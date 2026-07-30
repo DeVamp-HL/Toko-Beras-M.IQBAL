@@ -256,12 +256,13 @@
   <input type="file" id="inputMuatFile" accept=".json" onchange="muatDariFile(event)">
 </div>
 
-<nav>
+<nav style="overflow-x:auto;">
   <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')">💰 Jual</button>
   <button id="tabInput" onclick="pindahHalaman('input')">➕ Masuk</button>
   <button id="tabProduksi" onclick="pindahHalaman('produksi')">📦 Produksi</button>
   <button id="tabRekap" onclick="pindahHalaman('rekap')">📋 Riwayat</button>
   <button id="tabStok" onclick="pindahHalaman('stok')">🌾 Stok</button>
+  <button id="tabLaba" onclick="pindahHalaman('laba')">📈 Laba</button>
   <button id="tabBulanan" onclick="pindahHalaman('bulanan')">🗓️ Bulanan</button>
 </nav>
 
@@ -379,6 +380,23 @@
     <div id="daftarStokKemasan" class="daftar-batch"></div>
   </div>
 
+  <!-- HALAMAN LABA / MARGIN -->
+  <div id="halamanLaba" class="halaman">
+    <div class="info-box">Margin dihitung dari HPP yang tercatat SAAT transaksi itu terjadi (harga beli tiap merk beda tiap batch). Transaksi yang tersimpan sebelum fitur ini aktif tidak punya HPP tercatat — ditandai "HPP tidak tercatat", tidak dipaksakan pakai perkiraan.</div>
+    <div class="ringkasan-atas">
+      <div class="kotak">
+        <div class="label">Omzet (transaksi terhitung)</div>
+        <div class="nilai" id="labaOmzet">Rp0</div>
+      </div>
+      <div class="kotak">
+        <div class="label">Margin kotor (terhitung)</div>
+        <div class="nilai" id="labaMargin">Rp0</div>
+      </div>
+    </div>
+    <div class="keterangan" id="labaJumlahTakTerhitung" style="margin-bottom:12px;"></div>
+    <div id="daftarLaba" class="daftar-batch"></div>
+  </div>
+
   <!-- HALAMAN INPUT -->
   <div id="halamanInput" class="halaman">
     <div id="pesanOk" class="pesan-ok">✔ Tersimpan. Kedatangan baru sudah masuk ke riwayat.</div>
@@ -451,6 +469,17 @@
       <label>Keamanan lingkungan (Rp)</label>
       <input type="number" id="biayaKeamananBulanan" placeholder="0" inputmode="numeric">
 
+      <label>Bensin pengantaran (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
+      <input type="number" id="biayaBensinBulanan" placeholder="0" inputmode="numeric">
+
+      <label>Listrik mesin (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
+      <input type="number" id="biayaListrikBulanan" placeholder="0" inputmode="numeric">
+
+      <label>Benang jahit (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
+      <input type="number" id="biayaBenangBulanan" placeholder="0" inputmode="numeric">
+
+      <p class="keterangan">Bensin, listrik, dan benang tidak masuk HPP per produk — dilaporkan di sini sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
+
       <button type="button" onclick="simpanBiayaBulanan()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Biaya Bulan Ini</button>
     </div>
 
@@ -521,7 +550,7 @@
   let jenisJualAktif = 'kemasan';
 
   function pindahHalaman(nama) {
-    ['jual','input','produksi','rekap','stok','bulanan'].forEach(n => {
+    ['jual','input','produksi','rekap','stok','laba','bulanan'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
     });
@@ -533,6 +562,7 @@
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); }
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); }
     if (nama === 'stok') tampilkanStok();
+    if (nama === 'laba') tampilkanLaba();
   }
   function kapital(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
@@ -638,6 +668,20 @@
 
   function formatRupiah(angka) { return 'Rp' + Math.round(angka).toLocaleString('id-ID'); }
 
+  // ============ HPP PER BATCH (Tahap 3) ============
+  // Satu-satunya tempat rumus HPP per merk dihitung — dipakai oleh form Input
+  // (hitungPerkiraan), tab Riwayat (tampilkanRekap), dan tab HPP baru.
+  // daftarMerk = array baris merk (bentuk sama dengan m.merkList atau hasil bacaBarisMerk()).
+  // Rumus: HPP/kg = (harga beli/kg) + (porsi biaya bongkar, dialokasikan proporsional per kg).
+  function hitungHppMerkDalamBatch(daftarMerk, biayaBongkar) {
+    const totalKgSemua = daftarMerk.reduce((a, m) => a + m.totalKg, 0);
+    return daftarMerk.map(m => {
+      const alokasiBongkar = totalKgSemua > 0 ? (m.totalKg / totalKgSemua) * biayaBongkar : 0;
+      const hppPerKg = m.totalKg > 0 ? (m.subtotalHarga + alokasiBongkar) / m.totalKg : 0;
+      return { ...m, alokasiBongkar, hppPerKg };
+    });
+  }
+
   function hitungPerkiraan() {
     const baris = bacaBarisMerk();
     const bongkar = parseFloat(document.getElementById('biayaBongkar').value) || 0;
@@ -646,14 +690,13 @@
     const totalHargaBeli = baris.reduce((a, b) => a + b.subtotalHarga, 0);
     const totalSemua = totalHargaBeli + bongkar;
 
-    // Tampilkan subtotal per baris (alokasi bongkar proporsional kg)
-    baris.forEach(b => {
+    // Tampilkan subtotal per baris (alokasi bongkar proporsional kg) — pakai rumus tunggal hitungHppMerkDalamBatch
+    const barisDenganHpp = hitungHppMerkDalamBatch(baris, bongkar);
+    barisDenganHpp.forEach(b => {
       const el = document.getElementById('subtotal-' + b.id);
       if (!el) return;
       if (b.totalKg > 0) {
-        const alokasiBongkar = totalKgSemua > 0 ? (b.totalKg / totalKgSemua) * bongkar : 0;
-        const hppPerKg = (b.subtotalHarga + alokasiBongkar) / b.totalKg;
-        el.textContent = `${b.totalKg} kg · Harga beli ${formatRupiah(b.subtotalHarga)} · HPP≈${formatRupiah(hppPerKg)}/kg (sudah + porsi bongkar)`;
+        el.textContent = `${b.totalKg} kg · Harga beli ${formatRupiah(b.subtotalHarga)} · HPP≈${formatRupiah(b.hppPerKg)}/kg (sudah + porsi bongkar)`;
       } else {
         el.textContent = '';
       }
@@ -732,6 +775,7 @@
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
     if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
+    if (document.getElementById('halamanLaba').classList.contains('tampil')) tampilkanLaba();
   }, 'id');
 
   pasangSinkronisasi(KOLEKSI_PRODUKSI, KUNCI_PRODUKSI, (d) => { _cacheProduksi = d; }, () => {
@@ -913,15 +957,14 @@
       const totalHargaBeli = k.merkList.reduce((a, m) => a + m.subtotalHarga, 0);
       const totalSemua = totalHargaBeli + k.biayaBongkar;
 
-      const barisTabel = k.merkList.map(m => {
-        const alokasiBongkar = totalKgSemua > 0 ? (m.totalKg / totalKgSemua) * k.biayaBongkar : 0;
-        const hppPerKg = m.totalKg > 0 ? (m.subtotalHarga + alokasiBongkar) / m.totalKg : 0;
+      const merkDenganHpp = hitungHppMerkDalamBatch(k.merkList, k.biayaBongkar);
+      const barisTabel = merkDenganHpp.map(m => {
         const keteranganJumlah = m.satuan === 'karung' ? `${m.jumlahKarung} krg × ${m.beratKarung}kg` : `${m.totalKg}kg langsung`;
         return `<tr>
           <td>${m.merk}</td>
           <td>${keteranganJumlah}</td>
           <td>${formatRupiah(m.hargaPerKg)}/kg</td>
-          <td>${formatRupiah(hppPerKg)}/kg</td>
+          <td>${formatRupiah(m.hppPerKg)}/kg</td>
         </tr>`;
       }).join('');
 
@@ -959,12 +1002,15 @@
     const bulan = document.getElementById('bulanBiaya').value;
     const akses = parseFloat(document.getElementById('biayaAksesBulanan').value) || 0;
     const keamanan = parseFloat(document.getElementById('biayaKeamananBulanan').value) || 0;
+    const bensin = parseFloat(document.getElementById('biayaBensinBulanan').value) || 0;
+    const listrik = parseFloat(document.getElementById('biayaListrikBulanan').value) || 0;
+    const benang = parseFloat(document.getElementById('biayaBenangBulanan').value) || 0;
     if (!bulan) { alert('Pilih bulan dulu.'); return; }
-    if (akses <= 0 && keamanan <= 0) { alert('Isi minimal salah satu biaya.'); return; }
+    if (akses <= 0 && keamanan <= 0 && bensin <= 0 && listrik <= 0 && benang <= 0) { alert('Isi minimal salah satu biaya.'); return; }
 
     // Dokumen Firestore memakai "bulan" sebagai id supaya bulan yang sama otomatis menimpa (bukan duplikat).
     try {
-      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, akses, keamanan });
+      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, akses, keamanan, bensin, listrik, benang });
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -973,6 +1019,9 @@
 
     document.getElementById('biayaAksesBulanan').value = '';
     document.getElementById('biayaKeamananBulanan').value = '';
+    document.getElementById('biayaBensinBulanan').value = '';
+    document.getElementById('biayaListrikBulanan').value = '';
+    document.getElementById('biayaBenangBulanan').value = '';
   }
 
   async function hapusBulanan(bulan) {
@@ -992,19 +1041,26 @@
       kontainer.innerHTML = '<div class="kosong">Belum ada biaya bulanan tercatat.</div>';
       return;
     }
-    kontainer.innerHTML = semua.map(b => `
+    kontainer.innerHTML = semua.map(b => {
+      const bensin = b.bensin || 0, listrik = b.listrik || 0, benang = b.benang || 0;
+      const total = (b.akses || 0) + (b.keamanan || 0) + bensin + listrik + benang;
+      return `
       <div class="item-batch">
         <div class="baris-atas">
           <span class="pemasok-nama">${b.bulan}</span>
         </div>
         <div style="font-size:14px; color:#444; margin-top:6px;">
-          Akses/gapura: ${formatRupiah(b.akses)}<br>
-          Keamanan lingkungan: ${formatRupiah(b.keamanan)}
+          Akses/gapura: ${formatRupiah(b.akses || 0)}<br>
+          Keamanan lingkungan: ${formatRupiah(b.keamanan || 0)}<br>
+          Bensin pengantaran: ${formatRupiah(bensin)}<br>
+          Listrik mesin: ${formatRupiah(listrik)}<br>
+          Benang jahit: ${formatRupiah(benang)}
         </div>
-        <div class="total-baris"><span>Total bulan ini</span><span>${formatRupiah(b.akses + b.keamanan)}</span></div>
+        <div class="total-baris"><span>Total biaya operasional bulan ini</span><span>${formatRupiah(total)}</span></div>
         <button class="tombol-hapus" onclick="hapusBulanan('${b.bulan}')">Hapus</button>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   // ============ MESIN STOK, JUAL, PRODUKSI (Tahap 2) ============
@@ -1023,15 +1079,17 @@
   // Stok karung sumber per merk = total kg masuk (Tahap 1) - kg terpakai (jual karung + repacking dadakan + produksi kemasan)
   function hitungStokKarungPerMerk() {
     const batch = ambilSemuaBatch();
-    const stok = {}; // { merk: { totalMasuk, terpakai, hargaTerakhirPerKg } }
+    const stok = {}; // { merk: { totalMasuk, terpakai, hargaTerakhirPerKg, hppTerakhirPerKg } }
 
     batch.forEach(k => {
-      k.merkList.forEach(m => {
-        if (!stok[m.merk]) stok[m.merk] = { totalMasuk: 0, terpakai: 0, hargaTerakhirPerKg: m.hargaPerKg, tanggalTerakhir: k.tanggal };
+      const merkDenganHpp = hitungHppMerkDalamBatch(k.merkList, k.biayaBongkar);
+      merkDenganHpp.forEach(m => {
+        if (!stok[m.merk]) stok[m.merk] = { totalMasuk: 0, terpakai: 0, hargaTerakhirPerKg: m.hargaPerKg, hppTerakhirPerKg: m.hppPerKg, tanggalTerakhir: k.tanggal };
         stok[m.merk].totalMasuk += m.totalKg;
-        // simpan harga dari batch dgn tanggal paling baru
+        // simpan harga & HPP dari batch dgn tanggal paling baru (HPP sudah termasuk alokasi bongkar batch itu)
         if (!stok[m.merk].tanggalTerakhir || k.tanggal >= stok[m.merk].tanggalTerakhir) {
           stok[m.merk].hargaTerakhirPerKg = m.hargaPerKg;
+          stok[m.merk].hppTerakhirPerKg = m.hppPerKg;
           stok[m.merk].tanggalTerakhir = k.tanggal;
         }
       });
@@ -1055,21 +1113,25 @@
     Object.keys(stok).forEach(merk => {
       hasil[merk] = {
         sisaKg: Math.round((stok[merk].totalMasuk - stok[merk].terpakai) * 100) / 100,
-        hargaTerakhirPerKg: stok[merk].hargaTerakhirPerKg
+        hargaTerakhirPerKg: stok[merk].hargaTerakhirPerKg,
+        hppTerakhirPerKg: stok[merk].hppTerakhirPerKg
       };
     });
     return hasil;
   }
 
-  // Stok kemasan jadi per nama produk = total unit diproduksi - unit terjual
+  // Stok kemasan jadi per nama produk = total unit diproduksi - unit terjual.
+  // HPP ditampilkan sebagai rata-rata tertimbang (total nilai produksi / total unit dibuat) —
+  // bukan HPP produksi terakhir saja — supaya benar kalau stok gabungan dari beberapa batch produksi berbeda harga.
   function hitungStokKemasan() {
     const produksi = ambilProduksi();
-    const stok = {}; // { "namaProduk|ukuranKg": { unitDibuat, unitTerjual } }
+    const stok = {}; // { "namaProduk|ukuranKg": { unitDibuat, unitTerjual, nilaiProduksiTotal } }
 
     produksi.forEach(pr => {
       const kunci = pr.namaProduk + '|' + pr.ukuranKemasan;
-      if (!stok[kunci]) stok[kunci] = { namaProduk: pr.namaProduk, ukuranKemasan: pr.ukuranKemasan, unitDibuat: 0, unitTerjual: 0 };
+      if (!stok[kunci]) stok[kunci] = { namaProduk: pr.namaProduk, ukuranKemasan: pr.ukuranKemasan, unitDibuat: 0, unitTerjual: 0, nilaiProduksiTotal: 0 };
       stok[kunci].unitDibuat += pr.jumlahUnit;
+      stok[kunci].nilaiProduksiTotal += (pr.hppPerUnit || 0) * pr.jumlahUnit;
     });
 
     ambilPenjualan().forEach(p => {
@@ -1081,7 +1143,8 @@
 
     const hasil = {};
     Object.keys(stok).forEach(kunci => {
-      hasil[kunci] = { ...stok[kunci], sisaUnit: stok[kunci].unitDibuat - stok[kunci].unitTerjual };
+      const hppRataRata = stok[kunci].unitDibuat > 0 ? Math.round(stok[kunci].nilaiProduksiTotal / stok[kunci].unitDibuat) : 0;
+      hasil[kunci] = { ...stok[kunci], sisaUnit: stok[kunci].unitDibuat - stok[kunci].unitTerjual, hppRataRataPerUnit: hppRataRata };
     });
     return hasil;
   }
@@ -1212,7 +1275,8 @@
       if (!stokKarung[jenis] || stokKarung[jenis].sisaKg < totalKg) {
         if (!confirm(`Stok ${jenis} cuma sisa ${stokKarung[jenis]?.sisaKg || 0}kg, transaksi ini butuh ${totalKg}kg. Tetap simpan?`)) return;
       }
-      transaksi = { jenis: 'literan', merkSumber: jenis, jumlahLiter, rasioPakai: rasio, totalKg, namaProduk: jenis };
+      const hppPerKgSaatIni = stokKarung[jenis]?.hppTerakhirPerKg || 0;
+      transaksi = { jenis: 'literan', merkSumber: jenis, jumlahLiter, rasioPakai: rasio, totalKg, namaProduk: jenis, hppTotalSaatJual: Math.round(hppPerKgSaatIni * totalKg) };
     } else if (jenisJualAktif === 'kemasan') {
       const kunci = document.getElementById('jualKemasanProduk').value;
       const jumlahUnit = parseFloat(document.getElementById('jualKemasanJumlah').value) || 0;
@@ -1222,7 +1286,8 @@
       if (!stokKemasan[kunci] || stokKemasan[kunci].sisaUnit < jumlahUnit) {
         if (!confirm(`Stok kemasan ${namaProduk} ${ukuranKemasan}kg cuma sisa ${stokKemasan[kunci]?.sisaUnit || 0}, transaksi ini ${jumlahUnit} unit. Tetap simpan?`)) return;
       }
-      transaksi = { jenis: 'kemasan', namaProduk, ukuranKemasan: parseFloat(ukuranKemasan), jumlahUnit, totalKg: parseFloat(ukuranKemasan) * jumlahUnit };
+      const hppPerUnitSaatIni = stokKemasan[kunci]?.hppRataRataPerUnit || 0;
+      transaksi = { jenis: 'kemasan', namaProduk, ukuranKemasan: parseFloat(ukuranKemasan), jumlahUnit, totalKg: parseFloat(ukuranKemasan) * jumlahUnit, hppTotalSaatJual: Math.round(hppPerUnitSaatIni * jumlahUnit) };
     } else if (jenisJualAktif === 'repacking') {
       const merk = document.getElementById('jualRepackingMerk').value;
       const namaProduk = document.getElementById('jualRepackingNamaProduk').value.trim();
@@ -1233,7 +1298,8 @@
       if (!stokKarung[merk] || stokKarung[merk].sisaKg < kg) {
         if (!confirm(`Stok ${merk} cuma sisa ${stokKarung[merk]?.sisaKg || 0}kg, transaksi ini butuh ${kg}kg. Tetap simpan?`)) return;
       }
-      transaksi = { jenis: 'repacking', merkSumber: merk, namaProduk, totalKg: kg };
+      const hppPerKgRepacking = stokKarung[merk]?.hppTerakhirPerKg || 0;
+      transaksi = { jenis: 'repacking', merkSumber: merk, namaProduk, totalKg: kg, hppTotalSaatJual: Math.round(hppPerKgRepacking * kg) };
     } else if (jenisJualAktif === 'karung') {
       const merk = document.getElementById('jualKarungMerk').value;
       const jumlahKarung = parseFloat(document.getElementById('jualKarungJumlah').value) || 0;
@@ -1250,7 +1316,8 @@
       if (!stokKarung[merk] || stokKarung[merk].sisaKg < totalKg) {
         if (!confirm(`Stok ${merk} cuma sisa ${stokKarung[merk]?.sisaKg || 0}kg, transaksi ini butuh ${totalKg}kg (${jumlahKarung} karung × ${beratKarungAcuan}kg). Tetap simpan?`)) return;
       }
-      transaksi = { jenis: 'karung', merkSumber: merk, jumlahKarung, beratKarungAcuan, totalKg, namaProduk: merk + ' (karung utuh)' };
+      const hppPerKgKarung = stokKarung[merk]?.hppTerakhirPerKg || 0;
+      transaksi = { jenis: 'karung', merkSumber: merk, jumlahKarung, beratKarungAcuan, totalKg, namaProduk: merk + ' (karung utuh)', hppTotalSaatJual: Math.round(hppPerKgKarung * totalKg) };
     }
 
     if (!transaksi) { alert('Pilih jenis penjualan dulu.'); return; }
@@ -1337,12 +1404,15 @@
       if (!confirm(`Berat dipakai ${kgDipakai}kg tapi hasil kemasan ${totalKgJadi}kg (selisih >15%, mungkin karena susut atau salah ketik). Tetap simpan?`)) return;
     }
 
+    // HPP per unit = (HPP/kg sumber, sudah termasuk porsi bongkar batch itu × kg dipakai) + biaya kemasan + upah repacking, dibagi jumlah unit jadi.
+    const hppSumberPerKg = stokKarung[merkSumber]?.hppTerakhirPerKg || stokKarung[merkSumber]?.hargaTerakhirPerKg || 0;
     const produksi = {
       id: Date.now(),
       tanggal: new Date().toISOString().split('T')[0],
       merkSumber, kgDipakai, namaProduk, ukuranKemasan, jumlahUnit,
       biayaKemasan, upahRepacking,
-      hppPerUnit: Math.round(((stokKarung[merkSumber]?.hargaTerakhirPerKg || 0) * kgDipakai + biayaKemasan + upahRepacking) / jumlahUnit)
+      hppSumberPerKgDipakai: hppSumberPerKg,
+      hppPerUnit: Math.round((hppSumberPerKg * kgDipakai + biayaKemasan + upahRepacking) / jumlahUnit)
     };
 
     try {
@@ -1381,8 +1451,9 @@
         <div class="item-batch">
           <div class="baris-atas">
             <span class="pemasok-nama">${m}${stokKarung[m].sisaKg < 50 ? '<span class="badge-stok-rendah">STOK MENIPIS</span>' : ''}</span>
-            <span class="tanggal">${formatRupiah(stokKarung[m].hargaTerakhirPerKg)}/kg</span>
+            <span class="tanggal">HPP ${formatRupiah(stokKarung[m].hppTerakhirPerKg)}/kg</span>
           </div>
+          <div class="keterangan">Harga beli ${formatRupiah(stokKarung[m].hargaTerakhirPerKg)}/kg (belum + bongkar)</div>
           <div class="total-baris"><span>Sisa stok</span><span>${stokKarung[m].sisaKg} kg</span></div>
         </div>
       `).join('');
@@ -1395,10 +1466,65 @@
         <div class="item-batch">
           <div class="baris-atas">
             <span class="pemasok-nama">${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg${stokKemasan[k].sisaUnit < 5 ? '<span class="badge-stok-rendah">STOK MENIPIS</span>' : ''}</span>
+            <span class="tanggal">HPP ${formatRupiah(stokKemasan[k].hppRataRataPerUnit)}/unit</span>
           </div>
           <div class="total-baris"><span>Sisa stok</span><span>${stokKemasan[k].sisaUnit} unit</span></div>
         </div>
       `).join('');
+  }
+
+  // ============ LABA / MARGIN PER TRANSAKSI (Tahap 3) ============
+  // Hanya transaksi yang punya hppTotalSaatJual (dicatat mulai fitur ini aktif) yang dihitung.
+  // Transaksi lama (sebelum fitur ini) sengaja TIDAK ditambal dengan HPP perkiraan — ditandai terpisah.
+  function tampilkanLaba() {
+    const semua = ambilPenjualan();
+    const kontainer = document.getElementById('daftarLaba');
+
+    const terhitung = semua.filter(p => p.hppTotalSaatJual !== undefined && p.hppTotalSaatJual !== null);
+    const takTerhitung = semua.length - terhitung.length;
+
+    const totalOmzet = terhitung.reduce((a, p) => a + (p.hargaTotal || 0), 0);
+    const totalHpp = terhitung.reduce((a, p) => a + (p.hppTotalSaatJual || 0), 0);
+    const totalMargin = totalOmzet - totalHpp;
+
+    document.getElementById('labaOmzet').textContent = formatRupiah(totalOmzet);
+    document.getElementById('labaMargin').textContent = formatRupiah(totalMargin);
+    document.getElementById('labaJumlahTakTerhitung').textContent = takTerhitung > 0
+      ? `${takTerhitung} transaksi lama tidak ikut dihitung (HPP saat itu tidak tercatat).`
+      : `Semua ${terhitung.length} transaksi ikut dihitung.`;
+
+    if (semua.length === 0) {
+      kontainer.innerHTML = '<div class="kosong">Belum ada penjualan tercatat.</div>';
+      return;
+    }
+
+    kontainer.innerHTML = semua.map(p => {
+      const adaHpp = p.hppTotalSaatJual !== undefined && p.hppTotalSaatJual !== null;
+      const margin = adaHpp ? (p.hargaTotal || 0) - p.hppTotalSaatJual : null;
+      const marginPersenDariJual = adaHpp && p.hargaTotal > 0 ? Math.round((margin / p.hargaTotal) * 1000) / 10 : null;
+      return `
+        <div class="item-batch">
+          <div class="baris-atas">
+            <span class="pemasok-nama">${p.namaProduk || p.jenis}</span>
+            <span class="tanggal">${formatTanggal(p.tanggal)} ${p.jam || ''}</span>
+          </div>
+          <div style="font-size:13px; color:#666;">Jenis: ${p.jenis} · Bayar: ${p.caraBayar || '-'}</div>
+          <div class="total-baris">
+            <span>Harga jual</span><span>${formatRupiah(p.hargaTotal || 0)}</span>
+          </div>
+          ${adaHpp ? `
+            <div style="display:flex; justify-content:space-between; font-size:13px; color:#666; margin-top:4px;">
+              <span>HPP saat jual</span><span>${formatRupiah(p.hppTotalSaatJual)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-weight:800; color:${margin >= 0 ? 'var(--hijau-tua)' : 'var(--merah)'}; margin-top:4px;">
+              <span>Margin kotor (${marginPersenDariJual}% dari harga jual)</span><span>${formatRupiah(margin)}</span>
+            </div>
+          ` : `
+            <div class="keterangan" style="margin-top:4px; color:#b3261e; font-weight:700;">HPP tidak tercatat (transaksi sebelum fitur margin aktif)</div>
+          `}
+        </div>
+      `;
+    }).join('');
   }
 
   // --- Wajib: script ini "type=module" (supaya bisa import Firebase SDK).
