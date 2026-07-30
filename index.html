@@ -257,7 +257,8 @@
 </div>
 
 <nav style="overflow-x:auto;">
-  <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')">💰 Jual</button>
+  <button id="tabRingkasan" class="aktif" onclick="pindahHalaman('ringkasan')">🏠 Ringkasan</button>
+  <button id="tabJual" onclick="pindahHalaman('jual')">💰 Jual</button>
   <button id="tabInput" onclick="pindahHalaman('input')">➕ Masuk</button>
   <button id="tabProduksi" onclick="pindahHalaman('produksi')">📦 Produksi</button>
   <button id="tabRekap" onclick="pindahHalaman('rekap')">📋 Riwayat</button>
@@ -269,7 +270,35 @@
 <main>
 
   <!-- HALAMAN JUAL (kasir) -->
-  <div id="halamanJual" class="halaman tampil">
+  <!-- HALAMAN RINGKASAN (dashboard, halaman pembuka default) -->
+  <div id="halamanRingkasan" class="halaman tampil">
+    <div class="ringkasan-atas">
+      <div class="kotak">
+        <div class="label">Omzet hari ini</div>
+        <div class="nilai" id="ringOmzetHariIni">Rp0</div>
+      </div>
+      <div class="kotak">
+        <div class="label">Omzet minggu ini <span class="keterangan" style="display:block;">(Senin–Minggu)</span></div>
+        <div class="nilai" id="ringOmzetMingguIni">Rp0</div>
+      </div>
+    </div>
+    <div class="ringkasan-atas">
+      <div class="kotak">
+        <div class="label">Belanja beras minggu ini <span class="keterangan" style="display:block;">(harga beli + bongkar)</span></div>
+        <div class="nilai" id="ringBelanjaMingguIni">Rp0</div>
+      </div>
+      <div class="kotak">
+        <div class="label">Netto bulan ini <span class="keterangan" style="display:block;">(kasar, lihat catatan)</span></div>
+        <div class="nilai" id="ringNettoBulanIni">Rp0</div>
+      </div>
+    </div>
+    <div class="info-box">"Netto" di sini = Omzet bulan ini − Belanja beras bulan ini (uang keluar untuk beli stok). Ini ukuran arus kas KASAR, BUKAN laba bersih akuntansi — belum dikurangi biaya operasional bulanan (gaji, listrik, dll, lihat tab Bulanan) dan tidak sama dengan margin kotor di tab Laba (yang berbasis HPP per unit).</div>
+
+    <div class="subjudul" style="margin-top:0;">⚠️ Perlu Perhatian</div>
+    <div id="ringPerhatian" class="daftar-batch"></div>
+  </div>
+
+  <div id="halamanJual" class="halaman">
     <div id="pesanOkJual" class="pesan-ok">✔ Penjualan tersimpan.</div>
 
     <div class="kartu-jenis-jual" style="grid-template-columns: repeat(5,1fr);">
@@ -615,13 +644,14 @@
   let jenisJualAktif = 'kemasan';
 
   function pindahHalaman(nama) {
-    ['jual','input','produksi','rekap','stok','laba','bulanan'].forEach(n => {
+    ['ringkasan','jual','input','produksi','rekap','stok','laba','bulanan'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
     });
     document.getElementById('tombolSimpanWrap').style.display = nama === 'input' ? 'block' : 'none';
     document.getElementById('tombolSimpanJualWrap').style.display = nama === 'jual' ? 'block' : 'none';
     document.getElementById('tombolSimpanProduksiWrap').style.display = nama === 'produksi' ? 'block' : 'none';
+    if (nama === 'ringkasan') tampilkanRingkasan();
     if (nama === 'rekap') tampilkanRekap();
     if (nama === 'bulanan') tampilkanBulanan();
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); }
@@ -827,6 +857,7 @@
 
   pasangSinkronisasi(KOLEKSI_BATCH, KUNCI_SIMPAN, (d) => { _cacheBatch = d; }, () => {
     perbaruiCounterBackup();
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
     if (document.getElementById('halamanRekap').classList.contains('tampil')) tampilkanRekap();
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
@@ -838,6 +869,7 @@
   }, 'bulan', 'bulanan');
 
   pasangSinkronisasi(KOLEKSI_PENJUALAN, KUNCI_PENJUALAN, (d) => { _cachePenjualan = d; }, () => {
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
     if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
@@ -856,6 +888,7 @@
 
   pasangSinkronisasi(KOLEKSI_KARANTINA, KUNCI_KARANTINA, (d) => { _cacheKarantina = d; }, () => {
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'karantina');
 
   // Simpan satu dokumen ke Firestore. id dipakai sebagai nama dokumen supaya
@@ -1801,6 +1834,70 @@
     }
 
     tampilkanKarantina();
+  }
+
+  // ============ RINGKASAN / DASHBOARD (halaman pembuka default) ============
+  // Definisi periode: minggu = Senin s.d. Minggu kalender (bukan 7 hari bergulir),
+  // bulan = bulan kalender berjalan. Konsisten dengan tab Bulanan yang sudah pakai bulan kalender.
+  function tanggalMulaiMingguIni() {
+    const now = new Date();
+    const hari = now.getDay(); // 0=Minggu, 1=Senin, ...
+    const selisihKeSenin = hari === 0 ? 6 : hari - 1;
+    const senin = new Date(now);
+    senin.setDate(now.getDate() - selisihKeSenin);
+    senin.setHours(0,0,0,0);
+    return senin;
+  }
+  function tanggalAwalBulanIni() {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  function isoKeTanggal(iso) { return new Date(iso + 'T00:00:00'); }
+
+  function tampilkanRingkasan() {
+    const hariIniIso = new Date().toISOString().split('T')[0];
+    const mulaiMinggu = tanggalMulaiMingguIni();
+    const mulaiBulan = tanggalAwalBulanIni();
+
+    const penjualan = ambilPenjualan();
+    const batch = ambilSemuaBatch();
+
+    // Omzet hari ini & minggu ini — dari transaksi jual (bukan retur), berbasis tanggal transaksi.
+    const omzetHariIni = penjualan.filter(p => p.tanggal === hariIniIso).reduce((a,p) => a + (p.hargaTotal||0), 0);
+    const omzetMingguIni = penjualan.filter(p => isoKeTanggal(p.tanggal) >= mulaiMinggu).reduce((a,p) => a + (p.hargaTotal||0), 0);
+    const omzetBulanIni = penjualan.filter(p => isoKeTanggal(p.tanggal) >= mulaiBulan).reduce((a,p) => a + (p.hargaTotal||0), 0);
+
+    // Belanja beras = harga beli semua merk + biaya bongkar, per kedatangan mobil (tab Masuk).
+    function nilaiBelanjaBatch(k) {
+      const totalHargaBeli = k.merkList.reduce((a,m) => a + m.subtotalHarga, 0);
+      return totalHargaBeli + (k.biayaBongkar || 0);
+    }
+    const belanjaMingguIni = batch.filter(k => isoKeTanggal(k.tanggal) >= mulaiMinggu).reduce((a,k) => a + nilaiBelanjaBatch(k), 0);
+    const belanjaBulanIni = batch.filter(k => isoKeTanggal(k.tanggal) >= mulaiBulan).reduce((a,k) => a + nilaiBelanjaBatch(k), 0);
+
+    const nettoBulanIni = omzetBulanIni - belanjaBulanIni;
+
+    document.getElementById('ringOmzetHariIni').textContent = formatRupiah(omzetHariIni);
+    document.getElementById('ringOmzetMingguIni').textContent = formatRupiah(omzetMingguIni);
+    document.getElementById('ringBelanjaMingguIni').textContent = formatRupiah(belanjaMingguIni);
+    document.getElementById('ringNettoBulanIni').textContent = formatRupiah(nettoBulanIni);
+
+    // Perlu Perhatian: stok menipis + karantina belum diputuskan.
+    const stokKarung = hitungStokKarungPerMerk();
+    const merkMenipis = Object.keys(stokKarung).filter(m => stokKarung[m].sisaKg > 0 && stokKarung[m].sisaKg < 50);
+    const stokKemasan = hitungStokKemasan();
+    const kemasanMenipis = Object.keys(stokKemasan).filter(k => stokKemasan[k].sisaUnit > 0 && stokKemasan[k].sisaUnit < 5);
+    const karantinaMenunggu = ambilKarantina().filter(item => item.statusTindakan === 'belum_diputuskan');
+
+    const daftarPerhatian = [];
+    merkMenipis.forEach(m => daftarPerhatian.push(`🌾 Stok ${m} menipis: ${stokKarung[m].sisaKg} kg`));
+    kemasanMenipis.forEach(k => daftarPerhatian.push(`📦 Stok ${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg menipis: ${stokKemasan[k].sisaUnit} unit`));
+    if (karantinaMenunggu.length > 0) daftarPerhatian.push(`🚧 ${karantinaMenunggu.length} barang di Karantina menunggu keputusan (lihat tab Stok)`);
+
+    const kontPerhatian = document.getElementById('ringPerhatian');
+    kontPerhatian.innerHTML = daftarPerhatian.length === 0
+      ? '<div class="kosong">Tidak ada yang perlu diperhatikan sekarang.</div>'
+      : daftarPerhatian.map(teks => `<div class="item-batch" style="padding:12px 16px; font-size:14px;">${teks}</div>`).join('');
   }
 
   // ============ LABA / MARGIN PER TRANSAKSI (Tahap 3) ============
