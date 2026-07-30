@@ -287,12 +287,19 @@
         <div class="label">Belanja beras minggu ini <span class="keterangan" style="display:block;">(harga beli + bongkar)</span></div>
         <div class="nilai" id="ringBelanjaMingguIni">Rp0</div>
       </div>
+    </div>
+    <div class="subjudul" style="margin-top:0;">Kas Bulan Ini</div>
+    <div class="ringkasan-atas">
       <div class="kotak">
-        <div class="label">Netto bulan ini <span class="keterangan" style="display:block;">(kasar, lihat catatan)</span></div>
-        <div class="nilai" id="ringNettoBulanIni">Rp0</div>
+        <div class="label">Kas masuk <span class="keterangan" style="display:block;">(omzet jual)</span></div>
+        <div class="nilai" id="ringKasMasukBulanIni">Rp0</div>
+      </div>
+      <div class="kotak">
+        <div class="label">Kas keluar <span class="keterangan" style="display:block;">(belanja beras + biaya bulanan)</span></div>
+        <div class="nilai" id="ringKasKeluarBulanIni">Rp0</div>
       </div>
     </div>
-    <div class="info-box">"Netto" di sini = Omzet bulan ini − Belanja beras bulan ini (uang keluar untuk beli stok). Ini ukuran arus kas KASAR, BUKAN laba bersih akuntansi — belum dikurangi biaya operasional bulanan (gaji, listrik, dll, lihat tab Bulanan) dan tidak sama dengan margin kotor di tab Laba (yang berbasis HPP per unit).</div>
+    <div class="info-box">Kas masuk = total omzet jual bulan ini. Kas keluar = belanja beras (harga beli + bongkar dari tab Masuk) ditambah biaya bulanan (gaji, listrik, akses, dll dari tab Bulanan — kalau bulan ini belum diisi, bagian itu dihitung Rp0). Ini arus kas, BUKAN laba bersih akuntansi — beda dari margin kotor di tab Laba (yang berbasis HPP barang terjual, bukan barang dibeli).</div>
 
     <div class="subjudul" style="margin-top:0;">⚠️ Perlu Perhatian</div>
     <div id="ringPerhatian" class="daftar-batch"></div>
@@ -866,6 +873,7 @@
 
   pasangSinkronisasi(KOLEKSI_BULANAN, KUNCI_BULANAN, (d) => { _cacheBulanan = d; }, () => {
     if (document.getElementById('halamanBulanan').classList.contains('tampil')) tampilkanBulanan();
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'bulan', 'bulanan');
 
   pasangSinkronisasi(KOLEKSI_PENJUALAN, KUNCI_PENJUALAN, (d) => { _cachePenjualan = d; }, () => {
@@ -1875,12 +1883,21 @@
     const belanjaMingguIni = batch.filter(k => isoKeTanggal(k.tanggal) >= mulaiMinggu).reduce((a,k) => a + nilaiBelanjaBatch(k), 0);
     const belanjaBulanIni = batch.filter(k => isoKeTanggal(k.tanggal) >= mulaiBulan).reduce((a,k) => a + nilaiBelanjaBatch(k), 0);
 
-    const nettoBulanIni = omzetBulanIni - belanjaBulanIni;
+    // Kas Bulan Ini: masuk = omzet jual bulan ini. keluar = belanja beras bulan ini + biaya bulanan bulan ini
+    // (gaji, listrik, akses, dst — kalau bulan ini belum diisi di tab Bulanan, dihitung Rp0, bukan ditambal perkiraan).
+    const kunciBulanIni = new Date().toISOString().slice(0, 7); // format 'YYYY-MM', sama dengan input type="month"
+    const biayaBulananBulanIni = ambilBiayaBulanan().find(b => b.bulan === kunciBulanIni);
+    const totalBiayaBulanan = biayaBulananBulanIni
+      ? (biayaBulananBulanIni.akses||0) + (biayaBulananBulanIni.keamanan||0) + (biayaBulananBulanIni.bensin||0) + (biayaBulananBulanIni.listrik||0) + (biayaBulananBulanIni.benang||0) + (biayaBulananBulanIni.gaji||0)
+      : 0;
+    const kasMasukBulanIni = omzetBulanIni;
+    const kasKeluarBulanIni = belanjaBulanIni + totalBiayaBulanan;
 
     document.getElementById('ringOmzetHariIni').textContent = formatRupiah(omzetHariIni);
     document.getElementById('ringOmzetMingguIni').textContent = formatRupiah(omzetMingguIni);
     document.getElementById('ringBelanjaMingguIni').textContent = formatRupiah(belanjaMingguIni);
-    document.getElementById('ringNettoBulanIni').textContent = formatRupiah(nettoBulanIni);
+    document.getElementById('ringKasMasukBulanIni').textContent = formatRupiah(kasMasukBulanIni);
+    document.getElementById('ringKasKeluarBulanIni').textContent = formatRupiah(kasKeluarBulanIni);
 
     // Perlu Perhatian: stok menipis + karantina belum diputuskan.
     const stokKarung = hitungStokKarungPerMerk();
