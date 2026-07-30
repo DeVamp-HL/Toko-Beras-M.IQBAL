@@ -272,11 +272,12 @@
   <div id="halamanJual" class="halaman tampil">
     <div id="pesanOkJual" class="pesan-ok">✔ Penjualan tersimpan.</div>
 
-    <div class="kartu-jenis-jual" style="grid-template-columns: repeat(4,1fr);">
+    <div class="kartu-jenis-jual" style="grid-template-columns: repeat(5,1fr);">
       <button type="button" id="jenisJualKemasan" class="pilih" onclick="pilihJenisJual('kemasan')">📦<br>Dari Stok<br>Kemasan</button>
       <button type="button" id="jenisJualRepacking" onclick="pilihJenisJual('repacking')">⚖️<br>Repacking<br>Dadakan</button>
       <button type="button" id="jenisJualKarung" onclick="pilihJenisJual('karung')">🌾<br>Karung<br>Utuh</button>
       <button type="button" id="jenisJualLiteran" onclick="pilihJenisJual('literan')">🥤<br>Jual<br>Literan</button>
+      <button type="button" id="jenisJualRetur" onclick="pilihJenisJual('retur')">↩️<br>Retur</button>
     </div>
 
     <!-- Sub-form: Jual dari stok kemasan jadi -->
@@ -324,7 +325,57 @@
       <div class="keterangan" id="konversiLiteranInfo"></div>
     </div>
 
-    <div class="kartu">
+    <!-- Sub-form: Retur -->
+    <div class="kartu" id="formJualRetur" style="display:none;">
+      <div class="subjudul">Retur — barang apa yang dikembalikan?</div>
+      <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr;">
+        <button type="button" id="returJenisKemasan" class="pilih" onclick="pilihReturJenisAsal('kemasan')">📦<br>Kemasan Jadi</button>
+        <button type="button" id="returJenisKarung" onclick="pilihReturJenisAsal('karung')">🌾<br>Karung Utuh</button>
+      </div>
+
+      <div id="returPilihKemasanWrap">
+        <label>Produk kemasan yang diretur</label>
+        <div class="grid-tombol-pilih" id="pilihReturKemasanTombol"></div>
+        <input type="hidden" id="returKemasanProduk">
+        <label>Jumlah unit diretur</label>
+        <input type="number" id="returKemasanJumlah" placeholder="0" inputmode="numeric">
+      </div>
+      <div id="returPilihKarungWrap" style="display:none;">
+        <label>Merk karung yang diretur</label>
+        <div class="grid-tombol-pilih" id="pilihReturKarungTombol"></div>
+        <input type="hidden" id="returKarungMerk">
+        <label>Jumlah karung diretur</label>
+        <input type="number" id="returKarungJumlah" placeholder="0" inputmode="numeric">
+      </div>
+
+      <label>Kondisi barang retur</label>
+      <div class="tab-bayar">
+        <button type="button" id="returKondisiUtuh" class="pilih" onclick="pilihReturKondisi('utuh')">Utuh, masih bagus</button>
+        <button type="button" id="returKondisiTidakUtuh" onclick="pilihReturKondisi('tidak_utuh')">Tidak utuh / diragukan</button>
+      </div>
+      <p class="keterangan" id="returKeteranganKondisi">Barang utuh balik ke stok jual. Barang tidak utuh masuk Gudang Karantina — TIDAK langsung dijual lagi, owner putuskan dulu (retur ke pemasok / rework / buang) lewat tab Stok.</p>
+
+      <label>Cara penyelesaian</label>
+      <div class="tab-bayar">
+        <button type="button" id="returSelesaiRefund" class="pilih" onclick="pilihReturPenyelesaian('refund')">Refund (uang kembali)</button>
+        <button type="button" id="returSelesaiTukar" onclick="pilihReturPenyelesaian('tukar')">Tukar barang</button>
+      </div>
+
+      <div id="returBlokRefund">
+        <label>Nominal refund (Rp) <span class="keterangan">— sesuaikan kalau barang tidak utuh penuh, tidak harus sama dengan harga jual awal</span></label>
+        <input type="number" id="returNominalRefund" placeholder="0" inputmode="numeric">
+      </div>
+      <div id="returBlokTukar" style="display:none;">
+        <p class="keterangan">Pelanggan tukar dengan produk lain. Catat lewat transaksi Jual baru seperti biasa untuk barang penggantinya, lalu isi selisih di sini kalau ada.</p>
+        <label>Selisih harga (Rp) <span class="keterangan">— isi angka positif kalau TOKO refund kelebihan ke pelanggan, angka negatif kalau PELANGGAN nambah kekurangan</span></label>
+        <input type="number" id="returSelisihTukar" placeholder="0" inputmode="numeric">
+      </div>
+
+      <label>Alasan / catatan retur</label>
+      <input type="text" id="returCatatan" placeholder="Contoh: beras apek, salah kirim, dll">
+    </div>
+
+    <div class="kartu" id="kartuHargaBayarJual">
       <div class="subjudul">Harga & Bayar</div>
       <label>Harga jual (Rp) <span class="keterangan">— total transaksi ini</span></label>
       <input type="number" id="jualHargaTotal" placeholder="0" inputmode="numeric">
@@ -378,6 +429,9 @@
     <div id="daftarStokKarung" class="daftar-batch"></div>
     <div class="subjudul">Stok Kemasan Jadi</div>
     <div id="daftarStokKemasan" class="daftar-batch"></div>
+    <div class="subjudul">🚧 Gudang Karantina — barang retur belum diputuskan</div>
+    <p class="keterangan" style="margin-top:-8px;">Barang di sini TIDAK masuk stok jual. Putuskan salah satu tindakan untuk tiap item: balik ke pemasok, rework lalu masuk stok, atau buang (kerugian).</p>
+    <div id="daftarKarantina" class="daftar-batch"></div>
   </div>
 
   <!-- HALAMAN LABA / MARGIN -->
@@ -478,7 +532,11 @@
       <label>Benang jahit (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
       <input type="number" id="biayaBenangBulanan" placeholder="0" inputmode="numeric">
 
-      <p class="keterangan">Bensin, listrik, dan benang tidak masuk HPP per produk — dilaporkan di sini sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
+      <label>Total hari kerja semua pegawai bulan ini <span class="keterangan">— jumlah pegawai × hari kerja masing-masing, rate Rp77.000/hari-orang</span></label>
+      <input type="number" id="gajiTotalHariOrang" placeholder="Contoh: 3 pegawai × 26 hari = 78" inputmode="numeric" oninput="hitungPerkiraanGaji()">
+      <div class="keterangan" id="gajiPerkiraanInfo" style="margin-top:6px;"></div>
+
+      <p class="keterangan">Bensin, listrik, benang, dan gaji tidak masuk HPP per produk — dilaporkan di sini sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
 
       <button type="button" onclick="simpanBiayaBulanan()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Biaya Bulan Ini</button>
     </div>
@@ -492,7 +550,7 @@
   <button onclick="simpanKedatangan()" id="btnSimpanUtama">💾 Simpan Kedatangan Ini</button>
 </div>
 <div class="tombol-simpan" id="tombolSimpanJualWrap" style="display:none;">
-  <button onclick="simpanPenjualan()">💰 Simpan Penjualan</button>
+  <button onclick="simpanJualAtauRetur()" id="btnSimpanJual">💰 Simpan Penjualan</button>
 </div>
 <div class="tombol-simpan" id="tombolSimpanProduksiWrap" style="display:none;">
   <button onclick="simpanProduksi()">📦 Simpan Produksi Kemasan</button>
@@ -522,6 +580,8 @@
   const KOLEKSI_BULANAN = 'biayaBulanan';
   const KOLEKSI_PENJUALAN = 'penjualan';
   const KOLEKSI_PRODUKSI = 'produksiKemasan';
+  const KOLEKSI_RETUR = 'retur';
+  const KOLEKSI_KARANTINA = 'karantina';
 
   // Cache di memori — diisi ulang otomatis oleh onSnapshot tiap kali ada perubahan
   // (dari perangkat ini ATAU perangkat lain). Semua fungsi lama yang baca data
@@ -530,12 +590,16 @@
   let _cacheBulanan = [];
   let _cachePenjualan = [];
   let _cacheProduksi = [];
-  let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false };
+  let _cacheRetur = [];
+  let _cacheKarantina = [];
+  let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false };
 
   const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
   const KUNCI_BULANAN = 'miqbal_biaya_bulanan';
   const KUNCI_PENJUALAN = 'miqbal_penjualan_v1';
   const KUNCI_PRODUKSI = 'miqbal_produksi_kemasan_v1';
+  const KUNCI_RETUR = 'miqbal_retur_v1';
+  const KUNCI_KARANTINA = 'miqbal_karantina_v1';
   const DAFTAR_MERK = ['SAB','Lohan','SP','IR42 SB','IR42 B','Pandan Wangi','Angsa','Perahu Layar',
     'Rp11.500/L (grup)','Rp12.000/L (grup)','Rp12.500/L (grup)',
     'Ketan Putih','Ketan Putih Paris','Ketan Hitam PK','Ketan Hitam Sosoh','Beras Merah'];
@@ -545,6 +609,7 @@
     'Ketan Hitam Sosoh': 0.800, 'Ketan Putih Paris': 0.800, 'Beras Merah': 0.800
   };
   const RASIO_DEFAULT = 0.82; // produk inti
+  const RATE_GAJI_PER_HARI_ORANG = 77000; // Tahap 4: semua pegawai rate sama
 
   let idBaris = 0;
   let jenisJualAktif = 'kemasan';
@@ -734,7 +799,8 @@
     return [...arr].sort((a, b) => (b[field] > a[field] ? 1 : b[field] < a[field] ? -1 : 0));
   }
 
-  function pasangSinkronisasi(nomorKoleksi, kunciLocalStorage, setelCache, onBerubah, fieldUrut) {
+  // kunciStatus = key di _sambunganAktif (mis. 'batch', 'retur') — eksplisit, bukan ditebak dari nama koleksi.
+  function pasangSinkronisasi(nomorKoleksi, kunciLocalStorage, setelCache, onBerubah, fieldUrut, kunciStatus) {
     const kol = collection(db, nomorKoleksi);
     onSnapshot(kol, (snap) => {
       const daftar = [];
@@ -742,7 +808,7 @@
       const terurut = urutkanTerbaru(daftar, fieldUrut);
       setelCache(terurut);
       localStorage.setItem(kunciLocalStorage, JSON.stringify(terurut)); // cadangan offline
-      _sambunganAktif[nomorKoleksi === KOLEKSI_BATCH ? 'batch' : nomorKoleksi === KOLEKSI_BULANAN ? 'bulanan' : nomorKoleksi === KOLEKSI_PENJUALAN ? 'penjualan' : 'produksi'] = true;
+      _sambunganAktif[kunciStatus] = true;
       perbaruiStatusSambungan();
       if (onBerubah) onBerubah();
     }, (err) => {
@@ -765,24 +831,32 @@
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
     if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
-  }, 'id');
+  }, 'id', 'batch');
 
   pasangSinkronisasi(KOLEKSI_BULANAN, KUNCI_BULANAN, (d) => { _cacheBulanan = d; }, () => {
     if (document.getElementById('halamanBulanan').classList.contains('tampil')) tampilkanBulanan();
-  }, 'bulan');
+  }, 'bulan', 'bulanan');
 
   pasangSinkronisasi(KOLEKSI_PENJUALAN, KUNCI_PENJUALAN, (d) => { _cachePenjualan = d; }, () => {
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
     if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
     if (document.getElementById('halamanLaba').classList.contains('tampil')) tampilkanLaba();
-  }, 'id');
+  }, 'id', 'penjualan');
 
   pasangSinkronisasi(KOLEKSI_PRODUKSI, KUNCI_PRODUKSI, (d) => { _cacheProduksi = d; }, () => {
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
     if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
-  }, 'id');
+  }, 'id', 'produksi');
+
+  pasangSinkronisasi(KOLEKSI_RETUR, KUNCI_RETUR, (d) => { _cacheRetur = d; }, () => {
+    if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
+  }, 'id', 'retur');
+
+  pasangSinkronisasi(KOLEKSI_KARANTINA, KUNCI_KARANTINA, (d) => { _cacheKarantina = d; }, () => {
+    if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
+  }, 'id', 'karantina');
 
   // Simpan satu dokumen ke Firestore. id dipakai sebagai nama dokumen supaya
   // "muat dari file" bisa menimpa/menggabung tanpa duplikat.
@@ -998,6 +1072,12 @@
     return data ? JSON.parse(data) : [];
   }
 
+  function hitungPerkiraanGaji() {
+    const hariOrang = parseFloat(document.getElementById('gajiTotalHariOrang').value) || 0;
+    const el = document.getElementById('gajiPerkiraanInfo');
+    el.textContent = hariOrang > 0 ? `${hariOrang} hari-orang × ${formatRupiah(RATE_GAJI_PER_HARI_ORANG)} = ${formatRupiah(hariOrang * RATE_GAJI_PER_HARI_ORANG)}` : '';
+  }
+
   async function simpanBiayaBulanan() {
     const bulan = document.getElementById('bulanBiaya').value;
     const akses = parseFloat(document.getElementById('biayaAksesBulanan').value) || 0;
@@ -1005,12 +1085,14 @@
     const bensin = parseFloat(document.getElementById('biayaBensinBulanan').value) || 0;
     const listrik = parseFloat(document.getElementById('biayaListrikBulanan').value) || 0;
     const benang = parseFloat(document.getElementById('biayaBenangBulanan').value) || 0;
+    const gajiHariOrang = parseFloat(document.getElementById('gajiTotalHariOrang').value) || 0;
+    const gaji = Math.round(gajiHariOrang * RATE_GAJI_PER_HARI_ORANG);
     if (!bulan) { alert('Pilih bulan dulu.'); return; }
-    if (akses <= 0 && keamanan <= 0 && bensin <= 0 && listrik <= 0 && benang <= 0) { alert('Isi minimal salah satu biaya.'); return; }
+    if (akses <= 0 && keamanan <= 0 && bensin <= 0 && listrik <= 0 && benang <= 0 && gaji <= 0) { alert('Isi minimal salah satu biaya.'); return; }
 
     // Dokumen Firestore memakai "bulan" sebagai id supaya bulan yang sama otomatis menimpa (bukan duplikat).
     try {
-      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, akses, keamanan, bensin, listrik, benang });
+      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, akses, keamanan, bensin, listrik, benang, gajiHariOrang, gaji });
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -1022,6 +1104,8 @@
     document.getElementById('biayaBensinBulanan').value = '';
     document.getElementById('biayaListrikBulanan').value = '';
     document.getElementById('biayaBenangBulanan').value = '';
+    document.getElementById('gajiTotalHariOrang').value = '';
+    document.getElementById('gajiPerkiraanInfo').textContent = '';
   }
 
   async function hapusBulanan(bulan) {
@@ -1042,8 +1126,8 @@
       return;
     }
     kontainer.innerHTML = semua.map(b => {
-      const bensin = b.bensin || 0, listrik = b.listrik || 0, benang = b.benang || 0;
-      const total = (b.akses || 0) + (b.keamanan || 0) + bensin + listrik + benang;
+      const bensin = b.bensin || 0, listrik = b.listrik || 0, benang = b.benang || 0, gaji = b.gaji || 0;
+      const total = (b.akses || 0) + (b.keamanan || 0) + bensin + listrik + benang + gaji;
       return `
       <div class="item-batch">
         <div class="baris-atas">
@@ -1054,7 +1138,8 @@
           Keamanan lingkungan: ${formatRupiah(b.keamanan || 0)}<br>
           Bensin pengantaran: ${formatRupiah(bensin)}<br>
           Listrik mesin: ${formatRupiah(listrik)}<br>
-          Benang jahit: ${formatRupiah(benang)}
+          Benang jahit: ${formatRupiah(benang)}<br>
+          Gaji pegawai: ${formatRupiah(gaji)}${b.gajiHariOrang ? ` (${b.gajiHariOrang} hari-orang × Rp77.000)` : ''}
         </div>
         <div class="total-baris"><span>Total biaya operasional bulan ini</span><span>${formatRupiah(total)}</span></div>
         <button class="tombol-hapus" onclick="hapusBulanan('${b.bulan}')">Hapus</button>
@@ -1075,8 +1160,19 @@
     const data = localStorage.getItem(KUNCI_PRODUKSI);
     return data ? JSON.parse(data) : [];
   }
+  function ambilRetur() {
+    if (_cacheRetur.length > 0) return _cacheRetur;
+    const data = localStorage.getItem(KUNCI_RETUR);
+    return data ? JSON.parse(data) : [];
+  }
+  function ambilKarantina() {
+    if (_cacheKarantina.length > 0) return _cacheKarantina;
+    const data = localStorage.getItem(KUNCI_KARANTINA);
+    return data ? JSON.parse(data) : [];
+  }
 
   // Stok karung sumber per merk = total kg masuk (Tahap 1) - kg terpakai (jual karung + repacking dadakan + produksi kemasan)
+  // + kg masuk balik dari retur kondisi UTUH (kemasan/karung) - kg keluar untuk retur yang jadi barang pengganti.
   function hitungStokKarungPerMerk() {
     const batch = ambilSemuaBatch();
     const stok = {}; // { merk: { totalMasuk, terpakai, hargaTerakhirPerKg, hppTerakhirPerKg } }
@@ -1106,6 +1202,13 @@
     ambilProduksi().forEach(pr => {
       if (pr.merkSumber && stok[pr.merkSumber]) {
         stok[pr.merkSumber].terpakai += pr.kgDipakai;
+      }
+    });
+
+    // Retur karung UTUH balik ke stok (kurangi "terpakai" = tambah sisa). Retur TIDAK UTUH masuk karantina, tidak di sini.
+    ambilRetur().forEach(r => {
+      if (r.jenisAsal === 'karung' && r.kondisi === 'utuh' && r.merkSumber && stok[r.merkSumber]) {
+        stok[r.merkSumber].terpakai -= r.totalKg;
       }
     });
 
@@ -1141,6 +1244,14 @@
       }
     });
 
+    // Retur kemasan UTUH balik ke stok (kurangi unitTerjual = tambah sisa). Retur TIDAK UTUH masuk karantina, tidak di sini.
+    ambilRetur().forEach(r => {
+      if (r.jenisAsal === 'kemasan' && r.kondisi === 'utuh') {
+        const kunci = r.namaProduk + '|' + r.ukuranKemasan;
+        if (stok[kunci]) stok[kunci].unitTerjual -= r.jumlahUnit;
+      }
+    });
+
     const hasil = {};
     Object.keys(stok).forEach(kunci => {
       const hppRataRata = stok[kunci].unitDibuat > 0 ? Math.round(stok[kunci].nilaiProduksiTotal / stok[kunci].unitDibuat) : 0;
@@ -1151,12 +1262,155 @@
 
   function pilihJenisJual(jenis) {
     jenisJualAktif = jenis;
-    ['Kemasan','Repacking','Karung','Literan'].forEach(j => {
+    ['Kemasan','Repacking','Karung','Literan','Retur'].forEach(j => {
       document.getElementById('jenisJual' + j).classList.toggle('pilih', j.toLowerCase() === jenis);
       document.getElementById('formJual' + j).style.display = j.toLowerCase() === jenis ? 'block' : 'none';
     });
+    // Retur tidak pakai kartu "Harga & Bayar" biasa — punya kartunya sendiri.
+    document.getElementById('kartuHargaBayarJual').style.display = jenis === 'retur' ? 'none' : 'block';
+    document.getElementById('btnSimpanJual').textContent = jenis === 'retur' ? '↩️ Simpan Retur' : '💰 Simpan Penjualan';
+    if (jenis === 'retur') { isiDropdownRetur(); }
     isiDropdownJual();
     perbaruiStokJual();
+  }
+
+  function simpanJualAtauRetur() {
+    if (jenisJualAktif === 'retur') return simpanRetur();
+    return simpanPenjualan();
+  }
+
+  // ============ RETUR (Tahap 4) ============
+  let returJenisAsalAktif = 'kemasan';
+  let returKondisiAktif = 'utuh';
+  let returPenyelesaianAktif = 'refund';
+
+  function pilihReturJenisAsal(jenis) {
+    returJenisAsalAktif = jenis;
+    document.getElementById('returJenisKemasan').classList.toggle('pilih', jenis === 'kemasan');
+    document.getElementById('returJenisKarung').classList.toggle('pilih', jenis === 'karung');
+    document.getElementById('returPilihKemasanWrap').style.display = jenis === 'kemasan' ? 'block' : 'none';
+    document.getElementById('returPilihKarungWrap').style.display = jenis === 'karung' ? 'block' : 'none';
+    isiDropdownRetur();
+  }
+
+  function pilihReturKondisi(kondisi) {
+    returKondisiAktif = kondisi;
+    document.getElementById('returKondisiUtuh').classList.toggle('pilih', kondisi === 'utuh');
+    document.getElementById('returKondisiTidakUtuh').classList.toggle('pilih', kondisi === 'tidak_utuh');
+    const ket = document.getElementById('returKeteranganKondisi');
+    ket.textContent = kondisi === 'utuh'
+      ? 'Barang utuh — balik ke stok jual seperti sedia kala.'
+      : 'Barang tidak utuh / diragukan — masuk Gudang Karantina, TIDAK langsung dijual lagi. Owner putuskan tindakan (retur ke pemasok / rework / buang) lewat tab Stok.';
+  }
+
+  function pilihReturPenyelesaian(cara) {
+    returPenyelesaianAktif = cara;
+    document.getElementById('returSelesaiRefund').classList.toggle('pilih', cara === 'refund');
+    document.getElementById('returSelesaiTukar').classList.toggle('pilih', cara === 'tukar');
+    document.getElementById('returBlokRefund').style.display = cara === 'refund' ? 'block' : 'none';
+    document.getElementById('returBlokTukar').style.display = cara === 'tukar' ? 'block' : 'none';
+  }
+
+  function isiDropdownRetur() {
+    const stokKemasan = hitungStokKemasan();
+    const opsiKemasan = Object.keys(stokKemasan).map(k => ({
+      kunci: k, label: `${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg`, subLabel: `stok saat ini ${stokKemasan[k].sisaUnit} unit`
+    }));
+    bikinTombolPilih('pilihReturKemasanTombol', 'returKemasanProduk', opsiKemasan, 'Belum ada produk kemasan tercatat.', null);
+
+    const stokKarung = hitungStokKarungPerMerk();
+    const opsiMerk = Object.keys(stokKarung).map(m => ({
+      kunci: m, label: m, subLabel: `stok saat ini ${stokKarung[m].sisaKg} kg`
+    }));
+    bikinTombolPilih('pilihReturKarungTombol', 'returKarungMerk', opsiMerk, 'Belum ada merk tercatat.', null);
+  }
+
+  async function simpanRetur() {
+    const kondisi = returKondisiAktif;
+    const penyelesaian = returPenyelesaianAktif;
+    const catatan = document.getElementById('returCatatan').value.trim();
+
+    let dataRetur = null;
+    if (returJenisAsalAktif === 'kemasan') {
+      const kunci = document.getElementById('returKemasanProduk').value;
+      const jumlahUnit = parseFloat(document.getElementById('returKemasanJumlah').value) || 0;
+      if (!kunci) { alert('Pilih produk kemasan yang diretur dulu.'); return; }
+      if (jumlahUnit <= 0) { alert('Isi jumlah unit yang diretur.'); return; }
+      const [namaProduk, ukuranKemasan] = kunci.split('|');
+      dataRetur = { jenisAsal: 'kemasan', namaProduk, ukuranKemasan: parseFloat(ukuranKemasan), jumlahUnit, totalKg: parseFloat(ukuranKemasan) * jumlahUnit };
+    } else {
+      const merk = document.getElementById('returKarungMerk').value;
+      const jumlahKarung = parseFloat(document.getElementById('returKarungJumlah').value) || 0;
+      if (!merk) { alert('Pilih merk karung yang diretur dulu.'); return; }
+      if (jumlahKarung <= 0) { alert('Isi jumlah karung yang diretur.'); return; }
+      const batch = ambilSemuaBatch();
+      let beratKarungAcuan = 50;
+      for (const k of batch) {
+        const m = k.merkList.find(x => x.merk === merk && x.satuan === 'karung');
+        if (m) { beratKarungAcuan = m.beratKarung; break; }
+      }
+      const totalKg = jumlahKarung * beratKarungAcuan;
+      dataRetur = { jenisAsal: 'karung', merkSumber: merk, jumlahKarung, beratKarungAcuan, totalKg };
+    }
+
+    dataRetur.kondisi = kondisi;
+    dataRetur.penyelesaian = penyelesaian;
+    dataRetur.catatan = catatan;
+    dataRetur.id = Date.now();
+    dataRetur.tanggal = new Date().toISOString().split('T')[0];
+    dataRetur.jam = new Date().toTimeString().slice(0,5);
+
+    if (penyelesaian === 'refund') {
+      const nominalRefund = parseFloat(document.getElementById('returNominalRefund').value) || 0;
+      if (nominalRefund <= 0) { alert('Isi nominal refund.'); return; }
+      dataRetur.nominalRefund = nominalRefund;
+    } else {
+      const selisih = parseFloat(document.getElementById('returSelisihTukar').value) || 0;
+      dataRetur.selisihHargaTukar = selisih; // positif = toko refund ke pelanggan, negatif = pelanggan nambah
+    }
+
+    try {
+      await simpanKeFirestore(KOLEKSI_RETUR, dataRetur);
+      // Kalau kondisi tidak utuh, catat juga ke Gudang Karantina supaya owner bisa putuskan tindakan.
+      if (kondisi === 'tidak_utuh') {
+        const itemKarantina = {
+          id: dataRetur.id,
+          tanggal: dataRetur.tanggal,
+          asalRetur: true,
+          jenisAsal: dataRetur.jenisAsal,
+          namaProduk: dataRetur.namaProduk || null,
+          ukuranKemasan: dataRetur.ukuranKemasan || null,
+          merkSumber: dataRetur.merkSumber || null,
+          totalKg: dataRetur.totalKg,
+          catatan: dataRetur.catatan,
+          statusTindakan: 'belum_diputuskan' // belum_diputuskan | dikembalikan_pemasok | dirework | dibuang
+        };
+        await simpanKeFirestore(KOLEKSI_KARANTINA, itemKarantina);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
+      return;
+    }
+
+    // Reset form retur
+    document.getElementById('returKemasanJumlah').value = '';
+    document.getElementById('returKarungJumlah').value = '';
+    document.getElementById('returNominalRefund').value = '';
+    document.getElementById('returSelisihTukar').value = '';
+    document.getElementById('returCatatan').value = '';
+    document.getElementById('returKemasanProduk').value = '';
+    document.getElementById('returKarungMerk').value = '';
+    isiDropdownRetur();
+    perbaruiStokJual();
+
+    const pesan = document.getElementById('pesanOkJual');
+    pesan.textContent = kondisi === 'tidak_utuh'
+      ? '✔ Retur tersimpan. Barang masuk Gudang Karantina — putuskan tindakan lewat tab Stok.'
+      : '✔ Retur tersimpan. Barang sudah balik ke stok jual.';
+    pesan.style.display = 'block';
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    setTimeout(() => { pesan.style.display = 'none'; pesan.textContent = '✔ Penjualan tersimpan.'; }, 4000);
   }
 
   // Bikin grid tombol pilih generik. daftarOpsi = [{ kunci, label, subLabel, sisa }]
@@ -1471,6 +1725,82 @@
           <div class="total-baris"><span>Sisa stok</span><span>${stokKemasan[k].sisaUnit} unit</span></div>
         </div>
       `).join('');
+
+    tampilkanKarantina();
+  }
+
+  // ============ GUDANG KARANTINA (Tahap 4) ============
+  // Barang retur kondisi "tidak utuh" masuk sini, TIDAK otomatis ke stok jual.
+  // Owner wajib pilih satu tindakan per item sebelum barang keluar dari karantina.
+  function tampilkanKarantina() {
+    const semua = ambilKarantina().filter(item => item.statusTindakan === 'belum_diputuskan');
+    const kontainer = document.getElementById('daftarKarantina');
+    if (semua.length === 0) {
+      kontainer.innerHTML = '<div class="kosong">Tidak ada barang di karantina.</div>';
+      return;
+    }
+    kontainer.innerHTML = semua.map(item => {
+      const namaBarang = item.jenisAsal === 'kemasan' ? `${item.namaProduk} ${item.ukuranKemasan}kg` : item.merkSumber;
+      return `
+        <div class="item-batch">
+          <div class="baris-atas">
+            <span class="pemasok-nama">${namaBarang}</span>
+            <span class="tanggal">${formatTanggal(item.tanggal)}</span>
+          </div>
+          <div style="font-size:13px; color:#666;">${item.totalKg} kg${item.catatan ? ' · ' + item.catatan : ''}</div>
+          <div class="baris-2" style="margin-top:10px; gap:8px;">
+            <button type="button" onclick="putuskanKarantina(${item.id}, 'dikembalikan_pemasok')" style="padding:10px 4px; border:2px solid var(--garis); background:white; border-radius:8px; font-size:12px; font-weight:700;">↩️ Balik ke Pemasok</button>
+            <button type="button" onclick="putuskanKarantina(${item.id}, 'dirework')" style="padding:10px 4px; border:2px solid var(--hijau); background:white; color:var(--hijau-tua); border-radius:8px; font-size:12px; font-weight:700;">🔧 Rework → Stok</button>
+          </div>
+          <button type="button" onclick="putuskanKarantina(${item.id}, 'dibuang')" style="width:100%; margin-top:8px; padding:10px; border:2px solid var(--merah); background:white; color:var(--merah); border-radius:8px; font-size:12px; font-weight:700;">🗑️ Buang (catat kerugian)</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function putuskanKarantina(id, tindakan) {
+    const item = ambilKarantina().find(k => k.id === id);
+    if (!item) return;
+
+    let pesanKonfirmasi = '';
+    if (tindakan === 'dikembalikan_pemasok') pesanKonfirmasi = 'Kembalikan barang ini ke pemasok? Barang TIDAK masuk stok jual.';
+    if (tindakan === 'dirework') pesanKonfirmasi = 'Barang ini sudah dirework dan siap masuk stok jual lagi?';
+    if (tindakan === 'dibuang') pesanKonfirmasi = 'Buang barang ini dan catat sebagai kerugian? Barang TIDAK masuk stok jual.';
+    if (!confirm(pesanKonfirmasi)) return;
+
+    try {
+      // Update status di dokumen karantina (bukan hapus — supaya riwayat keputusan tetap ada).
+      await simpanKeFirestore(KOLEKSI_KARANTINA, { ...item, statusTindakan: tindakan, tanggalKeputusan: new Date().toISOString().split('T')[0] });
+
+      if (tindakan === 'dirework') {
+        // Barang rework masuk balik ke stok lewat jalur produksi/masuk yang sudah ada,
+        // supaya HPP tetap tercatat wajar (bukan langsung nambah stok tanpa jejak biaya rework).
+        if (item.jenisAsal === 'kemasan') {
+          await simpanKeFirestore(KOLEKSI_PRODUKSI, {
+            id: Date.now(),
+            tanggal: new Date().toISOString().split('T')[0],
+            merkSumber: null,
+            kgDipakai: 0,
+            namaProduk: item.namaProduk,
+            ukuranKemasan: item.ukuranKemasan,
+            jumlahUnit: Math.round(item.totalKg / item.ukuranKemasan),
+            biayaKemasan: 0,
+            upahRepacking: 0,
+            hppSumberPerKgDipakai: 0,
+            hppPerUnit: 0, // rework dari retur — HPP bahan sudah 0 (barang sudah pernah dibeli/diproduksi), catat manual kalau ada biaya rework
+            catatan: 'Hasil rework dari karantina (retur id ' + item.id + ')'
+          });
+        } else if (item.jenisAsal === 'karung') {
+          alert('Karung rework: tambahkan kembali sebagai kedatangan/penyesuaian manual lewat tab Masuk kalau perlu, karena HPP karung mengikuti batch aslinya.');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Gagal update database (offline?). Coba lagi kalau internet sudah nyambung.');
+      return;
+    }
+
+    tampilkanKarantina();
   }
 
   // ============ LABA / MARGIN PER TRANSAKSI (Tahap 3) ============
@@ -1540,14 +1870,20 @@
   window.pilihBayar = pilihBayar;
   window.tambahBarisMerk = tambahBarisMerk;
   window.simpanBiayaBulanan = simpanBiayaBulanan;
+  window.hitungPerkiraanGaji = hitungPerkiraanGaji;
   window.simpanKedatangan = simpanKedatangan;
   window.simpanPenjualan = simpanPenjualan;
+  window.simpanJualAtauRetur = simpanJualAtauRetur;
+  window.pilihReturJenisAsal = pilihReturJenisAsal;
+  window.pilihReturKondisi = pilihReturKondisi;
+  window.pilihReturPenyelesaian = pilihReturPenyelesaian;
   window.simpanProduksi = simpanProduksi;
   window.cekMerkLain = cekMerkLain;
   window.pilihSatuan = pilihSatuan;
   window.hitungPerkiraan = hitungPerkiraan;
   window.hapusBarisMerk = hapusBarisMerk;
   window.hapusBatch = hapusBatch;
+  window.putuskanKarantina = putuskanKarantina;
   window.hapusBulanan = hapusBulanan;
 </script>
 
