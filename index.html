@@ -247,8 +247,8 @@
   <p id="subjudulHeader">1 kedatangan mobil = banyak merk beras</p>
 </header>
 
-<div class="bar-backup">
-  <span>📥 Riwayat sekarang: <b id="jumlahDiHp">0</b> kedatangan di HP ini</span>
+<div class="bar-backup" id="barBackup">
+  <span>📡 <b id="statusSambung">Menyambungkan…</b> · <b id="jumlahDiHp">0</b> kedatangan</span>
   <div style="display:flex; gap:8px;">
     <button class="tombol-kecil" onclick="unduhBackup()">⬇ Unduh Backup</button>
     <button class="tombol-kecil" onclick="document.getElementById('inputMuatFile').click()">⬆ Muat dari File</button>
@@ -469,7 +469,40 @@
   <button onclick="simpanProduksi()">📦 Simpan Produksi Kemasan</button>
 </div>
 
-<script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA",
+    authDomain: "toko-beras-m-iqbal.firebaseapp.com",
+    projectId: "toko-beras-m-iqbal",
+    storageBucket: "toko-beras-m-iqbal.firebasestorage.app",
+    messagingSenderId: "149034588465",
+    appId: "1:149034588465:web:42316713d21c6fc994b810",
+    measurementId: "G-9LQLFWQ08W"
+  };
+
+  const appFirebase = initializeApp(firebaseConfig);
+  const db = getFirestore(appFirebase);
+
+  // --- Nama koleksi Firestore (satu koleksi = satu jenis data, dokumen id = id lokal) ---
+  const KOLEKSI_BATCH = 'batchMasuk';
+  const KOLEKSI_BULANAN = 'biayaBulanan';
+  const KOLEKSI_PENJUALAN = 'penjualan';
+  const KOLEKSI_PRODUKSI = 'produksiKemasan';
+
+  // Cache di memori — diisi ulang otomatis oleh onSnapshot tiap kali ada perubahan
+  // (dari perangkat ini ATAU perangkat lain). Semua fungsi lama yang baca data
+  // sekarang baca dari sini, bukan langsung localStorage.
+  let _cacheBatch = [];
+  let _cacheBulanan = [];
+  let _cachePenjualan = [];
+  let _cacheProduksi = [];
+  let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false };
+
   const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
   const KUNCI_BULANAN = 'miqbal_biaya_bulanan';
   const KUNCI_PENJUALAN = 'miqbal_penjualan_v1';
@@ -649,7 +682,75 @@
   tambahBarisMerk();
   perbaruiCounterBackup();
 
+  // ============ SINKRONISASI FIRESTORE (real-time, semua perangkat) ============
+  // Prinsip: localStorage tetap ditulis di tiap simpan sebagai cadangan offline,
+  // tapi SUMBER KEBENARAN adalah Firestore. onSnapshot mendengarkan perubahan
+  // dari perangkat mana pun dan otomatis me-refresh cache + tampilan di sini.
+
+  function urutkanTerbaru(arr, field) {
+    return [...arr].sort((a, b) => (b[field] > a[field] ? 1 : b[field] < a[field] ? -1 : 0));
+  }
+
+  function pasangSinkronisasi(nomorKoleksi, kunciLocalStorage, setelCache, onBerubah, fieldUrut) {
+    const kol = collection(db, nomorKoleksi);
+    onSnapshot(kol, (snap) => {
+      const daftar = [];
+      snap.forEach(d => daftar.push(d.data()));
+      const terurut = urutkanTerbaru(daftar, fieldUrut);
+      setelCache(terurut);
+      localStorage.setItem(kunciLocalStorage, JSON.stringify(terurut)); // cadangan offline
+      _sambunganAktif[nomorKoleksi === KOLEKSI_BATCH ? 'batch' : nomorKoleksi === KOLEKSI_BULANAN ? 'bulanan' : nomorKoleksi === KOLEKSI_PENJUALAN ? 'penjualan' : 'produksi'] = true;
+      perbaruiStatusSambungan();
+      if (onBerubah) onBerubah();
+    }, (err) => {
+      console.error('Firestore sync gagal untuk ' + nomorKoleksi, err);
+      perbaruiStatusSambungan(true);
+    });
+  }
+
+  function perbaruiStatusSambungan(adaError) {
+    const el = document.getElementById('statusSambung');
+    if (!el) return;
+    if (adaError) { el.textContent = 'Offline (pakai data HP ini)'; el.parentElement.parentElement.style.background = '#8a5a12'; return; }
+    const semuaSiap = Object.values(_sambunganAktif).every(v => v);
+    el.textContent = semuaSiap ? 'Tersambung semua perangkat' : 'Menyambungkan…';
+  }
+
+  pasangSinkronisasi(KOLEKSI_BATCH, KUNCI_SIMPAN, (d) => { _cacheBatch = d; }, () => {
+    perbaruiCounterBackup();
+    if (document.getElementById('halamanRekap').classList.contains('tampil')) tampilkanRekap();
+    if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
+    if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
+    if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
+  }, 'id');
+
+  pasangSinkronisasi(KOLEKSI_BULANAN, KUNCI_BULANAN, (d) => { _cacheBulanan = d; }, () => {
+    if (document.getElementById('halamanBulanan').classList.contains('tampil')) tampilkanBulanan();
+  }, 'bulan');
+
+  pasangSinkronisasi(KOLEKSI_PENJUALAN, KUNCI_PENJUALAN, (d) => { _cachePenjualan = d; }, () => {
+    if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
+    if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
+    if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
+  }, 'id');
+
+  pasangSinkronisasi(KOLEKSI_PRODUKSI, KUNCI_PRODUKSI, (d) => { _cacheProduksi = d; }, () => {
+    if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
+    if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
+    if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
+  }, 'id');
+
+  // Simpan satu dokumen ke Firestore. id dipakai sebagai nama dokumen supaya
+  // "muat dari file" bisa menimpa/menggabung tanpa duplikat.
+  async function simpanKeFirestore(nomorKoleksi, data) {
+    await setDoc(doc(db, nomorKoleksi, String(data.id)), data);
+  }
+  async function hapusDariFirestore(nomorKoleksi, id) {
+    await deleteDoc(doc(db, nomorKoleksi, String(id)));
+  }
+
   function ambilSemuaBatch() {
+    if (_cacheBatch.length > 0) return _cacheBatch;
     const data = localStorage.getItem(KUNCI_SIMPAN);
     return data ? JSON.parse(data) : [];
   }
@@ -686,52 +787,43 @@
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
       try {
         const isi = JSON.parse(e.target.result);
         const batchDariFile = isi.batchMasuk || [];
         const bulananDariFile = isi.biayaBulanan || [];
-
-        const batchSekarang = ambilSemuaBatch();
-        const idSekarang = new Set(batchSekarang.map(b => b.id));
-        const batchBaru = batchDariFile.filter(b => !idSekarang.has(b.id));
-
-        const gabungan = [...batchSekarang, ...batchBaru].sort((a, b) => b.id - a.id);
-        localStorage.setItem(KUNCI_SIMPAN, JSON.stringify(gabungan));
-
-        const bulananSekarang = ambilBiayaBulanan();
-        const bulanSekarangSet = new Set(bulananSekarang.map(b => b.bulan));
-        const bulananBaru = bulananDariFile.filter(b => !bulanSekarangSet.has(b.bulan));
-        const gabunganBulanan = [...bulananSekarang, ...bulananBaru].sort((a, b) => b.bulan.localeCompare(a.bulan));
-        localStorage.setItem(KUNCI_BULANAN, JSON.stringify(gabunganBulanan));
-
         const penjualanDariFile = isi.penjualan || [];
-        const penjualanSekarang = ambilPenjualan();
-        const idPenjualanSekarang = new Set(penjualanSekarang.map(p => p.id));
-        const penjualanBaru = penjualanDariFile.filter(p => !idPenjualanSekarang.has(p.id));
-        const gabunganPenjualan = [...penjualanSekarang, ...penjualanBaru].sort((a, b) => b.id - a.id);
-        localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(gabunganPenjualan));
-
         const produksiDariFile = isi.produksiKemasan || [];
-        const produksiSekarang = ambilProduksi();
-        const idProduksiSekarang = new Set(produksiSekarang.map(p => p.id));
-        const produksiBaru = produksiDariFile.filter(p => !idProduksiSekarang.has(p.id));
-        const gabunganProduksi = [...produksiSekarang, ...produksiBaru].sort((a, b) => b.id - a.id);
-        localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(gabunganProduksi));
 
-        alert(`Berhasil dimuat: ${batchBaru.length} kedatangan, ${penjualanBaru.length} penjualan, ${produksiBaru.length} produksi baru ditambahkan. Total kedatangan sekarang: ${gabungan.length}.`);
-        perbaruiCounterBackup();
-        tampilkanRekap();
-        tampilkanBulanan();
+        // Muat dari file sekarang berarti UPLOAD ke Firestore (bukan cuma ke localStorage HP ini)
+        // supaya file backup lama bisa dipakai memulihkan data di semua perangkat sekaligus.
+        const idSekarang = new Set(ambilSemuaBatch().map(b => b.id));
+        const batchBaru = batchDariFile.filter(b => !idSekarang.has(b.id));
+        for (const b of batchBaru) await simpanKeFirestore(KOLEKSI_BATCH, b);
+
+        const bulanSekarangSet = new Set(ambilBiayaBulanan().map(b => b.bulan));
+        const bulananBaru = bulananDariFile.filter(b => !bulanSekarangSet.has(b.bulan));
+        for (const b of bulananBaru) await simpanKeFirestore(KOLEKSI_BULANAN, b);
+
+        const idPenjualanSekarang = new Set(ambilPenjualan().map(p => p.id));
+        const penjualanBaru = penjualanDariFile.filter(p => !idPenjualanSekarang.has(p.id));
+        for (const p of penjualanBaru) await simpanKeFirestore(KOLEKSI_PENJUALAN, p);
+
+        const idProduksiSekarang = new Set(ambilProduksi().map(p => p.id));
+        const produksiBaru = produksiDariFile.filter(p => !idProduksiSekarang.has(p.id));
+        for (const p of produksiBaru) await simpanKeFirestore(KOLEKSI_PRODUKSI, p);
+
+        alert(`Berhasil diunggah ke database: ${batchBaru.length} kedatangan, ${bulananBaru.length} biaya bulanan, ${penjualanBaru.length} penjualan, ${produksiBaru.length} produksi baru. Semua perangkat akan ikut ter-update.`);
       } catch (err) {
-        alert('File tidak bisa dibaca. Pastikan ini file backup .json yang benar dari sistem ini.');
+        console.error(err);
+        alert('File tidak bisa dibaca, atau gagal mengunggah ke database (cek koneksi internet). Pastikan ini file backup .json yang benar dari sistem ini.');
       }
       event.target.value = '';
     };
     reader.readAsText(file);
   }
 
-  function simpanKedatangan() {
+  async function simpanKedatangan() {
     const baris = bacaBarisMerk();
     let pemasok = document.getElementById('pemasok').value;
     if (pemasok === 'Lainnya') pemasok = document.getElementById('pemasokLain').value.trim();
@@ -753,9 +845,18 @@
       merkList: barisValid
     };
 
-    const semua = ambilSemuaBatch();
-    semua.unshift(kedatangan);
-    localStorage.setItem(KUNCI_SIMPAN, JSON.stringify(semua));
+    const btn = document.getElementById('btnSimpanUtama');
+    btn.disabled = true; btn.textContent = 'Menyimpan…';
+    try {
+      await simpanKeFirestore(KOLEKSI_BATCH, kedatangan);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (offline?). Data disimpan sementara di HP ini saja — coba lagi kalau internet sudah nyambung.');
+      const semuaLokal = ambilSemuaBatch();
+      semuaLokal.unshift(kedatangan);
+      localStorage.setItem(KUNCI_SIMPAN, JSON.stringify(semuaLokal));
+    }
+    btn.disabled = false; btn.textContent = '💾 Simpan Kedatangan Ini';
     perbaruiCounterBackup();
     unduhBackup(true);
 
@@ -768,18 +869,20 @@
     document.getElementById('kotakHasil').style.display = 'none';
 
     const pesan = document.getElementById('pesanOk');
-    pesan.textContent = '✔ Tersimpan + backup terunduh otomatis. Kedatangan baru sudah masuk ke riwayat.';
+    pesan.textContent = '✔ Tersimpan ke database + backup terunduh. Otomatis muncul di semua perangkat.';
     pesan.style.display = 'block';
     window.scrollTo({top: 0, behavior: 'smooth'});
     setTimeout(() => { pesan.style.display = 'none'; }, 4000);
   }
 
-  function hapusBatch(id) {
+  async function hapusBatch(id) {
     if (!confirm('Hapus kedatangan ini dari riwayat?')) return;
-    const semua = ambilSemuaBatch().filter(b => b.id !== id);
-    localStorage.setItem(KUNCI_SIMPAN, JSON.stringify(semua));
-    perbaruiCounterBackup();
-    tampilkanRekap();
+    try {
+      await hapusDariFirestore(KOLEKSI_BATCH, id);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
+    }
   }
 
   function formatTanggal(iso) {
@@ -847,34 +950,39 @@
 
   // --- Biaya Bulanan ---
   function ambilBiayaBulanan() {
+    if (_cacheBulanan.length > 0) return _cacheBulanan;
     const data = localStorage.getItem(KUNCI_BULANAN);
     return data ? JSON.parse(data) : [];
   }
 
-  function simpanBiayaBulanan() {
+  async function simpanBiayaBulanan() {
     const bulan = document.getElementById('bulanBiaya').value;
     const akses = parseFloat(document.getElementById('biayaAksesBulanan').value) || 0;
     const keamanan = parseFloat(document.getElementById('biayaKeamananBulanan').value) || 0;
     if (!bulan) { alert('Pilih bulan dulu.'); return; }
     if (akses <= 0 && keamanan <= 0) { alert('Isi minimal salah satu biaya.'); return; }
 
-    let semua = ambilBiayaBulanan();
-    semua = semua.filter(b => b.bulan !== bulan); // ganti kalau bulan sama sudah ada
-    semua.unshift({ bulan, akses, keamanan });
-    semua.sort((a, b) => b.bulan.localeCompare(a.bulan));
-    localStorage.setItem(KUNCI_BULANAN, JSON.stringify(semua));
-    unduhBackup(true);
+    // Dokumen Firestore memakai "bulan" sebagai id supaya bulan yang sama otomatis menimpa (bukan duplikat).
+    try {
+      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, akses, keamanan });
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
+      return;
+    }
 
     document.getElementById('biayaAksesBulanan').value = '';
     document.getElementById('biayaKeamananBulanan').value = '';
-    tampilkanBulanan();
   }
 
-  function hapusBulanan(bulan) {
+  async function hapusBulanan(bulan) {
     if (!confirm('Hapus data biaya bulan ' + bulan + '?')) return;
-    let semua = ambilBiayaBulanan().filter(b => b.bulan !== bulan);
-    localStorage.setItem(KUNCI_BULANAN, JSON.stringify(semua));
-    tampilkanBulanan();
+    try {
+      await hapusDariFirestore(KOLEKSI_BULANAN, bulan);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
+    }
   }
 
   function tampilkanBulanan() {
@@ -902,10 +1010,12 @@
   // ============ MESIN STOK, JUAL, PRODUKSI (Tahap 2) ============
 
   function ambilPenjualan() {
+    if (_cachePenjualan.length > 0) return _cachePenjualan;
     const data = localStorage.getItem(KUNCI_PENJUALAN);
     return data ? JSON.parse(data) : [];
   }
   function ambilProduksi() {
+    if (_cacheProduksi.length > 0) return _cacheProduksi;
     const data = localStorage.getItem(KUNCI_PRODUKSI);
     return data ? JSON.parse(data) : [];
   }
@@ -1080,7 +1190,7 @@
     document.getElementById('blokKredit').style.display = cara === 'Kredit' ? 'block' : 'none';
   }
 
-  function simpanPenjualan() {
+  async function simpanPenjualan() {
     const hargaTotal = parseFloat(document.getElementById('jualHargaTotal').value) || 0;
     const caraBayar = document.querySelector('.tab-bayar button.pilih')?.id.replace('bayar','') || 'Tunai';
     const namaPelanggan = document.getElementById('jualNamaPelanggan').value.trim();
@@ -1152,9 +1262,15 @@
     transaksi.caraBayar = caraBayar;
     transaksi.namaPelanggan = caraBayar === 'Kredit' ? namaPelanggan : '';
 
-    const semua = ambilPenjualan();
-    semua.unshift(transaksi);
-    localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(semua));
+    try {
+      await simpanKeFirestore(KOLEKSI_PENJUALAN, transaksi);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (offline?). Data disimpan sementara di HP ini saja — coba lagi kalau internet sudah nyambung.');
+      const semuaLokal = ambilPenjualan();
+      semuaLokal.unshift(transaksi);
+      localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(semuaLokal));
+    }
     unduhBackup(true);
 
     // Reset form ringan
@@ -1196,7 +1312,7 @@
     } else { info.textContent = ''; }
   }
 
-  function simpanProduksi() {
+  async function simpanProduksi() {
     const merkSumber = document.getElementById('produksiMerkSumber').value;
     const kgDipakai = parseFloat(document.getElementById('produksiKgDipakai').value) || 0;
     const namaProduk = document.getElementById('produksiNamaProduk').value.trim();
@@ -1229,9 +1345,15 @@
       hppPerUnit: Math.round(((stokKarung[merkSumber]?.hargaTerakhirPerKg || 0) * kgDipakai + biayaKemasan + upahRepacking) / jumlahUnit)
     };
 
-    const semua = ambilProduksi();
-    semua.unshift(produksi);
-    localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(semua));
+    try {
+      await simpanKeFirestore(KOLEKSI_PRODUKSI, produksi);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (offline?). Data disimpan sementara di HP ini saja — coba lagi kalau internet sudah nyambung.');
+      const semuaLokal = ambilProduksi();
+      semuaLokal.unshift(produksi);
+      localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(semuaLokal));
+    }
     unduhBackup(true);
 
     document.getElementById('produksiKgDipakai').value = '';
@@ -1278,6 +1400,29 @@
         </div>
       `).join('');
   }
+
+  // --- Wajib: script ini "type=module" (supaya bisa import Firebase SDK).
+  // Module TIDAK otomatis menaruh fungsi ke window, padahal semua tombol di HTML
+  // pakai onclick="namaFungsi()" inline. Tanpa baris di bawah ini, semua tombol
+  // akan mati total ("namaFungsi is not defined"). Daftar ini harus mencakup
+  // SETIAP fungsi yang dipanggil dari atribut onclick/onchange/oninput di HTML.
+  window.unduhBackup = unduhBackup;
+  window.muatDariFile = muatDariFile;
+  window.pindahHalaman = pindahHalaman;
+  window.pilihJenisJual = pilihJenisJual;
+  window.hitungTotalJual = hitungTotalJual;
+  window.pilihBayar = pilihBayar;
+  window.tambahBarisMerk = tambahBarisMerk;
+  window.simpanBiayaBulanan = simpanBiayaBulanan;
+  window.simpanKedatangan = simpanKedatangan;
+  window.simpanPenjualan = simpanPenjualan;
+  window.simpanProduksi = simpanProduksi;
+  window.cekMerkLain = cekMerkLain;
+  window.pilihSatuan = pilihSatuan;
+  window.hitungPerkiraan = hitungPerkiraan;
+  window.hapusBarisMerk = hapusBarisMerk;
+  window.hapusBatch = hapusBatch;
+  window.hapusBulanan = hapusBulanan;
 </script>
 
 </body>
