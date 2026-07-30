@@ -1,1 +1,1268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sistem Toko — Toko Beras M.IQBAL</title>
+<style>
+  :root {
+    --hijau: #1b6b3c;
+    --hijau-tua: #0f4a28;
+    --merah: #b3261e;
+    --abu: #f2f1ea;
+    --garis: #d8d5c8;
+    --teks: #241f14;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--abu);
+    color: var(--teks);
+    padding-bottom: 100px;
+  }
+  header {
+    background: var(--hijau-tua);
+    color: white;
+    padding: 18px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+  nav {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid var(--garis);
+    position: sticky;
+    top: 68px;
+    z-index: 9;
+  }
+  nav button {
+    flex: 1;
+    padding: 14px 8px;
+    border: none;
+    background: white;
+    font-size: 15px;
+    font-weight: 600;
+    color: #888;
+    border-bottom: 3px solid transparent;
+  }
+  nav button.aktif { color: var(--hijau-tua); border-bottom: 3px solid var(--hijau); }
+  main { padding: 16px; max-width: 680px; margin: 0 auto; }
+  .kartu {
+    background: white;
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 6px; margin-top: 18px; }
+  label:first-child { margin-top: 0; }
+  .keterangan { font-size: 12px; color: #777; font-weight: 400; margin-top: 2px; }
+  select, input[type="number"], input[type="text"], input[type="date"], textarea {
+    width: 100%;
+    padding: 14px;
+    font-size: 17px;
+    border: 2px solid var(--garis);
+    border-radius: 10px;
+    background: white;
+    color: var(--teks);
+  }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--hijau); }
+  .baris-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .subjudul {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--hijau-tua);
+    font-weight: 800;
+    margin: 24px 0 4px;
+    padding-top: 16px;
+    border-top: 1px solid var(--garis);
+  }
+  .subjudul:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  .hasil {
+    background: #eef7ee;
+    border: 2px solid var(--hijau);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 20px;
+    font-size: 15px;
+  }
+  .hasil .angka { font-size: 22px; font-weight: 800; color: var(--hijau-tua); }
+  .peringatan {
+    background: #fdeceb;
+    border: 2px solid var(--merah);
+    color: var(--merah);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-top: 12px;
+    display: none;
+  }
+  .tombol-simpan {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: white;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    border-top: 2px solid var(--garis);
+    z-index: 10;
+  }
+  .tombol-simpan button {
+    width: 100%; max-width: 680px; margin: 0 auto; display: block;
+    padding: 18px; background: var(--hijau); color: white; border: none;
+    border-radius: 12px; font-size: 18px; font-weight: 800;
+  }
+  .tombol-simpan button:active { background: var(--hijau-tua); }
+  .tombol-simpan button:disabled { background: #bbb; }
+  .pesan-ok {
+    background: var(--hijau); color: white; text-align: center; padding: 12px;
+    border-radius: 10px; font-weight: 700; margin-bottom: 16px; display: none;
+  }
+  .info-box {
+    background: #fff8e6; border: 1px solid #e0c26a; border-radius: 10px;
+    padding: 12px 14px; font-size: 13px; color: #6b5416; margin-bottom: 16px;
+  }
+  /* Baris merk (dinamis) */
+  .baris-merk {
+    background: var(--abu);
+    border: 2px solid var(--garis);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 12px;
+    position: relative;
+  }
+  .baris-merk .nomor {
+    position: absolute; top: -10px; left: 12px;
+    background: var(--hijau); color: white;
+    font-size: 12px; font-weight: 800;
+    padding: 2px 10px; border-radius: 999px;
+  }
+  .baris-merk-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 8px; }
+  .baris-merk-grid .baris-2 { gap: 8px; }
+  .baris-merk label { font-size: 12px; margin-top: 10px; margin-bottom: 4px; }
+  .baris-merk select, .baris-merk input { padding: 11px; font-size: 15px; }
+  .tombol-hapus-merk {
+    width: 100%; margin-top: 10px; padding: 10px;
+    background: white; border: 2px solid var(--merah); color: var(--merah);
+    border-radius: 8px; font-weight: 700; font-size: 13px;
+  }
+  .tombol-tambah-merk {
+    width: 100%; margin-top: 14px; padding: 14px;
+    background: white; border: 2px dashed var(--hijau); color: var(--hijau-tua);
+    border-radius: 10px; font-weight: 800; font-size: 15px;
+  }
+  .satuan-toggle { display: flex; gap: 8px; margin-top: 4px; }
+  .satuan-toggle button {
+    flex: 1; padding: 10px; border: 2px solid var(--garis); background: white;
+    border-radius: 8px; font-size: 13px; font-weight: 700; color: #777;
+  }
+  .satuan-toggle button.pilih { background: var(--hijau); border-color: var(--hijau); color: white; }
+  .subtotal-merk {
+    margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--garis);
+    font-size: 13px; color: var(--hijau-tua); font-weight: 700;
+  }
+  /* Rekap */
+  .daftar-batch { display: flex; flex-direction: column; gap: 12px; }
+  .item-batch {
+    background: white; border-radius: 12px; padding: 14px 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .item-batch .baris-atas { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .item-batch .pemasok-nama { font-weight: 800; font-size: 16px; }
+  .item-batch .tanggal { font-size: 13px; color: #888; }
+  .item-batch table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  .item-batch th, .item-batch td { text-align: left; padding: 5px 4px; border-bottom: 1px solid var(--garis); }
+  .item-batch th { color: #888; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .item-batch .total-baris {
+    display: flex; justify-content: space-between; margin-top: 10px; padding-top: 8px;
+    border-top: 2px solid var(--garis); font-weight: 800; color: var(--hijau-tua); font-size: 15px;
+  }
+  .kosong { text-align: center; color: #999; padding: 40px 16px; font-size: 14px; }
+  .ringkasan-atas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .ringkasan-atas .kotak { background: white; border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .ringkasan-atas .label { font-size: 12px; color: #888; }
+  .ringkasan-atas .nilai { font-size: 18px; font-weight: 800; color: var(--hijau-tua); margin-top: 4px; }
+  .tombol-hapus { background: none; border: none; color: var(--merah); font-size: 13px; font-weight: 700; padding: 8px 0 0; }
+  .halaman { display: none; }
+  .halaman.tampil { display: block; }
+  .badge-karung { display:inline-block; background:#e0f0e4; color:var(--hijau-tua); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; margin-left:6px; }
+  .bar-backup {
+    background: #0f4a28; color: white; padding: 12px 16px; font-size: 13px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .bar-backup b { font-weight: 800; }
+  .bar-backup .tombol-kecil {
+    background: white; color: var(--hijau-tua); border: none; border-radius: 8px;
+    padding: 8px 14px; font-weight: 800; font-size: 13px; white-space: nowrap;
+  }
+  .peringatan-besar {
+    background: #fdeceb; border: 2px solid var(--merah); color: var(--merah);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; font-size: 14px; font-weight: 700;
+  }
+  input[type="file"] { display: none; }
+  /* Kasir / Jual */
+  .kartu-jenis-jual {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;
+  }
+  .kartu-jenis-jual button {
+    padding: 14px 6px; border: 2px solid var(--garis); background: white; border-radius: 12px;
+    font-size: 13px; font-weight: 800; color: #777; text-align: center; line-height: 1.3;
+  }
+  .kartu-jenis-jual button.pilih { background: var(--hijau); border-color: var(--hijau); color: white; }
+  .stok-tersedia {
+    background: #eef7ee; border: 1px solid var(--hijau); border-radius: 10px;
+    padding: 10px 12px; font-size: 13px; color: var(--hijau-tua); margin-top: 8px;
+  }
+  .stok-tersedia.kurang { background: #fdeceb; border-color: var(--merah); color: var(--merah); font-weight: 700; }
+  .tab-bayar { display: flex; gap: 8px; margin-top: 4px; }
+  .tab-bayar button {
+    flex: 1; padding: 12px 4px; border: 2px solid var(--garis); background: white;
+    border-radius: 8px; font-size: 13px; font-weight: 700; color: #777;
+  }
+  .tab-bayar button.pilih { background: var(--hijau); border-color: var(--hijau); color: white; }
+  .badge-stok-rendah { background: var(--merah); color: white; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 5px; margin-left: 6px; }
+</style>
+</head>
+<body>
 
+<header>
+  <h1>🌾 Sistem Toko M.IQBAL</h1>
+  <p id="subjudulHeader">1 kedatangan mobil = banyak merk beras</p>
+</header>
+
+<div class="bar-backup">
+  <span>📥 Riwayat sekarang: <b id="jumlahDiHp">0</b> kedatangan di HP ini</span>
+  <div style="display:flex; gap:8px;">
+    <button class="tombol-kecil" onclick="unduhBackup()">⬇ Unduh Backup</button>
+    <button class="tombol-kecil" onclick="document.getElementById('inputMuatFile').click()">⬆ Muat dari File</button>
+  </div>
+  <input type="file" id="inputMuatFile" accept=".json" onchange="muatDariFile(event)">
+</div>
+
+<nav>
+  <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')">💰 Jual</button>
+  <button id="tabInput" onclick="pindahHalaman('input')">➕ Masuk</button>
+  <button id="tabProduksi" onclick="pindahHalaman('produksi')">📦 Produksi</button>
+  <button id="tabRekap" onclick="pindahHalaman('rekap')">📋 Riwayat</button>
+  <button id="tabStok" onclick="pindahHalaman('stok')">🌾 Stok</button>
+  <button id="tabBulanan" onclick="pindahHalaman('bulanan')">🗓️ Bulanan</button>
+</nav>
+
+<main>
+
+  <!-- HALAMAN JUAL (kasir) -->
+  <div id="halamanJual" class="halaman tampil">
+    <div id="pesanOkJual" class="pesan-ok">✔ Penjualan tersimpan.</div>
+
+    <div class="kartu-jenis-jual">
+      <button type="button" id="jenisJualKemasan" class="pilih" onclick="pilihJenisJual('kemasan')">📦<br>Dari Stok<br>Kemasan Jadi</button>
+      <button type="button" id="jenisJualRepacking" onclick="pilihJenisJual('repacking')">⚖️<br>Repacking<br>Dadakan</button>
+      <button type="button" id="jenisJualKarung" onclick="pilihJenisJual('karung')">🌾<br>Karung Utuh<br>(50/25kg)</button>
+    </div>
+
+    <!-- Sub-form: Jual dari stok kemasan jadi -->
+    <div class="kartu" id="formJualKemasan">
+      <div class="subjudul">Jual dari Stok Kemasan</div>
+      <label>Nama produk</label>
+      <select id="jualKemasanProduk" onchange="perbaruiStokJual()"></select>
+      <div class="stok-tersedia" id="stokKemasanInfo"></div>
+      <label>Jumlah dijual (unit)</label>
+      <input type="number" id="jualKemasanJumlah" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
+    </div>
+
+    <!-- Sub-form: Repacking dadakan -->
+    <div class="kartu" id="formJualRepacking" style="display:none;">
+      <div class="subjudul">Repacking Dadakan dari Karung Sumber</div>
+      <label>Ambil dari merk/jenis (stok karung)</label>
+      <select id="jualRepackingMerk" onchange="perbaruiStokJual()"></select>
+      <div class="stok-tersedia" id="stokRepackingInfo"></div>
+      <label>Jadi produk apa (nama jual)</label>
+      <input type="text" id="jualRepackingNamaProduk" placeholder="Contoh: Kembang, Putri, atau nama lain">
+      <label>Berat dijual (kg)</label>
+      <input type="number" id="jualRepackingKg" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
+    </div>
+
+    <!-- Sub-form: Karung utuh -->
+    <div class="kartu" id="formJualKarung" style="display:none;">
+      <div class="subjudul">Jual Karung Utuh</div>
+      <label>Ambil dari merk/jenis (stok karung)</label>
+      <select id="jualKarungMerk" onchange="perbaruiStokJual()"></select>
+      <div class="stok-tersedia" id="stokKarungInfo"></div>
+      <label>Jumlah karung terjual</label>
+      <input type="number" id="jualKarungJumlah" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
+      <p class="keterangan">Berat per karung ikut berat asli dari batch sumbernya.</p>
+    </div>
+
+    <!-- Sub-form: Literan -->
+    <div class="kartu" id="formJualLiteran">
+      <div class="subjudul">🥤 Atau Jual Literan</div>
+      <p class="keterangan" style="margin-top:-8px;">Centang ini kalau transaksinya literan, bukan kemasan/karung. Ketan & Beras Merah tidak boleh dicampur produk lain.</p>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:12px;">
+        <input type="checkbox" id="modeLiteran" onchange="toggleModeLiteran()" style="width:auto;"> Ini transaksi literan
+      </label>
+      <div id="blokLiteran" style="display:none; margin-top:12px;">
+        <label>Jenis (literan khusus tidak dicampur produk lain)</label>
+        <select id="jualLiteranJenis" onchange="perbaruiStokJual()"></select>
+        <div class="stok-tersedia" id="stokLiteranInfo"></div>
+        <label>Jumlah liter dijual</label>
+        <input type="number" id="jualLiteranJumlah" placeholder="0" step="0.1" inputmode="decimal" oninput="hitungTotalJual()">
+        <div class="keterangan" id="konversiLiteranInfo"></div>
+      </div>
+    </div>
+
+    <div class="kartu">
+      <div class="subjudul">Harga & Bayar</div>
+      <label>Harga jual (Rp) <span class="keterangan">— total transaksi ini</span></label>
+      <input type="number" id="jualHargaTotal" placeholder="0" inputmode="numeric">
+      <label>Cara bayar</label>
+      <div class="tab-bayar">
+        <button type="button" id="bayarTunai" class="pilih" onclick="pilihBayar('Tunai')">Tunai</button>
+        <button type="button" id="bayarQris" onclick="pilihBayar('QRIS')">QRIS</button>
+        <button type="button" id="bayarKredit" onclick="pilihBayar('Kredit')">Kredit</button>
+      </div>
+      <div id="blokKredit" style="display:none; margin-top:12px;">
+        <label>Nama pelanggan (kredit)</label>
+        <input type="text" id="jualNamaPelanggan" placeholder="Nama pelanggan">
+      </div>
+    </div>
+  </div>
+
+  <!-- HALAMAN PRODUKSI KEMASAN -->
+  <div id="halamanProduksi" class="halaman">
+    <div id="pesanOkProduksi" class="pesan-ok">✔ Stok kemasan bertambah.</div>
+    <div class="info-box">Dipakai waktu sepi: siapkan stok kemasan duluan (timbang & jahit dari karung sumber), supaya nanti tinggal diambil pas ada pembeli lewat tab "Jual → Dari Stok Kemasan Jadi".</div>
+
+    <div class="kartu">
+      <div class="subjudul">Ambil dari Karung Sumber</div>
+      <label>Merk/jenis sumber</label>
+      <select id="produksiMerkSumber" onchange="perbaruiStokProduksi()"></select>
+      <div class="stok-tersedia" id="stokProduksiInfo"></div>
+      <label>Berat dipakai (kg)</label>
+      <input type="number" id="produksiKgDipakai" placeholder="0" inputmode="numeric">
+    </div>
+
+    <div class="kartu">
+      <div class="subjudul">Jadi Produk Kemasan</div>
+      <label>Nama produk (nama jual)</label>
+      <input type="text" id="produksiNamaProduk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
+      <label>Ukuran per kemasan (kg)</label>
+      <input type="number" id="produksiUkuranKemasan" placeholder="Contoh: 5, 10, 20" inputmode="numeric">
+      <label>Jadi berapa unit kemasan</label>
+      <input type="number" id="produksiJumlahUnit" placeholder="0" inputmode="numeric">
+      <p class="keterangan">Biaya kemasan (karung/plastik/paper bag/benang) dan upah repacking dicatat di sini supaya HPP kemasan lengkap.</p>
+      <label>Biaya kemasan (Rp) <span class="keterangan">— total untuk produksi ini</span></label>
+      <input type="number" id="produksiBiayaKemasan" placeholder="0" inputmode="numeric">
+      <label>Upah repacking (Rp)</label>
+      <input type="number" id="produksiUpahRepacking" placeholder="0" inputmode="numeric">
+    </div>
+  </div>
+
+  <!-- HALAMAN STOK -->
+  <div id="halamanStok" class="halaman">
+    <div class="info-box">Stok dihitung otomatis: karung sumber (dari tab Masuk, dikurangi terpakai) dan kemasan jadi (dari tab Produksi, dikurangi terjual).</div>
+    <div class="subjudul" style="margin-top:0;">Stok Karung Sumber (per merk)</div>
+    <div id="daftarStokKarung" class="daftar-batch"></div>
+    <div class="subjudul">Stok Kemasan Jadi</div>
+    <div id="daftarStokKemasan" class="daftar-batch"></div>
+  </div>
+
+  <!-- HALAMAN INPUT -->
+  <div id="halamanInput" class="halaman">
+    <div id="pesanOk" class="pesan-ok">✔ Tersimpan. Kedatangan baru sudah masuk ke riwayat.</div>
+
+    <div class="kartu">
+      <div class="subjudul">Data Kedatangan Mobil</div>
+
+      <label>Tanggal masuk</label>
+      <input type="date" id="tanggal">
+
+      <label>Pemasok</label>
+      <select id="pemasok">
+        <option value="RODA MAS">RODA MAS</option>
+        <option value="U.D. SEJATI JAYA">U.D. SEJATI JAYA</option>
+        <option value="Lainnya">Lainnya (isi manual)</option>
+      </select>
+      <input type="text" id="pemasokLain" placeholder="Nama pemasok lain" style="margin-top:8px; display:none;">
+
+      <label>Biaya bongkar (Rp) <span class="keterangan">— untuk seluruh mobil ini</span></label>
+      <input type="number" id="biayaBongkar" placeholder="0" inputmode="numeric">
+      <p class="keterangan">Akses/gapura dan keamanan lingkungan tidak diisi di sini — itu biaya bulanan, isi di tab "Biaya Bulanan".</p>
+    </div>
+
+    <div class="kartu">
+      <div class="subjudul">Rincian per Merk</div>
+      <p class="keterangan" style="margin-top:-8px;">Tambah satu baris untuk tiap merk/jenis dalam mobil ini. Total karung minimal 60.</p>
+
+      <div id="daftarBarisMerk"></div>
+
+      <button type="button" class="tombol-tambah-merk" onclick="tambahBarisMerk()">+ Tambah Merk</button>
+    </div>
+
+    <div class="hasil" id="kotakHasil" style="display:none;">
+      <div>Total mobil ini:</div>
+      <div class="angka" id="hasilTotal">-</div>
+      <div class="keterangan" id="hasilRincian"></div>
+      <div class="peringatan" id="peringatanKarung">⚠ Total karung belum sampai 60. Cek lagi — biasanya 1 mobil minimal 60 karung.</div>
+    </div>
+
+  </div>
+
+  <!-- HALAMAN REKAP -->
+  <div id="halamanRekap" class="halaman">
+    <div class="ringkasan-atas">
+      <div class="kotak">
+        <div class="label">Total kedatangan</div>
+        <div class="nilai" id="ringkasJumlah">0</div>
+      </div>
+      <div class="kotak">
+        <div class="label">Total nilai pembelian</div>
+        <div class="nilai" id="ringkasNilai">Rp0</div>
+      </div>
+    </div>
+    <div class="info-box">Data utama tersimpan di HP/tablet ini. Tiap kali "Simpan Kedatangan", file backup ikut terunduh otomatis — kalau riwayat di sini pernah kosong/hilang, tekan "⬆ Muat dari File" di atas dan pilih file backup terakhir.</div>
+    <div id="daftarBatch" class="daftar-batch"></div>
+  </div>
+
+  <!-- HALAMAN BIAYA BULANAN -->
+  <div id="halamanBulanan" class="halaman">
+    <div class="kartu">
+      <div class="subjudul">Biaya Bulanan (di luar per-mobil)</div>
+      <p class="keterangan" style="margin-top:-8px;">Akses/gapura dan keamanan lingkungan dibayar sekali sebulan — dicatat di sini, bukan per kedatangan mobil, supaya tidak dobel-hitung.</p>
+
+      <label>Bulan</label>
+      <input type="month" id="bulanBiaya">
+
+      <label>Akses / gapura (Rp)</label>
+      <input type="number" id="biayaAksesBulanan" placeholder="0" inputmode="numeric">
+
+      <label>Keamanan lingkungan (Rp)</label>
+      <input type="number" id="biayaKeamananBulanan" placeholder="0" inputmode="numeric">
+
+      <button type="button" onclick="simpanBiayaBulanan()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Biaya Bulan Ini</button>
+    </div>
+
+    <div id="daftarBulanan" class="daftar-batch"></div>
+  </div>
+
+</main>
+
+<div class="tombol-simpan" id="tombolSimpanWrap">
+  <button onclick="simpanKedatangan()" id="btnSimpanUtama">💾 Simpan Kedatangan Ini</button>
+</div>
+<div class="tombol-simpan" id="tombolSimpanJualWrap" style="display:none;">
+  <button onclick="simpanPenjualan()">💰 Simpan Penjualan</button>
+</div>
+<div class="tombol-simpan" id="tombolSimpanProduksiWrap" style="display:none;">
+  <button onclick="simpanProduksi()">📦 Simpan Produksi Kemasan</button>
+</div>
+
+<script>
+  const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
+  const KUNCI_BULANAN = 'miqbal_biaya_bulanan';
+  const KUNCI_PENJUALAN = 'miqbal_penjualan_v1';
+  const KUNCI_PRODUKSI = 'miqbal_produksi_kemasan_v1';
+  const DAFTAR_MERK = ['SAB','Lohan','SP','IR42 SB','IR42 B','Pandan Wangi','Angsa','Perahu Layar',
+    'Rp11.500/L (grup)','Rp12.000/L (grup)','Rp12.500/L (grup)',
+    'Ketan Putih','Ketan Putih Paris','Ketan Hitam PK','Ketan Hitam Sosoh','Beras Merah'];
+  const JENIS_LITERAN_KHUSUS = ['Ketan Putih','Ketan Putih Paris','Ketan Hitam PK','Ketan Hitam Sosoh','Beras Merah'];
+  const RASIO_KONVERSI = {
+    'Ketan Putih': 0.815, 'Ketan Hitam PK': 0.810,
+    'Ketan Hitam Sosoh': 0.800, 'Ketan Putih Paris': 0.800, 'Beras Merah': 0.800
+  };
+  const RASIO_DEFAULT = 0.82; // produk inti
+
+  let idBaris = 0;
+  let jenisJualAktif = 'kemasan';
+
+  function pindahHalaman(nama) {
+    ['jual','input','produksi','rekap','stok','bulanan'].forEach(n => {
+      document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
+      document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
+    });
+    document.getElementById('tombolSimpanWrap').style.display = nama === 'input' ? 'block' : 'none';
+    document.getElementById('tombolSimpanJualWrap').style.display = nama === 'jual' ? 'block' : 'none';
+    document.getElementById('tombolSimpanProduksiWrap').style.display = nama === 'produksi' ? 'block' : 'none';
+    if (nama === 'rekap') tampilkanRekap();
+    if (nama === 'bulanan') tampilkanBulanan();
+    if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); }
+    if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); }
+    if (nama === 'stok') tampilkanStok();
+  }
+  function kapital(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function opsiMerkHtml() {
+    let html = '<option value="">— pilih merk/jenis —</option>';
+    DAFTAR_MERK.forEach(m => html += `<option value="${m}">${m}</option>`);
+    html += '<option value="__lain__">Merk lain (ketik manual)</option>';
+    return html;
+  }
+
+  function tambahBarisMerk(prefill) {
+    idBaris++;
+    const id = idBaris;
+    const div = document.createElement('div');
+    div.className = 'baris-merk';
+    div.id = 'baris-' + id;
+    div.innerHTML = `
+      <span class="nomor">Merk #${id}</span>
+      <div class="baris-merk-grid">
+        <div>
+          <label>Merk / jenis beras</label>
+          <select id="merk-${id}" onchange="cekMerkLain(${id})">${opsiMerkHtml()}</select>
+          <input type="text" id="merkLain-${id}" placeholder="Nama merk" style="margin-top:6px; display:none;">
+        </div>
+        <div>
+          <label>Satuan</label>
+          <div class="satuan-toggle">
+            <button type="button" id="satKarung-${id}" class="pilih" onclick="pilihSatuan(${id},'karung')">Karung</button>
+            <button type="button" id="satKg-${id}" onclick="pilihSatuan(${id},'kg')">Kg langsung</button>
+          </div>
+        </div>
+        <div class="baris-2" id="inputKarung-${id}">
+          <div>
+            <label>Jumlah karung</label>
+            <input type="number" id="jumlahKarung-${id}" placeholder="0" inputmode="numeric" oninput="hitungPerkiraan()">
+          </div>
+          <div>
+            <label>Berat/karung (kg)</label>
+            <input type="number" id="beratKarung-${id}" value="50" inputmode="numeric" oninput="hitungPerkiraan()">
+          </div>
+        </div>
+        <div id="inputKg-${id}" style="display:none;">
+          <label>Total kg</label>
+          <input type="number" id="totalKgLangsung-${id}" placeholder="0" inputmode="numeric" oninput="hitungPerkiraan()">
+        </div>
+        <div>
+          <label>Harga beli per kg (Rp)</label>
+          <input type="number" id="hargaPerKg-${id}" placeholder="0" inputmode="numeric" oninput="hitungPerkiraan()">
+        </div>
+      </div>
+      <div class="subtotal-merk" id="subtotal-${id}"></div>
+      <button type="button" class="tombol-hapus-merk" onclick="hapusBarisMerk(${id})">Hapus merk ini</button>
+    `;
+    document.getElementById('daftarBarisMerk').appendChild(div);
+    hitungPerkiraan();
+  }
+
+  function hapusBarisMerk(id) {
+    const el = document.getElementById('baris-' + id);
+    if (el) el.remove();
+    hitungPerkiraan();
+  }
+
+  function cekMerkLain(id) {
+    const nilai = document.getElementById('merk-' + id).value;
+    document.getElementById('merkLain-' + id).style.display = nilai === '__lain__' ? 'block' : 'none';
+  }
+
+  function pilihSatuan(id, satuan) {
+    document.getElementById('satKarung-' + id).classList.toggle('pilih', satuan === 'karung');
+    document.getElementById('satKg-' + id).classList.toggle('pilih', satuan === 'kg');
+    document.getElementById('inputKarung-' + id).style.display = satuan === 'karung' ? 'grid' : 'none';
+    document.getElementById('inputKg-' + id).style.display = satuan === 'kg' ? 'block' : 'none';
+    hitungPerkiraan();
+  }
+
+  function getSatuan(id) {
+    return document.getElementById('satKg-' + id).classList.contains('pilih') ? 'kg' : 'karung';
+  }
+
+  function bacaBarisMerk() {
+    const kontainer = document.getElementById('daftarBarisMerk');
+    const barisEls = kontainer.querySelectorAll('.baris-merk');
+    const hasil = [];
+    barisEls.forEach(el => {
+      const id = el.id.split('-')[1];
+      let merk = document.getElementById('merk-' + id).value;
+      if (merk === '__lain__') merk = document.getElementById('merkLain-' + id).value.trim();
+      const satuan = getSatuan(id);
+      let totalKg = 0, jumlahKarung = 0, beratKarung = 0;
+      if (satuan === 'karung') {
+        jumlahKarung = parseFloat(document.getElementById('jumlahKarung-' + id).value) || 0;
+        beratKarung = parseFloat(document.getElementById('beratKarung-' + id).value) || 0;
+        totalKg = jumlahKarung * beratKarung;
+      } else {
+        totalKg = parseFloat(document.getElementById('totalKgLangsung-' + id).value) || 0;
+      }
+      const hargaPerKg = parseFloat(document.getElementById('hargaPerKg-' + id).value) || 0;
+      hasil.push({ id, merk, satuan, jumlahKarung, beratKarung, totalKg, hargaPerKg, subtotalHarga: totalKg * hargaPerKg });
+    });
+    return hasil;
+  }
+
+  function formatRupiah(angka) { return 'Rp' + Math.round(angka).toLocaleString('id-ID'); }
+
+  function hitungPerkiraan() {
+    const baris = bacaBarisMerk();
+    const bongkar = parseFloat(document.getElementById('biayaBongkar').value) || 0;
+    const totalKgSemua = baris.reduce((a, b) => a + b.totalKg, 0);
+    const totalKarungSemua = baris.filter(b => b.satuan === 'karung').reduce((a, b) => a + b.jumlahKarung, 0);
+    const totalHargaBeli = baris.reduce((a, b) => a + b.subtotalHarga, 0);
+    const totalSemua = totalHargaBeli + bongkar;
+
+    // Tampilkan subtotal per baris (alokasi bongkar proporsional kg)
+    baris.forEach(b => {
+      const el = document.getElementById('subtotal-' + b.id);
+      if (!el) return;
+      if (b.totalKg > 0) {
+        const alokasiBongkar = totalKgSemua > 0 ? (b.totalKg / totalKgSemua) * bongkar : 0;
+        const hppPerKg = (b.subtotalHarga + alokasiBongkar) / b.totalKg;
+        el.textContent = `${b.totalKg} kg · Harga beli ${formatRupiah(b.subtotalHarga)} · HPP≈${formatRupiah(hppPerKg)}/kg (sudah + porsi bongkar)`;
+      } else {
+        el.textContent = '';
+      }
+    });
+
+    const kotak = document.getElementById('kotakHasil');
+    const peringatan = document.getElementById('peringatanKarung');
+    if (baris.length > 0 && totalKgSemua > 0) {
+      document.getElementById('hasilTotal').textContent = formatRupiah(totalSemua);
+      document.getElementById('hasilRincian').textContent =
+        `${baris.length} merk · ${totalKarungSemua} karung · ${totalKgSemua} kg total · harga beli ${formatRupiah(totalHargaBeli)} + bongkar ${formatRupiah(bongkar)}`;
+      kotak.style.display = 'block';
+      peringatan.style.display = totalKarungSemua > 0 && totalKarungSemua < 60 ? 'block' : 'none';
+    } else {
+      kotak.style.display = 'none';
+    }
+  }
+
+  document.getElementById('biayaBongkar').addEventListener('input', hitungPerkiraan);
+  document.getElementById('pemasok').addEventListener('change', function() {
+    document.getElementById('pemasokLain').style.display = this.value === 'Lainnya' ? 'block' : 'none';
+  });
+  document.getElementById('tanggal').value = new Date().toISOString().split('T')[0];
+
+  // Mulai dengan 1 baris merk kosong
+  tambahBarisMerk();
+  perbaruiCounterBackup();
+
+  function ambilSemuaBatch() {
+    const data = localStorage.getItem(KUNCI_SIMPAN);
+    return data ? JSON.parse(data) : [];
+  }
+
+  function perbaruiCounterBackup() {
+    const el = document.getElementById('jumlahDiHp');
+    if (el) el.textContent = ambilSemuaBatch().length;
+  }
+
+  // --- Backup ke file (jaring pengaman kalau localStorage browser hilang) ---
+  function unduhBackup(diam) {
+    const isi = {
+      versi: 3,
+      diunduhPada: new Date().toISOString(),
+      batchMasuk: ambilSemuaBatch(),
+      biayaBulanan: ambilBiayaBulanan(),
+      penjualan: ambilPenjualan(),
+      produksiKemasan: ambilProduksi()
+    };
+    const blob = new Blob([JSON.stringify(isi, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const tanggalFile = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `backup-batch-miqbal-${tanggalFile}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (!diam) alert('Backup terunduh. Simpan file ini di tempat aman (misal folder Download HP) — ini cadangan kalau riwayat di browser hilang lagi.');
+  }
+
+  function muatDariFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const isi = JSON.parse(e.target.result);
+        const batchDariFile = isi.batchMasuk || [];
+        const bulananDariFile = isi.biayaBulanan || [];
+
+        const batchSekarang = ambilSemuaBatch();
+        const idSekarang = new Set(batchSekarang.map(b => b.id));
+        const batchBaru = batchDariFile.filter(b => !idSekarang.has(b.id));
+
+        const gabungan = [...batchSekarang, ...batchBaru].sort((a, b) => b.id - a.id);
+        localStorage.setItem(KUNCI_SIMPAN, JSON.stringify(gabungan));
+
+        const bulananSekarang = ambilBiayaBulanan();
+        const bulanSekarangSet = new Set(bulananSekarang.map(b => b.bulan));
+        const bulananBaru = bulananDariFile.filter(b => !bulanSekarangSet.has(b.bulan));
+        const gabunganBulanan = [...bulananSekarang, ...bulananBaru].sort((a, b) => b.bulan.localeCompare(a.bulan));
+        localStorage.setItem(KUNCI_BULANAN, JSON.stringify(gabunganBulanan));
+
+        const penjualanDariFile = isi.penjualan || [];
+        const penjualanSekarang = ambilPenjualan();
+        const idPenjualanSekarang = new Set(penjualanSekarang.map(p => p.id));
+        const penjualanBaru = penjualanDariFile.filter(p => !idPenjualanSekarang.has(p.id));
+        const gabunganPenjualan = [...penjualanSekarang, ...penjualanBaru].sort((a, b) => b.id - a.id);
+        localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(gabunganPenjualan));
+
+        const produksiDariFile = isi.produksiKemasan || [];
+        const produksiSekarang = ambilProduksi();
+        const idProduksiSekarang = new Set(produksiSekarang.map(p => p.id));
+        const produksiBaru = produksiDariFile.filter(p => !idProduksiSekarang.has(p.id));
+        const gabunganProduksi = [...produksiSekarang, ...produksiBaru].sort((a, b) => b.id - a.id);
+        localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(gabunganProduksi));
+
+        alert(`Berhasil dimuat: ${batchBaru.length} kedatangan, ${penjualanBaru.length} penjualan, ${produksiBaru.length} produksi baru ditambahkan. Total kedatangan sekarang: ${gabungan.length}.`);
+        perbaruiCounterBackup();
+        tampilkanRekap();
+        tampilkanBulanan();
+      } catch (err) {
+        alert('File tidak bisa dibaca. Pastikan ini file backup .json yang benar dari sistem ini.');
+      }
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  function simpanKedatangan() {
+    const baris = bacaBarisMerk();
+    let pemasok = document.getElementById('pemasok').value;
+    if (pemasok === 'Lainnya') pemasok = document.getElementById('pemasokLain').value.trim();
+
+    const barisValid = baris.filter(b => b.merk && b.totalKg > 0);
+    if (barisValid.length === 0) { alert('Isi minimal satu baris merk dengan jenis beras dan jumlah yang lengkap.'); return; }
+    if (barisValid.some(b => b.hargaPerKg <= 0)) { alert('Ada baris merk yang harga beli per kg-nya belum diisi.'); return; }
+
+    const totalKarungSemua = baris.filter(b => b.satuan === 'karung').reduce((a, b) => a + b.jumlahKarung, 0);
+    if (totalKarungSemua > 0 && totalKarungSemua < 60) {
+      if (!confirm('Total karung baru ' + totalKarungSemua + ' — biasanya 1 mobil minimal 60 karung. Tetap simpan?')) return;
+    }
+
+    const kedatangan = {
+      id: Date.now(),
+      tanggal: document.getElementById('tanggal').value,
+      pemasok: pemasok,
+      biayaBongkar: parseFloat(document.getElementById('biayaBongkar').value) || 0,
+      merkList: barisValid
+    };
+
+    const semua = ambilSemuaBatch();
+    semua.unshift(kedatangan);
+    localStorage.setItem(KUNCI_SIMPAN, JSON.stringify(semua));
+    perbaruiCounterBackup();
+    unduhBackup(true);
+
+    // Reset form
+    document.getElementById('daftarBarisMerk').innerHTML = '';
+    idBaris = 0;
+    tambahBarisMerk();
+    document.getElementById('biayaBongkar').value = '';
+    document.getElementById('tanggal').value = new Date().toISOString().split('T')[0];
+    document.getElementById('kotakHasil').style.display = 'none';
+
+    const pesan = document.getElementById('pesanOk');
+    pesan.textContent = '✔ Tersimpan + backup terunduh otomatis. Kedatangan baru sudah masuk ke riwayat.';
+    pesan.style.display = 'block';
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    setTimeout(() => { pesan.style.display = 'none'; }, 4000);
+  }
+
+  function hapusBatch(id) {
+    if (!confirm('Hapus kedatangan ini dari riwayat?')) return;
+    const semua = ambilSemuaBatch().filter(b => b.id !== id);
+    localStorage.setItem(KUNCI_SIMPAN, JSON.stringify(semua));
+    perbaruiCounterBackup();
+    tampilkanRekap();
+  }
+
+  function formatTanggal(iso) {
+    if (!iso) return '-';
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function tampilkanRekap() {
+    const semua = ambilSemuaBatch();
+    const kontainer = document.getElementById('daftarBatch');
+
+    document.getElementById('ringkasJumlah').textContent = semua.length;
+    const totalNilai = semua.reduce((a, k) => {
+      const totalMerk = k.merkList.reduce((x, m) => x + m.subtotalHarga, 0);
+      return a + totalMerk + k.biayaBongkar;
+    }, 0);
+    document.getElementById('ringkasNilai').textContent = formatRupiah(totalNilai);
+
+    if (semua.length === 0) {
+      kontainer.innerHTML = '<div class="kosong">Belum ada kedatangan tercatat.<br>Buka tab "Input Baru" untuk mulai catat.</div>';
+      return;
+    }
+
+    kontainer.innerHTML = semua.map(k => {
+      const totalKgSemua = k.merkList.reduce((a, m) => a + m.totalKg, 0);
+      const totalKarungSemua = k.merkList.filter(m => m.satuan === 'karung').reduce((a, m) => a + m.jumlahKarung, 0);
+      const totalHargaBeli = k.merkList.reduce((a, m) => a + m.subtotalHarga, 0);
+      const totalSemua = totalHargaBeli + k.biayaBongkar;
+
+      const barisTabel = k.merkList.map(m => {
+        const alokasiBongkar = totalKgSemua > 0 ? (m.totalKg / totalKgSemua) * k.biayaBongkar : 0;
+        const hppPerKg = m.totalKg > 0 ? (m.subtotalHarga + alokasiBongkar) / m.totalKg : 0;
+        const keteranganJumlah = m.satuan === 'karung' ? `${m.jumlahKarung} krg × ${m.beratKarung}kg` : `${m.totalKg}kg langsung`;
+        return `<tr>
+          <td>${m.merk}</td>
+          <td>${keteranganJumlah}</td>
+          <td>${formatRupiah(m.hargaPerKg)}/kg</td>
+          <td>${formatRupiah(hppPerKg)}/kg</td>
+        </tr>`;
+      }).join('');
+
+      return `
+        <div class="item-batch">
+          <div class="baris-atas">
+            <span class="pemasok-nama">${k.pemasok || '-'}</span>
+            <span class="tanggal">${formatTanggal(k.tanggal)}</span>
+          </div>
+          <div style="font-size:13px; color:#666;">
+            ${k.merkList.length} merk · <span class="badge-karung">${totalKarungSemua} karung${totalKarungSemua < 60 && totalKarungSemua > 0 ? ' ⚠' : ''}</span> · ${totalKgSemua} kg total
+          </div>
+          <table>
+            <tr><th>Merk</th><th>Jumlah</th><th>Harga beli</th><th>HPP+bongkar</th></tr>
+            ${barisTabel}
+          </table>
+          <div class="total-baris">
+            <span>Total (harga beli + bongkar ${formatRupiah(k.biayaBongkar)})</span>
+            <span>${formatRupiah(totalSemua)}</span>
+          </div>
+          <button class="tombol-hapus" onclick="hapusBatch(${k.id})">Hapus</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // --- Biaya Bulanan ---
+  function ambilBiayaBulanan() {
+    const data = localStorage.getItem(KUNCI_BULANAN);
+    return data ? JSON.parse(data) : [];
+  }
+
+  function simpanBiayaBulanan() {
+    const bulan = document.getElementById('bulanBiaya').value;
+    const akses = parseFloat(document.getElementById('biayaAksesBulanan').value) || 0;
+    const keamanan = parseFloat(document.getElementById('biayaKeamananBulanan').value) || 0;
+    if (!bulan) { alert('Pilih bulan dulu.'); return; }
+    if (akses <= 0 && keamanan <= 0) { alert('Isi minimal salah satu biaya.'); return; }
+
+    let semua = ambilBiayaBulanan();
+    semua = semua.filter(b => b.bulan !== bulan); // ganti kalau bulan sama sudah ada
+    semua.unshift({ bulan, akses, keamanan });
+    semua.sort((a, b) => b.bulan.localeCompare(a.bulan));
+    localStorage.setItem(KUNCI_BULANAN, JSON.stringify(semua));
+    unduhBackup(true);
+
+    document.getElementById('biayaAksesBulanan').value = '';
+    document.getElementById('biayaKeamananBulanan').value = '';
+    tampilkanBulanan();
+  }
+
+  function hapusBulanan(bulan) {
+    if (!confirm('Hapus data biaya bulan ' + bulan + '?')) return;
+    let semua = ambilBiayaBulanan().filter(b => b.bulan !== bulan);
+    localStorage.setItem(KUNCI_BULANAN, JSON.stringify(semua));
+    tampilkanBulanan();
+  }
+
+  function tampilkanBulanan() {
+    const semua = ambilBiayaBulanan();
+    const kontainer = document.getElementById('daftarBulanan');
+    if (semua.length === 0) {
+      kontainer.innerHTML = '<div class="kosong">Belum ada biaya bulanan tercatat.</div>';
+      return;
+    }
+    kontainer.innerHTML = semua.map(b => `
+      <div class="item-batch">
+        <div class="baris-atas">
+          <span class="pemasok-nama">${b.bulan}</span>
+        </div>
+        <div style="font-size:14px; color:#444; margin-top:6px;">
+          Akses/gapura: ${formatRupiah(b.akses)}<br>
+          Keamanan lingkungan: ${formatRupiah(b.keamanan)}
+        </div>
+        <div class="total-baris"><span>Total bulan ini</span><span>${formatRupiah(b.akses + b.keamanan)}</span></div>
+        <button class="tombol-hapus" onclick="hapusBulanan('${b.bulan}')">Hapus</button>
+      </div>
+    `).join('');
+  }
+
+  // ============ MESIN STOK, JUAL, PRODUKSI (Tahap 2) ============
+
+  function ambilPenjualan() {
+    const data = localStorage.getItem(KUNCI_PENJUALAN);
+    return data ? JSON.parse(data) : [];
+  }
+  function ambilProduksi() {
+    const data = localStorage.getItem(KUNCI_PRODUKSI);
+    return data ? JSON.parse(data) : [];
+  }
+
+  // Stok karung sumber per merk = total kg masuk (Tahap 1) - kg terpakai (jual karung + repacking dadakan + produksi kemasan)
+  function hitungStokKarungPerMerk() {
+    const batch = ambilSemuaBatch();
+    const stok = {}; // { merk: { totalMasuk, terpakai, hargaTerakhirPerKg } }
+
+    batch.forEach(k => {
+      k.merkList.forEach(m => {
+        if (!stok[m.merk]) stok[m.merk] = { totalMasuk: 0, terpakai: 0, hargaTerakhirPerKg: m.hargaPerKg, tanggalTerakhir: k.tanggal };
+        stok[m.merk].totalMasuk += m.totalKg;
+        // simpan harga dari batch dgn tanggal paling baru
+        if (!stok[m.merk].tanggalTerakhir || k.tanggal >= stok[m.merk].tanggalTerakhir) {
+          stok[m.merk].hargaTerakhirPerKg = m.hargaPerKg;
+          stok[m.merk].tanggalTerakhir = k.tanggal;
+        }
+      });
+    });
+
+    // Kurangi pemakaian dari penjualan (jalur karung utuh & repacking dadakan & literan langsung dari merk)
+    ambilPenjualan().forEach(p => {
+      if ((p.jenis === 'karung' || p.jenis === 'repacking' || p.jenis === 'literan') && p.merkSumber && stok[p.merkSumber]) {
+        stok[p.merkSumber].terpakai += p.totalKg;
+      }
+    });
+
+    // Kurangi pemakaian dari produksi kemasan (yang narik dari karung sumber)
+    ambilProduksi().forEach(pr => {
+      if (pr.merkSumber && stok[pr.merkSumber]) {
+        stok[pr.merkSumber].terpakai += pr.kgDipakai;
+      }
+    });
+
+    const hasil = {};
+    Object.keys(stok).forEach(merk => {
+      hasil[merk] = {
+        sisaKg: Math.round((stok[merk].totalMasuk - stok[merk].terpakai) * 100) / 100,
+        hargaTerakhirPerKg: stok[merk].hargaTerakhirPerKg
+      };
+    });
+    return hasil;
+  }
+
+  // Stok kemasan jadi per nama produk = total unit diproduksi - unit terjual
+  function hitungStokKemasan() {
+    const produksi = ambilProduksi();
+    const stok = {}; // { "namaProduk|ukuranKg": { unitDibuat, unitTerjual } }
+
+    produksi.forEach(pr => {
+      const kunci = pr.namaProduk + '|' + pr.ukuranKemasan;
+      if (!stok[kunci]) stok[kunci] = { namaProduk: pr.namaProduk, ukuranKemasan: pr.ukuranKemasan, unitDibuat: 0, unitTerjual: 0 };
+      stok[kunci].unitDibuat += pr.jumlahUnit;
+    });
+
+    ambilPenjualan().forEach(p => {
+      if (p.jenis === 'kemasan') {
+        const kunci = p.namaProduk + '|' + p.ukuranKemasan;
+        if (stok[kunci]) stok[kunci].unitTerjual += p.jumlahUnit;
+      }
+    });
+
+    const hasil = {};
+    Object.keys(stok).forEach(kunci => {
+      hasil[kunci] = { ...stok[kunci], sisaUnit: stok[kunci].unitDibuat - stok[kunci].unitTerjual };
+    });
+    return hasil;
+  }
+
+  function pilihJenisJual(jenis) {
+    jenisJualAktif = jenis;
+    ['Kemasan','Repacking','Karung'].forEach(j => {
+      document.getElementById('jenisJual' + j).classList.toggle('pilih', j.toLowerCase() === jenis);
+      document.getElementById('formJual' + j).style.display = j.toLowerCase() === jenis ? 'block' : 'none';
+    });
+    isiDropdownJual();
+    perbaruiStokJual();
+  }
+
+  function toggleModeLiteran() {
+    const aktif = document.getElementById('modeLiteran').checked;
+    document.getElementById('blokLiteran').style.display = aktif ? 'block' : 'none';
+    if (aktif) {
+      // Mode literan menonaktifkan 3 form di atas secara visual (literan jalur sendiri)
+      document.getElementById('formJualKemasan').style.display = 'none';
+      document.getElementById('formJualRepacking').style.display = 'none';
+      document.getElementById('formJualKarung').style.display = 'none';
+    } else {
+      pilihJenisJual(jenisJualAktif);
+    }
+    perbaruiStokJual();
+  }
+
+  function isiDropdownJual() {
+    const stokKemasan = hitungStokKemasan();
+    const selKemasan = document.getElementById('jualKemasanProduk');
+    selKemasan.innerHTML = '<option value="">— pilih produk —</option>' +
+      Object.keys(stokKemasan).filter(k => stokKemasan[k].sisaUnit > 0).map(k =>
+        `<option value="${k}">${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg (sisa ${stokKemasan[k].sisaUnit})</option>`
+      ).join('');
+    if (Object.keys(stokKemasan).filter(k => stokKemasan[k].sisaUnit > 0).length === 0) {
+      selKemasan.innerHTML = '<option value="">— belum ada stok kemasan jadi —</option>';
+    }
+
+    const stokKarung = hitungStokKarungPerMerk();
+    const opsiMerkStok = Object.keys(stokKarung).filter(m => stokKarung[m].sisaKg > 0).map(m =>
+      `<option value="${m}">${m} (sisa ${stokKarung[m].sisaKg}kg)</option>`
+    ).join('') || '<option value="">— belum ada stok karung —</option>';
+
+    document.getElementById('jualRepackingMerk').innerHTML = '<option value="">— pilih merk sumber —</option>' + opsiMerkStok;
+    document.getElementById('jualKarungMerk').innerHTML = '<option value="">— pilih merk sumber —</option>' + opsiMerkStok;
+
+    const opsiLiteran = Object.keys(stokKarung).filter(m => stokKarung[m].sisaKg > 0)
+      .map(m => `<option value="${m}">${m} (sisa ${stokKarung[m].sisaKg}kg)</option>`).join('') || '<option value="">— belum ada stok —</option>';
+    document.getElementById('jualLiteranJenis').innerHTML = '<option value="">— pilih jenis —</option>' + opsiLiteran;
+  }
+
+  function perbaruiStokJual() {
+    const stokKarung = hitungStokKarungPerMerk();
+    const stokKemasan = hitungStokKemasan();
+
+    // Info stok kemasan
+    const kunciKemasan = document.getElementById('jualKemasanProduk').value;
+    const infoKemasan = document.getElementById('stokKemasanInfo');
+    if (kunciKemasan && stokKemasan[kunciKemasan]) {
+      infoKemasan.textContent = `Sisa stok: ${stokKemasan[kunciKemasan].sisaUnit} unit`;
+      infoKemasan.className = 'stok-tersedia' + (stokKemasan[kunciKemasan].sisaUnit <= 0 ? ' kurang' : '');
+    } else { infoKemasan.textContent = ''; }
+
+    // Info stok repacking
+    const merkRepacking = document.getElementById('jualRepackingMerk').value;
+    const infoRepacking = document.getElementById('stokRepackingInfo');
+    if (merkRepacking && stokKarung[merkRepacking]) {
+      infoRepacking.textContent = `Sisa stok: ${stokKarung[merkRepacking].sisaKg} kg`;
+      infoRepacking.className = 'stok-tersedia' + (stokKarung[merkRepacking].sisaKg <= 0 ? ' kurang' : '');
+    } else { infoRepacking.textContent = ''; }
+
+    // Info stok karung utuh
+    const merkKarung = document.getElementById('jualKarungMerk').value;
+    const infoKarung = document.getElementById('stokKarungInfo');
+    if (merkKarung && stokKarung[merkKarung]) {
+      infoKarung.textContent = `Sisa stok: ${stokKarung[merkKarung].sisaKg} kg`;
+      infoKarung.className = 'stok-tersedia' + (stokKarung[merkKarung].sisaKg <= 0 ? ' kurang' : '');
+    } else { infoKarung.textContent = ''; }
+
+    // Info stok literan + konversi
+    const jenisLiteran = document.getElementById('jualLiteranJenis').value;
+    const infoLiteran = document.getElementById('stokLiteranInfo');
+    const infoKonversi = document.getElementById('konversiLiteranInfo');
+    if (jenisLiteran && stokKarung[jenisLiteran]) {
+      infoLiteran.textContent = `Sisa stok: ${stokKarung[jenisLiteran].sisaKg} kg`;
+      infoLiteran.className = 'stok-tersedia' + (stokKarung[jenisLiteran].sisaKg <= 0 ? ' kurang' : '');
+      const rasio = RASIO_KONVERSI[jenisLiteran] || RASIO_DEFAULT;
+      infoKonversi.textContent = `Rasio konversi: ${rasio} kg/L` + (JENIS_LITERAN_KHUSUS.includes(jenisLiteran) ? ' · literan khusus, tidak dicampur produk lain' : '');
+    } else { infoLiteran.textContent = ''; infoKonversi.textContent = ''; }
+
+    hitungTotalJual();
+  }
+
+  function hitungTotalJual() {
+    // Placeholder hook kalau nanti mau hitung otomatis harga; saat ini harga jual diisi manual owner/kasir.
+  }
+
+  function pilihBayar(cara) {
+    ['Tunai','Qris','Kredit'].forEach(c => {
+      document.getElementById('bayar' + c).classList.toggle('pilih', c.toLowerCase() === cara.toLowerCase());
+    });
+    document.getElementById('blokKredit').style.display = cara === 'Kredit' ? 'block' : 'none';
+  }
+
+  function simpanPenjualan() {
+    const modeLiteran = document.getElementById('modeLiteran').checked;
+    const hargaTotal = parseFloat(document.getElementById('jualHargaTotal').value) || 0;
+    const caraBayar = document.querySelector('.tab-bayar button.pilih')?.id.replace('bayar','') || 'Tunai';
+    const namaPelanggan = document.getElementById('jualNamaPelanggan').value.trim();
+
+    if (hargaTotal <= 0) { alert('Isi harga jual dulu.'); return; }
+    if (caraBayar === 'Kredit' && !namaPelanggan) { alert('Isi nama pelanggan untuk penjualan kredit.'); return; }
+
+    let transaksi = null;
+    const stokKarung = hitungStokKarungPerMerk();
+    const stokKemasan = hitungStokKemasan();
+
+    if (modeLiteran) {
+      const jenis = document.getElementById('jualLiteranJenis').value;
+      const jumlahLiter = parseFloat(document.getElementById('jualLiteranJumlah').value) || 0;
+      if (!jenis) { alert('Pilih jenis literan dulu.'); return; }
+      if (jumlahLiter <= 0) { alert('Isi jumlah liter.'); return; }
+      const rasio = RASIO_KONVERSI[jenis] || RASIO_DEFAULT;
+      const totalKg = Math.round(jumlahLiter * rasio * 1000) / 1000;
+      if (!stokKarung[jenis] || stokKarung[jenis].sisaKg < totalKg) {
+        if (!confirm(`Stok ${jenis} cuma sisa ${stokKarung[jenis]?.sisaKg || 0}kg, transaksi ini butuh ${totalKg}kg. Tetap simpan?`)) return;
+      }
+      transaksi = { jenis: 'literan', merkSumber: jenis, jumlahLiter, rasioPakai: rasio, totalKg, namaProduk: jenis };
+    } else if (jenisJualAktif === 'kemasan') {
+      const kunci = document.getElementById('jualKemasanProduk').value;
+      const jumlahUnit = parseFloat(document.getElementById('jualKemasanJumlah').value) || 0;
+      if (!kunci) { alert('Pilih produk kemasan dulu.'); return; }
+      if (jumlahUnit <= 0) { alert('Isi jumlah unit terjual.'); return; }
+      const [namaProduk, ukuranKemasan] = kunci.split('|');
+      if (!stokKemasan[kunci] || stokKemasan[kunci].sisaUnit < jumlahUnit) {
+        if (!confirm(`Stok kemasan ${namaProduk} ${ukuranKemasan}kg cuma sisa ${stokKemasan[kunci]?.sisaUnit || 0}, transaksi ini ${jumlahUnit} unit. Tetap simpan?`)) return;
+      }
+      transaksi = { jenis: 'kemasan', namaProduk, ukuranKemasan: parseFloat(ukuranKemasan), jumlahUnit, totalKg: parseFloat(ukuranKemasan) * jumlahUnit };
+    } else if (jenisJualAktif === 'repacking') {
+      const merk = document.getElementById('jualRepackingMerk').value;
+      const namaProduk = document.getElementById('jualRepackingNamaProduk').value.trim();
+      const kg = parseFloat(document.getElementById('jualRepackingKg').value) || 0;
+      if (!merk) { alert('Pilih merk sumber dulu.'); return; }
+      if (!namaProduk) { alert('Isi jadi produk apa (nama jual).'); return; }
+      if (kg <= 0) { alert('Isi berat yang dijual.'); return; }
+      if (!stokKarung[merk] || stokKarung[merk].sisaKg < kg) {
+        if (!confirm(`Stok ${merk} cuma sisa ${stokKarung[merk]?.sisaKg || 0}kg, transaksi ini butuh ${kg}kg. Tetap simpan?`)) return;
+      }
+      transaksi = { jenis: 'repacking', merkSumber: merk, namaProduk, totalKg: kg };
+    } else if (jenisJualAktif === 'karung') {
+      const merk = document.getElementById('jualKarungMerk').value;
+      const jumlahKarung = parseFloat(document.getElementById('jualKarungJumlah').value) || 0;
+      if (!merk) { alert('Pilih merk sumber dulu.'); return; }
+      if (jumlahKarung <= 0) { alert('Isi jumlah karung terjual.'); return; }
+      // Ambil berat per karung dari batch terakhir merk ini
+      const batch = ambilSemuaBatch();
+      let beratKarungAcuan = 50;
+      for (const k of batch) {
+        const m = k.merkList.find(x => x.merk === merk && x.satuan === 'karung');
+        if (m) { beratKarungAcuan = m.beratKarung; break; }
+      }
+      const totalKg = jumlahKarung * beratKarungAcuan;
+      if (!stokKarung[merk] || stokKarung[merk].sisaKg < totalKg) {
+        if (!confirm(`Stok ${merk} cuma sisa ${stokKarung[merk]?.sisaKg || 0}kg, transaksi ini butuh ${totalKg}kg (${jumlahKarung} karung × ${beratKarungAcuan}kg). Tetap simpan?`)) return;
+      }
+      transaksi = { jenis: 'karung', merkSumber: merk, jumlahKarung, beratKarungAcuan, totalKg, namaProduk: merk + ' (karung utuh)' };
+    }
+
+    if (!transaksi) { alert('Pilih jenis penjualan dulu.'); return; }
+
+    transaksi.id = Date.now();
+    transaksi.tanggal = new Date().toISOString().split('T')[0];
+    transaksi.jam = new Date().toTimeString().slice(0,5);
+    transaksi.hargaTotal = hargaTotal;
+    transaksi.caraBayar = caraBayar;
+    transaksi.namaPelanggan = caraBayar === 'Kredit' ? namaPelanggan : '';
+
+    const semua = ambilPenjualan();
+    semua.unshift(transaksi);
+    localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(semua));
+    unduhBackup(true);
+
+    // Reset form ringan
+    document.getElementById('jualHargaTotal').value = '';
+    document.getElementById('jualKemasanJumlah').value = '';
+    document.getElementById('jualRepackingKg').value = '';
+    document.getElementById('jualRepackingNamaProduk').value = '';
+    document.getElementById('jualKarungJumlah').value = '';
+    document.getElementById('jualLiteranJumlah').value = '';
+    document.getElementById('jualNamaPelanggan').value = '';
+    isiDropdownJual();
+    perbaruiStokJual();
+
+    const pesan = document.getElementById('pesanOkJual');
+    pesan.style.display = 'block';
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    setTimeout(() => { pesan.style.display = 'none'; }, 3000);
+  }
+
+  function isiDropdownProduksi() {
+    const stokKarung = hitungStokKarungPerMerk();
+    const opsi = Object.keys(stokKarung).filter(m => stokKarung[m].sisaKg > 0).map(m =>
+      `<option value="${m}">${m} (sisa ${stokKarung[m].sisaKg}kg)</option>`
+    ).join('') || '<option value="">— belum ada stok karung —</option>';
+    document.getElementById('produksiMerkSumber').innerHTML = '<option value="">— pilih merk sumber —</option>' + opsi;
+  }
+
+  function perbaruiStokProduksi() {
+    const stokKarung = hitungStokKarungPerMerk();
+    const merk = document.getElementById('produksiMerkSumber').value;
+    const info = document.getElementById('stokProduksiInfo');
+    if (merk && stokKarung[merk]) {
+      info.textContent = `Sisa stok: ${stokKarung[merk].sisaKg} kg`;
+      info.className = 'stok-tersedia' + (stokKarung[merk].sisaKg <= 0 ? ' kurang' : '');
+    } else { info.textContent = ''; }
+  }
+
+  function simpanProduksi() {
+    const merkSumber = document.getElementById('produksiMerkSumber').value;
+    const kgDipakai = parseFloat(document.getElementById('produksiKgDipakai').value) || 0;
+    const namaProduk = document.getElementById('produksiNamaProduk').value.trim();
+    const ukuranKemasan = parseFloat(document.getElementById('produksiUkuranKemasan').value) || 0;
+    const jumlahUnit = parseFloat(document.getElementById('produksiJumlahUnit').value) || 0;
+    const biayaKemasan = parseFloat(document.getElementById('produksiBiayaKemasan').value) || 0;
+    const upahRepacking = parseFloat(document.getElementById('produksiUpahRepacking').value) || 0;
+
+    if (!merkSumber) { alert('Pilih merk sumber dulu.'); return; }
+    if (kgDipakai <= 0) { alert('Isi berat yang dipakai.'); return; }
+    if (!namaProduk) { alert('Isi nama produk kemasan.'); return; }
+    if (ukuranKemasan <= 0) { alert('Isi ukuran per kemasan.'); return; }
+    if (jumlahUnit <= 0) { alert('Isi jadi berapa unit.'); return; }
+
+    const stokKarung = hitungStokKarungPerMerk();
+    if (!stokKarung[merkSumber] || stokKarung[merkSumber].sisaKg < kgDipakai) {
+      if (!confirm(`Stok ${merkSumber} cuma sisa ${stokKarung[merkSumber]?.sisaKg || 0}kg, produksi ini butuh ${kgDipakai}kg. Tetap simpan?`)) return;
+    }
+
+    const totalKgJadi = ukuranKemasan * jumlahUnit;
+    if (Math.abs(totalKgJadi - kgDipakai) > kgDipakai * 0.15) {
+      if (!confirm(`Berat dipakai ${kgDipakai}kg tapi hasil kemasan ${totalKgJadi}kg (selisih >15%, mungkin karena susut atau salah ketik). Tetap simpan?`)) return;
+    }
+
+    const produksi = {
+      id: Date.now(),
+      tanggal: new Date().toISOString().split('T')[0],
+      merkSumber, kgDipakai, namaProduk, ukuranKemasan, jumlahUnit,
+      biayaKemasan, upahRepacking,
+      hppPerUnit: Math.round(((stokKarung[merkSumber]?.hargaTerakhirPerKg || 0) * kgDipakai + biayaKemasan + upahRepacking) / jumlahUnit)
+    };
+
+    const semua = ambilProduksi();
+    semua.unshift(produksi);
+    localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(semua));
+    unduhBackup(true);
+
+    document.getElementById('produksiKgDipakai').value = '';
+    document.getElementById('produksiNamaProduk').value = '';
+    document.getElementById('produksiUkuranKemasan').value = '';
+    document.getElementById('produksiJumlahUnit').value = '';
+    document.getElementById('produksiBiayaKemasan').value = '';
+    document.getElementById('produksiUpahRepacking').value = '';
+    isiDropdownProduksi();
+    perbaruiStokProduksi();
+
+    const pesan = document.getElementById('pesanOkProduksi');
+    pesan.style.display = 'block';
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    setTimeout(() => { pesan.style.display = 'none'; }, 3000);
+  }
+
+  function tampilkanStok() {
+    const stokKarung = hitungStokKarungPerMerk();
+    const kontKarung = document.getElementById('daftarStokKarung');
+    const merkList = Object.keys(stokKarung).filter(m => stokKarung[m].sisaKg !== 0);
+    kontKarung.innerHTML = merkList.length === 0 ? '<div class="kosong">Belum ada stok tercatat.</div>' :
+      merkList.map(m => `
+        <div class="item-batch">
+          <div class="baris-atas">
+            <span class="pemasok-nama">${m}${stokKarung[m].sisaKg < 50 ? '<span class="badge-stok-rendah">STOK MENIPIS</span>' : ''}</span>
+            <span class="tanggal">${formatRupiah(stokKarung[m].hargaTerakhirPerKg)}/kg</span>
+          </div>
+          <div class="total-baris"><span>Sisa stok</span><span>${stokKarung[m].sisaKg} kg</span></div>
+        </div>
+      `).join('');
+
+    const stokKemasan = hitungStokKemasan();
+    const kontKemasan = document.getElementById('daftarStokKemasan');
+    const kemasanList = Object.keys(stokKemasan).filter(k => stokKemasan[k].sisaUnit !== 0);
+    kontKemasan.innerHTML = kemasanList.length === 0 ? '<div class="kosong">Belum ada stok kemasan jadi.</div>' :
+      kemasanList.map(k => `
+        <div class="item-batch">
+          <div class="baris-atas">
+            <span class="pemasok-nama">${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg${stokKemasan[k].sisaUnit < 5 ? '<span class="badge-stok-rendah">STOK MENIPIS</span>' : ''}</span>
+          </div>
+          <div class="total-baris"><span>Sisa stok</span><span>${stokKemasan[k].sisaUnit} unit</span></div>
+        </div>
+      `).join('');
+  }
+</script>
+
+</body>
+</html>
