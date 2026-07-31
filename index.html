@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Sistem Toko — Toko Beras M.IQBAL</title>
 <link rel="manifest" href="manifest-sistem.json">
-<meta name="theme-color" content="#4a3826">
+<meta name="theme-color" content="#3a2e1f">
 <link rel="icon" type="image/png" sizes="32x32" href="icon-sistem-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-sistem-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,13 +15,38 @@
 <meta name="description" content="Pembelian batch, repacking, penjualan, stok, dan laporan Toko Beras M.IQBAL.">
 <style>
   :root {
-    --hijau: #6b7a4f;
-    --hijau-tua: #4a3826;
+    /* Palet vintage rice business (31 Juli 2026, konfirmasi My DeV): cokelat karung goni
+       jadi warna utama pengganti hijau, merah bata untuk aksen aktif, emas padi untuk highlight. */
+    --hijau: #6b4a2e;
+    --hijau-tua: #3a2e1f;
     --merah: #a8462f;
-    --abu: #ece3d0;
-    --garis: #c9b998;
+    --emas: #d4a03c;
+    --abu: #f0e6ce;
+    --garis: #c2a868;
     --teks: #3a2e1f;
-    --kartu: #fbf5e6;
+    --kartu: #f0e6ce;
+    --hasil-bg: #e8dcc0;
+    --peringatan-bg: #ecd6c8;
+    --badge-bg: #e3d5ae;
+    --header-teks: #f0e6ce;
+    --tombol-teks: #ffffff;
+  }
+  html[data-tema="gelap"] {
+    /* Mode gelap — tetap keluarga warna sama (cokelat/emas/merah bata), bukan hitam-putih.
+       Cokelat karung goni gelap jadi dasar, krem/emas jadi teks (kebalikan proporsi mode terang). */
+    --hijau: #c2914f;
+    --hijau-tua: #f0e6ce;
+    --merah: #d97a5c;
+    --emas: #d4a03c;
+    --abu: #201810;
+    --garis: #5a4630;
+    --teks: #ecdfc4;
+    --kartu: #2b2015;
+    --hasil-bg: #332616;
+    --peringatan-bg: #3a2620;
+    --badge-bg: #4a3826;
+    --header-teks: #f0e6ce;
+    --tombol-teks: #201810;
   }
   * { box-sizing: border-box; }
   body {
@@ -33,7 +58,7 @@
   }
   header {
     background: var(--hijau-tua);
-    color: #f2e9d8;
+    color: var(--header-teks);
     padding: 18px 16px;
     position: sticky;
     top: 0;
@@ -41,6 +66,12 @@
   }
   header h1 { margin: 0; font-size: 20px; }
   header p { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  #tombolTema {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: var(--header-teks);
+    border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700; white-space: nowrap;
+    flex-shrink: 0;
+  }
   nav {
     display: flex;
     background: var(--kartu);
@@ -94,7 +125,7 @@
   }
   .subjudul:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
   .hasil {
-    background: #eee6d3;
+    background: var(--hasil-bg);
     border: 2px solid var(--hijau);
     border-radius: 12px;
     padding: 16px;
@@ -103,7 +134,7 @@
   }
   .hasil .angka { font-size: 22px; font-weight: 800; color: var(--hijau-tua); }
   .peringatan {
-    background: #f0ded2;
+    background: var(--peringatan-bg);
     border: 2px solid var(--merah);
     color: var(--merah);
     border-radius: 10px;
@@ -123,13 +154,13 @@
   }
   .tombol-simpan button {
     width: 100%; max-width: 680px; margin: 0 auto; display: block;
-    padding: 18px; background: var(--hijau); color: white; border: none;
+    padding: 18px; background: var(--hijau); color: var(--tombol-teks); border: none;
     border-radius: 12px; font-size: 18px; font-weight: 800;
   }
   .tombol-simpan button:active { background: var(--hijau-tua); }
   .tombol-simpan button:disabled { background: #bbb; }
   .pesan-ok {
-    background: var(--hijau); color: white; text-align: center; padding: 12px;
+    background: var(--hijau); color: var(--tombol-teks); text-align: center; padding: 12px;
     border-radius: 10px; font-weight: 700; margin-bottom: 16px; display: none;
   }
   .info-box {
@@ -147,7 +178,7 @@
   }
   .baris-merk .nomor {
     position: absolute; top: -10px; left: 12px;
-    background: var(--hijau); color: white;
+    background: var(--hijau); color: var(--tombol-teks);
     font-size: 12px; font-weight: 800;
     padding: 2px 10px; border-radius: 999px;
   }
@@ -170,7 +201,7 @@
     flex: 1; padding: 10px; border: 2px solid var(--garis); background: var(--kartu);
     border-radius: 8px; font-size: 13px; font-weight: 700; color: #777;
   }
-  .satuan-toggle button.pilih { background: var(--hijau); border-color: var(--hijau); color: white; }
+  .satuan-toggle button.pilih { background: var(--hijau); border-color: var(--hijau); color: var(--tombol-teks); }
   .subtotal-merk {
     margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--garis);
     font-size: 13px; color: var(--hijau-tua); font-weight: 700;
@@ -199,9 +230,9 @@
   .tombol-hapus { background: none; border: none; color: var(--merah); font-size: 13px; font-weight: 700; padding: 8px 0 0; }
   .halaman { display: none; }
   .halaman.tampil { display: block; }
-  .badge-karung { display:inline-block; background:#e3dcc4; color:var(--hijau-tua); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; margin-left:6px; }
+  .badge-karung { display:inline-block; background:var(--badge-bg); color:var(--hijau-tua); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; margin-left:6px; }
   .bar-backup {
-    background: #4a3826; color: white; padding: 12px 16px; font-size: 13px;
+    background: var(--hijau-tua); color: var(--header-teks); padding: 12px 16px; font-size: 13px;
     display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
   }
   .bar-backup b { font-weight: 800; }
@@ -228,13 +259,13 @@
   .cari-global-item:last-child { border-bottom: none; }
   .cari-global-item .cg-tipe {
     display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase;
-    color: var(--hijau-tua); background: #e3dcc4; padding: 1px 6px; border-radius: 5px; margin-right: 6px;
+    color: var(--hijau-tua); background: var(--badge-bg); padding: 1px 6px; border-radius: 5px; margin-right: 6px;
   }
   .cari-global-item .cg-judul { font-weight: 700; }
   .cari-global-item .cg-sub { color: #888; font-size: 12px; margin-top: 2px; }
   .cari-global-kosong { padding: 14px; text-align: center; color: #999; font-size: 13px; }
   .peringatan-besar {
-    background: #f0ded2; border: 2px solid var(--merah); color: var(--merah);
+    background: var(--peringatan-bg); border: 2px solid var(--merah); color: var(--merah);
     border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; font-size: 14px; font-weight: 700;
   }
   input[type="file"] { display: none; }
@@ -246,19 +277,19 @@
     padding: 14px 6px; border: 2px solid var(--garis); background: var(--kartu); border-radius: 12px;
     font-size: 13px; font-weight: 800; color: #777; text-align: center; line-height: 1.3;
   }
-  .kartu-jenis-jual button.pilih { background: var(--hijau); border-color: var(--hijau); color: white; }
+  .kartu-jenis-jual button.pilih { background: var(--hijau); border-color: var(--hijau); color: var(--tombol-teks); }
   .stok-tersedia {
-    background: #eee6d3; border: 1px solid var(--hijau); border-radius: 10px;
+    background: var(--hasil-bg); border: 1px solid var(--hijau); border-radius: 10px;
     padding: 10px 12px; font-size: 13px; color: var(--hijau-tua); margin-top: 8px;
   }
-  .stok-tersedia.kurang { background: #f0ded2; border-color: var(--merah); color: var(--merah); font-weight: 700; }
+  .stok-tersedia.kurang { background: var(--peringatan-bg); border-color: var(--merah); color: var(--merah); font-weight: 700; }
   .tab-bayar { display: flex; gap: 8px; margin-top: 4px; }
   .tab-bayar button {
     flex: 1; padding: 12px 4px; border: 2px solid var(--garis); background: var(--kartu);
     border-radius: 8px; font-size: 13px; font-weight: 700; color: #777;
   }
-  .tab-bayar button.pilih { background: var(--hijau); border-color: var(--hijau); color: white; }
-  .badge-stok-rendah { background: var(--merah); color: white; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 5px; margin-left: 6px; }
+  .tab-bayar button.pilih { background: var(--hijau); border-color: var(--hijau); color: var(--tombol-teks); }
+  .badge-stok-rendah { background: var(--merah); color: var(--tombol-teks); font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 5px; margin-left: 6px; }
   .grid-tombol-pilih {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px;
   }
@@ -268,8 +299,8 @@
   }
   .grid-tombol-pilih button .nama-produk { display: block; font-weight: 800; }
   .grid-tombol-pilih button .info-stok-tombol { display: block; font-size: 11px; font-weight: 600; color: #888; margin-top: 2px; }
-  .grid-tombol-pilih button.pilih { background: var(--hijau); border-color: var(--hijau); color: white; }
-  .grid-tombol-pilih button.pilih .info-stok-tombol { color: #efe6cd; }
+  .grid-tombol-pilih button.pilih { background: var(--hijau); border-color: var(--hijau); color: var(--tombol-teks); }
+  .grid-tombol-pilih button.pilih .info-stok-tombol { color: var(--badge-bg); }
   .grid-tombol-pilih button.stok-habis { opacity: 0.4; }
   .grid-tombol-pilih .kosong-pilih { grid-column: 1 / -1; text-align: center; color: #999; padding: 16px; font-size: 13px; }
   .tab-owner { display: none; }
@@ -300,15 +331,18 @@
     flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: 800; font-size: 14px;
   }
   .modal-pin-batal { background: var(--abu); color: var(--teks); }
-  .modal-pin-masuk { background: var(--hijau); color: white; }
+  .modal-pin-masuk { background: var(--hijau); color: var(--tombol-teks); }
   .modal-pin-salah { color: var(--merah); font-size: 13px; font-weight: 700; margin-top: 10px; display: none; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1 id="headerJudul" onclick="tekanLogoHeader()">🌾 Sistem Toko M.IQBAL</h1>
-  <p id="subjudulHeader">1 kedatangan mobil = banyak merk beras</p>
+  <div>
+    <h1 id="headerJudul" onclick="tekanLogoHeader()">🌾 Sistem Toko M.IQBAL</h1>
+    <p id="subjudulHeader">1 kedatangan mobil = banyak merk beras</p>
+  </div>
+  <button type="button" id="tombolTema" onclick="gantiTema()">🌙 Gelap</button>
 </header>
 
 <div class="modal-pin-bg" id="modalPinBg">
@@ -541,7 +575,7 @@
         </div>
       </div>
       <div class="keterangan" id="beliBahanKemasanTotalInfo" style="margin-top:6px;"></div>
-      <button type="button" onclick="simpanBeliBahanKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan Pembelian Kantong</button>
+      <button type="button" onclick="simpanBeliBahanKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan Pembelian Kantong</button>
     </div>
 
     <div class="kartu">
@@ -566,7 +600,7 @@
         </div>
       </div>
       <div class="keterangan" id="beliBahanLiteranTotalInfo" style="margin-top:6px;"></div>
-      <button type="button" onclick="simpanBeliBahanLiteran()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan Pembelian</button>
+      <button type="button" onclick="simpanBeliBahanLiteran()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan Pembelian</button>
     </div>
 
     <div class="kartu">
@@ -647,7 +681,7 @@
       <input type="text" id="hargaLiteranMerk" placeholder="Contoh: Kembang, Ketan Putih, dll">
       <label>Harga jual per liter (Rp)</label>
       <input type="number" id="hargaLiteranNominal" placeholder="0" inputmode="numeric">
-      <button type="button" onclick="simpanHargaLiteran()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan / Perbarui Harga Literan</button>
+      <button type="button" onclick="simpanHargaLiteran()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan / Perbarui Harga Literan</button>
     </div>
     <div id="daftarHargaLiteran" class="daftar-batch"></div>
 
@@ -660,7 +694,7 @@
       <input type="number" id="hargaKemasanUkuran" placeholder="Contoh: 5, 10, 20, 25" inputmode="numeric">
       <label>Harga jual per unit (Rp)</label>
       <input type="number" id="hargaKemasanNominal" placeholder="0" inputmode="numeric">
-      <button type="button" onclick="simpanHargaKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan / Perbarui Harga Kemasan</button>
+      <button type="button" onclick="simpanHargaKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan / Perbarui Harga Kemasan</button>
     </div>
     <div id="daftarHargaKemasan" class="daftar-batch"></div>
   </div>
@@ -768,7 +802,7 @@
 
       <p class="keterangan">Bensin, listrik, internet, plastik/tali/benang/dll, dan gaji tidak masuk HPP per produk — dilaporkan di sini sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
 
-      <button type="button" onclick="simpanBiayaBulanan()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Biaya Bulan Ini</button>
+      <button type="button" onclick="simpanBiayaBulanan()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Biaya Bulan Ini</button>
     </div>
 
     <div id="daftarBulanan" class="daftar-batch"></div>
@@ -797,7 +831,7 @@
       <label>Nominal (Rp)</label>
       <input type="number" id="harianNominal" placeholder="0" inputmode="numeric">
 
-      <button type="button" onclick="simpanPengeluaranHarian()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Pengeluaran</button>
+      <button type="button" onclick="simpanPengeluaranHarian()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Pengeluaran</button>
     </div>
 
     <div class="subjudul" style="margin-top:0;">Filter tampilan</div>
@@ -1347,6 +1381,19 @@
     if (!confirm('Hapus kedatangan ini dari riwayat?')) return;
     try {
       await hapusDariFirestore(KOLEKSI_BATCH, id);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
+    }
+  }
+
+  // Owner-only (tombol dibungkus .tab-owner-blok) — hapus dari koleksi penjualan.
+  // Mengurangi stok/omzet/margin secara otomatis karena semua dihitung ulang dari _cachePenjualan
+  // tiap kali cache berubah (bukan disimpan sebagai angka tetap terpisah).
+  async function hapusPenjualan(id) {
+    if (!confirm('Hapus transaksi penjualan ini dari riwayat? Stok, omzet, dan margin akan ikut dihitung ulang tanpa transaksi ini.')) return;
+    try {
+      await hapusDariFirestore(KOLEKSI_PENJUALAN, id);
     } catch (err) {
       console.error(err);
       alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -2805,6 +2852,7 @@
           ` : `
             <div class="keterangan" style="margin-top:4px; color:var(--merah); font-weight:700;">HPP tidak tercatat (transaksi sebelum fitur margin aktif)</div>
           `}
+          <button class="tombol-hapus tab-owner-blok" onclick="hapusPenjualan(${p.id})">Hapus</button>
         </div>
       `;
     }).join('');
@@ -2911,6 +2959,27 @@
     }
   }
 
+  // ============ TEMA GELAP / TERANG ============
+  // Sama pola dengan KUNCI_UNLOCK_OWNER: tersimpan di localStorage PER PERANGKAT,
+  // bukan disinkronkan lewat Firestore — preferensi tampilan tidak perlu ikut database bersama.
+  const KUNCI_TEMA = 'miqbal_tema_v1';
+
+  function terapkanTema(tema) {
+    document.documentElement.setAttribute('data-tema', tema);
+    const btn = document.getElementById('tombolTema');
+    if (btn) btn.textContent = tema === 'gelap' ? '☀️ Terang' : '🌙 Gelap';
+  }
+
+  function gantiTema() {
+    const skrgGelap = document.documentElement.getAttribute('data-tema') === 'gelap';
+    const temaBaru = skrgGelap ? 'terang' : 'gelap';
+    localStorage.setItem(KUNCI_TEMA, temaBaru);
+    terapkanTema(temaBaru);
+  }
+
+  // Terapkan preferensi tersimpan sedini mungkin (sebelum konten lain dirender) supaya tidak ada kedip warna.
+  terapkanTema(localStorage.getItem(KUNCI_TEMA) === 'gelap' ? 'gelap' : 'terang');
+
   // ============ KUNCI OWNER (Ringkasan & Laba) ============
   // Tab Ringkasan dan Laba disembunyikan (class .tab-owner, default display:none)
   // sampai PIN benar dimasukkan. Sekali benar, status "unlock" disimpan di
@@ -2986,6 +3055,7 @@
   // pakai onclick="namaFungsi()" inline. Tanpa baris di bawah ini, semua tombol
   // akan mati total ("namaFungsi is not defined"). Daftar ini harus mencakup
   // SETIAP fungsi yang dipanggil dari atribut onclick/onchange/oninput di HTML.
+  window.gantiTema = gantiTema;
   window.tekanLogoHeader = tekanLogoHeader;
   window.tutupModalPin = tutupModalPin;
   window.cekPinOwner = cekPinOwner;
@@ -3010,6 +3080,7 @@
   window.hitungPerkiraan = hitungPerkiraan;
   window.hapusBarisMerk = hapusBarisMerk;
   window.hapusBatch = hapusBatch;
+  window.hapusPenjualan = hapusPenjualan;
   window.putuskanKarantina = putuskanKarantina;
   window.hapusBulanan = hapusBulanan;
   window.pilihKategoriHarian = pilihKategoriHarian;
