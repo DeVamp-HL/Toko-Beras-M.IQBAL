@@ -265,6 +265,10 @@
   .grid-tombol-pilih .kosong-pilih { grid-column: 1 / -1; text-align: center; color: #999; padding: 16px; font-size: 13px; }
   .tab-owner { display: none; }
   .tab-owner.tampil-owner { display: flex; }
+  /* Sama seperti .tab-owner (kunci PIN), tapi untuk elemen yang bukan flex-item nav
+     (tombol kategori dalam grid, filter dalam .tab-bayar) supaya layout aslinya tidak berubah. */
+  .tab-owner-blok { display: none !important; }
+  .tab-owner-blok.tampil-owner { display: block !important; }
   #headerJudul { cursor: default; user-select: none; }
   .modal-pin-bg {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
@@ -681,7 +685,7 @@
       <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr 1fr;">
         <button type="button" id="kategoriHarianToko" class="pilih" onclick="pilihKategoriHarian('toko')">🏪<br>Toko</button>
         <button type="button" id="kategoriHarianBen" onclick="pilihKategoriHarian('ben')">👤<br>Ben Mohsein</button>
-        <button type="button" id="kategoriHarianOwner" onclick="pilihKategoriHarian('owner')">👤<br>Owner</button>
+        <button type="button" id="kategoriHarianOwner" class="tab-owner-blok" onclick="pilihKategoriHarian('owner')">👤<br>Owner</button>
       </div>
       <input type="hidden" id="harianKategori" value="toko">
 
@@ -702,7 +706,7 @@
       <button type="button" id="filterHarianSemua" class="pilih" onclick="filterHarian('semua')">Semua</button>
       <button type="button" id="filterHarianToko" onclick="filterHarian('toko')">Toko</button>
       <button type="button" id="filterHarianBen" onclick="filterHarian('ben')">Ben Mohsein</button>
-      <button type="button" id="filterHarianOwner" onclick="filterHarian('owner')">Owner</button>
+      <button type="button" id="filterHarianOwner" class="tab-owner-blok" onclick="filterHarian('owner')">Owner</button>
     </div>
     <div id="daftarHarian" class="daftar-batch"></div>
   </div>
@@ -1423,7 +1427,10 @@
   }
 
   function tampilkanHarian() {
-    const semua = ambilPengeluaranHarian();
+    // Kategori 'owner' murni pribadi & terkunci PIN — non-owner tidak boleh melihatnya
+    // sama sekali, bahkan lewat filter 'semua'. Owner yang sudah unlock lihat semuanya.
+    const semuaMentah = ambilPengeluaranHarian();
+    const semua = ownerSudahUnlock() ? semuaMentah : semuaMentah.filter(h => h.kategori !== 'owner');
     const tampil = filterHarianAktif === 'semua' ? semua : semua.filter(h => h.kategori === filterHarianAktif);
     const kontainer = document.getElementById('daftarHarian');
     if (tampil.length === 0) {
@@ -1497,7 +1504,8 @@
       }
     });
 
-    ambilPengeluaranHarian().forEach(h => {
+    // Sama seperti tampilkanHarian(): kategori 'owner' disembunyikan dari hasil search untuk non-owner.
+    ambilPengeluaranHarian().filter(h => ownerSudahUnlock() || h.kategori !== 'owner').forEach(h => {
       if (cocok(h.keterangan, kata) || cocok(labelKategoriHarian(h.kategori), kata)) {
         hasil.push({ tipe: 'Harian', judul: `${h.keterangan} (${labelKategoriHarian(h.kategori)})`, sub: `${formatTanggal(h.tanggal)} · ${formatRupiah(h.nominal||0)}`, tab: 'harian' });
       }
@@ -2342,9 +2350,15 @@
 
   function terapkanStatusOwner() {
     const sudahUnlock = ownerSudahUnlock();
-    document.querySelectorAll('.tab-owner').forEach(el => {
+    document.querySelectorAll('.tab-owner, .tab-owner-blok').forEach(el => {
       el.classList.toggle('tampil-owner', sudahUnlock);
     });
+    // Kalau belum unlock dan kebetulan lagi di kategori/filter 'owner' (mis. baru logout
+    // di perangkat ini), jatuhkan balik ke default supaya tidak nyangkut di pilihan tersembunyi.
+    if (!sudahUnlock) {
+      if (kategoriHarianAktif === 'owner') pilihKategoriHarian('toko');
+      if (filterHarianAktif === 'owner') filterHarian('semua');
+    }
   }
 
   function tekanLogoHeader() {
