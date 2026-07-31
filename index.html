@@ -637,6 +637,9 @@
       <label>Upah repacking (Rp)</label>
       <input type="number" id="produksiUpahRepacking" placeholder="0" inputmode="numeric">
     </div>
+
+    <div class="subjudul">Riwayat Produksi</div>
+    <div id="daftarProduksi" class="daftar-batch"></div>
   </div>
 
   <!-- HALAMAN STOK -->
@@ -655,6 +658,8 @@
     <div class="subjudul">🚧 Gudang Karantina — barang retur belum diputuskan</div>
     <p class="keterangan" style="margin-top:-8px;">Barang di sini TIDAK masuk stok jual. Putuskan salah satu tindakan untuk tiap item: balik ke pemasok, rework lalu masuk stok, atau buang (kerugian).</p>
     <div id="daftarKarantina" class="daftar-batch"></div>
+    <div class="subjudul">↩️ Riwayat Retur</div>
+    <div id="daftarRetur" class="daftar-batch"></div>
   </div>
 
   <!-- HALAMAN LABA / MARGIN -->
@@ -984,8 +989,8 @@
     if (nama === 'rekap') tampilkanRekap();
     if (nama === 'bulanan') tampilkanBulanan();
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); }
-    if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); }
-    if (nama === 'stok') tampilkanStok();
+    if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
+    if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); }
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'harga') tampilkanHarga();
     if (nama === 'harian') tampilkanHarian();
@@ -1212,11 +1217,12 @@
   pasangSinkronisasi(KOLEKSI_PRODUKSI, KUNCI_PRODUKSI, (d) => { _cacheProduksi = d; }, () => {
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
-    if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
+    if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); tampilkanProduksi(); }
   }, 'id', 'produksi');
 
   pasangSinkronisasi(KOLEKSI_RETUR, KUNCI_RETUR, (d) => { _cacheRetur = d; }, () => {
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
+    if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanRetur();
   }, 'id', 'retur');
 
   pasangSinkronisasi(KOLEKSI_KARANTINA, KUNCI_KARANTINA, (d) => { _cacheKarantina = d; }, () => {
@@ -2011,6 +2017,50 @@
     pesan.style.display = 'block';
     window.scrollTo({top: 0, behavior: 'smooth'});
     setTimeout(() => { pesan.style.display = 'none'; pesan.textContent = '✔ Penjualan tersimpan.'; }, 4000);
+    tampilkanRetur();
+  }
+
+  // Riwayat Retur — daftar transaksi retur, terbaru dulu, dengan tombol hapus owner-only.
+  function tampilkanRetur() {
+    const kontainer = document.getElementById('daftarRetur');
+    if (!kontainer) return;
+    const semua = ambilRetur();
+    if (semua.length === 0) {
+      kontainer.innerHTML = '<div class="kosong">Belum ada retur tercatat.</div>';
+      return;
+    }
+    kontainer.innerHTML = semua.map(r => {
+      const labelBarang = r.jenisAsal === 'kemasan'
+        ? `${r.namaProduk || '-'} ${r.ukuranKemasan}kg × ${r.jumlahUnit || 0} unit`
+        : `${r.merkSumber || '-'} × ${r.jumlahKarung || 0} karung`;
+      const labelKondisi = r.kondisi === 'tidak_utuh' ? 'Tidak utuh → Karantina' : 'Utuh → balik stok';
+      const labelNominal = r.penyelesaian === 'refund'
+        ? `Refund ${formatRupiah(r.nominalRefund || 0)}`
+        : `Tukar (selisih ${formatRupiah(r.selisihHargaTukar || 0)})`;
+      return `
+        <div class="item-batch">
+          <div class="baris-atas">
+            <span class="pemasok-nama">${labelBarang}</span>
+            <span class="tanggal">${formatTanggal(r.tanggal)}</span>
+          </div>
+          <div style="font-size:13px; color:#666;">${labelKondisi} · ${labelNominal}</div>
+          <button class="tombol-hapus tab-owner-blok" onclick="hapusRetur(${r.id})">Hapus</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Owner-only — hapus dari koleksi retur. Kalau retur ini juga tercatat di Karantina
+  // (kondisi tidak_utuh, id sama), hapus juga dari sana supaya tidak jadi entri yatim.
+  async function hapusRetur(id) {
+    if (!confirm('Hapus catatan retur ini? Kalau barangnya sempat masuk Gudang Karantina, catatan karantinanya ikut terhapus juga.')) return;
+    try {
+      await hapusDariFirestore(KOLEKSI_RETUR, id);
+      await hapusDariFirestore(KOLEKSI_KARANTINA, id);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
+    }
   }
 
   // Bikin grid tombol pilih generik. daftarOpsi = [{ kunci, label, subLabel, sisa }]
@@ -2577,6 +2627,41 @@
     pesan.style.display = 'block';
     window.scrollTo({top: 0, behavior: 'smooth'});
     setTimeout(() => { pesan.style.display = 'none'; }, 3000);
+    tampilkanProduksi();
+  }
+
+  // Riwayat Produksi — daftar transaksi produksi kemasan, terbaru dulu, dengan tombol hapus owner-only.
+  function tampilkanProduksi() {
+    const kontainer = document.getElementById('daftarProduksi');
+    if (!kontainer) return;
+    const semua = ambilProduksi();
+    if (semua.length === 0) {
+      kontainer.innerHTML = '<div class="kosong">Belum ada produksi kemasan tercatat.</div>';
+      return;
+    }
+    kontainer.innerHTML = semua.map(p => `
+      <div class="item-batch">
+        <div class="baris-atas">
+          <span class="pemasok-nama">${p.namaProduk || '-'} ${p.ukuranKemasan}kg</span>
+          <span class="tanggal">${formatTanggal(p.tanggal)}</span>
+        </div>
+        <div style="font-size:13px; color:#666;">Dari ${p.merkSumber || '-'} · ${p.kgDipakai || 0} kg dipakai → ${p.jumlahUnit || 0} unit</div>
+        <div class="total-baris"><span>HPP per unit</span><span>${formatRupiah(p.hppPerUnit || 0)}</span></div>
+        <button class="tombol-hapus tab-owner-blok" onclick="hapusProduksi(${p.id})">Hapus</button>
+      </div>
+    `).join('');
+  }
+
+  // Owner-only — hapus dari koleksi produksi. Stok kemasan otomatis dihitung ulang dari
+  // _cacheProduksi tanpa item ini (sama pola dengan hapusPenjualan).
+  async function hapusProduksi(id) {
+    if (!confirm('Hapus catatan produksi ini? Stok kemasan akan dihitung ulang tanpa produksi ini — pastikan stok hasil produksi ini belum terlanjur terjual habis.')) return;
+    try {
+      await hapusDariFirestore(KOLEKSI_PRODUKSI, id);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
+    }
   }
 
   function tampilkanStok() {
@@ -3086,6 +3171,10 @@
   window.hapusBarisMerk = hapusBarisMerk;
   window.hapusBatch = hapusBatch;
   window.hapusPenjualan = hapusPenjualan;
+  window.tampilkanProduksi = tampilkanProduksi;
+  window.hapusProduksi = hapusProduksi;
+  window.tampilkanRetur = tampilkanRetur;
+  window.hapusRetur = hapusRetur;
   window.putuskanKarantina = putuskanKarantina;
   window.hapusBulanan = hapusBulanan;
   window.pilihKategoriHarian = pilihKategoriHarian;
