@@ -2075,7 +2075,12 @@
 
   async function simpanPenjualan() {
     const hargaTotal = parseFloat(document.getElementById('jualHargaTotal').value) || 0;
-    const caraBayar = document.querySelector('.tab-bayar button.pilih')?.id.replace('bayar','') || 'Tunai';
+    // Ambil cara bayar HANYA dari 3 tombol bayarTunai/bayarQris/bayarKredit — jangan pakai selector
+    // generik ".tab-bayar button.pilih" karena form Retur (returKondisiUtuh dkk) juga pakai class
+    // yang sama dan muncul lebih dulu di DOM, sehingga tertangkap keliru (bug ditemukan saat audit
+    // 31 Juli 2026: kolom Cara Bayar tersimpan "returKondisiUtuh" bukan "Tunai").
+    const tombolBayarAktif = ['Tunai','Qris','Kredit'].map(c => document.getElementById('bayar' + c)).find(el => el.classList.contains('pilih'));
+    const caraBayar = tombolBayarAktif ? tombolBayarAktif.id.replace('bayar','') : 'Tunai';
     const namaPelanggan = document.getElementById('jualNamaPelanggan').value.trim();
 
     if (hargaTotal <= 0) { alert('Isi harga jual dulu.'); return; }
