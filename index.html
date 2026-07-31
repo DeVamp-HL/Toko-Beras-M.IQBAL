@@ -542,8 +542,9 @@
 
     <div class="kartu" id="kartuHargaBayarJual">
       <div class="subjudul">Harga & Bayar</div>
-      <label>Harga jual (Rp) <span class="keterangan">— total transaksi ini</span></label>
-      <input type="number" id="jualHargaTotal" placeholder="0" inputmode="numeric">
+      <label>Harga jual (Rp) <span class="keterangan">— otomatis dari Daftar Harga, total transaksi ini</span></label>
+      <input type="number" id="jualHargaTotal" placeholder="0" inputmode="numeric" readonly style="background:var(--hasil-bg); font-weight:800;">
+      <div class="keterangan" id="statusHargaJualInfo" style="margin-top:-8px;"></div>
       <label>Cara bayar</label>
       <div class="tab-bayar">
         <button type="button" id="bayarTunai" class="pilih" onclick="pilihBayar('Tunai')">Tunai</button>
@@ -707,6 +708,17 @@
       <button type="button" onclick="simpanHargaKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan / Perbarui Harga Kemasan</button>
     </div>
     <div id="daftarHargaKemasan" class="daftar-batch"></div>
+
+    <div class="kartu">
+      <div class="subjudul" style="margin-top:0;">🌾 Katalog Harga Karung / Repacking (per kg)</div>
+      <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk + harga jual per kg. Dipakai untuk Repacking Dadakan & Karung Utuh.</p>
+      <label>Merk</label>
+      <input type="text" id="hargaKarungMerk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
+      <label>Harga jual per kg (Rp)</label>
+      <input type="number" id="hargaKarungNominal" placeholder="0" inputmode="numeric">
+      <button type="button" onclick="simpanHargaKarung()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan / Perbarui Harga Karung</button>
+    </div>
+    <div id="daftarHargaKarung" class="daftar-batch"></div>
   </div>
 
   <!-- HALAMAN INPUT -->
@@ -897,6 +909,7 @@
   const KOLEKSI_BAHAN_LITERAN = 'stokBahanLiteran';
   const KOLEKSI_HARGA_LITERAN = 'katalogHargaLiteran';
   const KOLEKSI_HARGA_KEMASAN = 'katalogHargaKemasan';
+  const KOLEKSI_HARGA_KARUNG = 'katalogHargaKarung';
 
   // Cache di memori — diisi ulang otomatis oleh onSnapshot tiap kali ada perubahan
   // (dari perangkat ini ATAU perangkat lain). Semua fungsi lama yang baca data
@@ -912,7 +925,8 @@
   let _cacheBahanLiteran = [];
   let _cacheHargaLiteran = [];
   let _cacheHargaKemasan = [];
-  let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false };
+  let _cacheHargaKarung = [];
+  let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false };
 
   const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
   const KUNCI_BULANAN = 'miqbal_biaya_bulanan';
@@ -925,6 +939,7 @@
   const KUNCI_BAHAN_LITERAN = 'miqbal_stok_bahan_literan_v1';
   const KUNCI_HARGA_LITERAN = 'miqbal_katalog_harga_literan_v1';
   const KUNCI_HARGA_KEMASAN = 'miqbal_katalog_harga_kemasan_v1';
+  const KUNCI_HARGA_KARUNG = 'miqbal_katalog_harga_karung_v1';
 
   // Jenis bahan kemasan biasa (plastik untuk produk kemasan jadi, di luar literan) —
   // per kombinasi ukuran + merek beras, karena harga per lembar beda tiap merek (instruksi My DeV, 1 Agustus 2026).
@@ -1253,6 +1268,11 @@
     if (document.getElementById('halamanHarga').classList.contains('tampil')) tampilkanHarga();
   }, 'id', 'hargaKemasan');
 
+  pasangSinkronisasi(KOLEKSI_HARGA_KARUNG, KUNCI_HARGA_KARUNG, (d) => { _cacheHargaKarung = d; }, () => {
+    if (document.getElementById('halamanHarga').classList.contains('tampil')) tampilkanHarga();
+    if (document.getElementById('halamanJual').classList.contains('tampil')) hitungTotalJual();
+  }, 'merk', 'hargaKarung');
+
   // Simpan satu dokumen ke Firestore. id dipakai sebagai nama dokumen supaya
   // "muat dari file" bisa menimpa/menggabung tanpa duplikat.
   async function simpanKeFirestore(nomorKoleksi, data) {
@@ -1467,7 +1487,7 @@
             <span>Total (harga beli + bongkar ${formatRupiah(k.biayaBongkar)})</span>
             <span>${formatRupiah(totalSemua)}</span>
           </div>
-          <button class="tombol-hapus" onclick="hapusBatch(${k.id})">Hapus</button>
+          <button class="tombol-hapus tab-owner-blok" onclick="hapusBatch(${k.id})">Hapus</button>
         </div>
       `;
     }).join('');
@@ -1575,7 +1595,7 @@
           Gaji pegawai: ${formatRupiah(gaji)}${rincianGajiHtml ? ` (${rincianGajiHtml})` : ''}
         </div>
         <div class="total-baris"><span>Total biaya operasional bulan ini</span><span>${formatRupiah(total)}</span></div>
-        <button class="tombol-hapus" onclick="hapusBulanan('${b.bulan}')">Hapus</button>
+        <button class="tombol-hapus tab-owner-blok" onclick="hapusBulanan('${b.bulan}')">Hapus</button>
       </div>
     `;
     }).join('');
@@ -1672,7 +1692,7 @@
           <span class="badge-karung">${labelKategoriHarian(h.kategori)}</span>
         </div>
         <div class="total-baris"><span>Nominal</span><span>${formatRupiah(h.nominal || 0)}</span></div>
-        <button class="tombol-hapus" onclick="hapusHarian(${h.id})">Hapus</button>
+        <button class="tombol-hapus tab-owner-blok" onclick="hapusHarian(${h.id})">Hapus</button>
       </div>
     `).join('');
   }
@@ -2147,8 +2167,91 @@
     perbaruiInfoKemasanLiteranJual();
   }
 
+  // Hitung harga jual otomatis dari Daftar Harga (tab Harga) — kasir tidak input harga manual.
+  // Kalau merk/produk belum ada harganya di katalog, harga dikosongkan (0) dan status kasih tahu
+  // jelas apa yang kurang, supaya kasir tidak salah kira 0 = gratis.
   function hitungTotalJual() {
-    // Placeholder hook kalau nanti mau hitung otomatis harga; saat ini harga jual diisi manual owner/kasir.
+    const inputHarga = document.getElementById('jualHargaTotal');
+    const statusEl = document.getElementById('statusHargaJualInfo');
+    if (!inputHarga || !statusEl) return;
+
+    let total = 0;
+    let status = '';
+
+    if (jenisJualAktif === 'kemasan') {
+      const kunci = document.getElementById('jualKemasanProduk').value;
+      const jumlahUnit = parseFloat(document.getElementById('jualKemasanJumlah').value) || 0;
+      if (!kunci) { status = 'Pilih produk kemasan dulu.'; }
+      else {
+        const [namaProduk, ukuranStr] = kunci.split('|');
+        const ukuran = parseFloat(ukuranStr);
+        const hargaKatalog = ambilHargaKemasan().find(h => h.merk === namaProduk && h.ukuran === ukuran);
+        if (!hargaKatalog) {
+          status = `⚠ Belum ada harga untuk ${namaProduk} ${ukuran}kg di Daftar Harga. Isi dulu lewat tab Harga.`;
+        } else if (jumlahUnit <= 0) {
+          status = `Harga: ${formatRupiah(hargaKatalog.hargaPerUnit)}/unit. Isi jumlah unit.`;
+        } else {
+          total = Math.round(hargaKatalog.hargaPerUnit * jumlahUnit);
+          status = `${formatRupiah(hargaKatalog.hargaPerUnit)}/unit × ${jumlahUnit} unit`;
+        }
+      }
+    } else if (jenisJualAktif === 'literan') {
+      const jenis = document.getElementById('jualLiteranJenis').value;
+      const jumlahLiter = parseFloat(document.getElementById('jualLiteranJumlah').value) || 0;
+      if (!jenis) { status = 'Pilih jenis literan dulu.'; }
+      else {
+        const hargaKatalog = ambilHargaLiteran().find(h => h.merk === jenis);
+        if (!hargaKatalog) {
+          status = `⚠ Belum ada harga untuk ${jenis} di Daftar Harga. Isi dulu lewat tab Harga.`;
+        } else if (jumlahLiter <= 0) {
+          status = `Harga: ${formatRupiah(hargaKatalog.hargaPerLiter)}/liter. Isi jumlah liter.`;
+        } else {
+          total = Math.round(hargaKatalog.hargaPerLiter * jumlahLiter);
+          status = `${formatRupiah(hargaKatalog.hargaPerLiter)}/liter × ${jumlahLiter} liter`;
+        }
+      }
+    } else if (jenisJualAktif === 'repacking') {
+      const merk = document.getElementById('jualRepackingMerk').value;
+      const kg = parseFloat(document.getElementById('jualRepackingKg').value) || 0;
+      if (!merk) { status = 'Pilih merk sumber dulu.'; }
+      else {
+        const hargaPerKg = cariHargaKarungPerKg(merk);
+        if (hargaPerKg === null) {
+          status = `⚠ Belum ada harga untuk ${merk} di Daftar Harga (Katalog Harga Karung/Repacking). Isi dulu lewat tab Harga.`;
+        } else if (kg <= 0) {
+          status = `Harga: ${formatRupiah(hargaPerKg)}/kg. Isi berat yang dijual.`;
+        } else {
+          total = Math.round(hargaPerKg * kg);
+          status = `${formatRupiah(hargaPerKg)}/kg × ${kg} kg`;
+        }
+      }
+    } else if (jenisJualAktif === 'karung') {
+      const merk = document.getElementById('jualKarungMerk').value;
+      const jumlahKarung = parseFloat(document.getElementById('jualKarungJumlah').value) || 0;
+      if (!merk) { status = 'Pilih merk sumber dulu.'; }
+      else {
+        const hargaPerKg = cariHargaKarungPerKg(merk);
+        const stokKarung = hitungStokKarungPerMerk();
+        let beratKarungAcuan = 50;
+        const batch = ambilSemuaBatch();
+        for (const k of batch) {
+          const m = k.merkList.find(x => x.merk === merk && x.satuan === 'karung');
+          if (m) { beratKarungAcuan = m.beratKarung; break; }
+        }
+        if (hargaPerKg === null) {
+          status = `⚠ Belum ada harga untuk ${merk} di Daftar Harga (Katalog Harga Karung/Repacking). Isi dulu lewat tab Harga.`;
+        } else if (jumlahKarung <= 0) {
+          status = `Harga: ${formatRupiah(hargaPerKg)}/kg (berat karung ~${beratKarungAcuan}kg). Isi jumlah karung.`;
+        } else {
+          const totalKg = jumlahKarung * beratKarungAcuan;
+          total = Math.round(hargaPerKg * totalKg);
+          status = `${formatRupiah(hargaPerKg)}/kg × ${jumlahKarung} karung × ${beratKarungAcuan}kg = ${totalKg}kg`;
+        }
+      }
+    }
+
+    inputHarga.value = total > 0 ? total : '';
+    statusEl.textContent = status;
   }
 
   // Tampilkan kemasan literan yang akan otomatis dipakai + biayanya, sebelum transaksi disimpan.
@@ -2185,7 +2288,7 @@
     const caraBayar = tombolBayarAktif ? tombolBayarAktif.id.replace('bayar','') : 'Tunai';
     const namaPelanggan = document.getElementById('jualNamaPelanggan').value.trim();
 
-    if (hargaTotal <= 0) { alert('Isi harga jual dulu.'); return; }
+    if (hargaTotal <= 0) { alert('Harga jual belum ada — cek pesan di bawah kotak Harga & Bayar. Kemungkinan produk ini belum ada harganya di Daftar Harga (tab Harga), atau jumlah/berat belum diisi.'); return; }
     if (caraBayar === 'Kredit' && !namaPelanggan) { alert('Isi nama pelanggan untuk penjualan kredit.'); return; }
 
     let transaksi = null;
@@ -2961,6 +3064,17 @@
     const data = localStorage.getItem(KUNCI_HARGA_KEMASAN);
     return data ? JSON.parse(data) : [];
   }
+  function ambilHargaKarung() {
+    if (_cacheHargaKarung.length > 0) return _cacheHargaKarung;
+    const data = localStorage.getItem(KUNCI_HARGA_KARUNG);
+    return data ? JSON.parse(data) : [];
+  }
+  // Cari harga jual per kg untuk satu merk karung — dipakai Repacking Dadakan & Karung Utuh.
+  // Kembalikan null kalau merk itu belum ada di katalog (form Jual akan tampilkan peringatan).
+  function cariHargaKarungPerKg(merk) {
+    const cocok = ambilHargaKarung().find(h => h.merk === merk);
+    return cocok ? cocok.hargaPerKg : null;
+  }
 
   async function simpanHargaLiteran() {
     const merk = document.getElementById('hargaLiteranMerk').value.trim();
@@ -2983,6 +3097,31 @@
   async function hapusHargaLiteran(id) {
     if (!confirm('Hapus harga literan "' + id + '" dari katalog?')) return;
     try { await hapusDariFirestore(KOLEKSI_HARGA_LITERAN, id); }
+    catch (err) { alert('Gagal hapus (cek internet). ' + err.message); }
+  }
+
+  // Harga per kg untuk karung/repacking — dipakai Repacking Dadakan & Karung Utuh di form Jual.
+  async function simpanHargaKarung() {
+    const merk = document.getElementById('hargaKarungMerk').value.trim();
+    const nominal = parseFloat(document.getElementById('hargaKarungNominal').value) || 0;
+    if (!merk) { alert('Isi dulu nama merk karungnya.'); return; }
+    if (nominal <= 0) { alert('Harga jual per kg belum diisi atau nol.'); return; }
+    try {
+      await simpanKeFirestore(KOLEKSI_HARGA_KARUNG, { id: merk, merk, hargaPerKg: nominal, diubahPada: new Date().toISOString() });
+      document.getElementById('hargaKarungMerk').value = '';
+      document.getElementById('hargaKarungNominal').value = '';
+      const pesan = document.getElementById('pesanOkHarga');
+      pesan.style.display = 'block';
+      setTimeout(() => { pesan.style.display = 'none'; }, 2000);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (cek internet). ' + err.message);
+    }
+  }
+
+  async function hapusHargaKarung(id) {
+    if (!confirm('Hapus harga karung "' + id + '" dari katalog?')) return;
+    try { await hapusDariFirestore(KOLEKSI_HARGA_KARUNG, id); }
     catch (err) { alert('Gagal hapus (cek internet). ' + err.message); }
   }
 
@@ -3017,6 +3156,7 @@
   function tampilkanHarga() {
     const literan = ambilHargaLiteran();
     const kemasan = ambilHargaKemasan();
+    const karung = ambilHargaKarung();
 
     const kontainerLiteran = document.getElementById('daftarHargaLiteran');
     if (literan.length === 0) {
@@ -3046,6 +3186,23 @@
           <button type="button" class="tombol-hapus-merk" onclick="hapusHargaKemasan('${h.id}')">Hapus</button>
         </div>
       `).join('');
+    }
+
+    const kontainerKarung = document.getElementById('daftarHargaKarung');
+    if (kontainerKarung) {
+      if (karung.length === 0) {
+        kontainerKarung.innerHTML = '<div class="kosong">Belum ada harga karung/repacking tercatat.</div>';
+      } else {
+        kontainerKarung.innerHTML = [...karung].sort((a,b) => a.merk.localeCompare(b.merk)).map(h => `
+          <div class="item-batch">
+            <div class="baris-atas">
+              <span class="pemasok-nama">${h.merk}</span>
+              <span class="tanggal">${formatRupiah(h.hargaPerKg)}/kg</span>
+            </div>
+            <button type="button" class="tombol-hapus-merk" onclick="hapusHargaKarung('${h.id}')">Hapus</button>
+          </div>
+        `).join('');
+      }
     }
   }
 
@@ -3196,6 +3353,8 @@
   window.hapusHargaLiteran = hapusHargaLiteran;
   window.simpanHargaKemasan = simpanHargaKemasan;
   window.hapusHargaKemasan = hapusHargaKemasan;
+  window.simpanHargaKarung = simpanHargaKarung;
+  window.hapusHargaKarung = hapusHargaKarung;
 </script>
 
 </body>
