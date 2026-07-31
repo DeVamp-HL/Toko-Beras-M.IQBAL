@@ -515,26 +515,14 @@
 
     <div class="kartu">
       <div class="subjudul" style="margin-top:0;">🛍️ Beli Stok Bahan Kemasan (plastik)</div>
-      <p class="keterangan" style="margin-top:-8px;">Stok kantong plastik kosong — dicatat begitu beli, supaya nanti di form Produksi tinggal pilih, tidak perlu ketik ulang harganya.</p>
-      <label>Jenis kantong</label>
-      <div class="kartu-jenis-jual" style="grid-template-columns: repeat(4,1fr);">
-        <button type="button" id="beliBahanKemasan5kg" class="pilih" onclick="pilihJenisBeliBahanKemasan('5kg')">5 kg</button>
-        <button type="button" id="beliBahanKemasan10kg" onclick="pilihJenisBeliBahanKemasan('10kg')">10 kg</button>
-        <button type="button" id="beliBahanKemasan20kg" onclick="pilihJenisBeliBahanKemasan('20kg')">20 kg</button>
-        <button type="button" id="beliBahanKemasan25kg" onclick="pilihJenisBeliBahanKemasan('25kg')">25 kg</button>
-      </div>
-      <input type="hidden" id="beliBahanKemasanJenis" value="5kg">
+      <p class="keterangan" style="margin-top:-8px;">Stok kantong plastik kosong per ukuran + merek beras — harga per lembar sudah tetap (baku per merek), tidak perlu ketik ulang harganya.</p>
+      <label>Jenis kantong (ukuran — merek)</label>
+      <div class="kartu-jenis-jual" style="grid-template-columns: repeat(2,1fr);" id="beliBahanKemasanTombolWrap"></div>
+      <input type="hidden" id="beliBahanKemasanJenis" value="5kg_kembangbmw">
       <div class="stok-tersedia" id="stokBahanKemasanInfo"></div>
-      <div class="baris-2">
-        <div>
-          <label>Jumlah beli (pcs)</label>
-          <input type="number" id="beliBahanKemasanJumlah" placeholder="0" inputmode="numeric">
-        </div>
-        <div>
-          <label>Harga total (Rp)</label>
-          <input type="number" id="beliBahanKemasanHarga" placeholder="0" inputmode="numeric">
-        </div>
-      </div>
+      <label>Jumlah beli (pcs/lembar)</label>
+      <input type="number" id="beliBahanKemasanJumlah" placeholder="0" inputmode="numeric" oninput="perbaruiInfoBeliBahanKemasan()">
+      <div class="keterangan" id="beliBahanKemasanTotalInfo" style="margin-top:6px;"></div>
       <button type="button" onclick="simpanBeliBahanKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan Pembelian Kantong</button>
     </div>
 
@@ -574,13 +562,8 @@
       <input type="number" id="produksiJumlahUnit" placeholder="0" inputmode="numeric">
       <p class="keterangan">Pilih jenis kantong yang dipakai — biaya kemasan otomatis dihitung dari stok, tidak perlu ketik manual. Kalau stok kantong belum tercatat, isi dulu lewat "Beli Stok Bahan Kemasan" di atas.</p>
       <label>Jenis kantong dipakai</label>
-      <div class="kartu-jenis-jual" style="grid-template-columns: repeat(4,1fr);">
-        <button type="button" id="produksiKantong5kg" class="pilih" onclick="pilihKantongProduksi('5kg')">5 kg</button>
-        <button type="button" id="produksiKantong10kg" onclick="pilihKantongProduksi('10kg')">10 kg</button>
-        <button type="button" id="produksiKantong20kg" onclick="pilihKantongProduksi('20kg')">20 kg</button>
-        <button type="button" id="produksiKantong25kg" onclick="pilihKantongProduksi('25kg')">25 kg</button>
-      </div>
-      <input type="hidden" id="produksiKantongJenis" value="5kg">
+      <div class="kartu-jenis-jual" style="grid-template-columns: repeat(2,1fr);" id="produksiKantongTombolWrap"></div>
+      <input type="hidden" id="produksiKantongJenis" value="5kg_kembangbmw">
       <div class="stok-tersedia" id="produksiKantongInfo"></div>
       <label>Jumlah kantong dipakai (pcs) <span class="keterangan">— biasanya sama dengan jumlah unit di atas</span></label>
       <input type="number" id="produksiKantongJumlah" placeholder="0" inputmode="numeric" oninput="hitungBiayaKemasanProduksi()">
@@ -837,8 +820,22 @@
   const KUNCI_BAHAN_KEMASAN = 'miqbal_stok_bahan_kemasan_v1';
   const KUNCI_BAHAN_LITERAN = 'miqbal_stok_bahan_literan_v1';
 
-  // Jenis bahan kemasan biasa (plastik untuk produk kemasan jadi, di luar literan).
-  const JENIS_BAHAN_KEMASAN = ['5kg', '10kg', '20kg', '25kg'];
+  // Jenis bahan kemasan biasa (plastik untuk produk kemasan jadi, di luar literan) —
+  // per kombinasi ukuran + merek beras, karena harga per lembar beda tiap merek (instruksi My DeV, 1 Agustus 2026).
+  // Harga TETAP per lembar (bukan rata-rata beli), sama seperti pola kemasan literan.
+  const JENIS_BAHAN_KEMASAN = ['5kg_kembangbmw', '5kg_putriagri', '10kg_kembangbmw', '10kg_putriagri_lele', '20kg_kembangbmw', '20kg_putriagri_lele_persik', '25kg_kembang'];
+  const HARGA_BAHAN_KEMASAN = {
+    '5kg_kembangbmw': 1150, '5kg_putriagri': 2400,
+    '10kg_kembangbmw': 1800, '10kg_putriagri_lele': 3000,
+    '20kg_kembangbmw': 2200, '20kg_putriagri_lele_persik': 3700,
+    '25kg_kembang': 2500
+  };
+  const LABEL_BAHAN_KEMASAN = {
+    '5kg_kembangbmw': '5 kg — Kembang/BMW', '5kg_putriagri': '5 kg — Putri Agri',
+    '10kg_kembangbmw': '10 kg — Kembang/BMW', '10kg_putriagri_lele': '10 kg — Putri Agri/Lele',
+    '20kg_kembangbmw': '20 kg — Kembang/BMW', '20kg_putriagri_lele_persik': '20 kg — Putri Agri/Lele/Persik',
+    '25kg_kembang': '25 kg — Kembang'
+  };
   // Jenis bahan kemasan literan — harga tetap per lembar/karung (BUKAN dihitung dari rata-rata beli,
   // karena instruksi eksplisit My DeV: harga sudah pasti Rp305/Rp395/Rp1.500).
   const HARGA_BAHAN_LITERAN = { 'paperbag5l': 305, 'paperbag10l': 395, 'karungbekas': 1500 };
@@ -2153,10 +2150,10 @@
     } else { info.textContent = ''; }
   }
 
-  // ============ STOK BAHAN KEMASAN (plastik 5/10/20/25kg) ============
-  // Setiap pembelian kantong kosong dicatat sebagai satu dokumen { jenis, jumlahBeli, hargaTotal }.
-  // HPP per pcs = rata-rata tertimbang dari SEMUA pembelian jenis itu (bukan harga terakhir saja),
-  // supaya kalau harga naik/turun antar pembelian, biaya kemasan tetap wajar.
+  // ============ STOK BAHAN KEMASAN (plastik, per kombinasi ukuran+merek) ============
+  // Setiap pembelian kantong kosong dicatat sebagai satu dokumen { jenis, jumlah, tipe: 'beli'|'pakai' }.
+  // Harga per lembar TETAP (dari HARGA_BAHAN_KEMASAN, instruksi eksplisit My DeV) — BUKAN dihitung dari
+  // rata-rata harga beli, karena harga per merek sudah baku dan tidak berubah tiap pembelian.
   function ambilBahanKemasan() {
     if (_cacheBahanKemasan.length > 0) return _cacheBahanKemasan;
     const data = localStorage.getItem(KUNCI_BAHAN_KEMASAN);
@@ -2165,31 +2162,53 @@
 
   function hitungStokBahanKemasan() {
     const semua = ambilBahanKemasan();
-    const stok = {}; // { jenis: { totalBeli, totalTerpakai, totalHargaBeli, sisaPcs, hppPerPcs } }
-    JENIS_BAHAN_KEMASAN.forEach(j => { stok[j] = { totalBeli: 0, totalTerpakai: 0, totalHargaBeli: 0 }; });
+    const stok = {}; // { jenis: { totalBeli, totalTerpakai, sisaPcs, hppPerPcs (harga tetap) } }
+    JENIS_BAHAN_KEMASAN.forEach(j => { stok[j] = { totalBeli: 0, totalTerpakai: 0 }; });
     semua.forEach(b => {
-      if (!stok[b.jenis]) stok[b.jenis] = { totalBeli: 0, totalTerpakai: 0, totalHargaBeli: 0 };
-      if (b.tipe === 'pakai') {
-        stok[b.jenis].totalTerpakai += b.jumlah;
-      } else {
-        stok[b.jenis].totalBeli += b.jumlah;
-        stok[b.jenis].totalHargaBeli += b.hargaTotal;
-      }
+      if (!stok[b.jenis]) stok[b.jenis] = { totalBeli: 0, totalTerpakai: 0 };
+      if (b.tipe === 'pakai') stok[b.jenis].totalTerpakai += b.jumlah;
+      else stok[b.jenis].totalBeli += b.jumlah;
     });
     Object.keys(stok).forEach(j => {
       const s = stok[j];
       s.sisaPcs = s.totalBeli - s.totalTerpakai;
-      s.hppPerPcs = s.totalBeli > 0 ? Math.round(s.totalHargaBeli / s.totalBeli) : 0;
+      s.hppPerPcs = HARGA_BAHAN_KEMASAN[j] || 0;
     });
     return stok;
   }
 
-  let jenisBeliBahanKemasanAktif = '5kg';
+  // ID tombol dibangun otomatis dari JENIS_BAHAN_KEMASAN (kunci berisi underscore, jadi ID
+  // tombol tidak bisa disambung langsung dari nama jenis — pakai mapping eksplisit seperti
+  // pola ID_TOMBOL_BAHAN_LITERAN).
+  const ID_TOMBOL_BAHAN_KEMASAN = {};
+  JENIS_BAHAN_KEMASAN.forEach((j, i) => { ID_TOMBOL_BAHAN_KEMASAN[j] = 'beliBahanKemasanTombol' + i; });
+  const ID_TOMBOL_KANTONG_PRODUKSI = {};
+  JENIS_BAHAN_KEMASAN.forEach((j, i) => { ID_TOMBOL_KANTONG_PRODUKSI[j] = 'produksiKantongTombol' + i; });
+
+  function bangunTombolBahanKemasan() {
+    const wrapBeli = document.getElementById('beliBahanKemasanTombolWrap');
+    const wrapProduksi = document.getElementById('produksiKantongTombolWrap');
+    if (wrapBeli && !wrapBeli.dataset.terisi) {
+      wrapBeli.innerHTML = JENIS_BAHAN_KEMASAN.map((j, i) =>
+        `<button type="button" id="${ID_TOMBOL_BAHAN_KEMASAN[j]}" onclick="pilihJenisBeliBahanKemasan('${j}')">${LABEL_BAHAN_KEMASAN[j]}</button>`
+      ).join('');
+      wrapBeli.dataset.terisi = '1';
+    }
+    if (wrapProduksi && !wrapProduksi.dataset.terisi) {
+      wrapProduksi.innerHTML = JENIS_BAHAN_KEMASAN.map((j, i) =>
+        `<button type="button" id="${ID_TOMBOL_KANTONG_PRODUKSI[j]}" onclick="pilihKantongProduksi('${j}')">${LABEL_BAHAN_KEMASAN[j]}</button>`
+      ).join('');
+      wrapProduksi.dataset.terisi = '1';
+    }
+  }
+
+  let jenisBeliBahanKemasanAktif = JENIS_BAHAN_KEMASAN[0];
   function pilihJenisBeliBahanKemasan(jenis) {
+    bangunTombolBahanKemasan();
     jenisBeliBahanKemasanAktif = jenis;
     document.getElementById('beliBahanKemasanJenis').value = jenis;
-    JENIS_BAHAN_KEMASAN.forEach(j => {
-      document.getElementById('beliBahanKemasan' + j).classList.toggle('pilih', j === jenis);
+    Object.keys(ID_TOMBOL_BAHAN_KEMASAN).forEach(j => {
+      document.getElementById(ID_TOMBOL_BAHAN_KEMASAN[j]).classList.toggle('pilih', j === jenis);
     });
     perbaruiInfoBeliBahanKemasan();
   }
@@ -2199,17 +2218,24 @@
     const jenis = document.getElementById('beliBahanKemasanJenis').value;
     const info = document.getElementById('stokBahanKemasanInfo');
     if (stok[jenis]) {
-      info.textContent = `Sisa stok: ${stok[jenis].sisaPcs} pcs · HPP rata-rata ${formatRupiah(stok[jenis].hppPerPcs)}/pcs`;
+      info.textContent = `Sisa stok: ${stok[jenis].sisaPcs} pcs · Harga tetap ${formatRupiah(stok[jenis].hppPerPcs)}/lembar`;
       info.className = 'stok-tersedia' + (stok[jenis].sisaPcs <= 0 ? ' kurang' : '');
+    }
+    const jumlah = parseFloat(document.getElementById('beliBahanKemasanJumlah')?.value) || 0;
+    const totalInfo = document.getElementById('beliBahanKemasanTotalInfo');
+    if (totalInfo) {
+      const hargaSatuan = HARGA_BAHAN_KEMASAN[jenis] || 0;
+      totalInfo.textContent = jumlah > 0
+        ? `${jumlah} lembar × ${formatRupiah(hargaSatuan)} = ${formatRupiah(Math.round(jumlah * hargaSatuan))}`
+        : '';
     }
   }
 
   async function simpanBeliBahanKemasan() {
     const jenis = document.getElementById('beliBahanKemasanJenis').value;
     const jumlah = parseFloat(document.getElementById('beliBahanKemasanJumlah').value) || 0;
-    const hargaTotal = parseFloat(document.getElementById('beliBahanKemasanHarga').value) || 0;
     if (jumlah <= 0) { alert('Isi jumlah beli dulu.'); return; }
-    if (hargaTotal <= 0) { alert('Isi harga total dulu.'); return; }
+    const hargaTotal = Math.round(jumlah * (HARGA_BAHAN_KEMASAN[jenis] || 0));
 
     const item = { id: Date.now(), tipe: 'beli', jenis, jumlah, hargaTotal, tanggal: new Date().toISOString().split('T')[0] };
     try {
@@ -2220,21 +2246,27 @@
       return;
     }
     document.getElementById('beliBahanKemasanJumlah').value = '';
-    document.getElementById('beliBahanKemasanHarga').value = '';
     perbaruiInfoBeliBahanKemasan();
   }
 
   function isiPilihanBahanKemasan() {
+    const sudahAda = document.getElementById('beliBahanKemasanTombolWrap')?.dataset.terisi;
+    bangunTombolBahanKemasan();
+    if (!sudahAda) {
+      document.getElementById(ID_TOMBOL_BAHAN_KEMASAN[jenisBeliBahanKemasanAktif])?.classList.add('pilih');
+      document.getElementById(ID_TOMBOL_KANTONG_PRODUKSI[kantongProduksiAktif])?.classList.add('pilih');
+    }
     perbaruiInfoBeliBahanKemasan();
     perbaruiInfoKantongProduksi();
   }
 
-  let kantongProduksiAktif = '5kg';
+  let kantongProduksiAktif = JENIS_BAHAN_KEMASAN[0];
   function pilihKantongProduksi(jenis) {
+    bangunTombolBahanKemasan();
     kantongProduksiAktif = jenis;
     document.getElementById('produksiKantongJenis').value = jenis;
-    JENIS_BAHAN_KEMASAN.forEach(j => {
-      document.getElementById('produksiKantong' + j).classList.toggle('pilih', j === jenis);
+    Object.keys(ID_TOMBOL_KANTONG_PRODUKSI).forEach(j => {
+      document.getElementById(ID_TOMBOL_KANTONG_PRODUKSI[j]).classList.toggle('pilih', j === jenis);
     });
     perbaruiInfoKantongProduksi();
     hitungBiayaKemasanProduksi();
@@ -2245,7 +2277,7 @@
     const jenis = document.getElementById('produksiKantongJenis').value;
     const info = document.getElementById('produksiKantongInfo');
     if (stok[jenis]) {
-      info.textContent = `Sisa stok: ${stok[jenis].sisaPcs} pcs · HPP rata-rata ${formatRupiah(stok[jenis].hppPerPcs)}/pcs`;
+      info.textContent = `Sisa stok: ${stok[jenis].sisaPcs} pcs · Harga tetap ${formatRupiah(stok[jenis].hppPerPcs)}/lembar`;
       info.className = 'stok-tersedia' + (stok[jenis].sisaPcs <= 0 ? ' kurang' : '');
     }
   }
@@ -2430,8 +2462,8 @@
       bahanKemasanList.map(j => `
         <div class="item-batch">
           <div class="baris-atas">
-            <span class="pemasok-nama">Plastik ${j}${stokBahanKemasan[j].sisaPcs < 10 ? '<span class="badge-stok-rendah">STOK MENIPIS</span>' : ''}</span>
-            <span class="tanggal">HPP ${formatRupiah(stokBahanKemasan[j].hppPerPcs)}/pcs</span>
+            <span class="pemasok-nama">${LABEL_BAHAN_KEMASAN[j] || j}${stokBahanKemasan[j].sisaPcs < 10 ? '<span class="badge-stok-rendah">STOK MENIPIS</span>' : ''}</span>
+            <span class="tanggal">${formatRupiah(stokBahanKemasan[j].hppPerPcs)}/lembar (tetap)</span>
           </div>
           <div class="total-baris"><span>Sisa stok</span><span>${stokBahanKemasan[j].sisaPcs} pcs</span></div>
         </div>
@@ -2781,6 +2813,7 @@
   window.simpanPengeluaranHarian = simpanPengeluaranHarian;
   window.hapusHarian = hapusHarian;
   window.pilihJenisBeliBahanKemasan = pilihJenisBeliBahanKemasan;
+  window.perbaruiInfoBeliBahanKemasan = perbaruiInfoBeliBahanKemasan;
   window.simpanBeliBahanKemasan = simpanBeliBahanKemasan;
   window.pilihKantongProduksi = pilihKantongProduksi;
   window.hitungBiayaKemasanProduksi = hitungBiayaKemasanProduksi;
