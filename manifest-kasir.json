@@ -1,0 +1,14 @@
+{
+  "name": "Catat Uang Masuk - Toko M.IQBAL",
+  "short_name": "Kasir M.IQBAL",
+  "start_url": "./kasir-darurat-nominal.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ece3d0",
+  "theme_color": "#6b7a4f",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-kasir-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-kasir-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

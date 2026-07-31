@@ -1,0 +1,14 @@
+{
+  "name": "Sistem Toko Beras M.IQBAL",
+  "short_name": "Toko M.IQBAL",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ece3d0",
+  "theme_color": "#4a3826",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-sistem-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-sistem-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
