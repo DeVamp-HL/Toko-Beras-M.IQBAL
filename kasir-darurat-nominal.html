@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Catat Uang Masuk — Toko M.IQBAL</title>
+<style>
+  :root {
+    --hijau: #6b7a4f;
+    --hijau-tua: #4a3826;
+    --merah: #a8462f;
+    --abu: #ece3d0;
+    --garis: #c9b998;
+    --teks: #3a2e1f;
+    --kartu: #fbf5e6;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%;
+    font-family: Georgia, "Times New Roman", -apple-system, "Segoe UI", Roboto, serif;
+    background: var(--abu);
+    color: var(--teks);
+  }
+  header {
+    background: var(--hijau-tua);
+    color: #f2e9d8;
+    padding: 20px 16px;
+    text-align: center;
+  }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 6px 0 0; font-size: 14px; opacity: 0.9; }
+  #statusSambung { display: block; margin-top: 8px; font-size: 13px; font-weight: 700; }
+  main { padding: 16px; max-width: 700px; margin: 0 auto; padding-bottom: 40px; }
+
+  #tampilanNominal {
+    background: var(--hijau-tua); color: white; border-radius: 16px;
+    padding: 28px; text-align: center; font-size: 44px; font-weight: 800;
+    margin-bottom: 16px; letter-spacing: 1px;
+  }
+  .grid-keypad {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+  }
+  .tombol-key {
+    background: var(--kartu); border: 3px solid var(--garis); border-radius: 16px;
+    padding: 26px 10px; font-size: 32px; font-weight: 800; color: var(--teks);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  .tombol-key:active { background: var(--garis); }
+  .tombol-hapus { color: var(--merah); border-color: var(--merah); }
+  .tombol-000 { font-size: 22px; }
+
+  .tombol-besar {
+    width: 100%; padding: 26px; margin-top: 18px;
+    border: none; border-radius: 16px;
+    font-size: 26px; font-weight: 800; color: white;
+  }
+  .tombol-simpan { background: var(--hijau); }
+  .tombol-simpan:active { background: var(--hijau-tua); }
+
+  #pesanOk {
+    display: none; background: var(--hijau); color: white; text-align: center;
+    padding: 20px; border-radius: 16px; font-size: 20px; font-weight: 800;
+    margin-bottom: 16px;
+  }
+  .info-box {
+    background: #f5ecd7; border: 1px solid #b89658; border-radius: 12px;
+    padding: 14px 16px; font-size: 14px; color: #5c4522; margin-top: 20px;
+  }
+  .riwayat-mini { margin-top: 20px; border-top: 2px solid var(--garis); padding-top: 12px; }
+  .riwayat-mini h3 { font-size: 14px; text-transform: uppercase; color: var(--hijau-tua); margin-bottom: 8px; }
+  .riwayat-item {
+    background: var(--kartu); border-radius: 10px; padding: 10px 14px;
+    display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 6px;
+  }
+  .total-hari-ini {
+    background: var(--kartu); border: 2px solid var(--hijau); border-radius: 12px;
+    padding: 12px 16px; text-align: center; font-size: 16px; font-weight: 800;
+    color: var(--hijau-tua); margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💵 Catat Uang Masuk</h1>
+  <p>Ketik jumlah uang yang diterima → Simpan</p>
+  <span id="statusSambung">Menyambungkan…</span>
+</header>
+
+<main>
+  <div id="pesanOk">✔ Tersimpan!</div>
+
+  <div id="tampilanNominal">Rp0</div>
+  <div class="grid-keypad">
+    <button type="button" class="tombol-key" onclick="tekanAngka('1')">1</button>
+    <button type="button" class="tombol-key" onclick="tekanAngka('2')">2</button>
+    <button type="button" class="tombol-key" onclick="tekanAngka('3')">3</button>
+    <button type="button" class="tombol-key" onclick="tekanAngka('4')">4</button>
+    <button type="button" class="tombol-key" onclick="tekanAngka('5')">5</button>
+    <button type="button" class="tombol-key" onclick="tekanAngka('6')">6</button>
+    <button type="button" class="tombol-key" onclick="tekanAngka('7')">7</button>
+    <button type="button" class="tombol-key" onclick="tekanAngka('8')">8</button>
+    <button type="button" class="tombol-key" onclick="tekanAngka('9')">9</button>
+    <button type="button" class="tombol-key tombol-000" onclick="tekanAngka('000')">000</button>
+    <button type="button" class="tombol-key" onclick="tekanAngka('0')">0</button>
+    <button type="button" class="tombol-key tombol-hapus" onclick="hapusAngka()">⌫</button>
+  </div>
+  <button type="button" class="tombol-besar tombol-simpan" onclick="simpanTransaksi()">💾 Simpan</button>
+
+  <div class="info-box">
+    ⚠ Halaman ini CUMA catat total uang masuk — tidak ada nama produk, tidak ada stok yang berkurang otomatis. Kalau Ben atau My DeV sudah kembali ke toko, sisa stok fisik di gudang perlu dihitung ulang dan disesuaikan manual di sistem utama.
+  </div>
+
+  <div class="riwayat-mini">
+    <h3>Transaksi hari ini (halaman ini)</h3>
+    <div class="total-hari-ini" id="totalHariIni">Total: Rp0</div>
+    <div id="daftarRiwayat"></div>
+  </div>
+</main>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getFirestore, collection, doc, setDoc, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  // Firebase config SAMA PERSIS dengan sistem utama — transaksi masuk ke database
+  // yang sama, otomatis ikut kehitung di omzet dashboard (Kas Masuk, Omzet hari ini).
+  const firebaseConfig = {
+    apiKey: "AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA",
+    authDomain: "toko-beras-m-iqbal.firebaseapp.com",
+    projectId: "toko-beras-m-iqbal",
+    storageBucket: "toko-beras-m-iqbal.firebasestorage.app",
+    messagingSenderId: "149034588465",
+    appId: "1:149034588465:web:42316713d21c6fc994b810",
+    measurementId: "G-9LQLFWQ08W"
+  };
+  const appFirebase = initializeApp(firebaseConfig);
+  const db = getFirestore(appFirebase);
+  const KOLEKSI_PENJUALAN = 'penjualan';
+
+  let nominalDiketik = '';
+
+  function formatRupiah(angka) { return 'Rp' + Math.round(angka).toLocaleString('id-ID'); }
+
+  function tekanAngka(digit) {
+    if (nominalDiketik.length > 9) return;
+    nominalDiketik += digit;
+    perbaruiTampilan();
+  }
+
+  function hapusAngka() {
+    nominalDiketik = nominalDiketik.slice(0, -1);
+    perbaruiTampilan();
+  }
+
+  function perbaruiTampilan() {
+    const angka = parseInt(nominalDiketik || '0', 10);
+    document.getElementById('tampilanNominal').textContent = formatRupiah(angka);
+  }
+
+  async function simpanTransaksi() {
+    const nominal = parseInt(nominalDiketik || '0', 10);
+    if (nominal <= 0) { alert('Ketik dulu jumlah uangnya.'); return; }
+
+    const transaksi = {
+      id: Date.now(),
+      tanggal: new Date().toISOString().split('T')[0],
+      jam: new Date().toTimeString().slice(0,5),
+      jenis: 'kasir_darurat_nominal',
+      namaProduk: '(tidak tercatat — kasir darurat)',
+      hargaTotal: nominal,
+      caraBayar: 'Tunai'
+      // SENGAJA tanpa produk, kg, atau hppTotalSaatJual sama sekali.
+      // Ini transaksi paling kasar: cuma omzet yang benar, stok dan margin
+      // TIDAK ke-track dari sini. Rekonsiliasi stok fisik wajib manual.
+    };
+
+    try {
+      await setDoc(doc(db, KOLEKSI_PENJUALAN, String(transaksi.id)), transaksi);
+      document.getElementById('pesanOk').style.display = 'block';
+      setTimeout(() => { document.getElementById('pesanOk').style.display = 'none'; }, 2000);
+      nominalDiketik = '';
+      perbaruiTampilan();
+    } catch (err) {
+      alert('Gagal simpan. Cek sinyal internet, lalu coba lagi. (' + err.message + ')');
+    }
+  }
+
+  let _cachePenjualan = [];
+  function tampilkanRiwayatHariIni() {
+    const hariIni = new Date().toISOString().split('T')[0];
+    const punyaHariIni = _cachePenjualan.filter(p => p.tanggal === hariIni && p.jenis === 'kasir_darurat_nominal');
+    const kontainer = document.getElementById('daftarRiwayat');
+    const totalEl = document.getElementById('totalHariIni');
+    const total = punyaHariIni.reduce((a,p) => a + (p.hargaTotal||0), 0);
+    totalEl.textContent = 'Total: ' + formatRupiah(total);
+    if (punyaHariIni.length === 0) {
+      kontainer.innerHTML = '<p style="color:#888; font-size:14px;">Belum ada transaksi hari ini.</p>';
+      return;
+    }
+    const terurut = [...punyaHariIni].sort((a,b) => b.id - a.id);
+    kontainer.innerHTML = terurut.map(p =>
+      `<div class="riwayat-item"><span>${p.jam || ''}</span><span>${formatRupiah(p.hargaTotal)}</span></div>`
+    ).join('');
+  }
+
+  const statusEl = document.getElementById('statusSambung');
+  onSnapshot(collection(db, KOLEKSI_PENJUALAN), (snap) => {
+    const daftar = [];
+    snap.forEach(d => daftar.push(d.data()));
+    _cachePenjualan = daftar;
+    statusEl.textContent = '📡 Tersambung';
+    tampilkanRiwayatHariIni();
+  }, (err) => {
+    statusEl.textContent = '⚠ Offline — cek sinyal';
+    console.error(err);
+  });
+
+  window.tekanAngka = tekanAngka;
+  window.hapusAngka = hapusAngka;
+  window.simpanTransaksi = simpanTransaksi;
+</script>
+
+</body>
+</html>
