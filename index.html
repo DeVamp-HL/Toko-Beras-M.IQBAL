@@ -607,17 +607,33 @@
       <label>Bensin pengantaran (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
       <input type="number" id="biayaBensinBulanan" placeholder="0" inputmode="numeric">
 
-      <label>Listrik mesin (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
+      <label>Listrik (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
       <input type="number" id="biayaListrikBulanan" placeholder="0" inputmode="numeric">
+
+      <label>Internet/Wifi (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
+      <input type="number" id="biayaInternetBulanan" placeholder="0" inputmode="numeric">
 
       <label>Benang jahit (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
       <input type="number" id="biayaBenangBulanan" placeholder="0" inputmode="numeric">
 
-      <label>Total hari kerja semua pegawai bulan ini <span class="keterangan">— jumlah pegawai × hari kerja masing-masing, rate Rp77.000/hari-orang</span></label>
-      <input type="number" id="gajiTotalHariOrang" placeholder="Contoh: 3 pegawai × 26 hari = 78" inputmode="numeric" oninput="hitungPerkiraanGaji()">
+      <label>Hari kerja pegawai bulan ini <span class="keterangan">— rate Rp86.500/hari per orang</span></label>
+      <div class="baris-2" style="grid-template-columns: 1fr 1fr 1fr; gap:8px;">
+        <div>
+          <label style="font-size:12px; margin-top:0;">Ben Mohsein</label>
+          <input type="number" id="gajiHariBen" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji()">
+        </div>
+        <div>
+          <label style="font-size:12px; margin-top:0;">Hasan</label>
+          <input type="number" id="gajiHariHasan" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji()">
+        </div>
+        <div>
+          <label style="font-size:12px; margin-top:0;">Gono</label>
+          <input type="number" id="gajiHariGono" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji()">
+        </div>
+      </div>
       <div class="keterangan" id="gajiPerkiraanInfo" style="margin-top:6px;"></div>
 
-      <p class="keterangan">Bensin, listrik, benang, dan gaji tidak masuk HPP per produk — dilaporkan di sini sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
+      <p class="keterangan">Bensin, listrik, internet, benang, dan gaji tidak masuk HPP per produk — dilaporkan di sini sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
 
       <button type="button" onclick="simpanBiayaBulanan()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Biaya Bulan Ini</button>
     </div>
@@ -691,7 +707,8 @@
     'Ketan Hitam Sosoh': 0.800, 'Ketan Putih Paris': 0.800, 'Beras Merah': 0.800
   };
   const RASIO_DEFAULT = 0.82; // produk inti
-  const RATE_GAJI_PER_HARI_ORANG = 77000; // Tahap 4: semua pegawai rate sama
+  const RATE_GAJI_PER_HARI_ORANG = 86500; // direvisi 31 Juli 2026 (sebelumnya Rp77.000); semua pegawai rate sama
+  const NAMA_PEGAWAI_GAJI = ['Ben Mohsein', 'Hasan', 'Gono']; // urutan tetap: id field gajiHari<Nama>, nama tampilan di sini
 
   let idBaris = 0;
   let jenisJualAktif = 'kemasan';
@@ -1159,10 +1176,27 @@
     return data ? JSON.parse(data) : [];
   }
 
+  // id field HTML per pegawai: "Ben Mohsein" -> "gajiHariBen", "Hasan" -> "gajiHariHasan", dst.
+  // Aturan: ambil kata pertama nama, kecuali "Ben Mohsein" sengaja dipendekkan jadi "Ben" (sudah dibuat manual di HTML).
+  const ID_FIELD_GAJI_PEGAWAI = { 'Ben Mohsein': 'gajiHariBen', 'Hasan': 'gajiHariHasan', 'Gono': 'gajiHariGono' };
+
+  function bacaHariGajiPegawai() {
+    return NAMA_PEGAWAI_GAJI.map(nama => {
+      const idField = ID_FIELD_GAJI_PEGAWAI[nama];
+      const hari = parseFloat(document.getElementById(idField).value) || 0;
+      return { nama, hari, gaji: Math.round(hari * RATE_GAJI_PER_HARI_ORANG) };
+    });
+  }
+
   function hitungPerkiraanGaji() {
-    const hariOrang = parseFloat(document.getElementById('gajiTotalHariOrang').value) || 0;
+    const rincian = bacaHariGajiPegawai();
     const el = document.getElementById('gajiPerkiraanInfo');
-    el.textContent = hariOrang > 0 ? `${hariOrang} hari-orang × ${formatRupiah(RATE_GAJI_PER_HARI_ORANG)} = ${formatRupiah(hariOrang * RATE_GAJI_PER_HARI_ORANG)}` : '';
+    const adaIsi = rincian.some(r => r.hari > 0);
+    if (!adaIsi) { el.textContent = ''; return; }
+    const totalGaji = rincian.reduce((a, r) => a + r.gaji, 0);
+    const totalHari = rincian.reduce((a, r) => a + r.hari, 0);
+    const perNama = rincian.filter(r => r.hari > 0).map(r => `${r.nama} ${r.hari} hari (${formatRupiah(r.gaji)})`).join(', ');
+    el.textContent = `${perNama} — total ${totalHari} hari-orang × ${formatRupiah(RATE_GAJI_PER_HARI_ORANG)} = ${formatRupiah(totalGaji)}`;
   }
 
   async function simpanBiayaBulanan() {
@@ -1171,15 +1205,17 @@
     const keamanan = parseFloat(document.getElementById('biayaKeamananBulanan').value) || 0;
     const bensin = parseFloat(document.getElementById('biayaBensinBulanan').value) || 0;
     const listrik = parseFloat(document.getElementById('biayaListrikBulanan').value) || 0;
+    const internet = parseFloat(document.getElementById('biayaInternetBulanan').value) || 0;
     const benang = parseFloat(document.getElementById('biayaBenangBulanan').value) || 0;
-    const gajiHariOrang = parseFloat(document.getElementById('gajiTotalHariOrang').value) || 0;
-    const gaji = Math.round(gajiHariOrang * RATE_GAJI_PER_HARI_ORANG);
+    const rincianGaji = bacaHariGajiPegawai();
+    const gajiHariOrang = rincianGaji.reduce((a, r) => a + r.hari, 0);
+    const gaji = rincianGaji.reduce((a, r) => a + r.gaji, 0);
     if (!bulan) { alert('Pilih bulan dulu.'); return; }
-    if (akses <= 0 && keamanan <= 0 && bensin <= 0 && listrik <= 0 && benang <= 0 && gaji <= 0) { alert('Isi minimal salah satu biaya.'); return; }
+    if (akses <= 0 && keamanan <= 0 && bensin <= 0 && listrik <= 0 && internet <= 0 && benang <= 0 && gaji <= 0) { alert('Isi minimal salah satu biaya.'); return; }
 
     // Dokumen Firestore memakai "bulan" sebagai id supaya bulan yang sama otomatis menimpa (bukan duplikat).
     try {
-      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, akses, keamanan, bensin, listrik, benang, gajiHariOrang, gaji });
+      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, akses, keamanan, bensin, listrik, internet, benang, gajiHariOrang, gaji, rincianGaji });
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -1190,8 +1226,9 @@
     document.getElementById('biayaKeamananBulanan').value = '';
     document.getElementById('biayaBensinBulanan').value = '';
     document.getElementById('biayaListrikBulanan').value = '';
+    document.getElementById('biayaInternetBulanan').value = '';
     document.getElementById('biayaBenangBulanan').value = '';
-    document.getElementById('gajiTotalHariOrang').value = '';
+    NAMA_PEGAWAI_GAJI.forEach(nama => { document.getElementById(ID_FIELD_GAJI_PEGAWAI[nama]).value = ''; });
     document.getElementById('gajiPerkiraanInfo').textContent = '';
   }
 
@@ -1213,8 +1250,12 @@
       return;
     }
     kontainer.innerHTML = semua.map(b => {
-      const bensin = b.bensin || 0, listrik = b.listrik || 0, benang = b.benang || 0, gaji = b.gaji || 0;
-      const total = (b.akses || 0) + (b.keamanan || 0) + bensin + listrik + benang + gaji;
+      const bensin = b.bensin || 0, listrik = b.listrik || 0, internet = b.internet || 0, benang = b.benang || 0, gaji = b.gaji || 0;
+      const total = (b.akses || 0) + (b.keamanan || 0) + bensin + listrik + internet + benang + gaji;
+      // Data lama (sebelum revisi rincian per pegawai) tidak punya b.rincianGaji — tampilkan total saja.
+      const rincianGajiHtml = (b.rincianGaji && b.rincianGaji.length > 0)
+        ? b.rincianGaji.filter(r => r.hari > 0).map(r => `${r.nama} ${r.hari} hari (${formatRupiah(r.gaji)})`).join(', ')
+        : (b.gajiHariOrang ? `${b.gajiHariOrang} hari-orang` : '');
       return `
       <div class="item-batch">
         <div class="baris-atas">
@@ -1224,9 +1265,10 @@
           Akses/gapura: ${formatRupiah(b.akses || 0)}<br>
           Keamanan lingkungan: ${formatRupiah(b.keamanan || 0)}<br>
           Bensin pengantaran: ${formatRupiah(bensin)}<br>
-          Listrik mesin: ${formatRupiah(listrik)}<br>
+          Listrik: ${formatRupiah(listrik)}<br>
+          Internet/Wifi: ${formatRupiah(internet)}<br>
           Benang jahit: ${formatRupiah(benang)}<br>
-          Gaji pegawai: ${formatRupiah(gaji)}${b.gajiHariOrang ? ` (${b.gajiHariOrang} hari-orang × Rp77.000)` : ''}
+          Gaji pegawai: ${formatRupiah(gaji)}${rincianGajiHtml ? ` (${rincianGajiHtml})` : ''}
         </div>
         <div class="total-baris"><span>Total biaya operasional bulan ini</span><span>${formatRupiah(total)}</span></div>
         <button class="tombol-hapus" onclick="hapusBulanan('${b.bulan}')">Hapus</button>
@@ -1941,7 +1983,7 @@
     const kunciBulanIni = new Date().toISOString().slice(0, 7); // format 'YYYY-MM', sama dengan input type="month"
     const biayaBulananBulanIni = ambilBiayaBulanan().find(b => b.bulan === kunciBulanIni);
     const totalBiayaBulanan = biayaBulananBulanIni
-      ? (biayaBulananBulanIni.akses||0) + (biayaBulananBulanIni.keamanan||0) + (biayaBulananBulanIni.bensin||0) + (biayaBulananBulanIni.listrik||0) + (biayaBulananBulanIni.benang||0) + (biayaBulananBulanIni.gaji||0)
+      ? (biayaBulananBulanIni.akses||0) + (biayaBulananBulanIni.keamanan||0) + (biayaBulananBulanIni.bensin||0) + (biayaBulananBulanIni.listrik||0) + (biayaBulananBulanIni.internet||0) + (biayaBulananBulanIni.benang||0) + (biayaBulananBulanIni.gaji||0)
       : 0;
     const kasMasukBulanIni = omzetBulanIni;
     const kasKeluarBulanIni = belanjaBulanIni + totalBiayaBulanan;
