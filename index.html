@@ -30,6 +30,10 @@
     --badge-bg: #e3d5ae;
     --header-teks: #f0e6ce;
     --tombol-teks: #ffffff;
+    /* Background header & bar-backup HARUS tetap cokelat gelap di kedua mode — beda dari
+       --hijau-tua yang membalik arah (jadi terang) saat mode gelap karena perannya di
+       tempat lain adalah warna TEKS/aksen, bukan background. Dipisah supaya tidak tabrakan. */
+    --gelap-tetap: #3a2e1f;
   }
   html[data-tema="gelap"] {
     /* Mode gelap — tetap keluarga warna sama (cokelat/emas/merah bata), bukan hitam-putih.
@@ -47,6 +51,7 @@
     --badge-bg: #4a3826;
     --header-teks: #f0e6ce;
     --tombol-teks: #201810;
+    --gelap-tetap: #201810;
   }
   * { box-sizing: border-box; }
   body {
@@ -57,7 +62,7 @@
     padding-bottom: 100px;
   }
   header {
-    background: var(--hijau-tua);
+    background: var(--gelap-tetap);
     color: var(--header-teks);
     padding: 18px 16px;
     position: sticky;
@@ -232,7 +237,7 @@
   .halaman.tampil { display: block; }
   .badge-karung { display:inline-block; background:var(--badge-bg); color:var(--hijau-tua); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; margin-left:6px; }
   .bar-backup {
-    background: var(--hijau-tua); color: var(--header-teks); padding: 12px 16px; font-size: 13px;
+    background: var(--gelap-tetap); color: var(--header-teks); padding: 12px 16px; font-size: 13px;
     display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
   }
   .bar-backup b { font-weight: 800; }
