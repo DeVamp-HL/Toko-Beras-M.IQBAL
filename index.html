@@ -200,6 +200,30 @@
     background: var(--kartu); color: var(--hijau-tua); border: none; border-radius: 8px;
     padding: 8px 14px; font-weight: 800; font-size: 13px; white-space: nowrap;
   }
+  .cari-global-wrap { position: relative; padding: 10px 16px; background: var(--kartu); border-bottom: 2px solid var(--garis); }
+  .cari-global-input {
+    width: 100%; padding: 12px 14px; font-size: 14px; border: 2px solid var(--garis);
+    border-radius: 10px; background: white; color: var(--teks);
+  }
+  .cari-global-input:focus { outline: none; border-color: var(--hijau); }
+  .cari-global-hasil {
+    display: none; position: absolute; left: 16px; right: 16px; top: 100%;
+    background: var(--kartu); border: 2px solid var(--hijau); border-top: none;
+    border-radius: 0 0 12px 12px; max-height: 60vh; overflow-y: auto; z-index: 20;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+  }
+  .cari-global-hasil.tampil { display: block; }
+  .cari-global-item {
+    padding: 10px 14px; border-bottom: 1px solid var(--garis); font-size: 13px; cursor: pointer;
+  }
+  .cari-global-item:last-child { border-bottom: none; }
+  .cari-global-item .cg-tipe {
+    display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase;
+    color: var(--hijau-tua); background: #e3dcc4; padding: 1px 6px; border-radius: 5px; margin-right: 6px;
+  }
+  .cari-global-item .cg-judul { font-weight: 700; }
+  .cari-global-item .cg-sub { color: #888; font-size: 12px; margin-top: 2px; }
+  .cari-global-kosong { padding: 14px; text-align: center; color: #999; font-size: 13px; }
   .peringatan-besar {
     background: #f0ded2; border: 2px solid var(--merah); color: var(--merah);
     border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; font-size: 14px; font-weight: 700;
@@ -296,6 +320,11 @@
   <input type="file" id="inputMuatFile" accept=".json" onchange="muatDariFile(event)">
 </div>
 
+<div class="cari-global-wrap">
+  <input type="text" id="cariGlobalInput" class="cari-global-input" placeholder="🔍 Cari di semua riwayat (merk, nama pelanggan, keterangan...)" oninput="cariGlobal()">
+  <div id="cariGlobalHasil" class="cari-global-hasil"></div>
+</div>
+
 <nav style="overflow-x:auto;">
   <button id="tabRingkasan" class="tab-owner" onclick="pindahHalaman('ringkasan')">🏠 Ringkasan</button>
   <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')">💰 Jual</button>
@@ -305,6 +334,7 @@
   <button id="tabStok" onclick="pindahHalaman('stok')">🌾 Stok</button>
   <button id="tabLaba" class="tab-owner" onclick="pindahHalaman('laba')">📈 Laba</button>
   <button id="tabBulanan" onclick="pindahHalaman('bulanan')">🗓️ Bulanan</button>
+  <button id="tabHarian" onclick="pindahHalaman('harian')">🧾 Harian</button>
 </nav>
 
 <main>
@@ -344,7 +374,7 @@
         <div class="nilai" id="ringKasKeluarBulanIni">Rp0</div>
       </div>
     </div>
-    <div class="info-box">Kas masuk = total omzet jual bulan ini. Kas keluar = belanja beras (harga beli + bongkar dari tab Masuk) ditambah biaya bulanan (gaji, listrik, akses, dll dari tab Bulanan — kalau bulan ini belum diisi, bagian itu dihitung Rp0). Ini arus kas, BUKAN laba bersih akuntansi — beda dari margin kotor di tab Laba (yang berbasis HPP barang terjual, bukan barang dibeli).</div>
+    <div class="info-box">Kas masuk = total omzet jual bulan ini. Kas keluar = belanja beras (harga beli + bongkar dari tab Masuk) + biaya bulanan (gaji, listrik, akses, dll dari tab Bulanan — kalau bulan ini belum diisi, bagian itu dihitung Rp0) + pengeluaran harian kategori Toko (dari tab Harian). Pengeluaran harian Ben Mohsein &amp; Owner TIDAK ikut dihitung — murni pribadi. Ini arus kas, BUKAN laba bersih akuntansi — beda dari margin kotor di tab Laba (yang berbasis HPP barang terjual, bukan barang dibeli).</div>
 
     <div class="subjudul" style="margin-top:0;">⚠️ Perlu Perhatian</div>
     <div id="ringPerhatian" class="daftar-batch"></div>
@@ -613,7 +643,7 @@
       <label>Internet/Wifi (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
       <input type="number" id="biayaInternetBulanan" placeholder="0" inputmode="numeric">
 
-      <label>Benang jahit (Rp) <span class="keterangan">— rata-rata sebulan</span></label>
+      <label>Plastik / tali / benang / dll (Rp) <span class="keterangan">— kebutuhan toko yang tidak bisa dihitung sebagai stok, rata-rata sebulan</span></label>
       <input type="number" id="biayaBenangBulanan" placeholder="0" inputmode="numeric">
 
       <label>Hari kerja pegawai bulan ini <span class="keterangan">— rate Rp86.500/hari per orang</span></label>
@@ -633,12 +663,48 @@
       </div>
       <div class="keterangan" id="gajiPerkiraanInfo" style="margin-top:6px;"></div>
 
-      <p class="keterangan">Bensin, listrik, internet, benang, dan gaji tidak masuk HPP per produk — dilaporkan di sini sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
+      <p class="keterangan">Bensin, listrik, internet, plastik/tali/benang/dll, dan gaji tidak masuk HPP per produk — dilaporkan di sini sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
 
       <button type="button" onclick="simpanBiayaBulanan()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Biaya Bulan Ini</button>
     </div>
 
     <div id="daftarBulanan" class="daftar-batch"></div>
+  </div>
+
+  <!-- HALAMAN PENGELUARAN HARIAN -->
+  <div id="halamanHarian" class="halaman">
+    <div id="pesanOkHarian" class="pesan-ok">✔ Pengeluaran tersimpan.</div>
+    <div class="info-box">Catatan kecil-kecil harian, beda dari "Bulanan" (biaya tetap besar per bulan). Hanya kategori <b>Toko</b> yang otomatis ikut Kas Keluar di dashboard Ringkasan. Ben Mohsein &amp; Owner murni pribadi — TIDAK ikut kas toko, TIDAK ikut laporan bulanan.</div>
+
+    <div class="kartu">
+      <div class="subjudul" style="margin-top:0;">Kategori</div>
+      <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr 1fr;">
+        <button type="button" id="kategoriHarianToko" class="pilih" onclick="pilihKategoriHarian('toko')">🏪<br>Toko</button>
+        <button type="button" id="kategoriHarianBen" onclick="pilihKategoriHarian('ben')">👤<br>Ben Mohsein</button>
+        <button type="button" id="kategoriHarianOwner" onclick="pilihKategoriHarian('owner')">👤<br>Owner</button>
+      </div>
+      <input type="hidden" id="harianKategori" value="toko">
+
+      <label>Tanggal</label>
+      <input type="date" id="harianTanggal">
+
+      <label>Untuk apa</label>
+      <input type="text" id="harianKeterangan" placeholder="Contoh: beli galon, bensin motor, jajan, dll">
+
+      <label>Nominal (Rp)</label>
+      <input type="number" id="harianNominal" placeholder="0" inputmode="numeric">
+
+      <button type="button" onclick="simpanPengeluaranHarian()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:white; border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Pengeluaran</button>
+    </div>
+
+    <div class="subjudul" style="margin-top:0;">Filter tampilan</div>
+    <div class="tab-bayar" style="margin-bottom:16px;">
+      <button type="button" id="filterHarianSemua" class="pilih" onclick="filterHarian('semua')">Semua</button>
+      <button type="button" id="filterHarianToko" onclick="filterHarian('toko')">Toko</button>
+      <button type="button" id="filterHarianBen" onclick="filterHarian('ben')">Ben Mohsein</button>
+      <button type="button" id="filterHarianOwner" onclick="filterHarian('owner')">Owner</button>
+    </div>
+    <div id="daftarHarian" class="daftar-batch"></div>
   </div>
 
 </main>
@@ -679,6 +745,7 @@
   const KOLEKSI_PRODUKSI = 'produksiKemasan';
   const KOLEKSI_RETUR = 'retur';
   const KOLEKSI_KARANTINA = 'karantina';
+  const KOLEKSI_HARIAN = 'pengeluaranHarian';
 
   // Cache di memori — diisi ulang otomatis oleh onSnapshot tiap kali ada perubahan
   // (dari perangkat ini ATAU perangkat lain). Semua fungsi lama yang baca data
@@ -689,7 +756,8 @@
   let _cacheProduksi = [];
   let _cacheRetur = [];
   let _cacheKarantina = [];
-  let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false };
+  let _cacheHarian = [];
+  let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false };
 
   const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
   const KUNCI_BULANAN = 'miqbal_biaya_bulanan';
@@ -697,6 +765,7 @@
   const KUNCI_PRODUKSI = 'miqbal_produksi_kemasan_v1';
   const KUNCI_RETUR = 'miqbal_retur_v1';
   const KUNCI_KARANTINA = 'miqbal_karantina_v1';
+  const KUNCI_HARIAN = 'miqbal_pengeluaran_harian_v1';
   // Dikosongkan atas permintaan My DeV (31 Juli 2026) — mulai dari nol, diisi ulang
   // satu per satu sesuai merk yang benar-benar dijual. Dropdown "Merk lain (ketik manual)"
   // tetap tersedia di form Input selama daftar ini masih kosong.
@@ -714,7 +783,7 @@
   let jenisJualAktif = 'kemasan';
 
   function pindahHalaman(nama) {
-    ['ringkasan','jual','input','produksi','rekap','stok','laba','bulanan'].forEach(n => {
+    ['ringkasan','jual','input','produksi','rekap','stok','laba','bulanan','harian'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
     });
@@ -728,6 +797,7 @@
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); }
     if (nama === 'stok') tampilkanStok();
     if (nama === 'laba') tampilkanLaba();
+    if (nama === 'harian') tampilkanHarian();
   }
   function kapital(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
@@ -885,6 +955,7 @@
     document.getElementById('pemasokLain').style.display = this.value === 'Lainnya' ? 'block' : 'none';
   });
   document.getElementById('tanggal').value = new Date().toISOString().split('T')[0];
+  document.getElementById('harianTanggal').value = new Date().toISOString().split('T')[0];
 
   // Mulai dengan 1 baris merk kosong
   tambahBarisMerk();
@@ -961,6 +1032,12 @@
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'karantina');
+
+  pasangSinkronisasi(KOLEKSI_HARIAN, KUNCI_HARIAN, (d) => { _cacheHarian = d; }, () => {
+    if (document.getElementById('halamanHarian').classList.contains('tampil')) tampilkanHarian();
+    // Kategori 'toko' otomatis ikut Kas Keluar Bulan Ini — dashboard harus refresh tiap ada pengeluaran harian baru.
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
+  }, 'id', 'harian');
 
   // Simpan satu dokumen ke Firestore. id dipakai sebagai nama dokumen supaya
   // "muat dari file" bisa menimpa/menggabung tanpa duplikat.
@@ -1267,7 +1344,7 @@
           Bensin pengantaran: ${formatRupiah(bensin)}<br>
           Listrik: ${formatRupiah(listrik)}<br>
           Internet/Wifi: ${formatRupiah(internet)}<br>
-          Benang jahit: ${formatRupiah(benang)}<br>
+          Plastik/tali/benang/dll: ${formatRupiah(benang)}<br>
           Gaji pegawai: ${formatRupiah(gaji)}${rincianGajiHtml ? ` (${rincianGajiHtml})` : ''}
         </div>
         <div class="total-baris"><span>Total biaya operasional bulan ini</span><span>${formatRupiah(total)}</span></div>
@@ -1276,6 +1353,175 @@
     `;
     }).join('');
   }
+
+  // --- Pengeluaran Harian (Toko / Ben Mohsein / Owner) ---
+  // Aturan keras (instruksi proyek + konfirmasi My DeV): kategori 'ben' & 'owner' MURNI PRIBADI.
+  // TIDAK pernah masuk kasKeluarBulanIni, TIDAK masuk totalBiayaBulanan, TIDAK masuk laporan bulanan.
+  // Hanya kategori 'toko' yang otomatis ikut Kas Keluar Bulan Ini di dashboard Ringkasan.
+  let kategoriHarianAktif = 'toko';
+  let filterHarianAktif = 'semua';
+
+  function ambilPengeluaranHarian() {
+    if (_cacheHarian.length > 0) return _cacheHarian;
+    const data = localStorage.getItem(KUNCI_HARIAN);
+    return data ? JSON.parse(data) : [];
+  }
+
+  function pilihKategoriHarian(kat) {
+    kategoriHarianAktif = kat;
+    document.getElementById('harianKategori').value = kat;
+    document.getElementById('kategoriHarianToko').classList.toggle('pilih', kat === 'toko');
+    document.getElementById('kategoriHarianBen').classList.toggle('pilih', kat === 'ben');
+    document.getElementById('kategoriHarianOwner').classList.toggle('pilih', kat === 'owner');
+  }
+
+  function labelKategoriHarian(kat) {
+    return kat === 'toko' ? 'Toko' : kat === 'ben' ? 'Ben Mohsein' : 'Owner';
+  }
+
+  async function simpanPengeluaranHarian() {
+    const kategori = document.getElementById('harianKategori').value || 'toko';
+    const tanggal = document.getElementById('harianTanggal').value;
+    const keterangan = document.getElementById('harianKeterangan').value.trim();
+    const nominal = parseFloat(document.getElementById('harianNominal').value) || 0;
+    if (!tanggal) { alert('Pilih tanggal dulu.'); return; }
+    if (!keterangan) { alert('Isi keterangan dulu (untuk apa pengeluaran ini).'); return; }
+    if (nominal <= 0) { alert('Isi nominal dulu.'); return; }
+
+    const id = Date.now();
+    try {
+      await simpanKeFirestore(KOLEKSI_HARIAN, { id, kategori, tanggal, keterangan, nominal });
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
+      return;
+    }
+
+    document.getElementById('harianKeterangan').value = '';
+    document.getElementById('harianNominal').value = '';
+    document.getElementById('harianTanggal').value = new Date().toISOString().split('T')[0];
+    document.getElementById('pesanOkHarian').style.display = 'block';
+    setTimeout(() => { document.getElementById('pesanOkHarian').style.display = 'none'; }, 2000);
+  }
+
+  async function hapusHarian(id) {
+    if (!confirm('Hapus pengeluaran ini?')) return;
+    try {
+      await hapusDariFirestore(KOLEKSI_HARIAN, id);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
+    }
+  }
+
+  function filterHarian(kat) {
+    filterHarianAktif = kat;
+    ['semua','toko','ben','owner'].forEach(k => {
+      document.getElementById('filterHarian' + kapital(k)).classList.toggle('pilih', k === kat);
+    });
+    tampilkanHarian();
+  }
+
+  function tampilkanHarian() {
+    const semua = ambilPengeluaranHarian();
+    const tampil = filterHarianAktif === 'semua' ? semua : semua.filter(h => h.kategori === filterHarianAktif);
+    const kontainer = document.getElementById('daftarHarian');
+    if (tampil.length === 0) {
+      kontainer.innerHTML = '<div class="kosong">Belum ada pengeluaran harian tercatat.</div>';
+      return;
+    }
+    const totalTampil = tampil.reduce((a, h) => a + (h.nominal || 0), 0);
+    kontainer.innerHTML = `<div class="info-box">${tampil.length} catatan · total ${formatRupiah(totalTampil)}${filterHarianAktif === 'semua' ? ' (gabungan semua kategori)' : ' (kategori ' + labelKategoriHarian(filterHarianAktif) + ')'}</div>` +
+      tampil.map(h => `
+      <div class="item-batch">
+        <div class="baris-atas">
+          <span class="pemasok-nama">${h.keterangan}</span>
+          <span class="tanggal">${formatTanggal(h.tanggal)}</span>
+        </div>
+        <div style="font-size:13px; color:#666;">
+          <span class="badge-karung">${labelKategoriHarian(h.kategori)}</span>
+        </div>
+        <div class="total-baris"><span>Nominal</span><span>${formatRupiah(h.nominal || 0)}</span></div>
+        <button class="tombol-hapus" onclick="hapusHarian(${h.id})">Hapus</button>
+      </div>
+    `).join('');
+  }
+
+  // ============ SEARCH LINTAS-RIWAYAT (semua koleksi, dari cache di memori) ============
+  function cocok(teks, kata) {
+    return (teks || '').toString().toLowerCase().includes(kata);
+  }
+
+  function cariGlobal() {
+    const kataMentah = document.getElementById('cariGlobalInput').value.trim();
+    const hasilEl = document.getElementById('cariGlobalHasil');
+    if (kataMentah.length < 2) { hasilEl.classList.remove('tampil'); hasilEl.innerHTML = ''; return; }
+    const kata = kataMentah.toLowerCase();
+    const hasil = [];
+
+    ambilSemuaBatch().forEach(k => {
+      const merkTeks = (k.merkList || []).map(m => m.merk).join(', ');
+      if (cocok(k.pemasok, kata) || cocok(merkTeks, kata)) {
+        hasil.push({ tipe: 'Masuk', judul: `${k.pemasok || '-'} — ${merkTeks}`, sub: formatTanggal(k.tanggal), tab: 'rekap' });
+      }
+    });
+
+    ambilPenjualan().forEach(p => {
+      if (cocok(p.namaProduk, kata) || cocok(p.merkSumber, kata) || cocok(p.namaPelanggan, kata) || cocok(p.caraBayar, kata)) {
+        hasil.push({ tipe: 'Jual', judul: `${p.namaProduk || p.merkSumber || '-'}${p.namaPelanggan ? ' — ' + p.namaPelanggan : ''}`, sub: `${formatTanggal(p.tanggal)} · ${formatRupiah(p.hargaTotal||0)}`, tab: 'laba' });
+      }
+    });
+
+    ambilProduksi().forEach(pr => {
+      if (cocok(pr.namaProduk, kata) || cocok(pr.merkSumber, kata)) {
+        hasil.push({ tipe: 'Produksi', judul: `${pr.namaProduk || '-'} (dari ${pr.merkSumber || '-'})`, sub: formatTanggal(pr.tanggal), tab: 'stok' });
+      }
+    });
+
+    ambilRetur().forEach(r => {
+      if (cocok(r.namaProduk, kata) || cocok(r.merkSumber, kata) || cocok(r.catatan, kata)) {
+        hasil.push({ tipe: 'Retur', judul: `${r.namaProduk || r.merkSumber || '-'}${r.catatan ? ' — ' + r.catatan : ''}`, sub: formatTanggal(r.tanggal), tab: 'stok' });
+      }
+    });
+
+    ambilKarantina().forEach(kt => {
+      if (cocok(kt.namaProduk, kata) || cocok(kt.merkSumber, kata) || cocok(kt.catatan, kata)) {
+        hasil.push({ tipe: 'Karantina', judul: `${kt.namaProduk || kt.merkSumber || '-'}${kt.catatan ? ' — ' + kt.catatan : ''}`, sub: formatTanggal(kt.tanggal), tab: 'stok' });
+      }
+    });
+
+    ambilBiayaBulanan().forEach(b => {
+      if (cocok(b.bulan, kata) || cocok('bulanan biaya operasional gaji listrik internet plastik tali benang akses keamanan bensin', kata)) {
+        const totalBulanIni = (b.akses||0)+(b.keamanan||0)+(b.bensin||0)+(b.listrik||0)+(b.internet||0)+(b.benang||0)+(b.gaji||0);
+        hasil.push({ tipe: 'Bulanan', judul: `Biaya bulan ${b.bulan}`, sub: formatRupiah(totalBulanIni), tab: 'bulanan' });
+      }
+    });
+
+    ambilPengeluaranHarian().forEach(h => {
+      if (cocok(h.keterangan, kata) || cocok(labelKategoriHarian(h.kategori), kata)) {
+        hasil.push({ tipe: 'Harian', judul: `${h.keterangan} (${labelKategoriHarian(h.kategori)})`, sub: `${formatTanggal(h.tanggal)} · ${formatRupiah(h.nominal||0)}`, tab: 'harian' });
+      }
+    });
+
+    if (hasil.length === 0) {
+      hasilEl.innerHTML = '<div class="cari-global-kosong">Tidak ada hasil untuk "' + kataMentah + '".</div>';
+    } else {
+      hasilEl.innerHTML = hasil.slice(0, 30).map(h => `
+        <div class="cari-global-item" onclick="pindahHalaman('${h.tab}'); document.getElementById('cariGlobalHasil').classList.remove('tampil');">
+          <span class="cg-tipe">${h.tipe}</span><span class="cg-judul">${h.judul}</span>
+          <div class="cg-sub">${h.sub}</div>
+        </div>
+      `).join('') + (hasil.length > 30 ? `<div class="cari-global-kosong">+${hasil.length - 30} hasil lain, persempit kata kunci untuk melihat.</div>` : '');
+    }
+    hasilEl.classList.add('tampil');
+  }
+
+  document.addEventListener('click', function(e) {
+    const wrap = document.querySelector('.cari-global-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('cariGlobalHasil').classList.remove('tampil');
+    }
+  });
 
   // ============ MESIN STOK, JUAL, PRODUKSI (Tahap 2) ============
 
@@ -1985,8 +2231,13 @@
     const totalBiayaBulanan = biayaBulananBulanIni
       ? (biayaBulananBulanIni.akses||0) + (biayaBulananBulanIni.keamanan||0) + (biayaBulananBulanIni.bensin||0) + (biayaBulananBulanIni.listrik||0) + (biayaBulananBulanIni.internet||0) + (biayaBulananBulanIni.benang||0) + (biayaBulananBulanIni.gaji||0)
       : 0;
+    // Pengeluaran Harian kategori TOKO bulan ini — otomatis ikut Kas Keluar (konfirmasi My DeV 31 Juli 2026).
+    // Kategori Ben Mohsein & Owner sengaja TIDAK dijumlah di sini — murni pribadi, tidak boleh ikut kas toko.
+    const pengeluaranHarianTokoBulanIni = ambilPengeluaranHarian()
+      .filter(h => h.kategori === 'toko' && isoKeTanggal(h.tanggal) >= mulaiBulan)
+      .reduce((a, h) => a + (h.nominal || 0), 0);
     const kasMasukBulanIni = omzetBulanIni;
-    const kasKeluarBulanIni = belanjaBulanIni + totalBiayaBulanan;
+    const kasKeluarBulanIni = belanjaBulanIni + totalBiayaBulanan + pengeluaranHarianTokoBulanIni;
 
     document.getElementById('ringOmzetHariIni').textContent = formatRupiah(omzetHariIni);
     document.getElementById('ringOmzetMingguIni').textContent = formatRupiah(omzetMingguIni);
@@ -2170,6 +2421,11 @@
   window.hapusBatch = hapusBatch;
   window.putuskanKarantina = putuskanKarantina;
   window.hapusBulanan = hapusBulanan;
+  window.pilihKategoriHarian = pilihKategoriHarian;
+  window.simpanPengeluaranHarian = simpanPengeluaranHarian;
+  window.hapusHarian = hapusHarian;
+  window.filterHarian = filterHarian;
+  window.cariGlobal = cariGlobal;
 </script>
 
 </body>
