@@ -239,14 +239,53 @@
   .grid-tombol-pilih button.pilih .info-stok-tombol { color: #efe6cd; }
   .grid-tombol-pilih button.stok-habis { opacity: 0.4; }
   .grid-tombol-pilih .kosong-pilih { grid-column: 1 / -1; text-align: center; color: #999; padding: 16px; font-size: 13px; }
+  .tab-owner { display: none; }
+  .tab-owner.tampil-owner { display: flex; }
+  #headerJudul { cursor: default; user-select: none; }
+  .modal-pin-bg {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-pin-bg.tampil { display: flex; }
+  .modal-pin-kotak {
+    background: var(--kartu); border-radius: 16px; padding: 24px; width: 85%; max-width: 320px;
+    text-align: center;
+  }
+  .modal-pin-kotak h3 { margin: 0 0 4px; color: var(--hijau-tua); }
+  .modal-pin-kotak p { font-size: 13px; color: #777; margin: 0 0 16px; }
+  .modal-pin-kotak input {
+    width: 100%; padding: 14px; font-size: 22px; text-align: center; letter-spacing: 8px;
+    border: 2px solid var(--garis); border-radius: 10px; background: white; color: var(--teks);
+  }
+  .modal-pin-kotak input:focus { outline: none; border-color: var(--hijau); }
+  .modal-pin-tombol { display: flex; gap: 8px; margin-top: 14px; }
+  .modal-pin-tombol button {
+    flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: 800; font-size: 14px;
+  }
+  .modal-pin-batal { background: var(--abu); color: var(--teks); }
+  .modal-pin-masuk { background: var(--hijau); color: white; }
+  .modal-pin-salah { color: var(--merah); font-size: 13px; font-weight: 700; margin-top: 10px; display: none; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>🌾 Sistem Toko M.IQBAL</h1>
+  <h1 id="headerJudul" onclick="tekanLogoHeader()">🌾 Sistem Toko M.IQBAL</h1>
   <p id="subjudulHeader">1 kedatangan mobil = banyak merk beras</p>
 </header>
+
+<div class="modal-pin-bg" id="modalPinBg">
+  <div class="modal-pin-kotak">
+    <h3>🔒 Khusus Owner</h3>
+    <p>Masukkan PIN untuk buka Ringkasan &amp; Laba</p>
+    <input type="password" id="inputPinOwner" inputmode="numeric" maxlength="4" placeholder="••••">
+    <div class="modal-pin-salah" id="pinSalahPesan">PIN salah. Coba lagi.</div>
+    <div class="modal-pin-tombol">
+      <button type="button" class="modal-pin-batal" onclick="tutupModalPin()">Batal</button>
+      <button type="button" class="modal-pin-masuk" onclick="cekPinOwner()">Masuk</button>
+    </div>
+  </div>
+</div>
 
 <div class="bar-backup" id="barBackup">
   <span>📡 <b id="statusSambung">Menyambungkan…</b> · <b id="jumlahDiHp">0</b> kedatangan</span>
@@ -258,13 +297,13 @@
 </div>
 
 <nav style="overflow-x:auto;">
-  <button id="tabRingkasan" class="aktif" onclick="pindahHalaman('ringkasan')">🏠 Ringkasan</button>
-  <button id="tabJual" onclick="pindahHalaman('jual')">💰 Jual</button>
+  <button id="tabRingkasan" class="tab-owner" onclick="pindahHalaman('ringkasan')">🏠 Ringkasan</button>
+  <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')">💰 Jual</button>
   <button id="tabInput" onclick="pindahHalaman('input')">➕ Masuk</button>
   <button id="tabProduksi" onclick="pindahHalaman('produksi')">📦 Produksi</button>
   <button id="tabRekap" onclick="pindahHalaman('rekap')">📋 Riwayat</button>
   <button id="tabStok" onclick="pindahHalaman('stok')">🌾 Stok</button>
-  <button id="tabLaba" onclick="pindahHalaman('laba')">📈 Laba</button>
+  <button id="tabLaba" class="tab-owner" onclick="pindahHalaman('laba')">📈 Laba</button>
   <button id="tabBulanan" onclick="pindahHalaman('bulanan')">🗓️ Bulanan</button>
 </nav>
 
@@ -272,7 +311,7 @@
 
   <!-- HALAMAN JUAL (kasir) -->
   <!-- HALAMAN RINGKASAN (dashboard, halaman pembuka default) -->
-  <div id="halamanRingkasan" class="halaman tampil">
+  <div id="halamanRingkasan" class="halaman">
     <div class="ringkasan-atas">
       <div class="kotak">
         <div class="label">Omzet hari ini</div>
@@ -311,7 +350,7 @@
     <div id="ringPerhatian" class="daftar-batch"></div>
   </div>
 
-  <div id="halamanJual" class="halaman">
+  <div id="halamanJual" class="halaman tampil">
     <div id="pesanOkJual" class="pesan-ok">✔ Penjualan tersimpan.</div>
 
     <div class="kartu-jenis-jual" style="grid-template-columns: repeat(5,1fr);">
@@ -588,10 +627,10 @@
 
 </main>
 
-<div class="tombol-simpan" id="tombolSimpanWrap">
+<div class="tombol-simpan" id="tombolSimpanWrap" style="display:none;">
   <button onclick="simpanKedatangan()" id="btnSimpanUtama">💾 Simpan Kedatangan Ini</button>
 </div>
-<div class="tombol-simpan" id="tombolSimpanJualWrap" style="display:none;">
+<div class="tombol-simpan" id="tombolSimpanJualWrap">
   <button onclick="simpanJualAtauRetur()" id="btnSimpanJual">💰 Simpan Penjualan</button>
 </div>
 <div class="tombol-simpan" id="tombolSimpanProduksiWrap" style="display:none;">
@@ -1993,11 +2032,78 @@
     }).join('');
   }
 
+  // ============ KUNCI OWNER (Ringkasan & Laba) ============
+  // Tab Ringkasan dan Laba disembunyikan (class .tab-owner, default display:none)
+  // sampai PIN benar dimasukkan. Sekali benar, status "unlock" disimpan di
+  // localStorage PERANGKAT ITU SAJA (tidak sinkron lintas perangkat lewat Firestore
+  // — sengaja, supaya PIN tidak pernah lewat jaringan/tersimpan di database bersama).
+  const PIN_OWNER = '9977';
+  const KUNCI_UNLOCK_OWNER = 'miqbal_owner_unlock';
+  let hitungTekanLogo = 0;
+  let waktuTekanLogoTerakhir = 0;
+
+  function ownerSudahUnlock() {
+    return localStorage.getItem(KUNCI_UNLOCK_OWNER) === '1';
+  }
+
+  function terapkanStatusOwner() {
+    const sudahUnlock = ownerSudahUnlock();
+    document.querySelectorAll('.tab-owner').forEach(el => {
+      el.classList.toggle('tampil-owner', sudahUnlock);
+    });
+  }
+
+  function tekanLogoHeader() {
+    if (ownerSudahUnlock()) return; // sudah unlock, tidak perlu apa-apa
+    const sekarang = Date.now();
+    if (sekarang - waktuTekanLogoTerakhir > 1500) hitungTekanLogo = 0;
+    waktuTekanLogoTerakhir = sekarang;
+    hitungTekanLogo++;
+    if (hitungTekanLogo >= 3) {
+      hitungTekanLogo = 0;
+      bukaModalPin();
+    }
+  }
+
+  function bukaModalPin() {
+    document.getElementById('pinSalahPesan').style.display = 'none';
+    document.getElementById('inputPinOwner').value = '';
+    document.getElementById('modalPinBg').classList.add('tampil');
+    setTimeout(() => document.getElementById('inputPinOwner').focus(), 50);
+  }
+
+  function tutupModalPin() {
+    document.getElementById('modalPinBg').classList.remove('tampil');
+  }
+
+  function cekPinOwner() {
+    const nilai = document.getElementById('inputPinOwner').value.trim();
+    if (nilai === PIN_OWNER) {
+      localStorage.setItem(KUNCI_UNLOCK_OWNER, '1');
+      terapkanStatusOwner();
+      tutupModalPin();
+      pindahHalaman('ringkasan');
+    } else {
+      document.getElementById('pinSalahPesan').style.display = 'block';
+      document.getElementById('inputPinOwner').value = '';
+      document.getElementById('inputPinOwner').focus();
+    }
+  }
+
+  document.getElementById('inputPinOwner').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') cekPinOwner();
+  });
+
+  terapkanStatusOwner();
+
   // --- Wajib: script ini "type=module" (supaya bisa import Firebase SDK).
   // Module TIDAK otomatis menaruh fungsi ke window, padahal semua tombol di HTML
   // pakai onclick="namaFungsi()" inline. Tanpa baris di bawah ini, semua tombol
   // akan mati total ("namaFungsi is not defined"). Daftar ini harus mencakup
   // SETIAP fungsi yang dipanggil dari atribut onclick/onchange/oninput di HTML.
+  window.tekanLogoHeader = tekanLogoHeader;
+  window.tutupModalPin = tutupModalPin;
+  window.cekPinOwner = cekPinOwner;
   window.unduhBackup = unduhBackup;
   window.muatDariFile = muatDariFile;
   window.pindahHalaman = pindahHalaman;
