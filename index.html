@@ -1217,6 +1217,7 @@
       _sambunganAktif[kunciStatus] = true;
       perbaruiStatusSambungan();
       if (onBerubah) onBerubah();
+      jadwalkanRingkasanKasir();
     }, (err) => {
       console.error('Firestore sync gagal untuk ' + nomorKoleksi, err);
       perbaruiStatusSambungan(true);
@@ -1228,7 +1229,9 @@
     if (!el) return;
     if (adaError) { el.textContent = 'Offline (pakai data HP ini)'; el.parentElement.parentElement.style.background = '#8a5a12'; return; }
     const semuaSiap = Object.values(_sambunganAktif).every(v => v);
-    el.textContent = semuaSiap ? 'Tersambung semua perangkat' : 'Menyambungkan…';
+    const nTunda = ambilAntreanTunda().length;
+    const awalan = nTunda > 0 ? '⏳ ' + nTunda + ' antre kirim · ' : '';
+    el.textContent = awalan + (semuaSiap ? 'Tersambung semua perangkat' : 'Menyambungkan…');
   }
 
   pasangSinkronisasi(KOLEKSI_BATCH, KUNCI_SIMPAN, (d) => { _cacheBatch = d; }, () => {
@@ -1297,13 +1300,107 @@
     if (document.getElementById('halamanJual').classList.contains('tampil')) hitungTotalJual();
   }, 'merk', 'hargaKarung');
 
+  // ============ RINGKASAN KASIR (dibaca kasir.html ringan) ============
+  // Satu dokumen kecil berisi harga+stok+HPP terkini, supaya halaman kasir tidak
+  // perlu Firebase SDK ataupun memuat seluruh riwayat. Diterbitkan ulang otomatis
+  // (debounce 4 detik) setiap ada perubahan data, lokal maupun dari perangkat lain.
+  let _timerRingkasanKasir = null;
+  function jadwalkanRingkasanKasir() {
+    clearTimeout(_timerRingkasanKasir);
+    _timerRingkasanKasir = setTimeout(terbitkanRingkasanKasir, 4000);
+  }
+  async function terbitkanRingkasanKasir() {
+    try {
+      const stokKemasan = hitungStokKemasan();
+      const stokKarung = hitungStokKarungPerMerk();
+      const stokBahanLiteran = hitungStokBahanLiteran();
+      const hargaKemasan = ambilHargaKemasan();
+      const hargaLiteran = ambilHargaLiteran();
+      const batch = ambilSemuaBatch();
+
+      const kemasan = Object.keys(stokKemasan).map(kunci => {
+        const s = stokKemasan[kunci];
+        const [namaProduk, ukuranStr] = kunci.split('|');
+        const ukuran = parseFloat(ukuranStr);
+        const h = hargaKemasan.find(x => x.merk === namaProduk && x.ukuran === ukuran);
+        return { kunci, namaProduk, ukuran, sisaUnit: s.sisaUnit || 0,
+          hppPerUnit: s.hppRataRataPerUnit || 0, hargaPerUnit: h ? h.hargaPerUnit : 0 };
+      });
+
+      const merkKarung = Object.keys(stokKarung).map(merk => {
+        const s = stokKarung[merk];
+        let beratKarung = 50;
+        for (const k of batch) {
+          const m = k.merkList.find(x => x.merk === merk && x.satuan === 'karung');
+          if (m) { beratKarung = m.beratKarung; break; }
+        }
+        const hL = hargaLiteran.find(x => x.merk === merk);
+        return { merk, sisaKg: s.sisaKg || 0, hppPerKg: s.hppTerakhirPerKg || 0, beratKarung,
+          hargaPerKg: cariHargaKarungPerKg(merk) || 0,
+          hargaPerLiter: hL ? hL.hargaPerLiter : 0,
+          rasio: RASIO_KONVERSI[merk] || RASIO_DEFAULT };
+      });
+
+      const bahanLiteran = {};
+      Object.keys(stokBahanLiteran).forEach(j => {
+        bahanLiteran[j] = { sisaPcs: stokBahanLiteran[j].sisaPcs || 0, hargaPerPcs: stokBahanLiteran[j].hargaPerPcs || 0 };
+      });
+
+      const isiTetap = JSON.stringify({ kemasan, merkKarung, bahanLiteran });
+      if (localStorage.getItem('miqbal_ringkasan_terakhir') === isiTetap) return;
+      await Promise.race([
+        setDoc(doc(db, 'ringkasanKasir', 'aktif'), {
+          id: 'aktif', diperbaruiPada: new Date().toISOString(), kemasan, merkKarung, bahanLiteran
+        }),
+        new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 8000))
+      ]);
+      localStorage.setItem('miqbal_ringkasan_terakhir', isiTetap);
+    } catch (e) { console.error('Gagal terbitkan ringkasan kasir', e); }
+  }
+
   // Simpan satu dokumen ke Firestore. id dipakai sebagai nama dokumen supaya
   // "muat dari file" bisa menimpa/menggabung tanpa duplikat.
+  // Pengaman offline (audit 2 Agustus 2026): tanpa ini, setDoc saat sinyal hilang
+  // MENGGANTUNG tanpa batas — tombol "Menyimpan…" beku, lalu transaksi hilang kalau
+  // halaman ditutup. Sekarang: tunggu maks 4 detik; lewat itu transaksi masuk antrean
+  // lokal dan dikirim ulang otomatis saat sinyal balik. Alur pemanggil tetap sukses.
+  const KUNCI_ANTREAN_TUNDA = 'miqbal_antrean_tunda_v1';
+  function ambilAntreanTunda() { try { return JSON.parse(localStorage.getItem(KUNCI_ANTREAN_TUNDA) || '[]'); } catch (e) { return []; } }
+  function setAntreanTunda(a) { localStorage.setItem(KUNCI_ANTREAN_TUNDA, JSON.stringify(a)); perbaruiStatusSambungan(); }
+  let _sedangKirimTunda = false;
+  async function kirimAntreanTunda() {
+    if (_sedangKirimTunda) return;
+    _sedangKirimTunda = true;
+    try {
+      while (ambilAntreanTunda().length > 0) {
+        const item = ambilAntreanTunda()[0];
+        await Promise.race([
+          setDoc(doc(db, item.koleksi, String(item.data.id)), item.data),
+          new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 8000))
+        ]);
+        const sisa = ambilAntreanTunda(); sisa.shift(); setAntreanTunda(sisa);
+      }
+    } catch (e) { /* masih offline — dicoba lagi otomatis */ }
+    _sedangKirimTunda = false;
+  }
+  window.addEventListener('online', kirimAntreanTunda);
+  setInterval(kirimAntreanTunda, 30000);
   async function simpanKeFirestore(nomorKoleksi, data) {
-    await setDoc(doc(db, nomorKoleksi, String(data.id)), data);
+    try {
+      await Promise.race([
+        setDoc(doc(db, nomorKoleksi, String(data.id)), data),
+        new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 4000))
+      ]);
+    } catch (e) {
+      const antre = ambilAntreanTunda();
+      antre.push({ koleksi: nomorKoleksi, data: data });
+      setAntreanTunda(antre);
+    }
+    if (nomorKoleksi !== 'ringkasanKasir') jadwalkanRingkasanKasir();
   }
   async function hapusDariFirestore(nomorKoleksi, id) {
     await deleteDoc(doc(db, nomorKoleksi, String(id)));
+    if (nomorKoleksi !== 'ringkasanKasir') jadwalkanRingkasanKasir();
   }
 
   function ambilSemuaBatch() {
@@ -1319,6 +1416,11 @@
 
   // --- Backup ke file (jaring pengaman kalau localStorage browser hilang) ---
   function unduhBackup(diam) {
+    // Backup otomatis (diam=true) dibatasi 1x per hari per perangkat — sebelumnya tiap
+    // transaksi memicu unduhan file, di HP memunculkan dialog download per jual
+    // (temuan audit 2 Agustus 2026, salah satu biang "lambat" di lapangan).
+    if (diam && localStorage.getItem('miqbal_backup_auto_tanggal') === tanggalLokalIso()) return;
+    if (diam) localStorage.setItem('miqbal_backup_auto_tanggal', tanggalLokalIso());
     const isi = {
       versi: 3,
       diunduhPada: new Date().toISOString(),

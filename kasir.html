@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Kasir — Toko Beras M.IQBAL</title>
+<meta name="description" content="Kasir ringan Toko Beras M.IQBAL — jual cepat, jalan walau sinyal jelek.">
+<meta name="theme-color" content="#3a2e1f">
+<link rel="manifest" href="manifest-kasir.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-kasir-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-kasir-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kasir M.IQBAL">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  /* Palet vintage "cokelat karung goni" — sama dengan sistem utama (konfirmasi My DeV 31 Juli 2026). */
+  :root {
+    --cokelat: #6b4a2e; --cokelat-tua: #3a2e1f; --merah: #a8462f; --emas: #d4a03c;
+    --abu: #f0e6ce; --garis: #c2a868; --teks: #3a2e1f; --kartu: #fbf5e6;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 17px; }
+  body {
+    margin: 0; padding: 0 0 90px 0;
+    font-family: Georgia, 'Times New Roman', serif;
+    background: var(--abu); color: var(--teks);
+  }
+  header {
+    background: var(--cokelat-tua); color: var(--abu); padding: 12px 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 4px double var(--emas);
+  }
+  header h1 { font-size: 1.05rem; margin: 0; letter-spacing: 1px; font-weight: normal; }
+  header h1 b { display: block; font-size: 1.25rem; letter-spacing: 2px; }
+  #chipStatus {
+    font-family: Arial, sans-serif; font-size: .78rem; padding: 5px 10px;
+    border-radius: 999px; background: var(--cokelat); white-space: nowrap; color: #f7efdc;
+  }
+  #chipStatus.offline { background: var(--merah); }
+  main { max-width: 560px; margin: 0 auto; padding: 12px; }
+  .langkah { margin-top: 14px; }
+  .label {
+    font-family: Arial, sans-serif; font-weight: bold; font-size: .95rem;
+    color: var(--cokelat); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid1 { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  button {
+    font-family: Georgia, serif; border: 2px solid var(--garis); border-radius: 12px;
+    background: var(--kartu); color: var(--teks); cursor: pointer; padding: 14px 10px;
+    font-size: 1.05rem; min-height: 64px; line-height: 1.25;
+    box-shadow: 0 1px 3px rgba(58,46,31,.15);
+  }
+  button.pilih { background: var(--cokelat-tua); color: var(--kartu); border-color: var(--cokelat-tua); }
+  button:active { transform: scale(.98); }
+  .tombol-produk { text-align: left; padding: 12px 14px; min-height: 58px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .tombol-produk small { font-family: Arial, sans-serif; font-size: .78rem; color: var(--cokelat); text-align: right; }
+  .tombol-produk.pilih small { color: #e6d9b8; }
+  input[type="number"], input[type="text"] {
+    width: 100%; font-size: 1.5rem; padding: 12px; border: 2px solid var(--garis);
+    border-radius: 12px; background: var(--kartu); color: var(--teks); font-family: Georgia, serif;
+  }
+  .baris-jumlah { display: grid; grid-template-columns: 64px 1fr 64px; gap: 8px; align-items: stretch; }
+  .baris-jumlah button { font-size: 1.6rem; min-height: 56px; padding: 0; }
+  #hargaTampil {
+    background: var(--cokelat-tua); color: var(--kartu); border-radius: 14px; padding: 14px;
+    text-align: center; border: 3px double var(--emas);
+  }
+  #hargaTampil .angka { font-size: 2rem; letter-spacing: 1px; }
+  #hargaTampil .ket { font-family: Arial, sans-serif; font-size: .8rem; color: #d9cba6; margin-top: 4px; min-height: 1em; }
+  #hargaTampil.perhatian { background: var(--merah); }
+  #inputHargaManualWrap { margin-top: 8px; display: none; }
+  #btnSimpan {
+    width: 100%; background: var(--merah); color: var(--kartu); border-color: #7c2d1d;
+    font-size: 1.45rem; min-height: 74px; margin-top: 14px; letter-spacing: 1px;
+  }
+  #btnSimpan:disabled { opacity: .5; }
+  footer {
+    position: fixed; bottom: 0; left: 0; right: 0; background: #e8dcc0;
+    border-top: 2px solid var(--garis); padding: 8px 12px; font-family: Arial, sans-serif;
+    font-size: .8rem; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  #btnKirim { min-height: 40px; padding: 6px 12px; font-size: .85rem; font-family: Arial, sans-serif; border-radius: 8px; }
+  #layarSukses {
+    position: fixed; inset: 0; background: rgba(58,46,31,.96); color: var(--kartu);
+    display: none; align-items: center; justify-content: center; flex-direction: column;
+    font-size: 1.6rem; z-index: 50; text-align: center; padding: 20px;
+  }
+  #layarSukses .cek { font-size: 4rem; color: var(--emas); }
+  .kosong { font-family: Arial, sans-serif; color: var(--cokelat); font-size: .9rem; padding: 10px; background: #e8dcc0; border-radius: 10px; }
+  .peringatan { font-family: Arial, sans-serif; color: #7c2d1d; font-size: .85rem; margin-top: 6px; }
+  .sembunyi { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>TOKO BERAS<b>M.IQBAL — KASIR</b></h1>
+  <span id="chipStatus">Memuat…</span>
+</header>
+<main>
+  <div id="blokPerluOnline" class="kosong sembunyi">
+    Kasir belum punya data harga. Sambungkan internet sekali, halaman ini akan mengambil daftar harga otomatis.
+  </div>
+
+  <div class="langkah">
+    <div class="label">1 · Jenis Jual</div>
+    <div class="grid2">
+      <button type="button" id="jenis-kemasan" onclick="pilihJenis('kemasan')">📦 Stok<br>Kemasan</button>
+      <button type="button" id="jenis-literan" onclick="pilihJenis('literan')">🥤 Jual<br>Literan</button>
+      <button type="button" id="jenis-karung" onclick="pilihJenis('karung')">🌾 Karung<br>Utuh</button>
+      <button type="button" id="jenis-repacking" onclick="pilihJenis('repacking')">⚖️ Repacking<br>Dadakan</button>
+    </div>
+  </div>
+
+  <div class="langkah">
+    <div class="label">2 · Pilih Barang</div>
+    <div id="daftarProduk" class="grid1"><div class="kosong">Memuat daftar barang…</div></div>
+  </div>
+
+  <div class="langkah" id="blokJumlah">
+    <div class="label" id="labelJumlah">3 · Jumlah</div>
+    <div class="baris-jumlah">
+      <button type="button" onclick="ubahJumlah(-1)">−</button>
+      <input type="number" id="inputJumlah" inputmode="decimal" min="0" step="any" placeholder="0" oninput="hitungHarga()">
+      <button type="button" onclick="ubahJumlah(1)">+</button>
+    </div>
+    <div id="wrapNamaProduk" class="sembunyi" style="margin-top:8px;">
+      <input type="text" id="inputNamaProduk" placeholder="Jadi produk apa (nama jual)">
+    </div>
+    <div id="infoKemasanLiteran" class="peringatan"></div>
+  </div>
+
+  <div class="langkah">
+    <div class="label">4 · Harga &amp; Bayar</div>
+    <div id="hargaTampil"><div class="angka" id="hargaAngka">Rp0</div><div class="ket" id="hargaKet">Pilih barang dan isi jumlah.</div></div>
+    <div id="inputHargaManualWrap">
+      <input type="number" id="inputHargaManual" inputmode="numeric" placeholder="Ketik harga total (Rp)" oninput="tampilkanHargaManual()">
+    </div>
+    <button type="button" id="btnHargaManual" style="margin-top:8px; min-height:44px; font-size:.9rem; font-family:Arial,sans-serif;" onclick="aktifkanHargaManual()">✏️ Ubah harga manual</button>
+    <div class="grid2" style="margin-top:10px; grid-template-columns:1fr 1fr 1fr;">
+      <button type="button" id="bayar-Tunai" class="pilih" onclick="pilihBayar('Tunai')">💵 Tunai</button>
+      <button type="button" id="bayar-Qris" onclick="pilihBayar('Qris')">📱 QRIS</button>
+      <button type="button" id="bayar-Kredit" onclick="pilihBayar('Kredit')">📒 Kredit</button>
+    </div>
+    <div id="wrapPelanggan" class="sembunyi" style="margin-top:8px;">
+      <input type="text" id="inputPelanggan" placeholder="Nama pelanggan (wajib untuk kredit)">
+    </div>
+  </div>
+
+  <button type="button" id="btnSimpan" onclick="simpanJual()">SIMPAN ✔</button>
+</main>
+
+<footer>
+  <span id="teksAntrean">Antrean kirim: 0</span>
+  <span id="teksSync"></span>
+  <button type="button" id="btnKirim" onclick="kirimAntrean(true)">Kirim sekarang</button>
+</footer>
+
+<div id="layarSukses"><div class="cek">✔</div><div id="teksSukses">Tersimpan</div></div>
+
+<script>
+'use strict';
+// ================== KASIR RINGAN TOKO BERAS M.IQBAL ==================
+// Tanpa Firebase SDK (543 KB dihemat). Baca 1 dokumen ringkasan, tulis via REST.
+// Offline-first: transaksi masuk antrean lokal dulu, dikirim otomatis di belakang.
+
+var PROYEK = 'toko-beras-m-iqbal';
+var KUNCI_API = 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA';
+var DASAR = 'https://firestore.googleapis.com/v1/projects/' + PROYEK + '/databases/(default)/documents/';
+var K_RINGKASAN = 'kasir_ringkasan_v1';
+var K_ANTREAN = 'kasir_antrean_v1';
+var K_GAGAL = 'kasir_gagal_v1';
+var LABEL_BAHAN = { paperbag5l: 'Paper bag 5L', paperbag10l: 'Paper bag 10L', karungbekas: 'Karung bekas' };
+
+var ringkasan = null;          // data harga+stok+HPP terbitan sistem utama
+var jenisAktif = 'kemasan';
+var barangAktif = null;        // kunci kemasan ATAU nama merk
+var daftarTampil = [];         // kunci tombol barang yang sedang tampil (anti masalah tanda kutip di onclick)
+var bayarAktif = 'Tunai';
+var hargaManualAktif = false;
+var hargaOtomatis = 0;
+
+// ---------- util ----------
+function $(id) { return document.getElementById(id); }
+function esk(s) { if (s === undefined || s === null) return ''; return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function idUnik() { return Date.now() + Math.random(); }
+function tanggalLokalIso(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function rupiah(n) { return 'Rp' + Math.round(n || 0).toLocaleString('id-ID'); }
+function tentukanKemasanLiteran(L) { if (L < 5) return null; if (L === 5) return 'paperbag5l'; if (L <= 12) return 'paperbag10l'; return 'karungbekas'; }
+
+// ---------- konversi Firestore REST ----------
+function keFs(nilai) {
+  if (nilai === null || nilai === undefined) return { nullValue: null };
+  if (typeof nilai === 'boolean') return { booleanValue: nilai };
+  if (typeof nilai === 'number') return Number.isInteger(nilai) ? { integerValue: String(nilai) } : { doubleValue: nilai };
+  if (typeof nilai === 'string') return { stringValue: nilai };
+  if (Array.isArray(nilai)) return { arrayValue: { values: nilai.map(keFs) } };
+  var f = {}; for (var k in nilai) f[k] = keFs(nilai[k]);
+  return { mapValue: { fields: f } };
+}
+function dariFs(v) {
+  if (!v) return null;
+  if ('nullValue' in v) return null;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('integerValue' in v) return parseInt(v.integerValue, 10);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('stringValue' in v) return v.stringValue;
+  if ('timestampValue' in v) return v.timestampValue;
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(dariFs);
+  if ('mapValue' in v) { var o = {}, f = v.mapValue.fields || {}; for (var k in f) o[k] = dariFs(f[k]); return o; }
+  return null;
+}
+
+// ---------- ringkasan (harga/stok terbitan sistem utama) ----------
+function muatRingkasanCache() {
+  try { var t = localStorage.getItem(K_RINGKASAN); if (t) ringkasan = JSON.parse(t); } catch (e) {}
+}
+function segarkanRingkasan() {
+  fetch(DASAR + 'ringkasanKasir/aktif?key=' + KUNCI_API)
+    .then(function (r) { if (!r.ok) throw new Error('status ' + r.status); return r.json(); })
+    .then(function (j) {
+      var o = {}; var f = j.fields || {}; for (var k in f) o[k] = dariFs(f[k]);
+      ringkasan = o;
+      localStorage.setItem(K_RINGKASAN, JSON.stringify(o));
+      gambarUlang();
+      setStatus(true);
+    })
+    .catch(function () { setStatus(navigator.onLine); });
+}
+function stokQueuedKurang(jenis, kunciAtauMerk) {
+  // Kurangi stok tampilan dengan transaksi yang masih di antrean (belum terkirim)
+  var antre = ambilAntrean(), total = 0;
+  antre.forEach(function (a) {
+    if (a.koleksi !== 'penjualan') return;
+    var d = a.data;
+    if (jenis === 'kemasan' && d.jenis === 'kemasan' && (d.namaProduk + '|' + d.ukuranKemasan) === kunciAtauMerk) total += d.jumlahUnit || 0;
+    if (jenis !== 'kemasan' && d.jenis !== 'kemasan' && d.merkSumber === kunciAtauMerk) total += d.totalKg || 0;
+  });
+  return total;
+}
+
+// ---------- antrean offline ----------
+function ambilAntrean() { try { return JSON.parse(localStorage.getItem(K_ANTREAN) || '[]'); } catch (e) { return []; } }
+function simpanAntrean(a) { localStorage.setItem(K_ANTREAN, JSON.stringify(a)); perbaruiFooter(); }
+function ambilGagal() { try { return JSON.parse(localStorage.getItem(K_GAGAL) || '[]'); } catch (e) { return []; } }
+function tambahAntrean(koleksi, data) {
+  var a = ambilAntrean();
+  a.push({ koleksi: koleksi, docId: String(data.id), data: data, dibuat: new Date().toISOString() });
+  simpanAntrean(a);
+}
+var sedangKirim = false;
+function kirimAntrean(manual) {
+  if (sedangKirim) return;
+  var a = ambilAntrean();
+  if (a.length === 0) { if (manual) setStatus(navigator.onLine); return; }
+  sedangKirim = true;
+  var kirimSatu = function () {
+    var a2 = ambilAntrean();
+    if (a2.length === 0) { sedangKirim = false; setStatus(true); catatSync(); return; }
+    var item = a2[0];
+    fetch(DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })() })
+    }).then(function (r) {
+      if (r.ok) { a2.shift(); simpanAntrean(a2); kirimSatu(); return; }
+      if (r.status >= 400 && r.status < 500) {
+        // Ditolak permanen server (bukan soal sinyal) — pindah ke daftar gagal
+        // supaya antrean tidak macet menahan transaksi lain di belakangnya.
+        var g = ambilGagal(); g.push(item);
+        localStorage.setItem(K_GAGAL, JSON.stringify(g));
+        a2.shift(); simpanAntrean(a2); kirimSatu(); return;
+      }
+      throw new Error('status ' + r.status);
+    }).catch(function () { sedangKirim = false; setStatus(false); });
+  };
+  kirimSatu();
+}
+function catatSync() { localStorage.setItem('kasir_sync_terakhir', new Date().toISOString()); perbaruiFooter(); }
+function perbaruiFooter() {
+  var n = ambilAntrean().length, g = ambilGagal().length;
+  $('teksAntrean').textContent = 'Antrean kirim: ' + n;
+  var t = localStorage.getItem('kasir_sync_terakhir');
+  $('teksSync').textContent = g > 0 ? ('⚠ ' + g + ' ditolak — lapor My DeV') : (t ? 'Terkirim ' + t.slice(11, 16) : '');
+  $('btnKirim').style.display = n > 0 ? 'block' : 'none';
+}
+function setStatus(online) {
+  var el = $('chipStatus'); var n = ambilAntrean().length;
+  if (online) { el.textContent = n > 0 ? 'Online · mengirim…' : 'Online ✓'; el.className = ''; }
+  else { el.textContent = n > 0 ? 'Offline · ' + n + ' menunggu' : 'Offline (tetap bisa jual)'; el.className = 'offline'; }
+}
+
+// ---------- gambar pilihan ----------
+function pilihJenis(j) {
+  jenisAktif = j; barangAktif = null; hargaManualAktif = false;
+  ['kemasan', 'literan', 'karung', 'repacking'].forEach(function (x) { $('jenis-' + x).classList.toggle('pilih', x === j); });
+  $('labelJumlah').textContent = j === 'kemasan' ? '3 · Jumlah (unit)' : j === 'literan' ? '3 · Jumlah (liter)' : j === 'karung' ? '3 · Jumlah (karung)' : '3 · Berat (kg)';
+  $('wrapNamaProduk').classList.toggle('sembunyi', j !== 'repacking');
+  $('inputJumlah').value = '';
+  gambarUlang(); hitungHarga();
+}
+function pilihBarangIdx(i) {
+  barangAktif = daftarTampil[i] || null; hargaManualAktif = false;
+  if (jenisAktif === 'repacking' && barangAktif && !$('inputNamaProduk').value.trim()) $('inputNamaProduk').value = barangAktif;
+  gambarUlang(); hitungHarga();
+}
+function pilihBayar(c) {
+  bayarAktif = c;
+  ['Tunai', 'Qris', 'Kredit'].forEach(function (x) { $('bayar-' + x).classList.toggle('pilih', x === c); });
+  $('wrapPelanggan').classList.toggle('sembunyi', c !== 'Kredit');
+}
+function ubahJumlah(delta) {
+  var el = $('inputJumlah'); var v = parseFloat(el.value) || 0;
+  v = Math.max(0, v + delta); el.value = v || '';
+  hitungHarga();
+}
+function gambarUlang() {
+  var wadah = $('daftarProduk');
+  $('blokPerluOnline').classList.toggle('sembunyi', !!ringkasan);
+  daftarTampil = [];
+  if (!ringkasan) { wadah.innerHTML = '<div class="kosong">Belum ada data. Sambungkan internet sekali dulu.</div>'; return; }
+  var html = '';
+  if (jenisAktif === 'kemasan') {
+    var daftar = ringkasan.kemasan || [];
+    if (daftar.length === 0) html = '<div class="kosong">Belum ada produk kemasan. Catat lewat sistem lengkap.</div>';
+    daftar.forEach(function (p, i) {
+      daftarTampil.push(p.kunci);
+      var sisa = (p.sisaUnit || 0) - stokQueuedKurang('kemasan', p.kunci);
+      html += '<button type="button" class="tombol-produk' + (barangAktif === p.kunci ? ' pilih' : '') + '" onclick="pilihBarangIdx(' + i + ')">' +
+        '<span>' + esk(p.namaProduk) + ' ' + p.ukuran + 'kg</span><small>' + rupiah(p.hargaPerUnit) + '/unit<br>sisa ' + sisa + ' unit</small></button>';
+    });
+  } else {
+    var daftarM = ringkasan.merkKarung || [];
+    if (daftarM.length === 0) html = '<div class="kosong">Belum ada stok karung. Catat batch masuk lewat sistem lengkap.</div>';
+    daftarM.forEach(function (m, i) {
+      daftarTampil.push(m.merk);
+      var sisa = Math.round(((m.sisaKg || 0) - stokQueuedKurang(jenisAktif, m.merk)) * 10) / 10;
+      var hargaTeks = jenisAktif === 'literan'
+        ? (m.hargaPerLiter ? rupiah(m.hargaPerLiter) + '/L' : 'harga belum ada')
+        : (m.hargaPerKg ? rupiah(m.hargaPerKg) + '/kg' : 'harga belum ada');
+      html += '<button type="button" class="tombol-produk' + (barangAktif === m.merk ? ' pilih' : '') + '" onclick="pilihBarangIdx(' + i + ')">' +
+        '<span>' + esk(m.merk) + '</span><small>' + hargaTeks + '<br>sisa ' + sisa + ' kg</small></button>';
+    });
+  }
+  wadah.innerHTML = html;
+}
+
+// ---------- harga ----------
+function cariBarang() {
+  if (!ringkasan || !barangAktif) return null;
+  if (jenisAktif === 'kemasan') return (ringkasan.kemasan || []).find(function (p) { return p.kunci === barangAktif; }) || null;
+  return (ringkasan.merkKarung || []).find(function (m) { return m.merk === barangAktif; }) || null;
+}
+function hitungHarga() {
+  var jml = parseFloat($('inputJumlah').value) || 0;
+  var b = cariBarang();
+  var total = 0, ket = '';
+  $('infoKemasanLiteran').textContent = '';
+  if (!b) { ket = 'Pilih barang dulu.'; }
+  else if (jml <= 0) { ket = 'Isi jumlah.'; }
+  else if (jenisAktif === 'kemasan') {
+    if (!b.hargaPerUnit) ket = '⚠ Harga belum ada di Daftar Harga. Pakai harga manual.';
+    else { total = Math.round(b.hargaPerUnit * jml); ket = rupiah(b.hargaPerUnit) + '/unit × ' + jml; }
+  } else if (jenisAktif === 'literan') {
+    if (!b.hargaPerLiter) ket = '⚠ Harga belum ada di Daftar Harga. Pakai harga manual.';
+    else { total = Math.round(b.hargaPerLiter * jml); ket = rupiah(b.hargaPerLiter) + '/L × ' + jml + ' L'; }
+    var jk = tentukanKemasanLiteran(jml);
+    if (jk) $('infoKemasanLiteran').textContent = 'Kemasan otomatis: ' + LABEL_BAHAN[jk];
+  } else if (jenisAktif === 'repacking') {
+    if (!b.hargaPerKg) ket = '⚠ Harga belum ada di Daftar Harga. Pakai harga manual.';
+    else { total = Math.round(b.hargaPerKg * jml); ket = rupiah(b.hargaPerKg) + '/kg × ' + jml + ' kg'; }
+  } else if (jenisAktif === 'karung') {
+    var berat = b.beratKarung || 50;
+    if (!b.hargaPerKg) ket = '⚠ Harga belum ada di Daftar Harga. Pakai harga manual.';
+    else { total = Math.round(b.hargaPerKg * jml * berat); ket = rupiah(b.hargaPerKg) + '/kg × ' + jml + ' krg × ' + berat + 'kg'; }
+  }
+  hargaOtomatis = total;
+  if (!hargaManualAktif) {
+    $('hargaAngka').textContent = rupiah(total);
+    $('hargaKet').textContent = ket;
+    $('hargaTampil').className = total > 0 ? '' : 'perhatian';
+  }
+}
+function aktifkanHargaManual() {
+  hargaManualAktif = true;
+  $('inputHargaManualWrap').style.display = 'block';
+  $('inputHargaManual').value = hargaOtomatis || '';
+  $('inputHargaManual').focus();
+  tampilkanHargaManual();
+}
+function tampilkanHargaManual() {
+  var v = parseFloat($('inputHargaManual').value) || 0;
+  $('hargaAngka').textContent = rupiah(v);
+  $('hargaKet').textContent = 'Harga diketik manual';
+  $('hargaTampil').className = v > 0 ? '' : 'perhatian';
+}
+function hargaFinal() { return hargaManualAktif ? (parseFloat($('inputHargaManual').value) || 0) : hargaOtomatis; }
+
+// ---------- simpan ----------
+function simpanJual() {
+  var b = cariBarang();
+  var jml = parseFloat($('inputJumlah').value) || 0;
+  var harga = hargaFinal();
+  var nama = $('inputPelanggan').value.trim();
+  if (!b) { alert('Pilih barang dulu.'); return; }
+  if (jml <= 0) { alert('Isi jumlah dulu.'); return; }
+  if (harga <= 0) { alert('Harga masih nol. Kalau harga belum ada di katalog, pakai tombol "Ubah harga manual".'); return; }
+  if (bayarAktif === 'Kredit' && !nama) { alert('Isi nama pelanggan untuk penjualan kredit.'); return; }
+
+  var trx = null;
+  if (jenisAktif === 'kemasan') {
+    var sisaU = (b.sisaUnit || 0) - stokQueuedKurang('kemasan', b.kunci);
+    if (jml > sisaU && !confirm('Stok tercatat sisa ' + sisaU + ' unit, ini jual ' + jml + '. Tetap simpan?')) return;
+    trx = { jenis: 'kemasan', namaProduk: b.namaProduk, ukuranKemasan: b.ukuran, jumlahUnit: jml,
+      totalKg: b.ukuran * jml, hppTotalSaatJual: Math.round((b.hppPerUnit || 0) * jml) };
+  } else if (jenisAktif === 'literan') {
+    var rasio = b.rasio || 0.82;
+    var totalKg = Math.round(jml * rasio * 1000) / 1000;
+    var sisaL = (b.sisaKg || 0) - stokQueuedKurang('literan', b.merk);
+    if (totalKg > sisaL && !confirm('Stok tercatat sisa ' + sisaL + ' kg, ini butuh ' + totalKg + ' kg. Tetap simpan?')) return;
+    var jk = tentukanKemasanLiteran(jml);
+    var biayaKemasan = 0, jmlKemasan = 0;
+    if (jk) {
+      jmlKemasan = 1;
+      var bahan = (ringkasan.bahanLiteran || {})[jk] || {};
+      biayaKemasan = (bahan.hargaPerPcs || 0) * jmlKemasan;
+    }
+    trx = { jenis: 'literan', merkSumber: b.merk, jumlahLiter: jml, rasioPakai: rasio, totalKg: totalKg,
+      namaProduk: b.merk, hppTotalSaatJual: Math.round((b.hppPerKg || 0) * totalKg) + biayaKemasan,
+      kemasanLiteran: jk, biayaKemasanLiteran: biayaKemasan, jumlahKemasanLiteranDipakai: jmlKemasan };
+  } else if (jenisAktif === 'repacking') {
+    var namaP = $('inputNamaProduk').value.trim() || b.merk;
+    var sisaR = (b.sisaKg || 0) - stokQueuedKurang('repacking', b.merk);
+    if (jml > sisaR && !confirm('Stok tercatat sisa ' + sisaR + ' kg, ini jual ' + jml + ' kg. Tetap simpan?')) return;
+    trx = { jenis: 'repacking', merkSumber: b.merk, namaProduk: namaP, totalKg: jml,
+      hppTotalSaatJual: Math.round((b.hppPerKg || 0) * jml) };
+  } else if (jenisAktif === 'karung') {
+    var berat = b.beratKarung || 50;
+    var totKg = jml * berat;
+    var sisaK = (b.sisaKg || 0) - stokQueuedKurang('karung', b.merk);
+    if (totKg > sisaK && !confirm('Stok tercatat sisa ' + sisaK + ' kg, ini butuh ' + totKg + ' kg. Tetap simpan?')) return;
+    trx = { jenis: 'karung', merkSumber: b.merk, jumlahKarung: jml, beratKarungAcuan: berat, totalKg: totKg,
+      namaProduk: b.merk + ' (karung utuh)', hppTotalSaatJual: Math.round((b.hppPerKg || 0) * totKg) };
+  }
+  if (!trx) return;
+
+  trx.id = idUnik();
+  trx.tanggal = tanggalLokalIso();
+  trx.jam = new Date().toTimeString().slice(0, 5);
+  trx.hargaTotal = harga;
+  trx.caraBayar = bayarAktif;
+  trx.namaPelanggan = bayarAktif === 'Kredit' ? nama : '';
+
+  tambahAntrean('penjualan', trx);
+  if (trx.jenis === 'literan' && trx.kemasanLiteran && trx.jumlahKemasanLiteranDipakai > 0) {
+    tambahAntrean('stokBahanLiteran', { id: trx.id + 1, tipe: 'pakai', jenis: trx.kemasanLiteran,
+      jumlah: trx.jumlahKemasanLiteranDipakai, hargaTotal: 0, tanggal: trx.tanggal,
+      catatan: 'Otomatis dari penjualan literan id ' + trx.id });
+  }
+  kirimAntrean(false);
+
+  // layar sukses + reset
+  $('teksSukses').textContent = 'Tersimpan — ' + rupiah(harga);
+  $('layarSukses').style.display = 'flex';
+  setTimeout(function () { $('layarSukses').style.display = 'none'; }, 1200);
+  $('inputJumlah').value = '';
+  $('inputNamaProduk').value = '';
+  $('inputPelanggan').value = '';
+  $('inputHargaManual').value = '';
+  hargaManualAktif = false;
+  $('inputHargaManualWrap').style.display = 'none';
+  barangAktif = null;
+  gambarUlang(); hitungHarga(); perbaruiFooter();
+}
+
+// ---------- mulai ----------
+window.pilihJenis = pilihJenis; window.pilihBarangIdx = pilihBarangIdx; window.pilihBayar = pilihBayar;
+window.ubahJumlah = ubahJumlah; window.hitungHarga = hitungHarga; window.simpanJual = simpanJual;
+window.kirimAntrean = kirimAntrean; window.aktifkanHargaManual = aktifkanHargaManual;
+window.tampilkanHargaManual = tampilkanHargaManual;
+
+muatRingkasanCache();
+pilihJenis('kemasan');
+perbaruiFooter();
+setStatus(navigator.onLine);
+segarkanRingkasan();
+kirimAntrean(false);
+window.addEventListener('online', function () { setStatus(true); kirimAntrean(false); segarkanRingkasan(); });
+window.addEventListener('offline', function () { setStatus(false); });
+setInterval(function () { if (navigator.onLine) { kirimAntrean(false); } }, 25000);
+setInterval(segarkanRingkasan, 120000);
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw-kasir.js').catch(function () {}); }
+</script>
+</body>
+</html>

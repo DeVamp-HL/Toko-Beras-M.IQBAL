@@ -1,13 +1,13 @@
 {
-  "name": "Catat Uang Masuk - Toko M.IQBAL",
+  "name": "Kasir Toko Beras M.IQBAL",
   "short_name": "Kasir M.IQBAL",
-  "description": "Catat nominal uang masuk harian saat toko ramai — untuk Gono, Hasan, dan Ben.",
-  "start_url": "./kasir-darurat-nominal.html",
+  "description": "Kasir cepat Toko Beras M.IQBAL — jual kemasan, literan, karung, repacking. Jalan walau sinyal jelek.",
+  "start_url": "./kasir.html",
   "id": "./kasir-darurat-nominal.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#ece3d0",
-  "theme_color": "#6b7a4f",
+  "background_color": "#f0e6ce",
+  "theme_color": "#3a2e1f",
   "orientation": "portrait",
   "lang": "id",
   "icons": [
