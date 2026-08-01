@@ -171,11 +171,8 @@
 
 <div id="layarPilihOperator">
   <div class="label" style="font-size:1.1rem; margin-bottom:14px;">SIAPA YANG JAGA KASIR?</div>
-  <div class="grid1">
-    <button type="button" onclick="pilihOperator('Gono')">👤 Gono</button>
-    <button type="button" onclick="pilihOperator('Hasan')">👤 Hasan</button>
-    <button type="button" onclick="pilihOperator('Ben Mohsein')">👤 Ben</button>
-  </div>
+  <div class="grid1" id="daftarOperator"></div>
+  <p style="font-family:Arial,sans-serif; font-size:.8rem; color:var(--cokelat); margin-top:12px;">Yang tertulis "libur" diatur owner lewat sistem lengkap.</p>
 </div>
 <div id="layarTutup">
   <div style="font-size:3.2rem;">🔒</div>
@@ -197,6 +194,8 @@ var K_RINGKASAN = 'kasir_ringkasan_v1';
 var K_ANTREAN = 'kasir_antrean_v1';
 var K_GAGAL = 'kasir_gagal_v1';
 var K_OPERATOR = 'kasir_operator_v1';
+var K_ROSTER = 'kasir_roster_v1';
+var NAMA_OPERATOR = ['Gono', 'Hasan', 'Ben Mohsein'];
 var JAM_BUKA = 5, JAM_TUTUP = 19; // input hanya 05.00-18.59 — di luar itu terkunci (anak di rumah tidak bisa ketik-ketik)
 var LABEL_BAHAN = { paperbag5l: 'Paper bag 5L', paperbag10l: 'Paper bag 10L', karungbekas: 'Karung bekas' };
 
@@ -243,7 +242,40 @@ function dariFs(v) {
 function muatRingkasanCache() {
   try { var t = localStorage.getItem(K_RINGKASAN); if (t) ringkasan = JSON.parse(t); } catch (e) {}
 }
+function rosterKasir() {
+  try { var t = localStorage.getItem(K_ROSTER); if (t) return JSON.parse(t); } catch (e) {}
+  return null; // belum ada pengaturan — semua dianggap aktif
+}
+function infoOperator(nama) {
+  var r = rosterKasir();
+  if (!r || !r.operator || !r.operator[nama]) return { aktif: true, pin: null };
+  return { aktif: r.operator[nama].aktif !== false, pin: r.operator[nama].pin || null };
+}
+function segarkanRoster() {
+  fetch(DASAR + 'pengaturan/aksesKasir?key=' + KUNCI_API, { cache: 'no-store' })
+    .then(function (r) {
+      if (r.status === 404) { localStorage.removeItem(K_ROSTER); return null; }
+      if (!r.ok) return null; return r.json();
+    })
+    .then(function (j) {
+      if (!j) { cekOperatorMasihAktif(); return; }
+      var o = {}; var f = j.fields || {}; for (var kk in f) o[kk] = dariFs(f[kk]);
+      localStorage.setItem(K_ROSTER, JSON.stringify(o));
+      cekOperatorMasihAktif();
+    })
+    .catch(function () {});
+}
+function cekOperatorMasihAktif() {
+  var nama = operatorAktif();
+  if (nama && !infoOperator(nama).aktif) {
+    localStorage.removeItem(K_OPERATOR);
+    perbaruiChipOperator();
+    bukaPilihOperator();
+  }
+  gambarPilihanOperator();
+}
 function segarkanRingkasan() {
+  segarkanRoster();
   fetch(DASAR + 'ringkasanKasir/aktif?key=' + KUNCI_API)
     .then(function (r) { if (!r.ok) throw new Error('status ' + r.status); return r.json(); })
     .then(function (j) {
@@ -319,12 +351,32 @@ function setStatus(online) {
 
 // ---------- operator & jam operasional ----------
 function operatorAktif() { return localStorage.getItem(K_OPERATOR) || ''; }
-function pilihOperator(nama) {
+function gambarPilihanOperator() {
+  var wadah = $('daftarOperator');
+  if (!wadah) return;
+  wadah.innerHTML = NAMA_OPERATOR.map(function (n, i) {
+    var inf = infoOperator(n);
+    var label = n === 'Ben Mohsein' ? 'Ben' : n;
+    if (!inf.aktif) return '<button type="button" style="opacity:.45;" onclick="alert(\'' + label + ' sedang libur \u2014 pilih yang bertugas.\')">👤 ' + label + ' (libur)</button>';
+    return '<button type="button" onclick="pilihOperatorIdx(' + i + ')">👤 ' + label + '</button>';
+  }).join('');
+}
+function pilihOperatorIdx(i) {
+  var nama = NAMA_OPERATOR[i];
+  var inf = infoOperator(nama);
+  if (!inf.aktif) return;
+  // PIN pribadi: cegah anak/orang lain asal pilih nama orang. Hanya ditanya saat ganti nama,
+  // bukan tiap transaksi. Kalau roster belum pernah disetel owner, tanpa PIN dulu.
+  if (inf.pin) {
+    var v = prompt('PIN ' + (nama === 'Ben Mohsein' ? 'Ben' : nama) + ':');
+    if (v === null) return;
+    if (v.trim() !== inf.pin) { alert('PIN salah.'); return; }
+  }
   localStorage.setItem(K_OPERATOR, nama);
   $('layarPilihOperator').style.display = 'none';
   perbaruiChipOperator();
 }
-function bukaPilihOperator() { $('layarPilihOperator').style.display = 'flex'; }
+function bukaPilihOperator() { gambarPilihanOperator(); $('layarPilihOperator').style.display = 'flex'; }
 function perbaruiChipOperator() { $('chipOperator').textContent = '👤 ' + (operatorAktif() || 'pilih'); }
 function cekJamOperasional() {
   var jam = new Date().getHours();
@@ -443,6 +495,7 @@ function hargaFinal() { return hargaManualAktif ? (parseFloat($('inputHargaManua
 function simpanJual() {
   if (!cekJamOperasional()) return;
   if (!operatorAktif()) { bukaPilihOperator(); return; }
+  if (!infoOperator(operatorAktif()).aktif) { localStorage.removeItem(K_OPERATOR); bukaPilihOperator(); return; }
   var b = cariBarang();
   var jml = parseFloat($('inputJumlah').value) || 0;
   var harga = hargaFinal();
@@ -524,7 +577,7 @@ window.pilihJenis = pilihJenis; window.pilihBarangIdx = pilihBarangIdx; window.p
 window.ubahJumlah = ubahJumlah; window.hitungHarga = hitungHarga; window.simpanJual = simpanJual;
 window.kirimAntrean = kirimAntrean; window.aktifkanHargaManual = aktifkanHargaManual;
 window.tampilkanHargaManual = tampilkanHargaManual;
-window.pilihOperator = pilihOperator; window.bukaPilihOperator = bukaPilihOperator;
+window.pilihOperatorIdx = pilihOperatorIdx; window.bukaPilihOperator = bukaPilihOperator;
 
 muatRingkasanCache();
 perbaruiChipOperator();

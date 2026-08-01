@@ -369,6 +369,21 @@
   <button type="button" id="tombolTema" onclick="gantiTema()">🌙 Gelap</button>
 </header>
 
+<div class="modal-pin-bg" id="modalJagaBg">
+  <div class="modal-pin-kotak" style="max-width:340px; text-align:left;">
+    <h3>🗓️ Siapa yang bertugas</h3>
+    <p>Yang Libur tidak bisa dipilih di kasir & tidak bisa input. Berlaku ke semua HP begitu online.</p>
+    <div id="isiModalJaga"></div>
+    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:14px;">
+      <input type="checkbox" id="cekBenSistem" style="width:20px; height:20px;">
+      Ben boleh buka Sistem Lengkap (matikan saat Ben liburan)
+    </label>
+    <div class="modal-pin-tombol">
+      <button type="button" onclick="tutupModalJaga()">Batal</button>
+      <button type="button" onclick="simpanModalJaga()" style="background:var(--hijau); color:#fff;">Simpan</button>
+    </div>
+  </div>
+</div>
 <div class="modal-pin-bg" id="modalPinBg">
   <div class="modal-pin-kotak">
     <h3>🔒 Khusus Owner</h3>
@@ -405,6 +420,7 @@
   <button id="tabStok" onclick="pindahHalaman('stok')">🌾 Stok</button>
   <button id="tabLaba" class="tab-owner" onclick="pindahHalaman('laba')">📈 Laba</button>
   <button id="tabHarga" class="tab-owner" onclick="pindahHalaman('harga')">🏷️ Harga</button>
+  <button id="tabJaga" class="tab-owner" onclick="bukaModalJaga()">🗓️ Jaga</button>
   <button id="tabBulanan" onclick="pindahHalaman('bulanan')">🗓️ Bulanan</button>
   <button id="tabHarian" onclick="pindahHalaman('harian')">🧾 Harian</button>
 </nav>
@@ -3463,6 +3479,13 @@
       el.classList.add('tampil');
       return;
     }
+    const roster = (function () { try { return JSON.parse(localStorage.getItem('miqbal_roster_v1') || 'null'); } catch (e) { return null; } })();
+    if (roster && roster.benSistemLengkap === false) {
+      pesan.textContent = 'Akses sistem sedang dimatikan owner (Ben libur). Hanya owner yang bisa masuk.';
+      blokPin.style.display = 'none';
+      el.classList.add('tampil');
+      return;
+    }
     blokPin.style.display = 'block';
     pesan.textContent = 'Khusus Ben & My DeV. Masukkan PIN masuk.';
     el.classList.toggle('tampil', localStorage.getItem(KUNCI_GERBANG) !== 'ya');
@@ -3493,6 +3516,72 @@
   setInterval(terapkanGerbang, 60000);
   window.cekPinGerbang = cekPinGerbang;
   window.gerbangJalurOwner = gerbangJalurOwner;
+
+  // ===== Roster jaga (2 Agustus 2026): saklar per-orang, dikendalikan owner dari tab Jaga =====
+  // Dokumen Firestore pengaturan/aksesKasir. Gono/Hasan gantian bulanan; Ben bisa liburan.
+  // Yang Libur: tidak bisa dipilih & tidak bisa input di kasir; saklar Ben mematikan PIN masuk 1808.
+  const NAMA_OPERATOR_JAGA = ['Gono', 'Hasan', 'Ben Mohsein'];
+  const PIN_DEFAULT_JAGA = { 'Gono': '1111', 'Hasan': '2222', 'Ben Mohsein': '3333' };
+  const KUNCI_ROSTER = 'miqbal_roster_v1';
+  function rosterCache() {
+    try { const t2 = localStorage.getItem(KUNCI_ROSTER); if (t2) return JSON.parse(t2); } catch (e) {}
+    return null;
+  }
+  async function segarkanRoster() {
+    try {
+      const r = await fetch('https://firestore.googleapis.com/v1/projects/toko-beras-m-iqbal/databases/(default)/documents/pengaturan/aksesKasir?key=AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA', { cache: 'no-store' });
+      if (r.status === 404) { localStorage.removeItem(KUNCI_ROSTER); return; }
+      if (!r.ok) return;
+      const j = await r.json();
+      const baca = (v) => {
+        if (!v) return null;
+        if ('booleanValue' in v) return v.booleanValue;
+        if ('stringValue' in v) return v.stringValue;
+        if ('mapValue' in v) { const o = {}; const f = v.mapValue.fields || {}; for (const k in f) o[k] = baca(f[k]); return o; }
+        return null;
+      };
+      const o = {}; const f = j.fields || {}; for (const k in f) o[k] = baca(f[k]);
+      localStorage.setItem(KUNCI_ROSTER, JSON.stringify(o));
+      terapkanGerbang();
+    } catch (e) { /* offline — pakai cache */ }
+  }
+  function bukaModalJaga() {
+    const r = rosterCache();
+    const op = (r && r.operator) || {};
+    document.getElementById('isiModalJaga').innerHTML = NAMA_OPERATOR_JAGA.map((n, i) => {
+      const d = op[n] || { aktif: true, pin: PIN_DEFAULT_JAGA[n] };
+      return `<div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+        <b style="flex:1;">${n}</b>
+        <label style="display:flex; align-items:center; gap:4px; font-size:13px;">
+          <input type="checkbox" id="jagaAktif${i}" ${d.aktif !== false ? 'checked' : ''} style="width:20px; height:20px;"> Aktif
+        </label>
+        <input type="text" id="jagaPin${i}" value="${(d.pin || PIN_DEFAULT_JAGA[n])}" maxlength="6" inputmode="numeric"
+          style="width:70px; text-align:center; padding:6px; border:1.5px solid var(--garis); border-radius:8px;" title="PIN pribadi">
+      </div>`;
+    }).join('');
+    document.getElementById('cekBenSistem').checked = !r || r.benSistemLengkap !== false;
+    document.getElementById('modalJagaBg').classList.add('tampil');
+  }
+  function tutupModalJaga() { document.getElementById('modalJagaBg').classList.remove('tampil'); }
+  async function simpanModalJaga() {
+    const operator = {};
+    NAMA_OPERATOR_JAGA.forEach((n, i) => {
+      operator[n] = {
+        aktif: document.getElementById('jagaAktif' + i).checked,
+        pin: (document.getElementById('jagaPin' + i).value.trim() || PIN_DEFAULT_JAGA[n])
+      };
+    });
+    const data = { id: 'aksesKasir', operator, benSistemLengkap: document.getElementById('cekBenSistem').checked, diubahPada: new Date().toISOString() };
+    await simpanKeFirestore('pengaturan', data);
+    localStorage.setItem(KUNCI_ROSTER, JSON.stringify(data));
+    tutupModalJaga();
+    alert('Tersimpan. Berlaku di semua HP begitu HP-nya online.');
+  }
+  window.bukaModalJaga = bukaModalJaga;
+  window.tutupModalJaga = tutupModalJaga;
+  window.simpanModalJaga = simpanModalJaga;
+  setTimeout(segarkanRoster, 0);
+  setInterval(segarkanRoster, 300000);
   const KUNCI_UNLOCK_OWNER = 'miqbal_owner_unlock';
   let hitungTekanLogo = 0;
   let waktuTekanLogoTerakhir = 0;
