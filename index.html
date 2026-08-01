@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Sistem Toko — Toko Beras M.IQBAL</title>
 <link rel="manifest" href="manifest-sistem.json">
 <meta name="theme-color" content="#3a2e1f">
@@ -346,6 +346,15 @@
   #gerbangSistem .tombol-gerbang { margin-top: 12px; padding: 14px 22px; border-radius: 12px; border: none; font-size: 1.1rem; background: var(--merah); color: #fff; }
   #gerbangSistem a.kasir-link { display: inline-block; margin-top: 26px; background: var(--emas); color: var(--hijau-tua); padding: 16px 26px; border-radius: 14px; font-size: 1.2rem; text-decoration: none; font-weight: bold; }
   #gerbangSistem .owner-kecil { margin-top: 30px; background: none; border: 1px solid var(--garis); color: var(--abu); padding: 8px 14px; border-radius: 10px; font-size: .85rem; }
+  /* ===== Penyesuaian perangkat owner (2 Agustus 2026) ===== */
+  /* iPhone (mode terpasang/PWA): beri ruang notch & garis home — env() diabaikan browser lama. */
+  header { padding-top: calc(18px + env(safe-area-inset-top, 0px)); }
+  body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  /* Layar lebar (Mac mini / monitor): konten melebar, tidak lagi sekolom sempit 680px. */
+  @media (min-width: 1100px) {
+    main { max-width: 960px; }
+    header { padding-left: calc((100% - 960px) / 2 + 16px); padding-right: calc((100% - 960px) / 2 + 16px); }
+  }
 </style>
 </head>
 <body>
