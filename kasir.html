@@ -91,12 +91,24 @@
   .kosong { font-family: Arial, sans-serif; color: var(--cokelat); font-size: .9rem; padding: 10px; background: #e8dcc0; border-radius: 10px; }
   .peringatan { font-family: Arial, sans-serif; color: #7c2d1d; font-size: .85rem; margin-top: 6px; }
   .sembunyi { display: none !important; }
+  #layarPilihOperator, #layarTutup {
+    position: fixed; inset: 0; background: var(--abu); z-index: 60;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px; text-align: center;
+  }
+  #layarTutup { z-index: 70; background: var(--cokelat-tua); color: var(--abu); }
+  #layarPilihOperator .grid1 { width: 100%; max-width: 360px; }
+  #chipOperator {
+    font-family: Arial, sans-serif; font-size: .78rem; padding: 5px 10px;
+    border-radius: 999px; background: var(--emas); color: var(--cokelat-tua);
+    white-space: nowrap; margin-right: 6px; cursor: pointer;
+  }
 </style>
 </head>
 <body>
 <header>
   <h1>TOKO BERAS<b>M.IQBAL — KASIR</b></h1>
-  <span id="chipStatus">Memuat…</span>
+  <span style="display:flex; align-items:center;"><span id="chipOperator" onclick="bukaPilihOperator()">👤 —</span><span id="chipStatus">Memuat…</span></span>
 </header>
 <main>
   <div id="blokPerluOnline" class="kosong sembunyi">
@@ -157,6 +169,19 @@
   <button type="button" id="btnKirim" onclick="kirimAntrean(true)">Kirim sekarang</button>
 </footer>
 
+<div id="layarPilihOperator">
+  <div class="label" style="font-size:1.1rem; margin-bottom:14px;">SIAPA YANG JAGA KASIR?</div>
+  <div class="grid1">
+    <button type="button" onclick="pilihOperator('Gono')">👤 Gono</button>
+    <button type="button" onclick="pilihOperator('Hasan')">👤 Hasan</button>
+    <button type="button" onclick="pilihOperator('Ben Mohsein')">👤 Ben</button>
+  </div>
+</div>
+<div id="layarTutup">
+  <div style="font-size:3.2rem;">🔒</div>
+  <h2 style="margin:10px 0 4px; font-weight:normal; letter-spacing:1px;">Kasir Tutup</h2>
+  <p style="font-family:Arial,sans-serif; font-size:.95rem; margin:0;">Buka otomatis jam 05.00 pagi.<br>Transaksi yang belum terkirim tetap dikirim sendiri.</p>
+</div>
 <div id="layarSukses"><div class="cek">✔</div><div id="teksSukses">Tersimpan</div></div>
 
 <script>
@@ -171,6 +196,8 @@ var DASAR = 'https://firestore.googleapis.com/v1/projects/' + PROYEK + '/databas
 var K_RINGKASAN = 'kasir_ringkasan_v1';
 var K_ANTREAN = 'kasir_antrean_v1';
 var K_GAGAL = 'kasir_gagal_v1';
+var K_OPERATOR = 'kasir_operator_v1';
+var JAM_BUKA = 5, JAM_TUTUP = 19; // input hanya 05.00-18.59 — di luar itu terkunci (anak di rumah tidak bisa ketik-ketik)
 var LABEL_BAHAN = { paperbag5l: 'Paper bag 5L', paperbag10l: 'Paper bag 10L', karungbekas: 'Karung bekas' };
 
 var ringkasan = null;          // data harga+stok+HPP terbitan sistem utama
@@ -290,6 +317,22 @@ function setStatus(online) {
   else { el.textContent = n > 0 ? 'Offline · ' + n + ' menunggu' : 'Offline (tetap bisa jual)'; el.className = 'offline'; }
 }
 
+// ---------- operator & jam operasional ----------
+function operatorAktif() { return localStorage.getItem(K_OPERATOR) || ''; }
+function pilihOperator(nama) {
+  localStorage.setItem(K_OPERATOR, nama);
+  $('layarPilihOperator').style.display = 'none';
+  perbaruiChipOperator();
+}
+function bukaPilihOperator() { $('layarPilihOperator').style.display = 'flex'; }
+function perbaruiChipOperator() { $('chipOperator').textContent = '👤 ' + (operatorAktif() || 'pilih'); }
+function cekJamOperasional() {
+  var jam = new Date().getHours();
+  var tutup = (jam < JAM_BUKA || jam >= JAM_TUTUP);
+  $('layarTutup').style.display = tutup ? 'flex' : 'none';
+  return !tutup;
+}
+
 // ---------- gambar pilihan ----------
 function pilihJenis(j) {
   jenisAktif = j; barangAktif = null; hargaManualAktif = false;
@@ -398,6 +441,8 @@ function hargaFinal() { return hargaManualAktif ? (parseFloat($('inputHargaManua
 
 // ---------- simpan ----------
 function simpanJual() {
+  if (!cekJamOperasional()) return;
+  if (!operatorAktif()) { bukaPilihOperator(); return; }
   var b = cariBarang();
   var jml = parseFloat($('inputJumlah').value) || 0;
   var harga = hargaFinal();
@@ -450,6 +495,7 @@ function simpanJual() {
   trx.hargaTotal = harga;
   trx.caraBayar = bayarAktif;
   trx.namaPelanggan = bayarAktif === 'Kredit' ? nama : '';
+  trx.operator = operatorAktif();
 
   tambahAntrean('penjualan', trx);
   if (trx.jenis === 'literan' && trx.kemasanLiteran && trx.jumlahKemasanLiteranDipakai > 0) {
@@ -478,8 +524,13 @@ window.pilihJenis = pilihJenis; window.pilihBarangIdx = pilihBarangIdx; window.p
 window.ubahJumlah = ubahJumlah; window.hitungHarga = hitungHarga; window.simpanJual = simpanJual;
 window.kirimAntrean = kirimAntrean; window.aktifkanHargaManual = aktifkanHargaManual;
 window.tampilkanHargaManual = tampilkanHargaManual;
+window.pilihOperator = pilihOperator; window.bukaPilihOperator = bukaPilihOperator;
 
 muatRingkasanCache();
+perbaruiChipOperator();
+if (!operatorAktif()) bukaPilihOperator();
+cekJamOperasional();
+setInterval(cekJamOperasional, 60000);
 pilihJenis('kemasan');
 perbaruiFooter();
 setStatus(navigator.onLine);
