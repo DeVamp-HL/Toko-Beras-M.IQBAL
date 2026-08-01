@@ -875,7 +875,7 @@
   <button onclick="simpanJualAtauRetur()" id="btnSimpanJual">💰 Simpan Penjualan</button>
 </div>
 <div class="tombol-simpan" id="tombolSimpanProduksiWrap" style="display:none;">
-  <button onclick="simpanProduksi()">📦 Simpan Produksi Kemasan</button>
+  <button onclick="simpanProduksi()" id="btnSimpanProduksi">📦 Simpan Produksi Kemasan</button>
 </div>
 
 <script type="module">
@@ -1114,6 +1114,30 @@
 
   function formatRupiah(angka) { return 'Rp' + Math.round(angka).toLocaleString('id-ID'); }
 
+  // Tanggal/bulan LOKAL (WIB), bukan toISOString() yang selalu UTC — penting karena
+  // Indonesia UTC+7: sebelum jam 07:00 WIB, toISOString() masih tanggal/bulan KEMARIN.
+  // Bug ditemukan saat audit 1 Agustus 2026 (lihat juga bulanLokalIso di bawah).
+  function tanggalLokalIso(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function bulanLokalIso(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  // ID unik untuk dokumen Firestore. Date.now() saja bisa tabrakan (2 simpan di milidetik
+  // yang sama saling menimpa, silent data loss) — tambahkan pecahan acak, tetap Number
+  // supaya urutkanTerbaru() (sort by id) tetap konsisten dengan id lama yang juga Number.
+  function idUnik() {
+    return Date.now() + Math.random();
+  }
+  // Escape teks bebas-ketik (nama pelanggan, catatan, merk manual, dll) sebelum masuk innerHTML
+  // — mencegah XSS tersimpan kalau ada yang mengetik tag HTML/script di field bebas manapun.
+  function escapeHtml(s) {
+    if (s === undefined || s === null) return '';
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   // ============ HPP PER BATCH (Tahap 3) ============
   // Satu-satunya tempat rumus HPP per merk dihitung — dipakai oleh form Input
   // (hitungPerkiraan), tab Riwayat (tampilkanRekap), dan tab HPP baru.
@@ -1165,8 +1189,8 @@
   document.getElementById('pemasok').addEventListener('change', function() {
     document.getElementById('pemasokLain').style.display = this.value === 'Lainnya' ? 'block' : 'none';
   });
-  document.getElementById('tanggal').value = new Date().toISOString().split('T')[0];
-  document.getElementById('harianTanggal').value = new Date().toISOString().split('T')[0];
+  document.getElementById('tanggal').value = tanggalLokalIso();
+  document.getElementById('harianTanggal').value = tanggalLokalIso();
 
   // Mulai dengan 1 baris merk kosong
   tambahBarisMerk();
@@ -1306,7 +1330,7 @@
     const blob = new Blob([JSON.stringify(isi, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const tanggalFile = new Date().toISOString().split('T')[0];
+    const tanggalFile = tanggalLokalIso();
     a.href = url;
     a.download = `backup-batch-miqbal-${tanggalFile}.json`;
     document.body.appendChild(a);
@@ -1371,7 +1395,7 @@
     }
 
     const kedatangan = {
-      id: Date.now(),
+      id: idUnik(),
       tanggal: document.getElementById('tanggal').value,
       pemasok: pemasok,
       biayaBongkar: parseFloat(document.getElementById('biayaBongkar').value) || 0,
@@ -1398,7 +1422,7 @@
     idBaris = 0;
     tambahBarisMerk();
     document.getElementById('biayaBongkar').value = '';
-    document.getElementById('tanggal').value = new Date().toISOString().split('T')[0];
+    document.getElementById('tanggal').value = tanggalLokalIso();
     document.getElementById('kotakHasil').style.display = 'none';
 
     const pesan = document.getElementById('pesanOk');
@@ -1463,7 +1487,7 @@
       const barisTabel = merkDenganHpp.map(m => {
         const keteranganJumlah = m.satuan === 'karung' ? `${m.jumlahKarung} krg × ${m.beratKarung}kg` : `${m.totalKg}kg langsung`;
         return `<tr>
-          <td>${m.merk}</td>
+          <td>${escapeHtml(m.merk)}</td>
           <td>${keteranganJumlah}</td>
           <td>${formatRupiah(m.hargaPerKg)}/kg</td>
           <td>${formatRupiah(m.hppPerKg)}/kg</td>
@@ -1473,7 +1497,7 @@
       return `
         <div class="item-batch">
           <div class="baris-atas">
-            <span class="pemasok-nama">${k.pemasok || '-'}</span>
+            <span class="pemasok-nama">${escapeHtml(k.pemasok) || '-'}</span>
             <span class="tanggal">${formatTanggal(k.tanggal)}</span>
           </div>
           <div style="font-size:13px; color:#666;">
@@ -1635,7 +1659,7 @@
     if (!keterangan) { alert('Isi keterangan dulu (untuk apa pengeluaran ini).'); return; }
     if (nominal <= 0) { alert('Isi nominal dulu.'); return; }
 
-    const id = Date.now();
+    const id = idUnik();
     try {
       await simpanKeFirestore(KOLEKSI_HARIAN, { id, kategori, tanggal, keterangan, nominal });
     } catch (err) {
@@ -1646,7 +1670,7 @@
 
     document.getElementById('harianKeterangan').value = '';
     document.getElementById('harianNominal').value = '';
-    document.getElementById('harianTanggal').value = new Date().toISOString().split('T')[0];
+    document.getElementById('harianTanggal').value = tanggalLokalIso();
     document.getElementById('pesanOkHarian').style.display = 'block';
     setTimeout(() => { document.getElementById('pesanOkHarian').style.display = 'none'; }, 2000);
   }
@@ -1685,7 +1709,7 @@
       tampil.map(h => `
       <div class="item-batch">
         <div class="baris-atas">
-          <span class="pemasok-nama">${h.keterangan}</span>
+          <span class="pemasok-nama">${escapeHtml(h.keterangan)}</span>
           <span class="tanggal">${formatTanggal(h.tanggal)}</span>
         </div>
         <div style="font-size:13px; color:#666;">
@@ -1759,8 +1783,8 @@
     } else {
       hasilEl.innerHTML = hasil.slice(0, 30).map(h => `
         <div class="cari-global-item" onclick="pindahHalaman('${h.tab}'); document.getElementById('cariGlobalHasil').classList.remove('tampil');">
-          <span class="cg-tipe">${h.tipe}</span><span class="cg-judul">${h.judul}</span>
-          <div class="cg-sub">${h.sub}</div>
+          <span class="cg-tipe">${h.tipe}</span><span class="cg-judul">${escapeHtml(h.judul)}</span>
+          <div class="cg-sub">${escapeHtml(h.sub)}</div>
         </div>
       `).join('') + (hasil.length > 30 ? `<div class="cari-global-kosong">+${hasil.length - 30} hasil lain, persempit kata kunci untuk melihat.</div>` : '');
     }
@@ -1800,19 +1824,26 @@
   // Stok karung sumber per merk = total kg masuk (Tahap 1) - kg terpakai (jual karung + repacking dadakan + produksi kemasan)
   // + kg masuk balik dari retur kondisi UTUH (kemasan/karung) - kg keluar untuk retur yang jadi barang pengganti.
   function hitungStokKarungPerMerk() {
-    const batch = ambilSemuaBatch();
-    const stok = {}; // { merk: { totalMasuk, terpakai, hargaTerakhirPerKg, hppTerakhirPerKg } }
+    const batch = ambilSemuaBatch(); // sudah terurut terbaru dulu (by id) dari pasangSinkronisasi/urutkanTerbaru
+    const stok = {}; // { merk: { totalMasuk, terpakai, totalNilaiMasuk, hargaTerakhirPerKg, hppTerakhirPerKg } }
 
     batch.forEach(k => {
       const merkDenganHpp = hitungHppMerkDalamBatch(k.merkList, k.biayaBongkar);
       merkDenganHpp.forEach(m => {
-        if (!stok[m.merk]) stok[m.merk] = { totalMasuk: 0, terpakai: 0, hargaTerakhirPerKg: m.hargaPerKg, hppTerakhirPerKg: m.hppPerKg, tanggalTerakhir: k.tanggal };
+        if (!stok[m.merk]) stok[m.merk] = { totalMasuk: 0, terpakai: 0, totalNilaiMasuk: 0, hargaTerakhirPerKg: m.hargaPerKg, idTerakhir: k.id };
         stok[m.merk].totalMasuk += m.totalKg;
-        // simpan harga & HPP dari batch dgn tanggal paling baru (HPP sudah termasuk alokasi bongkar batch itu)
-        if (!stok[m.merk].tanggalTerakhir || k.tanggal >= stok[m.merk].tanggalTerakhir) {
+        // HPP dihitung RATA-RATA TERTIMBANG dari seluruh histori beli merk ini (pola sama dengan
+        // bahan kemasan/literan) — bukan cuma HPP batch terakhir, supaya tidak bias kalau batch
+        // lama yang jauh lebih murah/mahal masih jadi sebagian besar sisa stok.
+        // Bug lama (ditemukan saat audit 1 Agustus 2026): pakai HPP batch dgn tanggal terbaru saja,
+        // dan tie-break-nya salah arah (>= tanggal) sehingga batch tanggal sama tapi id lebih lama
+        // yang menang, bukan yang benar-benar terakhir diinput.
+        stok[m.merk].totalNilaiMasuk += m.hppPerKg * m.totalKg;
+        // "Harga beli terakhir" (bukan HPP) tetap disimpan terpisah sebagai info referensi di tab Stok —
+        // batch diproses terurut id menurun (terbaru dulu), jadi hasil pertama per merk sudah yang terbaru.
+        if (k.id >= stok[m.merk].idTerakhir) {
           stok[m.merk].hargaTerakhirPerKg = m.hargaPerKg;
-          stok[m.merk].hppTerakhirPerKg = m.hppPerKg;
-          stok[m.merk].tanggalTerakhir = k.tanggal;
+          stok[m.merk].idTerakhir = k.id;
         }
       });
     });
@@ -1843,7 +1874,9 @@
       hasil[merk] = {
         sisaKg: Math.round((stok[merk].totalMasuk - stok[merk].terpakai) * 100) / 100,
         hargaTerakhirPerKg: stok[merk].hargaTerakhirPerKg,
-        hppTerakhirPerKg: stok[merk].hppTerakhirPerKg
+        // Nama field dipertahankan (dipakai luas di simpanPenjualan/simpanProduksi/tampilkanStok)
+        // tapi isinya sekarang rata-rata tertimbang, bukan HPP batch terakhir saja.
+        hppTerakhirPerKg: stok[merk].totalMasuk > 0 ? stok[merk].totalNilaiMasuk / stok[merk].totalMasuk : 0
       };
     });
     return hasil;
@@ -1900,9 +1933,19 @@
     perbaruiStokJual();
   }
 
-  function simpanJualAtauRetur() {
-    if (jenisJualAktif === 'retur') return simpanRetur();
-    return simpanPenjualan();
+  // Kunci tombol simpan selama proses async — mencegah double-tap (koneksi lambat/HP nge-lag)
+  // membuat 2 transaksi tersimpan sekaligus (bug ditemukan saat audit 1 Agustus 2026; simpanKedatangan
+  // sudah punya pengaman ini dari awal, simpanPenjualan/simpanRetur belum).
+  async function simpanJualAtauRetur() {
+    const btn = document.getElementById('btnSimpanJual');
+    const teksAsli = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Menyimpan…';
+    try {
+      if (jenisJualAktif === 'retur') await simpanRetur();
+      else await simpanPenjualan();
+    } finally {
+      btn.disabled = false; btn.textContent = teksAsli;
+    }
   }
 
   // ============ RETUR (Tahap 4) ============
@@ -1963,12 +2006,34 @@
       if (!kunci) { alert('Pilih produk kemasan yang diretur dulu.'); return; }
       if (jumlahUnit <= 0) { alert('Isi jumlah unit yang diretur.'); return; }
       const [namaProduk, ukuranKemasan] = kunci.split('|');
+      // Sanity check: jangan sampai retur lebih banyak dari yang pernah benar-benar terjual
+      // (dikurangi retur sebelumnya) — semua jalur jual lain sudah pakai confirm() serupa
+      // sebelum melebihi stok, retur belum, jadi salah ketik/nol ekstra bisa lolos tanpa peringatan
+      // (bug ditemukan saat audit 1 Agustus 2026).
+      const totalTerjualProduk = ambilPenjualan()
+        .filter(p => p.jenis === 'kemasan' && p.namaProduk === namaProduk && p.ukuranKemasan === parseFloat(ukuranKemasan))
+        .reduce((a, p) => a + (p.jumlahUnit || 0), 0);
+      const totalReturSebelumnya = ambilRetur()
+        .filter(r => r.jenisAsal === 'kemasan' && r.namaProduk === namaProduk && r.ukuranKemasan === parseFloat(ukuranKemasan))
+        .reduce((a, r) => a + (r.jumlahUnit || 0), 0);
+      if (jumlahUnit > totalTerjualProduk - totalReturSebelumnya) {
+        if (!confirm(`${namaProduk} ${ukuranKemasan}kg cuma pernah terjual ${totalTerjualProduk} unit (sudah diretur ${totalReturSebelumnya} sebelumnya) — retur ${jumlahUnit} unit ini melebihi itu, mungkin salah ketik. Tetap simpan?`)) return;
+      }
       dataRetur = { jenisAsal: 'kemasan', namaProduk, ukuranKemasan: parseFloat(ukuranKemasan), jumlahUnit, totalKg: parseFloat(ukuranKemasan) * jumlahUnit };
     } else {
       const merk = document.getElementById('returKarungMerk').value;
       const jumlahKarung = parseFloat(document.getElementById('returKarungJumlah').value) || 0;
       if (!merk) { alert('Pilih merk karung yang diretur dulu.'); return; }
       if (jumlahKarung <= 0) { alert('Isi jumlah karung yang diretur.'); return; }
+      const totalTerjualKarung = ambilPenjualan()
+        .filter(p => p.jenis === 'karung' && p.merkSumber === merk)
+        .reduce((a, p) => a + (p.jumlahKarung || 0), 0);
+      const totalReturKarungSebelumnya = ambilRetur()
+        .filter(r => r.jenisAsal === 'karung' && r.merkSumber === merk)
+        .reduce((a, r) => a + (r.jumlahKarung || 0), 0);
+      if (jumlahKarung > totalTerjualKarung - totalReturKarungSebelumnya) {
+        if (!confirm(`Merk ${merk} cuma pernah terjual ${totalTerjualKarung} karung utuh (sudah diretur ${totalReturKarungSebelumnya} sebelumnya) — retur ${jumlahKarung} karung ini melebihi itu, mungkin salah ketik. Tetap simpan?`)) return;
+      }
       const batch = ambilSemuaBatch();
       let beratKarungAcuan = 50;
       for (const k of batch) {
@@ -1982,8 +2047,8 @@
     dataRetur.kondisi = kondisi;
     dataRetur.penyelesaian = penyelesaian;
     dataRetur.catatan = catatan;
-    dataRetur.id = Date.now();
-    dataRetur.tanggal = new Date().toISOString().split('T')[0];
+    dataRetur.id = idUnik();
+    dataRetur.tanggal = tanggalLokalIso();
     dataRetur.jam = new Date().toTimeString().slice(0,5);
 
     if (penyelesaian === 'refund') {
@@ -2051,8 +2116,8 @@
     }
     kontainer.innerHTML = semua.map(r => {
       const labelBarang = r.jenisAsal === 'kemasan'
-        ? `${r.namaProduk || '-'} ${r.ukuranKemasan}kg × ${r.jumlahUnit || 0} unit`
-        : `${r.merkSumber || '-'} × ${r.jumlahKarung || 0} karung`;
+        ? `${escapeHtml(r.namaProduk) || '-'} ${r.ukuranKemasan}kg × ${r.jumlahUnit || 0} unit`
+        : `${escapeHtml(r.merkSumber) || '-'} × ${r.jumlahKarung || 0} karung`;
       const labelKondisi = r.kondisi === 'tidak_utuh' ? 'Tidak utuh → Karantina' : 'Utuh → balik stok';
       const labelNominal = r.penyelesaian === 'refund'
         ? `Refund ${formatRupiah(r.nominalRefund || 0)}`
@@ -2093,9 +2158,9 @@
       return;
     }
     kontainer.innerHTML = daftarOpsi.map(opsi => `
-      <button type="button" class="${opsi.kunci === hiddenInput.value ? 'pilih' : ''}" data-kunci="${opsi.kunci}">
-        <span class="nama-produk">${opsi.label}</span>
-        <span class="info-stok-tombol">${opsi.subLabel}</span>
+      <button type="button" class="${opsi.kunci === hiddenInput.value ? 'pilih' : ''}" data-kunci="${escapeHtml(opsi.kunci)}">
+        <span class="nama-produk">${escapeHtml(opsi.label)}</span>
+        <span class="info-stok-tombol">${escapeHtml(opsi.subLabel)}</span>
       </button>
     `).join('');
     kontainer.querySelectorAll('button').forEach(btn => {
@@ -2369,8 +2434,8 @@
 
     if (!transaksi) { alert('Pilih jenis penjualan dulu.'); return; }
 
-    transaksi.id = Date.now();
-    transaksi.tanggal = new Date().toISOString().split('T')[0];
+    transaksi.id = idUnik();
+    transaksi.tanggal = tanggalLokalIso();
     transaksi.jam = new Date().toTimeString().slice(0,5);
     transaksi.hargaTotal = hargaTotal;
     transaksi.caraBayar = caraBayar;
@@ -2531,7 +2596,7 @@
     if (hargaSatuan <= 0) { alert('Isi harga per lembar dulu.'); return; }
     const hargaTotal = Math.round(jumlah * hargaSatuan);
 
-    const item = { id: Date.now(), tipe: 'beli', jenis, jumlah, hargaTotal, tanggal: new Date().toISOString().split('T')[0] };
+    const item = { id: idUnik(), tipe: 'beli', jenis, jumlah, hargaTotal, tanggal: tanggalLokalIso() };
     try {
       await simpanKeFirestore(KOLEKSI_BAHAN_KEMASAN, item);
     } catch (err) {
@@ -2656,7 +2721,7 @@
     if (hargaSatuan <= 0) { alert('Isi harga per lembar/karung dulu.'); return; }
     const hargaTotal = Math.round(jumlah * hargaSatuan);
 
-    const item = { id: Date.now(), tipe: 'beli', jenis, jumlah, hargaTotal, tanggal: new Date().toISOString().split('T')[0] };
+    const item = { id: idUnik(), tipe: 'beli', jenis, jumlah, hargaTotal, tanggal: tanggalLokalIso() };
     try {
       await simpanKeFirestore(KOLEKSI_BAHAN_LITERAN, item);
     } catch (err) {
@@ -2677,6 +2742,8 @@
     const jumlahUnit = parseFloat(document.getElementById('produksiJumlahUnit').value) || 0;
     const biayaKemasan = parseFloat(document.getElementById('produksiBiayaKemasan').value) || 0;
     const upahRepacking = parseFloat(document.getElementById('produksiUpahRepacking').value) || 0;
+    const kantongJenis = document.getElementById('produksiKantongJenis').value;
+    const kantongJumlah = parseFloat(document.getElementById('produksiKantongJumlah').value) || 0;
 
     if (!merkSumber) { alert('Pilih merk sumber dulu.'); return; }
     if (kgDipakai <= 0) { alert('Isi berat yang dipakai.'); return; }
@@ -2689,6 +2756,16 @@
       if (!confirm(`Stok ${merkSumber} cuma sisa ${stokKarung[merkSumber]?.sisaKg || 0}kg, produksi ini butuh ${kgDipakai}kg. Tetap simpan?`)) return;
     }
 
+    // Bug ditemukan saat audit 1 Agustus 2026: stok kantong plastik dipakai untuk hitung biaya
+    // (hitungBiayaKemasanProduksi) tapi TIDAK PERNAH dicatat sebagai "tipe: 'pakai'" — jadi
+    // sisaPcs di tab Stok cuma bertambah, tidak pernah berkurang meski dipakai terus-menerus.
+    if (kantongJenis && kantongJumlah > 0) {
+      const stokBahanKemasan = hitungStokBahanKemasan();
+      if (!stokBahanKemasan[kantongJenis] || stokBahanKemasan[kantongJenis].sisaPcs < kantongJumlah) {
+        if (!confirm(`Stok kantong ${LABEL_BAHAN_KEMASAN[kantongJenis] || kantongJenis} cuma sisa ${stokBahanKemasan[kantongJenis]?.sisaPcs || 0}, produksi ini butuh ${kantongJumlah}. Tetap simpan? (stok bisa jadi minus, catat pembelian susulan nanti)`)) return;
+      }
+    }
+
     const totalKgJadi = ukuranKemasan * jumlahUnit;
     if (Math.abs(totalKgJadi - kgDipakai) > kgDipakai * 0.15) {
       if (!confirm(`Berat dipakai ${kgDipakai}kg tapi hasil kemasan ${totalKgJadi}kg (selisih >15%, mungkin karena susut atau salah ketik). Tetap simpan?`)) return;
@@ -2697,16 +2774,27 @@
     // HPP per unit = (HPP/kg sumber, sudah termasuk porsi bongkar batch itu × kg dipakai) + biaya kemasan + upah repacking, dibagi jumlah unit jadi.
     const hppSumberPerKg = stokKarung[merkSumber]?.hppTerakhirPerKg || stokKarung[merkSumber]?.hargaTerakhirPerKg || 0;
     const produksi = {
-      id: Date.now(),
-      tanggal: new Date().toISOString().split('T')[0],
+      id: idUnik(),
+      tanggal: tanggalLokalIso(),
       merkSumber, kgDipakai, namaProduk, ukuranKemasan, jumlahUnit,
       biayaKemasan, upahRepacking,
       hppSumberPerKgDipakai: hppSumberPerKg,
       hppPerUnit: Math.round((hppSumberPerKg * kgDipakai + biayaKemasan + upahRepacking) / jumlahUnit)
     };
 
+    const btnProduksi = document.getElementById('btnSimpanProduksi');
+    if (btnProduksi) { btnProduksi.disabled = true; btnProduksi.textContent = 'Menyimpan…'; }
     try {
       await simpanKeFirestore(KOLEKSI_PRODUKSI, produksi);
+      // Catat pemakaian kantong plastik (mengurangi stok) — sepasang dengan produksi, sama pola
+      // dengan pemakaian kemasan literan di simpanPenjualan, supaya stok kantong ikut turun otomatis.
+      if (kantongJenis && kantongJumlah > 0) {
+        await simpanKeFirestore(KOLEKSI_BAHAN_KEMASAN, {
+          id: produksi.id + 1, tipe: 'pakai', jenis: kantongJenis,
+          jumlah: kantongJumlah, hargaTotal: 0,
+          tanggal: produksi.tanggal, catatan: 'Otomatis dari produksi id ' + produksi.id
+        });
+      }
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Data disimpan sementara di HP ini saja — coba lagi kalau internet sudah nyambung.');
@@ -2714,6 +2802,7 @@
       semuaLokal.unshift(produksi);
       localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(semuaLokal));
     }
+    if (btnProduksi) { btnProduksi.disabled = false; btnProduksi.textContent = '📦 Simpan Produksi Kemasan'; }
     unduhBackup(true);
 
     document.getElementById('produksiKgDipakai').value = '';
@@ -2745,10 +2834,10 @@
     kontainer.innerHTML = semua.map(p => `
       <div class="item-batch">
         <div class="baris-atas">
-          <span class="pemasok-nama">${p.namaProduk || '-'} ${p.ukuranKemasan}kg</span>
+          <span class="pemasok-nama">${escapeHtml(p.namaProduk) || '-'} ${p.ukuranKemasan}kg</span>
           <span class="tanggal">${formatTanggal(p.tanggal)}</span>
         </div>
-        <div style="font-size:13px; color:#666;">Dari ${p.merkSumber || '-'} · ${p.kgDipakai || 0} kg dipakai → ${p.jumlahUnit || 0} unit</div>
+        <div style="font-size:13px; color:#666;">Dari ${escapeHtml(p.merkSumber) || '-'} · ${p.kgDipakai || 0} kg dipakai → ${p.jumlahUnit || 0} unit</div>
         <div class="total-baris"><span>HPP per unit</span><span>${formatRupiah(p.hppPerUnit || 0)}</span></div>
         <button class="tombol-hapus tab-owner-blok" onclick="hapusProduksi(${p.id})">Hapus</button>
       </div>
@@ -2775,7 +2864,7 @@
       merkList.map(m => `
         <div class="item-batch">
           <div class="baris-atas">
-            <span class="pemasok-nama">${m}${stokKarung[m].sisaKg < 50 ? '<span class="badge-stok-rendah">STOK MENIPIS</span>' : ''}</span>
+            <span class="pemasok-nama">${escapeHtml(m)}${stokKarung[m].sisaKg < 50 ? '<span class="badge-stok-rendah">STOK MENIPIS</span>' : ''}</span>
             <span class="tanggal">HPP ${formatRupiah(stokKarung[m].hppTerakhirPerKg)}/kg</span>
           </div>
           <div class="keterangan">Harga beli ${formatRupiah(stokKarung[m].hargaTerakhirPerKg)}/kg (belum + bongkar)</div>
@@ -2790,7 +2879,7 @@
       kemasanList.map(k => `
         <div class="item-batch">
           <div class="baris-atas">
-            <span class="pemasok-nama">${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg${stokKemasan[k].sisaUnit < 5 ? '<span class="badge-stok-rendah">STOK MENIPIS</span>' : ''}</span>
+            <span class="pemasok-nama">${escapeHtml(stokKemasan[k].namaProduk)} ${stokKemasan[k].ukuranKemasan}kg${stokKemasan[k].sisaUnit < 5 ? '<span class="badge-stok-rendah">STOK MENIPIS</span>' : ''}</span>
             <span class="tanggal">HPP ${formatRupiah(stokKemasan[k].hppRataRataPerUnit)}/unit</span>
           </div>
           <div class="total-baris"><span>Sisa stok</span><span>${stokKemasan[k].sisaUnit} unit</span></div>
@@ -2839,14 +2928,14 @@
       return;
     }
     kontainer.innerHTML = semua.map(item => {
-      const namaBarang = item.jenisAsal === 'kemasan' ? `${item.namaProduk} ${item.ukuranKemasan}kg` : item.merkSumber;
+      const namaBarang = item.jenisAsal === 'kemasan' ? `${escapeHtml(item.namaProduk)} ${item.ukuranKemasan}kg` : escapeHtml(item.merkSumber);
       return `
         <div class="item-batch">
           <div class="baris-atas">
             <span class="pemasok-nama">${namaBarang}</span>
             <span class="tanggal">${formatTanggal(item.tanggal)}</span>
           </div>
-          <div style="font-size:13px; color:#666;">${item.totalKg} kg${item.catatan ? ' · ' + item.catatan : ''}</div>
+          <div style="font-size:13px; color:#666;">${item.totalKg} kg${item.catatan ? ' · ' + escapeHtml(item.catatan) : ''}</div>
           <div class="baris-2" style="margin-top:10px; gap:8px;">
             <button type="button" onclick="putuskanKarantina(${item.id}, 'dikembalikan_pemasok')" style="padding:10px 4px; border:2px solid var(--garis); background:var(--kartu); border-radius:8px; font-size:12px; font-weight:700;">↩️ Balik ke Pemasok</button>
             <button type="button" onclick="putuskanKarantina(${item.id}, 'dirework')" style="padding:10px 4px; border:2px solid var(--hijau); background:var(--kartu); color:var(--hijau-tua); border-radius:8px; font-size:12px; font-weight:700;">🔧 Rework → Stok</button>
@@ -2869,15 +2958,15 @@
 
     try {
       // Update status di dokumen karantina (bukan hapus — supaya riwayat keputusan tetap ada).
-      await simpanKeFirestore(KOLEKSI_KARANTINA, { ...item, statusTindakan: tindakan, tanggalKeputusan: new Date().toISOString().split('T')[0] });
+      await simpanKeFirestore(KOLEKSI_KARANTINA, { ...item, statusTindakan: tindakan, tanggalKeputusan: tanggalLokalIso() });
 
       if (tindakan === 'dirework') {
         // Barang rework masuk balik ke stok lewat jalur produksi/masuk yang sudah ada,
         // supaya HPP tetap tercatat wajar (bukan langsung nambah stok tanpa jejak biaya rework).
         if (item.jenisAsal === 'kemasan') {
           await simpanKeFirestore(KOLEKSI_PRODUKSI, {
-            id: Date.now(),
-            tanggal: new Date().toISOString().split('T')[0],
+            id: idUnik(),
+            tanggal: tanggalLokalIso(),
             merkSumber: null,
             kgDipakai: 0,
             namaProduk: item.namaProduk,
@@ -2921,7 +3010,7 @@
   function isoKeTanggal(iso) { return new Date(iso + 'T00:00:00'); }
 
   function tampilkanRingkasan() {
-    const hariIniIso = new Date().toISOString().split('T')[0];
+    const hariIniIso = tanggalLokalIso();
     const mulaiMinggu = tanggalMulaiMingguIni();
     const mulaiBulan = tanggalAwalBulanIni();
 
@@ -2950,7 +3039,7 @@
 
     // Kas Bulan Ini: masuk = omzet jual bulan ini. keluar = belanja beras bulan ini + biaya bulanan bulan ini
     // (gaji, listrik, akses, dst — kalau bulan ini belum diisi di tab Bulanan, dihitung Rp0, bukan ditambal perkiraan).
-    const kunciBulanIni = new Date().toISOString().slice(0, 7); // format 'YYYY-MM', sama dengan input type="month"
+    const kunciBulanIni = bulanLokalIso(); // format 'YYYY-MM', sama dengan input type="month"
     const biayaBulananBulanIni = ambilBiayaBulanan().find(b => b.bulan === kunciBulanIni);
     const totalBiayaBulanan = biayaBulananBulanIni
       ? (biayaBulananBulanIni.akses||0) + (biayaBulananBulanIni.keamanan||0) + (biayaBulananBulanIni.bensin||0) + (biayaBulananBulanIni.listrik||0) + (biayaBulananBulanIni.internet||0) + (biayaBulananBulanIni.benang||0) + (biayaBulananBulanIni.gaji||0)
@@ -3028,7 +3117,7 @@
       return `
         <div class="item-batch">
           <div class="baris-atas">
-            <span class="pemasok-nama">${p.namaProduk || p.jenis}</span>
+            <span class="pemasok-nama">${escapeHtml(p.namaProduk) || p.jenis}</span>
             <span class="tanggal">${formatTanggal(p.tanggal)} ${p.jam || ''}</span>
           </div>
           <div style="font-size:13px; color:#666;">Jenis: ${p.jenis} · Bayar: ${p.caraBayar || '-'}</div>
