@@ -1600,7 +1600,15 @@
   async function hapusPenjualan(id) {
     if (!confirm('Hapus transaksi penjualan ini dari riwayat? Stok, omzet, dan margin akan ikut dihitung ulang tanpa transaksi ini.')) return;
     try {
+      const trx = ambilPenjualan().find(p => p.id === id);
       await hapusDariFirestore(KOLEKSI_PENJUALAN, id);
+      // Hapus juga catatan pemakaian kemasan literan pasangannya (docId = id transaksi + 1,
+      // pola sama di index & kasir). Tanpa ini stok bahan literan tetap berkurang selamanya
+      // meski transaksinya sudah dihapus (temuan audit 2 Agustus 2026). deleteDoc pada dokumen
+      // yang tidak ada = no-op aman, jadi jalur non-literan pun tidak masalah.
+      if (!trx || (trx.jenis === 'literan' && trx.kemasanLiteran)) {
+        await hapusDariFirestore(KOLEKSI_BAHAN_LITERAN, id + 1);
+      }
     } catch (err) {
       console.error(err);
       alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -2930,6 +2938,7 @@
       tanggal: tanggalLokalIso(),
       merkSumber, kgDipakai, namaProduk, ukuranKemasan, jumlahUnit,
       biayaKemasan, upahRepacking,
+      kantongJenis: kantongJenis || null, kantongJumlah: kantongJumlah || 0,
       hppSumberPerKgDipakai: hppSumberPerKg,
       hppPerUnit: Math.round((hppSumberPerKg * kgDipakai + biayaKemasan + upahRepacking) / jumlahUnit)
     };
@@ -3002,6 +3011,10 @@
     if (!confirm('Hapus catatan produksi ini? Stok kemasan akan dihitung ulang tanpa produksi ini — pastikan stok hasil produksi ini belum terlanjur terjual habis.')) return;
     try {
       await hapusDariFirestore(KOLEKSI_PRODUKSI, id);
+      // Hapus juga catatan pemakaian kantong plastik pasangannya (docId = id produksi + 1).
+      // Dokumen produksi lama tidak menyimpan jenis/jumlah kantong, jadi hapus tanpa syarat —
+      // deleteDoc pada dokumen yang tidak ada = no-op aman (temuan audit 2 Agustus 2026).
+      await hapusDariFirestore(KOLEKSI_BAHAN_KEMASAN, id + 1);
     } catch (err) {
       console.error(err);
       alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -3406,10 +3419,10 @@
       kontainerLiteran.innerHTML = [...literan].sort((a,b) => a.merk.localeCompare(b.merk)).map(h => `
         <div class="item-batch">
           <div class="baris-atas">
-            <span class="pemasok-nama">${h.merk}</span>
+            <span class="pemasok-nama">${escapeHtml(h.merk)}</span>
             <span class="tanggal">${formatRupiah(h.hargaPerLiter)}/liter</span>
           </div>
-          <button type="button" class="tombol-hapus-merk" onclick="hapusHargaLiteran('${h.id}')">Hapus</button>
+          <button type="button" class="tombol-hapus-merk" onclick="hapusHargaLiteran(${escapeHtml(JSON.stringify(h.id))})">Hapus</button>
         </div>
       `).join('');
     }
@@ -3421,10 +3434,10 @@
       kontainerKemasan.innerHTML = [...kemasan].sort((a,b) => a.merk.localeCompare(b.merk) || a.ukuran - b.ukuran).map(h => `
         <div class="item-batch">
           <div class="baris-atas">
-            <span class="pemasok-nama">${h.merk} — ${h.ukuran} kg</span>
+            <span class="pemasok-nama">${escapeHtml(h.merk)} — ${h.ukuran} kg</span>
             <span class="tanggal">${formatRupiah(h.hargaPerUnit)}/unit</span>
           </div>
-          <button type="button" class="tombol-hapus-merk" onclick="hapusHargaKemasan('${h.id}')">Hapus</button>
+          <button type="button" class="tombol-hapus-merk" onclick="hapusHargaKemasan(${escapeHtml(JSON.stringify(h.id))})">Hapus</button>
         </div>
       `).join('');
     }
@@ -3437,10 +3450,10 @@
         kontainerKarung.innerHTML = [...karung].sort((a,b) => a.merk.localeCompare(b.merk)).map(h => `
           <div class="item-batch">
             <div class="baris-atas">
-              <span class="pemasok-nama">${h.merk}</span>
+              <span class="pemasok-nama">${escapeHtml(h.merk)}</span>
               <span class="tanggal">${formatRupiah(h.hargaPerKg)}/kg</span>
             </div>
-            <button type="button" class="tombol-hapus-merk" onclick="hapusHargaKarung('${h.id}')">Hapus</button>
+            <button type="button" class="tombol-hapus-merk" onclick="hapusHargaKarung(${escapeHtml(JSON.stringify(h.id))})">Hapus</button>
           </div>
         `).join('');
       }
