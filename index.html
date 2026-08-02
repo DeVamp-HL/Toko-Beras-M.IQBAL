@@ -393,6 +393,19 @@
     </div>
   </div>
 </div>
+<div class="modal-pin-bg" id="modalLoginBg">
+  <div class="modal-pin-kotak">
+    <h3>🔑 Masuk sekali di perangkat ini</h3>
+    <p id="loginTokoPesan">Masukkan sandi toko. Cukup sekali per perangkat.</p>
+    <input type="password" id="inputSandiToko" placeholder="Sandi toko" autocomplete="current-password">
+    <div class="modal-pin-salah" id="loginTokoSalah">Sandi salah. Coba lagi.</div>
+    <div class="modal-pin-tombol">
+      <button type="button" class="modal-pin-batal" onclick="tutupModalLoginToko()">Nanti</button>
+      <button type="button" class="modal-pin-masuk" id="btnLoginToko" onclick="kirimLoginToko()">Masuk</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-pin-bg" id="modalPinBg">
   <div class="modal-pin-kotak">
     <h3>🔒 Khusus Owner</h3>
@@ -927,6 +940,9 @@
   import {
     getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  import {
+    getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA",
@@ -940,6 +956,61 @@
 
   const appFirebase = initializeApp(firebaseConfig);
   const db = getFirestore(appFirebase);
+
+  // ===== Login toko (Jalan benar, 2 Agustus 2026) =====
+  // Database dikunci: hanya yang login boleh baca/tulis. Sandi TIDAK ditulis di kode —
+  // repo ini publik. Diketik sekali per perangkat; sesi disimpan browser (browserLocalPersistence),
+  // jadi tidak minta sandi lagi tiap buka, termasuk saat offline.
+  const EMAIL_TOKO = 'kasir@tokoberasmiqbal.web.app';
+  const auth = getAuth(appFirebase);
+  let _sudahLoginToko = false;
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+  onAuthStateChanged(auth, (u) => {
+    _sudahLoginToko = !!u;
+    if (u) tutupModalLoginToko();
+    perbaruiStatusSambungan();
+  });
+  function bukaModalLoginToko(pesan) {
+    const el = document.getElementById('modalLoginBg');
+    if (!el) return;
+    document.getElementById('loginTokoPesan').textContent = pesan || 'Masukkan sandi toko. Cukup sekali per perangkat.';
+    document.getElementById('loginTokoSalah').style.display = 'none';
+    el.classList.add('tampil');
+  }
+  function tutupModalLoginToko() {
+    const el = document.getElementById('modalLoginBg');
+    if (el) el.classList.remove('tampil');
+  }
+  async function kirimLoginToko() {
+    const sandi = document.getElementById('inputSandiToko').value.trim();
+    if (!sandi) return;
+    const btn = document.getElementById('btnLoginToko');
+    btn.disabled = true; btn.textContent = 'Memeriksa…';
+    try {
+      await signInWithEmailAndPassword(auth, EMAIL_TOKO, sandi);
+      document.getElementById('inputSandiToko').value = '';
+      tutupModalLoginToko();
+    } catch (e) {
+      const kode = String(e.code || '');
+      const salah = document.getElementById('loginTokoSalah');
+      salah.textContent = (kode.includes('wrong-password') || kode.includes('invalid-credential') || kode.includes('user-not-found'))
+        ? 'Sandi salah. Coba lagi.'
+        : 'Gagal masuk — cek internet, lalu coba lagi.';
+      salah.style.display = 'block';
+    }
+    btn.disabled = false; btn.textContent = 'Masuk';
+  }
+  // Dipanggil kalau Firestore menolak karena belum login (database sudah dikunci).
+  function mintaLoginKalauDitolak(err) {
+    if (err && String(err.code || '').includes('permission-denied')) {
+      bukaModalLoginToko('Database terkunci. Masukkan sandi toko untuk lanjut.');
+      return true;
+    }
+    return false;
+  }
+  window.kirimLoginToko = kirimLoginToko;
+  window.tutupModalLoginToko = tutupModalLoginToko;
+  window.bukaModalLoginToko = bukaModalLoginToko;
 
   // --- Nama koleksi Firestore (satu koleksi = satu jenis data, dokumen id = id lokal) ---
   const KOLEKSI_BATCH = 'batchMasuk';
@@ -1270,6 +1341,9 @@
       jadwalkanRingkasanKasir();
     }, (err) => {
       console.error('Firestore sync gagal untuk ' + nomorKoleksi, err);
+      // Kalau ditolak karena belum login (database sudah dikunci), minta sandi —
+      // jangan cuma tampil "Offline", karena penyebabnya bukan sinyal.
+      if (mintaLoginKalauDitolak(err)) return;
       perbaruiStatusSambungan(true);
     });
   }
@@ -1280,7 +1354,7 @@
     if (adaError) { el.textContent = 'Offline (pakai data HP ini)'; el.parentElement.parentElement.style.background = '#8a5a12'; return; }
     const semuaSiap = Object.values(_sambunganAktif).every(v => v);
     const nTunda = ambilAntreanTunda().length;
-    const awalan = nTunda > 0 ? '⏳ ' + nTunda + ' antre kirim · ' : '';
+    const awalan = (nTunda > 0 ? '⏳ ' + nTunda + ' antre kirim · ' : '') + (_sudahLoginToko ? '' : '🔑 belum masuk · ');
     el.textContent = awalan + (semuaSiap ? 'Tersambung semua perangkat' : 'Menyambungkan…');
   }
 
@@ -1430,7 +1504,7 @@
         ]);
         const sisa = ambilAntreanTunda(); sisa.shift(); setAntreanTunda(sisa);
       }
-    } catch (e) { /* masih offline — dicoba lagi otomatis */ }
+    } catch (e) { mintaLoginKalauDitolak(e); /* selain itu: masih offline — dicoba lagi otomatis */ }
     _sedangKirimTunda = false;
   }
   window.addEventListener('online', kirimAntreanTunda);
@@ -1442,6 +1516,9 @@
         new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 4000))
       ]);
     } catch (e) {
+      // Ditolak karena belum login → tetap masuk antrean tunda (data TIDAK hilang),
+      // lalu minta sandi. Begitu login, antrean dikirim otomatis.
+      mintaLoginKalauDitolak(e);
       const antre = ambilAntreanTunda();
       antre.push({ koleksi: nomorKoleksi, data: data });
       setAntreanTunda(antre);
@@ -3671,6 +3748,12 @@
   document.getElementById('inputPinOwner').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') cekPinOwner();
   });
+  document.getElementById('inputSandiToko').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') kirimLoginToko();
+  });
+  // Tawarkan login di awal kalau perangkat ini belum pernah masuk. Beri jeda supaya
+  // sesi tersimpan sempat dipulihkan dulu — jangan munculkan sandi kalau sudah login.
+  setTimeout(() => { if (!_sudahLoginToko) bukaModalLoginToko(); }, 2500);
 
   terapkanStatusOwner();
 

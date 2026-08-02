@@ -91,11 +91,12 @@
   .kosong { font-family: Arial, sans-serif; color: var(--cokelat); font-size: .9rem; padding: 10px; background: #e8dcc0; border-radius: 10px; }
   .peringatan { font-family: Arial, sans-serif; color: #7c2d1d; font-size: .85rem; margin-top: 6px; }
   .sembunyi { display: none !important; }
-  #layarPilihOperator, #layarTutup {
+  #layarPilihOperator, #layarTutup, #layarLogin {
     position: fixed; inset: 0; background: var(--abu); z-index: 60;
     display: none; flex-direction: column; align-items: center; justify-content: center;
     padding: 24px; text-align: center;
   }
+  #layarLogin { z-index: 65; overflow-y: auto; }
   #layarTutup { z-index: 70; background: var(--cokelat-tua); color: var(--abu); }
   #layarPilihOperator .grid1 { width: 100%; max-width: 360px; }
   #chipOperator {
@@ -187,6 +188,18 @@
   <h2 style="margin:10px 0 4px; font-weight:normal; letter-spacing:1px;">Kasir Tutup</h2>
   <p style="font-family:Arial,sans-serif; font-size:.95rem; margin:0;">Buka otomatis jam 05.00 pagi.<br>Transaksi yang belum terkirim tetap dikirim sendiri.</p>
 </div>
+<div id="layarLogin">
+  <div style="font-size:3rem;">🔑</div>
+  <div class="label" style="font-size:1.05rem; margin:10px 0 6px;">MASUK SEKALI DI HP INI</div>
+  <p id="loginPesan" style="font-family:Arial,sans-serif; font-size:.9rem; color:var(--cokelat); margin:0 0 14px; max-width:340px;"></p>
+  <div style="width:100%; max-width:340px;">
+    <input type="password" id="inputSandiLogin" placeholder="Sandi toko" autocomplete="current-password" inputmode="text">
+    <div id="loginSalah" style="display:none; color:#7c2d1d; font-family:Arial,sans-serif; font-size:.85rem; margin-top:8px;"></div>
+    <button type="button" id="btnLogin" onclick="kirimLogin()" style="width:100%; margin-top:10px; background:var(--cokelat-tua); color:var(--kartu); border-color:var(--cokelat-tua); min-height:60px; font-size:1.15rem;">Masuk</button>
+    <button type="button" onclick="lewatiLogin()" style="width:100%; margin-top:8px; min-height:44px; font-size:.85rem; font-family:Arial,sans-serif;">Lewati dulu — tetap bisa jual</button>
+    <p style="font-family:Arial,sans-serif; font-size:.75rem; color:var(--cokelat); margin-top:10px;">Jualan tetap tersimpan di HP walau dilewati, dikirim otomatis setelah masuk.</p>
+  </div>
+</div>
 <div id="layarSukses"><div class="cek">✔</div><div id="teksSukses">Tersimpan</div></div>
 
 <script>
@@ -203,6 +216,14 @@ var K_ANTREAN = 'kasir_antrean_v1';
 var K_GAGAL = 'kasir_gagal_v1';
 var K_OPERATOR = 'kasir_operator_v1';
 var K_ROSTER = 'kasir_roster_v1';
+// ===== Login toko (Jalan benar, 2 Agustus 2026) =====
+// Database dikunci: hanya yang login boleh baca/tulis. Sandi TIDAK ditulis di kode
+// (kalau ditulis, repo publik = sandi bocor = percuma). Diketik sekali per HP, lalu
+// token pembaharu disimpan di HP ini — tidak minta sandi lagi tiap buka.
+var K_AUTH = 'kasir_auth_v1';
+var EMAIL_TOKO = 'kasir@tokoberasmiqbal.web.app';
+var URL_MASUK = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + KUNCI_API;
+var URL_SEGARKAN_TOKEN = 'https://securetoken.googleapis.com/v1/token?key=' + KUNCI_API;
 var NAMA_OPERATOR = ['Gono', 'Hasan', 'Ben Mohsein'];
 var JAM_BUKA = 5, JAM_TUTUP = 19; // input hanya 05.00-18.59 — di luar itu terkunci (anak di rumah tidak bisa ketik-ketik)
 var LABEL_BAHAN = { paperbag5l: 'Paper bag 5L', paperbag10l: 'Paper bag 10L', karungbekas: 'Karung bekas' };
@@ -232,6 +253,89 @@ function hargaBahanLiteran(jk) {
   var bahan = ((ringkasan && ringkasan.bahanLiteran) || {})[jk] || {};
   return bahan.hargaPerPcs || HARGA_AWAL_BAHAN[jk] || 0;
 }
+
+// ---------- login toko (REST, tanpa SDK — kasir tetap ringan) ----------
+function authTersimpan() { try { return JSON.parse(localStorage.getItem(K_AUTH) || 'null'); } catch (e) { return null; } }
+function simpanAuth(a) { localStorage.setItem(K_AUTH, JSON.stringify(a)); }
+function sudahLogin() { var a = authTersimpan(); return !!(a && a.refreshToken); }
+// Token id berumur 1 jam. Disegarkan pakai refresh token yang tersimpan di HP ini.
+// Kalau offline, kembalikan null — penjualan TETAP masuk antrean lokal, tidak hilang.
+var _tokenSedangSegar = null;
+function tokenSegar() {
+  var a = authTersimpan();
+  if (!a || !a.refreshToken) return Promise.resolve(null);
+  if (a.idToken && Date.now() < (a.kedaluwarsa || 0)) return Promise.resolve(a.idToken);
+  if (_tokenSedangSegar) return _tokenSedangSegar; // hindari refresh berbarengan
+  _tokenSedangSegar = fetch(URL_SEGARKAN_TOKEN, {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(a.refreshToken)
+  }).then(function (r) {
+    if (!r.ok) {
+      // 400 = refresh token dicabut/ganti sandi. Bukan soal sinyal — minta login lagi.
+      if (r.status === 400) { localStorage.removeItem(K_AUTH); tampilkanLayarLogin(true); }
+      return null;
+    }
+    return r.json().then(function (j) {
+      simpanAuth({ refreshToken: j.refresh_token, idToken: j.id_token,
+        kedaluwarsa: Date.now() + (parseInt(j.expires_in, 10) - 120) * 1000 });
+      return j.id_token;
+    });
+  }).catch(function () { return null; })
+    .then(function (t) { _tokenSedangSegar = null; return t; });
+  return _tokenSedangSegar;
+}
+function masukDenganSandi(sandi) {
+  return fetch(URL_MASUK, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: EMAIL_TOKO, password: sandi, returnSecureToken: true })
+  }).then(function (r) {
+    if (!r.ok) return r.json().then(function (j) { throw new Error((j.error && j.error.message) || 'GAGAL'); });
+    return r.json();
+  }).then(function (j) {
+    simpanAuth({ refreshToken: j.refreshToken, idToken: j.idToken,
+      kedaluwarsa: Date.now() + (parseInt(j.expiresIn, 10) - 120) * 1000 });
+    return true;
+  });
+}
+// Bungkus header: sisipkan token kalau ada. Kalau belum login, permintaan tetap dikirim —
+// selama database belum dikunci, kasir tetap jalan seperti biasa (masa transisi).
+function denganAuth(opsi) {
+  opsi = opsi || {};
+  return tokenSegar().then(function (t) {
+    if (t) { opsi.headers = opsi.headers || {}; opsi.headers['Authorization'] = 'Bearer ' + t; }
+    return opsi;
+  });
+}
+function tampilkanLayarLogin(paksa) {
+  var el = $('layarLogin');
+  if (!el) return;
+  $('loginPesan').textContent = paksa
+    ? 'Sesi habis. Masukkan sandi toko sekali lagi.'
+    : 'HP ini belum masuk. Masukkan sandi toko (sekali saja).';
+  el.style.display = 'flex';
+  $('loginSalah').style.display = 'none';
+}
+function tutupLayarLogin() { var el = $('layarLogin'); if (el) el.style.display = 'none'; }
+function kirimLogin() {
+  var sandi = $('inputSandiLogin').value.trim();
+  if (!sandi) return;
+  var btn = $('btnLogin');
+  btn.disabled = true; btn.textContent = 'Memeriksa…';
+  masukDenganSandi(sandi).then(function () {
+    $('inputSandiLogin').value = '';
+    tutupLayarLogin();
+    perbaruiFooter();
+    segarkanRingkasan();
+    kirimAntrean(false);
+  }).catch(function (e) {
+    var pesan = String(e.message || '');
+    $('loginSalah').textContent = (pesan.indexOf('PASSWORD') >= 0 || pesan.indexOf('INVALID_LOGIN') >= 0 || pesan.indexOf('EMAIL_NOT_FOUND') >= 0)
+      ? 'Sandi salah.'
+      : 'Gagal masuk — cek sinyal, lalu coba lagi.';
+    $('loginSalah').style.display = 'block';
+  }).then(function () { btn.disabled = false; btn.textContent = 'Masuk'; });
+}
+function lewatiLogin() { tutupLayarLogin(); }
 
 // ---------- konversi Firestore REST ----------
 function keFs(nilai) {
@@ -270,7 +374,8 @@ function infoOperator(nama) {
   return { aktif: r.operator[nama].aktif !== false, pin: r.operator[nama].pin || null };
 }
 function segarkanRoster() {
-  fetch(DASAR + 'pengaturan/aksesKasir?key=' + KUNCI_API, { cache: 'no-store' })
+  denganAuth({ cache: 'no-store' }).then(function (opsi) {
+  return fetch(DASAR + 'pengaturan/aksesKasir?key=' + KUNCI_API, opsi)
     .then(function (r) {
       if (r.status === 404) { localStorage.removeItem(K_ROSTER); return null; }
       if (!r.ok) return null; return r.json();
@@ -282,6 +387,7 @@ function segarkanRoster() {
       cekOperatorMasihAktif();
     })
     .catch(function () {});
+  });
 }
 function cekOperatorMasihAktif() {
   var nama = operatorAktif();
@@ -294,8 +400,13 @@ function cekOperatorMasihAktif() {
 }
 function segarkanRingkasan() {
   segarkanRoster();
-  fetch(DASAR + 'ringkasanKasir/aktif?key=' + KUNCI_API)
-    .then(function (r) { if (!r.ok) throw new Error('status ' + r.status); return r.json(); })
+  denganAuth({}).then(function (opsi) {
+  return fetch(DASAR + 'ringkasanKasir/aktif?key=' + KUNCI_API, opsi)
+    .then(function (r) {
+      // 401/403 = database sudah dikunci tapi HP ini belum login. Bukan soal sinyal.
+      if (r.status === 401 || r.status === 403) { tampilkanLayarLogin(sudahLogin()); throw new Error('perlu login'); }
+      if (!r.ok) throw new Error('status ' + r.status); return r.json();
+    })
     .then(function (j) {
       var o = {}; var f = j.fields || {}; for (var k in f) o[k] = dariFs(f[k]);
       ringkasan = o;
@@ -304,6 +415,7 @@ function segarkanRingkasan() {
       setStatus(true);
     })
     .catch(function () { setStatus(navigator.onLine); });
+  });
 }
 function stokQueuedKurang(jenis, kunciAtauMerk) {
   // Kurangi stok tampilan dengan transaksi yang masih di antrean (belum terkirim)
@@ -336,20 +448,32 @@ function kirimAntrean(manual) {
     var a2 = ambilAntrean();
     if (a2.length === 0) { sedangKirim = false; setStatus(true); catatSync(); return; }
     var item = a2[0];
-    fetch(DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, {
+    denganAuth({
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields: (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })() })
-    }).then(function (r) {
+    }).then(function (opsi) {
+    return fetch(DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, opsi).then(function (r) {
       if (r.ok) { a2.shift(); simpanAntrean(a2); kirimSatu(); return; }
+      // 401/403 = belum/tidak lagi login. TRANSAKSI TIDAK BOLEH DIBUANG — tahan di
+      // antrean, minta login, kirim ulang setelah masuk. (Sebelum perbaikan ini,
+      // penguncian database akan membuang transaksi ke daftar "gagal" — hilang dari
+      // antrean padahal cuma perlu login. Temuan audit 2 Agustus 2026.)
+      if (r.status === 401 || r.status === 403) {
+        sedangKirim = false;
+        setStatus(false);
+        tampilkanLayarLogin(sudahLogin());
+        return;
+      }
       if (r.status >= 400 && r.status < 500) {
-        // Ditolak permanen server (bukan soal sinyal) — pindah ke daftar gagal
-        // supaya antrean tidak macet menahan transaksi lain di belakangnya.
+        // Ditolak permanen server (bukan soal sinyal, bukan soal login) — pindah ke
+        // daftar gagal supaya antrean tidak macet menahan transaksi lain di belakangnya.
         var g = ambilGagal(); g.push(item);
         localStorage.setItem(K_GAGAL, JSON.stringify(g));
         a2.shift(); simpanAntrean(a2); kirimSatu(); return;
       }
       throw new Error('status ' + r.status);
     }).catch(function () { sedangKirim = false; setStatus(false); });
+    });
   };
   kirimSatu();
 }
@@ -358,7 +482,8 @@ function perbaruiFooter() {
   var n = ambilAntrean().length, g = ambilGagal().length;
   $('teksAntrean').textContent = 'Antrean kirim: ' + n;
   var t = localStorage.getItem('kasir_sync_terakhir');
-  $('teksSync').textContent = g > 0 ? ('⚠ ' + g + ' ditolak — lapor My DeV') : (t ? 'Terkirim ' + t.slice(11, 16) : '');
+  $('teksSync').textContent = g > 0 ? ('⚠ ' + g + ' ditolak — lapor My DeV')
+    : (!sudahLogin() ? '🔑 belum masuk' : (t ? 'Terkirim ' + t.slice(11, 16) : ''));
   $('btnKirim').style.display = n > 0 ? 'block' : 'none';
 }
 function setStatus(online) {
@@ -595,8 +720,11 @@ window.ubahJumlah = ubahJumlah; window.hitungHarga = hitungHarga; window.simpanJ
 window.kirimAntrean = kirimAntrean; window.aktifkanHargaManual = aktifkanHargaManual;
 window.tampilkanHargaManual = tampilkanHargaManual;
 window.pilihOperatorIdx = pilihOperatorIdx; window.bukaPilihOperator = bukaPilihOperator;
+window.kirimLogin = kirimLogin; window.lewatiLogin = lewatiLogin;
 
 muatRingkasanCache();
+if (!sudahLogin()) tampilkanLayarLogin(false);
+$('inputSandiLogin').addEventListener('keydown', function (e) { if (e.key === 'Enter') kirimLogin(); });
 perbaruiChipOperator();
 if (!operatorAktif()) bukaPilihOperator();
 cekJamOperasional();

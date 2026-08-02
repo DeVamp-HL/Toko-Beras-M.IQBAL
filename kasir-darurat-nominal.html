@@ -114,7 +114,7 @@
     <button type="button" class="tombol-key" onclick="tekanAngka('0')">0</button>
     <button type="button" class="tombol-key tombol-hapus" onclick="hapusAngka()">⌫</button>
   </div>
-  <button type="button" class="tombol-besar tombol-simpan" onclick="simpanTransaksi()">💾 Simpan</button>
+  <button type="button" class="tombol-besar tombol-simpan" id="btnSimpanKasir" onclick="simpanTransaksi()">💾 Simpan</button>
 
   <div class="info-box">
     ⚠ Halaman ini CUMA catat total uang masuk — tidak ada nama produk, tidak ada stok yang berkurang otomatis. Kalau Ben atau My DeV sudah kembali ke toko, sisa stok fisik di gudang perlu dihitung ulang dan disesuaikan manual di sistem utama.
@@ -130,8 +130,11 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import {
-    getFirestore, collection, doc, setDoc, onSnapshot
+    getFirestore, collection, doc, setDoc, onSnapshot, query, where
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  import {
+    getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
   // Firebase config SAMA PERSIS dengan sistem utama — transaksi masuk ke database
   // yang sama, otomatis ikut kehitung di omzet dashboard (Kas Masuk, Omzet hari ini).
@@ -148,9 +151,45 @@
   const db = getFirestore(appFirebase);
   const KOLEKSI_PENJUALAN = 'penjualan';
 
+  // ===== Login toko (Jalan benar, 2 Agustus 2026) =====
+  // Sandi TIDAK ditulis di kode (repo publik). Diketik sekali per perangkat lewat prompt,
+  // sesi disimpan browser sehingga tidak diminta lagi tiap buka.
+  const EMAIL_TOKO = 'kasir@tokoberasmiqbal.web.app';
+  const auth = getAuth(appFirebase);
+  let _sudahLoginToko = false;
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+  onAuthStateChanged(auth, (u) => { _sudahLoginToko = !!u; });
+  async function mintaLoginToko(pesan) {
+    const sandi = prompt(pesan || 'Masukkan sandi toko (sekali saja di HP ini):');
+    if (!sandi) return false;
+    try {
+      await signInWithEmailAndPassword(auth, EMAIL_TOKO, sandi.trim());
+      return true;
+    } catch (e) {
+      const kode = String(e.code || '');
+      alert((kode.includes('wrong-password') || kode.includes('invalid-credential') || kode.includes('user-not-found'))
+        ? 'Sandi salah.' : 'Gagal masuk — cek sinyal, lalu coba lagi.');
+      return false;
+    }
+  }
+  function ditolakKarenaBelumLogin(err) {
+    return !!(err && String(err.code || '').includes('permission-denied'));
+  }
+
   let nominalDiketik = '';
 
   function formatRupiah(angka) { return 'Rp' + Math.round(angka).toLocaleString('id-ID'); }
+
+  // Tanggal LOKAL (WIB), bukan toISOString() yang selalu UTC — Indonesia UTC+7, jadi sebelum
+  // jam 07:00 WIB toISOString() masih tanggal KEMARIN (sama bug-nya dengan sistem utama,
+  // harus konsisten karena kedua halaman menulis ke koleksi 'penjualan' yang sama).
+  function tanggalLokalIso() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  // ID unik — Date.now() saja bisa tabrakan kalau 2 orang di 2 HP beda simpan di milidetik
+  // yang sama (silent overwrite, transaksi hilang tanpa pesan error apa pun).
+  function idUnik() { return Date.now() + Math.random(); }
 
   function tekanAngka(digit) {
     if (nominalDiketik.length > 9) return;
@@ -173,8 +212,8 @@
     if (nominal <= 0) { alert('Ketik dulu jumlah uangnya.'); return; }
 
     const transaksi = {
-      id: Date.now(),
-      tanggal: new Date().toISOString().split('T')[0],
+      id: idUnik(),
+      tanggal: tanggalLokalIso(),
       jam: new Date().toTimeString().slice(0,5),
       jenis: 'kasir_darurat_nominal',
       namaProduk: '(tidak tercatat — kasir darurat)',
@@ -185,6 +224,10 @@
       // TIDAK ke-track dari sini. Rekonsiliasi stok fisik wajib manual.
     };
 
+    // Kunci tombol selama proses async — mencegah double-tap (koneksi lambat) menyimpan
+    // transaksi yang sama dua kali sebelum tombol sempat merespons tap pertama.
+    const btn = document.getElementById('btnSimpanKasir');
+    if (btn) btn.disabled = true;
     try {
       await setDoc(doc(db, KOLEKSI_PENJUALAN, String(transaksi.id)), transaksi);
       document.getElementById('pesanOk').style.display = 'block';
@@ -192,14 +235,30 @@
       nominalDiketik = '';
       perbaruiTampilan();
     } catch (err) {
-      alert('Gagal simpan. Cek sinyal internet, lalu coba lagi. (' + err.message + ')');
+      // Ditolak karena database terkunci & HP ini belum login → minta sandi, lalu COBA SIMPAN
+      // LAGI otomatis. Nominal tidak dihapus dari layar sampai benar-benar tersimpan.
+      if (ditolakKarenaBelumLogin(err) && await mintaLoginToko('Database terkunci. Masukkan sandi toko untuk menyimpan:')) {
+        try {
+          await setDoc(doc(db, KOLEKSI_PENJUALAN, String(transaksi.id)), transaksi);
+          document.getElementById('pesanOk').style.display = 'block';
+          setTimeout(() => { document.getElementById('pesanOk').style.display = 'none'; }, 2000);
+          nominalDiketik = '';
+          perbaruiTampilan();
+        } catch (err2) {
+          alert('Masih gagal simpan. Cek sinyal, lalu coba lagi. (' + err2.message + ')');
+        }
+      } else {
+        alert('Gagal simpan. Cek sinyal internet, lalu coba lagi. (' + err.message + ')');
+      }
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
   let _cachePenjualan = [];
   function tampilkanRiwayatHariIni() {
-    const hariIni = new Date().toISOString().split('T')[0];
-    const punyaHariIni = _cachePenjualan.filter(p => p.tanggal === hariIni && p.jenis === 'kasir_darurat_nominal');
+    const hariIni = tanggalLokalIso();
+    const punyaHariIni = _cachePenjualan.filter(p => p.tanggal === hariIni);
     const kontainer = document.getElementById('daftarRiwayat');
     const totalEl = document.getElementById('totalHariIni');
     const total = punyaHariIni.reduce((a,p) => a + (p.hargaTotal||0), 0);
@@ -215,14 +274,19 @@
   }
 
   const statusEl = document.getElementById('statusSambung');
-  onSnapshot(collection(db, KOLEKSI_PENJUALAN), (snap) => {
+  // Query DIPERSEMPIT ke jenis='kasir_darurat_nominal' saja (bukan seluruh koleksi 'penjualan') —
+  // halaman ini cuma perlu total kasir darurat, bukan seluruh riwayat penjualan toko yang terus
+  // membesar. Sebelumnya listener ini mengunduh ULANG SELURUH histori penjualan toko setiap kali
+  // ada perubahan apa pun di mana pun, boros kuota/baterai (bug ditemukan saat audit 1 Agustus 2026).
+  const queryKasirDarurat = query(collection(db, KOLEKSI_PENJUALAN), where('jenis', '==', 'kasir_darurat_nominal'));
+  onSnapshot(queryKasirDarurat, (snap) => {
     const daftar = [];
     snap.forEach(d => daftar.push(d.data()));
     _cachePenjualan = daftar;
     statusEl.textContent = '📡 Tersambung';
     tampilkanRiwayatHariIni();
   }, (err) => {
-    statusEl.textContent = '⚠ Offline — cek sinyal';
+    statusEl.textContent = ditolakKarenaBelumLogin(err) ? '🔑 Belum masuk — ketuk Simpan untuk login' : '⚠ Offline — cek sinyal';
     console.error(err);
   });
 
