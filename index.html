@@ -4013,11 +4013,14 @@
         else if (p.jenis === 'kemasan') grup.kemasan += n;
         else if (p.jenis === 'karung' || p.jenis === 'repacking') grup.karung += n;
       });
+      const adaData = (grup.literan + grup.kemasan + grup.karung) > 0;
       const dasar = Math.max(1, grup.literan + grup.kemasan + grup.karung);
       const pL = Math.round(grup.literan / dasar * 100), pK = Math.round(grup.kemasan / dasar * 100);
-      const pG = Math.max(0, 100 - pL - pK);
+      const pG = adaData ? Math.max(0, 100 - pL - pK) : 0;
       const donat = document.getElementById('donatOmzet');
-      if (donat) donat.style.background = 'conic-gradient(#d4ab5e 0 ' + pL + '%, #6ea8dc ' + pL + '% ' + (pL + pK) + '%, #8a6d4a ' + (pL + pK) + '% 100%)';
+      if (donat) donat.style.background = adaData
+        ? 'conic-gradient(#d4ab5e 0 ' + pL + '%, #6ea8dc ' + pL + '% ' + (pL + pK) + '%, #8a6d4a ' + (pL + pK) + '% 100%)'
+        : '#232a36';
       const elTotal = document.getElementById('donatOmzetTotal');
       if (elTotal) elTotal.textContent = formatRupiah(total30);
       const legenda = document.getElementById('legendaOmzet');
