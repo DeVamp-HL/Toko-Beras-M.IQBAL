@@ -3634,8 +3634,18 @@
   }
   async function segarkanRoster() {
     try {
-      const r = await fetch('https://firestore.googleapis.com/v1/projects/toko-beras-m-iqbal/databases/(default)/documents/pengaturan/aksesKasir?key=AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA', { cache: 'no-store' });
+      // Jalur REST mentah (bukan SDK), jadi token TIDAK ikut otomatis — harus disisipkan
+      // sendiri. Tanpa ini, begitu database dikunci roster ditolak diam-diam (403) dan
+      // saklar "siapa jaga" berhenti tersegarkan tanpa pesan apa pun.
+      // Temuan audit 2 Agustus 2026, sebelum penguncian.
+      const opsi = { cache: 'no-store' };
+      try {
+        const t = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+        if (t) opsi.headers = { Authorization: 'Bearer ' + t };
+      } catch (e) { /* offline / belum login — lanjut tanpa token, pakai cache */ }
+      const r = await fetch('https://firestore.googleapis.com/v1/projects/toko-beras-m-iqbal/databases/(default)/documents/pengaturan/aksesKasir?key=AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA', opsi);
       if (r.status === 404) { localStorage.removeItem(KUNCI_ROSTER); return; }
+      if (r.status === 401 || r.status === 403) { bukaModalLoginToko('Database terkunci. Masukkan sandi toko untuk lanjut.'); return; }
       if (!r.ok) return;
       const j = await r.json();
       const baca = (v) => {
