@@ -1010,15 +1010,21 @@
   const HARGA_AWAL_BAHAN_LITERAN = { 'paperbag5l': 305, 'paperbag10l': 395, 'karungbekas': 1500 };
   const LABEL_BAHAN_LITERAN = { 'paperbag5l': 'Paper bag 5 liter', 'paperbag10l': 'Paper bag 10 liter', 'karungbekas': 'Karung bekas' };
 
-  // Tentukan jenis kemasan literan dari jumlah liter yang dibeli (aturan My DeV, 1 Agustus 2026):
-  // = 5L -> paper bag 5L (Rp305/lembar). 6-12L -> paper bag 10L (Rp395/lembar).
+  // Tentukan jenis kemasan literan dari jumlah liter yang dibeli
+  // (aturan My DeV 1 Agustus 2026, ditegaskan ulang 2 Agustus 2026: karung bekas DEFAULT untuk minimal 13 liter):
+  // = 5L -> paper bag 5L (Rp305/lembar). 5<L<13 -> paper bag 10L (Rp395/lembar).
   // >= 13L -> karung bekas (Rp1.500/karung, 1 transaksi = 1 karung, bukan dihitung per liter).
   // < 5L -> tanpa kemasan khusus (plastik biasa, sudah tercakup biaya operasional bulanan).
   function tentukanKemasanLiteran(jumlahLiter) {
     if (jumlahLiter < 5) return null;
     if (jumlahLiter === 5) return 'paperbag5l';
-    if (jumlahLiter <= 12) return 'paperbag10l';
+    if (jumlahLiter < 13) return 'paperbag10l';
     return 'karungbekas';
+  }
+  // Harga bahan literan efektif: rata-rata batch kalau sudah ada pembelian tercatat,
+  // kalau belum pakai harga awal konfirmasi My DeV (paper bag file 14; karung bekas Rp1.500 file 04, 2 Agustus 2026).
+  function hargaBahanLiteranEfektif(jenis, stokBahanLiteran) {
+    return (stokBahanLiteran[jenis]?.hargaPerPcs || 0) || HARGA_AWAL_BAHAN_LITERAN[jenis] || 0;
   }
   // Dikosongkan atas permintaan My DeV (31 Juli 2026) — mulai dari nol, diisi ulang
   // satu per satu sesuai merk yang benar-benar dijual. Dropdown "Merk lain (ketik manual)"
@@ -2477,9 +2483,9 @@
       return;
     }
     const stokBahanLiteran = hitungStokBahanLiteran();
-    const harga = stokBahanLiteran[jenisKemasan]?.hargaPerPcs ?? 0;
+    const harga = hargaBahanLiteranEfektif(jenisKemasan, stokBahanLiteran);
     const sisa = stokBahanLiteran[jenisKemasan]?.sisaPcs ?? 0;
-    el.textContent = `Kemasan otomatis: ${LABEL_BAHAN_LITERAN[jenisKemasan]} (${formatRupiah(harga)}, rata-rata batch) — ikut ditambahkan ke HPP. Sisa stok kemasan ini: ${sisa}${sisa <= 0 ? ' ⚠ HABIS' : ''}.`;
+    el.textContent = `Kemasan otomatis: ${LABEL_BAHAN_LITERAN[jenisKemasan]} (${formatRupiah(harga)}) — ikut ditambahkan ke HPP. Sisa stok kemasan ini: ${sisa}${sisa <= 0 ? ' ⚠ HABIS' : ''}.`;
   }
 
   function pilihBayar(cara) {
@@ -2518,14 +2524,14 @@
       }
       const hppPerKgSaatIni = stokKarung[jenis]?.hppTerakhirPerKg || 0;
 
-      // Kemasan literan otomatis dari jumlah liter — aturan My DeV (1 Agustus 2026):
-      // =5L->paper bag 5L, 6-12L->paper bag 10L, >=13L->karung bekas (per karung, bukan per liter). <5L: tidak ada biaya khusus.
+      // Kemasan literan otomatis dari jumlah liter — aturan My DeV (ditegaskan 2 Agustus 2026):
+      // =5L->paper bag 5L, 5<L<13->paper bag 10L, >=13L->karung bekas DEFAULT (per karung, bukan per liter). <5L: tidak ada biaya khusus.
       const jenisKemasanLiteran = tentukanKemasanLiteran(jumlahLiter);
       let biayaKemasanLiteran = 0, jumlahKemasanLiteranDipakai = 0;
       if (jenisKemasanLiteran) {
-        jumlahKemasanLiteranDipakai = jenisKemasanLiteran === 'karungbekas' ? 1 : 1; // 1 transaksi = 1 unit kemasan
+        jumlahKemasanLiteranDipakai = 1; // 1 transaksi = 1 unit kemasan
         const stokBahanLiteran = hitungStokBahanLiteran();
-        biayaKemasanLiteran = (stokBahanLiteran[jenisKemasanLiteran]?.hargaPerPcs || 0) * jumlahKemasanLiteranDipakai;
+        biayaKemasanLiteran = hargaBahanLiteranEfektif(jenisKemasanLiteran, stokBahanLiteran) * jumlahKemasanLiteranDipakai;
         if (!stokBahanLiteran[jenisKemasanLiteran] || stokBahanLiteran[jenisKemasanLiteran].sisaPcs < jumlahKemasanLiteranDipakai) {
           if (!confirm(`Stok ${LABEL_BAHAN_LITERAN[jenisKemasanLiteran]} cuma sisa ${stokBahanLiteran[jenisKemasanLiteran]?.sisaPcs || 0}. Tetap simpan? (stok bisa jadi minus, catat pembelian susulan nanti)`)) return;
         }

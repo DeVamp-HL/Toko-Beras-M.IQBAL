@@ -206,6 +206,10 @@ var K_ROSTER = 'kasir_roster_v1';
 var NAMA_OPERATOR = ['Gono', 'Hasan', 'Ben Mohsein'];
 var JAM_BUKA = 5, JAM_TUTUP = 19; // input hanya 05.00-18.59 — di luar itu terkunci (anak di rumah tidak bisa ketik-ketik)
 var LABEL_BAHAN = { paperbag5l: 'Paper bag 5L', paperbag10l: 'Paper bag 10L', karungbekas: 'Karung bekas' };
+// Harga fallback kalau ringkasan belum memuat harga bahan (belum ada pembelian tercatat).
+// Angka konfirmasi My DeV: paper bag file 14 (3 Juli 2026), karung bekas Rp1.500 file 04 (2 Agustus 2026).
+// Sinkron dengan HARGA_AWAL_BAHAN_LITERAN di index.html.
+var HARGA_AWAL_BAHAN = { paperbag5l: 305, paperbag10l: 395, karungbekas: 1500 };
 
 var ringkasan = null;          // data harga+stok+HPP terbitan sistem utama
 var jenisAktif = 'kemasan';
@@ -221,7 +225,13 @@ function esk(s) { if (s === undefined || s === null) return ''; return String(s)
 function idUnik() { return Date.now() + Math.random(); }
 function tanggalLokalIso(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function rupiah(n) { return 'Rp' + Math.round(n || 0).toLocaleString('id-ID'); }
-function tentukanKemasanLiteran(L) { if (L < 5) return null; if (L === 5) return 'paperbag5l'; if (L <= 12) return 'paperbag10l'; return 'karungbekas'; }
+// Aturan My DeV (ditegaskan 2 Agustus 2026): karung bekas DEFAULT untuk literan minimal 13 liter.
+// <5L: plastik biasa (operasional, bukan HPP). =5L: paper bag 5L. 5<L<13: paper bag 10L. >=13L: karung bekas.
+function tentukanKemasanLiteran(L) { if (L < 5) return null; if (L === 5) return 'paperbag5l'; if (L < 13) return 'paperbag10l'; return 'karungbekas'; }
+function hargaBahanLiteran(jk) {
+  var bahan = ((ringkasan && ringkasan.bahanLiteran) || {})[jk] || {};
+  return bahan.hargaPerPcs || HARGA_AWAL_BAHAN[jk] || 0;
+}
 
 // ---------- konversi Firestore REST ----------
 function keFs(nilai) {
@@ -468,7 +478,7 @@ function hitungHarga() {
     if (!b.hargaPerLiter) ket = '⚠ Harga belum ada di Daftar Harga. Pakai harga manual.';
     else { total = Math.round(b.hargaPerLiter * jml); ket = rupiah(b.hargaPerLiter) + '/L × ' + jml + ' L'; }
     var jk = tentukanKemasanLiteran(jml);
-    if (jk) $('infoKemasanLiteran').textContent = 'Kemasan otomatis: ' + LABEL_BAHAN[jk];
+    if (jk) $('infoKemasanLiteran').textContent = 'Kemasan otomatis: ' + LABEL_BAHAN[jk] + ' (' + rupiah(hargaBahanLiteran(jk)) + ', masuk HPP)';
   } else if (jenisAktif === 'repacking') {
     if (!b.hargaPerKg) ket = '⚠ Harga belum ada di Daftar Harga. Pakai harga manual.';
     else { total = Math.round(b.hargaPerKg * jml); ket = rupiah(b.hargaPerKg) + '/kg × ' + jml + ' kg'; }
@@ -527,9 +537,8 @@ function simpanJual() {
     var jk = tentukanKemasanLiteran(jml);
     var biayaKemasan = 0, jmlKemasan = 0;
     if (jk) {
-      jmlKemasan = 1;
-      var bahan = (ringkasan.bahanLiteran || {})[jk] || {};
-      biayaKemasan = (bahan.hargaPerPcs || 0) * jmlKemasan;
+      jmlKemasan = 1; // 1 transaksi = 1 unit kemasan (karung bekas per karung, bukan per liter)
+      biayaKemasan = hargaBahanLiteran(jk) * jmlKemasan;
     }
     trx = { jenis: 'literan', merkSumber: b.merk, jumlahLiter: jml, rasioPakai: rasio, totalKg: totalKg,
       namaProduk: b.merk, hppTotalSaatJual: Math.round((b.hppPerKg || 0) * totalKg) + biayaKemasan,
