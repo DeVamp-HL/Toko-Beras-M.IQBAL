@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Sistem Toko — Toko Beras M.IQBAL</title>
 <link rel="manifest" href="manifest-sistem.json">
-<meta name="theme-color" content="#3a2e1f">
+<meta name="theme-color" content="#0d1117">
 <link rel="icon" type="image/png" sizes="32x32" href="icon-sistem-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-sistem-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,72 +15,85 @@
 <meta name="description" content="Pembelian batch, repacking, penjualan, stok, dan laporan Toko Beras M.IQBAL.">
 <style>
   :root {
-    /* Palet vintage rice business (31 Juli 2026, konfirmasi My DeV): cokelat karung goni
-       jadi warna utama pengganti hijau, merah bata untuk aksen aktif, emas padi untuk highlight. */
-    --hijau: #6b4a2e;
-    --hijau-tua: #3a2e1f;
-    --merah: #a8462f;
-    --emas: #d4a03c;
-    --abu: #f0e6ce;
-    --garis: #c2a868;
-    --teks: #3a2e1f;
-    --kartu: #f0e6ce;
-    --hasil-bg: #e8dcc0;
-    --peringatan-bg: #ecd6c8;
-    --badge-bg: #e3d5ae;
-    --header-teks: #f0e6ce;
-    --tombol-teks: #ffffff;
-    /* Background header & bar-backup HARUS tetap cokelat gelap di kedua mode — beda dari
-       --hijau-tua yang membalik arah (jadi terang) saat mode gelap karena perannya di
-       tempat lain adalah warna TEKS/aksen, bukan background. Dipisah supaya tidak tabrakan. */
-    --gelap-tetap: #3a2e1f;
+    /* ===== TEMA E "MEWAH" (2 Agustus 2026, pilihan My DeV dari mockup-sistem-mewah) =====
+       Kaca gelap + emas sampanye, khusus perangkat Ben & My DeV. Nama variabel lama
+       dipertahankan supaya tidak satu selector pun perlu diganti — hanya nilainya. */
+    --hijau: #d4ab5e;            /* aksen utama (dulu cokelat) -> emas sampanye */
+    --hijau-tua: #eef1f6;        /* teks kuat -> putih gading */
+    --merah: #f27059;
+    --emas: #d9b25f;
+    --abu: #171c25;              /* dasar elemen sekunder */
+    --garis: #232a36;
+    --teks: #e9ecf1;
+    --kartu: #141922;            /* dasar input/nav (kartu kaca diatur di .kartu) */
+    --hasil-bg: rgba(217, 178, 95, .08);
+    --peringatan-bg: rgba(242, 112, 89, .1);
+    --badge-bg: rgba(217, 178, 95, .16);
+    --header-teks: #e9ecf1;
+    --tombol-teks: #171004;      /* teks di atas tombol emas */
+    --gelap-tetap: #0d1117;
+    --redup: #8b93a1;
+    --emas-terang: #f2d795;
+    --emas-gelap: #a8873f;
+    --hijau-naik: #4ade80;
+    --kaca: rgba(23, 28, 37, .72);
+    --kaca-garis: rgba(255, 255, 255, .07);
   }
   html[data-tema="gelap"] {
-    /* Mode gelap — tetap keluarga warna sama (cokelat/emas/merah bata), bukan hitam-putih.
-       Cokelat karung goni gelap jadi dasar, krem/emas jadi teks (kebalikan proporsi mode terang). */
-    --hijau: #c2914f;
-    --hijau-tua: #f0e6ce;
-    --merah: #d97a5c;
-    --emas: #d4a03c;
-    --abu: #201810;
-    --garis: #5a4630;
-    --teks: #ecdfc4;
-    --kartu: #2b2015;
-    --hasil-bg: #332616;
-    --peringatan-bg: #3a2620;
-    --badge-bg: #4a3826;
-    --header-teks: #f0e6ce;
-    --tombol-teks: #201810;
-    --gelap-tetap: #201810;
+    /* Tema E berlaku tunggal — saklar tema lama dibiarkan hidup di logika,
+       tapi kedua mode memakai nilai yang sama supaya tidak ada jalur tampilan kedua. */
+    --hijau: #d4ab5e;
+    --hijau-tua: #eef1f6;
+    --merah: #f27059;
+    --emas: #d9b25f;
+    --abu: #171c25;
+    --garis: #232a36;
+    --teks: #e9ecf1;
+    --kartu: #141922;
+    --hasil-bg: rgba(217, 178, 95, .08);
+    --peringatan-bg: rgba(242, 112, 89, .1);
+    --badge-bg: rgba(217, 178, 95, .16);
+    --header-teks: #e9ecf1;
+    --tombol-teks: #171004;
+    --gelap-tetap: #0d1117;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    font-family: Georgia, "Times New Roman", -apple-system, "Segoe UI", Roboto, serif;
-    background: var(--abu);
+    font-family: -apple-system, "Inter", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(1100px 480px at 75% -10%, rgba(217, 178, 95, .13) 0%, transparent 55%),
+      radial-gradient(700px 500px at -10% 30%, rgba(110, 168, 220, .07) 0%, transparent 55%),
+      linear-gradient(180deg, #10141b, #0c0f14);
+    background-attachment: fixed;
     color: var(--teks);
     padding-bottom: 100px;
+    -webkit-font-smoothing: antialiased;
   }
   header {
-    background: var(--gelap-tetap);
+    background: linear-gradient(180deg, rgba(16, 20, 27, .92), rgba(13, 17, 23, .92));
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     color: var(--header-teks);
     padding: 18px 16px;
     position: sticky;
     top: 0;
     z-index: 10;
+    border-bottom: 1px solid rgba(217, 178, 95, .28);
   }
-  header h1 { margin: 0; font-size: 20px; }
-  header p { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+  header h1 {
+    margin: 0; font-size: 20px;
+    font-family: Georgia, "Times New Roman", serif; font-weight: 600; letter-spacing: 1.5px;
+    background: linear-gradient(90deg, var(--emas-terang), var(--emas));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  header p { margin: 4px 0 0; font-size: 12.5px; color: var(--redup); letter-spacing: .3px; }
   header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-  #tombolTema {
-    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: var(--header-teks);
-    border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700; white-space: nowrap;
-    flex-shrink: 0;
-  }
+  #tombolTema { display: none; } /* tema tunggal E — saklar disembunyikan, logikanya dibiarkan */
   nav {
     display: flex;
-    background: var(--kartu);
-    border-bottom: 2px solid var(--garis);
+    background: rgba(16, 20, 27, .88);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--garis);
     position: sticky;
     top: 68px;
     z-index: 9;
@@ -89,41 +102,46 @@
     flex: 1;
     padding: 14px 8px;
     border: none;
-    background: var(--kartu);
-    font-size: 15px;
-    font-weight: 600;
-    color: #888;
-    border-bottom: 3px solid transparent;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    color: var(--redup);
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
   }
-  nav button.aktif { color: var(--hijau-tua); border-bottom: 3px solid var(--hijau); }
+  nav button.aktif { color: var(--emas-terang); border-bottom: 2px solid var(--emas); }
   main { padding: 16px; max-width: 680px; margin: 0 auto; }
   .kartu {
-    background: var(--kartu);
-    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(26, 32, 42, .75), var(--kaca));
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--kaca-garis);
+    border-radius: 16px;
     padding: 18px;
     margin-bottom: 16px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .05);
   }
-  label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 6px; margin-top: 18px; }
+  label { display: block; font-size: 13.5px; font-weight: 700; margin-bottom: 6px; margin-top: 18px; color: #cfd5de; }
   label:first-child { margin-top: 0; }
-  .keterangan { font-size: 12px; color: #777; font-weight: 400; margin-top: 2px; }
-  select, input[type="number"], input[type="text"], input[type="date"], textarea {
+  .keterangan { font-size: 12px; color: var(--redup); font-weight: 400; margin-top: 2px; }
+  select, input[type="number"], input[type="text"], input[type="date"], input[type="month"], textarea {
     width: 100%;
-    padding: 14px;
+    padding: 13px;
     font-size: 17px;
-    border: 2px solid var(--garis);
+    border: 1px solid var(--garis);
     border-radius: 10px;
-    background: var(--kartu);
+    background: #0e1218;
     color: var(--teks);
+    font-variant-numeric: tabular-nums;
   }
-  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--hijau); }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--emas-gelap); box-shadow: 0 0 0 3px rgba(217, 178, 95, .13); }
   .baris-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .subjudul {
-    font-size: 13px;
+    font-size: 11.5px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--hijau-tua);
-    font-weight: 800;
+    letter-spacing: 1.6px;
+    color: #c6ccd6;
+    font-weight: 700;
     margin: 24px 0 4px;
     padding-top: 16px;
     border-top: 1px solid var(--garis);
@@ -131,16 +149,16 @@
   .subjudul:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
   .hasil {
     background: var(--hasil-bg);
-    border: 2px solid var(--hijau);
+    border: 1px solid rgba(217, 178, 95, .4);
     border-radius: 12px;
     padding: 16px;
     margin-top: 20px;
     font-size: 15px;
   }
-  .hasil .angka { font-size: 22px; font-weight: 800; color: var(--hijau-tua); }
+  .hasil .angka { font-size: 22px; font-weight: 800; color: var(--emas-terang); font-variant-numeric: tabular-nums; }
   .peringatan {
     background: var(--peringatan-bg);
-    border: 2px solid var(--merah);
+    border: 1px solid rgba(242, 112, 89, .45);
     color: var(--merah);
     border-radius: 10px;
     padding: 10px 14px;
@@ -152,30 +170,35 @@
   .tombol-simpan {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    background: var(--kartu);
+    background: rgba(13, 17, 23, .92);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
-    border-top: 2px solid var(--garis);
+    border-top: 1px solid var(--garis);
     z-index: 10;
   }
   .tombol-simpan button {
     width: 100%; max-width: 680px; margin: 0 auto; display: block;
-    padding: 18px; background: var(--hijau); color: var(--tombol-teks); border: none;
-    border-radius: 12px; font-size: 18px; font-weight: 800;
+    padding: 17px;
+    background: linear-gradient(135deg, var(--emas-terang), var(--emas) 60%, var(--emas-gelap));
+    color: var(--tombol-teks); border: none;
+    border-radius: 12px; font-size: 17px; font-weight: 800; letter-spacing: .3px;
+    box-shadow: 0 4px 20px rgba(217, 178, 95, .28), inset 0 1px 0 rgba(255, 255, 255, .5);
   }
-  .tombol-simpan button:active { background: var(--hijau-tua); }
-  .tombol-simpan button:disabled { background: #bbb; }
+  .tombol-simpan button:active { transform: translateY(1px); }
+  .tombol-simpan button:disabled { background: #3a4046; color: #8b93a1; box-shadow: none; }
   .pesan-ok {
-    background: var(--hijau); color: var(--tombol-teks); text-align: center; padding: 12px;
+    background: rgba(74, 222, 128, .12); border: 1px solid rgba(74, 222, 128, .35);
+    color: var(--hijau-naik); text-align: center; padding: 12px;
     border-radius: 10px; font-weight: 700; margin-bottom: 16px; display: none;
   }
   .info-box {
-    background: #f5ecd7; border: 1px solid #b89658; border-radius: 10px;
-    padding: 12px 14px; font-size: 13px; color: #5c4522; margin-bottom: 16px;
+    background: rgba(217, 178, 95, .06); border: 1px solid rgba(217, 178, 95, .25); border-radius: 12px;
+    padding: 12px 14px; font-size: 12.5px; color: #c9c0a8; margin-bottom: 16px;
   }
   /* Baris merk (dinamis) */
   .baris-merk {
-    background: var(--abu);
-    border: 2px solid var(--garis);
+    background: rgba(14, 18, 24, .6);
+    border: 1px solid var(--garis);
     border-radius: 12px;
     padding: 14px;
     margin-top: 12px;
@@ -183,7 +206,8 @@
   }
   .baris-merk .nomor {
     position: absolute; top: -10px; left: 12px;
-    background: var(--hijau); color: var(--tombol-teks);
+    background: linear-gradient(135deg, var(--emas-terang), var(--emas-gelap));
+    color: var(--tombol-teks);
     font-size: 12px; font-weight: 800;
     padding: 2px 10px; border-radius: 999px;
   }
@@ -193,84 +217,90 @@
   .baris-merk select, .baris-merk input { padding: 11px; font-size: 15px; }
   .tombol-hapus-merk {
     width: 100%; margin-top: 10px; padding: 10px;
-    background: var(--kartu); border: 2px solid var(--merah); color: var(--merah);
+    background: transparent; border: 1px solid rgba(242, 112, 89, .45); color: var(--merah);
     border-radius: 8px; font-weight: 700; font-size: 13px;
   }
   .tombol-tambah-merk {
     width: 100%; margin-top: 14px; padding: 14px;
-    background: var(--kartu); border: 2px dashed var(--hijau); color: var(--hijau-tua);
+    background: rgba(217, 178, 95, .05); border: 1px dashed rgba(217, 178, 95, .45); color: var(--emas-terang);
     border-radius: 10px; font-weight: 800; font-size: 15px;
   }
   .satuan-toggle { display: flex; gap: 8px; margin-top: 4px; }
   .satuan-toggle button {
-    flex: 1; padding: 10px; border: 2px solid var(--garis); background: var(--kartu);
-    border-radius: 8px; font-size: 13px; font-weight: 700; color: #777;
+    flex: 1; padding: 10px; border: 1px solid var(--garis); background: var(--kartu);
+    border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--redup);
   }
-  .satuan-toggle button.pilih { background: var(--hijau); border-color: var(--hijau); color: var(--tombol-teks); }
+  .satuan-toggle button.pilih { background: var(--emas); border-color: var(--emas); color: var(--tombol-teks); }
   .subtotal-merk {
     margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--garis);
-    font-size: 13px; color: var(--hijau-tua); font-weight: 700;
+    font-size: 13px; color: var(--emas-terang); font-weight: 700; font-variant-numeric: tabular-nums;
   }
   /* Rekap */
   .daftar-batch { display: flex; flex-direction: column; gap: 12px; }
   .item-batch {
-    background: var(--kartu); border-radius: 12px; padding: 14px 16px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    background: #151a23; border: 1px solid var(--kaca-garis); border-radius: 14px; padding: 14px 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
   }
   .item-batch .baris-atas { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-  .item-batch .pemasok-nama { font-weight: 800; font-size: 16px; }
-  .item-batch .tanggal { font-size: 13px; color: #888; }
-  .item-batch table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
-  .item-batch th, .item-batch td { text-align: left; padding: 5px 4px; border-bottom: 1px solid var(--garis); }
-  .item-batch th { color: #888; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .item-batch .pemasok-nama { font-weight: 800; font-size: 16px; color: var(--hijau-tua); }
+  .item-batch .tanggal { font-size: 13px; color: var(--redup); }
+  .item-batch table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .item-batch th, .item-batch td { text-align: left; padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, .05); }
+  .item-batch th { color: var(--redup); font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; }
   .item-batch .total-baris {
     display: flex; justify-content: space-between; margin-top: 10px; padding-top: 8px;
-    border-top: 2px solid var(--garis); font-weight: 800; color: var(--hijau-tua); font-size: 15px;
+    border-top: 1px solid rgba(217, 178, 95, .35); font-weight: 800; color: var(--emas-terang); font-size: 15px;
+    font-variant-numeric: tabular-nums;
   }
-  .kosong { text-align: center; color: #999; padding: 40px 16px; font-size: 14px; }
+  .kosong { text-align: center; color: var(--redup); padding: 40px 16px; font-size: 14px; }
   .ringkasan-atas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .ringkasan-atas .kotak { background: var(--kartu); border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-  .ringkasan-atas .label { font-size: 12px; color: #888; }
-  .ringkasan-atas .nilai { font-size: 18px; font-weight: 800; color: var(--hijau-tua); margin-top: 4px; }
+  .ringkasan-atas .kotak {
+    background: linear-gradient(180deg, #1a2029, #151a23);
+    border: 1px solid var(--kaca-garis); border-radius: 14px; padding: 14px; text-align: center;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .05);
+  }
+  .ringkasan-atas .label { font-size: 10.5px; color: var(--redup); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; }
+  .ringkasan-atas .nilai { font-size: 19px; font-weight: 800; color: var(--hijau-tua); margin-top: 6px; font-variant-numeric: tabular-nums; }
   .tombol-hapus { background: none; border: none; color: var(--merah); font-size: 13px; font-weight: 700; padding: 8px 0 0; }
   .halaman { display: none; }
   .halaman.tampil { display: block; }
-  .badge-karung { display:inline-block; background:var(--badge-bg); color:var(--hijau-tua); font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; margin-left:6px; }
+  .badge-karung { display: inline-block; background: var(--badge-bg); color: var(--emas-terang); font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; margin-left: 6px; }
   .bar-backup {
-    background: var(--gelap-tetap); color: var(--header-teks); padding: 12px 16px; font-size: 13px;
+    background: rgba(13, 17, 23, .85); color: var(--header-teks); padding: 11px 16px; font-size: 12.5px;
     display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--garis);
   }
   .bar-backup b { font-weight: 800; }
   .bar-backup .tombol-kecil {
-    background: var(--kartu); color: var(--hijau-tua); border: none; border-radius: 8px;
-    padding: 8px 14px; font-weight: 800; font-size: 13px; white-space: nowrap;
+    background: rgba(255, 255, 255, .06); color: var(--teks); border: 1px solid var(--garis); border-radius: 8px;
+    padding: 8px 14px; font-weight: 700; font-size: 12.5px; white-space: nowrap;
   }
-  .cari-global-wrap { position: relative; padding: 10px 16px; background: var(--kartu); border-bottom: 2px solid var(--garis); }
+  .cari-global-wrap { position: relative; padding: 10px 16px; background: transparent; border-bottom: 1px solid var(--garis); }
   .cari-global-input {
-    width: 100%; padding: 12px 14px; font-size: 14px; border: 2px solid var(--garis);
-    border-radius: 10px; background: white; color: var(--teks);
+    width: 100%; padding: 12px 14px; font-size: 14px; border: 1px solid var(--garis);
+    border-radius: 10px; background: #0e1218; color: var(--teks);
   }
-  .cari-global-input:focus { outline: none; border-color: var(--hijau); }
+  .cari-global-input:focus { outline: none; border-color: var(--emas-gelap); }
   .cari-global-hasil {
     display: none; position: absolute; left: 16px; right: 16px; top: 100%;
-    background: var(--kartu); border: 2px solid var(--hijau); border-top: none;
+    background: #151a23; border: 1px solid rgba(217, 178, 95, .35); border-top: none;
     border-radius: 0 0 12px 12px; max-height: 60vh; overflow-y: auto; z-index: 20;
-    box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .5);
   }
   .cari-global-hasil.tampil { display: block; }
   .cari-global-item {
-    padding: 10px 14px; border-bottom: 1px solid var(--garis); font-size: 13px; cursor: pointer;
+    padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, .05); font-size: 13px; cursor: pointer;
   }
   .cari-global-item:last-child { border-bottom: none; }
   .cari-global-item .cg-tipe {
     display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase;
-    color: var(--hijau-tua); background: var(--badge-bg); padding: 1px 6px; border-radius: 5px; margin-right: 6px;
+    color: var(--emas-terang); background: var(--badge-bg); padding: 1px 6px; border-radius: 5px; margin-right: 6px;
   }
   .cari-global-item .cg-judul { font-weight: 700; }
-  .cari-global-item .cg-sub { color: #888; font-size: 12px; margin-top: 2px; }
-  .cari-global-kosong { padding: 14px; text-align: center; color: #999; font-size: 13px; }
+  .cari-global-item .cg-sub { color: var(--redup); font-size: 12px; margin-top: 2px; }
+  .cari-global-kosong { padding: 14px; text-align: center; color: var(--redup); font-size: 13px; }
   .peringatan-besar {
-    background: var(--peringatan-bg); border: 2px solid var(--merah); color: var(--merah);
+    background: var(--peringatan-bg); border: 1px solid rgba(242, 112, 89, .45); color: var(--merah);
     border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; font-size: 14px; font-weight: 700;
   }
   input[type="file"] { display: none; }
@@ -279,35 +309,35 @@
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;
   }
   .kartu-jenis-jual button {
-    padding: 14px 6px; border: 2px solid var(--garis); background: var(--kartu); border-radius: 12px;
-    font-size: 13px; font-weight: 800; color: #777; text-align: center; line-height: 1.3;
+    padding: 13px 6px; border: 1px solid var(--garis); background: #151a23; border-radius: 12px;
+    font-size: 12.5px; font-weight: 700; color: var(--redup); text-align: center; line-height: 1.35;
   }
-  .kartu-jenis-jual button.pilih { background: var(--hijau); border-color: var(--hijau); color: var(--tombol-teks); }
+  .kartu-jenis-jual button.pilih { background: var(--emas); border-color: var(--emas); color: var(--tombol-teks); }
   .stok-tersedia {
-    background: var(--hasil-bg); border: 1px solid var(--hijau); border-radius: 10px;
-    padding: 10px 12px; font-size: 13px; color: var(--hijau-tua); margin-top: 8px;
+    background: var(--hasil-bg); border: 1px solid rgba(217, 178, 95, .3); border-radius: 10px;
+    padding: 10px 12px; font-size: 13px; color: #d8cfb4; margin-top: 8px; font-variant-numeric: tabular-nums;
   }
-  .stok-tersedia.kurang { background: var(--peringatan-bg); border-color: var(--merah); color: var(--merah); font-weight: 700; }
+  .stok-tersedia.kurang { background: var(--peringatan-bg); border-color: rgba(242, 112, 89, .45); color: var(--merah); font-weight: 700; }
   .tab-bayar { display: flex; gap: 8px; margin-top: 4px; }
   .tab-bayar button {
-    flex: 1; padding: 12px 4px; border: 2px solid var(--garis); background: var(--kartu);
-    border-radius: 8px; font-size: 13px; font-weight: 700; color: #777;
+    flex: 1; padding: 12px 4px; border: 1px solid var(--garis); background: #151a23;
+    border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--redup);
   }
-  .tab-bayar button.pilih { background: var(--hijau); border-color: var(--hijau); color: var(--tombol-teks); }
-  .badge-stok-rendah { background: var(--merah); color: var(--tombol-teks); font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 5px; margin-left: 6px; }
+  .tab-bayar button.pilih { background: var(--emas); border-color: var(--emas); color: var(--tombol-teks); }
+  .badge-stok-rendah { background: var(--merah); color: #fff; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 5px; margin-left: 6px; }
   .grid-tombol-pilih {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px;
   }
   .grid-tombol-pilih button {
-    padding: 12px 8px; border: 2px solid var(--garis); background: var(--kartu); border-radius: 10px;
+    padding: 12px 8px; border: 1px solid var(--garis); background: #151a23; border-radius: 10px;
     font-size: 14px; font-weight: 700; color: var(--teks); text-align: left; line-height: 1.4;
   }
   .grid-tombol-pilih button .nama-produk { display: block; font-weight: 800; }
-  .grid-tombol-pilih button .info-stok-tombol { display: block; font-size: 11px; font-weight: 600; color: #888; margin-top: 2px; }
-  .grid-tombol-pilih button.pilih { background: var(--hijau); border-color: var(--hijau); color: var(--tombol-teks); }
-  .grid-tombol-pilih button.pilih .info-stok-tombol { color: var(--badge-bg); }
+  .grid-tombol-pilih button .info-stok-tombol { display: block; font-size: 11px; font-weight: 600; color: var(--redup); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .grid-tombol-pilih button.pilih { background: var(--emas); border-color: var(--emas); color: var(--tombol-teks); }
+  .grid-tombol-pilih button.pilih .info-stok-tombol { color: rgba(23, 16, 4, .7); }
   .grid-tombol-pilih button.stok-habis { opacity: 0.4; }
-  .grid-tombol-pilih .kosong-pilih { grid-column: 1 / -1; text-align: center; color: #999; padding: 16px; font-size: 13px; }
+  .grid-tombol-pilih .kosong-pilih { grid-column: 1 / -1; text-align: center; color: var(--redup); padding: 16px; font-size: 13px; }
   .tab-owner { display: none; }
   .tab-owner.tampil-owner { display: flex; }
   /* Sama seperti .tab-owner (kunci PIN), tapi untuk elemen yang bukan flex-item nav
@@ -316,41 +346,63 @@
   .tab-owner-blok.tampil-owner { display: block !important; }
   #headerJudul { cursor: default; user-select: none; }
   .modal-pin-bg {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: none; position: fixed; inset: 0; background: rgba(5, 7, 10, .72);
     z-index: 100; align-items: center; justify-content: center;
   }
   .modal-pin-bg.tampil { display: flex; }
   .modal-pin-kotak {
-    background: var(--kartu); border-radius: 16px; padding: 24px; width: 85%; max-width: 320px;
-    text-align: center;
+    background: linear-gradient(180deg, #1a2029, #141922);
+    border: 1px solid rgba(217, 178, 95, .3);
+    border-radius: 18px; padding: 24px; width: 85%; max-width: 320px;
+    text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, .55);
   }
-  .modal-pin-kotak h3 { margin: 0 0 4px; color: var(--hijau-tua); }
-  .modal-pin-kotak p { font-size: 13px; color: #777; margin: 0 0 16px; }
+  .modal-pin-kotak h3 { margin: 0 0 4px; color: var(--emas-terang); font-family: Georgia, serif; font-weight: 600; letter-spacing: .5px; }
+  .modal-pin-kotak p { font-size: 13px; color: var(--redup); margin: 0 0 16px; }
   .modal-pin-kotak input {
     width: 100%; padding: 14px; font-size: 22px; text-align: center; letter-spacing: 8px;
-    border: 2px solid var(--garis); border-radius: 10px; background: white; color: var(--teks);
+    border: 1px solid var(--garis); border-radius: 10px; background: #0e1218; color: var(--teks);
   }
-  .modal-pin-kotak input:focus { outline: none; border-color: var(--hijau); }
+  .modal-pin-kotak input:focus { outline: none; border-color: var(--emas-gelap); }
   .modal-pin-tombol { display: flex; gap: 8px; margin-top: 14px; }
   .modal-pin-tombol button {
     flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: 800; font-size: 14px;
   }
-  .modal-pin-batal { background: var(--abu); color: var(--teks); }
-  .modal-pin-masuk { background: var(--hijau); color: var(--tombol-teks); }
+  .modal-pin-batal { background: rgba(255, 255, 255, .07); color: var(--teks); border: 1px solid var(--garis) !important; }
+  .modal-pin-masuk { background: linear-gradient(135deg, var(--emas-terang), var(--emas-gelap)); color: var(--tombol-teks); }
   .modal-pin-salah { color: var(--merah); font-size: 13px; font-weight: 700; margin-top: 10px; display: none; }
-  /* Gerbang masuk sistem lengkap (2 Agustus 2026): Ben & My DeV pakai PIN masuk,
-     Gono/Hasan diarahkan ke kasir. Di luar jam toko (05.00-19.00) terkunci kecuali owner. */
-  #gerbangSistem { position: fixed; inset: 0; background: var(--hijau-tua); z-index: 99999; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--abu); }
+  /* Gerbang masuk sistem lengkap: Ben & My DeV pakai PIN masuk, Gono/Hasan diarahkan
+     ke kasir. Di luar jam toko (05.00-19.00) terkunci kecuali owner. */
+  #gerbangSistem {
+    position: fixed; inset: 0; z-index: 99999; display: none; flex-direction: column;
+    align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--teks);
+    background:
+      radial-gradient(800px 400px at 70% -5%, rgba(217, 178, 95, .14) 0%, transparent 55%),
+      linear-gradient(180deg, #10141b, #0b0e13);
+  }
   #gerbangSistem.tampil { display: flex; }
-  #gerbangSistem input { font-size: 1.6rem; padding: 12px; width: 200px; text-align: center; border-radius: 12px; border: 2px solid var(--garis); letter-spacing: 6px; }
-  #gerbangSistem .tombol-gerbang { margin-top: 12px; padding: 14px 22px; border-radius: 12px; border: none; font-size: 1.1rem; background: var(--merah); color: #fff; }
-  #gerbangSistem a.kasir-link { display: inline-block; margin-top: 26px; background: var(--emas); color: var(--hijau-tua); padding: 16px 26px; border-radius: 14px; font-size: 1.2rem; text-decoration: none; font-weight: bold; }
-  #gerbangSistem .owner-kecil { margin-top: 30px; background: none; border: 1px solid var(--garis); color: var(--abu); padding: 8px 14px; border-radius: 10px; font-size: .85rem; }
-  /* ===== Penyesuaian perangkat owner (2 Agustus 2026) ===== */
-  /* iPhone (mode terpasang/PWA): beri ruang notch & garis home — env() diabaikan browser lama. */
+  #gerbangSistem h2 {
+    font-family: Georgia, serif; font-weight: 600; letter-spacing: 2px;
+    background: linear-gradient(90deg, var(--emas-terang), var(--emas));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  #gerbangSistem input { font-size: 1.6rem; padding: 12px; width: 200px; text-align: center; border-radius: 12px; border: 1px solid var(--garis); letter-spacing: 6px; background: #0e1218; color: var(--teks); }
+  #gerbangSistem input:focus { outline: none; border-color: var(--emas-gelap); }
+  #gerbangSistem .tombol-gerbang {
+    margin-top: 12px; padding: 14px 26px; border-radius: 12px; border: none; font-size: 1.05rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--emas-terang), var(--emas) 60%, var(--emas-gelap)); color: var(--tombol-teks);
+    box-shadow: 0 4px 20px rgba(217, 178, 95, .3);
+  }
+  #gerbangSistem a.kasir-link {
+    display: inline-block; margin-top: 26px; background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(217, 178, 95, .4); color: var(--emas-terang);
+    padding: 15px 26px; border-radius: 14px; font-size: 1.1rem; text-decoration: none; font-weight: bold;
+  }
+  #gerbangSistem .owner-kecil { margin-top: 30px; background: none; border: 1px solid var(--garis); color: var(--redup); padding: 8px 14px; border-radius: 10px; font-size: .85rem; }
+  /* ===== Penyesuaian perangkat owner ===== */
+  /* iPhone (mode terpasang/PWA): beri ruang notch & garis home. */
   header { padding-top: calc(18px + env(safe-area-inset-top, 0px)); }
   body { padding-bottom: env(safe-area-inset-bottom, 0px); }
-  /* Layar lebar (Mac mini / monitor): konten melebar, tidak lagi sekolom sempit 680px. */
+  /* Layar lebar (Mac mini / monitor): konten melebar. */
   @media (min-width: 1100px) {
     main { max-width: 960px; }
     header { padding-left: calc((100% - 960px) / 2 + 16px); padding-right: calc((100% - 960px) / 2 + 16px); }
@@ -359,28 +411,28 @@
 </head>
 <body>
 <div id="gerbangSistem" class="tampil">
-  <h2 style="margin:0 0 6px;">🌾 Sistem Toko M.IQBAL</h2>
+  <h2 style="margin:0 0 6px;"> Sistem Toko M.IQBAL</h2>
   <p id="gerbangPesan" style="margin:0 0 14px; font-size:.95rem;">Khusus Ben &amp; My DeV. Masukkan PIN masuk.</p>
   <div id="gerbangBlokPin">
     <input type="password" id="inputPinGerbang" inputmode="numeric" maxlength="6" placeholder="PIN" onkeyup="if(event.key==='Enter')cekPinGerbang()">
     <br><button type="button" class="tombol-gerbang" onclick="cekPinGerbang()">Masuk</button>
     <p id="gerbangSalah" style="display:none; color:#f0b9a5; font-size:.9rem;">PIN salah.</p>
   </div>
-  <a class="kasir-link" href="kasir.html">🧾 Buka Kasir (Gono / Hasan / Ben)</a>
-  <br><button type="button" class="owner-kecil" onclick="gerbangJalurOwner()">👑 Owner</button>
+  <a class="kasir-link" href="kasir.html"> Buka Kasir (Gono / Hasan / Ben)</a>
+  <br><button type="button" class="owner-kecil" onclick="gerbangJalurOwner()"> Owner</button>
 </div>
 
 <header>
   <div>
-    <h1 id="headerJudul" onclick="tekanLogoHeader()">🌾 Sistem Toko M.IQBAL</h1>
+    <h1 id="headerJudul" onclick="tekanLogoHeader()"> Sistem Toko M.IQBAL</h1>
     <p id="subjudulHeader">1 kedatangan mobil = banyak merk beras</p>
   </div>
-  <button type="button" id="tombolTema" onclick="gantiTema()">🌙 Gelap</button>
+  <button type="button" id="tombolTema" onclick="gantiTema()"> Gelap</button>
 </header>
 
 <div class="modal-pin-bg" id="modalJagaBg">
   <div class="modal-pin-kotak" style="max-width:340px; text-align:left;">
-    <h3>🗓️ Siapa yang bertugas</h3>
+    <h3> Siapa yang bertugas</h3>
     <p>Yang Libur tidak bisa dipilih di kasir & tidak bisa input. Berlaku ke semua HP begitu online.</p>
     <div id="isiModalJaga"></div>
     <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:14px;">
@@ -395,7 +447,7 @@
 </div>
 <div class="modal-pin-bg" id="modalLoginBg">
   <div class="modal-pin-kotak">
-    <h3>🔑 Masuk sekali di perangkat ini</h3>
+    <h3> Masuk sekali di perangkat ini</h3>
     <p id="loginTokoPesan">Masukkan sandi toko. Cukup sekali per perangkat.</p>
     <input type="password" id="inputSandiToko" placeholder="Sandi toko" autocomplete="current-password">
     <div class="modal-pin-salah" id="loginTokoSalah">Sandi salah. Coba lagi.</div>
@@ -408,7 +460,7 @@
 
 <div class="modal-pin-bg" id="modalPinBg">
   <div class="modal-pin-kotak">
-    <h3>🔒 Khusus Owner</h3>
+    <h3> Khusus Owner</h3>
     <p>Masukkan PIN untuk buka Ringkasan &amp; Laba</p>
     <input type="password" id="inputPinOwner" inputmode="numeric" maxlength="4" placeholder="••••">
     <div class="modal-pin-salah" id="pinSalahPesan">PIN salah. Coba lagi.</div>
@@ -420,31 +472,31 @@
 </div>
 
 <div class="bar-backup" id="barBackup">
-  <span>📡 <b id="statusSambung">Menyambungkan…</b> · <b id="jumlahDiHp">0</b> kedatangan</span>
+  <span> <b id="statusSambung">Menyambungkan…</b> · <b id="jumlahDiHp">0</b> kedatangan</span>
   <div style="display:flex; gap:8px;">
-    <button class="tombol-kecil" onclick="unduhBackup()">⬇ Unduh Backup</button>
-    <button class="tombol-kecil" onclick="document.getElementById('inputMuatFile').click()">⬆ Muat dari File</button>
+    <button class="tombol-kecil" onclick="unduhBackup()"> Unduh Backup</button>
+    <button class="tombol-kecil" onclick="document.getElementById('inputMuatFile').click()"> Muat dari File</button>
   </div>
   <input type="file" id="inputMuatFile" accept=".json" onchange="muatDariFile(event)">
 </div>
 
 <div class="cari-global-wrap">
-  <input type="text" id="cariGlobalInput" class="cari-global-input" placeholder="🔍 Cari di semua riwayat (merk, nama pelanggan, keterangan...)" oninput="cariGlobal()">
+  <input type="text" id="cariGlobalInput" class="cari-global-input" placeholder="Cari di semua riwayat (merk, nama pelanggan, keterangan...)" oninput="cariGlobal()">
   <div id="cariGlobalHasil" class="cari-global-hasil"></div>
 </div>
 
 <nav style="overflow-x:auto;">
-  <button id="tabRingkasan" class="tab-owner" onclick="pindahHalaman('ringkasan')">🏠 Ringkasan</button>
-  <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')">💰 Jual</button>
-  <button id="tabInput" onclick="pindahHalaman('input')">➕ Masuk</button>
-  <button id="tabProduksi" onclick="pindahHalaman('produksi')">📦 Produksi</button>
-  <button id="tabRekap" onclick="pindahHalaman('rekap')">📋 Riwayat</button>
-  <button id="tabStok" onclick="pindahHalaman('stok')">🌾 Stok</button>
-  <button id="tabLaba" class="tab-owner" onclick="pindahHalaman('laba')">📈 Laba</button>
-  <button id="tabHarga" class="tab-owner" onclick="pindahHalaman('harga')">🏷️ Harga</button>
-  <button id="tabJaga" class="tab-owner" onclick="bukaModalJaga()">🗓️ Jaga</button>
-  <button id="tabBulanan" onclick="pindahHalaman('bulanan')">🗓️ Bulanan</button>
-  <button id="tabHarian" onclick="pindahHalaman('harian')">🧾 Harian</button>
+  <button id="tabRingkasan" class="tab-owner" onclick="pindahHalaman('ringkasan')"> Ringkasan</button>
+  <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')"> Jual</button>
+  <button id="tabInput" onclick="pindahHalaman('input')"> Masuk</button>
+  <button id="tabProduksi" onclick="pindahHalaman('produksi')"> Produksi</button>
+  <button id="tabRekap" onclick="pindahHalaman('rekap')"> Riwayat</button>
+  <button id="tabStok" onclick="pindahHalaman('stok')"> Stok</button>
+  <button id="tabLaba" class="tab-owner" onclick="pindahHalaman('laba')"> Laba</button>
+  <button id="tabHarga" class="tab-owner" onclick="pindahHalaman('harga')"> Harga</button>
+  <button id="tabJaga" class="tab-owner" onclick="bukaModalJaga()"> Jaga</button>
+  <button id="tabBulanan" onclick="pindahHalaman('bulanan')"> Bulanan</button>
+  <button id="tabHarian" onclick="pindahHalaman('harian')"> Harian</button>
 </nav>
 
 <main>
@@ -486,19 +538,19 @@
     </div>
     <div class="info-box">Kas masuk = total omzet jual bulan ini. Kas keluar = belanja beras (harga beli + bongkar dari tab Masuk) + biaya bulanan (gaji, listrik, akses, dll dari tab Bulanan — kalau bulan ini belum diisi, bagian itu dihitung Rp0) + pengeluaran harian kategori Toko (dari tab Harian). Pengeluaran harian Ben Mohsein &amp; Owner TIDAK ikut dihitung — murni pribadi. Ini arus kas, BUKAN laba bersih akuntansi — beda dari margin kotor di tab Laba (yang berbasis HPP barang terjual, bukan barang dibeli).</div>
 
-    <div class="subjudul" style="margin-top:0;">⚠️ Perlu Perhatian</div>
+    <div class="subjudul" style="margin-top:0;"> Perlu Perhatian</div>
     <div id="ringPerhatian" class="daftar-batch"></div>
   </div>
 
   <div id="halamanJual" class="halaman tampil">
-    <div id="pesanOkJual" class="pesan-ok">✔ Penjualan tersimpan.</div>
+    <div id="pesanOkJual" class="pesan-ok"> Penjualan tersimpan.</div>
 
     <div class="kartu-jenis-jual" style="grid-template-columns: repeat(5,1fr);">
-      <button type="button" id="jenisJualKemasan" class="pilih" onclick="pilihJenisJual('kemasan')">📦<br>Dari Stok<br>Kemasan</button>
-      <button type="button" id="jenisJualRepacking" onclick="pilihJenisJual('repacking')">⚖️<br>Repacking<br>Dadakan</button>
-      <button type="button" id="jenisJualKarung" onclick="pilihJenisJual('karung')">🌾<br>Karung<br>Utuh</button>
-      <button type="button" id="jenisJualLiteran" onclick="pilihJenisJual('literan')">🥤<br>Jual<br>Literan</button>
-      <button type="button" id="jenisJualRetur" onclick="pilihJenisJual('retur')">↩️<br>Retur</button>
+      <button type="button" id="jenisJualKemasan" class="pilih" onclick="pilihJenisJual('kemasan')">Dari Stok<br>Kemasan</button>
+      <button type="button" id="jenisJualRepacking" onclick="pilihJenisJual('repacking')">Repacking<br>Dadakan</button>
+      <button type="button" id="jenisJualKarung" onclick="pilihJenisJual('karung')">Karung<br>Utuh</button>
+      <button type="button" id="jenisJualLiteran" onclick="pilihJenisJual('literan')">Jual<br>Literan</button>
+      <button type="button" id="jenisJualRetur" onclick="pilihJenisJual('retur')">Retur</button>
     </div>
 
     <!-- Sub-form: Jual dari stok kemasan jadi -->
@@ -551,8 +603,8 @@
     <div class="kartu" id="formJualRetur" style="display:none;">
       <div class="subjudul">Retur — barang apa yang dikembalikan?</div>
       <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr;">
-        <button type="button" id="returJenisKemasan" class="pilih" onclick="pilihReturJenisAsal('kemasan')">📦<br>Kemasan Jadi</button>
-        <button type="button" id="returJenisKarung" onclick="pilihReturJenisAsal('karung')">🌾<br>Karung Utuh</button>
+        <button type="button" id="returJenisKemasan" class="pilih" onclick="pilihReturJenisAsal('kemasan')">Kemasan Jadi</button>
+        <button type="button" id="returJenisKarung" onclick="pilihReturJenisAsal('karung')">Karung Utuh</button>
       </div>
 
       <div id="returPilihKemasanWrap">
@@ -617,11 +669,11 @@
 
   <!-- HALAMAN PRODUKSI KEMASAN -->
   <div id="halamanProduksi" class="halaman">
-    <div id="pesanOkProduksi" class="pesan-ok">✔ Stok kemasan bertambah.</div>
+    <div id="pesanOkProduksi" class="pesan-ok"> Stok kemasan bertambah.</div>
     <div class="info-box">Dipakai waktu sepi: siapkan stok kemasan duluan (timbang & jahit dari karung sumber), supaya nanti tinggal diambil pas ada pembeli lewat tab "Jual → Dari Stok Kemasan Jadi".</div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;">🛍️ Beli Stok Bahan Kemasan</div>
+      <div class="subjudul" style="margin-top:0;"> Beli Stok Bahan Kemasan</div>
       <p class="keterangan" style="margin-top:-8px;">Stok kantong plastik kosong per ukuran + merek beras — harga per lembar diketik tiap beli (harga bisa berubah), HPP dihitung rata-rata tertimbang dari sisa stok.</p>
       <label>Jenis kantong (ukuran — merek)</label>
       <div class="kartu-jenis-jual" style="grid-template-columns: repeat(2,1fr);" id="beliBahanKemasanTombolWrap"></div>
@@ -638,11 +690,11 @@
         </div>
       </div>
       <div class="keterangan" id="beliBahanKemasanTotalInfo" style="margin-top:6px;"></div>
-      <button type="button" onclick="simpanBeliBahanKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan Pembelian Kantong</button>
+      <button type="button" onclick="simpanBeliBahanKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;"> Simpan Pembelian Kantong</button>
     </div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;">📄 Beli Stok Kemasan Literan (paper bag / karung bekas)</div>
+      <div class="subjudul" style="margin-top:0;"> Beli Stok Kemasan Literan (paper bag / karung bekas)</div>
       <p class="keterangan" style="margin-top:-8px;">Harga per lembar/karung diketik tiap beli (harga bisa berubah), HPP dihitung rata-rata tertimbang dari sisa stok.</p>
       <label>Jenis</label>
       <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr 1fr;">
@@ -663,7 +715,7 @@
         </div>
       </div>
       <div class="keterangan" id="beliBahanLiteranTotalInfo" style="margin-top:6px;"></div>
-      <button type="button" onclick="simpanBeliBahanLiteran()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan Pembelian</button>
+      <button type="button" onclick="simpanBeliBahanLiteran()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;"> Simpan Pembelian</button>
     </div>
 
     <div class="kartu">
@@ -713,10 +765,10 @@
     <div class="subjudul">Stok Kemasan Literan (paper bag / karung bekas)</div>
     <p class="keterangan" style="margin-top:-8px;">Otomatis berkurang tiap ada penjualan literan yang butuh kemasan ini (=5L, 6-12L, atau ≥13L).</p>
     <div id="daftarStokBahanLiteran" class="daftar-batch"></div>
-    <div class="subjudul">🚧 Gudang Karantina — barang retur belum diputuskan</div>
+    <div class="subjudul"> Gudang Karantina — barang retur belum diputuskan</div>
     <p class="keterangan" style="margin-top:-8px;">Barang di sini TIDAK masuk stok jual. Putuskan salah satu tindakan untuk tiap item: balik ke pemasok, rework lalu masuk stok, atau buang (kerugian).</p>
     <div id="daftarKarantina" class="daftar-batch"></div>
-    <div class="subjudul">↩️ Riwayat Retur</div>
+    <div class="subjudul"> Riwayat Retur</div>
     <div id="daftarRetur" class="daftar-batch"></div>
   </div>
 
@@ -739,22 +791,22 @@
 
   <!-- HALAMAN HARGA (katalog harga jual resmi, owner-only) -->
   <div id="halamanHarga" class="halaman">
-    <div id="pesanOkHarga" class="pesan-ok">✔ Harga tersimpan.</div>
+    <div id="pesanOkHarga" class="pesan-ok"> Harga tersimpan.</div>
     <div class="info-box">Daftar harga di sini akan jadi sumber harga jual resmi untuk kasir — kasir tidak bisa ketik harga bebas lagi setelah katalog ini dipakai. Isi lengkap dulu sebelum dikunci ke form Jual.</div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;">🥤 Katalog Harga Literan (per liter)</div>
+      <div class="subjudul" style="margin-top:0;"> Katalog Harga Literan (per liter)</div>
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk/jenis literan + harga jual per liter.</p>
       <label>Merk / jenis</label>
       <input type="text" id="hargaLiteranMerk" placeholder="Contoh: Kembang, Ketan Putih, dll">
       <label>Harga jual per liter (Rp)</label>
       <input type="number" id="hargaLiteranNominal" placeholder="0" inputmode="numeric">
-      <button type="button" onclick="simpanHargaLiteran()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan / Perbarui Harga Literan</button>
+      <button type="button" onclick="simpanHargaLiteran()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;"> Simpan / Perbarui Harga Literan</button>
     </div>
     <div id="daftarHargaLiteran" class="daftar-batch"></div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;">📦 Katalog Harga Kemasan (per unit)</div>
+      <div class="subjudul" style="margin-top:0;"> Katalog Harga Kemasan (per unit)</div>
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk + ukuran kemasan + harga jual per unit.</p>
       <label>Merk</label>
       <input type="text" id="hargaKemasanMerk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
@@ -762,25 +814,25 @@
       <input type="number" id="hargaKemasanUkuran" placeholder="Contoh: 5, 10, 20, 25" inputmode="numeric">
       <label>Harga jual per unit (Rp)</label>
       <input type="number" id="hargaKemasanNominal" placeholder="0" inputmode="numeric">
-      <button type="button" onclick="simpanHargaKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan / Perbarui Harga Kemasan</button>
+      <button type="button" onclick="simpanHargaKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;"> Simpan / Perbarui Harga Kemasan</button>
     </div>
     <div id="daftarHargaKemasan" class="daftar-batch"></div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;">🌾 Katalog Harga Karung / Repacking (per kg)</div>
+      <div class="subjudul" style="margin-top:0;"> Katalog Harga Karung / Repacking (per kg)</div>
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk + harga jual per kg. Dipakai untuk Repacking Dadakan & Karung Utuh.</p>
       <label>Merk</label>
       <input type="text" id="hargaKarungMerk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
       <label>Harga jual per kg (Rp)</label>
       <input type="number" id="hargaKarungNominal" placeholder="0" inputmode="numeric">
-      <button type="button" onclick="simpanHargaKarung()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;">💾 Simpan / Perbarui Harga Karung</button>
+      <button type="button" onclick="simpanHargaKarung()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;"> Simpan / Perbarui Harga Karung</button>
     </div>
     <div id="daftarHargaKarung" class="daftar-batch"></div>
   </div>
 
   <!-- HALAMAN INPUT -->
   <div id="halamanInput" class="halaman">
-    <div id="pesanOk" class="pesan-ok">✔ Tersimpan. Kedatangan baru sudah masuk ke riwayat.</div>
+    <div id="pesanOk" class="pesan-ok"> Tersimpan. Kedatangan baru sudah masuk ke riwayat.</div>
 
     <div class="kartu">
       <div class="subjudul">Data Kedatangan Mobil</div>
@@ -814,7 +866,7 @@
       <div>Total mobil ini:</div>
       <div class="angka" id="hasilTotal">-</div>
       <div class="keterangan" id="hasilRincian"></div>
-      <div class="peringatan" id="peringatanKarung">⚠ Total karung belum sampai 60. Cek lagi — biasanya 1 mobil minimal 60 karung.</div>
+      <div class="peringatan" id="peringatanKarung"> Total karung belum sampai 60. Cek lagi — biasanya 1 mobil minimal 60 karung.</div>
     </div>
 
   </div>
@@ -831,7 +883,7 @@
         <div class="nilai" id="ringkasNilai">Rp0</div>
       </div>
     </div>
-    <div class="info-box">Data utama tersimpan di HP/tablet ini. Tiap kali "Simpan Kedatangan", file backup ikut terunduh otomatis — kalau riwayat di sini pernah kosong/hilang, tekan "⬆ Muat dari File" di atas dan pilih file backup terakhir.</div>
+    <div class="info-box">Data utama tersimpan di HP/tablet ini. Tiap kali "Simpan Kedatangan", file backup ikut terunduh otomatis — kalau riwayat di sini pernah kosong/hilang, tekan " Muat dari File" di atas dan pilih file backup terakhir.</div>
     <div id="daftarBatch" class="daftar-batch"></div>
   </div>
 
@@ -881,7 +933,7 @@
 
       <p class="keterangan">Bensin, listrik, internet, plastik/tali/benang/dll, dan gaji tidak masuk HPP per produk — dilaporkan di sini sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
 
-      <button type="button" onclick="simpanBiayaBulanan()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Biaya Bulan Ini</button>
+      <button type="button" onclick="simpanBiayaBulanan()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:16px;"> Simpan Biaya Bulan Ini</button>
     </div>
 
     <div id="daftarBulanan" class="daftar-batch"></div>
@@ -889,15 +941,15 @@
 
   <!-- HALAMAN PENGELUARAN HARIAN -->
   <div id="halamanHarian" class="halaman">
-    <div id="pesanOkHarian" class="pesan-ok">✔ Pengeluaran tersimpan.</div>
+    <div id="pesanOkHarian" class="pesan-ok"> Pengeluaran tersimpan.</div>
     <div class="info-box">Catatan kecil-kecil harian, beda dari "Bulanan" (biaya tetap besar per bulan). Hanya kategori <b>Toko</b> yang otomatis ikut Kas Keluar di dashboard Ringkasan. Ben Mohsein &amp; Owner murni pribadi — TIDAK ikut kas toko, TIDAK ikut laporan bulanan.</div>
 
     <div class="kartu">
       <div class="subjudul" style="margin-top:0;">Kategori</div>
       <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr 1fr;">
-        <button type="button" id="kategoriHarianToko" class="pilih" onclick="pilihKategoriHarian('toko')">🏪<br>Toko</button>
-        <button type="button" id="kategoriHarianBen" onclick="pilihKategoriHarian('ben')">👤<br>Ben Mohsein</button>
-        <button type="button" id="kategoriHarianOwner" class="tab-owner-blok" onclick="pilihKategoriHarian('owner')">👤<br>Owner</button>
+        <button type="button" id="kategoriHarianToko" class="pilih" onclick="pilihKategoriHarian('toko')">Toko</button>
+        <button type="button" id="kategoriHarianBen" onclick="pilihKategoriHarian('ben')">Ben Mohsein</button>
+        <button type="button" id="kategoriHarianOwner" class="tab-owner-blok" onclick="pilihKategoriHarian('owner')">Owner</button>
       </div>
       <input type="hidden" id="harianKategori" value="toko">
 
@@ -910,7 +962,7 @@
       <label>Nominal (Rp)</label>
       <input type="number" id="harianNominal" placeholder="0" inputmode="numeric">
 
-      <button type="button" onclick="simpanPengeluaranHarian()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:16px;">💾 Simpan Pengeluaran</button>
+      <button type="button" onclick="simpanPengeluaranHarian()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:16px;"> Simpan Pengeluaran</button>
     </div>
 
     <div class="subjudul" style="margin-top:0;">Filter tampilan</div>
@@ -926,13 +978,13 @@
 </main>
 
 <div class="tombol-simpan" id="tombolSimpanWrap" style="display:none;">
-  <button onclick="simpanKedatangan()" id="btnSimpanUtama">💾 Simpan Kedatangan Ini</button>
+  <button onclick="simpanKedatangan()" id="btnSimpanUtama"> Simpan Kedatangan Ini</button>
 </div>
 <div class="tombol-simpan" id="tombolSimpanJualWrap">
-  <button onclick="simpanJualAtauRetur()" id="btnSimpanJual">💰 Simpan Penjualan</button>
+  <button onclick="simpanJualAtauRetur()" id="btnSimpanJual"> Simpan Penjualan</button>
 </div>
 <div class="tombol-simpan" id="tombolSimpanProduksiWrap" style="display:none;">
-  <button onclick="simpanProduksi()" id="btnSimpanProduksi">📦 Simpan Produksi Kemasan</button>
+  <button onclick="simpanProduksi()" id="btnSimpanProduksi"> Simpan Produksi Kemasan</button>
 </div>
 
 <script type="module">
@@ -1354,7 +1406,7 @@
     if (adaError) { el.textContent = 'Offline (pakai data HP ini)'; el.parentElement.parentElement.style.background = '#8a5a12'; return; }
     const semuaSiap = Object.values(_sambunganAktif).every(v => v);
     const nTunda = ambilAntreanTunda().length;
-    const awalan = (nTunda > 0 ? '⏳ ' + nTunda + ' antre kirim · ' : '') + (_sudahLoginToko ? '' : '🔑 belum masuk · ');
+    const awalan = (nTunda > 0 ? ' ' + nTunda + ' antre kirim · ' : '') + (_sudahLoginToko ? '' : ' belum masuk · ');
     el.textContent = awalan + (semuaSiap ? 'Tersambung semua perangkat' : 'Menyambungkan…');
   }
 
@@ -1642,7 +1694,7 @@
       semuaLokal.unshift(kedatangan);
       localStorage.setItem(KUNCI_SIMPAN, JSON.stringify(semuaLokal));
     }
-    btn.disabled = false; btn.textContent = '💾 Simpan Kedatangan Ini';
+    btn.disabled = false; btn.textContent = ' Simpan Kedatangan Ini';
     perbaruiCounterBackup();
     unduhBackup(true);
 
@@ -1655,7 +1707,7 @@
     document.getElementById('kotakHasil').style.display = 'none';
 
     const pesan = document.getElementById('pesanOk');
-    pesan.textContent = '✔ Tersimpan ke database + backup terunduh. Otomatis muncul di semua perangkat.';
+    pesan.textContent = ' Tersimpan ke database + backup terunduh. Otomatis muncul di semua perangkat.';
     pesan.style.display = 'block';
     window.scrollTo({top: 0, behavior: 'smooth'});
     setTimeout(() => { pesan.style.display = 'none'; }, 4000);
@@ -1738,7 +1790,7 @@
             <span class="tanggal">${formatTanggal(k.tanggal)}</span>
           </div>
           <div style="font-size:13px; color:#666;">
-            ${k.merkList.length} merk · <span class="badge-karung">${totalKarungSemua} karung${totalKarungSemua < 60 && totalKarungSemua > 0 ? ' ⚠' : ''}</span> · ${totalKgSemua} kg total
+            ${k.merkList.length} merk · <span class="badge-karung">${totalKarungSemua} karung${totalKarungSemua < 60 && totalKarungSemua > 0 ? ' ' : ''}</span> · ${totalKgSemua} kg total
           </div>
           <table>
             <tr><th>Merk</th><th>Jumlah</th><th>Harga beli</th><th>HPP+bongkar</th></tr>
@@ -2164,7 +2216,7 @@
     });
     // Retur tidak pakai kartu "Harga & Bayar" biasa — punya kartunya sendiri.
     document.getElementById('kartuHargaBayarJual').style.display = jenis === 'retur' ? 'none' : 'block';
-    document.getElementById('btnSimpanJual').textContent = jenis === 'retur' ? '↩️ Simpan Retur' : '💰 Simpan Penjualan';
+    document.getElementById('btnSimpanJual').textContent = jenis === 'retur' ? ' Simpan Retur' : ' Simpan Penjualan';
     if (jenis === 'retur') { isiDropdownRetur(); }
     isiDropdownJual();
     perbaruiStokJual();
@@ -2334,11 +2386,11 @@
 
     const pesan = document.getElementById('pesanOkJual');
     pesan.textContent = kondisi === 'tidak_utuh'
-      ? '✔ Retur tersimpan. Barang masuk Gudang Karantina — putuskan tindakan lewat tab Stok.'
-      : '✔ Retur tersimpan. Barang sudah balik ke stok jual.';
+      ? ' Retur tersimpan. Barang masuk Gudang Karantina — putuskan tindakan lewat tab Stok.'
+      : ' Retur tersimpan. Barang sudah balik ke stok jual.';
     pesan.style.display = 'block';
     window.scrollTo({top: 0, behavior: 'smooth'});
-    setTimeout(() => { pesan.style.display = 'none'; pesan.textContent = '✔ Penjualan tersimpan.'; }, 4000);
+    setTimeout(() => { pesan.style.display = 'none'; pesan.textContent = ' Penjualan tersimpan.'; }, 4000);
     tampilkanRetur();
   }
 
@@ -2489,7 +2541,7 @@
         const ukuran = parseFloat(ukuranStr);
         const hargaKatalog = ambilHargaKemasan().find(h => h.merk === namaProduk && h.ukuran === ukuran);
         if (!hargaKatalog) {
-          status = `⚠ Belum ada harga untuk ${namaProduk} ${ukuran}kg di Daftar Harga. Isi dulu lewat tab Harga.`;
+          status = ` Belum ada harga untuk ${namaProduk} ${ukuran}kg di Daftar Harga. Isi dulu lewat tab Harga.`;
         } else if (jumlahUnit <= 0) {
           status = `Harga: ${formatRupiah(hargaKatalog.hargaPerUnit)}/unit. Isi jumlah unit.`;
         } else {
@@ -2504,7 +2556,7 @@
       else {
         const hargaKatalog = ambilHargaLiteran().find(h => h.merk === jenis);
         if (!hargaKatalog) {
-          status = `⚠ Belum ada harga untuk ${jenis} di Daftar Harga. Isi dulu lewat tab Harga.`;
+          status = ` Belum ada harga untuk ${jenis} di Daftar Harga. Isi dulu lewat tab Harga.`;
         } else if (jumlahLiter <= 0) {
           status = `Harga: ${formatRupiah(hargaKatalog.hargaPerLiter)}/liter. Isi jumlah liter.`;
         } else {
@@ -2519,7 +2571,7 @@
       else {
         const hargaPerKg = cariHargaKarungPerKg(merk);
         if (hargaPerKg === null) {
-          status = `⚠ Belum ada harga untuk ${merk} di Daftar Harga (Katalog Harga Karung/Repacking). Isi dulu lewat tab Harga.`;
+          status = ` Belum ada harga untuk ${merk} di Daftar Harga (Katalog Harga Karung/Repacking). Isi dulu lewat tab Harga.`;
         } else if (kg <= 0) {
           status = `Harga: ${formatRupiah(hargaPerKg)}/kg. Isi berat yang dijual.`;
         } else {
@@ -2541,7 +2593,7 @@
           if (m) { beratKarungAcuan = m.beratKarung; break; }
         }
         if (hargaPerKg === null) {
-          status = `⚠ Belum ada harga untuk ${merk} di Daftar Harga (Katalog Harga Karung/Repacking). Isi dulu lewat tab Harga.`;
+          status = ` Belum ada harga untuk ${merk} di Daftar Harga (Katalog Harga Karung/Repacking). Isi dulu lewat tab Harga.`;
         } else if (jumlahKarung <= 0) {
           status = `Harga: ${formatRupiah(hargaPerKg)}/kg (berat karung ~${beratKarungAcuan}kg). Isi jumlah karung.`;
         } else {
@@ -2570,7 +2622,7 @@
     const stokBahanLiteran = hitungStokBahanLiteran();
     const harga = hargaBahanLiteranEfektif(jenisKemasan, stokBahanLiteran);
     const sisa = stokBahanLiteran[jenisKemasan]?.sisaPcs ?? 0;
-    el.textContent = `Kemasan otomatis: ${LABEL_BAHAN_LITERAN[jenisKemasan]} (${formatRupiah(harga)}) — ikut ditambahkan ke HPP. Sisa stok kemasan ini: ${sisa}${sisa <= 0 ? ' ⚠ HABIS' : ''}.`;
+    el.textContent = `Kemasan otomatis: ${LABEL_BAHAN_LITERAN[jenisKemasan]} (${formatRupiah(harga)}) — ikut ditambahkan ke HPP. Sisa stok kemasan ini: ${sisa}${sisa <= 0 ? '  HABIS' : ''}.`;
   }
 
   function pilihBayar(cara) {
@@ -3040,7 +3092,7 @@
       semuaLokal.unshift(produksi);
       localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(semuaLokal));
     }
-    if (btnProduksi) { btnProduksi.disabled = false; btnProduksi.textContent = '📦 Simpan Produksi Kemasan'; }
+    if (btnProduksi) { btnProduksi.disabled = false; btnProduksi.textContent = ' Simpan Produksi Kemasan'; }
     unduhBackup(true);
 
     document.getElementById('produksiKgDipakai').value = '';
@@ -3179,10 +3231,10 @@
           </div>
           <div style="font-size:13px; color:#666;">${item.totalKg} kg${item.catatan ? ' · ' + escapeHtml(item.catatan) : ''}</div>
           <div class="baris-2" style="margin-top:10px; gap:8px;">
-            <button type="button" onclick="putuskanKarantina(${item.id}, 'dikembalikan_pemasok')" style="padding:10px 4px; border:2px solid var(--garis); background:var(--kartu); border-radius:8px; font-size:12px; font-weight:700;">↩️ Balik ke Pemasok</button>
-            <button type="button" onclick="putuskanKarantina(${item.id}, 'dirework')" style="padding:10px 4px; border:2px solid var(--hijau); background:var(--kartu); color:var(--hijau-tua); border-radius:8px; font-size:12px; font-weight:700;">🔧 Rework → Stok</button>
+            <button type="button" onclick="putuskanKarantina(${item.id}, 'dikembalikan_pemasok')" style="padding:10px 4px; border:2px solid var(--garis); background:var(--kartu); border-radius:8px; font-size:12px; font-weight:700;"> Balik ke Pemasok</button>
+            <button type="button" onclick="putuskanKarantina(${item.id}, 'dirework')" style="padding:10px 4px; border:2px solid var(--hijau); background:var(--kartu); color:var(--hijau-tua); border-radius:8px; font-size:12px; font-weight:700;"> Rework → Stok</button>
           </div>
-          <button type="button" onclick="putuskanKarantina(${item.id}, 'dibuang')" style="width:100%; margin-top:8px; padding:10px; border:2px solid var(--merah); background:var(--kartu); color:var(--merah); border-radius:8px; font-size:12px; font-weight:700;">🗑️ Buang (catat kerugian)</button>
+          <button type="button" onclick="putuskanKarantina(${item.id}, 'dibuang')" style="width:100%; margin-top:8px; padding:10px; border:2px solid var(--merah); background:var(--kartu); color:var(--merah); border-radius:8px; font-size:12px; font-weight:700;"> Buang (catat kerugian)</button>
         </div>
       `;
     }).join('');
@@ -3304,7 +3356,7 @@
     const elCatatanMargin = document.getElementById('ringMarginCatatan');
     if (jumlahTakTerhitungHariIni > 0) {
       elCatatanMargin.style.display = 'block';
-      elCatatanMargin.textContent = `⚠ ${jumlahTakTerhitungHariIni} transaksi hari ini HPP-nya tidak tercatat, tidak ikut dihitung di margin ini.`;
+      elCatatanMargin.textContent = ` ${jumlahTakTerhitungHariIni} transaksi hari ini HPP-nya tidak tercatat, tidak ikut dihitung di margin ini.`;
     } else {
       elCatatanMargin.style.display = 'none';
     }
@@ -3317,9 +3369,9 @@
     const karantinaMenunggu = ambilKarantina().filter(item => item.statusTindakan === 'belum_diputuskan');
 
     const daftarPerhatian = [];
-    merkMenipis.forEach(m => daftarPerhatian.push(`🌾 Stok ${m} menipis: ${stokKarung[m].sisaKg} kg`));
-    kemasanMenipis.forEach(k => daftarPerhatian.push(`📦 Stok ${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg menipis: ${stokKemasan[k].sisaUnit} unit`));
-    if (karantinaMenunggu.length > 0) daftarPerhatian.push(`🚧 ${karantinaMenunggu.length} barang di Karantina menunggu keputusan (lihat tab Stok)`);
+    merkMenipis.forEach(m => daftarPerhatian.push(` Stok ${m} menipis: ${stokKarung[m].sisaKg} kg`));
+    kemasanMenipis.forEach(k => daftarPerhatian.push(` Stok ${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg menipis: ${stokKemasan[k].sisaUnit} unit`));
+    if (karantinaMenunggu.length > 0) daftarPerhatian.push(` ${karantinaMenunggu.length} barang di Karantina menunggu keputusan (lihat tab Stok)`);
 
     const kontPerhatian = document.getElementById('ringPerhatian');
     kontPerhatian.innerHTML = daftarPerhatian.length === 0
@@ -3545,7 +3597,7 @@
   function terapkanTema(tema) {
     document.documentElement.setAttribute('data-tema', tema);
     const btn = document.getElementById('tombolTema');
-    if (btn) btn.textContent = tema === 'gelap' ? '☀️ Terang' : '🌙 Gelap';
+    if (btn) btn.textContent = tema === 'gelap' ? ' Terang' : ' Gelap';
   }
 
   function gantiTema() {
