@@ -3,7 +3,7 @@
   "short_name": "Kasir M.IQBAL",
   "description": "Kasir cepat Toko Beras M.IQBAL — jual kemasan, literan, karung, repacking. Jalan walau sinyal jelek.",
   "start_url": "./kasir.html",
-  "id": "./kasir-darurat-nominal.html",
+  "id": "./kasir.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f0e6ce",
