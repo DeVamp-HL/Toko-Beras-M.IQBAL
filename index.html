@@ -402,10 +402,68 @@
   /* iPhone (mode terpasang/PWA): beri ruang notch & garis home. */
   header { padding-top: calc(18px + env(safe-area-inset-top, 0px)); }
   body { padding-bottom: env(safe-area-inset-bottom, 0px); }
-  /* Layar lebar (Mac mini / monitor): konten melebar. */
+
+
+  /* ===== FASE 2: STRUKTUR MOCKUP E (judul halaman, pil status, sidebar Mac, grafik) ===== */
+  .judul-halaman { display: flex; justify-content: space-between; align-items: flex-end; margin: 2px 0 16px; }
+  .judul-halaman h2 { margin: 0; font-family: Georgia, serif; font-size: 24px; font-weight: 600; letter-spacing: .5px; color: var(--hijau-tua); }
+  .judul-halaman .jh-sub { color: var(--redup); font-size: 12px; }
+  .pil-status {
+    display: inline-flex; align-items: center; gap: 7px; align-self: center;
+    background: rgba(74, 222, 128, .09); border: 1px solid rgba(74, 222, 128, .25);
+    border-radius: 999px; padding: 6px 12px; font-size: 11px; font-weight: 700;
+    color: var(--hijau-naik); white-space: nowrap; max-width: 48vw; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pil-status .titik-pil { width: 7px; height: 7px; border-radius: 50%; background: var(--hijau-naik); box-shadow: 0 0 8px var(--hijau-naik); flex: 0 0 auto; }
+  .cari-details { border-bottom: 1px solid var(--garis); background: rgba(16, 20, 27, .5); }
+  .cari-details summary { list-style: none; cursor: pointer; padding: 9px 16px; color: var(--redup); font-size: 12px; font-weight: 700; letter-spacing: .6px; }
+  .cari-details summary::-webkit-details-marker { display: none; }
+  .cari-details summary::before { content: '+  '; color: var(--emas); }
+  .cari-details[open] summary::before { content: '\2212  '; }
+  .cari-global-wrap { border-bottom: none; padding-top: 0; }
+  .kartu-backup-baris { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .kartu-backup-baris button { background: rgba(255, 255, 255, .06); color: var(--teks); border: 1px solid var(--garis); border-radius: 8px; padding: 9px 14px; font-weight: 700; font-size: 12.5px; }
+  .kartu-backup-baris .keterangan { flex: 1 1 100%; }
+  .dua-grafik { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 700px) { .dua-grafik { grid-template-columns: 3fr 2fr; } }
+  .label-hari-grafik { display: flex; justify-content: space-between; color: var(--redup); font-size: 10px; letter-spacing: 1px; padding: 2px 4px 2px; }
+  .label-hari-grafik b { color: var(--emas-terang); }
+  .donat-omzet { width: 110px; height: 110px; border-radius: 50%; position: relative; flex: 0 0 auto; background: #232a36; box-shadow: 0 0 20px rgba(217, 178, 95, .14); }
+  .donat-omzet::before { content: ''; position: absolute; inset: 15px; border-radius: 50%; background: #10151d; box-shadow: inset 0 2px 8px rgba(0, 0, 0, .5); }
+  .donat-omzet .tengah-donat { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
+  .donat-omzet .tengah-donat b { font-size: 13px; color: var(--hijau-tua); font-variant-numeric: tabular-nums; }
+  .donat-omzet .tengah-donat span { font-size: 8px; color: var(--redup); letter-spacing: 1.5px; text-transform: uppercase; }
+  .legenda-omzet { display: grid; gap: 8px; font-size: 12.5px; flex: 1; }
+  .legenda-omzet div { display: flex; align-items: center; gap: 8px; color: var(--redup); }
+  .legenda-omzet i { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; }
+  .legenda-omzet b { color: var(--hijau-tua); margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; }
+  .tabel-terakhir { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .tabel-terakhir th { text-align: left; padding: 7px 6px; color: var(--redup); font-size: 9.5px; text-transform: uppercase; letter-spacing: 1.2px; border-bottom: 1px solid var(--garis); font-weight: 700; }
+  .tabel-terakhir td { padding: 8px 6px; border-bottom: 1px solid rgba(255, 255, 255, .05); }
+  .tabel-terakhir tr:last-child td { border-bottom: 0; }
+  .tabel-terakhir td.kanan, .tabel-terakhir th.kanan { text-align: right; }
+  .kartu-jenis-jual { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) !important; }
+  .nav-brand { display: none; }
+  /* ===== Mac / layar lebar: sidebar kiri seperti mockup ===== */
   @media (min-width: 1100px) {
-    main { max-width: 960px; }
-    header { padding-left: calc((100% - 960px) / 2 + 16px); padding-right: calc((100% - 960px) / 2 + 16px); }
+    body { display: grid; grid-template-columns: 236px minmax(0, 1fr); }
+    nav {
+      grid-column: 1; grid-row: 1 / span 4;
+      position: sticky; top: 0; height: 100vh;
+      display: flex; flex-direction: column; overflow-y: auto;
+      border-right: 1px solid var(--garis); border-bottom: none;
+      background: rgba(13, 17, 23, .92); padding: 16px 10px; gap: 2px;
+    }
+    nav button { flex: 0 0 auto; text-align: left; border-bottom: none; border-left: 2px solid transparent; border-radius: 9px; padding: 11px 13px; font-size: 13.5px; white-space: nowrap; }
+    nav button.aktif { color: var(--emas-terang); border-left-color: var(--emas); background: linear-gradient(90deg, rgba(217, 178, 95, .12), transparent); border-bottom: none; }
+    .tab-owner.tampil-owner { display: block; }
+    .nav-brand { display: block; padding: 6px 13px 20px; }
+    .nav-brand b { display: block; font-family: Georgia, serif; font-size: 16px; letter-spacing: 2.5px; background: linear-gradient(90deg, var(--emas-terang), var(--emas)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav-brand span { font-size: 9px; color: var(--redup); letter-spacing: 3px; text-transform: uppercase; }
+    header { grid-column: 2; padding-left: 26px; padding-right: 26px; }
+    .cari-details { grid-column: 2; }
+    main { grid-column: 2; max-width: 1000px; padding: 20px 26px; }
+    .tombol-simpan { left: 236px; }
   }
 </style>
 </head>
@@ -424,10 +482,11 @@
 
 <header>
   <div>
-    <h1 id="headerJudul" onclick="tekanLogoHeader()"> Sistem Toko M.IQBAL</h1>
-    <p id="subjudulHeader">1 kedatangan mobil = banyak merk beras</p>
+    <h1 id="headerJudul" onclick="tekanLogoHeader()">Sistem Toko M.IQBAL</h1>
+    <p id="subjudulHeader">Toko Beras M.IQBAL</p>
   </div>
-  <button type="button" id="tombolTema" onclick="gantiTema()"> Gelap</button>
+  <span class="pil-status"><span class="titik-pil"></span><span><b id="statusSambung">Menyambungkan…</b></span></span>
+  <button type="button" id="tombolTema" onclick="gantiTema()">Gelap</button>
 </header>
 
 <div class="modal-pin-bg" id="modalJagaBg">
@@ -471,21 +530,18 @@
   </div>
 </div>
 
-<div class="bar-backup" id="barBackup">
-  <span> <b id="statusSambung">Menyambungkan…</b> · <b id="jumlahDiHp">0</b> kedatangan</span>
-  <div style="display:flex; gap:8px;">
-    <button class="tombol-kecil" onclick="unduhBackup()"> Unduh Backup</button>
-    <button class="tombol-kecil" onclick="document.getElementById('inputMuatFile').click()"> Muat dari File</button>
-  </div>
-  <input type="file" id="inputMuatFile" accept=".json" onchange="muatDariFile(event)">
-</div>
+<input type="file" id="inputMuatFile" accept=".json" onchange="muatDariFile(event)">
 
-<div class="cari-global-wrap">
-  <input type="text" id="cariGlobalInput" class="cari-global-input" placeholder="Cari di semua riwayat (merk, nama pelanggan, keterangan...)" oninput="cariGlobal()">
-  <div id="cariGlobalHasil" class="cari-global-hasil"></div>
-</div>
+<details class="cari-details">
+  <summary>Cari riwayat</summary>
+  <div class="cari-global-wrap">
+    <input type="text" id="cariGlobalInput" class="cari-global-input" placeholder="Cari di semua riwayat (merk, nama pelanggan, keterangan...)" oninput="cariGlobal()">
+    <div id="cariGlobalHasil" class="cari-global-hasil"></div>
+  </div>
+</details>
 
 <nav style="overflow-x:auto;">
+  <div class="nav-brand"><b>M.IQBAL</b><span>Sistem Toko</span></div>
   <button id="tabRingkasan" class="tab-owner" onclick="pindahHalaman('ringkasan')"> Ringkasan</button>
   <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')"> Jual</button>
   <button id="tabInput" onclick="pindahHalaman('input')"> Masuk</button>
@@ -504,6 +560,7 @@
   <!-- HALAMAN JUAL (kasir) -->
   <!-- HALAMAN RINGKASAN (dashboard, halaman pembuka default) -->
   <div id="halamanRingkasan" class="halaman">
+    <div class="judul-halaman"><h2>Ikhtisar</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div class="ringkasan-atas">
       <div class="kotak">
         <div class="label">Omzet hari ini</div>
@@ -525,6 +582,20 @@
       </div>
     </div>
     <div id="ringMarginCatatan" class="keterangan" style="display:none; margin:-8px 0 16px; text-align:center;"></div>
+    <div class="dua-grafik" style="margin-bottom:16px;">
+      <div class="kartu" style="margin-bottom:0;">
+        <div class="subjudul" style="margin-top:0;">Omzet 7 Hari</div>
+        <div id="grafikOmzetWrap" style="margin-top:8px;"><div class="kosong" style="padding:18px;">Belum ada data.</div></div>
+      </div>
+      <div class="kartu" style="margin-bottom:0; display:flex; align-items:center; gap:18px;">
+        <div class="donat-omzet" id="donatOmzet"><div class="tengah-donat"><b id="donatOmzetTotal">Rp0</b><span>30 hari</span></div></div>
+        <div class="legenda-omzet" id="legendaOmzet"><div class="kosong" style="padding:6px;">Belum ada data.</div></div>
+      </div>
+    </div>
+    <div class="kartu">
+      <div class="subjudul" style="margin-top:0;">Penjualan Terakhir</div>
+      <div id="wadahPenjualanTerakhir" style="margin-top:8px;"><div class="kosong" style="padding:18px;">Belum ada penjualan.</div></div>
+    </div>
     <div class="subjudul" style="margin-top:0;">Kas Bulan Ini</div>
     <div class="ringkasan-atas">
       <div class="kotak">
@@ -543,6 +614,7 @@
   </div>
 
   <div id="halamanJual" class="halaman tampil">
+    <div class="judul-halaman"><h2>Jual</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkJual" class="pesan-ok"> Penjualan tersimpan.</div>
 
     <div class="kartu-jenis-jual" style="grid-template-columns: repeat(5,1fr);">
@@ -669,6 +741,7 @@
 
   <!-- HALAMAN PRODUKSI KEMASAN -->
   <div id="halamanProduksi" class="halaman">
+    <div class="judul-halaman"><h2>Produksi</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkProduksi" class="pesan-ok"> Stok kemasan bertambah.</div>
     <div class="info-box">Dipakai waktu sepi: siapkan stok kemasan duluan (timbang & jahit dari karung sumber), supaya nanti tinggal diambil pas ada pembeli lewat tab "Jual → Dari Stok Kemasan Jadi".</div>
 
@@ -754,6 +827,7 @@
 
   <!-- HALAMAN STOK -->
   <div id="halamanStok" class="halaman">
+    <div class="judul-halaman"><h2>Stok</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div class="info-box">Stok dihitung otomatis: karung sumber (dari tab Masuk, dikurangi terpakai) dan kemasan jadi (dari tab Produksi, dikurangi terjual).</div>
     <div class="subjudul" style="margin-top:0;">Stok Karung Sumber (per merk)</div>
     <div id="daftarStokKarung" class="daftar-batch"></div>
@@ -774,6 +848,7 @@
 
   <!-- HALAMAN LABA / MARGIN -->
   <div id="halamanLaba" class="halaman">
+    <div class="judul-halaman"><h2>Laba</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div class="info-box">Margin dihitung dari HPP yang tercatat SAAT transaksi itu terjadi (harga beli tiap merk beda tiap batch). Transaksi yang tersimpan sebelum fitur ini aktif tidak punya HPP tercatat — ditandai "HPP tidak tercatat", tidak dipaksakan pakai perkiraan.</div>
     <div class="ringkasan-atas">
       <div class="kotak">
@@ -791,6 +866,7 @@
 
   <!-- HALAMAN HARGA (katalog harga jual resmi, owner-only) -->
   <div id="halamanHarga" class="halaman">
+    <div class="judul-halaman"><h2>Daftar Harga</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkHarga" class="pesan-ok"> Harga tersimpan.</div>
     <div class="info-box">Daftar harga di sini akan jadi sumber harga jual resmi untuk kasir — kasir tidak bisa ketik harga bebas lagi setelah katalog ini dipakai. Isi lengkap dulu sebelum dikunci ke form Jual.</div>
 
@@ -832,6 +908,7 @@
 
   <!-- HALAMAN INPUT -->
   <div id="halamanInput" class="halaman">
+    <div class="judul-halaman"><h2>Batch Masuk</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOk" class="pesan-ok"> Tersimpan. Kedatangan baru sudah masuk ke riwayat.</div>
 
     <div class="kartu">
@@ -873,6 +950,15 @@
 
   <!-- HALAMAN REKAP -->
   <div id="halamanRekap" class="halaman">
+    <div class="judul-halaman"><h2>Riwayat</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <div class="kartu">
+      <div class="subjudul" style="margin-top:0;">Cadangan Data</div>
+      <div class="kartu-backup-baris" style="margin-top:10px;">
+        <span class="keterangan" style="margin:0;"><b id="jumlahDiHp">0</b> kedatangan tersimpan di perangkat ini</span>
+        <button type="button" onclick="unduhBackup()">Unduh Backup</button>
+        <button type="button" onclick="document.getElementById('inputMuatFile').click()">Muat dari File</button>
+      </div>
+    </div>
     <div class="ringkasan-atas">
       <div class="kotak">
         <div class="label">Total kedatangan</div>
@@ -889,6 +975,7 @@
 
   <!-- HALAMAN BIAYA BULANAN -->
   <div id="halamanBulanan" class="halaman">
+    <div class="judul-halaman"><h2>Biaya Bulanan</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div class="kartu">
       <div class="subjudul">Biaya Bulanan (di luar per-mobil)</div>
       <p class="keterangan" style="margin-top:-8px;">Akses/gapura dan keamanan lingkungan dibayar sekali sebulan — dicatat di sini, bukan per kedatangan mobil, supaya tidak dobel-hitung.</p>
@@ -941,6 +1028,7 @@
 
   <!-- HALAMAN PENGELUARAN HARIAN -->
   <div id="halamanHarian" class="halaman">
+    <div class="judul-halaman"><h2>Pengeluaran Harian</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkHarian" class="pesan-ok"> Pengeluaran tersimpan.</div>
     <div class="info-box">Catatan kecil-kecil harian, beda dari "Bulanan" (biaya tetap besar per bulan). Hanya kategori <b>Toko</b> yang otomatis ikut Kas Keluar di dashboard Ringkasan. Ben Mohsein &amp; Owner murni pribadi — TIDAK ikut kas toko, TIDAK ikut laporan bulanan.</div>
 
@@ -3877,6 +3965,79 @@
   window.hapusHargaKemasan = hapusHargaKemasan;
   window.simpanHargaKarung = simpanHargaKarung;
   window.hapusHargaKarung = hapusHargaKarung;
+
+  // ===== FASE 2 (murni tampilan): tanggal header/halaman + grafik Ikhtisar =====
+  // Tidak menyentuh logika bisnis. Dibungkus try/catch: kalau visual gagal, sistem tetap jalan.
+  (function isiTanggal() {
+    try {
+      const HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      const d = new Date();
+      const teks = HARI[d.getDay()] + ', ' + d.getDate() + ' ' + BULAN[d.getMonth()] + ' ' + d.getFullYear();
+      const sub = document.getElementById('subjudulHeader');
+      if (sub) sub.textContent = teks;
+      document.querySelectorAll('[data-tanggal-halaman]').forEach(el => { el.textContent = teks; });
+    } catch (e) {}
+  })();
+  function segarkanVisualRingkasan() {
+    try {
+      const semua = ambilPenjualan();
+      const hariSingkat = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'];
+      const hariIni = new Date(); hariIni.setHours(12, 0, 0, 0);
+      const hari7 = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(hariIni); d.setDate(d.getDate() - i);
+        hari7.push({ iso: tanggalLokalIso(d), label: hariSingkat[d.getDay()], total: 0 });
+      }
+      semua.forEach(p => { const h = hari7.find(x => x.iso === p.tanggal); if (h) h.total += (p.hargaTotal || 0); });
+      const maks = Math.max(1, ...hari7.map(h => h.total));
+      const W = 560, H = 150, PB = 16;
+      const titik = hari7.map((h, i) => [Math.round(i * (W / 6)), Math.round(H - PB - (Math.max(0, h.total) / maks) * (H - PB - 14))]);
+      const garis = titik.map((t2, i) => (i === 0 ? 'M' : 'L') + t2[0] + ',' + t2[1]).join(' ');
+      const wrapG = document.getElementById('grafikOmzetWrap');
+      if (wrapG) wrapG.innerHTML =
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="150" preserveAspectRatio="none">' +
+        '<defs><linearGradient id="gOmzetIsi" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#d4ab5e" stop-opacity=".35"/><stop offset="100%" stop-color="#d4ab5e" stop-opacity="0"/></linearGradient></defs>' +
+        '<path d="' + garis + ' L' + W + ',' + H + ' L0,' + H + ' Z" fill="url(#gOmzetIsi)"/>' +
+        '<path d="' + garis + '" fill="none" stroke="#d4ab5e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<circle cx="' + titik[6][0] + '" cy="' + titik[6][1] + '" r="4.5" fill="#f2d795"/></svg>' +
+        '<div class="label-hari-grafik">' + hari7.map((h, i) => (i === 6 ? '<b>HARI INI</b>' : '<span>' + h.label + '</span>')).join('') + '</div>';
+      const batas = new Date(hariIni); batas.setDate(batas.getDate() - 29);
+      const batasIso = tanggalLokalIso(batas);
+      const grup = { literan: 0, kemasan: 0, karung: 0 };
+      let total30 = 0;
+      semua.filter(p => p.tanggal >= batasIso).forEach(p => {
+        const n = p.hargaTotal || 0; total30 += n;
+        if (p.jenis === 'literan') grup.literan += n;
+        else if (p.jenis === 'kemasan') grup.kemasan += n;
+        else if (p.jenis === 'karung' || p.jenis === 'repacking') grup.karung += n;
+      });
+      const dasar = Math.max(1, grup.literan + grup.kemasan + grup.karung);
+      const pL = Math.round(grup.literan / dasar * 100), pK = Math.round(grup.kemasan / dasar * 100);
+      const pG = Math.max(0, 100 - pL - pK);
+      const donat = document.getElementById('donatOmzet');
+      if (donat) donat.style.background = 'conic-gradient(#d4ab5e 0 ' + pL + '%, #6ea8dc ' + pL + '% ' + (pL + pK) + '%, #8a6d4a ' + (pL + pK) + '% 100%)';
+      const elTotal = document.getElementById('donatOmzetTotal');
+      if (elTotal) elTotal.textContent = formatRupiah(total30);
+      const legenda = document.getElementById('legendaOmzet');
+      if (legenda) legenda.innerHTML =
+        '<div><i style="background:#d4ab5e;"></i>Literan<b>' + pL + '%</b></div>' +
+        '<div><i style="background:#6ea8dc;"></i>Kemasan<b>' + pK + '%</b></div>' +
+        '<div><i style="background:#8a6d4a;"></i>Karung + Repack<b>' + pG + '%</b></div>' +
+        '<div style="font-size:10.5px;">Komposisi omzet 30 hari</div>';
+      const urut = semua.slice().sort((a, b) => ((b.tanggal || '') + (b.jam || '')).localeCompare((a.tanggal || '') + (a.jam || ''))).slice(0, 5);
+      const wadahT = document.getElementById('wadahPenjualanTerakhir');
+      if (wadahT) {
+        if (urut.length === 0) wadahT.innerHTML = '<div class="kosong" style="padding:18px;">Belum ada penjualan.</div>';
+        else wadahT.innerHTML = '<table class="tabel-terakhir"><tr><th>Waktu</th><th>Produk</th><th class="kanan">Harga</th><th>Bayar</th></tr>' +
+          urut.map(p => '<tr><td>' + escapeHtml(((p.tanggal || '').slice(5)) + ' ' + (p.jam || '')) + '</td><td>' + escapeHtml(p.namaProduk || p.merkSumber || '-') + '</td><td class="kanan">' + formatRupiah(p.hargaTotal || 0) + '</td><td>' + escapeHtml((p.caraBayar || '') + (p.namaPelanggan ? ' \u2014 ' + p.namaPelanggan : '')) + '</td></tr>').join('') + '</table>';
+      }
+    } catch (e) { /* murni tampilan — tidak boleh mengganggu sistem */ }
+  }
+  const _tampilkanRingkasanAsli = tampilkanRingkasan;
+  tampilkanRingkasan = function () { _tampilkanRingkasanAsli(); segarkanVisualRingkasan(); };
+  setTimeout(segarkanVisualRingkasan, 900);
 </script>
 
 </body>
