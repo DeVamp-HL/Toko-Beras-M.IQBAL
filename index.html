@@ -374,11 +374,11 @@
   input[type="file"] { display: none; }
   /* Kasir / Jual */
   .kartu-jenis-jual {
-    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 18px;
   }
   .kartu-jenis-jual button {
-    padding: 13px 6px; border: 1px solid var(--garis); background: #151a23; border-radius: 12px;
-    font-size: 12.5px; font-weight: 700; color: var(--redup); text-align: center; line-height: 1.35;
+    padding: 14px 7px; border: 1px solid var(--garis); background: #151a23; border-radius: 12px;
+    font-size: 12.5px; font-weight: 700; color: var(--redup); text-align: center; line-height: 1.4;
   }
   .kartu-jenis-jual button.pilih { background: var(--emas); border-color: var(--emas); color: var(--tombol-teks); }
   .stok-tersedia {
@@ -606,6 +606,10 @@
     .cari-details { grid-column: 2; }
     main { grid-column: 2; max-width: 1000px; width: 100%; padding: 20px 26px; }
     .tombol-simpan { left: 236px; }
+    /* Target 4 (kepadatan tab Jual): di layar lebar ruang cukup, jadi 5 tombol jenis jual
+       dapat gap & padding lebih lega daripada versi dasar (yang harus muat di HP juga). */
+    .kartu-jenis-jual { gap: 14px; }
+    .kartu-jenis-jual button { padding: 16px 8px; }
   }
 </style>
 </head>
