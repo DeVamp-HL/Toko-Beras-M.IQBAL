@@ -111,6 +111,16 @@
     white-space: nowrap;
   }
   nav button.aktif { color: var(--emas-terang); border-bottom: 2px solid var(--emas); }
+  /* ===== Target 2 Langkah 1b (3 Agustus): indikator tab BERGERAK, sesuai spesifikasi =====
+     "Spesifikasi gaya sidebar" di file 16 — sebelumnya tab aktif cuma ditandai warna statis
+     tanpa elemen yang benar-benar bergeser. Base rule di sini disembunyikan (display:none)
+     karena breakpoint <1100px dan >=1100px sama-sama pakai nav vertikal (flex-direction:
+     column) — indikator geser cuma masuk akal untuk layout vertikal, ditampilkan di dalam
+     kedua media query nav vertikal di bawah, BUKAN di sini. Posisi/tinggi diisi lewat JS
+     (geserIndikatorTab(), dekat pindahHalaman()) berbasis getBoundingClientRect() tombol
+     .aktif yang sedang tampak — otomatis benar walau tab-owner (Ringkasan/Laba) kadang
+     tersembunyi sebelum PIN owner dimasukkan. */
+  .indikator-tab { display: none; }
   main { padding: 16px; max-width: 680px; margin: 0 auto; }
   .kartu {
     background: linear-gradient(180deg, rgba(26, 32, 42, .75), var(--kaca));
@@ -254,6 +264,9 @@
   }
   .kosong { text-align: center; color: var(--redup); padding: 40px 16px; font-size: 14px; }
   .ringkasan-atas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  /* Revisi 5: default (mobile-first) disembunyikan — ini sekarang jatah tampilan DESKTOP,
+     ditampilkan lagi di dalam @media (min-width:1100px) di bawah. */
+  .ringkasan-atas.ringkasan-mobile, .subjudul-kas-mobile { display: none; }
   .ringkasan-atas .kotak {
     background: linear-gradient(180deg, #1a2029, #151a23);
     border: 1px solid var(--kaca-garis); border-radius: 14px; padding: 14px; text-align: center;
@@ -261,6 +274,31 @@
   }
   .ringkasan-atas .label { font-size: 10.5px; color: var(--redup); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; }
   .ringkasan-atas .nilai { font-size: 19px; font-weight: 800; color: var(--hijau-tua); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  /* ===== Target 1 Langkah 1b (revisi 5, 3 Agustus — MENIMPA revisi 4): kartu KPI ala =====
+     ===== mockup, sekarang KHUSUS MOBILE (default/mobile-first di sini, di bawah 1100px). =====
+     Arahan My DeV: mobile diutamakan, harus "lebih unggul" dari desktop. Aturan penampak
+     dibalik di @media (min-width:1100px) — .kpi-ringkasan-dt disembunyikan di sana,
+     .ringkasan-mobile (nama class peninggalan revisi 4, sekarang isinya justru versi
+     DESKTOP — belum diganti nama supaya tidak menyentuh HTML lagi) ditampilkan di sana.
+     Dipakai hanya di #halamanRingkasan — tab Laba dan Masuk tetap pakai .ringkasan-atas
+     lama apa adanya, tidak ikut berubah (di luar cakupan Target 1). */
+  .kpi { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 16px; }
+  .kpi .kartu { padding: 18px 20px; position: relative; overflow: hidden; text-align: left; }
+  .kpi .kartu.emas::before {
+    content: ''; position: absolute; inset: -40% auto auto -20%; width: 70%; height: 90%;
+    background: radial-gradient(closest-side, rgba(212,171,94,.18), transparent); pointer-events: none;
+  }
+  .kpi .label { position: relative; color: var(--redup); font-size: 10.5px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; margin-bottom: 10px; }
+  .kpi .nilai { position: relative; font-size: 26px; font-weight: 250; letter-spacing: -.3px; color: var(--hijau-tua); font-variant-numeric: tabular-nums; }
+  .kpi .nilai b { font-weight: 800; }
+  .kpi .nilai .rp { font-size: 15px; color: var(--redup); font-weight: 600; margin-right: 3px; }
+  .kpi .sub2 { position: relative; color: var(--redup); font-size: 11.5px; margin-top: 9px; }
+  .kpi .sub2 .naik { color: var(--hijau-naik); font-weight: 700; }
+  /* ≥700px tapi masih <1100px (tablet/HP lebar landscape): 3 kartu muat berdampingan tanpa gepeng */
+  @media (min-width: 700px) and (max-width: 1099px) {
+    .kpi { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .kpi .kartu { padding: 16px 16px; }
+  }
   .tombol-hapus { background: none; border: none; color: var(--merah); font-size: 13px; font-weight: 700; padding: 8px 0 0; }
   .halaman { display: none; }
   .halaman.tampil { display: block; }
@@ -444,6 +482,58 @@
   .tabel-terakhir td.kanan, .tabel-terakhir th.kanan { text-align: right; }
   .kartu-jenis-jual { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) !important; }
   .nav-brand { display: none; }
+
+  /* ===== SIDEBAR MOBILE (drawer) — target urutan 2, disetujui My DeV 3 Agustus 2026 =====
+     Logo IQ di header = tombol buka/tutup. Drawer melayang di atas konten (bukan
+     mendorong/mengecilkan konten — sudah dikoreksi sesuai screenshot app Claude iOS asli).
+     Lebar proporsional 83vw (maks 340px), kurva pegas cubic-bezier(.32,.86,.36,1) 0,42 detik,
+     overlay gelap tipis (opacity .45). Berlaku di bawah breakpoint sidebar-Mac 1100px. */
+  .tombol-logo-drawer { display: none; }
+  .overlay-drawer-nav { display: none; }
+  @media (max-width: 1099px) {
+    .tombol-logo-drawer {
+      display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 10px; flex: 0 0 auto;
+      background: linear-gradient(135deg, #f2d795, #d4ab5e 50%, #8a6a2e);
+      color: #171004; font-weight: 800; font-size: 12px; letter-spacing: .3px;
+      border: none; box-shadow: 0 4px 16px rgba(212,171,94,.4), inset 0 1px 0 rgba(255,255,255,.55);
+    }
+    .overlay-drawer-nav {
+      display: block; position: fixed; inset: 0; z-index: 15;
+      background: #000; opacity: 0; pointer-events: none;
+      transition: opacity .42s cubic-bezier(.32,.86,.36,1);
+    }
+    body.drawer-nav-terbuka .overlay-drawer-nav { opacity: .45; pointer-events: auto; }
+    nav {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 20;
+      width: 83vw; max-width: 340px;
+      flex-direction: column; overflow-x: hidden; overflow-y: auto;
+      background: #0a0d12; border-right: 1px solid rgba(242,215,149,.14); border-bottom: none;
+      padding: 16px 10px; gap: 2px;
+      transform: translateX(-100%);
+      transition: transform .42s cubic-bezier(.32,.86,.36,1);
+      box-shadow: 4px 0 32px rgba(0,0,0,.6);
+    }
+    body.drawer-nav-terbuka nav { transform: translateX(0); }
+    nav button { flex: 0 0 auto; text-align: left; border-bottom: none; border-left: 2px solid transparent; border-radius: 9px; padding: 11px 13px; font-size: 13.5px; white-space: nowrap; position: relative; z-index: 1; }
+    nav button.aktif { color: var(--emas-terang); border-left-color: transparent; background: transparent; border-bottom: none; }
+    /* Target 2: indikator geser vertikal (drawer mobile). Posisi (top) & tinggi (height)
+       diisi JS. Warna gradasi emas + glow sesuai spesifikasi file 16. border-left/background
+       statis di nav button.aktif di atas dipindah ke sini supaya jadi SATU elemen yang
+       benar-benar bergeser, bukan dua efek terpisah yang keduanya statis. */
+    .indikator-tab {
+      display: block; position: absolute; left: 10px; right: 10px; height: 41px;
+      border-radius: 9px; border-left: 2px solid var(--emas);
+      background: linear-gradient(90deg, rgba(217, 178, 95, .16), rgba(217, 178, 95, .02));
+      box-shadow: -2px 0 10px rgba(217, 178, 95, .35);
+      transition: top .3s cubic-bezier(.4,0,.2,1);
+      top: 0; pointer-events: none; z-index: 0;
+    }
+    .nav-brand { display: block; padding: 6px 13px 20px; }
+    .nav-brand b { display: block; font-family: Georgia, serif; font-size: 16px; letter-spacing: 2.5px; background: linear-gradient(90deg, var(--emas-terang), var(--emas)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav-brand span { font-size: 9px; color: var(--redup); letter-spacing: 3px; text-transform: uppercase; }
+  }
+
   /* ===== Mac / layar lebar: sidebar kiri seperti mockup ===== */
   @media (min-width: 1100px) {
     body { display: grid; grid-template-columns: 236px minmax(0, 1fr); }
@@ -454,12 +544,28 @@
       border-right: 1px solid var(--garis); border-bottom: none;
       background: rgba(13, 17, 23, .92); padding: 16px 10px; gap: 2px;
     }
-    nav button { flex: 0 0 auto; text-align: left; border-bottom: none; border-left: 2px solid transparent; border-radius: 9px; padding: 11px 13px; font-size: 13.5px; white-space: nowrap; }
-    nav button.aktif { color: var(--emas-terang); border-left-color: var(--emas); background: linear-gradient(90deg, rgba(217, 178, 95, .12), transparent); border-bottom: none; }
+    nav button { flex: 0 0 auto; text-align: left; border-bottom: none; border-left: 2px solid transparent; border-radius: 9px; padding: 11px 13px; font-size: 13.5px; white-space: nowrap; position: relative; z-index: 1; }
+    nav button.aktif { color: var(--emas-terang); border-left-color: transparent; background: transparent; border-bottom: none; }
+    /* Target 2 (desktop, ≥1100px): sama seperti versi drawer mobile — satu elemen
+       .indikator-tab yang benar-benar geser, bukan efek statis di tiap tombol. */
+    .indikator-tab {
+      display: block; position: absolute; left: 10px; right: 10px; height: 41px;
+      border-radius: 9px; border-left: 2px solid var(--emas);
+      background: linear-gradient(90deg, rgba(217, 178, 95, .16), rgba(217, 178, 95, .02));
+      box-shadow: -2px 0 10px rgba(217, 178, 95, .35);
+      transition: top .3s cubic-bezier(.4,0,.2,1);
+      top: 0; pointer-events: none; z-index: 0;
+    }
     .tab-owner.tampil-owner { display: block; }
     .nav-brand { display: block; padding: 6px 13px 20px; }
     .nav-brand b { display: block; font-family: Georgia, serif; font-size: 16px; letter-spacing: 2.5px; background: linear-gradient(90deg, var(--emas-terang), var(--emas)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
     .nav-brand span { font-size: 9px; color: var(--redup); letter-spacing: 3px; text-transform: uppercase; }
+    /* Target 1 Langkah 1b (revisi 5, MENIMPA revisi 4): di layar ≥1100px, kartu KPI mewah
+       DISEMBUNYIKAN (sekarang jatah mobile) — desktop sementara balik ke gaya lama
+       .ringkasan-atas/.kotak sampai giliran didesain ulang tersendiri. */
+    .kpi-ringkasan-dt { display: none; }
+    .ringkasan-mobile, .subjudul-kas-mobile { display: block; }
+    .ringkasan-mobile.ringkasan-atas { display: grid; }
     header { grid-column: 2; padding-left: 26px; padding-right: 26px; }
     .cari-details { grid-column: 2; }
     main { grid-column: 2; max-width: 1000px; width: 100%; padding: 20px 26px; }
@@ -481,6 +587,7 @@
 </div>
 
 <header>
+  <button type="button" class="tombol-logo-drawer" id="tombolLogoDrawer" onclick="toggleDrawerNav()" aria-label="Buka menu">IQ</button>
   <div>
     <h1 id="headerJudul" onclick="tekanLogoHeader()">Sistem Toko M.IQBAL</h1>
     <p id="subjudulHeader">Toko Beras M.IQBAL</p>
@@ -488,6 +595,7 @@
   <span class="pil-status"><span class="titik-pil"></span><span><b id="statusSambung">Menyambungkan…</b></span></span>
   <button type="button" id="tombolTema" onclick="gantiTema()">Gelap</button>
 </header>
+<div class="overlay-drawer-nav" id="overlayDrawerNav" onclick="toggleDrawerNav()"></div>
 
 <div class="modal-pin-bg" id="modalJagaBg">
   <div class="modal-pin-kotak" style="max-width:340px; text-align:left;">
@@ -541,6 +649,7 @@
 </details>
 
 <nav style="overflow-x:auto;">
+  <div class="indikator-tab" id="indikatorTab"></div>
   <div class="nav-brand"><b>M.IQBAL</b><span>Sistem Toko</span></div>
   <button id="tabRingkasan" class="tab-owner" onclick="pindahHalaman('ringkasan')"> Ringkasan</button>
   <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')"> Jual</button>
@@ -561,7 +670,10 @@
   <!-- HALAMAN RINGKASAN (dashboard, halaman pembuka default) -->
   <div id="halamanRingkasan" class="halaman">
     <div class="judul-halaman"><h2>Ikhtisar</h2><span class="jh-sub" data-tanggal-halaman></span></div>
-    <div class="ringkasan-atas">
+
+    <!-- Versi MOBILE (breakpoint <1100px) — pola lama, TIDAK diubah. Target 1 (revisi 4)
+         cuma berlaku desktop, mobile sengaja tetap gaya ini (arahan My DeV 3 Agustus). -->
+    <div class="ringkasan-atas ringkasan-mobile">
       <div class="kotak">
         <div class="label">Omzet hari ini</div>
         <div class="nilai" id="ringOmzetHariIni">Rp0</div>
@@ -571,7 +683,7 @@
         <div class="nilai" id="ringOmzetMingguIni">Rp0</div>
       </div>
     </div>
-    <div class="ringkasan-atas">
+    <div class="ringkasan-atas ringkasan-mobile">
       <div class="kotak">
         <div class="label">Belanja beras minggu ini <span class="keterangan" style="display:block;">(harga beli + bongkar)</span></div>
         <div class="nilai" id="ringBelanjaMingguIni">Rp0</div>
@@ -581,6 +693,40 @@
         <div class="nilai" id="ringMarginHariIni">Rp0</div>
       </div>
     </div>
+
+    <!-- Versi DESKTOP (breakpoint ≥1100px) — kartu KPI ala mockup, Target 1 Langkah 1b
+         revisi 4. id berakhiran "Dt" supaya beda dari versi mobile di atas — JS mengisi
+         keduanya (lihat sekitar baris 3502). Hapus komentar ini kalau nanti target 1
+         diperluas ke mobile secara eksplisit. -->
+    <div class="kpi kpi-ringkasan-dt">
+      <div class="kartu emas">
+        <div class="label">Omzet hari ini</div>
+        <div class="nilai"><span class="rp">Rp</span><b id="ringOmzetHariIniDt">0</b></div>
+      </div>
+      <div class="kartu">
+        <div class="label">Omzet minggu ini <span class="keterangan" style="display:block; margin-top:2px;">(Senin–Minggu)</span></div>
+        <div class="nilai"><span class="rp">Rp</span><b id="ringOmzetMingguIniDt">0</b></div>
+      </div>
+      <div class="kartu">
+        <div class="label">Margin kotor hari ini <span class="keterangan" style="display:block; margin-top:2px;">(omzet − HPP terjual)</span></div>
+        <div class="nilai"><span class="rp">Rp</span><b id="ringMarginHariIniDt">0</b></div>
+      </div>
+    </div>
+    <div class="kpi kpi-ringkasan-dt">
+      <div class="kartu">
+        <div class="label">Belanja beras minggu ini <span class="keterangan" style="display:block; margin-top:2px;">(harga beli + bongkar)</span></div>
+        <div class="nilai"><span class="rp">Rp</span><b id="ringBelanjaMingguIniDt">0</b></div>
+      </div>
+      <div class="kartu">
+        <div class="label">Kas masuk bulan ini <span class="keterangan" style="display:block; margin-top:2px;">(omzet jual)</span></div>
+        <div class="nilai"><span class="rp">Rp</span><b id="ringKasMasukBulanIniDt">0</b></div>
+      </div>
+      <div class="kartu">
+        <div class="label">Kas keluar bulan ini <span class="keterangan" style="display:block; margin-top:2px;">(belanja + biaya bulanan)</span></div>
+        <div class="nilai"><span class="rp">Rp</span><b id="ringKasKeluarBulanIniDt">0</b></div>
+      </div>
+    </div>
+
     <div id="ringMarginCatatan" class="keterangan" style="display:none; margin:-8px 0 16px; text-align:center;"></div>
     <div class="dua-grafik" style="margin-bottom:16px;">
       <div class="kartu" style="margin-bottom:0;">
@@ -596,8 +742,8 @@
       <div class="subjudul" style="margin-top:0;">Penjualan Terakhir</div>
       <div id="wadahPenjualanTerakhir" style="margin-top:8px;"><div class="kosong" style="padding:18px;">Belum ada penjualan.</div></div>
     </div>
-    <div class="subjudul" style="margin-top:0;">Kas Bulan Ini</div>
-    <div class="ringkasan-atas">
+    <div class="subjudul subjudul-kas-mobile" style="margin-top:0;">Kas Bulan Ini</div>
+    <div class="ringkasan-atas ringkasan-mobile">
       <div class="kotak">
         <div class="label">Kas masuk <span class="keterangan" style="display:block;">(omzet jual)</span></div>
         <div class="nilai" id="ringKasMasukBulanIni">Rp0</div>
@@ -1253,11 +1399,29 @@
   let idBaris = 0;
   let jenisJualAktif = 'kemasan';
 
+  // Target 2 Langkah 1b (3 Agustus): geser elemen .indikator-tab ke posisi tombol .aktif
+  // yang SEDANG TAMPAK di layar — pakai getBoundingClientRect(), bukan urutan array,
+  // supaya tetap benar walau tombol tab-owner (Ringkasan/Laba) kadang tersembunyi sebelum
+  // PIN owner dimasukkan (lihat baris ~3830). Dipanggil dari pindahHalaman() dan dari
+  // titik mana pun yang mengubah tombol mana yang tampil (buka/tutup owner, resize).
+  function geserIndikatorTab() {
+    var indikator = document.getElementById('indikatorTab');
+    var navEl = document.querySelector('nav');
+    var tombolAktif = navEl ? navEl.querySelector('button.aktif') : null;
+    if (!indikator || !navEl || !tombolAktif) return;
+    var rNav = navEl.getBoundingClientRect();
+    var rTombol = tombolAktif.getBoundingClientRect();
+    indikator.style.top = (rTombol.top - rNav.top + navEl.scrollTop) + 'px';
+    indikator.style.height = rTombol.height + 'px';
+  }
+  window.addEventListener('resize', geserIndikatorTab);
+
   function pindahHalaman(nama) {
     ['ringkasan','jual','input','produksi','rekap','stok','laba','harga','bulanan','harian'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
     });
+    geserIndikatorTab();
     document.getElementById('tombolSimpanWrap').style.display = nama === 'input' ? 'block' : 'none';
     document.getElementById('tombolSimpanJualWrap').style.display = nama === 'jual' ? 'block' : 'none';
     document.getElementById('tombolSimpanProduksiWrap').style.display = nama === 'produksi' ? 'block' : 'none';
@@ -1270,8 +1434,14 @@
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'harga') tampilkanHarga();
     if (nama === 'harian') tampilkanHarian();
+    if (document.body.classList.contains('drawer-nav-terbuka')) toggleDrawerNav();
   }
   function kapital(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function toggleDrawerNav() {
+    document.body.classList.toggle('drawer-nav-terbuka');
+  }
+  window.toggleDrawerNav = toggleDrawerNav;
 
   function opsiMerkHtml() {
     let html = '<option value="">— pilih merk/jenis —</option>';
@@ -3440,6 +3610,15 @@
     document.getElementById('ringMarginHariIni').textContent = formatRupiah(marginHariIni);
     document.getElementById('ringKasMasukBulanIni').textContent = formatRupiah(kasMasukBulanIni);
     document.getElementById('ringKasKeluarBulanIni').textContent = formatRupiah(kasKeluarBulanIni);
+    // Target 1 Langkah 1b (revisi 4): kartu KPI desktop (id akhiran "Dt") — angka saja,
+    // "Rp" sudah ada di <span class="rp"> pembungkus HTML-nya, jadi prefix dibuang di sini
+    // supaya tidak dobel jadi "RpRp0". Enam elemen ini murni tampilan, tidak dibaca kode lain.
+    document.getElementById('ringOmzetHariIniDt').textContent = formatRupiah(omzetHariIni).replace('Rp', '');
+    document.getElementById('ringOmzetMingguIniDt').textContent = formatRupiah(omzetMingguIni).replace('Rp', '');
+    document.getElementById('ringBelanjaMingguIniDt').textContent = formatRupiah(belanjaMingguIni).replace('Rp', '');
+    document.getElementById('ringMarginHariIniDt').textContent = formatRupiah(marginHariIni).replace('Rp', '');
+    document.getElementById('ringKasMasukBulanIniDt').textContent = formatRupiah(kasMasukBulanIni).replace('Rp', '');
+    document.getElementById('ringKasKeluarBulanIniDt').textContent = formatRupiah(kasKeluarBulanIni).replace('Rp', '');
 
     const elCatatanMargin = document.getElementById('ringMarginCatatan');
     if (jumlahTakTerhitungHariIni > 0) {
@@ -4041,6 +4220,14 @@
   const _tampilkanRingkasanAsli = tampilkanRingkasan;
   tampilkanRingkasan = function () { _tampilkanRingkasanAsli(); segarkanVisualRingkasan(); };
   setTimeout(segarkanVisualRingkasan, 900);
+
+  // Target 2 Langkah 1b: posisi awal .indikator-tab. Tombol "Jual" sudah aktif lewat
+  // HTML statis (class="aktif" di markup, bukan lewat pindahHalaman() saat load) — jadi
+  // indikator perlu digeser sekali di sini juga, bukan cuma menunggu klik pertama.
+  // Dipanggil dua kali: langsung (kasus umum) + tertunda 900ms (jaring pengaman kalau
+  // font/layout belum settle saat panggilan pertama, sama seperti pola baris di atas).
+  geserIndikatorTab();
+  setTimeout(geserIndikatorTab, 900);
 </script>
 
 </body>
