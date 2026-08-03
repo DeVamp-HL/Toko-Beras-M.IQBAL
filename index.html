@@ -872,6 +872,7 @@
   <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')"> Jual</button>
   <div class="nav-grup">Gudang &amp; Stok</div>
   <button id="tabInput" onclick="pindahHalaman('input')"> Masuk</button>
+  <button id="tabStokawal" onclick="pindahHalaman('stokawal')"> Stok Awal</button>
   <button id="tabProduksi" onclick="pindahHalaman('produksi')"> Produksi</button>
   <button id="tabStok" onclick="pindahHalaman('stok')"> Stok</button>
   <div class="nav-grup">Catatan</div>
@@ -1304,6 +1305,35 @@
     </div>
   </div>
 
+  <!-- HALAMAN STOK AWAL (add produk per ukuran, HPP otomatis) -->
+  <div id="halamanStokawal" class="halaman">
+    <div class="judul-halaman"><h2>Stok Awal</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <div id="pesanOkStokAwal" class="pesan-ok"> Stok awal tersimpan. Stok &amp; HPP langsung terhitung, kasir ikut terisi otomatis.</div>
+    <div class="info-box">Untuk barang yang SUDAH ada di gudang: pilih ukuran, pilih produk, isi jumlah &amp; modal — HPP dihitung otomatis. Ukuran 50/25 kg masuk sebagai karung sumber; 20/10/5 kg masuk sebagai kemasan jadi siap jual.</div>
+
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Data Stok Awal</h2></div>
+      <label>Tanggal</label>
+      <input type="date" id="stokAwalTanggal">
+      <label>Ongkir + bongkar seluruh stok ini (Rp) <span class="keterangan">— opsional; kalau biaya lama sudah lewat, biarkan 0 supaya tidak dobel hitung. Dialokasikan otomatis per kg.</span></label>
+      <input type="number" id="stokAwalOngkir" placeholder="0" inputmode="numeric" oninput="hitungRingkasStokAwal()">
+    </div>
+
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Daftar Produk</h2></div>
+      <p class="keterangan" style="margin-top:-8px;">Satu baris = satu produk satu ukuran. Tambah baris sebanyak yang ada di gudang.</p>
+      <div id="stokAwalDaftarBaris"></div>
+      <button type="button" class="tombol-tambah-merk" onclick="tambahBarisStokAwal()">+ Tambah Produk</button>
+    </div>
+
+    <div class="hasil" id="stokAwalKotakHasil" style="display:none;">
+      <div>Total stok awal:</div>
+      <div class="angka" id="stokAwalTotal">-</div>
+      <div class="keterangan" id="stokAwalRincian"></div>
+    </div>
+    <button type="button" id="btnSimpanStokAwal" onclick="simpanStokAwal()" style="margin-top:12px; width:100%; padding:16px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:16px;">Simpan Stok Awal</button>
+  </div>
+
   <!-- HALAMAN INPUT -->
   <div id="halamanInput" class="halaman">
     <div class="judul-halaman"><h2>Batch Masuk</h2><span class="jh-sub" data-tanggal-halaman></span></div>
@@ -1685,7 +1715,7 @@
   window.addEventListener('resize', geserIndikatorTab);
 
   function pindahHalaman(nama) {
-    ['ringkasan','jual','input','produksi','rekap','stok','laba','harga','bulanan','harian'].forEach(n => {
+    ['ringkasan','jual','input','stokawal','produksi','rekap','stok','laba','harga','bulanan','harian'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
     });
@@ -1702,6 +1732,7 @@
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'harga') tampilkanHarga();
     if (nama === 'harian') tampilkanHarian();
+    if (nama === 'stokawal') { if (document.querySelectorAll('#stokAwalDaftarBaris .baris-stok-awal').length === 0) tambahBarisStokAwal(); hitungRingkasStokAwal(); }
     if (document.body.classList.contains('drawer-nav-terbuka')) toggleDrawerNav();
   }
   function kapital(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -2185,6 +2216,176 @@
       event.target.value = '';
     };
     reader.readAsText(file);
+  }
+
+
+  // ============ STOK AWAL (menu terpisah, 3 Agu 2026) ============
+  // Barang yang sudah ada di gudang saat sistem mulai. 50/25 kg -> dokumen batchMasuk
+  // (pemasok "STOK AWAL") supaya HPP/stok karung memakai rumus yang sudah ada.
+  // 20/10/5 kg -> dokumen produksiKemasan bertanda beliJadi (merkSumber "BELI JADI",
+  // kgDipakai 0) supaya stok kemasan, laba, dan ringkasan kasir jalan tanpa logika baru.
+  const PRODUK_STOK_AWAL = {
+    50: ['IR64 Ascent','IR64 Elevate','IR64 Apex','Angsa','Perahu Layar','Pandan Wangi','IR42 Select','IR42 Value','Ketan Putih','Ketan Putih Paris','Ketan Hitam PK','Ketan Hitam Sosoh','Beras Merah'],
+    25: ['Kembang','Angsa','Layar'],
+    20: ['Kembang','Swan','Buah Persik','Lele Special','BMW'],
+    10: ['Kembang','Putri Agri','Lele Special','BMW'],
+    5:  ['Kembang','Putri Agri','BMW']
+  };
+  let idBarisStokAwal = 0;
+  function opsiProdukStokAwal(ukuran) {
+    let html = '<option value="">— pilih produk —</option>';
+    (PRODUK_STOK_AWAL[ukuran] || []).forEach(n => html += `<option value="${n}">${n}</option>`);
+    html += '<option value="__lain__">Produk lain (ketik manual)</option>';
+    return html;
+  }
+  function tambahBarisStokAwal() {
+    idBarisStokAwal++;
+    const id = idBarisStokAwal;
+    const div = document.createElement('div');
+    div.className = 'baris-merk baris-stok-awal';
+    div.id = 'stokawal-' + id;
+    div.innerHTML = `
+      <span class="nomor">Produk #${id}</span>
+      <div class="baris-merk-grid">
+        <div>
+          <label>Ukuran</label>
+          <select id="saUkuran-${id}" onchange="gantiUkuranStokAwal(${id})">
+            <option value="50">Karung 50 kg</option>
+            <option value="25">Karung 25 kg</option>
+            <option value="20">Kemasan 20 kg</option>
+            <option value="10">Kemasan 10 kg</option>
+            <option value="5">Kemasan 5 kg</option>
+          </select>
+        </div>
+        <div>
+          <label>Produk</label>
+          <select id="saProduk-${id}" onchange="cekProdukLainStokAwal(${id})">${opsiProdukStokAwal(50)}</select>
+          <input type="text" id="saProdukLain-${id}" placeholder="Nama produk" style="margin-top:6px; display:none;">
+        </div>
+        <div class="baris-2">
+          <div>
+            <label>Jumlah (<span id="saSatuan-${id}">karung</span>)</label>
+            <input type="number" id="saJumlah-${id}" placeholder="0" inputmode="numeric" oninput="hitungRingkasStokAwal()">
+          </div>
+          <div>
+            <label>Modal per <span id="saSatuan2-${id}">karung</span> (Rp)</label>
+            <input type="number" id="saModal-${id}" placeholder="0" inputmode="numeric" oninput="hitungRingkasStokAwal()">
+          </div>
+        </div>
+      </div>
+      <div class="subtotal-merk" id="saSubtotal-${id}"></div>
+      <button type="button" class="tombol-hapus-merk" onclick="hapusBarisStokAwal(${id})">Hapus produk ini</button>
+    `;
+    document.getElementById('stokAwalDaftarBaris').appendChild(div);
+    if (!document.getElementById('stokAwalTanggal').value) document.getElementById('stokAwalTanggal').value = tanggalLokalIso();
+    hitungRingkasStokAwal();
+  }
+  function hapusBarisStokAwal(id) {
+    const el = document.getElementById('stokawal-' + id);
+    if (el) el.remove();
+    hitungRingkasStokAwal();
+  }
+  function gantiUkuranStokAwal(id) {
+    const uk = parseFloat(document.getElementById('saUkuran-' + id).value);
+    document.getElementById('saProduk-' + id).innerHTML = opsiProdukStokAwal(uk);
+    document.getElementById('saProdukLain-' + id).style.display = 'none';
+    const satuan = uk >= 25 ? 'karung' : 'pcs';
+    document.getElementById('saSatuan-' + id).textContent = satuan;
+    document.getElementById('saSatuan2-' + id).textContent = satuan;
+    hitungRingkasStokAwal();
+  }
+  function cekProdukLainStokAwal(id) {
+    const v = document.getElementById('saProduk-' + id).value;
+    document.getElementById('saProdukLain-' + id).style.display = v === '__lain__' ? 'block' : 'none';
+  }
+  function bacaBarisStokAwal() {
+    const hasil = [];
+    document.querySelectorAll('#stokAwalDaftarBaris .baris-stok-awal').forEach(el => {
+      const id = el.id.split('-')[1];
+      const ukuran = parseFloat(document.getElementById('saUkuran-' + id).value);
+      let nama = document.getElementById('saProduk-' + id).value;
+      if (nama === '__lain__') nama = document.getElementById('saProdukLain-' + id).value.trim();
+      const jumlah = parseFloat(document.getElementById('saJumlah-' + id).value) || 0;
+      const modal = parseFloat(document.getElementById('saModal-' + id).value) || 0;
+      hasil.push({ id, ukuran, nama, jumlah, modal, totalKg: ukuran * jumlah, subtotal: modal * jumlah });
+    });
+    return hasil;
+  }
+  // HPP otomatis: modal + alokasi ongkir/bongkar proporsional per kg (rumus sama dengan batch masuk).
+  function hitungRingkasStokAwal() {
+    const baris = bacaBarisStokAwal();
+    const ongkir = parseFloat(document.getElementById('stokAwalOngkir').value) || 0;
+    const totalKgSemua = baris.reduce((a, b) => a + (b.nama && b.jumlah > 0 ? b.totalKg : 0), 0);
+    let totalNilai = 0, adaIsi = false;
+    baris.forEach(b => {
+      const elSub = document.getElementById('saSubtotal-' + b.id);
+      if (!elSub) return;
+      if (!b.nama || b.jumlah <= 0 || b.modal <= 0) { elSub.textContent = ''; return; }
+      adaIsi = true;
+      const alokasi = totalKgSemua > 0 ? (b.totalKg / totalKgSemua) * ongkir : 0;
+      const hppPerSatuan = Math.round((b.subtotal + alokasi) / b.jumlah);
+      const hppPerKg = Math.round((b.subtotal + alokasi) / b.totalKg);
+      totalNilai += b.subtotal;
+      elSub.textContent = `${b.totalKg} kg · modal ${formatRupiah(b.subtotal)} · HPP ${formatRupiah(hppPerSatuan)}/${b.ukuran >= 25 ? 'karung' : 'pcs'} (${formatRupiah(hppPerKg)}/kg${ongkir > 0 ? ', sudah + porsi ongkir' : ''})`;
+    });
+    const kotak = document.getElementById('stokAwalKotakHasil');
+    kotak.style.display = adaIsi ? 'block' : 'none';
+    if (adaIsi) {
+      document.getElementById('stokAwalTotal').textContent = formatRupiah(totalNilai + ongkir);
+      document.getElementById('stokAwalRincian').textContent = `Modal barang ${formatRupiah(totalNilai)} + ongkir/bongkar ${formatRupiah(ongkir)} · ${totalKgSemua} kg total`;
+    }
+  }
+  async function simpanStokAwal() {
+    const semua = bacaBarisStokAwal().filter(b => b.nama && b.jumlah > 0);
+    if (semua.length === 0) { alert('Isi minimal satu baris produk yang lengkap.'); return; }
+    if (semua.some(b => b.modal <= 0)) { alert('Ada baris yang modalnya belum diisi. HPP tidak bisa dihitung tanpa modal.'); return; }
+    const tanggal = document.getElementById('stokAwalTanggal').value || tanggalLokalIso();
+    const ongkir = parseFloat(document.getElementById('stokAwalOngkir').value) || 0;
+    const totalKgSemua = semua.reduce((a, b) => a + b.totalKg, 0);
+
+    const barisKarung = semua.filter(b => b.ukuran >= 25);
+    const barisKemasan = semua.filter(b => b.ukuran < 25);
+    const btn = document.getElementById('btnSimpanStokAwal');
+    btn.disabled = true; btn.textContent = 'Menyimpan…';
+    try {
+      if (barisKarung.length > 0) {
+        const ongkirKarung = totalKgSemua > 0 ? Math.round(ongkir * barisKarung.reduce((a, b) => a + b.totalKg, 0) / totalKgSemua) : 0;
+        const kedatangan = {
+          id: idUnik(), tanggal, pemasok: 'STOK AWAL', biayaBongkar: ongkirKarung, stokAwal: true,
+          merkList: barisKarung.map((b, i) => ({
+            id: String(i + 1), merk: b.nama, satuan: 'karung',
+            jumlahKarung: b.jumlah, beratKarung: b.ukuran, totalKg: b.totalKg,
+            hargaPerKg: Math.round(b.modal / b.ukuran), subtotalHarga: b.subtotal
+          }))
+        };
+        await simpanKeFirestore(KOLEKSI_BATCH, kedatangan);
+      }
+      for (const b of barisKemasan) {
+        const alokasi = totalKgSemua > 0 ? (b.totalKg / totalKgSemua) * ongkir : 0;
+        await simpanKeFirestore(KOLEKSI_PRODUKSI, {
+          id: idUnik(), tanggal, beliJadi: true, stokAwal: true,
+          merkSumber: 'BELI JADI', kgDipakai: 0,
+          namaProduk: b.nama, ukuranKemasan: b.ukuran, jumlahUnit: b.jumlah,
+          biayaKemasan: 0, upahRepacking: 0, kantongJenis: null, kantongJumlah: 0,
+          hppSumberPerKgDipakai: 0, modalPerUnit: b.modal,
+          hppPerUnit: Math.round(b.modal + alokasi / b.jumlah)
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (cek internet / login). Belum ada yang tersimpan sebagian? Cek tab Riwayat & Stok sebelum ulang.');
+      btn.disabled = false; btn.textContent = 'Simpan Stok Awal';
+      return;
+    }
+    btn.disabled = false; btn.textContent = 'Simpan Stok Awal';
+    document.getElementById('stokAwalDaftarBaris').innerHTML = '';
+    idBarisStokAwal = 0;
+    document.getElementById('stokAwalOngkir').value = '';
+    tambahBarisStokAwal();
+    const pesan = document.getElementById('pesanOkStokAwal');
+    pesan.style.display = 'block';
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    setTimeout(() => { pesan.style.display = 'none'; }, 4000);
   }
 
   async function simpanKedatangan() {
@@ -4381,6 +4582,9 @@
   window.hitungTotalJual = hitungTotalJual;
   window.pilihBayar = pilihBayar;
   window.tambahBarisMerk = tambahBarisMerk;
+  window.tambahBarisStokAwal = tambahBarisStokAwal; window.hapusBarisStokAwal = hapusBarisStokAwal;
+  window.gantiUkuranStokAwal = gantiUkuranStokAwal; window.cekProdukLainStokAwal = cekProdukLainStokAwal;
+  window.hitungRingkasStokAwal = hitungRingkasStokAwal; window.simpanStokAwal = simpanStokAwal;
   window.simpanBiayaBulanan = simpanBiayaBulanan;
   window.hitungPerkiraanGaji = hitungPerkiraanGaji;
   window.simpanKedatangan = simpanKedatangan;
