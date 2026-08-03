@@ -7,6 +7,10 @@
 <meta name="description" content="Kasir kalkulator Toko Beras M.IQBAL — ketik harga, tekan barang, catat. Jalan walau sinyal jelek.">
 <meta name="theme-color" content="#23272b">
 <link rel="manifest" href="manifest-kasir.json">
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+
 <link rel="icon" type="image/png" sizes="32x32" href="icon-kasir-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-kasir-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -34,6 +38,7 @@
     --garis: #3a4046;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  button, input, select { touch-action: manipulation; }
   html { font-size: 17px; }
   html, body { height: 100%; }
   body {
@@ -269,6 +274,15 @@
 // (hargaKatalog), lalu dokumen penjualan ditulis PERSIS skema lama — laporan
 // sistem utama tidak perlu diubah.
 
+// Penambal padStart untuk WebView Android lama (Chrome <57) — tanpa ini tanggalLokalIso
+// crash dan seluruh halaman mati di HP tua. 3 baris, gratis, menyelamatkan HP kentang.
+if (!String.prototype.padStart) {
+  String.prototype.padStart = function (len, pad) {
+    var s = String(this); pad = String(pad || ' ');
+    while (s.length < len) s = pad.slice(0, len - s.length) + s;
+    return s;
+  };
+}
 var PROYEK = 'toko-beras-m-iqbal';
 var KUNCI_API = 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA';
 var DASAR = 'https://firestore.googleapis.com/v1/projects/' + PROYEK + '/databases/(default)/documents/';

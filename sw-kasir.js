@@ -1,6 +1,13 @@
-// Service worker kasir M.IQBAL — kasir kebuka instan & tetap jalan offline.
-const VERSI = 'kasir-v3';
-const FILES = ['kasir.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
+// Service worker kasir M.IQBAL — kasir kebuka INSTAN di HP lemah & tetap jalan offline.
+// v4 (4 Agustus 2026): strategi kasir.html diganti network-first -> CACHE DULU, perbarui
+// di belakang layar (stale-while-revalidate). Alasan: di HP kentang + sinyal jelek,
+// network-first membuat halaman menunggu jaringan gagal dulu baru buka — bisa belasan
+// detik. Sekarang: buka langsung dari cache (<1 detik), versi baru diunduh diam-diam
+// untuk pembukaan berikutnya. kasir-darurat-nominal.html ikut di-cache — katup darurat
+// justru paling wajib bisa kebuka saat jaringan mati.
+const VERSI = 'kasir-v4';
+const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
+const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSI).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -19,14 +26,19 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== location.origin) return;
   const nama = url.pathname.split('/').pop();
   if (!FILES.includes(nama)) return;
-  if (nama === 'kasir.html') {
-    // network-first: dapat versi terbaru kalau online, cache kalau offline
+  if (HTML_SWR.includes(nama)) {
+    // cache dulu (instan), lalu perbarui di belakang layar untuk buka berikutnya
     e.respondWith(
-      fetch(e.request).then((r) => {
-        const salinan = r.clone();
-        caches.open(VERSI).then((c) => c.put(e.request, salinan));
-        return r;
-      }).catch(() => caches.match(e.request))
+      caches.match(e.request).then((tersimpan) => {
+        const dariJaringan = fetch(e.request).then((r) => {
+          if (r && r.ok) {
+            const salinan = r.clone();
+            caches.open(VERSI).then((c) => c.put(e.request, salinan));
+          }
+          return r;
+        }).catch(() => tersimpan);
+        return tersimpan || dariJaringan;
+      })
     );
   } else {
     e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
