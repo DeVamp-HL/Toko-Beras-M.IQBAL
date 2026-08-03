@@ -6,6 +6,13 @@
 <title>Sistem Toko — Toko Beras M.IQBAL</title>
 <link rel="manifest" href="manifest-sistem.json">
 <meta name="theme-color" content="#0d1117">
+<template id="__bundler_thumbnail" data-bg-color="#0d141b">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+<rect width="200" height="200" fill="#0d141b"/>
+<circle cx="100" cy="100" r="58" fill="none" stroke="#d4ab5e" stroke-width="3"/>
+<text x="100" y="112" font-family="Georgia, serif" font-size="42" font-weight="600" fill="#d4ab5e" text-anchor="middle">IQ</text>
+</svg>
+</template>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-sistem-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-sistem-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,6 +20,9 @@
 <meta name="apple-mobile-web-app-title" content="Toko M.IQBAL">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="description" content="Pembelian batch, repacking, penjualan, stok, dan laporan Toko Beras M.IQBAL.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     /* ===== TEMA E "MEWAH" (2 Agustus 2026, pilihan My DeV dari mockup-sistem-mewah) =====
@@ -86,7 +96,7 @@
   }
   header h1 {
     margin: 0; font-size: 20px;
-    font-family: Georgia, "Times New Roman", serif; font-weight: 600; letter-spacing: 1.5px;
+    font-family: 'Playfair Display', Georgia, "Times New Roman", serif; font-weight: 600; letter-spacing: 1.5px;
     background: linear-gradient(90deg, var(--emas-terang), var(--emas));
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   }
@@ -424,7 +434,7 @@
     border-radius: 18px; padding: 24px; width: 85%; max-width: 320px;
     text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, .55);
   }
-  .modal-pin-kotak h3 { margin: 0 0 4px; color: var(--emas-terang); font-family: Georgia, serif; font-weight: 600; letter-spacing: .5px; }
+  .modal-pin-kotak h3 { margin: 0 0 4px; color: var(--emas-terang); font-family: 'Playfair Display', Georgia, serif; font-weight: 600; letter-spacing: .5px; }
   .modal-pin-kotak p { font-size: 13px; color: var(--redup); margin: 0 0 16px; }
   .modal-pin-kotak input {
     width: 100%; padding: 14px; font-size: 22px; text-align: center; letter-spacing: 8px;
@@ -449,7 +459,7 @@
   }
   #gerbangSistem.tampil { display: flex; }
   #gerbangSistem h2 {
-    font-family: Georgia, serif; font-weight: 600; letter-spacing: 2px;
+    font-family: 'Playfair Display', Georgia, serif; font-weight: 600; letter-spacing: 2px;
     background: linear-gradient(90deg, var(--emas-terang), var(--emas));
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   }
@@ -474,7 +484,7 @@
 
   /* ===== FASE 2: STRUKTUR MOCKUP E (judul halaman, pil status, sidebar Mac, grafik) ===== */
   .judul-halaman { display: flex; justify-content: space-between; align-items: flex-end; margin: 2px 0 16px; }
-  .judul-halaman h2 { margin: 0; font-family: Georgia, serif; font-size: 24px; font-weight: 600; letter-spacing: .5px; color: var(--hijau-tua); }
+  .judul-halaman h2 { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 600; letter-spacing: .5px; color: var(--hijau-tua); }
   .judul-halaman .jh-sub { color: var(--redup); font-size: 12px; }
   .pil-status {
     display: inline-flex; align-items: center; gap: 7px; align-self: center;
@@ -512,6 +522,34 @@
   .tabel-terakhir td.kanan, .tabel-terakhir th.kanan { text-align: right; }
   .kartu-jenis-jual { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) !important; }
   .nav-brand { display: none; }
+  /* ===== DRAFT RAPI (3 Agustus): label kelompok menu di nav vertikal (drawer & sidebar).
+     Default disembunyikan (nav horizontal warisan); ditampilkan di kedua media query nav
+     vertikal. Label "Owner" ikut kunci PIN: pakai selector 2-3 kelas supaya menang
+     spesifisitas atas .nav-grup{display:block} di media query, apa pun urutannya. */
+  .nav-grup { display: none; padding: 18px 13px 7px; font-size: 9.5px; font-weight: 800; letter-spacing: 2.2px; text-transform: uppercase; color: var(--redup); opacity: .8; }
+  .nav-grup.nav-grup-owner { display: none; }
+  .nav-grup.nav-grup-owner.tampil-owner { display: block; }
+  /* ===== DRAFT RAPI: badge identitas di dasar nav (logo MD + nama), ala mockup mewah v2.
+     display:none di sini (default nav non-vertikal); ditampilkan lewat flex di kedua
+     media query nav vertikal (drawer & sidebar) supaya margin-top:auto mendorongnya
+     ke paling bawah nav pada keduanya. */
+  .nav-footer { display: none; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--kaca-garis); align-items: center; gap: 11px; }
+  .nav-footer .avatar { width: 32px; height: 32px; border-radius: 50%; flex: 0 0 auto; border: 1.5px solid var(--emas-gelap); background: radial-gradient(circle at 30% 25%, #2c3648, #12161d); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--emas-terang); }
+  .nav-footer .info { font-size: 11px; color: var(--teks); font-weight: 600; line-height: 1.5; }
+  .nav-footer .info span { display: block; font-size: 9px; color: var(--redup); font-weight: 400; }
+  /* ===== Target 3 SELESAI (draft rapi): semua daftar riwayat/stok kini dibungkus .kartu
+     ber-.panel-kepala. Supaya tidak kartu-di-dalam-kartu, .item-batch di dalam .kartu
+     jadi baris datar dengan pemisah tipis; di luar .kartu gaya lama tetap berlaku
+     (tidak ada yang memakainya lagi, tapi renderer dinamis tidak perlu diubah). */
+  .kartu .daftar-batch { gap: 0; }
+  .kartu .item-batch { background: transparent; border: none; box-shadow: none; border-radius: 0; padding: 13px 2px; border-bottom: 1px solid rgba(255, 255, 255, .055); }
+  .kartu .item-batch:last-child { border-bottom: none; padding-bottom: 2px; }
+  .kartu .daftar-batch .kosong { padding: 24px 12px; }
+  /* ===== DRAFT RAPI: satu kelas untuk semua tombol simpan di dalam kartu — dulu 7 tombol
+     memakai inline style background:var(--hijau) yang sama persis; sekarang seragam dengan
+     gradasi emas tombol utama (.tombol-simpan). */
+  .tombol-utama-kartu { display: block; width: 100%; margin-top: 16px; padding: 15px; border: none; border-radius: 11px; font-weight: 800; font-size: 15.5px; letter-spacing: .3px; color: var(--tombol-teks); background: linear-gradient(135deg, var(--emas-terang), var(--emas) 60%, var(--emas-gelap)); box-shadow: 0 4px 18px rgba(217, 178, 95, .25), inset 0 1px 0 rgba(255, 255, 255, .5); }
+  .tombol-utama-kartu:active { transform: translateY(1px); }
 
   /* ===== SIDEBAR MOBILE (drawer) — target urutan 2, disetujui My DeV 3 Agustus 2026 =====
      Logo IQ di header = tombol buka/tutup. Drawer melayang di atas konten (bukan
@@ -566,8 +604,10 @@
       top: 0; pointer-events: none; z-index: 0;
     }
     .nav-brand { display: block; padding: 6px 13px 20px; }
-    .nav-brand b { display: block; font-family: Georgia, serif; font-size: 16px; letter-spacing: 2.5px; background: linear-gradient(90deg, var(--emas-terang), var(--emas)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav-brand b { display: block; font-family: 'Playfair Display', Georgia, serif; font-size: 16px; letter-spacing: 2.5px; background: linear-gradient(90deg, var(--emas-terang), var(--emas)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
     .nav-brand span { font-size: 9px; color: var(--redup); letter-spacing: 3px; text-transform: uppercase; }
+    .nav-grup { display: block; }
+    .nav-footer { display: flex; }
   }
 
   /* ===== Mac / layar lebar: sidebar kiri seperti mockup ===== */
@@ -594,16 +634,16 @@
     }
     .tab-owner.tampil-owner { display: block; }
     .nav-brand { display: block; padding: 6px 13px 20px; }
-    .nav-brand b { display: block; font-family: Georgia, serif; font-size: 16px; letter-spacing: 2.5px; background: linear-gradient(90deg, var(--emas-terang), var(--emas)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav-brand b { display: block; font-family: 'Playfair Display', Georgia, serif; font-size: 16px; letter-spacing: 2.5px; background: linear-gradient(90deg, var(--emas-terang), var(--emas)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
     .nav-brand span { font-size: 9px; color: var(--redup); letter-spacing: 3px; text-transform: uppercase; }
-    /* Target 1 Langkah 1b (revisi 5, MENIMPA revisi 4): di layar ≥1100px, kartu KPI mewah
-       DISEMBUNYIKAN (sekarang jatah mobile) — desktop sementara balik ke gaya lama
-       .ringkasan-atas/.kotak sampai giliran didesain ulang tersendiri. */
-    .kpi-ringkasan-dt { display: none; }
-    .ringkasan-mobile, .subjudul-kas-mobile { display: block; }
-    .ringkasan-mobile.ringkasan-atas { display: grid; }
+    .nav-grup { display: block; }
+    .nav-footer { display: flex; }
+    /* Target 1 SELESAI (draft rapi, 3 Agustus): desktop ≥1100px kini ikut kartu KPI mewah
+       yang sama dengan mobile — 3 kolom seperti mockup E. Fallback lama .ringkasan-atas/
+       .kotak (.ringkasan-mobile + .subjudul-kas-mobile) pensiun: markup & id-nya tetap ada
+       (masih diisi JS, aman), tapi tidak ditampilkan di breakpoint mana pun. */
+    .kpi { grid-template-columns: repeat(3, 1fr); gap: 16px; }
     header { grid-column: 2; padding-left: 26px; padding-right: 26px; }
-    .cari-details { grid-column: 2; }
     main { grid-column: 2; max-width: 1000px; width: 100%; padding: 20px 26px; }
     .tombol-simpan { left: 236px; }
     /* Target 4 (kepadatan tab Jual): di layar lebar ruang cukup, jadi 5 tombol jenis jual
@@ -611,6 +651,139 @@
     .kartu-jenis-jual { gap: 14px; }
     .kartu-jenis-jual button { padding: 16px 8px; }
   }
+  /* ===== DRAFT RAPI: interaksi & animasi — supaya lebih hidup, tanpa mengubah logic/id ===== */
+  @keyframes fadeBg { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes modalPop { from { opacity: 0; transform: scale(.92) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  @keyframes halamanMasuk { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes dropdownMasuk { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes titikNyala { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+  @keyframes pulsePeringatan { 0%, 100% { box-shadow: 0 0 0 0 rgba(242,112,89,.4); } 50% { box-shadow: 0 0 0 5px rgba(242,112,89,0); } }
+
+  .halaman.tampil { animation: halamanMasuk .32s cubic-bezier(.16,1,.3,1); }
+  .modal-pin-bg.tampil { animation: fadeBg .18s ease; }
+  .modal-pin-bg.tampil .modal-pin-kotak { animation: modalPop .3s cubic-bezier(.34,1.56,.64,1); }
+  #gerbangSistem.tampil { animation: fadeBg .25s ease; }
+  .cari-global-hasil.tampil { animation: dropdownMasuk .18s cubic-bezier(.16,1,.3,1); }
+  .titik-pil { animation: titikNyala 2.2s ease-in-out infinite; }
+  .badge-stok-rendah { animation: pulsePeringatan 1.8s ease-out infinite; }
+
+  button { transition: transform .12s ease, box-shadow .15s ease, background-color .15s ease, border-color .15s ease, color .15s ease; }
+  button:active { transform: translateY(1px) scale(.98); }
+  select, input[type="number"], input[type="text"], input[type="date"], input[type="month"], textarea { transition: border-color .15s ease, box-shadow .15s ease; }
+
+  nav button:not(.aktif):hover { color: #c9d0da; background: rgba(255, 255, 255, .045); }
+  .nav-footer .avatar { transition: transform .2s ease; }
+  .nav-footer:hover .avatar { transform: scale(1.06); }
+
+  .kartu-jenis-jual button:not(.pilih):hover,
+  .grid-tombol-pilih button:not(.pilih):hover,
+  .tab-bayar button:not(.pilih):hover,
+  .satuan-toggle button:not(.pilih):hover { border-color: var(--emas-gelap); color: #d8dde4; background: rgba(217, 178, 95, .06); }
+  .kartu-jenis-jual button.pilih, .grid-tombol-pilih button.pilih, .tab-bayar button.pilih, .satuan-toggle button.pilih { transition: background .18s ease, border-color .18s ease, color .18s ease, transform .12s ease; }
+
+  .tombol-tambah-merk:hover { background: rgba(217, 178, 95, .1); border-color: var(--emas-terang); }
+  .tombol-hapus-merk:hover { background: rgba(242, 112, 89, .1); }
+  .panel-kepala a { transition: opacity .15s ease; }
+  .panel-kepala a:hover { opacity: .72; }
+  .cari-global-item { transition: background-color .12s ease; }
+  .cari-global-item:hover { background: rgba(217, 178, 95, .07); }
+  .cari-details summary { transition: color .15s ease; }
+  .cari-details summary:hover { color: #c9d0da; }
+  .cari-details summary::before { display: inline-block; transition: transform .2s ease; }
+  .cari-details[open] summary::before { transform: rotate(180deg); }
+
+  .kpi .kartu { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .kpi .kartu:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06); border-color: rgba(217, 178, 95, .3); }
+
+  .tombol-logo-drawer, .tombol-gerbang, .modal-pin-masuk { transition: transform .15s ease, filter .15s ease; }
+  .tombol-logo-drawer:hover, .tombol-gerbang:hover, .modal-pin-masuk:hover { filter: brightness(1.08); }
+  /* DRAFT RAPI: tombol "Cari riwayat" jadi ikon kaca kecil di header (bukan bar penuh) */
+  .cari-details { border-bottom: none; background: none; position: relative; flex: 0 0 auto; align-self: center; }
+  .cari-details summary { list-style: none; cursor: pointer; padding: 0; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .06); border: 1px solid var(--kaca-garis); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: var(--emas-terang); transition: background-color .15s ease, border-color .15s ease, transform .15s ease; }
+  .cari-details summary::-webkit-details-marker { display: none; }
+  .cari-details summary::before { content: none; }
+  .cari-details[open] summary::before { content: none; transform: none; }
+  .cari-details summary:hover { background: rgba(217, 178, 95, .14); border-color: rgba(217, 178, 95, .4); }
+  .cari-details summary:active { transform: scale(.92); }
+  .cari-details[open] summary { background: rgba(217, 178, 95, .18); border-color: rgba(217, 178, 95, .5); }
+  .cari-details .cari-global-wrap { position: absolute; top: calc(100% + 10px); right: 0; width: min(300px, 85vw); padding: 12px; background: #151a23; border: 1px solid rgba(217, 178, 95, .35); border-radius: 14px; box-shadow: 0 14px 34px rgba(0, 0, 0, .5); z-index: 25; }
+  .cari-details .cari-global-hasil { left: 0; right: 0; }
+
+  /* DRAFT RAPI: judul header tidak overflow di layar sempit (iPhone 13 / Android Ben) */
+  header > div { min-width: 0; flex: 1 1 auto; }
+  header h1, header p#subjudulHeader { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* ===== DRAFT RAPI v3: polish menyeluruh — hidup, elegan, modern; komposisi warna TETAP ===== */
+  /* Kilau emas berkala di tombol utama (persis pola button.utama mockup E) */
+  @keyframes kilau { 0%, 55% { left: -70%; } 75%, 100% { left: 130%; } }
+  .tombol-simpan button, .tombol-utama-kartu, .modal-pin-masuk, .tombol-gerbang { position: relative; overflow: hidden; }
+  .tombol-simpan button::after, .tombol-utama-kartu::after, .modal-pin-masuk::after, .tombol-gerbang::after {
+    content: ''; position: absolute; top: 0; left: -70%; width: 45%; height: 100%;
+    background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .45), transparent);
+    transform: skewX(-20deg); animation: kilau 3.6s ease-in-out infinite; pointer-events: none;
+  }
+  .tombol-simpan button:disabled::after { display: none; }
+
+  /* Titik penanda di tiap item nav (ala mockup: aside a .ikon), aktif menyala */
+  nav button::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .45; margin-right: 10px; vertical-align: 2px; transition: opacity .2s ease, box-shadow .2s ease; }
+  nav button.aktif::before { opacity: 1; box-shadow: 0 0 7px currentColor; }
+
+  /* Drawer dibuka: item nav masuk berurutan (stagger halus) */
+  @keyframes navItemMasuk { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+  body.drawer-nav-terbuka nav > button, body.drawer-nav-terbuka nav > .nav-grup, body.drawer-nav-terbuka nav > .nav-footer { animation: navItemMasuk .38s cubic-bezier(.16,1,.3,1) backwards; }
+  body.drawer-nav-terbuka nav > *:nth-child(3) { animation-delay: .03s; }
+  body.drawer-nav-terbuka nav > *:nth-child(4) { animation-delay: .05s; }
+  body.drawer-nav-terbuka nav > *:nth-child(5) { animation-delay: .07s; }
+  body.drawer-nav-terbuka nav > *:nth-child(6) { animation-delay: .09s; }
+  body.drawer-nav-terbuka nav > *:nth-child(7) { animation-delay: .11s; }
+  body.drawer-nav-terbuka nav > *:nth-child(8) { animation-delay: .13s; }
+  body.drawer-nav-terbuka nav > *:nth-child(9) { animation-delay: .15s; }
+  body.drawer-nav-terbuka nav > *:nth-child(10) { animation-delay: .17s; }
+  body.drawer-nav-terbuka nav > *:nth-child(11) { animation-delay: .19s; }
+  body.drawer-nav-terbuka nav > *:nth-child(12) { animation-delay: .21s; }
+  body.drawer-nav-terbuka nav > *:nth-child(13) { animation-delay: .23s; }
+  body.drawer-nav-terbuka nav > *:nth-child(14) { animation-delay: .25s; }
+  body.drawer-nav-terbuka nav > *:nth-child(15) { animation-delay: .27s; }
+  body.drawer-nav-terbuka nav > *:nth-child(16) { animation-delay: .29s; }
+  body.drawer-nav-terbuka nav > *:nth-child(17) { animation-delay: .31s; }
+
+  /* Pesan sukses / peringatan / kotak hasil muncul dengan pop halus
+     (animasi otomatis main ulang tiap display none -> block dari JS lama) */
+  @keyframes pesanMuncul { from { opacity: 0; transform: translateY(-6px) scale(.985); } to { opacity: 1; transform: none; } }
+  .pesan-ok, .peringatan, .hasil, .peringatan-besar { animation: pesanMuncul .35s cubic-bezier(.16,1,.3,1); }
+
+  /* Baris tabel & daftar bereaksi saat disentuh kursor (ala tabel mockup) */
+  .tabel-terakhir tr:hover td { background: rgba(212, 171, 94, .05); }
+  .item-batch table tr:hover td { background: rgba(212, 171, 94, .04); }
+  .kartu .item-batch { transition: background-color .15s ease; }
+  .kartu .item-batch:hover { background: rgba(217, 178, 95, .035); }
+
+  /* Detail modern: radius kartu, seleksi teks emas, scrollbar tipis, fokus keyboard, hover input */
+  .kartu { border-radius: 18px; }
+  ::selection { background: rgba(217, 178, 95, .4); color: #fff; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(217, 178, 95, .18); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(217, 178, 95, .38); border: 2px solid transparent; background-clip: padding-box; }
+  button:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid rgba(217, 178, 95, .55); outline-offset: 2px; }
+  input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) { border-color: rgba(217, 178, 95, .35); }
+  p, .keterangan, .info-box, .kosong { text-wrap: pretty; }
+  html { scroll-behavior: smooth; }
+
+  /* Hormati preferensi kurangi-gerak */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+  /* DRAFT RAPI v4: tombol pilihan terpilih disamakan dengan gaya tab "Jual" aktif di nav
+     (gradasi emas transparan + garis + glow), menggantikan emas solid datar — berlaku
+     menyeluruh: jenis jual (Retur dll), Kemasan Jadi/Karung, kondisi, penyelesaian,
+     cara bayar, kategori & filter Harian, satuan, pilihan produk. */
+  .kartu-jenis-jual button.pilih, .tab-bayar button.pilih, .grid-tombol-pilih button.pilih, .satuan-toggle button.pilih {
+    background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+    border-color: rgba(217, 178, 95, .55);
+    color: var(--emas-terang);
+    box-shadow: 0 0 12px rgba(217, 178, 95, .18), inset 0 1px 0 rgba(255, 255, 255, .07);
+  }
+  .grid-tombol-pilih button.pilih .info-stok-tombol { color: rgba(242, 215, 149, .75); }
 </style>
 </head>
 <body>
@@ -632,6 +805,15 @@
     <h1 id="headerJudul" onclick="tekanLogoHeader()">Sistem Toko M.IQBAL</h1>
     <p id="subjudulHeader">Toko Beras M.IQBAL</p>
   </div>
+  <details class="cari-details">
+    <summary aria-label="Cari riwayat" title="Cari riwayat">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.2" y2="16.2"></line></svg>
+    </summary>
+    <div class="cari-global-wrap">
+      <input type="text" id="cariGlobalInput" class="cari-global-input" placeholder="Cari di semua riwayat (merk, nama pelanggan, keterangan...)" oninput="cariGlobal()">
+      <div id="cariGlobalHasil" class="cari-global-hasil"></div>
+    </div>
+  </details>
   <span class="pil-status"><span class="titik-pil"></span><span><b id="statusSambung">Menyambungkan…</b></span></span>
   <button type="button" id="tombolTema" onclick="gantiTema()">Gelap</button>
 </header>
@@ -648,7 +830,7 @@
     </label>
     <div class="modal-pin-tombol">
       <button type="button" onclick="tutupModalJaga()">Batal</button>
-      <button type="button" onclick="simpanModalJaga()" style="background:var(--hijau); color:#fff;">Simpan</button>
+      <button type="button" class="modal-pin-masuk" onclick="simpanModalJaga()">Simpan</button>
     </div>
   </div>
 </div>
@@ -680,28 +862,30 @@
 
 <input type="file" id="inputMuatFile" accept=".json" onchange="muatDariFile(event)">
 
-<details class="cari-details">
-  <summary>Cari riwayat</summary>
-  <div class="cari-global-wrap">
-    <input type="text" id="cariGlobalInput" class="cari-global-input" placeholder="Cari di semua riwayat (merk, nama pelanggan, keterangan...)" oninput="cariGlobal()">
-    <div id="cariGlobalHasil" class="cari-global-hasil"></div>
-  </div>
-</details>
-
 <nav style="overflow-x:auto;">
   <div class="indikator-tab" id="indikatorTab"></div>
   <div class="nav-brand"><b>M.IQBAL</b><span>Sistem Toko</span></div>
+  <!-- DRAFT RAPI: menu dikelompokkan. Urutan tombol digeser, id & onclick TIDAK berubah,
+       jadi pindahHalaman()/terapkanStatusOwner()/indikator geser jalan seperti biasa. -->
+  <div class="nav-grup">Utama</div>
   <button id="tabRingkasan" class="tab-owner" onclick="pindahHalaman('ringkasan')"> Ringkasan</button>
   <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')"> Jual</button>
+  <div class="nav-grup">Gudang &amp; Stok</div>
   <button id="tabInput" onclick="pindahHalaman('input')"> Masuk</button>
   <button id="tabProduksi" onclick="pindahHalaman('produksi')"> Produksi</button>
-  <button id="tabRekap" onclick="pindahHalaman('rekap')"> Riwayat</button>
   <button id="tabStok" onclick="pindahHalaman('stok')"> Stok</button>
+  <div class="nav-grup">Catatan</div>
+  <button id="tabRekap" onclick="pindahHalaman('rekap')"> Riwayat</button>
+  <button id="tabBulanan" onclick="pindahHalaman('bulanan')"> Bulanan</button>
+  <button id="tabHarian" onclick="pindahHalaman('harian')"> Harian</button>
+  <div class="nav-grup nav-grup-owner tab-owner">Owner</div>
   <button id="tabLaba" class="tab-owner" onclick="pindahHalaman('laba')"> Laba</button>
   <button id="tabHarga" class="tab-owner" onclick="pindahHalaman('harga')"> Harga</button>
   <button id="tabJaga" class="tab-owner" onclick="bukaModalJaga()"> Jaga</button>
-  <button id="tabBulanan" onclick="pindahHalaman('bulanan')"> Bulanan</button>
-  <button id="tabHarian" onclick="pindahHalaman('harian')"> Harian</button>
+  <div class="nav-footer">
+    <div class="avatar">DV</div>
+    <div class="info">DeVamp<span>Owner</span></div>
+  </div>
 </nav>
 
 <main>
@@ -795,8 +979,10 @@
     </div>
     <div class="info-box">Kas masuk = total omzet jual bulan ini. Kas keluar = belanja beras (harga beli + bongkar dari tab Masuk) + biaya bulanan (gaji, listrik, akses, dll dari tab Bulanan — kalau bulan ini belum diisi, bagian itu dihitung Rp0) + pengeluaran harian kategori Toko (dari tab Harian). Pengeluaran harian Ben Mohsein &amp; Owner TIDAK ikut dihitung — murni pribadi. Ini arus kas, BUKAN laba bersih akuntansi — beda dari margin kotor di tab Laba (yang berbasis HPP barang terjual, bukan barang dibeli).</div>
 
-    <div class="subjudul" style="margin-top:0;"> Perlu Perhatian</div>
-    <div id="ringPerhatian" class="daftar-batch"></div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Perlu Perhatian</h2></div>
+      <div id="ringPerhatian" class="daftar-batch"></div>
+    </div>
   </div>
 
   <div id="halamanJual" class="halaman tampil">
@@ -949,7 +1135,7 @@
         </div>
       </div>
       <div class="keterangan" id="beliBahanKemasanTotalInfo" style="margin-top:6px;"></div>
-      <button type="button" onclick="simpanBeliBahanKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;"> Simpan Pembelian Kantong</button>
+      <button type="button" onclick="simpanBeliBahanKemasan()" class="tombol-utama-kartu"> Simpan Pembelian Kantong</button>
     </div>
 
     <div class="kartu">
@@ -974,7 +1160,7 @@
         </div>
       </div>
       <div class="keterangan" id="beliBahanLiteranTotalInfo" style="margin-top:6px;"></div>
-      <button type="button" onclick="simpanBeliBahanLiteran()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;"> Simpan Pembelian</button>
+      <button type="button" onclick="simpanBeliBahanLiteran()" class="tombol-utama-kartu"> Simpan Pembelian</button>
     </div>
 
     <div class="kartu">
@@ -1007,29 +1193,43 @@
       <input type="number" id="produksiUpahRepacking" placeholder="0" inputmode="numeric">
     </div>
 
-    <div class="subjudul">Riwayat Produksi</div>
-    <div id="daftarProduksi" class="daftar-batch"></div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Riwayat Produksi</h2></div>
+      <div id="daftarProduksi" class="daftar-batch"></div>
+    </div>
   </div>
 
   <!-- HALAMAN STOK -->
   <div id="halamanStok" class="halaman">
     <div class="judul-halaman"><h2>Stok</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div class="info-box">Stok dihitung otomatis: karung sumber (dari tab Masuk, dikurangi terpakai) dan kemasan jadi (dari tab Produksi, dikurangi terjual).</div>
-    <div class="subjudul" style="margin-top:0;">Stok Karung Sumber (per merk)</div>
-    <div id="daftarStokKarung" class="daftar-batch"></div>
-    <div class="subjudul">Stok Kemasan Jadi</div>
-    <div id="daftarStokKemasan" class="daftar-batch"></div>
-    <div class="subjudul">Stok Bahan Kemasan (plastik kosong)</div>
-    <p class="keterangan" style="margin-top:-8px;">Kantong plastik yang belum dipakai — sisa ini yang tersedia untuk produksi kemasan berikutnya.</p>
-    <div id="daftarStokBahanKemasan" class="daftar-batch"></div>
-    <div class="subjudul">Stok Kemasan Literan (paper bag / karung bekas)</div>
-    <p class="keterangan" style="margin-top:-8px;">Otomatis berkurang tiap ada penjualan literan yang butuh kemasan ini (=5L, 6-12L, atau ≥13L).</p>
-    <div id="daftarStokBahanLiteran" class="daftar-batch"></div>
-    <div class="subjudul"> Gudang Karantina — barang retur belum diputuskan</div>
-    <p class="keterangan" style="margin-top:-8px;">Barang di sini TIDAK masuk stok jual. Putuskan salah satu tindakan untuk tiap item: balik ke pemasok, rework lalu masuk stok, atau buang (kerugian).</p>
-    <div id="daftarKarantina" class="daftar-batch"></div>
-    <div class="subjudul"> Riwayat Retur</div>
-    <div id="daftarRetur" class="daftar-batch"></div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Stok Karung Sumber (per merk)</h2></div>
+      <div id="daftarStokKarung" class="daftar-batch"></div>
+    </div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Stok Kemasan Jadi</h2></div>
+      <div id="daftarStokKemasan" class="daftar-batch"></div>
+    </div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Stok Bahan Kemasan (plastik kosong)</h2></div>
+      <p class="keterangan" style="margin-top:0;">Kantong plastik yang belum dipakai — sisa ini yang tersedia untuk produksi kemasan berikutnya.</p>
+      <div id="daftarStokBahanKemasan" class="daftar-batch"></div>
+    </div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Stok Kemasan Literan (paper bag / karung bekas)</h2></div>
+      <p class="keterangan" style="margin-top:0;">Otomatis berkurang tiap ada penjualan literan yang butuh kemasan ini (=5L, 6-12L, atau ≥13L).</p>
+      <div id="daftarStokBahanLiteran" class="daftar-batch"></div>
+    </div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Gudang Karantina — retur belum diputuskan</h2></div>
+      <p class="keterangan" style="margin-top:0;">Barang di sini TIDAK masuk stok jual. Putuskan salah satu tindakan untuk tiap item: balik ke pemasok, rework lalu masuk stok, atau buang (kerugian).</p>
+      <div id="daftarKarantina" class="daftar-batch"></div>
+    </div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Riwayat Retur</h2></div>
+      <div id="daftarRetur" class="daftar-batch"></div>
+    </div>
   </div>
 
   <!-- HALAMAN LABA / MARGIN -->
@@ -1046,8 +1246,11 @@
         <div class="nilai" id="labaMargin">Rp0</div>
       </div>
     </div>
-    <div class="keterangan" id="labaJumlahTakTerhitung" style="margin-bottom:12px;"></div>
-    <div id="daftarLaba" class="daftar-batch"></div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Rincian per Transaksi</h2></div>
+      <div class="keterangan" id="labaJumlahTakTerhitung" style="margin-bottom:12px;"></div>
+      <div id="daftarLaba" class="daftar-batch"></div>
+    </div>
   </div>
 
   <!-- HALAMAN HARGA (katalog harga jual resmi, owner-only) -->
@@ -1063,9 +1266,12 @@
       <input type="text" id="hargaLiteranMerk" placeholder="Contoh: Kembang, Ketan Putih, dll">
       <label>Harga jual per liter (Rp)</label>
       <input type="number" id="hargaLiteranNominal" placeholder="0" inputmode="numeric">
-      <button type="button" onclick="simpanHargaLiteran()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;"> Simpan / Perbarui Harga Literan</button>
+      <button type="button" onclick="simpanHargaLiteran()" class="tombol-utama-kartu"> Simpan / Perbarui Harga Literan</button>
     </div>
-    <div id="daftarHargaLiteran" class="daftar-batch"></div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Harga Literan Tersimpan</h2></div>
+      <div id="daftarHargaLiteran" class="daftar-batch"></div>
+    </div>
 
     <div class="kartu">
       <div class="panel-kepala"><h2> Katalog Harga Kemasan (per unit)</h2></div>
@@ -1076,9 +1282,12 @@
       <input type="number" id="hargaKemasanUkuran" placeholder="Contoh: 5, 10, 20, 25" inputmode="numeric">
       <label>Harga jual per unit (Rp)</label>
       <input type="number" id="hargaKemasanNominal" placeholder="0" inputmode="numeric">
-      <button type="button" onclick="simpanHargaKemasan()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;"> Simpan / Perbarui Harga Kemasan</button>
+      <button type="button" onclick="simpanHargaKemasan()" class="tombol-utama-kartu"> Simpan / Perbarui Harga Kemasan</button>
     </div>
-    <div id="daftarHargaKemasan" class="daftar-batch"></div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Harga Kemasan Tersimpan</h2></div>
+      <div id="daftarHargaKemasan" class="daftar-batch"></div>
+    </div>
 
     <div class="kartu">
       <div class="panel-kepala"><h2> Katalog Harga Karung / Repacking (per kg)</h2></div>
@@ -1087,9 +1296,12 @@
       <input type="text" id="hargaKarungMerk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
       <label>Harga jual per kg (Rp)</label>
       <input type="number" id="hargaKarungNominal" placeholder="0" inputmode="numeric">
-      <button type="button" onclick="simpanHargaKarung()" style="margin-top:14px; width:100%; padding:14px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:15px;"> Simpan / Perbarui Harga Karung</button>
+      <button type="button" onclick="simpanHargaKarung()" class="tombol-utama-kartu"> Simpan / Perbarui Harga Karung</button>
     </div>
-    <div id="daftarHargaKarung" class="daftar-batch"></div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Harga Karung / Repacking Tersimpan</h2></div>
+      <div id="daftarHargaKarung" class="daftar-batch"></div>
+    </div>
   </div>
 
   <!-- HALAMAN INPUT -->
@@ -1156,7 +1368,10 @@
       </div>
     </div>
     <div class="info-box">Data utama tersimpan di HP/tablet ini. Tiap kali "Simpan Kedatangan", file backup ikut terunduh otomatis — kalau riwayat di sini pernah kosong/hilang, tekan " Muat dari File" di atas dan pilih file backup terakhir.</div>
-    <div id="daftarBatch" class="daftar-batch"></div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Riwayat Kedatangan</h2></div>
+      <div id="daftarBatch" class="daftar-batch"></div>
+    </div>
   </div>
 
   <!-- HALAMAN BIAYA BULANAN -->
@@ -1206,10 +1421,13 @@
 
       <p class="keterangan">Bensin, listrik, internet, plastik/tali/benang/dll, dan gaji tidak masuk HPP per produk — dilaporkan di sini sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
 
-      <button type="button" onclick="simpanBiayaBulanan()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:16px;"> Simpan Biaya Bulan Ini</button>
+      <button type="button" onclick="simpanBiayaBulanan()" class="tombol-utama-kartu"> Simpan Biaya Bulan Ini</button>
     </div>
 
-    <div id="daftarBulanan" class="daftar-batch"></div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Riwayat Biaya Bulanan</h2></div>
+      <div id="daftarBulanan" class="daftar-batch"></div>
+    </div>
   </div>
 
   <!-- HALAMAN PENGELUARAN HARIAN -->
@@ -1236,17 +1454,19 @@
       <label>Nominal (Rp)</label>
       <input type="number" id="harianNominal" placeholder="0" inputmode="numeric">
 
-      <button type="button" onclick="simpanPengeluaranHarian()" style="margin-top:20px; width:100%; padding:16px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:16px;"> Simpan Pengeluaran</button>
+      <button type="button" onclick="simpanPengeluaranHarian()" class="tombol-utama-kartu"> Simpan Pengeluaran</button>
     </div>
 
-    <div class="subjudul" style="margin-top:0;">Filter tampilan</div>
-    <div class="tab-bayar" style="margin-bottom:16px;">
-      <button type="button" id="filterHarianSemua" class="pilih" onclick="filterHarian('semua')">Semua</button>
-      <button type="button" id="filterHarianToko" onclick="filterHarian('toko')">Toko</button>
-      <button type="button" id="filterHarianBen" onclick="filterHarian('ben')">Ben Mohsein</button>
-      <button type="button" id="filterHarianOwner" class="tab-owner-blok" onclick="filterHarian('owner')">Owner</button>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Riwayat Pengeluaran</h2></div>
+      <div class="tab-bayar" style="margin-bottom:14px;">
+        <button type="button" id="filterHarianSemua" class="pilih" onclick="filterHarian('semua')">Semua</button>
+        <button type="button" id="filterHarianToko" onclick="filterHarian('toko')">Toko</button>
+        <button type="button" id="filterHarianBen" onclick="filterHarian('ben')">Ben Mohsein</button>
+        <button type="button" id="filterHarianOwner" class="tab-owner-blok" onclick="filterHarian('owner')">Owner</button>
+      </div>
+      <div id="daftarHarian" class="daftar-batch"></div>
     </div>
-    <div id="daftarHarian" class="daftar-batch"></div>
   </div>
 
 </main>
