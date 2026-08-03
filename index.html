@@ -809,7 +809,7 @@
 
     <!-- Sub-form: Jual dari stok kemasan jadi -->
     <div class="kartu" id="formJualKemasan">
-      <div class="subjudul">Jual dari Stok Kemasan — pilih produk</div>
+      <div class="panel-kepala"><h2>Jual dari Stok Kemasan — pilih produk</h2></div>
       <div class="grid-tombol-pilih" id="pilihKemasanTombol"></div>
       <input type="hidden" id="jualKemasanProduk">
       <div class="stok-tersedia" id="stokKemasanInfo"></div>
@@ -819,7 +819,7 @@
 
     <!-- Sub-form: Repacking dadakan -->
     <div class="kartu" id="formJualRepacking" style="display:none;">
-      <div class="subjudul">Repacking Dadakan — pilih merk sumber</div>
+      <div class="panel-kepala"><h2>Repacking Dadakan — pilih merk sumber</h2></div>
       <div class="grid-tombol-pilih" id="pilihRepackingTombol"></div>
       <input type="hidden" id="jualRepackingMerk">
       <div class="stok-tersedia" id="stokRepackingInfo"></div>
@@ -831,7 +831,7 @@
 
     <!-- Sub-form: Karung utuh -->
     <div class="kartu" id="formJualKarung" style="display:none;">
-      <div class="subjudul">Jual Karung Utuh — pilih merk sumber</div>
+      <div class="panel-kepala"><h2>Jual Karung Utuh — pilih merk sumber</h2></div>
       <div class="grid-tombol-pilih" id="pilihKarungTombol"></div>
       <input type="hidden" id="jualKarungMerk">
       <div class="stok-tersedia" id="stokKarungInfo"></div>
@@ -842,7 +842,7 @@
 
     <!-- Sub-form: Literan -->
     <div class="kartu" id="formJualLiteran" style="display:none;">
-      <div class="subjudul">Jual Literan — pilih jenis</div>
+      <div class="panel-kepala"><h2>Jual Literan — pilih jenis</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Ketan & Beras Merah tidak boleh dicampur produk lain.</p>
       <div class="grid-tombol-pilih" id="pilihLiteranTombol"></div>
       <input type="hidden" id="jualLiteranJenis">
@@ -855,7 +855,7 @@
 
     <!-- Sub-form: Retur -->
     <div class="kartu" id="formJualRetur" style="display:none;">
-      <div class="subjudul">Retur — barang apa yang dikembalikan?</div>
+      <div class="panel-kepala"><h2>Retur — barang apa yang dikembalikan?</h2></div>
       <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr;">
         <button type="button" id="returJenisKemasan" class="pilih" onclick="pilihReturJenisAsal('kemasan')">Kemasan Jadi</button>
         <button type="button" id="returJenisKarung" onclick="pilihReturJenisAsal('karung')">Karung Utuh</button>
@@ -904,7 +904,7 @@
     </div>
 
     <div class="kartu" id="kartuHargaBayarJual">
-      <div class="subjudul">Harga & Bayar</div>
+      <div class="panel-kepala"><h2>Harga & Bayar</h2></div>
       <label>Harga jual (Rp) <span class="keterangan">— otomatis dari Daftar Harga, total transaksi ini</span></label>
       <input type="number" id="jualHargaTotal" placeholder="0" inputmode="numeric" readonly style="background:var(--hasil-bg); font-weight:800;">
       <div class="keterangan" id="statusHargaJualInfo" style="margin-top:-8px;"></div>
@@ -928,7 +928,7 @@
     <div class="info-box">Dipakai waktu sepi: siapkan stok kemasan duluan (timbang & jahit dari karung sumber), supaya nanti tinggal diambil pas ada pembeli lewat tab "Jual → Dari Stok Kemasan Jadi".</div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;"> Beli Stok Bahan Kemasan</div>
+      <div class="panel-kepala"><h2> Beli Stok Bahan Kemasan</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Stok kantong plastik kosong per ukuran + merek beras — harga per lembar diketik tiap beli (harga bisa berubah), HPP dihitung rata-rata tertimbang dari sisa stok.</p>
       <label>Jenis kantong (ukuran — merek)</label>
       <div class="kartu-jenis-jual" style="grid-template-columns: repeat(2,1fr);" id="beliBahanKemasanTombolWrap"></div>
@@ -949,7 +949,7 @@
     </div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;"> Beli Stok Kemasan Literan (paper bag / karung bekas)</div>
+      <div class="panel-kepala"><h2> Beli Stok Kemasan Literan (paper bag / karung bekas)</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Harga per lembar/karung diketik tiap beli (harga bisa berubah), HPP dihitung rata-rata tertimbang dari sisa stok.</p>
       <label>Jenis</label>
       <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr 1fr;">
@@ -974,7 +974,7 @@
     </div>
 
     <div class="kartu">
-      <div class="subjudul">Ambil dari Karung Sumber — pilih merk</div>
+      <div class="panel-kepala"><h2>Ambil dari Karung Sumber — pilih merk</h2></div>
       <div class="grid-tombol-pilih" id="pilihProduksiTombol"></div>
       <input type="hidden" id="produksiMerkSumber">
       <div class="stok-tersedia" id="stokProduksiInfo"></div>
@@ -983,7 +983,7 @@
     </div>
 
     <div class="kartu">
-      <div class="subjudul">Jadi Produk Kemasan</div>
+      <div class="panel-kepala"><h2>Jadi Produk Kemasan</h2></div>
       <label>Nama produk (nama jual)</label>
       <input type="text" id="produksiNamaProduk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
       <label>Ukuran per kemasan (kg)</label>
@@ -1053,7 +1053,7 @@
     <div class="info-box">Daftar harga di sini akan jadi sumber harga jual resmi untuk kasir — kasir tidak bisa ketik harga bebas lagi setelah katalog ini dipakai. Isi lengkap dulu sebelum dikunci ke form Jual.</div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;"> Katalog Harga Literan (per liter)</div>
+      <div class="panel-kepala"><h2> Katalog Harga Literan (per liter)</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk/jenis literan + harga jual per liter.</p>
       <label>Merk / jenis</label>
       <input type="text" id="hargaLiteranMerk" placeholder="Contoh: Kembang, Ketan Putih, dll">
@@ -1064,7 +1064,7 @@
     <div id="daftarHargaLiteran" class="daftar-batch"></div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;"> Katalog Harga Kemasan (per unit)</div>
+      <div class="panel-kepala"><h2> Katalog Harga Kemasan (per unit)</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk + ukuran kemasan + harga jual per unit.</p>
       <label>Merk</label>
       <input type="text" id="hargaKemasanMerk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
@@ -1077,7 +1077,7 @@
     <div id="daftarHargaKemasan" class="daftar-batch"></div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;"> Katalog Harga Karung / Repacking (per kg)</div>
+      <div class="panel-kepala"><h2> Katalog Harga Karung / Repacking (per kg)</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk + harga jual per kg. Dipakai untuk Repacking Dadakan & Karung Utuh.</p>
       <label>Merk</label>
       <input type="text" id="hargaKarungMerk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
@@ -1094,7 +1094,7 @@
     <div id="pesanOk" class="pesan-ok"> Tersimpan. Kedatangan baru sudah masuk ke riwayat.</div>
 
     <div class="kartu">
-      <div class="subjudul">Data Kedatangan Mobil</div>
+      <div class="panel-kepala"><h2>Data Kedatangan Mobil</h2></div>
 
       <label>Tanggal masuk</label>
       <input type="date" id="tanggal">
@@ -1113,7 +1113,7 @@
     </div>
 
     <div class="kartu">
-      <div class="subjudul">Rincian per Merk</div>
+      <div class="panel-kepala"><h2>Rincian per Merk</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Tambah satu baris untuk tiap merk/jenis dalam mobil ini. Total karung minimal 60.</p>
 
       <div id="daftarBarisMerk"></div>
@@ -1134,7 +1134,7 @@
   <div id="halamanRekap" class="halaman">
     <div class="judul-halaman"><h2>Riwayat</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;">Cadangan Data</div>
+      <div class="panel-kepala"><h2>Cadangan Data</h2></div>
       <div class="kartu-backup-baris" style="margin-top:10px;">
         <span class="keterangan" style="margin:0;"><b id="jumlahDiHp">0</b> kedatangan tersimpan di perangkat ini</span>
         <button type="button" onclick="unduhBackup()">Unduh Backup</button>
@@ -1159,7 +1159,7 @@
   <div id="halamanBulanan" class="halaman">
     <div class="judul-halaman"><h2>Biaya Bulanan</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div class="kartu">
-      <div class="subjudul">Biaya Bulanan (di luar per-mobil)</div>
+      <div class="panel-kepala"><h2>Biaya Bulanan (di luar per-mobil)</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Akses/gapura dan keamanan lingkungan dibayar sekali sebulan — dicatat di sini, bukan per kedatangan mobil, supaya tidak dobel-hitung.</p>
 
       <label>Bulan</label>
@@ -1215,7 +1215,7 @@
     <div class="info-box">Catatan kecil-kecil harian, beda dari "Bulanan" (biaya tetap besar per bulan). Hanya kategori <b>Toko</b> yang otomatis ikut Kas Keluar di dashboard Ringkasan. Ben Mohsein &amp; Owner murni pribadi — TIDAK ikut kas toko, TIDAK ikut laporan bulanan.</div>
 
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;">Kategori</div>
+      <div class="panel-kepala"><h2>Kategori</h2></div>
       <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr 1fr;">
         <button type="button" id="kategoriHarianToko" class="pilih" onclick="pilihKategoriHarian('toko')">Toko</button>
         <button type="button" id="kategoriHarianBen" onclick="pilihKategoriHarian('ben')">Ben Mohsein</button>
