@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Kasir Darurat — Toko Beras M.IQBAL</title>
+<meta name="description" content="Catat nominal uang masuk saat darurat. Cuma omzet — tanpa produk, tanpa stok.">
+<meta name="theme-color" content="#23272b">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-kasir-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-kasir-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  /* ============ KASIR DARURAT NOMINAL — dibuat ulang 4 Agustus 2026 ============
+     Katup darurat: HANYA catat nominal uang masuk. Tanpa produk, tanpa stok, tanpa HPP.
+     Mesin disamakan dengan kasir.html (REST + token BERSAMA kasir_auth_v1, antrean offline,
+     tanpa Firebase SDK) supaya ringan di HP lemah dan tidak minta sandi lagi kalau
+     HP itu sudah pernah login di kasir. Skema dokumen SAMA PERSIS dengan versi lama:
+     jenis 'kasir_darurat_nominal' di koleksi 'penjualan'. */
+  :root {
+    --badan: #23272b; --badan-tua: #17191c;
+    --lcd: #c8d3bd; --lcd-teks: #1c2318;
+    --tombol: #f2f0ea; --tombol-teks: #17191c; --tombol-op: #d8d4c8;
+    --simpan: #2e7d43; --merah: #b23a2a; --garis: #3a4046;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html { font-size: 17px; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--badan); color: var(--tombol);
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  #bilahAtas {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; font-size: .8rem; color: #9aa3ab; flex: 0 0 auto;
+  }
+  #bilahAtas b { color: #cfd6dc; font-weight: 700; letter-spacing: .5px; }
+  #chipStatus { padding: 2px 8px; border-radius: 999px; background: #2e3438; }
+  #chipStatus.offline { background: var(--merah); color: #fff; }
+  #judulDarurat {
+    text-align: center; color: #e4b93c; font-weight: 800; letter-spacing: 1px;
+    font-size: .85rem; padding: 0 12px 6px; text-transform: uppercase;
+  }
+  #lcd {
+    background: var(--lcd); color: var(--lcd-teks); margin: 0 10px; border-radius: 8px;
+    border: 3px solid #0e100e; box-shadow: inset 0 2px 8px rgba(0,0,0,.35);
+    padding: 10px 12px 12px; flex: 0 0 auto;
+  }
+  #lcdAngka {
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 2.9rem; font-weight: 700; text-align: right; letter-spacing: 1px;
+    line-height: 1.15; white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums;
+  }
+  #lcd.lcd-tolak #lcdAngka { color: var(--merah) !important; }
+  #lcd.lcd-tolak { animation: goyangTolak .3s linear 2; }
+  @keyframes goyangTolak { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  #logHari {
+    flex: 1 1 auto; overflow-y: auto; margin: 8px 10px; min-height: 40px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  #totalHari {
+    text-align: center; font-weight: 800; color: #cfd6dc; font-size: .95rem;
+    padding: 6px; background: #2b3036; border: 1px solid var(--garis); border-radius: 8px;
+  }
+  .baris-log {
+    display: flex; justify-content: space-between; background: #2b3036;
+    border: 1px solid var(--garis); border-radius: 8px; padding: 7px 12px; font-size: .9rem;
+  }
+  .baris-log .jam { color: #9aa3ab; }
+  .baris-log .nilai { font-variant-numeric: tabular-nums; font-weight: 700; }
+  #logKosong { color: #6b737b; font-size: .85rem; text-align: center; padding: 8px 0; }
+  #peringatan {
+    margin: 0 10px 8px; padding: 9px 12px; border: 1px solid #8a6d1f; border-radius: 8px;
+    color: #e4b93c; font-size: .78rem; line-height: 1.35; flex: 0 0 auto;
+  }
+  #papan {
+    flex: 0 0 auto; padding: 4px 10px 8px;
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 62px; gap: 7px;
+  }
+  #papan button {
+    border: 0; border-radius: 10px; font-size: 1.8rem; font-weight: 700;
+    background: var(--tombol); color: var(--tombol-teks); border-bottom: 4px solid #b9b5a8;
+    font-variant-numeric: tabular-nums;
+  }
+  #papan button:active { transform: translateY(1px); border-bottom-width: 2px; }
+  #papan button.op { background: var(--tombol-op); border-bottom-color: #a09c8e; font-size: 1.3rem; font-weight: 800; }
+  #btnSimpan {
+    margin: 0 10px 10px; flex: 0 0 auto;
+    border: 0; border-radius: 12px; background: var(--simpan); color: #fff;
+    min-height: 66px; font-size: 1.4rem; font-weight: 800; letter-spacing: 1px;
+    border-bottom: 4px solid #1d5b2e;
+  }
+  #btnSimpan:active { transform: translateY(1px); border-bottom-width: 2px; }
+  #btnSimpan:disabled { opacity: .6; }
+  .lapisan {
+    position: fixed; inset: 0; z-index: 50; display: none; flex-direction: column;
+    align-items: center; justify-content: center; padding: 24px; text-align: center;
+    background: rgba(16,18,20,.96);
+  }
+  .lapisan.tampil { display: flex; }
+  .lapisan h2 { margin: 0 0 6px; font-size: 1.2rem; letter-spacing: .5px; }
+  .lapisan p { margin: 0 0 14px; color: #9aa3ab; font-size: .9rem; max-width: 340px; }
+  .lapisan input {
+    width: 100%; max-width: 340px; padding: 14px; font-size: 1.1rem; border-radius: 10px;
+    border: 1px solid var(--garis); background: #2b3036; color: #fff; text-align: center; margin-bottom: 10px;
+  }
+  .lapisan button {
+    width: 100%; max-width: 340px; min-height: 52px; border: 0; border-radius: 10px;
+    font-size: 1.05rem; font-weight: 800; margin-bottom: 8px;
+    background: var(--tombol); color: var(--tombol-teks);
+  }
+  .lapisan button.redup { background: #2b3036; color: #9aa3ab; border: 1px solid var(--garis); }
+  #salahLogin { color: #ff8a75; font-size: .85rem; display: none; margin: 0 0 10px; }
+  #pesanOk {
+    position: fixed; left: 50%; top: 18%; transform: translateX(-50%);
+    background: var(--simpan); color: #fff; font-weight: 800; font-size: 1.1rem;
+    padding: 14px 26px; border-radius: 12px; display: none; z-index: 60;
+  }
+</style>
+</head>
+<body>
+
+<div id="bilahAtas"><b>M.IQBAL</b><span id="chipStatus">Menyambungkan…</span></div>
+<div id="judulDarurat">Kasir Darurat — Catat Nominal Saja</div>
+
+<div id="lcd"><div id="lcdAngka">Rp0</div></div>
+
+<div id="peringatan">Halaman ini CUMA mencatat total uang masuk — tanpa nama produk, stok tidak berkurang. Setelah keadaan normal, stok fisik dihitung ulang dan dirapikan di sistem utama.</div>
+
+<div id="logHari">
+  <div id="totalHari">Hari ini dari HP ini: Rp0</div>
+  <div id="logKosong">Belum ada catatan hari ini.</div>
+</div>
+
+<div id="papan">
+  <button type="button" onclick="tekanAngka('1')">1</button>
+  <button type="button" onclick="tekanAngka('2')">2</button>
+  <button type="button" onclick="tekanAngka('3')">3</button>
+  <button type="button" onclick="tekanAngka('4')">4</button>
+  <button type="button" onclick="tekanAngka('5')">5</button>
+  <button type="button" onclick="tekanAngka('6')">6</button>
+  <button type="button" onclick="tekanAngka('7')">7</button>
+  <button type="button" onclick="tekanAngka('8')">8</button>
+  <button type="button" onclick="tekanAngka('9')">9</button>
+  <button type="button" class="op" onclick="tekanAngka('000')">000</button>
+  <button type="button" onclick="tekanAngka('0')">0</button>
+  <button type="button" class="op" onclick="hapusAngka()">HAPUS</button>
+</div>
+<button type="button" id="btnSimpan" onclick="simpanNominal()">SIMPAN</button>
+
+<div id="pesanOk">Tersimpan</div>
+
+<div id="layarLogin" class="lapisan">
+  <h2>MASUK SEKALI DI HP INI</h2>
+  <p id="loginPesan">HP ini belum masuk. Masukkan sandi toko (sekali saja).</p>
+  <input type="password" id="inputSandiLogin" placeholder="Sandi toko" autocomplete="current-password">
+  <p id="salahLogin">Sandi salah.</p>
+  <button type="button" id="btnLogin" onclick="kirimLogin()">Masuk</button>
+  <button type="button" class="redup" onclick="lewatiLogin()">Lewati dulu — tetap bisa catat</button>
+  <p style="font-size:.78rem;">Catatan tetap tersimpan di HP walau dilewati, dikirim otomatis setelah masuk.</p>
+</div>
+
+<script>
+// Mesin = salinan pola kasir.html (REST tanpa SDK). Token login DIBAGI dengan kasir
+// lewat localStorage kasir_auth_v1 — HP yang sudah login di kasir langsung jalan di sini.
+var PROYEK = 'toko-beras-m-iqbal';
+var KUNCI_API = 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA';
+var DASAR = 'https://firestore.googleapis.com/v1/projects/' + PROYEK + '/databases/(default)/documents/';
+var EMAIL_TOKO = 'kasir@tokoberasmiqbal.web.app';
+var URL_MASUK = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + KUNCI_API;
+var URL_SEGARKAN_TOKEN = 'https://securetoken.googleapis.com/v1/token?key=' + KUNCI_API;
+var K_AUTH = 'kasir_auth_v1';           // BERSAMA dengan kasir.html — login sekali untuk keduanya
+var K_ANTREAN = 'darurat_antrean_v1';   // antrean sendiri, tidak ganggu antrean kasir
+var K_GAGAL = 'darurat_gagal_v1';
+var K_LOG = 'darurat_log_v1';           // catatan lokal per HP untuk daftar "hari ini"
+var K_OPERATOR = 'kasir_operator_v1';   // ikut kasir: kalau ada nama penjaga, ikut tercatat
+
+function $(id) { return document.getElementById(id); }
+function idUnik() { return Date.now() + Math.random(); }
+function tanggalLokalIso(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function rupiah(n) { return 'Rp' + Math.round(n || 0).toLocaleString('id-ID'); }
+
+// ---------- login toko (REST, token bersama) ----------
+function authTersimpan() { try { return JSON.parse(localStorage.getItem(K_AUTH) || 'null'); } catch (e) { return null; } }
+function simpanAuth(a) { localStorage.setItem(K_AUTH, JSON.stringify(a)); }
+function sudahLogin() { var a = authTersimpan(); return !!(a && a.refreshToken); }
+var _tokenSedangSegar = null;
+function tokenSegar() {
+  var a = authTersimpan();
+  if (!a || !a.refreshToken) return Promise.resolve(null);
+  if (a.idToken && Date.now() < (a.kedaluwarsa || 0)) return Promise.resolve(a.idToken);
+  if (_tokenSedangSegar) return _tokenSedangSegar;
+  _tokenSedangSegar = fetch(URL_SEGARKAN_TOKEN, {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(a.refreshToken)
+  }).then(function (r) {
+    if (!r.ok) {
+      if (r.status === 400) { localStorage.removeItem(K_AUTH); tampilkanLayarLogin(true); }
+      return null;
+    }
+    return r.json().then(function (j) {
+      simpanAuth({ refreshToken: j.refresh_token, idToken: j.id_token,
+        kedaluwarsa: Date.now() + (parseInt(j.expires_in, 10) - 120) * 1000 });
+      return j.id_token;
+    });
+  }).catch(function () { return null; })
+    .then(function (t) { _tokenSedangSegar = null; return t; });
+  return _tokenSedangSegar;
+}
+function masukDenganSandi(sandi) {
+  return fetch(URL_MASUK, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: EMAIL_TOKO, password: sandi, returnSecureToken: true })
+  }).then(function (r) {
+    if (!r.ok) return r.json().then(function (j) { throw new Error((j.error && j.error.message) || 'GAGAL'); });
+    return r.json();
+  }).then(function (j) {
+    simpanAuth({ refreshToken: j.refreshToken, idToken: j.idToken,
+      kedaluwarsa: Date.now() + (parseInt(j.expiresIn, 10) - 120) * 1000 });
+    return true;
+  });
+}
+function denganAuth(opsi) {
+  opsi = opsi || {};
+  return tokenSegar().then(function (t) {
+    if (t) { opsi.headers = opsi.headers || {}; opsi.headers['Authorization'] = 'Bearer ' + t; }
+    return opsi;
+  });
+}
+function tampilkanLayarLogin(paksa) {
+  $('loginPesan').textContent = paksa
+    ? 'Sesi habis. Masukkan sandi toko sekali lagi.'
+    : 'HP ini belum masuk. Masukkan sandi toko (sekali saja).';
+  $('layarLogin').classList.add('tampil');
+  $('salahLogin').style.display = 'none';
+}
+function kirimLogin() {
+  var sandi = $('inputSandiLogin').value.trim();
+  if (!sandi) return;
+  var btn = $('btnLogin');
+  btn.disabled = true; btn.textContent = 'Memeriksa…';
+  masukDenganSandi(sandi).then(function () {
+    $('inputSandiLogin').value = '';
+    $('layarLogin').classList.remove('tampil');
+    kirimAntrean(true);
+  }).catch(function (e) {
+    var pesan = String(e.message || '');
+    $('salahLogin').textContent = (pesan.indexOf('PASSWORD') >= 0 || pesan.indexOf('INVALID_LOGIN') >= 0 || pesan.indexOf('EMAIL_NOT_FOUND') >= 0)
+      ? 'Sandi salah.' : 'Gagal masuk — cek sinyal, lalu coba lagi.';
+    $('salahLogin').style.display = 'block';
+  }).then(function () { btn.disabled = false; btn.textContent = 'Masuk'; });
+}
+function lewatiLogin() { $('layarLogin').classList.remove('tampil'); }
+
+// ---------- konversi Firestore REST ----------
+function keFs(nilai) {
+  if (nilai === null || nilai === undefined) return { nullValue: null };
+  if (typeof nilai === 'boolean') return { booleanValue: nilai };
+  if (typeof nilai === 'number') return Number.isInteger(nilai) ? { integerValue: String(nilai) } : { doubleValue: nilai };
+  if (typeof nilai === 'string') return { stringValue: nilai };
+  var f = {}; for (var k in nilai) f[k] = keFs(nilai[k]);
+  return { mapValue: { fields: f } };
+}
+
+// ---------- antrean offline ----------
+function ambilAntrean() { try { return JSON.parse(localStorage.getItem(K_ANTREAN) || '[]'); } catch (e) { return []; } }
+function simpanAntrean(a) { localStorage.setItem(K_ANTREAN, JSON.stringify(a)); }
+function ambilGagal() { try { return JSON.parse(localStorage.getItem(K_GAGAL) || '[]'); } catch (e) { return []; } }
+var sedangKirim = false;
+function kirimAntrean(manual) {
+  if (sedangKirim) return;
+  var a = ambilAntrean();
+  if (a.length === 0) { if (manual) setStatus(navigator.onLine); return; }
+  sedangKirim = true;
+  var kirimSatu = function () {
+    var a2 = ambilAntrean();
+    if (a2.length === 0) { sedangKirim = false; setStatus(true); return; }
+    var item = a2[0];
+    denganAuth({
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })() })
+    }).then(function (opsi) {
+      return fetch(DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, opsi).then(function (r) {
+        if (r.ok) { a2.shift(); simpanAntrean(a2); kirimSatu(); return; }
+        if (r.status === 401 || r.status === 403) {
+          sedangKirim = false; setStatus(false); tampilkanLayarLogin(sudahLogin()); return;
+        }
+        if (r.status >= 400 && r.status < 500) {
+          var g = ambilGagal(); g.push(item);
+          localStorage.setItem(K_GAGAL, JSON.stringify(g));
+          a2.shift(); simpanAntrean(a2); kirimSatu(); return;
+        }
+        throw new Error('status ' + r.status);
+      }).catch(function () { sedangKirim = false; setStatus(false); });
+    });
+  };
+  kirimSatu();
+}
+function setStatus(online) {
+  var el = $('chipStatus'); var n = ambilAntrean().length; var g = ambilGagal().length;
+  var teks;
+  if (online) { teks = n > 0 ? 'Mengirim ' + n + '…' : 'Online'; el.className = ''; }
+  else { teks = n > 0 ? 'Offline · ' + n + ' menunggu' : 'Offline — tetap bisa catat'; el.className = 'offline'; }
+  if (g > 0) teks += ' · ' + g + ' ditolak';
+  if (!sudahLogin()) teks += ' · belum masuk';
+  el.textContent = teks;
+}
+
+// ---------- papan angka ----------
+var nominalDiketik = '';
+function gambarLcd() { $('lcdAngka').textContent = rupiah(parseInt(nominalDiketik || '0', 10)); }
+function tekanAngka(d) {
+  if ((nominalDiketik + d).length > 10) return;
+  if (nominalDiketik === '' && d === '000') return;
+  nominalDiketik += d;
+  gambarLcd();
+}
+function hapusAngka() { nominalDiketik = nominalDiketik.slice(0, -1); gambarLcd(); }
+function tolakEntri() {
+  var lcd = $('lcd');
+  lcd.classList.add('lcd-tolak');
+  if (navigator.vibrate) { try { navigator.vibrate(120); } catch (e) {} }
+  setTimeout(function () { lcd.classList.remove('lcd-tolak'); }, 900);
+}
+
+// ---------- catatan lokal "hari ini" (per HP) ----------
+function ambilLog() { try { return JSON.parse(localStorage.getItem(K_LOG) || '[]'); } catch (e) { return []; } }
+function catatLog(trx) {
+  var log = ambilLog().filter(function (x) { return x.tanggal === tanggalLokalIso(); });
+  log.push({ id: trx.id, tanggal: trx.tanggal, jam: trx.jam, hargaTotal: trx.hargaTotal });
+  localStorage.setItem(K_LOG, JSON.stringify(log));
+}
+function gambarLog() {
+  var hariIni = tanggalLokalIso();
+  var log = ambilLog().filter(function (x) { return x.tanggal === hariIni; });
+  var total = log.reduce(function (a, x) { return a + (x.hargaTotal || 0); }, 0);
+  $('totalHari').textContent = 'Hari ini dari HP ini: ' + rupiah(total) + (log.length ? ' (' + log.length + ' catatan)' : '');
+  var wadah = $('logHari');
+  wadah.querySelectorAll('.baris-log').forEach(function (el) { el.remove(); });
+  $('logKosong').style.display = log.length ? 'none' : 'block';
+  log.slice().reverse().forEach(function (x) {
+    var div = document.createElement('div');
+    div.className = 'baris-log';
+    div.innerHTML = '<span class="jam">' + (x.jam || '') + '</span><span class="nilai">' + rupiah(x.hargaTotal) + '</span>';
+    wadah.appendChild(div);
+  });
+}
+
+// ---------- simpan ----------
+function simpanNominal() {
+  var nominal = parseInt(nominalDiketik || '0', 10);
+  if (nominal <= 0) { tolakEntri(); return; }
+  // Skema SAMA PERSIS dengan kasir darurat lama — laporan omzet sistem utama sudah mengenalnya.
+  var trx = {
+    id: idUnik(),
+    tanggal: tanggalLokalIso(),
+    jam: new Date().toTimeString().slice(0, 5),
+    jenis: 'kasir_darurat_nominal',
+    namaProduk: '(tidak tercatat — kasir darurat)',
+    hargaTotal: nominal,
+    caraBayar: 'Tunai'
+  };
+  var op = localStorage.getItem(K_OPERATOR);
+  if (op) trx.operator = op;
+  var a = ambilAntrean();
+  a.push({ koleksi: 'penjualan', docId: String(trx.id), data: trx });
+  simpanAntrean(a);
+  catatLog(trx);
+  nominalDiketik = '';
+  gambarLcd();
+  gambarLog();
+  var ok = $('pesanOk');
+  ok.style.display = 'block';
+  setTimeout(function () { ok.style.display = 'none'; }, 1200);
+  kirimAntrean(false);
+  setStatus(navigator.onLine);
+}
+
+window.tekanAngka = tekanAngka;
+window.hapusAngka = hapusAngka;
+window.simpanNominal = simpanNominal;
+window.kirimLogin = kirimLogin;
+window.lewatiLogin = lewatiLogin;
+
+// ---------- mulai ----------
+gambarLcd();
+gambarLog();
+setStatus(navigator.onLine);
+if (!sudahLogin()) tampilkanLayarLogin(false);
+window.addEventListener('online', function () { kirimAntrean(false); setStatus(true); });
+window.addEventListener('offline', function () { setStatus(false); });
+setInterval(function () { kirimAntrean(false); }, 25000);
+kirimAntrean(false);
+</script>
+
+</body>
+</html>
