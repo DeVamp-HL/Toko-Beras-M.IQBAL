@@ -422,7 +422,12 @@ function bangunDaftarProduk() {
   // Urutan: literan dulu (paling sering), lalu kemasan, lalu karung utuh.
   (ringkasan.merkKarung || []).forEach(function (m) {
     if (!m || !m.merk) return;
-    daftarProduk.push({ tipe: 'literan', label: m.merk, sub: (m.hargaPerLiter ? angkaTitik(m.hargaPerLiter) + '/L' : 'harga?'),
+    // Merk IR64*: tuts literan bertuliskan HARGA per liter, bukan nama merk —
+    // pelanggan beli berdasarkan harga (aturan My DeV 3 Agu 2026). Dokumen
+    // penjualan tetap menyimpan merk asli.
+    var labelLiteran = (/^IR64/i.test(m.merk) && m.hargaPerLiter)
+      ? 'Rp' + angkaTitik(m.hargaPerLiter) : m.merk;
+    daftarProduk.push({ tipe: 'literan', label: labelLiteran, sub: (m.hargaPerLiter ? angkaTitik(m.hargaPerLiter) + '/L' : 'harga?'),
       merk: m.merk, hargaSatuan: m.hargaPerLiter || 0, step: 0.5, rasio: m.rasio || 0.82, hppPerKg: m.hppPerKg || 0 });
   });
   (ringkasan.kemasan || []).forEach(function (p) {

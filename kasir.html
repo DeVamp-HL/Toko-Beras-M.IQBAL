@@ -576,8 +576,12 @@ function gambarUlang() {
       var hargaTeks = jenisAktif === 'literan'
         ? (m.hargaPerLiter ? rupiah(m.hargaPerLiter) + '/L' : 'harga belum ada')
         : (m.hargaPerKg ? rupiah(m.hargaPerKg) + '/kg' : 'harga belum ada');
+      // Merk IR64* di tab LITERAN tampil sebagai HARGA (pelanggan beli berdasarkan
+      // harga, bukan merk — aturan My DeV 3 Agu 2026). Dokumen penjualan tetap merk asli.
+      var namaTampil = (jenisAktif === 'literan' && /^IR64/i.test(m.merk) && m.hargaPerLiter)
+        ? rupiah(m.hargaPerLiter) : m.merk;
       html += '<button type="button" class="tombol-produk' + (barangAktif === m.merk ? ' pilih' : '') + '" onclick="pilihBarangIdx(' + i + ')">' +
-        '<span>' + esk(m.merk) + '</span><small>' + hargaTeks + '<br>sisa ' + sisa + ' kg</small></button>';
+        '<span>' + esk(namaTampil) + '</span><small>' + hargaTeks + '<br>sisa ' + sisa + ' kg</small></button>';
     });
   }
   wadah.innerHTML = html;

@@ -1014,7 +1014,7 @@
       <input type="hidden" id="jualRepackingMerk">
       <div class="stok-tersedia" id="stokRepackingInfo"></div>
       <label>Jadi produk apa (nama jual)</label>
-      <input type="text" id="jualRepackingNamaProduk" placeholder="Contoh: Kembang, Putri, atau nama lain">
+      <input type="text" id="jualRepackingNamaProduk" placeholder="Contoh: Kembang, Putri Agri, atau nama lain">
       <label>Berat dijual (kg)</label>
       <input type="number" id="jualRepackingKg" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
     </div>
@@ -1175,7 +1175,7 @@
     <div class="kartu">
       <div class="panel-kepala"><h2>Jadi Produk Kemasan</h2></div>
       <label>Nama produk (nama jual)</label>
-      <input type="text" id="produksiNamaProduk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
+      <input type="text" id="produksiNamaProduk" placeholder="Contoh: Kembang, Putri Agri, Lele Special, BMW, Buah Persik">
       <label>Ukuran per kemasan (kg)</label>
       <input type="number" id="produksiUkuranKemasan" placeholder="Contoh: 5, 10, 20" inputmode="numeric">
       <label>Jadi berapa unit kemasan</label>
@@ -1263,7 +1263,7 @@
       <div class="panel-kepala"><h2> Katalog Harga Literan (per liter)</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk/jenis literan + harga jual per liter.</p>
       <label>Merk / jenis</label>
-      <input type="text" id="hargaLiteranMerk" placeholder="Contoh: Kembang, Ketan Putih, dll">
+      <input type="text" id="hargaLiteranMerk" placeholder="Contoh: IR64 Ascent, Ketan Putih, dll">
       <label>Harga jual per liter (Rp)</label>
       <input type="number" id="hargaLiteranNominal" placeholder="0" inputmode="numeric">
       <button type="button" onclick="simpanHargaLiteran()" class="tombol-utama-kartu"> Simpan / Perbarui Harga Literan</button>
@@ -1277,7 +1277,7 @@
       <div class="panel-kepala"><h2> Katalog Harga Kemasan (per unit)</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk + ukuran kemasan + harga jual per unit.</p>
       <label>Merk</label>
-      <input type="text" id="hargaKemasanMerk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
+      <input type="text" id="hargaKemasanMerk" placeholder="Contoh: Kembang, Putri Agri, Lele Special, BMW, Buah Persik">
       <label>Ukuran kemasan (kg)</label>
       <input type="number" id="hargaKemasanUkuran" placeholder="Contoh: 5, 10, 20, 25" inputmode="numeric">
       <label>Harga jual per unit (Rp)</label>
@@ -1293,7 +1293,7 @@
       <div class="panel-kepala"><h2> Katalog Harga Karung / Repacking (per kg)</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk + harga jual per kg. Dipakai untuk Repacking Dadakan & Karung Utuh.</p>
       <label>Merk</label>
-      <input type="text" id="hargaKarungMerk" placeholder="Contoh: Kembang, Putri, Lele, BMW, Persik">
+      <input type="text" id="hargaKarungMerk" placeholder="Contoh: Kembang, Putri Agri, Lele Special, BMW, Buah Persik">
       <label>Harga jual per kg (Rp)</label>
       <input type="number" id="hargaKarungNominal" placeholder="0" inputmode="numeric">
       <button type="button" onclick="simpanHargaKarung()" class="tombol-utama-kartu"> Simpan / Perbarui Harga Karung</button>
@@ -1646,7 +1646,15 @@
   // Dikosongkan atas permintaan My DeV (31 Juli 2026) — mulai dari nol, diisi ulang
   // satu per satu sesuai merk yang benar-benar dijual. Dropdown "Merk lain (ketik manual)"
   // tetap tersedia di form Input selama daftar ini masih kosong.
-  const DAFTAR_MERK = [];
+  // Nama produk default sistem (ditetapkan My DeV 3 Agustus 2026).
+  // Merk karung sumber untuk dropdown Batch Masuk — merk lain tetap bisa lewat "Merk lain (ketik manual)".
+  const DAFTAR_MERK = [
+    'IR64 Ascent', 'IR64 Elevate', 'IR64 Apex',
+    'Angsa', 'Perahu Layar', 'Pandan Wangi',
+    'IR42 Select', 'IR42 Value',
+    'Ketan Putih', 'Ketan Putih Paris', 'Ketan Hitam PK', 'Ketan Hitam Sosoh', 'Beras Merah',
+    'Kembang', 'Layar'
+  ];
   const JENIS_LITERAN_KHUSUS = ['Ketan Putih','Ketan Putih Paris','Ketan Hitam PK','Ketan Hitam Sosoh','Beras Merah'];
   const RASIO_KONVERSI = {
     'Ketan Putih': 0.815, 'Ketan Hitam PK': 0.810,
@@ -2997,7 +3005,18 @@
     }));
     bikinTombolPilih('pilihRepackingTombol', 'jualRepackingMerk', opsiMerk, 'Belum ada stok karung.', perbaruiStokJual);
     bikinTombolPilih('pilihKarungTombol', 'jualKarungMerk', opsiMerk, 'Belum ada stok karung.', perbaruiStokJual);
-    bikinTombolPilih('pilihLiteranTombol', 'jualLiteranJenis', opsiMerk, 'Belum ada stok.', perbaruiStokJual);
+    // Tab LITERAN: merk IR64* ditampilkan sebagai HARGA per liter (pelanggan beli
+    // berdasarkan harga, bukan merk — aturan My DeV 3 Agu 2026). Dokumen penjualan
+    // tetap menyimpan merk asli (kunci tidak berubah), hanya tulisan tombol yang beda.
+    const opsiLiteran = opsiMerk.map(o => ({ ...o, label: labelLiteranTampil(o.kunci) }));
+    bikinTombolPilih('pilihLiteranTombol', 'jualLiteranJenis', opsiLiteran, 'Belum ada stok.', perbaruiStokJual);
+  }
+
+  // Label tombol literan: IR64* -> "Rp11.500" (dari katalog harga literan). Merk lain tetap nama.
+  function labelLiteranTampil(merk) {
+    if (!/^IR64/i.test(merk)) return merk;
+    const h = ambilHargaLiteran().find(x => x.merk === merk);
+    return h && h.hargaPerLiter > 0 ? 'Rp' + Math.round(h.hargaPerLiter).toLocaleString('id-ID') : merk;
   }
 
   function perbaruiStokJual() {
