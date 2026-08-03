@@ -160,6 +160,27 @@
     padding-top: 16px;
     border-top: 1px solid var(--garis);
   }
+  /* ===== Target 3 Langkah 1b (3 Agustus): kepala panel ala mockup, TITIK UJI tab =====
+     ===== Ringkasan dulu — .subjudul lama TIDAK dihapus, masih dipakai 9 tab lain =====
+     sampai giliran masing-masing tiba. .panel-kepala jadi pembungkus (div berisi h2 +
+     opsional a), bukan elemen tunggal seperti .subjudul — dipasang sebagai anak PERTAMA
+     di dalam .kartu, bukan menggantikan .kartu itu sendiri. Warna ambil dari variabel
+     yang sudah dipakai index.html (--emas-terang/--emas), bukan --emas1/--emas2 milik
+     mockup — nama beda, nilai setara. */
+  .panel-kepala {
+    padding: 0 0 14px; margin-bottom: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--kaca-garis);
+  }
+  .panel-kepala h2 {
+    margin: 0; font-size: 11.5px; letter-spacing: 2px; text-transform: uppercase;
+    color: #cfd5de; font-weight: 700;
+  }
+  .panel-kepala a {
+    font-size: 11.5px; font-weight: 700; text-decoration: none; letter-spacing: 1px;
+    background: linear-gradient(90deg, var(--emas-terang), var(--emas));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
   .subjudul:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
   .hasil {
     background: var(--hasil-bg);
@@ -745,7 +766,7 @@
     <div id="ringMarginCatatan" class="keterangan" style="display:none; margin:-8px 0 16px; text-align:center;"></div>
     <div class="dua-grafik" style="margin-bottom:16px;">
       <div class="kartu" style="margin-bottom:0;">
-        <div class="subjudul" style="margin-top:0;">Omzet 7 Hari</div>
+        <div class="panel-kepala"><h2>Omzet 7 Hari</h2></div>
         <div id="grafikOmzetWrap" style="margin-top:8px;"><div class="kosong" style="padding:18px;">Belum ada data.</div></div>
       </div>
       <div class="kartu" style="margin-bottom:0; display:flex; align-items:center; gap:18px;">
@@ -754,7 +775,7 @@
       </div>
     </div>
     <div class="kartu">
-      <div class="subjudul" style="margin-top:0;">Penjualan Terakhir</div>
+      <div class="panel-kepala"><h2>Penjualan Terakhir</h2><a href="#" onclick="pindahHalaman('rekap'); return false;">LIHAT SEMUA</a></div>
       <div id="wadahPenjualanTerakhir" style="margin-top:8px;"><div class="kosong" style="padding:18px;">Belum ada penjualan.</div></div>
     </div>
     <div class="subjudul subjudul-kas-mobile" style="margin-top:0;">Kas Bulan Ini</div>
