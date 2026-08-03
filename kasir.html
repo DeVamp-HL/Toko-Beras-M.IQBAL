@@ -189,15 +189,15 @@
   <div id="lcdAngka">0</div>
 </div>
 
-<div id="struk"><div id="strukKosong">Ketik harga barang, lalu tekan tuts kuning nama barangnya.</div></div>
+<div id="struk"><div id="strukKosong">Ketik harga lalu +. Bisa juga 13500 \u00d7 2.5 atau 12000 : 2. Angka yang tidak cocok harga barang otomatis ditolak.</div></div>
 
 <div id="panelProduk"><div class="kosong">Memuat daftar barang…</div></div>
 
 <div id="papan">
-  <button type="button" class="op hapus" onclick="tekanHapusSemua()">AC</button>
   <button type="button" class="op hapus" onclick="tekanHapus()">C</button>
-  <button type="button" class="op" onclick="tekanKali()">&times;</button>
   <button type="button" class="op" onclick="tekanKurang()">&minus;</button>
+  <button type="button" class="op" onclick="tekanOperator('x')">&times;</button>
+  <button type="button" class="op" onclick="tekanOperator(':')">:</button>
 
   <button type="button" onclick="tekanAngka('7')">7</button>
   <button type="button" onclick="tekanAngka('8')">8</button>
@@ -215,7 +215,7 @@
 
   <button type="button" onclick="tekanAngka('0')">0</button>
   <button type="button" onclick="tekanAngka('00')">00</button>
-  <button type="button" onclick="tekanAngka('000')">000</button>
+  <button type="button" onclick="tekanTitik()">.</button>
 </div>
 
 <div id="bilahCatat">
@@ -224,7 +224,7 @@
     <button type="button" id="bayar-Qris" onclick="pilihBayar('Qris')">QRIS</button>
     <button type="button" id="bayar-Kredit" onclick="pilihBayar('Kredit')">KREDIT</button>
   </div>
-  <button type="button" id="btnCatat" onclick="tekanCatat()">CATAT</button>
+  <button type="button" id="btnCatat" onclick="tekanCatat()">JUAL</button>
 </div>
 
 <div id="layarTanyaProduk" class="lapisan">
@@ -619,28 +619,31 @@ function setStatus(online) {
 function perbaruiStatus() { setStatus(navigator.onLine); }
 
 // ================== OTAK KALKULATOR ==================
-// Register sederhana: entriSekarang (yang sedang diketik), pengali (dari tuts ×),
+// Register sederhana: entriSekarang (yang sedang diketik), opA+opJenis (rantai × atau :),
 // tandaKurang (dari tuts −), dan strukItems (daftar item transaksi berjalan).
-var entriSekarang = '';    // digit yang sedang diketik (string)
-var pengali = null;        // angka sebelum × (mis. 3 pada 3×13000)
+var entriSekarang = '';    // digit yang sedang diketik (string, boleh berisi titik desimal)
+var opA = null;            // angka pertama sebelum operator (mis. 13500 pada 13500×2.5)
+var opJenis = null;        // 'x' (kali) atau ':' (bagi)
 var tandaKurang = false;   // true kalau entri ini potongan (−)
 var strukItems = [];       // {harga, qty, produkIdx (null=UMUM), potongan}
 var totalTerkunci = false; // sesudah =, sebelum CATAT
 var antriTanya = [];       // indeks item UMUM yang sedang ditanya produknya
 
-function nilaiEntri() { return parseInt(entriSekarang || '0', 10) || 0; }
+function nilaiEntri() { return parseFloat(entriSekarang || '0') || 0; }
 function totalStruk() {
   return strukItems.reduce(function (a, it) { return a + (it.potongan ? -it.harga : it.harga); }, 0);
 }
 function gambarLcd() {
   var elA = $('lcdAngka'), kiri = $('lcdKiri'), kanan = $('lcdKanan');
   var tampil;
+  var simbolOp = opJenis === 'x' ? ' \u00d7' : (opJenis === ':' ? ' :' : '');
+  var teksOp = opA !== null ? (angkaTitik(opA) + simbolOp) : '';
   if (entriSekarang !== '') {
-    tampil = (tandaKurang ? '−' : '') + angkaTitik(nilaiEntri());
-    kanan.textContent = pengali !== null ? (angkaTitik(pengali) + ' ×') : (tandaKurang ? 'POTONGAN' : '');
+    tampil = (tandaKurang ? '−' : '') + (entriSekarang.indexOf('.') >= 0 ? entriSekarang : angkaTitik(nilaiEntri()));
+    kanan.textContent = teksOp || (tandaKurang ? 'POTONGAN' : '');
   } else {
-    tampil = angkaTitik(totalStruk());
-    kanan.textContent = pengali !== null ? (angkaTitik(pengali) + ' ×') : (totalTerkunci ? 'TOTAL' : '');
+    tampil = opA !== null ? angkaTitik(opA) : angkaTitik(totalStruk());
+    kanan.textContent = opA !== null ? ('' + simbolOp).trim() : (totalTerkunci ? 'TOTAL' : '');
   }
   kiri.textContent = strukItems.length > 0 ? (strukItems.length + ' barang') : '';
   elA.textContent = tampil;
@@ -649,7 +652,7 @@ function gambarLcd() {
 function gambarStruk() {
   var wadah = $('struk');
   if (strukItems.length === 0) {
-    wadah.innerHTML = '<div id="strukKosong">Ketik harga barang, lalu tekan tuts kuning nama barangnya.</div>';
+    wadah.innerHTML = '<div id="strukKosong">Ketik harga lalu +. Bisa juga 13500 \u00d7 2.5 atau 12000 : 2. Angka yang tidak cocok harga barang otomatis ditolak.</div>';
     return;
   }
   wadah.innerHTML = strukItems.map(function (it, i) {
@@ -674,17 +677,41 @@ function tekanAngka(d) {
   if (totalTerkunci) { mulaiBaru(); }
   if (entriSekarang.length >= 12) return;
   if (entriSekarang === '' && d === '0') { entriSekarang = '0'; gambarLcd(); return; }
-  if (entriSekarang === '0') entriSekarang = '';
+  if (entriSekarang === '0' && d !== '.') entriSekarang = '';
   entriSekarang += d;
   if (entriSekarang.length > 12) entriSekarang = entriSekarang.slice(0, 12);
   gambarLcd();
 }
-function tekanKali() {
+function tekanTitik() {
   if (totalTerkunci) mulaiBaru();
-  if (entriSekarang === '' || nilaiEntri() <= 0) return;
-  pengali = nilaiEntri();
+  if (entriSekarang.indexOf('.') >= 0) return;           // satu titik saja
+  entriSekarang = (entriSekarang === '' ? '0' : entriSekarang) + '.';
+  gambarLcd();
+}
+function tekanOperator(jenis) {
+  if (totalTerkunci) mulaiBaru();
+  if (entriSekarang === '' && opA === null) return;
+  if (entriSekarang !== '' && opA !== null) {
+    // sudah ada pasangan (mis. 13500 × 2 lalu tekan operator lagi): hitung dulu jadi angka tunggal
+    var hasilAntara = hitungPasangan();
+    if (hasilAntara === null) { tolakEntri('ANGKA TIDAK PAS'); return; }
+    opA = hasilAntara;
+  } else if (entriSekarang !== '') {
+    opA = nilaiEntri();
+  }
+  opJenis = jenis;
   entriSekarang = '';
   gambarLcd();
+}
+// Hitung opA (operator) entri -> nilai rupiah bulat; null kalau tidak sah.
+function hitungPasangan() {
+  var b = nilaiEntri();
+  if (opA === null || opJenis === null || b <= 0) return null;
+  var hasil = opJenis === 'x' ? opA * b : opA / b;
+  if (!isFinite(hasil) || hasil <= 0) return null;
+  var bulat = Math.round(hasil);
+  if (Math.abs(hasil - bulat) > 0.001) return null;      // rupiah harus bulat (12000:7 = tolak)
+  return bulat;
 }
 function tekanKurang() {
   if (totalTerkunci) mulaiBaru();
@@ -693,13 +720,16 @@ function tekanKurang() {
   gambarLcd();
 }
 function pasangEntriJadiItem(produkIdx) {
-  // harga final entri: kalau ada pengali, harga = pengali × entri (entri = harga satuan)
+  // harga final entri: selesaikan rantai operator dulu kalau ada
   var harga, qtyDariKali = null;
-  if (pengali !== null && entriSekarang !== '') {
-    harga = pengali * nilaiEntri();
-    qtyDariKali = pengali;
+  if (opA !== null && entriSekarang !== '') {
+    harga = hitungPasangan();
+    if (harga === null) { tolakEntri('ANGKA TIDAK PAS'); return false; }
+    if (opJenis === 'x') { qtyDariKali = (opA === Math.round(opA) && nilaiEntri() > 60) ? opA : nilaiEntri(); }
+  } else if (opA !== null) {
+    harga = opA;
   } else {
-    harga = nilaiEntri();
+    harga = Math.round(nilaiEntri());
   }
   if (harga <= 0) return false;
   if (tandaKurang) {
@@ -709,7 +739,7 @@ function pasangEntriJadiItem(produkIdx) {
     if (produkIdx !== null && produkIdx !== undefined) tandaiProduk(item, produkIdx, qtyDariKali);
     strukItems.push(item);
   }
-  entriSekarang = ''; pengali = null; tandaKurang = false;
+  entriSekarang = ''; opA = null; opJenis = null; tandaKurang = false;
   return true;
 }
 function tandaiProduk(item, produkIdx, qtyDariKali) {
@@ -735,17 +765,22 @@ function tandaiProduk(item, produkIdx, qtyDariKali) {
 //  - cocok 0 produk  -> DITOLAK: LCD goyang merah, item tidak masuk struk.
 // Tuts kuning nama produk tetap jalan seperti biasa (jalan pintas + penegasan).
 var kandidatTunggu = null; // {list:[{idx,qty}], harga}
-function kenaliProdukDariHarga(total, hargaSatuanKetik, qtyKali) {
+function qtySahUntuk(pr, qty) {
+  if (!qty || qty <= 0 || qty > 60) return false;        // batas wajar per transaksi
+  if (pr.tipe === 'literan') return Math.abs(qty * 2 - Math.round(qty * 2)) < 0.001; // kelipatan 0,5 L
+  return Math.abs(qty - Math.round(qty)) < 0.001;        // kemasan/karung wajib bulat
+}
+function kenaliProdukDariHarga(total, hintHarga, hintQty) {
   var pas = [], kelipatan = [], adaHargaCocokTapiHabis = false;
   var BATAS_QTY = 60; // di atas ini hampir pasti salah ketik
   for (var i = 0; i < daftarProduk.length; i++) {
     var pr = daftarProduk[i];
     if (!pr.hargaSatuan || pr.hargaSatuan <= 0) continue;
-    if (qtyKali !== null && qtyKali !== undefined) {
-      // pola 3 × 13500: entri = harga satuan, wajib PERSIS
-      if (pr.hargaSatuan === hargaSatuanKetik) {
+    if (hintHarga !== null && hintHarga !== undefined) {
+      // pola operator: salah satu operand adalah HARGA SATUAN persis, sisanya jumlah
+      if (pr.hargaSatuan === hintHarga && qtySahUntuk(pr, hintQty)) {
         if ((pr.sisa || 0) <= 0) { adaHargaCocokTapiHabis = true; continue; }
-        pas.push({ idx: i, qty: qtyKali });
+        pas.push({ idx: i, qty: Math.round(hintQty * 100) / 100 });
       }
       continue;
     }
@@ -799,27 +834,49 @@ function jawabPilihKandidat(urutan) {
   strukItems.push(itemDariKandidat(k, kandidatTunggu.harga));
   kandidatTunggu = null;
   $('layarTanyaProduk').classList.remove('tampil');
-  entriSekarang = ''; pengali = null; tandaKurang = false;
+  entriSekarang = ''; opA = null; opJenis = null; tandaKurang = false;
   gambarSemua();
 }
 function tambahEntriDenganDeteksi() {
-  // pengganti jalur lama "+ polos": harga WAJIB dikenal sistem
-  var qtyKali = null, hargaSatuanKetik = null, harga;
-  if (pengali !== null && entriSekarang !== '') {
-    hargaSatuanKetik = nilaiEntri(); harga = pengali * hargaSatuanKetik; qtyKali = pengali;
+  // Jalur +/=: harga WAJIB dikenal sistem. Bentuk yang diterima:
+  //   13500 +            -> 1 satuan produk berharga 13500
+  //   27000 +            -> kelipatan bersih (2 L × 13500)
+  //   13500 × 2.5 +      -> harga × jumlah (desimal boleh utk literan)
+  //   3 × 13500 +        -> jumlah × harga (urutan lama tetap jalan)
+  //   12000 : 2 +        -> harga ÷ pembagi (= setengah satuan, dst)
+  var harga, hintHarga = null, hintQty = null;
+  if (opA !== null && entriSekarang !== '') {
+    var b = nilaiEntri();
+    harga = hitungPasangan();
+    if (harga === null) { tolakEntri('ANGKA TIDAK PAS'); return false; }
+    if (opJenis === 'x') { hintHarga = opA; hintQty = b; }
+    else { hintHarga = opA; hintQty = 1 / b; }
+  } else if (opA !== null) {
+    tolakEntri('ANGKA BELUM LENGKAP');
+    return false;
   } else {
     harga = nilaiEntri();
+    if (Math.abs(harga - Math.round(harga)) > 0.001) { tolakEntri('HARGA HARUS BULAT'); return false; }
+    harga = Math.round(harga);
   }
   if (harga <= 0) return false;
-  if (tandaKurang) { pasangEntriJadiItem(null); return true; } // potongan tetap bebas
-  var hasil = kenaliProdukDariHarga(harga, hargaSatuanKetik, qtyKali);
+  if (tandaKurang) { pasangEntriJadiItem(null); return true; } // potongan tetap bebas angka
+  var hasil = kenaliProdukDariHarga(harga, hintHarga, hintQty);
+  if (hasil.cocok.length === 0 && hintHarga !== null && opJenis === 'x') {
+    // urutan terbalik: 3 × 13500 (jumlah dulu). Coba operand kedua sebagai harga.
+    hasil = kenaliProdukDariHarga(harga, nilaiEntri(), opA);
+  }
+  if (hasil.cocok.length === 0 && hintHarga !== null) {
+    // operand bukan harga persis — nilai akhirnya sendiri mungkin kelipatan sah
+    hasil = kenaliProdukDariHarga(harga, null, null);
+  }
   if (hasil.cocok.length === 0) {
     tolakEntri(hasil.stokHabis ? 'STOK HABIS' : 'HARGA TIDAK DIKENAL');
     return false; // entri dibiarkan di LCD supaya bisa dikoreksi dengan C
   }
   if (hasil.cocok.length === 1) {
     strukItems.push(itemDariKandidat(hasil.cocok[0], harga));
-    entriSekarang = ''; pengali = null; tandaKurang = false;
+    entriSekarang = ''; opA = null; opJenis = null; tandaKurang = false;
     return true;
   }
   tanyaPilihKandidat(hasil.cocok, harga);
@@ -828,13 +885,13 @@ function tambahEntriDenganDeteksi() {
 
 function tekanTambah() {
   if (totalTerkunci) mulaiBaru();
-  if (entriSekarang === '' && pengali === null) return;
+  if (entriSekarang === '' && opA === null) return;
   tambahEntriDenganDeteksi(); // harga dikenali otomatis; angka asing DITOLAK
   gambarSemua();
 }
 function tekanProduk(i) {
   if (totalTerkunci) mulaiBaru();
-  if (entriSekarang === '' && pengali === null) {
+  if (entriSekarang === '' && opA === null) {
     // belum ketik harga — beri petunjuk lewat LCD, jangan alert (mengganggu)
     $('lcdKanan').textContent = 'KETIK HARGA DULU';
     return;
@@ -845,7 +902,7 @@ function tekanProduk(i) {
 }
 function tekanSama() {
   // = : tutup entri berjalan (kalau ada) lalu kunci total & tampilkan CATAT
-  if (entriSekarang !== '' || pengali !== null) {
+  if (entriSekarang !== '' || opA !== null) {
     if (!tambahEntriDenganDeteksi()) { gambarSemua(); return; } // ditolak/menunggu pilihan: jangan kunci total
   }
   if (strukItems.length === 0) { gambarSemua(); return; }
@@ -855,16 +912,11 @@ function tekanSama() {
 function tekanHapus() {
   // C: hapus entri yang sedang diketik; kalau tidak ada, hapus item terakhir
   if (totalTerkunci) { totalTerkunci = false; gambarSemua(); return; }
-  if (entriSekarang !== '' || pengali !== null || tandaKurang) {
-    entriSekarang = ''; pengali = null; tandaKurang = false;
+  if (entriSekarang !== '' || opA !== null || tandaKurang) {
+    entriSekarang = ''; opA = null; opJenis = null; tandaKurang = false;
   } else if (strukItems.length > 0) {
     strukItems.pop();
   }
-  gambarSemua();
-}
-function tekanHapusSemua() {
-  if (strukItems.length > 0 && !confirm('Hapus semua dan mulai dari nol?')) return;
-  mulaiBaru();
   gambarSemua();
 }
 function hapusItem(i) {
@@ -874,7 +926,7 @@ function hapusItem(i) {
 }
 function mulaiBaru() {
   kandidatTunggu = null;
-  entriSekarang = ''; pengali = null; tandaKurang = false;
+  entriSekarang = ''; opA = null; opJenis = null; tandaKurang = false;
   strukItems = []; totalTerkunci = false; bayarAktif = 'Tunai';
   ['Tunai', 'Qris', 'Kredit'].forEach(function (x) { $('bayar-' + x).classList.toggle('pilih', x === 'Tunai'); });
 }
@@ -992,9 +1044,10 @@ function simpanTransaksi() {
 }
 
 // ---------- mulai ----------
-window.tekanAngka = tekanAngka; window.tekanTambah = tekanTambah; window.tekanKali = tekanKali;
+window.tekanAngka = tekanAngka; window.tekanTambah = tekanTambah;
+window.tekanOperator = tekanOperator; window.tekanTitik = tekanTitik;
 window.tekanKurang = tekanKurang; window.tekanSama = tekanSama; window.tekanHapus = tekanHapus;
-window.tekanHapusSemua = tekanHapusSemua; window.tekanProduk = tekanProduk; window.hapusItem = hapusItem;
+window.tekanProduk = tekanProduk; window.hapusItem = hapusItem;
 window.tekanCatat = tekanCatat; window.pilihBayar = pilihBayar; window.jawabTanyaProduk = jawabTanyaProduk;
 window.batalTanyaProduk = batalTanyaProduk;
 window.jawabPilihKandidat = jawabPilihKandidat; window.bukaPilihOperator = bukaPilihOperator;
