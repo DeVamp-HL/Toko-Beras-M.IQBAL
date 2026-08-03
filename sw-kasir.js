@@ -1,5 +1,5 @@
 // Service worker kasir M.IQBAL — kasir kebuka instan & tetap jalan offline.
-const VERSI = 'kasir-v2';
+const VERSI = 'kasir-v3';
 const FILES = ['kasir.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 
 self.addEventListener('install', (e) => {
