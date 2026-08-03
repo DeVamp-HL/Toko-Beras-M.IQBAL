@@ -57,7 +57,11 @@
     --tombol-teks: #171004;
     --gelap-tetap: #0d1117;
   }
-  * { box-sizing: border-box; }
+  /* -webkit-tap-highlight-color: khusus Android (Chrome) — tanpa ini, tiap tap
+     tombol/link muncul kotak highlight abu-abu sesaat, bawaan Chrome Android. iOS Safari
+     sudah tidak menampilkan itu secara default, jadi baris ini murni menyamakan rasa tap
+     di kedua platform (Ben/Android, My DeV/iPhone), bukan mengubah apa pun untuk iOS. */
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     margin: 0;
     font-family: -apple-system, "Inter", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
@@ -224,7 +228,10 @@
   .baris-merk-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 8px; }
   .baris-merk-grid .baris-2 { gap: 8px; }
   .baris-merk label { font-size: 12px; margin-top: 10px; margin-bottom: 4px; }
-  .baris-merk select, .baris-merk input { padding: 11px; font-size: 15px; }
+  /* 16px, bukan 15px seperti semula — di bawah 16px, Safari iOS (iPhone My DeV) otomatis
+     zoom in tiap kali field ini difokus, layar jadi tergeser. Android tidak kena masalah
+     ini, tapi menaikkan ke 16px tidak merugikan Android sama sekali. */
+  .baris-merk select, .baris-merk input { padding: 11px; font-size: 16px; }
   .tombol-hapus-merk {
     width: 100%; margin-top: 10px; padding: 10px;
     background: transparent; border: 1px solid rgba(242, 112, 89, .45); color: var(--merah);
@@ -315,7 +322,9 @@
   }
   .cari-global-wrap { position: relative; padding: 10px 16px; background: transparent; border-bottom: 1px solid var(--garis); }
   .cari-global-input {
-    width: 100%; padding: 12px 14px; font-size: 14px; border: 1px solid var(--garis);
+    /* 16px, bukan 14px — sama alasannya seperti .baris-merk di atas: kotak "Cari riwayat"
+       ini sering dipakai, dan di bawah 16px Safari iOS auto-zoom tiap kali difokus. */
+    width: 100%; padding: 12px 14px; font-size: 16px; border: 1px solid var(--garis);
     border-radius: 10px; background: #0e1218; color: var(--teks);
   }
   .cari-global-input:focus { outline: none; border-color: var(--emas-gelap); }
@@ -509,7 +518,13 @@
       width: 83vw; max-width: 340px;
       flex-direction: column; overflow-x: hidden; overflow-y: auto;
       background: #0a0d12; border-right: 1px solid rgba(242,215,149,.14); border-bottom: none;
-      padding: 16px 10px; gap: 2px;
+      /* padding-top & padding-left ikut safe-area — drawer ini position:fixed dari top:0,
+         jadi konten paling atas (logo M.IQBAL) bisa ketutup notch/status bar iPhone kalau
+         tidak dihitung. safe-area-inset-left relevan untuk iPhone landscape / Dynamic
+         Island; di iPhone 13 portrait nilainya 0 jadi tidak mengubah apa pun, aman untuk
+         Android juga (env() bernilai 0 di browser yang tidak mendukungnya). */
+      padding: calc(16px + env(safe-area-inset-top, 0px)) 10px 16px calc(10px + env(safe-area-inset-left, 0px));
+      gap: 2px;
       transform: translateX(-100%);
       transition: transform .42s cubic-bezier(.32,.86,.36,1);
       box-shadow: 4px 0 32px rgba(0,0,0,.6);
