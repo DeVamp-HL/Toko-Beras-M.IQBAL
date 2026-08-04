@@ -3550,7 +3550,10 @@
     document.querySelectorAll('#produksiSumberDaftar .baris-sumber-produksi').forEach(el => {
       const id = el.id.split('-')[1];
       const merk = document.getElementById('spMerk-' + id).value;
-      const kg = parseFloat(document.getElementById('spKg-' + id).value) || 0;
+      // Bulatkan ke 3 desimal di SATU pintu masuk ini. Penjumlahan pecahan di komputer
+      // meninggalkan ekor (0.1+0.2 = 0.30000000000000004); dibulatkan di sini supaya
+      // kgDipakai, HPP, dan tampilan tidak pernah kebagian angka berekor.
+      const kg = Math.round((parseFloat(document.getElementById('spKg-' + id).value) || 0) * 1000) / 1000;
       if (merk && kg > 0) hasil.push({ merk, kg });
     });
     return hasil;
@@ -3572,6 +3575,7 @@
     const sumber = bacaSumberProduksi();
     if (sumber.length === 0) { info.textContent = ''; return; }
     let totalKg = 0, totalHpp = 0, totalJual = 0, jualLengkap = true, kurang = [];
+    // dibulatkan setelah loop — lihat catatan di bacaSumberProduksi
     sumber.forEach(s => {
       totalKg += s.kg;
       totalHpp += (stokKarung[s.merk]?.hppTerakhirPerKg || 0) * s.kg;
@@ -3579,6 +3583,7 @@
       if (hj === null) jualLengkap = false; else totalJual += hj * s.kg;
       if ((stokKarung[s.merk]?.sisaKg || 0) < s.kg) kurang.push(s.merk);
     });
+    totalKg = Math.round(totalKg * 1000) / 1000;
     const hppPerKg = totalKg > 0 ? totalHpp / totalKg : 0;
     const jualPerKg = jualLengkap && totalKg > 0 ? totalJual / totalKg : null;
     const ukuran = parseFloat(document.getElementById('produksiUkuranKemasan').value) || 0;
@@ -3849,7 +3854,7 @@
 
   async function simpanProduksi() {
     const sumberList = bacaSumberProduksi();
-    const kgDipakai = sumberList.reduce((a, s) => a + s.kg, 0);
+    const kgDipakai = Math.round(sumberList.reduce((a, s) => a + s.kg, 0) * 1000) / 1000;
     const merkSumber = sumberList.length === 1 ? sumberList[0].merk
       : 'CAMPURAN: ' + sumberList.map(s => s.merk).join(' + ');
     const namaProduk = document.getElementById('produksiNamaProduk').value.trim();
