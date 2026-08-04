@@ -1028,7 +1028,7 @@
       <div class="stok-tersedia" id="stokKarungInfo"></div>
       <label>Jumlah karung terjual</label>
       <input type="number" id="jualKarungJumlah" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
-      <p class="keterangan">Berat per karung ikut berat asli dari batch sumbernya.</p>
+      <p class="keterangan">Karung utuh selalu 50 kg. Bungkusan 25 kg dijual lewat "Dari Stok Kemasan".</p>
     </div>
 
     <!-- Sub-form: Literan -->
@@ -1165,12 +1165,11 @@
     </div>
 
     <div class="kartu">
-      <div class="panel-kepala"><h2>Ambil dari Karung Sumber — pilih merk</h2></div>
-      <div class="grid-tombol-pilih" id="pilihProduksiTombol"></div>
-      <input type="hidden" id="produksiMerkSumber">
-      <div class="stok-tersedia" id="stokProduksiInfo"></div>
-      <label>Berat dipakai (kg)</label>
-      <input type="number" id="produksiKgDipakai" placeholder="0" inputmode="numeric">
+      <div class="panel-kepala"><h2>Ambil dari Karung Sumber — boleh campuran</h2></div>
+      <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk sumber + berapa kg dipakai. Boleh dicampur beberapa merk (contoh: IR64 Ascent 50 kg + IR64 Elevate 50 kg = 100 kg campuran). Nilai per kg campuran dihitung otomatis.</p>
+      <div id="produksiSumberDaftar"></div>
+      <button type="button" class="tombol-tambah-merk" onclick="tambahBarisSumberProduksi()">+ Tambah Sumber</button>
+      <div class="stok-tersedia" id="produksiCampuranInfo" style="margin-top:10px;"></div>
     </div>
 
     <div class="kartu">
@@ -1178,7 +1177,13 @@
       <label>Nama produk (nama jual)</label>
       <input type="text" id="produksiNamaProduk" placeholder="Contoh: Kembang, Putri Agri, Lele Special, BMW, Buah Persik">
       <label>Ukuran per kemasan (kg)</label>
-      <input type="number" id="produksiUkuranKemasan" placeholder="Contoh: 5, 10, 20" inputmode="numeric">
+      <div class="kartu-jenis-jual" style="grid-template-columns: repeat(4,1fr);" id="produksiUkuranTombol">
+        <button type="button" id="ukuranProd-25" onclick="pilihUkuranProduksi(25)">25 kg</button>
+        <button type="button" id="ukuranProd-20" onclick="pilihUkuranProduksi(20)">20 kg</button>
+        <button type="button" id="ukuranProd-10" onclick="pilihUkuranProduksi(10)">10 kg</button>
+        <button type="button" id="ukuranProd-5" onclick="pilihUkuranProduksi(5)">5 kg</button>
+      </div>
+      <input type="number" id="produksiUkuranKemasan" placeholder="Atau ketik manual" inputmode="numeric" oninput="hitungCampuranProduksi()">
       <label>Jadi berapa unit kemasan</label>
       <input type="number" id="produksiJumlahUnit" placeholder="0" inputmode="numeric">
       <p class="keterangan">Pilih jenis kantong yang dipakai — biaya kemasan otomatis dihitung dari stok, tidak perlu ketik manual. Kalau stok kantong belum tercatat, isi dulu lewat "Beli Stok Bahan Kemasan" di atas.</p>
@@ -1309,7 +1314,7 @@
   <div id="halamanStokawal" class="halaman">
     <div class="judul-halaman"><h2>Stok Awal</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkStokAwal" class="pesan-ok"> Stok awal tersimpan. Stok &amp; HPP langsung terhitung, kasir ikut terisi otomatis.</div>
-    <div class="info-box">Untuk barang yang SUDAH ada di gudang: pilih ukuran, pilih produk, isi jumlah &amp; modal — HPP dihitung otomatis. Ukuran 50/25 kg masuk sebagai karung sumber; 20/10/5 kg masuk sebagai kemasan jadi siap jual.</div>
+    <div class="info-box">Untuk barang yang SUDAH ada di gudang: pilih ukuran, pilih produk, isi jumlah &amp; modal — HPP dihitung otomatis. Ukuran 50 kg masuk sebagai karung sumber; 25/20/10/5 kg masuk sebagai kemasan jadi siap jual.</div>
 
     <div class="kartu">
       <div class="panel-kepala"><h2>Data Stok Awal</h2></div>
@@ -2062,13 +2067,9 @@
 
       const merkKarung = Object.keys(stokKarung).map(merk => {
         const s = stokKarung[merk];
-        let beratKarung = 50;
-        for (const k of batch) {
-          const m = k.merkList.find(x => x.merk === merk && x.satuan === 'karung');
-          if (m) { beratKarung = m.beratKarung; break; }
-        }
         const hL = hargaLiteran.find(x => x.merk === merk);
-        return { merk, sisaKg: s.sisaKg || 0, hppPerKg: s.hppTerakhirPerKg || 0, beratKarung,
+        return { merk, sisaKg: s.sisaKg || 0, hppPerKg: s.hppTerakhirPerKg || 0,
+          beratKarung: 50, karung50: merkPunyaKarung50(merk),
           hargaPerKg: cariHargaKarungPerKg(merk) || 0,
           hargaPerLiter: hL ? hL.hargaPerLiter : 0,
           rasio: RASIO_KONVERSI[merk] || RASIO_DEFAULT };
@@ -2251,7 +2252,7 @@
           <label>Ukuran</label>
           <select id="saUkuran-${id}" onchange="gantiUkuranStokAwal(${id})">
             <option value="50">Karung 50 kg</option>
-            <option value="25">Karung 25 kg</option>
+            <option value="25">Kemasan 25 kg</option>
             <option value="20">Kemasan 20 kg</option>
             <option value="10">Kemasan 10 kg</option>
             <option value="5">Kemasan 5 kg</option>
@@ -2289,7 +2290,7 @@
     const uk = parseFloat(document.getElementById('saUkuran-' + id).value);
     document.getElementById('saProduk-' + id).innerHTML = opsiProdukStokAwal(uk);
     document.getElementById('saProdukLain-' + id).style.display = 'none';
-    const satuan = uk >= 25 ? 'karung' : 'pcs';
+    const satuan = uk >= 50 ? 'karung' : 'pcs';
     document.getElementById('saSatuan-' + id).textContent = satuan;
     document.getElementById('saSatuan2-' + id).textContent = satuan;
     hitungRingkasStokAwal();
@@ -2326,7 +2327,7 @@
       const hppPerSatuan = Math.round((b.subtotal + alokasi) / b.jumlah);
       const hppPerKg = Math.round((b.subtotal + alokasi) / b.totalKg);
       totalNilai += b.subtotal;
-      elSub.textContent = `${b.totalKg} kg · modal ${formatRupiah(b.subtotal)} · HPP ${formatRupiah(hppPerSatuan)}/${b.ukuran >= 25 ? 'karung' : 'pcs'} (${formatRupiah(hppPerKg)}/kg${ongkir > 0 ? ', sudah + porsi ongkir' : ''})`;
+      elSub.textContent = `${b.totalKg} kg · modal ${formatRupiah(b.subtotal)} · HPP ${formatRupiah(hppPerSatuan)}/${b.ukuran >= 50 ? 'karung' : 'pcs'} (${formatRupiah(hppPerKg)}/kg${ongkir > 0 ? ', sudah + porsi ongkir' : ''})`;
     });
     const kotak = document.getElementById('stokAwalKotakHasil');
     kotak.style.display = adaIsi ? 'block' : 'none';
@@ -2343,8 +2344,8 @@
     const ongkir = parseFloat(document.getElementById('stokAwalOngkir').value) || 0;
     const totalKgSemua = semua.reduce((a, b) => a + b.totalKg, 0);
 
-    const barisKarung = semua.filter(b => b.ukuran >= 25);
-    const barisKemasan = semua.filter(b => b.ukuran < 25);
+    const barisKarung = semua.filter(b => b.ukuran >= 50);   // hanya 50 kg = karung sumber
+    const barisKemasan = semua.filter(b => b.ukuran < 50);   // 25/20/10/5 kg = kemasan jadi (aturan 4 Agu 2026)
     const btn = document.getElementById('btnSimpanStokAwal');
     btn.disabled = true; btn.textContent = 'Menyimpan…';
     try {
@@ -2839,6 +2840,12 @@
 
   // Stok karung sumber per merk = total kg masuk (Tahap 1) - kg terpakai (jual karung + repacking dadakan + produksi kemasan)
   // + kg masuk balik dari retur kondisi UTUH (kemasan/karung) - kg keluar untuk retur yang jadi barang pengganti.
+  // Aturan My DeV 4 Agu 2026: "Karung Utuh" HANYA karung 50 kg. Bungkusan 25 kg
+  // (Layar, Angsa, dst) bukan karung jual — masuk kategori kemasan jadi.
+  function merkPunyaKarung50(merk) {
+    return ambilSemuaBatch().some(k => (k.merkList || []).some(m => m.merk === merk && m.satuan === 'karung' && m.beratKarung === 50));
+  }
+
   function hitungStokKarungPerMerk() {
     const batch = ambilSemuaBatch(); // sudah terurut terbaru dulu (by id) dari pasangSinkronisasi/urutkanTerbaru
     const stok = {}; // { merk: { totalMasuk, terpakai, totalNilaiMasuk, hargaTerakhirPerKg, hppTerakhirPerKg } }
@@ -2871,9 +2878,12 @@
       }
     });
 
-    // Kurangi pemakaian dari produksi kemasan (yang narik dari karung sumber)
+    // Kurangi pemakaian dari produksi kemasan (yang narik dari karung sumber).
+    // Produksi campuran (4 Agu 2026) bawa sumberList per merk; produksi lama satu merk.
     ambilProduksi().forEach(pr => {
-      if (pr.merkSumber && stok[pr.merkSumber]) {
+      if (Array.isArray(pr.sumberList) && pr.sumberList.length > 0) {
+        pr.sumberList.forEach(s => { if (s.merk && stok[s.merk]) stok[s.merk].terpakai += (s.kg || 0); });
+      } else if (pr.merkSumber && stok[pr.merkSumber]) {
         stok[pr.merkSumber].terpakai += pr.kgDipakai;
       }
     });
@@ -3205,7 +3215,9 @@
       kunci: m, label: m, subLabel: `sisa ${stokKarung[m].sisaKg} kg`
     }));
     bikinTombolPilih('pilihRepackingTombol', 'jualRepackingMerk', opsiMerk, 'Belum ada stok karung.', perbaruiStokJual);
-    bikinTombolPilih('pilihKarungTombol', 'jualKarungMerk', opsiMerk, 'Belum ada stok karung.', perbaruiStokJual);
+    // Karung Utuh: HANYA merk yang tercatat punya karung 50 kg (aturan 4 Agu 2026).
+    const opsiKarung50 = opsiMerk.filter(o => merkPunyaKarung50(o.kunci));
+    bikinTombolPilih('pilihKarungTombol', 'jualKarungMerk', opsiKarung50, 'Belum ada stok karung 50 kg. Karung utuh hanya untuk karung 50 kg.', perbaruiStokJual);
     // Tab LITERAN: merk IR64* ditampilkan sebagai HARGA per liter (pelanggan beli
     // berdasarkan harga, bukan merk — aturan My DeV 3 Agu 2026). Dokumen penjualan
     // tetap menyimpan merk asli (kunci tidak berubah), hanya tulisan tombol yang beda.
@@ -3324,12 +3336,7 @@
       else {
         const hargaPerKg = cariHargaKarungPerKg(merk);
         const stokKarung = hitungStokKarungPerMerk();
-        let beratKarungAcuan = 50;
-        const batch = ambilSemuaBatch();
-        for (const k of batch) {
-          const m = k.merkList.find(x => x.merk === merk && x.satuan === 'karung');
-          if (m) { beratKarungAcuan = m.beratKarung; break; }
-        }
+        const beratKarungAcuan = 50; // karung utuh = 50 kg, titik (aturan 4 Agu 2026)
         if (hargaPerKg === null) {
           status = ` Belum ada harga untuk ${merk} di Daftar Harga (Katalog Harga Karung/Repacking). Isi dulu lewat tab Harga.`;
         } else if (jumlahKarung <= 0) {
@@ -3444,13 +3451,7 @@
       const jumlahKarung = parseFloat(document.getElementById('jualKarungJumlah').value) || 0;
       if (!merk) { alert('Pilih merk sumber dulu.'); return; }
       if (jumlahKarung <= 0) { alert('Isi jumlah karung terjual.'); return; }
-      // Ambil berat per karung dari batch terakhir merk ini
-      const batch = ambilSemuaBatch();
-      let beratKarungAcuan = 50;
-      for (const k of batch) {
-        const m = k.merkList.find(x => x.merk === merk && x.satuan === 'karung');
-        if (m) { beratKarungAcuan = m.beratKarung; break; }
-      }
+      const beratKarungAcuan = 50; // karung utuh = 50 kg, titik (aturan 4 Agu 2026)
       const totalKg = jumlahKarung * beratKarungAcuan;
       if (!stokKarung[merk] || stokKarung[merk].sisaKg < totalKg) {
         if (!confirm(`Stok ${merk} cuma sisa ${stokKarung[merk]?.sisaKg || 0}kg, transaksi ini butuh ${totalKg}kg (${jumlahKarung} karung × ${beratKarungAcuan}kg). Tetap simpan?`)) return;
@@ -3509,22 +3510,111 @@
     setTimeout(() => { pesan.style.display = 'none'; }, 3000);
   }
 
-  function isiDropdownProduksi() {
+  // ============ SUMBER CAMPURAN PRODUKSI (4 Agu 2026) ============
+  // Satu produksi boleh menarik dari BEBERAPA merk sekaligus (campuran).
+  // Nilai per kg campuran = rata-rata tertimbang; HPP ikut rumus yang sama.
+  let idBarisSumberProduksi = 0;
+  function opsiMerkSumberHtml(terpilih) {
     const stokKarung = hitungStokKarungPerMerk();
-    const opsi = Object.keys(stokKarung).filter(m => stokKarung[m].sisaKg > 0).map(m => ({
-      kunci: m, label: m, subLabel: `sisa ${stokKarung[m].sisaKg} kg`
-    }));
-    bikinTombolPilih('pilihProduksiTombol', 'produksiMerkSumber', opsi, 'Belum ada stok karung. Catat batch masuk dulu lewat tab Masuk.', perbaruiStokProduksi);
+    let html = '<option value="">— pilih merk —</option>';
+    Object.keys(stokKarung).filter(m => stokKarung[m].sisaKg > 0).forEach(m => {
+      html += `<option value="${escapeHtml(m)}"${m === terpilih ? ' selected' : ''}>${escapeHtml(m)} (sisa ${stokKarung[m].sisaKg} kg)</option>`;
+    });
+    return html;
   }
-
-  function perbaruiStokProduksi() {
+  function tambahBarisSumberProduksi() {
+    idBarisSumberProduksi++;
+    const id = idBarisSumberProduksi;
+    const div = document.createElement('div');
+    div.className = 'baris-merk baris-sumber-produksi';
+    div.id = 'sumberprod-' + id;
+    div.innerHTML = `
+      <div class="baris-2">
+        <div>
+          <label>Merk sumber</label>
+          <select id="spMerk-${id}" onchange="hitungCampuranProduksi()">${opsiMerkSumberHtml('')}</select>
+        </div>
+        <div>
+          <label>Dipakai (kg)</label>
+          <input type="number" id="spKg-${id}" placeholder="0" inputmode="numeric" oninput="hitungCampuranProduksi()">
+        </div>
+      </div>
+      <button type="button" class="tombol-hapus-merk" onclick="hapusBarisSumberProduksi(${id})">Hapus sumber ini</button>
+    `;
+    document.getElementById('produksiSumberDaftar').appendChild(div);
+    hitungCampuranProduksi();
+  }
+  function hapusBarisSumberProduksi(id) {
+    const el = document.getElementById('sumberprod-' + id);
+    if (el) el.remove();
+    hitungCampuranProduksi();
+  }
+  function bacaSumberProduksi() {
+    const hasil = [];
+    document.querySelectorAll('#produksiSumberDaftar .baris-sumber-produksi').forEach(el => {
+      const id = el.id.split('-')[1];
+      const merk = document.getElementById('spMerk-' + id).value;
+      const kg = parseFloat(document.getElementById('spKg-' + id).value) || 0;
+      if (merk && kg > 0) hasil.push({ merk, kg });
+    });
+    return hasil;
+  }
+  function isiDropdownProduksi() {
+    // segarkan pilihan merk tiap baris tanpa menghapus isian kg
+    document.querySelectorAll('#produksiSumberDaftar .baris-sumber-produksi').forEach(el => {
+      const id = el.id.split('-')[1];
+      const sel = document.getElementById('spMerk-' + id);
+      const nilai = sel.value;
+      sel.innerHTML = opsiMerkSumberHtml(nilai);
+    });
+    if (document.querySelectorAll('#produksiSumberDaftar .baris-sumber-produksi').length === 0) tambahBarisSumberProduksi();
+  }
+  function hitungCampuranProduksi() {
+    const info = document.getElementById('produksiCampuranInfo');
+    if (!info) return;
     const stokKarung = hitungStokKarungPerMerk();
-    const merk = document.getElementById('produksiMerkSumber').value;
-    const info = document.getElementById('stokProduksiInfo');
-    if (merk && stokKarung[merk]) {
-      info.textContent = `Sisa stok: ${stokKarung[merk].sisaKg} kg`;
-      info.className = 'stok-tersedia' + (stokKarung[merk].sisaKg <= 0 ? ' kurang' : '');
-    } else { info.textContent = ''; }
+    const sumber = bacaSumberProduksi();
+    if (sumber.length === 0) { info.textContent = ''; return; }
+    let totalKg = 0, totalHpp = 0, totalJual = 0, jualLengkap = true, kurang = [];
+    sumber.forEach(s => {
+      totalKg += s.kg;
+      totalHpp += (stokKarung[s.merk]?.hppTerakhirPerKg || 0) * s.kg;
+      const hj = cariHargaKarungPerKg(s.merk);
+      if (hj === null) jualLengkap = false; else totalJual += hj * s.kg;
+      if ((stokKarung[s.merk]?.sisaKg || 0) < s.kg) kurang.push(s.merk);
+    });
+    const hppPerKg = totalKg > 0 ? totalHpp / totalKg : 0;
+    const jualPerKg = jualLengkap && totalKg > 0 ? totalJual / totalKg : null;
+    const ukuran = parseFloat(document.getElementById('produksiUkuranKemasan').value) || 0;
+    let teks = `Campuran: ${totalKg} kg · HPP ${formatRupiah(hppPerKg)}/kg`;
+    teks += jualPerKg !== null
+      ? ` · nilai jual sumber ${formatRupiah(jualPerKg)}/kg`
+      : ' · nilai jual/kg belum lengkap (isi Katalog Harga Karung di tab Harga)';
+    if (ukuran > 0) {
+      teks += ` → per kemasan ${ukuran} kg: HPP ${formatRupiah(hppPerKg * ukuran)}`;
+      if (jualPerKg !== null) teks += `, dasar jual ${formatRupiah(jualPerKg * ukuran)}`;
+      const unitMuat = Math.floor(totalKg / ukuran);
+      if (unitMuat > 0) teks += ` · muat ±${unitMuat} unit`;
+    }
+    if (kurang.length > 0) teks += ` · STOK KURANG: ${kurang.join(', ')}`;
+    info.textContent = teks;
+    info.className = 'stok-tersedia' + (kurang.length > 0 ? ' kurang' : '');
+  }
+  function pilihUkuranProduksi(u) {
+    document.getElementById('produksiUkuranKemasan').value = u;
+    [25, 20, 10, 5].forEach(x => {
+      const b = document.getElementById('ukuranProd-' + x);
+      if (b) b.classList.toggle('pilih', x === u);
+    });
+    hitungCampuranProduksi();
+  }
+  function perbaruiStokProduksi() { hitungCampuranProduksi(); }
+  // dipanggil ulang di reset simpanProduksi supaya tombol ukuran ikut bersih
+  function resetTombolUkuranProduksi() {
+    [25, 20, 10, 5].forEach(x => {
+      const b = document.getElementById('ukuranProd-' + x);
+      if (b) b.classList.remove('pilih');
+    });
   }
 
   // ============ STOK BAHAN KEMASAN (plastik, per kombinasi ukuran+merek) ============
@@ -3762,8 +3852,10 @@
   }
 
   async function simpanProduksi() {
-    const merkSumber = document.getElementById('produksiMerkSumber').value;
-    const kgDipakai = parseFloat(document.getElementById('produksiKgDipakai').value) || 0;
+    const sumberList = bacaSumberProduksi();
+    const kgDipakai = sumberList.reduce((a, s) => a + s.kg, 0);
+    const merkSumber = sumberList.length === 1 ? sumberList[0].merk
+      : 'CAMPURAN: ' + sumberList.map(s => s.merk).join(' + ');
     const namaProduk = document.getElementById('produksiNamaProduk').value.trim();
     const ukuranKemasan = parseFloat(document.getElementById('produksiUkuranKemasan').value) || 0;
     const jumlahUnit = parseFloat(document.getElementById('produksiJumlahUnit').value) || 0;
@@ -3772,15 +3864,16 @@
     const kantongJenis = document.getElementById('produksiKantongJenis').value;
     const kantongJumlah = parseFloat(document.getElementById('produksiKantongJumlah').value) || 0;
 
-    if (!merkSumber) { alert('Pilih merk sumber dulu.'); return; }
-    if (kgDipakai <= 0) { alert('Isi berat yang dipakai.'); return; }
+    if (sumberList.length === 0) { alert('Isi minimal satu sumber (merk + kg).'); return; }
     if (!namaProduk) { alert('Isi nama produk kemasan.'); return; }
     if (ukuranKemasan <= 0) { alert('Isi ukuran per kemasan.'); return; }
     if (jumlahUnit <= 0) { alert('Isi jadi berapa unit.'); return; }
 
     const stokKarung = hitungStokKarungPerMerk();
-    if (!stokKarung[merkSumber] || stokKarung[merkSumber].sisaKg < kgDipakai) {
-      if (!confirm(`Stok ${merkSumber} cuma sisa ${stokKarung[merkSumber]?.sisaKg || 0}kg, produksi ini butuh ${kgDipakai}kg. Tetap simpan?`)) return;
+    for (const s of sumberList) {
+      if (!stokKarung[s.merk] || stokKarung[s.merk].sisaKg < s.kg) {
+        if (!confirm(`Stok ${s.merk} cuma sisa ${stokKarung[s.merk]?.sisaKg || 0}kg, produksi ini pakai ${s.kg}kg. Tetap simpan?`)) return;
+      }
     }
 
     // Bug ditemukan saat audit 1 Agustus 2026: stok kantong plastik dipakai untuk hitung biaya
@@ -3798,12 +3891,13 @@
       if (!confirm(`Berat dipakai ${kgDipakai}kg tapi hasil kemasan ${totalKgJadi}kg (selisih >15%, mungkin karena susut atau salah ketik). Tetap simpan?`)) return;
     }
 
-    // HPP per unit = (HPP/kg sumber, sudah termasuk porsi bongkar batch itu × kg dipakai) + biaya kemasan + upah repacking, dibagi jumlah unit jadi.
-    const hppSumberPerKg = stokKarung[merkSumber]?.hppTerakhirPerKg || stokKarung[merkSumber]?.hargaTerakhirPerKg || 0;
+    // HPP per unit = rata-rata tertimbang HPP tiap sumber campuran × kg + biaya kemasan + upah, dibagi unit jadi.
+    const totalNilaiHpp = sumberList.reduce((a, s) => a + (stokKarung[s.merk]?.hppTerakhirPerKg || 0) * s.kg, 0);
+    const hppSumberPerKg = kgDipakai > 0 ? totalNilaiHpp / kgDipakai : 0;
     const produksi = {
       id: idUnik(),
       tanggal: tanggalLokalIso(),
-      merkSumber, kgDipakai, namaProduk, ukuranKemasan, jumlahUnit,
+      merkSumber, sumberList, kgDipakai, namaProduk, ukuranKemasan, jumlahUnit,
       biayaKemasan, upahRepacking,
       kantongJenis: kantongJenis || null, kantongJumlah: kantongJumlah || 0,
       hppSumberPerKgDipakai: hppSumberPerKg,
@@ -3833,13 +3927,15 @@
     if (btnProduksi) { btnProduksi.disabled = false; btnProduksi.textContent = ' Simpan Produksi Kemasan'; }
     unduhBackup(true);
 
-    document.getElementById('produksiKgDipakai').value = '';
+    document.getElementById('produksiSumberDaftar').innerHTML = '';
+    idBarisSumberProduksi = 0;
+    tambahBarisSumberProduksi();
     document.getElementById('produksiNamaProduk').value = '';
     document.getElementById('produksiUkuranKemasan').value = '';
+    resetTombolUkuranProduksi();
     document.getElementById('produksiJumlahUnit').value = '';
     document.getElementById('produksiBiayaKemasan').value = '';
     document.getElementById('produksiUpahRepacking').value = '';
-    document.getElementById('produksiMerkSumber').value = '';
     isiDropdownProduksi();
     perbaruiStokProduksi();
 
@@ -4594,6 +4690,8 @@
   window.pilihReturKondisi = pilihReturKondisi;
   window.pilihReturPenyelesaian = pilihReturPenyelesaian;
   window.simpanProduksi = simpanProduksi;
+  window.tambahBarisSumberProduksi = tambahBarisSumberProduksi; window.hapusBarisSumberProduksi = hapusBarisSumberProduksi;
+  window.hitungCampuranProduksi = hitungCampuranProduksi; window.pilihUkuranProduksi = pilihUkuranProduksi;
   window.cekMerkLain = cekMerkLain;
   window.pilihSatuan = pilihSatuan;
   window.hitungPerkiraan = hitungPerkiraan;

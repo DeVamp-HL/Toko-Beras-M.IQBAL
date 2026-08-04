@@ -455,7 +455,8 @@ function bangunDaftarProduk() {
   });
   (ringkasan.merkKarung || []).forEach(function (m) {
     if (!m || !m.merk) return;
-    var berat = m.beratKarung || 50;
+    if (!m.karung50) return; // Karung utuh HANYA karung 50 kg (aturan 4 Agu 2026)
+    var berat = 50;
     daftarProduk.push({ tipe: 'karung', label: 'KRG ' + m.merk, sub: (m.hargaPerKg ? angkaTitik(m.hargaPerKg * berat) + '/krg' : 'harga?'),
       merk: m.merk, beratKarung: berat, hargaSatuan: (m.hargaPerKg || 0) * berat, step: 1, hppPerKg: m.hppPerKg || 0, sisa: m.sisaKg || 0 });
   });
