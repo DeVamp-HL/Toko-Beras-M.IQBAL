@@ -2049,6 +2049,9 @@
         const hL = hargaLiteran.find(x => x.merk === merk);
         return { merk, sisaKg: s.sisaKg || 0, hppPerKg: s.hppTerakhirPerKg || 0,
           beratKarung: 50, karung50: merkPunyaKarungBerat(merk, 50), karung25: merkPunyaKarungBerat(merk, 25),
+          // Harga siap pakai per ukuran karung — Katalog Kemasan menang atas harga/kg (aturan 4 Agu 2026).
+          hargaKarung50: (hargaKarungUtuh(merk, 50) || {}).perUnit || 0,
+          hargaKarung25: (hargaKarungUtuh(merk, 25) || {}).perUnit || 0,
           hargaPerKg: cariHargaKarungPerKg(merk) || 0,
           hargaPerLiter: hL ? hL.hargaPerLiter : 0,
           rasio: RASIO_KONVERSI[merk] || RASIO_DEFAULT };
@@ -3324,17 +3327,20 @@
       const jumlahKarung = parseFloat(document.getElementById('jualKarungJumlah').value) || 0;
       if (!merk) { status = 'Pilih merk sumber dulu.'; }
       else {
-        const hargaPerKg = cariHargaKarungPerKg(merk);
-        const stokKarung = hitungStokKarungPerMerk();
         const beratKarungAcuan = parseFloat(document.getElementById('jualKarungBerat').value) || 50;
-        if (hargaPerKg === null) {
-          status = ` Belum ada harga untuk ${merk} di Daftar Harga (Katalog Harga Karung/Repacking). Isi dulu lewat tab Harga.`;
+        const hk = hargaKarungUtuh(merk, beratKarungAcuan);
+        if (hk === null) {
+          status = ` Belum ada harga ${merk} ${beratKarungAcuan}kg. Isi di tab Harga — Katalog Harga Kemasan (per karung) atau Katalog Harga Karung (per kg).`;
         } else if (jumlahKarung <= 0) {
-          status = `Harga: ${formatRupiah(hargaPerKg)}/kg (berat karung ~${beratKarungAcuan}kg). Isi jumlah karung.`;
+          status = hk.sumber === 'kemasan'
+            ? `Harga: ${formatRupiah(hk.perUnit)}/karung ${beratKarungAcuan}kg (dari Katalog Harga Kemasan). Isi jumlah karung.`
+            : `Harga: ${formatRupiah(hk.perKg)}/kg × ${beratKarungAcuan}kg = ${formatRupiah(hk.perUnit)}/karung. Isi jumlah karung.`;
         } else {
           const totalKg = jumlahKarung * beratKarungAcuan;
-          total = Math.round(hargaPerKg * totalKg);
-          status = `${formatRupiah(hargaPerKg)}/kg × ${jumlahKarung} karung × ${beratKarungAcuan}kg = ${totalKg}kg`;
+          total = Math.round(hk.perUnit * jumlahKarung);
+          status = hk.sumber === 'kemasan'
+            ? `${formatRupiah(hk.perUnit)}/karung × ${jumlahKarung} karung = ${totalKg}kg · harga dari Katalog Harga Kemasan (${merk} ${beratKarungAcuan}kg)`
+            : `${formatRupiah(hk.perKg)}/kg × ${jumlahKarung} karung × ${beratKarungAcuan}kg = ${totalKg}kg`;
         }
       }
     }
@@ -4285,6 +4291,23 @@
     const data = localStorage.getItem(KUNCI_HARGA_KARUNG);
     return data ? JSON.parse(data) : [];
   }
+  // ATURAN HARGA KARUNG UTUH (4 Agu 2026, permintaan My DeV):
+  // Kalau merk+ukuran karung itu SUDAH punya harga di Katalog Harga Kemasan (per unit),
+  // harga ITU yang dipakai — bukan hasil kali harga/kg × berat. Alasannya: harga kemasan
+  // ditetapkan owner sebagai angka bulat siap tempel (mis. Rp383.000), sedangkan
+  // harga/kg × 25 menghasilkan Rp382.500 — dua daftar, satu barang, beda angka.
+  // Kalau ukuran itu belum ada di Katalog Kemasan, jatuh balik ke harga/kg × berat.
+  // Kembalikan {perUnit, sumber:'kemasan'|'karung'} atau null kalau dua-duanya kosong.
+  function hargaKarungUtuh(merk, beratKarung) {
+    const hKemasan = ambilHargaKemasan().find(x => x.merk === merk && x.ukuran === beratKarung);
+    if (hKemasan && hKemasan.hargaPerUnit > 0) {
+      return { perUnit: hKemasan.hargaPerUnit, sumber: 'kemasan' };
+    }
+    const perKg = cariHargaKarungPerKg(merk);
+    if (perKg === null || perKg <= 0) return null;
+    return { perUnit: Math.round(perKg * beratKarung), perKg, sumber: 'karung' };
+  }
+
   // Cari harga jual per kg untuk satu merk karung — dipakai Repacking Dadakan & Karung Utuh.
   // Kembalikan null kalau merk itu belum ada di katalog (form Jual akan tampilkan peringatan).
   function cariHargaKarungPerKg(merk) {
