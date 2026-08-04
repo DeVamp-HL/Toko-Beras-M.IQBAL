@@ -1371,7 +1371,7 @@
 
     <div class="kartu">
       <div class="panel-kepala"><h2>Rincian per Merk</h2></div>
-      <p class="keterangan" style="margin-top:-8px;">Tambah satu baris untuk tiap merk/jenis dalam mobil ini. Total karung minimal 60.</p>
+      <p class="keterangan" style="margin-top:-8px;">Tambah satu baris untuk tiap merk/jenis dalam mobil ini. Semua dicatat per karung — isi jumlah karung dan berat per karung. Total karung minimal 60.</p>
 
       <div id="daftarBarisMerk"></div>
 
@@ -1774,14 +1774,7 @@
           <select id="merk-${id}" onchange="cekMerkLain(${id})">${opsiMerkHtml()}</select>
           <input type="text" id="merkLain-${id}" placeholder="Nama merk" style="margin-top:6px; display:none;">
         </div>
-        <div>
-          <label>Satuan</label>
-          <div class="satuan-toggle">
-            <button type="button" id="satKarung-${id}" class="pilih" onclick="pilihSatuan(${id},'karung')">Karung</button>
-            <button type="button" id="satKg-${id}" onclick="pilihSatuan(${id},'kg')">Kg langsung</button>
-          </div>
-        </div>
-        <div class="baris-2" id="inputKarung-${id}">
+        <div class="baris-2">
           <div>
             <label>Jumlah karung</label>
             <input type="number" id="jumlahKarung-${id}" placeholder="0" inputmode="numeric" oninput="hitungPerkiraan()">
@@ -1790,10 +1783,6 @@
             <label>Berat/karung (kg)</label>
             <input type="number" id="beratKarung-${id}" value="50" inputmode="numeric" oninput="hitungPerkiraan()">
           </div>
-        </div>
-        <div id="inputKg-${id}" style="display:none;">
-          <label>Total kg</label>
-          <input type="number" id="totalKgLangsung-${id}" placeholder="0" inputmode="numeric" oninput="hitungPerkiraan()">
         </div>
         <div>
           <label>Harga beli per kg (Rp)</label>
@@ -1818,18 +1807,6 @@
     document.getElementById('merkLain-' + id).style.display = nilai === '__lain__' ? 'block' : 'none';
   }
 
-  function pilihSatuan(id, satuan) {
-    document.getElementById('satKarung-' + id).classList.toggle('pilih', satuan === 'karung');
-    document.getElementById('satKg-' + id).classList.toggle('pilih', satuan === 'kg');
-    document.getElementById('inputKarung-' + id).style.display = satuan === 'karung' ? 'grid' : 'none';
-    document.getElementById('inputKg-' + id).style.display = satuan === 'kg' ? 'block' : 'none';
-    hitungPerkiraan();
-  }
-
-  function getSatuan(id) {
-    return document.getElementById('satKg-' + id).classList.contains('pilih') ? 'kg' : 'karung';
-  }
-
   function bacaBarisMerk() {
     const kontainer = document.getElementById('daftarBarisMerk');
     const barisEls = kontainer.querySelectorAll('.baris-merk');
@@ -1838,17 +1815,13 @@
       const id = el.id.split('-')[1];
       let merk = document.getElementById('merk-' + id).value;
       if (merk === '__lain__') merk = document.getElementById('merkLain-' + id).value.trim();
-      const satuan = getSatuan(id);
-      let totalKg = 0, jumlahKarung = 0, beratKarung = 0;
-      if (satuan === 'karung') {
-        jumlahKarung = parseFloat(document.getElementById('jumlahKarung-' + id).value) || 0;
-        beratKarung = parseFloat(document.getElementById('beratKarung-' + id).value) || 0;
-        totalKg = jumlahKarung * beratKarung;
-      } else {
-        totalKg = parseFloat(document.getElementById('totalKgLangsung-' + id).value) || 0;
-      }
+      // Semua baris = KARUNG (opsi "Kg langsung" dihapus 4 Agu 2026 atas perintah My DeV:
+      // baris tanpa jumlah karung bikin riwayat kabur & merk tidak muncul di Karung Utuh).
+      const jumlahKarung = parseFloat(document.getElementById('jumlahKarung-' + id).value) || 0;
+      const beratKarung = parseFloat(document.getElementById('beratKarung-' + id).value) || 0;
+      const totalKg = jumlahKarung * beratKarung;
       const hargaPerKg = parseFloat(document.getElementById('hargaPerKg-' + id).value) || 0;
-      hasil.push({ id, merk, satuan, jumlahKarung, beratKarung, totalKg, hargaPerKg, subtotalHarga: totalKg * hargaPerKg });
+      hasil.push({ id, merk, satuan: 'karung', jumlahKarung, beratKarung, totalKg, hargaPerKg, subtotalHarga: totalKg * hargaPerKg });
     });
     return hasil;
   }
@@ -2401,7 +2374,7 @@
     if (pemasok === 'Lainnya') pemasok = document.getElementById('pemasokLain').value.trim();
 
     const barisValid = baris.filter(b => b.merk && b.totalKg > 0);
-    if (barisValid.length === 0) { alert('Isi minimal satu baris merk dengan jenis beras dan jumlah yang lengkap.'); return; }
+    if (barisValid.length === 0) { alert('Isi minimal satu baris: merk, jumlah karung, dan berat per karung.'); return; }
     if (barisValid.some(b => b.hargaPerKg <= 0)) { alert('Ada baris merk yang harga beli per kg-nya belum diisi.'); return; }
 
     const totalKarungSemua = baris.filter(b => b.satuan === 'karung').reduce((a, b) => a + b.jumlahKarung, 0);
@@ -2508,7 +2481,7 @@
 
       const merkDenganHpp = hitungHppMerkDalamBatch(k.merkList, k.biayaBongkar);
       const barisTabel = merkDenganHpp.map(m => {
-        const keteranganJumlah = m.satuan === 'karung' ? `${m.jumlahKarung} krg × ${m.beratKarung}kg` : `${m.totalKg}kg langsung`;
+        const keteranganJumlah = m.satuan === 'karung' ? `${m.jumlahKarung} krg × ${m.beratKarung}kg` : `${m.totalKg}kg (data lama, tanpa karung)`;
         return `<tr>
           <td>${escapeHtml(m.merk)}</td>
           <td>${keteranganJumlah}</td>
@@ -4710,7 +4683,6 @@
   window.tambahBarisSumberProduksi = tambahBarisSumberProduksi; window.hapusBarisSumberProduksi = hapusBarisSumberProduksi;
   window.hitungCampuranProduksi = hitungCampuranProduksi; window.pilihUkuranProduksi = pilihUkuranProduksi;
   window.cekMerkLain = cekMerkLain;
-  window.pilihSatuan = pilihSatuan;
   window.hitungPerkiraan = hitungPerkiraan;
   window.hapusBarisMerk = hapusBarisMerk;
   window.hapusBatch = hapusBatch;
