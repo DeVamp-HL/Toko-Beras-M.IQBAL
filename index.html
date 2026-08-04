@@ -1022,13 +1022,19 @@
 
     <!-- Sub-form: Karung utuh -->
     <div class="kartu" id="formJualKarung" style="display:none;">
-      <div class="panel-kepala"><h2>Jual Karung Utuh — pilih merk sumber</h2></div>
+      <div class="panel-kepala"><h2>Jual Karung Utuh — pilih ukuran & merk</h2></div>
+      <label>Ukuran karung</label>
+      <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr;">
+        <button type="button" id="beratKarung-50" class="pilih" onclick="pilihBeratKarungJual(50)">Karung 50 kg</button>
+        <button type="button" id="beratKarung-25" onclick="pilihBeratKarungJual(25)">Karung 25 kg</button>
+      </div>
+      <input type="hidden" id="jualKarungBerat" value="50">
       <div class="grid-tombol-pilih" id="pilihKarungTombol"></div>
       <input type="hidden" id="jualKarungMerk">
       <div class="stok-tersedia" id="stokKarungInfo"></div>
       <label>Jumlah karung terjual</label>
       <input type="number" id="jualKarungJumlah" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
-      <p class="keterangan">Karung utuh selalu 50 kg. Bungkusan 25 kg dijual lewat "Dari Stok Kemasan".</p>
+      <p class="keterangan">Daftar merk mengikuti ukuran yang dipilih. Terjual = stok karung sumber langsung berkurang (jumlah × berat karung).</p>
     </div>
 
     <!-- Sub-form: Literan -->
@@ -2069,7 +2075,7 @@
         const s = stokKarung[merk];
         const hL = hargaLiteran.find(x => x.merk === merk);
         return { merk, sisaKg: s.sisaKg || 0, hppPerKg: s.hppTerakhirPerKg || 0,
-          beratKarung: 50, karung50: merkPunyaKarung50(merk),
+          beratKarung: 50, karung50: merkPunyaKarungBerat(merk, 50), karung25: merkPunyaKarungBerat(merk, 25),
           hargaPerKg: cariHargaKarungPerKg(merk) || 0,
           hargaPerLiter: hL ? hL.hargaPerLiter : 0,
           rasio: RASIO_KONVERSI[merk] || RASIO_DEFAULT };
@@ -2840,11 +2846,12 @@
 
   // Stok karung sumber per merk = total kg masuk (Tahap 1) - kg terpakai (jual karung + repacking dadakan + produksi kemasan)
   // + kg masuk balik dari retur kondisi UTUH (kemasan/karung) - kg keluar untuk retur yang jadi barang pengganti.
-  // Aturan My DeV 4 Agu 2026: "Karung Utuh" HANYA karung 50 kg. Bungkusan 25 kg
-  // (Layar, Angsa, dst) bukan karung jual — masuk kategori kemasan jadi.
-  function merkPunyaKarung50(merk) {
-    return ambilSemuaBatch().some(k => (k.merkList || []).some(m => m.merk === merk && m.satuan === 'karung' && m.beratKarung === 50));
+  // Karung utuh dijual per ukuran (revisi My DeV 4 Agu 2026 malam: 50 kg DAN 25 kg).
+  // Merk hanya muncul di ukuran yang memang pernah tercatat di batch/stok awal.
+  function merkPunyaKarungBerat(merk, berat) {
+    return ambilSemuaBatch().some(k => (k.merkList || []).some(m => m.merk === merk && m.satuan === 'karung' && m.beratKarung === berat));
   }
+  function merkPunyaKarung50(merk) { return merkPunyaKarungBerat(merk, 50); }
 
   function hitungStokKarungPerMerk() {
     const batch = ambilSemuaBatch(); // sudah terurut terbaru dulu (by id) dari pasangSinkronisasi/urutkanTerbaru
@@ -3215,9 +3222,10 @@
       kunci: m, label: m, subLabel: `sisa ${stokKarung[m].sisaKg} kg`
     }));
     bikinTombolPilih('pilihRepackingTombol', 'jualRepackingMerk', opsiMerk, 'Belum ada stok karung.', perbaruiStokJual);
-    // Karung Utuh: HANYA merk yang tercatat punya karung 50 kg (aturan 4 Agu 2026).
-    const opsiKarung50 = opsiMerk.filter(o => merkPunyaKarung50(o.kunci));
-    bikinTombolPilih('pilihKarungTombol', 'jualKarungMerk', opsiKarung50, 'Belum ada stok karung 50 kg. Karung utuh hanya untuk karung 50 kg.', perbaruiStokJual);
+    // Karung Utuh: merk disaring per ukuran karung yang dipilih (50 atau 25 kg).
+    const beratJualKarung = parseFloat(document.getElementById('jualKarungBerat').value) || 50;
+    const opsiKarungBerat = opsiMerk.filter(o => merkPunyaKarungBerat(o.kunci, beratJualKarung));
+    bikinTombolPilih('pilihKarungTombol', 'jualKarungMerk', opsiKarungBerat, `Belum ada stok karung ${beratJualKarung} kg.`, perbaruiStokJual);
     // Tab LITERAN: merk IR64* ditampilkan sebagai HARGA per liter (pelanggan beli
     // berdasarkan harga, bukan merk — aturan My DeV 3 Agu 2026). Dokumen penjualan
     // tetap menyimpan merk asli (kunci tidak berubah), hanya tulisan tombol yang beda.
@@ -3230,6 +3238,15 @@
     if (!/^IR64/i.test(merk)) return merk;
     const h = ambilHargaLiteran().find(x => x.merk === merk);
     return h && h.hargaPerLiter > 0 ? 'Rp' + Math.round(h.hargaPerLiter).toLocaleString('id-ID') : merk;
+  }
+
+  function pilihBeratKarungJual(berat) {
+    document.getElementById('jualKarungBerat').value = berat;
+    document.getElementById('beratKarung-50').classList.toggle('pilih', berat === 50);
+    document.getElementById('beratKarung-25').classList.toggle('pilih', berat === 25);
+    document.getElementById('jualKarungMerk').value = '';
+    isiDropdownJual();
+    perbaruiStokJual();
   }
 
   function perbaruiStokJual() {
@@ -3336,7 +3353,7 @@
       else {
         const hargaPerKg = cariHargaKarungPerKg(merk);
         const stokKarung = hitungStokKarungPerMerk();
-        const beratKarungAcuan = 50; // karung utuh = 50 kg, titik (aturan 4 Agu 2026)
+        const beratKarungAcuan = parseFloat(document.getElementById('jualKarungBerat').value) || 50;
         if (hargaPerKg === null) {
           status = ` Belum ada harga untuk ${merk} di Daftar Harga (Katalog Harga Karung/Repacking). Isi dulu lewat tab Harga.`;
         } else if (jumlahKarung <= 0) {
@@ -3451,8 +3468,8 @@
       const jumlahKarung = parseFloat(document.getElementById('jualKarungJumlah').value) || 0;
       if (!merk) { alert('Pilih merk sumber dulu.'); return; }
       if (jumlahKarung <= 0) { alert('Isi jumlah karung terjual.'); return; }
-      const beratKarungAcuan = 50; // karung utuh = 50 kg, titik (aturan 4 Agu 2026)
-      const totalKg = jumlahKarung * beratKarungAcuan;
+      const beratKarungAcuan = parseFloat(document.getElementById('jualKarungBerat').value) || 50;
+      const totalKg = jumlahKarung * beratKarungAcuan; // stok karung sumber terpotong jumlah × berat ini
       if (!stokKarung[merk] || stokKarung[merk].sisaKg < totalKg) {
         if (!confirm(`Stok ${merk} cuma sisa ${stokKarung[merk]?.sisaKg || 0}kg, transaksi ini butuh ${totalKg}kg (${jumlahKarung} karung × ${beratKarungAcuan}kg). Tetap simpan?`)) return;
       }
@@ -4719,6 +4736,7 @@
   window.filterHarian = filterHarian;
   window.cariGlobal = cariGlobal;
   window.tampilkanHarga = tampilkanHarga;
+  window.pilihBeratKarungJual = pilihBeratKarungJual;
   window.simpanHargaLiteran = simpanHargaLiteran;
   window.hapusHargaLiteran = hapusHargaLiteran;
   window.simpanHargaKemasan = simpanHargaKemasan;

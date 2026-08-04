@@ -455,10 +455,14 @@ function bangunDaftarProduk() {
   });
   (ringkasan.merkKarung || []).forEach(function (m) {
     if (!m || !m.merk) return;
-    if (!m.karung50) return; // Karung utuh HANYA karung 50 kg (aturan 4 Agu 2026)
-    var berat = 50;
-    daftarProduk.push({ tipe: 'karung', label: 'KRG ' + m.merk, sub: (m.hargaPerKg ? angkaTitik(m.hargaPerKg * berat) + '/krg' : 'harga?'),
-      merk: m.merk, beratKarung: berat, hargaSatuan: (m.hargaPerKg || 0) * berat, step: 1, hppPerKg: m.hppPerKg || 0, sisa: m.sisaKg || 0 });
+    // Karung utuh per ukuran (revisi 4 Agu 2026 malam): tuts terpisah 50 kg & 25 kg,
+    // hanya untuk ukuran yang memang tercatat ada di batch/stok awal merk itu.
+    [[50, m.karung50], [25, m.karung25]].forEach(function (u) {
+      var berat = u[0];
+      if (!u[1]) return;
+      daftarProduk.push({ tipe: 'karung', label: 'KRG' + berat + ' ' + m.merk, sub: (m.hargaPerKg ? angkaTitik(m.hargaPerKg * berat) + '/krg' : 'harga?'),
+        merk: m.merk, beratKarung: berat, hargaSatuan: (m.hargaPerKg || 0) * berat, step: 1, hppPerKg: m.hppPerKg || 0, sisa: m.sisaKg || 0 });
+    });
   });
 }
 function gambarPanelProduk(wadahId, aksiNama) {
