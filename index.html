@@ -4830,6 +4830,16 @@
   }
   window.toggleLembarMenu = toggleLembarMenu;
   window.pindahDariMenu = pindahDariMenu;
+  // Sinkron awal nav bawah: nyalakan tab sesuai halaman default saat boot (skrip di akhir body, DOM sudah ada)
+  (function () {
+    const hAktif = document.querySelector('.halaman.tampil');
+    const nama = hAktif ? hAktif.id.replace('halaman', '').toLowerCase() : 'jual';
+    document.querySelectorAll('#navBawah [data-halaman], #lembarMenu [data-halaman]').forEach(b => {
+      b.classList.toggle('aktif', b.getAttribute('data-halaman') === nama);
+    });
+    const tbm = document.getElementById('tombolLembarMenu');
+    if (tbm) tbm.classList.toggle('aktif', ['input','stokawal','produksi','rekap','bulanan','harian','laba'].indexOf(nama) >= 0);
+  })();
   window.pilihJenisJual = pilihJenisJual;
   window.hitungTotalJual = hitungTotalJual;
   window.pilihBayar = pilihBayar;
