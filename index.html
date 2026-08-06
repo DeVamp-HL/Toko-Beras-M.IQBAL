@@ -168,12 +168,63 @@
     flex: 0 0 auto; min-width: 44px; min-height: 44px; border: none; background: none;
     color: var(--redup); font-size: 11px; font-weight: 700; font-family: inherit; border-radius: 9px;
   }
+  /* ===== HALAMAN JUAL — mockup UI (6 Agu 2026) ===== */
+  .stepper-jumlah { display: flex; align-items: center; gap: 10px; }
+  .stepper-jumlah input { flex: 1; text-align: center; font-size: 24px; font-weight: 800; margin: 0; font-variant-numeric: tabular-nums; }
+  .stepper-jumlah button { flex: 0 0 auto; width: 48px; height: 48px; border-radius: 12px; font-size: 22px; font-weight: 700; font-family: inherit; background: var(--abu); border: 1px solid var(--garis); color: var(--teks); }
+  .stepper-jumlah .st-tambah { color: var(--emas-terang); background: linear-gradient(90deg, rgba(217,178,95,.22), rgba(217,178,95,.05)); border-color: rgba(217,178,95,.55); }
+  .ringkas-stok { display: none; }
+  @media (max-width: 699px) { .ringkas-stok { display: grid; margin-bottom: 12px; } }
+  .kartu-total-jual { display: none; }
+  @media (max-width: 699px) {
+    #halamanJual > .kartu-jenis-jual { grid-template-columns: repeat(3, 1fr) !important; }
+    #halamanJual > .kartu-jenis-jual button { min-height: 46px; font-size: 11px; line-height: 1.25; }
+    #kartuHargaBayarJual > label:first-of-type, #jualHargaTotal { display: none; }
+    #kartuTotalJual {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin: 0 0 12px; padding: 14px 16px; border-radius: 14px;
+      background: var(--kartu); border: 1px solid rgba(217, 178, 95, .35);
+      background-image: linear-gradient(135deg, rgba(217, 178, 95, .07), rgba(217, 178, 95, 0) 55%);
+    }
+    .ktj-label { font-size: 9.5px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--redup); font-weight: 700; }
+    .ktj-rincian { font-size: 10.5px; color: var(--redup); margin-top: 4px; }
+    .ktj-nilai { font-size: 26px; font-weight: 800; color: var(--hijau-tua); white-space: nowrap; }
+  }
+  @media (min-width: 700px) { .jual-hari-ini { display: none; } }
+
+  /* ===== HEADER RINGKAS HP (mockup UI, 6 Agu 2026) ===== */
+  .merek-hp, .chip-tanggal { display: none; }
+  @media (max-width: 699px) {
+    header { padding: 8px 16px 8px; gap: 10px; align-items: center; }
+    header > div, #headerJudul, #subjudulHeader, #tombolTema, .tombol-logo-drawer { display: none !important; }
+    .merek-hp { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; background: none; border: none; padding: 0; text-align: left; font-family: inherit; }
+    .mh-badge {
+      width: 34px; height: 34px; flex: 0 0 auto; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800; letter-spacing: .3px; color: var(--emas-terang);
+      background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+      border: 1px solid rgba(217, 178, 95, .55);
+      box-shadow: 0 0 12px rgba(217, 178, 95, .18), inset 0 1px 0 rgba(255, 255, 255, .07);
+    }
+    .mh-teks { display: block; min-width: 0; }
+    .mh-teks b { display: block; font-family: 'Playfair Display', Georgia, serif; font-size: 14px; font-weight: 700; letter-spacing: 2px; color: var(--emas-terang); }
+    .mh-teks i { display: block; font-style: normal; font-size: 9px; color: var(--redup); letter-spacing: 1.2px; text-transform: uppercase; }
+    .chip-tanggal { display: inline-block; flex: 0 0 auto; font-size: 10.5px; color: var(--redup); border: 1px solid var(--garis); border-radius: 20px; padding: 5px 10px; white-space: nowrap; }
+    .pil-status { font-size: 9.5px; padding: 4px 8px; }
+    .pil-status b { font-size: 9.5px; }
+    .cari-details summary { width: 34px; height: 34px; }
+    .judul-halaman .jh-sub { display: none; }
+    .judul-halaman h2 { font-size: 24px; }
+  }
   /* Hero Ringkasan hanya untuk HP (<700px). Di 700px ke atas tetap kartu KPI lama —
      supaya tidak muncul dua blok angka yang sama. */
-  #halamanRingkasan > .ringkasan-mobile { display: none; }
+  #halamanRingkasan > .ringkasan-mobile, #halamanRingkasan > .ringkasan-mobile-2 { display: none; }
   @media (max-width: 699px) {
-    #halamanRingkasan > .ringkasan-mobile { display: block; }
+    #halamanRingkasan > .ringkasan-mobile, #halamanRingkasan > .ringkasan-mobile-2 { display: block; }
+    #halamanRingkasan .dua-grafik { display: block; margin-bottom: 12px; }
     #halamanRingkasan > .kpi-ringkasan-dt { display: none; }
+    #halamanRingkasan .ring-lama-hp,
+    #halamanRingkasan .ringkasan-atas.ringkasan-mobile { display: none !important; }
   }
   /* ===== Konfirmasi pra-simpan & URUNGKAN (porting UX 6 Agu 2026) ===== */
   #overlayKonfirmasi {
@@ -259,7 +310,24 @@
   }
   .kartu-hero .label { font-size: 9.5px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--redup); font-weight: 700; }
   .kartu-hero .hero-nilai { font-size: 32px; font-weight: 800; line-height: 1.05; margin-top: 6px; color: var(--hijau-tua); }
-  .kartu-hero .hero-kaki { font-size: 10.5px; color: var(--redup); margin-top: 8px; }
+  .kartu-hero .hero-kaki { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .hero-badge { font-size: 10.5px; font-weight: 700; border-radius: 20px; padding: 3px 9px; }
+  .hero-badge.naik { color: var(--hijau-naik); background: rgba(74, 222, 128, .12); }
+  .hero-badge.turun { color: var(--merah); background: rgba(242, 112, 89, .12); }
+  .hero-trx { font-size: 10.5px; color: var(--redup); }
+  .kpi-mini.kpi-dua { grid-template-columns: 1fr 1fr; }
+  .kartu-mini .nilai.naik { color: var(--hijau-naik); }
+  .kartu-mini .nilai.turun { color: var(--merah); }
+  .catatan-kecil { margin: 8px 2px 0; font-size: 9.5px; color: var(--redup); line-height: 1.5; }
+  .kd-kepala { padding-top: 0; }
+  .kd-judul { display: flex; align-items: baseline; justify-content: space-between; padding: 12px 0 4px; }
+  .kd-judul h3 { margin: 0; font-size: 13px; font-weight: 700; color: var(--teks); }
+  .kd-judul .kd-hitung { font-size: 10px; color: var(--redup); font-weight: 600; }
+  .panel-kepala .kd-hitung { margin-left: auto; font-size: 10px; color: var(--redup); font-weight: 600; }
+  .kd-tautan { background: none; border: none; font-family: inherit; font-size: 9.5px; letter-spacing: 1.2px; font-weight: 700; color: var(--emas-terang); padding: 6px 0 6px 10px; }
+  .baris-44 .jam { font-size: 10px; color: var(--redup); width: 34px; flex: 0 0 auto; }
+  .baris-44 .pil-aksi { flex: 0 0 auto; font-size: 9.5px; font-weight: 700; color: var(--emas-terang); border: 1px solid rgba(217,178,95,.4); border-radius: 16px; padding: 4px 9px; background: none; font-family: inherit; min-height: 30px; }
+  .baris-44 .ikon-perhatian { width: 15px; height: 15px; flex: 0 0 auto; }
   .kpi-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .kartu-mini { background: var(--kartu); border: 1px solid var(--kaca-garis); border-radius: 12px; padding: 11px 12px; min-width: 0; }
   .kartu-mini .label { font-size: 9px; letter-spacing: .8px; text-transform: uppercase; color: var(--redup); font-weight: 700; line-height: 1.5; }
@@ -997,6 +1065,11 @@
 
 <header>
   <button type="button" class="tombol-logo-drawer" id="tombolLogoDrawer" onclick="toggleDrawerNav()" aria-label="Buka menu">IQ</button>
+  <button type="button" class="merek-hp" onclick="toggleLembarMenu()" aria-label="Menu">
+    <span class="mh-badge">IQ</span>
+    <span class="mh-teks"><b>M.IQBAL</b><i>Toko Beras</i></span>
+  </button>
+  <span class="chip-tanggal" data-tanggal-halaman></span>
   <div>
     <h1 id="headerJudul" onclick="tekanLogoHeader()">Sistem Toko M.IQBAL</h1>
     <p id="subjudulHeader">Toko Beras M.IQBAL</p>
@@ -1149,7 +1222,10 @@
       <div class="kartu-hero">
         <div class="label">Omzet hari ini</div>
         <div class="hero-nilai" id="ringOmzetHariIni">Rp0</div>
-        <div class="hero-kaki">Semua penjualan tercatat hari ini</div>
+        <div class="hero-kaki">
+          <span class="hero-badge" id="ringBandingKemarin" style="display:none;"></span>
+          <span class="hero-trx" id="ringJumlahTrxHariIni">Belum ada transaksi</span>
+        </div>
       </div>
       <div class="kpi-mini">
         <div class="kartu-mini">
@@ -1206,16 +1282,40 @@
         <div class="panel-kepala"><h2>Omzet 7 Hari</h2></div>
         <div id="grafikOmzetWrap" style="margin-top:8px;"><div class="kosong" style="padding:18px;">Belum ada data.</div></div>
       </div>
-      <div class="kartu" style="margin-bottom:0; display:flex; align-items:center; gap:18px;">
+      <div class="kartu ring-lama-hp" style="margin-bottom:0; display:flex; align-items:center; gap:18px;">
         <div class="donat-omzet" id="donatOmzet"><div class="tengah-donat"><b id="donatOmzetTotal">Rp0</b><span>30 hari</span></div></div>
         <div class="legenda-omzet" id="legendaOmzet"><div class="kosong" style="padding:6px;">Belum ada data.</div></div>
       </div>
     </div>
-    <div class="kartu">
+    <div class="ringkasan-mobile ringkasan-mobile-2">
+      <div class="kartu-daftar kd-kepala">
+        <div class="kd-judul"><h3>Penjualan Terakhir</h3><button type="button" class="kd-tautan" onclick="pindahDariMenu('rekap')">SEMUA →</button></div>
+        <div id="ringPenjualanTerakhir"></div>
+      </div>
+
+      <div class="kpi-mini kpi-dua" style="margin-top:10px;">
+        <div class="kartu-mini">
+          <div class="label">Kas masuk · bulan ini</div>
+          <div class="nilai naik" id="ringKasMasukBulanIniHp">Rp0</div>
+        </div>
+        <div class="kartu-mini">
+          <div class="label">Kas keluar · bulan ini</div>
+          <div class="nilai turun" id="ringKasKeluarBulanIniHp">Rp0</div>
+        </div>
+      </div>
+      <p class="catatan-kecil">Arus kas, bukan laba bersih — rincian perhitungannya di halaman Bulanan.</p>
+
+      <div class="kartu-daftar kd-kepala" style="margin-top:10px;">
+        <div class="kd-judul"><h3>Perlu Perhatian</h3></div>
+        <div id="ringPerhatianHp"></div>
+      </div>
+    </div>
+
+    <div class="kartu ring-lama-hp">
       <div class="panel-kepala"><h2>Penjualan Terakhir</h2><a href="#" onclick="pindahHalaman('rekap'); return false;">LIHAT SEMUA</a></div>
       <div id="wadahPenjualanTerakhir" style="margin-top:8px;"><div class="kosong" style="padding:18px;">Belum ada penjualan.</div></div>
     </div>
-    <div class="subjudul subjudul-kas-mobile" style="margin-top:0;">Kas Bulan Ini</div>
+    <div class="subjudul subjudul-kas-mobile ring-lama-hp" style="margin-top:0;">Kas Bulan Ini</div>
     <div class="ringkasan-atas ringkasan-mobile">
       <div class="kotak">
         <div class="label">Kas masuk <span class="keterangan" style="display:block;">(omzet jual)</span></div>
@@ -1226,9 +1326,9 @@
         <div class="nilai" id="ringKasKeluarBulanIni">Rp0</div>
       </div>
     </div>
-    <div class="info-box">Kas masuk = total omzet jual bulan ini. Kas keluar = belanja beras (harga beli + bongkar dari tab Masuk) + biaya bulanan (gaji, listrik, akses, dll dari tab Bulanan — kalau bulan ini belum diisi, bagian itu dihitung Rp0) + pengeluaran harian kategori Toko (dari tab Harian). Pengeluaran harian Ben Mohsein &amp; Owner TIDAK ikut dihitung — murni pribadi. Ini arus kas, BUKAN laba bersih akuntansi — beda dari margin kotor di tab Laba (yang berbasis HPP barang terjual, bukan barang dibeli).</div>
+    <div class="info-box ring-lama-hp">Kas masuk = total omzet jual bulan ini. Kas keluar = belanja beras (harga beli + bongkar dari tab Masuk) + biaya bulanan (gaji, listrik, akses, dll dari tab Bulanan — kalau bulan ini belum diisi, bagian itu dihitung Rp0) + pengeluaran harian kategori Toko (dari tab Harian). Pengeluaran harian Ben Mohsein &amp; Owner TIDAK ikut dihitung — murni pribadi. Ini arus kas, BUKAN laba bersih akuntansi — beda dari margin kotor di tab Laba (yang berbasis HPP barang terjual, bukan barang dibeli).</div>
 
-    <div class="kartu">
+    <div class="kartu ring-lama-hp">
       <div class="panel-kepala"><h2>Perlu Perhatian</h2></div>
       <div id="ringPerhatian" class="daftar-batch"></div>
     </div>
@@ -1253,7 +1353,11 @@
       <input type="hidden" id="jualKemasanProduk">
       <div class="stok-tersedia" id="stokKemasanInfo"></div>
       <label>Jumlah dijual (unit)</label>
-      <input type="number" id="jualKemasanJumlah" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
+      <div class="stepper-jumlah">
+        <button type="button" class="st-kurang" onclick="ubahJumlah('jualKemasanJumlah', -1)" aria-label="Kurangi">−</button>
+        <input type="number" id="jualKemasanJumlah" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
+        <button type="button" class="st-tambah" onclick="ubahJumlah('jualKemasanJumlah', 1)" aria-label="Tambah">+</button>
+      </div>
     </div>
 
     <!-- Sub-form: Repacking dadakan -->
@@ -1281,7 +1385,11 @@
       <input type="hidden" id="jualKarungMerk">
       <div class="stok-tersedia" id="stokKarungInfo"></div>
       <label>Jumlah karung terjual</label>
-      <input type="number" id="jualKarungJumlah" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
+      <div class="stepper-jumlah">
+        <button type="button" class="st-kurang" onclick="ubahJumlah('jualKarungJumlah', -1)" aria-label="Kurangi">−</button>
+        <input type="number" id="jualKarungJumlah" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
+        <button type="button" class="st-tambah" onclick="ubahJumlah('jualKarungJumlah', 1)" aria-label="Tambah">+</button>
+      </div>
       <p class="keterangan">Daftar merk mengikuti ukuran yang dipilih. Terjual = stok karung sumber langsung berkurang (jumlah × berat karung).</p>
     </div>
 
@@ -1363,6 +1471,20 @@
         <label>Nama pelanggan (kredit)</label>
         <input type="text" id="jualNamaPelanggan" placeholder="Nama pelanggan">
       </div>
+    </div>
+
+    <!-- Kartu TOTAL + daftar hari ini — mengikuti mockup UI (6 Agu 2026), khusus HP -->
+    <div class="kartu-total-jual" id="kartuTotalJual">
+      <div>
+        <div class="ktj-label">Total</div>
+        <div class="ktj-rincian" id="ktjRincian">Belum ada isian</div>
+      </div>
+      <div class="ktj-nilai" id="ktjNilai">Rp0</div>
+    </div>
+
+    <div class="kartu-daftar kd-kepala jual-hari-ini">
+      <div class="kd-judul"><h3>Penjualan hari ini</h3><span class="kd-hitung" id="jualHariIniHitung">0 trx</span></div>
+      <div id="jualHariIniDaftar"></div>
     </div>
   </div>
 
@@ -1462,6 +1584,16 @@
   <!-- HALAMAN STOK -->
   <div id="halamanStok" class="halaman">
     <div class="judul-halaman"><h2>Stok</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <div class="kpi-mini kpi-dua ringkas-stok">
+      <div class="kartu-mini">
+        <div class="label">Karung sumber</div>
+        <div class="nilai" id="stokRingkasKarung">0 <span style="font-size:10px;color:var(--redup);font-weight:600;">krg</span></div>
+      </div>
+      <div class="kartu-mini">
+        <div class="label">Kemasan jadi</div>
+        <div class="nilai" id="stokRingkasKemasan">0 <span style="font-size:10px;color:var(--redup);font-weight:600;">unit siap jual</span></div>
+      </div>
+    </div>
     <div class="info-box">Stok dihitung otomatis: karung sumber (dari tab Masuk, dikurangi terpakai) dan kemasan jadi (dari tab Produksi, dikurangi terjual).</div>
     <div class="kartu">
       <div class="panel-kepala"><h2>Stok Karung Sumber (per merk)</h2></div>
@@ -1529,7 +1661,7 @@
       <button type="button" onclick="simpanHargaLiteran()" class="tombol-utama-kartu"> Simpan / Perbarui Harga Literan</button>
     </div>
     <div class="kartu">
-      <div class="panel-kepala"><h2>Harga Literan Tersimpan</h2></div>
+      <div class="panel-kepala"><h2>Harga Literan Tersimpan</h2><span class="kd-hitung" id="hitungHargaLiteran"></span></div>
       <div id="daftarHargaLiteran" class="daftar-batch"></div>
     </div>
 
@@ -1545,7 +1677,7 @@
       <button type="button" onclick="simpanHargaKemasan()" class="tombol-utama-kartu"> Simpan / Perbarui Harga Kemasan</button>
     </div>
     <div class="kartu">
-      <div class="panel-kepala"><h2>Harga Kemasan Tersimpan</h2></div>
+      <div class="panel-kepala"><h2>Harga Kemasan Tersimpan</h2><span class="kd-hitung" id="hitungHargaKemasan"></span></div>
       <div id="daftarHargaKemasan" class="daftar-batch"></div>
     </div>
 
@@ -1559,7 +1691,7 @@
       <button type="button" onclick="simpanHargaKarung()" class="tombol-utama-kartu"> Simpan / Perbarui Harga Karung</button>
     </div>
     <div class="kartu">
-      <div class="panel-kepala"><h2>Harga Karung / Repacking Tersimpan</h2></div>
+      <div class="panel-kepala"><h2>Harga Karung / Repacking Tersimpan</h2><span class="kd-hitung" id="hitungHargaKarung"></span></div>
       <div id="daftarHargaKarung" class="daftar-batch"></div>
     </div>
   </div>
@@ -2001,7 +2133,7 @@
     if (nama === 'ringkasan') tampilkanRingkasan();
     if (nama === 'rekap') tampilkanRekap();
     if (nama === 'bulanan') tampilkanBulanan();
-    if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); }
+    if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); }
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
     if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); }
     if (nama === 'laba') tampilkanLaba();
@@ -3306,6 +3438,42 @@
   }
   function tutupKonfirmasi() { document.body.classList.remove('konfirmasi-terbuka'); }
 
+  // Stepper jumlah (mockup UI): satu ketukan naik/turun, tanpa buka keyboard.
+  function ubahJumlah(idInput, delta) {
+    const el = document.getElementById(idInput);
+    if (!el) return;
+    const baru = Math.max(0, (parseFloat(el.value) || 0) + delta);
+    el.value = baru === 0 ? '' : baru;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // Kartu Total + daftar penjualan hari ini (versi HP, mockup UI).
+  function perbaruiKartuTotalJual() {
+    const nilai = document.getElementById('ktjNilai');
+    const rincian = document.getElementById('ktjRincian');
+    if (!nilai || !rincian) return;
+    const total = parseFloat(document.getElementById('jualHargaTotal').value) || 0;
+    nilai.textContent = formatRupiah(total);
+    const r = bacaRincianJual();
+    rincian.textContent = r ? r.baris.slice(0, 2).map(b => b[1]).join(' · ') : 'Belum ada isian';
+    if (total > 0) sorotAngka(nilai);
+  }
+  function tampilkanJualHariIni() {
+    const kont = document.getElementById('jualHariIniDaftar');
+    if (!kont) return;
+    const hariIni = ambilPenjualan().filter(p => p.tanggal === tanggalLokalIso());
+    const total = hariIni.reduce((a, p) => a + (p.hargaTotal || 0), 0);
+    const hitung = document.getElementById('jualHariIniHitung');
+    if (hitung) hitung.textContent = hariIni.length + ' trx · ' + formatRupiah(total);
+    kont.innerHTML = hariIni.length === 0
+      ? '<div class="kosong-info"><b>Belum ada penjualan hari ini</b><span>Transaksi yang disimpan akan langsung muncul di sini.</span></div>'
+      : [...hariIni].sort((a, b) => (b.id || 0) - (a.id || 0)).map(t => `<div class="baris-44">
+          <span class="jam">${escapeHtml(t.jam || '--:--')}</span>
+          <span class="nama">${escapeHtml(t.namaProduk || t.merkSumber || 'Penjualan')}</span>
+          <span class="angka">${formatRupiah(t.hargaTotal || 0)}</span>
+        </div>`).join('');
+  }
+
   // Baca isi form Jual jadi rincian yang bisa dibaca manusia. null = tidak cukup data.
   function bacaRincianJual() {
     const total = parseFloat(document.getElementById('jualHargaTotal').value) || 0;
@@ -3391,7 +3559,7 @@
     // bersihkan juga salinan lokal (kalau tadi tersimpan offline)
     const sisa = ambilPenjualan().filter(x => x.id !== trx.id);
     localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(sisa));
-    perbaruiStokJual(); isiDropdownJual();
+    perbaruiStokJual(); isiDropdownJual(); tampilkanJualHariIni();
     alert('Transaksi dibatalkan. Omzet dan stok kembali seperti sebelumnya.');
   }
 
@@ -3788,6 +3956,7 @@
     if (inputHarga.value !== totalLama && total > 0) sorotAngka(inputHarga);
     statusEl.textContent = status;
     statusEl.classList.toggle('teks-amber', status.indexOf('Belum ada harga') >= 0);
+    perbaruiKartuTotalJual();
   }
 
   // Tampilkan kemasan literan yang akan otomatis dipakai + biayanya, sebelum transaksi disimpan.
@@ -3944,6 +4113,7 @@
     // Bilah URUNGKAN menggantikan pesan-ok statis: memberi kabar SEKALIGUS jalan keluar
     // beberapa detik (Alur UX 1). Pesan-ok lama tetap dipakai di jalur non-mobile lebar.
     const namaSingkat = transaksi.namaProduk || transaksi.merkSumber || 'Transaksi';
+    tampilkanJualHariIni();
     tampilkanUrungkan(transaksi, 'Tersimpan: ' + namaSingkat + ' — ' + formatRupiah(hargaTotal));
     window.scrollTo({top: 0, behavior: 'smooth'});
   }
@@ -4444,7 +4614,18 @@
         </div>`;
       }).join('') + '</div>';
 
+    const elRK = document.getElementById('stokRingkasKarung');
+    if (elRK) {
+      const totalKg = merkList.reduce((a, m) => a + (stokKarung[m].sisaKg || 0), 0);
+      elRK.innerHTML = Math.round(totalKg / 50) + ' <span style="font-size:10px;color:var(--redup);font-weight:600;">krg · ±' +
+        Math.round(totalKg).toLocaleString('id-ID') + ' kg</span>';
+    }
     const stokKemasan = hitungStokKemasan();
+    const elRKem = document.getElementById('stokRingkasKemasan');
+    if (elRKem) {
+      const totalUnit = Object.keys(stokKemasan).reduce((a, k) => a + (stokKemasan[k].sisaUnit || 0), 0);
+      elRKem.innerHTML = totalUnit + ' <span style="font-size:10px;color:var(--redup);font-weight:600;">unit siap jual</span>';
+    }
     const kontKemasan = document.getElementById('daftarStokKemasan');
     const kemasanList = Object.keys(stokKemasan).filter(k => stokKemasan[k].sisaUnit !== 0);
     const katalogKem = ambilHargaKemasan();
@@ -4667,6 +4848,56 @@
     kontPerhatian.innerHTML = daftarPerhatian.length === 0
       ? '<div class="kosong">Tidak ada yang perlu diperhatikan sekarang.</div>'
       : daftarPerhatian.map(teks => `<div class="item-batch" style="padding:12px 16px; font-size:14px;">${teks}</div>`).join('');
+
+    // ===== Versi HP (mockup UI 6 Agu 2026) =====
+    const kemarinIso = tanggalLokalIso(new Date(Date.now() - 86400000));
+    const omzetKemarin = penjualan.filter(p => p.tanggal === kemarinIso).reduce((a,p) => a + (p.hargaTotal||0), 0);
+    const elBanding = document.getElementById('ringBandingKemarin');
+    if (elBanding) {
+      if (omzetKemarin > 0 && omzetHariIni > 0) {
+        const beda = Math.round((omzetHariIni - omzetKemarin) / omzetKemarin * 100);
+        elBanding.style.display = 'inline-block';
+        elBanding.className = 'hero-badge ' + (beda >= 0 ? 'naik' : 'turun');
+        elBanding.textContent = (beda >= 0 ? '▲ ' : '▼ ') + Math.abs(beda) + '% vs kemarin';
+      } else { elBanding.style.display = 'none'; }
+    }
+    const elTrx = document.getElementById('ringJumlahTrxHariIni');
+    if (elTrx) elTrx.textContent = penjualanHariIni.length === 0 ? 'Belum ada transaksi hari ini' : penjualanHariIni.length + ' transaksi';
+
+    const elTerakhir = document.getElementById('ringPenjualanTerakhir');
+    if (elTerakhir) {
+      const lima = [...penjualan].sort((a,b) => (b.id||0) - (a.id||0)).slice(0, 5);
+      elTerakhir.innerHTML = lima.length === 0
+        ? '<div class="kosong-info"><b>Belum ada penjualan</b><span>Transaksi pertama akan muncul di sini.</span></div>'
+        : lima.map(t => `<div class="baris-44">
+            <span class="jam">${escapeHtml(t.jam || '--:--')}</span>
+            <span class="nama">${escapeHtml(t.namaProduk || t.merkSumber || 'Penjualan')}</span>
+            <span class="angka">${formatRupiah(t.hargaTotal || 0)}</span>
+          </div>`).join('');
+    }
+    const elKasM = document.getElementById('ringKasMasukBulanIniHp');
+    if (elKasM) elKasM.textContent = formatRupiah(kasMasukBulanIni);
+    const elKasK = document.getElementById('ringKasKeluarBulanIniHp');
+    if (elKasK) elKasK.textContent = formatRupiah(kasKeluarBulanIni);
+
+    const elPerhatianHp = document.getElementById('ringPerhatianHp');
+    if (elPerhatianHp) {
+      const daftarHp = [];
+      merkMenipis.forEach(m => daftarHp.push({ w: 'var(--merah)', t: `Stok ${escapeHtml(m)} tinggal ${stokKarung[m].sisaKg} kg`, h: 'stok', a: 'Stok' }));
+      kemasanMenipis.forEach(k => daftarHp.push({ w: 'var(--merah)', t: `${escapeHtml(stokKemasan[k].namaProduk)} ${stokKemasan[k].ukuranKemasan}kg tinggal ${stokKemasan[k].sisaUnit} unit`, h: 'stok', a: 'Stok' }));
+      const katalogK = ambilHargaKemasan();
+      const tanpaHarga = Object.keys(stokKemasan).filter(k => stokKemasan[k].sisaUnit > 0 &&
+        !katalogK.some(x => x.merk === stokKemasan[k].namaProduk && x.ukuran === stokKemasan[k].ukuranKemasan && x.hargaPerUnit > 0));
+      if (tanpaHarga.length > 0) daftarHp.push({ w: 'var(--amber)', t: `${tanpaHarga.length} produk belum punya harga — belum bisa dijual`, h: 'harga', a: 'Harga' });
+      if (karantinaMenunggu.length > 0) daftarHp.push({ w: 'var(--amber)', t: `${karantinaMenunggu.length} barang di Karantina menunggu keputusan`, h: 'stok', a: 'Stok' });
+      elPerhatianHp.innerHTML = daftarHp.length === 0
+        ? '<div class="kosong-info"><b>Semua aman</b><span>Tidak ada stok menipis, harga kosong, atau retur menggantung.</span></div>'
+        : daftarHp.map(x => `<div class="baris-44">
+            <svg class="ikon-perhatian" viewBox="0 0 24 24" fill="none" stroke="${x.w}" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.1" fill="${x.w}" stroke="none"/></svg>
+            <span class="nama">${x.t}</span>
+            <button type="button" class="pil-aksi" onclick="pindahDariMenu('${x.h}')">${x.a}</button>
+          </div>`).join('');
+    }
   }
 
   // ============ LABA / MARGIN PER TRANSAKSI (Tahap 3) ============
@@ -4847,6 +5078,24 @@
     const literan = ambilHargaLiteran();
     const kemasan = ambilHargaKemasan();
     const karung = ambilHargaKarung();
+
+    // Hitungan di kepala tiap bagian (mockup UI): berapa harga terisi, berapa yang masih kosong.
+    // "Kosong" = produk/merk yang PUNYA STOK tapi belum punya harga — itu yang bikin kasir mentok.
+    const stokKemasanH = hitungStokKemasan();
+    const kemasanTanpaHarga = Object.keys(stokKemasanH).filter(k => stokKemasanH[k].sisaUnit > 0 &&
+      !kemasan.some(x => x.merk === stokKemasanH[k].namaProduk && x.ukuran === stokKemasanH[k].ukuranKemasan && x.hargaPerUnit > 0)).length;
+    const stokKarungH = hitungStokKarungPerMerk();
+    const merkAdaStok = Object.keys(stokKarungH).filter(m => stokKarungH[m].sisaKg > 0);
+    const literanTanpaHarga = merkAdaStok.filter(m => !literan.some(x => x.merk === m)).length;
+    const karungTanpaHarga = merkAdaStok.filter(m => !karung.some(x => x.merk === m)).length;
+    function tulisHitung(id, jml, kosong) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = jml + ' harga' + (kosong > 0 ? ' · <span class="teks-amber">' + kosong + ' kosong</span>' : '');
+    }
+    tulisHitung('hitungHargaLiteran', literan.length, literanTanpaHarga);
+    tulisHitung('hitungHargaKemasan', kemasan.length, kemasanTanpaHarga);
+    tulisHitung('hitungHargaKarung', karung.length, karungTanpaHarga);
 
     const kontainerLiteran = document.getElementById('daftarHargaLiteran');
     if (literan.length === 0) {
@@ -5152,6 +5401,7 @@
   window.urungkanTransaksi = urungkanTransaksi;
   window.pulihkanDrafMasuk = pulihkanDrafMasuk;
   window.buangDrafMasuk = buangDrafMasuk;
+  window.ubahJumlah = ubahJumlah;
   // Sinkron awal nav bawah: nyalakan tab sesuai halaman default saat boot (skrip di akhir body, DOM sudah ada)
   (function () {
     const hAktif = document.querySelector('.halaman.tampil');
