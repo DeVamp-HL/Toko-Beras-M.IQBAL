@@ -46,6 +46,14 @@
     --emas-terang: #f2d795;
     --emas-gelap: #a8873f;
     --hijau-naik: #4ade80;
+    --amber: #e8b04a;            /* belum lengkap, perlu diisi — bukan bahaya (vonis Color+Type 5 Agu) */
+    /* Sistem Gerak (porting desain final 6 Agu 2026) — pagu keras 350ms */
+    --gerak-sentuh: 100ms; --gerak-kecil: 180ms;
+    --gerak-halaman: 240ms; --gerak-halaman-keluar: 180ms;
+    --gerak-panel: 280ms; --gerak-panel-keluar: 220ms;
+    --lengkung-masuk: cubic-bezier(.16, .84, .28, 1);
+    --lengkung-keluar: cubic-bezier(.4, 0, 1, 1);
+    --lengkung-dasar: cubic-bezier(.25, 0, .45, 1);
     --kaca: rgba(23, 28, 37, .72);
     --kaca-garis: rgba(255, 255, 255, .07);
   }
@@ -136,6 +144,18 @@
      tersembunyi sebelum PIN owner dimasukkan. */
   .indikator-tab { display: none; }
   main { padding: 16px; max-width: 680px; margin: 0 auto; }
+  /* ===== Porting desain final (6 Agu 2026): pola komponen ===== */
+  body { font-variant-numeric: tabular-nums; } /* semua angka rata digit — Prinsip 1 */
+  @media (hover: none) { button:active, .chip-aktif:active { transform: translateY(1px); } } /* pengganti hover di HP */
+  @keyframes sorotAngkaNaik { 0% { color: var(--emas-terang); } 100% { color: inherit; } }
+  .angka-berubah { animation: sorotAngkaNaik 300ms var(--lengkung-dasar); }
+  .teks-amber { color: var(--amber) !important; }
+  .lencana-amber {
+    display: inline-block; font-size: 10px; font-weight: 700; color: var(--amber);
+    border: 1px dashed rgba(232, 176, 74, .5); border-radius: 14px; padding: 3px 9px;
+  }
+  .baris-44 { display: flex; align-items: center; gap: 8px; min-height: 44px; border-top: 1px solid rgba(255, 255, 255, .055); }
+  .baris-44 .angka { margin-left: auto; font-weight: 800; text-align: right; }
   .kartu {
     background: linear-gradient(180deg, rgba(26, 32, 42, .75), var(--kaca));
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -224,10 +244,11 @@
   .tombol-simpan button {
     width: 100%; max-width: 680px; margin: 0 auto; display: block;
     padding: 17px;
-    background: linear-gradient(135deg, var(--emas-terang), var(--emas) 60%, var(--emas-gelap));
-    color: var(--tombol-teks); border: none;
+    /* kaca emas transparan — keputusan final My DeV 5 Agu (bukan emas solid) */
+    background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+    color: var(--emas-terang); border: 1px solid rgba(217, 178, 95, .55);
     border-radius: 12px; font-size: 17px; font-weight: 800; letter-spacing: .3px;
-    box-shadow: 0 4px 20px rgba(217, 178, 95, .28), inset 0 1px 0 rgba(255, 255, 255, .5);
+    box-shadow: 0 0 12px rgba(217, 178, 95, .18), inset 0 1px 0 rgba(255, 255, 255, .07);
   }
   .tombol-simpan button:active { transform: translateY(1px); }
   .tombol-simpan button:disabled { background: #3a4046; color: #8b93a1; box-shadow: none; }
@@ -770,8 +791,67 @@
   html { scroll-behavior: smooth; }
 
   /* Hormati preferensi kurangi-gerak */
+
+  /* ===== NAV BAWAH MOBILE (porting desain final 6 Agu 2026) =====
+     <700px: bilah bawah 4 halaman tersering + Menu (lembar bawah 7 halaman).
+     Drawer kiri lama tetap ada untuk 700-1099px; sidebar tetap untuk >=1100px. */
+  #navBawah, #lembarMenu, #overlayLembarMenu { display: none; }
+  @media (max-width: 699px) {
+    .tombol-logo-drawer { display: none; } /* drawer diganti nav bawah */
+    main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+    .tombol-simpan { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); padding: 12px 16px; }
+    #navBawah {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+      padding: 7px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+      background: rgba(13, 17, 23, .94);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border-top: 1px solid var(--kaca-garis);
+    }
+    #navBawah button {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      min-height: 48px; padding: 6px 0 5px; border: 1px solid transparent; border-radius: 11px;
+      background: none; color: var(--redup); font-size: 9px; font-weight: 600; font-family: inherit;
+    }
+    #navBawah button svg { width: 19px; height: 19px; }
+    #navBawah button.aktif {
+      color: var(--emas-terang); font-weight: 700;
+      background: linear-gradient(180deg, rgba(217, 178, 95, .18), rgba(217, 178, 95, .03));
+      border-color: rgba(217, 178, 95, .35);
+    }
+    #overlayLembarMenu {
+      display: block; position: fixed; inset: 0; z-index: 31;
+      background: #000; opacity: 0; pointer-events: none;
+      transition: opacity var(--gerak-panel-keluar) var(--lengkung-keluar);
+    }
+    body.lembar-menu-terbuka #overlayLembarMenu { opacity: .45; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
+    #lembarMenu {
+      display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 32;
+      background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
+      border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgba(0, 0, 0, .6);
+      padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+      transform: translateY(105%);
+      transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
+    }
+    body.lembar-menu-terbuka #lembarMenu { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
+    #lembarMenu .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
+    #lembarMenu h3 { margin: 0 0 4px; font-family: 'Playfair Display', Georgia, serif; font-size: 17px; font-weight: 700; letter-spacing: .5px; color: var(--teks); }
+    #lembarMenu .lm-grup { font-size: 9.5px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--redup); font-weight: 700; padding: 12px 0 4px; }
+    #lembarMenu .lm-baris { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #lembarMenu .lm-baris button {
+      min-height: 48px; border-radius: 11px; padding: 9px 12px; text-align: left;
+      background: var(--abu); border: 1px solid var(--garis); color: var(--teks);
+      font-size: 13px; font-weight: 700; font-family: inherit;
+    }
+    #lembarMenu .lm-baris button.aktif {
+      color: var(--emas-terang);
+      background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+      border-color: rgba(217, 178, 95, .55);
+    }
+  }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    :root { --gerak-sentuh: 0ms; --gerak-kecil: 0ms; --gerak-halaman: 0ms; --gerak-halaman-keluar: 0ms; --gerak-panel: 0ms; --gerak-panel-keluar: 0ms; }
   }
   /* DRAFT RAPI v4: tombol pilihan terpilih disamakan dengan gaya tab "Jual" aktif di nav
      (gradasi emas transparan + garis + glow), menggantikan emas solid datar — berlaku
@@ -888,6 +968,37 @@
     <div class="info">DeVamp<span>Owner</span></div>
   </div>
 </nav>
+
+<!-- NAV BAWAH MOBILE (porting desain final): 4 tersering + Menu. id tabBawah* dipakai pindahHalaman -->
+<div id="navBawah">
+  <button type="button" data-halaman="ringkasan" onclick="pindahHalaman('ringkasan')" class="tab-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 14.5a7.5 7.5 0 1 1 15 0"/><path d="M12 14.5l3.4-3.4"/></svg><span>Ringkasan</span></button>
+  <button type="button" data-halaman="jual" onclick="pindahHalaman('jual')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="6.5" width="19" height="11.5" rx="2"/><circle cx="12" cy="12.2" r="2.4"/></svg><span>Jual</span></button>
+  <button type="button" data-halaman="stok" onclick="pindahHalaman('stok')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l8.5 4.7-8.5 4.7-8.5-4.7 8.5-4.7z"/><path d="M3.5 13.4l8.5 4.7 8.5-4.7"/></svg><span>Stok</span></button>
+  <button type="button" data-halaman="harga" onclick="pindahHalaman('harga')" class="tab-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 4h7.2L20.5 13.3a1.8 1.8 0 0 1 0 2.5l-4.7 4.7a1.8 1.8 0 0 1-2.5 0L4 11.2V4z"/><circle cx="8.3" cy="8.3" r="1.4" fill="currentColor" stroke="none"/></svg><span>Harga</span></button>
+  <button type="button" id="tombolLembarMenu" onclick="toggleLembarMenu()"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></svg><span>Menu</span></button>
+</div>
+<div id="overlayLembarMenu" onclick="toggleLembarMenu(false)"></div>
+<div id="lembarMenu">
+  <div class="lm-pegangan"></div>
+  <h3>Semua Halaman</h3>
+  <div class="lm-grup">Catat</div>
+  <div class="lm-baris">
+    <button type="button" data-halaman="input" onclick="pindahDariMenu('input')">Masuk</button>
+    <button type="button" data-halaman="produksi" onclick="pindahDariMenu('produksi')">Produksi</button>
+    <button type="button" data-halaman="stokawal" onclick="pindahDariMenu('stokawal')">Stok Awal</button>
+  </div>
+  <div class="lm-grup">Laporan</div>
+  <div class="lm-baris">
+    <button type="button" data-halaman="rekap" onclick="pindahDariMenu('rekap')">Riwayat</button>
+    <button type="button" data-halaman="harian" onclick="pindahDariMenu('harian')">Harian</button>
+    <button type="button" data-halaman="bulanan" onclick="pindahDariMenu('bulanan')">Bulanan</button>
+    <button type="button" data-halaman="laba" class="tab-owner" onclick="pindahDariMenu('laba')">Laba</button>
+  </div>
+  <div class="lm-grup tab-owner">Owner</div>
+  <div class="lm-baris">
+    <button type="button" class="tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()">Jaga Toko</button>
+  </div>
+</div>
 
 <main>
 
@@ -1342,7 +1453,7 @@
       <div class="angka" id="stokAwalTotal">-</div>
       <div class="keterangan" id="stokAwalRincian"></div>
     </div>
-    <button type="button" id="btnSimpanStokAwal" onclick="simpanStokAwal()" style="margin-top:12px; width:100%; padding:16px; background:var(--hijau); color:var(--tombol-teks); border:none; border-radius:10px; font-weight:800; font-size:16px;">Simpan Stok Awal</button>
+    <button type="button" id="btnSimpanStokAwal" onclick="simpanStokAwal()" style="margin-top:12px; width:100%; padding:16px; background:linear-gradient(90deg, rgba(217,178,95,.22), rgba(217,178,95,.05)); color:var(--emas-terang); border:1px solid rgba(217,178,95,.55); border-radius:10px; font-weight:800; font-size:16px;">Simpan Stok Awal</button>
   </div>
 
   <!-- HALAMAN INPUT -->
@@ -1731,6 +1842,13 @@
       document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
     });
     geserIndikatorTab();
+    // Nav bawah mobile (porting desain final 6 Agu): sinkronkan status aktif
+    document.querySelectorAll('#navBawah [data-halaman], #lembarMenu [data-halaman]').forEach(b => {
+      b.classList.toggle('aktif', b.getAttribute('data-halaman') === nama);
+    });
+    const tbMenu = document.getElementById('tombolLembarMenu');
+    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','stokawal','produksi','rekap','bulanan','harian','laba'].indexOf(nama) >= 0);
+    if (document.body.classList.contains('lembar-menu-terbuka')) toggleLembarMenu(false);
     document.getElementById('tombolSimpanWrap').style.display = nama === 'input' ? 'block' : 'none';
     document.getElementById('tombolSimpanJualWrap').style.display = nama === 'jual' ? 'block' : 'none';
     document.getElementById('tombolSimpanProduksiWrap').style.display = nama === 'produksi' ? 'block' : 'none';
@@ -3345,8 +3463,11 @@
       }
     }
 
+    const totalLama = inputHarga.value;
     inputHarga.value = total > 0 ? total : '';
+    if (inputHarga.value !== totalLama && total > 0) sorotAngka(inputHarga);
     statusEl.textContent = status;
+    statusEl.classList.toggle('teks-amber', status.indexOf('Belum ada harga') >= 0);
   }
 
   // Tampilkan kemasan literan yang akan otomatis dipakai + biayanya, sebelum transaksi disimpan.
@@ -3570,6 +3691,7 @@
   }
   function hitungCampuranProduksi() {
     const info = document.getElementById('produksiCampuranInfo');
+    const isiLamaInfo = info ? info.textContent : '';
     if (!info) return;
     const stokKarung = hitungStokKarungPerMerk();
     const sumber = bacaSumberProduksi();
@@ -3599,6 +3721,7 @@
     }
     if (kurang.length > 0) teks += ` · STOK KURANG: ${kurang.join(', ')}`;
     info.textContent = teks;
+    if (teks !== isiLamaInfo) sorotAngka(info);
     info.className = 'stok-tersedia' + (kurang.length > 0 ? ' kurang' : '');
   }
   function pilihUkuranProduksi(u) {
@@ -4692,6 +4815,21 @@
   window.unduhBackup = unduhBackup;
   window.muatDariFile = muatDariFile;
   window.pindahHalaman = pindahHalaman;
+  // Lembar Menu bawah (porting desain final 6 Agu 2026)
+  function toggleLembarMenu(paksa) {
+    const buka = typeof paksa === 'boolean' ? paksa : !document.body.classList.contains('lembar-menu-terbuka');
+    document.body.classList.toggle('lembar-menu-terbuka', buka);
+  }
+  function pindahDariMenu(nama) { toggleLembarMenu(false); pindahHalaman(nama); }
+  // Sorot angka berubah: mata tertarik ke SATU angka yang berubah (Prinsip 1)
+  function sorotAngka(el) {
+    if (!el) return;
+    el.classList.remove('angka-berubah');
+    void el.offsetWidth;
+    el.classList.add('angka-berubah');
+  }
+  window.toggleLembarMenu = toggleLembarMenu;
+  window.pindahDariMenu = pindahDariMenu;
   window.pilihJenisJual = pilihJenisJual;
   window.hitungTotalJual = hitungTotalJual;
   window.pilihBayar = pilihBayar;
