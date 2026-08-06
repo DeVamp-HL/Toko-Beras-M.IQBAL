@@ -52,9 +52,16 @@
     --gerak-sentuh: 100ms; --gerak-kecil: 180ms;
     --gerak-halaman: 240ms; --gerak-halaman-keluar: 180ms;
     --gerak-panel: 280ms; --gerak-panel-keluar: 220ms;
-    --lengkung-masuk: cubic-bezier(.16, .84, .28, 1);
-    --lengkung-keluar: cubic-bezier(.4, 0, 1, 1);
-    --lengkung-dasar: cubic-bezier(.25, 0, .45, 1);
+    /* Kurva khas sistem — nama sesuai Lembar Sistem Gerak (6 Agu 2026).
+       Tanpa pantulan/overshoot: karakter buku besar kulit & kuningan. */
+    --kurva-kuningan: cubic-bezier(.16, .84, .28, 1);   /* masuk & berpindah */
+    --kurva-keluar: cubic-bezier(.4, 0, 1, 1);          /* semua yang pergi */
+    --kurva-sentuh: cubic-bezier(.25, 0, .45, 1);       /* tekan & lepas */
+    /* alias lama dipertahankan supaya selector yang sudah ada tidak perlu diubah */
+    --lengkung-masuk: var(--kurva-kuningan);
+    --lengkung-keluar: var(--kurva-keluar);
+    --lengkung-dasar: var(--kurva-sentuh);
+    --gerak-sentuh-tekan: 60ms; --gerak-sentuh-lepas: 140ms;
     --kaca: rgba(23, 28, 37, .72);
     --kaca-garis: rgba(255, 255, 255, .07);
   }
@@ -147,9 +154,61 @@
   main { padding: 16px; max-width: 680px; margin: 0 auto; }
   /* ===== Porting desain final (6 Agu 2026): pola komponen ===== */
   body { font-variant-numeric: tabular-nums; } /* semua angka rata digit — Prinsip 1 */
-  @media (hover: none) { button:active, .chip-aktif:active { transform: translateY(1px); } } /* pengganti hover di HP */
-  @keyframes sorotAngkaNaik { 0% { color: var(--emas-terang); } 100% { color: inherit; } }
-  .angka-berubah { animation: sorotAngkaNaik 300ms var(--lengkung-dasar); }
+  /* ===== SISTEM GERAK — 10 momen (Lembar Sistem Gerak, 6 Agu 2026) =====
+     Batas mengikat: HANYA transform & opacity. Pagu keras 350 ms.
+     Keluar selalu lebih cepat daripada masuk — pemakai tidak menunggu sesuatu pergi. */
+
+  /* 1 · Sentuh tombol & chip (ratusan kali sehari) — turun 1 px + meredup, lepas kembali */
+  button, .chip-aktif { transition: transform var(--gerak-sentuh-lepas) var(--kurva-sentuh), opacity var(--gerak-sentuh-lepas) var(--kurva-sentuh); }
+  @media (hover: none) {
+    button:active, .chip-aktif:active {
+      transform: translateY(1px) scale(.985); opacity: .84;
+      transition-duration: var(--gerak-sentuh-tekan);
+    }
+  }
+
+  /* 2 · Angka berubah — nilai BENAR seketika, sorot menyusul sebagai lapisan opacity.
+     Bukan transisi color: warna memicu paint, opacity tetap di compositor (P3). */
+  @keyframes sorotAngkaNaik { 0% { opacity: 1; } 100% { opacity: 0; } }
+  .angka-berubah { position: relative; }
+  .angka-berubah::after {
+    content: ''; position: absolute; inset: -2px -4px; border-radius: 6px;
+    background: rgba(217, 178, 95, .18); pointer-events: none;
+    animation: sorotAngkaNaik 400ms var(--kurva-keluar) forwards;
+  }
+  .angka-berubah.turun::after { background: rgba(242, 112, 89, .18); }
+  .angka-berubah.naik::after { background: rgba(74, 222, 128, .18); }
+
+  /* 3 · Pindah halaman — geser 24 px saja: arah terbaca, mata tidak menempuh perjalanan (P2).
+     main dikunci overflow-x supaya geseran 24 px tidak memunculkan gulir samping sekejap. */
+  main { overflow-x: hidden; }
+  @keyframes halamanMasuk { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .halaman.tampil { animation: halamanMasuk var(--gerak-halaman) var(--kurva-kuningan); }
+
+  /* 6 · Tolakan — goyang teredam HANYA di elemen yang salah, layar lain diam (P1) */
+  @keyframes goyangTolak {
+    0%, 100% { transform: translateX(0); }
+    15% { transform: translateX(-4.5px); }
+    35% { transform: translateX(3.5px); }
+    55% { transform: translateX(-2.5px); }
+    75% { transform: translateX(1.5px); }
+  }
+  .gerak-tolak { animation: goyangTolak 300ms var(--kurva-sentuh); }
+  .sorot-bahaya { box-shadow: 0 0 0 2px rgba(242, 112, 89, .55); }
+  .sorot-kurang { box-shadow: 0 0 0 2px rgba(232, 176, 74, .55); }
+
+  /* 7 · Baris dinamis form Masuk — tumbuh masuk, sisanya merapat */
+  @keyframes barisMasuk { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .baris-merk, .baris-sumber-produksi, .baris-stok-awal { animation: barisMasuk 200ms var(--kurva-kuningan); }
+  .baris-melipat { animation: barisMasuk 180ms var(--kurva-keluar) reverse forwards; }
+
+  /* 9 · Draf pulih & spanduk — melayang masuk dari atas, tidak mendorong halaman melompat */
+  @keyframes spandukMasuk { from { transform: translateY(-12px); opacity: 0; } to { transform: none; opacity: 1; } }
+  body.ada-draf-masuk #spandukDraf { animation: spandukMasuk var(--gerak-halaman) var(--kurva-kuningan); }
+
+  /* 10 · Isian PIN — titik terisi dengan pop kecil */
+  @keyframes titikPop { from { transform: scale(.6); opacity: .5; } to { transform: none; opacity: 1; } }
+  .titik-pin.terisi { animation: titikPop 120ms var(--kurva-sentuh); }
   .teks-amber { color: var(--amber) !important; }
   .lencana-amber {
     display: inline-block; font-size: 10px; font-weight: 700; color: var(--amber);
@@ -1058,7 +1117,13 @@
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-    :root { --gerak-sentuh: 0ms; --gerak-kecil: 0ms; --gerak-halaman: 0ms; --gerak-halaman-keluar: 0ms; --gerak-panel: 0ms; --gerak-panel-keluar: 0ms; }
+    :root { --gerak-sentuh: 0ms; --gerak-kecil: 0ms; --gerak-halaman: 0ms; --gerak-halaman-keluar: 0ms; --gerak-panel: 0ms; --gerak-panel-keluar: 0ms; --gerak-sentuh-tekan: 0ms; --gerak-sentuh-lepas: 0ms; }
+    /* Aturan D: perpindahan hilang, INFORMASI tidak. Denyut antrean diganti label statis;
+       sorot angka berubah TETAP (ia kabar, bukan hiasan); angka detik URUNGKAN tetap jalan. */
+    body.ada-antrean-kirim #statusSambung { animation: none !important; }
+    #buGaris span { transition: none !important; }
+    .angka-berubah { animation-duration: 400ms !important; }
+    #navBawah button:active, .tombol-simpan button:active, #papan button:active { transform: none !important; }
   }
   /* DRAFT RAPI v4: tombol pilihan terpilih disamakan dengan gaya tab "Jual" aktif di nav
      (gradasi emas transparan + garis + glow), menggantikan emas solid datar — berlaku
@@ -2233,8 +2298,10 @@
 
   function hapusBarisMerk(id) {
     const el = document.getElementById('baris-' + id);
-    if (el) el.remove();
-    hitungPerkiraan();
+    if (!el) { hitungPerkiraan(); return; }
+    // Momen 7: melipat keluar dulu supaya mata tidak kehilangan hitungan baris.
+    el.classList.add('baris-melipat');
+    setTimeout(() => { el.remove(); hitungPerkiraan(); }, 180);
   }
 
   function cekMerkLain(id) {
@@ -4013,8 +4080,12 @@
     const totalLama = inputHarga.value;
     inputHarga.value = total > 0 ? total : '';
     if (inputHarga.value !== totalLama && total > 0) sorotAngka(inputHarga);
+    const statusLama = statusEl.textContent;
     statusEl.textContent = status;
-    statusEl.classList.toggle('teks-amber', status.indexOf('Belum ada harga') >= 0);
+    const hargaKosong = status.indexOf('Belum ada harga') >= 0;
+    statusEl.classList.toggle('teks-amber', hargaKosong);
+    // Momen 6: baru muncul (bukan berulang tiap ketik) -> tandai sebagai "belum lengkap", amber.
+    if (hargaKosong && status !== statusLama) tolakElemen(statusEl.parentElement, 'kurang');
     perbaruiKartuTotalJual();
   }
 
@@ -5455,12 +5526,25 @@
   }
   function pindahDariMenu(nama) { toggleLembarMenu(false); pindahHalaman(nama); }
   // Sorot angka berubah: mata tertarik ke SATU angka yang berubah (Prinsip 1)
-  function sorotAngka(el) {
+  function sorotAngka(el, arah) {
     if (!el) return;
-    el.classList.remove('angka-berubah');
+    el.classList.remove('angka-berubah', 'naik', 'turun');
     void el.offsetWidth;
     el.classList.add('angka-berubah');
+    if (arah === 'naik' || arah === 'turun') el.classList.add(arah);
   }
+  // Tolakan (momen 6): goyang + sorot HANYA di elemen yang salah, layar lain diam.
+  function tolakElemen(el, jenis) {
+    if (!el) return;
+    const kelasSorot = jenis === 'kurang' ? 'sorot-kurang' : 'sorot-bahaya';
+    el.classList.remove('gerak-tolak', 'sorot-bahaya', 'sorot-kurang');
+    void el.offsetWidth;
+    el.classList.add('gerak-tolak', kelasSorot);
+    if (navigator.vibrate) { try { navigator.vibrate(35); } catch (e) {} }
+    setTimeout(() => el.classList.remove('gerak-tolak'), 320);
+    setTimeout(() => el.classList.remove(kelasSorot), 600);
+  }
+  window.tolakElemen = tolakElemen;
   window.toggleLembarMenu = toggleLembarMenu;
   window.pindahDariMenu = pindahDariMenu;
   window.tutupKonfirmasi = tutupKonfirmasi;
