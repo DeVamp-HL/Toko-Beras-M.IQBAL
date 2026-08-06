@@ -254,15 +254,17 @@
   }
   .lk-total span { font-size: 9.5px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--redup); font-weight: 700; }
   .lk-total b { font-size: 26px; font-weight: 800; color: var(--hijau-tua); }
+  .lk-sesudah { color: var(--emas-terang); font-weight: 800; }
+  .lk-tombol { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 12px; }
   #lembarKonfirmasi .lk-utama {
-    width: 100%; min-height: 54px; margin-top: 12px; border-radius: 13px;
+    width: 100%; min-height: 54px; border-radius: 13px;
     background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
     color: var(--emas-terang); border: 1px solid rgba(217, 178, 95, .55);
     font-size: 16px; font-weight: 800; font-family: inherit;
     box-shadow: 0 0 12px rgba(217, 178, 95, .18), inset 0 1px 0 rgba(255, 255, 255, .07);
   }
   #lembarKonfirmasi .lk-batal {
-    width: 100%; min-height: 48px; margin-top: 8px; border-radius: 12px;
+    width: 100%; min-height: 54px; border-radius: 12px;
     background: none; border: 1px solid var(--garis); color: var(--redup);
     font-size: 13px; font-weight: 700; font-family: inherit;
   }
@@ -279,7 +281,9 @@
   }
   body.urungkan-tampil #bilahUrungkan { display: flex; }
   body.urungkan-siap #bilahUrungkan { transform: translateY(0); opacity: 1; }
-  #bilahUrungkan #buTeks { flex: 1; font-size: 12.5px; color: var(--teks); line-height: 1.35; }
+  #bilahUrungkan .bu-isi { flex: 1; min-width: 0; }
+  #bilahUrungkan #buJudul { display: block; font-size: 12.5px; font-weight: 800; color: var(--hijau-naik); }
+  #bilahUrungkan #buTeks { display: block; font-size: 10.5px; color: var(--redup); line-height: 1.4; margin-top: 2px; }
   #bilahUrungkan button {
     flex: 0 0 auto; min-height: 44px; padding: 0 14px; border-radius: 10px;
     background: none; border: 1px solid rgba(217, 178, 95, .5); color: var(--emas-terang);
@@ -1173,18 +1177,23 @@
 <div id="overlayKonfirmasi" onclick="tutupKonfirmasi()"></div>
 <div id="lembarKonfirmasi" role="dialog" aria-modal="true">
   <div class="lm-pegangan"></div>
-  <h3>Periksa dulu</h3>
+  <h3>Periksa sebelum simpan</h3>
   <p class="lk-sub">Setelah disimpan, angka ini masuk omzet dan stok berkurang.</p>
   <div id="lkRincian"></div>
-  <div class="lk-total"><span>Total</span><b id="lkTotal">Rp0</b></div>
-  <button type="button" id="lkSimpan" class="lk-utama" onclick="lanjutSimpanJual()">Ya, Simpan</button>
-  <button type="button" class="lk-batal" onclick="tutupKonfirmasi()">Periksa lagi</button>
+  <div class="lk-total"><span>Total diterima</span><b id="lkTotal">Rp0</b></div>
+  <div class="lk-tombol">
+    <button type="button" class="lk-batal" onclick="tutupKonfirmasi()">Ubah</button>
+    <button type="button" id="lkSimpan" class="lk-utama" onclick="lanjutSimpanJual()">Ya, Simpan</button>
+  </div>
 </div>
 
 <!-- BILAH URUNGKAN (Alur UX 1: kesempatan membatalkan beberapa detik) -->
 <div id="bilahUrungkan">
-  <span id="buTeks">Tersimpan.</span>
-  <button type="button" onclick="urungkanTransaksi()">URUNGKAN <i id="buHitung">6</i></button>
+  <div class="bu-isi">
+    <b id="buJudul">Tersimpan</b>
+    <span id="buTeks">—</span>
+  </div>
+  <button type="button" onclick="urungkanTransaksi()">URUNGKAN <i>· <span id="buHitung">6</span> dtk</i></button>
   <div id="buGaris"><span></span></div>
 </div>
 <div id="lembarMenu">
@@ -1752,11 +1761,11 @@
 
     <div id="spandukDraf">
       <div class="sd-isi">
-        <b>Isian sebelumnya masih tersimpan</b>
+        <b>Lanjutkan yang tadi?</b>
         <span id="sdKeterangan">Terhenti di tengah pengisian.</span>
       </div>
-      <button type="button" class="sd-lanjut" onclick="pulihkanDrafMasuk()">Lanjutkan</button>
-      <button type="button" class="sd-buang" onclick="buangDrafMasuk()">Buang</button>
+      <button type="button" class="sd-lanjut" id="sdTombolLanjut" onclick="pulihkanDrafMasuk()">Lanjutkan</button>
+      <button type="button" class="sd-buang" onclick="buangDrafMasuk()">Buang draf</button>
     </div>
 
     <div class="kartu">
@@ -2247,10 +2256,19 @@
     if (!d || !d.baris || d.baris.length === 0 || isiSekarang.length > 0) {
       document.body.classList.remove('ada-draf-masuk'); return;
     }
+    // Keterangan mengikuti file UX: pemasok, berapa baris lengkap vs setengah,
+    // jam simpan, dan nilai sementara — supaya jelas apa yang akan dipulihkan.
     const waktu = new Date(d.disimpanPada);
+    const lengkap = d.baris.filter(b => b.merk && b.jumlahKarung > 0 && b.hargaPerKg > 0).length;
+    const separuh = d.baris.length - lengkap;
+    const nilai = d.baris.reduce((a, b) => a + (b.subtotalHarga || 0), 0) + (d.biayaBongkar || 0);
+    const pemasok = d.pemasok === 'Lainnya' ? (d.pemasokLain || 'Pemasok lain') : (d.pemasok || 'Pemasok');
     const ket = document.getElementById('sdKeterangan');
-    if (ket) ket.textContent = d.baris.length + ' merk terisi, disimpan ' +
-      waktu.toLocaleString('id-ID', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) + '.';
+    if (ket) ket.textContent = 'Draf Masuk ' + pemasok + ' — ' + lengkap + ' baris lengkap' +
+      (separuh > 0 ? ' + ' + separuh + ' baris setengah terisi' : '') + '. Tersimpan otomatis ' +
+      waktu.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) + ' · ' + formatRupiah(nilai) + ' sementara.';
+    const tl = document.getElementById('sdTombolLanjut');
+    if (tl) tl.textContent = 'Lanjutkan dari baris ' + d.baris.length;
     document.body.classList.add('ada-draf-masuk');
   }
   function pulihkanDrafMasuk() {
@@ -3428,13 +3446,17 @@
   // Tombol Simpan tidak lagi langsung menulis ke database. Ia membuka lembar "Periksa dulu"
   // berisi rincian + total, baru setelah dikonfirmasi transaksi benar-benar tersimpan.
   // Alasan: satu nol kelebihan = jutaan rupiah tercatat salah (Prinsip 1 menang atas 2).
+  let rincianSebelumSimpan = null;   // dipakai bilah URUNGKAN untuk menyebut stok sesudah
   function simpanJualAtauRetur() {
     if (jenisJualAktif === 'retur') { lanjutSimpanJual(); return; } // retur tidak menambah omzet
     const rincian = bacaRincianJual();
+    rincianSebelumSimpan = rincian;
     if (!rincian) { lanjutSimpanJual(); return; }  // biar validasi asli yang bicara
     document.getElementById('lkRincian').innerHTML = rincian.baris.map(b =>
       `<div class="baris-44"><span class="nama">${b[0]}</span><span class="angka">${b[1]}</span></div>`).join('');
     document.getElementById('lkTotal').textContent = formatRupiah(rincian.total);
+    const elS = document.getElementById('lkSimpan');
+    if (elS) elS.focus({ preventScroll: true });
     document.body.classList.add('konfirmasi-terbuka');
   }
   function tutupKonfirmasi() { document.body.classList.remove('konfirmasi-terbuka'); }
@@ -3483,31 +3505,47 @@
     const bayarAktif = ['Tunai','Qris','Kredit'].map(c => el('bayar' + c)).find(x => x && x.classList.contains('pilih'));
     const bayar = bayarAktif ? bayarAktif.id.replace('bayar','') : 'Tunai';
     const baris = [];
+    let stokSesudah = null;   // "46 → 42 unit" — supaya akibat simpan terlihat SEBELUM disimpan
     if (jenisJualAktif === 'kemasan') {
       const k = el('jualKemasanProduk').value; if (!k) return null;
       const [nama, uk] = k.split('|');
+      const jml = parseFloat(el('jualKemasanJumlah').value) || 0;
+      const hSat = ambilHargaKemasan().find(x => x.merk === nama && x.ukuran === parseFloat(uk));
       baris.push(['Produk', escapeHtml(nama) + ' ' + uk + ' kg']);
-      baris.push(['Jumlah', (parseFloat(el('jualKemasanJumlah').value) || 0) + ' unit']);
+      baris.push(['Jumlah', jml + ' unit' + (hSat ? ' × ' + formatRupiah(hSat.hargaPerUnit) : '')]);
+      const sk = hitungStokKemasan()[k];
+      if (sk) stokSesudah = [sk.sisaUnit, sk.sisaUnit - jml, 'unit'];
     } else if (jenisJualAktif === 'repacking') {
-      if (!el('jualRepackingMerk').value) return null;
-      baris.push(['Dari karung', escapeHtml(el('jualRepackingMerk').value)]);
+      const merk = el('jualRepackingMerk').value; if (!merk) return null;
+      const kg = parseFloat(el('jualRepackingKg').value) || 0;
+      baris.push(['Dari karung', escapeHtml(merk)]);
       baris.push(['Jadi produk', escapeHtml(el('jualRepackingNamaProduk').value || '-')]);
-      baris.push(['Berat', (parseFloat(el('jualRepackingKg').value) || 0) + ' kg']);
+      baris.push(['Berat', kg + ' kg']);
+      const s = hitungStokKarungPerMerk()[merk];
+      if (s) stokSesudah = [s.sisaKg, Math.round((s.sisaKg - kg) * 100) / 100, 'kg'];
     } else if (jenisJualAktif === 'karung') {
-      if (!el('jualKarungMerk').value) return null;
+      const merk = el('jualKarungMerk').value; if (!merk) return null;
       const berat = parseFloat(el('jualKarungBerat').value) || 50;
       const jml = parseFloat(el('jualKarungJumlah').value) || 0;
-      baris.push(['Merk', escapeHtml(el('jualKarungMerk').value)]);
+      baris.push(['Merk', escapeHtml(merk)]);
       baris.push(['Karung utuh', jml + ' × ' + berat + ' kg = ' + (jml * berat) + ' kg']);
+      const s = hitungStokKarungPerMerk()[merk];
+      if (s) stokSesudah = [s.sisaKg, Math.round((s.sisaKg - jml * berat) * 100) / 100, 'kg'];
     } else if (jenisJualAktif === 'literan') {
-      if (!el('jualLiteranJenis').value) return null;
-      baris.push(['Beras', escapeHtml(el('jualLiteranJenis').value)]);
-      baris.push(['Jumlah', (parseFloat(el('jualLiteranJumlah').value) || 0) + ' liter']);
+      const jenis = el('jualLiteranJenis').value; if (!jenis) return null;
+      const liter = parseFloat(el('jualLiteranJumlah').value) || 0;
+      const hL = ambilHargaLiteran().find(x => x.merk === jenis);
+      baris.push(['Beras', escapeHtml(jenis)]);
+      baris.push(['Jumlah', liter + ' liter' + (hL ? ' × ' + formatRupiah(hL.hargaPerLiter) : '')]);
+      const rasio = RASIO_KONVERSI[jenis] || RASIO_DEFAULT;
+      const s = hitungStokKarungPerMerk()[jenis];
+      if (s) stokSesudah = [s.sisaKg, Math.round((s.sisaKg - liter * rasio) * 100) / 100, 'kg'];
     } else return null;
+    if (stokSesudah) baris.push(['Stok sesudah', stokSesudah[0] + ' → <b class="lk-sesudah">' + stokSesudah[1] + '</b> ' + stokSesudah[2]]);
     baris.push(['Cara bayar', bayar]);
     const plg = el('jualNamaPelanggan').value.trim();
     if (bayar === 'Kredit' && plg) baris.push(['Pelanggan', escapeHtml(plg)]);
-    return { baris, total };
+    return { baris, total, stokSesudah };
   }
 
   async function lanjutSimpanJual() {
@@ -3525,9 +3563,11 @@
 
   // ===== URUNGKAN: beberapa detik untuk membatalkan transaksi yang baru tersimpan =====
   let jamUrungkan = null, hitungMundurUrungkan = null, trxUrungkan = null;
-  function tampilkanUrungkan(trx, keterangan) {
+  function tampilkanUrungkan(trx, keterangan, judul) {
     batalkanTimerUrungkan();
     trxUrungkan = trx;
+    const elJudul = document.getElementById('buJudul');
+    if (elJudul) elJudul.textContent = judul || 'Tersimpan';
     document.getElementById('buTeks').textContent = keterangan;
     const angka = document.getElementById('buHitung');
     let sisa = 6; angka.textContent = sisa;
@@ -4114,8 +4154,16 @@
     // Bilah URUNGKAN menggantikan pesan-ok statis: memberi kabar SEKALIGUS jalan keluar
     // beberapa detik (Alur UX 1). Pesan-ok lama tetap dipakai di jalur non-mobile lebar.
     const namaSingkat = transaksi.namaProduk || transaksi.merkSumber || 'Transaksi';
+    // Keterangan mengikuti file UX: apa yang tersimpan, stok jadi berapa, masuk riwayat nomor berapa.
+    const bagian = [namaSingkat];
+    if (transaksi.jumlahUnit) bagian[0] += ' × ' + transaksi.jumlahUnit;
+    else if (transaksi.totalKg) bagian[0] += ' · ' + transaksi.totalKg + ' kg';
+    if (rincianSebelumSimpan && rincianSebelumSimpan.stokSesudah) {
+      bagian.push('stok jadi ' + rincianSebelumSimpan.stokSesudah[1] + ' ' + rincianSebelumSimpan.stokSesudah[2]);
+    }
+    bagian.push('masuk Riwayat #' + String(transaksi.id).slice(-4));
     tampilkanJualHariIni();
-    tampilkanUrungkan(transaksi, 'Tersimpan: ' + namaSingkat + ' — ' + formatRupiah(hargaTotal));
+    tampilkanUrungkan(transaksi, bagian.join(' · '), 'Tersimpan — ' + formatRupiah(hargaTotal));
     window.scrollTo({top: 0, behavior: 'smooth'});
   }
 
