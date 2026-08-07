@@ -380,6 +380,13 @@
     #halamanRingkasan .ring-lama-hp,
     #halamanRingkasan .ringkasan-atas.ringkasan-mobile { display: none !important; }
   }
+  /* Donat lama pensiun di SEMUA lebar, bukan cuma HP: persennya dihitung hanya dari
+     transaksi yang punya jenis produk, sementara angka di tengahnya total penuh —
+     72/14/14 di atas Rp 34,3 jt padahal ketiganya cuma menjelaskan Rp 11,3 jt.
+     Persis cacat "dua angka berbeda di satu layar" yang diperingatkan Lembar 10.
+     Kartu komposisi yang baru menggantikannya di semua lebar. Markup & id donat lama
+     dibiarkan di DOM supaya JS lama tidak perlu disentuh. */
+  #halamanRingkasan .dua-grafik > .kartu.ring-lama-hp { display: none !important; }
   /* ===== Konfirmasi pra-simpan & URUNGKAN (porting UX 6 Agu 2026) ===== */
   #overlayKonfirmasi {
     position: fixed; inset: 0; z-index: 40; background: #000; opacity: 0; pointer-events: none;
@@ -504,12 +511,14 @@
   .kd-judul h3 { margin: 0; font-size: 13px; font-weight: 700; color: var(--teks); }
   .kd-judul .kd-hitung { font-size: 10.5px; color: var(--redup); font-weight: 600; }
   .panel-kepala .kd-hitung { margin-left: auto; font-size: 10.5px; color: var(--redup); font-weight: 600; }
-  .kd-tautan { background: none; border: none; font-family: inherit; font-size: 9.5px; letter-spacing: 1.2px; font-weight: 700; color: var(--emas-terang); padding: 6px 0 6px 10px; }
+  /* Tulisannya tetap 9,5 px seperti mockup, tapi tombolnya 44 px — terukur 23 px
+     waktu audit Sprint 4, dan batas target sentuh 44 px tanpa kecuali. */
+  .kd-tautan { display: inline-flex; align-items: center; min-height: 44px; background: none; border: none; font-family: inherit; font-size: 9.5px; letter-spacing: 1.2px; font-weight: 700; color: var(--emas-terang); padding: 0 0 0 10px; }
   .baris-44 .jam { font-size: 10.5px; color: var(--redup); width: 34px; flex: 0 0 auto; }
   .baris-44 .pil-aksi {
     flex: 0 0 auto; font-size: 9.5px; font-weight: 700; color: var(--emas-terang);
     border: 1px solid rgba(217, 178, 95, .4); border-radius: 16px; padding: 4px 9px;
-    background: none; font-family: inherit; min-height: 30px;
+    background: none; font-family: inherit; min-height: 44px;   /* terukur 30 px, batasnya 44 */
   }
   .baris-44 .ikon-perhatian { width: 15px; height: 15px; flex: 0 0 auto; }
   .kpi-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -1685,6 +1694,39 @@
     background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
     border-color: rgba(217, 178, 95, .55);
   }
+  /* ===== Penyempurnaan Lembar 10 — kartu komposisi omzet ===== */
+  .kartu-komposisi {
+    display: flex; align-items: center; gap: 18px; margin: 0 0 12px; padding: 20px;
+    border-radius: 20px; background: var(--kartu);
+    background-image: linear-gradient(135deg, rgba(217, 178, 95, .075), rgba(217, 178, 95, 0) 58%);
+    border: 1px solid rgba(217, 178, 95, .22); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+  }
+  .komp-donat { position: relative; width: 124px; height: 124px; flex: 0 0 auto; }
+  .komp-donat svg { position: absolute; top: 0; left: 0; width: 124px; height: 124px; }
+  .komp-tengah {
+    position: absolute; top: 0; left: 0; width: 124px; height: 124px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; line-height: 1.15;
+  }
+  .komp-tengah b { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .komp-tengah b i { font-style: normal; font-size: 9.5px; color: var(--emas); font-weight: 700; }
+  .komp-tengah b u { text-decoration: none; font-size: 9.5px; color: var(--redup); font-weight: 700; }
+  .komp-tengah > span { font-size: 9.5px; letter-spacing: 2.2px; color: var(--redup); font-weight: 700; margin-top: 5px; }
+  .komp-kanan { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .komp-baris {
+    display: flex; align-items: center; gap: 12px; min-height: 44px;
+    border-bottom: 1px solid rgba(255, 255, 255, .05);
+  }
+  .komp-baris i { width: 3px; height: 16px; border-radius: 2px; flex: 0 0 auto; }
+  .komp-baris span { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.3; }
+  .komp-baris b { flex: 0 0 auto; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .3px; }
+  .komp-baris b u { text-decoration: none; font-size: 9.5px; color: var(--redup); margin-left: 1px; }
+  .komp-label { font-size: 9.5px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--redup); font-weight: 700; padding-top: 12px; }
+  /* Di 360 px donat + legenda berdampingan jadi sempit; legenda turun ke bawah. */
+  @media (max-width: 379px) {
+    .kartu-komposisi { flex-direction: column; align-items: stretch; gap: 12px; }
+    .komp-donat { align-self: center; }
+  }
   /* ===== Penyempurnaan Lembar 5 + 9 — pola daftar panjang (Riwayat) ===== */
   /* Judul + cari + saringan menempel di atas; daftarnya yang bergerak. */
   .riw-kepala {
@@ -2430,6 +2472,31 @@
         <div class="legenda-omzet" id="legendaOmzet"><div class="kosong" style="padding:6px;">Belum ada data.</div></div>
       </div>
     </div>
+
+    <!-- LEMBAR 10 — kartu komposisi omzet, disisipkan TEPAT di bawah Omzet 7 Hari.
+         Kartu itu berakhir dengan "30 hari · RpX"; kartu ini memecah angka yang SAMA.
+         Dua kartu berurutan menjawab satu pertanyaan: berapa, lalu dari mana.
+         Seluruh angkanya dihitung ulang dari ambilPenjualan() saat halaman dirender —
+         tidak ada satu pun angka tetap di kode. -->
+    <div class="kartu-komposisi" id="kartuKomposisi">
+      <div class="komp-donat">
+        <svg viewBox="0 0 124 124" aria-hidden="true">
+          <circle cx="62" cy="62" r="57" fill="none" stroke="rgba(217,178,95,.16)" stroke-width="1"></circle>
+          <circle cx="62" cy="62" r="44" fill="none" stroke="#1b212c" stroke-width="9"></circle>
+          <g id="kompBusur" transform="rotate(-90 62 62)" stroke-width="9" stroke-linecap="round" fill="none"></g>
+        </svg>
+        <div class="komp-tengah">
+          <b id="kompTotal">Rp0</b>
+          <span>30 HARI</span>
+        </div>
+      </div>
+      <div class="komp-kanan">
+        <div id="kompLegenda"></div>
+        <div class="komp-label">Komposisi omzet</div>
+      </div>
+    </div>
+    <p class="catatan-kecil" id="kompCatatan" hidden></p>
+
     <div class="ringkasan-mobile ringkasan-mobile-2">
       <div class="kartu-daftar kd-kepala">
         <div class="kd-judul"><h3>Penjualan Terakhir</h3><button type="button" class="kd-tautan" onclick="pindahDariMenu('rekap')">SEMUA →</button></div>
@@ -8781,6 +8848,10 @@
       if (elTotal) elTotal.textContent = formatRupiah(total30);
       const el30 = document.getElementById('ringOmzet30Hari');
       if (el30) el30.textContent = '30 hari · Rp ' + singkatJuta(total30) + (total30 >= 1000000 ? ' jt' : '');
+      // Lembar 10 — kartu komposisi. Dipanggil dengan transaksi & total YANG SAMA
+      // dengan baris di atas: dua angka 30 hari yang berbeda di satu layar adalah
+      // cacat yang paling cepat merusak kepercayaan.
+      gambarKomposisiOmzet(semua.filter(p => p.tanggal >= batasIso), total30);
       const legenda = document.getElementById('legendaOmzet');
       if (legenda) legenda.innerHTML =
         '<div><i style="background:#d4ab5e;"></i>Literan<b>' + pL + '%</b></div>' +
@@ -8796,6 +8867,86 @@
       }
     } catch (e) { /* murni tampilan — tidak boleh mengganggu sistem */ }
   }
+  // ===================== LEMBAR 10 — KARTU KOMPOSISI OMZET =====================
+  // Potongan terbesar justru "tidak tercatat": kasir darurat sengaja hanya mencatat
+  // nominal, tanpa nama produk. Kartu yang jujur menampilkan potongan itu apa adanya
+  // dan MENAMAINYA terang-terangan — bukan menyembunyikannya, bukan membaginya rata
+  // ke jenis lain. Warnanya amber karena artinya memang "data kurang", bukan bahaya.
+  const KOMP_KELOMPOK = [
+    { kunci: 'darurat', nama: 'Kasir darurat — produk tidak tercatat', warna: '#e8b04a',
+      cocok: j => j === 'kasir_darurat_nominal' },
+    { kunci: 'karung', nama: 'Karung utuh', warna: '#f2d795', cocok: j => j === 'karung' || j === 'repacking' },
+    { kunci: 'kemasan', nama: 'Kemasan jadi', warna: '#c9a24d', cocok: j => j === 'kemasan' },
+    { kunci: 'literan', nama: 'Literan', warna: '#9b7f42', cocok: j => j === 'literan' }
+  ];
+
+  function gambarKomposisiOmzet(trx30, total30) {
+    const kartu = document.getElementById('kartuKomposisi');
+    if (!kartu) return;
+    const nilai = {}; KOMP_KELOMPOK.forEach(k => { nilai[k.kunci] = 0; });
+    let lain = 0;
+    trx30.forEach(p => {
+      const n = p.hargaTotal || 0;
+      const k = KOMP_KELOMPOK.find(g => g.cocok(p.jenis));
+      if (k) nilai[k.kunci] += n; else lain += n;
+    });
+
+    const busur = document.getElementById('kompBusur');
+    const legenda = document.getElementById('kompLegenda');
+    const elTotal = document.getElementById('kompTotal');
+    const catatan = document.getElementById('kompCatatan');
+
+    // Angka tengah = total30, sumber yang sama persis dengan subjudul Omzet 7 Hari.
+    elTotal.innerHTML = total30 === 0 ? 'Rp0'
+      : '<i>Rp</i> ' + singkatJuta(total30) + (Math.abs(total30) >= 1000000 ? '<u> jt</u>' : '<u> rb</u>');
+
+    if (total30 <= 0) {
+      busur.innerHTML = '';
+      legenda.innerHTML = '<div class="komp-baris"><span>Belum ada penjualan 30 hari terakhir.</span></div>';
+      catatan.hidden = true;
+      return;
+    }
+
+    // Persen dihitung terhadap total30 yang sama, bukan terhadap jumlah potongan yang
+    // digambar — kalau ada potongan harga (nilainya negatif), cincinnya memang tidak
+    // menutup penuh, dan celah itu yang menceritakan keadaannya.
+    const KELILING = 2 * Math.PI * 44;
+    let offset = 0, isiBusur = '';
+    const barisLegenda = [];
+    KOMP_KELOMPOK.forEach(g => {
+      const n = nilai[g.kunci];
+      if (n === 0) return;
+      const pct = n / total30 * 100;
+      barisLegenda.push({ nama: g.nama, warna: g.warna, pct: pct });
+      if (n <= 0) return;                       // busur tidak bisa negatif
+      const panjang = KELILING * (n / total30);
+      isiBusur += `<circle cx="62" cy="62" r="44" stroke="${g.warna}"` +
+        ` stroke-dasharray="${panjang.toFixed(2)} ${(KELILING - panjang).toFixed(2)}"` +
+        ` stroke-dashoffset="${(-offset).toFixed(2)}"></circle>`;
+      offset += panjang;
+    });
+    if (lain !== 0) barisLegenda.push({ nama: lain < 0 ? 'Potongan harga' : 'Lainnya', warna: '#5d6570', pct: lain / total30 * 100 });
+
+    busur.innerHTML = isiBusur;
+    legenda.innerHTML = barisLegenda.map(b =>
+      `<div class="komp-baris"><i style="background:${b.warna}"></i>` +
+      `<span>${escapeHtml(b.nama)}</span>` +
+      `<b>${(b.pct < 0 ? '−' : '') + Math.abs(b.pct).toFixed(1).replace('.', ',')}<u>%</u></b></div>`
+    ).join('');
+
+    // Kalau potongan "tidak tercatat" cukup besar, akibatnya disebut dengan kalimat,
+    // bukan cuma diberi warna — laba per jenis produk tidak bisa dihitung dari bagian itu.
+    const pctDarurat = nilai.darurat / total30 * 100;
+    if (pctDarurat >= 10) {
+      catatan.hidden = false;
+      catatan.textContent = 'Rp ' + formatRibuan(nilai.darurat) + ' (' +
+        pctDarurat.toFixed(1).replace('.', ',') + '%) masuk lewat kasir darurat yang hanya mencatat nominal. ' +
+        'Bagian itu tidak punya nama produk, jadi tidak ikut terhitung di halaman Laba.';
+    } else {
+      catatan.hidden = true;
+    }
+  }
+
   const _tampilkanRingkasanAsli = tampilkanRingkasan;
   tampilkanRingkasan = function () { _tampilkanRingkasanAsli(); segarkanVisualRingkasan(); };
   setTimeout(segarkanVisualRingkasan, 900);
