@@ -365,7 +365,7 @@
   #bilahUrungkan button i { font-style: normal; color: var(--redup); font-weight: 700; }
   #buGaris { position: absolute; left: 14px; right: 14px; bottom: 7px; height: 2px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; }
   #buGaris span { display: block; height: 100%; width: 100%; background: var(--emas); transform-origin: left; }
-  body.urungkan-siap #buGaris span { transform: scaleX(0); transition: transform 6s linear; }
+  body.urungkan-siap #buGaris span { transform: scaleX(0); transition: transform 5s linear; }
   @keyframes denyutAntrean { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
   body.ada-antrean-kirim #statusSambung { animation: denyutAntrean 2.2s ease-in-out infinite; }
   /* Spanduk draf pulih (Alur UX 3: pekerjaan tidak hilang saat terinterupsi pembeli) */
@@ -685,10 +685,13 @@
   .stok-tersedia.kurang { background: var(--peringatan-bg); border-color: rgba(242, 112, 89, .45); color: var(--merah); font-weight: 700; }
   .tab-bayar { display: flex; gap: 8px; margin-top: 4px; }
   .tab-bayar button {
-    flex: 1; padding: 12px 4px; border: 1px solid var(--garis); background: #151a23;
+    flex: 1; min-height: 44px; padding: 12px 4px; border: 1px solid var(--garis); background: #151a23;
     border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--redup);
   }
-  .tab-bayar button.pilih { background: var(--emas); border-color: var(--emas); color: var(--tombol-teks); }
+  .tab-bayar button.pilih {
+    background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+    border-color: rgba(217, 178, 95, .55); color: var(--emas-terang);
+  }
   .badge-stok-rendah { background: var(--merah); color: #fff; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 5px; margin-left: 6px; }
   .grid-tombol-pilih {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px;
@@ -951,12 +954,12 @@
   .modal-pin-bg.tampil .modal-pin-kotak { animation: modalPop .3s cubic-bezier(.34,1.56,.64,1); }
   #gerbangSistem.tampil { animation: fadeBg .25s ease; }
   .cari-global-hasil.tampil { animation: dropdownMasuk .18s cubic-bezier(.16,1,.3,1); }
-  .titik-pil { animation: titikNyala 2.2s ease-in-out infinite; }
-  .badge-stok-rendah { animation: pulsePeringatan 1.8s ease-out infinite; }
+  /* titikNyala DIBUANG (audit 7 Agu): gerak berulang tanpa informasi. Izin tunggal = denyut antrean. */
+  /* pulsePeringatan DIBUANG (audit 7 Agu): stok menipis sudah ditandai titik + angka merah yang diam. */
 
-  button { transition: transform .12s ease, box-shadow .15s ease, background-color .15s ease, border-color .15s ease, color .15s ease; }
+  button { transition: transform .12s var(--kurva-sentuh), opacity .12s var(--kurva-sentuh); /* audit 7 Agu: hanya transform & opacity */ }
   button:active { transform: translateY(1px) scale(.98); }
-  select, input[type="number"], input[type="text"], input[type="date"], input[type="month"], textarea { transition: border-color .15s ease, box-shadow .15s ease; }
+  select, input[type="number"], input[type="text"], input[type="date"], input[type="month"], textarea { transition: opacity .15s var(--kurva-sentuh); }
 
   nav button:not(.aktif):hover { color: #c9d0da; background: rgba(255, 255, 255, .045); }
   .nav-footer .avatar { transition: transform .2s ease; }
@@ -966,27 +969,27 @@
   .grid-tombol-pilih button:not(.pilih):hover,
   .tab-bayar button:not(.pilih):hover,
   .satuan-toggle button:not(.pilih):hover { border-color: var(--emas-gelap); color: #d8dde4; background: rgba(217, 178, 95, .06); }
-  .kartu-jenis-jual button.pilih, .grid-tombol-pilih button.pilih, .tab-bayar button.pilih, .satuan-toggle button.pilih { transition: background .18s ease, border-color .18s ease, color .18s ease, transform .12s ease; }
+  .kartu-jenis-jual button.pilih, .grid-tombol-pilih button.pilih, .tab-bayar button.pilih, .satuan-toggle button.pilih { transition: transform .18s var(--kurva-sentuh), opacity .18s var(--kurva-sentuh); }
 
   .tombol-tambah-merk:hover { background: rgba(217, 178, 95, .1); border-color: var(--emas-terang); }
   .tombol-hapus-merk:hover { background: rgba(242, 112, 89, .1); }
   .panel-kepala a { transition: opacity .15s ease; }
   .panel-kepala a:hover { opacity: .72; }
-  .cari-global-item { transition: background-color .12s ease; }
+  .cari-global-item { transition: opacity .12s var(--kurva-sentuh); }
   .cari-global-item:hover { background: rgba(217, 178, 95, .07); }
-  .cari-details summary { transition: color .15s ease; }
+  .cari-details summary { transition: opacity .15s var(--kurva-sentuh); }
   .cari-details summary:hover { color: #c9d0da; }
   .cari-details summary::before { display: inline-block; transition: transform .2s ease; }
   .cari-details[open] summary::before { transform: rotate(180deg); }
 
-  .kpi .kartu { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .kpi .kartu { transition: transform .2s var(--kurva-sentuh), opacity .2s var(--kurva-sentuh); }
   .kpi .kartu:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06); border-color: rgba(217, 178, 95, .3); }
 
-  .tombol-logo-drawer, .tombol-gerbang, .modal-pin-masuk { transition: transform .15s ease, filter .15s ease; }
+  .tombol-logo-drawer, .tombol-gerbang, .modal-pin-masuk { transition: transform .15s var(--kurva-sentuh), opacity .15s var(--kurva-sentuh); }
   .tombol-logo-drawer:hover, .tombol-gerbang:hover, .modal-pin-masuk:hover { filter: brightness(1.08); }
   /* DRAFT RAPI: tombol "Cari riwayat" jadi ikon kaca kecil di header (bukan bar penuh) */
   .cari-details { border-bottom: none; background: none; position: relative; flex: 0 0 auto; align-self: center; }
-  .cari-details summary { list-style: none; cursor: pointer; padding: 0; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .06); border: 1px solid var(--kaca-garis); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: var(--emas-terang); transition: background-color .15s ease, border-color .15s ease, transform .15s ease; }
+  .cari-details summary { list-style: none; cursor: pointer; padding: 0; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .06); border: 1px solid var(--kaca-garis); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: var(--emas-terang); transition: transform .15s var(--kurva-sentuh), opacity .15s var(--kurva-sentuh); }
   .cari-details summary::-webkit-details-marker { display: none; }
   .cari-details summary::before { content: none; }
   .cari-details[open] summary::before { content: none; transform: none; }
@@ -1006,12 +1009,12 @@
   .tombol-simpan button::after, .tombol-utama-kartu::after, .modal-pin-masuk::after, .tombol-gerbang::after {
     content: ''; position: absolute; top: 0; left: -70%; width: 45%; height: 100%;
     background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .45), transparent);
-    transform: skewX(-20deg); animation: kilau 3.6s ease-in-out infinite; pointer-events: none;
+    transform: skewX(-20deg); /* kilau DIBUANG (audit 7 Agu): hiasan berulang, boros di HP Ben */ pointer-events: none;
   }
   .tombol-simpan button:disabled::after { display: none; }
 
   /* Titik penanda di tiap item nav (ala mockup: aside a .ikon), aktif menyala */
-  nav button::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .45; margin-right: 10px; vertical-align: 2px; transition: opacity .2s ease, box-shadow .2s ease; }
+  nav button::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .45; margin-right: 10px; vertical-align: 2px; transition: opacity .2s var(--kurva-sentuh); }
   nav button.aktif::before { opacity: 1; box-shadow: 0 0 7px currentColor; }
 
   /* Drawer dibuka: item nav masuk berurutan (stagger halus) */
@@ -1041,7 +1044,7 @@
   /* Baris tabel & daftar bereaksi saat disentuh kursor (ala tabel mockup) */
   .tabel-terakhir tr:hover td { background: rgba(212, 171, 94, .05); }
   .item-batch table tr:hover td { background: rgba(212, 171, 94, .04); }
-  .kartu .item-batch { transition: background-color .15s ease; }
+  .kartu .item-batch { transition: opacity .15s var(--kurva-sentuh); }
   .kartu .item-batch:hover { background: rgba(217, 178, 95, .035); }
 
   /* Detail modern: radius kartu, seleksi teks emas, scrollbar tipis, fokus keyboard, hover input */
@@ -1122,7 +1125,7 @@
        sorot angka berubah TETAP (ia kabar, bukan hiasan); angka detik URUNGKAN tetap jalan. */
     body.ada-antrean-kirim #statusSambung { animation: none !important; }
     #buGaris span { transition: none !important; }
-    .angka-berubah { animation-duration: 400ms !important; }
+    .angka-berubah, .angka-berubah::after { animation-duration: 400ms !important; }
     #navBawah button:active, .tombol-simpan button:active, #papan button:active { transform: none !important; }
   }
   /* DRAFT RAPI v4: tombol pilihan terpilih disamakan dengan gaya tab "Jual" aktif di nav
@@ -1276,7 +1279,7 @@
     <b id="buJudul">Tersimpan</b>
     <span id="buTeks">—</span>
   </div>
-  <button type="button" onclick="urungkanTransaksi()">URUNGKAN <i>· <span id="buHitung">6</span> dtk</i></button>
+  <button type="button" onclick="urungkanTransaksi()">URUNGKAN <i>· <span id="buHitung">5</span> dtk</i></button>
   <div id="buGaris"><span></span></div>
 </div>
 <div id="lembarMenu">
@@ -3655,11 +3658,11 @@
     if (elJudul) elJudul.textContent = judul || 'Tersimpan';
     document.getElementById('buTeks').textContent = keterangan;
     const angka = document.getElementById('buHitung');
-    let sisa = 6; angka.textContent = sisa;
+    let sisa = 5; angka.textContent = sisa;
     document.body.classList.add('urungkan-tampil');
     requestAnimationFrame(() => document.body.classList.add('urungkan-siap'));
     hitungMundurUrungkan = setInterval(() => { sisa -= 1; angka.textContent = Math.max(sisa, 0); }, 1000);
-    jamUrungkan = setTimeout(sembunyikanUrungkan, 6000);
+    jamUrungkan = setTimeout(sembunyikanUrungkan, 5000);
   }
   function batalkanTimerUrungkan() {
     if (jamUrungkan) clearTimeout(jamUrungkan);
