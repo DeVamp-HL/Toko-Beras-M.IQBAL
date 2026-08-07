@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background full-bleed (tanpa rounded corner — pembulatan jadi urusan OS/maskable crop) -->
+  <rect width="512" height="512" fill="#3a2e1f"/>
+  <!-- Simbol di dalam safe-zone 80% (radius 205px dari pusat) supaya tidak terpotong saat di-crop jadi lingkaran/squircle -->
+  <circle cx="256" cy="256" r="205" fill="#f0e6ce"/>
+  <text x="256" y="285" font-family="Georgia, serif" font-size="165" font-weight="bold" fill="#3a2e1f" text-anchor="middle">IQ</text>
+  <text x="256" y="360" font-family="Georgia, serif" font-size="66" fill="#6b4a2e" text-anchor="middle">BERAS</text>
+</svg>
