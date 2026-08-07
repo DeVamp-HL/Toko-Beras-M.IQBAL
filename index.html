@@ -1400,7 +1400,11 @@
     color: #5d6570; display: flex; align-items: center; justify-content: center;
   }
   .baris-merk-v2.bm-kosong .bm-buang { color: #3d444f; }
-  .bm-isi { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+  /* Lembar 1 menargetkan 132 px per baris merk. Angka itu = 3 × 44 px persis, yaitu
+     tiga jalur sentuh yang saling menempel tanpa jarak sama sekali. Dua target 44 px
+     yang bersentuhan langsung membuat salah tekan ibu jari, jadi jarak minimum tetap
+     dipertahankan; padding & gap dipepet secukupnya (167 -> ~155 px). */
+  .bm-isi { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
   .bm-baris { display: flex; align-items: center; gap: 7px; }
   .bm-x { font-size: 12.5px; color: var(--redup); flex: 0 0 auto; }
   /* .bm-kotak adalah <label> — margin & tebal huruf bawaan label form lama dinolkan di
@@ -1419,7 +1423,7 @@
      di bawah itu Safari iOS ikut zoom tiap kali difokus. */
   .bm-kotak .bm-inp {
     width: 2ch; flex: 0 0 auto; padding: 0; border: none; background: none; box-shadow: none;
-    font-family: inherit; font-size: 17px; font-weight: 800; line-height: 44px;
+    font-family: inherit; font-size: 17px; font-weight: 800; line-height: 42px;
     color: var(--teks); font-variant-numeric: tabular-nums;
   }
   .bm-kotak .bm-inp:focus { outline: none; border: none; box-shadow: none; }
