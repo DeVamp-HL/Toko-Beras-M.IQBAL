@@ -1,0 +1,43 @@
+# Alur kerja Pages sederhana — Toko Beras M.IQBAL
+# Dipakai 6 Agustus 2026 setelah pembangun bawaan "pages build and deployment"
+# gagal 5 kali berturut-turut (job menunggu mesin 15 menit lalu dibatalkan).
+# Tidak ada build: file di repo disalin apa adanya, karena sistem ini memang
+# satu file HTML statis tanpa framework.
+name: Terbitkan Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  terbitkan:
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Ambil isi repo
+        uses: actions/checkout@v4
+
+      - name: Siapkan Pages
+        uses: actions/configure-pages@v5
+
+      - name: Bungkus seluruh folder apa adanya
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Terbitkan
+        id: deploy
+        uses: actions/deploy-pages@v4
