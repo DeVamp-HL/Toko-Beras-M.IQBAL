@@ -801,6 +801,8 @@
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 18px;
   }
   .kartu-jenis-jual button {
+    /* min-height 44: diukur 41 px waktu audit Sprint 2, dan batas 44 px tanpa kecuali. */
+    min-height: 44px;
     padding: 14px 7px; border: 1px solid var(--garis); background: #151a23; border-radius: 12px;
     font-size: 12.5px; font-weight: 700; color: var(--redup); text-align: center; line-height: 1.4;
   }
@@ -812,7 +814,8 @@
   .stok-tersedia.kurang { background: var(--peringatan-bg); border-color: rgba(242, 112, 89, .45); color: var(--merah); font-weight: 700; }
   .tab-bayar { display: flex; gap: 8px; margin-top: 4px; }
   .tab-bayar button {
-    flex: 1; padding: 12px 4px; border: 1px solid var(--garis); background: #151a23;
+    /* Sama alasannya dengan .kartu-jenis-jual: terukur 41 px, batasnya 44. */
+    flex: 1; min-height: 44px; padding: 12px 4px; border: 1px solid var(--garis); background: #151a23;
     border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--redup);
   }
   .tab-bayar button.pilih { background: var(--emas); border-color: var(--emas); color: var(--tombol-teks); }
@@ -1453,6 +1456,30 @@
   /* HPP per satuan & per kg baris Stok Awal — turunan, jadi redup di bawah isiannya. */
   .sa-hpp { font-size: 10.5px; color: var(--redup); line-height: 1.5; font-variant-numeric: tabular-nums; }
   .sa-hpp:empty { display: none; }
+  /* ===== Penyempurnaan Lembar 3 — baris sumber produksi =====
+     HPP tiap sumber ditulis DI BARISNYA, jadi HPP rata-rata di kartu pratinjau bisa
+     dilacak asalnya tanpa membuka halaman lain (Prinsip 1). */
+  /* Stepper jumlah unit duduk di dalam baris "nama kiri, isian kanan": nama & keterangan
+     "muat N" di kiri, tiga tombol/isian 48 px di kanan. */
+  .baris-unit { align-items: center; }
+  .baris-unit .stepper-jumlah { flex: 0 0 auto; gap: 8px; }
+  .baris-unit .stepper-jumlah input { width: 58px; flex: 0 0 auto; padding: 0; height: 48px; }
+  /* Lencana "belum diisi" duduk sebaris dengan isiannya; hilang begitu terisi.
+     Isian yang berbagi baris dengan lencana dipersempit supaya nama di kiri tetap
+     muat satu baris di 360 px. */
+  .baris-isian .bi-isi .lencana-amber { flex: 0 0 auto; }
+  .baris-isian .bi-isi .lencana-amber.terisi { display: none; }
+  /* Dipersempit lewat id, bukan lewat selektor induk-punya-anak (Chrome 105) —
+     sistem ini harus jalan di Chrome 80. */
+  #produksiKantongJumlah { width: 84px; }
+  .baris-sumber-produksi .sp-kotak-kg { flex: 0 0 auto; width: 138px; }
+  .sp-nilai { flex: 1; min-width: 0; text-align: right; line-height: 1.4; }
+  .sp-nilai i {
+    display: block; font-style: normal; font-size: 10.5px; color: var(--redup);
+    font-variant-numeric: tabular-nums;
+  }
+  .sp-nilai b { display: block; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .baris-merk-v2.bm-kosong .sp-nilai i, .baris-merk-v2.bm-kosong .sp-nilai b { color: #3d444f; }
   .bm-sat { font-size: 10.5px; color: var(--redup); flex: 0 0 auto; white-space: nowrap; }
   .bm-rp { font-size: 10.5px; font-weight: 700; color: var(--emas); flex: 0 0 auto; }
   .bm-subtotal { flex: 0 0 auto; text-align: right; line-height: 1.3; }
@@ -2551,19 +2578,46 @@
         <button type="button" id="ukuranProd-5" onclick="pilihUkuranProduksi(5)">5 kg</button>
       </div>
       <input type="number" id="produksiUkuranKemasan" placeholder="Atau ketik manual" inputmode="numeric" oninput="hitungCampuranProduksi()">
-      <label>Jadi berapa unit kemasan</label>
-      <input type="number" id="produksiJumlahUnit" placeholder="0" inputmode="numeric">
+
+      <!-- Lembar 3: jumlah unit sudah terisi dari perhitungan muat — pemakai tinggal
+           menekan − kalau produksi sebagian (Prinsip 2 — sedikit ketik). Stepper 48 px
+           sama dengan yang dipakai halaman Jual. -->
+      <div class="baris-isian baris-unit">
+        <span class="bi-nama">Jumlah unit<small id="produksiMuatKet">isi sumber &amp; ukuran dulu</small></span>
+        <div class="stepper-jumlah">
+          <button type="button" class="st-kurang" onclick="ubahJumlahUnitProduksi(-1)" aria-label="Kurangi unit">−</button>
+          <input type="number" id="produksiJumlahUnit" placeholder="0" inputmode="numeric" oninput="tandaiUnitDisentuh()">
+          <button type="button" class="st-tambah" onclick="ubahJumlahUnitProduksi(1)" aria-label="Tambah unit">+</button>
+        </div>
+      </div>
       <p class="keterangan">Pilih jenis kantong yang dipakai — biaya kemasan otomatis dihitung dari stok, tidak perlu ketik manual. Kalau stok kantong belum tercatat, isi dulu lewat "Beli Stok Bahan Kemasan" di atas.</p>
       <label>Jenis kantong dipakai</label>
       <div class="kartu-jenis-jual" style="grid-template-columns: repeat(2,1fr);" id="produksiKantongTombolWrap"></div>
       <input type="hidden" id="produksiKantongJenis" value="5kg_kembangbmw">
       <div class="stok-tersedia" id="produksiKantongInfo"></div>
-      <label>Jumlah kantong dipakai (pcs) <span class="keterangan">— biasanya sama dengan jumlah unit di atas</span></label>
-      <input type="number" id="produksiKantongJumlah" placeholder="0" inputmode="numeric" oninput="hitungBiayaKemasanProduksi(); hitungCampuranProduksi();">
+      <!-- Lembar 3: kantong & upah memakai lencana AMBER, bukan merah — belum lengkap
+           itu bukan bahaya, dan produksi tetap boleh disimpan. Akibatnya disebut jujur
+           oleh kalimat amber di kartu pratinjau. -->
+      <div class="baris-isian">
+        <!-- Tanpa <small>: lencana + isian + satuan sudah memakan kolom kanan, dan
+             "biasanya sama dengan jumlah unit" sudah tertulis di paragraf di atasnya.
+             Dua kali menulis hal yang sama membuat namanya melipat tiga baris di 360 px. -->
+        <span class="bi-nama">Kantong dipakai</span>
+        <span class="bi-isi">
+          <span class="lencana-amber" id="lencanaKantong">belum diisi</span>
+          <input type="number" id="produksiKantongJumlah" placeholder="0" inputmode="numeric" oninput="hitungBiayaKemasanProduksi(); hitungCampuranProduksi();"><i>pcs</i>
+        </span>
+      </div>
       <div class="keterangan" id="produksiBiayaKemasanInfo" style="margin-top:6px;"></div>
       <input type="hidden" id="produksiBiayaKemasan" value="0">
-      <label>Upah repacking (Rp)</label>
-      <input type="number" id="produksiUpahRepacking" placeholder="0" inputmode="numeric" oninput="hitungCampuranProduksi()">
+      <div class="baris-isian">
+        <span class="bi-nama">Upah repacking</span>
+        <span class="bi-isi">
+          <span class="lencana-amber" id="lencanaUpah">belum diisi</span>
+          <b>Rp</b><input type="text" id="produksiUpahTampil" placeholder="0" inputmode="numeric" autocomplete="off" aria-label="Upah repacking">
+        </span>
+        <input type="hidden" id="produksiUpahRepacking">
+      </div>
     </div>
 
     <div class="kartu">
@@ -3951,6 +4005,13 @@
     document.getElementById('biayaBongkar').value = n > 0 ? n : '';
     document.getElementById('biayaBongkarTampil').value = n > 0 ? n.toLocaleString('id-ID') : '';
   }
+  // Upah repacking — pengaman rupiah yang sama, di baris "nama kiri, isian kanan"
+  // yang padding-nya 12px, jadi lebar dari ukurIsian dibuang seperti biaya bongkar.
+  pasangRibuan(document.getElementById('produksiUpahTampil'), function (nilai) {
+    document.getElementById('produksiUpahRepacking').value = nilai > 0 ? nilai : '';
+    document.getElementById('produksiUpahTampil').style.width = '';
+    hitungCampuranProduksi();
+  });
   document.getElementById('pemasok').addEventListener('change', function() {
     document.getElementById('pemasokLain').style.display = this.value === 'Lainnya' ? 'block' : 'none';
   });
@@ -6241,31 +6302,77 @@
     idBarisSumberProduksi++;
     const id = idBarisSumberProduksi;
     const div = document.createElement('div');
-    div.className = 'baris-merk baris-sumber-produksi';
+    // Lembar 3: baris sumber ikut kerangka baris merk. HPP sumber ini dan nilainya
+    // ditulis di sebelah kanan kotak kg — HPP rata-rata di kartu pratinjau jadi bisa
+    // dilacak asalnya tanpa membuka halaman lain (Prinsip 1). Id isian (spMerk/spKg/
+    // spSisa) dipertahankan supaya bacaSumberProduksi() & simpanProduksi() tidak berubah.
+    div.className = 'baris-merk baris-merk-v2 baris-sumber-produksi bm-kosong';
     div.id = 'sumberprod-' + id;
     div.innerHTML = `
-      <div class="baris-2">
-        <div>
-          <label>Merk sumber</label>
-          <select id="spMerk-${id}" onchange="hitungCampuranProduksi()">${opsiMerkSumberHtml('')}</select>
-        </div>
-        <div>
-          <label>Dipakai (kg)</label>
-          <input type="number" id="spKg-${id}" placeholder="0" inputmode="numeric" oninput="hitungCampuranProduksi()">
-        </div>
+      <div class="bm-kepala">
+        <span class="bm-no">${id}</span>
+        <select class="bm-nama-pilih" id="spMerk-${id}" onchange="hitungCampuranProduksi()" aria-label="Merk sumber baris ${id}">${opsiMerkSumberHtml('')}</select>
+        <span class="bm-kg" id="spSisaKrg-${id}"></span>
+        <button type="button" class="bm-buang" onclick="mintaHapusBarisSumberProduksi(${id})" aria-label="Hapus sumber ${id}">${IKON_BUANG}</button>
       </div>
-      <!-- UX Alur 4: sisa stok merk ini + sisanya SESUDAH produksi, ditempel di baris
-           pilihannya sendiri — tidak perlu bolak-balik ke halaman Stok (Prinsip 3). -->
-      <div class="sp-sisa" id="spSisa-${id}"></div>
-      <button type="button" class="tombol-hapus-merk" onclick="hapusBarisSumberProduksi(${id})">Hapus sumber ini</button>
+      <div class="bm-tanya">
+        <span class="bm-tanya-teks" id="spTanya-${id}">Hapus sumber ${id}?</span>
+        <button type="button" class="bm-tanya-ya" onclick="hapusBarisSumberProduksi(${id})">Hapus</button>
+        <button type="button" class="bm-tanya-batal" onclick="batalHapusBarisSumberProduksi(${id})" aria-label="Batal hapus">${IKON_SILANG}</button>
+      </div>
+      <div class="bm-isi">
+        <div class="bm-baris">
+          <label class="bm-kotak sp-kotak-kg" for="spKg-${id}">
+            <input class="bm-inp" type="number" id="spKg-${id}" placeholder="0" inputmode="numeric" oninput="hitungCampuranProduksi()">
+            <span class="bm-sat">kg dipakai</span>
+          </label>
+          <div class="sp-nilai"><i id="spHpp-${id}">HPP &mdash;</i><b id="spSub-${id}">Rp &mdash;</b></div>
+        </div>
+        <!-- UX Alur 4: sisa stok merk ini + sisanya SESUDAH produksi, ditempel di baris
+             pilihannya sendiri — tidak perlu bolak-balik ke halaman Stok (Prinsip 3). -->
+        <div class="sp-sisa" id="spSisa-${id}"></div>
+      </div>
     `;
     document.getElementById('produksiSumberDaftar').appendChild(div);
+    // .bm-inp bawaannya 2ch — tanpa ukurIsian, "100" kg terpotong jadi "10".
+    const inpKg = document.getElementById('spKg-' + id);
+    inpKg.addEventListener('input', function () { ukurIsian(inpKg); });
+    ukurIsian(inpKg);
+    nomoriUlangSumberProduksi();
     hitungCampuranProduksi();
+  }
+  // Hapus dua ketukan tanpa dialog — pola yang sama dengan baris merk & Stok Awal.
+  function mintaHapusBarisSumberProduksi(id) {
+    document.querySelectorAll('#produksiSumberDaftar .bm-tanya-aktif').forEach(el => el.classList.remove('bm-tanya-aktif'));
+    const el = document.getElementById('sumberprod-' + id);
+    if (!el) return;
+    const kg = Math.round((parseFloat(document.getElementById('spKg-' + id).value) || 0) * 1000) / 1000;
+    const nomor = el.querySelector('.bm-no');
+    const tanya = document.getElementById('spTanya-' + id);
+    if (tanya) {
+      tanya.innerHTML = 'Hapus sumber ' + escapeHtml(nomor ? nomor.textContent : String(id)) + '? ' +
+        '<span>' + (kg > 0 ? angkaRapi(kg) + ' kg hilang' : 'belum ada angka') + '</span>';
+    }
+    el.classList.add('bm-tanya-aktif');
+  }
+  function batalHapusBarisSumberProduksi(id) {
+    const el = document.getElementById('sumberprod-' + id);
+    if (el) el.classList.remove('bm-tanya-aktif');
+  }
+  function nomoriUlangSumberProduksi() {
+    const semua = document.querySelectorAll('#produksiSumberDaftar .baris-sumber-produksi');
+    for (let i = 0; i < semua.length; i++) {
+      const badge = semua[i].querySelector('.bm-no');
+      if (badge) badge.textContent = i + 1;
+      const buang = semua[i].querySelector('.bm-buang');
+      if (buang) buang.setAttribute('aria-label', 'Hapus sumber ' + (i + 1));
+    }
   }
   function hapusBarisSumberProduksi(id) {
     const el = document.getElementById('sumberprod-' + id);
-    if (el) el.remove();
-    hitungCampuranProduksi();
+    if (!el) { hitungCampuranProduksi(); return; }
+    el.classList.add('baris-melipat');
+    setTimeout(() => { el.remove(); nomoriUlangSumberProduksi(); hitungCampuranProduksi(); }, 180);
   }
   function bacaSumberProduksi() {
     const hasil = [];
@@ -6335,7 +6442,8 @@
   function gambarPratinjauProduksi(d) {
     const kartu = document.getElementById('pratinjauProduksi');
     if (!kartu) return;
-    if (!d || d.totalKg <= 0) { kartu.style.display = 'none'; return; }
+    perbaruiLencanaBahanProduksi();
+    if (!d || d.totalKg <= 0) { kartu.style.display = 'none'; isiUnitOtomatis(0); return; }
     kartu.style.display = 'block';
     document.getElementById('ppJumlahMerk').textContent = d.merk + ' merk';
     document.getElementById('ppTotalKg').innerHTML = angkaRapi(d.totalKg) + ' <i>kg</i>';
@@ -6343,6 +6451,7 @@
 
     const muat = d.ukuran > 0 ? Math.floor(d.totalKg / d.ukuran) : 0;
     const sisa = d.ukuran > 0 ? Math.round((d.totalKg - muat * d.ukuran) * 1000) / 1000 : 0;
+    isiUnitOtomatis(muat);
     document.getElementById('ppHppUnit').textContent = d.ukuran > 0 ? angkaRapi(Math.round(d.hppPerKg * d.ukuran)) : '—';
     document.getElementById('ppMuat').innerHTML = d.ukuran > 0
       ? muat + ' <i>unit' + (sisa > 0 ? ' · sisa ' + angkaRapi(sisa) + ' kg' : '') + '</i>'
@@ -6373,6 +6482,45 @@
   // Angka tanpa "Rp" untuk kartu pratinjau — label kolomnya sudah menyebut satuan.
   function angkaRapi(n) { return Number(n || 0).toLocaleString('id-ID'); }
 
+  // ===== Lembar 3 — jumlah unit terisi sendiri dari perhitungan muat =====
+  // Sekali pemakai mengubahnya, sistem berhenti mengisi: angka yang diketik orang
+  // tidak boleh ditimpa mesin, sekecil apa pun alasannya (Prinsip 1).
+  let _unitProduksiDisentuh = false;
+  function tandaiUnitDisentuh() { _unitProduksiDisentuh = true; hitungCampuranProduksi(); }
+  function ubahJumlahUnitProduksi(delta) {
+    _unitProduksiDisentuh = true;
+    ubahJumlah('produksiJumlahUnit', delta);
+    hitungCampuranProduksi();
+  }
+  function isiUnitOtomatis(muat) {
+    const el = document.getElementById('produksiJumlahUnit');
+    const ket = document.getElementById('produksiMuatKet');
+    if (!el) return;
+    if (!_unitProduksiDisentuh) el.value = muat > 0 ? muat : '';
+    if (ket) {
+      ket.textContent = muat > 0
+        ? 'muat ' + angkaRapi(muat) + ' dari campuran ini'
+        : 'isi sumber & ukuran dulu';
+    }
+  }
+  // Kantong & upah: lencana amber hilang begitu terisi. Amber, bukan merah —
+  // data kurang bukan bahaya, dan produksi tetap boleh disimpan (Lembar 3).
+  // Upah repacking ikut pengaman rupiah (a) — pola kembar yang sama dengan biaya
+  // bongkar & modal stok awal: yang tampil bertitik, yang dibaca kode digit mentah.
+  function isiUpahProduksi(nilai) {
+    const n = parseFloat(nilai) || 0;
+    document.getElementById('produksiUpahRepacking').value = n > 0 ? n : '';
+    document.getElementById('produksiUpahTampil').value = n > 0 ? n.toLocaleString('id-ID') : '';
+  }
+  function perbaruiLencanaBahanProduksi() {
+    const kantong = parseFloat((document.getElementById('produksiKantongJumlah') || {}).value) || 0;
+    const upah = parseFloat((document.getElementById('produksiUpahRepacking') || {}).value) || 0;
+    const lk = document.getElementById('lencanaKantong');
+    const lu = document.getElementById('lencanaUpah');
+    if (lk) lk.classList.toggle('terisi', kantong > 0);
+    if (lu) lu.classList.toggle('terisi', upah > 0);
+  }
+
   // UX Alur 4 — sisa stok tiap merk sumber, dan sisanya SESUDAH kg ini dipakai.
   // Yang melebihi sisa ditahan di sini juga (merah), sebelum tombol Simpan ditekan.
   function perbaruiSisaTiapSumber(stokKarung) {
@@ -6381,18 +6529,40 @@
       const kotak = document.getElementById('spSisa-' + id);
       if (!kotak) return;
       const merk = document.getElementById('spMerk-' + id).value;
-      if (!merk) { kotak.textContent = ''; kotak.className = 'sp-sisa'; return; }
+      // Kepala baris: kosong = garis putus amber, sama seperti baris merk (Lembar 1).
+      el.classList.toggle('bm-kosong', !merk);
+      const elKrg = document.getElementById('spSisaKrg-' + id);
+      const elHpp = document.getElementById('spHpp-' + id);
+      const elSub = document.getElementById('spSub-' + id);
+      if (!merk) {
+        kotak.textContent = ''; kotak.className = 'sp-sisa';
+        if (elKrg) elKrg.textContent = '';
+        if (elHpp) elHpp.innerHTML = 'HPP &mdash;';
+        if (elSub) elSub.innerHTML = 'Rp &mdash;';
+        return;
+      }
       const sisa = Math.round((stokKarung[merk]?.sisaKg || 0) * 1000) / 1000;
       const kg = Math.round((parseFloat(document.getElementById('spKg-' + id).value) || 0) * 1000) / 1000;
+      // Kepala baris membawa kg YANG DIPAKAI, sejajar dengan kepala baris di Masuk dan
+      // Stok Awal. Sisa stok tidak diulang di sini — barisnya sendiri sudah membawanya
+      // di bawah isian, lengkap dengan proyeksi sesudah produksi (UX Alur 4).
+      // Lembar 3 menulis "sisa 22 krg" di kepala, tapi sistem hanya menyimpan sisa
+      // dalam KG (berat per karung beda-beda per merk); mengarang jumlah karungnya
+      // berarti menampilkan angka yang bukan angka toko.
+      if (elKrg) elKrg.textContent = kg > 0 ? angkaRapi(kg) + ' kg' : '';
+      // HPP sumber ini + nilainya, terbaca di barisnya sendiri (Prinsip 1).
+      const hppKg = stokKarung[merk]?.hppTerakhirPerKg || 0;
+      if (elHpp) elHpp.textContent = hppKg > 0 ? 'HPP ' + formatRupiah(hppKg) + '/kg' : 'HPP belum tercatat';
+      if (elSub) elSub.innerHTML = kg > 0 && hppKg > 0 ? formatRupiah(hppKg * kg) : 'Rp &mdash;';
       if (kg > sisa) {
         kotak.className = 'sp-sisa sp-lebih';
-        kotak.innerHTML = `Melebihi sisa stok. Maksimal <b>${sisa} kg</b> — atau kurangi dari merk lain.`;
+        kotak.innerHTML = `Melebihi sisa stok. Maksimal <b>${angkaRapi(sisa)} kg</b> — atau kurangi dari merk lain.`;
         return;
       }
       kotak.className = 'sp-sisa';
       kotak.innerHTML = kg > 0
-        ? `sisa ±${sisa} kg → jadi <b>±${Math.round((sisa - kg) * 1000) / 1000} kg</b>`
-        : `sisa ±${sisa} kg`;
+        ? `sisa ±${angkaRapi(sisa)} kg → jadi <b>±${angkaRapi(Math.round((sisa - kg) * 1000) / 1000)} kg</b>`
+        : `sisa ±${angkaRapi(sisa)} kg`;
     });
   }
 
@@ -6737,8 +6907,10 @@
     document.getElementById('produksiUkuranKemasan').value = '';
     resetTombolUkuranProduksi();
     document.getElementById('produksiJumlahUnit').value = '';
+    // Batch baru = jumlah unit boleh diisi otomatis lagi dari perhitungan muat.
+    _unitProduksiDisentuh = false;
     document.getElementById('produksiBiayaKemasan').value = '';
-    document.getElementById('produksiUpahRepacking').value = '';
+    isiUpahProduksi(0);
     isiDropdownProduksi();
     perbaruiStokProduksi();
 
@@ -8055,6 +8227,9 @@
   window.pilihReturPenyelesaian = pilihReturPenyelesaian;
   window.simpanProduksi = simpanProduksi;
   window.tambahBarisSumberProduksi = tambahBarisSumberProduksi; window.hapusBarisSumberProduksi = hapusBarisSumberProduksi;
+  window.mintaHapusBarisSumberProduksi = mintaHapusBarisSumberProduksi;
+  window.batalHapusBarisSumberProduksi = batalHapusBarisSumberProduksi;
+  window.ubahJumlahUnitProduksi = ubahJumlahUnitProduksi; window.tandaiUnitDisentuh = tandaiUnitDisentuh;
   window.perbaruiRingkasHarian = perbaruiRingkasHarian;
   window.pakaiChipKeterangan = pakaiChipKeterangan;
   window.tampilkanHarianHariIni = tampilkanHarianHariIni;
