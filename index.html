@@ -1671,6 +1671,52 @@
     background: var(--abu); border: 1px solid var(--garis); color: var(--redup);
     font-family: inherit; font-size: 13px; font-weight: 700;
   }
+  /* ===== Penyempurnaan Lembar 7 — Harian ===== */
+  .pilih-kategori { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 12px; }
+  .pilih-kategori button {
+    min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    border-radius: 11px; font-family: inherit; color: var(--redup);
+    background: var(--abu); border: 1px solid var(--garis);
+  }
+  .pilih-kategori button b { font-size: 12.5px; font-weight: 600; }
+  .pilih-kategori button i { font-style: normal; font-size: 9.5px; color: #5d6570; }
+  .pilih-kategori button.pilih {
+    color: var(--emas-terang);
+    background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+    border-color: rgba(217, 178, 95, .55);
+  }
+  .pilih-kategori button.pilih b { font-weight: 800; }
+  .pilih-kategori button.pilih i { color: #c9b078; }
+  /* Nominal = angka utama halaman ini (tingkat 1), bukan isian biasa */
+  .kartu-nominal {
+    margin-bottom: 12px; padding: 14px 16px; border-radius: 14px;
+    background: var(--kartu); border: 1px solid rgba(217, 178, 95, .35);
+    background-image: linear-gradient(135deg, rgba(217, 178, 95, .07), rgba(217, 178, 95, 0) 55%);
+  }
+  .kartu-nominal .kn-label { font-size: 9.5px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--redup); font-weight: 700; }
+  .kartu-nominal .kn-baris { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; }
+  .kartu-nominal .kn-rp { font-size: 15px; font-weight: 700; color: var(--emas); flex: 0 0 auto; }
+  .kartu-nominal .kn-baris input {
+    flex: 1; min-width: 0; margin: 0; padding: 0; border: none; background: none; border-radius: 0;
+    font-size: 32px; font-weight: 800; line-height: 1.05; color: var(--hijau-tua);
+    font-variant-numeric: tabular-nums;
+  }
+  .kartu-nominal .kn-baris input:focus { outline: none; box-shadow: none; }
+  .kartu-nominal .kn-eja {
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, .055);
+    font-size: 10.5px; color: var(--redup); line-height: 1.5;
+  }
+  .chip-keterangan { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+  .chip-keterangan button {
+    min-height: 36px; padding: 0 11px; border-radius: 10px; font-family: inherit;
+    font-size: 10.5px; font-weight: 600; color: var(--redup);
+    background: var(--abu); border: 1px solid var(--garis);
+  }
+  /* Baris pribadi redup SELURUHNYA, termasuk nominalnya: angka yang tidak ikut kas
+     toko tidak boleh punya berat visual yang sama dengan yang ikut (Prinsip 1). */
+  .baris-44.baris-pribadi .nama { color: var(--redup); }
+  .baris-44.baris-pribadi .nama small { color: #5d6570; }
+  .baris-44.baris-pribadi .angka { color: var(--redup); }
   /* ===== Penyempurnaan Lembar 6 — baris isian "nama kiri, isian kanan" =====
      Dipakai halaman yang tiap barisnya cuma satu angka (Bulanan). Bukan pola baris
      merk Lembar 1: di sana satu baris punya empat isian, di sini cuma satu — label
@@ -2587,14 +2633,17 @@
   <div id="halamanStokawal" class="halaman">
     <div class="judul-halaman"><h2>Stok Awal</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkStokAwal" class="pesan-ok"> Stok awal tersimpan. Stok &amp; HPP langsung terhitung, kasir ikut terisi otomatis.</div>
-    <div class="info-box">Untuk barang yang SUDAH ada di gudang: pilih ukuran, pilih produk, isi jumlah &amp; modal — HPP dihitung otomatis. Ukuran 50 kg masuk sebagai karung sumber; 25/20/10/5 kg masuk sebagai kemasan jadi siap jual.</div>
+    <!-- Penyempurnaan Lembar 4: kotak ini mencegah kesalahan TERMAHAL di halaman ini —
+         mencatat kedatangan baru di sini, yang membuat stok terhitung dobel (Prinsip 1). -->
+    <div class="kartu-peringatan-amber">
+      <div class="kpa-judul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/></svg><b>Halaman ini dipakai sekali</b></div>
+      <p>Isi saat sistem mulai jalan: barang yang sudah di gudang sebelum ada catatan. Beras yang datang <b>setelah</b> hari ini dicatat di halaman <b>Masuk</b> — kalau dicatat di sini juga, stoknya terhitung dua kali.</p>
+    </div>
+    <p class="keterangan catatan-luwes">Ukuran 50 kg masuk sebagai karung sumber; 25/20/10/5 kg masuk sebagai kemasan jadi siap jual. HPP dihitung otomatis.</p>
 
     <div class="kartu">
-      <div class="panel-kepala"><h2>Data Stok Awal</h2></div>
-      <label>Tanggal</label>
+      <label style="margin-top:0;">Tanggal</label>
       <input type="date" id="stokAwalTanggal">
-      <label>Ongkir + bongkar seluruh stok ini (Rp) <span class="keterangan">— opsional; kalau biaya lama sudah lewat, biarkan 0 supaya tidak dobel hitung. Dialokasikan otomatis per kg.</span></label>
-      <input type="number" id="stokAwalOngkir" placeholder="0" inputmode="numeric" oninput="hitungRingkasStokAwal()">
     </div>
 
     <div class="kartu">
@@ -2602,6 +2651,16 @@
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu produk satu ukuran. Tambah baris sebanyak yang ada di gudang.</p>
       <div id="stokAwalDaftarBaris"></div>
       <button type="button" class="tombol-tambah-merk" onclick="tambahBarisStokAwal()">+ Tambah Produk</button>
+    </div>
+
+    <!-- Ongkir turun ke bawah daftar: hampir selalu dibiarkan 0, jadi tidak pantas
+         menempati paruh atas layar di atas isian yang benar-benar diisi (Prinsip 3). -->
+    <div class="kartu">
+      <div class="baris-isian">
+        <span class="bi-nama">Ongkir + bongkar<small>seluruh stok ini · dialokasikan per kg</small></span>
+        <span class="bi-isi"><b>Rp</b><input type="number" id="stokAwalOngkir" placeholder="0" inputmode="numeric" oninput="hitungRingkasStokAwal()"></span>
+      </div>
+      <p class="keterangan" style="margin-top:8px;">Opsional. Kalau biayanya sudah lama lewat, biarkan 0 supaya tidak dobel hitung.</p>
     </div>
 
     <div class="hasil" id="stokAwalKotakHasil" style="display:none;">
@@ -2773,35 +2832,51 @@
   </div>
 
   <!-- HALAMAN PENGELUARAN HARIAN -->
+  <!-- HARIAN — Penyempurnaan Lembar 7.
+       Kategori duluan, nominal kedua: kategori menentukan apakah uang ini masuk kas
+       toko, dan pilihan itu satu ketukan sementara nominal butuh papan ketik — yang
+       cepat didahulukan supaya papan ketik cuma naik sekali (Prinsip 2). -->
   <div id="halamanHarian" class="halaman">
-    <div class="judul-halaman"><h2>Pengeluaran Harian</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <div class="judul-halaman"><h2>Harian</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkHarian" class="pesan-ok"> Pengeluaran tersimpan.</div>
-    <div class="info-box">Catatan kecil-kecil harian, beda dari "Bulanan" (biaya tetap besar per bulan). Hanya kategori <b>Toko</b> yang otomatis ikut Kas Keluar di dashboard Ringkasan. Ben Mohsein &amp; Owner murni pribadi — TIDAK ikut kas toko, TIDAK ikut laporan bulanan.</div>
 
-    <div class="kartu">
-      <div class="panel-kepala"><h2>Kategori</h2></div>
-      <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr 1fr;">
-        <button type="button" id="kategoriHarianToko" class="pilih" onclick="pilihKategoriHarian('toko')">Toko</button>
-        <button type="button" id="kategoriHarianBen" onclick="pilihKategoriHarian('ben')">Ben Mohsein</button>
-        <button type="button" id="kategoriHarianOwner" class="tab-owner-blok" onclick="pilihKategoriHarian('owner')">Owner</button>
+    <!-- Akibat terbesar halaman ini ada di pilihan kategori, jadi keterangannya
+         ("ikut kas" / "pribadi") menempel di dalam tombolnya (Prinsip 1). -->
+    <div class="pilih-kategori" id="pilihKategoriHarianWrap">
+      <button type="button" id="kategoriHarianToko" class="pilih" onclick="pilihKategoriHarian('toko')"><b>Toko</b><i>ikut kas</i></button>
+      <button type="button" id="kategoriHarianBen" onclick="pilihKategoriHarian('ben')"><b>Ben Mohsein</b><i>pribadi</i></button>
+      <button type="button" id="kategoriHarianOwner" class="tab-owner-blok" onclick="pilihKategoriHarian('owner')"><b>Owner</b><i>pribadi</i></button>
+    </div>
+    <input type="hidden" id="harianKategori" value="toko">
+
+    <div class="kartu-nominal">
+      <div class="kn-label">Nominal</div>
+      <div class="kn-baris">
+        <span class="kn-rp">Rp</span>
+        <input type="number" id="harianNominal" placeholder="0" inputmode="numeric" oninput="perbaruiRingkasHarian()">
       </div>
-      <input type="hidden" id="harianKategori" value="toko">
-
-      <label>Tanggal</label>
-      <input type="date" id="harianTanggal">
-
-      <label>Untuk apa</label>
-      <input type="text" id="harianKeterangan" placeholder="Contoh: beli galon, bensin motor, jajan, dll">
-
-      <label>Nominal (Rp)</label>
-      <input type="number" id="harianNominal" placeholder="0" inputmode="numeric">
-
-      <button type="button" onclick="simpanPengeluaranHarian()" class="tombol-utama-kartu"> Simpan Pengeluaran</button>
+      <div class="kn-eja" id="harianEja">nol rupiah</div>
     </div>
 
     <div class="kartu">
-      <div class="panel-kepala"><h2>Riwayat Pengeluaran</h2></div>
-      <div class="tab-bayar" style="margin-bottom:14px;">
+      <label style="margin-top:0;">Untuk apa</label>
+      <input type="text" id="harianKeterangan" placeholder="Contoh: bensin motor, beli galon" oninput="perbaruiRingkasHarian()">
+      <!-- Chip diambil dari catatan terbanyak pemakai sendiri: untuk pengeluaran yang
+           berulang tiap hari, mengetik jadi memilih (Prinsip 2). -->
+      <div class="chip-keterangan" id="chipKeteranganHarian"></div>
+      <label>Tanggal</label>
+      <input type="date" id="harianTanggal">
+    </div>
+
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Hari ini</h3><span class="kd-hitung" id="harianHitungHariIni"></span></div>
+      <div id="daftarHarianHariIni"></div>
+    </div>
+    <p class="catatan-kecil">Hanya kategori Toko yang ikut kas keluar di Ringkasan. Ben Mohsein &amp; Owner murni pribadi.</p>
+
+    <div class="kartu" style="margin-top:12px;">
+      <div class="panel-kepala"><h2>Riwayat pengeluaran</h2></div>
+      <div class="saring-riwayat" style="margin-bottom:8px;">
         <button type="button" id="filterHarianSemua" class="pilih" onclick="filterHarian('semua')">Semua</button>
         <button type="button" id="filterHarianToko" onclick="filterHarian('toko')">Toko</button>
         <button type="button" id="filterHarianBen" onclick="filterHarian('ben')">Ben Mohsein</button>
@@ -2828,6 +2903,11 @@
 </div>
 <div class="tombol-simpan" id="tombolSimpanBulananWrap" style="display:none;">
   <button onclick="simpanBiayaBulanan()" id="btnSimpanBulanan">Simpan Biaya Bulan Ini</button>
+</div>
+<div class="tombol-simpan" id="tombolSimpanHarianWrap" style="display:none;">
+  <!-- Tombol membawa ulang nominal & kategori: pemeriksaan terakhir tepat di tempat
+       jempol sudah berada (Lembar 7). -->
+  <button onclick="simpanPengeluaranHarian()" id="btnSimpanHarian">Simpan</button>
 </div>
 <div class="tombol-simpan" id="tombolSimpanProduksiWrap" style="display:none;">
   <!-- Penyempurnaan Lembar 3: pratinjau naik pangkat dari satu baris teks jadi kartu
@@ -3071,8 +3151,9 @@
     document.getElementById('tombolSimpanJualWrap').style.display = nama === 'jual' ? 'block' : 'none';
     document.getElementById('tombolSimpanProduksiWrap').style.display = nama === 'produksi' ? 'block' : 'none';
     document.getElementById('tombolSimpanBulananWrap').style.display = nama === 'bulanan' ? 'block' : 'none';
+    document.getElementById('tombolSimpanHarianWrap').style.display = nama === 'harian' ? 'block' : 'none';
     // Sisakan ruang di kaki <main> selama bilah Simpan melayang menutupi halaman
-    document.body.classList.toggle('ada-bilah-simpan', ['jual', 'input', 'produksi', 'bulanan'].indexOf(nama) >= 0);
+    document.body.classList.toggle('ada-bilah-simpan', ['jual', 'input', 'produksi', 'bulanan', 'harian'].indexOf(nama) >= 0);
     if (nama === 'ringkasan') tampilkanRingkasan();
     if (nama === 'rekap') { tampilkanRekap(); tampilkanRiwayatJual(); }
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); }
@@ -3081,7 +3162,7 @@
     if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); }
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'harga') tampilkanHarga();
-    if (nama === 'harian') tampilkanHarian();
+    if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
     if (nama === 'input') periksaDrafMasuk();
     if (nama === 'stokawal') { if (document.querySelectorAll('#stokAwalDaftarBaris .baris-stok-awal').length === 0) tambahBarisStokAwal(); hitungRingkasStokAwal(); }
     if (document.body.classList.contains('drawer-nav-terbuka')) toggleDrawerNav();
@@ -3830,7 +3911,7 @@
   }, 'id', 'karantina');
 
   pasangSinkronisasi(KOLEKSI_HARIAN, KUNCI_HARIAN, (d) => { _cacheHarian = d; }, () => {
-    if (document.getElementById('halamanHarian').classList.contains('tampil')) tampilkanHarian();
+    if (document.getElementById('halamanHarian').classList.contains('tampil')) { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); }
     // Kategori 'toko' otomatis ikut Kas Keluar Bulan Ini — dashboard harus refresh tiap ada pengeluaran harian baru.
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'harian');
@@ -4579,6 +4660,71 @@
     document.getElementById('kategoriHarianToko').classList.toggle('pilih', kat === 'toko');
     document.getElementById('kategoriHarianBen').classList.toggle('pilih', kat === 'ben');
     document.getElementById('kategoriHarianOwner').classList.toggle('pilih', kat === 'owner');
+    perbaruiRingkasHarian();
+  }
+
+  // ===== Penyempurnaan Lembar 7 =====
+  // Tombol simpan membawa ulang nominal & kategori, dan mati selama isian belum sah —
+  // pemeriksaan terakhir ada tepat di tempat jempol sudah berada.
+  function perbaruiRingkasHarian() {
+    const nominal = parseFloat((document.getElementById('harianNominal') || {}).value) || 0;
+    const ket = ((document.getElementById('harianKeterangan') || {}).value || '').trim();
+    const eja = document.getElementById('harianEja');
+    // Nominal dieja penuh di bawah angkanya — satu nol kelebihan ketahuan di sini
+    // sebelum disimpan, sama seperti bilah total di halaman Masuk (Prinsip 1).
+    if (eja) eja.textContent = ejaRingkas(nominal) + ' rupiah';
+    const btn = document.getElementById('btnSimpanHarian');
+    if (btn) {
+      const sah = nominal > 0 && ket.length > 0;
+      btn.disabled = !sah;
+      btn.textContent = sah
+        ? 'Simpan — ' + formatRupiah(nominal) + ' · ' + labelKategoriHarian(kategoriHarianAktif)
+        : (nominal <= 0 ? 'Isi nominal dulu' : 'Isi keterangan dulu');
+    }
+  }
+
+  // Chip keterangan = catatan yang paling sering ditulis pemakai sendiri di kategori
+  // yang sedang dipilih. Untuk pengeluaran yang berulang tiap hari, mengetik jadi memilih.
+  function gambarChipKeteranganHarian() {
+    const wadah = document.getElementById('chipKeteranganHarian');
+    if (!wadah) return;
+    const hitung = {};
+    ambilPengeluaranHarian().forEach(h => {
+      const k = (h.keterangan || '').trim();
+      if (k) hitung[k] = (hitung[k] || 0) + 1;
+    });
+    const teratas = Object.keys(hitung).sort((a, b) => hitung[b] - hitung[a]).slice(0, 5);
+    wadah.innerHTML = teratas.map(k =>
+      `<button type="button" onclick="pakaiChipKeterangan(${escapeHtml(JSON.stringify(k))})">${escapeHtml(k)}</button>`).join('');
+    wadah.style.display = teratas.length ? 'flex' : 'none';
+  }
+  function pakaiChipKeterangan(teks) {
+    const el = document.getElementById('harianKeterangan');
+    if (el) el.value = teks;
+    perbaruiRingkasHarian();
+  }
+
+  // Daftar hari ini: baris pribadi tampil redup SELURUHNYA, termasuk nominalnya —
+  // angka yang tidak ikut kas toko tidak boleh punya berat visual yang sama (Prinsip 1).
+  function tampilkanHarianHariIni() {
+    const kont = document.getElementById('daftarHarianHariIni');
+    if (!kont) return;
+    const hariIni = tanggalLokalIso();
+    const semua = (ownerSudahUnlock() ? ambilPengeluaranHarian() : ambilPengeluaranHarian().filter(h => h.kategori !== 'owner'))
+      .filter(h => h.tanggal === hariIni);
+    const total = semua.reduce((a, h) => a + (h.nominal || 0), 0);
+    const hitung = document.getElementById('harianHitungHariIni');
+    if (hitung) hitung.textContent = semua.length + ' catatan · ' + formatRupiah(total);
+    kont.innerHTML = semua.length === 0
+      ? '<div class="kosong-info"><b>Belum ada catatan hari ini</b><span>Pengeluaran yang disimpan akan langsung muncul di sini.</span></div>'
+      : semua.slice().sort((a, b) => (b.id || 0) - (a.id || 0)).map(h => {
+        const pribadi = h.kategori !== 'toko';
+        return `<div class="baris-44${pribadi ? ' baris-pribadi' : ''}">
+          <span class="jam">${escapeHtml((h.jam || '').slice(0, 5) || '—')}</span>
+          <span class="nama">${escapeHtml(h.keterangan || '')}<small>${labelKategoriHarian(h.kategori)} · ${pribadi ? 'pribadi, di luar kas toko' : 'ikut kas keluar'}</small></span>
+          <span class="angka">${formatRupiah(h.nominal || 0)}</span>
+        </div>`;
+      }).join('');
   }
 
   function labelKategoriHarian(kat) {
@@ -4596,7 +4742,8 @@
 
     const id = idUnik();
     try {
-      await simpanKeFirestore(KOLEKSI_HARIAN, { id, kategori, tanggal, keterangan, nominal });
+      const jam = new Date().toTimeString().slice(0, 5);
+      await simpanKeFirestore(KOLEKSI_HARIAN, { id, kategori, tanggal, keterangan, nominal, jam });
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -4606,6 +4753,9 @@
     document.getElementById('harianKeterangan').value = '';
     document.getElementById('harianNominal').value = '';
     document.getElementById('harianTanggal').value = tanggalLokalIso();
+    perbaruiRingkasHarian();
+    tampilkanHarianHariIni();
+    gambarChipKeteranganHarian();
     document.getElementById('pesanOkHarian').style.display = 'block';
     setTimeout(() => { document.getElementById('pesanOkHarian').style.display = 'none'; }, 2000);
   }
@@ -7624,6 +7774,9 @@
   window.pilihReturPenyelesaian = pilihReturPenyelesaian;
   window.simpanProduksi = simpanProduksi;
   window.tambahBarisSumberProduksi = tambahBarisSumberProduksi; window.hapusBarisSumberProduksi = hapusBarisSumberProduksi;
+  window.perbaruiRingkasHarian = perbaruiRingkasHarian;
+  window.pakaiChipKeterangan = pakaiChipKeterangan;
+  window.tampilkanHarianHariIni = tampilkanHarianHariIni;
   window.perbaruiKeadaanBulanan = perbaruiKeadaanBulanan;
   window.perbaruiTotalBulanan = perbaruiTotalBulanan;
   window.salinBiayaBulanLalu = salinBiayaBulanLalu;
