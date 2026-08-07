@@ -1,0 +1,27 @@
+.DS_Store
+*.log
+
+# ===== CATATAN BISNIS — JANGAN PERNAH MASUK REPO PUBLIK =====
+# Berisi omzet, piutang, piutang mati, utang & termin pemasok, harga beli, dan
+# pengeluaran harian. Audit 4 Agustus 2026 mencatat berkas-berkas ini memang
+# TIDAK ada di repo publik ("404 semua") — itu keputusan sadar, bukan kelalaian.
+# Pola di bawah menutup seluruh catatan bernomor sekaligus supaya berkas baru
+# dengan pola yang sama ikut terlindungi tanpa perlu diingat satu per satu.
+0[0-9]-*.md
+1[0-9]-*.md
+2[0-9]-*.md
+backup-batch-*.json
+
+# README.md di folder ini adalah DAFTAR ISI catatan bisnis di atas, bukan README
+# proyek: ia menyebut nama pemasok berikut termin pembayarannya dan mengutip satu
+# angka piutang mati. Ikut dikecualikan — kalau berkasnya dilindungi tapi daftar
+# isinya tidak, isinya tetap bocor.
+README.md
+
+# Cadangan & arsip kerja lokal — bukan bagian aplikasi yang dijalankan
+_backup/
+_arsip-mockup/
+mockup-sistem-mewah.html
+
+# Setelan alat bantu per-mesin
+.claude/
