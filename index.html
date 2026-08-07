@@ -1743,6 +1743,38 @@
      "nol yang sudah dipastikan" (Lembar 6). */
   .baris-isian .bi-isi input:placeholder-shown { color: #5d6570; font-weight: 600; }
   .baris-isian .bi-terkunci { font-size: 13px; font-weight: 800; color: var(--redup); font-variant-numeric: tabular-nums; }
+  /* ===== Penyempurnaan Lembar 2 — kepala halaman Masuk & kartu Rincian ===== */
+  /* Tanggal & pemasok berbagi satu baris: dua isian yang selalu terisi otomatis
+     (hari ini, pemasok terakhir) tidak layak satu baris penuh masing-masing (Prinsip 3). */
+  .baris-kedatangan { display: flex; align-items: center; gap: 8px; }
+  .baris-kedatangan .bk-kotak {
+    flex: 1; min-width: 0; min-height: 44px; border-radius: 11px;
+    background: var(--gelap-tetap); border: 1px solid var(--garis);
+    display: flex; align-items: center; gap: 8px; padding: 0 12px; margin: 0;
+  }
+  .baris-kedatangan .bk-kotak > svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--redup); }
+  .baris-kedatangan .bk-kotak input,
+  .baris-kedatangan .bk-kotak select {
+    flex: 1; min-width: 0; width: auto; height: 42px; margin: 0; padding: 0;
+    background: none; border: none; box-shadow: none; border-radius: 0;
+    -webkit-appearance: none; appearance: none;
+    font-family: inherit; font-size: 12.5px; color: var(--teks);
+  }
+  .baris-kedatangan .bk-kotak input:focus,
+  .baris-kedatangan .bk-kotak select:focus { outline: none; border: none; box-shadow: none; }
+  .baris-kedatangan .bk-kotak:focus-within { border-color: var(--emas-gelap); box-shadow: 0 0 0 3px rgba(217, 178, 95, .13); }
+  /* Pemasok bergaris emas: satu-satunya isian di baris ini yang benar-benar dipilih. */
+  .baris-kedatangan .bk-pemasok { border-color: rgba(217, 178, 95, .4); }
+  .baris-kedatangan .bk-pemasok select { color: var(--emas-terang); font-weight: 700; text-overflow: ellipsis; }
+  .baris-kedatangan .bk-pemasok > svg.bk-chev { transform: rotate(90deg); }
+  /* Kartu Rincian: dua baris pertama angka penuh, baris porsi bongkar redup —
+     itu turunan, bukan angka yang diketik pemakai. */
+  #rincianMasuk .bi-angka { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #rincianMasuk .bi-nama.bi-redup { color: var(--redup); }
+  /* Total & rincian di HP kini dibawa kartu Rincian + bilah total yang menempel di dasar
+     layar. Kotak hasil lama tetap di DOM — masih diisi hitungPerkiraan() dan dipakai layar
+     lebar — cuma tidak ditampilkan. Pola yang sama seperti .ring-lama-hp di Ringkasan. */
+  @media (max-width: 699px) { #halamanInput > .hasil { display: none; } }
   .baris-hasil {
     margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .055);
     font-size: 10.5px; color: var(--redup); font-variant-numeric: tabular-nums;
@@ -2677,26 +2709,39 @@
 
   <!-- HALAMAN INPUT -->
   <div id="halamanInput" class="halaman">
-    <div class="judul-halaman"><h2>Batch Masuk</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <div class="judul-halaman"><h2>Masuk</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOk" class="pesan-ok"> Tersimpan. Kedatangan baru sudah masuk ke riwayat.</div>
 
     <div class="kartu">
-      <div class="panel-kepala"><h2>Data Kedatangan Mobil</h2></div>
-
-      <label>Tanggal masuk</label>
-      <input type="date" id="tanggal">
-
-      <label>Pemasok</label>
-      <select id="pemasok">
-        <option value="RODA MAS">RODA MAS</option>
-        <option value="U.D. SEJATI JAYA">U.D. SEJATI JAYA</option>
-        <option value="Lainnya">Lainnya (isi manual)</option>
-      </select>
+      <!-- Lembar 2: label di atas isian dibuang. Tanggal & pemasok berbagi satu baris —
+           keduanya selalu terisi otomatis, jadi tidak layak satu baris penuh masing-masing
+           (Prinsip 3). Ikonnya yang menyebut isi baris, bukan kata. -->
+      <div class="baris-kedatangan">
+        <label class="bk-kotak" for="tanggal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3.5v4M16 3.5v4" stroke-linecap="round"/></svg>
+          <input type="date" id="tanggal" aria-label="Tanggal masuk">
+        </label>
+        <label class="bk-kotak bk-pemasok" for="pemasok">
+          <select id="pemasok" aria-label="Pemasok">
+            <option value="RODA MAS">RODA MAS</option>
+            <option value="U.D. SEJATI JAYA">U.D. SEJATI JAYA</option>
+            <option value="Lainnya">Lainnya (isi manual)</option>
+          </select>
+          <svg class="bk-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+        </label>
+      </div>
       <input type="text" id="pemasokLain" placeholder="Nama pemasok lain" style="margin-top:8px; display:none;">
 
-      <label>Biaya bongkar (Rp) <span class="keterangan">— untuk seluruh mobil ini</span></label>
-      <input type="number" id="biayaBongkar" placeholder="0" inputmode="numeric">
-      <p class="keterangan">Akses/gapura dan keamanan lingkungan tidak diisi di sini — itu biaya bulanan, isi di tab "Biaya Bulanan".</p>
+      <div class="baris-isian">
+        <span class="bi-nama">Biaya bongkar<small>seluruh mobil ini</small></span>
+        <!-- Pengaman rupiah (a) dari Lembar 1: titik ribuan muncul SAAT mengetik. Pola
+             kembar baris merk — isian tampil bertitik, angka mentahnya di kotak
+             tersembunyi ber-id sama seperti dulu, supaya tidak satu pun pembaca
+             (simpan, draf, rekap) perlu diubah dan parseFloat tidak pernah bertemu titik. -->
+        <span class="bi-isi"><b>Rp</b><input type="text" id="biayaBongkarTampil" placeholder="0" inputmode="numeric" autocomplete="off" aria-label="Biaya bongkar"></span>
+        <input type="hidden" id="biayaBongkar">
+      </div>
+      <p class="keterangan catatan-luwes">Akses/gapura dan keamanan lingkungan tidak diisi di sini — itu biaya bulanan, isi di tab "Biaya Bulanan".</p>
     </div>
 
     <div id="spandukDraf">
@@ -2722,6 +2767,25 @@
       <div id="daftarBarisMerk"></div>
 
       <button type="button" class="tombol-tambah-merk" onclick="tambahBarisMerk()">+ Tambah Merk</button>
+    </div>
+
+    <!-- Lembar 2 — kartu Rincian. "Porsi bongkar per kg" ditampilkan terang-terangan:
+         HPP tiap merk naik segitu, dan pemakai berhak tahu dari mana angka itu datang
+         SEBELUM menyimpan, bukan sesudah (Prinsip 1 — jenis uang jelas). -->
+    <div class="kartu" id="rincianMasuk" style="display:none;">
+      <div class="panel-kepala"><h2>Rincian</h2></div>
+      <div class="baris-isian">
+        <span class="bi-nama" id="rmLabelBeli">Harga beli</span>
+        <span class="bi-angka" id="rmHargaBeli">Rp0</span>
+      </div>
+      <div class="baris-isian">
+        <span class="bi-nama">Biaya bongkar<small>dibagi per kg</small></span>
+        <span class="bi-angka" id="rmBongkar">Rp0</span>
+      </div>
+      <div class="baris-isian">
+        <span class="bi-nama bi-redup">Porsi bongkar per kg</span>
+        <span class="bi-terkunci" id="rmPorsi">&mdash;</span>
+      </div>
     </div>
 
     <div class="hasil" id="kotakHasil" style="display:none;">
@@ -3646,7 +3710,7 @@
       document.getElementById('pemasokLain').style.display = d.pemasok === 'Lainnya' ? 'block' : 'none';
     }
     if (d.pemasokLain) document.getElementById('pemasokLain').value = d.pemasokLain;
-    document.getElementById('biayaBongkar').value = d.biayaBongkar || '';
+    isiBiayaBongkar(d.biayaBongkar);
     document.getElementById('daftarBarisMerk').innerHTML = '';
     idBaris = 0;
     d.baris.forEach(b => tambahBarisMerk(b));
@@ -3786,6 +3850,26 @@
       }
     }
 
+    // Lembar 2 — kartu Rincian. Porsi bongkar per kg dipakai rumus yang sama dengan
+    // hitungHppMerkDalamBatch (alokasi proporsional kg), jadi angka di kartu ini dan
+    // HPP tiap merk tidak akan pernah berbeda.
+    const rin = document.getElementById('rincianMasuk');
+    if (rin) {
+      const adaRincian = totalHargaBeli > 0 || bongkar > 0;
+      rin.style.display = adaRincian ? 'block' : 'none';
+      if (adaRincian) {
+        const merkTerisi = baris.filter(b => b.merk).length;
+        document.getElementById('rmLabelBeli').textContent =
+          merkTerisi > 0 ? 'Harga beli ' + merkTerisi + ' merk' : 'Harga beli';
+        document.getElementById('rmHargaBeli').textContent = formatRupiah(totalHargaBeli);
+        document.getElementById('rmBongkar').textContent = formatRupiah(bongkar);
+        // Selama kg masih nol, porsinya BELUM ADA — bukan Rp0. Menulis "Rp0" di sini
+        // sama saja mengaku sudah dihitung padahal pembaginya belum ada (Prinsip 1).
+        document.getElementById('rmPorsi').textContent =
+          totalKgSemua > 0 ? formatRupiah(bongkar / totalKgSemua) + '/kg' : '—';
+      }
+    }
+
     const kotak = document.getElementById('kotakHasil');
     const peringatan = document.getElementById('peringatanKarung');
     if (baris.length > 0 && totalKgSemua > 0) {
@@ -3799,7 +3883,24 @@
     }
   }
 
-  document.getElementById('biayaBongkar').addEventListener('input', hitungPerkiraan);
+  // Biaya bongkar memakai pengaman rupiah yang sama dengan harga per kg di baris merk:
+  // yang tampil bertitik, yang dibaca kode tetap digit mentah di #biayaBongkar.
+  pasangRibuan(document.getElementById('biayaBongkarTampil'), function (nilai) {
+    document.getElementById('biayaBongkar').value = nilai > 0 ? nilai : '';
+    // pasangRibuan memanggil ukurIsian, yang menyetel lebar dalam ch INKLUSIF padding.
+    // Di baris merk padding-nya 0 jadi pas; di .baris-isian padding-nya 12px kiri-kanan,
+    // sehingga "220.000" terpotong jadi "220.0". Kotak ini memang berlebar tetap
+    // (rata kanan), jadi lebar dari ukurIsian dibuang lagi di sini.
+    document.getElementById('biayaBongkarTampil').style.width = '';
+    hitungPerkiraan();
+  });
+  // Satu pintu untuk menulis biaya bongkar dari kode (pulihkan draf, reset sesudah
+  // simpan): dua kotak selalu berubah bersama, tidak mungkin lupa salah satu.
+  function isiBiayaBongkar(nilai) {
+    const n = parseFloat(nilai) || 0;
+    document.getElementById('biayaBongkar').value = n > 0 ? n : '';
+    document.getElementById('biayaBongkarTampil').value = n > 0 ? n.toLocaleString('id-ID') : '';
+  }
   document.getElementById('pemasok').addEventListener('change', function() {
     document.getElementById('pemasokLain').style.display = this.value === 'Lainnya' ? 'block' : 'none';
   });
@@ -4339,7 +4440,7 @@
     document.getElementById('daftarBarisMerk').innerHTML = '';
     idBaris = 0;
     tambahBarisMerk();
-    document.getElementById('biayaBongkar').value = '';
+    isiBiayaBongkar(0);
     document.getElementById('tanggal').value = tanggalLokalIso();
     document.getElementById('kotakHasil').style.display = 'none';
 
