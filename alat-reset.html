@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alat Reset Data Latihan — M.IQBAL</title>
+<style>
+  :root {
+    --teks: #e9ecf1; --redup: #8b93a1; --garis: #232a36; --kartu: #141922;
+    --gelap: #0d1117; --abu: #171c25; --emas: #d9b25f; --emas-terang: #f2d795;
+    --merah: #f27059; --amber: #e8b04a; --hijau: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px 16px calc(40px + env(safe-area-inset-bottom, 0px));
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: linear-gradient(180deg, #10141b, #0c0f14); color: var(--teks);
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+    max-width: 680px; margin-inline: auto; overflow-x: hidden;
+  }
+  h1 { font-size: 20px; margin: 4px 0 2px; }
+  .sub { font-size: 11px; color: var(--redup); line-height: 1.6; margin: 0 0 14px; }
+  .kartu { background: var(--kartu); border: 1px solid var(--garis); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+  .kartu.mati { opacity: .45; }
+  .kartu.bahaya { border-color: rgba(242, 112, 89, .45); }
+  .tahap { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .tahap b { font-size: 15px; }
+  .no {
+    width: 26px; height: 26px; border-radius: 9px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: var(--emas-terang);
+    background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+    border: 1px solid rgba(217, 178, 95, .55);
+  }
+  .kartu.bahaya .no { color: var(--merah); background: rgba(242, 112, 89, .1); border-color: rgba(242, 112, 89, .5); }
+  .ket { font-size: 11.5px; color: var(--redup); line-height: 1.65; margin: 8px 0 0; }
+  .ket b { color: var(--teks); }
+  label { display: block; font-size: 11px; color: var(--redup); margin: 14px 0 6px; }
+  input {
+    width: 100%; min-height: 48px; padding: 0 14px; margin: 0;
+    background: var(--gelap); border: 1px solid var(--garis); border-radius: 11px;
+    font-family: inherit; font-size: 15px; color: var(--teks);
+  }
+  input:focus { outline: none; border-color: var(--emas); }
+  button {
+    width: 100%; min-height: 50px; margin-top: 12px; border-radius: 12px;
+    font-family: inherit; font-size: 14px; font-weight: 800; color: var(--emas-terang);
+    background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+    border: 1px solid rgba(217, 178, 95, .55);
+  }
+  button.bahaya { color: var(--merah); background: rgba(242, 112, 89, .08); border-color: rgba(242, 112, 89, .5); }
+  button:disabled { color: #5d6570; background: var(--abu); border-color: var(--garis); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  .kabar { font-size: 12px; line-height: 1.6; margin-top: 12px; }
+  .kabar.ok { color: var(--hijau); }
+  .kabar.salah { color: var(--merah); }
+  .kabar.kerja { color: var(--amber); }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
+  th { text-align: left; font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--redup); padding: 0 0 6px; font-weight: 700; }
+  th.ka, td.ka { text-align: right; }
+  td { padding: 9px 0; border-top: 1px solid rgba(255, 255, 255, .055); }
+  td.nama { word-break: break-word; }
+  td small { display: block; font-size: 9.5px; color: var(--redup); }
+  .lindung td.nama { color: var(--emas-terang); }
+  .habis { color: var(--hijau); font-weight: 800; }
+  .sisa-salah { color: var(--merah); font-weight: 800; }
+  .peringatan {
+    border-radius: 12px; padding: 12px 14px; font-size: 11.5px; line-height: 1.65;
+    background: rgba(232, 176, 74, .07); border: 1px solid rgba(232, 176, 74, .35); color: var(--redup); margin-top: 12px;
+  }
+  .peringatan b { color: var(--amber); }
+  .peringatan.merah { background: rgba(242, 112, 89, .07); border-color: rgba(242, 112, 89, .4); }
+  .peringatan.merah b { color: var(--merah); }
+  .daftar { font-size: 11.5px; line-height: 1.9; margin: 10px 0 0; padding-left: 18px; color: var(--redup); }
+  .daftar li b { color: var(--teks); }
+  .daftar.lindungi li b { color: var(--emas-terang); }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--teks); }
+</style>
+</head>
+<body>
+
+<h1>Alat Reset Data Latihan</h1>
+<p class="sub">
+  Sekali pakai. Membuang data masa uji coba 5–7 Agustus 2026, dan <b>menyisakan katalog harga
+  serta setelan kasir</b> supaya toko langsung bisa jualan. Berkas ini dihapus dari repo
+  setelah dipakai.
+</p>
+
+<div class="peringatan merah">
+  <b>Baca sekali sebelum mulai.</b> Alat ini menghapus data di database yang sama dengan yang
+  dipakai jualan — bukan salinan. Pastikan semua HP toko sedang <b>online</b> dan tidak ada
+  catatan yang masih mengantre terkirim, supaya tidak ada yang lolos kembali setelah dihapus.
+</div>
+
+<!-- ===================== TAHAP 1 ===================== -->
+<div class="kartu" id="kartu1">
+  <div class="tahap"><span class="no">1</span><b>Ekspor — unduh semua dulu</b></div>
+  <p class="ket">
+    Masuk dengan sandi toko, lalu unduh <b>seluruh</b> koleksi ke satu berkas JSON. Jumlah
+    dokumen dihitung dua kali: sebelum dan sesudah diunduh, supaya terbukti tidak ada yang
+    berubah atau terlewat.
+  </p>
+
+  <label for="sandi">Sandi toko</label>
+  <input type="password" id="sandi" placeholder="Sandi toko" autocomplete="current-password" enterkeyhint="go">
+  <button id="btnMasuk" type="button">Masuk</button>
+  <div class="kabar" id="kabar1"></div>
+
+  <button id="btnEkspor" type="button" disabled>Hitung &amp; Unduh Semua</button>
+  <div id="tabel1"></div>
+</div>
+
+<!-- ===================== TAHAP 2 ===================== -->
+<div class="kartu bahaya mati" id="kartu2">
+  <div class="tahap"><span class="no">2</span><b>Hapus — data latihan saja</b></div>
+  <p class="ket">Yang <b>DIHAPUS</b> (9 koleksi):</p>
+  <ul class="daftar" id="daftarHapus"></ul>
+  <p class="ket">Yang <b>TIDAK DISENTUH</b> (5 koleksi) — kalau ini hilang, kasir tidak bisa jualan:</p>
+  <ul class="daftar lindungi" id="daftarLindungi"></ul>
+
+  <div class="peringatan" id="kunci2"><b>Terkunci.</b> Selesaikan Tahap 1 dulu — tidak ada yang dihapus sebelum ada salinannya.</div>
+
+  <label for="konfirmasi">Ketik <code>HAPUS</code> untuk membuka tombolnya</label>
+  <input type="text" id="konfirmasi" placeholder="HAPUS" autocomplete="off" autocapitalize="characters" spellcheck="false" disabled>
+  <button id="btnHapus" class="bahaya" type="button" disabled>Hapus Data Latihan</button>
+  <div class="kabar" id="kabar2"></div>
+</div>
+
+<!-- ===================== TAHAP 3 ===================== -->
+<div class="kartu mati" id="kartu3">
+  <div class="tahap"><span class="no">3</span><b>Laporan — apa yang tersisa</b></div>
+  <p class="ket">Hitungan ulang seluruh koleksi setelah penghapusan, langsung dari database.</p>
+  <div id="tabel3"></div>
+  <div class="kabar" id="kabar3"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, doc, deleteDoc }
+    from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+  // Setelan & email sama persis dengan index.html. Sandi TIDAK ada di kode — repo publik.
+  const firebaseConfig = {
+    apiKey: "AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA",
+    authDomain: "toko-beras-m-iqbal.firebaseapp.com",
+    projectId: "toko-beras-m-iqbal",
+    storageBucket: "toko-beras-m-iqbal.firebasestorage.app",
+    messagingSenderId: "149034588465",
+    appId: "1:149034588465:web:42316713d21c6fc994b810",
+    measurementId: "G-9LQLFWQ08W"
+  };
+  const EMAIL_TOKO = 'kasir@tokoberasmiqbal.web.app';
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  // ---- Daftar koleksi. Nama diambil dari konstanta KOLEKSI_* di index.html. ----
+  // ringkasanKasir & pengaturan tidak punya konstanta di sana; namanya dibaca langsung
+  // dari pemakaiannya: doc(db,'ringkasanKasir','aktif') dan simpanKeFirestore('pengaturan', ...).
+  const HAPUS = [
+    ['batchMasuk', 'kedatangan mobil'],
+    ['penjualan', 'semua transaksi jual'],
+    ['produksiKemasan', 'catatan produksi'],
+    ['retur', 'barang dikembalikan'],
+    ['karantina', 'retur belum diputuskan'],
+    ['pengeluaranHarian', 'pengeluaran harian'],
+    ['stokBahanKemasan', 'stok kantong plastik'],
+    ['stokBahanLiteran', 'stok paper bag / karung bekas'],
+    ['ringkasanKasir', 'ringkasan stok untuk kasir — dibuat ulang sendiri']
+  ];
+  const LINDUNGI = [
+    ['katalogHargaLiteran', 'harga per liter'],
+    ['katalogHargaKemasan', 'harga per unit kemasan'],
+    ['katalogHargaKarung', 'harga per kg karung & repacking'],
+    ['pengaturan', 'PIN operator & saklar akses kasir'],
+    ['biayaBulanan', 'biaya tetap bulanan']
+  ];
+  // ringkasanKasir ikut diekspor walau tidak ada di daftar permintaan: apa pun yang
+  // dihapus harus punya salinannya dulu — itu inti Tahap 1.
+  const SEMUA = HAPUS.concat(LINDUNGI);
+
+  // Pengaman mati: satu nama saja bocor ke dua daftar, alat berhenti sebelum apa pun jalan.
+  const bentrok = HAPUS.filter(h => LINDUNGI.some(l => l[0] === h[0])).map(h => h[0]);
+  if (bentrok.length) {
+    document.body.innerHTML = '<div class="peringatan merah" style="margin:20px"><b>Alat dihentikan.</b> ' +
+      'Koleksi ini ada di daftar hapus DAN daftar lindungi: ' + bentrok.join(', ') +
+      '. Perbaiki dulu sebelum dipakai.</div>';
+    throw new Error('daftar bentrok: ' + bentrok.join(','));
+  }
+
+  const $ = id => document.getElementById(id);
+  const teks = (el, isi, kelas) => { el.textContent = isi; el.className = 'kabar' + (kelas ? ' ' + kelas : ''); };
+
+  $('daftarHapus').innerHTML = HAPUS.map(([n, k]) => `<li><b>${n}</b> — ${k}</li>`).join('');
+  $('daftarLindungi').innerHTML = LINDUNGI.map(([n, k]) => `<li><b>${n}</b> — ${k}</li>`).join('');
+
+  let sudahEkspor = false;
+  let hitungSebelum = {};
+
+  async function hitungSemua() {
+    const hasil = {};
+    for (const [nama] of SEMUA) {
+      const cuplikan = await getDocs(collection(db, nama));
+      hasil[nama] = cuplikan.size;
+    }
+    return hasil;
+  }
+
+  function gambarTabel(wadah, sebelum, sesudah, judulSesudah) {
+    const baris = SEMUA.map(([nama, ket]) => {
+      const dilindungi = LINDUNGI.some(l => l[0] === nama);
+      const b = sebelum[nama], s = sesudah ? sesudah[nama] : null;
+      let kelasS = '';
+      if (sesudah) {
+        if (dilindungi) kelasS = s === b ? '' : 'sisa-salah';
+        else kelasS = s === 0 ? 'habis' : 'sisa-salah';
+      }
+      return `<tr class="${dilindungi ? 'lindung' : ''}">
+        <td class="nama">${nama}<small>${ket}${dilindungi ? ' · DILINDUNGI' : ''}</small></td>
+        <td class="ka">${b}</td>
+        ${sesudah ? `<td class="ka ${kelasS}">${s}</td>` : ''}
+      </tr>`;
+    }).join('');
+    const totalB = Object.values(sebelum).reduce((a, n) => a + n, 0);
+    const totalS = sesudah ? Object.values(sesudah).reduce((a, n) => a + n, 0) : null;
+    wadah.innerHTML = `<table>
+      <tr><th>Koleksi</th><th class="ka">Sebelum</th>${sesudah ? `<th class="ka">${judulSesudah}</th>` : ''}</tr>
+      ${baris}
+      <tr><td class="nama"><b>Total dokumen</b></td><td class="ka"><b>${totalB}</b></td>${sesudah ? `<td class="ka"><b>${totalS}</b></td>` : ''}</tr>
+    </table>`;
+  }
+
+  // ===================== TAHAP 1 =====================
+  onAuthStateChanged(auth, u => {
+    if (u) {
+      teks($('kabar1'), 'Sudah masuk. Lanjut ke "Hitung & Unduh Semua".', 'ok');
+      $('btnEkspor').disabled = false;
+      $('btnMasuk').disabled = true;
+      $('sandi').disabled = true;
+    }
+  });
+
+  async function masuk() {
+    const sandi = $('sandi').value.trim();
+    if (!sandi) { teks($('kabar1'), 'Sandi belum diisi.', 'salah'); return; }
+    $('btnMasuk').disabled = true;
+    teks($('kabar1'), 'Menyambung…', 'kerja');
+    try {
+      await signInWithEmailAndPassword(auth, EMAIL_TOKO, sandi);
+      $('sandi').value = '';          // tidak disimpan, tidak dicatat, tidak dikirim ke mana pun
+    } catch (e) {
+      $('btnMasuk').disabled = false;
+      teks($('kabar1'), 'Gagal masuk: ' + (e.code || e.message) + '. Coba lagi.', 'salah');
+    }
+  }
+  $('btnMasuk').addEventListener('click', masuk);
+  $('sandi').addEventListener('keydown', e => { if (e.key === 'Enter') masuk(); });
+
+  $('btnEkspor').addEventListener('click', async () => {
+    $('btnEkspor').disabled = true;
+    teks($('kabar1'), 'Menghitung & mengambil seluruh dokumen…', 'kerja');
+    try {
+      const isi = {};
+      hitungSebelum = {};
+      for (const [nama] of SEMUA) {
+        const cuplikan = await getDocs(collection(db, nama));
+        isi[nama] = cuplikan.docs.map(d => ({ _id: d.id, ...d.data() }));
+        hitungSebelum[nama] = cuplikan.size;
+      }
+      gambarTabel($('tabel1'), hitungSebelum, null);
+
+      const stempel = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const berkas = {
+        dibuatPada: new Date().toISOString(),
+        proyek: firebaseConfig.projectId,
+        keterangan: 'Ekspor lengkap sebelum reset data masa uji coba 5-7 Agustus 2026',
+        jumlahDokumen: hitungSebelum,
+        koleksi: isi
+      };
+      const blob = new Blob([JSON.stringify(berkas, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'ekspor-lengkap-miqbal-' + stempel + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+      // Hitung ULANG dari database sesudah unduhan — membuktikan datanya masih utuh
+      // dan angka di berkas memang angka yang sama.
+      teks($('kabar1'), 'Berkas terunduh. Menghitung ulang dari database…', 'kerja');
+      const sesudah = await hitungSemua();
+      gambarTabel($('tabel1'), hitungSebelum, sesudah, 'Sesudah unduh');
+
+      const beda = SEMUA.filter(([n]) => hitungSebelum[n] !== sesudah[n]).map(([n]) => n);
+      if (beda.length) {
+        teks($('kabar1'), 'Jumlah berubah saat mengunduh di: ' + beda.join(', ') +
+          '. Ada yang menulis data barusan. Ulangi Tahap 1 sebelum menghapus apa pun.', 'salah');
+        $('btnEkspor').disabled = false;
+        return;
+      }
+      sudahEkspor = true;
+      const total = Object.values(hitungSebelum).reduce((a, n) => a + n, 0);
+      teks($('kabar1'), 'Selesai. ' + total + ' dokumen tersalin, jumlah sebelum & sesudah sama. ' +
+        'Simpan berkasnya di tempat aman — isinya termasuk PIN operator.', 'ok');
+      bukaTahap2();
+    } catch (e) {
+      $('btnEkspor').disabled = false;
+      teks($('kabar1'), 'Gagal: ' + (e.code || e.message), 'salah');
+    }
+  });
+
+  // ===================== TAHAP 2 =====================
+  function bukaTahap2() {
+    $('kartu2').classList.remove('mati');
+    $('kunci2').innerHTML = '<b>Terbuka.</b> Salinan sudah ada. Ketik HAPUS untuk melanjutkan.';
+    $('konfirmasi').disabled = false;
+  }
+  $('konfirmasi').addEventListener('input', () => {
+    $('btnHapus').disabled = !(sudahEkspor && $('konfirmasi').value.trim().toUpperCase() === 'HAPUS');
+  });
+
+  $('btnHapus').addEventListener('click', async () => {
+    if (!sudahEkspor) { teks($('kabar2'), 'Tahap 1 belum selesai.', 'salah'); return; }
+    if ($('konfirmasi').value.trim().toUpperCase() !== 'HAPUS') { teks($('kabar2'), 'Ketik HAPUS dulu.', 'salah'); return; }
+    $('btnHapus').disabled = true;
+    $('konfirmasi').disabled = true;
+    let terhapus = 0, gagal = [];
+    try {
+      for (const [nama] of HAPUS) {
+        // Pengaman kedua, di titik paling akhir sebelum menghapus.
+        if (LINDUNGI.some(l => l[0] === nama)) throw new Error('koleksi dilindungi ikut terjadwal hapus: ' + nama);
+        const cuplikan = await getDocs(collection(db, nama));
+        for (const d of cuplikan.docs) {
+          try { await deleteDoc(doc(db, nama, d.id)); terhapus++; }
+          catch (e) { gagal.push(nama + '/' + d.id); }
+          teks($('kabar2'), 'Menghapus… ' + terhapus + ' dokumen (' + nama + ')', 'kerja');
+        }
+      }
+      teks($('kabar2'), terhapus + ' dokumen dihapus' +
+        (gagal.length ? '. GAGAL pada ' + gagal.length + ': ' + gagal.slice(0, 5).join(', ') : '.'),
+        gagal.length ? 'salah' : 'ok');
+      await jalankanTahap3();
+    } catch (e) {
+      teks($('kabar2'), 'Berhenti: ' + (e.code || e.message) + '. Sudah terhapus ' + terhapus + ' dokumen.', 'salah');
+    }
+  });
+
+  // ===================== TAHAP 3 =====================
+  async function jalankanTahap3() {
+    $('kartu3').classList.remove('mati');
+    teks($('kabar3'), 'Menghitung ulang dari database…', 'kerja');
+    const sesudah = await hitungSemua();
+    gambarTabel($('tabel3'), hitungSebelum, sesudah, 'Sisa sekarang');
+    const sisaSalah = HAPUS.filter(([n]) => sesudah[n] !== 0).map(([n]) => n);
+    const hilangSalah = LINDUNGI.filter(([n]) => sesudah[n] !== hitungSebelum[n]).map(([n]) => n);
+    if (sisaSalah.length || hilangSalah.length) {
+      teks($('kabar3'),
+        (sisaSalah.length ? 'Masih tersisa di: ' + sisaSalah.join(', ') + '. ' : '') +
+        (hilangSalah.length ? 'BERUBAH padahal dilindungi: ' + hilangSalah.join(', ') + '. Pulihkan dari berkas ekspor.' : ''),
+        'salah');
+      return;
+    }
+    const sisa = Object.values(sesudah).reduce((a, n) => a + n, 0);
+    teks($('kabar3'), 'Bersih. Sembilan koleksi data latihan kosong, dan ' + sisa +
+      ' dokumen harga & setelan utuh tanpa satu pun berubah. Buka sistem di tiap HP dan muat ulang ' +
+      'sekali supaya salinan lama di perangkat ikut kosong.', 'ok');
+  }
+</script>
+</body>
+</html>
