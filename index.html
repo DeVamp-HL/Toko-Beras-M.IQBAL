@@ -179,8 +179,12 @@
   .angka-berubah.naik::after { background: rgba(74, 222, 128, .18); }
 
   /* 3 · Pindah halaman — geser 24 px saja: arah terbaca, mata tidak menempuh perjalanan (P2).
-     main dikunci overflow-x supaya geseran 24 px tidak memunculkan gulir samping sekejap. */
-  main { overflow-x: hidden; }
+     Geseran 24 px dikunci supaya tidak memunculkan gulir samping sekejap. Kuncinya di
+     BODY, bukan di main: overflow-x pada main membuat main jadi wadah gulir sendiri,
+     dan position:sticky di dalamnya (kepala Riwayat, penunjuk baris Masuk) berhenti
+     menempel — ia menempel ke kotak main yang justru ikut tergulir pergi. Di body,
+     nilainya diwariskan ke viewport dan sticky tetap menempel ke layar. */
+  body { overflow-x: hidden; }
   /* 3 · Pindah halaman — geser 24 px saja: arah terbaca, mata tidak menempuh perjalanan (P2) */
   @keyframes halamanMasuk { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
   .halaman.tampil { animation: halamanMasuk var(--gerak-halaman) var(--kurva-kuningan); }
@@ -924,7 +928,8 @@
   .cari-details[open] summary::before { content: '\2212  '; }
   .cari-global-wrap { border-bottom: none; padding-top: 0; }
   .kartu-backup-baris { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .kartu-backup-baris button { background: rgba(255, 255, 255, .06); color: var(--teks); border: 1px solid var(--garis); border-radius: 8px; padding: 9px 14px; font-weight: 700; font-size: 12.5px; }
+  /* min-height 44: terukur 34 px waktu audit Sprint 3, dan batasnya 44 tanpa kecuali. */
+  .kartu-backup-baris button { min-height: 44px; background: rgba(255, 255, 255, .06); color: var(--teks); border: 1px solid var(--garis); border-radius: 8px; padding: 9px 14px; font-weight: 700; font-size: 12.5px; }
   .kartu-backup-baris .keterangan { flex: 1 1 100%; }
   .dua-grafik { display: grid; grid-template-columns: 1fr; gap: 12px; }
   @media (min-width: 700px) { .dua-grafik { grid-template-columns: 3fr 2fr; } }
@@ -1668,7 +1673,10 @@
   /* ===== UX Alur 6 — Riwayat: saring dengan chip, koreksi berjejak ===== */
   .saring-riwayat { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
   .saring-riwayat button {
-    min-height: 36px; padding: 0 12px; border-radius: 18px; font-family: inherit;
+    /* 44 px, bukan 36: lembar menggambar pil 34–36 px, tapi file 26 menulis target
+       sentuh 44 px tanpa kecuali. Di Riwayat keduanya dipenuhi sekaligus lewat pil
+       34 px di dalam tombol 44 px (.riw-chip); di sini pilnya sendiri yang 44 px. */
+    min-height: 44px; padding: 0 12px; border-radius: 18px; font-family: inherit;
     font-size: 10.5px; font-weight: 700; color: var(--redup);
     background: var(--abu); border: 1px solid var(--garis);
   }
@@ -1677,6 +1685,130 @@
     background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
     border-color: rgba(217, 178, 95, .55);
   }
+  /* ===== Penyempurnaan Lembar 5 + 9 — pola daftar panjang (Riwayat) ===== */
+  /* Judul + cari + saringan menempel di atas; daftarnya yang bergerak. */
+  .riw-kepala {
+    position: sticky; top: 0; z-index: 9; margin: 0 -16px 4px; padding: 2px 16px 8px;
+    background: var(--gelap-tetap); border-bottom: 1px solid rgba(255, 255, 255, .07);
+  }
+  .riw-judul { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .riw-judul h2 {
+    margin: 0; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    font-size: 24px; font-weight: 700;
+  }
+  .riw-hitung { font-size: 10.5px; color: var(--redup); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .riw-kotak-cari {
+    display: flex; align-items: center; gap: 9px; min-height: 44px; margin: 10px 0 8px;
+    padding: 0 12px; border-radius: 11px; background: var(--kartu); border: 1px solid var(--garis);
+  }
+  .riw-kotak-cari > svg { width: 15px; height: 15px; flex: 0 0 auto; color: var(--redup); }
+  .riw-kotak-cari input {
+    flex: 1; min-width: 0; width: auto; height: 42px; margin: 0; padding: 0;
+    background: none; border: none; box-shadow: none; border-radius: 0;
+    font-family: inherit; font-size: 12.5px; color: var(--teks);
+  }
+  .riw-kotak-cari input:focus { outline: none; box-shadow: none; }
+  .riw-kotak-cari.ada-kata { border-color: rgba(217, 178, 95, .55); }
+  .riw-kotak-cari.ada-kata > svg { color: var(--emas-terang); }
+  .riw-hasil { font-size: 10.5px; color: var(--redup); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+  .riw-hapus-cari {
+    width: 32px; height: 44px; flex: 0 0 auto; padding: 0; margin: 0;
+    background: none; border: none; color: var(--redup); font-size: 20px; font-family: inherit;
+  }
+  /* Chip menggulir menyamping, tidak melipat: dua baris chip memakan tinggi yang
+     seharusnya jadi baris data (Prinsip 3). */
+  .riw-chip {
+    flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-bottom: 4px;
+  }
+  .riw-chip::-webkit-scrollbar { display: none; }
+  /* Pil tetap 34 px seperti di lembar, tapi TOMBOLNYA 44 px — dua dokumen (lembar 34,
+     batas keras 44) dipenuhi sekaligus, pola yang sama dengan .tombol-isi-harga. */
+  .riw-chip button {
+    flex: 0 0 auto; display: flex; align-items: center; min-height: 44px;
+    padding: 0; margin: 0; background: none; border: none;
+  }
+  .riw-chip button > span {
+    display: flex; align-items: center; min-height: 34px; padding: 0 11px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--redup);
+    background: var(--abu); border: 1px solid var(--garis);
+  }
+  .riw-chip button.pilih > span {
+    font-weight: 800; color: var(--emas-terang);
+    background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+    border-color: rgba(217, 178, 95, .55);
+  }
+  .riw-chip button > span u { text-decoration: none; margin-left: 5px; font-variant-numeric: tabular-nums; opacity: .75; }
+  .riw-ringkas {
+    display: flex; align-items: center; gap: 9px; min-height: 40px; margin-bottom: 8px;
+    padding: 0 12px; border-radius: 11px; background: var(--kartu); border: 1px solid var(--garis);
+  }
+  .riw-ringkas span { flex: 1; min-width: 0; font-size: 11px; color: var(--redup); line-height: 1.4; }
+  .riw-ringkas span b { color: var(--teks); }
+  .riw-ringkas button {
+    flex: 0 0 auto; min-height: 44px; padding: 0 4px; background: none; border: none;
+    font-family: inherit; font-size: 11px; font-weight: 700; color: var(--emas-terang);
+  }
+  /* Kepala hari: TANPA latar, TANPA garis — yang membedakan kelompok itu ruang kosong.
+     117 baris dengan belasan bidang abu jadi bergaris-garis dan melelahkan (Lembar 9). */
+  .riw-hari {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    /* top diukur dari tinggi kepala yang sebenarnya (disetel JS ke --riw-atas),
+       bukan angka tebakan yang meleset begitu isi kepala berubah. */
+    padding: 16px 2px 7px; position: sticky; top: var(--riw-atas, 150px); z-index: 6;
+    background: var(--gelap-tetap);
+  }
+  .riw-hari b { font-size: 12.5px; font-weight: 700; }
+  .riw-hari span { font-size: 10.5px; color: var(--redup); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .riw-kelompok {
+    background: var(--kartu); border: 1px solid rgba(255, 255, 255, .07);
+    border-radius: 14px; padding: 0 12px;
+  }
+  /* Baris 52 px, bukan 44: baris ini punya dua baris teks, jadi target sentuhnya
+     justru lebih longgar dari batas (Lembar 9). */
+  .riw-baris {
+    display: flex; align-items: center; gap: 9px; width: 100%; min-height: 52px;
+    padding: 0; margin: 0; background: none; text-align: left; font-family: inherit;
+    border: none; border-top: 1px solid rgba(255, 255, 255, .055); color: var(--teks);
+  }
+  .riw-baris:first-child { border-top: none; }
+  .riw-baris .rb-jam { width: 32px; flex: 0 0 auto; font-size: 10px; color: var(--redup); font-variant-numeric: tabular-nums; }
+  .riw-baris .rb-titik { width: 5px; height: 5px; border-radius: 50%; flex: 0 0 auto; }
+  .riw-baris .rb-nama { flex: 1; min-width: 0; line-height: 1.35; }
+  .riw-baris .rb-nama i { font-style: normal; display: block; font-size: 12.5px; }
+  .riw-baris .rb-nama small { display: block; font-size: 10px; color: var(--redup); }
+  /* Tanpa "Rp": di daftar yang semuanya rupiah, huruf Rp cuma menambah lebar. */
+  .riw-baris .rb-nom { flex: 0 0 auto; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .riw-baris .rb-nom.merah { color: var(--merah); }
+  .riw-baris .rb-nom.redup { color: var(--redup); }
+  .riw-baris svg { width: 13px; height: 13px; flex: 0 0 auto; color: #3d444f; }
+  .riw-baris.mati .rb-nama i, .riw-baris.mati .rb-nom { text-decoration: line-through; color: var(--redup); }
+  .riw-baris:active { transform: translateY(1px); }
+  /* Baris baru masuk: naik 8 px + memudar. Hanya transform & opacity. */
+  .riw-baris.baru { animation: riwMasuk var(--gerak-kecil) var(--lengkung-masuk) both; }
+  @keyframes riwMasuk { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .riw-kosong {
+    border: 1px dashed rgba(139, 147, 161, .4); border-radius: 14px; padding: 22px 18px;
+    display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
+  }
+  .riw-kosong b { font-size: 12.5px; font-weight: 700; }
+  .riw-kosong span { font-size: 10.5px; color: var(--redup); line-height: 1.55; }
+  .riw-kosong button {
+    min-height: 44px; margin-top: 5px; padding: 0 16px; border-radius: 11px; font-family: inherit;
+    font-size: 12.5px; font-weight: 700; color: var(--emas-terang);
+    background: linear-gradient(90deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+    border: 1px solid rgba(217, 178, 95, .55);
+  }
+  /* Kepala menempel & daftar gabungan hanya untuk HP; layar lebar tetap daftar lama. */
+  #halamanRekap .riw-kepala, #halamanRekap .riw-ringkas,
+  #halamanRekap #daftarRiwayat, #halamanRekap #riwSentinel { display: none; }
+  @media (max-width: 699px) {
+    #halamanRekap .riw-kepala { display: block; }
+    #halamanRekap .riw-ringkas.tampil { display: flex; }
+    #halamanRekap #daftarRiwayat, #halamanRekap #riwSentinel { display: block; }
+    #halamanRekap > .judul-halaman, #halamanRekap .riw-lama-hp { display: none !important; }
+  }
+  @media (prefers-reduced-motion: reduce) { .riw-baris.baru { animation: none; } }
   /* Baris yang dibatalkan / sudah dikoreksi: dicoret, bukan dihilangkan.
      Coretan hanya di nama & nominalnya — baris jejak ("dikoreksi oleh #…") harus
      tetap terbaca jelas, karena justru itu keterangannya. text-decoration menurun
@@ -1763,7 +1895,8 @@
   }
   .chip-keterangan { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
   .chip-keterangan button {
-    min-height: 36px; padding: 0 11px; border-radius: 10px; font-family: inherit;
+    /* 44 px, alasan sama dengan .saring-riwayat: terukur 36, batasnya 44. */
+    min-height: 44px; padding: 0 11px; border-radius: 10px; font-family: inherit;
     font-size: 10.5px; font-weight: 600; color: var(--redup);
     background: var(--abu); border: 1px solid var(--garis);
   }
@@ -2891,7 +3024,41 @@
 
   <!-- HALAMAN REKAP -->
   <div id="halamanRekap" class="halaman">
-    <div class="judul-halaman"><h2>Riwayat</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <!-- LEMBAR 5 + 9 — halaman "cari sesuatu", bukan "isi sesuatu".
+         Judul + pencarian + saringan MENEMPEL di atas, daftarnya yang bergerak: di
+         daftar ratusan baris, alat pencarinya tidak boleh ikut hilang saat digulir
+         (Prinsip 2). Hitungan di chip menjawab "berapa banyak" sebelum ditekan. -->
+    <div class="riw-kepala">
+      <div class="riw-judul">
+        <h2>Riwayat</h2>
+        <span class="riw-hitung" id="riwHitungTotal">0 catatan</span>
+      </div>
+      <label class="riw-kotak-cari" for="riwCari">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.2" y2="16.2"></line></svg>
+        <input type="text" id="riwCari" placeholder="Cari merk, produk, nominal…" autocomplete="off" oninput="tampilkanRiwayat()">
+        <span class="riw-hasil" id="riwHasilCari"></span>
+        <button type="button" class="riw-hapus-cari" id="riwHapusCari" onclick="kosongkanCariRiwayat()" aria-label="Hapus pencarian" style="display:none;">×</button>
+      </label>
+      <div class="saring-riwayat riw-chip" id="saringJenisRiwayat"></div>
+      <div class="saring-riwayat riw-chip" id="saringHariRiwayat"></div>
+    </div>
+
+    <!-- Saringan bisa menumpuk. Kalau menumpuk, satu baris menyebut ketiganya beserta
+         jumlah hasil — tanpa itu pemakai melihat daftar pendek dan mengira datanya
+         hilang (Prinsip 1). -->
+    <div class="riw-ringkas" id="riwRingkasSaring" style="display:none;">
+      <span id="riwRingkasTeks"></span>
+      <button type="button" onclick="hapusSemuaSaringRiwayat()">Hapus semua</button>
+    </div>
+
+    <div id="daftarRiwayat"></div>
+    <div id="riwSentinel" aria-hidden="true"></div>
+
+    <div class="kartu" style="margin-top:14px;">
+      <div class="panel-kepala"><h2>Riwayat Kedatangan <span class="keterangan">rincian per mobil</span></h2></div>
+      <div id="daftarBatch" class="daftar-batch"></div>
+    </div>
+
     <div class="kartu">
       <div class="panel-kepala"><h2>Cadangan Data</h2></div>
       <div class="kartu-backup-baris" style="margin-top:10px;">
@@ -2899,41 +3066,24 @@
         <button type="button" onclick="unduhBackup()">Unduh Backup</button>
         <button type="button" onclick="document.getElementById('inputMuatFile').click()">Muat dari File</button>
       </div>
-    </div>
-    <div class="ringkasan-atas">
-      <div class="kotak">
-        <div class="label">Total kedatangan</div>
-        <div class="nilai" id="ringkasJumlah">0</div>
+      <div class="ringkasan-atas" style="margin-top:12px;">
+        <div class="kotak">
+          <div class="label">Total kedatangan</div>
+          <div class="nilai" id="ringkasJumlah">0</div>
+        </div>
+        <div class="kotak">
+          <div class="label">Total nilai pembelian</div>
+          <div class="nilai" id="ringkasNilai">Rp0</div>
+        </div>
       </div>
-      <div class="kotak">
-        <div class="label">Total nilai pembelian</div>
-        <div class="nilai" id="ringkasNilai">Rp0</div>
-      </div>
-    </div>
-    <div class="info-box">Data utama tersimpan di HP/tablet ini. Tiap kali "Simpan Kedatangan", file backup ikut terunduh otomatis — kalau riwayat di sini pernah kosong/hilang, tekan " Muat dari File" di atas dan pilih file backup terakhir.</div>
-    <!-- UX Alur 6: Riwayat = semua catatan, semua jenis. Disaring dengan chip
-         (jenis + hari), bukan diketik — transaksi kemarin ketemu ≤3 ketukan. -->
-    <div class="kartu">
-      <div class="panel-kepala"><h2>Riwayat Penjualan</h2><span class="kd-hitung" id="hitungRiwayatJual"></span></div>
-      <div class="saring-riwayat" id="saringJenisRiwayat">
-        <button type="button" class="pilih" data-jenis="semua" onclick="pilihSaringRiwayat('jenis','semua')">Semua</button>
-        <button type="button" data-jenis="kemasan" onclick="pilihSaringRiwayat('jenis','kemasan')">Kemasan</button>
-        <button type="button" data-jenis="literan" onclick="pilihSaringRiwayat('jenis','literan')">Literan</button>
-        <button type="button" data-jenis="karung" onclick="pilihSaringRiwayat('jenis','karung')">Karung</button>
-        <button type="button" data-jenis="repacking" onclick="pilihSaringRiwayat('jenis','repacking')">Repacking</button>
-      </div>
-      <div class="saring-riwayat" id="saringHariRiwayat">
-        <button type="button" class="pilih" data-hari="0" onclick="pilihSaringRiwayat('hari','0')">Hari ini</button>
-        <button type="button" data-hari="1" onclick="pilihSaringRiwayat('hari','1')">Kemarin</button>
-        <button type="button" data-hari="7" onclick="pilihSaringRiwayat('hari','7')">7 hari</button>
-        <button type="button" data-hari="semua" onclick="pilihSaringRiwayat('hari','semua')">Semua</button>
-      </div>
-      <div id="daftarRiwayatJual" class="daftar-batch"></div>
+      <p class="keterangan catatan-luwes">Data utama tersimpan di HP/tablet ini. Tiap kali "Simpan Kedatangan", file backup ikut terunduh otomatis — kalau riwayat di sini pernah kosong/hilang, tekan "Muat dari File" dan pilih file backup terakhir.</p>
     </div>
 
-    <div class="kartu">
-      <div class="panel-kepala"><h2>Riwayat Kedatangan</h2></div>
-      <div id="daftarBatch" class="daftar-batch"></div>
+    <!-- Daftar lama tetap di DOM: masih diisi tampilkanRiwayatJual() dan dipakai layar
+         lebar. Di HP digantikan daftar gabungan di atas. -->
+    <div class="kartu riw-lama-hp">
+      <div class="panel-kepala"><h2>Riwayat Penjualan</h2><span class="kd-hitung" id="hitungRiwayatJual"></span></div>
+      <div id="daftarRiwayatJual" class="daftar-batch"></div>
     </div>
   </div>
 
@@ -3327,7 +3477,7 @@
     // Sisakan ruang di kaki <main> selama bilah Simpan melayang menutupi halaman
     document.body.classList.toggle('ada-bilah-simpan', ['jual', 'input', 'produksi', 'bulanan', 'harian'].indexOf(nama) >= 0);
     if (nama === 'ringkasan') tampilkanRingkasan();
-    if (nama === 'rekap') { tampilkanRekap(); tampilkanRiwayatJual(); }
+    if (nama === 'rekap') { tampilkanRekap(); tampilkanRiwayatJual(); tampilkanRiwayat(); }
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); }
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); }
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
@@ -4107,7 +4257,7 @@
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
     if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
     if (document.getElementById('halamanLaba').classList.contains('tampil')) tampilkanLaba();
-    if (document.getElementById('halamanRekap').classList.contains('tampil')) tampilkanRiwayatJual();
+    if (document.getElementById('halamanRekap').classList.contains('tampil')) { tampilkanRiwayatJual(); tampilkanRiwayat(); }
   }, 'id', 'penjualan');
 
   pasangSinkronisasi(KOLEKSI_PRODUKSI, KUNCI_PRODUKSI, (d) => { _cacheProduksi = d; }, () => {
@@ -7580,18 +7730,281 @@
 
   function pilihSaringRiwayat(kunci, nilai) {
     _saringRiwayat[kunci] = nilai;
-    const kotak = document.getElementById(kunci === 'jenis' ? 'saringJenisRiwayat' : 'saringHariRiwayat');
-    kotak.querySelectorAll('button').forEach(b => {
-      b.classList.toggle('pilih', b.dataset[kunci] === nilai);
-    });
+    _riwTampil = RIW_SEKALI;   // ganti saringan = mulai lagi dari 30 baris pertama
     tampilkanRiwayatJual();
+    tampilkanRiwayat();
+  }
+
+  // ===================== LEMBAR 5 + 9 — POLA DAFTAR PANJANG =====================
+  // Riwayat menggabungkan SEMUA jenis catatan, bukan cuma penjualan: itu yang membuat
+  // pertanyaan "apa yang terjadi hari itu" bisa dijawab di satu layar. Halaman ini
+  // hanya MEMBACA; tidak satu pun jalur simpan/hapus lewat sini.
+  const RIW_SEKALI = 30;              // dimuat 30 baris dulu, sisanya menyusul saat digulir
+  let _riwTampil = RIW_SEKALI;
+  let _riwPengamat = null;
+
+  // Satu warna titik per jenis, dikenali tanpa dibaca (Lembar 9).
+  const RIW_TITIK = {
+    jual: '#4ade80', masuk: '#f2d795', produksi: '#8b93a1',
+    retur: '#e8b04a', harian: '#f27059'
+  };
+
+  // Semua koleksi diratakan jadi satu bentuk baris. Jam diambil kalau ada; catatan
+  // lama tidak menyimpannya, dan kolom jam dibiarkan kosong — bukan diisi tebakan.
+  function kumpulkanRiwayat() {
+    const baris = [];
+    ambilPenjualanSemua().forEach(p => {
+      const mati = !penjualanMasihBerlaku(p);
+      baris.push({
+        id: p.id, jenis: 'jual', subjenis: p.jenis || '', tanggal: p.tanggal || '', jam: p.jam || '',
+        nama: namaSingkatTrx(p),
+        ket: 'Jual · ' + (p.jenis || 'lainnya'),
+        nom: formatRibuan(p.hargaTotal || 0), masuk: mati ? 0 : (p.hargaTotal || 0),
+        mati: mati, bisaDibuka: true,
+        cari: [p.namaProduk, p.merkSumber, p.namaPelanggan, p.caraBayar, p.hargaTotal].join(' ')
+      });
+    });
+    ambilSemuaBatch().filter(k => !k.stokAwal).forEach(k => {
+      const merk = (k.merkList || []);
+      const totKg = merk.reduce((a, m) => a + (m.totalKg || 0), 0);
+      const totKrg = merk.reduce((a, m) => a + (m.jumlahKarung || 0), 0);
+      const nilai = merk.reduce((a, m) => a + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0);
+      baris.push({
+        id: k.id, jenis: 'masuk', tanggal: k.tanggal || '', jam: '',
+        nama: (k.pemasok || 'Pemasok') + ' · ' + merk.length + ' merk',
+        ket: 'Masuk · ' + angkaRapi(Math.round(totKrg)) + ' krg · ' + angkaRapi(Math.round(totKg)) + ' kg',
+        nom: formatRibuan(nilai), masuk: 0, bisaDibuka: false,
+        cari: [k.pemasok, merk.map(m => m.merk).join(' '), nilai].join(' ')
+      });
+    });
+    ambilProduksi().forEach(pr => {
+      const sumber = Array.isArray(pr.sumberList) && pr.sumberList.length
+        ? 'campuran ' + pr.sumberList.length + ' merk' : (pr.merkSumber || 'sumber lama');
+      baris.push({
+        id: pr.id, jenis: 'produksi', tanggal: pr.tanggal || '', jam: '',
+        nama: (pr.namaProduk || 'Kemasan') + ' ' + (pr.ukuranKemasan || 0) + ' kg × ' + (pr.jumlahUnit || 0) + ' unit',
+        ket: 'Produksi · ' + sumber,
+        nom: angkaRapi(pr.kgDipakai || 0) + ' kg', nomRedup: true, masuk: 0, bisaDibuka: false,
+        cari: [pr.namaProduk, pr.merkSumber].join(' ')
+      });
+    });
+    ambilRetur().forEach(r => {
+      baris.push({
+        id: r.id, jenis: 'retur', tanggal: r.tanggal || '', jam: '',
+        nama: r.namaProduk || r.merkSumber || 'Retur',
+        ket: 'Retur · ' + (r.kondisi === 'utuh' ? 'balik ke stok' : 'ke karantina'),
+        nom: '−' + formatRibuan(r.nominalRefund || r.selisihTukar || 0), nomMerah: true, masuk: 0,
+        bisaDibuka: false, cari: [r.namaProduk, r.merkSumber, r.catatan].join(' ')
+      });
+    });
+    // Kategori 'owner' murni pribadi & terkunci PIN — disaring di sini juga, sama
+    // seperti tampilkanHarian(), supaya tidak bocor lewat daftar gabungan.
+    ambilPengeluaranHarian().filter(h => ownerSudahUnlock() || h.kategori !== 'owner').forEach(h => {
+      baris.push({
+        id: h.id, jenis: 'harian', tanggal: h.tanggal || '', jam: '',
+        nama: h.keterangan || 'Pengeluaran',
+        ket: 'Harian · ' + labelKategoriHarian(h.kategori),
+        nom: formatRibuan(h.nominal || 0), nomRedup: h.kategori !== 'toko', masuk: 0,
+        bisaDibuka: false, cari: [h.keterangan, labelKategoriHarian(h.kategori), h.nominal].join(' ')
+      });
+    });
+    // Terbaru dulu: tanggal menurun, lalu JAM menurun di hari yang sama. Catatan lama
+    // tidak menyimpan jam — yang tanpa jam ditaruh di bawah yang berjam, tidak dikarangkan
+    // jam supaya urutannya rapi. Sesama tanpa jam diurut id menurun.
+    baris.sort((a, b) =>
+      (b.tanggal || '').localeCompare(a.tanggal || '')
+      || (a.jam ? 0 : 1) - (b.jam ? 0 : 1)
+      || (b.jam || '').localeCompare(a.jam || '')
+      || (b.id || 0) - (a.id || 0));
+    return baris;
+  }
+
+  // Kepala hari membawa nama harinya — "hari itu" jauh lebih mudah diingat lewat
+  // nama hari daripada lewat tanggal. Dua hari terakhir dipanggil namanya sendiri.
+  const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  function formatHariRiwayat(iso) {
+    if (!iso) return 'Tanpa tanggal';
+    const hariIni = tanggalLokalIso();
+    const kemarin = (function () { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - 1); return tanggalLokalIso(d); })();
+    if (iso === hariIni) return 'Hari ini';
+    if (iso === kemarin) return 'Kemarin';
+    const bagian = iso.split('-');
+    const d = new Date(Number(bagian[0]), Number(bagian[1]) - 1, Number(bagian[2]));
+    return NAMA_HARI[d.getDay()] + ', ' + formatTanggal(iso).replace(/ \d{4}$/, '');
+  }
+
+  // Nominal tanpa "Rp": di daftar yang semuanya rupiah, huruf Rp cuma menambah lebar.
+  function formatRibuan(n) { return Math.round(n || 0).toLocaleString('id-ID'); }
+
+  function saringRiwayat(semua) {
+    const kata = ((document.getElementById('riwCari') || {}).value || '').trim().toLowerCase();
+    let hasil = semua;
+    if (_saringRiwayat.jenis !== 'semua') hasil = hasil.filter(r => r.jenis === _saringRiwayat.jenis);
+    if (_saringRiwayat.hari !== 'semua') {
+      const n = parseInt(_saringRiwayat.hari, 10);
+      const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n);
+      const iso = tanggalLokalIso(d);
+      hasil = n >= 7 ? hasil.filter(r => r.tanggal >= iso) : hasil.filter(r => r.tanggal === iso);
+    }
+    if (kata) hasil = hasil.filter(r => (r.nama + ' ' + r.ket + ' ' + r.nom + ' ' + r.cari).toLowerCase().includes(kata));
+    return { hasil, kata };
+  }
+
+  function gambarChipRiwayat(semua) {
+    const kotakJenis = document.getElementById('saringJenisRiwayat');
+    const kotakHari = document.getElementById('saringHariRiwayat');
+    if (!kotakJenis || !kotakHari) return;
+    // Hitungan dihitung dengan saringan LAIN tetap berlaku, jadi angka di chip selalu
+    // menjawab "kalau saya tekan ini, berapa yang muncul" — bukan angka yang menyesatkan.
+    const dasarJenis = saringRiwayat(semua).hasil;   // sudah kena hari + kata
+    const simpanJenis = _saringRiwayat.jenis;
+    _saringRiwayat.jenis = 'semua';
+    const tanpaJenis = saringRiwayat(semua).hasil;
+    _saringRiwayat.jenis = simpanJenis;
+
+    const jenisDaftar = [
+      ['semua', 'Semua'], ['jual', 'Jual'], ['masuk', 'Masuk'],
+      ['produksi', 'Produksi'], ['harian', 'Harian'], ['retur', 'Retur']
+    ];
+    kotakJenis.innerHTML = jenisDaftar.map(([kunci, label]) => {
+      const n = kunci === 'semua' ? tanpaJenis.length : tanpaJenis.filter(r => r.jenis === kunci).length;
+      if (n === 0 && kunci !== 'semua' && kunci !== _saringRiwayat.jenis) return '';
+      return `<button type="button" data-jenis="${kunci}" class="${_saringRiwayat.jenis === kunci ? 'pilih' : ''}"
+        onclick="pilihSaringRiwayat('jenis','${kunci}')"><span>${label}<u>${n}</u></span></button>`;
+    }).join('');
+
+    const simpanHari = _saringRiwayat.hari;
+    const hariDaftar = [['0', 'Hari ini'], ['1', 'Kemarin'], ['7', '7 hari'], ['semua', 'Semua tanggal']];
+    kotakHari.innerHTML = hariDaftar.map(([kunci, label]) => {
+      _saringRiwayat.hari = kunci;
+      const n = saringRiwayat(semua).hasil.length;
+      _saringRiwayat.hari = simpanHari;
+      return `<button type="button" data-hari="${kunci}" class="${simpanHari === kunci ? 'pilih' : ''}"
+        onclick="pilihSaringRiwayat('hari','${kunci}')"><span>${label}<u>${n}</u></span></button>`;
+    }).join('');
+    return dasarJenis;
+  }
+
+  function tampilkanRiwayat() {
+    const kont = document.getElementById('daftarRiwayat');
+    if (!kont) return;
+    const semua = kumpulkanRiwayat();
+    gambarChipRiwayat(semua);
+    const { hasil, kata } = saringRiwayat(semua);
+
+    document.getElementById('riwHitungTotal').textContent = angkaRapi(semua.length) + ' catatan';
+    const kotakCari = document.querySelector('#halamanRekap .riw-kotak-cari');
+    if (kotakCari) kotakCari.classList.toggle('ada-kata', kata.length > 0);
+    document.getElementById('riwHasilCari').textContent = kata ? hasil.length + ' hasil' : '';
+    document.getElementById('riwHapusCari').style.display = kata ? 'block' : 'none';
+
+    // Baris ringkasan hanya muncul kalau saringan benar-benar MENUMPUK — kalau cuma
+    // satu yang aktif, chipnya sendiri sudah kelihatan menyala.
+    const aktif = [];
+    if (kata) aktif.push('"' + escapeHtml(kata) + '"');
+    if (_saringRiwayat.jenis !== 'semua') aktif.push(labelJenisRiwayat(_saringRiwayat.jenis));
+    if (_saringRiwayat.hari !== 'semua') aktif.push(labelHariRiwayat(_saringRiwayat.hari));
+    const ringkas = document.getElementById('riwRingkasSaring');
+    ringkas.classList.toggle('tampil', aktif.length >= 2);
+    if (aktif.length >= 2) {
+      document.getElementById('riwRingkasTeks').innerHTML =
+        '<b>' + hasil.length + ' hasil</b> · ' + aktif.join(' · ');
+    }
+
+    if (hasil.length === 0) {
+      // Keadaan kosong dua baris: apa yang terjadi, lalu apa yang harus dilakukan.
+      // Baris kedua jadi tombol karena jalan keluarnya cuma satu dan sudah diketahui.
+      const adaSaringan = kata || _saringRiwayat.jenis !== 'semua' || _saringRiwayat.hari !== 'semua';
+      kont.innerHTML = adaSaringan
+        ? `<div class="riw-kosong">
+             <b>Tidak ada ${kata ? '"' + escapeHtml(kata) + '"' : 'catatan'} di saringan ini</b>
+             <span>Coba lebarkan tanggalnya, atau hapus saringan jenisnya.</span>
+             <button type="button" onclick="hapusSemuaSaringRiwayat()">Cari di semua catatan</button>
+           </div>`
+        : `<div class="riw-kosong"><b>Belum ada catatan sama sekali</b>
+             <span>Catatan muncul di sini begitu ada penjualan, kedatangan, atau produksi pertama.</span></div>`;
+      pasangPengamatRiwayat(false);
+      return;
+    }
+
+    const dipotong = hasil.slice(0, _riwTampil);
+    let html = '', hariSekarang = null;
+    dipotong.forEach((r, i) => {
+      if (r.tanggal !== hariSekarang) {
+        if (hariSekarang !== null) html += '</div>';
+        hariSekarang = r.tanggal;
+        const sehari = hasil.filter(x => x.tanggal === r.tanggal);
+        const masuk = sehari.reduce((a, x) => a + (x.masuk || 0), 0);
+        // Kepala hari membawa subtotalnya: pertanyaan pemakai hampir selalu
+        // "hari itu masuk berapa", bukan "transaksi ke-58 isinya apa" (Prinsip 1).
+        html += `<div class="riw-hari"><b>${escapeHtml(formatHariRiwayat(r.tanggal))}</b>` +
+          `<span>${sehari.length} catatan${masuk > 0 ? ' · Rp ' + formatRibuan(masuk) + ' masuk' : ''}</span></div>` +
+          `<div class="riw-kelompok">`;
+      }
+      const tag = r.bisaDibuka ? 'button' : 'div';
+      const buka = r.bisaDibuka ? ` onclick="bukaLembarTrx(${r.id})"` : '';
+      const kelasNom = r.nomMerah ? ' merah' : r.nomRedup ? ' redup' : '';
+      html += `<${tag} type="button" class="riw-baris${r.mati ? ' mati' : ''}${i >= _riwTampil - RIW_SEKALI && _riwTampil > RIW_SEKALI ? ' baru' : ''}"${buka}>
+        <span class="rb-jam">${escapeHtml(r.jam || '')}</span>
+        <span class="rb-titik" style="background:${RIW_TITIK[r.jenis]}"></span>
+        <span class="rb-nama"><i>${escapeHtml(r.nama)}</i><small>${escapeHtml(r.ket)}</small></span>
+        <span class="rb-nom${kelasNom}">${escapeHtml(r.nom)}</span>
+        ${r.bisaDibuka ? IKON_CHEV : ''}
+      </${tag}>`;
+    });
+    if (hariSekarang !== null) html += '</div>';
+    kont.innerHTML = html;
+    pasangPengamatRiwayat(hasil.length > _riwTampil);
+    ukurKepalaRiwayat();
+  }
+
+  function labelJenisRiwayat(j) {
+    return { jual: 'Jual', masuk: 'Masuk', produksi: 'Produksi', harian: 'Harian', retur: 'Retur' }[j] || j;
+  }
+  function labelHariRiwayat(h) {
+    return { '0': 'hari ini', '1': 'kemarin', '7': '7 hari terakhir' }[h] || 'semua tanggal';
+  }
+  function kosongkanCariRiwayat() {
+    const el = document.getElementById('riwCari');
+    if (el) el.value = '';
+    _riwTampil = RIW_SEKALI;
+    tampilkanRiwayat();
+  }
+  function hapusSemuaSaringRiwayat() {
+    const el = document.getElementById('riwCari');
+    if (el) el.value = '';
+    _saringRiwayat = { jenis: 'semua', hari: 'semua' };
+    _riwTampil = RIW_SEKALI;
+    tampilkanRiwayatJual();
+    tampilkanRiwayat();
+  }
+  // Tinggi kepala diukur, bukan ditebak — kepala hari menempel tepat di bawahnya.
+  function ukurKepalaRiwayat() {
+    const kepala = document.querySelector('#halamanRekap .riw-kepala');
+    if (!kepala) return;
+    const t = Math.round(kepala.getBoundingClientRect().height);
+    if (t > 0) document.documentElement.style.setProperty('--riw-atas', t + 'px');
+  }
+  // Sisanya menyusul saat digulir — 117 baris sekaligus membuat Android non-flagship
+  // tersendat. IntersectionObserver ada sejak Chrome 51, aman untuk target Chrome 80.
+  function pasangPengamatRiwayat(masihAda) {
+    const sentinel = document.getElementById('riwSentinel');
+    if (!sentinel) return;
+    if (_riwPengamat) { _riwPengamat.disconnect(); _riwPengamat = null; }
+    if (!masihAda || typeof IntersectionObserver === 'undefined') return;
+    _riwPengamat = new IntersectionObserver(entri => {
+      if (entri.some(e => e.isIntersecting)) { _riwTampil += RIW_SEKALI; tampilkanRiwayat(); }
+    }, { rootMargin: '300px' });
+    _riwPengamat.observe(sentinel);
   }
 
   function tampilkanRiwayatJual() {
     const kont = document.getElementById('daftarRiwayatJual');
     if (!kont) return;
     let daftar = ambilPenjualanSemua().slice();
-    if (_saringRiwayat.jenis !== 'semua') daftar = daftar.filter(p => p.jenis === _saringRiwayat.jenis);
+    // Saringan JENIS tidak dipakai di sini lagi: sejak Lembar 5, nilainya adalah jenis
+    // catatan (jual/masuk/produksi/...), bukan sub-jenis penjualan (kemasan/literan/...).
+    // Daftar lama ini cuma dipakai layar lebar dan tetap menampilkan seluruh penjualan.
     if (_saringRiwayat.hari !== 'semua') {
       const n = parseInt(_saringRiwayat.hari, 10);
       const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n);
@@ -7727,7 +8140,7 @@
       // Asli TIDAK dihapus — hanya ditandai, supaya barisnya tetap terbaca di Riwayat.
       await simpanKeFirestore(KOLEKSI_PENJUALAN, { ...p, dikoreksiOleh: idBaru, alasanKoreksi: alasan });
       tutupLembarTrx();
-      tampilkanRiwayatJual();
+      tampilkanRiwayatJual(); tampilkanRiwayat();
     } catch (err) {
       console.error(err);
       alert('Gagal simpan koreksi (cek internet). ' + err.message);
@@ -7745,7 +8158,7 @@
         ...p, dibatalkan: true, alasanKoreksi: alasan.trim(), dikoreksiPada: new Date().toISOString()
       });
       tutupLembarTrx();
-      tampilkanRiwayatJual();
+      tampilkanRiwayatJual(); tampilkanRiwayat();
     } catch (err) {
       console.error(err);
       alert('Gagal simpan pembatalan (cek internet). ' + err.message);
@@ -8286,6 +8699,9 @@
   window.cariMerkStok = cariMerkStok;
   window.perbaruiPratinjauHarga = perbaruiPratinjauHarga;
   window.pilihSaringRiwayat = pilihSaringRiwayat;
+  window.tampilkanRiwayat = tampilkanRiwayat;
+  window.kosongkanCariRiwayat = kosongkanCariRiwayat;
+  window.hapusSemuaSaringRiwayat = hapusSemuaSaringRiwayat;
   window.bukaLembarTrx = bukaLembarTrx;
   window.tutupLembarTrx = tutupLembarTrx;
   window.mulaiKoreksiTrx = mulaiKoreksiTrx;
