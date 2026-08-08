@@ -1927,6 +1927,22 @@
     font-size: 13px; font-weight: 700; color: #e8b04a;
     background: rgba(232, 176, 74, .10); border: 1px dashed rgba(232, 176, 74, .55);
   }
+  /* Lewati (skip ke antrean berikutnya) — sengaja kecil & redup, BUKAN bersaing dengan
+     "Simpan rincian": ini jalan keluar untuk nominal yang kemungkinan salah input,
+     bukan tindakan yang mau didorong. Cuma tampil saat sedang jalan lewat antrean
+     (mulaiAntreanRinci), karena "berikutnya" tidak berarti apa-apa kalau dibuka sendiri
+     dari satu baris Riwayat. */
+  .tombol-lewati-rinci {
+    /* min-height 44 tanpa kecuali — visualnya tetap dibuat kecil/redup lewat font
+       11,5px + padding tipis, sama pola dengan .tombol-isi-harga: pil kelihatan
+       kecil, target sentuhnya tetap penuh 44 px. */
+    display: none; align-items: center; gap: 5px; min-height: 44px; margin: 2px 0 10px;
+    padding: 0 12px; border-radius: 10px; font-family: inherit;
+    font-size: 11.5px; font-weight: 700; color: var(--redup);
+    background: none; border: 1px solid var(--garis);
+  }
+  .tombol-lewati-rinci.tampil { display: inline-flex; }
+  .tombol-lewati-rinci svg { width: 13px; height: 13px; }
   .kartu-darurat {
     display: none; width: 100%; text-align: left; margin: 0 0 12px; padding: 12px 14px;
     border-radius: 12px; font-family: inherit; cursor: pointer;
@@ -2382,6 +2398,13 @@
        Nominal TIDak pernah berubah — omzet sebelum = sesudah rinci. -->
   <div id="lembarTrxRinci" style="display:none;">
     <p class="lk-sub" style="margin:10px 0 0;">Satu nominal bisa berisi beberapa barang. Tambahkan satu per satu — jumlah semua barang harus pas sama dengan nominal.</p>
+    <!-- Cuma tampil saat jalan lewat antrean (mulaiAntreanRinci) — lihat lewatiRinci().
+         Nominal ini kemungkinan salah input dan tidak akan pernah pas ke produk apa pun;
+         daripada macet di sini, lanjut ke yang berikutnya, balik lagi nanti. -->
+    <button type="button" class="tombol-lewati-rinci" id="btnLewatiRinci" onclick="lewatiRinci()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+      Lewati, ke berikutnya
+    </button>
     <div id="rinciChips" class="rinci-chips"></div>
     <div id="rinciDaftarItem"></div>
     <label>Jalur jual</label>
@@ -8436,6 +8459,9 @@
   let _kandidatRinci = [];
   let _komboRinci = [];
   let _itemRinci = [];
+  // Id yang di-"Lewati" selagi jalan lewat antrean (lihat lewatiRinci()) — cuma untuk
+  // SESI JALAN INI, dilupakan lagi tiap mulaiAntreanRinci() dipanggil dari awal.
+  let _idDilewatiRinci = new Set();
 
   function daftarDaruratBelumRinci() {
     return ambilPenjualan().filter(p => p.jenis === 'kasir_darurat_nominal');
@@ -8532,18 +8558,32 @@
 
   function mulaiAntreanRinci() {
     _antreanRinci = true;
+    _idDilewatiRinci.clear();   // sesi antrean baru = lupakan yang dilewati sesi sebelumnya
     lanjutAntreanRinci();
   }
   function lanjutAntreanRinci() {
-    const d = daftarDaruratBelumRinci().sort((a, b) => (a.id || 0) - (b.id || 0));
+    const d = daftarDaruratBelumRinci()
+      .filter(p => !_idDilewatiRinci.has(p.id))
+      .sort((a, b) => (a.id || 0) - (b.id || 0));
     if (d.length === 0) {
       _antreanRinci = false;
       tutupLembarTrx();
-      alert('Semua transaksi kasir darurat sudah dirinci. HPP dan stok ikut terhitung.');
+      alert(_idDilewatiRinci.size > 0
+        ? 'Sisanya sudah diperiksa. ' + _idDilewatiRinci.size + ' transaksi dilewati — masih belum dirinci, buka lagi dari Ringkasan kalau sudah siap ditangani.'
+        : 'Semua transaksi kasir darurat sudah dirinci. HPP dan stok ikut terhitung.');
       return;
     }
     bukaLembarTrx(d[0].id);
     mulaiRinciTrx();
+  }
+  // Nominal ini kemungkinan salah input (mis. salah ketik Gono) dan tidak akan pernah
+  // ketemu produknya — daripada antrean macet di sini, lewati untuk SESI JALAN INI saja
+  // (bukan ditandai permanen; kalau antrean dibuka ulang dari awal, transaksi ini muncul
+  // lagi). Dokumen aslinya sama sekali tidak disentuh — cuma pointer antrean yang maju.
+  function lewatiRinci() {
+    if (!_trxTerbuka || !_antreanRinci) return;
+    _idDilewatiRinci.add(_trxTerbuka.id);
+    lanjutAntreanRinci();
   }
 
   function mulaiRinciTrx() {
@@ -8552,6 +8592,9 @@
     document.getElementById('lembarTrxAksi').style.display = 'none';
     document.getElementById('lembarTrxForm').style.display = 'none';
     document.getElementById('lembarTrxRinci').style.display = 'block';
+    // "Lewati" cuma masuk akal kalau sedang jalan lewat antrean — dibuka satu-satu
+    // langsung dari baris Riwayat, tidak ada "berikutnya" untuk dituju.
+    document.getElementById('btnLewatiRinci').classList.toggle('tampil', _antreanRinci);
     _itemRinci = [];
     _kandidatRinci = kandidatDarurat(p.hargaTotal || 0);
     _komboRinci = kombinasiDarurat(p.hargaTotal || 0);
@@ -9384,6 +9427,7 @@
   window.simpanRinciTrx = simpanRinciTrx;
   window.urungkanRinciTrx = urungkanRinciTrx;
   window.mulaiAntreanRinci = mulaiAntreanRinci;
+  window.lewatiRinci = lewatiRinci;
   window.pilihJenisHarga = pilihJenisHarga;
   window.hapusHargaSedangDiubah = hapusHargaSedangDiubah;
   window.ubahHargaLiteran = ubahHargaLiteran;
