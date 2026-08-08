@@ -5077,6 +5077,10 @@
         </div>
       `;
     }).join('');
+    // Tombol Hapus di atas baru dibuat lewat innerHTML, jadi belum punya class
+    // tampil-owner walau owner sudah unlock sebelumnya — beri tahu ulang di sini
+    // supaya tidak hilang lagi tiap kali tab ini dibuka (bug ditemukan 8 Agu 2026).
+    terapkanStatusOwner();
   }
 
   // --- Biaya Bulanan ---
@@ -5279,6 +5283,7 @@
       </div>
     `;
     }).join('');
+    terapkanStatusOwner();   // lihat catatan di tampilkanRekap() — sama sebabnya
   }
 
   // --- Pengeluaran Harian (Toko / Ben Mohsein / Owner) ---
@@ -5444,6 +5449,7 @@
         <button class="tombol-hapus tab-owner-blok" onclick="hapusHarian(${h.id})">Hapus</button>
       </div>
     `).join('');
+    terapkanStatusOwner();   // lihat catatan di tampilkanRekap() — sama sebabnya
   }
 
   // ============ SEARCH LINTAS-RIWAYAT (semua koleksi, dari cache di memori) ============
@@ -6161,6 +6167,7 @@
         </div>
       `;
     }).join('');
+    terapkanStatusOwner();   // lihat catatan di tampilkanRekap() — sama sebabnya
   }
 
   // Owner-only — hapus dari koleksi retur. Kalau retur ini juga tercatat di Karantina
@@ -7241,6 +7248,7 @@
         <button class="tombol-hapus tab-owner-blok" onclick="hapusProduksi(${p.id})">Hapus</button>
       </div>
     `).join('');
+    terapkanStatusOwner();   // lihat catatan di tampilkanRekap() — sama sebabnya
   }
 
   // Owner-only — hapus dari koleksi produksi. Stok kemasan otomatis dihitung ulang dari
