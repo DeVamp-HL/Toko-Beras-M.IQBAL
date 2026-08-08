@@ -8266,9 +8266,12 @@
       hargaTotal: Math.round(satuanHarga * baru),
       hppTotalSaatJual: j.nilai > 0 ? Math.round((p.hppTotalSaatJual || 0) / j.nilai * baru) : 0,
       koreksiDari: p.id, alasanKoreksi: alasan,
-      dikoreksiPada: new Date().toISOString(),
-      dikoreksiOleh: undefined, dibatalkan: undefined
+      dikoreksiPada: new Date().toISOString()
     };
+    // setDoc MENOLAK nilai undefined (beda dengan null) — dulu ditulis
+    // "dikoreksiOleh: undefined" dan simpan koreksi selalu gagal. Dihapus dari objek.
+    delete pengganti.dikoreksiOleh;
+    delete pengganti.dibatalkan;
     if (p.jenis === 'kemasan') pengganti.totalKg = (p.ukuranKemasan || 0) * baru;
     try {
       await simpanKeFirestore(KOLEKSI_PENJUALAN, pengganti);
