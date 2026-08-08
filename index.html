@@ -1907,6 +1907,26 @@
     color: #e8b04a; background: rgba(232, 176, 74, .12); border: 1px solid rgba(232, 176, 74, .5);
   }
   .rinci-kosong { font-size: 11.5px; color: var(--redup); line-height: 1.5; margin: 8px 0 4px; }
+  #rinciDaftarItem { margin: 8px 0 4px; }
+  .rinci-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 6px;
+    border-radius: 10px; background: rgba(232, 176, 74, .07); border: 1px solid rgba(232, 176, 74, .3);
+  }
+  .rinci-item .ri-nama { flex: 1; font-size: 12.5px; font-weight: 600; }
+  .rinci-item .ri-harga { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .rinci-item .ri-hapus {
+    min-width: 34px; min-height: 34px; border-radius: 9px; font-size: 15px; font-weight: 700;
+    color: var(--merah); background: rgba(242, 112, 89, .08); border: 1px solid rgba(242, 112, 89, .4);
+  }
+  .rinci-sisa { padding: 8px 10px; font-size: 12.5px; font-weight: 700; text-align: right; }
+  .rinci-sisa.pas { color: var(--hijau, #6fbf8f); }
+  .rinci-sisa.kurang { color: #e8b04a; }
+  .rinci-sisa.lebih { color: var(--merah); }
+  .tombol-tambah-rinci {
+    width: 100%; min-height: 44px; margin-top: 8px; border-radius: 12px; font-family: inherit;
+    font-size: 13px; font-weight: 700; color: #e8b04a;
+    background: rgba(232, 176, 74, .10); border: 1px dashed rgba(232, 176, 74, .55);
+  }
   .kartu-darurat {
     display: none; width: 100%; text-align: left; margin: 0 0 12px; padding: 12px 14px;
     border-radius: 12px; font-family: inherit; cursor: pointer;
@@ -2341,6 +2361,7 @@
   <div id="lembarTrxAksi">
     <button type="button" class="ltx-koreksi" id="btnKoreksiTrx" onclick="mulaiKoreksiTrx()">Koreksi angka</button>
     <button type="button" class="ltx-rinci" id="btnRinciTrx" style="display:none;" onclick="mulaiRinciTrx()">Rincikan produk</button>
+    <button type="button" class="ltx-rinci" id="btnUrungkanRinci" style="display:none;" onclick="urungkanRinciTrx()">Urungkan rincian</button>
     <button type="button" class="ltx-batal" onclick="mulaiBatalkanTrx()">Batalkan transaksi</button>
   </div>
 
@@ -2354,11 +2375,15 @@
   </div>
 
   <!-- RINCI KASIR DARURAT: transaksi nominal-saja diberi produk sebenarnya.
-       Nominal TIDAK berubah — hanya dirinci, supaya HPP, margin, dan stok ikut terhitung.
-       Chip di atas = tebakan sistem dari katalog harga; isian manual untuk harga nego / gabungan. -->
+       Satu nominal Gono biasanya GABUNGAN beberapa barang (aturan lapangan 8 Agu 2026:
+       Gono mencatat total per pembeli, bukan per barang) — maka rinci = daftar barang,
+       dan jumlah seluruh barang WAJIB pas sama dengan nominal sebelum boleh disimpan.
+       Chip = tebakan sistem: barang tunggal ATAU kombinasi 2-3 barang yang jumlahnya pas.
+       Nominal TIDak pernah berubah — omzet sebelum = sesudah rinci. -->
   <div id="lembarTrxRinci" style="display:none;">
-    <p class="lk-sub" style="margin:10px 0 0;">Pilih produk yang sebenarnya terjual. Nominal tidak berubah — hanya dirinci.</p>
+    <p class="lk-sub" style="margin:10px 0 0;">Satu nominal bisa berisi beberapa barang. Tambahkan satu per satu — jumlah semua barang harus pas sama dengan nominal.</p>
     <div id="rinciChips" class="rinci-chips"></div>
+    <div id="rinciDaftarItem"></div>
     <label>Jalur jual</label>
     <select id="rinciJalur" onchange="gantiJalurRinci()">
       <option value="literan">Literan</option>
@@ -2366,18 +2391,21 @@
       <option value="karung">Karung utuh</option>
     </select>
     <label id="labelRinciProduk">Merk</label>
-    <select id="rinciProduk" onchange="perbaruiDampakRinci()"></select>
+    <select id="rinciProduk"></select>
     <div id="rinciKarungBeratWrap" style="display:none;">
       <label>Berat karung</label>
-      <select id="rinciKarungBerat" onchange="perbaruiDampakRinci()">
+      <select id="rinciKarungBerat">
         <option value="50">50 kg</option>
         <option value="25">25 kg</option>
       </select>
     </div>
     <label id="labelRinciJumlah">Jumlah liter</label>
-    <input type="number" id="rinciJumlah" placeholder="0" inputmode="decimal" step="any" oninput="perbaruiDampakRinci()">
+    <input type="number" id="rinciJumlah" placeholder="0" inputmode="decimal" step="any">
+    <label>Harga barang ini (kosongkan = harga katalog)</label>
+    <input type="number" id="rinciHargaItem" placeholder="Otomatis dari katalog" inputmode="numeric">
+    <button type="button" class="tombol-tambah-rinci" onclick="tambahItemRinci()">+ Tambah barang</button>
     <div id="dampakRinci" class="pratinjau-harga" style="display:none;"></div>
-    <button type="button" class="tombol-utama-kartu" onclick="simpanRinciTrx()">Simpan rincian</button>
+    <button type="button" class="tombol-utama-kartu" id="btnSimpanRinci" onclick="simpanRinciTrx()">Simpan rincian</button>
   </div>
 
   <button type="button" class="lmk-tutup" onclick="tutupLembarTrx()">Tutup</button>
@@ -8205,6 +8233,7 @@
     document.getElementById('lembarTrxAksi').style.display = (mati || (!j && !darurat)) ? 'none' : 'grid';
     document.getElementById('btnKoreksiTrx').style.display = darurat ? 'none' : '';
     document.getElementById('btnRinciTrx').style.display = darurat && !mati ? '' : 'none';
+    document.getElementById('btnUrungkanRinci').style.display = p.asalDarurat && !mati ? '' : 'none';
     document.getElementById('lembarTrxForm').style.display = 'none';
     document.getElementById('lembarTrxRinci').style.display = 'none';
     document.body.classList.add('lembar-trx-terbuka');
@@ -8312,6 +8341,8 @@
   // Harga nego / gabungan beberapa produk tidak akan ketemu tebakannya — diisi manual.
   let _antreanRinci = false;
   let _kandidatRinci = [];
+  let _komboRinci = [];
+  let _itemRinci = [];
 
   function daftarDaruratBelumRinci() {
     return ambilPenjualan().filter(p => p.jenis === 'kasir_darurat_nominal');
@@ -8344,6 +8375,68 @@
     return hasil.slice(0, 6);
   }
 
+  // Kolam nilai untuk pencarian kombinasi: setiap (produk × jumlah wajar) beserta harganya.
+  function kolamHargaRinci() {
+    const kolam = [];
+    ambilHargaLiteran().forEach(h => {
+      if (!(h.hargaPerLiter > 0)) return;
+      for (let L = 1; L <= 25; L++) kolam.push({ jalur: 'literan', produk: h.merk, jumlah: L, harga: h.hargaPerLiter * L, label: h.merk + ' ' + L + 'L' });
+    });
+    ambilHargaKemasan().forEach(h => {
+      if (!(h.hargaPerUnit > 0)) return;
+      for (let u = 1; u <= 3; u++) kolam.push({ jalur: 'kemasan', produk: h.merk + '|' + h.ukuran, jumlah: u, harga: h.hargaPerUnit * u, label: h.merk + ' ' + h.ukuran + 'kg×' + u });
+    });
+    Object.keys(hitungStokKarungPerMerk()).forEach(merk => {
+      [50, 25].forEach(b => {
+        const hu = (hargaKarungUtuh(merk, b) || {}).perUnit || 0;
+        if (!(hu > 0)) return;
+        for (let n = 1; n <= 2; n++) kolam.push({ jalur: 'karung', produk: merk, berat: b, jumlah: n, harga: hu * n, label: 'Krg' + b + ' ' + merk + '×' + n });
+      });
+    });
+    return kolam;
+  }
+
+  // Kombinasi 2-3 barang yang jumlahnya PERSIS nominal — karena Gono mencatat total per
+  // pembeli, bukan per barang (aturan lapangan 8 Agu 2026). Tiga barang dijangkar pada
+  // barang besar (karung/kemasan) supaya pencarian tidak meledak dan tebakannya masuk akal.
+  function kombinasiDarurat(nominal) {
+    if (!(nominal > 0)) return [];
+    const kolam = kolamHargaRinci().filter(k => k.harga < nominal);
+    const peta = new Map();
+    kolam.forEach(k => { if (!peta.has(k.harga)) peta.set(k.harga, []); peta.get(k.harga).push(k); });
+    const hasil = []; const jejak = new Set();
+    const kunciItem = it => it.jalur + '|' + it.produk + '|' + (it.berat || '') + '|' + it.jumlah;
+    function catat(items) {
+      const produkSaja = items.map(i => i.jalur + '|' + i.produk);
+      if (new Set(produkSaja).size !== produkSaja.length) return; // produk sama 2× = sebenarnya cuma qty lebih besar
+      const kunci = items.map(kunciItem).sort().join('~');
+      if (jejak.has(kunci)) return;
+      jejak.add(kunci);
+      hasil.push(items);
+    }
+    for (const a of kolam) {
+      const cocok = peta.get(nominal - a.harga);
+      if (cocok) for (const b of cocok.slice(0, 3)) catat([a, b]);
+      if (hasil.length > 40) break;
+    }
+    const jangkar = kolam.filter(k => k.jalur !== 'literan');
+    luar: for (const a of jangkar) {
+      const sisa1 = nominal - a.harga;
+      for (const b of kolam) {
+        if (b.harga >= sisa1) continue;
+        const cocok = peta.get(sisa1 - b.harga);
+        if (cocok) for (const c of cocok.slice(0, 2)) catat([a, b, c]);
+        if (hasil.length > 80) break luar;
+      }
+    }
+    // Peringkat: sedikit barang menang. Dua heuristik lain sudah dicoba dan GAGAL di uji
+    // (liter-terkecil melempar contoh nyata ke bawah; barang-termurah-terbesar malah
+    // menaikkan tumpukan 22-25 L yang absurd). Mesin tidak tahu kebiasaan pembeli —
+    // biar manusia yang memilih dari daftar pendek yang jujur.
+    hasil.sort((x, y) => x.length - y.length);
+    return hasil.slice(0, 6);
+  }
+
   function mulaiAntreanRinci() {
     _antreanRinci = true;
     lanjutAntreanRinci();
@@ -8366,26 +8459,85 @@
     document.getElementById('lembarTrxAksi').style.display = 'none';
     document.getElementById('lembarTrxForm').style.display = 'none';
     document.getElementById('lembarTrxRinci').style.display = 'block';
+    _itemRinci = [];
     _kandidatRinci = kandidatDarurat(p.hargaTotal || 0);
-    const wadah = document.getElementById('rinciChips');
-    wadah.innerHTML = _kandidatRinci.length === 0
-      ? '<div class="rinci-kosong">Tidak ada tebakan pas dari katalog — kemungkinan harga nego atau gabungan beberapa produk. Isi manual di bawah, tanya operatornya kalau lupa.</div>'
-      : _kandidatRinci.map((c, i) => `<button type="button" onclick="pakaiKandidatRinci(${i})">${escapeHtml(c.label)}</button>`).join('');
+    _komboRinci = kombinasiDarurat(p.hargaTotal || 0);
+    const potongan = [];
+    _kandidatRinci.forEach((c, i) => potongan.push(`<button type="button" onclick="pakaiKandidatRinci(${i})">${escapeHtml(c.label)}</button>`));
+    _komboRinci.forEach((k, i) => potongan.push(`<button type="button" onclick="pakaiKomboRinci(${i})">${escapeHtml(k.map(x => x.label).join(' + '))}</button>`));
+    document.getElementById('rinciChips').innerHTML = potongan.length === 0
+      ? '<div class="rinci-kosong">Tidak ada tebakan pas dari katalog — kemungkinan ada harga nego di dalamnya. Tambahkan barang satu per satu di bawah; barang nego isi harganya manual. Tanya operatornya selagi ingat.</div>'
+      : potongan.join('');
     document.getElementById('rinciJalur').value = 'literan';
     gantiJalurRinci();
     document.getElementById('rinciJumlah').value = '';
+    document.getElementById('rinciHargaItem').value = '';
+    renderItemRinci();
     perbaruiDampakRinci();
   }
 
   function pakaiKandidatRinci(i) {
     const c = _kandidatRinci[i];
     if (!c) return;
-    document.getElementById('rinciJalur').value = c.jalur;
-    gantiJalurRinci();
-    document.getElementById('rinciProduk').value = c.produk;
-    if (c.jalur === 'karung') document.getElementById('rinciKarungBerat').value = String(c.berat);
-    document.getElementById('rinciJumlah').value = c.jumlah;
+    const item = hitungItemRinci(c.jalur, c.produk, c.berat, c.jumlah, 0);
+    if (!item || item.gagal) return;
+    _itemRinci = [item];
+    renderItemRinci();
     perbaruiDampakRinci();
+  }
+
+  function pakaiKomboRinci(i) {
+    const kombo = _komboRinci[i];
+    if (!kombo) return;
+    const items = kombo.map(c => hitungItemRinci(c.jalur, c.produk, c.berat, c.jumlah, 0));
+    if (items.some(x => !x || x.gagal)) return;
+    _itemRinci = items;
+    renderItemRinci();
+    perbaruiDampakRinci();
+  }
+
+  function tambahItemRinci() {
+    const jalur = document.getElementById('rinciJalur').value;
+    const produk = document.getElementById('rinciProduk').value;
+    const jumlah = parseFloat(document.getElementById('rinciJumlah').value) || 0;
+    const berat = parseFloat(document.getElementById('rinciKarungBerat').value) || 50;
+    const hargaManual = parseFloat(document.getElementById('rinciHargaItem').value) || 0;
+    if (!produk) { alert('Pilih produknya dulu.'); return; }
+    if (jumlah <= 0) { alert('Isi jumlahnya dulu.'); return; }
+    const item = hitungItemRinci(jalur, produk, berat, jumlah, hargaManual);
+    if (!item) { alert('Barang tidak dikenal.'); return; }
+    if (item.gagal) { alert(item.gagal); return; }
+    _itemRinci.push(item);
+    document.getElementById('rinciJumlah').value = '';
+    document.getElementById('rinciHargaItem').value = '';
+    renderItemRinci();
+    perbaruiDampakRinci();
+  }
+
+  function hapusItemRinci(i) {
+    _itemRinci.splice(i, 1);
+    renderItemRinci();
+    perbaruiDampakRinci();
+  }
+
+  function renderItemRinci() {
+    const wadah = document.getElementById('rinciDaftarItem');
+    const p = _trxTerbuka;
+    if (!wadah || !p) return;
+    const target = p.hargaTotal || 0;
+    const total = _itemRinci.reduce((a, it) => a + it.harga, 0);
+    const sisa = target - total;
+    const baris = _itemRinci.map((it, i) =>
+      `<div class="rinci-item"><span class="ri-nama">${escapeHtml(it.label)}</span><span class="ri-harga">${formatRupiah(it.harga)}</span><button type="button" class="ri-hapus" onclick="hapusItemRinci(${i})">×</button></div>`);
+    if (_itemRinci.length > 0) {
+      baris.push(`<div class="rinci-sisa ${sisa === 0 ? 'pas' : sisa > 0 ? 'kurang' : 'lebih'}">${
+        sisa === 0 ? 'PAS ' + formatRupiah(total) + ' — siap disimpan'
+        : sisa > 0 ? 'Sisa belum terurai: ' + formatRupiah(sisa)
+        : 'KELEBIHAN ' + formatRupiah(-sisa) + ' — hapus atau betulkan harga barang'}</div>`);
+    }
+    wadah.innerHTML = baris.join('');
+    const btn = document.getElementById('btnSimpanRinci');
+    if (btn) btn.disabled = !(sisa === 0 && _itemRinci.length > 0);
   }
 
   function gantiJalurRinci() {
@@ -8407,29 +8559,26 @@
     perbaruiDampakRinci();
   }
 
-  // Bentuk dokumen pengganti dihitung PERSIS seperti jalur simpanPenjualan —
-  // field, pembulatan, dan sumber HPP-nya sama, supaya stok/laba/riwayat membacanya
-  // tanpa perlakuan khusus.
-  function hitungRinciDariKontrol() {
-    const jalur = document.getElementById('rinciJalur').value;
-    const produk = document.getElementById('rinciProduk').value;
-    const jumlah = parseFloat(document.getElementById('rinciJumlah').value) || 0;
-    if (!produk || jumlah <= 0) return null;
+  // Satu barang dalam rincian. Bentuk field dihitung PERSIS seperti jalur simpanPenjualan —
+  // field, pembulatan, dan sumber HPP-nya sama, supaya stok/laba/riwayat membacanya tanpa
+  // perlakuan khusus. hargaManual > 0 = harga nego (menang atas katalog); 0 = pakai katalog.
+  function hitungItemRinci(jalur, produk, berat, jumlah, hargaManual) {
+    if (!produk || !(jumlah > 0)) return null;
 
     if (jalur === 'literan') {
       const s = hitungStokKarungPerMerk()[produk];
+      const hKatalog = (ambilHargaLiteran().find(h => h.merk === produk) || {}).hargaPerLiter || 0;
+      const harga = hargaManual > 0 ? hargaManual : Math.round(hKatalog * jumlah);
+      if (!(harga > 0)) return { gagal: 'Harga literan ' + produk + ' belum ada di katalog — isi "Harga barang ini" manual.' };
       const rasio = RASIO_KONVERSI[produk] || RASIO_DEFAULT;
       const totalKg = Math.round(jumlah * rasio * 1000) / 1000;
       const hppKg = s ? s.hppTerakhirPerKg : 0;
       const jk = tentukanKemasanLiteran(jumlah);
       let biaya = 0, dipakai = 0;
-      if (jk) {
-        dipakai = 1;
-        biaya = hargaBahanLiteranEfektif(jk, hitungStokBahanLiteran()) * dipakai;
-      }
+      if (jk) { dipakai = 1; biaya = hargaBahanLiteranEfektif(jk, hitungStokBahanLiteran()) * dipakai; }
       return {
+        jalur, produk, berat: null, jumlah, harga,
         label: 'Literan ' + produk + ' ' + jumlah + ' L',
-        sisaSesudah: s ? (Math.round((s.sisaKg - totalKg) * 100) / 100) + ' kg ' + produk : '?',
         stokKurang: !s || s.sisaKg < totalKg,
         fields: {
           jenis: 'literan', merkSumber: produk, jumlahLiter: jumlah, rasioPakai: rasio, totalKg, namaProduk: produk,
@@ -8442,10 +8591,13 @@
       const s = hitungStokKemasan()[produk];
       const potongan = produk.split('|');
       const ukuran = parseFloat(potongan[1]);
+      const hK = ambilHargaKemasan().find(x => x.merk === potongan[0] && x.ukuran === ukuran);
+      const harga = hargaManual > 0 ? hargaManual : Math.round((hK ? hK.hargaPerUnit : 0) * jumlah);
+      if (!(harga > 0)) return { gagal: 'Harga kemasan ' + potongan[0] + ' ' + ukuran + 'kg belum ada di katalog — isi "Harga barang ini" manual.' };
       const hppU = s ? s.hppRataRataPerUnit : 0;
       return {
+        jalur, produk, berat: null, jumlah, harga,
         label: potongan[0] + ' ' + ukuran + ' kg × ' + jumlah,
-        sisaSesudah: s ? (s.sisaUnit - jumlah) + ' unit ' + potongan[0] + ' ' + ukuran + ' kg' : '?',
         stokKurang: !s || s.sisaUnit < jumlah,
         fields: {
           jenis: 'kemasan', namaProduk: potongan[0], ukuranKemasan: ukuran, jumlahUnit: jumlah,
@@ -8455,15 +8607,18 @@
     }
     // karung utuh
     const s = hitungStokKarungPerMerk()[produk];
-    const berat = parseFloat(document.getElementById('rinciKarungBerat').value) || 50;
-    const totalKg = jumlah * berat;
+    const b = berat || 50;
+    const hu = (hargaKarungUtuh(produk, b) || {}).perUnit || ((cariHargaKarungPerKg(produk) || 0) * b);
+    const harga = hargaManual > 0 ? hargaManual : Math.round(hu * jumlah);
+    if (!(harga > 0)) return { gagal: 'Harga karung ' + b + 'kg ' + produk + ' belum ada di katalog — isi "Harga barang ini" manual.' };
+    const totalKg = jumlah * b;
     const hppKg = s ? s.hppTerakhirPerKg : 0;
     return {
-      label: 'Karung ' + berat + ' kg ' + produk + ' × ' + jumlah,
-      sisaSesudah: s ? (Math.round((s.sisaKg - totalKg) * 100) / 100) + ' kg ' + produk : '?',
+      jalur, produk, berat: b, jumlah, harga,
+      label: 'Karung ' + b + ' kg ' + produk + ' × ' + jumlah,
       stokKurang: !s || s.sisaKg < totalKg,
       fields: {
-        jenis: 'karung', merkSumber: produk, jumlahKarung: jumlah, beratKarungAcuan: berat, totalKg,
+        jenis: 'karung', merkSumber: produk, jumlahKarung: jumlah, beratKarungAcuan: b, totalKg,
         namaProduk: produk + ' (karung utuh)', hppTotalSaatJual: Math.round(hppKg * totalKg)
       }
     };
@@ -8473,55 +8628,101 @@
     const el = document.getElementById('dampakRinci');
     const p = _trxTerbuka;
     if (!el || !p) return;
-    const r = hitungRinciDariKontrol();
-    if (!r) { el.style.display = 'none'; return; }
-    const margin = (p.hargaTotal || 0) - r.fields.hppTotalSaatJual;
+    if (_itemRinci.length === 0) { el.style.display = 'none'; return; }
+    const target = p.hargaTotal || 0;
+    const totalHarga = _itemRinci.reduce((a, it) => a + it.harga, 0);
+    const totalHpp = _itemRinci.reduce((a, it) => a + it.fields.hppTotalSaatJual, 0);
+    const margin = totalHarga - totalHpp;
+    const kurangStok = _itemRinci.filter(it => it.stokKurang).map(it => it.label);
     el.style.display = 'block';
     el.innerHTML =
-      `<div class="ph-baris"><span>Produk</span><b>${escapeHtml(r.label)}</b></div>` +
-      `<div class="ph-baris"><span>Nominal (tidak berubah)</span><b>${formatRupiah(p.hargaTotal || 0)}</b></div>` +
-      `<div class="ph-baris"><span>HPP saat jual</span><b>${formatRupiah(r.fields.hppTotalSaatJual)}</b></div>` +
+      `<div class="ph-baris"><span>Barang</span><b>${_itemRinci.length}</b></div>` +
+      `<div class="ph-baris"><span>Nominal (tidak berubah)</span><b>${formatRupiah(target)}</b></div>` +
+      `<div class="ph-baris"><span>HPP saat jual</span><b>${formatRupiah(totalHpp)}</b></div>` +
       `<div class="ph-baris"><span>Margin kotor</span><b class="${margin < 0 ? 'ph-merah' : 'ph-hijau'}">${margin < 0 ? '−' : ''} ${formatRupiah(Math.abs(margin))}</b></div>` +
-      `<div class="ph-baris"><span>Sisa stok sesudah</span><b>${escapeHtml(r.sisaSesudah)}</b></div>` +
-      (r.stokKurang ? `<div class="ph-baris"><span></span><b class="ph-amber">Stok tercatat kurang — barangnya sudah keluar, catatan stok yang belum pas</b></div>` : '');
+      (kurangStok.length ? `<div class="ph-baris"><span></span><b class="ph-amber">Stok tercatat kurang: ${escapeHtml(kurangStok.join(', '))} — barang sudah keluar, catatan stok yang belum pas</b></div>` : '');
   }
 
   async function simpanRinciTrx() {
     const p = _trxTerbuka;
     if (!p || p.jenis !== 'kasir_darurat_nominal' || !penjualanMasihBerlaku(p)) return;
-    const r = hitungRinciDariKontrol();
-    if (!r) { alert('Pilih produk dan isi jumlahnya dulu — atau ketuk salah satu tebakan di atas.'); return; }
-    const idBaru = idUnik();
-    const pengganti = {
-      ...p, id: idBaru, ...r.fields,
-      namaPelanggan: p.namaPelanggan || '',
-      asalDarurat: true, rinciDari: p.id, koreksiDari: p.id,
-      alasanKoreksi: 'Rincian dari kasir darurat #' + String(p.id).slice(-4),
-      dirinciPada: new Date().toISOString()
-    };
-    // JANGAN pakai "field: undefined" — setDoc menolak undefined (beda dengan null).
-    delete pengganti.dikoreksiOleh;
-    delete pengganti.dibatalkan;
+    if (_itemRinci.length === 0) { alert('Tambahkan barangnya dulu — atau ketuk salah satu tebakan di atas.'); return; }
+    const target = p.hargaTotal || 0;
+    const totalHarga = _itemRinci.reduce((a, it) => a + it.harga, 0);
+    if (totalHarga !== target) {
+      alert('Jumlah barang ' + formatRupiah(totalHarga) + ' belum pas dengan nominal ' + formatRupiah(target) + '. Selisih ' + formatRupiah(Math.abs(target - totalHarga)) + ' harus diurai dulu.');
+      return;
+    }
+    const idGrup = idUnik();
+    const kini = new Date().toISOString();
+    const docBaru = _itemRinci.map(it => {
+      const d = {
+        id: idUnik(), tanggal: p.tanggal, jam: p.jam, caraBayar: p.caraBayar || 'Tunai', namaPelanggan: '',
+        ...it.fields, hargaTotal: it.harga,
+        grupNota: idGrup, asalDarurat: true, rinciDari: p.id, koreksiDari: p.id,
+        alasanKoreksi: 'Rincian dari kasir darurat #' + String(p.id).slice(-4), dirinciPada: kini
+      };
+      if (p.operator) d.operator = p.operator;
+      return d;
+    });
     try {
-      await simpanKeFirestore(KOLEKSI_PENJUALAN, pengganti);
-      // Pasangan catatan pemakaian kemasan literan (docId = id + 1) — pola sama dengan simpanPenjualan.
-      if (pengganti.kemasanLiteran && pengganti.jumlahKemasanLiteranDipakai > 0) {
-        await simpanKeFirestore(KOLEKSI_BAHAN_LITERAN, {
-          id: idBaru + 1, tipe: 'pakai', jenis: pengganti.kemasanLiteran,
-          jumlah: pengganti.jumlahKemasanLiteranDipakai, hargaTotal: 0,
-          tanggal: p.tanggal, catatan: 'Otomatis dari rincian darurat id ' + idBaru
-        });
+      for (const d of docBaru) {
+        await simpanKeFirestore(KOLEKSI_PENJUALAN, d);
+        // Pasangan catatan pemakaian kemasan literan (docId = id + 1) — pola sama dengan simpanPenjualan.
+        if (d.kemasanLiteran && d.jumlahKemasanLiteranDipakai > 0) {
+          await simpanKeFirestore(KOLEKSI_BAHAN_LITERAN, {
+            id: d.id + 1, tipe: 'pakai', jenis: d.kemasanLiteran,
+            jumlah: d.jumlahKemasanLiteranDipakai, hargaTotal: 0,
+            tanggal: p.tanggal, catatan: 'Otomatis dari rincian darurat id ' + d.id
+          });
+        }
       }
       // Asli TIDAK dihapus — ditandai, sama seperti koreksi. Jejak kasir darurat tetap terbaca.
-      await simpanKeFirestore(KOLEKSI_PENJUALAN, { ...p, dikoreksiOleh: idBaru, alasanKoreksi: 'Dirinci jadi: ' + r.label });
+      await simpanKeFirestore(KOLEKSI_PENJUALAN, {
+        ...p, dikoreksiOleh: docBaru[0].id,
+        alasanKoreksi: 'Dirinci jadi ' + docBaru.length + ' barang: ' + _itemRinci.map(it => it.label).join(' + ')
+      });
     } catch (err) {
       console.error(err);
       alert('Gagal simpan rincian (cek internet). ' + err.message);
       return;
     }
+    _itemRinci = [];
     tampilkanRiwayatJual(); tampilkanRiwayat(); perbaruiKartuDarurat();
     if (_antreanRinci) lanjutAntreanRinci();
     else tutupLembarTrx();
+  }
+
+  // Tarik balik rincian yang keliru: seluruh barang hasil rincian (satu grup rinciDari yang
+  // sama) dibatalkan, catatan pakai kemasan pasangannya dihapus (pola urungkanTransaksi),
+  // dan dokumen nominal asli dipulihkan ke antrean. Tebakan mesin jadi aman: selalu bisa mundur.
+  async function urungkanRinciTrx() {
+    const p = _trxTerbuka;
+    if (!p || !p.asalDarurat || !penjualanMasihBerlaku(p)) return;
+    const grup = ambilPenjualan().filter(x => x.asalDarurat && x.rinciDari === p.rinciDari);
+    if (grup.length === 0) return;
+    if (!confirm('Tarik balik rincian ini? ' + grup.length + ' barang hasil rincian dibatalkan, dan transaksi nominal kembali ke antrean rinci.')) return;
+    try {
+      for (const g of grup) {
+        await simpanKeFirestore(KOLEKSI_PENJUALAN, { ...g, dibatalkan: true, alasanKoreksi: 'Rincian diurungkan', dikoreksiPada: new Date().toISOString() });
+        if (g.jenis === 'literan' && g.kemasanLiteran) {
+          try { await hapusDariFirestore(KOLEKSI_BAHAN_LITERAN, g.id + 1); } catch (e) { /* catatan pakai bisa saja belum ada */ }
+        }
+      }
+      const asli = ambilPenjualanSemua().find(x => x.id === p.rinciDari);
+      if (asli) {
+        const pulih = { ...asli };
+        delete pulih.dikoreksiOleh;
+        delete pulih.alasanKoreksi;
+        await simpanKeFirestore(KOLEKSI_PENJUALAN, pulih);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Gagal mengurungkan (cek internet). ' + err.message);
+      return;
+    }
+    tampilkanRiwayatJual(); tampilkanRiwayat(); perbaruiKartuDarurat();
+    tutupLembarTrx();
   }
 
   function perbaruiKartuDarurat() {
@@ -9082,9 +9283,13 @@
   // Rinci kasir darurat — semua dipanggil dari onclick/onchange/oninput inline
   window.mulaiRinciTrx = mulaiRinciTrx;
   window.pakaiKandidatRinci = pakaiKandidatRinci;
+  window.pakaiKomboRinci = pakaiKomboRinci;
+  window.tambahItemRinci = tambahItemRinci;
+  window.hapusItemRinci = hapusItemRinci;
   window.gantiJalurRinci = gantiJalurRinci;
   window.perbaruiDampakRinci = perbaruiDampakRinci;
   window.simpanRinciTrx = simpanRinciTrx;
+  window.urungkanRinciTrx = urungkanRinciTrx;
   window.mulaiAntreanRinci = mulaiAntreanRinci;
   window.pilihJenisHarga = pilihJenisHarga;
   window.hapusHargaSedangDiubah = hapusHargaSedangDiubah;
