@@ -2847,7 +2847,8 @@
       <label>Nama produk (nama jual)</label>
       <input type="text" id="produksiNamaProduk" placeholder="Contoh: Kembang, Putri Agri, Lele Special, BMW, Buah Persik">
       <label>Ukuran per kemasan (kg)</label>
-      <div class="kartu-jenis-jual" style="grid-template-columns: repeat(4,1fr);" id="produksiUkuranTombol">
+      <div class="kartu-jenis-jual" style="grid-template-columns: repeat(3,1fr);" id="produksiUkuranTombol">
+        <button type="button" id="ukuranProd-50" onclick="pilihUkuranProduksi(50)">50 kg</button>
         <button type="button" id="ukuranProd-25" onclick="pilihUkuranProduksi(25)">25 kg</button>
         <button type="button" id="ukuranProd-20" onclick="pilihUkuranProduksi(20)">20 kg</button>
         <button type="button" id="ukuranProd-10" onclick="pilihUkuranProduksi(10)">10 kg</button>
@@ -6882,7 +6883,7 @@
   }
   function pilihUkuranProduksi(u) {
     document.getElementById('produksiUkuranKemasan').value = u;
-    [25, 20, 10, 5].forEach(x => {
+    [50, 25, 20, 10, 5].forEach(x => {
       const b = document.getElementById('ukuranProd-' + x);
       if (b) b.classList.toggle('pilih', x === u);
     });
@@ -6891,7 +6892,7 @@
   function perbaruiStokProduksi() { hitungCampuranProduksi(); }
   // dipanggil ulang di reset simpanProduksi supaya tombol ukuran ikut bersih
   function resetTombolUkuranProduksi() {
-    [25, 20, 10, 5].forEach(x => {
+    [50, 25, 20, 10, 5].forEach(x => {
       const b = document.getElementById('ukuranProd-' + x);
       if (b) b.classList.remove('pilih');
     });
