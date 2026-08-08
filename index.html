@@ -949,7 +949,13 @@
   .grafik-batang .gb-kolom {
     flex: 1; min-width: 0; height: 88px;
     display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px;
+    /* Sekarang <button>: reset gaya bawaan peramban. Kolom (bukan cuma batangnya)
+       yang jadi target ketuk — dengan 7 kolom berdampingan di layar 360-390 px,
+       lebarnya di bawah 44 px tidak terhindarkan; tingginya 88 px menutupinya. */
+    background: none; border: none; padding: 0; margin: 0; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
   }
+  .grafik-batang .gb-kolom:active .gb-batang { opacity: .7; }
   .grafik-batang .gb-nilai { font-size: 9.5px; font-weight: 700; color: #5d6570; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .grafik-batang .gb-nilai.kini { color: var(--emas-terang); }
   .grafik-batang .gb-batang { width: 100%; border-radius: 5px 5px 2px 2px; background: rgba(217, 178, 95, .26); }
@@ -7995,6 +8001,10 @@
   }
 
   // ===== UX ALUR 6 — Riwayat penjualan, koreksi & pembatalan berjejak =====
+  // _saringRiwayat.hari menampung DUA bentuk nilai berbeda: kode offset ('0'/'1'/'7')
+  // dari chip, ATAU tanggal ISO persis dari lihatRiwayatHari() (ketuk batang grafik).
+  // Pola ini yang membedakan keduanya di saringRiwayat() & labelHariRiwayat().
+  const POLA_TANGGAL_ISO = /^\d{4}-\d{2}-\d{2}$/;
   let _saringRiwayat = { jenis: 'semua', hari: '0' };
   let _trxTerbuka = null;
 
@@ -8003,6 +8013,20 @@
     _riwTampil = RIW_SEKALI;   // ganti saringan = mulai lagi dari 30 baris pertama
     tampilkanRiwayatJual();
     tampilkanRiwayat();
+  }
+
+  // Ketuk satu batang di kartu "Omzet 7 Hari" (Ringkasan) -> lompat ke Riwayat
+  // tersaring persis tanggal itu. Untuk hari ini/kemarin dipetakan ke kode chip
+  // yang sudah ada ('0'/'1') supaya chip-nya ikut menyala — selebihnya (2-6 hari
+  // lalu) pakai tanggal ISO apa adanya; saringRiwayat() & labelHariRiwayat() sudah
+  // menangani bentuk ini secara terpisah dari kode offset.
+  function lihatRiwayatHari(iso) {
+    const hariIni = tanggalLokalIso();
+    const kemarinD = new Date(); kemarinD.setHours(12, 0, 0, 0); kemarinD.setDate(kemarinD.getDate() - 1);
+    const kemarin = tanggalLokalIso(kemarinD);
+    _saringRiwayat = { jenis: 'semua', hari: iso === hariIni ? '0' : iso === kemarin ? '1' : iso };
+    _riwTampil = RIW_SEKALI;
+    pindahHalaman('rekap');
   }
 
   // ===================== LEMBAR 5 + 9 — POLA DAFTAR PANJANG =====================
@@ -8111,10 +8135,17 @@
     let hasil = semua;
     if (_saringRiwayat.jenis !== 'semua') hasil = hasil.filter(r => r.jenis === _saringRiwayat.jenis);
     if (_saringRiwayat.hari !== 'semua') {
-      const n = parseInt(_saringRiwayat.hari, 10);
-      const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n);
-      const iso = tanggalLokalIso(d);
-      hasil = n >= 7 ? hasil.filter(r => r.tanggal >= iso) : hasil.filter(r => r.tanggal === iso);
+      if (POLA_TANGGAL_ISO.test(_saringRiwayat.hari)) {
+        // Tanggal PERSIS (dari ketuk batang Omzet 7 Hari lewat lihatRiwayatHari) —
+        // bukan kode offset "N hari lalu". parseInt("2026-08-05") akan kebaca 2026
+        // dan menghitung tanggal 5+ tahun ke belakang kalau tidak dipisah di sini.
+        hasil = hasil.filter(r => r.tanggal === _saringRiwayat.hari);
+      } else {
+        const n = parseInt(_saringRiwayat.hari, 10);
+        const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n);
+        const iso = tanggalLokalIso(d);
+        hasil = n >= 7 ? hasil.filter(r => r.tanggal >= iso) : hasil.filter(r => r.tanggal === iso);
+      }
     }
     if (kata) hasil = hasil.filter(r => (r.nama + ' ' + r.ket + ' ' + r.nom + ' ' + r.cari).toLowerCase().includes(kata));
     return { hasil, kata };
@@ -8233,6 +8264,7 @@
     return { jual: 'Jual', masuk: 'Masuk', produksi: 'Produksi', harian: 'Harian', retur: 'Retur' }[j] || j;
   }
   function labelHariRiwayat(h) {
+    if (POLA_TANGGAL_ISO.test(h)) return formatHariRiwayat(h).toLowerCase();
     return { '0': 'hari ini', '1': 'kemarin', '7': '7 hari terakhir' }[h] || 'semua tanggal';
   }
   function kosongkanCariRiwayat() {
@@ -9407,6 +9439,7 @@
   window.cariMerkStok = cariMerkStok;
   window.perbaruiPratinjauHarga = perbaruiPratinjauHarga;
   window.pilihSaringRiwayat = pilihSaringRiwayat;
+  window.lihatRiwayatHari = lihatRiwayatHari;
   window.tampilkanRiwayat = tampilkanRiwayat;
   window.kosongkanCariRiwayat = kosongkanCariRiwayat;
   window.hapusSemuaSaringRiwayat = hapusSemuaSaringRiwayat;
@@ -9470,14 +9503,16 @@
       const maks = Math.max(1, ...hari7.map(h => h.total));
       const TINGGI = 88;
       const wrapG = document.getElementById('grafikOmzetWrap');
+      // Tiap kolom bisa diketuk -> lihatRiwayatHari() -> lompat ke Riwayat tersaring
+      // persis tanggal itu (iso sudah dibawa tiap entri hari7, tinggal dipakai).
       if (wrapG) wrapG.innerHTML = '<div class="grafik-batang">' + hari7.map((h, i) => {
         const kini = i === 6;
         const tinggi = Math.max(3, Math.round((Math.max(0, h.total) / maks) * TINGGI));
-        return '<div class="gb-kolom">' +
+        return '<button type="button" class="gb-kolom" onclick="lihatRiwayatHari(' + "'" + h.iso + "'" + ')" aria-label="Lihat riwayat ' + h.label + '">' +
           '<span class="gb-nilai' + (kini ? ' kini' : '') + '">' + singkatJuta(h.total) + '</span>' +
           '<div class="gb-batang' + (kini ? ' kini' : '') + '" style="height:' + tinggi + 'px"></div>' +
           '<span class="gb-hari' + (kini ? ' kini' : '') + '">' + h.label.charAt(0) + h.label.slice(1).toLowerCase() + '</span>' +
-          '</div>';
+          '</button>';
       }).join('') + '</div>';
       const batas = new Date(hariIni); batas.setDate(batas.getDate() - 29);
       const batasIso = tanggalLokalIso(batas);
