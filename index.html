@@ -2844,8 +2844,14 @@
 
     <div class="kartu">
       <div class="panel-kepala"><h2>Jadi Produk Kemasan</h2></div>
-      <label>Nama produk (nama jual)</label>
+      <!-- Ukuran 50 kg BUKAN produk kemasan baru — keputusan My DeV 9 Agu 2026: hasilnya
+           digabung balik ke stok karung sumber merk tujuan, lalu dijual lewat Jual > Karung
+           Utuh, bukan lewat Dari Stok Kemasan Jadi. Isian ini dipakai ULANG jadi "merk
+           tujuan" saat 50 kg dipilih — lihat aturModeProduksi50(). -->
+      <label id="labelNamaProduk">Nama produk (nama jual)</label>
       <input type="text" id="produksiNamaProduk" placeholder="Contoh: Kembang, Putri Agri, Lele Special, BMW, Buah Persik">
+      <datalist id="daftarMerkProduksi50"></datalist>
+      <p class="keterangan" id="produksiKet50" style="display:none;">Ukuran 50 kg = mengepak ulang jadi karung utuh, bukan produk baru. Kg hasilnya masuk balik ke stok karung merk ini, dan dijual lewat tab Jual → Karung Utuh. Kalau ini merk baru, tambahkan juga harga jualnya di Daftar Harga → Karung &amp; Repacking sebelum bisa dijual.</p>
       <label>Ukuran per kemasan (kg)</label>
       <div class="kartu-jenis-jual" style="grid-template-columns: repeat(3,1fr);" id="produksiUkuranTombol">
         <button type="button" id="ukuranProd-50" onclick="pilihUkuranProduksi(50)">50 kg</button>
@@ -2867,26 +2873,32 @@
           <button type="button" class="st-tambah" onclick="ubahJumlahUnitProduksi(1)" aria-label="Tambah unit">+</button>
         </div>
       </div>
-      <p class="keterangan">Pilih jenis kantong yang dipakai — biaya kemasan otomatis dihitung dari stok, tidak perlu ketik manual. Kalau stok kantong belum tercatat, isi dulu lewat "Beli Stok Bahan Kemasan" di atas.</p>
-      <label>Jenis kantong dipakai</label>
-      <div class="kartu-jenis-jual" style="grid-template-columns: repeat(2,1fr);" id="produksiKantongTombolWrap"></div>
-      <input type="hidden" id="produksiKantongJenis" value="5kg_kembangbmw">
-      <div class="stok-tersedia" id="produksiKantongInfo"></div>
-      <!-- Lembar 3: kantong & upah memakai lencana AMBER, bukan merah — belum lengkap
-           itu bukan bahaya, dan produksi tetap boleh disimpan. Akibatnya disebut jujur
-           oleh kalimat amber di kartu pratinjau. -->
-      <div class="baris-isian">
-        <!-- Tanpa <small>: lencana + isian + satuan sudah memakan kolom kanan, dan
-             "biasanya sama dengan jumlah unit" sudah tertulis di paragraf di atasnya.
-             Dua kali menulis hal yang sama membuat namanya melipat tiga baris di 360 px. -->
-        <span class="bi-nama">Kantong dipakai</span>
-        <span class="bi-isi">
-          <span class="lencana-amber" id="lencanaKantong">belum diisi</span>
-          <input type="number" id="produksiKantongJumlah" placeholder="0" inputmode="numeric" oninput="hitungBiayaKemasanProduksi(); hitungCampuranProduksi();"><i>pcs</i>
-        </span>
+      <!-- Disembunyikan seluruhnya untuk mode 50 kg (aturModeProduksi50): karung 50 kg
+           tidak memakai kantong plastik dari JENIS_BAHAN_KEMASAN — artikelnya semua
+           ukuran 5-25 kg. Isian di dalamnya TETAP dibaca simpanProduksi(), makanya
+           dipaksa kosong lewat kode, bukan cuma disembunyikan lewat CSS. -->
+      <div id="produksiKantongBlok">
+        <p class="keterangan">Pilih jenis kantong yang dipakai — biaya kemasan otomatis dihitung dari stok, tidak perlu ketik manual. Kalau stok kantong belum tercatat, isi dulu lewat "Beli Stok Bahan Kemasan" di atas.</p>
+        <label>Jenis kantong dipakai</label>
+        <div class="kartu-jenis-jual" style="grid-template-columns: repeat(2,1fr);" id="produksiKantongTombolWrap"></div>
+        <input type="hidden" id="produksiKantongJenis" value="5kg_kembangbmw">
+        <div class="stok-tersedia" id="produksiKantongInfo"></div>
+        <!-- Lembar 3: kantong & upah memakai lencana AMBER, bukan merah — belum lengkap
+             itu bukan bahaya, dan produksi tetap boleh disimpan. Akibatnya disebut jujur
+             oleh kalimat amber di kartu pratinjau. -->
+        <div class="baris-isian">
+          <!-- Tanpa <small>: lencana + isian + satuan sudah memakan kolom kanan, dan
+               "biasanya sama dengan jumlah unit" sudah tertulis di paragraf di atasnya.
+               Dua kali menulis hal yang sama membuat namanya melipat tiga baris di 360 px. -->
+          <span class="bi-nama">Kantong dipakai</span>
+          <span class="bi-isi">
+            <span class="lencana-amber" id="lencanaKantong">belum diisi</span>
+            <input type="number" id="produksiKantongJumlah" placeholder="0" inputmode="numeric" oninput="hitungBiayaKemasanProduksi(); hitungCampuranProduksi();"><i>pcs</i>
+          </span>
+        </div>
+        <div class="keterangan" id="produksiBiayaKemasanInfo" style="margin-top:6px;"></div>
+        <input type="hidden" id="produksiBiayaKemasan" value="0">
       </div>
-      <div class="keterangan" id="produksiBiayaKemasanInfo" style="margin-top:6px;"></div>
-      <input type="hidden" id="produksiBiayaKemasan" value="0">
       <div class="baris-isian">
         <span class="bi-nama">Upah repacking</span>
         <span class="bi-isi">
@@ -5570,7 +5582,14 @@
   // Karung utuh dijual per ukuran (revisi My DeV 4 Agu 2026 malam: 50 kg DAN 25 kg).
   // Merk hanya muncul di ukuran yang memang pernah tercatat di batch/stok awal.
   function merkPunyaKarungBerat(merk, berat) {
-    return ambilSemuaBatch().some(k => (k.merkList || []).some(m => m.merk === merk && m.satuan === 'karung' && m.beratKarung === berat));
+    const dariBeli = ambilSemuaBatch().some(k => (k.merkList || []).some(m => m.merk === merk && m.satuan === 'karung' && m.beratKarung === berat));
+    if (dariBeli) return true;
+    // Produksi 50 kg yang digabung balik ke karung utuh (bukan jadi kemasan sendiri —
+    // keputusan My DeV 9 Agu 2026) juga membuat merk itu "punya karung 50 kg", walau
+    // merk itu tidak pernah dibeli langsung dari pemasok. Cuma berlaku di 50 kg, karena
+    // cuma di situ jadiKarungUtuh dipakai.
+    if (berat !== 50) return false;
+    return ambilProduksi().some(pr => pr.jadiKarungUtuh && pr.merkTujuan === merk);
   }
   function merkPunyaKarung50(merk) { return merkPunyaKarungBerat(merk, 50); }
 
@@ -5623,6 +5642,22 @@
       }
     });
 
+    // Produksi 50 kg yang digabung balik ke karung utuh (keputusan My DeV 9 Agu 2026):
+    // kg yang berhasil dipak ulang jadi karung ditambahkan sebagai stok BARU ke merk
+    // tujuan yang dipilih pemakai — dinilai dari HPP bahan bakunya saja, TANPA upah
+    // repacking, supaya rata-rata tertimbangnya tidak tercampur biaya buruh (sama
+    // seperti batch beli menilai stok cuma dari harga barang, bukan ongkos apa pun
+    // sesudahnya). Kg yang dikreditkan = kg yang benar-benar jadi karung (ukuran×unit),
+    // bukan kg yang dipakai dari sumber — selisihnya (susut) sengaja tidak dikreditkan.
+    ambilProduksi().forEach(pr => {
+      if (!pr.jadiKarungUtuh || !pr.merkTujuan) return;
+      const totalKgJadi = (pr.ukuranKemasan || 0) * (pr.jumlahUnit || 0);
+      if (totalKgJadi <= 0) return;
+      if (!stok[pr.merkTujuan]) stok[pr.merkTujuan] = { totalMasuk: 0, terpakai: 0, totalNilaiMasuk: 0, hargaTerakhirPerKg: 0, idTerakhir: pr.id };
+      stok[pr.merkTujuan].totalMasuk += totalKgJadi;
+      stok[pr.merkTujuan].totalNilaiMasuk += (pr.hppSumberPerKgDipakai || 0) * (pr.kgDipakai || 0);
+    });
+
     const hasil = {};
     Object.keys(stok).forEach(merk => {
       hasil[merk] = {
@@ -5644,6 +5679,10 @@
     const stok = {}; // { "namaProduk|ukuranKg": { unitDibuat, unitTerjual, nilaiProduksiTotal } }
 
     produksi.forEach(pr => {
+      // Produksi 50 kg yang digabung balik ke karung utuh BUKAN kemasan jadi — sudah
+      // dihitung sebagai stok karung di hitungStokKarungPerMerk(). Ikut dihitung di sini
+      // juga berarti barang yang sama muncul dobel di dua bagian tab Stok sekaligus.
+      if (pr.jadiKarungUtuh) return;
       const kunci = pr.namaProduk + '|' + pr.ukuranKemasan;
       if (!stok[kunci]) stok[kunci] = { namaProduk: pr.namaProduk, ukuranKemasan: pr.ukuranKemasan, unitDibuat: 0, unitTerjual: 0, nilaiProduksiTotal: 0 };
       stok[kunci].unitDibuat += pr.jumlahUnit;
@@ -6774,11 +6813,13 @@
       : '';
 
     // Kantong & upah belum diisi = amber (data kurang, bukan bahaya) — produksi
-    // tetap boleh disimpan, tapi akibatnya disebut jujur.
+    // tetap boleh disimpan, tapi akibatnya disebut jujur. Kantong dilewati untuk mode
+    // 50 kg — blok isiannya memang disembunyikan (aturModeProduksi50), jadi menagihnya
+    // di sini cuma akan menyesatkan.
     const kantong = parseFloat(document.getElementById('produksiKantongJumlah').value) || 0;
     const upah = parseFloat(document.getElementById('produksiUpahRepacking').value) || 0;
     const belum = [];
-    if (kantong <= 0) belum.push('Kantong');
+    if (d.ukuran !== 50 && kantong <= 0) belum.push('Kantong');
     if (upah <= 0) belum.push('upah repacking');
     const cat = document.getElementById('ppCatatan');
     cat.textContent = belum.length
@@ -6887,6 +6928,7 @@
       const b = document.getElementById('ukuranProd-' + x);
       if (b) b.classList.toggle('pilih', x === u);
     });
+    aturModeProduksi50(u === 50);
     hitungCampuranProduksi();
   }
   function perbaruiStokProduksi() { hitungCampuranProduksi(); }
@@ -6896,6 +6938,36 @@
       const b = document.getElementById('ukuranProd-' + x);
       if (b) b.classList.remove('pilih');
     });
+    aturModeProduksi50(false);
+  }
+
+  // ===== Ukuran 50 kg = gabung balik ke karung utuh, BUKAN produk kemasan baru =====
+  // Keputusan My DeV 9 Agu 2026: isian "nama produk" dipakai ulang jadi "merk tujuan",
+  // dan blok kantong plastik disembunyikan (karung 50 kg tidak pakai artikel kantong
+  // manapun di JENIS_BAHAN_KEMASAN — semuanya ukuran 5-25 kg). Perhitungan HPP/muat di
+  // kartu pratinjau tidak berubah sama sekali, cuma tujuan stoknya yang beda.
+  function aturModeProduksi50(aktif) {
+    const label = document.getElementById('labelNamaProduk');
+    const input = document.getElementById('produksiNamaProduk');
+    const ket = document.getElementById('produksiKet50');
+    const blokKantong = document.getElementById('produksiKantongBlok');
+    if (label) label.textContent = aktif ? 'Merk tujuan (masuk balik ke stok karung)' : 'Nama produk (nama jual)';
+    if (input) {
+      input.placeholder = aktif ? 'Contoh: IR64 Ascent, Angsa — boleh merk baru' : 'Contoh: Kembang, Putri Agri, Lele Special, BMW, Buah Persik';
+      if (aktif) { isiDaftarMerkProduksi50(); input.setAttribute('list', 'daftarMerkProduksi50'); }
+      else input.removeAttribute('list');
+    }
+    if (ket) ket.style.display = aktif ? 'block' : 'none';
+    if (blokKantong) blokKantong.style.display = aktif ? 'none' : 'block';
+  }
+  // Saran merk: gabungan DAFTAR_MERK baku + merk apa pun yang sudah pernah tercatat di
+  // stok karung sekarang (termasuk hasil produksi 50 kg sebelumnya) — supaya mengetik
+  // ulang nama merk yang sama tidak perlu mengingat ejaan persis.
+  function isiDaftarMerkProduksi50() {
+    const dl = document.getElementById('daftarMerkProduksi50');
+    if (!dl) return;
+    const gabung = Array.from(new Set([...DAFTAR_MERK, ...Object.keys(hitungStokKarungPerMerk())])).sort();
+    dl.innerHTML = gabung.map(m => `<option value="${escapeHtml(m)}">`).join('');
   }
 
   // ============ STOK BAHAN KEMASAN (plastik, per kombinasi ukuran+merek) ============
@@ -7140,13 +7212,18 @@
     const namaProduk = document.getElementById('produksiNamaProduk').value.trim();
     const ukuranKemasan = parseFloat(document.getElementById('produksiUkuranKemasan').value) || 0;
     const jumlahUnit = parseFloat(document.getElementById('produksiJumlahUnit').value) || 0;
-    const biayaKemasan = parseFloat(document.getElementById('produksiBiayaKemasan').value) || 0;
+    // 50 kg = gabung balik ke karung utuh (keputusan My DeV 9 Agu 2026), bukan kemasan
+    // baru. Isian "nama produk" dipakai ulang jadi merk tujuan; kantong DIPAKSA kosong
+    // di sini — bukan cuma disembunyikan lewat CSS — karena #produksiKantongJenis
+    // punya nilai bawaan "5kg_kembangbmw" yang tetap terbaca walau blok-nya tersembunyi.
+    const jadiKarungUtuh = ukuranKemasan === 50;
+    const biayaKemasan = jadiKarungUtuh ? 0 : (parseFloat(document.getElementById('produksiBiayaKemasan').value) || 0);
     const upahRepacking = parseFloat(document.getElementById('produksiUpahRepacking').value) || 0;
-    const kantongJenis = document.getElementById('produksiKantongJenis').value;
-    const kantongJumlah = parseFloat(document.getElementById('produksiKantongJumlah').value) || 0;
+    const kantongJenis = jadiKarungUtuh ? '' : document.getElementById('produksiKantongJenis').value;
+    const kantongJumlah = jadiKarungUtuh ? 0 : (parseFloat(document.getElementById('produksiKantongJumlah').value) || 0);
 
     if (sumberList.length === 0) { alert('Isi minimal satu sumber (merk + kg).'); return; }
-    if (!namaProduk) { alert('Isi nama produk kemasan.'); return; }
+    if (!namaProduk) { alert(jadiKarungUtuh ? 'Isi merk tujuan dulu.' : 'Isi nama produk kemasan.'); return; }
     if (ukuranKemasan <= 0) { alert('Isi ukuran per kemasan.'); return; }
     if (jumlahUnit <= 0) { alert('Isi jadi berapa unit.'); return; }
 
@@ -7182,7 +7259,13 @@
       biayaKemasan, upahRepacking,
       kantongJenis: kantongJenis || null, kantongJumlah: kantongJumlah || 0,
       hppSumberPerKgDipakai: hppSumberPerKg,
-      hppPerUnit: Math.round((hppSumberPerKg * kgDipakai + biayaKemasan + upahRepacking) / jumlahUnit)
+      // Biaya kemasan sengaja TIDAK dihitung di sini kalau jadiKarungUtuh (selalu 0
+      // untuk mode itu) — hppPerUnit di sini berarti "biaya per karung 50 kg",
+      // ditampilkan di Riwayat Produksi, TIDAK dipakai untuk menilai stok karung
+      // (hitungStokKarungPerMerk menilai dari hppSumberPerKgDipakai × kgDipakai saja,
+      // tanpa upah, supaya rata-rata tertimbang stok tidak tercampur biaya buruh).
+      hppPerUnit: Math.round((hppSumberPerKg * kgDipakai + biayaKemasan + upahRepacking) / jumlahUnit),
+      jadiKarungUtuh, merkTujuan: jadiKarungUtuh ? namaProduk : null
     };
 
     const btnProduksi = document.getElementById('btnSimpanProduksi');
@@ -7223,6 +7306,7 @@
     perbaruiStokProduksi();
 
     const pesan = document.getElementById('pesanOkProduksi');
+    pesan.textContent = (jadiKarungUtuh ? ' Stok karung bertambah.' : ' Stok kemasan bertambah.');
     pesan.style.display = 'block';
     window.scrollTo({top: 0, behavior: 'smooth'});
     setTimeout(() => { pesan.style.display = 'none'; }, 3000);
