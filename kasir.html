@@ -158,6 +158,33 @@
     background: var(--tombol); color: var(--tombol-teks); border-bottom: 3px solid #b9b5a8;
   }
   .lapisan button.redup { background: #2b3036; color: #9aa3ab; border: 1px solid var(--garis); font-size: .9rem; min-height: 44px; }
+  /* Kolom nama pelanggan — WAJIB untuk ketiga cara bayar (keputusan My DeV 9 Agu 2026).
+     Tingginya 44 px sama dengan tuts bayar di atasnya supaya barisnya tidak lebih pendek. */
+  #kolomPelanggan { flex: 0 0 auto; display: flex; gap: 7px; padding: 0 10px 8px; }
+  #kolomPelanggan input {
+    flex: 1; min-width: 0; min-height: 44px; border-radius: 9px; padding: 0 12px;
+    border: 1px solid var(--garis); background: #2b3036; color: #e9ecf1;
+    font-family: inherit; font-size: .95rem;
+  }
+  #kolomPelanggan input::placeholder { color: #6d757d; }
+  /* Merah saat CATAT ditekan tapi nama masih kosong — pemberitahuannya di tempat
+     masalahnya, bukan lewat kotak peringatan yang menutupi layar. */
+  #kolomPelanggan input.kurang { border-color: #b23a2a; }
+  #btnUtang {
+    flex: 0 0 auto; min-height: 44px; padding: 0 14px; border-radius: 9px;
+    border: 1px solid var(--garis); background: #2b3036; color: #cfd6dc;
+    font-family: inherit; font-size: .85rem; font-weight: 700; letter-spacing: .5px;
+  }
+  #btnUtang.ada { border-color: #8a6d2f; color: var(--tombol); }
+  /* Daftar utang & riwayatnya di layar UTANG */
+  #daftarUtang { width: 100%; max-width: 380px; max-height: 46vh; overflow-y: auto; margin-top: 6px; text-align: left; }
+  .baris-utang {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    min-height: 52px; padding: 8px 12px; margin-bottom: 7px; border-radius: 10px;
+    border: 1px solid var(--garis); background: #2b3036; color: #e9ecf1;
+    font-family: inherit; font-size: .95rem; text-align: left;
+  }
+  .baris-utang b { font-variant-numeric: tabular-nums; color: var(--tombol); white-space: nowrap; }
   #lcd.lcd-tolak #lcdAngka { color: #b23a2a !important; }
   #lcd.lcd-tolak { animation: goyangTolak .3s linear 2; }
   @keyframes goyangTolak { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
@@ -192,6 +219,17 @@
 <div id="struk"><div id="strukKosong">Ketik harga lalu +. Bisa juga 13500 \u00d7 2.5 atau 12000 : 2. Angka yang tidak cocok harga barang otomatis ditolak.</div></div>
 
 <div id="panelProduk"><div class="kosong">Memuat daftar barang…</div></div>
+
+<!-- Baris ini SELALU tampil, sengaja di luar #bilahCatat: bilah itu cuma muncul kalau
+     struk sudah ada isinya, sedangkan menerima pembayaran utang justru pekerjaan yang
+     TIDAK ada jualannya — kalau tombol UTANG ikut tersembunyi, kasir harus pura-pura
+     menjual barang dulu hanya untuk membukanya. -->
+<div id="kolomPelanggan">
+  <input type="text" id="namaPelangganInput" placeholder="Nama pembeli" autocomplete="off"
+    list="daftarNamaPelanggan" oninput="tandaiNamaTerisi()">
+  <datalist id="daftarNamaPelanggan"></datalist>
+  <button type="button" id="btnUtang" onclick="bukaLayarUtang()">UTANG</button>
+</div>
 
 <div id="papan">
   <button type="button" class="op hapus" onclick="tekanHapus()">C</button>
@@ -255,6 +293,26 @@
     <button type="button" class="redup" onclick="lewatiLogin()">Lewati dulu — tetap bisa jual</button>
   </div>
   <p style="margin-top:12px; font-size:.75rem;">Jualan tetap tersimpan di HP walau dilewati, dikirim otomatis setelah masuk.</p>
+</div>
+
+<!-- LAYAR UTANG: dua tahap dalam satu layar — pilih pelanggan, lalu isi nominal bayar.
+     Daftar & sisa utang dibaca dari ringkasanKasir (diterbitkan sistem admin), jadi kasir
+     tetap cuma membaca SATU dokumen. Pembayaran ditulis ke koleksi piutangMutasi lewat
+     antrean offline yang sudah ada, jadi tetap bisa dicatat walau sinyal mati. -->
+<div id="layarUtang" class="lapisan" style="z-index:55;">
+  <h2 id="utangJudul">PELANGGAN BERUTANG</h2>
+  <p id="utangSub">Ketuk nama untuk mencatat pembayaran.</p>
+  <div id="daftarUtang"></div>
+
+  <div id="utangFormBayar" style="display:none; width:100%; max-width:340px;">
+    <input type="number" id="utangNominal" placeholder="0" inputmode="numeric">
+    <div class="grid1">
+      <button type="button" class="redup" onclick="isiLunasUtang()">Isi penuh (lunasi)</button>
+      <button type="button" onclick="simpanBayarUtang()">Catat pembayaran</button>
+    </div>
+  </div>
+
+  <button type="button" class="redup" style="margin-top:12px; width:100%; max-width:380px;" onclick="tutupLayarUtang()">Kembali</button>
 </div>
 
 <div id="layarSukses" class="lapisan"><div class="cek">TERSIMPAN</div><div class="nom" id="teksSukses"></div></div>
@@ -433,6 +491,7 @@ function dariFs(v) {
 function muatRingkasanCache() {
   try { var t = localStorage.getItem(K_RINGKASAN); if (t) ringkasan = JSON.parse(t); } catch (e) {}
   bangunDaftarProduk();
+  isiSaranNamaPelanggan();
 }
 function bangunDaftarProduk() {
   daftarProduk = [];
@@ -511,6 +570,7 @@ function segarkanRingkasan() {
         localStorage.setItem(K_RINGKASAN, JSON.stringify(o));
         bangunDaftarProduk();
         gambarPanelProduk('panelProduk', 'tekanProduk');
+        isiSaranNamaPelanggan();
         setStatus(true);
       })
       .catch(function () { setStatus(navigator.onLine); });
@@ -937,10 +997,106 @@ function mulaiBaru() {
   entriSekarang = ''; opA = null; opJenis = null; tandaKurang = false;
   strukItems = []; totalTerkunci = false; bayarAktif = 'Tunai';
   ['Tunai', 'Qris', 'Kredit'].forEach(function (x) { $('bayar-' + x).classList.toggle('pilih', x === 'Tunai'); });
+  var elNama = $('namaPelangganInput');
+  if (elNama) { elNama.value = ''; elNama.classList.remove('kurang'); }
+}
+function namaPelangganTerisi() {
+  var el = $('namaPelangganInput');
+  return !!(el && (el.value || '').trim());
+}
+function tandaiNamaTerisi() {
+  var el = $('namaPelangganInput');
+  if (el && (el.value || '').trim()) el.classList.remove('kurang');
 }
 function pilihBayar(c) {
   bayarAktif = c;
   ['Tunai', 'Qris', 'Kredit'].forEach(function (x) { $('bayar-' + x).classList.toggle('pilih', x === c); });
+}
+
+// ---------- UTANG PELANGGAN ----------
+// Daftar & sisa utang datang dari ringkasanKasir (diterbitkan sistem admin, sudah
+// menghitung penjualan kredit + saldo awal − pembayaran). Kasir tidak menghitung
+// sendiri — supaya angka di kasir dan di sistem tidak pernah beda versi.
+var utangTerpilih = null;
+function daftarUtang() {
+  return ((ringkasan && ringkasan.piutang) || []).filter(function (p) { return p && p.sisa > 0; });
+}
+// Nama pelanggan yang pernah berutang dipakai sebagai saran ketik — mengurangi salah
+// ketik yang bikin satu orang tercatat sebagai dua pelanggan berbeda.
+function isiSaranNamaPelanggan() {
+  var dl = $('daftarNamaPelanggan');
+  if (!dl) return;
+  dl.innerHTML = daftarUtang().map(function (p) {
+    return '<option value="' + esk(p.nama) + '"></option>';
+  }).join('');
+  var tb = $('btnUtang');
+  if (tb) {
+    var n = daftarUtang().length;
+    tb.classList.toggle('ada', n > 0);
+    tb.textContent = n > 0 ? 'UTANG ' + n : 'UTANG';
+  }
+}
+function bukaLayarUtang() {
+  utangTerpilih = null;
+  $('utangFormBayar').style.display = 'none';
+  $('utangJudul').textContent = 'PELANGGAN BERUTANG';
+  var d = daftarUtang();
+  var total = d.reduce(function (a, p) { return a + (p.sisa || 0); }, 0);
+  $('utangSub').textContent = d.length === 0
+    ? 'Tidak ada yang berutang sekarang.'
+    : d.length + ' pelanggan · total ' + rupiah(total) + '. Ketuk nama untuk mencatat pembayaran.';
+  $('daftarUtang').innerHTML = d.length === 0
+    ? ''
+    : d.map(function (p, i) {
+        return '<button type="button" class="baris-utang" onclick="pilihUtang(' + i + ')">' +
+          '<span>' + esk(p.nama) + '</span><b>' + rupiah(p.sisa) + '</b></button>';
+      }).join('');
+  $('layarUtang').classList.add('tampil');
+}
+function tutupLayarUtang() {
+  utangTerpilih = null;
+  $('layarUtang').classList.remove('tampil');
+}
+function pilihUtang(i) {
+  var p = daftarUtang()[i];
+  if (!p) return;
+  utangTerpilih = p;
+  $('utangJudul').textContent = p.nama;
+  $('utangSub').textContent = 'Sisa utang ' + rupiah(p.sisa) + '. Isi berapa yang dibayar sekarang.';
+  $('daftarUtang').innerHTML = '';
+  $('utangNominal').value = '';
+  $('utangFormBayar').style.display = 'block';
+  $('utangNominal').focus();
+}
+function isiLunasUtang() {
+  if (!utangTerpilih) return;
+  $('utangNominal').value = utangTerpilih.sisa;
+}
+function simpanBayarUtang() {
+  if (!utangTerpilih) return;
+  if (!operatorAktif()) { bukaPilihOperator(); return; }
+  var n = parseFloat($('utangNominal').value) || 0;
+  if (n <= 0) { alert('Isi dulu berapa yang dibayar.'); return; }
+  // Melebihi sisa = data cacat. Ditolak, pola sama dengan sisi sistem admin.
+  if (n > utangTerpilih.sisa) {
+    alert('Bayar ' + rupiah(n) + ' melebihi sisa utang ' + rupiah(utangTerpilih.sisa) + '. Kalau lebih, sisanya dicatat sebagai penjualan biasa.');
+    return;
+  }
+  tambahAntrean('piutangMutasi', {
+    id: idUnik(), tipe: 'bayar', namaPelanggan: utangTerpilih.nama, nominal: n,
+    tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5),
+    caraBayar: bayarAktif === 'Kredit' ? 'Tunai' : bayarAktif,
+    catatan: '', operator: operatorAktif(), dicatatDi: 'kasir'
+  });
+  kirimAntrean(false);
+  // Sisa di layar dikurangi supaya angka yang terlihat langsung masuk akal; angka
+  // sebenarnya menyusul dari ringkasanKasir begitu sistem admin menerbitkan ulang.
+  utangTerpilih.sisa = Math.round((utangTerpilih.sisa - n) * 100) / 100;
+  isiSaranNamaPelanggan();
+  tutupLayarUtang();
+  $('teksSukses').textContent = rupiah(n);
+  $('layarSukses').classList.add('tampil');
+  setTimeout(function () { $('layarSukses').classList.remove('tampil'); }, 1300);
 }
 
 // ---------- CATAT: tanya produk yang belum ditandai, lalu simpan ----------
@@ -949,6 +1105,15 @@ function tekanCatat() {
   if (!operatorAktif()) { bukaPilihOperator(); return; }
   if (!infoOperator(operatorAktif()).aktif) { localStorage.removeItem(K_OPERATOR); bukaPilihOperator(); return; }
   if (strukItems.length === 0) return;
+  // Nama pembeli WAJIB untuk ketiga cara bayar (keputusan My DeV 9 Agu 2026).
+  // Diperiksa DI SINI, sebelum layar "barang apa?" — supaya kasir tidak menjawab
+  // sederet pertanyaan produk dulu baru ditolak gara-gara nama kosong.
+  if (!namaPelangganTerisi()) {
+    var el = $('namaPelangganInput');
+    el.classList.add('kurang');
+    el.focus();
+    return;
+  }
   // wajib produk: kumpulkan item UMUM (bukan potongan) yang belum ditandai
   antriTanya = [];
   strukItems.forEach(function (it, i) { if (!it.potongan && it.produkIdx === null) antriTanya.push(i); });
@@ -976,13 +1141,10 @@ function batalTanyaProduk() {
   $('layarTanyaProduk').classList.remove('tampil');
 }
 function simpanTransaksi() {
-  var namaPelanggan = '';
-  if (bayarAktif === 'Kredit') {
-    var v = prompt('Nama pelanggan (wajib untuk kredit):');
-    if (v === null) return;
-    namaPelanggan = v.trim();
-    if (!namaPelanggan) { alert('Kredit harus pakai nama.'); return; }
-  }
+  // Sudah dipastikan terisi di tekanCatat(); dibaca ulang di sini supaya tetap benar
+  // kalau nanti ada jalur lain yang memanggil simpanTransaksi langsung.
+  var namaPelanggan = ($('namaPelangganInput').value || '').trim();
+  if (!namaPelanggan) { $('namaPelangganInput').classList.add('kurang'); $('namaPelangganInput').focus(); return; }
   var grupNota = idUnik();
   var tanggal = tanggalLokalIso();
   var jam = new Date().toTimeString().slice(0, 5);
@@ -1061,6 +1223,10 @@ window.batalTanyaProduk = batalTanyaProduk;
 window.jawabPilihKandidat = jawabPilihKandidat; window.bukaPilihOperator = bukaPilihOperator;
 window.pilihOperatorIdx = pilihOperatorIdx; window.kirimLogin = kirimLogin; window.lewatiLogin = lewatiLogin;
 window.kirimAntrean = kirimAntrean;
+window.tandaiNamaTerisi = tandaiNamaTerisi;
+window.bukaLayarUtang = bukaLayarUtang; window.tutupLayarUtang = tutupLayarUtang;
+window.pilihUtang = pilihUtang; window.isiLunasUtang = isiLunasUtang;
+window.simpanBayarUtang = simpanBayarUtang;
 
 muatRingkasanCache();
 gambarPanelProduk('panelProduk', 'tekanProduk');

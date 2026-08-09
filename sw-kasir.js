@@ -5,7 +5,11 @@
 // detik. Sekarang: buka langsung dari cache (<1 detik), versi baru diunduh diam-diam
 // untuk pembukaan berikutnya. kasir-darurat-nominal.html ikut di-cache — katup darurat
 // justru paling wajib bisa kebuka saat jaringan mati.
-const VERSI = 'kasir-v4';
+// v5 (9 Agustus 2026): kasir dapat kolom nama pembeli (wajib, ketiga cara bayar) dan
+// layar UTANG. VERSI dinaikkan supaya perubahan sebesar ini langsung terpasang begitu
+// kasir dibuka — kalau tidak, strategi "cache dulu" di bawah menyajikan kasir LAMA satu
+// kali dulu, dan kasir sempat menyimpan penjualan tanpa nama pelanggan.
+const VERSI = 'kasir-v5';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 
