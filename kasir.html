@@ -207,7 +207,7 @@
 </head>
 <body>
 <div id="bilahAtas">
-  <span><b>M.IQBAL</b> · <span id="chipOperator" onclick="bukaPilihOperator()">pilih nama</span></span>
+  <span><b>M.IQBAL</b> · <span id="chipOperator">Owner</span></span>
   <span id="chipStatus">Memuat…</span>
 </div>
 
@@ -216,7 +216,7 @@
   <div id="lcdAngka">0</div>
 </div>
 
-<div id="struk"><div id="strukKosong">Ketik harga lalu +. Bisa juga 13500 \u00d7 2.5 atau 12000 : 2. Angka yang tidak cocok harga barang otomatis ditolak.</div></div>
+<div id="struk"><div id="strukKosong">Ketik harga lalu +. Bisa juga 13500 \u00d7 2.5 atau 12000 : 2. Harga yang tidak ada di katalog tetap diterima \u2014 barangnya ditanya sebelum disimpan.</div></div>
 
 <div id="panelProduk"><div class="kosong">Memuat daftar barang…</div></div>
 
@@ -276,11 +276,6 @@
   <h2>SIAPA YANG JAGA KASIR?</h2>
   <div class="grid1" id="daftarOperator"></div>
   <p style="margin-top:14px;">Yang tertulis "libur" diatur owner lewat sistem lengkap.</p>
-</div>
-
-<div id="layarTutup" class="lapisan">
-  <h2>KASIR TUTUP</h2>
-  <p>Buka otomatis jam 05.00 pagi.<br>Transaksi yang belum terkirim tetap dikirim sendiri.</p>
 </div>
 
 <div id="layarLogin" class="lapisan" style="z-index:60;">
@@ -354,13 +349,16 @@ var EMAIL_TOKO = 'kasir@tokoberasmiqbal.web.app';
 var URL_MASUK = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + KUNCI_API;
 var URL_SEGARKAN_TOKEN = 'https://securetoken.googleapis.com/v1/token?key=' + KUNCI_API;
 var NAMA_OPERATOR = ['Gono', 'Hasan', 'Ben Mohsein'];
-var JAM_BUKA = 5, JAM_TUTUP = 19;
+// JAM_BUKA/JAM_TUTUP sengaja dihapus 9 Agu 2026 bersama gerbang jam operasional —
+// lihat cekJamOperasional(). Kasir darurat (kasir-darurat-nominal.html) tidak pernah
+// punya gerbang ini, jadi staf tidak terpengaruh.
 var LABEL_BAHAN = { paperbag5l: 'Paper bag 5L', paperbag10l: 'Paper bag 10L', karungbekas: 'Karung bekas' };
 var HARGA_AWAL_BAHAN = { paperbag5l: 305, paperbag10l: 395, karungbekas: 1500 };
 
 var ringkasan = null;
 var daftarProduk = [];   // dibangun dari ringkasan: [{tipe, label, merk/kunci, hargaSatuan, ...}]
 var bayarAktif = 'Tunai';
+var pesanSekali = '';   // kabar singkat untuk sudut LCD, dipakai sekali lalu hangus
 
 // ---------- util ----------
 function $(id) { return document.getElementById(id); }
@@ -587,16 +585,15 @@ function infoOperator(nama) {
   if (!r || !r.operator || !r.operator[nama]) return { aktif: true, pin: null };
   return { aktif: r.operator[nama].aktif !== false, pin: r.operator[nama].pin || null };
 }
-function operatorAktif() { return localStorage.getItem(K_OPERATOR) || ''; }
-function cekOperatorMasihAktif() {
-  var nama = operatorAktif();
-  if (nama && !infoOperator(nama).aktif) {
-    localStorage.removeItem(K_OPERATOR);
-    perbaruiChipOperator();
-    bukaPilihOperator();
-  }
-  gambarPilihanOperator();
-}
+// KASIR.HTML = ALAT OWNER (keputusan My DeV 9 Agu 2026). Pembagiannya sekarang:
+// staf (Gono/Hasan) memakai kasir-darurat-nominal.html karena jauh lebih cepat buat
+// mereka, sedangkan kasir.html ini dipakai owner sendiri. Karena itu tidak ada lagi
+// "siapa yang jaga kasir": setiap transaksi dari sini tercatat atas nama Owner.
+// Roster & PIN operator dibiarkan ada di kode tapi tidak lagi menghalangi apa pun —
+// dipakai kasir darurat lewat dokumen pengaturan yang sama.
+var OPERATOR_OWNER = 'Owner';
+function operatorAktif() { return OPERATOR_OWNER; }
+function cekOperatorMasihAktif() { perbaruiChipOperator(); }
 function gambarPilihanOperator() {
   var wadah = $('daftarOperator');
   if (!wadah) return;
@@ -622,15 +619,13 @@ function pilihOperatorIdx(i) {
 }
 function bukaPilihOperator() { gambarPilihanOperator(); $('layarPilihOperator').classList.add('tampil'); }
 function perbaruiChipOperator() {
-  var n = operatorAktif();
-  $('chipOperator').textContent = n ? (n === 'Ben Mohsein' ? 'Ben' : n) : 'pilih nama';
+  $('chipOperator').textContent = OPERATOR_OWNER;
 }
-function cekJamOperasional() {
-  var jam = new Date().getHours();
-  var tutup = (jam < JAM_BUKA || jam >= JAM_TUTUP);
-  $('layarTutup').classList.toggle('tampil', tutup);
-  return !tutup;
-}
+// Gerbang jam 05:00-19:00 DICABUT (9 Agu 2026): dulu gunanya mencegah staf mencatat
+// di luar jam toko. Owner justru paling sering membereskan catatan sesudah toko tutup,
+// jadi pagar ini cuma menghalangi pemiliknya sendiri. Fungsinya dipertahankan (dipanggil
+// di beberapa tempat) tapi selalu mengizinkan.
+function cekJamOperasional() { return true; }
 
 // ---------- antrean offline ----------
 function ambilAntrean() { try { return JSON.parse(localStorage.getItem(K_ANTREAN) || '[]'); } catch (e) { return []; } }
@@ -714,13 +709,16 @@ function gambarLcd() {
     kanan.textContent = opA !== null ? ('' + simbolOp).trim() : (totalTerkunci ? 'TOTAL' : '');
   }
   kiri.textContent = strukItems.length > 0 ? (strukItems.length + ' barang') : '';
+  // Kabar sekali-pakai (mis. "HARGA BEBAS — DITANYA NANTI") menang atas teks biasa,
+  // lalu hangus. Tanpa ini pesannya langsung tertimpa penggambaran ulang di tekanTambah.
+  if (pesanSekali) { kanan.textContent = pesanSekali; pesanSekali = ''; }
   elA.textContent = tampil;
   elA.classList.toggle('kecilkan', tampil.length > 11);
 }
 function gambarStruk() {
   var wadah = $('struk');
   if (strukItems.length === 0) {
-    wadah.innerHTML = '<div id="strukKosong">Ketik harga lalu +. Bisa juga 13500 \u00d7 2.5 atau 12000 : 2. Angka yang tidak cocok harga barang otomatis ditolak.</div>';
+    wadah.innerHTML = '<div id="strukKosong">Ketik harga lalu +. Bisa juga 13500 \u00d7 2.5 atau 12000 : 2. Harga yang tidak ada di katalog tetap diterima \u2014 barangnya ditanya sebelum disimpan.</div>';
     return;
   }
   wadah.innerHTML = strukItems.map(function (it, i) {
@@ -939,8 +937,19 @@ function tambahEntriDenganDeteksi() {
     hasil = kenaliProdukDariHarga(harga, null, null);
   }
   if (hasil.cocok.length === 0) {
-    tolakEntri(hasil.stokHabis ? 'STOK HABIS' : 'HARGA TIDAK DIKENAL');
-    return false; // entri dibiarkan di LCD supaya bisa dikoreksi dengan C
+    // OWNER (9 Agu 2026): angka asing TIDAK LAGI ditolak. Dulu kasir ini dipakai
+    // Gono/Hasan yang gaptek, jadi "harga = identitas produk" berfungsi sebagai pagar
+    // anti salah ketik. Sekarang kasir.html milik owner (staf pindah ke kasir darurat),
+    // dan owner memang perlu harga nego / harga lama / barang yang stoknya sudah habis.
+    // Itemnya masuk TANPA produk, lalu ditanya "barang apa?" lewat alur yang memang
+    // sudah ada di tekanCatat — jadi barang & HPP-nya tetap tercatat, tidak jadi
+    // transaksi buta seperti kasir darurat.
+    strukItems.push({ harga: harga, potongan: false, produkIdx: null, qty: null, qtyPasti: false });
+    entriSekarang = ''; opA = null; opJenis = null; tandaKurang = false;
+    // Kabar pendek di LCD supaya owner sadar barangnya akan ditanya nanti — bukan
+    // penolakan, cuma pemberitahuan. Tidak ada goyang merah & getar.
+    pesanSekali = hasil.stokHabis ? 'STOK HABIS — DITANYA NANTI' : 'HARGA BEBAS — DITANYA NANTI';
+    return true;
   }
   if (hasil.cocok.length === 1) {
     strukItems.push(itemDariKandidat(hasil.cocok[0], harga));
@@ -1074,7 +1083,6 @@ function isiLunasUtang() {
 }
 function simpanBayarUtang() {
   if (!utangTerpilih) return;
-  if (!operatorAktif()) { bukaPilihOperator(); return; }
   var n = parseFloat($('utangNominal').value) || 0;
   if (n <= 0) { alert('Isi dulu berapa yang dibayar.'); return; }
   // Melebihi sisa = data cacat. Ditolak, pola sama dengan sisi sistem admin.
@@ -1101,9 +1109,8 @@ function simpanBayarUtang() {
 
 // ---------- CATAT: tanya produk yang belum ditandai, lalu simpan ----------
 function tekanCatat() {
-  if (!cekJamOperasional()) return;
-  if (!operatorAktif()) { bukaPilihOperator(); return; }
-  if (!infoOperator(operatorAktif()).aktif) { localStorage.removeItem(K_OPERATOR); bukaPilihOperator(); return; }
+  // Dua pagar lama (jam operasional & wajib pilih operator) dicabut — lihat catatan
+  // di operatorAktif() dan cekJamOperasional().
   if (strukItems.length === 0) return;
   // Nama pembeli WAJIB untuk ketiga cara bayar (keputusan My DeV 9 Agu 2026).
   // Diperiksa DI SINI, sebelum layar "barang apa?" — supaya kasir tidak menjawab
@@ -1233,10 +1240,7 @@ gambarPanelProduk('panelProduk', 'tekanProduk');
 if (!sudahLogin()) tampilkanLayarLogin(false);
 $('inputSandiLogin').addEventListener('keydown', function (e) { if (e.key === 'Enter') kirimLogin(); });
 perbaruiChipOperator();
-if (!operatorAktif()) bukaPilihOperator();
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw-kasir.js').catch(function () {}); }
-cekJamOperasional();
-setInterval(cekJamOperasional, 60000);
 gambarSemua();
 perbaruiStatus();
 segarkanRingkasan();
