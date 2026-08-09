@@ -1365,8 +1365,8 @@
       --gerak-panel: 120ms; --gerak-panel-keluar: 120ms;
       --gerak-sentuh-tekan: 120ms; --gerak-sentuh-lepas: 120ms;
     }
-    .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang,
-    #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang,
+    .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon,
+    #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon,
     #spandukDraf, #bilahUrungkan, .baris-merk, .baris-sumber-produksi, .baris-stok-awal {
       animation-duration: 120ms !important; transition-duration: 120ms !important;
     }
@@ -1680,12 +1680,12 @@
     font-family: inherit; font-size: 13px; font-weight: 700;
   }
   /* Lembar Piutang — pola & ukuran sama persis dengan #lembarHarga di atas. */
-  #overlayLembarPiutang {
+  #overlayLembarPiutang, #overlayLembarKasbon {
     position: fixed; inset: 0; z-index: 42; background: #000; opacity: 0; pointer-events: none;
     transition: opacity var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-piutang-terbuka #overlayLembarPiutang { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang {
+  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang, #lembarKasbon {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 43;
     max-width: 680px; margin: 0 auto;
     background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
@@ -1695,11 +1695,11 @@
     transform: translateY(105%);
     transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-piutang-terbuka #lembarPiutang { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
-  #lembarPiutang h3 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
-  #lembarPiutang .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
-  #lembarPiutang .lmk-tutup {
+  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
+  #lembarPiutang h3, #lembarKasbon h3 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
+  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
+  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup {
     width: 100%; min-height: 48px; margin-top: 12px; border-radius: 12px;
     background: var(--abu); border: 1px solid var(--garis); color: var(--redup);
     font-family: inherit; font-size: 13px; font-weight: 700;
@@ -2612,6 +2612,42 @@
   <button type="button" class="lmk-tutup" onclick="tutupLembarPiutang()">Tutup</button>
 </div>
 
+<!-- LEMBAR KASBON: satu karyawan — sisa kasbonnya, riwayat ambil/kembali, dan tempat
+     mencatat pengembalian (tunai atau potong gaji). Pola & bentuknya sengaja sama
+     dengan lembar Piutang supaya tidak ada dua cara membaca hal yang serupa. -->
+<div id="overlayLembarKasbon" onclick="tutupLembarKasbon()"></div>
+<div id="lembarKasbon" role="dialog" aria-modal="true" aria-labelledby="lembarKasbonJudul">
+  <div class="lm-pegangan"></div>
+  <h3 id="lembarKasbonJudul">Karyawan</h3>
+  <p class="lk-sub" id="lembarKasbonSub">—</p>
+
+  <div class="piutang-sisa">
+    <span>Sisa kasbon</span>
+    <b id="kasbonSisaNilai">Rp0</b>
+  </div>
+
+  <div id="kasbonFormBayar">
+    <label>Nominal dikembalikan (Rp)</label>
+    <input type="number" id="kasbonBayarNominal" placeholder="0" inputmode="numeric">
+    <button type="button" class="tombol-lewati-rinci" style="margin-top:8px;" onclick="isiPelunasanKasbon()">Isi penuh (lunasi)</button>
+    <label style="margin-top:12px;">Dikembalikan lewat</label>
+    <div class="kartu-jenis-jual" style="grid-template-columns: repeat(2,1fr);">
+      <button type="button" id="kasbonBayarTunai" class="pilih" onclick="pilihBayarKasbon('Tunai')">Tunai</button>
+      <button type="button" id="kasbonBayarPotongGaji" onclick="pilihBayarKasbon('Potong gaji')">Potong gaji</button>
+    </div>
+    <label style="margin-top:12px;">Catatan <span class="keterangan">— boleh dikosongkan</span></label>
+    <input type="text" id="kasbonBayarCatatan" placeholder="Contoh: potong gaji minggu ini">
+    <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanBayarKasbon()">Catat pengembalian</button>
+  </div>
+
+  <div class="kartu-daftar kd-kepala" style="margin-top:14px;">
+    <div class="kd-judul"><h3 style="font-size:13px;">Riwayat</h3><span class="kd-hitung" id="kasbonRiwayatHitung"></span></div>
+    <div id="kasbonRiwayat"></div>
+  </div>
+
+  <button type="button" class="lmk-tutup" onclick="tutupLembarKasbon()">Tutup</button>
+</div>
+
 <!-- LEMBAR PILIH MERK (Lembar 1 Penyempurnaan): nama merk dipilih, tidak diketik.
      Riwayat pemasok yang sedang dipilih naik ke paling atas. -->
 <div id="overlayLembarMerk" onclick="tutupLembarMerk()"></div>
@@ -3164,7 +3200,7 @@
        alasannya dengan catatan bisnis yang dikecualikan lewat .gitignore. -->
   <div id="halamanPiutang" class="halaman">
     <div class="judul-halaman">
-      <h2>Piutang</h2>
+      <h2>Piutang &amp; Kasbon</h2>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
 
@@ -3191,6 +3227,42 @@
       <label>Catatan <span class="keterangan">— boleh dikosongkan</span></label>
       <input type="text" id="piutangAwalCatatan" placeholder="Contoh: sisa dari catatan lama">
       <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanPiutangAwal()">Simpan saldo awal</button>
+    </div>
+
+    <!-- ===== KASBON PEGAWAI =====
+         Blok TERPISAH dari piutang pelanggan di atas, sesuai catatan bisnis file 08:
+         kasbon itu piutang ke KARYAWAN, bukan piutang dagang. Sengaja TIDAK ikut
+         "Kas Keluar Bulan Ini" (keputusan My DeV 9 Agu 2026): kasbon bukan biaya,
+         cuma uang toko yang sedang dipegang karyawan dan akan kembali — kalau ikut
+         Kas Keluar, angkanya terbaca seolah toko mengeluarkan biaya sebesar itu. -->
+    <div class="kartu-hero" style="margin-top:20px;">
+      <div class="label">Kasbon dipegang karyawan</div>
+      <div class="hero-nilai" id="kasbonTotal">Rp0</div>
+      <div class="hero-syarat" id="kasbonSyarat"></div>
+    </div>
+
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Karyawan berkasbon</h3><span class="kd-hitung" id="kasbonHitung"></span></div>
+      <div id="daftarKasbon"></div>
+    </div>
+
+    <div class="kartu" style="margin-top:12px;">
+      <h3 style="margin:0 0 4px; font-size:14px;">Catat kasbon baru</h3>
+      <p class="keterangan" style="margin:0 0 10px;">Uang toko yang diambil karyawan dan akan dikembalikan — tunai atau potong gaji. Ini bukan pengeluaran toko, jadi tidak ikut Kas Keluar.</p>
+      <label>Nama karyawan</label>
+      <input type="text" id="kasbonNama" placeholder="Contoh: Gono" list="daftarNamaPegawai" autocomplete="off">
+      <datalist id="daftarNamaPegawai">
+        <option value="Gono"></option>
+        <option value="Hasan"></option>
+        <option value="Ben Mohsein"></option>
+      </datalist>
+      <label>Nominal kasbon (Rp)</label>
+      <input type="number" id="kasbonNominal" placeholder="0" inputmode="numeric">
+      <label>Tanggal</label>
+      <input type="date" id="kasbonTanggal">
+      <label>Catatan <span class="keterangan">— boleh dikosongkan</span></label>
+      <input type="text" id="kasbonCatatan" placeholder="Contoh: buat berobat anak">
+      <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanKasbonAmbil()">Simpan kasbon</button>
     </div>
   </div>
 
@@ -3696,6 +3768,12 @@
   // Yang disimpan cuma MUTASI-nya (saldo awal & pembayaran); sisa utang selalu dihitung
   // ulang dari penjualan kredit + saldo awal − pembayaran. Sama seperti stok & margin.
   const KOLEKSI_PIUTANG = 'piutangMutasi';
+  // Kasbon pegawai (9 Agu 2026) — koleksi TERSENDIRI, bukan digabung ke piutangMutasi.
+  // Catatan bisnis file 08 menegaskan: kasbon itu piutang ke KARYAWAN, bukan piutang
+  // dagang. Dicampur berarti daftar pelanggan berutang jadi bercampur nama pegawai, dan
+  // "total belum tertagih" kehilangan artinya. Bentuk datanya sengaja sama (ambil|bayar)
+  // supaya cara membacanya seragam.
+  const KOLEKSI_KASBON = 'kasbonMutasi';
 
   // Cache di memori — diisi ulang otomatis oleh onSnapshot tiap kali ada perubahan
   // (dari perangkat ini ATAU perangkat lain). Semua fungsi lama yang baca data
@@ -3713,7 +3791,8 @@
   let _cacheHargaKemasan = [];
   let _cacheHargaKarung = [];
   let _cachePiutang = [];
-  let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false, piutang: false };
+  let _cacheKasbon = [];
+  let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false, piutang: false, kasbon: false };
 
   const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
   const KUNCI_BULANAN = 'miqbal_biaya_bulanan';
@@ -3728,6 +3807,7 @@
   const KUNCI_HARGA_KEMASAN = 'miqbal_katalog_harga_kemasan_v1';
   const KUNCI_HARGA_KARUNG = 'miqbal_katalog_harga_karung_v1';
   const KUNCI_PIUTANG = 'miqbal_piutang_mutasi_v1';
+  const KUNCI_KASBON = 'miqbal_kasbon_mutasi_v1';
 
   // Jenis bahan kemasan biasa (plastik untuk produk kemasan jadi, di luar literan) —
   // per kombinasi ukuran + merek beras, karena harga per lembar beda tiap merek (instruksi My DeV, 1 Agustus 2026).
@@ -3844,7 +3924,7 @@
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
     if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); }
     if (nama === 'laba') tampilkanLaba();
-    if (nama === 'piutang') tampilkanPiutang();
+    if (nama === 'piutang') { tampilkanPiutang(); tampilkanKasbon(); }
     if (nama === 'harga') tampilkanHarga();
     if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
     if (nama === 'input') periksaDrafMasuk();
@@ -4672,6 +4752,10 @@
     if (document.getElementById('halamanPiutang').classList.contains('tampil')) tampilkanPiutang();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'piutang');
+
+  pasangSinkronisasi(KOLEKSI_KASBON, KUNCI_KASBON, (d) => { _cacheKasbon = d; }, () => {
+    if (document.getElementById('halamanPiutang').classList.contains('tampil')) tampilkanKasbon();
+  }, 'id', 'kasbon');
 
   // ============ RINGKASAN KASIR (dibaca kasir.html ringan) ============
   // Satu dokumen kecil berisi harga+stok+HPP terkini, supaya halaman kasir tidak
@@ -5826,6 +5910,44 @@
     if (_cachePiutang.length > 0) return _cachePiutang;
     const data = localStorage.getItem(KUNCI_PIUTANG);
     return data ? JSON.parse(data) : [];
+  }
+  function ambilKasbonMutasi() {
+    if (_cacheKasbon.length > 0) return _cacheKasbon;
+    const data = localStorage.getItem(KUNCI_KASBON);
+    return data ? JSON.parse(data) : [];
+  }
+
+  // Sisa kasbon per pegawai = yang diambil − yang sudah dikembalikan. Tidak ada angka
+  // saldo yang disimpan & ditimpa; semuanya diturunkan ulang dari mutasinya, sama seperti
+  // piutang, stok, dan margin. Nama pegawai dinormalkan dengan kunci yang sama
+  // (kunciPelanggan) supaya "Gono" dan "gono" tidak jadi dua orang.
+  function hitungKasbon() {
+    const peta = {};
+    ambilKasbonMutasi().forEach(m => {
+      const k = kunciPelanggan(m.namaPegawai);
+      if (!k) return;
+      if (!peta[k]) peta[k] = { kunci: k, nama: String(m.namaPegawai).trim(), urutNama: 0, ambil: 0, bayar: 0, mutasi: [] };
+      const s = peta[k];
+      if ((m.id || 0) >= s.urutNama) { s.nama = String(m.namaPegawai).trim(); s.urutNama = m.id || 0; }
+      const n = m.nominal || 0;
+      if (m.tipe === 'bayar') {
+        s.bayar += n;
+        s.mutasi.push({ jenis: 'bayar', tanggal: m.tanggal, nominal: n, id: m.id,
+          ket: 'Dikembalikan' + (m.caraBayar ? ' · ' + m.caraBayar : '') + (m.catatan ? ' · ' + m.catatan : '') });
+      } else {
+        s.ambil += n;
+        s.mutasi.push({ jenis: 'ambil', tanggal: m.tanggal, nominal: n, id: m.id,
+          ket: 'Ambil kasbon' + (m.catatan ? ' · ' + m.catatan : '') });
+      }
+    });
+    const hasil = Object.keys(peta).map(k => {
+      const s = peta[k];
+      s.sisa = Math.round((s.ambil - s.bayar) * 100) / 100;
+      s.mutasi.sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')) || (b.id || 0) - (a.id || 0));
+      return s;
+    });
+    hasil.sort((a, b) => (b.sisa - a.sisa) || a.nama.localeCompare(b.nama));
+    return hasil;
   }
 
   // ============ PIUTANG PELANGGAN (9 Agu 2026) ============
@@ -8255,6 +8377,120 @@
     alert('Saldo awal ' + nama + ' ' + formatRupiah(nominal) + ' tersimpan.');
   }
 
+  // ============ KASBON PEGAWAI (9 Agu 2026) ============
+  let _kasbonTerbuka = null;
+  let _bayarKasbonAktif = 'Tunai';
+  let _kasbonTampil = [];   // baris memanggil lewat INDEKS, bukan menempel nama (lihat _piutangTampil)
+
+  function tampilkanKasbon() {
+    const daftar = hitungKasbon();
+    _kasbonTampil = daftar;
+    const berkasbon = daftar.filter(d => d.sisa > 0);
+    const lunas = daftar.filter(d => d.sisa <= 0);
+    const total = berkasbon.reduce((a, d) => a + d.sisa, 0);
+
+    document.getElementById('kasbonTotal').innerHTML = angkaUtamaHtml(total);
+    document.getElementById('kasbonSyarat').textContent = berkasbon.length === 0
+      ? (daftar.length === 0 ? 'Belum ada kasbon tercatat.' : 'Semua kasbon sudah dikembalikan.')
+      : `Dipegang ${berkasbon.length} karyawan${lunas.length > 0 ? ` · ${lunas.length} sudah lunas` : ''}. Bukan biaya toko — uang ini akan kembali.`;
+    document.getElementById('kasbonHitung').textContent = berkasbon.length > 0 ? berkasbon.length + ' berkasbon' : '';
+
+    const kont = document.getElementById('daftarKasbon');
+    if (daftar.length === 0) {
+      kont.innerHTML = '<div class="kosong-info"><b>Belum ada kasbon</b><span>Catat lewat formulir di bawah setiap kali ada karyawan mengambil uang.</span></div>';
+      return;
+    }
+    kont.innerHTML = daftar.map((d, i) => {
+      const lunasIni = d.sisa <= 0;
+      return `<button type="button" class="baris-44 baris-ketuk" onclick="bukaLembarKasbon(${i})">
+        <span class="nama"><i class="trx-nama">${escapeHtml(d.nama)}</i><small>${d.mutasi.length} catatan · diambil ${formatRupiah(d.ambil)}${d.bayar > 0 ? ' · dikembalikan ' + formatRupiah(d.bayar) : ''}</small></span>
+        <span class="angka${lunasIni ? '' : ' kritis'}">${lunasIni ? 'LUNAS' : formatRupiah(d.sisa)}</span>
+        ${IKON_CHEV}
+      </button>`;
+    }).join('');
+  }
+
+  function bukaLembarKasbon(i) {
+    const d = _kasbonTampil[i];
+    if (!d) return;
+    _kasbonTerbuka = d.kunci;
+    document.getElementById('lembarKasbonJudul').textContent = d.nama;
+    document.getElementById('lembarKasbonSub').textContent =
+      `Diambil ${formatRupiah(d.ambil)} · sudah dikembalikan ${formatRupiah(d.bayar)}`;
+    const elSisa = document.getElementById('kasbonSisaNilai');
+    elSisa.textContent = d.sisa > 0 ? formatRupiah(d.sisa) : 'LUNAS';
+    elSisa.classList.toggle('lunas', d.sisa <= 0);
+    document.getElementById('kasbonFormBayar').style.display = d.sisa > 0 ? 'block' : 'none';
+    document.getElementById('kasbonBayarNominal').value = '';
+    document.getElementById('kasbonBayarCatatan').value = '';
+    pilihBayarKasbon('Tunai');
+
+    document.getElementById('kasbonRiwayatHitung').textContent = d.mutasi.length + ' catatan';
+    document.getElementById('kasbonRiwayat').innerHTML = d.mutasi.map(m => {
+      const bayar = m.jenis === 'bayar';
+      return `<div class="pm-baris">
+        <span class="pm-ket">${escapeHtml(m.ket || '')}<small>${escapeHtml(formatTanggal(m.tanggal))}</small></span>
+        <span class="pm-nom ${bayar ? 'kurang' : 'tambah'}">${bayar ? '−' : '+'}${formatRupiah(m.nominal)}</span>
+      </div>`;
+    }).join('');
+    document.body.classList.add('lembar-kasbon-terbuka');
+  }
+  function tutupLembarKasbon() {
+    _kasbonTerbuka = null;
+    document.body.classList.remove('lembar-kasbon-terbuka');
+  }
+  function pilihBayarKasbon(c) {
+    _bayarKasbonAktif = c;
+    document.getElementById('kasbonBayarTunai').classList.toggle('pilih', c === 'Tunai');
+    document.getElementById('kasbonBayarPotongGaji').classList.toggle('pilih', c === 'Potong gaji');
+  }
+  function isiPelunasanKasbon() {
+    const d = hitungKasbon().find(x => x.kunci === _kasbonTerbuka);
+    if (!d) return;
+    document.getElementById('kasbonBayarNominal').value = d.sisa > 0 ? d.sisa : '';
+  }
+
+  async function simpanBayarKasbon() {
+    const d = hitungKasbon().find(x => x.kunci === _kasbonTerbuka);
+    if (!d) return;
+    const nominal = parseFloat(document.getElementById('kasbonBayarNominal').value) || 0;
+    if (nominal <= 0) { alert('Isi nominal yang dikembalikan dulu.'); return; }
+    // Mengembalikan lebih besar dari sisa = data cacat, pola sama dengan piutang.
+    if (nominal > d.sisa) {
+      alert('Pengembalian ' + formatRupiah(nominal) + ' melebihi sisa kasbon ' + formatRupiah(d.sisa)
+        + '. Kalau memang lebih, sisanya bukan pengembalian kasbon — catat terpisah.');
+      return;
+    }
+    await simpanKeFirestore(KOLEKSI_KASBON, {
+      id: idUnik(), tipe: 'bayar', namaPegawai: d.nama, nominal,
+      tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5),
+      caraBayar: _bayarKasbonAktif, catatan: document.getElementById('kasbonBayarCatatan').value.trim()
+    });
+    const sisaBaru = d.sisa - nominal;
+    tutupLembarKasbon();
+    tampilkanKasbon();
+    alert(sisaBaru <= 0
+      ? 'Kasbon ' + d.nama + ' LUNAS. Pengembalian ' + formatRupiah(nominal) + ' tercatat.'
+      : 'Pengembalian ' + formatRupiah(nominal) + ' tercatat. Sisa kasbon ' + d.nama + ' sekarang ' + formatRupiah(sisaBaru) + '.');
+  }
+
+  async function simpanKasbonAmbil() {
+    const nama = document.getElementById('kasbonNama').value.trim();
+    const nominal = parseFloat(document.getElementById('kasbonNominal').value) || 0;
+    const tanggal = document.getElementById('kasbonTanggal').value || tanggalLokalIso();
+    const catatan = document.getElementById('kasbonCatatan').value.trim();
+    if (!nama) { alert('Isi nama karyawannya dulu.'); return; }
+    if (nominal <= 0) { alert('Isi nominal kasbonnya dulu.'); return; }
+    await simpanKeFirestore(KOLEKSI_KASBON, {
+      id: idUnik(), tipe: 'ambil', namaPegawai: nama, nominal, tanggal, catatan
+    });
+    document.getElementById('kasbonNama').value = '';
+    document.getElementById('kasbonNominal').value = '';
+    document.getElementById('kasbonCatatan').value = '';
+    tampilkanKasbon();
+    alert('Kasbon ' + nama + ' ' + formatRupiah(nominal) + ' tercatat.');
+  }
+
   // ============ KATALOG HARGA JUAL RESMI (owner-only) ============
   // Sumber harga jual resmi untuk kasir — belum dipakai mengunci form Jual
   // (itu tahap berikutnya, setelah katalog ini diisi lengkap oleh owner).
@@ -10066,6 +10302,14 @@
   window.isiPelunasanPiutang = isiPelunasanPiutang;
   window.simpanBayarPiutang = simpanBayarPiutang;
   window.simpanPiutangAwal = simpanPiutangAwal;
+  // Kasbon pegawai
+  window.tampilkanKasbon = tampilkanKasbon;
+  window.bukaLembarKasbon = bukaLembarKasbon;
+  window.tutupLembarKasbon = tutupLembarKasbon;
+  window.pilihBayarKasbon = pilihBayarKasbon;
+  window.isiPelunasanKasbon = isiPelunasanKasbon;
+  window.simpanBayarKasbon = simpanBayarKasbon;
+  window.simpanKasbonAmbil = simpanKasbonAmbil;
   window.pilihJenisHarga = pilihJenisHarga;
   window.hapusHargaSedangDiubah = hapusHargaSedangDiubah;
   window.ubahHargaLiteran = ubahHargaLiteran;
