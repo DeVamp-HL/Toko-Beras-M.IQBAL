@@ -1965,6 +1965,15 @@
     background: linear-gradient(90deg, rgba(232, 176, 74, .22), rgba(232, 176, 74, .05));
     border: 1px solid rgba(232, 176, 74, .55);
   }
+  /* Blok perbaikan cara bayar & nama — dipisahkan dari isian barang di bawahnya
+     dengan latar & garis sendiri, supaya jelas ini tentang transaksinya secara
+     keseluruhan, bukan tentang satu barang yang sedang ditambahkan. */
+  .rinci-perbaikan {
+    margin: 12px 0 4px; padding: 12px; border-radius: 12px;
+    background: var(--abu); border: 1px solid var(--garis);
+  }
+  .rinci-perbaikan > label:first-child { margin-top: 0; }
+  .rinci-perbaikan input.kurang { border-color: var(--merah); }
   .rinci-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
   .rinci-chips button {
     padding: 10px 13px; border-radius: 999px; font-family: inherit; font-size: 12.5px; font-weight: 700;
@@ -2471,6 +2480,24 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
       Lewati, ke berikutnya
     </button>
+    <!-- Perbaikan cara bayar & nama pembeli (9 Agu 2026). Kasir darurat dipakai saat
+         keadaan kacau — Gono/Hasan/Ben sering lupa mengisinya, dan transaksi sebelum
+         9 Agu 2026 malah TIDAK PUNYA kolomnya sama sekali (caraBayar dipaku 'Tunai').
+         Di sinilah owner meninjau transaksi itu, jadi di sini pula tempat paling masuk
+         akal untuk membetulkannya. Nilainya ikut terbawa ke barang hasil rincian. -->
+    <div class="rinci-perbaikan">
+      <label>Cara bayar <span class="keterangan">— betulkan kalau kasir salah/lupa</span></label>
+      <div class="kartu-jenis-jual" style="grid-template-columns: repeat(3,1fr);">
+        <button type="button" id="rinciBayarTunai" class="pilih" onclick="pilihBayarRinci('Tunai')">Tunai</button>
+        <button type="button" id="rinciBayarQris" onclick="pilihBayarRinci('Qris')">QRIS</button>
+        <button type="button" id="rinciBayarKredit" onclick="pilihBayarRinci('Kredit')">Kredit</button>
+      </div>
+      <label>Nama pembeli <span class="keterangan">— wajib kalau kredit, karena utang tanpa nama tidak bisa ditagih</span></label>
+      <input type="text" id="rinciNamaPembeli" placeholder="Contoh: Pak Sutar" oninput="tandaiNamaRinci()">
+      <button type="button" class="tombol-lewati-rinci" onclick="simpanPerbaikanDarurat()">
+        Simpan perbaikan ini saja — barangnya belum diingat
+      </button>
+    </div>
     <div id="rinciChips" class="rinci-chips"></div>
     <div id="rinciDaftarItem"></div>
     <label>Jalur jual</label>
@@ -8808,7 +8835,10 @@
     if (p.asalDarurat) baris.push(['Asal', 'Rincian dari kasir darurat #' + String(p.rinciDari || '').slice(-4)]);
     if (p.dibatalkan) baris.push(['Status', '<b class="ph-merah">Dibatalkan</b> — ' + escapeHtml(p.alasanKoreksi || 'tanpa alasan')]);
     if (p.dikoreksiOleh) baris.push(['Status', '<b class="ph-amber">Dikoreksi</b> — lihat #' + String(p.dikoreksiOleh).slice(-4)]);
-    if (p.koreksiDari && !p.asalDarurat) baris.push(['Asal', 'Koreksi dari #' + String(p.koreksiDari).slice(-4) + ' — ' + escapeHtml(p.alasanKoreksi || '')]);
+    // Berlabel "Koreksi", bukan "Asal": dokumen darurat yang cara bayar/namanya
+    // diperbaiki punya DUA baris asal-usul sekaligus (dari kasir darurat + koreksi dari
+    // dokumen sebelumnya), dan dua baris berlabel sama persis bertumpuk itu membingungkan.
+    if (p.koreksiDari && !p.asalDarurat) baris.push(['Koreksi', 'Dari #' + String(p.koreksiDari).slice(-4) + ' — ' + escapeHtml(p.alasanKoreksi || '')]);
     document.getElementById('lembarTrxRincian').innerHTML = baris.map(b =>
       `<div class="ltx-baris"><span>${b[0]}</span><b>${b[1]}</b></div>`).join('');
     // Transaksi yang sudah mati (dibatalkan/dikoreksi) tidak bisa dikoreksi lagi —
@@ -9077,12 +9107,85 @@
     document.getElementById('rinciChips').innerHTML = potongan.length === 0
       ? '<div class="rinci-kosong">Tidak ada tebakan pas dari katalog — kemungkinan ada harga nego di dalamnya. Tambahkan barang satu per satu di bawah; barang nego isi harganya manual. Tanya operatornya selagi ingat.</div>'
       : potongan.join('');
+    // Pra-isi dari transaksi aslinya, supaya yang sudah benar tidak perlu diketik ulang
+    // dan yang salah/kosong langsung kelihatan.
+    pilihBayarRinci(p.caraBayar === 'Qris' || p.caraBayar === 'Kredit' ? p.caraBayar : 'Tunai');
+    const elNamaRinci = document.getElementById('rinciNamaPembeli');
+    elNamaRinci.value = p.namaPelanggan || '';
+    elNamaRinci.classList.remove('kurang');
     document.getElementById('rinciJalur').value = 'literan';
     gantiJalurRinci();
     document.getElementById('rinciJumlah').value = '';
     document.getElementById('rinciHargaItem').value = '';
     renderItemRinci();
     perbaruiDampakRinci();
+  }
+
+  // Cara bayar & nama pembeli yang sedang dipilih di lembar rinci.
+  let _bayarRinci = 'Tunai';
+  function pilihBayarRinci(c) {
+    _bayarRinci = c;
+    ['Tunai', 'Qris', 'Kredit'].forEach(x =>
+      document.getElementById('rinciBayar' + x).classList.toggle('pilih', x === c));
+    const el = document.getElementById('rinciNamaPembeli');
+    if (c !== 'Kredit') el.classList.remove('kurang');
+  }
+  function tandaiNamaRinci() {
+    const el = document.getElementById('rinciNamaPembeli');
+    if (el.value.trim()) el.classList.remove('kurang');
+  }
+  // Kredit tanpa nama = utang yang tidak bisa ditagih. Dipakai bersama oleh dua tombol
+  // simpan di lembar ini, supaya aturannya cuma ditulis sekali.
+  function namaRinciSah() {
+    const nama = document.getElementById('rinciNamaPembeli').value.trim();
+    if (_bayarRinci === 'Kredit' && !nama) {
+      const el = document.getElementById('rinciNamaPembeli');
+      el.classList.add('kurang');
+      el.focus();
+      alert('Kredit harus punya nama pembeli — tanpa nama, utangnya tidak bisa ditagih.');
+      return null;
+    }
+    return nama;
+  }
+
+  // Perbaiki cara bayar/nama SAJA, tanpa merinci barangnya (barangnya belum diingat).
+  // Mengikuti pola koreksi yang sudah ada: dokumen asli TIDAK ditimpa — ditandai
+  // dikoreksiOleh, lalu dokumen pengganti yang benar menggantikannya di antrean rinci.
+  async function simpanPerbaikanDarurat() {
+    const p = _trxTerbuka;
+    if (!p || p.jenis !== 'kasir_darurat_nominal' || !penjualanMasihBerlaku(p)) return;
+    const nama = namaRinciSah();
+    if (nama === null) return;
+    const bayarLama = p.caraBayar || 'Tunai';
+    if (_bayarRinci === bayarLama && nama === (p.namaPelanggan || '')) {
+      alert('Tidak ada yang berubah — cara bayar dan nama pembelinya masih sama.');
+      return;
+    }
+    const idBaru = idUnik();
+    const pengganti = {
+      ...p, id: idBaru, caraBayar: _bayarRinci, namaPelanggan: nama,
+      koreksiDari: p.id, alasanKoreksi: 'Perbaikan cara bayar / nama pembeli',
+      dikoreksiPada: new Date().toISOString()
+    };
+    // setDoc menolak undefined; dua penanda ini juga tidak boleh terbawa ke pengganti.
+    delete pengganti.dikoreksiOleh;
+    delete pengganti.dibatalkan;
+    try {
+      await simpanKeFirestore(KOLEKSI_PENJUALAN, pengganti);
+      await simpanKeFirestore(KOLEKSI_PENJUALAN, {
+        ...p, dikoreksiOleh: idBaru,
+        alasanKoreksi: 'Diperbaiki: ' + bayarLama + ' → ' + _bayarRinci + (nama ? ', pembeli ' + nama : '')
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan perbaikan (cek internet). ' + err.message);
+      return;
+    }
+    tampilkanRiwayatJual(); tampilkanRiwayat(); perbaruiKartuDarurat();
+    if (_antreanRinci) lanjutAntreanRinci();
+    else tutupLembarTrx();
+    alert('Perbaikan tersimpan: ' + _bayarRinci + (nama ? ' · ' + nama : '')
+      + '. Transaksi ini tetap menunggu dirinci barangnya.');
   }
 
   function pakaiKandidatRinci(i) {
@@ -9265,6 +9368,11 @@
     const p = _trxTerbuka;
     if (!p || p.jenis !== 'kasir_darurat_nominal' || !penjualanMasihBerlaku(p)) return;
     if (_itemRinci.length === 0) { alert('Tambahkan barangnya dulu — atau ketuk salah satu tebakan di atas.'); return; }
+    // Cara bayar & nama pembeli diambil dari blok perbaikan di atas, BUKAN disalin
+    // mentah dari dokumen asli: kasir darurat sering lupa mengisinya, dan transaksi
+    // sebelum 9 Agu 2026 selalu tersimpan 'Tunai' tanpa nama.
+    const namaPembeli = namaRinciSah();
+    if (namaPembeli === null) return;
     const target = p.hargaTotal || 0;
     const totalHarga = _itemRinci.reduce((a, it) => a + it.harga, 0);
     const sisaBelumTerurai = target - totalHarga;
@@ -9280,7 +9388,7 @@
     const kini = new Date().toISOString();
     const docBaru = _itemRinci.map(it => {
       const d = {
-        id: idUnik(), tanggal: p.tanggal, jam: p.jam, caraBayar: p.caraBayar || 'Tunai', namaPelanggan: '',
+        id: idUnik(), tanggal: p.tanggal, jam: p.jam, caraBayar: _bayarRinci, namaPelanggan: namaPembeli,
         ...it.fields, hargaTotal: it.harga,
         grupNota: idGrup, asalDarurat: true, rinciDari: p.id, koreksiDari: p.id,
         alasanKoreksi: 'Rincian dari kasir darurat #' + String(p.id).slice(-4), dirinciPada: kini
@@ -9293,7 +9401,7 @@
       // lewat penanda ini. Tanpa itu, tarik balik memulihkan nominal asli tapi
       // membiarkan baris sisa tetap hidup → uang dobel sebesar sisa.
       const sisaDoc = {
-        id: idUnik(), tanggal: p.tanggal, jam: p.jam, caraBayar: p.caraBayar || 'Tunai', namaPelanggan: '',
+        id: idUnik(), tanggal: p.tanggal, jam: p.jam, caraBayar: _bayarRinci, namaPelanggan: namaPembeli,
         jenis: 'kasir_darurat_nominal', hargaTotal: sisaBelumTerurai,
         grupNota: idGrup, asalDarurat: true, rinciDari: p.id, koreksiDari: p.id,
         alasanKoreksi: 'Sisa belum diurai dari kasir darurat #' + String(p.id).slice(-4), dirinciPada: kini
@@ -9944,6 +10052,9 @@
   window.gantiJalurRinci = gantiJalurRinci;
   window.perbaruiDampakRinci = perbaruiDampakRinci;
   window.simpanRinciTrx = simpanRinciTrx;
+  window.pilihBayarRinci = pilihBayarRinci;
+  window.tandaiNamaRinci = tandaiNamaRinci;
+  window.simpanPerbaikanDarurat = simpanPerbaikanDarurat;
   window.urungkanRinciTrx = urungkanRinciTrx;
   window.mulaiAntreanRinci = mulaiAntreanRinci;
   window.lewatiRinci = lewatiRinci;
