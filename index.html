@@ -8707,7 +8707,10 @@
     if (_itemRinci.length > 0) {
       baris.push(`<div class="rinci-sisa ${sisa === 0 ? 'pas' : sisa > 0 ? 'kurang' : 'lebih'}">${
         sisa === 0 ? 'PAS ' + formatRupiah(total) + ' — siap disimpan'
-        : sisa > 0 ? 'Sisa belum terurai: ' + formatRupiah(sisa)
+        // Sisa positif BUKAN error — uang itu tetap masuk penuh, cuma belum semuanya
+        // ketemu barangnya. Boleh disimpan; sisanya otomatis tercatat sebagai kasir
+        // darurat baru (uang masuk tetap sama, HPP-nya menyusul kalau diurai lagi nanti).
+        : sisa > 0 ? 'Sisa ' + formatRupiah(sisa) + ' belum terurai — tetap tercatat, siap disimpan'
         : 'KELEBIHAN ' + formatRupiah(-sisa) + ' — hapus atau betulkan harga barang'}</div>`);
     }
     wadah.innerHTML = baris.join('');
@@ -8715,8 +8718,10 @@
     // (bug WebKit iOS: re-enable lewat JS kadang tidak langsung mengembalikan respons
     // ketukan). Tombol selalu bisa diketuk; simpanRinciTrx() sendiri yang menjaga &
     // menjelaskan kalau belum pas — pesannya lebih jelas daripada tombol diam tak bereaksi.
+    // Yang diblokir cuma KELEBIHAN (sisa negatif) — uang keluar (barang tercatat) tidak
+    // boleh lebih besar dari uang yang benar-benar masuk. Sisa positif/PAS boleh disimpan.
     const btn = document.getElementById('btnSimpanRinci');
-    if (btn) btn.classList.toggle('belum-siap', !(sisa === 0 && _itemRinci.length > 0));
+    if (btn) btn.classList.toggle('belum-siap', !(sisa >= 0 && _itemRinci.length > 0));
   }
 
   function gantiJalurRinci() {
@@ -8828,8 +8833,13 @@
     if (_itemRinci.length === 0) { alert('Tambahkan barangnya dulu — atau ketuk salah satu tebakan di atas.'); return; }
     const target = p.hargaTotal || 0;
     const totalHarga = _itemRinci.reduce((a, it) => a + it.harga, 0);
-    if (totalHarga !== target) {
-      alert('Jumlah barang ' + formatRupiah(totalHarga) + ' belum pas dengan nominal ' + formatRupiah(target) + '. Selisih ' + formatRupiah(Math.abs(target - totalHarga)) + ' harus diurai dulu.');
+    const sisaBelumTerurai = target - totalHarga;
+    // Tidak wajib PAS persis — yang tidak boleh cuma KELEBIHAN (barang tercatat lebih
+    // besar dari uang yang benar-benar masuk). Sisa yang belum sempat diurai TETAP
+    // tercatat penuh sebagai uang masuk lewat baris kasir darurat baru di bawah — bukan
+    // hilang dari Omzet, cuma HPP-nya menyusul kalau nanti diurai lagi.
+    if (sisaBelumTerurai < 0) {
+      alert('Jumlah barang ' + formatRupiah(totalHarga) + ' KELEBIHAN ' + formatRupiah(-sisaBelumTerurai) + ' dari nominal ' + formatRupiah(target) + ' — tidak boleh melebihi uang yang masuk. Hapus atau betulkan harga barang dulu.');
       return;
     }
     const idGrup = idUnik();
@@ -8844,6 +8854,16 @@
       if (p.operator) d.operator = p.operator;
       return d;
     });
+    if (sisaBelumTerurai > 0) {
+      const sisaDoc = {
+        id: idUnik(), tanggal: p.tanggal, jam: p.jam, caraBayar: p.caraBayar || 'Tunai', namaPelanggan: '',
+        jenis: 'kasir_darurat_nominal', hargaTotal: sisaBelumTerurai,
+        grupNota: idGrup, koreksiDari: p.id,
+        alasanKoreksi: 'Sisa belum diurai dari kasir darurat #' + String(p.id).slice(-4), dirinciPada: kini
+      };
+      if (p.operator) sisaDoc.operator = p.operator;
+      docBaru.push(sisaDoc);
+    }
     try {
       for (const d of docBaru) {
         await simpanKeFirestore(KOLEKSI_PENJUALAN, d);
@@ -8859,7 +8879,8 @@
       // Asli TIDAK dihapus — ditandai, sama seperti koreksi. Jejak kasir darurat tetap terbaca.
       await simpanKeFirestore(KOLEKSI_PENJUALAN, {
         ...p, dikoreksiOleh: docBaru[0].id,
-        alasanKoreksi: 'Dirinci jadi ' + docBaru.length + ' barang: ' + _itemRinci.map(it => it.label).join(' + ')
+        alasanKoreksi: 'Dirinci jadi ' + _itemRinci.length + ' barang: ' + _itemRinci.map(it => it.label).join(' + ')
+          + (sisaBelumTerurai > 0 ? ' + sisa ' + formatRupiah(sisaBelumTerurai) + ' belum diurai' : '')
       });
     } catch (err) {
       console.error(err);
