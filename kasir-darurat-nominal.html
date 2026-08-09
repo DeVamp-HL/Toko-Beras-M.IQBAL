@@ -63,7 +63,7 @@
   #lcd.lcd-tolak { animation: goyangTolak .3s linear 2; }
   @keyframes goyangTolak { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
   #logHari {
-    flex: 1 1 auto; overflow-y: auto; margin: 8px 10px; min-height: 40px;
+    flex: 0 1 auto; overflow-y: auto; margin: 8px 10px; max-height: 84px;
     display: flex; flex-direction: column; gap: 4px;
   }
   #totalHari {
@@ -81,9 +81,40 @@
     margin: 0 10px 8px; padding: 9px 12px; border: 1px solid #8a6d1f; border-radius: 8px;
     color: #e4b93c; font-size: .78rem; line-height: 1.35; flex: 0 0 auto;
   }
+  /* ===== DAFTAR BARANG SATU TRANSAKSI (9 Agu 2026) =====
+     Dulu kasir darurat menyimpan SATU total (mis. Rp174.000) — barang apa saja yang ada
+     di dalamnya cuma tersimpan di kepala Gono, dan hilang dalam hitungan hari. Waktu owner
+     hendak merinci, tidak ada lagi yang ingat. Sekarang tiap barang diketik harganya
+     sendiri lalu ditekan +, jadi tiap baris tersimpan terpisah dan harganya bisa
+     dicocokkan sistem ke produk (39.000 -> Angsa 3 L) tanpa perlu bertanya siapa pun.
+     Beban Gono TIDAK bertambah — malah berkurang, karena tidak perlu menjumlah di kepala. */
+  /* flex:1 + min-height:0 = daftar ini yang mengalah & menggulir kalau barangnya banyak,
+     bukan mendorong tombol SIMPAN keluar layar (temuan uji 9 Agu 2026: 6 barang bikin
+     isi halaman 1014px di layar 844px). */
+  #daftarBaris { flex: 1 1 auto; min-height: 0; margin: 8px 10px 0; overflow-y: auto; }
+  #daftarBaris .br {
+    display: flex; align-items: center; gap: 8px; background: #2b3036;
+    border: 1px solid var(--garis); border-radius: 8px; padding: 4px 6px 4px 12px; margin-bottom: 5px;
+  }
+  #daftarBaris .br .no { color: #9aa3ab; font-size: .8rem; flex: 0 0 auto; }
+  #daftarBaris .br .nilai {
+    flex: 1; text-align: right; font-weight: 700; font-size: 1.05rem;
+    font-variant-numeric: tabular-nums; color: #e9ecf1;
+  }
+  #daftarBaris .br button {
+    flex: 0 0 auto; width: 44px; height: 44px; border-radius: 8px;
+    background: none; border: 1px solid var(--garis); color: #e89b8a; font-size: 1.1rem;
+  }
+  #btnTambahBaris {
+    flex: 0 0 auto; margin: 8px 10px 0; min-height: 50px; border-radius: 10px;
+    border: 0; background: var(--tombol-op); color: var(--tombol-teks);
+    font-family: inherit; font-size: 1.05rem; font-weight: 800; letter-spacing: .5px;
+    border-bottom: 4px solid #a09c8e;
+  }
+  #btnTambahBaris:active { transform: translateY(1px); border-bottom-width: 2px; }
   #papan {
     flex: 0 0 auto; padding: 4px 10px 8px;
-    display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 62px; gap: 7px;
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 54px; gap: 7px;
   }
   #papan button {
     border: 0; border-radius: 10px; font-size: 1.8rem; font-weight: 700;
@@ -148,11 +179,13 @@
 <body>
 
 <div id="bilahAtas"><b>M.IQBAL</b><span id="chipStatus">Menyambungkan…</span></div>
-<div id="judulDarurat">Kasir Darurat — Catat Nominal Saja</div>
+<div id="judulDarurat">Kasir Darurat — Catat Per Barang</div>
 
 <div id="lcd"><div id="lcdAngka">Rp0</div></div>
 
-<div id="peringatan">Halaman ini CUMA mencatat total uang masuk — tanpa nama produk, stok tidak berkurang. Setelah keadaan normal, stok fisik dihitung ulang dan dirapikan di sistem utama.</div>
+<div id="daftarBaris"></div>
+
+<div id="peringatan">Ketik harga TIAP barang lalu tekan <b>+ BARANG BERIKUTNYA</b>. Jangan dijumlah sendiri.</div>
 
 <div id="logHari">
   <div id="totalHari">Hari ini dari HP ini: Rp0</div>
@@ -173,6 +206,9 @@
   <button type="button" onclick="tekanAngka('0')">0</button>
   <button type="button" class="op" onclick="hapusAngka()">HAPUS</button>
 </div>
+<!-- Kata-katanya sengaja panjang & jelas, bukan cuma tanda "+": pemakainya gaptek dan
+     tombol ini menentukan apakah barangnya bisa ditelusuri nanti atau tidak. -->
+<button type="button" id="btnTambahBaris" onclick="tambahBaris()">+ BARANG BERIKUTNYA</button>
 <div id="pilihBayarD">
   <button type="button" id="bayarD-Tunai" class="pilih" onclick="pilihBayarD('Tunai')">TUNAI</button>
   <button type="button" id="bayarD-Qris" onclick="pilihBayarD('Qris')">QRIS</button>
@@ -352,7 +388,36 @@ function setStatus(online) {
 
 // ---------- papan angka ----------
 var nominalDiketik = '';
-function gambarLcd() { $('lcdAngka').textContent = rupiah(parseInt(nominalDiketik || '0', 10)); }
+// Daftar harga barang dalam SATU transaksi berjalan (satu pembeli).
+var barisNominal = [];
+function totalBaris() { return barisNominal.reduce(function (a, b) { return a + b; }, 0); }
+function gambarLcd() {
+  // Yang diketik menang di layar; kalau tidak ada, tampilkan total yang sudah terkumpul —
+  // supaya Gono tidak perlu menjumlah sendiri untuk tahu berapa yang harus ditagih.
+  var angka = nominalDiketik !== '' ? parseInt(nominalDiketik, 10) : totalBaris();
+  $('lcdAngka').textContent = rupiah(angka);
+}
+function gambarBaris() {
+  var wadah = $('daftarBaris');
+  if (barisNominal.length === 0) { wadah.innerHTML = ''; return; }
+  wadah.innerHTML = barisNominal.map(function (n, i) {
+    return '<div class="br"><span class="no">' + (i + 1) + '</span>' +
+      '<span class="nilai">' + rupiah(n) + '</span>' +
+      '<button type="button" onclick="hapusBaris(' + i + ')" aria-label="Hapus barang ' + (i + 1) + '">&times;</button></div>';
+  }).join('');
+  wadah.scrollTop = wadah.scrollHeight;
+}
+function tambahBaris() {
+  var n = parseInt(nominalDiketik || '0', 10);
+  if (n <= 0) { tolakEntri(); return; }
+  barisNominal.push(n);
+  nominalDiketik = '';
+  gambarLcd(); gambarBaris();
+}
+function hapusBaris(i) {
+  barisNominal.splice(i, 1);
+  gambarLcd(); gambarBaris();
+}
 function tekanAngka(d) {
   if ((nominalDiketik + d).length > 10) return;
   if (nominalDiketik === '' && d === '000') return;
@@ -410,8 +475,12 @@ function tandaiNamaD() {
 
 // ---------- simpan ----------
 function simpanNominal() {
-  var nominal = parseInt(nominalDiketik || '0', 10);
-  if (nominal <= 0) { tolakEntri(); return; }
+  // Angka yang masih diketik ikut disimpan tanpa perlu menekan + dulu — kalau tidak,
+  // barang terakhir tiap transaksi akan sering hilang karena lupa ditambahkan.
+  var daftar = barisNominal.slice();
+  var sisa = parseInt(nominalDiketik || '0', 10);
+  if (sisa > 0) daftar.push(sisa);
+  if (daftar.length === 0) { tolakEntri(); return; }
   var nama = ($('namaPembeliD').value || '').trim();
   if (bayarDAktif === 'Kredit' && !nama) {
     var elN = $('namaPembeliD');
@@ -419,24 +488,39 @@ function simpanNominal() {
     elN.focus();
     return;
   }
-  // Skema SAMA PERSIS dengan kasir darurat lama — laporan omzet sistem utama sudah mengenalnya.
-  var trx = {
-    id: idUnik(),
-    tanggal: tanggalLokalIso(),
-    jam: new Date().toTimeString().slice(0, 5),
-    jenis: 'kasir_darurat_nominal',
-    namaProduk: '(tidak tercatat — kasir darurat)',
-    hargaTotal: nominal,
-    caraBayar: bayarDAktif,
-    namaPelanggan: nama
-  };
+  // TIAP BARANG jadi dokumennya sendiri, disatukan oleh grupNota. Bentuk dokumennya SAMA
+  // PERSIS dengan kasir darurat lama (jenis kasir_darurat_nominal), jadi omzet, laporan,
+  // dan antrean rinci di sistem utama membacanya tanpa perubahan apa pun — bedanya
+  // sekarang tiap baris berisi harga SATU barang, sehingga tebakan produk hampir selalu
+  // ketemu tepat tanpa perlu bertanya ke siapa pun.
+  var grup = idUnik();
+  var jam = new Date().toTimeString().slice(0, 5);
+  var tanggal = tanggalLokalIso();
   var op = localStorage.getItem(K_OPERATOR);
-  if (op) trx.operator = op;
   var a = ambilAntrean();
-  a.push({ koleksi: 'penjualan', docId: String(trx.id), data: trx });
+  daftar.forEach(function (n) {
+    var trx = {
+      id: idUnik(),
+      tanggal: tanggal,
+      jam: jam,
+      jenis: 'kasir_darurat_nominal',
+      namaProduk: '(tidak tercatat — kasir darurat)',
+      hargaTotal: n,
+      caraBayar: bayarDAktif,
+      namaPelanggan: nama,
+      grupNota: grup
+    };
+    if (op) trx.operator = op;
+    a.push({ koleksi: 'penjualan', docId: String(trx.id), data: trx });
+  });
   simpanAntrean(a);
-  catatLog(trx);
+  // Log harian tetap SATU baris per pembeli (bukan per barang) — yang ingin dilihat Gono
+  // adalah "pembeli tadi bayar berapa", bukan pecahannya.
+  catatLog({ id: grup, tanggal: tanggal, jam: jam,
+    hargaTotal: daftar.reduce(function (x, y) { return x + y; }, 0) });
+  barisNominal = [];
   nominalDiketik = '';
+  gambarBaris();
   // Nama & cara bayar ikut direset: pembeli berikutnya orang lain, dan nama yang
   // tertinggal di kolom akan menempel diam-diam ke transaksi berikutnya.
   $('namaPembeliD').value = '';
@@ -453,6 +537,8 @@ function simpanNominal() {
 
 window.tekanAngka = tekanAngka;
 window.hapusAngka = hapusAngka;
+window.tambahBaris = tambahBaris;
+window.hapusBaris = hapusBaris;
 window.simpanNominal = simpanNominal;
 window.pilihBayarD = pilihBayarD;
 window.tandaiNamaD = tandaiNamaD;
@@ -461,6 +547,7 @@ window.lewatiLogin = lewatiLogin;
 
 // ---------- mulai ----------
 gambarLcd();
+gambarBaris();
 gambarLog();
 setStatus(navigator.onLine);
 if (!sudahLogin()) tampilkanLayarLogin(false);

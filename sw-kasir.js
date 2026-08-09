@@ -16,7 +16,9 @@
 // v8 (9 Agustus 2026): nama pembeli tidak lagi wajib untuk Tunai/QRIS — cuma Kredit.
 // v9 (9 Agustus 2026): panel tuts nama produk dibuang dari kasir owner.
 // v10 (9 Agustus 2026): layar KEMBALIAN — sebut lembar uang yang harus diambil.
-const VERSI = 'kasir-v10';
+// v11 (9 Agustus 2026): kasir darurat mencatat PER BARANG (tombol +), bukan satu total —
+// supaya tiap harga bisa dicocokkan ke produk tanpa mengandalkan ingatan Gono.
+const VERSI = 'kasir-v11';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

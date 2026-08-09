@@ -9209,10 +9209,14 @@
   function kandidatDarurat(nominal) {
     const hasil = [];
     if (!(nominal > 0)) return hasil;
+    // Kelipatan 0,5 L — BUKAN cuma liter bulat. Toko memang menjual setengah liter
+    // (kasir sendiri sudah lama mengizinkannya lewat qtySahUntuk), tapi penebak ini dulu
+    // mulai dari L>=1 sehingga Rp11.000 = Ketan Hitam PK 0,5 L tidak pernah ketemu dan
+    // owner terpaksa mengetiknya manual (temuan 9 Agu 2026 dari transaksi #2112).
     ambilHargaLiteran().forEach(h => {
       if (!(h.hargaPerLiter > 0)) return;
-      const L = Math.round(nominal / h.hargaPerLiter);
-      if (L >= 1 && L <= 40 && L * h.hargaPerLiter === nominal)
+      const L = Math.round(nominal / h.hargaPerLiter * 2) / 2;
+      if (L >= 0.5 && L <= 40 && Math.round(L * h.hargaPerLiter) === nominal)
         hasil.push({ jalur: 'literan', produk: h.merk, jumlah: L, label: h.merk + ' ' + L + ' L' });
     });
     ambilHargaKemasan().forEach(h => {
