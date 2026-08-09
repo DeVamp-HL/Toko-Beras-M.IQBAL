@@ -9213,11 +9213,31 @@
     // (kasir sendiri sudah lama mengizinkannya lewat qtySahUntuk), tapi penebak ini dulu
     // mulai dari L>=1 sehingga Rp11.000 = Ketan Hitam PK 0,5 L tidak pernah ketemu dan
     // owner terpaksa mengetiknya manual (temuan 9 Agu 2026 dari transaksi #2112).
+    // PEMBULATAN RECEH (9 Agu 2026). Di Indonesia pecahan di bawah Rp500 praktis tidak
+    // terpakai — pembeli menolak menerimanya. Jadi Rp11.500 ÷ 2 = Rp5.750 di lapangan
+    // ditagih Rp6.000. Penebak yang menuntut kecocokan PERSIS tidak akan pernah menemukan
+    // penjualan setengah liter berharga ganjil, dan owner terpaksa mengetiknya manual
+    // tiap kali. Selisih di bawah Rp500 karena itu diterima, TAPI:
+    //   - ditandai jelas di labelnya (berapa selisihnya, ke arah mana), dan
+    //   - hargaPas dibawa serta supaya barangnya dicatat sebesar UANG YANG BENAR-BENAR
+    //     DITERIMA (Rp6.000), bukan harga katalog (Rp5.750). Kalau memakai harga katalog,
+    //     tiap transaksi bulat akan meninggalkan sisa Rp250 yang tidak pernah habis.
+    // Toleransi ini sengaja HANYA untuk literan — di situlah harga ganjil muncul; kemasan
+    // & karung harganya sudah bulat, memberi toleransi di sana cuma menambah tebakan palsu.
+    const TOLERANSI_BULAT = 500;
     ambilHargaLiteran().forEach(h => {
       if (!(h.hargaPerLiter > 0)) return;
       const L = Math.round(nominal / h.hargaPerLiter * 2) / 2;
-      if (L >= 0.5 && L <= 40 && Math.round(L * h.hargaPerLiter) === nominal)
-        hasil.push({ jalur: 'literan', produk: h.merk, jumlah: L, label: h.merk + ' ' + L + ' L' });
+      if (!(L >= 0.5 && L <= 40)) return;
+      const hargaKatalog = Math.round(L * h.hargaPerLiter);
+      const selisih = nominal - hargaKatalog;
+      if (selisih === 0) {
+        hasil.push({ jalur: 'literan', produk: h.merk, jumlah: L, tepat: true,
+          label: h.merk + ' ' + L + ' L' });
+      } else if (Math.abs(selisih) < TOLERANSI_BULAT) {
+        hasil.push({ jalur: 'literan', produk: h.merk, jumlah: L, tepat: false, hargaPas: nominal,
+          label: h.merk + ' ' + L + ' L · bulat ' + (selisih > 0 ? '+' : '−') + formatRupiah(Math.abs(selisih)) });
+      }
     });
     ambilHargaKemasan().forEach(h => {
       if (!(h.hargaPerUnit > 0)) return;
@@ -9231,9 +9251,12 @@
         if (!(hu > 0)) return;
         const n = Math.round(nominal / hu);
         if (n >= 1 && n <= 4 && n * hu === nominal)
-          hasil.push({ jalur: 'karung', produk: merk, berat: b, jumlah: n, label: 'Karung ' + b + ' kg ' + merk + ' × ' + n });
+          hasil.push({ jalur: 'karung', produk: merk, berat: b, jumlah: n, tepat: true, label: 'Karung ' + b + ' kg ' + merk + ' × ' + n });
       });
     });
+    // Yang cocok PERSIS didahulukan; tebakan hasil pembulatan turun ke bawah supaya
+    // tidak pernah menutupi kemungkinan yang benar-benar pas.
+    hasil.sort((a, b) => (b.tepat ? 1 : 0) - (a.tepat ? 1 : 0));
     return hasil.slice(0, 6);
   }
 
@@ -9431,7 +9454,9 @@
   function pakaiKandidatRinci(i) {
     const c = _kandidatRinci[i];
     if (!c) return;
-    const item = hitungItemRinci(c.jalur, c.produk, c.berat, c.jumlah, 0);
+    // hargaPas hanya ada pada tebakan hasil pembulatan — dipakai supaya barangnya tercatat
+    // sebesar uang yang BENAR-BENAR diterima, bukan harga katalognya (lihat kandidatDarurat).
+    const item = hitungItemRinci(c.jalur, c.produk, c.berat, c.jumlah, c.hargaPas || 0);
     if (!item || item.gagal) return;
     _itemRinci = [item];
     renderItemRinci();
