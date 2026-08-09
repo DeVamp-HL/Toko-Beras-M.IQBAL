@@ -3849,6 +3849,18 @@
   // = 5L -> paper bag 5L (Rp305/lembar). 5<L<13 -> paper bag 10L (Rp395/lembar).
   // >= 13L -> karung bekas (Rp1.500/karung, 1 transaksi = 1 karung, bukan dihitung per liter).
   // < 5L -> tanpa kemasan khusus (plastik biasa, sudah tercakup biaya operasional bulanan).
+  // Satu karung bekas muat 65 liter (ditetapkan My DeV 10 Agu 2026). Di atas itu perlu
+  // lebih dari satu — dulu berapa pun liternya cuma dihitung SATU karung, jadi pembelian
+  // 130 liter (yang jelas butuh 2 karung) cuma dibebani Rp1.500 dan margin-nya kelihatan
+  // lebih besar dari kenyataan. Rentang 13-65 liter tidak berubah: tetap 1 karung.
+  const KAPASITAS_KARUNG_BEKAS_LITER = 65;
+  function jumlahKemasanLiteran(jumlahLiter) {
+    const jenis = tentukanKemasanLiteran(jumlahLiter);
+    if (!jenis) return 0;
+    // Paper bag selalu 1: 5 L pas satu kantong, 5-12 L pas satu kantong 10 L.
+    if (jenis !== 'karungbekas') return 1;
+    return Math.max(1, Math.ceil(jumlahLiter / KAPASITAS_KARUNG_BEKAS_LITER));
+  }
   function tentukanKemasanLiteran(jumlahLiter) {
     if (jumlahLiter < 5) return null;
     if (jumlahLiter === 5) return 'paperbag5l';
@@ -6956,11 +6968,12 @@
       const hppPerKgSaatIni = stokKarung[jenis]?.hppTerakhirPerKg || 0;
 
       // Kemasan literan otomatis dari jumlah liter — aturan My DeV (ditegaskan 2 Agustus 2026):
-      // =5L->paper bag 5L, 5<L<13->paper bag 10L, >=13L->karung bekas DEFAULT (per karung, bukan per liter). <5L: tidak ada biaya khusus.
+      // =5L->paper bag 5L, 5<L<13->paper bag 10L, >=13L->karung bekas. <5L: tidak ada biaya khusus.
+      // Jumlahnya lewat jumlahKemasanLiteran() — 1 karung bekas tiap 65 liter (10 Agu 2026).
       const jenisKemasanLiteran = tentukanKemasanLiteran(jumlahLiter);
       let biayaKemasanLiteran = 0, jumlahKemasanLiteranDipakai = 0;
       if (jenisKemasanLiteran) {
-        jumlahKemasanLiteranDipakai = 1; // 1 transaksi = 1 unit kemasan
+        jumlahKemasanLiteranDipakai = jumlahKemasanLiteran(jumlahLiter);
         const stokBahanLiteran = hitungStokBahanLiteran();
         biayaKemasanLiteran = hargaBahanLiteranEfektif(jenisKemasanLiteran, stokBahanLiteran) * jumlahKemasanLiteranDipakai;
         if (!stokBahanLiteran[jenisKemasanLiteran] || stokBahanLiteran[jenisKemasanLiteran].sisaPcs < jumlahKemasanLiteranDipakai) {
@@ -9661,7 +9674,8 @@
       const hppKg = s ? s.hppTerakhirPerKg : 0;
       const jk = tentukanKemasanLiteran(jumlah);
       let biaya = 0, dipakai = 0;
-      if (jk) { dipakai = 1; biaya = hargaBahanLiteranEfektif(jk, hitungStokBahanLiteran()) * dipakai; }
+      // Jumlah kemasan ikut aturan yang sama dengan jalur Jual — 1 karung bekas tiap 65 L.
+      if (jk) { dipakai = jumlahKemasanLiteran(jumlah); biaya = hargaBahanLiteranEfektif(jk, hitungStokBahanLiteran()) * dipakai; }
       return {
         jalur, produk, berat: null, jumlah, harga,
         label: 'Literan ' + produk + ' ' + jumlah + ' L',

@@ -432,6 +432,17 @@ function rupiah(n) { return 'Rp' + Math.round(n || 0).toLocaleString('id-ID'); }
 function angkaTitik(n) { return Math.round(n || 0).toLocaleString('id-ID'); }
 // Aturan My DeV (2 Agustus 2026): karung bekas DEFAULT untuk literan >= 13 liter.
 function tentukanKemasanLiteran(L) { if (L < 5) return null; if (L === 5) return 'paperbag5l'; if (L < 13) return 'paperbag10l'; return 'karungbekas'; }
+// Satu karung bekas muat 65 liter (My DeV 10 Agu 2026). Dulu berapa pun liternya cuma
+// dihitung SATU karung, jadi pembelian 130 L cuma dibebani Rp1.500 dan margin-nya
+// kelihatan lebih besar dari kenyataan. Aturan ini KEMBAR dengan jumlahKemasanLiteran()
+// di index.html — kalau salah satu diubah, ubah dua-duanya.
+var KAPASITAS_KARUNG_BEKAS_LITER = 65;
+function jumlahKemasanLiteran(L) {
+  var jenis = tentukanKemasanLiteran(L);
+  if (!jenis) return 0;
+  if (jenis !== 'karungbekas') return 1;   // paper bag selalu satu
+  return Math.max(1, Math.ceil(L / KAPASITAS_KARUNG_BEKAS_LITER));
+}
 function hargaBahanLiteran(jk) {
   var bahan = ((ringkasan && ringkasan.bahanLiteran) || {})[jk] || {};
   return bahan.hargaPerPcs || HARGA_AWAL_BAHAN[jk] || 0;
@@ -1328,7 +1339,7 @@ function simpanTransaksi() {
         var totalKg = L ? Math.round(L * rasio * 1000) / 1000 : 0;
         var jk = L ? tentukanKemasanLiteran(L) : null;
         var biayaKemasan = 0, jmlKemasan = 0;
-        if (jk) { jmlKemasan = 1; biayaKemasan = hargaBahanLiteran(jk) * jmlKemasan; }
+        if (jk) { jmlKemasan = jumlahKemasanLiteran(L); biayaKemasan = hargaBahanLiteran(jk) * jmlKemasan; }
         trx = { jenis: 'literan', merkSumber: p.merk, jumlahLiter: L || 0, rasioPakai: rasio, totalKg: totalKg,
           namaProduk: p.merk, hargaTotal: it.harga,
           hppTotalSaatJual: Math.round((p.hppPerKg || 0) * totalKg) + biayaKemasan,
