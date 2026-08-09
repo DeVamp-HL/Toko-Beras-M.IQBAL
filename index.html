@@ -5608,6 +5608,17 @@
   // Penyaringan dilakukan di SATU pintu ini supaya seluruh hitungan (stok, omzet, HPP,
   // laba, grafik — 16 pemakai ambilPenjualan) otomatis mengabaikan baris yang batal,
   // tanpa perlu menambah syarat di masing-masing tempat.
+  // HPP dianggap TERCATAT kalau nilainya ada DAN bukan Rp0 pada transaksi berduit.
+  // Semua jalur jual memakai pola `hpp... || 0`: barang yang dijual saat merk/produknya
+  // belum punya batch/produksi tercatat di sistem tersimpan ber-HPP Rp0 — bukan kosong —
+  // sehingga dulu lolos dihitung "untung 100%" dan tidak pernah muncul di catatan kuning
+  // (temuan 9 Agu 2026: dua penjualan Angsa 25 kg @Rp375rb tampil margin 100% di Laba,
+  // menggelembungkan Margin Kotor Hari Ini Rp750rb). Rp0 pada transaksi berduit bukan
+  // harga pokok yang mungkin untuk beras — itu tanda datanya bolong, bukan untung penuh.
+  function hppTercatat(p) {
+    if (p.hppTotalSaatJual === undefined || p.hppTotalSaatJual === null) return false;
+    return p.hppTotalSaatJual > 0 || (p.hargaTotal || 0) === 0;
+  }
   function penjualanMasihBerlaku(p) {
     return !p.dibatalkan && !p.dikoreksiOleh;
   }
@@ -7640,10 +7651,11 @@
     const belanjaMingguIni = batch.filter(k => isoKeTanggal(k.tanggal) >= mulaiMinggu).reduce((a,k) => a + nilaiBelanjaBatch(k), 0);
     const belanjaBulanIni = batch.filter(k => isoKeTanggal(k.tanggal) >= mulaiBulan).reduce((a,k) => a + nilaiBelanjaBatch(k), 0);
 
-    // Margin kotor hari ini = omzet - HPP barang terjual, HANYA transaksi yang punya hppTotalSaatJual tercatat.
-    // Transaksi lama/tanpa HPP tercatat dikeluarkan dari hitungan (bukan dianggap Rp0), lalu ditandai di catatan.
+    // Margin kotor hari ini = omzet - HPP barang terjual, HANYA transaksi yang HPP-nya
+    // benar-benar tercatat (lihat hppTercatat: kosong ATAU Rp0-berduit sama-sama bolong).
+    // Yang bolong dikeluarkan dari hitungan (bukan dianggap Rp0/untung penuh), lalu ditandai di catatan.
     const penjualanHariIni = penjualan.filter(p => p.tanggal === hariIniIso);
-    const penjualanHariIniTerhitung = penjualanHariIni.filter(p => p.hppTotalSaatJual !== undefined && p.hppTotalSaatJual !== null);
+    const penjualanHariIniTerhitung = penjualanHariIni.filter(hppTercatat);
     const jumlahTakTerhitungHariIni = penjualanHariIni.length - penjualanHariIniTerhitung.length;
     const marginHariIni = penjualanHariIniTerhitung.reduce((a,p) => a + ((p.hargaTotal||0) - p.hppTotalSaatJual), 0);
 
@@ -7779,8 +7791,10 @@
   // Transaksi lama (sebelum fitur ini) sengaja TIDAK ditambal dengan HPP perkiraan — ditandai terpisah.
   function tampilkanLaba() {
     const semua = ambilPenjualan();
-    const terhitung = semua.filter(p => p.hppTotalSaatJual !== undefined && p.hppTotalSaatJual !== null);
-    const tanpaHpp = semua.filter(p => p.hppTotalSaatJual === undefined || p.hppTotalSaatJual === null);
+    // hppTercatat: HPP kosong ATAU Rp0-berduit sama-sama dianggap tidak tercatat —
+    // dua-duanya bolong data, bukan untung 100% (lihat catatan di definisi hppTercatat).
+    const terhitung = semua.filter(hppTercatat);
+    const tanpaHpp = semua.filter(p => !hppTercatat(p));
 
     const totalOmzet = terhitung.reduce((a, p) => a + (p.hargaTotal || 0), 0);
     const totalHpp = terhitung.reduce((a, p) => a + (p.hppTotalSaatJual || 0), 0);
@@ -7833,7 +7847,7 @@
     kartuTT.style.display = 'block';
     document.getElementById('labaJudulTakTerhitung').textContent = tanpaHpp.length + ' transaksi tidak dihitung';
     document.getElementById('labaKetTakTerhitung').textContent =
-      `Tersimpan sebelum HPP mulai dicatat, jadi tidak punya harga beli. Omzetnya ${formatRupiah(omzetTT)} — sengaja tidak dikira-kira, supaya margin di atas tetap angka yang benar.`;
+      `Tersimpan sebelum HPP mulai dicatat, atau HPP-nya terekam Rp0 karena stok/batch produknya belum ada di sistem saat transaksi. Omzetnya ${formatRupiah(omzetTT)} — sengaja tidak dikira-kira, supaya margin di atas tetap angka yang benar.`;
     document.getElementById('daftarLabaTakTerhitung').innerHTML =
       tanpaHpp.slice().sort((a, b) => (b.id || 0) - (a.id || 0)).map(p => `<div class="baris-44">
         <span class="nama"><i class="trx-nama">${escapeHtml(namaSingkatTrx(p))}</i><small>${escapeHtml(formatTanggal(p.tanggal))} · omzet ${formatRupiah(p.hargaTotal || 0)}</small></span>
