@@ -518,7 +518,10 @@
   .baris-44 .pil-aksi {
     flex: 0 0 auto; font-size: 9.5px; font-weight: 700; color: var(--emas-terang);
     border: 1px solid rgba(217, 178, 95, .4); border-radius: 16px; padding: 4px 9px;
-    background: none; font-family: inherit; min-height: 44px;   /* terukur 30 px, batasnya 44 */
+    background: none; font-family: inherit;
+    /* Batas sentuh 44 berlaku DUA arah. Dulu cuma tingginya yang dinaikkan, lebarnya
+       terlewat — label pendek seperti "Stok" cuma jadi 41 px (temuan 9 Agu 2026). */
+    min-height: 44px; min-width: 44px;
   }
   .baris-44 .ikon-perhatian { width: 15px; height: 15px; flex: 0 0 auto; }
   .kpi-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -945,14 +948,16 @@
   .label-hari-grafik { display: flex; justify-content: space-between; color: var(--redup); font-size: 10.5px; letter-spacing: 1px; padding: 2px 4px 2px; }
   .label-hari-grafik b { color: var(--emas-terang); }
   /* Grafik batang Omzet 7 Hari (mockup): angka di atas batang, nama hari di bawah. */
-  .grafik-batang { display: flex; align-items: flex-end; gap: 9px; height: 88px; margin-top: 14px; }
+  .grafik-batang { display: flex; align-items: flex-end; gap: 0; height: 88px; margin-top: 14px; }
   .grafik-batang .gb-kolom {
     flex: 1; min-width: 0; height: 88px;
     display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px;
     /* Sekarang <button>: reset gaya bawaan peramban. Kolom (bukan cuma batangnya)
-       yang jadi target ketuk — dengan 7 kolom berdampingan di layar 360-390 px,
-       lebarnya di bawah 44 px tidak terhindarkan; tingginya 88 px menutupinya. */
-    background: none; border: none; padding: 0; margin: 0; font-family: inherit;
+       yang jadi target ketuk. Jarak antar batang dipindah dari gap induk ke padding
+       kolom ini: jaraknya TERLIHAT sama persis, tapi daerah ketuknya melebar sampai
+       tepi — 38 px jadi ±45 px tanpa mengubah tampilan. (Menggantikan catatan lama
+       yang menyerah menganggap <44 px tidak terhindarkan; 9 Agu 2026.) */
+    background: none; border: none; padding: 0 4.5px; margin: 0; font-family: inherit;
     -webkit-tap-highlight-color: transparent;
   }
   .grafik-batang .gb-kolom:active .gb-batang { opacity: .7; }
@@ -962,6 +967,13 @@
   .grafik-batang .gb-batang.kini { background: linear-gradient(180deg, var(--emas-terang), var(--emas)); }
   .grafik-batang .gb-hari { font-size: 9.5px; color: var(--redup); }
   .grafik-batang .gb-hari.kini { color: var(--emas-terang); font-weight: 700; }
+  /* Di bawah ~376 px, 7 kolom × 44 px tidak muat di dalam padding kartu (18 px kiri-kanan):
+     lebar strip = lebar layar − 32 (padding main) − 36 (padding kartu). Strip dibiarkan
+     menembus padding kartu supaya tiap kolom tetap ≥44 px di HP 360 px. Batangnya sendiri
+     nyaris tidak bergeser karena tiap kolom sudah menyisakan padding 4,5 px di dalamnya. */
+  @media (max-width: 380px) {
+    .grafik-batang { margin-left: -12px; margin-right: -12px; }
+  }
   .donat-omzet { width: 110px; height: 110px; border-radius: 50%; position: relative; flex: 0 0 auto; background: #232a36; box-shadow: 0 0 20px rgba(217, 178, 95, .14); }
   .donat-omzet::before { content: ''; position: absolute; inset: 15px; border-radius: 50%; background: #10151d; box-shadow: inset 0 2px 8px rgba(0, 0, 0, .5); }
   .donat-omzet .tengah-donat { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
