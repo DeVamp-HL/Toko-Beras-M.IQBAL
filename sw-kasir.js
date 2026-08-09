@@ -9,7 +9,9 @@
 // layar UTANG. VERSI dinaikkan supaya perubahan sebesar ini langsung terpasang begitu
 // kasir dibuka — kalau tidak, strategi "cache dulu" di bawah menyajikan kasir LAMA satu
 // kali dulu, dan kasir sempat menyimpan penjualan tanpa nama pelanggan.
-const VERSI = 'kasir-v5';
+// v6 (9 Agustus 2026): kasir darurat ikut dapat pilihan Tunai/QRIS/Kredit + nama
+// pembeli (sebelumnya caraBayar DIPAKU 'Tunai', jadi QRIS/kredit tercatat keliru).
+const VERSI = 'kasir-v6';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

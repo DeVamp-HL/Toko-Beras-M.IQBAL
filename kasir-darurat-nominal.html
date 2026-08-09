@@ -100,6 +100,25 @@
   }
   #btnSimpan:active { transform: translateY(1px); border-bottom-width: 2px; }
   #btnSimpan:disabled { opacity: .6; }
+  /* Cara bayar + nama pembeli (9 Agu 2026). Dulu caraBayar DIPAKU 'Tunai', jadi
+     penjualan QRIS/kredit lewat katup darurat tercatat keliru sebagai tunai.
+     Nama sengaja WAJIB hanya untuk Kredit — tanpa nama, utangnya tidak bisa ditagih;
+     sedangkan Tunai/QRIS dibiarkan boleh kosong supaya katup darurat tetap cepat
+     dipakai justru saat keadaan sedang kacau. */
+  #pilihBayarD { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin: 0 10px 8px; flex: 0 0 auto; }
+  #pilihBayarD button {
+    border: 1px solid var(--garis); background: #2b3036; color: #cfd6dc; border-radius: 9px;
+    min-height: 44px; font-size: .9rem; font-weight: 700; letter-spacing: .5px; font-family: inherit;
+  }
+  #pilihBayarD button.pilih { background: var(--tombol); color: var(--tombol-teks); border-color: var(--tombol); }
+  #barisNamaD { margin: 0 10px 8px; flex: 0 0 auto; }
+  #barisNamaD input {
+    width: 100%; min-height: 44px; border-radius: 9px; padding: 0 12px; box-sizing: border-box;
+    border: 1px solid var(--garis); background: #2b3036; color: #e9ecf1;
+    font-family: inherit; font-size: .95rem;
+  }
+  #barisNamaD input::placeholder { color: #6d757d; }
+  #barisNamaD input.kurang { border-color: var(--merah); }
   .lapisan {
     position: fixed; inset: 0; z-index: 50; display: none; flex-direction: column;
     align-items: center; justify-content: center; padding: 24px; text-align: center;
@@ -153,6 +172,14 @@
   <button type="button" class="op" onclick="tekanAngka('000')">000</button>
   <button type="button" onclick="tekanAngka('0')">0</button>
   <button type="button" class="op" onclick="hapusAngka()">HAPUS</button>
+</div>
+<div id="pilihBayarD">
+  <button type="button" id="bayarD-Tunai" class="pilih" onclick="pilihBayarD('Tunai')">TUNAI</button>
+  <button type="button" id="bayarD-Qris" onclick="pilihBayarD('Qris')">QRIS</button>
+  <button type="button" id="bayarD-Kredit" onclick="pilihBayarD('Kredit')">KREDIT</button>
+</div>
+<div id="barisNamaD">
+  <input type="text" id="namaPembeliD" placeholder="Nama pembeli (wajib kalau kredit)" autocomplete="off" oninput="tandaiNamaD()">
 </div>
 <button type="button" id="btnSimpan" onclick="simpanNominal()">SIMPAN</button>
 
@@ -363,10 +390,35 @@ function gambarLog() {
   });
 }
 
+// ---------- cara bayar & nama pembeli ----------
+var bayarDAktif = 'Tunai';
+function pilihBayarD(c) {
+  bayarDAktif = c;
+  ['Tunai', 'Qris', 'Kredit'].forEach(function (x) {
+    $('bayarD-' + x).classList.toggle('pilih', x === c);
+  });
+  // Kredit tanpa nama = utang yang tidak bisa ditagih, jadi kolomnya langsung diberi
+  // aba-aba begitu Kredit dipilih — bukan menunggu SIMPAN ditekan lalu ditolak.
+  var el = $('namaPembeliD');
+  el.placeholder = c === 'Kredit' ? 'Nama pembeli (WAJIB untuk kredit)' : 'Nama pembeli (boleh dikosongkan)';
+  if (c !== 'Kredit') el.classList.remove('kurang');
+}
+function tandaiNamaD() {
+  var el = $('namaPembeliD');
+  if (el && (el.value || '').trim()) el.classList.remove('kurang');
+}
+
 // ---------- simpan ----------
 function simpanNominal() {
   var nominal = parseInt(nominalDiketik || '0', 10);
   if (nominal <= 0) { tolakEntri(); return; }
+  var nama = ($('namaPembeliD').value || '').trim();
+  if (bayarDAktif === 'Kredit' && !nama) {
+    var elN = $('namaPembeliD');
+    elN.classList.add('kurang');
+    elN.focus();
+    return;
+  }
   // Skema SAMA PERSIS dengan kasir darurat lama — laporan omzet sistem utama sudah mengenalnya.
   var trx = {
     id: idUnik(),
@@ -375,7 +427,8 @@ function simpanNominal() {
     jenis: 'kasir_darurat_nominal',
     namaProduk: '(tidak tercatat — kasir darurat)',
     hargaTotal: nominal,
-    caraBayar: 'Tunai'
+    caraBayar: bayarDAktif,
+    namaPelanggan: nama
   };
   var op = localStorage.getItem(K_OPERATOR);
   if (op) trx.operator = op;
@@ -384,6 +437,11 @@ function simpanNominal() {
   simpanAntrean(a);
   catatLog(trx);
   nominalDiketik = '';
+  // Nama & cara bayar ikut direset: pembeli berikutnya orang lain, dan nama yang
+  // tertinggal di kolom akan menempel diam-diam ke transaksi berikutnya.
+  $('namaPembeliD').value = '';
+  $('namaPembeliD').classList.remove('kurang');
+  pilihBayarD('Tunai');
   gambarLcd();
   gambarLog();
   var ok = $('pesanOk');
@@ -396,6 +454,8 @@ function simpanNominal() {
 window.tekanAngka = tekanAngka;
 window.hapusAngka = hapusAngka;
 window.simpanNominal = simpanNominal;
+window.pilihBayarD = pilihBayarD;
+window.tandaiNamaD = tandaiNamaD;
 window.kirimLogin = kirimLogin;
 window.lewatiLogin = lewatiLogin;
 

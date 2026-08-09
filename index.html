@@ -8796,6 +8796,12 @@
     if (j) baris.push(['Jumlah', j.nilai + ' ' + j.satuan]);
     baris.push(['Total tercatat', formatRupiah(p.hargaTotal || 0)]);
     if (p.caraBayar) baris.push(['Cara bayar', p.caraBayar]);
+    // Nama pembeli WAJIB ikut terlihat di sini (9 Agu 2026): sejak kasir mewajibkan
+    // nama, angka kredit tidak ada gunanya kalau siapa yang berutang cuma bisa dilihat
+    // di tab Piutang. Kredit tanpa nama = utang yang tidak bisa ditagih, jadi
+    // kekosongannya ditandai terang-terangan, bukan dibiarkan jadi baris kosong.
+    if (p.namaPelanggan) baris.push(['Pembeli', escapeHtml(p.namaPelanggan)]);
+    else if (p.caraBayar === 'Kredit') baris.push(['Pembeli', '<b class="ph-merah">Tidak tercatat</b> — utang ini tidak bisa ditagih']);
     // Baris sisa hasil rinci punya dua-duanya (jenis darurat + asalDarurat) — cukup satu
     // baris Asal, yang menyebut induknya, supaya tidak tampak seperti dua catatan berbeda.
     if (darurat && !p.asalDarurat) baris.push(['Asal', 'Kasir darurat — hanya nominal, produk belum tercatat']);
