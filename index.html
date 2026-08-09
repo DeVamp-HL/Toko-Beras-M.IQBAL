@@ -8375,7 +8375,9 @@
     if (j) baris.push(['Jumlah', j.nilai + ' ' + j.satuan]);
     baris.push(['Total tercatat', formatRupiah(p.hargaTotal || 0)]);
     if (p.caraBayar) baris.push(['Cara bayar', p.caraBayar]);
-    if (darurat) baris.push(['Asal', 'Kasir darurat — hanya nominal, produk belum tercatat']);
+    // Baris sisa hasil rinci punya dua-duanya (jenis darurat + asalDarurat) — cukup satu
+    // baris Asal, yang menyebut induknya, supaya tidak tampak seperti dua catatan berbeda.
+    if (darurat && !p.asalDarurat) baris.push(['Asal', 'Kasir darurat — hanya nominal, produk belum tercatat']);
     if (p.asalDarurat) baris.push(['Asal', 'Rincian dari kasir darurat #' + String(p.rinciDari || '').slice(-4)]);
     if (p.dibatalkan) baris.push(['Status', '<b class="ph-merah">Dibatalkan</b> — ' + escapeHtml(p.alasanKoreksi || 'tanpa alasan')]);
     if (p.dikoreksiOleh) baris.push(['Status', '<b class="ph-amber">Dikoreksi</b> — lihat #' + String(p.dikoreksiOleh).slice(-4)]);
@@ -8855,10 +8857,13 @@
       return d;
     });
     if (sisaBelumTerurai > 0) {
+      // asalDarurat + rinciDari WAJIB ikut — urungkanRinciTrx mengenali anggota grup
+      // lewat penanda ini. Tanpa itu, tarik balik memulihkan nominal asli tapi
+      // membiarkan baris sisa tetap hidup → uang dobel sebesar sisa.
       const sisaDoc = {
         id: idUnik(), tanggal: p.tanggal, jam: p.jam, caraBayar: p.caraBayar || 'Tunai', namaPelanggan: '',
         jenis: 'kasir_darurat_nominal', hargaTotal: sisaBelumTerurai,
-        grupNota: idGrup, koreksiDari: p.id,
+        grupNota: idGrup, asalDarurat: true, rinciDari: p.id, koreksiDari: p.id,
         alasanKoreksi: 'Sisa belum diurai dari kasir darurat #' + String(p.id).slice(-4), dirinciPada: kini
       };
       if (p.operator) sisaDoc.operator = p.operator;
@@ -8899,9 +8904,26 @@
   async function urungkanRinciTrx() {
     const p = _trxTerbuka;
     if (!p || !p.asalDarurat || !penjualanMasihBerlaku(p)) return;
-    const grup = ambilPenjualan().filter(x => x.asalDarurat && x.rinciDari === p.rinciDari);
+    // Grup = satu kali SIMPAN rincian (grupNota unik per simpan) — bukan rinciDari saja,
+    // karena rinciDari yang sama bisa terpakai dua generasi kalau pernah diurungkan lalu
+    // dirinci ulang. Fallback rinciDari cuma untuk dokumen lama tanpa grupNota. Diambil
+    // dari ambilPenjualanSemua (termasuk yang mati) supaya keutuhan grup bisa diperiksa.
+    const seGrup = p.grupNota
+      ? (x) => x.grupNota === p.grupNota
+      : (x) => x.asalDarurat && x.rinciDari === p.rinciDari;
+    const grup = ambilPenjualanSemua().filter(seGrup);
     if (grup.length === 0) return;
-    if (!confirm('Tarik balik rincian ini? ' + grup.length + ' barang hasil rincian dibatalkan, dan transaksi nominal kembali ke antrean rinci.')) return;
+    // Grup harus UTUH sebelum boleh ditarik balik. Kalau ada anggota yang sudah
+    // dikoreksi/dirinci lagi/dibatalkan, memulihkan nominal asli akan MENDOBEL uang
+    // turunannya yang masih hidup — selesaikan dulu turunannya baru boleh mundur.
+    const tersentuh = grup.find(x => !penjualanMasihBerlaku(x));
+    if (tersentuh) {
+      alert('Tidak bisa ditarik balik: catatan #' + String(tersentuh.id).slice(-4) + ' dari rincian ini sudah '
+        + (tersentuh.dikoreksiOleh ? 'dikoreksi/dirinci lagi (lihat #' + String(tersentuh.dikoreksiOleh).slice(-4) + ')' : 'dibatalkan')
+        + '. Urungkan/tinjau yang itu dulu supaya totalnya tidak dobel.');
+      return;
+    }
+    if (!confirm('Tarik balik rincian ini? ' + grup.length + ' catatan hasil rincian dibatalkan, dan transaksi nominal kembali ke antrean rinci.')) return;
     try {
       for (const g of grup) {
         await simpanKeFirestore(KOLEKSI_PENJUALAN, { ...g, dibatalkan: true, alasanKoreksi: 'Rincian diurungkan', dikoreksiPada: new Date().toISOString() });
