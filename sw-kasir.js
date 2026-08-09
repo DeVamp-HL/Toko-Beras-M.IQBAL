@@ -13,7 +13,8 @@
 // pembeli (sebelumnya caraBayar DIPAKU 'Tunai', jadi QRIS/kredit tercatat keliru).
 // v7 (9 Agustus 2026): kasir.html jadi alat OWNER — gerbang jam operasional & wajib
 // pilih operator dicabut, harga di luar katalog diterima (ditanya barangnya nanti).
-const VERSI = 'kasir-v7';
+// v8 (9 Agustus 2026): nama pembeli tidak lagi wajib untuk Tunai/QRIS — cuma Kredit.
+const VERSI = 'kasir-v8';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

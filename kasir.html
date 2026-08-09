@@ -225,7 +225,7 @@
      TIDAK ada jualannya — kalau tombol UTANG ikut tersembunyi, kasir harus pura-pura
      menjual barang dulu hanya untuk membukanya. -->
 <div id="kolomPelanggan">
-  <input type="text" id="namaPelangganInput" placeholder="Nama pembeli" autocomplete="off"
+  <input type="text" id="namaPelangganInput" placeholder="Nama pembeli (boleh dikosongkan)" autocomplete="off"
     list="daftarNamaPelanggan" oninput="tandaiNamaTerisi()">
   <datalist id="daftarNamaPelanggan"></datalist>
   <button type="button" id="btnUtang" onclick="bukaLayarUtang()">UTANG</button>
@@ -1020,6 +1020,12 @@ function tandaiNamaTerisi() {
 function pilihBayar(c) {
   bayarAktif = c;
   ['Tunai', 'Qris', 'Kredit'].forEach(function (x) { $('bayar-' + x).classList.toggle('pilih', x === c); });
+  // Kolomnya memberi aba-aba begitu KREDIT dipilih, bukan menunggu JUAL ditekan lalu
+  // ditolak. Pindah dari Kredit = tanda merahnya ikut hilang, karena syaratnya gugur.
+  var el = $('namaPelangganInput');
+  if (!el) return;
+  el.placeholder = c === 'Kredit' ? 'Nama pembeli (WAJIB untuk kredit)' : 'Nama pembeli (boleh dikosongkan)';
+  if (c !== 'Kredit') el.classList.remove('kurang');
 }
 
 // ---------- UTANG PELANGGAN ----------
@@ -1112,10 +1118,13 @@ function tekanCatat() {
   // Dua pagar lama (jam operasional & wajib pilih operator) dicabut — lihat catatan
   // di operatorAktif() dan cekJamOperasional().
   if (strukItems.length === 0) return;
-  // Nama pembeli WAJIB untuk ketiga cara bayar (keputusan My DeV 9 Agu 2026).
+  // Nama pembeli WAJIB hanya untuk KREDIT (revisi My DeV 9 Agu 2026, sesudah dipakai
+  // betulan): pembeli tunai kebanyakan orang lewat — memaksa mengetik nama tiap
+  // transaksi tidak masuk akal dan memperlambat kasir. Kredit tetap wajib karena utang
+  // tanpa nama tidak bisa ditagih. Aturan yang sama dipakai kasir darurat.
   // Diperiksa DI SINI, sebelum layar "barang apa?" — supaya kasir tidak menjawab
   // sederet pertanyaan produk dulu baru ditolak gara-gara nama kosong.
-  if (!namaPelangganTerisi()) {
+  if (bayarAktif === 'Kredit' && !namaPelangganTerisi()) {
     var el = $('namaPelangganInput');
     el.classList.add('kurang');
     el.focus();
@@ -1148,10 +1157,13 @@ function batalTanyaProduk() {
   $('layarTanyaProduk').classList.remove('tampil');
 }
 function simpanTransaksi() {
-  // Sudah dipastikan terisi di tekanCatat(); dibaca ulang di sini supaya tetap benar
-  // kalau nanti ada jalur lain yang memanggil simpanTransaksi langsung.
+  // Boleh kosong untuk Tunai/QRIS; wajib untuk Kredit. Syaratnya sudah diperiksa di
+  // tekanCatat(), diulang di sini supaya tetap benar kalau nanti ada jalur lain yang
+  // memanggil simpanTransaksi langsung.
   var namaPelanggan = ($('namaPelangganInput').value || '').trim();
-  if (!namaPelanggan) { $('namaPelangganInput').classList.add('kurang'); $('namaPelangganInput').focus(); return; }
+  if (bayarAktif === 'Kredit' && !namaPelanggan) {
+    $('namaPelangganInput').classList.add('kurang'); $('namaPelangganInput').focus(); return;
+  }
   var grupNota = idUnik();
   var tanggal = tanggalLokalIso();
   var jam = new Date().toTimeString().slice(0, 5);
