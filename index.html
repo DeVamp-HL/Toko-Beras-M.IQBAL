@@ -4626,13 +4626,25 @@
     // (temuan audit 2 Agustus 2026, salah satu biang "lambat" di lapangan).
     if (diam && localStorage.getItem('miqbal_backup_auto_tanggal') === tanggalLokalIso()) return;
     if (diam) localStorage.setItem('miqbal_backup_auto_tanggal', tanggalLokalIso());
+    // Versi 4 (audit 9 Agu 2026): SEMUA koleksi ikut. Versi 3 cuma menyimpan 4 koleksi
+    // dan penjualan yang hidup saja — restore dari file lama membuat stok salah (retur
+    // yang mengembalikan barang ke stok hilang), katalog harga kosong, dan jejak
+    // koreksi/pembatalan lenyap. penjualan sekarang pakai ambilPenjualanSemua().
     const isi = {
-      versi: 3,
+      versi: 4,
       diunduhPada: new Date().toISOString(),
       batchMasuk: ambilSemuaBatch(),
       biayaBulanan: ambilBiayaBulanan(),
-      penjualan: ambilPenjualan(),
-      produksiKemasan: ambilProduksi()
+      penjualan: ambilPenjualanSemua(),
+      produksiKemasan: ambilProduksi(),
+      retur: ambilRetur(),
+      karantina: ambilKarantina(),
+      pengeluaranHarian: ambilPengeluaranHarian(),
+      stokBahanKemasan: ambilBahanKemasan(),
+      stokBahanLiteran: ambilBahanLiteran(),
+      katalogHargaLiteran: ambilHargaLiteran(),
+      katalogHargaKemasan: ambilHargaKemasan(),
+      katalogHargaKarung: ambilHargaKarung()
     };
     const blob = new Blob([JSON.stringify(isi, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -4654,30 +4666,40 @@
     reader.onload = async function(e) {
       try {
         const isi = JSON.parse(e.target.result);
-        const batchDariFile = isi.batchMasuk || [];
-        const bulananDariFile = isi.biayaBulanan || [];
-        const penjualanDariFile = isi.penjualan || [];
-        const produksiDariFile = isi.produksiKemasan || [];
 
         // Muat dari file sekarang berarti UPLOAD ke Firestore (bukan cuma ke localStorage HP ini)
         // supaya file backup lama bisa dipakai memulihkan data di semua perangkat sekaligus.
-        const idSekarang = new Set(ambilSemuaBatch().map(b => b.id));
-        const batchBaru = batchDariFile.filter(b => !idSekarang.has(b.id));
-        for (const b of batchBaru) await simpanKeFirestore(KOLEKSI_BATCH, b);
+        // Satu daftar untuk SEMUA koleksi (versi 4) — file versi 3 yang lama cuma punya
+        // 4 kunci pertama, sisanya terbaca kosong dan dilewati tanpa error.
+        // penjualan dide-dup lewat ambilPenjualanSemua(): dokumen mati (jejak koreksi)
+        // ikut dihitung "sudah ada", tidak diunggah ulang percuma.
+        const daftarKoleksi = [
+          { kunci: 'batchMasuk',        koleksi: KOLEKSI_BATCH,         ada: ambilSemuaBatch(),        field: 'id',    label: 'kedatangan' },
+          { kunci: 'biayaBulanan',      koleksi: KOLEKSI_BULANAN,       ada: ambilBiayaBulanan(),      field: 'bulan', label: 'biaya bulanan' },
+          { kunci: 'penjualan',         koleksi: KOLEKSI_PENJUALAN,     ada: ambilPenjualanSemua(),    field: 'id',    label: 'penjualan' },
+          { kunci: 'produksiKemasan',   koleksi: KOLEKSI_PRODUKSI,      ada: ambilProduksi(),          field: 'id',    label: 'produksi' },
+          { kunci: 'retur',             koleksi: KOLEKSI_RETUR,         ada: ambilRetur(),             field: 'id',    label: 'retur' },
+          { kunci: 'karantina',         koleksi: KOLEKSI_KARANTINA,     ada: ambilKarantina(),         field: 'id',    label: 'karantina' },
+          { kunci: 'pengeluaranHarian', koleksi: KOLEKSI_HARIAN,        ada: ambilPengeluaranHarian(), field: 'id',    label: 'pengeluaran harian' },
+          { kunci: 'stokBahanKemasan',  koleksi: KOLEKSI_BAHAN_KEMASAN, ada: ambilBahanKemasan(),      field: 'id',    label: 'bahan kemasan' },
+          { kunci: 'stokBahanLiteran',  koleksi: KOLEKSI_BAHAN_LITERAN, ada: ambilBahanLiteran(),      field: 'id',    label: 'bahan literan' },
+          { kunci: 'katalogHargaLiteran', koleksi: KOLEKSI_HARGA_LITERAN, ada: ambilHargaLiteran(),    field: 'id',    label: 'harga literan' },
+          { kunci: 'katalogHargaKemasan', koleksi: KOLEKSI_HARGA_KEMASAN, ada: ambilHargaKemasan(),    field: 'id',    label: 'harga kemasan' },
+          { kunci: 'katalogHargaKarung',  koleksi: KOLEKSI_HARGA_KARUNG,  ada: ambilHargaKarung(),     field: 'id',    label: 'harga karung' }
+        ];
+        const laporan = [];
+        for (const k of daftarKoleksi) {
+          const dariFile = isi[k.kunci] || [];
+          if (dariFile.length === 0) continue;
+          const sudahAda = new Set(k.ada.map(x => x[k.field]));
+          const baru = dariFile.filter(x => !sudahAda.has(x[k.field]));
+          for (const d of baru) await simpanKeFirestore(k.koleksi, d);
+          if (baru.length > 0) laporan.push(`${baru.length} ${k.label}`);
+        }
 
-        const bulanSekarangSet = new Set(ambilBiayaBulanan().map(b => b.bulan));
-        const bulananBaru = bulananDariFile.filter(b => !bulanSekarangSet.has(b.bulan));
-        for (const b of bulananBaru) await simpanKeFirestore(KOLEKSI_BULANAN, b);
-
-        const idPenjualanSekarang = new Set(ambilPenjualan().map(p => p.id));
-        const penjualanBaru = penjualanDariFile.filter(p => !idPenjualanSekarang.has(p.id));
-        for (const p of penjualanBaru) await simpanKeFirestore(KOLEKSI_PENJUALAN, p);
-
-        const idProduksiSekarang = new Set(ambilProduksi().map(p => p.id));
-        const produksiBaru = produksiDariFile.filter(p => !idProduksiSekarang.has(p.id));
-        for (const p of produksiBaru) await simpanKeFirestore(KOLEKSI_PRODUKSI, p);
-
-        alert(`Berhasil diunggah ke database: ${batchBaru.length} kedatangan, ${bulananBaru.length} biaya bulanan, ${penjualanBaru.length} penjualan, ${produksiBaru.length} produksi baru. Semua perangkat akan ikut ter-update.`);
+        alert(laporan.length === 0
+          ? 'Semua isi file backup ini sudah ada di database — tidak ada yang perlu diunggah.'
+          : `Berhasil diunggah ke database: ${laporan.join(', ')} baru. Semua perangkat akan ikut ter-update.`);
       } catch (err) {
         console.error(err);
         alert('File tidak bisa dibaca, atau gagal mengunggah ke database (cek koneksi internet). Pastikan ini file backup .json yang benar dari sistem ini.');
@@ -7546,6 +7568,12 @@
         // Barang rework masuk balik ke stok lewat jalur produksi/masuk yang sudah ada,
         // supaya HPP tetap tercatat wajar (bukan langsung nambah stok tanpa jejak biaya rework).
         if (item.jenisAsal === 'kemasan') {
+          // HPP rework = HPP rata-rata produk itu SAAT INI (keputusan My DeV 9 Agu 2026).
+          // Dulu Rp0 — margin penjualan ulang tampak untung penuh dan mengencerkan HPP
+          // rata-rata produk. Dihitung SEBELUM dokumen produksi rework ditulis, supaya
+          // rata-ratanya murni dari stok yang ada, belum tercampur unit rework ini.
+          const kunciKemasan = item.namaProduk + '|' + item.ukuranKemasan;
+          const hppReworkPerUnit = (hitungStokKemasan()[kunciKemasan] || {}).hppRataRataPerUnit || 0;
           await simpanKeFirestore(KOLEKSI_PRODUKSI, {
             id: idUnik(),
             tanggal: tanggalLokalIso(),
@@ -7557,7 +7585,7 @@
             biayaKemasan: 0,
             upahRepacking: 0,
             hppSumberPerKgDipakai: 0,
-            hppPerUnit: 0, // rework dari retur — HPP bahan sudah 0 (barang sudah pernah dibeli/diproduksi), catat manual kalau ada biaya rework
+            hppPerUnit: hppReworkPerUnit,
             catatan: 'Hasil rework dari karantina (retur id ' + item.id + ')'
           });
         } else if (item.jenisAsal === 'karung') {
@@ -7631,8 +7659,14 @@
     const pengeluaranHarianTokoBulanIni = ambilPengeluaranHarian()
       .filter(h => h.kategori === 'toko' && isoKeTanggal(h.tanggal) >= mulaiBulan)
       .reduce((a, h) => a + (h.nominal || 0), 0);
+    // Refund retur = uang keluar nyata (keputusan My DeV 9 Agu 2026) — ikut Kas Keluar
+    // Bulan Ini. selisihHargaTukar ikut juga: positif = toko mengembalikan selisih ke
+    // pelanggan (uang keluar), negatif = pelanggan menambah (mengurangi total secara neto).
+    const refundReturBulanIni = ambilRetur()
+      .filter(r => isoKeTanggal(r.tanggal) >= mulaiBulan)
+      .reduce((a, r) => a + (r.nominalRefund || 0) + (r.selisihHargaTukar || 0), 0);
     const kasMasukBulanIni = omzetBulanIni;
-    const kasKeluarBulanIni = belanjaBulanIni + totalBiayaBulanan + pengeluaranHarianTokoBulanIni;
+    const kasKeluarBulanIni = belanjaBulanIni + totalBiayaBulanan + pengeluaranHarianTokoBulanIni + refundReturBulanIni;
 
     document.getElementById('ringOmzetHariIni').innerHTML = angkaUtamaHtml(omzetHariIni);
     // Kartu pendukung HP cuma selebar ±110 px: nominal rupiah penuh membungkus jadi
@@ -8459,6 +8493,11 @@
     delete pengganti.dikoreksiOleh;
     delete pengganti.dibatalkan;
     if (p.jenis === 'kemasan') pengganti.totalKg = (p.ukuranKemasan || 0) * baru;
+    // Bug audit 9 Agu 2026: literan & karung dulu TIDAK menghitung ulang totalKg,
+    // padahal stok karung dipotong dari totalKg — koreksi 10L→5L tetap memotong stok
+    // sebesar 10 liter, selamanya. repacking aman (field koreksinya memang totalKg).
+    if (p.jenis === 'literan') pengganti.totalKg = Math.round(baru * (p.rasioPakai || RASIO_DEFAULT) * 1000) / 1000;
+    if (p.jenis === 'karung') pengganti.totalKg = baru * (p.beratKarungAcuan || 50);
     try {
       await simpanKeFirestore(KOLEKSI_PENJUALAN, pengganti);
       // Asli TIDAK dihapus — hanya ditandai, supaya barisnya tetap terbaca di Riwayat.
