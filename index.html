@@ -3154,6 +3154,16 @@
       <div class="panel-kepala"><h2>Riwayat Retur</h2></div>
       <div id="daftarRetur" class="daftar-batch"></div>
     </div>
+
+    <!-- Bersih-bersih sekali jalan, bukan pekerjaan rutin: kartunya menyembunyikan diri
+         sendiri kalau tidak ada data yang meleset. Ditaruh di tab Stok karena akibat
+         bug-nya memang di stok — bukan di uang. -->
+    <div class="kartu-peringatan-amber" id="kartuPerbaikanKg" style="display:none;">
+      <div class="kpa-judul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/></svg><b id="perbaikanKgJudul"></b></div>
+      <p id="perbaikanKgKet"></p>
+      <div id="daftarPerbaikanKg" class="kartu-daftar" style="margin-top:10px; background:none; border:none; padding:0;"></div>
+      <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="perbaikiTotalKgSemua()">Betulkan beratnya sekarang</button>
+    </div>
   </div>
 
   <!-- HALAMAN LABA / MARGIN -->
@@ -3922,7 +3932,7 @@
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); }
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); }
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
-    if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); }
+    if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); }
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'piutang') { tampilkanPiutang(); tampilkanKasbon(); }
     if (nama === 'harga') tampilkanHarga();
@@ -8377,6 +8387,96 @@
     alert('Saldo awal ' + nama + ' ' + formatRupiah(nominal) + ' tersimpan.');
   }
 
+  // ============ PERBAIKAN DATA LAMA: totalKg yang meleset (9 Agu 2026) ============
+  // Sebelum 9 Agu 2026, simpanKoreksiTrx TIDAK menghitung ulang totalKg untuk literan &
+  // karung. Koreksi 10 L -> 5 L menghasilkan dokumen pengganti berisi jumlahLiter 5 tapi
+  // totalKg milik 10 L — dan stok karung dipotong dari totalKg, jadi stoknya berkurang
+  // dua kali lipat SELAMANYA. Jalur ke depan sudah ditambal; yang tersisa dokumen lama
+  // yang terlanjur salah. Pemindai ini mencarinya.
+  //
+  // totalKg itu angka TURUNAN (jumlah x rasio/berat), bukan keterangan berdiri sendiri —
+  // karena itu perbaikannya menimpa field itu langsung, BUKAN membuat dokumen koreksi
+  // baru seperti pola biasa. Alasannya: dokumen koreksi baru akan menambah satu penjualan
+  // lagi dan MENDOBEL omzet, padahal uang transaksinya tidak berubah sedikit pun. Yang
+  // ditulis ulang cuma totalKg + penanda tanggal perbaikannya.
+  function pindaiTotalKgMeleset() {
+    const hasil = [];
+    ambilPenjualan().forEach(p => {
+      let seharusnya = null;
+      if (p.jenis === 'literan') {
+        const rasio = p.rasioPakai || RASIO_KONVERSI[p.merkSumber] || RASIO_DEFAULT;
+        seharusnya = Math.round((p.jumlahLiter || 0) * rasio * 1000) / 1000;
+      } else if (p.jenis === 'karung') {
+        seharusnya = (p.jumlahKarung || 0) * (p.beratKarungAcuan || 50);
+      } else if (p.jenis === 'kemasan') {
+        seharusnya = (p.ukuranKemasan || 0) * (p.jumlahUnit || 0);
+      }
+      // repacking sengaja dilewati: di sana totalKg MEMANG angka aslinya (yang dikoreksi),
+      // bukan turunan dari jumlah lain — tidak ada yang bisa dibandingkan.
+      if (seharusnya === null || !(seharusnya > 0)) return;
+      const tercatat = p.totalKg;
+      if (tercatat === undefined || tercatat === null) return;
+      if (Math.abs(tercatat - seharusnya) < 0.001) return;
+      hasil.push({ id: p.id, jenis: p.jenis, nama: namaSingkatTrx(p), tanggal: p.tanggal,
+        merk: p.merkSumber || p.namaProduk || '', tercatat, seharusnya,
+        selisih: Math.round((tercatat - seharusnya) * 1000) / 1000,
+        dariKoreksi: !!p.koreksiDari });
+    });
+    return hasil.sort((a, b) => Math.abs(b.selisih) - Math.abs(a.selisih));
+  }
+
+  function tampilkanPerbaikanTotalKg() {
+    const kartu = document.getElementById('kartuPerbaikanKg');
+    if (!kartu) return;
+    const daftar = pindaiTotalKgMeleset();
+    // Kartu ini menyembunyikan diri kalau tidak ada masalah — bukan pekerjaan rutin,
+    // cuma bersih-bersih sekali jalan.
+    if (daftar.length === 0) { kartu.style.display = 'none'; return; }
+    kartu.style.display = 'block';
+    const totalSelisih = Math.round(daftar.reduce((a, d) => a + d.selisih, 0) * 1000) / 1000;
+    document.getElementById('perbaikanKgJudul').textContent =
+      daftar.length + ' transaksi lama salah hitung berat';
+    document.getElementById('perbaikanKgKet').textContent =
+      'Berat (kg) tidak cocok dengan jumlah yang tercatat — akibat koreksi jumlah sebelum 9 Agustus 2026. '
+      + 'Stok merk terkait meleset ' + (totalSelisih > 0 ? 'berkurang' : 'bertambah') + ' ' + Math.abs(totalSelisih)
+      + ' kg dari yang seharusnya. Uang transaksinya TIDAK ikut berubah — yang dibetulkan cuma beratnya.';
+    document.getElementById('daftarPerbaikanKg').innerHTML = daftar.map(d => `
+      <div class="baris-44">
+        <span class="nama"><i class="trx-nama">${escapeHtml(d.nama)}</i><small>${escapeHtml(formatTanggal(d.tanggal))} · tercatat ${d.tercatat} kg · seharusnya ${d.seharusnya} kg${d.dariKoreksi ? ' · dari koreksi' : ''}</small></span>
+        <span class="angka kritis">${d.selisih > 0 ? '+' : ''}${d.selisih} kg</span>
+      </div>`).join('');
+  }
+
+  async function perbaikiTotalKgSemua() {
+    const daftar = pindaiTotalKgMeleset();
+    if (daftar.length === 0) return;
+    if (!confirm('Betulkan berat ' + daftar.length + ' transaksi lama?\n\n'
+      + 'Yang diubah HANYA angka kg-nya supaya cocok dengan jumlah yang tercatat. '
+      + 'Nominal uang, produk, dan tanggalnya tidak disentuh sama sekali. '
+      + 'Stok merk terkait akan langsung terhitung ulang.')) return;
+    const semua = ambilPenjualanSemua();
+    let berhasil = 0;
+    try {
+      for (const d of daftar) {
+        const asli = semua.find(x => x.id === d.id);
+        if (!asli) continue;
+        await simpanKeFirestore(KOLEKSI_PENJUALAN, {
+          ...asli, totalKg: d.seharusnya,
+          totalKgDiperbaiki: tanggalLokalIso(),
+          totalKgSebelumnya: d.tercatat   // jejak: berapa angka yang keliru itu
+        });
+        berhasil++;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Sebagian gagal disimpan (cek internet). ' + berhasil + ' dari ' + daftar.length + ' sudah dibetulkan; sisanya bisa diulang.');
+      return;
+    }
+    tampilkanPerbaikanTotalKg();
+    tampilkanStok();
+    alert(berhasil + ' transaksi dibetulkan beratnya. Stok sudah dihitung ulang.');
+  }
+
   // ============ KASBON PEGAWAI (9 Agu 2026) ============
   let _kasbonTerbuka = null;
   let _bayarKasbonAktif = 'Tunai';
@@ -10339,6 +10439,7 @@
   window.isiPelunasanKasbon = isiPelunasanKasbon;
   window.simpanBayarKasbon = simpanBayarKasbon;
   window.simpanKasbonAmbil = simpanKasbonAmbil;
+  window.perbaikiTotalKgSemua = perbaikiTotalKgSemua;
   window.pilihJenisHarga = pilihJenisHarga;
   window.hapusHargaSedangDiubah = hapusHargaSedangDiubah;
   window.ubahHargaLiteran = ubahHargaLiteran;
