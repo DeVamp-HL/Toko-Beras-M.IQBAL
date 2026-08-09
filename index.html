@@ -1016,6 +1016,13 @@
     box-shadow: 0 0 12px rgba(217, 178, 95, .18), inset 0 1px 0 rgba(255, 255, 255, .07);
   }
   .tombol-utama-kartu:active { transform: translateY(1px); }
+  /* "Belum siap" (rincian belum pas nominal) — REDUP, bukan disabled=true. Bug WebKit iOS:
+     button.disabled=false lewat JS kadang tidak langsung mengembalikan respons ketukan
+     sampai ada pemicu render ulang lain, jadi tombol yang BARU SAJA jadi "siap" terlihat
+     aktif tapi tidak bisa diketuk. Tombol ini SELALU bisa diketuk; penjaga sungguhannya
+     ada di simpanRinciTrx() sendiri (menolak & memberi tahu alasannya lewat alert kalau
+     belum pas) — bukan atribut disabled yang berapa pun keadaannya diam-diam macet. */
+  .tombol-utama-kartu.belum-siap { opacity: .4; }
 
   /* ===== SIDEBAR MOBILE (drawer) — target urutan 2, disetujui My DeV 3 Agustus 2026 =====
      Logo IQ di header = tombol buka/tutup. Drawer melayang di atas konten (bukan
@@ -8704,8 +8711,12 @@
         : 'KELEBIHAN ' + formatRupiah(-sisa) + ' — hapus atau betulkan harga barang'}</div>`);
     }
     wadah.innerHTML = baris.join('');
+    // BUKAN disabled=true/false — lihat catatan di CSS .tombol-utama-kartu.belum-siap
+    // (bug WebKit iOS: re-enable lewat JS kadang tidak langsung mengembalikan respons
+    // ketukan). Tombol selalu bisa diketuk; simpanRinciTrx() sendiri yang menjaga &
+    // menjelaskan kalau belum pas — pesannya lebih jelas daripada tombol diam tak bereaksi.
     const btn = document.getElementById('btnSimpanRinci');
-    if (btn) btn.disabled = !(sisa === 0 && _itemRinci.length > 0);
+    if (btn) btn.classList.toggle('belum-siap', !(sisa === 0 && _itemRinci.length > 0));
   }
 
   function gantiJalurRinci() {
