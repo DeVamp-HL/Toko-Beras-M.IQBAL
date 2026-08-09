@@ -7714,10 +7714,28 @@
     const kemasanMenipis = Object.keys(stokKemasan).filter(k => stokKemasan[k].sisaUnit > 0 && stokKemasan[k].sisaUnit < 5);
     const karantinaMenunggu = ambilKarantina().filter(item => item.statusTindakan === 'belum_diputuskan');
 
+    // Produk yang PUNYA STOK tapi HPP-nya Rp0 — bahaya senyap, dan sebabnya ada di luar
+    // sistem ini: kasir MEMBEKUKAN HPP dari ringkasan yang diterbitkan di sini, sementara
+    // kasir cuma mencegat "harga tidak dikenal" dan "stok habis" — HPP Rp0 lolos begitu
+    // saja. Penjualannya lalu terekam untung 100% dan otomatis dibuang dari Margin Kotor
+    // (lihat hppTercatat), jadi tanpa baris ini barangnya bisa terjual berhari-hari sebelum
+    // ketahuan — persis yang terjadi pada Angsa 25 kg & Kembang 10 kg (temuan 9 Agu 2026).
+    // Penyebab lazimnya: catatan produksi/stok awalnya terhapus, atau masuk lewat jalur
+    // yang menaruh HPP 0 (mis. rework karantina sebelum ditambal 9 Agu 2026).
+    const hppNol = [];
+    Object.keys(stokKemasan).forEach(k => {
+      const s = stokKemasan[k];
+      if (s.sisaUnit > 0 && !(s.hppRataRataPerUnit > 0)) hppNol.push(s.namaProduk + ' ' + s.ukuranKemasan + ' kg');
+    });
+    Object.keys(stokKarung).forEach(m => {
+      if (stokKarung[m].sisaKg > 0 && !(stokKarung[m].hppTerakhirPerKg > 0)) hppNol.push(m + ' (karung/literan)');
+    });
+
     const daftarPerhatian = [];
     merkMenipis.forEach(m => daftarPerhatian.push(` Stok ${m} menipis: ${stokKarung[m].sisaKg} kg`));
     kemasanMenipis.forEach(k => daftarPerhatian.push(` Stok ${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg menipis: ${stokKemasan[k].sisaUnit} unit`));
     if (karantinaMenunggu.length > 0) daftarPerhatian.push(` ${karantinaMenunggu.length} barang di Karantina menunggu keputusan (lihat tab Stok)`);
+    if (hppNol.length > 0) daftarPerhatian.push(` ${hppNol.length} produk punya stok tapi HPP Rp0 — penjualannya terekam untung penuh dan TIDAK ikut dihitung di margin: ${escapeHtml(hppNol.join(', '))}. Perbaiki lewat Produksi/Stok Awal.`);
 
     const kontPerhatian = document.getElementById('ringPerhatian');
     kontPerhatian.innerHTML = daftarPerhatian.length === 0
@@ -7767,6 +7785,11 @@
       const daftarHp = [];
       merkMenipis.forEach(m => daftarHp.push({ w: 'var(--merah)', t: `Stok ${escapeHtml(m)} tinggal ${stokKarung[m].sisaKg} kg`, h: 'stok', a: 'Stok' }));
       kemasanMenipis.forEach(k => daftarHp.push({ w: 'var(--merah)', t: `${escapeHtml(stokKemasan[k].namaProduk)} ${stokKemasan[k].ukuranKemasan}kg tinggal ${stokKemasan[k].sisaUnit} unit`, h: 'stok', a: 'Stok' }));
+      // Merah, dan ditaruh di atas peringatan harga/karantina: ini satu-satunya baris yang
+      // artinya "angka uang Anda sedang salah", bukan sekadar "stok perlu diisi ulang".
+      if (hppNol.length > 0) daftarHp.push({ w: 'var(--merah)',
+        t: `${hppNol.length} produk ber-HPP Rp0 — ${escapeHtml(hppNol.slice(0, 2).join(', '))}${hppNol.length > 2 ? ', dll' : ''}. Penjualannya tidak terhitung di margin`,
+        h: 'stok', a: 'Stok' });
       const katalogK = ambilHargaKemasan();
       const tanpaHarga = Object.keys(stokKemasan).filter(k => stokKemasan[k].sisaUnit > 0 &&
         !katalogK.some(x => x.merk === stokKemasan[k].namaProduk && x.ukuran === stokKemasan[k].ukuranKemasan && x.hargaPerUnit > 0));
