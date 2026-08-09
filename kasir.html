@@ -185,6 +185,40 @@
     font-family: inherit; font-size: .95rem; text-align: left;
   }
   .baris-utang b { font-variant-numeric: tabular-nums; color: var(--tombol); white-space: nowrap; }
+  /* ---- LAYAR KEMBALIAN (9 Agu 2026) ----
+     Dibuat karena owner mudah pusing dengan angka dan pernah memberi kembalian
+     Rp40.000 padahal seharusnya Rp36.000 — toko rugi diam-diam. Intinya BUKAN
+     menampilkan angka kembalian saja (itu masih menuntut berhitung saat mengambil
+     uangnya), tapi menyebutkan LEMBAR UANG mana yang harus diserahkan, supaya
+     tinggal diambil satu per satu tanpa menghitung apa pun. */
+  #btnKembalian {
+    width: 100%; min-height: 46px; margin-bottom: 7px; border-radius: 10px;
+    border: 1px solid #8a6d2f; background: #2b3036; color: var(--tombol);
+    font-family: inherit; font-size: 1rem; font-weight: 800; letter-spacing: .5px;
+  }
+  #layarKembalian .kb-total { font-size: .95rem; color: #9aa3ab; margin-bottom: 2px; }
+  #layarKembalian .kb-total b { color: #e9ecf1; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+  #layarKembalian .kb-cepat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; width: 100%; max-width: 340px; margin-top: 10px; }
+  #layarKembalian .kb-cepat button {
+    min-height: 48px; border-radius: 10px; border: 1px solid var(--garis);
+    background: #2b3036; color: #e9ecf1; font-family: inherit; font-size: .95rem; font-weight: 700;
+  }
+  /* Angka kembalian: sengaja sebesar mungkin — ini satu-satunya angka yang harus
+     terbaca sekilas tanpa memicu keraguan. */
+  #kbHasil { margin-top: 14px; width: 100%; max-width: 340px; }
+  #kbLabel { font-size: .85rem; letter-spacing: 1.5px; color: #9aa3ab; font-weight: 700; }
+  #kbNilai { font-size: 3rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; color: #9fe0ae; }
+  #kbNilai.kurang { color: #e89b8a; }
+  #kbEja { font-size: .85rem; color: #9aa3ab; font-style: italic; margin-top: 2px; }
+  /* Rincian lembar uang — inti fitur ini. */
+  #kbPecahan { margin-top: 12px; text-align: left; }
+  #kbPecahan .kb-baris {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    min-height: 44px; padding: 6px 12px; margin-bottom: 6px; border-radius: 10px;
+    background: #2b3036; border: 1px solid var(--garis); font-size: 1rem; color: #e9ecf1;
+  }
+  #kbPecahan .kb-baris b { font-size: 1.15rem; color: var(--tombol); font-variant-numeric: tabular-nums; }
+  #kbPecahan .kb-judul { font-size: .8rem; letter-spacing: 1.2px; color: #9aa3ab; font-weight: 700; margin-bottom: 6px; }
   #lcd.lcd-tolak #lcdAngka { color: #b23a2a !important; }
   #lcd.lcd-tolak { animation: goyangTolak .3s linear 2; }
   @keyframes goyangTolak { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
@@ -269,6 +303,10 @@
     <button type="button" id="bayar-Qris" onclick="pilihBayar('Qris')">QRIS</button>
     <button type="button" id="bayar-Kredit" onclick="pilihBayar('Kredit')">KREDIT</button>
   </div>
+  <!-- Ditaruh DI ATAS tombol JUAL karena urutan kerjanya memang begitu: terima uang,
+       serahkan kembalian, baru catat. Hanya muncul bersama bilah ini (yaitu saat sudah
+       ada barang di struk), jadi layar diam tetap bersih. -->
+  <button type="button" id="btnKembalian" onclick="bukaLayarKembalian()">KEMBALIAN — hitung uang kembali</button>
   <button type="button" id="btnCatat" onclick="tekanCatat()">JUAL</button>
 </div>
 
@@ -315,6 +353,24 @@
   </div>
 
   <button type="button" class="redup" style="margin-top:12px; width:100%; max-width:380px;" onclick="tutupLayarUtang()">Kembali</button>
+</div>
+
+<!-- LAYAR KEMBALIAN: total belanja -> uang diterima -> kembalian + LEMBAR UANG-nya. -->
+<div id="layarKembalian" class="lapisan" style="z-index:56;">
+  <div class="kb-total">Total belanja<br><b id="kbTotal">Rp0</b></div>
+
+  <p style="margin:10px 0 6px;">Uang yang diterima dari pembeli:</p>
+  <input type="number" id="kbUangDiterima" placeholder="0" inputmode="numeric" oninput="hitungKembalian()">
+  <div class="kb-cepat" id="kbTombolCepat"></div>
+
+  <div id="kbHasil" style="display:none;">
+    <div id="kbLabel">KEMBALIAN</div>
+    <div id="kbNilai">Rp0</div>
+    <div id="kbEja"></div>
+    <div id="kbPecahan"></div>
+  </div>
+
+  <button type="button" class="redup" style="margin-top:14px; width:100%; max-width:340px;" onclick="tutupLayarKembalian()">Tutup</button>
 </div>
 
 <div id="layarSukses" class="lapisan"><div class="cek">TERSIMPAN</div><div class="nom" id="teksSukses"></div></div>
@@ -1015,6 +1071,9 @@ function mulaiBaru() {
   ['Tunai', 'Qris', 'Kredit'].forEach(function (x) { $('bayar-' + x).classList.toggle('pilih', x === 'Tunai'); });
   var elNama = $('namaPelangganInput');
   if (elNama) { elNama.value = ''; elNama.classList.remove('kurang'); }
+  // Transaksi berikutnya orang lain: kembalian transaksi lama tidak boleh tertinggal
+  // di layar dan salah dibaca sebagai kembalian pembeli berikutnya.
+  if ($('layarKembalian')) tutupLayarKembalian();
 }
 function namaPelangganTerisi() {
   var el = $('namaPelangganInput');
@@ -1033,6 +1092,85 @@ function pilihBayar(c) {
   if (!el) return;
   el.placeholder = c === 'Kredit' ? 'Nama pembeli (WAJIB untuk kredit)' : 'Nama pembeli (boleh dikosongkan)';
   if (c !== 'Kredit') el.classList.remove('kurang');
+}
+
+// ---------- KEMBALIAN (9 Agu 2026) ----------
+// Masalah nyata My DeV: gampang pusing dengan angka, sering KELEBIHAN memberi kembalian
+// (harusnya Rp36.000, diberi Rp40.000 — toko rugi diam-diam tanpa jejak di mana pun).
+// Menampilkan angka kembalian saja TIDAK cukup: pemiliknya masih harus menerjemahkan
+// angka itu jadi lembaran uang di tangan, dan justru DI SITU salahnya terjadi. Maka yang
+// ditonjolkan layar ini adalah LEMBAR MANA yang harus diambil — tinggal ikuti daftarnya,
+// tanpa berhitung sama sekali.
+var PECAHAN = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100];
+function labelPecahan(n) { return n >= 1000 ? angkaTitik(n / 1000) + ' ribu' : angkaTitik(n); }
+// Pecahan rupiah bersifat kanonik (tiap pecahan kelipatan bulat pecahan di bawahnya),
+// jadi cara serakah selalu menghasilkan jumlah lembar paling sedikit — tidak perlu
+// pencarian yang rumit.
+function uraikanPecahan(n) {
+  var hasil = [];
+  for (var i = 0; i < PECAHAN.length; i++) {
+    var c = Math.floor(n / PECAHAN[i]);
+    if (c > 0) { hasil.push({ nilai: PECAHAN[i], jumlah: c }); n -= c * PECAHAN[i]; }
+  }
+  return { lembar: hasil, sisa: n };
+}
+function bukaLayarKembalian() {
+  var total = totalStruk();
+  $('kbTotal').textContent = rupiah(total);
+  $('kbUangDiterima').value = '';
+  $('kbHasil').style.display = 'none';
+  // Tombol cepat dibangun dari total transaksi ini, bukan daftar tetap — supaya yang
+  // muncul selalu masuk akal (uang pas + pecahan yang benar-benar cukup membayar).
+  var calon = [total];
+  var bulat10 = Math.ceil(total / 10000) * 10000;
+  if (bulat10 > total) calon.push(bulat10);
+  [20000, 50000, 100000, 150000, 200000, 300000, 500000].forEach(function (n) {
+    if (n > total) calon.push(n);
+  });
+  var unik = [], sudah = {};
+  calon.forEach(function (n) { if (!sudah[n]) { sudah[n] = 1; unik.push(n); } });
+  $('kbTombolCepat').innerHTML = unik.slice(0, 6).map(function (n) {
+    return '<button type="button" onclick="isiUangCepat(' + n + ')">' +
+      (n === total ? 'UANG PAS' : angkaTitik(n)) + '</button>';
+  }).join('');
+  $('layarKembalian').classList.add('tampil');
+}
+function tutupLayarKembalian() { $('layarKembalian').classList.remove('tampil'); }
+function isiUangCepat(n) { $('kbUangDiterima').value = n; hitungKembalian(); }
+function hitungKembalian() {
+  var total = totalStruk();
+  var uang = parseFloat($('kbUangDiterima').value) || 0;
+  var hasil = $('kbHasil');
+  if (uang <= 0) { hasil.style.display = 'none'; return; }
+  hasil.style.display = 'block';
+  var kembali = Math.round((uang - total) * 100) / 100;
+  var elNilai = $('kbNilai');
+  if (kembali < 0) {
+    // Uangnya belum cukup — disebut terang-terangan supaya tidak keliru dibaca sebagai
+    // kembalian, karena angkanya sama-sama besar di layar.
+    $('kbLabel').textContent = 'UANG PEMBELI KURANG';
+    elNilai.textContent = rupiah(-kembali);
+    elNilai.classList.add('kurang');
+    $('kbEja').textContent = 'Masih kurang segini dari ' + rupiah(total);
+    $('kbPecahan').innerHTML = '';
+    return;
+  }
+  $('kbLabel').textContent = 'KEMBALIAN';
+  elNilai.textContent = rupiah(kembali);
+  elNilai.classList.remove('kurang');
+  $('kbEja').textContent = rupiah(uang) + ' − ' + rupiah(total);
+  if (kembali === 0) {
+    $('kbPecahan').innerHTML = '<div class="kb-judul">UANG PAS — TIDAK ADA KEMBALIAN</div>';
+    return;
+  }
+  var u = uraikanPecahan(kembali);
+  var baris = u.lembar.map(function (p) {
+    return '<div class="kb-baris"><span>' + labelPecahan(p.nilai) + '</span><b>' + p.jumlah + ' lembar</b></div>';
+  }).join('');
+  // Sisa di bawah Rp100 tidak punya pecahannya. Disebut apa adanya, tidak dibulatkan
+  // diam-diam — pembulatan sepihak pada uang orang lain bukan urusan mesin.
+  if (u.sisa > 0) baris += '<div class="kb-baris"><span>Sisa ' + rupiah(u.sisa) + '</span><b>tak ada pecahannya</b></div>';
+  $('kbPecahan').innerHTML = '<div class="kb-judul">AMBIL LEMBAR INI</div>' + baris;
 }
 
 // ---------- UTANG PELANGGAN ----------
@@ -1253,6 +1391,8 @@ window.tandaiNamaTerisi = tandaiNamaTerisi;
 window.bukaLayarUtang = bukaLayarUtang; window.tutupLayarUtang = tutupLayarUtang;
 window.pilihUtang = pilihUtang; window.isiLunasUtang = isiLunasUtang;
 window.simpanBayarUtang = simpanBayarUtang;
+window.bukaLayarKembalian = bukaLayarKembalian; window.tutupLayarKembalian = tutupLayarKembalian;
+window.hitungKembalian = hitungKembalian; window.isiUangCepat = isiUangCepat;
 
 muatRingkasanCache();
 gambarPanelProduk('panelProduk', 'tekanProduk');
