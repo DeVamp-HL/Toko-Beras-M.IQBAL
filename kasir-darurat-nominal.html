@@ -62,11 +62,15 @@
   #lcd.lcd-tolak #lcdAngka { color: var(--merah) !important; }
   #lcd.lcd-tolak { animation: goyangTolak .3s linear 2; }
   @keyframes goyangTolak { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  /* flex:0 0 auto — blok ini TIDAK boleh ikut menyusut. Waktu dibiarkan menyusut, ia
+     terpotong jadi setengah baris dan terlihat seperti tampilan rusak (temuan uji 9 Agu
+     2026). Yang mengalah cukup #daftarBaris yang memang bisa menggulir. */
   #logHari {
-    flex: 0 1 auto; overflow-y: auto; margin: 8px 10px; max-height: 84px;
+    flex: 0 0 auto; overflow-y: auto; margin: 8px 10px; max-height: 64px;
     display: flex; flex-direction: column; gap: 4px;
   }
   #totalHari {
+    flex: 0 0 auto;
     text-align: center; font-weight: 800; color: #cfd6dc; font-size: .95rem;
     padding: 6px; background: #2b3036; border: 1px solid var(--garis); border-radius: 8px;
   }
@@ -112,6 +116,20 @@
     border-bottom: 4px solid #a09c8e;
   }
   #btnTambahBaris:active { transform: translateY(1px); border-bottom-width: 2px; }
+  /* Tuts harga cepat — ditaruh tepat di atas papan angka supaya terjangkau ibu jari.
+     :empty menyembunyikannya sendiri di hari-hari pertama (belum ada kebiasaan yang bisa
+     dipelajari), jadi tidak ada kotak kosong yang membingungkan. */
+  #tutsHargaCepat {
+    flex: 0 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px;
+    padding: 0 10px 8px;
+  }
+  #tutsHargaCepat:empty { display: none; }
+  #tutsHargaCepat button {
+    min-height: 48px; border-radius: 9px; border: 1px solid #8a6d2f;
+    background: #2b3036; color: #e4b93c; font-family: inherit;
+    font-size: .95rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  }
+  #tutsHargaCepat button:active { transform: translateY(1px); }
   #papan {
     flex: 0 0 auto; padding: 4px 10px 8px;
     display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 54px; gap: 7px;
@@ -192,6 +210,7 @@
   <div id="logKosong">Belum ada catatan hari ini.</div>
 </div>
 
+<div id="tutsHargaCepat"></div>
 <div id="papan">
   <button type="button" onclick="tekanAngka('1')">1</button>
   <button type="button" onclick="tekanAngka('2')">2</button>
@@ -399,7 +418,20 @@ function gambarLcd() {
 }
 function gambarBaris() {
   var wadah = $('daftarBaris');
-  if (barisNominal.length === 0) { wadah.innerHTML = ''; return; }
+  // Kotak petunjuk disembunyikan begitu transaksi dimulai. Ia berguna saat layar kosong,
+  // tapi di tengah transaksi yang WAJIB terlihat adalah daftar barangnya — kalau tidak,
+  // Gono tidak bisa memeriksa atau menghapus barang yang salah ketik. Ruangnya persis
+  // cukup untuk itu (temuan uji 9 Agu 2026: dengan petunjuk tetap tampil, daftar barang
+  // terhimpit sampai tidak kelihatan sama sekali).
+  // Rekap "hari ini" ikut disembunyikan dengan alasan yang sama: itu bacaan untuk saat
+  // layar menganggur, bukan di tengah melayani pembeli. Dua blok ini mengalah supaya
+  // daftar barang muat 2-3 baris sekaligus — cukup untuk memeriksa tanpa menggulir.
+  var sedangIsi = barisNominal.length > 0;
+  var pr = $('peringatan');
+  if (pr) pr.style.display = sedangIsi ? 'none' : '';
+  var lh = $('logHari');
+  if (lh) lh.style.display = sedangIsi ? 'none' : '';
+  if (!sedangIsi) { wadah.innerHTML = ''; return; }
   wadah.innerHTML = barisNominal.map(function (n, i) {
     return '<div class="br"><span class="no">' + (i + 1) + '</span>' +
       '<span class="nilai">' + rupiah(n) + '</span>' +
@@ -407,6 +439,44 @@ function gambarBaris() {
   }).join('');
   wadah.scrollTop = wadah.scrollHeight;
 }
+// ---------- tuts harga cepat (belajar dari kebiasaan sendiri) ----------
+// Toko ramai tiap pagi; mengetik 4 ketukan per barang itu mahal saat antre. Harga yang
+// paling sering dipakai ditawarkan sebagai tombol — SEKALI KETUK langsung jadi satu
+// barang, tanpa mengetik dan tanpa menekan +. Daftarnya diturunkan dari catatan 30 hari
+// di HP ini sendiri, jadi tidak perlu diatur siapa pun dan makin lama makin pas.
+var JML_TUTS_CEPAT = 4;
+function hargaSering() {
+  var hitung = {};
+  ambilLog().forEach(function (x) {
+    (x.harga || []).forEach(function (h) { if (h > 0) hitung[h] = (hitung[h] || 0) + 1; });
+  });
+  return Object.keys(hitung)
+    .map(function (h) { return { harga: parseInt(h, 10), n: hitung[h] }; })
+    .sort(function (a, b) { return b.n - a.n || b.harga - a.harga; })
+    .slice(0, JML_TUTS_CEPAT)
+    // Ditampilkan urut NILAI, bukan urut keseringan: letak tombol jadi tetap dari hari ke
+    // hari sehingga bisa dihafal jari. Kalau urut keseringan, tombolnya pindah-pindah
+    // sendiri dan justru memperlambat orang yang sudah hafal tempatnya.
+    .sort(function (a, b) { return a.harga - b.harga; })
+    .map(function (x) { return x.harga; });
+}
+function gambarTutsCepat() {
+  var wadah = $('tutsHargaCepat');
+  if (!wadah) return;
+  wadah.innerHTML = hargaSering().map(function (h) {
+    // Tanpa "Rp" — tombolnya sempit dan angkanya yang harus terbaca sekilas.
+    return '<button type="button" onclick="tambahHargaCepat(' + h + ')">' + Math.round(h).toLocaleString('id-ID') + '</button>';
+  }).join('');
+}
+function tambahHargaCepat(h) {
+  // Angka yang terlanjur diketik jangan hilang gara-gara menekan tuts cepat.
+  var sisa = parseInt(nominalDiketik || '0', 10);
+  if (sisa > 0) barisNominal.push(sisa);
+  barisNominal.push(h);
+  nominalDiketik = '';
+  gambarLcd(); gambarBaris();
+}
+
 function tambahBaris() {
   var n = parseInt(nominalDiketik || '0', 10);
   if (n <= 0) { tolakEntri(); return; }
@@ -434,9 +504,15 @@ function tolakEntri() {
 
 // ---------- catatan lokal "hari ini" (per HP) ----------
 function ambilLog() { try { return JSON.parse(localStorage.getItem(K_LOG) || '[]'); } catch (e) { return []; } }
+// Catatan disimpan 30 hari, bukan cuma hari ini — dari sinilah tuts harga cepat belajar
+// kebiasaan Gono. Harga TIAP barang ikut disimpan (bukan cuma totalnya), karena yang
+// perlu dihitung frekuensinya adalah harga per barang. Daftar "hari ini" di layar tetap
+// disaring per tanggal, jadi tampilannya tidak berubah.
+var HARI_RIWAYAT_HARGA = 30;
 function catatLog(trx) {
-  var log = ambilLog().filter(function (x) { return x.tanggal === tanggalLokalIso(); });
-  log.push({ id: trx.id, tanggal: trx.tanggal, jam: trx.jam, hargaTotal: trx.hargaTotal });
+  var batas = tanggalLokalIso(new Date(Date.now() - HARI_RIWAYAT_HARGA * 86400000));
+  var log = ambilLog().filter(function (x) { return x.tanggal >= batas; });
+  log.push({ id: trx.id, tanggal: trx.tanggal, jam: trx.jam, hargaTotal: trx.hargaTotal, harga: trx.harga || [] });
   localStorage.setItem(K_LOG, JSON.stringify(log));
 }
 function gambarLog() {
@@ -517,7 +593,7 @@ function simpanNominal() {
   // Log harian tetap SATU baris per pembeli (bukan per barang) — yang ingin dilihat Gono
   // adalah "pembeli tadi bayar berapa", bukan pecahannya.
   catatLog({ id: grup, tanggal: tanggal, jam: jam,
-    hargaTotal: daftar.reduce(function (x, y) { return x + y; }, 0) });
+    hargaTotal: daftar.reduce(function (x, y) { return x + y; }, 0), harga: daftar });
   barisNominal = [];
   nominalDiketik = '';
   gambarBaris();
@@ -527,6 +603,7 @@ function simpanNominal() {
   $('namaPembeliD').classList.remove('kurang');
   pilihBayarD('Tunai');
   gambarLcd();
+  gambarTutsCepat();
   gambarLog();
   var ok = $('pesanOk');
   ok.style.display = 'block';
@@ -538,6 +615,7 @@ function simpanNominal() {
 window.tekanAngka = tekanAngka;
 window.hapusAngka = hapusAngka;
 window.tambahBaris = tambahBaris;
+window.tambahHargaCepat = tambahHargaCepat;
 window.hapusBaris = hapusBaris;
 window.simpanNominal = simpanNominal;
 window.pilihBayarD = pilihBayarD;
@@ -548,6 +626,7 @@ window.lewatiLogin = lewatiLogin;
 // ---------- mulai ----------
 gambarLcd();
 gambarBaris();
+gambarTutsCepat();
 gambarLog();
 setStatus(navigator.onLine);
 if (!sudahLogin()) tampilkanLayarLogin(false);

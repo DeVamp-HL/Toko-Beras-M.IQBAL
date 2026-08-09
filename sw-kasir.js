@@ -18,7 +18,8 @@
 // v10 (9 Agustus 2026): layar KEMBALIAN — sebut lembar uang yang harus diambil.
 // v11 (9 Agustus 2026): kasir darurat mencatat PER BARANG (tombol +), bukan satu total —
 // supaya tiap harga bisa dicocokkan ke produk tanpa mengandalkan ingatan Gono.
-const VERSI = 'kasir-v11';
+// v12 (9 Agustus 2026): tuts harga cepat di kasir darurat — sekali ketuk jadi satu barang.
+const VERSI = 'kasir-v12';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 
