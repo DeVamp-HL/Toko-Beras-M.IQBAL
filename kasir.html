@@ -218,7 +218,14 @@
 
 <div id="struk"><div id="strukKosong">Ketik harga lalu +. Bisa juga 13500 \u00d7 2.5 atau 12000 : 2. Harga yang tidak ada di katalog tetap diterima \u2014 barangnya ditanya sebelum disimpan.</div></div>
 
-<div id="panelProduk"><div class="kosong">Memuat daftar barang…</div></div>
+<!-- Panel tuts produk DIBUANG 9 Agu 2026 atas permintaan My DeV ("ganggu"). Dulu ia
+     perlu karena harga asing DITOLAK, jadi tuts nama produk satu-satunya jalan masuk
+     untuk barang yang harganya tidak diingat. Sekarang harga bebas sudah jalan: ketik
+     harga -> JUAL -> sistem menanyakan barangnya lewat layar "BARANG APA?" (layar itu
+     memakai gambarPanelProduk juga, jadi daftar produknya TIDAK hilang, cuma pindah ke
+     tempat yang cuma muncul saat dibutuhkan). Menghapus panel ini juga mengembalikan
+     ruang layar buat struk. Kalau suatu saat mau dikembalikan, cukup pasang lagi
+     <div id="panelProduk"></div> di sini — pemanggilnya sudah aman kalau elemennya tiada. -->
 
 <!-- Baris ini SELALU tampil, sengaja di luar #bilahCatat: bilah itu cuma muncul kalau
      struk sudah ada isinya, sedangkan menerima pembayaran utang justru pekerjaan yang
