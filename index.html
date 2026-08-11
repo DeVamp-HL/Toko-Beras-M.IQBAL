@@ -3294,7 +3294,7 @@
          dikonfirmasi pemilik 12 Agu 2026 sebagai bagian dari kas). -->
     <div class="kartu" style="margin-top:12px;">
       <div class="panel-kepala"><h2>Cocokkan Kas</h2></div>
-      <p class="keterangan" style="margin-top:-4px;">Setel sekali dengan hitungan uang yang benar-benar Anda pegang. Sesudah itu sistem terus menghitung berapa yang <i>seharusnya</i> ada, dan menunjukkan selisihnya.</p>
+      <p class="keterangan" style="margin-top:-4px;">Isi apa adanya: uang yang <b>benar-benar Anda pegang saat ini</b>, hasil menghitung fisik. Jangan diturunkan dari angka mana pun — justru angka inilah yang jadi patokan. Sesudah disetel, sistem menghitung sendiri berapa yang <i>seharusnya</i> ada tiap hari, dan menunjukkan selisihnya.</p>
 
       <label for="kasTitikTanggal">Dihitung pada akhir tanggal</label>
       <input type="date" id="kasTitikTanggal">
@@ -3306,9 +3306,17 @@
 
       <div id="kasHasilWrap" style="display:none; margin-top:14px;">
         <div class="pratinjau-harga" id="kasRincian"></div>
-        <label for="kasHitungSekarang" style="margin-top:10px;">Hitungan Anda SEKARANG — laci + rekening (Rp)</label>
-        <input type="number" id="kasHitungSekarang" placeholder="0" inputmode="numeric" oninput="perbaruiSelisihKas()">
-        <div class="pratinjau-harga" id="kasSelisih" style="display:none;"></div>
+        <!-- Kolom pembanding disembunyikan selama belum ada gerakan sesudah titik hitung.
+             Kalau ditampilkan di hari yang sama, pemakai terpancing mengisinya dengan angka
+             LAIN dari yang baru saja disetel, lalu selisihnya cuma memantulkan selisih dua
+             ketikan itu sendiri — bukan uang yang benar-benar hilang. Persis itu yang
+             terjadi pada pemilik 12 Agu 2026. -->
+        <div id="kasBelumAdaGerakan" class="info-box" style="display:none; margin-top:10px;"></div>
+        <div id="kasBandingWrap" style="display:none;">
+          <label for="kasHitungSekarang" style="margin-top:10px;">Hitungan Anda SEKARANG — laci + rekening (Rp)</label>
+          <input type="number" id="kasHitungSekarang" placeholder="0" inputmode="numeric" oninput="perbaruiSelisihKas()">
+          <div class="pratinjau-harga" id="kasSelisih" style="display:none;"></div>
+        </div>
       </div>
     </div>
 
@@ -8553,6 +8561,23 @@
       (tanpaTgl.length
         ? `<div class="ph-catatan ph-amber">Belum dikurangi (tanggal bayarnya belum diisi, jadi dianggap belum dibayar): ${escapeHtml(tanpaTgl.map(x => x.label + ' ' + formatRupiah(x.nominal)).join(', '))}. Kalau sebenarnya sudah dibayar, isi tanggalnya di tab Bulanan.</div>`
         : `<div class="ph-catatan">Tidak ada biaya bulanan yang menggantung — semua pos sudah punya tanggal bayar.</div>`);
+    // Belum ada gerakan sama sekali sesudah titik hitung = tidak ada yang bisa dicocokkan.
+    // Angka "seharusnya" masih sama persis dengan yang baru saja diisi.
+    const belumGerak = g.totalMasuk === 0 && g.totalKeluar === 0;
+    const elBelum = document.getElementById('kasBelumAdaGerakan');
+    const elBanding = document.getElementById('kasBandingWrap');
+    if (belumGerak) {
+      elBanding.style.display = 'none';
+      elBelum.style.display = 'block';
+      elBelum.innerHTML = 'Belum ada uang masuk atau keluar sesudah ' + escapeHtml(formatTanggal(t.tanggal))
+        + ', jadi belum ada yang bisa dicocokkan — angka seharusnya masih sama persis dengan yang Anda isi. '
+        + 'Kolom pembanding muncul sendiri begitu ada transaksi. <b>Cukup pastikan angka di atas benar-benar hasil hitung fisik Anda</b>, bukan angka turunan.';
+      document.getElementById('kasHitungSekarang').value = '';
+      document.getElementById('kasSelisih').style.display = 'none';
+      return;
+    }
+    elBelum.style.display = 'none';
+    elBanding.style.display = 'block';
     perbaruiSelisihKas();
   }
 
