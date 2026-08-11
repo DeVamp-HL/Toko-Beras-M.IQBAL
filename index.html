@@ -2096,6 +2096,11 @@
   .baris-isian .bi-tgl > i { font-style: normal; font-size: 11px; color: var(--redup); flex: 0 0 auto; }
   .baris-isian .bi-tgl input { flex: 1; min-height: 44px; font-size: 13px; }
   .baris-isian .bi-tgl.belum > i { color: var(--amber); }
+  /* Kolom tanggal bawaan peramban menampilkan urutan sesuai bahasa perangkat — di HP
+     pemilik jadi BULAN/TANGGAL/TAHUN, sehingga "4 Agustus" gampang terketik jadi 8 April.
+     Ejaan Indonesia di sebelahnya membuat salah urutan langsung ketahuan. */
+  .baris-isian .bi-tgl > u { flex: 0 0 auto; text-decoration: none; font-size: 11.5px; font-weight: 700; color: var(--emas-terang, #d9b25f); white-space: nowrap; }
+  .baris-isian .bi-tgl > u:empty { display: none; }
   .baris-isian .bi-nama { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.35; }
   .baris-isian .bi-nama small { display: block; font-size: 10.5px; color: var(--redup); margin-top: 2px; }
   .baris-isian .bi-isi { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
@@ -3686,13 +3691,13 @@
 
     <div class="kartu">
       <div class="panel-kepala"><h2>Biaya tetap <span class="keterangan">rata-rata sebulan</span></h2></div>
-      <div class="baris-isian"><span class="bi-nama">Gaji<small>dihitung dari hari di atas</small></span><span class="bi-isi bi-terkunci" id="bulananGajiBayang">Rp0</span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaGaji" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Gaji"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Listrik</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaListrikBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaListrik" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Listrik"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Akses / gapura<small>dibayar sekali sebulan</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaAksesBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaAkses" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Akses"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Keamanan lingkungan</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaKeamananBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaKeamanan" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Keamanan"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Bensin pengantaran</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaBensinBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaBensin" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Bensin"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Internet / Wifi</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaInternetBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaInternet" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Internet"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Plastik / tali / benang<small>kebutuhan toko yang bukan stok</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaBenangBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaBenang" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Plastik/tali"></span></div>
+      <div class="baris-isian"><span class="bi-nama">Gaji<small>dihitung dari hari di atas</small></span><span class="bi-isi bi-terkunci" id="bulananGajiBayang">Rp0</span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaGaji" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Gaji"><u id="tglBiayaGajiBaca"></u></span></div>
+      <div class="baris-isian"><span class="bi-nama">Listrik</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaListrikBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaListrik" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Listrik"><u id="tglBiayaListrikBaca"></u></span></div>
+      <div class="baris-isian"><span class="bi-nama">Akses / gapura<small>dibayar sekali sebulan</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaAksesBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaAkses" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Akses"><u id="tglBiayaAksesBaca"></u></span></div>
+      <div class="baris-isian"><span class="bi-nama">Keamanan lingkungan</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaKeamananBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaKeamanan" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Keamanan"><u id="tglBiayaKeamananBaca"></u></span></div>
+      <div class="baris-isian"><span class="bi-nama">Bensin pengantaran</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaBensinBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaBensin" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Bensin"><u id="tglBiayaBensinBaca"></u></span></div>
+      <div class="baris-isian"><span class="bi-nama">Internet / Wifi</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaInternetBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaInternet" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Internet"><u id="tglBiayaInternetBaca"></u></span></div>
+      <div class="baris-isian"><span class="bi-nama">Plastik / tali / benang<small>kebutuhan toko yang bukan stok</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaBenangBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaBenang" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Plastik/tali"><u id="tglBiayaBenangBaca"></u></span></div>
       <p class="keterangan catatan-luwes">Semua biaya di sini tidak masuk HPP per produk — dilaporkan sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
     </div>
 
@@ -5691,13 +5696,30 @@
       const r = d && (d.rincianGaji || []).find(x => x.nama === nama);
       el.value = r ? (r.hari || '') : '';
     });
+    // tanggalBayarPos (per pos) MENANG MUTLAK begitu ada. tanggalBayar tunggal cuma dipakai
+    // untuk dokumen lama yang belum pernah punya peta per pos — kalau dijadikan cadangan
+    // per kolom, pos yang sengaja dikosongkan (belum dibayar) ikut tampil bertanggal dan
+    // terlihat sudah dibayar. Persis itu yang terjadi 12 Agu 2026: lima pos Rp0 tampil
+    // "dibayar 04/08/2026" hanya karena dokumennya menyimpan tanggalBayar warisan.
+    const punyaPerPos = !!(d && d.tanggalBayarPos);
     const peta = (d && d.tanggalBayarPos) || {};
     POS_BIAYA_BULANAN.forEach(pos => {
       const el = document.getElementById(pos.idTgl);
-      if (el) el.value = peta[pos.kunci] || (d && d.tanggalBayar) || '';
+      if (el) el.value = punyaPerPos ? (peta[pos.kunci] || '') : ((d && d.tanggalBayar) || '');
     });
+    ejaTanggalBulanan();
     hitungPerkiraanGaji();
     perbaruiTotalBulanan();
+  }
+
+  // Mengeja tanggal tiap pos dalam bahasa Indonesia di sebelah kolomnya.
+  function ejaTanggalBulanan() {
+    POS_BIAYA_BULANAN.forEach(pos => {
+      const el = document.getElementById(pos.idTgl);
+      const baca = document.getElementById(pos.idTgl + 'Baca');
+      if (!el || !baca) return;
+      baca.textContent = el.value ? formatTanggal(el.value) : '';
+    });
   }
 
   function salinBiayaBulanLalu() {
@@ -8383,15 +8405,18 @@
   function bayaranBiayaBulanan() {
     const out = [];
     ambilBiayaBulanan().forEach(b => {
+      // Peta per pos MENANG MUTLAK begitu dokumennya punya. tanggalBayar tunggal (bentuk
+      // yang cuma dipakai beberapa jam pada 12 Agu 2026) hanya jadi cadangan untuk dokumen
+      // yang belum pernah punya peta itu. Kalau dipakai sebagai cadangan PER KOLOM, pos
+      // yang sengaja dikosongkan karena belum dibayar akan ikut bertanggal dan terhitung
+      // sebagai uang keluar — persis kebalikan dari maksudnya.
+      const punyaPerPos = !!b.tanggalBayarPos;
       const peta = b.tanggalBayarPos || {};
       POS_BIAYA_BULANAN.forEach(pos => {
         const nominal = b[pos.kunci] || 0;
         if (!(nominal > 0)) return;
-        // b.tanggalBayar = kolom tunggal yang sempat dipakai beberapa jam pada 12 Agu 2026
-        // sebelum diganti per pos. Dipakai sebagai cadangan supaya dokumen itu tidak jadi
-        // "belum dibayar" hanya karena bentuk datanya berubah.
         out.push({ bulan: b.bulan, pos: pos.kunci, label: pos.label, nominal,
-          tanggal: peta[pos.kunci] || b.tanggalBayar || '' });
+          tanggal: punyaPerPos ? (peta[pos.kunci] || '') : (b.tanggalBayar || '') });
       });
     });
     return out;
