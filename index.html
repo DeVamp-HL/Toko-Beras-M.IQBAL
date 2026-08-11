@@ -3655,6 +3655,11 @@
     <div class="kartu">
       <label style="margin-top:0;">Bulan</label>
       <input type="month" id="bulanBiaya" onchange="perbaruiKeadaanBulanan()">
+      <!-- Tanggal bayar dipakai Cocokkan Kas (tab Arus Kas) untuk menaruh biaya ini
+           pada hari yang benar. Tanpa itu sistem cuma bisa menebak sebulan penuh. -->
+      <label for="tanggalBayarBulanan">Tanggal dibayar</label>
+      <input type="date" id="tanggalBayarBulanan">
+      <p class="keterangan" style="margin:6px 0 0;">Kapan biaya bulan ini benar-benar dikeluarkan dari kas. Dipakai halaman Arus Kas untuk menghitung saldo kas dengan tepat. Boleh dikosongkan, tapi saldo kas jadi kurang presisi.</p>
     </div>
 
     <div class="kartu">
@@ -5628,7 +5633,10 @@
     const judul = document.getElementById('bulananJudulBulan');
     if (judul) judul.textContent = namaBulanPanjang(iso);
     const semua = ambilBiayaBulanan();
-    const adaBulanIni = semua.some(b => b.bulan === iso);
+    const dataBulanIni = semua.find(b => b.bulan === iso);
+    const adaBulanIni = !!dataBulanIni;
+    const elTgl = document.getElementById('tanggalBayarBulanan');
+    if (elTgl) elTgl.value = (dataBulanIni && dataBulanIni.tanggalBayar) || '';
     const kotak = document.getElementById('bulananKosong');
     if (kotak) {
       kotak.style.display = adaBulanIni ? 'none' : 'block';
@@ -5685,7 +5693,8 @@
 
     // Dokumen Firestore memakai "bulan" sebagai id supaya bulan yang sama otomatis menimpa (bukan duplikat).
     try {
-      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, akses, keamanan, bensin, listrik, internet, benang, gajiHariOrang, gaji, rincianGaji });
+      const tanggalBayar = document.getElementById('tanggalBayarBulanan').value || '';
+      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, tanggalBayar, akses, keamanan, bensin, listrik, internet, benang, gajiHariOrang, gaji, rincianGaji });
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -8309,10 +8318,17 @@
     };
   }
 
+  // Arus kas mencatat uang saat BERPINDAH. Biaya bulanan yang dibayar telat (mis. biaya
+  // Juli baru dibayar 3 Agustus) masuk arus kas AGUSTUS, bukan Juli. Dokumen lama yang
+  // belum punya tanggalBayar jatuh balik ke bulan tertagihnya — perilaku lama, supaya
+  // angka bulan-bulan yang sudah pernah dibaca pemilik tidak berubah sendiri.
+  function bulanKasBiayaBulanan(b) {
+    return b.tanggalBayar ? bulanDari(b.tanggalBayar) : b.bulan;
+  }
   function hitungArusKas(bulanIso) {
     const bl = bulanIso || bulanLokalIso();
-    const bln = ambilBiayaBulanan().find(b => b.bulan === bl);
-    const hasil = hitungArusKasInti(t => bulanDari(t) === bl, bln ? [bln] : []);
+    const blnList = ambilBiayaBulanan().filter(b => bulanKasBiayaBulanan(b) === bl);
+    const hasil = hitungArusKasInti(t => bulanDari(t) === bl, blnList);
     hasil.bulan = bl;
     return hasil;
   }
@@ -8322,16 +8338,25 @@
   // cuma catatan bertanggal SESUDAHNYA. Kalau inklusif, transaksi di hari penghitungan
   // akan terhitung dua kali — sekali sudah masuk uang yang dihitung, sekali lagi di sini.
   //
-  // Biaya bulanan TIDAK punya tanggal bayar. Yang diikutkan cuma bulan-bulan SESUDAH
-  // bulan titik hitung; biaya bulan titik itu sendiri dianggap sudah tercermin di saldo
-  // yang dihitung. Ini pendekatan paling aman: lebih baik kurang mengurangi daripada
-  // mengurangi dua kali. Disebut terang-terangan di layar.
+  // Biaya bulanan ditempatkan pakai TANGGAL BAYAR-nya (ditambahkan 12 Agu 2026) — sama
+  // persis seperti catatan lain: ikut kalau dibayar sesudah titik hitung.
+  // Dokumen lama yang belum diisi tanggal bayarnya tidak bisa ditempatkan setepat itu.
+  // Untuk yang begitu dipakai aturan konservatif: cuma bulan SESUDAH bulan titik yang
+  // ikut, karena biaya bulan titik mungkin sudah dibayar sebelum kas dihitung — dan
+  // mengurangi dua kali lebih berbahaya daripada kurang mengurangi. Berapa dokumen yang
+  // masih begitu dilaporkan ke layar lewat blnTanpaTanggal, bukan didiamkan.
   function hitungArusKasSejak(dariIso, sampaiIso) {
     const sampai = sampaiIso || tanggalLokalIso();
     const blnTitik = bulanDari(dariIso);
     const blnSampai = bulanDari(sampai);
-    const blnList = ambilBiayaBulanan().filter(b => b.bulan > blnTitik && b.bulan <= blnSampai);
-    return hitungArusKasInti(t => !!t && t > dariIso && t <= sampai, blnList);
+    const semuaBln = ambilBiayaBulanan();
+    const blnList = semuaBln.filter(b => b.tanggalBayar
+      ? (b.tanggalBayar > dariIso && b.tanggalBayar <= sampai)
+      : (b.bulan > blnTitik && b.bulan <= blnSampai));
+    const hasil = hitungArusKasInti(t => !!t && t > dariIso && t <= sampai, blnList);
+    // Yang masih menebak: dokumen tanpa tanggal bayar yang bulannya tersentuh rentang ini.
+    hasil.blnTanpaTanggal = semuaBln.filter(b => !b.tanggalBayar && b.bulan >= blnTitik && b.bulan <= blnSampai);
+    return hasil;
   }
 
   function barisArusKas(x) {
@@ -8457,16 +8482,18 @@
     const seharusnya = awal + g.totalMasuk - g.totalKeluar;
     wrap.dataset.seharusnya = String(seharusnya);
 
-    const blnTitik = bulanDari(t.tanggal);
-    const adaBiayaBulanTitik = ambilBiayaBulanan().some(b => b.bulan === blnTitik);
+    // Dokumen biaya bulanan yang belum diisi tanggal bayarnya = satu-satunya bagian yang
+    // masih ditebak. Disebut namanya sekalian, supaya pemilik tahu persis apa yang harus
+    // dilengkapi kalau mau angkanya benar-benar tepat.
+    const tanpaTgl = g.blnTanpaTanggal || [];
     document.getElementById('kasRincian').innerHTML =
       `<div class="ph-baris"><span>Titik hitung ${escapeHtml(formatTanggal(t.tanggal))}</span><b>${formatRupiah(awal)}</b></div>` +
       `<div class="ph-baris"><span>Uang masuk sesudahnya</span><b class="ph-hijau">+ ${formatRupiah(g.totalMasuk)}</b></div>` +
       `<div class="ph-baris"><span>Uang keluar sesudahnya</span><b class="ph-merah">− ${formatRupiah(g.totalKeluar)}</b></div>` +
       `<div class="ph-baris"><span><b>Kas seharusnya sekarang</b></span><b>${formatRupiah(seharusnya)}</b></div>` +
-      (adaBiayaBulanTitik
-        ? `<div class="ph-catatan">Biaya bulanan ${escapeHtml(namaBulanPanjang(blnTitik + '-01'))} tidak ikut dikurangi — dianggap sudah tercermin di angka yang Anda hitung waktu itu. Biaya bulan-bulan berikutnya ikut.</div>`
-        : '');
+      (tanpaTgl.length
+        ? `<div class="ph-catatan ph-amber">Biaya bulanan ${escapeHtml(tanpaTgl.map(b => namaBulanPanjang(b.bulan + '-01')).join(', '))} belum diisi tanggal bayarnya, jadi penempatannya masih ditebak (bulan titik hitung dianggap sudah terbayar). Isi tanggalnya di tab Bulanan supaya saldo ini tepat.</div>`
+        : `<div class="ph-catatan">Semua biaya bulanan sudah punya tanggal bayar — penempatannya tepat, tidak ada yang ditebak.</div>`);
     perbaruiSelisihKas();
   }
 
