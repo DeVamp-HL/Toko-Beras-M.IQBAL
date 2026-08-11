@@ -730,6 +730,9 @@
     border-top: 1px solid rgba(217, 178, 95, .35); font-weight: 800; color: var(--emas-terang); font-size: 15px;
     font-variant-numeric: tabular-nums;
   }
+  /* Produksi yang HPP-nya sudah dikoreksi (superseded) — tetap kebaca, jelas bukan angka aktif. */
+  .item-batch.baris-mati { opacity: .55; }
+  .item-batch.baris-mati .pemasok-nama, .item-batch.baris-mati .total-baris { text-decoration: line-through; }
   .kosong { text-align: center; color: var(--redup); padding: 40px 16px; font-size: 15px; }
   .ringkasan-atas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
   /* Revisi 5: default (mobile-first) disembunyikan — ini sekarang jatah tampilan DESKTOP,
@@ -1365,8 +1368,8 @@
       --gerak-panel: 120ms; --gerak-panel-keluar: 120ms;
       --gerak-sentuh-tekan: 120ms; --gerak-sentuh-lepas: 120ms;
     }
-    .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon,
-    #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon,
+    .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi,
+    #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi,
     #spandukDraf, #bilahUrungkan, .baris-merk, .baris-sumber-produksi, .baris-stok-awal {
       animation-duration: 120ms !important; transition-duration: 120ms !important;
     }
@@ -1680,12 +1683,12 @@
     font-family: inherit; font-size: 13px; font-weight: 700;
   }
   /* Lembar Piutang — pola & ukuran sama persis dengan #lembarHarga di atas. */
-  #overlayLembarPiutang, #overlayLembarKasbon {
+  #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi {
     position: fixed; inset: 0; z-index: 42; background: #000; opacity: 0; pointer-events: none;
     transition: opacity var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang, #lembarKasbon {
+  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon, body.lembar-koreksi-produksi-terbuka #overlayLembarKoreksiProduksi { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 43;
     max-width: 680px; margin: 0 auto;
     background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
@@ -1695,11 +1698,11 @@
     transform: translateY(105%);
     transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
-  #lembarPiutang h3, #lembarKasbon h3 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
-  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
-  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup {
+  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang, body.lembar-koreksi-produksi-terbuka #lembarKoreksiProduksi { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan, #lembarKoreksiProduksi .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
+  #lembarPiutang h3, #lembarKasbon h3, #lembarKoreksiProduksi h3 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
+  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub, #lembarKoreksiProduksi .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
+  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup, #lembarKoreksiProduksi .lmk-tutup {
     width: 100%; min-height: 48px; margin-top: 12px; border-radius: 12px;
     background: var(--abu); border: 1px solid var(--garis); color: var(--redup);
     font-family: inherit; font-size: 13px; font-weight: 700;
@@ -2646,6 +2649,30 @@
   </div>
 
   <button type="button" class="lmk-tutup" onclick="tutupLembarKasbon()">Tutup</button>
+</div>
+
+<!-- LEMBAR KOREKSI HPP PRODUKSI: catatan produksi lama yang HPP-nya salah/nol dikoreksi
+     di sini, bukan dihapus — supaya rata-rata tertimbang stok kemasan terhitung benar
+     tanpa kehilangan jejak riwayat produksinya (temuan audit margin: Angsa 25 kg &
+     Kembang 10 kg, lihat ambilProduksiBerlaku). Pola sama dengan koreksi transaksi. -->
+<div id="overlayLembarKoreksiProduksi" onclick="tutupLembarKoreksiProduksi()"></div>
+<div id="lembarKoreksiProduksi" role="dialog" aria-modal="true" aria-labelledby="lembarKoreksiProduksiJudul">
+  <div class="lm-pegangan"></div>
+  <h3 id="lembarKoreksiProduksiJudul">Koreksi HPP</h3>
+  <p class="lk-sub" id="lembarKoreksiProduksiSub">—</p>
+
+  <div class="piutang-sisa">
+    <span>HPP per unit tercatat sekarang</span>
+    <b id="koreksiHppLama">Rp0</b>
+  </div>
+
+  <label style="margin-top:12px;">HPP per unit yang benar (Rp)</label>
+  <input type="number" id="koreksiHppBaru" placeholder="0" inputmode="numeric">
+  <label style="margin-top:12px;">Alasan koreksi</label>
+  <input type="text" id="koreksiHppAlasan" placeholder="Contoh: lupa diisi waktu produksi, sekarang dihitung ulang">
+  <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanKoreksiHpp()">Simpan koreksi</button>
+
+  <button type="button" class="lmk-tutup" onclick="tutupLembarKoreksiProduksi()">Tutup</button>
 </div>
 
 <!-- LEMBAR PILIH MERK (Lembar 1 Penyempurnaan): nama merk dipilih, tidak diketik.
@@ -5918,6 +5945,14 @@
     const data = localStorage.getItem(KUNCI_PRODUKSI);
     return data ? JSON.parse(data) : [];
   }
+  // Pola SAMA dengan penjualanMasihBerlaku: catatan produksi yang HPP-nya sudah
+  // dikoreksi TIDAK dihapus — ditandai dikoreksiOleh, tetap terbaca di Riwayat
+  // Produksi, tapi dikeluarkan dari hitungan stok/HPP supaya angka lama yang salah
+  // tidak ikut menyeret rata-rata tertimbang (temuan audit margin: Angsa 25 kg &
+  // Kembang 10 kg). Dipakai di titik yang menghitung UANG/HPP saja; pencarian &
+  // Riwayat gabungan sengaja tetap memakai ambilProduksi() mentah.
+  function produksiMasihBerlaku(pr) { return !pr.dikoreksiOleh; }
+  function ambilProduksiBerlaku() { return ambilProduksi().filter(produksiMasihBerlaku); }
   function ambilRetur() {
     if (_cacheRetur.length > 0) return _cacheRetur;
     const data = localStorage.getItem(KUNCI_RETUR);
@@ -6043,7 +6078,7 @@
     // merk itu tidak pernah dibeli langsung dari pemasok. Cuma berlaku di 50 kg, karena
     // cuma di situ jadiKarungUtuh dipakai.
     if (berat !== 50) return false;
-    return ambilProduksi().some(pr => pr.jadiKarungUtuh && pr.merkTujuan === merk);
+    return ambilProduksiBerlaku().some(pr => pr.jadiKarungUtuh && pr.merkTujuan === merk);
   }
   function merkPunyaKarung50(merk) { return merkPunyaKarungBerat(merk, 50); }
 
@@ -6081,7 +6116,10 @@
 
     // Kurangi pemakaian dari produksi kemasan (yang narik dari karung sumber).
     // Produksi campuran (4 Agu 2026) bawa sumberList per merk; produksi lama satu merk.
-    ambilProduksi().forEach(pr => {
+    // ambilProduksiBerlaku() (9 Agu 2026) — kalau raw ambilProduksi() dipakai, catatan
+    // yang sudah dikoreksi ikut menarik kg pemakaian LAGI dari catatan penggantinya juga
+    // (dobel hitung), karena keduanya sama-sama tersimpan sebagai dokumen terpisah.
+    ambilProduksiBerlaku().forEach(pr => {
       if (Array.isArray(pr.sumberList) && pr.sumberList.length > 0) {
         pr.sumberList.forEach(s => { if (s.merk && stok[s.merk]) stok[s.merk].terpakai += (s.kg || 0); });
       } else if (pr.merkSumber && stok[pr.merkSumber]) {
@@ -6103,7 +6141,7 @@
     // seperti batch beli menilai stok cuma dari harga barang, bukan ongkos apa pun
     // sesudahnya). Kg yang dikreditkan = kg yang benar-benar jadi karung (ukuran×unit),
     // bukan kg yang dipakai dari sumber — selisihnya (susut) sengaja tidak dikreditkan.
-    ambilProduksi().forEach(pr => {
+    ambilProduksiBerlaku().forEach(pr => {
       if (!pr.jadiKarungUtuh || !pr.merkTujuan) return;
       const totalKgJadi = (pr.ukuranKemasan || 0) * (pr.jumlahUnit || 0);
       if (totalKgJadi <= 0) return;
@@ -6129,7 +6167,10 @@
   // HPP ditampilkan sebagai rata-rata tertimbang (total nilai produksi / total unit dibuat) —
   // bukan HPP produksi terakhir saja — supaya benar kalau stok gabungan dari beberapa batch produksi berbeda harga.
   function hitungStokKemasan() {
-    const produksi = ambilProduksi();
+    // ambilProduksiBerlaku() (9 Agu 2026) — catatan yang HPP-nya sudah dikoreksi
+    // dikeluarkan, supaya HPP-Rp0 yang lama tidak lagi ikut menyeret rata-rata
+    // tertimbang produk itu (temuan audit margin: Angsa 25 kg & Kembang 10 kg).
+    const produksi = ambilProduksiBerlaku();
     const stok = {}; // { "namaProduk|ukuranKg": { unitDibuat, unitTerjual, nilaiProduksiTotal } }
 
     produksi.forEach(pr => {
@@ -7772,22 +7813,33 @@
   function tampilkanProduksi() {
     const kontainer = document.getElementById('daftarProduksi');
     if (!kontainer) return;
+    // Riwayat menampilkan SEMUA termasuk yang sudah dikoreksi (ambilProduksi() mentah,
+    // bukan ambilProduksiBerlaku()) — jejaknya tetap terbaca, sama prinsipnya dengan
+    // Riwayat penjualan yang tidak menyembunyikan transaksi dikoreksi/dibatalkan.
     const semua = ambilProduksi();
     if (semua.length === 0) {
       kontainer.innerHTML = '<div class="kosong">Belum ada produksi kemasan tercatat.</div>';
       return;
     }
-    kontainer.innerHTML = semua.map(p => `
-      <div class="item-batch">
+    kontainer.innerHTML = semua.map(p => {
+      const mati = !produksiMasihBerlaku(p);
+      return `
+      <div class="item-batch${mati ? ' baris-mati' : ''}">
         <div class="baris-atas">
           <span class="pemasok-nama">${escapeHtml(p.namaProduk) || '-'} ${p.ukuranKemasan}kg</span>
           <span class="tanggal">${formatTanggal(p.tanggal)}</span>
         </div>
         <div style="font-size:13px; color:#666;">Dari ${escapeHtml(p.merkSumber) || '-'} · ${p.kgDipakai || 0} kg dipakai → ${p.jumlahUnit || 0} unit</div>
         <div class="total-baris"><span>HPP per unit</span><span>${formatRupiah(p.hppPerUnit || 0)}</span></div>
-        <button class="tombol-hapus tab-owner-blok" onclick="hapusProduksi(${p.id})">Hapus</button>
+        ${mati
+          ? `<div style="font-size:12px; color:var(--amber, #e8b04a); margin-top:6px;">Dikoreksi — lihat #${String(p.dikoreksiOleh).slice(-4)}${p.alasanKoreksi ? ' · ' + escapeHtml(p.alasanKoreksi) : ''}</div>`
+          : `<div style="display:flex; gap:8px; margin-top:8px;">
+              <button class="tombol-hapus tab-owner-blok" style="flex:1;" onclick="hapusProduksi(${p.id})">Hapus</button>
+              <button class="tab-owner-blok" style="flex:1; min-height:44px; border-radius:8px; border:1px solid rgba(217,178,95,.4); background:none; color:var(--emas-terang,#d9b25f); font-family:inherit; font-weight:700; font-size:13px;" onclick="bukaKoreksiHpp(${p.id})">Koreksi HPP</button>
+            </div>`}
       </div>
-    `).join('');
+    `;
+    }).join('');
     terapkanStatusOwner();   // lihat catatan di tampilkanRekap() — sama sebabnya
   }
 
@@ -7804,6 +7856,52 @@
     } catch (err) {
       console.error(err);
       alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
+    }
+  }
+
+  // Koreksi HPP produksi (9 Agu 2026) — pengganti "hapus lalu masukin ulang" untuk
+  // catatan produksi yang HPP-nya salah/nol (temuan audit margin: Angsa 25 kg &
+  // Kembang 10 kg). Pola SAMA dengan simpanKoreksiTrx: dokumen lama TIDAK dihapus,
+  // ditandai dikoreksiOleh + tetap kebaca di Riwayat, dokumen baru dengan HPP benar
+  // yang dipakai hitungStokKemasan lewat ambilProduksiBerlaku.
+  let _koreksiProduksiId = null;
+  function bukaKoreksiHpp(id) {
+    const pr = ambilProduksi().find(x => x.id === id);
+    if (!pr) return;
+    _koreksiProduksiId = id;
+    document.getElementById('lembarKoreksiProduksiSub').textContent =
+      `${pr.namaProduk || '-'} ${pr.ukuranKemasan}kg · ${formatTanggal(pr.tanggal)} · ${pr.jumlahUnit || 0} unit`;
+    document.getElementById('koreksiHppLama').textContent = formatRupiah(pr.hppPerUnit || 0);
+    document.getElementById('koreksiHppBaru').value = pr.hppPerUnit || '';
+    document.getElementById('koreksiHppAlasan').value = '';
+    document.body.classList.add('lembar-koreksi-produksi-terbuka');
+  }
+  function tutupLembarKoreksiProduksi() {
+    _koreksiProduksiId = null;
+    document.body.classList.remove('lembar-koreksi-produksi-terbuka');
+  }
+  async function simpanKoreksiHpp() {
+    const pr = ambilProduksi().find(x => x.id === _koreksiProduksiId);
+    if (!pr) return;
+    const baru = parseFloat(document.getElementById('koreksiHppBaru').value);
+    const alasan = document.getElementById('koreksiHppAlasan').value.trim();
+    if (!(baru >= 0)) { alert('Isi HPP per unit yang benar.'); return; }
+    if (baru === (pr.hppPerUnit || 0)) { alert('HPP-nya sama dengan yang tercatat — tidak ada yang perlu dikoreksi.'); return; }
+    if (!alasan) { alert('Isi alasan koreksinya — supaya jejaknya bisa dibaca nanti.'); return; }
+    const idBaru = Date.now();
+    const pengganti = { ...pr, id: idBaru, hppPerUnit: baru,
+      koreksiDari: pr.id, alasanKoreksi: alasan, dikoreksiPada: new Date().toISOString() };
+    delete pengganti.dikoreksiOleh;
+    try {
+      await simpanKeFirestore(KOLEKSI_PRODUKSI, pengganti);
+      await simpanKeFirestore(KOLEKSI_PRODUKSI, { ...pr, dikoreksiOleh: idBaru, alasanKoreksi: alasan });
+      tutupLembarKoreksiProduksi();
+      tampilkanProduksi();
+      tampilkanStok();
+      tampilkanRekap();
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan koreksi (cek internet). ' + err.message);
     }
   }
 
@@ -10375,6 +10473,9 @@
   window.hapusPenjualan = hapusPenjualan;
   window.tampilkanProduksi = tampilkanProduksi;
   window.hapusProduksi = hapusProduksi;
+  window.bukaKoreksiHpp = bukaKoreksiHpp;
+  window.tutupLembarKoreksiProduksi = tutupLembarKoreksiProduksi;
+  window.simpanKoreksiHpp = simpanKoreksiHpp;
   window.tampilkanRetur = tampilkanRetur;
   window.hapusRetur = hapusRetur;
   window.putuskanKarantina = putuskanKarantina;
