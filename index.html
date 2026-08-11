@@ -2088,6 +2088,14 @@
     min-height: 52px; border-top: 1px solid rgba(255, 255, 255, .055);
   }
   .baris-isian:first-of-type { border-top: none; }
+  /* Tanggal bayar per pos (12 Agu 2026): tiap biaya punya tanggalnya sendiri — listrik
+     bisa dibayar tanggal 4, gaji tanggal 12. Ditaruh di baris kedua supaya di layar
+     375 px tidak berdesakan dengan nominalnya. */
+  .baris-isian { flex-wrap: wrap; }
+  .baris-isian .bi-tgl { flex: 0 0 100%; display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; }
+  .baris-isian .bi-tgl > i { font-style: normal; font-size: 11px; color: var(--redup); flex: 0 0 auto; }
+  .baris-isian .bi-tgl input { flex: 1; min-height: 44px; font-size: 13px; }
+  .baris-isian .bi-tgl.belum > i { color: var(--amber); }
   .baris-isian .bi-nama { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.35; }
   .baris-isian .bi-nama small { display: block; font-size: 10.5px; color: var(--redup); margin-top: 2px; }
   .baris-isian .bi-isi { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
@@ -3655,11 +3663,7 @@
     <div class="kartu">
       <label style="margin-top:0;">Bulan</label>
       <input type="month" id="bulanBiaya" onchange="perbaruiKeadaanBulanan()">
-      <!-- Tanggal bayar dipakai Cocokkan Kas (tab Arus Kas) untuk menaruh biaya ini
-           pada hari yang benar. Tanpa itu sistem cuma bisa menebak sebulan penuh. -->
-      <label for="tanggalBayarBulanan">Tanggal dibayar</label>
-      <input type="date" id="tanggalBayarBulanan">
-      <p class="keterangan" style="margin:6px 0 0;">Kapan biaya bulan ini benar-benar dikeluarkan dari kas. Dipakai halaman Arus Kas untuk menghitung saldo kas dengan tepat. Boleh dikosongkan, tapi saldo kas jadi kurang presisi.</p>
+      <p class="keterangan" style="margin:6px 0 0;">Tanggal bayar diisi <b>per pos</b> di bawah — listrik, gaji, dan lainnya sering dibayar di hari yang berbeda. Pos yang tanggalnya kosong dianggap <b>belum dibayar</b> dan tidak mengurangi kas.</p>
     </div>
 
     <div class="kartu">
@@ -3674,13 +3678,13 @@
 
     <div class="kartu">
       <div class="panel-kepala"><h2>Biaya tetap <span class="keterangan">rata-rata sebulan</span></h2></div>
-      <div class="baris-isian"><span class="bi-nama">Gaji<small>dihitung dari hari di atas</small></span><span class="bi-isi bi-terkunci" id="bulananGajiBayang">Rp0</span></div>
-      <div class="baris-isian"><span class="bi-nama">Listrik</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaListrikBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Akses / gapura<small>dibayar sekali sebulan</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaAksesBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Keamanan lingkungan</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaKeamananBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Bensin pengantaran</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaBensinBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Internet / Wifi</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaInternetBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span></div>
-      <div class="baris-isian"><span class="bi-nama">Plastik / tali / benang<small>kebutuhan toko yang bukan stok</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaBenangBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span></div>
+      <div class="baris-isian"><span class="bi-nama">Gaji<small>dihitung dari hari di atas</small></span><span class="bi-isi bi-terkunci" id="bulananGajiBayang">Rp0</span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaGaji" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Gaji"></span></div>
+      <div class="baris-isian"><span class="bi-nama">Listrik</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaListrikBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaListrik" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Listrik"></span></div>
+      <div class="baris-isian"><span class="bi-nama">Akses / gapura<small>dibayar sekali sebulan</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaAksesBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaAkses" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Akses"></span></div>
+      <div class="baris-isian"><span class="bi-nama">Keamanan lingkungan</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaKeamananBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaKeamanan" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Keamanan"></span></div>
+      <div class="baris-isian"><span class="bi-nama">Bensin pengantaran</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaBensinBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaBensin" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Bensin"></span></div>
+      <div class="baris-isian"><span class="bi-nama">Internet / Wifi</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaInternetBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaInternet" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Internet"></span></div>
+      <div class="baris-isian"><span class="bi-nama">Plastik / tali / benang<small>kebutuhan toko yang bukan stok</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaBenangBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaBenang" onchange="perbaruiTotalBulanan()" aria-label="Tanggal bayar Plastik/tali"></span></div>
       <p class="keterangan catatan-luwes">Semua biaya di sini tidak masuk HPP per produk — dilaporkan sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
     </div>
 
@@ -5635,8 +5639,6 @@
     const semua = ambilBiayaBulanan();
     const dataBulanIni = semua.find(b => b.bulan === iso);
     const adaBulanIni = !!dataBulanIni;
-    const elTgl = document.getElementById('tanggalBayarBulanan');
-    if (elTgl) elTgl.value = (dataBulanIni && dataBulanIni.tanggalBayar) || '';
     // Nilai lamanya ikut dimunculkan supaya bulan yang sudah terisi bisa DISUNTING,
     // bukan tanpa sadar ditimpa nol. Lihat catatan di isiFormBulananDari().
     isiFormBulananDari(dataBulanIni || null);
@@ -5681,6 +5683,11 @@
       const r = d && (d.rincianGaji || []).find(x => x.nama === nama);
       el.value = r ? (r.hari || '') : '';
     });
+    const peta = (d && d.tanggalBayarPos) || {};
+    POS_BIAYA_BULANAN.forEach(pos => {
+      const el = document.getElementById(pos.idTgl);
+      if (el) el.value = peta[pos.kunci] || (d && d.tanggalBayar) || '';
+    });
     hitungPerkiraanGaji();
     perbaruiTotalBulanan();
   }
@@ -5690,9 +5697,11 @@
     const lalu = ambilBiayaBulanan().find(b => b.bulan === bulanSebelum(iso));
     if (!lalu) return;
     isiFormBulananDari(lalu);
-    // tanggalBayar SENGAJA tidak ikut disalin — itu tanggal bulan lalu, bukan bulan ini.
-    const elTgl = document.getElementById('tanggalBayarBulanan');
-    if (elTgl) elTgl.value = '';
+    // Tanggal bayar SENGAJA dikosongkan — itu tanggal bulan lalu, bukan bulan ini.
+    POS_BIAYA_BULANAN.forEach(pos => {
+      const el = document.getElementById(pos.idTgl);
+      if (el) el.value = '';
+    });
   }
 
   async function simpanBiayaBulanan() {
@@ -5711,8 +5720,12 @@
 
     // Dokumen Firestore memakai "bulan" sebagai id supaya bulan yang sama otomatis menimpa (bukan duplikat).
     try {
-      const tanggalBayar = document.getElementById('tanggalBayarBulanan').value || '';
-      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, tanggalBayar, akses, keamanan, bensin, listrik, internet, benang, gajiHariOrang, gaji, rincianGaji });
+      const tanggalBayarPos = {};
+      POS_BIAYA_BULANAN.forEach(pos => {
+        const el = document.getElementById(pos.idTgl);
+        tanggalBayarPos[pos.kunci] = (el && el.value) || '';
+      });
+      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, tanggalBayarPos, akses, keamanan, bensin, listrik, internet, benang, gajiHariOrang, gaji, rincianGaji });
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -8272,7 +8285,7 @@
   //   cocok   : (tanggalIso) => boolean, penentu catatan mana yang ikut
   //   blnList : dokumen biayaBulanan mana saja yang ikut (biaya bulanan tidak punya
   //             tanggal bayar, jadi pemilihannya diserahkan ke pemanggil)
-  function hitungArusKasInti(cocok, blnList) {
+  function hitungArusKasInti(cocok, bayaranBln) {
     const jmlHarga = arr => arr.reduce((a, x) => a + (x.hargaTotal || 0), 0);
     const jmlNominal = arr => arr.reduce((a, x) => a + (x.nominal || 0), 0);
 
@@ -8295,8 +8308,11 @@
     const belanja = batch.reduce((a, k) =>
       a + (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0), 0);
 
-    const biayaBulanan = (blnList || []).reduce((a, b) =>
-      a + (b.akses||0)+(b.keamanan||0)+(b.bensin||0)+(b.listrik||0)+(b.internet||0)+(b.benang||0)+(b.gaji||0), 0);
+    // Tiap pos biaya bulanan lewat predikat yang sama persis dengan penjualan, belanja,
+    // dan lainnya — tidak ada lagi perlakuan khusus. Pos tanpa tanggal tidak akan pernah
+    // cocok, jadi otomatis tidak terhitung sebagai uang keluar.
+    const bayarTerhitung = (bayaranBln || []).filter(x => x.tanggal && cocok(x.tanggal));
+    const biayaBulanan = bayarTerhitung.reduce((a, x) => a + x.nominal, 0);
 
     const harianToko = ambilPengeluaranHarian().filter(h => h.kategori === 'toko' && cocok(h.tanggal));
     const returDipakai = ambilRetur().filter(r => cocok(r.tanggal));
@@ -8319,8 +8335,10 @@
     ];
     const keluar = [
       { label: 'Belanja beras', nominal: belanja, n: batch.length, satuan: 'kedatangan' },
-      { label: 'Biaya bulanan', nominal: biayaBulanan, n: (blnList || []).length, satuan: 'bulan',
-        ket: (blnList || []).length ? 'gaji, listrik, akses, dll' : 'belum diisi di tab Bulanan — dihitung Rp0' },
+      { label: 'Biaya bulanan', nominal: biayaBulanan, n: bayarTerhitung.length, satuan: 'pembayaran',
+        ket: bayarTerhitung.length
+          ? bayarTerhitung.map(x => x.label).join(', ')
+          : 'belum ada pos yang tercatat dibayar' },
       { label: 'Pengeluaran harian (Toko)', nominal: jmlNominal(harianToko), n: harianToko.length, satuan: 'catatan' },
       { label: 'Refund retur', nominal: refund, n: returDipakai.length, satuan: 'retur' },
       { label: 'Beli kantong kemasan', nominal: jmlHarga(beliKemasan), n: beliKemasan.length, satuan: 'pembelian' },
@@ -8340,14 +8358,44 @@
   // Juli baru dibayar 3 Agustus) masuk arus kas AGUSTUS, bukan Juli. Dokumen lama yang
   // belum punya tanggalBayar jatuh balik ke bulan tertagihnya — perilaku lama, supaya
   // angka bulan-bulan yang sudah pernah dibaca pemilik tidak berubah sendiri.
-  function bulanKasBiayaBulanan(b) {
-    return b.tanggalBayar ? bulanDari(b.tanggalBayar) : b.bulan;
+  const POS_BIAYA_BULANAN = [
+    { kunci: 'gaji', label: 'Gaji pegawai', idTgl: 'tglBiayaGaji' },
+    { kunci: 'listrik', label: 'Listrik', idTgl: 'tglBiayaListrik' },
+    { kunci: 'akses', label: 'Akses / gapura', idTgl: 'tglBiayaAkses' },
+    { kunci: 'keamanan', label: 'Keamanan lingkungan', idTgl: 'tglBiayaKeamanan' },
+    { kunci: 'bensin', label: 'Bensin pengantaran', idTgl: 'tglBiayaBensin' },
+    { kunci: 'internet', label: 'Internet / Wifi', idTgl: 'tglBiayaInternet' },
+    { kunci: 'benang', label: 'Plastik / tali / benang', idTgl: 'tglBiayaBenang' }
+  ];
+  // Satu dokumen biaya bulanan sebenarnya berisi BEBERAPA pembayaran yang harinya
+  // berbeda-beda (listrik tanggal 4, gaji tanggal 12, dst — dikonfirmasi pemilik
+  // 12 Agu 2026). Dipecah di sini supaya arus kas bisa menaruh tiap pos di harinya
+  // sendiri, persis seperti catatan lain. Pos tanpa tanggal = BELUM DIBAYAR: tidak
+  // pernah ikut arus kas, tapi tetap dilaporkan supaya tidak hilang dari perhatian.
+  function bayaranBiayaBulanan() {
+    const out = [];
+    ambilBiayaBulanan().forEach(b => {
+      const peta = b.tanggalBayarPos || {};
+      POS_BIAYA_BULANAN.forEach(pos => {
+        const nominal = b[pos.kunci] || 0;
+        if (!(nominal > 0)) return;
+        // b.tanggalBayar = kolom tunggal yang sempat dipakai beberapa jam pada 12 Agu 2026
+        // sebelum diganti per pos. Dipakai sebagai cadangan supaya dokumen itu tidak jadi
+        // "belum dibayar" hanya karena bentuk datanya berubah.
+        out.push({ bulan: b.bulan, pos: pos.kunci, label: pos.label, nominal,
+          tanggal: peta[pos.kunci] || b.tanggalBayar || '' });
+      });
+    });
+    return out;
   }
   function hitungArusKas(bulanIso) {
     const bl = bulanIso || bulanLokalIso();
-    const blnList = ambilBiayaBulanan().filter(b => bulanKasBiayaBulanan(b) === bl);
-    const hasil = hitungArusKasInti(t => bulanDari(t) === bl, blnList);
+    const semua = bayaranBiayaBulanan();
+    const hasil = hitungArusKasInti(t => bulanDari(t) === bl, semua);
     hasil.bulan = bl;
+    // Pos bulan ini yang belum bertanggal — belum jadi uang keluar, tapi jangan sampai
+    // lenyap dari perhatian pemilik hanya karena tidak terhitung.
+    hasil.bulananBelumDibayar = semua.filter(x => !x.tanggal && x.bulan === bl);
     return hasil;
   }
 
@@ -8356,24 +8404,17 @@
   // cuma catatan bertanggal SESUDAHNYA. Kalau inklusif, transaksi di hari penghitungan
   // akan terhitung dua kali — sekali sudah masuk uang yang dihitung, sekali lagi di sini.
   //
-  // Biaya bulanan ditempatkan pakai TANGGAL BAYAR-nya (ditambahkan 12 Agu 2026) — sama
-  // persis seperti catatan lain: ikut kalau dibayar sesudah titik hitung.
-  // Dokumen lama yang belum diisi tanggal bayarnya tidak bisa ditempatkan setepat itu.
-  // Untuk yang begitu dipakai aturan konservatif: cuma bulan SESUDAH bulan titik yang
-  // ikut, karena biaya bulan titik mungkin sudah dibayar sebelum kas dihitung — dan
-  // mengurangi dua kali lebih berbahaya daripada kurang mengurangi. Berapa dokumen yang
-  // masih begitu dilaporkan ke layar lewat blnTanpaTanggal, bukan didiamkan.
+  // Sejak 12 Agustus 2026 tidak ada lagi tebakan di sini: tiap pos biaya bulanan punya
+  // tanggal bayarnya sendiri dan diperlakukan sama seperti catatan lain — ikut kalau
+  // dibayar sesudah titik hitung. Pos tanpa tanggal berarti belum dibayar, jadi memang
+  // belum boleh mengurangi kas; jumlahnya dilaporkan lewat bulananBelumDibayar.
   function hitungArusKasSejak(dariIso, sampaiIso) {
     const sampai = sampaiIso || tanggalLokalIso();
+    const semua = bayaranBiayaBulanan();
+    const hasil = hitungArusKasInti(t => !!t && t > dariIso && t <= sampai, semua);
     const blnTitik = bulanDari(dariIso);
     const blnSampai = bulanDari(sampai);
-    const semuaBln = ambilBiayaBulanan();
-    const blnList = semuaBln.filter(b => b.tanggalBayar
-      ? (b.tanggalBayar > dariIso && b.tanggalBayar <= sampai)
-      : (b.bulan > blnTitik && b.bulan <= blnSampai));
-    const hasil = hitungArusKasInti(t => !!t && t > dariIso && t <= sampai, blnList);
-    // Yang masih menebak: dokumen tanpa tanggal bayar yang bulannya tersentuh rentang ini.
-    hasil.blnTanpaTanggal = semuaBln.filter(b => !b.tanggalBayar && b.bulan >= blnTitik && b.bulan <= blnSampai);
+    hasil.bulananBelumDibayar = semua.filter(x => !x.tanggal && x.bulan >= blnTitik && x.bulan <= blnSampai);
     return hasil;
   }
 
@@ -8503,15 +8544,15 @@
     // Dokumen biaya bulanan yang belum diisi tanggal bayarnya = satu-satunya bagian yang
     // masih ditebak. Disebut namanya sekalian, supaya pemilik tahu persis apa yang harus
     // dilengkapi kalau mau angkanya benar-benar tepat.
-    const tanpaTgl = g.blnTanpaTanggal || [];
+    const tanpaTgl = g.bulananBelumDibayar || [];
     document.getElementById('kasRincian').innerHTML =
       `<div class="ph-baris"><span>Titik hitung ${escapeHtml(formatTanggal(t.tanggal))}</span><b>${formatRupiah(awal)}</b></div>` +
       `<div class="ph-baris"><span>Uang masuk sesudahnya</span><b class="ph-hijau">+ ${formatRupiah(g.totalMasuk)}</b></div>` +
       `<div class="ph-baris"><span>Uang keluar sesudahnya</span><b class="ph-merah">− ${formatRupiah(g.totalKeluar)}</b></div>` +
       `<div class="ph-baris"><span><b>Kas seharusnya sekarang</b></span><b>${formatRupiah(seharusnya)}</b></div>` +
       (tanpaTgl.length
-        ? `<div class="ph-catatan ph-amber">Biaya bulanan ${escapeHtml(tanpaTgl.map(b => namaBulanPanjang(b.bulan + '-01')).join(', '))} belum diisi tanggal bayarnya, jadi penempatannya masih ditebak (bulan titik hitung dianggap sudah terbayar). Isi tanggalnya di tab Bulanan supaya saldo ini tepat.</div>`
-        : `<div class="ph-catatan">Semua biaya bulanan sudah punya tanggal bayar — penempatannya tepat, tidak ada yang ditebak.</div>`);
+        ? `<div class="ph-catatan ph-amber">Belum dikurangi (tanggal bayarnya belum diisi, jadi dianggap belum dibayar): ${escapeHtml(tanpaTgl.map(x => x.label + ' ' + formatRupiah(x.nominal)).join(', '))}. Kalau sebenarnya sudah dibayar, isi tanggalnya di tab Bulanan.</div>`
+        : `<div class="ph-catatan">Tidak ada biaya bulanan yang menggantung — semua pos sudah punya tanggal bayar.</div>`);
     perbaruiSelisihKas();
   }
 
