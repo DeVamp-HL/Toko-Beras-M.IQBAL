@@ -2376,6 +2376,7 @@
   <button id="tabHarian" onclick="pindahHalaman('harian')"> Harian</button>
   <div class="nav-grup nav-grup-owner tab-owner">Owner</div>
   <button id="tabLaba" class="tab-owner" onclick="pindahHalaman('laba')"> Laba</button>
+  <button id="tabAruskas" class="tab-owner" onclick="pindahHalaman('aruskas')"> Arus Kas</button>
   <button id="tabPiutang" class="tab-owner" onclick="pindahHalaman('piutang')"> Piutang</button>
   <button id="tabHarga" class="tab-owner" onclick="pindahHalaman('harga')"> Harga</button>
   <button id="tabJaga" class="tab-owner" onclick="bukaModalJaga()"> Jaga</button>
@@ -2435,6 +2436,7 @@
   <button type="button" class="lm-baris" data-halaman="harian" onclick="pindahDariMenu('harian')"><span>Harian <i>— pengeluaran harian</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris" data-halaman="bulanan" onclick="pindahDariMenu('bulanan')"><span>Bulanan <i>— gaji, listrik, biaya tetap</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="laba" onclick="pindahDariMenu('laba')"><span>Laba <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button type="button" class="lm-baris tab-owner" data-halaman="aruskas" onclick="pindahDariMenu('aruskas')"><span>Arus Kas <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— uang masuk &amp; keluar</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="piutang" onclick="pindahDariMenu('piutang')"><span>Piutang <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— pelanggan yang berutang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()"><span>Jaga Toko <i>— siapa yang bertugas</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <div class="lm-kaki">
@@ -2768,11 +2770,11 @@
         <div class="nilai"><span class="rp">Rp</span><b id="ringBelanjaMingguIniDt">0</b></div>
       </div>
       <div class="kartu">
-        <div class="label">Kas masuk bulan ini <span class="keterangan" style="display:block; margin-top:2px;">(omzet jual)</span></div>
+        <div class="label">Kas masuk bulan ini <span class="keterangan" style="display:block; margin-top:2px;">(uang diterima)</span></div>
         <div class="nilai"><span class="rp">Rp</span><b id="ringKasMasukBulanIniDt">0</b></div>
       </div>
       <div class="kartu">
-        <div class="label">Kas keluar bulan ini <span class="keterangan" style="display:block; margin-top:2px;">(belanja + biaya bulanan)</span></div>
+        <div class="label">Kas keluar bulan ini <span class="keterangan" style="display:block; margin-top:2px;">(uang dikeluarkan)</span></div>
         <div class="nilai"><span class="rp">Rp</span><b id="ringKasKeluarBulanIniDt">0</b></div>
       </div>
     </div>
@@ -2844,15 +2846,15 @@
     <div class="subjudul subjudul-kas-mobile ring-lama-hp" style="margin-top:0;">Kas Bulan Ini</div>
     <div class="ringkasan-atas ringkasan-mobile">
       <div class="kotak">
-        <div class="label">Kas masuk <span class="keterangan" style="display:block;">(omzet jual)</span></div>
+        <div class="label">Kas masuk <span class="keterangan" style="display:block;">(uang diterima)</span></div>
         <div class="nilai" id="ringKasMasukBulanIni">Rp0</div>
       </div>
       <div class="kotak">
-        <div class="label">Kas keluar <span class="keterangan" style="display:block;">(belanja beras + biaya bulanan)</span></div>
+        <div class="label">Kas keluar <span class="keterangan" style="display:block;">(uang dikeluarkan)</span></div>
         <div class="nilai" id="ringKasKeluarBulanIni">Rp0</div>
       </div>
     </div>
-    <div class="info-box ring-lama-hp">Kas masuk = total omzet jual bulan ini. Kas keluar = belanja beras (harga beli + bongkar dari tab Masuk) + biaya bulanan (gaji, listrik, akses, dll dari tab Bulanan — kalau bulan ini belum diisi, bagian itu dihitung Rp0) + pengeluaran harian kategori Toko (dari tab Harian). Pengeluaran harian Ben Mohsein &amp; Owner TIDAK ikut dihitung — murni pribadi. Ini arus kas, BUKAN laba bersih akuntansi — beda dari margin kotor di tab Laba (yang berbasis HPP barang terjual, bukan barang dibeli).</div>
+    <div class="info-box ring-lama-hp">Dua angka ini cuma menghitung uang yang BENAR-BENAR berpindah, dan rinciannya ada di tab <b>Arus Kas</b>. Masuk = penjualan tunai + QRIS, pelunasan piutang, kasbon yang dikembalikan. Keluar = belanja beras, biaya bulanan, pengeluaran harian kategori Toko, refund retur, beli kantong kemasan &amp; paper bag, kasbon yang diambil pegawai. Penjualan <b>kredit belum dihitung</b> di sini sampai pelanggannya melunasi — barangnya sudah keluar tapi uangnya belum diterima. Pengeluaran harian Ben Mohsein &amp; Owner TIDAK ikut — murni pribadi. Ini arus kas, BUKAN laba: margin kotor ada di tab Laba (berbasis HPP barang terjual).</div>
 
     <div class="kartu ring-lama-hp">
       <div class="panel-kepala"><h2>Perlu Perhatian</h2></div>
@@ -3246,6 +3248,43 @@
       <p id="labaKetTakTerhitung"></p>
       <div id="daftarLabaTakTerhitung" class="kartu-daftar" style="margin-top:10px; background:none; border:none; padding:0;"></div>
     </div>
+  </div>
+
+  <!-- HALAMAN ARUS KAS (owner-only, 11 Agustus 2026) — uang yang BENAR-BENAR berpindah.
+       Bukan omzet (itu tab Laba) dan bukan margin. Penjualan kredit sengaja TIDAK ikut
+       sampai pelanggan melunasi. Rinciannya dihitung hitungArusKas(), yang juga dipakai
+       kartu Kas di Ringkasan supaya dua tempat itu tidak pernah beda angka. -->
+  <div id="halamanAruskas" class="halaman">
+    <div class="judul-halaman">
+      <h2>Arus Kas</h2>
+      <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
+    </div>
+
+    <label for="arusKasBulan">Bulan</label>
+    <input type="month" id="arusKasBulan" onchange="tampilkanArusKas()">
+
+    <div class="kartu-hero" style="margin-top:12px;">
+      <div class="label">Kas bersih bulan ini</div>
+      <div class="hero-nilai" id="arusKasBersih">Rp0</div>
+      <div class="hero-syarat" id="arusKasSyarat"></div>
+    </div>
+
+    <div class="kpi-mini kpi-dua" style="margin-top:10px;">
+      <div class="kartu-mini"><div class="label">Uang masuk</div><div class="nilai" id="arusKasTotalMasuk">Rp0</div></div>
+      <div class="kartu-mini"><div class="label">Uang keluar</div><div class="nilai" id="arusKasTotalKeluar">Rp0</div></div>
+    </div>
+
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Uang masuk</h3></div>
+      <div id="daftarArusKasMasuk"></div>
+    </div>
+
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Uang keluar</h3></div>
+      <div id="daftarArusKasKeluar"></div>
+    </div>
+
+    <div class="info-box" id="arusKasCatatan" style="margin-top:12px;"></div>
   </div>
 
   <!-- HALAMAN PIUTANG (owner-only) — pelanggan yang berutang ke toko.
@@ -3962,7 +4001,7 @@
   window.addEventListener('resize', geserIndikatorTab);
 
   function pindahHalaman(nama) {
-    ['ringkasan','jual','input','stokawal','produksi','rekap','stok','laba','harga','bulanan','harian','piutang'].forEach(n => {
+    ['ringkasan','jual','input','stokawal','produksi','rekap','stok','laba','aruskas','harga','bulanan','harian','piutang'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
     });
@@ -3972,7 +4011,7 @@
       b.classList.toggle('aktif', b.getAttribute('data-halaman') === nama);
     });
     const tbMenu = document.getElementById('tombolLembarMenu');
-    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','stokawal','produksi','rekap','bulanan','harian','laba','piutang'].indexOf(nama) >= 0);
+    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','stokawal','produksi','rekap','bulanan','harian','laba','aruskas','piutang'].indexOf(nama) >= 0);
     if (document.body.classList.contains('lembar-menu-terbuka')) toggleLembarMenu(false);
     if (document.body.classList.contains('lembar-merk-terbuka')) tutupLembarMerk();
     document.body.classList.toggle('di-halaman-masuk', nama === 'input');
@@ -3992,6 +4031,7 @@
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
     if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); }
     if (nama === 'laba') tampilkanLaba();
+    if (nama === 'aruskas') tampilkanArusKas();
     if (nama === 'piutang') { tampilkanPiutang(); tampilkanKasbon(); }
     if (nama === 'harga') tampilkanHarga();
     if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
@@ -8123,18 +8163,138 @@
   }
   function isoKeTanggal(iso) { return new Date(iso + 'T00:00:00'); }
 
+  // ============ ARUS KAS (11 Agustus 2026) ============
+  // Yang dihitung di sini cuma uang yang BENAR-BENAR berpindah — beda dari tab Laba
+  // (margin berbasis HPP barang terjual) dan beda dari kartu "Kas masuk" versi lama,
+  // yang ternyata isinya OMZET, bukan kas. Tiga pembetulan atas cakupan lama:
+  //   1. Penjualan KREDIT TIDAK dihitung waktu barang keluar — uangnya belum ada.
+  //      Baru masuk waktu pelanggan melunasi, lewat piutangMutasi tipe 'bayar'.
+  //      (Dulu kredit ikut dihitung, jadi Kas Masuk bisa lebih besar dari isi laci.)
+  //   2. Pelunasan piutang & kasbon yang dikembalikan sekarang IKUT — dulu tidak
+  //      dihitung sama sekali, padahal uangnya nyata masuk laci.
+  //   3. Beli kantong kemasan, beli paper bag literan, dan kasbon yang diambil pegawai
+  //      ikut uang keluar — dulu ketiganya tidak pernah muncul di mana pun.
+  // Cakupan dikonfirmasi My DeV, 11 Agustus 2026.
+  //
+  // Yang SENGAJA tidak ikut:
+  //   - Saldo awal piutang: cuma pencatatan utang lama, tidak ada uang berpindah.
+  //   - Pengeluaran harian kategori Ben Mohsein & Owner: murni pribadi (aturan lama).
+  //   - Upah repacking di tab Produksi: sudah menyatu di HPP dan di gaji bulanan —
+  //     dihitung lagi di sini berarti satu pengeluaran tercatat dua kali.
+  function bulanDari(iso) { return String(iso || '').slice(0, 7); }
+  // Ejaan caraBayar tidak seragam antar-alat: tab Jual menyimpan 'QRIS', kasir 'Qris'.
+  // Dicocokkan tanpa pandang huruf besar/kecil supaya tidak ada penjualan yang salah
+  // golong — satu ejaan yang lolos di sini artinya uang tercatat di arah yang keliru.
+  function caraBayarKunci(p) { return String((p && p.caraBayar) || '').trim().toLowerCase(); }
+
+  function hitungArusKas(bulanIso) {
+    const bl = bulanIso || bulanLokalIso();
+    const diBulan = t => bulanDari(t) === bl;
+    const jmlHarga = arr => arr.reduce((a, x) => a + (x.hargaTotal || 0), 0);
+    const jmlNominal = arr => arr.reduce((a, x) => a + (x.nominal || 0), 0);
+
+    // ambilPenjualan() sudah membuang yang dibatalkan/dikoreksi — transaksi batal
+    // memang tidak pernah jadi uang.
+    const jual = ambilPenjualan().filter(p => diBulan(p.tanggal));
+    const kredit = jual.filter(p => caraBayarKunci(p) === 'kredit');
+    const qris = jual.filter(p => caraBayarKunci(p) === 'qris');
+    const tunai = jual.filter(p => caraBayarKunci(p) !== 'kredit' && caraBayarKunci(p) !== 'qris');
+
+    const piutangBayar = ambilPiutangMutasi().filter(m => m.tipe === 'bayar' && diBulan(m.tanggal));
+    const kasbonBayar = ambilKasbonMutasi().filter(m => m.tipe === 'bayar' && diBulan(m.tanggal));
+    const kasbonAmbil = ambilKasbonMutasi().filter(m => m.tipe === 'ambil' && diBulan(m.tanggal));
+
+    const batch = ambilSemuaBatch().filter(k => diBulan(k.tanggal));
+    const belanja = batch.reduce((a, k) =>
+      a + (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0), 0);
+
+    const bln = ambilBiayaBulanan().find(b => b.bulan === bl);
+    const biayaBulanan = bln
+      ? (bln.akses||0)+(bln.keamanan||0)+(bln.bensin||0)+(bln.listrik||0)+(bln.internet||0)+(bln.benang||0)+(bln.gaji||0)
+      : 0;
+
+    const harianToko = ambilPengeluaranHarian().filter(h => h.kategori === 'toko' && diBulan(h.tanggal));
+    const returBulan = ambilRetur().filter(r => diBulan(r.tanggal));
+    // selisihHargaTukar positif = toko mengembalikan selisih (uang keluar);
+    // negatif = pelanggan menambah, jadi mengurangi total secara neto.
+    const refund = returBulan.reduce((a, r) => a + (r.nominalRefund || 0) + (r.selisihHargaTukar || 0), 0);
+    const beliKemasan = ambilBahanKemasan().filter(b => b.tipe === 'beli' && diBulan(b.tanggal));
+    const beliLiteran = ambilBahanLiteran().filter(b => b.tipe === 'beli' && diBulan(b.tanggal));
+
+    const masuk = [
+      { label: 'Penjualan tunai', nominal: jmlHarga(tunai), n: tunai.length, satuan: 'transaksi' },
+      { label: 'Penjualan QRIS', nominal: jmlHarga(qris), n: qris.length, satuan: 'transaksi' },
+      { label: 'Pelunasan piutang', nominal: jmlNominal(piutangBayar), n: piutangBayar.length, satuan: 'pembayaran' },
+      { label: 'Kasbon dikembalikan', nominal: jmlNominal(kasbonBayar), n: kasbonBayar.length, satuan: 'kali' }
+    ];
+    const keluar = [
+      { label: 'Belanja beras', nominal: belanja, n: batch.length, satuan: 'kedatangan' },
+      { label: 'Biaya bulanan', nominal: biayaBulanan, n: bln ? 1 : 0, satuan: '',
+        ket: bln ? 'gaji, listrik, akses, dll' : 'belum diisi di tab Bulanan — dihitung Rp0' },
+      { label: 'Pengeluaran harian (Toko)', nominal: jmlNominal(harianToko), n: harianToko.length, satuan: 'catatan' },
+      { label: 'Refund retur', nominal: refund, n: returBulan.length, satuan: 'retur' },
+      { label: 'Beli kantong kemasan', nominal: jmlHarga(beliKemasan), n: beliKemasan.length, satuan: 'pembelian' },
+      { label: 'Beli paper bag literan', nominal: jmlHarga(beliLiteran), n: beliLiteran.length, satuan: 'pembelian' },
+      { label: 'Kasbon diambil pegawai', nominal: jmlNominal(kasbonAmbil), n: kasbonAmbil.length, satuan: 'kali' }
+    ];
+    const totalMasuk = masuk.reduce((a, x) => a + x.nominal, 0);
+    const totalKeluar = keluar.reduce((a, x) => a + x.nominal, 0);
+    return {
+      bulan: bl, masuk, keluar, totalMasuk, totalKeluar,
+      bersih: totalMasuk - totalKeluar,
+      omzetPenuh: jmlHarga(jual), kreditBulanIni: jmlHarga(kredit), jumlahKredit: kredit.length
+    };
+  }
+
+  function barisArusKas(x) {
+    const ket = x.ket || (x.n > 0 && x.satuan ? x.n + ' ' + x.satuan : '');
+    return `<div class="baris-44${x.nominal === 0 ? ' baris-mati' : ''}">
+      <span class="nama"><i class="trx-nama">${escapeHtml(x.label)}</i>${ket ? `<small>${escapeHtml(ket)}</small>` : ''}</span>
+      <span class="angka">${formatRupiah(x.nominal)}</span>
+    </div>`;
+  }
+
+  function tampilkanArusKas() {
+    const elBulan = document.getElementById('arusKasBulan');
+    if (!elBulan) return;
+    if (!elBulan.value) elBulan.value = bulanLokalIso();
+    const d = hitungArusKas(elBulan.value);
+
+    document.getElementById('arusKasBersih').innerHTML = angkaUtamaHtml(d.bersih);
+    document.getElementById('arusKasSyarat').textContent =
+      'Masuk ' + formatRupiah(d.totalMasuk) + ' − keluar ' + formatRupiah(d.totalKeluar);
+    document.getElementById('arusKasTotalMasuk').textContent = formatRupiah(d.totalMasuk);
+    document.getElementById('arusKasTotalKeluar').textContent = formatRupiah(d.totalKeluar);
+    document.getElementById('daftarArusKasMasuk').innerHTML = d.masuk.map(barisArusKas).join('');
+    document.getElementById('daftarArusKasKeluar').innerHTML = d.keluar.map(barisArusKas).join('');
+
+    // Kredit bulan ini disebut terang-terangan: itu barang yang sudah keluar tapi
+    // uangnya belum ada, dan justru itu selisih terbesar antara omzet dan kas.
+    const el = document.getElementById('arusKasCatatan');
+    let teks = 'Yang dihitung di sini cuma uang yang benar-benar berpindah. ';
+    if (d.kreditBulanIni > 0) {
+      teks += `Penjualan <b>kredit ${formatRupiah(d.kreditBulanIni)}</b> (${d.jumlahKredit} transaksi) bulan ini <b>belum</b> ikut — barangnya sudah keluar tapi uangnya belum diterima. Nanti masuk sendiri begitu pelanggan melunasi lewat tab Piutang. `;
+    } else {
+      teks += 'Bulan ini tidak ada penjualan kredit, jadi seluruh penjualan sudah jadi uang. ';
+    }
+    teks += `Omzet penuh bulan ini (termasuk kredit) ${formatRupiah(d.omzetPenuh)} — angka itu yang dipakai tab Laba. `;
+    teks += 'Pengeluaran harian kategori Ben Mohsein &amp; Owner tidak ikut di sini karena murni pribadi.';
+    el.innerHTML = teks;
+  }
+
   function tampilkanRingkasan() {
     const hariIniIso = tanggalLokalIso();
     const mulaiMinggu = tanggalMulaiMingguIni();
-    const mulaiBulan = tanggalAwalBulanIni();
 
     const penjualan = ambilPenjualan();
     const batch = ambilSemuaBatch();
 
     // Omzet hari ini & minggu ini — dari transaksi jual (bukan retur), berbasis tanggal transaksi.
+    // Angka BULANAN tidak dihitung di sini lagi: kartu Kas bulan ini sekarang membaca
+    // hitungArusKas() (lihat di bawah), jadi rumus bulanan yang dulu ada di sini dibuang
+    // supaya tidak ada dua sumber angka untuk hal yang sama.
     const omzetHariIni = penjualan.filter(p => p.tanggal === hariIniIso).reduce((a,p) => a + (p.hargaTotal||0), 0);
     const omzetMingguIni = penjualan.filter(p => isoKeTanggal(p.tanggal) >= mulaiMinggu).reduce((a,p) => a + (p.hargaTotal||0), 0);
-    const omzetBulanIni = penjualan.filter(p => isoKeTanggal(p.tanggal) >= mulaiBulan).reduce((a,p) => a + (p.hargaTotal||0), 0);
 
     // Belanja beras = harga beli semua merk + biaya bongkar, per kedatangan mobil (tab Masuk).
     function nilaiBelanjaBatch(k) {
@@ -8142,7 +8302,6 @@
       return totalHargaBeli + (k.biayaBongkar || 0);
     }
     const belanjaMingguIni = batch.filter(k => isoKeTanggal(k.tanggal) >= mulaiMinggu).reduce((a,k) => a + nilaiBelanjaBatch(k), 0);
-    const belanjaBulanIni = batch.filter(k => isoKeTanggal(k.tanggal) >= mulaiBulan).reduce((a,k) => a + nilaiBelanjaBatch(k), 0);
 
     // Margin kotor hari ini = omzet - HPP barang terjual, HANYA transaksi yang HPP-nya
     // benar-benar tercatat (lihat hppTercatat: kosong ATAU Rp0-berduit sama-sama bolong).
@@ -8152,26 +8311,16 @@
     const jumlahTakTerhitungHariIni = penjualanHariIni.length - penjualanHariIniTerhitung.length;
     const marginHariIni = penjualanHariIniTerhitung.reduce((a,p) => a + ((p.hargaTotal||0) - p.hppTotalSaatJual), 0);
 
-    // Kas Bulan Ini: masuk = omzet jual bulan ini. keluar = belanja beras bulan ini + biaya bulanan bulan ini
-    // (gaji, listrik, akses, dst — kalau bulan ini belum diisi di tab Bulanan, dihitung Rp0, bukan ditambal perkiraan).
+    // Kas Bulan Ini — SATU sumber hitungan dengan tab Arus Kas (hitungArusKas), bukan
+    // rumus tersendiri di sini. Sebelum 11 Agu 2026 kartu ini punya rumusnya sendiri dan
+    // isinya sebenarnya OMZET: penjualan kredit ikut dihitung sebagai kas walau uangnya
+    // belum diterima, sementara pelunasan piutang yang benar-benar masuk laci malah tidak
+    // dihitung. Dua tempat dengan dua rumus = dua angka yang tidak pernah bisa dicocokkan,
+    // jadi sekarang keduanya membaca fungsi yang sama.
     const kunciBulanIni = bulanLokalIso(); // format 'YYYY-MM', sama dengan input type="month"
-    const biayaBulananBulanIni = ambilBiayaBulanan().find(b => b.bulan === kunciBulanIni);
-    const totalBiayaBulanan = biayaBulananBulanIni
-      ? (biayaBulananBulanIni.akses||0) + (biayaBulananBulanIni.keamanan||0) + (biayaBulananBulanIni.bensin||0) + (biayaBulananBulanIni.listrik||0) + (biayaBulananBulanIni.internet||0) + (biayaBulananBulanIni.benang||0) + (biayaBulananBulanIni.gaji||0)
-      : 0;
-    // Pengeluaran Harian kategori TOKO bulan ini — otomatis ikut Kas Keluar (konfirmasi My DeV 31 Juli 2026).
-    // Kategori Ben Mohsein & Owner sengaja TIDAK dijumlah di sini — murni pribadi, tidak boleh ikut kas toko.
-    const pengeluaranHarianTokoBulanIni = ambilPengeluaranHarian()
-      .filter(h => h.kategori === 'toko' && isoKeTanggal(h.tanggal) >= mulaiBulan)
-      .reduce((a, h) => a + (h.nominal || 0), 0);
-    // Refund retur = uang keluar nyata (keputusan My DeV 9 Agu 2026) — ikut Kas Keluar
-    // Bulan Ini. selisihHargaTukar ikut juga: positif = toko mengembalikan selisih ke
-    // pelanggan (uang keluar), negatif = pelanggan menambah (mengurangi total secara neto).
-    const refundReturBulanIni = ambilRetur()
-      .filter(r => isoKeTanggal(r.tanggal) >= mulaiBulan)
-      .reduce((a, r) => a + (r.nominalRefund || 0) + (r.selisihHargaTukar || 0), 0);
-    const kasMasukBulanIni = omzetBulanIni;
-    const kasKeluarBulanIni = belanjaBulanIni + totalBiayaBulanan + pengeluaranHarianTokoBulanIni + refundReturBulanIni;
+    const arusKasBulanIni = hitungArusKas(kunciBulanIni);
+    const kasMasukBulanIni = arusKasBulanIni.totalMasuk;
+    const kasKeluarBulanIni = arusKasBulanIni.totalKeluar;
 
     document.getElementById('ringOmzetHariIni').innerHTML = angkaUtamaHtml(omzetHariIni);
     // Kartu pendukung HP cuma selebar ±110 px: nominal rupiah penuh membungkus jadi
@@ -10584,6 +10733,7 @@
   window.filterHarian = filterHarian;
   window.cariGlobal = cariGlobal;
   window.tampilkanHarga = tampilkanHarga;
+  window.tampilkanArusKas = tampilkanArusKas;
   window.simpanHargaLiteran = simpanHargaLiteran;
   window.hapusHargaLiteran = hapusHargaLiteran;
   window.simpanHargaKemasan = simpanHargaKemasan;
