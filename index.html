@@ -9347,6 +9347,15 @@
     if (j) baris.push(['Jumlah', j.nilai + ' ' + j.satuan]);
     baris.push(['Total tercatat', formatRupiah(p.hargaTotal || 0)]);
     if (p.caraBayar) baris.push(['Cara bayar', p.caraBayar]);
+    // Kembalian (kalkulator kasir, 11 Agu 2026): cuma ada kalau kasir sempat pakai layar
+    // KEMBALIAN di kasir.html. Statusnya dipakai owner untuk mengecek belakangan kalau
+    // pembeli nanya "kembaliannya udah dikasih belum" — bukan mengandalkan ingatan.
+    if (p.kembalianNominal != null) {
+      baris.push(['Kembalian', formatRupiah(p.kembalianNominal) + ' dari bayar ' + formatRupiah(p.kembalianUangDiterima || 0) +
+        (p.kembalianDiserahkan
+          ? ' — <b class="ph-hijau">sudah diserahkan</b>' + (p.kembalianJamKonfirmasi ? ' jam ' + p.kembalianJamKonfirmasi : '')
+          : ' — <b class="ph-amber">belum dikonfirmasi diserahkan</b>')]);
+    }
     // Nama pembeli WAJIB ikut terlihat di sini (9 Agu 2026): sejak kasir mewajibkan
     // nama, angka kredit tidak ada gunanya kalau siapa yang berutang cuma bisa dilihat
     // di tab Piutang. Kredit tanpa nama = utang yang tidak bisa ditagih, jadi

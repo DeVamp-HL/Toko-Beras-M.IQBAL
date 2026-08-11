@@ -219,6 +219,14 @@
   }
   #kbPecahan .kb-baris b { font-size: 1.15rem; color: var(--tombol); font-variant-numeric: tabular-nums; }
   #kbPecahan .kb-judul { font-size: .8rem; letter-spacing: 1.2px; color: #9aa3ab; font-weight: 700; margin-bottom: 6px; }
+  /* Konfirmasi kembalian sudah diserahkan (11 Agu 2026): owner sering lupa apakah
+     kembalian sudah benar-benar dikasih ke pembeli. Ketukan ini dicatat ke transaksi
+     (kembalianDiserahkan + jam), supaya bisa dicek lagi lewat Riwayat kalau pembeli
+     nanya belakangan — bukan cuma mengandalkan ingatan. */
+  #btnKonfirmasiKembalian {
+    min-height: 50px; border-radius: 10px; border: 1px solid #2f6b43;
+    background: #234a30; color: #9fe0ae; font-family: inherit; font-size: 1rem; font-weight: 800;
+  }
   #lcd.lcd-tolak #lcdAngka { color: #b23a2a !important; }
   #lcd.lcd-tolak { animation: goyangTolak .3s linear 2; }
   @keyframes goyangTolak { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
@@ -370,7 +378,8 @@
     <div id="kbPecahan"></div>
   </div>
 
-  <button type="button" class="redup" style="margin-top:14px; width:100%; max-width:340px;" onclick="tutupLayarKembalian()">Tutup</button>
+  <button type="button" id="btnKonfirmasiKembalian" style="display:none; margin-top:14px; width:100%; max-width:340px;" onclick="konfirmasiSudahDiserahkan()">✓ Sudah saya kasih ke pembeli</button>
+  <button type="button" class="redup" style="margin-top:8px; width:100%; max-width:340px;" onclick="tutupLayarKembalian()">Tutup</button>
 </div>
 
 <div id="layarSukses" class="lapisan"><div class="cek">TERSIMPAN</div><div class="nom" id="teksSukses"></div></div>
@@ -1082,6 +1091,7 @@ function mulaiBaru() {
   // Transaksi berikutnya orang lain: kembalian transaksi lama tidak boleh tertinggal
   // di layar dan salah dibaca sebagai kembalian pembeli berikutnya.
   if ($('layarKembalian')) tutupLayarKembalian();
+  kembalianInfo = null;
 }
 function namaPelangganTerisi() {
   var el = $('namaPelangganInput');
@@ -1109,6 +1119,12 @@ function pilihBayar(c) {
 // angka itu jadi lembaran uang di tangan, dan justru DI SITU salahnya terjadi. Maka yang
 // ditonjolkan layar ini adalah LEMBAR MANA yang harus diambil — tinggal ikuti daftarnya,
 // tanpa berhitung sama sekali.
+// kembalianInfo: { total, uangDiterima, nominal, diserahkan, jam } dari kalkulasi kembalian
+// TERAKHIR yang masih punya kembalian (>0). Diikutkan ke transaksi saat JUAL ditekan,
+// TAPI hanya kalau totalnya masih sama persis dengan struk saat itu — kalau struk berubah
+// (item ditambah/dihapus) sesudah kembalian dihitung, dianggap basi dan tidak diikutkan
+// (lihat simpanTransaksi()). Direset tiap transaksi baru mulai (mulaiBaru()).
+var kembalianInfo = null;
 var PECAHAN = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100];
 function labelPecahan(n) { return n >= 1000 ? angkaTitik(n / 1000) + ' ribu' : angkaTitik(n); }
 // Pecahan rupiah bersifat kanonik (tiap pecahan kelipatan bulat pecahan di bawahnya),
@@ -1127,6 +1143,7 @@ function bukaLayarKembalian() {
   $('kbTotal').textContent = rupiah(total);
   $('kbUangDiterima').value = '';
   $('kbHasil').style.display = 'none';
+  $('btnKonfirmasiKembalian').style.display = 'none';
   // Tombol cepat dibangun dari total transaksi ini, bukan daftar tetap — supaya yang
   // muncul selalu masuk akal (uang pas + pecahan yang benar-benar cukup membayar).
   var calon = [total];
@@ -1149,7 +1166,7 @@ function hitungKembalian() {
   var total = totalStruk();
   var uang = parseFloat($('kbUangDiterima').value) || 0;
   var hasil = $('kbHasil');
-  if (uang <= 0) { hasil.style.display = 'none'; return; }
+  if (uang <= 0) { hasil.style.display = 'none'; $('btnKonfirmasiKembalian').style.display = 'none'; kembalianInfo = null; return; }
   hasil.style.display = 'block';
   var kembali = Math.round((uang - total) * 100) / 100;
   var elNilai = $('kbNilai');
@@ -1161,6 +1178,8 @@ function hitungKembalian() {
     elNilai.classList.add('kurang');
     $('kbEja').textContent = 'Masih kurang segini dari ' + rupiah(total);
     $('kbPecahan').innerHTML = '';
+    $('btnKonfirmasiKembalian').style.display = 'none';
+    kembalianInfo = null;
     return;
   }
   $('kbLabel').textContent = 'KEMBALIAN';
@@ -1169,6 +1188,8 @@ function hitungKembalian() {
   $('kbEja').textContent = rupiah(uang) + ' − ' + rupiah(total);
   if (kembali === 0) {
     $('kbPecahan').innerHTML = '<div class="kb-judul">UANG PAS — TIDAK ADA KEMBALIAN</div>';
+    $('btnKonfirmasiKembalian').style.display = 'none';
+    kembalianInfo = null;
     return;
   }
   var u = uraikanPecahan(kembali);
@@ -1179,6 +1200,22 @@ function hitungKembalian() {
   // diam-diam — pembulatan sepihak pada uang orang lain bukan urusan mesin.
   if (u.sisa > 0) baris += '<div class="kb-baris"><span>Sisa ' + rupiah(u.sisa) + '</span><b>tak ada pecahannya</b></div>';
   $('kbPecahan').innerHTML = '<div class="kb-judul">AMBIL LEMBAR INI</div>' + baris;
+  // Angka kembalian berubah (uang diterima diketik ulang) = konfirmasi sebelumnya
+  // (kalau ada) sudah tidak mewakili angka yang tampil sekarang — mulai bersih lagi,
+  // owner harus menekan konfirmasi ulang untuk angka yang baru ini.
+  kembalianInfo = { total: total, uangDiterima: uang, nominal: kembali, diserahkan: false, jam: null };
+  $('btnKonfirmasiKembalian').style.display = 'block';
+}
+// Ditekan SESUDAH kembalian benar-benar diserahkan ke tangan pembeli — bukan sebelum.
+// Statusnya menumpang ke transaksi ini saat JUAL ditekan (lihat simpanTransaksi()),
+// supaya kalau pembeli belakangan nanya "kembaliannya udah dikasih belum", owner tinggal
+// buka transaksinya di Riwayat (index.html) dan lihat catatannya — tidak mengandalkan ingatan.
+function konfirmasiSudahDiserahkan() {
+  if (kembalianInfo) {
+    kembalianInfo.diserahkan = true;
+    kembalianInfo.jam = new Date().toTimeString().slice(0, 5);
+  }
+  tutupLayarKembalian();
 }
 
 // ---------- UTANG PELANGGAN ----------
@@ -1322,6 +1359,11 @@ function simpanTransaksi() {
   var jam = new Date().toTimeString().slice(0, 5);
   var op = operatorAktif();
   var totalNota = 0;
+  // kembalianInfo cuma ikut kalau totalnya masih persis sama dengan struk SEKARANG —
+  // kalau struk berubah (tambah/hapus barang) sesudah kembalian dihitung, angka lama
+  // itu sudah tidak mewakili transaksi ini lagi, jadi tidak diikutkan sama sekali
+  // (lebih baik tidak ada catatan daripada catatan yang salah).
+  var kbValid = kembalianInfo && kembalianInfo.total === totalStruk();
 
   strukItems.forEach(function (it) {
     var trx = null;
@@ -1367,6 +1409,12 @@ function simpanTransaksi() {
     trx.operator = op;
     trx.grupNota = grupNota;
     trx.viaKalkulator = true;
+    if (kbValid) {
+      trx.kembalianNominal = kembalianInfo.nominal;
+      trx.kembalianUangDiterima = kembalianInfo.uangDiterima;
+      trx.kembalianDiserahkan = kembalianInfo.diserahkan;
+      if (kembalianInfo.diserahkan) trx.kembalianJamKonfirmasi = kembalianInfo.jam;
+    }
     totalNota += trx.hargaTotal;
     tambahAntrean('penjualan', trx);
     if (trx.jenis === 'literan' && trx.kemasanLiteran && trx.jumlahKemasanLiteranDipakai > 0) {
@@ -1401,6 +1449,7 @@ window.pilihUtang = pilihUtang; window.isiLunasUtang = isiLunasUtang;
 window.simpanBayarUtang = simpanBayarUtang;
 window.bukaLayarKembalian = bukaLayarKembalian; window.tutupLayarKembalian = tutupLayarKembalian;
 window.hitungKembalian = hitungKembalian; window.isiUangCepat = isiUangCepat;
+window.konfirmasiSudahDiserahkan = konfirmasiSudahDiserahkan;
 
 muatRingkasanCache();
 gambarPanelProduk('panelProduk', 'tekanProduk');

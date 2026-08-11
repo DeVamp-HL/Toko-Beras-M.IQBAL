@@ -22,7 +22,10 @@
 // v13 (10 Agustus 2026): karung bekas dihitung 1 lembar tiap 65 liter, bukan 1 lembar
 // berapa pun liternya.
 // v14 (11 Agustus 2026): opsi karung 25 kg dicabut dari Jual Karung Utuh — cuma 50 kg.
-const VERSI = 'kasir-v14';
+// v15 (11 Agustus 2026): layar KEMBALIAN dapat tombol konfirmasi "Sudah saya kasih ke
+// pembeli" — statusnya ikut tersimpan ke transaksi supaya bisa dicek lagi kalau pembeli
+// belakangan nanya soal kembaliannya.
+const VERSI = 'kasir-v15';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 
