@@ -5637,6 +5637,9 @@
     const adaBulanIni = !!dataBulanIni;
     const elTgl = document.getElementById('tanggalBayarBulanan');
     if (elTgl) elTgl.value = (dataBulanIni && dataBulanIni.tanggalBayar) || '';
+    // Nilai lamanya ikut dimunculkan supaya bulan yang sudah terisi bisa DISUNTING,
+    // bukan tanpa sadar ditimpa nol. Lihat catatan di isiFormBulananDari().
+    isiFormBulananDari(dataBulanIni || null);
     const kotak = document.getElementById('bulananKosong');
     if (kotak) {
       kotak.style.display = adaBulanIni ? 'none' : 'block';
@@ -5657,24 +5660,39 @@
     perbaruiTotalBulanan();
   }
 
+  const PETA_ISIAN_BULANAN = {
+    biayaListrikBulanan: 'listrik', biayaAksesBulanan: 'akses', biayaKeamananBulanan: 'keamanan',
+    biayaBensinBulanan: 'bensin', biayaInternetBulanan: 'internet', biayaBenangBulanan: 'benang'
+  };
+  // Isi seluruh formulir dari satu dokumen biaya bulanan (null = kosongkan semua).
+  // WAJIB dipanggil tiap kali bulan yang dipilih berganti. Sebelum 12 Agu 2026 tidak ada
+  // pengisian ulang ini, dan akibatnya berbahaya: memilih bulan yang SUDAH terisi
+  // menampilkan formulir kosong, lalu simpanBiayaBulanan() menimpa dokumen lama dengan
+  // nol-nol dari isian kosong itu — tanpa peringatan apa pun. Pemilik yang cuma ingin
+  // menambah tanggal bayar bisa kehilangan seluruh biaya sebulan.
+  function isiFormBulananDari(d) {
+    Object.keys(PETA_ISIAN_BULANAN).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = d ? (d[PETA_ISIAN_BULANAN[id]] || '') : '';
+    });
+    NAMA_PEGAWAI_GAJI.forEach(nama => {
+      const el = document.getElementById(ID_FIELD_GAJI_PEGAWAI[nama]);
+      if (!el) return;
+      const r = d && (d.rincianGaji || []).find(x => x.nama === nama);
+      el.value = r ? (r.hari || '') : '';
+    });
+    hitungPerkiraanGaji();
+    perbaruiTotalBulanan();
+  }
+
   function salinBiayaBulanLalu() {
     const iso = (document.getElementById('bulanBiaya') || {}).value || '';
     const lalu = ambilBiayaBulanan().find(b => b.bulan === bulanSebelum(iso));
     if (!lalu) return;
-    const petaIsian = {
-      biayaListrikBulanan: 'listrik', biayaAksesBulanan: 'akses', biayaKeamananBulanan: 'keamanan',
-      biayaBensinBulanan: 'bensin', biayaInternetBulanan: 'internet', biayaBenangBulanan: 'benang'
-    };
-    Object.keys(petaIsian).forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = lalu[petaIsian[id]] || '';
-    });
-    (lalu.rincianGaji || []).forEach(r => {
-      const el = document.getElementById(ID_FIELD_GAJI_PEGAWAI[r.nama]);
-      if (el) el.value = r.hari || '';
-    });
-    hitungPerkiraanGaji();
-    perbaruiTotalBulanan();
+    isiFormBulananDari(lalu);
+    // tanggalBayar SENGAJA tidak ikut disalin — itu tanggal bulan lalu, bukan bulan ini.
+    const elTgl = document.getElementById('tanggalBayarBulanan');
+    if (elTgl) elTgl.value = '';
   }
 
   async function simpanBiayaBulanan() {
