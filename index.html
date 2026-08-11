@@ -2900,12 +2900,7 @@
 
     <!-- Sub-form: Karung utuh -->
     <div class="kartu" id="formJualKarung" style="display:none;">
-      <div class="panel-kepala"><h2>Jual Karung Utuh — pilih ukuran & merk</h2></div>
-      <label>Ukuran karung</label>
-      <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr;">
-        <button type="button" id="beratKarung-50" class="pilih" onclick="pilihBeratKarungJual(50)">Karung 50 kg</button>
-        <button type="button" id="beratKarung-25" onclick="pilihBeratKarungJual(25)">Karung 25 kg</button>
-      </div>
+      <div class="panel-kepala"><h2>Jual Karung Utuh — pilih merk</h2></div>
       <input type="hidden" id="jualKarungBerat" value="50">
       <div class="grid-tombol-pilih" id="pilihKarungTombol"></div>
       <input type="hidden" id="jualKarungMerk">
@@ -4861,10 +4856,9 @@
         const s = stokKarung[merk];
         const hL = hargaLiteran.find(x => x.merk === merk);
         return { merk, sisaKg: s.sisaKg || 0, hppPerKg: s.hppTerakhirPerKg || 0,
-          beratKarung: 50, karung50: merkPunyaKarungBerat(merk, 50), karung25: merkPunyaKarungBerat(merk, 25),
-          // Harga siap pakai per ukuran karung — Katalog Kemasan menang atas harga/kg (aturan 4 Agu 2026).
+          beratKarung: 50, karung50: merkPunyaKarungBerat(merk, 50),
+          // Harga siap pakai per karung 50kg — Katalog Kemasan menang atas harga/kg (aturan 4 Agu 2026).
           hargaKarung50: (hargaKarungUtuh(merk, 50) || {}).perUnit || 0,
-          hargaKarung25: (hargaKarungUtuh(merk, 25) || {}).perUnit || 0,
           hargaPerKg: cariHargaKarungPerKg(merk) || 0,
           hargaPerLiter: hL ? hL.hargaPerLiter : 0,
           rasio: RASIO_KONVERSI[merk] || RASIO_DEFAULT };
@@ -6092,8 +6086,9 @@
 
   // Stok karung sumber per merk = total kg masuk (Tahap 1) - kg terpakai (jual karung + repacking dadakan + produksi kemasan)
   // + kg masuk balik dari retur kondisi UTUH (kemasan/karung) - kg keluar untuk retur yang jadi barang pengganti.
-  // Karung utuh dijual per ukuran (revisi My DeV 4 Agu 2026 malam: 50 kg DAN 25 kg).
-  // Merk hanya muncul di ukuran yang memang pernah tercatat di batch/stok awal.
+  // Karung utuh dijual 50 kg saja (opsi 25 kg dicabut My DeV 11 Agu 2026 — tidak
+  // pernah dipakai, cuma bikin layar Jual berantakan).
+  // Merk hanya muncul kalau memang pernah tercatat sebagai karung 50kg di batch/stok awal.
   function merkPunyaKarungBerat(merk, berat) {
     const dariBeli = ambilSemuaBatch().some(k => (k.merkList || []).some(m => m.merk === merk && m.satuan === 'karung' && m.beratKarung === berat));
     if (dariBeli) return true;
@@ -6820,10 +6815,9 @@
       kunci: m, label: m, subLabel: `sisa ${stokKarung[m].sisaKg} kg`
     }));
     bikinTombolPilih('pilihRepackingTombol', 'jualRepackingMerk', opsiMerk, 'Belum ada stok karung.', perbaruiStokJual);
-    // Karung Utuh: merk disaring per ukuran karung yang dipilih (50 atau 25 kg).
-    const beratJualKarung = parseFloat(document.getElementById('jualKarungBerat').value) || 50;
-    const opsiKarungBerat = opsiMerk.filter(o => merkPunyaKarungBerat(o.kunci, beratJualKarung));
-    bikinTombolPilih('pilihKarungTombol', 'jualKarungMerk', opsiKarungBerat, `Belum ada stok karung ${beratJualKarung} kg.`, perbaruiStokJual);
+    // Karung Utuh: cuma merk yang punya karung 50kg tercatat (opsi 25kg dicabut 11 Agu 2026).
+    const opsiKarungBerat = opsiMerk.filter(o => merkPunyaKarungBerat(o.kunci, 50));
+    bikinTombolPilih('pilihKarungTombol', 'jualKarungMerk', opsiKarungBerat, 'Belum ada stok karung 50 kg.', perbaruiStokJual);
     // Tab LITERAN: merk IR64* ditampilkan sebagai HARGA per liter (pelanggan beli
     // berdasarkan harga, bukan merk — aturan My DeV 3 Agu 2026). Dokumen penjualan
     // tetap menyimpan merk asli (kunci tidak berubah), hanya tulisan tombol yang beda.
@@ -6836,15 +6830,6 @@
     if (!/^IR64/i.test(merk)) return merk;
     const h = ambilHargaLiteran().find(x => x.merk === merk);
     return h && h.hargaPerLiter > 0 ? 'Rp' + Math.round(h.hargaPerLiter).toLocaleString('id-ID') : merk;
-  }
-
-  function pilihBeratKarungJual(berat) {
-    document.getElementById('jualKarungBerat').value = berat;
-    document.getElementById('beratKarung-50').classList.toggle('pilih', berat === 50);
-    document.getElementById('beratKarung-25').classList.toggle('pilih', berat === 25);
-    document.getElementById('jualKarungMerk').value = '';
-    isiDropdownJual();
-    perbaruiStokJual();
   }
 
   function perbaruiStokJual() {
@@ -10590,7 +10575,6 @@
   window.filterHarian = filterHarian;
   window.cariGlobal = cariGlobal;
   window.tampilkanHarga = tampilkanHarga;
-  window.pilihBeratKarungJual = pilihBeratKarungJual;
   window.simpanHargaLiteran = simpanHargaLiteran;
   window.hapusHargaLiteran = hapusHargaLiteran;
   window.simpanHargaKemasan = simpanHargaKemasan;

@@ -21,7 +21,8 @@
 // v12 (9 Agustus 2026): tuts harga cepat di kasir darurat — sekali ketuk jadi satu barang.
 // v13 (10 Agustus 2026): karung bekas dihitung 1 lembar tiap 65 liter, bukan 1 lembar
 // berapa pun liternya.
-const VERSI = 'kasir-v13';
+// v14 (11 Agustus 2026): opsi karung 25 kg dicabut dari Jual Karung Utuh — cuma 50 kg.
+const VERSI = 'kasir-v14';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

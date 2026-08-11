@@ -586,17 +586,14 @@ function bangunDaftarProduk() {
   });
   (ringkasan.merkKarung || []).forEach(function (m) {
     if (!m || !m.merk) return;
-    // Karung utuh per ukuran (revisi 4 Agu 2026 malam): tuts terpisah 50 kg & 25 kg,
-    // hanya untuk ukuran yang memang tercatat ada di batch/stok awal merk itu.
-    [[50, m.karung50, m.hargaKarung50], [25, m.karung25, m.hargaKarung25]].forEach(function (u) {
-      var berat = u[0];
-      if (!u[1]) return;
-      // Harga per karung sudah dihitung sistem utama (Katalog Kemasan menang atas harga/kg).
-      // Cadangan utk ringkasan lama yang belum bawa hargaKarung50/25: harga/kg × berat.
-      var hargaKrg = u[2] || ((m.hargaPerKg || 0) * berat);
-      daftarProduk.push({ tipe: 'karung', label: 'KRG' + berat + ' ' + m.merk, sub: (hargaKrg ? angkaTitik(hargaKrg) + '/krg' : 'harga?'),
-        merk: m.merk, beratKarung: berat, hargaSatuan: hargaKrg, step: 1, hppPerKg: m.hppPerKg || 0, sisa: m.sisaKg || 0 });
-    });
+    // Karung utuh 50 kg saja (opsi 25 kg dicabut My DeV 11 Agu 2026 — tidak pernah
+    // dipakai), hanya untuk merk yang memang tercatat punya karung 50kg di batch/stok awal.
+    if (!m.karung50) return;
+    // Harga per karung sudah dihitung sistem utama (Katalog Kemasan menang atas harga/kg).
+    // Cadangan utk ringkasan lama yang belum bawa hargaKarung50: harga/kg × 50.
+    var hargaKrg = m.hargaKarung50 || ((m.hargaPerKg || 0) * 50);
+    daftarProduk.push({ tipe: 'karung', label: 'KRG50 ' + m.merk, sub: (hargaKrg ? angkaTitik(hargaKrg) + '/krg' : 'harga?'),
+      merk: m.merk, beratKarung: 50, hargaSatuan: hargaKrg, step: 1, hppPerKg: m.hppPerKg || 0, sisa: m.sisaKg || 0 });
   });
 }
 function gambarPanelProduk(wadahId, aksiNama) {
