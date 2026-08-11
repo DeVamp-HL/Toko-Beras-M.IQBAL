@@ -3683,15 +3683,15 @@
       <div class="panel-kepala"><h2>Gaji <span class="keterangan">Rp86.500 / hari-orang</span></h2></div>
       <!-- Diisi dalam HARI, bukan rupiah: tarifnya sudah ada di sistem, jadi pemakai
            menghitung hari (yang dia tahu) bukan rupiah (yang harus dikalikan). Prinsip 2. -->
-      <div class="baris-isian"><span class="bi-nama">Ben Mohsein</span><span class="bi-isi"><input type="number" id="gajiHariBen" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span></div>
-      <div class="baris-isian"><span class="bi-nama">Hasan</span><span class="bi-isi"><input type="number" id="gajiHariHasan" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span></div>
-      <div class="baris-isian"><span class="bi-nama">Gono</span><span class="bi-isi"><input type="number" id="gajiHariGono" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span></div>
+      <div class="baris-isian"><span class="bi-nama">Ben Mohsein</span><span class="bi-isi"><input type="number" id="gajiHariBen" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiBen" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Ben Mohsein"><u id="tglGajiBenBaca"></u></span></div>
+      <div class="baris-isian"><span class="bi-nama">Hasan</span><span class="bi-isi"><input type="number" id="gajiHariHasan" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiHasan" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Hasan"><u id="tglGajiHasanBaca"></u></span></div>
+      <div class="baris-isian"><span class="bi-nama">Gono</span><span class="bi-isi"><input type="number" id="gajiHariGono" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiGono" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Gono"><u id="tglGajiGonoBaca"></u></span></div>
       <div class="baris-hasil" id="gajiPerkiraanInfo"></div>
     </div>
 
     <div class="kartu">
       <div class="panel-kepala"><h2>Biaya tetap <span class="keterangan">rata-rata sebulan</span></h2></div>
-      <div class="baris-isian"><span class="bi-nama">Gaji<small>dihitung dari hari di atas</small></span><span class="bi-isi bi-terkunci" id="bulananGajiBayang">Rp0</span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaGaji" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Gaji"><u id="tglBiayaGajiBaca"></u></span></div>
+      <div class="baris-isian"><span class="bi-nama">Gaji<small>tanggal bayarnya per pegawai, di kartu atas</small></span><span class="bi-isi bi-terkunci" id="bulananGajiBayang">Rp0</span></div>
       <div class="baris-isian"><span class="bi-nama">Listrik</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaListrikBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaListrik" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Listrik"><u id="tglBiayaListrikBaca"></u></span></div>
       <div class="baris-isian"><span class="bi-nama">Akses / gapura<small>dibayar sekali sebulan</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaAksesBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaAkses" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Akses"><u id="tglBiayaAksesBaca"></u></span></div>
       <div class="baris-isian"><span class="bi-nama">Keamanan lingkungan</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaKeamananBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaKeamanan" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Keamanan"><u id="tglBiayaKeamananBaca"></u></span></div>
@@ -5707,6 +5707,13 @@
       const el = document.getElementById(pos.idTgl);
       if (el) el.value = punyaPerPos ? (peta[pos.kunci] || '') : ((d && d.tanggalBayar) || '');
     });
+    // Tanggal gaji per pegawai; dokumen lama jatuh balik ke tanggal gaji gabungan.
+    const petaGaji = (d && d.tanggalBayarGaji) || null;
+    const cadanganGaji = (punyaPerPos ? (peta.gaji || '') : '') || (d && d.tanggalBayar) || '';
+    NAMA_PEGAWAI_GAJI.forEach(nama => {
+      const el = document.getElementById(ID_TGL_GAJI_PEGAWAI[nama]);
+      if (el) el.value = petaGaji ? (petaGaji[nama] || '') : (d ? cadanganGaji : '');
+    });
     ejaTanggalBulanan();
     hitungPerkiraanGaji();
     perbaruiTotalBulanan();
@@ -5714,9 +5721,11 @@
 
   // Mengeja tanggal tiap pos dalam bahasa Indonesia di sebelah kolomnya.
   function ejaTanggalBulanan() {
-    POS_BIAYA_BULANAN.forEach(pos => {
-      const el = document.getElementById(pos.idTgl);
-      const baca = document.getElementById(pos.idTgl + 'Baca');
+    const semuaId = POS_BIAYA_BULANAN.map(p => p.idTgl)
+      .concat(NAMA_PEGAWAI_GAJI.map(n => ID_TGL_GAJI_PEGAWAI[n]));
+    semuaId.forEach(id => {
+      const el = document.getElementById(id);
+      const baca = document.getElementById(id + 'Baca');
       if (!el || !baca) return;
       baca.textContent = el.value ? formatTanggal(el.value) : '';
     });
@@ -5732,6 +5741,11 @@
       const el = document.getElementById(pos.idTgl);
       if (el) el.value = '';
     });
+    NAMA_PEGAWAI_GAJI.forEach(nama => {
+      const el = document.getElementById(ID_TGL_GAJI_PEGAWAI[nama]);
+      if (el) el.value = '';
+    });
+    ejaTanggalBulanan();
   }
 
   async function simpanBiayaBulanan() {
@@ -5755,7 +5769,12 @@
         const el = document.getElementById(pos.idTgl);
         tanggalBayarPos[pos.kunci] = (el && el.value) || '';
       });
-      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, tanggalBayarPos, akses, keamanan, bensin, listrik, internet, benang, gajiHariOrang, gaji, rincianGaji });
+      const tanggalBayarGaji = {};
+      NAMA_PEGAWAI_GAJI.forEach(nama => {
+        const el = document.getElementById(ID_TGL_GAJI_PEGAWAI[nama]);
+        tanggalBayarGaji[nama] = (el && el.value) || '';
+      });
+      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, tanggalBayarPos, tanggalBayarGaji, akses, keamanan, bensin, listrik, internet, benang, gajiHariOrang, gaji, rincianGaji });
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -5786,6 +5805,11 @@
   }
 
   function tampilkanBulanan() {
+    // Kolom bulan pernah tampil KOSONG saat tab dibuka (terlihat di layar pemilik
+    // 12 Agu 2026): tanpa bulan terpilih, seluruh isian ikut kosong dan mudah dikira
+    // datanya hilang. Diisi bulan berjalan sebagai titik berangkat.
+    const elBulan = document.getElementById('bulanBiaya');
+    if (elBulan && !elBulan.value) { elBulan.value = bulanLokalIso(); perbaruiKeadaanBulanan(); }
     const semua = ambilBiayaBulanan();
     const kontainer = document.getElementById('daftarBulanan');
     if (semua.length === 0) {
@@ -8388,8 +8412,11 @@
   // Juli baru dibayar 3 Agustus) masuk arus kas AGUSTUS, bukan Juli. Dokumen lama yang
   // belum punya tanggalBayar jatuh balik ke bulan tertagihnya — perilaku lama, supaya
   // angka bulan-bulan yang sudah pernah dibaca pemilik tidak berubah sendiri.
+  // Gaji SENGAJA tidak di sini: tiap pegawai punya hari kerja dan tanggal bayar sendiri
+  // (mayoritas tidak penuh sebulan — ada cuti/libur, dikonfirmasi pemilik 12 Agu 2026).
+  // Dipecah per orang di bayaranBiayaBulanan().
+  const ID_TGL_GAJI_PEGAWAI = { 'Ben Mohsein': 'tglGajiBen', 'Hasan': 'tglGajiHasan', 'Gono': 'tglGajiGono' };
   const POS_BIAYA_BULANAN = [
-    { kunci: 'gaji', label: 'Gaji pegawai', idTgl: 'tglBiayaGaji' },
     { kunci: 'listrik', label: 'Listrik', idTgl: 'tglBiayaListrik' },
     { kunci: 'akses', label: 'Akses / gapura', idTgl: 'tglBiayaAkses' },
     { kunci: 'keamanan', label: 'Keamanan lingkungan', idTgl: 'tglBiayaKeamanan' },
@@ -8417,6 +8444,18 @@
         if (!(nominal > 0)) return;
         out.push({ bulan: b.bulan, pos: pos.kunci, label: pos.label, nominal,
           tanggal: punyaPerPos ? (peta[pos.kunci] || '') : (b.tanggalBayar || '') });
+      });
+      // Gaji dipecah per pegawai. Yang harinya nol tidak menghasilkan pembayaran apa pun.
+      // Dokumen lama: tanggalBayarGaji belum ada, jadi jatuh balik ke tanggal gaji gabungan
+      // (tanggalBayarPos.gaji), lalu ke tanggalBayar tunggal — supaya catatan lama tidak
+      // tiba-tiba jadi "belum dibayar" cuma karena bentuk datanya berubah.
+      const petaGaji = b.tanggalBayarGaji || null;
+      const cadanganGaji = (punyaPerPos ? (peta.gaji || '') : '') || b.tanggalBayar || '';
+      (b.rincianGaji || []).forEach(r => {
+        const nominal = r.gaji || 0;
+        if (!(nominal > 0)) return;
+        out.push({ bulan: b.bulan, pos: 'gaji:' + r.nama, label: 'Gaji ' + r.nama, nominal,
+          tanggal: petaGaji ? (petaGaji[r.nama] || '') : cadanganGaji });
       });
     });
     return out;
