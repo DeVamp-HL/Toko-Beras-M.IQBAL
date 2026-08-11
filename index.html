@@ -1368,8 +1368,8 @@
       --gerak-panel: 120ms; --gerak-panel-keluar: 120ms;
       --gerak-sentuh-tekan: 120ms; --gerak-sentuh-lepas: 120ms;
     }
-    .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi,
-    #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi,
+    .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp,
+    #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi, #overlayLembarIsiHpp,
     #spandukDraf, #bilahUrungkan, .baris-merk, .baris-sumber-produksi, .baris-stok-awal {
       animation-duration: 120ms !important; transition-duration: 120ms !important;
     }
@@ -1683,12 +1683,12 @@
     font-family: inherit; font-size: 13px; font-weight: 700;
   }
   /* Lembar Piutang — pola & ukuran sama persis dengan #lembarHarga di atas. */
-  #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi {
+  #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi, #overlayLembarIsiHpp {
     position: fixed; inset: 0; z-index: 42; background: #000; opacity: 0; pointer-events: none;
     transition: opacity var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon, body.lembar-koreksi-produksi-terbuka #overlayLembarKoreksiProduksi { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi {
+  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon, body.lembar-koreksi-produksi-terbuka #overlayLembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #overlayLembarIsiHpp { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 43;
     max-width: 680px; margin: 0 auto;
     background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
@@ -1698,11 +1698,11 @@
     transform: translateY(105%);
     transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang, body.lembar-koreksi-produksi-terbuka #lembarKoreksiProduksi { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan, #lembarKoreksiProduksi .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
-  #lembarPiutang h3, #lembarKasbon h3, #lembarKoreksiProduksi h3 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
-  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub, #lembarKoreksiProduksi .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
-  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup, #lembarKoreksiProduksi .lmk-tutup {
+  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang, body.lembar-koreksi-produksi-terbuka #lembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #lembarIsiHpp { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan, #lembarKoreksiProduksi .lm-pegangan, #lembarIsiHpp .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
+  #lembarPiutang h3, #lembarKasbon h3, #lembarKoreksiProduksi h3, #lembarIsiHpp h3 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
+  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub, #lembarKoreksiProduksi .lk-sub, #lembarIsiHpp .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
+  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup, #lembarKoreksiProduksi .lmk-tutup, #lembarIsiHpp .lmk-tutup {
     width: 100%; min-height: 48px; margin-top: 12px; border-radius: 12px;
     background: var(--abu); border: 1px solid var(--garis); color: var(--redup);
     font-family: inherit; font-size: 13px; font-weight: 700;
@@ -2673,6 +2673,30 @@
   <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanKoreksiHpp()">Simpan koreksi</button>
 
   <button type="button" class="lmk-tutup" onclick="tutupLembarKoreksiProduksi()">Tutup</button>
+</div>
+
+<!-- LEMBAR ISI HPP TRANSAKSI LAMA: penjualan yang tersimpan sebelum HPP-nya sempat
+     tercatat (atau stok/produknya masih ber-HPP Rp0 saat itu) diisi di sini, memakai
+     HPP stok SEKARANG sebagai saran — bukan dihapus/ditimpa, dokumen koreksi baru yang
+     dibuat (pola sama dengan Koreksi HPP produksi & Koreksi angka transaksi). -->
+<div id="overlayLembarIsiHpp" onclick="tutupLembarIsiHpp()"></div>
+<div id="lembarIsiHpp" role="dialog" aria-modal="true" aria-labelledby="lembarIsiHppJudul">
+  <div class="lm-pegangan"></div>
+  <h3 id="lembarIsiHppJudul">Isi HPP</h3>
+  <p class="lk-sub" id="lembarIsiHppSub">—</p>
+
+  <div class="piutang-sisa">
+    <span>Omzet transaksi ini</span>
+    <b id="isiHppOmzet">Rp0</b>
+  </div>
+
+  <label style="margin-top:12px;">HPP total transaksi ini (Rp) <span class="keterangan">— saran dari stok sekarang, boleh diubah</span></label>
+  <input type="number" id="isiHppBaru" placeholder="0" inputmode="numeric">
+  <label style="margin-top:12px;">Alasan</label>
+  <input type="text" id="isiHppAlasan" placeholder="Contoh: dihitung ulang setelah HPP produksinya dikoreksi">
+  <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanIsiHpp()">Simpan HPP</button>
+
+  <button type="button" class="lmk-tutup" onclick="tutupLembarIsiHpp()">Tutup</button>
 </div>
 
 <!-- LEMBAR PILIH MERK (Lembar 1 Penyempurnaan): nama merk dipilih, tidak diketik.
@@ -8354,12 +8378,80 @@
     kartuTT.style.display = 'block';
     document.getElementById('labaJudulTakTerhitung').textContent = tanpaHpp.length + ' transaksi tidak dihitung';
     document.getElementById('labaKetTakTerhitung').textContent =
-      `Tersimpan sebelum HPP mulai dicatat, atau HPP-nya terekam Rp0 karena stok/batch produknya belum ada di sistem saat transaksi. Omzetnya ${formatRupiah(omzetTT)} — sengaja tidak dikira-kira, supaya margin di atas tetap angka yang benar.`;
+      `Tersimpan sebelum HPP mulai dicatat, atau HPP-nya terekam Rp0 karena stok/batch produknya belum ada di sistem saat transaksi. Omzetnya ${formatRupiah(omzetTT)} — sengaja tidak dikira-kira dulu, tapi tidak dikunci selamanya: ketuk salah satu buat isi HPP-nya (dihitung dari stok sekarang), baru ikut masuk margin di atas.`;
     document.getElementById('daftarLabaTakTerhitung').innerHTML =
-      tanpaHpp.slice().sort((a, b) => (b.id || 0) - (a.id || 0)).map(p => `<div class="baris-44">
+      tanpaHpp.slice().sort((a, b) => (b.id || 0) - (a.id || 0)).map(p => `<button type="button" class="baris-44 baris-ketuk" onclick="bukaIsiHpp(${p.id})">
         <span class="nama"><i class="trx-nama">${escapeHtml(namaSingkatTrx(p))}</i><small>${escapeHtml(formatTanggal(p.tanggal))} · omzet ${formatRupiah(p.hargaTotal || 0)}</small></span>
         <span class="lencana-amber">HPP tidak tercatat</span>
-      </div>`).join('');
+      </button>`).join('');
+  }
+
+  // Saran HPP total transaksi ini KALAU dihitung dari stok SEKARANG (bukan stok saat
+  // transaksi dulu — makanya cuma "saran", pemilik boleh ubah). Cabang jenisnya sengaja
+  // sama persis dengan simpanPenjualan, supaya angka yang disarankan konsisten dengan
+  // cara sistem menghitung HPP transaksi baru.
+  function hitungHppSaranSaatIni(p) {
+    if (p.jenis === 'kemasan') {
+      const kunci = p.namaProduk + '|' + p.ukuranKemasan;
+      const s = hitungStokKemasan()[kunci];
+      return Math.round((s?.hppRataRataPerUnit || 0) * (p.jumlahUnit || 0));
+    }
+    if (p.jenis === 'literan') {
+      const s = hitungStokKarungPerMerk()[p.merkSumber];
+      return Math.round((s?.hppTerakhirPerKg || 0) * (p.totalKg || 0)) + (p.biayaKemasanLiteran || 0);
+    }
+    if (p.jenis === 'repacking' || p.jenis === 'karung') {
+      const s = hitungStokKarungPerMerk()[p.merkSumber];
+      return Math.round((s?.hppTerakhirPerKg || 0) * (p.totalKg || 0));
+    }
+    return 0;
+  }
+
+  // Isi HPP transaksi lama (11 Agu 2026) — pengganti "biarkan selamanya tidak dihitung"
+  // untuk penjualan yang tersimpan waktu HPP-nya masih bolong (lihat hppTercatat).
+  // Pola SAMA dengan simpanKoreksiTrx/simpanKoreksiHpp: dokumen lama TIDAK ditimpa,
+  // ditandai dikoreksiOleh, dokumen baru cuma mengganti hppTotalSaatJual — jumlah,
+  // harga, dan totalKg transaksi TIDAK disentuh sama sekali, karena itu semua sudah benar.
+  let _isiHppId = null;
+  function bukaIsiHpp(id) {
+    const p = ambilPenjualan().find(x => x.id === id);
+    if (!p) return;
+    _isiHppId = id;
+    document.getElementById('lembarIsiHppSub').textContent =
+      `${namaSingkatTrx(p)} · ${formatTanggal(p.tanggal)}`;
+    document.getElementById('isiHppOmzet').textContent = formatRupiah(p.hargaTotal || 0);
+    const saran = hitungHppSaranSaatIni(p);
+    document.getElementById('isiHppBaru').value = saran > 0 ? saran : '';
+    document.getElementById('isiHppAlasan').value = '';
+    document.body.classList.add('lembar-isi-hpp-terbuka');
+  }
+  function tutupLembarIsiHpp() {
+    _isiHppId = null;
+    document.body.classList.remove('lembar-isi-hpp-terbuka');
+  }
+  async function simpanIsiHpp() {
+    const p = ambilPenjualan().find(x => x.id === _isiHppId);
+    if (!p) return;
+    const baru = parseFloat(document.getElementById('isiHppBaru').value);
+    const alasan = document.getElementById('isiHppAlasan').value.trim();
+    // Beda dengan Koreksi HPP produksi: Rp0 di sini TIDAK sah, karena tidak mengubah
+    // apa-apa — transaksinya akan tetap masuk daftar "tidak dihitung" persis seperti semula.
+    if (!(baru > 0)) { alert('Isi HPP yang benar (harus lebih dari Rp0, supaya ikut terhitung).'); return; }
+    if (!alasan) { alert('Isi alasannya — supaya jejaknya bisa dibaca nanti.'); return; }
+    const idBaru = Date.now();
+    const pengganti = { ...p, id: idBaru, hppTotalSaatJual: baru,
+      koreksiDari: p.id, alasanKoreksi: alasan, dikoreksiPada: new Date().toISOString() };
+    delete pengganti.dikoreksiOleh;
+    try {
+      await simpanKeFirestore(KOLEKSI_PENJUALAN, pengganti);
+      await simpanKeFirestore(KOLEKSI_PENJUALAN, { ...p, dikoreksiOleh: idBaru, alasanKoreksi: alasan });
+      tutupLembarIsiHpp();
+      tampilkanLaba();
+      tampilkanRiwayatJual(); tampilkanRiwayat();
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan (cek internet). ' + err.message);
+    }
   }
 
   // ============ PIUTANG — TAMPILAN & PENCATATAN (9 Agu 2026) ============
@@ -10476,6 +10568,9 @@
   window.bukaKoreksiHpp = bukaKoreksiHpp;
   window.tutupLembarKoreksiProduksi = tutupLembarKoreksiProduksi;
   window.simpanKoreksiHpp = simpanKoreksiHpp;
+  window.bukaIsiHpp = bukaIsiHpp;
+  window.tutupLembarIsiHpp = tutupLembarIsiHpp;
+  window.simpanIsiHpp = simpanIsiHpp;
   window.tampilkanRetur = tampilkanRetur;
   window.hapusRetur = hapusRetur;
   window.putuskanKarantina = putuskanKarantina;
