@@ -3280,6 +3280,30 @@
       <div id="daftarArusKasKeluar"></div>
     </div>
 
+    <!-- COCOKKAN KAS (12 Agustus 2026) — menjawab "sekarang saya pegang berapa",
+         pertanyaan yang tidak bisa dijawab tabel di atas (itu gerakan sebulan, bukan saldo).
+         Kas = uang laci + saldo rekening/e-wallet toko (QRIS mengendap di sana,
+         dikonfirmasi pemilik 12 Agu 2026 sebagai bagian dari kas). -->
+    <div class="kartu" style="margin-top:12px;">
+      <div class="panel-kepala"><h2>Cocokkan Kas</h2></div>
+      <p class="keterangan" style="margin-top:-4px;">Setel sekali dengan hitungan uang yang benar-benar Anda pegang. Sesudah itu sistem terus menghitung berapa yang <i>seharusnya</i> ada, dan menunjukkan selisihnya.</p>
+
+      <label for="kasTitikTanggal">Dihitung pada akhir tanggal</label>
+      <input type="date" id="kasTitikTanggal">
+      <label for="kasTitikLaci">Uang di laci saat itu (Rp)</label>
+      <input type="number" id="kasTitikLaci" placeholder="0" inputmode="numeric">
+      <label for="kasTitikRekening">Saldo rekening / e-wallet toko saat itu (Rp)</label>
+      <input type="number" id="kasTitikRekening" placeholder="0" inputmode="numeric">
+      <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanTitikKas()">Simpan titik hitung</button>
+
+      <div id="kasHasilWrap" style="display:none; margin-top:14px;">
+        <div class="pratinjau-harga" id="kasRincian"></div>
+        <label for="kasHitungSekarang" style="margin-top:10px;">Hitungan Anda SEKARANG — laci + rekening (Rp)</label>
+        <input type="number" id="kasHitungSekarang" placeholder="0" inputmode="numeric" oninput="perbaruiSelisihKas()">
+        <div class="pratinjau-harga" id="kasSelisih" style="display:none;"></div>
+      </div>
+    </div>
+
     <div class="info-box" id="arusKasCatatan" style="margin-top:12px;"></div>
 
     <!-- Muncul sendiri hanya kalau memang ada catatan lama berejaan usang. -->
@@ -8215,52 +8239,50 @@
     return String(c || '').trim() || 'Tunai';
   }
 
-  function hitungArusKas(bulanIso) {
-    const bl = bulanIso || bulanLokalIso();
-    const diBulan = t => bulanDari(t) === bl;
+  // Inti hitungan dipakai DUA cara: per bulan (tab Arus Kas) dan kumulatif sejak satu
+  // tanggal (pencocokan saldo kas). Dipisah begini supaya dua tampilan itu mustahil
+  // memakai aturan yang berbeda — cukup satu tempat kalau aturannya berubah.
+  //   cocok   : (tanggalIso) => boolean, penentu catatan mana yang ikut
+  //   blnList : dokumen biayaBulanan mana saja yang ikut (biaya bulanan tidak punya
+  //             tanggal bayar, jadi pemilihannya diserahkan ke pemanggil)
+  function hitungArusKasInti(cocok, blnList) {
     const jmlHarga = arr => arr.reduce((a, x) => a + (x.hargaTotal || 0), 0);
     const jmlNominal = arr => arr.reduce((a, x) => a + (x.nominal || 0), 0);
 
     // ambilPenjualan() sudah membuang yang dibatalkan/dikoreksi — transaksi batal
     // memang tidak pernah jadi uang.
-    const jual = ambilPenjualan().filter(p => diBulan(p.tanggal));
+    const jual = ambilPenjualan().filter(p => cocok(p.tanggal));
     const kredit = jual.filter(p => caraBayarKunci(p) === 'kredit');
     const qris = jual.filter(p => caraBayarKunci(p) === 'qris');
     const tunai = jual.filter(p => caraBayarKunci(p) !== 'kredit' && caraBayarKunci(p) !== 'qris');
 
-    const piutangBayar = ambilPiutangMutasi().filter(m => m.tipe === 'bayar' && diBulan(m.tanggal));
-    const kasbonBayar = ambilKasbonMutasi().filter(m => m.tipe === 'bayar' && diBulan(m.tanggal));
-    const kasbonAmbil = ambilKasbonMutasi().filter(m => m.tipe === 'ambil' && diBulan(m.tanggal));
+    const piutangBayar = ambilPiutangMutasi().filter(m => m.tipe === 'bayar' && cocok(m.tanggal));
+    const kasbonBayar = ambilKasbonMutasi().filter(m => m.tipe === 'bayar' && cocok(m.tanggal));
+    const kasbonAmbil = ambilKasbonMutasi().filter(m => m.tipe === 'ambil' && cocok(m.tanggal));
 
     // STOK AWAL BUKAN ARUS KAS (keputusan My DeV 12 Agustus 2026).
     // Barang yang sudah ada di gudang saat sistem mulai dipakai dicatat 8 Agustus 2026
     // sebagai foto keadaan awal — uangnya sudah keluar jauh sebelum itu, di luar sistem.
-    // Menghitungnya sebagai belanja bulan Agustus membuat uang keluar membengkak
-    // Rp50,7 juta hanya dari beras (temuan saat pemilik memeriksa tab Arus Kas).
     // Penandanya sudah ada sejak simpanStokAwal() dibuat, cuma belum pernah dipakai di sini.
-    const batch = ambilSemuaBatch().filter(k => diBulan(k.tanggal) && !k.stokAwal);
+    const batch = ambilSemuaBatch().filter(k => cocok(k.tanggal) && !k.stokAwal);
     const belanja = batch.reduce((a, k) =>
       a + (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0), 0);
 
-    const bln = ambilBiayaBulanan().find(b => b.bulan === bl);
-    const biayaBulanan = bln
-      ? (bln.akses||0)+(bln.keamanan||0)+(bln.bensin||0)+(bln.listrik||0)+(bln.internet||0)+(bln.benang||0)+(bln.gaji||0)
-      : 0;
+    const biayaBulanan = (blnList || []).reduce((a, b) =>
+      a + (b.akses||0)+(b.keamanan||0)+(b.bensin||0)+(b.listrik||0)+(b.internet||0)+(b.benang||0)+(b.gaji||0), 0);
 
-    const harianToko = ambilPengeluaranHarian().filter(h => h.kategori === 'toko' && diBulan(h.tanggal));
-    const returBulan = ambilRetur().filter(r => diBulan(r.tanggal));
+    const harianToko = ambilPengeluaranHarian().filter(h => h.kategori === 'toko' && cocok(h.tanggal));
+    const returDipakai = ambilRetur().filter(r => cocok(r.tanggal));
     // selisihHargaTukar positif = toko mengembalikan selisih (uang keluar);
     // negatif = pelanggan menambah, jadi mengurangi total secara neto.
-    const refund = returBulan.reduce((a, r) => a + (r.nominalRefund || 0) + (r.selisihHargaTukar || 0), 0);
+    const refund = returDipakai.reduce((a, r) => a + (r.nominalRefund || 0) + (r.selisihHargaTukar || 0), 0);
     // Kantong kemasan & paper bag literan TIDAK punya penanda stokAwal: keduanya masuk
     // lewat formulir beli bahan biasa, jadi tidak ada bedanya di data selain tanggal.
     // Pemilik memastikan (12 Agu 2026) seluruh pembelian bahan bertanggal 8 Agustus 2026
     // adalah stok awal — barangnya dibeli bulan sebelumnya, cuma dicatat hari itu.
-    // Dikecualikan lewat tanggal karena memang peristiwa sekali seumur sistem; belanja
-    // bahan sesudah tanggal itu tetap terhitung normal.
-    const bukanStokAwalBahan = b => b.tipe === 'beli' && diBulan(b.tanggal) && b.tanggal !== TANGGAL_STOK_AWAL;
-    const beliKemasan = ambilBahanKemasan().filter(bukanStokAwalBahan);
-    const beliLiteran = ambilBahanLiteran().filter(bukanStokAwalBahan);
+    const bahanDipakai = b => b.tipe === 'beli' && cocok(b.tanggal) && b.tanggal !== TANGGAL_STOK_AWAL;
+    const beliKemasan = ambilBahanKemasan().filter(bahanDipakai);
+    const beliLiteran = ambilBahanLiteran().filter(bahanDipakai);
 
     const masuk = [
       { label: 'Penjualan tunai', nominal: jmlHarga(tunai), n: tunai.length, satuan: 'transaksi' },
@@ -8270,10 +8292,10 @@
     ];
     const keluar = [
       { label: 'Belanja beras', nominal: belanja, n: batch.length, satuan: 'kedatangan' },
-      { label: 'Biaya bulanan', nominal: biayaBulanan, n: bln ? 1 : 0, satuan: '',
-        ket: bln ? 'gaji, listrik, akses, dll' : 'belum diisi di tab Bulanan — dihitung Rp0' },
+      { label: 'Biaya bulanan', nominal: biayaBulanan, n: (blnList || []).length, satuan: 'bulan',
+        ket: (blnList || []).length ? 'gaji, listrik, akses, dll' : 'belum diisi di tab Bulanan — dihitung Rp0' },
       { label: 'Pengeluaran harian (Toko)', nominal: jmlNominal(harianToko), n: harianToko.length, satuan: 'catatan' },
-      { label: 'Refund retur', nominal: refund, n: returBulan.length, satuan: 'retur' },
+      { label: 'Refund retur', nominal: refund, n: returDipakai.length, satuan: 'retur' },
       { label: 'Beli kantong kemasan', nominal: jmlHarga(beliKemasan), n: beliKemasan.length, satuan: 'pembelian' },
       { label: 'Beli paper bag literan', nominal: jmlHarga(beliLiteran), n: beliLiteran.length, satuan: 'pembelian' },
       { label: 'Kasbon diambil pegawai', nominal: jmlNominal(kasbonAmbil), n: kasbonAmbil.length, satuan: 'kali' }
@@ -8281,10 +8303,35 @@
     const totalMasuk = masuk.reduce((a, x) => a + x.nominal, 0);
     const totalKeluar = keluar.reduce((a, x) => a + x.nominal, 0);
     return {
-      bulan: bl, masuk, keluar, totalMasuk, totalKeluar,
+      masuk, keluar, totalMasuk, totalKeluar,
       bersih: totalMasuk - totalKeluar,
       omzetPenuh: jmlHarga(jual), kreditBulanIni: jmlHarga(kredit), jumlahKredit: kredit.length
     };
+  }
+
+  function hitungArusKas(bulanIso) {
+    const bl = bulanIso || bulanLokalIso();
+    const bln = ambilBiayaBulanan().find(b => b.bulan === bl);
+    const hasil = hitungArusKasInti(t => bulanDari(t) === bl, bln ? [bln] : []);
+    hasil.bulan = bl;
+    return hasil;
+  }
+
+  // Gerakan kas SESUDAH satu tanggal, sampai hari ini. Dipakai pencocokan saldo kas.
+  // dariIso EKSKLUSIF: saldo dianggap dihitung pada AKHIR tanggal itu, jadi yang ikut
+  // cuma catatan bertanggal SESUDAHNYA. Kalau inklusif, transaksi di hari penghitungan
+  // akan terhitung dua kali — sekali sudah masuk uang yang dihitung, sekali lagi di sini.
+  //
+  // Biaya bulanan TIDAK punya tanggal bayar. Yang diikutkan cuma bulan-bulan SESUDAH
+  // bulan titik hitung; biaya bulan titik itu sendiri dianggap sudah tercermin di saldo
+  // yang dihitung. Ini pendekatan paling aman: lebih baik kurang mengurangi daripada
+  // mengurangi dua kali. Disebut terang-terangan di layar.
+  function hitungArusKasSejak(dariIso, sampaiIso) {
+    const sampai = sampaiIso || tanggalLokalIso();
+    const blnTitik = bulanDari(dariIso);
+    const blnSampai = bulanDari(sampai);
+    const blnList = ambilBiayaBulanan().filter(b => b.bulan > blnTitik && b.bulan <= blnSampai);
+    return hitungArusKasInti(t => !!t && t > dariIso && t <= sampai, blnList);
   }
 
   function barisArusKas(x) {
@@ -8363,8 +8410,92 @@
     alert(berhasil + ' catatan dibakukan ejaannya. Tidak ada nominal yang berubah.');
   }
 
+  // ===== COCOKKAN KAS (12 Agustus 2026) =====
+  // Tabel Arus Kas menjawab "bulan ini uang bergerak berapa". Pemilik butuh yang lain:
+  // "sekarang saya pegang berapa" — dan itu mustahil dijawab tanpa titik mulai, karena
+  // sistem tidak pernah tahu isi laci sebelum dia ada. Di sini titik itu diberikan sekali,
+  // lalu saldo seharusnya dihitung terus dari gerakan sesudahnya.
+  // Kas = uang laci + saldo rekening/e-wallet toko. QRIS ikut karena uangnya mengendap di
+  // rekening toko (dikonfirmasi pemilik 12 Agu 2026), bukan hilang.
+  // Disimpan di localStorage perangkat ini + dicadangkan ke Firestore. Sistem utama sudah
+  // owner-only, jadi tidak perlu jalur sinkron khusus seperti roster kasir.
+  const KUNCI_TITIK_KAS = 'miqbal_titik_kas_v1';
+  function ambilTitikKas() {
+    try { return JSON.parse(localStorage.getItem(KUNCI_TITIK_KAS) || 'null'); } catch (e) { return null; }
+  }
+  async function simpanTitikKas() {
+    const tanggal = document.getElementById('kasTitikTanggal').value;
+    const laci = parseFloat(document.getElementById('kasTitikLaci').value) || 0;
+    const rekening = parseFloat(document.getElementById('kasTitikRekening').value) || 0;
+    if (!tanggal) { alert('Pilih tanggal penghitungannya dulu.'); return; }
+    if (laci <= 0 && rekening <= 0) { alert('Isi minimal salah satu: uang laci atau saldo rekening.'); return; }
+    const data = { id: 'titikKas', tanggal, laci, rekening, diubahPada: new Date().toISOString() };
+    localStorage.setItem(KUNCI_TITIK_KAS, JSON.stringify(data));
+    try { await simpanKeFirestore('pengaturan', data); } catch (e) { console.error(e); }
+    tampilkanCocokKas();
+    alert('Titik hitung tersimpan. Mulai sekarang sistem menghitung saldo kas dari sini.');
+  }
+
+  function tampilkanCocokKas() {
+    const t = ambilTitikKas();
+    const wrap = document.getElementById('kasHasilWrap');
+    if (!wrap) return;
+    if (!t) {
+      wrap.style.display = 'none';
+      const elTgl = document.getElementById('kasTitikTanggal');
+      if (elTgl && !elTgl.value) elTgl.value = tanggalLokalIso();
+      return;
+    }
+    document.getElementById('kasTitikTanggal').value = t.tanggal;
+    document.getElementById('kasTitikLaci').value = t.laci || '';
+    document.getElementById('kasTitikRekening').value = t.rekening || '';
+    wrap.style.display = 'block';
+
+    const hariIni = tanggalLokalIso();
+    const g = hitungArusKasSejak(t.tanggal, hariIni);
+    const awal = (t.laci || 0) + (t.rekening || 0);
+    const seharusnya = awal + g.totalMasuk - g.totalKeluar;
+    wrap.dataset.seharusnya = String(seharusnya);
+
+    const blnTitik = bulanDari(t.tanggal);
+    const adaBiayaBulanTitik = ambilBiayaBulanan().some(b => b.bulan === blnTitik);
+    document.getElementById('kasRincian').innerHTML =
+      `<div class="ph-baris"><span>Titik hitung ${escapeHtml(formatTanggal(t.tanggal))}</span><b>${formatRupiah(awal)}</b></div>` +
+      `<div class="ph-baris"><span>Uang masuk sesudahnya</span><b class="ph-hijau">+ ${formatRupiah(g.totalMasuk)}</b></div>` +
+      `<div class="ph-baris"><span>Uang keluar sesudahnya</span><b class="ph-merah">− ${formatRupiah(g.totalKeluar)}</b></div>` +
+      `<div class="ph-baris"><span><b>Kas seharusnya sekarang</b></span><b>${formatRupiah(seharusnya)}</b></div>` +
+      (adaBiayaBulanTitik
+        ? `<div class="ph-catatan">Biaya bulanan ${escapeHtml(namaBulanPanjang(blnTitik + '-01'))} tidak ikut dikurangi — dianggap sudah tercermin di angka yang Anda hitung waktu itu. Biaya bulan-bulan berikutnya ikut.</div>`
+        : '');
+    perbaruiSelisihKas();
+  }
+
+  function perbaruiSelisihKas() {
+    const el = document.getElementById('kasSelisih');
+    const wrap = document.getElementById('kasHasilWrap');
+    if (!el || !wrap) return;
+    const isian = document.getElementById('kasHitungSekarang').value;
+    if (isian === '' || isNaN(parseFloat(isian))) { el.style.display = 'none'; return; }
+    const nyata = parseFloat(isian);
+    const seharusnya = parseFloat(wrap.dataset.seharusnya || '0');
+    const beda = Math.round(nyata - seharusnya);
+    el.style.display = 'block';
+    if (beda === 0) {
+      el.innerHTML = '<div class="ph-baris"><span>Selisih</span><b class="ph-hijau">Cocok persis</b></div>';
+      return;
+    }
+    // Arah selisih disebut apa adanya. "Kurang" berarti uang tidak ada di tangan padahal
+    // catatan bilang harusnya ada — itu yang perlu dikejar, bukan disamarkan.
+    el.innerHTML =
+      `<div class="ph-baris"><span>Selisih</span><b class="${beda < 0 ? 'ph-merah' : 'ph-amber'}">${beda < 0 ? 'KURANG ' : 'LEBIH '}${formatRupiah(Math.abs(beda))}</b></div>` +
+      `<div class="ph-catatan">${beda < 0
+        ? 'Uang di tangan lebih sedikit dari yang seharusnya. Kemungkinan: ada pengeluaran yang belum dicatat, penjualan tercatat lebih besar dari yang diterima, atau memang ada yang hilang.'
+        : 'Uang di tangan lebih banyak dari yang seharusnya. Kemungkinan: ada pemasukan yang belum dicatat, atau ada pengeluaran yang tercatat padahal belum benar-benar dibayar.'}</div>`;
+  }
+
   function tampilkanArusKas() {
     tampilkanCaraBayarLama();
+    tampilkanCocokKas();
     const elBulan = document.getElementById('arusKasBulan');
     if (!elBulan) return;
     if (!elBulan.value) elBulan.value = bulanLokalIso();
@@ -10849,6 +10980,8 @@
   window.tampilkanHarga = tampilkanHarga;
   window.tampilkanArusKas = tampilkanArusKas;
   window.perbaikiCaraBayarLama = perbaikiCaraBayarLama;
+  window.simpanTitikKas = simpanTitikKas;
+  window.perbaruiSelisihKas = perbaruiSelisihKas;
   window.simpanHargaLiteran = simpanHargaLiteran;
   window.hapusHargaLiteran = hapusHargaLiteran;
   window.simpanHargaKemasan = simpanHargaKemasan;
