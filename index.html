@@ -889,7 +889,7 @@
     box-shadow: 0 0 12px rgba(217, 178, 95, .18), inset 0 1px 0 rgba(255, 255, 255, .07);
   }
   .modal-pin-salah { color: var(--merah); font-size: 13px; font-weight: 700; margin-top: 10px; display: none; }
-  /* Gerbang masuk sistem lengkap: Ben & My DeV pakai PIN masuk, Gono/Hasan diarahkan
+  /* Gerbang masuk sistem utama: owner pakai PIN masuk, pegawai diarahkan
      ke kasir. Di luar jam toko (05.00-19.00) terkunci kecuali owner. */
   #gerbangSistem {
     position: fixed; inset: 0; z-index: 99999; display: none; flex-direction: column;
@@ -2277,7 +2277,7 @@
 <body>
 <div id="gerbangSistem" class="tampil">
   <h2 style="margin:0 0 6px;"> Sistem Toko M.IQBAL</h2>
-  <p id="gerbangPesan" style="margin:0 0 14px; font-size:.95rem;">Khusus Ben &amp; My DeV. Masukkan PIN masuk.</p>
+  <p id="gerbangPesan" style="margin:0 0 14px; font-size:.95rem;">Khusus owner. Masukkan PIN masuk.</p>
   <div id="gerbangBlokPin">
     <input type="password" id="inputPinGerbang" inputmode="numeric" maxlength="6" placeholder="PIN" onkeyup="if(event.key==='Enter')cekPinGerbang()">
     <br><button type="button" class="tombol-gerbang" onclick="cekPinGerbang()">Masuk</button>
@@ -2319,10 +2319,6 @@
     <h3> Siapa yang bertugas</h3>
     <p>Yang Libur tidak bisa dipilih di kasir & tidak bisa input. Berlaku ke semua HP begitu online.</p>
     <div id="isiModalJaga"></div>
-    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:14px;">
-      <input type="checkbox" id="cekBenSistem" style="width:20px; height:20px;">
-      Ben boleh buka Sistem Lengkap (matikan saat Ben liburan)
-    </label>
     <div class="modal-pin-tombol">
       <button type="button" onclick="tutupModalJaga()">Batal</button>
       <button type="button" class="modal-pin-masuk" onclick="simpanModalJaga()">Simpan</button>
@@ -2854,7 +2850,7 @@
         <div class="nilai" id="ringKasKeluarBulanIni">Rp0</div>
       </div>
     </div>
-    <div class="info-box ring-lama-hp">Dua angka ini cuma menghitung uang yang BENAR-BENAR berpindah, dan rinciannya ada di tab <b>Arus Kas</b>. Masuk = penjualan tunai + QRIS, pelunasan piutang, kasbon yang dikembalikan. Keluar = belanja beras, biaya bulanan, pengeluaran harian kategori Toko, refund retur, beli kantong kemasan &amp; paper bag, kasbon yang diambil pegawai. Penjualan <b>kredit belum dihitung</b> di sini sampai pelanggannya melunasi — barangnya sudah keluar tapi uangnya belum diterima. Pengeluaran harian Ben Mohsein &amp; Owner TIDAK ikut — murni pribadi. Ini arus kas, BUKAN laba: margin kotor ada di tab Laba (berbasis HPP barang terjual).</div>
+    <div class="info-box ring-lama-hp">Dua angka ini cuma menghitung uang yang BENAR-BENAR berpindah, dan rinciannya ada di tab <b>Arus Kas</b>. Masuk = penjualan tunai + QRIS, pelunasan piutang, kasbon yang dikembalikan. Keluar = belanja beras, biaya bulanan, pengeluaran harian kategori Toko, refund retur, beli kantong kemasan &amp; paper bag, kasbon yang diambil pegawai. Penjualan <b>kredit belum dihitung</b> di sini sampai pelanggannya melunasi — barangnya sudah keluar tapi uangnya belum diterima. Pengeluaran harian kategori Owner TIDAK ikut — murni pribadi. Ini arus kas, BUKAN laba: margin kotor ada di tab Laba (berbasis HPP barang terjual).</div>
 
     <div class="kartu ring-lama-hp">
       <div class="panel-kepala"><h2>Perlu Perhatian</h2></div>
@@ -3683,7 +3679,6 @@
          ("ikut kas" / "pribadi") menempel di dalam tombolnya (Prinsip 1). -->
     <div class="pilih-kategori" id="pilihKategoriHarianWrap">
       <button type="button" id="kategoriHarianToko" class="pilih" onclick="pilihKategoriHarian('toko')"><b>Toko</b><i>ikut kas</i></button>
-      <button type="button" id="kategoriHarianBen" onclick="pilihKategoriHarian('ben')"><b>Ben Mohsein</b><i>pribadi</i></button>
       <button type="button" id="kategoriHarianOwner" class="tab-owner-blok" onclick="pilihKategoriHarian('owner')"><b>Owner</b><i>pribadi</i></button>
     </div>
     <input type="hidden" id="harianKategori" value="toko">
@@ -3711,14 +3706,13 @@
       <div class="kd-judul"><h3>Hari ini</h3><span class="kd-hitung" id="harianHitungHariIni"></span></div>
       <div id="daftarHarianHariIni"></div>
     </div>
-    <p class="catatan-kecil">Hanya kategori Toko yang ikut kas keluar di Ringkasan. Ben Mohsein &amp; Owner murni pribadi.</p>
+    <p class="catatan-kecil">Hanya kategori Toko yang ikut kas keluar. Owner murni pribadi.</p>
 
     <div class="kartu" style="margin-top:12px;">
       <div class="panel-kepala"><h2>Riwayat pengeluaran</h2></div>
       <div class="saring-riwayat" style="margin-bottom:8px;">
         <button type="button" id="filterHarianSemua" class="pilih" onclick="filterHarian('semua')">Semua</button>
         <button type="button" id="filterHarianToko" onclick="filterHarian('toko')">Toko</button>
-        <button type="button" id="filterHarianBen" onclick="filterHarian('ben')">Ben Mohsein</button>
         <button type="button" id="filterHarianOwner" class="tab-owner-blok" onclick="filterHarian('owner')">Owner</button>
       </div>
       <div id="daftarHarian" class="daftar-batch"></div>
@@ -5733,7 +5727,9 @@
     terapkanStatusOwner();   // lihat catatan di tampilkanRekap() — sama sebabnya
   }
 
-  // --- Pengeluaran Harian (Toko / Ben Mohsein / Owner) ---
+  // --- Pengeluaran Harian (Toko / Owner) ---
+  // Kategori 'Ben Mohsein' dicabut 12 Agu 2026; catatan lama berkategori itu tetap ada
+  // dan tetap terbaca lewat filter "semua" (lihat labelKategoriHarian).
   // Aturan keras (instruksi proyek + konfirmasi My DeV): kategori 'ben' & 'owner' MURNI PRIBADI.
   // TIDAK pernah masuk kasKeluarBulanIni, TIDAK masuk totalBiayaBulanan, TIDAK masuk laporan bulanan.
   // Hanya kategori 'toko' yang otomatis ikut Kas Keluar Bulan Ini di dashboard Ringkasan.
@@ -5750,7 +5746,6 @@
     kategoriHarianAktif = kat;
     document.getElementById('harianKategori').value = kat;
     document.getElementById('kategoriHarianToko').classList.toggle('pilih', kat === 'toko');
-    document.getElementById('kategoriHarianBen').classList.toggle('pilih', kat === 'ben');
     document.getElementById('kategoriHarianOwner').classList.toggle('pilih', kat === 'owner');
     perbaruiRingkasHarian();
   }
@@ -5819,8 +5814,12 @@
       }).join('');
   }
 
+  // 'ben' TIDAK dihapus dari sini walau kategorinya sudah dicabut 12 Agu 2026: catatan
+  // lama yang terlanjur berkategori 'ben' harus tetap tampil apa adanya di filter "semua".
+  // Kalau baris ini dibuang, catatan itu diam-diam berubah label jadi "Owner" — salah
+  // atribusi pengeluaran, dan uang orang tidak boleh berpindah nama diam-diam.
   function labelKategoriHarian(kat) {
-    return kat === 'toko' ? 'Toko' : kat === 'ben' ? 'Ben Mohsein' : 'Owner';
+    return kat === 'toko' ? 'Toko' : kat === 'ben' ? 'Ben Mohsein (kategori lama)' : 'Owner';
   }
 
   async function simpanPengeluaranHarian() {
@@ -5864,7 +5863,7 @@
 
   function filterHarian(kat) {
     filterHarianAktif = kat;
-    ['semua','toko','ben','owner'].forEach(k => {
+    ['semua','toko','owner'].forEach(k => {
       document.getElementById('filterHarian' + kapital(k)).classList.toggle('pilih', k === kat);
     });
     tampilkanHarian();
@@ -8187,10 +8186,14 @@
   //
   // Yang SENGAJA tidak ikut:
   //   - Saldo awal piutang: cuma pencatatan utang lama, tidak ada uang berpindah.
-  //   - Pengeluaran harian kategori Ben Mohsein & Owner: murni pribadi (aturan lama).
+  //   - Pengeluaran harian selain kategori Toko (Owner, dan 'ben' dari catatan lama):
+  //     murni pribadi, bukan uang toko.
   //   - Upah repacking di tab Produksi: sudah menyatu di HPP dan di gaji bulanan —
   //     dihitung lagi di sini berarti satu pengeluaran tercatat dua kali.
   function bulanDari(iso) { return String(iso || '').slice(0, 7); }
+  // Hari sistem ini mulai dipakai. Seluruh isi gudang difoto ke sistem pada tanggal ini,
+  // jadi catatan bahan bertanggal sama dianggap stok awal, bukan belanja bulan berjalan.
+  const TANGGAL_STOK_AWAL = '2026-08-08';
   // Ejaan caraBayar tidak seragam antar-alat: tab Jual menyimpan 'QRIS', kasir 'Qris'.
   // Dicocokkan tanpa pandang huruf besar/kecil supaya tidak ada penjualan yang salah
   // golong — satu ejaan yang lolos di sini artinya uang tercatat di arah yang keliru.
@@ -8229,7 +8232,13 @@
     const kasbonBayar = ambilKasbonMutasi().filter(m => m.tipe === 'bayar' && diBulan(m.tanggal));
     const kasbonAmbil = ambilKasbonMutasi().filter(m => m.tipe === 'ambil' && diBulan(m.tanggal));
 
-    const batch = ambilSemuaBatch().filter(k => diBulan(k.tanggal));
+    // STOK AWAL BUKAN ARUS KAS (keputusan My DeV 12 Agustus 2026).
+    // Barang yang sudah ada di gudang saat sistem mulai dipakai dicatat 8 Agustus 2026
+    // sebagai foto keadaan awal — uangnya sudah keluar jauh sebelum itu, di luar sistem.
+    // Menghitungnya sebagai belanja bulan Agustus membuat uang keluar membengkak
+    // Rp50,7 juta hanya dari beras (temuan saat pemilik memeriksa tab Arus Kas).
+    // Penandanya sudah ada sejak simpanStokAwal() dibuat, cuma belum pernah dipakai di sini.
+    const batch = ambilSemuaBatch().filter(k => diBulan(k.tanggal) && !k.stokAwal);
     const belanja = batch.reduce((a, k) =>
       a + (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0), 0);
 
@@ -8243,8 +8252,15 @@
     // selisihHargaTukar positif = toko mengembalikan selisih (uang keluar);
     // negatif = pelanggan menambah, jadi mengurangi total secara neto.
     const refund = returBulan.reduce((a, r) => a + (r.nominalRefund || 0) + (r.selisihHargaTukar || 0), 0);
-    const beliKemasan = ambilBahanKemasan().filter(b => b.tipe === 'beli' && diBulan(b.tanggal));
-    const beliLiteran = ambilBahanLiteran().filter(b => b.tipe === 'beli' && diBulan(b.tanggal));
+    // Kantong kemasan & paper bag literan TIDAK punya penanda stokAwal: keduanya masuk
+    // lewat formulir beli bahan biasa, jadi tidak ada bedanya di data selain tanggal.
+    // Pemilik memastikan (12 Agu 2026) seluruh pembelian bahan bertanggal 8 Agustus 2026
+    // adalah stok awal — barangnya dibeli bulan sebelumnya, cuma dicatat hari itu.
+    // Dikecualikan lewat tanggal karena memang peristiwa sekali seumur sistem; belanja
+    // bahan sesudah tanggal itu tetap terhitung normal.
+    const bukanStokAwalBahan = b => b.tipe === 'beli' && diBulan(b.tanggal) && b.tanggal !== TANGGAL_STOK_AWAL;
+    const beliKemasan = ambilBahanKemasan().filter(bukanStokAwalBahan);
+    const beliLiteran = ambilBahanLiteran().filter(bukanStokAwalBahan);
 
     const masuk = [
       { label: 'Penjualan tunai', nominal: jmlHarga(tunai), n: tunai.length, satuan: 'transaksi' },
@@ -8372,7 +8388,8 @@
       teks += 'Bulan ini tidak ada penjualan kredit, jadi seluruh penjualan sudah jadi uang. ';
     }
     teks += `Omzet penuh bulan ini (termasuk kredit) ${formatRupiah(d.omzetPenuh)} — angka itu yang dipakai tab Laba. `;
-    teks += 'Pengeluaran harian kategori Ben Mohsein &amp; Owner tidak ikut di sini karena murni pribadi.';
+    teks += 'Pengeluaran harian kategori Owner tidak ikut di sini karena murni pribadi. ';
+    teks += 'Stok awal 8 Agustus 2026 (isi gudang saat sistem mulai dipakai) juga tidak ikut \u2014 uangnya sudah keluar sebelum sistem ini ada.';
     el.innerHTML = teks;
   }
 
@@ -8395,7 +8412,9 @@
       const totalHargaBeli = k.merkList.reduce((a,m) => a + m.subtotalHarga, 0);
       return totalHargaBeli + (k.biayaBongkar || 0);
     }
-    const belanjaMingguIni = batch.filter(k => isoKeTanggal(k.tanggal) >= mulaiMinggu).reduce((a,k) => a + nilaiBelanjaBatch(k), 0);
+    // Stok awal dikecualikan dengan alasan yang sama seperti di hitungArusKas: itu foto
+    // isi gudang saat sistem mulai, bukan belanja minggu ini.
+    const belanjaMingguIni = batch.filter(k => isoKeTanggal(k.tanggal) >= mulaiMinggu && !k.stokAwal).reduce((a,k) => a + nilaiBelanjaBatch(k), 0);
 
     // Margin kotor hari ini = omzet - HPP barang terjual, HANYA transaksi yang HPP-nya
     // benar-benar tercatat (lihat hppTercatat: kosong ATAU Rp0-berduit sama-sama bolong).
@@ -10506,7 +10525,8 @@
   // — sengaja, supaya PIN tidak pernah lewat jaringan/tersimpan di database bersama).
   const PIN_OWNER = '7431';
   // ===== Gerbang masuk sistem lengkap (2 Agustus 2026) =====
-  // Kasir = Gono/Hasan/Ben. Sistem lengkap = Ben & My DeV (PIN masuk), owner bebas 24 jam.
+  // Kasir = Gono/Hasan/Ben. Sistem utama = OWNER SAJA (12 Agu 2026; sebelumnya Ben juga
+  // boleh lewat saklar benSistemLengkap, saklar itu sudah dicabut).
   // Di luar jam 05.00-19.00 semua terkunci kecuali owner — cegah anak pegawai ketik-ketik di rumah.
   const PIN_MASUK = '5296';
   const KUNCI_GERBANG = 'miqbal_gerbang_v1';
@@ -10525,15 +10545,11 @@
       el.classList.add('tampil');
       return;
     }
-    const roster = (function () { try { return JSON.parse(localStorage.getItem('miqbal_roster_v1') || 'null'); } catch (e) { return null; } })();
-    if (roster && roster.benSistemLengkap === false) {
-      pesan.textContent = 'Akses sistem sedang dimatikan owner (Ben libur). Hanya owner yang bisa masuk.';
-      blokPin.style.display = 'none';
-      el.classList.add('tampil');
-      return;
-    }
+    // Sistem utama kini OWNER SAJA (keputusan My DeV 12 Agu 2026). Ben tetap memakai
+    // KASIR, tapi tidak lagi punya jalan masuk ke sini — saklar benSistemLengkap dan
+    // gerbang "Ben libur" dicabut, tersisa PIN masuk milik owner.
     blokPin.style.display = 'block';
-    pesan.textContent = 'Khusus Ben & My DeV. Masukkan PIN masuk.';
+    pesan.textContent = 'Khusus owner. Masukkan PIN masuk.';
     el.classList.toggle('tampil', localStorage.getItem(KUNCI_GERBANG) !== 'ya');
   }
   function cekPinGerbang() {
@@ -10566,6 +10582,8 @@
   // ===== Roster jaga (2 Agustus 2026): saklar per-orang, dikendalikan owner dari tab Jaga =====
   // Dokumen Firestore pengaturan/aksesKasir. Gono/Hasan gantian bulanan; Ben bisa liburan.
   // Yang Libur: tidak bisa dipilih & tidak bisa input di kasir; saklar Ben mematikan PIN masuk 1808.
+  // Roster ini mengatur siapa yang boleh pegang KASIR — Ben termasuk, dia memang
+  // memakai kasir. Yang dicabut 12 Agu 2026 cuma akses Ben ke SISTEM UTAMA ini.
   const NAMA_OPERATOR_JAGA = ['Gono', 'Hasan', 'Ben Mohsein'];
   const PIN_DEFAULT_JAGA = { 'Gono': '1111', 'Hasan': '2222', 'Ben Mohsein': '3333' };
   const KUNCI_ROSTER = 'miqbal_roster_v1';
@@ -10615,7 +10633,6 @@
           style="width:70px; text-align:center; padding:6px; border:1.5px solid var(--garis); border-radius:8px;" title="PIN pribadi">
       </div>`;
     }).join('');
-    document.getElementById('cekBenSistem').checked = !r || r.benSistemLengkap !== false;
     document.getElementById('modalJagaBg').classList.add('tampil');
   }
   function tutupModalJaga() { document.getElementById('modalJagaBg').classList.remove('tampil'); }
@@ -10627,7 +10644,7 @@
         pin: (document.getElementById('jagaPin' + i).value.trim() || PIN_DEFAULT_JAGA[n])
       };
     });
-    const data = { id: 'aksesKasir', operator, benSistemLengkap: document.getElementById('cekBenSistem').checked, diubahPada: new Date().toISOString() };
+    const data = { id: 'aksesKasir', operator, diubahPada: new Date().toISOString() };
     await simpanKeFirestore('pengaturan', data);
     localStorage.setItem(KUNCI_ROSTER, JSON.stringify(data));
     tutupModalJaga();
