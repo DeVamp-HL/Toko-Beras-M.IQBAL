@@ -25,7 +25,10 @@
 // v15 (11 Agustus 2026): layar KEMBALIAN dapat tombol konfirmasi "Sudah saya kasih ke
 // pembeli" — statusnya ikut tersimpan ke transaksi supaya bisa dicek lagi kalau pembeli
 // belakangan nanya soal kembaliannya.
-const VERSI = 'kasir-v15';
+// v16 (11 Agustus 2026): ejaan caraBayar dibakukan jadi 'QRIS' (kapital) di kasir dan
+// kasir darurat. WAJIB naik: dengan cache lama, kasir masih menyimpan 'Qris' walau
+// berkasnya sudah diperbarui — terbukti saat pengujian, v15 menyajikan versi lama.
+const VERSI = 'kasir-v16';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

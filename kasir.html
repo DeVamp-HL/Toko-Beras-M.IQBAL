@@ -430,6 +430,17 @@ var HARGA_AWAL_BAHAN = { paperbag5l: 305, paperbag10l: 395, karungbekas: 1500 };
 var ringkasan = null;
 var daftarProduk = [];   // dibangun dari ringkasan: [{tipe, label, merk/kunci, hargaSatuan, ...}]
 var bayarAktif = 'Tunai';
+// Ejaan resmi yang boleh TERSIMPAN: 'Tunai', 'QRIS', 'Kredit' — QRIS akronim, kapital
+// semua (keputusan My DeV 11 Agu 2026). KEMBAR dengan bakuCaraBayar() di index.html &
+// kasir-darurat-nominal.html; ubah ketiganya bersama. id tombol tetap 'bayar-Qris',
+// itu cuma pegangan DOM, bukan yang disimpan.
+function bakuCaraBayar(c) {
+  var k = String(c || '').trim().toLowerCase();
+  if (k === 'qris') return 'QRIS';
+  if (k === 'kredit') return 'Kredit';
+  if (k === 'tunai') return 'Tunai';
+  return String(c || '').trim() || 'Tunai';
+}
 var pesanSekali = '';   // kabar singkat untuk sudut LCD, dipakai sekali lalu hangus
 
 // ---------- util ----------
@@ -1102,8 +1113,8 @@ function tandaiNamaTerisi() {
   if (el && (el.value || '').trim()) el.classList.remove('kurang');
 }
 function pilihBayar(c) {
-  bayarAktif = c;
-  ['Tunai', 'Qris', 'Kredit'].forEach(function (x) { $('bayar-' + x).classList.toggle('pilih', x === c); });
+  bayarAktif = bakuCaraBayar(c);
+  ['Tunai', 'Qris', 'Kredit'].forEach(function (x) { $('bayar-' + x).classList.toggle('pilih', bakuCaraBayar(x) === bayarAktif); });
   // Kolomnya memberi aba-aba begitu KREDIT dipilih, bukan menunggu JUAL ditekan lalu
   // ditolak. Pindah dari Kredit = tanda merahnya ikut hilang, karena syaratnya gugur.
   var el = $('namaPelangganInput');

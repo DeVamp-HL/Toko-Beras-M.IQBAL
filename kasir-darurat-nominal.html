@@ -533,10 +533,20 @@ function gambarLog() {
 
 // ---------- cara bayar & nama pembeli ----------
 var bayarDAktif = 'Tunai';
+// Ejaan resmi yang boleh TERSIMPAN: 'Tunai', 'QRIS', 'Kredit' — QRIS akronim, kapital
+// semua (keputusan My DeV 11 Agu 2026). KEMBAR dengan bakuCaraBayar() di index.html &
+// kasir.html; ubah ketiganya bersama. id tombol tetap 'bayarD-Qris' (pegangan DOM).
+function bakuCaraBayar(c) {
+  var k = String(c || '').trim().toLowerCase();
+  if (k === 'qris') return 'QRIS';
+  if (k === 'kredit') return 'Kredit';
+  if (k === 'tunai') return 'Tunai';
+  return String(c || '').trim() || 'Tunai';
+}
 function pilihBayarD(c) {
-  bayarDAktif = c;
+  bayarDAktif = bakuCaraBayar(c);
   ['Tunai', 'Qris', 'Kredit'].forEach(function (x) {
-    $('bayarD-' + x).classList.toggle('pilih', x === c);
+    $('bayarD-' + x).classList.toggle('pilih', bakuCaraBayar(x) === bayarDAktif);
   });
   // Kredit tanpa nama = utang yang tidak bisa ditagih, jadi kolomnya langsung diberi
   // aba-aba begitu Kredit dipilih — bukan menunggu SIMPAN ditekan lalu ditolak.

@@ -3285,6 +3285,14 @@
     </div>
 
     <div class="info-box" id="arusKasCatatan" style="margin-top:12px;"></div>
+
+    <!-- Muncul sendiri hanya kalau memang ada catatan lama berejaan usang. -->
+    <div class="kartu-peringatan-amber" id="kartuCaraBayarLama" style="display:none; margin-top:12px;">
+      <div class="kpa-judul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/></svg><b id="caraBayarLamaJudul"></b></div>
+      <p id="caraBayarLamaKet"></p>
+      <div id="daftarCaraBayarLama" class="kartu-daftar" style="margin-top:10px; background:none; border:none; padding:0;"></div>
+      <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="perbaikiCaraBayarLama()">Bakukan ejaannya sekarang</button>
+    </div>
   </div>
 
   <!-- HALAMAN PIUTANG (owner-only) — pelanggan yang berutang ke toko.
@@ -6469,7 +6477,7 @@
     if (total <= 0) return null;
     const el = id => document.getElementById(id);
     const bayarAktif = ['Tunai','Qris','Kredit'].map(c => el('bayar' + c)).find(x => x && x.classList.contains('pilih'));
-    const bayar = bayarAktif ? bayarAktif.id.replace('bayar','') : 'Tunai';
+    const bayar = bakuCaraBayar(bayarAktif ? bayarAktif.id.replace('bayar','') : 'Tunai');
     const baris = [];
     let stokSesudah = null;   // "46 → 42 unit" — supaya akibat simpan terlihat SEBELUM disimpan
     if (jenisJualAktif === 'kemasan') {
@@ -7023,7 +7031,7 @@
 
   function pilihBayar(cara) {
     ['Tunai','Qris','Kredit'].forEach(c => {
-      document.getElementById('bayar' + c).classList.toggle('pilih', c.toLowerCase() === cara.toLowerCase());
+      document.getElementById('bayar' + c).classList.toggle('pilih', bakuCaraBayar(c) === bakuCaraBayar(cara));
     });
     document.getElementById('blokKredit').style.display = cara === 'Kredit' ? 'block' : 'none';
   }
@@ -7035,7 +7043,8 @@
     // yang sama dan muncul lebih dulu di DOM, sehingga tertangkap keliru (bug ditemukan saat audit
     // 31 Juli 2026: kolom Cara Bayar tersimpan "returKondisiUtuh" bukan "Tunai").
     const tombolBayarAktif = ['Tunai','Qris','Kredit'].map(c => document.getElementById('bayar' + c)).find(el => el.classList.contains('pilih'));
-    const caraBayar = tombolBayarAktif ? tombolBayarAktif.id.replace('bayar','') : 'Tunai';
+    // id tombol tetap 'bayarQris' (cuma pegangan DOM); yang TERSIMPAN dibakukan jadi 'QRIS'.
+    const caraBayar = bakuCaraBayar(tombolBayarAktif ? tombolBayarAktif.id.replace('bayar','') : 'Tunai');
     const namaPelanggan = document.getElementById('jualNamaPelanggan').value.trim();
 
     if (hargaTotal <= 0) { alert('Harga jual belum ada — cek pesan di bawah kotak Harga & Bayar. Kemungkinan produk ini belum ada harganya di Daftar Harga (tab Harga), atau jumlah/berat belum diisi.'); return; }
@@ -8187,6 +8196,22 @@
   // golong — satu ejaan yang lolos di sini artinya uang tercatat di arah yang keliru.
   function caraBayarKunci(p) { return String((p && p.caraBayar) || '').trim().toLowerCase(); }
 
+  // Ejaan resmi yang boleh TERSIMPAN: 'Tunai', 'QRIS', 'Kredit'. QRIS itu akronim
+  // (Quick Response Code Indonesian Standard) jadi kapital semua — keputusan My DeV
+  // 11 Agustus 2026. Sebelum itu semua alat menyimpan 'Qris'; catatan lama dibetulkan
+  // sekali jalan lewat tombol di tab Arus Kas (pindaiCaraBayarLama).
+  // Dipakai di SETIAP titik tulis supaya tidak pernah lahir ejaan kedua lagi. Nilai di
+  // luar ketiganya (mis. 'Potong gaji' untuk kasbon) dilewatkan apa adanya.
+  // caraBayarKunci() di atas tetap dipakai untuk MEMBACA — selama masih ada catatan lama
+  // yang belum dibetulkan, penggolongan harus tetap benar tanpa pandang ejaan.
+  function bakuCaraBayar(c) {
+    const k = String(c || '').trim().toLowerCase();
+    if (k === 'qris') return 'QRIS';
+    if (k === 'kredit') return 'Kredit';
+    if (k === 'tunai') return 'Tunai';
+    return String(c || '').trim() || 'Tunai';
+  }
+
   function hitungArusKas(bulanIso) {
     const bl = bulanIso || bulanLokalIso();
     const diBulan = t => bulanDari(t) === bl;
@@ -8254,7 +8279,76 @@
     </div>`;
   }
 
+  // ===== Pembakuan ejaan caraBayar pada catatan LAMA (11 Agustus 2026) =====
+  // Sebelum hari ini semua alat menyimpan 'Qris'. Sesudah pembakuan, yang baru 'QRIS'.
+  // Tanpa alat ini riwayat akan memuat dua ejaan berdampingan selamanya.
+  //
+  // Ini SATU-SATUNYA jenis perbaikan yang menimpa dokumen di tempat (bukan bikin dokumen
+  // koreksi baru seperti aturan umum untuk uang) — alasannya sama dengan alat perbaikan
+  // totalKg: caraBayar itu LABEL, bukan fakta uang tersendiri. Tidak ada satu rupiah pun
+  // yang berubah, jadi membuat dokumen koreksi malah akan menggandakan omzet.
+  const KOLEKSI_PUNYA_CARA_BAYAR = [
+    { koleksi: KOLEKSI_PENJUALAN, ambil: () => ambilPenjualanSemua(), label: 'penjualan' },
+    { koleksi: KOLEKSI_PIUTANG,   ambil: () => ambilPiutangMutasi(),  label: 'pelunasan piutang' },
+    { koleksi: KOLEKSI_KASBON,    ambil: () => ambilKasbonMutasi(),   label: 'kasbon' }
+  ];
+  function pindaiCaraBayarLama() {
+    const hasil = [];
+    KOLEKSI_PUNYA_CARA_BAYAR.forEach(k => {
+      k.ambil().forEach(d => {
+        const asli = d.caraBayar;
+        if (asli === undefined || asli === null || asli === '') return;
+        const baku = bakuCaraBayar(asli);
+        if (baku === asli) return;
+        hasil.push({ koleksi: k.koleksi, label: k.label, id: d.id, tanggal: d.tanggal, dari: asli, jadi: baku });
+      });
+    });
+    return hasil;
+  }
+  function tampilkanCaraBayarLama() {
+    const kartu = document.getElementById('kartuCaraBayarLama');
+    if (!kartu) return;
+    const daftar = pindaiCaraBayarLama();
+    if (daftar.length === 0) { kartu.style.display = 'none'; return; }
+    kartu.style.display = 'block';
+    // Dikelompokkan per ejaan supaya sekali lihat ketahuan apa yang mau diubah jadi apa.
+    const per = {};
+    daftar.forEach(d => { const k = d.dari + ' → ' + d.jadi; per[k] = (per[k] || 0) + 1; });
+    document.getElementById('caraBayarLamaJudul').textContent =
+      daftar.length + ' catatan lama masih memakai ejaan lama';
+    document.getElementById('caraBayarLamaKet').textContent =
+      'Cuma tulisan cara bayarnya yang dibakukan. Nominal, tanggal, produk, dan nama pembeli tidak disentuh sama sekali — tidak ada angka rupiah yang berubah.';
+    document.getElementById('daftarCaraBayarLama').innerHTML = Object.keys(per).map(k =>
+      `<div class="baris-44"><span class="nama"><i class="trx-nama">${escapeHtml(k)}</i></span><span class="angka">${per[k]} catatan</span></div>`
+    ).join('');
+  }
+  async function perbaikiCaraBayarLama() {
+    const daftar = pindaiCaraBayarLama();
+    if (daftar.length === 0) return;
+    if (!confirm('Bakukan ejaan cara bayar pada ' + daftar.length + ' catatan lama?\n\n'
+      + 'Yang diubah HANYA tulisan cara bayarnya (contoh: Qris menjadi QRIS). '
+      + 'Nominal uang, tanggal, produk, dan nama pembeli tidak disentuh sama sekali.')) return;
+    let berhasil = 0;
+    try {
+      for (const d of daftar) {
+        const sumber = KOLEKSI_PUNYA_CARA_BAYAR.find(k => k.koleksi === d.koleksi);
+        const asli = sumber.ambil().find(x => x.id === d.id);
+        if (!asli) continue;
+        await simpanKeFirestore(d.koleksi, { ...asli, caraBayar: d.jadi });
+        berhasil++;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Sebagian gagal disimpan (cek internet). ' + berhasil + ' dari ' + daftar.length
+        + ' sudah dibakukan; sisanya bisa diulang dengan tombol yang sama.');
+      return;
+    }
+    tampilkanArusKas();   // ikut menggambar ulang kartu peringatan di atas
+    alert(berhasil + ' catatan dibakukan ejaannya. Tidak ada nominal yang berubah.');
+  }
+
   function tampilkanArusKas() {
+    tampilkanCaraBayarLama();
     const elBulan = document.getElementById('arusKasBulan');
     if (!elBulan) return;
     if (!elBulan.value) elBulan.value = bulanLokalIso();
@@ -8660,9 +8754,9 @@
     document.body.classList.remove('lembar-piutang-terbuka');
   }
   function pilihBayarPiutang(c) {
-    _bayarPiutangAktif = c;
+    _bayarPiutangAktif = bakuCaraBayar(c);
     ['Tunai', 'Qris'].forEach(x =>
-      document.getElementById('piutangBayar' + x).classList.toggle('pilih', x === c));
+      document.getElementById('piutangBayar' + x).classList.toggle('pilih', bakuCaraBayar(x) === _bayarPiutangAktif));
   }
   function isiPelunasanPiutang() {
     const d = hitungPiutang().find(x => x.kunci === _piutangTerbuka);
@@ -9818,7 +9912,10 @@
       : potongan.join('');
     // Pra-isi dari transaksi aslinya, supaya yang sudah benar tidak perlu diketik ulang
     // dan yang salah/kosong langsung kelihatan.
-    pilihBayarRinci(p.caraBayar === 'Qris' || p.caraBayar === 'Kredit' ? p.caraBayar : 'Tunai');
+    // Dibandingkan setelah dibakukan: dokumen lama masih 'Qris', yang baru 'QRIS' —
+    // cocok-huruf di sini dulu membuat QRIS diam-diam jatuh jadi Tunai saat dirinci.
+    const bayarAsal = bakuCaraBayar(p.caraBayar);
+    pilihBayarRinci(bayarAsal === 'QRIS' || bayarAsal === 'Kredit' ? bayarAsal : 'Tunai');
     const elNamaRinci = document.getElementById('rinciNamaPembeli');
     elNamaRinci.value = p.namaPelanggan || '';
     elNamaRinci.classList.remove('kurang');
@@ -9833,9 +9930,9 @@
   // Cara bayar & nama pembeli yang sedang dipilih di lembar rinci.
   let _bayarRinci = 'Tunai';
   function pilihBayarRinci(c) {
-    _bayarRinci = c;
+    _bayarRinci = bakuCaraBayar(c);
     ['Tunai', 'Qris', 'Kredit'].forEach(x =>
-      document.getElementById('rinciBayar' + x).classList.toggle('pilih', x === c));
+      document.getElementById('rinciBayar' + x).classList.toggle('pilih', bakuCaraBayar(x) === _bayarRinci));
     const el = document.getElementById('rinciNamaPembeli');
     if (c !== 'Kredit') el.classList.remove('kurang');
   }
@@ -10734,6 +10831,7 @@
   window.cariGlobal = cariGlobal;
   window.tampilkanHarga = tampilkanHarga;
   window.tampilkanArusKas = tampilkanArusKas;
+  window.perbaikiCaraBayarLama = perbaikiCaraBayarLama;
   window.simpanHargaLiteran = simpanHargaLiteran;
   window.hapusHargaLiteran = hapusHargaLiteran;
   window.simpanHargaKemasan = simpanHargaKemasan;
