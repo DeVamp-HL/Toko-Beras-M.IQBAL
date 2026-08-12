@@ -3053,6 +3053,14 @@
       <label>Harga jual (Rp) <span class="keterangan">— otomatis dari Daftar Harga, total transaksi ini</span></label>
       <input type="number" id="jualHargaTotal" placeholder="0" inputmode="numeric" readonly style="background:var(--hasil-bg); font-weight:800;">
       <div class="keterangan" id="statusHargaJualInfo" style="margin-top:-8px;"></div>
+      <!-- Pengganti retur (12 Agu 2026, izin My DeV): barang tukar keluar dari stok,
+           tapi omzet & kas TIDAK dihitung — uangnya sudah terwakili penjualan asli +
+           selisih di catatan Retur. Tanpa ini, tukar Rp160rb menggelembungkan kas
+           Rp160rb yang tidak pernah diterima. -->
+      <label style="display:flex; align-items:center; gap:10px; min-height:44px; cursor:pointer;">
+        <input type="checkbox" id="jualPenggantiRetur" style="width:22px; height:22px; flex:0 0 auto;">
+        <span>Barang <b>pengganti retur</b> (tukar) — stok terpotong, omzet &amp; kas Rp0</span>
+      </label>
       <label>Cara bayar</label>
       <div class="tab-bayar">
         <button type="button" id="bayarTunai" class="pilih" onclick="pilihBayar('Tunai')">Tunai</button>
@@ -6874,6 +6882,9 @@
       if (s) stokSesudah = [s.sisaKg, Math.round((s.sisaKg - liter * rasio) * 100) / 100, 'kg'];
     } else return null;
     if (stokSesudah) baris.push(['Stok sesudah', stokSesudah[0] + ' → <b class="lk-sesudah">' + stokSesudah[1] + '</b> ' + stokSesudah[2]]);
+    if (document.getElementById('jualPenggantiRetur').checked) {
+      baris.push(['Pengganti retur', '<b class="ph-amber">Omzet & kas dicatat Rp0</b> — nilai barang ' + formatRupiah(total)]);
+    }
     baris.push(['Cara bayar', bayar]);
     const plg = el('jualNamaPelanggan').value.trim();
     if (bayar === 'Kredit' && plg) baris.push(['Pelanggan', escapeHtml(plg)]);
@@ -7558,6 +7569,15 @@
     transaksi.hargaTotal = hargaTotal;
     transaksi.caraBayar = caraBayar;
     transaksi.namaPelanggan = caraBayar === 'Kredit' ? namaPelanggan : '';
+    // Pengganti retur: nilai barang disimpan sebagai jejak, uangnya Rp0 — dengan begitu
+    // SEMUA pembaca hargaTotal (omzet, laba, arus kas, piutang, komposisi) otomatis
+    // benar tanpa perlu dikejar satu-satu. HPP tetap utuh: barangnya sungguh keluar,
+    // dan biaya penukaran memang pantas terbaca di Laba.
+    if (document.getElementById('jualPenggantiRetur').checked) {
+      transaksi.penggantiRetur = true;
+      transaksi.nilaiBarangPengganti = hargaTotal;
+      transaksi.hargaTotal = 0;
+    }
 
     try {
       await simpanKeFirestore(KOLEKSI_PENJUALAN, transaksi);
@@ -7587,6 +7607,7 @@
     document.getElementById('jualKarungJumlah').value = '';
     document.getElementById('jualLiteranJumlah').value = '';
     document.getElementById('jualNamaPelanggan').value = '';
+    document.getElementById('jualPenggantiRetur').checked = false;
     document.getElementById('jualKemasanProduk').value = '';
     document.getElementById('jualRepackingMerk').value = '';
     document.getElementById('jualKarungMerk').value = '';
@@ -10330,6 +10351,7 @@
     if (j) baris.push(['Jumlah', j.nilai + ' ' + j.satuan]);
     baris.push(['Total tercatat', formatRupiah(p.hargaTotal || 0)]);
     if (p.caraBayar) baris.push(['Cara bayar', p.caraBayar]);
+    if (p.penggantiRetur) baris.push(['Pengganti retur', 'Omzet & kas Rp0 — nilai barang ' + formatRupiah(p.nilaiBarangPengganti || 0) + '. Uangnya terwakili penjualan asli + selisih di catatan Retur.']);
     if (p.perluKoreksi) baris.push(['Dari kasir', '<b class="ph-amber">Perlu dirapikan</b> — harga di luar katalog, jumlah belum pasti' + (jumlahTrx(p) && jumlahTrx(p).nilai > 0 ? '' : ', <b class="ph-merah">stok belum terpotong</b>')]);
     else if (p.jumlahDiturunkan) baris.push(['Dari kasir', 'Jumlah diturunkan dari harga (bukan ketikan) — pembagiannya pas']);
     // Kembalian (kalkulator kasir, 11 Agu 2026): cuma ada kalau kasir sempat pakai layar
