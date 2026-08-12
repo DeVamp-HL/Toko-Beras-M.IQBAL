@@ -3281,6 +3281,23 @@
       <div id="daftarPerbaikanKg" class="kartu-daftar" style="margin-top:10px; background:none; border:none; padding:0;"></div>
       <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="perbaikiTotalKgSemua()">Betulkan beratnya sekarang</button>
     </div>
+
+    <!-- COCOKKAN STOK / OPNAME (12 Agu 2026, izin My DeV) — pasangan "Cocokkan Kas"
+         untuk beras. Timbang fisik, isi hasilnya, selisihnya tercatat BERJEJAK. -->
+    <div class="kartu" style="margin-top:12px;">
+      <div class="panel-kepala"><h2>Cocokkan Stok <span class="keterangan">hasil timbang fisik</span></h2></div>
+      <p class="keterangan" style="margin-top:-4px;">Isi hasil timbang gudang yang sebenarnya. Selisihnya tercatat sebagai penyesuaian yang bisa dibaca ulang — bukan angka yang ditimpa diam-diam. HPP tidak berubah.</p>
+      <div class="grid-tombol-pilih" id="pilihOpnameMerkTombol"></div>
+      <input type="hidden" id="opnameMerk">
+      <div class="stok-tersedia" id="opnameInfo"></div>
+      <label for="opnameKgFisik">Hasil timbang fisik (kg)</label>
+      <input type="number" id="opnameKgFisik" placeholder="0" inputmode="decimal" oninput="perbaruiOpname()">
+      <div class="pratinjau-harga" id="opnamePreview" style="display:none;"></div>
+      <label for="opnameAlasan">Alasan / catatan</label>
+      <input type="text" id="opnameAlasan" placeholder="Contoh: susut timbangan, tumpahan, opname mingguan">
+      <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanPenyesuaianStok()">Catat penyesuaian</button>
+      <div class="kartu-daftar" id="daftarPenyesuaianStok" style="margin-top:12px; background:none; border:none; padding:0;"></div>
+    </div>
   </div>
 
   <!-- HALAMAN LABA / MARGIN -->
@@ -3987,6 +4004,12 @@
   // "total belum tertagih" kehilangan artinya. Bentuk datanya sengaja sama (ambil|bayar)
   // supaya cara membacanya seragam.
   const KOLEKSI_KASBON = 'kasbonMutasi';
+  // Penyesuaian stok / opname (12 Agu 2026, izin My DeV). Dunia nyata selalu geser dari
+  // catatan — susut, tumpahan, salah timbang. Sebelum ini tidak ada jalur sah untuk
+  // mencatatnya, jadi pembetulan manual pemilik tidak berjejak dan selisih berikutnya
+  // tidak bisa dibedakan dari bug. Yang disimpan MUTASINYA (kg sistem, kg fisik,
+  // selisih, alasan) — bukan angka stok yang ditimpa; sama seperti piutang & kasbon.
+  const KOLEKSI_PENYESUAIAN = 'penyesuaianStok';
 
   // Cache di memori — diisi ulang otomatis oleh onSnapshot tiap kali ada perubahan
   // (dari perangkat ini ATAU perangkat lain). Semua fungsi lama yang baca data
@@ -4005,6 +4028,7 @@
   let _cacheHargaKarung = [];
   let _cachePiutang = [];
   let _cacheKasbon = [];
+  let _cachePenyesuaian = [];
   let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false, piutang: false, kasbon: false };
 
   const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
@@ -4021,6 +4045,7 @@
   const KUNCI_HARGA_KARUNG = 'miqbal_katalog_harga_karung_v1';
   const KUNCI_PIUTANG = 'miqbal_piutang_mutasi_v1';
   const KUNCI_KASBON = 'miqbal_kasbon_mutasi_v1';
+  const KUNCI_PENYESUAIAN = 'miqbal_penyesuaian_stok_v1';
 
   // Jenis bahan kemasan biasa (plastik untuk produk kemasan jadi, di luar literan) —
   // per kombinasi ukuran + merek beras, karena harga per lembar beda tiap merek (instruksi My DeV, 1 Agustus 2026).
@@ -4147,7 +4172,7 @@
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); }
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); }
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
-    if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); }
+    if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); tampilkanCocokStok(); }
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'aruskas') tampilkanArusKas();
     if (nama === 'piutang') { tampilkanPiutang(); tampilkanKasbon(); }
@@ -5008,6 +5033,13 @@
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'kasbon');
 
+  pasangSinkronisasi(KOLEKSI_PENYESUAIAN, KUNCI_PENYESUAIAN, (d) => { _cachePenyesuaian = d; }, () => {
+    if (document.getElementById('halamanStok').classList.contains('tampil')) { tampilkanStok(); tampilkanCocokStok(); }
+    if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
+    if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
+  }, 'id', 'penyesuaian');
+
   // ============ RINGKASAN KASIR (dibaca kasir.html ringan) ============
   // Satu dokumen kecil berisi harga+stok+HPP terkini, supaya halaman kasir tidak
   // perlu Firebase SDK ataupun memuat seluruh riwayat. Diterbitkan ulang otomatis
@@ -5155,7 +5187,8 @@
       stokBahanLiteran: ambilBahanLiteran(),
       katalogHargaLiteran: ambilHargaLiteran(),
       katalogHargaKemasan: ambilHargaKemasan(),
-      katalogHargaKarung: ambilHargaKarung()
+      katalogHargaKarung: ambilHargaKarung(),
+      penyesuaianStok: ambilPenyesuaianStok()
     };
     const blob = new Blob([JSON.stringify(isi, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -5196,7 +5229,8 @@
           { kunci: 'stokBahanLiteran',  koleksi: KOLEKSI_BAHAN_LITERAN, ada: ambilBahanLiteran(),      field: 'id',    label: 'bahan literan' },
           { kunci: 'katalogHargaLiteran', koleksi: KOLEKSI_HARGA_LITERAN, ada: ambilHargaLiteran(),    field: 'id',    label: 'harga literan' },
           { kunci: 'katalogHargaKemasan', koleksi: KOLEKSI_HARGA_KEMASAN, ada: ambilHargaKemasan(),    field: 'id',    label: 'harga kemasan' },
-          { kunci: 'katalogHargaKarung',  koleksi: KOLEKSI_HARGA_KARUNG,  ada: ambilHargaKarung(),     field: 'id',    label: 'harga karung' }
+          { kunci: 'katalogHargaKarung',  koleksi: KOLEKSI_HARGA_KARUNG,  ada: ambilHargaKarung(),     field: 'id',    label: 'harga karung' },
+          { kunci: 'penyesuaianStok',     koleksi: KOLEKSI_PENYESUAIAN,   ada: ambilPenyesuaianStok(),  field: 'id',    label: 'penyesuaian stok' }
         ];
         const laporan = [];
         for (const k of daftarKoleksi) {
@@ -6351,6 +6385,11 @@
     const data = localStorage.getItem(KUNCI_KASBON);
     return data ? JSON.parse(data) : [];
   }
+  function ambilPenyesuaianStok() {
+    if (_cachePenyesuaian.length > 0) return _cachePenyesuaian;
+    const data = localStorage.getItem(KUNCI_PENYESUAIAN);
+    return data ? JSON.parse(data) : [];
+  }
 
   // Sisa kasbon per pegawai = yang diambil − yang sudah dikembalikan. Tidak ada angka
   // saldo yang disimpan & ditimpa; semuanya diturunkan ulang dari mutasinya, sama seperti
@@ -6511,6 +6550,13 @@
       if (r.jenisAsal === 'karung' && r.kondisi === 'utuh' && r.merkSumber && stok[r.merkSumber]) {
         stok[r.merkSumber].terpakai -= r.totalKg;
       }
+    });
+
+    // Penyesuaian opname (12 Agu 2026): selisihKg = fisik − sistem saat dihitung.
+    // Lewat 'terpakai' dan BUKAN 'totalMasuk', supaya HPP rata-rata tertimbang tidak
+    // tersentuh — barang susut tidak mengubah harga modal barang yang tersisa.
+    ambilPenyesuaianStok().forEach(o => {
+      if (o.merk && stok[o.merk]) stok[o.merk].terpakai -= (o.selisihKg || 0);
     });
 
     // Produksi 50 kg yang digabung balik ke karung utuh (keputusan My DeV 9 Agu 2026):
@@ -9502,6 +9548,76 @@
       </div>`).join('');
   }
 
+  // ===== COCOKKAN STOK / OPNAME (12 Agu 2026) =====
+  function tampilkanCocokStok() {
+    const wadah = document.getElementById('pilihOpnameMerkTombol');
+    if (!wadah) return;
+    const stokKarung = hitungStokKarungPerMerk();
+    // SEMUA merk yang pernah tercatat ikut — termasuk yang sistem bilang habis,
+    // justru di situlah opname paling sering menemukan barang.
+    const opsi = Object.keys(stokKarung).sort().map(m => ({
+      kunci: m, label: m, subLabel: `sistem ${stokKarung[m].sisaKg} kg`
+    }));
+    bikinTombolPilih('pilihOpnameMerkTombol', 'opnameMerk', opsi, 'Belum ada merk tercatat.', perbaruiOpname);
+    const daftar = document.getElementById('daftarPenyesuaianStok');
+    const semua = ambilPenyesuaianStok().slice().sort((x, y) => (y.id || 0) - (x.id || 0)).slice(0, 8);
+    daftar.innerHTML = semua.length === 0 ? '' :
+      '<div class="kd-judul" style="margin-bottom:6px;"><h3>Penyesuaian terakhir</h3></div>' +
+      semua.map(o => `<div class="baris-44">
+        <span class="nama"><i class="trx-nama">${escapeHtml(o.merk)}</i><small>${escapeHtml(formatTanggal(o.tanggal))}${o.jam ? ' · ' + o.jam : ''} · ${escapeHtml(o.alasan || '')}</small></span>
+        <span class="angka ${(o.selisihKg || 0) < 0 ? 'ph-merah' : 'ph-hijau'}">${(o.selisihKg || 0) > 0 ? '+' : ''}${o.selisihKg} kg</span>
+      </div>`).join('');
+  }
+
+  function perbaruiOpname() {
+    const merk = document.getElementById('opnameMerk').value;
+    const info = document.getElementById('opnameInfo');
+    const prev = document.getElementById('opnamePreview');
+    if (!merk) { info.textContent = ''; prev.style.display = 'none'; return; }
+    const st = hitungStokKarungPerMerk()[merk];
+    const sistem = st ? st.sisaKg : 0;
+    info.textContent = `Menurut sistem: ${sistem} kg`;
+    const isian = document.getElementById('opnameKgFisik').value;
+    if (isian === '' || isNaN(parseFloat(isian))) { prev.style.display = 'none'; return; }
+    const fisik = parseFloat(isian);
+    const selisih = Math.round((fisik - sistem) * 100) / 100;
+    prev.style.display = 'block';
+    prev.innerHTML =
+      `<div class="ph-baris"><span>Sistem → fisik</span><b>${sistem} → ${fisik} kg</b></div>` +
+      `<div class="ph-baris"><span>Selisih</span><b class="${selisih < 0 ? 'ph-merah' : (selisih > 0 ? 'ph-hijau' : '')}">${selisih === 0 ? 'Cocok persis' : (selisih > 0 ? '+' : '') + selisih + ' kg'}</b></div>` +
+      (selisih !== 0 && st && st.hppTerakhirPerKg > 0
+        ? `<div class="ph-catatan">Nilai selisih ± ${formatRupiah(Math.round(Math.abs(selisih) * st.hppTerakhirPerKg))} (HPP ${formatRupiah(Math.round(st.hppTerakhirPerKg))}/kg) — sebagai gambaran, tidak mengubah HPP.</div>`
+        : '');
+  }
+
+  async function simpanPenyesuaianStok() {
+    const merk = document.getElementById('opnameMerk').value;
+    if (!merk) { alert('Pilih merk yang ditimbang dulu.'); return; }
+    const isian = document.getElementById('opnameKgFisik').value;
+    if (isian === '' || isNaN(parseFloat(isian))) { alert('Isi hasil timbang fisiknya (kg).'); return; }
+    const fisik = parseFloat(isian);
+    if (fisik < 0) { alert('Hasil timbang tidak mungkin negatif.'); return; }
+    const alasan = document.getElementById('opnameAlasan').value.trim();
+    if (!alasan) { alert('Isi alasannya — supaya jejaknya bisa dibaca nanti.'); return; }
+    const st = hitungStokKarungPerMerk()[merk];
+    const sistem = st ? st.sisaKg : 0;
+    const selisih = Math.round((fisik - sistem) * 100) / 100;
+    if (selisih === 0) { alert('Fisik sama persis dengan sistem — tidak ada yang perlu disesuaikan. Kabar baik.'); return; }
+    if (!confirm('Catat penyesuaian ' + merk + '?\n\nSistem ' + sistem + ' kg → fisik ' + fisik + ' kg (selisih '
+      + (selisih > 0 ? '+' : '') + selisih + ' kg).\nStok sistem langsung mengikuti angka fisik. HPP tidak berubah.')) return;
+    await simpanKeFirestore(KOLEKSI_PENYESUAIAN, {
+      id: idUnik(), tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5),
+      merk, kgSistem: sistem, kgFisik: fisik, selisihKg: selisih, alasan
+    });
+    document.getElementById('opnameKgFisik').value = '';
+    document.getElementById('opnameAlasan').value = '';
+    document.getElementById('opnamePreview').style.display = 'none';
+    tampilkanStok();
+    tampilkanCocokStok();
+    perbaruiOpname();
+    alert('Penyesuaian tercatat. Stok ' + merk + ' sekarang ' + fisik + ' kg.');
+  }
+
   async function perbaikiTotalKgSemua() {
     const daftar = pindaiTotalKgMeleset();
     if (daftar.length === 0) return;
@@ -11551,6 +11667,8 @@
   window.tampilkanHarga = tampilkanHarga;
   window.tampilkanArusKas = tampilkanArusKas;
   window.perbaikiCaraBayarLama = perbaikiCaraBayarLama;
+  window.simpanPenyesuaianStok = simpanPenyesuaianStok;
+  window.perbaruiOpname = perbaruiOpname;
   window.simpanTitikKas = simpanTitikKas;
   window.bukaLembarQris = bukaLembarQris;
   window.tutupLembarQris = tutupLembarQris;
