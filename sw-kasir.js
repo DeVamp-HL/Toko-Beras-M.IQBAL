@@ -28,7 +28,11 @@
 // v16 (11 Agustus 2026): ejaan caraBayar dibakukan jadi 'QRIS' (kapital) di kasir dan
 // kasir darurat. WAJIB naik: dengan cache lama, kasir masih menyimpan 'Qris' walau
 // berkasnya sudah diperbarui — terbukti saat pengujian, v15 menyajikan versi lama.
-const VERSI = 'kasir-v16';
+// v17 (12 Agustus 2026): kasir memberi tahu umur harganya sendiri. Kasir MEMBEKUKAN
+// harga & HPP dari ringkasan yang di-cache; kalau penyegaran gagal berjam-jam, kasir
+// tetap jualan pakai harga lama tanpa ada yang memberi tahu. Sekarang ada bilah yang
+// diam selama masih segar dan menyela di atas 6 jam / sehari.
+const VERSI = 'kasir-v17';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

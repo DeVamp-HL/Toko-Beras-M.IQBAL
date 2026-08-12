@@ -58,6 +58,17 @@
   #chipOperator { color: var(--produk); font-weight: 700; cursor: pointer; padding: 4px 6px; }
   #chipStatus { padding: 2px 8px; border-radius: 999px; background: #2e3438; }
   #chipStatus.offline { background: var(--merah); color: #fff; }
+  /* Umur harga (12 Agu 2026). Kasir MEMBEKUKAN harga & HPP dari ringkasan yang di-cache;
+     kalau penyegaran gagal berjam-jam, kasir tetap jualan pakai harga lama tanpa ada
+     yang memberi tahu. Bilah ini diam selama masih segar, dan menyela begitu tidak. */
+  #bilahHarga {
+    display: none; flex: 0 0 auto; margin: 0 10px 6px; padding: 8px 12px; border-radius: 10px;
+    font-size: .78rem; line-height: 1.35; text-align: left; width: calc(100% - 20px);
+    font-family: inherit; border: 1px solid var(--amber, #e8b04a); background: rgba(232,176,74,.12); color: #f0d29a;
+  }
+  #bilahHarga.tampil { display: block; }
+  #bilahHarga.parah { border-color: var(--merah); background: rgba(242,112,89,.14); color: #f6b6a8; }
+  #bilahHarga b { display: block; font-size: .82rem; margin-bottom: 1px; }
   /* ---- layar LCD ---- */
   #lcd {
     background: var(--lcd); color: var(--lcd-teks); margin: 0 10px; border-radius: 8px;
@@ -253,6 +264,8 @@
   <span id="chipStatus">Memuat…</span>
 </div>
 
+<button type="button" id="bilahHarga" onclick="segarkanRingkasan()"></button>
+
 <div id="lcd">
   <div id="lcdInfo"><span id="lcdKiri"></span><span id="lcdKanan"></span></div>
   <div id="lcdAngka">0</div>
@@ -412,6 +425,11 @@ var PROYEK = 'toko-beras-m-iqbal';
 var KUNCI_API = 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA';
 var DASAR = 'https://firestore.googleapis.com/v1/projects/' + PROYEK + '/databases/(default)/documents/';
 var K_RINGKASAN = 'kasir_ringkasan_v1';
+// Kapan ringkasan TERAKHIR BERHASIL diambil dari server. Sengaja bukan diperbaruiPada
+// milik dokumennya: dokumen itu cuma ditulis ulang kalau harga/stok benar-benar berubah,
+// jadi umurnya bisa berhari-hari padahal harganya memang masih benar. Yang menentukan
+// risiko bagi kasir adalah "kapan terakhir aku bisa menyambung".
+var K_SEGAR = 'kasir_ringkasan_disegarkan';
 var K_ANTREAN = 'kasir_antrean_v1';
 var K_GAGAL = 'kasir_gagal_v1';
 var K_OPERATOR = 'kasir_operator_v1';
@@ -659,12 +677,14 @@ function segarkanRingkasan() {
         var o = {}; var f = j.fields || {}; for (var k in f) o[k] = dariFs(f[k]);
         ringkasan = o;
         localStorage.setItem(K_RINGKASAN, JSON.stringify(o));
+        localStorage.setItem(K_SEGAR, new Date().toISOString());
         bangunDaftarProduk();
         gambarPanelProduk('panelProduk', 'tekanProduk');
         isiSaranNamaPelanggan();
         setStatus(true);
+        gambarBilahHarga();
       })
-      .catch(function () { setStatus(navigator.onLine); });
+      .catch(function () { setStatus(navigator.onLine); gambarBilahHarga(); });
   });
 }
 
@@ -772,7 +792,38 @@ function setStatus(online) {
   if (!sudahLogin()) teks += ' · belum masuk';
   el.textContent = teks;
 }
-function perbaruiStatus() { setStatus(navigator.onLine); }
+function perbaruiStatus() { setStatus(navigator.onLine); gambarBilahHarga(); }
+
+// Jam sejak penyegaran terakhir. null = belum pernah berhasil sama sekali.
+function jamSejakSegar() {
+  var t = localStorage.getItem(K_SEGAR);
+  if (!t) return null;
+  var ms = Date.now() - new Date(t).getTime();
+  return ms < 0 ? 0 : ms / 3600000;   // jam mundur (HP salah setel) dianggap segar, bukan alarm palsu
+}
+function jamKeKata(j) {
+  if (j < 1) return Math.max(1, Math.round(j * 60)) + ' menit';
+  if (j < 24) return Math.round(j) + ' jam';
+  return Math.floor(j / 24) + ' hari';
+}
+// Ambang: 6 jam amber, 24 jam merah. Penyegaran otomatis jalan tiap 2 menit selama
+// online, jadi 6 jam berarti benar-benar putus lama — bukan sekadar sinyal kedip.
+function gambarBilahHarga() {
+  var el = $('bilahHarga');
+  if (!el) return;
+  var j = jamSejakSegar();
+  if (j === null) {
+    el.className = 'tampil parah';
+    el.innerHTML = '<b>Harga belum pernah terambil</b>Sambungkan internet sekali \u2014 tanpa itu daftar barang & harga kosong.';
+    return;
+  }
+  if (j < 6) { el.className = ''; el.innerHTML = ''; return; }
+  var parah = j >= 24;
+  el.className = 'tampil' + (parah ? ' parah' : '');
+  el.innerHTML = '<b>Harga terakhir disegarkan ' + jamKeKata(j) + ' lalu</b>'
+    + (parah ? 'Sudah lewat sehari \u2014 harga & stok di sini mungkin sudah berubah di sistem. ' : 'Kalau owner mengubah harga hari ini, kasir belum tahu. ')
+    + 'Ketuk untuk coba segarkan sekarang.';
+}
 
 // ================== OTAK KALKULATOR ==================
 // Register sederhana: entriSekarang (yang sedang diketik), opA+opJenis (rantai × atau :),
@@ -1456,6 +1507,7 @@ window.batalTanyaProduk = batalTanyaProduk;
 window.jawabPilihKandidat = jawabPilihKandidat; window.bukaPilihOperator = bukaPilihOperator;
 window.pilihOperatorIdx = pilihOperatorIdx; window.kirimLogin = kirimLogin; window.lewatiLogin = lewatiLogin;
 window.kirimAntrean = kirimAntrean;
+window.segarkanRingkasan = segarkanRingkasan;
 window.tandaiNamaTerisi = tandaiNamaTerisi;
 window.bukaLayarUtang = bukaLayarUtang; window.tutupLayarUtang = tutupLayarUtang;
 window.pilihUtang = pilihUtang; window.isiLunasUtang = isiLunasUtang;
@@ -1473,6 +1525,8 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw-kasir.j
 gambarSemua();
 perbaruiStatus();
 segarkanRingkasan();
+gambarBilahHarga();
+setInterval(gambarBilahHarga, 300000);   // bilah ikut menua sendiri walau penyegaran gagal terus
 kirimAntrean(false);
 window.addEventListener('online', function () { setStatus(true); kirimAntrean(false); segarkanRingkasan(); });
 window.addEventListener('offline', function () { setStatus(false); });
