@@ -899,6 +899,12 @@
     border: 1px solid var(--garis); border-radius: 10px; background: #0e1218; color: var(--teks);
   }
   .modal-pin-kotak input:focus { outline: none; border-color: var(--emas-gelap); }
+  /* Setel PIN punya TIGA kolom, tidak seperti modal PIN biasa yang cuma satu. Kolomnya
+     tetap bergaya ketik-angka (huruf besar, berjarak) supaya enak ditekan di HP, jadi
+     penjelasannya pindah ke label di atas kolom — placeholder kalimat panjang terpotong
+     oleh letter-spacing 8px. Tinggi dibatasi supaya muat di HP pendek. */
+  #modalSetelPinBg .modal-pin-kotak { max-height: 92vh; overflow-y: auto; }
+  .setel-pin-label { font-size: 12px; color: var(--redup); text-align: left; font-weight: 700; margin: 12px 0 5px; }
   .modal-pin-tombol { display: flex; gap: 8px; margin-top: 14px; }
   .modal-pin-tombol button {
     flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: 800; font-size: 15px;
@@ -2345,12 +2351,7 @@
 <body>
 <div id="gerbangSistem" class="tampil">
   <h2 style="margin:0 0 6px;"> Sistem Toko M.IQBAL</h2>
-  <p id="gerbangPesan" style="margin:0 0 14px; font-size:.95rem;">Khusus owner. Masukkan PIN masuk.</p>
-  <div id="gerbangBlokPin">
-    <input type="password" id="inputPinGerbang" inputmode="numeric" maxlength="6" placeholder="PIN" onkeyup="if(event.key==='Enter')cekPinGerbang()">
-    <br><button type="button" class="tombol-gerbang" onclick="cekPinGerbang()">Masuk</button>
-    <p id="gerbangSalah" style="display:none; color:#f0b9a5; font-size:.9rem;">PIN salah.</p>
-  </div>
+  <p id="gerbangPesan" style="margin:0 0 14px; font-size:.95rem;">Sistem utama khusus owner. Pegawai lewat tombol Kasir di bawah.</p>
   <a class="kasir-link" href="kasir.html"> Buka Kasir (Gono / Hasan / Ben)</a>
   <br><button type="button" class="owner-kecil" onclick="gerbangJalurOwner()"> Owner</button>
 </div>
@@ -2415,6 +2416,26 @@
     <div class="qris-aksi">
       <button type="button" class="qris-utama" id="btnPasangQris" onclick="pilihBerkasQris()">Pilih gambar QRIS dari HP</button>
       <button type="button" class="qris-redup" onclick="tutupLembarQris()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-pin-bg" id="modalSetelPinBg">
+  <div class="modal-pin-kotak">
+    <h3 id="setelPinJudul">PIN Owner</h3>
+    <p id="setelPinKet"></p>
+    <div id="setelPinBlokLama" style="display:none;">
+      <div class="setel-pin-label">PIN sekarang</div>
+      <input type="password" id="setelPinLama" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off">
+    </div>
+    <div class="setel-pin-label">PIN baru — 4 sampai 8 angka</div>
+    <input type="password" id="setelPinBaru" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off">
+    <div class="setel-pin-label">Ulangi PIN baru</div>
+    <input type="password" id="setelPinUlang" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off">
+    <div class="modal-pin-salah" id="setelPinSalah"></div>
+    <div class="modal-pin-tombol">
+      <button type="button" class="modal-pin-batal" onclick="tutupSetelPin()">Batal</button>
+      <button type="button" class="modal-pin-masuk" onclick="simpanSetelPin()">Simpan</button>
     </div>
   </div>
 </div>
@@ -2517,6 +2538,7 @@
   <button type="button" class="lm-baris tab-owner" data-halaman="tutup" onclick="pindahDariMenu('tutup')"><span>Tutup Hari <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— ritual malam</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="aruskas" onclick="pindahDariMenu('aruskas')"><span>Arus Kas <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— uang masuk &amp; keluar</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="piutang" onclick="pindahDariMenu('piutang')"><span>Piutang <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— pelanggan yang berutang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaSetelPin()"><span>PIN Owner <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— setel / ganti</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()"><span>Jaga Toko <i>— siapa yang bertugas</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <div class="lm-kaki">
     <div class="lm-avatar">MD</div>
@@ -9566,6 +9588,9 @@
     // Dua antrean kasir — dulu cuma tampil di tata letak HP; layar lebar tidak pernah diberi tahu.
     const rapikanN = daftarPerluRapikan();
     if (rapikanN.length > 0) daftarPerhatian.push(` ${rapikanN.length} penjualan kasir perlu dirapikan jumlahnya — sebagian stoknya belum terpotong (lihat tab Riwayat)`);
+    // PIN belum disetel = tab uang terbuka di HP mana pun yang sudah masuk. Sesudah
+    // perombakan 12 Agu 2026 keadaan ini memang berlaku sampai pemilik menyetelnya sekali.
+    if (!pinSudahDisetel()) daftarPerhatian.push(' PIN owner belum disetel — tab uang terbuka di HP mana pun yang sudah masuk. Setel lewat Menu → PIN Owner.');
     const belumTutup = hariBelumDitutup();
     if (belumTutup.length > 0) daftarPerhatian.push(` ${belumTutup.length} hari berjualan belum ditutup (${escapeHtml(belumTutup.map(formatTanggal).join(', '))}) — kas & stoknya belum pernah dicocokkan`);
     const daruratN = daftarDaruratBelumRinci();
@@ -9629,6 +9654,9 @@
         !katalogK.some(x => x.merk === stokKemasan[k].namaProduk && x.ukuran === stokKemasan[k].ukuranKemasan && x.hargaPerUnit > 0));
       if (tanpaHarga.length > 0) daftarHp.push({ w: 'var(--amber)', t: `${tanpaHarga.length} produk belum punya harga — belum bisa dijual`, h: 'harga', a: 'Harga' });
       if (karantinaMenunggu.length > 0) daftarHp.push({ w: 'var(--amber)', t: `${karantinaMenunggu.length} barang di Karantina menunggu keputusan`, h: 'stok', a: 'Stok' });
+      if (!pinSudahDisetel()) daftarHp.push({ w: 'var(--merah)',
+        t: 'PIN owner belum disetel — tab uang terbuka di HP yang sudah masuk',
+        k: 'bukaSetelPin()', a: 'Setel' });
       const belumTutupHp = hariBelumDitutup();
       if (belumTutupHp.length > 0) daftarHp.push({ w: 'var(--amber)',
         t: `${belumTutupHp.length} hari berjualan belum ditutup — kas & stoknya belum dicocokkan`,
@@ -11850,15 +11878,92 @@
 
   // ============ KUNCI OWNER (Ringkasan & Laba) ============
   // Tab Ringkasan dan Laba disembunyikan (class .tab-owner, default display:none)
-  // sampai PIN benar dimasukkan. Sekali benar, status "unlock" disimpan di
-  // localStorage PERANGKAT ITU SAJA (tidak sinkron lintas perangkat lewat Firestore
-  // — sengaja, supaya PIN tidak pernah lewat jaringan/tersimpan di database bersama).
-  const PIN_OWNER = '7431';
-  // ===== Gerbang masuk sistem lengkap (2 Agustus 2026) =====
-  // Kasir = Gono/Hasan/Ben. Sistem utama = OWNER SAJA (12 Agu 2026; sebelumnya Ben juga
-  // boleh lewat saklar benSistemLengkap, saklar itu sudah dicabut).
-  // Di luar jam 05.00-19.00 semua terkunci kecuali owner — cegah anak pegawai ketik-ketik di rumah.
-  const PIN_MASUK = '5296';
+  // sampai PIN benar dimasukkan. Status "unlock" tetap disimpan di localStorage
+  // PERANGKAT ITU SAJA — membuka di HP tidak ikut membuka di laptop. Yang sinkron
+  // lintas perangkat cuma PIN-nya sendiri (teracak), lihat blok di bawah.
+  // ===== PIN OWNER (dirombak 12 Agustus 2026) =====
+  // Sebelum ini PIN tertulis apa adanya di berkas yang terbit di GitHub Pages — siapa
+  // pun bisa membacanya lewat "lihat sumber", dan tidak ada pembatas percobaan sama
+  // sekali. Diperiksa saat audit: tanpa login, SEMUA koleksi database menolak (403).
+  // Jadi PIN memang bukan penjaga data — penjaga data adalah sandi toko. PIN mengunci
+  // layar di perangkat yang SUDAH terlanjur login, yaitu HP pemilik sendiri. Justru
+  // untuk ancaman itu PIN yang bisa dibaca publik tidak berguna sama sekali.
+  //
+  // Sekarang: satu PIN owner saja (PIN masuk dicabut — sisa dari zaman Ben masih
+  // memakai sistem utama), disimpan TERACAK di pengaturan/keamanan yang terlindungi
+  // login, disalin ke perangkat sesudah berhasil dibaca, dan bisa diganti dari layar
+  // tanpa perlu menerbitkan ulang kode.
+  const KUNCI_PIN_LOKAL = 'miqbal_pin_owner_v1';   // { garam, acak } salinan perangkat
+  const KUNCI_COBA_PIN = 'miqbal_pin_percobaan_v1';
+
+  // SHA-256 bawaan peramban. Bukan demi menyembunyikan dari pembaca database (pemilik
+  // sendiri yang punya aksesnya), tapi supaya PIN tidak pernah tersimpan apa adanya —
+  // orang cenderung memakai angka yang sama di tempat lain.
+  async function acakPin(pin, garam) {
+    const data = new TextEncoder().encode(String(garam) + '|' + String(pin));
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function pinLokal() {
+    try { return JSON.parse(localStorage.getItem(KUNCI_PIN_LOKAL) || 'null'); } catch (e) { return null; }
+  }
+  // Pemilik TIDAK BISA terkunci: kalau perangkat belum pernah menyalin PIN (HP baru,
+  // database belum terjangkau), gerbang PIN dilewati dan yang menjaga adalah sandi toko
+  // — penjaga yang sesungguhnya. Keputusan My DeV 12 Agu 2026.
+  function pinSudahDisetel() { const d = pinLokal(); return !!(d && d.acak); }
+
+  // Jeda bertingkat sesudah 5 kali salah. Tanpa ini, PIN 4 angka cuma 10.000
+  // kemungkinan yang bisa dicoba habis sambil santai; dengan ini, mencoba semuanya
+  // butuh berhari-hari.
+  const JEDA_PIN = [30, 60, 300, 900];   // detik, sesudah salah ke-5, 6, 7, 8+
+  function statusCobaPin() {
+    let d;
+    try { d = JSON.parse(localStorage.getItem(KUNCI_COBA_PIN) || 'null'); } catch (e) { d = null; }
+    if (!d) return { salah: 0, sisaDetik: 0 };
+    const sisa = Math.ceil((d.bolehLagi - Date.now()) / 1000);
+    return { salah: d.salah || 0, sisaDetik: sisa > 0 ? sisa : 0 };
+  }
+  function catatPinSalah() {
+    const st = statusCobaPin();
+    const salah = st.salah + 1;
+    let jeda = 0;
+    if (salah >= 5) jeda = JEDA_PIN[Math.min(salah - 5, JEDA_PIN.length - 1)];
+    localStorage.setItem(KUNCI_COBA_PIN, JSON.stringify({ salah, bolehLagi: Date.now() + jeda * 1000 }));
+    return jeda;
+  }
+  function bersihkanCobaPin() { localStorage.removeItem(KUNCI_COBA_PIN); }
+  function kataJeda(detik) {
+    if (detik >= 60) return Math.ceil(detik / 60) + ' menit';
+    return detik + ' detik';
+  }
+
+  // Benar/salahnya diputuskan di sini saja, supaya jeda & pencatatan tidak bisa terlewat
+  // di salah satu pemanggil.
+  async function pinOwnerBenar(masukan) {
+    const d = pinLokal();
+    if (!d || !d.acak) return true;   // belum disetel di perangkat ini — lihat pinSudahDisetel()
+    return (await acakPin(masukan, d.garam)) === d.acak;
+  }
+
+  // Disalin dari database sesudah login berhasil. Dokumen ini cuma berisi garam + hasil
+  // acak, tidak pernah PIN-nya sendiri.
+  function pasangPendengarPin() {
+    onSnapshot(doc(db, 'pengaturan', 'keamanan'), (snap) => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      if (d && d.acak && d.garam) localStorage.setItem(KUNCI_PIN_LOKAL, JSON.stringify({ garam: d.garam, acak: d.acak }));
+    }, () => { /* offline / belum masuk — pakai salinan perangkat */ });
+  }
+  setTimeout(pasangPendengarPin, 0);
+
+  async function simpanPinOwnerBaru(pinBaru) {
+    const garam = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    const acak = await acakPin(pinBaru, garam);
+    const data = { id: 'keamanan', garam, acak, diubahPada: new Date().toISOString() };
+    localStorage.setItem(KUNCI_PIN_LOKAL, JSON.stringify({ garam, acak }));
+    await simpanKeFirestore('pengaturan', data);
+  }
+
   const KUNCI_GERBANG = 'miqbal_gerbang_v1';
   const JAM_BUKA_SISTEM = 5, JAM_TUTUP_SISTEM = 19;
   function terapkanGerbang() {
@@ -11868,45 +11973,49 @@
     const jam = new Date().getHours();
     const diLuarJam = (jam < JAM_BUKA_SISTEM || jam >= JAM_TUTUP_SISTEM);
     const pesan = document.getElementById('gerbangPesan');
-    const blokPin = document.getElementById('gerbangBlokPin');
     if (diLuarJam) {
       pesan.textContent = 'Sistem tutup di luar jam toko (05.00\u201319.00). Sampai besok pagi.';
-      blokPin.style.display = 'none';
       el.classList.add('tampil');
       return;
     }
-    // Sistem utama kini OWNER SAJA (keputusan My DeV 12 Agu 2026). Ben tetap memakai
-    // KASIR, tapi tidak lagi punya jalan masuk ke sini — saklar benSistemLengkap dan
-    // gerbang "Ben libur" dicabut, tersisa PIN masuk milik owner.
-    blokPin.style.display = 'block';
-    pesan.textContent = 'Khusus owner. Masukkan PIN masuk.';
+    // PIN MASUK DICABUT 12 Agustus 2026. Ia lahir waktu Ben masih memakai sistem utama;
+    // sejak akses Ben dicabut, sistem ini owner-only dan pemilik mengetik DUA PIN
+    // berbeda untuk membuka pintu yang sama. Yang tersisa: kunci jam operasional di
+    // atas, dan tombol Owner di bawah yang meminta PIN owner satu-satunya.
+    // Data sendiri tetap dijaga sandi toko — diperiksa saat audit, tanpa login semua
+    // koleksi menolak 403.
+    pesan.textContent = 'Sistem utama khusus owner. Pegawai lewat tombol Kasir di bawah.';
     el.classList.toggle('tampil', localStorage.getItem(KUNCI_GERBANG) !== 'ya');
   }
-  function cekPinGerbang() {
-    const v = document.getElementById('inputPinGerbang').value.trim();
-    if (v === PIN_MASUK) {
-      localStorage.setItem(KUNCI_GERBANG, 'ya');
-      document.getElementById('inputPinGerbang').value = '';
-      document.getElementById('gerbangSalah').style.display = 'none';
-      terapkanGerbang();
-    } else {
-      document.getElementById('gerbangSalah').style.display = 'block';
-    }
+  async function gerbangJalurOwner() {
+    if (!(await mintaPinOwner('PIN owner:'))) return;
+    localStorage.setItem(KUNCI_UNLOCK_OWNER, '1');
+    localStorage.setItem(KUNCI_GERBANG, 'ya');
+    terapkanStatusOwner();
+    terapkanGerbang();
   }
-  function gerbangJalurOwner() {
-    const v = prompt('PIN owner:');
-    if (v && v.trim() === PIN_OWNER) {
-      localStorage.setItem(KUNCI_UNLOCK_OWNER, '1');
-      localStorage.setItem(KUNCI_GERBANG, 'ya');
-      terapkanStatusOwner();
-      terapkanGerbang();
-    } else if (v !== null) { alert('PIN owner salah.'); }
+
+  // Satu tempat untuk meminta + memeriksa PIN, dipakai gerbang maupun modal. Menyatukan
+  // jalannya membuat jeda dan pencatatan salah mustahil terlewat di salah satunya.
+  // Mengembalikan true kalau boleh masuk (termasuk saat PIN memang belum disetel).
+  async function mintaPinOwner(judul) {
+    if (!pinSudahDisetel()) return true;
+    const st = statusCobaPin();
+    if (st.sisaDetik > 0) {
+      alert('Terlalu banyak PIN salah. Coba lagi ' + kataJeda(st.sisaDetik) + ' lagi.');
+      return false;
+    }
+    const v = prompt(judul);
+    if (v === null) return false;
+    if (await pinOwnerBenar(v.trim())) { bersihkanCobaPin(); return true; }
+    const jeda = catatPinSalah();
+    alert('PIN owner salah.' + (jeda > 0 ? ' Tunggu ' + kataJeda(jeda) + ' sebelum mencoba lagi.' : ''));
+    return false;
   }
   // setTimeout 0: tunggu seluruh modul selesai dievaluasi dulu — ownerSudahUnlock()
   // membaca KUNCI_UNLOCK_OWNER yang dideklarasikan lebih bawah (hindari TDZ ReferenceError).
   setTimeout(terapkanGerbang, 0);
   setInterval(terapkanGerbang, 60000);
-  window.cekPinGerbang = cekPinGerbang;
   window.gerbangJalurOwner = gerbangJalurOwner;
 
   // ===== Roster jaga (2 Agustus 2026): saklar per-orang, dikendalikan owner dari tab Jaga =====
@@ -12018,6 +12127,50 @@
     }
   }
 
+  function bukaSetelPin() {
+    const sudah = pinSudahDisetel();
+    document.getElementById('setelPinJudul').textContent = sudah ? 'Ganti PIN Owner' : 'Setel PIN Owner';
+    document.getElementById('setelPinKet').textContent = sudah
+      ? 'PIN ini mengunci tab uang di HP yang sudah masuk. Berlaku di semua perangkat Anda begitu online.'
+      : 'PIN belum pernah disetel, jadi tab uang sekarang terbuka di HP mana pun yang sudah masuk. Setel sekarang — berlaku di semua perangkat Anda.';
+    document.getElementById('setelPinBlokLama').style.display = sudah ? 'block' : 'none';
+    ['setelPinLama', 'setelPinBaru', 'setelPinUlang'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('setelPinSalah').style.display = 'none';
+    document.getElementById('modalSetelPinBg').classList.add('tampil');
+  }
+  function tutupSetelPin() { document.getElementById('modalSetelPinBg').classList.remove('tampil'); }
+
+  async function simpanSetelPin() {
+    const salah = document.getElementById('setelPinSalah');
+    const tunjuk = (t) => { salah.textContent = t; salah.style.display = 'block'; };
+    const baru = document.getElementById('setelPinBaru').value.trim();
+    const ulang = document.getElementById('setelPinUlang').value.trim();
+    if (pinSudahDisetel()) {
+      const st = statusCobaPin();
+      if (st.sisaDetik > 0) { tunjuk('Terlalu banyak PIN salah. Coba lagi ' + kataJeda(st.sisaDetik) + ' lagi.'); return; }
+      const lama = document.getElementById('setelPinLama').value.trim();
+      if (!(await pinOwnerBenar(lama))) {
+        const jeda = catatPinSalah();
+        tunjuk('PIN sekarang salah.' + (jeda > 0 ? ' Tunggu ' + kataJeda(jeda) + '.' : ''));
+        return;
+      }
+      bersihkanCobaPin();
+    }
+    if (!/^[0-9]{4,8}$/.test(baru)) { tunjuk('PIN baru harus 4 sampai 8 angka.'); return; }
+    if (baru !== ulang) { tunjuk('Ulangan PIN tidak sama.'); return; }
+    try {
+      await simpanPinOwnerBaru(baru);
+    } catch (err) {
+      console.error(err);
+      tunjuk('Gagal menyimpan ke database (offline?). PIN belum berubah di perangkat lain.');
+      return;
+    }
+    bersihkanCobaPin();
+    tutupSetelPin();
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
+    alert('PIN owner tersimpan. Berlaku di semua perangkat Anda begitu online.');
+  }
+
   function bukaModalPin() {
     document.getElementById('pinSalahPesan').style.display = 'none';
     document.getElementById('inputPinOwner').value = '';
@@ -12029,15 +12182,25 @@
     document.getElementById('modalPinBg').classList.remove('tampil');
   }
 
-  function cekPinOwner() {
+  async function cekPinOwner() {
     const nilai = document.getElementById('inputPinOwner').value.trim();
-    if (nilai === PIN_OWNER) {
+    const st = statusCobaPin();
+    const pesanSalah = document.getElementById('pinSalahPesan');
+    if (st.sisaDetik > 0) {
+      pesanSalah.textContent = 'Terlalu banyak PIN salah. Coba lagi ' + kataJeda(st.sisaDetik) + ' lagi.';
+      pesanSalah.style.display = 'block';
+      return;
+    }
+    if (await pinOwnerBenar(nilai)) {
+      bersihkanCobaPin();
       localStorage.setItem(KUNCI_UNLOCK_OWNER, '1');
       terapkanStatusOwner();
       tutupModalPin();
       pindahHalaman('ringkasan');
     } else {
-      document.getElementById('pinSalahPesan').style.display = 'block';
+      const jeda = catatPinSalah();
+      pesanSalah.textContent = 'PIN salah.' + (jeda > 0 ? ' Tunggu ' + kataJeda(jeda) + ' sebelum mencoba lagi.' : ' Coba lagi.');
+      pesanSalah.style.display = 'block';
       document.getElementById('inputPinOwner').value = '';
       document.getElementById('inputPinOwner').focus();
     }
@@ -12183,6 +12346,9 @@
   window.perbaruiOpname = perbaruiOpname;
   window.simpanTitikKas = simpanTitikKas;
   window.tampilkanTutupHari = tampilkanTutupHari;
+  window.bukaSetelPin = bukaSetelPin;
+  window.tutupSetelPin = tutupSetelPin;
+  window.simpanSetelPin = simpanSetelPin;
   window.kirimStrukTrx = kirimStrukTrx;
   window.perbaruiSelisihTutup = perbaruiSelisihTutup;
   window.simpanTutupHari = simpanTutupHari;
