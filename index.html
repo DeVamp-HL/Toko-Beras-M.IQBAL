@@ -3515,6 +3515,14 @@
       <div class="hero-syarat" id="piutangSyarat"></div>
     </div>
 
+    <!-- Kelompok umur (12 Agu 2026). Total saja tidak memberi tahu apa pun tentang
+         risiko: Rp5 juta yang baru seminggu beda jauh dari Rp5 juta yang sudah setahun. -->
+    <div class="kpi-mini" id="piutangUmurWrap" style="grid-template-columns: repeat(3, 1fr); margin-top:10px;">
+      <div class="kartu-mini"><div class="label">0–30 hari</div><div class="nilai" id="piutangUmur1">Rp0</div></div>
+      <div class="kartu-mini"><div class="label">31–90 hari</div><div class="nilai" id="piutangUmur2">Rp0</div></div>
+      <div class="kartu-mini"><div class="label">di atas 90 hari</div><div class="nilai" id="piutangUmur3">Rp0</div></div>
+    </div>
+
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
       <div class="kd-judul"><h3>Pelanggan berutang</h3><span class="kd-hitung" id="piutangHitung"></span></div>
       <div id="daftarPiutang"></div>
@@ -6578,11 +6586,31 @@
       const s = peta[k];
       s.sisa = Math.round((s.kredit + s.saldoAwal - s.bayar) * 100) / 100;
       s.total = s.kredit + s.saldoAwal;
-      s.mutasi.sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')) || (b.idTrx || b.idMutasi || 0) - (a.idTrx || a.idMutasi || 0));
+      // UMUR PIUTANG (12 Agu 2026) — pembayaran dianggap melunasi utang TERTUA dulu
+      // (FIFO), kebiasaan penagihan di mana pun. Sisa yang tinggal karena itu melekat
+      // pada utang termuda, dan umurnya dihitung dari utang tertua yang BELUM tertutup.
+      // Catatan 09 memperlihatkan kenapa ini penting: tujuh piutang di sana sudah lewat
+      // setahun (dua di atas 3,5 tahun) tanpa pernah ada yang menandai mereka menua.
+      const utang = s.mutasi.filter(m => m.jenis !== 'bayar')
+        .slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));
+      let sisaBayar = s.bayar;
+      s.tanggalTertua = null;
+      for (const u of utang) {
+        if (sisaBayar >= u.nominal) { sisaBayar -= u.nominal; continue; }
+        s.tanggalTertua = u.tanggal || null;   // utang pertama yang belum tertutup penuh
+        break;
+      }
+      s.umurHari = (s.sisa > 0 && s.tanggalTertua)
+        ? Math.max(0, Math.round((isoKeTanggal(tanggalLokalIso()) - isoKeTanggal(s.tanggalTertua)) / 86400000))
+        : null;
       return s;
     });
-    // Yang masih berutang di atas (paling besar dulu); yang sudah lunas turun ke bawah.
-    hasil.sort((a, b) => (b.sisa - a.sisa) || a.nama.localeCompare(b.nama));
+    // Yang masih berutang di atas, TERTUA dulu — bukan terbesar. Yang menua diam-diam
+    // itulah yang berubah jadi piutang mati; nominal besar yang baru kemarin justru
+    // paling gampang ditagih. Yang sudah lunas turun ke bawah.
+    hasil.sort((a, b) => (b.sisa > 0) - (a.sisa > 0)
+      || (b.umurHari || 0) - (a.umurHari || 0)
+      || (b.sisa - a.sisa) || a.nama.localeCompare(b.nama));
     return hasil;
   }
 
@@ -9759,6 +9787,17 @@
   // mengandung tanda kutip (mis. "O'Brien") akan memecah string JavaScript-nya.
   let _piutangTampil = [];
 
+  // Umur dalam kata yang langsung terbaca. Di atas 60 hari orang berhenti menghitung
+  // hari — yang terasa justru "sudah berbulan-bulan".
+  function umurKeKata(hari) {
+    if (hari === null || hari === undefined) return 'baru';
+    if (hari <= 0) return 'hari ini';
+    if (hari < 60) return hari + ' hari';
+    if (hari < 365) return Math.round(hari / 30) + ' bulan';
+    const th = Math.floor(hari / 365), sisaBln = Math.round((hari % 365) / 30);
+    return th + ' tahun' + (sisaBln > 0 ? ' ' + sisaBln + ' bln' : '');
+  }
+
   function tampilkanPiutang() {
     const daftar = hitungPiutang();
     _piutangTampil = daftar;
@@ -9774,6 +9813,22 @@
       : `Dari ${berutang.length} pelanggan${lunas.length > 0 ? ` · ${lunas.length} sudah lunas` : ''}. Belum termasuk piutang yang tidak dicatat lewat sistem.`;
     document.getElementById('piutangHitung').textContent = berutang.length > 0 ? berutang.length + ' berutang' : '';
 
+    // Kelompok umur. Ambang 30/90 hari: catatan 09 mencatat piutang yang lewat setahun
+    // praktis berhenti tertagih, jadi 90 hari sudah pantas disebut bahaya — bukan
+    // menunggu sampai setahun baru ketahuan.
+    const emb = [0, 0, 0];
+    berutang.forEach(d => {
+      const u = d.umurHari || 0;
+      emb[u <= 30 ? 0 : (u <= 90 ? 1 : 2)] += d.sisa;
+    });
+    // angkaKartuMini: kartu sepertiga layar cuma ~109 px — rupiah penuh terpotong di
+    // situ (diukur saat pengujian). Pola singkat "2,2 jt" sudah dipakai kartu KPI lain.
+    document.getElementById('piutangUmur1').innerHTML = angkaKartuMini(emb[0], true);
+    document.getElementById('piutangUmur2').innerHTML = angkaKartuMini(emb[1], true);
+    const el3 = document.getElementById('piutangUmur3');
+    el3.innerHTML = angkaKartuMini(emb[2], true);
+    el3.className = 'nilai' + (emb[2] > 0 ? ' kritis' : '');
+
     const kont = document.getElementById('daftarPiutang');
     if (daftar.length === 0) {
       kont.innerHTML = '<div class="kosong-info"><b>Belum ada piutang</b><span>Penjualan kredit dari kasir masuk ke sini otomatis. Utang lama bisa dimasukkan lewat formulir Saldo Awal di bawah.</span></div>';
@@ -9784,7 +9839,8 @@
     kont.innerHTML = daftar.map((d, i) => {
       const lunasIni = d.sisa <= 0;
       return `<button type="button" class="baris-44 baris-ketuk" onclick="bukaLembarPiutang(${i})">
-        <span class="nama"><i class="trx-nama">${escapeHtml(d.nama)}</i><small>${d.mutasi.length} catatan · total ${formatRupiah(d.total)}${d.bayar > 0 ? ' · dibayar ' + formatRupiah(d.bayar) : ''}</small></span>
+        <span class="nama"><i class="trx-nama">${escapeHtml(d.nama)}</i><small>${lunasIni ? d.mutasi.length + ' catatan · total ' + formatRupiah(d.total)
+          : '<b class="' + (d.umurHari > 90 ? 'ph-merah' : (d.umurHari > 30 ? 'ph-amber' : '')) + '">' + umurKeKata(d.umurHari) + '</b> · sejak ' + escapeHtml(formatTanggal(d.tanggalTertua)) + (d.bayar > 0 ? ' · dibayar ' + formatRupiah(d.bayar) : '')}</small></span>
         <span class="angka${lunasIni ? '' : ' kritis'}">${lunasIni ? 'LUNAS' : formatRupiah(d.sisa)}</span>
         ${IKON_CHEV}
       </button>`;
