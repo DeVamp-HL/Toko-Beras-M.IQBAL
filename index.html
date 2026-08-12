@@ -3354,6 +3354,15 @@
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
 
+    <!-- Uang kas menurut catatan, SEKARANG — bukan per bulan. Baru berarti sesudah
+         titik hitung disetel di kartu Cocokkan Kas; sebelum itu sistem jujur bilang
+         belum bisa tahu, bukan menebak. -->
+    <div class="kartu-hero" id="kasSekarangWrap" style="display:none; margin-bottom:12px;">
+      <div class="label">Uang kas sekarang <span class="keterangan">menurut catatan</span></div>
+      <div class="hero-nilai" id="kasSekarangNilai">Rp0</div>
+      <div class="hero-syarat" id="kasSekarangSyarat"></div>
+    </div>
+
     <label for="arusKasBulan">Bulan</label>
     <input type="month" id="arusKasBulan" onchange="tampilkanArusKas()">
 
@@ -3376,6 +3385,14 @@
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
       <div class="kd-judul"><h3>Uang keluar</h3></div>
       <div id="daftarArusKasKeluar"></div>
+    </div>
+
+    <!-- BUKU KAS (12 Agu 2026): pergerakan uang satu per satu, urut tanggal, dengan
+         saldo berjalan — jawaban untuk "pergerakan uang masuk & keluar", bukan cuma
+         total per kategori. Saldo hanya terisi untuk gerakan SESUDAH titik hitung. -->
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Buku Kas</h3><span class="kd-hitung" id="bukuKasHitung"></span></div>
+      <div id="daftarBukuKas"></div>
     </div>
 
     <!-- COCOKKAN KAS (12 Agustus 2026) — menjawab "sekarang saya pegang berapa",
@@ -8703,9 +8720,12 @@
 
     const harianToko = ambilPengeluaranHarian().filter(h => h.kategori === 'toko' && cocok(h.tanggal));
     const returDipakai = ambilRetur().filter(r => cocok(r.tanggal));
-    // selisihHargaTukar positif = toko mengembalikan selisih (uang keluar);
-    // negatif = pelanggan menambah, jadi mengurangi total secara neto.
-    const refund = returDipakai.reduce((a, r) => a + (r.nominalRefund || 0) + (r.selisihHargaTukar || 0), 0);
+    // BRUTO, bukan neto (12 Agu 2026): selisih tukar yang pelanggan TAMBAHKAN adalah
+    // uang yang sungguh masuk laci — dulu dijaringkan diam-diam ke angka refund,
+    // sehingga rincian kategori tidak pernah bisa dicocokkan dengan Buku Kas yang
+    // mencatat kejadian per kejadian. Bersihnya sama persis; rinciannya kini jujur.
+    const refund = returDipakai.reduce((a, r) => a + (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0), 0);
+    const tukarMasuk = returDipakai.reduce((a, r) => a + Math.max(0, -(r.selisihHargaTukar || 0)), 0);
     // Kantong kemasan & paper bag literan TIDAK punya penanda stokAwal: keduanya masuk
     // lewat formulir beli bahan biasa, jadi tidak ada bedanya di data selain tanggal.
     // Pemilik memastikan (12 Agu 2026) seluruh pembelian bahan bertanggal 8 Agustus 2026
@@ -8718,7 +8738,8 @@
       { label: 'Penjualan tunai', nominal: jmlHarga(tunai), n: tunai.length, satuan: 'transaksi' },
       { label: 'Penjualan QRIS', nominal: jmlHarga(qris), n: qris.length, satuan: 'transaksi' },
       { label: 'Pelunasan piutang', nominal: jmlNominal(piutangBayar), n: piutangBayar.length, satuan: 'pembayaran' },
-      { label: 'Kasbon dikembalikan', nominal: jmlNominal(kasbonBayar), n: kasbonBayar.length, satuan: 'kali' }
+      { label: 'Kasbon dikembalikan', nominal: jmlNominal(kasbonBayar), n: kasbonBayar.length, satuan: 'kali' },
+      { label: 'Tukar — pelanggan menambah', nominal: tukarMasuk, n: returDipakai.filter(r => (r.selisihHargaTukar || 0) < 0).length, satuan: 'retur' }
     ];
     const keluar = [
       { label: 'Belanja beras', nominal: belanja, n: batch.length, satuan: 'kedatangan' },
@@ -8813,6 +8834,58 @@
   // tanggal bayarnya sendiri dan diperlakukan sama seperti catatan lain — ikut kalau
   // dibayar sesudah titik hitung. Pos tanpa tanggal berarti belum dibayar, jadi memang
   // belum boleh mengurangi kas; jumlahnya dilaporkan lewat bulananBelumDibayar.
+  // ===== BUKU KAS (12 Agu 2026) =====
+  // Arus Kas menjawab "sebulan bergerak berapa" per kategori; pemilik juga butuh
+  // PERGERAKANNYA satu per satu dengan saldo berjalan — seperti buku kas warung.
+  // Aturan ikut/tidaknya SAMA PERSIS dengan hitungArusKasInti; kesamaannya dijaga
+  // pengujian yang membandingkan jumlah kedua jalur, bukan sekadar janji komentar.
+  function daftarGerakanKas() {
+    const rows = [];
+    const dorong = (t, jam, id, label, masuk, keluar) => {
+      if (!(masuk > 0) && !(keluar > 0)) return;   // baris Rp0 (mis. pengganti retur) tidak berarti di buku kas
+      rows.push({ t: t || '', jam: jam || '', id: id || 0, label, masuk: masuk || 0, keluar: keluar || 0 });
+    };
+    ambilPenjualan().forEach(p => {
+      if (caraBayarKunci(p) === 'kredit') return;  // belum jadi uang — masuk lewat pelunasan piutang
+      dorong(p.tanggal, p.jam, p.id, namaSingkatTrx(p) + (caraBayarKunci(p) === 'qris' ? ' · QRIS' : ''), p.hargaTotal, 0);
+    });
+    ambilPiutangMutasi().forEach(m => {
+      if (m.tipe !== 'bayar') return;
+      dorong(m.tanggal, m.jam, m.id, 'Pelunasan piutang — ' + (m.namaPelanggan || ''), m.nominal, 0);
+    });
+    ambilKasbonMutasi().forEach(m => {
+      if (m.tipe === 'bayar') dorong(m.tanggal, m.jam, m.id, 'Kasbon kembali — ' + (m.namaPegawai || ''), m.nominal, 0);
+      else dorong(m.tanggal, m.jam, m.id, 'Kasbon — ' + (m.namaPegawai || ''), 0, m.nominal);
+    });
+    ambilSemuaBatch().forEach(k => {
+      if (k.stokAwal) return;
+      const nilai = (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0);
+      dorong(k.tanggal, '', k.id, 'Belanja beras — ' + (k.pemasok || '') + ' (' + (k.merkList || []).length + ' merk)', 0, nilai);
+    });
+    bayaranBiayaBulanan().forEach(x => {
+      if (!x.tanggal) return;                      // belum dibayar = belum bergerak
+      dorong(x.tanggal, '', 0, x.label + ' — biaya ' + namaBulanPanjang(x.bulan + '-01'), 0, x.nominal);
+    });
+    ambilPengeluaranHarian().forEach(h => {
+      if (h.kategori !== 'toko') return;
+      dorong(h.tanggal, '', h.id, 'Harian — ' + (h.keterangan || ''), 0, h.nominal);
+    });
+    ambilRetur().forEach(r => {
+      const nama = r.merkSumber || r.namaProduk || '';
+      if (r.nominalRefund > 0) dorong(r.tanggal, r.jam, r.id, 'Refund retur — ' + nama, 0, r.nominalRefund);
+      const sel = r.selisihHargaTukar || 0;
+      if (sel > 0) dorong(r.tanggal, r.jam, r.id, 'Selisih tukar — ' + nama, 0, sel);
+      else if (sel < 0) dorong(r.tanggal, r.jam, r.id, 'Selisih tukar (pelanggan nambah) — ' + nama, -sel, 0);
+    });
+    const bahan = b2 => b2.tipe === 'beli' && b2.tanggal !== TANGGAL_STOK_AWAL;
+    ambilBahanKemasan().filter(bahan).forEach(b2 =>
+      dorong(b2.tanggal, '', b2.id, 'Beli kantong kemasan — ' + (LABEL_BAHAN_KEMASAN[b2.jenis] || b2.jenis), 0, b2.hargaTotal));
+    ambilBahanLiteran().filter(bahan).forEach(b2 =>
+      dorong(b2.tanggal, '', b2.id, 'Beli bahan literan — ' + (LABEL_BAHAN_LITERAN[b2.jenis] || b2.jenis), 0, b2.hargaTotal));
+    rows.sort((x, y) => x.t.localeCompare(y.t) || x.jam.localeCompare(y.jam) || (x.id - y.id));
+    return rows;
+  }
+
   function hitungArusKasSejak(dariIso, sampaiIso) {
     const sampai = sampaiIso || tanggalLokalIso();
     const semua = bayaranBiayaBulanan();
@@ -9015,6 +9088,42 @@
         : 'Uang di tangan lebih banyak dari yang seharusnya. Kemungkinan: ada pemasukan yang belum dicatat, atau ada pengeluaran yang tercatat padahal belum benar-benar dibayar.'}</div>`;
   }
 
+  function tampilkanBukuKas(bl) {
+    const kont = document.getElementById('daftarBukuKas');
+    if (!kont) return;
+    const t = ambilTitikKas();
+    const semua = daftarGerakanKas();
+    // Saldo berjalan dihitung SEKALI menyeluruh dari titik hitung, lalu bulan yang
+    // dipilih cuma jendelanya — kalau dihitung per bulan, saldo awal bulan jadi tebakan.
+    let saldo = t ? (t.laci || 0) + (t.rekening || 0) : null;
+    semua.forEach(r => {
+      if (t && r.t > t.tanggal) { saldo += r.masuk - r.keluar; r.saldo = saldo; }
+      else r.saldo = null;
+    });
+    // Hero "uang kas sekarang" = saldo akhir seluruh gerakan sesudah titik.
+    const wrap = document.getElementById('kasSekarangWrap');
+    if (t) {
+      wrap.style.display = 'block';
+      document.getElementById('kasSekarangNilai').innerHTML = angkaUtamaHtml(saldo);
+      document.getElementById('kasSekarangSyarat').textContent =
+        'Laci + rekening, dihitung dari titik ' + formatTanggal(t.tanggal) + '. Cocokkan berkala dengan hitungan fisik di kartu bawah.';
+    } else {
+      wrap.style.display = 'none';
+    }
+    const bulanIni = semua.filter(r => bulanDari(r.t) === bl);
+    document.getElementById('bukuKasHitung').textContent = bulanIni.length + ' gerakan';
+    if (bulanIni.length === 0) {
+      kont.innerHTML = '<div class="kosong-info"><b>Belum ada gerakan uang bulan ini</b><span>Penjualan tunai/QRIS, belanja, dan biaya akan tercatat di sini.</span></div>';
+      return;
+    }
+    // Terbaru di atas — kebiasaan yang sama dengan Riwayat; saldo tetap benar karena
+    // dihitung kronologis sebelum dibalik.
+    kont.innerHTML = bulanIni.slice().reverse().map(r => `<div class="baris-44">
+      <span class="nama"><i class="trx-nama">${escapeHtml(r.label)}</i><small>${escapeHtml(formatTanggal(r.t))}${r.jam ? ' · ' + r.jam : ''}${r.saldo !== null ? ' · saldo ' + formatRupiah(r.saldo) : ''}</small></span>
+      <span class="angka ${r.masuk > 0 ? 'ph-hijau' : 'ph-merah'}">${r.masuk > 0 ? '+' : '−'}${formatRupiah(r.masuk > 0 ? r.masuk : r.keluar).replace('Rp', 'Rp')}</span>
+    </div>`).join('');
+  }
+
   function tampilkanArusKas() {
     tampilkanCaraBayarLama();
     tampilkanCocokKas();
@@ -9030,6 +9139,7 @@
     document.getElementById('arusKasTotalKeluar').textContent = formatRupiah(d.totalKeluar);
     document.getElementById('daftarArusKasMasuk').innerHTML = d.masuk.map(barisArusKas).join('');
     document.getElementById('daftarArusKasKeluar').innerHTML = d.keluar.map(barisArusKas).join('');
+    tampilkanBukuKas(d.bulan);
 
     // Kredit bulan ini disebut terang-terangan: itu barang yang sudah keluar tapi
     // uangnya belum ada, dan justru itu selisih terbesar antara omzet dan kas.
