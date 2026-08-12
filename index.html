@@ -3681,6 +3681,16 @@
       <span>Ketuk untuk merinci satu per satu — nominal tidak berubah, HPP &amp; stok ikut terhitung</span>
     </button>
 
+    <!-- Antrean "Rapikan dari kasir" (12 Agu 2026): transaksi yang kasir tandai
+         perluKoreksi (harga di luar katalog -> jumlah 0, atau harga melenceng jauh ->
+         jumlah hasil tebakan). Bendera ini SUDAH ditulis kasir sejak 9 Agu tapi tidak
+         pernah dibaca siapa pun — stok melenceng diam-diam tiap kejadian. -->
+    <div class="kartu-peringatan-amber" id="kartuRapikanKasir" style="display:none; margin-bottom:12px;">
+      <div class="kpa-judul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/></svg><b id="rapikanKasirJudul"></b></div>
+      <p>Kasir menjual dengan harga di luar katalog, jadi jumlah barangnya belum pasti — sebagian malah tercatat 0 dan <b>stoknya belum terpotong</b>. Ketuk barisnya, lalu pakai "Koreksi angka" untuk mengisi jumlah sebenarnya. Uangnya tidak berubah.</p>
+      <div id="daftarRapikanKasir" class="kartu-daftar" style="margin-top:10px; background:none; border:none; padding:0;"></div>
+    </div>
+
     <div id="daftarRiwayat"></div>
     <div id="riwSentinel" aria-hidden="true"></div>
 
@@ -9077,6 +9087,11 @@
     kemasanMenipis.forEach(k => daftarPerhatian.push(` Stok ${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg menipis: ${stokKemasan[k].sisaUnit} unit`));
     if (karantinaMenunggu.length > 0) daftarPerhatian.push(` ${karantinaMenunggu.length} barang di Karantina menunggu keputusan (lihat tab Stok)`);
     if (hppNol.length > 0) daftarPerhatian.push(` ${hppNol.length} produk punya stok tapi HPP Rp0 — penjualannya terekam untung penuh dan TIDAK ikut dihitung di margin: ${escapeHtml(hppNol.join(', '))}. Perbaiki lewat Produksi/Stok Awal.`);
+    // Dua antrean kasir — dulu cuma tampil di tata letak HP; layar lebar tidak pernah diberi tahu.
+    const rapikanN = daftarPerluRapikan();
+    if (rapikanN.length > 0) daftarPerhatian.push(` ${rapikanN.length} penjualan kasir perlu dirapikan jumlahnya — sebagian stoknya belum terpotong (lihat tab Riwayat)`);
+    const daruratN = daftarDaruratBelumRinci();
+    if (daruratN.length > 0) daftarPerhatian.push(` ${daruratN.length} penjualan kasir darurat belum dirinci — ${formatRupiah(daruratN.reduce((a, p) => a + (p.hargaTotal || 0), 0))} tanpa produk & HPP (lihat tab Riwayat)`);
 
     const kontPerhatian = document.getElementById('ringPerhatian');
     kontPerhatian.innerHTML = daftarPerhatian.length === 0
@@ -9136,6 +9151,10 @@
         !katalogK.some(x => x.merk === stokKemasan[k].namaProduk && x.ukuran === stokKemasan[k].ukuranKemasan && x.hargaPerUnit > 0));
       if (tanpaHarga.length > 0) daftarHp.push({ w: 'var(--amber)', t: `${tanpaHarga.length} produk belum punya harga — belum bisa dijual`, h: 'harga', a: 'Harga' });
       if (karantinaMenunggu.length > 0) daftarHp.push({ w: 'var(--amber)', t: `${karantinaMenunggu.length} barang di Karantina menunggu keputusan`, h: 'stok', a: 'Stok' });
+      const rapikanHp = daftarPerluRapikan();
+      if (rapikanHp.length > 0) daftarHp.push({ w: 'var(--merah)',
+        t: `${rapikanHp.length} penjualan kasir perlu dirapikan — jumlah belum pasti, sebagian stok belum terpotong`,
+        h: 'rekap', a: 'Riwayat' });
       const daruratBelum = daftarDaruratBelumRinci();
       if (daruratBelum.length > 0) daftarHp.push({ w: 'var(--amber)',
         t: `${daruratBelum.length} penjualan kasir darurat belum dirinci — ${formatRupiah(daruratBelum.reduce((a, p) => a + (p.hargaTotal || 0), 0))} tanpa produk & HPP`,
@@ -10195,6 +10214,8 @@
     if (j) baris.push(['Jumlah', j.nilai + ' ' + j.satuan]);
     baris.push(['Total tercatat', formatRupiah(p.hargaTotal || 0)]);
     if (p.caraBayar) baris.push(['Cara bayar', p.caraBayar]);
+    if (p.perluKoreksi) baris.push(['Dari kasir', '<b class="ph-amber">Perlu dirapikan</b> — harga di luar katalog, jumlah belum pasti' + (jumlahTrx(p) && jumlahTrx(p).nilai > 0 ? '' : ', <b class="ph-merah">stok belum terpotong</b>')]);
+    else if (p.jumlahDiturunkan) baris.push(['Dari kasir', 'Jumlah diturunkan dari harga (bukan ketikan) — pembagiannya pas']);
     // Kembalian (kalkulator kasir, 11 Agu 2026): cuma ada kalau kasir sempat pakai layar
     // KEMBALIAN di kasir.html. Statusnya dipakai owner untuk mengecek belakangan kalau
     // pembeli nanya "kembaliannya udah dikasih belum" — bukan mengandalkan ingatan.
@@ -10260,16 +10281,20 @@
     const j = jumlahTrx(p);
     const baru = parseFloat(document.getElementById('koreksiJumlah').value);
     if (!(baru >= 0) || baru === j.nilai) { el.style.display = 'none'; return; }
+    const isiPertama = !(j.nilai > 0);
     const satuanHarga = j.nilai > 0 ? (p.hargaTotal || 0) / j.nilai : 0;
-    const totalBaru = Math.round(satuanHarga * baru);
+    const totalBaru = isiPertama ? (p.hargaTotal || 0) : Math.round(satuanHarga * baru);
     const selisih = totalBaru - (p.hargaTotal || 0);
     const kembali = j.nilai - baru;
     el.style.display = 'block';
     el.innerHTML =
       `<div class="ph-baris"><span>Jumlah</span><b>${j.nilai} → ${baru} ${j.satuan}</b></div>` +
       `<div class="ph-baris"><span>Stok ${escapeHtml(p.namaProduk || p.merkSumber || '')}</span><b>${kembali > 0 ? 'kembali ' + kembali : 'berkurang ' + Math.abs(kembali)} ${j.satuan}</b></div>` +
-      `<div class="ph-baris"><span>Omzet ${escapeHtml(formatTanggal(p.tanggal))}</span><b class="${selisih < 0 ? 'ph-merah' : 'ph-hijau'}">${selisih < 0 ? '−' : '+'} ${formatRupiah(Math.abs(selisih))}</b></div>` +
-      `<div class="ph-baris"><span>Total baru</span><b>${formatRupiah(totalBaru)}</b></div>`;
+      (isiPertama
+        ? `<div class="ph-baris"><span>Uang</span><b>${formatRupiah(totalBaru)} — tidak diubah</b></div>` +
+          `<div class="ph-catatan">Jumlah baru diisi pertama kali (dari kasir tanpa katalog). Uang yang diterima kasir dipertahankan; HPP diisi dari stok terkini.</div>`
+        : `<div class="ph-baris"><span>Omzet ${escapeHtml(formatTanggal(p.tanggal))}</span><b class="${selisih < 0 ? 'ph-merah' : 'ph-hijau'}">${selisih < 0 ? '−' : '+'} ${formatRupiah(Math.abs(selisih))}</b></div>` +
+          `<div class="ph-baris"><span>Total baru</span><b>${formatRupiah(totalBaru)}</b></div>`);
   }
 
   async function simpanKoreksiTrx() {
@@ -10284,19 +10309,39 @@
     const satuanHarga = j.nilai > 0 ? (p.hargaTotal || 0) / j.nilai : 0;
     const idBaru = Date.now();
     // Transaksi pengganti: salinan yang benar, menunjuk ke asalnya.
+    // JUMLAH LAMA 0 = jalur kasir tanpa-katalog: uangnya NYATA diterima, jumlahnya saja
+    // yang belum diisi. Sebelum 12 Agu 2026, harga satuan dihitung Rp/0 = 0 sehingga
+    // koreksi justru MENGHAPUS omzetnya (dibuktikan di browser: Rp750.000 -> Rp0).
+    // Sekarang: uang dipertahankan apa adanya, dan HPP diisi dari stok terkini —
+    // pola yang sama dengan rincian kasir darurat.
+    const isiPertamaKali = !(j.nilai > 0);
     const pengganti = {
       ...p, id: idBaru,
       [j.field]: baru,
-      hargaTotal: Math.round(satuanHarga * baru),
+      hargaTotal: isiPertamaKali ? (p.hargaTotal || 0) : Math.round(satuanHarga * baru),
       hppTotalSaatJual: j.nilai > 0 ? Math.round((p.hppTotalSaatJual || 0) / j.nilai * baru) : 0,
       koreksiDari: p.id, alasanKoreksi: alasan,
       dikoreksiPada: new Date().toISOString()
     };
+    // Jumlahnya kini pasti — bendera kasir tidak boleh terbawa, supaya antrean
+    // "Rapikan dari kasir" benar-benar kosong sesudah dirapikan.
+    delete pengganti.perluKoreksi;
+    delete pengganti.jumlahDiturunkan;
     // setDoc MENOLAK nilai undefined (beda dengan null) — dulu ditulis
     // "dikoreksiOleh: undefined" dan simpan koreksi selalu gagal. Dihapus dari objek.
     delete pengganti.dikoreksiOleh;
     delete pengganti.dibatalkan;
     if (p.jenis === 'kemasan') pengganti.totalKg = (p.ukuranKemasan || 0) * baru;
+    if (isiPertamaKali) {
+      if (p.jenis === 'karung' || p.jenis === 'repacking') {
+        const st = hitungStokKarungPerMerk()[p.merkSumber];
+        const kg = p.jenis === 'karung' ? baru * (p.beratKarungAcuan || 50) : baru;
+        pengganti.hppTotalSaatJual = Math.round((st ? st.hppTerakhirPerKg : 0) * kg);
+      } else if (p.jenis === 'kemasan') {
+        const sk = hitungStokKemasan()[p.namaProduk + '|' + p.ukuranKemasan];
+        pengganti.hppTotalSaatJual = Math.round((sk ? sk.hppRataRataPerUnit : 0) * baru);
+      }
+    }
     // Bug audit 9 Agu 2026: literan & karung dulu TIDAK menghitung ulang totalKg,
     // padahal stok karung dipotong dari totalKg — koreksi 10L→5L tetap memotong stok
     // sebesar 10 liter, selamanya. repacking aman (field koreksinya memang totalKg).
@@ -10315,6 +10360,10 @@
       // lembarnya tidak berbanding lurus dengan liter.
       const hppBerasLama = Math.max(0, (p.hppTotalSaatJual || 0) - (p.biayaKemasanLiteran || 0));
       if (j.nilai > 0) pengganti.hppTotalSaatJual = Math.round(hppBerasLama / j.nilai * baru) + biayaBaru;
+      else {
+        const st = hitungStokKarungPerMerk()[p.merkSumber];
+        pengganti.hppTotalSaatJual = Math.round((st ? st.hppTerakhirPerKg : 0) * (pengganti.totalKg || 0)) + biayaBaru;
+      }
       pengganti.kemasanLiteran = jkBaru;
       pengganti.jumlahKemasanLiteranDipakai = dipakaiBaru;
       pengganti.biayaKemasanLiteran = biayaBaru;
@@ -10940,7 +10989,35 @@
     tutupLembarTrx();
   }
 
+  // Transaksi kasir yang jumlahnya belum pasti. HANYA perluKoreksi yang diantrekan:
+  // jumlahDiturunkan saja (pembagian harga yang pas) lazim dan benar — mengantrekan
+  // semuanya membanjiri antrean sampai tidak ada yang membacanya lagi.
+  function daftarPerluRapikan() {
+    return ambilPenjualan().filter(p => p.perluKoreksi);
+  }
+  function tampilkanRapikanKasir() {
+    const kartu = document.getElementById('kartuRapikanKasir');
+    if (!kartu) return;
+    const d = daftarPerluRapikan();
+    if (d.length === 0) { kartu.style.display = 'none'; return; }
+    kartu.style.display = 'block';
+    document.getElementById('rapikanKasirJudul').textContent =
+      d.length + ' penjualan kasir perlu dirapikan jumlahnya';
+    document.getElementById('daftarRapikanKasir').innerHTML = d.map(p => {
+      const j = jumlahTrx(p);
+      const nolStok = !j || !(j.nilai > 0);
+      return `<button type="button" class="baris-44 baris-ketuk" onclick="bukaLembarTrx(${p.id})">
+        <span class="nama"><i class="trx-nama">${escapeHtml(namaSingkatTrx(p))}</i><small>${escapeHtml(formatTanggal(p.tanggal))}${p.jam ? ' · ' + p.jam : ''}${nolStok ? ' · <b class="ph-merah">stok belum terpotong</b>' : ' · jumlah hasil tebakan'}</small></span>
+        <span class="angka">${formatRupiah(p.hargaTotal || 0)}</span>
+        ${IKON_CHEV}
+      </button>`;
+    }).join('');
+  }
+
   function perbaruiKartuDarurat() {
+    // Dua kartu antrean di halaman yang sama disegarkan bersama — setiap jalur yang
+    // menyegarkan satu pasti butuh yang lain (koreksi, batalkan, rinci, sinkron).
+    tampilkanRapikanKasir();
     const el = document.getElementById('kartuDaruratRekap');
     if (!el) return;
     const d = daftarDaruratBelumRinci();
