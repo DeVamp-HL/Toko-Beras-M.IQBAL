@@ -69,6 +69,17 @@
   #bilahHarga.tampil { display: block; }
   #bilahHarga.parah { border-color: var(--merah); background: rgba(242,112,89,.14); color: #f6b6a8; }
   #bilahHarga b { display: block; font-size: .82rem; margin-bottom: 1px; }
+  /* Struk digital (12 Agu 2026). Muncul SESUDAH transaksi tersimpan, bukan menyela
+     sebelum — kebanyakan pembeli tidak minta struk, dan menambah satu ketukan di tiap
+     penjualan memperlambat kasir yang sedang ramai. */
+  #bilahStruk {
+    display: none; flex: 0 0 auto; margin: 0 10px 6px; padding: 9px 12px; border-radius: 10px;
+    font-size: .82rem; font-weight: 700; text-align: left; width: calc(100% - 20px); min-height: 44px;
+    font-family: inherit; border: 1px solid #2f6b43; background: rgba(47,107,67,.16); color: #9fe0ae;
+  }
+  #bilahStruk.tampil { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  #bilahStruk small { display: block; font-weight: 600; font-size: .72rem; color: #7fb894; }
+  #bilahStruk .kirim { flex: 0 0 auto; color: #cfeeda; }
   /* ---- layar LCD ---- */
   #lcd {
     background: var(--lcd); color: var(--lcd-teks); margin: 0 10px; border-radius: 8px;
@@ -265,6 +276,7 @@
 </div>
 
 <button type="button" id="bilahHarga" onclick="segarkanRingkasan()"></button>
+<button type="button" id="bilahStruk" onclick="kirimStrukWa()"></button>
 
 <div id="lcd">
   <div id="lcdInfo"><span id="lcdKiri"></span><span id="lcdKanan"></span></div>
@@ -861,6 +873,8 @@ function gambarLcd() {
 }
 function gambarStruk() {
   var wadah = $('struk');
+  // Begitu ada barang di struk, pembelinya sudah berganti — tautan struk lama dicabut.
+  if (strukItems.length > 0) lupakanStrukTerakhir();
   if (strukItems.length === 0) {
     wadah.innerHTML = '<div id="strukKosong">Ketik harga lalu +. Bisa juga 13500 \u00d7 2.5 atau 12000 : 2. Harga yang tidak ada di katalog tetap diterima \u2014 barangnya ditanya sebelum disimpan.</div>';
     return;
@@ -1157,6 +1171,14 @@ function mulaiBaru() {
   if ($('layarKembalian')) tutupLayarKembalian();
   kembalianInfo = null;
 }
+
+// Struk milik pembeli SEBELUMNYA — begitu barang pembeli berikutnya masuk struk,
+// tautannya harus hilang supaya tidak ada yang terkirim ke orang yang salah.
+function lupakanStrukTerakhir() {
+  if (!strukTerakhir) return;
+  strukTerakhir = null;
+  gambarBilahStruk();
+}
 function namaPelangganTerisi() {
   var el = $('namaPelangganInput');
   return !!(el && (el.value || '').trim());
@@ -1367,6 +1389,64 @@ function simpanBayarUtang() {
   setTimeout(function () { $('layarSukses').classList.remove('tampil'); }, 1300);
 }
 
+// ---------- STRUK DIGITAL (12 Agustus 2026) ----------
+// Bukti untuk pembeli, dan penengah kalau belakangan ada beda ingatan soal kembalian
+// atau utang. Dikirim lewat tautan wa.me — tanpa server, tanpa nomor pembeli disimpan
+// di mana pun: WhatsApp sendiri yang menanyakan mau dikirim ke siapa.
+var HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+var BULAN_ID = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+var strukTerakhir = null;   // { teks, total }
+
+function susunStrukTerakhir(totalNota, namaPelanggan) {
+  var d = new Date();
+  var baris = [];
+  baris.push('*TOKO BERAS M.IQBAL*');
+  baris.push(HARI_ID[d.getDay()] + ', ' + d.getDate() + ' ' + BULAN_ID[d.getMonth()] + ' ' + d.getFullYear()
+    + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'));
+  baris.push('');
+  strukItems.forEach(function (it) {
+    if (it.potongan) { baris.push('Potongan harga    −' + rupiah(it.harga)); return; }
+    var p = it.produkIdx !== null ? daftarProduk[it.produkIdx] : null;
+    var nama = p ? p.label : 'Barang';
+    var satuan = p ? (p.tipe === 'literan' ? ' liter' : (p.tipe === 'karung' ? ' karung' : ' pcs')) : '';
+    baris.push(nama + (p && it.qty ? '  ' + it.qty + satuan : '') + '   ' + rupiah(it.harga));
+  });
+  baris.push('------------------------------');
+  baris.push('*TOTAL   ' + rupiah(totalNota) + '*');
+  if (bayarAktif === 'Kredit') {
+    baris.push('KREDIT — belum dibayar');
+    if (namaPelanggan) baris.push('a.n. ' + namaPelanggan);
+  } else {
+    baris.push('Bayar: ' + bayarAktif);
+    // Kembalian ikut HANYA kalau memang dihitung lewat layar KEMBALIAN dan totalnya
+    // masih cocok — angka basi di struk lebih berbahaya daripada tidak ada angka.
+    if (kembalianInfo && kembalianInfo.total === totalNota && kembalianInfo.nominal > 0) {
+      baris.push('Uang diterima: ' + rupiah(kembalianInfo.uangDiterima));
+      baris.push('Kembali: ' + rupiah(kembalianInfo.nominal));
+    }
+  }
+  baris.push('');
+  baris.push('Terima kasih 🙏');
+  strukTerakhir = { teks: baris.join('\n'), total: totalNota };
+  gambarBilahStruk();
+}
+
+function gambarBilahStruk() {
+  var el = $('bilahStruk');
+  if (!el) return;
+  if (!strukTerakhir) { el.className = ''; el.innerHTML = ''; return; }
+  el.className = 'tampil';
+  el.innerHTML = '<span>Struk terakhir ' + rupiah(strukTerakhir.total)
+    + '<small>ketuk untuk kirim ke WhatsApp</small></span><span class="kirim">Kirim ›</span>';
+}
+
+function kirimStrukWa() {
+  if (!strukTerakhir) return;
+  // Tanpa nomor tujuan: WhatsApp yang menanyakan mau dikirim ke siapa, jadi nomor
+  // pembeli tidak perlu diminta apalagi disimpan.
+  window.open('https://wa.me/?text=' + encodeURIComponent(strukTerakhir.teks), '_blank');
+}
+
 // ---------- CATAT: tanya produk yang belum ditandai, lalu simpan ----------
 function tekanCatat() {
   // Dua pagar lama (jam operasional & wajib pilih operator) dicabut — lihat catatan
@@ -1489,6 +1569,9 @@ function simpanTransaksi() {
   });
 
   kirimAntrean(false);
+  // Struk disusun SEBELUM mulaiBaru() — sesudah itu strukItems, bayarAktif, dan
+  // kembalianInfo semuanya sudah dikosongkan untuk pembeli berikutnya.
+  susunStrukTerakhir(totalNota, namaPelanggan);
   $('teksSukses').textContent = rupiah(totalNota);
   $('layarSukses').classList.add('tampil');
   setTimeout(function () { $('layarSukses').classList.remove('tampil'); }, 1300);
@@ -1508,6 +1591,7 @@ window.jawabPilihKandidat = jawabPilihKandidat; window.bukaPilihOperator = bukaP
 window.pilihOperatorIdx = pilihOperatorIdx; window.kirimLogin = kirimLogin; window.lewatiLogin = lewatiLogin;
 window.kirimAntrean = kirimAntrean;
 window.segarkanRingkasan = segarkanRingkasan;
+window.kirimStrukWa = kirimStrukWa;
 window.tandaiNamaTerisi = tandaiNamaTerisi;
 window.bukaLayarUtang = bukaLayarUtang; window.tutupLayarUtang = tutupLayarUtang;
 window.pilihUtang = pilihUtang; window.isiLunasUtang = isiLunasUtang;

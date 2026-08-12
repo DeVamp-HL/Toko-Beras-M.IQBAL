@@ -1984,6 +1984,14 @@
     border: 1px solid rgba(217, 178, 95, .55);
   }
   #lembarTrx .ltx-batal { color: var(--merah); background: rgba(242, 112, 89, .08); border: 1px solid rgba(242, 112, 89, .4); }
+  /* Kirim struk (12 Agu 2026). Di luar #lembarTrxAksi karena aksi-aksi itu disembunyikan
+     untuk transaksi yang sudah mati — padahal struk transaksi lama justru yang paling
+     sering diminta ulang saat ada beda ingatan. */
+  #lembarTrx .ltx-struk {
+    width: 100%; min-height: 46px; margin-top: 10px; border-radius: 12px;
+    font-family: inherit; font-size: 13px; font-weight: 700; color: #9fe0ae;
+    background: rgba(47, 107, 67, .16); border: 1px solid #2f6b43;
+  }
   /* ===== Rinci kasir darurat: tombol + chip tebakan + kartu antrean ===== */
   #lembarTrx .ltx-rinci {
     color: #e8b04a;
@@ -2531,6 +2539,7 @@
     <button type="button" class="ltx-rinci" id="btnUrungkanRinci" style="display:none;" onclick="urungkanRinciTrx()">Urungkan rincian</button>
     <button type="button" class="ltx-batal" onclick="mulaiBatalkanTrx()">Batalkan transaksi</button>
   </div>
+  <button type="button" class="ltx-struk" id="btnStrukTrx" onclick="kirimStrukTrx()">Kirim struk ke WhatsApp</button>
 
   <div id="lembarTrxForm" style="display:none;">
     <label id="labelKoreksiJumlah">Jumlah yang benar</label>
@@ -10819,12 +10828,59 @@
     // jejaknya tetap terbaca, tapi tidak boleh bercabang jadi rantai yang membingungkan.
     // Transaksi darurat yang masih hidup: tombolnya Rincikan produk (bukan Koreksi angka).
     document.getElementById('lembarTrxAksi').style.display = (mati || (!j && !darurat)) ? 'none' : 'grid';
+    // Struk boleh dikirim untuk transaksi mana pun yang punya nominal — termasuk yang
+    // sudah dibatalkan/dikoreksi (strukturnya menyebut statusnya), karena justru
+    // transaksi lama yang jadi bahan perselisihan. Kecuali darurat yang belum dirinci:
+    // barangnya belum diketahui, struknya cuma akan berisi "Penjualan".
+    document.getElementById('btnStrukTrx').style.display =
+      (darurat && !p.asalDarurat) ? 'none' : 'block';
     document.getElementById('btnKoreksiTrx').style.display = darurat ? 'none' : '';
     document.getElementById('btnRinciTrx').style.display = darurat && !mati ? '' : 'none';
     document.getElementById('btnUrungkanRinci').style.display = p.asalDarurat && !mati ? '' : 'none';
     document.getElementById('lembarTrxForm').style.display = 'none';
     document.getElementById('lembarTrxRinci').style.display = 'none';
     document.body.classList.add('lembar-trx-terbuka');
+  }
+
+  // ===== STRUK DIGITAL (12 Agustus 2026) =====
+  // Kembaran fungsi di kasir.html (kasir menyusun dari struk berjalan, di sini dari
+  // dokumen yang sudah tersimpan) — kalau bentuk struknya diubah, ubah keduanya.
+  // Satu penjualan kasir bisa jadi BEBERAPA dokumen yang diikat grupNota; strukturnya
+  // dikumpulkan lagi di sini supaya struk memuat seluruh belanjaan, bukan satu baris saja.
+  const HARI_ID_STRUK = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  function susunStrukTrx(p) {
+    const grup = p.grupNota
+      ? ambilPenjualan().filter(x => x.grupNota === p.grupNota)
+      : [p];
+    const total = grup.reduce((a, x) => a + (x.hargaTotal || 0), 0);
+    const d = isoKeTanggal(p.tanggal);
+    const baris = ['*TOKO BERAS M.IQBAL*',
+      HARI_ID_STRUK[d.getDay()] + ', ' + formatTanggal(p.tanggal) + (p.jam ? ' · ' + p.jam : ''), ''];
+    grup.forEach(x => {
+      baris.push(namaSingkatTrx(x) + '   ' + formatRupiah(x.hargaTotal || 0));
+    });
+    baris.push('------------------------------');
+    baris.push('*TOTAL   ' + formatRupiah(total) + '*');
+    if (caraBayarKunci(p) === 'kredit') {
+      baris.push('KREDIT — belum dibayar');
+      if (p.namaPelanggan) baris.push('a.n. ' + p.namaPelanggan);
+    } else {
+      baris.push('Bayar: ' + (p.caraBayar || 'Tunai'));
+      if (p.kembalianNominal > 0) {
+        baris.push('Uang diterima: ' + formatRupiah(p.kembalianUangDiterima || 0));
+        baris.push('Kembali: ' + formatRupiah(p.kembalianNominal));
+      }
+    }
+    if (!penjualanMasihBerlaku(p)) baris.push('(catatan ini sudah ' + (p.dibatalkan ? 'dibatalkan' : 'dikoreksi') + ')');
+    baris.push('');
+    baris.push('Terima kasih 🙏');
+    return baris.join('\n');
+  }
+  function kirimStrukTrx() {
+    if (!_trxTerbuka) return;
+    // Tanpa nomor tujuan — WhatsApp yang menanyakan mau dikirim ke siapa, jadi nomor
+    // pembeli tidak perlu diminta apalagi disimpan di sistem.
+    window.open('https://wa.me/?text=' + encodeURIComponent(susunStrukTrx(_trxTerbuka)), '_blank');
   }
 
   function tutupLembarTrx() {
@@ -12127,6 +12183,7 @@
   window.perbaruiOpname = perbaruiOpname;
   window.simpanTitikKas = simpanTitikKas;
   window.tampilkanTutupHari = tampilkanTutupHari;
+  window.kirimStrukTrx = kirimStrukTrx;
   window.perbaruiSelisihTutup = perbaruiSelisihTutup;
   window.simpanTutupHari = simpanTutupHari;
   window.bukaLembarQris = bukaLembarQris;
