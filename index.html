@@ -2346,6 +2346,85 @@
     .bm-isi { flex-direction: row; align-items: center; flex-wrap: wrap; }
     .bm-isi .bm-baris { flex: 1 1 260px; }
   }
+
+  /* ===== LAPORAN BULANAN (12 Agustus 2026) =====
+     Lembar layar-penuh, bukan halaman biasa: isinya panjang dan tujuannya dicetak.
+     Angkanya TIDAK dihitung ulang di sini — semuanya memanggil fungsi yang sama
+     dengan tab Laba, Arus Kas, dan Buku Kas. */
+  #lembarLaporan {
+    display: none; position: fixed; inset: 0; z-index: 190;
+    background: var(--gelap-tetap); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  body.lembar-laporan-terbuka { overflow: hidden; }
+  body.lembar-laporan-terbuka #lembarLaporan { display: block; }
+  .lap-bilah {
+    position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; align-items: center;
+    padding: 10px 12px; background: var(--kaca); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--garis);
+  }
+  .lap-bilah input[type="month"] {
+    flex: 1 1 auto; min-width: 0; min-height: 44px; margin: 0;
+    background: var(--kartu); color: var(--teks); border: 1px solid var(--garis);
+    border-radius: 10px; padding: 0 10px; font-family: inherit; font-size: 14px;
+  }
+  .lap-bilah button { min-height: 44px; min-width: 44px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 700; padding: 0 14px; }
+  .lap-tutup { background: none; color: var(--redup); border: 1px solid var(--garis); }
+  .lap-cetak { background: var(--emas); color: var(--tombol-teks); border: none; }
+  .lap-kertas { padding: 16px 14px 40px; max-width: 720px; margin: 0 auto; }
+  .lap-kepala { text-align: center; border-bottom: 2px solid var(--emas-gelap); padding-bottom: 12px; margin-bottom: 16px; }
+  .lap-kepala h1 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 21px; color: var(--emas-terang); }
+  .lap-kepala .lap-bulan { font-size: 15px; font-weight: 700; color: var(--teks); }
+  .lap-kepala .lap-cap { font-size: 11px; color: var(--redup); margin-top: 4px; }
+  .lap-bagian { margin: 0 0 20px; }
+  .lap-bagian > h2 {
+    margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .8px;
+    text-transform: uppercase; color: var(--emas); border-bottom: 1px solid var(--garis); padding-bottom: 5px;
+  }
+  .lap-baris { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid rgba(35, 42, 54, .6); font-size: 13.5px; }
+  .lap-baris:last-child { border-bottom: none; }
+  .lap-baris .lb-nama { color: var(--teks); }
+  .lap-baris .lb-nama small { display: block; font-size: 11px; color: var(--redup); margin-top: 1px; }
+  .lap-baris .lb-angka { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 700; }
+  .lap-baris.lb-nol .lb-nama, .lap-baris.lb-nol .lb-angka { color: var(--redup); font-weight: 400; }
+  .lap-baris.lb-jumlah { border-top: 1.5px solid var(--emas-gelap); border-bottom: none; margin-top: 4px; padding-top: 9px; font-size: 14.5px; }
+  .lap-baris.lb-jumlah .lb-nama { font-weight: 700; }
+  .lap-baris.lb-utama { font-size: 16px; }
+  .lap-baris.lb-utama .lb-angka { color: var(--emas-terang); }
+  .lb-masuk { color: var(--hijau-naik); }
+  .lb-keluar { color: var(--merah); }
+  .lap-catatan {
+    font-size: 11.5px; line-height: 1.65; color: var(--redup);
+    background: var(--hasil-bg); border-left: 2px solid var(--emas-gelap);
+    border-radius: 0 8px 8px 0; padding: 9px 11px; margin-top: 10px;
+  }
+  .lap-catatan b { color: var(--teks); }
+  .lap-peringatan { background: var(--peringatan-bg); border-left-color: var(--merah); }
+  .lap-kosong { font-size: 12.5px; color: var(--redup); padding: 10px 0; }
+  .lap-kaki { margin-top: 24px; padding-top: 10px; border-top: 1px solid var(--garis); font-size: 10.5px; color: var(--redup); line-height: 1.6; }
+
+  /* CETAK — kertas putih, tinta hitam. Tema gelap di kertas menghabiskan tinta dan
+     hasilnya sulit dibaca. Semua yang bukan laporan disembunyikan. */
+  @media print {
+    @page { margin: 12mm; }
+    body.lembar-laporan-terbuka { overflow: visible; background: #fff; }
+    body.lembar-laporan-terbuka > *:not(#lembarLaporan) { display: none !important; }
+    #lembarLaporan { position: static; overflow: visible; background: #fff; }
+    .lap-bilah { display: none !important; }
+    .lap-kertas { max-width: none; padding: 0; }
+    .lap-kepala h1, .lap-kepala .lap-bulan, .lap-baris .lb-nama, .lap-baris .lb-angka,
+    .lap-baris.lb-utama .lb-angka, .lap-catatan b { color: #000 !important; }
+    .lap-kepala .lap-cap, .lap-kaki, .lap-baris .lb-nama small, .lap-catatan,
+    .lap-kosong, .lap-baris.lb-nol .lb-nama, .lap-baris.lb-nol .lb-angka { color: #444 !important; }
+    .lap-bagian > h2 { color: #000 !important; border-bottom-color: #999; }
+    .lap-kepala { border-bottom-color: #000; }
+    .lap-baris { border-bottom-color: #ddd; }
+    .lap-baris.lb-jumlah { border-top-color: #000; }
+    .lb-masuk, .lb-keluar { color: #000 !important; }
+    .lap-catatan { background: #f4f4f4; border-left-color: #999; }
+    .lap-bagian { break-inside: auto; }
+    .lap-bagian > h2 { break-after: avoid; }
+    .lap-baris { break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
@@ -2418,6 +2497,18 @@
       <button type="button" class="qris-redup" onclick="tutupLembarQris()">Tutup</button>
     </div>
   </div>
+</div>
+
+<!-- LAPORAN BULANAN (12 Agu 2026): satu lembar yang bisa dicetak / disimpan jadi PDF
+     lewat dialog cetak peramban — tanpa pustaka luar, karena repo ini satu berkas dan
+     tidak boleh memanggil CDN. -->
+<div id="lembarLaporan" role="dialog" aria-modal="true" aria-labelledby="lapJudul">
+  <div class="lap-bilah">
+    <button type="button" class="lap-tutup" onclick="tutupLaporan()">Tutup</button>
+    <input type="month" id="lapBulan" onchange="gambarLaporan()" aria-label="Bulan laporan">
+    <button type="button" class="lap-cetak" onclick="cetakLaporan()">Cetak / PDF</button>
+  </div>
+  <div class="lap-kertas" id="lapKertas"></div>
 </div>
 
 <div class="modal-pin-bg" id="modalSetelPinBg">
@@ -2538,6 +2629,7 @@
   <button type="button" class="lm-baris tab-owner" data-halaman="tutup" onclick="pindahDariMenu('tutup')"><span>Tutup Hari <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— ritual malam</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="aruskas" onclick="pindahDariMenu('aruskas')"><span>Arus Kas <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— uang masuk &amp; keluar</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="piutang" onclick="pindahDariMenu('piutang')"><span>Piutang <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— pelanggan yang berutang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaLaporan()"><span>Laporan Bulanan <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— cetak / simpan PDF</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaSetelPin()"><span>PIN Owner <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— setel / ganti</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()"><span>Jaga Toko <i>— siapa yang bertugas</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <div class="lm-kaki">
@@ -9487,6 +9579,157 @@
     el.innerHTML = teks;
   }
 
+  // ===== LAPORAN BULANAN (12 Agustus 2026) =====
+  // Satu lembar cetak yang menyatukan omzet, laba, arus kas, dan buku kas. Tidak ada
+  // satu pun angka yang dihitung ulang di sini — semuanya memanggil fungsi yang sudah
+  // dipakai tab aslinya. Kalau nanti aturannya berubah di sana, laporan ikut berubah
+  // sendiri; itulah sebabnya laporan ini tidak boleh punya rumusnya sendiri.
+  //
+  // Satu perbedaan yang DISENGAJA dan disebut terang-terangan di lembarnya: arus kas
+  // memakai tanggal UANG BERPINDAH (biaya Juli yang dibayar 3 Agustus masuk Agustus),
+  // sedangkan laba memakai bulan biaya itu DITAGIHKAN. Dua-duanya benar untuk
+  // pertanyaannya masing-masing, tapi kalau tidak dijelaskan, angkanya tampak berselisih.
+  function hitungLabaBulan(bl) {
+    const semua = ambilPenjualan().filter(p => bulanDari(p.tanggal) === bl);
+    const terhitung = semua.filter(hppTercatat);
+    const tanpaHpp = semua.filter(p => !hppTercatat(p));
+    const omzetHitung = terhitung.reduce((a, p) => a + (p.hargaTotal || 0), 0);
+    const hpp = terhitung.reduce((a, p) => a + (p.hppTotalSaatJual || 0), 0);
+    return {
+      jumlahTrx: semua.length, jumlahHitung: terhitung.length, jumlahTanpaHpp: tanpaHpp.length,
+      omzetPenuh: semua.reduce((a, p) => a + (p.hargaTotal || 0), 0),
+      omzetHitung, hpp, margin: omzetHitung - hpp,
+      omzetTanpaHpp: tanpaHpp.reduce((a, p) => a + (p.hargaTotal || 0), 0)
+    };
+  }
+
+  function rpTanda(n) { return (n < 0 ? '−' : '') + formatRupiah(Math.abs(n)); }
+  function barisLap(nama, ket, angka, kelas) {
+    return `<div class="lap-baris${angka === 0 && !kelas ? ' lb-nol' : ''}${kelas ? ' ' + kelas : ''}">
+      <span class="lb-nama">${escapeHtml(nama)}${ket ? `<small>${escapeHtml(ket)}</small>` : ''}</span>
+      <span class="lb-angka">${typeof angka === 'string' ? escapeHtml(angka) : rpTanda(angka)}</span>
+    </div>`;
+  }
+
+  function gambarLaporan() {
+    const el = document.getElementById('lapBulan');
+    if (!el.value) el.value = bulanLokalIso();
+    const bl = el.value;
+    const kas = hitungArusKas(bl);
+    const laba = hitungLabaBulan(bl);
+
+    // Biaya bulanan yang DITAGIHKAN ke bulan ini — bukan yang dibayar bulan ini.
+    const biayaBln = bayaranBiayaBulanan().filter(x => x.bulan === bl);
+    const totalBiaya = biayaBln.reduce((a, x) => a + x.nominal, 0);
+    const biayaBelum = biayaBln.filter(x => !x.tanggal);
+    const labaBersih = laba.margin - totalBiaya;
+
+    const bagian = [];
+    const jam = new Date().toTimeString().slice(0, 5);
+    bagian.push(`<div class="lap-kepala">
+      <h1 id="lapJudul">Toko Beras M.IQBAL</h1>
+      <div class="lap-bulan">Laporan ${escapeHtml(namaBulanPanjang(bl + '-01'))}</div>
+      <div class="lap-cap">Dicetak ${escapeHtml(formatTanggal(tanggalLokalIso()))} pukul ${escapeHtml(jam)}</div>
+    </div>`);
+
+    bagian.push(`<div class="lap-bagian"><h2>Ikhtisar</h2>
+      ${barisLap('Omzet penuh', laba.jumlahTrx + ' transaksi, termasuk kredit', laba.omzetPenuh, 'lb-utama')}
+      ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', laba.margin)}
+      ${barisLap('Biaya bulanan', 'ditagihkan ke bulan ini', -totalBiaya)}
+      ${barisLap('Laba bersih perkiraan', 'margin kotor dikurangi biaya bulanan', labaBersih, 'lb-jumlah')}
+      ${barisLap('Kas bersih', 'uang yang benar-benar berpindah bulan ini', kas.bersih, 'lb-jumlah')}
+    </div>`);
+
+    const catLaba = [];
+    if (laba.jumlahTanpaHpp > 0) {
+      catLaba.push(`<b>${laba.jumlahTanpaHpp} transaksi tidak ikut dihitung margin</b> karena HPP-nya tidak tercatat — omzetnya ${formatRupiah(laba.omzetTanpaHpp)}. Selama itu belum diisi, laba di atas lebih rendah dari yang sebenarnya. Isi lewat tab Laba.`);
+    }
+    if (biayaBelum.length) {
+      catLaba.push(`<b>Belum dibayar:</b> ${biayaBelum.map(x => escapeHtml(x.label) + ' ' + formatRupiah(x.nominal)).join(', ')}. Tetap dihitung sebagai biaya bulan ini, tapi belum mengurangi kas.`);
+    }
+    const persen = laba.omzetHitung > 0 ? (laba.margin / laba.omzetHitung * 100).toFixed(1).replace('.', ',') + '%' : '—';
+    bagian.push(`<div class="lap-bagian"><h2>Laba</h2>
+      ${barisLap('Omzet yang bisa dihitung', laba.jumlahHitung + ' dari ' + laba.jumlahTrx + ' transaksi', laba.omzetHitung)}
+      ${barisLap('Harga pokok (HPP)', '', -laba.hpp)}
+      ${barisLap('Margin kotor', 'margin ' + persen, laba.margin, 'lb-jumlah')}
+      ${biayaBln.length
+        ? biayaBln.slice().sort((a, b) => b.nominal - a.nominal).map(x =>
+            barisLap(x.label, x.tanggal ? 'dibayar ' + formatTanggal(x.tanggal) : 'belum dibayar', -x.nominal)).join('')
+        : '<div class="lap-kosong">Biaya bulanan bulan ini belum diisi — laba di atas masih laba kotor.</div>'}
+      ${biayaBln.length ? barisLap('Laba bersih perkiraan', '', labaBersih, 'lb-jumlah') : ''}
+      ${catLaba.length ? `<div class="lap-catatan${laba.jumlahTanpaHpp > 0 ? ' lap-peringatan' : ''}">${catLaba.join('<br>')}</div>` : ''}
+    </div>`);
+
+    const brsKas = x => barisLap(x.label, x.ket || (x.n > 0 && x.satuan ? x.n + ' ' + x.satuan : ''), x.nominal);
+    bagian.push(`<div class="lap-bagian"><h2>Uang masuk</h2>
+      ${kas.masuk.map(brsKas).join('')}
+      ${barisLap('Jumlah uang masuk', '', kas.totalMasuk, 'lb-jumlah')}
+    </div>`);
+    bagian.push(`<div class="lap-bagian"><h2>Uang keluar</h2>
+      ${kas.keluar.map(brsKas).join('')}
+      ${barisLap('Jumlah uang keluar', '', kas.totalKeluar, 'lb-jumlah')}
+      ${barisLap('Kas bersih', 'masuk dikurangi keluar', kas.bersih, 'lb-jumlah')}
+    </div>`);
+
+    let catKas = 'Yang dihitung cuma uang yang benar-benar berpindah. ';
+    catKas += kas.kreditBulanIni > 0
+      ? `Penjualan <b>kredit ${formatRupiah(kas.kreditBulanIni)}</b> (${kas.jumlahKredit} transaksi) belum ikut — barangnya sudah keluar, uangnya belum diterima. `
+      : 'Bulan ini tidak ada penjualan kredit. ';
+    catKas += 'Biaya bulanan di sini memakai tanggal uangnya keluar, sedangkan di bagian Laba memakai bulan biaya itu ditagihkan — jadi dua angkanya boleh berbeda. ';
+    catKas += 'Pengeluaran harian kategori Owner tidak ikut karena murni pribadi, dan stok awal 8 Agustus 2026 juga tidak ikut karena uangnya sudah keluar sebelum sistem ini ada.';
+    bagian.push(`<div class="lap-catatan">${catKas}</div>`);
+
+    // Buku kas — saldo berjalan dihitung menyeluruh dari titik kas dulu, persis seperti
+    // tampilkanBukuKas; bulan yang dipilih cuma jendelanya. Kalau dihitung per bulan,
+    // saldo awal bulannya jadi tebakan.
+    const titik = ambilTitikKas();
+    const semuaGerak = daftarGerakanKas();
+    let saldo = titik ? (titik.laci || 0) + (titik.rekening || 0) : null;
+    semuaGerak.forEach(r => {
+      if (titik && r.t > titik.tanggal) { saldo += r.masuk - r.keluar; r.saldo = saldo; }
+      else r.saldo = null;
+    });
+    const gerakBln = semuaGerak.filter(r => bulanDari(r.t) === bl);
+    bagian.push(`<div class="lap-bagian"><h2>Buku kas — ${gerakBln.length} gerakan</h2>
+      ${gerakBln.length === 0
+        ? '<div class="lap-kosong">Belum ada gerakan uang bulan ini.</div>'
+        : gerakBln.map(r => `<div class="lap-baris">
+            <span class="lb-nama">${escapeHtml(r.label)}<small>${escapeHtml(formatTanggal(r.t))}${r.jam ? ' · ' + escapeHtml(r.jam) : ''}${r.saldo !== null ? ' · saldo ' + formatRupiah(r.saldo) : ''}</small></span>
+            <span class="lb-angka ${r.masuk > 0 ? 'lb-masuk' : 'lb-keluar'}">${r.masuk > 0 ? '+' : '−'}${formatRupiah(r.masuk > 0 ? r.masuk : r.keluar)}</span>
+          </div>`).join('')}
+      ${titik ? '' : '<div class="lap-catatan">Saldo berjalan belum bisa ditampilkan — titik hitung kas belum disetel di tab Arus Kas.</div>'}
+    </div>`);
+
+    // Piutang adalah keadaan SAAT INI, bukan keadaan akhir bulan yang dilaporkan.
+    // Dibedakan terang-terangan supaya laporan bulan lama tidak terbaca seolah
+    // piutangnya sebesar itu waktu itu.
+    const piutang = hitungPiutang().filter(p => p.sisa > 0);
+    const totalPiutang = piutang.reduce((a, p) => a + p.sisa, 0);
+    bagian.push(`<div class="lap-bagian"><h2>Piutang belum tertagih</h2>
+      ${piutang.length === 0
+        ? '<div class="lap-kosong">Tidak ada piutang yang belum tertagih.</div>'
+        : piutang.map(p => barisLap(p.nama, p.umurHari !== null ? umurKeKata(p.umurHari) : '', p.sisa)).join('')
+          + barisLap('Jumlah piutang', piutang.length + ' pelanggan', totalPiutang, 'lb-jumlah')}
+      <div class="lap-catatan">Piutang di atas adalah keadaan <b>hari ini</b>, bukan keadaan akhir ${escapeHtml(namaBulanPanjang(bl + '-01'))}.</div>
+    </div>`);
+
+    bagian.push(`<div class="lap-kaki">Dibuat otomatis oleh Sistem Toko M.IQBAL dari catatan yang tersimpan.
+      Transaksi yang dibatalkan atau dikoreksi tidak ikut dihitung.
+      Angka di laporan ini berasal dari perhitungan yang sama dengan tab Laba, Arus Kas, dan Buku Kas.</div>`);
+
+    document.getElementById('lapKertas').innerHTML = bagian.join('');
+  }
+
+  function bukaLaporan() {
+    const el = document.getElementById('lapBulan');
+    if (!el.value) el.value = bulanLokalIso();
+    gambarLaporan();
+    document.body.classList.add('lembar-laporan-terbuka');
+    document.getElementById('lembarLaporan').scrollTop = 0;
+  }
+  function tutupLaporan() { document.body.classList.remove('lembar-laporan-terbuka'); }
+  function cetakLaporan() { window.print(); }
+
   function tampilkanRingkasan() {
     const hariIniIso = tanggalLokalIso();
     const mulaiMinggu = tanggalMulaiMingguIni();
@@ -12346,6 +12589,10 @@
   window.perbaruiOpname = perbaruiOpname;
   window.simpanTitikKas = simpanTitikKas;
   window.tampilkanTutupHari = tampilkanTutupHari;
+  window.bukaLaporan = bukaLaporan;
+  window.tutupLaporan = tutupLaporan;
+  window.gambarLaporan = gambarLaporan;
+  window.cetakLaporan = cetakLaporan;
   window.bukaSetelPin = bukaSetelPin;
   window.tutupSetelPin = tutupSetelPin;
   window.simpanSetelPin = simpanSetelPin;
