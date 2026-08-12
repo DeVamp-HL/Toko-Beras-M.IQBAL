@@ -10302,8 +10302,40 @@
     // sebesar 10 liter, selamanya. repacking aman (field koreksinya memang totalKg).
     if (p.jenis === 'literan') pengganti.totalKg = Math.round(baru * (p.rasioPakai || RASIO_DEFAULT) * 1000) / 1000;
     if (p.jenis === 'karung') pengganti.totalKg = baru * (p.beratKarungAcuan || 50);
+    // Liter berubah = kemasannya bisa ikut berubah kelas (20 L pakai karung bekas,
+    // 5 L cuma paperbag). Sebelum 12 Agu 2026 koreksi menyalin kemasan lama mentah-mentah
+    // dan dokumen pemakaian bahan pasangannya tidak disentuh — stok karung bekas /
+    // paper bag melenceng pelan-pelan justru lewat jalur perbaikan.
+    if (p.jenis === 'literan') {
+      const jkBaru = tentukanKemasanLiteran(baru);
+      const dipakaiBaru = jkBaru ? jumlahKemasanLiteran(baru) : 0;
+      const biayaBaru = jkBaru ? hargaBahanLiteranEfektif(jkBaru, hitungStokBahanLiteran()) * dipakaiBaru : 0;
+      // HPP: bagian BERAS diskalakan dari catatan asli, bagian KEMASAN dihitung ulang —
+      // menskalakan gabungannya (perilaku lama) ikut menskalakan biaya kemasan padahal
+      // lembarnya tidak berbanding lurus dengan liter.
+      const hppBerasLama = Math.max(0, (p.hppTotalSaatJual || 0) - (p.biayaKemasanLiteran || 0));
+      if (j.nilai > 0) pengganti.hppTotalSaatJual = Math.round(hppBerasLama / j.nilai * baru) + biayaBaru;
+      pengganti.kemasanLiteran = jkBaru;
+      pengganti.jumlahKemasanLiteranDipakai = dipakaiBaru;
+      pengganti.biayaKemasanLiteran = biayaBaru;
+    }
     try {
       await simpanKeFirestore(KOLEKSI_PENJUALAN, pengganti);
+      // Dokumen pemakaian bahan SELALU milik transaksi yang hidup: yang lama (id asli+1)
+      // dihapus, yang baru ditulis di id pengganti+1 — supaya koreksi berantai, batalkan,
+      // dan hapus di kemudian hari menemukan pasangannya di tempat yang sama.
+      if (p.jenis === 'literan') {
+        if (p.kemasanLiteran) {
+          try { await hapusDariFirestore(KOLEKSI_BAHAN_LITERAN, p.id + 1); } catch (e) { /* boleh tidak ada */ }
+        }
+        if (pengganti.kemasanLiteran && pengganti.jumlahKemasanLiteranDipakai > 0) {
+          await simpanKeFirestore(KOLEKSI_BAHAN_LITERAN, {
+            id: idBaru + 1, tipe: 'pakai', jenis: pengganti.kemasanLiteran,
+            jumlah: pengganti.jumlahKemasanLiteranDipakai, hargaTotal: 0, tanggal: p.tanggal,
+            catatan: 'Otomatis dari koreksi penjualan literan id ' + idBaru
+          });
+        }
+      }
       // Asli TIDAK dihapus — hanya ditandai, supaya barisnya tetap terbaca di Riwayat.
       await simpanKeFirestore(KOLEKSI_PENJUALAN, { ...p, dikoreksiOleh: idBaru, alasanKoreksi: alasan });
       tutupLembarTrx();
@@ -10324,6 +10356,13 @@
       await simpanKeFirestore(KOLEKSI_PENJUALAN, {
         ...p, dibatalkan: true, alasanKoreksi: alasan.trim(), dikoreksiPada: new Date().toISOString()
       });
+      // Kemasan literan pasangan ikut dilepas — jalur hapus & urungkan-rinci sudah lama
+      // melakukannya, jalur batalkan ini saja yang lupa (temuan audit 12 Agu 2026:
+      // batalkan penjualan 20 L mengembalikan berasnya, tapi 1 karung bekas tetap
+      // terhitung terpakai selamanya).
+      if (p.jenis === 'literan' && p.kemasanLiteran) {
+        try { await hapusDariFirestore(KOLEKSI_BAHAN_LITERAN, p.id + 1); } catch (e) { /* pakai bisa saja belum ada */ }
+      }
       tutupLembarTrx();
       tampilkanRiwayatJual(); tampilkanRiwayat();
     } catch (err) {
