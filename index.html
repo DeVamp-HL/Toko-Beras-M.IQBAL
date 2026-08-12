@@ -2101,6 +2101,31 @@
      Ejaan Indonesia di sebelahnya membuat salah urutan langsung ketahuan. */
   .baris-isian .bi-tgl > u { flex: 0 0 auto; text-decoration: none; font-size: 11.5px; font-weight: 700; color: var(--emas-terang, #d9b25f); white-space: nowrap; }
   .baris-isian .bi-tgl > u:empty { display: none; }
+  /* Kalender hari masuk (12 Agu 2026): pemilik menandai tanggal berapa saja pegawai
+     masuk, lalu jumlah harinya dihitung dari situ — tidak diketik manual lagi. Dipakai
+     karena mayoritas pegawai tidak penuh sebulan (cuti/libur), jadi angka hari yang
+     diketik bebas tidak bisa ditelusuri ke tanggal mana pun. */
+  .kal-buka {
+    flex: 0 0 100%; margin: 8px 0 2px; min-height: 44px; border-radius: 10px;
+    border: 1px dashed var(--garis); background: none; color: var(--emas-terang);
+    font-family: inherit; font-size: 12.5px; font-weight: 700;
+  }
+  /* Tujuh kolom 44 px tidak muat di lebar kartu (cuma ~304 px), padahal aturan sentuh
+     44x44 berlaku tanpa kecuali. Kalender dilebarkan keluar dari padding kartu supaya
+     tiap tanggal tetap 44 px, bukan tombolnya yang dikecilkan. */
+  /* flex-basis harus IKUT dilebarkan: 'flex: 0 0 100%' mengunci lebar ke induknya,
+     sehingga margin negatif cuma menggeser tanpa melebarkan. */
+  .kal-wadah { flex: 0 0 calc(100% + 24px); margin: 0 -12px 6px; }
+  .kal-kepala, .kal-isi { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .kal-kepala { margin-bottom: 4px; }
+  .kal-kepala span { font-size: 10px; color: var(--redup); text-align: center; font-weight: 700; }
+  .kal-isi .kal-kosong { min-height: 44px; }
+  .kal-hari {
+    min-height: 44px; border-radius: 8px; border: 1px solid var(--garis);
+    background: var(--abu); color: var(--teks); font-family: inherit; font-size: 13px; font-weight: 600;
+  }
+  .kal-hari.pilih { background: var(--emas); color: var(--tombol-teks); border-color: var(--emas); font-weight: 800; }
+  .kal-kaki { font-size: 11.5px; color: var(--redup); margin-top: 6px; }
   .baris-isian .bi-nama { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.35; }
   .baris-isian .bi-nama small { display: block; font-size: 10.5px; color: var(--redup); margin-top: 2px; }
   .baris-isian .bi-isi { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
@@ -3683,9 +3708,9 @@
       <div class="panel-kepala"><h2>Gaji <span class="keterangan">Rp86.500 / hari-orang</span></h2></div>
       <!-- Diisi dalam HARI, bukan rupiah: tarifnya sudah ada di sistem, jadi pemakai
            menghitung hari (yang dia tahu) bukan rupiah (yang harus dikalikan). Prinsip 2. -->
-      <div class="baris-isian"><span class="bi-nama">Ben Mohsein</span><span class="bi-isi"><input type="number" id="gajiHariBen" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiBen" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Ben Mohsein"><u id="tglGajiBenBaca"></u></span></div>
-      <div class="baris-isian"><span class="bi-nama">Hasan</span><span class="bi-isi"><input type="number" id="gajiHariHasan" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiHasan" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Hasan"><u id="tglGajiHasanBaca"></u></span></div>
-      <div class="baris-isian"><span class="bi-nama">Gono</span><span class="bi-isi"><input type="number" id="gajiHariGono" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiGono" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Gono"><u id="tglGajiGonoBaca"></u></span></div>
+      <div class="baris-isian"><span class="bi-nama">Ben Mohsein</span><span class="bi-isi"><input type="number" id="gajiHariBen" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiBen" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Ben Mohsein"><u id="tglGajiBenBaca"></u></span><button type="button" class="kal-buka" id="kalBuka0" onclick="toggleKalender(0)">Tandai tanggal masuk</button><div class="kal-wadah" id="kalWadah0" style="display:none;"></div></div>
+      <div class="baris-isian"><span class="bi-nama">Hasan</span><span class="bi-isi"><input type="number" id="gajiHariHasan" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiHasan" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Hasan"><u id="tglGajiHasanBaca"></u></span><button type="button" class="kal-buka" id="kalBuka1" onclick="toggleKalender(1)">Tandai tanggal masuk</button><div class="kal-wadah" id="kalWadah1" style="display:none;"></div></div>
+      <div class="baris-isian"><span class="bi-nama">Gono</span><span class="bi-isi"><input type="number" id="gajiHariGono" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiGono" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Gono"><u id="tglGajiGonoBaca"></u></span><button type="button" class="kal-buka" id="kalBuka2" onclick="toggleKalender(2)">Tandai tanggal masuk</button><div class="kal-wadah" id="kalWadah2" style="display:none;"></div></div>
       <div class="baris-hasil" id="gajiPerkiraanInfo"></div>
     </div>
 
@@ -5581,11 +5606,87 @@
   // Aturan: ambil kata pertama nama, kecuali "Ben Mohsein" sengaja dipendekkan jadi "Ben" (sudah dibuat manual di HTML).
   const ID_FIELD_GAJI_PEGAWAI = { 'Ben Mohsein': 'gajiHariBen', 'Hasan': 'gajiHariHasan', 'Gono': 'gajiHariGono' };
 
+  // ===== HARI MASUK PEGAWAI (12 Agustus 2026) =====
+  // Mayoritas pegawai tidak penuh sebulan — ada cuti, ada libur. Angka hari yang diketik
+  // bebas tidak bisa ditelusuri: kalau nanti ada selisih gaji, tidak ada cara memeriksa
+  // hari mana yang dihitung. Sekarang pemilik menandai TANGGALNYA, dan jumlah hari
+  // diturunkan dari situ.
+  // Bentuk data: rincianGaji[].tanggalMasuk = ['2026-08-01', ...].
+  // Dokumen lama tidak punya field itu; selama belum ada tanggal ditandai, angka hari
+  // yang sudah tersimpan tetap dipakai apa adanya dan kolomnya tetap bisa diketik —
+  // supaya membuka bulan lama tidak menihilkan gajinya.
+  let _hariMasukForm = {};   // { namaPegawai: ['YYYY-MM-DD', ...] } untuk bulan yang sedang dibuka
+  const HARI_SINGKAT = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
   function bacaHariGajiPegawai() {
     return NAMA_PEGAWAI_GAJI.map(nama => {
       const idField = ID_FIELD_GAJI_PEGAWAI[nama];
-      const hari = parseFloat(document.getElementById(idField).value) || 0;
-      return { nama, hari, gaji: Math.round(hari * RATE_GAJI_PER_HARI_ORANG) };
+      const ditandai = _hariMasukForm[nama] || [];
+      // Tanggal yang ditandai MENANG atas ketikan — itu satu-satunya angka yang bisa
+      // ditelusuri. Kalau belum ada yang ditandai, ketikan lama tetap berlaku.
+      const hari = ditandai.length > 0
+        ? ditandai.length
+        : (parseFloat(document.getElementById(idField).value) || 0);
+      return { nama, hari, gaji: Math.round(hari * RATE_GAJI_PER_HARI_ORANG),
+        tanggalMasuk: ditandai.slice() };
+    });
+  }
+
+  function toggleKalender(i) {
+    const w = document.getElementById('kalWadah' + i);
+    if (!w) return;
+    const buka = w.style.display === 'none';
+    w.style.display = buka ? 'block' : 'none';
+    if (buka) gambarKalenderPegawai(i);
+  }
+
+  function gambarKalenderPegawai(i) {
+    const nama = NAMA_PEGAWAI_GAJI[i];
+    const w = document.getElementById('kalWadah' + i);
+    const iso = (document.getElementById('bulanBiaya') || {}).value || '';
+    if (!w || !iso) return;
+    const [th, bl] = iso.split('-').map(Number);
+    const jmlHari = new Date(th, bl, 0).getDate();
+    // getDay(): 0=Minggu. Digeser supaya Senin jadi kolom pertama (kebiasaan Indonesia).
+    const geser = (new Date(th, bl - 1, 1).getDay() + 6) % 7;
+    const dipilih = _hariMasukForm[nama] || [];
+    let html = '<div class="kal-kepala">' + HARI_SINGKAT.map(d => '<span>' + d + '</span>').join('') + '</div><div class="kal-isi">';
+    for (let k = 0; k < geser; k++) html += '<span class="kal-kosong"></span>';
+    for (let d = 1; d <= jmlHari; d++) {
+      const tgl = iso + '-' + String(d).padStart(2, '0');
+      const aktif = dipilih.indexOf(tgl) >= 0;
+      html += '<button type="button" class="kal-hari' + (aktif ? ' pilih' : '') + '" onclick="toggleHariMasuk(' + i + ',\'' + tgl + '\')">' + d + '</button>';
+    }
+    html += '</div><div class="kal-kaki">' + dipilih.length + ' hari ditandai · '
+      + formatRupiah(dipilih.length * RATE_GAJI_PER_HARI_ORANG) + '</div>';
+    w.innerHTML = html;
+  }
+
+  function toggleHariMasuk(i, tgl) {
+    const nama = NAMA_PEGAWAI_GAJI[i];
+    const arr = _hariMasukForm[nama] || [];
+    const at = arr.indexOf(tgl);
+    if (at >= 0) arr.splice(at, 1); else arr.push(tgl);
+    arr.sort();
+    _hariMasukForm[nama] = arr;
+    // Kolom hari ikut angka tandaan, dan dikunci selama masih ada yang ditandai supaya
+    // tidak ada dua angka yang saling bertentangan di layar yang sama.
+    const el = document.getElementById(ID_FIELD_GAJI_PEGAWAI[nama]);
+    if (el) { el.value = arr.length > 0 ? arr.length : ''; el.readOnly = arr.length > 0; }
+    gambarKalenderPegawai(i);
+    perbaruiLabelKalender();
+    hitungPerkiraanGaji();
+    perbaruiTotalBulanan();
+  }
+
+  function perbaruiLabelKalender() {
+    NAMA_PEGAWAI_GAJI.forEach((nama, i) => {
+      const tb = document.getElementById('kalBuka' + i);
+      if (!tb) return;
+      const n = (_hariMasukForm[nama] || []).length;
+      tb.textContent = n > 0 ? 'Tanggal masuk — ' + n + ' hari ditandai' : 'Tandai tanggal masuk';
+      const el = document.getElementById(ID_FIELD_GAJI_PEGAWAI[nama]);
+      if (el) el.readOnly = n > 0;
     });
   }
 
@@ -5655,6 +5756,10 @@
     // Nilai lamanya ikut dimunculkan supaya bulan yang sudah terisi bisa DISUNTING,
     // bukan tanpa sadar ditimpa nol. Lihat catatan di isiFormBulananDari().
     isiFormBulananDari(dataBulanIni || null);
+    NAMA_PEGAWAI_GAJI.forEach((nama, i) => {
+      const w = document.getElementById('kalWadah' + i);
+      if (w && w.style.display !== 'none') gambarKalenderPegawai(i);
+    });
     const kotak = document.getElementById('bulananKosong');
     if (kotak) {
       kotak.style.display = adaBulanIni ? 'none' : 'block';
@@ -5708,6 +5813,17 @@
       if (el) el.value = punyaPerPos ? (peta[pos.kunci] || '') : ((d && d.tanggalBayar) || '');
     });
     // Tanggal gaji per pegawai; dokumen lama jatuh balik ke tanggal gaji gabungan.
+    // Hari masuk dimuat dari dokumen; kalau belum ada, kolom hari tetap bisa diketik.
+    _hariMasukForm = {};
+    NAMA_PEGAWAI_GAJI.forEach(nama => {
+      const r = d && (d.rincianGaji || []).find(x => x.nama === nama);
+      _hariMasukForm[nama] = (r && Array.isArray(r.tanggalMasuk)) ? r.tanggalMasuk.slice() : [];
+    });
+    perbaruiLabelKalender();
+    NAMA_PEGAWAI_GAJI.forEach((nama, i) => {
+      const w = document.getElementById('kalWadah' + i);
+      if (w && w.style.display !== 'none') gambarKalenderPegawai(i);
+    });
     const petaGaji = (d && d.tanggalBayarGaji) || null;
     const cadanganGaji = (punyaPerPos ? (peta.gaji || '') : '') || (d && d.tanggalBayar) || '';
     NAMA_PEGAWAI_GAJI.forEach(nama => {
@@ -5744,6 +5860,15 @@
     NAMA_PEGAWAI_GAJI.forEach(nama => {
       const el = document.getElementById(ID_TGL_GAJI_PEGAWAI[nama]);
       if (el) el.value = '';
+    });
+    // Tandaan hari masuk juga dikosongkan — tanggalnya milik bulan lalu, bukan bulan ini.
+    // Jumlah harinya tetap tersalin sebagai angka ketikan, tinggal ditandai ulang.
+    _hariMasukForm = {};
+    NAMA_PEGAWAI_GAJI.forEach(nama => { _hariMasukForm[nama] = []; });
+    perbaruiLabelKalender();
+    NAMA_PEGAWAI_GAJI.forEach((nama, i) => {
+      const w = document.getElementById('kalWadah' + i);
+      if (w && w.style.display !== 'none') gambarKalenderPegawai(i);
     });
     ejaTanggalBulanan();
   }
@@ -11156,6 +11281,8 @@
   window.tampilkanArusKas = tampilkanArusKas;
   window.perbaikiCaraBayarLama = perbaikiCaraBayarLama;
   window.simpanTitikKas = simpanTitikKas;
+  window.toggleKalender = toggleKalender;
+  window.toggleHariMasuk = toggleHariMasuk;
   window.perbaruiSelisihKas = perbaruiSelisihKas;
   window.simpanHargaLiteran = simpanHargaLiteran;
   window.hapusHargaLiteran = hapusHargaLiteran;
