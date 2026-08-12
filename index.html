@@ -864,6 +864,28 @@
     z-index: 100; align-items: center; justify-content: center;
   }
   .modal-pin-bg.tampil { display: flex; }
+  /* Lembar QRIS (12 Agu 2026): gambar kode QRIS toko ditunjukkan ke pembeli saat
+     cara bayar QRIS dipilih. Gambarnya TIDAK ikut terbit di repo — disimpan di HP
+     pemilik sendiri (localStorage), keputusan pemilik karena repo ini publik. */
+  .modal-qris-kotak {
+    background: linear-gradient(180deg, #1a2029, #141922);
+    border: 1px solid rgba(217, 178, 95, .3);
+    border-radius: 18px; padding: 16px; width: 94%; max-width: 400px;
+    max-height: 92vh; overflow-y: auto; text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .55);
+  }
+  .modal-qris-kotak h3 { margin: 0 0 2px; font-size: 15px; }
+  .qris-total { font-size: 13px; color: var(--redup); margin-bottom: 10px; }
+  .qris-total b { display: block; font-size: 26px; color: var(--emas-terang); font-variant-numeric: tabular-nums; }
+  .qris-gambar { width: 100%; border-radius: 12px; display: block; background: #fff; }
+  .qris-kosong {
+    border: 1px dashed var(--garis); border-radius: 12px; padding: 22px 14px;
+    color: var(--redup); font-size: 13px; line-height: 1.6;
+  }
+  .qris-aksi { display: grid; gap: 8px; margin-top: 12px; }
+  .qris-aksi button { min-height: 46px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 700; }
+  .qris-utama { background: var(--emas); color: var(--tombol-teks); border: none; }
+  .qris-redup { background: none; color: var(--redup); border: 1px solid var(--garis); }
   .modal-pin-kotak {
     background: linear-gradient(180deg, #1a2029, #141922);
     border: 1px solid rgba(217, 178, 95, .3);
@@ -2372,6 +2394,19 @@
     <div class="modal-pin-tombol">
       <button type="button" class="modal-pin-batal" onclick="tutupModalLoginToko()">Nanti</button>
       <button type="button" class="modal-pin-masuk" id="btnLoginToko" onclick="kirimLoginToko()">Masuk</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-pin-bg" id="modalQrisBg">
+  <div class="modal-qris-kotak">
+    <h3>Bayar pakai QRIS</h3>
+    <div class="qris-total">Total yang harus dibayar<b id="qrisTotal">Rp0</b></div>
+    <div id="qrisIsi"></div>
+    <input type="file" id="qrisBerkas" accept="image/*" style="display:none;" onchange="pasangQris(event)">
+    <div class="qris-aksi">
+      <button type="button" class="qris-utama" id="btnPasangQris" onclick="pilihBerkasQris()">Pilih gambar QRIS dari HP</button>
+      <button type="button" class="qris-redup" onclick="tutupLembarQris()">Tutup</button>
     </div>
   </div>
 </div>
@@ -7276,6 +7311,77 @@
       document.getElementById('bayar' + c).classList.toggle('pilih', bakuCaraBayar(c) === bakuCaraBayar(cara));
     });
     document.getElementById('blokKredit').style.display = cara === 'Kredit' ? 'block' : 'none';
+    // Pilih QRIS = pembeli butuh melihat kodenya sekarang, jadi langsung dimunculkan.
+    if (bakuCaraBayar(cara) === 'QRIS') bukaLembarQris();
+  }
+
+  // ============ KODE QRIS TOKO (12 Agustus 2026) ============
+  // Gambarnya SENGAJA tidak ikut terbit di repo: repo ini publik, dan QRIS yang bisa
+  // diunduh siapa saja bisa dipasang di toko palsu — uangnya memang tetap masuk ke
+  // rekening toko, tapi pemilik yang kena tagih barang yang tidak pernah dia kirim.
+  // Keputusan pemilik 12 Agu 2026: simpan di HP masing-masing saja.
+  // Konsekuensinya harus dipasang sekali per perangkat; disebut terang-terangan di layar.
+  const KUNCI_QRIS = 'miqbal_qris_v1';
+  function ambilQris() { try { return localStorage.getItem(KUNCI_QRIS) || ''; } catch (e) { return ''; } }
+
+  function bukaLembarQris() {
+    const total = parseFloat(document.getElementById('jualHargaTotal').value) || 0;
+    document.getElementById('qrisTotal').textContent = formatRupiah(total);
+    gambarIsiQris();
+    document.getElementById('modalQrisBg').classList.add('tampil');
+  }
+  function tutupLembarQris() { document.getElementById('modalQrisBg').classList.remove('tampil'); }
+
+  function gambarIsiQris() {
+    const src = ambilQris();
+    const isi = document.getElementById('qrisIsi');
+    const tb = document.getElementById('btnPasangQris');
+    if (!src) {
+      isi.innerHTML = '<div class="qris-kosong">Kode QRIS toko belum dipasang di HP ini.<br>'
+        + 'Pilih gambarnya dari galeri — tersimpan di HP ini saja, tidak ikut terbit ke internet.</div>';
+      tb.textContent = 'Pilih gambar QRIS dari HP';
+    } else {
+      isi.innerHTML = '<img class="qris-gambar" src="' + src + '" alt="Kode QRIS Toko Beras M.IQBAL">';
+      tb.textContent = 'Ganti gambar QRIS';
+    }
+  }
+
+  function pilihBerkasQris() { document.getElementById('qrisBerkas').click(); }
+
+  function pasangQris(ev) {
+    const berkas = ev.target.files && ev.target.files[0];
+    ev.target.value = '';   // supaya memilih berkas yang sama lagi tetap memicu onchange
+    if (!berkas) return;
+    const baca = new FileReader();
+    baca.onload = function () {
+      const img = new Image();
+      img.onload = function () {
+        // Foto dari HP bisa berpuluh megabyte; localStorage cuma beberapa MB. Diperkecil
+        // dulu ke sisi terpanjang 900 px — QR-nya tetap tajam untuk dipindai, tapi muat
+        // disimpan. Tanpa ini, memilih foto besar langsung menabrak batas penyimpanan.
+        const MAKS = 900;
+        const skala = Math.min(1, MAKS / Math.max(img.width, img.height));
+        const kanvas = document.createElement('canvas');
+        kanvas.width = Math.round(img.width * skala);
+        kanvas.height = Math.round(img.height * skala);
+        kanvas.getContext('2d').drawImage(img, 0, 0, kanvas.width, kanvas.height);
+        let data;
+        try { data = kanvas.toDataURL('image/jpeg', 0.9); } catch (e) { data = ''; }
+        if (!data) { alert('Gambar tidak bisa diproses di HP ini.'); return; }
+        try {
+          localStorage.setItem(KUNCI_QRIS, data);
+        } catch (e) {
+          alert('Penyimpanan HP penuh, kode QRIS tidak tersimpan. Coba gambar yang lebih kecil.');
+          return;
+        }
+        gambarIsiQris();
+        alert('Kode QRIS tersimpan di HP ini saja. Tidak dikirim ke mana pun.');
+      };
+      img.onerror = function () { alert('Berkas itu tidak terbaca sebagai gambar.'); };
+      img.src = baca.result;
+    };
+    baca.onerror = function () { alert('Gagal membaca berkas.'); };
+    baca.readAsDataURL(berkas);
   }
 
   async function simpanPenjualan() {
@@ -11281,6 +11387,10 @@
   window.tampilkanArusKas = tampilkanArusKas;
   window.perbaikiCaraBayarLama = perbaikiCaraBayarLama;
   window.simpanTitikKas = simpanTitikKas;
+  window.bukaLembarQris = bukaLembarQris;
+  window.tutupLembarQris = tutupLembarQris;
+  window.pilihBerkasQris = pilihBerkasQris;
+  window.pasangQris = pasangQris;
   window.toggleKalender = toggleKalender;
   window.toggleHariMasuk = toggleHariMasuk;
   window.perbaruiSelisihKas = perbaruiSelisihKas;

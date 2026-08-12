@@ -25,3 +25,18 @@ mockup-sistem-mewah.html
 
 # Setelan alat bantu per-mesin
 .claude/
+
+# ===== KODE QRIS TOKO — JANGAN PERNAH MASUK REPO PUBLIK =====
+# Keputusan pemilik 12 Agustus 2026: gambar QRIS TIDAK ikut terbit. Alasannya bukan
+# takut uangnya diambil (memindai QRIS justru membayar KE toko), tapi QR yang bisa
+# diunduh siapa saja bisa dipasang di toko online palsu — uang tetap masuk ke rekening
+# toko, dan pemilik yang kena tagih barang yang tidak pernah dia kirim.
+# Gambarnya dipasang per HP lewat tombol "Pilih gambar QRIS" di tab Jual, disimpan di
+# localStorage perangkat itu saja. Pola di bawah pengaman kalau berkasnya tidak sengaja
+# tersalin ke folder proyek.
+*qris*.png
+*qris*.jpg
+*qris*.jpeg
+*QRIS*.png
+*QRIS*.jpg
+*QRIS*.jpeg
