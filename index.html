@@ -4895,7 +4895,18 @@
     if (kaki) kaki.textContent = rapi;
   }
 
+  // Arus Kas dibangun dari SEMBILAN koleksi sekaligus (penjualan, batch, bulanan,
+  // harian, retur, bahan kemasan/literan, piutang, kasbon). Temuan audit 12 Agu 2026:
+  // tidak ada satu pun callback yang menggambar ulang halaman itu, jadi kalau tabnya
+  // terbuka saat kasir di HP lain mencatat penjualan, angkanya membeku sampai pemilik
+  // pindah tab. Satu helper dipakai semua callback supaya tidak ada yang terlewat lagi.
+  function segarkanArusKasJikaTampil() {
+    const el = document.getElementById('halamanAruskas');
+    if (el && el.classList.contains('tampil')) tampilkanArusKas();
+  }
+
   pasangSinkronisasi(KOLEKSI_BATCH, KUNCI_SIMPAN, (d) => { _cacheBatch = d; }, () => {
+    segarkanArusKasJikaTampil();
     perbaruiCounterBackup();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
     if (document.getElementById('halamanRekap').classList.contains('tampil')) tampilkanRekap();
@@ -4905,11 +4916,13 @@
   }, 'id', 'batch');
 
   pasangSinkronisasi(KOLEKSI_BULANAN, KUNCI_BULANAN, (d) => { _cacheBulanan = d; }, () => {
+    segarkanArusKasJikaTampil();
     if (document.getElementById('halamanBulanan').classList.contains('tampil')) tampilkanBulanan();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'bulan', 'bulanan');
 
   pasangSinkronisasi(KOLEKSI_PENJUALAN, KUNCI_PENJUALAN, (d) => { _cachePenjualan = d; }, () => {
+    segarkanArusKasJikaTampil();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
@@ -4927,6 +4940,7 @@
   }, 'id', 'produksi');
 
   pasangSinkronisasi(KOLEKSI_RETUR, KUNCI_RETUR, (d) => { _cacheRetur = d; }, () => {
+    segarkanArusKasJikaTampil();
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanRetur();
   }, 'id', 'retur');
@@ -4937,17 +4951,24 @@
   }, 'id', 'karantina');
 
   pasangSinkronisasi(KOLEKSI_HARIAN, KUNCI_HARIAN, (d) => { _cacheHarian = d; }, () => {
+    segarkanArusKasJikaTampil();
     if (document.getElementById('halamanHarian').classList.contains('tampil')) { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); }
     // Kategori 'toko' otomatis ikut Kas Keluar Bulan Ini — dashboard harus refresh tiap ada pengeluaran harian baru.
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'harian');
 
   pasangSinkronisasi(KOLEKSI_BAHAN_KEMASAN, KUNCI_BAHAN_KEMASAN, (d) => { _cacheBahanKemasan = d; }, () => {
+    segarkanArusKasJikaTampil();
+    // Pembelian bahan = uang keluar di kartu Kas Bulan Ini (sejak Arus Kas ada).
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanProduksi').classList.contains('tampil')) isiPilihanBahanKemasan();
   }, 'id', 'bahanKemasan');
 
   pasangSinkronisasi(KOLEKSI_BAHAN_LITERAN, KUNCI_BAHAN_LITERAN, (d) => { _cacheBahanLiteran = d; }, () => {
+    segarkanArusKasJikaTampil();
+    // Pembelian bahan = uang keluar di kartu Kas Bulan Ini (sejak Arus Kas ada).
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
   }, 'id', 'bahanLiteran');
 
@@ -4965,12 +4986,16 @@
   }, 'merk', 'hargaKarung');
 
   pasangSinkronisasi(KOLEKSI_PIUTANG, KUNCI_PIUTANG, (d) => { _cachePiutang = d; }, () => {
+    segarkanArusKasJikaTampil();
     if (document.getElementById('halamanPiutang').classList.contains('tampil')) tampilkanPiutang();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'piutang');
 
   pasangSinkronisasi(KOLEKSI_KASBON, KUNCI_KASBON, (d) => { _cacheKasbon = d; }, () => {
+    segarkanArusKasJikaTampil();
     if (document.getElementById('halamanPiutang').classList.contains('tampil')) tampilkanKasbon();
+    // Kartu Kas Bulan Ini menghitung kasbon (diambil = keluar, dikembalikan = masuk).
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'kasbon');
 
   // ============ RINGKASAN KASIR (dibaca kasir.html ringan) ============
@@ -8810,6 +8835,20 @@
   function ambilTitikKas() {
     try { return JSON.parse(localStorage.getItem(KUNCI_TITIK_KAS) || 'null'); } catch (e) { return null; }
   }
+  // Temuan audit 12 Agu 2026: simpanTitikKas MENULIS ke Firestore tapi tidak ada yang
+  // pernah MEMBACANYA balik — HP kedua tidak akan pernah melihat titik hitung yang
+  // disetel HP pertama. Sinkron satu arah itu sama saja tidak sinkron. Pendengar dokumen
+  // ini menutupnya: begitu titiknya berubah di perangkat mana pun, semua perangkat ikut.
+  onSnapshot(doc(db, 'pengaturan', 'titikKas'), (snap) => {
+    if (!snap.exists()) return;
+    const d = snap.data();
+    const lokal = ambilTitikKas();
+    // Jangan biarkan gema server yang lebih tua menimpa setelan lokal yang lebih baru
+    // (terjadi saat offline: lokal sudah baru, server masih lama sampai antrean terkirim).
+    if (lokal && String(lokal.diubahPada || '') > String(d.diubahPada || '')) return;
+    localStorage.setItem(KUNCI_TITIK_KAS, JSON.stringify(d));
+    segarkanArusKasJikaTampil();
+  }, (err) => { /* offline / belum masuk — pakai salinan lokal, jangan berisik */ });
   async function simpanTitikKas() {
     const tanggal = document.getElementById('kasTitikTanggal').value;
     const laci = parseFloat(document.getElementById('kasTitikLaci').value) || 0;
@@ -8927,6 +8966,16 @@
     teks += `Omzet penuh bulan ini (termasuk kredit) ${formatRupiah(d.omzetPenuh)} — angka itu yang dipakai tab Laba. `;
     teks += 'Pengeluaran harian kategori Owner tidak ikut di sini karena murni pribadi. ';
     teks += 'Stok awal 8 Agustus 2026 (isi gudang saat sistem mulai dipakai) juga tidak ikut \u2014 uangnya sudah keluar sebelum sistem ini ada.';
+    // Pos biaya bulan ini yang belum bertanggal bayar cuma terlihat di kartu Cocokkan
+    // Kas sebelum audit 12 Agu 2026 — padahal pembaca tampilan bulanan juga perlu tahu
+    // uang keluar yang tampak kecil itu karena ada tagihan yang belum dibayar, bukan
+    // karena bulannya memang murah.
+    const belum = d.bulananBelumDibayar || [];
+    if (belum.length) {
+      teks += ' <b>Belum dibayar bulan ini (tidak ikut dihitung):</b> '
+        + belum.map(x => escapeHtml(x.label) + ' ' + formatRupiah(x.nominal)).join(', ')
+        + ' \u2014 isi tanggal bayarnya di tab Bulanan begitu uangnya keluar.';
+    }
     el.innerHTML = teks;
   }
 
