@@ -1396,8 +1396,8 @@
       --gerak-panel: 120ms; --gerak-panel-keluar: 120ms;
       --gerak-sentuh-tekan: 120ms; --gerak-sentuh-lepas: 120ms;
     }
-    .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp,
-    #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi, #overlayLembarIsiHpp,
+    .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp, #lembarPelanggan,
+    #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi, #overlayLembarIsiHpp, #overlayLembarPelanggan,
     #spandukDraf, #bilahUrungkan, .baris-merk, .baris-sumber-produksi, .baris-stok-awal {
       animation-duration: 120ms !important; transition-duration: 120ms !important;
     }
@@ -1715,8 +1715,8 @@
     position: fixed; inset: 0; z-index: 42; background: #000; opacity: 0; pointer-events: none;
     transition: opacity var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon, body.lembar-koreksi-produksi-terbuka #overlayLembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #overlayLembarIsiHpp { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp {
+  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon, body.lembar-koreksi-produksi-terbuka #overlayLembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #overlayLembarIsiHpp, body.lembar-pelanggan-terbuka #overlayLembarPelanggan { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp, #lembarPelanggan {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 43;
     max-width: 680px; margin: 0 auto;
     background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
@@ -1726,15 +1726,27 @@
     transform: translateY(105%);
     transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang, body.lembar-koreksi-produksi-terbuka #lembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #lembarIsiHpp { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan, #lembarKoreksiProduksi .lm-pegangan, #lembarIsiHpp .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
-  #lembarPiutang h3, #lembarKasbon h3, #lembarKoreksiProduksi h3, #lembarIsiHpp h3 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
-  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub, #lembarKoreksiProduksi .lk-sub, #lembarIsiHpp .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
-  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup, #lembarKoreksiProduksi .lmk-tutup, #lembarIsiHpp .lmk-tutup {
+  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang, body.lembar-koreksi-produksi-terbuka #lembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #lembarIsiHpp, body.lembar-pelanggan-terbuka #lembarPelanggan { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan, #lembarKoreksiProduksi .lm-pegangan, #lembarIsiHpp .lm-pegangan, #lembarPelanggan .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
+  #lembarPiutang h3, #lembarKasbon h3, #lembarKoreksiProduksi h3, #lembarIsiHpp h3, #lembarPelanggan h3 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
+  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub, #lembarKoreksiProduksi .lk-sub, #lembarIsiHpp .lk-sub, #lembarPelanggan .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
+  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup, #lembarKoreksiProduksi .lmk-tutup, #lembarIsiHpp .lmk-tutup, #lembarPelanggan .lmk-tutup {
     width: 100%; min-height: 48px; margin-top: 12px; border-radius: 12px;
     background: var(--abu); border: 1px solid var(--garis); color: var(--redup);
     font-family: inherit; font-size: 13px; font-weight: 700;
   }
+  /* Catatan pengenal pelanggan (13 Agu 2026) — kolom bebas: ciri wajah, kendaraan,
+     panggilan. Textarea satu-satunya di sistem; gayanya menjiplak input biasa. */
+  #pelCatatan {
+    width: 100%; box-sizing: border-box; min-height: 96px; resize: vertical;
+    background: var(--kartu); color: var(--teks); border: 1px solid var(--garis);
+    border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 14px; line-height: 1.5;
+  }
+  #pelCatatan:focus { outline: none; border-color: var(--emas-gelap); }
+  .pel-stat { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .pel-stat > div { background: var(--abu); border: 1px solid var(--garis); border-radius: 12px; padding: 8px 12px; }
+  .pel-stat .label { font-size: 10px; letter-spacing: .6px; text-transform: uppercase; color: var(--redup); }
+  .pel-stat .nilai { font-size: 14px; font-weight: 700; color: var(--teks); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Sisa utang pelanggan yang sedang dibuka — angka paling penting di lembar ini. */
   .piutang-sisa { display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
     padding: 10px 12px; border-radius: 12px; background: var(--abu); border: 1px solid var(--garis); margin-bottom: 12px; }
@@ -2491,6 +2503,13 @@
     <h3>Bayar pakai QRIS</h3>
     <div class="qris-total">Total yang harus dibayar<b id="qrisTotal">Rp0</b></div>
     <div id="qrisIsi"></div>
+    <!-- Nama pengirim QRIS (13 Agu 2026): satu-satunya cara bayar yang MEMBERI TAHU
+         nama pembeli tanpa ditanya — tertera di notifikasi rekening toko. Kolom ini
+         menulis langsung ke kolom nama pembeli form Jual; lembar QRIS memang hanya
+         dibuka dari sana (pilihBayar satu-satunya pemanggil). -->
+    <input type="text" id="qrisNamaPengirim" placeholder="Nama pengirim di notifikasi (opsional)"
+      autocomplete="off" style="margin-top:10px;"
+      oninput="document.getElementById('jualNamaPelanggan').value = this.value">
     <input type="file" id="qrisBerkas" accept="image/*" style="display:none;" onchange="pasangQris(event)">
     <div class="qris-aksi">
       <button type="button" class="qris-utama" id="btnPasangQris" onclick="pilihBerkasQris()">Pilih gambar QRIS dari HP</button>
@@ -2568,6 +2587,7 @@
   <button id="tabAruskas" class="tab-owner" onclick="pindahHalaman('aruskas')"> Arus Kas</button>
   <button id="tabTutup" class="tab-owner" onclick="pindahHalaman('tutup')"> Tutup Hari</button>
   <button id="tabPiutang" class="tab-owner" onclick="pindahHalaman('piutang')"> Piutang</button>
+  <button id="tabPelanggan" class="tab-owner" onclick="pindahHalaman('pelanggan')"> Pelanggan</button>
   <button id="tabHarga" class="tab-owner" onclick="pindahHalaman('harga')"> Harga</button>
   <button id="tabJaga" class="tab-owner" onclick="bukaModalJaga()"> Jaga</button>
   <div class="nav-footer">
@@ -2628,6 +2648,7 @@
   <button type="button" class="lm-baris tab-owner" data-halaman="laba" onclick="pindahDariMenu('laba')"><span>Laba <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="tutup" onclick="pindahDariMenu('tutup')"><span>Tutup Hari <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— ritual malam</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="aruskas" onclick="pindahDariMenu('aruskas')"><span>Arus Kas <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— uang masuk &amp; keluar</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button type="button" class="lm-baris tab-owner" data-halaman="pelanggan" onclick="pindahDariMenu('pelanggan')"><span>Pelanggan <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— buku pelanggan &amp; ciri pengenal</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="piutang" onclick="pindahDariMenu('piutang')"><span>Piutang <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— pelanggan yang berutang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaLaporan()"><span>Laporan Bulanan <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— cetak / simpan PDF</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaSetelPin()"><span>PIN Owner <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— setel / ganti</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -2815,6 +2836,25 @@
      mencatat pengembalian (tunai atau potong gaji). Pola & bentuknya sengaja sama
      dengan lembar Piutang supaya tidak ada dua cara membaca hal yang serupa. -->
 <div id="overlayLembarKasbon" onclick="tutupLembarKasbon()"></div>
+
+<div id="overlayLembarPelanggan" onclick="tutupLembarPelanggan()"></div>
+<div id="lembarPelanggan" role="dialog" aria-modal="true" aria-labelledby="lembarPelangganJudul">
+  <div class="lm-pegangan"></div>
+  <h3 id="lembarPelangganJudul">Pelanggan</h3>
+  <p class="lk-sub" id="lembarPelangganSub">—</p>
+
+  <div class="pel-stat">
+    <div><div class="label">Langganan</div><div class="nilai" id="pelFavorit">—</div></div>
+    <div><div class="label">Terakhir datang</div><div class="nilai" id="pelTerakhir">—</div></div>
+    <div><div class="label">Total belanja</div><div class="nilai" id="pelTotal">Rp0</div></div>
+    <div><div class="label">Sisa utang</div><div class="nilai" id="pelUtang">—</div></div>
+  </div>
+
+  <label for="pelCatatan">Catatan pengenal <span class="keterangan">— ciri, kendaraan, panggilan</span></label>
+  <textarea id="pelCatatan" placeholder="Contoh: bapak tinggi, Vario merah, biasa IR64 5kg dua mingguan"></textarea>
+  <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanCatatanPelanggan()">Simpan catatan</button>
+  <button type="button" class="lmk-tutup" onclick="tutupLembarPelanggan()">Tutup</button>
+</div>
 <div id="lembarKasbon" role="dialog" aria-modal="true" aria-labelledby="lembarKasbonJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarKasbonJudul">Karyawan</h3>
@@ -3199,7 +3239,11 @@
            ditagih; di Tunai/QRIS boleh dikosongkan supaya jualan tidak melambat. -->
       <div id="blokNamaPelanggan" style="margin-top:12px;">
         <label id="labelNamaPelanggan">Nama pembeli <i style="font-weight:400; font-style:normal; color:var(--redup);">— boleh dikosongkan</i></label>
-        <input type="text" id="jualNamaPelanggan" placeholder="Nama pembeli (boleh dikosongkan)" autocomplete="off">
+        <input type="text" id="jualNamaPelanggan" placeholder="Nama pembeli (boleh dikosongkan)" autocomplete="off" list="saranPelanggan">
+        <!-- Saran nama dari Buku Pelanggan — supaya SAHALA tidak terpecah jadi "Sahala"
+             dan "sahala" yang di mata piutang adalah orang yang sama tapi di mata
+             pencarian jadi dua. kasir.html sudah lama punya padanannya. -->
+        <datalist id="saranPelanggan"></datalist>
       </div>
     </div>
 
@@ -3705,6 +3749,37 @@
       <input type="text" id="kasbonCatatan" placeholder="Contoh: buat berobat anak">
       <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanKasbonAmbil()">Simpan kasbon</button>
     </div>
+  </div>
+
+  <!-- HALAMAN PELANGGAN / BUKU PELANGGAN (13 Agu 2026, owner-only) — jawaban untuk
+       "orang ini siapa ya" tanpa harus bertanya ulang. Kartu terisi OTOMATIS dari
+       riwayat (nama pembeli tersimpan di ketiga cara bayar sejak 12 Agu); pemilik
+       cuma menambah catatan pengenal: ciri, kendaraan, panggilan. Pencariannya
+       menyisir nama + catatan + barang favorit — ketik "vario merah" ketemu orangnya.
+       Nama pelanggan data sensitif; seperti Piutang, isinya hidup di database yang
+       dijaga sandi toko, tidak pernah tertanam di berkas publik ini. -->
+  <div id="halamanPelanggan" class="halaman">
+    <div class="judul-halaman">
+      <h2>Pelanggan</h2>
+      <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
+    </div>
+
+    <label for="cariPelanggan">Cari — nama, ciri, kendaraan, atau barang langganannya</label>
+    <input type="text" id="cariPelanggan" placeholder='Contoh: "vario merah", "IR64", "sahala"' autocomplete="off" oninput="tampilkanPelanggan()">
+
+    <div class="kpi-mini kpi-dua" style="margin-top:10px;">
+      <div class="kartu-mini"><div class="label">Dikenal sistem</div><div class="nilai" id="pelangganJumlah">0</div></div>
+      <div class="kartu-mini"><div class="label">Punya catatan pengenal</div><div class="nilai" id="pelangganBercatatan">0</div></div>
+    </div>
+
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Buku Pelanggan</h3><span class="kd-hitung" id="pelangganHitung"></span></div>
+      <div id="daftarPelanggan"></div>
+    </div>
+
+    <div class="info-box" style="margin-top:12px;">Nama masuk sendiri dari transaksi (tunai, QRIS, kredit).
+      Pembayar QRIS: namanya terbaca di notifikasi rekening toko — salin ke kolom nama saat menjual,
+      atau lewat kolom di lembar kode QRIS. Ketuk pelanggan untuk menulis ciri pengenalnya.</div>
   </div>
 
   <!-- HALAMAN HARGA (katalog harga jual resmi, owner-only) -->
@@ -4234,6 +4309,7 @@
   // MEMAJUKAN titik hitung kas tiap malam, sehingga selisih ketahuan harian dan tidak
   // menumpuk berbulan-bulan sampai tidak bisa ditelusuri lagi.
   const KOLEKSI_TUTUP = 'tutupHari';
+  const KOLEKSI_PELANGGAN_CAT = 'pelangganCatatan';
 
   // Cache di memori — diisi ulang otomatis oleh onSnapshot tiap kali ada perubahan
   // (dari perangkat ini ATAU perangkat lain). Semua fungsi lama yang baca data
@@ -4254,6 +4330,7 @@
   let _cacheKasbon = [];
   let _cachePenyesuaian = [];
   let _cacheTutup = [];
+  let _cachePelangganCat = [];
   let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false, piutang: false, kasbon: false };
 
   const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
@@ -4272,6 +4349,7 @@
   const KUNCI_KASBON = 'miqbal_kasbon_mutasi_v1';
   const KUNCI_PENYESUAIAN = 'miqbal_penyesuaian_stok_v1';
   const KUNCI_TUTUP = 'miqbal_tutup_hari_v1';
+  const KUNCI_PELANGGAN_CAT = 'miqbal_pelanggan_catatan_v1';
 
   // Jenis bahan kemasan biasa (plastik untuk produk kemasan jadi, di luar literan) —
   // per kombinasi ukuran + merek beras, karena harga per lembar beda tiap merek (instruksi My DeV, 1 Agustus 2026).
@@ -4370,7 +4448,7 @@
   window.addEventListener('resize', geserIndikatorTab);
 
   function pindahHalaman(nama) {
-    ['ringkasan','jual','input','stokawal','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang'].forEach(n => {
+    ['ringkasan','jual','input','stokawal','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
     });
@@ -4380,7 +4458,7 @@
       b.classList.toggle('aktif', b.getAttribute('data-halaman') === nama);
     });
     const tbMenu = document.getElementById('tombolLembarMenu');
-    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','stokawal','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang'].indexOf(nama) >= 0);
+    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','stokawal','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan'].indexOf(nama) >= 0);
     if (document.body.classList.contains('lembar-menu-terbuka')) toggleLembarMenu(false);
     if (document.body.classList.contains('lembar-merk-terbuka')) tutupLembarMerk();
     document.body.classList.toggle('di-halaman-masuk', nama === 'input');
@@ -4396,13 +4474,14 @@
     if (nama === 'ringkasan') tampilkanRingkasan();
     if (nama === 'rekap') { tampilkanRekap(); tampilkanRiwayatJual(); tampilkanRiwayat(); }
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); }
-    if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); }
+    if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); isiSaranPelanggan(); }
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
     if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); tampilkanCocokStok(); }
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'aruskas') tampilkanArusKas();
     if (nama === 'tutup') tampilkanTutupHari();
     if (nama === 'piutang') { tampilkanPiutang(); tampilkanKasbon(); }
+    if (nama === 'pelanggan') tampilkanPelanggan();
     if (nama === 'harga') tampilkanHarga();
     if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
     if (nama === 'input') periksaDrafMasuk();
@@ -5193,6 +5272,7 @@
     if (document.getElementById('halamanRekap').classList.contains('tampil')) { tampilkanRiwayatJual(); tampilkanRiwayat(); }
     // Penjualan kredit = utang bertambah, jadi daftar piutang ikut berubah.
     if (document.getElementById('halamanPiutang').classList.contains('tampil')) tampilkanPiutang();
+    if (document.getElementById('halamanPelanggan').classList.contains('tampil')) tampilkanPelanggan();
   }, 'id', 'penjualan');
 
   pasangSinkronisasi(KOLEKSI_PRODUKSI, KUNCI_PRODUKSI, (d) => { _cacheProduksi = d; }, () => {
@@ -5250,6 +5330,7 @@
   pasangSinkronisasi(KOLEKSI_PIUTANG, KUNCI_PIUTANG, (d) => { _cachePiutang = d; }, () => {
     segarkanArusKasJikaTampil();
     if (document.getElementById('halamanPiutang').classList.contains('tampil')) tampilkanPiutang();
+    if (document.getElementById('halamanPelanggan').classList.contains('tampil')) tampilkanPelanggan();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'piutang');
 
@@ -5271,6 +5352,10 @@
     if (document.getElementById('halamanTutup').classList.contains('tampil')) tampilkanTutupHari();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'tutup');
+
+  pasangSinkronisasi(KOLEKSI_PELANGGAN_CAT, KUNCI_PELANGGAN_CAT, (d) => { _cachePelangganCat = d; }, () => {
+    if (document.getElementById('halamanPelanggan').classList.contains('tampil')) tampilkanPelanggan();
+  }, 'id', 'pelangganCat');
 
   // ============ RINGKASAN KASIR (dibaca kasir.html ringan) ============
   // Satu dokumen kecil berisi harga+stok+HPP terkini, supaya halaman kasir tidak
@@ -5406,7 +5491,10 @@
     // yang mengembalikan barang ke stok hilang), katalog harga kosong, dan jejak
     // koreksi/pembatalan lenyap. penjualan sekarang pakai ambilPenjualanSemua().
     const isi = {
-      versi: 4,
+      // versi 5 (13 Agu 2026): piutangMutasi + kasbonMutasi AKHIRNYA ikut — dua-duanya
+      // data uang tapi selama ini tidak pernah masuk file backup, jadi pulihkan-dari-file
+      // diam-diam kehilangan seluruh catatan utang. pelangganCatatan ikut sejak lahir.
+      versi: 5,
       diunduhPada: new Date().toISOString(),
       batchMasuk: ambilSemuaBatch(),
       biayaBulanan: ambilBiayaBulanan(),
@@ -5421,7 +5509,10 @@
       katalogHargaKemasan: ambilHargaKemasan(),
       katalogHargaKarung: ambilHargaKarung(),
       penyesuaianStok: ambilPenyesuaianStok(),
-      tutupHari: ambilTutupHari()
+      tutupHari: ambilTutupHari(),
+      piutangMutasi: ambilPiutangMutasi(),
+      kasbonMutasi: ambilKasbonMutasi(),
+      pelangganCatatan: ambilPelangganCatatan()
     };
     const blob = new Blob([JSON.stringify(isi, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -5464,7 +5555,10 @@
           { kunci: 'katalogHargaKemasan', koleksi: KOLEKSI_HARGA_KEMASAN, ada: ambilHargaKemasan(),    field: 'id',    label: 'harga kemasan' },
           { kunci: 'katalogHargaKarung',  koleksi: KOLEKSI_HARGA_KARUNG,  ada: ambilHargaKarung(),     field: 'id',    label: 'harga karung' },
           { kunci: 'penyesuaianStok',     koleksi: KOLEKSI_PENYESUAIAN,   ada: ambilPenyesuaianStok(),  field: 'id',    label: 'penyesuaian stok' },
-          { kunci: 'tutupHari',           koleksi: KOLEKSI_TUTUP,         ada: ambilTutupHari(),        field: 'id',    label: 'tutup hari' }
+          { kunci: 'tutupHari',           koleksi: KOLEKSI_TUTUP,         ada: ambilTutupHari(),        field: 'id',    label: 'tutup hari' },
+          { kunci: 'piutangMutasi',       koleksi: KOLEKSI_PIUTANG,       ada: ambilPiutangMutasi(),    field: 'id',    label: 'mutasi piutang' },
+          { kunci: 'kasbonMutasi',        koleksi: KOLEKSI_KASBON,        ada: ambilKasbonMutasi(),     field: 'id',    label: 'mutasi kasbon' },
+          { kunci: 'pelangganCatatan',    koleksi: KOLEKSI_PELANGGAN_CAT, ada: ambilPelangganCatatan(), field: 'id',    label: 'catatan pelanggan' }
         ];
         const laporan = [];
         for (const k of daftarKoleksi) {
@@ -6624,6 +6718,11 @@
     const data = localStorage.getItem(KUNCI_PENYESUAIAN);
     return data ? JSON.parse(data) : [];
   }
+  function ambilPelangganCatatan() {
+    if (_cachePelangganCat.length > 0) return _cachePelangganCat;
+    const data = localStorage.getItem(KUNCI_PELANGGAN_CAT);
+    return data ? JSON.parse(data) : [];
+  }
   function ambilTutupHari() {
     if (_cacheTutup.length > 0) return _cacheTutup;
     const data = localStorage.getItem(KUNCI_TUTUP);
@@ -7674,6 +7773,9 @@
   function ambilQris() { try { return localStorage.getItem(KUNCI_QRIS) || ''; } catch (e) { return ''; } }
 
   function bukaLembarQris() {
+    // Kolom nama pengirim mengikuti apa pun yang sudah terketik di form Jual.
+    const nq = document.getElementById('qrisNamaPengirim');
+    if (nq) nq.value = document.getElementById('jualNamaPelanggan').value;
     const total = parseFloat(document.getElementById('jualHargaTotal').value) || 0;
     document.getElementById('qrisTotal').textContent = formatRupiah(total);
     gambarIsiQris();
@@ -9591,6 +9693,132 @@
         + ' \u2014 isi tanggal bayarnya di tab Bulanan begitu uangnya keluar.';
     }
     el.innerHTML = teks;
+  }
+
+  // ===== BUKU PELANGGAN (13 Agustus 2026) =====
+  // Menjawab masalah #1 catatan pemilik: pelanggan datang lagi tapi namanya lupa.
+  // Kartu dibangun OTOMATIS dari riwayat — tidak ada angka tersimpan, sama seperti
+  // piutang/stok. Satu-satunya yang ditulis tangan: catatan pengenal per pelanggan,
+  // satu dokumen per orang (id = kunciPelanggan) di koleksi pelangganCatatan.
+  // Ini catatan, bukan uang — dokumen boleh ditimpa saat diedit.
+  function hitungPelanggan() {
+    const peta = {};
+    function slot(nama, urut) {
+      const k = kunciPelanggan(nama);
+      if (!k) return null;
+      if (!peta[k]) peta[k] = { kunci: k, nama: String(nama).trim(), urutNama: urut || 0,
+        n: 0, total: 0, terakhir: '', produk: {}, kunjungan: {}, catatan: '' };
+      // Ejaan terbaru menang — aturan yang sama dengan hitungPiutang.
+      if ((urut || 0) >= peta[k].urutNama) { peta[k].nama = String(nama).trim(); peta[k].urutNama = urut || 0; }
+      return peta[k];
+    }
+    ambilPenjualan().forEach(p => {
+      if (!p.namaPelanggan) return;
+      const t = slot(p.namaPelanggan, p.id);
+      if (!t) return;
+      t.n += 1;
+      t.total += p.hargaTotal || 0;
+      if ((p.tanggal || '') > t.terakhir) t.terakhir = p.tanggal || '';
+      // Nama darurat "(tidak tercatat …)" bukan barang — jangan jadi "langganan".
+      const barang = p.jenis === 'kasir_darurat_nominal' ? '' : (p.namaProduk || p.merkSumber || '');
+      if (barang) t.produk[barang] = (t.produk[barang] || 0) + 1;
+      t.kunjungan[String(p.grupNota || p.id)] = true;
+    });
+    // Pembayar piutang juga "datang" — tanggal kunjungannya ikut dihitung.
+    ambilPiutangMutasi().forEach(m => {
+      if (!m.namaPelanggan) return;
+      const t = slot(m.namaPelanggan, m.id);
+      if (t && (m.tanggal || '') > t.terakhir) t.terakhir = m.tanggal || '';
+    });
+    // Catatan pengenal — termasuk pelanggan yang BELUM pernah tercatat belanja
+    // (pemilik boleh menulis dulu, transaksinya menyusul).
+    ambilPelangganCatatan().forEach(c => {
+      const t = slot(c.nama || c.id, 0);
+      if (t) t.catatan = c.catatan || '';
+    });
+    const utang = {};
+    hitungPiutang().forEach(x => { utang[x.kunci] = x.sisa; });
+    return Object.keys(peta).map(k => {
+      const t = peta[k];
+      let favorit = '', maxN = 0;
+      Object.keys(t.produk).forEach(b => { if (t.produk[b] > maxN) { maxN = t.produk[b]; favorit = b; } });
+      return { kunci: t.kunci, nama: t.nama, n: t.n, total: t.total, terakhir: t.terakhir,
+        favorit, kunjungan: Object.keys(t.kunjungan).length, catatan: t.catatan,
+        sisaUtang: utang[k] || 0 };
+    }).sort((a, b) => String(b.terakhir).localeCompare(String(a.terakhir)) || a.nama.localeCompare(b.nama));
+  }
+
+  let _daftarPelRender = [];
+  function tampilkanPelanggan() {
+    const kont = document.getElementById('daftarPelanggan');
+    if (!kont) return;
+    const semua = hitungPelanggan();
+    document.getElementById('pelangganJumlah').textContent = semua.length;
+    document.getElementById('pelangganBercatatan').textContent = semua.filter(x => x.catatan).length;
+    const kata = (document.getElementById('cariPelanggan').value || '').trim().toLowerCase();
+    _daftarPelRender = !kata ? semua : semua.filter(x =>
+      (x.nama + ' ' + x.catatan + ' ' + x.favorit).toLowerCase().indexOf(kata) >= 0);
+    document.getElementById('pelangganHitung').textContent = _daftarPelRender.length + ' orang';
+    if (_daftarPelRender.length === 0) {
+      kont.innerHTML = kata
+        ? '<div class="kosong-info"><b>Tidak ketemu</b><span>Coba kata lain — nama, ciri di catatan, atau barang langganannya.</span></div>'
+        : '<div class="kosong-info"><b>Belum ada pelanggan bernama</b><span>Isi kolom nama pembeli saat menjual — tunai dan QRIS juga bisa, bukan cuma kredit.</span></div>';
+      return;
+    }
+    kont.innerHTML = _daftarPelRender.map((x, i) => {
+      const sub = [];
+      if (x.favorit) sub.push('langganan ' + x.favorit);
+      if (x.terakhir) sub.push('terakhir ' + formatTanggal(x.terakhir));
+      if (x.catatan) sub.push(x.catatan);
+      return `<button type="button" class="baris-44 baris-ketuk" onclick="bukaLembarPelanggan(${i})">
+        <span class="nama"><i class="trx-nama">${escapeHtml(x.nama)}</i><small>${escapeHtml(sub.join(' · ') || x.kunjungan + ' kunjungan')}</small></span>
+        ${x.sisaUtang > 0 ? '<span class="lencana-amber">utang ' + formatRupiah(x.sisaUtang) + '</span>' : `<span class="angka">${formatRupiah(x.total)}</span>`}
+        ${IKON_CHEV}
+      </button>`;
+    }).join('');
+  }
+
+  let _pelTerbuka = null;
+  function bukaLembarPelanggan(i) {
+    const x = _daftarPelRender[i];
+    if (!x) return;
+    _pelTerbuka = x;
+    document.getElementById('lembarPelangganJudul').textContent = x.nama;
+    document.getElementById('lembarPelangganSub').textContent =
+      x.n > 0 ? `${x.kunjungan} kunjungan · ${x.n} barang tercatat` : 'Belum ada transaksi tercatat';
+    document.getElementById('pelFavorit').textContent = x.favorit || '—';
+    document.getElementById('pelTerakhir').textContent = x.terakhir ? formatTanggal(x.terakhir) : '—';
+    document.getElementById('pelTotal').textContent = formatRupiah(x.total);
+    document.getElementById('pelUtang').textContent = x.sisaUtang > 0 ? formatRupiah(x.sisaUtang) : 'Lunas';
+    document.getElementById('pelCatatan').value = x.catatan || '';
+    document.body.classList.add('lembar-pelanggan-terbuka');
+  }
+  function tutupLembarPelanggan() {
+    _pelTerbuka = null;
+    document.body.classList.remove('lembar-pelanggan-terbuka');
+  }
+  async function simpanCatatanPelanggan() {
+    if (!_pelTerbuka) return;
+    const dok = { id: _pelTerbuka.kunci, nama: _pelTerbuka.nama,
+      catatan: document.getElementById('pelCatatan').value.trim(),
+      diubahPada: new Date().toISOString() };
+    // Perbarui salinan lokal DULU supaya layar jujur walau offline; onSnapshot
+    // menyusul menyamakan begitu tersambung.
+    const semua = ambilPelangganCatatan().filter(c => c.id !== dok.id);
+    semua.push(dok);
+    _cachePelangganCat = semua;
+    localStorage.setItem(KUNCI_PELANGGAN_CAT, JSON.stringify(semua));
+    try { await simpanKeFirestore(KOLEKSI_PELANGGAN_CAT, dok); } catch (e) { console.error(e); }
+    tutupLembarPelanggan();
+    tampilkanPelanggan();
+  }
+
+  // Saran nama di form Jual — dari Buku Pelanggan, yang paling baru datang di atas.
+  function isiSaranPelanggan() {
+    const dl = document.getElementById('saranPelanggan');
+    if (!dl) return;
+    dl.innerHTML = hitungPelanggan().slice(0, 80)
+      .map(x => `<option value="${escapeHtml(x.nama)}"></option>`).join('');
   }
 
   // ===== LAPORAN BULANAN (12 Agustus 2026) =====
@@ -12610,6 +12838,10 @@
   window.tutupLaporan = tutupLaporan;
   window.gambarLaporan = gambarLaporan;
   window.cetakLaporan = cetakLaporan;
+  window.tampilkanPelanggan = tampilkanPelanggan;
+  window.bukaLembarPelanggan = bukaLembarPelanggan;
+  window.tutupLembarPelanggan = tutupLembarPelanggan;
+  window.simpanCatatanPelanggan = simpanCatatanPelanggan;
   window.bukaSetelPin = bukaSetelPin;
   window.tutupSetelPin = tutupSetelPin;
   window.simpanSetelPin = simpanSetelPin;
