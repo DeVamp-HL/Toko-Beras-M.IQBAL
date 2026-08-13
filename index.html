@@ -203,7 +203,7 @@
 
   /* 7 · Baris dinamis form Masuk — tumbuh masuk, sisanya merapat */
   @keyframes barisMasuk { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
-  .baris-merk, .baris-sumber-produksi, .baris-stok-awal { animation: barisMasuk 200ms var(--kurva-kuningan); }
+  .baris-merk, .baris-sumber-produksi { animation: barisMasuk 200ms var(--kurva-kuningan); }
   .baris-melipat { animation: barisMasuk 180ms var(--kurva-keluar) reverse forwards; }
 
   /* 9 · Draf pulih & spanduk — melayang masuk dari atas, tidak mendorong halaman melompat */
@@ -1398,11 +1398,11 @@
     }
     .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp, #lembarPelanggan,
     #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi, #overlayLembarIsiHpp, #overlayLembarPelanggan,
-    #spandukDraf, #bilahUrungkan, .baris-merk, .baris-sumber-produksi, .baris-stok-awal {
+    #spandukDraf, #bilahUrungkan, .baris-merk, .baris-sumber-produksi {
       animation-duration: 120ms !important; transition-duration: 120ms !important;
     }
     /* Yang bergeser tidak lagi bergeser — hanya muncul/hilang. */
-    .halaman.tampil, .baris-merk, .baris-sumber-produksi, .baris-stok-awal { animation-name: pudarSaja !important; }
+    .halaman.tampil, .baris-merk, .baris-sumber-produksi { animation-name: pudarSaja !important; }
     #spandukDraf { animation-name: pudarSaja !important; }
     /* Denyut antrean berhenti; kabarnya tidak hilang karena teks pilnya sendiri
        sudah berbunyi "N menunggu sinyal" — label statis yang diminta Aturan D. */
@@ -1524,8 +1524,6 @@
   }
   .bm-kotak .bm-pilih:focus { outline: none; box-shadow: none; }
   /* HPP per satuan & per kg baris Stok Awal — turunan, jadi redup di bawah isiannya. */
-  .sa-hpp { font-size: 10.5px; color: var(--redup); line-height: 1.5; font-variant-numeric: tabular-nums; }
-  .sa-hpp:empty { display: none; }
   /* ===== Penyempurnaan Lembar 3 — baris sumber produksi =====
      HPP tiap sumber ditulis DI BARISNYA, jadi HPP rata-rata di kartu pratinjau bisa
      dilacak asalnya tanpa membuka halaman lain (Prinsip 1). */
@@ -2218,7 +2216,6 @@
   /* Catatan: #kotakHasil sudah disembunyikan di HP oleh aturan di bagian bawah berkas ini
      (@media max-width:699px). Kartu Rincian melengkapinya — kotak lama membawa TOTAL,
      kartu ini membawa asal-usulnya. Kotak hasil Stok Awal ikut aturan yang sama. */
-  @media (max-width: 699px) { #stokAwalKotakHasil { display: none !important; } }
   .baris-hasil {
     margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .055);
     font-size: 10.5px; color: var(--redup); font-variant-numeric: tabular-nums;
@@ -2345,14 +2342,13 @@
   .lencana-owner svg { width: 10px; height: 10px; flex: 0 0 auto; }
   /* Bilah bawah halaman Masuk kini dua tingkat (total sementara + Simpan) — isi halaman
      diberi ruang supaya baris terakhir tidak tertutup. */
-  body.di-halaman-masuk, body.di-halaman-stokawal { padding-bottom: 190px; }
+  body.di-halaman-masuk { padding-bottom: 190px; }
   @media (max-width: 699px) {
     /* Total sementara mengambil alih tugas kotak hasil di dasar halaman — satu angka,
        satu tempat, di paruh bawah layar. Di 700px ke atas kotak lama tetap dipakai. */
     #kotakHasil { display: none !important; }
     .bm-penunjuk.tampil { position: sticky; top: 50px; z-index: 8; }
     body.di-halaman-masuk main,
-    body.di-halaman-stokawal main { padding-bottom: calc(236px + env(safe-area-inset-bottom, 0px)); }
   }
   @media (min-width: 700px) {
     .bm-isi { flex-direction: row; align-items: center; flex-wrap: wrap; }
@@ -2575,7 +2571,6 @@
   <button id="tabJual" class="aktif" onclick="pindahHalaman('jual')"> Jual</button>
   <div class="nav-grup">Gudang &amp; Stok</div>
   <button id="tabInput" onclick="pindahHalaman('input')"> Masuk</button>
-  <button id="tabStokawal" onclick="pindahHalaman('stokawal')"> Stok Awal</button>
   <button id="tabProduksi" onclick="pindahHalaman('produksi')"> Produksi</button>
   <button id="tabStok" onclick="pindahHalaman('stok')"> Stok</button>
   <div class="nav-grup">Catatan</div>
@@ -2640,7 +2635,6 @@
   <div class="lm-grup">Catat</div>
   <button type="button" class="lm-baris" data-halaman="input" onclick="pindahDariMenu('input')"><span>Masuk <i>— batch beli karung</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris" data-halaman="produksi" onclick="pindahDariMenu('produksi')"><span>Produksi <i>— repack ke kemasan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris" data-halaman="stokawal" onclick="pindahDariMenu('stokawal')"><span>Stok Awal <i>— barang yang sudah di gudang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <div class="lm-grup">Laporan</div>
   <button type="button" class="lm-baris" data-halaman="rekap" onclick="pindahDariMenu('rekap')"><span>Riwayat</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris" data-halaman="harian" onclick="pindahDariMenu('harian')"><span>Harian <i>— pengeluaran harian</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -3813,59 +3807,6 @@
   </div>
 
   <!-- HALAMAN STOK AWAL (add produk per ukuran, HPP otomatis) -->
-  <div id="halamanStokawal" class="halaman">
-    <div class="judul-halaman"><h2>Stok Awal</h2><span class="jh-sub" data-tanggal-halaman></span></div>
-    <div id="pesanOkStokAwal" class="pesan-ok"> Stok awal tersimpan. Stok &amp; HPP langsung terhitung, kasir ikut terisi otomatis.</div>
-    <!-- Penyempurnaan Lembar 4: kotak ini mencegah kesalahan TERMAHAL di halaman ini —
-         mencatat kedatangan baru di sini, yang membuat stok terhitung dobel (Prinsip 1). -->
-    <div class="kartu-peringatan-amber">
-      <div class="kpa-judul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/></svg><b>Halaman ini dipakai sekali</b></div>
-      <p>Isi saat sistem mulai jalan: barang yang sudah di gudang sebelum ada catatan. Beras yang datang <b>setelah</b> hari ini dicatat di halaman <b>Masuk</b> — kalau dicatat di sini juga, stoknya terhitung dua kali.</p>
-    </div>
-    <p class="keterangan catatan-luwes">Ukuran 50 kg masuk sebagai karung sumber; 25/20/10/5 kg masuk sebagai kemasan jadi siap jual. HPP dihitung otomatis.</p>
-
-    <div class="kartu">
-      <!-- Satu isian, satu baris ringkas — label di atas isian dibuang seperti di Masuk. -->
-      <div class="baris-kedatangan">
-        <label class="bk-kotak" for="stokAwalTanggal">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3.5v4M16 3.5v4" stroke-linecap="round"/></svg>
-          <input type="date" id="stokAwalTanggal" aria-label="Tanggal stok awal">
-        </label>
-      </div>
-    </div>
-
-    <div class="kartu">
-      <div class="panel-kepala"><h2>Daftar Produk</h2></div>
-      <p class="keterangan" style="margin-top:-8px;">Satu baris = satu produk satu ukuran. Tambah baris sebanyak yang ada di gudang.</p>
-
-      <!-- Penunjuk baris (Lembar 4, komponen sama dengan Masuk): tahu sedang di baris
-           ke berapa dari berapa tanpa menggulir ke atas. -->
-      <div id="saPenunjuk" class="bm-penunjuk">
-        <span class="bmp-hitung">Baris <b id="sapKe">1</b><span> dari <b id="sapDari">1</b></span></span>
-        <span class="bmp-garis" id="sapGaris" aria-hidden="true"></span>
-        <span class="bmp-jumlah" id="sapJumlah">0 satuan · 0 kg</span>
-      </div>
-
-      <div id="stokAwalDaftarBaris"></div>
-      <button type="button" class="tombol-tambah-merk" onclick="tambahBarisStokAwal()">+ Tambah Produk</button>
-    </div>
-
-    <!-- Ongkir turun ke bawah daftar: hampir selalu dibiarkan 0, jadi tidak pantas
-         menempati paruh atas layar di atas isian yang benar-benar diisi (Prinsip 3). -->
-    <div class="kartu">
-      <div class="baris-isian">
-        <span class="bi-nama">Ongkir + bongkar<small>seluruh stok ini · dialokasikan per kg</small></span>
-        <span class="bi-isi"><b>Rp</b><input type="number" id="stokAwalOngkir" placeholder="0" inputmode="numeric" oninput="hitungRingkasStokAwal()"></span>
-      </div>
-      <p class="keterangan" style="margin-top:8px;">Opsional. Kalau biayanya sudah lama lewat, biarkan 0 supaya tidak dobel hitung.</p>
-    </div>
-
-    <div class="hasil" id="stokAwalKotakHasil" style="display:none;">
-      <div>Total stok awal:</div>
-      <div class="angka" id="stokAwalTotal">-</div>
-      <div class="keterangan" id="stokAwalRincian"></div>
-    </div>
-  </div>
 
   <!-- HALAMAN INPUT -->
   <div id="halamanInput" class="halaman">
@@ -4162,16 +4103,6 @@
   <div id="alasanJual" style="display:none;"></div>
   <button onclick="simpanJualAtauRetur()" id="btnSimpanJual"> Simpan Penjualan</button>
 </div>
-<div class="tombol-simpan" id="tombolSimpanStokAwalWrap" style="display:none;">
-  <!-- Lembar 4: nilai stok pembuka menempel di dasar LAYAR, sepasang dengan tombol
-       Simpan — jempol tidak pindah, dan angka besarnya diulang dengan huruf supaya
-       salah nol ketahuan di tingkat total, bukan cuma di tingkat baris. -->
-  <div id="saTotalMenempel" class="bm-total-menempel">
-    <div class="bts-kiri"><i>Nilai stok pembuka</i><span id="saTotalRincian">Belum ada baris</span></div>
-    <div class="bts-kanan"><b id="saTotalAngka">Rp0</b><span id="saTotalEja">nol rupiah</span></div>
-  </div>
-  <button onclick="simpanStokAwal()" id="btnSimpanStokAwal">Simpan Stok Awal</button>
-</div>
 <div class="tombol-simpan" id="tombolSimpanBulananWrap" style="display:none;">
   <button onclick="simpanBiayaBulanan()" id="btnSimpanBulanan">Simpan Biaya Bulan Ini</button>
 </div>
@@ -4448,7 +4379,7 @@
   window.addEventListener('resize', geserIndikatorTab);
 
   function pindahHalaman(nama) {
-    ['ringkasan','jual','input','stokawal','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan'].forEach(n => {
+    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
     });
@@ -4458,15 +4389,13 @@
       b.classList.toggle('aktif', b.getAttribute('data-halaman') === nama);
     });
     const tbMenu = document.getElementById('tombolLembarMenu');
-    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','stokawal','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan'].indexOf(nama) >= 0);
+    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan'].indexOf(nama) >= 0);
     if (document.body.classList.contains('lembar-menu-terbuka')) toggleLembarMenu(false);
     if (document.body.classList.contains('lembar-merk-terbuka')) tutupLembarMerk();
     document.body.classList.toggle('di-halaman-masuk', nama === 'input');
-    document.body.classList.toggle('di-halaman-stokawal', nama === 'stokawal');
     document.getElementById('tombolSimpanWrap').style.display = nama === 'input' ? 'block' : 'none';
     document.getElementById('tombolSimpanJualWrap').style.display = nama === 'jual' ? 'block' : 'none';
     document.getElementById('tombolSimpanProduksiWrap').style.display = nama === 'produksi' ? 'block' : 'none';
-    document.getElementById('tombolSimpanStokAwalWrap').style.display = nama === 'stokawal' ? 'block' : 'none';
     document.getElementById('tombolSimpanBulananWrap').style.display = nama === 'bulanan' ? 'block' : 'none';
     document.getElementById('tombolSimpanHarianWrap').style.display = nama === 'harian' ? 'block' : 'none';
     // Sisakan ruang di kaki <main> selama bilah Simpan melayang menutupi halaman
@@ -4485,7 +4414,6 @@
     if (nama === 'harga') tampilkanHarga();
     if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
     if (nama === 'input') periksaDrafMasuk();
-    if (nama === 'stokawal') { if (document.querySelectorAll('#stokAwalDaftarBaris .baris-stok-awal').length === 0) tambahBarisStokAwal(); hitungRingkasStokAwal(); }
     if (document.body.classList.contains('drawer-nav-terbuka')) toggleDrawerNav();
   }
   function kapital(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -5583,298 +5511,6 @@
   }
 
 
-  // ============ STOK AWAL (menu terpisah, 3 Agu 2026) ============
-  // Barang yang sudah ada di gudang saat sistem mulai. 50/25 kg -> dokumen batchMasuk
-  // (pemasok "STOK AWAL") supaya HPP/stok karung memakai rumus yang sudah ada.
-  // 20/10/5 kg -> dokumen produksiKemasan bertanda beliJadi (merkSumber "BELI JADI",
-  // kgDipakai 0) supaya stok kemasan, laba, dan ringkasan kasir jalan tanpa logika baru.
-  const PRODUK_STOK_AWAL = {
-    50: ['IR64 Ascent','IR64 Elevate','IR64 Apex','Angsa','Perahu Layar','Pandan Wangi','IR42 Select','IR42 Value','Ketan Putih','Ketan Putih Paris','Ketan Hitam PK','Ketan Hitam Sosoh','Beras Merah'],
-    25: ['Kembang','Angsa','Layar'],
-    20: ['Kembang','Swan','Buah Persik','Lele Special','BMW'],
-    10: ['Kembang','Putri Agri','Lele Special','BMW'],
-    5:  ['Kembang','Putri Agri','BMW']
-  };
-  let idBarisStokAwal = 0;
-  function opsiProdukStokAwal(ukuran) {
-    let html = '<option value="">— pilih produk —</option>';
-    (PRODUK_STOK_AWAL[ukuran] || []).forEach(n => html += `<option value="${n}">${n}</option>`);
-    html += '<option value="__lain__">Produk lain (ketik manual)</option>';
-    return html;
-  }
-  function tambahBarisStokAwal() {
-    idBarisStokAwal++;
-    const id = idBarisStokAwal;
-    const div = document.createElement('div');
-    // Lembar 4: baris ini SENGAJA sebangun dengan baris merk di Masuk — kepala bernomor,
-    // hapus dua ketukan tanpa dialog, satuan hidup di dalam isian. Yang berbeda cuma
-    // label harga ("modal/..." bukan "/kg") dan dua isian yang dipilih, bukan diketik.
-    // Semua id isian (saUkuran/saProduk/saProdukLain/saJumlah/saModal/saSubtotal) DIPERTAHANKAN
-    // apa adanya supaya bacaBarisStokAwal(), hitungRingkasStokAwal(), dan simpanStokAwal()
-    // tidak perlu diubah satu baris pun — jalur stok & modal tidak tersentuh.
-    div.className = 'baris-merk baris-merk-v2 baris-stok-awal bm-kosong';
-    div.id = 'stokawal-' + id;
-    div.innerHTML = `
-      <div class="bm-kepala">
-        <span class="bm-no">${id}</span>
-        <select class="bm-nama-pilih" id="saProduk-${id}" onchange="pilihProdukStokAwal(${id})" aria-label="Produk baris ${id}">${opsiProdukStokAwal(50)}</select>
-        <span class="lencana-amber bm-belum">belum diisi</span>
-        <span class="bm-kg" id="saKg-${id}"></span>
-        <button type="button" class="bm-buang" onclick="mintaHapusBarisStokAwal(${id})" aria-label="Hapus baris ${id}">${IKON_BUANG}</button>
-      </div>
-      <div class="bm-tanya">
-        <span class="bm-tanya-teks" id="saTanya-${id}">Hapus baris ${id}?</span>
-        <button type="button" class="bm-tanya-ya" onclick="hapusBarisStokAwal(${id})">Hapus</button>
-        <button type="button" class="bm-tanya-batal" onclick="batalHapusBarisStokAwal(${id})" aria-label="Batal hapus">${IKON_SILANG}</button>
-      </div>
-      <div class="bm-isi">
-        <div class="bm-baris">
-          <label class="bm-kotak" for="saJumlah-${id}">
-            <input class="bm-inp" type="number" id="saJumlah-${id}" placeholder="0" inputmode="numeric" oninput="hitungRingkasStokAwal()">
-            <span class="bm-sat" id="saSatuan-${id}">karung</span>
-          </label>
-          <span class="bm-x" aria-hidden="true">&times;</span>
-          <label class="bm-kotak" for="saUkuran-${id}">
-            <select class="bm-pilih" id="saUkuran-${id}" onchange="gantiUkuranStokAwal(${id})" aria-label="Ukuran baris ${id}">
-              <option value="50">50</option>
-              <option value="25">25</option>
-              <option value="20">20</option>
-              <option value="10">10</option>
-              <option value="5">5</option>
-            </select>
-            <span class="bm-sat" id="saSatuanUkuran-${id}">kg/karung</span>
-          </label>
-        </div>
-        <div class="bm-baris">
-          <label class="bm-kotak" for="saModalTampil-${id}">
-            <span class="bm-rp">Rp</span>
-            <input class="bm-inp" type="text" id="saModalTampil-${id}" placeholder="0" inputmode="numeric" autocomplete="off">
-            <span class="bm-sat">modal/<span id="saSatuan2-${id}">karung</span></span>
-          </label>
-          <input type="hidden" id="saModal-${id}">
-          <div class="bm-subtotal"><i>Subtotal</i><b id="saSubtotalAngka-${id}">Rp &mdash;</b></div>
-        </div>
-        <div class="sa-hpp" id="saSubtotal-${id}"></div>
-        <input type="text" id="saProdukLain-${id}" placeholder="Nama produk" style="margin-top:2px; display:none;">
-      </div>
-    `;
-    document.getElementById('stokAwalDaftarBaris').appendChild(div);
-    // Modal per satuan ikut pengaman rupiah (a) Lembar 1 — titik ribuan muncul saat
-    // mengetik. Pola kembar baris merk: yang tampil bertitik, angka mentahnya di
-    // #saModal-<id> tersembunyi, jadi bacaBarisStokAwal() & simpanStokAwal() tidak berubah.
-    const inpModal = document.getElementById('saModalTampil-' + id);
-    pasangRibuan(inpModal, function (nilai) {
-      document.getElementById('saModal-' + id).value = nilai > 0 ? nilai : '';
-      hitungRingkasStokAwal();
-    });
-    ukurIsian(inpModal);
-    // Isian di dalam kotak berlebar mengikuti isi (.bm-inp bawaannya 2ch). Tanpa
-    // ukurIsian, "22" pun sudah mepet dan angka tiga digit ke atas terpotong.
-    const inpJumlah = document.getElementById('saJumlah-' + id);
-    inpJumlah.addEventListener('input', function () { ukurIsian(inpJumlah); });
-    ukurIsian(inpJumlah);
-    nomoriUlangBarisStokAwal();
-    if (!document.getElementById('stokAwalTanggal').value) document.getElementById('stokAwalTanggal').value = tanggalLokalIso();
-    hitungRingkasStokAwal();
-  }
-  function hapusBarisStokAwal(id) {
-    const el = document.getElementById('stokawal-' + id);
-    if (!el) { hitungRingkasStokAwal(); return; }
-    // Melipat keluar dulu (Momen 7) supaya mata tidak kehilangan hitungan baris.
-    el.classList.add('baris-melipat');
-    setTimeout(() => { el.remove(); nomoriUlangBarisStokAwal(); hitungRingkasStokAwal(); }, 180);
-  }
-  function gantiUkuranStokAwal(id) {
-    const uk = parseFloat(document.getElementById('saUkuran-' + id).value);
-    document.getElementById('saProduk-' + id).innerHTML = opsiProdukStokAwal(uk);
-    document.getElementById('saProdukLain-' + id).style.display = 'none';
-    const satuan = uk >= 50 ? 'karung' : 'pcs';
-    document.getElementById('saSatuan-' + id).textContent = satuan;
-    document.getElementById('saSatuan2-' + id).textContent = satuan;
-    // Satuan hidup DI DALAM isian ukuran juga, supaya baris tidak perlu label di atasnya.
-    const satUk = document.getElementById('saSatuanUkuran-' + id);
-    if (satUk) satUk.textContent = 'kg/' + satuan;
-    hitungRingkasStokAwal();
-  }
-  // Mengganti daftar produk berarti baris ini bisa berubah dari kosong jadi terisi
-  // (atau sebaliknya) — lencana amber & garis penunjuk ikut dihitung ulang di sini.
-  function pilihProdukStokAwal(id) {
-    const v = document.getElementById('saProduk-' + id).value;
-    document.getElementById('saProdukLain-' + id).style.display = v === '__lain__' ? 'block' : 'none';
-    hitungRingkasStokAwal();
-  }
-  // Hapus dua ketukan tanpa dialog, sama seperti baris merk: ketukan pertama mengubah
-  // kepala baris jadi pertanyaan DI TEMPATNYA SENDIRI, membawa nilai yang akan hilang.
-  function mintaHapusBarisStokAwal(id) {
-    document.querySelectorAll('#stokAwalDaftarBaris .bm-tanya-aktif').forEach(el => el.classList.remove('bm-tanya-aktif'));
-    const el = document.getElementById('stokawal-' + id);
-    if (!el) return;
-    const baris = bacaBarisStokAwal().filter(b => String(b.id) === String(id))[0];
-    const nilai = baris ? baris.subtotal : 0;
-    const nomor = el.querySelector('.bm-no');
-    const tanya = document.getElementById('saTanya-' + id);
-    if (tanya) {
-      tanya.innerHTML = 'Hapus baris ' + escapeHtml(nomor ? nomor.textContent : String(id)) + '? ' +
-        '<span>' + (nilai > 0 ? formatRupiah(nilai) + ' hilang' : 'belum ada angka') + '</span>';
-    }
-    el.classList.add('bm-tanya-aktif');
-  }
-  function batalHapusBarisStokAwal(id) {
-    const el = document.getElementById('stokawal-' + id);
-    if (el) el.classList.remove('bm-tanya-aktif');
-  }
-  // Nomor yang dilihat pemakai = urutan di layar, bukan id internal — supaya
-  // "Baris 2 dari 2" cocok dengan badge di kepala baris sesudah ada yang dihapus.
-  function nomoriUlangBarisStokAwal() {
-    const semua = document.querySelectorAll('#stokAwalDaftarBaris .baris-stok-awal');
-    for (let i = 0; i < semua.length; i++) {
-      const badge = semua[i].querySelector('.bm-no');
-      if (badge) badge.textContent = i + 1;
-      const buang = semua[i].querySelector('.bm-buang');
-      if (buang) buang.setAttribute('aria-label', 'Hapus baris ' + (i + 1));
-    }
-  }
-  function bacaBarisStokAwal() {
-    const hasil = [];
-    document.querySelectorAll('#stokAwalDaftarBaris .baris-stok-awal').forEach(el => {
-      const id = el.id.split('-')[1];
-      const ukuran = parseFloat(document.getElementById('saUkuran-' + id).value);
-      let nama = document.getElementById('saProduk-' + id).value;
-      if (nama === '__lain__') nama = document.getElementById('saProdukLain-' + id).value.trim();
-      const jumlah = parseFloat(document.getElementById('saJumlah-' + id).value) || 0;
-      const modal = parseFloat(document.getElementById('saModal-' + id).value) || 0;
-      hasil.push({ id, ukuran, nama, jumlah, modal, totalKg: ukuran * jumlah, subtotal: modal * jumlah });
-    });
-    return hasil;
-  }
-  // HPP otomatis: modal + alokasi ongkir/bongkar proporsional per kg (rumus sama dengan batch masuk).
-  function hitungRingkasStokAwal() {
-    const baris = bacaBarisStokAwal();
-    const ongkir = parseFloat(document.getElementById('stokAwalOngkir').value) || 0;
-    const totalKgSemua = baris.reduce((a, b) => a + (b.nama && b.jumlah > 0 ? b.totalKg : 0), 0);
-    let totalNilai = 0, adaIsi = false;
-    baris.forEach(b => {
-      const elSub = document.getElementById('saSubtotal-' + b.id);
-      if (!elSub) return;
-      // Kepala baris: kosong = garis putus amber + lencana "belum diisi" (Lembar 4).
-      const wadah = document.getElementById('stokawal-' + b.id);
-      const lengkap = b.nama && b.jumlah > 0 && b.modal > 0;
-      if (wadah) wadah.classList.toggle('bm-kosong', !b.nama);
-      // Total kg naik ke kepala baris: terbaca walau isian di bawahnya tertutup papan ketik.
-      const elKg = document.getElementById('saKg-' + b.id);
-      if (elKg) elKg.textContent = b.totalKg > 0 ? Math.round(b.totalKg).toLocaleString('id-ID') + ' kg' : '';
-      const elAngka = document.getElementById('saSubtotalAngka-' + b.id);
-      if (elAngka) elAngka.textContent = b.subtotal > 0 ? formatRupiah(b.subtotal) : 'Rp —';
-      if (!lengkap) { elSub.textContent = ''; return; }
-      adaIsi = true;
-      const alokasi = totalKgSemua > 0 ? (b.totalKg / totalKgSemua) * ongkir : 0;
-      const hppPerSatuan = Math.round((b.subtotal + alokasi) / b.jumlah);
-      const hppPerKg = Math.round((b.subtotal + alokasi) / b.totalKg);
-      totalNilai += b.subtotal;
-      elSub.textContent = `${b.totalKg} kg · HPP ${formatRupiah(hppPerSatuan)}/${b.ukuran >= 50 ? 'karung' : 'pcs'} (${formatRupiah(hppPerKg)}/kg${ongkir > 0 ? ', sudah + porsi ongkir' : ''})`;
-    });
-    perbaruiPenunjukStokAwal(baris);
-
-    // Nilai stok pembuka menempel di dasar layar, sepasang dengan tombol Simpan (Lembar 4).
-    const nsp = document.getElementById('saTotalMenempel');
-    if (nsp) {
-      nsp.classList.toggle('tampil', adaIsi);
-      if (adaIsi) {
-        const totalSemua = totalNilai + ongkir;
-        const merkTerisi = baris.filter(b => b.nama).length;
-        const totalJumlah = baris.reduce((a, b) => a + (b.nama ? b.jumlah : 0), 0);
-        document.getElementById('saTotalAngka').textContent = formatRupiah(totalSemua);
-        document.getElementById('saTotalEja').textContent = ejaRingkas(totalSemua);
-        document.getElementById('saTotalRincian').textContent =
-          merkTerisi + ' produk · ' + Math.round(totalJumlah).toLocaleString('id-ID') + ' satuan · ' +
-          Math.round(totalKgSemua).toLocaleString('id-ID') + ' kg';
-      }
-    }
-    const btn = document.getElementById('btnSimpanStokAwal');
-    if (btn) btn.disabled = !adaIsi;
-
-    const kotak = document.getElementById('stokAwalKotakHasil');
-    kotak.style.display = adaIsi ? 'block' : 'none';
-    if (adaIsi) {
-      document.getElementById('stokAwalTotal').textContent = formatRupiah(totalNilai + ongkir);
-      document.getElementById('stokAwalRincian').textContent = `Modal barang ${formatRupiah(totalNilai)} + ongkir/bongkar ${formatRupiah(ongkir)} · ${totalKgSemua} kg total`;
-    }
-  }
-
-  // Penunjuk baris Stok Awal — komponen yang sama dengan halaman Masuk, cuma sumbernya
-  // baris stok awal. Muncul mulai dua baris; di bawah itu tidak ada yang perlu ditunjuk.
-  function perbaruiPenunjukStokAwal(baris) {
-    const wadah = document.getElementById('saPenunjuk');
-    if (!wadah) return;
-    baris = baris || bacaBarisStokAwal();
-    wadah.classList.toggle('tampil', baris.length > 1);
-    if (baris.length === 0) return;
-    document.getElementById('sapKe').textContent = baris.length;
-    document.getElementById('sapDari').textContent = baris.length;
-    let garis = '';
-    baris.forEach(b => {
-      const lengkap = b.nama && b.jumlah > 0 && b.modal > 0;
-      const kosong = !b.nama && !(b.jumlah > 0) && !(b.modal > 0);
-      garis += '<i class="' + (lengkap ? 'lengkap' : kosong ? '' : 'isi') + '"></i>';
-    });
-    document.getElementById('sapGaris').innerHTML = garis;
-    const totalJumlah = baris.reduce((a, b) => a + b.jumlah, 0);
-    const totalKg = baris.reduce((a, b) => a + b.totalKg, 0);
-    document.getElementById('sapJumlah').textContent =
-      Math.round(totalJumlah).toLocaleString('id-ID') + ' satuan · ' + Math.round(totalKg).toLocaleString('id-ID') + ' kg';
-  }
-  async function simpanStokAwal() {
-    const semua = bacaBarisStokAwal().filter(b => b.nama && b.jumlah > 0);
-    if (semua.length === 0) { alert('Isi minimal satu baris produk yang lengkap.'); return; }
-    if (semua.some(b => b.modal <= 0)) { alert('Ada baris yang modalnya belum diisi. HPP tidak bisa dihitung tanpa modal.'); return; }
-    const tanggal = document.getElementById('stokAwalTanggal').value || tanggalLokalIso();
-    const ongkir = parseFloat(document.getElementById('stokAwalOngkir').value) || 0;
-    const totalKgSemua = semua.reduce((a, b) => a + b.totalKg, 0);
-
-    const barisKarung = semua.filter(b => b.ukuran >= 50);   // hanya 50 kg = karung sumber
-    const barisKemasan = semua.filter(b => b.ukuran < 50);   // 25/20/10/5 kg = kemasan jadi (aturan 4 Agu 2026)
-    const btn = document.getElementById('btnSimpanStokAwal');
-    btn.disabled = true; btn.textContent = 'Menyimpan…';
-    try {
-      if (barisKarung.length > 0) {
-        const ongkirKarung = totalKgSemua > 0 ? Math.round(ongkir * barisKarung.reduce((a, b) => a + b.totalKg, 0) / totalKgSemua) : 0;
-        const kedatangan = {
-          id: idUnik(), tanggal, pemasok: 'STOK AWAL', biayaBongkar: ongkirKarung, stokAwal: true,
-          merkList: barisKarung.map((b, i) => ({
-            id: String(i + 1), merk: b.nama, satuan: 'karung',
-            jumlahKarung: b.jumlah, beratKarung: b.ukuran, totalKg: b.totalKg,
-            hargaPerKg: Math.round(b.modal / b.ukuran), subtotalHarga: b.subtotal
-          }))
-        };
-        await simpanKeFirestore(KOLEKSI_BATCH, kedatangan);
-      }
-      for (const b of barisKemasan) {
-        const alokasi = totalKgSemua > 0 ? (b.totalKg / totalKgSemua) * ongkir : 0;
-        await simpanKeFirestore(KOLEKSI_PRODUKSI, {
-          id: idUnik(), tanggal, beliJadi: true, stokAwal: true,
-          merkSumber: 'BELI JADI', kgDipakai: 0,
-          namaProduk: b.nama, ukuranKemasan: b.ukuran, jumlahUnit: b.jumlah,
-          biayaKemasan: 0, upahRepacking: 0, kantongJenis: null, kantongJumlah: 0,
-          hppSumberPerKgDipakai: 0, modalPerUnit: b.modal,
-          hppPerUnit: Math.round(b.modal + alokasi / b.jumlah)
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Gagal simpan ke database (cek internet / login). Belum ada yang tersimpan sebagian? Cek tab Riwayat & Stok sebelum ulang.');
-      btn.disabled = false; btn.textContent = 'Simpan Stok Awal';
-      return;
-    }
-    btn.disabled = false; btn.textContent = 'Simpan Stok Awal';
-    document.getElementById('stokAwalDaftarBaris').innerHTML = '';
-    idBarisStokAwal = 0;
-    document.getElementById('stokAwalOngkir').value = '';
-    tambahBarisStokAwal();
-    const pesan = document.getElementById('pesanOkStokAwal');
-    pesan.style.display = 'block';
-    window.scrollTo({top: 0, behavior: 'smooth'});
-    setTimeout(() => { pesan.style.display = 'none'; }, 4000);
-  }
 
   async function simpanKedatangan() {
     const baris = bacaBarisMerk();
@@ -9052,7 +8688,8 @@
     // STOK AWAL BUKAN ARUS KAS (keputusan My DeV 12 Agustus 2026).
     // Barang yang sudah ada di gudang saat sistem mulai dipakai dicatat 8 Agustus 2026
     // sebagai foto keadaan awal — uangnya sudah keluar jauh sebelum itu, di luar sistem.
-    // Penandanya sudah ada sejak simpanStokAwal() dibuat, cuma belum pernah dipakai di sini.
+    // Penandanya lahir bersama formulir Stok Awal (formulirnya sendiri dicabut 13 Agu
+    // 2026 sesudah pemindahan selesai; datanya tetap dan tetap dibaca di sini).
     const batch = ambilSemuaBatch().filter(k => cocok(k.tanggal) && !k.stokAwal);
     const belanja = batch.reduce((a, k) =>
       a + (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0), 0);
@@ -12760,17 +12397,12 @@
       b.classList.toggle('aktif', b.getAttribute('data-halaman') === nama);
     });
     const tbm = document.getElementById('tombolLembarMenu');
-    if (tbm) tbm.classList.toggle('aktif', ['input','stokawal','produksi','rekap','bulanan','harian','laba'].indexOf(nama) >= 0);
+    if (tbm) tbm.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba'].indexOf(nama) >= 0);
   })();
   window.pilihJenisJual = pilihJenisJual;
   window.hitungTotalJual = hitungTotalJual;
   window.pilihBayar = pilihBayar;
   window.tambahBarisMerk = tambahBarisMerk;
-  window.tambahBarisStokAwal = tambahBarisStokAwal; window.hapusBarisStokAwal = hapusBarisStokAwal;
-  window.gantiUkuranStokAwal = gantiUkuranStokAwal;
-  window.pilihProdukStokAwal = pilihProdukStokAwal;
-  window.mintaHapusBarisStokAwal = mintaHapusBarisStokAwal; window.batalHapusBarisStokAwal = batalHapusBarisStokAwal;
-  window.hitungRingkasStokAwal = hitungRingkasStokAwal; window.simpanStokAwal = simpanStokAwal;
   window.simpanBiayaBulanan = simpanBiayaBulanan;
   window.hitungPerkiraanGaji = hitungPerkiraanGaji;
   window.simpanKedatangan = simpanKedatangan;
