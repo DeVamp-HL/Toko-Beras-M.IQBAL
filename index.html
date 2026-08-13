@@ -2816,6 +2816,24 @@
     <label style="margin-top:12px;">Catatan <span class="keterangan">— boleh dikosongkan</span></label>
     <input type="text" id="piutangBayarCatatan" placeholder="Contoh: dibayar lewat anaknya">
     <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanBayarPiutang()">Catat pembayaran</button>
+
+    <!-- TAGIH LEWAT WA (13 Agu 2026): menyusun pesan tagihan sopan berisi rincian
+         yang belum lunas (FIFO — sama dengan umur piutang) + totalnya. Pola wa.me
+         tanpa nomor, seperti struk: nomor pelanggan tidak diminta dan tidak disimpan.
+         Pesannya masih bisa diedit di WhatsApp sebelum benar-benar terkirim. -->
+    <button type="button" class="tombol-lewati-rinci" style="margin-top:8px;" onclick="kirimTagihanPiutang()"> Susun tagihan WhatsApp</button>
+
+    <!-- HAPUS BUKU: dua langkah + alasan wajib. Uang tidak tersentuh; lihat catatan
+         di hitungPiutang. Disembunyikan sampai diminta supaya tidak terpencet. -->
+    <button type="button" class="tombol-lewati-rinci" style="margin-top:8px; color:var(--merah); border-color:var(--merah);" onclick="bukaHapusBuku()">Hapus buku — utang tak akan kembali</button>
+    <div id="blokHapusBuku" style="display:none; margin-top:10px; border:1px dashed var(--merah); border-radius:12px; padding:10px 12px;">
+      <label>Nominal dihapus (Rp)</label>
+      <input type="number" id="hapusBukuNominal" placeholder="0" inputmode="numeric">
+      <label style="margin-top:10px;">Alasan <span class="keterangan">— wajib, tercatat permanen</span></label>
+      <input type="text" id="hapusBukuAlasan" placeholder="Contoh: pindah kota 2023, tidak bisa dihubungi">
+      <div id="hapusBukuDampak" class="pratinjau-harga" style="margin-top:10px;"></div>
+      <button type="button" class="tombol-utama-kartu" style="margin-top:10px; background:var(--merah);" onclick="simpanHapusBuku()">Ya, hapus buku — sisa utang berkurang</button>
+    </div>
   </div>
 
   <div class="kartu-daftar kd-kepala" style="margin-top:14px;">
@@ -6427,7 +6445,7 @@
     function slot(nama, urut) {
       const k = kunciPelanggan(nama);
       if (!k) return null;
-      if (!peta[k]) peta[k] = { kunci: k, nama: String(nama).trim(), urutNama: urut || 0, kredit: 0, saldoAwal: 0, bayar: 0, mutasi: [] };
+      if (!peta[k]) peta[k] = { kunci: k, nama: String(nama).trim(), urutNama: urut || 0, kredit: 0, saldoAwal: 0, bayar: 0, dihapus: 0, mutasi: [] };
       // Ejaan yang dipakai = dari mutasi paling baru, supaya pembetulan ejaan ikut terpakai.
       if ((urut || 0) >= peta[k].urutNama) { peta[k].nama = String(nama).trim(); peta[k].urutNama = urut || 0; }
       return peta[k];
@@ -6453,20 +6471,31 @@
         s.saldoAwal += n;
         s.mutasi.push({ jenis: 'saldoAwal', tanggal: m.tanggal, jam: m.jam || '', nominal: n, idMutasi: m.id,
           ket: 'Saldo awal' + (m.catatan ? ' · ' + m.catatan : '') });
+      } else if (m.tipe === 'hapusBuku') {
+        // HAPUS BUKU (13 Agu 2026): utang yang diputuskan tidak akan kembali. Mengurangi
+        // sisa SEPERTI pembayaran, tapi BUKAN uang masuk — arus kas & buku kas menyaring
+        // tipe 'bayar' saja, jadi mutasi ini tidak pernah menyentuh kas. Jejaknya
+        // permanen di riwayat pelanggan dan dilaporkan sebagai kerugian di Laporan
+        // Bulanan. Dokumen tidak pernah dihapus — pola mutasi-saja seperti semua uang.
+        s.dihapus += n;
+        s.mutasi.push({ jenis: 'hapusBuku', tanggal: m.tanggal, jam: m.jam || '', nominal: n, idMutasi: m.id,
+          ket: 'Hapus buku' + (m.alasan ? ' · ' + m.alasan : '') });
       }
     });
     const hasil = Object.keys(peta).map(k => {
       const s = peta[k];
-      s.sisa = Math.round((s.kredit + s.saldoAwal - s.bayar) * 100) / 100;
+      s.sisa = Math.round((s.kredit + s.saldoAwal - s.bayar - s.dihapus) * 100) / 100;
       s.total = s.kredit + s.saldoAwal;
       // UMUR PIUTANG (12 Agu 2026) — pembayaran dianggap melunasi utang TERTUA dulu
       // (FIFO), kebiasaan penagihan di mana pun. Sisa yang tinggal karena itu melekat
       // pada utang termuda, dan umurnya dihitung dari utang tertua yang BELUM tertutup.
       // Catatan 09 memperlihatkan kenapa ini penting: tujuh piutang di sana sudah lewat
       // setahun (dua di atas 3,5 tahun) tanpa pernah ada yang menandai mereka menua.
-      const utang = s.mutasi.filter(m => m.jenis !== 'bayar')
+      const utang = s.mutasi.filter(m => m.jenis === 'jual' || m.jenis === 'saldoAwal')
         .slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));
-      let sisaBayar = s.bayar;
+      // Hapus buku ikut memadamkan utang TERTUA lebih dulu, sama seperti pembayaran —
+      // sisa yang tinggal memang melekat di utang yang lebih muda.
+      let sisaBayar = s.bayar + s.dihapus;
       s.tanggalTertua = null;
       for (const u of utang) {
         if (sisaBayar >= u.nominal) { sisaBayar -= u.nominal; continue; }
@@ -9382,9 +9411,10 @@
       if (barang) t.produk[barang] = (t.produk[barang] || 0) + 1;
       t.kunjungan[String(p.grupNota || p.id)] = true;
     });
-    // Pembayar piutang juga "datang" — tanggal kunjungannya ikut dihitung.
+    // Pembayar piutang juga "datang" — tanggal kunjungannya ikut dihitung. HANYA
+    // tipe bayar: saldo awal & hapus buku itu catatan owner di meja, bukan kunjungan.
     ambilPiutangMutasi().forEach(m => {
-      if (!m.namaPelanggan) return;
+      if (!m.namaPelanggan || m.tipe !== 'bayar') return;
       const t = slot(m.namaPelanggan, m.id);
       if (t && (m.tanggal || '') > t.terakhir) t.terakhir = m.tanggal || '';
     });
@@ -9522,7 +9552,13 @@
     const biayaBln = bayaranBiayaBulanan().filter(x => x.bulan === bl);
     const totalBiaya = biayaBln.reduce((a, x) => a + x.nominal, 0);
     const biayaBelum = biayaBln.filter(x => !x.tanggal);
-    const labaBersih = laba.margin - totalBiaya;
+    // Hapus buku piutang bulan ini = kerugian nyata (barang sudah keluar, uangnya
+    // diputuskan tidak akan kembali). BUKAN uang keluar — kas tidak tersentuh —
+    // tapi laba bersih wajib memikulnya; kalau tidak, menghapus utang macet malah
+    // membuat bulan itu tampak lebih sehat.
+    const hapusBln = ambilPiutangMutasi().filter(m => m.tipe === 'hapusBuku' && bulanDari(m.tanggal) === bl);
+    const totalHapus = hapusBln.reduce((a, m) => a + (m.nominal || 0), 0);
+    const labaBersih = laba.margin - totalBiaya - totalHapus;
 
     const bagian = [];
     const jam = new Date().toTimeString().slice(0, 5);
@@ -9536,7 +9572,8 @@
       ${barisLap('Omzet penuh', laba.jumlahTrx + ' transaksi, termasuk kredit', laba.omzetPenuh, 'lb-utama')}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', laba.margin)}
       ${barisLap('Biaya bulanan', 'ditagihkan ke bulan ini', -totalBiaya)}
-      ${barisLap('Laba bersih perkiraan', 'margin kotor dikurangi biaya bulanan', labaBersih, 'lb-jumlah')}
+      ${totalHapus > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama — bukan uang keluar', -totalHapus) : ''}
+      ${barisLap('Laba bersih perkiraan', 'margin kotor dikurangi biaya' + (totalHapus > 0 ? ' & hapus buku' : ''), labaBersih, 'lb-jumlah')}
       ${barisLap('Kas bersih', 'uang yang benar-benar berpindah bulan ini', kas.bersih, 'lb-jumlah')}
     </div>`);
 
@@ -9556,7 +9593,8 @@
         ? biayaBln.slice().sort((a, b) => b.nominal - a.nominal).map(x =>
             barisLap(x.label, x.tanggal ? 'dibayar ' + formatTanggal(x.tanggal) : 'belum dibayar', -x.nominal)).join('')
         : '<div class="lap-kosong">Biaya bulanan bulan ini belum diisi — laba di atas masih laba kotor.</div>'}
-      ${biayaBln.length ? barisLap('Laba bersih perkiraan', '', labaBersih, 'lb-jumlah') : ''}
+      ${hapusBln.map(m => barisLap('Hapus buku — ' + (m.namaPelanggan || ''), m.alasan || '', -(m.nominal || 0))).join('')}
+      ${(biayaBln.length || hapusBln.length) ? barisLap('Laba bersih perkiraan', '', labaBersih, 'lb-jumlah') : ''}
       ${catLaba.length ? `<div class="lap-catatan${laba.jumlahTanpaHpp > 0 ? ' lap-peringatan' : ''}">${catLaba.join('<br>')}</div>` : ''}
     </div>`);
 
@@ -10111,7 +10149,8 @@
     _piutangTerbuka = d.kunci;
     document.getElementById('lembarPiutangJudul').textContent = d.nama;
     document.getElementById('lembarPiutangSub').textContent =
-      `Utang ${formatRupiah(d.total)} · sudah dibayar ${formatRupiah(d.bayar)}`;
+      `Utang ${formatRupiah(d.total)} · sudah dibayar ${formatRupiah(d.bayar)}`
+      + (d.dihapus > 0 ? ` · dihapus buku ${formatRupiah(d.dihapus)}` : '');
     const elSisa = document.getElementById('piutangSisaNilai');
     elSisa.textContent = d.sisa > 0 ? formatRupiah(d.sisa) : 'LUNAS';
     elSisa.classList.toggle('lunas', d.sisa <= 0);
@@ -10124,12 +10163,14 @@
 
     document.getElementById('piutangRiwayatHitung').textContent = d.mutasi.length + ' catatan';
     document.getElementById('piutangRiwayat').innerHTML = d.mutasi.map(m => {
-      const bayar = m.jenis === 'bayar';
+      const kurang = m.jenis === 'bayar' || m.jenis === 'hapusBuku';
       return `<div class="pm-baris">
         <span class="pm-ket">${escapeHtml(m.ket || '')}<small>${escapeHtml(formatTanggal(m.tanggal))}${m.jam ? ' · ' + escapeHtml(m.jam) : ''}</small></span>
-        <span class="pm-nom ${bayar ? 'kurang' : 'tambah'}">${bayar ? '−' : '+'}${formatRupiah(m.nominal)}</span>
+        <span class="pm-nom ${kurang ? 'kurang' : 'tambah'}">${kurang ? '−' : '+'}${formatRupiah(m.nominal)}</span>
       </div>`;
     }).join('');
+    // Blok hapus buku selalu mulai tertutup; jejak yang sudah ada disebut di sub.
+    document.getElementById('blokHapusBuku').style.display = 'none';
     document.body.classList.add('lembar-piutang-terbuka');
   }
   function tutupLembarPiutang() {
@@ -10145,6 +10186,77 @@
     const d = hitungPiutang().find(x => x.kunci === _piutangTerbuka);
     if (!d) return;
     document.getElementById('piutangBayarNominal').value = d.sisa > 0 ? d.sisa : '';
+  }
+
+  // Rincian utang yang BELUM tertutup, dengan jalan FIFO yang sama persis dengan
+  // umur piutang: pembayaran (dan hapus buku) memadamkan yang tertua dulu; entri
+  // pertama yang tak habis terpadamkan disebut sisanya.
+  function rincianBelumLunas(d) {
+    const utang = d.mutasi.filter(m => m.jenis === 'jual' || m.jenis === 'saldoAwal')
+      .slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));
+    let tertutup = d.bayar + d.dihapus;
+    const hasil = [];
+    for (const u of utang) {
+      if (tertutup >= u.nominal) { tertutup -= u.nominal; continue; }
+      hasil.push({ tanggal: u.tanggal, ket: u.ket, nominal: u.nominal, sisa: u.nominal - tertutup });
+      tertutup = 0;
+    }
+    return hasil;
+  }
+
+  function kirimTagihanPiutang() {
+    const d = hitungPiutang().find(x => x.kunci === _piutangTerbuka);
+    if (!d || d.sisa <= 0) { alert('Utangnya sudah lunas — tidak ada yang perlu ditagih.'); return; }
+    const rinci = rincianBelumLunas(d);
+    const baris = ['*TOKO BERAS M.IQBAL*', 'Catatan belanja a.n. ' + d.nama, '', 'Belum lunas:'];
+    rinci.forEach(r => {
+      baris.push('- ' + formatTanggal(r.tanggal) + ' · ' + (r.ket || 'Belanja') + ' — ' + formatRupiah(r.nominal)
+        + (r.sisa < r.nominal ? ' (sisa ' + formatRupiah(r.sisa) + ')' : ''));
+    });
+    baris.push('');
+    baris.push('*Total sisa: ' + formatRupiah(d.sisa) + '*');
+    if (d.umurHari !== null && d.umurHari > 0) baris.push('(tertunggak ' + umurKeKata(d.umurHari) + ')');
+    baris.push('');
+    baris.push('Mohon dicek. Pembayaran bisa tunai di toko atau QRIS. Terima kasih ');
+    // Tanpa nomor tujuan — sama seperti struk: WhatsApp yang menanyakan tujuannya,
+    // dan pesannya masih bisa diedit dulu sebelum terkirim.
+    window.open('https://wa.me/?text=' + encodeURIComponent(baris.join('\n')), '_blank');
+  }
+
+  function bukaHapusBuku() {
+    const d = hitungPiutang().find(x => x.kunci === _piutangTerbuka);
+    if (!d || d.sisa <= 0) { alert('Tidak ada sisa utang yang bisa dihapus buku.'); return; }
+    const blok = document.getElementById('blokHapusBuku');
+    const buka = blok.style.display === 'none';
+    blok.style.display = buka ? 'block' : 'none';
+    if (buka) {
+      document.getElementById('hapusBukuNominal').value = d.sisa;
+      document.getElementById('hapusBukuAlasan').value = '';
+      document.getElementById('hapusBukuDampak').textContent =
+        'Sisa utang ' + d.nama + ' ' + formatRupiah(d.sisa) + ' → berkurang sebesar nominal di atas. '
+        + 'BUKAN uang masuk — kas tidak berubah; tercatat permanen sebagai kerugian di Laporan Bulanan.';
+    }
+  }
+
+  async function simpanHapusBuku() {
+    const d = hitungPiutang().find(x => x.kunci === _piutangTerbuka);
+    if (!d) return;
+    const nominal = parseFloat(document.getElementById('hapusBukuNominal').value) || 0;
+    const alasan = document.getElementById('hapusBukuAlasan').value.trim();
+    if (nominal <= 0) { alert('Isi nominal yang dihapus buku.'); return; }
+    if (nominal > d.sisa) {
+      alert('Hapus buku ' + formatRupiah(nominal) + ' melebihi sisa utang ' + formatRupiah(d.sisa) + '. Maksimal sebesar sisanya.');
+      return;
+    }
+    if (!alasan) { alert('Alasan wajib diisi — jejak ini permanen dan dibaca lagi bertahun-tahun ke depan.'); document.getElementById('hapusBukuAlasan').focus(); return; }
+    const dok = {
+      id: idUnik(), tipe: 'hapusBuku', namaPelanggan: d.nama, nominal, alasan,
+      tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5), dicatatDi: 'sistem'
+    };
+    await simpanKeFirestore(KOLEKSI_PIUTANG, dok);
+    tutupLembarPiutang();
+    tampilkanPiutang();
+    alert('Dihapus buku ' + formatRupiah(nominal) + ' atas nama ' + d.nama + '. Kas tidak berubah; kerugiannya tercatat di Laporan Bulanan ' + namaBulanPanjang(dok.tanggal) + '.');
   }
 
   async function simpanBayarPiutang() {
@@ -12569,6 +12681,9 @@
   window.tutupLaporan = tutupLaporan;
   window.gambarLaporan = gambarLaporan;
   window.cetakLaporan = cetakLaporan;
+  window.kirimTagihanPiutang = kirimTagihanPiutang;
+  window.bukaHapusBuku = bukaHapusBuku;
+  window.simpanHapusBuku = simpanHapusBuku;
   window.tampilkanPelanggan = tampilkanPelanggan;
   window.bukaLembarPelanggan = bukaLembarPelanggan;
   window.tutupLembarPelanggan = tutupLembarPelanggan;
