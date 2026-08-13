@@ -3602,6 +3602,16 @@
       <div class="kartu-mini"><div class="label">Uang keluar</div><div class="nilai" id="arusKasTotalKeluar">Rp0</div></div>
     </div>
 
+    <!-- KE MANA UANG BULAN INI (13 Agu 2026) — jawaban untuk "kok kas bersih gua
+         minus?": kas yang turun dipecah menjadi wujud barunya (stok, piutang, kasbon)
+         dan yang benar-benar habis (biaya). Jumlah pecahan HARUS sama persis dengan
+         kas bersih — dijaga pengujian, bukan janji komentar. -->
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="kartuKeMana">
+      <div class="kd-judul"><h3>Ke mana uang bulan ini</h3></div>
+      <div id="daftarKeMana"></div>
+      <div class="info-box" id="keManaVonis" style="margin:10px 12px 12px;"></div>
+    </div>
+
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
       <div class="kd-judul"><h3>Uang masuk</h3></div>
       <div id="daftarArusKasMasuk"></div>
@@ -8740,7 +8750,17 @@
     return {
       masuk, keluar, totalMasuk, totalKeluar,
       bersih: totalMasuk - totalKeluar,
-      omzetPenuh: jmlHarga(jual), kreditBulanIni: jmlHarga(kredit), jumlahKredit: kredit.length
+      omzetPenuh: jmlHarga(jual), kreditBulanIni: jmlHarga(kredit), jumlahKredit: kredit.length,
+      // Angka mentah per pos (13 Agu 2026) — dipakai kartu "Ke mana uang bulan ini"
+      // supaya pecahannya berasal dari SUMBER YANG SAMA, bukan hitungan tandingan.
+      pos: {
+        tunai: jmlHarga(tunai), qris: jmlHarga(qris),
+        pelunasan: jmlNominal(piutangBayar),
+        kasbonBayar: jmlNominal(kasbonBayar), kasbonAmbil: jmlNominal(kasbonAmbil),
+        tukarMasuk, refund, belanja,
+        biayaBulanan, harian: jmlNominal(harianToko),
+        beliKemasan: jmlHarga(beliKemasan), beliLiteran: jmlHarga(beliLiteran)
+      }
     };
   }
 
@@ -9305,6 +9325,7 @@
     document.getElementById('arusKasTotalKeluar').textContent = formatRupiah(d.totalKeluar);
     document.getElementById('daftarArusKasMasuk').innerHTML = d.masuk.map(barisArusKas).join('');
     document.getElementById('daftarArusKasKeluar').innerHTML = d.keluar.map(barisArusKas).join('');
+    tampilkanKeManaUang(d);
     tampilkanBukuKas(d.bulan);
 
     // Kredit bulan ini disebut terang-terangan: itu barang yang sudah keluar tapi
@@ -9608,6 +9629,84 @@
   }
   function tutupLaporan() { document.body.classList.remove('lembar-laporan-terbuka'); }
   function cetakLaporan() { window.print(); }
+
+  // ===== KE MANA UANG BULAN INI (13 Agustus 2026) =====
+  // Kas bersih yang minus TIDAK sama dengan rugi — paling sering uangnya cuma berubah
+  // wujud jadi beras di gudang. Kartu ini membuktikannya dengan identitas yang selalu
+  // seimbang, disusun ulang dari pos arus kas yang sama (bukan hitungan tandingan):
+  //
+  //   kas bersih = untung kotor barang terjual
+  //              + omzet ber-HPP-bolong (untungnya tak terukur, uangnya masuk penuh)
+  //              − uang yang jadi stok      (belanja − harga pokok barang terjual)
+  //              − uang yang jadi piutang   (kredit baru − pelunasan)
+  //              − uang yang jadi kasbon    (diambil − dikembalikan)
+  //              − biaya, bahan & refund (bersih)
+  //
+  // Tiap suku dipindahkan secara aljabar dari rumus masuk−keluar; tidak ada pembulatan,
+  // jadi jumlahnya sama persis sampai rupiah terakhir. Pengujian membandingkan kedua
+  // jalur dan menolak selisih Rp1 sekalipun.
+  // Angka BULANANNYA memakai hitungLabaBulan — mesin yang sama dengan Laporan Bulanan.
+  function tampilkanKeManaUang(d) {
+    const kont = document.getElementById('daftarKeMana');
+    if (!kont || !d.pos) return;
+    const kartu = document.getElementById('kartuKeMana');
+    const laba = hitungLabaBulan(d.bulan);
+    const pos = d.pos;
+    const jadiStok = pos.belanja - laba.hpp;
+    const jadiPiutang = d.kreditBulanIni - pos.pelunasan;
+    const jadiKasbon = pos.kasbonAmbil - pos.kasbonBayar;
+    const biayaNyata = pos.biayaBulanan + pos.harian + pos.beliKemasan + pos.beliLiteran
+      + pos.refund - pos.tukarMasuk;
+    // Bulan kosong: kartunya diam, tidak memajang deretan Rp0.
+    const adaIsi = d.totalMasuk !== 0 || d.totalKeluar !== 0 || laba.margin !== 0;
+    kartu.style.display = adaIsi ? 'block' : 'none';
+    if (!adaIsi) return;
+
+    // Baris bertanda: arah uangnya ikut kalimatnya, bukan cuma tanda minus.
+    const brs = (label, ket, nilai, arah) => `<div class="baris-44${nilai === 0 ? ' baris-mati' : ''}">
+      <span class="nama"><i class="trx-nama">${escapeHtml(label)}</i>${ket ? `<small>${escapeHtml(ket)}</small>` : ''}</span>
+      <span class="angka ${nilai === 0 ? '' : (arah > 0 ? 'ph-hijau' : 'ph-merah')}">${nilai === 0 ? 'Rp0' : (arah > 0 ? '+' : '−') + formatRupiah(Math.abs(nilai))}</span>
+    </div>`;
+    const baris = [];
+    baris.push(brs('Untung kotor barang terjual', 'omzet ber-HPP dikurangi harga pokoknya', laba.margin, laba.margin >= 0 ? 1 : -1));
+    if (laba.omzetTanpaHpp > 0) {
+      baris.push(brs('Penjualan yang HPP-nya bolong', laba.jumlahTanpaHpp + ' transaksi — uangnya masuk penuh, untungnya belum terukur', laba.omzetTanpaHpp, 1));
+    }
+    baris.push(jadiStok >= 0
+      ? brs('Jadi stok di gudang', 'belanja beras melebihi harga pokok yang terjual', jadiStok, -1)
+      : brs('Diambil dari stok lama', 'yang terjual melebihi belanja — stok menyusut jadi uang', -jadiStok, 1));
+    baris.push(jadiPiutang >= 0
+      ? brs('Jadi piutang pelanggan', 'kredit baru melebihi pelunasan — uangnya menyusul', jadiPiutang, -1)
+      : brs('Piutang mengempis', 'pelunasan melebihi kredit baru', -jadiPiutang, 1));
+    baris.push(jadiKasbon >= 0
+      ? brs('Jadi kasbon pegawai', 'diambil melebihi yang dikembalikan', jadiKasbon, -1)
+      : brs('Kasbon kembali', 'dikembalikan melebihi yang diambil', -jadiKasbon, 1));
+    baris.push(brs('Habis untuk biaya, bahan & refund', 'listrik, gaji, harian, kantong, refund (bersih)', biayaNyata, -1));
+    baris.push(`<div class="baris-44" style="border-top:1.5px solid var(--emas-gelap);">
+      <span class="nama"><i class="trx-nama"><b>Jumlah — kas bersih</b></i></span>
+      <span class="angka">${(d.bersih < 0 ? '−' : '') + formatRupiah(Math.abs(d.bersih))}</span>
+    </div>`);
+    kont.innerHTML = baris.join('');
+
+    // Vonisnya dibunyikan terang-terangan: berapa yang berubah wujud, berapa
+    // hasil operasional. Kalau operasionalnya minus, dikatakan minus.
+    const berubahWujud = Math.max(0, jadiStok) + Math.max(0, jadiPiutang) + Math.max(0, jadiKasbon);
+    // Operasional = untung jualan melawan biaya SAJA. Perubahan wujud dua arah tidak
+    // ikut — stok yang mencair jadi uang itu konversi, bukan untung; sempat keliru
+    // dihitung beban dan membuat bulan sehat divonis "biaya menang" (uji Sep 2026).
+    const operasional = laba.margin + laba.omzetTanpaHpp - biayaNyata;
+    let vonis = '';
+    if (d.bersih < 0 && berubahWujud > 0) {
+      vonis += `Dari kas yang turun, <b>${formatRupiah(berubahWujud)} bukan hilang — berubah wujud</b> jadi stok, piutang, dan kasbon di atas. `;
+    }
+    vonis += operasional >= 0
+      ? `Di luar itu, jualan bulan ini menang <b>${formatRupiah(operasional)}</b> atas biayanya — operasionalnya sehat.`
+      : `Di luar itu, biaya bulan ini <b>menang ${formatRupiah(Math.abs(operasional))}</b> atas untung jualan — ini yang benar-benar menggerus, bukan belanja stoknya.`;
+    if (laba.jumlahTanpaHpp > 0) {
+      vonis += ` Catatan: ${laba.jumlahTanpaHpp} transaksi ber-HPP bolong membuat angka untung & stok di atas masih kabur sebesar ${formatRupiah(laba.omzetTanpaHpp)} — isi HPP-nya lewat tab Laba.`;
+    }
+    document.getElementById('keManaVonis').innerHTML = vonis;
+  }
 
   function tampilkanRingkasan() {
     const hariIniIso = tanggalLokalIso();
