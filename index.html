@@ -6499,7 +6499,7 @@
     });
 
     ambilPenjualan().forEach(p => {
-      if (cocok(p.namaProduk, kata) || cocok(p.merkSumber, kata) || cocok(p.namaPelanggan, kata) || cocok(p.caraBayar, kata)) {
+      if (cocok(p.namaProduk, kata) || cocok(p.merkSumber, kata) || cocok(p.namaPelanggan, kata) || cocok(p.caraBayar, kata) || cocok(p.keteranganDarurat, kata)) {
         hasil.push({ tipe: 'Jual', judul: `${p.namaProduk || p.merkSumber || '-'}${p.namaPelanggan ? ' — ' + p.namaPelanggan : ''}`, sub: `${formatTanggal(p.tanggal)} · ${formatRupiah(p.hargaTotal||0)}`, tab: 'laba' });
       }
     });
@@ -10766,7 +10766,7 @@
         ket: 'Jual · ' + (p.jenis || 'lainnya'),
         nom: formatRibuan(p.hargaTotal || 0), masuk: mati ? 0 : (p.hargaTotal || 0),
         mati: mati, bisaDibuka: true,
-        cari: [p.namaProduk, p.merkSumber, p.namaPelanggan, p.caraBayar, p.hargaTotal].join(' ')
+        cari: [p.namaProduk, p.merkSumber, p.namaPelanggan, p.caraBayar, p.hargaTotal, p.keteranganDarurat || ''].join(' ')
       });
     });
     ambilSemuaBatch().filter(k => !k.stokAwal).forEach(k => {
@@ -11101,6 +11101,9 @@
     // baris Asal, yang menyebut induknya, supaya tidak tampak seperti dua catatan berbeda.
     if (darurat && !p.asalDarurat) baris.push(['Asal', 'Kasir darurat — hanya nominal, produk belum tercatat']);
     if (p.asalDarurat) baris.push(['Asal', 'Rincian dari kasir darurat #' + String(p.rinciDari || '').slice(-4)]);
+    // Catatan nego dari operator kasir darurat (13 Agu 2026) — inilah pengganti
+    // "tanya Gono barang apa itu"; tampil juga saat lembar rinci terbuka.
+    if (p.keteranganDarurat) baris.push(['Catatan', escapeHtml(p.keteranganDarurat)]);
     if (p.dibatalkan) baris.push(['Status', '<b class="ph-merah">Dibatalkan</b> — ' + escapeHtml(p.alasanKoreksi || 'tanpa alasan')]);
     if (p.dikoreksiOleh) baris.push(['Status', '<b class="ph-amber">Dikoreksi</b> — lihat #' + String(p.dikoreksiOleh).slice(-4)]);
     // Berlabel "Koreksi", bukan "Asal": dokumen darurat yang cara bayar/namanya

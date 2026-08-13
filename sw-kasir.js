@@ -35,7 +35,12 @@
 // v18 (12 Agustus 2026): struk digital — sesudah transaksi tersimpan muncul bilah
 // "Struk terakhir", ketuk untuk mengirimkannya lewat WhatsApp. Tautannya wa.me tanpa
 // nomor tujuan, jadi nomor pembeli tidak perlu diminta apalagi disimpan.
-const VERSI = 'kasir-v18';
+// v19 (13 Agustus 2026): kasir darurat dapat TUTS BERNAMA BARANG — kalau HP punya
+// salinan katalog (ringkasan kasir), sekali ketuk = barang + harga + HPP tercatat
+// sebagai penjualan lengkap yang tidak perlu dirinci. Ditambah kolom catatan nego
+// untuk angka polos. WAJIB naik: dengan cache lama, darurat masih menyimpan
+// nominal-tanpa-barang walau berkasnya sudah diperbarui.
+const VERSI = 'kasir-v19';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

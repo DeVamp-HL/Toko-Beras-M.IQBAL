@@ -96,13 +96,23 @@
      bukan mendorong tombol SIMPAN keluar layar (temuan uji 9 Agu 2026: 6 barang bikin
      isi halaman 1014px di layar 844px). */
   #daftarBaris { flex: 1 1 auto; min-height: 0; margin: 8px 10px 0; overflow-y: auto; }
+  /* Saat transaksi berjalan, daftar barang WAJIB kebagian minimal satu baris — tanpa ini
+     strip tuts bernama + kolom catatan menjepitnya sampai nol dan operator tidak bisa
+     memeriksa/menghapus barang salah ketik (ketahuan dari uji layar 812px, 13 Agu 2026). */
+  #daftarBaris:not(:empty) { min-height: 66px; }
   #daftarBaris .br {
     display: flex; align-items: center; gap: 8px; background: #2b3036;
     border: 1px solid var(--garis); border-radius: 8px; padding: 4px 6px 4px 12px; margin-bottom: 5px;
   }
   #daftarBaris .br .no { color: #9aa3ab; font-size: .8rem; flex: 0 0 auto; }
+  /* Nama barang di baris (13 Agu 2026) — baris dari tuts bernama menyebut barangnya,
+     baris ketikan angka polos membiarkannya kosong. */
+  #daftarBaris .br .lbl {
+    flex: 1; color: #cfd6dc; font-size: .85rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   #daftarBaris .br .nilai {
-    flex: 1; text-align: right; font-weight: 700; font-size: 1.05rem;
+    flex: 0 0 auto; text-align: right; font-weight: 700; font-size: 1.05rem;
     font-variant-numeric: tabular-nums; color: #e9ecf1;
   }
   #daftarBaris .br button {
@@ -130,6 +140,20 @@
     font-size: .95rem; font-weight: 800; font-variant-numeric: tabular-nums;
   }
   #tutsHargaCepat button:active { transform: translateY(1px); }
+  /* Tuts BERNAMA BARANG (13 Agu 2026): kalau HP ini punya salinan katalog (ringkasan
+     kasir — kasir.html dan halaman ini berbagi localStorage), tuts menyebut barang +
+     harganya. Sekali ketuk = barang + harga + HPP langsung tercatat, TIDAK PERLU
+     dirinci dan tidak perlu ditanya ke siapa pun. Grid 2 kolom karena labelnya dua
+     baris; dibatasi ~2,5 baris dengan gulir supaya papan angka tidak terdorong. */
+  #tutsHargaCepat.produk { grid-template-columns: repeat(2, 1fr); max-height: 108px; overflow-y: auto; }
+  /* Menganggur: dua baris tuts terlihat. Transaksi berjalan: menyusut ke satu baris
+     (sisanya tetap tergapai lewat gulir) supaya layarnya cukup untuk daftar barang. */
+  #tutsHargaCepat.produk.ringkas { max-height: 52px; }
+  #tutsHargaCepat.produk button { min-height: 50px; font-size: .92rem; line-height: 1.25; padding: 5px 8px; text-align: left; }
+  #tutsHargaCepat.produk button small { display: block; font-weight: 700; color: #cfd6dc; font-size: .78rem; }
+  #umurHargaD { flex: 0 0 auto; padding: 0 12px 6px; font-size: .78rem; color: #e4b93c; display: none; }
+  #umurHargaD.tampil { display: block; }
+  #umurHargaD.merah { color: #ff8a75; }
   #papan {
     flex: 0 0 auto; padding: 4px 10px 8px;
     display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 54px; gap: 7px;
@@ -160,13 +184,13 @@
     min-height: 44px; font-size: .9rem; font-weight: 700; letter-spacing: .5px; font-family: inherit;
   }
   #pilihBayarD button.pilih { background: var(--tombol); color: var(--tombol-teks); border-color: var(--tombol); }
-  #barisNamaD { margin: 0 10px 8px; flex: 0 0 auto; }
-  #barisNamaD input {
+  #barisNamaD, #barisKetD { margin: 0 10px 8px; flex: 0 0 auto; }
+  #barisNamaD input, #barisKetD input {
     width: 100%; min-height: 44px; border-radius: 9px; padding: 0 12px; box-sizing: border-box;
     border: 1px solid var(--garis); background: #2b3036; color: #e9ecf1;
     font-family: inherit; font-size: .95rem;
   }
-  #barisNamaD input::placeholder { color: #6d757d; }
+  #barisNamaD input::placeholder, #barisKetD input::placeholder { color: #6d757d; }
   #barisNamaD input.kurang { border-color: var(--merah); }
   .lapisan {
     position: fixed; inset: 0; z-index: 50; display: none; flex-direction: column;
@@ -210,6 +234,7 @@
   <div id="logKosong">Belum ada catatan hari ini.</div>
 </div>
 
+<div id="umurHargaD"></div>
 <div id="tutsHargaCepat"></div>
 <div id="papan">
   <button type="button" onclick="tekanAngka('1')">1</button>
@@ -235,6 +260,13 @@
 </div>
 <div id="barisNamaD">
   <input type="text" id="namaPembeliD" placeholder="Nama pembeli (wajib kalau kredit)" autocomplete="off" oninput="tandaiNamaD()">
+</div>
+<!-- Catatan barang nego (13 Agu 2026): harga tawar-menawar tidak akan pernah ketemu di
+     katalog — tanpa catatan, berbulan-bulan kemudian owner harus bertanya lagi ke
+     operator barang apa itu. Opsional supaya katup darurat tetap cepat; menempel ke
+     baris ANGKA POLOS saja (barang dari tuts bernama sudah menjelaskan dirinya). -->
+<div id="barisKetD">
+  <input type="text" id="ketNegoD" placeholder="Catatan barang nego (opsional) — mis. wangi nego bu haji" autocomplete="off">
 </div>
 <button type="button" id="btnSimpan" onclick="simpanNominal()">SIMPAN</button>
 
@@ -273,11 +305,14 @@ var K_ANTREAN = 'darurat_antrean_v1';   // antrean sendiri, tidak ganggu antrean
 var K_GAGAL = 'darurat_gagal_v1';
 var K_LOG = 'darurat_log_v1';           // catatan lokal per HP untuk daftar "hari ini"
 var K_OPERATOR = 'kasir_operator_v1';   // ikut kasir: kalau ada nama penjaga, ikut tercatat
+var K_RINGKASAN = 'kasir_ringkasan_v1';  // BERSAMA kasir.html — katalog beku untuk tuts bernama barang
+var K_SEGAR = 'kasir_ringkasan_disegarkan';
 
 function $(id) { return document.getElementById(id); }
 function idUnik() { return Date.now() + Math.random(); }
 function tanggalLokalIso(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function rupiah(n) { return 'Rp' + Math.round(n || 0).toLocaleString('id-ID'); }
+function esk(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 // ---------- login toko (REST, token bersama) ----------
 function authTersimpan() { try { return JSON.parse(localStorage.getItem(K_AUTH) || 'null'); } catch (e) { return null; } }
@@ -361,6 +396,21 @@ function keFs(nilai) {
   return { mapValue: { fields: f } };
 }
 
+// Kembaran dariFs di kasir.html. Sampai 13 Agu 2026 halaman ini menulis saja;
+// sekarang ia membaca SATU dokumen (ringkasanKasir/aktif) untuk tuts bernama barang.
+function dariFs(v) {
+  if (!v) return null;
+  if ('nullValue' in v) return null;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('integerValue' in v) return parseInt(v.integerValue, 10);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('stringValue' in v) return v.stringValue;
+  if ('timestampValue' in v) return v.timestampValue;
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(dariFs);
+  if ('mapValue' in v) { var o = {}, f = v.mapValue.fields || {}; for (var k in f) o[k] = dariFs(f[k]); return o; }
+  return null;
+}
+
 // ---------- antrean offline ----------
 function ambilAntrean() { try { return JSON.parse(localStorage.getItem(K_ANTREAN) || '[]'); } catch (e) { return []; } }
 function simpanAntrean(a) { localStorage.setItem(K_ANTREAN, JSON.stringify(a)); }
@@ -407,9 +457,12 @@ function setStatus(online) {
 
 // ---------- papan angka ----------
 var nominalDiketik = '';
-// Daftar harga barang dalam SATU transaksi berjalan (satu pembeli).
-var barisNominal = [];
-function totalBaris() { return barisNominal.reduce(function (a, b) { return a + b; }, 0); }
+// Daftar barang dalam SATU transaksi berjalan (satu pembeli). Tiap baris {h, p}:
+// h = harga; p = barang dari tuts bernama, atau null untuk ketikan angka polos.
+// Dulu daftar ini cuma angka — sejak tuts bernama (13 Agu 2026) baris harus ingat
+// barang apa yang diketuk, karena itulah yang membuatnya tidak perlu dirinci lagi.
+var barisItems = [];
+function totalBaris() { return barisItems.reduce(function (a, b) { return a + b.h; }, 0); }
 function gambarLcd() {
   // Yang diketik menang di layar; kalau tidak ada, tampilkan total yang sudah terkumpul —
   // supaya Gono tidak perlu menjumlah sendiri untuk tahu berapa yang harus ditagih.
@@ -426,15 +479,18 @@ function gambarBaris() {
   // Rekap "hari ini" ikut disembunyikan dengan alasan yang sama: itu bacaan untuk saat
   // layar menganggur, bukan di tengah melayani pembeli. Dua blok ini mengalah supaya
   // daftar barang muat 2-3 baris sekaligus — cukup untuk memeriksa tanpa menggulir.
-  var sedangIsi = barisNominal.length > 0;
+  var sedangIsi = barisItems.length > 0;
+  var tuts = $('tutsHargaCepat');
+  if (tuts && tuts.className.indexOf('produk') === 0) tuts.className = 'produk' + (sedangIsi ? ' ringkas' : '');
   var pr = $('peringatan');
   if (pr) pr.style.display = sedangIsi ? 'none' : '';
   var lh = $('logHari');
   if (lh) lh.style.display = sedangIsi ? 'none' : '';
   if (!sedangIsi) { wadah.innerHTML = ''; return; }
-  wadah.innerHTML = barisNominal.map(function (n, i) {
+  wadah.innerHTML = barisItems.map(function (it, i) {
     return '<div class="br"><span class="no">' + (i + 1) + '</span>' +
-      '<span class="nilai">' + rupiah(n) + '</span>' +
+      '<span class="lbl">' + (it.p ? esk(it.p.label) : '') + '</span>' +
+      '<span class="nilai">' + rupiah(it.h) + '</span>' +
       '<button type="button" onclick="hapusBaris(' + i + ')" aria-label="Hapus barang ' + (i + 1) + '">&times;</button></div>';
   }).join('');
   wadah.scrollTop = wadah.scrollHeight;
@@ -444,6 +500,60 @@ function gambarBaris() {
 // paling sering dipakai ditawarkan sebagai tombol — SEKALI KETUK langsung jadi satu
 // barang, tanpa mengetik dan tanpa menekan +. Daftarnya diturunkan dari catatan 30 hari
 // di HP ini sendiri, jadi tidak perlu diatur siapa pun dan makin lama makin pas.
+// ---------- katalog untuk tuts bernama (13 Agu 2026) ----------
+// Dibaca dari salinan ringkasan kasir di HP ini. Kemasan + karung utuh 50 kg saja:
+// dua-duanya berharga SATUAN yang pasti, jadi satu ketukan = satu barang yang jelas.
+// Literan SENGAJA tidak ikut — jumlah liternya diturunkan dari harga dan pemakaian
+// kantongnya berpasangan dengan stok bahan; itu urusan kasir biasa, bukan katup darurat.
+// Barang TANPA HARGA tidak jadi tombol: sekali ketuk Rp0 itu bukan penjualan.
+var daftarProdukD = [];
+function muatRingkasanD() {
+  var r = null;
+  try { r = JSON.parse(localStorage.getItem(K_RINGKASAN) || 'null'); } catch (e) { r = null; }
+  daftarProdukD = [];
+  if (!r) return;
+  (r.kemasan || []).forEach(function (q) {
+    if (!q || !q.namaProduk || !(q.hargaPerUnit > 0)) return;
+    daftarProdukD.push({ t: 'kemasan', label: q.namaProduk + ' ' + q.ukuran + 'kg', harga: q.hargaPerUnit,
+      namaProduk: q.namaProduk, ukuran: q.ukuran, hppPerUnit: q.hppPerUnit || 0 });
+  });
+  (r.merkKarung || []).forEach(function (m) {
+    if (!m || !m.merk || !m.karung50) return;
+    var hargaKrg = m.hargaKarung50 || ((m.hargaPerKg || 0) * 50);
+    if (!(hargaKrg > 0)) return;
+    daftarProdukD.push({ t: 'karung', label: 'KRG50 ' + m.merk, harga: hargaKrg,
+      merk: m.merk, hppPerKg: m.hppPerKg || 0 });
+  });
+}
+// Segarkan salinan katalog kalau online — supaya HP yang tidak pernah membuka kasir
+// biasa pun tetap kebagian tuts bernama. Gagal = diam; salinan lama tetap dipakai.
+function segarkanRingkasanD() {
+  if (!navigator.onLine || !sudahLogin()) return;
+  denganAuth({}).then(function (opsi) {
+    return fetch(DASAR + 'ringkasanKasir/aktif?key=' + KUNCI_API, opsi).then(function (r) {
+      if (!r.ok) return;
+      return r.json().then(function (j) {
+        var o = {}; var f = j.fields || {}; for (var k in f) o[k] = dariFs(f[k]);
+        localStorage.setItem(K_RINGKASAN, JSON.stringify(o));
+        localStorage.setItem(K_SEGAR, new Date().toISOString());
+        muatRingkasanD(); gambarTutsCepat(); gambarUmurHargaD();
+      });
+    }).catch(function () {});
+  });
+}
+// Umur salinan harga — versi ringkas dari bilah umur harga di kasir (ambang sama:
+// 6 jam kuning, 24 jam merah). Selagi masih segar tidak ada tulisan apa pun.
+function gambarUmurHargaD() {
+  var el = $('umurHargaD');
+  if (!el) return;
+  var t = localStorage.getItem(K_SEGAR);
+  var jam = t ? (Date.now() - new Date(t).getTime()) / 3600000 : null;
+  if (daftarProdukD.length === 0 || jam === null || jam < 6) { el.className = ''; el.textContent = ''; return; }
+  var kata = jam < 48 ? Math.round(jam) + ' jam' : Math.round(jam / 24) + ' hari';
+  el.textContent = 'Harga tuts dari salinan ' + kata + ' lalu — sambungkan internet untuk menyegarkan.';
+  el.className = 'tampil' + (jam >= 24 ? ' merah' : '');
+}
+
 var JML_TUTS_CEPAT = 4;
 function hargaSering() {
   var hitung = {};
@@ -463,16 +573,40 @@ function hargaSering() {
 function gambarTutsCepat() {
   var wadah = $('tutsHargaCepat');
   if (!wadah) return;
+  // Ada katalog -> tuts BERNAMA BARANG; ketukannya langsung jadi penjualan lengkap
+  // (barang + harga + HPP), tidak masuk antrean rinci sama sekali. Urutannya urutan
+  // katalog — tetap dari hari ke hari, bisa dihafal jari, sama seperti alasan tuts
+  // angka dulu diurut nilai. Tanpa katalog (HP belum pernah online) jatuh kembali ke
+  // tuts angka yang belajar dari kebiasaan 30 hari.
+  if (daftarProdukD.length > 0) {
+    wadah.className = 'produk';
+    wadah.innerHTML = daftarProdukD.map(function (q, i) {
+      return '<button type="button" onclick="tambahProdukD(' + i + ')">' + esk(q.label) +
+        '<small>' + Math.round(q.harga).toLocaleString('id-ID') + '</small></button>';
+    }).join('');
+    return;
+  }
+  wadah.className = '';
   wadah.innerHTML = hargaSering().map(function (h) {
     // Tanpa "Rp" — tombolnya sempit dan angkanya yang harus terbaca sekilas.
     return '<button type="button" onclick="tambahHargaCepat(' + h + ')">' + Math.round(h).toLocaleString('id-ID') + '</button>';
   }).join('');
 }
+function tambahProdukD(i) {
+  var q = daftarProdukD[i];
+  if (!q) return;
+  // Angka yang terlanjur diketik jangan hilang gara-gara menekan tuts.
+  var sisa = parseInt(nominalDiketik || '0', 10);
+  if (sisa > 0) barisItems.push({ h: sisa, p: null });
+  barisItems.push({ h: q.harga, p: q });
+  nominalDiketik = '';
+  gambarLcd(); gambarBaris();
+}
 function tambahHargaCepat(h) {
   // Angka yang terlanjur diketik jangan hilang gara-gara menekan tuts cepat.
   var sisa = parseInt(nominalDiketik || '0', 10);
-  if (sisa > 0) barisNominal.push(sisa);
-  barisNominal.push(h);
+  if (sisa > 0) barisItems.push({ h: sisa, p: null });
+  barisItems.push({ h: h, p: null });
   nominalDiketik = '';
   gambarLcd(); gambarBaris();
 }
@@ -480,12 +614,12 @@ function tambahHargaCepat(h) {
 function tambahBaris() {
   var n = parseInt(nominalDiketik || '0', 10);
   if (n <= 0) { tolakEntri(); return; }
-  barisNominal.push(n);
+  barisItems.push({ h: n, p: null });
   nominalDiketik = '';
   gambarLcd(); gambarBaris();
 }
 function hapusBaris(i) {
-  barisNominal.splice(i, 1);
+  barisItems.splice(i, 1);
   gambarLcd(); gambarBaris();
 }
 function tekanAngka(d) {
@@ -563,9 +697,9 @@ function tandaiNamaD() {
 function simpanNominal() {
   // Angka yang masih diketik ikut disimpan tanpa perlu menekan + dulu — kalau tidak,
   // barang terakhir tiap transaksi akan sering hilang karena lupa ditambahkan.
-  var daftar = barisNominal.slice();
+  var daftar = barisItems.slice();
   var sisa = parseInt(nominalDiketik || '0', 10);
-  if (sisa > 0) daftar.push(sisa);
+  if (sisa > 0) daftar.push({ h: sisa, p: null });
   if (daftar.length === 0) { tolakEntri(); return; }
   var nama = ($('namaPembeliD').value || '').trim();
   if (bayarDAktif === 'Kredit' && !nama) {
@@ -574,43 +708,58 @@ function simpanNominal() {
     elN.focus();
     return;
   }
-  // TIAP BARANG jadi dokumennya sendiri, disatukan oleh grupNota. Bentuk dokumennya SAMA
-  // PERSIS dengan kasir darurat lama (jenis kasir_darurat_nominal), jadi omzet, laporan,
-  // dan antrean rinci di sistem utama membacanya tanpa perubahan apa pun — bedanya
-  // sekarang tiap baris berisi harga SATU barang, sehingga tebakan produk hampir selalu
-  // ketemu tepat tanpa perlu bertanya ke siapa pun.
+  var ket = ($('ketNegoD') ? ($('ketNegoD').value || '') : '').trim();
+  // TIAP BARANG jadi dokumennya sendiri, disatukan oleh grupNota — sejak v11.
+  // Sejak tuts bernama (13 Agu 2026) ada DUA bentuk dokumen:
+  //   - Baris dari tuts bernama -> dokumen jual SAMA PERSIS dengan buatan kasir biasa
+  //     (jenis kemasan/karung, harga & HPP beku dari ringkasan yang sama). Stok, omzet,
+  //     dan laba di sistem utama menghitungnya sendiri; TIDAK masuk antrean rinci.
+  //     Ditandai viaDarurat supaya asal-usulnya tetap terlacak (kembaran viaKalkulator).
+  //   - Baris angka polos -> kasir_darurat_nominal seperti dulu, tetap antre dirinci;
+  //     catatan nego (kalau diisi) menempel di sini supaya owner tidak perlu bertanya.
   var grup = idUnik();
   var jam = new Date().toTimeString().slice(0, 5);
   var tanggal = tanggalLokalIso();
   var op = localStorage.getItem(K_OPERATOR);
   var a = ambilAntrean();
-  daftar.forEach(function (n) {
-    var trx = {
-      id: idUnik(),
-      tanggal: tanggal,
-      jam: jam,
-      jenis: 'kasir_darurat_nominal',
-      namaProduk: '(tidak tercatat — kasir darurat)',
-      hargaTotal: n,
-      caraBayar: bayarDAktif,
-      namaPelanggan: nama,
-      grupNota: grup
-    };
+  daftar.forEach(function (it) {
+    var trx;
+    if (it.p && it.p.t === 'kemasan') {
+      trx = { id: idUnik(), tanggal: tanggal, jam: jam, jenis: 'kemasan',
+        namaProduk: it.p.namaProduk, ukuranKemasan: it.p.ukuran, jumlahUnit: 1,
+        totalKg: it.p.ukuran, hargaTotal: it.h,
+        hppTotalSaatJual: Math.round(it.p.hppPerUnit || 0),
+        caraBayar: bayarDAktif, namaPelanggan: nama, grupNota: grup, viaDarurat: true };
+    } else if (it.p && it.p.t === 'karung') {
+      trx = { id: idUnik(), tanggal: tanggal, jam: jam, jenis: 'karung',
+        merkSumber: it.p.merk, jumlahKarung: 1, beratKarungAcuan: 50, totalKg: 50,
+        namaProduk: it.p.merk + ' (karung utuh)', hargaTotal: it.h,
+        hppTotalSaatJual: Math.round((it.p.hppPerKg || 0) * 50),
+        caraBayar: bayarDAktif, namaPelanggan: nama, grupNota: grup, viaDarurat: true };
+    } else {
+      trx = { id: idUnik(), tanggal: tanggal, jam: jam, jenis: 'kasir_darurat_nominal',
+        namaProduk: '(tidak tercatat — kasir darurat)', hargaTotal: it.h,
+        caraBayar: bayarDAktif, namaPelanggan: nama, grupNota: grup };
+      if (ket) trx.keteranganDarurat = ket;
+    }
     if (op) trx.operator = op;
     a.push({ koleksi: 'penjualan', docId: String(trx.id), data: trx });
   });
   simpanAntrean(a);
   // Log harian tetap SATU baris per pembeli (bukan per barang) — yang ingin dilihat Gono
-  // adalah "pembeli tadi bayar berapa", bukan pecahannya.
+  // adalah "pembeli tadi bayar berapa", bukan pecahannya. Yang diajarkan ke tuts angka
+  // cadangan hanya harga KETIKAN — harga tuts bernama sudah punya tombolnya sendiri.
   catatLog({ id: grup, tanggal: tanggal, jam: jam,
-    hargaTotal: daftar.reduce(function (x, y) { return x + y; }, 0), harga: daftar });
-  barisNominal = [];
+    hargaTotal: daftar.reduce(function (x, y) { return x + y.h; }, 0),
+    harga: daftar.filter(function (x) { return !x.p; }).map(function (x) { return x.h; }) });
+  barisItems = [];
   nominalDiketik = '';
   gambarBaris();
   // Nama & cara bayar ikut direset: pembeli berikutnya orang lain, dan nama yang
   // tertinggal di kolom akan menempel diam-diam ke transaksi berikutnya.
   $('namaPembeliD').value = '';
   $('namaPembeliD').classList.remove('kurang');
+  if ($('ketNegoD')) $('ketNegoD').value = '';
   pilihBayarD('Tunai');
   gambarLcd();
   gambarTutsCepat();
@@ -622,6 +771,7 @@ function simpanNominal() {
   setStatus(navigator.onLine);
 }
 
+window.tambahProdukD = tambahProdukD;
 window.tekanAngka = tekanAngka;
 window.hapusAngka = hapusAngka;
 window.tambahBaris = tambahBaris;
@@ -634,13 +784,16 @@ window.kirimLogin = kirimLogin;
 window.lewatiLogin = lewatiLogin;
 
 // ---------- mulai ----------
+muatRingkasanD();
 gambarLcd();
 gambarBaris();
 gambarTutsCepat();
+gambarUmurHargaD();
 gambarLog();
+segarkanRingkasanD();
 setStatus(navigator.onLine);
 if (!sudahLogin()) tampilkanLayarLogin(false);
-window.addEventListener('online', function () { kirimAntrean(false); setStatus(true); });
+window.addEventListener('online', function () { kirimAntrean(false); setStatus(true); segarkanRingkasanD(); });
 window.addEventListener('offline', function () { setStatus(false); });
 setInterval(function () { kirimAntrean(false); }, 25000);
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw-kasir.js').catch(function () {}); }
