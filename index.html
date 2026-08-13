@@ -965,6 +965,10 @@
   /* iPhone (mode terpasang/PWA): beri ruang notch & garis home. */
   header { padding-top: calc(18px + env(safe-area-inset-top, 0px)); }
   body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  /* iPhone standalone (14 Agu 2026): tanpa ini seluruh halaman ikut memantul karet
+     saat digulir mentok — terasa seperti web, bukan aplikasi. Gulir dalam (lembar,
+     daftar) tidak terpengaruh: pantulan lokal mereka tetap ada. */
+  html, body { overscroll-behavior-y: none; }
 
 
   /* ===== FASE 2: STRUKTUR MOCKUP E (judul halaman, pil status, sidebar Mac, grafik) ===== */
@@ -1149,7 +1153,7 @@
     body { display: grid; grid-template-columns: 236px minmax(0, 1fr); }
     nav {
       grid-column: 1; grid-row: 1 / span 4;
-      position: sticky; top: 0; height: 100vh;
+      position: sticky; top: 0; height: 100vh; height: 100dvh;
       display: flex; flex-direction: column; overflow-y: auto;
       border-right: 1px solid var(--garis); border-bottom: none;
       background: rgba(13, 17, 23, .92); padding: 16px 10px; gap: 2px;
@@ -1359,7 +1363,7 @@
       border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgba(0, 0, 0, .6);
       /* ruang bawah disisakan untuk bilah nav yang tetap tampil di atas lembar */
       padding: 10px 16px calc(74px + env(safe-area-inset-bottom, 0px));
-      max-height: calc(100vh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+      max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
       transform: translateY(105%);
       transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
     }
@@ -1704,7 +1708,7 @@
     background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
     border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgba(0, 0, 0, .6);
     padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-    max-height: calc(100vh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+    max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
     transform: translateY(105%);
     transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
@@ -1734,7 +1738,7 @@
     background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
     border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgba(0, 0, 0, .6);
     padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-    max-height: calc(100vh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+    max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
     transform: translateY(105%);
     transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
@@ -1990,7 +1994,7 @@
     background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
     border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgba(0, 0, 0, .6);
     padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-    max-height: calc(100vh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+    max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
     transform: translateY(105%);
     transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
@@ -2154,7 +2158,7 @@
   .baris-isian { flex-wrap: wrap; }
   .baris-isian .bi-tgl { flex: 0 0 100%; display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; }
   .baris-isian .bi-tgl > i { font-style: normal; font-size: 11px; color: var(--redup); flex: 0 0 auto; }
-  .baris-isian .bi-tgl input { flex: 1; min-height: 44px; font-size: 13px; }
+  .baris-isian .bi-tgl input { flex: 1; min-height: 44px; font-size: 16px; }
   .baris-isian .bi-tgl.belum > i { color: var(--amber); }
   /* Kolom tanggal bawaan peramban menampilkan urutan sesuai bahasa perangkat — di HP
      pemilik jadi BULAN/TANGGAL/TAHUN, sehingga "4 Agustus" gampang terketik jadi 8 April.
