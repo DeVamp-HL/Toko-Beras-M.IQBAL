@@ -204,6 +204,20 @@
   /* 7 · Baris dinamis form Masuk — tumbuh masuk, sisanya merapat */
   @keyframes barisMasuk { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
   .baris-merk, .baris-sumber-produksi { animation: barisMasuk 200ms var(--kurva-kuningan); }
+  /* Bentuk pembelian per baris (Terbitan B, 13 Agu 2026): Sack (karung 50/25) atau
+     Bal (bundel bags 20/10/5 dari distributor — isi per bal beda-beda, diisi saat beli). */
+  .bm-bentuk { display: flex; gap: 6px; margin: 0 0 8px; }
+  .bm-bentuk button {
+    flex: 1; min-height: 40px; border-radius: 9px; font-family: inherit; font-size: 12px;
+    font-weight: 700; background: var(--abu); color: var(--redup); border: 1px solid var(--garis);
+  }
+  .bm-bentuk button.pilih { background: var(--badge-bg); color: var(--emas-terang); border-color: var(--emas-gelap); }
+  .bm-bal-ukuran { display: flex; gap: 6px; margin: 0 0 8px; }
+  .bm-bal-ukuran button {
+    flex: 1; min-height: 40px; border-radius: 9px; font-family: inherit; font-size: 12px;
+    font-weight: 700; background: var(--abu); color: var(--redup); border: 1px solid var(--garis);
+  }
+  .bm-bal-ukuran button.pilih { background: var(--badge-bg); color: var(--emas-terang); border-color: var(--emas-gelap); }
   .baris-melipat { animation: barisMasuk 180ms var(--kurva-keluar) reverse forwards; }
 
   /* 9 · Draf pulih & spanduk — melayang masuk dari atas, tidak mendorong halaman melompat */
@@ -3919,7 +3933,7 @@
 
     <div class="kartu">
       <div class="panel-kepala"><h2>Rincian per Merk</h2></div>
-      <p class="keterangan" style="margin-top:-8px;">Tambah satu baris untuk tiap merk/jenis dalam mobil ini. Semua dicatat per karung — isi jumlah karung dan berat per karung. Total karung minimal 60.</p>
+      <p class="keterangan" style="margin-top:-8px;">Tambah satu baris untuk tiap merk/jenis dalam mobil ini. Sack (50/25 kg) dicatat per karung; bags 20/10/5 kg dicatat per bal — isi per bal lihat nota distributor. Total sack minimal 60.</p>
 
       <!-- Penunjuk baris (Lembar 1): tahu sedang di baris ke berapa tanpa menggulir ke atas -->
       <div id="bmPenunjuk" class="bm-penunjuk">
@@ -4617,15 +4631,21 @@
         <button type="button" class="bm-tanya-batal" onclick="batalHapusBaris(${id})" aria-label="Batal hapus">${IKON_SILANG}</button>
       </div>
       <div class="bm-isi">
+        <div class="bm-bentuk">
+          <button type="button" id="bentukSack-${id}" class="pilih" onclick="gantiBentukBaris(${id}, 'sack')">Sack (50/25)</button>
+          <button type="button" id="bentukBal-${id}" onclick="gantiBentukBaris(${id}, 'bal')">Bal — bags 20/10/5</button>
+        </div>
+        <input type="hidden" id="bentuk-${id}" value="sack">
+        <div id="blokSack-${id}">
         <div class="bm-baris">
           <label class="bm-kotak" for="jumlahKarung-${id}">
             <input class="bm-inp" type="number" id="jumlahKarung-${id}" placeholder="0" inputmode="numeric" oninput="hitungPerkiraan()">
-            <span class="bm-sat">karung</span>
+            <span class="bm-sat">sack</span>
           </label>
           <span class="bm-x" aria-hidden="true">&times;</span>
           <label class="bm-kotak" for="beratKarung-${id}">
             <input class="bm-inp" type="number" id="beratKarung-${id}" value="50" inputmode="numeric" oninput="hitungPerkiraan()">
-            <span class="bm-sat">kg/karung</span>
+            <span class="bm-sat">kg/sack</span>
           </label>
         </div>
         <div class="bm-baris">
@@ -4635,6 +4655,35 @@
             <span class="bm-sat">/kg</span>
           </label>
           <div class="bm-subtotal"><i>Subtotal</i><b id="subtotal-${id}">Rp &mdash;</b></div>
+        </div>
+        </div>
+        <div id="blokBal-${id}" style="display:none;">
+        <div class="bm-bal-ukuran">
+          <button type="button" id="balUk20-${id}" onclick="pilihUkuranBal(${id}, 20)">bags 20 kg</button>
+          <button type="button" id="balUk10-${id}" class="pilih" onclick="pilihUkuranBal(${id}, 10)">bags 10 kg</button>
+          <button type="button" id="balUk5-${id}" onclick="pilihUkuranBal(${id}, 5)">bags 5 kg</button>
+        </div>
+        <input type="hidden" id="balUkuran-${id}" value="10">
+        <div class="bm-baris">
+          <label class="bm-kotak" for="jumlahBal-${id}">
+            <input class="bm-inp" type="number" id="jumlahBal-${id}" placeholder="0" inputmode="numeric" oninput="hitungPerkiraan()">
+            <span class="bm-sat">bal</span>
+          </label>
+          <span class="bm-x" aria-hidden="true">&times;</span>
+          <label class="bm-kotak" for="isiPerBal-${id}">
+            <input class="bm-inp" type="number" id="isiPerBal-${id}" placeholder="0" inputmode="numeric" oninput="hitungPerkiraan()">
+            <span class="bm-sat">pcs/bal</span>
+          </label>
+        </div>
+        <div class="bm-baris">
+          <label class="bm-kotak" for="bmHargaBal-${id}">
+            <span class="bm-rp">Rp</span>
+            <input class="bm-inp" type="text" id="bmHargaBal-${id}" placeholder="0" inputmode="numeric" autocomplete="off">
+            <span class="bm-sat">/bal</span>
+          </label>
+          <div class="bm-subtotal"><i>Subtotal</i><b id="subtotalBal-${id}">Rp &mdash;</b></div>
+        </div>
+        <input type="hidden" id="hargaPerBal-${id}" value="">
         </div>
         <div class="bm-eja" id="bmEja-${id}"></div>
         <div class="bm-alarm" id="bmAlarm-${id}"></div>
@@ -4654,6 +4703,13 @@
     });
     inpHarga.addEventListener('focus', function () { bmBarisAktif = id; perbaruiEjaHarga(id); perbaruiPenunjukBaris(); });
     inpHarga.addEventListener('blur', function () { perbaruiEjaHarga(id); });
+    // Harga per bal ikut berformat ribuan, pola sama dengan harga /kg.
+    const inpHargaBal = document.getElementById('bmHargaBal-' + id);
+    const balTersembunyi = document.getElementById('hargaPerBal-' + id);
+    pasangRibuan(inpHargaBal, function (nilai) {
+      balTersembunyi.value = nilai > 0 ? nilai : '';
+      hitungPerkiraan();
+    });
     ['jumlahKarung-', 'beratKarung-'].forEach(awalan => {
       const el = document.getElementById(awalan + id);
       el.addEventListener('input', function () { ukurIsian(el); });
@@ -4681,11 +4737,23 @@
           div.classList.remove('bm-kosong');
         }
       }
-      if (prefill.jumlahKarung) document.getElementById('jumlahKarung-' + id).value = prefill.jumlahKarung;
-      if (prefill.beratKarung) document.getElementById('beratKarung-' + id).value = prefill.beratKarung;
-      if (prefill.hargaPerKg) {
-        inpTersembunyi.value = prefill.hargaPerKg;
-        inpHarga.value = Number(prefill.hargaPerKg).toLocaleString('id-ID');
+      if (prefill.bentuk === 'bal') {
+        // Draf baris bal (Terbitan B) — bentuk & isian bal dipulihkan apa adanya.
+        gantiBentukBaris(id, 'bal');
+        if (prefill.ukuranBag) pilihUkuranBal(id, prefill.ukuranBag);
+        if (prefill.jumlahBal) document.getElementById('jumlahBal-' + id).value = prefill.jumlahBal;
+        if (prefill.isiPerBal) document.getElementById('isiPerBal-' + id).value = prefill.isiPerBal;
+        if (prefill.hargaPerBal) {
+          document.getElementById('hargaPerBal-' + id).value = prefill.hargaPerBal;
+          document.getElementById('bmHargaBal-' + id).value = Number(prefill.hargaPerBal).toLocaleString('id-ID');
+        }
+      } else {
+        if (prefill.jumlahKarung) document.getElementById('jumlahKarung-' + id).value = prefill.jumlahKarung;
+        if (prefill.beratKarung) document.getElementById('beratKarung-' + id).value = prefill.beratKarung;
+        if (prefill.hargaPerKg) {
+          inpTersembunyi.value = prefill.hargaPerKg;
+          inpHarga.value = Number(prefill.hargaPerKg).toLocaleString('id-ID');
+        }
       }
       ukurIsian(document.getElementById('jumlahKarung-' + id));
       ukurIsian(document.getElementById('beratKarung-' + id));
@@ -4892,7 +4960,7 @@
       garis += '<i class="' + (lengkap ? 'lengkap' : kosong ? '' : 'isi') + '"></i>';
     });
     document.getElementById('bmpGaris').innerHTML = garis;
-    const totalKrg = baris.reduce((a, b) => a + b.jumlahKarung, 0);
+    const totalKrg = baris.reduce((a, b) => a + (b.jumlahKarung || 0), 0);
     const totalKg = baris.reduce((a, b) => a + b.totalKg, 0);
     document.getElementById('bmpJumlah').textContent =
       Math.round(totalKrg).toLocaleString('id-ID') + ' krg · ' + Math.round(totalKg).toLocaleString('id-ID') + ' kg';
@@ -4907,9 +4975,15 @@
     if (jamSimpanDraf) clearTimeout(jamSimpanDraf);
     jamSimpanDraf = setTimeout(() => {
       try {
-        const baris = bacaBarisMerk().filter(b => b.merk || b.jumlahKarung > 0 || b.hargaPerKg > 0);
+        const baris = bacaBarisMerk().filter(b => b.merk || b.jumlahKarung > 0 || b.hargaPerKg > 0 || b.jumlahBal > 0 || b.isiPerBal > 0);
         const bongkar = parseFloat(document.getElementById('biayaBongkar').value) || 0;
-        if (baris.length === 0 && bongkar === 0) { localStorage.removeItem(KUNCI_DRAF_MASUK); return; }
+        // BUG LAMA (ketahuan saat menguji Terbitan B): baris kosong bawaan saat BOOT ikut
+        // memicu jalur ini dan MENGHAPUS draf 600 ms sesudah setiap muat ulang — persis
+        // di HP yang suka membunuh aplikasi di latar belakang, saat drafnya paling
+        // dibutuhkan. Form kosong sekarang berarti "tidak ada yang perlu disimpan",
+        // bukan "musnahkan draf" — penghapusan resmi tetap lewat simpan sukses,
+        // tombol buang, dan pemulihan.
+        if (baris.length === 0 && bongkar === 0) return;
         localStorage.setItem(KUNCI_DRAF_MASUK, JSON.stringify({
           disimpanPada: new Date().toISOString(),
           tanggal: document.getElementById('tanggal').value,
@@ -4925,7 +4999,7 @@
   }
   function periksaDrafMasuk() {
     const d = adaDrafMasuk();
-    const isiSekarang = bacaBarisMerk().filter(b => b.merk || b.jumlahKarung > 0);
+    const isiSekarang = bacaBarisMerk().filter(b => b.merk || b.jumlahKarung > 0 || b.jumlahBal > 0);
     // Tawarkan hanya kalau form sedang kosong — jangan menimpa pekerjaan yang sedang jalan.
     if (!d || !d.baris || d.baris.length === 0 || isiSekarang.length > 0) {
       document.body.classList.remove('ada-draf-masuk'); return;
@@ -4933,7 +5007,9 @@
     // Keterangan mengikuti file UX: pemasok, berapa baris lengkap vs setengah,
     // jam simpan, dan nilai sementara — supaya jelas apa yang akan dipulihkan.
     const waktu = new Date(d.disimpanPada);
-    const lengkap = d.baris.filter(b => b.merk && b.jumlahKarung > 0 && b.hargaPerKg > 0).length;
+    const lengkap = d.baris.filter(b => b.merk && (b.bentuk === 'bal'
+      ? (b.jumlahBal > 0 && b.isiPerBal > 0 && b.hargaPerBal > 0)
+      : (b.jumlahKarung > 0 && b.hargaPerKg > 0))).length;
     const separuh = d.baris.length - lengkap;
     const nilai = d.baris.reduce((a, b) => a + (b.subtotalHarga || 0), 0) + (d.biayaBongkar || 0);
     const pemasok = d.pemasok === 'Lainnya' ? (d.pemasokLain || 'Pemasok lain') : (d.pemasok || 'Pemasok');
@@ -4974,8 +5050,23 @@
       const id = el.id.split('-')[1];
       let merk = document.getElementById('merk-' + id).value;
       if (merk === '__lain__') merk = document.getElementById('merkLain-' + id).value.trim();
-      // Semua baris = KARUNG (opsi "Kg langsung" dihapus 4 Agu 2026 atas perintah My DeV:
-      // baris tanpa jumlah karung bikin riwayat kabur & merk tidak muncul di Karung Utuh).
+      const bentuk = (document.getElementById('bentuk-' + id) || {}).value || 'sack';
+      if (bentuk === 'bal') {
+        // BAL (Terbitan B): bundel bags dari distributor. hargaPerKg DITURUNKAN dari
+        // harga/bal supaya validasi, alokasi bongkar, dan HPP memakai rumus yang sama
+        // persis dengan baris sack — satu mesin, dua bentuk.
+        const ukuranBag = parseFloat(document.getElementById('balUkuran-' + id).value) || 0;
+        const jumlahBal = parseFloat(document.getElementById('jumlahBal-' + id).value) || 0;
+        const isiPerBal = parseFloat(document.getElementById('isiPerBal-' + id).value) || 0;
+        const hargaPerBal = parseFloat(document.getElementById('hargaPerBal-' + id).value) || 0;
+        const jumlahPcs = jumlahBal * isiPerBal;
+        const totalKg = jumlahPcs * ukuranBag;
+        const subtotalHarga = jumlahBal * hargaPerBal;
+        hasil.push({ id, merk, satuan: 'bal', bentuk: 'bal', ukuranBag, jumlahBal, isiPerBal, jumlahPcs,
+          totalKg, hargaPerBal, hargaPerKg: totalKg > 0 ? subtotalHarga / totalKg : 0, subtotalHarga });
+        return;
+      }
+      // SACK: jalur lama (opsi "Kg langsung" dihapus 4 Agu 2026 atas perintah My DeV).
       const jumlahKarung = parseFloat(document.getElementById('jumlahKarung-' + id).value) || 0;
       const beratKarung = parseFloat(document.getElementById('beratKarung-' + id).value) || 0;
       const totalKg = jumlahKarung * beratKarung;
@@ -5056,6 +5147,22 @@
     });
   }
 
+  // Bentuk pembelian per baris (Terbitan B): 'sack' = karung 50/25 masuk kolam kg;
+  // 'bal' = bundel bags 20/10/5 yang langsung jadi stok Kemasan Jadi (beli-jadi).
+  function gantiBentukBaris(id, bentuk) {
+    document.getElementById('bentuk-' + id).value = bentuk;
+    document.getElementById('bentukSack-' + id).classList.toggle('pilih', bentuk === 'sack');
+    document.getElementById('bentukBal-' + id).classList.toggle('pilih', bentuk === 'bal');
+    document.getElementById('blokSack-' + id).style.display = bentuk === 'sack' ? 'block' : 'none';
+    document.getElementById('blokBal-' + id).style.display = bentuk === 'bal' ? 'block' : 'none';
+    hitungPerkiraan();
+  }
+  function pilihUkuranBal(id, ukuran) {
+    document.getElementById('balUkuran-' + id).value = ukuran;
+    [20, 10, 5].forEach(u => document.getElementById('balUk' + u + '-' + id).classList.toggle('pilih', u === ukuran));
+    hitungPerkiraan();
+  }
+
   function hitungPerkiraan() {
     if (typeof simpanDrafMasuk === 'function') simpanDrafMasuk();
     const baris = bacaBarisMerk();
@@ -5070,6 +5177,8 @@
     barisDenganHpp.forEach(b => {
       const el = document.getElementById('subtotal-' + b.id);
       if (el) el.textContent = b.subtotalHarga > 0 ? formatRupiah(b.subtotalHarga) : 'Rp —';
+      const elBal = document.getElementById('subtotalBal-' + b.id);
+      if (elBal) elBal.textContent = b.subtotalHarga > 0 ? formatRupiah(b.subtotalHarga) : 'Rp —';
       // Total kg pindah ke kepala baris: terbaca walau isian di bawahnya sedang tertutup keyboard.
       const elKg = document.getElementById('bmKg-' + b.id);
       if (elKg) elKg.textContent = b.totalKg > 0 ? Math.round(b.totalKg).toLocaleString('id-ID') + ' kg' : '';
@@ -5585,8 +5694,10 @@
     if (pemasok === 'Lainnya') pemasok = document.getElementById('pemasokLain').value.trim();
 
     const barisValid = baris.filter(b => b.merk && b.totalKg > 0);
-    if (barisValid.length === 0) { alert('Isi minimal satu baris: merk, jumlah karung, dan berat per karung.'); return; }
-    if (barisValid.some(b => b.hargaPerKg <= 0)) { alert('Ada baris merk yang harga beli per kg-nya belum diisi.'); return; }
+    if (barisValid.length === 0) { alert('Isi minimal satu baris: merk + jumlahnya (sack, atau bal beserta isinya).'); return; }
+    if (barisValid.some(b => b.bentuk !== 'bal' && b.hargaPerKg <= 0)) { alert('Ada baris sack yang harga beli per kg-nya belum diisi.'); return; }
+    if (barisValid.some(b => b.bentuk === 'bal' && !(b.hargaPerBal > 0))) { alert('Ada baris bal yang harga per bal-nya belum diisi.'); return; }
+    if (barisValid.some(b => b.bentuk === 'bal' && !(b.isiPerBal > 0))) { alert('Ada baris bal yang isi per bal-nya belum diisi — tanya nota distributornya.'); return; }
 
     const totalKarungSemua = baris.filter(b => b.satuan === 'karung').reduce((a, b) => a + b.jumlahKarung, 0);
     if (totalKarungSemua > 0 && totalKarungSemua < 60) {
@@ -5612,6 +5723,29 @@
       semuaLokal.unshift(kedatangan);
       localStorage.setItem(KUNCI_SIMPAN, JSON.stringify(semuaLokal));
     }
+    // Baris BAL juga menulis dokumen produksi beli-jadi (pola formulir Stok Awal dulu):
+    // stok kemasan, laba, dan ringkasan kasir membacanya tanpa logika baru. HPP per pcs
+    // memakai hitungHppMerkDalamBatch atas SELURUH baris — porsi bongkar terbagi rata
+    // per kg ke sack dan bal, rumus yang sama dengan pratinjau. dariBatch menautkan ke
+    // kedatangannya supaya hapusBatch bisa mencabut keduanya sekaligus.
+    const denganHpp = hitungHppMerkDalamBatch(barisValid, kedatangan.biayaBongkar);
+    for (const b of denganHpp) {
+      if (b.bentuk !== 'bal') continue;
+      const dokProduksi = {
+        id: idUnik(), tanggal: kedatangan.tanggal,
+        namaProduk: b.merk, ukuranKemasan: b.ukuranBag, jumlahUnit: b.jumlahPcs,
+        hppPerUnit: Math.round(b.hppPerKg * b.ukuranBag),
+        merkSumber: 'BELI JADI', kgDipakai: 0, beliJadi: true, dariBatch: kedatangan.id
+      };
+      try {
+        await simpanKeFirestore(KOLEKSI_PRODUKSI, dokProduksi);
+      } catch (err) {
+        console.error(err);
+        const lokal = ambilProduksi();
+        lokal.unshift(dokProduksi);
+        localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(lokal));
+      }
+    }
     btn.disabled = false; btn.textContent = ' Simpan Kedatangan Ini';
     perbaruiCounterBackup();
     unduhBackup(true);
@@ -5634,9 +5768,16 @@
   }
 
   async function hapusBatch(id) {
-    if (!confirm('Hapus kedatangan ini dari riwayat?')) return;
+    // Kedatangan dengan baris bal punya dokumen produksi beli-jadi pasangan (dariBatch).
+    // Keduanya dicabut bersama — kalau tidak, stok bags-nya hidup selamanya tanpa induk.
+    const pasangan = ambilProduksi().filter(pr => pr.dariBatch === id);
+    const tanya = pasangan.length > 0
+      ? 'Hapus kedatangan ini dari riwayat?\n\nIkut terhapus: ' + pasangan.length + ' catatan stok bags (beli-jadi) pasangannya.'
+      : 'Hapus kedatangan ini dari riwayat?';
+    if (!confirm(tanya)) return;
     try {
       await hapusDariFirestore(KOLEKSI_BATCH, id);
+      for (const pr of pasangan) await hapusDariFirestore(KOLEKSI_PRODUKSI, pr.id);
     } catch (err) {
       console.error(err);
       alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -5694,7 +5835,9 @@
 
       const merkDenganHpp = hitungHppMerkDalamBatch(k.merkList, k.biayaBongkar);
       const barisTabel = merkDenganHpp.map(m => {
-        const keteranganJumlah = m.satuan === 'karung' ? `${m.jumlahKarung} krg × ${m.beratKarung}kg` : `${m.totalKg}kg (data lama, tanpa karung)`;
+        const keteranganJumlah = m.bentuk === 'bal'
+          ? `${m.jumlahBal} bal × ${m.isiPerBal} = ${m.jumlahPcs} bags ${m.ukuranBag}kg`
+          : (m.satuan === 'karung' ? `${m.jumlahKarung} sack × ${m.beratKarung}kg` : `${m.totalKg}kg (data lama, tanpa karung)`);
         return `<tr>
           <td>${escapeHtml(m.merk)}</td>
           <td>${keteranganJumlah}</td>
@@ -6579,6 +6722,11 @@
     batch.forEach(k => {
       const merkDenganHpp = hitungHppMerkDalamBatch(k.merkList, k.biayaBongkar);
       merkDenganHpp.forEach(m => {
+        // Baris BAL bukan karung sumber — bags jadi yang stoknya hidup di hitungStokKemasan
+        // lewat dokumen beli-jadi pasangannya. Ikut di sini = barang yang sama dihitung
+        // dua kali. (Alokasi bongkarnya tetap dihitung atas SEMUA baris di atas — porsi
+        // milik bal terbawa ke HPP per pcs-nya, bukan ke kolam.)
+        if (m.bentuk === 'bal') return;
         if (!stok[m.merk]) stok[m.merk] = { totalMasuk: 0, terpakai: 0, totalNilaiMasuk: 0, hargaTerakhirPerKg: m.hargaPerKg, idTerakhir: k.id };
         stok[m.merk].totalMasuk += m.totalKg;
         // HPP dihitung RATA-RATA TERTIMBANG dari seluruh histori beli merk ini (pola sama dengan
@@ -12766,6 +12914,8 @@
   window.hitungTotalJual = hitungTotalJual;
   window.pilihBayar = pilihBayar;
   window.tambahBarisMerk = tambahBarisMerk;
+  window.gantiBentukBaris = gantiBentukBaris;
+  window.pilihUkuranBal = pilihUkuranBal;
   window.simpanBiayaBulanan = simpanBiayaBulanan;
   window.hitungPerkiraanGaji = hitungPerkiraanGaji;
   window.simpanKedatangan = simpanKedatangan;
