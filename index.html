@@ -3156,7 +3156,15 @@
 
     <!-- Sub-form: Karung utuh -->
     <div class="kartu" id="formJualKarung" style="display:none;">
-      <div class="panel-kepala"><h2>Jual Karung Utuh — pilih merk</h2></div>
+      <div class="panel-kepala"><h2>Jual Sack Utuh — pilih ukuran &amp; merk</h2></div>
+      <!-- Sack 25 HIDUP LAGI (13 Agu 2026, keputusan pemilik): dicabut 11 Agu karena
+           belum pernah terpakai, lalu hari ini toko mulai membeli sack 25 (Angsa &
+           Perahu Layar) dan butuh menjualnya utuh. Tiap ukuran hanya menampilkan merk
+           yang MEMANG pernah dibeli pada ukuran itu (merkPunyaKarungBerat). -->
+      <div class="kartu-jenis-jual" style="grid-template-columns:1fr 1fr; margin-bottom:10px;">
+        <button type="button" id="pilihSack50" class="pilih" onclick="pilihBeratSack(50)">Sack 50 kg</button>
+        <button type="button" id="pilihSack25" onclick="pilihBeratSack(25)">Sack 25 kg</button>
+      </div>
       <input type="hidden" id="jualKarungBerat" value="50">
       <div class="grid-tombol-pilih" id="pilihKarungTombol"></div>
       <input type="hidden" id="jualKarungMerk">
@@ -5372,6 +5380,10 @@
         const hL = hargaLiteran.find(x => x.merk === merk);
         return { merk, sisaKg: s.sisaKg || 0, hppPerKg: s.hppTerakhirPerKg || 0,
           beratKarung: 50, karung50: merkPunyaKarungBerat(merk, 50),
+          // Sack 25 (13 Agu 2026) — kasir & darurat butuh tahu merk mana yang punya
+          // sack 25 dan harganya, dengan aturan harga yang sama dengan 50.
+          karung25: merkPunyaKarungBerat(merk, 25),
+          hargaKarung25: (hargaKarungUtuh(merk, 25) || {}).perUnit || 0,
           // Harga siap pakai per karung 50kg — Katalog Kemasan menang atas harga/kg (aturan 4 Agu 2026).
           hargaKarung50: (hargaKarungUtuh(merk, 50) || {}).perUnit || 0,
           hargaPerKg: cariHargaKarungPerKg(merk) || 0,
@@ -7284,9 +7296,11 @@
       kunci: m, label: m, subLabel: `sisa ${stokKarung[m].sisaKg} kg`
     }));
     bikinTombolPilih('pilihRepackingTombol', 'jualRepackingMerk', opsiMerk, 'Belum ada stok karung.', perbaruiStokJual);
-    // Karung Utuh: cuma merk yang punya karung 50kg tercatat (opsi 25kg dicabut 11 Agu 2026).
-    const opsiKarungBerat = opsiMerk.filter(o => merkPunyaKarungBerat(o.kunci, 50));
-    bikinTombolPilih('pilihKarungTombol', 'jualKarungMerk', opsiKarungBerat, 'Belum ada stok karung 50 kg.', perbaruiStokJual);
+    // Sack Utuh: merk mengikuti UKURAN yang dipilih (50/25) — hanya yang pernah
+    // dibeli pada ukuran itu. Sack 25 dihidupkan lagi 13 Agu 2026.
+    const beratSack = parseFloat(document.getElementById('jualKarungBerat').value) || 50;
+    const opsiKarungBerat = opsiMerk.filter(o => merkPunyaKarungBerat(o.kunci, beratSack));
+    bikinTombolPilih('pilihKarungTombol', 'jualKarungMerk', opsiKarungBerat, 'Belum ada stok sack ' + beratSack + ' kg.', perbaruiStokJual);
     // Tab LITERAN: merk IR64* ditampilkan sebagai HARGA per liter (pelanggan beli
     // berdasarkan harga, bukan merk — aturan My DeV 3 Agu 2026). Dokumen penjualan
     // tetap menyimpan merk asli (kunci tidak berubah), hanya tulisan tombol yang beda.
@@ -10736,6 +10750,19 @@
   // harga/kg × 25 menghasilkan Rp382.500 — dua daftar, satu barang, beda angka.
   // Kalau ukuran itu belum ada di Katalog Kemasan, jatuh balik ke harga/kg × berat.
   // Kembalikan {perUnit, sumber:'kemasan'|'karung'} atau null kalau dua-duanya kosong.
+  function pilihBeratSack(berat) {
+    document.getElementById('jualKarungBerat').value = berat;
+    document.getElementById('pilihSack50').classList.toggle('pilih', berat === 50);
+    document.getElementById('pilihSack25').classList.toggle('pilih', berat === 25);
+    // Merk yang tampil mengikuti ukuran; pilihan lama dibuang supaya tidak ada
+    // "Angsa sack 50" yang diam-diam terjual sebagai 25.
+    document.getElementById('jualKarungMerk').value = '';
+    document.getElementById('jualKarungJumlah').value = '';
+    isiDropdownJual();
+    perbaruiStokJual();
+    hitungTotalJual();
+  }
+
   function hargaKarungUtuh(merk, beratKarung) {
     const hKemasan = ambilHargaKemasan().find(x => x.merk === merk && x.ukuran === beratKarung);
     if (hKemasan && hKemasan.hargaPerUnit > 0) {
@@ -12735,6 +12762,7 @@
     if (tbm) tbm.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba'].indexOf(nama) >= 0);
   })();
   window.pilihJenisJual = pilihJenisJual;
+  window.pilihBeratSack = pilihBeratSack;
   window.hitungTotalJual = hitungTotalJual;
   window.pilihBayar = pilihBayar;
   window.tambahBarisMerk = tambahBarisMerk;
