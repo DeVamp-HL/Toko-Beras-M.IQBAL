@@ -2804,6 +2804,14 @@
     <b id="piutangSisaNilai">Rp0</b>
   </div>
 
+  <!-- Rincian belum-lunas DI LAYAR (13 Agu 2026): tidak semua pelanggan punya
+       WhatsApp — untuk mereka, rincian yang sama dengan isi pesan tagihan tampil
+       di sini: tinggal tunjukkan layar atau bacakan saat orangnya di toko. -->
+  <div class="kartu-daftar kd-kepala" id="kartuBelumLunas" style="margin-bottom:12px; display:none;">
+    <div class="kd-judul"><h3 style="font-size:13px;">Belum lunas — rincian</h3><span class="kd-hitung" id="belumLunasHitung"></span></div>
+    <div id="daftarBelumLunas"></div>
+  </div>
+
   <div id="piutangFormBayar">
     <label>Nominal dibayar (Rp)</label>
     <input type="number" id="piutangBayarNominal" placeholder="0" inputmode="numeric">
@@ -3491,6 +3499,25 @@
       <input type="text" id="opnameAlasan" placeholder="Contoh: susut timbangan, tumpahan, opname mingguan">
       <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanPenyesuaianStok()">Catat penyesuaian</button>
       <div class="kartu-daftar" id="daftarPenyesuaianStok" style="margin-top:12px; background:none; border:none; padding:0;"></div>
+    </div>
+
+    <!-- COCOKKAN BAHAN (13 Agu 2026) — pasangan opname untuk kantong & paper bag.
+         Bocornya kecil tapi menahun; tanpa ini selisih fisik kantong tidak pernah
+         punya jalan resmi. Penyesuaiannya menggeser SISA saja, tidak menyentuh
+         rata-rata harga per pcs dan tidak pernah jadi uang keluar. -->
+    <div class="kartu" style="margin-top:12px;">
+      <div class="panel-kepala"><h2>Cocokkan Bahan <span class="keterangan">kantong &amp; paper bag</span></h2></div>
+      <p class="keterangan" style="margin-top:-4px;">Hitung fisik kantong/paper bag, isi hasilnya. Selisihnya tercatat berjejak — harga rata-rata per pcs dan uang tidak berubah.</p>
+      <div class="grid-tombol-pilih" id="pilihOpnameBahanTombol"></div>
+      <input type="hidden" id="opnameBahanJenis">
+      <div class="stok-tersedia" id="opnameBahanInfo"></div>
+      <label for="opnameBahanFisik">Hitungan fisik (pcs)</label>
+      <input type="number" id="opnameBahanFisik" placeholder="0" inputmode="numeric" oninput="perbaruiOpnameBahan()">
+      <div class="pratinjau-harga" id="opnameBahanPreview" style="display:none;"></div>
+      <label for="opnameBahanAlasan">Alasan / catatan</label>
+      <input type="text" id="opnameBahanAlasan" placeholder="Contoh: kantong sobek, opname bulanan">
+      <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanOpnameBahan()">Catat penyesuaian bahan</button>
+      <div class="kartu-daftar" id="daftarOpnameBahan" style="margin-top:12px; background:none; border:none; padding:0;"></div>
     </div>
   </div>
 
@@ -4433,7 +4460,7 @@
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); }
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); isiSaranPelanggan(); }
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
-    if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); tampilkanCocokStok(); }
+    if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); tampilkanCocokStok(); tampilkanCocokBahan(); }
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'aruskas') tampilkanArusKas();
     if (nama === 'tutup') tampilkanTutupHari();
@@ -5259,7 +5286,7 @@
     segarkanArusKasJikaTampil();
     // Pembelian bahan = uang keluar di kartu Kas Bulan Ini (sejak Arus Kas ada).
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
-    if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
+    if (document.getElementById('halamanStok').classList.contains('tampil')) { tampilkanStok(); tampilkanCocokBahan(); }
     if (document.getElementById('halamanProduksi').classList.contains('tampil')) isiPilihanBahanKemasan();
   }, 'id', 'bahanKemasan');
 
@@ -5267,7 +5294,7 @@
     segarkanArusKasJikaTampil();
     // Pembelian bahan = uang keluar di kartu Kas Bulan Ini (sejak Arus Kas ada).
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
-    if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
+    if (document.getElementById('halamanStok').classList.contains('tampil')) { tampilkanStok(); tampilkanCocokBahan(); }
   }, 'id', 'bahanLiteran');
 
   pasangSinkronisasi(KOLEKSI_HARGA_LITERAN, KUNCI_HARGA_LITERAN, (d) => { _cacheHargaLiteran = d; }, () => {
@@ -8029,6 +8056,11 @@
       if (!stok[b.jenis]) stok[b.jenis] = { totalBeli: 0, totalTerpakai: 0, totalHargaBeli: 0 };
       if (b.tipe === 'pakai') {
         stok[b.jenis].totalTerpakai += b.jumlah;
+      } else if (b.tipe === 'opname') {
+        // Penyesuaian opname (13 Agu 2026): menggeser SISA saja. SENGAJA bukan lewat
+        // cabang beli — kalau lewat sana, pcs gratisan ikut membagi rata-rata harga
+        // dan menyeret ongkos kantong per pcs jadi salah.
+        stok[b.jenis].penyesuaian = (stok[b.jenis].penyesuaian || 0) + b.jumlah;
       } else {
         stok[b.jenis].totalBeli += b.jumlah;
         stok[b.jenis].totalHargaBeli += (b.hargaTotal || 0);
@@ -8036,7 +8068,7 @@
     });
     Object.keys(stok).forEach(j => {
       const s = stok[j];
-      s.sisaPcs = s.totalBeli - s.totalTerpakai;
+      s.sisaPcs = s.totalBeli - s.totalTerpakai + (s.penyesuaian || 0);
       s.hppPerPcs = s.totalBeli > 0 ? Math.round(s.totalHargaBeli / s.totalBeli) : 0;
     });
     return stok;
@@ -8183,6 +8215,11 @@
       if (!stok[b.jenis]) stok[b.jenis] = { totalBeli: 0, totalTerpakai: 0, totalHargaBeli: 0 };
       if (b.tipe === 'pakai') {
         stok[b.jenis].totalTerpakai += b.jumlah;
+      } else if (b.tipe === 'opname') {
+        // Penyesuaian opname (13 Agu 2026): menggeser SISA saja. SENGAJA bukan lewat
+        // cabang beli — kalau lewat sana, pcs gratisan ikut membagi rata-rata harga
+        // dan menyeret ongkos kantong per pcs jadi salah.
+        stok[b.jenis].penyesuaian = (stok[b.jenis].penyesuaian || 0) + b.jumlah;
       } else {
         stok[b.jenis].totalBeli += b.jumlah;
         stok[b.jenis].totalHargaBeli += (b.hargaTotal || 0);
@@ -8190,7 +8227,7 @@
     });
     Object.keys(stok).forEach(j => {
       const s = stok[j];
-      s.sisaPcs = s.totalBeli - s.totalTerpakai;
+      s.sisaPcs = s.totalBeli - s.totalTerpakai + (s.penyesuaian || 0);
       s.hargaPerPcs = s.totalBeli > 0 ? Math.round(s.totalHargaBeli / s.totalBeli) : 0;
     });
     return stok;
@@ -10161,6 +10198,19 @@
     document.getElementById('piutangBayarCatatan').value = '';
     pilihBayarPiutang('Tunai');
 
+    // Rincian belum lunas — sumbernya sama persis dengan pesan tagihan WA.
+    const kartuBL = document.getElementById('kartuBelumLunas');
+    if (d.sisa > 0) {
+      const rinci = rincianBelumLunas(d);
+      kartuBL.style.display = 'block';
+      document.getElementById('belumLunasHitung').textContent = rinci.length + ' catatan';
+      document.getElementById('daftarBelumLunas').innerHTML = rinci.map(r => `<div class="pm-baris">
+        <span class="pm-ket">${escapeHtml(r.ket || 'Belanja')}<small>${escapeHtml(formatTanggal(r.tanggal))}${r.sisa < r.nominal ? ' · dari ' + formatRupiah(r.nominal) : ''}</small></span>
+        <span class="pm-nom tambah">${formatRupiah(r.sisa)}</span>
+      </div>`).join('');
+    } else {
+      kartuBL.style.display = 'none';
+    }
     document.getElementById('piutangRiwayatHitung').textContent = d.mutasi.length + ' catatan';
     document.getElementById('piutangRiwayat').innerHTML = d.mutasi.map(m => {
       const kurang = m.jenis === 'bayar' || m.jenis === 'hapusBuku';
@@ -10441,6 +10491,80 @@
     tampilkanCocokStok();
     perbaruiOpname();
     alert('Penyesuaian tercatat. Stok ' + merk + ' sekarang ' + fisik + ' kg.');
+  }
+
+  // ===== COCOKKAN BAHAN (13 Agu 2026) — opname kantong & paper bag =====
+  // Satu daftar untuk dua koleksi: jenis menentukan rumahnya (LABEL_BAHAN_LITERAN
+  // -> stokBahanLiteran, selain itu stokBahanKemasan).
+  function jenisBahanLiteran(jenis) { return !!LABEL_BAHAN_LITERAN[jenis]; }
+  function labelBahan(jenis) { return LABEL_BAHAN_KEMASAN[jenis] || LABEL_BAHAN_LITERAN[jenis] || jenis; }
+  function stokBahanUntuk(jenis) {
+    const peta = jenisBahanLiteran(jenis) ? hitungStokBahanLiteran() : hitungStokBahanKemasan();
+    return peta[jenis] || { sisaPcs: 0 };
+  }
+  function tampilkanCocokBahan() {
+    const wadah = document.getElementById('pilihOpnameBahanTombol');
+    if (!wadah) return;
+    const kem = hitungStokBahanKemasan();
+    const lit = hitungStokBahanLiteran();
+    const opsi = Object.keys(LABEL_BAHAN_KEMASAN).map(j => ({
+      kunci: j, label: LABEL_BAHAN_KEMASAN[j], subLabel: `sistem ${(kem[j] || {}).sisaPcs || 0} pcs`
+    })).concat(Object.keys(LABEL_BAHAN_LITERAN).map(j => ({
+      kunci: j, label: LABEL_BAHAN_LITERAN[j], subLabel: `sistem ${(lit[j] || {}).sisaPcs || 0} pcs`
+    })));
+    bikinTombolPilih('pilihOpnameBahanTombol', 'opnameBahanJenis', opsi, 'Belum ada bahan tercatat.', perbaruiOpnameBahan);
+    const semua = ambilBahanKemasan().concat(ambilBahanLiteran())
+      .filter(b => b.tipe === 'opname')
+      .sort((x, y) => (y.id || 0) - (x.id || 0)).slice(0, 8);
+    document.getElementById('daftarOpnameBahan').innerHTML = semua.length === 0 ? '' :
+      '<div class="kd-judul" style="margin-bottom:6px;"><h3>Penyesuaian terakhir</h3></div>' +
+      semua.map(o => `<div class="baris-44">
+        <span class="nama"><i class="trx-nama">${escapeHtml(labelBahan(o.jenis))}</i><small>${escapeHtml(formatTanggal(o.tanggal))} · ${escapeHtml(o.catatan || '')}</small></span>
+        <span class="angka ${(o.jumlah || 0) < 0 ? 'ph-merah' : 'ph-hijau'}">${(o.jumlah || 0) > 0 ? '+' : ''}${o.jumlah} pcs</span>
+      </div>`).join('');
+  }
+  function perbaruiOpnameBahan() {
+    const jenis = document.getElementById('opnameBahanJenis').value;
+    const info = document.getElementById('opnameBahanInfo');
+    const prev = document.getElementById('opnameBahanPreview');
+    if (!jenis) { info.textContent = ''; prev.style.display = 'none'; return; }
+    const sistem = stokBahanUntuk(jenis).sisaPcs || 0;
+    info.textContent = `Menurut sistem: ${sistem} pcs`;
+    const isian = document.getElementById('opnameBahanFisik').value;
+    if (isian === '' || isNaN(parseInt(isian, 10))) { prev.style.display = 'none'; return; }
+    const fisik = parseInt(isian, 10);
+    const selisih = fisik - sistem;
+    prev.style.display = 'block';
+    prev.innerHTML =
+      `<div class="ph-baris"><span>Sistem → fisik</span><b>${sistem} → ${fisik} pcs</b></div>` +
+      `<div class="ph-baris"><span>Selisih</span><b class="${selisih < 0 ? 'ph-merah' : (selisih > 0 ? 'ph-hijau' : '')}">${selisih === 0 ? 'Cocok persis' : (selisih > 0 ? '+' : '') + selisih + ' pcs'}</b></div>`;
+  }
+  async function simpanOpnameBahan() {
+    const jenis = document.getElementById('opnameBahanJenis').value;
+    if (!jenis) { alert('Pilih bahan yang dihitung dulu.'); return; }
+    const isian = document.getElementById('opnameBahanFisik').value;
+    if (isian === '' || isNaN(parseInt(isian, 10))) { alert('Isi hitungan fisiknya (pcs).'); return; }
+    const fisik = parseInt(isian, 10);
+    if (fisik < 0) { alert('Hitungan fisik tidak mungkin negatif.'); return; }
+    const alasan = document.getElementById('opnameBahanAlasan').value.trim();
+    if (!alasan) { alert('Isi alasannya — supaya jejaknya bisa dibaca nanti.'); return; }
+    const sistem = stokBahanUntuk(jenis).sisaPcs || 0;
+    const selisih = fisik - sistem;
+    if (selisih === 0) { alert('Fisik sama persis dengan sistem — tidak ada yang perlu disesuaikan. Kabar baik.'); return; }
+    if (!confirm('Catat penyesuaian ' + labelBahan(jenis) + '?\n\nSistem ' + sistem + ' pcs → fisik ' + fisik
+      + ' pcs (selisih ' + (selisih > 0 ? '+' : '') + selisih + ' pcs).\nHarga rata-rata per pcs dan uang tidak berubah.')) return;
+    await simpanKeFirestore(jenisBahanLiteran(jenis) ? KOLEKSI_BAHAN_LITERAN : KOLEKSI_BAHAN_KEMASAN, {
+      id: idUnik(), tipe: 'opname', jenis, jumlah: selisih, hargaTotal: 0,
+      tanggal: tanggalLokalIso(), pcsSistem: sistem, pcsFisik: fisik,
+      catatan: alasan
+    });
+    document.getElementById('opnameBahanFisik').value = '';
+    document.getElementById('opnameBahanAlasan').value = '';
+    document.getElementById('opnameBahanPreview').style.display = 'none';
+    tampilkanStok();
+    tampilkanCocokBahan();
+    perbaruiOpnameBahan();
+    alert('Penyesuaian tercatat. Stok ' + labelBahan(jenis) + ' sekarang ' + fisik + ' pcs.');
   }
 
   async function perbaikiTotalKgSemua() {
@@ -12681,6 +12805,8 @@
   window.tutupLaporan = tutupLaporan;
   window.gambarLaporan = gambarLaporan;
   window.cetakLaporan = cetakLaporan;
+  window.perbaruiOpnameBahan = perbaruiOpnameBahan;
+  window.simpanOpnameBahan = simpanOpnameBahan;
   window.kirimTagihanPiutang = kirimTagihanPiutang;
   window.bukaHapusBuku = bukaHapusBuku;
   window.simpanHapusBuku = simpanHapusBuku;
