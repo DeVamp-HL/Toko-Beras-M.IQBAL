@@ -2884,6 +2884,9 @@
     <div><div class="label">Sisa utang</div><div class="nilai" id="pelUtang">—</div></div>
   </div>
 
+  <div id="pelThrRiwayat" style="margin-bottom:10px;"></div>
+  <button type="button" class="tombol-lewati-rinci" id="btnCatatThr" style="margin-bottom:12px;" onclick="catatThrPelanggan()">Catat THR</button>
+
   <label for="pelCatatan">Catatan pengenal <span class="keterangan">— ciri, kendaraan, panggilan</span></label>
   <textarea id="pelCatatan" placeholder="Contoh: bapak tinggi, Vario merah, biasa IR64 5kg dua mingguan"></textarea>
   <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanCatatanPelanggan()">Simpan catatan</button>
@@ -3135,9 +3138,9 @@
     <div id="pesanOkJual" class="pesan-ok"> Penjualan tersimpan.</div>
 
     <div class="kartu-jenis-jual" style="grid-template-columns: repeat(5,1fr);">
-      <button type="button" id="jenisJualKemasan" class="pilih" onclick="pilihJenisJual('kemasan')">Dari Stok<br>Kemasan</button>
+      <button type="button" id="jenisJualKemasan" class="pilih" onclick="pilihJenisJual('kemasan')">Bags Jadi<br>(kemasan)</button>
       <button type="button" id="jenisJualRepacking" onclick="pilihJenisJual('repacking')">Repacking<br>Dadakan</button>
-      <button type="button" id="jenisJualKarung" onclick="pilihJenisJual('karung')">Karung<br>Utuh</button>
+      <button type="button" id="jenisJualKarung" onclick="pilihJenisJual('karung')">Sack<br>Utuh</button>
       <button type="button" id="jenisJualLiteran" onclick="pilihJenisJual('literan')">Jual<br>Literan</button>
       <button type="button" id="jenisJualRetur" onclick="pilihJenisJual('retur')">Retur</button>
     </div>
@@ -3183,13 +3186,13 @@
       <div class="grid-tombol-pilih" id="pilihKarungTombol"></div>
       <input type="hidden" id="jualKarungMerk">
       <div class="stok-tersedia" id="stokKarungInfo"></div>
-      <label>Jumlah karung terjual</label>
+      <label>Jumlah sack terjual</label>
       <div class="stepper-jumlah">
         <button type="button" class="st-kurang" onclick="ubahJumlah('jualKarungJumlah', -1)" aria-label="Kurangi">−</button>
         <input type="number" id="jualKarungJumlah" placeholder="0" inputmode="numeric" oninput="hitungTotalJual()">
         <button type="button" class="st-tambah" onclick="ubahJumlah('jualKarungJumlah', 1)" aria-label="Tambah">+</button>
       </div>
-      <p class="keterangan">Daftar merk mengikuti ukuran yang dipilih. Terjual = stok karung sumber langsung berkurang (jumlah × berat karung).</p>
+      <p class="keterangan">Daftar merk mengikuti ukuran yang dipilih. Terjual = stok sack sumber langsung berkurang (jumlah × berat sack).</p>
     </div>
 
     <!-- Sub-form: Literan -->
@@ -3209,8 +3212,8 @@
     <div class="kartu" id="formJualRetur" style="display:none;">
       <div class="panel-kepala"><h2>Retur — barang apa yang dikembalikan?</h2></div>
       <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr;">
-        <button type="button" id="returJenisKemasan" class="pilih" onclick="pilihReturJenisAsal('kemasan')">Kemasan Jadi</button>
-        <button type="button" id="returJenisKarung" onclick="pilihReturJenisAsal('karung')">Karung Utuh</button>
+        <button type="button" id="returJenisKemasan" class="pilih" onclick="pilihReturJenisAsal('kemasan')">Bags Jadi</button>
+        <button type="button" id="returJenisKarung" onclick="pilihReturJenisAsal('karung')">Sack Utuh</button>
       </div>
 
       <div id="returPilihKemasanWrap">
@@ -3451,7 +3454,7 @@
     <!-- Dua kartu ringkas di atas — mockup UI (6 Agu 2026): jawaban "berapa semua" sebelum rincian -->
     <div class="kpi-mini kpi-dua ringkas-stok">
       <div class="kartu-mini">
-        <div class="label">Karung sumber</div>
+        <div class="label">Sack sumber</div>
         <div class="nilai" id="stokRingkasKarung">0 <span style="font-size:10px;color:var(--redup);font-weight:600;">krg</span></div>
       </div>
       <div class="kartu-mini">
@@ -3473,7 +3476,7 @@
       <div id="daftarStokKarung" class="daftar-batch"></div>
     </div>
     <div class="kartu">
-      <div class="panel-kepala"><h2>Kemasan Jadi</h2><span class="kd-hitung" id="hitungStokKemasan"></span></div>
+      <div class="panel-kepala"><h2>Bags Jadi <span class="keterangan">kemasan</span></h2><span class="kd-hitung" id="hitungStokKemasan"></span></div>
       <div id="daftarStokKemasan" class="daftar-batch"></div>
     </div>
     <div class="kartu">
@@ -3843,6 +3846,19 @@
       <div class="kartu-mini"><div class="label">Punya catatan pengenal</div><div class="nilai" id="pelangganBercatatan">0</div></div>
     </div>
 
+    <!-- THR RAMADAN (Terbitan C): tiap tahun toko membagi THR (baju koko, sarung,
+         mukena, handuk — barang dari kas toko) untuk pelanggan setia. Kartu ini
+         mencatat SIAPA-DAPAT-APA per tahun; UANGNYA keluar saat belanja barangnya
+         dan dicatat di tab Harian (kategori Toko) — bukan di sini, supaya tidak
+         terhitung dua kali. -->
+    <div class="kartu" style="margin-top:12px;">
+      <div class="panel-kepala"><h2>THR Ramadan <span class="keterangan">pelanggan setia</span></h2><span class="kd-hitung" id="thrRingkas"></span></div>
+      <label for="thrTahun">Tahun</label>
+      <input type="number" id="thrTahun" inputmode="numeric" onchange="tampilkanPelanggan()" style="max-width:120px;">
+      <p class="keterangan" style="margin-top:8px;">Penerima ditandai ✓ di daftar bawah — urutan daftar sudah dari yang paling
+        sering belanja. Catat lewat kartu pelanggannya. Belanja barang THR-nya sendiri dicatat di tab Harian (Toko).</p>
+    </div>
+
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
       <div class="kd-judul"><h3>Buku Pelanggan</h3><span class="kd-hitung" id="pelangganHitung"></span></div>
       <div id="daftarPelanggan"></div>
@@ -3881,6 +3897,14 @@
     <button type="button" class="tombol-tambah-harga" onclick="bukaLembarHarga('literan')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Tambah Harga
     </button>
+
+    <!-- JENIS BERAS (Terbitan C): lapisan di atas merk — Angsa & Perahu Layar itu IR64,
+         Pandan Wangi tetap Pandan Wangi. Petanya data, diedit di sini, dipakai tab Stok
+         untuk mengelompokkan. -->
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Jenis Beras <span class="keterangan">merk → varietas</span></h3><span class="kd-hitung" id="hitungJenisBeras"></span></div>
+      <div id="daftarJenisBeras"></div>
+    </div>
   </div>
 
   <!-- HALAMAN STOK AWAL (add produk per ukuran, HPP otomatis) -->
@@ -4318,6 +4342,7 @@
   // menumpuk berbulan-bulan sampai tidak bisa ditelusuri lagi.
   const KOLEKSI_TUTUP = 'tutupHari';
   const KOLEKSI_PELANGGAN_CAT = 'pelangganCatatan';
+  const KOLEKSI_THR = 'thrPelanggan';
 
   // Cache di memori — diisi ulang otomatis oleh onSnapshot tiap kali ada perubahan
   // (dari perangkat ini ATAU perangkat lain). Semua fungsi lama yang baca data
@@ -4339,6 +4364,7 @@
   let _cachePenyesuaian = [];
   let _cacheTutup = [];
   let _cachePelangganCat = [];
+  let _cacheThr = [];
   let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false, piutang: false, kasbon: false };
 
   const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
@@ -4358,6 +4384,8 @@
   const KUNCI_PENYESUAIAN = 'miqbal_penyesuaian_stok_v1';
   const KUNCI_TUTUP = 'miqbal_tutup_hari_v1';
   const KUNCI_PELANGGAN_CAT = 'miqbal_pelanggan_catatan_v1';
+  const KUNCI_JENIS_BERAS = 'miqbal_jenis_beras_v1';
+  const KUNCI_THR = 'miqbal_thr_pelanggan_v1';
 
   // Jenis bahan kemasan biasa (plastik untuk produk kemasan jadi, di luar literan) —
   // per kombinasi ukuran + merek beras, karena harga per lembar beda tiap merek (instruksi My DeV, 1 Agustus 2026).
@@ -4488,7 +4516,7 @@
     if (nama === 'tutup') tampilkanTutupHari();
     if (nama === 'piutang') { tampilkanPiutang(); tampilkanKasbon(); }
     if (nama === 'pelanggan') tampilkanPelanggan();
-    if (nama === 'harga') tampilkanHarga();
+    if (nama === 'harga') { tampilkanHarga(); tampilkanJenisBeras(); }
     if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
     if (nama === 'input') periksaDrafMasuk();
     if (document.body.classList.contains('drawer-nav-terbuka')) toggleDrawerNav();
@@ -5457,6 +5485,10 @@
     if (document.getElementById('halamanPelanggan').classList.contains('tampil')) tampilkanPelanggan();
   }, 'id', 'pelangganCat');
 
+  pasangSinkronisasi(KOLEKSI_THR, KUNCI_THR, (d) => { _cacheThr = d; }, () => {
+    if (document.getElementById('halamanPelanggan').classList.contains('tampil')) tampilkanPelanggan();
+  }, 'id', 'thr');
+
   // ============ RINGKASAN KASIR (dibaca kasir.html ringan) ============
   // Satu dokumen kecil berisi harga+stok+HPP terkini, supaya halaman kasir tidak
   // perlu Firebase SDK ataupun memuat seluruh riwayat. Diterbitkan ulang otomatis
@@ -5616,7 +5648,8 @@
       tutupHari: ambilTutupHari(),
       piutangMutasi: ambilPiutangMutasi(),
       kasbonMutasi: ambilKasbonMutasi(),
-      pelangganCatatan: ambilPelangganCatatan()
+      pelangganCatatan: ambilPelangganCatatan(),
+      thrPelanggan: ambilThrPelanggan()
     };
     const blob = new Blob([JSON.stringify(isi, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -5662,7 +5695,8 @@
           { kunci: 'tutupHari',           koleksi: KOLEKSI_TUTUP,         ada: ambilTutupHari(),        field: 'id',    label: 'tutup hari' },
           { kunci: 'piutangMutasi',       koleksi: KOLEKSI_PIUTANG,       ada: ambilPiutangMutasi(),    field: 'id',    label: 'mutasi piutang' },
           { kunci: 'kasbonMutasi',        koleksi: KOLEKSI_KASBON,        ada: ambilKasbonMutasi(),     field: 'id',    label: 'mutasi kasbon' },
-          { kunci: 'pelangganCatatan',    koleksi: KOLEKSI_PELANGGAN_CAT, ada: ambilPelangganCatatan(), field: 'id',    label: 'catatan pelanggan' }
+          { kunci: 'pelangganCatatan',    koleksi: KOLEKSI_PELANGGAN_CAT, ada: ambilPelangganCatatan(), field: 'id',    label: 'catatan pelanggan' },
+          { kunci: 'thrPelanggan',        koleksi: KOLEKSI_THR,           ada: ambilThrPelanggan(),     field: 'id',    label: 'THR pelanggan' }
         ];
         const laporan = [];
         for (const k of daftarKoleksi) {
@@ -6567,6 +6601,11 @@
   function ambilPelangganCatatan() {
     if (_cachePelangganCat.length > 0) return _cachePelangganCat;
     const data = localStorage.getItem(KUNCI_PELANGGAN_CAT);
+    return data ? JSON.parse(data) : [];
+  }
+  function ambilThrPelanggan() {
+    if (_cacheThr.length > 0) return _cacheThr;
+    const data = localStorage.getItem(KUNCI_THR);
     return data ? JSON.parse(data) : [];
   }
   function ambilTutupHari() {
@@ -8684,22 +8723,36 @@
     const stokKarung = hitungStokKarungPerMerk();
     const kontKarung = document.getElementById('daftarStokKarung');
     const merkList = Object.keys(stokKarung).filter(m => stokKarung[m].sisaKg !== 0);
+    // Dikelompokkan per JENIS beras (Terbitan C) — "keseluruhan total beras" yang
+    // diminta pemilik: IR64 dulu (terbesar di pasar), sisanya urut nama, yang belum
+    // diisi jenisnya paling bawah supaya kelihatan dan tergoda diisi.
+    const perJenis = {};
+    merkList.forEach(m => {
+      const j = jenisUntukMerk(m) || 'Belum diisi jenisnya';
+      (perJenis[j] = perJenis[j] || []).push(m);
+    });
+    const urutJenis = Object.keys(perJenis).sort((a, b) =>
+      (a === 'Belum diisi jenisnya') - (b === 'Belum diisi jenisnya') || (b === 'IR64') - (a === 'IR64') || a.localeCompare(b));
     kontKarung.innerHTML = merkList.length === 0 ?
-      '<div class="kosong-info"><b>Belum ada stok karung</b><span>Catat kedatangan lewat halaman Masuk supaya stok terhitung.</span></div>' :
-      '<div class="kartu-daftar">' + merkList.map(m => {
-        const s = stokKarung[m], kritis = s.sisaKg < 50;
-        return `<div class="baris-44">
-          <span class="titik${kritis ? ' kritis' : ''}"></span>
-          <span class="nama">${escapeHtml(m)}<small>HPP ${formatRupiah(s.hppTerakhirPerKg)}/kg</small></span>
-          <span class="angka${kritis ? ' kritis' : ''}">${s.sisaKg} <u>kg</u></span>
-        </div>`;
+      '<div class="kosong-info"><b>Belum ada stok sack</b><span>Catat kedatangan lewat halaman Masuk supaya stok terhitung.</span></div>' :
+      '<div class="kartu-daftar">' + urutJenis.map(j => {
+        const kgJenis = perJenis[j].reduce((a, m) => a + (stokKarung[m].sisaKg || 0), 0);
+        return `<div class="kd-judul" style="margin:6px 0 2px;"><h3 style="font-size:12px;">${escapeHtml(j)}</h3><span class="kd-hitung">${Math.round(kgJenis).toLocaleString('id-ID')} kg</span></div>`
+          + perJenis[j].map(m => {
+            const s = stokKarung[m], kritis = s.sisaKg < 50;
+            return `<div class="baris-44">
+              <span class="titik${kritis ? ' kritis' : ''}"></span>
+              <span class="nama">${escapeHtml(m)}<small>HPP ${formatRupiah(s.hppTerakhirPerKg)}/kg</small></span>
+              <span class="angka${kritis ? ' kritis' : ''}">${s.sisaKg} <u>kg</u></span>
+            </div>`;
+          }).join('');
       }).join('') + '</div>';
 
     // Ringkas atas (mockup UI): total karung & total unit kemasan siap jual
     const elRK = document.getElementById('stokRingkasKarung');
     if (elRK) {
       const totalKg = merkList.reduce((a, m) => a + (stokKarung[m].sisaKg || 0), 0);
-      elRK.innerHTML = Math.round(totalKg / 50) + ' <span style="font-size:10px;color:var(--redup);font-weight:600;">krg · ±' +
+      elRK.innerHTML = Math.round(totalKg / 50) + ' <span style="font-size:10px;color:var(--redup);font-weight:600;">sack · ±' +
         Math.round(totalKg).toLocaleString('id-ID') + ' kg</span>';
     }
     const elHK = document.getElementById('hitungStokKarung');
@@ -9642,6 +9695,16 @@
     const semua = hitungPelanggan();
     document.getElementById('pelangganJumlah').textContent = semua.length;
     document.getElementById('pelangganBercatatan').textContent = semua.filter(x => x.catatan).length;
+    // THR tahun aktif — default tahun berjalan; pemilik menggantinya saat musim Ramadan.
+    const elTahun = document.getElementById('thrTahun');
+    if (elTahun && !elTahun.value) elTahun.value = new Date().getFullYear();
+    const tahunThr = tahunThrAktif();
+    const thrTahunIni = ambilThrPelanggan().filter(x => x.tahun === tahunThr);
+    const petaThr = {};
+    thrTahunIni.forEach(x => { petaThr[x.kunci] = x; });
+    const nilaiThr = thrTahunIni.reduce((a, x) => a + (x.nilai || 0), 0);
+    document.getElementById('thrRingkas').textContent =
+      thrTahunIni.length + ' penerima' + (nilaiThr > 0 ? ' · ±' + formatRupiah(nilaiThr) : '');
     const kata = (document.getElementById('cariPelanggan').value || '').trim().toLowerCase();
     _daftarPelRender = !kata ? semua : semua.filter(x =>
       (x.nama + ' ' + x.catatan + ' ' + x.favorit).toLowerCase().indexOf(kata) >= 0);
@@ -9654,6 +9717,8 @@
     }
     kont.innerHTML = _daftarPelRender.map((x, i) => {
       const sub = [];
+      const thr = petaThr[x.kunci];
+      if (thr) sub.push('THR ' + tahunThr + ' ✓ ' + (thr.bentuk || ''));
       if (x.favorit) sub.push('langganan ' + x.favorit);
       if (x.terakhir) sub.push('terakhir ' + formatTanggal(x.terakhir));
       if (x.catatan) sub.push(x.catatan);
@@ -9678,6 +9743,18 @@
     document.getElementById('pelTotal').textContent = formatRupiah(x.total);
     document.getElementById('pelUtang').textContent = x.sisaUtang > 0 ? formatRupiah(x.sisaUtang) : 'Lunas';
     document.getElementById('pelCatatan').value = x.catatan || '';
+    const tahunThr = tahunThrAktif();
+    const riwayatThr = ambilThrPelanggan().filter(t => t.kunci === x.kunci)
+      .sort((a, b) => b.tahun - a.tahun);
+    document.getElementById('pelThrRiwayat').innerHTML = riwayatThr.length === 0 ? '' :
+      riwayatThr.map(t => `<div class="pm-baris">
+        <span class="pm-ket">THR ${t.tahun} — ${escapeHtml(t.bentuk || '')}<small>${escapeHtml(formatTanggal(t.tanggal))}</small></span>
+        <span class="pm-nom">${t.nilai > 0 ? '±' + formatRupiah(t.nilai) : ''}</span>
+      </div>`).join('');
+    const sudahThr = thrUntuk(x.kunci, tahunThr);
+    document.getElementById('btnCatatThr').textContent = sudahThr
+      ? 'THR ' + tahunThr + ' ✓ ' + (sudahThr.bentuk || '') + ' — ketuk untuk hapus'
+      : 'Catat THR ' + tahunThr;
     document.body.classList.add('lembar-pelanggan-terbuka');
   }
   function tutupLembarPelanggan() {
@@ -9696,6 +9773,45 @@
     _cachePelangganCat = semua;
     localStorage.setItem(KUNCI_PELANGGAN_CAT, JSON.stringify(semua));
     try { await simpanKeFirestore(KOLEKSI_PELANGGAN_CAT, dok); } catch (e) { console.error(e); }
+    tutupLembarPelanggan();
+    tampilkanPelanggan();
+  }
+
+  // ===== THR PELANGGAN SETIA (Terbitan C) =====
+  function tahunThrAktif() {
+    const el = document.getElementById('thrTahun');
+    const t = el && parseInt(el.value, 10);
+    return (t >= 2020 && t <= 2100) ? t : new Date().getFullYear();
+  }
+  function thrUntuk(kunci, tahun) {
+    return ambilThrPelanggan().find(x => x.kunci === kunci && x.tahun === tahun);
+  }
+  async function catatThrPelanggan() {
+    if (!_pelTerbuka) return;
+    const tahun = tahunThrAktif();
+    const sudah = thrUntuk(_pelTerbuka.kunci, tahun);
+    if (sudah) {
+      if (confirm('THR ' + tahun + ' untuk ' + _pelTerbuka.nama + ' sudah tercatat: ' + (sudah.bentuk || '-')
+        + '.\n\nHapus catatannya (salah catat)?')) {
+        try { await hapusDariFirestore(KOLEKSI_THR, sudah.id); } catch (e) { console.error(e); }
+        _cacheThr = ambilThrPelanggan().filter(x => x.id !== sudah.id);
+        localStorage.setItem(KUNCI_THR, JSON.stringify(_cacheThr));
+        tutupLembarPelanggan(); tampilkanPelanggan();
+      }
+      return;
+    }
+    const bentuk = prompt('THR ' + tahun + ' untuk ' + _pelTerbuka.nama + ' — bentuknya apa?\nContoh: sarung, baju koko, mukena, handuk');
+    if (bentuk === null) return;
+    if (!bentuk.trim()) { alert('Bentuknya wajib diisi — supaya tahun depan terbaca siapa dapat apa.'); return; }
+    const nilaiStr = prompt('Perkiraan nilai barangnya (Rp) — boleh dikosongkan:', '');
+    if (nilaiStr === null) return;
+    const nilai = parseFloat(String(nilaiStr).replace(/[^0-9]/g, '')) || 0;
+    const dok = { id: idUnik(), tahun, kunci: _pelTerbuka.kunci, nama: _pelTerbuka.nama,
+      bentuk: bentuk.trim(), nilai, tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5) };
+    // Salinan lokal dulu supaya layar jujur walau offline (pola catatan pelanggan).
+    const semua = ambilThrPelanggan().slice(); semua.push(dok);
+    _cacheThr = semua; localStorage.setItem(KUNCI_THR, JSON.stringify(semua));
+    try { await simpanKeFirestore(KOLEKSI_THR, dok); } catch (e) { console.error(e); }
     tutupLembarPelanggan();
     tampilkanPelanggan();
   }
@@ -11425,7 +11541,7 @@
   function namaSingkatTrx(p) {
     const nama = p.namaProduk || p.merkSumber || 'Penjualan';
     if (p.jenis === 'kemasan') return `${nama} ${p.ukuranKemasan} kg × ${p.jumlahUnit}`;
-    if (p.jenis === 'karung') return `Karung utuh ${nama} × ${p.jumlahKarung || ''}`.trim();
+    if (p.jenis === 'karung') return `Sack ${p.beratKarungAcuan || 50} ${nama} × ${p.jumlahKarung || ''}`.trim();
     if (p.jenis === 'literan') return `Literan ${nama} · ${p.jumlahLiter || 0} L`;
     if (p.jenis === 'repacking') return `Repacking ${nama} · ${p.totalKg || 0} kg`;
     return nama;
@@ -12582,6 +12698,89 @@
 
   // Disalin dari database sesudah login berhasil. Dokumen ini cuma berisi garam + hasil
   // acak, tidak pernah PIN-nya sendiri.
+  // ===== JENIS BERAS (Terbitan C, 13 Agu 2026) =====
+  // Lapisan di atas merk: IR64, Pandan Wangi, IR42, dst. Petanya DATA yang bisa
+  // diedit pemilik (dok pengaturan/jenisBeras), bukan dipaku di kode — repo publik,
+  // dan nama dagang itu data toko. Aturan awal cuma menebak yang tidak mungkin salah:
+  // IR64* -> IR64, Angsa & Perahu Layar -> IR64 (konfirmasi pemilik 13 Agu 2026),
+  // IR42* -> IR42, Ketan* -> Ketan, Pandan Wangi & Beras Merah -> dirinya sendiri.
+  const PILIHAN_JENIS_BERAS = ['IR64', 'Pandan Wangi', 'IR42', 'Rojolele', 'Ketan Putih', 'Ketan Hitam', 'Beras Merah'];
+  function ambilPetaJenisBeras() {
+    try { return JSON.parse(localStorage.getItem(KUNCI_JENIS_BERAS) || '{}'); } catch (e) { return {}; }
+  }
+  function tebakJenisBeras(merk) {
+    const m = String(merk || '');
+    if (/^IR64/i.test(m) || m === 'Angsa' || m === 'Perahu Layar') return 'IR64';
+    if (/^IR42/i.test(m)) return 'IR42';
+    if (/^Ketan Hitam/i.test(m)) return 'Ketan Hitam';
+    if (/^Ketan/i.test(m)) return 'Ketan Putih';
+    if (/Pandan Wangi/i.test(m)) return 'Pandan Wangi';
+    if (/Beras Merah/i.test(m)) return 'Beras Merah';
+    if (/Rojolele|Rojo Lele/i.test(m)) return 'Rojolele';
+    return '';
+  }
+  function jenisUntukMerk(merk) {
+    const peta = ambilPetaJenisBeras();
+    return peta[merk] !== undefined ? peta[merk] : tebakJenisBeras(merk);
+  }
+  function pasangPendengarJenisBeras() {
+    onSnapshot(doc(db, 'pengaturan', 'jenisBeras'), (snap) => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      if (d && d.peta) {
+        localStorage.setItem(KUNCI_JENIS_BERAS, JSON.stringify(d.peta));
+        if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
+        if (document.getElementById('halamanHarga').classList.contains('tampil')) tampilkanJenisBeras();
+      }
+    }, () => { /* offline — pakai salinan perangkat */ });
+  }
+  setTimeout(pasangPendengarJenisBeras, 0);
+  async function simpanJenisBeras(merk, jenis) {
+    const peta = ambilPetaJenisBeras();
+    peta[merk] = jenis;
+    localStorage.setItem(KUNCI_JENIS_BERAS, JSON.stringify(peta));
+    try {
+      await simpanKeFirestore('pengaturan', { id: 'jenisBeras', peta, diubahPada: new Date().toISOString() });
+    } catch (e) { console.error(e); }
+    tampilkanJenisBeras();
+    if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
+  }
+  function ubahJenisBeras(merk) {
+    const sekarang = jenisUntukMerk(merk);
+    const daftar = PILIHAN_JENIS_BERAS.map((j, i) => (i + 1) + '. ' + j).join('\n');
+    const jawab = prompt('Jenis beras untuk "' + merk + '"?\nKetik nomor, atau ketik nama jenis lain:\n\n' + daftar
+      + '\n\nSekarang: ' + (sekarang || 'belum diisi'), sekarang);
+    if (jawab === null) return;
+    const bersih = jawab.trim();
+    const nomor = parseInt(bersih, 10);
+    const jenis = (nomor >= 1 && nomor <= PILIHAN_JENIS_BERAS.length) ? PILIHAN_JENIS_BERAS[nomor - 1] : bersih;
+    simpanJenisBeras(merk, jenis);
+  }
+  function semuaMerkDikenal() {
+    const kumpul = {};
+    Object.keys(hitungStokKarungPerMerk()).forEach(m => { kumpul[m] = true; });
+    Object.keys(hitungStokKemasan()).forEach(k => { kumpul[k.split('|')[0]] = true; });
+    ambilHargaKarung().forEach(h => { kumpul[h.merk] = true; });
+    return Object.keys(kumpul).sort();
+  }
+  function tampilkanJenisBeras() {
+    const kont = document.getElementById('daftarJenisBeras');
+    if (!kont) return;
+    const merk = semuaMerkDikenal();
+    document.getElementById('hitungJenisBeras').textContent =
+      merk.filter(m => jenisUntukMerk(m)).length + '/' + merk.length + ' terisi';
+    kont.innerHTML = merk.length === 0
+      ? '<div class="kosong-info"><b>Belum ada merk tercatat</b><span>Merk muncul sendiri begitu ada stok atau harga.</span></div>'
+      : merk.map(m => {
+        const j = jenisUntukMerk(m);
+        return `<button type="button" class="baris-44 baris-ketuk" onclick="ubahJenisBeras('${escapeHtml(m).replace(/'/g, "\\'")}')">
+          <span class="nama"><i class="trx-nama">${escapeHtml(m)}</i></span>
+          ${j ? `<span class="angka">${escapeHtml(j)}</span>` : '<span class="lencana-amber">belum diisi</span>'}
+          ${IKON_CHEV}
+        </button>`;
+      }).join('');
+  }
+
   function pasangPendengarPin() {
     onSnapshot(doc(db, 'pengaturan', 'keamanan'), (snap) => {
       if (!snap.exists()) return;
@@ -12911,6 +13110,7 @@
   })();
   window.pilihJenisJual = pilihJenisJual;
   window.pilihBeratSack = pilihBeratSack;
+  window.ubahJenisBeras = ubahJenisBeras;
   window.hitungTotalJual = hitungTotalJual;
   window.pilihBayar = pilihBayar;
   window.tambahBarisMerk = tambahBarisMerk;
@@ -12992,6 +13192,7 @@
   window.bukaLembarPelanggan = bukaLembarPelanggan;
   window.tutupLembarPelanggan = tutupLembarPelanggan;
   window.simpanCatatanPelanggan = simpanCatatanPelanggan;
+  window.catatThrPelanggan = catatThrPelanggan;
   window.bukaSetelPin = bukaSetelPin;
   window.tutupSetelPin = tutupSetelPin;
   window.simpanSetelPin = simpanSetelPin;
