@@ -2424,6 +2424,26 @@
   .lap-kosong { font-size: 12.5px; color: var(--redup); padding: 10px 0; }
   .lap-kaki { margin-top: 24px; padding-top: 10px; border-top: 1px solid var(--garis); font-size: 10.5px; color: var(--redup); line-height: 1.6; }
 
+  /* Tutup Buku memakai kerangka & kelas yang sama dengan Laporan. */
+  #lembarTutupBuku {
+    display: none; position: fixed; inset: 0; z-index: 190;
+    background: var(--gelap-tetap); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  body.lembar-tutupbuku-terbuka { overflow: hidden; }
+  body.lembar-tutupbuku-terbuka #lembarTutupBuku { display: block; }
+  .tb-langkah { border: 1px solid var(--garis); border-radius: 14px; padding: 12px; margin-bottom: 12px; }
+  .tb-langkah.siap { border-color: var(--emas-gelap); }
+  .tb-langkah.beres { border-color: var(--hijau-naik); }
+  .tb-langkah h3 { margin: 0 0 4px; font-size: 14px; color: var(--teks); }
+  .tb-langkah p { margin: 0 0 10px; font-size: 12px; color: var(--redup); line-height: 1.6; }
+  .tb-langkah button {
+    width: 100%; min-height: 48px; border-radius: 10px; border: none;
+    background: var(--emas); color: var(--tombol-teks); font-family: inherit; font-size: 14px; font-weight: 700;
+  }
+  .tb-langkah button:disabled { background: var(--abu); color: var(--redup); }
+  .tb-langkah .tb-status { font-size: 12px; margin-top: 8px; color: var(--hijau-naik); }
+  .tb-bahaya button { background: var(--merah); color: #fff; }
+
   /* CETAK — kertas putih, tinta hitam. Tema gelap di kertas menghabiskan tinta dan
      hasilnya sulit dibaca. Semua yang bukan laporan disembunyikan. */
   @media print {
@@ -2526,6 +2546,18 @@
       <button type="button" class="qris-redup" onclick="tutupLembarQris()">Tutup</button>
     </div>
   </div>
+</div>
+
+<!-- TUTUP BUKU TAHUNAN (13 Agu 2026): ritual arsip — arsipkan, tulis saldo pembuka,
+     baru boleh hapus. Sesudahnya sistem hanya memuat tahun berjalan: ringan bertahun-
+     tahun di HP toko dan kuota database. -->
+<div id="lembarTutupBuku" role="dialog" aria-modal="true" aria-labelledby="tbJudul">
+  <div class="lap-bilah">
+    <button type="button" class="lap-tutup" onclick="tutupTutupBuku()">Tutup</button>
+    <input type="number" id="tbTahun" inputmode="numeric" onchange="gambarTutupBuku()" aria-label="Tahun yang ditutup">
+    <button type="button" class="lap-cetak" onclick="gambarTutupBuku()">Segarkan</button>
+  </div>
+  <div class="lap-kertas" id="tbKertas"></div>
 </div>
 
 <!-- LAPORAN BULANAN (12 Agu 2026): satu lembar yang bisa dicetak / disimpan jadi PDF
@@ -2659,6 +2691,7 @@
   <button type="button" class="lm-baris tab-owner" data-halaman="pelanggan" onclick="pindahDariMenu('pelanggan')"><span>Pelanggan <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— buku pelanggan &amp; ciri pengenal</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="piutang" onclick="pindahDariMenu('piutang')"><span>Piutang <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— pelanggan yang berutang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaLaporan()"><span>Laporan Bulanan <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— cetak / simpan PDF</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaTutupBuku()"><span>Tutup Buku <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— arsip tahunan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaSetelPin()"><span>PIN Owner <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— setel / ganti</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()"><span>Jaga Toko <i>— siapa yang bertugas</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <div class="lm-kaki">
@@ -6618,9 +6651,10 @@
   // saldo yang disimpan & ditimpa; semuanya diturunkan ulang dari mutasinya, sama seperti
   // piutang, stok, dan margin. Nama pegawai dinormalkan dengan kunci yang sama
   // (kunciPelanggan) supaya "Gono" dan "gono" tidak jadi dua orang.
-  function hitungKasbon() {
+  function hitungKasbon(sampai) {
+    const batasi = arr => sampai ? arr.filter(x => (x.tanggal || '') <= sampai) : arr;
     const peta = {};
-    ambilKasbonMutasi().forEach(m => {
+    batasi(ambilKasbonMutasi()).forEach(m => {
       const k = kunciPelanggan(m.namaPegawai);
       if (!k) return;
       if (!peta[k]) peta[k] = { kunci: k, nama: String(m.namaPegawai).trim(), urutNama: 0, ambil: 0, bayar: 0, mutasi: [] };
@@ -6631,6 +6665,12 @@
         s.bayar += n;
         s.mutasi.push({ jenis: 'bayar', tanggal: m.tanggal, nominal: n, id: m.id,
           ket: 'Dikembalikan' + (m.caraBayar ? ' · ' + m.caraBayar : '') + (m.catatan ? ' · ' + m.catatan : '') });
+      } else if (m.tipe === 'saldoAwal') {
+        // Saldo pembuka tutup buku — menambah tanggungan seperti ambil, tapi BUKAN uang
+        // keluar tahun ini: arus kas menyaring tipe 'ambil' saja.
+        s.ambil += n;
+        s.mutasi.push({ jenis: 'saldoAwal', tanggal: m.tanggal, nominal: n, id: m.id,
+          ket: 'Saldo awal (tutup buku)' + (m.catatan ? ' · ' + m.catatan : '') });
       } else {
         s.ambil += n;
         s.mutasi.push({ jenis: 'ambil', tanggal: m.tanggal, nominal: n, id: m.id,
@@ -6661,7 +6701,8 @@
   // Tidak ada angka saldo yang disimpan & ditimpa: semuanya diturunkan ulang tiap dipanggil,
   // jadi pembatalan/koreksi transaksi kredit otomatis ikut terbawa (ambilPenjualan sudah
   // menyaring yang batal), dan salah catat selalu bisa ditelusuri ke dokumen sumbernya.
-  function hitungPiutang() {
+  function hitungPiutang(sampai) {
+    const batasi = arr => sampai ? arr.filter(x => (x.tanggal || '') <= sampai) : arr;
     const peta = {};
     function slot(nama, urut) {
       const k = kunciPelanggan(nama);
@@ -6671,7 +6712,7 @@
       if ((urut || 0) >= peta[k].urutNama) { peta[k].nama = String(nama).trim(); peta[k].urutNama = urut || 0; }
       return peta[k];
     }
-    ambilPenjualan().forEach(p => {
+    batasi(ambilPenjualan()).forEach(p => {
       if (p.caraBayar !== 'Kredit') return;
       const s = slot(p.namaPelanggan, p.id);
       if (!s) return;
@@ -6680,7 +6721,7 @@
       s.mutasi.push({ jenis: 'jual', tanggal: p.tanggal, jam: p.jam || '', nominal: n, idTrx: p.id,
         ket: namaSingkatTrx(p) });
     });
-    ambilPiutangMutasi().forEach(m => {
+    batasi(ambilPiutangMutasi()).forEach(m => {
       const s = slot(m.namaPelanggan, m.id);
       if (!s) return;
       const n = m.nominal || 0;
@@ -6754,8 +6795,10 @@
   }
   function merkPunyaKarung50(merk) { return merkPunyaKarungBerat(merk, 50); }
 
-  function hitungStokKarungPerMerk() {
-    const batch = ambilSemuaBatch(); // sudah terurut terbaru dulu (by id) dari pasangSinkronisasi/urutkanTerbaru
+  function hitungStokKarungPerMerk(sampai) {
+    // `sampai` (Tutup Buku, 13 Agu 2026): batas tanggal INKLUSIF. Kosong = semua.
+    const batasi = arr => sampai ? arr.filter(x => (x.tanggal || '') <= sampai) : arr;
+    const batch = batasi(ambilSemuaBatch()); // sudah terurut terbaru dulu (by id) dari pasangSinkronisasi/urutkanTerbaru
     const stok = {}; // { merk: { totalMasuk, terpakai, totalNilaiMasuk, hargaTerakhirPerKg, hppTerakhirPerKg } }
 
     batch.forEach(k => {
@@ -6785,7 +6828,7 @@
     });
 
     // Kurangi pemakaian dari penjualan (jalur karung utuh & repacking dadakan & literan langsung dari merk)
-    ambilPenjualan().forEach(p => {
+    batasi(ambilPenjualan()).forEach(p => {
       if ((p.jenis === 'karung' || p.jenis === 'repacking' || p.jenis === 'literan') && p.merkSumber && stok[p.merkSumber]) {
         stok[p.merkSumber].terpakai += p.totalKg;
       }
@@ -6796,7 +6839,7 @@
     // ambilProduksiBerlaku() (9 Agu 2026) — kalau raw ambilProduksi() dipakai, catatan
     // yang sudah dikoreksi ikut menarik kg pemakaian LAGI dari catatan penggantinya juga
     // (dobel hitung), karena keduanya sama-sama tersimpan sebagai dokumen terpisah.
-    ambilProduksiBerlaku().forEach(pr => {
+    batasi(ambilProduksiBerlaku()).forEach(pr => {
       if (Array.isArray(pr.sumberList) && pr.sumberList.length > 0) {
         pr.sumberList.forEach(s => { if (s.merk && stok[s.merk]) stok[s.merk].terpakai += (s.kg || 0); });
       } else if (pr.merkSumber && stok[pr.merkSumber]) {
@@ -6805,7 +6848,7 @@
     });
 
     // Retur karung UTUH balik ke stok (kurangi "terpakai" = tambah sisa). Retur TIDAK UTUH masuk karantina, tidak di sini.
-    ambilRetur().forEach(r => {
+    batasi(ambilRetur()).forEach(r => {
       if (r.jenisAsal === 'karung' && r.kondisi === 'utuh' && r.merkSumber && stok[r.merkSumber]) {
         stok[r.merkSumber].terpakai -= r.totalKg;
       }
@@ -6814,7 +6857,7 @@
     // Penyesuaian opname (12 Agu 2026): selisihKg = fisik − sistem saat dihitung.
     // Lewat 'terpakai' dan BUKAN 'totalMasuk', supaya HPP rata-rata tertimbang tidak
     // tersentuh — barang susut tidak mengubah harga modal barang yang tersisa.
-    ambilPenyesuaianStok().forEach(o => {
+    batasi(ambilPenyesuaianStok()).forEach(o => {
       if (o.merk && stok[o.merk]) stok[o.merk].terpakai -= (o.selisihKg || 0);
     });
 
@@ -6825,7 +6868,7 @@
     // seperti batch beli menilai stok cuma dari harga barang, bukan ongkos apa pun
     // sesudahnya). Kg yang dikreditkan = kg yang benar-benar jadi karung (ukuran×unit),
     // bukan kg yang dipakai dari sumber — selisihnya (susut) sengaja tidak dikreditkan.
-    ambilProduksiBerlaku().forEach(pr => {
+    batasi(ambilProduksiBerlaku()).forEach(pr => {
       if (!pr.jadiKarungUtuh || !pr.merkTujuan) return;
       const totalKgJadi = (pr.ukuranKemasan || 0) * (pr.jumlahUnit || 0);
       if (totalKgJadi <= 0) return;
@@ -6850,11 +6893,12 @@
   // Stok kemasan jadi per nama produk = total unit diproduksi - unit terjual.
   // HPP ditampilkan sebagai rata-rata tertimbang (total nilai produksi / total unit dibuat) —
   // bukan HPP produksi terakhir saja — supaya benar kalau stok gabungan dari beberapa batch produksi berbeda harga.
-  function hitungStokKemasan() {
+  function hitungStokKemasan(sampai) {
+    const batasi = arr => sampai ? arr.filter(x => (x.tanggal || '') <= sampai) : arr;
     // ambilProduksiBerlaku() (9 Agu 2026) — catatan yang HPP-nya sudah dikoreksi
     // dikeluarkan, supaya HPP-Rp0 yang lama tidak lagi ikut menyeret rata-rata
     // tertimbang produk itu (temuan audit margin: Angsa 25 kg & Kembang 10 kg).
-    const produksi = ambilProduksiBerlaku();
+    const produksi = batasi(ambilProduksiBerlaku());
     const stok = {}; // { "namaProduk|ukuranKg": { unitDibuat, unitTerjual, nilaiProduksiTotal } }
 
     produksi.forEach(pr => {
@@ -6868,7 +6912,7 @@
       stok[kunci].nilaiProduksiTotal += (pr.hppPerUnit || 0) * pr.jumlahUnit;
     });
 
-    ambilPenjualan().forEach(p => {
+    batasi(ambilPenjualan()).forEach(p => {
       if (p.jenis === 'kemasan') {
         const kunci = p.namaProduk + '|' + p.ukuranKemasan;
         if (stok[kunci]) stok[kunci].unitTerjual += p.jumlahUnit;
@@ -6876,7 +6920,7 @@
     });
 
     // Retur kemasan UTUH balik ke stok (kurangi unitTerjual = tambah sisa). Retur TIDAK UTUH masuk karantina, tidak di sini.
-    ambilRetur().forEach(r => {
+    batasi(ambilRetur()).forEach(r => {
       if (r.jenisAsal === 'kemasan' && r.kondisi === 'utuh') {
         const kunci = r.namaProduk + '|' + r.ukuranKemasan;
         if (stok[kunci]) stok[kunci].unitTerjual -= r.jumlahUnit;
@@ -8249,8 +8293,9 @@
     return data ? JSON.parse(data) : [];
   }
 
-  function hitungStokBahanKemasan() {
-    const semua = ambilBahanKemasan();
+  function hitungStokBahanKemasan(sampai) {
+    const batasi = arr => sampai ? arr.filter(x => (x.tanggal || '') <= sampai) : arr;
+    const semua = batasi(ambilBahanKemasan());
     const stok = {}; // { jenis: { totalBeli, totalTerpakai, totalHargaBeli, sisaPcs, hppPerPcs (rata-rata tertimbang) } }
     JENIS_BAHAN_KEMASAN.forEach(j => { stok[j] = { totalBeli: 0, totalTerpakai: 0, totalHargaBeli: 0 }; });
     semua.forEach(b => {
@@ -8262,6 +8307,11 @@
         // cabang beli — kalau lewat sana, pcs gratisan ikut membagi rata-rata harga
         // dan menyeret ongkos kantong per pcs jadi salah.
         stok[b.jenis].penyesuaian = (stok[b.jenis].penyesuaian || 0) + b.jumlah;
+      } else if (b.tipe === 'saldoAwal') {
+        // Saldo pembuka tutup buku (13 Agu 2026): membawa sisa DAN harga rata-rata
+        // tahun lalu, tapi bukan uang keluar — pembaca uang menyaring tipe 'beli'.
+        stok[b.jenis].totalBeli += b.jumlah;
+        stok[b.jenis].totalHargaBeli += (b.hargaTotal || 0);
       } else {
         stok[b.jenis].totalBeli += b.jumlah;
         stok[b.jenis].totalHargaBeli += (b.hargaTotal || 0);
@@ -8408,8 +8458,9 @@
     return data ? JSON.parse(data) : [];
   }
 
-  function hitungStokBahanLiteran() {
-    const semua = ambilBahanLiteran();
+  function hitungStokBahanLiteran(sampai) {
+    const batasi = arr => sampai ? arr.filter(x => (x.tanggal || '') <= sampai) : arr;
+    const semua = batasi(ambilBahanLiteran());
     const stok = {};
     Object.keys(HARGA_AWAL_BAHAN_LITERAN).forEach(j => { stok[j] = { totalBeli: 0, totalTerpakai: 0, totalHargaBeli: 0 }; });
     semua.forEach(b => {
@@ -8421,6 +8472,11 @@
         // cabang beli — kalau lewat sana, pcs gratisan ikut membagi rata-rata harga
         // dan menyeret ongkos kantong per pcs jadi salah.
         stok[b.jenis].penyesuaian = (stok[b.jenis].penyesuaian || 0) + b.jumlah;
+      } else if (b.tipe === 'saldoAwal') {
+        // Saldo pembuka tutup buku (13 Agu 2026): membawa sisa DAN harga rata-rata
+        // tahun lalu, tapi bukan uang keluar — pembaca uang menyaring tipe 'beli'.
+        stok[b.jenis].totalBeli += b.jumlah;
+        stok[b.jenis].totalHargaBeli += (b.hargaTotal || 0);
       } else {
         stok[b.jenis].totalBeli += b.jumlah;
         stok[b.jenis].totalHargaBeli += (b.hargaTotal || 0);
@@ -9822,6 +9878,277 @@
     if (!dl) return;
     dl.innerHTML = hitungPelanggan().slice(0, 80)
       .map(x => `<option value="${escapeHtml(x.nama)}"></option>`).join('');
+  }
+
+  // ===== TUTUP BUKU TAHUNAN (13 Agustus 2026) =====
+  // Kenapa: semua angka diturunkan dari riwayat penuh yang dimuat ke tiap perangkat.
+  // Ribuan transaksi per tahun berarti HP kentang makin berat dan kuota database
+  // makin tergerus. Ritual ini memindahkan satu tahun ke FILE ARSIP, menuliskan
+  // SALDO PEMBUKA yang membuat setiap angka turunan tetap sama persis, baru
+  // mengizinkan penghapusan. Tiga langkah, berurutan, tidak bisa dilompati:
+  //   1. Unduh arsip (bukti permanen — tanpa ini langkah lain terkunci)
+  //   2. Tulis saldo pembuka 1 Januari tahun berikutnya
+  //   3. Hapus dokumen tahun itu dari database (online, ketik tahunnya untuk yakin)
+  // Saldo pembuka memakai mekanisme yang SUDAH ADA sehingga tidak ada pembaca baru:
+  // batch stokAwal (kolam karung, dikecualikan arus kas), produksi beliJadi (kemasan),
+  // bahan tipe saldoAwal, piutang tipe saldoAwal (umur terbawa lewat tanggal tertua),
+  // kasbon tipe saldoAwal. HPP terbawa sebagai rata-rata tertimbang penutupan.
+  let _tbArsipDiunduh = null;   // tahun yang arsipnya SUDAH diunduh di sesi ini
+  let _tbSaldoDitulis = null;   // tahun yang saldonya sudah ditulis di sesi ini
+
+  function tbCutoff(tahun) { return tahun + '-12-31'; }
+
+  function tbPunyaBerat(merk, berat, cutoff) {
+    return ambilSemuaBatch().some(k => (k.tanggal || '') <= cutoff &&
+      (k.merkList || []).some(m => m.merk === merk && m.satuan === 'karung' && m.beratKarung === berat));
+  }
+
+  function hitungSaldoTutup(tahun) {
+    const cutoff = tbCutoff(tahun);
+    const karung = [];
+    const petaKarung = hitungStokKarungPerMerk(cutoff);
+    Object.keys(petaKarung).forEach(m => {
+      const st = petaKarung[m];
+      if (Math.abs(st.sisaKg) < 0.01) return;
+      karung.push({ merk: m, sisaKg: st.sisaKg, hppPerKg: st.hppTerakhirPerKg || 0,
+        punya50: tbPunyaBerat(m, 50, cutoff), punya25: tbPunyaBerat(m, 25, cutoff) });
+    });
+    const kemasan = [];
+    const petaKem = hitungStokKemasan(cutoff);
+    Object.keys(petaKem).forEach(k => {
+      const st = petaKem[k];
+      if (!(st.sisaUnit > 0)) return;
+      kemasan.push({ namaProduk: st.namaProduk, ukuran: st.ukuranKemasan, sisaUnit: st.sisaUnit, hppPerUnit: st.hppRataRataPerUnit || 0 });
+    });
+    const bahanK = [], bahanL = [];
+    const petaBK = hitungStokBahanKemasan(cutoff);
+    Object.keys(petaBK).forEach(j => { const st = petaBK[j];
+      if (st.sisaPcs > 0) bahanK.push({ jenis: j, sisaPcs: st.sisaPcs, hargaRata: st.hppPerPcs || 0 }); });
+    const petaBL = hitungStokBahanLiteran(cutoff);
+    Object.keys(petaBL).forEach(j => { const st = petaBL[j];
+      if (st.sisaPcs > 0) bahanL.push({ jenis: j, sisaPcs: st.sisaPcs, hargaRata: st.hargaPerPcs || 0 }); });
+    const piutang = hitungPiutang(cutoff).filter(x => x.sisa > 0)
+      .map(x => ({ nama: x.nama, sisa: x.sisa, tanggalTertua: x.tanggalTertua || cutoff }));
+    const kasbon = hitungKasbon(cutoff).filter(x => x.sisa > 0)
+      .map(x => ({ nama: x.nama, sisa: x.sisa }));
+    return { tahun, cutoff, karung, kemasan, bahanK, bahanL, piutang, kasbon };
+  }
+
+  // Dokumen milik tahun <= cutoff per koleksi — daftar id untuk arsip & penghapusan.
+  // Katalog harga, pengaturan, catatan pelanggan, dan THR TIDAK ikut: itu data hidup.
+  function tbDaftarKoleksi(tahun) {
+    const cutoff = tbCutoff(tahun);
+    // !x.tutupBuku WAJIB: saldo pembuka piutang sengaja bertanggal utang tertuanya
+    // (supaya umurnya jujur) — tanpa pengecualian ini, langkah 3 MENGHAPUS dokumen
+    // pembuka yang baru ditulis langkah 2. Berlaku ke semua koleksi untuk aman.
+    const tgl = arr => arr.filter(x => (x.tanggal || '') <= cutoff && !x.tutupBuku);
+    return [
+      { koleksi: KOLEKSI_PENJUALAN,      label: 'penjualan',          dok: tgl(ambilPenjualanSemua()) },
+      { koleksi: KOLEKSI_BATCH,          label: 'kedatangan',         dok: tgl(ambilSemuaBatch()) },
+      { koleksi: KOLEKSI_PRODUKSI,       label: 'produksi',           dok: tgl(ambilProduksi()) },
+      { koleksi: KOLEKSI_RETUR,          label: 'retur',              dok: tgl(ambilRetur()) },
+      { koleksi: KOLEKSI_KARANTINA,      label: 'karantina',          dok: tgl(ambilKarantina()) },
+      { koleksi: KOLEKSI_HARIAN,         label: 'pengeluaran harian', dok: tgl(ambilPengeluaranHarian()) },
+      { koleksi: KOLEKSI_BAHAN_KEMASAN,  label: 'bahan kemasan',      dok: tgl(ambilBahanKemasan()) },
+      { koleksi: KOLEKSI_BAHAN_LITERAN,  label: 'bahan literan',      dok: tgl(ambilBahanLiteran()) },
+      { koleksi: KOLEKSI_PIUTANG,        label: 'mutasi piutang',     dok: tgl(ambilPiutangMutasi()) },
+      { koleksi: KOLEKSI_KASBON,         label: 'mutasi kasbon',      dok: tgl(ambilKasbonMutasi()) },
+      { koleksi: KOLEKSI_PENYESUAIAN,    label: 'penyesuaian stok',   dok: tgl(ambilPenyesuaianStok()) },
+      { koleksi: KOLEKSI_TUTUP,          label: 'tutup hari',         dok: tgl(ambilTutupHari()) },
+      { koleksi: KOLEKSI_BULANAN,        label: 'biaya bulanan',      dok: ambilBiayaBulanan().filter(b => (b.bulan || '') <= tahun + '-12') }
+    ];
+  }
+
+  // Penjaga: tahun tidak boleh ditutup selagi masih ada pekerjaan yang MENGUBAH STOK.
+  function tbPenjaga(tahun) {
+    const cutoff = tbCutoff(tahun);
+    return {
+      darurat: daftarDaruratBelumRinci().filter(p => (p.tanggal || '') <= cutoff).length,
+      rapikan: daftarPerluRapikan().filter(p => (p.tanggal || '') <= cutoff).length,
+      hppBolong: ambilPenjualan().filter(p => (p.tanggal || '') <= cutoff && !hppTercatat(p)).length
+    };
+  }
+
+  function bukaTutupBuku() {
+    const el = document.getElementById('tbTahun');
+    if (!el.value) el.value = new Date().getFullYear();
+    gambarTutupBuku();
+    document.body.classList.add('lembar-tutupbuku-terbuka');
+    document.getElementById('lembarTutupBuku').scrollTop = 0;
+  }
+  function tutupTutupBuku() { document.body.classList.remove('lembar-tutupbuku-terbuka'); }
+
+  function gambarTutupBuku() {
+    const tahun = parseInt(document.getElementById('tbTahun').value, 10) || new Date().getFullYear();
+    const saldo = hitungSaldoTutup(tahun);
+    const daftar = tbDaftarKoleksi(tahun);
+    const totalDok = daftar.reduce((a, d) => a + d.dok.length, 0);
+    const jaga = tbPenjaga(tahun);
+    const buntu = jaga.darurat > 0 || jaga.rapikan > 0;
+    const arsipBeres = _tbArsipDiunduh === tahun;
+    const saldoBeres = _tbSaldoDitulis === tahun;
+    const b = [];
+    b.push(`<div class="lap-kepala"><h1 id="tbJudul">Tutup Buku ${tahun}</h1>
+      <div class="lap-bulan">${totalDok.toLocaleString('id-ID')} dokumen sampai ${escapeHtml(formatTanggal(saldo.cutoff))}</div>
+      <div class="lap-cap">Arsipkan → tulis saldo pembuka → baru boleh hapus. Tidak bisa dilompati.</div></div>`);
+
+    if (buntu || jaga.hppBolong > 0) {
+      b.push(`<div class="lap-catatan${buntu ? ' lap-peringatan' : ''}">` +
+        (jaga.darurat > 0 ? `<b>${jaga.darurat} penjualan kasir darurat belum dirinci</b> — stoknya belum terpotong; tahun TIDAK BISA ditutup sebelum ini nol (tab Riwayat). ` : '') +
+        (jaga.rapikan > 0 ? `<b>${jaga.rapikan} penjualan kasir perlu dirapikan</b> — sama: wajib nol dulu. ` : '') +
+        (jaga.hppBolong > 0 ? `${jaga.hppBolong} transaksi ber-HPP bolong ikut terarsip apa adanya — laba tahun ini tercatat lebih rendah dari kenyataan selamanya. Kalau mau membereskannya, isi lewat tab Laba SEBELUM menutup.` : '') +
+        `</div>`);
+    }
+
+    const rp = n => (n < 0 ? '−' : '') + formatRupiah(Math.abs(n));
+    b.push(`<div class="lap-bagian"><h2>Saldo pembuka 1 Jan ${tahun + 1} — pratinjau</h2>
+      ${barisLap('Sack sumber', saldo.karung.length + ' merk', saldo.karung.reduce((a, x) => a + x.sisaKg, 0).toLocaleString('id-ID') + ' kg')}
+      ${barisLap('Bags jadi', saldo.kemasan.length + ' produk', saldo.kemasan.reduce((a, x) => a + x.sisaUnit, 0) + ' bags')}
+      ${barisLap('Bahan kemasan + literan', (saldo.bahanK.length + saldo.bahanL.length) + ' jenis', (saldo.bahanK.reduce((a, x) => a + x.sisaPcs, 0) + saldo.bahanL.reduce((a, x) => a + x.sisaPcs, 0)) + ' pcs')}
+      ${barisLap('Piutang terbawa', saldo.piutang.length + ' pelanggan — umurnya ikut terbawa', saldo.piutang.reduce((a, x) => a + x.sisa, 0))}
+      ${barisLap('Kasbon terbawa', saldo.kasbon.length + ' pegawai', saldo.kasbon.reduce((a, x) => a + x.sisa, 0))}
+      <div class="lap-catatan">Saldo pembuka BUKAN uang masuk/keluar — arus kas ${tahun + 1} mulai dari nol.
+      HPP terbawa sebagai rata-rata tertimbang penutupan, jadi laba ${tahun + 1} menghitung modal yang benar.</div>
+    </div>`);
+
+    b.push(`<div class="lap-bagian"><h2>Yang diarsipkan &amp; dihapus</h2>
+      ${daftar.filter(d => d.dok.length > 0).map(d => barisLap(d.label, '', d.dok.length + ' dokumen')).join('') || '<div class="lap-kosong">Tidak ada dokumen pada tahun ini.</div>'}
+    </div>`);
+
+    b.push(`<div class="tb-langkah ${arsipBeres ? 'beres' : 'siap'}">
+      <h3>Langkah 1 — Unduh arsip ${tahun}</h3>
+      <p>Satu file berisi SEMUA dokumen di atas + saldo penutupan. Simpan baik-baik (HP + cadangan lain) — sesudah langkah 3, inilah satu-satunya salinan riwayat ${tahun}.</p>
+      <button type="button" onclick="unduhArsipTahun(${tahun})">Unduh arsip ${tahun}</button>
+      ${arsipBeres ? '<div class="tb-status">✓ Arsip terunduh di sesi ini</div>' : ''}
+    </div>`);
+    b.push(`<div class="tb-langkah ${saldoBeres ? 'beres' : (arsipBeres && !buntu ? 'siap' : '')}">
+      <h3>Langkah 2 — Tulis saldo pembuka 1 Jan ${tahun + 1}</h3>
+      <p>Menuliskan dokumen pembuka di atas ke database. Belum menghapus apa pun — angka stok/piutang/kasbon TIDAK berubah karena riwayat lamanya masih ada namun pembukanya bertanggal tahun depan… dihitung dobel? TIDAK: pembuka baru berpengaruh justru SETELAH riwayat lama dihapus di langkah 3. Karena itu langkah 2 dan 3 harus selesai BERURUTAN pada kesempatan yang sama.</p>
+      <button type="button" ${arsipBeres && !buntu && !saldoBeres ? '' : 'disabled'} onclick="tulisSaldoPembuka(${tahun})">Tulis saldo pembuka</button>
+      ${saldoBeres ? '<div class="tb-status">✓ Saldo pembuka tertulis</div>' : (buntu ? '<div class="tb-status" style="color:var(--merah);">Terkunci: bereskan antrean darurat/rapikan dulu</div>' : '')}
+    </div>`);
+    b.push(`<div class="tb-langkah tb-bahaya ${saldoBeres ? 'siap' : ''}">
+      <h3>Langkah 3 — Hapus dokumen ${tahun} dari database</h3>
+      <p>SATU ARAH. Butuh internet. ${totalDok.toLocaleString('id-ID')} dokumen dihapus satu per satu; kalau terputus, buka lagi lembar ini dan ulangi langkah 3 — sisanya melanjutkan sendiri. Riwayat ${tahun} sesudah ini hanya ada di file arsip.</p>
+      <button type="button" ${saldoBeres ? '' : 'disabled'} onclick="hapusDokumenTahun(${tahun})">Hapus ${totalDok.toLocaleString('id-ID')} dokumen ${tahun}</button>
+      <div class="tb-status" id="tbProgresHapus"></div>
+    </div>`);
+    document.getElementById('tbKertas').innerHTML = b.join('');
+  }
+
+  function unduhArsipTahun(tahun) {
+    const saldo = hitungSaldoTutup(tahun);
+    const daftar = tbDaftarKoleksi(tahun);
+    const isi = { jenisFile: 'arsip-tutup-buku', versi: 1, tahun, dibuatPada: new Date().toISOString(),
+      saldoPenutupan: saldo, dokumen: {} };
+    daftar.forEach(d => { isi.dokumen[d.koleksi] = d.dok; });
+    const blob = new Blob([JSON.stringify(isi, null, 1)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `arsip-miqbal-${tahun}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    _tbArsipDiunduh = tahun;
+    gambarTutupBuku();
+  }
+
+  async function tulisSaldoPembuka(tahun) {
+    if (_tbArsipDiunduh !== tahun) { alert('Unduh arsipnya dulu (langkah 1).'); return; }
+    const jaga = tbPenjaga(tahun);
+    if (jaga.darurat > 0 || jaga.rapikan > 0) { alert('Masih ada antrean darurat/rapikan tahun itu. Bereskan dulu.'); return; }
+    const tglBuka = (tahun + 1) + '-01-01';
+    // Cegah dobel: pembuka tahun ini sudah pernah ditulis? Diperiksa di DUA koleksi —
+    // batch bisa saja kosong (tahun tanpa sisa karung), piutang pun bisa kosong;
+    // salah satunya ada = sudah pernah.
+    if (ambilSemuaBatch().some(k => k.tutupBuku && k.tahunDari === tahun)
+      || ambilPiutangMutasi().some(m => m.tutupBuku && m.tahunDari === tahun)) {
+      alert('Saldo pembuka dari tutup buku ' + tahun + ' sudah pernah ditulis. Lanjut ke langkah 3.');
+      _tbSaldoDitulis = tahun; gambarTutupBuku(); return;
+    }
+    if (!confirm('Tulis saldo pembuka 1 Jan ' + (tahun + 1) + ' sekarang?\n\nSesudah ini WAJIB lanjut langkah 3 pada kesempatan yang sama — sebelum langkah 3 selesai, angka stok/piutang belum boleh dibaca.')) return;
+    const saldo = hitungSaldoTutup(tahun);
+    const tulis = (koleksi, dok) => simpanKeFirestore(koleksi, dok).catch(e => console.error(e));
+    // Kolam karung: satu batch stokAwal berisi semua merk. Baris kedua ber-totalKg 0
+    // hanya penanda berat (50/25) supaya gerbang ukuran di Jual tetap kenal merk itu.
+    const merkList = [];
+    saldo.karung.forEach(x => {
+      const beratUtama = x.punya25 && !x.punya50 ? 25 : 50;
+      merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratUtama,
+        jumlahKarung: Math.floor(x.sisaKg / beratUtama), totalKg: x.sisaKg,
+        hargaPerKg: x.hppPerKg, subtotalHarga: Math.round(x.sisaKg * x.hppPerKg) });
+      const beratLain = beratUtama === 50 ? 25 : 50;
+      if ((beratLain === 25 && x.punya25) || (beratLain === 50 && x.punya50)) {
+        merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratLain,
+          jumlahKarung: 0, totalKg: 0, hargaPerKg: x.hppPerKg, subtotalHarga: 0 });
+      }
+    });
+    if (merkList.length > 0) {
+      await tulis(KOLEKSI_BATCH, { id: idUnik(), tanggal: tglBuka, pemasok: 'TUTUP BUKU ' + tahun,
+        biayaBongkar: 0, stokAwal: true, tutupBuku: true, tahunDari: tahun, merkList });
+    }
+    for (const x of saldo.kemasan) {
+      await tulis(KOLEKSI_PRODUKSI, { id: idUnik(), tanggal: tglBuka, namaProduk: x.namaProduk,
+        ukuranKemasan: x.ukuran, jumlahUnit: x.sisaUnit, hppPerUnit: Math.round(x.hppPerUnit),
+        merkSumber: 'BELI JADI', kgDipakai: 0, beliJadi: true, stokAwal: true, tutupBuku: true, tahunDari: tahun });
+    }
+    for (const x of saldo.bahanK) {
+      await tulis(KOLEKSI_BAHAN_KEMASAN, { id: idUnik(), tipe: 'saldoAwal', jenis: x.jenis, jumlah: x.sisaPcs,
+        hargaTotal: Math.round(x.sisaPcs * x.hargaRata), tanggal: tglBuka, tutupBuku: true, tahunDari: tahun,
+        catatan: 'Saldo pembuka tutup buku ' + tahun });
+    }
+    for (const x of saldo.bahanL) {
+      await tulis(KOLEKSI_BAHAN_LITERAN, { id: idUnik(), tipe: 'saldoAwal', jenis: x.jenis, jumlah: x.sisaPcs,
+        hargaTotal: Math.round(x.sisaPcs * x.hargaRata), tanggal: tglBuka, tutupBuku: true, tahunDari: tahun,
+        catatan: 'Saldo pembuka tutup buku ' + tahun });
+    }
+    for (const x of saldo.piutang) {
+      await tulis(KOLEKSI_PIUTANG, { id: idUnik(), tipe: 'saldoAwal', namaPelanggan: x.nama, nominal: x.sisa,
+        tanggal: x.tanggalTertua, jam: '00:00', tutupBuku: true, tahunDari: tahun,
+        catatan: 'Saldo pembuka tutup buku ' + tahun + ' — tanggal mengikuti utang tertuanya supaya umurnya jujur' });
+    }
+    for (const x of saldo.kasbon) {
+      await tulis(KOLEKSI_KASBON, { id: idUnik(), tipe: 'saldoAwal', namaPegawai: x.nama, nominal: x.sisa,
+        tanggal: tglBuka, jam: '00:00', tutupBuku: true, tahunDari: tahun,
+        catatan: 'Saldo pembuka tutup buku ' + tahun });
+    }
+    await tulis('pengaturan', { id: 'tutupBuku', tahunDitutup: tahun, padaTanggal: tanggalLokalIso() });
+    _tbSaldoDitulis = tahun;
+    gambarTutupBuku();
+    alert('Saldo pembuka tertulis. LANJUTKAN KE LANGKAH 3 SEKARANG — jangan berhenti di tengah.');
+  }
+
+  async function hapusDokumenTahun(tahun) {
+    const saldoAda = ambilSemuaBatch().some(k => k.tutupBuku && k.tahunDari === tahun)
+      || ambilPiutangMutasi().some(m => m.tutupBuku && m.tahunDari === tahun);
+    if (_tbSaldoDitulis !== tahun && !saldoAda) {
+      alert('Tulis saldo pembukanya dulu (langkah 2).'); return;
+    }
+    if (!navigator.onLine) { alert('Langkah ini butuh internet — penghapusan langsung ke database, tidak lewat antrean.'); return; }
+    const daftar = tbDaftarKoleksi(tahun);
+    const totalDok = daftar.reduce((a, d) => a + d.dok.length, 0);
+    const ketik = prompt('SATU ARAH: ' + totalDok.toLocaleString('id-ID') + ' dokumen tahun ' + tahun
+      + ' akan dihapus dari database.\nRiwayatnya sesudah ini HANYA ada di file arsip.\n\nKetik "' + tahun + '" untuk melanjutkan:');
+    if (ketik === null) return;
+    if (ketik.trim() !== String(tahun)) { alert('Tidak jadi — ketikan tidak cocok.'); return; }
+    const el = document.getElementById('tbProgresHapus');
+    let sudah = 0;
+    try {
+      for (const d of daftar) {
+        for (const dok of d.dok) {
+          await hapusDariFirestore(d.koleksi, d.koleksi === KOLEKSI_BULANAN ? (dok.bulan || dok.id) : dok.id);
+          sudah++;
+          if (sudah % 20 === 0 && el) el.textContent = 'Menghapus… ' + sudah + '/' + totalDok;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      if (el) el.textContent = 'Terhenti di ' + sudah + '/' + totalDok + ' — cek internet lalu ulangi langkah 3; sisanya melanjutkan sendiri.';
+      alert('Penghapusan terhenti di ' + sudah + ' dari ' + totalDok + '. Aman: ulangi langkah 3, yang sudah terhapus tidak diulang.');
+      return;
+    }
+    if (el) el.textContent = '✓ Selesai — ' + sudah + ' dokumen tahun ' + tahun + ' dihapus. Sistem sekarang hanya memuat tahun berjalan.';
+    alert('Tutup buku ' + tahun + ' SELESAI. Riwayatnya ada di file arsip; sistem sekarang ringan.');
+    gambarTutupBuku();
   }
 
   // ===== LAPORAN BULANAN (12 Agustus 2026) =====
@@ -13179,6 +13506,12 @@
   window.perbaruiOpname = perbaruiOpname;
   window.simpanTitikKas = simpanTitikKas;
   window.tampilkanTutupHari = tampilkanTutupHari;
+  window.bukaTutupBuku = bukaTutupBuku;
+  window.tutupTutupBuku = tutupTutupBuku;
+  window.gambarTutupBuku = gambarTutupBuku;
+  window.unduhArsipTahun = unduhArsipTahun;
+  window.tulisSaldoPembuka = tulisSaldoPembuka;
+  window.hapusDokumenTahun = hapusDokumenTahun;
   window.bukaLaporan = bukaLaporan;
   window.tutupLaporan = tutupLaporan;
   window.gambarLaporan = gambarLaporan;
