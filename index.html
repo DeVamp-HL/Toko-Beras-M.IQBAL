@@ -9546,7 +9546,7 @@
     // Terbaru di atas — kebiasaan yang sama dengan Riwayat; saldo tetap benar karena
     // dihitung kronologis sebelum dibalik.
     kont.innerHTML = bulanIni.slice().reverse().map(r => `<div class="baris-44">
-      <span class="nama"><i class="trx-nama">${escapeHtml(r.label)}</i><small>${escapeHtml(formatTanggal(r.t))}${r.jam ? ' · ' + r.jam : ''}${r.saldo !== null ? ' · saldo ' + formatRupiah(r.saldo) : ''}</small></span>
+      <span class="nama"><i class="trx-nama">${escapeHtml(r.label)}</i><small>${escapeHtml(formatTanggal(r.t))}${r.jam ? ' · ' + r.jam : ''}${r.saldo !== null ? ' · saldo ' + rpTanda(r.saldo) : ''}</small></span>
       <span class="angka ${r.masuk > 0 ? 'ph-hijau' : 'ph-merah'}">${r.masuk > 0 ? '+' : '−'}${formatRupiah(r.masuk > 0 ? r.masuk : r.keluar).replace('Rp', 'Rp')}</span>
     </div>`).join('');
   }
@@ -9708,7 +9708,7 @@
       ${gerakBln.length === 0
         ? '<div class="lap-kosong">Belum ada gerakan uang bulan ini.</div>'
         : gerakBln.map(r => `<div class="lap-baris">
-            <span class="lb-nama">${escapeHtml(r.label)}<small>${escapeHtml(formatTanggal(r.t))}${r.jam ? ' · ' + escapeHtml(r.jam) : ''}${r.saldo !== null ? ' · saldo ' + formatRupiah(r.saldo) : ''}</small></span>
+            <span class="lb-nama">${escapeHtml(r.label)}<small>${escapeHtml(formatTanggal(r.t))}${r.jam ? ' · ' + escapeHtml(r.jam) : ''}${r.saldo !== null ? ' · saldo ' + rpTanda(r.saldo) : ''}</small></span>
             <span class="lb-angka ${r.masuk > 0 ? 'lb-masuk' : 'lb-keluar'}">${r.masuk > 0 ? '+' : '−'}${formatRupiah(r.masuk > 0 ? r.masuk : r.keluar)}</span>
           </div>`).join('')}
       ${titik ? '' : '<div class="lap-catatan">Saldo berjalan belum bisa ditampilkan — titik hitung kas belum disetel di tab Arus Kas.</div>'}
