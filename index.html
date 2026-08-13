@@ -3192,9 +3192,14 @@
         <button type="button" id="bayarQris" onclick="pilihBayar('QRIS')">QRIS</button>
         <button type="button" id="bayarKredit" onclick="pilihBayar('Kredit')">Kredit</button>
       </div>
-      <div id="blokKredit" style="display:none; margin-top:12px;">
-        <label>Nama pelanggan (kredit)</label>
-        <input type="text" id="jualNamaPelanggan" placeholder="Nama pelanggan">
+      <!-- Nama pembeli dulu cuma muncul (dan cuma tersimpan) untuk Kredit — di Tunai/QRIS
+           nama yang sempat diketik DIBUANG diam-diam saat simpan. Kasir dan kasir darurat
+           sudah lama menyimpannya apa adanya, jadi tab Jual yang menyimpang sendiri.
+           12 Agu 2026: selalu tampil. Wajib cuma di Kredit — utang tanpa nama tidak bisa
+           ditagih; di Tunai/QRIS boleh dikosongkan supaya jualan tidak melambat. -->
+      <div id="blokNamaPelanggan" style="margin-top:12px;">
+        <label id="labelNamaPelanggan">Nama pembeli <i style="font-weight:400; font-style:normal; color:var(--redup);">— boleh dikosongkan</i></label>
+        <input type="text" id="jualNamaPelanggan" placeholder="Nama pembeli (boleh dikosongkan)" autocomplete="off">
       </div>
     </div>
 
@@ -7648,7 +7653,13 @@
     ['Tunai','Qris','Kredit'].forEach(c => {
       document.getElementById('bayar' + c).classList.toggle('pilih', bakuCaraBayar(c) === bakuCaraBayar(cara));
     });
-    document.getElementById('blokKredit').style.display = cara === 'Kredit' ? 'block' : 'none';
+    // Kolomnya selalu ada; yang berubah cuma wajib/tidaknya, dan itu dikatakan di labelnya.
+    const kredit = bakuCaraBayar(cara) === 'Kredit';
+    document.getElementById('labelNamaPelanggan').innerHTML = kredit
+      ? 'Nama pelanggan <i style="font-weight:400; font-style:normal; color:var(--merah);">— wajib untuk kredit</i>'
+      : 'Nama pembeli <i style="font-weight:400; font-style:normal; color:var(--redup);">— boleh dikosongkan</i>';
+    document.getElementById('jualNamaPelanggan').placeholder = kredit
+      ? 'Nama pelanggan (wajib)' : 'Nama pembeli (boleh dikosongkan)';
     // Pilih QRIS = pembeli butuh melihat kodenya sekarang, jadi langsung dimunculkan.
     if (bakuCaraBayar(cara) === 'QRIS') bukaLembarQris();
   }
@@ -7814,7 +7825,10 @@
     transaksi.jam = new Date().toTimeString().slice(0,5);
     transaksi.hargaTotal = hargaTotal;
     transaksi.caraBayar = caraBayar;
-    transaksi.namaPelanggan = caraBayar === 'Kredit' ? namaPelanggan : '';
+    // Disimpan apa adanya untuk SEMUA cara bayar (12 Agu 2026). Aman untuk piutang:
+    // hitungPiutang() menyaring `caraBayar !== 'Kredit'` lebih dulu, jadi nama di
+    // penjualan tunai/QRIS tidak bisa memunculkan utang yang tidak pernah ada.
+    transaksi.namaPelanggan = namaPelanggan;
     // Pengganti retur: nilai barang disimpan sebagai jejak, uangnya Rp0 — dengan begitu
     // SEMUA pembaca hargaTotal (omzet, laba, arus kas, piutang, komposisi) otomatis
     // benar tanpa perlu dikejar satu-satu. HPP tetap utuh: barangnya sungguh keluar,
