@@ -3758,6 +3758,14 @@
       <div class="info-box" id="keManaVonis" style="margin:10px 12px 12px;"></div>
     </div>
 
+    <!-- NERACA RINGKAS (Modul ERP #3): kaki ketiga akuntansi — posisi kekayaan toko
+         hari ini, dibandingkan saat titik kas terakhir. -->
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Neraca Ringkas <span class="keterangan">kekayaan toko</span></h3></div>
+      <div id="daftarNeraca"></div>
+      <div class="info-box" id="neracaBanding" style="margin:10px 12px 12px;"></div>
+    </div>
+
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
       <div class="kd-judul"><h3>Uang masuk</h3></div>
       <div id="daftarArusKasMasuk"></div>
@@ -9801,6 +9809,7 @@
     document.getElementById('daftarArusKasMasuk').innerHTML = d.masuk.map(barisArusKas).join('');
     document.getElementById('daftarArusKasKeluar').innerHTML = d.keluar.map(barisArusKas).join('');
     tampilkanKeManaUang(d);
+    tampilkanNeraca();
     tampilkanBukuKas(d.bulan);
 
     // Kredit bulan ini disebut terang-terangan: itu barang yang sudah keluar tapi
@@ -10016,6 +10025,77 @@
     if (!dl) return;
     dl.innerHTML = hitungPelanggan().slice(0, 80)
       .map(x => `<option value="${escapeHtml(x.nama)}"></option>`).join('');
+  }
+
+  // ===== NERACA RINGKAS (Modul ERP #3, 14 Agustus 2026) =====
+  // Kaki ketiga akuntansi (laba-rugi & arus kas sudah ada): posisi kekayaan toko.
+  // Kekayaan = kas + nilai stok @HPP (modal, bukan harga jual — konservatif & jujur)
+  // + piutang pelanggan + kasbon pegawai. Tidak ada sisi kewajiban: belanja selalu
+  // tunai di tempat (konfirmasi pemilik 13 Agu) dan tidak ada pinjaman tercatat.
+  // Pembandingnya TITIK KAS terakhir — hari terakhir pemilik menghitung uang fisik;
+  // identitas yang dijaga pengujian: perubahan kekayaan = margin − biaya sejak titik,
+  // karena belanja stok cuma memindahkan wujud uang, bukan mengubah kekayaan.
+  function kasPada(sampaiTgl) {
+    const t = ambilTitikKas();
+    if (!t) return null;
+    if (sampaiTgl && sampaiTgl < t.tanggal) return null;   // mundur dari titik = tidak tahu, bukan menebak
+    let saldo = (t.laci || 0) + (t.rekening || 0);
+    daftarGerakanKas().forEach(r => {
+      if (r.t > t.tanggal && (!sampaiTgl || r.t <= sampaiTgl)) saldo += r.masuk - r.keluar;
+    });
+    return saldo;
+  }
+  function hitungNeraca(sampai) {
+    const stokK = hitungStokKarungPerMerk(sampai);
+    const nilaiSack = Object.keys(stokK).reduce((a, m) =>
+      a + Math.max(0, stokK[m].sisaKg || 0) * (stokK[m].hppTerakhirPerKg || 0), 0);
+    const stokB = hitungStokKemasan(sampai);
+    const nilaiBags = Object.keys(stokB).reduce((a, k) =>
+      a + Math.max(0, stokB[k].sisaUnit || 0) * (stokB[k].hppRataRataPerUnit || 0), 0);
+    const bhk = hitungStokBahanKemasan(sampai), bhl = hitungStokBahanLiteran(sampai);
+    const nilaiBahan = Object.keys(bhk).reduce((a, j) => a + Math.max(0, bhk[j].sisaPcs || 0) * (bhk[j].hppPerPcs || 0), 0)
+      + Object.keys(bhl).reduce((a, j) => a + Math.max(0, bhl[j].sisaPcs || 0) * (bhl[j].hargaPerPcs || 0), 0);
+    const daftarPiutang = hitungPiutang(sampai).filter(x => x.sisa > 0);
+    const piutang = daftarPiutang.reduce((a, x) => a + x.sisa, 0);
+    const daftarKasbon = hitungKasbon(sampai).filter(x => x.sisa > 0);
+    const kasbon = daftarKasbon.reduce((a, x) => a + x.sisa, 0);
+    const kas = kasPada(sampai || null);
+    const stok = Math.round(nilaiSack + nilaiBags + nilaiBahan);
+    return { kas, nilaiSack: Math.round(nilaiSack), nilaiBags: Math.round(nilaiBags),
+      nilaiBahan: Math.round(nilaiBahan), stok, piutang, nPiutang: daftarPiutang.length,
+      kasbon, nKasbon: daftarKasbon.length,
+      total: kas === null ? null : Math.round(kas + stok + piutang + kasbon) };
+  }
+  function tampilkanNeraca() {
+    const kont = document.getElementById('daftarNeraca');
+    if (!kont) return;
+    const kini = hitungNeraca();
+    const titik = ambilTitikKas();
+    const rp = n => (n < 0 ? '−' : '') + formatRupiah(Math.abs(n));
+    const brs = (label, ket, nilai, tebal) => `<div class="baris-44">
+      <span class="nama"><i class="trx-nama">${tebal ? '<b>' + escapeHtml(label) + '</b>' : escapeHtml(label)}</i>${ket ? `<small>${escapeHtml(ket)}</small>` : ''}</span>
+      <span class="angka">${nilai === null ? '—' : rp(nilai)}</span>
+    </div>`;
+    const baris = [];
+    baris.push(brs('Kas', titik ? 'laci + rekening, dari titik ' + formatTanggal(titik.tanggal) : 'titik kas belum disetel — isi di kartu Cocokkan Kas', kini.kas));
+    baris.push(brs('Nilai stok (modal)', `sack ${formatRupiah(kini.nilaiSack)} · bags ${formatRupiah(kini.nilaiBags)} · bahan ${formatRupiah(kini.nilaiBahan)}`, kini.stok));
+    baris.push(brs('Piutang pelanggan', kini.nPiutang + ' orang', kini.piutang));
+    baris.push(brs('Kasbon pegawai', kini.nKasbon + ' orang', kini.kasbon));
+    baris.push(`<div class="baris-44" style="border-top:1.5px solid var(--emas-gelap);">
+      <span class="nama"><i class="trx-nama"><b>Kekayaan toko hari ini</b></i>${kini.total === null ? '<small>belum utuh — kas belum bisa dihitung tanpa titik kas</small>' : ''}</span>
+      <span class="angka">${kini.total === null ? '—' : rp(kini.total)}</span>
+    </div>`);
+    kont.innerHTML = baris.join('');
+    const ket = document.getElementById('neracaBanding');
+    if (!titik || kini.total === null) { ket.innerHTML = 'Stok dinilai dengan HPP (harga modal), bukan harga jual — sengaja konservatif.'; return; }
+    const awal = hitungNeraca(titik.tanggal);
+    if (awal.total === null) { ket.innerHTML = ''; return; }
+    const selisih = kini.total - awal.total;
+    ket.innerHTML = `Saat titik kas ${escapeHtml(formatTanggal(titik.tanggal))} kekayaan ${formatRupiah(awal.total)} — `
+      + (selisih === 0 ? '<b>belum bergeser</b>.'
+        : `sejak itu <b>${selisih > 0 ? 'naik ' : 'turun '}${formatRupiah(Math.abs(selisih))}</b>.`)
+      + ' Belanja stok tidak menggerakkan angka ini — uangnya cuma berubah wujud; yang menggerakkannya untung dan biaya.'
+      + ' Stok dinilai dengan HPP (modal), bukan harga jual.';
   }
 
   // ===== KECERDASAN STOK (Modul ERP #2, 14 Agustus 2026) =====
