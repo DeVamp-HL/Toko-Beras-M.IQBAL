@@ -2480,6 +2480,131 @@
     .lap-bagian > h2 { break-after: avoid; }
     .lap-baris { break-inside: avoid; }
   }
+
+/* ==================================================================
+   PLATINA MALAM — halaman Ringkasan saja (#halamanRingkasan).
+   Hasil Claude Design "Ringkasan F — Platina Malam", dipilih pemilik
+   14 Agu 2026 (mandat v2: sistem utama bebas bergerak, kasir tetap).
+   Halaman lain menyusul SETELAH pemilik menyetujui halaman ini.
+   ================================================================== */
+#halamanRingkasan{
+  --pf-putih:#f4f7fa; --pf-platina:#c3ccd6; --pf-abu:#8b93a1;
+  --pf-hijau:#2ea36b; --pf-hijau2:#5ec695; --pf-amber:#d4a94e; --pf-merah2:#e07a68;
+  --pf-kartu:linear-gradient(170deg,#14181d,#0f1216);
+  --pf-tepi:rgba(216,221,227,.14); --pf-tepi2:rgba(216,221,227,.24);
+  --pf-serif:ui-serif,'New York','Iowan Old Style',Georgia,'Times New Roman',serif;
+}
+#halamanRingkasan .judul-halaman h2{
+  font-family:var(--pf-serif); font-weight:600; letter-spacing:.01em;
+  background:linear-gradient(115deg,var(--pf-putih) 30%,#aeb6c0 90%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:var(--pf-putih);
+}
+#halamanRingkasan .judul-halaman .jh-sub{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+#halamanRingkasan .kartu, #halamanRingkasan .kartu-mini, #halamanRingkasan .kartu-daftar,
+#halamanRingkasan .kartu-komposisi{
+  background:var(--pf-kartu); border:1px solid var(--pf-tepi); border-radius:15px;
+  box-shadow:0 18px 40px -22px rgba(0,0,0,.75), inset 0 1px 0 rgba(244,247,250,.05);
+}
+/* --- hero: satin menyapu + cahaya bernafas + tera air MI --- */
+#halamanRingkasan .kartu-hero{
+  position:relative; overflow:hidden; border-radius:18px;
+  background:var(--pf-kartu); border:1px solid var(--pf-tepi2);
+  box-shadow:0 24px 50px -24px rgba(0,0,0,.8), inset 0 1px 0 rgba(244,247,250,.07);
+}
+#halamanRingkasan .kartu-hero>*{ position:relative; z-index:1; }
+#halamanRingkasan .kartu-hero .pf-satin, #halamanRingkasan .kartu-hero .pf-nafas,
+#halamanRingkasan .kartu-hero .pf-mi{ position:absolute; z-index:0; pointer-events:none; }
+#halamanRingkasan .pf-satin{ inset:-30%;
+  background:linear-gradient(115deg,transparent 38%,rgba(244,247,250,.05) 46%,rgba(244,247,250,.09) 50%,rgba(244,247,250,.05) 54%,transparent 62%);
+  animation:pfSatin 8.5s ease-in-out infinite; }
+#halamanRingkasan .pf-nafas{ inset:0;
+  background:radial-gradient(circle at 82% 12%,rgba(94,198,149,.16),transparent 58%);
+  animation:pfNafas 6.5s ease-in-out infinite; }
+#halamanRingkasan .pf-mi{ right:10px; bottom:-26px; font-family:var(--pf-serif); font-style:italic;
+  font-weight:700; font-size:92px; line-height:1; color:rgba(244,247,250,.045); user-select:none; }
+#halamanRingkasan .kartu-hero .label{ font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--pf-abu); }
+#halamanRingkasan .hero-nilai{ font-family:var(--pf-serif); font-weight:600; font-size:40px; line-height:1.15; letter-spacing:.01em;
+  background:linear-gradient(180deg,var(--pf-putih),#aeb6c0);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:var(--pf-putih); }
+#halamanRingkasan .hero-nilai .rp-awalan{ font-size:.5em; font-weight:500; letter-spacing:.04em; vertical-align:.32em;
+  -webkit-text-fill-color:var(--pf-abu); color:var(--pf-abu); }
+#halamanRingkasan .hero-trx{ font-family:var(--pf-serif); font-style:italic; font-size:12.5px; color:var(--pf-abu); }
+#halamanRingkasan .hero-badge{ font-size:10.5px; font-weight:700; letter-spacing:.06em; border-radius:999px; padding:3px 9px; border:1px solid; }
+#halamanRingkasan .hero-badge.naik{ color:var(--pf-hijau2); border-color:rgba(94,198,149,.4); background:rgba(46,163,107,.12); }
+#halamanRingkasan .hero-badge.turun{ color:var(--pf-merah2); border-color:rgba(224,122,104,.4); background:rgba(224,122,104,.1); }
+/* --- kartu KPI kecil --- */
+#halamanRingkasan .kartu-mini .label{ font-size:9.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--pf-abu); }
+#halamanRingkasan .kartu-mini .nilai{ font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--pf-putih); }
+#halamanRingkasan .kartu-mini .nilai .sat{ font-size:11px; font-style:italic; color:var(--pf-abu); }
+/* --- judul kartu & tautan --- */
+#halamanRingkasan .panel-kepala h2, #halamanRingkasan .kd-judul h3{
+  font-family:var(--pf-serif); font-weight:600; letter-spacing:.02em; color:var(--pf-putih); }
+#halamanRingkasan .kd-hitung{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+#halamanRingkasan .kd-tautan{ font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--pf-hijau2);
+  border:1px solid rgba(94,198,149,.35); border-radius:999px; padding:5px 10px; background:transparent; }
+/* --- grafik garis satin 7 hari --- */
+#halamanRingkasan .pf-grafik{ position:relative; padding-top:42px; }
+#halamanRingkasan .pf-svgwrap{ position:relative; }
+#halamanRingkasan .pf-svgwrap svg{ display:block; width:100%; height:128px; }
+#halamanRingkasan .pf-garis{ stroke-dasharray:1; stroke-dashoffset:1; animation:pfGaris 1.2s cubic-bezier(.4,0,.2,1) .15s forwards; }
+#halamanRingkasan .pf-area{ opacity:0; animation:pfPudar .9s ease .5s forwards; }
+#halamanRingkasan .pf-dot{ position:absolute; width:9px; height:9px; border-radius:50%; background:#0d1013;
+  border:2px solid var(--pf-hijau2); box-shadow:0 0 10px rgba(94,198,149,.5); transform:translate(-50%,-50%);
+  transition:left .28s cubic-bezier(.3,.9,.3,1), top .28s cubic-bezier(.3,.9,.3,1); display:none; }
+#halamanRingkasan .pf-dot.ada{ display:block; }
+#halamanRingkasan .pf-hari{ display:flex; margin-top:6px; }
+#halamanRingkasan .pf-kolom{ flex:1; min-height:44px; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:2px; background:transparent; border:0; border-radius:10px; padding:5px 0; cursor:pointer; }
+#halamanRingkasan .pf-kolom .pf-nilai{ font-family:var(--pf-serif); font-size:10.5px; color:var(--pf-platina); }
+#halamanRingkasan .pf-kolom .pf-label{ font-size:8.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--pf-abu); }
+#halamanRingkasan .pf-kolom.dipilih{ background:rgba(94,198,149,.08); }
+#halamanRingkasan .pf-kolom.dipilih .pf-nilai, #halamanRingkasan .pf-kolom.dipilih .pf-label{ color:var(--pf-hijau2); }
+#halamanRingkasan .pf-tip{ position:absolute; top:0; z-index:2; transform:translateX(-50%);
+  background:linear-gradient(170deg,#181d23,#12161b); border:1px solid var(--pf-tepi2); border-radius:11px;
+  padding:6px 11px; display:flex; align-items:center; gap:8px; white-space:nowrap; cursor:pointer;
+  box-shadow:0 12px 26px -12px rgba(0,0,0,.8); opacity:0; }
+#halamanRingkasan .pf-tip.muncul{ animation:pfTip .3s ease forwards; }
+#halamanRingkasan .pf-tip.kiri{ transform:translateX(-14%); }
+#halamanRingkasan .pf-tip.kanan{ transform:translateX(-86%); }
+#halamanRingkasan .pf-tip b{ font-family:var(--pf-serif); font-size:13.5px; font-weight:600; color:var(--pf-putih); }
+#halamanRingkasan .pf-tip .pf-tip-hari{ font-size:9px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--pf-abu); }
+#halamanRingkasan .pf-tip .pf-tip-buka{ font-size:9px; font-weight:700; letter-spacing:.12em; color:var(--pf-hijau2); }
+/* --- baris penjualan terakhir & perlu perhatian --- */
+#halamanRingkasan .pf-jual .jam{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+#halamanRingkasan .pf-jual .angka{ font-family:var(--pf-serif); font-weight:600; color:var(--pf-hijau2); }
+#halamanRingkasan .pf-cara{ flex:none; font-size:8.5px; font-weight:700; letter-spacing:.12em; border-radius:999px;
+  padding:2.5px 7px; border:1px solid var(--pf-tepi2); color:var(--pf-platina); }
+#halamanRingkasan .pf-cara.qris{ color:var(--pf-hijau2); border-color:rgba(94,198,149,.4); }
+#halamanRingkasan .pf-cara.lain{ color:var(--pf-amber); border-color:rgba(212,169,78,.4); }
+#halamanRingkasan .pf-tanda{ flex:none; align-self:stretch; width:2.5px; min-height:30px; border-radius:2px; }
+#halamanRingkasan .pil-aksi{ font-size:9.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+  background:transparent; border:1px solid var(--pf-tepi2); color:#dfe5ea; border-radius:999px; padding:7px 11px; }
+#halamanRingkasan .kosong-info b{ font-family:var(--pf-serif); font-weight:600; }
+#halamanRingkasan .kosong-info span, #halamanRingkasan .catatan-kecil{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+#halamanRingkasan .komp-tengah b{ font-family:var(--pf-serif); font-weight:600; color:var(--pf-putih); }
+#halamanRingkasan .komp-tengah span, #halamanRingkasan .komp-label{ letter-spacing:.14em; color:var(--pf-abu); }
+/* --- kemunculan berlapis saat halaman dibuka --- */
+#halamanRingkasan .ringkasan-mobile>*, #halamanRingkasan .dua-grafik,
+#halamanRingkasan .kartu-komposisi, #halamanRingkasan .ringkasan-mobile-2>*{
+  animation:pfMuncul .9s cubic-bezier(.19,.8,.26,1) both; }
+#halamanRingkasan .kpi-mini{ animation-delay:.08s; }
+#halamanRingkasan .dua-grafik{ animation-delay:.14s; }
+#halamanRingkasan .kartu-komposisi{ animation-delay:.2s; }
+#halamanRingkasan .ringkasan-mobile-2>*:nth-child(1){ animation-delay:.26s; }
+#halamanRingkasan .ringkasan-mobile-2>*:nth-child(2){ animation-delay:.32s; }
+#halamanRingkasan .ringkasan-mobile-2>*:nth-child(3){ animation-delay:.36s; }
+#halamanRingkasan .ringkasan-mobile-2>*:nth-child(4){ animation-delay:.4s; }
+@keyframes pfMuncul{ from{ opacity:0; transform:translateY(14px) scale(.985); } to{ opacity:1; transform:none; } }
+@keyframes pfSatin{ 0%,55%{ transform:translateX(-55%); } 85%,100%{ transform:translateX(55%); } }
+@keyframes pfNafas{ 0%,100%{ opacity:.45; } 50%{ opacity:1; } }
+@keyframes pfGaris{ to{ stroke-dashoffset:0; } }
+@keyframes pfPudar{ to{ opacity:1; } }
+@keyframes pfTip{ from{ opacity:0; } to{ opacity:1; } }
+@media (prefers-reduced-motion: reduce){
+  #halamanRingkasan *, #halamanRingkasan *::before, #halamanRingkasan *::after{ animation:none !important; }
+  #halamanRingkasan .pf-garis{ stroke-dashoffset:0; }
+  #halamanRingkasan .pf-area, #halamanRingkasan .pf-tip.muncul{ opacity:1; }
+}
 </style>
 </head>
 <body>
@@ -3089,6 +3214,7 @@
          berubah supaya tampilkanRingkasan() tetap mengisi elemen yang sama. -->
     <div class="ringkasan-mobile">
       <div class="kartu-hero">
+        <i class="pf-satin" aria-hidden="true"></i><i class="pf-nafas" aria-hidden="true"></i><b class="pf-mi" aria-hidden="true">MI</b>
         <div class="label">Omzet hari ini</div>
         <div class="hero-nilai" id="ringOmzetHariIni">Rp0</div>
         <div class="hero-kaki">
@@ -3165,7 +3291,7 @@
     <div class="kartu-komposisi" id="kartuKomposisi">
       <div class="komp-donat">
         <svg viewBox="0 0 124 124" aria-hidden="true">
-          <circle cx="62" cy="62" r="57" fill="none" stroke="rgba(217,178,95,.16)" stroke-width="1"></circle>
+          <circle cx="62" cy="62" r="57" fill="none" stroke="rgba(216,221,227,.16)" stroke-width="1"></circle>
           <circle cx="62" cy="62" r="44" fill="none" stroke="#1b212c" stroke-width="9"></circle>
           <g id="kompBusur" transform="rotate(-90 62 62)" stroke-width="9" stroke-linecap="round" fill="none"></g>
         </svg>
@@ -11188,11 +11314,14 @@
       const lima = [...penjualan].sort((a,b) => (b.id||0) - (a.id||0)).slice(0, 5);
       elTerakhir.innerHTML = lima.length === 0
         ? '<div class="kosong-info"><b>Belum ada penjualan</b><span>Transaksi pertama akan muncul di sini.</span></div>'
-        : lima.map(t => `<div class="baris-44">
+        : lima.map(t => { const cb = String(t.caraBayar || '');
+            const kelas = /qris/i.test(cb) ? 'qris' : (/tunai/i.test(cb) ? 'tunai' : 'lain');
+            const pil = cb ? `<span class="pf-cara ${kelas}">${escapeHtml(cb.split(' ')[0].slice(0, 7).toUpperCase())}</span>` : '';
+            return `<div class="baris-44 pf-jual">
             <span class="jam">${escapeHtml(t.jam || '--:--')}</span>
-            <span class="nama">${escapeHtml(t.namaProduk || t.merkSumber || 'Penjualan')}</span>
+            <span class="nama">${escapeHtml(t.namaProduk || t.merkSumber || 'Penjualan')}</span>${pil}
             <span class="angka">${formatRupiah(t.hargaTotal || 0)}</span>
-          </div>`).join('');
+          </div>`; }).join('');
     }
 
     const elKasM = document.getElementById('ringKasMasukBulanIniHp');
@@ -11243,12 +11372,13 @@
         k: 'mulaiAntreanRinci()', a: 'Rinci' });
       elPerhatianHp.innerHTML = daftarHp.length === 0
         ? '<div class="kosong-info"><b>Semua aman</b><span>Tidak ada stok menipis, harga kosong, atau retur menggantung.</span></div>'
-        : daftarHp.map(x => `<div class="baris-44">
-            <svg class="ikon-perhatian" viewBox="0 0 24 24" fill="none" stroke="${x.w}" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.1" fill="${x.w}" stroke="none"/></svg>
+        : daftarHp.map(x => `<div class="baris-44 pf-perhatian">
+            <i class="pf-tanda" style="background:${x.w};" aria-hidden="true"></i>
             <span class="nama">${x.t}</span>
             <button type="button" class="pil-aksi" onclick="${x.k || `pindahDariMenu('${x.h}')`}">${x.a}</button>
           </div>`).join('');
     }
+    pfHitungNaik();
   }
 
   // ============ LABA / MARGIN PER TRANSAKSI (Tahap 3) ============
@@ -14239,6 +14369,8 @@
   window.perbaruiPratinjauHarga = perbaruiPratinjauHarga;
   window.pilihSaringRiwayat = pilihSaringRiwayat;
   window.lihatRiwayatHari = lihatRiwayatHari;
+  window.pilihHariPlatina = pilihHariPlatina;
+  window.bukaRiwayatHariPlatina = bukaRiwayatHariPlatina;
   window.tampilkanRiwayat = tampilkanRiwayat;
   window.kosongkanCariRiwayat = kosongkanCariRiwayat;
   window.hapusSemuaSaringRiwayat = hapusSemuaSaringRiwayat;
@@ -14303,6 +14435,73 @@
       if (chip) chip.textContent = HARI[d.getDay()].slice(0, 3) + ', ' + d.getDate() + ' ' + BULAN[d.getMonth()].slice(0, 3) + ' ' + d.getFullYear();
     } catch (e) {}
   })();
+  // ============ PLATINA MALAM — pembantu visual Ringkasan ============
+  // Murni kulit di atas angka yang SUDAH final: teks akhir selalu persis hasil
+  // format fungsi uang lama (innerHTML dikembalikan utuh di akhir animasi).
+  let _pfHari7 = null, _pfTtk = null, _pfHariDipilih = 6;
+  function pilihHariPlatina(i, awal) {
+    if (!_pfHari7 || !_pfHari7[i] || !_pfTtk) return;
+    _pfHariDipilih = i;
+    for (let j = 0; j < 7; j++) {
+      const k = document.getElementById('pfKolom' + j);
+      if (k) k.classList.toggle('dipilih', j === i);
+    }
+    const dot = document.getElementById('pfDot');
+    if (dot) {
+      dot.style.left = ((i + 0.5) / 7 * 100) + '%';
+      dot.style.top = (_pfTtk[i].y / 126 * 100) + '%';
+      dot.classList.add('ada');
+    }
+    const tip = document.getElementById('pfTip');
+    if (tip) {
+      const h = _pfHari7[i];
+      tip.innerHTML = '<span class="pf-tip-hari">' + h.label + ' ' + h.iso.slice(8) + '/' + h.iso.slice(5, 7) + '</span>' +
+        '<b>' + formatRupiah(h.total) + '</b><span class="pf-tip-buka">RIWAYAT \u2192</span>';
+      tip.style.left = ((i + 0.5) / 7 * 100) + '%';
+      tip.classList.remove('kiri', 'kanan');
+      if (i <= 1) tip.classList.add('kiri'); else if (i >= 5) tip.classList.add('kanan');
+      if (!awal) { tip.classList.remove('muncul'); void tip.offsetWidth; }
+      tip.classList.add('muncul');
+    }
+  }
+  function bukaRiwayatHariPlatina() {
+    if (_pfHari7 && _pfHari7[_pfHariDipilih]) lihatRiwayatHari(_pfHari7[_pfHariDipilih].iso);
+  }
+  const _pfAnimSebelum = {};
+  function pfHitungNaik() {
+    try {
+      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const ids = ['ringOmzetHariIni', 'ringOmzetMingguIni', 'ringMarginHariIni',
+        'ringBelanjaMingguIni', 'ringKasMasukBulanIniHp', 'ringKasKeluarBulanIniHp'];
+      let urut = 0;
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el || !el.offsetParent) return;
+        const akhirHtml = el.innerHTML, teks = el.textContent;
+        if (_pfAnimSebelum[id] === teks) return;      // nilai tidak berubah -> diam
+        _pfAnimSebelum[id] = teks;
+        const m = teks.match(/\d[\d.]*(,\d+)?/);
+        if (!m) return;                               // "\u2014" dsb: tampil apa adanya, jujur
+        const target = parseFloat(m[0].replace(/\./g, '').replace(',', '.'));
+        if (!isFinite(target) || target === 0) return;
+        const des = m[0].indexOf(',') >= 0 ? 1 : 0;
+        const awalTeks = teks.slice(0, m.index), akhirTeks = teks.slice(m.index + m[0].length);
+        const mulai = performance.now() + urut * 90; urut++;
+        const token = mulai + ':' + id;
+        el.dataset.pfToken = token;
+        const langkah = t => {
+          if (el.dataset.pfToken !== token) return;   // sudah diisi ulang render baru
+          const q = Math.min(1, Math.max(0, (t - mulai) / 1050));
+          if (q >= 1) { el.innerHTML = akhirHtml; return; }
+          const e = 1 - Math.pow(1 - q, 3);
+          el.textContent = awalTeks + (target * e).toLocaleString('id-ID',
+            { minimumFractionDigits: des, maximumFractionDigits: des }) + akhirTeks;
+          requestAnimationFrame(langkah);
+        };
+        requestAnimationFrame(langkah);
+      });
+    } catch (e) { /* pemanis — tidak boleh mengganggu angka */ }
+  }
   function segarkanVisualRingkasan() {
     try {
       const semua = ambilPenjualan();
@@ -14314,25 +14513,47 @@
         hari7.push({ iso: tanggalLokalIso(d), label: hariSingkat[d.getDay()], total: 0 });
       }
       semua.forEach(p => { const h = hari7.find(x => x.iso === p.tanggal); if (h) h.total += (p.hargaTotal || 0); });
-      // Batang, bukan garis area (mockup): tiap hari punya angkanya sendiri di atas
-      // batang dan nama harinya di bawah — omzet per hari terbaca tanpa menebak-nebak
-      // titik di garis. Hari ini emas penuh, enam hari lain emas redup.
-      // Grafik garis lama juga menggambar garis lurus melintang saat semua hari nol;
-      // dengan batang, nol tampil sebagai batang tipis dan angkanya jelas "0".
-      const maks = Math.max(1, ...hari7.map(h => h.total));
-      const TINGGI = 88;
+      // PLATINA MALAM (Claude Design "Ringkasan F", dipilih pemilik 14 Agu 2026):
+      // garis satin interaktif menggantikan batang. Kejujuran angka dipertahankan —
+      // omzet TIAP hari tetap tertulis di kolomnya sendiri, garis hanya memberi
+      // bentuk minggu. Ketuk kolom = pilih hari (titik + kartu nilai); ketuk kartu
+      // nilai = buka Riwayat tersaring tanggal itu (jalur lihatRiwayatHari lama).
       const wrapG = document.getElementById('grafikOmzetWrap');
-      // Tiap kolom bisa diketuk -> lihatRiwayatHari() -> lompat ke Riwayat tersaring
-      // persis tanggal itu (iso sudah dibawa tiap entri hari7, tinggal dipakai).
-      if (wrapG) wrapG.innerHTML = '<div class="grafik-batang">' + hari7.map((h, i) => {
-        const kini = i === 6;
-        const tinggi = Math.max(3, Math.round((Math.max(0, h.total) / maks) * TINGGI));
-        return '<button type="button" class="gb-kolom" onclick="lihatRiwayatHari(' + "'" + h.iso + "'" + ')" aria-label="Lihat riwayat ' + h.label + '">' +
-          '<span class="gb-nilai' + (kini ? ' kini' : '') + '">' + singkatJuta(h.total) + '</span>' +
-          '<div class="gb-batang' + (kini ? ' kini' : '') + '" style="height:' + tinggi + 'px"></div>' +
-          '<span class="gb-hari' + (kini ? ' kini' : '') + '">' + h.label.charAt(0) + h.label.slice(1).toLowerCase() + '</span>' +
-          '</button>';
-      }).join('') + '</div>';
+      if (wrapG) {
+        const nilaiMin = Math.min(...hari7.map(h => h.total));
+        const rentang = Math.max(1, Math.max(...hari7.map(h => h.total)) - nilaiMin);
+        // Kurva Catmull-Rom -> Bezier: garis lewat TEPAT di tiap titik data, tidak
+        // melenceng — grafik uang tidak boleh "memperindah" nilainya sendiri.
+        const ttk = hari7.map((h, i) => ({ x: 23 + i * 46, y: 106 - ((h.total - nilaiMin) / rentang) * 78 }));
+        _pfHari7 = hari7; _pfTtk = ttk;
+        let dG = 'M' + ttk[0].x + ' ' + ttk[0].y.toFixed(1);
+        for (let i = 0; i < 6; i++) {
+          const p0 = ttk[Math.max(0, i - 1)], p1 = ttk[i], p2 = ttk[i + 1], p3 = ttk[Math.min(6, i + 2)];
+          dG += ' C' + (p1.x + (p2.x - p0.x) / 6).toFixed(1) + ' ' + (p1.y + (p2.y - p0.y) / 6).toFixed(1) +
+            ' ' + (p2.x - (p3.x - p1.x) / 6).toFixed(1) + ' ' + (p2.y - (p3.y - p1.y) / 6).toFixed(1) +
+            ' ' + p2.x + ' ' + p2.y.toFixed(1);
+        }
+        wrapG.innerHTML = '<div class="pf-grafik">' +
+          '<button type="button" class="pf-tip" id="pfTip" onclick="bukaRiwayatHariPlatina()" aria-label="Buka riwayat hari terpilih"></button>' +
+          '<div class="pf-svgwrap">' +
+          '<svg viewBox="0 0 322 126" preserveAspectRatio="none" aria-hidden="true">' +
+          '<defs>' +
+          '<linearGradient id="pfGarisG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#aeb6c0"/><stop offset=".55" stop-color="#f4f7fa"/><stop offset="1" stop-color="#5ec695"/></linearGradient>' +
+          '<linearGradient id="pfIsiG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(94,198,149,.2)"/><stop offset="1" stop-color="rgba(94,198,149,0)"/></linearGradient>' +
+          '</defs>' +
+          '<path class="pf-area" d="' + dG + ' L' + ttk[6].x + ' 122 L' + ttk[0].x + ' 122 Z" fill="url(#pfIsiG)"/>' +
+          '<path class="pf-garis" d="' + dG + '" fill="none" stroke="url(#pfGarisG)" stroke-width="2" stroke-linecap="round" pathLength="1"/>' +
+          '</svg>' +
+          '<i class="pf-dot" id="pfDot"></i>' +
+          '</div>' +
+          '<div class="pf-hari">' + hari7.map((h, i) =>
+            '<button type="button" class="pf-kolom" id="pfKolom' + i + '" onclick="pilihHariPlatina(' + i + ')" aria-label="Omzet ' + h.label + ' ' + h.iso + '">' +
+            '<span class="pf-nilai">' + singkatJuta(h.total) + '</span>' +
+            '<span class="pf-label">' + h.label.charAt(0) + h.label.slice(1).toLowerCase() + '</span>' +
+            '</button>').join('') + '</div>' +
+          '</div>';
+        pilihHariPlatina(_pfHariDipilih, true);
+      }
       const batas = new Date(hariIni); batas.setDate(batas.getDate() - 29);
       const batasIso = tanggalLokalIso(batas);
       const grup = { literan: 0, kemasan: 0, karung: 0 };
@@ -14349,7 +14570,7 @@
       const pG = adaData ? Math.max(0, 100 - pL - pK) : 0;
       const donat = document.getElementById('donatOmzet');
       if (donat) donat.style.background = adaData
-        ? 'conic-gradient(#d4ab5e 0 ' + pL + '%, #6ea8dc ' + pL + '% ' + (pL + pK) + '%, #8a6d4a ' + (pL + pK) + '% 100%)'
+        ? 'conic-gradient(#8b93a1 0 ' + pL + '%, #5ec695 ' + pL + '% ' + (pL + pK) + '%, #c3ccd6 ' + (pL + pK) + '% 100%)'
         : '#232a36';
       const elTotal = document.getElementById('donatOmzetTotal');
       if (elTotal) elTotal.textContent = formatRupiah(total30);
@@ -14361,9 +14582,9 @@
       gambarKomposisiOmzet(semua.filter(p => p.tanggal >= batasIso), total30);
       const legenda = document.getElementById('legendaOmzet');
       if (legenda) legenda.innerHTML =
-        '<div><i style="background:#d4ab5e;"></i>Literan<b>' + pL + '%</b></div>' +
-        '<div><i style="background:#6ea8dc;"></i>Kemasan<b>' + pK + '%</b></div>' +
-        '<div><i style="background:#8a6d4a;"></i>Karung + Repack<b>' + pG + '%</b></div>' +
+        '<div><i style="background:#8b93a1;"></i>Literan<b>' + pL + '%</b></div>' +
+        '<div><i style="background:#5ec695;"></i>Kemasan<b>' + pK + '%</b></div>' +
+        '<div><i style="background:#c3ccd6;"></i>Karung + Repack<b>' + pG + '%</b></div>' +
         '<div style="font-size:10.5px;">Komposisi omzet 30 hari</div>';
       const urut = semua.slice().sort((a, b) => ((b.tanggal || '') + (b.jam || '')).localeCompare((a.tanggal || '') + (a.jam || ''))).slice(0, 5);
       const wadahT = document.getElementById('wadahPenjualanTerakhir');
@@ -14380,11 +14601,11 @@
   // dan MENAMAINYA terang-terangan — bukan menyembunyikannya, bukan membaginya rata
   // ke jenis lain. Warnanya amber karena artinya memang "data kurang", bukan bahaya.
   const KOMP_KELOMPOK = [
-    { kunci: 'darurat', nama: 'Kasir darurat — produk tidak tercatat', warna: '#e8b04a',
+    { kunci: 'darurat', nama: 'Kasir darurat — produk tidak tercatat', warna: '#d4a94e',
       cocok: j => j === 'kasir_darurat_nominal' },
-    { kunci: 'karung', nama: 'Karung utuh', warna: '#f2d795', cocok: j => j === 'karung' || j === 'repacking' },
-    { kunci: 'kemasan', nama: 'Kemasan jadi', warna: '#c9a24d', cocok: j => j === 'kemasan' },
-    { kunci: 'literan', nama: 'Literan', warna: '#9b7f42', cocok: j => j === 'literan' }
+    { kunci: 'karung', nama: 'Karung utuh', warna: '#c3ccd6', cocok: j => j === 'karung' || j === 'repacking' },
+    { kunci: 'kemasan', nama: 'Kemasan jadi', warna: '#5ec695', cocok: j => j === 'kemasan' },
+    { kunci: 'literan', nama: 'Literan', warna: '#8b93a1', cocok: j => j === 'literan' }
   ];
 
   function gambarKomposisiOmzet(trx30, total30) {
