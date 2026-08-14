@@ -2544,8 +2544,16 @@
 #halamanRingkasan .hero-badge.naik{ color:var(--pf-hijau2); border-color:rgba(94,198,149,.4); background:rgba(46,163,107,.12); }
 #halamanRingkasan .hero-badge.turun{ color:var(--pf-merah2); border-color:rgba(224,122,104,.4); background:rgba(224,122,104,.1); }
 /* --- kartu KPI kecil --- */
-#halamanRingkasan .kartu-mini .label{ font-size:9.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--pf-abu); }
-#halamanRingkasan .kartu-mini .nilai{ font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--pf-putih); }
+/* Trio KPI (koreksi pemilik 15 Agu 2026 dari screenshot): sebelumnya "MARGIN KOTOR
+   HARI INI" pecah 3 baris sedangkan tetangganya 2, jadi ketiga angka tidak sebaris —
+   dan trio menempel rapat ke kartu Omzet 7 Hari. Dua obat: jarak-huruf label
+   dikecilkan supaya <br> yang sudah ada di markup benar-benar jadi 2 baris, DAN
+   kartu dijadikan kolom flex dengan label memuai — angka selalu rata bawah walau
+   panjang labelnya beda (penjaga kalau nanti ada label baru yang lebih panjang). */
+#halamanRingkasan .kartu-mini{ display:flex; flex-direction:column; padding:12px 12px 13px; }
+#halamanRingkasan .kartu-mini .label{ flex:1; font-size:9px; font-weight:700; letter-spacing:.07em; line-height:1.45; text-transform:uppercase; color:var(--pf-abu); }
+#halamanRingkasan .kartu-mini .nilai{ margin-top:9px; font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--pf-putih); }
+#halamanRingkasan .kpi-mini:not(.kpi-dua){ margin-bottom:14px; }
 #halamanRingkasan .kartu-mini .nilai .sat{ font-size:11px; font-style:italic; color:var(--pf-abu); }
 /* --- judul kartu & tautan --- */
 #halamanRingkasan .panel-kepala h2, #halamanRingkasan .kd-judul h3{
@@ -3282,7 +3290,7 @@
       </div>
     </div>
 
-    <div id="ringMarginCatatan" class="keterangan" style="display:none; margin:-8px 0 16px; text-align:center;"></div>
+    <div id="ringMarginCatatan" class="keterangan" style="display:none; margin:-4px 0 14px; text-align:center;"></div>
     <div class="dua-grafik" style="margin-bottom:16px;">
       <div class="kartu" style="margin-bottom:0;">
         <div class="panel-kepala"><h2>Omzet 7 Hari</h2><span class="kd-hitung" id="ringOmzet30Hari">30 hari · Rp0</span></div>
