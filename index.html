@@ -2530,8 +2530,10 @@
   box-shadow:0 24px 50px -24px rgba(0,0,0,.8), inset 0 1px 0 rgba(244,247,250,.07);
 }
 .platina .kartu-hero>*{ position:relative; z-index:1; }
-.platina .kartu-hero .pf-satin, .platina .kartu-hero .pf-nafas,
-.platina .kartu-hero .pf-mi{ position:absolute; z-index:0; pointer-events:none; }
+/* Berlaku di mana pun lapisan ini dipakai (hero, kartu Total Jual, dst) —
+   dulu terikat .kartu-hero, dan di luar sana lapisannya berubah jadi blok biasa
+   yang mendorong isi kartu. */
+.platina .pf-satin, .platina .pf-nafas, .platina .pf-mi{ position:absolute; z-index:0; pointer-events:none; }
 .platina .pf-satin{ inset:-30%;
   background:linear-gradient(115deg,transparent 38%,rgba(244,247,250,.05) 46%,rgba(244,247,250,.09) 50%,rgba(244,247,250,.05) 54%,transparent 62%);
   animation:pfSatin 8.5s ease-in-out infinite; }
@@ -2674,7 +2676,12 @@
   font-weight:700; letter-spacing:.08em; transition:transform .15s ease;
 }
 .platina .tombol-utama-kartu:active{ transform:scale(.985); }
+/* Label pendek jadi kapital berjarak (rasa Platina). Tapi label yang isinya
+   KALIMAT — yang memuat kotak centang, atau keterangan tambahan di dalamnya —
+   tetap huruf biasa: satu kalimat penuh dalam kapital 10px berhenti terbaca. */
 .platina label{ font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--pf-abu); }
+.platina label:has(input){ font-size:12.5px; font-weight:600; letter-spacing:normal; text-transform:none; color:var(--pf-platina); }
+.platina label .keterangan, .platina label i{ text-transform:none; letter-spacing:normal; font-family:var(--pf-serif); font-style:italic; }
 .platina select, .platina input[type="number"], .platina input[type="text"],
 .platina input[type="date"], .platina input[type="month"], .platina textarea{
   background:rgba(216,221,227,.04); border:1px solid var(--pf-tepi); border-radius:12px; color:var(--pf-putih);
@@ -2694,6 +2701,131 @@
 #halamanAruskas > *:nth-child(7){ animation-delay:.25s }
 #halamanAruskas > *:nth-child(8){ animation-delay:.29s }
 #halamanAruskas > *:nth-child(n+9){ animation-delay:.33s }
+
+/* ---------- Komponen yang dibawa halaman Jual (15 Agu 2026) ----------
+   Halaman tercepat yang dipakai pemilik: keterbacaan menang atas hiasan.
+   Keadaan TERPILIH memakai platina terang, bukan zamrud — zamrud tetap
+   dijaga khusus untuk untung & uang masuk (aturan warna rumah). */
+.platina .kartu-jenis-jual button, .platina .tab-bayar button, .platina .grid-tombol-pilih button{
+  background:linear-gradient(170deg,rgba(216,221,227,.05),rgba(216,221,227,.02));
+  border:1px solid var(--pf-tepi); border-radius:12px; color:var(--pf-platina);
+  transition:transform .14s ease;
+}
+.platina .kartu-jenis-jual button:active, .platina .tab-bayar button:active,
+.platina .grid-tombol-pilih button:active{ transform:scale(.95); }
+.platina .kartu-jenis-jual button.pilih, .platina .tab-bayar button.pilih,
+.platina .grid-tombol-pilih button.pilih{
+  background:linear-gradient(180deg,rgba(216,221,227,.22),rgba(216,221,227,.06));
+  border-color:rgba(216,221,227,.42); color:var(--pf-putih);
+  box-shadow:inset 0 1px 0 rgba(244,247,250,.12);
+}
+.platina .grid-tombol-pilih button .nama-produk{ color:inherit; }
+.platina .grid-tombol-pilih button .info-stok-tombol{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+.platina .grid-tombol-pilih button.pilih .info-stok-tombol{ color:rgba(244,247,250,.72); }
+.platina .grid-tombol-pilih .kosong-pilih{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+/* Sisa stok: kabar netral, jadi platina. Merah cuma saat stok TIDAK cukup. */
+.platina .stok-tersedia{
+  background:rgba(216,221,227,.05); border:1px solid var(--pf-tepi); border-radius:12px;
+  font-family:var(--pf-serif); color:#c2c9d2;
+}
+.platina .stok-tersedia.kurang{ background:rgba(224,122,104,.1); border-color:rgba(224,122,104,.4); color:var(--pf-merah2); }
+.platina .stepper-jumlah input{ font-family:var(--pf-serif); font-weight:600; font-size:26px; color:var(--pf-putih); }
+.platina .stepper-jumlah button{
+  background:linear-gradient(170deg,rgba(216,221,227,.06),rgba(216,221,227,.02));
+  border:1px solid var(--pf-tepi); color:var(--pf-platina); border-radius:14px; transition:transform .14s ease;
+}
+.platina .stepper-jumlah button:active{ transform:scale(.9); }
+.platina .stepper-jumlah .st-tambah{
+  background:linear-gradient(180deg,rgba(216,221,227,.2),rgba(216,221,227,.05));
+  border-color:rgba(216,221,227,.4); color:var(--pf-putih);
+}
+.platina .peringatan-baris{
+  background:rgba(224,122,104,.09); border:1px solid rgba(224,122,104,.35); border-radius:12px;
+}
+.platina .peringatan-baris svg{ color:var(--pf-merah2); }
+.platina .peringatan-baris span{ font-family:var(--pf-serif); color:#d7cdc9; }
+/* Alasan tombol Simpan mati: amber DIPERTAHANKAN (itu bahasa peringatan), cuma
+   nadanya diselaraskan ke amber Platina + teks serif; pintu keluarnya platina. */
+.platina #alasanJual .aj-baris{ background:rgba(212,169,78,.08); border:1px solid rgba(212,169,78,.32); border-radius:12px; }
+.platina #alasanJual .aj-baris svg{ color:var(--pf-amber); }
+.platina #alasanJual .aj-baris span{ font-family:var(--pf-serif); color:#d8cfbb; }
+.platina #alasanJual .aj-kasir{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+.platina #alasanJual .aj-pintu{
+  color:#eef2f6; border:1px solid var(--pf-tepi2); border-radius:13px;
+  background:linear-gradient(180deg,rgba(216,221,227,.16),rgba(216,221,227,.04));
+}
+.platina .pesan-ok{
+  background:linear-gradient(170deg,rgba(216,221,227,.06),rgba(216,221,227,.02));
+  border:1px solid var(--pf-tepi); border-radius:12px; color:var(--pf-putih);
+  font-family:var(--pf-serif); font-weight:600;
+}
+.platina .baris-44 .tanda-baru{ font-style:normal; font-size:9px; font-weight:700; letter-spacing:.12em;
+  color:var(--pf-hijau2); border:1px solid rgba(94,198,149,.4); border-radius:999px; padding:1.5px 6px; margin-left:4px; }
+.platina .baris-44 .jam{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+/* Kartu TOTAL — satu angka utama per layar, jadi diperlakukan seperti hero. */
+.platina #kartuTotalJual{
+  position:relative; overflow:hidden; border-radius:18px;
+  background:var(--pf-kartu); border:1px solid var(--pf-tepi2); background-image:none;
+  box-shadow:0 20px 44px -24px rgba(0,0,0,.8), inset 0 1px 0 rgba(244,247,250,.07);
+}
+.platina #kartuTotalJual > *{ position:relative; z-index:1; }
+.platina .ktj-label{ font-size:10px; letter-spacing:.22em; color:var(--pf-abu); }
+.platina .ktj-rincian{ font-family:var(--pf-serif); font-style:italic; font-size:11.5px; color:var(--pf-abu); }
+.platina .ktj-nilai{
+  font-family:var(--pf-serif); font-weight:600; letter-spacing:.01em;
+  background:linear-gradient(180deg,var(--pf-putih),#aeb6c0);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:var(--pf-putih);
+}
+.platina .ktj-nilai .tanda-minus{ -webkit-text-fill-color:var(--pf-putih); color:var(--pf-putih); }
+.platina .lencana-katalog{ color:var(--pf-platina); border-color:var(--pf-tepi2); }
+/* Bilah Simpan melayang + lembar konfirmasi: kaca platina, tombol platina. */
+.platina.tombol-simpan{
+  background:rgba(15,19,26,.85); border-top:1px solid var(--pf-tepi);
+  backdrop-filter:blur(20px) saturate(150%); -webkit-backdrop-filter:blur(20px) saturate(150%);
+}
+.platina.tombol-simpan button{
+  color:#eef2f6; border:1px solid var(--pf-tepi2); border-radius:14px;
+  background:linear-gradient(180deg,rgba(216,221,227,.16),rgba(216,221,227,.04));
+  box-shadow:0 12px 28px -16px rgba(0,0,0,.85), inset 0 1px 0 rgba(244,247,250,.1);
+  letter-spacing:.04em; transition:transform .15s ease;
+}
+.platina.tombol-simpan button:active{ transform:scale(.985); }
+.platina.tombol-simpan button:disabled{ background:none; color:var(--pf-abu); border-color:var(--pf-tepi); box-shadow:none; }
+.platina#lembarKonfirmasi{ background:linear-gradient(180deg,#151a20,#0f1216); border-color:var(--pf-tepi2); }
+.platina#lembarKonfirmasi h3{ font-family:var(--pf-serif); font-weight:600; color:var(--pf-putih); }
+.platina#lembarKonfirmasi .lk-sub{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+.platina .lk-total{ background:rgba(216,221,227,.05); border:1px solid var(--pf-tepi); border-radius:13px; }
+.platina .lk-total span{ letter-spacing:.2em; color:var(--pf-abu); }
+.platina .lk-total b{ font-family:var(--pf-serif); font-weight:600;
+  background:linear-gradient(180deg,var(--pf-putih),#aeb6c0);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:var(--pf-putih); }
+/* Angka "stok sesudah" tetap ditonjolkan — cuma pindah dari emas ke platina terang. */
+.platina .lk-sesudah{ color:var(--pf-putih); }
+.platina#lembarKonfirmasi .lk-utama{
+  color:#eef2f6; border:1px solid var(--pf-tepi2); border-radius:13px;
+  background:linear-gradient(180deg,rgba(216,221,227,.18),rgba(216,221,227,.05));
+  box-shadow:0 10px 26px -16px rgba(0,0,0,.85), inset 0 1px 0 rgba(244,247,250,.1);
+}
+.platina#lembarKonfirmasi .lk-batal{ border:1px solid var(--pf-tepi); color:var(--pf-platina); border-radius:13px; background:none; }
+/* Lembar QRIS ikut alur Jual (dibuka dari tombol Cara bayar). Angkanya besar
+   dan itu satu-satunya angka di layar -> perlakuan serif platina seperti hero. */
+.platina.modal-qris-kotak{ background:linear-gradient(180deg,#151a20,#0f1216); border-color:var(--pf-tepi2); }
+.platina.modal-qris-kotak h3{ font-family:var(--pf-serif); font-weight:600; font-size:16px; color:var(--pf-putih); }
+.platina .qris-total{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+.platina .qris-total b{ font-family:var(--pf-serif); font-style:normal; font-weight:600; font-size:30px; color:var(--pf-putih); }
+.platina .qris-kosong{ border:1px dashed rgba(216,221,227,.28); font-family:var(--pf-serif); color:var(--pf-abu); }
+.platina .qris-utama{
+  background:linear-gradient(180deg,rgba(216,221,227,.18),rgba(216,221,227,.05));
+  border:1px solid var(--pf-tepi2); color:#eef2f6; border-radius:13px;
+}
+.platina .qris-redup{ border:1px solid var(--pf-tepi); color:var(--pf-platina); border-radius:13px; }
+.platina .qris-aksi button{ transition:transform .15s ease; }
+.platina .qris-aksi button:active{ transform:scale(.97); }
+/* Kemunculan berlapis: hanya kartu isi, bilah tuts jalur tetap diam supaya
+   pindah jalur terasa seketika. */
+#halamanJual > .kartu, #halamanJual > .kartu-daftar, #halamanJual > #kartuTotalJual{
+  animation:pfMuncul .7s cubic-bezier(.19,.8,.26,1) both;
+}
 @media (prefers-reduced-motion: reduce){
   .platina *, .platina *::before, .platina *::after{ animation:none !important; }
   .platina .pf-garis{ stroke-dashoffset:0; }
@@ -2761,7 +2893,7 @@
 </div>
 
 <div class="modal-pin-bg" id="modalQrisBg">
-  <div class="modal-qris-kotak">
+  <div class="modal-qris-kotak platina">
     <h3>Bayar pakai QRIS</h3>
     <div class="qris-total">Total yang harus dibayar<b id="qrisTotal">Rp0</b></div>
     <div id="qrisIsi"></div>
@@ -2898,7 +3030,7 @@
 
 <!-- LEMBAR KONFIRMASI PRA-SIMPAN (Alur UX 1: uang tidak pernah tersimpan satu tahap) -->
 <div id="overlayKonfirmasi" onclick="tutupKonfirmasi()"></div>
-<div id="lembarKonfirmasi" role="dialog" aria-modal="true">
+<div id="lembarKonfirmasi" class="platina" role="dialog" aria-modal="true">
   <div class="lm-pegangan"></div>
   <h3>Periksa sebelum simpan</h3>
   <p class="lk-sub">Setelah disimpan, angka ini masuk omzet dan stok berkurang.</p>
@@ -3448,7 +3580,7 @@
     </div>
   </div>
 
-  <div id="halamanJual" class="halaman tampil">
+  <div id="halamanJual" class="halaman tampil platina">
     <div class="judul-halaman"><h2>Jual</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkJual" class="pesan-ok"> Penjualan tersimpan.</div>
 
@@ -3621,6 +3753,7 @@
 
     <!-- Kartu TOTAL + daftar hari ini — mengikuti mockup UI (6 Agu 2026), khusus HP -->
     <div class="kartu-total-jual" id="kartuTotalJual">
+      <i class="pf-nafas" aria-hidden="true"></i>
       <div>
         <div class="ktj-label">Total</div>
         <div class="ktj-rincian" id="ktjRincian">Belum ada isian</div>
@@ -4576,7 +4709,7 @@
   </div>
   <button onclick="simpanKedatangan()" id="btnSimpanUtama"> Simpan Kedatangan Ini</button>
 </div>
-<div class="tombol-simpan" id="tombolSimpanJualWrap">
+<div class="tombol-simpan platina" id="tombolSimpanJualWrap">
   <!-- Alasan tombol mati ditulis DI SEBELAH tombolnya, dengan pintu keluarnya (UX Alur 1) -->
   <div id="alasanJual" style="display:none;"></div>
   <button onclick="simpanJualAtauRetur()" id="btnSimpanJual"> Simpan Penjualan</button>
