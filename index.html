@@ -2394,6 +2394,12 @@
     border-radius: 10px; padding: 0 10px; font-family: inherit; font-size: 14px;
   }
   .lap-bilah button { min-height: 44px; min-width: 44px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 700; padding: 0 14px; }
+  .lap-mode { display: flex; gap: 4px; flex: 0 0 auto; }
+  .lap-mode button { padding: 0 10px; font-size: 12px; background: var(--kartu); color: var(--redup); border: 1px solid var(--garis); }
+  .lap-mode button.pilih { background: var(--badge-bg); color: var(--emas-terang); border-color: var(--emas-gelap); }
+  .tren-svg { width: 100%; height: 96px; display: block; margin: 6px 0 2px; }
+  .tren-svg rect { fill: var(--emas); }
+  .tren-svg text { fill: var(--redup); font-size: 8px; font-family: inherit; }
   .lap-tutup { background: none; color: var(--redup); border: 1px solid var(--garis); }
   .lap-cetak { background: var(--emas); color: var(--tombol-teks); border: none; }
   .lap-kertas { padding: 16px 14px 40px; max-width: 720px; margin: 0 auto; }
@@ -2467,6 +2473,9 @@
     .lap-baris.lb-jumlah { border-top-color: #000; }
     .lb-masuk, .lb-keluar { color: #000 !important; }
     .lap-catatan { background: #f4f4f4; border-left-color: #999; }
+    .tren-svg rect { fill: #555 !important; }
+    .tren-svg text { fill: #444 !important; }
+    .lap-mode { display: none !important; }
     .lap-bagian { break-inside: auto; }
     .lap-bagian > h2 { break-after: avoid; }
     .lap-baris { break-inside: avoid; }
@@ -2570,7 +2579,12 @@
 <div id="lembarLaporan" role="dialog" aria-modal="true" aria-labelledby="lapJudul">
   <div class="lap-bilah">
     <button type="button" class="lap-tutup" onclick="tutupLaporan()">Tutup</button>
+    <div class="lap-mode">
+      <button type="button" id="lapModeBulan" class="pilih" onclick="gantiModeLaporan('bulan')">Bulanan</button>
+      <button type="button" id="lapModeTahun" onclick="gantiModeLaporan('tahun')">Tahunan</button>
+    </div>
     <input type="month" id="lapBulan" onchange="gambarLaporan()" aria-label="Bulan laporan">
+    <input type="number" id="lapTahun" inputmode="numeric" onchange="gambarLaporan()" aria-label="Tahun laporan" style="display:none;">
     <button type="button" class="lap-cetak" onclick="cetakLaporan()">Cetak / PDF</button>
   </div>
   <div class="lap-kertas" id="lapKertas"></div>
@@ -2696,7 +2710,7 @@
   <button type="button" class="lm-baris tab-owner" data-halaman="aruskas" onclick="pindahDariMenu('aruskas')"><span>Arus Kas <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— uang masuk &amp; keluar</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="pelanggan" onclick="pindahDariMenu('pelanggan')"><span>Pelanggan <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— buku pelanggan &amp; ciri pengenal</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="piutang" onclick="pindahDariMenu('piutang')"><span>Piutang <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— pelanggan yang berutang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaLaporan()"><span>Laporan Bulanan <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— cetak / simpan PDF</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaLaporan()"><span>Laporan <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— bulanan &amp; tahunan, cetak/PDF</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaTutupBuku()"><span>Tutup Buku <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— arsip tahunan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaSetelPin()"><span>PIN Owner <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— setel / ganti</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()"><span>Jaga Toko <i>— siapa yang bertugas</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -10648,6 +10662,7 @@
   }
 
   function gambarLaporan() {
+    if (_modeLaporan === 'tahun') { gambarLaporanTahunan(); return; }
     const el = document.getElementById('lapBulan');
     if (!el.value) el.value = bulanLokalIso();
     const bl = el.value;
@@ -10761,6 +10776,96 @@
       Transaksi yang dibatalkan atau dikoreksi tidak ikut dihitung.
       Angka di laporan ini berasal dari perhitungan yang sama dengan tab Laba, Arus Kas, dan Buku Kas.</div>`);
 
+    document.getElementById('lapKertas').innerHTML = bagian.join('');
+  }
+
+  // ===== LAPORAN TAHUNAN (Modul ERP #4, 14 Agustus 2026) =====
+  // Agregat 12 bulan MEMAKAI MESIN BULANAN YANG SAMA (hitungLabaBulan & hitungArusKas
+  // per bulan) — totalnya dijumlah dari sana, sehingga laporan tahunan tidak mungkin
+  // berselisih dengan laporan-laporan bulanannya sendiri; kesamaannya diuji, bukan
+  // dijanjikan. Ditambah baris pajak final UMKM 0,5% (PP 55/2022): perorangan bebas
+  // untuk Rp500 juta omzet pertama — hitungan kasar, bukan nasihat pajak.
+  let _modeLaporan = 'bulan';
+  const BATAS_BEBAS_UMKM = 500000000;
+  function gantiModeLaporan(mode) {
+    _modeLaporan = mode;
+    document.getElementById('lapModeBulan').classList.toggle('pilih', mode === 'bulan');
+    document.getElementById('lapModeTahun').classList.toggle('pilih', mode === 'tahun');
+    document.getElementById('lapBulan').style.display = mode === 'bulan' ? '' : 'none';
+    document.getElementById('lapTahun').style.display = mode === 'tahun' ? '' : 'none';
+    const elT = document.getElementById('lapTahun');
+    if (mode === 'tahun' && !elT.value) elT.value = new Date().getFullYear();
+    gambarLaporan();
+  }
+  function gambarLaporanTahunan() {
+    const tahun = parseInt(document.getElementById('lapTahun').value, 10) || new Date().getFullYear();
+    const perBulan = [];
+    for (let b = 1; b <= 12; b++) {
+      const bl = tahun + '-' + String(b).padStart(2, '0');
+      perBulan.push({ bl, laba: hitungLabaBulan(bl), kas: hitungArusKas(bl) });
+    }
+    const jml = f => perBulan.reduce((a, x) => a + f(x), 0);
+    const omzet = jml(x => x.laba.omzetPenuh);
+    const margin = jml(x => x.laba.margin);
+    const omzetBolong = jml(x => x.laba.omzetTanpaHpp);
+    const nBolong = jml(x => x.laba.jumlahTanpaHpp);
+    const nTrx = jml(x => x.laba.jumlahTrx);
+    const kasMasuk = jml(x => x.kas.totalMasuk);
+    const kasKeluar = jml(x => x.kas.totalKeluar);
+    const biaya = bayaranBiayaBulanan().filter(x => (x.bulan || '').slice(0, 4) === String(tahun))
+      .reduce((a, x) => a + x.nominal, 0);
+    const hapusBuku = ambilPiutangMutasi().filter(m => m.tipe === 'hapusBuku' && (m.tanggal || '').slice(0, 4) === String(tahun))
+      .reduce((a, m) => a + (m.nominal || 0), 0);
+    const labaBersih = margin - biaya - hapusBuku;
+    const kenaPajak = Math.max(0, omzet - BATAS_BEBAS_UMKM);
+    const pajak = Math.round(kenaPajak * 0.005);
+    const rp = n => (n < 0 ? '−' : '') + formatRupiah(Math.abs(n));
+
+    const bagian = [];
+    bagian.push(`<div class="lap-kepala">
+      <h1>Toko Beras M.IQBAL</h1>
+      <div class="lap-bulan">Laporan Tahunan ${tahun}</div>
+      <div class="lap-cap">Dicetak ${escapeHtml(formatTanggal(tanggalLokalIso()))} — dijumlah dari dua belas laporan bulanan</div>
+    </div>`);
+    bagian.push(`<div class="lap-bagian"><h2>Ikhtisar ${tahun}</h2>
+      ${barisLap('Omzet penuh setahun', nTrx + ' transaksi, termasuk kredit', omzet, 'lb-utama')}
+      ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', margin)}
+      ${barisLap('Biaya bulanan setahun', 'ditagihkan ke tahun ini', -biaya)}
+      ${hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama', -hapusBuku) : ''}
+      ${barisLap('Laba bersih perkiraan', '', labaBersih, 'lb-jumlah')}
+      ${barisLap('Kas bersih setahun', 'masuk ' + formatRupiah(kasMasuk) + ' − keluar ' + formatRupiah(kasKeluar), kasMasuk - kasKeluar, 'lb-jumlah')}
+    </div>`);
+    bagian.push(`<div class="lap-bagian"><h2>Pajak final UMKM — hitungan kasar</h2>
+      ${barisLap('Omzet setahun (dasar pajak)', '', omzet)}
+      ${barisLap('Bebas pajak (PP 55/2022, perorangan)', 'Rp500 juta omzet pertama', -Math.min(omzet, BATAS_BEBAS_UMKM))}
+      ${barisLap('Perkiraan pajak final 0,5%', kenaPajak > 0 ? 'atas ' + formatRupiah(kenaPajak) : 'omzet masih di bawah batas bebas', pajak, 'lb-jumlah')}
+      <div class="lap-catatan">Hitungan kasar untuk pegangan, BUKAN nasihat pajak — tarif & batas mengikuti
+      aturan yang bisa berubah; pastikan ke konsultan/DJP sebelum lapor.</div>
+    </div>`);
+    // Tren 12 bulan: batang omzet (SVG polos) + tabel angkanya.
+    const maks = Math.max(1, ...perBulan.map(x => x.laba.omzetPenuh));
+    const NB = 'JFMAMJJASOND';
+    const batang = perBulan.map((x, i) => {
+      const t = Math.round((x.laba.omzetPenuh / maks) * 70);
+      return `<rect x="${8 + i * 32}" y="${78 - t}" width="22" height="${Math.max(t, x.laba.omzetPenuh > 0 ? 2 : 0)}" rx="2"></rect>
+        <text x="${19 + i * 32}" y="90" text-anchor="middle">${NB[i]}</text>`;
+    }).join('');
+    bagian.push(`<div class="lap-bagian"><h2>Tren per bulan</h2>
+      <svg class="tren-svg" viewBox="0 0 392 96" preserveAspectRatio="xMidYMid meet" aria-label="Omzet per bulan">${batang}</svg>
+      ${perBulan.map((x, i) => {
+        const ada = x.laba.jumlahTrx > 0 || x.kas.totalMasuk > 0 || x.kas.totalKeluar > 0;
+        return `<div class="lap-baris${ada ? '' : ' lb-nol'}">
+          <span class="lb-nama">${escapeHtml(namaBulanPanjang(x.bl + '-01'))}<small>margin ${rp(x.laba.margin)} · kas ${rp(x.kas.bersih)}</small></span>
+          <span class="lb-angka">${formatRupiah(x.laba.omzetPenuh)}</span>
+        </div>`;
+      }).join('')}
+    </div>`);
+    const catatan = [];
+    if (nBolong > 0) catatan.push(`<b>${nBolong} transaksi ber-HPP bolong</b> (omzet ${formatRupiah(omzetBolong)}) — margin setahun tercatat lebih rendah dari kenyataan; isi lewat tab Laba.`);
+    catatan.push('Angka tahunan dijumlah dari mesin laporan bulanan yang sama — tidak ada rumus tandingan.');
+    bagian.push(`<div class="lap-catatan${nBolong > 0 ? ' lap-peringatan' : ''}">${catatan.join(' ')}</div>`);
+    bagian.push(`<div class="lap-kaki">Dibuat otomatis oleh Sistem Toko M.IQBAL dari catatan yang tersimpan.
+      Transaksi yang dibatalkan atau dikoreksi tidak ikut dihitung.</div>`);
     document.getElementById('lapKertas').innerHTML = bagian.join('');
   }
 
@@ -13996,6 +14101,7 @@
   window.unduhArsipTahun = unduhArsipTahun;
   window.tulisSaldoPembuka = tulisSaldoPembuka;
   window.hapusDokumenTahun = hapusDokumenTahun;
+  window.gantiModeLaporan = gantiModeLaporan;
   window.bukaLaporan = bukaLaporan;
   window.tutupLaporan = tutupLaporan;
   window.gambarLaporan = gambarLaporan;
