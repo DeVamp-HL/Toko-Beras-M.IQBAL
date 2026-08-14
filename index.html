@@ -1323,33 +1323,44 @@
   #navBawah, #lembarMenu, #overlayLembarMenu { display: none; }
   @media (max-width: 699px) {
     .tombol-logo-drawer { display: none; } /* drawer diganti nav bawah */
-    main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+    main { padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
     /* Halaman dengan bilah Simpan melayang (Jual, Masuk, Produksi) menumpuk dua
        lapis chrome: nav 64 px + bilah ±81 px. Dengan padding 96 px, kartu Total dan
        daftar "Penjualan hari ini" di kaki halaman Jual tidak pernah bisa di-scroll
        ke tempat yang terlihat — keduanya permanen tertutup. */
-    body.ada-bilah-simpan main { padding-bottom: calc(184px + env(safe-area-inset-bottom, 0px)); }
-    .tombol-simpan { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); padding: 12px 16px; }
+    body.ada-bilah-simpan main { padding-bottom: calc(196px + env(safe-area-inset-bottom, 0px)); }
+    .tombol-simpan { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); padding: 12px 16px; }
+    /* Bilah urungkan harus lolos dari puncak pil nav baru (75px + safe-area). */
+    #bilahUrungkan { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
     /* z-index di atas lembar Menu (32): mockup menahan bilah bawah tetap terlihat
        saat lembar terbuka, jadi pindah ke 4 halaman tersering tetap satu ketukan. */
+    /* PIL KACA MENGAMBANG — Claude Design "Ringkasan A: Kaca Dalam", dipilih
+       pemilik 14 Agu 2026 dari screenshot bilah bawah. Ikon, urutan tab, dan
+       seluruh perilaku (pindahHalaman / lembar Menu) TIDAK berubah — hanya
+       wadahnya: melayang 12px dari tepi, kaca blur dalam, tab aktif berpendar
+       emas, mengecil saat ditekan. */
     #navBawah {
       display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 33;
-      padding: 7px 10px calc(8px + env(safe-area-inset-bottom, 0px));
-      background: rgba(13, 17, 23, .94);
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-      border-top: 1px solid var(--kaca-garis);
+      position: fixed; left: 12px; right: 12px;
+      bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 33;
+      padding: 7px 6px 8px;
+      background: rgba(15, 19, 26, .78);
+      backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
+      border: 1px solid rgba(255, 255, 255, .09);
+      border-radius: 30px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .5);
     }
     #navBawah button {
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-      min-height: 48px; padding: 6px 0 5px; border: 1px solid transparent; border-radius: 11px;
-      background: none; color: var(--redup); font-size: 9.5px; font-weight: 600; font-family: inherit;
+      min-height: 48px; padding: 6px 0 5px; border: none; border-radius: 22px;
+      background: none; color: var(--redup); font-size: 9px; font-weight: 600; font-family: inherit;
+      transition: transform .15s ease;
     }
+    #navBawah button:active { transform: scale(.93); }
     #navBawah button svg { width: 19px; height: 19px; }
     #navBawah button.aktif {
       color: var(--emas-terang); font-weight: 700;
-      background: linear-gradient(180deg, rgba(217, 178, 95, .18), rgba(217, 178, 95, .03));
-      border-color: rgba(217, 178, 95, .35);
+      background: linear-gradient(180deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
     }
     #overlayLembarMenu {
       display: block; position: fixed; inset: 0; z-index: 31;
@@ -1362,7 +1373,7 @@
       background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
       border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgba(0, 0, 0, .6);
       /* ruang bawah disisakan untuk bilah nav yang tetap tampil di atas lembar */
-      padding: 10px 16px calc(74px + env(safe-area-inset-bottom, 0px));
+      padding: 10px 16px calc(86px + env(safe-area-inset-bottom, 0px));
       max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
       transform: translateY(105%);
       transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
