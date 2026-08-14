@@ -3264,6 +3264,12 @@
         <label>Merk karung yang diretur</label>
         <div class="grid-tombol-pilih" id="pilihReturKarungTombol"></div>
         <input type="hidden" id="returKarungMerk">
+        <label>Ukuran sack yang diretur</label>
+        <div class="kartu-jenis-jual" style="grid-template-columns:1fr 1fr;">
+          <button type="button" id="returSack50" class="pilih" onclick="pilihReturBeratSack(50)">Sack 50 kg</button>
+          <button type="button" id="returSack25" onclick="pilihReturBeratSack(25)">Sack 25 kg</button>
+        </div>
+        <input type="hidden" id="returBeratKarung" value="50">
         <label>Jumlah karung diretur</label>
         <input type="number" id="returKarungJumlah" placeholder="0" inputmode="numeric">
       </div>
@@ -5686,7 +5692,10 @@
       piutangMutasi: ambilPiutangMutasi(),
       kasbonMutasi: ambilKasbonMutasi(),
       pelangganCatatan: ambilPelangganCatatan(),
-      thrPelanggan: ambilThrPelanggan()
+      thrPelanggan: ambilThrPelanggan(),
+      // Peta merk->jenis beras (dok pengaturan, bukan koleksi ber-id) — audit 14 Agu
+      // 2026: sebelumnya tidak ikut backup, pulihkan-dari-file membuat petanya kosong.
+      petaJenisBeras: ambilPetaJenisBeras()
     };
     const blob = new Blob([JSON.stringify(isi, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -5735,6 +5744,11 @@
           { kunci: 'pelangganCatatan',    koleksi: KOLEKSI_PELANGGAN_CAT, ada: ambilPelangganCatatan(), field: 'id',    label: 'catatan pelanggan' },
           { kunci: 'thrPelanggan',        koleksi: KOLEKSI_THR,           ada: ambilThrPelanggan(),     field: 'id',    label: 'THR pelanggan' }
         ];
+        // Peta jenis beras: satu dokumen pengaturan, dipulihkan langsung (bukan per-id).
+        if (isi.petaJenisBeras && Object.keys(isi.petaJenisBeras).length > 0) {
+          localStorage.setItem(KUNCI_JENIS_BERAS, JSON.stringify(isi.petaJenisBeras));
+          try { await simpanKeFirestore('pengaturan', { id: 'jenisBeras', peta: isi.petaJenisBeras, diubahPada: new Date().toISOString() }); } catch (e) { console.error(e); }
+        }
         const laporan = [];
         for (const k of daftarKoleksi) {
           const dariFile = isi[k.kunci] || [];
@@ -5839,6 +5853,14 @@
   }
 
   async function hapusBatch(id) {
+    // Batch FONDASI tidak boleh terhapus dari tombol riwayat: stok awal 8 Agu dan
+    // saldo pembuka tutup buku menopang seluruh stok & HPP — satu ketukan salah
+    // memusnahkan setahun angka (audit 14 Agu 2026).
+    const b = ambilSemuaBatch().find(k => k.id === id);
+    if (b && (b.stokAwal || b.tutupBuku)) {
+      alert('Ini batch fondasi (' + (b.tutupBuku ? 'saldo pembuka tutup buku' : 'stok awal') + ') — seluruh stok & HPP berdiri di atasnya, jadi tidak bisa dihapus dari sini.');
+      return;
+    }
     // Kedatangan dengan baris bal punya dokumen produksi beli-jadi pasangan (dariBatch).
     // Keduanya dicabut bersama — kalau tidak, stok bags-nya hidup selamanya tanpa induk.
     const pasangan = ambilProduksi().filter(pr => pr.dariBatch === id);
@@ -7295,7 +7317,24 @@
     const opsiMerk = Object.keys(stokKarung).map(m => ({
       kunci: m, label: m, subLabel: `stok saat ini ${stokKarung[m].sisaKg} kg`
     }));
-    bikinTombolPilih('pilihReturKarungTombol', 'returKarungMerk', opsiMerk, 'Belum ada merk tercatat.', null);
+    bikinTombolPilih('pilihReturKarungTombol', 'returKarungMerk', opsiMerk, 'Belum ada merk tercatat.', selaraskanReturBerat);
+  }
+
+  function pilihReturBeratSack(berat) {
+    document.getElementById('returBeratKarung').value = berat;
+    document.getElementById('returSack50').classList.toggle('pilih', berat === 50);
+    document.getElementById('returSack25').classList.toggle('pilih', berat === 25);
+  }
+  // Dipanggil dari tombol pilih merk retur (onPilih bikinTombolPilih): merk yang cuma
+  // punya satu ukuran langsung terkunci ke ukuran itu.
+  function selaraskanReturBerat() {
+    const merk = document.getElementById('returKarungMerk').value;
+    if (!merk) return;
+    const p50 = merkPunyaKarungBerat(merk, 50), p25 = merkPunyaKarungBerat(merk, 25);
+    document.getElementById('returSack50').disabled = !p50;
+    document.getElementById('returSack25').disabled = !p25;
+    if (p50 && !p25) pilihReturBeratSack(50);
+    else if (p25 && !p50) pilihReturBeratSack(25);
   }
 
   async function simpanRetur() {
@@ -7339,11 +7378,10 @@
         if (!confirm(`Merk ${merk} cuma pernah terjual ${totalTerjualKarung} karung utuh (sudah diretur ${totalReturKarungSebelumnya} sebelumnya) — retur ${jumlahKarung} karung ini melebihi itu, mungkin salah ketik. Tetap simpan?`)) return;
       }
       const batch = ambilSemuaBatch();
-      let beratKarungAcuan = 50;
-      for (const k of batch) {
-        const m = k.merkList.find(x => x.merk === merk && x.satuan === 'karung');
-        if (m) { beratKarungAcuan = m.beratKarung; break; }
-      }
+      // DULU berat ditebak dari baris batch pertama yang ketemu — sejak sack 25 hidup,
+      // satu merk bisa punya 50 DAN 25: retur sack 25 bisa mengembalikan 50 kg ke stok
+      // (audit 14 Agu 2026). Sekarang mengikuti tombol ukuran yang dipilih pemakai.
+      const beratKarungAcuan = parseFloat((document.getElementById('returBeratKarung') || {}).value) || 50;
       const totalKg = jumlahKarung * beratKarungAcuan;
       dataRetur = { jenisAsal: 'karung', merkSumber: merk, jumlahKarung, beratKarungAcuan, totalKg };
     }
@@ -9197,8 +9235,12 @@
       dorong(m.tanggal, m.jam, m.id, 'Pelunasan piutang — ' + (m.namaPelanggan || ''), m.nominal, 0);
     });
     ambilKasbonMutasi().forEach(m => {
+      // HANYA ambil/bayar. Cabang else yang lama ikut menangkap tipe saldoAwal
+      // (tutup buku) sebagai uang keluar — dan hero "Uang Kas Sekarang" dihitung
+      // dari daftar ini, jadi kasbon terbawa akan menggerus kas sekarang secara
+      // diam-diam. Tertangkap audit 14 Agu 2026, SEBELUM tutup buku pertama.
       if (m.tipe === 'bayar') dorong(m.tanggal, m.jam, m.id, 'Kasbon kembali — ' + (m.namaPegawai || ''), m.nominal, 0);
-      else dorong(m.tanggal, m.jam, m.id, 'Kasbon — ' + (m.namaPegawai || ''), 0, m.nominal);
+      else if (m.tipe === 'ambil') dorong(m.tanggal, m.jam, m.id, 'Kasbon — ' + (m.namaPegawai || ''), 0, m.nominal);
     });
     ambilSemuaBatch().forEach(k => {
       if (k.stokAwal) return;
@@ -13453,6 +13495,8 @@
   window.simpanPenjualan = simpanPenjualan;
   window.simpanJualAtauRetur = simpanJualAtauRetur;
   window.pilihReturJenisAsal = pilihReturJenisAsal;
+  window.pilihReturBeratSack = pilihReturBeratSack;
+  window.selaraskanReturBerat = selaraskanReturBerat;
   window.pilihReturKondisi = pilihReturKondisi;
   window.pilihReturPenyelesaian = pilihReturPenyelesaian;
   window.simpanProduksi = simpanProduksi;
