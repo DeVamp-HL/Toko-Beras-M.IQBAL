@@ -2590,6 +2590,17 @@
   <div class="lap-kertas" id="lapKertas"></div>
 </div>
 
+<div class="modal-pin-bg" id="modalSlipBg">
+  <div class="modal-pin-kotak" style="text-align:left; max-height:92vh; overflow-y:auto;">
+    <h3 id="slipJudul">Slip Gaji</h3>
+    <div id="slipIsi" style="font-size:13.5px; line-height:1.7; color:var(--teks); white-space:pre-line; font-variant-numeric:tabular-nums; margin:10px 0 4px;"></div>
+    <div class="modal-pin-tombol">
+      <button type="button" class="modal-pin-batal" onclick="tutupSlipGaji()">Tutup</button>
+      <button type="button" class="modal-pin-masuk" onclick="kirimSlipWa()">Kirim WA</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-pin-bg" id="modalSetelPinBg">
   <div class="modal-pin-kotak">
     <h3 id="setelPinJudul">PIN Owner</h3>
@@ -4268,6 +4279,16 @@
       <div class="panel-kepala"><h2>Riwayat Biaya Bulanan</h2></div>
       <div id="daftarBulanan" class="daftar-batch"></div>
     </div>
+
+    <!-- SLIP GAJI (Modul ERP #5, 14 Agu 2026): gaji + hadir + potongan kasbon sudah
+         tercatat semua — tinggal disusun jadi slip yang bisa dikirim WA. Profesional
+         terasa justru di sini. -->
+    <div class="kartu" style="margin-top:12px;">
+      <div class="panel-kepala"><h2>Slip Gaji <span class="keterangan">kirim WA ke pegawai</span></h2></div>
+      <label for="slipBulan">Bulan</label>
+      <input type="month" id="slipBulan" onchange="tampilkanSlipGaji()">
+      <div class="kartu-daftar" id="daftarSlipGaji" style="margin-top:10px; background:none; border:none; padding:0;"></div>
+    </div>
   </div>
 
   <!-- HALAMAN PENGELUARAN HARIAN -->
@@ -4644,7 +4665,7 @@
     document.body.classList.toggle('ada-bilah-simpan', ['jual', 'input', 'produksi', 'bulanan', 'harian'].indexOf(nama) >= 0);
     if (nama === 'ringkasan') tampilkanRingkasan();
     if (nama === 'rekap') { tampilkanRekap(); tampilkanRiwayatJual(); tampilkanRiwayat(); }
-    if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); }
+    if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); tampilkanSlipGaji(); }
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); isiSaranPelanggan(); }
     if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
     if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); tampilkanCocokStok(); tampilkanCocokBahan(); }
@@ -5524,6 +5545,7 @@
   }, 'id', 'batch');
 
   pasangSinkronisasi(KOLEKSI_BULANAN, KUNCI_BULANAN, (d) => { _cacheBulanan = d; }, () => {
+    if (document.getElementById('halamanBulanan').classList.contains('tampil')) tampilkanSlipGaji();
     segarkanArusKasJikaTampil();
     if (document.getElementById('halamanBulanan').classList.contains('tampil')) tampilkanBulanan();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
@@ -10041,6 +10063,68 @@
       .map(x => `<option value="${escapeHtml(x.nama)}"></option>`).join('');
   }
 
+  // ===== SLIP GAJI (Modul ERP #5, 14 Agustus 2026) =====
+  // Semua bahannya sudah tercatat: hari masuk (kalender), tarif per hari, tanggal
+  // bayar, dan potongan kasbon bertanda "Potong gaji". Slip cuma MENYUSUN — tidak
+  // ada angka baru, tidak ada uang yang bergerak dari sini.
+  let _slipTeks = '';
+  function dataSlipGaji(bulan) {
+    const dok = ambilBiayaBulanan().find(b => b.bulan === bulan);
+    if (!dok || !Array.isArray(dok.rincianGaji)) return [];
+    return dok.rincianGaji.filter(r => (r.gaji || 0) > 0).map(r => {
+      const potongan = ambilKasbonMutasi()
+        .filter(m => m.tipe === 'bayar' && m.caraBayar === 'Potong gaji'
+          && kunciPelanggan(m.namaPegawai) === kunciPelanggan(r.nama)
+          && bulanDari(m.tanggal) === bulan)
+        .reduce((a, m) => a + (m.nominal || 0), 0);
+      const kasbonSkr = hitungKasbon().find(x => kunciPelanggan(x.nama) === kunciPelanggan(r.nama));
+      const tglBayar = (dok.tanggalBayarGaji || {})[r.nama] || '';
+      return { nama: r.nama, hari: r.hari || 0, gaji: r.gaji || 0,
+        tanggalMasuk: r.tanggalMasuk || [], potongan, diterima: (r.gaji || 0) - potongan,
+        sisaKasbon: kasbonSkr ? kasbonSkr.sisa : 0, tglBayar };
+    });
+  }
+  function tampilkanSlipGaji() {
+    const kont = document.getElementById('daftarSlipGaji');
+    if (!kont) return;
+    const el = document.getElementById('slipBulan');
+    if (!el.value) el.value = bulanLokalIso();
+    const daftar = dataSlipGaji(el.value);
+    kont.innerHTML = daftar.length === 0
+      ? '<div class="kosong-info"><b>Belum ada gaji tercatat bulan ini</b><span>Isi gaji pegawai di formulir atas dulu — slipnya menyusun dari sana.</span></div>'
+      : daftar.map((d, i) => `<button type="button" class="baris-44 baris-ketuk" onclick="bukaSlipGaji(${i})">
+          <span class="nama"><i class="trx-nama">${escapeHtml(d.nama)}</i><small>${d.hari} hari${d.potongan > 0 ? ' · potongan kasbon ' + formatRupiah(d.potongan) : ''}${d.tglBayar ? ' · dibayar ' + formatTanggal(d.tglBayar) : ' · belum dibayar'}</small></span>
+          <span class="angka">${formatRupiah(d.diterima)}</span>
+          ${IKON_CHEV}
+        </button>`).join('');
+  }
+  function susunSlipGaji(d, bulan) {
+    const baris = ['*TOKO BERAS M.IQBAL*', 'Slip Gaji ' + namaBulanPanjang(bulan + '-01'), d.nama, ''];
+    baris.push('Hari masuk: ' + d.hari + ' hari');
+    baris.push('Gaji: ' + d.hari + ' × ' + formatRupiah(RATE_GAJI_PER_HARI_ORANG) + ' = ' + formatRupiah(d.gaji));
+    if (d.potongan > 0) baris.push('Potongan kasbon: −' + formatRupiah(d.potongan));
+    baris.push('*Diterima: ' + formatRupiah(d.diterima) + '*');
+    baris.push(d.tglBayar ? 'Dibayar: ' + formatTanggal(d.tglBayar) : 'Status: belum dibayar');
+    if (d.sisaKasbon > 0) baris.push('Sisa kasbon: ' + formatRupiah(d.sisaKasbon));
+    baris.push('');
+    baris.push('Terima kasih atas kerjanya ');
+    return baris.join('\n');
+  }
+  function bukaSlipGaji(i) {
+    const bulan = document.getElementById('slipBulan').value;
+    const d = dataSlipGaji(bulan)[i];
+    if (!d) return;
+    _slipTeks = susunSlipGaji(d, bulan);
+    document.getElementById('slipJudul').textContent = 'Slip Gaji — ' + d.nama;
+    document.getElementById('slipIsi').textContent = _slipTeks.replace(/\*/g, '');
+    document.getElementById('modalSlipBg').classList.add('tampil');
+  }
+  function tutupSlipGaji() { document.getElementById('modalSlipBg').classList.remove('tampil'); }
+  function kirimSlipWa() {
+    // Tanpa nomor tujuan — pola struk & tagihan: WhatsApp yang menanyakan tujuannya.
+    window.open('https://wa.me/?text=' + encodeURIComponent(_slipTeks), '_blank');
+  }
+
   // ===== NERACA RINGKAS (Modul ERP #3, 14 Agustus 2026) =====
   // Kaki ketiga akuntansi (laba-rugi & arus kas sudah ada): posisi kekayaan toko.
   // Kekayaan = kas + nilai stok @HPP (modal, bukan harga jual — konservatif & jujur)
@@ -14101,6 +14185,10 @@
   window.unduhArsipTahun = unduhArsipTahun;
   window.tulisSaldoPembuka = tulisSaldoPembuka;
   window.hapusDokumenTahun = hapusDokumenTahun;
+  window.tampilkanSlipGaji = tampilkanSlipGaji;
+  window.bukaSlipGaji = bukaSlipGaji;
+  window.tutupSlipGaji = tutupSlipGaji;
+  window.kirimSlipWa = kirimSlipWa;
   window.gantiModeLaporan = gantiModeLaporan;
   window.bukaLaporan = bukaLaporan;
   window.tutupLaporan = tutupLaporan;
