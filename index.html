@@ -1414,8 +1414,8 @@
       --gerak-panel: 120ms; --gerak-panel-keluar: 120ms;
       --gerak-sentuh-tekan: 120ms; --gerak-sentuh-lepas: 120ms;
     }
-    .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp, #lembarPelanggan,
-    #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi, #overlayLembarIsiHpp, #overlayLembarPelanggan,
+    .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp, #lembarPelanggan, #lembarPemasok,
+    #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi, #overlayLembarIsiHpp, #overlayLembarPelanggan, #overlayLembarPemasok,
     #spandukDraf, #bilahUrungkan, .baris-merk, .baris-sumber-produksi {
       animation-duration: 120ms !important; transition-duration: 120ms !important;
     }
@@ -1731,8 +1731,8 @@
     position: fixed; inset: 0; z-index: 42; background: #000; opacity: 0; pointer-events: none;
     transition: opacity var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon, body.lembar-koreksi-produksi-terbuka #overlayLembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #overlayLembarIsiHpp, body.lembar-pelanggan-terbuka #overlayLembarPelanggan { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp, #lembarPelanggan {
+  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon, body.lembar-koreksi-produksi-terbuka #overlayLembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #overlayLembarIsiHpp, body.lembar-pelanggan-terbuka #overlayLembarPelanggan, body.lembar-pemasok-terbuka #overlayLembarPemasok { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp, #lembarPelanggan, #lembarPemasok {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 43;
     max-width: 680px; margin: 0 auto;
     background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
@@ -1742,23 +1742,23 @@
     transform: translateY(105%);
     transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang, body.lembar-koreksi-produksi-terbuka #lembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #lembarIsiHpp, body.lembar-pelanggan-terbuka #lembarPelanggan { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan, #lembarKoreksiProduksi .lm-pegangan, #lembarIsiHpp .lm-pegangan, #lembarPelanggan .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
-  #lembarPiutang h3, #lembarKasbon h3, #lembarKoreksiProduksi h3, #lembarIsiHpp h3, #lembarPelanggan h3 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
-  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub, #lembarKoreksiProduksi .lk-sub, #lembarIsiHpp .lk-sub, #lembarPelanggan .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
-  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup, #lembarKoreksiProduksi .lmk-tutup, #lembarIsiHpp .lmk-tutup, #lembarPelanggan .lmk-tutup {
+  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang, body.lembar-koreksi-produksi-terbuka #lembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #lembarIsiHpp, body.lembar-pelanggan-terbuka #lembarPelanggan, body.lembar-pemasok-terbuka #lembarPemasok { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan, #lembarKoreksiProduksi .lm-pegangan, #lembarIsiHpp .lm-pegangan, #lembarPelanggan .lm-pegangan, #lembarPemasok .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(233, 236, 241, .25); margin: 2px auto 12px; }
+  #lembarPiutang h3, #lembarKasbon h3, #lembarKoreksiProduksi h3, #lembarIsiHpp h3, #lembarPelanggan h3, #lembarPemasok h3 { margin: 0 0 2px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
+  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub, #lembarKoreksiProduksi .lk-sub, #lembarIsiHpp .lk-sub, #lembarPelanggan .lk-sub, #lembarPemasok .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
+  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup, #lembarKoreksiProduksi .lmk-tutup, #lembarIsiHpp .lmk-tutup, #lembarPelanggan .lmk-tutup, #lembarPemasok .lmk-tutup {
     width: 100%; min-height: 48px; margin-top: 12px; border-radius: 12px;
     background: var(--abu); border: 1px solid var(--garis); color: var(--redup);
     font-family: inherit; font-size: 13px; font-weight: 700;
   }
   /* Catatan pengenal pelanggan (13 Agu 2026) — kolom bebas: ciri wajah, kendaraan,
      panggilan. Textarea satu-satunya di sistem; gayanya menjiplak input biasa. */
-  #pelCatatan {
+  #pelCatatan, #pemasokCatatanIsi {
     width: 100%; box-sizing: border-box; min-height: 96px; resize: vertical;
     background: var(--kartu); color: var(--teks); border: 1px solid var(--garis);
     border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 14px; line-height: 1.5;
   }
-  #pelCatatan:focus { outline: none; border-color: var(--emas-gelap); }
+  #pelCatatan:focus, #pemasokCatatanIsi:focus { outline: none; border-color: var(--emas-gelap); }
   .pel-stat { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
   .pel-stat > div { background: var(--abu); border: 1px solid var(--garis); border-radius: 12px; padding: 8px 12px; }
   .pel-stat .label { font-size: 10px; letter-spacing: .6px; text-transform: uppercase; color: var(--redup); }
@@ -2633,6 +2633,7 @@
   <button id="tabTutup" class="tab-owner" onclick="pindahHalaman('tutup')"> Tutup Hari</button>
   <button id="tabPiutang" class="tab-owner" onclick="pindahHalaman('piutang')"> Piutang</button>
   <button id="tabPelanggan" class="tab-owner" onclick="pindahHalaman('pelanggan')"> Pelanggan</button>
+  <button id="tabPemasok" class="tab-owner" onclick="pindahHalaman('pemasok')"> Pemasok</button>
   <button id="tabHarga" class="tab-owner" onclick="pindahHalaman('harga')"> Harga</button>
   <button id="tabJaga" class="tab-owner" onclick="bukaModalJaga()"> Jaga</button>
   <div class="nav-footer">
@@ -2684,6 +2685,7 @@
        keterangan singkat menempel di namanya supaya tidak perlu dihafal letaknya. -->
   <div class="lm-grup">Catat</div>
   <button type="button" class="lm-baris" data-halaman="input" onclick="pindahDariMenu('input')"><span>Masuk <i>— batch beli karung</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button type="button" class="lm-baris tab-owner" data-halaman="pemasok" onclick="pindahDariMenu('pemasok')"><span>Pemasok <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— riwayat harga beli</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris" data-halaman="produksi" onclick="pindahDariMenu('produksi')"><span>Produksi <i>— repack ke kemasan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <div class="lm-grup">Laporan</div>
   <button type="button" class="lm-baris" data-halaman="rekap" onclick="pindahDariMenu('rekap')"><span>Riwayat</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -2909,6 +2911,37 @@
 <div id="overlayLembarKasbon" onclick="tutupLembarKasbon()"></div>
 
 <div id="overlayLembarPelanggan" onclick="tutupLembarPelanggan()"></div>
+
+<div id="overlayLembarPemasok" onclick="tutupLembarPemasok()"></div>
+<div id="lembarPemasok" role="dialog" aria-modal="true" aria-labelledby="lembarPemasokJudul">
+  <div class="lm-pegangan"></div>
+  <h3 id="lembarPemasokJudul">Pemasok</h3>
+  <p class="lk-sub" id="lembarPemasokSub">—</p>
+
+  <div class="pel-stat">
+    <div><div class="label">Kedatangan</div><div class="nilai" id="pmsKedatangan">—</div></div>
+    <div><div class="label">Terakhir kirim</div><div class="nilai" id="pmsTerakhir">—</div></div>
+    <div><div class="label">Total belanja</div><div class="nilai" id="pmsBelanja">Rp0</div></div>
+    <div><div class="label">Total beras</div><div class="nilai" id="pmsKg">0 kg</div></div>
+  </div>
+
+  <div class="kartu-daftar kd-kepala" style="margin-bottom:12px;">
+    <div class="kd-judul"><h3 style="font-size:13px;">Harga per merk</h3><span class="kd-hitung" id="pmsHargaHitung"></span></div>
+    <div id="pmsDaftarHarga"></div>
+  </div>
+
+  <div class="kartu-daftar kd-kepala" style="margin-bottom:12px;">
+    <div class="kd-judul"><h3 style="font-size:13px;">Kedatangan terakhir</h3><span class="kd-hitung" id="pmsRiwayatHitung"></span></div>
+    <div id="pmsRiwayat"></div>
+  </div>
+
+  <label for="pemasokKontak">Kontak <span class="keterangan">— nama sales / nomor</span></label>
+  <input type="text" id="pemasokKontak" placeholder="Contoh: sales Budi 0812xxx" autocomplete="off">
+  <label for="pemasokCatatanIsi" style="margin-top:10px;">Catatan <span class="keterangan">— syarat, kebiasaan, kualitas</span></label>
+  <textarea id="pemasokCatatanIsi" placeholder="Contoh: kirim Kamis, minta karung dobel jahit, bisa nego di atas 100 sack"></textarea>
+  <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanCatatanPemasok()">Simpan catatan</button>
+  <button type="button" class="lmk-tutup" onclick="tutupLembarPemasok()">Tutup</button>
+</div>
 <div id="lembarPelanggan" role="dialog" aria-modal="true" aria-labelledby="lembarPelangganJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarPelangganJudul">Pelanggan</h3>
@@ -3912,6 +3945,34 @@
       atau lewat kolom di lembar kode QRIS. Ketuk pelanggan untuk menulis ciri pengenalnya.</div>
   </div>
 
+  <!-- HALAMAN PEMASOK / BUKU PEMASOK (Modul ERP #1, 14 Agu 2026) — kembaran Buku
+       Pelanggan di sisi belanja. Kartu terisi otomatis dari riwayat kedatangan;
+       nilai intinya: RIWAYAT HARGA BELI PER KG per merk per pemasok — saat pemasok
+       menawar, dua ketukan menunjukkan harga dia bulan lalu dan pesaing termurahnya.
+       Harga beli itu rahasia dagang -> owner-only, data hidup di database. -->
+  <div id="halamanPemasok" class="halaman">
+    <div class="judul-halaman">
+      <h2>Pemasok</h2>
+      <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
+    </div>
+
+    <label for="cariPemasok">Cari — nama pemasok, merk, atau isi catatan</label>
+    <input type="text" id="cariPemasok" placeholder='Contoh: "roda mas", "IR64", "sales budi"' autocomplete="off" oninput="tampilkanPemasok()">
+
+    <div class="kpi-mini kpi-dua" style="margin-top:10px;">
+      <div class="kartu-mini"><div class="label">Pemasok dikenal</div><div class="nilai" id="pemasokJumlah">0</div></div>
+      <div class="kartu-mini"><div class="label">Belanja 12 bulan</div><div class="nilai" id="pemasokBelanjaSetahun">Rp0</div></div>
+    </div>
+
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Buku Pemasok</h3><span class="kd-hitung" id="pemasokHitung"></span></div>
+      <div id="daftarPemasok"></div>
+    </div>
+
+    <div class="info-box" style="margin-top:12px;">Terisi otomatis dari tab Masuk. Ketuk pemasok untuk
+      riwayat harga per merk — harga termurah antar pemasok ditandai, jadi menawar berbekal data.</div>
+  </div>
+
   <!-- HALAMAN HARGA (katalog harga jual resmi, owner-only) -->
   <!-- DAFTAR HARGA — mengikuti mockup: halaman ini daftar, bukan formulir.
        16 baris harga terpindai satu kolom; menambah/mengubah lewat lembar bawah
@@ -4386,6 +4447,7 @@
   const KOLEKSI_TUTUP = 'tutupHari';
   const KOLEKSI_PELANGGAN_CAT = 'pelangganCatatan';
   const KOLEKSI_THR = 'thrPelanggan';
+  const KOLEKSI_PEMASOK_CAT = 'pemasokCatatan';
 
   // Cache di memori — diisi ulang otomatis oleh onSnapshot tiap kali ada perubahan
   // (dari perangkat ini ATAU perangkat lain). Semua fungsi lama yang baca data
@@ -4408,6 +4470,7 @@
   let _cacheTutup = [];
   let _cachePelangganCat = [];
   let _cacheThr = [];
+  let _cachePemasokCat = [];
   let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false, piutang: false, kasbon: false };
 
   const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
@@ -4429,6 +4492,7 @@
   const KUNCI_PELANGGAN_CAT = 'miqbal_pelanggan_catatan_v1';
   const KUNCI_JENIS_BERAS = 'miqbal_jenis_beras_v1';
   const KUNCI_THR = 'miqbal_thr_pelanggan_v1';
+  const KUNCI_PEMASOK_CAT = 'miqbal_pemasok_catatan_v1';
 
   // Jenis bahan kemasan biasa (plastik untuk produk kemasan jadi, di luar literan) —
   // per kombinasi ukuran + merek beras, karena harga per lembar beda tiap merek (instruksi My DeV, 1 Agustus 2026).
@@ -4527,7 +4591,7 @@
   window.addEventListener('resize', geserIndikatorTab);
 
   function pindahHalaman(nama) {
-    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan'].forEach(n => {
+    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan','pemasok'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
     });
@@ -4537,7 +4601,7 @@
       b.classList.toggle('aktif', b.getAttribute('data-halaman') === nama);
     });
     const tbMenu = document.getElementById('tombolLembarMenu');
-    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan'].indexOf(nama) >= 0);
+    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan','pemasok'].indexOf(nama) >= 0);
     if (document.body.classList.contains('lembar-menu-terbuka')) toggleLembarMenu(false);
     if (document.body.classList.contains('lembar-merk-terbuka')) tutupLembarMerk();
     document.body.classList.toggle('di-halaman-masuk', nama === 'input');
@@ -4559,9 +4623,10 @@
     if (nama === 'tutup') tampilkanTutupHari();
     if (nama === 'piutang') { tampilkanPiutang(); tampilkanKasbon(); }
     if (nama === 'pelanggan') tampilkanPelanggan();
+    if (nama === 'pemasok') tampilkanPemasok();
     if (nama === 'harga') { tampilkanHarga(); tampilkanJenisBeras(); }
     if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
-    if (nama === 'input') periksaDrafMasuk();
+    if (nama === 'input') { periksaDrafMasuk(); isiPilihanPemasok(); }
     if (document.body.classList.contains('drawer-nav-terbuka')) toggleDrawerNav();
   }
   function kapital(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -5418,6 +5483,7 @@
   }
 
   pasangSinkronisasi(KOLEKSI_BATCH, KUNCI_SIMPAN, (d) => { _cacheBatch = d; }, () => {
+    if (document.getElementById('halamanPemasok').classList.contains('tampil')) tampilkanPemasok();
     segarkanArusKasJikaTampil();
     perbaruiCounterBackup();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
@@ -5531,6 +5597,10 @@
   pasangSinkronisasi(KOLEKSI_THR, KUNCI_THR, (d) => { _cacheThr = d; }, () => {
     if (document.getElementById('halamanPelanggan').classList.contains('tampil')) tampilkanPelanggan();
   }, 'id', 'thr');
+
+  pasangSinkronisasi(KOLEKSI_PEMASOK_CAT, KUNCI_PEMASOK_CAT, (d) => { _cachePemasokCat = d; }, () => {
+    if (document.getElementById('halamanPemasok').classList.contains('tampil')) tampilkanPemasok();
+  }, 'id', 'pemasokCat');
 
   // ============ RINGKASAN KASIR (dibaca kasir.html ringan) ============
   // Satu dokumen kecil berisi harga+stok+HPP terkini, supaya halaman kasir tidak
@@ -5693,6 +5763,7 @@
       kasbonMutasi: ambilKasbonMutasi(),
       pelangganCatatan: ambilPelangganCatatan(),
       thrPelanggan: ambilThrPelanggan(),
+      pemasokCatatan: ambilPemasokCatatan(),
       // Peta merk->jenis beras (dok pengaturan, bukan koleksi ber-id) — audit 14 Agu
       // 2026: sebelumnya tidak ikut backup, pulihkan-dari-file membuat petanya kosong.
       petaJenisBeras: ambilPetaJenisBeras()
@@ -5742,7 +5813,8 @@
           { kunci: 'piutangMutasi',       koleksi: KOLEKSI_PIUTANG,       ada: ambilPiutangMutasi(),    field: 'id',    label: 'mutasi piutang' },
           { kunci: 'kasbonMutasi',        koleksi: KOLEKSI_KASBON,        ada: ambilKasbonMutasi(),     field: 'id',    label: 'mutasi kasbon' },
           { kunci: 'pelangganCatatan',    koleksi: KOLEKSI_PELANGGAN_CAT, ada: ambilPelangganCatatan(), field: 'id',    label: 'catatan pelanggan' },
-          { kunci: 'thrPelanggan',        koleksi: KOLEKSI_THR,           ada: ambilThrPelanggan(),     field: 'id',    label: 'THR pelanggan' }
+          { kunci: 'thrPelanggan',        koleksi: KOLEKSI_THR,           ada: ambilThrPelanggan(),     field: 'id',    label: 'THR pelanggan' },
+          { kunci: 'pemasokCatatan',      koleksi: KOLEKSI_PEMASOK_CAT,   ada: ambilPemasokCatatan(),   field: 'id',    label: 'catatan pemasok' }
         ];
         // Peta jenis beras: satu dokumen pengaturan, dipulihkan langsung (bukan per-id).
         if (isi.petaJenisBeras && Object.keys(isi.petaJenisBeras).length > 0) {
@@ -6660,6 +6732,11 @@
   function ambilPelangganCatatan() {
     if (_cachePelangganCat.length > 0) return _cachePelangganCat;
     const data = localStorage.getItem(KUNCI_PELANGGAN_CAT);
+    return data ? JSON.parse(data) : [];
+  }
+  function ambilPemasokCatatan() {
+    if (_cachePemasokCat.length > 0) return _cachePemasokCat;
+    const data = localStorage.getItem(KUNCI_PEMASOK_CAT);
     return data ? JSON.parse(data) : [];
   }
   function ambilThrPelanggan() {
@@ -9924,6 +10001,170 @@
     if (!dl) return;
     dl.innerHTML = hitungPelanggan().slice(0, 80)
       .map(x => `<option value="${escapeHtml(x.nama)}"></option>`).join('');
+  }
+
+  // ===== BUKU PEMASOK (Modul ERP #1, 14 Agustus 2026) =====
+  // Kembaran Buku Pelanggan di sisi belanja. Tidak ada angka tersimpan — semuanya
+  // diturunkan segar dari riwayat kedatangan. STOK AWAL dan TUTUP BUKU bukan pemasok
+  // sungguhan, dikecualikan dari analitik.
+  function pemasokSungguhan(nama) {
+    const n = String(nama || '').trim();
+    return n !== '' && n !== 'STOK AWAL' && !n.startsWith('TUTUP BUKU');
+  }
+  function hitungPemasok() {
+    const peta = {};
+    const catatan = {};
+    ambilPemasokCatatan().forEach(c => { catatan[c.id] = c; });
+    ambilSemuaBatch().forEach(k => {
+      if (!pemasokSungguhan(k.pemasok)) return;
+      const kunci = kunciPelanggan(k.pemasok);
+      if (!peta[kunci]) peta[kunci] = { kunci, nama: String(k.pemasok).trim(), urutNama: 0,
+        kedatangan: 0, belanja: 0, totalKg: 0, terakhir: '', hargaPerMerk: {}, batch: [] };
+      const s = peta[kunci];
+      if ((k.id || 0) >= s.urutNama) { s.nama = String(k.pemasok).trim(); s.urutNama = k.id || 0; }
+      const nilai = (k.merkList || []).reduce((a, m) => a + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0);
+      s.kedatangan += 1;
+      s.belanja += nilai;
+      if ((k.tanggal || '') > s.terakhir) s.terakhir = k.tanggal || '';
+      s.batch.push({ id: k.id, tanggal: k.tanggal, nMerk: (k.merkList || []).length, nilai });
+      (k.merkList || []).forEach(m => {
+        if (!m.merk || !(m.hargaPerKg > 0)) return;
+        s.totalKg += m.totalKg || 0;
+        const h = s.hargaPerMerk[m.merk] = s.hargaPerMerk[m.merk] || { riwayat: [] };
+        h.riwayat.push({ tanggal: k.tanggal, id: k.id, hargaPerKg: m.hargaPerKg, bentuk: m.bentuk || 'sack' });
+      });
+    });
+    return Object.keys(peta).map(kunci => {
+      const s = peta[kunci];
+      Object.keys(s.hargaPerMerk).forEach(merk => {
+        const h = s.hargaPerMerk[merk];
+        h.riwayat.sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')) || (b.id || 0) - (a.id || 0));
+        h.terakhir = h.riwayat[0];
+      });
+      s.batch.sort((a, b) => (b.id || 0) - (a.id || 0));
+      const c = catatan[kunci] || {};
+      s.kontak = c.kontak || '';
+      s.catatan = c.catatan || '';
+      return s;
+    }).sort((a, b) => String(b.terakhir).localeCompare(String(a.terakhir)) || a.nama.localeCompare(b.nama));
+  }
+  // Harga TERMURAH terakhir per merk di antara semua pemasok — bekal menawar.
+  function hargaTermurahPerMerk(daftar) {
+    const termurah = {};
+    daftar.forEach(s => {
+      Object.keys(s.hargaPerMerk).forEach(merk => {
+        const t = s.hargaPerMerk[merk].terakhir;
+        if (!t) return;
+        if (!termurah[merk] || t.hargaPerKg < termurah[merk].hargaPerKg) {
+          termurah[merk] = { hargaPerKg: t.hargaPerKg, pemasok: s.nama };
+        }
+      });
+    });
+    return termurah;
+  }
+
+  let _daftarPmsRender = [];
+  let _pmsTerbuka = null;
+  function tampilkanPemasok() {
+    const kont = document.getElementById('daftarPemasok');
+    if (!kont) return;
+    const semua = hitungPemasok();
+    document.getElementById('pemasokJumlah').textContent = semua.length;
+    const setahunLalu = tanggalLokalIso(new Date(Date.now() - 365 * 86400000));
+    const belanjaSetahun = ambilSemuaBatch()
+      .filter(k => pemasokSungguhan(k.pemasok) && (k.tanggal || '') >= setahunLalu)
+      .reduce((a, k) => a + (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0), 0);
+    document.getElementById('pemasokBelanjaSetahun').textContent = formatRupiah(belanjaSetahun);
+    const kata = (document.getElementById('cariPemasok').value || '').trim().toLowerCase();
+    _daftarPmsRender = !kata ? semua : semua.filter(x =>
+      (x.nama + ' ' + x.kontak + ' ' + x.catatan + ' ' + Object.keys(x.hargaPerMerk).join(' ')).toLowerCase().indexOf(kata) >= 0);
+    document.getElementById('pemasokHitung').textContent = _daftarPmsRender.length + ' pemasok';
+    kont.innerHTML = _daftarPmsRender.length === 0
+      ? (kata
+        ? '<div class="kosong-info"><b>Tidak ketemu</b><span>Coba nama pemasok, merk, atau isi catatannya.</span></div>'
+        : '<div class="kosong-info"><b>Belum ada pemasok tercatat</b><span>Terisi otomatis begitu ada kedatangan di tab Masuk.</span></div>')
+      : _daftarPmsRender.map((x, i) => {
+        const sub = [];
+        sub.push(x.kedatangan + ' kedatangan');
+        if (x.terakhir) sub.push('terakhir ' + formatTanggal(x.terakhir));
+        if (x.kontak) sub.push(x.kontak);
+        return `<button type="button" class="baris-44 baris-ketuk" onclick="bukaLembarPemasok(${i})">
+          <span class="nama"><i class="trx-nama">${escapeHtml(x.nama)}</i><small>${escapeHtml(sub.join(' · '))}</small></span>
+          <span class="angka">${formatRupiah(x.belanja)}</span>
+          ${IKON_CHEV}
+        </button>`;
+      }).join('');
+  }
+  function bukaLembarPemasok(i) {
+    const x = _daftarPmsRender[i];
+    if (!x) return;
+    _pmsTerbuka = x;
+    document.getElementById('lembarPemasokJudul').textContent = x.nama;
+    document.getElementById('lembarPemasokSub').textContent =
+      Object.keys(x.hargaPerMerk).length + ' merk pernah dipasok';
+    document.getElementById('pmsKedatangan').textContent = x.kedatangan + '×';
+    document.getElementById('pmsTerakhir').textContent = x.terakhir ? formatTanggal(x.terakhir) : '—';
+    document.getElementById('pmsBelanja').textContent = formatRupiah(x.belanja);
+    document.getElementById('pmsKg').textContent = Math.round(x.totalKg).toLocaleString('id-ID') + ' kg';
+    const termurah = hargaTermurahPerMerk(hitungPemasok());
+    const merkUrut = Object.keys(x.hargaPerMerk).sort();
+    document.getElementById('pmsHargaHitung').textContent = merkUrut.length + ' merk';
+    document.getElementById('pmsDaftarHarga').innerHTML = merkUrut.length === 0
+      ? '<div class="kosong-info"><b>Belum ada harga tercatat</b></div>'
+      : merkUrut.map(merk => {
+        const h = x.hargaPerMerk[merk];
+        const t = h.terakhir;
+        const m = termurah[merk];
+        // Lencana pembanding hanya bermakna kalau termurahnya pemasok LAIN.
+        const banding = m && m.pemasok !== x.nama && t.hargaPerKg > m.hargaPerKg
+          ? `<div style="padding:0 12px 8px; text-align:right;"><span class="lencana-amber">termurah ${formatRupiah(m.hargaPerKg)} — ${escapeHtml(m.pemasok)}</span></div>`
+          : '';
+        const bintang = m && m.pemasok === x.nama ? ' ★' : '';
+        const riwayatSingkat = h.riwayat.slice(0, 3)
+          .map(r => formatTanggal(r.tanggal) + ' ' + formatRupiah(r.hargaPerKg)).join(' · ');
+        return `<div class="baris-44">
+          <span class="nama"><i class="trx-nama">${escapeHtml(merk)}${bintang}</i><small>${escapeHtml(riwayatSingkat)}</small></span>
+          <span class="angka">${formatRupiah(t.hargaPerKg)}<u>/kg</u></span>
+        </div>` + banding;
+      }).join('');
+    document.getElementById('pmsRiwayatHitung').textContent = x.batch.length + ' kedatangan';
+    document.getElementById('pmsRiwayat').innerHTML = x.batch.slice(0, 6).map(b => `<div class="pm-baris">
+      <span class="pm-ket">${b.nMerk} merk<small>${escapeHtml(formatTanggal(b.tanggal))}</small></span>
+      <span class="pm-nom">${formatRupiah(b.nilai)}</span>
+    </div>`).join('');
+    document.getElementById('pemasokKontak').value = x.kontak || '';
+    document.getElementById('pemasokCatatanIsi').value = x.catatan || '';
+    document.body.classList.add('lembar-pemasok-terbuka');
+  }
+  function tutupLembarPemasok() {
+    _pmsTerbuka = null;
+    document.body.classList.remove('lembar-pemasok-terbuka');
+  }
+  async function simpanCatatanPemasok() {
+    if (!_pmsTerbuka) return;
+    const dok = { id: _pmsTerbuka.kunci, nama: _pmsTerbuka.nama,
+      kontak: document.getElementById('pemasokKontak').value.trim(),
+      catatan: document.getElementById('pemasokCatatanIsi').value.trim(),
+      diubahPada: new Date().toISOString() };
+    const semua = ambilPemasokCatatan().filter(c => c.id !== dok.id);
+    semua.push(dok);
+    _cachePemasokCat = semua;
+    localStorage.setItem(KUNCI_PEMASOK_CAT, JSON.stringify(semua));
+    try { await simpanKeFirestore(KOLEKSI_PEMASOK_CAT, dok); } catch (e) { console.error(e); }
+    tutupLembarPemasok();
+    tampilkanPemasok();
+  }
+  // Dropdown pemasok di tab Masuk belajar dari riwayat — nama yang pernah diketik
+  // lewat "Lainnya" naik jadi pilihan tetap, tidak perlu diketik ulang.
+  function isiPilihanPemasok() {
+    const sel = document.getElementById('pemasok');
+    if (!sel) return;
+    const terpilih = sel.value;
+    const baku = ['RODA MAS', 'U.D. SEJATI JAYA'];
+    const dariRiwayat = hitungPemasok().map(x => x.nama).filter(n => baku.indexOf(n) < 0);
+    sel.innerHTML = baku.concat(dariRiwayat).map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')
+      + '<option value="Lainnya">Lainnya (isi manual)</option>';
+    if ([...sel.options].some(o => o.value === terpilih)) sel.value = terpilih;
   }
 
   // ===== TUTUP BUKU TAHUNAN (13 Agustus 2026) =====
@@ -13569,6 +13810,10 @@
   window.kirimTagihanPiutang = kirimTagihanPiutang;
   window.bukaHapusBuku = bukaHapusBuku;
   window.simpanHapusBuku = simpanHapusBuku;
+  window.tampilkanPemasok = tampilkanPemasok;
+  window.bukaLembarPemasok = bukaLembarPemasok;
+  window.tutupLembarPemasok = tutupLembarPemasok;
+  window.simpanCatatanPemasok = simpanCatatanPemasok;
   window.tampilkanPelanggan = tampilkanPelanggan;
   window.bukaLembarPelanggan = bukaLembarPelanggan;
   window.tutupLembarPelanggan = tutupLembarPelanggan;
