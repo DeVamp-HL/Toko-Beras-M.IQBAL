@@ -1336,45 +1336,68 @@
   #navBawah, #lembarMenu, #overlayLembarMenu { display: none; }
   @media (max-width: 699px) {
     .tombol-logo-drawer { display: none; } /* drawer diganti nav bawah */
-    main { padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
+    main { padding-bottom: calc(122px + env(safe-area-inset-bottom, 0px)); }
     /* Halaman dengan bilah Simpan melayang (Jual, Masuk, Produksi) menumpuk dua
        lapis chrome: nav 64 px + bilah ±81 px. Dengan padding 96 px, kartu Total dan
        daftar "Penjualan hari ini" di kaki halaman Jual tidak pernah bisa di-scroll
        ke tempat yang terlihat — keduanya permanen tertutup. */
-    body.ada-bilah-simpan main { padding-bottom: calc(196px + env(safe-area-inset-bottom, 0px)); }
-    .tombol-simpan { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); padding: 12px 16px; }
+    body.ada-bilah-simpan main { padding-bottom: calc(210px + env(safe-area-inset-bottom, 0px)); }
+    .tombol-simpan { bottom: calc(94px + env(safe-area-inset-bottom, 0px)); padding: 12px 16px; }
     /* Bilah urungkan harus lolos dari puncak pil nav baru (75px + safe-area). */
-    #bilahUrungkan { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+    #bilahUrungkan { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
     /* z-index di atas lembar Menu (32): mockup menahan bilah bawah tetap terlihat
        saat lembar terbuka, jadi pindah ke 4 halaman tersering tetap satu ketukan. */
-    /* PIL KACA MENGAMBANG — Claude Design "Ringkasan A: Kaca Dalam", dipilih
-       pemilik 14 Agu 2026 dari screenshot bilah bawah. Ikon, urutan tab, dan
-       seluruh perilaku (pindahHalaman / lembar Menu) TIDAK berubah — hanya
-       wadahnya: melayang 12px dari tepi, kaca blur dalam, tab aktif berpendar
-       emas, mengecil saat ditekan. */
+    /* BILAH NAV 6a (prototipe pemilik): kaca selebar layar dengan LEMBAH cekung
+       di puncak — tombol emas Jual bersarang di sana, menonjol ke atas halaman.
+       Tab: kapital kecil berjarak; aktif = emas. Ditekan = mengecil; FAB
+       memancarkan cincin cahaya. Menggantikan pil kaca (Kaca Dalam, 14 Agu). */
     #navBawah {
-      display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
-      position: fixed; left: 12px; right: 12px;
-      bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 33;
-      padding: 7px 6px 8px;
-      background: rgba(15, 19, 26, .78);
-      backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
-      border: 1px solid rgba(255, 255, 255, .09);
-      border-radius: 30px;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, .5);
+      display: flex; align-items: flex-start; justify-content: space-between;
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 33;
+      padding: 24px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+      background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02));
+      backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
+    }
+    #navBawah::before {
+      content: ''; position: absolute; left: 0; right: 0; top: 0; height: 18px;
+      background: var(--gelap-tetap);
+      border-bottom-left-radius: 50% 18px; border-bottom-right-radius: 50% 18px;
+      box-shadow: 0 1px 0 rgba(226, 205, 166, .4);
+    }
+    #navBawah::after {
+      content: ''; position: absolute; left: 16px; right: 16px;
+      bottom: calc(4px + env(safe-area-inset-bottom, 0px)); height: 1px;
+      background: linear-gradient(90deg, rgba(226, 205, 166, 0), rgba(226, 205, 166, .5), rgba(226, 205, 166, 0));
     }
     #navBawah button {
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-      min-height: 48px; padding: 6px 0 5px; border: none; border-radius: 22px;
-      background: none; color: var(--redup); font-size: 9px; font-weight: 600; font-family: inherit;
+      position: relative; z-index: 1; flex: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+      min-height: 48px; padding: 6px 0 5px; border: none;
+      background: none; color: var(--redup); font-family: inherit;
+      font-size: 8px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
       transition: transform .15s ease;
     }
-    #navBawah button:active { transform: scale(.93); }
-    #navBawah button svg { width: 19px; height: 19px; }
-    #navBawah button.aktif {
-      color: var(--emas-terang); font-weight: 700;
-      background: linear-gradient(180deg, rgba(217, 178, 95, .22), rgba(217, 178, 95, .05));
+    #navBawah button:active { transform: scale(.94); }
+    #navBawah button svg { width: 18px; height: 18px; }
+    #navBawah button.aktif { color: var(--emas); font-weight: 700; }
+    /* Tab owner yang belum terbuka: slotnya DIPERTAHANKAN (visibility, bukan
+       display) supaya tombol emas Jual tetap persis di tengah lembah. */
+    #navBawah .tab-owner { display: flex; visibility: hidden; }
+    #navBawah .tab-owner.tampil-owner { visibility: visible; }
+    /* Tombol emas Jual — menonjol dari lembah, selalu emas (jalan tercepat mencatat uang) */
+    #navBawah .fab-jual {
+      flex: 0 0 54px; margin-top: -30px; width: 54px; min-height: 54px; height: 54px;
+      border-radius: 50%; padding: 0;
+      background: linear-gradient(160deg, #fdf7e8, #e2cda6 50%, #bfa476);
+      color: #231a08; font-size: 25px; font-weight: 500; letter-spacing: 0; line-height: 1;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 6px 22px rgba(0, 0, 0, .45), 0 0 18px rgba(226, 205, 166, .25);
     }
+    #navBawah .fab-jual.aktif { color: #231a08; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 6px 26px rgba(0, 0, 0, .5), 0 0 30px rgba(226, 205, 166, .5); }
+    #navBawah .fab-jual:active { transform: scale(.93); }
+    .fab-cincin { position: absolute; inset: -18px; border-radius: 50%; pointer-events: none; opacity: 0;
+      background: radial-gradient(circle, rgba(226, 205, 166, .55), rgba(226, 205, 166, 0) 70%); }
+    .fab-jual:active .fab-cincin { animation: cincinFab .55s ease-out; }
+    @keyframes cincinFab { 0% { opacity: .85; transform: scale(.4); } 100% { opacity: 0; transform: scale(2); } }
     #overlayLembarMenu {
       display: block; position: fixed; inset: 0; z-index: 31;
       background: #000; opacity: 0; pointer-events: none;
@@ -1386,7 +1409,7 @@
       background: #10151d; border: 1px solid rgba(242, 215, 149, .14); border-bottom: none;
       border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgba(0, 0, 0, .6);
       /* ruang bawah disisakan untuk bilah nav yang tetap tampil di atas lembar */
-      padding: 10px 16px calc(86px + env(safe-area-inset-bottom, 0px));
+      padding: 10px 16px calc(100px + env(safe-area-inset-bottom, 0px));
       max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
       transform: translateY(105%);
       transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
@@ -3035,10 +3058,14 @@
 
 <!-- NAV BAWAH MOBILE (porting desain final): 4 tersering + Menu. id tabBawah* dipakai pindahHalaman -->
 <div id="navBawah">
-  <button type="button" data-halaman="ringkasan" onclick="pindahHalaman('ringkasan')" class="tab-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 14.5a7.5 7.5 0 1 1 15 0"/><path d="M12 14.5l3.4-3.4"/></svg><span>Ringkasan</span></button>
-  <button type="button" data-halaman="jual" onclick="pindahHalaman('jual')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="6.5" width="19" height="11.5" rx="2"/><circle cx="12" cy="12.2" r="2.4"/></svg><span>Jual</span></button>
-  <button type="button" data-halaman="stok" onclick="pindahHalaman('stok')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l8.5 4.7-8.5 4.7-8.5-4.7 8.5-4.7z"/><path d="M3.5 13.4l8.5 4.7 8.5-4.7"/></svg><span>Stok</span></button>
-  <button type="button" data-halaman="harga" onclick="pindahHalaman('harga')" class="tab-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 4h7.2L20.5 13.3a1.8 1.8 0 0 1 0 2.5l-4.7 4.7a1.8 1.8 0 0 1-2.5 0L4 11.2V4z"/><circle cx="8.3" cy="8.3" r="1.4" fill="currentColor" stroke="none"/></svg><span>Harga</span></button>
+  <!-- Struktur 6a (prototipe pemilik, 21 Agu 2026): dua tab kiri + tombol emas
+       Jual menonjol di lembah tengah + dua tab kanan. Stok & Harga pindah ke
+       lembar Menu (grup Data). Ikon tetap SVG nyata — ubin geometris prototipe
+       adalah singkatan mockup, Pelanggan vs Riwayat tidak terbedakan di sana. -->
+  <button type="button" data-halaman="ringkasan" onclick="pindahHalaman('ringkasan')" class="tab-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 14.5a7.5 7.5 0 1 1 15 0"/><path d="M12 14.5l3.4-3.4"/></svg><span>Ikhtisar</span></button>
+  <button type="button" data-halaman="pelanggan" onclick="pindahHalaman('pelanggan')" class="tab-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.5" cy="9.5" r="2.6"/><path d="M16.4 14.6c2.3.2 4 1.8 4.6 4.4"/></svg><span>Pelanggan</span></button>
+  <button type="button" id="fabJual" class="fab-jual" data-halaman="jual" onclick="pindahHalaman('jual')" aria-label="Jual — catat penjualan"><i class="fab-cincin" aria-hidden="true"></i>＋</button>
+  <button type="button" data-halaman="rekap" onclick="pindahHalaman('rekap')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg><span>Riwayat</span></button>
   <button type="button" id="tombolLembarMenu" onclick="toggleLembarMenu()"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></svg><span>Menu</span></button>
 </div>
 <div id="overlayLembarMenu" onclick="toggleLembarMenu(false)"></div>
@@ -3070,7 +3097,7 @@
   <div class="lm-pegangan"></div>
   <div class="lm-kepala">
     <h3>Semua Halaman</h3>
-    <span>4 lainnya ada di bilah bawah</span>
+    <span>Ikhtisar, Pelanggan, Jual &amp; Riwayat di bilah bawah</span>
   </div>
   <!-- Baris penuh 48 px + anak panah (mockup): 7 halaman ini dipindai satu kolom,
        keterangan singkat menempel di namanya supaya tidak perlu dihafal letaknya. -->
@@ -3078,6 +3105,9 @@
   <button type="button" class="lm-baris" data-halaman="input" onclick="pindahDariMenu('input')"><span>Masuk <i>— batch beli karung</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="pemasok" onclick="pindahDariMenu('pemasok')"><span>Pemasok <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— riwayat harga beli</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris" data-halaman="produksi" onclick="pindahDariMenu('produksi')"><span>Produksi <i>— repack ke kemasan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <div class="lm-grup">Data</div>
+  <button type="button" class="lm-baris" data-halaman="stok" onclick="pindahDariMenu('stok')"><span>Stok <i>— sack, kemasan, bahan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button type="button" class="lm-baris tab-owner" data-halaman="harga" onclick="pindahDariMenu('harga')"><span>Harga <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— katalog &amp; jenis beras</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <div class="lm-grup">Laporan</div>
   <button type="button" class="lm-baris" data-halaman="rekap" onclick="pindahDariMenu('rekap')"><span>Riwayat</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris" data-halaman="harian" onclick="pindahDariMenu('harian')"><span>Harian <i>— pengeluaran harian</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
