@@ -2864,6 +2864,147 @@
 #halamanJual > .kartu, #halamanJual > .kartu-daftar, #halamanJual > #kartuTotalJual{
   animation:pfMuncul .7s cubic-bezier(.19,.8,.26,1) both;
 }
+
+/* ---------- IKHTISAR 6a: tabung beras + tumpuk kartu + Denyut + grafik jam ----------
+   Dari prototipe pemilik (kandidat G + Denyut 5b + keputusan PT1/O1). HP saja;
+   desktop >=700px tetap tampilan lamanya. Semua angka dari fungsi hitung lama. */
+.ikhtisar-6a { display: none; }
+@media (max-width: 699px) {
+  #halamanRingkasan > .judul-halaman, #halamanRingkasan > .ringkasan-mobile,
+  #halamanRingkasan > .dua-grafik, #halamanRingkasan > .kartu-komposisi,
+  #halamanRingkasan > #kompCatatan, #halamanRingkasan > #ringMarginCatatan,
+  #halamanRingkasan > .ringkasan-mobile-2 { display: none !important; }
+  .ikhtisar-6a { display: block; }
+}
+.ik6-kepala { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.ik6-salam { font-family: var(--pf-serif); font-size: 19px; color: var(--teks); }
+.ik6-sub { font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase; font-weight: 700; color: #8b9198; margin-top: 4px; }
+.ik6-atas { display: flex; gap: 14px; margin-top: 14px; }
+/* Tabung beras: terisi sebatas omzet vs patokan; ketuk = ganti patokan (rata 7h <-> terbaik) */
+.ik6-tabung { position: relative; width: 92px; height: 204px; flex: none; border-radius: 19px; overflow: hidden;
+  background: linear-gradient(160deg, rgba(255,255,255,.08), rgba(255,255,255,.025));
+  border: 1px solid rgba(255,255,255,.13); box-shadow: inset 0 1px 0 rgba(255,255,255,.22);
+  padding: 0; cursor: pointer; transition: transform .18s ease; font-family: inherit; }
+.ik6-tabung:active { transform: scale(.975); }
+.ik6-tabung-isi { position: absolute; left: 0; right: 0; bottom: 0; display: block;
+  background: linear-gradient(180deg, #fdf6e7, #e2cda6 42%, #bfa476);
+  box-shadow: 0 -8px 22px rgba(226,205,166,.38); animation: ik6Isi .9s cubic-bezier(.25,.9,.3,1) both; }
+.ik6-tabung-isi::after { content: ''; position: absolute; inset: 0; opacity: .34;
+  background-image: repeating-linear-gradient(115deg, rgba(93,73,36,.5) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(65deg, rgba(93,73,36,.34) 0 1px, transparent 1px 6px); }
+.ik6-riak { position: absolute; top: -3px; left: 0; right: 0; height: 6px; display: block;
+  background: linear-gradient(180deg, #fffdf6, rgba(253,246,231,0)); animation: ik6Riak 2.6s ease-in-out infinite; }
+.ik6-patokan { position: absolute; left: 0; right: 0; display: flex; align-items: center; gap: 4px; padding-left: 7px; font-style: normal; }
+.ik6-patokan u { width: 11px; height: 1px; background: rgba(255,255,255,.55); text-decoration: none; }
+.ik6-patokan span { font-size: 7.5px; letter-spacing: .12em; font-weight: 700; color: #f0e2c4; white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.ik6-tabung-kilau { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, rgba(255,255,255,.13), transparent 42%); }
+.ik6-tabung-ket { position: absolute; left: 0; right: 0; bottom: 5px; text-align: center; font-size: 7.5px;
+  letter-spacing: .1em; font-weight: 700; color: rgba(35,26,8,.75); text-transform: uppercase; }
+/* Tumpuk kartu: Omzet / Laba(kunci O1) / Kas — ketuk = putar, titik = posisi */
+.ik6-kanan { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ik6-tumpuk { position: relative; height: 176px; }
+.ik6-kartu { position: absolute; left: 0; right: 0; top: 0; padding: 12px 14px 12px; border-radius: 17px; overflow: hidden;
+  /* Latar PEKAT (bukan kaca murni): kartu belakang tidak boleh menembus angka
+     kartu depan — Rp yang saling menimpa tidak bisa dibaca. */
+  background: linear-gradient(160deg, #24282e, #191d21 60%);
+  border: 1px solid rgba(255,255,255,.14); text-align: left; font-family: inherit; color: var(--teks);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 12px 26px rgba(0,0,0,.34);
+  transition: transform .5s cubic-bezier(.22,1.3,.36,1), opacity .4s ease; user-select: none; -webkit-user-select: none; }
+.ik6-kartu .kilau { position: absolute; top: 0; left: 0; width: 58%; height: 100%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(253,246,231,.13), transparent); animation: ik6Kilau 6.5s ease-in-out infinite; }
+.ik6-kartu-label { display: flex; justify-content: space-between; align-items: center;
+  font-size: 8.5px; letter-spacing: .2em; text-transform: uppercase; font-weight: 700; color: #9aa2a8; }
+.ik6-kartu-nilai { font-family: var(--pf-serif); font-size: 23px; line-height: 1.16; margin-top: 6px; color: var(--teks); white-space: nowrap; }
+.ik6-kartu-nilai.emas { background: linear-gradient(180deg,#fdf6e7,#eadcbd 55%,#c9b085);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #fdf6e7; }
+.ik6-kartu-ket { font-size: 9.5px; color: #9aa2a8; margin-top: 4px; line-height: 1.45; }
+.ik6-kartu-stat { display: flex; gap: 10px; margin-top: 9px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,.16); }
+.ik6-kartu-stat > div { flex: 1; min-width: 0; }
+.ik6-kartu-stat i { display: block; font-style: normal; font-size: 7.5px; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: #8b9198; }
+.ik6-kartu-stat b { display: block; font-family: var(--pf-serif); font-weight: 400; font-size: 12.5px; margin-top: 2px; color: var(--teks); white-space: nowrap; }
+.ik6-progres { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: #e2cda6; transition: width .1s linear; }
+.ik6-titik { display: flex; justify-content: center; gap: 6px; margin-top: 9px; }
+.ik6-titik i { width: 5px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.22); transition: all .3s ease; }
+.ik6-titik i.aktif { width: 16px; background: #e2cda6; }
+/* Trio stok ringkas -> ketuk ke Stok */
+.ik6-stok3 { display: flex; gap: 7px; margin-top: 11px; }
+.ik6-stok3 button { flex: 1; min-width: 0; padding: 9px 11px; border-radius: 13px; text-align: left; font-family: inherit;
+  background: linear-gradient(160deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.1); color: var(--teks); transition: transform .15s ease; }
+.ik6-stok3 button:active { transform: scale(.965); }
+.ik6-stok3 i { display: block; font-style: normal; font-size: 8px; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: #9aa2a8; }
+.ik6-stok3 b { display: block; font-family: var(--pf-serif); font-weight: 400; font-size: 16px; margin-top: 2px; }
+.ik6-stok3 span { display: block; font-size: 9px; color: #8b9198; margin-top: 1px; }
+/* Denyut: saringan + karusel geser */
+.ik6-denyut-bar { display: flex; gap: 9px; margin-top: 15px; align-items: center; }
+.ik6-denyut-judul { font-size: 9px; letter-spacing: .26em; color: #e2cda6; text-transform: uppercase; font-weight: 700; }
+.ik6-saring { font-size: 9px; text-transform: uppercase; letter-spacing: .16em; font-weight: 700; padding: 4px 1px;
+  background: none; border: none; border-bottom: 1px solid transparent; color: #8b9198; font-family: inherit; transition: transform .15s ease; }
+.ik6-saring:active { transform: scale(.95); }
+.ik6-saring.aktif { color: #f0e2c4; border-bottom-color: #e2cda6; }
+.ik6-saring.oksida { color: #d3a08b; }
+.ik6-geser { margin-left: auto; font-size: 9px; color: #8b9198; letter-spacing: .14em; font-weight: 600; }
+.ik6-karusel { margin: 9px -16px 0; padding: 2px 16px 6px; overflow-x: auto; display: flex; gap: 9px;
+  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.ik6-karusel::-webkit-scrollbar { display: none; }
+.ik6-kartu-denyut { position: relative; flex: none; width: 150px; scroll-snap-align: start; padding: 11px 12px;
+  border-radius: 15px; overflow: hidden; text-align: left; font-family: inherit;
+  background: linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.026));
+  border: 1px solid rgba(255,255,255,.1); color: var(--teks);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 10px 22px rgba(0,0,0,.3);
+  animation: ik6Masuk .42s both; transition: transform .15s ease; }
+.ik6-kartu-denyut:active { transform: scale(.965); }
+.ik6-kartu-denyut.oksida { background: linear-gradient(160deg, rgba(211,160,139,.14), rgba(211,160,139,.05));
+  border-color: rgba(211,160,139,.4); }
+.ik6-kartu-denyut .jam { font-size: 8px; letter-spacing: .2em; text-transform: uppercase; font-weight: 700; color: #9aa2a8; }
+.ik6-kartu-denyut .nilai { font-family: var(--pf-serif); font-size: 17px; margin-top: 5px; white-space: nowrap; color: #f0e2c4; }
+.ik6-kartu-denyut .nilai.keluar { color: #d3a08b; }
+.ik6-kartu-denyut .judul { font-size: 11px; margin-top: 4px; line-height: 1.35; max-height: 30px; overflow: hidden; }
+.ik6-kartu-denyut .ket { font-size: 9px; color: #8b9198; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Grafik kas per jam 05-19 */
+.ik6-grafik { margin-top: 9px; padding: 9px 12px 6px; border-radius: 14px;
+  background: linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.026)); border: 1px solid rgba(255,255,255,.1); }
+.ik6-grafik-kepala { display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 8px; letter-spacing: .18em; text-transform: uppercase; font-weight: 700; color: #8b9198; }
+.ik6-grafik-kepala .ik6-em { color: #e2cda6; font-weight: 700; } .ik6-grafik-kepala .ik6-ok { color: #d3a08b; font-weight: 700; }
+#ik6JamSorot { color: #e2cda6; letter-spacing: .16em; }
+.ik6-grafik-badan { position: relative; height: 56px; margin-top: 8px; }
+.ik6-grafik-badan svg { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: 34px; pointer-events: none; z-index: 2; }
+.ik6-grafik-badan svg path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: ik6Garis 1.1s cubic-bezier(.25,.9,.3,1) .3s forwards; }
+.ik6-garis-nol { position: absolute; left: 0; right: 0; top: 32px; height: 1px; background: rgba(255,255,255,.15); }
+.ik6-jam-wrap { position: relative; height: 100%; display: flex; gap: 3px; }
+.ik6-jam-wrap button { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center;
+  background: none; border: none; padding: 0; font-family: inherit; transition: transform .16s ease; }
+.ik6-jam-wrap button:active { transform: scale(.96); }
+.ik6-jam-atas { height: 32px; width: 100%; display: flex; align-items: flex-end; }
+.ik6-jam-atas i { width: 100%; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, #f0e2c4, #bfa476);
+  animation: ik6Batang .7s cubic-bezier(.25,.9,.3,1) both; }
+.ik6-jam-bawah { height: 12px; width: 100%; display: flex; align-items: flex-start; }
+.ik6-jam-bawah i { width: 100%; border-radius: 0 0 3px 3px; background: rgba(211,160,139,.75);
+  animation: ik6Batang .7s cubic-bezier(.25,.9,.3,1) both; }
+.ik6-jam-wrap span { margin-top: 1px; font-size: 7px; letter-spacing: .06em; font-weight: 700; color: #7c848a; }
+.ik6-jam-wrap button.sorot span { color: #e2cda6; }
+.ik6-gelembung { position: absolute; top: -32px; transform: translateX(-50%); z-index: 5; pointer-events: none; white-space: nowrap;
+  padding: 5px 9px; border-radius: 9px; background: linear-gradient(160deg, #fdf7e8, #e2cda6 55%, #bfa476);
+  box-shadow: 0 6px 18px rgba(226,205,166,.35); animation: ik6Masuk .25s ease both; }
+.ik6-gelembung b { font-size: 9px; letter-spacing: .12em; font-weight: 700; color: #5c4a1c; }
+.ik6-gelembung .gm { font-size: 9.5px; color: #1c1608; margin-left: 6px; font-weight: 600; }
+.ik6-gelembung .gk { font-size: 9.5px; color: #7a3f28; margin-left: 4px; font-weight: 600; }
+/* Keadaan kosong */
+.ik6-kosong { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 30px 12px 6px; }
+.ik6-kosong .tanda { width: 46px; height: 46px; border-radius: 14px; border: 1px dashed rgba(226,205,166,.5);
+  display: flex; align-items: center; justify-content: center; font-size: 22px; color: #e2cda6; }
+.ik6-kosong h4 { margin: 0; font-family: var(--pf-serif); font-weight: 400; font-size: 17px; color: var(--teks); }
+.ik6-kosong p { margin: 0; font-size: 11.5px; color: #9aa2a8; line-height: 1.5; max-width: 290px; }
+@keyframes ik6Isi { from { height: 0; } }
+@keyframes ik6Riak { 0%, 100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(-2px) scaleY(1.12); } }
+@keyframes ik6Kilau { 0% { transform: translateX(-130%); } 55%, 100% { transform: translateX(330%); } }
+@keyframes ik6Masuk { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes ik6Batang { from { height: 0; } }
+@keyframes ik6Garis { to { stroke-dashoffset: 0; } }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -3479,6 +3620,52 @@
   <!-- HALAMAN RINGKASAN (dashboard, halaman pembuka default) -->
   <div id="halamanRingkasan" class="halaman k6a">
     <div class="judul-halaman"><h2>Ikhtisar</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+
+    <!-- IKHTISAR 6a (prototipe pemilik) — HP saja; blok lama tetap di DOM
+         (terisi seperti biasa, disembunyikan CSS) supaya desktop & fungsi
+         pengisi lama tidak berubah sedikit pun. -->
+    <div class="ikhtisar-6a">
+      <div class="ik6-kepala">
+        <div>
+          <div class="ik6-salam" id="ik6Salam">Halo, Iqbal</div>
+          <div class="ik6-sub" id="ik6Sub"></div>
+        </div>
+      </div>
+      <div class="ik6-atas">
+        <button type="button" class="ik6-tabung" id="ik6Tabung" onclick="ik6GantiPatokan()" aria-label="Omzet hari ini dibanding patokan — ketuk untuk ganti patokan">
+          <i class="ik6-tabung-isi" id="ik6TabungIsi" style="height:0;"><b class="ik6-riak"></b></i>
+          <i class="ik6-patokan" id="ik6PatokanTanda" style="display:none;"><u></u><span id="ik6PatokanLabel"></span></i>
+          <i class="ik6-tabung-kilau"></i>
+          <i class="ik6-tabung-ket" id="ik6TabungKet"></i>
+        </button>
+        <div class="ik6-kanan">
+          <div class="ik6-tumpuk" id="ik6Tumpuk"></div>
+          <div class="ik6-titik" id="ik6Titik"></div>
+        </div>
+      </div>
+      <div class="ik6-stok3" id="ik6Stok3"></div>
+      <div id="ik6DenyutWrap" style="display:none;">
+        <div class="ik6-denyut-bar">
+          <span class="ik6-denyut-judul">Denyut</span>
+          <span id="ik6SaringWrap" style="display:flex;gap:9px;"></span>
+          <span class="ik6-geser">geser →</span>
+        </div>
+        <div class="ik6-karusel" id="ik6Karusel"></div>
+        <div class="ik6-grafik">
+          <div class="ik6-grafik-kepala">
+            <span>Masuk <b class="ik6-em">▲</b> keluar <b class="ik6-ok">▼</b> · garis kas · <span id="ik6RentangJam">05–19</span></span>
+            <span id="ik6JamSorot"></span>
+          </div>
+          <div class="ik6-grafik-badan">
+            <div class="ik6-gelembung" id="ik6Gelembung" style="display:none;"></div>
+            <svg viewBox="0 0 300 32" preserveAspectRatio="none" aria-hidden="true"><path id="ik6GarisKas" fill="none" stroke="#e2cda6" stroke-width="1.3" pathLength="1" d=""/></svg>
+            <div class="ik6-garis-nol"></div>
+            <div class="ik6-jam-wrap" id="ik6JamWrap"></div>
+          </div>
+        </div>
+      </div>
+      <div class="ik6-kosong" id="ik6Kosong" style="display:none;"></div>
+    </div>
 
     <!-- Versi MOBILE — porting desain final 6 Agu 2026: SATU angka utama per layar.
          Omzet hari ini jadi hero 32px; tiga sisanya kartu pendukung kecil. id TIDAK
@@ -11655,8 +11842,10 @@
             <span class="nama">${x.t}</span>
             <button type="button" class="pil-aksi" onclick="${x.k || `pindahDariMenu('${x.h}')`}">${x.a}</button>
           </div>`).join('');
+      _ik6Perhatian = daftarHp;             // Denyut 6a memakai daftar yang SAMA
     }
     pfHitungNaik();
+    tampilkanIkhtisar6a();
   }
 
   // ============ LABA / MARGIN PER TRANSAKSI (Tahap 3) ============
@@ -14652,6 +14841,10 @@
   window.pilihSaringRiwayat = pilihSaringRiwayat;
   window.lihatRiwayatHari = lihatRiwayatHari;
   window.pilihHariPlatina = pilihHariPlatina;
+  window.ik6PilihKartu = ik6PilihKartu;
+  window.ik6GantiPatokan = ik6GantiPatokan;
+  window.ik6SaringDenyut = ik6SaringDenyut;
+  window.ik6PilihJam = ik6PilihJam;
   window.bukaRiwayatHariPlatina = bukaRiwayatHariPlatina;
   window.tampilkanRiwayat = tampilkanRiwayat;
   window.kosongkanCariRiwayat = kosongkanCariRiwayat;
@@ -14795,6 +14988,252 @@
       });
     } catch (e) { /* pemanis — tidak boleh mengganggu angka */ }
   }
+  // ============ IKHTISAR 6a — tabung, tumpuk kartu, Denyut, grafik jam ============
+  // MURNI PEMBACA: semua angka dari fungsi hitung lama (ambilPenjualan,
+  // daftarGerakanKas, hitungStok*, ambilTitikKas). Tidak ada rumus uang baru.
+  let _ik6Perhatian = [], _ik6Kartu = 0, _ik6Saring = 'semua', _ik6PatokanMode = 'rata7', _ik6JamPilih = null;
+  let _ik6LabaSampai = 0, _ik6TahanTimer = null, _ik6TahanMulai = 0, _ik6MaskTimer = null;
+  const IK6_JAM_A = 5, IK6_JAM_B = 19;   // jam toko (JAM_BUKA_SISTEM..JAM_TUTUP_SISTEM)
+  function ik6Rp(n) { return (n < 0 ? '\u2212' : '') + 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID'); }
+
+  function ik6KasSekarang() {
+    // Cermin persis hero Buku Kas: saldo titik + gerakan SESUDAH titik. null = belum bisa dihitung.
+    const t = ambilTitikKas();
+    if (!t) return null;
+    let saldo = (t.laci || 0) + (t.rekening || 0);
+    daftarGerakanKas().forEach(r => { if (r.t > t.tanggal) saldo += r.masuk - r.keluar; });
+    return saldo;
+  }
+
+  function tampilkanIkhtisar6a() {
+    try {
+      const wrap = document.querySelector('.ikhtisar-6a');
+      if (!wrap || window.matchMedia('(min-width: 700px)').matches) return;
+      const kini = new Date();
+      const jamKini = kini.getHours();
+      const salam = jamKini < 11 ? 'Selamat pagi' : jamKini < 15 ? 'Selamat siang' : jamKini < 19 ? 'Selamat sore' : 'Selamat malam';
+      document.getElementById('ik6Salam').textContent = salam + ', Iqbal';
+      document.getElementById('ik6Sub').textContent =
+        NAMA_HARI[kini.getDay()] + ', ' + kini.getDate() + ' ' + BULAN_SINGKAT[kini.getMonth()] + ' \u00b7 buka 05\u201319';
+
+      const hariIniIso = tanggalLokalIso();
+      const semua = ambilPenjualan();
+      const trxHariIni = semua.filter(x => x.tanggal === hariIniIso);
+      const omzet = trxHariIni.reduce((a, x) => a + (x.hargaTotal || 0), 0);
+      let margin = 0, bolong = 0, omzetBolong = 0;
+      trxHariIni.forEach(x => {
+        if (x.hppTotalSaatJual > 0) margin += (x.hargaTotal || 0) - x.hppTotalSaatJual;
+        else { bolong++; omzetBolong += (x.hargaTotal || 0); }
+      });
+
+      // ----- patokan tabung: rata 7 hari sebelumnya (PT1) <-> hari terbaik 30h; ketuk berganti -----
+      const perHari = {};
+      semua.forEach(x => { if (x.tanggal && x.tanggal < hariIniIso) perHari[x.tanggal] = (perHari[x.tanggal] || 0) + (x.hargaTotal || 0); });
+      let jum7 = 0;
+      for (let i = 1; i <= 7; i++) {
+        const d = new Date(kini); d.setDate(d.getDate() - i);
+        jum7 += perHari[tanggalLokalIso(d)] || 0;
+      }
+      const rata7 = jum7 > 0 ? jum7 / 7 : null;
+      let terbaik = null;
+      for (let i = 1; i <= 30; i++) {
+        const d = new Date(kini); d.setDate(d.getDate() - i);
+        const v = perHari[tanggalLokalIso(d)] || 0;
+        if (v > 0 && (terbaik === null || v > terbaik)) terbaik = v;
+      }
+      if (_ik6PatokanMode === 'terbaik' && terbaik === null) _ik6PatokanMode = 'rata7';
+      const patokan = _ik6PatokanMode === 'rata7' ? rata7 : terbaik;
+      const labelPatokan = _ik6PatokanMode === 'rata7' ? 'RATA 7H' : 'TERBAIK';
+      const isiEl = document.getElementById('ik6TabungIsi');
+      const tandaEl = document.getElementById('ik6PatokanTanda');
+      const GARIS = 34;                                    // garis patokan: 34% dari puncak tabung
+      if (patokan) {
+        const rasio = omzet / patokan;
+        isiEl.style.height = Math.min(96, rasio * (100 - GARIS)).toFixed(1) + '%';
+        tandaEl.style.display = 'flex';
+        tandaEl.style.top = 'calc(' + GARIS + '% - 1px)';
+        document.getElementById('ik6PatokanLabel').textContent = labelPatokan + ' ' + singkatJuta(Math.round(patokan));
+        document.getElementById('ik6TabungKet').textContent = Math.round(rasio * 100) + '% patokan';
+      } else {
+        isiEl.style.height = omzet > 0 ? '20%' : '0';
+        tandaEl.style.display = 'none';
+        document.getElementById('ik6TabungKet').textContent = omzet > 0 ? 'belum ada patokan' : '';
+      }
+
+      // ----- tumpuk 3 kartu: Omzet / Laba (O1: tahan 2 dtk utk intip) / Kas -----
+      const kas = ik6KasSekarang();
+      const gerakan = daftarGerakanKas().filter(r => r.t === hariIniIso);
+      const masukHariIni = gerakan.reduce((a, r) => a + r.masuk, 0);
+      const keluarHariIni = gerakan.reduce((a, r) => a + r.keluar, 0);
+      const labaTerbuka = Date.now() < _ik6LabaSampai;
+      const vsPatokan = patokan ? (omzet >= patokan ? '+' : '\u2212') + Math.abs(Math.round((omzet / patokan - 1) * 100)) + '%' : '\u2014';
+      const kartu = [
+        { label: 'Omzet hari ini', id: 'ik6aOmzet', nilai: ik6Rp(omzet), emas: true,
+          ket: trxHariIni.length + ' transaksi' + (bolong ? ' \u00b7 ' + bolong + ' tanpa HPP' : ''),
+          stat: [{ l: 'Patokan', v: patokan ? ik6Rp(Math.round(patokan)) : '\u2014' }, { l: 'VS patokan', v: vsPatokan }] },
+        { label: 'Laba hari ini', id: 'ik6aLaba', kunci: true,
+          nilai: labaTerbuka ? ik6Rp(margin) : 'Rp \u2022\u2022\u2022\u2022\u2022\u2022', emas: labaTerbuka,
+          ket: labaTerbuka
+            ? (bolong ? bolong + ' trx ber-HPP bolong tidak ikut dihitung (' + ik6Rp(omzetBolong) + ')' : 'semua HPP hari ini tercatat')
+            : 'tahan kartu 2 detik untuk melihat',
+          stat: labaTerbuka
+            ? [{ l: 'Margin', v: (omzet - omzetBolong) > 0 ? (margin / (omzet - omzetBolong) * 100).toFixed(1).replace('.', ',') + '%' : '\u2014' },
+               { l: 'Tanpa HPP', v: bolong ? ik6Rp(omzetBolong) : 'Rp0' }]
+            : [{ l: 'Margin', v: '\u2022\u2022' }, { l: 'Tanpa HPP', v: '\u2022\u2022' }] },
+        { label: 'Kas di tangan', id: 'ik6aKas', nilai: kas === null ? '\u2014' : ik6Rp(kas), emas: kas !== null,
+          ket: kas === null ? 'titik kas belum disetel \u2014 isi lewat Arus Kas' : 'laci + rekening menurut catatan',
+          stat: [{ l: 'Masuk hari ini', v: ik6Rp(masukHariIni) }, { l: 'Keluar hari ini', v: ik6Rp(keluarHariIni) }] }
+      ];
+      const posisi = i => (i - _ik6Kartu + 3) % 3;
+      document.getElementById('ik6Tumpuk').innerHTML = kartu.map((k, i) => {
+        const pos = posisi(i);
+        const gaya = pos === 0 ? 'transform:none;opacity:1;z-index:3;'
+          : pos === 1 ? 'transform:translateY(9px) scale(.955);opacity:.5;z-index:2;'
+          : 'transform:translateY(17px) scale(.91);opacity:.22;z-index:1;';
+        return '<div class="ik6-kartu" data-kartu="' + i + '" style="' + gaya + '" onclick="ik6PilihKartu()">'
+          + '<span class="kilau"></span>'
+          + '<div class="ik6-kartu-label"><span>' + k.label + '</span>' + (k.kunci ? '<span>' + (labaTerbuka ? '\ud83d\udd13' : '\ud83d\udd12') + '</span>' : '') + '</div>'
+          + '<div class="ik6-kartu-nilai' + (k.emas ? ' emas' : '') + '" id="' + k.id + '">' + k.nilai + '</div>'
+          + '<div class="ik6-kartu-ket">' + k.ket + '</div>'
+          + '<div class="ik6-kartu-stat">' + k.stat.map(x => '<div><i>' + x.l + '</i><b>' + x.v + '</b></div>').join('') + '</div>'
+          + (k.kunci ? '<span class="ik6-progres" id="ik6Progres"></span>' : '')
+          + '</div>';
+      }).join('');
+      document.getElementById('ik6Titik').innerHTML =
+        kartu.map((k, i) => '<i class="' + (posisi(i) === 0 ? 'aktif' : '') + '"></i>').join('');
+      // O1: tahan kartu laba 2 dtk -> terbuka 45 dtk. Halaman uang penuh tetap PIN.
+      const kartuLaba = document.querySelector('#ik6Tumpuk [data-kartu="1"]');
+      if (kartuLaba && !labaTerbuka) {
+        kartuLaba.addEventListener('pointerdown', ik6TahanLabaMulai);
+        kartuLaba.addEventListener('pointerup', ik6TahanLabaBatal);
+        kartuLaba.addEventListener('pointerleave', ik6TahanLabaBatal);
+      }
+
+      // ----- trio stok -----
+      const sk = hitungStokKarungPerMerk();
+      const totalKg = Object.keys(sk).reduce((a, m) => a + Math.max(0, sk[m].sisaKg || 0), 0);
+      const skm = hitungStokKemasan();
+      const totalUnit = Object.keys(skm).reduce((a, k) => a + Math.max(0, skm[k].sisaUnit || 0), 0);
+      const sbk = hitungStokBahanKemasan();
+      const totalKantong = Object.keys(sbk).reduce((a, k) => a + Math.max(0, (sbk[k].sisa != null ? sbk[k].sisa : sbk[k].sisaUnit) || 0), 0);
+      document.getElementById('ik6Stok3').innerHTML = [
+        { n: 'Kemasan', v: totalUnit.toLocaleString('id-ID'), k: 'unit siap jual' },
+        { n: 'Beras', v: Math.round(totalKg).toLocaleString('id-ID'), k: 'kg semua merk' },
+        { n: 'Kantong', v: totalKantong.toLocaleString('id-ID'), k: 'plastik kosong' }
+      ].map(x => '<button type="button" onclick="pindahDariMenu(\'stok\')"><i>' + x.n + '</i><b>' + x.v + '</b><span>' + x.k + '</span></button>').join('');
+
+      // ----- Denyut: peringatan (oksida, terdepan) + kejadian uang hari ini -----
+      const item = [];
+      _ik6Perhatian.forEach(x => item.push({ jenis: 'perhatian', jam: '\u26a0 perhatian', judul: x.t, ket: 'ketuk untuk membereskan',
+        aksi: x.k || ("pindahDariMenu('" + x.h + "')") }));
+      trxHariIni.slice().sort((a, b) => (b.jam || '').localeCompare(a.jam || '')).forEach(x =>
+        item.push({ jenis: 'jual', jam: x.jam || '\u2014', nilai: '+' + ik6Rp(x.hargaTotal || 0),
+          judul: namaSingkatTrx(x), ket: (x.caraBayar || '') + (x.namaPelanggan ? ' \u00b7 ' + x.namaPelanggan : ''),
+          aksi: 'bukaLembarTrx(' + JSON.stringify(String(x.id)) + ')' }));
+      // Kas di Denyut: penjualan TIDAK diulang (sudah jadi kartu Jual) — yang tampil
+      // hanya uang KELUAR dan masuk non-penjualan (pelunasan piutang, kasbon kembali).
+      gerakan.forEach(r => {
+        if (r.keluar > 0) item.push({ jenis: 'kas', jam: r.jam || '\u2014', keluar: true,
+          nilai: '\u2212' + ik6Rp(r.keluar), judul: r.label, ket: 'uang keluar', aksi: "pindahDariMenu('aruskas')" });
+        else if (r.masuk > 0 && ((r.label || '').indexOf('Pelunasan') === 0 || (r.label || '').indexOf('Kasbon kembali') === 0))
+          item.push({ jenis: 'kas', jam: r.jam || '\u2014',
+            nilai: '+' + ik6Rp(r.masuk), judul: r.label, ket: 'uang masuk', aksi: "pindahDariMenu('aruskas')" });
+      });
+      const adaIsi = trxHariIni.length > 0 || gerakan.length > 0;
+      const nPerhatian = _ik6Perhatian.length;
+      document.getElementById('ik6DenyutWrap').style.display = adaIsi ? 'block' : 'none';
+      const kosongEl = document.getElementById('ik6Kosong');
+      kosongEl.style.display = adaIsi ? 'none' : 'flex';
+      if (!adaIsi) {
+        kosongEl.innerHTML = '<span class="tanda">+</span><h4>Belum ada transaksi hari ini</h4><p>'
+          + (kas !== null ? 'Kas menurut catatan ' + ik6Rp(kas) + '. ' : '')
+          + 'Tekan tombol emas di bawah untuk mencatat penjualan pertama \u2014 tabung, Denyut, dan grafik akan terisi sendiri.</p>'
+          + (nPerhatian ? '<p style="color:#d3a08b;">\u26a0 ' + nPerhatian + ' hal menunggu perhatian \u2014 lihat kartu Denyut begitu ada transaksi, atau buka lewat Menu.</p>' : '');
+      }
+      if (adaIsi) {
+        const saringDaftar = [
+          { k: 'semua', n: 'Semua' }, { k: 'jual', n: 'Jual' }, { k: 'kas', n: 'Kas' }
+        ];
+        if (nPerhatian) saringDaftar.push({ k: 'perhatian', n: '\u26a0 ' + nPerhatian, oksida: true });
+        if (_ik6Saring === 'perhatian' && !nPerhatian) _ik6Saring = 'semua';
+        document.getElementById('ik6SaringWrap').innerHTML = saringDaftar.map(x =>
+          '<button type="button" class="ik6-saring' + (x.oksida ? ' oksida' : '') + (_ik6Saring === x.k ? ' aktif' : '')
+          + '" onclick="ik6SaringDenyut(\'' + x.k + '\')">' + x.n + '</button>').join('');
+        const tampil = item.filter(x => _ik6Saring === 'semua' || x.jenis === _ik6Saring
+          || (_ik6Saring === 'kas' && x.jenis === 'kas') || (_ik6Saring === 'jual' && x.jenis === 'jual'));
+        document.getElementById('ik6Karusel').innerHTML = tampil.slice(0, 24).map((x, i) =>
+          '<button type="button" class="ik6-kartu-denyut' + (x.jenis === 'perhatian' ? ' oksida' : '') + '" style="animation-delay:' + Math.min(i * 60, 360) + 'ms;" onclick="' + x.aksi.replace(/"/g, '&quot;') + '">'
+          + '<span class="jam">' + x.jam + '</span>'
+          + (x.nilai ? '<span class="nilai' + (x.keluar ? ' keluar' : '') + '" style="display:block;">' + x.nilai + '</span>' : '')
+          + '<span class="judul" style="display:block;">' + escapeHtml(x.judul || '') + '</span>'
+          + '<span class="ket" style="display:block;">' + escapeHtml(x.ket || '') + '</span></button>').join('')
+          || '<div class="kosong-info" style="flex:none;width:100%;"><b>Tidak ada di saringan ini</b></div>';
+
+        // ----- grafik per jam 05-19 + garis kas berjalan -----
+        const nJam = IK6_JAM_B - IK6_JAM_A + 1;
+        const jm = Array.from({ length: nJam }, () => ({ masuk: 0, keluar: 0 }));
+        gerakan.forEach(r => {
+          const h = r.jam ? parseInt(r.jam.slice(0, 2), 10) : NaN;
+          if (!isNaN(h) && h >= IK6_JAM_A && h <= IK6_JAM_B) { jm[h - IK6_JAM_A].masuk += r.masuk; jm[h - IK6_JAM_A].keluar += r.keluar; }
+        });
+        const maksJam = Math.max(1, ...jm.map(x => Math.max(x.masuk, x.keluar)));
+        const sorot = _ik6JamPilih !== null ? _ik6JamPilih
+          : Math.min(nJam - 1, Math.max(0, jamKini - IK6_JAM_A));
+        document.getElementById('ik6JamSorot').textContent =
+          String(IK6_JAM_A + sorot).padStart(2, '0') + ':00';
+        document.getElementById('ik6JamWrap').innerHTML = jm.map((x, i) =>
+          '<button type="button" class="' + (i === sorot ? 'sorot' : '') + '" onclick="ik6PilihJam(' + i + ')">'
+          + '<span class="ik6-jam-atas"><i style="height:' + Math.round(x.masuk / maksJam * 30) + 'px;animation-delay:' + i * 30 + 'ms;"></i></span>'
+          + '<span class="ik6-jam-bawah"><i style="height:' + Math.round(x.keluar / maksJam * 11) + 'px;animation-delay:' + i * 30 + 'ms;"></i></span>'
+          + '<span>' + String(IK6_JAM_A + i).padStart(2, '0') + '</span></button>').join('');
+        // garis kas kumulatif dalam pita 0-30 (skala relatif rentang hari ini)
+        let saldoJalan = 0; const titikKas = [];
+        jm.forEach(x => { saldoJalan += x.masuk - x.keluar; titikKas.push(saldoJalan); });
+        const minK = Math.min(0, ...titikKas), maksK = Math.max(1, ...titikKas);
+        const seg = 300 / (nJam - 1);
+        const dKas = titikKas.map((v, i) =>
+          (i === 0 ? 'M' : 'L') + (i * seg).toFixed(1) + ' ' + (30 - (v - minK) / (maksK - minK) * 28).toFixed(1)).join(' ');
+        document.getElementById('ik6GarisKas').setAttribute('d', dKas);
+        // gelembung jam terpilih (ketukan pemilik)
+        const gel = document.getElementById('ik6Gelembung');
+        if (_ik6JamPilih !== null) {
+          const x = jm[_ik6JamPilih];
+          gel.style.display = 'block';
+          gel.style.left = ((_ik6JamPilih + 0.5) / nJam * 100) + '%';
+          gel.innerHTML = '<b>' + String(IK6_JAM_A + _ik6JamPilih).padStart(2, '0') + ':00</b>'
+            + '<span class="gm">+' + singkatJuta(x.masuk) + '</span>'
+            + (x.keluar > 0 ? '<span class="gk">\u2212' + singkatJuta(x.keluar) + '</span>' : '');
+        } else gel.style.display = 'none';
+      }
+      pfHitungNaik(['ik6aOmzet', 'ik6aKas'].concat(labaTerbuka ? ['ik6aLaba'] : []));
+    } catch (e) { /* pembaca murni — tidak boleh mengganggu sistem */ }
+  }
+  function ik6PilihKartu() { _ik6Kartu = (_ik6Kartu + 1) % 3; tampilkanIkhtisar6a(); }
+  function ik6GantiPatokan() { _ik6PatokanMode = _ik6PatokanMode === 'rata7' ? 'terbaik' : 'rata7'; tampilkanIkhtisar6a(); }
+  function ik6SaringDenyut(k) { _ik6Saring = k; tampilkanIkhtisar6a(); }
+  function ik6PilihJam(i) { _ik6JamPilih = _ik6JamPilih === i ? null : i; tampilkanIkhtisar6a(); }
+  function ik6TahanLabaMulai(e) {
+    _ik6TahanMulai = Date.now();
+    const bar = document.getElementById('ik6Progres');
+    clearInterval(_ik6TahanTimer);
+    _ik6TahanTimer = setInterval(() => {
+      const q = Math.min(1, (Date.now() - _ik6TahanMulai) / 2000);
+      if (bar) bar.style.width = (q * 100) + '%';
+      if (q >= 1) {
+        clearInterval(_ik6TahanTimer);
+        _ik6LabaSampai = Date.now() + 45000;          // terbuka 45 dtk, lalu tertutup sendiri
+        clearTimeout(_ik6MaskTimer);
+        _ik6MaskTimer = setTimeout(tampilkanIkhtisar6a, 45200);
+        tampilkanIkhtisar6a();
+      }
+    }, 80);
+  }
+  function ik6TahanLabaBatal() {
+    clearInterval(_ik6TahanTimer);
+    const bar = document.getElementById('ik6Progres');
+    if (bar) bar.style.width = '0';
+  }
+
   function segarkanVisualRingkasan() {
     try {
       const semua = ambilPenjualan();
