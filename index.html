@@ -11807,7 +11807,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   function kasSeharusnyaSekarang() {
     const t = ambilTitikKas();
     if (!t) return null;
-    const g = hitungArusKasSejak(t.tanggal, tanggalLokalIso());
+    // Batas atasnya mengikuti tanggal yang sedang ditutup, bukan jam dinding — kalau
+    // penutupan dikerjakan dini hari, arus kas dihitung sampai akhir hari itu, bukan
+    // sampai hari baru yang belum jalan.
+    const g = hitungArusKasSejak(t.tanggal, tanggalTutupAktif());
     return (t.laci || 0) + (t.rekening || 0) + g.totalMasuk - g.totalKeluar;
   }
 
@@ -11824,11 +11827,29 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     return Object.keys(adaJual).filter(t => !ditutup[t]).sort();
   }
 
+  // TANGGAL YANG DITUTUP (perbaikan 21 Agu 2026). Toko tutup 19:00, dan ritual tutup
+  // sering dikerjakan lewat tengah malam. Sebelum perbaikan ini, tutup pukul 03:59
+  // membaca tanggal hari BARU — yang omzetnya tentu masih nol — lalu mencatat seluruh
+  // isi laci sebagai "selisih" tak dikenal. Kejadian nyata 16-20 Agu 2026: lima malam
+  // berturut-turut omzet tercatat Rp0, selisih palsu sampai −Rp33.492.500, dan 15 Agu
+  // hilang dari daftar karena penutupannya tersimpan bertanggal 16 Agu.
+  // Aturan sekarang: tutup SEBELUM tengah hari = menutup hari KEMARIN. Tidak ada orang
+  // yang menutup hari yang belum selesai, jadi arah salahnya cuma satu dan aman dijaga.
+  // Batas jam sengaja ditaruh DI DALAM fungsi: konstanta modul di posisi ini pernah
+  // memicu TDZ waktu dipanggil lebih awal dari barisnya (kasus KUNCI_UNLOCK_OWNER).
+  function tanggalTutupAktif(sekarang) {
+    const JAM_BATAS_TUTUP = 12;
+    const n = sekarang || new Date();
+    if (n.getHours() < JAM_BATAS_TUTUP) return tanggalLokalIso(new Date(n.getTime() - 86400000));
+    return tanggalLokalIso(n);
+  }
+
   function tampilkanTutupHari() {
-    const hariIni = tanggalLokalIso();
+    const hariIni = tanggalTutupAktif();
     const elTgl = document.getElementById('tutupTanggal');
     if (!elTgl) return;
-    elTgl.textContent = '· ' + formatTanggal(hariIni);
+    elTgl.textContent = '· ' + formatTanggal(hariIni)
+      + (hariIni !== tanggalLokalIso() ? ' — hari kemarin, karena sekarang masih dini hari' : '');
 
     // Sudah ditutup hari ini? Sebut apa adanya — menutup dua kali berarti titik kas
     // maju dua kali dan gerakan di antaranya terhitung ganda.
@@ -11937,7 +11958,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   }
 
   async function simpanTutupHari() {
-    const hariIni = tanggalLokalIso();
+    const hariIni = tanggalTutupAktif();
     const laci = document.getElementById('tutupLaci').value;
     const rek = document.getElementById('tutupRekening').value;
     if (laci === '' && rek === '') { alert('Hitung uangnya dulu — isi uang di laci dan saldo rekening.'); return; }
@@ -11993,7 +12014,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     document.getElementById('tutupAlasan').value = '';
     document.getElementById('tutupSetoran').value = '';
     tampilkanTutupHari();
-    alert('Hari dikunci. Kas fisik ' + formatRupiah(nLaci + nRek)
+    alert('Hari ' + formatTanggal(hariIni) + ' dikunci. Kas fisik ' + formatRupiah(nLaci + nRek)
       + (selisih === 0 ? ' — cocok persis.' : ' · selisih ' + (selisih > 0 ? 'lebih ' : 'kurang ') + formatRupiah(Math.abs(selisih)) + '.')
       + (setoran > 0 ? '\nDisetor ke owner ' + formatRupiah(setoran) + ' — kas awal besok ' + formatRupiah(nLaci - setoran + nRek) + '.' : '\nKas awal besok ' + formatRupiah(nLaci + nRek) + '.')
       + '\nKirim rekap WA lewat tombol di atas kalau perlu.');
@@ -12015,8 +12036,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
   // Langkah 5: rekap malam via WA (pola wa.me tanpa nomor — pilih tujuan di WA).
   function kirimRekapTutupWa() {
-    const dok = ambilTutupHari().find(x => x.tanggal === tanggalLokalIso());
-    if (!dok) { alert('Hari ini belum dikunci.'); return; }
+    const dok = ambilTutupHari().find(x => x.tanggal === tanggalTutupAktif());
+    if (!dok) { alert('Hari itu belum dikunci.'); return; }
     const b = [];
     b.push('*Rekap Toko Beras M.IQBAL — ' + formatTanggal(dok.tanggal) + '*');
     b.push('Omzet: ' + formatRupiah(dok.omzet || 0) + ' (' + (dok.jumlahTransaksi || 0) + ' trx)');
