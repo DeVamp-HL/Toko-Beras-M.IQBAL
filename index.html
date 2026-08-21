@@ -3052,7 +3052,18 @@
 #halamanTutup > *, #halamanPiutang > *, #halamanPelanggan > *, #halamanPemasok > *,
 #halamanPesanan > *, #halamanSetelan > * {
   animation: pfMuncul .7s cubic-bezier(.19,.8,.26,1) both;
-}/* ---------- Kalender omzet harian + lembar hari (wireframe R3) ---------- */
+}/* ---------- port hi-fi: batang 6 bulan + sparkline saldo ---------- */
+.bl-batang { display: flex; gap: 8px; align-items: flex-end; height: 110px; margin-top: 10px; }
+.bl-kolom { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; }
+.bl-kolom i { width: 100%; border-radius: 4px 4px 0 0; background: rgba(226,205,166,.32);
+  animation: ik6Batang .7s cubic-bezier(.25,.9,.3,1) both; }
+.bl-kolom i.ini { background: linear-gradient(180deg, #fdf6e7, #c2a875); box-shadow: 0 0 12px rgba(226,205,166,.5); }
+.bl-kolom span { font-size: 8.5px; letter-spacing: .1em; font-weight: 700; text-transform: uppercase; color: #7c848a; }
+.bl-kolom span.ini { color: #e2cda6; }
+.bl-kolom b { font-family: var(--pf-serif); font-weight: 400; font-size: 10px; color: var(--pf-platina); }
+.ak-spark-kaki { display: flex; justify-content: space-between; margin-top: 4px;
+  font-family: var(--pf-serif); font-style: italic; font-size: 10px; color: #9aa2a8; }
+/* ---------- Kalender omzet harian + lembar hari (wireframe R3) ---------- */
 .rw-kal-kartu { margin-bottom: 12px; }
 .rw-kal { display: flex; gap: 3px; align-items: flex-end; height: 96px; margin-top: 10px;
   overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
@@ -4713,6 +4724,21 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       <div class="kartu-mini"><div class="label">Uang keluar</div><div class="nilai" id="arusKasTotalKeluar">Rp0</div></div>
     </div>
 
+    <!-- RENCANA KELUAR (hi-fi Arus Kas): pos bulan ini yang BELUM dibayar
+         (biaya + gaji per orang) vs kas sekarang — cukup / kurang berapa. -->
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="akRencanaKartu">
+      <div class="kd-judul"><h3>Rencana keluar bulan ini</h3><span class="kd-hitung" id="akRencanaCukup"></span></div>
+      <div id="akRencanaDaftar"></div>
+    </div>
+
+    <!-- SALDO SEJAK TITIK (hi-fi: saldo kas 30 hari) — garis kecil dari titik kas
+         ke hari ini; sebelum titik saldo tidak diketahui (jujur, tidak menebak). -->
+    <div class="kartu" style="margin-top:12px;" id="akSparkKartu">
+      <div class="panel-kepala"><h2>Saldo kas berjalan</h2><span class="kd-hitung" id="akSparkKet"></span></div>
+      <svg id="akSpark" viewBox="0 0 300 46" preserveAspectRatio="none" aria-hidden="true" style="display:block;width:100%;height:52px;margin-top:8px;"><path fill="none" stroke="#e2cda6" stroke-width="1.4" d=""/></svg>
+      <div class="ak-spark-kaki"><span id="akSparkAwal"></span><span id="akSparkAkhir"></span></div>
+    </div>
+
     <!-- KE MANA UANG BULAN INI (13 Agu 2026) — jawaban untuk "kok kas bersih gua
          minus?": kas yang turun dipecah menjadi wujud barunya (stok, piutang, kasbon)
          dan yang benar-benar habis (biaya). Jumlah pecahan HARUS sama persis dengan
@@ -4979,6 +5005,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
 
+    <!-- PERKIRAAN BELANJA (hi-fi Pemasok): saran belanja x harga termurah ->
+         total perkiraan + kirim daftar via WA. -->
+    <div class="kartu-daftar kd-kepala" style="margin-bottom:12px;" id="pmBelanjaKartu">
+      <div class="kd-judul"><h3>Perlu belanja</h3><span class="kd-hitung" id="pmBelanjaTotal"></span></div>
+      <div id="pmBelanjaDaftar"></div>
+      <button type="button" class="tombol-utama-kartu" style="margin:10px 12px 12px; width:auto; display:block;" onclick="kirimBelanjaWa()">Kirim daftar → WA</button>
+    </div>
+
     <label for="cariPemasok">Cari — nama pemasok, merk, atau isi catatan</label>
     <input type="text" id="cariPemasok" placeholder='Contoh: "roda mas", "IR64", "sales budi"' autocomplete="off" oninput="tampilkanPemasok()">
 
@@ -5232,6 +5266,22 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     <div class="judul-halaman"><h2>Bulanan</h2><span class="jh-cat" id="bulananJudulBulan"></span></div>
     <div id="pesanOkBulanan" class="pesan-ok"> Biaya bulanan tersimpan.</div>
 
+    <!-- LAPORAN RINGKAS BULAN (hi-fi Bulanan): hero + enam bulan terakhir + baris inti. -->
+    <div class="kartu-hero" style="margin-bottom:12px;">
+      <i class="pf-nafas" aria-hidden="true"></i>
+      <div class="label">Omzet bulan ini <span class="keterangan">sampai hari ini</span></div>
+      <div class="hero-nilai" id="blHeroOmzet">Rp0</div>
+      <div class="hero-syarat" id="blHeroKet"></div>
+    </div>
+    <div class="kartu" style="margin-bottom:12px;">
+      <div class="panel-kepala"><h2>Enam bulan terakhir</h2></div>
+      <div class="bl-batang" id="blBatang"></div>
+    </div>
+    <div class="kartu-daftar kd-kepala" style="margin-bottom:12px;">
+      <div class="kd-judul"><h3>Inti bulan ini</h3></div>
+      <div id="blInti"></div>
+    </div>
+
     <div id="bulananKosong" class="kartu-peringatan-amber" style="display:none;">
       <div class="kpa-judul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/></svg><b id="bulananKosongJudul">Bulan ini belum diisi</b></div>
       <p>Selama kosong, biaya tetap dihitung Rp0 — kas keluar di Ringkasan dan laba di halaman Laba tampak lebih besar dari sebenarnya. Isi sekali di awal bulan, angkanya jarang berubah.</p>
@@ -5295,6 +5345,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   <div id="halamanHarian" class="halaman k6a">
     <div class="judul-halaman"><h2>Harian</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkHarian" class="pesan-ok"> Pengeluaran tersimpan.</div>
+
+    <!-- REKAP HARI INI (hi-fi Rekap Harian): omzet per cara bayar + keluar,
+         teks yang sama dgn rekap WA — satu sumber. -->
+    <div class="kartu-daftar kd-kepala" style="margin-bottom:12px;">
+      <div class="kd-judul"><h3>Rekap hari ini</h3><span class="kd-hitung" id="rhKet"></span></div>
+      <div id="rhBaris"></div>
+      <button type="button" class="tombol-utama-kartu" style="margin:10px 12px 12px; width:auto; display:block;" onclick="kirimRekapHarianWa()">Kirim rekap → WA</button>
+    </div>
 
     <!-- Akibat terbesar halaman ini ada di pilihan kategori, jadi keterangannya
          ("ikut kas" / "pribadi") menempel di dalam tombolnya (Prinsip 1). -->
@@ -7453,6 +7511,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   }
 
   function tampilkanBulanan() {
+    tampilkanRingkasBulanan();
     // Kolom bulan pernah tampil KOSONG saat tab dibuka (terlihat di layar pemilik
     // 12 Agu 2026): tanpa bulan terpilih, seluruh isian ikut kosong dan mudah dikira
     // datanya hilang. Diisi bulan berjalan sebagai titik berangkat.
@@ -7636,6 +7695,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   }
 
   function tampilkanHarian() {
+    tampilkanRekapHarian();
     // Kategori 'owner' murni pribadi & terkunci PIN — non-owner tidak boleh melihatnya
     // sama sekali, bahkan lewat filter 'semua'. Owner yang sudah unlock lihat semuanya.
     const semuaMentah = ambilPengeluaranHarian();
@@ -8838,6 +8898,172 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       else if (!dariKiri && dx < 0 && i < URUTAN.length - 1) pindahHalaman(URUTAN[i + 1]);  // tepi kanan -> maju
     }, { passive: true });
   })();
+
+  // ============ PORT HI-FI: Rekap Harian, Bulanan, Arus Kas, Pemasok ============
+  // Semuanya MURNI PEMBACA dari fungsi hitung lama — nol rumus uang baru.
+  function dataRekapHarian() {
+    const iso = tanggalLokalIso();
+    const jual = ambilPenjualan().filter(x => x.tanggal === iso);
+    const per = k => jual.filter(x => caraBayarKunci(x) === k).reduce((a, x) => a + (x.hargaTotal || 0), 0);
+    const keluarHarian = ambilPengeluaranHarian().filter(h => h.tanggal === iso && h.kategori !== 'owner')
+      .reduce((a, h) => a + (h.nominal || 0), 0);
+    const refund = ambilRetur().filter(r => r.tanggal === iso && r.penyelesaian === 'refund')
+      .reduce((a, r) => a + (r.nominalRefund || 0), 0);
+    const setoran = ambilSetoranKas().filter(x => x.tanggal === iso).reduce((a, x) => a + (x.nominal || 0), 0);
+    return { iso, omzet: jual.reduce((a, x) => a + (x.hargaTotal || 0), 0), n: jual.length,
+      tunai: per('tunai'), qris: per('qris'), kredit: per('kredit'), keluarHarian, refund, setoran };
+  }
+  function tampilkanRekapHarian() {
+    const el = document.getElementById('rhBaris');
+    if (!el) return;
+    const d = dataRekapHarian();
+    document.getElementById('rhKet').textContent = d.n + ' transaksi';
+    const brs = (nama, nilai, oksida) => `<div class="baris-44${nilai === 0 ? ' baris-nol' : ''}">
+      <span class="nama">${nama}</span><span class="angka${oksida && nilai > 0 ? ' ph-merah' : ''}">${formatRupiah(nilai)}</span></div>`;
+    el.innerHTML = brs('Omzet hari ini', d.omzet)
+      + brs('\u2003Tunai', d.tunai) + brs('\u2003QRIS', d.qris) + brs('\u2003Kredit \u2014 belum jadi uang', d.kredit)
+      + brs('Refund retur', d.refund, true)
+      + brs('Pengeluaran harian (Toko)', d.keluarHarian, true)
+      + brs('Setoran ke owner', d.setoran, true);
+  }
+  function kirimRekapHarianWa() {
+    const d = dataRekapHarian();
+    const b = ['*Rekap Toko Beras M.IQBAL \u2014 ' + formatTanggal(d.iso) + '*',
+      'Omzet: ' + formatRupiah(d.omzet) + ' (' + d.n + ' trx)',
+      'Tunai: ' + formatRupiah(d.tunai), 'QRIS: ' + formatRupiah(d.qris)];
+    if (d.kredit) b.push('Kredit (belum jadi uang): ' + formatRupiah(d.kredit));
+    if (d.refund) b.push('Refund retur: ' + formatRupiah(d.refund));
+    if (d.keluarHarian) b.push('Pengeluaran: ' + formatRupiah(d.keluarHarian));
+    if (d.setoran) b.push('Setoran ke owner: ' + formatRupiah(d.setoran));
+    window.open('https://wa.me/?text=' + encodeURIComponent(b.join('\n')), '_blank');
+  }
+
+  function tampilkanRingkasBulanan() {
+    const el = document.getElementById('blHeroOmzet');
+    if (!el) return;
+    const kini = new Date();
+    const bulanIso = bulanLokalIso();
+    const semua = ambilPenjualan();
+    const per = {};
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(kini.getFullYear(), kini.getMonth() - i, 1);
+      per[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')] = { omzet: 0, hpp: 0, bolong: 0, label: BULAN_SINGKAT[d.getMonth()] };
+    }
+    semua.forEach(x => {
+      const b = (x.tanggal || '').slice(0, 7);
+      if (!per[b]) return;
+      per[b].omzet += x.hargaTotal || 0;
+      if (x.hppTotalSaatJual > 0) per[b].hpp += x.hppTotalSaatJual; else per[b].bolong += x.hargaTotal || 0;
+    });
+    const ini = per[bulanIso];
+    el.innerHTML = angkaUtamaHtml(ini.omzet);
+    const hariJalan = kini.getDate();
+    const rataHari = Math.round(ini.omzet / hariJalan);
+    document.getElementById('blHeroKet').textContent =
+      hariJalan + ' hari jalan \u00b7 rata ' + singkatJuta(rataHari) + (rataHari >= 1e6 ? ' jt' : '') + ' per hari';
+    const kunci6 = Object.keys(per).sort();
+    const maks = Math.max(1, ...kunci6.map(k => per[k].omzet));
+    document.getElementById('blBatang').innerHTML = kunci6.map((k, i) =>
+      '<div class="bl-kolom"><i style="height:' + Math.max(3, Math.round(per[k].omzet / maks * 100)) + '%;animation-delay:' + (i * 60) + 'ms;" class="' + (k === bulanIso ? 'ini' : '') + '"></i>'
+      + '<span class="' + (k === bulanIso ? 'ini' : '') + '">' + per[k].label + '</span>'
+      + '<b>' + singkatJuta(per[k].omzet) + '</b></div>').join('');
+    // Laba ikut SEGEL O1 (tahan kartu Laba di Ikhtisar) — satu segel satu kebijakan.
+    const labaTerbuka = Date.now() < _ik6LabaSampai;
+    const margin = (ini.omzet - ini.bolong) - ini.hpp;
+    const g = hitungArusKas(bulanIso);
+    const brs = (nama, nilai, ket) => `<div class="baris-44"><span class="nama">${nama}${ket ? `<small>${ket}</small>` : ''}</span><span class="angka">${nilai}</span></div>`;
+    document.getElementById('blInti').innerHTML =
+      brs('Omzet', formatRupiah(ini.omzet))
+      + brs('HPP barang terjual', formatRupiah(ini.hpp), ini.bolong ? 'di luar ' + formatRupiah(ini.bolong) + ' omzet ber-HPP bolong' : '')
+      + brs('Laba kotor', labaTerbuka ? formatRupiah(margin) : '\ud83d\udd12', labaTerbuka ? 'omzet ber-HPP \u2212 HPP-nya' : 'tahan kartu Laba di Ikhtisar 2 detik')
+      + brs('Uang keluar (arus kas)', formatRupiah(g.totalKeluar))
+      + brs('Kas bersih', (g.bersih < 0 ? '\u2212' : '') + formatRupiah(Math.abs(g.bersih)));
+  }
+
+  function tampilkanRencanaKeluar() {
+    const kartu = document.getElementById('akRencanaKartu');
+    if (!kartu) return;
+    const bulanIso = bulanLokalIso();
+    const belum = bayaranBiayaBulanan().filter(x => x.bulan === bulanIso && !x.tanggal && (x.nominal || 0) > 0);
+    const total = belum.reduce((a, x) => a + x.nominal, 0);
+    const kas = ik6KasSekarang();
+    const cukupEl = document.getElementById('akRencanaCukup');
+    if (!belum.length) {
+      document.getElementById('akRencanaDaftar').innerHTML =
+        '<div class="kosong-info"><b>Semua pos bulan ini sudah dibayar</b><span>Tidak ada rencana keluar yang menunggu.</span></div>';
+      cukupEl.textContent = '';
+      return;
+    }
+    cukupEl.innerHTML = kas === null ? formatRupiah(total)
+      : kas >= total ? formatRupiah(total) + ' \u00b7 kas cukup'
+      : formatRupiah(total) + ' \u00b7 <b class="ph-merah">kurang ' + formatRupiah(total - kas) + '</b>';
+    document.getElementById('akRencanaDaftar').innerHTML = belum.map(x =>
+      `<div class="baris-44"><span class="nama">${escapeHtml(x.label)}<small>belum dibayar bulan ini</small></span>
+       <span class="angka">${formatRupiah(x.nominal)}</span></div>`).join('');
+  }
+
+  function tampilkanSparkSaldo() {
+    const svg = document.getElementById('akSpark');
+    if (!svg) return;
+    const t = ambilTitikKas();
+    const kartu = document.getElementById('akSparkKartu');
+    if (!t) { kartu.style.display = 'none'; return; }
+    kartu.style.display = 'block';
+    const mulai = isoKeTanggal(t.tanggal);
+    const kini = isoKeTanggal(tanggalLokalIso());
+    const nHari = Math.min(30, Math.max(1, Math.round((kini - mulai) / 86400000))) + 1;
+    const gerakan = daftarGerakanKas();
+    let saldo = (t.laci || 0) + (t.rekening || 0);
+    const titik = [];
+    for (let i = 0; i < nHari; i++) {
+      const d = new Date(mulai); d.setDate(d.getDate() + i);
+      const iso = tanggalLokalIso(d);
+      gerakan.forEach(r => { if (r.t === iso && r.t > t.tanggal) saldo += r.masuk - r.keluar; });
+      titik.push(saldo);
+    }
+    const min = Math.min(...titik), maks = Math.max(...titik);
+    const seg = 300 / Math.max(1, nHari - 1);
+    const d2 = titik.map((v, i) => (i === 0 ? 'M' : 'L') + (i * seg).toFixed(1) + ' '
+      + (42 - (maks === min ? 0.5 : (v - min) / (maks - min)) * 38).toFixed(1)).join(' ');
+    svg.querySelector('path').setAttribute('d', d2);
+    document.getElementById('akSparkKet').textContent = 'sejak titik \u00b7 ' + (nHari - 1) + ' hari';
+    document.getElementById('akSparkAwal').textContent = formatTanggal(t.tanggal) + ' \u00b7 ' + singkatJuta(titik[0]) + (titik[0] >= 1e6 ? ' jt' : '');
+    document.getElementById('akSparkAkhir').textContent = 'kini \u00b7 ' + singkatJuta(saldo) + (saldo >= 1e6 ? ' jt' : '');
+  }
+
+  let _pmDaftarWa = null;
+  function tampilkanPerluBelanja() {
+    const kartu = document.getElementById('pmBelanjaKartu');
+    if (!kartu) return;
+    const saran = hitungSaranBelanja();
+    if (!saran.length) {
+      document.getElementById('pmBelanjaDaftar').innerHTML =
+        '<div class="kosong-info"><b>Stok masih cukup</b><span>Tidak ada merk di bawah target 14 hari.</span></div>';
+      document.getElementById('pmBelanjaTotal').textContent = '';
+      _pmDaftarWa = null;
+      return;
+    }
+    let total = 0;
+    const baris = saran.map(x => {
+      const kg = x.sack * x.berat;
+      const harga = x.termurah && x.termurah.hargaPerKg ? x.termurah.hargaPerKg * kg : null;
+      if (harga) total += harga;
+      return { merk: x.merk, sack: x.sack, berat: x.berat, kg,
+        pemasok: x.termurah ? x.termurah.pemasok : null, harga, hari: x.hari };
+    });
+    _pmDaftarWa = { baris, total };
+    document.getElementById('pmBelanjaTotal').textContent = total ? 'perkiraan ' + formatRupiah(total) : '';
+    document.getElementById('pmBelanjaDaftar').innerHTML = baris.map(b =>
+      `<div class="baris-44"><span class="nama">${escapeHtml(b.merk)} \u00b7 ${b.sack} sack \u00d7 ${b.berat} kg<small>${kataHabis(b.hari)}${b.pemasok ? ' \u00b7 termurah: ' + escapeHtml(b.pemasok) : ' \u00b7 belum ada riwayat harga pemasok'}</small></span>
+       <span class="angka">${b.harga ? formatRupiah(b.harga) : '\u2014'}</span></div>`).join('');
+  }
+  function kirimBelanjaWa() {
+    if (!_pmDaftarWa || !_pmDaftarWa.baris.length) { alert('Tidak ada daftar belanja — stok masih cukup.'); return; }
+    const b = ['*Daftar belanja Toko Beras M.IQBAL*'];
+    _pmDaftarWa.baris.forEach(x => b.push('\u2022 ' + x.merk + ' \u00b7 ' + x.sack + ' sack \u00d7 ' + x.berat + ' kg' + (x.pemasok ? ' (' + x.pemasok + ')' : '')));
+    if (_pmDaftarWa.total) b.push('Perkiraan: ' + formatRupiah(_pmDaftarWa.total));
+    window.open('https://wa.me/?text=' + encodeURIComponent(b.join('\n')), '_blank');
+  }
 
   // ============ KALENDER OMZET HARIAN + LEMBAR HARI (wireframe R3) ============
   let _rwHariIso = null, _rwHariPenuh = false;
@@ -11815,7 +12041,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       wrap.style.display = 'block';
       document.getElementById('kasSekarangNilai').innerHTML = angkaUtamaHtml(saldo);
       document.getElementById('kasSekarangSyarat').textContent =
-        'Laci + rekening, dihitung dari titik ' + formatTanggal(t.tanggal) + '. Cocokkan berkala dengan hitungan fisik di kartu bawah.';
+        'Titik ' + formatTanggal(t.tanggal) + ': laci ' + formatRupiah(t.laci || 0) + ' \u00b7 rekening ' + formatRupiah(t.rekening || 0)
+        + '. Sesudahnya bercampur \u2014 pisah per kanal hanya diketahui saat titik.';
     } else {
       wrap.style.display = 'none';
     }
@@ -11851,6 +12078,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     tampilkanKeManaUang(d);
     tampilkanNeraca();
     tampilkanBukuKas(d.bulan);
+    tampilkanRencanaKeluar();
+    tampilkanSparkSaldo();
     pfHitungNaik(PF_ANGKA_ARUSKAS);   // sesudah tampilkanBukuKas: hero "kas sekarang" diisi di sana
 
     // Kredit bulan ini disebut terang-terangan: itu barang yang sudah keluar tapi
@@ -12357,6 +12586,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   let _daftarPmsRender = [];
   let _pmsTerbuka = null;
   function tampilkanPemasok() {
+    tampilkanPerluBelanja();
     const kont = document.getElementById('daftarPemasok');
     if (!kont) return;
     const semua = hitungPemasok();
@@ -16313,6 +16543,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
   window.wzBukaKreditSekali = wzBukaKreditSekali; window.wzPilihJanji = wzPilihJanji;
+  window.kirimRekapHarianWa = kirimRekapHarianWa; window.kirimBelanjaWa = kirimBelanjaWa;
   window.perbaruiSetoranTutup = perbaruiSetoranTutup; window.kirimRekapTutupWa = kirimRekapTutupWa;
   window.bukaLembarHariRw = bukaLembarHariRw; window.tutupLembarHariRw = tutupLembarHariRw;
   window.rwHariTingkat = rwHariTingkat;
