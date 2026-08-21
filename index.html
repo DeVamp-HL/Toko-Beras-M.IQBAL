@@ -3046,6 +3046,37 @@
 #lembarBukaToko .wz-lanjut { max-width: 330px; }
 #lembarBukaToko .bt-beda { background: none; border: none; font-family: inherit; font-size: 12px;
   font-weight: 700; color: #d3a08b; letter-spacing: .04em; padding: 10px; }
+/* Halaman lama ber-k6a: kemunculan berjenjang ringan yang sama */
+#halamanStok > *, #halamanHarga > *, #halamanRekap > *, #halamanInput > *,
+#halamanProduksi > *, #halamanBulanan > *, #halamanHarian > *, #halamanLaba > *,
+#halamanTutup > *, #halamanPiutang > *, #halamanPelanggan > *, #halamanPemasok > *,
+#halamanPesanan > *, #halamanSetelan > * {
+  animation: pfMuncul .7s cubic-bezier(.19,.8,.26,1) both;
+}
+/* ---------- KR3: retur dari transaksi hari ini + alasan wajib ---------- */
+.rt-hariini > i, .rt-alasan > i { display: block; font-style: normal; font-size: 9px; letter-spacing: .16em;
+  text-transform: uppercase; font-weight: 700; color: #9aa2a8; margin: 12px 2px 7px; }
+.rt-trx { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 12px;
+  margin-bottom: 7px; border-radius: 12px; text-align: left; font-family: inherit; color: var(--teks);
+  background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.09); transition: transform .14s ease; }
+.rt-trx:active { transform: scale(.975); }
+.rt-trx.pilih { border-color: rgba(226,205,166,.55); background: linear-gradient(160deg, rgba(226,205,166,.16), rgba(226,205,166,.05)); }
+.rt-trx .jam { flex: none; font-family: var(--pf-serif); font-style: italic; font-size: 11px; color: #9aa2a8; }
+.rt-trx .nama { flex: 1; min-width: 0; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-trx b { font-family: var(--pf-serif); font-weight: 400; font-size: 13px; }
+.rt-alasan > div { display: flex; gap: 8px; }
+.rt-alasan button { flex: 1; min-height: 42px; border-radius: 11px; font-family: inherit; font-size: 12px;
+  font-weight: 700; background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.09); color: var(--pf-platina); }
+.rt-alasan button.pilih { border-color: rgba(226,205,166,.55); color: #fdf6e7;
+  background: linear-gradient(180deg, rgba(226,205,166,.26), rgba(226,205,166,.08)); }
+/* HP: pemilih MANUAL produk retur disembunyikan (jalur resmi = ketuk transaksi
+   hari ini yang mengisinya otomatis) — input JUMLAH & nominal tetap tampil
+   supaya retur sebagian (1 dari 3) tetap bisa. Layar lebar: manual tetap ada. */
+@media (max-width: 699px) {
+  .rt-manual { display: none; }
+}
 
 /* ---------- IKHTISAR 6a: tabung beras + tumpuk kartu + Denyut + grafik jam ----------
    Dari prototipe pemilik (kandidat G + Denyut 5b + keputusan PT1/O1). HP saja;
@@ -3487,7 +3518,7 @@
 <!-- LEMBAR TRANSAKSI (UX Alur 6): detail satu transaksi + dua tindakan berjejak.
      Tidak ada tombol Hapus — angka yang bisa hilang diam-diam tidak bisa dipercaya. -->
 <div id="overlayLembarTrx" onclick="tutupLembarTrx()"></div>
-<div id="lembarTrx" role="dialog" aria-modal="true" aria-labelledby="lembarTrxJudul">
+<div id="lembarTrx" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarTrxJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarTrxJudul">Transaksi</h3>
   <p class="lk-sub" id="lembarTrxSub">—</p>
@@ -3576,7 +3607,7 @@
      Isi formulirnya persis yang dulu menempel di halaman — id kotak isian TIDAK
      berubah, jadi simpanHargaLiteran/Kemasan/Karung dan isiHarga* tetap memakainya. -->
 <div id="overlayLembarHarga" onclick="tutupLembarHarga()"></div>
-<div id="lembarHarga" role="dialog" aria-modal="true" aria-labelledby="lembarHargaJudul">
+<div id="lembarHarga" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarHargaJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarHargaJudul">Tambah / ubah harga</h3>
   <p class="lk-sub">Harga di katalog ini yang dipakai kasir — pilih dulu jalur jualnya.</p>
@@ -3625,7 +3656,7 @@
      angka apa pun; ia disimpan sebagai mutasi tersendiri, jadi jejaknya utuh dan
      salah catat bisa ditelusuri. -->
 <div id="overlayLembarPiutang" onclick="tutupLembarPiutang()"></div>
-<div id="lembarPiutang" role="dialog" aria-modal="true" aria-labelledby="lembarPiutangJudul">
+<div id="lembarPiutang" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarPiutangJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarPiutangJudul">Pelanggan</h3>
   <p class="lk-sub" id="lembarPiutangSub">—</p>
@@ -3691,7 +3722,7 @@
 <div id="overlayLembarPelanggan" onclick="tutupLembarPelanggan()"></div>
 
 <div id="overlayLembarPemasok" onclick="tutupLembarPemasok()"></div>
-<div id="lembarPemasok" role="dialog" aria-modal="true" aria-labelledby="lembarPemasokJudul">
+<div id="lembarPemasok" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarPemasokJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarPemasokJudul">Pemasok</h3>
   <p class="lk-sub" id="lembarPemasokSub">—</p>
@@ -3720,7 +3751,7 @@
   <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanCatatanPemasok()">Simpan catatan</button>
   <button type="button" class="lmk-tutup" onclick="tutupLembarPemasok()">Tutup</button>
 </div>
-<div id="lembarPelanggan" role="dialog" aria-modal="true" aria-labelledby="lembarPelangganJudul">
+<div id="lembarPelanggan" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarPelangganJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarPelangganJudul">Pelanggan</h3>
   <p class="lk-sub" id="lembarPelangganSub">—</p>
@@ -3740,7 +3771,7 @@
   <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanCatatanPelanggan()">Simpan catatan</button>
   <button type="button" class="lmk-tutup" onclick="tutupLembarPelanggan()">Tutup</button>
 </div>
-<div id="lembarKasbon" role="dialog" aria-modal="true" aria-labelledby="lembarKasbonJudul">
+<div id="lembarKasbon" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarKasbonJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarKasbonJudul">Karyawan</h3>
   <p class="lk-sub" id="lembarKasbonSub">—</p>
@@ -3777,7 +3808,7 @@
      tanpa kehilangan jejak riwayat produksinya (temuan audit margin: Angsa 25 kg &
      Kembang 10 kg, lihat ambilProduksiBerlaku). Pola sama dengan koreksi transaksi. -->
 <div id="overlayLembarKoreksiProduksi" onclick="tutupLembarKoreksiProduksi()"></div>
-<div id="lembarKoreksiProduksi" role="dialog" aria-modal="true" aria-labelledby="lembarKoreksiProduksiJudul">
+<div id="lembarKoreksiProduksi" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarKoreksiProduksiJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarKoreksiProduksiJudul">Koreksi HPP</h3>
   <p class="lk-sub" id="lembarKoreksiProduksiSub">—</p>
@@ -3801,7 +3832,7 @@
      HPP stok SEKARANG sebagai saran — bukan dihapus/ditimpa, dokumen koreksi baru yang
      dibuat (pola sama dengan Koreksi HPP produksi & Koreksi angka transaksi). -->
 <div id="overlayLembarIsiHpp" onclick="tutupLembarIsiHpp()"></div>
-<div id="lembarIsiHpp" role="dialog" aria-modal="true" aria-labelledby="lembarIsiHppJudul">
+<div id="lembarIsiHpp" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarIsiHppJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarIsiHppJudul">Isi HPP</h3>
   <p class="lk-sub" id="lembarIsiHppSub">—</p>
@@ -3823,7 +3854,7 @@
 <!-- LEMBAR PILIH MERK (Lembar 1 Penyempurnaan): nama merk dipilih, tidak diketik.
      Riwayat pemasok yang sedang dipilih naik ke paling atas. -->
 <div id="overlayLembarMerk" onclick="tutupLembarMerk()"></div>
-<div id="lembarMerk" role="dialog" aria-modal="true" aria-labelledby="lembarMerkJudul">
+<div id="lembarMerk" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarMerkJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarMerkJudul">Pilih merk</h3>
   <div id="lembarMerkIsi"></div>
@@ -4119,27 +4150,43 @@
     <!-- Sub-form: Retur -->
     <div class="kartu" id="formJualRetur" style="display:none;">
       <div class="panel-kepala"><h2>Retur — barang apa yang dikembalikan?</h2></div>
+      <!-- KR3 (HP): retur berangkat dari TRANSAKSI HARI INI — ketuk salah satu,
+           form di bawah terisi otomatis (produk, jumlah, nominal). Daftar manual
+           tetap ada untuk layar lebar / kasus lama. -->
+      <div class="rt-hariini" id="rtHariIni"></div>
+      <div class="rt-alasan" id="rtAlasan">
+        <i>Alasan retur — wajib pilih</i>
+        <div>
+          <button type="button" onclick="rtAlasanPilih('salah beli')">salah beli</button>
+          <button type="button" onclick="rtAlasanPilih('kualitas')">kualitas</button>
+          <button type="button" onclick="rtAlasanPilih('kelebihan')">kelebihan</button>
+        </div>
+      </div>
       <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr;">
         <button type="button" id="returJenisKemasan" class="pilih" onclick="pilihReturJenisAsal('kemasan')">Bags Jadi</button>
         <button type="button" id="returJenisKarung" onclick="pilihReturJenisAsal('karung')">Sack Utuh</button>
       </div>
 
       <div id="returPilihKemasanWrap">
+        <div class="rt-manual">
         <label>Produk kemasan yang diretur</label>
         <div class="grid-tombol-pilih" id="pilihReturKemasanTombol"></div>
+        </div>
         <input type="hidden" id="returKemasanProduk">
         <label>Jumlah unit diretur</label>
         <input type="number" id="returKemasanJumlah" placeholder="0" inputmode="numeric">
       </div>
       <div id="returPilihKarungWrap" style="display:none;">
+        <div class="rt-manual">
         <label>Merk karung yang diretur</label>
         <div class="grid-tombol-pilih" id="pilihReturKarungTombol"></div>
-        <input type="hidden" id="returKarungMerk">
         <label>Ukuran sack yang diretur</label>
         <div class="kartu-jenis-jual" style="grid-template-columns:1fr 1fr;">
           <button type="button" id="returSack50" class="pilih" onclick="pilihReturBeratSack(50)">Sack 50 kg</button>
           <button type="button" id="returSack25" onclick="pilihReturBeratSack(25)">Sack 25 kg</button>
         </div>
+        </div>
+        <input type="hidden" id="returKarungMerk">
         <input type="hidden" id="returBeratKarung" value="50">
         <label>Jumlah karung diretur</label>
         <input type="number" id="returKarungJumlah" placeholder="0" inputmode="numeric">
@@ -4231,7 +4278,7 @@
   </div>
 
   <!-- HALAMAN PRODUKSI KEMASAN -->
-  <div id="halamanProduksi" class="halaman">
+  <div id="halamanProduksi" class="halaman k6a">
     <div class="judul-halaman"><h2>Produksi</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkProduksi" class="pesan-ok"> Stok kemasan bertambah.</div>
     <div class="info-box">Dipakai waktu sepi: siapkan stok kemasan duluan (timbang & jahit dari karung sumber), supaya nanti tinggal diambil pas ada pembeli lewat tab "Jual → Dari Stok Kemasan Jadi".</div>
@@ -4364,7 +4411,7 @@
   </div>
 
   <!-- HALAMAN STOK -->
-  <div id="halamanStok" class="halaman">
+  <div id="halamanStok" class="halaman k6a">
     <div class="judul-halaman"><h2>Stok</h2><span class="jh-sub" data-tanggal-halaman></span><span class="jh-cat">dihitung otomatis</span></div>
     <!-- Dua kartu ringkas di atas — mockup UI (6 Agu 2026): jawaban "berapa semua" sebelum rincian -->
     <div class="kpi-mini kpi-dua ringkas-stok">
@@ -4466,7 +4513,7 @@
        Yang tidak bisa dihitung DITAMPILKAN, bukan disembunyikan: transaksi tanpa HPP
        dapat kartunya sendiri, menyebut jumlahnya dan omzet yang ditinggalkan, supaya
        owner bisa menilai seberapa besar bagian yang tidak terhitung (Prinsip 1). -->
-  <div id="halamanLaba" class="halaman">
+  <div id="halamanLaba" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Laba</h2>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
@@ -4501,7 +4548,7 @@
        Semua pengaman yang dibangun 9-12 Agustus (antrean rapikan kasir, rincian
        darurat, opname stok, cocokkan kas) hanya bekerja kalau DIPAKAI BERIRAMA.
        Halaman ini yang memaksakan iramanya: satu layar, urut, sekali sehari. -->
-  <div id="halamanTutup" class="halaman">
+  <div id="halamanTutup" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Tutup Hari</h2>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
@@ -4674,7 +4721,7 @@
        lewat formulir di bawah, bukan ditanam di kode: berkas ini terbit di GitHub Pages
        yang publik, sedangkan nama pelanggan + nominal utang itu data sensitif — sama
        alasannya dengan catatan bisnis yang dikecualikan lewat .gitignore. -->
-  <div id="halamanPiutang" class="halaman">
+  <div id="halamanPiutang" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Piutang &amp; Kasbon</h2>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
@@ -4757,7 +4804,7 @@
        menyisir nama + catatan + barang favorit — ketik "vario merah" ketemu orangnya.
        Nama pelanggan data sensitif; seperti Piutang, isinya hidup di database yang
        dijaga sandi toko, tidak pernah tertanam di berkas publik ini. -->
-  <div id="halamanPelanggan" class="halaman">
+  <div id="halamanPelanggan" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Pelanggan</h2>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
@@ -4849,7 +4896,7 @@
     <div class="info-box" style="margin-top:12px;">Pesanan <b>bukan uang</b>: nilai di atas hanya perkiraan. Omzet, kas, dan stok baru bergerak saat pesanan <b>dicatat jualnya</b> lewat tombol di kartu — persis seperti penjualan biasa (stok terpotong, HPP dihitung, bisa nego/kredit).</div>
   </div>
 
-  <div id="halamanPemasok" class="halaman">
+  <div id="halamanPemasok" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Pemasok</h2>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
@@ -4876,7 +4923,7 @@
   <!-- DAFTAR HARGA — mengikuti mockup: halaman ini daftar, bukan formulir.
        16 baris harga terpindai satu kolom; menambah/mengubah lewat lembar bawah
        (#lembarHarga) supaya tiga formulir tidak lagi mendorong daftarnya ke bawah. -->
-  <div id="halamanHarga" class="halaman">
+  <div id="halamanHarga" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Daftar Harga</h2>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
@@ -4913,7 +4960,7 @@
   <!-- HALAMAN STOK AWAL (add produk per ukuran, HPP otomatis) -->
 
   <!-- HALAMAN INPUT -->
-  <div id="halamanInput" class="halaman">
+  <div id="halamanInput" class="halaman k6a">
     <div class="judul-halaman"><h2>Masuk</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOk" class="pesan-ok"> Tersimpan. Kedatangan baru sudah masuk ke riwayat.</div>
 
@@ -5011,7 +5058,7 @@
   </div>
 
   <!-- HALAMAN REKAP -->
-  <div id="halamanRekap" class="halaman">
+  <div id="halamanRekap" class="halaman k6a">
     <!-- LEMBAR 5 + 9 — halaman "cari sesuatu", bukan "isi sesuatu".
          Judul + pencarian + saringan MENEMPEL di atas, daftarnya yang bergerak: di
          daftar ratusan baris, alat pencarinya tidak boleh ikut hilang saat digulir
@@ -5098,7 +5145,7 @@
        angka, jadi label dan isian muat sebaris dan tidak perlu kartu (Prinsip 3).
        Kekosongan bulan berjalan dirancang sendiri — selama kosong, laba & kas
        keluar tampak lebih besar dari sebenarnya, dan itu harus dikatakan. -->
-  <div id="halamanBulanan" class="halaman">
+  <div id="halamanBulanan" class="halaman k6a">
     <div class="judul-halaman"><h2>Bulanan</h2><span class="jh-cat" id="bulananJudulBulan"></span></div>
     <div id="pesanOkBulanan" class="pesan-ok"> Biaya bulanan tersimpan.</div>
 
@@ -5162,7 +5209,7 @@
        Kategori duluan, nominal kedua: kategori menentukan apakah uang ini masuk kas
        toko, dan pilihan itu satu ketukan sementara nominal butuh papan ketik — yang
        cepat didahulukan supaya papan ketik cuma naik sekali (Prinsip 2). -->
-  <div id="halamanHarian" class="halaman">
+  <div id="halamanHarian" class="halaman k6a">
     <div class="judul-halaman"><h2>Harian</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkHarian" class="pesan-ok"> Pengeluaran tersimpan.</div>
 
@@ -7993,7 +8040,7 @@
     // Retur tidak pakai kartu "Harga & Bayar" biasa — punya kartunya sendiri.
     document.getElementById('kartuHargaBayarJual').style.display = jenis === 'retur' ? 'none' : 'block';
     document.getElementById('btnSimpanJual').textContent = jenis === 'retur' ? ' Simpan Retur' : ' Simpan Penjualan';
-    if (jenis === 'retur') { isiDropdownRetur(); }
+    if (jenis === 'retur') { isiDropdownRetur(); rtRenderHariIni(); }
     isiDropdownJual();
     perbaruiStokJual();
   }
@@ -8375,6 +8422,9 @@
     const kondisi = returKondisiAktif;
     const penyelesaian = returPenyelesaianAktif;
     const catatan = document.getElementById('returCatatan').value.trim();
+    // KR3 (papan keputusan pemilik): alasan retur WAJIB — retur tanpa alasan
+    // tidak bisa diaudit ("kenapa uang keluar?" harus selalu terjawab).
+    if (!catatan) { alert('Pilih / isi alasan retur dulu (salah beli, kualitas, kelebihan, dll).'); return; }
 
     let dataRetur = null;
     if (returJenisAsalAktif === 'kemasan') {
@@ -8652,6 +8702,87 @@
     document.getElementById('daftarPesananSelesai').innerHTML = selesai.length
       ? selesai.slice(0, 20).map(kartu).join('')
       : '<div class="kosong-info"><b>Belum ada</b></div>';
+  }
+
+  // ============ GESER TEPI ANTAR LAYAR (patokan prototipe: tepi 24px, ambang 25%) ============
+  // Hanya HP, hanya empat layar bilah nav (Ikhtisar-Pelanggan-Jual-Riwayat), dan
+  // hanya bila tidak ada lembar/modal terbuka. Mulai HARUS dari tepi supaya tidak
+  // berebut dengan karusel Denyut / guliran isi.
+  (function () {
+    const URUTAN = ['ringkasan', 'pelanggan', 'jual', 'rekap'];
+    let x0 = null, y0 = null, dariKiri = false;
+    const halamanKini = () => {
+      const el = document.querySelector('.halaman.tampil');
+      return el ? el.id.replace('halaman', '').toLowerCase() : null;
+    };
+    const bolehGeser = () => window.innerWidth < 700
+      && !document.body.classList.contains('lembar-menu-terbuka')
+      && !document.body.classList.contains('konfirmasi-terbuka')
+      && !document.getElementById('lembarBukaToko').classList.contains('tampil')
+      && !document.querySelector('.modal-pin-bg.tampil');
+    document.addEventListener('touchstart', e => {
+      if (!bolehGeser() || e.touches.length !== 1) { x0 = null; return; }
+      const x = e.touches[0].clientX;
+      if (x <= 24) { x0 = x; dariKiri = true; y0 = e.touches[0].clientY; }
+      else if (x >= window.innerWidth - 24) { x0 = x; dariKiri = false; y0 = e.touches[0].clientY; }
+      else x0 = null;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      if (x0 === null) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - x0, dy = Math.abs(t.clientY - y0);
+      x0 = null;
+      if (Math.abs(dx) < window.innerWidth * 0.25 || dy > 80) return;   // ambang 25%, tetap toleran diagonal
+      const kini = halamanKini();
+      const map = { rekap: 'rekap', ringkasan: 'ringkasan', pelanggan: 'pelanggan', jual: 'jual' };
+      const i = URUTAN.indexOf(map[kini]);
+      if (i < 0) return;
+      if (dariKiri && dx > 0 && i > 0) pindahHalaman(URUTAN[i - 1]);          // dari tepi kiri -> mundur
+      else if (!dariKiri && dx < 0 && i < URUTAN.length - 1) pindahHalaman(URUTAN[i + 1]);  // tepi kanan -> maju
+    }, { passive: true });
+  })();
+
+  // ============ KR3: retur berangkat dari transaksi HARI INI ============
+  function rtAlasanPilih(alasan) {
+    document.getElementById('returCatatan').value = alasan;
+    document.querySelectorAll('#rtAlasan button').forEach(b =>
+      b.classList.toggle('pilih', b.textContent === alasan));
+  }
+  function rtIsiDariTrx(id) {
+    const t = ambilPenjualan().find(x => String(x.id) === String(id));
+    if (!t) return;
+    if (t.jenis === 'kemasan') {
+      pilihReturJenisAsal('kemasan');
+      const kunci = t.namaProduk + '|' + t.ukuranKemasan;
+      const b = document.querySelector('#pilihReturKemasanTombol button[data-kunci="' + CSS.escape(kunci) + '"]');
+      if (b) b.click();
+      document.getElementById('returKemasanJumlah').value = t.jumlahUnit || 1;
+    } else if (t.jenis === 'karung') {
+      pilihReturJenisAsal('karung');
+      pilihReturBeratSack(t.beratKarungAcuan || 50);
+      const b = document.querySelector('#pilihReturKarungTombol button[data-kunci="' + CSS.escape(t.merkSumber || '') + '"]');
+      if (b) b.click();
+      document.getElementById('returKarungJumlah').value = t.jumlahKarung || 1;
+    } else {
+      alert('Jalur retur untuk literan / repacking belum ada — pakai koreksi transaksi di Riwayat.');
+      return;
+    }
+    document.getElementById('returNominalRefund').value = t.hargaTotal || 0;
+    document.querySelectorAll('#rtHariIni .rt-trx').forEach(el =>
+      el.classList.toggle('pilih', String(el.dataset.id) === String(id)));
+  }
+  function rtRenderHariIni() {
+    const el = document.getElementById('rtHariIni');
+    if (!el) return;
+    const hariIni = tanggalLokalIso();
+    const trx = ambilPenjualan().filter(x => x.tanggal === hariIni && (x.hargaTotal || 0) > 0)
+      .sort((a, b) => (b.jam || '').localeCompare(a.jam || ''));
+    el.innerHTML = '<i>Transaksi hari ini — ketuk yang diretur</i>'
+      + (trx.length ? trx.map(t => '<button type="button" class="rt-trx" data-id="' + t.id + '" onclick="rtIsiDariTrx(\'' + t.id + '\')">'
+        + '<span class="jam">' + wzEsc(t.jam || '') + '</span>'
+        + '<span class="nama">' + wzEsc(namaSingkatTrx(t)) + '</span>'
+        + '<b>' + formatRupiah(t.hargaTotal || 0) + '</b></button>').join('')
+      : '<div class="kosong-info" style="margin-top:6px;"><b>Belum ada transaksi hari ini</b><span>Retur berangkat dari penjualan hari ini. Untuk kasus lama, pakai pemilih manual di bawah (layar lebar) atau koreksi di Riwayat.</span></div>');
   }
 
   // ============ G4: BATAS KREDIT (KR1) + JANJI BAYAR (KR2) ============
@@ -15936,6 +16067,7 @@
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
   window.wzBukaKreditSekali = wzBukaKreditSekali; window.wzPilihJanji = wzPilihJanji;
+  window.rtAlasanPilih = rtAlasanPilih; window.rtIsiDariTrx = rtIsiDariTrx;
   window.bukaTokoCocok = bukaTokoCocok; window.bukaTokoBeda = bukaTokoBeda;
   window.bukaModalLoginToko = bukaModalLoginToko; window.bukaSetelPin = window.bukaSetelPin || bukaSetelPin;
   window.unduhBackup = window.unduhBackup || unduhBackup;
