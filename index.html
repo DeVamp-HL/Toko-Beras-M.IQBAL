@@ -8875,10 +8875,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const bolehGeser = () => window.innerWidth < 700
       && !document.body.classList.contains('lembar-menu-terbuka')
       && !document.body.classList.contains('konfirmasi-terbuka')
+      && !document.body.classList.contains('lembar-hari-rw-terbuka')
       && !document.getElementById('lembarBukaToko').classList.contains('tampil')
       && !document.querySelector('.modal-pin-bg.tampil');
     document.addEventListener('touchstart', e => {
       if (!bolehGeser() || e.touches.length !== 1) { x0 = null; return; }
+      // Penggulir horizontal & kolom isian menang atas geser-tepi — jempol yang
+      // menggulir karusel dekat tepi TIDAK boleh berpindah halaman (bug audit 21 Agu).
+      if (e.target.closest && e.target.closest('.ik6-karusel, .rw-kal, .wz-sering-baris, input, textarea, select')) { x0 = null; return; }
       const x = e.touches[0].clientX;
       if (x <= 24) { x0 = x; dariKiri = true; y0 = e.touches[0].clientY; }
       else if (x >= window.innerWidth - 24) { x0 = x; dariKiri = false; y0 = e.touches[0].clientY; }
@@ -11971,11 +11975,12 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       menggantung: { rapikanKasir: rapikan, daruratBelumRinci: darurat }
     });
     // Dokumen setoran = gerakan kas keluar bertanggal malam ini (bukan biaya).
-    if (setoran > 0) {
-      await simpanKeFirestore(KOLEKSI_SETORAN, {
-        id: idUnik(), tanggal: hariIni, jam, nominal: setoran, catatan: 'Tutup hari'
-      });
-    }
+    // id DETERMINISTIK per tanggal & SELALU ditulis (nominal 0 pun): menutup ulang
+    // hari yang sama MENIMPA setoran sebelumnya, bukan menumpuknya — tanpa ini,
+    // koreksi tutup-ulang membuat kas keluar tercatat dobel (bug audit 21 Agu).
+    await simpanKeFirestore(KOLEKSI_SETORAN, {
+      id: 'st-' + hariIni, tanggal: hariIni, jam, nominal: setoran, catatan: 'Tutup hari'
+    });
     // Patokan kas maju ke hitungan malam ini — inti ritualnya. Tanpa ini, selisih
     // menumpuk berbulan-bulan sampai tidak ada yang bisa menelusurinya lagi.
     // Patokan besok = laci SESUDAH setoran + rekening — persis isi laci esok pagi.
