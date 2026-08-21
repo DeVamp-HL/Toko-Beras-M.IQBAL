@@ -4103,6 +4103,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       </div>
       <p class="catatan-kecil">Arus kas, bukan laba bersih — rincian perhitungannya di halaman Bulanan.</p>
 
+      <!-- RITUAL HARI INI (21 Agu 2026) — pagar disiplin harian owner. Semua status
+           DITURUNKAN dari catatan yang ada, bukan checklist yang dicentang tangan:
+           kalau catatannya ada, hijau sendiri. Aturan mainnya di file 31. -->
+      <div class="kartu-daftar kd-kepala" style="margin-top:10px;" id="kartuRitual">
+        <div class="kd-judul"><h3>Ritual Hari Ini</h3><span class="kd-hitung" id="ritualHitung"></span></div>
+        <div id="ritualIsi"></div>
+      </div>
+
       <div class="kartu-daftar kd-kepala" style="margin-top:10px;">
         <div class="kd-judul"><h3>Perlu Perhatian</h3></div>
         <div id="ringPerhatianHp"></div>
@@ -13462,9 +13470,51 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     document.getElementById('keManaVonis').innerHTML = vonis;
   }
 
+  // RITUAL HARI INI — status diturunkan dari catatan, bukan dicentang tangan.
+  // Lima mata rantai disiplin yang kalau salah satunya putus, selisih malam lahir:
+  // tutup kemarin, prive sekali pagi, jatah belanja, antrean darurat, QRIS jujur.
+  function perbaruiRitualHari() {
+    const wadah = document.getElementById('ritualIsi');
+    if (!wadah) return;
+    const hariIni = tanggalLokalIso();
+    const kemarin = tanggalLokalIso(new Date(Date.now() - 86400000));
+    const harian = ambilPengeluaranHarian().filter(h => h.tanggal === hariIni);
+    const jualKemarin = ambilPenjualan().some(p => p.tanggal === kemarin);
+    const tutupKemarin = ambilTutupHari().some(x => x.tanggal === kemarin);
+    const priveN = harian.filter(h => h.kategori === 'owner').length;
+    const belanja = harian.filter(h => h.kategori === 'toko').reduce((a, h) => a + (h.nominal || 0), 0);
+    const darurat = daftarDaruratBelumRinci().length;
+
+    const item = [];
+    // 1 — kemarin dikunci?
+    if (!jualKemarin || tutupKemarin) item.push([true, 'Kemarin sudah dikunci', tutupKemarin ? 'patokan kas jalan' : 'tidak ada penjualan kemarin']);
+    else item.push([false, 'Kemarin BELUM dikunci', 'buka Tutup Hari sekarang — makin lama makin susah ditelusuri']);
+    // 2 — prive sekali di pagi hari
+    if (priveN === 0) item.push([false, 'Prive pagi belum diambil', 'ambil Rp100.000 SEKALI, catat kategori Owner']);
+    else if (priveN === 1) item.push([true, 'Prive tercatat sekali', 'sesuai aturan — sekali sehari']);
+    else item.push([false, 'Prive tercatat ' + priveN + ' kali', 'aturannya SEKALI sehari — besok gabungkan di pagi hari']);
+    // 3 — jatah belanja toko
+    item.push([belanja <= 100000, 'Belanja toko ' + formatRupiah(belanja),
+      belanja <= 100000 ? 'di dalam jatah Rp100.000' : 'lewat jatah Rp100.000 — masih boleh, asal sadar']);
+    // 4 — antrean kasir darurat
+    item.push([darurat === 0, darurat === 0 ? 'Antrean darurat bersih' : darurat + ' transaksi darurat belum dirinci',
+      darurat === 0 ? 'semua penjualan Gono sudah berproduk' : 'urai sore ini — jangan menumpuk']);
+    // 5 — pengingat yang tidak bisa dicek sistem
+    item.push([null, 'QRIS ditekan QRIS, amplop laba Rp75.000 malam ini', 'dua-duanya cuma bisa dijaga tangan sendiri']);
+
+    const beres = item.filter(x => x[0] === true).length;
+    const total = item.filter(x => x[0] !== null).length;
+    const h = document.getElementById('ritualHitung');
+    if (h) h.textContent = beres + '/' + total + ' beres';
+    wadah.innerHTML = item.map(([ok, judul, ket]) => `<div class="baris-44${ok === false ? '' : ' baris-nol'}">
+        <span class="nama"><i class="trx-nama">${ok === true ? '✓ ' : ok === false ? '✕ ' : '• '}${escapeHtml(judul)}</i><small>${escapeHtml(ket)}</small></span>
+      </div>`).join('');
+  }
+
   function tampilkanRingkasan() {
     const hariIniIso = tanggalLokalIso();
     const mulaiMinggu = tanggalMulaiMingguIni();
+    try { perbaruiRitualHari(); } catch (e) { console.error(e); }
 
     const penjualan = ambilPenjualan();
     const batch = ambilSemuaBatch();
