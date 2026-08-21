@@ -4124,7 +4124,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
         <div class="nilai" id="ringKasKeluarBulanIni">Rp0</div>
       </div>
     </div>
-    <div class="info-box ring-lama-hp">Dua angka ini cuma menghitung uang yang BENAR-BENAR berpindah, dan rinciannya ada di tab <b>Arus Kas</b>. Masuk = penjualan tunai + QRIS, pelunasan piutang, kasbon yang dikembalikan. Keluar = belanja beras, biaya bulanan, pengeluaran harian kategori Toko, refund retur, beli kantong kemasan &amp; paper bag, kasbon yang diambil pegawai. Penjualan <b>kredit belum dihitung</b> di sini sampai pelanggannya melunasi — barangnya sudah keluar tapi uangnya belum diterima. Pengeluaran harian kategori Owner TIDAK ikut — murni pribadi. Ini arus kas, BUKAN laba: margin kotor ada di tab Laba (berbasis HPP barang terjual).</div>
+    <div class="info-box ring-lama-hp">Dua angka ini cuma menghitung uang yang BENAR-BENAR berpindah, dan rinciannya ada di tab <b>Arus Kas</b>. Masuk = penjualan tunai + QRIS, pelunasan piutang, kasbon yang dikembalikan. Keluar = belanja beras, biaya bulanan, pengeluaran harian kategori Toko, refund retur, beli kantong kemasan &amp; paper bag, kasbon yang diambil pegawai, dan <b>prive owner</b> (kategori Owner — biaya hidup pemilik yang diambil dari laci; terhitung keluar dari kas supaya hitungan malam cocok, tapi TIDAK pernah masuk biaya toko atau mengurangi laba). Penjualan <b>kredit belum dihitung</b> di sini sampai pelanggannya melunasi — barangnya sudah keluar tapi uangnya belum diterima. Aturan pakai: entri Owner HANYA untuk uang yang keluar dari laci — belanja pribadi dari dompet sendiri jangan dicatat sama sekali. Ini arus kas, BUKAN laba: margin kotor ada di tab Laba (berbasis HPP barang terjual).</div>
 
     <div class="kartu ring-lama-hp">
       <div class="panel-kepala"><h2>Perlu Perhatian</h2></div>
@@ -11439,6 +11439,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const biayaBulanan = bayarTerhitung.reduce((a, x) => a + x.nominal, 0);
 
     const harianToko = ambilPengeluaranHarian().filter(h => h.kategori === 'toko' && cocok(h.tanggal));
+    // PRIVE OWNER (21 Agu 2026, keputusan My DeV): biaya hidup pemilik untuk sementara
+    // memang diambil dari laci toko — belum ada kas pribadi terpisah. Aturannya:
+    // pengeluaran kategori Owner = uang KELUAR dari laci (supaya hitungan malam cocok),
+    // tapi BUKAN biaya toko (tidak menyentuh laba — laba tetap membaca kategori 'toko'
+    // saja). Bukunya yang memisahkan uang pribadi dan uang toko, bukan lacinya.
+    // Konsekuensi disiplin: entri Owner HANYA untuk uang yang benar-benar keluar dari
+    // laci — belanja pribadi dari dompet sendiri jangan dicatat di sistem sama sekali.
+    const harianOwner = ambilPengeluaranHarian().filter(h => h.kategori === 'owner' && cocok(h.tanggal));
     const returDipakai = ambilRetur().filter(r => cocok(r.tanggal));
     // BRUTO, bukan neto (12 Agu 2026): selisih tukar yang pelanggan TAMBAHKAN adalah
     // uang yang sungguh masuk laci — dulu dijaringkan diam-diam ke angka refund,
@@ -11468,6 +11476,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
           ? bayarTerhitung.map(x => x.label).join(', ')
           : 'belum ada pos yang tercatat dibayar' },
       { label: 'Pengeluaran harian (Toko)', nominal: jmlNominal(harianToko), n: harianToko.length, satuan: 'catatan' },
+      { label: 'Prive owner — hidup dari laci', nominal: jmlNominal(harianOwner), n: harianOwner.length, satuan: 'catatan' },
       { label: 'Refund retur', nominal: refund, n: returDipakai.length, satuan: 'retur' },
       { label: 'Beli kantong kemasan', nominal: jmlHarga(beliKemasan), n: beliKemasan.length, satuan: 'pembelian' },
       { label: 'Beli paper bag literan', nominal: jmlHarga(beliLiteran), n: beliLiteran.length, satuan: 'pembelian' },
@@ -11489,7 +11498,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
         pelunasan: jmlNominal(piutangBayar),
         kasbonBayar: jmlNominal(kasbonBayar), kasbonAmbil: jmlNominal(kasbonAmbil),
         tukarMasuk, refund, belanja,
-        biayaBulanan, harian: jmlNominal(harianToko),
+        biayaBulanan, harian: jmlNominal(harianToko), prive: jmlNominal(harianOwner),
         beliKemasan: jmlHarga(beliKemasan), beliLiteran: jmlHarga(beliLiteran),
         setoran: jmlNominal(setoran)
       }
@@ -11608,6 +11617,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       dorong(x.tanggal, '', 0, x.label + ' — biaya ' + namaBulanPanjang(x.bulan + '-01'), 0, x.nominal);
     });
     ambilPengeluaranHarian().forEach(h => {
+      // Owner ikut Buku Kas sebagai prive (21 Agu 2026) — uangnya keluar dari laci
+      // yang sama, jadi wajib kelihatan di buku; labelnya membedakan, bukan disembunyikan.
+      if (h.kategori === 'owner') { dorong(h.tanggal, '', h.id, 'Prive owner — ' + (h.keterangan || ''), 0, h.nominal); return; }
       if (h.kategori !== 'toko') return;
       dorong(h.tanggal, '', h.id, 'Harian — ' + (h.keterangan || ''), 0, h.nominal);
     });
@@ -13317,6 +13329,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ? brs('Jadi kasbon pegawai', 'diambil melebihi yang dikembalikan', jadiKasbon, -1)
       : brs('Kasbon kembali', 'dikembalikan melebihi yang diambil', -jadiKasbon, 1));
     baris.push(brs('Disetor ke owner', 'pengambilan pemilik — bukan biaya toko', pos.setoran || 0, -1));
+    baris.push(brs('Prive owner dari laci', 'biaya hidup pemilik — keluar dari laci, bukan biaya toko', pos.prive || 0, -1));
     baris.push(brs('Habis untuk biaya, bahan & refund', 'listrik, gaji, harian, kantong, refund (bersih)', biayaNyata, -1));
     baris.push(`<div class="baris-44 baris-jumlah">
       <span class="nama"><i class="trx-nama"><b>Jumlah — kas bersih</b></i></span>
