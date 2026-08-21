@@ -5310,9 +5310,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       <div class="baris-isian"><span class="bi-nama">Listrik</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaListrikBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaListrik" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Listrik"><u id="tglBiayaListrikBaca"></u></span></div>
       <div class="baris-isian"><span class="bi-nama">Akses / gapura<small>dibayar sekali sebulan</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaAksesBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaAkses" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Akses"><u id="tglBiayaAksesBaca"></u></span></div>
       <div class="baris-isian"><span class="bi-nama">Keamanan lingkungan</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaKeamananBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaKeamanan" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Keamanan"><u id="tglBiayaKeamananBaca"></u></span></div>
-      <div class="baris-isian"><span class="bi-nama">Bensin pengantaran</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaBensinBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaBensin" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Bensin"><u id="tglBiayaBensinBaca"></u></span></div>
+      <!-- Bensin pengantaran DIPINDAH ke Pengeluaran Harian (perintah My DeV, 21 Agu 2026):
+           belinya tidak rutin tiap bulan, jadi tempatnya di catatan harian bertanggal,
+           bukan di pos tetap bulanan yang menuntut angka tiap bulan. -->
+      <!-- baris bensin dihapus -->
       <div class="baris-isian"><span class="bi-nama">Internet / Wifi</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaInternetBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaInternet" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Internet"><u id="tglBiayaInternetBaca"></u></span></div>
-      <div class="baris-isian"><span class="bi-nama">Plastik / tali / benang<small>kebutuhan toko yang bukan stok</small></span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaBenangBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaBenang" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Plastik/tali"><u id="tglBiayaBenangBaca"></u></span></div>
+      <!-- Plastik / tali / benang DIPINDAH ke Pengeluaran Harian (perintah My DeV, 21 Agu 2026):
+           sama seperti bensin — belinya sekali-sekali, bukan tagihan bulanan. -->
+      <!-- baris plastik/tali/benang dihapus -->
       <p class="keterangan catatan-luwes">Semua biaya di sini tidak masuk HPP per produk — dilaporkan sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
     </div>
 
@@ -7308,7 +7313,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
   // ===== Penyempurnaan Lembar 6 — keadaan kosong & total berjalan =====
   const ISIAN_BULANAN = ['biayaListrikBulanan', 'biayaAksesBulanan', 'biayaKeamananBulanan',
-    'biayaBensinBulanan', 'biayaInternetBulanan', 'biayaBenangBulanan'];
+    'biayaInternetBulanan'];
 
   function namaBulanPanjang(iso) {
     if (!iso) return '';
@@ -7386,7 +7391,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
   const PETA_ISIAN_BULANAN = {
     biayaListrikBulanan: 'listrik', biayaAksesBulanan: 'akses', biayaKeamananBulanan: 'keamanan',
-    biayaBensinBulanan: 'bensin', biayaInternetBulanan: 'internet', biayaBenangBulanan: 'benang'
+    biayaInternetBulanan: 'internet'
   };
   // Isi seluruh formulir dari satu dokumen biaya bulanan (null = kosongkan semua).
   // WAJIB dipanggil tiap kali bulan yang dipilih berganti. Sebelum 12 Agu 2026 tidak ada
@@ -7481,15 +7486,13 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const bulan = document.getElementById('bulanBiaya').value;
     const akses = parseFloat(document.getElementById('biayaAksesBulanan').value) || 0;
     const keamanan = parseFloat(document.getElementById('biayaKeamananBulanan').value) || 0;
-    const bensin = parseFloat(document.getElementById('biayaBensinBulanan').value) || 0;
     const listrik = parseFloat(document.getElementById('biayaListrikBulanan').value) || 0;
     const internet = parseFloat(document.getElementById('biayaInternetBulanan').value) || 0;
-    const benang = parseFloat(document.getElementById('biayaBenangBulanan').value) || 0;
     const rincianGaji = bacaHariGajiPegawai();
     const gajiHariOrang = rincianGaji.reduce((a, r) => a + r.hari, 0);
     const gaji = rincianGaji.reduce((a, r) => a + r.gaji, 0);
     if (!bulan) { alert('Pilih bulan dulu.'); return; }
-    if (akses <= 0 && keamanan <= 0 && bensin <= 0 && listrik <= 0 && internet <= 0 && benang <= 0 && gaji <= 0) { alert('Isi minimal salah satu biaya.'); return; }
+    if (akses <= 0 && keamanan <= 0 && listrik <= 0 && internet <= 0 && gaji <= 0) { alert('Isi minimal salah satu biaya.'); return; }
 
     // Dokumen Firestore memakai "bulan" sebagai id supaya bulan yang sama otomatis menimpa (bukan duplikat).
     try {
@@ -7503,7 +7506,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
         const el = document.getElementById(ID_TGL_GAJI_PEGAWAI[nama]);
         tanggalBayarGaji[nama] = (el && el.value) || '';
       });
-      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, tanggalBayarPos, tanggalBayarGaji, akses, keamanan, bensin, listrik, internet, benang, gajiHariOrang, gaji, rincianGaji });
+      // bensin & benang sengaja TIDAK ditulis lagi (21 Agu 2026) — keduanya pindah ke
+      // Pengeluaran Harian. Dokumen bulan lama masih menyimpan fieldnya, tapi
+      // POS_BIAYA_BULANAN tidak lagi membacanya, jadi tidak ikut arus kas maupun laporan.
+      await simpanKeFirestore(KOLEKSI_BULANAN, { id: bulan, bulan, tanggalBayarPos, tanggalBayarGaji, akses, keamanan, listrik, internet, gajiHariOrang, gaji, rincianGaji });
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -7512,10 +7518,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
     document.getElementById('biayaAksesBulanan').value = '';
     document.getElementById('biayaKeamananBulanan').value = '';
-    document.getElementById('biayaBensinBulanan').value = '';
     document.getElementById('biayaListrikBulanan').value = '';
     document.getElementById('biayaInternetBulanan').value = '';
-    document.getElementById('biayaBenangBulanan').value = '';
     NAMA_PEGAWAI_GAJI.forEach(nama => { document.getElementById(ID_FIELD_GAJI_PEGAWAI[nama]).value = ''; });
     hitungPerkiraanGaji();
     perbaruiKeadaanBulanan();
@@ -11504,9 +11508,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     { kunci: 'listrik', label: 'Listrik', idTgl: 'tglBiayaListrik' },
     { kunci: 'akses', label: 'Akses / gapura', idTgl: 'tglBiayaAkses' },
     { kunci: 'keamanan', label: 'Keamanan lingkungan', idTgl: 'tglBiayaKeamanan' },
-    { kunci: 'bensin', label: 'Bensin pengantaran', idTgl: 'tglBiayaBensin' },
-    { kunci: 'internet', label: 'Internet / Wifi', idTgl: 'tglBiayaInternet' },
-    { kunci: 'benang', label: 'Plastik / tali / benang', idTgl: 'tglBiayaBenang' }
+    { kunci: 'internet', label: 'Internet / Wifi', idTgl: 'tglBiayaInternet' }
+    // 'bensin' & 'benang' dikeluarkan 21 Agu 2026 — pindah ke Pengeluaran Harian karena
+    // belinya tidak rutin. Dokumen bulan lama masih memuat angkanya, tapi karena daftar
+    // ini yang menentukan apa yang dibaca, angka itu berhenti ikut arus kas & laporan.
   ];
   // Satu dokumen biaya bulanan sebenarnya berisi BEBERAPA pembayaran yang harinya
   // berbeda-beda (listrik tanggal 4, gaji tanggal 12, dst — dikonfirmasi pemilik
