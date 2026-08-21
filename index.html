@@ -5295,7 +5295,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     </div>
 
     <div class="kartu">
-      <div class="panel-kepala"><h2>Gaji <span class="keterangan">Rp86.500 / hari-orang</span></h2></div>
+      <div class="panel-kepala"><h2>Gaji <span class="keterangan">Rp60.000 / hari-orang</span></h2></div>
       <!-- Diisi dalam HARI, bukan rupiah: tarifnya sudah ada di sistem, jadi pemakai
            menghitung hari (yang dia tahu) bukan rupiah (yang harus dikalikan). Prinsip 2. -->
       <div class="baris-isian"><span class="bi-nama">Ben Mohsein</span><span class="bi-isi"><input type="number" id="gajiHariBen" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiBen" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Ben Mohsein"><u id="tglGajiBenBaca"></u></span><button type="button" class="kal-buka" id="kalBuka0" onclick="toggleKalender(0)">Tandai tanggal masuk</button><div class="kal-wadah" id="kalWadah0" style="display:none;"></div></div>
@@ -5676,7 +5676,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     'Ketan Hitam Sosoh': 0.800, 'Ketan Putih Paris': 0.800, 'Beras Merah': 0.800
   };
   const RASIO_DEFAULT = 0.82; // produk inti
-  const RATE_GAJI_PER_HARI_ORANG = 86500; // direvisi 31 Juli 2026 (sebelumnya Rp77.000); semua pegawai rate sama
+  // Direvisi 21 Agu 2026 → Rp60.000 (sebelumnya Rp86.500 sejak 31 Juli, Rp77.000 sebelum itu).
+  // Tarif ini hanya berlaku untuk gaji yang BELUM dibayar. Gaji yang sudah dibayar memakai
+  // tarif saat pembayarannya — lihat bacaHariGajiPegawai(): mengubah angka yang uangnya
+  // sudah keluar membuat buku tidak lagi cocok dengan kas.
+  const RATE_GAJI_PER_HARI_ORANG = 60000;
   const NAMA_PEGAWAI_GAJI = ['Ben Mohsein', 'Hasan', 'Gono']; // urutan tetap: id field gajiHari<Nama>, nama tampilan di sini
 
   let idBaris = 0;
@@ -7199,6 +7203,25 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   let _hariMasukForm = {};   // { namaPegawai: ['YYYY-MM-DD', ...] } untuk bulan yang sedang dibuka
   const HARI_SINGKAT = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
+  // TARIF YANG SUDAH DIBAYAR TIDAK IKUT BERUBAH (21 Agu 2026). Sebelum ini, menyimpan
+  // halaman Bulanan menghitung ulang gaji SEMUA orang dari konstanta yang berlaku saat itu.
+  // Akibatnya sekali tarif direvisi, gaji yang uangnya sudah keluar ikut berubah dan buku
+  // tidak lagi cocok dengan kas — Gono dibayar Rp2.162.500 pada 10 Agu dengan tarif
+  // Rp86.500; tarif baru Rp60.000 akan diam-diam menyusutkannya jadi Rp1.500.000.
+  // Aturan sekarang: kalau orangnya sudah punya tanggal bayar di bulan itu, tarif yang
+  // dipakai adalah tarif pembayarannya sendiri (gaji tersimpan ÷ hari tersimpan).
+  function rateGajiOrang(nama) {
+    try {
+      const bulan = (document.getElementById('bulanBiaya') || {}).value || '';
+      if (!bulan) return RATE_GAJI_PER_HARI_ORANG;
+      const dok = ambilBiayaBulanan().find(b => b.bulan === bulan);
+      if (!dok || !dok.tanggalBayarGaji || !dok.tanggalBayarGaji[nama]) return RATE_GAJI_PER_HARI_ORANG;
+      const lama = (dok.rincianGaji || []).find(r => r.nama === nama);
+      if (!lama || !(lama.hari > 0) || !(lama.gaji > 0)) return RATE_GAJI_PER_HARI_ORANG;
+      return lama.gaji / lama.hari;
+    } catch (e) { return RATE_GAJI_PER_HARI_ORANG; }
+  }
+
   function bacaHariGajiPegawai() {
     return NAMA_PEGAWAI_GAJI.map(nama => {
       const idField = ID_FIELD_GAJI_PEGAWAI[nama];
@@ -7208,7 +7231,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       const hari = ditandai.length > 0
         ? ditandai.length
         : (parseFloat(document.getElementById(idField).value) || 0);
-      return { nama, hari, gaji: Math.round(hari * RATE_GAJI_PER_HARI_ORANG),
+      return { nama, hari, gaji: Math.round(hari * rateGajiOrang(nama)),
         tanggalMasuk: ditandai.slice() };
     });
   }
