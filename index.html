@@ -11385,6 +11385,30 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // golong — satu ejaan yang lolos di sini artinya uang tercatat di arah yang keliru.
   function caraBayarKunci(p) { return String((p && p.caraBayar) || '').trim().toLowerCase(); }
 
+  // Pelunasan kasbon lewat potong gaji — TIDAK ada uang yang berpindah. Dipakai bersama
+  // oleh mesin arus kas, Buku Kas, dan penghitung gaji tunai supaya ketiganya membaca
+  // aturan yang sama persis (dulu hanya formulirnya yang tahu, mesinnya tidak).
+  function kasbonPotongGaji(m) {
+    return String((m && m.caraBayar) || '').trim().toLowerCase() === 'potong gaji';
+  }
+
+  // Gaji TUNAI yang benar-benar keluar laci = gaji kotor − kasbon yang dipotong.
+  // Potongan dipakaikan ke baris gaji pegawai itu urut tanggal bayar paling lama dulu,
+  // dan tidak pernah membuat baris jadi minus — sisa potongan menunggu gaji berikutnya.
+  // Contoh nyata Gono: kasbon Rp1.562.500 dipotong dari gaji siklus 17 Jul–10 Agu; baris
+  // Juli Rp1.297.500 habis jadi Rp0, sisanya Rp265.000 memotong baris Agustus Rp865.000
+  // → tunai keluar Rp600.000. Persis yang dia terima.
+  function potonganGajiPerPegawai() {
+    const sisa = {};
+    ambilKasbonMutasi().forEach(m => {
+      if (m.tipe !== 'bayar' || !kasbonPotongGaji(m)) return;
+      const n = String(m.namaPegawai || '').trim();
+      if (!n) return;
+      sisa[n] = (sisa[n] || 0) + (m.nominal || 0);
+    });
+    return sisa;
+  }
+
   // Ejaan resmi yang boleh TERSIMPAN: 'Tunai', 'QRIS', 'Kredit'. QRIS itu akronim
   // (Quick Response Code Indonesian Standard) jadi kapital semua — keputusan My DeV
   // 11 Agustus 2026. Sebelum itu semua alat menyimpan 'Qris'; catatan lama dibetulkan
@@ -11419,7 +11443,15 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const tunai = jual.filter(p => caraBayarKunci(p) !== 'kredit' && caraBayarKunci(p) !== 'qris');
 
     const piutangBayar = ambilPiutangMutasi().filter(m => m.tipe === 'bayar' && cocok(m.tanggal));
-    const kasbonBayar = ambilKasbonMutasi().filter(m => m.tipe === 'bayar' && cocok(m.tanggal));
+    // KASBON DILUNASI POTONG GAJI BUKAN UANG MASUK (21 Agu 2026). Dikonfirmasi My DeV:
+    // di toko ini SEMUA kasbon dilunasi dengan memotong gaji — pegawai tidak pernah
+    // menyerahkan uang tunai. Formulirnya memang sudah punya pilihan "Potong gaji",
+    // tapi mesin kas dulu menghitung SEMUA pelunasan sebagai kas masuk. Akibatnya laci
+    // seolah bertambah padahal tidak ada rupiah yang masuk — muncul sebagai "selisih
+    // KURANG" saat Tutup Hari (kejadian nyata: Rp1.562.500 pada 21 Agu 2026).
+    // Sisi gaji ditangani di bayaranBiayaBulanan(): gaji tunai keluar = gaji − potongan.
+    const kasbonBayar = ambilKasbonMutasi().filter(m => m.tipe === 'bayar' && cocok(m.tanggal)
+      && !kasbonPotongGaji(m));
     const setoran = ambilSetoranKas().filter(x => cocok(x.tanggal));
     const kasbonAmbil = ambilKasbonMutasi().filter(m => m.tipe === 'ambil' && cocok(m.tanggal));
 
@@ -11529,6 +11561,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // pernah ikut arus kas, tapi tetap dilaporkan supaya tidak hilang dari perhatian.
   function bayaranBiayaBulanan() {
     const out = [];
+    const barisGaji = [];   // dikumpulkan dulu lintas bulan, potongan kasbon dipakaikan di bawah
     ambilBiayaBulanan().forEach(b => {
       // Peta per pos MENANG MUTLAK begitu dokumennya punya. tanggalBayar tunggal (bentuk
       // yang cuma dipakai beberapa jam pada 12 Agu 2026) hanya jadi cadangan untuk dokumen
@@ -11552,9 +11585,25 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       (b.rincianGaji || []).forEach(r => {
         const nominal = r.gaji || 0;
         if (!(nominal > 0)) return;
-        out.push({ bulan: b.bulan, pos: 'gaji:' + r.nama, label: 'Gaji ' + r.nama, nominal,
+        barisGaji.push({ bulan: b.bulan, pos: 'gaji:' + r.nama, nama: r.nama, kotor: nominal,
           tanggal: petaGaji ? (petaGaji[r.nama] || '') : cadanganGaji });
       });
+    });
+
+    // Potongan kasbon dipakaikan SESUDAH semua baris gaji terkumpul — urut tanggal bayar
+    // paling lama dulu — supaya potongan yang melampaui satu bulan mengalir ke bulan
+    // berikutnya, bukan terpaksa dipaksa muat lalu hilang.
+    const sisaPotong = potonganGajiPerPegawai();
+    barisGaji.sort((x, y) => String(x.tanggal || '9999').localeCompare(String(y.tanggal || '9999')));
+    barisGaji.forEach(g => {
+      const tersedia = sisaPotong[g.nama] || 0;
+      const dipotong = Math.min(tersedia, g.kotor);
+      if (dipotong > 0) sisaPotong[g.nama] = tersedia - dipotong;
+      const tunai = g.kotor - dipotong;
+      if (!(tunai > 0)) return;   // habis dipotong kasbon — tidak ada uang keluar laci
+      out.push({ bulan: g.bulan, pos: g.pos, nominal: tunai, tanggal: g.tanggal,
+        label: 'Gaji ' + g.nama + (dipotong > 0 ? ' (kotor ' + formatRupiah(g.kotor)
+          + ' − kasbon ' + formatRupiah(dipotong) + ')' : '') });
     });
     return out;
   }
@@ -11602,6 +11651,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       // (tutup buku) sebagai uang keluar — dan hero "Uang Kas Sekarang" dihitung
       // dari daftar ini, jadi kasbon terbawa akan menggerus kas sekarang secara
       // diam-diam. Tertangkap audit 14 Agu 2026, SEBELUM tutup buku pertama.
+      // Potong gaji tidak memindahkan uang: jangan pernah muncul sebagai kas masuk di
+      // Buku Kas. Jejaknya tetap hidup di riwayat kasbon pegawainya sendiri.
+      if (m.tipe === 'bayar' && kasbonPotongGaji(m)) return;
       if (m.tipe === 'bayar') dorong(m.tanggal, m.jam, m.id, 'Kasbon kembali — ' + (m.namaPegawai || ''), m.nominal, 0);
       else if (m.tipe === 'ambil') dorong(m.tanggal, m.jam, m.id, 'Kasbon — ' + (m.namaPegawai || ''), 0, m.nominal);
     });
