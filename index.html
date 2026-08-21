@@ -4645,6 +4645,15 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
 
 
+    <!-- JATAH HARIAN (21 Agu 2026) — pagar angka supaya laba harian tidak tergerus
+         belanja & prive tanpa disadari. Murni turunan dari catatan yang sudah ada:
+         tidak menyimpan apa pun, tidak melarang apa pun, cuma memperlihatkan. -->
+    <div class="kartu" style="margin-top:12px;" id="kartuJatahHari">
+      <div class="panel-kepala"><h2>Jatah hari ini</h2></div>
+      <div class="pratinjau-harga" id="jatahIsi"></div>
+      <p class="keterangan" id="jatahCatatan" style="margin-top:8px;"></p>
+    </div>
+
     <!-- 2 — hitung uang. Angka yang diisi di sini jadi patokan baru esok hari. -->
     <div class="kartu" style="margin-top:12px;">
       <div class="panel-kepala"><h2>1 · Cocokkan kas</h2></div>
@@ -11968,6 +11977,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       + (terhitung.length < jual.length ? ' (dari ' + terhitung.length + ' yang HPP-nya tercatat)' : '')
       + (kredit > 0 ? ' · termasuk kredit ' + formatRupiah(kredit) + ' yang belum jadi uang' : '');
 
+    perbaruiJatahHari(hariIni);
+
     const gerak = daftarGerakanKas().filter(r => r.t === hariIni);
     document.getElementById('tutupMasuk').textContent = formatRupiah(gerak.reduce((a, r) => a + r.masuk, 0));
     document.getElementById('tutupKeluar').textContent = formatRupiah(gerak.reduce((a, r) => a + r.keluar, 0));
@@ -12025,6 +12036,45 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
           <button type="button" class="pil-aksi" onclick="pindahDariMenu('stok')">Timbang</button>
         </div>`).join('')
         + '<p class="keterangan" style="margin-top:8px;">Timbang yang paling banyak keluar — di situ selisih paling sering muncul. Catat lewat Cocokkan Stok di tab Stok.</p>';
+  }
+
+  // JATAH HARIAN (21 Agu 2026, disetujui My DeV). Angkanya dari kejadian nyata 14 hari
+  // pertama, bukan angka ideal: belanja toko rata-rata ±Rp88rb/hari, prive ±Rp90rb/hari,
+  // laba bersih ±Rp96rb/hari. Jatah dipasang sedikit di atas kebiasaan supaya realistis,
+  // dan sisihan dipasang di bawah laba supaya tidak pernah memakan modal.
+  // TIDAK melarang apa pun — kalau lewat, tetap tersimpan, cuma kelihatan.
+  const JATAH_BELANJA_TOKO = 100000;
+  const JATAH_PRIVE_OWNER  = 100000;
+  const SISIHAN_LABA_HARI  = 75000;
+
+  function perbaruiJatahHari(hariIni) {
+    const el = document.getElementById('jatahIsi');
+    if (!el) return;
+    const harian = ambilPengeluaranHarian().filter(h => h.tanggal === hariIni);
+    const belanja = harian.filter(h => h.kategori === 'toko').reduce((a, h) => a + (h.nominal || 0), 0);
+    const prive = harian.filter(h => h.kategori === 'owner').reduce((a, h) => a + (h.nominal || 0), 0);
+
+    // Baris jatah: hijau selama masih di dalam pagar, amber begitu lewat. Lewat bukan
+    // dosa — tapi harus kelihatan malam ini juga, bukan baru ketahuan akhir bulan.
+    const baris = (label, pakai, jatah) => {
+      const lewat = pakai > jatah;
+      const sisa = Math.abs(jatah - pakai);
+      return `<div class="ph-baris"><span>${escapeHtml(label)}</span>`
+        + `<b class="${lewat ? 'ph-amber' : 'ph-hijau'}">${formatRupiah(pakai)}`
+        + ` <small style="font-weight:400;">dari ${formatRupiah(jatah)}`
+        + (lewat ? ' · lewat ' + formatRupiah(sisa) : ' · sisa ' + formatRupiah(sisa)) + '</small></b></div>';
+    };
+    el.innerHTML = baris('Belanja toko', belanja, JATAH_BELANJA_TOKO)
+      + baris('Prive owner', prive, JATAH_PRIVE_OWNER)
+      + `<div class="ph-baris"><span><b>Sisihkan ke amplop laba</b></span><b>${formatRupiah(SISIHAN_LABA_HARI)}</b></div>`;
+
+    const ct = document.getElementById('jatahCatatan');
+    if (ct) {
+      const lewatTotal = Math.max(0, belanja - JATAH_BELANJA_TOKO) + Math.max(0, prive - JATAH_PRIVE_OWNER);
+      ct.textContent = lewatTotal > 0
+        ? 'Hari ini lewat jatah ' + formatRupiah(lewatTotal) + '. Tidak apa-apa — asal tahu, dan tidak jadi kebiasaan tiap hari.'
+        : 'Amplop laba TETAP uang toko, bukan uang pribadi — simpan terpisah dari laci, dan tetap ikut dihitung saat cocokkan kas. Jangan dicatat sebagai Setoran ke owner.';
+    }
   }
 
   function perbaruiSelisihTutup() {
