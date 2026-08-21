@@ -2872,6 +2872,81 @@
   animation:pfMuncul .7s cubic-bezier(.19,.8,.26,1) both;
 }
 
+/* ---------- WIZARD JUAL 6a (G2) — remote control form lama ----------
+   HP saja. Wizard TIDAK menghitung uang: setiap pilihan mengeklik tombol /
+   mengisi input form lama yang tersembunyi, lalu MEMBACA hasilnya (stok,
+   total, peringatan) dari elemen yang diisi logika lama. Bongkar = satu
+   saklar CSS; jalur retur memakai form lama apa adanya. */
+.wz-jual { display: none; }
+@media (max-width: 699px) {
+  .wz-jual { display: block; }
+  #halamanJual > .kartu-jenis-jual,
+  #halamanJual #formJualKemasan, #halamanJual #formJualRepacking,
+  #halamanJual #formJualKarung, #halamanJual #formJualLiteran,
+  #halamanJual #kartuHargaBayarJual { display: none !important; }
+  /* Jalur RETUR: wizard minggir, form retur lama tampil apa adanya */
+  #halamanJual.wz-retur #formJualRetur { display: block !important; }
+  #halamanJual.wz-retur .wz-panel, #halamanJual.wz-retur .wz-sering { display: none; }
+  /* Bilah Simpan lama disembunyikan di HP: wizard punya tombolnya sendiri di
+     langkah bayar (yang mengeklik tombol lama). Retur tetap memakai bilah lama. */
+  #tombolSimpanJualWrap { display: none !important; }
+  body.wz-retur-aktif #tombolSimpanJualWrap { display: block !important; }
+}
+.wz-kepala { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.wz-langkah { font-size: 8.5px; letter-spacing: .2em; text-transform: uppercase; font-weight: 700; color: #e2cda6; }
+.wz-batal { margin-left: auto; background: none; border: none; color: #9aa2a8; font-size: 15px; padding: 6px 10px; font-family: inherit; }
+.wz-tanya { font-family: var(--pf-serif); font-size: 19px; color: var(--teks); margin: 2px 0 12px; }
+.wz-panel { animation: silangWz .24s cubic-bezier(.16,.84,.28,1) both; }
+@keyframes silangWz { from { opacity: 0; transform: scale(.965); } to { opacity: 1; transform: none; } }
+.wz-baris { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 56px; padding: 10px 14px;
+  margin-bottom: 8px; border-radius: 15px; text-align: left; font-family: inherit; color: var(--teks);
+  background: linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.026));
+  border: 1px solid rgba(255,255,255,.1); transition: transform .14s ease; }
+.wz-baris:active { transform: scale(.975); }
+.wz-baris b { display: block; font-size: 14px; font-weight: 700; }
+.wz-baris i { display: block; font-style: normal; font-size: 10.5px; color: #9aa2a8; margin-top: 2px; }
+.wz-baris .panah { margin-left: auto; color: #7c848a; flex: none; }
+.wz-baris.mati { opacity: .45; }
+.wz-baris.mati i { color: #d3a08b; }
+.wz-balik { display: inline-flex; align-items: center; gap: 6px; background: none; border: none;
+  color: #9aa2a8; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  padding: 8px 2px; margin-bottom: 4px; font-family: inherit; }
+.wz-sering { margin-bottom: 14px; }
+.wz-sering-judul { font-size: 8.5px; letter-spacing: .2em; text-transform: uppercase; font-weight: 700; color: #9aa2a8; margin-bottom: 7px; }
+.wz-sering-baris { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+.wz-sering-baris::-webkit-scrollbar { display: none; }
+.wz-chip { flex: none; padding: 9px 13px; border-radius: 12px; font-family: inherit; text-align: left;
+  background: linear-gradient(180deg, rgba(226,205,166,.16), rgba(226,205,166,.05));
+  border: 1px solid rgba(226,205,166,.4); color: #f0e2c4; transition: transform .14s ease; }
+.wz-chip:active { transform: scale(.95); }
+.wz-chip b { display: block; font-size: 12px; font-weight: 700; }
+.wz-chip i { display: block; font-style: normal; font-size: 9px; color: #c9b085; margin-top: 1px; }
+.wz-jumlah-wrap { margin: 4px 0 12px; }
+.wz-info { font-family: var(--pf-serif); font-style: italic; font-size: 12px; color: #9aa2a8; margin: 8px 2px; }
+.wz-peringatan { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 10px 12px;
+  border-radius: 12px; background: rgba(211,160,139,.09); border: 1px solid rgba(211,160,139,.35); }
+.wz-peringatan span { font-family: var(--pf-serif); font-size: 12px; color: #d8d0bf; line-height: 1.5; }
+.wz-peringatan .aksi { display: flex; gap: 8px; }
+.wz-peringatan .aksi button { flex: 1; min-height: 40px; border-radius: 10px; font-family: inherit; font-size: 11.5px;
+  font-weight: 700; background: none; border: 1px solid rgba(211,160,139,.45); color: #d3a08b; }
+.wz-lanjut { display: block; width: 100%; min-height: 52px; margin-top: 14px; border: none; border-radius: 14px;
+  font-family: inherit; font-size: 15px; font-weight: 800; letter-spacing: .04em; color: #231a08;
+  background: linear-gradient(160deg, #fdf7e8, #e2cda6 52%, #bfa476);
+  box-shadow: 0 12px 28px -14px rgba(226,205,166,.35), inset 0 1px 0 rgba(255,255,255,.7);
+  transition: transform .15s ease; }
+.wz-lanjut:active { transform: scale(.985); }
+.wz-lanjut:disabled { background: none; color: #7c848a; border: 1px solid rgba(255,255,255,.12); box-shadow: none; }
+.wz-bayar-tab { display: flex; gap: 8px; margin: 6px 0 4px; }
+.wz-bayar-tab button { flex: 1; min-height: 46px; border-radius: 12px; font-family: inherit; font-size: 13px; font-weight: 700;
+  background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.09); color: var(--pf-platina); transition: transform .14s ease; }
+.wz-bayar-tab button.pilih { background: linear-gradient(180deg, rgba(226,205,166,.28), rgba(226,205,166,.08));
+  border-color: rgba(226,205,166,.55); color: #fdf6e7; }
+.wz-ringkas { padding: 11px 13px; border-radius: 13px; margin-bottom: 10px;
+  background: rgba(226,205,166,.07); border: 1px solid rgba(226,205,166,.25); }
+.wz-ringkas b { font-family: var(--pf-serif); font-weight: 400; font-size: 15px; color: #f0e2c4; }
+.wz-ringkas i { display: block; font-style: italic; font-family: var(--pf-serif); font-size: 11px; color: #9aa2a8; margin-top: 2px; }
+
 /* ---------- IKHTISAR 6a: tabung beras + tumpuk kartu + Denyut + grafik jam ----------
    Dari prototipe pemilik (kandidat G + Denyut 5b + keputusan PT1/O1). HP saja;
    desktop >=700px tetap tampilan lamanya. Semua angka dari fungsi hitung lama. */
@@ -3840,6 +3915,18 @@
   <div id="halamanJual" class="halaman tampil k6a">
     <div class="judul-halaman"><h2>Jual</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkJual" class="pesan-ok"> Penjualan tersimpan.</div>
+
+    <!-- WIZARD JUAL 6a (G2) — kulit bertanya-satu-satu di atas form lama.
+         Form lama tetap hidup tersembunyi & tetap dipakai layar lebar. -->
+    <div class="wz-jual" id="wzJual">
+      <div class="wz-kepala">
+        <span class="wz-langkah" id="wzLangkahLabel"></span>
+        <button type="button" class="wz-batal" id="wzBatal" onclick="wzReset()" style="display:none;">✕</button>
+      </div>
+      <div class="wz-sering" id="wzSering" style="display:none;"></div>
+      <div class="wz-tanya" id="wzTanya"></div>
+      <div class="wz-panel" id="wzPanel"></div>
+    </div>
 
     <div class="kartu-jenis-jual" style="grid-template-columns: repeat(5,1fr);">
       <button type="button" id="jenisJualKemasan" class="pilih" onclick="pilihJenisJual('kemasan')">Bags Jadi<br>(kemasan)</button>
@@ -8244,6 +8331,263 @@
   }
 
   // Bikin grid tombol pilih generik. daftarOpsi = [{ kunci, label, subLabel, sisa }]
+  // ============ WIZARD JUAL 6a (G2) — remote control form lama ============
+  // Tidak ada rumus uang di sini: wizard MENG-KLIK tombol form lama, MENGISI
+  // input form lama, lalu MEMBACA teks yang diisi logika lama. Satu sumber.
+  let _wz = { jalur: null, langkah: 'jalur', merk: null, maks: null };
+  function wzBacaTombol(idKontainer) {
+    // Daftar pilihan = tombol yang SUDAH dirender form lama (label, stok, habis)
+    return [...document.querySelectorAll('#' + idKontainer + ' button')].map(b => ({
+      kunci: b.dataset.kunci, habis: !!b.dataset.habis,
+      label: (b.querySelector('.nama-produk') || {}).textContent || b.textContent.trim(),
+      sub: (b.querySelector('.info-stok-tombol') || {}).textContent || '',
+      el: b
+    }));
+  }
+  function wzMaksDariSub(sub) { const m = String(sub).match(/(\d+[\d.]*)/); return m ? parseInt(m[1].replace(/\./g, ''), 10) : null; }
+  function wzEsc(t) { return escapeHtml(String(t || '')); }
+
+  function wzKe(langkah) { _wz.langkah = langkah; wzRender(); }
+  function wzReset() {
+    _wz = { jalur: null, langkah: 'jalur', merk: null, maks: null };
+    document.getElementById('halamanJual').classList.remove('wz-retur');
+    document.body.classList.remove('wz-retur-aktif');
+    // kosongkan isian jumlah form lama (murni tampilan; harga dihitung ulang logika lama)
+    ['jualKemasanJumlah', 'jualKarungJumlah', 'jualLiteranJumlah', 'jualRepackingKg'].forEach(id => {
+      const el = document.getElementById(id); if (el) { el.value = ''; }
+    });
+    hitungTotalJual();
+    wzRender();
+  }
+  function wzPilihJalur(j) {
+    _wz.jalur = j; _wz.merk = null; _wz.maks = null;
+    pilihJenisJual(j);                               // form lama pindah jalur (logika lama)
+    if (j === 'retur') { document.getElementById('halamanJual').classList.add('wz-retur');
+      document.body.classList.add('wz-retur-aktif'); wzRender(); return; }
+    document.getElementById('halamanJual').classList.remove('wz-retur');
+    document.body.classList.remove('wz-retur-aktif');
+    wzKe(j === 'kemasan' ? 'jenis' : (j === 'karung' ? 'ukuranSack' : (j === 'literan' ? 'produkL' : 'merkR')));
+  }
+  function wzPilihJenis(jenis) { _wz.jenisBeras = jenis; wzKe('merk'); }
+  function wzPilihMerk(nama) { _wz.merk = nama; wzKe('ukuran'); }
+  function wzKlikOpsi(idKontainer, kunci, langkahLanjut) {
+    const b = document.querySelector('#' + idKontainer + ' button[data-kunci="' + CSS.escape(kunci) + '"]');
+    if (!b) return;
+    if (b.dataset.habis) { b.click(); return; }       // handler lama menawarkan Produksi
+    b.click();                                        // handler LAMA yang berjalan
+    const opsi = wzBacaTombol(idKontainer).find(o => o.kunci === kunci);
+    _wz.maks = opsi ? wzMaksDariSub(opsi.sub) : null;
+    wzKe(langkahLanjut);
+  }
+  function wzPilihSack(berat) { pilihBeratSack(berat); wzKe('merkK'); }
+  function wzSering(kunci) {
+    wzPilihJalur('kemasan');
+    wzKlikOpsi('pilihKemasanTombol', kunci, 'jumlah');
+  }
+  function wzIsiJumlah(idInput, nilai) {
+    const el = document.getElementById(idInput);
+    el.value = nilai;
+    el.dispatchEvent(new Event('input', { bubbles: true }));  // hitungTotalJual jalur lama
+    wzRender();
+  }
+  function wzUbah(idInput, delta) {
+    const el = document.getElementById(idInput);
+    const v = Math.max(0, (parseFloat(el.value) || 0) + delta);
+    wzIsiJumlah(idInput, v || '');
+  }
+  function wzBayar(cara) {
+    ({ Tunai: 'bayarTunai', QRIS: 'bayarQris', Kredit: 'bayarKredit' })[cara] &&
+      document.getElementById({ Tunai: 'bayarTunai', QRIS: 'bayarQris', Kredit: 'bayarKredit' }[cara]).click();
+    wzRender();
+  }
+  function wzNama(v) {
+    const el = document.getElementById('jualNamaPelanggan');
+    el.value = v; el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  function wzSimpan() { document.getElementById('btnSimpanJual').click(); }
+
+  function wzRender() {
+    try {
+      const wrap = document.getElementById('wzJual');
+      if (!wrap || window.matchMedia('(min-width: 700px)').matches) return;
+      if (document.getElementById('halamanJual').classList.contains('wz-retur')) {
+        document.getElementById('wzLangkahLabel').textContent = 'Retur';
+        document.getElementById('wzTanya').innerHTML =
+          '<button type="button" class="wz-balik" onclick="wzReset()">\u2190 balik ke Jual</button>';
+        document.getElementById('wzBatal').style.display = 'none';
+        document.getElementById('wzSering').style.display = 'none';
+        return;
+      }
+      const l = _wz.langkah;
+      const panel = document.getElementById('wzPanel');
+      const tanya = document.getElementById('wzTanya');
+      const label = document.getElementById('wzLangkahLabel');
+      const sering = document.getElementById('wzSering');
+      document.getElementById('wzBatal').style.display = l === 'jalur' ? 'none' : 'block';
+      sering.style.display = 'none';
+      const balik = (ke) => '<button type="button" class="wz-balik" onclick="wzKe(\'' + ke + '\')">\u2190 balik</button>';
+      const baris = (onclick, isi, sub, mati) =>
+        '<button type="button" class="wz-baris' + (mati ? ' mati' : '') + '" onclick="' + onclick + '">'
+        + '<span><b>' + isi + '</b>' + (sub ? '<i>' + sub + '</i>' : '') + '</span>'
+        + '<span class="panah">\u203a</span></button>';
+
+      if (l === 'jalur') {
+        label.textContent = 'Jual \u00b7 langkah 1';
+        tanya.textContent = 'Jual apa?';
+        // Sering dijual: tombol kemasan lama sudah tersortir paling laku
+        const laku = wzBacaTombol('pilihKemasanTombol').filter(o => !o.habis && o.kunci).slice(0, 3);
+        if (laku.length) {
+          sering.style.display = 'block';
+          sering.innerHTML = '<div class="wz-sering-judul">Sering dijual \u00b7 2 ketukan</div><div class="wz-sering-baris">'
+            + laku.map(o => '<button type="button" class="wz-chip" onclick="wzSering(\'' + wzEsc(o.kunci).replace(/'/g, "\\'") + '\')"><b>' + wzEsc(o.label) + '</b><i>' + wzEsc(o.sub) + '</i></button>').join('') + '</div>';
+        }
+        panel.innerHTML = [
+          baris("wzPilihJalur('kemasan')", 'Kemasan jadi', 'bags siap jual dari Produksi'),
+          baris("wzPilihJalur('repacking')", 'Repacking dadakan', 'timbang & jahit dari sack sumber'),
+          baris("wzPilihJalur('karung')", 'Sack utuh', 'karung 50 / 25 kg'),
+          baris("wzPilihJalur('literan')", 'Literan', 'takar per liter \u00b7 min 5 L'),
+          baris("wzPilihJalur('retur')", 'Retur', 'barang kembali \u00b7 jalur khusus')
+        ].join('');
+        return;
+      }
+
+      if (l === 'jenis') {
+        label.textContent = 'Kemasan \u00b7 langkah 2';
+        tanya.textContent = 'Jenis berasnya?';
+        const opsi = wzBacaTombol('pilihKemasanTombol').filter(o => o.kunci);
+        const grup = {};
+        opsi.forEach(o => {
+          const merk = o.kunci.split('|')[0];
+          const j = jenisUntukMerk(merk) || 'Belum diberi jenis';
+          (grup[j] = grup[j] || []).push(o);
+        });
+        panel.innerHTML = balik('jalur') + Object.keys(grup).sort().map(j =>
+          baris("wzPilihJenis('" + wzEsc(j).replace(/'/g, "\\'") + "')", wzEsc(j),
+            grup[j].length + ' produk', grup[j].every(o => o.habis))).join('')
+          || balik('jalur') + '<div class="wz-info">Belum ada stok kemasan jadi \u2014 buat lewat Produksi.</div>';
+        return;
+      }
+      if (l === 'merk') {
+        label.textContent = 'Kemasan \u00b7 langkah 3';
+        tanya.textContent = 'Merknya?';
+        const opsi = wzBacaTombol('pilihKemasanTombol').filter(o => o.kunci &&
+          (jenisUntukMerk(o.kunci.split('|')[0]) || 'Belum diberi jenis') === _wz.jenisBeras);
+        const merk = {};
+        opsi.forEach(o => { const m = o.kunci.split('|')[0]; (merk[m] = merk[m] || []).push(o); });
+        panel.innerHTML = balik('jenis') + Object.keys(merk).map(m =>
+          baris("wzPilihMerk('" + wzEsc(m).replace(/'/g, "\\'") + "')", wzEsc(m),
+            merk[m].map(o => o.kunci.split('|')[1] + ' kg').join(' \u00b7 '), merk[m].every(o => o.habis))).join('');
+        return;
+      }
+      if (l === 'ukuran') {
+        label.textContent = 'Kemasan \u00b7 langkah 4';
+        tanya.textContent = 'Ukurannya?';
+        const opsi = wzBacaTombol('pilihKemasanTombol').filter(o => o.kunci && o.kunci.split('|')[0] === _wz.merk);
+        panel.innerHTML = balik('merk') + opsi.map(o =>
+          baris("wzKlikOpsi('pilihKemasanTombol','" + wzEsc(o.kunci).replace(/'/g, "\\'") + "','jumlah')",
+            wzEsc(o.kunci.split('|')[1]) + ' kg', wzEsc(o.sub), o.habis)).join('');
+        return;
+      }
+
+      if (l === 'merkR') {
+        label.textContent = 'Repacking \u00b7 langkah 2';
+        tanya.textContent = 'Merk sumbernya?';
+        panel.innerHTML = balik('jalur') + wzBacaTombol('pilihRepackingTombol').filter(o => o.kunci).map(o =>
+          baris("wzKlikOpsi('pilihRepackingTombol','" + wzEsc(o.kunci).replace(/'/g, "\\'") + "','namaR')",
+            wzEsc(o.label), wzEsc(o.sub), o.habis)).join('');
+        return;
+      }
+      if (l === 'namaR') {
+        label.textContent = 'Repacking \u00b7 langkah 3';
+        tanya.textContent = 'Jadi produk apa?';
+        panel.innerHTML = balik('merkR')
+          + '<input type="text" id="wzNamaR" placeholder="Contoh: Kembang, Putri Agri" value="'
+          + wzEsc(document.getElementById('jualRepackingNamaProduk').value) + '">'
+          + '<button type="button" class="wz-lanjut" onclick="document.getElementById(\'jualRepackingNamaProduk\').value = document.getElementById(\'wzNamaR\').value; wzKe(\'jumlah\')">Lanjut</button>';
+        return;
+      }
+
+      if (l === 'ukuranSack') {
+        label.textContent = 'Sack utuh \u00b7 langkah 2';
+        tanya.textContent = 'Ukuran sack-nya?';
+        panel.innerHTML = balik('jalur')
+          + baris("wzPilihSack(50)", 'Sack 50 kg', 'ukuran standar')
+          + baris("wzPilihSack(25)", 'Sack 25 kg', 'Angsa \u00b7 Perahu Layar dkk');
+        return;
+      }
+      if (l === 'merkK') {
+        label.textContent = 'Sack utuh \u00b7 langkah 3';
+        tanya.textContent = 'Merknya?';
+        panel.innerHTML = balik('ukuranSack') + (wzBacaTombol('pilihKarungTombol').filter(o => o.kunci).map(o =>
+          baris("wzKlikOpsi('pilihKarungTombol','" + wzEsc(o.kunci).replace(/'/g, "\\'") + "','jumlah')",
+            wzEsc(o.label), wzEsc(o.sub), o.habis)).join('')
+          || '<div class="wz-info">Belum ada sack pada ukuran ini.</div>');
+        return;
+      }
+
+      if (l === 'produkL') {
+        label.textContent = 'Literan \u00b7 langkah 2';
+        tanya.textContent = 'Yang mana?';
+        panel.innerHTML = balik('jalur') + wzBacaTombol('pilihLiteranTombol').filter(o => o.kunci).map(o =>
+          baris("wzKlikOpsi('pilihLiteranTombol','" + wzEsc(o.kunci).replace(/'/g, "\\'") + "','jumlah')",
+            wzEsc(o.label), wzEsc(o.sub), o.habis)).join('');
+        return;
+      }
+
+      if (l === 'jumlah') {
+        const peta = { kemasan: ['jualKemasanJumlah', 'unit', 1], karung: ['jualKarungJumlah', 'sack', 1],
+          literan: ['jualLiteranJumlah', 'liter', 0.5], repacking: ['jualRepackingKg', 'kg', 1] };
+        const [idInput, satuan, tambah] = peta[_wz.jalur];
+        const nilai = document.getElementById(idInput).value || '0';
+        label.textContent = 'Langkah ' + (_wz.jalur === 'kemasan' ? '5' : (_wz.jalur === 'repacking' ? '4' : (_wz.jalur === 'karung' ? '4' : '3')));
+        tanya.textContent = 'Berapa ' + satuan + '?';
+        const stokInfo = { kemasan: 'stokKemasanInfo', karung: 'stokKarungInfo', literan: 'stokLiteranInfo', repacking: 'stokRepackingInfo' }[_wz.jalur];
+        const infoTeks = (document.getElementById(stokInfo) || {}).textContent || '';
+        const nNum = parseFloat(nilai) || 0;
+        const lebih = _wz.maks !== null && nNum > _wz.maks;
+        panel.innerHTML = balik(_wz.jalur === 'kemasan' ? 'ukuran' : (_wz.jalur === 'repacking' ? 'namaR' : (_wz.jalur === 'karung' ? 'merkK' : 'produkL')))
+          + '<div class="stepper-jumlah wz-jumlah-wrap">'
+          + '<button type="button" class="st-kurang" onclick="wzUbah(\'' + idInput + '\',-' + tambah + ')" aria-label="Kurangi">\u2212</button>'
+          + '<input type="number" inputmode="decimal" value="' + wzEsc(nilai === '0' ? '' : nilai) + '" placeholder="0" oninput="wzIsiJumlah(\'' + idInput + '\', this.value)">'
+          + '<button type="button" class="st-tambah" onclick="wzUbah(\'' + idInput + '\',' + tambah + ')" aria-label="Tambah">+</button>'
+          + '</div>'
+          + (infoTeks ? '<div class="wz-info">' + wzEsc(infoTeks) + '</div>' : '')
+          // form lama MENJEPIT otomatis ke maks stok; penjelasannya dicerminkan di sini
+          + (function () { const pb = document.getElementById('peringatanBatasJual');
+              return pb && pb.style.display !== 'none' && pb.textContent.trim()
+                ? '<div class="wz-peringatan"><span>' + wzEsc(pb.textContent.trim()) + '</span>'
+                  + '<div class="aksi"><button type="button" onclick="pindahDariMenu(\'produksi\')">repack dulu</button></div></div>' : ''; })()
+          + (lebih ? '<div class="wz-peringatan"><span>\u26a0 Melebihi stok \u2014 sisa ' + _wz.maks + ' ' + satuan + '. Stok tidak boleh minus.</span>'
+            + '<div class="aksi"><button type="button" onclick="wzIsiJumlah(\'' + idInput + '\',' + _wz.maks + ')">jual ' + _wz.maks + ' saja</button>'
+            + '<button type="button" onclick="pindahDariMenu(\'produksi\')">repack dulu</button></div></div>' : '')
+          + '<button type="button" class="wz-lanjut" onclick="wzKe(\'bayar\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>Lanjut ke bayar</button>';
+        return;
+      }
+
+      if (l === 'bayar') {
+        label.textContent = 'Terakhir \u00b7 bayar';
+        tanya.textContent = 'Bayarnya?';
+        const rincian = (document.getElementById('ktjRincian') || {}).textContent || '';
+        const status = (document.getElementById('statusHargaJualInfo') || {}).textContent || '';
+        const caraAktif = ['Tunai', 'QRIS', 'Kredit'].find(c =>
+          document.getElementById('bayar' + (c === 'QRIS' ? 'Qris' : c)).classList.contains('pilih')) || 'Tunai';
+        const alasan = document.getElementById('alasanJual');
+        const alasanTeks = alasan && alasan.style.display !== 'none' ? alasan.textContent.trim() : '';
+        const bolehSimpan = !document.getElementById('btnSimpanJual').disabled;
+        panel.innerHTML = balik('jumlah')
+          + '<div class="wz-ringkas"><b>' + wzEsc(rincian || 'Belum ada isian') + '</b>'
+          + (status ? '<i>' + wzEsc(status) + '</i>' : '') + '<i>Totalnya di kartu TOTAL di bawah \u2014 satu sumber angka.</i></div>'
+          + '<div class="wz-bayar-tab">' + ['Tunai', 'QRIS', 'Kredit'].map(c =>
+            '<button type="button" class="' + (c === caraAktif ? 'pilih' : '') + '" onclick="wzBayar(\'' + c + '\')">' + c + '</button>').join('') + '</div>'
+          + '<label style="margin-top:12px;">Nama pembeli' + (caraAktif === 'Kredit' ? ' \u2014 wajib untuk kredit' : ' \u2014 boleh kosong') + '</label>'
+          + '<input type="text" value="' + wzEsc(document.getElementById('jualNamaPelanggan').value) + '" placeholder="Nama pembeli" oninput="wzNama(this.value)" list="saranPelanggan">'
+          + (alasanTeks ? '<div class="wz-peringatan" style="margin-top:10px;"><span>' + wzEsc(alasanTeks) + '</span></div>' : '')
+          + '<button type="button" class="wz-lanjut" onclick="wzSimpan()" ' + (bolehSimpan ? '' : 'disabled') + '>Periksa & Simpan</button>';
+        return;
+      }
+    } catch (e) { /* kulit — jangan ganggu jalur uang */ }
+  }
+
   function bikinTombolPilih(idKontainer, idHiddenInput, daftarOpsi, teksKosong, onPilih) {
     const kontainer = document.getElementById(idKontainer);
     const hiddenInput = document.getElementById(idHiddenInput);
@@ -8331,6 +8675,7 @@
     // tetap menyimpan merk asli (kunci tidak berubah), hanya tulisan tombol yang beda.
     const opsiLiteran = opsiMerk.map(o => ({ ...o, label: labelLiteranTampil(o.kunci) }));
     bikinTombolPilih('pilihLiteranTombol', 'jualLiteranJenis', opsiLiteran, 'Belum ada stok.', perbaruiStokJual);
+    wzRender();   // wizard HP membaca ulang tombol yang baru dirender
   }
 
   // Label tombol literan: IR64* -> "Rp11.500" (dari katalog harga literan). Merk lain tetap nama.
@@ -14874,6 +15219,17 @@
   window.pilihSaringRiwayat = pilihSaringRiwayat;
   window.lihatRiwayatHari = lihatRiwayatHari;
   window.pilihHariPlatina = pilihHariPlatina;
+  window.wzReset = wzReset; window.wzKe = wzKe; window.wzPilihJalur = wzPilihJalur;
+  window.wzPilihJenis = wzPilihJenis; window.wzPilihMerk = wzPilihMerk; window.wzKlikOpsi = wzKlikOpsi;
+  window.wzPilihSack = wzPilihSack; window.wzSering = wzSering; window.wzIsiJumlah = wzIsiJumlah;
+  window.wzUbah = wzUbah; window.wzBayar = wzBayar; window.wzNama = wzNama; window.wzSimpan = wzSimpan;
+  // Sesudah simpan sukses, form lama memunculkan BILAH URUNGKAN (tampilkanUrungkan
+  // menambah kelas urungkan-tampil di body) -> wizard ikut pulang ke langkah awal.
+  new MutationObserver(() => {
+    if (document.body.classList.contains('urungkan-tampil')
+      && document.getElementById('halamanJual').classList.contains('tampil')
+      && _wz.langkah !== 'jalur') wzReset();
+  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   window.ik6PilihKartu = ik6PilihKartu;
   window.ik6GantiPatokan = ik6GantiPatokan;
   window.ik6SaringDenyut = ik6SaringDenyut;
