@@ -2989,6 +2989,18 @@
 .wz-bayar-tab input { flex: 1.4; min-width: 0; padding: 10px; font-size: 13px; border-radius: 12px; }
 .wz-langkah[data-keranjang]:not([data-keranjang=""])::after {
   content: '\00b7 keranjang ' attr(data-keranjang); color: #f0e2c4; margin-left: 6px; }
+.wz-kredit-kunci { margin-top: 10px; padding: 12px 13px; border-radius: 13px;
+  background: linear-gradient(160deg, rgba(211,160,139,.12), rgba(211,160,139,.04)), #191d21;
+  border: 1px dashed rgba(211,160,139,.55); }
+.wz-kredit-kunci b { display: block; font-size: 12.5px; color: #f4e3da; }
+.wz-kredit-kunci span { display: block; font-family: var(--pf-serif); font-style: italic;
+  font-size: 11px; color: #d3a08b; margin-top: 4px; line-height: 1.5; }
+.wz-kredit-kunci .aksi { display: flex; gap: 8px; margin-top: 10px; }
+.wz-kredit-kunci .aksi button { flex: 1; min-height: 42px; border-radius: 11px; font-family: inherit;
+  font-size: 12px; font-weight: 700; background: none; border: 1px solid rgba(211,160,139,.45); color: #d3a08b; }
+.wz-kredit-kunci .aksi button:last-child { border-color: rgba(226,205,166,.5);
+  background: linear-gradient(180deg, rgba(226,205,166,.18), rgba(226,205,166,.05)); color: #f0e2c4; }
+.wz-janji button { font-size: 11px; }
 
 /* ---------- IKHTISAR 6a: tabung beras + tumpuk kartu + Denyut + grafik jam ----------
    Dari prototipe pemilik (kandidat G + Denyut 5b + keputusan PT1/O1). HP saja;
@@ -8385,9 +8397,38 @@
   }
 
   // Bikin grid tombol pilih generik. daftarOpsi = [{ kunci, label, subLabel, sisa }]
+  // ============ G4: BATAS KREDIT (KR1) + JANJI BAYAR (KR2) ============
+  // Keputusan pemilik: kredit hanya untuk pelanggan TERDAFTAR di buku Pelanggan,
+  // batas = 2 x rata-rata belanja bulanan (90 hari terakhir / 3, semua cara bayar).
+  // Murni pembaca — identitas nama memakai kunciPelanggan yang sama dengan piutang.
+  function infoKreditPelanggan(nama) {
+    const k = kunciPelanggan(nama);
+    if (!k) return { ada: false };
+    const terdaftar = ambilPelangganCatatan().some(c => kunciPelanggan(c.nama || c.id) === k);
+    const rekor = hitungPiutang().find(x => x.kunci === k);
+    const sisa = rekor ? Math.max(0, rekor.sisa || 0) : 0;
+    const batasIso = tanggalLokalIso(new Date(Date.now() - 89 * 86400000));
+    let total90 = 0;
+    ambilPenjualan().forEach(t => {
+      if ((t.tanggal || '') >= batasIso && kunciPelanggan(t.namaPelanggan) === k) total90 += t.hargaTotal || 0;
+    });
+    const rataBulanan = Math.round(total90 / 3);
+    return { ada: true, terdaftar, sisa, rataBulanan, batas: rataBulanan * 2 };
+  }
+  function tanggalJanji(pilihan) {
+    const d = new Date();
+    if (pilihan === 'besok') d.setDate(d.getDate() + 1);
+    else if (pilihan === '3hari') d.setDate(d.getDate() + 3);
+    else if (pilihan === '1minggu') d.setDate(d.getDate() + 7);
+    else if (pilihan === 'akhirbulan') { d.setMonth(d.getMonth() + 1); d.setDate(0); }
+    else return null;
+    return tanggalLokalIso(d);
+  }
+
   // ---------- G3: keadaan keranjang wizard ----------
   let _wzItems = [], _wzPotongan = 0, _wzPotonganMode = 'tanpa', _wzUang = 0;
   let _wzNego = null, _wzBonus = false, _wzSatuanAsli = 0;
+  let _wzJanji = null, _wzKreditBuka = false;
 
   function wzSatuanKini() {
     // harga satuan menurut form lama SAAT INI (katalog x jumlah / jumlah)
@@ -8472,9 +8513,15 @@
     const cara = tombolBayarAktif ? bakuCaraBayar(tombolBayarAktif.id.replace('bayar', '')) : 'Tunai';
     const nama = document.getElementById('jualNamaPelanggan').value.trim();
     if (cara === 'Kredit' && !nama) { alert('Isi nama pelanggan untuk penjualan kredit.'); return; }
+    if (cara === 'Kredit') {                        // KR1 — penjaga sebelum lembar konfirmasi
+      const alasanKunci = wzKreditTerkunci(total);
+      if (alasanKunci) { alert(alasanKunci); return; }
+    }
     const baris = _wzItems.map(x => [x.label, formatRupiah(x.trx.hargaTotal)]);
     if (pot > 0) baris.push(['Potongan', '\u2212' + formatRupiah(pot)]);
     baris.push(['Cara bayar', cara + (nama ? ' \u2014 ' + escapeHtml(nama) : '')]);
+    if (cara === 'Kredit' && _wzJanji) baris.push(['Janji bayar', formatTanggal(tanggalJanji(_wzJanji))]);
+    if (cara === 'Kredit' && _wzKreditBuka) baris.push(['Kredit', 'dibuka owner untuk transaksi ini']);
     if (_wzUang > 0 && cara === 'Tunai') {
       baris.push(['Uang diterima', formatRupiah(_wzUang)]);
       const k = _wzUang - total;
@@ -8509,6 +8556,7 @@
     if (tanya && _wzItems.length && !confirm('Buang ' + _wzItems.length + ' item di keranjang?')) return;
     _wzItems = []; _wzPotongan = 0; _wzPotonganMode = 'tanpa'; _wzUang = 0;
     _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0;
+    _wzJanji = null; _wzKreditBuka = false;
     _wz = { jalur: null, langkah: 'jalur', merk: null, maks: null };
     document.getElementById('halamanJual').classList.remove('wz-retur');
     document.body.classList.remove('wz-retur-aktif');
@@ -8564,6 +8612,66 @@
   function wzNama(v) {
     const el = document.getElementById('jualNamaPelanggan');
     el.value = v; el.dispatchEvent(new Event('input', { bubbles: true }));
+    _wzKreditBuka = false;                       // izin owner melekat ke nama, bukan ke form
+    clearTimeout(wzNama._t);
+    wzNama._t = setTimeout(wzPerbaruiKredit, 350);   // kartu kredit diperbarui tanpa merusak fokus ketik
+  }
+  async function wzBukaKreditSekali() {
+    const boleh = await mintaPinOwner('PIN owner \u2014 buka kredit SEKALI untuk transaksi ini');
+    if (boleh) { _wzKreditBuka = true; wzRender(); }
+  }
+  function wzPilihJanji(j) { _wzJanji = _wzJanji === j ? null : j; wzRender(); }
+  // Kartu status kredit — dipakai render penuh & pembaruan ringan saat mengetik nama.
+  function wzKartuKreditHtml(total) {
+    const nama = document.getElementById('jualNamaPelanggan').value.trim();
+    // SEMUA cabang dibungkus #wzKreditWrap — pembaruan saat mengetik nama mengganti
+    // elemen ini; tanpa pembungkus di cabang kosong, kartu tidak pernah bisa hidup.
+    if (!nama) return wzBungkusKredit('<div class="wz-info">Isi nama pelanggan terdaftar untuk kredit.</div>');
+    const info = infoKreditPelanggan(nama);
+    const kunci = [];
+    if (!info.terdaftar) kunci.push(wzEsc(nama) + ' belum ada di buku Pelanggan');
+    else if (info.batas <= 0) kunci.push('belum ada riwayat belanja \u2014 batas kredit belum terbentuk');
+    else if (info.sisa + total > info.batas)
+      kunci.push('piutang ' + formatRupiah(info.sisa) + ' + transaksi ini melewati batas ' + formatRupiah(info.batas)
+        + ' \u00b7 2\u00d7 rata belanja bulanan ' + formatRupiah(info.rataBulanan));
+    const terkunci = kunci.length > 0 && !_wzKreditBuka;
+    let html = '';
+    if (terkunci) {
+      html += '<div class="wz-kredit-kunci"><b>\ud83d\udd12 Kredit dimatikan untuk ' + wzEsc(nama) + '</b>'
+        + kunci.map(x => '<span>' + x + '</span>').join('')
+        + '<div class="aksi"><button type="button" onclick="wzBayar(\'Tunai\')">tunai saja</button>'
+        + '<button type="button" onclick="wzBukaKreditSekali()">buka sekali (owner)</button></div></div>';
+    } else {
+      html += '<div class="wz-info">Piutang berjalan ' + formatRupiah(info.sisa)
+        + (info.batas > 0 ? ' \u00b7 batas ' + formatRupiah(info.batas) : '')
+        + (_wzKreditBuka && kunci.length ? ' \u00b7 DIBUKA OWNER untuk transaksi ini' : '') + '</div>'
+        + '<i class="wz-label-kecil">Janji bayar \u2014 pengingat muncul pada tanggalnya</i>'
+        + '<div class="wz-bayar-tab wz-janji">'
+        + [['besok', 'besok'], ['3hari', '3 hari'], ['1minggu', '1 minggu'], ['akhirbulan', 'akhir bulan']].map(m =>
+          '<button type="button" class="' + (_wzJanji === m[0] ? 'pilih' : '') + '" onclick="wzPilihJanji(\'' + m[0] + '\')">' + m[1] + '</button>').join('')
+        + '</div>';
+    }
+    return wzBungkusKredit(html);
+  }
+  function wzBungkusKredit(html) { return '<div id="wzKreditWrap">' + html + '</div>'; }
+  function wzPerbaruiKredit() {
+    const wrap = document.getElementById('wzKreditWrap');
+    if (!wrap) return;
+    const pot = Math.min(Math.round(_wzPotongan || 0), wzSubtotal());
+    const ganti = document.createElement('div');
+    ganti.innerHTML = wzKartuKreditHtml(wzSubtotal() - pot);
+    wrap.replaceWith(ganti.firstChild);
+  }
+  function wzKreditTerkunci(total) {
+    const nama = document.getElementById('jualNamaPelanggan').value.trim();
+    if (!nama) return 'Isi nama pelanggan untuk penjualan kredit.';
+    const info = infoKreditPelanggan(nama);
+    if (_wzKreditBuka) return null;
+    if (!info.terdaftar) return nama + ' belum terdaftar di buku Pelanggan \u2014 kredit dimatikan (KR1).';
+    if (info.batas <= 0) return 'Belum ada riwayat belanja \u2014 batas kredit belum terbentuk (KR1).';
+    if (info.sisa + total > info.batas)
+      return 'Melewati batas kredit ' + formatRupiah(info.batas) + ' (piutang ' + formatRupiah(info.sisa) + ' + transaksi ini).';
+    return null;
   }
   function wzSimpan() { document.getElementById('btnSimpanJual').click(); }
 
@@ -8788,6 +8896,7 @@
             : '')
           + '<label style="margin-top:12px;">Nama pembeli' + (caraAktif === 'Kredit' ? ' \u2014 wajib untuk kredit' : ' \u2014 boleh kosong') + '</label>'
           + '<input type="text" value="' + wzEsc(document.getElementById('jualNamaPelanggan').value) + '" placeholder="Nama pembeli" oninput="wzNama(this.value)" list="saranPelanggan">'
+          + (caraAktif === 'Kredit' ? wzKartuKreditHtml(total) : '')
           + '<button type="button" class="wz-lanjut" onclick="wzKonfirmasiKeranjang()">Periksa & Simpan</button>';
         return;
       }
@@ -9137,6 +9246,12 @@
     const caraBayar = bakuCaraBayar(tombolBayarAktif ? tombolBayarAktif.id.replace('bayar', '') : 'Tunai');
     const namaPelanggan = document.getElementById('jualNamaPelanggan').value.trim();
     if (caraBayar === 'Kredit' && !namaPelanggan) { alert('Isi nama pelanggan untuk penjualan kredit.'); return; }
+    if (caraBayar === 'Kredit') {                   // KR1 — penjaga terakhir di jalur tulis
+      const potCek = Math.min(Math.max(0, Math.round(_wzPotongan || 0)), _wzItems.reduce((a, x) => a + x.trx.hargaTotal, 0));
+      const alasanKunci = wzKreditTerkunci(_wzItems.reduce((a, x) => a + x.trx.hargaTotal, 0) - potCek);
+      if (alasanKunci) { alert(alasanKunci); return; }
+    }
+    const janjiIso = caraBayar === 'Kredit' && _wzJanji ? tanggalJanji(_wzJanji) : null;
     const trxId = idUnik();
     const tanggal = tanggalLokalIso();
     const jam = new Date().toTimeString().slice(0, 5);
@@ -9157,6 +9272,8 @@
       const trx = x.trx;
       trx.id = idUnik(); trx.trxId = trxId; trx.tanggal = tanggal; trx.jam = jam;
       trx.caraBayar = caraBayar; trx.namaPelanggan = namaPelanggan;
+      if (janjiIso) trx.janjiBayar = janjiIso;                         // KR2 — pengingat pada tanggalnya
+      if (caraBayar === 'Kredit' && _wzKreditBuka) trx.kreditDibukaOwner = true;   // jejak keputusan owner
       if (_wzUang > 0 && caraBayar === 'Tunai') { trx.uangDiterima = _wzUang; trx.kembalian = Math.max(0, _wzUang - totalBayar); }
       try {
         await simpanKeFirestore(KOLEKSI_PENJUALAN, trx);
@@ -9182,6 +9299,7 @@
     ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('jualPenggantiRetur').checked = false;
     _wzItems = []; _wzPotongan = 0; _wzPotonganMode = 'tanpa'; _wzUang = 0;
+    _wzJanji = null; _wzKreditBuka = false;
     isiDropdownJual();
     perbaruiStokJual();
     tampilkanJualHariIni();
@@ -9190,6 +9308,7 @@
     if (_lastKembalianInfo) { ket.push(_lastKembalianInfo); _lastKembalianInfo = ''; }
     ket.push('masuk Riwayat #' + String(trxId).slice(-4));
     tampilkanUrungkan({ id: trxId, _grup: items.map(x => x.trx) }, ket.join(' \u00b7 '), 'Keranjang tersimpan');
+    wzReset();                                     // wizard pulang — deterministik, bukan lewat pengamat
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   let _lastKembalianInfo = '';
@@ -9309,6 +9428,20 @@
   async function simpanPenjualan() {
     const transaksi = await bangunTrxJualDariForm();
     if (!transaksi) return;
+    // KR1 juga menjaga jalur satu-item (form lama / layar lebar): kebijakan kredit
+    // satu, bukan per pintu. Jalan keluar owner = PIN (jejaknya tercatat di dokumen).
+    if (transaksi.caraBayar === 'Kredit') {
+      const info = infoKreditPelanggan(transaksi.namaPelanggan);
+      const alasanKunci = !info.terdaftar ? transaksi.namaPelanggan + ' belum terdaftar di buku Pelanggan.'
+        : info.batas <= 0 ? 'Belum ada riwayat belanja \u2014 batas kredit belum terbentuk.'
+        : (info.sisa + transaksi.hargaTotal > info.batas)
+          ? 'Melewati batas kredit ' + formatRupiah(info.batas) + ' (piutang ' + formatRupiah(info.sisa) + ' + transaksi ini).' : null;
+      if (alasanKunci) {
+        if (!confirm(alasanKunci + '\n\nBuka kredit SEKALI untuk transaksi ini (perlu PIN owner)?')) return;
+        if (!(await mintaPinOwner('PIN owner \u2014 buka kredit sekali'))) return;
+        transaksi.kreditDibukaOwner = true;
+      }
+    }
 
     try {
       await simpanKeFirestore(KOLEKSI_PENJUALAN, transaksi);
@@ -12481,6 +12614,24 @@
         .forEach(x => daftarHp.push({ w: x.hari <= 2 ? 'var(--merah)' : 'var(--amber)',
           t: `${escapeHtml(x.merk)} diperkirakan ${kataHabis(x.hari)} — sisa ${Math.round(x.sisa)} kg, laju 14 hari`,
           h: 'input', a: 'Belanja' }));
+      // KR2: janji bayar jatuh tempo — pengingat muncul PADA tanggalnya (dan sesudahnya
+      // selama piutangnya masih bersisa). Janji terbaru per pelanggan yang dipakai.
+      const janjiPer = {};
+      ambilPenjualan().forEach(t => {
+        if (t.caraBayar !== 'Kredit' || !t.janjiBayar) return;
+        const kj = kunciPelanggan(t.namaPelanggan);
+        if (kj && (!janjiPer[kj] || t.janjiBayar > janjiPer[kj])) janjiPer[kj] = t.janjiBayar;
+      });
+      if (Object.keys(janjiPer).length) {
+        hitungPiutang().forEach(x => {
+          const j = janjiPer[x.kunci];
+          if (!j || x.sisa <= 0 || j > hariIniIso) return;
+          const telat = Math.round((isoKeTanggal(hariIniIso) - isoKeTanggal(j)) / 86400000);
+          daftarHp.push({ w: telat > 0 ? 'var(--merah)' : 'var(--amber)',
+            t: `Janji bayar ${escapeHtml(x.nama)} ${telat > 0 ? 'lewat ' + telat + ' hari' : 'HARI INI'} — sisa ${formatRupiah(x.sisa)}`,
+            h: 'piutang', a: 'Tagih' });
+        });
+      }
       if (!pinSudahDisetel()) daftarHp.push({ w: 'var(--merah)',
         t: 'PIN owner belum disetel — tab uang terbuka di HP yang sudah masuk',
         k: 'bukaSetelPin()', a: 'Setel' });
@@ -15509,13 +15660,11 @@
   window.wzNegoUbah = wzNegoUbah; window.wzBonusToggle = wzBonusToggle; window.wzTambahItem = wzTambahItem;
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
-  // Sesudah simpan sukses, form lama memunculkan BILAH URUNGKAN (tampilkanUrungkan
-  // menambah kelas urungkan-tampil di body) -> wizard ikut pulang ke langkah awal.
-  new MutationObserver(() => {
-    if (document.body.classList.contains('urungkan-tampil')
-      && document.getElementById('halamanJual').classList.contains('tampil')
-      && _wz.langkah !== 'jalur') wzReset();
-  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  window.wzBukaKreditSekali = wzBukaKreditSekali; window.wzPilihJanji = wzPilihJanji;
+  // Wizard pulang DIPANGGIL LANGSUNG oleh simpanKeranjangJual — observer kelas body
+  // yang lama terlalu rakus: selama bilah urungkan tampil (5 dtk), mutasi kelas apa
+  // pun ikut mereset, dan keranjang BERIKUTNYA yang sedang disusun buru-buru lenyap.
+  // (Tertangkap saat uji beruntun G4.)
   window.ik6PilihKartu = ik6PilihKartu;
   window.ik6GantiPatokan = ik6GantiPatokan;
   window.ik6SaringDenyut = ik6SaringDenyut;
