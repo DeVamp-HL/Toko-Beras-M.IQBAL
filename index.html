@@ -3052,7 +3052,55 @@
 #halamanTutup > *, #halamanPiutang > *, #halamanPelanggan > *, #halamanPemasok > *,
 #halamanPesanan > *, #halamanSetelan > * {
   animation: pfMuncul .7s cubic-bezier(.19,.8,.26,1) both;
-}
+}/* ---------- Kalender omzet harian + lembar hari (wireframe R3) ---------- */
+.rw-kal-kartu { margin-bottom: 12px; }
+.rw-kal { display: flex; gap: 3px; align-items: flex-end; height: 96px; margin-top: 10px;
+  overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.rw-kal::-webkit-scrollbar { display: none; }
+.rw-kal-hari { flex: 1 0 16px; min-width: 16px; height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end; gap: 3px; background: none; border: none;
+  padding: 0; font-family: inherit; transition: transform .14s ease; }
+.rw-kal-hari:active { transform: scale(.92); }
+.rw-kal-hari .batang { width: 100%; border-radius: 3px 3px 0 0; background: rgba(226,205,166,.34);
+  animation: ik6Batang .6s cubic-bezier(.25,.9,.3,1) both; }
+.rw-kal-hari.ini .batang { background: linear-gradient(180deg, #fdf6e7, #c2a875); box-shadow: 0 0 12px rgba(226,205,166,.5); }
+.rw-kal-hari.nol .batang { background: rgba(255,255,255,.08); }
+.rw-kal-hari .tgl { font-size: 7.5px; font-weight: 700; letter-spacing: .04em; color: #7c848a; }
+.rw-kal-hari.ini .tgl { color: #e2cda6; }
+#overlayLembarHariRw { display: block; position: fixed; inset: 0; z-index: 41; background: #000;
+  opacity: 0; pointer-events: none; transition: opacity .22s ease; }
+body.lembar-hari-rw-terbuka #overlayLembarHariRw { opacity: .62; pointer-events: auto; }
+#lembarHariRw { position: fixed; left: 0; right: 0; bottom: 0; z-index: 42; height: 46vh; height: 46dvh;
+  background: linear-gradient(180deg, #20242a, #14171a); border: 1px solid rgba(226,205,166,.3); border-bottom: none;
+  border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgba(0,0,0,.6);
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(105%); transition: transform .3s cubic-bezier(.16,.84,.28,1), height .3s cubic-bezier(.16,.84,.28,1);
+  display: flex; flex-direction: column; overflow: hidden; }
+body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
+#lembarHariRw.penuh { height: 88vh; height: 88dvh; }
+#lembarHariRw .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(228,232,234,.25); margin: 2px auto 8px; flex: none; cursor: pointer; }
+.rw-hari-kepala { display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  width: 100%; background: none; border: none; padding: 2px 2px 10px; font-family: inherit; flex: none; }
+.rw-hari-kepala span { font-family: var(--pf-serif); font-size: 17px; color: var(--teks); }
+.rw-hari-kepala b { font-family: var(--pf-serif); font-weight: 400; font-size: 20px;
+  background: linear-gradient(180deg,#fdf6e7,#eadcbd 55%,#c9b085);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.rw-hari-ringkas { display: flex; gap: 8px; flex: none; margin-bottom: 10px; }
+.rw-hari-ringkas > div { flex: 1; padding: 8px 11px; border-radius: 12px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
+.rw-hari-ringkas i { display: block; font-style: normal; font-size: 8px; letter-spacing: .16em;
+  text-transform: uppercase; font-weight: 700; color: #9aa2a8; }
+.rw-hari-ringkas b { display: block; font-family: var(--pf-serif); font-weight: 400; font-size: 13px; margin-top: 2px; color: var(--teks); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rw-hari-daftar { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.rw-hari-trx { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px;
+  padding: 8px 2px; background: none; border: none; border-top: 1px solid rgba(255,255,255,.06);
+  font-family: inherit; color: var(--teks); text-align: left; }
+.rw-hari-trx:first-child { border-top: none; }
+.rw-hari-trx .jam { flex: none; font-family: var(--pf-serif); font-style: italic; font-size: 11px; color: #9aa2a8; }
+.rw-hari-trx .nama { flex: 1; min-width: 0; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rw-hari-trx .nama i { display: block; font-style: italic; font-family: var(--pf-serif); font-size: 9.5px; color: #c9b085; }
+.rw-hari-trx b { font-family: var(--pf-serif); font-weight: 400; font-size: 13px; }
+
 /* ---------- KR3: retur dari transaksi hari ini + alasan wajib ---------- */
 .rt-hariini > i, .rt-alasan > i { display: block; font-style: normal; font-size: 9px; letter-spacing: .16em;
   text-transform: uppercase; font-weight: 700; color: #9aa2a8; margin: 12px 2px 7px; }
@@ -3454,6 +3502,19 @@
   </div>
   <button type="button" class="wz-lanjut" onclick="bukaTokoCocok()">Cocok — buka toko</button>
   <button type="button" class="bt-beda" onclick="bukaTokoBeda()">Beda dengan isi laci — cocokkan kas</button>
+</div>
+
+<!-- LEMBAR HARI (wireframe Riwayat): ketuk batang kalender -> ringkasan hari
+     dua tingkat; ketuk kepalanya utk membesar, ketuk latar utk menutup. -->
+<div id="overlayLembarHariRw" onclick="tutupLembarHariRw()"></div>
+<div id="lembarHariRw" class="k6a" role="dialog" aria-modal="true">
+  <div class="lm-pegangan" onclick="rwHariTingkat()"></div>
+  <button type="button" class="rw-hari-kepala" onclick="rwHariTingkat()">
+    <span id="rwHariJudul"></span>
+    <b id="rwHariOmzet"></b>
+  </button>
+  <div class="rw-hari-ringkas" id="rwHariRingkas"></div>
+  <div class="rw-hari-daftar" id="rwHariDaftar"></div>
 </div>
 
 <!-- LEMBAR KONFIRMASI PRA-SIMPAN (Alur UX 1: uang tidak pernah tersimpan satu tahap) -->
@@ -5081,6 +5142,12 @@
     <!-- Saringan bisa menumpuk. Kalau menumpuk, satu baris menyebut ketiganya beserta
          jumlah hasil — tanpa itu pemakai melihat daftar pendek dan mengira datanya
          hilang (Prinsip 1). -->
+    <!-- KALENDER OMZET HARIAN (wireframe R3): batang per tanggal bulan berjalan,
+         hari ini emas terang; ketuk batang -> lembar hari dua tingkat. -->
+    <div class="kartu rw-kal-kartu">
+      <div class="panel-kepala"><h2>Omzet harian</h2><span class="kd-hitung" id="rwKalBulan"></span></div>
+      <div class="rw-kal" id="rwKal"></div>
+    </div>
     <div class="riw-ringkas" id="riwRingkasSaring" style="display:none;">
       <span id="riwRingkasTeks"></span>
       <button type="button" onclick="hapusSemuaSaringRiwayat()">Hapus semua</button>
@@ -8742,6 +8809,80 @@
     }, { passive: true });
   })();
 
+  // ============ KALENDER OMZET HARIAN + LEMBAR HARI (wireframe R3) ============
+  let _rwHariIso = null, _rwHariPenuh = false;
+  function rwRenderKalender() {
+    const el = document.getElementById('rwKal');
+    if (!el) return;
+    const kini = new Date();
+    const bulanIso = bulanLokalIso();
+    document.getElementById('rwKalBulan').textContent =
+      BULAN_SINGKAT[kini.getMonth()] + ' ' + kini.getFullYear();
+    const nHari = new Date(kini.getFullYear(), kini.getMonth() + 1, 0).getDate();
+    const per = {};
+    ambilPenjualan().forEach(x => {
+      if ((x.tanggal || '').slice(0, 7) === bulanIso) per[x.tanggal] = (per[x.tanggal] || 0) + (x.hargaTotal || 0);
+    });
+    const maks = Math.max(1, ...Object.values(per));
+    const hariIni = kini.getDate();
+    let html = '';
+    for (let d = 1; d <= nHari; d++) {
+      const iso = bulanIso + '-' + String(d).padStart(2, '0');
+      const v = per[iso] || 0;
+      const tinggi = Math.max(3, Math.round(v / maks * 100));
+      const ini = d === hariIni;
+      html += '<button type="button" class="rw-kal-hari' + (ini ? ' ini' : '') + (v > 0 ? '' : ' nol')
+        + '" onclick="bukaLembarHariRw(\'' + iso + '\')" aria-label="' + d + ', omzet ' + formatRupiah(v) + '">'
+        + '<span class="batang" style="height:' + tinggi + '%;animation-delay:' + (d * 18) + 'ms;"></span>'
+        + '<span class="tgl">' + d + '</span></button>';
+    }
+    el.innerHTML = html;
+    // hari ini selalu terlihat — gulir kisi sampai batang hari ini di tengah
+    const ini = el.querySelector('.rw-kal-hari.ini');
+    if (ini) el.scrollLeft = Math.max(0, ini.offsetLeft - el.clientWidth / 2 + ini.offsetWidth / 2);
+  }
+  function bukaLembarHariRw(iso) {
+    _rwHariIso = iso; _rwHariPenuh = false;
+    rwRenderLembarHari();
+    document.body.classList.add('lembar-hari-rw-terbuka');
+  }
+  function tutupLembarHariRw() {
+    document.body.classList.remove('lembar-hari-rw-terbuka');
+    document.getElementById('lembarHariRw').classList.remove('penuh');
+  }
+  function rwHariTingkat() {
+    _rwHariPenuh = !_rwHariPenuh;
+    document.getElementById('lembarHariRw').classList.toggle('penuh', _rwHariPenuh);
+  }
+  function rwRenderLembarHari() {
+    const iso = _rwHariIso;
+    if (!iso) return;
+    const d = isoKeTanggal(iso);
+    const trx = ambilPenjualan().filter(x => x.tanggal === iso)
+      .sort((a, b) => (b.jam || '').localeCompare(a.jam || ''));
+    const omzet = trx.reduce((a, x) => a + (x.hargaTotal || 0), 0);
+    let margin = 0, bolong = 0;
+    trx.forEach(x => { if (x.hppTotalSaatJual > 0) margin += (x.hargaTotal || 0) - x.hppTotalSaatJual; else bolong++; });
+    const gerakan = daftarGerakanKas().filter(r => r.t === iso);
+    const keluar = gerakan.reduce((a, r) => a + r.keluar, 0);
+    document.getElementById('rwHariJudul').textContent =
+      NAMA_HARI[d.getDay()] + ', ' + d.getDate() + ' ' + BULAN_SINGKAT[d.getMonth()];
+    document.getElementById('rwHariOmzet').textContent = ik6Rp(omzet);
+    // Laba ikut SEGEL O1 yang sama dengan Ikhtisar: tersegel sampai tahan-2-dtk di sana.
+    const labaTerbuka = Date.now() < _ik6LabaSampai;
+    document.getElementById('rwHariRingkas').innerHTML = [
+      { l: 'Trx', v: String(trx.length) },
+      { l: 'Laba', v: labaTerbuka ? ik6Rp(margin) + (bolong ? ' \u00b7 ' + bolong + ' bolong' : '') : '\ud83d\udd12' },
+      { l: 'Keluar', v: ik6Rp(keluar) }
+    ].map(x => '<div><i>' + x.l + '</i><b>' + x.v + '</b></div>').join('');
+    document.getElementById('rwHariDaftar').innerHTML = trx.length
+      ? trx.map(x => '<button type="button" class="rw-hari-trx" onclick="tutupLembarHariRw();bukaLembarTrx(' + JSON.stringify(String(x.id)) + ')">'
+        + '<span class="jam">' + wzEsc(x.jam || '\u2014') + '</span>'
+        + '<span class="nama">' + wzEsc(namaSingkatTrx(x)) + (x.trxId ? '<i>keranjang #' + String(x.trxId).slice(-4) + '</i>' : '') + '</span>'
+        + '<b>' + formatRupiah(x.hargaTotal || 0) + '</b></button>').join('')
+      : '<div class="kosong-info" style="margin-top:8px;"><b>Tidak ada transaksi</b><span>Hari ini tidak ada penjualan tercatat.</span></div>';
+  }
+
   // ============ KR3: retur berangkat dari transaksi HARI INI ============
   function rtAlasanPilih(alasan) {
     document.getElementById('returCatatan').value = alasan;
@@ -11739,8 +11880,19 @@
         : '<div class="kosong-info"><b>Belum ada pelanggan bernama</b><span>Isi kolom nama pembeli saat menjual — tunai dan QRIS juga bisa, bukan cuma kredit.</span></div>';
       return;
     }
+    // Wireframe Pelanggan: belanja bulanan di tiap baris — satu lintasan hitung
+    // (90 hari / 3), identitas kunciPelanggan yang sama dengan piutang & kredit.
+    const batas90 = tanggalLokalIso(new Date(Date.now() - 89 * 86400000));
+    const belanja90 = {};
+    ambilPenjualan().forEach(t => {
+      if ((t.tanggal || '') < batas90) return;
+      const kb = kunciPelanggan(t.namaPelanggan);
+      if (kb) belanja90[kb] = (belanja90[kb] || 0) + (t.hargaTotal || 0);
+    });
     kont.innerHTML = _daftarPelRender.map((x, i) => {
       const sub = [];
+      const rataBln = Math.round((belanja90[x.kunci] || 0) / 3);
+      if (rataBln > 0) sub.push('\u00b1' + singkatJuta(rataBln) + (rataBln >= 1000000 ? ' jt' : '') + '/bln');
       const thr = petaThr[x.kunci];
       if (thr) sub.push('THR ' + tahunThr + ' ✓ ' + (thr.bentuk || ''));
       if (x.favorit) sub.push('langganan ' + x.favorit);
@@ -13995,9 +14147,18 @@
       ...literanKosong.map(m => ({ merk: m, html: barisKosong(m, `isiHargaLiteran(${escapeHtml(JSON.stringify(m))})`) }))
     ].sort((a, b) => a.merk.localeCompare(b.merk)), 'Belum ada harga literan tercatat.');
 
+    // Wireframe 'Daftar Harga: jual vs HPP' — margin tampil di tiap baris.
+    // HPP kosong TIDAK dianggap untung 100%: ditulis 'HPP belum ada' (jujur).
+    const stokKemasanM = hitungStokKemasan();
+    const stokKarungM = hitungStokKarungPerMerk();
+    const subMargin = (harga, hpp) => {
+      if (!(hpp > 0)) return '<small class="teks-amber">HPP belum ada \u2014 margin tak terhitung</small>';
+      const m = (harga - hpp) / harga * 100;
+      return `<small>HPP ${formatRupiah(Math.round(hpp))} \u00b7 margin <b class="${m < 0 ? 'teks-merah' : ''}">${m.toFixed(1).replace('.', ',')}%</b></small>`;
+    };
     tulisDaftar('daftarHargaKemasan', [
       ...kemasan.map(h => ({ merk: h.merk, ukuran: h.ukuran, html: `<button type="button" class="baris-44 baris-ketuk" onclick="ubahHargaKemasan(${escapeHtml(JSON.stringify(h.id))})">
-          <span class="nama">${escapeHtml(h.merk)} ${h.ukuran} kg</span>
+          <span class="nama">${escapeHtml(h.merk)} ${h.ukuran} kg${subMargin(h.hargaPerUnit, (stokKemasanM[h.merk + '|' + h.ukuran] || {}).hppRataRataPerUnit)}</span>
           <span class="angka">${formatRupiah(h.hargaPerUnit)} <u>/unit</u></span>
           ${IKON_CHEV}
         </button>` })),
@@ -14007,7 +14168,7 @@
 
     tulisDaftar('daftarHargaKarung', [
       ...karung.map(h => ({ merk: h.merk, html: `<button type="button" class="baris-44 baris-ketuk" onclick="ubahHargaKarung(${escapeHtml(JSON.stringify(h.id))})">
-          <span class="nama">${escapeHtml(h.merk)}</span>
+          <span class="nama">${escapeHtml(h.merk)}${subMargin(h.hargaPerKg, (stokKarungM[h.merk] || {}).hppTerakhirPerKg)}</span>
           <span class="angka">${formatRupiah(h.hargaPerKg)} <u>/kg</u></span>
           ${IKON_CHEV}
         </button>` })),
@@ -14202,6 +14363,7 @@
   }
 
   function tampilkanRiwayat() {
+    rwRenderKalender();
     const kont = document.getElementById('daftarRiwayat');
     if (!kont) return;
     perbaruiKartuDarurat();
@@ -16067,6 +16229,8 @@
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
   window.wzBukaKreditSekali = wzBukaKreditSekali; window.wzPilihJanji = wzPilihJanji;
+  window.bukaLembarHariRw = bukaLembarHariRw; window.tutupLembarHariRw = tutupLembarHariRw;
+  window.rwHariTingkat = rwHariTingkat;
   window.rtAlasanPilih = rtAlasanPilih; window.rtIsiDariTrx = rtIsiDariTrx;
   window.bukaTokoCocok = bukaTokoCocok; window.bukaTokoBeda = bukaTokoBeda;
   window.bukaModalLoginToko = bukaModalLoginToko; window.bukaSetelPin = window.bukaSetelPin || bukaSetelPin;
