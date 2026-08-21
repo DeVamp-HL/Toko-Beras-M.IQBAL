@@ -3001,6 +3001,51 @@
 .wz-kredit-kunci .aksi button:last-child { border-color: rgba(226,205,166,.5);
   background: linear-gradient(180deg, rgba(226,205,166,.18), rgba(226,205,166,.05)); color: #f0e2c4; }
 .wz-janji button { font-size: 11px; }
+/* ---------- G5: Pesanan + lembar Buka Toko ---------- */
+.ps-kartu { padding: 11px 13px; border-radius: 14px; margin-bottom: 9px;
+  background: linear-gradient(160deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.1); }
+.ps-atas { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ps-atas b { font-size: 13.5px; }
+.ps-chip { flex: none; font-family: inherit; font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(226,205,166,.4);
+  background: rgba(226,205,166,.1); color: #f0e2c4; }
+.ps-chip.antar { border-color: rgba(226,205,166,.6);
+  background: linear-gradient(160deg, #fdf7e8, #e2cda6 52%, #bfa476); color: #231a08; }
+.ps-chip.dibayar { border-color: rgba(226,205,166,.4); background: none; color: #e2cda6; }
+.ps-chip.batal { border-color: rgba(211,160,139,.4); background: none; color: #d3a08b; text-decoration: line-through; }
+.ps-isi { font-size: 12.5px; margin-top: 6px; line-height: 1.45; }
+.ps-alamat { font-family: var(--pf-serif); font-style: italic; font-size: 11px; color: #9aa2a8; margin-top: 3px; }
+.ps-kaki { display: flex; align-items: baseline; gap: 10px; margin-top: 8px; padding-top: 7px;
+  border-top: 1px dashed rgba(255,255,255,.1); font-size: 10px; color: #8b9198; flex-wrap: wrap; }
+.ps-nilai { font-family: var(--pf-serif); font-style: italic; color: #c9b085; }
+.ps-tautan { color: #e2cda6; font-weight: 700; letter-spacing: .06em; }
+.ps-batal { margin-left: auto; background: none; border: none; font-family: inherit;
+  font-size: 10px; font-weight: 700; color: #d3a08b; letter-spacing: .08em; padding: 4px 2px; }
+#lembarBukaToko { display: none; position: fixed; inset: 0; z-index: 90; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; gap: 12px;
+  padding: 30px 26px calc(30px + env(safe-area-inset-bottom, 0px));
+  background: radial-gradient(120% 80% at 50% 0%, #1a1e23, #0f1113); }
+#lembarBukaToko.tampil { display: flex; }
+#lembarBukaToko .bt-logo { width: 52px; height: 52px; border-radius: 50%;
+  background: linear-gradient(160deg, #fdf7e8, #e2cda6 52%, #bfa476); color: #231a08;
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; }
+#lembarBukaToko h3 { margin: 0; font-family: var(--pf-serif); font-weight: 400; font-size: 22px; color: var(--teks); }
+#lembarBukaToko .bt-sub { margin: 0; font-size: 9px; letter-spacing: .24em; text-transform: uppercase;
+  font-weight: 700; color: #9aa2a8; }
+#lembarBukaToko .bt-kas { width: 100%; max-width: 330px; margin-top: 14px; padding: 16px;
+  border-radius: 18px; background: linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
+  border: 1px solid rgba(226,205,166,.3); }
+#lembarBukaToko .bt-kas i { display: block; font-style: normal; font-size: 9px; letter-spacing: .22em;
+  text-transform: uppercase; font-weight: 700; color: #e2cda6; }
+#lembarBukaToko .bt-kas b { display: block; font-family: var(--pf-serif); font-weight: 400; font-size: 32px;
+  margin-top: 6px; background: linear-gradient(180deg, #fdf6e7, #eadcbd 55%, #c9b085);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+#lembarBukaToko .bt-kas span { display: block; font-family: var(--pf-serif); font-style: italic;
+  font-size: 11px; color: #9aa2a8; margin-top: 7px; line-height: 1.5; }
+#lembarBukaToko .wz-lanjut { max-width: 330px; }
+#lembarBukaToko .bt-beda { background: none; border: none; font-family: inherit; font-size: 12px;
+  font-weight: 700; color: #d3a08b; letter-spacing: .04em; padding: 10px; }
 
 /* ---------- IKHTISAR 6a: tabung beras + tumpuk kartu + Denyut + grafik jam ----------
    Dari prototipe pemilik (kandidat G + Denyut 5b + keputusan PT1/O1). HP saja;
@@ -3365,6 +3410,21 @@
 </div>
 <div id="overlayLembarMenu" onclick="toggleLembarMenu(false)"></div>
 
+<!-- LEMBAR BUKA TOKO (G5/BT1): ritual pagi 10 detik — kas menurut catatan
+     dicocokkan mata sebelum jualan; selisih ketahuan PAGI, bukan malam. -->
+<div id="lembarBukaToko" class="k6a" role="dialog" aria-modal="true">
+  <div class="bt-logo">IQ</div>
+  <h3>Toko Beras M.IQBAL</h3>
+  <p class="bt-sub" id="btTanggal"></p>
+  <div class="bt-kas">
+    <i>Kas menurut catatan</i>
+    <b id="btKas">—</b>
+    <span id="btKasKet"></span>
+  </div>
+  <button type="button" class="wz-lanjut" onclick="bukaTokoCocok()">Cocok — buka toko</button>
+  <button type="button" class="bt-beda" onclick="bukaTokoBeda()">Beda dengan isi laci — cocokkan kas</button>
+</div>
+
 <!-- LEMBAR KONFIRMASI PRA-SIMPAN (Alur UX 1: uang tidak pernah tersimpan satu tahap) -->
 <div id="overlayKonfirmasi" onclick="tutupKonfirmasi()"></div>
 <div id="lembarKonfirmasi" class="k6a" role="dialog" aria-modal="true">
@@ -3400,9 +3460,11 @@
   <button type="button" class="lm-baris" data-halaman="input" onclick="pindahDariMenu('input')"><span>Masuk <i>— batch beli karung</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="pemasok" onclick="pindahDariMenu('pemasok')"><span>Pemasok <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— riwayat harga beli</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris" data-halaman="produksi" onclick="pindahDariMenu('produksi')"><span>Produksi <i>— repack ke kemasan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button type="button" class="lm-baris" data-halaman="pesanan" onclick="pindahDariMenu('pesanan')"><span>Pesanan <i>— dipesan \u00b7 diantar \u00b7 dibayar</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <div class="lm-grup">Data</div>
   <button type="button" class="lm-baris" data-halaman="stok" onclick="pindahDariMenu('stok')"><span>Stok <i>— sack, kemasan, bahan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris tab-owner" data-halaman="harga" onclick="pindahDariMenu('harga')"><span>Harga <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— katalog &amp; jenis beras</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button type="button" class="lm-baris" data-halaman="setelan" onclick="pindahDariMenu('setelan')"><span>Setelan <i>— PIN, cadangan, login</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <div class="lm-grup">Laporan</div>
   <button type="button" class="lm-baris" data-halaman="rekap" onclick="pindahDariMenu('rekap')"><span>Riwayat</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
   <button type="button" class="lm-baris" data-halaman="harian" onclick="pindahDariMenu('harian')"><span>Harian <i>— pengeluaran harian</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -4737,6 +4799,56 @@
        nilai intinya: RIWAYAT HARGA BELI PER KG per merk per pemasok — saat pemasok
        menawar, dua ketukan menunjukkan harga dia bulan lalu dan pesaing termurahnya.
        Harga beli itu rahasia dagang -> owner-only, data hidup di database. -->
+  <!-- HALAMAN PESANAN (G5, 21 Agu 2026 — bentuk data disetujui pemilik).
+       BUKAN UANG: selama dipesan/diantar tidak menyentuh omzet/kas/stok;
+       nilai berlabel PERKIRAAN. Jalan ke "dibayar" satu-satunya lewat
+       "Catat jualnya" -> wizard Jual sungguhan (stok & HPP asli). -->
+  <!-- HALAMAN SETELAN (G5): yang selama ini tersebar, satu pintu. -->
+  <div id="halamanSetelan" class="halaman k6a">
+    <div class="judul-halaman"><h2>Setelan</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <div class="kartu-daftar kd-kepala">
+      <div class="kd-judul"><h3>Keamanan</h3></div>
+      <button type="button" class="lm-baris" onclick="bukaSetelPin()"><span>PIN owner <i>— setel / ubah kunci tab uang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button type="button" class="lm-baris" onclick="bukaModalLoginToko('Masukkan sandi toko untuk login ulang database.')"><span>Login database <i id="setelStatusSambung">— status sambungan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Cadangan data</h3></div>
+      <button type="button" class="lm-baris" onclick="unduhBackup()"><span>Unduh backup <i>— file JSON semua catatan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button type="button" class="lm-baris" onclick="document.getElementById('inputMuatFile').click()"><span>Muat dari file <i>— pulihkan dari backup</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Data dagang</h3></div>
+      <button type="button" class="lm-baris" onclick="pindahDariMenu('harga')"><span>Jenis beras &amp; katalog harga <i>— di halaman Harga</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button type="button" class="lm-baris" onclick="pindahDariMenu('aruskas')"><span>Titik hitung kas <i>— kartu Cocokkan Kas di Arus Kas</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+    <div class="info-box" style="margin-top:12px;">Sistem Toko M.IQBAL \u00b7 bahasa 6a Kaca Emas Malam \u00b7 satu berkas, tanpa CDN, offline-first.</div>
+  </div>
+
+  <div id="halamanPesanan" class="halaman k6a">
+    <div class="judul-halaman"><h2>Pesanan</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <div class="kartu">
+      <div class="panel-kepala"><h2>Pesanan baru</h2></div>
+      <label>Nama pelanggan</label>
+      <input type="text" id="psNama" placeholder="Nama pelanggan" autocomplete="off" list="saranPelanggan">
+      <label>Isi pesanan</label>
+      <input type="text" id="psIsi" placeholder="Contoh: 2 sack IR64 + 3 bags 5kg">
+      <label>Alamat / catatan antar <span class="keterangan">— boleh kosong</span></label>
+      <input type="text" id="psAlamat" placeholder="Alamat antar">
+      <label>Nilai perkiraan (Rp) <span class="keterangan">— perkiraan saja, BUKAN uang tercatat</span></label>
+      <input type="number" id="psNilai" placeholder="0" inputmode="numeric">
+      <button type="button" class="tombol-utama-kartu" onclick="simpanPesanan()">Simpan Pesanan</button>
+    </div>
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Berjalan</h3><span class="kd-hitung" id="psHitungAktif"></span></div>
+      <div id="daftarPesananAktif"></div>
+    </div>
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Selesai &amp; batal</h3><span class="kd-hitung" id="psHitungSelesai"></span></div>
+      <div id="daftarPesananSelesai"></div>
+    </div>
+    <div class="info-box" style="margin-top:12px;">Pesanan <b>bukan uang</b>: nilai di atas hanya perkiraan. Omzet, kas, dan stok baru bergerak saat pesanan <b>dicatat jualnya</b> lewat tombol di kartu — persis seperti penjualan biasa (stok terpotong, HPP dihitung, bisa nego/kredit).</div>
+  </div>
+
   <div id="halamanPemasok" class="halaman">
     <div class="judul-halaman">
       <h2>Pemasok</h2>
@@ -5251,6 +5363,7 @@
   // menumpuk berbulan-bulan sampai tidak bisa ditelusuri lagi.
   const KOLEKSI_TUTUP = 'tutupHari';
   const KOLEKSI_PELANGGAN_CAT = 'pelangganCatatan';
+  const KOLEKSI_PESANAN = 'pesanan';   // G5 (disetujui pemilik 21 Agu 2026): BUKAN uang sampai dicatat jual
   const KOLEKSI_THR = 'thrPelanggan';
   const KOLEKSI_PEMASOK_CAT = 'pemasokCatatan';
 
@@ -5274,6 +5387,7 @@
   let _cachePenyesuaian = [];
   let _cacheTutup = [];
   let _cachePelangganCat = [];
+  let _cachePesanan = [];
   let _cacheThr = [];
   let _cachePemasokCat = [];
   let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false, piutang: false, kasbon: false };
@@ -5295,6 +5409,7 @@
   const KUNCI_PENYESUAIAN = 'miqbal_penyesuaian_stok_v1';
   const KUNCI_TUTUP = 'miqbal_tutup_hari_v1';
   const KUNCI_PELANGGAN_CAT = 'miqbal_pelanggan_catatan_v1';
+  const KUNCI_PESANAN = 'miqbal_pesanan_v1';
   const KUNCI_JENIS_BERAS = 'miqbal_jenis_beras_v1';
   const KUNCI_THR = 'miqbal_thr_pelanggan_v1';
   const KUNCI_PEMASOK_CAT = 'miqbal_pemasok_catatan_v1';
@@ -5428,6 +5543,7 @@
     if (nama === 'tutup') tampilkanTutupHari();
     if (nama === 'piutang') { tampilkanPiutang(); tampilkanKasbon(); }
     if (nama === 'pelanggan') tampilkanPelanggan();
+    if (nama === 'pesanan') tampilkanPesanan();
     if (nama === 'pemasok') tampilkanPemasok();
     if (nama === 'harga') { tampilkanHarga(); tampilkanJenisBeras(); }
     if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
@@ -6278,6 +6394,8 @@
     }
     const kaki = document.getElementById('lmStatusSambung');
     if (kaki) kaki.textContent = rapi;
+    const setel = document.getElementById('setelStatusSambung');
+    if (setel) setel.textContent = '\u2014 ' + rapi;
     // Header hilang di HP -> pil salam Ikhtisar jadi penampil status (prototipe 6a).
     const ik6 = document.getElementById('ik6Sambung');
     if (ik6) {
@@ -6410,6 +6528,10 @@
   pasangSinkronisasi(KOLEKSI_PELANGGAN_CAT, KUNCI_PELANGGAN_CAT, (d) => { _cachePelangganCat = d; }, () => {
     if (document.getElementById('halamanPelanggan').classList.contains('tampil')) tampilkanPelanggan();
   }, 'id', 'pelangganCat');
+
+  pasangSinkronisasi(KOLEKSI_PESANAN, KUNCI_PESANAN, (d) => { _cachePesanan = d; }, () => {
+    if (document.getElementById('halamanPesanan').classList.contains('tampil')) tampilkanPesanan();
+  }, 'id', 'pesanan');
 
   pasangSinkronisasi(KOLEKSI_THR, KUNCI_THR, (d) => { _cacheThr = d; }, () => {
     if (document.getElementById('halamanPelanggan').classList.contains('tampil')) tampilkanPelanggan();
@@ -6581,6 +6703,7 @@
       pelangganCatatan: ambilPelangganCatatan(),
       thrPelanggan: ambilThrPelanggan(),
       pemasokCatatan: ambilPemasokCatatan(),
+      pesanan: ambilPesanan(),
       // Peta merk->jenis beras (dok pengaturan, bukan koleksi ber-id) — audit 14 Agu
       // 2026: sebelumnya tidak ikut backup, pulihkan-dari-file membuat petanya kosong.
       petaJenisBeras: ambilPetaJenisBeras()
@@ -6630,6 +6753,7 @@
           { kunci: 'piutangMutasi',       koleksi: KOLEKSI_PIUTANG,       ada: ambilPiutangMutasi(),    field: 'id',    label: 'mutasi piutang' },
           { kunci: 'kasbonMutasi',        koleksi: KOLEKSI_KASBON,        ada: ambilKasbonMutasi(),     field: 'id',    label: 'mutasi kasbon' },
           { kunci: 'pelangganCatatan',    koleksi: KOLEKSI_PELANGGAN_CAT, ada: ambilPelangganCatatan(), field: 'id',    label: 'catatan pelanggan' },
+          { kunci: 'pesanan',             koleksi: KOLEKSI_PESANAN,       ada: ambilPesanan(),          field: 'id',    label: 'pesanan' },
           { kunci: 'thrPelanggan',        koleksi: KOLEKSI_THR,           ada: ambilThrPelanggan(),     field: 'id',    label: 'THR pelanggan' },
           { kunci: 'pemasokCatatan',      koleksi: KOLEKSI_PEMASOK_CAT,   ada: ambilPemasokCatatan(),   field: 'id',    label: 'catatan pemasok' }
         ];
@@ -7551,6 +7675,11 @@
     const data = localStorage.getItem(KUNCI_PELANGGAN_CAT);
     return data ? JSON.parse(data) : [];
   }
+  function ambilPesanan() {
+    if (_cachePesanan.length > 0) return _cachePesanan;
+    const data = localStorage.getItem(KUNCI_PESANAN);
+    return data ? JSON.parse(data) : [];
+  }
   function ambilPemasokCatatan() {
     if (_cachePemasokCat.length > 0) return _cachePemasokCat;
     const data = localStorage.getItem(KUNCI_PEMASOK_CAT);
@@ -8397,6 +8526,134 @@
   }
 
   // Bikin grid tombol pilih generik. daftarOpsi = [{ kunci, label, subLabel, sisa }]
+  // ============ LEMBAR BUKA TOKO (BT1) — sekali sehari, HP saja ============
+  const KUNCI_BUKA_TOKO = 'miqbal_buka_toko_v1';
+  function tampilkanBukaToko() {
+    try {
+      if (window.matchMedia('(min-width: 700px)').matches) return;
+      if (localStorage.getItem(KUNCI_BUKA_TOKO) === tanggalLokalIso()) return;
+      const gerbang = document.getElementById('gerbangSistem');
+      if (gerbang && gerbang.classList.contains('tampil')) return;   // masih di gerbang
+      const el = document.getElementById('lembarBukaToko');
+      const kini = new Date();
+      document.getElementById('btTanggal').textContent =
+        NAMA_HARI[kini.getDay()] + ', ' + kini.getDate() + ' ' + BULAN_SINGKAT[kini.getMonth()] + ' ' + kini.getFullYear();
+      const kas = ik6KasSekarang();
+      document.getElementById('btKas').textContent = kas === null ? '\u2014' : ik6Rp(kas);
+      document.getElementById('btKasKet').textContent = kas === null
+        ? 'titik kas belum disetel \u2014 setel lewat Arus Kas supaya angka ini hidup'
+        : 'laci + rekening \u00b7 cocokkan sekilas dengan isi laci';
+      el.classList.add('tampil');
+    } catch (e) { /* ritual — tidak boleh menghalangi kerja */ }
+  }
+  function bukaTokoCocok() {
+    localStorage.setItem(KUNCI_BUKA_TOKO, tanggalLokalIso());
+    document.getElementById('lembarBukaToko').classList.remove('tampil');
+  }
+  function bukaTokoBeda() {
+    localStorage.setItem(KUNCI_BUKA_TOKO, tanggalLokalIso());
+    document.getElementById('lembarBukaToko').classList.remove('tampil');
+    pindahDariMenu('aruskas');
+  }
+  setTimeout(tampilkanBukaToko, 900);
+
+  // ============ PESANAN (G5) — dipesan -> diantar -> dibayar (lewat Jual) ============
+  let _pesananKeJual = null;
+  // Pesanan BUKAN uang -> boleh langsung terlihat tanpa menunggu sinkron.
+  // Salinan lokal ditulis di sini; saat online, pasangSinkronisasi menimpa
+  // dengan kebenaran server (dokumen ber-id sama — aman dua arah).
+  function tulisPesananLokal(doc, baru) {
+    const semua = ambilPesanan().slice();
+    const i = semua.findIndex(x => String(x.id) === String(doc.id));
+    if (i >= 0) semua[i] = doc; else if (baru) semua.unshift(doc);
+    localStorage.setItem(KUNCI_PESANAN, JSON.stringify(semua));
+    if (_cachePesanan.length) _cachePesanan = semua;
+  }
+  function simpanPesanan() {
+    const nama = document.getElementById('psNama').value.trim();
+    const isi = document.getElementById('psIsi').value.trim();
+    if (!nama) { alert('Isi nama pelanggan.'); return; }
+    if (!isi) { alert('Isi pesanannya apa.'); return; }
+    const doc = {
+      id: idUnik(), tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5),
+      namaPelanggan: nama, isi, alamat: document.getElementById('psAlamat').value.trim(),
+      nilaiPerkiraan: Math.max(0, Math.round(parseFloat(document.getElementById('psNilai').value) || 0)),
+      status: 'dipesan', trxIdJual: null,
+      riwayatStatus: [{ status: 'dipesan', pada: new Date().toISOString() }]
+    };
+    simpanKeFirestore(KOLEKSI_PESANAN, doc);
+    tulisPesananLokal(doc, true);
+    ['psNama', 'psIsi', 'psAlamat', 'psNilai'].forEach(id => { document.getElementById(id).value = ''; });
+    tampilkanPesanan();
+    
+  }
+  function ambilPesananDoc(id) {
+    const dariCache = ambilPesanan().find(x => String(x.id) === String(id));
+    if (dariCache) return dariCache;
+    const q = ambilAntreanTunda().find(q => q.koleksi === KOLEKSI_PESANAN && String((q.data || {}).id) === String(id));
+    return q ? q.data : null;
+  }
+  function majukanPesanan(id) {
+    const d = ambilPesananDoc(id);
+    if (!d) return;
+    if (d.status === 'dipesan') d.status = 'diantar';
+    else return;                                     // dibayar HANYA lewat catat jual
+    (d.riwayatStatus = d.riwayatStatus || []).push({ status: d.status, pada: new Date().toISOString() });
+    simpanKeFirestore(KOLEKSI_PESANAN, d);
+    tulisPesananLokal(d);
+    tampilkanPesanan();
+  }
+  function batalkanPesanan(id) {
+    const d = ambilPesananDoc(id);
+    if (!d) return;
+    if (!confirm('Batalkan pesanan ' + (d.namaPelanggan || '') + '? Jejaknya tetap tersimpan.')) return;
+    d.status = 'batal';
+    (d.riwayatStatus = d.riwayatStatus || []).push({ status: 'batal', pada: new Date().toISOString() });
+    simpanKeFirestore(KOLEKSI_PESANAN, d);
+    tulisPesananLokal(d);
+    tampilkanPesanan();
+  }
+  function catatJualPesanan(id) {
+    const d = ambilPesananDoc(id);
+    if (!d) return;
+    _pesananKeJual = String(id);
+    pindahHalaman('jual');
+    wzReset();
+    wzNama(d.namaPelanggan || '');
+    alert('Susun keranjangnya untuk pesanan ' + (d.namaPelanggan || '') + ' — begitu tersimpan, pesanan otomatis jadi DIBAYAR.');
+  }
+  function tampilkanPesanan() {
+    const elA = document.getElementById('daftarPesananAktif');
+    if (!elA) return;
+    const semua = ambilPesanan().slice().sort((a, b) => String(b.id).localeCompare(String(a.id)));
+    const aktif = semua.filter(x => x.status === 'dipesan' || x.status === 'diantar');
+    const selesai = semua.filter(x => x.status === 'dibayar' || x.status === 'batal');
+    document.getElementById('psHitungAktif').textContent = aktif.length + ' pesanan';
+    document.getElementById('psHitungSelesai').textContent = selesai.length ? selesai.length + '' : '';
+    const kartu = (x) => {
+      const chip = x.status === 'dipesan'
+        ? `<button type="button" class="ps-chip" onclick="majukanPesanan('${x.id}')">DIPESAN \u2192 antar</button>`
+        : x.status === 'diantar'
+          ? `<button type="button" class="ps-chip antar" onclick="catatJualPesanan('${x.id}')">DIANTAR \u2192 catat jualnya</button>`
+          : `<span class="ps-chip ${x.status}">${x.status.toUpperCase()}</span>`;
+      return `<div class="ps-kartu">
+        <div class="ps-atas"><b>${escapeHtml(x.namaPelanggan || '')}</b>${chip}</div>
+        <div class="ps-isi">${escapeHtml(x.isi || '')}</div>
+        ${x.alamat ? `<div class="ps-alamat">${escapeHtml(x.alamat)}</div>` : ''}
+        <div class="ps-kaki"><span>${escapeHtml(formatTanggal(x.tanggal))}${x.jam ? ' \u00b7 ' + x.jam : ''}</span>
+          <span class="ps-nilai">${x.nilaiPerkiraan ? 'perkiraan ' + formatRupiah(x.nilaiPerkiraan) : ''}</span>
+          ${x.trxIdJual ? `<span class="ps-tautan">Riwayat #${String(x.trxIdJual).slice(-4)}</span>` : ''}
+          ${(x.status === 'dipesan' || x.status === 'diantar') ? `<button type="button" class="ps-batal" onclick="batalkanPesanan('${x.id}')">batalkan</button>` : ''}
+        </div>
+      </div>`;
+    };
+    elA.innerHTML = aktif.length ? aktif.map(kartu).join('')
+      : '<div class="kosong-info"><b>Tidak ada pesanan berjalan</b><span>Pesanan baru dari formulir di atas muncul di sini begitu tersinkron.</span></div>';
+    document.getElementById('daftarPesananSelesai').innerHTML = selesai.length
+      ? selesai.slice(0, 20).map(kartu).join('')
+      : '<div class="kosong-info"><b>Belum ada</b></div>';
+  }
+
   // ============ G4: BATAS KREDIT (KR1) + JANJI BAYAR (KR2) ============
   // Keputusan pemilik: kredit hanya untuk pelanggan TERDAFTAR di buku Pelanggan,
   // batas = 2 x rata-rata belanja bulanan (90 hari terakhir / 3, semua cara bayar).
@@ -9307,6 +9564,18 @@
     if (potDipakai > 0) ket.push('potongan ' + formatRupiah(potDipakai));
     if (_lastKembalianInfo) { ket.push(_lastKembalianInfo); _lastKembalianInfo = ''; }
     ket.push('masuk Riwayat #' + String(trxId).slice(-4));
+    // Jembatan Pesanan (G5): keranjang ini dicatat DARI sebuah pesanan ->
+    // pesanan itu resmi DIBAYAR dan tertaut ke nomor transaksinya.
+    if (_pesananKeJual) {
+      const ps = ambilPesananDoc(_pesananKeJual);
+      if (ps) {
+        ps.status = 'dibayar'; ps.trxIdJual = trxId;
+        (ps.riwayatStatus = ps.riwayatStatus || []).push({ status: 'dibayar', pada: new Date().toISOString() });
+        try { await simpanKeFirestore(KOLEKSI_PESANAN, ps); } catch (e) { console.error(e); }
+        tulisPesananLokal(ps);
+      }
+      _pesananKeJual = null;
+    }
     tampilkanUrungkan({ id: trxId, _grup: items.map(x => x.trx) }, ket.join(' \u00b7 '), 'Keranjang tersimpan');
     wzReset();                                     // wizard pulang — deterministik, bukan lewat pengamat
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -11896,6 +12165,7 @@
       { koleksi: KOLEKSI_RETUR,          label: 'retur',              dok: tgl(ambilRetur()) },
       { koleksi: KOLEKSI_KARANTINA,      label: 'karantina',          dok: tgl(ambilKarantina()) },
       { koleksi: KOLEKSI_HARIAN,         label: 'pengeluaran harian', dok: tgl(ambilPengeluaranHarian()) },
+      { koleksi: KOLEKSI_PESANAN,        label: 'pesanan',            dok: tgl(ambilPesanan()) },
       { koleksi: KOLEKSI_BAHAN_KEMASAN,  label: 'bahan kemasan',      dok: tgl(ambilBahanKemasan()) },
       { koleksi: KOLEKSI_BAHAN_LITERAN,  label: 'bahan literan',      dok: tgl(ambilBahanLiteran()) },
       { koleksi: KOLEKSI_PIUTANG,        label: 'mutasi piutang',     dok: tgl(ambilPiutangMutasi()) },
@@ -12614,6 +12884,11 @@
         .forEach(x => daftarHp.push({ w: x.hari <= 2 ? 'var(--merah)' : 'var(--amber)',
           t: `${escapeHtml(x.merk)} diperkirakan ${kataHabis(x.hari)} — sisa ${Math.round(x.sisa)} kg, laju 14 hari`,
           h: 'input', a: 'Belanja' }));
+      // G5: pesanan berjalan — pengingat lembut supaya tidak ada janji antar terlupa
+      const psAktif = ambilPesanan().filter(x => x.status === 'dipesan' || x.status === 'diantar');
+      if (psAktif.length > 0) daftarHp.push({ w: 'var(--amber)',
+        t: `${psAktif.length} pesanan berjalan — ${escapeHtml(psAktif.slice(0, 2).map(x => x.namaPelanggan).join(', '))}${psAktif.length > 2 ? ', dll' : ''}`,
+        h: 'pesanan', a: 'Pesanan' });
       // KR2: janji bayar jatuh tempo — pengingat muncul PADA tanggalnya (dan sesudahnya
       // selama piutangnya masih bersisa). Janji terbaru per pelanggan yang dipakai.
       const janjiPer = {};
@@ -15661,6 +15936,11 @@
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
   window.wzBukaKreditSekali = wzBukaKreditSekali; window.wzPilihJanji = wzPilihJanji;
+  window.bukaTokoCocok = bukaTokoCocok; window.bukaTokoBeda = bukaTokoBeda;
+  window.bukaModalLoginToko = bukaModalLoginToko; window.bukaSetelPin = window.bukaSetelPin || bukaSetelPin;
+  window.unduhBackup = window.unduhBackup || unduhBackup;
+  window.simpanPesanan = simpanPesanan; window.majukanPesanan = majukanPesanan;
+  window.batalkanPesanan = batalkanPesanan; window.catatJualPesanan = catatJualPesanan;
   // Wizard pulang DIPANGGIL LANGSUNG oleh simpanKeranjangJual — observer kelas body
   // yang lama terlalu rakus: selama bilah urungkan tampil (5 dtk), mutasi kelas apa
   // pun ikut mereset, dan keranjang BERIKUTNYA yang sedang disusun buru-buru lenyap.
