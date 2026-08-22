@@ -20,9 +20,9 @@
 <meta name="apple-mobile-web-app-title" content="Toko M.IQBAL">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="description" content="Pembelian batch, repacking, penjualan, stok, dan laporan Toko Beras M.IQBAL.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<!-- CDN font DIBUANG 21 Agu 2026: Playfair sudah digantikan Prata yang
+     DI-EMBED (data-URI) sejak 6a. Tautan ini tinggal permintaan jaringan mati
+     tiap buka halaman — melanggar arsitektur tanpa-CDN & memperlambat saat sinyal jelek. -->
 <style>
   :root {
     /* ===== TEMA E "MEWAH" (2 Agustus 2026, pilihan My DeV dari mockup-sistem-mewah) =====
@@ -1709,15 +1709,35 @@
     transition: opacity var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
   body.lembar-merk-terbuka #overlayLembarMerk { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
+  /* Lembar merk: SATU penggulir untuk seluruh isi (dulu tiap daftar punya
+     penggulir sendiri 46vh — dua daftar = 92vh, lembarnya jadi LEBIH TINGGI
+     dari layar dan puncaknya menyembul ke balik poni, tak terjangkau sama
+     sekali; jempol yang menggulir malah menggerakkan daftar dalam. Temuan
+     pemilik 21 Agu 2026 dari layarnya sendiri.) */
   #lembarMerk {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 43;
     max-width: 680px; margin: 0 auto;
+    max-height: calc(90vh - env(safe-area-inset-top, 0px));
+    max-height: calc(90dvh - env(safe-area-inset-top, 0px));
+    display: flex; flex-direction: column;
     background: #15181c; border: 1px solid rgba(240, 226, 196, .14); border-bottom: none;
     border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgba(0, 0, 0, .6);
     padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
     transform: translateY(105%);
     transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
+  #lembarMerk .lm-pegangan, #lembarMerk h3, #lembarMerk .lmk-cari-wrap, #lembarMerk .lmk-tutup { flex: none; }
+  #lembarMerkIsi { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* Kotak cari — daftar merk toko ini 15+ nama, mengetik 2 huruf jauh lebih
+     cepat daripada menggulir saat mobil pemasok sedang menunggu. */
+  #lembarMerk .lmk-cari-wrap { position: relative; margin-bottom: 4px; }
+  #lembarMerk .lmk-cari { width: 100%; padding: 11px 34px 11px 13px; font-size: 15px; }
+  #lembarMerk .lmk-cari-hapus {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    width: 30px; height: 30px; border-radius: 50%; background: none; border: none;
+    color: var(--redup); font-family: inherit; font-size: 14px;
+  }
+  #lembarMerk .lmk-kosong { padding: 18px 4px; text-align: center; color: var(--redup); font-size: 12.5px; }
   body.lembar-merk-terbuka #lembarMerk { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
   #lembarMerk .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(228, 232, 234, .25); margin: 2px auto 12px; }
   #lembarMerk h3 {
@@ -1728,7 +1748,7 @@
     font-size: 9.5px; letter-spacing: 1.6px; text-transform: uppercase;
     color: var(--redup); font-weight: 700; padding: 12px 0 5px;
   }
-  #lembarMerk .lmk-daftar { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; }
+  #lembarMerk .lmk-daftar { display: flex; flex-direction: column; gap: 6px; }
   #lembarMerk .lmk-daftar button {
     display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px;
     padding: 8px 12px; border-radius: 11px; text-align: left;
@@ -3929,6 +3949,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 <div id="lembarMerk" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarMerkJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarMerkJudul">Pilih merk</h3>
+  <div class="lmk-cari-wrap">
+    <input type="text" id="lembarMerkCari" class="lmk-cari" placeholder="Cari merk — 2 huruf cukup" autocomplete="off" oninput="saringLembarMerk()">
+    <button type="button" class="lmk-cari-hapus" id="lembarMerkCariHapus" style="display:none;" onclick="kosongkanCariMerk()" aria-label="Hapus pencarian">✕</button>
+  </div>
   <div id="lembarMerkIsi"></div>
   <button type="button" class="lmk-tutup" onclick="tutupLembarMerk()">Batal</button>
 </div>
@@ -6129,7 +6153,51 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       '" data-merk="__lain__"><b>Ketik nama merk sendiri</b></button></div>';
 
     document.getElementById('lembarMerkIsi').innerHTML = html;
+    document.getElementById('lembarMerkCari').value = '';
+    document.getElementById('lembarMerkCariHapus').style.display = 'none';
+    saringLembarMerk();
     document.body.classList.add('lembar-merk-terbuka');
+    document.getElementById('lembarMerkIsi').scrollTop = 0;
+  }
+  // Saring merk tanpa membangun ulang daftar: tombol yang tidak cocok
+  // disembunyikan, judul grup yang kosong ikut hilang, dan "Ketik nama merk
+  // sendiri" SELALU tinggal — merk baru justru dicari lewat sana.
+  function saringLembarMerk() {
+    const kata = (document.getElementById('lembarMerkCari').value || '').trim().toLowerCase();
+    document.getElementById('lembarMerkCariHapus').style.display = kata ? 'block' : 'none';
+    const isi = document.getElementById('lembarMerkIsi');
+    let adaHasil = false;
+    isi.querySelectorAll('.lmk-daftar').forEach(daftar => {
+      let tampil = 0;
+      daftar.querySelectorAll('button[data-merk]').forEach(b => {
+        const nama = b.getAttribute('data-merk');
+        const cocok = !kata || nama === '__lain__' || nama.toLowerCase().indexOf(kata) >= 0;
+        b.style.display = cocok ? 'flex' : 'none';
+        if (cocok && nama !== '__lain__') tampil++;
+      });
+      const grup = daftar.previousElementSibling;
+      const grupTidakAdaDaftar = daftar.querySelector('button[data-merk="__lain__"]');
+      if (grup && grup.classList.contains('lmk-grup') && !grupTidakAdaDaftar) {
+        grup.style.display = tampil ? 'block' : 'none';
+        daftar.style.display = tampil ? 'flex' : 'none';
+      }
+      adaHasil = adaHasil || tampil > 0;
+    });
+    let kosong = isi.querySelector('.lmk-kosong');
+    if (!adaHasil && kata) {
+      if (!kosong) {
+        kosong = document.createElement('div');
+        kosong.className = 'lmk-kosong';
+        isi.insertBefore(kosong, isi.firstChild);
+      }
+      kosong.textContent = 'Tidak ada merk bernama "' + kata + '" — pakai "Ketik nama merk sendiri" di bawah.';
+      kosong.style.display = 'block';
+    } else if (kosong) kosong.style.display = 'none';
+  }
+  function kosongkanCariMerk() {
+    document.getElementById('lembarMerkCari').value = '';
+    saringLembarMerk();
+    document.getElementById('lembarMerkCari').focus();
   }
   document.getElementById('lembarMerkIsi').addEventListener('click', function (ev) {
     const tombol = ev.target.closest ? ev.target.closest('button[data-merk]') : null;
@@ -16810,6 +16878,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
   window.wzBukaKreditSekali = wzBukaKreditSekali; window.wzPilihJanji = wzPilihJanji;
+  window.saringLembarMerk = saringLembarMerk; window.kosongkanCariMerk = kosongkanCariMerk;
   window.kirimRekapHarianWa = kirimRekapHarianWa; window.kirimBelanjaWa = kirimBelanjaWa;
   window.perbaruiSetoranTutup = perbaruiSetoranTutup; window.kirimRekapTutupWa = kirimRekapTutupWa;
   window.bukaLembarHariRw = bukaLembarHariRw; window.tutupLembarHariRw = tutupLembarHariRw;
