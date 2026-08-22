@@ -2493,6 +2493,12 @@
   .lap-tabel thead th { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--redup); font-weight: 700; }
   .lap-tabel tfoot th { border-top: 1px solid var(--emas-gelap); border-bottom: none; color: var(--emas-terang); }
   .lap-tabel tr.lt-nol td { color: var(--redup); }
+  .lap-tombol {
+    width: 100%; min-height: 48px; margin: 10px 0 4px; border-radius: 12px;
+    background: linear-gradient(160deg, #fdf7e8, #e2cda6 52%, #bfa476); color: #231a08;
+    border: none; font-family: inherit; font-size: 14px; font-weight: 700;
+  }
+  @media print { .lap-tombol { display: none !important; } }
   .lap-baris.lb-naik .lb-angka { color: var(--emas-terang); }
   .lap-baris.lb-turun .lb-angka { color: #d3a08b; }
   .tren-svg { width: 100%; height: 96px; display: block; margin: 6px 0 2px; }
@@ -4714,14 +4720,30 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       <p class="keterangan" id="jatahCatatan" style="margin-top:8px;"></p>
     </div>
 
+    <!-- 1 — SISIHKAN DULU, baru hitung (urutan SOP catatan 31): uangnya benar-benar
+         dipindah ke amplop, supaya hitungan laci & amplop di langkah 2 sudah betul. -->
+    <div class="kartu" style="margin-top:12px;">
+      <div class="panel-kepala"><h2>1 · Sisihkan ke amplop laba</h2></div>
+      <label for="tutupSisihan">Dipindah laci &rarr; amplop (Rp) <span class="keterangan">— pindahkan uangnya dulu, baru hitung di langkah 2</span></label>
+      <div class="stepper-jumlah">
+        <button type="button" class="st-kurang" onclick="ubahJumlah('tutupSisihan', -25000)" aria-label="Kurangi">&minus;</button>
+        <input type="number" id="tutupSisihan" placeholder="0" inputmode="numeric" oninput="perbaruiSelisihTutup()">
+        <button type="button" class="st-tambah" onclick="ubahJumlah('tutupSisihan', 25000)" aria-label="Tambah">+</button>
+      </div>
+      <button type="button" class="pil-aksi" style="margin-top:8px;" onclick="isiJatahSisihan()">Isi jatah SOP Rp75.000</button>
+      <div class="pratinjau-harga" id="tutupSisihanInfo" style="margin-top:8px;"></div>
+    </div>
+
     <!-- 2 — hitung uang. Angka yang diisi di sini jadi patokan baru esok hari. -->
     <div class="kartu" style="margin-top:12px;">
-      <div class="panel-kepala"><h2>1 · Cocokkan kas</h2></div>
+      <div class="panel-kepala"><h2>2 · Cocokkan kas</h2></div>
       <div class="pratinjau-harga" id="tutupKasRingkas"></div>
       <label for="tutupLaci">Uang di laci sekarang (Rp)</label>
       <input type="number" id="tutupLaci" placeholder="0" inputmode="numeric" oninput="perbaruiSelisihTutup(); perbaruiSetoranTutup()">
       <label for="tutupRekening">Saldo rekening / e-wallet toko (Rp)</label>
       <input type="number" id="tutupRekening" placeholder="0" inputmode="numeric" oninput="perbaruiSelisihTutup(); perbaruiSetoranTutup()">
+      <label for="tutupAmplop">Uang di amplop laba (Rp) <span class="keterangan">— tetap uang toko, ikut dihitung</span></label>
+      <input type="number" id="tutupAmplop" placeholder="0" inputmode="numeric" oninput="perbaruiSelisihTutup()">
       <div class="pratinjau-harga" id="tutupSelisih" style="display:none;"></div>
       <div id="tutupAlasanBlok" style="display:none;">
         <label for="tutupAlasan">Kenapa selisih? <span class="keterangan">wajib diisi</span></label>
@@ -4731,20 +4753,20 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
     <!-- 1 — apa yang belum beres. Nol = boleh tidur tenang. -->
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
-      <div class="kd-judul"><h3>2 · Yang menggantung</h3><span class="kd-hitung" id="tutupGantungHitung"></span></div>
+      <div class="kd-judul"><h3>3 · Yang menggantung</h3><span class="kd-hitung" id="tutupGantungHitung"></span></div>
       <div id="tutupGantung"></div>
     </div>
 
     <!-- 3 — stok yang paling banyak bergerak hari ini = paling rawan melenceng. -->
     <div class="kartu" style="margin-top:12px;">
-      <div class="panel-kepala"><h2>3 · Opname singkat <span class="keterangan">stok paling bergerak, paling rawan meleset</span></h2></div>
+      <div class="panel-kepala"><h2>4 · Opname singkat <span class="keterangan">stok paling bergerak, paling rawan meleset</span></h2></div>
       <div id="tutupOpname"></div>
     </div>
 
     <!-- 4 — SETORAN KE OWNER (disetujui 21 Agu 2026): praktik malam sesungguhnya —
          isi laci disetor ke kantong owner, sisanya jadi kas awal besok. -->
     <div class="kartu" style="margin-top:12px;">
-      <div class="panel-kepala"><h2>4 · Setoran ke owner</h2></div>
+      <div class="panel-kepala"><h2>5 · Setoran ke owner</h2></div>
       <label for="tutupSetoran">Disetor dari laci (Rp) <span class="keterangan">— boleh Rp0 kalau malam ini tidak setor</span></label>
       <div class="stepper-jumlah">
         <button type="button" class="st-kurang" onclick="ubahJumlah('tutupSetoran', -100000)" aria-label="Kurangi">−</button>
@@ -4754,7 +4776,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       <div class="pratinjau-harga" id="tutupSetoranInfo" style="display:none;"></div>
     </div>
 
-    <button type="button" class="tombol-utama-kartu" style="margin-top:14px;" onclick="simpanTutupHari()">5 · Kunci hari &amp; catat</button>
+    <button type="button" class="tombol-utama-kartu" style="margin-top:14px;" onclick="simpanTutupHari()">6 · Kunci hari &amp; catat</button>
     <p class="keterangan" style="margin-top:8px;">Hitungan uang malam ini otomatis jadi patokan esok hari — selisih ketahuan harian, bukan menumpuk sebulan.</p>
   </div>
 
@@ -4858,6 +4880,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       <input type="number" id="kasTitikLaci" placeholder="0" inputmode="numeric">
       <label for="kasTitikRekening">Saldo rekening / e-wallet toko saat itu (Rp)</label>
       <input type="number" id="kasTitikRekening" placeholder="0" inputmode="numeric">
+      <label for="kasTitikAmplop">Uang di amplop laba saat itu (Rp) <span class="keterangan">— tetap uang toko, ikut dihitung</span></label>
+      <input type="number" id="kasTitikAmplop" placeholder="0" inputmode="numeric">
       <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanTitikKas()">Simpan titik hitung</button>
 
       <div id="kasHasilWrap" style="display:none; margin-top:14px;">
@@ -5627,6 +5651,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   const KOLEKSI_PELANGGAN_CAT = 'pelangganCatatan';
   const KOLEKSI_PESANAN = 'pesanan';   // G5 (disetujui pemilik 21 Agu 2026): BUKAN uang sampai dicatat jual
   const KOLEKSI_SETORAN = 'setoranKas'; // setoran malam ke kantong owner (disetujui 21 Agu 2026)
+  // AMPLOP LABA (23 Agu 2026) — buku besar pemindahan laci <-> amplop. Amplop adalah
+  // KANTONG KAS KETIGA (sesudah laci & rekening): isinya tetap uang toko, tetap aset.
+  // Karena itu pemindahannya PEMINDAHAN INTERNAL: total kas tidak berubah sepeser pun,
+  // jadi koleksi ini SENGAJA tidak pernah menyentuh hitungArusKasInti maupun Buku Kas.
+  const KOLEKSI_AMPLOP = 'amplopLaba';
   const KOLEKSI_THR = 'thrPelanggan';
   const KOLEKSI_PEMASOK_CAT = 'pemasokCatatan';
 
@@ -5652,6 +5681,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   let _cachePelangganCat = [];
   let _cachePesanan = [];
   let _cacheSetoran = [];
+  let _cacheAmplop = [];
   let _cacheThr = [];
   let _cachePemasokCat = [];
   let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false, piutang: false, kasbon: false };
@@ -5675,6 +5705,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   const KUNCI_PELANGGAN_CAT = 'miqbal_pelanggan_catatan_v1';
   const KUNCI_PESANAN = 'miqbal_pesanan_v1';
   const KUNCI_SETORAN = 'miqbal_setoran_kas_v1';
+  const KUNCI_AMPLOP = 'miqbal_amplop_laba_v1';
   const KUNCI_JENIS_BERAS = 'miqbal_jenis_beras_v1';
   const KUNCI_THR = 'miqbal_thr_pelanggan_v1';
   const KUNCI_PEMASOK_CAT = 'miqbal_pemasok_catatan_v1';
@@ -6851,6 +6882,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (document.getElementById('halamanAruskas').classList.contains('tampil')) tampilkanArusKas();
   }, 'id', 'setoranKas');
 
+  pasangSinkronisasi(KOLEKSI_AMPLOP, KUNCI_AMPLOP, (d) => { _cacheAmplop = d; }, () => {
+    if (document.getElementById('halamanTutup').classList.contains('tampil')) tampilkanTutupHari();
+    if (document.getElementById('halamanAruskas').classList.contains('tampil')) tampilkanArusKas();
+  }, 'id', 'amplopLaba');
+
   pasangSinkronisasi(KOLEKSI_THR, KUNCI_THR, (d) => { _cacheThr = d; }, () => {
     if (document.getElementById('halamanPelanggan').classList.contains('tampil')) tampilkanPelanggan();
   }, 'id', 'thr');
@@ -7023,6 +7059,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       pemasokCatatan: ambilPemasokCatatan(),
       pesanan: ambilPesanan(),
       setoranKas: ambilSetoranKas(),
+      amplopLaba: ambilAmplopLaba(),
       // Peta merk->jenis beras (dok pengaturan, bukan koleksi ber-id) — audit 14 Agu
       // 2026: sebelumnya tidak ikut backup, pulihkan-dari-file membuat petanya kosong.
       petaJenisBeras: ambilPetaJenisBeras()
@@ -7074,6 +7111,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
           { kunci: 'pelangganCatatan',    koleksi: KOLEKSI_PELANGGAN_CAT, ada: ambilPelangganCatatan(), field: 'id',    label: 'catatan pelanggan' },
           { kunci: 'pesanan',             koleksi: KOLEKSI_PESANAN,       ada: ambilPesanan(),          field: 'id',    label: 'pesanan' },
           { kunci: 'setoranKas',          koleksi: KOLEKSI_SETORAN,       ada: ambilSetoranKas(),       field: 'id',    label: 'setoran kas' },
+          { kunci: 'amplopLaba',          koleksi: KOLEKSI_AMPLOP,        ada: ambilAmplopLaba(),       field: 'id',    label: 'amplop laba' },
           { kunci: 'thrPelanggan',        koleksi: KOLEKSI_THR,           ada: ambilThrPelanggan(),     field: 'id',    label: 'THR pelanggan' },
           { kunci: 'pemasokCatatan',      koleksi: KOLEKSI_PEMASOK_CAT,   ada: ambilPemasokCatatan(),   field: 'id',    label: 'catatan pemasok' }
         ];
@@ -8024,6 +8062,33 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (_cacheSetoran.length > 0) return _cacheSetoran;
     const data = localStorage.getItem(KUNCI_SETORAN);
     return data ? JSON.parse(data) : [];
+  }
+  function ambilAmplopLaba() {
+    if (_cacheAmplop.length > 0) return _cacheAmplop;
+    const data = localStorage.getItem(KUNCI_AMPLOP);
+    return data ? JSON.parse(data) : [];
+  }
+  // Saldo amplop DITURUNKAN dari mutasinya, tidak pernah disimpan sebagai angka jadi —
+  // pola yang sama dengan piutang, kasbon, dan stok. Angka jadi bisa melenceng diam-diam;
+  // angka turunan tidak bisa.
+  function saldoAmplop(sampaiIso) {
+    return ambilAmplopLaba().reduce((a, x) => {
+      if (sampaiIso && String(x.tanggal || '') > sampaiIso) return a;
+      return a + (x.tipe === 'ambil' ? -(x.nominal || 0) : (x.nominal || 0));
+    }, 0);
+  }
+  function mutasiAmplopRentang(dariIso, sampaiIso) {
+    const isi = ambilAmplopLaba().filter(x => x.tanggal >= dariIso && x.tanggal <= sampaiIso);
+    const setor = isi.filter(x => x.tipe !== 'ambil').reduce((a, x) => a + (x.nominal || 0), 0);
+    const ambil = isi.filter(x => x.tipe === 'ambil').reduce((a, x) => a + (x.nominal || 0), 0);
+    return { isi, setor, ambil, bersih: setor - ambil };
+  }
+  async function catatAmplop(tipe, nominal, catatan, tanggal, id) {
+    const iso = tanggal || tanggalLokalIso();
+    await simpanKeFirestore(KOLEKSI_AMPLOP, {
+      id: id || idUnik(), tanggal: iso, jam: new Date().toTimeString().slice(0, 5),
+      tipe: tipe === 'ambil' ? 'ambil' : 'setor', nominal: Math.round(nominal), catatan: catatan || ''
+    });
   }
   function ambilPemasokCatatan() {
     if (_cachePemasokCat.length > 0) return _cachePemasokCat;
@@ -9155,7 +9220,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const kini = isoKeTanggal(tanggalLokalIso());
     const nHari = Math.min(30, Math.max(1, Math.round((kini - mulai) / 86400000))) + 1;
     const gerakan = daftarGerakanKas();
-    let saldo = (t.laci || 0) + (t.rekening || 0);
+    let saldo = (t.laci || 0) + (t.rekening || 0) + (t.amplop || 0);
     const titik = [];
     for (let i = 0; i < nHari; i++) {
       const d = new Date(mulai); d.setDate(d.getDate() + i);
@@ -12056,9 +12121,12 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const tanggal = document.getElementById('kasTitikTanggal').value;
     const laci = parseFloat(document.getElementById('kasTitikLaci').value) || 0;
     const rekening = parseFloat(document.getElementById('kasTitikRekening').value) || 0;
+    // Dokumen titik lama tidak punya field amplop — dibaca (t.amplop || 0) = 0 di mana pun,
+    // dan yang baru SELALU menulis angka (0 pun), tidak pernah undefined (Firestore menolak).
+    const amplop = parseFloat(document.getElementById('kasTitikAmplop').value) || 0;
     if (!tanggal) { alert('Pilih tanggal penghitungannya dulu.'); return; }
-    if (laci <= 0 && rekening <= 0) { alert('Isi minimal salah satu: uang laci atau saldo rekening.'); return; }
-    const data = { id: 'titikKas', tanggal, laci, rekening, diubahPada: new Date().toISOString() };
+    if (laci <= 0 && rekening <= 0 && amplop <= 0) { alert('Isi minimal salah satu: uang laci, saldo rekening, atau amplop laba.'); return; }
+    const data = { id: 'titikKas', tanggal, laci, rekening, amplop, diubahPada: new Date().toISOString() };
     localStorage.setItem(KUNCI_TITIK_KAS, JSON.stringify(data));
     try { await simpanKeFirestore('pengaturan', data); } catch (e) { console.error(e); }
     tampilkanCocokKas();
@@ -12082,7 +12150,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
     const hariIni = tanggalLokalIso();
     const g = hitungArusKasSejak(t.tanggal, hariIni);
-    const awal = (t.laci || 0) + (t.rekening || 0);
+    const awal = (t.laci || 0) + (t.rekening || 0) + (t.amplop || 0);
     const seharusnya = awal + g.totalMasuk - g.totalKeluar;
     wrap.dataset.seharusnya = String(seharusnya);
 
@@ -12151,7 +12219,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     // penutupan dikerjakan dini hari, arus kas dihitung sampai akhir hari itu, bukan
     // sampai hari baru yang belum jalan.
     const g = hitungArusKasSejak(t.tanggal, tanggalTutupAktif());
-    return (t.laci || 0) + (t.rekening || 0) + g.totalMasuk - g.totalKeluar;
+    return (t.laci || 0) + (t.rekening || 0) + (t.amplop || 0) + g.totalMasuk - g.totalKeluar;
   }
 
   // Hari BERJUALAN yang tidak pernah ditutup, 7 hari terakhir, HARI INI TIDAK DIHITUNG —
@@ -12199,7 +12267,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (sudah) {
       document.getElementById('tutupSudahJudul').textContent = 'Hari ini sudah ditutup jam ' + (sudah.jam || '');
       document.getElementById('tutupSudahKet').textContent =
-        'Kas tercatat ' + formatRupiah((sudah.kasFisikLaci || 0) + (sudah.kasFisikRekening || 0))
+        'Kas tercatat ' + formatRupiah((sudah.kasFisikLaci || 0) + (sudah.kasFisikRekening || 0) + (sudah.kasFisikAmplop || 0))
         + (sudah.selisih ? ' · selisih ' + (sudah.selisih > 0 ? 'lebih ' : 'kurang ') + formatRupiah(Math.abs(sudah.selisih)) : ' · cocok persis')
         + '. Menutup lagi akan menimpa catatan itu dan memajukan patokan kas sekali lagi.';
     }
@@ -12257,7 +12325,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     } else {
       const g = hitungArusKasSejak(t.tanggal, hariIni);
       rk.innerHTML =
-        `<div class="ph-baris"><span>Patokan ${escapeHtml(formatTanggal(t.tanggal))}</span><b>${formatRupiah((t.laci || 0) + (t.rekening || 0))}</b></div>` +
+        `<div class="ph-baris"><span>Patokan ${escapeHtml(formatTanggal(t.tanggal))}</span><b>${formatRupiah((t.laci || 0) + (t.rekening || 0) + (t.amplop || 0))}</b></div>` +
         `<div class="ph-baris"><span>Masuk sesudahnya</span><b class="ph-hijau">+ ${formatRupiah(g.totalMasuk)}</b></div>` +
         `<div class="ph-baris"><span>Keluar sesudahnya</span><b class="ph-merah">− ${formatRupiah(g.totalKeluar)}</b></div>` +
         `<div class="ph-baris"><span><b>Seharusnya ada sekarang</b></span><b>${formatRupiah(seharusnya)}</b></div>`;
@@ -12323,8 +12391,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const seharusnya = kasSeharusnyaSekarang();
     const laci = document.getElementById('tutupLaci').value;
     const rek = document.getElementById('tutupRekening').value;
-    if (laci === '' && rek === '') { el.style.display = 'none'; blok.style.display = 'none'; return; }
-    const total = (parseFloat(laci) || 0) + (parseFloat(rek) || 0);
+    const amp = document.getElementById('tutupAmplop').value;
+    perbaruiSisihanTutup();
+    if (laci === '' && rek === '' && amp === '') { el.style.display = 'none'; blok.style.display = 'none'; return; }
+    // Amplop ikut dijumlah: isinya uang toko, cuma beda kantong (23 Agu 2026).
+    const total = (parseFloat(laci) || 0) + (parseFloat(rek) || 0) + (parseFloat(amp) || 0);
     if (seharusnya === null) {
       el.style.display = 'block';
       el.innerHTML = `<div class="ph-baris"><span>Jadi patokan baru</span><b>${formatRupiah(total)}</b></div>`;
@@ -12338,15 +12409,44 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     blok.style.display = beda === 0 ? 'none' : 'block';
   }
 
+  // Pratinjau langkah 1 + penjaga kejujuran amplop: buku besar vs hitungan fisik.
+  // Kalau beda, DISEBUT — bukan didiamkan lalu jadi selisih misterius berbulan-bulan.
+  function perbaruiSisihanTutup() {
+    const el = document.getElementById('tutupSisihanInfo');
+    if (!el) return;
+    const hariIni = tanggalTutupAktif();
+    const sisihan = Math.max(0, Math.round(parseFloat(document.getElementById('tutupSisihan').value) || 0));
+    const sebelum = saldoAmplop(hariIni);
+    const bukuBesar = sebelum + sisihan;
+    const fisikTeks = document.getElementById('tutupAmplop').value;
+    let html = `<div class="ph-baris"><span>Isi amplop menurut catatan</span><b>${formatRupiah(sebelum)}</b></div>`;
+    if (sisihan > 0) html += `<div class="ph-baris"><span>Disisihkan malam ini</span><b class="ph-hijau">+ ${formatRupiah(sisihan)}</b></div>`;
+    html += `<div class="ph-baris"><span><b>Seharusnya di amplop</b></span><b>${formatRupiah(bukuBesar)}</b></div>`;
+    if (fisikTeks !== '') {
+      const beda = Math.round((parseFloat(fisikTeks) || 0) - bukuBesar);
+      html += beda === 0
+        ? '<div class="ph-catatan">Hitungan amplop cocok dengan catatan.</div>'
+        : `<div class="ph-catatan ph-amber">Amplop dihitung ${formatRupiah(parseFloat(fisikTeks) || 0)} — ${beda > 0 ? 'LEBIH' : 'KURANG'} ${formatRupiah(Math.abs(beda))} dari catatan. Periksa: uangnya sudah benar-benar dipindah? Atau ada yang diambil tanpa dicatat?</div>`;
+    } else {
+      html += '<div class="ph-catatan">Pindahkan uangnya ke amplop sekarang, lalu hitung isinya di langkah 2.</div>';
+    }
+    el.innerHTML = html;
+  }
+  function isiJatahSisihan() {
+    document.getElementById('tutupSisihan').value = SISIHAN_LABA_HARI;
+    perbaruiSelisihTutup();
+  }
+
   async function simpanTutupHari() {
     const hariIni = tanggalTutupAktif();
     const laci = document.getElementById('tutupLaci').value;
     const rek = document.getElementById('tutupRekening').value;
-    if (laci === '' && rek === '') { alert('Hitung uangnya dulu — isi uang di laci dan saldo rekening.'); return; }
-    const nLaci = parseFloat(laci) || 0, nRek = parseFloat(rek) || 0;
-    if (nLaci < 0 || nRek < 0) { alert('Jumlah uang tidak mungkin negatif.'); return; }
+    const amp = document.getElementById('tutupAmplop').value;
+    if (laci === '' && rek === '' && amp === '') { alert('Hitung uangnya dulu — isi uang di laci dan saldo rekening.'); return; }
+    const nLaci = parseFloat(laci) || 0, nRek = parseFloat(rek) || 0, nAmplop = parseFloat(amp) || 0;
+    if (nLaci < 0 || nRek < 0 || nAmplop < 0) { alert('Jumlah uang tidak mungkin negatif.'); return; }
     const seharusnya = kasSeharusnyaSekarang();
-    const selisih = seharusnya === null ? 0 : Math.round((nLaci + nRek) - seharusnya);
+    const selisih = seharusnya === null ? 0 : Math.round((nLaci + nRek + nAmplop) - seharusnya);
     const alasan = document.getElementById('tutupAlasan').value.trim();
     if (selisih !== 0 && !alasan) { alert('Selisih ' + formatRupiah(Math.abs(selisih)) + ' harus ada keterangannya — supaya bisa ditelusuri nanti.'); return; }
 
@@ -12354,6 +12454,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (sudah && !confirm('Hari ini sudah pernah ditutup jam ' + (sudah.jam || '') + '.\n\nMenutup lagi menimpa catatan itu dan memajukan patokan kas sekali lagi. Lanjutkan?')) return;
 
     // SETORAN (langkah 4): dari laci, sisa jadi kas awal besok (disetujui 21 Agu 2026)
+    const sisihan = Math.max(0, Math.round(parseFloat(document.getElementById('tutupSisihan').value) || 0));
     const setoran = Math.max(0, Math.round(parseFloat(document.getElementById('tutupSetoran').value) || 0));
     if (setoran > nLaci) { alert('Setoran ' + formatRupiah(setoran) + ' melebihi isi laci ' + formatRupiah(nLaci) + '.'); return; }
     const rapikan = daftarPerluRapikan().length;
@@ -12371,7 +12472,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       omzet: jual.reduce((a, p) => a + (p.hargaTotal || 0), 0),
       jumlahTransaksi: jual.length,
       kasSeharusnya: seharusnya === null ? null : Math.round(seharusnya),
-      kasFisikLaci: nLaci, kasFisikRekening: nRek,
+      kasFisikLaci: nLaci, kasFisikRekening: nRek, kasFisikAmplop: nAmplop,
       selisih, alasanSelisih: alasan,
       setoranOwner: setoran, kasAwalBesokLaci: nLaci - setoran,
       menggantung: { rapikanKasir: rapikan, daruratBelumRinci: darurat }
@@ -12383,10 +12484,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     await simpanKeFirestore(KOLEKSI_SETORAN, {
       id: 'st-' + hariIni, tanggal: hariIni, jam, nominal: setoran, catatan: 'Tutup hari'
     });
+    // Sisihan malam ini = pemindahan internal laci -> amplop. id deterministik per
+    // tanggal supaya menutup ulang MENIMPA, bukan menumpuk (pelajaran bug setoran dobel).
+    // Nominal 0 pun ditulis, supaya koreksi tutup-ulang ikut menetralkan yang lama.
+    await catatAmplop('setor', sisihan, 'Sisihan tutup hari', hariIni, 'am-' + hariIni);
     // Patokan kas maju ke hitungan malam ini — inti ritualnya. Tanpa ini, selisih
     // menumpuk berbulan-bulan sampai tidak ada yang bisa menelusurinya lagi.
     // Patokan besok = laci SESUDAH setoran + rekening — persis isi laci esok pagi.
-    const titik = { id: 'titikKas', tanggal: hariIni, laci: nLaci - setoran, rekening: nRek, diubahPada: new Date().toISOString() };
+    const titik = { id: 'titikKas', tanggal: hariIni, laci: nLaci - setoran, rekening: nRek, amplop: nAmplop, diubahPada: new Date().toISOString() };
     localStorage.setItem(KUNCI_TITIK_KAS, JSON.stringify(titik));
     try { await simpanKeFirestore('pengaturan', titik); } catch (e) { console.error(e); }
 
@@ -12394,10 +12499,12 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     document.getElementById('tutupRekening').value = '';
     document.getElementById('tutupAlasan').value = '';
     document.getElementById('tutupSetoran').value = '';
+    document.getElementById('tutupAmplop').value = '';
+    document.getElementById('tutupSisihan').value = '';
     tampilkanTutupHari();
-    alert('Hari ' + formatTanggal(hariIni) + ' dikunci. Kas fisik ' + formatRupiah(nLaci + nRek)
+    alert('Hari ' + formatTanggal(hariIni) + ' dikunci. Kas fisik ' + formatRupiah(nLaci + nRek + nAmplop)
       + (selisih === 0 ? ' — cocok persis.' : ' · selisih ' + (selisih > 0 ? 'lebih ' : 'kurang ') + formatRupiah(Math.abs(selisih)) + '.')
-      + (setoran > 0 ? '\nDisetor ke owner ' + formatRupiah(setoran) + ' — kas awal besok ' + formatRupiah(nLaci - setoran + nRek) + '.' : '\nKas awal besok ' + formatRupiah(nLaci + nRek) + '.')
+      + (setoran > 0 ? '\nDisetor ke owner ' + formatRupiah(setoran) + ' — kas awal besok ' + formatRupiah(nLaci - setoran + nRek + nAmplop) + '.' : '\nKas awal besok ' + formatRupiah(nLaci + nRek + nAmplop) + '.')
       + '\nKirim rekap WA lewat tombol di atas kalau perlu.');
   }
 
@@ -12422,10 +12529,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const b = [];
     b.push('*Rekap Toko Beras M.IQBAL — ' + formatTanggal(dok.tanggal) + '*');
     b.push('Omzet: ' + formatRupiah(dok.omzet || 0) + ' (' + (dok.jumlahTransaksi || 0) + ' trx)');
-    b.push('Kas fisik: ' + formatRupiah((dok.kasFisikLaci || 0) + (dok.kasFisikRekening || 0)));
+    b.push('Kas fisik: ' + formatRupiah((dok.kasFisikLaci || 0) + (dok.kasFisikRekening || 0) + (dok.kasFisikAmplop || 0)));
+    if (dok.kasFisikAmplop) b.push('  — di amplop laba: ' + formatRupiah(dok.kasFisikAmplop));
     if (dok.selisih) b.push('Selisih: ' + (dok.selisih > 0 ? '+' : '') + formatRupiah(dok.selisih) + (dok.alasanSelisih ? ' (' + dok.alasanSelisih + ')' : ''));
     if (dok.setoranOwner) b.push('Disetor ke owner: ' + formatRupiah(dok.setoranOwner));
-    b.push('Kas awal besok: ' + formatRupiah((dok.kasAwalBesokLaci != null ? dok.kasAwalBesokLaci : dok.kasFisikLaci || 0) + (dok.kasFisikRekening || 0)));
+    b.push('Kas awal besok: ' + formatRupiah((dok.kasAwalBesokLaci != null ? dok.kasAwalBesokLaci : dok.kasFisikLaci || 0) + (dok.kasFisikRekening || 0) + (dok.kasFisikAmplop || 0)));
     b.push('Dikunci ' + (dok.jam || ''));
     window.open('https://wa.me/?text=' + encodeURIComponent(b.join('\n')), '_blank');
   }
@@ -12437,7 +12545,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const semua = daftarGerakanKas();
     // Saldo berjalan dihitung SEKALI menyeluruh dari titik hitung, lalu bulan yang
     // dipilih cuma jendelanya — kalau dihitung per bulan, saldo awal bulan jadi tebakan.
-    let saldo = t ? (t.laci || 0) + (t.rekening || 0) : null;
+    let saldo = t ? (t.laci || 0) + (t.rekening || 0) + (t.amplop || 0) : null;
     semua.forEach(r => {
       if (t && r.t > t.tanggal) { saldo += r.masuk - r.keluar; r.saldo = saldo; }
       else r.saldo = null;
@@ -12449,6 +12557,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       document.getElementById('kasSekarangNilai').innerHTML = angkaUtamaHtml(saldo);
       document.getElementById('kasSekarangSyarat').textContent =
         'Titik ' + formatTanggal(t.tanggal) + ': laci ' + formatRupiah(t.laci || 0) + ' \u00b7 rekening ' + formatRupiah(t.rekening || 0)
+        + ' \u00b7 amplop ' + formatRupiah(t.amplop || 0)
         + '. Sesudahnya bercampur \u2014 pisah per kanal hanya diketahui saat titik.';
     } else {
       wrap.style.display = 'none';
@@ -12789,7 +12898,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const t = ambilTitikKas();
     if (!t) return null;
     if (sampaiTgl && sampaiTgl < t.tanggal) return null;   // mundur dari titik = tidak tahu, bukan menebak
-    let saldo = (t.laci || 0) + (t.rekening || 0);
+    let saldo = (t.laci || 0) + (t.rekening || 0) + (t.amplop || 0);
     daftarGerakanKas().forEach(r => {
       if (r.t > t.tanggal && (!sampaiTgl || r.t <= sampaiTgl)) saldo += r.masuk - r.keluar;
     });
@@ -13166,6 +13275,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       { koleksi: KOLEKSI_HARIAN,         label: 'pengeluaran harian', dok: tgl(ambilPengeluaranHarian()) },
       { koleksi: KOLEKSI_PESANAN,        label: 'pesanan',            dok: tgl(ambilPesanan()) },
       { koleksi: KOLEKSI_SETORAN,        label: 'setoran kas',        dok: tgl(ambilSetoranKas()) },
+      { koleksi: KOLEKSI_AMPLOP,         label: 'amplop laba',        dok: tgl(ambilAmplopLaba()) },
       { koleksi: KOLEKSI_BAHAN_KEMASAN,  label: 'bahan kemasan',      dok: tgl(ambilBahanKemasan()) },
       { koleksi: KOLEKSI_BAHAN_LITERAN,  label: 'bahan literan',      dok: tgl(ambilBahanLiteran()) },
       { koleksi: KOLEKSI_PIUTANG,        label: 'mutasi piutang',     dok: tgl(ambilPiutangMutasi()) },
@@ -13569,7 +13679,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     // saldo awal bulannya jadi tebakan.
     const titik = ambilTitikKas();
     const semuaGerak = daftarGerakanKas();
-    let saldo = titik ? (titik.laci || 0) + (titik.rekening || 0) : null;
+    let saldo = titik ? (titik.laci || 0) + (titik.rekening || 0) + (titik.amplop || 0) : null;
     semuaGerak.forEach(r => {
       if (titik && r.t > titik.tanggal) { saldo += r.masuk - r.keluar; r.saldo = saldo; }
       else r.saldo = null;
@@ -13590,6 +13700,39 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     // piutangnya sebesar itu waktu itu.
     const piutang = hitungPiutang().filter(p => p.sisa > 0);
     const totalPiutang = piutang.reduce((a, p) => a + p.sisa, 0);
+    // ===== AMPLOP LABA (23 Agustus 2026) =====
+    // Menyisihkan uang BUKAN berarti uang itu jadi laba: amplop cuma TEMPAT UANG, laba
+    // hasil hitungan omzet − HPP − biaya. Blok ini mempertemukan keduanya: berapa laba
+    // bersih bulan ini, berapa yang sudah masuk amplop, dan apa yang harus dilakukan.
+    const amp = mutasiAmplopRentang(bl + '-01', akhirBulanIso(bl));
+    const selisihAmplop = labaBersih - amp.bersih;
+    const saldoAmp = saldoAmplop();
+    const kosongAmp = posBulananKosong(bl);
+    bagian.push(`<div class="lap-bagian"><h2>Amplop Laba</h2>
+      ${barisLap('Laba bersih bulan ini', 'margin kotor − biaya toko' + (totalHapus > 0 ? ' − hapus buku' : ''), labaBersih)}
+      ${barisLap('Disisihkan ke amplop bulan ini', amp.ambil > 0 ? 'setor ' + formatRupiah(amp.setor) + ' − diambil ' + formatRupiah(amp.ambil) : amp.isi.length + ' kali setor', amp.bersih)}
+      ${barisLap('Selisih', 'laba bersih dikurangi yang disisihkan', selisihAmplop, 'lb-jumlah')}
+      ${barisLap('Saldo amplop sekarang', 'seluruh riwayat sampai hari ini', saldoAmp)}
+      <div class="lap-catatan${selisihAmplop === 0 ? '' : ' lap-peringatan'}">${
+        selisihAmplop > 0
+          ? `<b>Pindahkan ${formatRupiah(selisihAmplop)} dari laci ke amplop</b> supaya isi amplop sama dengan laba bulan ini.`
+          : (selisihAmplop < 0
+            ? `<b>Amplop kelebihan ${formatRupiah(-selisihAmplop)}</b> — itu modal kerja, kembalikan ke laci.`
+            : 'Amplop sudah pas dengan laba bulan ini.')
+      }${labaBersih < 0 ? ' Laba bulan ini MINUS — jangan menyisihkan apa pun; yang perlu dicari dulu sebabnya.' : ''}</div>
+      ${kosongAmp.kosong.length ? `<div class="lap-catatan lap-peringatan">Pos bulanan masih kosong: ${kosongAmp.kosong.map(escapeHtml).join(', ')}. Laba bersih di atas <b>lebih besar dari sebenarnya</b> — jangan menyisihkan uang berdasarkan angka ini sebelum pos itu diisi.</div>` : ''}
+      ${selisihAmplop !== 0 && labaBersih >= 0
+        ? `<button type="button" class="lap-tombol" onclick="tawarkanSelaraskanAmplop('${bl}')">Catat pemindahan ${formatRupiah(Math.abs(selisihAmplop))} ${selisihAmplop > 0 ? 'laci → amplop' : 'amplop → laci'}</button>`
+        : ''}
+      ${amp.isi.length
+        ? '<div class="lap-gulir"><table class="lap-tabel"><thead><tr><th>Tanggal</th><th>Jenis</th><th>Nominal (Rp)</th><th>Catatan</th></tr></thead><tbody>'
+          + amp.isi.slice().sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))).map(x =>
+            `<tr><td>${escapeHtml(formatTanggal(x.tanggal))}</td><td>${x.tipe === 'ambil' ? 'ambil' : 'setor'}</td><td>${(x.tipe === 'ambil' ? '−' : '')}${formatRupiah(x.nominal || 0).replace('Rp', '')}</td><td>${escapeHtml(x.catatan || '')}</td></tr>`).join('')
+          + '</tbody></table></div>'
+        : '<div class="lap-kosong">Belum ada pemindahan ke amplop bulan ini.</div>'}
+      <div class="lap-catatan">Amplop adalah kantong kas ketiga sesudah laci dan rekening — isinya <b>tetap uang toko</b>. Memindahkannya bukan biaya dan bukan pemasukan, jadi tidak menyentuh arus kas maupun laba.</div>
+    </div>`);
+
     bagian.push(`<div class="lap-bagian"><h2>Piutang belum tertagih</h2>
       ${piutang.length === 0
         ? '<div class="lap-kosong">Tidak ada piutang yang belum tertagih.</div>'
@@ -13839,6 +13982,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
           barisLap('Kas seharusnya', 'hitungan sistem saat ditutup', t.kasSeharusnya === null || t.kasSeharusnya === undefined ? '—' : t.kasSeharusnya),
           barisLap('Kas fisik — laci', '', t.kasFisikLaci || 0),
           barisLap('Kas fisik — rekening / e-wallet', '', t.kasFisikRekening || 0),
+          barisLap('Kas fisik — amplop laba', 'tetap uang toko', t.kasFisikAmplop || 0),
           barisLap('Selisih', t.selisih === 0 ? 'cocok persis' : ((t.selisih > 0 ? 'lebih' : 'kurang') + (t.alasanSelisih ? ' — ' + t.alasanSelisih : '')), t.selisih || 0, t.selisih === 0 ? '' : 'lb-turun'),
           barisLap('Setoran ke owner', '', -(t.setoranOwner || 0)),
           barisLap('Kas awal besok (laci)', 'laci sesudah setoran', t.kasAwalBesokLaci === undefined ? '—' : t.kasAwalBesokLaci),
@@ -13982,6 +14126,34 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const LT = hitungLabaBersihRentang(tahun + '-01-01', tahun + '-12-31', bayaran);
     banding('tahun laba bersih (rentang utuh vs Σ bulan)', LT.labaBersih, T.labaBersih);
     return { tahun, nMinggu, nBulan: 12, nHari: Object.keys(cacheHari).length, selisih, lulus: selisih.length === 0 };
+  }
+
+  // MENAWARKAN pencatatan pemindahan sebesar selisih. Uang tidak pernah dicatat tanpa
+  // persetujuan: konfirmasi menyebut nominal, arah, dan tanggalnya. Tanggal dokumen =
+  // akhir bulan yang diselaraskan (bukan hari ini) supaya bulan itu tertutup rapi —
+  // aman dilakukan karena amplop memang tidak menyentuh arus kas sama sekali.
+  async function tawarkanSelaraskanAmplop(bl) {
+    const bersih = hitungLabaBersihRentang(bl + '-01', akhirBulanIso(bl));
+    const amp = mutasiAmplopRentang(bl + '-01', akhirBulanIso(bl));
+    const selisih = bersih.labaBersih - amp.bersih;
+    if (selisih === 0) { alert('Amplop sudah pas dengan laba ' + namaBulanPanjang(bl + '-01') + '.'); return; }
+    const hariIni = tanggalLokalIso();
+    const akhir = akhirBulanIso(bl);
+    const tanggal = akhir > hariIni ? hariIni : akhir;
+    const kePindah = Math.abs(selisih);
+    const arah = selisih > 0 ? 'laci → amplop' : 'amplop → laci';
+    if (!confirm('Catat pemindahan ' + formatRupiah(kePindah) + ' (' + arah + ')\n'
+      + 'bertanggal ' + formatTanggal(tanggal) + ', untuk menyelaraskan amplop dengan laba '
+      + namaBulanPanjang(bl + '-01') + '.\n\nPindahkan uangnya sungguhan dulu, baru tekan OK.')) return;
+    await catatAmplop(selisih > 0 ? 'setor' : 'ambil', kePindah,
+      'Selaras laba ' + namaBulanPanjang(bl + '-01'), tanggal);
+    gambarLaporan();
+    // Dokumen uang baru muncul sesudah benar-benar tersimpan (arsitektur sistem ini).
+    // Saat offline ia menunggu di antrean — jangan mengaku "tercatat" dengan saldo lama.
+    const tertunda = ambilAntreanTunda().some(q => q.koleksi === KOLEKSI_AMPLOP);
+    alert(tertunda
+      ? 'Tersimpan di HP — catatan pemindahan ' + formatRupiah(kePindah) + ' menyusul ke server begitu ada sinyal, lalu saldo amplop ikut berubah.'
+      : 'Tercatat. Saldo amplop sekarang ' + formatRupiah(saldoAmplop()) + '.');
   }
 
   // Laporan yang sedang terbuka ikut tergambar ulang saat data berubah dari perangkat
@@ -17326,6 +17498,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.langkahLaporan = langkahLaporan;
   window.ujiKonsistensiLaporan = ujiKonsistensiLaporan;
   window.segarkanLaporanJikaTerbuka = segarkanLaporanJikaTerbuka;
+  window.tawarkanSelaraskanAmplop = tawarkanSelaraskanAmplop;
+  window.isiJatahSisihan = isiJatahSisihan;
+  window.perbaruiSisihanTutup = perbaruiSisihanTutup;
   window.cetakLaporan = cetakLaporan;
   window.perbaruiOpnameBahan = perbaruiOpnameBahan;
   window.simpanOpnameBahan = simpanOpnameBahan;
@@ -17556,7 +17731,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     // Cermin persis hero Buku Kas: saldo titik + gerakan SESUDAH titik. null = belum bisa dihitung.
     const t = ambilTitikKas();
     if (!t) return null;
-    let saldo = (t.laci || 0) + (t.rekening || 0);
+    let saldo = (t.laci || 0) + (t.rekening || 0) + (t.amplop || 0);
     daftarGerakanKas().forEach(r => { if (r.t > t.tanggal) saldo += r.masuk - r.keluar; });
     return saldo;
   }
