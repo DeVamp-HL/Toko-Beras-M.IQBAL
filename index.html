@@ -11701,7 +11701,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     // Tiap pos biaya bulanan lewat predikat yang sama persis dengan penjualan, belanja,
     // dan lainnya — tidak ada lagi perlakuan khusus. Pos tanpa tanggal tidak akan pernah
     // cocok, jadi otomatis tidak terhitung sebagai uang keluar.
-    const bayarTerhitung = (bayaranBln || []).filter(x => x.tanggal && cocok(x.tanggal));
+    // Baris bernominal nol (gaji yang habis dipotong kasbon) ada demi LABA, tapi di sisi
+    // kas ia bukan pembayaran — tidak ada rupiah yang berpindah, jadi tidak ikut di sini.
+    const bayarTerhitung = (bayaranBln || []).filter(x => x.tanggal && cocok(x.tanggal) && x.nominal > 0);
     const biayaBulanan = bayarTerhitung.reduce((a, x) => a + x.nominal, 0);
 
     const harianToko = ambilPengeluaranHarian().filter(h => h.kategori === 'toko' && cocok(h.tanggal));
@@ -11807,7 +11809,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       POS_BIAYA_BULANAN.forEach(pos => {
         const nominal = b[pos.kunci] || 0;
         if (!(nominal > 0)) return;
-        out.push({ bulan: b.bulan, pos: pos.kunci, label: pos.label, nominal,
+        // Pos non-gaji: kotor = bersih, tidak ada potongan apa pun.
+        out.push({ bulan: b.bulan, pos: pos.kunci, label: pos.label, labelLaba: pos.label,
+          nominal, nominalKotor: nominal, dipotong: 0,
           tanggal: punyaPerPos ? (peta[pos.kunci] || '') : (b.tanggalBayar || '') });
       });
       // Gaji dipecah per pegawai. Yang harinya nol tidak menghasilkan pembayaran apa pun.
@@ -11834,8 +11838,17 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       const dipotong = Math.min(tersedia, g.kotor);
       if (dipotong > 0) sisaPotong[g.nama] = tersedia - dipotong;
       const tunai = g.kotor - dipotong;
-      if (!(tunai > 0)) return;   // habis dipotong kasbon — tidak ada uang keluar laci
-      out.push({ bulan: g.bulan, pos: g.pos, nominal: tunai, tanggal: g.tanggal,
+      // DUA ANGKA, dua pertanyaan berbeda (koreksi pemilik 23 Agu 2026):
+      //   nominal      = uang tunai yang benar-benar keluar laci  -> ARUS KAS & BUKU KAS
+      //   nominalKotor = gaji penuh sebelum potongan kasbon       -> LABA
+      // Kasbon yang dilunasi potong gaji adalah PENYELESAIAN PIUTANG kepada pegawai,
+      // bukan pengurang biaya gaji: uang toko tetap terpakai penuh sebagai upah, yang
+      // berubah cuma wujudnya (sebagian menutup piutang kasbon, bukan berpindah tangan).
+      // Sebelum koreksi ini laba bersih tercatat TERLALU TINGGI sebesar total potongan.
+      // Baris tetap dibuat walau tunainya nol — kalau di-skip seperti dulu, gaji yang
+      // habis dipotong kasbon lenyap sama sekali dari biaya laba.
+      out.push({ bulan: g.bulan, pos: g.pos, nama: g.nama, nominal: tunai, nominalKotor: g.kotor,
+        dipotong, tanggal: g.tanggal, labelLaba: 'Gaji ' + g.nama,
         label: 'Gaji ' + g.nama + (dipotong > 0 ? ' (kotor ' + formatRupiah(g.kotor)
           + ' − kasbon ' + formatRupiah(dipotong) + ')' : '') });
     });
@@ -11848,7 +11861,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     hasil.bulan = bl;
     // Pos bulan ini yang belum bertanggal — belum jadi uang keluar, tapi jangan sampai
     // lenyap dari perhatian pemilik hanya karena tidak terhitung.
-    hasil.bulananBelumDibayar = semua.filter(x => !x.tanggal && x.bulan === bl);
+    hasil.bulananBelumDibayar = semua.filter(x => !x.tanggal && x.bulan === bl && x.nominal > 0);
     return hasil;
   }
 
@@ -11900,6 +11913,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     });
     bayaranBiayaBulanan().forEach(x => {
       if (!x.tanggal) return;                      // belum dibayar = belum bergerak
+      if (!(x.nominal > 0)) return;                // habis dipotong kasbon = tidak ada uang bergerak
       dorong(x.tanggal, '', 0, x.label + ' — biaya ' + namaBulanPanjang(x.bulan + '-01'), 0, x.nominal);
     });
     ambilPengeluaranHarian().forEach(h => {
@@ -11931,7 +11945,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const hasil = hitungArusKasInti(t => !!t && t > dariIso && t <= sampai, semua);
     const blnTitik = bulanDari(dariIso);
     const blnSampai = bulanDari(sampai);
-    hasil.bulananBelumDibayar = semua.filter(x => !x.tanggal && x.bulan >= blnTitik && x.bulan <= blnSampai);
+    hasil.bulananBelumDibayar = semua.filter(x => !x.tanggal && x.bulan >= blnTitik && x.bulan <= blnSampai && x.nominal > 0);
     return hasil;
   }
 
@@ -13405,7 +13419,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // rupiah terakhir, bukan "kira-kira sama".
   function jatahBiayaBulananHari(iso, bayaranBln) {
     const bl = bulanDari(iso);
-    const total = (bayaranBln || bayaranBiayaBulanan()).filter(x => x.bulan === bl).reduce((a, x) => a + x.nominal, 0);
+    // GAJI PENUH (nominalKotor), bukan gaji sesudah potongan kasbon — lihat alasannya
+    // di bayaranBiayaBulanan(). Jalur kas tetap memakai x.nominal.
+    const total = (bayaranBln || bayaranBiayaBulanan()).filter(x => x.bulan === bl)
+      .reduce((a, x) => a + (x.nominalKotor === undefined ? x.nominal : x.nominalKotor), 0);
     const nHari = parseInt(akhirBulanIso(bl).slice(8, 10), 10);
     const hari = parseInt(iso.slice(8, 10), 10);
     const dasar = Math.floor(total / nHari);
@@ -13464,8 +13481,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
     // Biaya bulanan yang DITAGIHKAN ke bulan ini — bukan yang dibayar bulan ini.
     const biayaBln = bayaranBiayaBulanan().filter(x => x.bulan === bl);
-    const totalBiaya = biayaBln.reduce((a, x) => a + x.nominal, 0);
-    const biayaBelum = biayaBln.filter(x => !x.tanggal);
+    const totalBiaya = biayaBln.reduce((a, x) => a + x.nominalKotor, 0);   // LABA = gaji penuh
+    const totalPotongan = biayaBln.reduce((a, x) => a + (x.dipotong || 0), 0);
+    const biayaBelum = biayaBln.filter(x => !x.tanggal && x.nominal > 0);
     // Hapus buku piutang bulan ini = kerugian nyata (barang sudah keluar, uangnya
     // diputuskan tidak akan kembali). BUKAN uang keluar — kas tidak tersentuh —
     // tapi laba bersih wajib memikulnya; kalau tidak, menghapus utang macet malah
@@ -13491,7 +13509,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     bagian.push(`<div class="lap-bagian"><h2>Ikhtisar</h2>
       ${barisLap('Omzet penuh', laba.jumlahTrx + ' transaksi, termasuk kredit', laba.omzetPenuh, 'lb-utama')}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', laba.margin)}
-      ${barisLap('Biaya bulanan', 'ditagihkan ke bulan ini', -totalBiaya)}
+      ${barisLap('Biaya bulanan', 'ditagihkan ke bulan ini' + (totalPotongan > 0 ? ' · gaji dihitung penuh' : ''), -totalBiaya)}
       ${barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan', -bersih.harianToko)}
       ${totalHapus > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama — bukan uang keluar', -totalHapus) : ''}
       ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko' + (totalHapus > 0 ? ' − hapus buku' : ''), labaBersih, 'lb-jumlah')}
@@ -13515,8 +13533,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ${barisLap('Harga pokok (HPP)', '', -laba.hpp)}
       ${barisLap('Margin kotor', 'margin ' + persen, laba.margin, 'lb-jumlah')}
       ${biayaBln.length
-        ? biayaBln.slice().sort((a, b) => b.nominal - a.nominal).map(x =>
-            barisLap(x.label, x.tanggal ? 'dibayar ' + formatTanggal(x.tanggal) : 'belum dibayar', -x.nominal)).join('')
+        ? biayaBln.slice().sort((a, b) => b.nominalKotor - a.nominalKotor).map(x =>
+            barisLap(x.labelLaba || x.label,
+              (x.tanggal ? 'dibayar ' + formatTanggal(x.tanggal) : 'belum dibayar')
+              + (x.dipotong > 0 ? ' · gaji penuh; ' + formatRupiah(x.dipotong) + ' dilunasi potong kasbon (piutang pegawai, bukan pengurang biaya)' : ''),
+              -x.nominalKotor)).join('')
         : '<div class="lap-kosong">Biaya bulanan bulan ini belum diisi — laba di atas masih laba kotor.</div>'}
       ${barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan sebulan', -bersih.harianToko)}
       ${hapusBln.map(m => barisLap('Hapus buku — ' + (m.namaPelanggan || ''), m.alasan || '', -(m.nominal || 0))).join('')}
@@ -13780,7 +13801,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ${barisLap('Harga pokok (HPP)', '', -L.hpp)}
       ${barisLap('Margin kotor', 'margin ' + persen, L.margin, 'lb-jumlah')}
       ${d.harianToko.length ? d.harianToko.map(brsHarian).join('') : '<div class="lap-kosong">Tidak ada pengeluaran Toko hari ini.</div>'}
-      ${barisLap('Jatah biaya bulanan hari ini', 'biaya bulanan ' + namaBulanPanjang(bl + '-01') + ' (gaji, listrik, dll.) ÷ ' + parseInt(akhirBulanIso(bl).slice(8, 10), 10) + ' hari', -L.jatahBulanan)}
+      ${barisLap('Jatah biaya bulanan hari ini', 'biaya bulanan ' + namaBulanPanjang(bl + '-01') + ' (gaji penuh, listrik, dll.) ÷ ' + parseInt(akhirBulanIso(bl).slice(8, 10), 10) + ' hari', -L.jatahBulanan)}
       ${d.hapusRows.map(m => barisLap('Hapus buku — ' + (m.namaPelanggan || ''), m.alasan || '', -(m.nominal || 0))).join('')}
       ${barisLap('Laba bersih hari ini', '', L.labaBersih, 'lb-jumlah')}
       ${cat.length ? `<div class="lap-catatan${(L.jumlahTanpaHpp > 0 || cat.length > (iso < TANGGAL_STOK_AWAL ? 1 : 0)) ? ' lap-peringatan' : ''}">${cat.join('<br>')}</div>` : ''}
@@ -13949,7 +13970,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       KUNCI.forEach(k => banding('bulan ' + bl + ' ' + k, jumlah(hari.map(h => h.L), k), LB[k]));
       KAS.forEach(k => banding('bulan ' + bl + ' kas ' + k, jumlah(hari.map(h => h.K), k), KB[k]));
       banding('bulan ' + bl + ' margin = hitungLabaBulan', LB.margin, hitungLabaBulan(bl).margin);
-      banding('bulan ' + bl + ' jatah = biaya ditagihkan', LB.jatahBulanan, bayaran.filter(x => x.bulan === bl).reduce((a, x) => a + x.nominal, 0));
+      banding('bulan ' + bl + ' jatah = biaya ditagihkan (kotor)', LB.jatahBulanan, bayaran.filter(x => x.bulan === bl).reduce((a, x) => a + x.nominalKotor, 0));
+      banding('bulan ' + bl + ' kas biaya = biaya bersih dibayar', bayaran.filter(x => x.bulan === bl && x.tanggal && bulanDari(x.tanggal) === bl).reduce((a, x) => a + x.nominal, 0), KB.pos.biayaBulanan - bayaran.filter(x => x.bulan !== bl && x.tanggal && bulanDari(x.tanggal) === bl).reduce((a, x) => a + x.nominal, 0));
       perBulan.push({ L: LB, K: KB });
     }
     const T = hitungLaporanTahunan(tahun, bayaran);
