@@ -8380,7 +8380,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       if (!merk) return null;
       const s = hitungStokKarungPerMerk()[merk];
       const berat = parseFloat(document.getElementById('jualKarungBerat').value) || 50;
-      return s ? Math.max(0, Math.floor(s.sisaKg / berat)) : null;
+      // SETENGAH SACK boleh (permintaan pemilik 21 Agu 2026: 0,5 / 1,5 / 2,5).
+      // Dibulatkan ke bawah ke kelipatan 0,5 supaya stok tetap TIDAK PERNAH minus:
+      // sisa 629,84 kg / 50 = 12,596 -> 12,5 sack (625 kg), bukan 12,59.
+      return s ? Math.max(0, Math.floor(s.sisaKg / berat * 2) / 2) : null;
     }
     return null;
   }
@@ -8440,8 +8443,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       if (tbTambah) tbTambah.disabled = mentok;
       if (peringatanBatas) {
         peringatanBatas.style.display = mentok ? 'flex' : 'none';
-        if (mentok) peringatanBatas.querySelector('span').innerHTML =
-          `Stok tinggal <b>${batas} ${jenisJualAktif === 'karung' ? 'karung' : 'unit'}</b> — tombol + berhenti di ${batas}.`;
+        if (mentok) { const batasTeks = batas.toLocaleString('id-ID');
+          peringatanBatas.querySelector('span').innerHTML =
+          `Stok tinggal <b>${batasTeks} ${jenisJualAktif === 'karung' ? 'karung' : 'unit'}</b> — tombol + berhenti di ${batasTeks}.`; }
       }
     } else if (peringatanBatas) {
       peringatanBatas.style.display = 'none';
@@ -8528,7 +8532,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       const berat = parseFloat(el('jualKarungBerat').value) || 50;
       const jml = parseFloat(el('jualKarungJumlah').value) || 0;
       baris.push(['Merk', escapeHtml(merk)]);
-      baris.push(['Karung utuh', jml + ' × ' + berat + ' kg = ' + (jml * berat) + ' kg']);
+      baris.push(['Karung utuh', jml.toLocaleString('id-ID') + ' × ' + berat + ' kg = ' + (jml * berat).toLocaleString('id-ID') + ' kg']);
       const s = hitungStokKarungPerMerk()[merk];
       if (s) stokSesudah = [s.sisaKg, Math.round((s.sisaKg - jml * berat) * 100) / 100, 'kg'];
     } else if (jenisJualAktif === 'literan') {
@@ -9345,9 +9349,13 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const kini = _wzNego === null ? asli : _wzNego;
     _wzNego = Math.max(500, kini + delta);
     if (_wzNego === asli) _wzNego = null;
-    wzRender();
+    const kotak = document.getElementById('wzHargaInput');
+    if (kotak) kotak.value = _wzNego === null ? asli : _wzNego;
+    if (_wzNego === null) wzTulisJumlah(document.getElementById(WZ_PETA_JUMLAH[_wz.jalur][0]).value);
+    else wzTerapkanNego();
+    wzJumlahRefresh();
   }
-  function wzBonusToggle() { _wzBonus = !_wzBonus; wzRender(); }
+  function wzBonusToggle() { _wzBonus = !_wzBonus; wzJumlahRefresh(); }
 
   async function wzTambahItem(lanjutKe) {
     const peta = { kemasan: 'jualKemasanJumlah', karung: 'jualKarungJumlah', literan: 'jualLiteranJumlah', repacking: 'jualRepackingKg' };
@@ -9378,7 +9386,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     _wzItems.push({ trx,
       label: (trx.namaProduk || trx.merkSumber || 'Item')
         + (trx.jumlahUnit ? ' \u00d7 ' + (trx.jumlahUnit - (trx.bonusUnit || 0)) + (trx.bonusUnit ? ' +' + trx.bonusUnit + ' bonus' : '')
-          : (trx.jumlahKarung ? ' \u00d7 ' + trx.jumlahKarung : ' \u00b7 ' + (trx.jumlahLiter || trx.totalKg) + (trx.jenis === 'literan' ? ' L' : ' kg'))) });
+          : (trx.jumlahKarung ? ' \u00d7 ' + wzAngkaTampil(trx.jumlahKarung) + ' sack'
+            : ' \u00b7 ' + wzAngkaTampil(trx.jumlahLiter || trx.totalKg) + (trx.jenis === 'literan' ? ' L' : ' kg'))) });
     // bersihkan isian per-item; cara bayar & nama menunggu langkah bayar
     ['jualHargaTotal', 'jualKemasanJumlah', 'jualRepackingKg', 'jualRepackingNamaProduk',
       'jualKarungJumlah', 'jualLiteranJumlah'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -9497,16 +9506,118 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     wzPilihJalur('kemasan');
     wzKlikOpsi('pilihKemasanTombol', kunci, 'jumlah');
   }
-  function wzIsiJumlah(idInput, nilai) {
-    const el = document.getElementById(idInput);
-    el.value = nilai;
-    el.dispatchEvent(new Event('input', { bubbles: true }));  // hitungTotalJual jalur lama
-    wzRender();
+  // [id form lama, satuan, langkah tombol +/-]. Sack, liter, dan kg boleh
+  // SETENGAHAN (permintaan pemilik): tombol melangkah 0,5 dan kolom menerima
+  // koma — kemasan tetap bulat karena satu bag itu utuh, tidak bisa dibelah.
+  const WZ_PETA_JUMLAH = { kemasan: ['jualKemasanJumlah', 'unit', 1], karung: ['jualKarungJumlah', 'sack', 0.5],
+    literan: ['jualLiteranJumlah', 'liter', 0.5], repacking: ['jualRepackingKg', 'kg', 0.5] };
+  // Papan ketik desimal iPhone berbahasa Indonesia mengetik KOMA. <input type=
+  // number> menolak koma diam-diam (nilainya jadi kosong) — jadi kolom wizard
+  // bertipe text dan angkanya diterjemahkan di sini.
+  function wzAngka(teks) {
+    const n = parseFloat(String(teks).replace(/\./g, '').replace(',', '.'));
+    return isFinite(n) ? n : 0;
   }
-  function wzUbah(idInput, delta) {
+  function wzAngkaTampil(n) {
+    return n ? Number(n).toLocaleString('id-ID', { maximumFractionDigits: 2 }) : '';
+  }
+
+  // Menulis jumlah ke form lama + menghitung ulang lewat jalur lama.
+  // TIDAK me-render ulang panel: dipanggil saat mengetik.
+  function wzTulisJumlah(nilai) {
+    const [idInput] = WZ_PETA_JUMLAH[_wz.jalur];
     const el = document.getElementById(idInput);
-    const v = Math.max(0, (parseFloat(el.value) || 0) + delta);
-    wzIsiJumlah(idInput, v || '');
+    const n = typeof nilai === 'number' ? nilai : wzAngka(nilai);
+    el.value = (nilai === '' || n === 0) ? '' : n;   // form lama selalu titik-desimal
+    el.dispatchEvent(new Event('input', { bubbles: true }));   // hitungTotalJual jalur lama
+    wzTerapkanNego();                                          // nego (bila ada) menimpa total katalog
+  }
+  function wzJumlahDiketik(nilai) { wzTulisJumlah(nilai); wzJumlahRefresh(); }
+  function wzUbah(delta) {
+    const [idInput] = WZ_PETA_JUMLAH[_wz.jalur];
+    const kini = parseFloat(document.getElementById(idInput).value) || 0;
+    const v = Math.round(Math.max(0, kini + delta) * 100) / 100;
+    const kotak = document.getElementById('wzQtyInput');
+    if (kotak) kotak.value = wzAngkaTampil(v);
+    wzTulisJumlah(v);
+    wzJumlahRefresh();
+  }
+  function wzIsiJumlah(idInput, nilai) {   // dipakai tombol "jual N saja"
+    const kotak = document.getElementById('wzQtyInput');
+    if (kotak) kotak.value = wzAngkaTampil(nilai);
+    wzTulisJumlah(nilai);
+    wzJumlahRefresh();
+  }
+  // Nego LANGSUNG menimpa total di form supaya kartu TOTAL jujur sejak diketik
+  // (dulu kartu TOTAL masih harga katalog sampai item dimasukkan keranjang).
+  function wzTerapkanNego() {
+    if (_wzNego === null) return;
+    const [idInput, satuan] = WZ_PETA_JUMLAH[_wz.jalur];
+    const q = parseFloat(document.getElementById(idInput).value) || 0;
+    if (q <= 0) return;
+    document.getElementById('jualHargaTotal').value = Math.round(_wzNego * q);
+    if (typeof perbaruiKartuTotalJual === 'function') perbaruiKartuTotalJual();
+    const rin = document.getElementById('ktjRincian');
+    if (rin) rin.textContent = rin.textContent + ' \u00b7 nego ' + formatRupiah(_wzNego) + '/' + satuan;
+  }
+  // Pembaruan RINGAN wilayah dinamis langkah jumlah — kolom ketik tidak disentuh.
+  function wzJumlahRefresh() {
+    if (_wz.langkah !== 'jumlah') return;
+    const [idInput, satuan, tambah] = WZ_PETA_JUMLAH[_wz.jalur];
+    const nNum = parseFloat(document.getElementById(idInput).value) || 0;
+    const lebih = _wz.maks !== null && nNum > _wz.maks;
+    const stokInfo = { kemasan: 'stokKemasanInfo', karung: 'stokKarungInfo', literan: 'stokLiteranInfo', repacking: 'stokRepackingInfo' }[_wz.jalur];
+    const infoTeks = (document.getElementById(stokInfo) || {}).textContent || '';
+    const elInfo = document.getElementById('wzInfoStok');
+    if (elInfo) elInfo.innerHTML = infoTeks ? '<div class="wz-info">' + wzEsc(infoTeks) + '</div>' : '';
+    const pb = document.getElementById('peringatanBatasJual');
+    const cermin = pb && pb.style.display !== 'none' && pb.textContent.trim()
+      ? '<div class="wz-peringatan"><span>' + wzEsc(pb.textContent.trim()) + '</span>'
+        + '<div class="aksi"><button type="button" onclick="pindahDariMenu(\'produksi\')">repack dulu</button></div></div>' : '';
+    const lebihHtml = lebih ? '<div class="wz-peringatan"><span>\u26a0 Melebihi stok \u2014 sisa ' + _wz.maks + ' ' + satuan + '. Stok tidak boleh minus.</span>'
+      + '<div class="aksi"><button type="button" onclick="wzIsiJumlah(\'' + idInput + '\',' + _wz.maks + ')">jual ' + _wz.maks + ' saja</button>'
+      + '<button type="button" onclick="pindahDariMenu(\'produksi\')">repack dulu</button></div></div>' : '';
+    const elP = document.getElementById('wzPeringatan');
+    if (elP) elP.innerHTML = cermin + lebihHtml;
+    // NEGO (NG1): harga satuan boleh DIKETIK langsung, tombol ±500 tetap ada.
+    const elN = document.getElementById('wzNegoBlok');
+    if (elN) {
+      const asli = _wzSatuanAsli || wzSatuanKini();
+      if (nNum <= 0 || !asli) elN.innerHTML = '';
+      else {
+        _wzSatuanAsli = asli;
+        const jual = _wzNego !== null ? _wzNego : asli;
+        const selisih = jual - asli;
+        const fokusHarga = document.activeElement && document.activeElement.id === 'wzHargaInput';
+        elN.innerHTML = '<div class="wz-nego"><i>Harga satuan \u2014 ketik atau ubah</i>'
+          + '<div class="wz-nego-baris">'
+          + '<button type="button" onclick="wzNegoUbah(-500)">\u2212</button>'
+          + '<input type="number" id="wzHargaInput" inputmode="numeric" step="500" enterkeyhint="done"'
+          + ' value="' + jual + '" onfocus="this.select()" oninput="wzHargaDiketik(this.value)">'
+          + '<button type="button" onclick="wzNegoUbah(500)">+</button></div>'
+          + '<span class="' + (selisih < 0 ? 'oksida' : '') + '">'
+          + (selisih === 0 ? 'sama dengan harga daftar'
+            : (selisih < 0 ? 'ditawar \u2212' : 'naik +') + formatRupiah(Math.abs(selisih)) + ' per ' + satuan)
+          + '</span></div>'
+          + (_wz.jalur === 'kemasan'
+            ? '<button type="button" class="wz-bonus' + (_wzBonus ? ' aktif' : '') + '" onclick="wzBonusToggle()">'
+              + (_wzBonus ? '\u2713 ' : '') + 'Bonus 1 kemasan \u2014 stok ikut turun, uang tidak</button>' : '');
+        if (fokusHarga) { const k = document.getElementById('wzHargaInput'); if (k) { k.focus(); k.setSelectionRange(k.value.length, k.value.length); } }
+      }
+    }
+    const elC = document.getElementById('wzCta');
+    if (elC) elC.innerHTML = '<div class="wz-cta2">'
+      + '<button type="button" class="wz-lanjut sekunder" onclick="wzTambahItem(\'jalur\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>\uff0b item lagi</button>'
+      + '<button type="button" class="wz-lanjut" onclick="wzTambahItem(\'bayar\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>ke bayar</button>'
+      + '</div>';
+  }
+  function wzHargaDiketik(v) {
+    const asli = _wzSatuanAsli || wzSatuanKini();
+    const n = Math.max(0, Math.round(parseFloat(v) || 0));
+    _wzNego = (n === asli || n === 0) ? null : n;
+    if (_wzNego === null) { wzTulisJumlah(document.getElementById(WZ_PETA_JUMLAH[_wz.jalur][0]).value); }
+    else wzTerapkanNego();
+    wzJumlahRefresh();
   }
   function wzBayar(cara) {
     ({ Tunai: 'bayarTunai', QRIS: 'bayarQris', Kredit: 'bayarKredit' })[cara] &&
@@ -9709,57 +9820,31 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       }
 
       if (l === 'jumlah') {
-        const peta = { kemasan: ['jualKemasanJumlah', 'unit', 1], karung: ['jualKarungJumlah', 'sack', 1],
-          literan: ['jualLiteranJumlah', 'liter', 0.5], repacking: ['jualRepackingKg', 'kg', 1] };
-        const [idInput, satuan, tambah] = peta[_wz.jalur];
-        const nilai = document.getElementById(idInput).value || '0';
+        const [idInput, satuan, tambah] = WZ_PETA_JUMLAH[_wz.jalur];
+        const nilai = wzAngkaTampil(parseFloat(document.getElementById(idInput).value) || 0);
         label.textContent = 'Langkah ' + (_wz.jalur === 'kemasan' ? '5' : (_wz.jalur === 'repacking' ? '4' : (_wz.jalur === 'karung' ? '4' : '3')));
         tanya.textContent = 'Berapa ' + satuan + '?';
-        const stokInfo = { kemasan: 'stokKemasanInfo', karung: 'stokKarungInfo', literan: 'stokLiteranInfo', repacking: 'stokRepackingInfo' }[_wz.jalur];
-        const infoTeks = (document.getElementById(stokInfo) || {}).textContent || '';
-        const nNum = parseFloat(nilai) || 0;
-        const lebih = _wz.maks !== null && nNum > _wz.maks;
+        const desimal = _wz.jalur !== 'kemasan';   // sack, liter, kg boleh setengahan
+        // Kolom diisi LANGSUNG dengan papan ketik HP. Dulu tiap ketukan memicu
+        // render ulang panel -> kolomnya dihancurkan, papan ketik menutup, dan
+        // angka lompat. Sekarang mengetik hanya memperbarui WILAYAH DINAMIS
+        // (#wzInfoStok, #wzPeringatan, #wzNegoBlok, #wzCta) — kolom tak tersentuh.
         panel.innerHTML = balik(_wz.jalur === 'kemasan' ? 'ukuran' : (_wz.jalur === 'repacking' ? 'namaR' : (_wz.jalur === 'karung' ? 'merkK' : 'produkL')))
           + '<div class="stepper-jumlah wz-jumlah-wrap">'
-          + '<button type="button" class="st-kurang" onclick="wzUbah(\'' + idInput + '\',-' + tambah + ')" aria-label="Kurangi">\u2212</button>'
-          + '<input type="number" inputmode="decimal" value="' + wzEsc(nilai === '0' ? '' : nilai) + '" placeholder="0" oninput="wzIsiJumlah(\'' + idInput + '\', this.value)">'
-          + '<button type="button" class="st-tambah" onclick="wzUbah(\'' + idInput + '\',' + tambah + ')" aria-label="Tambah">+</button>'
+          + '<button type="button" class="st-kurang" onclick="wzUbah(-' + tambah + ')" aria-label="Kurangi">\u2212</button>'
+          + '<input type="' + (desimal ? 'text' : 'number') + '" id="wzQtyInput" inputmode="' + (desimal ? 'decimal' : 'numeric') + '"'
+          + (desimal ? '' : ' step="1"')
+          + ' enterkeyhint="done" value="' + wzEsc(nilai) + '" placeholder="0"'
+          + ' onfocus="this.select()" oninput="wzJumlahDiketik(this.value)">'
+          + '<button type="button" class="st-tambah" onclick="wzUbah(' + tambah + ')" aria-label="Tambah">+</button>'
           + '</div>'
-          + (infoTeks ? '<div class="wz-info">' + wzEsc(infoTeks) + '</div>' : '')
-          // form lama MENJEPIT otomatis ke maks stok; penjelasannya dicerminkan di sini
-          + (function () { const pb = document.getElementById('peringatanBatasJual');
-              return pb && pb.style.display !== 'none' && pb.textContent.trim()
-                ? '<div class="wz-peringatan"><span>' + wzEsc(pb.textContent.trim()) + '</span>'
-                  + '<div class="aksi"><button type="button" onclick="pindahDariMenu(\'produksi\')">repack dulu</button></div></div>' : ''; })()
-          + (lebih ? '<div class="wz-peringatan"><span>\u26a0 Melebihi stok \u2014 sisa ' + _wz.maks + ' ' + satuan + '. Stok tidak boleh minus.</span>'
-            + '<div class="aksi"><button type="button" onclick="wzIsiJumlah(\'' + idInput + '\',' + _wz.maks + ')">jual ' + _wz.maks + ' saja</button>'
-            + '<button type="button" onclick="pindahDariMenu(\'produksi\')">repack dulu</button></div></div>' : '')
-          + (function () {   // NEGO per item (NG1): harga satuan boleh diubah, selisih tertulis
-              if (nNum <= 0) return '';
-              const asli = _wzSatuanAsli || wzSatuanKini();
-              if (!asli) return '';
-              const jual = _wzNego !== null ? _wzNego : asli;
-              const selisih = jual - asli;
-              return '<div class="wz-nego"><i>Harga satuan \u2014 boleh diubah</i>'
-                + '<div class="wz-nego-baris">'
-                + '<button type="button" onclick="wzNegoUbah(-500)">\u2212</button>'
-                + '<b>' + formatRupiah(jual) + '</b>'
-                + '<button type="button" onclick="wzNegoUbah(500)">+</button></div>'
-                + '<span class="' + (selisih < 0 ? 'oksida' : '') + '">'
-                + (selisih === 0 ? 'sama dengan harga daftar'
-                  : (selisih < 0 ? 'ditawar \u2212' : 'naik +') + formatRupiah(Math.abs(selisih)) + ' per ' + satuan)
-                + '</span></div>';
-            })()
-          + (_wz.jalur === 'kemasan' && nNum > 0
-            ? '<button type="button" class="wz-bonus' + (_wzBonus ? ' aktif' : '') + '" onclick="wzBonusToggle()">'
-              + (_wzBonus ? '\u2713 ' : '') + 'Bonus 1 kemasan \u2014 stok ikut turun, uang tidak</button>' : '')
-          + '<div class="wz-cta2">'
-          + '<button type="button" class="wz-lanjut sekunder" onclick="wzTambahItem(\'jalur\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>\uff0b item lagi</button>'
-          + '<button type="button" class="wz-lanjut" onclick="wzTambahItem(\'bayar\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>ke bayar</button>'
-          + '</div>';
+          + '<div id="wzInfoStok"></div>'
+          + '<div id="wzPeringatan"></div>'
+          + '<div id="wzNegoBlok"></div>'
+          + '<div id="wzCta"></div>';
+        wzJumlahRefresh();
         return;
       }
-
       if (l === 'bayar') {
         label.textContent = 'Terakhir \u00b7 bayar';
         tanya.textContent = 'Bayarnya?';
@@ -16874,6 +16959,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.wzPilihJenis = wzPilihJenis; window.wzPilihMerk = wzPilihMerk; window.wzKlikOpsi = wzKlikOpsi;
   window.wzPilihSack = wzPilihSack; window.wzSering = wzSering; window.wzIsiJumlah = wzIsiJumlah;
   window.wzUbah = wzUbah; window.wzBayar = wzBayar; window.wzNama = wzNama; window.wzSimpan = wzSimpan;
+  window.wzJumlahDiketik = wzJumlahDiketik; window.wzHargaDiketik = wzHargaDiketik;
   window.wzNegoUbah = wzNegoUbah; window.wzBonusToggle = wzBonusToggle; window.wzTambahItem = wzTambahItem;
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
