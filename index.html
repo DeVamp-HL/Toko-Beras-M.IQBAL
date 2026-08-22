@@ -9355,10 +9355,13 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     baris.push(['Cara bayar', cara + (nama ? ' \u2014 ' + escapeHtml(nama) : '')]);
     if (cara === 'Kredit' && _wzJanji) baris.push(['Janji bayar', formatTanggal(tanggalJanji(_wzJanji))]);
     if (cara === 'Kredit' && _wzKreditBuka) baris.push(['Kredit', 'dibuka owner untuk transaksi ini']);
-    if (_wzUang > 0 && cara === 'Tunai') {
+    if (_wzUang > 0 && cara !== 'Kredit') {
       baris.push(['Uang diterima', formatRupiah(_wzUang)]);
       const k = _wzUang - total;
       baris.push([k >= 0 ? 'Kembalian' : 'MASIH KURANG', (k < 0 ? '\u2212' : '') + formatRupiah(Math.abs(k))]);
+      // Kurang bayar akan jadi piutang \u2014 katakan di layar konfirmasi, jangan sampai
+      // tersimpan lalu baru ketahuan sendiri di daftar piutang besok.
+      if (k < 0) baris.push(['JADI PIUTANG', formatRupiah(-k) + (nama ? ' \u2014 ' + escapeHtml(nama) : ' \u2014 NAMA WAJIB DIISI')]);
       _lastKembalianInfo = k > 0 ? 'kembalian ' + formatRupiah(k) : '';
     } else _lastKembalianInfo = '';
     document.getElementById('lkRincian').innerHTML = baris.map(b =>
@@ -10076,10 +10079,36 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const items = _wzItems.slice();
     if (!items.length) return;
     const tombolBayarAktif = ['Tunai', 'Qris', 'Kredit'].map(c => document.getElementById('bayar' + c)).find(el => el.classList.contains('pilih'));
-    const caraBayar = bakuCaraBayar(tombolBayarAktif ? tombolBayarAktif.id.replace('bayar', '') : 'Tunai');
+    let caraBayar = bakuCaraBayar(tombolBayarAktif ? tombolBayarAktif.id.replace('bayar', '') : 'Tunai');
+    const caraBayarAsli = caraBayar;   // dipakai mencatat pelunasannya: tunai tetap tunai, QRIS tetap QRIS
     const namaPelanggan = document.getElementById('jualNamaPelanggan').value.trim();
+
+    // BAYAR SEBAGIAN (22 Agu 2026, permintaan My DeV): pembeli bayar kurang dari total,
+    // kekurangannya LANGSUNG jadi piutang atas namanya. Tidak ada mesin baru — bentuknya
+    // memakai dua catatan yang sudah dikenal sistem:
+    //   (1) penjualannya dicatat KREDIT  → seluruh nilainya masuk piutang, nol kas
+    //   (2) uang yang benar-benar diterima dicatat sebagai PELUNASAN piutang → kas masuk
+    // Sisanya = piutang berjalan. Omzet, HPP, dan margin tetap dihitung dari harga penuh.
+    // Nama pembeli jadi WAJIB — piutang tanpa nama tidak bisa ditagih siapa pun.
+    let bayarSebagian = 0;
+    const totalSebelumPot = items.reduce((a, x) => a + x.trx.hargaTotal, 0);
+    const totalSetelahPot = totalSebelumPot - Math.min(Math.max(0, Math.round(_wzPotongan || 0)), totalSebelumPot);
+    if (caraBayar !== 'Kredit' && _wzUang > 0 && _wzUang < totalSetelahPot) {
+      const kurang = totalSetelahPot - _wzUang;
+      if (!namaPelanggan) {
+        alert('Uang diterima ' + formatRupiah(_wzUang) + ', kurang ' + formatRupiah(kurang)
+          + '.\n\nIsi nama pembeli dulu — kekurangannya akan dicatat sebagai piutang, dan piutang tanpa nama tidak bisa ditagih.');
+        return;
+      }
+      if (!confirm('Kurang ' + formatRupiah(kurang) + ' dari ' + formatRupiah(totalSetelahPot) + '.\n\n'
+        + 'Catat ' + formatRupiah(kurang) + ' sebagai PIUTANG atas nama ' + namaPelanggan + '?\n'
+        + 'Uang diterima ' + formatRupiah(_wzUang) + ' tetap masuk kas hari ini.')) return;
+      bayarSebagian = _wzUang;
+      caraBayar = 'Kredit';   // seluruh nilai masuk piutang; yang dibayar dicatat sebagai pelunasan
+    }
+
     if (caraBayar === 'Kredit' && !namaPelanggan) { alert('Isi nama pelanggan untuk penjualan kredit.'); return; }
-    if (caraBayar === 'Kredit') {                   // KR1 — penjaga terakhir di jalur tulis
+    if (caraBayar === 'Kredit' && !bayarSebagian) {  // KR1 — penjaga terakhir di jalur tulis
       const potCek = Math.min(Math.max(0, Math.round(_wzPotongan || 0)), _wzItems.reduce((a, x) => a + x.trx.hargaTotal, 0));
       const alasanKunci = wzKreditTerkunci(_wzItems.reduce((a, x) => a + x.trx.hargaTotal, 0) - potCek);
       if (alasanKunci) { alert(alasanKunci); return; }
@@ -10124,6 +10153,23 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
         localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(semuaLokal));
       }
     }
+    // Pelunasan sebagian ditulis SESUDAH semua item tersimpan — kalau penjualannya gagal
+    // tersimpan, jangan sampai lahir pelunasan atas utang yang tidak pernah ada.
+    if (bayarSebagian > 0) {
+      try {
+        await simpanKeFirestore(KOLEKSI_PIUTANG, {
+          id: idUnik(), tipe: 'bayar', namaPelanggan, nominal: bayarSebagian,
+          tanggal, jam, caraBayar: caraBayarAsli, dicatatDi: 'sistem',
+          catatan: 'Dibayar langsung saat beli — sisa ' + formatRupiah(totalBayar - bayarSebagian) + ' jadi piutang'
+        });
+      } catch (err) {
+        console.error(err);
+        alert('Penjualan tersimpan, tapi catatan pembayaran ' + formatRupiah(bayarSebagian)
+          + ' GAGAL tersimpan.\n\nBuka halaman Piutang dan catat pembayaran itu manual atas nama '
+          + namaPelanggan + ' — kalau tidak, utangnya tercatat penuh.');
+      }
+    }
+
     unduhBackup(true);
     // Reset form ringan — daftar id yang sama dengan simpanPenjualan
     ['jualHargaTotal', 'jualKemasanJumlah', 'jualRepackingKg', 'jualRepackingNamaProduk',
@@ -10138,6 +10184,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     tampilkanJualHariIni();
     const ket = [items.length + ' item \u00b7 ' + formatRupiah(totalBayar)];
     if (potDipakai > 0) ket.push('potongan ' + formatRupiah(potDipakai));
+    if (bayarSebagian > 0) ket.push('dibayar ' + formatRupiah(bayarSebagian)
+      + ' \u00b7 PIUTANG ' + formatRupiah(totalBayar - bayarSebagian) + ' atas nama ' + namaPelanggan);
     if (_lastKembalianInfo) { ket.push(_lastKembalianInfo); _lastKembalianInfo = ''; }
     ket.push('masuk Riwayat #' + String(trxId).slice(-4));
     // Jembatan Pesanan (G5): keranjang ini dicatat DARI sebuah pesanan ->
