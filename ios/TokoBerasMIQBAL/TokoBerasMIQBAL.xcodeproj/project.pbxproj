@@ -1,0 +1,379 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		CA285A20A2A24887819C3511 /* TokoBerasApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145579D144BA44DCA6664B1F /* TokoBerasApp.swift */; };
+		57BB179C6BE245A9936B76CB /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3645BD52CD634DD99D00DEDC /* Models.swift */; };
+		EF5575EA66E54CACAF6307FF /* TokoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F36660F5B544C1085F254FB /* TokoViewModel.swift */; };
+		00880AE554644A7690EE398F /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6867DA7A96F2470BA4A679FD /* MainTabView.swift */; };
+		C6CE98E6D5A142959905429F /* KatalogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D62ACF8EDDE741B8B9D6F0FD /* KatalogView.swift */; };
+		47BC1C8771514B63840CB823 /* KasirView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8683D41E6E4C97867D2E46 /* KasirView.swift */; };
+		62AB021DB683446482742060 /* InventoriView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3601FE7DC0C14978996890A4 /* InventoriView.swift */; };
+		B4C85AD9CB78471FB780BA41 /* RiwayatTransaksiView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04EDBBB7D4B54901BE2383D0 /* RiwayatTransaksiView.swift */; };
+		0EF1A2543B5B4EAA8EA56CE5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 89F3F4DF73C94E38BFB105D2 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		7B78F25B14BD48C2B8B4CA51 /* TokoBerasMIQBAL.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TokoBerasMIQBAL.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		145579D144BA44DCA6664B1F /* TokoBerasApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokoBerasApp.swift; sourceTree = "<group>"; };
+		3645BD52CD634DD99D00DEDC /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		2F36660F5B544C1085F254FB /* TokoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokoViewModel.swift; sourceTree = "<group>"; };
+		6867DA7A96F2470BA4A679FD /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		D62ACF8EDDE741B8B9D6F0FD /* KatalogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KatalogView.swift; sourceTree = "<group>"; };
+		FA8683D41E6E4C97867D2E46 /* KasirView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KasirView.swift; sourceTree = "<group>"; };
+		3601FE7DC0C14978996890A4 /* InventoriView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoriView.swift; sourceTree = "<group>"; };
+		04EDBBB7D4B54901BE2383D0 /* RiwayatTransaksiView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiwayatTransaksiView.swift; sourceTree = "<group>"; };
+		89F3F4DF73C94E38BFB105D2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		0588AA92B43641C9B5DCFF74 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4096C385515D48E8A99BDB20 = {
+			isa = PBXGroup;
+			children = (
+				0956204EC9FF464390B5C2DE /* TokoBerasMIQBAL */,
+				2754EF8CA51245DABA7E9BBB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2754EF8CA51245DABA7E9BBB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				7B78F25B14BD48C2B8B4CA51 /* TokoBerasMIQBAL.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		0956204EC9FF464390B5C2DE /* TokoBerasMIQBAL */ = {
+			isa = PBXGroup;
+			children = (
+				145579D144BA44DCA6664B1F /* TokoBerasApp.swift */,
+				85580FE2F1324A6196C018F0 /* Models */,
+				F35BC5288BE9442482295BB4 /* ViewModels */,
+				84122BB2952C47F1BEE55164 /* Views */,
+				89F3F4DF73C94E38BFB105D2 /* Assets.xcassets */,
+			);
+			path = TokoBerasMIQBAL;
+			sourceTree = "<group>";
+		};
+		85580FE2F1324A6196C018F0 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				3645BD52CD634DD99D00DEDC /* Models.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		F35BC5288BE9442482295BB4 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				2F36660F5B544C1085F254FB /* TokoViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		84122BB2952C47F1BEE55164 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				6867DA7A96F2470BA4A679FD /* MainTabView.swift */,
+				D62ACF8EDDE741B8B9D6F0FD /* KatalogView.swift */,
+				FA8683D41E6E4C97867D2E46 /* KasirView.swift */,
+				3601FE7DC0C14978996890A4 /* InventoriView.swift */,
+				04EDBBB7D4B54901BE2383D0 /* RiwayatTransaksiView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		BBD2726ADFA343399724F70A /* TokoBerasMIQBAL */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 896047B023E3436886D1AC1C /* Build configuration list for PBXNativeTarget "TokoBerasMIQBAL" */;
+			buildPhases = (
+				B712268F2E934F238883B9C4 /* Sources */,
+				0588AA92B43641C9B5DCFF74 /* Frameworks */,
+				706F9E1A90F24E5398D41D0B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TokoBerasMIQBAL;
+			productName = TokoBerasMIQBAL;
+			productReference = 7B78F25B14BD48C2B8B4CA51 /* TokoBerasMIQBAL.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		EED9BDCD35D148D5BB4F0A8E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					BBD2726ADFA343399724F70A = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 214319B1DFB748FE949E357F /* Build configuration list for PBXProject "TokoBerasMIQBAL" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 4096C385515D48E8A99BDB20;
+			productRefGroup = 2754EF8CA51245DABA7E9BBB /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BBD2726ADFA343399724F70A /* TokoBerasMIQBAL */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		706F9E1A90F24E5398D41D0B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0EF1A2543B5B4EAA8EA56CE5 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B712268F2E934F238883B9C4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CA285A20A2A24887819C3511 /* TokoBerasApp.swift in Sources */,
+				57BB179C6BE245A9936B76CB /* Models.swift in Sources */,
+				EF5575EA66E54CACAF6307FF /* TokoViewModel.swift in Sources */,
+				00880AE554644A7690EE398F /* MainTabView.swift in Sources */,
+				C6CE98E6D5A142959905429F /* KatalogView.swift in Sources */,
+				47BC1C8771514B63840CB823 /* KasirView.swift in Sources */,
+				62AB021DB683446482742060 /* InventoriView.swift in Sources */,
+				B4C85AD9CB78471FB780BA41 /* RiwayatTransaksiView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		CBAB59C5957249589F30E83B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		6C3B4C31257D40A5B958783A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		8EDDA41C4845416A8858D046 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Toko Beras M.IQBAL";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.miqbal.tokoberas";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		20B9BA2F599D4360ADE06F1E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Toko Beras M.IQBAL";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.miqbal.tokoberas";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		214319B1DFB748FE949E357F /* Build configuration list for PBXProject "TokoBerasMIQBAL" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CBAB59C5957249589F30E83B /* Debug */,
+				6C3B4C31257D40A5B958783A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		896047B023E3436886D1AC1C /* Build configuration list for PBXNativeTarget "TokoBerasMIQBAL" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8EDDA41C4845416A8858D046 /* Debug */,
+				20B9BA2F599D4360ADE06F1E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = EED9BDCD35D148D5BB4F0A8E /* Project object */;
+}

@@ -25,3 +25,9 @@ mockup-sistem-mewah.html
 
 # Setelan alat bantu per-mesin
 .claude/
+
+# Xcode (proyek iOS di ios/TokoBerasMIQBAL)
+ios/**/xcuserdata/
+ios/**/*.xcuserstate
+ios/**/DerivedData/
+ios/**/*.xcworkspace/xcuserdata/
