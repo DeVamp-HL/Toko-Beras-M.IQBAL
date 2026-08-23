@@ -3940,12 +3940,13 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   <p class="lk-sub" id="lembarKoreksiProduksiSub">—</p>
 
   <div class="piutang-sisa">
-    <span>HPP per unit tercatat sekarang</span>
+    <span id="koreksiHppLamaLabel">HPP per unit tercatat sekarang</span>
     <b id="koreksiHppLama">Rp0</b>
   </div>
+  <div class="pratinjau-harga" id="koreksiBatchRincian" style="display:none; margin-top:8px;"></div>
 
-  <label style="margin-top:12px;">HPP per unit yang benar (Rp)</label>
-  <input type="number" id="koreksiHppBaru" placeholder="0" inputmode="numeric">
+  <label style="margin-top:12px;" id="koreksiHppBaruLabel">HPP per unit yang benar (Rp)</label>
+  <input type="number" id="koreksiHppBaru" placeholder="0" inputmode="numeric" oninput="pratinjauKoreksiBatch()">
   <label style="margin-top:12px;">Alasan koreksi</label>
   <input type="text" id="koreksiHppAlasan" placeholder="Contoh: lupa diisi waktu produksi, sekarang dihitung ulang">
   <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanKoreksiHpp()">Simpan koreksi</button>
@@ -11480,19 +11481,81 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // ditandai dikoreksiOleh + tetap kebaca di Riwayat, dokumen baru dengan HPP benar
   // yang dipakai hitungStokKemasan lewat ambilProduksiBerlaku.
   let _koreksiProduksiId = null;
+  let _koreksiBatch = null;   // null = koreksi satu dokumen; array = seluruh baris seadukan
+
+  // Baris seadukan yang MASIH BERLAKU, urut sesuai barisKe. Dipakai koreksi maupun
+  // penolakannya — supaya dua-duanya melihat kumpulan yang sama persis.
+  function barisSeadukan(pr) {
+    if (!pr || !pr.batchProduksi) return [pr];
+    return ambilProduksiBerlaku()
+      .filter(x => x.batchProduksi === pr.batchProduksi)
+      .sort((a, b) => (a.barisKe || 0) - (b.barisKe || 0));
+  }
+
   function bukaKoreksiHpp(id) {
     const pr = ambilProduksi().find(x => x.id === id);
     if (!pr) return;
     _koreksiProduksiId = id;
-    document.getElementById('lembarKoreksiProduksiSub').textContent =
-      `${pr.namaProduk || '-'} ${pr.ukuranKemasan}kg · ${formatTanggal(pr.tanggal)} · ${pr.jumlahUnit || 0} unit`;
-    document.getElementById('koreksiHppLama').textContent = formatRupiah(pr.hppPerUnit || 0);
-    document.getElementById('koreksiHppBaru').value = pr.hppPerUnit || '';
+    const saudara = barisSeadukan(pr);
+    // SATU ADUKAN = SATU KESATUAN BIAYA (23 Agu 2026). Biaya adukan dibagi ke tiap baris
+    // menurut kg; mengoreksi HPP satu baris saja membuat Σ (hpp × unit) tidak lagi sama
+    // dengan biaya adukan — nilai stok jadi mengarang selisihnya. Jadi untuk adukan
+    // multi-hasil yang dikoreksi adalah TOTAL BIAYA ADUKAN, lalu dibagi ulang ke semua
+    // barisnya dengan aturan yang sama seperti saat produksi dibuat.
+    _koreksiBatch = saudara.length > 1 ? saudara : null;
+    const elSub = document.getElementById('lembarKoreksiProduksiSub');
+    const elLabelLama = document.getElementById('koreksiHppLamaLabel');
+    const elLabelBaru = document.getElementById('koreksiHppBaruLabel');
+    const elRincian = document.getElementById('koreksiBatchRincian');
+    if (_koreksiBatch) {
+      const totalLama = Math.round(_koreksiBatch.reduce((a, x) => a + (x.hppPerUnit || 0) * (x.jumlahUnit || 0), 0));
+      elSub.textContent = `Satu adukan · ${_koreksiBatch.length} baris hasil · ${formatTanggal(pr.tanggal)}`;
+      elLabelLama.textContent = 'Total biaya adukan tercatat sekarang';
+      elLabelBaru.textContent = 'Total biaya adukan yang benar (Rp)';
+      document.getElementById('koreksiHppLama').textContent = formatRupiah(totalLama);
+      document.getElementById('koreksiHppBaru').value = totalLama || '';
+      elRincian.style.display = 'block';
+    } else {
+      elSub.textContent = `${pr.namaProduk || '-'} ${pr.ukuranKemasan}kg · ${formatTanggal(pr.tanggal)} · ${pr.jumlahUnit || 0} unit`;
+      elLabelLama.textContent = 'HPP per unit tercatat sekarang';
+      elLabelBaru.textContent = 'HPP per unit yang benar (Rp)';
+      document.getElementById('koreksiHppLama').textContent = formatRupiah(pr.hppPerUnit || 0);
+      document.getElementById('koreksiHppBaru').value = pr.hppPerUnit || '';
+      elRincian.style.display = 'none';
+    }
     document.getElementById('koreksiHppAlasan').value = '';
+    pratinjauKoreksiBatch();
     document.body.classList.add('lembar-koreksi-produksi-terbuka');
+  }
+
+  // Pembagian ulang biaya adukan ke tiap baris — RUMUS YANG SAMA dengan simpanProduksi
+  // (menurut kg, sisa pembulatan ke baris terakhir). Sengaja satu tempat: dua rumus
+  // untuk satu angka adalah sumber selisih yang paling sering.
+  function bagiBiayaAdukan(baris, totalBiaya) {
+    const totalKgJadi = baris.reduce((a, x) => a + (x.ukuranKemasan || 0) * (x.jumlahUnit || 0), 0);
+    if (!(totalKgJadi > 0)) return null;
+    let terpakai = 0;
+    return baris.map((x, i) => {
+      if (i < baris.length - 1) {
+        const v = Math.round(totalBiaya * (x.ukuranKemasan || 0) / totalKgJadi);
+        terpakai += v * (x.jumlahUnit || 0);
+        return v;
+      }
+      return (totalBiaya - terpakai) / (x.jumlahUnit || 1);
+    });
+  }
+  function pratinjauKoreksiBatch() {
+    const el = document.getElementById('koreksiBatchRincian');
+    if (!el || !_koreksiBatch) return;
+    const total = parseFloat(document.getElementById('koreksiHppBaru').value);
+    const bagi = (total >= 0) ? bagiBiayaAdukan(_koreksiBatch, total) : null;
+    el.innerHTML = _koreksiBatch.map((x, i) => `<div class="ph-baris"><span>${escapeHtml(x.namaProduk || '-')} ${x.ukuranKemasan} kg × ${x.jumlahUnit}</span>`
+      + `<b>${bagi ? formatRupiah(bagi[i]) + ' /unit' : formatRupiah(x.hppPerUnit || 0) + ' /unit'}</b></div>`).join('')
+      + (bagi ? `<div class="ph-catatan">Semua baris dikoreksi bersama — jumlahnya tetap sama persis dengan total biaya adukan.</div>` : '');
   }
   function tutupLembarKoreksiProduksi() {
     _koreksiProduksiId = null;
+    _koreksiBatch = null;
     document.body.classList.remove('lembar-koreksi-produksi-terbuka');
   }
   async function simpanKoreksiHpp() {
@@ -11500,9 +11563,54 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (!pr) return;
     const baru = parseFloat(document.getElementById('koreksiHppBaru').value);
     const alasan = document.getElementById('koreksiHppAlasan').value.trim();
-    if (!(baru >= 0)) { alert('Isi HPP per unit yang benar.'); return; }
-    if (baru === (pr.hppPerUnit || 0)) { alert('HPP-nya sama dengan yang tercatat — tidak ada yang perlu dikoreksi.'); return; }
+    if (!(baru >= 0)) { alert(_koreksiBatch ? 'Isi total biaya adukan yang benar.' : 'Isi HPP per unit yang benar.'); return; }
     if (!alasan) { alert('Isi alasan koreksinya — supaya jejaknya bisa dibaca nanti.'); return; }
+
+    // ===== ADUKAN MULTI-HASIL: seluruh baris dikoreksi serentak =====
+    if (_koreksiBatch) {
+      const baris = _koreksiBatch;
+      // Penolakan yang disengaja: kalau kumpulan barisnya tidak lengkap atau tidak bisa
+      // dibagi, LEBIH BAIK MENOLAK daripada membiarkan satu baris melenceng sendirian —
+      // Σ baris wajib sama dengan biaya adukan, dan setengah koreksi memecahnya diam-diam.
+      const jumlahTercatat = baris[0].jumlahBaris || baris.length;
+      if (baris.length !== jumlahTercatat) {
+        alert('Koreksi ditolak.\n\nAdukan ini seharusnya punya ' + jumlahTercatat + ' baris hasil, tapi yang masih berlaku cuma ' + baris.length
+          + '. Sebagian barisnya sudah dikoreksi atau dihapus sendiri-sendiri, jadi biaya adukan tidak bisa dibagi ulang dengan benar.'
+          + '\n\nHapus seluruh adukan ini lewat Riwayat Produksi, lalu catat ulang — itu satu-satunya cara yang tidak meninggalkan selisih.');
+        return;
+      }
+      const bagi = bagiBiayaAdukan(baris, baru);
+      if (!bagi) {
+        alert('Koreksi ditolak.\n\nTotal kg hasil adukan ini nol, jadi biayanya tidak bisa dibagi per baris. Periksa ukuran & jumlah unitnya di Riwayat Produksi.');
+        return;
+      }
+      const totalLama = Math.round(baris.reduce((a, x) => a + (x.hppPerUnit || 0) * (x.jumlahUnit || 0), 0));
+      if (Math.round(baru) === totalLama) { alert('Total biayanya sama dengan yang tercatat — tidak ada yang perlu dikoreksi.'); return; }
+      if (!confirm('Koreksi SELURUH adukan (' + baris.length + ' baris hasil):\n'
+        + baris.map((x, i) => '· ' + (x.namaProduk || '-') + ' ' + x.ukuranKemasan + ' kg × ' + x.jumlahUnit + ' → ' + formatRupiah(bagi[i]) + '/unit').join('\n')
+        + '\n\nTotal biaya adukan ' + formatRupiah(totalLama) + ' → ' + formatRupiah(baru)
+        + '.\nSemua baris dikoreksi bersama supaya jumlahnya tetap sama dengan total biaya. Lanjutkan?')) return;
+      try {
+        for (let i = 0; i < baris.length; i++) {
+          const idBaru = idUnik();
+          const pengganti = { ...baris[i], id: idBaru, hppPerUnit: bagi[i],
+            koreksiDari: baris[i].id, alasanKoreksi: alasan, dikoreksiPada: new Date().toISOString() };
+          delete pengganti.dikoreksiOleh;
+          await simpanKeFirestore(KOLEKSI_PRODUKSI, pengganti);
+          await simpanKeFirestore(KOLEKSI_PRODUKSI, { ...baris[i], dikoreksiOleh: idBaru, alasanKoreksi: alasan });
+        }
+        tutupLembarKoreksiProduksi();
+        tampilkanProduksi();
+        tampilkanStok();
+        tampilkanRekap();
+      } catch (err) {
+        console.error(err);
+        alert('Gagal simpan koreksi (cek internet). ' + err.message);
+      }
+      return;
+    }
+
+    if (baru === (pr.hppPerUnit || 0)) { alert('HPP-nya sama dengan yang tercatat — tidak ada yang perlu dikoreksi.'); return; }
     const idBaru = Date.now();
     const pengganti = { ...pr, id: idBaru, hppPerUnit: baru,
       koreksiDari: pr.id, alasanKoreksi: alasan, dikoreksiPada: new Date().toISOString() };
@@ -17624,6 +17732,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.salinBiayaBulanLalu = salinBiayaBulanLalu;
   window.hitungCampuranProduksi = hitungCampuranProduksi;
   window.tambahBarisHasilProduksi = tambahBarisHasilProduksi; window.hapusBarisHasilProduksi = hapusBarisHasilProduksi;
+  window.pratinjauKoreksiBatch = pratinjauKoreksiBatch;
   window.cekMerkLain = cekMerkLain;
   window.hitungPerkiraan = hitungPerkiraan;
   window.hapusBarisMerk = hapusBarisMerk;
