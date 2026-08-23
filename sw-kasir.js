@@ -5,7 +5,45 @@
 // detik. Sekarang: buka langsung dari cache (<1 detik), versi baru diunduh diam-diam
 // untuk pembukaan berikutnya. kasir-darurat-nominal.html ikut di-cache — katup darurat
 // justru paling wajib bisa kebuka saat jaringan mati.
-const VERSI = 'kasir-v4';
+// v5 (9 Agustus 2026): kasir dapat kolom nama pembeli (wajib, ketiga cara bayar) dan
+// layar UTANG. VERSI dinaikkan supaya perubahan sebesar ini langsung terpasang begitu
+// kasir dibuka — kalau tidak, strategi "cache dulu" di bawah menyajikan kasir LAMA satu
+// kali dulu, dan kasir sempat menyimpan penjualan tanpa nama pelanggan.
+// v6 (9 Agustus 2026): kasir darurat ikut dapat pilihan Tunai/QRIS/Kredit + nama
+// pembeli (sebelumnya caraBayar DIPAKU 'Tunai', jadi QRIS/kredit tercatat keliru).
+// v7 (9 Agustus 2026): kasir.html jadi alat OWNER — gerbang jam operasional & wajib
+// pilih operator dicabut, harga di luar katalog diterima (ditanya barangnya nanti).
+// v8 (9 Agustus 2026): nama pembeli tidak lagi wajib untuk Tunai/QRIS — cuma Kredit.
+// v9 (9 Agustus 2026): panel tuts nama produk dibuang dari kasir owner.
+// v10 (9 Agustus 2026): layar KEMBALIAN — sebut lembar uang yang harus diambil.
+// v11 (9 Agustus 2026): kasir darurat mencatat PER BARANG (tombol +), bukan satu total —
+// supaya tiap harga bisa dicocokkan ke produk tanpa mengandalkan ingatan Gono.
+// v12 (9 Agustus 2026): tuts harga cepat di kasir darurat — sekali ketuk jadi satu barang.
+// v13 (10 Agustus 2026): karung bekas dihitung 1 lembar tiap 65 liter, bukan 1 lembar
+// berapa pun liternya.
+// v14 (11 Agustus 2026): opsi karung 25 kg dicabut dari Jual Karung Utuh — cuma 50 kg.
+// v15 (11 Agustus 2026): layar KEMBALIAN dapat tombol konfirmasi "Sudah saya kasih ke
+// pembeli" — statusnya ikut tersimpan ke transaksi supaya bisa dicek lagi kalau pembeli
+// belakangan nanya soal kembaliannya.
+// v16 (11 Agustus 2026): ejaan caraBayar dibakukan jadi 'QRIS' (kapital) di kasir dan
+// kasir darurat. WAJIB naik: dengan cache lama, kasir masih menyimpan 'Qris' walau
+// berkasnya sudah diperbarui — terbukti saat pengujian, v15 menyajikan versi lama.
+// v17 (12 Agustus 2026): kasir memberi tahu umur harganya sendiri. Kasir MEMBEKUKAN
+// harga & HPP dari ringkasan yang di-cache; kalau penyegaran gagal berjam-jam, kasir
+// tetap jualan pakai harga lama tanpa ada yang memberi tahu. Sekarang ada bilah yang
+// diam selama masih segar dan menyela di atas 6 jam / sehari.
+// v18 (12 Agustus 2026): struk digital — sesudah transaksi tersimpan muncul bilah
+// "Struk terakhir", ketuk untuk mengirimkannya lewat WhatsApp. Tautannya wa.me tanpa
+// nomor tujuan, jadi nomor pembeli tidak perlu diminta apalagi disimpan.
+// v19 (13 Agustus 2026): kasir darurat dapat TUTS BERNAMA BARANG — kalau HP punya
+// salinan katalog (ringkasan kasir), sekali ketuk = barang + harga + HPP tercatat
+// sebagai penjualan lengkap yang tidak perlu dirinci. Ditambah kolom catatan nego
+// untuk angka polos. WAJIB naik: dengan cache lama, darurat masih menyimpan
+// nominal-tanpa-barang walau berkasnya sudah diperbarui.
+// v20 (13 Agustus 2026): SACK 25 hidup lagi + istilah sack. Toko mulai membeli
+// sack 25 kg (Angsa, Perahu Layar) dan menjualnya utuh. Kasir & darurat dapat
+// tombol SACK25 per merk yang memang punya, harga & HPP dari ringkasan.
+const VERSI = 'kasir-v20';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 
