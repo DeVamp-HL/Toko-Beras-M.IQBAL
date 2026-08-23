@@ -3755,7 +3755,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     <label>Merk</label>
     <input type="text" id="hargaKemasanMerk" placeholder="Contoh: Kembang, Putri Agri, Lele Special, BMW" oninput="perbaruiPratinjauHarga()">
     <label>Ukuran kemasan (kg)</label>
-    <input type="number" id="hargaKemasanUkuran" placeholder="Contoh: 5, 10, 20, 25" inputmode="numeric" oninput="perbaruiPratinjauHarga()">
+    <input type="number" id="hargaKemasanUkuran" placeholder="Contoh: 5, 10, 20, 25, 50" inputmode="numeric" oninput="perbaruiPratinjauHarga()">
     <label>Harga jual per unit (Rp)</label>
     <input type="number" id="hargaKemasanNominal" placeholder="0" inputmode="numeric" oninput="perbaruiPratinjauHarga()">
     <button type="button" onclick="simpanHargaKemasan()" class="tombol-utama-kartu">Simpan Harga Kemasan</button>
@@ -4480,58 +4480,21 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       <!-- Ukuran 50 kg BUKAN produk kemasan baru — keputusan My DeV 9 Agu 2026: hasilnya
            digabung balik ke stok karung sumber merk tujuan, lalu dijual lewat Jual > Karung
            Utuh, bukan lewat Dari Stok Kemasan Jadi. Isian ini dipakai ULANG jadi "merk
-           tujuan" saat 50 kg dipilih — lihat aturModeProduksi50(). -->
-      <label id="labelNamaProduk">Nama produk (nama jual)</label>
-      <input type="text" id="produksiNamaProduk" placeholder="Contoh: Kembang, Putri Agri, Lele Special, BMW, Buah Persik">
-      <datalist id="daftarMerkProduksi50"></datalist>
-      <p class="keterangan" id="produksiKet50" style="display:none;">Ukuran 50 kg = mengepak ulang jadi karung utuh, bukan produk baru. Kg hasilnya masuk balik ke stok karung merk ini, dan dijual lewat tab Jual → Karung Utuh. Kalau ini merk baru, tambahkan juga harga jualnya di Daftar Harga → Karung &amp; Repacking sebelum bisa dijual.</p>
-      <label>Ukuran per kemasan (kg)</label>
-      <div class="kartu-jenis-jual" style="grid-template-columns: repeat(3,1fr);" id="produksiUkuranTombol">
-        <button type="button" id="ukuranProd-50" onclick="pilihUkuranProduksi(50)">50 kg</button>
-        <button type="button" id="ukuranProd-25" onclick="pilihUkuranProduksi(25)">25 kg</button>
-        <button type="button" id="ukuranProd-20" onclick="pilihUkuranProduksi(20)">20 kg</button>
-        <button type="button" id="ukuranProd-10" onclick="pilihUkuranProduksi(10)">10 kg</button>
-        <button type="button" id="ukuranProd-5" onclick="pilihUkuranProduksi(5)">5 kg</button>
-      </div>
-      <input type="number" id="produksiUkuranKemasan" placeholder="Atau ketik manual" inputmode="numeric" oninput="hitungCampuranProduksi()">
-
-      <!-- Lembar 3: jumlah unit sudah terisi dari perhitungan muat — pemakai tinggal
-           menekan − kalau produksi sebagian (Prinsip 2 — sedikit ketik). Stepper 48 px
-           sama dengan yang dipakai halaman Jual. -->
-      <div class="baris-isian baris-unit">
-        <span class="bi-nama">Jumlah unit<small id="produksiMuatKet">isi sumber &amp; ukuran dulu</small></span>
-        <div class="stepper-jumlah">
-          <button type="button" class="st-kurang" onclick="ubahJumlahUnitProduksi(-1)" aria-label="Kurangi unit">−</button>
-          <input type="number" id="produksiJumlahUnit" placeholder="0" inputmode="numeric" oninput="tandaiUnitDisentuh()">
-          <button type="button" class="st-tambah" onclick="ubahJumlahUnitProduksi(1)" aria-label="Tambah unit">+</button>
-        </div>
-      </div>
-      <!-- Disembunyikan seluruhnya untuk mode 50 kg (aturModeProduksi50): karung 50 kg
-           tidak memakai kantong plastik dari JENIS_BAHAN_KEMASAN — artikelnya semua
-           ukuran 5-25 kg. Isian di dalamnya TETAP dibaca simpanProduksi(), makanya
-           dipaksa kosong lewat kode, bukan cuma disembunyikan lewat CSS. -->
-      <div id="produksiKantongBlok">
-        <p class="keterangan">Pilih jenis kantong yang dipakai — biaya kemasan otomatis dihitung dari stok, tidak perlu ketik manual. Kalau stok kantong belum tercatat, isi dulu lewat "Beli Stok Bahan Kemasan" di atas.</p>
-        <label>Jenis kantong dipakai</label>
-        <div class="kartu-jenis-jual" style="grid-template-columns: repeat(2,1fr);" id="produksiKantongTombolWrap"></div>
-        <input type="hidden" id="produksiKantongJenis" value="5kg_kembangbmw">
-        <div class="stok-tersedia" id="produksiKantongInfo"></div>
-        <!-- Lembar 3: kantong & upah memakai lencana AMBER, bukan merah — belum lengkap
-             itu bukan bahaya, dan produksi tetap boleh disimpan. Akibatnya disebut jujur
-             oleh kalimat amber di kartu pratinjau. -->
-        <div class="baris-isian">
-          <!-- Tanpa <small>: lencana + isian + satuan sudah memakan kolom kanan, dan
-               "biasanya sama dengan jumlah unit" sudah tertulis di paragraf di atasnya.
-               Dua kali menulis hal yang sama membuat namanya melipat tiga baris di 360 px. -->
-          <span class="bi-nama">Kantong dipakai</span>
-          <span class="bi-isi">
-            <span class="lencana-amber" id="lencanaKantong">belum diisi</span>
-            <input type="number" id="produksiKantongJumlah" placeholder="0" inputmode="numeric" oninput="hitungBiayaKemasanProduksi(); hitungCampuranProduksi();"><i>pcs</i>
-          </span>
-        </div>
-        <div class="keterangan" id="produksiBiayaKemasanInfo" style="margin-top:6px;"></div>
-        <input type="hidden" id="produksiBiayaKemasan" value="0">
-      </div>
+           tujuan" saat 50 kg dipilih. Mode itu DICABUT 23 Agu 2026. -->
+      <!-- HASIL JADI DAFTAR (23 Agu 2026) — satu adukan boleh dibagi ke beberapa
+           ukuran sekaligus. Contoh nyata pemilik: 450 kg campuran -> Angsa 50 kg x 5
+           sack + Angsa 25 kg x 8 karung. Dulu ini harus diinput dua kali dengan bahan
+           dibagi proporsional pakai tangan — hitungan yang gampang meleset, dan kalau
+           meleset HPP-nya ikut salah.
+           Ukuran 50 kg SEKARANG jadi kemasan biasa (membalik keputusan 9 Agu 2026):
+           hasil campuran itu beras repacking, tempatnya di Kemasan Jadi, bukan
+           dicampur balik ke kolam karung beras mentah. -->
+      <p class="keterangan" style="margin-top:-8px;">Satu baris = satu ukuran hasil. Boleh beberapa ukuran dari satu adukan — bahannya dibagi otomatis menurut kg, tidak perlu dihitung tangan.</p>
+      <div id="produksiHasilDaftar"></div>
+      <datalist id="daftarNamaHasil"></datalist>
+      <datalist id="daftarUkuranHasil"><option value="50"><option value="25"><option value="20"><option value="10"><option value="5"></datalist>
+      <button type="button" class="tombol-tambah-merk" onclick="tambahBarisHasilProduksi()">+ Tambah Hasil</button>
+      <div class="stok-tersedia" id="produksiHasilInfo" style="margin-top:10px;"></div>
       <div class="baris-isian">
         <span class="bi-nama">Upah repacking</span>
         <span class="bi-isi">
@@ -5551,8 +5514,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     <div class="pp-kisi">
       <div><div class="pp-label">Total kg</div><div class="pp-nilai" id="ppTotalKg">0 <i>kg</i></div></div>
       <div><div class="pp-label">HPP rata-rata</div><div class="pp-nilai" id="ppHppKg">0 <i>/kg</i></div></div>
-      <div><div class="pp-label">HPP per unit</div><div class="pp-nilai" id="ppHppUnit">0</div></div>
-      <div><div class="pp-label">Muat</div><div class="pp-nilai" id="ppMuat">0 <i>unit</i></div></div>
+      <div><div class="pp-label">Total kg hasil</div><div class="pp-nilai" id="ppKgHasil">0 <i>kg</i></div></div>
+      <div><div class="pp-label">Susut</div><div class="pp-nilai" id="ppSusut">0 <i>kg</i></div></div>
     </div>
     <div class="pp-ruas" id="ppRuas"></div>
     <div class="pp-catatan" id="ppCatatan"></div>
@@ -10078,10 +10041,19 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // sudah tertulis (UX Alur 1: "setiap peringatan membawa pintu keluar").
   function tawarkanProduksi(namaTampil) {
     const nama = String(namaTampil || '').replace(/\s*\d+\s*kg$/i, '').trim();
+    // Ukuran ikut dibaca dari labelnya ("Angsa 25 kg") — pintu keluarnya jadi benar-benar
+    // sampai, bukan cuma membuka halaman lalu menyuruh mengetik ulang.
+    const cocokUkuran = String(namaTampil || '').match(/(\d+(?:[.,]\d+)?)\s*kg$/i);
     if (!confirm(`Stok ${namaTampil} habis.\n\nBuka halaman Produksi untuk membuat stoknya sekarang?`)) return;
     pindahHalaman('produksi');
-    const el = document.getElementById('produksiNamaProduk');
-    if (el && nama) el.value = nama;
+    const baris = document.querySelector('#produksiHasilDaftar .baris-hasil-produksi');
+    if (!baris) return;
+    const id = baris.id.split('-')[1];
+    const elNama = document.getElementById('hpNama-' + id);
+    if (elNama && nama) elNama.value = nama;
+    const elUkuran = document.getElementById('hpUkuran-' + id);
+    if (elUkuran && cocokUkuran) elUkuran.value = cocokUkuran[1].replace(',', '.');
+    hitungCampuranProduksi();
   }
 
   // Berapa unit tiap produk kemasan terjual dalam 30 hari terakhir — dipakai untuk
@@ -10785,6 +10757,105 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     el.classList.add('baris-melipat');
     setTimeout(() => { el.remove(); nomoriUlangSumberProduksi(); hitungCampuranProduksi(); }, 180);
   }
+  // ============ BARIS HASIL PRODUKSI (multi-ukuran, 23 Agu 2026) ============
+  // Pola id sengaja beda dari sumber (sumberprod-*) supaya tidak pernah bentrok, dan
+  // pembacanya memakai id di dalam baris — bukan urutan DOM — jadi menghapus baris
+  // tengah tidak menggeser apa pun.
+  let idBarisHasilProduksi = 0;
+  function opsiKantongHtml(terpilih) {
+    const opsi = ['<option value="">tanpa kantong (mis. sack 50 kg)</option>'];
+    JENIS_BAHAN_KEMASAN.forEach(j => {
+      opsi.push('<option value="' + j + '"' + (j === terpilih ? ' selected' : '') + '>' + escapeHtml(LABEL_BAHAN_KEMASAN[j] || j) + '</option>');
+    });
+    return opsi.join('');
+  }
+  function tambahBarisHasilProduksi() {
+    idBarisHasilProduksi++;
+    const id = idBarisHasilProduksi;
+    const div = document.createElement('div');
+    div.className = 'baris-merk baris-merk-v2 baris-hasil-produksi bm-kosong';
+    div.id = 'hasilprod-' + id;
+    div.innerHTML = `
+      <div class="bm-kepala">
+        <span class="bm-no">${id}</span>
+        <input class="bm-nama-pilih" type="text" id="hpNama-${id}" list="daftarNamaHasil" placeholder="Nama produk" oninput="hitungCampuranProduksi()" aria-label="Nama produk hasil ${id}">
+        <span class="bm-kg" id="hpKg-${id}"></span>
+        <button type="button" class="bm-buang" onclick="hapusBarisHasilProduksi(${id})" aria-label="Hapus hasil ${id}">${IKON_BUANG}</button>
+      </div>
+      <div class="bm-isi">
+        <div class="bm-baris">
+          <label class="bm-kotak" for="hpUkuran-${id}">
+            <input class="bm-inp" type="number" id="hpUkuran-${id}" list="daftarUkuranHasil" placeholder="0" inputmode="numeric" oninput="hitungCampuranProduksi()">
+            <span class="bm-sat">kg per unit</span>
+          </label>
+          <label class="bm-kotak" for="hpUnit-${id}">
+            <input class="bm-inp" type="number" id="hpUnit-${id}" placeholder="0" inputmode="numeric" oninput="hitungCampuranProduksi()">
+            <span class="bm-sat">unit</span>
+          </label>
+        </div>
+        <div class="bm-baris hp-kantong">
+          <select id="hpKantongJenis-${id}" onchange="hitungCampuranProduksi()" aria-label="Jenis kantong hasil ${id}">${opsiKantongHtml('')}</select>
+          <label class="bm-kotak" for="hpKantongJumlah-${id}">
+            <input class="bm-inp" type="number" id="hpKantongJumlah-${id}" placeholder="0" inputmode="numeric" oninput="hitungCampuranProduksi()">
+            <span class="bm-sat">kantong</span>
+          </label>
+        </div>
+        <div class="sp-sisa" id="hpInfo-${id}"></div>
+      </div>
+    `;
+    document.getElementById('produksiHasilDaftar').appendChild(div);
+    [document.getElementById('hpUkuran-' + id), document.getElementById('hpUnit-' + id),
+     document.getElementById('hpKantongJumlah-' + id)].forEach(inp => {
+      inp.addEventListener('input', function () { ukurIsian(inp); });
+      ukurIsian(inp);
+    });
+    isiDaftarNamaHasil();
+    nomoriUlangHasilProduksi();
+    hitungCampuranProduksi();
+  }
+  function nomoriUlangHasilProduksi() {
+    document.querySelectorAll('#produksiHasilDaftar .baris-hasil-produksi').forEach((el, i) => {
+      const b = el.querySelector('.bm-no');
+      if (b) b.textContent = i + 1;
+    });
+  }
+  function hapusBarisHasilProduksi(id) {
+    const el = document.getElementById('hasilprod-' + id);
+    if (!el) { hitungCampuranProduksi(); return; }
+    if (document.querySelectorAll('#produksiHasilDaftar .baris-hasil-produksi').length <= 1) {
+      alert('Minimal satu baris hasil. Kosongkan isinya kalau mau ganti.');
+      return;
+    }
+    el.classList.add('baris-melipat');
+    setTimeout(() => { el.remove(); nomoriUlangHasilProduksi(); hitungCampuranProduksi(); }, 180);
+  }
+  function bacaHasilProduksi() {
+    const hasil = [];
+    document.querySelectorAll('#produksiHasilDaftar .baris-hasil-produksi').forEach(el => {
+      const id = el.id.split('-')[1];
+      const nama = (document.getElementById('hpNama-' + id).value || '').trim();
+      const ukuran = Math.round((parseFloat(document.getElementById('hpUkuran-' + id).value) || 0) * 1000) / 1000;
+      const unit = parseFloat(document.getElementById('hpUnit-' + id).value) || 0;
+      const kantongJenis = document.getElementById('hpKantongJenis-' + id).value || '';
+      const kantongJumlah = parseFloat(document.getElementById('hpKantongJumlah-' + id).value) || 0;
+      if (nama && ukuran > 0 && unit > 0) hasil.push({ id, nama, ukuran, unit, kantongJenis, kantongJumlah });
+    });
+    return hasil;
+  }
+  // Saran nama: produk kemasan yang sudah pernah dibuat + daftar merk baku.
+  function isiDaftarNamaHasil() {
+    const dl = document.getElementById('daftarNamaHasil');
+    if (!dl) return;
+    const dariStok = Object.values(hitungStokKemasan()).map(x => x.namaProduk);
+    const gabung = Array.from(new Set([...dariStok, ...DAFTAR_MERK])).sort();
+    dl.innerHTML = gabung.map(m => `<option value="${escapeHtml(m)}">`).join('');
+  }
+  function biayaKantongBaris(jenis, jumlah) {
+    if (!jenis || !(jumlah > 0)) return 0;
+    const stok = hitungStokBahanKemasan();
+    return Math.round((stok[jenis]?.hppPerPcs || 0) * jumlah);
+  }
+
   function bacaSumberProduksi() {
     const hasil = [];
     document.querySelectorAll('#produksiSumberDaftar .baris-sumber-produksi').forEach(el => {
@@ -10807,6 +10878,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       sel.innerHTML = opsiMerkSumberHtml(nilai);
     });
     if (document.querySelectorAll('#produksiSumberDaftar .baris-sumber-produksi').length === 0) tambahBarisSumberProduksi();
+    if (document.querySelectorAll('#produksiHasilDaftar .baris-hasil-produksi').length === 0) tambahBarisHasilProduksi();
   }
   function hitungCampuranProduksi() {
     const info = document.getElementById('produksiCampuranInfo');
@@ -10828,21 +10900,43 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     totalKg = Math.round(totalKg * 1000) / 1000;
     const hppPerKg = totalKg > 0 ? totalHpp / totalKg : 0;
     const jualPerKg = jualLengkap && totalKg > 0 ? totalJual / totalKg : null;
-    const ukuran = parseFloat(document.getElementById('produksiUkuranKemasan').value) || 0;
     let teks = `Campuran: ${totalKg} kg · HPP ${formatRupiah(hppPerKg)}/kg`;
     teks += jualPerKg !== null
       ? ` · nilai jual sumber ${formatRupiah(jualPerKg)}/kg`
       : ' · nilai jual/kg belum lengkap (isi Katalog Harga Karung di tab Harga)';
-    if (ukuran > 0) {
-      teks += ` → per kemasan ${ukuran} kg: HPP ${formatRupiah(hppPerKg * ukuran)}`;
-      if (jualPerKg !== null) teks += `, dasar jual ${formatRupiah(jualPerKg * ukuran)}`;
-      const unitMuat = Math.floor(totalKg / ukuran);
-      if (unitMuat > 0) teks += ` · muat ±${unitMuat} unit`;
-    }
     info.textContent = teks;
     if (teks !== isiLamaInfo) sorotAngka(info);
     info.className = 'stok-tersedia' + (kurang.length > 0 ? ' kurang' : '');
-    gambarPratinjauProduksi({ merk: sumber.length, totalKg, hppPerKg, ukuran });
+    // Pembagian biaya HANYA menurut kg — tiap baris hasil menanggung sesuai beratnya.
+    // Susut terserap otomatis: kalau totalKgJadi < kgDipakai, HPP per kg hasil naik
+    // dengan sendirinya. Itu benar dan memang harus begitu.
+    const hasil = bacaHasilProduksi();
+    const totalKgJadi = Math.round(hasil.reduce((a, h) => a + h.ukuran * h.unit, 0) * 1000) / 1000;
+    const biayaKantong = hasil.reduce((a, h) => a + biayaKantongBaris(h.kantongJenis, h.kantongJumlah), 0);
+    const upah = parseFloat(document.getElementById('produksiUpahRepacking').value) || 0;
+    const totalBiaya = Math.round(totalHpp) + upah + biayaKantong;
+    const hppKgHasil = totalKgJadi > 0 ? totalBiaya / totalKgJadi : 0;
+    hasil.forEach(h => {
+      const elKg = document.getElementById('hpKg-' + h.id);
+      if (elKg) elKg.textContent = angkaRapi(Math.round(h.ukuran * h.unit * 1000) / 1000) + ' kg';
+      const elInfo = document.getElementById('hpInfo-' + h.id);
+      if (elInfo) {
+        const bk = biayaKantongBaris(h.kantongJenis, h.kantongJumlah);
+        elInfo.innerHTML = totalKgJadi > 0
+          ? `HPP <b>${formatRupiah(hppKgHasil * h.ukuran)}</b> per unit${bk > 0 ? ' · kantong ' + formatRupiah(bk) : ''}`
+          : 'isi ukuran & unit';
+      }
+    });
+    const elHasilInfo = document.getElementById('produksiHasilInfo');
+    if (elHasilInfo) {
+      const susut = Math.round((totalKg - totalKgJadi) * 1000) / 1000;
+      elHasilInfo.textContent = totalKgJadi > 0
+        ? `Hasil: ${angkaRapi(totalKgJadi)} kg dari ${angkaRapi(totalKg)} kg bahan · susut ${angkaRapi(susut)} kg`
+          + ` · HPP hasil ${formatRupiah(hppKgHasil)}/kg`
+        : 'Isi minimal satu baris hasil (nama + ukuran + unit).';
+      elHasilInfo.className = 'stok-tersedia' + (totalKg > 0 && Math.abs(susut) > totalKg * 0.15 ? ' kurang' : '');
+    }
+    gambarPratinjauProduksi({ merk: sumber.length, totalKg, hppPerKg, totalKgJadi, hppKgHasil, rincianUnit: hasil.map(h => h.unit) });
     perbaruiKesiapanProduksi();
   }
 
@@ -10854,36 +10948,38 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const kartu = document.getElementById('pratinjauProduksi');
     if (!kartu) return;
     perbaruiLencanaBahanProduksi();
-    if (!d || d.totalKg <= 0) { kartu.style.display = 'none'; isiUnitOtomatis(0); return; }
+    if (!d || d.totalKg <= 0) { kartu.style.display = 'none'; return; }
     kartu.style.display = 'block';
     document.getElementById('ppJumlahMerk').textContent = d.merk + ' merk';
     document.getElementById('ppTotalKg').innerHTML = angkaRapi(d.totalKg) + ' <i>kg</i>';
     document.getElementById('ppHppKg').innerHTML = angkaRapi(Math.round(d.hppPerKg)) + ' <i>/kg</i>';
 
-    const muat = d.ukuran > 0 ? Math.floor(d.totalKg / d.ukuran) : 0;
-    const sisa = d.ukuran > 0 ? Math.round((d.totalKg - muat * d.ukuran) * 1000) / 1000 : 0;
-    isiUnitOtomatis(muat);
-    document.getElementById('ppHppUnit').textContent = d.ukuran > 0 ? angkaRapi(Math.round(d.hppPerKg * d.ukuran)) : '—';
-    document.getElementById('ppMuat').innerHTML = d.ukuran > 0
-      ? muat + ' <i>unit' + (sisa > 0 ? ' · sisa ' + angkaRapi(sisa) + ' kg' : '') + '</i>'
-      : '— <i>pilih ukuran</i>';
+    const kgHasil = d.totalKgJadi || 0;
+    const susut = Math.round((d.totalKg - kgHasil) * 1000) / 1000;
+    document.getElementById('ppKgHasil').innerHTML = kgHasil > 0 ? angkaRapi(kgHasil) + ' <i>kg</i>' : '— <i>isi hasil</i>';
+    document.getElementById('ppSusut').innerHTML = kgHasil > 0
+      ? angkaRapi(susut) + ' <i>kg' + (d.totalKg > 0 ? ' · ' + (susut / d.totalKg * 100).toFixed(1).replace('.', ',') + '%' : '') + '</i>'
+      : '— <i>kg</i>';
 
-    // Deret ruas dibatasi 40 supaya baris tidak jadi bubur di layar 360 px.
+    // Deret ruas = SEMUA unit hasil dari seluruh baris, dibatasi 40 supaya barisnya
+    // tidak jadi bubur di layar 360 px. Ruas patah di ujung = kg yang tidak jadi
+    // kemasan (susut) — terlihat sebelum ditimbang.
+    const unitSemua = (d.rincianUnit || []).reduce((a, x) => a + x, 0);
     const ruas = document.getElementById('ppRuas');
-    const tampil = Math.min(muat, 40);
+    const tampil = Math.min(unitSemua, 40);
     ruas.innerHTML = tampil > 0
-      ? Array.from({ length: tampil }, () => '<span></span>').join('') + (sisa > 0 ? '<span class="pp-patah"></span>' : '')
-        + (muat > 40 ? '<b class="pp-lebih">+' + (muat - 40) + '</b>' : '')
+      ? Array.from({ length: tampil }, () => '<span></span>').join('') + (susut > 0 ? '<span class="pp-patah"></span>' : '')
+        + (unitSemua > 40 ? '<b class="pp-lebih">+' + (unitSemua - 40) + '</b>' : '')
       : '';
 
-    // Kantong & upah belum diisi = amber (data kurang, bukan bahaya) — produksi
-    // tetap boleh disimpan, tapi akibatnya disebut jujur. Kantong dilewati untuk mode
-    // 50 kg — blok isiannya memang disembunyikan (aturModeProduksi50), jadi menagihnya
-    // di sini cuma akan menyesatkan.
-    const kantong = parseFloat(document.getElementById('produksiKantongJumlah').value) || 0;
+    // Kantong hanya ditagih kalau ada baris hasil yang memang memilih jenis kantong —
+    // sack 50 kg tidak memakai artikel kantong mana pun, menagihnya cuma menyesatkan.
+    const hasilKini = bacaHasilProduksi();
+    const kantong = hasilKini.reduce((a, h) => a + (h.kantongJumlah || 0), 0);
+    const butuhKantong = hasilKini.some(h => h.kantongJenis);
     const upah = parseFloat(document.getElementById('produksiUpahRepacking').value) || 0;
     const belum = [];
-    if (d.ukuran !== 50 && kantong <= 0) belum.push('Kantong');
+    if (butuhKantong && kantong <= 0) belum.push('Kantong');
     if (upah <= 0) belum.push('upah repacking');
     const cat = document.getElementById('ppCatatan');
     cat.textContent = belum.length
@@ -10898,24 +10994,6 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // ===== Lembar 3 — jumlah unit terisi sendiri dari perhitungan muat =====
   // Sekali pemakai mengubahnya, sistem berhenti mengisi: angka yang diketik orang
   // tidak boleh ditimpa mesin, sekecil apa pun alasannya (Prinsip 1).
-  let _unitProduksiDisentuh = false;
-  function tandaiUnitDisentuh() { _unitProduksiDisentuh = true; hitungCampuranProduksi(); }
-  function ubahJumlahUnitProduksi(delta) {
-    _unitProduksiDisentuh = true;
-    ubahJumlah('produksiJumlahUnit', delta);
-    hitungCampuranProduksi();
-  }
-  function isiUnitOtomatis(muat) {
-    const el = document.getElementById('produksiJumlahUnit');
-    const ket = document.getElementById('produksiMuatKet');
-    if (!el) return;
-    if (!_unitProduksiDisentuh) el.value = muat > 0 ? muat : '';
-    if (ket) {
-      ket.textContent = muat > 0
-        ? 'muat ' + angkaRapi(muat) + ' dari campuran ini'
-        : 'isi sumber & ukuran dulu';
-    }
-  }
   // Kantong & upah: lencana amber hilang begitu terisi. Amber, bukan merah —
   // data kurang bukan bahaya, dan produksi tetap boleh disimpan (Lembar 3).
   // Upah repacking ikut pengaman rupiah (a) — pola kembar yang sama dengan biaya
@@ -10926,9 +11004,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     document.getElementById('produksiUpahTampil').value = n > 0 ? n.toLocaleString('id-ID') : '';
   }
   function perbaruiLencanaBahanProduksi() {
-    const kantong = parseFloat((document.getElementById('produksiKantongJumlah') || {}).value) || 0;
+    const kantong = bacaHasilProduksi().reduce((a, h) => a + (h.kantongJumlah || 0), 0);
     const upah = parseFloat((document.getElementById('produksiUpahRepacking') || {}).value) || 0;
-    const lk = document.getElementById('lencanaKantong');
+    const lk = null;   // lencana kantong tunggal ikut tercabut (kantong kini per baris hasil)
     const lu = document.getElementById('lencanaUpah');
     if (lk) lk.classList.toggle('terisi', kantong > 0);
     if (lu) lu.classList.toggle('terisi', upah > 0);
@@ -10986,54 +11064,12 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (!tombol) return;
     tombol.disabled = document.querySelectorAll('#produksiSumberDaftar .sp-lebih').length > 0;
   }
-  function pilihUkuranProduksi(u) {
-    document.getElementById('produksiUkuranKemasan').value = u;
-    [50, 25, 20, 10, 5].forEach(x => {
-      const b = document.getElementById('ukuranProd-' + x);
-      if (b) b.classList.toggle('pilih', x === u);
-    });
-    aturModeProduksi50(u === 50);
-    hitungCampuranProduksi();
-  }
   function perbaruiStokProduksi() { hitungCampuranProduksi(); }
-  // dipanggil ulang di reset simpanProduksi supaya tombol ukuran ikut bersih
-  function resetTombolUkuranProduksi() {
-    [50, 25, 20, 10, 5].forEach(x => {
-      const b = document.getElementById('ukuranProd-' + x);
-      if (b) b.classList.remove('pilih');
-    });
-    aturModeProduksi50(false);
-  }
 
-  // ===== Ukuran 50 kg = gabung balik ke karung utuh, BUKAN produk kemasan baru =====
-  // Keputusan My DeV 9 Agu 2026: isian "nama produk" dipakai ulang jadi "merk tujuan",
-  // dan blok kantong plastik disembunyikan (karung 50 kg tidak pakai artikel kantong
-  // manapun di JENIS_BAHAN_KEMASAN — semuanya ukuran 5-25 kg). Perhitungan HPP/muat di
-  // kartu pratinjau tidak berubah sama sekali, cuma tujuan stoknya yang beda.
-  function aturModeProduksi50(aktif) {
-    const label = document.getElementById('labelNamaProduk');
-    const input = document.getElementById('produksiNamaProduk');
-    const ket = document.getElementById('produksiKet50');
-    const blokKantong = document.getElementById('produksiKantongBlok');
-    if (label) label.textContent = aktif ? 'Merk tujuan (masuk balik ke stok karung)' : 'Nama produk (nama jual)';
-    if (input) {
-      input.placeholder = aktif ? 'Contoh: IR64 Ascent, Angsa — boleh merk baru' : 'Contoh: Kembang, Putri Agri, Lele Special, BMW, Buah Persik';
-      if (aktif) { isiDaftarMerkProduksi50(); input.setAttribute('list', 'daftarMerkProduksi50'); }
-      else input.removeAttribute('list');
-    }
-    if (ket) ket.style.display = aktif ? 'block' : 'none';
-    if (blokKantong) blokKantong.style.display = aktif ? 'none' : 'block';
-  }
-  // Saran merk: gabungan DAFTAR_MERK baku + merk apa pun yang sudah pernah tercatat di
-  // stok karung sekarang (termasuk hasil produksi 50 kg sebelumnya) — supaya mengetik
-  // ulang nama merk yang sama tidak perlu mengingat ejaan persis.
-  function isiDaftarMerkProduksi50() {
-    const dl = document.getElementById('daftarMerkProduksi50');
-    if (!dl) return;
-    const gabung = Array.from(new Set([...DAFTAR_MERK, ...Object.keys(hitungStokKarungPerMerk())])).sort();
-    dl.innerHTML = gabung.map(m => `<option value="${escapeHtml(m)}">`).join('');
-  }
-
+  // CATATAN 23 Agu 2026: mode "50 kg = karung utuh" DICABUT atas keputusan pemilik —
+  // hasil campuran adalah beras repacking, tempatnya di Kemasan Jadi. Dokumen lama
+  // ber-jadiKarungUtuh (9-16 Agu, 900 kg) SENGAJA dibiarkan dan tetap dibaca
+  // hitungStokKarungPerMerk/merkPunyaKarungBerat — yang berhenti cuma pembuatan baru.
   // ============ STOK BAHAN KEMASAN (plastik, per kombinasi ukuran+merek) ============
   // Setiap pembelian kantong kosong dicatat sebagai satu dokumen { jenis, jumlah, hargaTotal, tipe: 'beli'|'pakai' }.
   // HPP per lembar = RATA-RATA TERTIMBANG dari semua pembelian jenis itu (per batch, instruksi My DeV
@@ -11081,23 +11117,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // pola ID_TOMBOL_BAHAN_LITERAN).
   const ID_TOMBOL_BAHAN_KEMASAN = {};
   JENIS_BAHAN_KEMASAN.forEach((j, i) => { ID_TOMBOL_BAHAN_KEMASAN[j] = 'beliBahanKemasanTombol' + i; });
-  const ID_TOMBOL_KANTONG_PRODUKSI = {};
-  JENIS_BAHAN_KEMASAN.forEach((j, i) => { ID_TOMBOL_KANTONG_PRODUKSI[j] = 'produksiKantongTombol' + i; });
 
   function bangunTombolBahanKemasan() {
     const wrapBeli = document.getElementById('beliBahanKemasanTombolWrap');
-    const wrapProduksi = document.getElementById('produksiKantongTombolWrap');
     if (wrapBeli && !wrapBeli.dataset.terisi) {
       wrapBeli.innerHTML = JENIS_BAHAN_KEMASAN.map((j, i) =>
         `<button type="button" id="${ID_TOMBOL_BAHAN_KEMASAN[j]}" onclick="pilihJenisBeliBahanKemasan('${j}')">${LABEL_BAHAN_KEMASAN[j]}</button>`
       ).join('');
       wrapBeli.dataset.terisi = '1';
-    }
-    if (wrapProduksi && !wrapProduksi.dataset.terisi) {
-      wrapProduksi.innerHTML = JENIS_BAHAN_KEMASAN.map((j, i) =>
-        `<button type="button" id="${ID_TOMBOL_KANTONG_PRODUKSI[j]}" onclick="pilihKantongProduksi('${j}')">${LABEL_BAHAN_KEMASAN[j]}</button>`
-      ).join('');
-      wrapProduksi.dataset.terisi = '1';
     }
   }
 
@@ -11159,46 +11186,13 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     bangunTombolBahanKemasan();
     if (!sudahAda) {
       document.getElementById(ID_TOMBOL_BAHAN_KEMASAN[jenisBeliBahanKemasanAktif])?.classList.add('pilih');
-      document.getElementById(ID_TOMBOL_KANTONG_PRODUKSI[kantongProduksiAktif])?.classList.add('pilih');
+
     }
     perbaruiInfoBeliBahanKemasan();
-    perbaruiInfoKantongProduksi();
   }
 
-  let kantongProduksiAktif = JENIS_BAHAN_KEMASAN[0];
-  function pilihKantongProduksi(jenis) {
-    bangunTombolBahanKemasan();
-    kantongProduksiAktif = jenis;
-    document.getElementById('produksiKantongJenis').value = jenis;
-    Object.keys(ID_TOMBOL_KANTONG_PRODUKSI).forEach(j => {
-      document.getElementById(ID_TOMBOL_KANTONG_PRODUKSI[j]).classList.toggle('pilih', j === jenis);
-    });
-    perbaruiInfoKantongProduksi();
-    hitungBiayaKemasanProduksi();
-  }
-
-  function perbaruiInfoKantongProduksi() {
-    const stok = hitungStokBahanKemasan();
-    const jenis = document.getElementById('produksiKantongJenis').value;
-    const info = document.getElementById('produksiKantongInfo');
-    if (stok[jenis]) {
-      info.textContent = `Sisa stok: ${stok[jenis].sisaPcs} pcs · HPP rata-rata ${formatRupiah(stok[jenis].hppPerPcs)}/lembar`;
-      info.className = 'stok-tersedia' + (stok[jenis].sisaPcs <= 0 ? ' kurang' : '');
-    }
-  }
-
-  function hitungBiayaKemasanProduksi() {
-    const stok = hitungStokBahanKemasan();
-    const jenis = document.getElementById('produksiKantongJenis').value;
-    const jumlahPcs = parseFloat(document.getElementById('produksiKantongJumlah').value) || 0;
-    const hppPerPcs = stok[jenis]?.hppPerPcs || 0;
-    const totalBiaya = Math.round(hppPerPcs * jumlahPcs);
-    document.getElementById('produksiBiayaKemasan').value = totalBiaya;
-    const infoEl = document.getElementById('produksiBiayaKemasanInfo');
-    infoEl.textContent = jumlahPcs > 0
-      ? `${jumlahPcs} pcs × ${formatRupiah(hppPerPcs)}/pcs = ${formatRupiah(totalBiaya)}`
-      : '';
-  }
+  // Jenis kantong kini dipilih PER BARIS HASIL (tiap ukuran pakai kantong berbeda),
+  // jadi pemilih tunggal beserta biayanya dicabut — lihat biayaKantongBaris().
 
   // ============ STOK BAHAN KEMASAN LITERAN (paper bag / karung bekas) ============
   // HPP per unit = RATA-RATA TERTIMBANG dari histori beli (per batch, instruksi My DeV 1 Agustus 2026)
@@ -11295,23 +11289,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const kgDipakai = Math.round(sumberList.reduce((a, s) => a + s.kg, 0) * 1000) / 1000;
     const merkSumber = sumberList.length === 1 ? sumberList[0].merk
       : 'CAMPURAN: ' + sumberList.map(s => s.merk).join(' + ');
-    const namaProduk = document.getElementById('produksiNamaProduk').value.trim();
-    const ukuranKemasan = parseFloat(document.getElementById('produksiUkuranKemasan').value) || 0;
-    const jumlahUnit = parseFloat(document.getElementById('produksiJumlahUnit').value) || 0;
-    // 50 kg = gabung balik ke karung utuh (keputusan My DeV 9 Agu 2026), bukan kemasan
-    // baru. Isian "nama produk" dipakai ulang jadi merk tujuan; kantong DIPAKSA kosong
-    // di sini — bukan cuma disembunyikan lewat CSS — karena #produksiKantongJenis
-    // punya nilai bawaan "5kg_kembangbmw" yang tetap terbaca walau blok-nya tersembunyi.
-    const jadiKarungUtuh = ukuranKemasan === 50;
-    const biayaKemasan = jadiKarungUtuh ? 0 : (parseFloat(document.getElementById('produksiBiayaKemasan').value) || 0);
+    const hasilList = bacaHasilProduksi();
     const upahRepacking = parseFloat(document.getElementById('produksiUpahRepacking').value) || 0;
-    const kantongJenis = jadiKarungUtuh ? '' : document.getElementById('produksiKantongJenis').value;
-    const kantongJumlah = jadiKarungUtuh ? 0 : (parseFloat(document.getElementById('produksiKantongJumlah').value) || 0);
 
     if (sumberList.length === 0) { alert('Isi minimal satu sumber (merk + kg).'); return; }
-    if (!namaProduk) { alert(jadiKarungUtuh ? 'Isi merk tujuan dulu.' : 'Isi nama produk kemasan.'); return; }
-    if (ukuranKemasan <= 0) { alert('Isi ukuran per kemasan.'); return; }
-    if (jumlahUnit <= 0) { alert('Isi jadi berapa unit.'); return; }
+    if (hasilList.length === 0) { alert('Isi minimal satu baris hasil (nama produk + ukuran + jumlah unit).'); return; }
 
     const stokKarung = hitungStokKarungPerMerk();
     for (const s of sumberList) {
@@ -11320,58 +11302,90 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       }
     }
 
-    // Bug ditemukan saat audit 1 Agustus 2026: stok kantong plastik dipakai untuk hitung biaya
-    // (hitungBiayaKemasanProduksi) tapi TIDAK PERNAH dicatat sebagai "tipe: 'pakai'" — jadi
-    // sisaPcs di tab Stok cuma bertambah, tidak pernah berkurang meski dipakai terus-menerus.
-    if (kantongJenis && kantongJumlah > 0) {
-      const stokBahanKemasan = hitungStokBahanKemasan();
-      if (!stokBahanKemasan[kantongJenis] || stokBahanKemasan[kantongJenis].sisaPcs < kantongJumlah) {
-        if (!confirm(`Stok kantong ${LABEL_BAHAN_KEMASAN[kantongJenis] || kantongJenis} cuma sisa ${stokBahanKemasan[kantongJenis]?.sisaPcs || 0}, produksi ini butuh ${kantongJumlah}. Tetap simpan? (stok bisa jadi minus, catat pembelian susulan nanti)`)) return;
+    // Stok kantong diperiksa per JENIS (beberapa baris hasil boleh memakai jenis sama).
+    // Bug lama yang tidak boleh kembali (audit 1 Agu 2026): kantong dipakai untuk
+    // menghitung biaya tapi tidak pernah dicatat 'pakai', jadi sisaPcs tidak pernah turun.
+    const butuhKantong = {};
+    hasilList.forEach(h => { if (h.kantongJenis && h.kantongJumlah > 0) butuhKantong[h.kantongJenis] = (butuhKantong[h.kantongJenis] || 0) + h.kantongJumlah; });
+    const stokBahanKemasan = hitungStokBahanKemasan();
+    for (const jenis of Object.keys(butuhKantong)) {
+      const sisa = stokBahanKemasan[jenis]?.sisaPcs || 0;
+      if (sisa < butuhKantong[jenis]) {
+        if (!confirm(`Stok kantong ${LABEL_BAHAN_KEMASAN[jenis] || jenis} cuma sisa ${sisa}, produksi ini butuh ${butuhKantong[jenis]}. Tetap simpan? (stok bisa jadi minus, catat pembelian susulan nanti)`)) return;
       }
     }
 
-    const totalKgJadi = ukuranKemasan * jumlahUnit;
+    // SUSUT dihitung dari TOTAL hasil lawan total bahan, bukan per baris — satu adukan
+    // dibagi ke beberapa ukuran, jadi memeriksa per baris pasti salah tuduh.
+    const totalKgJadi = Math.round(hasilList.reduce((a, h) => a + h.ukuran * h.unit, 0) * 1000) / 1000;
     if (Math.abs(totalKgJadi - kgDipakai) > kgDipakai * 0.15) {
-      if (!confirm(`Berat dipakai ${kgDipakai}kg tapi hasil kemasan ${totalKgJadi}kg (selisih >15%, mungkin karena susut atau salah ketik). Tetap simpan?`)) return;
+      if (!confirm(`Berat dipakai ${kgDipakai}kg tapi total hasil ${totalKgJadi}kg (selisih >15%, mungkin karena susut atau salah ketik). Tetap simpan?`)) return;
     }
 
-    // HPP per unit = rata-rata tertimbang HPP tiap sumber campuran × kg + biaya kemasan + upah, dibagi unit jadi.
-    const totalNilaiHpp = sumberList.reduce((a, s) => a + (stokKarung[s.merk]?.hppTerakhirPerKg || 0) * s.kg, 0);
-    const hppSumberPerKg = kgDipakai > 0 ? totalNilaiHpp / kgDipakai : 0;
-    const produksi = {
-      id: idUnik(),
-      tanggal: tanggalLokalIso(),
-      merkSumber, sumberList, kgDipakai, namaProduk, ukuranKemasan, jumlahUnit,
-      biayaKemasan, upahRepacking,
-      kantongJenis: kantongJenis || null, kantongJumlah: kantongJumlah || 0,
-      hppSumberPerKgDipakai: hppSumberPerKg,
-      // Biaya kemasan sengaja TIDAK dihitung di sini kalau jadiKarungUtuh (selalu 0
-      // untuk mode itu) — hppPerUnit di sini berarti "biaya per karung 50 kg",
-      // ditampilkan di Riwayat Produksi, TIDAK dipakai untuk menilai stok karung
-      // (hitungStokKarungPerMerk menilai dari hppSumberPerKgDipakai × kgDipakai saja,
-      // tanpa upah, supaya rata-rata tertimbang stok tidak tercampur biaya buruh).
-      hppPerUnit: Math.round((hppSumberPerKg * kgDipakai + biayaKemasan + upahRepacking) / jumlahUnit),
-      jadiKarungUtuh, merkTujuan: jadiKarungUtuh ? namaProduk : null
-    };
+    // ===== PEMBAGIAN BIAYA — menurut KG, dan wajib berjumlah persis =====
+    //   nilaiBahan  = Σ (kg sumber × HPP/kg sumber)
+    //   totalBiaya  = nilaiBahan + upah + Σ biaya kantong tiap baris
+    //   hppPerUnit_j = totalBiaya × ukuran_j / totalKgJadi
+    // Susut terserap sendiri: kalau totalKgJadi < kgDipakai, HPP per kg hasil naik.
+    // SISA PEMBULATAN DIJATUHKAN KE BARIS TERAKHIR supaya Σ (hppPerUnit × unit) sama
+    // PERSIS dengan totalBiaya — pola yang sama dengan pembagian potongan di keranjang
+    // jual. Baris terakhir sengaja boleh berpecahan rupiah: memaksanya bulat membuat
+    // jumlahnya meleset beberapa rupiah, dan rupiah yang hilang itu tidak pernah kembali.
+    const nilaiBahan = sumberList.reduce((a, s) => a + (stokKarung[s.merk]?.hppTerakhirPerKg || 0) * s.kg, 0);
+    const hppSumberPerKg = kgDipakai > 0 ? nilaiBahan / kgDipakai : 0;
+    const biayaKantongTotal = hasilList.reduce((a, h) => a + biayaKantongBaris(h.kantongJenis, h.kantongJumlah), 0);
+    const totalBiaya = nilaiBahan + upahRepacking + biayaKantongTotal;
+    let terpakai = 0;
+    const hppPerUnitList = hasilList.map((h, i) => {
+      if (i < hasilList.length - 1) {
+        const v = Math.round(totalBiaya * h.ukuran / totalKgJadi);
+        terpakai += v * h.unit;
+        return v;
+      }
+      return (totalBiaya - terpakai) / h.unit;   // baris terakhir menyerap sisa
+    });
 
     const btnProduksi = document.getElementById('btnSimpanProduksi');
     if (btnProduksi) { btnProduksi.disabled = true; btnProduksi.textContent = 'Menyimpan…'; }
+    const tanggal = tanggalLokalIso();
+    const batchId = idUnik();
+    const dokumen = hasilList.map((h, i) => {
+      const dok = {
+        id: i === 0 ? batchId : idUnik(),
+        tanggal, merkSumber, namaProduk: h.nama, ukuranKemasan: h.ukuran, jumlahUnit: h.unit,
+        biayaKemasan: biayaKantongBaris(h.kantongJenis, h.kantongJumlah), upahRepacking: i === 0 ? upahRepacking : 0,
+        kantongJenis: h.kantongJenis || null, kantongJumlah: h.kantongJumlah || 0,
+        hppSumberPerKgDipakai: hppSumberPerKg,
+        hppPerUnit: hppPerUnitList[i],
+        // sumberList & kgDipakai HANYA di dokumen pertama: hitungStokKarungPerMerk
+        // mengurangi stok dari tiap dokumen yang punya sumberList — kalau semuanya
+        // membawa daftar yang sama, stok sumber terpotong berkali-kali lipat.
+        sumberList: i === 0 ? sumberList : [], kgDipakai: i === 0 ? kgDipakai : 0,
+        batchProduksi: batchId, barisKe: i + 1, jumlahBaris: hasilList.length,
+        // Mode 50 kg = karung utuh sudah dicabut (23 Agu 2026); ditulis false eksplisit
+        // supaya tidak pernah undefined (Firestore menolaknya).
+        jadiKarungUtuh: false, merkTujuan: null
+      };
+      return dok;
+    });
+
     try {
-      await simpanKeFirestore(KOLEKSI_PRODUKSI, produksi);
-      // Catat pemakaian kantong plastik (mengurangi stok) — sepasang dengan produksi, sama pola
-      // dengan pemakaian kemasan literan di simpanPenjualan, supaya stok kantong ikut turun otomatis.
-      if (kantongJenis && kantongJumlah > 0) {
-        await simpanKeFirestore(KOLEKSI_BAHAN_KEMASAN, {
-          id: produksi.id + 1, tipe: 'pakai', jenis: kantongJenis,
-          jumlah: kantongJumlah, hargaTotal: 0,
-          tanggal: produksi.tanggal, catatan: 'Otomatis dari produksi id ' + produksi.id
-        });
+      for (let i = 0; i < dokumen.length; i++) {
+        await simpanKeFirestore(KOLEKSI_PRODUKSI, dokumen[i]);
+        const h = hasilList[i];
+        if (h.kantongJenis && h.kantongJumlah > 0) {
+          await simpanKeFirestore(KOLEKSI_BAHAN_KEMASAN, {
+            id: dokumen[i].id + 1, tipe: 'pakai', jenis: h.kantongJenis,
+            jumlah: h.kantongJumlah, hargaTotal: 0,
+            tanggal, catatan: 'Otomatis dari produksi id ' + dokumen[i].id
+          });
+        }
       }
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Data disimpan sementara di HP ini saja — coba lagi kalau internet sudah nyambung.');
       const semuaLokal = ambilProduksi();
-      semuaLokal.unshift(produksi);
+      dokumen.forEach(d => semuaLokal.unshift(d));
       localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(semuaLokal));
     }
     if (btnProduksi) { btnProduksi.disabled = false; btnProduksi.textContent = ' Simpan Produksi Kemasan'; }
@@ -11380,19 +11394,17 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     document.getElementById('produksiSumberDaftar').innerHTML = '';
     idBarisSumberProduksi = 0;
     tambahBarisSumberProduksi();
-    document.getElementById('produksiNamaProduk').value = '';
-    document.getElementById('produksiUkuranKemasan').value = '';
-    resetTombolUkuranProduksi();
-    document.getElementById('produksiJumlahUnit').value = '';
-    // Batch baru = jumlah unit boleh diisi otomatis lagi dari perhitungan muat.
-    _unitProduksiDisentuh = false;
-    document.getElementById('produksiBiayaKemasan').value = '';
+    document.getElementById('produksiHasilDaftar').innerHTML = '';
+    idBarisHasilProduksi = 0;
+    tambahBarisHasilProduksi();
     isiUpahProduksi(0);
     isiDropdownProduksi();
     perbaruiStokProduksi();
 
     const pesan = document.getElementById('pesanOkProduksi');
-    pesan.textContent = (jadiKarungUtuh ? ' Stok karung bertambah.' : ' Stok kemasan bertambah.');
+    pesan.textContent = dokumen.length === 1
+      ? ' Stok kemasan bertambah.'
+      : ' Stok kemasan bertambah — ' + dokumen.length + ' ukuran dari satu adukan.';
     pesan.style.display = 'block';
     window.scrollTo({top: 0, behavior: 'smooth'});
     setTimeout(() => { pesan.style.display = 'none'; }, 3000);
@@ -11436,13 +11448,26 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // Owner-only — hapus dari koleksi produksi. Stok kemasan otomatis dihitung ulang dari
   // _cacheProduksi tanpa item ini (sama pola dengan hapusPenjualan).
   async function hapusProduksi(id) {
-    if (!confirm('Hapus catatan produksi ini? Stok kemasan akan dihitung ulang tanpa produksi ini — pastikan stok hasil produksi ini belum terlanjur terjual habis.')) return;
+    // SATU ADUKAN = SATU KESATUAN (23 Agu 2026). Produksi multi-hasil menulis beberapa
+    // dokumen yang berbagi batchProduksi; pemakaian bahan sumber cuma tercatat di
+    // dokumen pertama. Menghapus satu barisnya saja akan MENGEMBALIKAN seluruh stok
+    // sumber sementara baris lain masih menambah stok kemasan — beras tercipta dari
+    // udara. Jadi seluruh baris seadukan dihapus bersama.
+    const pr = ambilProduksi().find(x => x.id === id);
+    const batch = pr && pr.batchProduksi ? pr.batchProduksi : null;
+    const saudara = batch ? ambilProduksi().filter(x => x.batchProduksi === batch) : (pr ? [pr] : [{ id }]);
+    const pesan = saudara.length > 1
+      ? 'Produksi ini satu adukan dengan ' + saudara.length + ' baris hasil (' + saudara.map(x => x.namaProduk + ' ' + x.ukuranKemasan + ' kg').join(', ') + ').\n\nSemuanya akan dihapus bersama — memisahnya membuat stok sumber kembali tapi stok kemasan tetap ada. Lanjutkan?'
+      : 'Hapus catatan produksi ini? Stok kemasan akan dihitung ulang tanpa produksi ini — pastikan stok hasil produksi ini belum terlanjur terjual habis.';
+    if (!confirm(pesan)) return;
     try {
-      await hapusDariFirestore(KOLEKSI_PRODUKSI, id);
-      // Hapus juga catatan pemakaian kantong plastik pasangannya (docId = id produksi + 1).
-      // Dokumen produksi lama tidak menyimpan jenis/jumlah kantong, jadi hapus tanpa syarat —
-      // deleteDoc pada dokumen yang tidak ada = no-op aman (temuan audit 2 Agustus 2026).
-      await hapusDariFirestore(KOLEKSI_BAHAN_KEMASAN, id + 1);
+      for (const d of saudara) {
+        await hapusDariFirestore(KOLEKSI_PRODUKSI, d.id);
+        // Hapus juga catatan pemakaian kantong plastik pasangannya (docId = id produksi + 1).
+        // Dokumen produksi lama tidak menyimpan jenis/jumlah kantong, jadi hapus tanpa syarat —
+        // deleteDoc pada dokumen yang tidak ada = no-op aman (temuan audit 2 Agustus 2026).
+        await hapusDariFirestore(KOLEKSI_BAHAN_KEMASAN, d.id + 1);
+      }
     } catch (err) {
       console.error(err);
       alert('Gagal hapus dari database (offline?). Coba lagi kalau internet sudah nyambung.');
@@ -17591,14 +17616,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.tambahBarisSumberProduksi = tambahBarisSumberProduksi; window.hapusBarisSumberProduksi = hapusBarisSumberProduksi;
   window.mintaHapusBarisSumberProduksi = mintaHapusBarisSumberProduksi;
   window.batalHapusBarisSumberProduksi = batalHapusBarisSumberProduksi;
-  window.ubahJumlahUnitProduksi = ubahJumlahUnitProduksi; window.tandaiUnitDisentuh = tandaiUnitDisentuh;
   window.perbaruiRingkasHarian = perbaruiRingkasHarian;
   window.pakaiChipKeterangan = pakaiChipKeterangan;
   window.tampilkanHarianHariIni = tampilkanHarianHariIni;
   window.perbaruiKeadaanBulanan = perbaruiKeadaanBulanan;
   window.perbaruiTotalBulanan = perbaruiTotalBulanan;
   window.salinBiayaBulanLalu = salinBiayaBulanLalu;
-  window.hitungCampuranProduksi = hitungCampuranProduksi; window.pilihUkuranProduksi = pilihUkuranProduksi;
+  window.hitungCampuranProduksi = hitungCampuranProduksi;
+  window.tambahBarisHasilProduksi = tambahBarisHasilProduksi; window.hapusBarisHasilProduksi = hapusBarisHasilProduksi;
   window.cekMerkLain = cekMerkLain;
   window.hitungPerkiraan = hitungPerkiraan;
   window.hapusBarisMerk = hapusBarisMerk;
@@ -17627,8 +17652,6 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.pilihJenisBeliBahanKemasan = pilihJenisBeliBahanKemasan;
   window.perbaruiInfoBeliBahanKemasan = perbaruiInfoBeliBahanKemasan;
   window.simpanBeliBahanKemasan = simpanBeliBahanKemasan;
-  window.pilihKantongProduksi = pilihKantongProduksi;
-  window.hitungBiayaKemasanProduksi = hitungBiayaKemasanProduksi;
   window.pilihJenisBeliBahanLiteran = pilihJenisBeliBahanLiteran;
   window.simpanBeliBahanLiteran = simpanBeliBahanLiteran;
   window.perbaruiInfoBeliBahanLiteran = perbaruiInfoBeliBahanLiteran;
