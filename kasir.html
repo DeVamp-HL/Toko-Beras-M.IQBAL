@@ -760,7 +760,19 @@ function cekJamOperasional() { return true; }
 function ambilAntrean() { try { return JSON.parse(localStorage.getItem(K_ANTREAN) || '[]'); } catch (e) { return []; } }
 function simpanAntrean(a) { localStorage.setItem(K_ANTREAN, JSON.stringify(a)); perbaruiStatus(); }
 function ambilGagal() { try { return JSON.parse(localStorage.getItem(K_GAGAL) || '[]'); } catch (e) { return []; } }
+// Fase 1 (26 Agu 2026): identitas perangkat — sekali dibuat, menetap di HP ini.
+function idPerangkat() {
+  var d = localStorage.getItem('kasir_perangkat_v1');
+  if (!d) {
+    d = 'k-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+    localStorage.setItem('kasir_perangkat_v1', d);
+  }
+  return d;
+}
 function tambahAntrean(koleksi, data) {
+  // Atribusi di SATU pintu (Fase 1): pencipta hanya diisi kalau belum ada.
+  if (data && !data.perangkat) data.perangkat = idPerangkat();
+  if (data && !data.oleh) data.oleh = 'Owner';
   var a = ambilAntrean();
   a.push({ koleksi: koleksi, docId: String(data.id), data: data, dibuat: new Date().toISOString() });
   simpanAntrean(a);

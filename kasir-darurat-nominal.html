@@ -392,6 +392,14 @@ function kirimLogin() {
     $('salahLogin').style.display = 'block';
   }).then(function () { btn.disabled = false; btn.textContent = 'Masuk'; });
 }
+function idPerangkatD() {
+  var d = localStorage.getItem('darurat_perangkat_v1');
+  if (!d) {
+    d = 'd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+    localStorage.setItem('darurat_perangkat_v1', d);
+  }
+  return d;
+}
 function lewatiLogin() { $('layarLogin').classList.remove('tampil'); perbaruiBarAntrean(); }
 function perbaruiBarAntrean() {
   var el = $('barAntrean');
@@ -772,6 +780,10 @@ function simpanNominal() {
       if (ket) trx.keteranganDarurat = ket;
     }
     if (op) trx.operator = op;
+    // Fase 1: tiap catatan bernama pelaku & perangkat — kalau nama operator tidak
+    // pernah dipilih, jujur ditulis begitu, bukan dibiarkan kosong.
+    trx.oleh = op || '(darurat tanpa nama)';
+    trx.perangkat = idPerangkatD();
     a.push({ koleksi: 'penjualan', docId: String(trx.id), data: trx });
   });
   simpanAntrean(a);

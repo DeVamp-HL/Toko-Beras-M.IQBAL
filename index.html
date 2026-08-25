@@ -3410,7 +3410,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 <div class="modal-pin-bg" id="modalLoginBg">
   <div class="modal-pin-kotak">
     <h3> Masuk sekali di perangkat ini</h3>
-    <p id="loginTokoPesan">Masukkan sandi toko. Cukup sekali per perangkat.</p>
+    <p id="loginTokoPesan">Masukkan sandi OWNER. Cukup sekali per perangkat.</p>
     <input type="password" id="inputSandiToko" placeholder="Sandi toko" autocomplete="current-password">
     <div class="modal-pin-salah" id="loginTokoSalah">Sandi salah. Coba lagi.</div>
     <div class="modal-pin-tombol">
@@ -5089,7 +5089,15 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     <div class="kartu-daftar kd-kepala">
       <div class="kd-judul"><h3>Keamanan</h3></div>
       <button type="button" class="lm-baris" onclick="bukaSetelPin()"><span>PIN owner <i>— setel / ubah kunci tab uang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-      <button type="button" class="lm-baris" onclick="bukaModalLoginToko('Masukkan sandi toko untuk login ulang database.')"><span>Login database <i id="setelStatusSambung">— status sambungan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button type="button" class="lm-baris" onclick="bukaModalLoginToko('Masukkan sandi OWNER untuk login ulang database.')"><span>Login database <i id="setelStatusSambung">— status sambungan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button type="button" class="lm-baris" onclick="ubahNamaPerangkat()"><span>Nama perangkat ini <i id="setelNamaPerangkat">—</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+
+    <!-- JEJAK AKTIVITAS (Fase 1): 100 tulisan terakhir — siapa, perangkat mana, kapan.
+         Dibaca lewat query limit(100), BUKAN sinkron koleksi penuh: log tumbuh terus. -->
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Jejak aktivitas</h3><span class="kd-hitung" id="logHitung">—</span></div>
+      <div id="daftarLogAktivitas"></div>
     </div>
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
       <div class="kd-judul"><h3>Cadangan data</h3></div>
@@ -5594,7 +5602,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import {
-    getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, runTransaction
+    getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, runTransaction, query, orderBy, limit
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
   import {
     getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence
@@ -5617,7 +5625,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // Database dikunci: hanya yang login boleh baca/tulis. Sandi TIDAK ditulis di kode —
   // repo ini publik. Diketik sekali per perangkat; sesi disimpan browser (browserLocalPersistence),
   // jadi tidak minta sandi lagi tiap buka, termasuk saat offline.
-  const EMAIL_TOKO = 'kasir@tokoberasmiqbal.web.app';
+  // FASE 1 (26 Agu 2026): index.html = alat OWNER -> login akun owner sendiri.
+  // Akun kasir lama tetap dipakai kasir.html / kasir-darurat / tablet (Fase 2), dan
+  // firestore.rules v2 membatasi akun kasir hanya ke koleksi yang memang tugasnya.
+  const EMAIL_TOKO = 'owner@tokoberasmiqbal.web.app';
   const auth = getAuth(appFirebase);
   let _sudahLoginToko = false;
   setPersistence(auth, browserLocalPersistence).catch(() => {});
@@ -5629,7 +5640,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   function bukaModalLoginToko(pesan) {
     const el = document.getElementById('modalLoginBg');
     if (!el) return;
-    document.getElementById('loginTokoPesan').textContent = pesan || 'Masukkan sandi toko. Cukup sekali per perangkat.';
+    document.getElementById('loginTokoPesan').textContent = pesan || 'Masukkan sandi OWNER. Cukup sekali per perangkat.';
     document.getElementById('loginTokoSalah').style.display = 'none';
     el.classList.add('tampil');
   }
@@ -5659,7 +5670,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // Dipanggil kalau Firestore menolak karena belum login (database sudah dikunci).
   function mintaLoginKalauDitolak(err) {
     if (err && String(err.code || '').includes('permission-denied')) {
-      bukaModalLoginToko('Database terkunci. Masukkan sandi toko untuk lanjut.');
+      bukaModalLoginToko('Database terkunci. Masukkan sandi OWNER untuk lanjut.');
       return true;
     }
     return false;
@@ -5917,6 +5928,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (nama === 'harga') { tampilkanHarga(); tampilkanJenisBeras(); }
     if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
     if (nama === 'input') { periksaDrafMasuk(); isiPilihanPemasok(); tampilkanSaranBelanja(); }
+    if (nama === 'setelan') {
+      pasangLogAktivitas(); gambarLogAktivitas();
+      const elNp = document.getElementById('setelNamaPerangkat');
+      if (elNp) elNp.textContent = '\u2014 ' + perangkatRingkas();
+    }
     if (document.body.classList.contains('drawer-nav-terbuka')) toggleDrawerNav();
   }
   function kapital(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -7073,7 +7089,94 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   }
   window.addEventListener('online', kirimAntreanTunda);
   setInterval(kirimAntreanTunda, 30000);
+  // ===== IDENTITAS PERANGKAT & PELAKU (Fase 1, 26 Agu 2026) =====
+  // index.html adalah alat owner, jadi pelakunya selalu 'Owner'; yang membedakan
+  // antar HP/iPad owner adalah id perangkat (sekali dibuat, menetap di localStorage)
+  // plus label yang bisa dinamai dari Setelan.
+  const OLEH_TETAP = 'Owner';
+  function idPerangkat() {
+    let d = localStorage.getItem('miqbal_perangkat_v1');
+    if (!d) {
+      d = 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+      localStorage.setItem('miqbal_perangkat_v1', d);
+    }
+    return d;
+  }
+  function perangkatRingkas() {
+    return localStorage.getItem('miqbal_perangkat_label_v1') || idPerangkat();
+  }
+  function ubahNamaPerangkat() {
+    const lama = localStorage.getItem('miqbal_perangkat_label_v1') || '';
+    const baru = prompt('Nama perangkat ini (contoh: iPhone Owner, iPad Toko):', lama);
+    if (baru === null) return;
+    if (baru.trim()) localStorage.setItem('miqbal_perangkat_label_v1', baru.trim());
+    else localStorage.removeItem('miqbal_perangkat_label_v1');
+    const el = document.getElementById('setelNamaPerangkat');
+    if (el) el.textContent = '— ' + perangkatRingkas();
+  }
+
+  // ===== LOG AKTIVITAS (Fase 1) — append-only, best-effort =====
+  // Satu dokumen per tulisan/hapusan uang: siapa, dari perangkat mana, kapan, apa.
+  // Gagal menulis log TIDAK BOLEH menggagalkan transaksinya (best-effort, tanpa
+  // antrean sendiri) — log adalah jejak, bukan sumber angka.
+  const KOLEKSI_LOG = 'logAktivitas';
+  function ringkasDok(d) {
+    if (!d) return '';
+    const n = (d.hargaTotal !== undefined && d.hargaTotal !== null) ? d.hargaTotal
+      : ((d.nominal !== undefined && d.nominal !== null) ? d.nominal : '');
+    const nm = d.namaProduk || d.namaPelanggan || d.namaPegawai || d.pemasok || d.merkSumber || d.keterangan || d.catatan || '';
+    return (String(nm).slice(0, 40) + (n !== '' ? ' · Rp' + Math.round(n).toLocaleString('id-ID') : '')).trim();
+  }
+  function catatLogAktivitas(koleksi, data, aksi) {
+    try {
+      if (koleksi === 'ringkasanKasir' || koleksi === KOLEKSI_LOG) return;
+      const dok = {
+        id: idUnik(), pada: new Date().toISOString(),
+        aksi: aksi || (data && data.dibatalkan ? 'batalkan' : (data && data.dikoreksiOleh ? 'tandai-koreksi' : 'tulis')),
+        koleksi, idDok: String((data && data.id) || ''),
+        oleh: OLEH_TETAP, perangkat: perangkatRingkas(), ringkas: ringkasDok(data)
+      };
+      setDoc(doc(db, KOLEKSI_LOG, String(dok.id)), dok).catch(() => {});
+    } catch (e) { /* jejak tidak boleh merusak transaksi */ }
+  }
+
+  let _logTerpasang = false, _cacheLog = [];
+  function pasangLogAktivitas() {
+    if (_logTerpasang) return;
+    _logTerpasang = true;
+    try {
+      onSnapshot(query(collection(db, KOLEKSI_LOG), orderBy('pada', 'desc'), limit(100)), snap => {
+        _cacheLog = [];
+        snap.forEach(d => _cacheLog.push(d.data()));
+        gambarLogAktivitas();
+      }, () => { /* offline / belum login: panel menampilkan pesan kosong */ });
+    } catch (e) { console.error(e); }
+  }
+  function gambarLogAktivitas() {
+    const kont = document.getElementById('daftarLogAktivitas');
+    if (!kont) return;
+    document.getElementById('logHitung').textContent = _cacheLog.length ? _cacheLog.length + ' terakhir' : '—';
+    kont.innerHTML = _cacheLog.length === 0
+      ? '<div class="kosong-info"><b>Belum ada jejak</b><span>Jejak terisi begitu ada tulisan baru sesudah Fase 1 terpasang (butuh sambungan).</span></div>'
+      : _cacheLog.map(l => `<div class="baris-44">
+          <span class="nama"><i class="trx-nama">${escapeHtml(l.aksi)} · ${escapeHtml(l.koleksi)}</i>
+          <small>${escapeHtml(String(l.pada || '').slice(0, 16).replace('T', ' '))} · ${escapeHtml(l.oleh || '')} @ ${escapeHtml(l.perangkat || '')}${l.ringkas ? ' · ' + escapeHtml(l.ringkas) : ''}</small></span>
+        </div>`).join('');
+  }
+
   async function simpanKeFirestore(nomorKoleksi, data) {
+    // ===== ATRIBUSI — satu pintu untuk SEMUA koleksi (Fase 1) =====
+    // oleh & perangkat = PENCIPTA, hanya diisi kalau belum ada (transaksi darurat yang
+    // dirapikan owner tetap milik pegawai yang mencatatnya). diubah* = SIAPA TERAKHIR
+    // menyentuh — selalu ditimpa. Firestore menolak undefined; semua nilai string.
+    if (data && typeof data === 'object') {
+      if (!data.oleh) data.oleh = OLEH_TETAP;
+      if (!data.perangkat) data.perangkat = perangkatRingkas();
+      data.diubahOleh = OLEH_TETAP;
+      data.diubahPerangkat = perangkatRingkas();
+      data.diubahPada = new Date().toISOString();
+    }
+    catatLogAktivitas(nomorKoleksi, data);
     try {
       await Promise.race([
         setDoc(doc(db, nomorKoleksi, String(data.id)), data),
@@ -7090,6 +7193,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (nomorKoleksi !== 'ringkasanKasir') jadwalkanRingkasanKasir();
   }
   async function hapusDariFirestore(nomorKoleksi, id) {
+    catatLogAktivitas(nomorKoleksi, { id }, 'hapus');
     await deleteDoc(doc(db, nomorKoleksi, String(id)));
     if (nomorKoleksi !== 'ringkasanKasir') jadwalkanRingkasanKasir();
   }
@@ -16798,7 +16902,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (!alasan.trim()) { alert('Alasan wajib diisi supaya jejaknya bisa dibaca nanti.'); return; }
     try {
       await simpanKeFirestore(KOLEKSI_PENJUALAN, {
-        ...p, dibatalkan: true, alasanKoreksi: alasan.trim(), dikoreksiPada: new Date().toISOString()
+        ...p, dibatalkan: true, alasanKoreksi: alasan.trim(), dikoreksiPada: new Date().toISOString(), dibatalkanPada: new Date().toISOString()
       });
       // Kemasan literan pasangan ikut dilepas — jalur hapus & urungkan-rinci sudah lama
       // melakukannya, jalur batalkan ini saja yang lupa (temuan audit 12 Agu 2026:
@@ -17363,7 +17467,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (!confirm('Tarik balik rincian ini? ' + grup.length + ' catatan hasil rincian dibatalkan, dan transaksi nominal kembali ke antrean rinci.')) return;
     try {
       for (const g of grup) {
-        await simpanKeFirestore(KOLEKSI_PENJUALAN, { ...g, dibatalkan: true, alasanKoreksi: 'Rincian diurungkan', dikoreksiPada: new Date().toISOString() });
+        await simpanKeFirestore(KOLEKSI_PENJUALAN, { ...g, dibatalkan: true, alasanKoreksi: 'Rincian diurungkan', dikoreksiPada: new Date().toISOString(), dibatalkanPada: new Date().toISOString() });
         if (g.jenis === 'literan' && g.kemasanLiteran) {
           try { await hapusDariFirestore(KOLEKSI_BAHAN_LITERAN, g.id + 1); } catch (e) { /* catatan pakai bisa saja belum ada */ }
         }
@@ -17865,7 +17969,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       } catch (e) { /* offline / belum login — lanjut tanpa token, pakai cache */ }
       const r = await fetch('https://firestore.googleapis.com/v1/projects/toko-beras-m-iqbal/databases/(default)/documents/pengaturan/aksesKasir?key=AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA', opsi);
       if (r.status === 404) { localStorage.removeItem(KUNCI_ROSTER); return; }
-      if (r.status === 401 || r.status === 403) { bukaModalLoginToko('Database terkunci. Masukkan sandi toko untuk lanjut.'); return; }
+      if (r.status === 401 || r.status === 403) { bukaModalLoginToko('Database terkunci. Masukkan sandi OWNER untuk lanjut.'); return; }
       if (!r.ok) return;
       const j = await r.json();
       const baca = (v) => {

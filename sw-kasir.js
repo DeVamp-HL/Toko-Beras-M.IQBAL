@@ -47,7 +47,9 @@
 // antrean menggunung diam-diam. Bilah merah permanen menghitung catatan yang belum
 // terkirim, dan layar sandi muncul lagi tiap selesai mencatat selama belum masuk.
 // WAJIB naik: tanpa ini HP pegawai tetap menyajikan darurat lama dari cache.
-const VERSI = 'kasir-v21';
+// v22 (26 Agustus 2026): Fase 1 identitas — kasir & darurat menyuntik oleh+perangkat
+// ke tiap catatan. WAJIB naik supaya HP lama tidak menyajikan versi tanpa atribusi.
+const VERSI = 'kasir-v22';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 
