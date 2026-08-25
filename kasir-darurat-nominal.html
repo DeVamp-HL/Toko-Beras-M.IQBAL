@@ -216,6 +216,9 @@
     background: var(--simpan); color: #fff; font-weight: 800; font-size: 1.1rem;
     padding: 14px 26px; border-radius: 12px; display: none; z-index: 60;
   }
+#barAntrean { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  background: #8d2f2f; color: #fff; font-weight: 700; font-size: .82rem; text-align: center;
+  padding: 10px 12px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -271,6 +274,11 @@
 <button type="button" id="btnSimpan" onclick="simpanNominal()">SIMPAN</button>
 
 <div id="pesanOk">Tersimpan</div>
+
+<!-- Audit Fase 0 (26 Agu 2026): dulu "Lewati" menutup layar login DIAM-DIAM — transaksi
+     menumpuk di antrean HP yang tidak akan pernah terkirim, dan kalau HP hilang/di-clear,
+     uangnya lenyap tanpa jejak. Bilah ini menolak untuk diam. -->
+<div id="barAntrean" onclick="tampilkanLayarLogin(false)"></div>
 
 <div id="layarLogin" class="lapisan">
   <h2>MASUK SEKALI DI HP INI</h2>
@@ -384,7 +392,20 @@ function kirimLogin() {
     $('salahLogin').style.display = 'block';
   }).then(function () { btn.disabled = false; btn.textContent = 'Masuk'; });
 }
-function lewatiLogin() { $('layarLogin').classList.remove('tampil'); }
+function lewatiLogin() { $('layarLogin').classList.remove('tampil'); perbaruiBarAntrean(); }
+function perbaruiBarAntrean() {
+  var el = $('barAntrean');
+  if (!el) return;
+  var n = ambilAntrean().length;
+  if (n > 0 && !sudahLogin()) {
+    var tertua = ambilAntrean()[0];
+    var t = tertua && tertua.data && tertua.data.tanggal ? ' - tertua ' + tertua.data.tanggal : '';
+    el.textContent = n + ' catatan BELUM TERKIRIM (perlu sandi) - ketuk di sini' + t;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
 
 // ---------- konversi Firestore REST ----------
 function keFs(nilai) {
@@ -453,6 +474,7 @@ function setStatus(online) {
   if (g > 0) teks += ' · ' + g + ' ditolak';
   if (!sudahLogin()) teks += ' · belum masuk';
   el.textContent = teks;
+  perbaruiBarAntrean();
 }
 
 // ---------- papan angka ----------
@@ -776,6 +798,10 @@ function simpanNominal() {
   setTimeout(function () { ok.style.display = 'none'; }, 1200);
   kirimAntrean(false);
   setStatus(navigator.onLine);
+  // Belum masuk = tiap selesai mencatat, layar sandi muncul lagi (audit Fase 0).
+  // Mencatat tidak pernah dihalangi — tapi mengirimnya butuh sandi, dan itu tidak
+  // boleh dibiarkan terlupa sampai antreannya menggunung.
+  if (!sudahLogin()) setTimeout(function () { tampilkanLayarLogin(false); }, 1300);
 }
 
 window.tambahProdukD = tambahProdukD;
@@ -800,6 +826,7 @@ gambarLog();
 segarkanRingkasanD();
 setStatus(navigator.onLine);
 if (!sudahLogin()) tampilkanLayarLogin(false);
+perbaruiBarAntrean();
 window.addEventListener('online', function () { kirimAntrean(false); setStatus(true); segarkanRingkasanD(); });
 window.addEventListener('offline', function () { setStatus(false); });
 setInterval(function () { kirimAntrean(false); }, 25000);

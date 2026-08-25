@@ -43,7 +43,11 @@
 // v20 (13 Agustus 2026): SACK 25 hidup lagi + istilah sack. Toko mulai membeli
 // sack 25 kg (Angsa, Perahu Layar) dan menjualnya utuh. Kasir & darurat dapat
 // tombol SACK25 per merk yang memang punya, harga & HPP dari ringkasan.
-const VERSI = 'kasir-v20';
+// v21 (26 Agustus 2026): kasir darurat — tombol "Lewati" tidak lagi bisa membuat
+// antrean menggunung diam-diam. Bilah merah permanen menghitung catatan yang belum
+// terkirim, dan layar sandi muncul lagi tiap selesai mencatat selama belum masuk.
+// WAJIB naik: tanpa ini HP pegawai tetap menyajikan darurat lama dari cache.
+const VERSI = 'kasir-v21';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

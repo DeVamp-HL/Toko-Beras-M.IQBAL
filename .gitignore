@@ -10,7 +10,15 @@
 0[0-9]-*.md
 1[0-9]-*.md
 2[0-9]-*.md
+3[0-9]-*.md
+4[0-9]-*.md
 backup-batch-*.json
+
+# Prompt kerja dari pemilik: menyebut angka omzet, utang & nama pemasok.
+PROMPT-*.md
+
+# Data bisnis untuk audit (backup JSON dari aplikasi) — tidak pernah ke repo publik.
+_privat/
 
 # README.md di folder ini adalah DAFTAR ISI catatan bisnis di atas, bukan README
 # proyek: ia menyebut nama pemasok berikut termin pembayarannya dan mengutip satu

@@ -2469,6 +2469,9 @@
     border-bottom: 1px solid var(--garis);
   }
   .lap-bilah .lap-cetak { margin-left: auto; }
+  #lapUjiChip { min-height: 32px; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 0 12px; border: 1px solid; background: none; font-family: inherit; }
+  #lapUjiChip.uji-hijau { color: var(--emas-terang); border-color: var(--emas-gelap); }
+  #lapUjiChip.uji-merah { color: #d3a08b; border-color: #d3a08b; }
   /* Baris kedua: empat mode sama lebar. Baris ketiga: ‹ pemilih periode ›. */
   .lap-langkah { flex: 1 1 100%; order: 3; display: flex; gap: 6px; align-items: center; }
   .lap-langkah > button {
@@ -3470,6 +3473,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       <button type="button" onclick="langkahLaporan(1)" aria-label="Periode berikutnya">&#8250;</button>
     </div>
     <button type="button" class="lap-cetak" onclick="cetakLaporan()">Cetak / PDF</button>
+    <button type="button" id="lapUjiChip" style="display:none;" onclick="alert(this.dataset.rinci || 'Uji belum jalan.')"></button>
   </div>
   <div class="lap-kertas" id="lapKertas"></div>
 </div>
@@ -5590,7 +5594,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import {
-    getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot
+    getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, runTransaction
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
   import {
     getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence
@@ -12850,9 +12854,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
     const jual = ambilPenjualan().filter(p => p.tanggal === hariIni);
     const jam = new Date().toTimeString().slice(0, 5);
+    // Empat dokumen malam ini disusun DULU, ditulis SEKALIGUS di bawah.
     // Dokumen penutupan: id = tanggal, jadi menutup ulang MENIMPA hari yang sama —
     // bukan menumpuk dua catatan untuk satu malam.
-    await simpanKeFirestore(KOLEKSI_TUTUP, {
+    const dokTutup = {
       id: hariIni, tanggal: hariIni, jam,
       omzet: jual.reduce((a, p) => a + (p.hargaTotal || 0), 0),
       jumlahTransaksi: jual.length,
@@ -12860,27 +12865,76 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       kasFisikLaci: nLaci, kasFisikRekening: nRek, kasFisikAmplop: nAmplop, kasFisikBrankas: nBrankas,
       selisih, alasanSelisih: alasan,
       setoranOwner: setoran, kasAwalBesokLaci: nLaci - setoran,
-      menggantung: { rapikanKasir: rapikan, daruratBelumRinci: darurat }
-    });
+      menggantung: { rapikanKasir: rapikan, daruratBelumRinci: darurat },
+      // Sidik jari versi (audit Fase 0, 26 Agu 2026) — dasar guard saling-timpa di bawah.
+      diubahPada: new Date().toISOString()
+    };
     // Dokumen setoran = gerakan kas keluar bertanggal malam ini (bukan biaya).
     // id DETERMINISTIK per tanggal & SELALU ditulis (nominal 0 pun): menutup ulang
     // hari yang sama MENIMPA setoran sebelumnya, bukan menumpuknya — tanpa ini,
     // koreksi tutup-ulang membuat kas keluar tercatat dobel (bug audit 21 Agu).
-    await simpanKeFirestore(KOLEKSI_SETORAN, {
-      id: 'st-' + hariIni, tanggal: hariIni, jam, nominal: setoran, catatan: 'Tutup hari'
-    });
+    const dokSetoran = { id: 'st-' + hariIni, tanggal: hariIni, jam, nominal: setoran, catatan: 'Tutup hari' };
     // Setoran malam = PENARIKAN MODAL (23 Agu 2026). Ditulis juga ke modalOwner supaya
     // hanya ada satu mekanisme pengambilan pemilik; dokumen setoranKas tetap ditulis demi
     // kompatibilitas cadangan lama. Penanda dariSetoran membuat daftarModalOwner()
     // membuang kembarannya — jadi TIDAK PERNAH terhitung dua kali di arus kas.
-    await simpanKeFirestore(KOLEKSI_MODAL, {
-      id: 'mo-st-' + hariIni, tanggal: hariIni, jam, tipe: 'tarik', nominal: setoran,
-      catatan: 'Setoran tutup hari', dariSetoran: 'st-' + hariIni
-    });
+    const dokModal = { id: 'mo-st-' + hariIni, tanggal: hariIni, jam, tipe: 'tarik', nominal: setoran,
+      catatan: 'Setoran tutup hari', dariSetoran: 'st-' + hariIni };
     // Sisihan malam ini = pemindahan internal laci -> amplop. id deterministik per
-    // tanggal supaya menutup ulang MENIMPA, bukan menumpuk (pelajaran bug setoran dobel).
-    // Nominal 0 pun ditulis, supaya koreksi tutup-ulang ikut menetralkan yang lama.
-    await catatAmplop('setor', sisihan, 'Sisihan tutup hari', hariIni, 'am-' + hariIni);
+    // tanggal supaya menutup ulang MENIMPA, bukan menumpuk. Nominal 0 pun ditulis,
+    // supaya koreksi tutup-ulang ikut menetralkan yang lama.
+    const dokAmplop = { id: 'am-' + hariIni, tanggal: hariIni, jam, tipe: 'setor',
+      nominal: Math.round(sisihan), catatan: 'Sisihan tutup hari' };
+
+    // ===== GUARD SALING-TIMPA ANTAR PERANGKAT (audit Fase 0, 26 Agu 2026) =====
+    // Dulu: setDoc last-write-wins murni — dua perangkat menutup malam yang sama saling
+    // menimpa DIAM-DIAM, dan konfirmasi "tutup ulang?" cuma membaca cache perangkat
+    // sendiri. Sekarang: transaksi membaca dokumen di SERVER dulu; kalau di sana ada
+    // versi yang belum pernah dilihat perangkat ini (diubahPada beda dari cache yang
+    // dipakai saat konfirmasi), penulisan DITOLAK dan pemilik diberi tahu — bukan
+    // ditimpa. Offline? Jatuh ke antrean tunda seperti biasa: mencatat tidak boleh
+    // terhalang sinyal, dan konfliknya akan terlihat saat sinkron.
+    let lewatTx = false;
+    try {
+      const hasilTx = await Promise.race([
+        runTransaction(db, async (tx) => {
+          const refTutup = doc(db, KOLEKSI_TUTUP, hariIni);
+          const snap = await tx.get(refTutup);
+          if (snap.exists()) {
+            const server = snap.data();
+            const dilihat = sudah ? String(sudah.diubahPada || sudah.jam || '') : '';
+            if (String(server.diubahPada || server.jam || '') !== dilihat) return { tolak: server };
+          }
+          tx.set(refTutup, dokTutup);
+          tx.set(doc(db, KOLEKSI_SETORAN, dokSetoran.id), dokSetoran);
+          tx.set(doc(db, KOLEKSI_MODAL, dokModal.id), dokModal);
+          tx.set(doc(db, KOLEKSI_AMPLOP, dokAmplop.id), dokAmplop);
+          return { ok: true };
+        }),
+        new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 6000))
+      ]);
+      if (hasilTx && hasilTx.tolak) {
+        const lain = hasilTx.tolak;
+        alert('DITOLAK — hari ini SUDAH ditutup dari perangkat lain jam ' + (lain.jam || '?')
+          + ' (kas tercatat ' + formatRupiah((lain.kasFisikLaci || 0) + (lain.kasFisikRekening || 0) + (lain.kasFisikAmplop || 0) + (lain.kasFisikBrankas || 0)) + ').\n\n'
+          + 'Muat ulang dulu, lihat catatannya, baru putuskan mau menimpa atau tidak.');
+        tampilkanTutupHari();
+        return;
+      }
+    } catch (eTx) {
+      // Offline / timeout — jalur lama: masuk antrean tunda, tidak pernah hilang.
+      lewatTx = true;
+    }
+    if (lewatTx) {
+      await simpanKeFirestore(KOLEKSI_TUTUP, dokTutup);
+      await simpanKeFirestore(KOLEKSI_SETORAN, dokSetoran);
+      await simpanKeFirestore(KOLEKSI_MODAL, dokModal);
+      await simpanKeFirestore(KOLEKSI_AMPLOP, dokAmplop);
+    } else {
+      // Transaksi sukses menulis langsung ke server — cache lokal ikut disegarkan
+      // supaya tampilan tidak menunggu gema onSnapshot.
+      localStorage.setItem(KUNCI_TUTUP, JSON.stringify([dokTutup].concat(ambilTutupHari().filter(x => x.id !== dokTutup.id))));
+    }
     // Patokan kas maju ke hitungan malam ini — inti ritualnya. Tanpa ini, selisih
     // menumpuk berbulan-bulan sampai tidak ada yang bisa menelusurinya lagi.
     // Patokan besok = laci SESUDAH setoran + rekening — persis isi laci esok pagi.
@@ -14740,6 +14794,34 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ? 'Tersimpan di HP — catatan pemindahan ' + formatRupiah(kePindah) + ' menyusul ke server begitu ada sinyal, lalu saldo amplop ikut berubah.'
       : 'Tercatat. Saldo amplop sekarang ' + formatRupiah(saldoAmplop()) + '.');
   }
+
+  // ===== UJI KONSISTENSI OTOMATIS SAAT BOOT (audit Fase 0, 26 Agu 2026) =====
+  // Dulu penjaga ini hanya jalan kalau diketik manual di konsol — artinya tidak pernah.
+  // Sekarang jalan sendiri sekali per sesi sesudah sinkronisasi awal tenang, dan
+  // hasilnya tampil sebagai chip di bilah Laporan: hijau = selisih Rp0, merah = ada
+  // temuan (ketuk untuk rinciannya). Gagal senyap — uji tidak boleh merusak halaman.
+  let _ujiBootSudah = false;
+  function jalankanUjiKonsistensiBoot() {
+    if (_ujiBootSudah) return;
+    _ujiBootSudah = true;
+    try {
+      if (ambilPenjualan().length === 0) return;
+      const h = ujiKonsistensiLaporan(new Date().getFullYear());
+      const chip = document.getElementById('lapUjiChip');
+      if (!chip) return;
+      chip.style.display = '';
+      if (h.lulus) {
+        chip.className = 'uji-hijau';
+        chip.textContent = 'Uji angka: Rp0 \u2713';
+        chip.dataset.rinci = 'Semua identitas cocok: ' + h.nHari + ' hari, ' + h.nMinggu + ' minggu, 12 bulan, tahun \u2014 selisih Rp0.';
+      } else {
+        chip.className = 'uji-merah';
+        chip.textContent = 'SELISIH: ' + h.selisih.length + ' temuan';
+        chip.dataset.rinci = h.selisih.slice(0, 12).join('\n');
+      }
+    } catch (e) { console.error('uji boot gagal', e); }
+  }
+  setTimeout(jalankanUjiKonsistensiBoot, 8000);
 
   // Laporan yang sedang terbuka ikut tergambar ulang saat data berubah dari perangkat
   // lain — dipanggil dari pasangSinkronisasi (onSnapshot), tanpa polling baru.

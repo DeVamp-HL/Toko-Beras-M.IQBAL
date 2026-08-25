@@ -1,0 +1,20 @@
+// ============================================================================
+// ATURAN FIRESTORE — Toko Beras M.IQBAL
+// Berkas KANONIK ber-versi (audit Fase 0, 26 Agu 2026). Sebelum ini aturan hanya
+// hidup di Firebase Console: tak bisa direview, di-diff, atau di-backup.
+//
+// BASELINE saat ini (disalin apa adanya dari perilaku produksi): satu akun toko,
+// semua baca/tulis butuh login. Penegakan peran per-uid menyusul di Fase 1
+// (lihat .claude/plans/gua-mau-improve-sistem-sorted-valiant.md).
+//
+// DEPLOY: masih salin-tempel manual ke Console > Firestore > Rules sampai jalur
+// otomatis (Fase 3) terpasang. Ubah di sini dulu, baru salin — jangan sebaliknya.
+// ============================================================================
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
