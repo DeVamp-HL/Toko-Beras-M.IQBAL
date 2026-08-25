@@ -1801,12 +1801,12 @@
     font-family: inherit; font-size: 13px; font-weight: 700;
   }
   /* Lembar Piutang — pola & ukuran sama persis dengan #lembarHarga di atas. */
-  #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi, #overlayLembarIsiHpp {
+  #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi, #overlayLembarIsiHpp, #overlayLembarBayarBon, #overlayLembarSaldoAwalUtang {
     position: fixed; inset: 0; z-index: 42; background: #000; opacity: 0; pointer-events: none;
     transition: opacity var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon, body.lembar-koreksi-produksi-terbuka #overlayLembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #overlayLembarIsiHpp, body.lembar-pelanggan-terbuka #overlayLembarPelanggan, body.lembar-pemasok-terbuka #overlayLembarPemasok { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp, #lembarPelanggan, #lembarPemasok {
+  body.lembar-piutang-terbuka #overlayLembarPiutang, body.lembar-kasbon-terbuka #overlayLembarKasbon, body.lembar-koreksi-produksi-terbuka #overlayLembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #overlayLembarIsiHpp, body.lembar-pelanggan-terbuka #overlayLembarPelanggan, body.lembar-pemasok-terbuka #overlayLembarPemasok, body.lembar-bayar-bon-terbuka #overlayLembarBayarBon, body.lembar-saldo-awal-utang-terbuka #overlayLembarSaldoAwalUtang { opacity: .62; pointer-events: auto; transition: opacity var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp, #lembarPelanggan, #lembarPemasok, #lembarBayarBon, #lembarSaldoAwalUtang {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 43;
     max-width: 680px; margin: 0 auto;
     background: #15181c; border: 1px solid rgba(240, 226, 196, .14); border-bottom: none;
@@ -1816,11 +1816,11 @@
     transform: translateY(105%);
     transition: transform var(--gerak-panel-keluar) var(--lengkung-keluar);
   }
-  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang, body.lembar-koreksi-produksi-terbuka #lembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #lembarIsiHpp, body.lembar-pelanggan-terbuka #lembarPelanggan, body.lembar-pemasok-terbuka #lembarPemasok { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
-  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan, #lembarKoreksiProduksi .lm-pegangan, #lembarIsiHpp .lm-pegangan, #lembarPelanggan .lm-pegangan, #lembarPemasok .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(228, 232, 234, .25); margin: 2px auto 12px; }
-  #lembarPiutang h3, #lembarKasbon h3, #lembarKoreksiProduksi h3, #lembarIsiHpp h3, #lembarPelanggan h3, #lembarPemasok h3 { margin: 0 0 2px; font-family: 'Prata', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
-  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub, #lembarKoreksiProduksi .lk-sub, #lembarIsiHpp .lk-sub, #lembarPelanggan .lk-sub, #lembarPemasok .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
-  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup, #lembarKoreksiProduksi .lmk-tutup, #lembarIsiHpp .lmk-tutup, #lembarPelanggan .lmk-tutup, #lembarPemasok .lmk-tutup {
+  body.lembar-kasbon-terbuka #lembarKasbon, body.lembar-piutang-terbuka #lembarPiutang, body.lembar-koreksi-produksi-terbuka #lembarKoreksiProduksi, body.lembar-isi-hpp-terbuka #lembarIsiHpp, body.lembar-pelanggan-terbuka #lembarPelanggan, body.lembar-pemasok-terbuka #lembarPemasok, body.lembar-bayar-bon-terbuka #lembarBayarBon, body.lembar-saldo-awal-utang-terbuka #lembarSaldoAwalUtang { transform: translateY(0); transition: transform var(--gerak-panel) var(--lengkung-masuk); }
+  #lembarPiutang .lm-pegangan, #lembarKasbon .lm-pegangan, #lembarKoreksiProduksi .lm-pegangan, #lembarIsiHpp .lm-pegangan, #lembarPelanggan .lm-pegangan, #lembarPemasok .lm-pegangan, #lembarBayarBon .lm-pegangan, #lembarSaldoAwalUtang .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px; background: rgba(228, 232, 234, .25); margin: 2px auto 12px; }
+  #lembarPiutang h3, #lembarKasbon h3, #lembarKoreksiProduksi h3, #lembarIsiHpp h3, #lembarPelanggan h3, #lembarPemasok h3, #lembarBayarBon h3, #lembarSaldoAwalUtang h3 { margin: 0 0 2px; font-family: 'Prata', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; color: var(--teks); }
+  #lembarPiutang .lk-sub, #lembarKasbon .lk-sub, #lembarKoreksiProduksi .lk-sub, #lembarIsiHpp .lk-sub, #lembarPelanggan .lk-sub, #lembarPemasok .lk-sub, #lembarBayarBon .lk-sub, #lembarSaldoAwalUtang .lk-sub { margin: 0 0 12px; font-size: 10.5px; color: var(--redup); line-height: 1.5; }
+  #lembarPiutang .lmk-tutup, #lembarKasbon .lmk-tutup, #lembarKoreksiProduksi .lmk-tutup, #lembarIsiHpp .lmk-tutup, #lembarPelanggan .lmk-tutup, #lembarPemasok .lmk-tutup, #lembarBayarBon .lmk-tutup, #lembarSaldoAwalUtang .lmk-tutup {
     width: 100%; min-height: 48px; margin-top: 12px; border-radius: 12px;
     background: var(--abu); border: 1px solid var(--garis); color: var(--redup);
     font-family: inherit; font-size: 13px; font-weight: 700;
@@ -2499,6 +2499,17 @@
     border: none; font-family: inherit; font-size: 14px; font-weight: 700;
   }
   @media print { .lap-tombol { display: none !important; } }
+  .bon-pilih { display: flex; flex-direction: column; gap: 6px; }
+  .bon-pilih button {
+    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px;
+    padding: 8px 12px; border-radius: 11px; text-align: left;
+    background: var(--abu); border: 1px solid var(--garis); color: var(--teks);
+    font-family: inherit; font-size: 13px; font-weight: 700;
+  }
+  .bon-pilih button.pilih { color: var(--emas-terang); background: linear-gradient(90deg, rgba(226, 205, 166, .22), rgba(226, 205, 166, .05)); border-color: rgba(226, 205, 166, .55); }
+  .bon-pilih button b { flex: 1; min-width: 0; }
+  .bon-pilih button i { font-style: normal; font-size: 10.5px; color: var(--redup); font-weight: 400; white-space: nowrap; }
+  .bon-tua { color: #d3a08b !important; font-weight: 700; }
   .lap-baris.lb-naik .lb-angka { color: var(--emas-terang); }
   .lap-baris.lb-turun .lb-angka { color: #d3a08b; }
   .tren-svg { width: 100%; height: 96px; display: block; margin: 6px 0 2px; }
@@ -3848,6 +3859,41 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 <div id="overlayLembarPelanggan" onclick="tutupLembarPelanggan()"></div>
 
 <div id="overlayLembarPemasok" onclick="tutupLembarPemasok()"></div>
+<div id="overlayLembarBayarBon" onclick="tutupLembarBayarBon()"></div>
+<div id="overlayLembarSaldoAwalUtang" onclick="tutupLembarSaldoAwalUtang()"></div>
+<div id="lembarBayarBon" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarBayarBonJudul">
+  <div class="lm-pegangan"></div>
+  <h3 id="lembarBayarBonJudul">Bayar bon</h3>
+  <p class="lk-sub" id="lembarBayarBonSub">—</p>
+  <p class="keterangan">Pilih bon yang dibayar — RODA MAS biasanya bon TERTUA, SEJATI JAYA bon TERBARU. Dua-duanya sah; sorotan awal cuma saran.</p>
+  <div id="bayarBonDaftar"></div>
+  <label style="margin-top:12px;">Nominal dibayar (Rp) <span class="keterangan">— boleh sebagian</span></label>
+  <input type="number" id="bayarBonNominal" placeholder="0" inputmode="numeric">
+  <label style="margin-top:10px;">Tanggal bayar</label>
+  <input type="date" id="bayarBonTanggal">
+  <label style="margin-top:10px;">Catatan</label>
+  <input type="text" id="bayarBonCatatan" placeholder="Contoh: dibayar saat kedatangan baru">
+  <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanBayarBon()">Catat pembayaran</button>
+  <button type="button" class="lmk-tutup" onclick="tutupLembarBayarBon()">Tutup</button>
+</div>
+
+<div id="lembarSaldoAwalUtang" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarSaldoAwalUtangJudul">
+  <div class="lm-pegangan"></div>
+  <h3 id="lembarSaldoAwalUtangJudul">Bon lama — pra-sistem</h3>
+  <p class="keterangan">Bon dari masa sebelum sistem mencatat (contoh: bon SEJATI JAYA Rp69.900.000). Berasnya sudah lama masuk & terjual — di sini cuma UTANGNYA yang dicatat, stok & HPP tidak tersentuh.</p>
+  <label>Pemasok</label>
+  <input type="text" id="saldoUtangPemasok" list="daftarPemasokUtang" placeholder="Contoh: RODA MAS" autocomplete="off">
+  <datalist id="daftarPemasokUtang"></datalist>
+  <label style="margin-top:10px;">Tanggal bon <span class="keterangan">— boleh perkiraan</span></label>
+  <input type="date" id="saldoUtangTanggal">
+  <label style="margin-top:10px;">Nilai bon (Rp)</label>
+  <input type="number" id="saldoUtangNominal" placeholder="0" inputmode="numeric">
+  <label style="margin-top:10px;">Catatan</label>
+  <input type="text" id="saldoUtangCatatan" placeholder="Contoh: bon 3 Agu, dari catatan manual">
+  <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanSaldoAwalUtang()">Catat bon lama</button>
+  <button type="button" class="lmk-tutup" onclick="tutupLembarSaldoAwalUtang()">Tutup</button>
+</div>
+
 <div id="lembarPemasok" class="k6a" role="dialog" aria-modal="true" aria-labelledby="lembarPemasokJudul">
   <div class="lm-pegangan"></div>
   <h3 id="lembarPemasokJudul">Pemasok</h3>
@@ -5101,6 +5147,16 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       <div class="kartu-mini"><div class="label">Belanja 12 bulan</div><div class="nilai" id="pemasokBelanjaSetahun">Rp0</div></div>
     </div>
 
+    <!-- UTANG PEMASOK (25 Agu 2026) — bon berjalan per pemasok. Kas besar di laci
+         bukan uang bebas selama daftar ini belum kosong. -->
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="kartuUtangPemasok">
+      <div class="kd-judul"><h3>Utang pemasok — bon berjalan</h3><span class="kd-hitung" id="utangPemasokTotal"></span></div>
+      <div id="utangPemasokDaftar"></div>
+      <div style="padding:10px 12px 12px;">
+        <button type="button" class="pil-aksi" onclick="bukaSaldoAwalUtang()">+ Catat bon lama (pra-sistem)</button>
+      </div>
+    </div>
+
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
       <div class="kd-judul"><h3>Buku Pemasok</h3><span class="kd-hitung" id="pemasokHitung"></span></div>
       <div id="daftarPemasok"></div>
@@ -5175,8 +5231,15 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       </div>
       <input type="text" id="pemasokLain" placeholder="Nama pemasok lain" style="margin-top:8px; display:none;">
 
+      <label style="margin-top:8px;">Cara bayar beras</label>
+      <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr;">
+        <button type="button" id="batchBayarTunai" class="pilih" onclick="pilihCaraBayarBatch('tunai')">Tunai saat datang</button>
+        <button type="button" id="batchBayarUtang" onclick="pilihCaraBayarBatch('utang')">Bon / utang</button>
+      </div>
+      <input type="hidden" id="batchCaraBayar" value="tunai">
+      <p class="keterangan" id="batchCaraBayarKet" style="display:none;">Nilai berasnya jadi UTANG ke pemasok — tidak keluar dari kas hari ini. Yang tunai hari ini hanya biaya bongkar. Bayar bonnya nanti lewat tab Pemasok.</p>
       <div class="baris-isian">
-        <span class="bi-nama">Biaya bongkar<small>seluruh mobil ini</small></span>
+        <span class="bi-nama">Biaya bongkar<small>seluruh mobil ini — selalu tunai</small></span>
         <!-- Pengaman rupiah (a) dari Lembar 1: titik ribuan muncul SAAT mengetik. Pola
              kembar baris merk — isian tampil bertitik, angka mentahnya di kotak
              tersembunyi ber-id sama seperti dulu, supaya tidak satu pun pembaca
@@ -5649,6 +5712,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // ke kas toko, jadi arus kas BERGERAK. Yang sama pada keempatnya: TIDAK menyentuh laba.
   // Menyetor modal bukan pendapatan; menarik modal bukan biaya.
   const KOLEKSI_MODAL = 'modalOwner';
+  // UTANG PEMASOK (25 Agu 2026) — KOREKSI MODEL BISNIS: batch beras TIDAK selalu
+  // dibayar tunai saat datang. RODA MAS berjalan dengan BON: beras datang = utang,
+  // hanya bongkar yang tunai hari itu; bon dibayar pada kedatangan berikutnya (kebiasaan
+  // RODA MAS: bon tertua dulu; SEJATI JAYA: bon terbaru — jangan kunci ke satu pola).
+  const KOLEKSI_UTANG_PEMASOK = 'utangPemasokMutasi';
   const KOLEKSI_THR = 'thrPelanggan';
   const KOLEKSI_PEMASOK_CAT = 'pemasokCatatan';
 
@@ -5676,6 +5744,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   let _cacheSetoran = [];
   let _cacheAmplop = [];
   let _cacheModal = [];
+  let _cacheUtangPemasok = [];
   let _cacheThr = [];
   let _cachePemasokCat = [];
   let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false, piutang: false, kasbon: false };
@@ -5701,6 +5770,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   const KUNCI_SETORAN = 'miqbal_setoran_kas_v1';
   const KUNCI_AMPLOP = 'miqbal_amplop_laba_v1';
   const KUNCI_MODAL = 'miqbal_modal_owner_v1';
+  const KUNCI_UTANG_PEMASOK = 'miqbal_utang_pemasok_v1';
   const KUNCI_JENIS_BERAS = 'miqbal_jenis_beras_v1';
   const KUNCI_THR = 'miqbal_thr_pelanggan_v1';
   const KUNCI_PEMASOK_CAT = 'miqbal_pemasok_catatan_v1';
@@ -6639,6 +6709,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // yang tampil bertitik, yang dibaca kode tetap digit mentah di #biayaBongkar.
   pasangRibuan(document.getElementById('biayaBongkarTampil'), function (nilai) {
     document.getElementById('biayaBongkar').value = nilai > 0 ? nilai : '';
+    if (typeof pilihCaraBayarBatch === 'function' && document.getElementById('batchCaraBayar')) pilihCaraBayarBatch('tunai');
     // pasangRibuan memanggil ukurIsian, yang menyetel lebar dalam ch INKLUSIF padding.
     // Di baris merk padding-nya 0 jadi pas; di .baris-isian padding-nya 12px kiri-kanan,
     // sehingga "220.000" terpotong jadi "220.0". Kotak ini memang berlebar tetap
@@ -6888,6 +6959,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'modalOwner');
 
+  pasangSinkronisasi(KOLEKSI_UTANG_PEMASOK, KUNCI_UTANG_PEMASOK, (d) => { _cacheUtangPemasok = d; }, () => {
+    segarkanArusKasJikaTampil();
+    segarkanLaporanJikaTerbuka();
+    if (document.getElementById('halamanPemasok').classList.contains('tampil')) tampilkanPemasok();
+    if (document.getElementById('halamanTutup').classList.contains('tampil')) tampilkanTutupHari();
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
+  }, 'id', 'utangPemasok');
+
   pasangSinkronisasi(KOLEKSI_THR, KUNCI_THR, (d) => { _cacheThr = d; }, () => {
     if (document.getElementById('halamanPelanggan').classList.contains('tampil')) tampilkanPelanggan();
   }, 'id', 'thr');
@@ -7062,6 +7141,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       setoranKas: ambilSetoranKas(),
       amplopLaba: ambilAmplopLaba(),
       modalOwner: ambilModalOwner(),
+      utangPemasokMutasi: ambilUtangPemasokMutasi(),
       // Peta merk->jenis beras (dok pengaturan, bukan koleksi ber-id) — audit 14 Agu
       // 2026: sebelumnya tidak ikut backup, pulihkan-dari-file membuat petanya kosong.
       petaJenisBeras: ambilPetaJenisBeras()
@@ -7115,6 +7195,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
           { kunci: 'setoranKas',          koleksi: KOLEKSI_SETORAN,       ada: ambilSetoranKas(),       field: 'id',    label: 'setoran kas' },
           { kunci: 'amplopLaba',          koleksi: KOLEKSI_AMPLOP,        ada: ambilAmplopLaba(),       field: 'id',    label: 'amplop laba' },
           { kunci: 'modalOwner',          koleksi: KOLEKSI_MODAL,         ada: ambilModalOwner(),       field: 'id',    label: 'modal owner' },
+          { kunci: 'utangPemasokMutasi',  koleksi: KOLEKSI_UTANG_PEMASOK, ada: ambilUtangPemasokMutasi(), field: 'id',  label: 'utang pemasok' },
           { kunci: 'thrPelanggan',        koleksi: KOLEKSI_THR,           ada: ambilThrPelanggan(),     field: 'id',    label: 'THR pelanggan' },
           { kunci: 'pemasokCatatan',      koleksi: KOLEKSI_PEMASOK_CAT,   ada: ambilPemasokCatatan(),   field: 'id',    label: 'catatan pemasok' }
         ];
@@ -7163,11 +7244,15 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       if (!confirm('Total karung baru ' + totalKarungSemua + ' — biasanya 1 mobil minimal 60 karung. Tetap simpan?')) return;
     }
 
+    const caraBayarBatch = document.getElementById('batchCaraBayar').value === 'utang' ? 'utang' : 'tunai';
     const kedatangan = {
       id: idUnik(),
       tanggal: document.getElementById('tanggal').value,
       pemasok: pemasok,
       biayaBongkar: parseFloat(document.getElementById('biayaBongkar').value) || 0,
+      // 'utang' = bon berjalan: beras masuk stok & HPP seperti biasa, tapi nilai
+      // berasnya TIDAK keluar kas hari ini (lihat hitungArusKasInti). Bongkar tetap tunai.
+      caraBayar: caraBayarBatch,
       merkList: barisValid
     };
 
@@ -8098,6 +8183,74 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   function saldoModalOwner() {
     return daftarModalOwner().reduce((a, x) => a + (x.tipe === 'tarik' ? -(x.nominal || 0) : (x.nominal || 0)), 0);
   }
+  function ambilUtangPemasokMutasi() {
+    if (_cacheUtangPemasok.length > 0) return _cacheUtangPemasok;
+    const data = localStorage.getItem(KUNCI_UTANG_PEMASOK);
+    return data ? JSON.parse(data) : [];
+  }
+  // Cara bayar batch: dokumen lama tanpa field = TUNAI — perilaku lama utuh, tanpa migrasi.
+  function batchDiutang(k) { return k.caraBayar === 'utang'; }
+  // Utang berjalan per pemasok, DITURUNKAN setiap dipanggil (pola persis hitungPiutang):
+  //   Σ nilai beras batch ber-caraBayar 'utang' + Σ saldoAwal − Σ bayar.
+  // Bongkar TIDAK pernah ikut utang — selalu tunai ke kuli & supir saat datang.
+  // Pembayaran dipasangkan ke bon lewat bonTanggal+bonId supaya sisa PER BON terbaca;
+  // pembayaran tanpa penunjuk bon mengurangi bon tertua dulu (cadangan aman).
+  function hitungUtangPemasok() {
+    const per = {}; // pemasok -> { pemasok, bon: [{id, tanggal, nilai, dibayar}], saldoAwalTotal, dibayarTotal }
+    const pastikan = nm => {
+      const kunci = String(nm || '').trim();
+      if (!kunci) return null;
+      if (!per[kunci]) per[kunci] = { pemasok: kunci, bon: [], totalUtang: 0 };
+      return per[kunci];
+    };
+    ambilSemuaBatch().forEach(k => {
+      if (k.stokAwal || !batchDiutang(k)) return;
+      const px = pastikan(k.pemasok);
+      if (!px) return;
+      const nilai = (k.merkList || []).reduce((a, m) => a + (m.subtotalHarga || 0), 0);
+      px.bon.push({ id: String(k.id), tanggal: k.tanggal || '', nilai, dibayar: 0, jenis: 'batch' });
+    });
+    ambilUtangPemasokMutasi().forEach(m => {
+      if (m.tipe !== 'saldoAwal') return;
+      const px = pastikan(m.pemasok);
+      if (!px) return;
+      // Tanggal bon HARUS tanggal bonnya sendiri — bukan tanggal dicatatnya. Bon lama
+      // tanpa tanggal tampil '(tanpa tanggal)' dan diurutkan PALING TUA ('' terurut
+      // paling awal): bon pra-sistem memang yang tertua, dan umurnya jujur tak diketahui.
+      px.bon.push({ id: String(m.id), tanggal: m.bonTanggal || '', nilai: m.nominal || 0, dibayar: 0, jenis: 'saldoAwal', catatan: m.catatan || '' });
+    });
+    Object.values(per).forEach(px => px.bon.sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))));
+    ambilUtangPemasokMutasi().forEach(m => {
+      if (m.tipe !== 'bayar') return;
+      const px = per[String(m.pemasok || '').trim()];
+      if (!px) return;
+      let sisa = m.nominal || 0;
+      const tunjuk = m.bonId ? px.bon.find(b => b.id === String(m.bonId)) : null;
+      if (tunjuk) {
+        const ambil = Math.min(sisa, tunjuk.nilai - tunjuk.dibayar);
+        tunjuk.dibayar += ambil; sisa -= ambil;
+      }
+      // sisa pembayaran (atau pembayaran tanpa penunjuk) mengalir ke bon tertua yang belum lunas
+      px.bon.forEach(b => {
+        if (sisa <= 0) return;
+        const ambil = Math.min(sisa, b.nilai - b.dibayar);
+        b.dibayar += ambil; sisa -= ambil;
+      });
+    });
+    const hasil = [];
+    Object.values(per).forEach(px => {
+      px.bon = px.bon.filter(b => b.nilai - b.dibayar > 0.5)
+        .map(b => Object.assign(b, { sisa: Math.round(b.nilai - b.dibayar),
+          umurHari: b.tanggal ? Math.max(0, Math.round((isoKeTanggal(tanggalLokalIso()) - isoKeTanggal(b.tanggal)) / 86400000)) : null }));
+      px.totalUtang = px.bon.reduce((a, b) => a + b.sisa, 0);
+      if (px.totalUtang > 0) hasil.push(px);
+    });
+    return hasil.sort((a, b) => b.totalUtang - a.totalUtang);
+  }
+  function totalUtangPemasokSemua() {
+    return hitungUtangPemasok().reduce((a, x) => ({ nominal: a.nominal + x.totalUtang, nBon: a.nBon + x.bon.length }), { nominal: 0, nBon: 0 });
+  }
+
   function saldoAmplop(sampaiIso) {
     return ambilAmplopLaba().reduce((a, x) => {
       if (sampaiIso && String(x.tanggal || '') > sampaiIso) return a;
@@ -11961,8 +12114,13 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     // Penandanya lahir bersama formulir Stok Awal (formulirnya sendiri dicabut 13 Agu
     // 2026 sesudah pemindahan selesai; datanya tetap dan tetap dibaca di sini).
     const batch = ambilSemuaBatch().filter(k => cocok(k.tanggal) && !k.stokAwal);
+    // BELANJA DIPECAH (25 Agu 2026): batch BON tidak mengeluarkan uang beras pada hari
+    // kedatangan — hanya BONGKARNYA yang tunai (dibayar kuli & supir, tidak pernah
+    // diutang). Nilai berasnya keluar nanti lewat "Bayar bon pemasok" pada TANGGAL
+    // BAYARNYA. Dokumen lama tanpa caraBayar = tunai, angka historis tidak bergeser.
     const belanja = batch.reduce((a, k) =>
-      a + (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0), 0);
+      a + (batchDiutang(k) ? 0 : (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0)) + (k.biayaBongkar || 0), 0);
+    const bayarBon = ambilUtangPemasokMutasi().filter(m => m.tipe === 'bayar' && cocok(m.tanggal));
 
     // Tiap pos biaya bulanan lewat predikat yang sama persis dengan penjualan, belanja,
     // dan lainnya — tidak ada lagi perlakuan khusus. Pos tanpa tanggal tidak akan pernah
@@ -12007,7 +12165,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       { label: 'Modal owner disetor', nominal: jmlNominal(modalSetor), n: modalSetor.length, satuan: 'kali' }
     ];
     const keluar = [
-      { label: 'Belanja beras', nominal: belanja, n: batch.length, satuan: 'kedatangan' },
+      { label: 'Belanja beras (tunai + bongkar)', nominal: belanja, n: batch.length, satuan: 'kedatangan' },
+      { label: 'Bayar bon pemasok', nominal: jmlNominal(bayarBon), n: bayarBon.length, satuan: 'pembayaran' },
       { label: 'Biaya bulanan', nominal: biayaBulanan, n: bayarTerhitung.length, satuan: 'pembayaran',
         ket: bayarTerhitung.length
           ? bayarTerhitung.map(x => x.label).join(', ')
@@ -12034,7 +12193,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
         tunai: jmlHarga(tunai), qris: jmlHarga(qris),
         pelunasan: jmlNominal(piutangBayar),
         kasbonBayar: jmlNominal(kasbonBayar), kasbonAmbil: jmlNominal(kasbonAmbil),
-        tukarMasuk, refund, belanja,
+        tukarMasuk, refund, belanja, bayarBon: jmlNominal(bayarBon),
+        berasDiutang: batch.reduce((a, k) => a + (batchDiutang(k) ? (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0) : 0), 0),
         biayaBulanan, harian: jmlNominal(harianToko), prive: jmlNominal(harianOwner),
         beliKemasan: jmlHarga(beliKemasan), beliLiteran: jmlHarga(beliLiteran),
         setoran: jmlNominal(setoran),
@@ -12179,8 +12339,18 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       : dorong(x.tanggal, x.jam, x.id, x.dariSetoranLama || x.dariSetoran ? 'Setoran ke owner' : 'Modal owner ditarik' + (x.catatan ? ' — ' + x.catatan : ''), 0, x.nominal));
     ambilSemuaBatch().forEach(k => {
       if (k.stokAwal) return;
-      const nilai = (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0) + (k.biayaBongkar || 0);
-      dorong(k.tanggal, '', k.id, 'Belanja beras — ' + (k.pemasok || '') + ' (' + (k.merkList || []).length + ' merk)', 0, nilai);
+      const nilaiBeras = (k.merkList || []).reduce((x, m) => x + (m.subtotalHarga || 0), 0);
+      if (batchDiutang(k)) {
+        // Bon: uang beras TIDAK bergerak hari itu — cuma bongkarnya. Nilai bonnya
+        // ditulis di keterangan supaya jejaknya tetap terbaca di Buku Kas.
+        dorong(k.tanggal, '', k.id, 'Bongkar — ' + (k.pemasok || '') + ' (bon ' + formatRupiah(nilaiBeras) + ' — utang)', 0, k.biayaBongkar || 0);
+      } else {
+        dorong(k.tanggal, '', k.id, 'Belanja beras — ' + (k.pemasok || '') + ' (' + (k.merkList || []).length + ' merk)', 0, nilaiBeras + (k.biayaBongkar || 0));
+      }
+    });
+    ambilUtangPemasokMutasi().forEach(m => {
+      if (m.tipe !== 'bayar') return;
+      dorong(m.tanggal, m.jam || '', m.id, 'Bayar bon ' + (m.pemasok || '') + (m.bonTanggal ? ' — bon ' + formatTanggal(m.bonTanggal) : ''), 0, m.nominal || 0);
     });
     bayaranBiayaBulanan().forEach(x => {
       if (!x.tanggal) return;                      // belum dibayar = belum bergerak
@@ -12512,6 +12682,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       if (stokKarung[m].sisaKg > 0 && !(stokKarung[m].hppTerakhirPerKg > 0)) hppNol.push(m); });
 
     const gantung = [];
+    // Utang pemasok SELALU tampil di sini kalau ada — kas yang kelihatan besar bukan
+    // uang bebas. Contoh nyata 25 Agu 2026: kas ±Rp40 juta, utang bon Rp132 juta.
+    const utangPm = totalUtangPemasokSemua();
+    if (utangPm.nominal > 0) gantung.push({ t: 'Utang pemasok berjalan: ' + formatRupiah(utangPm.nominal) + ' (' + utangPm.nBon + ' bon)', s: 'kas di tangan bukan uang bebas — bon menunggu dibayar', h: 'pemasok', a: 'Pemasok' });
     if (rapikan.length) gantung.push({ t: rapikan.length + ' penjualan kasir perlu dirapikan jumlahnya', s: 'sebagian stoknya belum terpotong', h: 'rekap', a: 'Riwayat', berat: true });
     if (darurat.length) gantung.push({ t: darurat.length + ' penjualan kasir darurat belum dirinci', s: formatRupiah(darurat.reduce((a, p) => a + (p.hargaTotal || 0), 0)) + ' tanpa produk & HPP', h: 'rekap', a: 'Riwayat', berat: true });
     if (karantina.length) gantung.push({ t: karantina.length + ' barang karantina menunggu keputusan', s: 'retur / rework / buang', h: 'stok', a: 'Stok' });
@@ -13385,8 +13559,132 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
   let _daftarPmsRender = [];
   let _pmsTerbuka = null;
+  function pilihCaraBayarBatch(cara) {
+    document.getElementById('batchCaraBayar').value = cara;
+    document.getElementById('batchBayarTunai').classList.toggle('pilih', cara === 'tunai');
+    document.getElementById('batchBayarUtang').classList.toggle('pilih', cara === 'utang');
+    document.getElementById('batchCaraBayarKet').style.display = cara === 'utang' ? 'block' : 'none';
+  }
+
+  // ===== KARTU UTANG PEMASOK (25 Agu 2026) =====
+  let _bayarBon = null;   // { pemasok, bonId } saat lembar bayar terbuka
+  function tampilkanUtangPemasok() {
+    const kont = document.getElementById('utangPemasokDaftar');
+    if (!kont) return;
+    const semua = hitungUtangPemasok();
+    const total = semua.reduce((a, x) => a + x.totalUtang, 0);
+    const nBon = semua.reduce((a, x) => a + x.bon.length, 0);
+    document.getElementById('utangPemasokTotal').textContent = total > 0
+      ? formatRupiah(total) + ' · ' + nBon + ' bon' : 'tidak ada';
+    kont.innerHTML = semua.length === 0
+      ? '<div class="kosong-info"><b>Tidak ada bon berjalan</b><span>Batch bon baru & bon lama pra-sistem akan tampil di sini.</span></div>'
+      : semua.map(px => {
+        const barisBon = px.bon.map(b => `<div class="baris-44">
+            <span class="nama"><i class="trx-nama">Bon ${escapeHtml(b.tanggal ? formatTanggal(b.tanggal) : '(tanpa tanggal)')}</i>
+            <small class="${(b.umurHari || 0) > 14 ? 'bon-tua' : ''}">${b.umurHari === null ? '' : 'umur ' + b.umurHari + ' hari'}${b.dibayar > 0 ? ' · sudah dibayar ' + formatRupiah(Math.round(b.dibayar)) : ''}${b.jenis === 'saldoAwal' ? ' · pra-sistem' : ''}</small></span>
+            <span class="angka">${formatRupiah(b.sisa)}</span>
+          </div>`).join('');
+        return `<div class="baris-44" style="border-bottom:none;">
+            <span class="nama"><i class="trx-nama"><b>${escapeHtml(px.pemasok)}</b></i><small>${px.bon.length} bon berjalan</small></span>
+            <span class="angka">${formatRupiah(px.totalUtang)}</span>
+            <button type="button" class="pil-aksi" onclick="bukaLembarBayarBon(${JSON.stringify(String(px.pemasok)).replace(/"/g, '&quot;')})">Bayar bon</button>
+          </div>` + barisBon;
+      }).join('');
+  }
+  function bukaLembarBayarBon(pemasok) {
+    const px = hitungUtangPemasok().find(x => x.pemasok === pemasok);
+    if (!px) { alert('Tidak ada bon berjalan untuk ' + pemasok + '.'); return; }
+    _bayarBon = { pemasok, bonId: px.bon[0] ? px.bon[0].id : null };   // sorotan awal: bon TERTUA (saran, bukan paksaan)
+    document.getElementById('lembarBayarBonSub').textContent =
+      pemasok + ' · ' + px.bon.length + ' bon · total ' + formatRupiah(px.totalUtang);
+    gambarPilihanBon(px);
+    document.getElementById('bayarBonTanggal').value = tanggalLokalIso();
+    document.getElementById('bayarBonCatatan').value = '';
+    document.body.classList.add('lembar-bayar-bon-terbuka');
+  }
+  function gambarPilihanBon(px) {
+    const kont = document.getElementById('bayarBonDaftar');
+    kont.innerHTML = '<div class="bon-pilih">' + px.bon.map(b =>
+      `<button type="button" class="${_bayarBon.bonId === b.id ? 'pilih' : ''}" onclick="pilihBonDibayar(${JSON.stringify(String(b.id)).replace(/"/g, '&quot;')})">
+        <b>Bon ${escapeHtml(b.tanggal ? formatTanggal(b.tanggal) : '(tanpa tanggal)')}</b>
+        <i>${b.umurHari === null ? '' : b.umurHari + ' hari'}</i>
+        <span class="angka">${formatRupiah(b.sisa)}</span>
+      </button>`).join('') + '</div>';
+    const terpilih = px.bon.find(b => b.id === _bayarBon.bonId);
+    document.getElementById('bayarBonNominal').value = terpilih ? terpilih.sisa : '';
+  }
+  function pilihBonDibayar(bonId) {
+    if (!_bayarBon) return;
+    _bayarBon.bonId = bonId;
+    const px = hitungUtangPemasok().find(x => x.pemasok === _bayarBon.pemasok);
+    if (px) gambarPilihanBon(px);
+  }
+  function tutupLembarBayarBon() {
+    _bayarBon = null;
+    document.body.classList.remove('lembar-bayar-bon-terbuka');
+  }
+  async function simpanBayarBon() {
+    if (!_bayarBon) return;
+    const px = hitungUtangPemasok().find(x => x.pemasok === _bayarBon.pemasok);
+    const bon = px ? px.bon.find(b => b.id === _bayarBon.bonId) : null;
+    if (!bon) { alert('Pilih bon yang dibayar dulu.'); return; }
+    const nominal = Math.round(parseFloat(document.getElementById('bayarBonNominal').value) || 0);
+    if (!(nominal > 0)) { alert('Isi nominal pembayarannya.'); return; }
+    if (nominal > bon.sisa) { alert('Nominal ' + formatRupiah(nominal) + ' melebihi sisa bon ' + formatRupiah(bon.sisa) + '. Kalau mau bayar bon lain sekalian, catat terpisah — satu pembayaran satu bon, biar jejaknya jelas.'); return; }
+    const tanggal = document.getElementById('bayarBonTanggal').value || tanggalLokalIso();
+    const catatan = document.getElementById('bayarBonCatatan').value.trim();
+    if (!confirm('Bayar bon ' + _bayarBon.pemasok + '\n'
+      + 'Bon ' + (bon.tanggal ? formatTanggal(bon.tanggal) : '(tanpa tanggal)') + ' — sisa ' + formatRupiah(bon.sisa) + '\n'
+      + 'Dibayar ' + formatRupiah(nominal) + (nominal < bon.sisa ? ' (SEBAGIAN — sisa bon jadi ' + formatRupiah(bon.sisa - nominal) + ')' : ' (LUNAS)')
+      + '\nTanggal ' + formatTanggal(tanggal)
+      + '\n\nKas toko akan BERKURANG ' + formatRupiah(nominal) + '. Lanjutkan?')) return;
+    await simpanKeFirestore(KOLEKSI_UTANG_PEMASOK, {
+      id: idUnik(), tanggal, jam: new Date().toTimeString().slice(0, 5), tipe: 'bayar',
+      pemasok: _bayarBon.pemasok, nominal, catatan,
+      bonId: bon.id, bonTanggal: bon.tanggal || null
+    });
+    tutupLembarBayarBon();
+    tampilkanPemasok();
+    const tertunda = ambilAntreanTunda().some(q => q.koleksi === KOLEKSI_UTANG_PEMASOK);
+    alert(tertunda ? 'Tersimpan di HP — menyusul ke server begitu ada sinyal.'
+      : 'Tercatat. Utang ' + _bayarBonPemasokTerakhir(nominal));
+  }
+  function _bayarBonPemasokTerakhir(nominal) {
+    const t = totalUtangPemasokSemua();
+    return 'seluruh pemasok kini ' + formatRupiah(t.nominal) + ' (' + t.nBon + ' bon).';
+  }
+  function bukaSaldoAwalUtang() {
+    const dl = document.getElementById('daftarPemasokUtang');
+    if (dl) dl.innerHTML = hitungPemasok().map(x => `<option value="${escapeHtml(x.nama)}">`).join('');
+    document.getElementById('saldoUtangTanggal').value = '';
+    document.getElementById('saldoUtangNominal').value = '';
+    document.getElementById('saldoUtangCatatan').value = '';
+    document.body.classList.add('lembar-saldo-awal-utang-terbuka');
+  }
+  function tutupLembarSaldoAwalUtang() {
+    document.body.classList.remove('lembar-saldo-awal-utang-terbuka');
+  }
+  async function simpanSaldoAwalUtang() {
+    const pemasok = document.getElementById('saldoUtangPemasok').value.trim();
+    const tanggal = document.getElementById('saldoUtangTanggal').value;
+    const nominal = Math.round(parseFloat(document.getElementById('saldoUtangNominal').value) || 0);
+    const catatan = document.getElementById('saldoUtangCatatan').value.trim();
+    if (!pemasok) { alert('Isi nama pemasoknya.'); return; }
+    if (!(nominal > 0)) { alert('Isi nilai bonnya.'); return; }
+    if (!confirm('Catat bon lama ' + pemasok + '\nNilai ' + formatRupiah(nominal)
+      + (tanggal ? '\nTanggal bon ' + formatTanggal(tanggal) : '\nTanggal bon: tidak diketahui')
+      + '\n\nIni UTANG dari masa sebelum sistem — kas, stok, dan laba TIDAK berubah. Lanjutkan?')) return;
+    await simpanKeFirestore(KOLEKSI_UTANG_PEMASOK, {
+      id: idUnik(), tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5),
+      tipe: 'saldoAwal', pemasok, nominal, catatan, bonTanggal: tanggal || null
+    });
+    tutupLembarSaldoAwalUtang();
+    tampilkanPemasok();
+  }
+
   function tampilkanPemasok() {
     tampilkanPerluBelanja();
+    tampilkanUtangPemasok();
     const kont = document.getElementById('daftarPemasok');
     if (!kont) return;
     const semua = hitungPemasok();
@@ -13561,6 +13859,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       { koleksi: KOLEKSI_SETORAN,        label: 'setoran kas',        dok: tgl(ambilSetoranKas()) },
       { koleksi: KOLEKSI_AMPLOP,         label: 'amplop laba',        dok: tgl(ambilAmplopLaba()) },
       { koleksi: KOLEKSI_MODAL,          label: 'modal owner',        dok: tgl(ambilModalOwner()) },
+      { koleksi: KOLEKSI_UTANG_PEMASOK,  label: 'utang pemasok',      dok: tgl(ambilUtangPemasokMutasi()) },
       { koleksi: KOLEKSI_BAHAN_KEMASAN,  label: 'bahan kemasan',      dok: tgl(ambilBahanKemasan()) },
       { koleksi: KOLEKSI_BAHAN_LITERAN,  label: 'bahan literan',      dok: tgl(ambilBahanLiteran()) },
       { koleksi: KOLEKSI_PIUTANG,        label: 'mutasi piutang',     dok: tgl(ambilPiutangMutasi()) },
@@ -14482,7 +14781,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const kartu = document.getElementById('kartuKeMana');
     const laba = hitungLabaBulan(d.bulan);
     const pos = d.pos;
-    const jadiStok = pos.belanja - laba.hpp;
+    // Belanja kas kini hanya tunai+bongkar. Stok yang datang lewat BON menambah gudang
+    // TANPA uang keluar — sukunya sendiri; bayar bon = uang keluar yang MENGURANGI UTANG,
+    // bukan stok baru dan bukan biaya. Tanpa dua suku ini identitasnya patah.
+    const jadiStok = pos.belanja + (pos.berasDiutang || 0) - laba.hpp;
     const jadiPiutang = d.kreditBulanIni - pos.pelunasan;
     const jadiKasbon = pos.kasbonAmbil - pos.kasbonBayar;
     const biayaNyata = pos.biayaBulanan + pos.harian + pos.beliKemasan + pos.beliLiteran
@@ -14508,6 +14810,12 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     baris.push(jadiPiutang >= 0
       ? brs('Jadi piutang pelanggan', 'kredit baru melebihi pelunasan — uangnya menyusul', jadiPiutang, -1)
       : brs('Piutang mengempis', 'pelunasan melebihi kredit baru', -jadiPiutang, 1));
+    if ((pos.berasDiutang || 0) > 0) {
+      baris.push(brs('Beras masuk lewat bon', 'stok bertambah tanpa uang keluar — jadi utang pemasok', pos.berasDiutang, 1));
+    }
+    if ((pos.bayarBon || 0) > 0) {
+      baris.push(brs('Melunasi bon pemasok — utang berkurang', 'uang keluar untuk beras yang sudah lama di gudang', pos.bayarBon, -1));
+    }
     baris.push(jadiKasbon >= 0
       ? brs('Jadi kasbon pegawai', 'diambil melebihi yang dikembalikan', jadiKasbon, -1)
       : brs('Kasbon kembali', 'dikembalikan melebihi yang diambil', -jadiKasbon, 1));
@@ -14805,6 +15113,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
             h: 'piutang', a: 'Tagih' });
         });
       }
+      const utangPmHp = totalUtangPemasokSemua();
+      if (utangPmHp.nominal > 0) daftarHp.push({ w: 'var(--amber)',
+        t: `Utang pemasok berjalan ${formatRupiah(utangPmHp.nominal)} (${utangPmHp.nBon} bon) — kas di tangan bukan uang bebas`,
+        h: 'pemasok', a: 'Pemasok' });
       if (!pinSudahDisetel()) daftarHp.push({ w: 'var(--merah)',
         t: 'PIN owner belum disetel — tab uang terbuka di HP yang sudah masuk',
         k: 'bukaSetelPin()', a: 'Setel' });
@@ -17793,6 +18105,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.segarkanLaporanJikaTerbuka = segarkanLaporanJikaTerbuka;
   window.tawarkanSelaraskanAmplop = tawarkanSelaraskanAmplop;
   window.catatModalOwner = catatModalOwner;
+  window.pilihCaraBayarBatch = pilihCaraBayarBatch;
+  window.bukaLembarBayarBon = bukaLembarBayarBon; window.tutupLembarBayarBon = tutupLembarBayarBon;
+  window.pilihBonDibayar = pilihBonDibayar; window.simpanBayarBon = simpanBayarBon;
+  window.bukaSaldoAwalUtang = bukaSaldoAwalUtang; window.tutupLembarSaldoAwalUtang = tutupLembarSaldoAwalUtang;
+  window.simpanSaldoAwalUtang = simpanSaldoAwalUtang;
   window.isiJatahSisihan = isiJatahSisihan;
   window.perbaruiSisihanTutup = perbaruiSisihanTutup;
   window.cetakLaporan = cetakLaporan;
