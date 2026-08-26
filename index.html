@@ -4714,6 +4714,15 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       <div class="kartu-mini"><div class="label">Margin rata-rata</div><div class="nilai" id="labaPersen">—</div></div>
     </div>
 
+    <!-- SUSUT & SELISIH STOK — barang yang hilang (atau lebih) dari hitungan fisik.
+         Sejak 1 Sep 2026 ia memotong laba; kartunya berdiri sendiri supaya besarnya
+         kelihatan dan bisa ditagih perbaikannya, bukan larut di antara biaya toko. -->
+    <div class="kartu-daftar kd-kepala" id="labaKartuSusut" style="display:none; margin-top:12px;">
+      <div class="kd-judul"><h3>Susut &amp; selisih stok</h3><span class="kd-hitung" id="labaSusutTotal"></span></div>
+      <div id="daftarLabaSusut"></div>
+      <p class="keterangan" style="padding:0 16px 12px; margin:0;">Karung sumber, kemasan jadi, dan bahan — semua yang tercatat sejak 1 September 2026. Memotong laba, tidak menyentuh kas.</p>
+    </div>
+
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
       <div class="kd-judul"><h3>Per transaksi</h3><span class="kd-hitung" id="labaHitungRugi"></span></div>
       <div id="daftarLaba"></div>
@@ -5746,6 +5755,22 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // (Kembang 25 kg: sistem 5, gudang 3) hanya bisa ditambal dengan cara yang merusak —
   // memalsukan produksi, mengarang penjualan, atau retur negatif.
   const KOLEKSI_PENY_KEMASAN = 'penyesuaianKemasan';
+  // ===== SUSUT STOK MEMOTONG LABA (26 Agu 2026, keputusan pemilik) =====
+  // Sampai hari ini penyesuaian stok tidak pernah menyentuh laba: beras yang hilang
+  // lenyap dari nilai stok tapi tidak pernah muncul sebagai kerugian, jadi laba bersih
+  // selalu tampak lebih baik dari kenyataan — dan jatah harian yang berdiri di atas laba
+  // itu ikut terlalu longgar.
+  //
+  // BERLAKU MAJU SAJA. Hitungan fisik Agustus 2026 adalah hitungan PERTAMA: isinya lebih
+  // banyak kalibrasi daripada kerugian. Kalau diberlakukan surut, laba Agustus justru
+  // NAIK Rp447.235 — surplus Perahu Layar (+Rp1.138.743) mengalahkan Kembang 25 kg
+  // (−Rp691.508). Laba yang naik karena salah menimbang adalah sinyal yang salah arah.
+  // Penjaganya bukan cuma tanggal: dokumen penyesuaian lama TIDAK punya field nilaiRp
+  // sama sekali, jadi Agustus tidak bisa ikut terhitung walau tanggalnya digeser.
+  const MULAI_SUSUT_LABA = '2026-09-01';
+  // Ambang peringatan penyesuaian POSITIF besar — stok bertambah tanpa pembelian.
+  // Angka awal untuk dicoba sebulan, bukan angka keramat; disetel di sini saja.
+  const AMBANG_SUSUT_POSITIF = 250000;
   const KOLEKSI_AMPLOP = 'amplopLaba';
   // MODAL OWNER (23 Agu 2026) — beda sifat dengan amplop & brankas, dan ini yang
   // paling gampang tertukar: amplop/brankas cuma PINDAH TEMPAT (uangnya tetap milik
@@ -6802,6 +6827,118 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     return [...arr].sort((a, b) => (b[field] > a[field] ? 1 : b[field] < a[field] ? -1 : 0));
   }
 
+  // ===== PENJAGA CADANGAN LOKAL (26 Agu 2026) =====
+  // localStorage adalah SATU-SATUNYA jaring kalau Firestore bermasalah. Sampai hari ini
+  // tiap snapshot menimpanya apa adanya, jadi satu snapshot KOSONG — koleksi terhapus
+  // dari sisi server, salah proyek, database dibersihkan — cukup untuk menghapus
+  // cadangan seluruh pembukuan dalam satu tarikan napas. Keluarga yang sama dengan bug
+  // suntikCachePenyesuaian yang baru diperbaiki: di sana cache kosong menimpa riwayat,
+  // di sini snapshot kosong yang menimpanya.
+  //
+  // Aturannya satu: data baru KOSONG sedangkan cadangan TIDAK kosong = jangan ditimpa,
+  // KECUALI aplikasi ini sendiri yang barusan menghapus (izinkanKoleksiKosong, dipasang
+  // di hapusDariFirestore — satu-satunya tempat deleteDoc dipanggil di berkas ini).
+  // Pemulihan dari berkas & tutup buku tidak perlu jalur khusus: keduanya hanya MENULIS
+  // dokumen, tidak pernah menghapus.
+  //
+  // AKIBAT YANG DISENGAJA: tiap ambil*() jatuh ke localStorage kalau cache kosong, jadi
+  // selama cadangan ditahan, layar terus menampilkan angka terakhir yang diketahui —
+  // bukan gudang kosong. Itu pilihan yang benar: lebih baik angka lama DITEMANI
+  // peringatan merah daripada toko yang tiba-tiba tampak tidak pernah ada. Pemilik yang
+  // memutuskan kapan cadangan itu dibuang, lewat tombol Terima di Perlu Perhatian.
+  const _bolehKoleksiKosong = {};
+  const _cadanganTertahan = {};
+  const LABEL_KOLEKSI = {
+    batchMasuk: 'kedatangan', biayaBulanan: 'biaya bulanan', penjualan: 'penjualan',
+    produksiKemasan: 'produksi', retur: 'retur', karantina: 'karantina',
+    pengeluaranHarian: 'pengeluaran harian', stokBahanKemasan: 'bahan kemasan',
+    stokBahanLiteran: 'bahan literan', katalogHargaLiteran: 'harga literan',
+    katalogHargaKemasan: 'harga kemasan', katalogHargaKarung: 'harga karung',
+    penyesuaianStok: 'penyesuaian stok', penyesuaianKemasan: 'penyesuaian kemasan',
+    tutupHari: 'tutup hari', piutangMutasi: 'mutasi piutang', kasbonMutasi: 'mutasi kasbon',
+    pelangganCatatan: 'catatan pelanggan', pesanan: 'pesanan', setoranKas: 'setoran kas',
+    amplopLaba: 'amplop laba', modalOwner: 'modal owner', utangPemasokMutasi: 'utang pemasok',
+    thrPelanggan: 'THR pelanggan', pemasokCatatan: 'catatan pemasok', ringkasanKasir: 'ringkasan kasir'
+  };
+  function labelKoleksi(k) { return LABEL_KOLEKSI[k] || k; }
+  function izinkanKoleksiKosong(koleksi, menit) {
+    _bolehKoleksiKosong[koleksi] = Date.now() + (menit || 5) * 60000;
+  }
+  function simpanCadanganLokal(koleksi, kunci, terurut) {
+    if (terurut.length === 0 && !(_bolehKoleksiKosong[koleksi] > Date.now())) {
+      let lama = [];
+      try { lama = JSON.parse(localStorage.getItem(kunci) || '[]') || []; } catch (e) { lama = []; }
+      if (lama.length > 0) {
+        _cadanganTertahan[koleksi] = { kunci, n: lama.length, label: labelKoleksi(koleksi) };
+        console.warn('Cadangan ' + koleksi + ' TIDAK diperbarui — server mengirim data kosong '
+          + 'padahal cadangan lokal berisi ' + lama.length + ' dokumen.');
+        return;
+      }
+    }
+    localStorage.setItem(kunci, JSON.stringify(terurut));
+    delete _cadanganTertahan[koleksi];
+  }
+  // Jalan keluar eksplisit — dipakai kalau pengosongan itu memang disengaja (mis.
+  // dihapus dari perangkat lain). Tidak pernah otomatis: yang tahu duduk perkaranya
+  // cuma pemilik.
+  function terimaKoleksiKosong(koleksi) {
+    const t = _cadanganTertahan[koleksi];
+    if (!t) return;
+    if (!confirm('Buang cadangan lokal ' + t.label + ' (' + t.n + ' dokumen)?\n\n'
+      + 'Lakukan HANYA kalau isi ' + t.label + ' memang sengaja dihapus semuanya. '
+      + 'Sesudah ini cadangan offline ' + t.label + ' hilang dari HP ini dan layar '
+      + 'mengikuti server yang kosong.')) return;
+    localStorage.setItem(t.kunci, '[]');
+    delete _cadanganTertahan[koleksi];
+    izinkanKoleksiKosong(koleksi, 60);
+    tampilkanRingkasan();
+  }
+
+  // Uji penjaga dari konsol: ujiPenjagaCadangan(). SENGAJA memakai koleksi & kunci
+  // PALSU — tidak pernah menyentuh data sungguhan, jadi aman dijalankan pemilik kapan
+  // saja untuk membuktikan penjaganya masih hidup di perangkat itu.
+  function ujiPenjagaCadangan() {
+    const KOL = '__ujiPenjaga', KUNCI = 'miqbal_uji_penjaga_v1';
+    const isi = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    const hasil = [];
+    const jml = () => { try { return JSON.parse(localStorage.getItem(KUNCI) || '[]').length; } catch (e) { return -1; } };
+    try {
+      localStorage.setItem(KUNCI, JSON.stringify(isi));
+      delete _cadanganTertahan[KOL]; delete _bolehKoleksiKosong[KOL];
+      // 1) snapshot KOSONG tanpa izin -> cadangan wajib utuh, peringatan wajib muncul
+      simpanCadanganLokal(KOL, KUNCI, []);
+      hasil.push(['kosong tanpa izin: cadangan utuh', jml() === 3]);
+      hasil.push(['kosong tanpa izin: tercatat perlu perhatian', !!_cadanganTertahan[KOL]]);
+      tampilkanRingkasan();
+      const teksP = (document.getElementById('ringPerhatian') || {}).innerText || '';
+      const teksH = (document.getElementById('ringPerhatianHp') || {}).innerText || '';
+      hasil.push(['peringatan tampil di Perlu Perhatian', /Cadangan .* tidak diperbarui/.test(teksP + ' ' + teksH)]);
+      // Tombol jalan keluarnya wajib ikut tergambar — peringatan tanpa pintu keluar
+      // cuma keluhan (aturan Alur UX). Dicek di KEDUA tata letak.
+      const htmlP = (document.getElementById('ringPerhatian') || {}).innerHTML || '';
+      const htmlH = (document.getElementById('ringPerhatianHp') || {}).innerHTML || '';
+      const polaTombol = new RegExp('onclick="terimaKoleksiKosong\\(\'' + KOL + '\'\\)"');
+      hasil.push(['tombol Terima ada di layar lebar', polaTombol.test(htmlP)]);
+      hasil.push(['tombol Terima ada di layar HP', polaTombol.test(htmlH)]);
+      // 2) snapshot BERISI -> menimpa seperti biasa, peringatan padam
+      simpanCadanganLokal(KOL, KUNCI, isi.concat({ id: 4 }));
+      hasil.push(['snapshot berisi: cadangan diperbarui', jml() === 4]);
+      hasil.push(['snapshot berisi: peringatan padam', !_cadanganTertahan[KOL]]);
+      // 3) penghapusan DISENGAJA -> kosong boleh menimpa (jalur hapusDariFirestore)
+      izinkanKoleksiKosong(KOL);
+      simpanCadanganLokal(KOL, KUNCI, []);
+      hasil.push(['penghapusan disengaja: cadangan ikut kosong', jml() === 0]);
+      hasil.push(['penghapusan disengaja: tanpa peringatan', !_cadanganTertahan[KOL]]);
+    } finally {
+      localStorage.removeItem(KUNCI);
+      delete _cadanganTertahan[KOL]; delete _bolehKoleksiKosong[KOL];
+      tampilkanRingkasan();
+    }
+    const gagal = hasil.filter(x => !x[1]).map(x => x[0]);
+    console.log(hasil.map(x => (x[1] ? '\u2713 ' : '\u2717 ') + x[0]).join('\n'));
+    return { lulus: gagal.length === 0, gagal };
+  }
+
   // kunciStatus = key di _sambunganAktif (mis. 'batch', 'retur') — eksplisit, bukan ditebak dari nama koleksi.
   function pasangSinkronisasi(nomorKoleksi, kunciLocalStorage, setelCache, onBerubah, fieldUrut, kunciStatus) {
     const kol = collection(db, nomorKoleksi);
@@ -6810,7 +6947,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       snap.forEach(d => daftar.push(d.data()));
       const terurut = urutkanTerbaru(daftar, fieldUrut);
       setelCache(terurut);
-      localStorage.setItem(kunciLocalStorage, JSON.stringify(terurut)); // cadangan offline
+      simpanCadanganLokal(nomorKoleksi, kunciLocalStorage, terurut);   // cadangan offline, berpenjaga
       _sambunganAktif[kunciStatus] = true;
       perbaruiStatusSambungan();
       if (onBerubah) onBerubah();
@@ -7145,6 +7282,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (nomorKoleksi !== 'ringkasanKasir') jadwalkanRingkasanKasir();
   }
   async function hapusDariFirestore(nomorKoleksi, id) {
+    // Penghapusan yang DISENGAJA: buka jendela supaya snapshot kosong sesudahnya
+    // (dokumen terakhir koleksi ini) tidak ditahan penjaga cadangan.
+    izinkanKoleksiKosong(nomorKoleksi);
     await deleteDoc(doc(db, nomorKoleksi, String(id)));
     if (nomorKoleksi !== 'ringkasanKasir') jadwalkanRingkasanKasir();
   }
@@ -14554,13 +14694,62 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const harianToko = harianRows.reduce((a, h) => a + (h.nominal || 0), 0);
     const hapusRows = ambilPiutangMutasi().filter(m => m.tipe === 'hapusBuku' && cocok(m.tanggal));
     const hapusBuku = hapusRows.reduce((a, m) => a + (m.nominal || 0), 0);
+    // SUSUT & SELISIH STOK — sukunya sendiri, sengaja tidak diselipkan ke biaya toko
+    // maupun ke HPP: besarnya harus kelihatan supaya bisa ditagih perbaikannya.
+    // DITULIS SEBAGAI PENJUMLAHAN dengan tanda apa adanya (nilaiRp negatif = stok
+    // berkurang = laba turun), supaya tandanya tidak pernah tertukar di kemudian hari.
+    const susutRows = barisSusutStok(cocok);
+    const susutStok = susutRows.reduce((a, x) => a + x.nilaiRp, 0);
     let jatahBulanan = 0, nHari = 0;
     for (let t = dariIso; t <= sampaiIso; t = geserHari(t, 1)) { jatahBulanan += jatahBiayaBulananHari(t, bayaran); nHari++; }
     const biayaToko = harianToko + jatahBulanan;
     return Object.assign(laba, {
       dariIso, sampaiIso, nHari, harianToko, nHarian: harianRows.length, jatahBulanan, biayaToko,
-      hapusBuku, nHapus: hapusRows.length, labaBersih: laba.margin - biayaToko - hapusBuku
+      hapusBuku, nHapus: hapusRows.length, susutStok, nSusut: susutRows.length,
+      labaBersih: laba.margin - biayaToko - hapusBuku + susutStok
     });
+  }
+
+  // Penyusun baris susut satu rentang — SATU pembaca untuk KETIGA jenis stok (karung
+  // sumber, kemasan jadi, bahan/kantong). Kalau cuma salah satu yang ikut, laporan jadi
+  // timpang tanpa ada yang tahu kenapa.
+  //
+  // Syaratnya tiga, semuanya wajib: (1) dokumen punya nilaiRp berupa angka — itulah
+  // yang mengunci Agustus 2026 di luar hitungan, karena dokumen lama tidak punya field
+  // itu; (2) tanggalnya >= MULAI_SUSUT_LABA; (3) lolos predikat rentang yang sama
+  // dengan suku laba lainnya. nilaiRp DIKUNCI saat simpan, tidak pernah diturunkan
+  // ulang di sini — HPP bergerak tiap ada pembelian, dan laporan bulan lalu tidak boleh
+  // berubah sendiri gara-gara beras baru masuk hari ini.
+  function barisSusutStok(cocok) {
+    const baris = [];
+    const tambah = (x, nama, satuan, jumlah, alasan) => {
+      if (typeof x.nilaiRp !== 'number' || !isFinite(x.nilaiRp) || x.nilaiRp === 0) return;
+      if (!x.tanggal || x.tanggal < MULAI_SUSUT_LABA || !cocok(x.tanggal)) return;
+      baris.push({ tanggal: x.tanggal, jam: x.jam || '', nama, satuan,
+        jumlah: jumlah || 0, nilaiRp: x.nilaiRp, alasan: alasan || '' });
+    };
+    ambilPenyesuaianStok().forEach(x => tambah(x, x.merk || '(karung)', 'kg', x.selisihKg, x.alasan));
+    ambilPenyesuaianKemasan().forEach(x =>
+      tambah(x, (x.namaProduk || '') + ' ' + x.ukuranKemasan + ' kg', 'unit', x.selisihUnit, x.alasan));
+    ambilBahanKemasan().concat(ambilBahanLiteran()).forEach(x => {
+      if (x.tipe === 'opname') tambah(x, labelBahan(x.jenis), 'pcs', x.jumlah, x.catatan);
+    });
+    return baris.sort((a, b) => (a.tanggal < b.tanggal ? 1 : a.tanggal > b.tanggal ? -1 : 0));
+  }
+
+  // Peringatan penyesuaian POSITIF besar (A4). Dipakai ketiga jalur opname.
+  function konfirmasiSusutPositif(nilaiRp) {
+    if (!(nilaiRp > AMBANG_SUSUT_POSITIF)) return true;
+    return confirm('Stok bertambah ' + formatRupiah(nilaiRp) + ' tanpa pembelian.\n\n'
+      + 'Beras tidak tumbuh sendiri — biasanya ini timbangan atau catatan masuk yang perlu '
+      + 'diperiksa, bukan keuntungan.\n\nLanjutkan?');
+  }
+  // Kalimat dampak yang jujur per tanggal: sebelum 1 Sep 2026 penyesuaian memang tidak
+  // menyentuh laba sama sekali; sejak tanggal itu ia punya barisnya sendiri di laporan.
+  function kalimatDampakSusut(nilaiRp, tanggal) {
+    if (!nilaiRp || (tanggal || '') < MULAI_SUSUT_LABA) return 'Kas, laba, dan omzet TIDAK berubah.';
+    return 'Laba periode ini ikut ' + (nilaiRp < 0 ? 'TURUN ' : 'NAIK ') + formatRupiah(Math.abs(nilaiRp))
+      + ' lewat baris "Susut & selisih stok". Kas dan omzet tidak bergerak.';
   }
 
   // Pos biaya bulanan yang masih kosong di satu bulan (per 22 Agu 2026: akses/gapura &
@@ -14609,6 +14798,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     // = pengeluaran harian Toko + gaji + listrik + akses + keamanan + internet).
     const bersih = hitungLabaBersihRentang(bl + '-01', akhirBulanIso(bl));
     const labaBersih = bersih.labaBersih;
+    // Rincian susut bulan ini — dibaca lewat mesin yang sama, bukan disaring ulang.
+    const susutBln = barisSusutStok(t => bulanDari(t) === bl);
 
     const bagian = [];
     const jam = new Date().toTimeString().slice(0, 5);
@@ -14624,7 +14815,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ${barisLap('Biaya bulanan', 'ditagihkan ke bulan ini' + (totalPotongan > 0 ? ' · gaji dihitung penuh' : ''), -totalBiaya)}
       ${barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan', -bersih.harianToko)}
       ${totalHapus > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama — bukan uang keluar', -totalHapus) : ''}
-      ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko' + (totalHapus > 0 ? ' − hapus buku' : ''), labaBersih, 'lb-jumlah')}
+      ${barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', bersih.susutStok)}
+      ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko' + (totalHapus > 0 ? ' − hapus buku' : '') + (bersih.susutStok !== 0 ? ' ± susut stok' : ''), labaBersih, 'lb-jumlah')}
       ${barisLap('Kas bersih', 'uang yang benar-benar berpindah bulan ini', kas.bersih, 'lb-jumlah')}
     </div>`);
 
@@ -14653,7 +14845,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
         : '<div class="lap-kosong">Biaya bulanan bulan ini belum diisi — laba di atas masih laba kotor.</div>'}
       ${barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan sebulan', -bersih.harianToko)}
       ${hapusBln.map(m => barisLap('Hapus buku — ' + (m.namaPelanggan || ''), m.alasan || '', -(m.nominal || 0))).join('')}
-      ${(biayaBln.length || hapusBln.length || bersih.harianToko > 0) ? barisLap('Laba bersih perkiraan', '', labaBersih, 'lb-jumlah') : ''}
+      ${susutBln.map(brsSusut).join('')}
+      ${(biayaBln.length || hapusBln.length || susutBln.length || bersih.harianToko > 0) ? barisLap('Laba bersih perkiraan', '', labaBersih, 'lb-jumlah') : ''}
       ${catLaba.length ? `<div class="lap-catatan${(laba.jumlahTanpaHpp > 0 || kosongBln.kosong.length) ? ' lap-peringatan' : ''}">${catLaba.join('<br>')}</div>` : ''}
     </div>`);
 
@@ -14810,14 +15003,15 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       omzetBolong: jml(x => x.laba.omzetTanpaHpp), nBolong: jml(x => x.laba.jumlahTanpaHpp), nTrx: jml(x => x.laba.jumlahTrx),
       kasMasuk: jml(x => x.kas.totalMasuk), kasKeluar: jml(x => x.kas.totalKeluar),
       biaya: jml(x => x.bersih.jatahBulanan), harianToko: jml(x => x.bersih.harianToko),
-      hapusBuku: jml(x => x.bersih.hapusBuku), labaBersih: jml(x => x.bersih.labaBersih),
+      hapusBuku: jml(x => x.bersih.hapusBuku), susutStok: jml(x => x.bersih.susutStok),
+      labaBersih: jml(x => x.bersih.labaBersih),
       kenaPajak, pajak: Math.round(kenaPajak * 0.005)
     };
   }
   function gambarLaporanTahunan() {
     const tahun = parseInt(document.getElementById('lapTahun').value, 10) || new Date().getFullYear();
     const T = hitungLaporanTahunan(tahun);
-    const { perBulan, omzet, margin, omzetBolong, nBolong, nTrx, kasMasuk, kasKeluar, biaya, hapusBuku, labaBersih, kenaPajak, pajak } = T;
+    const { perBulan, omzet, margin, omzetBolong, nBolong, nTrx, kasMasuk, kasKeluar, biaya, hapusBuku, susutStok, labaBersih, kenaPajak, pajak } = T;
     const rp = n => (n < 0 ? '−' : '') + formatRupiah(Math.abs(n));
 
     const bagian = [];
@@ -14832,7 +15026,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ${barisLap('Biaya bulanan setahun', 'ditagihkan ke tahun ini', -biaya)}
       ${barisLap('Pengeluaran harian (Toko) setahun', '', -T.harianToko)}
       ${hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama', -hapusBuku) : ''}
-      ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko − hapus buku', labaBersih, 'lb-jumlah')}
+      ${barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', susutStok)}
+      ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko − hapus buku ± susut stok', labaBersih, 'lb-jumlah')}
       ${barisLap('Kas bersih setahun', 'masuk ' + formatRupiah(kasMasuk) + ' − keluar ' + formatRupiah(kasKeluar), kasMasuk - kasKeluar, 'lb-jumlah')}
     </div>`);
     bagian.push(`<div class="lap-bagian"><h2>Pajak final UMKM — hitungan kasar</h2>
@@ -14886,6 +15081,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       kreditRows: ambilPenjualan().filter(p => cocok(p.tanggal) && caraBayarKunci(p) === 'kredit'),
       pelunasanRows: ambilPiutangMutasi().filter(m => m.tipe === 'bayar' && cocok(m.tanggal)),
       hapusRows: ambilPiutangMutasi().filter(m => m.tipe === 'hapusBuku' && cocok(m.tanggal)),
+      susutRows: barisSusutStok(cocok),
       tutup: ambilTutupHari().find(t => t.tanggal === iso) || null
     };
   }
@@ -14902,6 +15098,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     }).filter(Boolean);
   }
   const brsKasLap = x => barisLap(x.label, x.ket || (x.n > 0 && x.satuan ? x.n + ' ' + x.satuan : ''), x.nominal);
+  // Satu penulis baris rincian susut untuk semua laporan — tanda nilaiRp apa adanya.
+  const brsSusut = x => barisLap('Susut — ' + x.nama,
+    (x.jumlah > 0 ? '+' : '') + x.jumlah + ' ' + x.satuan + (x.alasan ? ' · ' + x.alasan : ''), x.nilaiRp);
 
   function gambarLaporanHarian() {
     const el = document.getElementById('lapTanggal');
@@ -14924,7 +15123,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', L.margin)}
       ${barisLap('Biaya toko hari ini', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ' + jatah biaya bulanan ' + formatRupiah(L.jatahBulanan), -L.biayaToko)}
       ${L.hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian — bukan uang keluar', -L.hapusBuku) : ''}
-      ${barisLap('Laba bersih hari ini', 'margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : ''), L.labaBersih, 'lb-jumlah')}
+      ${barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', L.susutStok)}
+      ${barisLap('Laba bersih hari ini', 'margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : '') + (L.susutStok !== 0 ? ' ± susut stok' : ''), L.labaBersih, 'lb-jumlah')}
       ${barisLap('Kas bersih hari ini', 'masuk ' + formatRupiah(K.totalMasuk) + ' − keluar ' + formatRupiah(K.totalKeluar), K.bersih, 'lb-jumlah')}
     </div>`);
 
@@ -14948,6 +15148,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ${d.harianToko.length ? d.harianToko.map(brsHarian).join('') : '<div class="lap-kosong">Tidak ada pengeluaran Toko hari ini.</div>'}
       ${barisLap('Jatah biaya bulanan hari ini', 'biaya bulanan ' + namaBulanPanjang(bl + '-01') + ' (gaji penuh, listrik, dll.) ÷ ' + parseInt(akhirBulanIso(bl).slice(8, 10), 10) + ' hari', -L.jatahBulanan)}
       ${d.hapusRows.map(m => barisLap('Hapus buku — ' + (m.namaPelanggan || ''), m.alasan || '', -(m.nominal || 0))).join('')}
+      ${d.susutRows.map(brsSusut).join('')}
       ${barisLap('Laba bersih hari ini', '', L.labaBersih, 'lb-jumlah')}
       ${cat.length ? `<div class="lap-catatan${(L.jumlahTanpaHpp > 0 || cat.length > (iso < TANGGAL_STOK_AWAL ? 1 : 0)) ? ' lap-peringatan' : ''}">${cat.join('<br>')}</div>` : ''}
     </div>`);
@@ -15027,7 +15228,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', L.margin)}
       ${barisLap('Biaya toko', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ' + jatah biaya bulanan 7 hari ' + formatRupiah(L.jatahBulanan), -L.biayaToko)}
       ${L.hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian — bukan uang keluar', -L.hapusBuku) : ''}
-      ${barisLap('Laba bersih minggu ini', 'margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : ''), L.labaBersih, 'lb-jumlah')}
+      ${barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', L.susutStok)}
+      ${barisLap('Laba bersih minggu ini', 'margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : '') + (L.susutStok !== 0 ? ' ± susut stok' : ''), L.labaBersih, 'lb-jumlah')}
       ${barisLap('Kas masuk', '', K.totalMasuk)}
       ${barisLap('Kas keluar', '', -K.totalKeluar)}
       ${barisLap('Kas bersih minggu ini', 'uang yang benar-benar berpindah', K.bersih, 'lb-jumlah')}
@@ -15090,7 +15292,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     tahun = tahun || new Date().getFullYear();
     const bayaran = bayaranBiayaBulanan();
     const selisih = [];
-    const KUNCI = ['omzetPenuh', 'hpp', 'margin', 'harianToko', 'jatahBulanan', 'hapusBuku', 'labaBersih'];
+    const KUNCI = ['omzetPenuh', 'hpp', 'margin', 'harianToko', 'jatahBulanan', 'hapusBuku', 'susutStok', 'labaBersih'];
     const KAS = ['totalMasuk', 'totalKeluar', 'bersih'];
     const banding = (nama, a, b) => { if (Math.round(a) !== Math.round(b)) selisih.push(nama + ': ' + a + ' ≠ ' + b); };
     const jumlah = (arr, k) => arr.reduce((s, x) => s + x[k], 0);
@@ -15124,6 +15326,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const T = hitungLaporanTahunan(tahun, bayaran);
     banding('tahun omzet', jumlah(perBulan.map(x => x.L), 'omzetPenuh'), T.omzet);
     banding('tahun margin', jumlah(perBulan.map(x => x.L), 'margin'), T.margin);
+    banding('tahun susut stok', jumlah(perBulan.map(x => x.L), 'susutStok'), T.susutStok);
     banding('tahun laba bersih', jumlah(perBulan.map(x => x.L), 'labaBersih'), T.labaBersih);
     banding('tahun kas bersih', jumlah(perBulan.map(x => x.K), 'bersih'), T.kasMasuk - T.kasKeluar);
     const LT = hitungLabaBersihRentang(tahun + '-01-01', tahun + '-12-31', bayaran);
@@ -15442,6 +15645,12 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     });
 
     const daftarPerhatian = [];
+    // Cadangan lokal yang ditahan = pertanda ada yang rusak di sisi server. Paling atas:
+    // selama ini berlangsung, angka di layar berasal dari cadangan, bukan dari server.
+    Object.keys(_cadanganTertahan).forEach(kol => daftarPerhatian.push(
+      ` Cadangan ${escapeHtml(_cadanganTertahan[kol].label)} tidak diperbarui — server mengirim data kosong `
+      + `padahal cadangan berisi ${_cadanganTertahan[kol].n} dokumen. Angka di layar memakai cadangan itu. `
+      + `<button type="button" class="pil-aksi" onclick="terimaKoleksiKosong('${escapeHtml(kol)}')">Terima data kosong</button>`));
     merkMenipis.forEach(m => daftarPerhatian.push(` Stok ${m} menipis: ${stokKarung[m].sisaKg} kg`));
     kemasanMenipis.forEach(k => daftarPerhatian.push(` Stok ${stokKemasan[k].namaProduk} ${stokKemasan[k].ukuranKemasan}kg menipis: ${stokKemasan[k].sisaUnit} unit`));
     if (karantinaMenunggu.length > 0) daftarPerhatian.push(` ${karantinaMenunggu.length} barang di Karantina menunggu keputusan (lihat tab Stok)`);
@@ -15515,6 +15724,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const elPerhatianHp = document.getElementById('ringPerhatianHp');
     if (elPerhatianHp) {
       const daftarHp = [];
+      Object.keys(_cadanganTertahan).forEach(kol => daftarHp.push({ w: 'var(--merah)',
+        t: `Cadangan ${escapeHtml(_cadanganTertahan[kol].label)} tidak diperbarui — server mengirim data kosong (${_cadanganTertahan[kol].n} dokumen tersimpan di HP ini)`,
+        k: `terimaKoleksiKosong('${escapeHtml(kol)}')`, a: 'Terima' }));
       merkMenipis.forEach(m => daftarHp.push({ w: 'var(--merah)', t: `Stok ${escapeHtml(m)} tinggal ${stokKarung[m].sisaKg} kg`, h: 'stok', a: 'Stok' }));
       kemasanMenipis.forEach(k => daftarHp.push({ w: 'var(--merah)', t: `${escapeHtml(stokKemasan[k].namaProduk)} ${stokKemasan[k].ukuranKemasan}kg tinggal ${stokKemasan[k].sisaUnit} unit`, h: 'stok', a: 'Stok' }));
       // Merah, dan ditaruh di atas peringatan harga/karantina: ini satu-satunya baris yang
@@ -15652,6 +15864,21 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
           ${IKON_CHEV}
         </button>`;
       }).join('');
+
+    // Susut & selisih stok — penyusun baris yang memotong laba di laporan periode.
+    // Ditaruh SEBELUM blok "tidak terhitung" yang bisa return lebih awal.
+    const kartuSusut = document.getElementById('labaKartuSusut');
+    if (kartuSusut) {
+      const susutSemua = barisSusutStok(() => true);
+      const totalSusut = susutSemua.reduce((a, x) => a + x.nilaiRp, 0);
+      kartuSusut.style.display = susutSemua.length ? 'block' : 'none';
+      document.getElementById('labaSusutTotal').textContent =
+        (totalSusut < 0 ? '−' : '+') + formatRupiah(Math.abs(totalSusut));
+      document.getElementById('daftarLabaSusut').innerHTML = susutSemua.map(x => `<div class="baris-44">
+        <span class="nama"><i class="trx-nama">${escapeHtml(x.nama)}</i><small>${escapeHtml(formatTanggal(x.tanggal))}${x.jam ? ' · ' + escapeHtml(x.jam) : ''} · ${x.jumlah > 0 ? '+' : ''}${x.jumlah} ${escapeHtml(x.satuan)}${x.alasan ? ' · ' + escapeHtml(x.alasan) : ''}</small></span>
+        <span class="angka${x.nilaiRp < 0 ? ' kritis' : ''}">${x.nilaiRp < 0 ? '−' : '+'}${formatRupiah(Math.abs(x.nilaiRp))}</span>
+      </div>`).join('');
+    }
 
     // Kartu tersendiri untuk yang tidak bisa dihitung — judulnya menyebut jumlahnya,
     // isinya menyebut omzet yang ditinggalkan, supaya besarnya bisa dinilai.
@@ -16202,15 +16429,25 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const sebelum = penyesuaianBaruUntuk(
       ambilPenyesuaianStok().filter(x => x.merk === merk).concat(tunda.map(x => ({ ...x, _tertunda: true }))), 10);
     if (sebelum.length > 0 && !confirm(pesanTumpuk(sebelum, 'kg'))) return;
+    // Nilai rupiah DIKUNCI sekarang, bukan diturunkan ulang saat laporan dibaca.
+    // Tanggalnya dipakai bersama oleh konfirmasi dan dokumen — kalau dibaca dua kali,
+    // opname tepat tengah malam bisa mengaku tanggal yang berbeda dari yang dikonfirmasi.
+    const tglOpname = tanggalLokalIso();
+    const nilaiRp = Math.round(selisih * ((st && st.hppTerakhirPerKg) || 0));
+    if (!konfirmasiSusutPositif(nilaiRp)) return;
     if (!confirm('Catat penyesuaian ' + merk + '?\n\nSistem ' + sistem + ' kg → fisik ' + fisik + ' kg (selisih '
-      + (selisih > 0 ? '+' : '') + selisih + ' kg).\nStok sistem langsung mengikuti angka fisik. HPP tidak berubah.')) return;
+      + (selisih > 0 ? '+' : '') + selisih + ' kg).\nStok sistem langsung mengikuti angka fisik. HPP per kg tidak berubah.\n'
+      + kalimatDampakSusut(nilaiRp, tglOpname))) return;
     const tombol = document.getElementById('btnSimpanOpname');
     if (tombol) { tombol.disabled = true; tombol.textContent = 'Menyimpan…'; }
     const idDok = idUnik();
     try {
       const dok = {
-        id: idDok, tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5),
-        merk, kgSistem: sistem, kgFisik: fisik, selisihKg: selisih, alasan
+        id: idDok, tanggal: tglOpname, jam: new Date().toTimeString().slice(0, 5),
+        merk, kgSistem: sistem, kgFisik: fisik, selisihKg: selisih, alasan,
+        // nilaiRp = selisihKg × HPP merk ini SAAT INI. Firestore menolak undefined,
+        // jadi nilainya selalu angka — HPP kosong berarti 0, bukan tanpa field.
+        nilaiRp, hppPerKgSaatOpname: Math.round((st && st.hppTerakhirPerKg) || 0)
       };
       await simpanKeFirestore(KOLEKSI_PENYESUAIAN, dok);
       if (!masihTertunda(KOLEKSI_PENYESUAIAN, idDok)) suntikCachePenyesuaian(KOLEKSI_PENYESUAIAN, dok);
@@ -16311,19 +16548,24 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (sebelum.length > 0 && !confirm(pesanTumpuk(sebelum, 'unit'))) return;
     const hpp = st.hppRataRataPerUnit || 0;
     const nama = st.namaProduk + ' ' + st.ukuranKemasan + ' kg';
+    const tglOpnameK = tanggalLokalIso();
+    const nilaiRpK = Math.round(selisih * hpp);
+    if (!konfirmasiSusutPositif(nilaiRpK)) return;
     if (!confirm('Catat penyesuaian ' + nama + '?\n\nSistem ' + sistem + ' unit → fisik ' + fisik
       + ' unit (selisih ' + (selisih > 0 ? '+' : '') + selisih + ' unit).\n'
       + (hpp > 0 ? 'Nilai ' + (selisih < 0 ? '−' : '+') + formatRupiah(Math.abs(selisih) * hpp)
           + ' (HPP ' + formatRupiah(hpp) + '/unit).\n' : '')
-      + 'Stok sistem langsung mengikuti angka fisik. HPP, kas, laba, dan omzet TIDAK berubah.')) return;
+      + 'Stok sistem langsung mengikuti angka fisik. HPP per unit tidak berubah.\n'
+      + kalimatDampakSusut(nilaiRpK, tglOpnameK))) return;
     const tombol = document.getElementById('btnSimpanOpnameKemasan');
     if (tombol) { tombol.disabled = true; tombol.textContent = 'Menyimpan…'; }
     const idDok = idUnik();
     try {
       const dokK = {
-        id: idDok, tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5),
+        id: idDok, tanggal: tglOpnameK, jam: new Date().toTimeString().slice(0, 5),
         namaProduk: st.namaProduk, ukuranKemasan: Number(st.ukuranKemasan) || st.ukuranKemasan,
-        unitSistem: sistem, unitFisik: fisik, selisihUnit: selisih, alasan
+        unitSistem: sistem, unitFisik: fisik, selisihUnit: selisih, alasan,
+        nilaiRp: nilaiRpK, hppPerUnitSaatOpname: Math.round(hpp)
       };
       await simpanKeFirestore(KOLEKSI_PENY_KEMASAN, dokK);
       if (!masihTertunda(KOLEKSI_PENY_KEMASAN, idDok)) suntikCachePenyesuaian(KOLEKSI_PENY_KEMASAN, dokK);
@@ -16420,16 +16662,30 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
         .filter(x => x.tipe === 'opname' && x.jenis === jenis)
         .concat(tundaB.map(x => ({ ...x, _tertunda: true }))), 10);
     if (sebelumB.length > 0 && !confirm(pesanTumpuk(sebelumB, 'pcs'))) return;
+    // Harga per pcs: literan jatuh ke harga awal kalau belum pernah ada pembelian
+    // (pola hargaBahanLiteranEfektif); bahan kemasan memakai rata-rata tertimbangnya.
+    const sbNilai = stokBahanUntuk(jenis);
+    const hargaPcs = jenisBahanLiteran(jenis)
+      ? ((sbNilai.hargaPerPcs || 0) || HARGA_AWAL_BAHAN_LITERAN[jenis] || 0)
+      : (sbNilai.hppPerPcs || 0);
+    const tglOpnameB = tanggalLokalIso();
+    const nilaiRpB = Math.round(selisih * hargaPcs);
+    if (!konfirmasiSusutPositif(nilaiRpB)) return;
     if (!confirm('Catat penyesuaian ' + labelBahan(jenis) + '?\n\nSistem ' + sistem + ' pcs → fisik ' + fisik
-      + ' pcs (selisih ' + (selisih > 0 ? '+' : '') + selisih + ' pcs).\nHarga rata-rata per pcs dan uang tidak berubah.')) return;
+      + ' pcs (selisih ' + (selisih > 0 ? '+' : '') + selisih + ' pcs).\n'
+      + (hargaPcs > 0 ? 'Nilai ' + (selisih < 0 ? '−' : '+') + formatRupiah(Math.abs(nilaiRpB))
+          + ' (' + formatRupiah(hargaPcs) + '/pcs).\n' : '')
+      + 'Harga rata-rata per pcs tidak berubah.\n' + kalimatDampakSusut(nilaiRpB, tglOpnameB))) return;
     const tombolB = document.getElementById('btnSimpanOpnameBahan');
     if (tombolB) { tombolB.disabled = true; tombolB.textContent = 'Menyimpan…'; }
     const idDokB = idUnik();
     try {
       const dokB = {
+        // hargaTotal TETAP 0 — pembaca uang menyaring tipe 'beli', dan opname memang
+        // bukan pembelian. nilaiRp dipakai LABA saja, tidak pernah menyentuh kas.
         id: idDokB, tipe: 'opname', jenis, jumlah: selisih, hargaTotal: 0,
-        tanggal: tanggalLokalIso(), pcsSistem: sistem, pcsFisik: fisik,
-        catatan: alasan
+        tanggal: tglOpnameB, pcsSistem: sistem, pcsFisik: fisik,
+        catatan: alasan, nilaiRp: nilaiRpB, hargaPerPcsSaatOpname: Math.round(hargaPcs)
       };
       await simpanKeFirestore(kolBahan, dokB);
       if (!masihTertunda(kolBahan, idDokB)) suntikCachePenyesuaian(kolBahan, dokB);
@@ -18832,6 +19088,8 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.cetakLaporan = cetakLaporan;
   window.perbaruiOpnameBahan = perbaruiOpnameBahan;
   window.simpanOpnameBahan = simpanOpnameBahan;
+  window.terimaKoleksiKosong = terimaKoleksiKosong;
+  window.ujiPenjagaCadangan = ujiPenjagaCadangan;
   window.kirimTagihanPiutang = kirimTagihanPiutang;
   window.bukaHapusBuku = bukaHapusBuku;
   window.simpanHapusBuku = simpanHapusBuku;
