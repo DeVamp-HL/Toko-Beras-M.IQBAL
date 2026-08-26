@@ -15,6 +15,12 @@
 //   2. Salin-tempel rules ini ke Console.
 //   3. Ganti sandi akun kasir lama (sandi lama tersebar di semua HP).
 //   4. Login ulang: index.html pakai sandi owner; perangkat kasir pakai sandi kasir baru.
+//
+// CATATAN LANGKAH 4 — index.html kini MEMERIKSA email sesi, bukan cuma "ada sesi".
+// Perangkat yang masih memegang sesi kasir@ akan langsung diminta sandi OWNER dengan
+// menyebut akun yang sedang dipakai, dan pendengar Firestore yang mati karena izin
+// ditolak dipasang ULANG begitu akun yang benar masuk. Tanpa dua hal itu, perangkat
+// pemilik akan menulis dokumen baru di atas angka yang sudah beku.
 // ============================================================================
 rules_version = '2';
 service cloud.firestore {
@@ -24,21 +30,40 @@ service cloud.firestore {
       return masuk() && request.auth.token.email == 'owner@tokoberasmiqbal.web.app';
     }
 
-    // Kasir MENCATAT jualan (append-only; koreksi/hapus urusan owner — selaras
-    // penjualanMasihBerlaku yang menandai, bukan menghapus).
+    // KIRIM-ULANG ANTREAN KASIR WAJIB IDEMPOTEN.
+    // kasir.html & kasir-darurat mengirim antreannya dengan PATCH memakai docId yang
+    // sudah ditentukan di HP. Kalau jawaban server hilang di tengah jalan (sinyal
+    // putus, Android mematikan PWA), tulisannya SUDAH mendarat tapi item tetap di
+    // kepala antrean dan dikirim ulang tiap 25 detik — dan kiriman kedua atas dokumen
+    // yang sudah ada dinilai Firestore sebagai UPDATE, bukan create.
+    // Dengan 'allow create' saja, kiriman kedua itu dijawab 403; klien menahan item
+    // tanpa membuangnya, dan karena antreannya FIFO satu-per-satu, SELURUH penjualan
+    // sesudahnya ikut beku. Di layar cuma tertulis "Offline · N menunggu" — terbaca
+    // seperti sinyal jelek, padahal transaksinya tersandera. Tidak ada tombol buang.
+    // Karena itu update DIIZINKAN hanya kalau isinya SAMA PERSIS dengan yang sudah ada
+    // (tulis-ulang nol-perubahan). Aman: kasir membekukan dokumennya ke localStorage
+    // saat mencatat — tanpa serverTimestamp, tanpa jam yang dicap ulang — jadi kiriman
+    // ulang selalu identik, sedangkan perubahan sungguhan tetap ditolak. Sifat
+    // append-only akun kasir tidak berkurang sedikit pun.
+    function tulisUlangSama() {
+      return masuk() && request.resource.data == resource.data;
+    }
     match /penjualan/{id} {
       allow create: if masuk();
-      allow read, update, delete: if owner();
+      allow update: if owner() || tulisUlangSama();
+      allow read, delete: if owner();
     }
     // kasir.html layar Utang menulis pembayaran piutang.
     match /piutangMutasi/{id} {
       allow create: if masuk();
-      allow read, update, delete: if owner();
+      allow update: if owner() || tulisUlangSama();
+      allow read, delete: if owner();
     }
     // Penjualan literan dari kasir mencatat pemakaian paper bag (tipe 'pakai').
     match /stokBahanLiteran/{id} {
       allow create: if masuk();
-      allow read, update, delete: if owner();
+      allow update: if owner() || tulisUlangSama();
+      allow read, delete: if owner();
     }
     // Jejak aktivitas: kasir hanya bisa MENAMBAH, tidak membaca/mengubah/menghapus.
     // Catatan jujur: aturan Firestore bersifat gabungan-permisif, jadi aturan payung

@@ -792,7 +792,12 @@ function kirimAntrean(manual) {
       body: JSON.stringify({ fields: (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })() })
     }).then(function (opsi) {
       return fetch(DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, opsi).then(function (r) {
-        if (r.ok) { a2.shift(); simpanAntrean(a2); kirimSatu(); return; }
+        // Baca ULANG antrean sebelum membuang kepalanya. 'a2' dibaca SEBELUM fetch;
+        // nota yang dicatat kasir selagi kiriman berlangsung sudah masuk localStorage,
+        // dan menulis balik a2 yang basi akan menghapusnya tanpa jejak — chip status
+        // tetap hijau, uangnya hilang diam-diam. Pola ini disalin dari
+        // kirimAntreanTunda() di index.html yang memang sudah membaca ulang.
+        if (r.ok) { var sisa = ambilAntrean(); sisa.shift(); simpanAntrean(sisa); kirimSatu(); return; }
         // 401/403: belum login — transaksi DITAHAN di antrean, jangan dibuang.
         if (r.status === 401 || r.status === 403) {
           sedangKirim = false;
@@ -803,7 +808,7 @@ function kirimAntrean(manual) {
         if (r.status >= 400 && r.status < 500) {
           var g = ambilGagal(); g.push(item);
           localStorage.setItem(K_GAGAL, JSON.stringify(g));
-          a2.shift(); simpanAntrean(a2); kirimSatu(); return;
+          var sisa2 = ambilAntrean(); sisa2.shift(); simpanAntrean(sisa2); kirimSatu(); return;
         }
         throw new Error('status ' + r.status);
       }).catch(function () { sedangKirim = false; setStatus(false); });

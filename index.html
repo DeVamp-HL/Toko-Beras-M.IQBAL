@@ -5672,9 +5672,24 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   const auth = getAuth(appFirebase);
   let _sudahLoginToko = false;
   setPersistence(auth, browserLocalPersistence).catch(() => {});
+  // FASE 1 — WAJIB memeriksa EMAIL-nya, bukan cuma "ada sesi". Perangkat yang sudah
+  // login kasir@ sejak Agustus punya sesi menetap (browserLocalPersistence); tanpa
+  // pemeriksaan ini ia dianggap sah, modal sandi tidak pernah muncul, dan begitu rules
+  // v2 dipasang SELURUH 25 pendengar mati kena permission-denied. Firestore MENGAKHIRI
+  // listener yang error dan tidak ada yang memasangnya kembali: tulisan hidup lagi
+  // sesudah login, bacaan tetap beku seumur sesi — layar memajang angka basi sementara
+  // dokumen baru ditulis di atasnya. Itu gabungan terburuk yang bisa terjadi.
   onAuthStateChanged(auth, (u) => {
-    _sudahLoginToko = !!u;
-    if (u) tutupModalLoginToko();
+    const email = String((u && u.email) || '').toLowerCase();
+    const benar = !!u && email === EMAIL_TOKO;
+    _sudahLoginToko = benar;
+    if (benar) {
+      tutupModalLoginToko();
+      pasangUlangSinkronisasiMati();   // sembuhkan sesi yang pendengarnya terlanjur mati
+    } else if (u) {
+      bukaModalLoginToko('Perangkat ini masih masuk sebagai ' + email
+        + '. Masukkan sandi OWNER untuk berpindah akun.');
+    }
     perbaruiStatusSambungan();
   });
   function bukaModalLoginToko(pesan) {
@@ -5964,9 +5979,19 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.addEventListener('resize', geserIndikatorTab);
 
   function pindahHalaman(nama) {
-    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan','pemasok'].forEach(n => {
+    // SEMUA 17 halaman ikut dipadamkan/dinyalakan. 'setelan' & 'pesanan' dulu TIDAK ada
+    // di daftar ini padahal keduanya punya <div class="halaman"> sendiri: membukanya
+    // memadamkan 15 halaman lain tanpa menyalakan apa pun — LAYAR KOSONG TOTAL, dan
+    // tidak ada jalur lain yang menyalakannya (satu-satunya penyala .tampil pada elemen
+    // .halaman adalah baris di bawah ini). Akibatnya seluruh isi Setelan tak terjangkau:
+    // Jejak aktivitas, Nama perangkat, PIN, Cadangan data, Login database.
+    // Keduanya cuma punya pintu di lembar Menu, TANPA tombol tab — jadi penyetelan
+    // 'aktif' wajib berpenjaga null, kalau tidak pindahHalaman melempar TypeError dan
+    // seluruh navigasi mati.
+    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan','pemasok','setelan','pesanan'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
-      document.getElementById('tab' + kapital(n)).classList.toggle('aktif', n === nama);
+      const tombolTab = document.getElementById('tab' + kapital(n));
+      if (tombolTab) tombolTab.classList.toggle('aktif', n === nama);
     });
     geserIndikatorTab();
     // Nav bawah mobile (porting desain final 6 Agu): sinkronkan status aktif
@@ -6989,8 +7014,22 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   }
 
   // kunciStatus = key di _sambunganAktif (mis. 'batch', 'retur') — eksplisit, bukan ditebak dari nama koleksi.
+  // Argumen tiap pendengar disimpan supaya yang mati bisa dipasang ULANG. Firestore
+  // mengakhiri listener yang kena error; tanpa daftar ini, satu penolakan izin =
+  // cache beku seumur sesi (akar bug opname ganda 26 Agu, kini bisa disembuhkan).
+  const _argSinkron = {}, _sinkronMati = {};
+  function pasangUlangSinkronisasiMati() {
+    const mati = Object.keys(_sinkronMati);
+    if (mati.length === 0) return;
+    mati.forEach(k => {
+      delete _sinkronMati[k];
+      if (_argSinkron[k]) pasangSinkronisasi.apply(null, _argSinkron[k]);
+    });
+    console.warn('Memasang ulang ' + mati.length + ' pendengar yang mati karena izin ditolak.');
+  }
   function pasangSinkronisasi(nomorKoleksi, kunciLocalStorage, setelCache, onBerubah, fieldUrut, kunciStatus) {
     _setelCacheKoleksi[nomorKoleksi] = setelCache;
+    _argSinkron[nomorKoleksi] = [nomorKoleksi, kunciLocalStorage, setelCache, onBerubah, fieldUrut, kunciStatus];
     const kol = collection(db, nomorKoleksi);
     onSnapshot(kol, (snap) => {
       const daftar = [];
@@ -7007,8 +7046,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     }, (err) => {
       console.error('Firestore sync gagal untuk ' + nomorKoleksi, err);
       // Kalau ditolak karena belum login (database sudah dikunci), minta sandi —
-      // jangan cuma tampil "Offline", karena penyebabnya bukan sinyal.
-      if (mintaLoginKalauDitolak(err)) return;
+      // jangan cuma tampil "Offline", karena penyebabnya bukan sinyal. Ditandai MATI
+      // supaya bisa dipasang ulang begitu akun yang benar masuk.
+      if (mintaLoginKalauDitolak(err)) { _sinkronMati[nomorKoleksi] = true; return; }
       perbaruiStatusSambungan(true);
     });
   }
@@ -7394,7 +7434,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ? '<div class="kosong-info"><b>Belum ada jejak</b><span>Jejak terisi begitu ada tulisan baru sesudah Fase 1 terpasang (butuh sambungan).</span></div>'
       : _cacheLog.map(l => `<div class="baris-44">
           <span class="nama"><i class="trx-nama">${escapeHtml(l.aksi)} · ${escapeHtml(l.koleksi)}</i>
-          <small>${escapeHtml(String(l.pada || '').slice(0, 16).replace('T', ' '))} · ${escapeHtml(l.oleh || '')} @ ${escapeHtml(l.perangkat || '')}${l.ringkas ? ' · ' + escapeHtml(l.ringkas) : ''}</small></span>
+          <small>${escapeHtml(String(l.pada || '').slice(0, 16).replace('T', ' '))} · ${escapeHtml(l.oleh || '')} @ ${escapeHtml(l.perangkat || '')}${l.ringkas ? ' · ' + escapeHtml(l.ringkas) : ''}${l.idDok ? ' · #' + escapeHtml(String(l.idDok)) : ''}</small></span>
         </div>`).join('');
   }
 
@@ -19239,6 +19279,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // Fase 1: dipanggil dari onclick di Setelan. Di <script type="module"> fungsi TIDAK
   // otomatis global — tanpa baris ini tombolnya diam saja tanpa pesan apa pun.
   window.ubahNamaPerangkat = ubahNamaPerangkat;
+  // Dipanggil 7 kolom tanggal bayar di Biaya Bulanan lewat onchange. Tanpa baris ini
+  // tiap kali pemilik memilih tanggal, handler-nya melempar ReferenceError dan ejaan
+  // tanggal di sebelah kolom membeku di nilai lama. Cacat lama, bukan bawaan Fase 1.
+  window.ejaTanggalBulanan = ejaTanggalBulanan;
   window.ujiPenjagaCadangan = ujiPenjagaCadangan;
   window.kirimTagihanPiutang = kirimTagihanPiutang;
   window.bukaHapusBuku = bukaHapusBuku;
