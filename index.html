@@ -11129,15 +11129,27 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     return UKURAN_KEMASAN_BOLEH_JADI_BAHAN.indexOf(Number(ukuran)) >= 0;
   }
   // Pilihan bahan: kemasan jadi berukuran 50/25 kg yang masih bersisa.
+  // Yang SEDANG TERPILIH selalu ikut ditampilkan walau sisanya sudah habis — daftar ini
+  // ditulis ulang tiap kali sinkronisasi masuk (isiDropdownProduksi dipicu snapshot
+  // penjualan/produksi/batch), dan kalau opsi terpilih raib, <select> diam-diam jatuh ke
+  // opsi kosong: bahan hilang dari adukan sementara kotak unitnya masih terisi dan
+  // tombol Simpan tetap hidup. Adukan tersimpan tanpa bahan itu, HPP hasil jadi salah.
   function opsiKemasanBahanHtml(terpilih) {
     const stok = hitungStokKemasan();
     const opsi = ['<option value="">— pilih kemasan jadi —</option>'];
     Object.keys(stok).sort().forEach(k => {
       const x = stok[k];
-      if (!kemasanBolehJadiBahan(x.ukuranKemasan) || x.sisaUnit <= 0) return;
-      opsi.push('<option value="' + escapeHtml(k) + '"' + (k === terpilih ? ' selected' : '') + '>'
+      const iniTerpilih = k === terpilih;
+      if (!iniTerpilih && (!kemasanBolehJadiBahan(x.ukuranKemasan) || x.sisaUnit <= 0)) return;
+      opsi.push('<option value="' + escapeHtml(k) + '"' + (iniTerpilih ? ' selected' : '') + '>'
         + escapeHtml(x.namaProduk + ' ' + x.ukuranKemasan + ' kg — sisa ' + x.sisaUnit + ' unit') + '</option>');
     });
+    // Terpilih yang produknya lenyap sama sekali dari stok (mis. dokumen dikoreksi)
+    // tetap dipertahankan sebagai baris jujur, bukan dihilangkan diam-diam.
+    if (terpilih && !stok[terpilih]) {
+      opsi.push('<option value="' + escapeHtml(terpilih) + '" selected>'
+        + escapeHtml(terpilih.replace('|', ' ') + ' kg — tidak ada di stok') + '</option>');
+    }
     return opsi.join('');
   }
 
@@ -11865,10 +11877,18 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     try {
       for (let i = 0; i < dokumen.length; i++) {
         await simpanKeFirestore(KOLEKSI_PRODUKSI, dokumen[i]);
-        // Kalau dokumen tertahan antrean (offline / gema server belum tiba), suntik ke
-        // cache supaya stok kemasan yang dipakai LANGSUNG berkurang di layar. Tanpa ini
-        // adukan berikutnya boleh membongkar unit yang sudah dibongkar.
-        if (masihTertunda(KOLEKSI_PRODUKSI, dokumen[i].id)) suntikCachePenyesuaian(KOLEKSI_PRODUKSI, dokumen[i]);
+        // Suntik TANPA SYARAT — beda dari jalur opname yang memakai !masihTertunda.
+        // Alasannya: sistemKarungKini/sistemKemasanKini SUDAH menjumlahkan antrean lewat
+        // penyesuaianTertunda(), jadi di sana menyuntik dokumen yang masih antre berarti
+        // menghitungnya dua kali. hitungStokKemasan TIDAK pernah membaca antrean, jadi
+        // untuk produksi KEDUA cabang bocor kalau tidak disuntik:
+        //   - offline  -> dokumen antre, cache tak berubah;
+        //   - listener Firestore mati diam-diam (token kedaluwarsa) -> tulisan SUKSES
+        //     pun tidak pernah bergema, cache beku seumur sesi.
+        // Cabang kedua itu justru akar bug opname ganda (lihat komentar di
+        // suntikCachePenyesuaian). Aman dipanggil dua-duanya: fungsinya idempoten lewat
+        // penjaga id, dan ambilProduksi() mencegah cache-kosong-palsu.
+        suntikCachePenyesuaian(KOLEKSI_PRODUKSI, dokumen[i]);
         const h = hasilList[i];
         if (h.kantongJenis && h.kantongJumlah > 0) {
           await simpanKeFirestore(KOLEKSI_BAHAN_KEMASAN, {
