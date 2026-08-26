@@ -48,3 +48,6 @@ mockup-sistem-mewah.html
 *QRIS*.png
 *QRIS*.jpg
 *QRIS*.jpeg
+
+# Sisa jalan skrip audit
+__pycache__/

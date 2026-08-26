@@ -18,6 +18,7 @@ import json, sys, datetime, collections
 
 # ===== Konstanta bisnis (index.html) =====
 TANGGAL_STOK_AWAL = '2026-08-08'          # index.html: TANGGAL_STOK_AWAL
+MULAI_SUSUT_LABA = '2026-09-01'           # index.html: MULAI_SUSUT_LABA
 POS_BIAYA_BULANAN = [('listrik', 'Listrik'), ('akses', 'Akses / gapura'),
                      ('keamanan', 'Keamanan lingkungan'), ('internet', 'Internet / Wifi')]
 
@@ -158,6 +159,30 @@ def laba_rentang(kol, cocok):
             'omzetHitung': omzet_hitung, 'hpp': hpp, 'margin': omzet_hitung - hpp,
             'omzetBolong': sum((p.get('hargaTotal') or 0) for p in bolong)}
 
+# ===== barisSusutStok (index.html) — susut stok memotong laba, mulai 1 Sep 2026 =====
+# Syaratnya tiga dan semuanya wajib, persis seperti di aplikasi: dokumen punya nilaiRp
+# berupa angka (dokumen lama tidak punya field ini sama sekali — itulah yang mengunci
+# Agustus 2026 di luar hitungan), tanggalnya >= MULAI_SUSUT_LABA, dan lolos rentang.
+# nilaiRp DIKUNCI saat simpan; audit tidak pernah menurunkannya ulang dari HPP hari ini.
+def baris_susut(kol, cocok):
+    baris = []
+    def tambah(x, nama, satuan, jumlah, alasan):
+        n = x.get('nilaiRp')
+        if isinstance(n, bool) or not isinstance(n, (int, float)) or n == 0: return
+        t = x.get('tanggal') or ''
+        if t < MULAI_SUSUT_LABA or not cocok(t): return
+        baris.append({'tanggal': t, 'nama': nama, 'satuan': satuan,
+                      'jumlah': jumlah or 0, 'nilaiRp': n, 'alasan': alasan or ''})
+    for x in kol('penyesuaianStok'):
+        tambah(x, x.get('merk') or '(karung)', 'kg', x.get('selisihKg'), x.get('alasan'))
+    for x in kol('penyesuaianKemasan'):
+        tambah(x, f"{x.get('namaProduk') or ''} {x.get('ukuranKemasan')} kg", 'unit',
+               x.get('selisihUnit'), x.get('alasan'))
+    for x in list(kol('stokBahanKemasan')) + list(kol('stokBahanLiteran')):
+        if x.get('tipe') == 'opname':
+            tambah(x, x.get('jenis'), 'pcs', x.get('jumlah'), x.get('catatan'))
+    return baris
+
 def jatah_hari(bl, hari, total_kotor_bulan):
     n = hari_dalam_bulan(bl)
     dasar = total_kotor_bulan // n
@@ -178,8 +203,13 @@ def laba_bersih_rentang(kol, dari, sampai, bayaran):
         bl = t.isoformat()[:7]
         jatah += jatah_hari(bl, t.day, kotor_per_bulan.get(bl, 0))
         t += datetime.timedelta(days=1)
+    # Susut = suku SENDIRI, tandanya apa adanya (nilaiRp negatif menurunkan laba).
+    # TIDAK pernah menyentuh arus kas: berasnya hilang, uangnya tidak pernah ada.
+    susut_rows = baris_susut(kol, cocok)
+    susut = sum(x['nilaiRp'] for x in susut_rows)
     laba.update({'harianToko': harian, 'jatahBulanan': jatah, 'hapusBuku': hapus,
-                 'labaBersih': laba['margin'] - harian - jatah - hapus})
+                 'susutStok': susut, 'nSusut': len(susut_rows),
+                 'labaBersih': laba['margin'] - harian - jatah - hapus + susut})
     return laba
 
 # ===== Stok karung (hitungStokKarungPerMerk + hitungHppMerkDalamBatch) =====
@@ -222,22 +252,43 @@ def stok_karung(kol):
             for m, v in stok.items()}
 
 # ===== Stok kemasan (hitungStokKemasan) =====
+def kunci_kemasan(nama, ukuran):
+    """Kembaran kunciKemasan() di index.html — ukuran tersimpan ada yang angka ada yang
+    teks, dan pembanding independen ini harus memakai kunci yang SAMA persis, kalau tidak
+    ia melaporkan 'cocok' untuk dua peta yang sebenarnya tak pernah bertemu."""
+    try:
+        u = float(ukuran)
+        return f"{nama}|{int(u) if u == int(u) else u}"
+    except (TypeError, ValueError):
+        return f"{nama}|{ukuran}"
+
 def stok_kemasan(kol):
-    stok = collections.defaultdict(lambda: {'dibuat': 0, 'terjual': 0, 'nilai': 0.0})
+    stok = collections.defaultdict(lambda: {'dibuat': 0, 'terjual': 0, 'dipakai': 0, 'peny': 0, 'nilai': 0.0})
     for pr in prod_berlaku(kol('produksiKemasan')):
         if pr.get('jadiKarungUtuh'): continue
-        k = f"{pr.get('namaProduk')}|{pr.get('ukuranKemasan')}"
+        k = kunci_kemasan(pr.get('namaProduk'), pr.get('ukuranKemasan'))
         stok[k]['dibuat'] += pr.get('jumlahUnit') or 0
         stok[k]['nilai'] += (pr.get('hppPerUnit') or 0) * (pr.get('jumlahUnit') or 0)
+    # Kemasan jadi yang DIBONGKAR jadi bahan adukan lain (index.html, 26 Agu 2026).
+    # Tanpa suku ini pembanding independen melaporkan karung hantu — dan karena
+    # selisihnya selalu menggeser angka audit ke ATAS, detektor MINUS tidak akan
+    # pernah menyala untuk kelas kesalahan yang justru dibuat fitur itu.
+    for pr in prod_berlaku(kol('produksiKemasan')):
+        for sk in (pr.get('sumberKemasanList') or []):
+            stok[kunci_kemasan(sk.get('namaProduk'), sk.get('ukuranKemasan'))]['dipakai'] += sk.get('unit') or 0
     for p in jual_berlaku(kol('penjualan')):
         if p.get('jenis') == 'kemasan':
-            k = f"{p.get('namaProduk')}|{p.get('ukuranKemasan')}"
+            k = kunci_kemasan(p.get('namaProduk'), p.get('ukuranKemasan'))
             if k in stok: stok[k]['terjual'] += p.get('jumlahUnit') or 0
     for r in kol('retur'):
         if r.get('jenisAsal') == 'kemasan' and r.get('kondisi') == 'utuh':
-            k = f"{r.get('namaProduk')}|{r.get('ukuranKemasan')}"
+            k = kunci_kemasan(r.get('namaProduk'), r.get('ukuranKemasan'))
             if k in stok: stok[k]['terjual'] -= r.get('jumlahUnit') or 0
-    return {k: {'sisaUnit': v['dibuat'] - v['terjual'],
+    # Cocokkan Kemasan Jadi (59dfa20) — suku tersendiri, TIDAK lewat 'dibuat', supaya
+    # tidak menyeret pembagi rata-rata HPP. Sama persis dengan hitungStokKemasan.
+    for o in kol('penyesuaianKemasan'):
+        stok[kunci_kemasan(o.get('namaProduk'), o.get('ukuranKemasan'))]['peny'] += o.get('selisihUnit') or 0
+    return {k: {'sisaUnit': v['dibuat'] - v['terjual'] - v['dipakai'] + v['peny'],
                 'hppPerUnit': v['nilai'] / v['dibuat'] if v['dibuat'] else 0}
             for k, v in stok.items()}
 
@@ -353,7 +404,12 @@ def utama():
           f" · darurat belum dirinci: {len(darurat)}")
 
     # [B] Laba & kas per bulan + identitas + konsistensi hari-vs-bulan
-    bulan_semua = sorted({bulan_dari(t) for t in tanggal_semua})
+    # Bulan yang diaudit BUKAN cuma bulan yang ada penjualannya: bulan tanpa jualan
+    # tapi ada susut stok tetap punya laba (negatif) dan wajib ikut dicetak. Kalau tidak,
+    # audit diam persis di bulan yang paling perlu dilihat — pola "audit buta" yang
+    # sudah sekali membunuh detektor MINUS (26 Agu 2026).
+    bulan_susut = {bulan_dari(x['tanggal']) for x in baris_susut(kol, lambda t: True)}
+    bulan_semua = sorted({bulan_dari(t) for t in tanggal_semua} | bulan_susut)
     if len(sys.argv) > 3 and sys.argv[2] == '--bulan': bulan_semua = [sys.argv[3]]
     print("\n[B] Per bulan (laba akrual + arus kas):")
     for bl in bulan_semua:
@@ -381,6 +437,10 @@ def utama():
         print(f"  {bl}: omzet {rp(L['omzet'])} · margin {rp(L['margin'])} · laba bersih {rp(L['labaBersih'])}"
               f" · kas {rp(K['masuk'])}−{rp(K['keluar'])}={rp(K['bersih'])}"
               f" · Σhari={'OK' if ok else 'BEDA!'} · identitas={'OK' if id_ok else 'PATAH! ' + rp(identitas - K['bersih'])}")
+        if L['susutStok']:
+            rinci = baris_susut(kol, lambda t: bool(t) and iso_hari(bl, 1) <= t <= iso_hari(bl, n))
+            print(f"      susut & selisih stok {rp(L['susutStok'])} dari {L['nSusut']} penyesuaian: "
+                  + ', '.join(str(x['nama']) + ' ' + rp(x['nilaiRp']) for x in rinci))
         if not ok: beda.append(f"{bl}: Σ per-hari ≠ bulan (laba/masuk/keluar)")
         if not id_ok: beda.append(f"{bl}: identitas Ke-Mana-Uang patah sebesar {rp(identitas - K['bersih'])}")
 
