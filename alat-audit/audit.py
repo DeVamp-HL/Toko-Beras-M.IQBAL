@@ -222,22 +222,43 @@ def stok_karung(kol):
             for m, v in stok.items()}
 
 # ===== Stok kemasan (hitungStokKemasan) =====
+def kunci_kemasan(nama, ukuran):
+    """Kembaran kunciKemasan() di index.html — ukuran tersimpan ada yang angka ada yang
+    teks, dan pembanding independen ini harus memakai kunci yang SAMA persis, kalau tidak
+    ia melaporkan 'cocok' untuk dua peta yang sebenarnya tak pernah bertemu."""
+    try:
+        u = float(ukuran)
+        return f"{nama}|{int(u) if u == int(u) else u}"
+    except (TypeError, ValueError):
+        return f"{nama}|{ukuran}"
+
 def stok_kemasan(kol):
-    stok = collections.defaultdict(lambda: {'dibuat': 0, 'terjual': 0, 'nilai': 0.0})
+    stok = collections.defaultdict(lambda: {'dibuat': 0, 'terjual': 0, 'dipakai': 0, 'peny': 0, 'nilai': 0.0})
     for pr in prod_berlaku(kol('produksiKemasan')):
         if pr.get('jadiKarungUtuh'): continue
-        k = f"{pr.get('namaProduk')}|{pr.get('ukuranKemasan')}"
+        k = kunci_kemasan(pr.get('namaProduk'), pr.get('ukuranKemasan'))
         stok[k]['dibuat'] += pr.get('jumlahUnit') or 0
         stok[k]['nilai'] += (pr.get('hppPerUnit') or 0) * (pr.get('jumlahUnit') or 0)
+    # Kemasan jadi yang DIBONGKAR jadi bahan adukan lain (index.html, 26 Agu 2026).
+    # Tanpa suku ini pembanding independen melaporkan karung hantu — dan karena
+    # selisihnya selalu menggeser angka audit ke ATAS, detektor MINUS tidak akan
+    # pernah menyala untuk kelas kesalahan yang justru dibuat fitur itu.
+    for pr in prod_berlaku(kol('produksiKemasan')):
+        for sk in (pr.get('sumberKemasanList') or []):
+            stok[kunci_kemasan(sk.get('namaProduk'), sk.get('ukuranKemasan'))]['dipakai'] += sk.get('unit') or 0
     for p in jual_berlaku(kol('penjualan')):
         if p.get('jenis') == 'kemasan':
-            k = f"{p.get('namaProduk')}|{p.get('ukuranKemasan')}"
+            k = kunci_kemasan(p.get('namaProduk'), p.get('ukuranKemasan'))
             if k in stok: stok[k]['terjual'] += p.get('jumlahUnit') or 0
     for r in kol('retur'):
         if r.get('jenisAsal') == 'kemasan' and r.get('kondisi') == 'utuh':
-            k = f"{r.get('namaProduk')}|{r.get('ukuranKemasan')}"
+            k = kunci_kemasan(r.get('namaProduk'), r.get('ukuranKemasan'))
             if k in stok: stok[k]['terjual'] -= r.get('jumlahUnit') or 0
-    return {k: {'sisaUnit': v['dibuat'] - v['terjual'],
+    # Cocokkan Kemasan Jadi (59dfa20) — suku tersendiri, TIDAK lewat 'dibuat', supaya
+    # tidak menyeret pembagi rata-rata HPP. Sama persis dengan hitungStokKemasan.
+    for o in kol('penyesuaianKemasan'):
+        stok[kunci_kemasan(o.get('namaProduk'), o.get('ukuranKemasan'))]['peny'] += o.get('selisihUnit') or 0
+    return {k: {'sisaUnit': v['dibuat'] - v['terjual'] - v['dipakai'] + v['peny'],
                 'hppPerUnit': v['nilai'] / v['dibuat'] if v['dibuat'] else 0}
             for k, v in stok.items()}
 
