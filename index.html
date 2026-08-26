@@ -6838,8 +6838,19 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // Aturannya satu: data baru KOSONG sedangkan cadangan TIDAK kosong = jangan ditimpa,
   // KECUALI aplikasi ini sendiri yang barusan menghapus (izinkanKoleksiKosong, dipasang
   // di hapusDariFirestore — satu-satunya tempat deleteDoc dipanggil di berkas ini).
-  // Pemulihan dari berkas & tutup buku tidak perlu jalur khusus: keduanya hanya MENULIS
-  // dokumen, tidak pernah menghapus.
+  // Sesudah penahanan menyala, snapshot yang MENGKERUT (mis. 2.608 dokumen jadi 1) juga
+  // ditahan: penjaga yang cuma melihat angka nol akan padam sendiri begitu satu dokumen
+  // masuk, dan justru itu saat cadangannya hilang. Penahanan tetap hanya bisa DIMULAI
+  // oleh snapshot benar-benar kosong, supaya penghapusan wajar tidak pernah salah tuduh.
+  //
+  // Pemulihan dari berkas memang cuma MENULIS dokumen, jadi tidak perlu jalur khusus.
+  // TUTUP BUKU BEDA — dan ini pernah salah kutulis di sini: hapusDokumenTahun() memang
+  // MENGHAPUS seluruh dokumen 19 koleksi. Perangkat yang menekan tombolnya aman (tiap
+  // penghapusan lewat hapusDariFirestore, jadi izinnya menyala), tapi PERANGKAT LAIN akan
+  // menahan cadangan tahun yang sudah ditutup lalu memakainya — stok bisa terhitung dua
+  // kali di atas saldo pembuka. Selama itu belum ditambal (butuh pendengar
+  // pengaturan/tutupBuku di tiap perangkat), tutup buku wajib dijalankan dari SATU
+  // perangkat dan perangkat lain dibersihkan lewat tombol Terima data kosong.
   //
   // AKIBAT YANG DISENGAJA: tiap ambil*() jatuh ke localStorage kalau cache kosong, jadi
   // selama cadangan ditahan, layar terus menampilkan angka terakhir yang diketahui —
@@ -6848,6 +6859,12 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // memutuskan kapan cadangan itu dibuang, lewat tombol Terima di Perlu Perhatian.
   const _bolehKoleksiKosong = {};
   const _cadanganTertahan = {};
+  // Penyetel cache per koleksi, didaftarkan saat pasangSinkronisasi dipasang. Dipakai
+  // terimaKoleksiKosong: mengosongkan localStorage saja TIDAK cukup, karena tiap ambil*()
+  // berbunyi "kalau _cacheX berisi, pakai itu" — dan _cacheX bisa terisi lagi lewat
+  // suntikCachePenyesuaian sesudah penahanan menyala. Tanpa ini keputusan pemilik batal
+  // diam-diam dan dokumen yang sudah 'dibuang' tetap dihitung.
+  const _setelCacheKoleksi = {};
   const LABEL_KOLEKSI = {
     batchMasuk: 'kedatangan', biayaBulanan: 'biaya bulanan', penjualan: 'penjualan',
     produksiKemasan: 'produksi', retur: 'retur', karantina: 'karantina',
@@ -6865,13 +6882,16 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     _bolehKoleksiKosong[koleksi] = Date.now() + (menit || 5) * 60000;
   }
   function simpanCadanganLokal(koleksi, kunci, terurut) {
-    if (terurut.length === 0 && !(_bolehKoleksiKosong[koleksi] > Date.now())) {
+    // Jalur normal (tidak sedang menahan, snapshot berisi) memintas seluruh blok ini —
+    // penting, karena fungsi ini jalan pada TIAP snapshot dari 25 koleksi.
+    const bolehKosong = _bolehKoleksiKosong[koleksi] > Date.now();
+    if (!bolehKosong && (terurut.length === 0 || _cadanganTertahan[koleksi])) {
       let lama = [];
       try { lama = JSON.parse(localStorage.getItem(kunci) || '[]') || []; } catch (e) { lama = []; }
-      if (lama.length > 0) {
+      if (lama.length > terurut.length) {
         _cadanganTertahan[koleksi] = { kunci, n: lama.length, label: labelKoleksi(koleksi) };
-        console.warn('Cadangan ' + koleksi + ' TIDAK diperbarui — server mengirim data kosong '
-          + 'padahal cadangan lokal berisi ' + lama.length + ' dokumen.');
+        console.warn('Cadangan ' + koleksi + ' TIDAK diperbarui — server mengirim '
+          + terurut.length + ' dokumen padahal cadangan lokal berisi ' + lama.length + '.');
         return;
       }
     }
@@ -6889,6 +6909,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       + 'Sesudah ini cadangan offline ' + t.label + ' hilang dari HP ini dan layar '
       + 'mengikuti server yang kosong.')) return;
     localStorage.setItem(t.kunci, '[]');
+    if (_setelCacheKoleksi[koleksi]) _setelCacheKoleksi[koleksi]([]);   // cache memori ikut
     delete _cadanganTertahan[koleksi];
     izinkanKoleksiKosong(koleksi, 60);
     tampilkanRingkasan();
@@ -6920,15 +6941,27 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       const polaTombol = new RegExp('onclick="terimaKoleksiKosong\\(\'' + KOL + '\'\\)"');
       hasil.push(['tombol Terima ada di layar lebar', polaTombol.test(htmlP)]);
       hasil.push(['tombol Terima ada di layar HP', polaTombol.test(htmlH)]);
-      // 2) snapshot BERISI -> menimpa seperti biasa, peringatan padam
+      // 2) masih menahan, snapshot MENGKERUT (1 dokumen) -> wajib tetap ditahan.
+      // Inilah cacat yang nyaris lolos: penjaga yang cuma melihat angka nol akan padam
+      // begitu satu dokumen masuk, dan justru di detik itu cadangannya hilang.
+      simpanCadanganLokal(KOL, KUNCI, [{ id: 9 }]);
+      hasil.push(['snapshot mengkerut: cadangan tetap utuh', jml() === 3]);
+      hasil.push(['snapshot mengkerut: peringatan tetap menyala', !!_cadanganTertahan[KOL]]);
+      // 3) snapshot BERISI penuh -> menimpa seperti biasa, peringatan padam
       simpanCadanganLokal(KOL, KUNCI, isi.concat({ id: 4 }));
       hasil.push(['snapshot berisi: cadangan diperbarui', jml() === 4]);
       hasil.push(['snapshot berisi: peringatan padam', !_cadanganTertahan[KOL]]);
-      // 3) penghapusan DISENGAJA -> kosong boleh menimpa (jalur hapusDariFirestore)
+      // 4) penghapusan DISENGAJA -> kosong boleh menimpa (jalur hapusDariFirestore)
       izinkanKoleksiKosong(KOL);
       simpanCadanganLokal(KOL, KUNCI, []);
       hasil.push(['penghapusan disengaja: cadangan ikut kosong', jml() === 0]);
       hasil.push(['penghapusan disengaja: tanpa peringatan', !_cadanganTertahan[KOL]]);
+      // 5) daftar penyetel cache benar-benar terisi saat boot — tanpa ini tombol Terima
+      // cuma mengosongkan localStorage sementara _cacheX lama tetap dipakai ambil*().
+      hasil.push(['daftar penyetel cache terisi (25 koleksi)',
+        typeof _setelCacheKoleksi[KOLEKSI_PENJUALAN] === 'function'
+        && typeof _setelCacheKoleksi[KOLEKSI_PENYESUAIAN] === 'function'
+        && Object.keys(_setelCacheKoleksi).length >= 25]);
     } finally {
       localStorage.removeItem(KUNCI);
       delete _cadanganTertahan[KOL]; delete _bolehKoleksiKosong[KOL];
@@ -6941,6 +6974,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 
   // kunciStatus = key di _sambunganAktif (mis. 'batch', 'retur') — eksplisit, bukan ditebak dari nama koleksi.
   function pasangSinkronisasi(nomorKoleksi, kunciLocalStorage, setelCache, onBerubah, fieldUrut, kunciStatus) {
+    _setelCacheKoleksi[nomorKoleksi] = setelCache;
     const kol = collection(db, nomorKoleksi);
     onSnapshot(kol, (snap) => {
       const daftar = [];
@@ -6952,6 +6986,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       perbaruiStatusSambungan();
       if (onBerubah) onBerubah();
       segarkanLaporanJikaTerbuka();   // laporan terbuka ikut berubah (22 Agu 2026)
+      segarkanLabaJikaTampil();       // kartu Susut & selisih stok disuapi 4 koleksi
       jadwalkanRingkasanKasir();
     }, (err) => {
       console.error('Firestore sync gagal untuk ' + nomorKoleksi, err);
@@ -7011,6 +7046,14 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // tidak ada satu pun callback yang menggambar ulang halaman itu, jadi kalau tabnya
   // terbuka saat kasir di HP lain mencatat penjualan, angkanya membeku sampai pemilik
   // pindah tab. Satu helper dipakai semua callback supaya tidak ada yang terlewat lagi.
+  // Halaman Laba kini memuat kartu "Susut & selisih stok" yang disuapi EMPAT koleksi
+  // (penyesuaianStok, penyesuaianKemasan, stokBahanKemasan, stokBahanLiteran) — bukan
+  // cuma penjualan. Dipasang terpusat di pasangSinkronisasi supaya koleksi baru tidak
+  // perlu diingat satu per satu.
+  function segarkanLabaJikaTampil() {
+    const el = document.getElementById('halamanLaba');
+    if (el && el.classList.contains('tampil')) tampilkanLaba();
+  }
   function segarkanArusKasJikaTampil() {
     const el = document.getElementById('halamanAruskas');
     if (el && el.classList.contains('tampil')) tampilkanArusKas();
@@ -7040,7 +7083,6 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanJual').classList.contains('tampil')) { isiDropdownJual(); perbaruiStokJual(); }
     if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiDropdownProduksi(); perbaruiStokProduksi(); }
-    if (document.getElementById('halamanLaba').classList.contains('tampil')) tampilkanLaba();
     if (document.getElementById('halamanRekap').classList.contains('tampil')) { tampilkanRiwayatJual(); tampilkanRiwayat(); }
     // Penjualan kredit = utang bertambah, jadi daftar piutang ikut berubah.
     if (document.getElementById('halamanPiutang').classList.contains('tampil')) tampilkanPiutang();
@@ -14904,7 +14946,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     const saldoAmp = saldoAmplop();
     const kosongAmp = posBulananKosong(bl);
     bagian.push(`<div class="lap-bagian"><h2>Amplop Laba</h2>
-      ${barisLap('Laba bersih bulan ini', 'margin kotor − biaya toko' + (totalHapus > 0 ? ' − hapus buku' : ''), labaBersih)}
+      ${barisLap('Laba bersih bulan ini', 'margin kotor − biaya toko' + (totalHapus > 0 ? ' − hapus buku' : '') + (bersih.susutStok !== 0 ? ' ± susut stok' : ''), labaBersih)}
       ${barisLap('Disisihkan ke amplop bulan ini', amp.ambil > 0 ? 'setor ' + formatRupiah(amp.setor) + ' − diambil ' + formatRupiah(amp.ambil) : amp.isi.length + ' kali setor', amp.bersih)}
       ${barisLap('Selisih', 'laba bersih dikurangi yang disisihkan', selisihAmplop, 'lb-jumlah')}
       ${barisLap('Saldo amplop sekarang', 'seluruh riwayat sampai hari ini', saldoAmp)}
