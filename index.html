@@ -7426,6 +7426,54 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       }, () => { /* offline / belum login: panel menampilkan pesan kosong */ });
     } catch (e) { console.error(e); }
   }
+  // Cap waktu jejak DISIMPAN sebagai ISO/UTC — itu memang benar: satu-satunya patokan
+  // yang bisa diurutkan lintas perangkat tanpa berdebat soal zona. Yang salah adalah
+  // MENGGAMBARNYA apa adanya. Menggunting string UTC memajang jam yang meleset 7 jam
+  // di WIB, dan yang lebih genting: apa pun sebelum 07:00 WIB jatuh ke tanggal KEMARIN.
+  // Toko buka jam 06:00 — jam pertama tiap hari dagang akan salah tanggal. Aturannya
+  // sudah tertulis di tanggalLokalIso() sejak audit 1 Agustus 2026; penampil ini yang
+  // melanggarnya. Karena itu tanggalnya WAJIB lewat tanggalLokalIso(), bukan slice().
+  function waktuJejakLokal(pada) {
+    if (!pada) return '';
+    const d = new Date(pada);
+    if (isNaN(d.getTime())) return '';
+    const pad = n => String(n).padStart(2, '0');
+    return formatTanggal(tanggalLokalIso(d)) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  // Uji dari konsol: ujiWaktuJejak(). Sengaja tidak menyentuh data apa pun.
+  // Waktu palsunya dibangun dari JAM DINDING perangkat ini, jadi ujinya benar di zona
+  // mana pun — bukan cuma WIB — dan tetap bergigi: butir 3 membuktikan cara lama
+  // memang meleset di zona ini, supaya uji ini tidak diam-diam jadi hijau palsu.
+  function ujiWaktuJejak() {
+    const hasil = [];
+    const pad = n => String(n).padStart(2, '0');
+    const jamDinding = d => formatTanggal(tanggalLokalIso(d)) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    // 05:30 waktu setempat — toko buka 06:00, jadi ini jam pertama hari dagang.
+    // Di WIB, ISO-nya jatuh ke KEMARIN pukul 22:30.
+    const pagi = new Date(); pagi.setHours(5, 30, 0, 0);
+    const isoPagi = pagi.toISOString();
+    hasil.push(['05:30 setempat: jam benar', waktuJejakLokal(isoPagi) === jamDinding(pagi)]);
+    hasil.push(['05:30 setempat: tanggal HARI INI, bukan kemarin',
+      waktuJejakLokal(isoPagi).indexOf(formatTanggal(tanggalLokalIso(pagi))) === 0]);
+    const zonaMenit = -pagi.getTimezoneOffset();
+    const lama = isoPagi.slice(0, 16).replace('T', ' ');
+    hasil.push(['uji bergigi: cara lama memang meleset di zona ini',
+      zonaMenit === 0 ? true : (lama.slice(0, 10) !== tanggalLokalIso(pagi) || lama.slice(11) !== '05:30')]);
+    // Tengah hari & lewat tengah malam — dua ujung yang lain.
+    const siang = new Date(); siang.setHours(11, 52, 0, 0);
+    hasil.push(['11:52 setempat cocok', waktuJejakLokal(siang.toISOString()) === jamDinding(siang)]);
+    const larut = new Date(); larut.setHours(23, 45, 0, 0);
+    hasil.push(['23:45 setempat cocok', waktuJejakLokal(larut.toISOString()) === jamDinding(larut)]);
+    // Masukan cacat tidak boleh melempar.
+    hasil.push(['pada kosong/cacat -> string kosong',
+      waktuJejakLokal('') === '' && waktuJejakLokal(undefined) === ''
+      && waktuJejakLokal(null) === '' && waktuJejakLokal('bukan tanggal') === '']);
+    const gagal = hasil.filter(x => !x[1]).map(x => x[0]);
+    console.log(hasil.map(x => (x[1] ? '\u2713 ' : '\u2717 ') + x[0]).join('\n'));
+    return { lulus: gagal.length === 0, gagal, zonaMenit, contoh0530: waktuJejakLokal(isoPagi) };
+  }
+
   function gambarLogAktivitas() {
     const kont = document.getElementById('daftarLogAktivitas');
     if (!kont) return;
@@ -7434,7 +7482,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       ? '<div class="kosong-info"><b>Belum ada jejak</b><span>Jejak terisi begitu ada tulisan baru sesudah Fase 1 terpasang (butuh sambungan).</span></div>'
       : _cacheLog.map(l => `<div class="baris-44">
           <span class="nama"><i class="trx-nama">${escapeHtml(l.aksi)} · ${escapeHtml(l.koleksi)}</i>
-          <small>${escapeHtml(String(l.pada || '').slice(0, 16).replace('T', ' '))} · ${escapeHtml(l.oleh || '')} @ ${escapeHtml(l.perangkat || '')}${l.ringkas ? ' · ' + escapeHtml(l.ringkas) : ''}${l.idDok ? ' · #' + escapeHtml(String(l.idDok)) : ''}</small></span>
+          <small>${escapeHtml(waktuJejakLokal(l.pada))} · ${escapeHtml(l.oleh || '')} @ ${escapeHtml(l.perangkat || '')}${l.ringkas ? ' · ' + escapeHtml(l.ringkas) : ''}${l.idDok ? ' · #' + escapeHtml(String(l.idDok)) : ''}</small></span>
         </div>`).join('');
   }
 
@@ -19284,6 +19332,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   // tanggal di sebelah kolom membeku di nilai lama. Cacat lama, bukan bawaan Fase 1.
   window.ejaTanggalBulanan = ejaTanggalBulanan;
   window.ujiPenjagaCadangan = ujiPenjagaCadangan;
+  window.ujiWaktuJejak = ujiWaktuJejak;
   window.kirimTagihanPiutang = kirimTagihanPiutang;
   window.bukaHapusBuku = bukaHapusBuku;
   window.simpanHapusBuku = simpanHapusBuku;
