@@ -3416,6 +3416,20 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 .k6a .kg-rincian{ font-size:10.5px; color:var(--pf-abu); line-height:1.55; }
 .k6a .kg-uang-piutang{ font-family:var(--pf-serif); font-weight:600; font-size:15px;
   color:var(--pf-platina); opacity:.78; }
+/* --- KACA EMAS G1: Menu kisi (rancangan Menu - Gabungan) --- */
+#lembarMenu .lm-kisi{ display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin:2px 0 12px; }
+/* Menimpa .tab-owner{display:none} global KHUSUS petak menu: terkunci = TAMPIL,
+   matinya dijaga atribut disabled (di markup sejak lahir, dibuka terapkanKunciMenu). */
+#lembarMenu .lm-petak.tab-owner{ display:flex; }
+#lembarMenu .lm-petak i{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#lembarMenu .lm-petak.aktif{ border-color:rgba(226,205,166,.5); }
+#lembarMenu .lm-gembok-baris{ display:flex; align-items:center; gap:8px; min-height:44px;
+  margin:0 0 6px; padding:0 2px; font-size:10.5px; color:var(--pf-abu); }
+#lembarMenu .lm-gembok-baris svg{ width:13px; height:13px; flex:0 0 auto; }
+#lembarMenu .lm-gembok-baris span{ flex:1; }
+#lembarMenu .lm-tombol-kunci{ min-height:44px; padding:0 16px; border-radius:99px;
+  font-size:9.5px; font-weight:800; letter-spacing:.14em; background:none;
+  border:1px solid rgba(226,205,166,.4); color:var(--emas); }
 
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
@@ -3683,36 +3697,52 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   <button type="button" onclick="urungkanTransaksi()">URUNGKAN <i>· <span id="buHitung">6</span> dtk</i></button>
   <div id="buGaris"><span></span></div>
 </div>
-<div id="lembarMenu">
+<div id="lembarMenu" class="k6a">
   <div class="lm-pegangan"></div>
   <div class="lm-kepala">
     <h3>Semua Halaman</h3>
     <span>Ikhtisar, Pelanggan, Jual &amp; Riwayat di bilah bawah</span>
   </div>
-  <!-- Baris penuh 48 px + anak panah (mockup): 7 halaman ini dipindai satu kolom,
-       keterangan singkat menempel di namanya supaya tidak perlu dihafal letaknya. -->
+  <!-- KACA EMAS G1 (rancangan Menu - Gabungan): 19 baris 48px menjadi kisi 3 kolom
+       petak >=80px bernama dua baris tanpa elipsis. Halaman ber-PIN tidak lagi memikul
+       lencana teks "PIN OWNER" satu per satu (tanda di separuh baris berhenti jadi
+       tanda) - tandanya SATU titik emas di sudut petak + satu keterangan di kepala ini,
+       dan cacahnya dihitung dari kisi yang dibangun (terapkanKunciMenu), bukan diketik.
+       Petak terkunci TAMPIL (nama tetap terbaca - itu alasan petak ditampilkan) tapi
+       mati beneran: atribut disabled sejak markup, dibuka JS saat owner unlock. -->
+  <div class="lm-gembok-baris">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>
+    <span id="lmKetGembok">Halaman bertitik emas perlu PIN owner</span>
+    <button type="button" class="lm-tombol-kunci" id="lmTombolKunci" onclick="ketukKunciMenu()">BUKA</button>
+  </div>
   <div class="lm-grup">Catat</div>
-  <button type="button" class="lm-baris" data-halaman="input" onclick="pindahDariMenu('input')"><span>Masuk <i>— batch beli karung</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" data-halaman="pemasok" onclick="pindahDariMenu('pemasok')"><span>Pemasok <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— riwayat harga beli</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris" data-halaman="produksi" onclick="pindahDariMenu('produksi')"><span>Produksi <i>— repack ke kemasan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris" data-halaman="pesanan" onclick="pindahDariMenu('pesanan')"><span>Pesanan <i>— dipesan \u00b7 diantar \u00b7 dibayar</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <div class="lm-kisi">
+  <button type="button" class="lm-petak kg-petak" data-halaman="input" onclick="pindahDariMenu('input')"><b>Masuk</b><i>batch beli karung</i></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="pemasok" onclick="pindahDariMenu('pemasok')" disabled><b>Pemasok</b><i>riwayat harga beli</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak" data-halaman="produksi" onclick="pindahDariMenu('produksi')"><b>Produksi</b><i>repack ke kemasan</i></button>
+  <button type="button" class="lm-petak kg-petak" data-halaman="pesanan" onclick="pindahDariMenu('pesanan')"><b>Pesanan</b><i>dipesan &#183; diantar</i></button>
+  </div>
   <div class="lm-grup">Data</div>
-  <button type="button" class="lm-baris" data-halaman="stok" onclick="pindahDariMenu('stok')"><span>Stok <i>— sack, kemasan, bahan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" data-halaman="harga" onclick="pindahDariMenu('harga')"><span>Harga <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— katalog &amp; jenis beras</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris" data-halaman="setelan" onclick="pindahDariMenu('setelan')"><span>Setelan <i>— PIN, cadangan, login</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <div class="lm-kisi">
+  <button type="button" class="lm-petak kg-petak" data-halaman="stok" onclick="pindahDariMenu('stok')"><b>Stok</b><i>sack, kemasan, bahan</i></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="harga" onclick="pindahDariMenu('harga')" disabled><b>Harga</b><i>katalog &amp; jenis beras</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak" data-halaman="setelan" onclick="pindahDariMenu('setelan')"><b>Setelan</b><i>PIN, cadangan, login</i></button>
+  </div>
   <div class="lm-grup">Laporan</div>
-  <button type="button" class="lm-baris" data-halaman="rekap" onclick="pindahDariMenu('rekap')"><span>Riwayat</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris" data-halaman="harian" onclick="pindahDariMenu('harian')"><span>Harian <i>— pengeluaran harian</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris" data-halaman="bulanan" onclick="pindahDariMenu('bulanan')"><span>Bulanan <i>— gaji, listrik, biaya tetap</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" data-halaman="laba" onclick="pindahDariMenu('laba')"><span>Laba <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" data-halaman="tutup" onclick="pindahDariMenu('tutup')"><span>Tutup Hari <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— ritual malam</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" data-halaman="aruskas" onclick="pindahDariMenu('aruskas')"><span>Arus Kas <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— uang masuk &amp; keluar</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" data-halaman="pelanggan" onclick="pindahDariMenu('pelanggan')"><span>Pelanggan <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— buku pelanggan &amp; ciri pengenal</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" data-halaman="piutang" onclick="pindahDariMenu('piutang')"><span>Piutang <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— pelanggan yang berutang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaLaporan()"><span>Laporan <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— bulanan &amp; tahunan, cetak/PDF</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaTutupBuku()"><span>Tutup Buku <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— arsip tahunan</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaSetelPin()"><span>PIN Owner <svg class="lm-gembok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg><u>PIN OWNER</u> <i>— setel / ganti</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-  <button type="button" class="lm-baris tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()"><span>Jaga Toko <i>— siapa yang bertugas</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  <div class="lm-kisi">
+  <button type="button" class="lm-petak kg-petak" data-halaman="rekap" onclick="pindahDariMenu('rekap')"><b>Riwayat</b><i>semua catatan</i></button>
+  <button type="button" class="lm-petak kg-petak" data-halaman="harian" onclick="pindahDariMenu('harian')"><b>Harian</b><i>pengeluaran harian</i></button>
+  <button type="button" class="lm-petak kg-petak" data-halaman="bulanan" onclick="pindahDariMenu('bulanan')"><b>Bulanan</b><i>gaji &amp; biaya tetap</i></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="laba" onclick="pindahDariMenu('laba')" disabled><b>Laba</b><i>margin per transaksi</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="tutup" onclick="pindahDariMenu('tutup')" disabled><b>Tutup Hari</b><i>ritual malam</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="aruskas" onclick="pindahDariMenu('aruskas')" disabled><b>Arus Kas</b><i>uang masuk &amp; keluar</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="pelanggan" onclick="pindahDariMenu('pelanggan')" disabled><b>Pelanggan</b><i>buku &amp; ciri pengenal</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="piutang" onclick="pindahDariMenu('piutang')" disabled><b>Piutang</b><i>yang berutang</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaLaporan()" disabled><b>Laporan</b><i>cetak / PDF</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaTutupBuku()" disabled><b>Tutup Buku</b><i>arsip tahunan</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaSetelPin()" disabled><b>PIN Owner</b><i>setel / ganti</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()" disabled><b>Jaga Toko</b><i>siapa bertugas</i></button>
+  </div>
   <div class="lm-kaki">
     <div class="lm-avatar">MD</div>
     <div class="lm-kaki-teks"><b id="lmNamaPemakai">Sistem Toko</b><span id="lmStatusSambung">Menyambungkan…</span></div>
@@ -19025,6 +19055,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   setTimeout(terapkanGerbang, 0);
   setInterval(terapkanGerbang, 60000);
   window.gerbangJalurOwner = gerbangJalurOwner;
+  window.ketukKunciMenu = ketukKunciMenu;
 
   // ===== Roster jaga (2 Agustus 2026): saklar per-orang, dikendalikan owner dari tab Jaga =====
   // Dokumen Firestore pengaturan/aksesKasir. Gono/Hasan gantian bulanan; Ben bisa liburan.
@@ -19110,11 +19141,36 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     return localStorage.getItem(KUNCI_UNLOCK_OWNER) === '1';
   }
 
+  // KACA EMAS G1 - kunci petak Menu dijaga di KODE, bukan cuma di gaya (aturan
+  // rancangan: tombol yang tampak mati harus benar-benar disabled). Keterangan gembok
+  // di kepala dihitung dari kisi yang dibangun, bukan diketik - klaimnya tidak bisa
+  // basi kalau daftar petaknya berubah.
+  function terapkanKunciMenu() {
+    const buka = ownerSudahUnlock();
+    document.querySelectorAll('#lembarMenu .lm-petak.tab-owner').forEach(el => { el.disabled = !buka; });
+    const nTitik = document.querySelectorAll('#lembarMenu .kg-titik-emas').length;
+    const ket = document.getElementById('lmKetGembok');
+    if (ket) ket.textContent = buka ? 'Semua halaman terbuka di perangkat ini'
+      : nTitik + ' halaman bertitik emas perlu PIN owner';
+    const tombol = document.getElementById('lmTombolKunci');
+    if (tombol) tombol.textContent = buka ? 'KUNCI' : 'BUKA';
+  }
+  function ketukKunciMenu() {
+    if (ownerSudahUnlock()) {
+      localStorage.removeItem(KUNCI_UNLOCK_OWNER);
+      terapkanStatusOwner();
+      pindahHalaman('ringkasan');   // jangan tertinggal di halaman yang barusan dikunci
+    } else {
+      toggleLembarMenu(false);
+      bukaModalPin();
+    }
+  }
   function terapkanStatusOwner() {
     const sudahUnlock = ownerSudahUnlock();
     document.querySelectorAll('.tab-owner, .tab-owner-blok').forEach(el => {
       el.classList.toggle('tampil-owner', sudahUnlock);
     });
+    terapkanKunciMenu();
     // Kalau belum unlock dan kebetulan lagi di kategori/filter 'owner' (mis. baru logout
     // di perangkat ini), jatuhkan balik ke default supaya tidak nyangkut di pilihan tersembunyi.
     if (!sudahUnlock) {
