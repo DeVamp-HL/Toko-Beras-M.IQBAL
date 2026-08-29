@@ -3480,6 +3480,24 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 /* Papan kapur: angka lama dicoret, tidak dihapus. */
 #halamanStok #daftarPapanKapur s{ opacity:.55; }
 #halamanStok #daftarPapanKapur .angka.redup{ color:var(--pf-abu); }
+/* --- KACA EMAS G1: lembar merk Stok --- */
+#overlayStokMerk{ display:none; position:fixed; inset:0; z-index:41; background:rgba(8,7,6,.55); }
+body.lembar-stok-merk-terbuka #overlayStokMerk{ display:block; }
+#lembarStokMerk{ position:fixed; left:0; right:0; bottom:0; z-index:42; max-height:72vh; max-height:72dvh;
+  background:linear-gradient(180deg,#20242a,#14171a); border:1px solid rgba(226,205,166,.3); border-bottom:none;
+  border-radius:22px 22px 0 0; box-shadow:0 -18px 50px rgba(0,0,0,.6);
+  padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));
+  transform:translateY(105%); transition:transform .3s cubic-bezier(.16,.84,.28,1);
+  display:flex; flex-direction:column; overflow-y:auto; }
+body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
+#lembarStokMerk .sm-kepala{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+#lembarStokMerk .sm-kepala span{ font-family:var(--pf-serif); font-size:19px; color:var(--teks); }
+#lembarStokMerk .sm-kepala b{ font-family:var(--pf-serif); font-weight:600; font-size:21px; color:var(--pf-platina); }
+#lembarStokMerk .sm-keran{ display:flex; align-items:flex-end; gap:3px; height:52px; margin-top:6px; }
+#lembarStokMerk .sm-keran span{ flex:1; border-radius:2px 2px 0 0;
+  background:linear-gradient(180deg,rgba(226,205,166,.55),rgba(226,205,166,.18)); }
+#lembarStokMerk .sm-keran span.nol{ background:rgba(255,255,255,.07); }
+#lembarStokMerk .sm-daftar{ margin-top:4px; }
 
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
@@ -3722,6 +3740,24 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   </button>
   <div class="rw-hari-ringkas" id="rwHariRingkas"></div>
   <div class="rw-hari-daftar" id="rwHariDaftar"></div>
+</div>
+
+<!-- KACA EMAS G1 (rancangan Stok - Gabungan, lembar merk): ketuk tabung karung ->
+     satu merk satu lembar. Keran 14 hari, daftar batch (kg, HPP, umur), nilai
+     tertidur. Murni pembaca - tidak ada tombol tulis di sini. -->
+<div id="overlayStokMerk" onclick="tutupLembarStokMerk()"></div>
+<div id="lembarStokMerk" class="k6a" role="dialog" aria-modal="true">
+  <div class="lm-pegangan" onclick="tutupLembarStokMerk()"></div>
+  <div class="sm-kepala">
+    <span id="smNama"></span>
+    <b id="smSisa"></b>
+  </div>
+  <div class="kg-rincian" id="smRingkas"></div>
+  <div class="kg-label" style="margin-top:10px;">Keran 14 hari &middot; kg keluar per hari</div>
+  <div class="sm-keran" id="smKeran" aria-hidden="true"></div>
+  <div class="kg-label" style="margin-top:10px;">Batch yang membentuk stok ini</div>
+  <div class="sm-daftar" id="smBatch"></div>
+  <button type="button" class="tombol-utama-kartu" style="margin-top:10px;" onclick="stokDariLembarKeDaftar()">Lihat di daftar rinci</button>
 </div>
 
 <!-- LEMBAR KONFIRMASI PRA-SIMPAN (Alur UX 1: uang tidak pernah tersimpan satu tahap) -->
@@ -12826,10 +12862,77 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
     _stokMode = mode === 'bahan' ? 'bahan' : 'jual';
     tampilkanStok();
   }
-  function stokKetukTabung(nama) {
+  function stokKetukTabung(jenis, nama) {
+    if (jenis === 'K') { bukaLembarStokMerk(nama); return; }
     const inp = document.getElementById('cariStokInput');
     if (inp) { inp.value = nama; cariMerkStok(); }
     const kartu = document.getElementById(_stokMode === 'bahan' ? 'kartuStokBahanKemasan' : 'kartuStokKarung');
+    if (kartu) kartu.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  // ===== Lembar merk: satu merk satu lembar (murni pembaca) =====
+  let _smMerk = null;
+  function bukaLembarStokMerk(merk) {
+    _smMerk = merk;
+    const st = hitungStokKarungPerMerk()[merk];
+    if (!st) return;
+    const laju = hitungLajuPakai().kgMerk[merk] || 0;
+    const hr = hariHabis(st.sisaKg, laju);
+    document.getElementById('smNama').textContent = merk;
+    document.getElementById('smSisa').textContent = (Math.round(st.sisaKg * 10) / 10).toLocaleString('id-ID') + ' kg';
+    document.getElementById('smRingkas').textContent =
+      'HPP ' + formatRupiah(Math.round(st.hppTerakhirPerKg)) + '/kg'
+      + ' · tertidur ' + formatRupiah(Math.round(st.sisaKg * st.hppTerakhirPerKg))
+      + ' · ' + (hr !== null ? kataHabis(hr) + ' (laju ' + (Math.round(laju * 10) / 10).toLocaleString('id-ID') + ' kg/hari)' : 'belum ada laju 14 hari');
+    // Keran 14 hari: kg keluar per hari dari koleksi yang sama dengan hitungLajuPakai
+    // (penjualan karung/repacking/literan + produksi) — satu batang satu hari.
+    const hariIni = new Date(); hariIni.setHours(12, 0, 0, 0);
+    const perHari = {};
+    for (let i = 13; i >= 0; i--) {
+      const t = new Date(hariIni); t.setDate(t.getDate() - i);
+      perHari[tanggalLokalIso(t)] = 0;
+    }
+    ambilPenjualan().forEach(p => {
+      if (!(p.tanggal in perHari)) return;
+      if ((p.jenis === 'karung' || p.jenis === 'repacking' || p.jenis === 'literan') && p.merkSumber === merk)
+        perHari[p.tanggal] += (p.totalKg || 0);
+    });
+    ambilProduksiBerlaku().forEach(pr => {
+      if (!(pr.tanggal in perHari)) return;
+      if (Array.isArray(pr.sumberList) && pr.sumberList.length > 0)
+        pr.sumberList.forEach(x => { if (x.merk === merk) perHari[pr.tanggal] += (x.kg || 0); });
+      else if (pr.merkSumber === merk && !pr.beliJadi) perHari[pr.tanggal] += (pr.kgDipakai || 0);
+    });
+    const seri = Object.keys(perHari).map(t => perHari[t]);
+    const maks = Math.max(1, ...seri);
+    document.getElementById('smKeran').innerHTML = seri.map(v =>
+      '<span style="height:' + Math.max(3, Math.round(v / maks * 100)) + '%;"'
+      + (v === 0 ? ' class="nol"' : '') + ' title="' + (Math.round(v * 10) / 10) + ' kg"></span>').join('');
+    // Batch pembentuk: umur dihitung dari tanggalnya — beras juga menua.
+    const kini = isoKeTanggal(tanggalLokalIso());
+    const batch = [];
+    ambilSemuaBatch().forEach(k => {
+      (k.merkList || []).forEach(m => {
+        if (m.merk !== merk) return;
+        const umur = k.tanggal ? Math.round((kini - isoKeTanggal(k.tanggal)) / 86400000) : null;
+        batch.push({ tanggal: k.tanggal || '', pemasok: k.stokAwal ? 'stok awal' : (k.pemasok || ''),
+          kg: m.totalKg || 0, hargaPerKg: m.hargaPerKg || 0, umur });
+      });
+    });
+    batch.sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
+    document.getElementById('smBatch').innerHTML = batch.length === 0
+      ? '<div class="kosong-info"><b>Tidak ada batch tercatat</b><span>Stok merk ini datang dari saldo pembuka.</span></div>'
+      : batch.map(b => '<div class="baris-44"><span class="nama">' + escapeHtml(formatTanggal(b.tanggal))
+          + '<small>' + escapeHtml(b.pemasok) + (b.hargaPerKg ? ' · ' + formatRupiah(b.hargaPerKg) + '/kg' : '')
+          + (b.umur !== null ? ' · umur ' + b.umur + ' hari' : '') + '</small></span>'
+          + '<span class="angka">' + Math.round(b.kg).toLocaleString('id-ID') + ' <u>kg</u></span></div>').join('');
+    document.body.classList.add('lembar-stok-merk-terbuka');
+  }
+  function tutupLembarStokMerk() { document.body.classList.remove('lembar-stok-merk-terbuka'); }
+  function stokDariLembarKeDaftar() {
+    tutupLembarStokMerk();
+    const inp = document.getElementById('cariStokInput');
+    if (inp && _smMerk) { inp.value = _smMerk; cariMerkStok(); }
+    const kartu = document.getElementById('kartuStokKarung');
     if (kartu) kartu.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   function stokKeKarantina() {
@@ -12880,7 +12983,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       Object.keys(d.stokKarung).forEach(m => {
         const st = d.stokKarung[m];
         if (!(st.sisaKg > 0)) return;
-        item.push({ nama: m, cari: m, sisa: st.sisaKg, satuan: 'kg',
+        item.push({ nama: m, cari: m, jenis: 'K', sisa: st.sisaKg, satuan: 'kg',
           hari: hariHabis(st.sisaKg, d.laju.kgMerk[m] || 0) });
       });
       Object.keys(d.stokKemasan).forEach(k => {
@@ -12912,7 +13015,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
           // "46 kg bisa lebih genting dari 118 kg": yang dijawab tabung adalah SISA,
           // yang dijawab teks kecil adalah BERAPA HARI LAGI — dua pertanyaan, dua tanda.
           return '<button type="button" class="st-tabung' + (genting ? ' genting' : '') + '" style="--isi:' + isi + '%;"'
-            + ' onclick="stokKetukTabung(' + JSON.stringify(x.cari).replace(/"/g, '&quot;') + ')">'
+            + ' onclick="stokKetukTabung(' + JSON.stringify(x.jenis || '') .replace(/"/g, '&quot;') + ', ' + JSON.stringify(x.cari).replace(/"/g, '&quot;') + ')">'
             + '<span class="tb-isi" aria-hidden="true"></span>'
             + '<b>' + escapeHtml(x.nama) + '</b>'
             + '<span class="tb-sisa">' + (Math.round(x.sisa * 10) / 10).toLocaleString('id-ID') + ' ' + x.satuan + '</span>'
@@ -19313,6 +19416,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   window.stokPilihMode = stokPilihMode;
   window.stokKetukTabung = stokKetukTabung;
   window.stokKeKarantina = stokKeKarantina;
+  window.bukaLembarStokMerk = bukaLembarStokMerk;
+  window.tutupLembarStokMerk = tutupLembarStokMerk;
+  window.stokDariLembarKeDaftar = stokDariLembarKeDaftar;
 
   // ===== Roster jaga (2 Agustus 2026): saklar per-orang, dikendalikan owner dari tab Jaga =====
   // Dokumen Firestore pengaturan/aksesKasir. Gono/Hasan gantian bulanan; Ben bisa liburan.
