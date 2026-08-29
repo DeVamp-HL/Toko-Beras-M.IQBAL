@@ -3430,6 +3430,18 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 #lembarMenu .lm-tombol-kunci{ min-height:44px; padding:0 16px; border-radius:99px;
   font-size:9.5px; font-weight:800; letter-spacing:.14em; background:none;
   border:1px solid rgba(226,205,166,.4); color:var(--emas); }
+/* --- KACA EMAS G1: Riwayat (rancangan Riwayat - Gabungan) --- */
+/* Chip terpilih memakai wujud terpilih Kaca Emas (gradien krem->emas tua, teks gelap).
+   Mekanisme chip tidak berubah: cacah kontekstual & pita menggulir sudah ada di kode. */
+#halamanRekap .riw-chip button.pilih > span{
+  background:linear-gradient(160deg,#f7ecd6,#c2a678); border-color:transparent; color:#2a1f13; }
+#halamanRekap .riw-chip button.pilih > span u{ color:#2a1f13; opacity:.8; }
+/* Petak kalender yang belum terjadi: tepi putus samar, batang tak digambar penuh. */
+#halamanRekap .rw-kal-hari.depan{ opacity:.35; cursor:default; }
+#halamanRekap .rw-kal-hari.depan .batang{ background:none; border-top:1px dashed rgba(226,205,166,.35); }
+#halamanRekap .rw-kal-hari:disabled:active{ transform:none; }
+/* Nominal kredit = wujud piutang: platina tersamar bergaya miring, bukan angka kas. */
+#halamanRekap .rb-nom.piutang{ font-style:italic; color:var(--pf-platina); opacity:.72; }
 
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
@@ -10059,8 +10071,13 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       const v = per[iso] || 0;
       const tinggi = Math.max(3, Math.round(v / maks * 100));
       const ini = d === hariIni;
+      // Hari yang BELUM terjadi = petak mati, bukan lembar kosong yang bisa dibuka —
+      // "sistem tidak menebaknya" (aturan rancangan Riwayat: 28-31 belum terjadi,
+      // petaknya mati, bukan diisi angka karangan). disabled dijaga di kode.
+      const depan = d > hariIni;
       html += '<button type="button" class="rw-kal-hari' + (ini ? ' ini' : '') + (v > 0 ? '' : ' nol')
-        + '" onclick="bukaLembarHariRw(\'' + iso + '\')" aria-label="' + d + ', omzet ' + formatRupiah(v) + '">'
+        + (depan ? ' depan" disabled' : '"')
+        + ' onclick="bukaLembarHariRw(\'' + iso + '\')" aria-label="' + d + (depan ? ', belum terjadi' : ', omzet ' + formatRupiah(v)) + '">'
         + '<span class="batang" style="height:' + tinggi + '%;animation-delay:' + (d * 18) + 'ms;"></span>'
         + '<span class="tgl">' + d + '</span></button>';
     }
@@ -17453,7 +17470,10 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
       baris.push({
         id: p.id, jenis: 'jual', subjenis: p.jenis || '', tanggal: p.tanggal || '', jam: p.jam || '',
         nama: namaSingkatTrx(p),
-        ket: 'Jual · ' + (p.jenis || 'lainnya'),
+        // KREDIT BUKAN KAS (aturan rancangan): barangnya keluar, uangnya belum ada —
+        // dia piutang, dan wujud angkanya wajib berbeda dari uang yang benar-benar masuk.
+        kredit: caraBayarKunci(p) === 'kredit',
+        ket: 'Jual · ' + (p.jenis || 'lainnya') + (caraBayarKunci(p) === 'kredit' ? ' · KREDIT — piutang' : ''),
         nom: formatRibuan(p.hargaTotal || 0), masuk: mati ? 0 : (p.hargaTotal || 0),
         mati: mati, bisaDibuka: true,
         cari: [p.namaProduk, p.merkSumber, p.namaPelanggan, p.caraBayar, p.hargaTotal, p.keteranganDarurat || ''].join(' ')
@@ -17642,12 +17662,12 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
         // Kepala hari membawa subtotalnya: pertanyaan pemakai hampir selalu
         // "hari itu masuk berapa", bukan "transaksi ke-58 isinya apa" (Prinsip 1).
         html += `<div class="riw-hari"><b>${escapeHtml(formatHariRiwayat(r.tanggal))}</b>` +
-          `<span>${sehari.length} catatan${masuk > 0 ? ' · Rp ' + formatRibuan(masuk) + ' masuk' : ''}</span></div>` +
+          `<span>${sehari.length} catatan${masuk > 0 ? ' · omzet Rp ' + formatRibuan(masuk) : ''}</span></div>` +
           `<div class="riw-kelompok">`;
       }
       const tag = r.bisaDibuka ? 'button' : 'div';
       const buka = r.bisaDibuka ? ` onclick="bukaLembarTrx(${r.id})"` : '';
-      const kelasNom = r.nomMerah ? ' merah' : r.nomRedup ? ' redup' : '';
+      const kelasNom = r.nomMerah ? ' merah' : r.nomRedup ? ' redup' : (r.kredit ? ' piutang' : '');
       html += `<${tag} type="button" class="riw-baris${r.mati ? ' mati' : ''}${i >= _riwTampil - RIW_SEKALI && _riwTampil > RIW_SEKALI ? ' baru' : ''}"${buka}>
         <span class="rb-jam">${escapeHtml(r.jam || '')}</span>
         <span class="rb-titik" style="background:${RIW_TITIK[r.jenis]}"></span>
