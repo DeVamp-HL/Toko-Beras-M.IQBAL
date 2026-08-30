@@ -3396,6 +3396,9 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 .k6a .kg-terpilih{ background:linear-gradient(160deg,#f7ecd6,#c2a678) !important;
   border-color:transparent !important; color:#2a1f13 !important; }
 .k6a .kg-terpilih u, .k6a .kg-terpilih i, .k6a .kg-terpilih b{ color:#2a1f13 !important; }
+/* Digit bergradien di atas latar emas terpilih kehilangan kontras — paksa gelap pekat. */
+.k6a .kg-terpilih .kg-uang-dagang, .k6a .kg-terpilih .kg-uang-laba{
+  background:none; -webkit-text-fill-color:#2a1f13; color:#2a1f13; border-color:rgba(42,31,19,.5); }
 .k6a .kg-label{ font-size:9px; font-weight:700; letter-spacing:.16em;
   text-transform:uppercase; color:var(--pf-abu); }
 /* Pita chip: menggulir, TIDAK melipat — dua baris chip memakan tinggi baris data
@@ -3577,6 +3580,51 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   background:none; border:1px solid rgba(211,160,139,.5); color:var(--pf-amber); }
 .ikhtisar-6a .ik8-beres{ font-family:var(--pf-serif); font-style:italic; font-size:11px; color:var(--pf-abu);
   padding:10px 2px; }
+/* --- KACA EMAS G2: Laba --- */
+@media (min-width:700px){ #labaKaca{ display:none; } }
+@media (max-width:699.98px){
+  /* kartu lama tetap di DOM & tetap diisi (desktop memakainya); di HP digantikan kaca */
+  #halamanLaba > .kartu-hero, #halamanLaba > .kpi-mini, #labaKartuSusut{ display:none; }
+}
+#labaKaca .lb6-keping{ display:flex; gap:7px; margin-top:2px; }
+#labaKaca .lb6-keping .kg-petak{ flex:1; min-height:82px; }
+#labaKaca .lb6-keping .kg-uang-dagang{ font-size:15px; }
+#labaKaca .lb6-keping .kg-uang-laba{ font-size:13px; padding:2px 6px; }
+#labaKaca .lb6-keping i{ white-space:normal; }
+#labaKaca .lb6-panel{ margin-top:8px; display:flex; flex-direction:column; gap:5px; }
+#labaKaca .lb6-besar{ font-size:26px; }
+#labaKaca .lb6-pita{ height:5px; border-radius:99px; overflow:hidden; background:rgba(211,160,139,.25); }
+#labaKaca .lb6-pita span{ display:block; height:100%; background:var(--emas); }
+#labaKaca .lb6-terjun{ display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  min-height:26px; font-size:11px; color:var(--teks); }
+#labaKaca .lb6-terjun b{ font-family:var(--pf-serif); font-weight:600; font-size:12.5px; }
+#labaKaca .lb6-terjun.total{ border-top:1px solid var(--pf-tepi); padding-top:6px; margin-top:3px; }
+#labaKaca .lb6-zona-saklar{ display:flex; gap:7px; margin-top:12px; }
+#labaKaca .lb6-zona-saklar button{ flex:1; min-height:44px; border-radius:4px; font-size:11.5px; font-weight:700;
+  letter-spacing:.05em; color:var(--pf-abu); border:1px solid var(--pf-tepi);
+  background:linear-gradient(168deg,rgba(255,255,255,.055),rgba(255,255,255,.02)); }
+#labaKaca .lb6-sela{ display:block; margin-top:14px; }
+#labaKaca .lb6-sela.oks{ color:var(--pf-amber); }
+#labaKaca .lb6-merk{ display:flex; align-items:center; gap:9px; min-height:44px; padding:4px 0;
+  border-bottom:1px solid rgba(255,255,255,.05); }
+#labaKaca .lb6-merk .nm{ flex:1 1 40%; min-width:0; font-size:11px; font-weight:600; }
+#labaKaca .lb6-merk .nm small{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-weight:400; font-size:9px; color:var(--pf-abu); }
+#labaKaca .lb6-merk .bar{ flex:1 1 30%; height:4px; border-radius:99px; background:rgba(255,255,255,.06); overflow:hidden; }
+#labaKaca .lb6-merk .bar i{ display:block; height:100%; background:var(--emas); }
+#labaKaca .lb6-merk .bar i.rugi, #labaKaca .lb6-merk b.rugi, #labaKaca .lb6-oks{ background:none; color:var(--pf-amber); }
+#labaKaca .lb6-merk .bar i.rugi{ background:var(--pf-amber); }
+#labaKaca .lb6-merk b{ font-family:var(--pf-serif); font-weight:600; font-size:12.5px; flex:0 0 auto; }
+#labaKaca .lb6-dua{ display:flex; gap:7px; margin-top:6px; }
+#labaKaca .lb6-mini{ flex:1; padding:9px 12px; display:flex; flex-direction:column; gap:2px; }
+#labaKaca .lb6-mini b{ font-family:var(--pf-serif); font-weight:600; font-size:15px; color:var(--pf-platina); }
+#labaKaca .lb6-mini i{ font-style:italic; font-family:var(--pf-serif); font-size:9px; color:var(--pf-abu); }
+#labaKaca .lb6-petak100{ display:grid; grid-template-columns:repeat(20,1fr); gap:2px; margin-top:6px; }
+#labaKaca .lb6-petak100 i{ aspect-ratio:1; border-radius:1.5px; background:rgba(255,255,255,.10); }
+#labaKaca .lb6-petak100 i.hpp{ background:rgba(255,255,255,.10); }
+#labaKaca .lb6-petak100 i.biaya{ background:rgba(211,160,139,.45); }
+#labaKaca .lb6-petak100 i.laba{ background:var(--emas); }
+#labaKaca .lb6-kosong{ font-family:var(--pf-serif); font-style:italic; font-size:11px; color:var(--pf-abu); padding:9px 2px; }
 
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
@@ -4973,8 +5021,17 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <div id="halamanLaba" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Laba</h2>
+      <span class="jh-sub" id="labaSubBulan"></span>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
+
+    <!-- KACA EMAS G2 (rancangan Laba - Gabungan): tiga keping kepala yang bisa diketuk
+         (margin kotor / laba bersih / diterima tunai — tiga angka yang tidak boleh
+         tertukar), panel syarat berganti mengikuti keping, dua zona DARI MANA / KE MANA.
+         Hanya <700px; desktop tetap kartu lama di bawah. PERIODE KACA = BULAN BERJALAN
+         (kartu lama tetap sepanjang-masa). Diisi tampilkanLabaKaca() dari dalam
+         tampilkanLaba. Tiga lembar desain (jujur/tambal/surat) DITUNDA. -->
+    <div id="labaKaca"></div>
 
     <div class="kartu-hero">
       <div class="label">Margin kotor · terhitung</div>
@@ -16579,7 +16636,152 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // ============ LABA / MARGIN PER TRANSAKSI (Tahap 3) ============
   // Hanya transaksi yang punya hppTotalSaatJual (dicatat mulai fitur ini aktif) yang dihitung.
   // Transaksi lama (sebelum fitur ini) sengaja TIDAK ditambal dengan HPP perkiraan — ditandai terpisah.
+  // ===== KACA EMAS G2 — Laba (rancangan Laba - Gabungan) =====
+  // Tiga keping kepala (tiga angka yang tidak boleh tertukar), panel syarat berganti,
+  // dua zona. SATU sumber: hitungLabaBersihRentang(bulan berjalan). groupBy per merk =
+  // penjumlahan field per-transaksi yang sudah dipakai daftar lama — bukan mesin baru.
+  let _labaKeping = 'kotor', _labaZona = 'dari';
+  function labaPilihKeping(k) { _labaKeping = k; tampilkanLabaKaca(); }
+  function labaPilihZona(z) { _labaZona = z; tampilkanLabaKaca(); }
+  function kelompokMerkLaba(cocok) {
+    const per = {};
+    ambilPenjualan().forEach(p => {
+      if (!cocok(p.tanggal) || !hppTercatat(p)) return;
+      const kunci = p.jenis === 'kemasan' ? (p.namaProduk + ' ' + p.ukuranKemasan + ' kg') : (p.merkSumber || '(tanpa merk)');
+      const e = per[kunci] = per[kunci] || { nama: kunci, omzet: 0, hpp: 0, kg: 0, n: 0 };
+      e.omzet += p.hargaTotal || 0;
+      e.hpp += p.hppTotalSaatJual || 0;
+      e.kg += p.jenis === 'kemasan' ? (p.jumlahUnit || 0) * (Number(p.ukuranKemasan) || 0) : (p.totalKg || 0);
+      e.n++;
+    });
+    return Object.values(per).map(e => ({ ...e, margin: e.omzet - e.hpp,
+      perKg: e.kg > 0 ? (e.omzet - e.hpp) / e.kg : null }));
+  }
+  function tampilkanLabaKaca() {
+    const wadah = document.getElementById('labaKaca');
+    if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      const bl = bulanLokalIso();
+      const namaBulan = namaBulanPanjang(bl + '-01');
+      const sub = document.getElementById('labaSubBulan');
+      if (sub) sub.textContent = namaBulan;
+      const cocok = t => !!t && bulanDari(t) === bl;
+      const L = hitungLabaBersihRentang(bl + '-01', akhirBulanIso(bl));
+      const rp = n => (n < 0 ? '−' : '') + 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
+      // margin kredit = rumus margin per-trx daftar lama, disaring kredit — bukan estimasi
+      let marginKredit = 0, omzetKredit = 0;
+      ambilPenjualan().forEach(p => {
+        if (!cocok(p.tanggal) || caraBayarKunci(p) !== 'kredit') return;
+        omzetKredit += p.hargaTotal || 0;
+        if (hppTercatat(p)) marginKredit += (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0);
+      });
+      const tunai = L.labaBersih - marginKredit;
+      const pct = (a, b) => b > 0 ? (a / b * 100).toFixed(1).replace('.', ',') + '%' : '—';
+      const K = _labaKeping;
+
+      // --- tiga keping ---
+      let html = '<div class="lb6-keping">'
+        + '<button type="button" class="kg-petak' + (K === 'kotor' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'kotor\')">'
+        + '<span class="kg-label">Margin kotor</span><b class="kg-uang-dagang">' + rp(L.margin) + '</b><i>' + pct(L.margin, L.omzetHitung) + ' dari omzet ber-HPP</i></button>'
+        + '<button type="button" class="kg-petak' + (K === 'bersih' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'bersih\')">'
+        + '<span class="kg-label">Laba bersih</span><b class="kg-uang-laba">' + rp(L.labaBersih) + '</b><i>sudah − biaya &amp; susut</i></button>'
+        + '<button type="button" class="kg-petak' + (K === 'tunai' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'tunai\')">'
+        + '<span class="kg-label">Diterima tunai</span><b class="kg-uang-dagang">' + rp(tunai) + '</b><i>laba yang sudah jadi uang</i></button></div>';
+
+      // --- panel syarat ---
+      html += '<div class="kg-panel lb6-panel">';
+      if (K === 'kotor') {
+        const cakupan = (L.omzetHitung + L.omzetTanpaHpp) > 0 ? L.omzetHitung / (L.omzetHitung + L.omzetTanpaHpp) : 1;
+        html += '<div class="kg-label">Syarat margin kotor</div>'
+          + '<b class="kg-uang-dagang lb6-besar">' + rp(L.margin) + '</b>'
+          + '<div class="lb6-pita"><span style="width:' + (cakupan * 100) + '%;"></span></div>'
+          + '<div class="kg-rincian">terhitung ' + pct(L.omzetHitung, L.omzetHitung + L.omzetTanpaHpp)
+          + (L.jumlahTanpaHpp ? ' · luput ' + L.jumlahTanpaHpp + ' trx (' + rp(L.omzetTanpaHpp) + ' omzet tanpa HPP)' : ' · semua transaksi ber-HPP') + '</div>';
+      } else if (K === 'bersih') {
+        html += '<div class="kg-label">Dari kotor turun ke bersih</div>'
+          + [['Omzet terhitung', L.omzetHitung], ['HPP barang', -L.hpp], ['Margin kotor', L.margin],
+             ['Biaya toko', -L.biayaToko]]
+            .concat(L.hapusBuku ? [['Hapus buku piutang', -L.hapusBuku]] : [])
+            .concat([['Susut stok', L.susutStok]])
+            .map(x => '<div class="lb6-terjun"><span>' + x[0] + '</span><b>' + rp(x[1]) + '</b></div>').join('')
+          + '<div class="lb6-terjun total"><span>Laba bersih</span><b class="kg-uang-laba">' + rp(L.labaBersih) + '</b></div>'
+          + '<div class="kg-rincian">margin − biaya toko − hapus buku ± susut · ' + namaBulan + '</div>';
+      } else {
+        const daftarP = hitungPiutang().filter(x => x.sisa > 0).slice(0, 5);
+        html += '<div class="kg-label">Syarat diterima tunai</div>'
+          + '<b class="kg-uang-kas lb6-besar">' + rp(tunai) + '</b>'
+          + '<div class="kg-rincian">laba bersih ' + rp(L.labaBersih) + ' − margin yang masih kredit ' + rp(marginKredit)
+          + ' · kredit ' + pct(omzetKredit, L.omzetHitung + L.omzetTanpaHpp) + ' dari omzet ' + namaBulan + '</div>'
+          + (daftarP.length ? '<div class="kg-label" style="margin-top:8px;">Piutang berjalan · semua periode</div>'
+            + daftarP.map(x => '<div class="lb6-terjun"><span>' + escapeHtml(x.nama)
+              + (x.umurHari != null ? ' · ' + x.umurHari + ' hari' : '') + '</span><b class="kg-uang-piutang">'
+              + rp(x.sisa) + '</b></div>').join('') : '');
+      }
+      html += '</div>';
+
+      // --- saklar zona ---
+      html += '<div class="lb6-zona-saklar">'
+        + '<button type="button"' + (_labaZona === 'dari' ? ' class="kg-terpilih"' : '') + ' onclick="labaPilihZona(\'dari\')">Dari mana</button>'
+        + '<button type="button"' + (_labaZona === 'ke' ? ' class="kg-terpilih"' : '') + ' onclick="labaPilihZona(\'ke\')">Ke mana</button></div>';
+
+      if (_labaZona === 'dari') {
+        const merk = kelompokMerkLaba(cocok).sort((a, b) => b.margin - a.margin);
+        const maksM = Math.max(1, ...merk.map(x => Math.abs(x.margin)));
+        html += '<div class="kg-label lb6-sela">Margin per merk · diurut margin · ' + namaBulan + '</div>';
+        html += merk.length === 0 ? '<div class="lb6-kosong">Belum ada transaksi ber-HPP bulan ini.</div>'
+          : merk.map(x => '<div class="lb6-merk"><span class="nm">' + escapeHtml(x.nama) + '<small>' + x.n + ' trx'
+              + (x.perKg !== null ? ' · ' + rp(x.perKg) + '/kg' : '') + '</small></span>'
+              + '<span class="bar"><i style="width:' + Math.round(Math.abs(x.margin) / maksM * 100) + '%;"'
+              + (x.margin < 0 ? ' class="rugi"' : '') + '></i></span>'
+              + '<b' + (x.margin < 0 ? ' class="rugi"' : '') + '>' + rp(x.margin) + '</b></div>').join('');
+        const rugi = merk.filter(x => x.margin < 0);
+        if (rugi.length) {
+          html += '<div class="kg-label lb6-sela oks">Dijual di bawah HPP · ' + rugi.length + ' merk</div>'
+            + rugi.map(x => '<div class="lb6-merk"><span class="nm">' + escapeHtml(x.nama)
+              + '<small>jual di bawah harga pokoknya — cek Daftar Harga</small></span>'
+              + '<b class="rugi">' + rp(x.margin) + '</b></div>').join('');
+        }
+      } else {
+        // --- KE MANA ---
+        const susutRows = barisSusutStok(t => cocok(t));
+        html += '<div class="lb6-dua">'
+          + '<div class="kg-panel lb6-mini"><span class="kg-label">Laba</span><b>' + (L.susutStok ? rp(L.susutStok) : 'Rp0') + '</b><i>susut memotong laba</i></div>'
+          + '<div class="kg-panel lb6-mini"><span class="kg-label">Kas</span><b>Rp0</b><i>susut tidak menyentuh kas</i></div></div>';
+        html += susutRows.length === 0
+          ? '<div class="lb6-kosong">Belum ada susut tercatat — mulai dihitung 1 September 2026.</div>'
+          : susutRows.map(x => '<div class="lb6-terjun"><span>' + escapeHtml(x.nama) + ' · ' + (x.jumlah > 0 ? '+' : '') + x.jumlah + ' ' + escapeHtml(x.satuan) + '</span><b>' + rp(x.nilaiRp) + '</b></div>').join('');
+        const upah = L.nHari > 0 ? L.labaBersih / L.nHari : 0;
+        html += '<div class="kg-label lb6-sela">Lu dibayar berapa per hari</div>'
+          + '<div class="kg-panel lb6-panel"><b class="' + (upah < 0 ? 'lb6-oks ' : '') + 'kg-uang-laba">' + rp(upah) + '</b>'
+          + '<span class="kg-rincian"> / hari kalender · laba bersih ' + rp(L.labaBersih) + ' ÷ ' + L.nHari + ' hari ' + namaBulan + '</span></div>';
+        // hari merdeka: kumulatif margin vs ongkos bulan — satu reduce, bukan 31x mesin
+        const perTgl = {};
+        ambilPenjualan().forEach(p => { if (cocok(p.tanggal) && hppTercatat(p)) perTgl[p.tanggal] = (perTgl[p.tanggal] || 0) + (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0); });
+        const ongkos = L.biayaToko + L.hapusBuku - L.susutStok;
+        let kum = 0, merdeka = null;
+        Object.keys(perTgl).sort().forEach(t2 => { kum += perTgl[t2]; if (merdeka === null && kum >= ongkos) merdeka = t2; });
+        html += '<div class="kg-label lb6-sela">Sejak tanggal ini untung</div>'
+          + '<div class="kg-rincian">' + (merdeka
+            ? 'Margin kumulatif menutup ongkos bulan (' + rp(ongkos) + ') sejak <b>' + formatTanggal(merdeka) + '</b> — sesudahnya tiap margin jadi laba.'
+            : 'Belum menutup ongkos bulan ini (' + rp(ongkos) + ') — margin kumulatif masih ' + rp(kum) + '.') + '</div>';
+        // 100 petak
+        if (L.omzetHitung > 0) {
+          const petakHpp = Math.max(0, Math.min(100, Math.round(L.hpp / L.omzetHitung * 100)));
+          const petakBiaya = Math.max(0, Math.min(100 - petakHpp, Math.round(ongkos / L.omzetHitung * 100)));
+          const petakLaba = Math.max(0, 100 - petakHpp - petakBiaya);
+          html += '<div class="kg-label lb6-sela">Dari 100 karung terjual</div><div class="lb6-petak100">';
+          for (let p2 = 0; p2 < 100; p2++)
+            html += '<i class="' + (p2 < petakHpp ? 'hpp' : p2 < petakHpp + petakBiaya ? 'biaya' : 'laba') + '"></i>';
+          html += '</div><div class="kg-rincian">balik jadi HPP ' + petakHpp + ' petak · biaya &amp; susut ' + petakBiaya
+            + ' petak · jadi laba ' + petakLaba + ' petak' + (L.labaBersih < 0 ? ' — bulan ini masih RUGI' : '') + '</div>';
+        }
+      }
+      wadah.innerHTML = html;
+    } catch (e) { console.error('laba kaca gagal', e); }
+  }
+
   function tampilkanLaba() {
+    tampilkanLabaKaca();   // kaca <700px; punya penjaga sendiri, WAJIB sebelum return dini di bawah
     const semua = ambilPenjualan();
     // hppTercatat: HPP kosong ATAU Rp0-berduit sama-sama dianggap tidak tercatat —
     // dua-duanya bolong data, bukan untung 100% (lihat catatan di definisi hppTercatat).
@@ -19966,6 +20168,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // pun ikut mereset, dan keranjang BERIKUTNYA yang sedang disusun buru-buru lenyap.
   // (Tertangkap saat uji beruntun G4.)
   window.ik8PilihKarung = ik8PilihKarung;
+  window.labaPilihKeping = labaPilihKeping;
+  window.labaPilihZona = labaPilihZona;
   window.bukaRiwayatHariPlatina = bukaRiwayatHariPlatina;
   window.tampilkanRiwayat = tampilkanRiwayat;
   window.kosongkanCariRiwayat = kosongkanCariRiwayat;
