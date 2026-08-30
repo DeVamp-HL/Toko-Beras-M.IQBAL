@@ -3649,6 +3649,52 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 @media (min-width:700px){
   #akSaklarZona{ display:none; }   /* desktop: ketiga zona tampil semua — gerbang CSS */
 }
+/* --- KACA EMAS G2: Piutang & Kasbon --- */
+@media (min-width:700px){ #piutang6a{ display:none; } }
+@media (max-width:699.98px){
+  /* kartu lama tetap diisi (desktop memakainya); di HP kaca yang tampil */
+  #kartuHeroPiutang, #piutangUmurWrap, #kartuDaftarPiutang, #kartuHeroKasbon, #kartuDaftarKasbon{ display:none; }
+  .p6-sembunyi{ display:none; }
+}
+#piutang6a .p6-buku{ display:flex; gap:7px; margin-bottom:10px; }
+#piutang6a .p6-buku button{ flex:1; display:flex; flex-direction:column; gap:2px; min-height:64px;
+  padding:9px 12px; border-radius:4px; text-align:left; color:var(--teks);
+  border:1px solid var(--pf-tepi); background:linear-gradient(168deg,rgba(255,255,255,.055),rgba(255,255,255,.02)); }
+#piutang6a .p6-buku i{ font-style:normal; font-size:9px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--pf-abu); }
+#piutang6a .p6-buku b{ font-size:16px; }
+#piutang6a .p6-buku u{ text-decoration:none; font-family:var(--pf-serif); font-style:italic; font-size:9px; color:var(--pf-abu); }
+#piutang6a .p6-zona{ display:flex; gap:7px; margin-bottom:10px; }
+#piutang6a .p6-zona button{ flex:1; min-height:44px; border-radius:4px; font-size:10px; font-weight:800;
+  letter-spacing:.12em; color:var(--pf-abu); border:1px solid var(--pf-tepi);
+  background:linear-gradient(168deg,rgba(255,255,255,.05),rgba(255,255,255,.018)); }
+#piutang6a .p6-fokus .p6-fokus-atas{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-top:2px; }
+#piutang6a .p6-fokus .nm{ font-family:var(--pf-serif); font-size:17px; }
+#piutang6a .p6-besar{ font-size:24px; }
+#piutang6a .p6-ket{ display:block; font-style:italic; font-family:var(--pf-serif); font-size:10px; color:var(--pf-abu); margin-top:2px; }
+#piutang6a .p6-janji{ display:inline-block; margin-top:5px; padding:2px 8px; border-radius:99px; font-size:9px;
+  font-weight:700; letter-spacing:.06em; border:1px solid rgba(226,205,166,.4); color:var(--emas); }
+#piutang6a .p6-janji.telat{ border-color:rgba(211,160,139,.55); color:var(--pf-amber); }
+#piutang6a .p6-aksi{ display:flex; gap:8px; margin-top:9px; }
+#piutang6a .p6-aksi button{ flex:1; min-height:48px; border-radius:4px; font-size:10.5px; font-weight:800;
+  letter-spacing:.08em; text-transform:uppercase; }
+#piutang6a .p6-aksi button:first-child{ background:linear-gradient(160deg,#f7ecd6,#c2a678); border:none; color:#2a1f13; }
+#piutang6a .p6-aksi button:last-child{ background:none; border:1px solid rgba(226,205,166,.4); color:var(--emas); }
+#piutang6a .p6-sela{ display:block; margin-top:12px; }
+#piutang6a .p6-lunas, #piutang6a .p6-kosong{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  color:var(--pf-abu); padding:9px 2px; }
+#piutang6a .p6-ruang{ margin-top:7px; padding:9px 12px; }
+#piutang6a .p6-ruang-atas{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+#piutang6a .p6-ruang.merah{ border-color:rgba(211,160,139,.5); }
+#piutang6a .p6-ruang.merah .kg-uang-piutang{ color:var(--pf-amber); opacity:1; }
+#piutang6a .p6-batas{ display:flex; flex-direction:column; gap:4px; min-height:44px; padding:7px 0;
+  border-bottom:1px solid rgba(255,255,255,.05); }
+#piutang6a .p6-batas .nm{ font-size:11.5px; font-weight:600; }
+#piutang6a .p6-batas .nm small{ display:block; font-family:var(--pf-serif); font-style:italic; font-weight:400;
+  font-size:9.5px; color:var(--pf-abu); }
+#piutang6a .p6-batas .bar{ height:4px; border-radius:99px; background:rgba(255,255,255,.06); overflow:hidden; }
+#piutang6a .p6-batas .bar i{ display:block; height:100%; background:var(--emas); }
+#piutang6a .p6-batas .bar i.lewat{ background:var(--pf-amber); }
+#piutang6a .baris-44 .kg-uang-piutang{ font-size:13px; }
 
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
@@ -5380,7 +5426,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
 
-    <div class="kartu-hero">
+    <!-- KACA EMAS G2 (rancangan Piutang - Gabungan): saklar buku PELANGGAN <-> PEGAWAI
+         (aturan paling keras: dua buku TIDAK PERNAH punya satu total gabungan), zona
+         TAGIH / PAHAM / ATUR. Hanya <700px; kartu lama tetap diisi utk desktop. -->
+    <div id="piutang6a"></div>
+
+    <div class="kartu-hero" id="kartuHeroPiutang">
       <div class="label">Total belum tertagih</div>
       <div class="hero-nilai" id="piutangTotal">Rp0</div>
       <div class="hero-syarat" id="piutangSyarat"></div>
@@ -5394,12 +5445,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <div class="kartu-mini"><div class="label">di atas 90 hari</div><div class="nilai" id="piutangUmur3">Rp0</div></div>
     </div>
 
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="kartuDaftarPiutang">
       <div class="kd-judul"><h3>Pelanggan berutang</h3><span class="kd-hitung" id="piutangHitung"></span></div>
       <div id="daftarPiutang"></div>
     </div>
 
-    <div class="kartu" style="margin-top:12px;">
+    <div class="kartu" style="margin-top:12px;" id="kartuSaldoAwal">
       <h3 style="margin:0 0 4px; font-size:14px;">Saldo awal utang lama</h3>
       <p class="keterangan" style="margin:0 0 10px;">Utang yang sudah ada SEBELUM sistem ini dipakai. Cukup diisi sekali per pelanggan — sesudah itu utang baru masuk sendiri dari penjualan kredit di kasir.</p>
       <label>Nama pelanggan</label>
@@ -5419,18 +5470,18 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
          "Kas Keluar Bulan Ini" (keputusan My DeV 9 Agu 2026): kasbon bukan biaya,
          cuma uang toko yang sedang dipegang karyawan dan akan kembali — kalau ikut
          Kas Keluar, angkanya terbaca seolah toko mengeluarkan biaya sebesar itu. -->
-    <div class="kartu-hero" style="margin-top:20px;">
+    <div class="kartu-hero" style="margin-top:20px;" id="kartuHeroKasbon">
       <div class="label">Kasbon dipegang karyawan</div>
       <div class="hero-nilai" id="kasbonTotal">Rp0</div>
       <div class="hero-syarat" id="kasbonSyarat"></div>
     </div>
 
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="kartuDaftarKasbon">
       <div class="kd-judul"><h3>Karyawan berkasbon</h3><span class="kd-hitung" id="kasbonHitung"></span></div>
       <div id="daftarKasbon"></div>
     </div>
 
-    <div class="kartu" style="margin-top:12px;">
+    <div class="kartu" style="margin-top:12px;" id="kartuKasbonBaru">
       <h3 style="margin:0 0 4px; font-size:14px;">Catat kasbon baru</h3>
       <p class="keterangan" style="margin:0 0 10px;">Uang toko yang diambil karyawan dan akan dikembalikan — tunai atau potong gaji. Ini bukan pengeluaran toko, jadi tidak ikut Kas Keluar.</p>
       <label>Nama karyawan</label>
@@ -17035,6 +17086,161 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     return th + ' tahun' + (sisaBln > 0 ? ' ' + sisaBln + ' bln' : '');
   }
 
+  // ===== KACA EMAS G2 — Piutang & Kasbon (rancangan Piutang - Gabungan) =====
+  // Dua buku, dua total, TIDAK PERNAH dijumlahkan — termasuk di kalimat keterangan.
+  // Semua angka berwujud kg-uang-piutang (halaman ini seluruhnya bukan-kas), dan
+  // hitungan sisa DIPERLIHATKAN (saldo awal + kredit − bayar − dihapus = sisa) dari
+  // field keluaran hitungPiutang — aturannya tidak cuma dipercaya, dia terlihat.
+  // "Peluang tertagih" desain (94/68/31%) DILEWATI: probabilitas karangan.
+  let _p6Buku = 'pelanggan', _p6Zona = 'tagih';
+  function p6PilihBuku(b) { _p6Buku = b === 'pegawai' ? 'pegawai' : 'pelanggan'; tampilkanPiutang6a(); }
+  function p6PilihZona(z) { _p6Zona = { tagih: 1, paham: 1, atur: 1 }[z] ? z : 'tagih'; tampilkanPiutang6a(); }
+  function p6KirimWa(kunci) {
+    const lama = _piutangTerbuka;
+    _piutangTerbuka = kunci;
+    kirimTagihanPiutang();
+    _piutangTerbuka = lama;
+  }
+  function tampilkanPiutang6a() {
+    const wadah = document.getElementById('piutang6a');
+    if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      const rp = n => 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
+      const daftarP = _piutangTampil || [];
+      const daftarK = _kasbonTampil || [];
+      const berutang = daftarP.map((d, i) => ({ d, i })).filter(x => x.d.sisa > 0);
+      const lunasP = daftarP.map((d, i) => ({ d, i })).filter(x => x.d.sisa <= 0);
+      const totalP = berutang.reduce((a, x) => a + x.d.sisa, 0);
+      const berkasbon = daftarK.map((d, i) => ({ d, i })).filter(x => x.d.sisa > 0);
+      const totalK = berkasbon.reduce((a, x) => a + x.d.sisa, 0);
+      const B = _p6Buku, Z = _p6Zona;
+
+      let html = '<div class="p6-buku">'
+        + '<button type="button"' + (B === 'pelanggan' ? ' class="kg-terpilih"' : '') + ' onclick="p6PilihBuku(\'pelanggan\')">'
+        + '<i>Pelanggan</i><b class="kg-uang-piutang">' + rp(totalP) + '</b><u>' + berutang.length + ' berutang</u></button>'
+        + '<button type="button"' + (B === 'pegawai' ? ' class="kg-terpilih"' : '') + ' onclick="p6PilihBuku(\'pegawai\')">'
+        + '<i>Pegawai</i><b class="kg-uang-piutang">' + rp(totalK) + '</b><u>' + berkasbon.length + ' berkasbon</u></button></div>';
+
+      if (B === 'pelanggan') {
+        html += '<div class="p6-zona">'
+          + ['tagih', 'paham', 'atur'].map(z => '<button type="button"' + (Z === z ? ' class="kg-terpilih"' : '')
+            + ' onclick="p6PilihZona(\'' + z + '\')">' + z.toUpperCase() + '</button>').join('') + '</div>';
+        // peta janji bayar KR2 (pola yang sudah dipakai Perlu Perhatian)
+        const janjiPer = {};
+        ambilPenjualan().forEach(t2 => {
+          if (t2.caraBayar !== 'Kredit' || !t2.janjiBayar) return;
+          const kj = kunciPelanggan(t2.namaPelanggan);
+          if (kj && (!janjiPer[kj] || t2.janjiBayar > janjiPer[kj])) janjiPer[kj] = t2.janjiBayar;
+        });
+        const hariIniIso = tanggalLokalIso();
+        const chipJanji = d => {
+          const j = janjiPer[d.kunci];
+          if (!j || d.sisa <= 0) return '';
+          const telat = j < hariIniIso;
+          return '<span class="p6-janji' + (telat ? ' telat' : '') + '">'
+            + (telat ? 'janji lewat — ' : 'janji bayar ') + escapeHtml(formatTanggal(j)) + '</span>';
+        };
+        if (Z === 'tagih') {
+          if (berutang.length === 0) {
+            html += '<div class="p6-kosong">' + (daftarP.length === 0 ? 'Belum ada piutang tercatat.' : 'Semua pelanggan sudah lunas.') + '</div>';
+          } else {
+            // skor tampilan: umur × besar — mesin tak disentuh, hanya urutan
+            const urut = berutang.slice().sort((a, b) =>
+              b.d.sisa * (1 + (b.d.umurHari || 0) / 30) - a.d.sisa * (1 + (a.d.umurHari || 0) / 30));
+            const f = urut[0];
+            html += '<div class="kg-panel p6-fokus"><div class="kg-label">Paling perlu ditagih</div>'
+              + '<div class="p6-fokus-atas"><span class="nm">' + escapeHtml(f.d.nama) + '</span>'
+              + '<b class="kg-uang-piutang p6-besar">' + rp(f.d.sisa) + '</b></div>'
+              + '<i class="p6-ket">' + escapeHtml(umurKeKata(f.d.umurHari)) + ' · sejak ' + escapeHtml(formatTanggal(f.d.tanggalTertua)) + '</i>'
+              + chipJanji(f.d)
+              + '<div class="p6-aksi"><button type="button" onclick="p6KirimWa(' + JSON.stringify(f.d.kunci).replace(/"/g, '&quot;') + ')">Susun tagihan WA</button>'
+              + '<button type="button" onclick="bukaLembarPiutang(' + f.i + ')">Catat bayar</button></div></div>';
+            html += '<div class="kg-label p6-sela">Antrean · diurut umur × besarnya</div>';
+            urut.slice(1).forEach(x => {
+              html += '<button type="button" class="baris-44 baris-ketuk" onclick="bukaLembarPiutang(' + x.i + ')">'
+                + '<span class="nama"><i class="trx-nama">' + escapeHtml(x.d.nama) + '</i><small>'
+                + escapeHtml(umurKeKata(x.d.umurHari)) + (x.d.bayar > 0 ? ' · dibayar ' + rp(x.d.bayar) : '') + '</small>' + chipJanji(x.d) + '</span>'
+                + '<span class="angka kg-uang-piutang">' + rp(x.d.sisa) + '</span></button>';
+            });
+            if (lunasP.length) html += '<div class="p6-lunas">' + lunasP.length + ' pelanggan sudah LUNAS — riwayatnya tetap di daftar desktop.</div>';
+          }
+        } else if (Z === 'paham') {
+          const j = k => berutang.reduce((a, x) => a + (x.d[k] || 0), 0);
+          const sAwal = j('saldoAwal'), sKredit = j('kredit'), sBayar = j('bayar'), sHapus = j('dihapus');
+          html += '<div class="kg-panel"><div class="kg-label">Belum tertagih</div>'
+            + '<b class="kg-uang-piutang p6-besar">' + rp(totalP) + '</b>'
+            + '<div class="kg-rincian">Saldo awal ' + rp(sAwal) + ' + kredit ' + rp(sKredit) + ' − bayar ' + rp(sBayar)
+            + (sHapus > 0 ? ' − dihapus buku ' + rp(sHapus) : '') + ' = ' + rp(totalP)
+            + '. Dihitung ulang tiap dibuka — tidak pernah disimpan.</div></div>';
+          // kolam bulan ini dari mutasi keluaran mesin
+          const bl = bulanLokalIso();
+          let baru = 0, dibayar = 0, dihapus = 0;
+          daftarP.forEach(d => (d.mutasi || []).forEach(m => {
+            if ((m.tanggal || '').slice(0, 7) !== bl) return;
+            if (m.jenis === 'bayar') dibayar += m.nominal || 0;
+            else if (m.jenis === 'hapusBuku') dihapus += m.nominal || 0;
+            else baru += m.nominal || 0;
+          }));
+          const selisih = baru - dibayar - dihapus;
+          html += '<div class="kg-panel p6-sela"><div class="kg-label">' + (selisih >= 0 ? 'Piutang naik bulan ini' : 'Piutang turun bulan ini') + '</div>'
+            + '<b class="kg-uang-piutang">' + (selisih >= 0 ? '+' : '−') + rp(selisih) + '</b>'
+            + '<div class="kg-rincian">baru ' + rp(baru) + ' · dibayar ' + rp(dibayar)
+            + (dihapus > 0 ? ' · dihapus buku ' + rp(dihapus) : '') + '</div></div>';
+          html += '<div class="kg-label p6-sela">Tiga ruang tunggu · tua dulu</div>';
+          [['Di atas 90 hari', x => (x.d.umurHari || 0) > 90, true], ['31–90 hari', x => (x.d.umurHari || 0) > 30 && (x.d.umurHari || 0) <= 90, false], ['0–30 hari', x => (x.d.umurHari || 0) <= 30, false]]
+            .forEach(r => {
+              const grup = berutang.filter(r[1]);
+              const nilai = grup.reduce((a, x) => a + x.d.sisa, 0);
+              html += '<div class="kg-panel p6-ruang' + (r[2] && grup.length ? ' merah' : '') + '"><div class="p6-ruang-atas"><span class="kg-label">' + r[0] + '</span>'
+                + '<b class="kg-uang-piutang">' + (grup.length ? rp(nilai) : 'tidak ada') + '</b></div>'
+                + (grup.length ? '<i class="p6-ket">' + grup.map(x => escapeHtml(x.d.nama)).join(' · ') + '</i>' : '') + '</div>';
+            });
+        } else {
+          html += '<div class="kg-label p6-sela">Batas kredit per pelanggan · KR1: 2× rata belanja 90 hari</div>';
+          if (berutang.length === 0) html += '<div class="p6-kosong">Tidak ada yang sedang berutang.</div>';
+          let lewat = 0;
+          berutang.forEach(x => {
+            const info = infoKreditPelanggan(x.d.nama);
+            const adaBatas = info.ada && info.batas > 0;
+            const isi = adaBatas ? Math.min(100, Math.round(x.d.sisa / info.batas * 100)) : 100;
+            const lebihi = adaBatas && x.d.sisa > info.batas;
+            if (lebihi || (info.ada && !info.terdaftar)) lewat++;
+            html += '<div class="p6-batas"><span class="nm">' + escapeHtml(x.d.nama)
+              + '<small>' + (info.ada && !info.terdaftar ? 'belum terdaftar di buku Pelanggan — kredit baru ditolak kasir'
+                : !adaBatas ? 'belum ada riwayat belanja — batas belum terbentuk'
+                : rp(x.d.sisa) + ' dari batas ' + rp(info.batas)
+                  + (lebihi ? ' · LEWAT — kasir menolak kredit baru' : ' · sisa jatah ' + rp(info.batas - x.d.sisa))) + '</small></span>'
+              + '<span class="bar"><i style="width:' + isi + '%;"' + (lebihi ? ' class="lewat"' : '') + '></i></span></div>';
+          });
+          html += '<div class="kg-rincian p6-sela">' + (lewat ? lewat + ' pelanggan lewat batas / belum terdaftar.' : 'Semua masih di bawah batasnya.') + '</div>';
+        }
+      } else {
+        // ===== buku PEGAWAI =====
+        const jAmbil = daftarK.reduce((a, d) => a + (d.ambil || 0), 0);
+        const jBayar = daftarK.reduce((a, d) => a + (d.bayar || 0), 0);
+        html += '<div class="kg-panel p6-sela"><div class="kg-label">Uang toko di kantong pegawai</div>'
+          + '<b class="kg-uang-piutang p6-besar">' + rp(totalK) + '</b>'
+          + '<div class="kg-rincian">Dari ' + rp(jAmbil) + ' yang pernah dikasbon, ' + rp(jBayar)
+          + ' sudah kembali. Bukan biaya toko — tidak ikut Kas Keluar.</div></div>';
+        html += '<div class="kg-label p6-sela">Sisa per karyawan</div>';
+        if (daftarK.length === 0) html += '<div class="p6-kosong">Belum ada kasbon tercatat.</div>';
+        daftarK.forEach((d, i) => {
+          const pct = d.ambil > 0 ? Math.round((d.bayar || 0) / d.ambil * 100) : 0;
+          html += '<button type="button" class="baris-44 baris-ketuk" onclick="bukaLembarKasbon(' + i + ')">'
+            + '<span class="nama"><i class="trx-nama">' + escapeHtml(d.nama) + '</i><small>diambil ' + rp(d.ambil || 0)
+            + ' · kembali ' + pct + '%</small></span>'
+            + '<span class="angka' + (d.sisa > 0 ? ' kg-uang-piutang' : '') + '">' + (d.sisa > 0 ? rp(d.sisa) : 'LUNAS') + '</span></button>';
+        });
+      }
+      wadah.innerHTML = html;
+      // form lama tampil per konteks — lewat kelas yang HANYA berlaku <700px
+      const fSaldo = document.getElementById('kartuSaldoAwal');
+      if (fSaldo) fSaldo.classList.toggle('p6-sembunyi', !(B === 'pelanggan' && Z === 'atur'));
+      const fKasbon = document.getElementById('kartuKasbonBaru');
+      if (fKasbon) fKasbon.classList.toggle('p6-sembunyi', B !== 'pegawai');
+    } catch (e) { console.error('piutang kaca gagal', e); }
+  }
+
   function tampilkanPiutang() {
     const daftar = hitungPiutang();
     _piutangTampil = daftar;
@@ -17069,6 +17275,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const kont = document.getElementById('daftarPiutang');
     if (daftar.length === 0) {
       kont.innerHTML = '<div class="kosong-info"><b>Belum ada piutang</b><span>Penjualan kredit dari kasir masuk ke sini otomatis. Utang lama bisa dimasukkan lewat formulir Saldo Awal di bawah.</span></div>';
+      tampilkanPiutang6a();   // jalur keluar dini pun wajib menggambar kaca (pelajaran bug 27 Agu)
       return;
     }
     // Yang masih berutang dulu (hitungPiutang sudah mengurutkan), yang lunas tetap
@@ -17082,6 +17289,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         ${IKON_CHEV}
       </button>`;
     }).join('');
+    tampilkanPiutang6a();
   }
 
   function bukaLembarPiutang(i) {
@@ -17810,6 +18018,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const kont = document.getElementById('daftarKasbon');
     if (daftar.length === 0) {
       kont.innerHTML = '<div class="kosong-info"><b>Belum ada kasbon</b><span>Catat lewat formulir di bawah setiap kali ada karyawan mengambil uang.</span></div>';
+      tampilkanPiutang6a();
       return;
     }
     kont.innerHTML = daftar.map((d, i) => {
@@ -17820,6 +18029,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         ${IKON_CHEV}
       </button>`;
     }).join('');
+    tampilkanPiutang6a();
   }
 
   function bukaLembarKasbon(i) {
@@ -20258,6 +20468,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.labaPilihZona = labaPilihZona;
   window.pilihZonaArusKas = pilihZonaArusKas;
   window.gulirKeCocokkanKas = gulirKeCocokkanKas;
+  window.p6PilihBuku = p6PilihBuku;
+  window.p6PilihZona = p6PilihZona;
+  window.p6KirimWa = p6KirimWa;
   window.bukaRiwayatHariPlatina = bukaRiwayatHariPlatina;
   window.tampilkanRiwayat = tampilkanRiwayat;
   window.kosongkanCariRiwayat = kosongkanCariRiwayat;
