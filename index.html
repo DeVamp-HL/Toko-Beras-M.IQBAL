@@ -3625,6 +3625,30 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #labaKaca .lb6-petak100 i.biaya{ background:rgba(211,160,139,.45); }
 #labaKaca .lb6-petak100 i.laba{ background:var(--emas); }
 #labaKaca .lb6-kosong{ font-family:var(--pf-serif); font-style:italic; font-size:11px; color:var(--pf-abu); padding:9px 2px; }
+/* --- KACA EMAS G2: Arus Kas tiga zona --- */
+#akKepala{ margin-bottom:12px; }
+#akKepala #kasSekarangWrap{ background:none; border:none; box-shadow:none; padding:6px 0 0; margin-bottom:0; }
+#akKepala .ak-keping{ display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; }
+#akKepala .keping{ flex:1 1 40%; display:flex; flex-direction:column; gap:1px; padding:7px 10px;
+  border-radius:4px; border:1px solid var(--pf-tepi);
+  background:linear-gradient(168deg,rgba(255,255,255,.05),rgba(255,255,255,.018)); }
+#akKepala .keping i{ font-style:normal; font-size:8.5px; font-weight:700; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--pf-abu); }
+#akKepala .keping b{ font-family:var(--pf-serif); font-weight:600; font-size:14px; color:var(--pf-platina); }
+#akKepala .keping-ket{ flex:1 1 100%; font-family:var(--pf-serif); font-style:italic;
+  font-size:9.5px; color:var(--pf-abu); }
+#akKepala #akKepalaKosong b{ font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--teks); }
+#akKepala #akKepalaKosong p{ margin:4px 0 8px; font-size:11px; color:var(--pf-abu); line-height:1.5; }
+.ak-saklar{ display:flex; gap:7px; margin-bottom:12px; }
+.ak-saklar button{ flex:1; min-height:44px; border-radius:4px; font-size:11px; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--pf-abu); border:1px solid var(--pf-tepi);
+  background:linear-gradient(168deg,rgba(255,255,255,.055),rgba(255,255,255,.02)); }
+@media (max-width:699.98px){
+  .ak-zona:not(.aktif){ display:none; }
+}
+@media (min-width:700px){
+  #akSaklarZona{ display:none; }   /* desktop: ketiga zona tampil semua — gerbang CSS */
+}
 
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
@@ -5177,6 +5201,13 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
 
+    <!-- KACA EMAS G2 (rancangan Arus Kas - Gabungan): SATU kartu kepala dua keadaan
+         (titik belum disetel = "sistem tidak menebaknya"; terisi = angka besar + empat
+         keping kantong SAAT TITIK), lalu tiga zona menurut WAKTU: SEKARANG / BULAN INI /
+         NANTI. Semua kartu lama dipertahankan id & mesinnya - hanya DIPINDAH ke zona.
+         Desktop >=700px: saklar tersembunyi, ketiga zona tampil (gerbang CSS). -->
+    <div class="kg-panel" id="akKepala">
+      <div class="kg-label">Sekarang pegang berapa</div>
     <!-- Uang kas menurut catatan, SEKARANG — bukan per bulan. Baru berarti sesudah
          titik hitung disetel di kartu Cocokkan Kas; sebelum itu sistem jujur bilang
          belum bisa tahu, bukan menebak. -->
@@ -5187,34 +5218,25 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <div class="hero-syarat" id="kasSekarangSyarat"></div>
     </div>
 
-    <label for="arusKasBulan">Bulan</label>
-    <input type="month" id="arusKasBulan" onchange="tampilkanArusKas()">
-
-    <div class="kartu-hero" style="margin-top:12px;">
-      <i class="pf-nafas" aria-hidden="true"></i>
-      <div class="label">Kas bersih bulan ini</div>
-      <div class="hero-nilai" id="arusKasBersih">Rp0</div>
-      <div class="hero-syarat" id="arusKasSyarat"></div>
+      <div class="ak-keping" id="akKantongKeping"></div>
+      <div id="akKepalaKosong" style="display:none;">
+        <b>Belum bisa tahu</b>
+        <p>Titik hitung belum disetel, jadi saldo sebelum itu tidak diketahui. Sistem tidak menebaknya.</p>
+        <button type="button" class="tombol-utama-kartu" onclick="gulirKeCocokkanKas()">Setel titik hitung</button>
+      </div>
     </div>
-
-    <div class="kpi-mini kpi-dua" style="margin-top:10px;">
-      <div class="kartu-mini"><div class="label">Uang masuk</div><div class="nilai" id="arusKasTotalMasuk">Rp0</div></div>
-      <div class="kartu-mini"><div class="label">Uang keluar</div><div class="nilai" id="arusKasTotalKeluar">Rp0</div></div>
+    <div class="ak-saklar" id="akSaklarZona">
+      <button type="button" class="kg-terpilih" data-z="sekarang" onclick="pilihZonaArusKas('sekarang')">Sekarang</button>
+      <button type="button" data-z="bulan" onclick="pilihZonaArusKas('bulan')">Bulan ini</button>
+      <button type="button" data-z="nanti" onclick="pilihZonaArusKas('nanti')">Nanti</button>
     </div>
-
-    <!-- RENCANA KELUAR (hi-fi Arus Kas): pos bulan ini yang BELUM dibayar
-         (biaya + gaji per orang) vs kas sekarang — cukup / kurang berapa. -->
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="akRencanaKartu">
-      <div class="kd-judul"><h3>Rencana keluar bulan ini</h3><span class="kd-hitung" id="akRencanaCukup"></span></div>
-      <div id="akRencanaDaftar"></div>
-    </div>
-
-    <!-- SALDO SEJAK TITIK (hi-fi: saldo kas 30 hari) — garis kecil dari titik kas
-         ke hari ini; sebelum titik saldo tidak diketahui (jujur, tidak menebak). -->
-    <div class="kartu" style="margin-top:12px;" id="akSparkKartu">
-      <div class="panel-kepala"><h2>Saldo kas berjalan</h2><span class="kd-hitung" id="akSparkKet"></span></div>
-      <svg id="akSpark" viewBox="0 0 300 46" preserveAspectRatio="none" aria-hidden="true" style="display:block;width:100%;height:52px;margin-top:8px;"><path fill="none" stroke="#e2cda6" stroke-width="1.4" d=""/></svg>
-      <div class="ak-spark-kaki"><span id="akSparkAwal"></span><span id="akSparkAkhir"></span></div>
+    <div class="ak-zona aktif" id="akZonaSekarang">
+    <!-- NERACA RINGKAS (Modul ERP #3): kaki ketiga akuntansi — posisi kekayaan toko
+         hari ini, dibandingkan saat titik kas terakhir. -->
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Neraca Ringkas <span class="keterangan">kekayaan toko</span></h3></div>
+      <div id="daftarNeraca"></div>
+      <div class="info-box" id="neracaBanding" style="margin:10px 12px 12px;"></div>
     </div>
 
     <!-- KE MANA UANG BULAN INI (13 Agu 2026) — jawaban untuk "kok kas bersih gua
@@ -5238,38 +5260,6 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         <button type="button" class="tombol-utama-kartu" style="flex:1; margin:0;" onclick="catatModalOwner('tarik')">Tarik modal</button>
       </div>
       <p class="keterangan" style="margin-top:8px;">Setor = uang pribadi masuk jadi kas toko. Tarik = kas toko keluar ke kantong pribadi. Dua-duanya menggerakkan kas, tapi tidak pernah menyentuh laba.</p>
-    </div>
-
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="kartuKeMana">
-      <div class="kd-judul"><h3>Ke mana uang bulan ini</h3></div>
-      <div id="daftarKeMana"></div>
-      <div class="info-box" id="keManaVonis" style="margin:10px 12px 12px;"></div>
-    </div>
-
-    <!-- NERACA RINGKAS (Modul ERP #3): kaki ketiga akuntansi — posisi kekayaan toko
-         hari ini, dibandingkan saat titik kas terakhir. -->
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
-      <div class="kd-judul"><h3>Neraca Ringkas <span class="keterangan">kekayaan toko</span></h3></div>
-      <div id="daftarNeraca"></div>
-      <div class="info-box" id="neracaBanding" style="margin:10px 12px 12px;"></div>
-    </div>
-
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
-      <div class="kd-judul"><h3>Uang masuk</h3></div>
-      <div id="daftarArusKasMasuk"></div>
-    </div>
-
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
-      <div class="kd-judul"><h3>Uang keluar</h3></div>
-      <div id="daftarArusKasKeluar"></div>
-    </div>
-
-    <!-- BUKU KAS (12 Agu 2026): pergerakan uang satu per satu, urut tanggal, dengan
-         saldo berjalan — jawaban untuk "pergerakan uang masuk & keluar", bukan cuma
-         total per kategori. Saldo hanya terisi untuk gerakan SESUDAH titik hitung. -->
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
-      <div class="kd-judul"><h3>Buku Kas</h3><span class="kd-hitung" id="bukuKasHitung"></span></div>
-      <div id="daftarBukuKas"></div>
     </div>
 
     <!-- COCOKKAN KAS (12 Agustus 2026) — menjawab "sekarang saya pegang berapa",
@@ -5308,8 +5298,67 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       </div>
     </div>
 
+    </div>
+    <div class="ak-zona" id="akZonaBulan">
+    <label for="arusKasBulan">Bulan</label>
+    <input type="month" id="arusKasBulan" onchange="tampilkanArusKas()">
+
+    <div class="kartu-hero" style="margin-top:12px;">
+      <i class="pf-nafas" aria-hidden="true"></i>
+      <div class="label">Kas bersih bulan ini</div>
+      <div class="hero-nilai" id="arusKasBersih">Rp0</div>
+      <div class="hero-syarat" id="arusKasSyarat"></div>
+    </div>
+
+    <div class="kpi-mini kpi-dua" style="margin-top:10px;">
+      <div class="kartu-mini"><div class="label">Uang masuk</div><div class="nilai" id="arusKasTotalMasuk">Rp0</div></div>
+      <div class="kartu-mini"><div class="label">Uang keluar</div><div class="nilai" id="arusKasTotalKeluar">Rp0</div></div>
+    </div>
+
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="kartuKeMana">
+      <div class="kd-judul"><h3>Ke mana uang bulan ini</h3></div>
+      <div id="daftarKeMana"></div>
+      <div class="info-box" id="keManaVonis" style="margin:10px 12px 12px;"></div>
+    </div>
+
+    <!-- SALDO SEJAK TITIK (hi-fi: saldo kas 30 hari) — garis kecil dari titik kas
+         ke hari ini; sebelum titik saldo tidak diketahui (jujur, tidak menebak). -->
+    <div class="kartu" style="margin-top:12px;" id="akSparkKartu">
+      <div class="panel-kepala"><h2>Saldo kas berjalan</h2><span class="kd-hitung" id="akSparkKet"></span></div>
+      <svg id="akSpark" viewBox="0 0 300 46" preserveAspectRatio="none" aria-hidden="true" style="display:block;width:100%;height:52px;margin-top:8px;"><path fill="none" stroke="#e2cda6" stroke-width="1.4" d=""/></svg>
+      <div class="ak-spark-kaki"><span id="akSparkAwal"></span><span id="akSparkAkhir"></span></div>
+    </div>
+
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Uang masuk</h3></div>
+      <div id="daftarArusKasMasuk"></div>
+    </div>
+
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Uang keluar</h3></div>
+      <div id="daftarArusKasKeluar"></div>
+    </div>
+
+    <!-- BUKU KAS (12 Agu 2026): pergerakan uang satu per satu, urut tanggal, dengan
+         saldo berjalan — jawaban untuk "pergerakan uang masuk & keluar", bukan cuma
+         total per kategori. Saldo hanya terisi untuk gerakan SESUDAH titik hitung. -->
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+      <div class="kd-judul"><h3>Buku Kas</h3><span class="kd-hitung" id="bukuKasHitung"></span></div>
+      <div id="daftarBukuKas"></div>
+    </div>
+
     <div class="info-box" id="arusKasCatatan" style="margin-top:12px;"></div>
 
+    </div>
+    <div class="ak-zona" id="akZonaNanti">
+    <!-- RENCANA KELUAR (hi-fi Arus Kas): pos bulan ini yang BELUM dibayar
+         (biaya + gaji per orang) vs kas sekarang — cukup / kurang berapa. -->
+    <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="akRencanaKartu">
+      <div class="kd-judul"><h3>Rencana keluar bulan ini</h3><span class="kd-hitung" id="akRencanaCukup"></span></div>
+      <div id="akRencanaDaftar"></div>
+    </div>
+
+    </div>
     <!-- Muncul sendiri hanya kalau memang ada catatan lama berejaan usang. -->
     <div class="kartu-peringatan-amber" id="kartuCaraBayarLama" style="display:none; margin-top:12px;">
       <div class="kpa-judul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/></svg><b id="caraBayarLamaJudul"></b></div>
@@ -14411,6 +14460,42 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     </div>`).join('');
   }
 
+  // ===== KACA EMAS G2 — Arus Kas: tiga zona + kepala dua keadaan =====
+  // Zona disimpan di state modul (bukan dibaca dari DOM yang dibangun ulang) supaya
+  // TIDAK reset ke 'sekarang' tiap onSnapshot merender ulang halaman. Semua zona tetap
+  // DIRENDER datanya (Cocokkan Kas mengisi nilai form — dilewati = form kosong dan
+  // simpanTitikKas bisa menyimpan 0); yang berganti hanya kelas tampil.
+  let _akZona = 'sekarang';
+  function pilihZonaArusKas(z) {
+    _akZona = { sekarang: 1, bulan: 1, nanti: 1 }[z] ? z : 'sekarang';
+    terapkanZonaArusKas();
+  }
+  function gulirKeCocokkanKas() {
+    pilihZonaArusKas('sekarang');
+    const el = document.getElementById('kasTitikTanggal');
+    if (el) el.closest('.kartu').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function terapkanZonaArusKas() {
+    document.querySelectorAll('#akSaklarZona button').forEach(b =>
+      b.classList.toggle('kg-terpilih', b.dataset.z === _akZona));
+    [['akZonaSekarang', 'sekarang'], ['akZonaBulan', 'bulan'], ['akZonaNanti', 'nanti']].forEach(x => {
+      const el = document.getElementById(x[0]);
+      if (el) el.classList.toggle('aktif', x[1] === _akZona);
+    });
+    // Kepala dua keadaan: hero lama tetap penulisnya (tampilkanBukuKas men-toggle
+    // #kasSekarangWrap); di sini hanya keadaan kosong + empat keping SAAT TITIK.
+    const t = ambilTitikKas();
+    const kosong = document.getElementById('akKepalaKosong');
+    if (kosong) kosong.style.display = t ? 'none' : 'block';
+    const keping = document.getElementById('akKantongKeping');
+    if (keping) {
+      keping.innerHTML = !t ? '' :
+        [['Laci', t.laci], ['Rekening', t.rekening], ['Amplop', t.amplop], ['Brankas', t.brankas]]
+          .map(x => '<span class="keping"><i>' + x[0] + '</i><b>Rp' + Math.round(x[1] || 0).toLocaleString('id-ID') + '</b></span>').join('')
+        + '<span class="keping-ket">saat titik ' + escapeHtml(formatTanggal(t.tanggal)) + ' — sesudahnya bercampur; pisah per kantong hanya diketahui saat titik</span>';
+    }
+  }
+
   function tampilkanArusKas() {
     tampilkanCaraBayarLama();
     tampilkanCocokKas();
@@ -14432,6 +14517,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     tampilkanRencanaKeluar();
     tampilkanSparkSaldo();
     tampilkanModalOwner();
+    terapkanZonaArusKas();   // KACA EMAS G2: zona bertahan lintas render + kepala 2 keadaan
     pfHitungNaik(PF_ANGKA_ARUSKAS);   // sesudah tampilkanBukuKas: hero "kas sekarang" diisi di sana
 
     // Kredit bulan ini disebut terang-terangan: itu barang yang sudah keluar tapi
@@ -20170,6 +20256,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.ik8PilihKarung = ik8PilihKarung;
   window.labaPilihKeping = labaPilihKeping;
   window.labaPilihZona = labaPilihZona;
+  window.pilihZonaArusKas = pilihZonaArusKas;
+  window.gulirKeCocokkanKas = gulirKeCocokkanKas;
   window.bukaRiwayatHariPlatina = bukaRiwayatHariPlatina;
   window.tampilkanRiwayat = tampilkanRiwayat;
   window.kosongkanCariRiwayat = kosongkanCariRiwayat;
