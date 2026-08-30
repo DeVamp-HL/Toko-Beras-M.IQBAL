@@ -3498,6 +3498,85 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   background:linear-gradient(180deg,rgba(226,205,166,.55),rgba(226,205,166,.18)); }
 #lembarStokMerk .sm-keran span.nol{ background:rgba(255,255,255,.07); }
 #lembarStokMerk .sm-daftar{ margin-top:4px; }
+/* --- KACA EMAS G2: Ringkasan 8a Karung & Jam --- */
+.ikhtisar-6a .ik8-papan{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-top:12px; flex-wrap:wrap; }
+.ikhtisar-6a .ik8-papan-kiri{ flex:1 1 200px; min-width:0; }
+/* Angka kas menyusut mengikuti lebar layar — jangan sampai angka terbesar halaman
+   justru terpotong tepi (kejadian di render pertama 390px). */
+.ikhtisar-6a .ik8-papan .kg-uang-kas{ font-size:clamp(26px, 9.2vw, 38px); margin:2px 0; }
+.ikhtisar-6a .ik8-netto{ text-align:right; flex:0 0 auto; max-width:38%; }
+.ikhtisar-6a .ik8-netto b{ font-family:var(--pf-serif); font-weight:600; font-size:13px; display:block; margin-top:4px; white-space:nowrap; }
+.ikhtisar-6a .ik8-netto b.naik{ color:var(--pf-hijau2); }
+.ikhtisar-6a .ik8-netto b.turun{ color:var(--pf-amber); }
+.ikhtisar-6a .ik8-sela{ margin-top:14px; display:block; }
+.ikhtisar-6a .ik8-ket{ display:block; font-style:italic; font-family:var(--pf-serif); font-size:10px; color:var(--pf-abu); margin:3px 0 7px; }
+.ikhtisar-6a .ik8-karung-wrap{ display:flex; gap:7px; }
+/* Karung sama besar — benda sentuh bukan tanda data; yang beda tinggi ISI-nya. */
+.ikhtisar-6a .ik8-karung{ position:relative; overflow:hidden; flex:1; min-width:44px; height:104px;
+  display:flex; flex-direction:column; justify-content:flex-end; gap:1px; padding:7px 6px;
+  border-radius:4px 4px 7px 7px; text-align:left; color:var(--teks);
+  background:linear-gradient(168deg,rgba(255,255,255,.045),rgba(255,255,255,.015));
+  border:1px solid var(--pf-tepi); border-bottom-color:rgba(0,0,0,.3); cursor:pointer; }
+.ikhtisar-6a .ik8-karung .isi{ position:absolute; left:0; right:0; bottom:0; height:var(--isi,0%);
+  background:linear-gradient(180deg,rgba(226,205,166,.30),rgba(226,205,166,.10)); pointer-events:none; }
+.ikhtisar-6a .ik8-karung.pilih{ border-color:rgba(226,205,166,.65); }
+.ikhtisar-6a .ik8-karung.pilih .isi{ background:linear-gradient(180deg,rgba(247,236,214,.42),rgba(194,166,120,.16)); }
+.ikhtisar-6a .ik8-karung u{ position:relative; text-decoration:none; font-family:ui-monospace,Menlo,monospace; font-size:9px; color:var(--pf-abu); }
+.ikhtisar-6a .ik8-karung b{ position:relative; font-size:10.5px; font-weight:700; }
+.ikhtisar-6a .ik8-karung:disabled{ opacity:.5; cursor:default; }
+.ikhtisar-6a .ik8-kantong{ margin-top:8px; padding:10px 14px; }
+.ikhtisar-6a .ik8-kantong-atas{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.ikhtisar-6a .ik8-kantong-nilai{ font-size:19px; }
+/* Jalannya hari — punggung jam tegak 05-19; simpul per jam; redup = saringan karung. */
+.ikhtisar-6a .ik8-jam-wrap{ position:relative; margin-top:4px; }
+.ikhtisar-6a .ik8-punggung{ position:absolute; top:6px; bottom:6px; left:31px; width:1px;
+  background:linear-gradient(180deg,rgba(226,205,166,.4),rgba(226,205,166,.08)); }
+.ikhtisar-6a .ik8-tick{ position:absolute; left:0; transform:translateY(-50%); }
+.ikhtisar-6a .ik8-tick i{ font-style:normal; font-family:ui-monospace,Menlo,monospace; font-size:8.5px; color:var(--pf-abu); }
+.ikhtisar-6a .ik8-penunjuk{ position:absolute; left:31px; width:0; border-left:1px dashed rgba(226,205,166,.3); }
+.ikhtisar-6a .ik8-simpul{ position:absolute; left:40px; right:0; transform:translateY(-50%);
+  display:flex; align-items:baseline; gap:7px; min-height:28px; padding:0 4px; border-radius:4px;
+  background:none; border:none; text-align:left; color:var(--teks); cursor:pointer;
+  transition:opacity var(--gerak-kecil) var(--kurva-sentuh); }
+.ikhtisar-6a .ik8-simpul .titik{ position:absolute; left:-12px; width:7px; height:7px; border-radius:99px;
+  background:var(--emas); box-shadow:0 0 7px rgba(226,205,166,.5); }
+.ikhtisar-6a .ik8-simpul .jm{ font-family:ui-monospace,Menlo,monospace; font-size:9px; color:var(--pf-abu); flex:0 0 auto; }
+.ikhtisar-6a .ik8-simpul b{ font-family:var(--pf-serif); font-weight:600; font-size:12.5px; }
+.ikhtisar-6a .ik8-simpul b.masuk{ color:var(--pf-hijau2); }
+.ikhtisar-6a .ik8-simpul b.keluar{ color:var(--pf-amber); }
+.ikhtisar-6a .ik8-simpul .cacah{ font-family:var(--pf-serif); font-style:italic; font-size:9px; color:var(--pf-abu); margin-left:auto; }
+.ikhtisar-6a .ik8-simpul.redup{ opacity:.25; }
+.ikhtisar-6a .ik8-tanpa-jam{ border-top:1px dashed rgba(226,205,166,.22); }
+.ikhtisar-6a .ik8-kini{ position:absolute; left:40px; transform:translateY(-50%); display:flex; align-items:center; gap:6px;
+  font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--emas); }
+.ikhtisar-6a .ik8-kini i{ width:7px; height:7px; border-radius:99px; background:var(--emas);
+  box-shadow:0 0 8px rgba(226,205,166,.7); animation:ik6Denyut 2.2s ease-in-out infinite; }
+/* Cukup dipantau: tiga petak; laba = wujud kesimpulan (kecil, tepi putus, ber-rincian) */
+.ikhtisar-6a .ik8-pantau{ display:flex; flex-direction:column; gap:7px; }
+.ikhtisar-6a .ik8-petak-pantau{ position:relative; overflow:hidden; display:flex; flex-direction:column; gap:2px;
+  padding:9px 12px; border-radius:4px; border:1px solid var(--pf-tepi); border-bottom-color:rgba(0,0,0,.28);
+  background:linear-gradient(168deg,rgba(255,255,255,.05),rgba(255,255,255,.018)); }
+.ikhtisar-6a .ik8-pantau-nilai{ font-size:18px; }
+.ikhtisar-6a .ik8-petak-pantau i{ font-style:italic; font-family:var(--pf-serif); font-size:9.5px; color:var(--pf-abu); }
+.ikhtisar-6a #ik8PetakLaba{ border-style:dashed; border-color:rgba(226,205,166,.28); background:none; }
+.ikhtisar-6a #ik8PetakLaba .kg-uang-laba{ border:none; padding:0; }
+.ikhtisar-6a #ik8PetakLaba .ik6-progres{ position:absolute; left:0; bottom:0; height:2px; width:0;
+  background:var(--emas); }
+/* Menuntut tindakan — terpisah dari pantau, bahasa oksida */
+.ikhtisar-6a .ik8-tangani-kepala{ display:flex; align-items:baseline; justify-content:space-between; margin-top:14px; }
+.ikhtisar-6a .ik8-tangani-kepala .oks{ color:var(--pf-amber); }
+.ikhtisar-6a .ik8-tangani-kepala b{ font-family:var(--pf-serif); font-weight:600; font-size:12px; color:var(--pf-amber); }
+.ikhtisar-6a .ik8-tangani{ display:flex; flex-direction:column; gap:7px; margin-top:6px; }
+.ikhtisar-6a .ik8-tangani-baris{ display:flex; align-items:center; gap:9px; min-height:44px; padding:7px 10px;
+  border-radius:4px; border:1px solid rgba(211,160,139,.35);
+  background:linear-gradient(168deg,rgba(217,166,147,.10),rgba(217,166,147,.03)); }
+.ikhtisar-6a .ik8-tangani-baris i{ flex:0 0 3px; align-self:stretch; border-radius:99px; background:var(--pf-amber); }
+.ikhtisar-6a .ik8-tangani-baris span{ flex:1; font-size:11px; line-height:1.4; }
+.ikhtisar-6a .ik8-tangani-baris button{ flex:0 0 auto; min-height:44px; min-width:44px; padding:0 12px;
+  border-radius:4px; font-size:9px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+  background:none; border:1px solid rgba(211,160,139,.5); color:var(--pf-amber); }
+.ikhtisar-6a .ik8-beres{ font-family:var(--pf-serif); font-style:italic; font-size:11px; color:var(--pf-abu);
+  padding:10px 2px; }
 
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
@@ -4239,39 +4318,42 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         </div>
         <span class="ik6-sambung" id="ik6Sambung" title=""><i></i><b>menyambung</b></span>
       </div>
-      <div class="ik6-atas">
-        <button type="button" class="ik6-tabung" id="ik6Tabung" onclick="ik6GantiPatokan()" aria-label="Omzet hari ini dibanding patokan — ketuk untuk ganti patokan">
-          <i class="ik6-tabung-isi" id="ik6TabungIsi" style="height:0;"><b class="ik6-riak"></b></i>
-          <i class="ik6-patokan" id="ik6PatokanTanda" style="display:none;"><u></u><span id="ik6PatokanLabel"></span></i>
-          <i class="ik6-tabung-kilau"></i>
-          <i class="ik6-tabung-ket" id="ik6TabungKet"></i>
-        </button>
-        <div class="ik6-kanan">
-          <div class="ik6-tumpuk" id="ik6Tumpuk"></div>
-          <div class="ik6-titik" id="ik6Titik"></div>
+      <!-- KACA EMAS G2 — 8a "Karung & Jam" (Ringkasan - Arah Desain). Papan kas =
+           angka terbesar (titik + gerakan sesudahnya, "menurut catatan"); EMPAT KARUNG
+           sama besar (benda sentuh bukan tanda data — yang beda tinggi isinya, diukur
+           terhadap kantong terbesar, dari nilai SAAT TITIK); karung dan garis waktu
+           saling bicara lewat sorot/redup kelas CSS SAJA — hasil saringan TIDAK PERNAH
+           dijumlahkan jadi angka. Menggantikan tabung patokan + tumpuk 3 kartu +
+           karusel Denyut (patokan RATA7/TERBAIK & geser-kartu pensiun dari mobile —
+           tidak ada padanannya di 8a; intip laba O1 pindah ke petak PANTAU). -->
+      <div class="kg-panel ik8-papan" id="ik8Papan">
+        <div class="ik8-papan-kiri">
+          <div class="kg-label">Kas &middot; rupiah &middot; menurut catatan</div>
+          <div class="kg-uang-kas" id="ik8Kas">&mdash;</div>
+          <div class="kg-rincian" id="ik8KasKet"></div>
+        </div>
+        <div class="ik8-netto">
+          <div class="kg-label">Netto hari ini</div>
+          <b id="ik8Netto">&mdash;</b>
         </div>
       </div>
+      <div class="kg-label ik8-sela" id="ik8KarungLabel">Empat karung</div>
+      <i class="ik8-ket">ketuk satu karung untuk menyaring jamnya &middot; tinggi = skala akar porsi (karung kecil tetap terbaca); angka %-nya porsi sebenarnya</i>
+      <div class="ik8-karung-wrap" id="ik8KarungWrap"></div>
+      <div class="kg-panel ik8-kantong" id="ik8Kantong">
+        <div class="ik8-kantong-atas"><span class="kg-label" id="ik8KantongNama"></span><b class="kg-uang-dagang ik8-kantong-nilai" id="ik8KantongNilai"></b></div>
+        <i class="ik8-ket" id="ik8KantongKet"></i>
+      </div>
+      <div id="ik8HariWrap">
+        <div class="kg-label ik8-sela">Jalannya hari</div>
+        <i class="ik8-ket" id="ik8SaringKet"></i>
+        <div class="ik8-jam-wrap" id="ik8JamWrap"></div>
+      </div>
+      <div class="kg-label ik8-sela">Cukup dipantau</div>
+      <div class="ik8-pantau" id="ik8Pantau"></div>
+      <div class="ik8-tangani-kepala"><span class="kg-label oks">Menuntut tindakan</span><b id="ik8NTangani"></b></div>
+      <div class="ik8-tangani" id="ik8Tangani"></div>
       <div class="ik6-stok3" id="ik6Stok3"></div>
-      <div id="ik6DenyutWrap" style="display:none;">
-        <div class="ik6-denyut-bar">
-          <span class="ik6-denyut-judul">Denyut</span>
-          <span id="ik6SaringWrap" style="display:flex;gap:9px;"></span>
-          <span class="ik6-geser">geser →</span>
-        </div>
-        <div class="ik6-karusel" id="ik6Karusel"></div>
-        <div class="ik6-grafik">
-          <div class="ik6-grafik-kepala">
-            <span>Masuk <b class="ik6-em">▲</b> keluar <b class="ik6-ok">▼</b> · garis kas · <span id="ik6RentangJam">05–19</span></span>
-            <span id="ik6JamSorot"></span>
-          </div>
-          <div class="ik6-grafik-badan">
-            <div class="ik6-gelembung" id="ik6Gelembung" style="display:none;"></div>
-            <svg viewBox="0 0 300 32" preserveAspectRatio="none" aria-hidden="true"><path id="ik6GarisKas" fill="none" stroke="#e2cda6" stroke-width="1.3" pathLength="1" d=""/></svg>
-            <div class="ik6-garis-nol"></div>
-            <div class="ik6-jam-wrap" id="ik6JamWrap"></div>
-          </div>
-        </div>
-      </div>
       <div class="ik6-kosong" id="ik6Kosong" style="display:none;"></div>
     </div>
 
@@ -19883,10 +19965,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // yang lama terlalu rakus: selama bilah urungkan tampil (5 dtk), mutasi kelas apa
   // pun ikut mereset, dan keranjang BERIKUTNYA yang sedang disusun buru-buru lenyap.
   // (Tertangkap saat uji beruntun G4.)
-  window.ik6PilihKartu = ik6PilihKartu;
-  window.ik6GantiPatokan = ik6GantiPatokan;
-  window.ik6SaringDenyut = ik6SaringDenyut;
-  window.ik6PilihJam = ik6PilihJam;
+  window.ik8PilihKarung = ik8PilihKarung;
   window.bukaRiwayatHariPlatina = bukaRiwayatHariPlatina;
   window.tampilkanRiwayat = tampilkanRiwayat;
   window.kosongkanCariRiwayat = kosongkanCariRiwayat;
@@ -20033,7 +20112,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // ============ IKHTISAR 6a — tabung, tumpuk kartu, Denyut, grafik jam ============
   // MURNI PEMBACA: semua angka dari fungsi hitung lama (ambilPenjualan,
   // daftarGerakanKas, hitungStok*, ambilTitikKas). Tidak ada rumus uang baru.
-  let _ik6Perhatian = [], _ik6Kartu = 0, _ik6Saring = 'semua', _ik6PatokanMode = 'rata7', _ik6JamPilih = null;
+  let _ik6Perhatian = [], _ik8Karung = 'laci';
   let _ik6LabaSampai = 0, _ik6TahanTimer = null, _ik6TahanMulai = 0, _ik6MaskTimer = null;
   const IK6_JAM_A = 5, IK6_JAM_B = 19;   // jam toko (JAM_BUKA_SISTEM..JAM_TUTUP_SISTEM)
   function ik6Rp(n) { return (n < 0 ? '\u2212' : '') + 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID'); }
@@ -20056,7 +20135,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       const salam = jamKini < 11 ? 'Selamat pagi' : jamKini < 15 ? 'Selamat siang' : jamKini < 19 ? 'Selamat sore' : 'Selamat malam';
       document.getElementById('ik6Salam').textContent = salam + ', Iqbal';
       document.getElementById('ik6Sub').textContent =
-        NAMA_HARI[kini.getDay()] + ', ' + kini.getDate() + ' ' + BULAN_SINGKAT[kini.getMonth()] + ' \u00b7 buka 05\u201319';
+        NAMA_HARI[kini.getDay()] + ', ' + kini.getDate() + ' ' + BULAN_SINGKAT[kini.getMonth()] + ' · buka 05–19';
 
       const hariIniIso = tanggalLokalIso();
       const semua = ambilPenjualan();
@@ -20067,99 +20146,179 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         if (x.hppTotalSaatJual > 0) margin += (x.hargaTotal || 0) - x.hppTotalSaatJual;
         else { bolong++; omzetBolong += (x.hargaTotal || 0); }
       });
-
-      // ----- patokan tabung: rata 7 hari sebelumnya (PT1) <-> hari terbaik 30h; ketuk berganti -----
-      const perHari = {};
-      semua.forEach(x => { if (x.tanggal && x.tanggal < hariIniIso) perHari[x.tanggal] = (perHari[x.tanggal] || 0) + (x.hargaTotal || 0); });
-      let jum7 = 0;
-      for (let i = 1; i <= 7; i++) {
-        const d = new Date(kini); d.setDate(d.getDate() - i);
-        jum7 += perHari[tanggalLokalIso(d)] || 0;
-      }
-      const rata7 = jum7 > 0 ? jum7 / 7 : null;
-      let terbaik = null;
-      for (let i = 1; i <= 30; i++) {
-        const d = new Date(kini); d.setDate(d.getDate() - i);
-        const v = perHari[tanggalLokalIso(d)] || 0;
-        if (v > 0 && (terbaik === null || v > terbaik)) terbaik = v;
-      }
-      if (_ik6PatokanMode === 'terbaik' && terbaik === null) _ik6PatokanMode = 'rata7';
-      const patokan = _ik6PatokanMode === 'rata7' ? rata7 : terbaik;
-      const labelPatokan = _ik6PatokanMode === 'rata7' ? 'RATA 7H' : 'TERBAIK';
-      const isiEl = document.getElementById('ik6TabungIsi');
-      const tandaEl = document.getElementById('ik6PatokanTanda');
-      const GARIS = 34;                                    // garis patokan: 34% dari puncak tabung
-      if (patokan) {
-        const rasio = omzet / patokan;
-        isiEl.style.height = Math.min(96, rasio * (100 - GARIS)).toFixed(1) + '%';
-        tandaEl.style.display = 'flex';
-        tandaEl.style.top = 'calc(' + GARIS + '% - 1px)';
-        document.getElementById('ik6PatokanLabel').textContent = labelPatokan + ' '
-          + singkatJuta(Math.round(patokan)) + (patokan >= 1000000 ? ' jt' : '');
-        document.getElementById('ik6TabungKet').textContent = Math.round(rasio * 100) + '% patokan';
-      } else {
-        isiEl.style.height = omzet > 0 ? '20%' : '0';
-        tandaEl.style.display = 'none';
-        document.getElementById('ik6TabungKet').textContent = omzet > 0 ? 'belum ada patokan' : '';
-      }
-
-      // ----- tumpuk 3 kartu: Omzet / Laba (O1: tahan 2 dtk utk intip) / Kas -----
       const kas = ik6KasSekarang();
       const gerakan = daftarGerakanKas().filter(r => r.t === hariIniIso);
       const masukHariIni = gerakan.reduce((a, r) => a + r.masuk, 0);
       const keluarHariIni = gerakan.reduce((a, r) => a + r.keluar, 0);
-      const labaTerbuka = Date.now() < _ik6LabaSampai;
-      const vsPatokan = patokan ? (omzet >= patokan ? '+' : '\u2212') + Math.abs(Math.round((omzet / patokan - 1) * 100)) + '%' : '\u2014';
-      const kartu = [
-        { label: 'Omzet hari ini', id: 'ik6aOmzet', nilai: ik6Rp(omzet), emas: true,
-          ket: trxHariIni.length + ' transaksi' + (bolong ? ' \u00b7 ' + bolong + ' tanpa HPP' : ''),
-          stat: [{ l: 'Patokan', v: patokan ? ik6Rp(Math.round(patokan)) : '\u2014' }, { l: 'VS patokan', v: vsPatokan }] },
-        { label: 'Laba hari ini', id: 'ik6aLaba', kunci: true,
-          nilai: labaTerbuka ? ik6Rp(margin) : 'Rp \u2022\u2022\u2022\u2022\u2022\u2022', emas: labaTerbuka,
-          ket: labaTerbuka
-            ? (bolong ? bolong + ' trx ber-HPP bolong tidak ikut dihitung (' + ik6Rp(omzetBolong) + ')' : 'semua HPP hari ini tercatat')
-            : 'tahan kartu 2 detik untuk melihat',
-          stat: labaTerbuka
-            ? [{ l: 'Margin', v: (omzet - omzetBolong) > 0 ? (margin / (omzet - omzetBolong) * 100).toFixed(1).replace('.', ',') + '%' : '\u2014' },
-               { l: 'Tanpa HPP', v: bolong ? ik6Rp(omzetBolong) : 'Rp0' }]
-            : [{ l: 'Margin', v: '\u2022\u2022' }, { l: 'Tanpa HPP', v: '\u2022\u2022' }] },
-        { label: 'Kas di tangan', id: 'ik6aKas', nilai: kas === null ? '\u2014' : ik6Rp(kas), emas: kas !== null,
-          ket: kas === null ? 'titik kas belum disetel \u2014 isi lewat Arus Kas' : 'laci + rekening menurut catatan',
-          stat: [{ l: 'Masuk hari ini', v: ik6Rp(masukHariIni) }, { l: 'Keluar hari ini', v: ik6Rp(keluarHariIni) }] }
-      ];
-      const posisi = i => (i - _ik6Kartu + 3) % 3;
-      document.getElementById('ik6Tumpuk').innerHTML = kartu.map((k, i) => {
-        const pos = posisi(i);
-        const gaya = pos === 0 ? 'transform:none;opacity:1;z-index:3;'
-          : pos === 1 ? 'transform:translateY(9px) scale(.955);opacity:.5;z-index:2;'
-          : 'transform:translateY(17px) scale(.91);opacity:.22;z-index:1;';
-        return '<div class="ik6-kartu" data-kartu="' + i + '" style="' + gaya + '" onclick="ik6PilihKartu()">'
-          + '<span class="kilau"></span>'
-          + '<div class="ik6-kartu-label"><span>' + k.label + '</span>' + (k.kunci ? '<span>' + (labaTerbuka ? '\ud83d\udd13' : '\ud83d\udd12') + '</span>' : '') + '</div>'
-          + '<div class="ik6-kartu-nilai' + (k.emas ? ' emas' : '') + '" id="' + k.id + '">' + k.nilai + '</div>'
-          + '<div class="ik6-kartu-ket">' + k.ket + '</div>'
-          + '<div class="ik6-kartu-stat">' + k.stat.map(x => '<div><i>' + x.l + '</i><b>' + x.v + '</b></div>').join('') + '</div>'
-          + (k.kunci ? '<span class="ik6-progres" id="ik6Progres"></span>' : '')
-          + '</div>';
+
+      // ----- papan kas: angka terbesar, "menurut catatan" (titik + gerakan sesudahnya) -----
+      document.getElementById('ik8Kas').textContent = kas === null ? '—' : ik6Rp(kas);
+      document.getElementById('ik8KasKet').textContent = kas === null
+        ? 'titik kas belum disetel — isi lewat Arus Kas'
+        : 'empat kantong + gerakan sesudah titik · kredit tidak dihitung';
+      const netto = masukHariIni - keluarHariIni;
+      const elNetto = document.getElementById('ik8Netto');
+      elNetto.textContent = (netto >= 0 ? '+' : '−') + 'Rp' + Math.abs(Math.round(netto)).toLocaleString('id-ID');
+      elNetto.className = netto >= 0 ? 'naik' : 'turun';
+
+      // ----- empat karung: nilai SAAT TITIK ("menurut hitungan {tanggal}") -----
+      // Tinggi isi & label persen dari VARIABEL YANG SAMA; karung sama besar.
+      const t = ambilTitikKas();
+      const K_NAMA = { laci: 'Laci', rekening: 'Rekening', amplop: 'Amplop', brankas: 'Brankas' };
+      const K_KET = {
+        laci: 'Uang jualan yang belum disetor — tunai keluar-masuk lewat sini.',
+        rekening: 'Hasil QRIS dan transfer. Cocokkan dengan mutasi bank.',
+        amplop: 'Disisihkan tiap malam di langkah 1 Tutup Hari — diisi saat Tutup Hari.',
+        brankas: 'Disimpan di luar laci. Jarang bergerak.'
+      };
+      document.getElementById('ik8KarungLabel').textContent = t
+        ? 'Empat karung · menurut hitungan ' + formatTanggal(t.tanggal)
+        : 'Empat karung · titik kas belum disetel';
+      const nilaiK = { laci: t ? (t.laci || 0) : 0, rekening: t ? (t.rekening || 0) : 0,
+        amplop: t ? (t.amplop || 0) : 0, brankas: t ? (t.brankas || 0) : 0 };
+      const maksK = Math.max(1, nilaiK.laci, nilaiK.rekening, nilaiK.amplop, nilaiK.brankas);
+      // PEMERIKSAAN RENDER PERTAMA (prompt pemilik): kas nyata timpang — brankas 89-100%,
+      // tiga karung lain rata tanah. Dasar ukur diganti SKALA AKAR: tinggi = akar(porsi),
+      // label % tetap porsi sebenarnya, dan keterangan di atas menyatakannya. SATU
+      // variabel (porsi) menggerakkan keduanya. Dasar "kebiasaan karung sendiri" dicoba
+      // di atas kertas dan ditolak: brankas baru 3 malam, maks laci tercemar malam-malam
+      // awal 50 jt — kebiasaannya belum ada.
+      document.getElementById('ik8KarungWrap').innerHTML = ['laci', 'rekening', 'amplop', 'brankas'].map(k => {
+        const porsi = nilaiK[k] / maksK;
+        const isi = Math.max(4, Math.round(Math.sqrt(porsi) * 100));
+        const pct = t ? Math.round(porsi * 100) + '%' : '—';
+        return '<button type="button" class="ik8-karung' + (k === _ik8Karung ? ' pilih' : '') + '" data-k="' + k + '"'
+          + (t ? '' : ' disabled') + ' onclick="ik8PilihKarung(\'' + k + '\')">'
+          + '<span class="isi" style="--isi:' + (t ? isi : 0) + '%;" aria-hidden="true"></span>'
+          + '<u>' + pct + '</u><b>' + K_NAMA[k] + '</b></button>';
       }).join('');
-      document.getElementById('ik6Titik').innerHTML =
-        kartu.map((k, i) => '<i class="' + (posisi(i) === 0 ? 'aktif' : '') + '"></i>').join('');
-      // O1: tahan kartu laba 2 dtk -> terbuka 45 dtk. Halaman uang penuh tetap PIN.
-      const kartuLaba = document.querySelector('#ik6Tumpuk [data-kartu="1"]');
-      if (kartuLaba && !labaTerbuka) {
-        kartuLaba.addEventListener('pointerdown', ik6TahanLabaMulai);
-        kartuLaba.addEventListener('pointerup', ik6TahanLabaBatal);
-        kartuLaba.addEventListener('pointerleave', ik6TahanLabaBatal);
+      const elKN = document.getElementById('ik8KantongNama');
+      const elKV = document.getElementById('ik8KantongNilai');
+      const elKK = document.getElementById('ik8KantongKet');
+      if (t) {
+        elKN.textContent = K_NAMA[_ik8Karung];
+        elKV.textContent = ik6Rp(nilaiK[_ik8Karung]);
+        elKK.textContent = K_KET[_ik8Karung] + ' · menurut hitungan ' + formatTanggal(t.tanggal);
+      } else {
+        elKN.textContent = 'Titik kas';
+        elKV.textContent = '—';
+        elKK.textContent = 'Titik kas belum disetel — isi lewat kartu Cocokkan Kas di Arus Kas.';
       }
 
-      // ----- trio stok -----
+      // ----- Jalannya hari: kejadian duduk pada jamnya, DIKELOMPOKKAN PER JAM -----
+      // 63–79 trx/hari — 70 titik di satu garis tak terbaca (pemeriksaan render pertama
+      // yang diminta prompt): satu baris per jam, cacah kejadian ikut ditulis.
+      // Atribusi kantong untuk saringan: keluar / masuk-tunai -> laci; label '· QRIS'
+      // -> rekening; amplop & brankas tidak pernah punya kejadian per jam (jujur).
+      const adaIsi = trxHariIni.length > 0 || gerakan.length > 0;
+      document.getElementById('ik8HariWrap').style.display = adaIsi ? 'block' : 'none';
+      if (adaIsi) {
+        const nJam = IK6_JAM_B - IK6_JAM_A + 1;
+        const ember = {};
+        let tanpaJam = null;
+        gerakan.forEach(r => {
+          let h = r.jam ? parseInt(r.jam.slice(0, 2), 10) : NaN;
+          let kunci;
+          if (isNaN(h)) { kunci = 'tanpa'; }
+          else { h = Math.min(IK6_JAM_B, Math.max(IK6_JAM_A, h)); kunci = h; }
+          const e = (kunci === 'tanpa')
+            ? (tanpaJam = tanpaJam || { masuk: 0, keluar: 0, n: 0, kantong: {} })
+            : (ember[kunci] = ember[kunci] || { masuk: 0, keluar: 0, n: 0, kantong: {} });
+          e.n++;
+          if (r.keluar > 0) { e.keluar += r.keluar; e.kantong.laci = 1; }
+          if (r.masuk > 0) {
+            e.masuk += r.masuk;
+            if ((r.label || '').indexOf('· QRIS') >= 0) e.kantong.rekening = 1; else e.kantong.laci = 1;
+          }
+        });
+        const jamAda = Object.keys(ember).map(Number).sort((a, b) => a - b);
+        const TINGGI = Math.max(300, jamAda.length * 34 + (tanpaJam ? 40 : 0) + 56);
+        const posJam = h => (h - IK6_JAM_A + 0.5) / nJam * (TINGGI - 40) + 8;
+        // sapuan anti-tindih: baris & penanda Sekarang memakai daftar sapuan yang SAMA
+        const baris = jamAda.map(h => ({ jenis: 'jam', h, benar: posJam(h), e: ember[h] }));
+        const jamDesimal = jamKini + kini.getMinutes() / 60;
+        if (jamDesimal >= IK6_JAM_A && jamDesimal <= IK6_JAM_B + 1)
+          baris.push({ jenis: 'kini', benar: posJam(Math.min(IK6_JAM_B + 0.49, jamDesimal)) });
+        baris.sort((a, b) => a.benar - b.benar);
+        let prev = -99;
+        baris.forEach(b => { b.pos = Math.max(b.benar, prev + 32); prev = b.pos; });
+        const rp6 = n => singkatJuta(Math.round(n)) + (n >= 1000000 ? ' jt' : '');
+        let html = '<span class="ik8-punggung" aria-hidden="true"></span>';
+        for (let h = IK6_JAM_A; h <= IK6_JAM_B; h += 2)
+          html += '<span class="ik8-tick" style="top:' + posJam(h) + 'px;"><i>' + String(h).padStart(2, '0') + '</i></span>';
+        baris.forEach(b => {
+          if (b.jenis === 'kini') {
+            html += '<span class="ik8-kini" style="top:' + b.pos + 'px;"><i></i>Sekarang</span>';
+            return;
+          }
+          const kant = Object.keys(b.e.kantong).join(' ');
+          const geser = Math.abs(b.pos - b.benar) > 3;
+          if (geser) html += '<span class="ik8-penunjuk" style="top:' + Math.min(b.pos, b.benar) + 'px;height:' + Math.abs(b.pos - b.benar) + 'px;" aria-hidden="true"></span>';
+          html += '<button type="button" class="ik8-simpul" data-kantong="' + kant + '" style="top:' + b.pos + 'px;"'
+            + ' onclick="ik8PilihKarung(\'' + (b.e.kantong.rekening && !b.e.kantong.laci ? 'rekening' : 'laci') + '\')">'
+            + '<i class="titik" style="top:' + (b.benar - b.pos) + 'px;"></i>'
+            + '<span class="jm">' + String(b.h).padStart(2, '0') + ':00</span>'
+            + (b.e.masuk > 0 ? '<b class="masuk">+' + rp6(b.e.masuk) + '</b>' : '')
+            + (b.e.keluar > 0 ? '<b class="keluar">−' + rp6(b.e.keluar) + '</b>' : '')
+            + '<span class="cacah">' + b.e.n + ' kejadian</span></button>';
+        });
+        if (tanpaJam) {
+          html += '<div class="ik8-simpul ik8-tanpa-jam" data-kantong="' + Object.keys(tanpaJam.kantong).join(' ') + '" style="top:' + (TINGGI - 28) + 'px;">'
+            + '<span class="jm">Tanpa jam</span>'
+            + (tanpaJam.masuk > 0 ? '<b class="masuk">+' + rp6(tanpaJam.masuk) + '</b>' : '')
+            + (tanpaJam.keluar > 0 ? '<b class="keluar">−' + rp6(tanpaJam.keluar) + '</b>' : '')
+            + '<span class="cacah">' + tanpaJam.n + ' kejadian</span></div>';
+        }
+        const jw = document.getElementById('ik8JamWrap');
+        jw.style.height = TINGGI + 'px';
+        jw.innerHTML = html;
+        ik8TerapkanSaring();
+      }
+
+      // ----- CUKUP DIPANTAU: omzet & margin (dagang) + laba bersih (turunan, O1) -----
+      const labaTerbuka = Date.now() < _ik6LabaSampai;
+      const L = hitungLabaBersihRentang(hariIniIso, hariIniIso);
+      const pctMargin = (omzet - omzetBolong) > 0 ? (margin / (omzet - omzetBolong) * 100).toFixed(1).replace('.', ',') + '%' : '—';
+      document.getElementById('ik8Pantau').innerHTML =
+        '<div class="ik8-petak-pantau"><span class="kg-label">Omzet · hari ini</span>'
+        + '<b class="kg-uang-dagang ik8-pantau-nilai" id="ik8Omzet">' + ik6Rp(omzet) + '</b>'
+        + '<i>' + trxHariIni.length + ' transaksi' + (bolong ? ' · ' + bolong + ' tanpa HPP' : '') + '</i></div>'
+        + '<div class="ik8-petak-pantau"><span class="kg-label">Margin kotor · ' + pctMargin + '</span>'
+        + '<b class="kg-uang-dagang ik8-pantau-nilai" id="ik8Margin">' + ik6Rp(margin) + '</b>'
+        + '<i>omzet ber-HPP − harga pokok</i></div>'
+        + '<div class="ik8-petak-pantau" id="ik8PetakLaba"><span class="kg-label">Laba bersih · turunan</span>'
+        + '<b class="kg-uang-laba" id="ik8Laba">' + (labaTerbuka ? ik6Rp(L.labaBersih) : 'Rp ••••••') + '</b>'
+        + '<span class="kg-rincian">' + (labaTerbuka
+            ? 'margin ' + ik6Rp(L.margin) + ' − biaya toko ' + ik6Rp(L.biayaToko)
+              + (L.hapusBuku ? ' − hapus buku ' + ik6Rp(L.hapusBuku) : '')
+              + (L.susutStok ? ' ± susut ' + ik6Rp(L.susutStok) : '')
+            : 'tahan 2 detik untuk melihat · sudah dipotong jatah biaya & susut') + '</span>'
+        + '<span class="ik6-progres" id="ik6Progres"></span></div>';
+      const petakLaba = document.getElementById('ik8PetakLaba');
+      if (petakLaba && !labaTerbuka) {
+        petakLaba.addEventListener('pointerdown', ik6TahanLabaMulai);
+        petakLaba.addEventListener('pointerup', ik6TahanLabaBatal);
+        petakLaba.addEventListener('pointerleave', ik6TahanLabaBatal);
+      }
+
+      // ----- MENUNTUT TINDAKAN: terpisah dari PANTAU; cacah dari daftar yang dibangun -----
+      const nPerhatian = _ik6Perhatian.length;
+      document.getElementById('ik8NTangani').textContent = nPerhatian ? nPerhatian + ' hal' : '';
+      document.getElementById('ik8Tangani').innerHTML = nPerhatian === 0
+        ? '<div class="ik8-beres">Semua karung beres — tidak ada yang menggantung.</div>'
+        : _ik6Perhatian.map(x =>
+            '<div class="ik8-tangani-baris"><i aria-hidden="true"></i>'
+            + '<span>' + x.t + '</span>'
+            + '<button type="button" onclick="' + (x.k || ("pindahDariMenu('" + x.h + "')")).replace(/"/g, '&quot;') + '">'
+            + escapeHtml(x.a || 'Buka') + '</button></div>').join('');
+
+      // ----- trio stok (dipertahankan) -----
       const sk = hitungStokKarungPerMerk();
       const totalKg = Object.keys(sk).reduce((a, m) => a + Math.max(0, sk[m].sisaKg || 0), 0);
       const skm = hitungStokKemasan();
       const totalUnit = Object.keys(skm).reduce((a, k) => a + Math.max(0, skm[k].sisaUnit || 0), 0);
       const sbk = hitungStokBahanKemasan();
       const totalKantong = Object.keys(sbk).reduce((a, k) => a + Math.max(0, (sbk[k].sisa != null ? sbk[k].sisa : sbk[k].sisaUnit) || 0), 0);
-      // Ambang menipis = persis aturan Perlu Perhatian (satu sumber aturan)
       const nKemTipis = Object.keys(skm).filter(k => skm[k].sisaUnit > 0 && skm[k].sisaUnit < 5).length;
       const nMerkTipis = Object.keys(sk).filter(m => sk[m].sisaKg > 0 && sk[m].sisaKg < 50).length;
       document.getElementById('ik6Stok3').innerHTML = [
@@ -20168,165 +20327,57 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         { n: 'Kantong', v: totalKantong.toLocaleString('id-ID'), k: 'plastik kosong' }
       ].map(x => '<button type="button" class="' + (x.tipis ? 'tipis' : '') + '" onclick="pindahDariMenu(\'stok\')"><i>' + x.n + '</i><b>' + x.v + '</b><span>' + x.k + '</span></button>').join('');
 
-      // ----- Denyut: peringatan (oksida, terdepan) + kejadian uang hari ini -----
-      const item = [];
-      _ik6Perhatian.forEach(x => item.push({ jenis: 'perhatian', jam: '\u26a0 perhatian', judul: x.t, ket: 'ketuk untuk membereskan',
-        aksi: x.k || ("pindahDariMenu('" + x.h + "')") }));
-      trxHariIni.slice().sort((a, b) => (b.jam || '').localeCompare(a.jam || '')).forEach(x =>
-        item.push({ jenis: 'jual', jam: x.jam || '\u2014', nilai: '+' + ik6Rp(x.hargaTotal || 0),
-          judul: namaSingkatTrx(x), ket: (x.caraBayar || '') + (x.namaPelanggan ? ' \u00b7 ' + x.namaPelanggan : ''),
-          aksi: 'bukaLembarTrx(' + JSON.stringify(String(x.id)) + ')' }));
-      // Kas di Denyut: penjualan TIDAK diulang (sudah jadi kartu Jual) — yang tampil
-      // hanya uang KELUAR dan masuk non-penjualan (pelunasan piutang, kasbon kembali).
-      gerakan.forEach(r => {
-        if (r.keluar > 0) item.push({ jenis: 'kas', jam: r.jam || '\u2014', keluar: true,
-          nilai: '\u2212' + ik6Rp(r.keluar), judul: r.label, ket: 'uang keluar', aksi: "pindahDariMenu('aruskas')" });
-        else if (r.masuk > 0 && ((r.label || '').indexOf('Pelunasan') === 0 || (r.label || '').indexOf('Kasbon kembali') === 0))
-          item.push({ jenis: 'kas', jam: r.jam || '\u2014',
-            nilai: '+' + ik6Rp(r.masuk), judul: r.label, ket: 'uang masuk', aksi: "pindahDariMenu('aruskas')" });
-      });
-      const adaIsi = trxHariIni.length > 0 || gerakan.length > 0;
-      const nPerhatian = _ik6Perhatian.length;
-      document.getElementById('ik6DenyutWrap').style.display = adaIsi ? 'block' : 'none';
+      // ----- keadaan kosong (belum ada transaksi & gerakan) -----
       const kosongEl = document.getElementById('ik6Kosong');
       kosongEl.style.display = adaIsi ? 'none' : 'flex';
       if (!adaIsi) {
         kosongEl.innerHTML = '<span class="tanda">+</span><h4>Belum ada transaksi hari ini</h4><p>'
           + (kas !== null ? 'Kas menurut catatan ' + ik6Rp(kas) + '. ' : '')
-          + 'Tekan tombol emas di bawah untuk mencatat penjualan pertama \u2014 tabung, Denyut, dan grafik akan terisi sendiri.</p>'
-          + (nPerhatian ? '<p style="color:#d3a08b;">\u26a0 ' + nPerhatian + ' hal menunggu perhatian \u2014 lihat kartu Denyut begitu ada transaksi, atau buka lewat Menu.</p>' : '');
+          + 'Tekan tombol emas di bawah untuk mencatat penjualan pertama — papan, karung, dan jamnya akan terisi sendiri.</p>';
       }
-      if (adaIsi) {
-        const saringDaftar = [
-          { k: 'semua', n: 'Semua' }, { k: 'jual', n: 'Jual' }, { k: 'kas', n: 'Kas' }
-        ];
-        if (nPerhatian) saringDaftar.push({ k: 'perhatian', n: '\u26a0 ' + nPerhatian, oksida: true });
-        if (_ik6Saring === 'perhatian' && !nPerhatian) _ik6Saring = 'semua';
-        document.getElementById('ik6SaringWrap').innerHTML = saringDaftar.map(x =>
-          '<button type="button" class="ik6-saring' + (x.oksida ? ' oksida' : '') + (_ik6Saring === x.k ? ' aktif' : '')
-          + '" onclick="ik6SaringDenyut(\'' + x.k + '\')">' + x.n + '</button>').join('');
-        const tampil = item.filter(x => _ik6Saring === 'semua' || x.jenis === _ik6Saring
-          || (_ik6Saring === 'kas' && x.jenis === 'kas') || (_ik6Saring === 'jual' && x.jenis === 'jual'));
-        document.getElementById('ik6Karusel').innerHTML = tampil.slice(0, 24).map((x, i) =>
-          '<button type="button" class="ik6-kartu-denyut' + (x.jenis === 'perhatian' ? ' oksida' : '') + '" style="animation-delay:' + Math.min(i * 60, 360) + 'ms;" onclick="' + x.aksi.replace(/"/g, '&quot;') + '">'
-          + '<span class="kilau" style="animation-delay:' + (i * 800) + 'ms;"></span>'
-          + '<span class="jam">' + x.jam + '</span>'
-          + (x.nilai ? '<span class="nilai' + (x.keluar ? ' keluar' : '') + '" style="display:block;">' + x.nilai + '</span>' : '')
-          + '<span class="judul" style="display:block;">' + escapeHtml(x.judul || '') + '</span>'
-          + '<span class="ket" style="display:block;">' + escapeHtml(x.ket || '') + '</span></button>').join('')
-          || '<div class="kosong-info" style="flex:none;width:100%;"><b>Tidak ada di saringan ini</b></div>';
-
-        // ----- grafik per jam 05-19 + garis kas berjalan -----
-        const nJam = IK6_JAM_B - IK6_JAM_A + 1;
-        const jm = Array.from({ length: nJam }, () => ({ masuk: 0, keluar: 0 }));
-        gerakan.forEach(r => {
-          const h = r.jam ? parseInt(r.jam.slice(0, 2), 10) : NaN;
-          if (!isNaN(h) && h >= IK6_JAM_A && h <= IK6_JAM_B) { jm[h - IK6_JAM_A].masuk += r.masuk; jm[h - IK6_JAM_A].keluar += r.keluar; }
-        });
-        const maksJam = Math.max(1, ...jm.map(x => Math.max(x.masuk, x.keluar)));
-        _ik6JamData = jm;                       // utk tahan-geser (scrub) tanpa render ulang
-        const sorot = _ik6JamPilih !== null ? _ik6JamPilih
-          : Math.min(nJam - 1, Math.max(0, jamKini - IK6_JAM_A));
-        document.getElementById('ik6JamSorot').textContent =
-          String(IK6_JAM_A + sorot).padStart(2, '0') + ':00';
-        document.getElementById('ik6JamWrap').innerHTML = jm.map((x, i) =>
-          '<button type="button" class="' + (i === sorot ? 'sorot' : '') + '" onclick="ik6PilihJam(' + i + ')">'
-          + '<span class="ik6-jam-atas"><i style="height:' + Math.round(x.masuk / maksJam * 30) + 'px;animation-delay:' + i * 30 + 'ms;"></i></span>'
-          + '<span class="ik6-jam-bawah"><i style="height:' + Math.round(x.keluar / maksJam * 11) + 'px;animation-delay:' + i * 30 + 'ms;"></i></span>'
-          + '<span>' + String(IK6_JAM_A + i).padStart(2, '0') + '</span></button>').join('');
-        // garis kas kumulatif dalam pita 0-30 (skala relatif rentang hari ini)
-        let saldoJalan = 0; const titikKas = [];
-        jm.forEach(x => { saldoJalan += x.masuk - x.keluar; titikKas.push(saldoJalan); });
-        const minK = Math.min(0, ...titikKas), maksK = Math.max(1, ...titikKas);
-        const seg = 300 / (nJam - 1);
-        const dKas = titikKas.map((v, i) =>
-          (i === 0 ? 'M' : 'L') + (i * seg).toFixed(1) + ' ' + (30 - (v - minK) / (maksK - minK) * 28).toFixed(1)).join(' ');
-        document.getElementById('ik6GarisKas').setAttribute('d', dKas);
-        // gelembung jam terpilih (ketukan pemilik)
-        const gel = document.getElementById('ik6Gelembung');
-        if (_ik6JamPilih !== null) {
-          const x = jm[_ik6JamPilih];
-          gel.style.display = 'block';
-          gel.style.left = ((_ik6JamPilih + 0.5) / nJam * 100) + '%';
-          gel.innerHTML = '<b>' + String(IK6_JAM_A + _ik6JamPilih).padStart(2, '0') + ':00</b>'
-            + '<span class="gm">+' + singkatJuta(x.masuk) + (x.masuk >= 1000000 ? ' jt' : '') + '</span>'
-            + (x.keluar > 0 ? '<span class="gk">\u2212' + singkatJuta(x.keluar) + (x.keluar >= 1000000 ? ' jt' : '') + '</span>' : '');
-        } else gel.style.display = 'none';
-      }
-      pfHitungNaik(['ik6aOmzet', 'ik6aKas'].concat(labaTerbuka ? ['ik6aLaba'] : []));
-      ik6PasangGestur();
+      pfHitungNaik(['ik8Kas', 'ik8Omzet', 'ik8Margin'].concat(labaTerbuka ? ['ik8Laba'] : []));
     } catch (e) { /* pembaca murni — tidak boleh mengganggu sistem */ }
   }
 
-  // ---------- gestur prototipe: geser kartu tumpuk + tahan-geser grafik jam ----------
-  let _ik6JamData = null, _ik6SwipeTelanClick = false;
-  function ik6PasangGestur() {
-    const tumpuk = document.getElementById('ik6Tumpuk');
-    if (tumpuk && !tumpuk._gestur) {
-      tumpuk._gestur = true;
-      let x0 = null, geser = 0;
-      tumpuk.addEventListener('pointerdown', e => { x0 = e.clientX; geser = 0; });
-      tumpuk.addEventListener('pointermove', e => {
-        if (x0 === null) return;
-        geser = e.clientX - x0;
-        if (Math.abs(geser) > 8) ik6TahanLabaBatal();     // mulai geser = batal tahan-intip
-        const depan = [...tumpuk.children].find(k => k.style.zIndex === '3');
-        if (depan && Math.abs(geser) > 4) {
-          depan.style.transition = 'none';
-          depan.style.transform = 'translateX(' + geser + 'px) rotate(' + (geser / 40) + 'deg)';
-        }
-      });
-      const lepas = e => {
-        if (x0 === null) return;
-        const dx = e.clientX - x0; x0 = null;
-        if (Math.abs(dx) > 40) {
-          _ik6SwipeTelanClick = true;                     // jangan dihitung ketukan
-          _ik6Kartu = (_ik6Kartu + (dx < 0 ? 1 : 2)) % 3; // kiri = maju, kanan = mundur
-          tampilkanIkhtisar6a();
-        } else if (Math.abs(dx) > 4) {
-          tampilkanIkhtisar6a();                          // kembalikan posisi kartu
-        }
+  // Karung <-> jam saling bicara: sorot/redup KELAS CSS saja, tanpa membangun ulang
+  // layar (rebuild me-restart animasi & melompatkan scroll) dan TANPA PERNAH
+  // menjumlahkan hasil saringan jadi angka apa pun.
+  function ik8TerapkanSaring() {
+    const k = _ik8Karung;
+    document.querySelectorAll('#ik8KarungWrap .ik8-karung').forEach(b =>
+      b.classList.toggle('pilih', b.dataset.k === k));
+    const tanpaKejadian = k === 'amplop' || k === 'brankas';
+    document.querySelectorAll('#ik8JamWrap .ik8-simpul').forEach(el => {
+      const daftar = (el.dataset.kantong || '').split(' ');
+      el.classList.toggle('redup', tanpaKejadian || daftar.indexOf(k) < 0);
+    });
+    const KET = {
+      laci: 'Tunai masuk & keluar lewat laci',
+      rekening: 'QRIS & pelunasan berlabel QRIS',
+      amplop: 'Diisi saat Tutup Hari — tidak ada kejadian per jam',
+      brankas: 'Diisi saat Tutup Hari — tidak ada kejadian per jam'
+    };
+    const elKet = document.getElementById('ik8SaringKet');
+    if (elKet) elKet.textContent = KET[k] + ' · Kredit tidak masuk kantong mana pun, dia jadi piutang';
+  }
+  function ik8PilihKarung(k) {
+    if (!{ laci: 1, rekening: 1, amplop: 1, brankas: 1 }[k]) return;
+    _ik8Karung = k;
+    const t = ambilTitikKas();
+    if (t) {
+      const K_NAMA = { laci: 'Laci', rekening: 'Rekening', amplop: 'Amplop', brankas: 'Brankas' };
+      const K_KET = {
+        laci: 'Uang jualan yang belum disetor — tunai keluar-masuk lewat sini.',
+        rekening: 'Hasil QRIS dan transfer. Cocokkan dengan mutasi bank.',
+        amplop: 'Disisihkan tiap malam di langkah 1 Tutup Hari — diisi saat Tutup Hari.',
+        brankas: 'Disimpan di luar laci. Jarang bergerak.'
       };
-      tumpuk.addEventListener('pointerup', lepas);
-      tumpuk.addEventListener('pointercancel', lepas);
+      document.getElementById('ik8KantongNama').textContent = K_NAMA[k];
+      document.getElementById('ik8KantongNilai').textContent = ik6Rp((t[k] || 0));
+      document.getElementById('ik8KantongKet').textContent = K_KET[k] + ' · menurut hitungan ' + formatTanggal(t.tanggal);
     }
-    const jamWrap = document.getElementById('ik6JamWrap');
-    if (jamWrap && !jamWrap._gestur) {
-      jamWrap._gestur = true;
-      let aktif = false;
-      const dariX = e => {
-        const r = jamWrap.getBoundingClientRect();
-        const n = _ik6JamData ? _ik6JamData.length : 15;
-        return Math.max(0, Math.min(n - 1, Math.floor((e.clientX - r.left) / r.width * n)));
-      };
-      jamWrap.addEventListener('pointerdown', e => { aktif = true; ik6SorotJam(dariX(e)); });
-      jamWrap.addEventListener('pointermove', e => { if (aktif) ik6SorotJam(dariX(e)); });
-      const selesai = e => { if (aktif) { aktif = false; _ik6JamPilih = dariX(e); } };
-      jamWrap.addEventListener('pointerup', selesai);
-      jamWrap.addEventListener('pointercancel', selesai);
-    }
+    ik8TerapkanSaring();
   }
-  // Pembaruan RINGAN selama jari menyapu — tanpa membangun ulang seluruh layar.
-  function ik6SorotJam(i) {
-    if (!_ik6JamData || !_ik6JamData[i]) return;
-    const x = _ik6JamData[i], nJam = _ik6JamData.length;
-    const wrap = document.getElementById('ik6JamWrap');
-    [...wrap.children].forEach((b, j) => b.classList.toggle('sorot', j === i));
-    document.getElementById('ik6JamSorot').textContent = String(IK6_JAM_A + i).padStart(2, '0') + ':00';
-    const gel = document.getElementById('ik6Gelembung');
-    gel.style.display = 'block';
-    gel.style.left = ((i + 0.5) / nJam * 100) + '%';
-    gel.innerHTML = '<b>' + String(IK6_JAM_A + i).padStart(2, '0') + ':00</b>'
-      + '<span class="gm">+' + singkatJuta(x.masuk) + (x.masuk >= 1000000 ? ' jt' : '') + '</span>'
-      + (x.keluar > 0 ? '<span class="gk">\u2212' + singkatJuta(x.keluar) + (x.keluar >= 1000000 ? ' jt' : '') + '</span>' : '');
-  }
-  function ik6PilihKartu() {
-    if (_ik6SwipeTelanClick) { _ik6SwipeTelanClick = false; return; }   // itu geseran, bukan ketukan
-    _ik6Kartu = (_ik6Kartu + 1) % 3; tampilkanIkhtisar6a();
-  }
-  function ik6GantiPatokan() { _ik6PatokanMode = _ik6PatokanMode === 'rata7' ? 'terbaik' : 'rata7'; tampilkanIkhtisar6a(); }
-  function ik6SaringDenyut(k) { _ik6Saring = k; tampilkanIkhtisar6a(); }
-  function ik6PilihJam(i) { _ik6JamPilih = _ik6JamPilih === i ? null : i; tampilkanIkhtisar6a(); }
   function ik6TahanLabaMulai(e) {
     _ik6TahanMulai = Date.now();
     const bar = document.getElementById('ik6Progres');
