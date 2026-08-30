@@ -3626,6 +3626,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #labaKaca .lb6-petak100 i.laba{ background:var(--emas); }
 #labaKaca .lb6-kosong{ font-family:var(--pf-serif); font-style:italic; font-size:11px; color:var(--pf-abu); padding:9px 2px; }
 /* --- KACA EMAS G2: Arus Kas tiga zona --- */
+/* Seluruh krom kepala kaca HANYA <700px — desktop memakai hero lama apa adanya. */
+@media (max-width:699.98px){
 #akKepala{ margin-bottom:12px; }
 #akKepala #kasSekarangWrap{ background:none; border:none; box-shadow:none; padding:6px 0 0; margin-bottom:0; }
 #akKepala .ak-keping{ display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; }
@@ -3639,6 +3641,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   font-size:9.5px; color:var(--pf-abu); }
 #akKepala #akKepalaKosong b{ font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--teks); }
 #akKepala #akKepalaKosong p{ margin:4px 0 8px; font-size:11px; color:var(--pf-abu); line-height:1.5; }
+}
 .ak-saklar{ display:flex; gap:7px; margin-bottom:12px; }
 .ak-saklar button{ flex:1; min-height:44px; border-radius:4px; font-size:11px; font-weight:700;
   letter-spacing:.06em; text-transform:uppercase; color:var(--pf-abu); border:1px solid var(--pf-tepi);
@@ -3648,6 +3651,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 }
 @media (min-width:700px){
   #akSaklarZona{ display:none; }   /* desktop: ketiga zona tampil semua — gerbang CSS */
+  /* Kepala kaca hanya untuk HP — desktop kembali persis ke hero lama (nol regresi).
+     Gaya dasarnya sudah dikurung media <700px; di sini tinggal krom kg-panel + isi baru. */
+  #akKepala{ background:none; border:none; box-shadow:none; padding:0; margin-bottom:0; }
+  #akKepala > .kg-label, #akKepala .ak-keping, #akKepalaKosong{ display:none !important; }
 }
 /* --- KACA EMAS G2: Piutang & Kasbon --- */
 @media (min-width:700px){ #piutang6a{ display:none; } }
