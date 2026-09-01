@@ -3785,6 +3785,71 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   font-family:var(--pf-serif); font-style:italic; font-size:11px; line-height:1.55;
   color:var(--pf-abu); }
 
+/* --- KACA EMAS G3: Pelanggan (buku pengenal) --- */
+@media (min-width:700px){ #pelanggan6a{ display:none; } }
+@media (max-width:699.98px){
+  /* Label + kolom cari TETAP tampil — kaca memakai input lama (fokus keyboard). */
+  #halamanPelanggan .kpi-mini, #halamanPelanggan .kartu,
+  #halamanPelanggan .kartu-daftar, #halamanPelanggan .info-box{ display:none; }
+}
+#pelanggan6a{ margin-top:12px; }
+#pelanggan6a .pel6-kepala{ padding:13px 14px; margin-bottom:10px; }
+#pelanggan6a .pel6-kisi{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:9px; }
+#pelanggan6a .pel6-kisi b{ display:block; font-family:var(--pf-serif); font-weight:600;
+  font-size:24px; color:var(--pf-platina); margin-top:3px; }
+#pelanggan6a .pel6-kisi b i{ font-size:11px; font-style:italic; color:var(--pf-abu); }
+#pelanggan6a .pel6-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.5; color:var(--pf-abu); }
+#pelanggan6a .pel6-chips{ display:flex; gap:7px; overflow-x:auto; margin:11px 0 4px;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+#pelanggan6a .pel6-chips::-webkit-scrollbar{ display:none; }
+#pelanggan6a .pel6-chip{ flex:0 0 auto; min-height:44px; padding:0 14px; border-radius:99px;
+  border:1px solid var(--pf-tepi); background:none; color:var(--pf-abu);
+  font-family:inherit; font-size:11px; font-weight:600; }
+#pelanggan6a .pel6-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10px;
+  color:var(--pf-abu); line-height:1.5; margin:7px 2px 10px; }
+#pelanggan6a .pel6-baris{ position:relative; display:block; width:100%; text-align:left;
+  padding:11px 13px; margin-bottom:8px; border:1px solid var(--pf-tepi); border-radius:13px;
+  background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+  color:inherit; font-family:inherit; overflow:hidden; }
+/* Bilah total di belakang nama: lebarnya var(--isi) — variabel yang SAMA dengan
+   angka Total belanja di rinciannya, bukan hitungan kedua. */
+#pelanggan6a .pel6-bilah{ position:absolute; top:0; left:0; bottom:0; width:var(--isi,0%);
+  background:linear-gradient(90deg,rgba(226,205,166,.11),rgba(226,205,166,.015)); pointer-events:none; }
+#pelanggan6a .pel6-dalam{ position:relative; }
+#pelanggan6a .pel6-atas{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+#pelanggan6a .pel6-ciri{ font-size:13px; font-weight:600; line-height:1.4; }
+#pelanggan6a .pel6-ciri.kosong{ color:var(--pf-abu); font-weight:400;
+  font-family:var(--pf-serif); font-style:italic; }
+#pelanggan6a .pel6-nama{ font-size:9.5px; font-weight:600; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--pf-abu); margin-top:3px; }
+#pelanggan6a .pel6-total{ flex:none; font-family:var(--pf-serif); font-style:italic;
+  font-size:11px; color:var(--pf-platina); }
+#pelanggan6a .pel6-kaki{ display:flex; align-items:center; gap:5px; margin-top:8px; }
+#pelanggan6a .pel6-titik{ width:6px; height:6px; border-radius:99px;
+  border:1px solid rgba(226,205,166,.28); }
+#pelanggan6a .pel6-titik.isi{ background:#c8d3bd; border-color:transparent;
+  box-shadow:0 0 5px rgba(200,211,189,.4); }
+#pelanggan6a .pel6-irama{ margin-left:auto; font-family:var(--pf-serif); font-style:italic;
+  font-size:9.5px; color:var(--pf-abu); }
+#pelanggan6a .pel6-rinci{ margin-top:9px; padding-top:9px; border-top:1px dashed rgba(255,255,255,.1);
+  display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; }
+#pelanggan6a .pel6-rinci .label{ font-size:8.5px; font-weight:600; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--pf-abu); }
+#pelanggan6a .pel6-rinci .nilai{ font-size:12px; margin-top:2px; }
+#pelanggan6a .pel6-buka{ grid-column:1 / -1; min-height:44px; border:none; border-radius:11px;
+  font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.1em; }
+#pelanggan6a .pel6-thr{ margin-top:12px; padding:13px 14px; }
+#pelanggan6a .pel6-thr-baris{ display:flex; align-items:center; gap:12px; margin:8px 0 6px; }
+#pelanggan6a .pel6-thr-baris button{ flex:none; width:44px; height:44px; border-radius:11px;
+  border:1px solid var(--pf-tepi2); background:none; color:var(--pf-platina);
+  font-family:inherit; font-size:19px; }
+#pelanggan6a .pel6-thr-baris b{ font-family:var(--pf-serif); font-weight:600; font-size:21px;
+  color:var(--pf-platina); }
+#pelanggan6a .pel6-thr-baris i{ margin-left:auto; font-family:var(--pf-serif); font-style:italic;
+  font-size:10.5px; color:var(--pf-abu); text-align:right; }
+#pelanggan6a .pel6-thr .pel6-nota{ margin-top:4px; }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -4415,6 +4480,13 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <div id="pelThrRiwayat" style="margin-bottom:10px;"></div>
   <button type="button" class="tombol-lewati-rinci" id="btnCatatThr" style="margin-bottom:12px;" onclick="catatThrPelanggan()">Catat THR</button>
 
+  <!-- KACA EMAS G3 (tulang 4a Pengenal): dua field opsional di dok pelangganCatatan
+       yang sama — tanpa migrasi, dok lama terbaca (x.ciri||''). Ciri jadi baris
+       utama Buku Pelanggan di kaca; rute jadi chip saring antar. -->
+  <label for="pelCiri">Ciri &amp; kendaraan <span class="keterangan">— boleh kosong</span></label>
+  <input type="text" id="pelCiri" placeholder="Contoh: bapak tinggi, Vario merah" autocomplete="off">
+  <label for="pelRute">Rute antar <span class="keterangan">— boleh kosong</span></label>
+  <input type="text" id="pelRute" placeholder="Contoh: komplek pasar, jalur pagi" autocomplete="off">
   <label for="pelCatatan">Catatan pengenal <span class="keterangan">— ciri, kendaraan, panggilan</span></label>
   <textarea id="pelCatatan" placeholder="Contoh: bapak tinggi, Vario merah, biasa IR64 5kg dua mingguan"></textarea>
   <button type="button" class="tombol-utama-kartu" style="margin-top:12px;" onclick="simpanCatatanPelanggan()">Simpan catatan</button>
@@ -5613,6 +5685,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 
     <label for="cariPelanggan">Cari — nama, ciri, kendaraan, atau barang langganannya</label>
     <input type="text" id="cariPelanggan" placeholder='Contoh: "vario merah", "IR64", "sahala"' autocomplete="off" oninput="tampilkanPelanggan()">
+
+    <!-- KACA EMAS G3 (rancangan Pelanggan - Gabungan): BUKU PENGENAL — ciri jadi
+         baris utama, nama sekunder; chip rute nyata; bilah total dari variabel
+         yang sama dengan angkanya. Hanya <700px; kartu lama tetap diisi. -->
+    <div id="pelanggan6a"></div>
 
     <div class="kpi-mini kpi-dua" style="margin-top:10px;">
       <div class="kartu-mini"><div class="label">Dikenal sistem</div><div class="nilai" id="pelangganJumlah">0</div></div>
@@ -14874,7 +14951,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       const k = kunciPelanggan(nama);
       if (!k) return null;
       if (!peta[k]) peta[k] = { kunci: k, nama: String(nama).trim(), urutNama: urut || 0,
-        n: 0, total: 0, terakhir: '', produk: {}, kunjungan: {}, catatan: '' };
+        n: 0, total: 0, terakhir: '', produk: {}, kunjungan: {}, catatan: '', ciri: '', rute: '' };
       // Ejaan terbaru menang — aturan yang sama dengan hitungPiutang.
       if ((urut || 0) >= peta[k].urutNama) { peta[k].nama = String(nama).trim(); peta[k].urutNama = urut || 0; }
       return peta[k];
@@ -14902,7 +14979,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // (pemilik boleh menulis dulu, transaksinya menyusul).
     ambilPelangganCatatan().forEach(c => {
       const t = slot(c.nama || c.id, 0);
-      if (t) t.catatan = c.catatan || '';
+      if (t) { t.catatan = c.catatan || ''; t.ciri = c.ciri || ''; t.rute = c.rute || ''; }
     });
     const utang = {};
     hitungPiutang().forEach(x => { utang[x.kunci] = x.sisa; });
@@ -14912,14 +14989,14 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       Object.keys(t.produk).forEach(b => { if (t.produk[b] > maxN) { maxN = t.produk[b]; favorit = b; } });
       return { kunci: t.kunci, nama: t.nama, n: t.n, total: t.total, terakhir: t.terakhir,
         favorit, kunjungan: Object.keys(t.kunjungan).length, catatan: t.catatan,
-        sisaUtang: utang[k] || 0 };
+        ciri: t.ciri, rute: t.rute, sisaUtang: utang[k] || 0 };
     }).sort((a, b) => String(b.terakhir).localeCompare(String(a.terakhir)) || a.nama.localeCompare(b.nama));
   }
 
   let _daftarPelRender = [];
   function tampilkanPelanggan() {
     const kont = document.getElementById('daftarPelanggan');
-    if (!kont) return;
+    if (!kont) { tampilkanPelanggan6a(); return; }   // jalur keluar dini pun wajib menggambar kaca
     const semua = hitungPelanggan();
     document.getElementById('pelangganJumlah').textContent = semua.length;
     document.getElementById('pelangganBercatatan').textContent = semua.filter(x => x.catatan).length;
@@ -14935,12 +15012,13 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       thrTahunIni.length + ' penerima' + (nilaiThr > 0 ? ' · ±' + formatRupiah(nilaiThr) : '');
     const kata = (document.getElementById('cariPelanggan').value || '').trim().toLowerCase();
     _daftarPelRender = !kata ? semua : semua.filter(x =>
-      (x.nama + ' ' + x.catatan + ' ' + x.favorit).toLowerCase().indexOf(kata) >= 0);
+      (x.nama + ' ' + x.catatan + ' ' + x.favorit + ' ' + x.ciri + ' ' + x.rute).toLowerCase().indexOf(kata) >= 0);
     document.getElementById('pelangganHitung').textContent = _daftarPelRender.length + ' orang';
     if (_daftarPelRender.length === 0) {
       kont.innerHTML = kata
         ? '<div class="kosong-info"><b>Tidak ketemu</b><span>Coba kata lain — nama, ciri di catatan, atau barang langganannya.</span></div>'
         : '<div class="kosong-info"><b>Belum ada pelanggan bernama</b><span>Isi kolom nama pembeli saat menjual — tunai dan QRIS juga bisa, bukan cuma kredit.</span></div>';
+      tampilkanPelanggan6a(semua);   // jalur keluar kosong pun wajib menggambar kaca
       return;
     }
     // Wireframe Pelanggan: belanja bulanan di tiap baris — satu lintasan hitung
@@ -14967,6 +15045,126 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         ${IKON_CHEV}
       </button>`;
     }).join('');
+    tampilkanPelanggan6a(semua);
+  }
+
+  // ============ KACA EMAS G3: PELANGGAN — BUKU PENGENAL (hanya <700px) ============
+  // Ciri jadi baris utama (nama sekunder): yang berdiri di depan meja itu "bapak
+  // tinggi Vario merah", bukan huruf besar di KTP. Bilah total digerakkan variabel
+  // yang sama dengan angka rinciannya; utang disebut apa adanya — piutang bukan kas.
+  // Kartu lama tetap diisi untuk desktop; kolom cari memakai input lama.
+  let _pel6Buka = null;    // kunci pelanggan yang rinciannya terbuka
+  let _pel6Rute = null;    // saring chip rute aktif
+  let _pel6Rutes = [];     // daftar rute unik pada render terakhir (untuk handler indeks)
+  function tampilkanPelanggan6a(semua) {
+    const wadah = document.getElementById('pelanggan6a');
+    if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      semua = semua || hitungPelanggan();
+      const daftar = _daftarPelRender || [];
+      const nCiri = semua.filter(x => x.ciri).length;
+      const belumCiri = semua.length - nCiri;
+      const tahunThr = tahunThrAktif();
+      const petaThr = {};
+      ambilThrPelanggan().forEach(x => { if (x.tahun === tahunThr) petaThr[x.kunci] = x; });
+      // Irama datang: hari-hari (Min..Sab) yang pernah ada belanja 90 hari terakhir.
+      const batas90 = tanggalLokalIso(new Date(Date.now() - 89 * 86400000));
+      const hariPel = {};
+      ambilPenjualan().forEach(t => {
+        if ((t.tanggal || '') < batas90) return;
+        const kb = kunciPelanggan(t.namaPelanggan);
+        if (!kb) return;
+        (hariPel[kb] = hariPel[kb] || {})[new Date(t.tanggal + 'T12:00:00').getDay()] = true;
+      });
+
+      let h = `<div class="kg-panel pel6-kepala">
+        <div class="pel6-kisi">
+          <div><div class="kg-label">Dikenal sistem</div><b>${semua.length} <i>orang</i></b></div>
+          <div><div class="kg-label">Punya ciri pengenal</div><b>${nCiri} <i>dari ${semua.length}</i></b></div>
+        </div>
+        <div class="pel6-nota">${belumCiri > 0
+          ? `${belumCiri} orang belum punya ciri pengenal — sistem tidak menebaknya. Isi cirinya waktu mereka datang lagi.`
+          : 'Semua pelanggan punya ciri pengenal.'}</div>
+      </div>`;
+
+      _pel6Rutes = [...new Set(daftar.map(x => x.rute).filter(Boolean))];
+      if (_pel6Rute && _pel6Rutes.indexOf(_pel6Rute) < 0) _pel6Rute = null;
+      if (_pel6Rutes.length) {
+        h += `<div class="pel6-chips">` + _pel6Rutes.map((r, ri) =>
+          `<button type="button" class="pel6-chip${r === _pel6Rute ? ' kg-terpilih' : ''}" onclick="pel6Rute(${ri})">${escapeHtml(r)}</button>`
+        ).join('') + `</div>`;
+      }
+
+      const tampil = daftar.map((x, i) => ({ x, i })).filter(p => !_pel6Rute || p.x.rute === _pel6Rute);
+      if (!tampil.length) {
+        const kata = (document.getElementById('cariPelanggan').value || '').trim();
+        const menyaring = !!(kata || _pel6Rute);
+        h += `<div class="kosong-info"><b>${menyaring ? 'Tidak ketemu' : 'Belum ada pelanggan bernama'}</b><span>${menyaring
+          ? 'Coba kata lain — nama, ciri pengenal, rute, atau barang langganannya.'
+          : 'Isi kolom nama pembeli saat menjual — tunai dan QRIS juga bisa, bukan cuma kredit.'}</span></div>`;
+      } else {
+        h += `<div class="pel6-ket">Bilah emas di belakang baris = total belanja seumur hidup, digerakkan angka yang sama dengan rinciannya. Utang disebut apa adanya — piutang bukan kas.</div>`;
+        const maks = Math.max.apply(null, tampil.map(p => p.x.total).concat([1]));
+        h += tampil.map(({ x, i }) => {
+          const porsi = Math.round((x.total / maks) * 100);
+          const hari = hariPel[x.kunci] || {};
+          const nHari = Object.keys(hari).length;
+          const titik = [0, 1, 2, 3, 4, 5, 6].map(d => `<span class="pel6-titik${hari[d] ? ' isi' : ''}"></span>`).join('');
+          const irama = nHari === 0 ? 'tidak tentu' : nHari + ' hari dalam sepekan';
+          return `<div class="pel6-baris" onclick="pel6Baris(${i})" role="button" tabindex="0">
+            <span class="pel6-bilah" style="--isi:${porsi}%"></span>
+            <div class="pel6-dalam">
+              <div class="pel6-atas">
+                <span><span class="pel6-ciri${x.ciri ? '' : ' kosong'}">${escapeHtml(x.ciri || 'belum ada ciri')}${x.favorit ? ' &middot; langganan ' + escapeHtml(x.favorit) : ''}</span>
+                <span class="pel6-nama">${escapeHtml(x.nama)}${petaThr[x.kunci] ? ' &middot; THR ✓' : ''}</span></span>
+                ${x.sisaUtang > 0 ? '<span class="lencana-amber">utang ' + formatRupiah(x.sisaUtang) + '</span>' : `<span class="pel6-total">${formatRupiah(x.total)}</span>`}
+              </div>
+              <div class="pel6-kaki">${titik}<span class="pel6-irama">${irama}</span></div>
+              ${_pel6Buka === x.kunci ? `<div class="pel6-rinci">
+                <span><span class="label">Total belanja</span><span class="nilai">${formatRupiah(x.total)}</span></span>
+                <span><span class="label">Langganan</span><span class="nilai">${escapeHtml(x.favorit || '—')}</span></span>
+                <span><span class="label">Terakhir datang</span><span class="nilai">${x.terakhir ? escapeHtml(formatTanggal(x.terakhir)) : '—'}</span></span>
+                <span><span class="label">Rute antar</span><span class="nilai">${escapeHtml(x.rute || '—')}</span></span>
+                <button type="button" class="kg-terpilih pel6-buka" onclick="event.stopPropagation(); bukaLembarPelanggan(${i})">Buka kartu</button>
+              </div>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      }
+
+      const ringkasThr = (document.getElementById('thrRingkas') || {}).textContent || '';
+      h += `<div class="kg-panel kg-tepi-putus pel6-thr">
+        <div class="kg-label">THR Ramadan — pelanggan setia</div>
+        <div class="pel6-thr-baris">
+          <button type="button" onclick="pel6Thr(-1)" aria-label="tahun sebelumnya">−</button>
+          <b>${tahunThr}</b>
+          <button type="button" onclick="pel6Thr(1)" aria-label="tahun berikutnya">+</button>
+          <i>${escapeHtml(ringkasThr)}</i>
+        </div>
+        <div class="pel6-nota">Penerima tahun ini bertanda ✓ di daftar. Uang barangnya keluar lewat tab Harian (Toko) — bukan di sini, supaya tidak terhitung dua kali.</div>
+      </div>`;
+
+      wadah.innerHTML = h;
+    } catch (e) { console.error('tampilkanPelanggan6a:', e); }
+  }
+  function pel6Baris(i) {
+    const x = _daftarPelRender[i];
+    if (!x) return;
+    _pel6Buka = _pel6Buka === x.kunci ? null : x.kunci;
+    tampilkanPelanggan6a();
+  }
+  function pel6Rute(ri) {
+    const r = _pel6Rutes[ri];
+    _pel6Rute = _pel6Rute === r ? null : r;
+    tampilkanPelanggan6a();
+  }
+  function pel6Thr(d) {
+    const el = document.getElementById('thrTahun');
+    if (!el) return;
+    // Stepper kaca menulis input lama yang tersembunyi — tahunThrAktif() membacanya,
+    // jadi kartu lama, ringkas, dan kaca tergambar ulang dari SATU sumber tahun.
+    el.value = (parseInt(el.value, 10) || new Date().getFullYear()) + d;
+    tampilkanPelanggan();
   }
 
   let _pelTerbuka = null;
@@ -14982,6 +15180,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     document.getElementById('pelTotal').textContent = formatRupiah(x.total);
     document.getElementById('pelUtang').textContent = x.sisaUtang > 0 ? formatRupiah(x.sisaUtang) : 'Lunas';
     document.getElementById('pelCatatan').value = x.catatan || '';
+    document.getElementById('pelCiri').value = x.ciri || '';
+    document.getElementById('pelRute').value = x.rute || '';
     const tahunThr = tahunThrAktif();
     const riwayatThr = ambilThrPelanggan().filter(t => t.kunci === x.kunci)
       .sort((a, b) => b.tahun - a.tahun);
@@ -15004,6 +15204,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (!_pelTerbuka) return;
     const dok = { id: _pelTerbuka.kunci, nama: _pelTerbuka.nama,
       catatan: document.getElementById('pelCatatan').value.trim(),
+      // String kosong, BUKAN undefined — Firestore menolak undefined.
+      ciri: document.getElementById('pelCiri').value.trim(),
+      rute: document.getElementById('pelRute').value.trim(),
       diubahPada: new Date().toISOString() };
     // Perbarui salinan lokal DULU supaya layar jujur walau offline; onSnapshot
     // menyusul menyamakan begitu tersambung.
@@ -20712,6 +20915,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.simpanCatatanPemasok = simpanCatatanPemasok;
   window.tampilkanPelanggan = tampilkanPelanggan;
   window.bukaLembarPelanggan = bukaLembarPelanggan;
+  window.pel6Baris = pel6Baris;
+  window.pel6Rute = pel6Rute;
+  window.pel6Thr = pel6Thr;
   window.tutupLembarPelanggan = tutupLembarPelanggan;
   window.simpanCatatanPelanggan = simpanCatatanPelanggan;
   window.catatThrPelanggan = catatThrPelanggan;
