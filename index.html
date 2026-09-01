@@ -3884,6 +3884,41 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   color:var(--pf-platina); margin:4px 0 2px; }
 #kacaLihatHarian .hz-angka i{ font-size:11px; font-style:italic; color:var(--pf-abu); }
 
+/* --- KACA EMAS G3: Bulanan (zona ISI / PAKAI / PAHAM) --- */
+@media (min-width:700px){ #bulananKaca{ display:none; } }
+@media (max-width:699.98px){
+  /* Zona hanya MENYEMBUNYIKAN kartu di luar zona aktif. !important perlu karena
+     #bulananKosong ber-display inline dari perbaruiKeadaanBulanan — kaca tidak
+     pernah memaksa tampil, jadi tetap satu penulis untuk "muncul". */
+  #halamanBulanan.bl-zona-isi .bl-z-pakai, #halamanBulanan.bl-zona-isi .bl-z-paham,
+  #halamanBulanan.bl-zona-pakai .bl-z-isi, #halamanBulanan.bl-zona-pakai .bl-z-paham,
+  #halamanBulanan.bl-zona-paham .bl-z-isi, #halamanBulanan.bl-zona-paham .bl-z-pakai{ display:none !important; }
+}
+#bulananKaca{ margin-bottom:12px; }
+#bulananKaca .bk-lencana{ display:block; width:100%; text-align:left; padding:12px 13px;
+  border-radius:13px; margin-bottom:10px; background:none; font-family:inherit;
+  border:1px dashed rgba(211,160,139,.5); color:#d3a08b; }
+#bulananKaca .bk-lencana:disabled{ opacity:.55; }
+#bulananKaca .bk-lencana b{ display:block; font-size:12.5px; }
+#bulananKaca .bk-lencana i{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:10.5px; line-height:1.5; margin-top:3px; color:rgba(211,160,139,.85); }
+#bulananKaca .bk-saklar{ display:flex; gap:8px; }
+#bulananKaca .bk-saklar button{ flex:1; min-height:46px; border-radius:12px; position:relative;
+  border:1px solid var(--pf-tepi); background:none; color:var(--pf-abu);
+  font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.14em; }
+#bulananKaca .bk-saklar .badge{ position:absolute; top:5px; right:7px; min-width:16px;
+  height:16px; border-radius:99px; padding:0 4px; font-size:9px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(211,160,139,.22); color:#d3a08b; }
+#bulananKaca .bk-kalender{ padding:13px 14px; margin-top:10px; }
+#bulananKaca .bk-kisi{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:9px; }
+#bulananKaca .bk-hari{ aspect-ratio:1; border-radius:7px; position:relative;
+  border:1px solid rgba(255,255,255,.07); display:flex; align-items:center;
+  justify-content:center; font-size:9.5px; color:var(--pf-abu); }
+#bulananKaca .bk-hari.isi{ border-color:var(--pf-tepi2); color:var(--pf-platina); font-weight:700; }
+#bulananKaca .bk-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.5; color:var(--pf-abu); margin-top:9px; }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -6104,39 +6139,43 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
        angka, jadi label dan isian muat sebaris dan tidak perlu kartu (Prinsip 3).
        Kekosongan bulan berjalan dirancang sendiri — selama kosong, laba & kas
        keluar tampak lebih besar dari sebenarnya, dan itu harus dikatakan. -->
-  <div id="halamanBulanan" class="halaman k6a">
+  <div id="halamanBulanan" class="halaman k6a bl-zona-isi">
     <div class="judul-halaman"><h2>Bulanan</h2><span class="jh-cat" id="bulananJudulBulan"></span></div>
     <div id="pesanOkBulanan" class="pesan-ok"> Biaya bulanan tersimpan.</div>
+    <!-- KACA EMAS G3 (rancangan Bulanan - Gabungan): lencana hidup "berapa rupiah
+         Laba sedang keliru" + saklar ISI / PAKAI / PAHAM. Zona hanya MENYEMBUNYIKAN
+         kartu lama lewat kelas — form tidak diduplikasi. Hanya <700px. -->
+    <div id="bulananKaca"></div>
 
     <!-- LAPORAN RINGKAS BULAN (hi-fi Bulanan): hero + enam bulan terakhir + baris inti. -->
-    <div class="kartu-hero" style="margin-bottom:12px;">
+    <div class="kartu-hero bl-z-pakai" style="margin-bottom:12px;">
       <i class="pf-nafas" aria-hidden="true"></i>
       <div class="label">Omzet bulan ini <span class="keterangan">sampai hari ini</span></div>
       <div class="hero-nilai" id="blHeroOmzet">Rp0</div>
       <div class="hero-syarat" id="blHeroKet"></div>
     </div>
-    <div class="kartu" style="margin-bottom:12px;">
+    <div class="kartu bl-z-pakai" style="margin-bottom:12px;">
       <div class="panel-kepala"><h2>Enam bulan terakhir</h2></div>
       <div class="bl-batang" id="blBatang"></div>
     </div>
-    <div class="kartu-daftar kd-kepala" style="margin-bottom:12px;">
+    <div class="kartu-daftar kd-kepala bl-z-pakai" style="margin-bottom:12px;">
       <div class="kd-judul"><h3>Inti bulan ini</h3></div>
       <div id="blInti"></div>
     </div>
 
-    <div id="bulananKosong" class="kartu-peringatan-amber" style="display:none;">
+    <div id="bulananKosong" class="kartu-peringatan-amber bl-z-isi" style="display:none;">
       <div class="kpa-judul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/></svg><b id="bulananKosongJudul">Bulan ini belum diisi</b></div>
       <p>Selama kosong, biaya tetap dihitung Rp0 — kas keluar di Ringkasan dan laba di halaman Laba tampak lebih besar dari sebenarnya. Isi sekali di awal bulan, angkanya jarang berubah.</p>
       <button type="button" id="bulananSalin" onclick="salinBiayaBulanLalu()">Salin dari bulan lalu</button>
     </div>
 
-    <div class="kartu">
+    <div class="kartu bl-z-isi">
       <label style="margin-top:0;">Bulan</label>
       <input type="month" id="bulanBiaya" onchange="perbaruiKeadaanBulanan()">
       <p class="keterangan" style="margin:6px 0 0;">Tanggal bayar diisi <b>per pos</b> di bawah — listrik, gaji, dan lainnya sering dibayar di hari yang berbeda. Pos yang tanggalnya kosong dianggap <b>belum dibayar</b> dan tidak mengurangi kas.</p>
     </div>
 
-    <div class="kartu">
+    <div class="kartu bl-z-isi">
       <div class="panel-kepala"><h2>Gaji <span class="keterangan">Rp60.000 / hari-orang</span></h2></div>
       <!-- Diisi dalam HARI, bukan rupiah: tarifnya sudah ada di sistem, jadi pemakai
            menghitung hari (yang dia tahu) bukan rupiah (yang harus dikalikan). Prinsip 2. -->
@@ -6146,7 +6185,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <div class="baris-hasil" id="gajiPerkiraanInfo"></div>
     </div>
 
-    <div class="kartu">
+    <div class="kartu bl-z-isi">
       <div class="panel-kepala"><h2>Biaya tetap <span class="keterangan">rata-rata sebulan</span></h2></div>
       <div class="baris-isian"><span class="bi-nama">Gaji<small>tanggal bayarnya per pegawai, di kartu atas</small></span><span class="bi-isi bi-terkunci" id="bulananGajiBayang">Rp0</span></div>
       <div class="baris-isian"><span class="bi-nama">Listrik</span><span class="bi-isi"><b>Rp</b><input type="number" id="biayaListrikBulanan" placeholder="0" inputmode="numeric" oninput="perbaruiTotalBulanan()"></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglBiayaListrik" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar Listrik"><u id="tglBiayaListrikBaca"></u></span></div>
@@ -6163,12 +6202,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <p class="keterangan catatan-luwes">Semua biaya di sini tidak masuk HPP per produk — dilaporkan sebagai biaya operasional bulanan, terpisah dari HPP per unit.</p>
     </div>
 
-    <div class="kartu-total-bulanan" id="kartuTotalBulanan">
+    <div class="kartu-total-bulanan bl-z-isi" id="kartuTotalBulanan">
       <div class="ktb-kiri"><div class="ktb-label" id="ktbLabel">Total bulan ini</div><div class="ktb-hitung" id="ktbHitung">0 dari 7 isian terisi</div></div>
       <div class="ktb-nilai" id="ktbNilai">Rp0</div>
     </div>
 
-    <div class="kartu">
+    <div class="kartu bl-z-paham">
       <div class="panel-kepala"><h2>Riwayat Biaya Bulanan</h2></div>
       <div id="daftarBulanan" class="daftar-batch"></div>
     </div>
@@ -6176,7 +6215,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     <!-- SLIP GAJI (Modul ERP #5, 14 Agu 2026): gaji + hadir + potongan kasbon sudah
          tercatat semua — tinggal disusun jadi slip yang bisa dikirim WA. Profesional
          terasa justru di sini. -->
-    <div class="kartu" style="margin-top:12px;">
+    <div class="kartu bl-z-isi" style="margin-top:12px;">
       <div class="panel-kepala"><h2>Slip Gaji <span class="keterangan">kirim WA ke pegawai</span></h2></div>
       <label for="slipBulan">Bulan</label>
       <input type="month" id="slipBulan" onchange="tampilkanSlipGaji()">
@@ -8805,6 +8844,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       }
     }
     perbaruiTotalBulanan();
+    tampilkanBulananKaca();   // rantai sinkron & ganti bulan lewat sini
   }
 
   const PETA_ISIAN_BULANAN = {
@@ -8955,7 +8995,83 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     }
   }
 
+  // ============ KACA EMAS G3: BULANAN — ZONA ISI / PAKAI / PAHAM (hanya <700px) ============
+  // Lencana di atas saklar menghitung BERAPA RUPIAH halaman Laba sedang keliru
+  // selama isian kosong (dari dokumen bulan lalu — tanpa dokumen lalu, cukup cacah,
+  // tanpa rupiah tebakan). Zona hanya menyembunyikan kartu lama lewat kelas; form
+  // tidak diduplikasi. Kalender PAHAM membaca dokumen TERSIMPAN, bukan isian hidup.
+  let _blZona = 'isi';
+  function tampilkanBulananKaca() {
+    const wadah = document.getElementById('bulananKaca');
+    if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      const hal = document.getElementById('halamanBulanan');
+      if (hal) {
+        hal.classList.remove('bl-zona-isi', 'bl-zona-pakai', 'bl-zona-paham');
+        hal.classList.add('bl-zona-' + _blZona);
+      }
+      const bl = (document.getElementById('bulanBiaya') || {}).value || bulanLokalIso();
+      const pk = posBulananKosong(bl);
+      const lalu = bulanSebelum(bl);
+      const dokLalu = ambilBiayaBulanan().find(b => b.bulan === lalu);
+      let taksir = 0;
+      if (dokLalu) {
+        POS_BIAYA_BULANAN.forEach(p => { if (pk.kosong.indexOf(p.label) >= 0) taksir += dokLalu[p.kunci] || 0; });
+        if (pk.kosong.indexOf('Gaji') >= 0) taksir += (dokLalu.rincianGaji || []).reduce((a, r) => a + (r.gaji || 0), 0);
+      }
+      const bayaran = bayaranBiayaBulanan().filter(x => x.bulan === bl);
+      const belum = bayaran.filter(x => !x.tanggal && x.nominal > 0);
+
+      let h = '';
+      if (pk.kosong.length > 0) {
+        h += `<button type="button" class="bk-lencana" onclick="salinBiayaBulanLalu()"${dokLalu ? '' : ' disabled'}>
+          <b>${pk.kosong.length} isian belum diisi ${escapeHtml(namaBulanPanjang(bl) || 'bulan ini')}</b>
+          <i>${taksir > 0
+            ? 'Selama kosong, laba di halaman Laba tampak +' + formatRupiah(taksir) + ' lebih besar dari sebenarnya — ketuk untuk salin dari ' + escapeHtml(namaBulanPanjang(lalu)) + '.'
+            : (dokLalu
+              ? 'Ketuk untuk salin dari ' + escapeHtml(namaBulanPanjang(lalu)) + '.'
+              : (namaBulanPanjang(lalu) || 'Bulan lalu') + ' belum diisi juga — isi manual di bawah.')}</i>
+        </button>`;
+      }
+      const badgeIsi = pk.kosong.length + belum.length;
+      h += `<div class="bk-saklar">
+        <button type="button" class="${_blZona === 'isi' ? 'kg-terpilih' : ''}" onclick="bulananPilihZona('isi')">ISI${badgeIsi > 0 ? `<span class="badge">${badgeIsi}</span>` : ''}</button>
+        <button type="button" class="${_blZona === 'pakai' ? 'kg-terpilih' : ''}" onclick="bulananPilihZona('pakai')">PAKAI</button>
+        <button type="button" class="${_blZona === 'paham' ? 'kg-terpilih' : ''}" onclick="bulananPilihZona('paham')">PAHAM</button>
+      </div>`;
+      if (_blZona === 'paham') {
+        if (!pk.adaDokumen) {
+          h += `<div class="kg-panel bk-kalender"><div class="kg-label">Jatuh tempo sebulan</div>
+            <div class="bk-ket">Dokumen ${escapeHtml(namaBulanPanjang(bl) || bl)} belum tersimpan — kalender hanya membaca dokumen tersimpan, bukan isian yang belum disimpan.</div></div>`;
+        } else {
+          const perTgl = {};
+          bayaran.forEach(x => {
+            if (!x.tanggal) return;
+            const d = parseInt(x.tanggal.slice(8, 10), 10);
+            if (d >= 1 && d <= 31) (perTgl[d] = perTgl[d] || []).push(x);
+          });
+          let berat = 0, beratRp = 0;
+          Object.keys(perTgl).forEach(d => {
+            const s = perTgl[d].reduce((a, x) => a + (x.nominal || 0), 0);
+            if (s > beratRp) { beratRp = s; berat = parseInt(d, 10); }
+          });
+          h += `<div class="kg-panel bk-kalender"><div class="kg-label">Jatuh tempo sebulan</div>
+            <div class="bk-kisi">` + Array.from({ length: 31 }, (_, i) => {
+              const d = i + 1, ada = perTgl[d];
+              return `<span class="bk-hari${ada ? ' isi' : ''}">${d}${d === berat ? '<span class="kg-titik-emas"></span>' : ''}</span>`;
+            }).join('') + `</div>
+            ${berat ? `<div class="bk-ket">Tanggal ${berat} paling berat: ${formatRupiah(beratRp)} (${perTgl[berat].map(x => escapeHtml(x.label || x.pos)).join(', ')}).</div>` : ''}
+            ${belum.length > 0 ? `<div class="bk-ket">${belum.length} pos belum punya tanggal bayar — belum tampil di kalender dan belum mengurangi kas.</div>` : ''}
+          </div>`;
+        }
+      }
+      wadah.innerHTML = h;
+    } catch (e) { console.error('tampilkanBulananKaca:', e); }
+  }
+  function bulananPilihZona(z) { _blZona = z; tampilkanBulananKaca(); }
+
   function tampilkanBulanan() {
+    tampilkanBulananKaca();   // baris pertama: jalur keluar dini pun wajib menggambar kaca
     tampilkanRingkasBulanan();
     // Kolom bulan pernah tampil KOSONG saat tab dibuka (terlihat di layar pemilik
     // 12 Agu 2026): tanpa bulan terpilih, seluruh isian ikut kosong dan mudah dikira
@@ -20915,6 +21031,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.pakaiChipKeterangan = pakaiChipKeterangan;
   window.tampilkanHarianHariIni = tampilkanHarianHariIni;
   window.perbaruiKeadaanBulanan = perbaruiKeadaanBulanan;
+  window.bulananPilihZona = bulananPilihZona;
   window.perbaruiTotalBulanan = perbaruiTotalBulanan;
   window.salinBiayaBulanLalu = salinBiayaBulanLalu;
   window.hitungCampuranProduksi = hitungCampuranProduksi;
