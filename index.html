@@ -3850,6 +3850,40 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   font-size:10.5px; color:var(--pf-abu); text-align:right; }
 #pelanggan6a .pel6-thr .pel6-nota{ margin-top:4px; }
 
+/* --- KACA EMAS G3: Harian (zona CATAT / LIHAT) --- */
+#halamanHarian .hz-zona{ display:flex; gap:8px; margin-bottom:12px; }
+#halamanHarian .hz-zona button{ flex:1; min-height:46px; border-radius:12px;
+  border:1px solid var(--pf-tepi); background:none; color:var(--pf-abu);
+  font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.14em; }
+@media (min-width:700px){ #halamanHarian .hz-zona, #kacaAkibatHarian, #kacaLihatHarian{ display:none; } }
+@media (max-width:699.98px){
+  /* Rekap sudah punya rumah di Ringkasan — di HP kartunya tidak dimunculkan. */
+  #kartuRekapHarian{ display:none; }
+  /* Zona CATAT (bawaan): sisi LIHAT disembunyikan. */
+  #kacaLihatHarian, #kartuHariIniHarian, #halamanHarian .catatan-kecil, #kartuRiwayatHarian{ display:none; }
+  body.hz-lihat #pilihKategoriHarianWrap, body.hz-lihat #halamanHarian .kartu-nominal,
+  body.hz-lihat #kartuIsianHarian, body.hz-lihat #kacaAkibatHarian{ display:none; }
+  /* Wrap simpan di luar halaman & display-nya ditulis inline oleh pengalih —
+     kelas body + !important satu-satunya cara aman tanpa menulis display kedua. */
+  body.hz-lihat #tombolSimpanHarianWrap{ display:none !important; }
+  body.hz-lihat #kacaLihatHarian, body.hz-lihat #kartuHariIniHarian,
+  body.hz-lihat #kartuRiwayatHarian{ display:block; }
+}
+#kacaAkibatHarian .kg-panel, #kacaLihatHarian .kg-panel{ padding:14px 15px 12px; margin-bottom:12px; }
+#kacaAkibatHarian .hz-kalimat, #kacaLihatHarian .hz-kalimat{ font-family:var(--pf-serif);
+  font-style:italic; font-size:11px; line-height:1.55; color:var(--pf-abu); margin-top:7px; }
+#kacaAkibatHarian .hz-baris{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+#kacaAkibatHarian .hz-baris:last-of-type{ border-bottom:none; }
+#kacaAkibatHarian .hz-baris .label{ font-size:10px; font-weight:600; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--pf-abu); }
+#kacaAkibatHarian .hz-baris .nilai{ font-size:14px; font-weight:600; color:var(--pf-platina); }
+#kacaAkibatHarian .hz-baris.redup{ opacity:.5; }
+#kacaAkibatHarian .hz-baris.redup .nilai{ font-weight:400; }
+#kacaLihatHarian .hz-angka{ font-family:var(--pf-serif); font-weight:600; font-size:25px;
+  color:var(--pf-platina); margin:4px 0 2px; }
+#kacaLihatHarian .hz-angka i{ font-size:11px; font-style:italic; color:var(--pf-abu); }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -6157,11 +6191,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
        cepat didahulukan supaya papan ketik cuma naik sekali (Prinsip 2). -->
   <div id="halamanHarian" class="halaman k6a">
     <div class="judul-halaman"><h2>Harian</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <div class="hz-zona">
+      <button type="button" id="hzCatat" class="kg-terpilih" onclick="pilihZonaHarian('catat')">CATAT</button>
+      <button type="button" id="hzLihat" onclick="pilihZonaHarian('lihat')">LIHAT</button>
+    </div>
     <div id="pesanOkHarian" class="pesan-ok"> Pengeluaran tersimpan.</div>
 
     <!-- REKAP HARI INI (hi-fi Rekap Harian): omzet per cara bayar + keluar,
          teks yang sama dgn rekap WA — satu sumber. -->
-    <div class="kartu-daftar kd-kepala" style="margin-bottom:12px;">
+    <div class="kartu-daftar kd-kepala" id="kartuRekapHarian" style="margin-bottom:12px;">
       <div class="kd-judul"><h3>Rekap hari ini</h3><span class="kd-hitung" id="rhKet"></span></div>
       <div id="rhBaris"></div>
       <button type="button" class="tombol-utama-kartu" style="margin:10px 12px 12px; width:auto; display:block;" onclick="kirimRekapHarianWa()">Kirim rekap → WA</button>
@@ -6184,7 +6222,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <div class="kn-eja" id="harianEja">nol rupiah</div>
     </div>
 
-    <div class="kartu">
+    <div class="kartu" id="kartuIsianHarian">
       <label style="margin-top:0;">Untuk apa</label>
       <input type="text" id="harianKeterangan" placeholder="Contoh: bensin motor, beli galon" oninput="perbaruiRingkasHarian()">
       <!-- Chip diambil dari catatan terbanyak pemakai sendiri: untuk pengeluaran yang
@@ -6194,13 +6232,19 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <input type="date" id="harianTanggal">
     </div>
 
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+    <!-- KACA EMAS G3 (rancangan Harian - Gabungan): zona CATAT menampilkan AKIBAT
+         sebelum disimpan; zona LIHAT memisahkan dua kantong yang tak pernah
+         dijumlahkan. Hanya <700px; kartu lama tetap diisi untuk desktop. -->
+    <div id="kacaAkibatHarian"></div>
+    <div id="kacaLihatHarian"></div>
+
+    <div class="kartu-daftar kd-kepala" id="kartuHariIniHarian" style="margin-top:12px;">
       <div class="kd-judul"><h3>Hari ini</h3><span class="kd-hitung" id="harianHitungHariIni"></span></div>
       <div id="daftarHarianHariIni"></div>
     </div>
     <p class="catatan-kecil">Hanya kategori Toko yang ikut kas keluar. Owner murni pribadi.</p>
 
-    <div class="kartu" style="margin-top:12px;">
+    <div class="kartu" id="kartuRiwayatHarian" style="margin-top:12px;">
       <div class="panel-kepala"><h2>Riwayat pengeluaran</h2></div>
       <div class="saring-riwayat" style="margin-bottom:8px;">
         <button type="button" id="filterHarianSemua" class="pilih" onclick="filterHarian('semua')">Semua</button>
@@ -8985,7 +9029,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const eja = document.getElementById('harianEja');
     // Nominal dieja penuh di bawah angkanya — satu nol kelebihan ketahuan di sini
     // sebelum disimpan, sama seperti bilah total di halaman Masuk (Prinsip 1).
-    if (eja) eja.textContent = ejaRingkas(nominal) + ' rupiah';
+    // ejaAngka (bukan ejaRingkas): "lima puluh ribu" utuh, tanpa "lebih" yang
+    // menyamarkan digit — dan ejaAngka tidak pernah menyisipkan kata "rupiah" sendiri.
+    if (eja) eja.textContent = ejaAngka(nominal) + ' rupiah';
     const btn = document.getElementById('btnSimpanHarian');
     if (btn) {
       const sah = nominal > 0 && ket.length > 0;
@@ -8994,6 +9040,56 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         ? 'Simpan — ' + formatRupiah(nominal) + ' · ' + labelKategoriHarian(kategoriHarianAktif)
         : (nominal <= 0 ? 'Isi nominal dulu' : 'Isi keterangan dulu');
     }
+    gambarKacaHarian();
+  }
+
+  // ============ KACA EMAS G3: HARIAN — ZONA CATAT / LIHAT (hanya <700px) ============
+  // CATAT memperlihatkan AKIBATNYA sebelum disimpan: Toko = kas toko keluar &
+  // tercatat beban; Owner = murni pribadi, kas toko tidak bergerak. LIHAT
+  // memisahkan dua kantong yang tidak pernah dijumlahkan. Angka dari mesin yang
+  // sama dengan kartu lama; saat owner terkunci angka pribadi tidak dibocorkan.
+  let zonaHarianAktif = 'catat';
+  function gambarKacaHarian() {
+    const wA = document.getElementById('kacaAkibatHarian');
+    const wL = document.getElementById('kacaLihatHarian');
+    if (!wA || !wL || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      const nominal = parseFloat((document.getElementById('harianNominal') || {}).value) || 0;
+      const kat = kategoriHarianAktif;
+      if (nominal <= 0) {
+        wA.innerHTML = `<div class="kg-panel"><div class="kg-label">Belum ada nominal</div>
+          <div class="hz-kalimat">Isi nominalnya dulu — akibatnya muncul di sini sebelum disimpan.</div></div>`;
+      } else if (kat === 'toko') {
+        wA.innerHTML = `<div class="kg-panel"><div class="kg-label">Kalau disimpan sekarang</div>
+          <div class="hz-baris"><span class="label">Beban toko</span><span class="nilai">+ ${formatRupiah(nominal)}</span></div>
+          <div class="hz-baris"><span class="label">Kas toko keluar</span><span class="nilai">− ${formatRupiah(nominal)}</span></div>
+          <div class="hz-kalimat">Kas toko keluar ${formatRupiah(nominal)} dan tercatat sebagai beban toko — dua buku, satu kejadian.</div></div>`;
+      } else {
+        wA.innerHTML = `<div class="kg-panel"><div class="kg-label">Kalau disimpan sekarang</div>
+          <div class="hz-baris redup"><span class="label">Beban toko</span><span class="nilai">Rp0</span></div>
+          <div class="hz-baris redup"><span class="label">Kas toko keluar</span><span class="nilai">Rp0 &middot; uang pribadi terpakai</span></div>
+          <div class="hz-kalimat">Murni pribadi. Kas toko dan beban toko tidak bergerak sama sekali.</div></div>`;
+      }
+      const hariIni = tanggalLokalIso();
+      const buka = ownerSudahUnlock();
+      const semua = (buka ? ambilPengeluaranHarian() : ambilPengeluaranHarian().filter(h => h.kategori !== 'owner'))
+        .filter(h => h.tanggal === hariIni);
+      const toko = semua.filter(h => h.kategori === 'toko').reduce((a, h) => a + (h.nominal || 0), 0);
+      const pribadi = semua.filter(h => h.kategori !== 'toko').reduce((a, h) => a + (h.nominal || 0), 0);
+      wL.innerHTML = `<div class="kg-panel"><div class="kg-label">Dicatat hari ini</div>
+        <div class="hz-angka">${formatRupiah(toko)} <i>beban toko &middot; ${semua.length} catatan</i></div>
+        <div class="hz-kalimat">${buka
+          ? `Beban toko ${formatRupiah(toko)} &middot; pribadi owner ${formatRupiah(pribadi)}. Dua kantong ini tidak pernah dijumlahkan.`
+          : 'Hanya kategori Toko yang ikut kas keluar. Catatan pribadi owner terkunci PIN.'}</div></div>`;
+    } catch (e) { console.error('gambarKacaHarian:', e); }
+  }
+  function pilihZonaHarian(z) {
+    zonaHarianAktif = z;
+    document.body.classList.toggle('hz-lihat', z === 'lihat');
+    const c = document.getElementById('hzCatat'), l = document.getElementById('hzLihat');
+    if (c) c.classList.toggle('kg-terpilih', z === 'catat');
+    if (l) l.classList.toggle('kg-terpilih', z === 'lihat');
+    gambarKacaHarian();
   }
 
   // Chip keterangan = catatan yang paling sering ditulis pemakai sendiri di kategori
@@ -9020,6 +9116,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // Daftar hari ini: baris pribadi tampil redup SELURUHNYA, termasuk nominalnya —
   // angka yang tidak ikut kas toko tidak boleh punya berat visual yang sama (Prinsip 1).
   function tampilkanHarianHariIni() {
+    gambarKacaHarian();   // jalur keluar dini pun wajib menggambar kaca
     const kont = document.getElementById('daftarHarianHariIni');
     if (!kont) return;
     const hariIni = tanggalLokalIso();
@@ -20847,6 +20944,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.putuskanKarantina = putuskanKarantina;
   window.hapusBulanan = hapusBulanan;
   window.pilihKategoriHarian = pilihKategoriHarian;
+  window.pilihZonaHarian = pilihZonaHarian;
   window.simpanPengeluaranHarian = simpanPengeluaranHarian;
   window.hapusHarian = hapusHarian;
   window.pilihJenisBeliBahanKemasan = pilihJenisBeliBahanKemasan;
