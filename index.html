@@ -3702,6 +3702,41 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #piutang6a .p6-batas .bar i{ display:block; height:100%; background:var(--emas); }
 #piutang6a .p6-batas .bar i.lewat{ background:var(--pf-amber); }
 #piutang6a .baris-44 .kg-uang-piutang{ font-size:13px; }
+/* --- KACA EMAS G3: Setelan (rapor + zona) --- */
+@media (min-width:700px){ #setelanKaca{ display:none; } }
+@media (max-width:699.98px){
+  #halamanSetelan > .kartu-daftar, #halamanSetelan > .info-box{ display:none; }
+}
+#setelanKaca .st6-rapor b{ font-family:var(--pf-serif); font-weight:600; font-size:26px; color:var(--pf-platina); display:block; margin:3px 0 7px; }
+#setelanKaca .st6-rapor b i{ font-size:11px; font-style:italic; color:var(--pf-abu); }
+#setelanKaca .st6-rapor.oks{ border-color:rgba(211,160,139,.4); }
+#setelanKaca .st6-oks{ color:var(--pf-amber); }
+#setelanKaca .st6-cek{ display:flex; align-items:baseline; gap:8px; min-height:24px; font-size:11px; }
+#setelanKaca .st6-cek i{ flex:0 0 7px; width:7px; height:7px; border-radius:99px; align-self:center; }
+#setelanKaca .st6-cek i.beres{ background:#c8d3bd; box-shadow:0 0 6px rgba(200,211,189,.4); }
+#setelanKaca .st6-cek i.gagal{ background:var(--pf-amber); box-shadow:0 0 6px rgba(211,160,139,.5); }
+#setelanKaca .st6-zona{ display:flex; gap:7px; margin:12px 0 4px; }
+#setelanKaca .st6-zona button{ flex:1; min-height:44px; border-radius:4px; font-size:10.5px; font-weight:800;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--pf-abu); border:1px solid var(--pf-tepi);
+  background:linear-gradient(168deg,rgba(255,255,255,.05),rgba(255,255,255,.018)); }
+#setelanKaca .st6-zona button u{ text-decoration:none; margin-left:5px; color:var(--pf-amber); }
+#setelanKaca .st6-zona button.kg-terpilih u{ color:#2a1f13; }
+#setelanKaca .st6-sela{ display:block; margin-top:12px; }
+#setelanKaca .st6-mini{ padding:10px 13px; margin-top:6px; }
+#setelanKaca .st6-mini b{ font-family:var(--pf-serif); font-weight:600; font-size:14px; }
+#setelanKaca .st6-mini i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); margin-top:2px; }
+#setelanKaca .kg-titik-lcd.mati{ background:var(--pf-amber); box-shadow:0 0 6px rgba(211,160,139,.5); }
+#setelanKaca .st6-baris{ display:flex; width:100%; min-height:48px; align-items:center; padding:8px 12px;
+  margin-top:7px; border-radius:4px; text-align:left; color:var(--teks);
+  border:1px solid var(--pf-tepi); background:linear-gradient(168deg,rgba(255,255,255,.05),rgba(255,255,255,.018)); }
+#setelanKaca .st6-baris b{ font-size:12px; font-weight:700; display:block; }
+#setelanKaca .st6-baris i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); }
+#setelanKaca .st6-saring{ margin:6px 0; }
+#setelanKaca .st6-saring button{ flex:0 0 auto; min-height:34px; padding:0 13px; border-radius:99px;
+  font-size:10px; font-weight:700; color:var(--pf-abu); border:1px solid var(--pf-tepi); background:none; }
+#setelanKaca .st6-log{ padding:6px 2px; border-bottom:1px solid rgba(255,255,255,.05); }
+#setelanKaca .st6-log b{ font-size:11px; font-weight:600; display:block; }
+#setelanKaca .st6-log i{ font-family:var(--pf-serif); font-style:italic; font-size:9.5px; color:var(--pf-abu); }
 
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
@@ -5572,6 +5607,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <!-- HALAMAN SETELAN (G5): yang selama ini tersebar, satu pintu. -->
   <div id="halamanSetelan" class="halaman k6a">
     <div class="judul-halaman"><h2>Setelan</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <!-- KACA EMAS G3 (rancangan Setelan - Gabungan): RAPOR MENUNJUK, ZONA MENAMPUNG —
+         cek nyata yang bisa benar-benar nol + zona AMAN / ORANG / MESIN menurut jenis
+         kekhawatiran. Hanya <700px; kartu lama tetap diisi untuk desktop. -->
+    <div id="setelanKaca"></div>
     <div class="kartu-daftar kd-kepala">
       <div class="kd-judul"><h3>Keamanan</h3></div>
       <button type="button" class="lm-baris" onclick="bukaSetelPin()"><span>PIN owner <i>— setel / ubah kunci tab uang</i></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -6473,6 +6512,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
     if (nama === 'input') { periksaDrafMasuk(); isiPilihanPemasok(); tampilkanSaranBelanja(); }
     if (nama === 'setelan') {
+      gambarSetelanKaca();
       pasangLogAktivitas(); gambarLogAktivitas();
       const elNp = document.getElementById('setelNamaPerangkat');
       if (elNp) elNp.textContent = '\u2014 ' + perangkatRingkas();
@@ -7522,6 +7562,88 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 
   /* Di HP pil status cuma titik (lihat CSS .pil-status di <700px) — kalimat lengkapnya
      dipindah ke kaki lembar Menu supaya tetap terbaca, dan ke title pilnya. */
+  // ===== KACA EMAS G3 — Setelan (rapor + zona) =====
+  let _setZona = 'aman', _setSaring = 'semua';
+  function setelanPilihZona(z) { _setZona = { aman: 1, orang: 1, mesin: 1 }[z] ? z : 'aman'; gambarSetelanKaca(); }
+  function setelanPilihSaring(x) { _setSaring = x; gambarSetelanKaca(); }
+  function segarkanSetelanKacaJikaTampil() {
+    const el = document.getElementById('halamanSetelan');
+    if (el && el.classList.contains('tampil')) gambarSetelanKaca();
+  }
+  function gambarSetelanKaca() {
+    const w = document.getElementById('setelanKaca');
+    if (!w || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      const rpH = n => n.toLocaleString('id-ID');
+      // --- RAPOR: cek nyata dari data yang ada — cacah gagal dihitung dari array ---
+      const nTunda = ambilAntreanTunda().length;
+      const tersambung = Object.values(_sambunganAktif).every(v => v) && _sudahLoginToko;
+      const tglBackup = localStorage.getItem('miqbal_backup_auto_tanggal');
+      const umurBackup = tglBackup ? Math.round((isoKeTanggal(tanggalLokalIso()) - isoKeTanggal(tglBackup)) / 86400000) : null;
+      const cek = [
+        { z: 'mesin', gagal: nTunda > 0, t: nTunda > 0 ? nTunda + ' catatan menunggu sinyal — belum sampai server' : 'Semua catatan sudah terkirim' },
+        { z: 'mesin', gagal: !tersambung, t: tersambung ? 'Tersambung ke database' : 'Belum tersambung penuh ke database' },
+        { z: 'orang', gagal: !pinSudahDisetel(), t: pinSudahDisetel() ? 'PIN owner terpasang' : 'PIN owner belum disetel — tab uang terbuka' },
+        { z: 'aman', gagal: umurBackup === null || umurBackup > 1,
+          t: umurBackup === null ? 'Backup otomatis belum pernah jalan di HP ini'
+            : umurBackup > 1 ? umurBackup + ' hari catatan tidak tercadang di HP ini' : 'Backup otomatis segar (hari ini/kemarin)' },
+        { z: 'orang', gagal: !localStorage.getItem('miqbal_perangkat_label_v1'),
+          t: localStorage.getItem('miqbal_perangkat_label_v1') ? 'Perangkat ini bernama: ' + perangkatRingkas() : 'Perangkat ini belum dinamai — jejak sulit dibaca' }
+      ];
+      const gagal = cek.filter(c => c.gagal);
+      const gagalZona = z => cek.filter(c => c.z === z && c.gagal).length;
+      let html = '<div class="kg-panel st6-rapor' + (gagal.length ? ' oks' : '') + '">'
+        + '<div class="kg-label' + (gagal.length ? ' st6-oks' : '') + '">' + (gagal.length ? 'Perlu perhatian' : 'Semua beres') + '</div>'
+        + '<b>' + gagal.length + ' <i>dari ' + cek.length + ' pemeriksaan</i></b>'
+        + cek.map(c => '<div class="st6-cek"><i class="' + (c.gagal ? 'gagal' : 'beres') + '"></i><span>' + escapeHtml(c.t) + '</span></div>').join('')
+        + '</div>';
+      // --- saklar zona (badge gagal dihitung dari cek yang dibangun) ---
+      html += '<div class="st6-zona">' + [['aman', 'Aman'], ['orang', 'Orang'], ['mesin', 'Mesin']].map(z =>
+        '<button type="button"' + (_setZona === z[0] ? ' class="kg-terpilih"' : '') + ' onclick="setelanPilihZona(\'' + z[0] + '\')">'
+        + z[1] + (gagalZona(z[0]) ? '<u>' + gagalZona(z[0]) + '</u>' : '') + '</button>').join('') + '</div>';
+      const brs = (aksi, judul, ket) => '<button type="button" class="st6-baris" onclick="' + aksi + '">'
+        + '<span><b>' + judul + '</b>' + (ket ? '<i>' + ket + '</i>' : '') + '</span></button>';
+      if (_setZona === 'aman') {
+        html += '<div class="kg-label st6-sela">Kalau catatannya hilang</div>'
+          + '<div class="kg-panel st6-mini">' + (umurBackup === null
+            ? '<b>Backup otomatis belum pernah jalan di HP ini.</b><i>Unduh backup manual sekarang — satu berkas JSON seluruh catatan.</i>'
+            : '<b>' + (umurBackup > 1 ? umurBackup + ' hari catatan hilang' : 'Cadangan segar') + '</b><i>backup otomatis terakhir ' + escapeHtml(formatTanggal(tglBackup)) + '</i>') + '</div>'
+          + brs('unduhBackup()', 'Unduh backup', 'file JSON semua catatan — simpan di luar HP ini')
+          + brs("document.getElementById('inputMuatFile') && document.getElementById('inputMuatFile').click()", 'Muat dari file', 'pulihkan dari backup')
+          + '<div class="kg-rincian st6-sela">' + rpH(ambilSemuaBatch().length) + ' catatan kedatangan tersimpan di HP ini sebagai cadangan offline.</div>';
+      } else if (_setZona === 'orang') {
+        const semuaLog = _cacheLog || [];
+        const punyaKu = perangkatRingkas();
+        const perangkatUnik = [...new Set(semuaLog.map(l => l.perangkat || ''))].filter(Boolean);
+        const tampilLog = semuaLog.filter(l => _setSaring === 'semua' ? true
+          : _setSaring === 'ini' ? l.perangkat === punyaKu : l.perangkat !== punyaKu);
+        html += '<div class="kg-label st6-sela">Siapa boleh apa, dari HP mana</div>'
+          + brs('bukaSetelPin()', 'PIN owner', pinSudahDisetel() ? 'terpasang — ubah di sini' : 'BELUM disetel — tab uang terbuka')
+          + brs('ubahNamaPerangkat()', 'Nama perangkat ini', escapeHtml(perangkatRingkas()))
+          + (perangkatUnik.length ? '<div class="kg-rincian st6-sela">Perangkat di jejak: ' + perangkatUnik.map(p =>
+              escapeHtml(p) + (p === punyaKu ? ' (HP ini)' : '')).join(' · ') + '</div>' : '')
+          + '<div class="kg-label st6-sela">Jejak aktivitas · ' + tampilLog.length + ' ditampilkan</div>'
+          + '<div class="kg-pita st6-saring">' + [['semua', 'Semua'], ['ini', 'HP ini'], ['lain', 'Lainnya']].map(x =>
+              '<button type="button"' + (_setSaring === x[0] ? ' class="kg-terpilih"' : '') + ' onclick="setelanPilihSaring(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>'
+          + (tampilLog.length === 0 ? '<div class="kg-rincian">Belum ada jejak' + (semuaLog.length ? ' di saringan ini' : ' — terisi begitu ada tulisan baru (butuh sambungan)') + '.</div>'
+            : tampilLog.slice(0, 30).map(l => '<div class="st6-log"><b>' + escapeHtml(l.aksi || '') + ' · ' + escapeHtml(l.koleksi || '') + '</b>'
+              + '<i>' + escapeHtml(waktuJejakLokal(l.pada)) + ' · ' + escapeHtml(l.oleh || '') + ' @ ' + escapeHtml(l.perangkat || '')
+              + (l.ringkas ? ' · ' + escapeHtml(l.ringkas) : '') + '</i></div>').join(''));
+      } else {
+        html += '<div class="kg-label st6-sela">Bagaimana sistemnya berjalan</div>'
+          + '<div class="kg-panel st6-mini"><span class="kg-titik-lcd' + (tersambung ? '' : ' mati') + '"></span> '
+          + '<b>' + (tersambung ? 'Tersambung' : (_sudahLoginToko ? 'Menyambungkan…' : 'Belum masuk — perlu sandi')) + '</b>'
+          + (nTunda > 0 ? '<i>' + nTunda + ' catatan menunggu sinyal</i>' : '<i>semua catatan terkirim</i>') + '</div>'
+          + (nTunda > 0 ? brs('kirimAntreanTunda()', 'Kirim sekarang', nTunda + ' catatan di antrean') : '')
+          + brs("bukaModalLoginToko('Masukkan sandi OWNER untuk login ulang database.')", 'Login database', 'sandi OWNER')
+          + '<div class="kg-label st6-sela">Pintu data dagang</div>'
+          + brs("pindahDariMenu('harga')", 'Jenis beras &amp; katalog harga', 'di halaman Harga')
+          + brs("pindahDariMenu('aruskas')", 'Titik hitung kas', 'kartu Cocokkan Kas di Arus Kas');
+      }
+      w.innerHTML = html;
+    } catch (e) { console.error('setelan kaca gagal', e); }
+  }
+
   function tulisStatusSambunganHp(teks, perluPerhatian) {
     const rapi = String(teks || '').replace(/\s+/g, ' ').replace(/^ ?· ?/, '').trim();
     const pil = document.querySelector('.pil-status');
@@ -7541,6 +7663,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       ik6.querySelector('b').textContent = perluPerhatian
         ? (rapi.length > 26 ? 'menunggu sinyal' : rapi) : 'tersambung';
     }
+    segarkanSetelanKacaJikaTampil();   // rapor MESIN ikut denyut status
   }
 
   // Arus Kas dibangun dari SEMBILAN koleksi sekaligus (penjualan, batch, bulanan,
@@ -7921,6 +8044,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   }
 
   function gambarLogAktivitas() {
+    segarkanSetelanKacaJikaTampil();   // kaca menyegar walau kartu lama tak ada (return di bawah)
     const kont = document.getElementById('daftarLogAktivitas');
     if (!kont) return;
     document.getElementById('logHitung').textContent = _cacheLog.length ? _cacheLog.length + ' terakhir' : '—';
@@ -20529,6 +20653,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.p6PilihZona = p6PilihZona;
   window.p6KirimWa = p6KirimWa;
   window.gantiPembacaLaporan = gantiPembacaLaporan;
+  window.setelanPilihZona = setelanPilihZona;
+  window.setelanPilihSaring = setelanPilihSaring;
+  window.kirimAntreanTunda = kirimAntreanTunda;
   window.bukaRiwayatHariPlatina = bukaRiwayatHariPlatina;
   window.tampilkanRiwayat = tampilkanRiwayat;
   window.kosongkanCariRiwayat = kosongkanCariRiwayat;
