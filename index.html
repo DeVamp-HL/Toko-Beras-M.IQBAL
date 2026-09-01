@@ -3738,6 +3738,53 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #setelanKaca .st6-log b{ font-size:11px; font-weight:600; display:block; }
 #setelanKaca .st6-log i{ font-family:var(--pf-serif); font-style:italic; font-size:9.5px; color:var(--pf-abu); }
 
+/* --- KACA EMAS G3: Pesanan (satu putaran, bukan uang) --- */
+@media (min-width:700px){ #pesanan6a{ display:none; } }
+@media (max-width:699.98px){
+  #halamanPesanan > .kartu-daftar, #halamanPesanan > .info-box{ display:none; }
+}
+#pesanan6a{ margin-top:14px; }
+#pesanan6a .ps6-kepala{ padding:15px 16px 13px; margin-bottom:14px; }
+/* Cacah janji = satu-satunya angka tegas di layar ini; rupiah tidak pernah tegas. */
+#pesanan6a .ps6-kepala b{ display:block; font-family:var(--pf-serif); font-weight:600;
+  font-size:27px; color:var(--pf-platina); margin:4px 0 8px; }
+#pesanan6a .ps6-perkiraan{ display:inline-block; font-family:var(--pf-serif); font-style:italic;
+  font-size:12px; color:var(--pf-abu); padding:5px 12px; border-radius:99px; margin-bottom:8px; }
+#pesanan6a .ps6-kepala > i{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:11px; line-height:1.5; color:var(--pf-abu); }
+#pesanan6a .ps6-zlabel{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:10px; margin:0 2px 8px; }
+#pesanan6a .ps6-zlabel i{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  color:var(--pf-abu); text-align:right; }
+#pesanan6a .ps6-kartu{ display:grid; grid-template-columns:30px 1fr auto; gap:4px 10px;
+  align-items:start; padding:12px 13px; margin-bottom:9px; }
+#pesanan6a .ps6-no{ width:28px; height:28px; border-radius:50%; margin-top:1px;
+  border:1px solid rgba(226,205,166,.5); color:#e2cda6; font-size:12px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; }
+#pesanan6a .ps6-no.tanpa{ border-style:dashed; border-color:var(--pf-tepi2); color:var(--pf-abu); font-weight:400; }
+#pesanan6a .ps6-tengah b{ display:block; font-size:13.5px; }
+#pesanan6a .ps6-tengah span{ display:block; font-size:12.5px; line-height:1.45; margin-top:2px; }
+#pesanan6a .ps6-tengah i{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:10.5px; color:var(--pf-abu); margin-top:3px; }
+#pesanan6a .ps6-kanan{ font-family:var(--pf-serif); font-style:italic; font-size:11px;
+  color:var(--pf-abu); text-align:right; }
+#pesanan6a .ps6-aksi{ grid-column:1 / -1; display:flex; align-items:center; gap:8px;
+  margin-top:4px; padding-top:6px; border-top:1px dashed rgba(255,255,255,.1); }
+#pesanan6a .ps-chip, #pesanan6a .ps-batal{ min-height:44px; }
+#pesanan6a .ps6-zlabel2{ margin:16px 2px 8px; }
+#pesanan6a .ps6-baris{ display:flex; gap:10px; align-items:baseline; padding:9px 2px;
+  border-bottom:1px solid rgba(255,255,255,.05); }
+#pesanan6a .ps6-baris:last-child{ border-bottom:none; }
+#pesanan6a .ps6-cek{ flex:none; width:16px; text-align:center; color:#c8d3bd; font-size:12px; }
+#pesanan6a .ps6-baris b{ display:block; font-size:12.5px; }
+#pesanan6a .ps6-baris i{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:10px; color:var(--pf-abu); margin-top:2px; }
+#pesanan6a .ps6-baris.batal{ opacity:.55; }
+#pesanan6a .ps6-baris.batal .ps6-cek{ color:var(--pf-abu); }
+#pesanan6a .ps6-aturan{ margin-top:14px; padding:11px 13px; border-radius:12px;
+  font-family:var(--pf-serif); font-style:italic; font-size:11px; line-height:1.55;
+  color:var(--pf-abu); }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -5651,6 +5698,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <input type="number" id="psNilai" placeholder="0" inputmode="numeric">
       <button type="button" class="tombol-utama-kartu" onclick="simpanPesanan()">Simpan Pesanan</button>
     </div>
+    <!-- KACA EMAS G3 (rancangan Pesanan - Gabungan): SATU PUTARAN — pesanan adalah
+         janji antar, BUKAN uang; nilai perkiraan selalu kabur bertepi putus, tanpa
+         satu pun wujud uang. Hanya <700px; kartu lama tetap diisi untuk desktop. -->
+    <div id="pesanan6a"></div>
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
       <div class="kd-judul"><h3>Berjalan</h3><span class="kd-hitung" id="psHitungAktif"></span></div>
       <div id="daftarPesananAktif"></div>
@@ -10282,6 +10333,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     alert('Susun keranjangnya untuk pesanan ' + (d.namaPelanggan || '') + ' — begitu tersimpan, pesanan otomatis jadi DIBAYAR.');
   }
   function tampilkanPesanan() {
+    tampilkanPesanan6a();   // di baris pertama: jalur keluar dini pun wajib menggambar kaca
     const elA = document.getElementById('daftarPesananAktif');
     if (!elA) return;
     const semua = ambilPesanan().slice().sort((a, b) => String(b.id).localeCompare(String(a.id)));
@@ -10311,6 +10363,81 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     document.getElementById('daftarPesananSelesai').innerHTML = selesai.length
       ? selesai.slice(0, 20).map(kartu).join('')
       : '<div class="kosong-info"><b>Belum ada</b></div>';
+  }
+
+  // ============ KACA EMAS G3: PESANAN — SATU PUTARAN (hanya <700px) ============
+  // Pesanan BUKAN uang: yang tegas cuma cacah janji; nilai perkiraan selalu kabur
+  // bertepi putus dan tidak memakai satu pun wujud uang. Nomor urut hanya untuk
+  // yang beralamat (satu putaran antar); tanpa alamat = ambil sendiri, disebut
+  // jujur, bukan disembunyikan. Kartu lama tetap diisi — desktop memakainya.
+  function tampilkanPesanan6a() {
+    const wadah = document.getElementById('pesanan6a');
+    if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      const rp = n => 'Rp' + Math.round(n || 0).toLocaleString('id-ID');
+      const semua = ambilPesanan().slice();
+      const berjalan = semua.filter(x => x.status === 'dipesan' || x.status === 'diantar')
+        .slice().sort((a, b) => String(a.jam || '99:99').localeCompare(String(b.jam || '99:99')));
+      const selesai = semua.filter(x => x.status === 'dibayar' || x.status === 'batal')
+        .sort((a, b) => String(b.id).localeCompare(String(a.id)));
+      const adaDibayar = selesai.some(x => x.status === 'dibayar');
+      const totalPerkiraan = berjalan.reduce((t, x) => t + (Number(x.nilaiPerkiraan) || 0), 0);
+      const beralamat = berjalan.filter(x => x.alamat);
+      const tanpaAlamat = berjalan.length - beralamat.length;
+
+      let h = '';
+      if (!berjalan.length) {
+        h += `<div class="kg-panel ps6-kepala"><div class="kg-label">Sudah dijanjikan</div>
+          <b>0 pesanan</b>
+          <i>Tidak ada pesanan berjalan. Pesanan baru dari formulir di atas muncul di sini begitu tersinkron.</i></div>`;
+      } else {
+        h += `<div class="kg-panel ps6-kepala"><div class="kg-label">Sudah dijanjikan</div>
+          <b>${berjalan.length} pesanan</b>
+          ${totalPerkiraan > 0 ? `<span class="ps6-perkiraan kg-tepi-putus">perkiraan ${rp(totalPerkiraan)}</span>` : ''}
+          <i>${berjalan.length} pesanan mengikat janji. Belum jadi omzet — baru bergerak saat dicatat jualnya.</i></div>`;
+
+        const ketAlamat = beralamat.length && tanpaAlamat
+          ? `${beralamat.length} alamat &middot; ${tanpaAlamat} tanpa alamat`
+          : beralamat.length ? `${beralamat.length} alamat` : `${tanpaAlamat} tanpa alamat`;
+        h += `<div class="ps6-zlabel"><span class="kg-label">Satu putaran</span><i>${ketAlamat}</i></div>`;
+
+        let nomor = 0;
+        h += berjalan.map(x => {
+          const noHtml = x.alamat
+            ? `<div class="ps6-no">${++nomor}</div>`
+            : `<div class="ps6-no tanpa">&mdash;</div>`;
+          const ket = [x.jam, x.alamat ? escapeHtml(x.alamat) : 'ambil sendiri, tanpa alamat']
+            .filter(Boolean).join(' &middot; ');
+          const chip = x.status === 'dipesan'
+            ? `<button type="button" class="ps-chip" onclick="majukanPesanan('${x.id}')">DIPESAN → antar</button>`
+            : `<button type="button" class="ps-chip antar" onclick="catatJualPesanan('${x.id}')">DIANTAR → catat jualnya</button>`;
+          return `<div class="kg-panel ps6-kartu">
+            ${noHtml}
+            <div class="ps6-tengah"><b>${escapeHtml(x.namaPelanggan || '')}</b>
+              <span>${escapeHtml(x.isi || '')}</span><i>${ket}</i></div>
+            <div class="ps6-kanan">${x.nilaiPerkiraan ? 'perkiraan<br>' + rp(x.nilaiPerkiraan) : ''}</div>
+            <div class="ps6-aksi">${chip}
+              <button type="button" class="ps-batal" onclick="batalkanPesanan('${x.id}')">batalkan</button></div>
+          </div>`;
+        }).join('');
+      }
+
+      if (adaDibayar) {
+        h += `<div class="kg-label ps6-zlabel2">Sudah dicatat jualnya</div><div class="kg-panel" style="padding:6px 13px;">`;
+        h += selesai.slice(0, 12).map(x => x.status === 'dibayar'
+          ? `<div class="ps6-baris"><span class="ps6-cek">✓</span>
+              <div><b>${escapeHtml(x.namaPelanggan || '')}</b>
+              <i>omzet, kas, dan stok sudah bergerak${x.trxIdJual ? ' &middot; Riwayat #' + escapeHtml(String(x.trxIdJual).slice(-4)) : ''}</i></div></div>`
+          : `<div class="ps6-baris batal"><span class="ps6-cek">&mdash;</span>
+              <div><b>${escapeHtml(x.namaPelanggan || '')}</b><i>BATAL</i></div></div>`
+        ).join('');
+        h += `</div>`;
+        if (selesai.length > 12) h += `<div class="ps6-zlabel" style="margin-top:6px;"><i>menampilkan 12 terakhir dari ${selesai.length}</i></div>`;
+      }
+
+      h += `<div class="ps6-aturan kg-tepi-putus">Angka bertepi putus-putus = perkiraan, belum masuk omzet, kas, atau stok.</div>`;
+      wadah.innerHTML = h;
+    } catch (e) { console.error('tampilkanPesanan6a:', e); }
   }
 
   // ============ GESER TEPI ANTAR LAYAR (patokan prototipe: tepi 24px, ambang 25%) ============
