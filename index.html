@@ -3813,6 +3813,14 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <button type="button" id="lapModeBulan" class="pilih" onclick="gantiModeLaporan('bulan')">Bulan</button>
       <button type="button" id="lapModeTahun" onclick="gantiModeLaporan('tahun')">Tahun</button>
     </div>
+    <!-- KACA EMAS G3 (rancangan Laporan - Gabungan): PEMBACA menentukan isi — baris
+         yang tak berhak TIDAK DIRENDER, bukan disembunyikan CSS. Saklar ini alat owner
+         menyiapkan lembar (bilah tak ikut tercetak; cap pembaca masuk kepala kertas). -->
+    <div class="lap-mode" id="lapPembaca">
+      <button type="button" id="lapBacaOwner" class="pilih" onclick="gantiPembacaLaporan('owner')">Owner</button>
+      <button type="button" id="lapBacaKeluarga" onclick="gantiPembacaLaporan('keluarga')">Keluarga</button>
+      <button type="button" id="lapBacaBank" onclick="gantiPembacaLaporan('bank')">Bank</button>
+    </div>
     <div class="lap-langkah">
       <button type="button" onclick="langkahLaporan(-1)" aria-label="Periode sebelumnya">&#8249;</button>
       <input type="date" id="lapTanggal" onchange="gambarLaporan()" aria-label="Tanggal laporan harian" style="display:none;">
@@ -15772,17 +15780,18 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <h1 id="lapJudul">Toko Beras M.IQBAL</h1>
       <div class="lap-bulan">Laporan ${escapeHtml(namaBulanPanjang(bl + '-01'))}</div>
       <div class="lap-cap">Dicetak ${escapeHtml(formatTanggal(tanggalLokalIso()))} pukul ${escapeHtml(jam)}</div>
+      ${capPembacaHtml()}
     </div>`);
 
     bagian.push(`<div class="lap-bagian"><h2>Ikhtisar</h2>
       ${barisLap('Omzet penuh', laba.jumlahTrx + ' transaksi, termasuk kredit', laba.omzetPenuh, 'lb-utama')}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', laba.margin)}
-      ${barisLap('Biaya bulanan', 'ditagihkan ke bulan ini' + (totalPotongan > 0 ? ' · gaji dihitung penuh' : ''), -totalBiaya)}
-      ${barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan', -bersih.harianToko)}
-      ${totalHapus > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama — bukan uang keluar', -totalHapus) : ''}
-      ${barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', bersih.susutStok)}
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya bulanan', 'ditagihkan ke bulan ini' + (totalPotongan > 0 ? ' · gaji dihitung penuh' : ''), -totalBiaya)
+        + barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan', -bersih.harianToko)
+        + (totalHapus > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama — bukan uang keluar', -totalHapus) : '')
+        + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', bersih.susutStok)}
       ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko' + (totalHapus > 0 ? ' − hapus buku' : '') + (bersih.susutStok !== 0 ? ' ± susut stok' : ''), labaBersih, 'lb-jumlah')}
-      ${barisLap('Kas bersih', 'uang yang benar-benar berpindah bulan ini', kas.bersih, 'lb-jumlah')}
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Kas bersih', 'uang yang benar-benar berpindah bulan ini', kas.bersih, 'lb-jumlah')}
     </div>`);
 
     const catLaba = [];
@@ -15905,7 +15914,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       Transaksi yang dibatalkan atau dikoreksi tidak ikut dihitung.
       Angka di laporan ini berasal dari perhitungan yang sama dengan tab Laba, Arus Kas, dan Buku Kas.</div>`);
 
-    document.getElementById('lapKertas').innerHTML = bagian.join('');
+    document.getElementById('lapKertas').innerHTML = saringBagianLaporan(bagian).join('');
   }
 
   // ===== LAPORAN TAHUNAN (Modul ERP #4, 14 Agustus 2026) =====
@@ -15915,6 +15924,44 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // dijanjikan. Ditambah baris pajak final UMKM 0,5% (PP 55/2022): perorangan bebas
   // untuk Rp500 juta omzet pertama — hitungan kasar, bukan nasihat pajak.
   let _modeLaporan = 'bulan';
+  // KACA EMAS G3 — pembaca menentukan isi. Saringan HANYA di penggambar: mesin angka
+  // (ujiKonsistensiLaporan, chip boot) tidak pernah tersentuh, dan total tetap milik
+  // mesin walau baris komponennya tidak dirender (lembar Bank tetap memikul susut &
+  // hapus buku di angka laba bersihnya).
+  let _pembacaLaporan = 'owner';
+  const LAP_BAGIAN_UNTUK = {
+    'Ikhtisar': 'OKB', 'Laba': 'OB', 'Uang masuk': 'OB', 'Uang keluar': 'OB',
+    'Buku kas': 'O', 'Amplop Laba': 'O', 'Piutang belum tertagih': 'O',
+    'Pajak final UMKM': 'OB', 'Tren per bulan': 'OB',
+    'Omzet per cara bayar': 'OB', 'Prive owner': 'O', 'Piutang hari ini': 'O',
+    'Tutup hari': 'O', 'Hari per hari': 'OKB', 'Dibanding minggu lalu': 'OKB'
+  };
+  function lapKodePembaca() { return _pembacaLaporan === 'owner' ? 'O' : _pembacaLaporan === 'keluarga' ? 'K' : 'B'; }
+  function saringBagianLaporan(bagian) {
+    const kode = lapKodePembaca();
+    if (kode === 'O') return bagian;
+    return bagian.filter(html => {
+      const m = html.match(/<div class="lap-bagian"><h2>([^<{]+)/);
+      if (!m) return true;   // kepala & catatan kaki ikut semua pembaca
+      const judul = m[1].trim();
+      const kunci = Object.keys(LAP_BAGIAN_UNTUK).find(k => judul.indexOf(k) === 0);
+      return kunci ? LAP_BAGIAN_UNTUK[kunci].indexOf(kode) >= 0 : false;   // tak terdaftar = owner saja
+    });
+  }
+  function capPembacaHtml() {
+    if (_pembacaLaporan === 'owner') return '';
+    return '<div class="lap-cap">Lembar untuk ' + (_pembacaLaporan === 'keluarga' ? 'Keluarga' : 'Bank')
+      + ' — baris yang tidak berhak tidak dirender, jadi tidak ikut tercetak.</div>';
+  }
+  function gantiPembacaLaporan(p) {
+    _pembacaLaporan = { owner: 1, keluarga: 1, bank: 1 }[p] ? p : 'owner';
+    [['lapBacaOwner', 'owner'], ['lapBacaKeluarga', 'keluarga'], ['lapBacaBank', 'bank']].forEach(x => {
+      const el = document.getElementById(x[0]);
+      if (el) el.classList.toggle('pilih', x[1] === _pembacaLaporan);
+    });
+    gambarLaporan();
+    document.getElementById('lembarLaporan').scrollTop = 0;
+  }
   const BATAS_BEBAS_UMKM = 500000000;
   function gantiModeLaporan(mode) {
     _modeLaporan = mode;
@@ -15984,16 +16031,17 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <h1>Toko Beras M.IQBAL</h1>
       <div class="lap-bulan">Laporan Tahunan ${tahun}</div>
       <div class="lap-cap">Dicetak ${escapeHtml(formatTanggal(tanggalLokalIso()))} — dijumlah dari dua belas laporan bulanan</div>
+      ${capPembacaHtml()}
     </div>`);
     bagian.push(`<div class="lap-bagian"><h2>Ikhtisar ${tahun}</h2>
       ${barisLap('Omzet penuh setahun', nTrx + ' transaksi, termasuk kredit', omzet, 'lb-utama')}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', margin)}
-      ${barisLap('Biaya bulanan setahun', 'ditagihkan ke tahun ini', -biaya)}
-      ${barisLap('Pengeluaran harian (Toko) setahun', '', -T.harianToko)}
-      ${hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama', -hapusBuku) : ''}
-      ${barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', susutStok)}
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya bulanan setahun', 'ditagihkan ke tahun ini', -biaya)
+        + barisLap('Pengeluaran harian (Toko) setahun', '', -T.harianToko)
+        + (hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama', -hapusBuku) : '')
+        + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', susutStok)}
       ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko − hapus buku ± susut stok', labaBersih, 'lb-jumlah')}
-      ${barisLap('Kas bersih setahun', 'masuk ' + formatRupiah(kasMasuk) + ' − keluar ' + formatRupiah(kasKeluar), kasMasuk - kasKeluar, 'lb-jumlah')}
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Kas bersih setahun', 'masuk ' + formatRupiah(kasMasuk) + ' − keluar ' + formatRupiah(kasKeluar), kasMasuk - kasKeluar, 'lb-jumlah')}
     </div>`);
     bagian.push(`<div class="lap-bagian"><h2>Pajak final UMKM — hitungan kasar</h2>
       ${barisLap('Omzet setahun (dasar pajak)', '', omzet)}
@@ -16026,7 +16074,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     bagian.push(`<div class="lap-catatan${nBolong > 0 ? ' lap-peringatan' : ''}">${catatan.join(' ')}</div>`);
     bagian.push(`<div class="lap-kaki">Dibuat otomatis oleh Sistem Toko M.IQBAL dari catatan yang tersimpan.
       Transaksi yang dibatalkan atau dikoreksi tidak ikut dihitung.</div>`);
-    document.getElementById('lapKertas').innerHTML = bagian.join('');
+    document.getElementById('lapKertas').innerHTML = saringBagianLaporan(bagian).join('');
   }
 
   // ===== LAPORAN HARIAN & MINGGUAN (22 Agustus 2026) =====
@@ -16081,16 +16129,17 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <h1>Toko Beras M.IQBAL</h1>
       <div class="lap-bulan">Laporan Harian — ${escapeHtml(namaHariTanggal(iso))}</div>
       <div class="lap-cap">Dicetak ${escapeHtml(formatTanggal(tanggalLokalIso()))} pukul ${escapeHtml(jam)}</div>
+      ${capPembacaHtml()}
     </div>`);
 
     bagian.push(`<div class="lap-bagian"><h2>Ikhtisar hari ini</h2>
       ${barisLap('Omzet', L.jumlahTrx + ' transaksi, termasuk kredit', L.omzetPenuh, 'lb-utama')}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', L.margin)}
-      ${barisLap('Biaya toko hari ini', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ' + jatah biaya bulanan ' + formatRupiah(L.jatahBulanan), -L.biayaToko)}
-      ${L.hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian — bukan uang keluar', -L.hapusBuku) : ''}
-      ${barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', L.susutStok)}
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya toko hari ini', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ' + jatah biaya bulanan ' + formatRupiah(L.jatahBulanan), -L.biayaToko)
+        + (L.hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian — bukan uang keluar', -L.hapusBuku) : '')
+        + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', L.susutStok)}
       ${barisLap('Laba bersih hari ini', 'margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : '') + (L.susutStok !== 0 ? ' ± susut stok' : ''), L.labaBersih, 'lb-jumlah')}
-      ${barisLap('Kas bersih hari ini', 'masuk ' + formatRupiah(K.totalMasuk) + ' − keluar ' + formatRupiah(K.totalKeluar), K.bersih, 'lb-jumlah')}
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Kas bersih hari ini', 'masuk ' + formatRupiah(K.totalMasuk) + ' − keluar ' + formatRupiah(K.totalKeluar), K.bersih, 'lb-jumlah')}
     </div>`);
 
     bagian.push(`<div class="lap-bagian"><h2>Omzet per cara bayar</h2>
@@ -16163,7 +16212,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     bagian.push(`<div class="lap-kaki">Dibuat otomatis oleh Sistem Toko M.IQBAL dari catatan yang tersimpan.
       Transaksi yang dibatalkan atau dikoreksi tidak ikut dihitung.
       Angka di laporan ini berasal dari mesin yang sama dengan laporan Mingguan, Bulanan, Tahunan, Ikhtisar, dan Arus Kas.</div>`);
-    document.getElementById('lapKertas').innerHTML = bagian.join('');
+    document.getElementById('lapKertas').innerHTML = saringBagianLaporan(bagian).join('');
   }
 
   function gambarLaporanMingguan() {
@@ -16185,32 +16234,33 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <h1>Toko Beras M.IQBAL</h1>
       <div class="lap-bulan">Laporan Mingguan — ${escapeHtml(formatTanggal(senin))} s/d ${escapeHtml(formatTanggal(minggu))}</div>
       <div class="lap-cap">Senin–Minggu · dicetak ${escapeHtml(formatTanggal(tanggalLokalIso()))} pukul ${escapeHtml(jam)}</div>
+      ${capPembacaHtml()}
     </div>`);
 
     bagian.push(`<div class="lap-bagian"><h2>Ikhtisar minggu ini</h2>
       ${barisLap('Omzet', L.jumlahTrx + ' transaksi, termasuk kredit', L.omzetPenuh, 'lb-utama')}
-      ${barisLap('Harga pokok (HPP)', L.jumlahHitung + ' transaksi ber-HPP', -L.hpp)}
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Harga pokok (HPP)', L.jumlahHitung + ' transaksi ber-HPP', -L.hpp)}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', L.margin)}
-      ${barisLap('Biaya toko', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ' + jatah biaya bulanan 7 hari ' + formatRupiah(L.jatahBulanan), -L.biayaToko)}
-      ${L.hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian — bukan uang keluar', -L.hapusBuku) : ''}
-      ${barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', L.susutStok)}
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya toko', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ' + jatah biaya bulanan 7 hari ' + formatRupiah(L.jatahBulanan), -L.biayaToko)
+        + (L.hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian — bukan uang keluar', -L.hapusBuku) : '')
+        + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', L.susutStok)}
       ${barisLap('Laba bersih minggu ini', 'margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : '') + (L.susutStok !== 0 ? ' ± susut stok' : ''), L.labaBersih, 'lb-jumlah')}
-      ${barisLap('Kas masuk', '', K.totalMasuk)}
-      ${barisLap('Kas keluar', '', -K.totalKeluar)}
-      ${barisLap('Kas bersih minggu ini', 'uang yang benar-benar berpindah', K.bersih, 'lb-jumlah')}
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Kas masuk', '', K.totalMasuk)
+        + barisLap('Kas keluar', '', -K.totalKeluar)
+        + barisLap('Kas bersih minggu ini', 'uang yang benar-benar berpindah', K.bersih, 'lb-jumlah')}
     </div>`);
 
     const angka = n => (n < 0 ? '−' : '') + formatRupiah(Math.abs(n)).replace('Rp', '');
     const NH = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
     bagian.push(`<div class="lap-bagian"><h2>Hari per hari</h2>
       <div class="lap-gulir"><table class="lap-tabel">
-        <thead><tr><th>Hari</th><th>Omzet (Rp)</th><th>Margin (Rp)</th><th>Kas masuk (Rp)</th><th>Kas keluar (Rp)</th></tr></thead>
+        <thead><tr><th>Hari</th><th>Omzet (Rp)</th><th>Margin (Rp)</th>${lapKodePembaca() === 'K' ? '' : '<th>Kas masuk (Rp)</th><th>Kas keluar (Rp)</th>'}</tr></thead>
         <tbody>${hari.map(h => {
           const dt = new Date(h.iso + 'T00:00:00');
           const kosong = h.bersih.jumlahTrx === 0 && h.kas.totalMasuk === 0 && h.kas.totalKeluar === 0;
-          return `<tr class="${kosong ? 'lt-nol' : ''}"><td>${NH[dt.getDay()]} ${dt.getDate()}</td><td>${angka(h.bersih.omzetPenuh)}</td><td>${angka(h.bersih.margin)}</td><td>${angka(h.kas.totalMasuk)}</td><td>${angka(h.kas.totalKeluar)}</td></tr>`;
+          return `<tr class="${kosong ? 'lt-nol' : ''}"><td>${NH[dt.getDay()]} ${dt.getDate()}</td><td>${angka(h.bersih.omzetPenuh)}</td><td>${angka(h.bersih.margin)}</td>${lapKodePembaca() === 'K' ? '' : '<td>' + angka(h.kas.totalMasuk) + '</td><td>' + angka(h.kas.totalKeluar) + '</td>'}</tr>`;
         }).join('')}</tbody>
-        <tfoot><tr><th>Jumlah</th><th>${angka(L.omzetPenuh)}</th><th>${angka(L.margin)}</th><th>${angka(K.totalMasuk)}</th><th>${angka(K.totalKeluar)}</th></tr></tfoot>
+        <tfoot><tr><th>Jumlah</th><th>${angka(L.omzetPenuh)}</th><th>${angka(L.margin)}</th>${lapKodePembaca() === 'K' ? '' : '<th>' + angka(K.totalMasuk) + '</th><th>' + angka(K.totalKeluar) + '</th>'}</tr></tfoot>
       </table></div>
       ${barisLap('Rata-rata omzet per hari', '7 hari kalender', Math.round(L.omzetPenuh / 7))}
       ${barisLap('Rata-rata margin kotor per hari', '7 hari kalender', Math.round(L.margin / 7))}
@@ -16230,7 +16280,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       ${banding('Omzet', L.omzetPenuh, Lp.omzetPenuh)}
       ${banding('Margin kotor', L.margin, Lp.margin)}
       ${banding('Laba bersih', L.labaBersih, Lp.labaBersih)}
-      ${banding('Kas bersih', K.bersih, Kp.bersih)}
+      ${lapKodePembaca() === 'K' ? '' : banding('Kas bersih', K.bersih, Kp.bersih)}
     </div>`);
 
     const cat = [];
@@ -16242,7 +16292,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     bagian.push(`<div class="lap-catatan${(L.jumlahTanpaHpp > 0 || cat.length > 2) ? ' lap-peringatan' : ''}">${cat.join('<br>')}</div>`);
     bagian.push(`<div class="lap-kaki">Dibuat otomatis oleh Sistem Toko M.IQBAL dari catatan yang tersimpan.
       Jumlah tujuh laporan harian minggu ini sama persis dengan laporan ini — satu mesin angka.</div>`);
-    document.getElementById('lapKertas').innerHTML = bagian.join('');
+    document.getElementById('lapKertas').innerHTML = saringBagianLaporan(bagian).join('');
   }
 
   // ===== UJI KONSISTENSI LINTAS PERIODE (22 Agustus 2026) =====
@@ -20478,6 +20528,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.p6PilihBuku = p6PilihBuku;
   window.p6PilihZona = p6PilihZona;
   window.p6KirimWa = p6KirimWa;
+  window.gantiPembacaLaporan = gantiPembacaLaporan;
   window.bukaRiwayatHariPlatina = bukaRiwayatHariPlatina;
   window.tampilkanRiwayat = tampilkanRiwayat;
   window.kosongkanCariRiwayat = kosongkanCariRiwayat;
