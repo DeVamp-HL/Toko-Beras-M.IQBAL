@@ -4057,6 +4057,48 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   border:1px solid var(--pf-tepi2); background:none; color:var(--pf-platina);
   font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.1em; }
 
+/* --- KACA EMAS G3: Masuk (timbangan mobil) --- */
+@media (min-width:700px){ #masukKaca, .bm-hpp{ display:none; } }
+@media (max-width:699.98px){
+  /* Kepala kaca mengambil alih peran kartu Rincian & penunjuk lengket;
+     keduanya tetap diisi hitungPerkiraan untuk desktop. #rincianMasuk
+     ber-display inline dari hitungPerkiraan — perlu !important. */
+  #halamanInput #rincianMasuk{ display:none !important; }
+  #halamanInput #bmPenunjuk.tampil{ position:static; }
+  #masukKaca .mk-kepala{ position:sticky; top:50px; z-index:9; }
+}
+#masukKaca .mk-kepala{ padding:11px 14px 10px; margin-bottom:12px; }
+#masukKaca .mk-atas{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+#masukKaca .mk-cara{ font-size:9px; font-weight:700; letter-spacing:.12em; padding:4px 9px; border-radius:99px;
+  border:1px solid rgba(226,205,166,.5); color:#e2cda6; white-space:nowrap; }
+#masukKaca .mk-cara.tunai{ border-color:rgba(200,211,189,.5); color:#c8d3bd; }
+#masukKaca .mk-nilai{ margin:4px 0 2px; }
+#masukKaca .mk-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; line-height:1.5;
+  color:var(--pf-abu); }
+#masukKaca .mk-ambang{ display:flex; align-items:center; gap:9px; margin-top:8px; font-size:9.5px;
+  font-weight:700; letter-spacing:.08em; color:var(--pf-abu); }
+#masukKaca .mk-ambang .rel{ flex:1; height:5px; border-radius:99px; background:rgba(255,255,255,.07); overflow:hidden; }
+/* Bilah digerakkan --isi dari cacah karung yang SAMA dengan labelnya. */
+#masukKaca .mk-ambang .bilah{ height:100%; width:var(--isi,0%); border-radius:99px;
+  background:linear-gradient(90deg,rgba(226,205,166,.9),rgba(226,205,166,.4)); }
+#masukKaca .mk-ambang.oks .bilah{ background:linear-gradient(90deg,rgba(211,160,139,.9),rgba(211,160,139,.4)); }
+#masukKaca .mk-ambang.oks span:last-child{ color:#d3a08b; }
+#masukKaca .mk-chip{ display:inline-block; margin-top:7px; padding:4px 10px; border-radius:99px;
+  border:1px dashed rgba(211,160,139,.5); color:#d3a08b; font-family:var(--pf-serif);
+  font-style:italic; font-size:10px; }
+#masukKaca .mk-tiga{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:9px;
+  padding-top:8px; border-top:1px solid rgba(255,255,255,.06); }
+#masukKaca .mk-tiga .label{ font-size:8px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--pf-abu); }
+#masukKaca .mk-tiga .nilai{ font-size:12px; font-weight:600; color:var(--pf-platina); margin-top:2px; }
+#masukKaca .mk-tiga .nilai.oks{ color:#d3a08b; }
+#masukKaca .mk-tiga .nilai.kosong{ color:var(--pf-abu); font-weight:400; }
+.bm-hpp{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); line-height:1.5; }
+.bm-hpp:empty{ display:none; }
+#daftarSaranBelanja .sb-pakai{ flex:none; min-height:44px; padding:0 13px; border:none; border-radius:11px;
+  font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.04em; margin-left:8px; }
+#daftarSaranBelanja .sb-pakai:disabled{ background:none !important; border:1px dashed rgba(226,205,166,.25);
+  color:var(--pf-abu) !important; -webkit-text-fill-color:var(--pf-abu); }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -6096,6 +6138,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     <div class="judul-halaman"><h2>Masuk</h2><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOk" class="pesan-ok"> Tersimpan. Kedatangan baru sudah masuk ke riwayat.</div>
 
+    <!-- KACA EMAS G3 (rancangan Masuk - Gabungan): TIMBANGAN MOBIL — kepala menempel
+         yang menyebut nilai beras mobil ini, cara bayarnya, dampak kasnya, dan ambang
+         60 karung; porsi bongkar/HPP per kg tampil inline di tiap baris. Form tulis
+         TIDAK dirombak. Hanya <700px; kartu Rincian lama tetap diisi (desktop). -->
+    <div id="masukKaca"></div>
+
     <div class="kartu">
       <!-- Lembar 2: label di atas isian dibuang. Tanggal & pemasok berbagi satu baris —
            keduanya selalu terisi otomatis, jadi tidak layak satu baris penuh masing-masing
@@ -6872,7 +6920,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (nama === 'pemasok') tampilkanPemasok();
     if (nama === 'harga') { tampilkanHarga(); tampilkanJenisBeras(); }
     if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
-    if (nama === 'input') { periksaDrafMasuk(); isiPilihanPemasok(); tampilkanSaranBelanja(); }
+    if (nama === 'input') { periksaDrafMasuk(); isiPilihanPemasok(); tampilkanSaranBelanja(); gambarMasukKaca(); }
     if (nama === 'setelan') {
       gambarSetelanKaca();
       pasangLogAktivitas(); gambarLogAktivitas();
@@ -7074,6 +7122,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         <input type="hidden" id="hargaPerBal-${id}" value="">
         </div>
         <div class="bm-eja" id="bmEja-${id}"></div>
+        <div class="bm-hpp" id="bmHpp-${id}"></div>
         <div class="bm-alarm" id="bmAlarm-${id}"></div>
         <input type="hidden" id="merk-${id}" value="">
         <input type="hidden" id="hargaPerKg-${id}" value="">
@@ -7617,6 +7666,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       // Total kg pindah ke kepala baris: terbaca walau isian di bawahnya sedang tertutup keyboard.
       const elKg = document.getElementById('bmKg-' + b.id);
       if (elKg) elKg.textContent = b.totalKg > 0 ? Math.round(b.totalKg).toLocaleString('id-ID') + ' kg' : '';
+      // Kaca Emas G3: porsi bongkar & HPP per kg baris ini — angka yang sama dengan
+      // yang akan tersimpan (hitungHppMerkDalamBatch), diperlihatkan SEBELUM disimpan.
+      const elHpp = document.getElementById('bmHpp-' + b.id);
+      if (elHpp) elHpp.textContent = b.totalKg > 0 && b.subtotalHarga > 0
+        ? 'HPP ' + formatRupiah(b.hppPerKg) + '/kg · serap bongkar ' + formatRupiah(b.alokasiBongkar) : '';
       perbaruiEjaHarga(b.id);
     });
     perbaruiPenunjukBaris(baris);
@@ -7669,6 +7723,59 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     } else {
       kotak.style.display = 'none';
     }
+    gambarMasukKaca({ baris, bongkar, totalKgSemua, totalKarungSemua, totalHargaBeli, totalSemua });
+  }
+
+  // ============ KACA EMAS G3: MASUK — TIMBANGAN MOBIL (hanya <700px) ============
+  // Kepala display-only (tanpa isian — digambar ulang tiap ketikan) yang menyebut
+  // nilai beras mobil ini sebagai uang DAGANG (bon = utang pemasok, bukan kas),
+  // dampaknya ke kas hari ini, dan ambang 60 karung yang MEMPERINGATKAN tanpa
+  // melarang (cermin #peringatanKarung). Angka dari hitungPerkiraan yang sama.
+  function gambarMasukKaca(d) {
+    const wadah = document.getElementById('masukKaca');
+    if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      if (!d) {
+        const baris = bacaBarisMerk();
+        const bongkar = parseFloat((document.getElementById('biayaBongkar') || {}).value) || 0;
+        const totalKgSemua = baris.reduce((a, b) => a + b.totalKg, 0);
+        d = { baris, bongkar, totalKgSemua,
+          totalKarungSemua: baris.filter(b => b.satuan === 'karung').reduce((a, b) => a + b.jumlahKarung, 0),
+          totalHargaBeli: baris.reduce((a, b) => a + b.subtotalHarga, 0) };
+        d.totalSemua = d.totalHargaBeli + d.bongkar;
+      }
+      const utang = ((document.getElementById('batchCaraBayar') || {}).value || 'tunai') === 'utang';
+      const merkTerisi = d.baris.filter(b => b.merk).length;
+      let ket;
+      if (!(d.totalHargaBeli > 0)) ket = 'belum ada baris terisi — sistem tidak menebaknya.';
+      else if (utang) ket = `Jadi utang pemasok — belum keluar dari kas. Kas hari ini keluar ${formatRupiah(d.bongkar)} untuk bongkar.`;
+      else ket = `Keluar dari kas hari ini ${formatRupiah(d.totalSemua)} — beras + bongkar.`;
+      const krg = d.totalKarungSemua;
+      const kurang = krg > 0 && krg < 60;
+      let h = `<div class="kg-panel mk-kepala">
+        <div class="mk-atas"><span class="kg-label">Nilai beras mobil ini</span><span class="mk-cara${utang ? '' : ' tunai'}">${utang ? 'BON PEMASOK' : 'TUNAI'}</span></div>
+        <div class="kg-uang-dagang mk-nilai">${d.totalHargaBeli > 0 ? formatRupiah(d.totalHargaBeli) : '—'}</div>
+        <div class="mk-ket">${merkTerisi > 0 ? merkTerisi + ' merk &middot; ' : ''}${ket}</div>`;
+      if (krg > 0) {
+        h += `<div class="mk-ambang${kurang ? ' oks' : ''}"><span class="rel"><span class="bilah" style="--isi:${Math.min(100, Math.round(krg / 60 * 100))}%"></span></span><span>${krg} / 60 krg</span></div>`;
+        if (kurang) h += `<span class="mk-chip">belum sampai 60 — cek lagi, tetap bisa disimpan</span>`;
+      }
+      h += `<div class="mk-tiga">
+        <div><div class="label">Bongkar &middot; tunai</div><div class="nilai${d.bongkar > 0 ? ' oks' : ' kosong'}">${d.bongkar > 0 ? formatRupiah(d.bongkar) : '—'}</div></div>
+        <div><div class="label">Porsi bongkar/kg</div><div class="nilai${d.totalKgSemua > 0 ? '' : ' kosong'}">${d.totalKgSemua > 0 ? formatRupiah(d.bongkar / d.totalKgSemua) : '—'}</div></div>
+        <div><div class="label">Total kg</div><div class="nilai${d.totalKgSemua > 0 ? '' : ' kosong'}">${d.totalKgSemua > 0 ? Math.round(d.totalKgSemua).toLocaleString('id-ID') + ' kg' : '—'}</div></div>
+      </div></div>`;
+      wadah.innerHTML = h;
+    } catch (e) { console.error('gambarMasukKaca:', e); }
+  }
+  // Tombol di Saran Belanja: satu ketukan jadi baris merk terisi jumlah & berat —
+  // harga SENGAJA kosong (harga beli riil belum tentu = termurah terakhir).
+  function pakaiSaranBelanja(merk, sack, berat) {
+    tambahBarisMerk({ merk, jumlahKarung: sack, beratKarung: berat });
+    tampilkanSaranBelanja();
+    const semua = document.querySelectorAll('#daftarBarisMerk .baris-merk');
+    const baru = semua[semua.length - 1];
+    if (baru) baru.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   // Biaya bongkar memakai pengaman rupiah yang sama dengan harga per kg di baris merk:
@@ -8669,6 +8776,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     idBaris = 0;
     tambahBarisMerk();
     isiBiayaBongkar(0);
+    gambarMasukKaca();   // isiBiayaBongkar tidak lewat hitungPerkiraan — kepala harus ikut nol
     document.getElementById('tanggal').value = tanggalLokalIso();
     document.getElementById('kotakHasil').style.display = 'none';
 
@@ -15839,9 +15947,14 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     kartu.style.display = saran.length > 0 ? 'block' : 'none';
     if (saran.length === 0) return;
     document.getElementById('saranBelanjaHitung').textContent = saran.length + ' merk';
+    // Kaca Emas G3: tombol "pakai" — merk yang sudah ada di baris form dimatikan beneran
+    // (turunan dari bacaBarisMerk, bukan state ketikan).
+    const sudahDiBaris = {};
+    bacaBarisMerk().forEach(b => { if (b.merk) sudahDiBaris[b.merk] = true; });
     kont.innerHTML = saran.map(x => `<div class="baris-44">
       <span class="nama"><i class="trx-nama">${escapeHtml(x.merk)}</i><small>sisa ${Math.round(x.sisa)} kg · laju ${Math.round(x.laju)} kg/hari · ${escapeHtml(kataHabis(x.hari))}${x.termurah ? ' · termurah ' + formatRupiah(x.termurah.hargaPerKg) + '/kg — ' + escapeHtml(x.termurah.pemasok) : ''}</small></span>
       <span class="angka${x.hari <= 2 ? ' kritis' : ''}">±${x.sack} <u>sack ${x.berat}</u></span>
+      <button type="button" class="kg-terpilih sb-pakai" onclick="pakaiSaranBelanja(${escapeHtml(JSON.stringify(x.merk))}, ${Number(x.sack) || 0}, ${Number(x.berat) || 0})"${sudahDiBaris[x.merk] ? ' disabled' : ''}>${sudahDiBaris[x.merk] ? 'sudah di baris' : '+ ' + x.sack + ' sack'}</button>
     </div>`).join('');
   }
 
@@ -15912,6 +16025,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     document.getElementById('batchBayarTunai').classList.toggle('pilih', cara === 'tunai');
     document.getElementById('batchBayarUtang').classList.toggle('pilih', cara === 'utang');
     document.getElementById('batchCaraBayarKet').style.display = cara === 'utang' ? 'block' : 'none';
+    gambarMasukKaca();   // lencana cara bayar di kepala kaca membaca #batchCaraBayar
   }
 
   // ===== KARTU UTANG PEMASOK (25 Agu 2026) =====
@@ -21556,6 +21670,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.tawarkanSelaraskanAmplop = tawarkanSelaraskanAmplop;
   window.catatModalOwner = catatModalOwner;
   window.pilihCaraBayarBatch = pilihCaraBayarBatch;
+  window.pakaiSaranBelanja = pakaiSaranBelanja;
   window.bukaLembarBayarBon = bukaLembarBayarBon; window.tutupLembarBayarBon = tutupLembarBayarBon;
   window.pilihBonDibayar = pilihBonDibayar; window.simpanBayarBon = simpanBayarBon;
   window.bukaSaldoAwalUtang = bukaSaldoAwalUtang; window.tutupLembarSaldoAwalUtang = tutupLembarSaldoAwalUtang;
