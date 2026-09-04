@@ -4193,6 +4193,57 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #produksiKacaBahan .pr6-sub{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; line-height:1.5;
   color:var(--pf-abu); margin-top:4px; }
 
+/* --- KACA EMAS G4: Jual (struk hidup, petak jalur, rak, saklar L⇄Rp, kembalian per lembar) --- */
+@media (max-width:699px){
+  #halamanJual #kartuTotalJual{ display:none; }   /* totalnya hidup di struk; kartu tetap diisi (desktop) */
+  .wz-jalur-kisi{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .wz-jalur-kisi .kg-petak, .wz-rak .kg-petak{ min-height:64px; text-align:left; padding:10px 12px; position:relative; }
+  .wz-jalur-kisi .kg-petak b, .wz-rak .kg-petak b{ display:block; font-size:12.5px; }
+  .wz-jalur-kisi .kg-petak i, .wz-rak .kg-petak i{ display:block; font-family:var(--pf-serif); font-style:italic;
+    font-size:9.5px; color:var(--pf-abu); margin-top:2px; white-space:normal; }
+  .wz-rak{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .wz-rak .kg-petak{ min-height:72px; padding-left:22px; }
+  /* Tabung sisa: tinggi dari --isi = sisa/maks daftar yang SAMA dengan teks sisanya. */
+  .wz-rak .tb-rel{ position:absolute; left:8px; top:10px; bottom:10px; width:6px; border-radius:99px;
+    background:rgba(255,255,255,.07); overflow:hidden; }
+  .wz-rak .tb-isi{ position:absolute; left:0; right:0; bottom:0; height:var(--isi,0%); border-radius:99px;
+    background:linear-gradient(180deg,rgba(226,205,166,.9),rgba(226,205,166,.4)); }
+  .wz-rak .kg-petak.kg-tepi-putus .tb-isi{ background:rgba(211,160,139,.5); }
+  .wz-saklar{ display:flex; gap:6px; margin:0 0 8px; }
+  .wz-saklar button{ flex:1; min-height:44px; border-radius:10px; border:1px solid var(--pf-tepi); background:none;
+    color:var(--pf-abu); font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.1em; }
+  .wz-saklar button:disabled{ border-style:dashed; opacity:.55; }
+  .wz-chip-takar{ display:flex; gap:6px; overflow-x:auto; margin:8px 0 4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .wz-chip-takar::-webkit-scrollbar{ display:none; }
+  .wz-chip-takar button{ flex:0 0 auto; min-height:44px; padding:0 13px; border-radius:99px; border:1px solid var(--pf-tepi2);
+    background:none; color:var(--pf-platina); font-family:inherit; font-size:11.5px; font-weight:700; }
+  .wz-chip-takar button:disabled{ border-style:dashed; color:var(--pf-abu); opacity:.6; }
+  .wz-konversi{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; color:var(--pf-abu); margin:4px 2px 6px; line-height:1.5; }
+  #wzStruk{ margin:0 0 12px; }
+  .wz-struk-kertas{ padding:12px 14px 10px; }
+  .wz-struk-baris{ display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; min-height:44px;
+    padding:6px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+  .wz-struk-baris .nama{ font-size:12.5px; }
+  .wz-struk-baris .nama i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); }
+  .wz-struk-baris b{ font-size:12.5px; color:var(--pf-platina); }
+  .wz-struk-baris .hapus{ min-width:44px; min-height:44px; background:none; border:none; color:var(--pf-abu); font-size:14px; font-family:inherit; }
+  .wz-struk-baris.hantu{ opacity:.6; }
+  .wz-struk-baris.hantu .nama i{ color:#e2cda6; }
+  .wz-struk-total{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding-top:8px; }
+  .wz-struk-total .kg-uang-dagang{ margin:0; }
+  .wz-struk-catatan{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); margin-top:4px; line-height:1.5; }
+  .wz-kas{ padding:12px 14px; margin-top:10px; }
+  .wz-kas-baris{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  .wz-kas-baris + .wz-kas-baris{ margin-top:6px; }
+  .wz-kas-baris .label{ font-size:9px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--pf-abu); }
+  .wz-kas .kg-uang-kas{ font-size:30px; }
+  .wz-kas .kg-uang-kas.oks{ color:#d3a08b; }
+  .wz-lembar{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .wz-lembar span{ padding:5px 9px; border-radius:8px; border:1px solid var(--pf-tepi2); font-size:10.5px; color:var(--pf-platina); }
+  .wz-lembar span b{ color:#e2cda6; }
+  .wz-lanjut:disabled{ opacity:.45; border:1px dashed rgba(226,205,166,.35) !important; background:none !important; color:var(--pf-abu) !important; -webkit-text-fill-color:var(--pf-abu); }
+}
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -5153,6 +5204,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       </div>
       <div class="wz-sering" id="wzSering" style="display:none;"></div>
       <div class="wz-tanya" id="wzTanya"></div>
+      <!-- KACA EMAS G4 (rancangan Jual - Gabungan): STRUK HIDUP — yang akan dipegang
+           pembeli, tampil di tiap langkah; dibaca dari keranjang & form lama, tidak
+           menghitung uang sendiri. Di dalam #wzJual = otomatis hanya <700px. -->
+      <div id="wzStruk" class="wz-struk"></div>
       <div class="wz-panel" id="wzPanel"></div>
     </div>
 
@@ -11504,6 +11559,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   let _wzItems = [], _wzPotongan = 0, _wzPotonganMode = 'tanpa', _wzUang = 0;
   let _wzNego = null, _wzBonus = false, _wzSatuanAsli = 0;
   let _wzJanji = null, _wzKreditBuka = false;
+  // Kaca Emas G4: saklar LITER⇄RUPIAH (hanya jalur literan) + struk hidup.
+  let _wzNominalOn = false, _wzNominalTeks = '', _wzStrukHtml = '';
 
   function wzSatuanKini() {
     // harga satuan menurut form lama SAAT INI (katalog x jumlah / jumlah)
@@ -11562,7 +11619,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     ['jualHargaTotal', 'jualKemasanJumlah', 'jualRepackingKg', 'jualRepackingNamaProduk',
       'jualKarungJumlah', 'jualLiteranJumlah'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('jualPenggantiRetur').checked = false;
-    _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0; _wz.maks = null;
+    _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0; _wz.maks = null; _wzNominalTeks = '';
     hitungTotalJual();
     wzKe(lanjutKe);
   }
@@ -11640,6 +11697,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     _wzItems = []; _wzPotongan = 0; _wzPotonganMode = 'tanpa'; _wzUang = 0;
     _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0;
     _wzJanji = null; _wzKreditBuka = false;
+    _wzNominalOn = false; _wzNominalTeks = '';
     _wz = { jalur: null, langkah: 'jalur', merk: null, maks: null };
     document.getElementById('halamanJual').classList.remove('wz-retur');
     document.body.classList.remove('wz-retur-aktif');
@@ -11652,6 +11710,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   }
   function wzPilihJalur(j) {
     _wz.jalur = j; _wz.merk = null; _wz.maks = null;
+    _wzNominalOn = false; _wzNominalTeks = '';
     pilihJenisJual(j);                               // form lama pindah jalur (logika lama)
     if (j === 'retur') { document.getElementById('halamanJual').classList.add('wz-retur');
       document.body.classList.add('wz-retur-aktif'); wzRender(); return; }
@@ -11668,7 +11727,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     b.click();                                        // handler LAMA yang berjalan
     const opsi = wzBacaTombol(idKontainer).find(o => o.kunci === kunci);
     _wz.maks = opsi ? wzMaksDariSub(opsi.sub) : null;
-    _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0;
+    _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0; _wzNominalTeks = '';
     wzKe(langkahLanjut);
   }
   function wzPilihSack(berat) { pilihBeratSack(berat); wzKe('merkK'); }
@@ -11712,11 +11771,151 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     wzTulisJumlah(v);
     wzJumlahRefresh();
   }
-  function wzIsiJumlah(idInput, nilai) {   // dipakai tombol "jual N saja"
+  function wzIsiJumlah(idInput, nilai) {   // dipakai tombol "jual N saja" & chip takaran
     const kotak = document.getElementById('wzQtyInput');
-    if (kotak) kotak.value = wzAngkaTampil(nilai);
+    const rp = _wz.jalur === 'literan' && _wzNominalOn;
+    if (rp) _wzNominalTeks = String(Math.round(nilai * wzHargaLiterKini()));
+    if (kotak) kotak.value = rp ? _wzNominalTeks : wzAngkaTampil(nilai);
     wzTulisJumlah(nilai);
     wzJumlahRefresh();
+  }
+
+  // ============ KACA EMAS G4: JUAL — struk hidup, rak, saklar L⇄Rp, kembalian per lembar ============
+  // Semua tetap remote control: kaca MEMBACA form/keranjang lama dan MENULIS ke input
+  // lama lewat wzTulisJumlah (dispatch 'input'). Nol rumus uang baru: liter dari
+  // rupiah hanya pembagian oleh harga katalog yang sama dengan hitungTotalJual;
+  // rupiah yang tersimpan tetap dari mesin lama. Escaping argumen: JSON.stringify.
+  const WZ_TAKAR = { literan: [0.5, 1, 1.5, 2, 2.5, 5, 10, 20], karung: [0.5, 1, 2, 3, 5],
+    repacking: [5, 10, 12.5, 20, 25, 30, 40, 50], kemasan: [1, 2, 3, 5] };
+  const WZ_TAKAR_RP = [20000, 50000, 100000, 200000, 500000];
+  function wzHargaLiterKini() {
+    const merk = (document.getElementById('jualLiteranJenis') || {}).value;
+    const h = merk ? ambilHargaLiteran().find(x => x.merk === merk) : null;   // pencarian yang sama dengan hitungTotalJual
+    return h && h.hargaPerLiter > 0 ? h.hargaPerLiter : 0;
+  }
+  function wzSaklarIsian(mode) {
+    const on = mode === 'rp';
+    if (on === _wzNominalOn) return;                 // sisi yang sudah aktif ditekan = tidak mengosongkan
+    if (on && !(wzHargaLiterKini() > 0)) return;     // tanpa harga katalog, rupiah tidak punya dasar
+    _wzNominalOn = on;
+    if (on) {
+      const q = parseFloat((document.getElementById('jualLiteranJumlah') || {}).value) || 0;
+      _wzNominalTeks = q > 0 ? String(Math.round(q * wzHargaLiterKini())) : '';
+    }
+    wzRender();
+  }
+  function wzNominalDiketik(v) {
+    _wzNominalTeks = String(v || '');
+    const harga = wzHargaLiterKini();
+    const liter = harga > 0 ? Math.round(wzAngka(v) / harga * 10) / 10 : 0;
+    wzTulisJumlah(liter);                            // mesin lama menghitung rupiahnya dari katalog
+    wzJumlahRefresh();
+  }
+  function wzIsiCepat(n) {
+    if (_wz.jalur === 'literan' && _wzNominalOn) {
+      const k = document.getElementById('wzQtyInput');
+      if (k) k.value = String(n);
+      wzNominalDiketik(String(n));
+      return;
+    }
+    wzIsiJumlah(WZ_PETA_JUMLAH[_wz.jalur][0], n);
+  }
+  function wzUangTambah(n) { _wzUang = Math.max(0, Math.round(_wzUang || 0)) + n; wzRender(); }
+  function wzChipTakarHtml() {
+    const rp = _wz.jalur === 'literan' && _wzNominalOn;
+    const harga = rp ? wzHargaLiterKini() : 0;
+    const daftar = rp ? WZ_TAKAR_RP : (WZ_TAKAR[_wz.jalur] || []);
+    const satuan = WZ_PETA_JUMLAH[_wz.jalur][1];
+    return '<div class="wz-chip-takar">' + daftar.map(n => {
+      const nilaiSatuan = rp ? (harga > 0 ? Math.round(n / harga * 10) / 10 : 0) : n;
+      const lebih = _wz.maks !== null && nilaiSatuan > _wz.maks;   // pagar yang SAMA dengan wzJumlahRefresh
+      return '<button type="button" onclick="wzIsiCepat(' + n + ')"' + (lebih ? ' disabled' : '') + '>'
+        + (rp ? (n / 1000) + 'rb' : wzAngkaTampil(n) + ' ' + satuan) + '</button>';
+    }).join('') + '</div>';
+  }
+  function wzKonversiTeks(nNum) {
+    const bagian = [];
+    if (_wz.jalur === 'literan') {
+      const k = ((document.getElementById('konversiLiteranInfo') || {}).textContent || '').trim();
+      if (k) bagian.push(wzEsc(k));
+      if (_wzNominalOn && nNum > 0) bagian.push('= ' + wzAngkaTampil(nNum) + ' liter menurut harga katalog');
+    }
+    try {
+      const r = bacaRincianJual();
+      if (r && r.stokSesudah && nNum > 0)
+        bagian.push('sisa ' + wzAngkaTampil(r.stokSesudah[0]) + ' \u2192 ' + wzAngkaTampil(r.stokSesudah[1]) + ' ' + wzEsc(r.stokSesudah[2]) + ' sesudah');
+    } catch (e) { /* rincian belum bisa dibaca — jangan menebak */ }
+    return bagian.length ? '<div class="wz-konversi">' + bagian.join(' \u00b7 ') + '</div>' : '';
+  }
+  function wzNamaBarisKini() {
+    const kont = { kemasan: 'pilihKemasanTombol', karung: 'pilihKarungTombol', literan: 'pilihLiteranTombol', repacking: 'pilihRepackingTombol' }[_wz.jalur];
+    // Literan: tombol lama menampilkan HARGA (aturan pemilik 3 Agu 2026) — nama baris
+    // struk memakai merk tersimpan supaya sama dengan label item sesudah dimasukkan.
+    const b = kont && document.querySelector('#' + kont + ' button.pilih .nama-produk');
+    const nama = _wz.jalur === 'literan'
+      ? ((document.getElementById('jualLiteranJenis') || {}).value || '')
+      : (b ? b.textContent.trim() : '');
+    if (_wz.jalur === 'repacking') {
+      const produk = ((document.getElementById('jualRepackingNamaProduk') || {}).value || '').trim();
+      return (produk ? produk + ' \u00b7 dari ' : '') + (nama || 'sack sumber');
+    }
+    return nama || 'Item';
+  }
+  // Rak: petak per pilihan dari tombol form lama; tabung --isi = sisa/maks daftar,
+  // sisa dibaca dengan parser yang sama dengan _wz.maks. Petak habis TETAP bisa
+  // diketuk (handler lama menawarkan Produksi) — bertepi putus, bukan disabled.
+  function wzKacaRak(idKontainer, langkahLanjut, opsi, labelDari) {
+    opsi = opsi || wzBacaTombol(idKontainer).filter(o => o.kunci);
+    if (!opsi.length) return '';
+    const sisaDari = o => { const n = wzMaksDariSub(o.sub); return n === null ? 0 : n; };
+    const maks = Math.max.apply(null, opsi.map(sisaDari).concat([1]));
+    return '<div class="wz-rak">' + opsi.map(o => {
+      const sisa = sisaDari(o);
+      return '<button type="button" class="kg-petak' + (o.habis ? ' kg-tepi-putus' : '') + '" onclick="wzKlikOpsi(\'' + idKontainer + '\',' + escapeHtml(JSON.stringify(String(o.kunci))) + ',\'' + langkahLanjut + '\')">'
+        + '<span class="tb-rel"><span class="tb-isi" style="--isi:' + Math.round(sisa / maks * 100) + '%"></span></span>'
+        + '<b>' + wzEsc(labelDari ? labelDari(o) : o.label) + '</b><i>' + wzEsc(o.sub || (o.habis ? 'habis \u2014 ketuk untuk produksi' : '')) + '</i></button>';
+    }).join('') + '</div>';
+  }
+  function wzLembarKembalian(k) {
+    const pecahan = [100000, 50000, 20000, 10000, 5000, 2000, 1000];
+    let sisa = Math.round(k); const isi = [];
+    pecahan.forEach(p => { const n = Math.floor(sisa / p); if (n > 0) { isi.push('<span><b>' + n + '\u00d7</b> ' + (p / 1000) + 'rb</span>'); sisa -= n * p; } });
+    if (sisa > 0) isi.push('<span>sisa ' + formatRupiah(sisa) + '</span>');
+    return isi.length ? '<div class="kg-label" style="margin-top:8px;">Lembar kembalian</div><div class="wz-lembar">' + isi.join('') + '</div>' : '';
+  }
+  function wzGambarStruk() {
+    const el = document.getElementById('wzStruk');
+    if (!el || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      const pot = Math.min(Math.round(_wzPotongan || 0), wzSubtotal());
+      const total = wzSubtotal() - pot;
+      const kredit = document.getElementById('bayarKredit').classList.contains('pilih');
+      let hantu = '';
+      if (_wz.langkah === 'jumlah' && _wz.jalur && WZ_PETA_JUMLAH[_wz.jalur]) {
+        const [idInput, satuan] = WZ_PETA_JUMLAH[_wz.jalur];
+        const q = parseFloat(document.getElementById(idInput).value) || 0;
+        const t = parseFloat(document.getElementById('jualHargaTotal').value) || 0;
+        if (q > 0 && t > 0) hantu = '<div class="wz-struk-baris hantu"><span class="nama">' + wzEsc(wzNamaBarisKini()) + ' \u00b7 ' + wzAngkaTampil(q) + ' ' + satuan
+          + '<i>sedang diisi \u2014 belum masuk struk</i></span><b>' + formatRupiah(t) + '</b><span></span></div>';
+      }
+      if (!_wzItems.length && !hantu && _wz.langkah === 'jalur') {
+        if (_wzStrukHtml !== '') { el.innerHTML = ''; _wzStrukHtml = ''; }
+        return;
+      }
+      let h = '<div class="kg-panel wz-struk-kertas"><div class="kg-label">Struk \u00b7 yang akan dipegang pembeli</div>';
+      if (!_wzItems.length && !hantu) h += '<div class="wz-struk-catatan">Belum ada barang \u2014 isi angkanya, lalu masukkan ke struk.</div>';
+      h += _wzItems.map((x, i) => '<div class="wz-struk-baris"><span class="nama">' + wzEsc(x.label)
+        + (x.trx.negoSelisih ? '<i>ditawar ' + (x.trx.negoSelisih < 0 ? '\u2212' : '+') + formatRupiah(Math.abs(x.trx.negoSelisih)) + '/sat</i>' : '')
+        + '</span><b>' + formatRupiah(x.trx.hargaTotal) + '</b>'
+        + '<button type="button" class="hapus" onclick="wzHapusItem(' + i + ')" aria-label="Hapus item">\u2715</button></div>').join('');
+      h += hantu;
+      if (pot > 0) h += '<div class="wz-struk-baris"><span class="nama">Potongan</span><b>\u2212' + formatRupiah(pot) + '</b><span></span></div>';
+      if (_wzItems.length) h += '<div class="wz-struk-total"><span class="kg-label">Total \u00b7 ' + _wzItems.length + ' item</span><span class="'
+        + (kredit ? 'kg-uang-piutang' : 'kg-uang-dagang') + '">' + formatRupiah(total) + '</span></div>'
+        + (kredit ? '<div class="wz-struk-catatan">Kredit \u2014 tidak masuk kas, jadi piutang atas nama pembeli.</div>' : '');
+      h += '</div>';
+      if (h !== _wzStrukHtml) { el.innerHTML = h; _wzStrukHtml = h; }   // node diganti hanya bila berubah
+    } catch (e) { console.error('wzGambarStruk:', e); }
   }
   // Nego LANGSUNG menimpa total di form supaya kartu TOTAL jujur sejak diketik
   // (dulu kartu TOTAL masih harga katalog sampai item dimasukkan keranjang).
@@ -11739,7 +11938,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const stokInfo = { kemasan: 'stokKemasanInfo', karung: 'stokKarungInfo', literan: 'stokLiteranInfo', repacking: 'stokRepackingInfo' }[_wz.jalur];
     const infoTeks = (document.getElementById(stokInfo) || {}).textContent || '';
     const elInfo = document.getElementById('wzInfoStok');
-    if (elInfo) elInfo.innerHTML = infoTeks ? '<div class="wz-info">' + wzEsc(infoTeks) + '</div>' : '';
+    if (elInfo) elInfo.innerHTML = (infoTeks ? '<div class="wz-info">' + wzEsc(infoTeks) + '</div>' : '') + wzKonversiTeks(nNum);
+    const elT = document.getElementById('wzTakar');
+    if (elT) elT.innerHTML = wzChipTakarHtml();
     const pb = document.getElementById('peringatanBatasJual');
     const cermin = pb && pb.style.display !== 'none' && pb.textContent.trim()
       ? '<div class="wz-peringatan"><span>' + wzEsc(pb.textContent.trim()) + '</span>'
@@ -11776,10 +11977,18 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       }
     }
     const elC = document.getElementById('wzCta');
-    if (elC) elC.innerHTML = '<div class="wz-cta2">'
-      + '<button type="button" class="wz-lanjut sekunder" onclick="wzTambahItem(\'jalur\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>\uff0b item lagi</button>'
-      + '<button type="button" class="wz-lanjut" onclick="wzTambahItem(\'bayar\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>ke bayar</button>'
-      + '</div>';
+    if (elC) {
+      // Alasan mesin lama (alasanJualBelumSah → #alasanJual) dicermin sebagai keterangan,
+      // bukan pagar kedua: pagar tetap validasi bangunTrxJualDariForm saat memasukkan.
+      const btnLama = document.getElementById('btnSimpanJual');
+      const alasan = ((document.getElementById('alasanJual') || {}).textContent || '').trim();
+      elC.innerHTML = (btnLama && btnLama.disabled && alasan && nNum > 0 ? '<div class="wz-info">' + wzEsc(alasan) + '</div>' : '')
+        + '<div class="wz-cta2">'
+        + '<button type="button" class="wz-lanjut sekunder" onclick="wzTambahItem(\'jalur\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>\uff0b masukkan ke struk</button>'
+        + '<button type="button" class="wz-lanjut" onclick="wzTambahItem(\'bayar\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>ke bayar</button>'
+        + '</div>';
+    }
+    wzGambarStruk();
   }
   function wzHargaDiketik(v) {
     const asli = _wzSatuanAsli || wzSatuanKini();
@@ -11846,6 +12055,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const ganti = document.createElement('div');
     ganti.innerHTML = wzKartuKreditHtml(wzSubtotal() - pot);
     wrap.replaceWith(ganti.firstChild);
+    const btn = document.getElementById('wzSimpanKeranjang');   // disabled beneran ikut nama yang diketik
+    if (btn) btn.disabled = !_wzItems.length || !!wzKreditTerkunci(wzSubtotal() - pot);
   }
   function wzKreditTerkunci(total) {
     const nama = document.getElementById('jualNamaPelanggan').value.trim();
@@ -11864,6 +12075,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     try {
       const wrap = document.getElementById('wzJual');
       if (!wrap || window.matchMedia('(min-width: 700px)').matches) return;
+      wzGambarStruk();   // struk hidup di tiap langkah — sebelum semua return di bawah
       if (document.getElementById('halamanJual').classList.contains('wz-retur')) {
         document.getElementById('wzLangkahLabel').textContent = 'Retur';
         document.getElementById('wzTanya').innerHTML =
@@ -11896,13 +12108,14 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           sering.innerHTML = '<div class="wz-sering-judul">Sering dijual \u00b7 2 ketukan</div><div class="wz-sering-baris">'
             + laku.map(o => '<button type="button" class="wz-chip" onclick="wzSering(\'' + wzEsc(o.kunci).replace(/'/g, "\\'") + '\')"><b>' + wzEsc(o.label) + '</b><i>' + wzEsc(o.sub) + '</i></button>').join('') + '</div>';
         }
-        panel.innerHTML = [
-          baris("wzPilihJalur('kemasan')", 'Kemasan jadi', 'bags siap jual dari Produksi'),
-          baris("wzPilihJalur('repacking')", 'Repacking dadakan', 'timbang & jahit dari sack sumber'),
-          baris("wzPilihJalur('karung')", 'Sack utuh', 'karung 50 / 25 kg'),
-          baris("wzPilihJalur('literan')", 'Literan', 'takar per liter \u00b7 min 5 L'),
-          baris("wzPilihJalur('retur')", 'Retur', 'barang kembali \u00b7 jalur khusus')
-        ].join('');
+        const petak = (onclick, isi, sub) => '<button type="button" class="kg-petak" onclick="' + onclick + '"><b>' + isi + '</b><i>' + sub + '</i></button>';
+        panel.innerHTML = '<div class="wz-jalur-kisi">' + [
+          petak("wzPilihJalur('literan')", 'Literan', 'per liter \u00b7 boleh pecahan'),
+          petak("wzPilihJalur('kemasan')", 'Bags Jadi', 'per unit \u00b7 stok kemasan'),
+          petak("wzPilihJalur('karung')", 'Sack Utuh', 'karung 50 / 25 \u00b7 katalog per karung'),
+          petak("wzPilihJalur('repacking')", 'Repacking Dadakan', 'kg bebas \u00b7 buka sack'),
+          petak("wzPilihJalur('retur')", 'Retur', 'barang kembali')
+        ].join('') + '</div>';
         return;
       }
 
@@ -11938,18 +12151,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         label.textContent = 'Kemasan \u00b7 langkah 4';
         tanya.textContent = 'Ukurannya?';
         const opsi = wzBacaTombol('pilihKemasanTombol').filter(o => o.kunci && o.kunci.split('|')[0] === _wz.merk);
-        panel.innerHTML = balik('merk') + opsi.map(o =>
-          baris("wzKlikOpsi('pilihKemasanTombol','" + wzEsc(o.kunci).replace(/'/g, "\\'") + "','jumlah')",
-            wzEsc(o.kunci.split('|')[1]) + ' kg', wzEsc(o.sub), o.habis)).join('');
+        panel.innerHTML = balik('merk') + wzKacaRak('pilihKemasanTombol', 'jumlah', opsi, o => o.kunci.split('|')[1] + ' kg');
         return;
       }
 
       if (l === 'merkR') {
         label.textContent = 'Repacking \u00b7 langkah 2';
         tanya.textContent = 'Merk sumbernya?';
-        panel.innerHTML = balik('jalur') + wzBacaTombol('pilihRepackingTombol').filter(o => o.kunci).map(o =>
-          baris("wzKlikOpsi('pilihRepackingTombol','" + wzEsc(o.kunci).replace(/'/g, "\\'") + "','namaR')",
-            wzEsc(o.label), wzEsc(o.sub), o.habis)).join('');
+        panel.innerHTML = balik('jalur') + (wzKacaRak('pilihRepackingTombol', 'namaR')
+          || '<div class="wz-info">Belum ada sack sumber.</div>');
         return;
       }
       if (l === 'namaR') {
@@ -11973,9 +12183,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       if (l === 'merkK') {
         label.textContent = 'Sack utuh \u00b7 langkah 3';
         tanya.textContent = 'Merknya?';
-        panel.innerHTML = balik('ukuranSack') + (wzBacaTombol('pilihKarungTombol').filter(o => o.kunci).map(o =>
-          baris("wzKlikOpsi('pilihKarungTombol','" + wzEsc(o.kunci).replace(/'/g, "\\'") + "','jumlah')",
-            wzEsc(o.label), wzEsc(o.sub), o.habis)).join('')
+        panel.innerHTML = balik('ukuranSack') + (wzKacaRak('pilihKarungTombol', 'jumlah')
           || '<div class="wz-info">Belum ada sack pada ukuran ini.</div>');
         return;
       }
@@ -11983,9 +12191,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       if (l === 'produkL') {
         label.textContent = 'Literan \u00b7 langkah 2';
         tanya.textContent = 'Yang mana?';
-        panel.innerHTML = balik('jalur') + wzBacaTombol('pilihLiteranTombol').filter(o => o.kunci).map(o =>
-          baris("wzKlikOpsi('pilihLiteranTombol','" + wzEsc(o.kunci).replace(/'/g, "\\'") + "','jumlah')",
-            wzEsc(o.label), wzEsc(o.sub), o.habis)).join('');
+        panel.innerHTML = balik('jalur') + (wzKacaRak('pilihLiteranTombol', 'jumlah')
+          || '<div class="wz-info">Belum ada merk literan.</div>');
         return;
       }
 
@@ -11993,21 +12200,33 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         const [idInput, satuan, tambah] = WZ_PETA_JUMLAH[_wz.jalur];
         const nilai = wzAngkaTampil(parseFloat(document.getElementById(idInput).value) || 0);
         label.textContent = 'Langkah ' + (_wz.jalur === 'kemasan' ? '5' : (_wz.jalur === 'repacking' ? '4' : (_wz.jalur === 'karung' ? '4' : '3')));
-        tanya.textContent = 'Berapa ' + satuan + '?';
+        const rpMode = _wz.jalur === 'literan' && _wzNominalOn;   // Kaca Emas G4: saklar hanya di Literan
+        tanya.textContent = rpMode ? 'Berapa rupiah?' : 'Berapa ' + satuan + '?';
         const desimal = _wz.jalur !== 'kemasan';   // sack, liter, kg boleh setengahan
+        const saklar = _wz.jalur === 'literan'
+          ? '<div class="wz-saklar"><button type="button" class="' + (rpMode ? '' : 'kg-terpilih') + '" onclick="wzSaklarIsian(\'liter\')">LITER</button>'
+            + '<button type="button" class="' + (rpMode ? 'kg-terpilih' : '') + '" onclick="wzSaklarIsian(\'rp\')"' + (wzHargaLiterKini() > 0 ? '' : ' disabled') + '>RUPIAH</button></div>'
+          : '';
         // Kolom diisi LANGSUNG dengan papan ketik HP. Dulu tiap ketukan memicu
         // render ulang panel -> kolomnya dihancurkan, papan ketik menutup, dan
         // angka lompat. Sekarang mengetik hanya memperbarui WILAYAH DINAMIS
         // (#wzInfoStok, #wzPeringatan, #wzNegoBlok, #wzCta) — kolom tak tersentuh.
         panel.innerHTML = balik(_wz.jalur === 'kemasan' ? 'ukuran' : (_wz.jalur === 'repacking' ? 'namaR' : (_wz.jalur === 'karung' ? 'merkK' : 'produkL')))
+          + saklar
           + '<div class="stepper-jumlah wz-jumlah-wrap">'
-          + '<button type="button" class="st-kurang" onclick="wzUbah(-' + tambah + ')" aria-label="Kurangi">\u2212</button>'
-          + '<input type="' + (desimal ? 'text' : 'number') + '" id="wzQtyInput" inputmode="' + (desimal ? 'decimal' : 'numeric') + '"'
-          + (desimal ? '' : ' step="1"')
-          + ' enterkeyhint="done" value="' + wzEsc(nilai) + '" placeholder="0"'
-          + ' onfocus="this.select()" oninput="wzJumlahDiketik(this.value)">'
-          + '<button type="button" class="st-tambah" onclick="wzUbah(' + tambah + ')" aria-label="Tambah">+</button>'
+          + (rpMode ? '<span class="st-kurang" style="visibility:hidden"></span>'
+            : '<button type="button" class="st-kurang" onclick="wzUbah(-' + tambah + ')" aria-label="Kurangi">\u2212</button>')
+          + '<input id="wzQtyInput" ' + (rpMode
+            ? 'type="text" inputmode="numeric" enterkeyhint="done" value="' + wzEsc(_wzNominalTeks) + '" placeholder="0"'
+              + ' onfocus="this.select()" oninput="wzNominalDiketik(this.value)"'
+            : 'type="' + (desimal ? 'text' : 'number') + '" inputmode="' + (desimal ? 'decimal' : 'numeric') + '"'
+              + (desimal ? '' : ' step="1"')
+              + ' enterkeyhint="done" value="' + wzEsc(nilai) + '" placeholder="0"'
+              + ' onfocus="this.select()" oninput="wzJumlahDiketik(this.value)"') + '>'
+          + (rpMode ? '<span class="st-tambah" style="visibility:hidden"></span>'
+            : '<button type="button" class="st-tambah" onclick="wzUbah(' + tambah + ')" aria-label="Tambah">+</button>')
           + '</div>'
+          + '<div id="wzTakar"></div>'
           + '<div id="wzInfoStok"></div>'
           + '<div id="wzPeringatan"></div>'
           + '<div id="wzNegoBlok"></div>'
@@ -12024,14 +12243,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         const caraAktif = ['Tunai', 'QRIS', 'Kredit'].find(c =>
           document.getElementById('bayar' + (c === 'QRIS' ? 'Qris' : c)).classList.contains('pilih')) || 'Tunai';
         const kembali = _wzUang > 0 ? _wzUang - total : null;
+        const matiSimpan = !_wzItems.length || (caraAktif === 'Kredit' && !!wzKreditTerkunci(total));
         panel.innerHTML = balik('jalur')
-          + '<div class="wz-keranjang">'
-          + _wzItems.map((x, i) => '<div class="wz-item"><span class="nama">' + wzEsc(x.label)
-            + (x.trx.negoSelisih ? '<i>ditawar ' + (x.trx.negoSelisih < 0 ? '\u2212' : '+') + formatRupiah(Math.abs(x.trx.negoSelisih)) + '/sat</i>' : '')
-            + '</span><b>' + formatRupiah(x.trx.hargaTotal) + '</b>'
-            + '<button type="button" class="hapus" onclick="wzHapusItem(' + i + ')" aria-label="Hapus item">\u2715</button></div>').join('')
-          + '<div class="wz-item total"><span class="nama">Subtotal \u00b7 ' + _wzItems.length + ' item</span><b>' + formatRupiah(wzSubtotal()) + '</b></div>'
-          + '</div>'
+          + '<div class="wz-item total"><span class="nama">Subtotal \u00b7 ' + _wzItems.length + ' item \u2014 rincian di struk atas</span><b>' + formatRupiah(wzSubtotal()) + '</b></div>'
           + '<i class="wz-label-kecil">Potongan</i>'
           + '<div class="wz-bayar-tab wz-pot">'
           + [['tanpa', 'tanpa'], ['1rb', 'bulat 1rb'], ['5rb', 'bulat 5rb']].map(m =>
@@ -12044,19 +12258,22 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           + '<div class="wz-bayar-tab">' + ['Tunai', 'QRIS', 'Kredit'].map(c =>
             '<button type="button" class="' + (c === caraAktif ? 'pilih' : '') + '" onclick="wzBayar(\'' + c + '\')">' + c + '</button>').join('') + '</div>'
           + (caraAktif === 'Tunai'
-            ? '<i class="wz-label-kecil">Uang diterima</i>'
+            ? '<i class="wz-label-kecil">Uang yang disodorkan</i>'
               + '<div class="wz-bayar-tab wz-uang">'
               + '<button type="button" class="' + (_wzUang === total && total > 0 ? 'pilih' : '') + '" onclick="wzUangPas()">uang pas</button>'
               + [50000, 100000].map(n => '<button type="button" class="' + (_wzUang === n ? 'pilih' : '') + '" onclick="wzUangSet(' + n + ')">' + (n / 1000) + 'rb</button>').join('')
               + '<input type="number" inputmode="numeric" placeholder="lainnya" value="' + (_wzUang && [total, 50000, 100000].indexOf(_wzUang) < 0 ? _wzUang : '') + '" onchange="wzUangSet(this.value)">'
               + '</div>'
-              + (kembali !== null ? '<div class="wz-item total besar ' + (kembali < 0 ? 'oksida' : '') + '"><span class="nama">'
-                + (kembali >= 0 ? 'Kembalian' : 'Masih kurang') + '</span><b>' + (kembali < 0 ? '\u2212' : '') + formatRupiah(Math.abs(kembali)) + '</b></div>' : '')
-            : '')
+              + '<div class="wz-chip-takar">' + [100000, 50000, 20000, 10000].map(n => '<button type="button" onclick="wzUangTambah(' + n + ')">+ ' + (n / 1000) + 'rb</button>').join('') + '</div>'
+              + (kembali !== null ? '<div class="kg-panel wz-kas">'
+                + '<div class="wz-kas-baris"><span class="label">Dibayar</span><span class="kg-uang-kas">' + formatRupiah(_wzUang) + '</span></div>'
+                + '<div class="wz-kas-baris"><span class="label">' + (kembali >= 0 ? 'Kembalian' : 'Masih kurang \u2014 jadi piutang') + '</span><span class="kg-uang-kas' + (kembali < 0 ? ' oks' : '') + '">' + (kembali < 0 ? '\u2212' : '') + formatRupiah(Math.abs(kembali)) + '</span></div>'
+                + (kembali > 0 ? wzLembarKembalian(kembali) : '') + '</div>' : '')
+            : (caraAktif === 'Kredit' ? '<div class="wz-info">Kredit tidak masuk kas \u2014 jadi piutang atas nama pembeli. Nama wajib.</div>' : ''))
           + '<label style="margin-top:12px;">Nama pembeli' + (caraAktif === 'Kredit' ? ' \u2014 wajib untuk kredit' : ' \u2014 boleh kosong') + '</label>'
           + '<input type="text" value="' + wzEsc(document.getElementById('jualNamaPelanggan').value) + '" placeholder="Nama pembeli" oninput="wzNama(this.value)" list="saranPelanggan">'
           + (caraAktif === 'Kredit' ? wzKartuKreditHtml(total) : '')
-          + '<button type="button" class="wz-lanjut" onclick="wzKonfirmasiKeranjang()">Periksa & Simpan</button>';
+          + '<button type="button" class="wz-lanjut" id="wzSimpanKeranjang" onclick="wzKonfirmasiKeranjang()"' + (matiSimpan ? ' disabled' : '') + '>Periksa & Simpan \u00b7 ' + formatRupiah(total) + '</button>';
         return;
       }
         } catch (e) { /* kulit — jangan ganggu jalur uang */ }
@@ -22102,6 +22319,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
   window.wzBukaKreditSekali = wzBukaKreditSekali; window.wzPilihJanji = wzPilihJanji;
+  window.wzSaklarIsian = wzSaklarIsian; window.wzNominalDiketik = wzNominalDiketik; window.wzIsiCepat = wzIsiCepat; window.wzUangTambah = wzUangTambah;
   window.saringLembarMerk = saringLembarMerk; window.kosongkanCariMerk = kosongkanCariMerk;
   window.kirimRekapHarianWa = kirimRekapHarianWa; window.kirimBelanjaWa = kirimBelanjaWa;
   window.perbaruiSetoranTutup = perbaruiSetoranTutup; window.kirimRekapTutupWa = kirimRekapTutupWa;
