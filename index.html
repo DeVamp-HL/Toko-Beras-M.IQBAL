@@ -2947,7 +2947,7 @@
   #halamanJual #kartuHargaBayarJual { display: none !important; }
   /* Jalur RETUR: wizard minggir, form retur lama tampil apa adanya */
   #halamanJual.wz-retur #formJualRetur { display: block !important; }
-  #halamanJual.wz-retur .wz-panel, #halamanJual.wz-retur .wz-sering { display: none; }
+  #halamanJual.wz-retur .wz-panel, #halamanJual.wz-retur .wz-sering, #halamanJual.wz-retur #wzStruk { display: none; }
   /* Bilah Simpan lama disembunyikan di HP: wizard punya tombolnya sendiri di
      langkah bayar (yang mengeklik tombol lama). Retur tetap memakai bilah lama. */
   #tombolSimpanJualWrap { display: none !important; }
@@ -11898,7 +11898,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     b.click();                                        // handler LAMA yang berjalan
     const opsi = wzBacaTombol(idKontainer).find(o => o.kunci === kunci);
     _wz.maks = opsi ? wzMaksDariSub(opsi.sub) : null;
-    _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0; _wzNominalTeks = '';
+    _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0;
+    // Saklar RUPIAH tetap hidup sesudah ganti merk: teksnya diturunkan dari liter yang
+    // masih ada di form (harga merk baru); merk tanpa harga → kembali ke LITER.
+    if (_wzNominalOn && !(wzHargaLiterKini() > 0)) _wzNominalOn = false;
+    _wzNominalTeks = _wzNominalOn ? wzTeksNominalDariForm() : '';
     wzKe(langkahLanjut);
   }
   function wzPilihSack(berat) { pilihBeratSack(berat); wzKe('merkK'); }
@@ -11964,22 +11968,30 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const h = merk ? ambilHargaLiteran().find(x => x.merk === merk) : null;   // pencarian yang sama dengan hitungTotalJual
     return h && h.hargaPerLiter > 0 ? h.hargaPerLiter : 0;
   }
+  // Teks rupiah diturunkan dari liter yang ADA di form (satu sumber angka) —
+  // dipakai saat saklar dinyalakan dan saat merk berganti lewat rak.
+  function wzTeksNominalDariForm() {
+    const harga = wzHargaLiterKini();
+    const q = parseFloat((document.getElementById('jualLiteranJumlah') || {}).value) || 0;
+    return harga > 0 && q > 0 ? String(Math.round(q * harga)) : '';
+  }
+  // Nominal → liter DIBULATKAN KE BAWAH ke 0,1 L: yang tercatat tidak pernah
+  // lebih besar dari uang yang disebut pembeli; selisihnya tampak di baris konversi.
+  function wzLiterDariNominal(nominal) {
+    const harga = wzHargaLiterKini();
+    return harga > 0 ? Math.floor(nominal / harga * 10 + 1e-9) / 10 : 0;
+  }
   function wzSaklarIsian(mode) {
     const on = mode === 'rp';
     if (on === _wzNominalOn) return;                 // sisi yang sudah aktif ditekan = tidak mengosongkan
     if (on && !(wzHargaLiterKini() > 0)) return;     // tanpa harga katalog, rupiah tidak punya dasar
     _wzNominalOn = on;
-    if (on) {
-      const q = parseFloat((document.getElementById('jualLiteranJumlah') || {}).value) || 0;
-      _wzNominalTeks = q > 0 ? String(Math.round(q * wzHargaLiterKini())) : '';
-    }
+    if (on) _wzNominalTeks = wzTeksNominalDariForm();
     wzRender();
   }
   function wzNominalDiketik(v) {
     _wzNominalTeks = String(v || '');
-    const harga = wzHargaLiterKini();
-    const liter = harga > 0 ? Math.round(wzAngka(v) / harga * 10) / 10 : 0;
-    wzTulisJumlah(liter);                            // mesin lama menghitung rupiahnya dari katalog
+    wzTulisJumlah(wzLiterDariNominal(wzAngka(v)));   // mesin lama menghitung rupiahnya dari katalog
     wzJumlahRefresh();
   }
   function wzIsiCepat(n) {
@@ -11998,7 +12010,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const daftar = rp ? WZ_TAKAR_RP : (WZ_TAKAR[_wz.jalur] || []);
     const satuan = WZ_PETA_JUMLAH[_wz.jalur][1];
     return '<div class="wz-chip-takar">' + daftar.map(n => {
-      const nilaiSatuan = rp ? (harga > 0 ? Math.round(n / harga * 10) / 10 : 0) : n;
+      const nilaiSatuan = rp ? wzLiterDariNominal(n) : n;
       const lebih = _wz.maks !== null && nilaiSatuan > _wz.maks;   // pagar yang SAMA dengan wzJumlahRefresh
       return '<button type="button" onclick="wzIsiCepat(' + n + ')"' + (lebih ? ' disabled' : '') + '>'
         + (rp ? (n / 1000) + 'rb' : wzAngkaTampil(n) + ' ' + satuan) + '</button>';
@@ -12009,7 +12021,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (_wz.jalur === 'literan') {
       const k = ((document.getElementById('konversiLiteranInfo') || {}).textContent || '').trim();
       if (k) bagian.push(wzEsc(k));
-      if (_wzNominalOn && nNum > 0) bagian.push('= ' + wzAngkaTampil(nNum) + ' liter menurut harga katalog');
+      if (_wzNominalOn && nNum > 0) {
+        const t = Math.round(parseFloat((document.getElementById('jualHargaTotal') || {}).value) || 0);
+        const ketik = Math.round(wzAngka(_wzNominalTeks));
+        bagian.push('= ' + wzAngkaTampil(nNum) + ' liter \u00b7 dihitung ' + formatRupiah(t)
+          + (t > 0 && ketik > t ? ' \u2014 takaran 0,1 L, ' + formatRupiah(ketik - t) + ' lebih sedikit dari yang diketik' : ''));
+      }
     }
     try {
       const r = bacaRincianJual();
@@ -12438,7 +12455,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
               + '<div class="wz-chip-takar">' + [100000, 50000, 20000, 10000].map(n => '<button type="button" onclick="wzUangTambah(' + n + ')">+ ' + (n / 1000) + 'rb</button>').join('') + '</div>'
               + (kembali !== null ? '<div class="kg-panel wz-kas">'
                 + '<div class="wz-kas-baris"><span class="label">Dibayar</span><span class="kg-uang-kas">' + formatRupiah(_wzUang) + '</span></div>'
-                + '<div class="wz-kas-baris"><span class="label">' + (kembali >= 0 ? 'Kembalian' : 'Masih kurang \u2014 jadi piutang') + '</span><span class="kg-uang-kas' + (kembali < 0 ? ' oks' : '') + '">' + (kembali < 0 ? '\u2212' : '') + formatRupiah(Math.abs(kembali)) + '</span></div>'
+                + '<div class="wz-kas-baris"><span class="label">' + (kembali >= 0 ? 'Kembalian' : 'Masih kurang \u2014 jadi piutang') + '</span><span class="' + (kembali < 0 ? 'kg-uang-piutang oks' : 'kg-uang-kas') + '">' + (kembali < 0 ? '\u2212' : '') + formatRupiah(Math.abs(kembali)) + '</span></div>'
                 + (kembali > 0 ? wzLembarKembalian(kembali) : '') + '</div>' : '')
             : (caraAktif === 'Kredit' ? '<div class="wz-info">Kredit tidak masuk kas \u2014 jadi piutang atas nama pembeli. Nama wajib.</div>' : ''))
           + '<label style="margin-top:12px;">Nama pembeli' + (caraAktif === 'Kredit' ? ' \u2014 wajib untuk kredit' : ' \u2014 boleh kosong') + '</label>'
@@ -15635,6 +15652,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', () => thSegar());   // terdaftar SESUDAH oninput atribut → membaca hasil fungsi lama
     });
+    // Tombol pil (mis. "Isi jatah SOP") menulis value langsung tanpa event 'input';
+    // pendengar bubbling berjalan SESUDAH onclick atribut → membaca hasilnya.
+    const hal = document.getElementById('halamanTutup');
+    if (hal) hal.addEventListener('click', ev => { if (ev.target && ev.target.closest && ev.target.closest('.pil-aksi')) thSegar(); });
   }
   function thSegar() {
     if (window.matchMedia('(min-width: 700px)').matches) return;
@@ -15650,13 +15671,13 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       let boleh = true; let pertamaBelum = 7;
       const barisPeta = [1, 2, 3, 4, 5, 6].map(i => {
         const pg = thPagar(i);
-        const beresI = i <= 5 ? thBeresI(i) : pg.ok;
+        const beresI = i <= 5 ? thBeresI(i) : false;   // baris 6 = tindakan kunci, bukan pagar
         if (!beresI && pertamaBelum === 7) pertamaBelum = i;
         const bisa = boleh; if (!beresI) boleh = false;
         return `<button type="button" class="th-baris" onclick="thKe(${i})"${bisa ? '' : ' disabled'}>
           <span class="th-no${beresI ? ' beres' : (i === pertamaBelum ? ' kini' : '')}">${beresI ? '✓' : i}</span>
           <span><b>${TH_JUDUL[i]}</b><i>${escapeHtml(TH_TEMPAT[i])}</i></span>
-          <small class="${beresI ? '' : (i === pertamaBelum ? '' : 'oks')}">${beresI ? 'beres' : (i === pertamaBelum ? 'sekarang' : '—')}</small></button>`;
+          <small class="${beresI || (i === 6 && _thInfo.sudah) ? '' : (i === pertamaBelum ? '' : 'oks')}">${beresI ? 'beres' : (i === 6 && _thInfo.sudah ? 'sudah dikunci' : (i === pertamaBelum ? 'sekarang' : '—'))}</small></button>`;
       }).join('');
       const tujuan = pertamaBelum === 7 ? 6 : pertamaBelum;
       thTulis('thPeta', `<div class="kg-panel" style="padding:6px 12px 12px;">${barisPeta}
@@ -15667,14 +15688,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       const alasanTampak = thTampil('tutupAlasanBlok');
       const malam = ambilTutupHari().filter(x => x.tanggal && x.tanggal < (_thInfo.hariIni || ''))
         .sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))).slice(-30);
-      const maksSel = Math.max.apply(null, malam.map(x => Math.abs(x.selisih || 0)).concat([1]));
+      const maksSel = Math.max.apply(null, malam.map(x => Math.abs(x.selisih || 0)).concat([0]));
+      const pembagi = Math.max(maksSel, 1);   // penjaga pembagi nol — TIDAK ikut dicetak
       thTulis('thAlatKas', (alasanTampak ? `<div class="th-chip">${['Kembalian kurang', 'Uang jajan diambil', 'Belum dicatat'].map(t =>
           `<button type="button" onclick="thAlasanCepat(${escapeHtml(JSON.stringify(t))})">${t}</button>`).join('')}</div>` : '')
         + `<div class="th-isi4${nIsi < 4 ? ' oks' : ''}">${nIsi} dari 4 tempat uang diisi${nIsi < 4 ? ' — yang kosong dihitung Rp0' : ''}</div>`
         + `<button type="button" class="th-lembar-buka" onclick="thLembarBuka()">Hitung lembar → isi laci</button>`
         + `<div class="kg-panel th-30"><div class="kg-label">Selisih 30 malam terkunci</div>`
-        + (malam.length ? `<div class="rel">${malam.map(x => `<span class="${(x.selisih || 0) < 0 ? 'oks' : ''}" style="--isi:${Math.round(Math.abs(x.selisih || 0) / maksSel * 100)}" title="${escapeHtml(x.tanggal)}"></span>`).join('')}</div>
-          <i>${malam.length} malam · terbesar ${formatRupiah(maksSel)} · oksida = kurang</i>` : '<i>belum ada malam terkunci — bar ini terisi begitu malam pertama dikunci</i>') + `</div>`);
+        + (malam.length ? `<div class="rel">${malam.map(x => `<span class="${(x.selisih || 0) < 0 ? 'oks' : ''}" style="--isi:${Math.round(Math.abs(x.selisih || 0) / pembagi * 100)}" title="${escapeHtml(x.tanggal)}"></span>`).join('')}</div>
+          <i>${malam.length} malam · ${maksSel > 0 ? 'terbesar ' + formatRupiah(maksSel) + ' · oksida = kurang' : 'semua cocok'}</i>` : '<i>belum ada malam terkunci — bar ini terisi begitu malam pertama dikunci</i>') + `</div>`);
       // Pagar & lawan kemarin (seksi 6).
       const kemarinIso = _thInfo.hariIni ? tanggalLokalIso(new Date(isoKeTanggal(_thInfo.hariIni).getTime() - 86400000)) : '';
       const kem = kemarinIso ? ambilTutupHari().find(x => x.tanggal === kemarinIso) : null;
@@ -17340,14 +17362,16 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // sudah ada (pagar & confirm/prompt di dalamnya tetap jalan). Mode LATIHAN = bendera
   // dry-run: hanya membalik _tbKaca.lat.*, tidak pernah memanggil ketiganya.
   let _tbKaca = { tahun: null, langkah: 0, latihan: false, lat: { arsip: false, saldo: false, hapus: false },
-    paraf: { owner: false, saksi: false }, perangkatOk: {}, sebelum: null, perangkat: [], hapusSelesai: false };
+    paraf: { owner: false, saksi: false }, perangkatOk: {}, sebelum: null, perangkat: [], hapusSelesai: false,
+    awal: true, maks: 0, progres: '', latihanDitutup: false };
   function tbSaldoAda(tahun) {   // ekspresi yang sama dengan penerimaan di hapusDokumenTahun
     return ambilSemuaBatch().some(k => k.tutupBuku && k.tahunDari === tahun)
       || ambilPiutangMutasi().some(m => m.tutupBuku && m.tahunDari === tahun);
   }
   function tbKacaReset(tahun) {
     _tbKaca = { tahun, langkah: 0, latihan: _tbKaca.latihan, lat: { arsip: false, saldo: false, hapus: false },
-      paraf: { owner: false, saksi: false }, perangkatOk: {}, sebelum: null, perangkat: [], hapusSelesai: false };
+      paraf: { owner: false, saksi: false }, perangkatOk: {}, sebelum: null, perangkat: [], hapusSelesai: false,
+      awal: true, maks: 0, progres: '', latihanDitutup: false };
   }
   function tbLimaAngka(sampai) {   // penjumlahan yang sama dengan pratinjau gambarTutupBuku
     const kar = hitungStokKarungPerMerk(sampai), kem = hitungStokKemasan(sampai);
@@ -17392,21 +17416,36 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const w = document.getElementById('tbKaca');
     if (!w || window.matchMedia('(min-width: 700px)').matches) return;
     try {
-      const K = tbKeadaan();
+      let K = tbKeadaan();
+      // Pagar jendela dobel berlaku di SEMUA pintu masuk latihan (ganti tahun, muat ulang),
+      // bukan hanya di tombolnya: saldo pembuka sudah tertulis + riwayat masih ada = wajib Hapus.
+      if (_tbKaca.latihan && K.nyata.saldo && K.totalDok > 0) {
+        _tbKaca.latihan = false; _tbKaca.lat = { arsip: false, saldo: false, hapus: false };
+        _tbKaca.paraf = { owner: false, saksi: false }; _tbKaca.langkah = 0; _tbKaca.latihanDitutup = true;
+        K = tbKeadaan();
+      }
       K.perangkat_semua_ok = _tbKaca.perangkat.every(p => _tbKaca.perangkatOk[p.nama]);
       const tahun = K.tahun, lat = _tbKaca.latihan;
       // Mode sungguhan: langkah diturunkan dari keadaan nyata (muat ulang di tengah aman).
       // Selesai = cache sudah kosong ATAU fungsi hapus lama melaporkan ✓ (cache boleh menyusul).
-      if (!lat) { if (K.nyata.selesai || _tbKaca.hapusSelesai) _tbKaca.langkah = 4; else if (K.nyata.saldo && _tbKaca.langkah < 3) _tbKaca.langkah = 3; }
-      else if (_tbKaca.lat.hapus) _tbKaca.langkah = 4;
+      // Saldo tertulis: lompat ke Hapus saat MASUK saja; sesudahnya layar 0/1 tetap bisa
+      // dikunjungi (unduh ulang arsip), hanya layar 2 (tulis saldo) yang terkunci.
+      if (!lat) {
+        if (K.nyata.selesai || _tbKaca.hapusSelesai) _tbKaca.langkah = 4;
+        else if (K.nyata.saldo && (_tbKaca.awal || _tbKaca.langkah === 2)) _tbKaca.langkah = 3;
+      } else if (_tbKaca.lat.hapus) _tbKaca.langkah = 4;
+      _tbKaca.awal = false;
+      _tbKaca.maks = Math.max(_tbKaca.maks || 0, _tbKaca.langkah);
       const l = _tbKaca.langkah;
+      const kunciSaldo = !lat && K.nyata.saldo;   // layar 2 terkunci: saldo pembuka tidak ditulis dua kali
       const rp = formatRupiah;
       const JUDUL = ['Periksa', 'Arsip', 'Saldo pembuka', 'Hapus', 'Selesai'];
       let h = `<div class="tb6-mode">
         <button type="button" class="lat${lat ? ' kg-terpilih' : ''}" onclick="tbKacaMode('latihan')">LATIHAN</button>
         <button type="button" class="${lat ? '' : 'kg-terpilih'}" onclick="tbKacaMode('sungguhan')"${K.nyata.saldo && K.totalDok > 0 ? '' : ''}>SUNGGUHAN</button></div>
         <div class="tb6-kalimat${lat ? ' lat' : ''}">${lat ? 'LATIHAN · tidak ada dokumen yang tersentuh — jalankan seluruh putaran untuk hafal urutannya.' : 'SUNGGUHAN · tiga langkah tulis di jalur ini mengubah database toko. Dari SATU perangkat saja.'}</div>
-        <div class="tb6-pita">${JUDUL.map((j, i) => `<button type="button" onclick="tbKacaKe(${i})"${i > l ? ' disabled' : ''} class="${i < l ? 'beres' : ''}${i === l ? ' kg-terpilih' : ''}">${i}·${j}</button>`).join('')}</div>`;
+        ${_tbKaca.latihanDitutup ? `<div class="tb6-ket oks">Latihan ditutup: jendela dobel ${tahun} sedang terbuka — selesaikan Hapus dulu.</div>` : ''}
+        <div class="tb6-pita">${JUDUL.map((j, i) => `<button type="button" onclick="tbKacaKe(${i})"${i > _tbKaca.maks || (i === 2 && kunciSaldo) || l === 4 ? ' disabled' : ''} class="${i < l ? 'beres' : ''}${i === l ? ' kg-terpilih' : ''}">${i}·${j}</button>`).join('')}</div>`;
       const nav = (bisa, ket, label) => `<div class="tb6-nav">${l > 0 ? `<button type="button" class="mundur" onclick="tbKacaMundur()">← Kembali</button>` : ''}
         <button type="button" class="kg-terpilih lanjut" onclick="tbKacaLanjut()"${bisa ? '' : ' disabled'}>${label || 'Lanjut → ' + JUDUL[l + 1]}</button></div>
         <div class="tb6-ket${bisa ? '' : ' oks'}">${ket}</div>`;
@@ -17464,7 +17503,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         const sb = _tbKaca.sebelum;
         const TETAP = ['katalog harga', 'pengaturan', 'catatan pelanggan', 'THR pelanggan'];
         h += `<div class="kg-panel tb6-panel"><h3>Hapus dokumen ${tahun}</h3>
-          ${K.ef.saldo && K.totalDok > 0 ? `<div class="tb6-dobel"><b>Angka sedang terhitung dua kali</b>Pembuka ${tahun + 1} sudah ditulis, riwayat ${tahun} masih ada. Sampai Hapus selesai: sack ${Math.round(sesudah.kg).toLocaleString('id-ID')} kg${sb ? ' (seharusnya ' + Math.round(sb.kg).toLocaleString('id-ID') + ')' : ''}, bags ${sesudah.bags}${sb ? ' (' + sb.bags + ')' : ''}, piutang ${rp(sesudah.piutang)}${sb ? ' (' + rp(sb.piutang) + ')' : ''}. Jangan baca angka toko dulu.</div>` : ''}
+          ${K.nyata.saldo && K.totalDok > 0 ? `<div class="tb6-dobel"><b>Angka sedang terhitung dua kali</b>Pembuka ${tahun + 1} sudah ditulis, riwayat ${tahun} masih ada. Sampai Hapus selesai: sack ${Math.round(sesudah.kg).toLocaleString('id-ID')} kg${sb ? ' (seharusnya ' + Math.round(sb.kg).toLocaleString('id-ID') + ')' : ''}, bags ${sesudah.bags}${sb ? ' (' + sb.bags + ')' : ''}, piutang ${rp(sesudah.piutang)}${sb ? ' (' + rp(sb.piutang) + ')' : ''}. Jangan baca angka toko dulu.</div>` : ''}
           <div class="kg-label">Dibersihkan (${K.daftar.length} koleksi)</div>
           <div class="tb6-petak">${K.daftar.map(d => `<span><b>${d.dok.length.toLocaleString('id-ID')}</b>${escapeHtml(d.label)}</span>`).join('')}</div>
           <div class="kg-label">Tetap hidup</div>
@@ -17476,7 +17515,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           </div>
           ${typeof pinSudahDisetel === 'function' && !pinSudahDisetel() ? '<div class="tb6-ket oks">PIN owner belum disetel — paraf pemilik lewat tanpa PIN.</div>' : ''}
           <button type="button" class="tb6-aksi bahaya" onclick="tbKacaHapus()"${tbKacaBolehLanjut(3, K) ? '' : ' disabled'}>${lat ? 'Hapus (latihan) ' : 'Hapus '}${K.totalDok.toLocaleString('id-ID')} dokumen ${tahun}</button>
-          <div class="tb6-progres" id="tbKacaProgres"></div>
+          <div class="tb6-progres" id="tbKacaProgres">${escapeHtml(_tbKaca.progres || '')}</div>
           <div class="tb6-ket">${tbKacaBolehLanjut(3, K) ? 'SATU ARAH. Ketik tahunnya saat diminta.' : (!K.ef.saldo ? 'Tulis saldo pembuka dulu.' : (!K.daring && !lat ? 'Butuh internet.' : 'Dua paraf dulu.'))}</div>
         </div>` + `<div class="tb6-nav"><button type="button" class="mundur" onclick="tbKacaMundur()">← Kembali</button></div>`;
       } else {
@@ -17501,9 +17540,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     _tbKaca.lat = { arsip: false, saldo: false, hapus: false };
     _tbKaca.paraf = { owner: false, saksi: false };
     _tbKaca.langkah = 0; _tbKaca.sebelum = null; _tbKaca.hapusSelesai = false;
+    _tbKaca.maks = 0; _tbKaca.progres = ''; _tbKaca.latihanDitutup = false; _tbKaca.awal = !lat;
     gambarTutupBukuKaca();
   }
-  function tbKacaKe(n) { if (n <= _tbKaca.langkah) { _tbKaca.langkah = n; gambarTutupBukuKaca(); } }
+  function tbKacaKe(n) { if (n <= (_tbKaca.maks || 0) && _tbKaca.langkah !== 4) { _tbKaca.langkah = n; gambarTutupBukuKaca(); } }
   function tbKacaLanjut() {
     const K = tbKeadaan(); K.perangkat_semua_ok = _tbKaca.perangkat.every(p => _tbKaca.perangkatOk[p.nama]);
     if (!tbKacaBolehLanjut(_tbKaca.langkah, K)) return;
@@ -17511,7 +17551,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     gambarTutupBukuKaca();
     document.getElementById('lembarTutupBuku').scrollTop = 0;
   }
-  function tbKacaMundur() { _tbKaca.langkah = Math.max(0, _tbKaca.langkah - 1); gambarTutupBukuKaca(); }
+  function tbKacaMundur() {
+    let n = Math.max(0, _tbKaca.langkah - 1);
+    if (n === 2 && !_tbKaca.latihan && tbKeadaan().nyata.saldo) n = 1;   // layar saldo terkunci → langsung ke Arsip
+    _tbKaca.langkah = n; gambarTutupBukuKaca();
+  }
   function tbKacaCentangPerangkat(i) { const p = _tbKaca.perangkat[i]; if (!p) return; _tbKaca.perangkatOk[p.nama] = !_tbKaca.perangkatOk[p.nama]; gambarTutupBukuKaca(); }
   function tbKacaArsip() {
     const tahun = _tbKaca.tahun;
@@ -17549,7 +17593,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     await hapusDokumenTahun(tahun);   // fungsi lama: prompt ketik tahun + hapus satu-satu + gambarTutupBuku → kaca
     if (obs) obs.disconnect();
     // Sukses hanya bila fungsi lama sendiri menulis ✓ ke progresnya (bukan tebakan dari cache).
-    if (((sumber && sumber.textContent) || '').indexOf('✓') === 0) _tbKaca.hapusSelesai = true;
+    _tbKaca.progres = (sumber && sumber.textContent) || '';   // jejak 'Terhenti di N/M' ikut terbawa ke gambar ulang
+    if (_tbKaca.progres.indexOf('✓') === 0) _tbKaca.hapusSelesai = true;
     gambarTutupBukuKaca();
   }
   function tbKacaSelesai() { tutupTutupBuku(); }
