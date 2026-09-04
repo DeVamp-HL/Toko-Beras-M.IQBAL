@@ -3919,6 +3919,62 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #bulananKaca .bk-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
   line-height:1.5; color:var(--pf-abu); margin-top:9px; }
 
+/* --- KACA EMAS G3: Harga (satu kolom per merk) --- */
+@media (min-width:700px){ #hargaKaca{ display:none; } }
+@media (max-width:699.98px){
+  /* Judul halaman + #pesanOkHarga TETAP tampil; sisanya digantikan kaca. */
+  #halamanHarga > .kartu, #halamanHarga > .tombol-tambah-harga,
+  #halamanHarga > .kartu-daftar, #halamanHarga > .info-box{ display:none; }
+}
+#hargaKaca .hg-utama{ padding:14px 15px 12px; margin-bottom:12px; }
+#hargaKaca .hg-utama b{ display:block; font-family:var(--pf-serif); font-weight:600;
+  font-size:24px; color:var(--pf-platina); margin:4px 0 6px; }
+#hargaKaca .hg-utama i{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:11px; line-height:1.5; color:var(--pf-abu); }
+#hargaKaca .hg-utama i.oks{ color:#d3a08b; }
+#hargaKaca .hg-merk{ padding:12px 13px; margin-bottom:11px; }
+#hargaKaca .hg-kepala{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:10px; margin-bottom:7px; }
+#hargaKaca .hg-kepala b{ font-size:13.5px; }
+#hargaKaca .hg-kepala small{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:10px; color:var(--pf-abu); margin-top:2px; }
+#hargaKaca .hg-pil-jenis{ flex:none; min-height:32px; padding:4px 11px; border-radius:99px;
+  border:1px solid var(--pf-tepi); background:none; color:var(--pf-abu);
+  font-family:var(--pf-serif); font-style:italic; font-size:10px; }
+#hargaKaca .hg-pil-jenis.oks{ border-color:rgba(211,160,139,.5); color:#d3a08b; }
+#hargaKaca .hg-baris{ display:grid; grid-template-columns:auto 1fr auto; align-items:center;
+  gap:4px 10px; width:100%; min-height:48px; padding:7px 2px; text-align:left;
+  background:none; border:none; border-top:1px solid rgba(255,255,255,.05);
+  color:inherit; font-family:inherit; }
+#hargaKaca .hg-ukuran{ min-width:58px; padding:4px 9px; border-radius:8px; text-align:center;
+  border:1px solid var(--pf-tepi); font-size:10.5px; font-weight:600; color:var(--pf-platina); }
+#hargaKaca .hg-baris .kg-uang-dagang{ font-size:17px; }
+#hargaKaca .hg-kanan{ text-align:right; font-size:9.5px; color:var(--pf-abu); line-height:1.5; }
+#hargaKaca .hg-kanan .oks{ color:#d3a08b; font-weight:700; }
+#hargaKaca .hg-titik-tua{ display:inline-block; width:5px; height:5px; border-radius:99px;
+  background:#d3a08b; margin-left:3px; vertical-align:1px; }
+#hargaKaca .hg-lubang{ display:flex; align-items:center; justify-content:space-between;
+  gap:10px; width:100%; min-height:48px; margin-top:6px; padding:8px 11px; text-align:left;
+  border-radius:10px; background:none; font-family:var(--pf-serif); font-style:italic;
+  font-size:10.5px; color:#d3a08b; border:1px dashed rgba(211,160,139,.5); }
+#hargaKaca .hg-lubang u{ flex:none; text-decoration:none; font-family:inherit; font-style:normal;
+  font-weight:700; font-size:10px; letter-spacing:.1em; padding:5px 12px; border-radius:99px;
+  border:1px solid rgba(211,160,139,.5); }
+#hargaKaca .hg-tangga{ margin-top:9px; padding-top:8px; border-top:1px dashed rgba(255,255,255,.1); }
+#hargaKaca .hg-tangga .kg-label{ margin-bottom:6px; }
+#hargaKaca .hg-anak{ display:grid; grid-template-columns:56px 1fr auto; align-items:center;
+  gap:8px; padding:2px 0; font-size:9.5px; color:var(--pf-abu); }
+/* Bilah tangga digerakkan --isi dari harga/kg yang SAMA dengan angka di kanannya. */
+#hargaKaca .hg-anak .bilah{ height:5px; border-radius:99px; width:var(--isi,0%);
+  background:linear-gradient(90deg,rgba(226,205,166,.5),rgba(226,205,166,.15)); }
+#hargaKaca .hg-anak.oks{ color:#d3a08b; }
+#hargaKaca .hg-anak.oks .bilah{ background:linear-gradient(90deg,rgba(211,160,139,.6),rgba(211,160,139,.2)); }
+#hargaKaca .hg-tangga-ket{ font-family:var(--pf-serif); font-style:italic; font-size:9.5px;
+  line-height:1.5; color:#d3a08b; margin-top:5px; }
+#hargaKaca .hg-tambah{ display:block; width:100%; min-height:48px; border:none;
+  border-radius:12px; font-family:inherit; font-size:12px; font-weight:700;
+  letter-spacing:.08em; margin-top:2px; }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -5911,6 +5967,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     </div>
     <div id="pesanOkHarga" class="pesan-ok"> Harga tersimpan.</div>
     <div class="info-box catatan-luwes">Sumber harga resmi kasir — kasir memilih dari katalog ini, tidak mengetik harga bebas. Isi lengkap dulu sebelum dikunci ke form Jual.</div>
+
+    <!-- KACA EMAS G3 (rancangan Harga - Gabungan): SATU KOLOM PER MERK — satuan
+         jadi baris di dalam merknya, lubang harga bertepi putus, tangga Rp/kg
+         menelanjangi diskon ukuran yang naik. Hanya <700px; kartu lama tetap diisi. -->
+    <div id="hargaKaca"></div>
 
     <div class="kartu">
       <div class="panel-kepala"><h2>Literan <span class="keterangan">per liter</span></h2><span class="kd-hitung" id="hitungHargaLiteran"></span></div>
@@ -19057,6 +19118,127 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         </button>` })),
       ...karungKosong.map(m => ({ merk: m, html: barisKosong(m, `isiHargaKarung(${escapeHtml(JSON.stringify(m))})`) }))
     ].sort((a, b) => a.merk.localeCompare(b.merk)), 'Belum ada harga karung/repacking tercatat.');
+    tampilkanHargaKaca();
+  }
+
+  // ============ KACA EMAS G3: HARGA — SATU KOLOM PER MERK (hanya <700px) ============
+  // Satuan jadi baris di dalam merknya; lubang harga (stok ada, harga tak ada)
+  // bertepi putus dan menyebut akibatnya: kasir akan menabraknya. Tangga Rp/kg
+  // digerakkan harga yang sama dengan barisnya — anak yang NAIK ditandai oksida.
+  // Harga jual = wujud uang dagang; bukan kas, jadi kg-uang-kas dilarang di sini.
+  // Kartu lama tetap diisi untuk desktop; kaca hanya memanggil handler lembar lama.
+  function tampilkanHargaKaca() {
+    const wadah = document.getElementById('hargaKaca');
+    if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      const literan = ambilHargaLiteran();
+      const kemasan = ambilHargaKemasan();
+      const karung = ambilHargaKarung();
+      const stokKem = hitungStokKemasan();
+      const stokKar = hitungStokKarungPerMerk();
+      const merkAdaStok = Object.keys(stokKar).filter(m => stokKar[m].sisaKg > 0);
+
+      // Lubang — derivasi yang sama dengan kepala kartu lama (tampilkanHarga).
+      const literanKosong = merkAdaStok.filter(m => !literan.some(x => x.merk === m));
+      const karungKosong = merkAdaStok.filter(m => !karung.some(x => x.merk === m));
+      const kemasanKosong = Object.keys(stokKem)
+        .filter(k => stokKem[k].sisaUnit > 0 &&
+          !kemasan.some(x => x.merk === stokKem[k].namaProduk && x.ukuran === stokKem[k].ukuranKemasan && x.hargaPerUnit > 0))
+        .map(k => ({ merk: stokKem[k].namaProduk, ukuran: stokKem[k].ukuranKemasan }));
+
+      const umurHari = t => t ? Math.floor((Date.now() - Date.parse(t)) / 86400000) : null;
+      const peta = {};
+      const slotM = m => (peta[m] = peta[m] || { baris: [], lubang: [] });
+      literan.forEach(h => {
+        const rasio = RASIO_KONVERSI[h.merk] || RASIO_DEFAULT;
+        const hppKg = (stokKar[h.merk] || {}).hppTerakhirPerKg || 0;
+        slotM(h.merk).baris.push({ urut: -1, pil: 'Literan /L', harga: h.hargaPerLiter,
+          perKg: h.hargaPerLiter / rasio, hpp: hppKg > 0 ? hppKg * rasio : 0,
+          umur: umurHari(h.diubahPada), aksi: `ubahHargaLiteran(${escapeHtml(JSON.stringify(h.id))})` });
+      });
+      kemasan.forEach(h => {
+        const kg = Number(h.ukuran);
+        slotM(h.merk).baris.push({ urut: kg > 0 ? kg : 9999, pil: escapeHtml(String(h.ukuran)) + ' kg',
+          harga: h.hargaPerUnit, perKg: kg > 0 ? h.hargaPerUnit / kg : null,
+          hpp: (stokKem[h.merk + '|' + h.ukuran] || {}).hppRataRataPerUnit || 0,
+          umur: umurHari(h.diubahPada), aksi: `ubahHargaKemasan(${escapeHtml(JSON.stringify(h.id))})` });
+      });
+      karung.forEach(h => {
+        slotM(h.merk).baris.push({ urut: 99999, pil: 'curah /kg', harga: h.hargaPerKg,
+          perKg: h.hargaPerKg, hpp: (stokKar[h.merk] || {}).hppTerakhirPerKg || 0,
+          umur: umurHari(h.diubahPada), aksi: `ubahHargaKarung(${escapeHtml(JSON.stringify(h.id))})` });
+      });
+      literanKosong.forEach(m => slotM(m).lubang.push({ pil: 'Literan',
+        aksi: `isiHargaLiteran(${escapeHtml(JSON.stringify(m))})` }));
+      kemasanKosong.forEach(p => slotM(p.merk).lubang.push({ pil: escapeHtml(String(p.ukuran)) + ' kg',
+        aksi: `isiHargaKemasan(${escapeHtml(JSON.stringify(p.merk))}, ${Number(p.ukuran) || 0})` }));
+      karungKosong.forEach(m => slotM(m).lubang.push({ pil: 'curah /kg',
+        aksi: `isiHargaKarung(${escapeHtml(JSON.stringify(m))})` }));
+
+      const daftarMerk = Object.keys(peta).sort((a, b) => a.localeCompare(b));
+      if (!daftarMerk.length) {
+        wadah.innerHTML = '<div class="kosong-info"><b>Belum ada merk tercatat</b><span>Merk muncul sendiri begitu ada stok atau harga.</span></div>';
+        return;
+      }
+      let nSiap = 0, nLubang = 0;
+      daftarMerk.forEach(m => { nSiap += peta[m].baris.length; nLubang += peta[m].lubang.length; });
+
+      let h = `<div class="kg-panel hg-utama">
+        <div class="kg-label">Sumber harga resmi kasir</div>
+        <b>${nSiap} dari ${nSiap + nLubang} harga siap</b>
+        ${nLubang > 0
+          ? `<i class="oks">${nLubang} lubang harga — kasir akan menabraknya.</i>`
+          : '<i>Semua ukuran yang ada stoknya punya harga. Kasir tidak akan menabrak lubang.</i>'}
+      </div>`;
+
+      h += daftarMerk.map(m => {
+        const d = peta[m];
+        d.baris.sort((a, b) => a.urut - b.urut);
+        const hppKg = (stokKar[m] || {}).hppTerakhirPerKg || 0;
+        const jenis = jenisUntukMerk(m);
+        const aksiJenis = `ubahJenisBeras('${escapeHtml(m).replace(/'/g, "\\'")}')`;
+        let x = `<div class="kg-panel hg-merk"><div class="hg-kepala">
+          <div><b>${escapeHtml(m)}</b><small>${d.baris.length} harga${hppKg > 0 ? ' &middot; HPP ' + formatRupiah(Math.round(hppKg)) + '/kg' : ' &middot; HPP belum ada'}</small></div>
+          <button type="button" class="hg-pil-jenis${jenis ? '' : ' oks'}" onclick="${aksiJenis}">${jenis ? escapeHtml(jenis) : 'varietas?'}</button>
+        </div>`;
+        x += d.baris.map(b => {
+          let kanan;
+          if (!(b.hpp > 0)) kanan = '<span class="oks">HPP belum ada</span>';
+          else {
+            const mg = (b.harga - b.hpp) / b.harga * 100;
+            kanan = `<span class="${mg < 5 ? 'oks' : ''}">margin ${mg.toFixed(1).replace('.', ',')}%</span>`;
+          }
+          const umur = b.umur !== null && b.umur !== undefined && !isNaN(b.umur)
+            ? `<br>${b.umur} hr${b.umur > 60 ? '<span class="hg-titik-tua"></span>' : ''}` : '';
+          return `<button type="button" class="hg-baris" onclick="${b.aksi}">
+            <span class="hg-ukuran">${b.pil}</span>
+            <span class="kg-uang-dagang">Rp${Math.round(b.harga).toLocaleString('id-ID')}</span>
+            <span class="hg-kanan">${kanan}${umur}</span>
+          </button>`;
+        }).join('');
+        x += d.lubang.map(l => `<button type="button" class="hg-lubang" onclick="${l.aksi}">
+          <span>${l.pil} belum ada harganya — kasir akan menabraknya</span><u>ISI</u>
+        </button>`).join('');
+        const anak = d.baris.filter(b => b.perKg > 0);
+        if (anak.length >= 2) {
+          const maksKg = Math.max.apply(null, anak.map(b => b.perKg));
+          let adaNaik = false;
+          x += `<div class="hg-tangga"><div class="kg-label">Tangga Rp/kg</div>` + anak.map((b, i) => {
+            const naik = i > 0 && b.perKg > anak[i - 1].perKg + 0.5;
+            if (naik) adaNaik = true;
+            return `<div class="hg-anak${naik ? ' oks' : ''}"><span>${b.pil}</span>
+              <span class="bilah" style="--isi:${Math.round(b.perKg / maksKg * 100)}%"></span>
+              <span>Rp${Math.round(b.perKg).toLocaleString('id-ID')}</span></div>`;
+          }).join('');
+          if (adaNaik) x += `<div class="hg-tangga-ket">Ukuran bertanda lebih mahal per kg daripada ukuran di bawahnya — diskon ukuran harusnya turun rapi.</div>`;
+          x += `</div>`;
+        }
+        return x + `</div>`;
+      }).join('');
+
+      h += `<button type="button" class="kg-terpilih hg-tambah" onclick="bukaLembarHarga('literan')">Tambah Harga</button>`;
+      wadah.innerHTML = h;
+    } catch (e) { console.error('tampilkanHargaKaca:', e); }
   }
 
   // ===== UX ALUR 6 — Riwayat penjualan, koreksi & pembatalan berjejak =====
@@ -20629,6 +20811,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     return Object.keys(kumpul).sort();
   }
   function tampilkanJenisBeras() {
+    tampilkanHargaKaca();   // listener jenisBeras tak lewat tampilkanHarga — kaca digambar dari sini juga
     const kont = document.getElementById('daftarJenisBeras');
     if (!kont) return;
     const merk = semuaMerkDikenal();
