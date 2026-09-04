@@ -4244,6 +4244,92 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   .wz-lanjut:disabled{ opacity:.45; border:1px dashed rgba(226,205,166,.35) !important; background:none !important; color:var(--pf-abu) !important; -webkit-text-fill-color:var(--pf-abu); }
 }
 
+/* --- KACA EMAS G4: Tutup Hari (jalur tujuh layar) --- */
+@media (min-width:700px){ #thKrom, #thPeta, #thNav, #thLembar, #thAlatKas, #thPagar{ display:none !important; } }
+@media (max-width:699.98px){
+  /* Hanya seksi aktif yang tampil — seksi lain disembunyikan lewat kelas th-lN di halaman
+     (bukan penulis display kedua untuk kartu yang punya style inline dari fungsi lama). */
+  #halamanTutup.th-l0 .th-layar:not([data-l="0"]), #halamanTutup.th-l1 .th-layar:not([data-l="1"]),
+  #halamanTutup.th-l2 .th-layar:not([data-l="2"]), #halamanTutup.th-l3 .th-layar:not([data-l="3"]),
+  #halamanTutup.th-l4 .th-layar:not([data-l="4"]), #halamanTutup.th-l5 .th-layar:not([data-l="5"]),
+  #halamanTutup.th-l6 .th-layar:not([data-l="6"]){ display:none; }
+  /* Seksi 2: hasil (patokan → dihitung → selisih) naik ke atas isian — urutan CSS, tanpa duplikasi. */
+  #halamanTutup .th-layar[data-l="2"] > .kartu{ display:flex; flex-direction:column; }
+  #halamanTutup .th-layar[data-l="2"] > .kartu > .panel-kepala{ order:-3; }
+  #halamanTutup #tutupKasRingkas{ order:-2; }
+  #halamanTutup #tutupSelisih{ order:-1; }
+  #halamanTutup #tutupSelisih .ph-baris:first-child b{ font-family:var(--pf-serif); font-weight:600; font-size:28px; color:var(--pf-platina); }
+}
+#thKrom .th-krom{ padding:11px 14px; margin-bottom:12px; display:grid; grid-template-columns:1fr auto; gap:6px 12px; align-items:center; }
+#thKrom .th-krom b{ display:block; font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--pf-platina); margin-top:2px; }
+#thKrom .th-krom i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); margin-top:2px; }
+/* Cincin beres: --isi dari cacah pagar yang SAMA dengan label x/6. */
+#thKrom .th-cincin{ width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; color:var(--pf-platina);
+  background:conic-gradient(#e2cda6 calc(var(--isi,0) * 1%), rgba(255,255,255,.08) 0); position:relative; }
+#thKrom .th-cincin::after{ content:''; position:absolute; inset:5px; border-radius:50%; background:#1a1713; }
+#thKrom .th-cincin span{ position:relative; }
+#thPeta .th-baris{ display:grid; grid-template-columns:28px 1fr auto; gap:2px 10px; align-items:center; width:100%;
+  min-height:52px; padding:8px 4px; text-align:left; background:none; border:none;
+  border-top:1px solid rgba(255,255,255,.05); color:inherit; font-family:inherit; }
+#thPeta .th-baris:disabled{ opacity:.45; }
+#thPeta .th-no{ width:26px; height:26px; border-radius:50%; border:1px solid var(--pf-tepi2); display:flex;
+  align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--pf-platina); }
+#thPeta .th-no.beres{ background:linear-gradient(160deg,#f7ecd6,#c2a678); color:#2a1f13; border-color:transparent; }
+#thPeta .th-no.kini{ border-color:#e2cda6; box-shadow:0 0 0 3px rgba(226,205,166,.18); }
+#thPeta .th-baris b{ display:block; font-size:12.5px; }
+#thPeta .th-baris i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); }
+#thPeta .th-baris small{ font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--pf-abu); }
+#thPeta .th-baris small.oks{ color:#d3a08b; }
+#thPeta .th-mulai, #thNav .th-lanjut, #thLembar .th-pakai{ display:block; width:100%; min-height:52px; margin-top:10px; border:none;
+  border-radius:12px; font-family:inherit; font-size:12.5px; font-weight:700; letter-spacing:.06em; }
+#thPeta .th-peringatan{ margin:8px 2px; font-family:var(--pf-serif); font-style:italic; font-size:10.5px; color:#d3a08b; }
+#thNav{ display:flex; gap:8px; margin-top:12px; }
+#thNav .th-kembali{ flex:0 0 auto; min-width:44px; min-height:52px; padding:0 16px; border-radius:12px; margin-top:10px;
+  border:1px solid var(--pf-tepi2); background:none; color:var(--pf-platina); font-family:inherit; font-size:12px; font-weight:700; }
+#thNav .th-lanjut{ flex:1; }
+#thNav .th-lanjut:disabled{ opacity:.5; background:none !important; border:1px dashed rgba(226,205,166,.35);
+  color:var(--pf-abu) !important; -webkit-text-fill-color:var(--pf-abu); }
+#thNav .th-ket{ flex-basis:100%; font-family:var(--pf-serif); font-style:italic; font-size:10.5px; color:var(--pf-abu); margin-top:6px; }
+#thAlatKas{ margin-top:10px; }
+#thAlatKas .th-chip{ display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; margin-bottom:8px; }
+#thAlatKas .th-chip::-webkit-scrollbar{ display:none; }
+#thAlatKas .th-chip button{ flex:0 0 auto; min-height:44px; padding:0 13px; border-radius:99px; border:1px solid rgba(211,160,139,.5);
+  background:none; color:#d3a08b; font-family:inherit; font-size:11px; font-weight:700; }
+#thAlatKas .th-isi4{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; color:var(--pf-abu); margin:4px 2px 8px; }
+#thAlatKas .th-isi4.oks{ color:#d3a08b; }
+#thAlatKas .th-lembar-buka{ display:block; width:100%; min-height:48px; border-radius:11px; border:1px solid var(--pf-tepi2);
+  background:none; color:var(--pf-platina); font-family:inherit; font-size:12px; font-weight:700; letter-spacing:.06em; }
+#thAlatKas .th-30{ padding:12px 14px; margin-top:12px; }
+#thAlatKas .th-30 .rel{ display:flex; align-items:flex-end; gap:3px; height:44px; margin-top:8px; }
+#thAlatKas .th-30 .rel span{ flex:1; border-radius:2px 2px 0 0; height:calc(var(--isi,0) * 1%); min-height:2px;
+  background:rgba(226,205,166,.55); }
+#thAlatKas .th-30 .rel span.oks{ background:rgba(211,160,139,.8); }
+#thAlatKas .th-30 i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); margin-top:6px; }
+#thLembar{ padding:12px 14px; margin-top:10px; }
+#thLembar .th-pecahan{ display:grid; grid-template-columns:1fr 44px 40px 44px; gap:6px 8px; align-items:center; min-height:48px;
+  border-bottom:1px solid rgba(255,255,255,.05); }
+#thLembar .th-pecahan b{ font-size:12.5px; }
+#thLembar .th-pecahan button{ width:44px; height:44px; border-radius:10px; border:1px solid var(--pf-tepi2); background:none;
+  color:var(--pf-platina); font-family:inherit; font-size:18px; }
+#thLembar .th-pecahan span{ text-align:center; font-size:13px; font-weight:700; color:var(--pf-platina); }
+#thLembar .th-pecahan small{ grid-column:1 / -1; font-family:var(--pf-serif); font-style:italic; font-size:9.5px; color:var(--pf-abu); margin-top:-4px; }
+#thLembar .th-jumlah{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-top:10px; }
+#thLembar .th-jumlah .kg-uang-kas{ font-size:30px; }
+#thLembar .th-catatan{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; color:#d3a08b; margin-top:6px; line-height:1.5; }
+#thLembar .th-tutup{ display:block; width:100%; min-height:44px; margin-top:8px; border-radius:11px; border:1px solid var(--pf-tepi);
+  background:none; color:var(--pf-abu); font-family:inherit; font-size:11px; font-weight:700; }
+#thPagar .th-pagar{ padding:12px 14px; margin-bottom:12px; }
+#thPagar .th-pg{ display:grid; grid-template-columns:22px 1fr auto; gap:8px; align-items:baseline; padding:7px 0;
+  border-bottom:1px solid rgba(255,255,255,.05); font-size:12px; }
+#thPagar .th-pg .tanda{ font-size:12px; color:#c8d3bd; text-align:center; }
+#thPagar .th-pg .tanda.oks{ color:#d3a08b; }
+#thPagar .th-pg i{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); text-align:right; }
+#thPagar .th-lawan{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px; }
+#thPagar .th-lawan .label{ font-size:8px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--pf-abu); }
+#thPagar .th-lawan .nilai{ font-size:12px; font-weight:600; color:var(--pf-platina); margin-top:2px; }
+#thPagar .th-lawan .nilai i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:9.5px; font-weight:400; color:var(--pf-abu); }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -5725,7 +5811,13 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <h2>Tutup Hari</h2>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
-
+    <!-- KACA EMAS G4 (rancangan Tutup Hari - Gabungan): JALUR TUJUH LAYAR — blok lama
+         DIPINDAHKAN ke dalam <section class="th-layar"> tanpa mengubah satu id pun;
+         di <700px hanya seksi aktif yang tampil, Lanjut disabled beneran dari pagar
+         yang MEMBACA hasil fungsi lama; desktop: semua seksi terbuka, krom mati.
+         simpanTutupHari tetap satu-satunya jalur simpan. -->
+    <div id="thKrom"></div>
+    <section class="th-layar" data-l="0">
     <div class="kartu-peringatan-amber" id="tutupSudah" style="display:none;">
       <div class="kpa-judul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L22 20.5H2L12 3.5z"/><path d="M12 10v4.2" stroke-linecap="round"/></svg><b id="tutupSudahJudul"></b></div>
       <p id="tutupSudahKet"></p>
@@ -5742,6 +5834,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <div class="kartu-mini"><div class="label">Uang masuk hari ini</div><div class="nilai" id="tutupMasuk">Rp0</div></div>
       <div class="kartu-mini"><div class="label">Uang keluar hari ini</div><div class="nilai" id="tutupKeluar">Rp0</div></div>
     </div>
+    <div id="thPeta"></div>
+    </section>
+    <section class="th-layar" data-l="1">
 
 
 
@@ -5767,6 +5862,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <button type="button" class="pil-aksi" style="margin-top:8px;" onclick="isiJatahSisihan()">Isi jatah SOP Rp75.000</button>
       <div class="pratinjau-harga" id="tutupSisihanInfo" style="margin-top:8px;"></div>
     </div>
+    </section>
+    <section class="th-layar" data-l="2">
 
     <!-- 2 — hitung uang. Angka yang diisi di sini jadi patokan baru esok hari. -->
     <div class="kartu" style="margin-top:12px;">
@@ -5786,18 +5883,26 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         <input type="text" id="tutupAlasan" placeholder="Contoh: kembalian kurang, uang jajan diambil, belum dicatat">
       </div>
     </div>
+    <div id="thAlatKas"></div>
+    <div id="thLembar" hidden></div>
+    </section>
+    <section class="th-layar" data-l="3">
 
     <!-- 1 — apa yang belum beres. Nol = boleh tidur tenang. -->
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
       <div class="kd-judul"><h3>3 · Yang menggantung</h3><span class="kd-hitung" id="tutupGantungHitung"></span></div>
       <div id="tutupGantung"></div>
     </div>
+    </section>
+    <section class="th-layar" data-l="4">
 
     <!-- 3 — stok yang paling banyak bergerak hari ini = paling rawan melenceng. -->
     <div class="kartu" style="margin-top:12px;">
       <div class="panel-kepala"><h2>4 · Opname singkat <span class="keterangan">stok paling bergerak, paling rawan meleset</span></h2></div>
       <div id="tutupOpname"></div>
     </div>
+    </section>
+    <section class="th-layar" data-l="5">
 
     <!-- 4 — SETORAN KE OWNER (disetujui 21 Agu 2026): praktik malam sesungguhnya —
          isi laci disetor ke kantong owner, sisanya jadi kas awal besok. -->
@@ -5811,9 +5916,13 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       </div>
       <div class="pratinjau-harga" id="tutupSetoranInfo" style="display:none;"></div>
     </div>
-
+    </section>
+    <section class="th-layar" data-l="6">
+    <div id="thPagar"></div>
     <button type="button" class="tombol-utama-kartu" style="margin-top:14px;" onclick="simpanTutupHari()">6 · Kunci hari &amp; catat</button>
     <p class="keterangan" style="margin-top:8px;">Hitungan uang malam ini otomatis jadi patokan esok hari — selisih ketahuan harian, bukan menumpuk sebulan.</p>
+    </section>
+    <div id="thNav"></div>
   </div>
 
   <!-- HALAMAN ARUS KAS (owner-only, 11 Agustus 2026) — uang yang BENAR-BENAR berpindah.
@@ -7087,7 +7196,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); tampilkanCocokStok(); tampilkanCocokKemasan(); tampilkanCocokBahan(); }
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'aruskas') tampilkanArusKas();
-    if (nama === 'tutup') tampilkanTutupHari();
+    if (nama === 'tutup') { _thLangkah = 0; _thDilihat = {}; tampilkanTutupHari(); }   // tiap kunjungan mulai dari peta putaran
     if (nama === 'piutang') { tampilkanPiutang(); tampilkanKasbon(); }
     if (nama === 'pelanggan') tampilkanPelanggan();
     if (nama === 'pesanan') tampilkanPesanan();
@@ -15406,10 +15515,175 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     return tanggalLokalIso(n);
   }
 
+  // ============ KACA EMAS G4: TUTUP HARI — JALUR TUJUH LAYAR (hanya <700px) ============
+  // Kaca tidak menghitung uang: pagar MEMBACA hasil perbaruiSelisihTutup /
+  // perbaruiSetoranTutup yang sudah tergambar di DOM; lembar pecahan MENULIS #tutupLaci
+  // lalu dispatch 'input' — satu-satunya keluaran; simpanTutupHari tidak disentuh.
+  let _thLangkah = 0, _thTerpasang = false, _thLembar = {}, _thInfo = {}, _thTerakhir = {}, _thDilihat = {};
+  const TH_PECAHAN = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200];
+  const TH_JUDUL = ['Peta putaran malam', 'Sisihkan ke amplop laba', 'Cocokkan kas', 'Yang menggantung', 'Opname singkat', 'Setoran ke owner', 'Kunci hari'];
+  const TH_TEMPAT = ['', 'laci → amplop', 'laci · rekening · amplop · brankas', 'meja kasir', 'gudang', 'laci → kantong owner', 'pintu depan'];
+  function thTampil(id) { const e = document.getElementById(id); return !!e && e.style.display === 'block'; }
+  function thNilai(id) { return (document.getElementById(id) || {}).value || ''; }
+  function thPagar(n) {
+    if (n === 1) { const s = Math.round(parseFloat(thNilai('tutupSisihan')) || 0); return { ok: true, ket: s > 0 ? 'disisihkan ' + formatRupiah(s) : 'tanpa sisihan malam ini' }; }
+    if (n === 2) {
+      const adaIsi = thTampil('tutupSelisih');
+      const alasanWajib = thTampil('tutupAlasanBlok') && thNilai('tutupAlasan').trim() === '';
+      const negatif = ['tutupLaci', 'tutupRekening', 'tutupAmplop', 'tutupBrankas'].some(id => thNilai(id) !== '' && parseFloat(thNilai(id)) < 0);
+      if (!adaIsi) return { ok: false, ket: 'isi uang di laci dulu' };
+      if (negatif) return { ok: false, ket: 'jumlah uang tidak mungkin negatif' };
+      if (alasanWajib) return { ok: false, ket: 'selisih butuh keterangan' };
+      return { ok: true, ket: thTampil('tutupAlasanBlok') ? 'selisih dicatat beserta alasannya' : 'cocok dengan catatan' };
+    }
+    if (n === 3) return { ok: true, ket: _thInfo.nGantung ? _thInfo.nGantung + ' hal menggantung — sudah dilihat' : 'tidak ada yang menggantung' };
+    if (n === 4) return { ok: true, ket: _thInfo.nOpname ? _thInfo.nOpname + ' merk paling bergerak untuk ditimbang' : 'tidak ada beras keluar' };
+    if (n === 5) {
+      const info = document.getElementById('tutupSetoranInfo');
+      const merah = !!(info && info.style.display === 'block' && info.querySelector('.ph-merah'));
+      const s = Math.round(parseFloat(thNilai('tutupSetoran')) || 0);
+      if (merah) return { ok: false, ket: 'setoran melebihi isi laci' };
+      return { ok: true, ket: s > 0 ? 'setor ' + formatRupiah(s) : 'Rp0 — tidak setor malam ini' };
+    }
+    if (n === 6) { const a = thPagar(2), b = thPagar(5); return { ok: a.ok && b.ok, ket: a.ok ? (b.ok ? 'siap dikunci' : b.ket) : a.ket }; }
+    return { ok: true, ket: '' };
+  }
+  // Langkah tanpa pagar mesin (1, 3, 4, 5) baru "beres" sesudah DILEWATI — bukan sejak awal.
+  function thBeresI(i) { return !!_thDilihat[i] && thPagar(i).ok && (i !== 2 || thTampil('tutupSelisih')); }
+  function thBeres() { let n = 0; for (let i = 1; i <= 5; i++) if (thBeresI(i)) n++; return n; }
+  function thTulis(id, html) { const el = document.getElementById(id); if (el && _thTerakhir[id] !== html) { el.innerHTML = html; _thTerakhir[id] = html; } }
+  function thTerapkanLangkah() {
+    const hal = document.getElementById('halamanTutup');
+    if (!hal) return;
+    for (let i = 0; i <= 6; i++) hal.classList.toggle('th-l' + i, i === _thLangkah);
+  }
+  function thKe(n) {
+    n = Math.max(0, Math.min(6, n));
+    if (n > _thLangkah) { for (let i = _thLangkah; i < n; i++) if (!thPagar(i).ok) return; }   // maju hanya lewat pagar
+    for (let i = 1; i < n; i++) _thDilihat[i] = true;   // yang dilewati = sudah dilihat
+    _thLangkah = n;
+    thTerapkanLangkah();
+    window.scrollTo(0, 0);
+    thSegar();
+  }
+  function thPasang() {
+    if (_thTerpasang) return;
+    _thTerpasang = true;
+    ['tutupSisihan', 'tutupLaci', 'tutupRekening', 'tutupAmplop', 'tutupBrankas', 'tutupSetoran', 'tutupAlasan'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', () => thSegar());   // terdaftar SESUDAH oninput atribut → membaca hasil fungsi lama
+    });
+  }
+  function thSegar() {
+    if (window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      const beres = thBeres();
+      const l = _thLangkah;
+      thTulis('thKrom', `<div class="kg-panel th-krom"><div><div class="kg-label">${l === 0 ? 'Peta putaran' : 'Langkah ' + l + ' dari 6'}</div>
+        <b>${TH_JUDUL[l]}</b><i>${l === 0 ? (_thInfo.hariIni ? 'malam ' + escapeHtml(formatTanggal(_thInfo.hariIni)) : '') : escapeHtml(TH_TEMPAT[l])}</i></div>
+        <div class="th-cincin" style="--isi:${Math.round(beres / 6 * 100)}"><span>${beres}/6</span></div></div>`);
+      // Peta: baris per langkah, status dari pagar yang sama.
+      const belum = (typeof hariBelumDitutup === 'function' ? (hariBelumDitutup() || []) : []);
+      const nBelum = Array.isArray(belum) ? belum.length : 0;
+      let boleh = true; let pertamaBelum = 7;
+      const barisPeta = [1, 2, 3, 4, 5, 6].map(i => {
+        const pg = thPagar(i);
+        const beresI = i <= 5 ? thBeresI(i) : pg.ok;
+        if (!beresI && pertamaBelum === 7) pertamaBelum = i;
+        const bisa = boleh; if (!beresI) boleh = false;
+        return `<button type="button" class="th-baris" onclick="thKe(${i})"${bisa ? '' : ' disabled'}>
+          <span class="th-no${beresI ? ' beres' : (i === pertamaBelum ? ' kini' : '')}">${beresI ? '✓' : i}</span>
+          <span><b>${TH_JUDUL[i]}</b><i>${escapeHtml(TH_TEMPAT[i])}</i></span>
+          <small class="${beresI ? '' : (i === pertamaBelum ? '' : 'oks')}">${beresI ? 'beres' : (i === pertamaBelum ? 'sekarang' : '—')}</small></button>`;
+      }).join('');
+      const tujuan = pertamaBelum === 7 ? 6 : pertamaBelum;
+      thTulis('thPeta', `<div class="kg-panel" style="padding:6px 12px 12px;">${barisPeta}
+        ${nBelum > 0 ? `<div class="th-peringatan">${nBelum} hari sebelumnya belum dikunci — kunci malam ini dulu, hari lain menyusul lewat tanggal.</div>` : ''}
+        <button type="button" class="kg-terpilih th-mulai" onclick="thKe(${tujuan})">${beres === 0 ? 'Mulai putaran malam' : (pertamaBelum === 7 ? 'Semua langkah beres — ke kunci' : 'Lanjut ke langkah ' + tujuan)}</button></div>`);
+      // Alat seksi 2: chip alasan, cacah isian, lembar, selisih 30 malam.
+      const nIsi = ['tutupLaci', 'tutupRekening', 'tutupAmplop', 'tutupBrankas'].filter(id => thNilai(id) !== '').length;
+      const alasanTampak = thTampil('tutupAlasanBlok');
+      const malam = ambilTutupHari().filter(x => x.tanggal && x.tanggal < (_thInfo.hariIni || ''))
+        .sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))).slice(-30);
+      const maksSel = Math.max.apply(null, malam.map(x => Math.abs(x.selisih || 0)).concat([1]));
+      thTulis('thAlatKas', (alasanTampak ? `<div class="th-chip">${['Kembalian kurang', 'Uang jajan diambil', 'Belum dicatat'].map(t =>
+          `<button type="button" onclick="thAlasanCepat(${escapeHtml(JSON.stringify(t))})">${t}</button>`).join('')}</div>` : '')
+        + `<div class="th-isi4${nIsi < 4 ? ' oks' : ''}">${nIsi} dari 4 tempat uang diisi${nIsi < 4 ? ' — yang kosong dihitung Rp0' : ''}</div>`
+        + `<button type="button" class="th-lembar-buka" onclick="thLembarBuka()">Hitung lembar → isi laci</button>`
+        + `<div class="kg-panel th-30"><div class="kg-label">Selisih 30 malam terkunci</div>`
+        + (malam.length ? `<div class="rel">${malam.map(x => `<span class="${(x.selisih || 0) < 0 ? 'oks' : ''}" style="--isi:${Math.round(Math.abs(x.selisih || 0) / maksSel * 100)}" title="${escapeHtml(x.tanggal)}"></span>`).join('')}</div>
+          <i>${malam.length} malam · terbesar ${formatRupiah(maksSel)} · oksida = kurang</i>` : '<i>belum ada malam terkunci — bar ini terisi begitu malam pertama dikunci</i>') + `</div>`);
+      // Pagar & lawan kemarin (seksi 6).
+      const kemarinIso = _thInfo.hariIni ? tanggalLokalIso(new Date(isoKeTanggal(_thInfo.hariIni).getTime() - 86400000)) : '';
+      const kem = kemarinIso ? ambilTutupHari().find(x => x.tanggal === kemarinIso) : null;
+      thTulis('thPagar', `<div class="kg-panel th-pagar"><div class="kg-label">Pagar sebelum kunci</div>` + [1, 2, 3, 4, 5].map(i => {
+          const pg = thPagar(i);
+          return `<div class="th-pg"><span class="tanda${pg.ok ? '' : ' oks'}">${pg.ok ? '✓' : '!'}</span><span>${TH_JUDUL[i]}</span><i>${escapeHtml(pg.ket)}</i></div>`;
+        }).join('') + `<div class="kg-label" style="margin-top:10px;">Lawan kemarin</div>
+        <div class="th-lawan">
+          <div><div class="label">Omzet</div><div class="nilai">${formatRupiah(_thInfo.omzet || 0)}<i>${kem ? 'kemarin ' + formatRupiah(kem.omzet || 0) : 'kemarin belum dikunci'}</i></div></div>
+          <div><div class="label">Transaksi</div><div class="nilai">${_thInfo.nJual || 0}<i>${kem ? 'kemarin ' + (kem.jumlahTransaksi || 0) : '—'}</i></div></div>
+          <div><div class="label">Kemarin</div><div class="nilai">${kem ? (kem.selisih ? (kem.selisih < 0 ? '−' : '+') + formatRupiah(Math.abs(kem.selisih)) : 'cocok') : '—'}<i>${kem ? 'setor ' + formatRupiah(kem.setoranOwner || 0) : 'tanpa catatan'}</i></div></div>
+        </div></div>`);
+      // Nav: hanya disabled/teks yang berubah bila node sudah ada.
+      const pgKini = thPagar(l);
+      const navHtml = l === 0 ? '' : `<button type="button" class="th-kembali" onclick="thKe(${l - 1})">← Kembali</button>`
+        + (l < 6 ? `<button type="button" class="kg-terpilih th-lanjut" id="thLanjut" onclick="thKe(${l + 1})">Lanjut → ${TH_JUDUL[l + 1]}</button>` : '')
+        + `<div class="th-ket" id="thNavKet"></div>`;
+      thTulis('thNav', navHtml);
+      const btn = document.getElementById('thLanjut');
+      if (btn) btn.disabled = !pgKini.ok;
+      const ket = document.getElementById('thNavKet');
+      if (ket) ket.textContent = l === 6 ? (pgKini.ok ? 'Tombol Kunci di atas menulis catatan malam ini.' : 'Belum bisa dikunci: ' + pgKini.ket) : pgKini.ket;
+      const lem = document.getElementById('thLembar');
+      if (lem && !lem.hidden) thLembarGambar();
+    } catch (e) { console.error('thSegar:', e); }
+  }
+  function thRender(info) {
+    if (!document.getElementById('thKrom') || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      if (info) _thInfo = info;
+      // Sesudah kunci sukses (form dikosongkan mesin) di langkah kunci → kembali ke peta.
+      if (_thInfo.sudah && _thLangkah === 6 && ['tutupLaci', 'tutupRekening', 'tutupAmplop', 'tutupBrankas'].every(id => thNilai(id) === '')) { _thLangkah = 0; _thLembar = {}; _thDilihat = {}; }
+      thPasang();
+      thTerapkanLangkah();
+      thSegar();
+    } catch (e) { console.error('thRender:', e); }
+  }
+  function thAlasanCepat(teks) {
+    const el = document.getElementById('tutupAlasan');
+    if (!el) return;
+    el.value = teks;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  function thLembarJumlah() { return TH_PECAHAN.reduce((a, p) => a + (_thLembar[p] || 0) * p, 0); }
+  function thLembarGambar() {
+    const jumlah = thLembarJumlah();
+    const laciKini = thNilai('tutupLaci');
+    const beda = laciKini !== '' && Math.round(parseFloat(laciKini) || 0) !== jumlah;
+    thTulis('thLembar', `<div class="kg-label">Hitung lembar · laci</div>` + TH_PECAHAN.map(p =>
+        `<div class="th-pecahan"><b>${formatRupiah(p)}</b><button type="button" onclick="thLembarUbah(${p}, -1)" aria-label="kurang">−</button><span>${_thLembar[p] || 0}</span><button type="button" onclick="thLembarUbah(${p}, 1)" aria-label="tambah">+</button></div>`).join('')
+      + `<div class="th-jumlah"><span class="kg-label">Jumlah lembaran</span><span class="kg-uang-kas">${formatRupiah(jumlah)}</span></div>`
+      + (beda ? `<div class="th-catatan">Laci sudah terisi ${formatRupiah(parseFloat(laciKini) || 0)} — Pakai akan menimpanya dengan hitungan lembar.</div>` : '')
+      + `<button type="button" class="kg-terpilih th-pakai" onclick="thLembarPakai()"${jumlah > 0 ? '' : ' disabled'}>Pakai ${formatRupiah(jumlah)} sebagai isi laci</button>`
+      + `<button type="button" class="th-tutup" onclick="thLembarTutup()">Tutup lembar</button>`);
+  }
+  function thLembarBuka() { const el = document.getElementById('thLembar'); if (!el) return; el.hidden = false; thLembarGambar(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  function thLembarTutup() { const el = document.getElementById('thLembar'); if (el) el.hidden = true; }
+  function thLembarUbah(nilai, delta) { _thLembar[nilai] = Math.max(0, (_thLembar[nilai] || 0) + delta); thLembarGambar(); }
+  function thLembarPakai() {
+    const el = document.getElementById('tutupLaci');
+    if (!el) return;
+    el.value = String(thLembarJumlah());                       // satu-satunya keluaran lembar
+    el.dispatchEvent(new Event('input', { bubbles: true }));   // → perbaruiSelisihTutup + perbaruiSetoranTutup (oninput lama) → thSegar
+    thLembarTutup();
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   function tampilkanTutupHari() {
     const hariIni = tanggalTutupAktif();
     const elTgl = document.getElementById('tutupTanggal');
-    if (!elTgl) return;
+    if (!elTgl) { thRender(); return; }   // jalur keluar dini pun menggambar kaca
     elTgl.textContent = '· ' + formatTanggal(hariIni)
       + (hariIni !== tanggalLokalIso() ? ' — hari kemarin, karena sekarang masih dini hari' : '');
 
@@ -15501,6 +15775,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           <button type="button" class="pil-aksi" onclick="pindahDariMenu('stok')">Timbang</button>
         </div>`).join('')
         + '<p class="keterangan" style="margin-top:8px;">Timbang yang paling banyak keluar — di situ selisih paling sering muncul. Catat lewat Cocokkan Stok di tab Stok.</p>';
+    thRender({ sudah: !!sudah, nJual: jual.length, nGantung: gantung.length, nOpname: urut.length, omzet, hariIni });
   }
 
   // JATAH HARIAN (21 Agu 2026, disetujui My DeV). Angkanya dari kejadian nyata 14 hari
@@ -22219,6 +22494,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.perbaruiOpname = perbaruiOpname;
   window.simpanTitikKas = simpanTitikKas;
   window.tampilkanTutupHari = tampilkanTutupHari;
+  window.thKe = thKe; window.thAlasanCepat = thAlasanCepat; window.thLembarBuka = thLembarBuka;
+  window.thLembarTutup = thLembarTutup; window.thLembarUbah = thLembarUbah; window.thLembarPakai = thLembarPakai;
   window.bukaTutupBuku = bukaTutupBuku;
   window.tutupTutupBuku = tutupTutupBuku;
   window.gambarTutupBuku = gambarTutupBuku;
