@@ -3942,10 +3942,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #hargaKaca .hg-kepala b{ font-size:13.5px; }
 #hargaKaca .hg-kepala small{ display:block; font-family:var(--pf-serif); font-style:italic;
   font-size:10px; color:var(--pf-abu); margin-top:2px; }
-#hargaKaca .hg-pil-jenis{ flex:none; min-height:32px; padding:4px 11px; border-radius:99px;
+#hargaKaca .hg-pil-jenis{ flex:none; min-height:44px; padding:4px 11px; border-radius:99px;
   border:1px solid var(--pf-tepi); background:none; color:var(--pf-abu);
   font-family:var(--pf-serif); font-style:italic; font-size:10px; }
 #hargaKaca .hg-pil-jenis.oks{ border-color:rgba(211,160,139,.5); color:#d3a08b; }
+#hargaKaca .hg-lain{ display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
 #hargaKaca .hg-baris{ display:grid; grid-template-columns:auto 1fr auto; align-items:center;
   gap:4px 10px; width:100%; min-height:48px; padding:7px 2px; text-align:left;
   background:none; border:none; border-top:1px solid rgba(255,255,255,.05);
@@ -4033,12 +4034,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #halamanPemasok .pm6-dua .nilai{ font-size:13px; font-weight:600; color:var(--pf-platina); margin-top:2px; }
 #halamanPemasok .pm6-dua .nilai.kosong{ color:var(--pf-abu); font-weight:400; }
 #halamanPemasok .pm6-keping{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
-#halamanPemasok .pm6-keping button{ min-height:36px; padding:5px 10px; border-radius:9px;
+#halamanPemasok .pm6-keping button{ min-height:44px; padding:5px 10px; border-radius:9px;
   border:1px solid var(--pf-tepi); background:rgba(255,255,255,.03); color:inherit;
   font-family:inherit; font-size:10.5px; display:flex; align-items:center; gap:6px; }
 #halamanPemasok .pm6-keping button i{ font-style:normal; color:var(--pf-abu); }
 #halamanPemasok .pm6-aksi{ display:flex; gap:8px; margin-top:10px; }
-#halamanPemasok .pm6-aksi button{ min-height:40px; padding:0 13px; border-radius:99px;
+#halamanPemasok .pm6-aksi button{ min-height:44px; padding:0 13px; border-radius:99px;
   border:1px solid var(--pf-tepi2); background:none; color:var(--pf-platina);
   font-family:inherit; font-size:10.5px; font-weight:700; letter-spacing:.06em; }
 #halamanPemasok .pm6-pra{ display:block; width:100%; min-height:44px; border-radius:11px;
@@ -4062,20 +4063,21 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.1em; }
 
 /* --- KACA EMAS G3: Masuk (timbangan mobil) --- */
-@media (min-width:700px){ #masukKaca, .bm-hpp{ display:none; } }
+@media (min-width:700px){ #masukKaca, .bm-hpp, #daftarSaranBelanja .sb-pakai{ display:none; } }
 @media (max-width:699.98px){
   /* Kepala kaca mengambil alih peran kartu Rincian & penunjuk lengket;
      keduanya tetap diisi hitungPerkiraan untuk desktop. #rincianMasuk
      ber-display inline dari hitungPerkiraan — perlu !important. */
   #halamanInput #rincianMasuk{ display:none !important; }
   #halamanInput #bmPenunjuk.tampil{ position:static; }
-  #masukKaca .mk-kepala{ position:sticky; top:50px; z-index:9; }
+  /* Sticky di WADAH-nya: elemen sticky hanya bergeser di dalam induknya, dan
+     #masukKaca setinggi halaman (anak langsung #halamanInput). */
+  #masukKaca{ position:sticky; top:50px; z-index:9; }
 }
 #masukKaca .mk-kepala{ padding:11px 14px 10px; margin-bottom:12px; }
 #masukKaca .mk-atas{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
 #masukKaca .mk-cara{ font-size:9px; font-weight:700; letter-spacing:.12em; padding:4px 9px; border-radius:99px;
   border:1px solid rgba(226,205,166,.5); color:#e2cda6; white-space:nowrap; }
-#masukKaca .mk-cara.tunai{ border-color:rgba(200,211,189,.5); color:#c8d3bd; }
 #masukKaca .mk-nilai{ margin:4px 0 2px; }
 #masukKaca .mk-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; line-height:1.5;
   color:var(--pf-abu); }
@@ -4166,9 +4168,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #produksiKacaAdukan .pr6-belah{ display:flex; height:5px; border-radius:99px; overflow:hidden; margin-top:6px;
   background:rgba(226,205,166,.55); }
 #produksiKacaAdukan .pr6-belah i{ display:block; width:var(--isi,0%); background:rgba(255,255,255,.14); }
+#produksiKacaAdukan .pr6-catatan{ margin:8px 0 2px; padding:7px 10px; border-radius:9px; font-family:var(--pf-serif);
+  font-style:italic; font-size:10px; line-height:1.5; color:#d3a08b; border-color:rgba(211,160,139,.5) !important; }
 #produksiKacaAdukan .pr6-hasil .putus{ margin-top:6px; padding:7px 10px; border-radius:9px; font-family:var(--pf-serif);
   font-style:italic; font-size:10px; color:var(--pf-abu); }
-#produksiKacaAdukan .pr6-kurang{ display:block; width:100%; min-height:40px; margin-top:6px; padding:7px 11px;
+#produksiKacaAdukan .pr6-kurang{ display:block; width:100%; min-height:44px; margin-top:6px; padding:7px 11px;
   text-align:left; border-radius:9px; background:none; font-family:var(--pf-serif); font-style:italic;
   font-size:10.5px; color:#d3a08b; border:1px dashed rgba(211,160,139,.5); }
 #produksiKacaBahan .pr6-bahan{ display:grid; grid-template-columns:auto 1fr auto; gap:3px 10px; align-items:center;
@@ -6974,6 +6978,19 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     indikator.style.height = rTombol.height + 'px';
   }
   window.addEventListener('resize', geserIndikatorTab);
+  // Kaca Emas: melintasi ambang 700px (putar HP, ubah jendela) menggambar ulang halaman
+  // aktif — renderer kaca bergerbang matchMedia; tanpa ini kartu lama tersembunyi CSS
+  // sementara kaca belum pernah digambar. addListener = API lama, aman di Chrome 80.
+  try {
+    const mqKaca = window.matchMedia('(min-width: 700px)');
+    const gambarUlangHalamanAktif = () => {
+      const h = document.querySelector('.halaman.tampil');
+      if (!h || !h.id) return;
+      pindahHalaman(h.id.replace(/^halaman/, '').toLowerCase());
+    };
+    if (mqKaca.addEventListener) mqKaca.addEventListener('change', gambarUlangHalamanAktif);
+    else mqKaca.addListener(gambarUlangHalamanAktif);
+  } catch (e) { /* matchMedia tak tersedia — abaikan */ }
 
   function pindahHalaman(nama) {
     // SEMUA 17 halaman ikut dipadamkan/dinyalakan. 'setelan' & 'pesanan' dulu TIDAK ada
@@ -7011,7 +7028,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (nama === 'rekap') { tampilkanRekap(); tampilkanRiwayatJual(); tampilkanRiwayat(); }
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); tampilkanSlipGaji(); }
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); isiSaranPelanggan(); }
-    if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); gambarKacaProduksiBahan(); }
+    if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); _prodMode = 'adukan'; prodTerapkanMode(); gambarKacaProduksiBahan(); }   // tiap kunjungan mulai dari pekerjaan utama
     if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); tampilkanCocokStok(); tampilkanCocokKemasan(); tampilkanCocokBahan(); }
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'aruskas') tampilkanArusKas();
@@ -7749,14 +7766,31 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     hitungPerkiraan();
   }
 
-  function hitungPerkiraan() {
-    if (typeof simpanDrafMasuk === 'function') simpanDrafMasuk();
+  function ringkasBarisMasuk() {
     const baris = bacaBarisMerk();
-    const bongkar = parseFloat(document.getElementById('biayaBongkar').value) || 0;
+    const bongkar = parseFloat((document.getElementById('biayaBongkar') || {}).value) || 0;
     const totalKgSemua = baris.reduce((a, b) => a + b.totalKg, 0);
     const totalKarungSemua = baris.filter(b => b.satuan === 'karung').reduce((a, b) => a + b.jumlahKarung, 0);
     const totalHargaBeli = baris.reduce((a, b) => a + b.subtotalHarga, 0);
-    const totalSemua = totalHargaBeli + bongkar;
+    return { baris, bongkar, totalKgSemua, totalKarungSemua, totalHargaBeli, totalSemua: totalHargaBeli + bongkar };
+  }
+  // Kaca Emas G3: keadaan disabled tombol saran diturunkan dari baris form yang ADA,
+  // disegarkan tiap hitungPerkiraan (pilih merk lewat lembar, hapus baris) — bukan
+  // hanya saat daftar saran digambar.
+  function segarkanTombolSaran(baris) {
+    const ada = {};
+    baris.forEach(b => { if (b.merk) ada[b.merk] = true; });
+    document.querySelectorAll('#daftarSaranBelanja .sb-pakai').forEach(t => {
+      const sudah = !!ada[t.dataset.merk];
+      t.disabled = sudah;
+      t.classList.toggle('kg-terpilih', !sudah);
+      t.textContent = sudah ? 'sudah di baris' : '+ ' + t.dataset.sack + ' sack';
+    });
+  }
+  function hitungPerkiraan() {
+    if (typeof simpanDrafMasuk === 'function') simpanDrafMasuk();
+    // Satu penolong untuk kartu lama DAN kepala kaca — tidak ada rumus tandingan.
+    const { baris, bongkar, totalKgSemua, totalKarungSemua, totalHargaBeli, totalSemua } = ringkasBarisMasuk();
 
     // Tampilkan subtotal per baris (alokasi bongkar proporsional kg) — pakai rumus tunggal hitungHppMerkDalamBatch
     const barisDenganHpp = hitungHppMerkDalamBatch(baris, bongkar);
@@ -7825,6 +7859,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     } else {
       kotak.style.display = 'none';
     }
+    segarkanTombolSaran(baris);
     gambarMasukKaca({ baris, bongkar, totalKgSemua, totalKarungSemua, totalHargaBeli, totalSemua });
   }
 
@@ -7837,33 +7872,29 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const wadah = document.getElementById('masukKaca');
     if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
     try {
-      if (!d) {
-        const baris = bacaBarisMerk();
-        const bongkar = parseFloat((document.getElementById('biayaBongkar') || {}).value) || 0;
-        const totalKgSemua = baris.reduce((a, b) => a + b.totalKg, 0);
-        d = { baris, bongkar, totalKgSemua,
-          totalKarungSemua: baris.filter(b => b.satuan === 'karung').reduce((a, b) => a + b.jumlahKarung, 0),
-          totalHargaBeli: baris.reduce((a, b) => a + b.subtotalHarga, 0) };
-        d.totalSemua = d.totalHargaBeli + d.bongkar;
-      }
+      if (!d) d = ringkasBarisMasuk();   // penolong yang sama dengan hitungPerkiraan
       const utang = ((document.getElementById('batchCaraBayar') || {}).value || 'tunai') === 'utang';
       const merkTerisi = d.baris.filter(b => b.merk).length;
       let ket;
-      if (!(d.totalHargaBeli > 0)) ket = 'belum ada baris terisi — sistem tidak menebaknya.';
-      else if (utang) ket = `Jadi utang pemasok — belum keluar dari kas. Kas hari ini keluar ${formatRupiah(d.bongkar)} untuk bongkar.`;
-      else ket = `Keluar dari kas hari ini ${formatRupiah(d.totalSemua)} — beras + bongkar.`;
+      if (!(d.totalHargaBeli > 0)) ket = merkTerisi > 0
+        ? 'merk dipilih, harga belum diisi — nilai belum bisa dihitung.'
+        : 'belum ada baris terisi — sistem tidak menebaknya.';
+      else if (utang) ket = 'Jadi utang pemasok — belum keluar dari kas. ' + (d.bongkar > 0
+        ? `Kas hari ini keluar ${formatRupiah(d.bongkar)} untuk bongkar.`
+        : 'Bongkar belum diisi — belum ada kas keluar hari ini.');
+      else ket = `Keluar dari kas hari ini ${formatRupiah(d.totalSemua)} — beras${d.bongkar > 0 ? ' + bongkar' : ' (bongkar belum diisi)'}.`;
       const krg = d.totalKarungSemua;
       const kurang = krg > 0 && krg < 60;
       let h = `<div class="kg-panel mk-kepala">
         <div class="mk-atas"><span class="kg-label">Nilai beras mobil ini</span><span class="mk-cara${utang ? '' : ' tunai'}">${utang ? 'BON PEMASOK' : 'TUNAI'}</span></div>
         <div class="kg-uang-dagang mk-nilai">${d.totalHargaBeli > 0 ? formatRupiah(d.totalHargaBeli) : '—'}</div>
-        <div class="mk-ket">${merkTerisi > 0 ? merkTerisi + ' merk &middot; ' : ''}${ket}</div>`;
+        <div class="mk-ket">${d.totalHargaBeli > 0 && merkTerisi > 0 ? merkTerisi + ' merk &middot; ' : ''}${ket}</div>`;
       if (krg > 0) {
         h += `<div class="mk-ambang${kurang ? ' oks' : ''}"><span class="rel"><span class="bilah" style="--isi:${Math.min(100, Math.round(krg / 60 * 100))}%"></span></span><span>${krg} / 60 krg</span></div>`;
         if (kurang) h += `<span class="mk-chip">belum sampai 60 — cek lagi, tetap bisa disimpan</span>`;
       }
       h += `<div class="mk-tiga">
-        <div><div class="label">Bongkar &middot; tunai</div><div class="nilai${d.bongkar > 0 ? ' oks' : ' kosong'}">${d.bongkar > 0 ? formatRupiah(d.bongkar) : '—'}</div></div>
+        <div><div class="label">Bongkar &middot; tunai</div><div class="nilai${d.bongkar > 0 ? '' : ' kosong'}">${d.bongkar > 0 ? formatRupiah(d.bongkar) : '—'}</div></div>
         <div><div class="label">Porsi bongkar/kg</div><div class="nilai${d.totalKgSemua > 0 ? '' : ' kosong'}">${d.totalKgSemua > 0 ? formatRupiah(d.bongkar / d.totalKgSemua) : '—'}</div></div>
         <div><div class="label">Total kg</div><div class="nilai${d.totalKgSemua > 0 ? '' : ' kosong'}">${d.totalKgSemua > 0 ? Math.round(d.totalKgSemua).toLocaleString('id-ID') + ' kg' : '—'}</div></div>
       </div></div>`;
@@ -8316,7 +8347,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // Pembelian bahan = uang keluar di kartu Kas Bulan Ini (sejak Arus Kas ada).
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
     if (document.getElementById('halamanStok').classList.contains('tampil')) { tampilkanStok(); tampilkanCocokBahan(); }
-    if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiPilihanBahanKemasan(); gambarKacaProduksiBahan(); }
+    if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiPilihanBahanKemasan(); gambarKacaProduksiBahan(); hitungCampuranProduksi(); }
   }, 'id', 'bahanKemasan');
 
   pasangSinkronisasi(KOLEKSI_BAHAN_LITERAN, KUNCI_BAHAN_LITERAN, (d) => { _cacheBahanLiteran = d; }, () => {
@@ -8324,7 +8355,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // Pembelian bahan = uang keluar di kartu Kas Bulan Ini (sejak Arus Kas ada).
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
     if (document.getElementById('halamanStok').classList.contains('tampil')) { tampilkanStok(); tampilkanCocokBahan(); }
-    if (document.getElementById('halamanProduksi').classList.contains('tampil')) gambarKacaProduksiBahan();
+    if (document.getElementById('halamanProduksi').classList.contains('tampil')) { gambarKacaProduksiBahan(); hitungCampuranProduksi(); }
   }, 'id', 'bahanLiteran');
 
   pasangSinkronisasi(KOLEKSI_HARGA_LITERAN, KUNCI_HARGA_LITERAN, (d) => { _cacheHargaLiteran = d; }, () => {
@@ -13162,6 +13193,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     _prodMode = mode === 'bahan' ? 'bahan' : 'adukan';
     prodTerapkanMode();
     gambarKacaProduksiBahan();
+    if (_prodMode === 'adukan') hitungCampuranProduksi();   // lembar adukan dari stok kantong terkini
     if (_prodMode === 'bahan') {
       const w = document.getElementById('produksiKacaBilah');
       if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -13182,7 +13214,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       daftar.push({ kelompok: 'l', jenis: j, label: LABEL_BAHAN_LITERAN[j] || j, sisa: s.sisaPcs, hpp: s.hargaPerPcs,
         hari: hariHabis(s.sisaPcs, laju[j] || 0) });
     });
-    daftar.forEach(x => { x.menipis = x.sisa < 10 || (x.hari !== null && x.hari <= 4); });
+    // Ambang kritis sama dengan Stok › Cocok Bahan: kemasan <10 lembar, literan <5.
+    daftar.forEach(x => { x.menipis = x.sisa < (x.kelompok === 'l' ? 5 : 10) || (x.hari !== null && x.hari <= 4); });
     return daftar;
   }
   function gambarKacaBilahKantong(daftar) {
@@ -13191,14 +13224,16 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     try {
       daftar = daftar || prodDaftarBahan();
       const tipis = daftar.filter(x => x.menipis);
+      let t = '';
       if (!daftar.length) {
-        w.innerHTML = `<button type="button" class="pr6-bilah" onclick="prodPilihTab('bahan')">Belum ada stok kantong tercatat — sistem tidak menebaknya. Ketuk untuk mencatat pembelian.</button>`;
+        t = `<button type="button" class="pr6-bilah" onclick="prodPilihTab('bahan')">Belum ada stok kantong tercatat — sistem tidak menebaknya. Ketuk untuk mencatat pembelian.</button>`;
       } else if (tipis.length) {
         const t = tipis[0];
-        w.innerHTML = `<button type="button" class="pr6-bilah oks" onclick="prodPilihTab('bahan')"><span><b>${tipis.length} jenis kantong menipis</b> — ${escapeHtml(t.label)}: sisa ${Math.round(t.sisa).toLocaleString('id-ID')} lembar${t.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(t.hari)) : ''}${tipis.length > 1 ? ' &middot; +' + (tipis.length - 1) + ' lagi' : ''}. Ketuk untuk beli.</span></button>`;
+        t = `<button type="button" class="pr6-bilah oks" onclick="prodPilihTab('bahan')"><span><b>${tipis.length} jenis kantong menipis</b> — ${escapeHtml(t.label)}: sisa ${Math.round(t.sisa).toLocaleString('id-ID')} lembar${t.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(t.hari)) : ''}${tipis.length > 1 ? ' &middot; +' + (tipis.length - 1) + ' lagi' : ''}. Ketuk untuk beli.</span></button>`;
       } else {
-        w.innerHTML = `<div class="pr6-bilah"><span class="kg-titik-lcd"></span><span>Kantong aman untuk produksi — ${daftar.length} jenis tercatat, tidak ada yang di bawah 10 lembar atau habis ≤4 hari.</span></div>`;
+        t = `<div class="pr6-bilah"><span class="kg-titik-lcd"></span><span>Kantong aman untuk produksi — ${daftar.length} jenis tercatat, tidak ada yang di bawah 10 lembar (literan 5) atau habis ≤4 hari.</span></div>`;
       }
+      if (w._pr6 !== t) { w.innerHTML = t; w._pr6 = t; }   // node tak diganti bila isinya sama (fokus tombol aman)
     } catch (e) { console.error('gambarKacaBilahKantong:', e); }
   }
   function gambarKacaProduksiAdukan(d) {
@@ -13246,7 +13281,16 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           const persen = harga ? margin / harga * 100 : null;
           return { x, hppUnit, harga, margin, persen };
         }).sort((a, b) => (b.persen === null ? -1e9 : b.persen) - (a.persen === null ? -1e9 : a.persen));
-        h += `<div class="kg-panel pr6-panel"><div class="pr6-kepala"><span class="kg-label">Hasil &middot; diurut margin</span><i>${baris.length} ukuran &middot; harga dari Katalog Harga</i></div>`;
+        // Catatan kejujuran yang sama dengan pratinjau lama: HPP ini baru beras bila
+        // kantong (untuk baris yang memilih jenis kantong) atau upah belum diisi.
+        const kantongN = hasil.reduce((a, x) => a + (x.kantongJumlah || 0), 0);
+        const butuhKantong = hasil.some(x => x.kantongJenis);
+        const upahR = parseFloat((document.getElementById('produksiUpahRepacking') || {}).value) || 0;
+        const belumIsi = [];
+        if (butuhKantong && kantongN <= 0) belumIsi.push('kantong');
+        if (upahR <= 0) belumIsi.push('upah repacking');
+        h += `<div class="kg-panel pr6-panel"><div class="pr6-kepala"><span class="kg-label">Hasil &middot; diurut margin</span><i>${baris.length} ukuran &middot; harga dari Katalog Harga</i></div>
+          ${belumIsi.length ? `<div class="pr6-catatan kg-tepi-putus">HPP ini baru bahan berasnya — ${belumIsi.join(' &amp; ')} belum diisi, angka per unit masih akan naik.</div>` : ''}`;
         h += baris.map(r => {
           const kurangKantong = r.x.kantongJenis && butuh[r.x.kantongJenis] > ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)
             ? `<button type="button" class="pr6-kurang" onclick="prodPilihTab('bahan')">Kantong ${escapeHtml(LABEL_BAHAN_KEMASAN[r.x.kantongJenis] || r.x.kantongJenis)} sisa ${Math.round((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)} — kurang ${Math.round(butuh[r.x.kantongJenis] - ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0))}. Ketuk untuk beli.</button>` : '';
@@ -13261,7 +13305,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         }).join('');
         h += `</div>`;
       }
-      w.innerHTML = h;
+      if (w._pr6 !== h) { w.innerHTML = h; w._pr6 = h; }   // digambar ulang tiap ketikan — ganti node hanya bila berubah
     } catch (e) { console.error('gambarKacaProduksiAdukan:', e); }
   }
   function gambarKacaProduksiBahan() {
@@ -15835,9 +15879,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           <div><div class="kg-label">Dikenal sistem</div><b>${semua.length} <i>orang</i></b></div>
           <div><div class="kg-label">Punya ciri pengenal</div><b>${nCiri} <i>dari ${semua.length}</i></b></div>
         </div>
-        <div class="pel6-nota">${belumCiri > 0
-          ? `${belumCiri} orang belum punya ciri pengenal — sistem tidak menebaknya. Isi cirinya waktu mereka datang lagi.`
-          : 'Semua pelanggan punya ciri pengenal.'}</div>
+        <div class="pel6-nota">${semua.length === 0
+          ? 'Belum ada pelanggan bernama — nama masuk sendiri dari transaksi yang menyebut pembelinya.'
+          : belumCiri > 0
+            ? `${belumCiri} orang belum punya ciri pengenal — sistem tidak menebaknya. Isi cirinya waktu mereka datang lagi.`
+            : 'Semua pelanggan punya ciri pengenal.'}</div>
       </div>`;
 
       _pel6Rutes = [...new Set(daftar.map(x => x.rute).filter(Boolean))];
@@ -15889,9 +15935,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       h += `<div class="kg-panel kg-tepi-putus pel6-thr">
         <div class="kg-label">THR Ramadan — pelanggan setia</div>
         <div class="pel6-thr-baris">
-          <button type="button" onclick="pel6Thr(-1)" aria-label="tahun sebelumnya">−</button>
+          <button type="button" onclick="pel6Thr(-1)" aria-label="tahun sebelumnya"${tahunThr <= 2020 ? ' disabled' : ''}>−</button>
           <b>${tahunThr}</b>
-          <button type="button" onclick="pel6Thr(1)" aria-label="tahun berikutnya">+</button>
+          <button type="button" onclick="pel6Thr(1)" aria-label="tahun berikutnya"${tahunThr >= 2100 ? ' disabled' : ''}>+</button>
           <i>${escapeHtml(ringkasThr)}</i>
         </div>
         <div class="pel6-nota">Penerima tahun ini bertanda ✓ di daftar. Uang barangnya keluar lewat tab Harian (Toko) — bukan di sini, supaya tidak terhitung dua kali.</div>
@@ -15916,7 +15962,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (!el) return;
     // Stepper kaca menulis input lama yang tersembunyi — tahunThrAktif() membacanya,
     // jadi kartu lama, ringkas, dan kaca tergambar ulang dari SATU sumber tahun.
-    el.value = (parseInt(el.value, 10) || new Date().getFullYear()) + d;
+    // Dijepit dengan batas yang SAMA dengan tahunThrAktif (2020–2100) — tampilan & input satu nilai.
+    el.value = Math.min(2100, Math.max(2020, (parseInt(el.value, 10) || new Date().getFullYear()) + d));
     tampilkanPelanggan();
   }
 
@@ -16235,7 +16282,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     kont.innerHTML = saran.map(x => `<div class="baris-44">
       <span class="nama"><i class="trx-nama">${escapeHtml(x.merk)}</i><small>sisa ${Math.round(x.sisa)} kg · laju ${Math.round(x.laju)} kg/hari · ${escapeHtml(kataHabis(x.hari))}${x.termurah ? ' · termurah ' + formatRupiah(x.termurah.hargaPerKg) + '/kg — ' + escapeHtml(x.termurah.pemasok) : ''}</small></span>
       <span class="angka${x.hari <= 2 ? ' kritis' : ''}">±${x.sack} <u>sack ${x.berat}</u></span>
-      <button type="button" class="kg-terpilih sb-pakai" onclick="pakaiSaranBelanja(${escapeHtml(JSON.stringify(x.merk))}, ${Number(x.sack) || 0}, ${Number(x.berat) || 0})"${sudahDiBaris[x.merk] ? ' disabled' : ''}>${sudahDiBaris[x.merk] ? 'sudah di baris' : '+ ' + x.sack + ' sack'}</button>
+      <button type="button" class="sb-pakai${sudahDiBaris[x.merk] ? '' : ' kg-terpilih'}" data-merk="${escapeHtml(x.merk)}" data-sack="${Number(x.sack) || 0}" onclick="pakaiSaranBelanja(${escapeHtml(JSON.stringify(x.merk))}, ${Number(x.sack) || 0}, ${Number(x.berat) || 0})"${sudahDiBaris[x.merk] ? ' disabled' : ''}>${sudahDiBaris[x.merk] ? 'sudah di baris' : '+ ' + x.sack + ' sack'}</button>
     </div>`).join('');
   }
 
@@ -16516,7 +16563,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           : '<div class="kosong-info"><b>Belum ada pemasok tercatat</b><span>Terisi otomatis begitu ada kedatangan di tab Masuk.</span></div>';
       } else {
         g += daftar.map((x, i) => {
-          const px = utangSemua.find(u => u.pemasok === x.nama.trim());
+          // Cocokkan lewat kunciPelanggan (huruf besar/spasi dirapikan) — bon boleh
+          // tercatat dengan varian nama; tiap varian dapat tombol bayarnya sendiri.
+          const pxList = utangSemua.filter(u => kunciPelanggan(u.pemasok) === x.kunci);
+          const px = pxList.length ? { pemasok: pxList[0].pemasok, totalUtang: pxList.reduce((a, u) => a + u.totalUtang, 0),
+            bon: [].concat.apply([], pxList.map(u => u.bon)) } : null;
           const bonTua = !!(px && px.bon.some(b => (b.umurHari || 0) > 14));
           const belanja12 = x.batch.filter(b => (b.tanggal || '') >= setahunLalu).reduce((a, b) => a + (b.nilai || 0), 0);
           const merkUrut = Object.keys(x.hargaPerMerk).sort();
@@ -16526,7 +16577,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
             const lcd = termurah[m] && termurah[m].pemasok === x.nama && pemilikMerk[m] > 1;
             return `<button type="button" onclick="event.stopPropagation(); pm6BukaGaris(${idx})">${lcd ? '<span class="kg-titik-lcd"></span>' : ''}${escapeHtml(m)} <i>Rp${Math.round(t.hargaPerKg).toLocaleString('id-ID')}/kg</i></button>`;
           }).join('');
-          const aksiBon = px ? `<button type="button" onclick="event.stopPropagation(); bukaLembarBayarBon(${JSON.stringify(String(px.pemasok)).replace(/"/g, '&quot;')})">Bayar bon</button>` : '';
+          const aksiBon = pxList.map(u => `<button type="button" onclick="event.stopPropagation(); bukaLembarBayarBon(${JSON.stringify(String(u.pemasok)).replace(/"/g, '&quot;')})">Bayar bon${pxList.length > 1 ? ' &middot; ' + escapeHtml(u.pemasok) : ''}</button>`).join('');
           return `<div class="kg-panel pm6-kartu" onclick="bukaLembarPemasok(${i})" role="button" tabindex="0">
             <div class="pm6-atas"><span class="pm6-inisial">${escapeHtml(x.nama.trim().charAt(0).toUpperCase())}</span>
               <span><b>${escapeHtml(x.nama)}</b><small>${x.kedatangan} kedatangan${x.terakhir ? ' &middot; terakhir ' + escapeHtml(formatTanggal(x.terakhir)) : ''}</small></span>
@@ -16540,6 +16591,20 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           </div>`;
         }).join('');
       }
+      // Bon yang pemasoknya tidak punya kedatangan tercatat (bon pra-sistem / nama lain):
+      // tetap tampil & bisa dibayar dari HP — kartu utang lama tersembunyi di <700px.
+      const kunciSemua = new Set(semua.map(s => s.kunci));
+      const kata6 = (document.getElementById('cariPemasok').value || '').trim().toLowerCase();
+      const yatim = utangSemua.filter(u => !kunciSemua.has(kunciPelanggan(u.pemasok))
+        && (!kata6 || String(u.pemasok).toLowerCase().indexOf(kata6) >= 0));
+      g += yatim.map(u => `<div class="kg-panel pm6-kartu" style="cursor:default;">
+        <div class="pm6-atas"><span class="pm6-inisial">${escapeHtml(String(u.pemasok).trim().charAt(0).toUpperCase())}</span>
+          <span><b>${escapeHtml(u.pemasok)}</b><small>bon tanpa kedatangan tercatat di sistem</small></span>
+          <span class="pm6-lencana${u.bon.some(b => (b.umurHari || 0) > 14) ? ' oks' : ''}">${u.bon.length} BON</span></div>
+        <div class="pm6-dua"><div><div class="label">Bon berjalan &middot; utang</div><div class="kg-uang-piutang nilai">${formatRupiah(u.totalUtang)}</div></div>
+          <div><div class="label">Belanja 12 bulan</div><div class="nilai kosong">tidak ada kedatangan</div></div></div>
+        <div class="pm6-aksi"><button type="button" onclick="bukaLembarBayarBon(${JSON.stringify(String(u.pemasok)).replace(/"/g, '&quot;')})">Bayar bon</button></div>
+      </div>`).join('');
       g += `<button type="button" class="pm6-pra" onclick="bukaSaldoAwalUtang()">+ Catat bon lama (pra-sistem)</button>`;
       g += `<div class="pm6-catatan"><span class="kg-titik-lcd"></span>titik hijau lembut = termurah di antara pemasok yang memasok merk itu; bon adalah utang, bukan kas, dan tidak dijumlahkan ke belanja.</div>`;
 
@@ -19829,7 +19894,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       });
       kemasan.forEach(h => {
         const kg = Number(h.ukuran);
-        slotM(h.merk).baris.push({ urut: kg > 0 ? kg : 9999, pil: escapeHtml(String(h.ukuran)) + ' kg',
+        slotM(h.merk).baris.push({ urut: kg > 0 ? kg : 9999, pil: escapeHtml(String(h.ukuran)) + ' kg', kem: true,
           harga: h.hargaPerUnit, perKg: kg > 0 ? h.hargaPerUnit / kg : null,
           hpp: (stokKem[h.merk + '|' + h.ukuran] || {}).hppRataRataPerUnit || 0,
           umur: umurHari(h.diubahPada), aksi: `ubahHargaKemasan(${escapeHtml(JSON.stringify(h.id))})` });
@@ -19867,9 +19932,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         d.baris.sort((a, b) => a.urut - b.urut);
         const hppKg = (stokKar[m] || {}).hppTerakhirPerKg || 0;
         const jenis = jenisUntukMerk(m);
-        const aksiJenis = `ubahJenisBeras('${escapeHtml(m).replace(/'/g, "\\'")}')`;
+        const aksiJenis = `ubahJenisBeras(${escapeHtml(JSON.stringify(m))})`;   // JSON.stringify meng-escape ' dan \
         let x = `<div class="kg-panel hg-merk"><div class="hg-kepala">
-          <div><b>${escapeHtml(m)}</b><small>${d.baris.length} harga${hppKg > 0 ? ' &middot; HPP ' + formatRupiah(Math.round(hppKg)) + '/kg' : ' &middot; HPP belum ada'}</small></div>
+          <div><b>${escapeHtml(m)}</b><small>${d.baris.length} harga${hppKg > 0 ? ' &middot; HPP ' + formatRupiah(Math.round(hppKg)) + '/kg' : (d.baris.some(b => b.kem) ? ' &middot; HPP per kg belum ada — margin per unit ada di baris' : ' &middot; HPP belum ada')}</small></div>
           <button type="button" class="hg-pil-jenis${jenis ? '' : ' oks'}" onclick="${aksiJenis}">${jenis ? escapeHtml(jenis) : 'varietas?'}</button>
         </div>`;
         x += d.baris.map(b => {
@@ -19906,6 +19971,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         }
         return x + `</div>`;
       }).join('');
+
+      // Merk yang dikenal sistem tapi tanpa stok & harga — kartu Jenis Beras lama
+      // tersembunyi di HP, jadi varietasnya tetap harus bisa diisi dari sini.
+      const merkLain = semuaMerkDikenal().filter(m => !peta[m]);
+      if (merkLain.length) {
+        h += `<div class="kg-panel hg-merk"><div class="hg-kepala"><div><b>Merk tanpa stok &amp; harga</b><small>${merkLain.length} merk — varietasnya masih bisa diisi</small></div></div>
+          <div class="hg-lain">` + merkLain.map(m => { const j = jenisUntukMerk(m);
+            return `<button type="button" class="hg-pil-jenis${j ? '' : ' oks'}" onclick="ubahJenisBeras(${escapeHtml(JSON.stringify(m))})">${escapeHtml(m)} &middot; ${j ? escapeHtml(j) : 'varietas?'}</button>`; }).join('') + `</div></div>`;
+      }
 
       h += `<button type="button" class="kg-terpilih hg-tambah" onclick="bukaLembarHarga('literan')">Tambah Harga</button>`;
       wadah.innerHTML = h;
@@ -21492,7 +21566,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       ? '<div class="kosong-info"><b>Belum ada merk tercatat</b><span>Merk muncul sendiri begitu ada stok atau harga.</span></div>'
       : merk.map(m => {
         const j = jenisUntukMerk(m);
-        return `<button type="button" class="baris-44 baris-ketuk" onclick="ubahJenisBeras('${escapeHtml(m).replace(/'/g, "\\'")}')">
+        return `<button type="button" class="baris-44 baris-ketuk" onclick="ubahJenisBeras(${escapeHtml(JSON.stringify(m))})">
           <span class="nama"><i class="trx-nama">${escapeHtml(m)}</i></span>
           ${j ? `<span class="angka">${escapeHtml(j)}</span>` : '<span class="lencana-amber">belum diisi</span>'}
           ${IKON_CHEV}
