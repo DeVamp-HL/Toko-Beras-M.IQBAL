@@ -3975,6 +3975,88 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   border-radius:12px; font-family:inherit; font-size:12px; font-weight:700;
   letter-spacing:.08em; margin-top:2px; }
 
+/* --- KACA EMAS G3: Pemasok (tiga lapis) --- */
+@media (min-width:700px){ #pemasokKaca, #pemasokKacaBuku{ display:none; } }
+@media (max-width:699.98px){
+  /* Judul + kolom cari TETAP tampil (kaca memakai input lama); sisanya diganti kaca.
+     Lapis belanja berdiri di ATAS kolom cari; buku pemasok di bawahnya. */
+  #halamanPemasok > .kartu-daftar, #halamanPemasok > .kpi-mini, #halamanPemasok > .info-box{ display:none; }
+  #pemasokKacaBuku{ margin-top:12px; }
+}
+#halamanPemasok .pm6-panel{ padding:13px 14px 12px; margin-bottom:12px; }
+#halamanPemasok .pm6-kepala{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+#halamanPemasok .pm6-kepala i{ font-family:var(--pf-serif); font-style:italic; font-size:10px;
+  color:var(--pf-abu); text-align:right; }
+#halamanPemasok .pm6-total{ margin:5px 0 2px; }
+#halamanPemasok .pm6-sub{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.5; color:var(--pf-abu); margin-bottom:6px; }
+#halamanPemasok .pm6-centang{ display:grid; grid-template-columns:22px 1fr auto; gap:2px 10px;
+  align-items:center; width:100%; min-height:48px; padding:7px 2px; text-align:left;
+  background:none; border:none; border-top:1px solid rgba(255,255,255,.05);
+  color:inherit; font-family:inherit; }
+#halamanPemasok .pm6-centang .kotak{ width:20px; height:20px; border-radius:6px;
+  border:1px solid var(--pf-tepi2); display:flex; align-items:center; justify-content:center;
+  font-size:12px; color:#2a1f13; }
+#halamanPemasok .pm6-centang.aktif .kotak{ background:linear-gradient(160deg,#f7ecd6,#c2a678); border-color:transparent; }
+#halamanPemasok .pm6-centang b{ font-size:12.5px; display:block; }
+#halamanPemasok .pm6-centang small{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:10px; color:var(--pf-abu); margin-top:1px; }
+#halamanPemasok .pm6-centang .angka{ font-size:12px; color:var(--pf-platina); }
+#halamanPemasok .pm6-centang:not(.aktif){ opacity:.5; }
+#halamanPemasok .pm6-centang:not(.aktif) .angka{ text-decoration:line-through; }
+#halamanPemasok .pm6-wa{ display:block; width:100%; min-height:46px; margin-top:8px; border:none;
+  border-radius:11px; font-family:inherit; font-size:11.5px; font-weight:700; letter-spacing:.06em; }
+#halamanPemasok .pm6-wa:disabled{ background:none !important; border:1px dashed rgba(226,205,166,.25);
+  color:var(--pf-abu) !important; -webkit-text-fill-color:var(--pf-abu); }
+#halamanPemasok .pm6-buku{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:10px; margin:2px 2px 8px; }
+#halamanPemasok .pm6-buku i{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  color:var(--pf-abu); text-align:right; }
+#halamanPemasok .pm6-kartu{ padding:12px 13px; margin-bottom:10px; cursor:pointer; }
+#halamanPemasok .pm6-atas{ display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center; }
+#halamanPemasok .pm6-inisial{ width:34px; height:34px; border-radius:50%; display:flex;
+  align-items:center; justify-content:center; font-family:var(--pf-serif); font-weight:600;
+  font-size:14px; color:var(--pf-platina); border:1px solid var(--pf-tepi2); }
+#halamanPemasok .pm6-atas b{ display:block; font-size:13.5px; }
+#halamanPemasok .pm6-atas small{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:10px; color:var(--pf-abu); margin-top:1px; }
+#halamanPemasok .pm6-lencana{ font-size:9px; font-weight:700; letter-spacing:.1em; padding:4px 9px;
+  border-radius:99px; border:1px solid var(--pf-tepi2); color:var(--pf-platina); white-space:nowrap; }
+#halamanPemasok .pm6-lencana.oks{ border-color:rgba(211,160,139,.5); color:#d3a08b; }
+#halamanPemasok .pm6-dua{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+#halamanPemasok .pm6-dua .label{ font-size:8.5px; font-weight:600; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--pf-abu); }
+#halamanPemasok .pm6-dua .nilai{ font-size:13px; font-weight:600; color:var(--pf-platina); margin-top:2px; }
+#halamanPemasok .pm6-dua .nilai.kosong{ color:var(--pf-abu); font-weight:400; }
+#halamanPemasok .pm6-keping{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+#halamanPemasok .pm6-keping button{ min-height:36px; padding:5px 10px; border-radius:9px;
+  border:1px solid var(--pf-tepi); background:rgba(255,255,255,.03); color:inherit;
+  font-family:inherit; font-size:10.5px; display:flex; align-items:center; gap:6px; }
+#halamanPemasok .pm6-keping button i{ font-style:normal; color:var(--pf-abu); }
+#halamanPemasok .pm6-aksi{ display:flex; gap:8px; margin-top:10px; }
+#halamanPemasok .pm6-aksi button{ min-height:40px; padding:0 13px; border-radius:99px;
+  border:1px solid var(--pf-tepi2); background:none; color:var(--pf-platina);
+  font-family:inherit; font-size:10.5px; font-weight:700; letter-spacing:.06em; }
+#halamanPemasok .pm6-pra{ display:block; width:100%; min-height:44px; border-radius:11px;
+  border:1px dashed rgba(226,205,166,.25); background:none; color:var(--pf-abu);
+  font-family:inherit; font-size:11px; margin-bottom:8px; }
+#halamanPemasok .pm6-catatan{ display:flex; gap:7px; align-items:center; font-family:var(--pf-serif);
+  font-style:italic; font-size:10px; color:var(--pf-abu); margin:4px 2px 12px; }
+#halamanPemasok .pm6-lembar svg{ width:100%; height:auto; display:block; margin:8px 0 4px; }
+#halamanPemasok .pm6-legenda{ display:grid; grid-template-columns:14px 1fr auto auto; gap:6px 8px;
+  align-items:center; padding:6px 0; border-top:1px solid rgba(255,255,255,.05); font-size:11px; }
+#halamanPemasok .pm6-legenda .swatch{ width:14px; height:3px; border-radius:2px; }
+#halamanPemasok .pm6-legenda .gerak{ font-size:10px; color:var(--pf-abu); }
+#halamanPemasok .pm6-legenda .gerak.naik{ color:#d3a08b; }
+#halamanPemasok .pm6-legenda .gerak.turun{ color:#c8d3bd; }
+#halamanPemasok .pm6-termurah{ font-size:8.5px; font-weight:700; letter-spacing:.1em; padding:2px 7px;
+  border-radius:99px; border:1px solid rgba(200,211,189,.5); color:#c8d3bd; }
+#halamanPemasok .pm6-ketahuan{ margin-top:9px; padding:10px 12px; border-radius:11px;
+  font-family:var(--pf-serif); font-style:italic; font-size:10.5px; line-height:1.55; color:var(--pf-abu); }
+#halamanPemasok .pm6-tutup{ display:block; width:100%; min-height:44px; margin-top:10px; border-radius:11px;
+  border:1px solid var(--pf-tepi2); background:none; color:var(--pf-platina);
+  font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.1em; }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -5921,6 +6003,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
 
+    <!-- KACA EMAS G3 (rancangan Pemasok - Gabungan): TIGA LAPIS — tindakan (daftar
+         belanja bisa dicentang → WA), pelaku (kartu per pemasok: bon = utang platina
+         tersamar, TIDAK PERNAH dijumlah dengan belanja), bukti (garis harga per merk
+         di tanggal kedatangan nyata). Hanya <700px; kartu lama tetap diisi. -->
+    <div id="pemasokKaca"></div>
+
     <!-- PERKIRAAN BELANJA (hi-fi Pemasok): saran belanja x harga termurah ->
          total perkiraan + kirim daftar via WA. -->
     <div class="kartu-daftar kd-kepala" style="margin-bottom:12px;" id="pmBelanjaKartu">
@@ -5931,6 +6019,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 
     <label for="cariPemasok">Cari — nama pemasok, merk, atau isi catatan</label>
     <input type="text" id="cariPemasok" placeholder='Contoh: "roda mas", "IR64", "sales budi"' autocomplete="off" oninput="tampilkanPemasok()">
+    <!-- Lapis pelaku + bukti kaca (di bawah kolom cari supaya saringannya tepat di atas daftar). -->
+    <div id="pemasokKacaBuku"></div>
 
     <div class="kpi-mini kpi-dua" style="margin-top:10px;">
       <div class="kartu-mini"><div class="label">Pemasok dikenal</div><div class="nilai" id="pemasokJumlah">0</div></div>
@@ -15944,7 +16034,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     tampilkanPerluBelanja();
     tampilkanUtangPemasok();
     const kont = document.getElementById('daftarPemasok');
-    if (!kont) return;
+    if (!kont) { tampilkanPemasokKaca(); return; }   // jalur keluar dini pun wajib menggambar kaca
     const semua = hitungPemasok();
     document.getElementById('pemasokJumlah').textContent = semua.length;
     const setahunLalu = tanggalLokalIso(new Date(Date.now() - 365 * 86400000));
@@ -15971,7 +16061,188 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           ${IKON_CHEV}
         </button>`;
       }).join('');
+    tampilkanPemasokKaca();
   }
+
+  // ============ KACA EMAS G3: PEMASOK — TIGA LAPIS (hanya <700px) ============
+  // Lapis tindakan: daftar belanja (dari _pmDaftarWa yang ditulis tampilkanPerluBelanja —
+  // kaca hanya membaca) bisa dicentang lalu dikirim ke WA; total = Σ baris tercentang.
+  // Lapis pelaku: kartu per pemasok — bon berjalan adalah UTANG (platina tersamar),
+  // tidak pernah dijumlah dengan belanja 12 bulan. Lapis bukti: garis harga per merk
+  // di tanggal kedatangan NYATA, per pemasok yang sungguh memasoknya. Kartu lama
+  // tetap diisi untuk desktop.
+  let _pm6Buang = new Set();   // merk yang dilepas centangnya (bawaan: semua tercentang)
+  let _pm6Merk = null;         // merk yang lembar garisnya terbuka
+  let _pm6MerkList = [];       // daftar merk pada render terakhir (handler pakai indeks)
+  const PM6_WARNA = ['#e2cda6', '#c8d3bd', '#d3a08b', '#9aa2a8', '#f0e2c4', '#b49a6c'];
+  function tampilkanPemasokKaca() {
+    const wA = document.getElementById('pemasokKaca');
+    const wB = document.getElementById('pemasokKacaBuku');
+    if (!wA || !wB || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      // ---- (E) lapis tindakan ----
+      const baris = _pmDaftarWa ? _pmDaftarWa.baris : [];
+      const aktif = baris.filter(b => !_pm6Buang.has(b.merk));
+      const total = aktif.reduce((a, b) => a + (b.harga || 0), 0);
+      let h = `<div class="kg-panel pm6-panel"><div class="pm6-kepala"><span class="kg-label">Perkiraan belanja</span>`;
+      if (!baris.length) {
+        h += `</div><div class="pm6-sub">Stok masih cukup — tidak ada merk di bawah target 14 hari. Sistem tidak menebak belanja.</div></div>`;
+      } else {
+        h += `<i>${aktif.length} dari ${baris.length} dicentang</i></div>
+          <div class="kg-uang-dagang pm6-total">${total > 0 ? formatRupiah(total) : '—'}</div>
+          <div class="pm6-sub">belanja beras &middot; harga termurah terakhir &middot; belum dibelanjakan, belum jadi kas keluar</div>`;
+        h += baris.map((b, i) => `<button type="button" class="pm6-centang${_pm6Buang.has(b.merk) ? '' : ' aktif'}" onclick="pm6Centang(${i})">
+            <span class="kotak">${_pm6Buang.has(b.merk) ? '' : '✓'}</span>
+            <span><b>${escapeHtml(b.merk)} &middot; ${b.sack} sack &times; ${b.berat} kg</b>
+              <small>${escapeHtml(kataHabis(b.hari))}${b.pemasok ? ' &middot; termurah ' + escapeHtml(b.pemasok) : ' &middot; belum ada riwayat harga pemasok'}</small></span>
+            <span class="angka">${b.harga ? formatRupiah(b.harga) : '—'}</span>
+          </button>`).join('');
+        h += `<button type="button" class="kg-terpilih pm6-wa" onclick="pm6KirimWa()"${aktif.length ? '' : ' disabled'}>${aktif.length ? 'Kirim ' + aktif.length + ' baris → WA' : 'Centang dulu minimal satu'}</button></div>`;
+      }
+      wA.innerHTML = h;
+
+      // ---- kepala buku + (C) kartu per pemasok ----
+      const semua = hitungPemasok();
+      const daftar = _daftarPmsRender || [];
+      const utangSemua = hitungUtangPemasok();
+      const utangTotal = totalUtangPemasokSemua();
+      const termurah = hargaTermurahPerMerk(semua);
+      const pemilikMerk = {};
+      semua.forEach(s => Object.keys(s.hargaPerMerk).forEach(m => { pemilikMerk[m] = (pemilikMerk[m] || 0) + 1; }));
+      const setahunLalu = tanggalLokalIso(new Date(Date.now() - 365 * 86400000));
+      const belanjaSetahunTeks = (document.getElementById('pemasokBelanjaSetahun') || {}).textContent || '';
+      let g = `<div class="pm6-buku"><span class="kg-label">Buku pemasok</span>
+        <i>${daftar.length}${daftar.length !== semua.length ? ' dari ' + semua.length : ''} pemasok &middot; belanja 12 bln ${escapeHtml(belanjaSetahunTeks)}${utangTotal.nominal > 0 ? ' &middot; bon ' + formatRupiah(utangTotal.nominal) + ' (' + utangTotal.nBon + ' bon)' : ' &middot; tanpa bon'}</i></div>`;
+      _pm6MerkList = [];
+      if (!daftar.length) {
+        const kata = (document.getElementById('cariPemasok').value || '').trim();
+        g += kata
+          ? '<div class="kosong-info"><b>Tidak ketemu</b><span>Coba nama pemasok, merk, atau isi catatannya.</span></div>'
+          : '<div class="kosong-info"><b>Belum ada pemasok tercatat</b><span>Terisi otomatis begitu ada kedatangan di tab Masuk.</span></div>';
+      } else {
+        g += daftar.map((x, i) => {
+          const px = utangSemua.find(u => u.pemasok === x.nama.trim());
+          const bonTua = !!(px && px.bon.some(b => (b.umurHari || 0) > 14));
+          const belanja12 = x.batch.filter(b => (b.tanggal || '') >= setahunLalu).reduce((a, b) => a + (b.nilai || 0), 0);
+          const merkUrut = Object.keys(x.hargaPerMerk).sort();
+          const keping = merkUrut.map(m => {
+            const t = x.hargaPerMerk[m].terakhir;
+            const idx = _pm6MerkList.indexOf(m) >= 0 ? _pm6MerkList.indexOf(m) : (_pm6MerkList.push(m) - 1);
+            const lcd = termurah[m] && termurah[m].pemasok === x.nama && pemilikMerk[m] > 1;
+            return `<button type="button" onclick="event.stopPropagation(); pm6BukaGaris(${idx})">${lcd ? '<span class="kg-titik-lcd"></span>' : ''}${escapeHtml(m)} <i>Rp${Math.round(t.hargaPerKg).toLocaleString('id-ID')}/kg</i></button>`;
+          }).join('');
+          const aksiBon = px ? `<button type="button" onclick="event.stopPropagation(); bukaLembarBayarBon(${JSON.stringify(String(px.pemasok)).replace(/"/g, '&quot;')})">Bayar bon</button>` : '';
+          return `<div class="kg-panel pm6-kartu" onclick="bukaLembarPemasok(${i})" role="button" tabindex="0">
+            <div class="pm6-atas"><span class="pm6-inisial">${escapeHtml(x.nama.trim().charAt(0).toUpperCase())}</span>
+              <span><b>${escapeHtml(x.nama)}</b><small>${x.kedatangan} kedatangan${x.terakhir ? ' &middot; terakhir ' + escapeHtml(formatTanggal(x.terakhir)) : ''}</small></span>
+              ${px ? `<span class="pm6-lencana${bonTua ? ' oks' : ''}">${px.bon.length} BON</span>` : ''}</div>
+            <div class="pm6-dua">
+              <div><div class="label">Bon berjalan &middot; utang</div>${px ? `<div class="kg-uang-piutang nilai">${formatRupiah(px.totalUtang)}</div>` : '<div class="nilai kosong">tidak ada</div>'}</div>
+              <div><div class="label">Belanja 12 bulan</div><div class="nilai">${formatRupiah(belanja12)}</div></div>
+            </div>
+            ${keping ? `<div class="pm6-keping">${keping}</div>` : ''}
+            ${aksiBon ? `<div class="pm6-aksi">${aksiBon}</div>` : ''}
+          </div>`;
+        }).join('');
+      }
+      g += `<button type="button" class="pm6-pra" onclick="bukaSaldoAwalUtang()">+ Catat bon lama (pra-sistem)</button>`;
+      g += `<div class="pm6-catatan"><span class="kg-titik-lcd"></span>titik hijau lembut = termurah di antara pemasok yang memasok merk itu; bon adalah utang, bukan kas, dan tidak dijumlahkan ke belanja.</div>`;
+
+      // ---- (H) lapis bukti: garis harga per merk ----
+      if (_pm6Merk && _pm6MerkList.indexOf(_pm6Merk) >= 0) g += pm6LembarGaris(_pm6Merk, semua, termurah);
+      else _pm6Merk = null;
+      wB.innerHTML = g;
+    } catch (e) { console.error('tampilkanPemasokKaca:', e); }
+  }
+  // Garis harga beli per kg, 180 hari, satu garis per pemasok yang sungguh memasok
+  // merk itu; titik di tanggal kedatangan nyata — tidak diinterpolasi ke grid bulan.
+  function pm6LembarGaris(merk, semua, termurah) {
+    const HARI = 180, W = 340, H = 150, kiri = 8, kanan = 8, atas = 10, bawah = 24;
+    const mulaiMs = Date.now() - (HARI - 1) * 86400000;
+    const mulaiIso = tanggalLokalIso(new Date(mulaiMs));
+    const deret = [];
+    semua.forEach((s, si) => {
+      const hp = s.hargaPerMerk[merk];
+      if (!hp) return;
+      const titik = hp.riwayat.filter(r => (r.tanggal || '') >= mulaiIso && r.hargaPerKg > 0)
+        .slice().sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || (a.id || 0) - (b.id || 0));
+      if (titik.length) deret.push({ nama: s.nama, titik, warna: PM6_WARNA[deret.length % PM6_WARNA.length] });
+    });
+    const nPemasokMerk = semua.filter(s => s.hargaPerMerk[merk]).length;
+    let h = `<div class="kg-panel pm6-panel pm6-lembar" id="pm6Lembar"><div class="pm6-kepala"><span class="kg-label">${escapeHtml(merk)}</span>
+      <i>harga beli &middot; per kg &middot; 180 hari &middot; ${deret.length} dari ${nPemasokMerk} pemasok punya kedatangan</i></div>`;
+    if (!deret.length) {
+      h += `<div class="pm6-sub">Tidak ada kedatangan ${escapeHtml(merk)} dalam 180 hari terakhir — tidak ada garis yang bisa digambar.</div>`;
+    } else {
+      const semuaHarga = [].concat.apply([], deret.map(d => d.titik.map(t => t.hargaPerKg)));
+      let mn = Math.min.apply(null, semuaHarga), mx = Math.max.apply(null, semuaHarga);
+      if (mx === mn) { mn = mn * 0.97; mx = mx * 1.03; }
+      const pad = (mx - mn) * 0.08; mn -= pad; mx += pad;
+      const xDari = iso => kiri + ((isoKeTanggal(iso) - mulaiMs) / ((HARI - 1) * 86400000)) * (W - kiri - kanan);
+      const yDari = v => atas + (1 - (v - mn) / (mx - mn)) * (H - atas - bawah);
+      let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="garis harga ${escapeHtml(merk)}">`;
+      // label bulan di awal tiap bulan yang jatuh dalam jendela
+      const d0 = new Date(mulaiMs); d0.setDate(1); d0.setMonth(d0.getMonth() + 1);
+      for (let d = new Date(d0); d.getTime() <= Date.now(); d.setMonth(d.getMonth() + 1)) {
+        const x = xDari(tanggalLokalIso(d));
+        svg += `<line x1="${x.toFixed(1)}" y1="${atas}" x2="${x.toFixed(1)}" y2="${H - bawah}" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+          <text x="${x.toFixed(1)}" y="${H - 8}" font-size="8" fill="#9aa2a8" text-anchor="middle">${BULAN_SINGKAT[d.getMonth()]}</text>`;
+      }
+      deret.forEach(d => {
+        const pts = d.titik.map(t => [xDari(t.tanggal), yDari(t.hargaPerKg)]);
+        if (pts.length >= 2) svg += `<polyline fill="none" stroke="${d.warna}" stroke-width="1.6" stroke-linejoin="round" points="${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}"/>`;
+        pts.forEach(p => { svg += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="${d.warna}"/>`; });
+      });
+      svg += `</svg>`;
+      h += svg;
+      h += deret.map(d => {
+        const awal = d.titik[0].hargaPerKg, akhir = d.titik[d.titik.length - 1].hargaPerKg;
+        const gerak = d.titik.length >= 2 ? (akhir - awal) / awal * 100 : null;
+        const isTermurah = termurah[merk] && termurah[merk].pemasok === d.nama && nPemasokMerk > 1;
+        return `<div class="pm6-legenda"><span class="swatch" style="background:${d.warna}"></span>
+          <span>${escapeHtml(d.nama)} ${isTermurah ? '<span class="pm6-termurah">TERMURAH</span>' : ''}</span>
+          <span>Rp${Math.round(akhir).toLocaleString('id-ID')}</span>
+          <span class="gerak${gerak === null ? '' : gerak > 0.05 ? ' naik' : gerak < -0.05 ? ' turun' : ''}">${gerak === null ? '1 titik' : (gerak > 0 ? '+' : '') + gerak.toFixed(1).replace('.', ',') + '%'}</span></div>`;
+      }).join('');
+      let ketahuan;
+      if (deret.length === 1) ketahuan = `${escapeHtml(deret[0].nama)} satu-satunya pemasok ${escapeHtml(merk)} dalam 180 hari — tidak ada pembanding.`;
+      else {
+        const akhirSemua = deret.map(d => d.titik[d.titik.length - 1].hargaPerKg);
+        const awalSemua = deret.map(d => d.titik[0].hargaPerKg);
+        const sebarAwal = Math.max.apply(null, awalSemua) - Math.min.apply(null, awalSemua);
+        const sebarAkhir = Math.max.apply(null, akhirSemua) - Math.min.apply(null, akhirSemua);
+        const murah = deret[akhirSemua.indexOf(Math.min.apply(null, akhirSemua))];
+        ketahuan = `Terakhir termurah ${escapeHtml(murah.nama)} Rp${Math.round(Math.min.apply(null, akhirSemua)).toLocaleString('id-ID')}/kg. Jarak harga antar pemasok ${sebarAkhir > sebarAwal + 0.5 ? 'melebar' : sebarAkhir < sebarAwal - 0.5 ? 'menyempit' : 'tetap'}: Rp${Math.round(sebarAwal).toLocaleString('id-ID')} → Rp${Math.round(sebarAkhir).toLocaleString('id-ID')} per kg.`;
+      }
+      h += `<div class="pm6-ketahuan kg-tepi-putus"><b>Yang ketahuan.</b> ${ketahuan}</div>`;
+    }
+    h += `<button type="button" class="pm6-tutup" onclick="pm6TutupGaris()">Tutup</button></div>`;
+    return h;
+  }
+  function pm6Centang(i) {
+    const b = _pmDaftarWa && _pmDaftarWa.baris[i];
+    if (!b) return;
+    if (_pm6Buang.has(b.merk)) _pm6Buang.delete(b.merk); else _pm6Buang.add(b.merk);
+    tampilkanPemasokKaca();
+  }
+  function pm6KirimWa() {
+    const aktif = _pmDaftarWa ? _pmDaftarWa.baris.filter(b => !_pm6Buang.has(b.merk)) : [];
+    if (!aktif.length) return;
+    const b = ['*Daftar belanja Toko Beras M.IQBAL*'];
+    aktif.forEach(x => b.push('• ' + x.merk + ' · ' + x.sack + ' sack × ' + x.berat + ' kg' + (x.pemasok ? ' (' + x.pemasok + ')' : '')));
+    const total = aktif.reduce((a, x) => a + (x.harga || 0), 0);
+    if (total) b.push('Perkiraan: ' + formatRupiah(total));
+    window.open('https://wa.me/?text=' + encodeURIComponent(b.join('\n')), '_blank');
+  }
+  function pm6BukaGaris(iMerk) {
+    const m = _pm6MerkList[iMerk];
+    if (!m) return;
+    _pm6Merk = m;
+    tampilkanPemasokKaca();
+    const el = document.getElementById('pm6Lembar');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function pm6TutupGaris() { _pm6Merk = null; tampilkanPemasokKaca(); }
   function bukaLembarPemasok(i) {
     const x = _daftarPmsRender[i];
     if (!x) return;
@@ -21309,6 +21580,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.simpanHapusBuku = simpanHapusBuku;
   window.tampilkanPemasok = tampilkanPemasok;
   window.bukaLembarPemasok = bukaLembarPemasok;
+  window.pm6Centang = pm6Centang;
+  window.pm6KirimWa = pm6KirimWa;
+  window.pm6BukaGaris = pm6BukaGaris;
+  window.pm6TutupGaris = pm6TutupGaris;
   window.tutupLembarPemasok = tutupLembarPemasok;
   window.simpanCatatanPemasok = simpanCatatanPemasok;
   window.tampilkanPelanggan = tampilkanPelanggan;
