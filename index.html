@@ -4330,6 +4330,63 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #thPagar .th-lawan .nilai{ font-size:12px; font-weight:600; color:var(--pf-platina); margin-top:2px; }
 #thPagar .th-lawan .nilai i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:9.5px; font-weight:400; color:var(--pf-abu); }
 
+/* --- KACA EMAS G4: Tutup Buku (jalur lima layar + latihan) --- */
+@media (min-width:700px){ #tbKaca{ display:none !important; } }
+@media (max-width:699.98px){ #lembarTutupBuku #tbKertas{ display:none; } }
+#tbKaca .tb6-mode{ display:flex; gap:6px; margin:0 0 10px; }
+#tbKaca .tb6-mode button{ flex:1; min-height:44px; border-radius:10px; border:1px solid var(--pf-tepi); background:none;
+  color:var(--pf-abu); font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.12em; }
+#tbKaca .tb6-mode button.lat.kg-terpilih{ background:linear-gradient(160deg,#dfe8d8,#a9b7a0) !important; }
+#tbKaca .tb6-kalimat{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; line-height:1.5; color:var(--pf-abu); margin:0 2px 10px; }
+#tbKaca .tb6-kalimat.lat{ color:#c8d3bd; }
+#tbKaca .tb6-pita{ display:flex; gap:4px; margin-bottom:12px; }
+#tbKaca .tb6-pita button{ flex:1; min-height:44px; border-radius:8px; border:1px solid var(--pf-tepi); background:none;
+  color:var(--pf-abu); font-family:inherit; font-size:9px; font-weight:700; letter-spacing:.06em; }
+#tbKaca .tb6-pita button.beres{ border-color:rgba(226,205,166,.6); color:#e2cda6; }
+#tbKaca .tb6-pita button:disabled{ border-style:dashed; opacity:.5; }
+#tbKaca .tb6-panel{ padding:13px 14px 12px; margin-bottom:12px; }
+#tbKaca .tb6-panel h3{ margin:0 0 4px; font-family:var(--pf-serif); font-weight:600; font-size:18px; color:var(--pf-platina); }
+#tbKaca .tb6-cek{ display:grid; grid-template-columns:20px 1fr auto; gap:6px 8px; align-items:baseline; padding:8px 0;
+  border-bottom:1px solid rgba(255,255,255,.05); font-size:12px; }
+#tbKaca .tb6-cek .tanda{ color:#c8d3bd; text-align:center; }
+#tbKaca .tb6-cek .tanda.oks{ color:#d3a08b; }
+#tbKaca .tb6-cek i{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); text-align:right; }
+#tbKaca .tb6-chip{ min-height:44px; padding:0 13px; border-radius:99px; border:1px solid var(--pf-tepi2); background:none;
+  color:var(--pf-platina); font-family:inherit; font-size:11px; font-weight:700; }
+#tbKaca .tb6-chip.aktif{ background:linear-gradient(160deg,#f7ecd6,#c2a678); color:#2a1f13; border-color:transparent; }
+#tbKaca .tb6-baris{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:7px 0;
+  border-bottom:1px solid rgba(255,255,255,.05); font-size:12px; }
+#tbKaca .tb6-baris b{ color:var(--pf-platina); }
+#tbKaca .tb6-kolam{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
+#tbKaca .tb6-kolam div{ padding:9px 10px; border-radius:10px; border:1px solid var(--pf-tepi); }
+#tbKaca .tb6-kolam .label{ font-size:8px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--pf-abu); }
+#tbKaca .tb6-kolam .nilai{ font-size:13px; font-weight:600; color:var(--pf-platina); margin-top:3px; }
+#tbKaca .tb6-kolam .nilai i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:9.5px; font-weight:400; color:var(--pf-abu); }
+#tbKaca .tb6-dobel{ padding:11px 13px; border-radius:12px; margin-bottom:10px; border:1px dashed rgba(211,160,139,.6); color:#d3a08b;
+  font-family:var(--pf-serif); font-style:italic; font-size:10.5px; line-height:1.5; }
+#tbKaca .tb6-dobel b{ display:block; font-family:inherit; font-style:normal; font-size:10px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:4px; }
+#tbKaca .tb6-petak{ display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin:8px 0; }
+#tbKaca .tb6-petak span{ padding:7px 5px; border-radius:7px; border:1px solid var(--pf-tepi); font-size:8.5px; line-height:1.3; color:var(--pf-abu); text-align:center; }
+#tbKaca .tb6-petak span b{ display:block; font-size:11px; color:var(--pf-platina); }
+#tbKaca .tb6-petak span.tetap{ border-style:dashed; }
+#tbKaca .tb6-paraf{ display:flex; gap:8px; margin:8px 0; }
+#tbKaca .tb6-paraf .tb6-chip{ flex:1; }
+#tbKaca .tb6-aksi{ display:block; width:100%; min-height:50px; margin-top:8px; border:none; border-radius:12px;
+  font-family:inherit; font-size:12.5px; font-weight:700; letter-spacing:.06em; }
+#tbKaca .tb6-aksi:disabled{ opacity:.5; background:none !important; border:1px dashed rgba(226,205,166,.35);
+  color:var(--pf-abu) !important; -webkit-text-fill-color:var(--pf-abu); }
+#tbKaca .tb6-aksi.bahaya:not(:disabled){ background:linear-gradient(160deg,#e8c4b4,#c48d76) !important; color:#2a1710 !important; -webkit-text-fill-color:#2a1710; }
+#tbKaca .tb6-nav{ display:flex; gap:8px; margin-top:4px; }
+#tbKaca .tb6-nav button{ min-height:48px; border-radius:11px; font-family:inherit; font-size:11.5px; font-weight:700; }
+#tbKaca .tb6-nav .mundur{ flex:0 0 auto; padding:0 14px; border:1px solid var(--pf-tepi2); background:none; color:var(--pf-platina); }
+#tbKaca .tb6-nav .lanjut{ flex:1; border:none; }
+#tbKaca .tb6-nav .lanjut:disabled{ opacity:.5; background:none !important; border:1px dashed rgba(226,205,166,.35); color:var(--pf-abu) !important; -webkit-text-fill-color:var(--pf-abu); }
+#tbKaca .tb6-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; color:var(--pf-abu); margin-top:6px; line-height:1.5; }
+#tbKaca .tb6-ket.oks{ color:#d3a08b; }
+#tbKaca .tb6-jilid{ padding:16px 14px; border:3px double rgba(226,205,166,.55); border-radius:14px; text-align:center; margin-bottom:12px; }
+#tbKaca .tb6-jilid b{ display:block; font-family:var(--pf-serif); font-weight:600; font-size:22px; color:var(--pf-platina); }
+#tbKaca .tb6-progres{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; color:var(--pf-abu); margin-top:6px; min-height:1em; }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -4426,6 +4483,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     <button type="button" class="lap-cetak" onclick="gambarTutupBuku()">Segarkan</button>
   </div>
   <div class="lap-kertas" id="tbKertas"></div>
+  <!-- KACA EMAS G4 (rancangan Tutup Buku - Gabungan): JALUR LIMA LAYAR + LATIHAN —
+       kaca = remote control tiga aksi tulis yang sudah ada; mode LATIHAN hanya
+       membalik bendera, tidak pernah memanggil fungsi tulis. k6a wajib: kelas kg-*
+       hanya bergaya di bawah .k6a. Hanya <700px; kertas lama untuk desktop. -->
+  <div id="tbKaca" class="k6a lap-kertas" aria-live="polite"></div>
 </div>
 
 <!-- LAPORAN BULANAN (12 Agu 2026): satu lembar yang bisa dicetak / disimpan jadi PDF
@@ -17273,6 +17335,225 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   let _tbArsipDiunduh = null;   // tahun yang arsipnya SUDAH diunduh di sesi ini
   let _tbSaldoDitulis = null;   // tahun yang saldonya sudah ditulis di sesi ini
 
+  // ============ KACA EMAS G4: TUTUP BUKU — JALUR LIMA LAYAR + LATIHAN (hanya <700px) ============
+  // Kaca hanya memanggil unduhArsipTahun / tulisSaldoPembuka / hapusDokumenTahun yang
+  // sudah ada (pagar & confirm/prompt di dalamnya tetap jalan). Mode LATIHAN = bendera
+  // dry-run: hanya membalik _tbKaca.lat.*, tidak pernah memanggil ketiganya.
+  let _tbKaca = { tahun: null, langkah: 0, latihan: false, lat: { arsip: false, saldo: false, hapus: false },
+    paraf: { owner: false, saksi: false }, perangkatOk: {}, sebelum: null, perangkat: [], hapusSelesai: false };
+  function tbSaldoAda(tahun) {   // ekspresi yang sama dengan penerimaan di hapusDokumenTahun
+    return ambilSemuaBatch().some(k => k.tutupBuku && k.tahunDari === tahun)
+      || ambilPiutangMutasi().some(m => m.tutupBuku && m.tahunDari === tahun);
+  }
+  function tbKacaReset(tahun) {
+    _tbKaca = { tahun, langkah: 0, latihan: _tbKaca.latihan, lat: { arsip: false, saldo: false, hapus: false },
+      paraf: { owner: false, saksi: false }, perangkatOk: {}, sebelum: null, perangkat: [], hapusSelesai: false };
+  }
+  function tbLimaAngka(sampai) {   // penjumlahan yang sama dengan pratinjau gambarTutupBuku
+    const kar = hitungStokKarungPerMerk(sampai), kem = hitungStokKemasan(sampai);
+    const bk = hitungStokBahanKemasan(sampai), bl = hitungStokBahanLiteran(sampai);
+    return {
+      kg: Object.keys(kar).reduce((a, m) => a + (kar[m].sisaKg || 0), 0),
+      bags: Object.keys(kem).reduce((a, k) => a + (kem[k].sisaUnit || 0), 0),
+      pcs: Object.keys(bk).reduce((a, j) => a + (bk[j].sisaPcs || 0), 0) + Object.keys(bl).reduce((a, j) => a + (bl[j].sisaPcs || 0), 0),
+      piutang: hitungPiutang(sampai).reduce((a, x) => a + (x.sisa > 0 ? x.sisa : 0), 0),
+      kasbon: hitungKasbon(sampai).reduce((a, x) => a + (x.sisa > 0 ? x.sisa : 0), 0)
+    };
+  }
+  function tbKeadaan() {
+    const tahun = parseInt(document.getElementById('tbTahun').value, 10) || new Date().getFullYear();
+    if (_tbKaca.tahun !== tahun) tbKacaReset(tahun);
+    const daftar = tbDaftarKoleksi(tahun);
+    const totalDok = daftar.reduce((a, d) => a + d.dok.length, 0);
+    const jaga = tbPenjaga(tahun);
+    const saldoAda = tbSaldoAda(tahun);
+    const nyata = { arsip: _tbArsipDiunduh === tahun, saldo: _tbSaldoDitulis === tahun || saldoAda, selesai: (_tbSaldoDitulis === tahun || saldoAda) && totalDok === 0 };
+    const ef = _tbKaca.latihan ? { arsip: _tbKaca.lat.arsip, saldo: _tbKaca.lat.saldo, selesai: _tbKaca.lat.hapus } : nyata;
+    // Perangkat lain yang pernah menulis dokumen tahun berjalan — pengakuan manual.
+    const ini = perangkatRingkas();
+    const peta = {};
+    tbDaftarKoleksi(new Date().getFullYear()).forEach(d => d.dok.forEach(x => {
+      [x.perangkat, x.diubahPerangkat].forEach(pr => { if (pr && pr !== ini) { if (!peta[pr] || String(x.diubahPada || '') > String(peta[pr] || '')) peta[pr] = x.diubahPada || ''; } });
+    }));
+    _tbKaca.perangkat = Object.keys(peta).sort().map(n => ({ nama: n, terakhir: peta[n] }));
+    const cadangan = Object.keys(_cadanganTertahan || {}).length;
+    const antrean = (typeof ambilAntreanTunda === 'function') ? ambilAntreanTunda().length : 0;
+    return { tahun, daftar, totalDok, jaga, saldoAda, nyata, ef, cadangan, antrean, daring: !!navigator.onLine };
+  }
+  function tbKacaBolehLanjut(k, K) {
+    if (k === 0) return _tbKaca.latihan || (K.jaga.darurat === 0 && K.jaga.rapikan === 0 && K.cadangan === 0 && K.daring
+      && K.perangkat_semua_ok);
+    if (k === 1) return K.ef.arsip;
+    if (k === 2) return K.ef.saldo;
+    if (k === 3) return K.ef.saldo && _tbKaca.paraf.owner && _tbKaca.paraf.saksi && (_tbKaca.latihan || K.daring);
+    return true;
+  }
+  function gambarTutupBukuKaca() {
+    const w = document.getElementById('tbKaca');
+    if (!w || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      const K = tbKeadaan();
+      K.perangkat_semua_ok = _tbKaca.perangkat.every(p => _tbKaca.perangkatOk[p.nama]);
+      const tahun = K.tahun, lat = _tbKaca.latihan;
+      // Mode sungguhan: langkah diturunkan dari keadaan nyata (muat ulang di tengah aman).
+      // Selesai = cache sudah kosong ATAU fungsi hapus lama melaporkan ✓ (cache boleh menyusul).
+      if (!lat) { if (K.nyata.selesai || _tbKaca.hapusSelesai) _tbKaca.langkah = 4; else if (K.nyata.saldo && _tbKaca.langkah < 3) _tbKaca.langkah = 3; }
+      else if (_tbKaca.lat.hapus) _tbKaca.langkah = 4;
+      const l = _tbKaca.langkah;
+      const rp = formatRupiah;
+      const JUDUL = ['Periksa', 'Arsip', 'Saldo pembuka', 'Hapus', 'Selesai'];
+      let h = `<div class="tb6-mode">
+        <button type="button" class="lat${lat ? ' kg-terpilih' : ''}" onclick="tbKacaMode('latihan')">LATIHAN</button>
+        <button type="button" class="${lat ? '' : 'kg-terpilih'}" onclick="tbKacaMode('sungguhan')"${K.nyata.saldo && K.totalDok > 0 ? '' : ''}>SUNGGUHAN</button></div>
+        <div class="tb6-kalimat${lat ? ' lat' : ''}">${lat ? 'LATIHAN · tidak ada dokumen yang tersentuh — jalankan seluruh putaran untuk hafal urutannya.' : 'SUNGGUHAN · tiga langkah tulis di jalur ini mengubah database toko. Dari SATU perangkat saja.'}</div>
+        <div class="tb6-pita">${JUDUL.map((j, i) => `<button type="button" onclick="tbKacaKe(${i})"${i > l ? ' disabled' : ''} class="${i < l ? 'beres' : ''}${i === l ? ' kg-terpilih' : ''}">${i}·${j}</button>`).join('')}</div>`;
+      const nav = (bisa, ket, label) => `<div class="tb6-nav">${l > 0 ? `<button type="button" class="mundur" onclick="tbKacaMundur()">← Kembali</button>` : ''}
+        <button type="button" class="kg-terpilih lanjut" onclick="tbKacaLanjut()"${bisa ? '' : ' disabled'}>${label || 'Lanjut → ' + JUDUL[l + 1]}</button></div>
+        <div class="tb6-ket${bisa ? '' : ' oks'}">${ket}</div>`;
+      if (l === 0) {
+        const cek = (ok, teks, ket) => `<div class="tb6-cek"><span class="tanda${ok ? '' : ' oks'}">${ok ? '✓' : '!'}</span><span>${teks}</span><i>${ket}</i></div>`;
+        h += `<div class="kg-panel tb6-panel"><h3>Tutup Buku ${tahun}</h3>
+          <div class="tb6-ket">${K.totalDok.toLocaleString('id-ID')} dokumen sampai ${escapeHtml(formatTanggal(tbCutoff(tahun)))} — yang dipangkas beban muat, bukan angkanya.</div>
+          ${cek(K.jaga.darurat === 0, 'Kasir darurat belum dirinci', K.jaga.darurat === 0 ? 'nol' : K.jaga.darurat + ' — bereskan di Riwayat')}
+          ${cek(K.jaga.rapikan === 0, 'Penjualan perlu dirapikan', K.jaga.rapikan === 0 ? 'nol' : K.jaga.rapikan + ' — bereskan di Riwayat')}
+          ${cek(K.jaga.hppBolong === 0, 'HPP bolong (ikut terarsip apa adanya)', K.jaga.hppBolong === 0 ? 'nol' : K.jaga.hppBolong + ' trx — isi di tab Laba bila mau')}
+          ${cek(K.cadangan === 0, 'Cadangan tertahan di HP ini', K.cadangan === 0 ? 'nol' : K.cadangan + ' koleksi')}
+          ${cek(K.antrean === 0, 'Antrean tunda (belum terkirim)', K.antrean === 0 ? 'kosong' : K.antrean + ' tulisan — tunggu sampai kosong')}
+          ${cek(K.daring, 'Sambungan internet', K.daring ? 'daring' : 'luring — langkah hapus butuh internet')}
+          <div class="kg-label" style="margin-top:10px;">Perangkat ini</div><div class="tb6-ket">${escapeHtml(perangkatRingkas())} — ritual dijalankan dari sini saja.</div>
+          <div class="kg-label" style="margin-top:8px;">Perangkat lain yang pernah menulis</div>
+          ${_tbKaca.perangkat.length ? _tbKaca.perangkat.map((p, i) => `<div class="tb6-cek"><span class="tanda${_tbKaca.perangkatOk[p.nama] ? '' : ' oks'}">${_tbKaca.perangkatOk[p.nama] ? '✓' : '!'}</span>
+              <span>${escapeHtml(p.nama)}<br><i style="text-align:left">${p.terakhir ? 'terakhir ' + escapeHtml(waktuJejakLokal(p.terakhir)) : ''}</i></span>
+              <button type="button" class="tb6-chip${_tbKaca.perangkatOk[p.nama] ? ' aktif' : ''}" onclick="tbKacaCentangPerangkat(${i})">${_tbKaca.perangkatOk[p.nama] ? 'sudah diberi tahu' : 'beri tahu: jangan tutup buku'}</button></div>`).join('')
+            : '<div class="tb6-ket">tidak ada perangkat lain di data tahun berjalan.</div>'}
+        </div>` + nav(tbKacaBolehLanjut(0, K), lat ? 'Latihan: semua pemeriksaan boleh dilewati.' : (tbKacaBolehLanjut(0, K) ? 'Semua pemeriksaan lolos.' : 'Belum bisa lanjut: bereskan tanda ! di atas.'));
+      } else if (l === 1) {
+        const saldo = hitungSaldoTutup(tahun);
+        h += `<div class="kg-panel tb6-panel"><h3>Arsip ${tahun}</h3>
+          <div class="tb6-baris"><span>Nama berkas</span><b>arsip-miqbal-${tahun}.json</b></div>
+          <div class="kg-label" style="margin-top:8px;">Isinya</div>
+          ${K.daftar.filter(d => d.dok.length > 0).map(d => `<div class="tb6-baris"><span>${escapeHtml(d.label)}</span><b>${d.dok.length.toLocaleString('id-ID')}</b></div>`).join('') || '<div class="tb6-ket">tidak ada dokumen pada tahun ini.</div>'}
+          <div class="tb6-baris"><span>Saldo penutupan</span><b>${saldo.karung.length} merk · ${saldo.kemasan.length} produk · ${saldo.piutang.length} piutang · ${saldo.kasbon.length} kasbon</b></div>
+          <button type="button" class="kg-terpilih tb6-aksi" onclick="tbKacaArsip()"${K.ef.arsip ? ' disabled' : ''}>${K.ef.arsip ? '✓ Arsip ' + tahun + (lat ? ' (latihan)' : ' terunduh') : 'Unduh arsip ' + tahun}</button>
+          <div class="tb6-ket">Simpan di luar HP ini juga — sesudah langkah Hapus, inilah satu-satunya salinan riwayat ${tahun}.</div>
+        </div>` + nav(tbKacaBolehLanjut(1, K), K.ef.arsip ? 'Arsip beres.' : 'Unduh arsipnya dulu.');
+      } else if (l === 2) {
+        const saldo = hitungSaldoTutup(tahun);
+        const dokPembuka = (saldo.karung.length ? 1 : 0) + saldo.kemasan.length + saldo.bahanK.length + saldo.bahanL.length + saldo.piutang.length + saldo.kasbon.length + 1;
+        const dokSemua = tbDaftarKoleksi(new Date().getFullYear()).reduce((a, d) => a + d.dok.length, 0);
+        const kg = saldo.karung.reduce((a, x) => a + x.sisaKg, 0), bags = saldo.kemasan.reduce((a, x) => a + x.sisaUnit, 0);
+        const pcs = saldo.bahanK.reduce((a, x) => a + x.sisaPcs, 0) + saldo.bahanL.reduce((a, x) => a + x.sisaPcs, 0);
+        const piu = saldo.piutang.reduce((a, x) => a + x.sisa, 0), kas = saldo.kasbon.reduce((a, x) => a + x.sisa, 0);
+        h += `<div class="kg-panel tb6-panel"><h3>Jembatan ${tahun} → ${tahun + 1}</h3>
+          <div class="tb6-ket">Yang menyeberang sebagai saldo pembuka 1 Jan ${tahun + 1}:</div>
+          <div class="tb6-kolam">
+            <div><div class="label">Sack sumber</div><div class="nilai">${Math.round(kg).toLocaleString('id-ID')} kg<i>${saldo.karung.length} merk</i></div></div>
+            <div><div class="label">Bags jadi</div><div class="nilai">${bags.toLocaleString('id-ID')} bags<i>${saldo.kemasan.length} produk</i></div></div>
+            <div><div class="label">Bahan</div><div class="nilai">${pcs.toLocaleString('id-ID')} pcs<i>${saldo.bahanK.length + saldo.bahanL.length} jenis</i></div></div>
+            <div><div class="label">Piutang</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(piu)}<i>${saldo.piutang.length} pelanggan · umur terbawa</i></div></div>
+            <div><div class="label">Kasbon</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(kas)}<i>${saldo.kasbon.length} pegawai</i></div></div>
+            <div><div class="label">Tidak menyeberang</div><div class="nilai">${K.totalDok.toLocaleString('id-ID')}<i>catatan ${tahun}</i></div></div>
+          </div>
+          <div class="tb6-baris"><span>Gulungan yang dimuat</span><b>${dokSemua.toLocaleString('id-ID')} → ${(dokSemua - K.totalDok + dokPembuka).toLocaleString('id-ID')}</b></div>
+          <button type="button" class="kg-terpilih tb6-aksi" onclick="tbKacaSaldo()"${K.ef.saldo || !K.ef.arsip ? ' disabled' : ''}>${K.ef.saldo ? '✓ Saldo pembuka ' + (lat ? '(latihan)' : 'tertulis') : 'Tulis saldo pembuka 1 Jan ' + (tahun + 1)}</button>
+          <div class="tb6-ket">Saldo pembuka BUKAN uang masuk/keluar — arus kas ${tahun + 1} mulai dari nol. Sesudah ini WAJIB lanjut Hapus pada kesempatan yang sama.</div>
+        </div>` + nav(tbKacaBolehLanjut(2, K), K.ef.saldo ? 'Saldo pembuka beres — angka sedang terhitung dua kali sampai Hapus selesai.' : 'Tulis saldo pembukanya dulu.');
+      } else if (l === 3) {
+        const tglBuka = (tahun + 1) + '-01-01';
+        const sesudah = tbLimaAngka(tglBuka);
+        const sb = _tbKaca.sebelum;
+        const TETAP = ['katalog harga', 'pengaturan', 'catatan pelanggan', 'THR pelanggan'];
+        h += `<div class="kg-panel tb6-panel"><h3>Hapus dokumen ${tahun}</h3>
+          ${K.ef.saldo && K.totalDok > 0 ? `<div class="tb6-dobel"><b>Angka sedang terhitung dua kali</b>Pembuka ${tahun + 1} sudah ditulis, riwayat ${tahun} masih ada. Sampai Hapus selesai: sack ${Math.round(sesudah.kg).toLocaleString('id-ID')} kg${sb ? ' (seharusnya ' + Math.round(sb.kg).toLocaleString('id-ID') + ')' : ''}, bags ${sesudah.bags}${sb ? ' (' + sb.bags + ')' : ''}, piutang ${rp(sesudah.piutang)}${sb ? ' (' + rp(sb.piutang) + ')' : ''}. Jangan baca angka toko dulu.</div>` : ''}
+          <div class="kg-label">Dibersihkan (${K.daftar.length} koleksi)</div>
+          <div class="tb6-petak">${K.daftar.map(d => `<span><b>${d.dok.length.toLocaleString('id-ID')}</b>${escapeHtml(d.label)}</span>`).join('')}</div>
+          <div class="kg-label">Tetap hidup</div>
+          <div class="tb6-petak">${TETAP.map(t => `<span class="tetap"><b>tetap</b>${t}</span>`).join('')}</div>
+          <div class="kg-label" style="margin-top:8px;">Perlu dua paraf</div>
+          <div class="tb6-paraf">
+            <button type="button" class="tb6-chip${_tbKaca.paraf.owner ? ' aktif' : ''}" onclick="tbKacaParaf('owner')">${_tbKaca.paraf.owner ? '✓ Pemilik' : 'Paraf pemilik (PIN)'}</button>
+            <button type="button" class="tb6-chip${_tbKaca.paraf.saksi ? ' aktif' : ''}" onclick="tbKacaParaf('saksi')">${_tbKaca.paraf.saksi ? '✓ Saksi' : 'Paraf saksi'}</button>
+          </div>
+          ${typeof pinSudahDisetel === 'function' && !pinSudahDisetel() ? '<div class="tb6-ket oks">PIN owner belum disetel — paraf pemilik lewat tanpa PIN.</div>' : ''}
+          <button type="button" class="tb6-aksi bahaya" onclick="tbKacaHapus()"${tbKacaBolehLanjut(3, K) ? '' : ' disabled'}>${lat ? 'Hapus (latihan) ' : 'Hapus '}${K.totalDok.toLocaleString('id-ID')} dokumen ${tahun}</button>
+          <div class="tb6-progres" id="tbKacaProgres"></div>
+          <div class="tb6-ket">${tbKacaBolehLanjut(3, K) ? 'SATU ARAH. Ketik tahunnya saat diminta.' : (!K.ef.saldo ? 'Tulis saldo pembuka dulu.' : (!K.daring && !lat ? 'Butuh internet.' : 'Dua paraf dulu.'))}</div>
+        </div>` + `<div class="tb6-nav"><button type="button" class="mundur" onclick="tbKacaMundur()">← Kembali</button></div>`;
+      } else {
+        const sb = _tbKaca.sebelum;
+        h += `<div class="tb6-jilid"><div class="kg-label">Buku dijilid</div><b>${tahun}</b><div class="tb6-ket">${lat ? 'latihan selesai — tidak ada yang tersentuh' : 'riwayat tahun ini kini hanya di berkas arsip'}</div></div>
+          <div class="kg-panel tb6-panel"><h3>Berita acara</h3>
+          <div class="tb6-baris"><span>Tanggal</span><b>${escapeHtml(formatTanggal(tanggalLokalIso()))}</b></div>
+          <div class="tb6-baris"><span>Berkas arsip</span><b>arsip-miqbal-${tahun}.json</b></div>
+          ${sb ? `<div class="tb6-baris"><span>Pembuka ${tahun + 1}</span><b>${Math.round(sb.kg).toLocaleString('id-ID')} kg · ${sb.bags} bags · ${rp(sb.piutang)} piutang</b></div>` : ''}
+          <div class="tb6-baris"><span>Dokumen ${tahun} tersisa</span><b>${K.totalDok.toLocaleString('id-ID')}</b></div>
+          <button type="button" class="kg-terpilih tb6-aksi" onclick="tbKacaSelesai()">Tutup lembar</button>
+          <button type="button" class="tb6-aksi" style="background:none;border:1px solid var(--pf-tepi2);color:var(--pf-platina);" onclick="tbKacaMode('latihan')">Ulangi sebagai latihan</button></div>`;
+      }
+      w.innerHTML = h;
+    } catch (e) { console.error('gambarTutupBukuKaca:', e); }
+  }
+  function tbKacaMode(m) {
+    const lat = m === 'latihan';
+    if (lat === _tbKaca.latihan && _tbKaca.langkah !== 4) return;
+    if (lat) { const K = tbKeadaan(); if (K.nyata.saldo && K.totalDok > 0) { alert('Jendela dobel sedang terbuka — selesaikan Hapus dulu sebelum latihan.'); return; } }
+    _tbKaca.latihan = lat;
+    _tbKaca.lat = { arsip: false, saldo: false, hapus: false };
+    _tbKaca.paraf = { owner: false, saksi: false };
+    _tbKaca.langkah = 0; _tbKaca.sebelum = null; _tbKaca.hapusSelesai = false;
+    gambarTutupBukuKaca();
+  }
+  function tbKacaKe(n) { if (n <= _tbKaca.langkah) { _tbKaca.langkah = n; gambarTutupBukuKaca(); } }
+  function tbKacaLanjut() {
+    const K = tbKeadaan(); K.perangkat_semua_ok = _tbKaca.perangkat.every(p => _tbKaca.perangkatOk[p.nama]);
+    if (!tbKacaBolehLanjut(_tbKaca.langkah, K)) return;
+    _tbKaca.langkah = Math.min(4, _tbKaca.langkah + 1);
+    gambarTutupBukuKaca();
+    document.getElementById('lembarTutupBuku').scrollTop = 0;
+  }
+  function tbKacaMundur() { _tbKaca.langkah = Math.max(0, _tbKaca.langkah - 1); gambarTutupBukuKaca(); }
+  function tbKacaCentangPerangkat(i) { const p = _tbKaca.perangkat[i]; if (!p) return; _tbKaca.perangkatOk[p.nama] = !_tbKaca.perangkatOk[p.nama]; gambarTutupBukuKaca(); }
+  function tbKacaArsip() {
+    const tahun = _tbKaca.tahun;
+    if (_tbKaca.latihan) { _tbKaca.lat.arsip = true; gambarTutupBukuKaca(); return; }
+    unduhArsipTahun(tahun);   // fungsi lama: unduh + _tbArsipDiunduh + gambarTutupBuku → kaca
+  }
+  async function tbKacaSaldo() {
+    const tahun = _tbKaca.tahun;
+    const saldo = hitungSaldoTutup(tahun);
+    _tbKaca.sebelum = { kg: saldo.karung.reduce((a, x) => a + x.sisaKg, 0), bags: saldo.kemasan.reduce((a, x) => a + x.sisaUnit, 0),
+      piutang: saldo.piutang.reduce((a, x) => a + x.sisa, 0) };
+    if (_tbKaca.latihan) { _tbKaca.lat.saldo = true; gambarTutupBukuKaca(); return; }
+    await tulisSaldoPembuka(tahun);   // fungsi lama: pagar arsip/penjaga/dobel + confirm tetap jalan
+    gambarTutupBukuKaca();
+  }
+  async function tbKacaParaf(siapa) {
+    if (siapa === 'owner') {
+      if (_tbKaca.paraf.owner) { _tbKaca.paraf.owner = false; gambarTutupBukuKaca(); return; }
+      const ok = await mintaPinOwner('Paraf pemilik — tutup buku ' + _tbKaca.tahun);
+      if (ok) _tbKaca.paraf.owner = true;
+    } else _tbKaca.paraf.saksi = !_tbKaca.paraf.saksi;
+    gambarTutupBukuKaca();
+  }
+  async function tbKacaHapus() {
+    const tahun = _tbKaca.tahun;
+    if (_tbKaca.latihan) { _tbKaca.lat.hapus = true; _tbKaca.langkah = 4; gambarTutupBukuKaca(); return; }
+    // Node progres kertas lama dipegang SEBELUM memanggil: fungsi lama menulis ke node ini,
+    // lalu membangun ulang kertas — node lama terlepas tapi teksnya tetap terbaca.
+    const sumber = document.getElementById('tbProgresHapus');
+    let obs = null;
+    if (sumber && window.MutationObserver) {
+      obs = new MutationObserver(() => { const c = document.getElementById('tbKacaProgres'); if (c) c.textContent = sumber.textContent; });
+      obs.observe(sumber, { childList: true, characterData: true, subtree: true });
+    }
+    await hapusDokumenTahun(tahun);   // fungsi lama: prompt ketik tahun + hapus satu-satu + gambarTutupBuku → kaca
+    if (obs) obs.disconnect();
+    // Sukses hanya bila fungsi lama sendiri menulis ✓ ke progresnya (bukan tebakan dari cache).
+    if (((sumber && sumber.textContent) || '').indexOf('✓') === 0) _tbKaca.hapusSelesai = true;
+    gambarTutupBukuKaca();
+  }
+  function tbKacaSelesai() { tutupTutupBuku(); }
+
   function tbCutoff(tahun) { return tahun + '-12-31'; }
 
   function tbPunyaBerat(merk, berat, cutoff) {
@@ -17417,6 +17698,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <div class="tb-status" id="tbProgresHapus"></div>
     </div>`);
     document.getElementById('tbKertas').innerHTML = b.join('');
+    gambarTutupBukuKaca();   // satu-satunya jalur keluar — kaca ikut di semua pemicu lama
   }
 
   function unduhArsipTahun(tahun) {
@@ -22502,6 +22784,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.unduhArsipTahun = unduhArsipTahun;
   window.tulisSaldoPembuka = tulisSaldoPembuka;
   window.hapusDokumenTahun = hapusDokumenTahun;
+  window.tbKacaMode = tbKacaMode; window.tbKacaKe = tbKacaKe; window.tbKacaLanjut = tbKacaLanjut; window.tbKacaMundur = tbKacaMundur;
+  window.tbKacaCentangPerangkat = tbKacaCentangPerangkat; window.tbKacaArsip = tbKacaArsip; window.tbKacaSaldo = tbKacaSaldo;
+  window.tbKacaParaf = tbKacaParaf; window.tbKacaHapus = tbKacaHapus; window.tbKacaSelesai = tbKacaSelesai;
   window.tampilkanSlipGaji = tampilkanSlipGaji;
   window.bukaSlipGaji = bukaSlipGaji;
   window.tutupSlipGaji = tutupSlipGaji;
