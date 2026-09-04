@@ -4099,6 +4099,92 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #daftarSaranBelanja .sb-pakai:disabled{ background:none !important; border:1px dashed rgba(226,205,166,.25);
   color:var(--pf-abu) !important; -webkit-text-fill-color:var(--pf-abu); }
 
+/* --- KACA EMAS G3: Produksi (saklar Adukan ⇄ Bahan kantong) --- */
+#produksiSaklar{ display:flex; gap:7px; margin:0 0 10px; }
+#produksiSaklar button{ flex:1; min-height:44px; border-radius:4px; font-size:11.5px;
+  font-weight:700; letter-spacing:.05em; color:var(--pf-abu); font-family:inherit;
+  background:linear-gradient(168deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+  border:1px solid var(--pf-tepi); }
+@media (min-width:700px){ #produksiSaklar, #produksiKacaBilah, #produksiKacaAdukan, #produksiKacaBahan{ display:none; } }
+@media (max-width:699.98px){
+  #halamanProduksi > .info-box{ display:none; }
+  /* Mode ADUKAN (bawaan): kartu beli bahan disimpan untuk tab Bahan kantong. */
+  #halamanProduksi:not(.prod-mode-bahan) #kartuBeliBahanKemasan,
+  #halamanProduksi:not(.prod-mode-bahan) #kartuBeliBahanLiteran,
+  #halamanProduksi:not(.prod-mode-bahan) #produksiKacaBahan{ display:none; }
+  /* Mode BAHAN: form adukan, hasil, dan riwayat disimpan untuk tab Adukan. */
+  #halamanProduksi.prod-mode-bahan #kartuSumberProduksi,
+  #halamanProduksi.prod-mode-bahan #kartuHasilProduksi,
+  #halamanProduksi.prod-mode-bahan #kartuRiwayatProduksi,
+  #halamanProduksi.prod-mode-bahan #produksiKacaAdukan{ display:none; }
+  /* Pratinjau lama & bilah simpan ber-display inline dari penulis lain — kelas + !important,
+     bukan .style kedua. Lembar adukan kaca menggantikan pratinjau di HP. */
+  #pratinjauProduksi{ display:none !important; }
+  #tombolSimpanProduksiWrap.prod-bahan{ display:none !important; }
+}
+#produksiKacaBilah .pr6-bilah{ display:flex; align-items:center; gap:9px; width:100%; min-height:44px;
+  padding:9px 13px; margin-bottom:10px; border-radius:12px; text-align:left; font-family:var(--pf-serif);
+  font-style:italic; font-size:10.5px; line-height:1.45; color:var(--pf-abu);
+  background:none; border:1px solid var(--pf-tepi); }
+#produksiKacaBilah .pr6-bilah.oks{ color:#d3a08b; border:1px dashed rgba(211,160,139,.5); }
+#produksiKacaBilah .pr6-bilah b{ font-style:normal; font-family:inherit; }
+#produksiKacaAdukan .pr6-panel, #produksiKacaBahan .pr6-panel{ padding:13px 14px 12px; margin-bottom:12px; }
+#halamanProduksi .pr6-kepala{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+#halamanProduksi .pr6-kepala i{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); }
+#produksiKacaAdukan .kg-uang-dagang{ margin:4px 0 8px; }
+#produksiKacaAdukan .pr6-sub{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.5; color:var(--pf-abu); }
+/* Corong: lebar kaki ∝ kg (flex dari variabel yang sama dengan label kg-nya). */
+#produksiKacaAdukan .pr6-kaki{ display:flex; gap:4px; margin-top:8px; }
+#produksiKacaAdukan .pr6-kaki span{ flex:var(--kg,1) 1 0; min-width:0; padding:6px 7px; border-radius:7px;
+  border:1px solid var(--pf-tepi); background:rgba(255,255,255,.03); overflow:hidden; }
+#produksiKacaAdukan .pr6-kaki b{ display:block; font-size:10.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#produksiKacaAdukan .pr6-kaki i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:9.5px;
+  color:var(--pf-abu); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#produksiKacaAdukan .pr6-kolam{ margin:6px 10%; padding:8px; text-align:center; border-radius:0 0 14px 14px;
+  border:1px solid rgba(226,205,166,.35); border-top:none; font-family:var(--pf-serif); font-weight:600;
+  font-size:15px; color:var(--pf-platina); }
+#produksiKacaAdukan .pr6-kolam i{ font-size:9.5px; font-style:italic; color:var(--pf-abu); }
+#produksiKacaAdukan .pr6-kaki.bawah span{ border-style:dashed; }
+#produksiKacaAdukan .pr6-tiga{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px;
+  padding-top:8px; border-top:1px solid rgba(255,255,255,.06); }
+#produksiKacaAdukan .pr6-tiga .label{ font-size:8px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--pf-abu); }
+#produksiKacaAdukan .pr6-tiga .nilai{ font-size:12px; font-weight:600; color:var(--pf-platina); margin-top:2px; }
+#produksiKacaAdukan .pr6-tiga .nilai.oks{ color:#d3a08b; }
+#produksiKacaAdukan .pr6-hasil{ padding:9px 0; border-top:1px solid rgba(255,255,255,.05); }
+#produksiKacaAdukan .pr6-hasil:first-of-type{ border-top:none; }
+#produksiKacaAdukan .pr6-hasil .atas{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+#produksiKacaAdukan .pr6-hasil .atas b{ font-size:12.5px; }
+#produksiKacaAdukan .pr6-hasil .atas .kg-uang-dagang{ font-size:15px; margin:0; }
+#produksiKacaAdukan .pr6-hasil small{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px;
+  color:var(--pf-abu); margin-top:2px; }
+/* Bilah belah: bagian HPP = --isi (dari HPP/harga yang sama dengan angkanya), sisanya margin. */
+#produksiKacaAdukan .pr6-belah{ display:flex; height:5px; border-radius:99px; overflow:hidden; margin-top:6px;
+  background:rgba(226,205,166,.55); }
+#produksiKacaAdukan .pr6-belah i{ display:block; width:var(--isi,0%); background:rgba(255,255,255,.14); }
+#produksiKacaAdukan .pr6-hasil .putus{ margin-top:6px; padding:7px 10px; border-radius:9px; font-family:var(--pf-serif);
+  font-style:italic; font-size:10px; color:var(--pf-abu); }
+#produksiKacaAdukan .pr6-kurang{ display:block; width:100%; min-height:40px; margin-top:6px; padding:7px 11px;
+  text-align:left; border-radius:9px; background:none; font-family:var(--pf-serif); font-style:italic;
+  font-size:10.5px; color:#d3a08b; border:1px dashed rgba(211,160,139,.5); }
+#produksiKacaBahan .pr6-bahan{ display:grid; grid-template-columns:auto 1fr auto; gap:3px 10px; align-items:center;
+  width:100%; min-height:48px; padding:8px 2px; text-align:left; background:none; border:none;
+  border-top:1px solid rgba(255,255,255,.05); color:inherit; font-family:inherit; }
+#produksiKacaBahan .pr6-bahan .pil{ min-width:46px; padding:4px 8px; border-radius:8px; text-align:center;
+  border:1px solid var(--pf-tepi); font-size:10px; font-weight:700; color:var(--pf-platina); }
+#produksiKacaBahan .pr6-bahan b{ display:block; font-size:12px; }
+#produksiKacaBahan .pr6-bahan small{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:9.5px;
+  color:var(--pf-abu); margin-top:1px; }
+#produksiKacaBahan .pr6-bahan .rel{ grid-column:2 / 4; height:4px; border-radius:99px; background:rgba(255,255,255,.07); overflow:hidden; }
+#produksiKacaBahan .pr6-bahan .rel i{ display:block; height:100%; width:var(--isi,0%); border-radius:99px;
+  background:linear-gradient(90deg,rgba(226,205,166,.85),rgba(226,205,166,.35)); }
+#produksiKacaBahan .pr6-bahan.oks .pil{ border-color:rgba(211,160,139,.5); color:#d3a08b; }
+#produksiKacaBahan .pr6-bahan.oks .rel i{ background:linear-gradient(90deg,rgba(211,160,139,.9),rgba(211,160,139,.4)); }
+#produksiKacaBahan .pr6-bahan .sisa{ font-size:12px; font-weight:600; color:var(--pf-platina); text-align:right; }
+#produksiKacaBahan .pr6-bahan.oks .sisa{ color:#d3a08b; }
+#produksiKacaBahan .pr6-sub{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; line-height:1.5;
+  color:var(--pf-abu); margin-top:4px; }
+
 @media (prefers-reduced-motion: reduce){
   .k6a *, .k6a *::before, .k6a *::after{ animation:none !important; }
   .k6a .pf-garis{ stroke-dashoffset:0; }
@@ -5269,7 +5355,19 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     <div id="pesanOkProduksi" class="pesan-ok"> Stok kemasan bertambah.</div>
     <div class="info-box">Dipakai waktu sepi: siapkan stok kemasan duluan (timbang & jahit dari karung sumber), supaya nanti tinggal diambil pas ada pembeli lewat tab "Jual → Dari Stok Kemasan Jadi".</div>
 
-    <div class="kartu">
+    <!-- KACA EMAS G3 (rancangan Produksi - Gabungan): SAKLAR dua pekerjaan (Adukan ⇄
+         Bahan kantong), bilah peringatan dini kantong menipis dari stok bahan yang ada,
+         lembar visual corong adukan + hasil diurut margin. Zona hanya show/hide kartu
+         asli lewat kelas; form & simpanProduksi tidak disentuh. Hanya <700px. -->
+    <div id="produksiSaklar">
+      <button type="button" id="prodTabAdukan" class="kg-terpilih" onclick="prodPilihTab('adukan')">Adukan</button>
+      <button type="button" id="prodTabBahan" onclick="prodPilihTab('bahan')">Bahan kantong</button>
+    </div>
+    <div id="produksiKacaBilah"></div>
+    <div id="produksiKacaAdukan"></div>
+    <div id="produksiKacaBahan"></div>
+
+    <div class="kartu" id="kartuBeliBahanKemasan">
       <div class="panel-kepala"><h2> Beli Stok Bahan Kemasan</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Stok kantong plastik kosong per ukuran + merek beras — harga per lembar diketik tiap beli (harga bisa berubah), HPP dihitung rata-rata tertimbang dari sisa stok.</p>
       <label>Jenis kantong (ukuran — merek)</label>
@@ -5290,7 +5388,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <button type="button" onclick="simpanBeliBahanKemasan()" class="tombol-utama-kartu"> Simpan Pembelian Kantong</button>
     </div>
 
-    <div class="kartu">
+    <div class="kartu" id="kartuBeliBahanLiteran">
       <div class="panel-kepala"><h2> Beli Stok Kemasan Literan (paper bag / karung bekas)</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Harga per lembar/karung diketik tiap beli (harga bisa berubah), HPP dihitung rata-rata tertimbang dari sisa stok.</p>
       <label>Jenis</label>
@@ -5315,7 +5413,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <button type="button" onclick="simpanBeliBahanLiteran()" class="tombol-utama-kartu"> Simpan Pembelian</button>
     </div>
 
-    <div class="kartu">
+    <div class="kartu" id="kartuSumberProduksi">
       <div class="panel-kepala"><h2>Ambil dari Karung Sumber — boleh campuran</h2></div>
       <p class="keterangan" style="margin-top:-8px;">Satu baris = satu merk sumber + berapa kg dipakai. Boleh dicampur beberapa merk (contoh: IR64 Ascent 50 kg + IR64 Elevate 50 kg = 100 kg campuran). Nilai per kg campuran dihitung otomatis.</p>
       <div id="produksiSumberDaftar"></div>
@@ -5333,7 +5431,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <div class="stok-tersedia" id="produksiCampuranInfo" style="margin-top:10px;"></div>
     </div>
 
-    <div class="kartu">
+    <div class="kartu" id="kartuHasilProduksi">
       <div class="panel-kepala"><h2>Jadi Produk Kemasan</h2></div>
       <!-- Ukuran 50 kg BUKAN produk kemasan baru — keputusan My DeV 9 Agu 2026: hasilnya
            digabung balik ke stok karung sumber merk tujuan, lalu dijual lewat Jual > Karung
@@ -5363,7 +5461,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       </div>
     </div>
 
-    <div class="kartu">
+    <div class="kartu" id="kartuRiwayatProduksi">
       <div class="panel-kepala"><h2>Riwayat Produksi</h2></div>
       <div id="daftarProduksi" class="daftar-batch"></div>
     </div>
@@ -6909,7 +7007,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (nama === 'rekap') { tampilkanRekap(); tampilkanRiwayatJual(); tampilkanRiwayat(); }
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); tampilkanSlipGaji(); }
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); isiSaranPelanggan(); }
-    if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); }
+    if (nama === 'produksi') { isiDropdownProduksi(); perbaruiStokProduksi(); isiPilihanBahanKemasan(); perbaruiInfoBeliBahanLiteran(); tampilkanProduksi(); gambarKacaProduksiBahan(); }
     if (nama === 'stok') { tampilkanStok(); tampilkanRetur(); tampilkanPerbaikanTotalKg(); tampilkanCocokStok(); tampilkanCocokKemasan(); tampilkanCocokBahan(); }
     if (nama === 'laba') tampilkanLaba();
     if (nama === 'aruskas') tampilkanArusKas();
@@ -8212,7 +8310,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // Pembelian bahan = uang keluar di kartu Kas Bulan Ini (sejak Arus Kas ada).
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
     if (document.getElementById('halamanStok').classList.contains('tampil')) { tampilkanStok(); tampilkanCocokBahan(); }
-    if (document.getElementById('halamanProduksi').classList.contains('tampil')) isiPilihanBahanKemasan();
+    if (document.getElementById('halamanProduksi').classList.contains('tampil')) { isiPilihanBahanKemasan(); gambarKacaProduksiBahan(); }
   }, 'id', 'bahanKemasan');
 
   pasangSinkronisasi(KOLEKSI_BAHAN_LITERAN, KUNCI_BAHAN_LITERAN, (d) => { _cacheBahanLiteran = d; }, () => {
@@ -8220,6 +8318,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // Pembelian bahan = uang keluar di kartu Kas Bulan Ini (sejak Arus Kas ada).
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
     if (document.getElementById('halamanStok').classList.contains('tampil')) { tampilkanStok(); tampilkanCocokBahan(); }
+    if (document.getElementById('halamanProduksi').classList.contains('tampil')) gambarKacaProduksiBahan();
   }, 'id', 'bahanLiteran');
 
   pasangSinkronisasi(KOLEKSI_HARGA_LITERAN, KUNCI_HARGA_LITERAN, (d) => { _cacheHargaLiteran = d; }, () => {
@@ -12887,7 +12986,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   function hitungCampuranProduksi() {
     const info = document.getElementById('produksiCampuranInfo');
     const isiLamaInfo = info ? info.textContent : '';
-    if (!info) return;
+    if (!info) { gambarKacaProduksiAdukan(null); return; }   // jalur keluar dini pun menggambar kaca
     const stokKarung = hitungStokKarungPerMerk();
     perbaruiSisaTiapSumber(stokKarung);
     const sumber = bacaSumberProduksi();
@@ -12970,6 +13069,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // habis dibagi ukuran kemasan, ruas terakhir dibiarkan patah (redup) dan sisa kg
   // ditulis — beras yang tidak jadi kemasan terlihat sebelum ditimbang (Prinsip 1).
   function gambarPratinjauProduksi(d) {
+    gambarKacaProduksiAdukan(d);   // Kaca Emas G3: lembar adukan digambar dari d yang SAMA
     const kartu = document.getElementById('pratinjauProduksi');
     if (!kartu) return;
     perbaruiLencanaBahanProduksi();
@@ -13011,6 +13111,157 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       ? 'HPP ini baru bahan berasnya. ' + belum.join(' & ') + ' belum diisi — angka per unit masih akan naik.'
       : '';
     cat.style.display = belum.length ? 'block' : 'none';
+  }
+
+  // ============ KACA EMAS G3: PRODUKSI — SAKLAR ADUKAN ⇄ BAHAN KANTONG (hanya <700px) ============
+  // Lembar adukan digambar dari objek d yang sama dengan pratinjau lama (hitungCampuran-
+  // Produksi) — corong bahan→kolam→hasil dengan lebar kaki ∝ kg, susut oksida di ambang
+  // yang sama (15%), hasil diurut margin dari Katalog Harga (tanpa harga = tidak ditebak).
+  // Bilah kantong = peringatan dini dari stok bahan yang sudah ada; simpanProduksi tak disentuh.
+  let _prodMode = 'adukan';
+  function prodTerapkanMode() {
+    const hal = document.getElementById('halamanProduksi');
+    if (hal) hal.classList.toggle('prod-mode-bahan', _prodMode === 'bahan');
+    const a = document.getElementById('prodTabAdukan'), b = document.getElementById('prodTabBahan');
+    if (a) a.classList.toggle('kg-terpilih', _prodMode === 'adukan');
+    if (b) b.classList.toggle('kg-terpilih', _prodMode === 'bahan');
+    const wrap = document.getElementById('tombolSimpanProduksiWrap');
+    if (wrap) wrap.classList.toggle('prod-bahan', _prodMode === 'bahan');
+  }
+  function prodPilihTab(mode) {
+    _prodMode = mode === 'bahan' ? 'bahan' : 'adukan';
+    prodTerapkanMode();
+    gambarKacaProduksiBahan();
+    if (_prodMode === 'bahan') {
+      const w = document.getElementById('produksiKacaBilah');
+      if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+  // Daftar jenis kantong yang pernah dibeli (pola saringan totalBeli > 0), kemasan lalu literan.
+  function prodDaftarBahan() {
+    const stokK = hitungStokBahanKemasan(), stokL = hitungStokBahanLiteran();
+    const laju = hitungLajuPakai().pcsBahan;
+    const daftar = [];
+    JENIS_BAHAN_KEMASAN.forEach(j => {
+      const s = stokK[j]; if (!s || !(s.totalBeli > 0)) return;
+      daftar.push({ kelompok: 'k', jenis: j, label: LABEL_BAHAN_KEMASAN[j] || j, sisa: s.sisaPcs, hpp: s.hppPerPcs,
+        hari: hariHabis(s.sisaPcs, laju[j] || 0) });
+    });
+    Object.keys(LABEL_BAHAN_LITERAN).forEach(j => {
+      const s = stokL[j]; if (!s || !(s.totalBeli > 0)) return;
+      daftar.push({ kelompok: 'l', jenis: j, label: LABEL_BAHAN_LITERAN[j] || j, sisa: s.sisaPcs, hpp: s.hargaPerPcs,
+        hari: hariHabis(s.sisaPcs, laju[j] || 0) });
+    });
+    daftar.forEach(x => { x.menipis = x.sisa < 10 || (x.hari !== null && x.hari <= 4); });
+    return daftar;
+  }
+  function gambarKacaBilahKantong(daftar) {
+    const w = document.getElementById('produksiKacaBilah');
+    if (!w || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      daftar = daftar || prodDaftarBahan();
+      const tipis = daftar.filter(x => x.menipis);
+      if (!daftar.length) {
+        w.innerHTML = `<button type="button" class="pr6-bilah" onclick="prodPilihTab('bahan')">Belum ada stok kantong tercatat — sistem tidak menebaknya. Ketuk untuk mencatat pembelian.</button>`;
+      } else if (tipis.length) {
+        const t = tipis[0];
+        w.innerHTML = `<button type="button" class="pr6-bilah oks" onclick="prodPilihTab('bahan')"><span><b>${tipis.length} jenis kantong menipis</b> — ${escapeHtml(t.label)}: sisa ${Math.round(t.sisa).toLocaleString('id-ID')} lembar${t.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(t.hari)) : ''}${tipis.length > 1 ? ' &middot; +' + (tipis.length - 1) + ' lagi' : ''}. Ketuk untuk beli.</span></button>`;
+      } else {
+        w.innerHTML = `<div class="pr6-bilah"><span class="kg-titik-lcd"></span><span>Kantong aman untuk produksi — ${daftar.length} jenis tercatat, tidak ada yang di bawah 10 lembar atau habis ≤4 hari.</span></div>`;
+      }
+    } catch (e) { console.error('gambarKacaBilahKantong:', e); }
+  }
+  function gambarKacaProduksiAdukan(d) {
+    const w = document.getElementById('produksiKacaAdukan');
+    if (!w || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      prodTerapkanMode();
+      const daftarBahan = prodDaftarBahan();
+      gambarKacaBilahKantong(daftarBahan);
+      if (!d || !(d.totalKg > 0)) {
+        w.innerHTML = `<div class="kg-panel pr6-panel"><div class="kg-label">Nilai adukan &middot; per kg</div>
+          <div class="pr6-sub">Belum ada bahan adukan — pilih karung sumber di bawah. Sistem tidak menebaknya.</div></div>`;
+        return;
+      }
+      const sumber = bacaSumberProduksi();
+      const sumberKem = bacaSumberKemasanProduksi();
+      const hasil = bacaHasilProduksi();
+      const susut = Math.round((d.totalKg - (d.totalKgJadi || 0)) * 1000) / 1000;
+      const susutBerat = d.totalKgJadi > 0 && Math.abs(susut) > d.totalKg * 0.15;
+      let h = `<div class="kg-panel pr6-panel">
+        <div class="pr6-kepala"><span class="kg-label">Nilai adukan &middot; per kg</span><i>${d.merk} bahan</i></div>
+        <div class="kg-uang-dagang">${formatRupiah(d.hppPerKg)}</div>
+        <div class="pr6-sub">nilai bahan per kg — belum termasuk kantong &amp; upah; HPP hasil ${d.totalKgJadi > 0 ? formatRupiah(d.hppKgHasil) + '/kg' : 'menunggu baris hasil'}.</div>
+        <div class="pr6-kaki atas">${sumber.map(s => `<span style="--kg:${Math.max(1, Math.round(s.kg))}"><b>${escapeHtml(s.merk)}</b><i>${angkaRapi(s.kg)} kg</i></span>`).join('')}${sumberKem.map(k => `<span style="--kg:${Math.max(1, Math.round(k.ukuranKemasan * k.unit))}"><b>${escapeHtml(k.namaProduk)} ${k.ukuranKemasan} kg</b><i>${angkaRapi(k.ukuranKemasan * k.unit)} kg &middot; kemasan jadi</i></span>`).join('')}</div>
+        <div class="pr6-kolam">${angkaRapi(d.totalKg)} kg <i>adukan</i></div>
+        <div class="pr6-kaki bawah">${hasil.length
+          ? hasil.map(x => `<span style="--kg:${Math.max(1, Math.round(x.ukuran * x.unit))}"><b>${angkaRapi(x.ukuran)} kg &times; ${angkaRapi(x.unit)}</b><i>${escapeHtml(x.nama)}</i></span>`).join('')
+          : '<span style="--kg:1"><b>—</b><i>belum ada baris hasil</i></span>'}</div>
+        <div class="pr6-tiga">
+          <div><div class="label">Masuk</div><div class="nilai">${angkaRapi(d.totalKg)} kg</div></div>
+          <div><div class="label">Keluar</div><div class="nilai">${d.totalKgJadi > 0 ? angkaRapi(d.totalKgJadi) + ' kg' : '—'}</div></div>
+          <div><div class="label">Susut</div><div class="nilai${susutBerat ? ' oks' : ''}">${d.totalKgJadi > 0 ? angkaRapi(susut) + ' kg' : '—'}</div></div>
+        </div>
+      </div>`;
+      if (hasil.length && d.totalKgJadi > 0) {
+        const hargaK = ambilHargaKemasan();
+        const stokK = hitungStokBahanKemasan();
+        const butuh = {};
+        hasil.forEach(x => { if (x.kantongJenis && x.kantongJumlah > 0) butuh[x.kantongJenis] = (butuh[x.kantongJenis] || 0) + x.kantongJumlah; });
+        const baris = hasil.map(x => {
+          const hppUnit = d.hppKgHasil * x.ukuran;
+          const hj = hargaK.find(p => p.merk === x.nama && Number(p.ukuran) === Number(x.ukuran) && p.hargaPerUnit > 0);
+          const harga = hj ? hj.hargaPerUnit : null;
+          const margin = harga !== null ? harga - hppUnit : null;
+          const persen = harga ? margin / harga * 100 : null;
+          return { x, hppUnit, harga, margin, persen };
+        }).sort((a, b) => (b.persen === null ? -1e9 : b.persen) - (a.persen === null ? -1e9 : a.persen));
+        h += `<div class="kg-panel pr6-panel"><div class="pr6-kepala"><span class="kg-label">Hasil &middot; diurut margin</span><i>${baris.length} ukuran &middot; harga dari Katalog Harga</i></div>`;
+        h += baris.map(r => {
+          const kurangKantong = r.x.kantongJenis && butuh[r.x.kantongJenis] > ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)
+            ? `<button type="button" class="pr6-kurang" onclick="prodPilihTab('bahan')">Kantong ${escapeHtml(LABEL_BAHAN_KEMASAN[r.x.kantongJenis] || r.x.kantongJenis)} sisa ${Math.round((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)} — kurang ${Math.round(butuh[r.x.kantongJenis] - ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0))}. Ketuk untuk beli.</button>` : '';
+          return `<div class="pr6-hasil">
+            <div class="atas"><b>${escapeHtml(r.x.nama)} ${angkaRapi(r.x.ukuran)} kg &times; ${angkaRapi(r.x.unit)}</b>${r.margin !== null ? `<span class="kg-uang-dagang">${(r.margin < 0 ? '−' : '') + formatRupiah(Math.abs(r.margin))}</span>` : ''}</div>
+            ${r.harga !== null
+              ? `<small>HPP ${formatRupiah(r.hppUnit)}/unit &middot; jual ${formatRupiah(r.harga)} &middot; margin ${r.persen.toFixed(1).replace('.', ',')}% per unit</small>
+                 <div class="pr6-belah"><i style="--isi:${Math.max(0, Math.min(100, Math.round(r.hppUnit / r.harga * 100)))}%"></i></div>`
+              : `<small>HPP ${formatRupiah(r.hppUnit)}/unit</small><div class="putus kg-tepi-putus">harga jual belum ada di Katalog Harga — margin tidak ditebak.</div>`}
+            ${kurangKantong}
+          </div>`;
+        }).join('');
+        h += `</div>`;
+      }
+      w.innerHTML = h;
+    } catch (e) { console.error('gambarKacaProduksiAdukan:', e); }
+  }
+  function gambarKacaProduksiBahan() {
+    const w = document.getElementById('produksiKacaBahan');
+    if (!w || window.matchMedia('(min-width: 700px)').matches) return;
+    try {
+      prodTerapkanMode();
+      const daftar = prodDaftarBahan();
+      gambarKacaBilahKantong(daftar);
+      const nTipis = daftar.filter(x => x.menipis).length;
+      let h = `<div class="kg-panel pr6-panel"><div class="pr6-kepala"><span class="kg-label">Stok kantong</span><i>${daftar.length} jenis${nTipis ? ' &middot; ' + nTipis + ' menipis' : ''}</i></div>`;
+      if (!daftar.length) {
+        h += `<div class="pr6-sub">Belum ada pembelian kantong tercatat — catat lewat kartu di bawah.</div>`;
+      } else {
+        const maks = Math.max.apply(null, daftar.map(x => x.sisa).concat([1]));
+        h += daftar.map(x => `<button type="button" class="pr6-bahan${x.menipis ? ' oks' : ''}" onclick="prodKetukBahan('${x.kelompok}', '${x.jenis}')">
+            <span class="pil">${escapeHtml(x.label.split(' — ')[0].replace(/^Paper bag /, 'PB '))}</span>
+            <span><b>${escapeHtml(x.label)}</b><small>${x.hpp > 0 ? 'HPP Rp' + Math.round(x.hpp).toLocaleString('id-ID') + '/lbr' : 'HPP —'}${x.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(x.hari)) : ' &middot; laju belum terbaca'}</small></span>
+            <span class="sisa">${Math.round(x.sisa).toLocaleString('id-ID')} lbr</span>
+            <span class="rel"><i style="--isi:${Math.max(0, Math.min(100, Math.round(x.sisa / maks * 100)))}%"></i></span>
+          </button>`).join('');
+        h += `<div class="pr6-sub">Ketuk jenis untuk mengisi kartu pembelian di bawah. Oksida = di bawah 10 lembar atau habis ≤4 hari menurut laju 14 hari.</div>`;
+      }
+      w.innerHTML = h + `</div>`;
+    } catch (e) { console.error('gambarKacaProduksiBahan:', e); }
+  }
+  function prodKetukBahan(kelompok, jenis) {
+    const kartu = document.getElementById(kelompok === 'l' ? 'kartuBeliBahanLiteran' : 'kartuBeliBahanKemasan');
+    if (kelompok === 'l') pilihJenisBeliBahanLiteran(jenis); else pilihJenisBeliBahanKemasan(jenis);
+    if (kartu) kartu.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // Angka tanpa "Rp" untuk kartu pratinjau — label kolomnya sudah menyebut satuan.
@@ -21617,6 +21868,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.hapusBatch = hapusBatch;
   window.hapusPenjualan = hapusPenjualan;
   window.tampilkanProduksi = tampilkanProduksi;
+  window.prodPilihTab = prodPilihTab;
+  window.prodKetukBahan = prodKetukBahan;
   window.hapusProduksi = hapusProduksi;
   window.bukaKoreksiHpp = bukaKoreksiHpp;
   window.tutupLembarKoreksiProduksi = tutupLembarKoreksiProduksi;
