@@ -14161,21 +14161,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           }).join('');
       }).join('') + '</div>';
 
-    // Ringkas atas (mockup UI): total karung & total unit kemasan siap jual
-    const elRK = document.getElementById('stokRingkasKarung');
-    if (elRK) {
-      const totalKg = merkList.reduce((a, m) => a + (stokKarung[m].sisaKg || 0), 0);
-      elRK.innerHTML = Math.round(totalKg / 50) + ' <span style="font-size:10px;color:var(--redup);font-weight:600;">sack · ±' +
-        Math.round(totalKg).toLocaleString('id-ID') + ' kg</span>';
-    }
+    // (Ringkas atas #stokRingkasKarung/#stokRingkasKemasan dicabut 4 Sep 2026 — id-nya
+    //  sudah tidak ada di markup sejak tiga gelombang; kode mati berpagar.)
     const elHK = document.getElementById('hitungStokKarung');
     if (elHK) elHK.textContent = merkList.length ? merkList.length + ' merk' : '';
     const stokKemasan = hitungStokKemasan();
-    const elRKem = document.getElementById('stokRingkasKemasan');
-    if (elRKem) {
-      const totalUnit = Object.keys(stokKemasan).reduce((a, k) => a + (stokKemasan[k].sisaUnit || 0), 0);
-      elRKem.innerHTML = totalUnit + ' <span style="font-size:10px;color:var(--redup);font-weight:600;">unit siap jual</span>';
-    }
     const kontKemasan = document.getElementById('daftarStokKemasan');
     const kemasanList = Object.keys(stokKemasan).filter(k => stokKemasan[k].sisaUnit !== 0);
     const elHKem = document.getElementById('hitungStokKemasan');
