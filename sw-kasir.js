@@ -49,7 +49,13 @@
 // WAJIB naik: tanpa ini HP pegawai tetap menyajikan darurat lama dari cache.
 // v22 (26 Agustus 2026): Fase 1 identitas — kasir & darurat menyuntik oleh+perangkat
 // ke tiap catatan. WAJIB naik supaya HP lama tidak menyajikan versi tanpa atribusi.
-const VERSI = 'kasir-v22';
+// v23 (5 September 2026): pembulatan KE ATAS Rp500 untuk TUNAI di kasir.html — LCD, layar
+// KEMBALIAN, struk WA, dan dokumen yang diantrekan memakai tagihan yang sudah dibulatkan
+// (field `pembulatan` menempel ke barang terakhir). WAJIB naik: aturan yang sama masuk
+// index.html pada push yang sama; dengan cache lama, kasir.html masih menagih Rp51.750
+// sementara layar owner menagih Rp52.000 untuk barang yang sama — dua pintu beda angka,
+// persis penyakit yang perubahan ini dibuat untuk menyembuhkan, dan diamnya sempurna.
+const VERSI = 'kasir-v23';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 
