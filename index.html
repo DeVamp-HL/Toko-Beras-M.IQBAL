@@ -3501,85 +3501,218 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   background:linear-gradient(180deg,rgba(226,205,166,.55),rgba(226,205,166,.18)); }
 #lembarStokMerk .sm-keran span.nol{ background:rgba(255,255,255,.07); }
 #lembarStokMerk .sm-daftar{ margin-top:4px; }
-/* --- KACA EMAS G2: Ringkasan 8a Karung & Jam --- */
-.ikhtisar-6a .ik8-papan{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-top:12px; flex-wrap:wrap; }
-.ikhtisar-6a .ik8-papan-kiri{ flex:1 1 200px; min-width:0; }
-/* Angka kas menyusut mengikuti lebar layar — jangan sampai angka terbesar halaman
-   justru terpotong tepi (kejadian di render pertama 390px). */
-.ikhtisar-6a .ik8-papan .kg-uang-kas{ font-size:clamp(26px, 9.2vw, 38px); margin:2px 0; }
-.ikhtisar-6a .ik8-netto{ text-align:right; flex:0 0 auto; max-width:38%; }
-.ikhtisar-6a .ik8-netto b{ font-family:var(--pf-serif); font-weight:600; font-size:13px; display:block; margin-top:4px; white-space:nowrap; }
-.ikhtisar-6a .ik8-netto b.naik{ color:var(--pf-hijau2); }
-.ikhtisar-6a .ik8-netto b.turun{ color:var(--pf-amber); }
-.ikhtisar-6a .ik8-sela{ margin-top:14px; display:block; }
-.ikhtisar-6a .ik8-ket{ display:block; font-style:italic; font-family:var(--pf-serif); font-size:10px; color:var(--pf-abu); margin:3px 0 7px; }
-.ikhtisar-6a .ik8-karung-wrap{ display:flex; gap:7px; }
-/* Karung sama besar — benda sentuh bukan tanda data; yang beda tinggi ISI-nya. */
-.ikhtisar-6a .ik8-karung{ position:relative; overflow:hidden; flex:1; min-width:44px; height:104px;
-  display:flex; flex-direction:column; justify-content:flex-end; gap:1px; padding:7px 6px;
-  border-radius:4px 4px 7px 7px; text-align:left; color:var(--teks);
-  background:linear-gradient(168deg,rgba(255,255,255,.045),rgba(255,255,255,.015));
-  border:1px solid var(--pf-tepi); border-bottom-color:rgba(0,0,0,.3); cursor:pointer; }
-.ikhtisar-6a .ik8-karung .isi{ position:absolute; left:0; right:0; bottom:0; height:var(--isi,0%);
-  background:linear-gradient(180deg,rgba(226,205,166,.30),rgba(226,205,166,.10)); pointer-events:none; }
-.ikhtisar-6a .ik8-karung.pilih{ border-color:rgba(226,205,166,.65); }
-.ikhtisar-6a .ik8-karung.pilih .isi{ background:linear-gradient(180deg,rgba(247,236,214,.42),rgba(194,166,120,.16)); }
-.ikhtisar-6a .ik8-karung u{ position:relative; text-decoration:none; font-family:ui-monospace,Menlo,monospace; font-size:9px; color:var(--pf-abu); }
-.ikhtisar-6a .ik8-karung b{ position:relative; font-size:10.5px; font-weight:700; }
-.ikhtisar-6a .ik8-karung:disabled{ opacity:.5; cursor:default; }
-.ikhtisar-6a .ik8-kantong{ margin-top:8px; padding:10px 14px; }
-.ikhtisar-6a .ik8-kantong-atas{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
-.ikhtisar-6a .ik8-kantong-nilai{ font-size:19px; }
-/* Jalannya hari — punggung jam tegak 05-19; simpul per jam; redup = saringan karung. */
-.ikhtisar-6a .ik8-jam-wrap{ position:relative; margin-top:4px; }
-.ikhtisar-6a .ik8-punggung{ position:absolute; top:6px; bottom:6px; left:31px; width:1px;
-  background:linear-gradient(180deg,rgba(226,205,166,.4),rgba(226,205,166,.08)); }
-.ikhtisar-6a .ik8-tick{ position:absolute; left:0; transform:translateY(-50%); }
-.ikhtisar-6a .ik8-tick i{ font-style:normal; font-family:ui-monospace,Menlo,monospace; font-size:8.5px; color:var(--pf-abu); }
-.ikhtisar-6a .ik8-penunjuk{ position:absolute; left:31px; width:0; border-left:1px dashed rgba(226,205,166,.3); }
-.ikhtisar-6a .ik8-simpul{ position:absolute; left:40px; right:0; transform:translateY(-50%);
-  display:flex; align-items:baseline; gap:7px; min-height:28px; padding:0 4px; border-radius:4px;
-  background:none; border:none; text-align:left; color:var(--teks); cursor:pointer;
-  transition:opacity var(--gerak-kecil) var(--kurva-sentuh); }
-.ikhtisar-6a .ik8-simpul .titik{ position:absolute; left:-12px; width:7px; height:7px; border-radius:99px;
-  background:var(--emas); box-shadow:0 0 7px rgba(226,205,166,.5); }
-.ikhtisar-6a .ik8-simpul .jm{ font-family:ui-monospace,Menlo,monospace; font-size:9px; color:var(--pf-abu); flex:0 0 auto; }
-.ikhtisar-6a .ik8-simpul b{ font-family:var(--pf-serif); font-weight:600; font-size:12.5px; }
-.ikhtisar-6a .ik8-simpul b.masuk{ color:var(--pf-hijau2); }
-.ikhtisar-6a .ik8-simpul b.keluar{ color:var(--pf-amber); }
-.ikhtisar-6a .ik8-simpul .cacah{ font-family:var(--pf-serif); font-style:italic; font-size:9px; color:var(--pf-abu); margin-left:auto; }
-.ikhtisar-6a .ik8-simpul.redup{ opacity:.25; }
-.ikhtisar-6a .ik8-tanpa-jam{ border-top:1px dashed rgba(226,205,166,.22); }
-.ikhtisar-6a .ik8-kini{ position:absolute; left:40px; transform:translateY(-50%); display:flex; align-items:center; gap:6px;
-  font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--emas); }
-.ikhtisar-6a .ik8-kini i{ width:7px; height:7px; border-radius:99px; background:var(--emas);
-  box-shadow:0 0 8px rgba(226,205,166,.7); animation:ik6Denyut 2.2s ease-in-out infinite; }
-/* Cukup dipantau: tiga petak; laba = wujud kesimpulan (kecil, tepi putus, ber-rincian) */
-.ikhtisar-6a .ik8-pantau{ display:flex; flex-direction:column; gap:7px; }
-.ikhtisar-6a .ik8-petak-pantau{ position:relative; overflow:hidden; display:flex; flex-direction:column; gap:2px;
-  padding:9px 12px; border-radius:4px; border:1px solid var(--pf-tepi); border-bottom-color:rgba(0,0,0,.28);
-  background:linear-gradient(168deg,rgba(255,255,255,.05),rgba(255,255,255,.018)); }
-.ikhtisar-6a .ik8-pantau-nilai{ font-size:18px; }
-.ikhtisar-6a .ik8-petak-pantau i{ font-style:italic; font-family:var(--pf-serif); font-size:9.5px; color:var(--pf-abu); }
-.ikhtisar-6a #ik8PetakLaba{ border-style:dashed; border-color:rgba(226,205,166,.28); background:none; }
-.ikhtisar-6a #ik8PetakLaba .kg-uang-laba{ border:none; padding:0; }
-.ikhtisar-6a #ik8PetakLaba .ik6-progres{ position:absolute; left:0; bottom:0; height:2px; width:0;
-  background:var(--emas); }
-/* Menuntut tindakan — terpisah dari pantau, bahasa oksida */
-.ikhtisar-6a .ik8-tangani-kepala{ display:flex; align-items:baseline; justify-content:space-between; margin-top:14px; }
-.ikhtisar-6a .ik8-tangani-kepala .oks{ color:var(--pf-amber); }
-.ikhtisar-6a .ik8-tangani-kepala b{ font-family:var(--pf-serif); font-weight:600; font-size:12px; color:var(--pf-amber); }
-.ikhtisar-6a .ik8-tangani{ display:flex; flex-direction:column; gap:7px; margin-top:6px; }
-.ikhtisar-6a .ik8-tangani-baris{ display:flex; align-items:center; gap:9px; min-height:44px; padding:7px 10px;
-  border-radius:4px; border:1px solid rgba(211,160,139,.35);
-  background:linear-gradient(168deg,rgba(217,166,147,.10),rgba(217,166,147,.03)); }
-.ikhtisar-6a .ik8-tangani-baris i{ flex:0 0 3px; align-self:stretch; border-radius:99px; background:var(--pf-amber); }
-.ikhtisar-6a .ik8-tangani-baris span{ flex:1; font-size:11px; line-height:1.4; }
-.ikhtisar-6a .ik8-tangani-baris button{ flex:0 0 auto; min-height:44px; min-width:44px; padding:0 12px;
-  border-radius:4px; font-size:9px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
-  background:none; border:1px solid rgba(211,160,139,.5); color:var(--pf-amber); }
-.ikhtisar-6a .ik8-beres{ font-family:var(--pf-serif); font-style:italic; font-size:11px; color:var(--pf-abu);
-  padding:10px 2px; }
+/* ═══ RINGKASAN 8a — Tambalan 01 "KARUNG & JAM" (6 Sep 2026) ═══════════════════
+   Empat jenis uang, empat wujud. Kas platina 44px di panel kaca (angka terukur),
+   omzet & margin sampanye 21px (angka dagang), laba bersih paling kecil bertepi
+   putus-putus dan WAJIB membawa potongannya (kesimpulan, bukan pengukuran) —
+   tersegel tahan-2-detik (keputusan O1). Piutang tidak muncul di sini — bukan kas.
+   Menggantikan CSS 8a G2 (nama kelas bertabrakan: karung/tick/simpul/tangani/ket). */
+.k6a .ik8-refraksi{
+  position:absolute; top:-40%; bottom:-40%; left:-30%; width:46%;
+  pointer-events:none; transform:skewX(-18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,250,240,.12),transparent);
+  animation:ik8Refraksi 7.5s ease-in-out infinite;
+}
+@keyframes ik8Refraksi{
+  0%{transform:translateX(-130%) skewX(-18deg)}
+  55%,100%{transform:translateX(330%) skewX(-18deg)}
+}
+@media (prefers-reduced-motion:reduce){ .k6a .ik8-refraksi{animation:none} }
+
+/* ── panel kas: satu-satunya yang pakai backdrop-filter ── */
+.k6a .ik8-kas{
+  position:relative; overflow:hidden; border-radius:5px; padding:16px 17px 15px; margin-top:12px;
+  background:linear-gradient(158deg,rgba(240,220,187,.2),rgba(240,220,187,.05) 42%,rgba(207,212,218,.09));
+  backdrop-filter:blur(14px) saturate(150%);
+  -webkit-backdrop-filter:blur(14px) saturate(150%);
+  border:1px solid rgba(240,220,187,.24);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42), inset 0 -1px 0 rgba(0,0,0,.4),
+             0 24px 48px -22px rgba(0,0,0,.85);
+}
+.k6a .ik8-label{
+  font:700 9px/1 -apple-system,system-ui; letter-spacing:.2em;
+  text-transform:uppercase; color:#b7bcc3;
+}
+.k6a .ik8-nkas{
+  font:600 44px/1.08 var(--pf-serif); margin-top:7px;
+  background:linear-gradient(180deg,#f7f8f9,#cfd4da 55%,#9aa0a8);
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent; color:#cfd4da;
+}
+.k6a .ik8-ket{
+  font:400 10.5px/1.55 -apple-system,system-ui; color:#a7adb5; margin-top:9px;
+}
+.k6a .ik8-grup{
+  font:800 9px/1 -apple-system,system-ui; letter-spacing:.22em;
+  text-transform:uppercase; color:#8f959d; padding:19px 3px 9px;
+}
+
+/* ── empat karung ──
+   Tinggi isi DAN label persen digerakkan SATU pembagi (porsi dari total kas),
+   faktor 1× — jangan dibesar-besarkan, itu merusak bacaan mutlaknya.
+   Tidak ada lantai minimum pada isian: lantai membuat 10% dan 7% jadi kembar.
+   Karung berisi kecil ditandai .ik8-dasar, 2px DI LUAR isian.               */
+.k6a .ik8-karung-baris{ display:flex; align-items:flex-end; gap:7px; height:153px; }
+.k6a .ik8-karung{
+  flex:1; min-width:0; height:100%; display:flex; flex-direction:column;
+  align-items:center; padding:0; background:none; border:0;
+  font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.k6a .ik8-karung:disabled{ opacity:.5; cursor:default; }
+.k6a .ik8-leher{
+  width:38%; height:13px; border-radius:5px 5px 0 0;
+  background:linear-gradient(180deg,rgba(226,205,166,.5),rgba(194,166,120,.28));
+}
+.k6a .ik8-badan{
+  position:relative; flex:1; width:100%; border-radius:6px 6px 11px 11px;
+  overflow:hidden; background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.08);
+  transition:border-color .18s ease, box-shadow .18s ease;
+}
+.k6a .ik8-dasar{
+  position:absolute; left:0; right:0; bottom:0; height:2px;
+  background:rgba(226,205,166,.34);
+}
+.k6a .ik8-isi{
+  position:absolute; left:0; right:0; bottom:0;
+  background:linear-gradient(180deg,rgba(226,205,166,.44),rgba(194,166,120,.24));
+  transition:height .3s cubic-bezier(.25,.9,.3,1);
+}
+.k6a .ik8-pct{
+  position:absolute; left:0; right:0; bottom:7px; text-align:center;
+  font:700 9.5px/1 var(--pf-serif); color:rgba(253,246,231,.72);
+}
+.k6a .ik8-pct.di-isian{ color:#2a1f13; }
+.k6a .ik8-karung.on .ik8-leher{
+  background:linear-gradient(180deg,#fdf6e7,rgba(226,205,166,.5));
+}
+.k6a .ik8-karung.on .ik8-badan{
+  background:rgba(226,205,166,.1); border-color:rgba(226,205,166,.55);
+  box-shadow:0 0 22px -6px rgba(226,205,166,.5);
+}
+.k6a .ik8-karung.on .ik8-isi{ background:linear-gradient(180deg,#fdf6e7,#c2a678); }
+.k6a .ik8-karung.on .ik8-pct:not(.di-isian){ color:#fdf6e7; }
+.k6a .ik8-karung-label{ display:flex; gap:7px; margin-top:8px; }
+.k6a .ik8-karung-label > span{
+  flex:1; min-width:0; display:flex; flex-direction:column;
+  gap:4px; align-items:center;
+}
+.k6a .ik8-knama{
+  font:700 8.5px/1 -apple-system,system-ui; letter-spacing:.1em;
+  text-transform:uppercase; color:#8f959d;
+}
+.k6a .ik8-knilai{ font:600 10.5px/1 var(--pf-serif); color:rgba(232,228,220,.62); }
+.k6a .ik8-klabel-on .ik8-knama{ color:#e2cda6; }
+.k6a .ik8-klabel-on .ik8-knilai{ color:#fdf6e7; }
+
+/* ── kartu kaca umum ── */
+.k6a .ik8-kartu{
+  position:relative; overflow:hidden; padding:14px 15px; border-radius:15px;
+  background:linear-gradient(158deg,rgba(255,255,255,.07),rgba(255,255,255,.028));
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 20px 44px -26px rgba(0,0,0,.8), inset 0 1px 0 rgba(253,246,231,.07);
+}
+.k6a .ik8-nota{
+  font:400 11px/1.55 -apple-system,system-ui; margin-top:12px;
+  padding:11px 12px; border-radius:13px; color:#8f959d;
+  background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08);
+}
+.k6a .ik8-nota.sorot{
+  background:rgba(226,205,166,.09); border-color:rgba(226,205,166,.3); color:#f0e2c4;
+}
+
+/* ── jam toko tegak: SATU simpul per jam (54–79 kejadian/hari), + slot lepas
+   "Tanpa jam" & "Kredit" di dasar ── */
+.k6a .ik8-jam{ position:relative; display:flex; gap:11px; }
+.k6a .ik8-tick-wrap{ position:relative; flex:none; width:24px; }
+.k6a .ik8-tick-garis{
+  position:absolute; left:18px; top:4px; bottom:0; width:1px;
+  background:linear-gradient(180deg,rgba(226,205,166,.5),rgba(226,205,166,.12));
+}
+.k6a .ik8-tick{
+  position:absolute; left:0; font:600 9px/1 var(--pf-serif); color:#8f959d;
+}
+.k6a .ik8-sekarang{
+  position:absolute; left:14px; width:9px; height:9px; border-radius:99px;
+  background:#fdf6e7; box-shadow:0 0 10px rgba(253,246,231,.7);
+  animation:ik6Denyut 2.2s ease-in-out infinite;
+}
+.k6a .ik8-simpul-wrap{ position:relative; flex:1; min-width:0; }
+.k6a .ik8-simpul{
+  position:absolute; left:0; right:0; display:flex; align-items:center; gap:9px;
+  min-height:44px; padding:6px 10px; border-radius:12px; font-family:inherit;
+  text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent; color:inherit;
+  background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08);
+  transition:background .18s ease, border-color .18s ease;
+}
+.k6a .ik8-simpul.lepas{ border:1px dashed rgba(226,205,166,.28); }
+.k6a .ik8-simpul.on{
+  background:rgba(226,205,166,.14); border-color:rgba(226,205,166,.46); border-style:solid;
+}
+.k6a .ik8-standa{ flex:none; width:3px; height:22px; border-radius:2px; background:#e2cda6; }
+.k6a .ik8-standa.keluar{ background:#c9705e; }
+.k6a .ik8-standa.tanpa{ background:rgba(207,212,218,.44); }
+.k6a .ik8-sisi{ flex:1; min-width:0; }
+.k6a .ik8-sjudul{ display:block; font:600 11.5px/1.25 -apple-system,system-ui; color:#e8e4dc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.k6a .ik8-sket{ display:block; font:400 9.5px/1.3 -apple-system,system-ui; color:#8f959d; margin-top:2px; }
+.k6a .ik8-snilai{ flex:none; font:600 11px/1 var(--pf-serif); color:#e2cda6; }
+.k6a .ik8-snilai.keluar{ color:#e8c3b2; }
+.k6a .ik8-snilai.tanpa{ color:#8f959d; }
+.k6a .ik8-jamnota{
+  position:relative; font:400 11px/1.55 -apple-system,system-ui; margin-top:14px;
+  padding-top:12px; border-top:1px solid rgba(255,255,255,.08); color:#8f959d;
+}
+
+/* ── TANGANI ── */
+.k6a .ik8-tangani{ border-color:rgba(201,112,94,.38) !important; }
+.k6a .ik8-trow{
+  display:flex; align-items:center; gap:11px; padding:9px 0;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.k6a .ik8-trow:last-child{ border-bottom:0; }
+.k6a .ik8-ttitik{ flex:none; width:6px; height:6px; border-radius:99px; background:#e2cda6; }
+.k6a .ik8-ttitik.merah{ background:#c9705e; }
+.k6a .ik8-tteks{ flex:1; min-width:0; font:400 11.5px/1.45 -apple-system,system-ui; color:#e8e4dc; }
+.k6a .ik8-pil{
+  flex:none; min-height:44px; padding:0 13px; border-radius:99px;
+  font:700 9.5px/1 -apple-system,system-ui; letter-spacing:.1em; text-transform:uppercase;
+  background:transparent; border:1px solid rgba(226,205,166,.3); color:#e2cda6;
+  cursor:pointer;
+}
+
+/* ── PANTAU ── */
+.k6a .ik8-mini-baris{ display:flex; gap:8px; }
+.k6a .ik8-mini{
+  flex:1; min-width:0; position:relative; overflow:hidden; border-radius:15px;
+  padding:12px 13px 11px;
+  background:linear-gradient(165deg,rgba(255,255,255,.06),rgba(255,255,255,.022));
+  border:1px solid rgba(226,205,166,.3);
+}
+.k6a .ik8-nomzet{
+  font:600 21px/1.12 var(--pf-serif); margin-top:6px;
+  background:linear-gradient(180deg,#fdf6e7,#eadcbd 55%,#c9b085);
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent; color:#fdf6e7;
+}
+.k6a .ik8-nmargin{ font:600 21px/1.12 var(--pf-serif); margin-top:6px; color:#e2cda6; }
+.k6a .ik8-spark{ display:flex; align-items:flex-end; gap:2px; height:20px; margin-top:9px; }
+.k6a .ik8-spark > i{ flex:1; border-radius:2px 2px 0 0; background:rgba(226,205,166,.24); }
+.k6a .ik8-spark > i.kini{ background:linear-gradient(180deg,#fdf6e7,#e2cda6); }
+
+/* laba bersih: paling kecil, tepi PUTUS-PUTUS, wajib bawa potongannya; tersegel O1 */
+.k6a .ik8-laba{
+  position:relative; overflow:hidden; margin-top:8px; padding:13px 14px; border-radius:15px;
+  background:rgba(255,255,255,.03); border:1px dashed rgba(207,212,218,.3);
+  -webkit-user-select:none; user-select:none;
+}
+.k6a .ik8-laba-atas{ display:flex; align-items:baseline; justify-content:space-between; gap:9px; }
+.k6a .ik8-nlaba{ flex:none; font:600 19px/1.1 var(--pf-serif); color:#cfd4da; }
+.k6a .ik8-nlaba.minus{ color:#e8c3b2; }
+.k6a .ik8-prow{ display:flex; align-items:baseline; gap:9px; min-height:30px; }
+.k6a .ik8-pnama{ flex:1; min-width:0; font:400 10.5px/1.45 -apple-system,system-ui; color:#8f959d; }
+.k6a .ik8-pnilai{ flex:none; font:600 11.5px/1 var(--pf-serif); color:#e8c3b2; }
+.k6a .ik8-laba.segel .ik8-nlaba, .k6a .ik8-laba.segel .ik8-pnilai{ color:#8f959d; letter-spacing:.06em; }
+.k6a .ik8-progres{ position:absolute; left:0; bottom:0; height:2px; width:0; background:var(--emas); }
 /* --- KACA EMAS G2: Laba --- */
 @media (min-width:700px){ #labaKaca{ display:none; } }
 @media (max-width:699.98px){
@@ -5147,43 +5280,68 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         </div>
         <span class="ik6-sambung" id="ik6Sambung" title=""><i></i><b>menyambung</b></span>
       </div>
-      <!-- KACA EMAS G2 — 8a "Karung & Jam" (Ringkasan - Arah Desain). Papan kas =
-           angka terbesar (titik + gerakan sesudahnya, "menurut catatan"); EMPAT KARUNG
-           sama besar (benda sentuh bukan tanda data — yang beda tinggi isinya, diukur
-           terhadap kantong terbesar, dari nilai SAAT TITIK); karung dan garis waktu
-           saling bicara lewat sorot/redup kelas CSS SAJA — hasil saringan TIDAK PERNAH
-           dijumlahkan jadi angka. Menggantikan tabung patokan + tumpuk 3 kartu +
-           karusel Denyut (patokan RATA7/TERBAIK & geser-kartu pensiun dari mobile —
-           tidak ada padanannya di 8a; intip laba O1 pindah ke petak PANTAU). -->
-      <div class="kg-panel ik8-papan" id="ik8Papan">
-        <div class="ik8-papan-kiri">
-          <div class="kg-label">Kas &middot; rupiah &middot; menurut catatan</div>
-          <div class="kg-uang-kas" id="ik8Kas">&mdash;</div>
-          <div class="kg-rincian" id="ik8KasKet"></div>
-        </div>
-        <div class="ik8-netto">
-          <div class="kg-label">Netto hari ini</div>
-          <b id="ik8Netto">&mdash;</b>
+      <!-- RINGKASAN 8a — Tambalan 01 "Karung & Jam" (6 Sep 2026, dari prototipe Claude
+           Design pemilik). Empat jenis uang, empat wujud: kas platina 44px di panel kaca;
+           omzet & margin sampanye; laba bersih paling kecil, bertepi putus, WAJIB membawa
+           potongannya dan tersegel tahan-2-detik (O1). Karung = nilai saat titik kas
+           (saldo per kantong hari ini tidak ada di sistem); jam toko = SATU simpul per jam;
+           kredit tidak masuk karung mana pun. Menggantikan 8a G2 (papan+kantong+Jalannya
+           hari+pantau) dan trio stok. Markup lama pra-kaca di bawah tetap di DOM. -->
+      <div class="ik8-kas">
+        <span class="ik8-refraksi"></span>
+        <div style="position:relative">
+          <div class="ik8-label">Uang kas sekarang</div>
+          <div class="ik8-nkas" id="ik8Kas">&mdash;</div>
+          <div class="ik8-ket" id="ik8KasKet"></div>
         </div>
       </div>
-      <div class="kg-label ik8-sela" id="ik8KarungLabel">Empat karung</div>
-      <i class="ik8-ket">ketuk satu karung untuk menyaring jamnya &middot; tinggi = skala akar porsi (karung kecil tetap terbaca); angka %-nya porsi sebenarnya</i>
-      <div class="ik8-karung-wrap" id="ik8KarungWrap"></div>
-      <div class="kg-panel ik8-kantong" id="ik8Kantong">
-        <div class="ik8-kantong-atas"><span class="kg-label" id="ik8KantongNama"></span><b class="kg-uang-dagang ik8-kantong-nilai" id="ik8KantongNilai"></b></div>
-        <i class="ik8-ket" id="ik8KantongKet"></i>
+
+      <div class="ik8-grup">Empat karung &middot; di mana uangnya</div>
+      <div class="ik8-karung-baris" id="ik8KarungBaris"></div>
+      <div class="ik8-karung-label" id="ik8KarungLabel"></div>
+      <div class="ik8-nota" id="ik8KarungNota"></div>
+
+      <div class="ik8-grup">Jam toko &middot; <span id="ik8RentangJam">05.00&ndash;19.00</span></div>
+      <div class="ik8-kartu">
+        <span class="ik8-refraksi"></span>
+        <div class="ik8-jam">
+          <div class="ik8-tick-wrap" id="ik8TickWrap"><span class="ik8-tick-garis"></span></div>
+          <div class="ik8-simpul-wrap" id="ik8SimpulWrap"></div>
+        </div>
+        <div class="ik8-jamnota" id="ik8JamNota"></div>
       </div>
-      <div id="ik8HariWrap">
-        <div class="kg-label ik8-sela">Jalannya hari</div>
-        <i class="ik8-ket" id="ik8SaringKet"></i>
-        <div class="ik8-jam-wrap" id="ik8JamWrap"></div>
+
+      <div class="ik8-grup">Tangani &middot; <span id="ik8TanganiCacah">0 hal</span></div>
+      <div class="ik8-kartu ik8-tangani" id="ik8Tangani"></div>
+
+      <div class="ik8-grup">Pantau</div>
+      <div class="ik8-mini-baris">
+        <div class="ik8-mini">
+          <span class="ik8-refraksi"></span>
+          <div style="position:relative">
+            <div class="ik8-label">Omzet hari ini</div>
+            <div class="ik8-nomzet" id="ik8Omzet">Rp0</div>
+            <div class="ik8-spark" id="ik8Spark"></div>
+          </div>
+        </div>
+        <div class="ik8-mini">
+          <span class="ik8-refraksi"></span>
+          <div style="position:relative">
+            <div class="ik8-label">Margin kotor</div>
+            <div class="ik8-nmargin" id="ik8Margin">Rp0</div>
+            <div class="ik8-ket" id="ik8MarginPct"></div>
+          </div>
+        </div>
       </div>
-      <div class="kg-label ik8-sela">Cukup dipantau</div>
-      <div class="ik8-pantau" id="ik8Pantau"></div>
-      <div class="ik8-tangani-kepala"><span class="kg-label oks">Menuntut tindakan</span><b id="ik8NTangani"></b></div>
-      <div class="ik8-tangani" id="ik8Tangani"></div>
-      <div class="ik6-stok3" id="ik6Stok3"></div>
-      <div class="ik6-kosong" id="ik6Kosong" style="display:none;"></div>
+      <div class="ik8-laba segel" id="ik8LabaBlok">
+        <div class="ik8-laba-atas">
+          <span class="ik8-label">Laba bersih hari ini</span>
+          <span class="ik8-nlaba" id="ik8Laba">Rp &bull;&bull;&bull;&bull;&bull;&bull;</span>
+        </div>
+        <div id="ik8Potongan" style="margin-top:11px"></div>
+        <div class="ik8-ket" id="ik8LabaKet"></div>
+        <span class="ik8-progres" id="ik8Progres"></span>
+      </div>
     </div>
 
     <!-- Versi MOBILE — porting desain final 6 Agu 2026: SATU angka utama per layar.
@@ -23008,6 +23166,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // pun ikut mereset, dan keranjang BERIKUTNYA yang sedang disusun buru-buru lenyap.
   // (Tertangkap saat uji beruntun G4.)
   window.ik8PilihKarung = ik8PilihKarung;
+  window.ik8PilihSimpul = ik8PilihSimpul;
   window.labaPilihKeping = labaPilihKeping;
   window.labaPilihZona = labaPilihZona;
   window.pilihZonaArusKas = pilihZonaArusKas;
@@ -23162,13 +23321,20 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       });
     } catch (e) { /* pemanis — tidak boleh mengganggu angka */ }
   }
-  // ============ IKHTISAR 6a — tabung, tumpuk kartu, Denyut, grafik jam ============
-  // MURNI PEMBACA: semua angka dari fungsi hitung lama (ambilPenjualan,
-  // daftarGerakanKas, hitungStok*, ambilTitikKas). Tidak ada rumus uang baru.
-  let _ik6Perhatian = [], _ik8Karung = 'laci';
+  // ============ RINGKASAN 8a — Tambalan 01 "Karung & Jam" (6 Sep 2026) ============
+  // MURNI PEMBACA: semua angka dari mesin lama — ik6KasSekarang, ambilTitikKas,
+  // daftarGerakanKas, hitungLabaBersihRentang, _ik6Perhatian. Tidak ada rumus uang baru.
+  // ATURAN YANG DIJAGA, jangan dilonggarkan:
+  //  · Kredit BUKAN kas — ember `ke:null`, tidak masuk karung mana pun, tak dijumlah ke kas.
+  //  · Laba bersih SELALU margin − potongan yang dipajang (penjaga: harus = mesin Laba).
+  //  · Tinggi karung & label persen dari SATU pembagi, faktor 1×; karung = nilai saat titik.
+  //  · Sorot karung↔kejadian dari SATU keadaan; memilih yang satu menolkan yang lain.
+  //  · Jam toko: SATU simpul per jam (54–79 kejadian/hari) + slot lepas Tanpa jam & Kredit.
+  let _ik6Perhatian = [], _ik8Karung = null, _ik8Simpul = null, _ik8SegelTerpasang = false;
   let _ik6LabaSampai = 0, _ik6TahanTimer = null, _ik6TahanMulai = 0, _ik6MaskTimer = null;
-  const IK6_JAM_A = 5, IK6_JAM_B = 19;   // jam toko (JAM_BUKA_SISTEM..JAM_TUTUP_SISTEM)
-  function ik6Rp(n) { return (n < 0 ? '\u2212' : '') + 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID'); }
+  const IK8_URUT = ['laci', 'rekening', 'amplop', 'brankas'];
+  const IK8_NAMA = { laci: 'Laci', rekening: 'Rekening', amplop: 'Amplop', brankas: 'Brankas' };
+  function ik6Rp(n) { return (n < 0 ? '−' : '') + 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID'); }
 
   function ik6KasSekarang() {
     // Cermin persis hero Buku Kas: saldo titik + gerakan SESUDAH titik. null = belum bisa dihitung.
@@ -23179,267 +23345,305 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     return saldo;
   }
 
+  // Omzet 7 hari terakhir — SATU loop untuk grafik platina (segarkanVisualRingkasan)
+  // dan tujuh batang PANTAU Ringkasan 8a. Omzet penuh (termasuk kredit), sama dengan dulu.
+  function omzet7Hari() {
+    const semua = ambilPenjualan();
+    const hariSingkat = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'];
+    const hariIni = new Date(); hariIni.setHours(12, 0, 0, 0);
+    const hari7 = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(hariIni); d.setDate(d.getDate() - i);
+      hari7.push({ iso: tanggalLokalIso(d), label: hariSingkat[d.getDay()], total: 0 });
+    }
+    semua.forEach(p => { const h = hari7.find(x => x.iso === p.tanggal); if (h) h.total += (p.hargaTotal || 0); });
+    return hari7;
+  }
+
+  // Kejadian hari ini → EMBER: satu per jam (jamA..jamB), satu "Tanpa jam", satu "Kredit".
+  // Atribusi kantong (tidak ada field kantong di dokumen mana pun — aturan yang sama
+  // dengan G2): keluar → laci; masuk berlabel '· QRIS' → rekening, masuk lain → laci.
+  // Amplop & brankas tidak pernah punya kejadian per jam (diisi Tutup Hari) — jujur.
+  function ik8Ember(gerakan, kredit, jamA, jamB) {
+    const baru = (jenis, jam) => ({ jenis, jam, n: 0, masuk: 0, keluar: 0, ke: {}, nPer: {}, contoh: '', nama: [] });
+    const isi = (e, r) => {
+      e.n++;
+      if (r.keluar > 0) { e.keluar += r.keluar; e.ke.laci = 1; e.nPer.laci = (e.nPer.laci || 0) + 1; }
+      if (r.masuk > 0) {
+        e.masuk += r.masuk;
+        const kant = (r.label || '').indexOf('· QRIS') >= 0 ? 'rekening' : 'laci';
+        e.ke[kant] = 1; e.nPer[kant] = (e.nPer[kant] || 0) + 1;
+      }
+      if (!e.contoh) e.contoh = r.label || '';
+    };
+    const perJam = {};
+    let tanpa = null;
+    gerakan.forEach(r => {
+      const h = r.jam ? parseInt(String(r.jam).slice(0, 2), 10) : NaN;
+      if (isNaN(h)) { tanpa = tanpa || baru('tanpa', null); isi(tanpa, r); return; }
+      const hj = Math.min(jamB, Math.max(jamA, h));
+      perJam[hj] = perJam[hj] || baru('jam', hj);
+      isi(perJam[hj], r);
+    });
+    const daftar = Object.keys(perJam).map(Number).sort((a, b) => a - b).map(h => perJam[h]);
+    if (tanpa) daftar.push(tanpa);
+    if (kredit.length) {
+      const k = baru('kredit', null);
+      k.ke = null;                                   // kredit BUKAN kas — tidak masuk karung mana pun
+      k.n = kredit.length;
+      k.masuk = kredit.reduce((a, p) => a + (p.hargaTotal || 0), 0);   // nilai bon (informasi), bukan kas
+      k.nama = Array.from(new Set(kredit.map(p => (p.namaPelanggan || '').trim()).filter(Boolean)));
+      daftar.push(k);
+    }
+    return daftar;
+  }
+
+  // Satu objek data untuk seluruh layar — semua dari mesin lama.
+  function ik8Data() {
+    const iso = tanggalLokalIso();
+    const t = ambilTitikKas();
+    const L = hitungLabaBersihRentang(iso, iso);   // omzetPenuh/omzetHitung/margin + harianToko/jatahBulanan/hapusBuku/susutStok/labaBersih
+    const gerakan = daftarGerakanKas().filter(r => r.t === iso);                       // kredit sudah dibuang di sumbernya
+    const kredit = ambilPenjualan().filter(p => p.tanggal === iso && caraBayarKunci(p) === 'kredit');
+    const potongan = [
+      { nama: 'Belanja toko hari ini', rp: L.harianToko || 0 },
+      { nama: 'Jatah biaya bulanan', rp: L.jatahBulanan || 0 }
+    ];
+    if (L.hapusBuku) potongan.push({ nama: 'Hapus buku piutang', rp: L.hapusBuku });
+    if (L.susutStok) potongan.push({ nama: 'Susut & selisih stok', rp: -L.susutStok });   // susut negatif = laba turun
+    return {
+      kas: ik6KasSekarang(), titik: t,
+      karung: { laci: t ? (t.laci || 0) : 0, rekening: t ? (t.rekening || 0) : 0, amplop: t ? (t.amplop || 0) : 0, brankas: t ? (t.brankas || 0) : 0 },
+      jamBuka: JAM_BUKA_SISTEM, jamTutup: JAM_TUTUP_SISTEM,
+      kejadian: ik8Ember(gerakan, kredit, JAM_BUKA_SISTEM, JAM_TUTUP_SISTEM),
+      tangani: _ik6Perhatian,
+      omzet: L.omzetPenuh || 0, omzetHitung: L.omzetHitung || 0, margin: L.margin || 0,
+      omzet7: omzet7Hari().map(h => h.total),
+      potongan, L
+    };
+  }
+
+  // Sorot dari SATU keadaan: karung terpilih menyalakan embernya; ember terpilih
+  // menyalakan karungnya. Keduanya saling meniadakan.
+  function ik8KarungNyala(kej) {
+    const s = {};
+    if (_ik8Karung) s[_ik8Karung] = 1;
+    else if (_ik8Simpul !== null && kej[_ik8Simpul] && kej[_ik8Simpul].ke) Object.keys(kej[_ik8Simpul].ke).forEach(k => { s[k] = 1; });
+    return s;
+  }
+  function ik8PilihKarung(id) {
+    if (!IK8_NAMA[id]) return;
+    _ik8Karung = (_ik8Karung === id) ? null : id;
+    _ik8Simpul = null;
+    tampilkanIkhtisar6a();
+  }
+  function ik8PilihSimpul(i) {
+    i = parseInt(i, 10);
+    if (isNaN(i)) return;
+    _ik8Simpul = (_ik8Simpul === i) ? null : i;
+    _ik8Karung = null;
+    tampilkanIkhtisar6a();
+  }
+
   function tampilkanIkhtisar6a() {
     try {
       const wrap = document.querySelector('.ikhtisar-6a');
       if (!wrap || window.matchMedia('(min-width: 700px)').matches) return;
       const kini = new Date();
       const jamKini = kini.getHours();
+      const pad2 = j => (j < 10 ? '0' : '') + j;
       const salam = jamKini < 11 ? 'Selamat pagi' : jamKini < 15 ? 'Selamat siang' : jamKini < 19 ? 'Selamat sore' : 'Selamat malam';
       document.getElementById('ik6Salam').textContent = salam + ', Iqbal';
       document.getElementById('ik6Sub').textContent =
-        NAMA_HARI[kini.getDay()] + ', ' + kini.getDate() + ' ' + BULAN_SINGKAT[kini.getMonth()] + ' · buka 05–19';
+        NAMA_HARI[kini.getDay()] + ', ' + kini.getDate() + ' ' + BULAN_SINGKAT[kini.getMonth()]
+        + ' · buka ' + pad2(JAM_BUKA_SISTEM) + '–' + pad2(JAM_TUTUP_SISTEM);
 
-      const hariIniIso = tanggalLokalIso();
-      const semua = ambilPenjualan();
-      const trxHariIni = semua.filter(x => x.tanggal === hariIniIso);
-      const omzet = trxHariIni.reduce((a, x) => a + (x.hargaTotal || 0), 0);
-      let margin = 0, bolong = 0, omzetBolong = 0;
-      trxHariIni.forEach(x => {
-        if (x.hppTotalSaatJual > 0) margin += (x.hargaTotal || 0) - x.hppTotalSaatJual;
-        else { bolong++; omzetBolong += (x.hargaTotal || 0); }
-      });
-      const kas = ik6KasSekarang();
-      const gerakan = daftarGerakanKas().filter(r => r.t === hariIniIso);
-      const masukHariIni = gerakan.reduce((a, r) => a + r.masuk, 0);
-      const keluarHariIni = gerakan.reduce((a, r) => a + r.keluar, 0);
+      const D = ik8Data();
+      const kej = D.kejadian;
+      const t = D.titik;
+      const namaKe = ke => IK8_URUT.filter(k => ke && ke[k]).map(k => IK8_NAMA[k]).join(' & ');   // urutan tetap: Laci & Rekening
 
-      // ----- papan kas: angka terbesar, "menurut catatan" (titik + gerakan sesudahnya) -----
-      document.getElementById('ik8Kas').textContent = kas === null ? '—' : ik6Rp(kas);
-      document.getElementById('ik8KasKet').textContent = kas === null
+      /* ── panel kas ── */
+      document.getElementById('ik8Kas').textContent = D.kas === null ? '—' : ik6Rp(D.kas);
+      document.getElementById('ik8KasKet').textContent = D.kas === null
         ? 'titik kas belum disetel — isi lewat Arus Kas'
-        : 'empat kantong + gerakan sesudah titik · kredit tidak dihitung';
-      const netto = masukHariIni - keluarHariIni;
-      const elNetto = document.getElementById('ik8Netto');
-      elNetto.textContent = (netto >= 0 ? '+' : '−') + 'Rp' + Math.abs(Math.round(netto)).toLocaleString('id-ID');
-      elNetto.className = netto >= 0 ? 'naik' : 'turun';
+        : 'menurut catatan · titik ' + formatTanggal(t.tanggal) + ' + gerakan sesudahnya · kredit tidak dihitung';
 
-      // ----- empat karung: nilai SAAT TITIK ("menurut hitungan {tanggal}") -----
-      // Tinggi isi & label persen dari VARIABEL YANG SAMA; karung sama besar.
-      const t = ambilTitikKas();
-      const K_NAMA = { laci: 'Laci', rekening: 'Rekening', amplop: 'Amplop', brankas: 'Brankas' };
-      const K_KET = {
-        laci: 'Uang jualan yang belum disetor — tunai keluar-masuk lewat sini.',
-        rekening: 'Hasil QRIS dan transfer. Cocokkan dengan mutasi bank.',
-        amplop: 'Disisihkan tiap malam di langkah 1 Tutup Hari — diisi saat Tutup Hari.',
-        brankas: 'Disimpan di luar laci. Jarang bergerak.'
-      };
-      document.getElementById('ik8KarungLabel').textContent = t
-        ? 'Empat karung · menurut hitungan ' + formatTanggal(t.tanggal)
-        : 'Empat karung · titik kas belum disetel';
-      const nilaiK = { laci: t ? (t.laci || 0) : 0, rekening: t ? (t.rekening || 0) : 0,
-        amplop: t ? (t.amplop || 0) : 0, brankas: t ? (t.brankas || 0) : 0 };
-      const maksK = Math.max(1, nilaiK.laci, nilaiK.rekening, nilaiK.amplop, nilaiK.brankas);
-      // PEMERIKSAAN RENDER PERTAMA (prompt pemilik): kas nyata timpang — brankas 89-100%,
-      // tiga karung lain rata tanah. Dasar ukur diganti SKALA AKAR: tinggi = akar(porsi),
-      // label % tetap porsi sebenarnya, dan keterangan di atas menyatakannya. SATU
-      // variabel (porsi) menggerakkan keduanya. Dasar "kebiasaan karung sendiri" dicoba
-      // di atas kertas dan ditolak: brankas baru 3 malam, maks laci tercemar malam-malam
-      // awal 50 jt — kebiasaannya belum ada.
-      document.getElementById('ik8KarungWrap').innerHTML = ['laci', 'rekening', 'amplop', 'brankas'].map(k => {
-        const porsi = nilaiK[k] / maksK;
-        const isi = Math.max(4, Math.round(Math.sqrt(porsi) * 100));
-        const pct = t ? Math.round(porsi * 100) + '%' : '—';
-        return '<button type="button" class="ik8-karung' + (k === _ik8Karung ? ' pilih' : '') + '" data-k="' + k + '"'
-          + (t ? '' : ' disabled') + ' onclick="ik8PilihKarung(\'' + k + '\')">'
-          + '<span class="isi" style="--isi:' + (t ? isi : 0) + '%;" aria-hidden="true"></span>'
-          + '<u>' + pct + '</u><b>' + K_NAMA[k] + '</b></button>';
+      /* ── empat karung: porsi dipakai untuk tinggi DAN label (satu pembagi). Ambang tinta
+         dari geometri labelnya (7px dari dasar + tinggi baris 10px pada tabung 153px). ── */
+      const TABUNG_PX = 153, AMBANG = (7 + 10) / TABUNG_PX * 100;
+      const tot = IK8_URUT.reduce((a, id) => a + (D.karung[id] || 0), 0) || 1;
+      const nyala = ik8KarungNyala(kej);
+      document.getElementById('ik8KarungBaris').innerHTML = IK8_URUT.map(id => {
+        const rp = D.karung[id] || 0;
+        const porsi = t ? rp / tot * 100 : 0;
+        return '<button type="button" class="ik8-karung' + (nyala[id] ? ' on' : '') + '"' + (t ? '' : ' disabled')
+          + ' onclick="ik8PilihKarung(\'' + id + '\')" aria-label="' + IK8_NAMA[id] + ' ' + ik6Rp(rp) + '">'
+          + '<span class="ik8-leher"></span>'
+          + '<span class="ik8-badan"><span class="ik8-dasar"></span>'
+          +   '<span class="ik8-isi" style="height:' + porsi.toFixed(1) + '%"></span>'
+          +   '<span class="ik8-pct' + (porsi >= AMBANG ? ' di-isian' : '') + '">' + (t ? Math.round(porsi) + '%' : '—') + '</span>'
+          + '</span></button>';
       }).join('');
-      const elKN = document.getElementById('ik8KantongNama');
-      const elKV = document.getElementById('ik8KantongNilai');
-      const elKK = document.getElementById('ik8KantongKet');
-      if (t) {
-        elKN.textContent = K_NAMA[_ik8Karung];
-        elKV.textContent = ik6Rp(nilaiK[_ik8Karung]);
-        elKK.textContent = K_KET[_ik8Karung] + ' · menurut hitungan ' + formatTanggal(t.tanggal);
+      document.getElementById('ik8KarungLabel').innerHTML = IK8_URUT.map(id =>
+        '<span' + (nyala[id] ? ' class="ik8-klabel-on"' : '') + '>'
+        + '<span class="ik8-knama">' + IK8_NAMA[id] + '</span>'
+        + '<span class="ik8-knilai">' + (t ? ik6Rp(D.karung[id] || 0) : '—') + '</span></span>').join('');
+      const notaK = document.getElementById('ik8KarungNota');
+      const basis = t ? 'menurut hitungan ' + formatTanggal(t.tanggal) : '';
+      if (!t) {
+        notaK.className = 'ik8-nota';
+        notaK.textContent = 'Titik kas belum disetel — isi lewat kartu Cocokkan Kas di Arus Kas. Karung terisi sesudahnya.';
+      } else if (_ik8Karung) {
+        const id = _ik8Karung;
+        const n = kej.reduce((a, e) => a + ((e.nPer && e.nPer[id]) || 0), 0);   // MENCACAH, tidak menjumlah rupiah
+        notaK.className = 'ik8-nota sorot';
+        notaK.textContent = IK8_NAMA[id] + ' berisi ' + ik6Rp(D.karung[id]) + ' (' + basis + ') · '
+          + (id === 'amplop' || id === 'brankas'
+            ? 'tidak ada kejadian per jam — diisi saat Tutup Hari.'
+            : n + ' kejadian hari ini menyentuhnya — disorot di jam toko.');
+      } else if (_ik8Simpul !== null && kej[_ik8Simpul]) {
+        const e = kej[_ik8Simpul];
+        notaK.className = 'ik8-nota sorot';
+        notaK.textContent = e.ke
+          ? 'Karung yang menyala: ' + namaKe(e.ke) + ' — isinya ' + basis + '.'
+          : 'Kredit tidak masuk karung mana pun — nol karung menyala.';
       } else {
-        elKN.textContent = 'Titik kas';
-        elKV.textContent = '—';
-        elKK.textContent = 'Titik kas belum disetel — isi lewat kartu Cocokkan Kas di Arus Kas.';
+        notaK.className = 'ik8-nota';
+        notaK.textContent = 'Isi karung ' + basis + '; angka kas di atas sudah ditambah gerakan sesudahnya. '
+          + 'Keempat karung sama besar — tinggi isinya digerakkan porsi yang sama dengan angka persennya. '
+          + 'Ketuk satu karung untuk melihat kejadian mana yang mengisinya.';
       }
 
-      // ----- Jalannya hari: kejadian duduk pada jamnya, DIKELOMPOKKAN PER JAM -----
-      // 63–79 trx/hari — 70 titik di satu garis tak terbaca (pemeriksaan render pertama
-      // yang diminta prompt): satu baris per jam, cacah kejadian ikut ditulis.
-      // Atribusi kantong untuk saringan: keluar / masuk-tunai -> laci; label '· QRIS'
-      // -> rekening; amplop & brankas tidak pernah punya kejadian per jam (jujur).
-      const adaIsi = trxHariIni.length > 0 || gerakan.length > 0;
-      document.getElementById('ik8HariWrap').style.display = adaIsi ? 'block' : 'none';
-      if (adaIsi) {
-        const nJam = IK6_JAM_B - IK6_JAM_A + 1;
-        const ember = {};
-        let tanpaJam = null;
-        gerakan.forEach(r => {
-          let h = r.jam ? parseInt(r.jam.slice(0, 2), 10) : NaN;
-          let kunci;
-          if (isNaN(h)) { kunci = 'tanpa'; }
-          else { h = Math.min(IK6_JAM_B, Math.max(IK6_JAM_A, h)); kunci = h; }
-          const e = (kunci === 'tanpa')
-            ? (tanpaJam = tanpaJam || { masuk: 0, keluar: 0, n: 0, kantong: {} })
-            : (ember[kunci] = ember[kunci] || { masuk: 0, keluar: 0, n: 0, kantong: {} });
-          e.n++;
-          if (r.keluar > 0) { e.keluar += r.keluar; e.kantong.laci = 1; }
-          if (r.masuk > 0) {
-            e.masuk += r.masuk;
-            if ((r.label || '').indexOf('· QRIS') >= 0) e.kantong.rekening = 1; else e.kantong.laci = 1;
-          }
-        });
-        const jamAda = Object.keys(ember).map(Number).sort((a, b) => a - b);
-        const TINGGI = Math.max(300, jamAda.length * 34 + (tanpaJam ? 40 : 0) + 56);
-        const posJam = h => (h - IK6_JAM_A + 0.5) / nJam * (TINGGI - 40) + 8;
-        // sapuan anti-tindih: baris & penanda Sekarang memakai daftar sapuan yang SAMA
-        const baris = jamAda.map(h => ({ jenis: 'jam', h, benar: posJam(h), e: ember[h] }));
-        const jamDesimal = jamKini + kini.getMinutes() / 60;
-        if (jamDesimal >= IK6_JAM_A && jamDesimal <= IK6_JAM_B + 1)
-          baris.push({ jenis: 'kini', benar: posJam(Math.min(IK6_JAM_B + 0.49, jamDesimal)) });
-        baris.sort((a, b) => a.benar - b.benar);
-        let prev = -99;
-        baris.forEach(b => { b.pos = Math.max(b.benar, prev + 32); prev = b.pos; });
-        const rp6 = n => singkatJuta(Math.round(n)) + (n >= 1000000 ? ' jt' : '');
-        let html = '<span class="ik8-punggung" aria-hidden="true"></span>';
-        for (let h = IK6_JAM_A; h <= IK6_JAM_B; h += 2)
-          html += '<span class="ik8-tick" style="top:' + posJam(h) + 'px;"><i>' + String(h).padStart(2, '0') + '</i></span>';
-        baris.forEach(b => {
-          if (b.jenis === 'kini') {
-            html += '<span class="ik8-kini" style="top:' + b.pos + 'px;"><i></i>Sekarang</span>';
-            return;
-          }
-          const kant = Object.keys(b.e.kantong).join(' ');
-          const geser = Math.abs(b.pos - b.benar) > 3;
-          if (geser) html += '<span class="ik8-penunjuk" style="top:' + Math.min(b.pos, b.benar) + 'px;height:' + Math.abs(b.pos - b.benar) + 'px;" aria-hidden="true"></span>';
-          html += '<button type="button" class="ik8-simpul" data-kantong="' + kant + '" style="top:' + b.pos + 'px;"'
-            + ' onclick="ik8PilihKarung(\'' + (b.e.kantong.rekening && !b.e.kantong.laci ? 'rekening' : 'laci') + '\')">'
-            + '<i class="titik" style="top:' + (b.benar - b.pos) + 'px;"></i>'
-            + '<span class="jm">' + String(b.h).padStart(2, '0') + ':00</span>'
-            + (b.e.masuk > 0 ? '<b class="masuk">+' + rp6(b.e.masuk) + '</b>' : '')
-            + (b.e.keluar > 0 ? '<b class="keluar">−' + rp6(b.e.keluar) + '</b>' : '')
-            + '<span class="cacah">' + b.e.n + ' kejadian</span></button>';
-        });
-        if (tanpaJam) {
-          html += '<div class="ik8-simpul ik8-tanpa-jam" data-kantong="' + Object.keys(tanpaJam.kantong).join(' ') + '" style="top:' + (TINGGI - 28) + 'px;">'
-            + '<span class="jm">Tanpa jam</span>'
-            + (tanpaJam.masuk > 0 ? '<b class="masuk">+' + rp6(tanpaJam.masuk) + '</b>' : '')
-            + (tanpaJam.keluar > 0 ? '<b class="keluar">−' + rp6(tanpaJam.keluar) + '</b>' : '')
-            + '<span class="cacah">' + tanpaJam.n + ' kejadian</span></div>';
+      /* ── jam toko tegak: ember per jam + slot lepas di dasar ── */
+      const jamA = D.jamBuka, jamB = D.jamTutup;
+      document.getElementById('ik8RentangJam').textContent = pad2(jamA) + '.00–' + pad2(jamB) + '.00';
+      const emberJam = kej.filter(e => e.jenis === 'jam');
+      const emberLepas = kej.filter(e => e.jenis !== 'jam');
+      const SLOT = 58, JARAK = 52, TINGGI_SIMPUL = 44;
+      const tinggiJam = Math.max(emberJam.length ? 7 : 4, emberJam.length) * SLOT;
+      const y = jam => Math.round((jam - jamA) / (jamB - jamA) * (tinggiJam - TINGGI_SIMPUL));
+      const baris = emberJam.map(e => ({ e, benar: y(Math.min(jamB, e.jam + 0.5)) }));
+      let prev = -999;
+      baris.forEach(b => { b.pos = Math.max(b.benar, prev + JARAK); prev = b.pos; });   // sapuan anti-tindih
+      const dasar = Math.max(tinggiJam, prev + TINGGI_SIMPUL) + (emberLepas.length ? 10 : 0);
+      const tinggiAkhir = dasar + emberLepas.length * SLOT;
+      let tickHtml = '<span class="ik8-tick-garis"></span>';
+      for (let j = jamA; j <= jamB; j += 2) tickHtml += '<span class="ik8-tick" style="top:' + y(j) + 'px">' + pad2(j) + '</span>';
+      const skr = jamKini + kini.getMinutes() / 60;
+      if (skr >= jamA && skr <= jamB) tickHtml += '<span class="ik8-sekarang" style="top:' + y(skr) + 'px"></span>';
+      const tickWrap = document.getElementById('ik8TickWrap');
+      tickWrap.style.height = tinggiAkhir + 'px';
+      tickWrap.innerHTML = tickHtml;
+      const rpTanda = n => (n < 0 ? '−' : '+') + Math.abs(Math.round(n)).toLocaleString('id-ID');
+      const htmlSimpul = (e, top) => {
+        const i = kej.indexOf(e);
+        const on = _ik8Simpul === i || (!!_ik8Karung && !!e.ke && !!e.ke[_ik8Karung]);
+        const netto = e.masuk - e.keluar;
+        const kls = e.jenis === 'kredit' ? ' tanpa' : (netto < 0 ? ' keluar' : '');
+        let judul, ket, nilai;
+        if (e.jenis === 'jam') {
+          judul = pad2(e.jam) + '.00 · ' + (e.n === 1 ? escapeHtml(e.contoh || 'satu kejadian') : e.n + ' kejadian');
+          ket = (e.masuk > 0 ? '+' + ik6Rp(e.masuk) + ' masuk' : '')
+            + (e.masuk > 0 && e.keluar > 0 ? ' · ' : '')
+            + (e.keluar > 0 ? '−' + ik6Rp(e.keluar) + ' keluar' : '')
+            + ' · ' + namaKe(e.ke);
+          nilai = rpTanda(netto);
+        } else if (e.jenis === 'tanpa') {
+          judul = 'Tanpa jam · ' + e.n + ' kejadian';
+          ket = 'belanja & biaya yang dicatat tanpa jam — dihitung di kas, tidak bisa ditaruh di garis jam · ' + namaKe(e.ke);
+          nilai = rpTanda(netto);
+        } else {
+          judul = 'Kredit hari ini · ' + e.n + ' bon';
+          ket = 'piutang — tidak masuk karung mana pun'
+            + (e.nama.length ? ' · ' + escapeHtml(e.nama.slice(0, 2).join(', ')) + (e.nama.length > 2 ? ' +' + (e.nama.length - 2) : '') : '');
+          nilai = Math.round(e.masuk).toLocaleString('id-ID');          // tanpa tanda: bukan uang masuk
         }
-        const jw = document.getElementById('ik8JamWrap');
-        jw.style.height = TINGGI + 'px';
-        jw.innerHTML = html;
-        ik8TerapkanSaring();
-      }
-
-      // ----- CUKUP DIPANTAU: omzet & margin (dagang) + laba bersih (turunan, O1) -----
-      const labaTerbuka = Date.now() < _ik6LabaSampai;
-      const L = hitungLabaBersihRentang(hariIniIso, hariIniIso);
-      const pctMargin = (omzet - omzetBolong) > 0 ? (margin / (omzet - omzetBolong) * 100).toFixed(1).replace('.', ',') + '%' : '—';
-      document.getElementById('ik8Pantau').innerHTML =
-        '<div class="ik8-petak-pantau"><span class="kg-label">Omzet · hari ini</span>'
-        + '<b class="kg-uang-dagang ik8-pantau-nilai" id="ik8Omzet">' + ik6Rp(omzet) + '</b>'
-        + '<i>' + trxHariIni.length + ' transaksi' + (bolong ? ' · ' + bolong + ' tanpa HPP' : '') + '</i></div>'
-        + '<div class="ik8-petak-pantau"><span class="kg-label">Margin kotor · ' + pctMargin + '</span>'
-        + '<b class="kg-uang-dagang ik8-pantau-nilai" id="ik8Margin">' + ik6Rp(margin) + '</b>'
-        + '<i>omzet ber-HPP − harga pokok</i></div>'
-        + '<div class="ik8-petak-pantau" id="ik8PetakLaba"><span class="kg-label">Laba bersih · turunan</span>'
-        + '<b class="kg-uang-laba" id="ik8Laba">' + (labaTerbuka ? ik6Rp(L.labaBersih) : 'Rp ••••••') + '</b>'
-        + '<span class="kg-rincian">' + (labaTerbuka
-            ? 'margin ' + ik6Rp(L.margin) + ' − biaya toko ' + ik6Rp(L.biayaToko)
-              + (L.hapusBuku ? ' − hapus buku ' + ik6Rp(L.hapusBuku) : '')
-              + (L.susutStok ? ' ± susut ' + ik6Rp(L.susutStok) : '')
-            : 'tahan 2 detik untuk melihat · sudah dipotong jatah biaya & susut') + '</span>'
-        + '<span class="ik6-progres" id="ik6Progres"></span></div>';
-      const petakLaba = document.getElementById('ik8PetakLaba');
-      if (petakLaba && !labaTerbuka) {
-        petakLaba.addEventListener('pointerdown', ik6TahanLabaMulai);
-        petakLaba.addEventListener('pointerup', ik6TahanLabaBatal);
-        petakLaba.addEventListener('pointerleave', ik6TahanLabaBatal);
-      }
-
-      // ----- MENUNTUT TINDAKAN: terpisah dari PANTAU; cacah dari daftar yang dibangun -----
-      const nPerhatian = _ik6Perhatian.length;
-      document.getElementById('ik8NTangani').textContent = nPerhatian ? nPerhatian + ' hal' : '';
-      document.getElementById('ik8Tangani').innerHTML = nPerhatian === 0
-        ? '<div class="ik8-beres">Semua karung beres — tidak ada yang menggantung.</div>'
-        : _ik6Perhatian.map(x =>
-            '<div class="ik8-tangani-baris"><i aria-hidden="true"></i>'
-            + '<span>' + x.t + '</span>'
-            + '<button type="button" onclick="' + (x.k || ("pindahDariMenu('" + x.h + "')")).replace(/"/g, '&quot;') + '">'
-            + escapeHtml(x.a || 'Buka') + '</button></div>').join('');
-
-      // ----- trio stok (dipertahankan) -----
-      const sk = hitungStokKarungPerMerk();
-      const totalKg = Object.keys(sk).reduce((a, m) => a + Math.max(0, sk[m].sisaKg || 0), 0);
-      const skm = hitungStokKemasan();
-      const totalUnit = Object.keys(skm).reduce((a, k) => a + Math.max(0, skm[k].sisaUnit || 0), 0);
-      const sbk = hitungStokBahanKemasan();
-      const totalKantong = Object.keys(sbk).reduce((a, k) => a + Math.max(0, (sbk[k].sisa != null ? sbk[k].sisa : sbk[k].sisaUnit) || 0), 0);
-      const nKemTipis = Object.keys(skm).filter(k => skm[k].sisaUnit > 0 && skm[k].sisaUnit < 5).length;
-      const nMerkTipis = Object.keys(sk).filter(m => sk[m].sisaKg > 0 && sk[m].sisaKg < 50).length;
-      document.getElementById('ik6Stok3').innerHTML = [
-        { n: 'Kemasan', v: totalUnit.toLocaleString('id-ID'), k: nKemTipis ? nKemTipis + ' menipis' : 'unit siap jual', tipis: nKemTipis > 0 },
-        { n: 'Beras', v: Math.round(totalKg).toLocaleString('id-ID'), k: nMerkTipis ? nMerkTipis + ' merk menipis' : 'kg semua merk', tipis: nMerkTipis > 0 },
-        { n: 'Kantong', v: totalKantong.toLocaleString('id-ID'), k: 'plastik kosong' }
-      ].map(x => '<button type="button" class="' + (x.tipis ? 'tipis' : '') + '" onclick="pindahDariMenu(\'stok\')"><i>' + x.n + '</i><b>' + x.v + '</b><span>' + x.k + '</span></button>').join('');
-
-      // ----- keadaan kosong (belum ada transaksi & gerakan) -----
-      const kosongEl = document.getElementById('ik6Kosong');
-      kosongEl.style.display = adaIsi ? 'none' : 'flex';
-      if (!adaIsi) {
-        kosongEl.innerHTML = '<span class="tanda">+</span><h4>Belum ada transaksi hari ini</h4><p>'
-          + (kas !== null ? 'Kas menurut catatan ' + ik6Rp(kas) + '. ' : '')
-          + 'Tekan tombol emas di bawah untuk mencatat penjualan pertama — papan, karung, dan jamnya akan terisi sendiri.</p>';
-      }
-      pfHitungNaik(['ik8Kas', 'ik8Omzet', 'ik8Margin'].concat(labaTerbuka ? ['ik8Laba'] : []));
-    } catch (e) { /* pembaca murni — tidak boleh mengganggu sistem */ }
-  }
-
-  // Karung <-> jam saling bicara: sorot/redup KELAS CSS saja, tanpa membangun ulang
-  // layar (rebuild me-restart animasi & melompatkan scroll) dan TANPA PERNAH
-  // menjumlahkan hasil saringan jadi angka apa pun.
-  function ik8TerapkanSaring() {
-    const k = _ik8Karung;
-    document.querySelectorAll('#ik8KarungWrap .ik8-karung').forEach(b =>
-      b.classList.toggle('pilih', b.dataset.k === k));
-    const tanpaKejadian = k === 'amplop' || k === 'brankas';
-    document.querySelectorAll('#ik8JamWrap .ik8-simpul').forEach(el => {
-      const daftar = (el.dataset.kantong || '').split(' ');
-      el.classList.toggle('redup', tanpaKejadian || daftar.indexOf(k) < 0);
-    });
-    const KET = {
-      laci: 'Tunai masuk & keluar lewat laci',
-      rekening: 'QRIS & pelunasan berlabel QRIS',
-      amplop: 'Diisi saat Tutup Hari — tidak ada kejadian per jam',
-      brankas: 'Diisi saat Tutup Hari — tidak ada kejadian per jam'
-    };
-    const elKet = document.getElementById('ik8SaringKet');
-    if (elKet) elKet.textContent = KET[k] + ' · Kredit tidak masuk kantong mana pun, dia jadi piutang';
-  }
-  function ik8PilihKarung(k) {
-    if (!{ laci: 1, rekening: 1, amplop: 1, brankas: 1 }[k]) return;
-    _ik8Karung = k;
-    const t = ambilTitikKas();
-    if (t) {
-      const K_NAMA = { laci: 'Laci', rekening: 'Rekening', amplop: 'Amplop', brankas: 'Brankas' };
-      const K_KET = {
-        laci: 'Uang jualan yang belum disetor — tunai keluar-masuk lewat sini.',
-        rekening: 'Hasil QRIS dan transfer. Cocokkan dengan mutasi bank.',
-        amplop: 'Disisihkan tiap malam di langkah 1 Tutup Hari — diisi saat Tutup Hari.',
-        brankas: 'Disimpan di luar laci. Jarang bergerak.'
+        return '<button type="button" class="ik8-simpul' + (on ? ' on' : '') + (e.jenis !== 'jam' ? ' lepas' : '') + '"'
+          + ' style="top:' + top + 'px" onclick="ik8PilihSimpul(' + i + ')">'
+          + '<span class="ik8-standa' + kls + '"></span>'
+          + '<span class="ik8-sisi"><span class="ik8-sjudul">' + judul + '</span><span class="ik8-sket">' + ket + '</span></span>'
+          + '<span class="ik8-snilai' + kls + '">' + nilai + '</span></button>';
       };
-      document.getElementById('ik8KantongNama').textContent = K_NAMA[k];
-      document.getElementById('ik8KantongNilai').textContent = ik6Rp((t[k] || 0));
-      document.getElementById('ik8KantongKet').textContent = K_KET[k] + ' · menurut hitungan ' + formatTanggal(t.tanggal);
-    }
-    ik8TerapkanSaring();
+      const sw = document.getElementById('ik8SimpulWrap');
+      sw.style.height = tinggiAkhir + 'px';
+      sw.innerHTML = baris.map(b => htmlSimpul(b.e, b.pos)).join('')
+        + emberLepas.map((e, k) => htmlSimpul(e, dasar + k * SLOT)).join('');
+      const jn = document.getElementById('ik8JamNota');
+      if (_ik8Simpul !== null && kej[_ik8Simpul]) {
+        const e = kej[_ik8Simpul];
+        jn.textContent = e.jenis === 'kredit'
+          ? 'Kredit tidak masuk karung mana pun — dia piutang, jadi nol kantong menyala. Uangnya belum pernah masuk toko.'
+          : (e.jenis === 'tanpa'
+            ? 'Kejadian tanpa jam: dicatat tanpa waktu, uangnya tetap dihitung — karung ' + namaKe(e.ke) + ' menyala di atas.'
+            : e.n + ' kejadian pukul ' + pad2(e.jam) + ' · masuk karung ' + namaKe(e.ke) + ' — karungnya menyala di atas.');
+      } else if (!kej.length) {
+        jn.textContent = 'Belum ada kejadian hari ini. Garis tegaknya jam buka, titik terang itu sekarang.';
+      } else {
+        jn.textContent = 'Garis tegaknya jam buka, titik terang itu sekarang. Satu simpul = satu jam. Ketuk satu simpul untuk melihat karung mana yang berubah.';
+      }
+
+      /* ── TANGANI: daftar yang SAMA dengan Perlu Perhatian lama (_ik6Perhatian) ── */
+      const tg = D.tangani || [];
+      document.getElementById('ik8TanganiCacah').textContent = tg.length + ' hal';
+      document.getElementById('ik8Tangani').innerHTML = tg.length
+        ? tg.map(x => '<div class="ik8-trow">'
+            + '<span class="ik8-ttitik' + (x.w === 'var(--merah)' ? ' merah' : '') + '"></span>'
+            + '<span class="ik8-tteks">' + x.t + '</span>'
+            + '<button type="button" class="ik8-pil" onclick="' + (x.k || ("pindahDariMenu('" + x.h + "')")).replace(/"/g, '&quot;') + '">'
+            + escapeHtml(x.a || 'Buka') + '</button></div>').join('')
+        : '<div class="ik8-trow"><span class="ik8-tteks">Tidak ada yang menuntut sekarang.</span></div>';
+
+      /* ── PANTAU ── */
+      document.getElementById('ik8Omzet').textContent = ik6Rp(D.omzet);
+      document.getElementById('ik8Margin').textContent = ik6Rp(D.margin);
+      document.getElementById('ik8MarginPct').textContent = D.omzetHitung
+        ? (Math.round(D.margin / D.omzetHitung * 1000) / 10).toLocaleString('id-ID', { minimumFractionDigits: 1 }) + '% dari omzet ber-HPP'
+        : (D.omzet ? 'belum ada HPP tercatat' : '');
+      const d7 = D.omzet7 || [];
+      const maks7 = Math.max.apply(null, d7.concat([1]));
+      document.getElementById('ik8Spark').innerHTML = d7.map((v, i) =>
+        '<i class="' + (i === d7.length - 1 ? 'kini' : '') + '" style="height:' + Math.max(4, Math.round(v / maks7 * 20)) + 'px"></i>').join('');
+
+      /* ── Laba bersih SELALU selisih — membawa potongannya di layar yang sama; tersegel
+         tahan-2-detik (O1, 21 Agu) lalu terbuka 45 detik. ── */
+      const pot = D.potongan;
+      const laba = D.margin - pot.reduce((a, q) => a + q.rp, 0);
+      if (Math.round(laba) !== Math.round(D.L.labaBersih || 0)) console.warn('[ik8] laba turunan ≠ mesin Laba', laba, D.L.labaBersih);
+      const terbuka = Date.now() < _ik6LabaSampai;
+      const blok = document.getElementById('ik8LabaBlok');
+      blok.classList.toggle('segel', !terbuka);
+      const elLaba = document.getElementById('ik8Laba');
+      elLaba.className = 'ik8-nlaba' + (terbuka && laba < 0 ? ' minus' : '');
+      elLaba.textContent = terbuka ? ik6Rp(laba) : 'Rp ••••••';
+      document.getElementById('ik8Potongan').innerHTML = pot.map(q =>
+        '<div class="ik8-prow"><span class="ik8-pnama">' + q.nama + '</span><span class="ik8-pnilai">'
+        + (terbuka ? (q.rp < 0 ? '+' + ik6Rp(-q.rp) : '−' + ik6Rp(q.rp)) : '••••') + '</span></div>').join('');
+      document.getElementById('ik8LabaKet').textContent = terbuka
+        ? 'Margin kotor ' + ik6Rp(D.margin) + ' dikurangi potongan di atas — selalu selisih, tidak pernah angka tersimpan.'
+        : 'Tahan 2 detik untuk melihat · margin dikurangi potongan di atas, selalu selisih.';
+      if (!_ik8SegelTerpasang) {                       // markup statis: pasang SEKALI, bukan tiap render
+        _ik8SegelTerpasang = true;
+        blok.addEventListener('pointerdown', ik6TahanLabaMulai);
+        blok.addEventListener('pointerup', ik6TahanLabaBatal);
+        blok.addEventListener('pointerleave', ik6TahanLabaBatal);
+        blok.addEventListener('pointercancel', ik6TahanLabaBatal);
+      }
+      pfHitungNaik(['ik8Kas', 'ik8Omzet', 'ik8Margin'].concat(terbuka ? ['ik8Laba'] : []));
+    } catch (e) { console.warn('[ik8]', e); }
   }
-  function ik6TahanLabaMulai(e) {
+
+  function ik6TahanLabaMulai() {
+    if (Date.now() < _ik6LabaSampai) return;            // sudah terbuka — tidak perlu ditahan lagi
     _ik6TahanMulai = Date.now();
-    const bar = document.getElementById('ik6Progres');
+    const bar = document.getElementById('ik8Progres');
     clearInterval(_ik6TahanTimer);
     _ik6TahanTimer = setInterval(() => {
       const q = Math.min(1, (Date.now() - _ik6TahanMulai) / 2000);
       if (bar) bar.style.width = (q * 100) + '%';
       if (q >= 1) {
         clearInterval(_ik6TahanTimer);
+        if (bar) bar.style.width = '0';
         _ik6LabaSampai = Date.now() + 45000;          // terbuka 45 dtk, lalu tertutup sendiri
         clearTimeout(_ik6MaskTimer);
         _ik6MaskTimer = setTimeout(tampilkanIkhtisar6a, 45200);
@@ -23449,21 +23653,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   }
   function ik6TahanLabaBatal() {
     clearInterval(_ik6TahanTimer);
-    const bar = document.getElementById('ik6Progres');
+    const bar = document.getElementById('ik8Progres');
     if (bar) bar.style.width = '0';
   }
 
   function segarkanVisualRingkasan() {
     try {
       const semua = ambilPenjualan();
-      const hariSingkat = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'];
-      const hariIni = new Date(); hariIni.setHours(12, 0, 0, 0);
-      const hari7 = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(hariIni); d.setDate(d.getDate() - i);
-        hari7.push({ iso: tanggalLokalIso(d), label: hariSingkat[d.getDay()], total: 0 });
-      }
-      semua.forEach(p => { const h = hari7.find(x => x.iso === p.tanggal); if (h) h.total += (p.hargaTotal || 0); });
+      const hariIni = new Date(); hariIni.setHours(12, 0, 0, 0);   // masih dipakai jendela 30 hari di bawah
+      const hari7 = omzet7Hari();   // satu loop dengan tujuh batang PANTAU Ringkasan 8a
       // PLATINA MALAM (Claude Design "Ringkasan F", dipilih pemilik 14 Agu 2026):
       // garis satin interaktif menggantikan batang. Kejujuran angka dipertahankan —
       // omzet TIAP hari tetap tertulis di kolomnya sendiri, garis hanya memberi
