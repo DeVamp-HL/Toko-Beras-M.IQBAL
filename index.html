@@ -10671,7 +10671,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const total = parseFloat(document.getElementById('jualHargaTotal').value) || 0;
     nilai.innerHTML = angkaUtamaHtml(total);
     const r = bacaRincianJual();
-    rincian.textContent = r ? r.baris.slice(0, 2).map(b => b[1]).join(' · ') : 'Belum ada isian';
+    rincian.textContent = (r ? r.baris.slice(0, 2).map(b => b[1]).join(' · ') : 'Belum ada isian')
+      + (r && r.bulat > 0 ? ' · ditagih ' + formatRupiah(r.total) + ' (bulat +' + formatRupiah(r.bulat) + ')' : '');
     const katalog = document.getElementById('ktjKatalog');
     if (katalog) katalog.style.display = total > 0 ? 'inline-flex' : 'none';
     if (total > 0) sorotAngka(nilai);
@@ -10867,10 +10868,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (document.getElementById('jualPenggantiRetur').checked) {
       baris.push(['Pengganti retur', '<b class="ph-amber">Omzet & kas dicatat Rp0</b> — nilai barang ' + formatRupiah(total)]);
     }
+    const bulat = document.getElementById('jualPenggantiRetur').checked ? 0 : pembulatanTunai(total, bayar);
+    if (bulat > 0) baris.push(['Dibulatkan ke Rp500', '+' + formatRupiah(bulat) + ' <span style="color:var(--redup);font-weight:400;">aturan meja kasir, tunai</span>']);
     baris.push(['Cara bayar', bayar]);
     const plg = el('jualNamaPelanggan').value.trim();
     if (bayar === 'Kredit' && plg) baris.push(['Pelanggan', escapeHtml(plg)]);
-    return { baris, total, stokSesudah };
+    return { baris, total: total + bulat, totalKatalog: total, bulat, stokSesudah };   // total = yang DITAGIH
   }
 
   async function lanjutSimpanJual() {
@@ -11795,13 +11798,46 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     wzKe(lanjutKe);
   }
   function wzHapusItem(i) { _wzItems.splice(i, 1); wzRender(); }
+  // ===== PEMBULATAN KE ATAS Rp500 (keputusan My DeV 5 Sep 2026) =====
+  // Di meja kasir total TUNAI selalu ditagih ke kelipatan Rp500 di atasnya: Rp49.450 →
+  // Rp49.500, Rp49.750 → Rp50.000. Sejak 9 Agu aturan ini sudah hidup di Rinci Darurat
+  // (hargaPas = uang yang benar-benar diterima); sekarang dua pintu owner (wizard HP &
+  // form lebar) ikut. HANYA TUNAI: QRIS membayar angka persis, kredit masuk buku piutang.
+  // Selisihnya MELEKAT ke hargaTotal item terakhir yang bernilai (jejak: field `pembulatan`),
+  // pola yang sama dengan potonganTransaksi — kas, laba, laporan, dan audit.py yang membaca
+  // hargaTotal apa adanya ikut benar tanpa disentuh.
+  function bulatKeAtas500(n) { return Math.ceil(Math.round(n) / 500) * 500; }
+  function pembulatanTunai(total, caraBayar) {
+    return bakuCaraBayar(caraBayar) === 'Tunai' && total > 0 ? bulatKeAtas500(total) - Math.round(total) : 0;
+  }
+  function tempelPembulatan(daftarTrx, bulat) {   // mengembalikan trx yang menampung, atau null
+    if (!(bulat > 0)) return null;
+    for (let i = daftarTrx.length - 1; i >= 0; i--) {
+      const t = daftarTrx[i];
+      if (t && t.hargaTotal > 0 && !t.penggantiRetur) { t.pembulatan = bulat; t.hargaTotal += bulat; return t; }
+    }
+    return null;
+  }
   function wzSubtotal() { return _wzItems.reduce((a, x) => a + x.trx.hargaTotal, 0); }
-  function wzPotonganSet(mode) {
-    _wzPotonganMode = mode;
+  function wzCaraBayarAktif() {
+    const b = ['Tunai', 'Qris', 'Kredit'].map(c => document.getElementById('bayar' + c)).find(el => el && el.classList.contains('pilih'));
+    return bakuCaraBayar(b ? b.id.replace('bayar', '') : 'Tunai');
+  }
+  // Satu sumber angka tagihan wizard: subtotal − potongan, + pembulatan Rp500 bila tunai.
+  function wzTagihan() {
     const sub = wzSubtotal();
-    if (mode === 'tanpa') _wzPotongan = 0;
-    else if (mode === '1rb') _wzPotongan = sub % 1000;
-    else if (mode === '5rb') _wzPotongan = sub % 5000;
+    const pot = Math.min(Math.round(_wzPotongan || 0), sub);
+    const total = sub - pot;
+    const cara = wzCaraBayarAktif();
+    const bulat = pembulatanTunai(total, cara);
+    return { sub, pot, total, cara, bulat, tagihan: total + bulat };
+  }
+  // Chip "bulat 1rb / bulat 5rb" (pembulatan KE BAWAH sebagai potongan) DICABUT 5 Sep 2026:
+  // arah pembulatan di toko adalah ke ATAS ke Rp500 (pembulatanTunai). Potongan tinggal
+  // nominal bebas — diskon sungguhan, bukan pembulatan.
+  function wzPotonganSet(mode) {
+    _wzPotonganMode = mode === 'nominal' ? 'nominal' : 'tanpa';
+    if (_wzPotonganMode === 'tanpa') _wzPotongan = 0;
     wzRender();
   }
   function wzPotonganNominal(v) {
@@ -11810,15 +11846,14 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     wzRender();
   }
   function wzUangSet(v) { _wzUang = Math.max(0, Math.round(parseFloat(v) || 0)); wzRender(); }
-  function wzUangPas() { _wzUang = wzSubtotal() - Math.round(_wzPotongan || 0); wzRender(); }
+  function wzUangPas() { _wzUang = wzTagihan().tagihan; wzRender(); }
 
   // Konfirmasi keranjang: lembar "Periksa sebelum simpan" LAMA diisi daftar item.
   function wzKonfirmasiKeranjang() {
     if (!_wzItems.length) return;
-    const pot = Math.min(Math.round(_wzPotongan || 0), wzSubtotal());
-    const total = wzSubtotal() - pot;
-    const tombolBayarAktif = ['Tunai', 'Qris', 'Kredit'].map(c => document.getElementById('bayar' + c)).find(el => el.classList.contains('pilih'));
-    const cara = tombolBayarAktif ? bakuCaraBayar(tombolBayarAktif.id.replace('bayar', '')) : 'Tunai';
+    const T = wzTagihan();
+    const pot = T.pot, cara = T.cara;
+    const total = T.tagihan;   // yang ditagih — sudah termasuk pembulatan Rp500 bila tunai
     const nama = document.getElementById('jualNamaPelanggan').value.trim();
     if (cara === 'Kredit' && !nama) { alert('Isi nama pelanggan untuk penjualan kredit.'); return; }
     if (cara === 'Kredit') {                        // KR1 — penjaga sebelum lembar konfirmasi
@@ -11827,6 +11862,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     }
     const baris = _wzItems.map(x => [x.label, formatRupiah(x.trx.hargaTotal)]);
     if (pot > 0) baris.push(['Potongan', '\u2212' + formatRupiah(pot)]);
+    if (T.bulat > 0) baris.push(['Dibulatkan ke Rp500', '+' + formatRupiah(T.bulat)]);
     baris.push(['Cara bayar', cara + (nama ? ' \u2014 ' + escapeHtml(nama) : '')]);
     if (cara === 'Kredit' && _wzJanji) baris.push(['Janji bayar', formatTanggal(tanggalJanji(_wzJanji))]);
     if (cara === 'Kredit' && _wzKreditBuka) baris.push(['Kredit', 'dibuka owner untuk transaksi ini']);
@@ -12065,9 +12101,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     }).join('') + '</div>';
   }
   function wzLembarKembalian(k) {
-    const pecahan = [100000, 50000, 20000, 10000, 5000, 2000, 1000];
+    const pecahan = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500];   // koin 500 hidup sejak tagihan dibulatkan ke 500
     let sisa = Math.round(k); const isi = [];
-    pecahan.forEach(p => { const n = Math.floor(sisa / p); if (n > 0) { isi.push('<span><b>' + n + '\u00d7</b> ' + (p / 1000) + 'rb</span>'); sisa -= n * p; } });
+    pecahan.forEach(p => { const n = Math.floor(sisa / p); if (n > 0) { isi.push('<span><b>' + n + '\u00d7</b> ' + (p >= 1000 ? (p / 1000) + 'rb' : p) + '</span>'); sisa -= n * p; } });
     if (sisa > 0) isi.push('<span>sisa ' + formatRupiah(sisa) + '</span>');
     return isi.length ? '<div class="kg-label" style="margin-top:8px;">Lembar kembalian</div><div class="wz-lembar">' + isi.join('') + '</div>' : '';
   }
@@ -12075,9 +12111,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const el = document.getElementById('wzStruk');
     if (!el || window.matchMedia('(min-width: 700px)').matches) return;
     try {
-      const pot = Math.min(Math.round(_wzPotongan || 0), wzSubtotal());
-      const total = wzSubtotal() - pot;
-      const kredit = document.getElementById('bayarKredit').classList.contains('pilih');
+      const T = wzTagihan();
+      const pot = T.pot, total = T.tagihan;
+      const kredit = T.cara === 'Kredit';
       let hantu = '';
       if (_wz.langkah === 'jumlah' && _wz.jalur && WZ_PETA_JUMLAH[_wz.jalur]) {
         const [idInput, satuan] = WZ_PETA_JUMLAH[_wz.jalur];
@@ -12098,6 +12134,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         + '<button type="button" class="hapus" onclick="wzHapusItem(' + i + ')" aria-label="Hapus item">\u2715</button></div>').join('');
       h += hantu;
       if (pot > 0) h += '<div class="wz-struk-baris"><span class="nama">Potongan</span><b>\u2212' + formatRupiah(pot) + '</b><span></span></div>';
+      if (T.bulat > 0 && _wzItems.length) h += '<div class="wz-struk-baris"><span class="nama">Dibulatkan ke Rp500<i>aturan meja kasir \u00b7 tunai</i></span><b>+' + formatRupiah(T.bulat) + '</b><span></span></div>';
       if (_wzItems.length) h += '<div class="wz-struk-total"><span class="kg-label">Total \u00b7 ' + _wzItems.length + ' item</span><span class="'
         + (kredit ? 'kg-uang-piutang' : 'kg-uang-dagang') + '">' + formatRupiah(total) + '</span></div>'
         + (kredit ? '<div class="wz-struk-catatan">Kredit \u2014 tidak masuk kas, jadi piutang atas nama pembeli.</div>' : '');
@@ -12426,21 +12463,19 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         label.textContent = 'Terakhir \u00b7 bayar';
         tanya.textContent = 'Bayarnya?';
         if (!_wzItems.length) { panel.innerHTML = balik('jalur') + '<div class="wz-info">Keranjang kosong.</div>'; return; }
-        const pot = Math.min(Math.round(_wzPotongan || 0), wzSubtotal());
-        const total = wzSubtotal() - pot;
-        const caraAktif = ['Tunai', 'QRIS', 'Kredit'].find(c =>
-          document.getElementById('bayar' + (c === 'QRIS' ? 'Qris' : c)).classList.contains('pilih')) || 'Tunai';
+        const T = wzTagihan();
+        const pot = T.pot, total = T.tagihan, caraAktif = T.cara;
         const kembali = _wzUang > 0 ? _wzUang - total : null;
         const matiSimpan = !_wzItems.length || (caraAktif === 'Kredit' && !!wzKreditTerkunci(total));
         panel.innerHTML = balik('jalur')
           + '<div class="wz-item total"><span class="nama">Subtotal \u00b7 ' + _wzItems.length + ' item \u2014 rincian di struk atas</span><b>' + formatRupiah(wzSubtotal()) + '</b></div>'
-          + '<i class="wz-label-kecil">Potongan</i>'
+          + '<i class="wz-label-kecil">Potongan (diskon, bila ada)</i>'
           + '<div class="wz-bayar-tab wz-pot">'
-          + [['tanpa', 'tanpa'], ['1rb', 'bulat 1rb'], ['5rb', 'bulat 5rb']].map(m =>
-            '<button type="button" class="' + (_wzPotonganMode === m[0] ? 'pilih' : '') + '" onclick="wzPotonganSet(\'' + m[0] + '\')">' + m[1] + '</button>').join('')
-          + '<input type="number" inputmode="numeric" placeholder="nominal" value="' + (_wzPotonganMode === 'nominal' && _wzPotongan ? _wzPotongan : '') + '" onchange="wzPotonganNominal(this.value)">'
+          + '<button type="button" class="' + (_wzPotonganMode === 'tanpa' ? 'pilih' : '') + '" onclick="wzPotonganSet(\'tanpa\')">tanpa</button>'
+          + '<input type="number" inputmode="numeric" placeholder="nominal Rp" value="' + (_wzPotonganMode === 'nominal' && _wzPotongan ? _wzPotongan : '') + '" onchange="wzPotonganNominal(this.value)">'
           + '</div>'
           + (pot > 0 ? '<div class="wz-info">Potongan \u2212' + formatRupiah(pot) + ' \u00b7 dibagi ke tiap item saat disimpan</div>' : '')
+          + (T.bulat > 0 ? '<div class="wz-item"><span class="nama">Dibulatkan ke Rp500 \u00b7 aturan meja kasir, tunai</span><b>+' + formatRupiah(T.bulat) + '</b></div>' : '')
           + '<div class="wz-item total besar"><span class="nama">Bayar</span><b>' + formatRupiah(total) + '</b></div>'
           + '<i class="wz-label-kecil">Cara bayar</i>'
           + '<div class="wz-bayar-tab">' + ['Tunai', 'QRIS', 'Kredit'].map(c =>
@@ -12735,6 +12770,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       ? 'Nama pelanggan (wajib)' : 'Nama pembeli (boleh dikosongkan)';
     // Pilih QRIS = pembeli butuh melihat kodenya sekarang, jadi langsung dimunculkan.
     if (bakuCaraBayar(cara) === 'QRIS') bukaLembarQris();
+    // Uang yang disodorkan (wizard) hanya bermakna untuk TUNAI. Sisa dari 'uang pas' tunai
+    // (yang sudah dibulatkan Rp500) pernah menjelma 'Kembalian Rp250' hantu di lembar
+    // konfirmasi QRIS — dibuang begitu cara bayar bukan tunai.
+    if (bakuCaraBayar(cara) !== 'Tunai') _wzUang = 0;
+    if (typeof perbaruiKartuTotalJual === 'function') perbaruiKartuTotalJual();   // tagihan tunai/bukan berubah
   }
 
   // ============ KODE QRIS TOKO (12 Agustus 2026) ============
@@ -12830,14 +12870,18 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     let bayarSebagian = 0;
     const totalSebelumPot = items.reduce((a, x) => a + x.trx.hargaTotal, 0);
     const totalSetelahPot = totalSebelumPot - Math.min(Math.max(0, Math.round(_wzPotongan || 0)), totalSebelumPot);
-    if (caraBayar !== 'Kredit' && _wzUang > 0 && _wzUang < totalSetelahPot) {
-      const kurang = totalSetelahPot - _wzUang;
+    // Pembulatan ke atas Rp500 mengikuti cara bayar yang DIPILIH (tunai). Kalau uangnya
+    // kurang dan sisanya jadi piutang, angka yang sudah ditagih di layar itulah yang dicatat.
+    const bulatNota = pembulatanTunai(totalSetelahPot, caraBayar);
+    const tagihanNota = totalSetelahPot + bulatNota;
+    if (caraBayar !== 'Kredit' && _wzUang > 0 && _wzUang < tagihanNota) {
+      const kurang = tagihanNota - _wzUang;
       if (!namaPelanggan) {
         alert('Uang diterima ' + formatRupiah(_wzUang) + ', kurang ' + formatRupiah(kurang)
           + '.\n\nIsi nama pembeli dulu — kekurangannya akan dicatat sebagai piutang, dan piutang tanpa nama tidak bisa ditagih.');
         return;
       }
-      if (!confirm('Kurang ' + formatRupiah(kurang) + ' dari ' + formatRupiah(totalSetelahPot) + '.\n\n'
+      if (!confirm('Kurang ' + formatRupiah(kurang) + ' dari ' + formatRupiah(tagihanNota) + '.\n\n'
         + 'Catat ' + formatRupiah(kurang) + ' sebagai PIUTANG atas nama ' + namaPelanggan + '?\n'
         + 'Uang diterima ' + formatRupiah(_wzUang) + ' tetap masuk kas hari ini.')) return;
       bayarSebagian = _wzUang;
@@ -12866,6 +12910,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       terpakai += bagian;
       if (bagian > 0) { x.trx.potonganTransaksi = bagian; x.trx.hargaTotal -= bagian; }
     });
+    tempelPembulatan(items.map(x => x.trx), bulatNota);   // tunai: ke atas Rp500, melekat ke item terakhir bernilai
     const totalBayar = items.reduce((a, x) => a + x.trx.hargaTotal, 0);
     for (const x of items) {
       const trx = x.trx;
@@ -12921,6 +12966,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     tampilkanJualHariIni();
     const ket = [items.length + ' item \u00b7 ' + formatRupiah(totalBayar)];
     if (potDipakai > 0) ket.push('potongan ' + formatRupiah(potDipakai));
+    if (bulatNota > 0) ket.push('dibulatkan +' + formatRupiah(bulatNota));
     if (bayarSebagian > 0) ket.push('dibayar ' + formatRupiah(bayarSebagian)
       + ' \u00b7 PIUTANG ' + formatRupiah(totalBayar - bayarSebagian) + ' atas nama ' + namaPelanggan);
     if (_lastKembalianInfo) { ket.push(_lastKembalianInfo); _lastKembalianInfo = ''; }
@@ -13058,6 +13104,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   async function simpanPenjualan() {
     const transaksi = await bangunTrxJualDariForm();
     if (!transaksi) return;
+    tempelPembulatan([transaksi], pembulatanTunai(transaksi.hargaTotal, transaksi.caraBayar));   // tunai: ke atas Rp500
     // KR1 juga menjaga jalur satu-item (form lama / layar lebar): kebijakan kredit
     // satu, bukan per pintu. Jalan keluar owner = PIN (jejaknya tercatat di dokumen).
     if (transaksi.caraBayar === 'Kredit') {
@@ -13127,7 +13174,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     _idJualBaru = transaksi.id;
     tampilkanJualHariIni();
     tampilkanUrungkan(transaksi, bagian.join(' · '),
-      (tertunda ? 'Tersimpan di HP — ' : 'Tersimpan — ') + formatRupiah(hargaTotal));
+      (tertunda ? 'Tersimpan di HP — ' : 'Tersimpan — ') + formatRupiah(transaksi.hargaTotal));   // dulu `hargaTotal` (variabel lokal fungsi lain) → ReferenceError, bilah URUNGKAN tak pernah tampil di jalur form lebar
     window.scrollTo({top: 0, behavior: 'smooth'});
   }
 
@@ -21170,6 +21217,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const baris = [];
     if (j) baris.push(['Jumlah', j.nilai + ' ' + j.satuan]);
     baris.push(['Total tercatat', formatRupiah(p.hargaTotal || 0)]);
+    if (p.pembulatan > 0) baris.push(['Termasuk pembulatan', '+' + formatRupiah(p.pembulatan) + ' ke Rp500 (tunai, aturan meja kasir)']);
     if (p.caraBayar) baris.push(['Cara bayar', p.caraBayar]);
     if (p.penggantiRetur) baris.push(['Pengganti retur', 'Omzet & kas Rp0 — nilai barang ' + formatRupiah(p.nilaiBarangPengganti || 0) + '. Uangnya terwakili penjualan asli + selisih di catatan Retur.']);
     if (p.perluKoreksi) baris.push(['Dari kasir', '<b class="ph-amber">Perlu dirapikan</b> — harga di luar katalog, jumlah belum pasti' + (jumlahTrx(p) && jumlahTrx(p).nilai > 0 ? '' : ', <b class="ph-merah">stok belum terpotong</b>')]);
@@ -21282,6 +21330,17 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 
   // Dampak koreksi ke stok & omzet ditampilkan SEBELUM simpan — dua tahap untuk uang,
   // sama seperti alur lain.
+  // Koreksi jumlah: pembulatan Rp500 dihitung ulang hanya bila dokumen ini yang MENANGGUNG
+  // pembulatan notanya — nota tunggal tunai (form lebar / kasir satu barang / keranjang satu
+  // item), atau item penampung (pembulatan > 0) pada keranjang. Item lain di keranjang
+  // multi-item dibiarkan: pembulatan memang per nota, dan penampungnya sudah membawanya.
+  function koreksiTanggungBulat(p) {
+    if (bakuCaraBayar(p.caraBayar) !== 'Tunai' || p.penggantiRetur) return false;
+    if ((p.pembulatan || 0) > 0) return true;
+    const kunci = p.trxId || p.grupNota;
+    if (!kunci) return true;
+    return !ambilPenjualanSemua().some(x => x.id !== p.id && penjualanMasihBerlaku(x) && (x.trxId || x.grupNota) === kunci);
+  }
   function perbaruiDampakKoreksi() {
     const el = document.getElementById('dampakKoreksi');
     if (!el || !_trxTerbuka) return;
@@ -21290,8 +21349,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const baru = parseFloat(document.getElementById('koreksiJumlah').value);
     if (!(baru >= 0) || baru === j.nilai) { el.style.display = 'none'; return; }
     const isiPertama = !(j.nilai > 0);
-    const satuanHarga = j.nilai > 0 ? (p.hargaTotal || 0) / j.nilai : 0;
-    const totalBaru = isiPertama ? (p.hargaTotal || 0) : Math.round(satuanHarga * baru);
+    const bulatLama = p.pembulatan || 0;   // pembulatan Rp500 bukan harga barang — dikeluarkan dulu, dibulatkan ulang sesudahnya
+    const satuanHarga = j.nilai > 0 ? ((p.hargaTotal || 0) - bulatLama) / j.nilai : 0;
+    const katalogBaru = Math.round(satuanHarga * baru);
+    const totalBaru = isiPertama ? (p.hargaTotal || 0) : katalogBaru + (koreksiTanggungBulat(p) ? bulatKeAtas500(katalogBaru) - katalogBaru : 0);
     const selisih = totalBaru - (p.hargaTotal || 0);
     const kembali = j.nilai - baru;
     el.style.display = 'block';
@@ -21314,7 +21375,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (!(baru >= 0)) { alert('Isi jumlah yang benar.'); return; }
     if (baru === j.nilai) { alert('Jumlahnya sama dengan yang tercatat — tidak ada yang perlu dikoreksi.'); return; }
     if (!alasan) { alert('Isi alasan koreksinya — supaya jejaknya bisa dibaca nanti.'); return; }
-    const satuanHarga = j.nilai > 0 ? (p.hargaTotal || 0) / j.nilai : 0;
+    const bulatLama = p.pembulatan || 0;
+    const satuanHarga = j.nilai > 0 ? ((p.hargaTotal || 0) - bulatLama) / j.nilai : 0;
+    const katalogBaru = Math.round(satuanHarga * baru);
+    const bulatBaru = koreksiTanggungBulat(p) ? bulatKeAtas500(katalogBaru) - katalogBaru : 0;
     const idBaru = Date.now();
     // Transaksi pengganti: salinan yang benar, menunjuk ke asalnya.
     // JUMLAH LAMA 0 = jalur kasir tanpa-katalog: uangnya NYATA diterima, jumlahnya saja
@@ -21326,7 +21390,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const pengganti = {
       ...p, id: idBaru,
       [j.field]: baru,
-      hargaTotal: isiPertamaKali ? (p.hargaTotal || 0) : Math.round(satuanHarga * baru),
+      hargaTotal: isiPertamaKali ? (p.hargaTotal || 0) : katalogBaru + bulatBaru,
       hppTotalSaatJual: j.nilai > 0 ? Math.round((p.hppTotalSaatJual || 0) / j.nilai * baru) : 0,
       koreksiDari: p.id, alasanKoreksi: alasan,
       dikoreksiPada: new Date().toISOString()
@@ -21335,6 +21399,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // "Rapikan dari kasir" benar-benar kosong sesudah dirapikan.
     delete pengganti.perluKoreksi;
     delete pengganti.jumlahDiturunkan;
+    if (!isiPertamaKali) { if (bulatBaru > 0) pengganti.pembulatan = bulatBaru; else delete pengganti.pembulatan; }
     // setDoc MENOLAK nilai undefined (beda dengan null) — dulu ditulis
     // "dikoreksiOleh: undefined" dan simpan koreksi selalu gagal. Dihapus dari objek.
     delete pengganti.dikoreksiOleh;

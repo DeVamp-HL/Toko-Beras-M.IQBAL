@@ -873,6 +873,16 @@ function nilaiEntri() { return parseFloat(entriSekarang || '0') || 0; }
 function totalStruk() {
   return strukItems.reduce(function (a, it) { return a + (it.potongan ? -it.harga : it.harga); }, 0);
 }
+// PEMBULATAN KE ATAS Rp500 (keputusan My DeV 5 Sep 2026) — KEMBAR dengan index.html
+// (pembulatanTunai): total TUNAI ditagih ke kelipatan Rp500 di atasnya (49.450 → 49.500,
+// 49.750 → 50.000); QRIS membayar angka persis, kredit masuk piutang. Selisihnya melekat ke
+// hargaTotal item terakhir yang bernilai (field `pembulatan`) saat disimpan — lihat simpanTransaksi.
+function bulatKeAtas500(n) { return Math.ceil(Math.round(n) / 500) * 500; }
+function pembulatanNota() {
+  var t = totalStruk();
+  return bayarAktif === 'Tunai' && t > 0 ? bulatKeAtas500(t) - Math.round(t) : 0;
+}
+function totalTagihan() { return totalStruk() + pembulatanNota(); }
 function gambarLcd() {
   var elA = $('lcdAngka'), kiri = $('lcdKiri'), kanan = $('lcdKanan');
   var tampil;
@@ -882,7 +892,7 @@ function gambarLcd() {
     tampil = (tandaKurang ? '−' : '') + (entriSekarang.indexOf('.') >= 0 ? entriSekarang : angkaTitik(nilaiEntri()));
     kanan.textContent = teksOp || (tandaKurang ? 'POTONGAN' : '');
   } else {
-    tampil = opA !== null ? angkaTitik(opA) : angkaTitik(totalStruk());
+    tampil = opA !== null ? angkaTitik(opA) : angkaTitik(totalTagihan());   // yang ditagih: sudah dibulatkan bila tunai
     kanan.textContent = opA !== null ? ('' + simbolOp).trim() : (totalTerkunci ? 'TOTAL' : '');
   }
   kiri.textContent = strukItems.length > 0 ? (strukItems.length + ' barang') : '';
@@ -914,6 +924,12 @@ function gambarStruk() {
       '<span class="nilai">' + angkaTitik(it.harga) + '</span>' +
       '<button type="button" onclick="hapusItem(' + i + ')">&times;</button></div>';
   }).join('');
+  var bulat = pembulatanNota();
+  if (bulat > 0) {
+    wadah.innerHTML += '<div class="baris-struk"><span class="nama">DIBULATKAN KE 500<small>aturan meja kasir \u00b7 tunai</small></span>' +
+      '<span class="nilai">+' + angkaTitik(bulat) + '</span>' +
+      '<button type="button" tabindex="-1" aria-hidden="true" style="visibility:hidden">&times;</button></div>';   // pengganjal: kolom angka sejajar baris item
+  }
   wadah.scrollTop = wadah.scrollHeight;
 }
 function gambarSemua() { gambarLcd(); gambarStruk(); $('bilahCatat').classList.toggle('tampil', totalTerkunci && strukItems.length > 0); }
@@ -1211,6 +1227,7 @@ function tandaiNamaTerisi() {
 function pilihBayar(c) {
   bayarAktif = bakuCaraBayar(c);
   ['Tunai', 'Qris', 'Kredit'].forEach(function (x) { $('bayar-' + x).classList.toggle('pilih', bakuCaraBayar(x) === bayarAktif); });
+  gambarSemua();   // pembulatan Rp500 hanya untuk tunai — angka tagihan ikut berubah
   // Kolomnya memberi aba-aba begitu KREDIT dipilih, bukan menunggu JUAL ditekan lalu
   // ditolak. Pindah dari Kredit = tanda merahnya ikut hilang, karena syaratnya gugur.
   var el = $('namaPelangganInput');
@@ -1246,7 +1263,7 @@ function uraikanPecahan(n) {
   return { lembar: hasil, sisa: n };
 }
 function bukaLayarKembalian() {
-  var total = totalStruk();
+  var total = totalTagihan();
   $('kbTotal').textContent = rupiah(total);
   $('kbUangDiterima').value = '';
   $('kbHasil').style.display = 'none';
@@ -1270,7 +1287,7 @@ function bukaLayarKembalian() {
 function tutupLayarKembalian() { $('layarKembalian').classList.remove('tampil'); }
 function isiUangCepat(n) { $('kbUangDiterima').value = n; hitungKembalian(); }
 function hitungKembalian() {
-  var total = totalStruk();
+  var total = totalTagihan();
   var uang = parseFloat($('kbUangDiterima').value) || 0;
   var hasil = $('kbHasil');
   if (uang <= 0) { hasil.style.display = 'none'; $('btnKonfirmasiKembalian').style.display = 'none'; kembalianInfo = null; return; }
@@ -1418,7 +1435,7 @@ var HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 var BULAN_ID = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 var strukTerakhir = null;   // { teks, total }
 
-function susunStrukTerakhir(totalNota, namaPelanggan) {
+function susunStrukTerakhir(totalNota, namaPelanggan, bulatNota) {
   var d = new Date();
   var baris = [];
   baris.push('*TOKO BERAS M.IQBAL*');
@@ -1432,6 +1449,7 @@ function susunStrukTerakhir(totalNota, namaPelanggan) {
     var satuan = p ? (p.tipe === 'literan' ? ' liter' : (p.tipe === 'karung' ? ' karung' : ' pcs')) : '';
     baris.push(nama + (p && it.qty ? '  ' + it.qty + satuan : '') + '   ' + rupiah(it.harga));
   });
+  if (bulatNota > 0) baris.push('Dibulatkan ke 500    +' + rupiah(bulatNota));
   baris.push('------------------------------');
   baris.push('*TOTAL   ' + rupiah(totalNota) + '*');
   if (bayarAktif === 'Kredit') {
@@ -1528,7 +1546,9 @@ function simpanTransaksi() {
   // kalau struk berubah (tambah/hapus barang) sesudah kembalian dihitung, angka lama
   // itu sudah tidak mewakili transaksi ini lagi, jadi tidak diikutkan sama sekali
   // (lebih baik tidak ada catatan daripada catatan yang salah).
-  var kbValid = kembalianInfo && kembalianInfo.total === totalStruk();
+  var kbValid = kembalianInfo && kembalianInfo.total === totalTagihan();
+  var bulatNota = pembulatanNota();
+  var daftar = [];   // dikumpulkan dulu: pembulatan menempel ke item terakhir yang bernilai, baru diantrekan
 
   strukItems.forEach(function (it) {
     var trx = null;
@@ -1580,6 +1600,16 @@ function simpanTransaksi() {
       trx.kembalianDiserahkan = kembalianInfo.diserahkan;
       if (kembalianInfo.diserahkan) trx.kembalianJamKonfirmasi = kembalianInfo.jam;
     }
+    daftar.push(trx);
+  });
+  if (bulatNota > 0) {
+    for (var b = daftar.length - 1; b >= 0; b--) {
+      if (daftar[b].jenis !== 'potongan' && daftar[b].hargaTotal > 0) {
+        daftar[b].pembulatan = bulatNota; daftar[b].hargaTotal += bulatNota; break;
+      }
+    }
+  }
+  daftar.forEach(function (trx) {
     totalNota += trx.hargaTotal;
     tambahAntrean('penjualan', trx);
     if (trx.jenis === 'literan' && trx.kemasanLiteran && trx.jumlahKemasanLiteranDipakai > 0) {
@@ -1592,7 +1622,7 @@ function simpanTransaksi() {
   kirimAntrean(false);
   // Struk disusun SEBELUM mulaiBaru() — sesudah itu strukItems, bayarAktif, dan
   // kembalianInfo semuanya sudah dikosongkan untuk pembeli berikutnya.
-  susunStrukTerakhir(totalNota, namaPelanggan);
+  susunStrukTerakhir(totalNota, namaPelanggan, bulatNota);
   $('teksSukses').textContent = rupiah(totalNota);
   $('layarSukses').classList.add('tampil');
   setTimeout(function () { $('layarSukses').classList.remove('tampil'); }, 1300);
