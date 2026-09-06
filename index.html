@@ -397,6 +397,9 @@
     .cari-details summary { width: 34px; height: 34px; }
     /* Judul halaman: tanggal sudah ada di chip header, jangan diulang */
     .judul-halaman .jh-sub { display: none; }
+    /* Sub-judul DESAIN (prototipe: judulPeta) — kalimat kedua yang memberi tahu layar
+       ini menjawab apa. Dibuka khusus, sementara sub bertanggal tetap tersembunyi. */
+    .k6a .judul-halaman .jh-sub[data-sub-desain] { display: inline; }
     .judul-halaman h2 { font-size: 24px; }
     /* Kas masuk & kas keluar TIDAK diwarnai. Peran warna dibakukan di lembar
        Warna+Tipografi: merah = kritis & bahaya, dan kas keluar bulanan adalah
@@ -2628,6 +2631,8 @@
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:var(--pf-putih);
 }
 .k6a .judul-halaman .jh-sub{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
+/* Riwayat memakai kepala sendiri (riw-kepala) — sub-judulnya ikut bahasa yang sama. */
+.k6a .riw-judul .riw-sub{ font-family:var(--pf-serif); font-style:italic; font-size:12.5px; color:var(--pf-abu); }
 .k6a .kartu, .k6a .kartu-mini, .k6a .kartu-daftar,
 .k6a .kartu-komposisi{
   background:var(--pf-kartu); border:1px solid var(--pf-tepi); border-radius:15px;
@@ -5677,7 +5682,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   </div>
 
   <div id="halamanJual" class="halaman tampil k6a">
-    <div class="judul-halaman"><h2>Jual</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <div class="judul-halaman"><h2>Jual</h2><span class="jh-sub" data-sub-desain>harga terkunci katalog</span><span class="jh-sub" data-tanggal-halaman></span></div>
     <div id="pesanOkJual" class="pesan-ok"> Penjualan tersimpan.</div>
 
     <!-- WIZARD JUAL 6a (G2) — kulit bertanya-satu-satu di atas form lama.
@@ -6017,7 +6022,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 
   <!-- HALAMAN STOK -->
   <div id="halamanStok" class="halaman k6a">
-    <div class="judul-halaman"><h2>Stok</h2><span class="jh-sub" data-tanggal-halaman></span><span class="jh-cat">dihitung otomatis</span></div>
+    <div class="judul-halaman"><h2>Stok</h2><span class="jh-sub" data-sub-desain>berapa hari lagi habis</span><span class="jh-sub" data-tanggal-halaman></span><span class="jh-cat">dihitung otomatis</span></div>
     <!-- KACA EMAS G1 (rancangan Stok - Gabungan): enam judul kartu tidak lagi berteriak
          sama keras — jenis stok dibawa SAKLAR, gambaran besarnya dibawa kepala Uang
          Tertidur + kisi tabung. Daftar rinci di bawah tetap hidup (disaring saklar);
@@ -6155,6 +6160,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <div id="halamanLaba" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Laba</h2>
+      <span class="jh-sub" data-sub-desain>tiga angka yang beda</span>
       <span class="jh-sub" id="labaSubBulan"></span>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
@@ -6208,6 +6214,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <div id="halamanTutup" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Tutup Hari</h2>
+      <span class="jh-sub" data-sub-desain>ritual malam</span>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
     <!-- KACA EMAS G4 (rancangan Tutup Hari - Gabungan): JALUR TUJUH LAYAR — blok lama
@@ -6331,6 +6338,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <div id="halamanAruskas" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Arus Kas</h2>
+      <span class="jh-sub" data-sub-desain>ke mana uangnya</span>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
 
@@ -6510,6 +6518,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <div id="halamanPiutang" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Piutang &amp; Kasbon</h2>
+      <span class="jh-sub" data-sub-desain>umur dulu, besar kemudian</span>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
 
@@ -6598,6 +6607,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <div id="halamanPelanggan" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Pelanggan</h2>
+      <span class="jh-sub" data-sub-desain>pengenal dulu</span>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
 
@@ -6722,7 +6732,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
        sumber. Seperti Tangani & Belanja, layar ini tidak menggantikan versi desktop mana
        pun, jadi tidak digerbangi lebar. -->
   <div id="halamanAkun" class="halaman k6a">
-    <div class="judul-halaman"><h2>Akun &amp; Perangkat</h2><span class="jh-sub">siapa, dari mana, sejak kapan</span></div>
+    <div class="judul-halaman"><h2>Akun &amp; Perangkat</h2><span class="jh-sub" data-sub-desain>siapa, dari mana, sejak kapan</span></div>
     <div class="ap-tab">
       <button type="button" id="apTabPerangkat" class="kg-terpilih" onclick="apPilihTab('perangkat')">Perangkat</button>
       <button type="button" id="apTabIzin" onclick="apPilihTab('izin')">Izin</button>
@@ -6732,7 +6742,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   </div>
 
   <div id="halamanTangani" class="halaman k6a">
-    <div class="judul-halaman"><h2>Tangani</h2><span class="jh-sub">menuntut tindakan</span></div>
+    <div class="judul-halaman"><h2>Tangani</h2><span class="jh-sub" data-sub-desain>menuntut tindakan</span></div>
     <div id="tgKaca"></div>
   </div>
 
@@ -6744,7 +6754,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
        sebelum disimpan. Sama seperti Tangani, dia tidak punya versi desktop lama,
        jadi tidak digerbangi lebar: menggerbanginya cuma memberi halaman kosong. -->
   <div id="halamanBelanja" class="halaman k6a">
-    <div class="judul-halaman"><h2>Belanja</h2><span class="jh-sub">dua pertanyaan, satu catatan</span></div>
+    <div class="judul-halaman"><h2>Belanja</h2><span class="jh-sub" data-sub-desain>dua pertanyaan, satu catatan</span></div>
 
     <div class="kg-panel bj-panel">
       <div class="kg-label">Nominal</div>
@@ -6835,6 +6845,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <div id="halamanHarga" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Daftar Harga</h2>
+      <span class="jh-sub" data-sub-desain>sumber harga kasir</span>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
     </div>
     <div id="pesanOkHarga" class="pesan-ok"> Harga tersimpan.</div>
@@ -6993,6 +7004,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     <div class="riw-kepala">
       <div class="riw-judul">
         <h2>Riwayat</h2>
+        <span class="riw-sub">saringan menumpuk</span>
         <span class="riw-hitung" id="riwHitungTotal">0 catatan</span>
       </div>
       <label class="riw-kotak-cari" for="riwCari">
