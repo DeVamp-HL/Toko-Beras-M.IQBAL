@@ -9336,6 +9336,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       amplopLaba: ambilAmplopLaba(),
       modalOwner: ambilModalOwner(),
       utangPemasokMutasi: ambilUtangPemasokMutasi(),
+      // Pelunasan utang ke owner (6 Sep 2026). Sisi TIMBUL-nya ikut lewat
+      // pengeluaranHarian berkategori 'tokoDompet'; kalau sisi LUNAS-nya tidak ikut,
+      // memulihkan backup menghidupkan lagi utang yang sudah dibayar.
+      utangOwnerMutasi: ambilUtangOwnerMutasi(),
       // Peta merk->jenis beras (dok pengaturan, bukan koleksi ber-id) — audit 14 Agu
       // 2026: sebelumnya tidak ikut backup, pulihkan-dari-file membuat petanya kosong.
       petaJenisBeras: ambilPetaJenisBeras()
@@ -9391,6 +9395,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           { kunci: 'amplopLaba',          koleksi: KOLEKSI_AMPLOP,        ada: ambilAmplopLaba(),       field: 'id',    label: 'amplop laba' },
           { kunci: 'modalOwner',          koleksi: KOLEKSI_MODAL,         ada: ambilModalOwner(),       field: 'id',    label: 'modal owner' },
           { kunci: 'utangPemasokMutasi',  koleksi: KOLEKSI_UTANG_PEMASOK, ada: ambilUtangPemasokMutasi(), field: 'id',  label: 'utang pemasok' },
+          { kunci: 'utangOwnerMutasi',    koleksi: KOLEKSI_UTANG_OWNER,   ada: ambilUtangOwnerMutasi(), field: 'id',    label: 'utang ke owner' },
           { kunci: 'thrPelanggan',        koleksi: KOLEKSI_THR,           ada: ambilThrPelanggan(),     field: 'id',    label: 'THR pelanggan' },
           { kunci: 'pemasokCatatan',      koleksi: KOLEKSI_PEMASOK_CAT,   ada: ambilPemasokCatatan(),   field: 'id',    label: 'catatan pemasok' }
         ];
@@ -10820,8 +10825,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     ambilUtangPemasokMutasi().forEach(m => {
       if (m.tipe !== 'saldoAwal') return;
       // Bon pra-sistem: umurnya dipegang bonTanggal, bukan tanggal dicatatnya.
-      // Bon tanpa tanggal ('') selalu lolos — dia memang yang tertua.
-      if (!sd(m.bonTanggal || m.tanggal)) return;
+      // Bon tanpa tanggal ('') selalu lolos — dia memang yang tertua, dan '' <= tanggal
+      // apa pun. JANGAN jatuh ke m.tanggal di sini: itu tanggal DICATATNYA, dan bon lama
+      // yang baru didigitalkan hari ini akan hilang dari jawaban "per tanggal" justru
+      // karena dia tua. Kunci saring wajib sama persis dengan kunci urut di bawah
+      // (m.bonTanggal || '') — kalau tidak, satu bon punya dua tanggal lahir.
+      if (!sd(m.bonTanggal || '')) return;
       const px = pastikan(m.pemasok);
       if (!px) return;
       // Tanggal bon HARUS tanggal bonnya sendiri — bukan tanggal dicatatnya. Bon lama
@@ -10837,6 +10846,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       if (!px) return;
       let sisa = m.nominal || 0;
       const tunjuk = m.bonId ? px.bon.find(b => b.id === String(m.bonId)) : null;
+      // Hanya saat menjawab "per tanggal": kalau bon yang DITUNJUK pembayaran ini belum
+      // lahir per tanggal itu, pembayarannya belum boleh mengalir ke bon tertua sebagai
+      // cadangan — dia akan melunasi bon lain yang saat itu sungguh-sungguh masih
+      // terbuka, dan utangnya menguap. Pembayaran tanpa bonId (dokumen lama) tetap
+      // memakai cadangan seperti dulu, jadi jalur tanpa argumen tidak bergeser.
+      if (sampaiIso && m.bonId && !tunjuk) return;
       if (tunjuk) {
         const ambil = Math.min(sisa, tunjuk.nilai - tunjuk.dibayar);
         tunjuk.dibayar += ambil; sisa -= ambil;
@@ -15804,6 +15819,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         biayaBulanan, harian: jmlNominal(harianToko), prive: jmlNominal(harianOwner),
         beliKemasan: jmlHarga(beliKemasan), beliLiteran: jmlHarga(beliLiteran),
         setoran: jmlNominal(setoran),
+        bayarUtangOwner: jmlNominal(bayarUtangOwner),
         modalSetor: jmlNominal(modalSetor), modalTarik: jmlNominal(setoran)
       }
     };
@@ -19313,14 +19329,46 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     cek('utang owner: sisa', u.sisa, Math.max(0, sDompet - bayar));
     const N = hitungNeraca();
     cek('neraca: utangOwner', N.utangOwner, u.sisa);
-    cek('neraca: kewajiban', N.kewajiban, N.utangOwner + N.utangPemasok);
+    // Neraca WAJIB memakai angka utang pemasok yang sama dengan halaman Pemasok.
+    // Membandingkan N.kewajiban dengan N.utangOwner + N.utangPemasok tidak bisa gagal —
+    // itu cuma mengulang rumusnya sendiri. Yang mengikat justru pembandingan ke sumber
+    // yang dibaca layar lain: pemilik akan menaruh dua layar itu bersebelahan.
+    const P = totalUtangPemasokSemua();
+    cek('neraca: utangPemasok = halaman Pemasok', N.utangPemasok, P.nominal);
+    cek('neraca: cacah bon', N.nBonPemasok, P.nBon);
     if (N.total !== null) cek('neraca: total dikurangi kewajiban',
-      N.total, Math.round(N.kas + N.stok + N.piutang + N.kasbon - N.kewajiban));
+      N.total, Math.round(N.kas + N.stok + N.piutang + N.kasbon - N.utangOwner - N.utangPemasok));
+
+    // 4b — Bon pra-sistem tanpa tanggal harus IKUT di jawaban "per tanggal" mana pun:
+    // dia yang tertua. Kalau kunci saring diam-diam pindah ke tanggal pencatatan, cek
+    // ini yang menyala — bukan pemilik yang menemukan kekayaannya melompat.
+    const adaTanpaTanggal = ambilUtangPemasokMutasi().some(m => m.tipe === 'saldoAwal' && !m.bonTanggal);
+    if (adaTanpaTanggal) {
+      const lama = totalUtangPemasokSemua('2000-01-01').nominal;
+      const tanpaTgl = ambilUtangPemasokMutasi()
+        .filter(m => m.tipe === 'saldoAwal' && !m.bonTanggal)
+        .reduce((x, m) => x + (m.nominal || 0), 0);
+      if (lama < Math.min(tanpaTgl, P.nominal)) salah.push('utang pemasok: bon tanpa tanggal hilang dari jawaban per-tanggal');
+    }
 
     // 5 — Pelunasan: uang keluar laci, tapi TIDAK menambah beban.
     const brsBayar = K.keluar.filter(x => x.label === 'Bayar utang ke owner')[0];
     if (!brsBayar) salah.push('kas: baris "Bayar utang ke owner" hilang');
     else cek('kas: pelunasan utang owner', brsBayar.nominal, bayar);
+
+    // 6 — Identitas kartu "Ke mana uang bulan ini" harus berjumlah kas bersih.
+    // Dihitung dengan rumus yang sama dengan tampilkanKeManaUang, jadi suku yang lupa
+    // ditambahkan di sana akan langsung terlihat di sini sebagai selisih.
+    const L2 = hitungLabaBersihRentang('2000-01-01', '2999-12-31', bayaran);
+    const q = K.pos;
+    const jadiStok = q.belanja + q.berasDiutang - L2.hpp;
+    const jadiPiutang = K.kreditBulanIni - q.pelunasan;   // nama field arus kas, bukan 'kredit'
+    const jadiKasbon = q.kasbonAmbil - q.kasbonBayar;
+    const biayaNyata = q.biayaBulanan + q.harian + q.beliKemasan + q.beliLiteran + q.refund - q.tukarMasuk;
+    const identitas = L2.margin + L2.omzetTanpaHpp - jadiStok - jadiPiutang - jadiKasbon
+      + q.berasDiutang - q.bayarBon + q.modalSetor - q.setoran - q.prive
+      - (q.bayarUtangOwner || 0) - biayaNyata;
+    cek('kartu Ke-Mana-Uang berjumlah kas bersih', identitas, K.bersih);
 
     if (salah.length) { console.error('ujiUtangOwner GAGAL:', salah); return { lulus: false, salah }; }
     console.log('ujiUtangOwner LULUS — ' + nDompet + ' belanja dompet (' + formatRupiah(sDompet)
@@ -19512,6 +19560,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     }
     if ((pos.bayarBon || 0) > 0) {
       baris.push(brs('Melunasi bon pemasok — utang berkurang', 'uang keluar untuk beras yang sudah lama di gudang', pos.bayarBon, -1));
+    }
+    // Pola yang sama dengan bayar bon: uang keluar TANPA beban baru, karena bebannya
+    // sudah diakui waktu belanjanya dicatat. Tanpa sukunya sendiri, kolom kartu ini
+    // tidak lagi berjumlah kas bersih — meleset persis sebesar pelunasan.
+    if ((pos.bayarUtangOwner || 0) > 0) {
+      baris.push(brs('Melunasi utang ke owner — kewajiban berkurang', 'uang keluar untuk belanja toko yang dulu dibayar dompet pribadi', pos.bayarUtangOwner, -1));
     }
     baris.push(jadiKasbon >= 0
       ? brs('Jadi kasbon pegawai', 'diambil melebihi yang dikembalikan', jadiKasbon, -1)

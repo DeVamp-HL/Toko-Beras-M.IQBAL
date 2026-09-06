@@ -396,6 +396,18 @@ def utama():
         if b is None: return
         if abs(a - b) > toleransi: beda.append(f"{nama}: audit {rp(a)} vs tercatat {rp(b)} (selisih {rp(a - b)})")
 
+    # BACKUP LAMA: sebelum 6 Sep 2026 unduhBackup() tidak mengekspor utangOwnerMutasi.
+    # Berkas seperti itu memulihkan sisi TIMBUL (dokumen 'tokoDompet') tanpa sisi LUNAS,
+    # jadi kas keluar versi audit kurang persis sebesar pelunasan — dan identitasnya
+    # tetap berkata OK karena kedua sisinya sama-sama tidak tahu. Koleksi yang KOSONG
+    # (sudah pernah diekspor, memang belum ada pelunasan) berbeda dari koleksi yang
+    # TIDAK ADA KUNCINYA, jadi yang diperiksa keberadaan kuncinya, bukan panjangnya.
+    if 'utangOwnerMutasi' not in d and any(h.get('kategori') == 'tokoDompet' for h in kol('pengeluaranHarian')):
+        beda.append("backup ini tidak punya kunci 'utangOwnerMutasi' padahal ada belanja "
+                    "berkategori 'tokoDompet' — pelunasan utang ke owner TIDAK terbaca, "
+                    "kas keluar & neraca di bawah ini kurang sebesar pelunasan yang hilang. "
+                    "Unduh backup baru dari aplikasi versi 6 Sep 2026 ke atas.")
+
     print("=" * 72)
     print("AUDIT INDEPENDEN — dari", path, "· versi backup", d.get('versi'), "· diunduh", str(d.get('diunduhPada'))[:19])
     print("=" * 72)
