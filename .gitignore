@@ -51,3 +51,6 @@ mockup-sistem-mewah.html
 
 # Sisa jalan skrip audit
 __pycache__/
+
+# Kotak pasir tulis-nol untuk uji browser — dibangun ulang tiap sesi, bukan bagian aplikasi
+kotak-uji.html

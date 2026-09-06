@@ -3362,6 +3362,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   background:linear-gradient(180deg,rgba(226,205,166,.55),rgba(226,205,166,.18)); }
 #lembarStokMerk .sm-keran span.nol{ background:rgba(255,255,255,.07); }
 #lembarStokMerk .sm-daftar{ margin-top:4px; }
+#lembarStokMerk .sm-tempat{ display:block; width:100%; min-height:44px; margin-top:8px; padding:8px 12px;
+  border-radius:12px; border:1px dashed rgba(226,205,166,.28); background:rgba(255,255,255,.03);
+  font-family:var(--pf-serif); font-style:italic; font-size:11.5px; line-height:1.5; color:var(--pf-abu);
+  text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+#lembarStokMerk .sm-tempat.terisi{ border-style:solid; border-color:rgba(226,205,166,.22); color:var(--pf-platina); }
 /* ═══ RINGKASAN 8a — Tambalan 01 "KARUNG & JAM" (6 Sep 2026) ═══════════════════
    Empat jenis uang, empat wujud. Kas platina 44px di panel kaca (angka terukur),
    omzet & margin sampanye 21px (angka dagang), laba bersih paling kecil bertepi
@@ -4946,6 +4951,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     <b id="smSisa"></b>
   </div>
   <div class="kg-rincian" id="smRingkas"></div>
+  <button type="button" class="sm-tempat" id="smTempat" onclick="ubahTempatSimpanMerkIni()"></button>
   <div class="kg-label" style="margin-top:10px;">Keran 14 hari &middot; kg keluar per hari</div>
   <div class="sm-keran" id="smKeran" aria-hidden="true"></div>
   <div class="kg-label" style="margin-top:10px;">Batch yang membentuk stok ini</div>
@@ -7549,6 +7555,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   const KUNCI_UTANG_OWNER = 'miqbal_utang_owner_v1';
   const KUNCI_UTANG_PEMASOK = 'miqbal_utang_pemasok_v1';
   const KUNCI_JENIS_BERAS = 'miqbal_jenis_beras_v1';
+  const KUNCI_TEMPAT_SIMPAN = 'miqbal_tempat_simpan_v1';
   const KUNCI_THR = 'miqbal_thr_pelanggan_v1';
   const KUNCI_PEMASOK_CAT = 'miqbal_pemasok_catatan_v1';
 
@@ -9571,7 +9578,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       utangOwnerMutasi: ambilUtangOwnerMutasi(),
       // Peta merk->jenis beras (dok pengaturan, bukan koleksi ber-id) — audit 14 Agu
       // 2026: sebelumnya tidak ikut backup, pulihkan-dari-file membuat petanya kosong.
-      petaJenisBeras: ambilPetaJenisBeras()
+      petaJenisBeras: ambilPetaJenisBeras(),
+      // Peta tempat simpan (6 Sep 2026) - dok pengaturan juga, jadi ia menabrak
+      // lubang yang sama dengan petaJenisBeras dulu: tanpa baris ini, pulihkan-dari-
+      // file mengembalikan seluruh stok tapi melupakan di mana barangnya berada.
+      petaTempatSimpan: ambilPetaTempatSimpan()
     };
     const blob = new Blob([JSON.stringify(isi, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -9643,6 +9654,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         if (isi.petaJenisBeras && Object.keys(isi.petaJenisBeras).length > 0) {
           localStorage.setItem(KUNCI_JENIS_BERAS, JSON.stringify(isi.petaJenisBeras));
           try { await simpanKeFirestore('pengaturan', { id: 'jenisBeras', peta: isi.petaJenisBeras, diubahPada: new Date().toISOString() }); } catch (e) { console.error(e); }
+        }
+        if (isi.petaTempatSimpan && Object.keys(isi.petaTempatSimpan).length > 0) {
+          localStorage.setItem(KUNCI_TEMPAT_SIMPAN, JSON.stringify(isi.petaTempatSimpan));
+          try { await simpanKeFirestore('pengaturan', { id: 'tempatSimpan', peta: isi.petaTempatSimpan, diubahPada: new Date().toISOString() }); } catch (e) { console.error(e); }
         }
         const laporan = [];
         for (const k of daftarKoleksi) {
@@ -15809,8 +15824,19 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           + '<small>' + escapeHtml(b.pemasok) + (b.hargaPerKg ? ' · ' + formatRupiah(b.hargaPerKg) + '/kg' : '')
           + (b.umur !== null ? ' · umur ' + b.umur + ' hari' : '') + '</small></span>'
           + '<span class="angka">' + Math.round(b.kg).toLocaleString('id-ID') + ' <u>kg</u></span></div>').join('');
+    gambarTempatLembarMerk();
     document.body.classList.add('lembar-stok-merk-terbuka');
   }
+  // Tempat simpan digambar terpisah supaya pendengar Firestore bisa menyegarkannya
+  // sendiri tanpa membangun ulang seluruh lembar (keran & batch tidak ikut berkedip).
+  function gambarTempatLembarMerk() {
+    const el = document.getElementById('smTempat');
+    if (!el || !_smMerk) return;
+    const t = tempatUntuk('K', _smMerk);
+    el.classList.toggle('terisi', !!t);
+    el.textContent = t ? 'Disimpan di ' + t : 'Tempat simpan belum ditulis - ketuk untuk mengisi';
+  }
+  function ubahTempatSimpanMerkIni() { if (_smMerk) ubahTempatSimpan('K', _smMerk, _smMerk); }
   function tutupLembarStokMerk() { document.body.classList.remove('lembar-stok-merk-terbuka'); }
   function stokDariLembarKeDaftar() {
     tutupLembarStokMerk();
@@ -15861,7 +15887,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       if (el) el.style.display = x[1] ? '' : 'none';
     });
 
-    // --- kisi tabung: tinggi isi = sisa, diukur terhadap yang terbesar DI SET INI ---
+    // --- kisi tabung: tinggi isi = berapa hari lagi habis (lihat catatan di bawah) ---
     let item = [];
     if (!bahanMode) {
       Object.keys(d.stokKarung).forEach(m => {
@@ -23840,6 +23866,63 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       }).join('');
   }
 
+  // ═══ TEMPAT SIMPAN PER BARANG (6 Sep 2026, keputusan My DeV: "satu field teks
+  // per merk, boleh kosong") ══════════════════════════════════════════════════
+  // Bentuknya menyalin petaJenisBeras: SATU dokumen pengaturan berisi peta, bukan
+  // koleksi ber-id. Alasannya sama — isinya keterangan tetap yang jarang berubah,
+  // tidak punya riwayat yang perlu dibaca, dan tidak boleh ikut terhapus tutup buku
+  // (koleksi 'pengaturan' memang di luar tbDaftarKoleksi).
+  //
+  // KUNCINYA BERAWALAN JENIS, bukan nama telanjang: 'K:' karung, 'M:' kemasan jadi,
+  // 'B:' bahan. Tanpa awalan, merk karung "Angsa" dan kemasan "Angsa 5 kg" bisa
+  // bertabrakan begitu ada merk yang namanya kebetulan sama dengan produk kemasan.
+  // Desain memberi tempat pada SEMUA barang (termasuk "Rak kemasan, baris atas" dan
+  // "Laci kasir" untuk bahan), jadi skemanya disiapkan lengkap sejak awal supaya
+  // Keliling gudang tidak perlu memindahkan kunci yang sudah terlanjur diisi.
+  function kunciTempat(jenis, id) { return String(jenis || 'K') + ':' + String(id || ''); }
+  function ambilPetaTempatSimpan() {
+    try { return JSON.parse(localStorage.getItem(KUNCI_TEMPAT_SIMPAN) || '{}'); } catch (e) { return {}; }
+  }
+  // Boleh kosong, dan kosong BUKAN keadaan salah — toko kecil menyimpan di tempat
+  // yang sudah dihafal. Pemanggil yang memutuskan mau menampilkan apa saat kosong.
+  function tempatUntuk(jenis, id) {
+    const peta = ambilPetaTempatSimpan();
+    const k = kunciTempat(jenis, id);
+    return typeof peta[k] === 'string' ? peta[k] : '';
+  }
+  function pasangPendengarTempatSimpan() {
+    onSnapshot(doc(db, 'pengaturan', 'tempatSimpan'), (snap) => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      if (d && d.peta) {
+        localStorage.setItem(KUNCI_TEMPAT_SIMPAN, JSON.stringify(d.peta));
+        if (_smMerk && document.body.classList.contains('lembar-stok-merk-terbuka')) gambarTempatLembarMerk();
+      }
+    }, () => { /* offline - pakai salinan perangkat */ });
+  }
+  setTimeout(pasangPendengarTempatSimpan, 0);
+  async function simpanTempatSimpan(jenis, id, teks) {
+    const peta = ambilPetaTempatSimpan();
+    const k = kunciTempat(jenis, id);
+    // Dikosongkan = kuncinya DIBUANG, bukan disimpan sebagai string kosong. Peta yang
+    // penuh kunci bernilai '' tidak bisa dibedakan dari peta yang memang terisi.
+    if (teks) peta[k] = teks; else delete peta[k];
+    localStorage.setItem(KUNCI_TEMPAT_SIMPAN, JSON.stringify(peta));
+    try {
+      await simpanKeFirestore('pengaturan', { id: 'tempatSimpan', peta, diubahPada: new Date().toISOString() });
+    } catch (e) { console.error(e); }
+  }
+  function ubahTempatSimpan(jenis, id, label) {
+    const sekarang = tempatUntuk(jenis, id);
+    const jawab = prompt('Di mana "' + label + '" disimpan?\n\n'
+      + 'Contoh: Los depan tumpukan kiri · Gudang belakang rak 2 · Laci kasir.\n'
+      + 'Boleh dikosongkan kalau tidak perlu ditulis.', sekarang);
+    if (jawab === null) return;
+    simpanTempatSimpan(jenis, id, jawab.trim()).then(() => {
+      if (document.body.classList.contains('lembar-stok-merk-terbuka')) gambarTempatLembarMerk();
+    });
+  }
+
   function pasangPendengarPin() {
     onSnapshot(doc(db, 'pengaturan', 'keamanan'), (snap) => {
       if (!snap.exists()) return;
@@ -24244,6 +24327,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.hitungPerkiraan = hitungPerkiraan;
   window.hapusBarisMerk = hapusBarisMerk;
   // Pola form baku (Lembar 1 Penyempurnaan, 7 Agu 2026)
+  window.ubahTempatSimpan = ubahTempatSimpan; window.ubahTempatSimpanMerkIni = ubahTempatSimpanMerkIni;
   window.bukaLembarMerk = bukaLembarMerk; window.tutupLembarMerk = tutupLembarMerk;
   window.pilihMerkDariLembar = pilihMerkDariLembar;
   window.mintaHapusBaris = mintaHapusBaris; window.batalHapusBaris = batalHapusBaris;
