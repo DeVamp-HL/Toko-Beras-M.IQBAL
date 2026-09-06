@@ -3367,6 +3367,87 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   font-family:var(--pf-serif); font-style:italic; font-size:11.5px; line-height:1.5; color:var(--pf-abu);
   text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent; }
 #lembarStokMerk .sm-tempat.terisi{ border-style:solid; border-color:rgba(226,205,166,.22); color:var(--pf-platina); }
+
+/* ═══ KELILING GUDANG (rancangan Stok - Gabungan, sumbu L) ═══════════════════
+   Lembar opname berpandu: satu barang satu layar, dua tombol besar. Sengaja
+   menutup layar penuh - ini dikerjakan sambil berdiri di antara tumpukan dengan
+   satu tangan, jadi tidak ada gunanya menyisakan kepala halaman yang tidak akan
+   dibaca. Tombolnya 56px, lebih besar dari 44px minimum: yang menekan sedang
+   memegang HP sambil menghitung karung. */
+#lembarKeliling{ position:fixed; inset:0; z-index:60; display:none; flex-direction:column;
+  background:linear-gradient(180deg,#1a1d21,#101215); }
+body.lembar-keliling-terbuka #lembarKeliling{ display:flex; }
+body.lembar-keliling-terbuka{ overflow:hidden; }
+#lembarKeliling .kl-kepala{ flex:none; display:flex; align-items:center; gap:9px;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;
+  border-bottom:1px solid rgba(255,255,255,.07); }
+#lembarKeliling .kl-ke{ flex:none; font-family:var(--pf-serif); font-weight:700; font-size:11px; color:var(--pf-platina); }
+#lembarKeliling .kl-bar{ flex:1; height:4px; border-radius:2px; background:rgba(207,212,218,.12); overflow:hidden; }
+#lembarKeliling .kl-bar i{ display:block; height:100%; border-radius:2px;
+  background:linear-gradient(90deg,#c2a678,#f7ecd6); transition:width .2s ease; }
+#lembarKeliling .kl-tutup{ flex:none; min-height:44px; padding:0 14px; border-radius:9px;
+  border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05);
+  font-family:inherit; font-size:11.5px; font-weight:700; color:#e8e4dc; cursor:pointer; }
+#lembarKeliling .kl-isi{ flex:1; min-height:0; overflow-y:auto;
+  padding:16px 16px calc(24px + env(safe-area-inset-bottom,0px)); }
+#lembarKeliling .kl-kotak{ border-radius:16px; padding:16px 15px;
+  background:linear-gradient(158deg,rgba(255,255,255,.07),rgba(255,255,255,.028));
+  border:1px solid rgba(255,255,255,.09); }
+#lembarKeliling .kl-nama{ font-family:var(--pf-serif); font-weight:600; font-size:20px; line-height:1.2; color:#f7ecd6; }
+#lembarKeliling .kl-tempat{ display:block; width:100%; min-height:44px; margin-top:6px; padding:7px 0;
+  background:none; border:0; text-align:left; font-family:var(--pf-serif); font-style:italic;
+  font-size:11px; line-height:1.5; color:var(--pf-abu); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+#lembarKeliling .kl-tempat u{ text-decoration-style:dotted; text-underline-offset:3px; }
+#lembarKeliling .kl-catat{ display:flex; align-items:baseline; gap:9px; margin-top:10px; }
+#lembarKeliling .kl-catat b{ font-family:var(--pf-serif); font-weight:600; font-size:36px; line-height:1; color:#f7ecd6; }
+#lembarKeliling .kl-catat span{ font-family:var(--pf-serif); font-style:italic; font-size:11px; color:var(--pf-abu); }
+#lembarKeliling .kl-pilih{ display:flex; gap:8px; margin-top:18px; }
+#lembarKeliling .kl-pilih button{ flex:1; min-height:56px; border-radius:12px; font-family:inherit;
+  font-size:13.5px; font-weight:700; letter-spacing:.02em; cursor:pointer; }
+#lembarKeliling .kl-cocok{ border:1px solid rgba(138,177,125,.5); background:rgba(138,177,125,.16); color:#cfe3c6; }
+#lembarKeliling .kl-beda{ border:1px solid rgba(226,205,166,.42); background:rgba(226,205,166,.1); color:var(--pf-platina); }
+#lembarKeliling .kl-hitung{ margin-top:15px; }
+#lembarKeliling .kl-hitung .kl-baris{ display:flex; align-items:center; gap:8px; margin-top:9px; }
+#lembarKeliling .kl-hitung button.kl-nudge{ flex:none; width:52px; min-height:52px; border-radius:12px;
+  border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06);
+  font-family:inherit; font-size:22px; color:#e8e4dc; cursor:pointer; }
+#lembarKeliling .kl-hitung input{ flex:1; min-width:0; min-height:52px; border-radius:12px;
+  border:1px solid rgba(255,255,255,.16); background:rgba(0,0,0,.25); color:#f7ecd6;
+  font-family:var(--pf-serif); font-size:24px; text-align:center; padding:0 8px; }
+#lembarKeliling .kl-selisih{ font-size:12px; font-weight:600; line-height:1.5; margin-top:10px; }
+#lembarKeliling .kl-selisih.kurang{ color:#d3a08b; }
+#lembarKeliling .kl-selisih.lebih{ color:#8ab17d; }
+#lembarKeliling .kl-selisih.sama{ color:var(--pf-abu); }
+#lembarKeliling .kl-simpan{ width:100%; min-height:52px; margin-top:12px; border-radius:12px;
+  border:1px solid rgba(226,205,166,.5); background:rgba(226,205,166,.16);
+  font-family:inherit; font-size:13px; font-weight:700; color:var(--pf-platina); cursor:pointer; }
+#lembarKeliling .kl-batal{ width:100%; min-height:44px; margin-top:7px; border-radius:10px;
+  border:1px solid rgba(255,255,255,.1); background:none;
+  font-family:inherit; font-size:12px; color:var(--pf-abu); cursor:pointer; }
+#lembarKeliling .kl-lewati{ width:100%; min-height:44px; margin-top:11px; border-radius:11px;
+  border:1px solid rgba(255,255,255,.1); background:none;
+  font-family:inherit; font-size:12.5px; color:var(--pf-abu); cursor:pointer; }
+#lembarKeliling .kl-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10px; line-height:1.55;
+  color:var(--pf-abu); text-align:center; margin-top:10px; }
+#lembarKeliling .kl-papan{ margin-top:14px; border-radius:14px; padding:11px 13px;
+  background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.07); }
+#lembarKeliling .kl-papan .kl-coret{ display:flex; align-items:baseline; gap:8px; padding:7px 0;
+  border-bottom:1px solid rgba(255,255,255,.05); font-size:12px; }
+#lembarKeliling .kl-papan .kl-coret:last-child{ border-bottom:0; }
+#lembarKeliling .kl-papan .kl-coret i{ flex:1; min-width:0; font-style:normal; color:#e8e4dc; }
+#lembarKeliling .kl-papan .kl-coret s{ opacity:.5; font-family:var(--pf-serif); }
+#lembarKeliling .kl-papan .kl-coret b{ font-family:var(--pf-serif); font-weight:600; color:var(--pf-platina); }
+#lembarKeliling .kl-selesai{ width:100%; min-height:56px; margin-top:14px; border-radius:12px;
+  border:1px solid rgba(226,205,166,.5); background:rgba(226,205,166,.16);
+  font-family:inherit; font-size:13.5px; font-weight:700; color:var(--pf-platina); cursor:pointer; }
+#lembarKeliling .kl-buang{ width:100%; min-height:44px; margin-top:8px; border-radius:10px;
+  border:1px solid rgba(255,255,255,.1); background:none;
+  font-family:inherit; font-size:12px; color:var(--pf-abu); cursor:pointer; }
+/* Tombol pembuka di bawah kisi tabung */
+#halamanStok .st-tombol-keliling{ width:100%; min-height:50px; margin-bottom:12px; border-radius:12px;
+  border:1px solid rgba(226,205,166,.32); background:rgba(226,205,166,.08);
+  font-family:inherit; font-size:12.5px; font-weight:700; letter-spacing:.02em;
+  color:var(--pf-platina); cursor:pointer; }
 /* ═══ RINGKASAN 8a — Tambalan 01 "KARUNG & JAM" (6 Sep 2026) ═══════════════════
    Empat jenis uang, empat wujud. Kas platina 44px di panel kaca (angka terukur),
    omzet & margin sampanye 21px (angka dagang), laba bersih paling kecil bertepi
@@ -4959,6 +5040,20 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <button type="button" class="tombol-utama-kartu" style="margin-top:10px;" onclick="stokDariLembarKeDaftar()">Lihat di daftar rinci</button>
 </div>
 
+<!-- KELILING GUDANG (rancangan Stok - Gabungan, sumbu L): lembar opname berpandu.
+     Satu barang satu layar, dua tombol besar, tanpa mengetik sambil berdiri.
+     Selisihnya DIKUMPULKAN dulu di ingatan; tidak ada satu pun tulisan sampai
+     pemilik menekan "Catat" di layar penutup - dan tulisannya pun lewat mesin
+     opname yang sudah ada, bukan jalur baru. -->
+<div id="lembarKeliling" class="k6a" role="dialog" aria-modal="true" aria-label="Keliling gudang">
+  <div class="kl-kepala">
+    <span class="kl-ke" id="klKe"></span>
+    <span class="kl-bar"><i id="klBar"></i></span>
+    <button type="button" class="kl-tutup" onclick="tutupKeliling()">Tutup</button>
+  </div>
+  <div class="kl-isi" id="klIsi"></div>
+</div>
+
 <!-- LEMBAR KONFIRMASI PRA-SIMPAN (Alur UX 1: uang tidak pernah tersimpan satu tahap) -->
 <div id="overlayKonfirmasi" onclick="tutupKonfirmasi()"></div>
 <div id="lembarKonfirmasi" class="k6a" role="dialog" aria-modal="true">
@@ -6053,6 +6148,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     </div>
     <div class="st-kisi" id="stokKisiTabung"></div>
     <div class="st-kisi-ket" id="stokKisiKet"></div>
+    <button type="button" class="st-tombol-keliling" id="stokTombolKeliling" onclick="bukaKeliling()"></button>
     <div class="kartu" id="stokMandek" style="display:none;">
       <div class="panel-kepala"><h2>Yang Mandek <span class="keterangan">tak bergerak 14 hari</span></h2></div>
       <div id="daftarStokMandek" class="daftar-batch"></div>
@@ -15845,6 +15941,269 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const kartu = document.getElementById('kartuStokKarung');
     if (kartu) kartu.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // KELILING GUDANG (rancangan Stok - Gabungan, sumbu L) - 6 Sep 2026
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Lembar opname berpandu: satu barang satu layar, dua tombol besar.
+  //
+  // KEPUTUSAN BENTUK YANG PALING PENTING - lembar ini TIDAK MENULIS APA PUN.
+  // Selisih yang ditemukan dikumpulkan di ingatan selama keliling, lalu di layar
+  // penutup pemilik menekan satu tombol dan seluruhnya dicatat lewat mesin opname
+  // YANG SUDAH ADA (simpanPenyesuaianStok / simpanPenyesuaianKemasan /
+  // simpanOpnameBahan). Alasannya tiga, dan ketiganya mahal kalau dilanggar:
+  //
+  //   1. Mesin opname itu memikul penjaga yang dibayar dengan kejadian nyata:
+  //      penjaga opname ganda 26 Agu (Perahu Layar, +141,6 kg dari dua tulisan
+  //      berselang 3 menit), kesadaran-antrean lewat penyesuaianTertunda,
+  //      konfirmasiSusutPositif sejak susut memotong laba 1 Sep, dan
+  //      suntikCachePenyesuaian. Menulis sendiri dari sini berarti menulis ulang
+  //      keempatnya - dan yang ditulis ulang selalu ketinggalan saat yang asli
+  //      ditambal.
+  //   2. Keliling gudang bisa ditinggal di tengah jalan (ada pembeli datang, HP
+  //      mati). Kalau tiap langkah menulis, gudang berakhir setengah tercatat
+  //      tanpa ada yang tahu bagian mana. Kumpul-lalu-catat: ditinggal = tidak
+  //      ada yang berubah sama sekali.
+  //   3. Sambil berdiri di antara tumpukan, "Cocok / Beda" harus dua ketukan
+  //      tanpa dialog. Konfirmasi uang tetap wajib - tapi tempatnya di akhir,
+  //      saat pemilik sudah berhenti berjalan.
+  //
+  // Angka "menurut catatan" SENGAJA diambil dari sistem*Kini() - sumber yang sama
+  // persis dengan yang dipakai fungsi simpan. Kalau lembar ini menghitung sendiri
+  // dari hitungStokKarungPerMerk() saja, angka yang dilihat pemilik saat menekan
+  // "Cocok" bisa berbeda dari angka yang dibandingkan saat menyimpan - persis
+  // celah yang dulu melahirkan opname ganda.
+  let _klDaftar = [];      // barang yang dikelilingi, terurut tempat simpan
+  let _klLangkah = 0;
+  let _klBeda = false;     // sedang membuka penghitung "Beda"
+  let _klNyata = 0;
+  let _klKoreksi = [];     // { jenis, id, nama, satuan, sistem, nyata } menunggu dicatat
+  let _klLewat = 0;
+
+  // Daftar barang mengikuti saklar yang sedang aktif - kolam Siap jual memuat
+  // karung sumber + kemasan jadi, kolam Bahan pakai memuat kantong & literan.
+  // Barang yang sistemnya PERSIS nol tidak ikut: kelilingnya jadi panjang oleh
+  // merk yang sudah lama habis, dan form Cocokkan stok di bawah tetap melayani
+  // kasus "ternyata masih ada" - disebut di layar penutup, bukan disembunyikan.
+  function daftarKeliling() {
+    const item = [];
+    if (_stokMode !== 'bahan') {
+      Object.keys(hitungStokKarungPerMerk()).forEach(m => {
+        const sis = sistemKarungKini(m).sistem;
+        if (sis === 0) return;
+        item.push({ jenis: 'K', id: m, nama: m, satuan: 'kg', sistem: sis, desimal: true });
+      });
+      const kem = hitungStokKemasan();
+      Object.keys(kem).forEach(k => {
+        const sis = sistemKemasanKini(k).sistem;
+        if (sis === 0) return;
+        item.push({ jenis: 'M', id: k, nama: kem[k].namaProduk + ' ' + kem[k].ukuranKemasan + ' kg',
+          satuan: 'unit', sistem: sis, desimal: false });
+      });
+    } else {
+      Object.keys(LABEL_BAHAN_KEMASAN).concat(Object.keys(LABEL_BAHAN_LITERAN)).forEach(j => {
+        const sis = sistemBahanKini(j).sistem;
+        if (sis === 0) return;
+        item.push({ jenis: 'B', id: j, nama: labelBahan(j), satuan: 'pcs', sistem: sis, desimal: false });
+      });
+    }
+    // URUTAN ADALAH RUTE BERJALAN, bukan urutan angka. Barang yang tempatnya sama
+    // berdekatan supaya pemilik tidak bolak-balik antara los depan dan gudang
+    // belakang. Yang tempatnya belum ditulis jatuh ke belakang - sekalian jadi
+    // ajakan mengisinya, karena di situlah dia sedang berdiri.
+    item.forEach(x => { x.tempat = tempatUntuk(x.jenis, x.id); });
+    item.sort((a, b) => {
+      if (!a.tempat !== !b.tempat) return a.tempat ? -1 : 1;
+      return String(a.tempat).localeCompare(String(b.tempat))
+        || String(a.nama).localeCompare(String(b.nama));
+    });
+    return item;
+  }
+
+  function bukaKeliling() {
+    _klDaftar = daftarKeliling();
+    if (_klDaftar.length === 0) {
+      alert('Belum ada barang yang bisa dikelilingi di kelompok ini.\n\nGanti saklar di atas, atau catat kedatangan dulu.');
+      return;
+    }
+    _klLangkah = 0; _klBeda = false; _klNyata = 0; _klKoreksi = []; _klLewat = 0;
+    document.body.classList.add('lembar-keliling-terbuka');
+    gambarLangkahKeliling();
+  }
+  function tutupKeliling() {
+    // Keluar di tengah jalan dengan selisih yang belum dicatat = kehilangan hasil
+    // hitungan yang sudah dikerjakan. Ditanya sekali, tidak dua kali.
+    if (_klKoreksi.length > 0 && _klLangkah < _klDaftar.length
+      && !confirm('Keluar dari keliling gudang?\n\n' + _klKoreksi.length + ' selisih sudah dihitung tapi BELUM dicatat.\n'
+        + 'Kalau keluar sekarang, hitungan itu hilang dan stok tidak berubah sama sekali.')) return;
+    document.body.classList.remove('lembar-keliling-terbuka');
+    _klDaftar = []; _klKoreksi = [];
+  }
+  function klItem() { return _klLangkah < _klDaftar.length ? _klDaftar[_klLangkah] : null; }
+  function klAngka(n, desimal) {
+    return (desimal ? Math.round(n * 10) / 10 : Math.round(n)).toLocaleString('id-ID');
+  }
+  function klMaju() { _klBeda = false; _klLangkah++; gambarLangkahKeliling(); }
+  function klCocok() { klMaju(); }
+  function klLewati() { _klLewat++; klMaju(); }
+  function klMulaiBeda() {
+    const it = klItem(); if (!it) return;
+    _klBeda = true; _klNyata = Math.max(0, it.desimal ? Math.round(it.sistem * 10) / 10 : Math.round(it.sistem));
+    gambarLangkahKeliling();
+  }
+  function klBatalBeda() { _klBeda = false; gambarLangkahKeliling(); }
+  function klNudge(d) {
+    _klNyata = Math.max(0, Math.round((_klNyata + d) * 10) / 10);
+    const inp = document.getElementById('klNyata');
+    if (inp) inp.value = _klNyata;
+    klGambarSelisih();
+  }
+  function klKetikNyata() {
+    const inp = document.getElementById('klNyata');
+    const x = parseFloat(String(inp.value).replace(',', '.'));
+    _klNyata = isNaN(x) || x < 0 ? 0 : x;
+    klGambarSelisih();
+  }
+  function klGambarSelisih() {
+    const it = klItem(); const el = document.getElementById('klSelisih');
+    if (!it || !el) return;
+    const sel = Math.round((_klNyata - it.sistem) * 100) / 100;
+    el.className = 'kl-selisih ' + (sel < 0 ? 'kurang' : (sel > 0 ? 'lebih' : 'sama'));
+    el.textContent = sel === 0
+      ? 'Sama persis dengan catatan - tidak ada yang perlu dicatat.'
+      : (sel > 0 ? 'Lebih ' : 'Kurang ') + klAngka(Math.abs(sel), it.desimal) + ' ' + it.satuan
+        + ' dari catatan.';
+  }
+  function klSimpanBeda() {
+    const it = klItem(); if (!it) return;
+    const sel = Math.round((_klNyata - it.sistem) * 100) / 100;
+    if (sel === 0) { klMaju(); return; }   // sama persis = sama saja dengan "Cocok"
+    _klKoreksi.push({ jenis: it.jenis, id: it.id, nama: it.nama, satuan: it.satuan,
+      sistem: it.sistem, nyata: _klNyata, desimal: it.desimal });
+    klMaju();
+  }
+  function klUbahTempat() {
+    const it = klItem(); if (!it) return;
+    ubahTempatSimpan(it.jenis, it.id, it.nama);
+  }
+
+  function gambarLangkahKeliling() {
+    const isi = document.getElementById('klIsi');
+    if (!isi) return;
+    const n = _klDaftar.length;
+    const selesai = _klLangkah >= n;
+    document.getElementById('klKe').textContent = selesai ? 'selesai' : (_klLangkah + 1) + ' / ' + n;
+    document.getElementById('klBar').style.width = Math.round(Math.min(_klLangkah, n) / Math.max(1, n) * 100) + '%';
+
+    if (!selesai) {
+      const it = _klDaftar[_klLangkah];
+      const tmp = tempatUntuk(it.jenis, it.id);
+      isi.innerHTML =
+        '<div class="kl-kotak">'
+        + '<div class="kl-nama">' + escapeHtml(it.nama) + '</div>'
+        + '<button type="button" class="kl-tempat" onclick="klUbahTempat()">'
+          + (tmp ? escapeHtml(tmp) : '<u>Tempat simpan belum ditulis - ketuk untuk mengisi</u>') + '</button>'
+        + '<div class="kl-catat"><b>' + klAngka(it.sistem, it.desimal) + '</b>'
+          + '<span>' + it.satuan + ' menurut catatan</span></div>'
+        + (_klBeda
+          ? '<div class="kl-hitung">'
+            + '<div class="kg-label">Hitungan nyata di gudang &middot; ' + it.satuan + '</div>'
+            + '<div class="kl-baris">'
+              + '<button type="button" class="kl-nudge" onclick="klNudge(-1)" aria-label="Kurangi satu">&minus;</button>'
+              + '<input type="number" id="klNyata" inputmode="decimal" value="' + _klNyata + '" oninput="klKetikNyata()">'
+              + '<button type="button" class="kl-nudge" onclick="klNudge(1)" aria-label="Tambah satu">+</button>'
+            + '</div>'
+            + '<div class="kl-selisih sama" id="klSelisih"></div>'
+            + '<button type="button" class="kl-simpan" onclick="klSimpanBeda()">Simpan selisih &amp; lanjut</button>'
+            + '<button type="button" class="kl-batal" onclick="klBatalBeda()">Batal</button>'
+          + '</div>'
+          : '<div class="kl-pilih">'
+            + '<button type="button" class="kl-cocok" onclick="klCocok()">Cocok</button>'
+            + '<button type="button" class="kl-beda" onclick="klMulaiBeda()">Beda</button>'
+          + '</div>')
+        + '</div>'
+        + (_klBeda ? '' : '<button type="button" class="kl-lewati" onclick="klLewati()">Lewati barang ini</button>')
+        + '<div class="kl-ket">Dua tombol saja - tidak perlu mengetik sambil berdiri di antara tumpukan.'
+          + '<br>Belum ada yang tercatat; semua selisih baru disimpan di layar penutup.</div>';
+      if (_klBeda) klGambarSelisih();
+      isi.scrollTop = 0;
+      return;
+    }
+
+    // ── Layar penutup: papan kapur dulu, baru tombol catat ──
+    const nBeda = _klKoreksi.length;
+    const ringkas = n + ' barang dikelilingi'
+      + (_klLewat > 0 ? ', ' + _klLewat + ' dilewati' : '')
+      + '. ' + (nBeda === 0 ? 'Semua cocok dengan catatan.' : nBeda + ' selisih ditemukan.');
+    isi.innerHTML =
+      '<div class="kl-nama">Keliling selesai</div>'
+      + '<div class="kl-ket" style="text-align:left;margin-top:6px;">' + escapeHtml(ringkas) + '</div>'
+      + '<div class="kl-papan">'
+      + (nBeda === 0
+        ? '<div class="kl-ket" style="text-align:left;margin:0;">Tidak ada yang perlu dicoret. Stok tidak akan berubah.</div>'
+        : _klKoreksi.map(k => '<div class="kl-coret"><i>' + escapeHtml(k.nama) + '</i>'
+            + '<s>' + klAngka(k.sistem, k.desimal) + '</s>'
+            + '<b>' + klAngka(k.nyata, k.desimal) + ' ' + k.satuan + '</b></div>').join(''))
+      + '</div>'
+      + (nBeda === 0
+        ? '<button type="button" class="kl-selesai" onclick="tutupKeliling()">Selesai</button>'
+        : '<button type="button" class="kl-selesai" id="klBtnCatat" onclick="klCatatSemua()">Catat ' + nBeda + ' penyesuaian</button>'
+          + '<button type="button" class="kl-buang" onclick="tutupKeliling()">Tutup tanpa mencatat</button>')
+      + '<div class="kl-ket" style="text-align:left;">'
+      + (nBeda === 0 ? '' : 'Tiap penyesuaian lewat penjaga yang sama dengan Cocokkan stok - '
+          + 'termasuk peringatan kalau nilainya memotong laba. Konfirmasinya muncul satu per satu.<br>')
+      + 'Barang yang catatannya sudah nol tidak ikut keliling. Kalau menemukan barangnya di gudang, '
+      + 'catat lewat Cocokkan stok di halaman Stok.</div>';
+    isi.scrollTop = 0;
+  }
+
+  // Menyerahkan tiap selisih ke mesin opname yang sudah ada, satu per satu.
+  // Kalau pemilik membatalkan salah satu konfirmasi di dalamnya, dokumennya tidak
+  // bertambah - itulah yang dipakai untuk menghitung berapa yang benar-benar
+  // tercatat. Jangan mengganti dengan asumsi "kalau tidak melempar berarti sukses":
+  // fungsi-fungsi itu memang keluar diam-diam saat konfirmasi ditolak.
+  function klCacahDok(jenis, id) {
+    if (jenis === 'K') return ambilPenyesuaianStok().length;
+    if (jenis === 'M') return ambilPenyesuaianKemasan().length;
+    return (jenisBahanLiteran(id) ? ambilBahanLiteran() : ambilBahanKemasan()).length;
+  }
+  async function klCatatSemua() {
+    const tombol = document.getElementById('klBtnCatat');
+    if (tombol) { tombol.disabled = true; tombol.textContent = 'Mencatat...'; }
+    const alasan = 'Keliling gudang ' + formatTanggal(tanggalLokalIso());
+    let berhasil = 0, batal = [];
+    try {
+      for (const k of _klKoreksi) {
+        const sebelum = klCacahDok(k.jenis, k.id);
+        if (k.jenis === 'K') {
+          document.getElementById('opnameMerk').value = k.id;
+          document.getElementById('opnameKgFisik').value = String(k.nyata);
+          document.getElementById('opnameAlasan').value = alasan;
+          await simpanPenyesuaianStok();
+        } else if (k.jenis === 'M') {
+          document.getElementById('opnameKemasanKunci').value = k.id;
+          document.getElementById('opnameKemasanFisik').value = String(Math.round(k.nyata));
+          document.getElementById('opnameKemasanAlasan').value = alasan;
+          await simpanPenyesuaianKemasan();
+        } else {
+          document.getElementById('opnameBahanJenis').value = k.id;
+          document.getElementById('opnameBahanFisik').value = String(Math.round(k.nyata));
+          document.getElementById('opnameBahanAlasan').value = alasan;
+          await simpanOpnameBahan();
+        }
+        if (klCacahDok(k.jenis, k.id) > sebelum) berhasil++; else batal.push(k.nama);
+      }
+    } finally {
+      if (tombol) { tombol.disabled = false; tombol.textContent = 'Catat ' + _klKoreksi.length + ' penyesuaian'; }
+    }
+    alert('Keliling gudang selesai.\n\n' + berhasil + ' dari ' + _klKoreksi.length + ' penyesuaian tercatat.'
+      + (batal.length ? '\n\nTidak tercatat (dibatalkan atau ditolak penjaga):\n' + batal.map(x => '- ' + x).join('\n') : '')
+      + '\n\nPerubahan hari ini bisa dibaca lagi di Papan Kapur, halaman Stok.');
+    _klKoreksi = [];
+    document.body.classList.remove('lembar-keliling-terbuka');
+    tampilkanStok();
+  }
+
   function stokKeKarantina() {
     const kartu = document.getElementById('kartuKarantina');
     if (kartu) kartu.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -15955,6 +16314,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       : 'Tinggi isi = berapa hari lagi habis menurut laju 14 hari, bukan pecahan kg — '
         + 'yang paling cepat habis berdiri paling depan. Tabung oksida = habis ' + AMBANG_GENTING
         + ' hari lagi atau kurang. Tabung pudar = belum ada laju, jadi waktunya belum bisa dihitung.';
+    const elTblKel = document.getElementById('stokTombolKeliling');
+    if (elTblKel) {
+      // Cacahnya dihitung dari daftar keliling, BUKAN dari panjang kisi tabung:
+      // kisi menampilkan yang sisanya positif, keliling juga mengunjungi yang
+      // sistemnya minus (justru di situ selisihnya paling perlu diluruskan).
+      const nKel = daftarKeliling().length;
+      elTblKel.style.display = nKel > 0 ? '' : 'none';
+      elTblKel.textContent = 'Keliling gudang \u00b7 opname ' + nKel + ' barang';
+    }
 
     // --- Yang Mandek: sisa ada, laju 14 hari nol — uangnya tertidur paling nyenyak ---
     const mandek = [];
@@ -24328,6 +24696,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.hapusBarisMerk = hapusBarisMerk;
   // Pola form baku (Lembar 1 Penyempurnaan, 7 Agu 2026)
   window.ubahTempatSimpan = ubahTempatSimpan; window.ubahTempatSimpanMerkIni = ubahTempatSimpanMerkIni;
+  window.bukaKeliling = bukaKeliling; window.tutupKeliling = tutupKeliling;
+  window.klCocok = klCocok; window.klLewati = klLewati; window.klMulaiBeda = klMulaiBeda;
+  window.klBatalBeda = klBatalBeda; window.klNudge = klNudge; window.klKetikNyata = klKetikNyata;
+  window.klSimpanBeda = klSimpanBeda; window.klUbahTempat = klUbahTempat; window.klCatatSemua = klCatatSemua;
   window.bukaLembarMerk = bukaLembarMerk; window.tutupLembarMerk = tutupLembarMerk;
   window.pilihMerkDariLembar = pilihMerkDariLembar;
   window.mintaHapusBaris = mintaHapusBaris; window.batalHapusBaris = batalHapusBaris;
