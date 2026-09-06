@@ -491,6 +491,25 @@ def utama():
         print(f"  {k}: {v['sisaUnit']} unit · {rp(v['hppPerUnit'])}{tanda}")
         if tanda: beda.append(f"stok kemasan {k}: minus")
 
+    # UTANG TOKO KE OWNER — dihitung ULANG di sini, bukan dibaca dari aplikasi.
+    # timbul = belanja 'tokoDompet' + saldo pembuka tutup buku; bayar = mutasi 'bayar'.
+    # Kalau bayar > timbul berarti ada dokumen sisi-timbul yang hilang: aplikasi menjepit
+    # sisanya ke nol lewat Math.max, jadi tanpa pemeriksaan di sini kerusakan itu tidak
+    # kelihatan dari mana pun.
+    uo_timbul = sum((h.get('nominal') or 0) for h in kol('pengeluaranHarian')
+                    if h.get('kategori') == 'tokoDompet')
+    uo_timbul += sum((m.get('nominal') or 0) for m in kol('utangOwnerMutasi')
+                     if m.get('tipe') == 'saldoAwal')
+    uo_bayar = sum((m.get('nominal') or 0) for m in kol('utangOwnerMutasi')
+                   if m.get('tipe') == 'bayar')
+    uo_sisa = max(0, uo_timbul - uo_bayar)
+    print(f"\n[F0] Utang toko ke owner: timbul {rp(uo_timbul)} - dibayar {rp(uo_bayar)}"
+          f" = sisa {rp(uo_sisa)}")
+    if uo_bayar - uo_timbul > 0.5:
+        beda.append(f"utang owner: dibayar {rp(uo_bayar)} melebihi yang pernah timbul "
+                    f"{rp(uo_timbul)} - ada catatan belanja dompet yang hilang "
+                    f"(selisih {rp(uo_bayar - uo_timbul)})")
+
     # [F] Piutang, kasbon, utang, amplop, modal
     pt = piutang(kol); tot_pt = sum(v for v in pt.values() if v > 0)
     minus_pt = {k: v for k, v in pt.items() if v < -0.5}

@@ -7403,6 +7403,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   let _cacheAmplop = [];
   let _cacheModal = [];
   let _cacheUtangPemasok = [];
+  let _cacheUtangOwner = [];
   let _cacheThr = [];
   let _cachePemasokCat = [];
   // Pil status BUTA terhadap 11 koleksi (temuan verifikasi adversarial 26 Agu 2026):
@@ -9000,7 +9001,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // menyusut), tapi TIDAK mengubah laba — bebannya sudah diakui saat belanjanya
   // dicatat. Karena itu yang disegarkan arus kas, laporan, dan Ringkasan; halaman
   // Laba sengaja tidak ikut supaya tidak menyiratkan angkanya berubah.
-  pasangSinkronisasi(KOLEKSI_UTANG_OWNER, KUNCI_UTANG_OWNER, () => {}, () => {
+  pasangSinkronisasi(KOLEKSI_UTANG_OWNER, KUNCI_UTANG_OWNER, (d) => { _cacheUtangOwner = d; }, () => {
     segarkanArusKasJikaTampil();
     segarkanLaporanJikaTerbuka();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
@@ -9364,6 +9365,17 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     reader.onload = async function(e) {
       try {
         const isi = JSON.parse(e.target.result);
+
+        if (isi && isi.jenisFile === 'arsip-tutup-buku') {
+          alert('Ini berkas ARSIP TUTUP BUKU tahun ' + (isi.tahun || '?') + ', bukan berkas backup.\n\n'
+            + 'Isinya riwayat yang SUDAH SENGAJA dihapus dari database saat tutup buku, dan memuatnya '
+            + 'kembali akan menghitung stok, piutang, dan utang DUA KALI — sekali dari riwayat lama, '
+            + 'sekali lagi dari saldo pembukanya.\n\n'
+            + 'Simpan berkas ini sebagai catatan. Untuk memulihkan data, pakai berkas '
+            + 'backup-batch-…json dari menu Cadangan.');
+          event.target.value = '';
+          return;
+        }
 
         // Muat dari file sekarang berarti UPLOAD ke Firestore (bukan cuma ke localStorage HP ini)
         // supaya file backup lama bisa dipakai memulihkan data di semua perangkat sekaligus.
@@ -10562,6 +10574,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       const u = hitungUtangOwner();
       h += '<div class="kg-panel bj-utang"><div class="kg-label">Utang toko ke owner</div>'
         + '<div class="bj-utang-nilai">' + formatRupiah(u.sisa) + '</div>'
+        // Dibayar melebihi yang pernah timbul = ada catatan belanjanya yang hilang.
+        // Ditulis apa adanya: angka yang dijepit diam-diam ke nol akan MEMAKAN utang
+        // berikutnya sampai sebesar tekornya, dan tidak ada yang tahu kenapa.
+        + (u.tekor > 0
+          ? '<div class="bj-vonis-isi" style="color:#e8c3b2;"><b>Tercatat dibayar ' + formatRupiah(u.tekor)
+            + ' lebih banyak daripada yang pernah timbul.</b> Berarti ada catatan belanja dompet yang hilang — '
+            + 'mungkin terhapus tangan. Sampai itu dibereskan, belanja dompet berikutnya tidak akan menaikkan utang '
+            + 'sampai melewati ' + formatRupiah(u.tekor) + '.</div>'
+          : '')
         + '<div class="bj-vonis-isi">' + (u.timbul > 0
           ? 'Timbul ' + formatRupiah(u.timbul) + ' &middot; sudah dibayar ' + formatRupiah(u.bayar)
             + '. Ini kewajiban toko, bukan modal: dia mengurangi kekayaan di neraca sampai dilunasi.'
@@ -10755,18 +10776,32 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // pola yang sama dengan piutang, kasbon, dan stok. Angka jadi bisa melenceng diam-diam;
   // angka turunan tidak bisa.
   function ambilUtangOwnerMutasi() {
+    if (_cacheUtangOwner.length > 0) return _cacheUtangOwner;
     try { return JSON.parse(localStorage.getItem(KUNCI_UTANG_OWNER) || '[]'); } catch (e) { return []; }
   }
-  // Saldo utang ke owner = Σ belanja toko-dibayar-dompet − Σ pelunasan. Turunan murni.
+  // Saldo utang ke owner = Σ belanja toko-dibayar-dompet + Σ saldo pembuka − Σ pelunasan.
+  // Turunan murni; tidak ada angka saldo yang pernah disimpan.
+  // 'saldoAwal' lahir dari TUTUP BUKU: utang yang belum lunas 31 Des menyeberang tahun.
+  // Dia menaikkan TIMBUL. Sengaja BUKAN dokumen pengeluaranHarian 'tokoDompet' bertanggal
+  // 1 Jan: kategori itu juga dibaca hitungLabaBersihRentang sebagai beban, jadi laba tahun
+  // baru akan tertekan beban tahun lalu. Koleksi ini tidak pernah disentuh mesin laba, dan
+  // sisi kas hanya membaca tipe 'bayar' — jadi saldo pembuka tidak menggerakkan apa pun
+  // selain kewajiban, persis yang dimaui.
   function hitungUtangOwner(sampaiIso) {
     const sd = t => !sampaiIso || (t || '') <= sampaiIso;
+    const mut = ambilUtangOwnerMutasi();
     const timbul = ambilPengeluaranHarian()
       .filter(h => h.kategori === 'tokoDompet' && sd(h.tanggal))
-      .reduce((a, h) => a + (h.nominal || 0), 0);
-    const bayar = ambilUtangOwnerMutasi()
-      .filter(m => m.tipe === 'bayar' && sd(m.tanggal))
+      .reduce((a, h) => a + (h.nominal || 0), 0)
+      + mut.filter(m => m.tipe === 'saldoAwal' && sd(m.tanggal))
+        .reduce((a, m) => a + (m.nominal || 0), 0);
+    const bayar = mut.filter(m => m.tipe === 'bayar' && sd(m.tanggal))
       .reduce((a, m) => a + (m.nominal || 0), 0);
-    return { timbul, bayar, sisa: Math.max(0, timbul - bayar) };
+    // TEKOR dibawa keluar, tidak dibungkam. Dibayar melebihi yang pernah timbul berarti
+    // ada dokumen sisi-timbul yang hilang (dihapus tangan, atau tersapu tutup buku yang
+    // tidak membawa pasangannya). Kalau dijepit diam-diam ke nol, kerusakan itu tidak
+    // cuma tersembunyi — dia MEMAKAN utang berikutnya sampai sebesar tekornya.
+    return { timbul, bayar, sisa: Math.max(0, timbul - bayar), tekor: Math.max(0, bayar - timbul) };
   }
 
   function ambilModalOwner() {
@@ -18167,13 +18202,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           <div class="tb6-baris"><span>Nama berkas</span><b>arsip-miqbal-${tahun}.json</b></div>
           <div class="kg-label" style="margin-top:8px;">Isinya</div>
           ${K.daftar.filter(d => d.dok.length > 0).map(d => `<div class="tb6-baris"><span>${escapeHtml(d.label)}</span><b>${d.dok.length.toLocaleString('id-ID')}</b></div>`).join('') || '<div class="tb6-ket">tidak ada dokumen pada tahun ini.</div>'}
-          <div class="tb6-baris"><span>Saldo penutupan</span><b>${saldo.karung.length} merk · ${saldo.kemasan.length} produk · ${saldo.piutang.length} piutang · ${saldo.kasbon.length} kasbon</b></div>
+          <div class="tb6-baris"><span>Saldo penutupan</span><b>${saldo.karung.length} merk · ${saldo.kemasan.length} produk · ${saldo.piutang.length} piutang · ${saldo.kasbon.length} kasbon · ${saldo.utangPemasok.reduce((a, px) => a + px.bon.length, 0) + (saldo.utangOwner > 0 ? 1 : 0)} kewajiban</b></div>
           <button type="button" class="kg-terpilih tb6-aksi" onclick="tbKacaArsip()"${K.ef.arsip ? ' disabled' : ''}>${K.ef.arsip ? '✓ Arsip ' + tahun + (lat ? ' (latihan)' : ' terunduh') : 'Unduh arsip ' + tahun}</button>
           <div class="tb6-ket">Simpan di luar HP ini juga — sesudah langkah Hapus, inilah satu-satunya salinan riwayat ${tahun}.</div>
         </div>` + nav(tbKacaBolehLanjut(1, K), K.ef.arsip ? 'Arsip beres.' : 'Unduh arsipnya dulu.');
       } else if (l === 2) {
         const saldo = hitungSaldoTutup(tahun);
-        const dokPembuka = (saldo.karung.length ? 1 : 0) + saldo.kemasan.length + saldo.bahanK.length + saldo.bahanL.length + saldo.piutang.length + saldo.kasbon.length + 1;
+        const nBonPembuka = saldo.utangPemasok.reduce((a, px) => a + px.bon.length, 0);
+        const rpPemasok = saldo.utangPemasok.reduce((a, px) => a + px.bon.reduce((x, b) => x + b.sisa, 0), 0);
+        const dokPembuka = (saldo.karung.length ? 1 : 0) + saldo.kemasan.length + saldo.bahanK.length + saldo.bahanL.length + saldo.piutang.length + saldo.kasbon.length + nBonPembuka + (saldo.utangOwner > 0 ? 1 : 0) + 1;
         const dokSemua = tbDaftarKoleksi(new Date().getFullYear()).reduce((a, d) => a + d.dok.length, 0);
         const kg = saldo.karung.reduce((a, x) => a + x.sisaKg, 0), bags = saldo.kemasan.reduce((a, x) => a + x.sisaUnit, 0);
         const pcs = saldo.bahanK.reduce((a, x) => a + x.sisaPcs, 0) + saldo.bahanL.reduce((a, x) => a + x.sisaPcs, 0);
@@ -18186,6 +18223,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
             <div><div class="label">Bahan</div><div class="nilai">${pcs.toLocaleString('id-ID')} pcs<i>${saldo.bahanK.length + saldo.bahanL.length} jenis</i></div></div>
             <div><div class="label">Piutang</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(piu)}<i>${saldo.piutang.length} pelanggan · umur terbawa</i></div></div>
             <div><div class="label">Kasbon</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(kas)}<i>${saldo.kasbon.length} pegawai</i></div></div>
+            <div><div class="label">Utang pemasok</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(rpPemasok)}<i>${nBonPembuka} bon · umur terbawa</i></div></div>
+            <div><div class="label">Utang ke owner</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(saldo.utangOwner)}<i>${saldo.utangOwner > 0 ? 'belum dilunasi' : 'tidak ada'}</i></div></div>
             <div><div class="label">Tidak menyeberang</div><div class="nilai">${K.totalDok.toLocaleString('id-ID')}<i>catatan ${tahun}</i></div></div>
           </div>
           <div class="tb6-baris"><span>Gulungan yang dimuat</span><b>${dokSemua.toLocaleString('id-ID')} → ${(dokSemua - K.totalDok + dokPembuka).toLocaleString('id-ID')}</b></div>
@@ -18329,17 +18368,36 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       .map(x => ({ nama: x.nama, sisa: x.sisa, tanggalTertua: x.tanggalTertua || cutoff }));
     const kasbon = hitungKasbon(cutoff).filter(x => x.sisa > 0)
       .map(x => ({ nama: x.nama, sisa: x.sisa }));
-    return { tahun, cutoff, karung, kemasan, bahanK, bahanL, piutang, kasbon };
+    // KEWAJIBAN (6 Sep 2026). Sebelum ini saldo penutupan hanya berisi HARTA — akibatnya
+    // tiap pergantian tahun kewajiban yang menggantung lenyap: dokumennya dihapus di
+    // langkah 3, saldo pembukanya tidak pernah ditulis. Untuk utang pemasok itu cacat
+    // lama yang tak terlihat karena neraca belum punya sisi kewajiban; sesudah neraca
+    // menampilkannya, hilangnya jadi lompatan kekayaan yang tidak bisa dijelaskan.
+    // Utang pemasok dibawa PER BON supaya umur dan nama pemasoknya tetap jujur —
+    // pola yang sama dengan piutang di atas.
+    const utangOwner = hitungUtangOwner(cutoff).sisa;
+    const utangPemasok = hitungUtangPemasok(cutoff).map(px => ({
+      pemasok: px.pemasok,
+      bon: px.bon.map(b => ({ sisa: b.sisa, bonTanggal: b.tanggal || '', catatan: b.catatan || '' }))
+    }));
+    return { tahun, cutoff, karung, kemasan, bahanK, bahanL, piutang, kasbon, utangOwner, utangPemasok };
   }
 
   // Dokumen milik tahun <= cutoff per koleksi — daftar id untuk arsip & penghapusan.
   // Katalog harga, pengaturan, catatan pelanggan, dan THR TIDAK ikut: itu data hidup.
   function tbDaftarKoleksi(tahun) {
     const cutoff = tbCutoff(tahun);
-    // !x.tutupBuku WAJIB: saldo pembuka piutang sengaja bertanggal utang tertuanya
-    // (supaya umurnya jujur) — tanpa pengecualian ini, langkah 3 MENGHAPUS dokumen
-    // pembuka yang baru ditulis langkah 2. Berlaku ke semua koleksi untuk aman.
-    const tgl = arr => arr.filter(x => (x.tanggal || '') <= cutoff && !x.tutupBuku);
+    // Pembuka piutang sengaja bertanggal utang tertuanya (supaya umurnya jujur), jadi
+    // tanggalnya jatuh SEBELUM cutoff dan langkah 3 akan menghapus dokumen yang baru
+    // ditulis langkah 2 — itu sebabnya ada pengecualian di sini.
+    // Tapi pengecualiannya WAJIB dibatasi pada tutup buku yang SEDANG berjalan. Kalau
+    // semua dokumen ber-tutupBuku kebal selamanya, pembuka tahun-tahun lalu ikut lolos,
+    // lalu tutup buku berikutnya menghitung sisanya LAGI dan menulis pembuka baru di
+    // sebelahnya — piutang, kasbon, stok, dan (sejak G4) kewajiban BERLIPAT DUA tiap
+    // pergantian tahun. Terukur: Rp1jt -> Rp1jt -> Rp2jt -> Rp4jt pada tiga siklus.
+    // Pembuka tahun lalu memang HARUS ikut diarsipkan dan dihapus — dia bagian riwayat
+    // tahun ini, persis seperti dokumen biasa.
+    const tgl = arr => arr.filter(x => (x.tanggal || '') <= cutoff && !(x.tutupBuku && x.tahunDari === tahun));
     return [
       { koleksi: KOLEKSI_PENJUALAN,      label: 'penjualan',          dok: tgl(ambilPenjualanSemua()) },
       { koleksi: KOLEKSI_BATCH,          label: 'kedatangan',         dok: tgl(ambilSemuaBatch()) },
@@ -18353,6 +18411,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       { koleksi: KOLEKSI_AMPLOP,         label: 'amplop laba',        dok: tgl(ambilAmplopLaba()) },
       { koleksi: KOLEKSI_MODAL,          label: 'modal owner',        dok: tgl(ambilModalOwner()) },
       { koleksi: KOLEKSI_UTANG_PEMASOK,  label: 'utang pemasok',      dok: tgl(ambilUtangPemasokMutasi()) },
+      // WAJIB berdampingan dengan utang pemasok. Kalau koleksi ini absen, sisi TIMBUL
+      // utang owner ikut terhapus (dia dokumen pengeluaranHarian 'tokoDompet', koleksi
+      // di atas) sementara sisi LUNAS-nya hidup selamanya — utangnya menguap DAN
+      // pelunasan yatimnya memakan utang tahun berikutnya.
+      { koleksi: KOLEKSI_UTANG_OWNER,    label: 'utang ke owner',     dok: tgl(ambilUtangOwnerMutasi()) },
       { koleksi: KOLEKSI_BAHAN_KEMASAN,  label: 'bahan kemasan',      dok: tgl(ambilBahanKemasan()) },
       { koleksi: KOLEKSI_BAHAN_LITERAN,  label: 'bahan literan',      dok: tgl(ambilBahanLiteran()) },
       { koleksi: KOLEKSI_PIUTANG,        label: 'mutasi piutang',     dok: tgl(ambilPiutangMutasi()) },
@@ -18457,6 +18520,18 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     gambarTutupBuku();
   }
 
+  // Pemeriksa dobel-tulis. Dulu cuma batch + piutang, dengan alasan "salah satunya bisa
+  // kosong". Alasan itu benar dan justru menuntut daftarnya IKUT TUMBUH: tahun tanpa sisa
+  // karung dan tanpa piutang tapi punya kewajiban akan lolos, lalu saldo pembukanya
+  // tertulis dua kali dan utangnya berlipat. Tiap koleksi yang bisa menerima saldo pembuka
+  // wajib ada di sini.
+  function sudahAdaSaldoPembuka(tahun) {
+    const punya = arr => arr.some(x => x.tutupBuku && x.tahunDari === tahun);
+    return punya(ambilSemuaBatch()) || punya(ambilPiutangMutasi()) || punya(ambilKasbonMutasi())
+      || punya(ambilProduksi()) || punya(ambilBahanKemasan()) || punya(ambilBahanLiteran())
+      || punya(ambilUtangPemasokMutasi()) || punya(ambilUtangOwnerMutasi());
+  }
+
   async function tulisSaldoPembuka(tahun) {
     if (_tbArsipDiunduh !== tahun) { alert('Unduh arsipnya dulu (langkah 1).'); return; }
     const jaga = tbPenjaga(tahun);
@@ -18465,8 +18540,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // Cegah dobel: pembuka tahun ini sudah pernah ditulis? Diperiksa di DUA koleksi —
     // batch bisa saja kosong (tahun tanpa sisa karung), piutang pun bisa kosong;
     // salah satunya ada = sudah pernah.
-    if (ambilSemuaBatch().some(k => k.tutupBuku && k.tahunDari === tahun)
-      || ambilPiutangMutasi().some(m => m.tutupBuku && m.tahunDari === tahun)) {
+    if (sudahAdaSaldoPembuka(tahun)) {
       alert('Saldo pembuka dari tutup buku ' + tahun + ' sudah pernah ditulis. Lanjut ke langkah 3.');
       _tbSaldoDitulis = tahun; gambarTutupBuku(); return;
     }
@@ -18516,6 +18590,23 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         tanggal: tglBuka, jam: '00:00', tutupBuku: true, tahunDari: tahun,
         catatan: 'Saldo pembuka tutup buku ' + tahun });
     }
+    // KEWAJIBAN menyeberang tahun. Utang pemasok memakai jalur 'saldoAwal' yang SUDAH ada
+    // di hitungUtangPemasok (dan sudah menghormati bonTanggal, jadi umur bon tidak
+    // di-reset jadi 1 Jan). Utang owner memakai tipe 'saldoAwal' baru di koleksinya
+    // sendiri — bukan dokumen 'tokoDompet' bertanggal 1 Jan, karena kategori itu juga
+    // dibaca mesin laba dan akan menekan laba tahun baru dengan beban tahun lalu.
+    for (const px of saldo.utangPemasok) {
+      for (const b of px.bon) {
+        await tulis(KOLEKSI_UTANG_PEMASOK, { id: idUnik(), tipe: 'saldoAwal', pemasok: px.pemasok,
+          nominal: b.sisa, bonTanggal: b.bonTanggal, tanggal: tglBuka, tutupBuku: true, tahunDari: tahun,
+          catatan: 'Saldo pembuka tutup buku ' + tahun + (b.catatan ? ' — ' + b.catatan : '') });
+      }
+    }
+    if (saldo.utangOwner > 0) {
+      await tulis(KOLEKSI_UTANG_OWNER, { id: idUnik(), tipe: 'saldoAwal', nominal: saldo.utangOwner,
+        tanggal: tglBuka, jam: '00:00', tutupBuku: true, tahunDari: tahun,
+        catatan: 'Saldo pembuka tutup buku ' + tahun + ' — belanja toko yang dibayar dompet owner dan belum dilunasi' });
+    }
     await tulis('pengaturan', { id: 'tutupBuku', tahunDitutup: tahun, padaTanggal: tanggalLokalIso() });
     _tbSaldoDitulis = tahun;
     gambarTutupBuku();
@@ -18523,8 +18614,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   }
 
   async function hapusDokumenTahun(tahun) {
-    const saldoAda = ambilSemuaBatch().some(k => k.tutupBuku && k.tahunDari === tahun)
-      || ambilPiutangMutasi().some(m => m.tutupBuku && m.tahunDari === tahun);
+    const saldoAda = sudahAdaSaldoPembuka(tahun);
     if (_tbSaldoDitulis !== tahun && !saldoAda) {
       alert('Tulis saldo pembukanya dulu (langkah 2).'); return;
     }
@@ -19324,9 +19414,23 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // 4 — NERACA: kewajiban = timbul − bayar, dan total sudah dikurangi kewajiban.
     const u = hitungUtangOwner();
     const bayar = ambilUtangOwnerMutasi().filter(m => m.tipe === 'bayar').reduce((x, m) => x + (m.nominal || 0), 0);
-    cek('utang owner: timbul', u.timbul, sDompet);
+    // TIMBUL punya DUA sumber sejak tutup buku bisa memindahkan kewajiban: belanja dompet
+    // tahun berjalan, dan saldo pembuka yang menyeberang dari tahun lalu. Sesudah tutup
+    // buku dokumen 'tokoDompet' tahun lalu sudah dihapus — kalau uji ini cuma menghitung
+    // sDompet, dia akan menuduh sistem salah persis pada hari sistem bekerja benar.
+    const sSaldoAwal = ambilUtangOwnerMutasi().filter(m => m.tipe === 'saldoAwal')
+      .reduce((x, m) => x + (m.nominal || 0), 0);
+    cek('utang owner: timbul = belanja dompet + saldo pembuka', u.timbul, sDompet + sSaldoAwal);
     cek('utang owner: bayar', u.bayar, bayar);
-    cek('utang owner: sisa', u.sisa, Math.max(0, sDompet - bayar));
+    cek('utang owner: sisa', u.sisa, Math.max(0, sDompet + sSaldoAwal - bayar));
+    cek('utang owner: tekor', u.tekor, Math.max(0, bayar - sDompet - sSaldoAwal));
+    // Pelunasan yatim: dibayar lebih banyak daripada yang pernah timbul. Selalu berarti
+    // ada dokumen sisi-timbul yang hilang — dan itu memakan utang berikutnya diam-diam.
+    if (u.tekor > 0) salah.push('utang owner: dibayar ' + formatRupiah(u.tekor)
+      + ' melebihi yang pernah timbul — ada catatan belanja dompet yang hilang');
+    // Tutup buku memindahkan kewajiban lewat dokumen 'saldoAwal'. Kalau koleksi ini
+    // pernah tersapu tanpa pasangannya, tekor di atas yang menyalakannya lebih dulu;
+    // cek ini menjaga arah sebaliknya — saldo pembuka ada tapi tidak terbaca.
     const N = hitungNeraca();
     cek('neraca: utangOwner', N.utangOwner, u.sisa);
     // Neraca WAJIB memakai angka utang pemasok yang sama dengan halaman Pemasok.
