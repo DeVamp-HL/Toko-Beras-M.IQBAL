@@ -15968,17 +15968,23 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // pengujian yang membandingkan jumlah kedua jalur, bukan sekadar janji komentar.
   function daftarGerakanKas() {
     const rows = [];
-    const dorong = (t, jam, id, label, masuk, keluar) => {
+    // kantong: ke mana / dari mana uangnya. Default 'laci' — itu memang kebenaran
+    // lapangan toko ini: yang tidak lewat rekening berpindah tangan di laci. Uang
+    // KELUAR selalu dianggap dari laci; tidak ada catatan yang membedakannya, dan
+    // menebak lebih jauh cuma memindahkan kesalahan ke tempat yang lebih sulit dilihat.
+    const dorong = (t, jam, id, label, masuk, keluar, kantong) => {
       if (!(masuk > 0) && !(keluar > 0)) return;   // baris Rp0 (mis. pengganti retur) tidak berarti di buku kas
-      rows.push({ t: t || '', jam: jam || '', id: id || 0, label, masuk: masuk || 0, keluar: keluar || 0 });
+      rows.push({ t: t || '', jam: jam || '', id: id || 0, label, masuk: masuk || 0, keluar: keluar || 0,
+        kantong: keluar > 0 ? 'laci' : (kantong || 'laci') });
     };
+    const kantongBayar = x => caraBayarKunci(x) === 'qris' ? 'rekening' : 'laci';
     ambilPenjualan().forEach(p => {
       if (caraBayarKunci(p) === 'kredit') return;  // belum jadi uang — masuk lewat pelunasan piutang
-      dorong(p.tanggal, p.jam, p.id, namaSingkatTrx(p) + (caraBayarKunci(p) === 'qris' ? ' · QRIS' : ''), p.hargaTotal, 0);
+      dorong(p.tanggal, p.jam, p.id, namaSingkatTrx(p) + (caraBayarKunci(p) === 'qris' ? ' · QRIS' : ''), p.hargaTotal, 0, kantongBayar(p));
     });
     ambilPiutangMutasi().forEach(m => {
       if (m.tipe !== 'bayar') return;
-      dorong(m.tanggal, m.jam, m.id, 'Pelunasan piutang — ' + (m.namaPelanggan || ''), m.nominal, 0);
+      dorong(m.tanggal, m.jam, m.id, 'Pelunasan piutang — ' + (m.namaPelanggan || ''), m.nominal, 0, kantongBayar(m));
     });
     ambilKasbonMutasi().forEach(m => {
       // HANYA ambil/bayar. Cabang else yang lama ikut menangkap tipe saldoAwal
@@ -15988,7 +15994,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       // Potong gaji tidak memindahkan uang: jangan pernah muncul sebagai kas masuk di
       // Buku Kas. Jejaknya tetap hidup di riwayat kasbon pegawainya sendiri.
       if (m.tipe === 'bayar' && kasbonPotongGaji(m)) return;
-      if (m.tipe === 'bayar') dorong(m.tanggal, m.jam, m.id, 'Kasbon kembali — ' + (m.namaPegawai || ''), m.nominal, 0);
+      if (m.tipe === 'bayar') dorong(m.tanggal, m.jam, m.id, 'Kasbon kembali — ' + (m.namaPegawai || ''), m.nominal, 0, kantongBayar(m));
       else if (m.tipe === 'ambil') dorong(m.tanggal, m.jam, m.id, 'Kasbon — ' + (m.namaPegawai || ''), 0, m.nominal);
     });
     daftarModalOwner().forEach(x => x.tipe === 'setor'
@@ -19479,6 +19485,39 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       + '), dilunasi ' + formatRupiah(bayar) + ', sisa utang ' + formatRupiah(u.sisa)
       + '. Beban naik, kas toko tidak bergerak, kewajiban terbawa ke neraca.');
     return { lulus: true, nDompet, sDompet, bayar, sisa: u.sisa };
+  }
+
+  // Dipanggil dari konsol: ujiKarungKas(). Menjaga SATU identitas yang gampang patah
+  // diam-diam: keempat karung di Ringkasan WAJIB menjumlah tepat ke "Uang Kas Sekarang"
+  // di atasnya. Dua-duanya berangkat dari total titik kas yang sama dan menambahkan
+  // gerakan yang sama — yang membedakan cuma pembagiannya. Kalau suatu hari ada gerakan
+  // kas baru yang lupa membawa kantong, atau ada kantong yang dibaca dari sumber lain,
+  // selisihnya muncul di sini, bukan di mata pemilik yang menjumlah empat angka sendiri.
+  function ujiKarungKas() {
+    const t = ambilTitikKas();
+    if (!t) { console.log('ujiKarungKas DILEWATI — titik kas belum disetel.'); return { lulus: true, lewat: true }; }
+    const salah = [];
+    const K = ik8KarungSekarang(t);
+    const jml = IK8_URUT.reduce((a, id) => a + (K[id] || 0), 0);
+    const kas = ik6KasSekarang();
+    if (Math.round(jml) !== Math.round(kas)) {
+      salah.push('Σ karung ' + Math.round(jml) + ' ≠ uang kas sekarang ' + Math.round(kas));
+    }
+    // Tiap baris gerakan WAJIB punya kantong yang dikenal — kalau ada yang jatuh ke
+    // cadangan 'laci' diam-diam, laci menggelembung tanpa sebab yang bisa ditelusuri.
+    const asing = {};
+    daftarGerakanKas().forEach(r => {
+      const k = r.kantong;
+      if (k !== 'laci' && k !== 'rekening' && k !== 'amplop' && k !== 'brankas') {
+        asing[String(k)] = (asing[String(k)] || 0) + 1;
+      }
+    });
+    Object.keys(asing).forEach(k => salah.push(asing[k] + ' baris gerakan berkantong tak dikenal: ' + k));
+    if (salah.length) { console.error('ujiKarungKas GAGAL:', salah); return { lulus: false, salah }; }
+    console.log('ujiKarungKas LULUS — laci ' + formatRupiah(K.laci) + ' · rekening ' + formatRupiah(K.rekening)
+      + ' · amplop ' + formatRupiah(K.amplop) + ' · brankas ' + formatRupiah(K.brankas)
+      + ' = ' + formatRupiah(jml) + ', sama dengan Uang Kas Sekarang.');
+    return { lulus: true, karung: K, jml, kas };
   }
 
   // Dipanggil dari konsol: ujiKonsistensiLaporan(2026). Membuktikan dengan angka bahwa
@@ -23802,6 +23841,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.langkahLaporan = langkahLaporan;
   window.ujiKonsistensiLaporan = ujiKonsistensiLaporan;
   window.ujiUtangOwner = ujiUtangOwner;
+  window.ujiKarungKas = ujiKarungKas;
   window.segarkanLaporanJikaTerbuka = segarkanLaporanJikaTerbuka;
   window.tawarkanSelaraskanAmplop = tawarkanSelaraskanAmplop;
   window.catatModalOwner = catatModalOwner;
@@ -24128,12 +24168,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const baru = (jenis, jam) => ({ jenis, jam, n: 0, masuk: 0, keluar: 0, ke: {}, nPer: {}, contoh: '', nama: [] });
     const isi = (e, r) => {
       e.n++;
-      if (r.keluar > 0) { e.keluar += r.keluar; e.ke.laci = 1; e.nPer.laci = (e.nPer.laci || 0) + 1; }
-      if (r.masuk > 0) {
-        e.masuk += r.masuk;
-        const kant = (r.label || '').indexOf('· QRIS') >= 0 ? 'rekening' : 'laci';
-        e.ke[kant] = 1; e.nPer[kant] = (e.nPer[kant] || 0) + 1;
-      }
+      const kant = r.kantong || 'laci';
+      if (r.keluar > 0) { e.keluar += r.keluar; e.ke[kant] = 1; e.nPer[kant] = (e.nPer[kant] || 0) + 1; }
+      if (r.masuk > 0) { e.masuk += r.masuk; e.ke[kant] = 1; e.nPer[kant] = (e.nPer[kant] || 0) + 1; }
       if (!e.contoh) e.contoh = r.label || '';
     };
     const perJam = {};
@@ -24159,6 +24196,33 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   }
 
   // Satu objek data untuk seluruh layar — semua dari mesin lama.
+  // Isi tiap kantong SEKARANG = hitungan terakhir + gerakan sesudahnya, dibagi menurut
+  // kantong yang dibawa tiap baris. Dulu keempatnya berhenti di angka titik kas: laci
+  // menampilkan Rp181.500 sementara penjualan tunai hari itu sudah jutaan, dan keempat
+  // karung tidak menjumlah ke "Uang Kas Sekarang" di atasnya.
+  //
+  // Identitas yang dijaga: Σ karung ≡ ik6KasSekarang(). Dua-duanya berangkat dari total
+  // titik kas yang sama dan menambahkan gerakan yang sama; yang membedakan hanya
+  // pembagiannya. Jadi angka besar dan keempat karung tidak bisa lagi berselisih.
+  //
+  // AMPLOP & BRANKAS tidak punya kejadian per jam — isinya berubah saat uang dipindahkan
+  // tangan, dan tidak ada catatan yang merekam perpindahan itu. Keduanya tetap di angka
+  // hitungan terakhir sampai Cocokkan Kas berikutnya. Konsekuensinya jujur: kalau uang
+  // laci dipindah ke brankas tanpa dicocokkan, totalnya tetap benar tapi pembagiannya
+  // meleset — dan itu persis yang diperbaiki Cocokkan Kas.
+  function ik8KarungSekarang(t) {
+    const k = { laci: 0, rekening: 0, amplop: 0, brankas: 0 };
+    if (!t) return k;
+    k.laci = t.laci || 0; k.rekening = t.rekening || 0;
+    k.amplop = t.amplop || 0; k.brankas = t.brankas || 0;
+    daftarGerakanKas().forEach(r => {
+      if (!(r.t > t.tanggal)) return;
+      const id = k[r.kantong] === undefined ? 'laci' : r.kantong;
+      k[id] += (r.masuk || 0) - (r.keluar || 0);
+    });
+    return k;
+  }
+
   function ik8Data() {
     const iso = tanggalLokalIso();
     const t = ambilTitikKas();
@@ -24173,7 +24237,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (L.susutStok) potongan.push({ nama: 'Susut & selisih stok', rp: -L.susutStok });   // susut negatif = laba turun
     return {
       kas: ik6KasSekarang(), titik: t,
-      karung: { laci: t ? (t.laci || 0) : 0, rekening: t ? (t.rekening || 0) : 0, amplop: t ? (t.amplop || 0) : 0, brankas: t ? (t.brankas || 0) : 0 },
+      karung: ik8KarungSekarang(t), karungTitik: { laci: t ? (t.laci || 0) : 0, rekening: t ? (t.rekening || 0) : 0, amplop: t ? (t.amplop || 0) : 0, brankas: t ? (t.brankas || 0) : 0 },
       jamBuka: JAM_BUKA_SISTEM, jamTutup: JAM_TUTUP_SISTEM,
       kejadian: ik8Ember(gerakan, kredit, JAM_BUKA_SISTEM, JAM_TUTUP_SISTEM),
       rentang: ik8RentangKejadian(gerakan, kredit),
@@ -24357,11 +24421,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       /* ── empat karung: porsi dipakai untuk tinggi DAN label (satu pembagi). Ambang tinta
          dari geometri labelnya (7px dari dasar + tinggi baris 10px pada tabung 153px). ── */
       const TABUNG_PX = 153, AMBANG = (7 + 10) / TABUNG_PX * 100;
-      const tot = IK8_URUT.reduce((a, id) => a + (D.karung[id] || 0), 0) || 1;
+      // Pembagi memakai nilai POSITIF saja: kalau satu kantong minus, memakai jumlah
+      // bersih akan menggelembungkan persen kantong lain melewati 100%.
+      const totPos = IK8_URUT.reduce((a, id) => a + Math.max(0, D.karung[id] || 0), 0);
+      const tot = totPos || 1;
+      const adaMinus = IK8_URUT.some(id => (D.karung[id] || 0) < 0);
       const nyala = ik8KarungNyala(kej);
       document.getElementById('ik8KarungBaris').innerHTML = IK8_URUT.map(id => {
         const rp = D.karung[id] || 0;
-        const porsi = t ? rp / tot * 100 : 0;
+        const porsi = t ? Math.max(0, Math.min(100, rp / tot * 100)) : 0;
         return '<button type="button" class="ik8-karung' + (nyala[id] ? ' on' : '') + '"' + (t ? '' : ' disabled')
           + ' onclick="ik8PilihKarung(\'' + id + '\')" aria-label="' + IK8_NAMA[id] + ' ' + ik6Rp(rp) + '">'
           + '<span class="ik8-leher"></span>'
@@ -24375,7 +24443,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         + '<span class="ik8-knama">' + IK8_NAMA[id] + '</span>'
         + '<span class="ik8-knilai">' + (t ? ik6Rp(D.karung[id] || 0) : '—') + '</span></span>').join('');
       const notaK = document.getElementById('ik8KarungNota');
-      const basis = t ? 'menurut hitungan ' + formatTanggal(t.tanggal) : '';
+      const basis = t ? 'dihitung ' + formatTanggal(t.tanggal) + ' lalu ditambah gerakan sesudahnya' : '';
+      const beku = t ? 'masih di angka hitungan ' + formatTanggal(t.tanggal) : '';
       if (!t) {
         notaK.className = 'ik8-nota';
         notaK.textContent = 'Titik kas belum disetel — isi lewat kartu Cocokkan Kas di Arus Kas. Karung terisi sesudahnya.';
@@ -24383,21 +24452,27 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         const id = _ik8Karung;
         const n = kej.reduce((a, e) => a + ((e.nPer && e.nPer[id]) || 0), 0);   // MENCACAH, tidak menjumlah rupiah
         notaK.className = 'ik8-nota sorot';
-        notaK.textContent = IK8_NAMA[id] + ' berisi ' + ik6Rp(D.karung[id]) + ' (' + basis + ') · '
-          + (id === 'amplop' || id === 'brankas'
-            ? 'tidak ada kejadian per jam — diisi saat Tutup Hari.'
+        const bekuKantong = (id === 'amplop' || id === 'brankas');
+        notaK.textContent = IK8_NAMA[id] + ' berisi ' + ik6Rp(D.karung[id])
+          + ' (' + (bekuKantong ? beku : basis) + ') · '
+          + (bekuKantong
+            ? 'tidak ada kejadian per jam — isinya baru berubah saat Cocokkan Kas berikutnya.'
             : n + ' kejadian hari ini menyentuhnya — disorot di jam toko.');
       } else if (_ik8Simpul !== null && kej[_ik8Simpul]) {
         const e = kej[_ik8Simpul];
         notaK.className = 'ik8-nota sorot';
         notaK.textContent = e.ke
-          ? 'Karung yang menyala: ' + namaKe(e.ke) + ' — isinya ' + basis + '.'
+          ? 'Karung yang menyala: ' + namaKe(e.ke) + ' — kejadian jam itu masuk ke sana.'
           : 'Kredit tidak masuk karung mana pun — nol karung menyala.';
       } else {
-        notaK.className = 'ik8-nota';
-        notaK.textContent = 'Isi karung ' + basis + '; angka kas di atas sudah ditambah gerakan sesudahnya. '
-          + 'Keempat karung sama besar — tinggi isinya digerakkan porsi yang sama dengan angka persennya. '
-          + 'Ketuk satu karung untuk melihat kejadian mana yang mengisinya.';
+        notaK.className = adaMinus ? 'ik8-nota sorot' : 'ik8-nota';
+        notaK.textContent = adaMinus
+          ? 'Ada kantong bernilai minus. Totalnya tetap benar — yang meleset pembagiannya: '
+            + 'tiap uang keluar dianggap keluar dari laci, padahal ada yang dibayar lewat rekening '
+            + 'atau diambil dari brankas. Cocokkan Kas membetulkan pembagiannya.'
+          : 'Laci & rekening ' + basis + '. Amplop & brankas ' + beku + ' — perpindahannya tidak tercatat '
+            + 'per jam. Keempatnya menjumlah tepat ke angka kas di atas. '
+            + 'Ketuk satu karung untuk melihat kejadian mana yang mengisinya.';
       }
 
       /* ── jam toko tegak: ember per jam + slot lepas di dasar ── */
