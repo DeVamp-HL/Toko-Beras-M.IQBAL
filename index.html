@@ -3442,6 +3442,98 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   width:100%; min-height:44px; margin-top:14px; background:none; border:0;
   font:700 11px/1 -apple-system,system-ui; letter-spacing:.06em; color:#8f959d; cursor:pointer;
 }
+/* ── BELANJA (gelombang 4): dua pertanyaan + papan tiga kolom ── */
+/* Sama seperti Tangani, layar ini tidak menggantikan versi desktop mana pun,
+   jadi dia TIDAK digerbangi lebar. Awalan bj- (bukan bl-, yang sudah milik
+   halaman Bulanan sejak grafik omzet 12 bulan). */
+.k6a .bj-panel{ margin-bottom:9px; }
+.k6a .bj-angka{ font:400 32px/1.1 var(--pf-serif); color:#f7ecd6; margin-top:7px; }
+.k6a .bj-angka.nol{ color:rgba(207,212,218,.28); }
+.k6a .bj-isian{
+  width:100%; box-sizing:border-box; min-height:44px; margin-top:10px; padding:0 12px;
+  border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04);
+  color:#e8e4dc; font:400 15px/1 -apple-system,system-ui; -webkit-appearance:none;
+}
+.k6a .bj-isian:focus{ outline:0; border-color:rgba(226,205,166,.45); }
+.k6a .bj-chip{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.k6a .bj-chip button{
+  min-height:44px; padding:0 13px; border-radius:99px; cursor:pointer;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04);
+  color:#cfd4da; font:700 11.5px/1 -apple-system,system-ui;
+}
+.k6a .bj-chip button.bj-hapus{
+  border-color:rgba(201,112,94,.38); background:rgba(201,112,94,.1); color:#e8c3b2;
+}
+.k6a .bj-tanya{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-bottom:9px; }
+.k6a .bj-tanya button{
+  min-height:56px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:3px;
+  padding:8px 12px; border-radius:13px; cursor:pointer; font-family:inherit; text-align:left;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); color:#a7adb5;
+}
+.k6a .bj-tanya button b{ font:700 12.5px/1.2 -apple-system,system-ui; }
+.k6a .bj-tanya button i{ font-style:normal; font:400 10.5px/1.2 -apple-system,system-ui; color:#7c848a; }
+.k6a .bj-tanya button.kg-terpilih{
+  border:0; background:linear-gradient(160deg,#fdf6e7,#e2cda6 62%,#bfa16a); color:#2a1f13;
+}
+.k6a .bj-tanya button.kg-terpilih i{ color:rgba(42,31,19,.72); }
+.k6a .bj-tanya button.tab-owner-blok.tampil-owner{ display:flex !important; }
+.k6a .bj-vonis{ padding:14px; border-color:rgba(226,205,166,.3); }
+.k6a .bj-vonis.tolak{ border-color:rgba(201,112,94,.38); }
+.k6a .bj-vonis-isi{ font:400 12px/1.6 -apple-system,system-ui; color:#e8e4dc; margin-top:9px; }
+.k6a .bj-simpan{
+  width:100%; min-height:52px; margin:9px 0 4px; border:0; border-radius:14px; padding:8px 12px;
+  background:linear-gradient(160deg,#fdf6e7,#e2cda6 62%,#bfa16a); color:#2a1f13;
+  font:700 12px/1.3 -apple-system,system-ui; cursor:pointer;
+}
+.k6a .bj-simpan:disabled{
+  background:rgba(207,212,218,.05); border:1px solid rgba(207,212,218,.12);
+  color:rgba(167,173,181,.6); cursor:default;
+}
+.k6a .bj-kolom{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:12px; }
+.k6a .bj-kol{
+  min-width:0; box-sizing:border-box; border-radius:13px; padding:11px 9px;
+  background:linear-gradient(158deg,rgba(255,255,255,.07),rgba(255,255,255,.028));
+  border:1px solid rgba(255,255,255,.08);
+}
+.k6a .bj-kol.sorot{ border-color:rgba(226,205,166,.5); }
+.k6a .bj-kol b{
+  display:block; min-height:22px; font:700 8.5px/1.25 -apple-system,system-ui;
+  letter-spacing:.14em; text-transform:uppercase; color:#8f959d;
+}
+.k6a .bj-kol u{ display:block; text-decoration:none; font:400 16.5px/1.2 var(--pf-serif); }
+.k6a .bj-kol i{ display:block; font-style:normal; font:400 9.5px/1.3 -apple-system,system-ui; color:#7c848a; margin-top:5px; }
+.k6a .bj-baris{
+  width:100%; display:block; text-align:left; margin-top:7px; padding:12px 13px;
+  border-radius:13px; cursor:pointer; font-family:inherit;
+  background:linear-gradient(158deg,rgba(255,255,255,.07),rgba(255,255,255,.028));
+  border:1px solid rgba(255,255,255,.08);
+}
+.k6a .bj-baris.buka{ border-color:rgba(226,205,166,.4); }
+.k6a .bj-baris-atas{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.k6a .bj-baris-atas span{ font:400 12.5px/1.35 -apple-system,system-ui; color:#e8e4dc; }
+.k6a .bj-baris-atas b{ flex:none; font:400 16px/1.15 var(--pf-serif); color:#cfd4da; }
+.k6a .bj-tanda{ display:flex; gap:5px; margin-top:9px; }
+.k6a .bj-tanda span{
+  padding:4px 8px; border-radius:99px; font:700 8.5px/1 -apple-system,system-ui;
+  letter-spacing:.1em; text-transform:uppercase;
+  color:#5f676d; border:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.02);
+}
+.k6a .bj-tanda span.on-beban{ color:#e2cda6; border-color:rgba(226,205,166,.33); background:rgba(226,205,166,.12); }
+.k6a .bj-tanda span.on-kas{ color:#e8c3b2; border-color:rgba(232,195,178,.33); background:rgba(232,195,178,.12); }
+.k6a .bj-tanda span.on-owner{ color:#cfd4da; border-color:rgba(207,212,218,.33); background:rgba(207,212,218,.12); }
+.k6a .bj-alasan{
+  display:block; margin-top:9px; padding-top:9px; border-top:1px solid rgba(255,255,255,.08);
+  font:400 11px/1.6 -apple-system,system-ui; color:#a7adb5;
+}
+.k6a .bj-utang{ margin-top:12px; padding:14px; border-color:rgba(207,212,218,.22); }
+.k6a .bj-utang-nilai{ font:400 26px/1.1 var(--pf-serif); color:#cfd4da; margin-top:7px; }
+.k6a .bj-lunasi{
+  width:100%; min-height:44px; margin-top:11px; border-radius:12px; cursor:pointer;
+  border:1px solid rgba(226,205,166,.4); background:none; color:#e2cda6;
+  font:700 11.5px/1 -apple-system,system-ui;
+}
+.k6a .bj-lunasi.tab-owner-blok.tampil-owner{ display:block !important; }
+
 /* ── ritual pagi: menggantikan lembar penuh #lembarBukaToko ──
    Kartu ini duduk di kepala Ringkasan supaya kerja tidak terhalang: boleh
    dilewati dengan menggulir, dan hilang sendiri sesudah ditekan sekali. */
@@ -4832,6 +4924,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <div class="lm-grup">Catat <span>menambah data</span></div>
   <div class="lm-kisi">
   <button type="button" class="lm-petak kg-petak" data-halaman="jual" onclick="pindahDariMenu('jual')"><b>Jual</b><i>lima jalur penjualan</i></button>
+  <button type="button" class="lm-petak kg-petak" data-halaman="belanja" onclick="pindahDariMenu('belanja')"><b>Belanja</b><i>toko atau pribadi</i></button>
   <button type="button" class="lm-petak kg-petak" data-halaman="input" onclick="pindahDariMenu('input')"><b>Masuk</b><i>batch beli karung</i></button>
   <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="pemasok" onclick="pindahDariMenu('pemasok')" disabled><b>Pemasok</b><i>riwayat harga beli</i><span class="kg-titik-emas"></span></button>
   <button type="button" class="lm-petak kg-petak" data-halaman="produksi" onclick="pindahDariMenu('produksi')"><b>Produksi</b><i>repack ke kemasan</i></button>
@@ -5512,7 +5605,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         <div class="nilai" id="ringKasKeluarBulanIni">Rp0</div>
       </div>
     </div>
-    <div class="info-box ring-lama-hp">Dua angka ini cuma menghitung uang yang BENAR-BENAR berpindah, dan rinciannya ada di tab <b>Arus Kas</b>. Masuk = penjualan tunai + QRIS, pelunasan piutang, kasbon yang dikembalikan. Keluar = belanja beras, biaya bulanan, pengeluaran harian kategori Toko, refund retur, beli kantong kemasan &amp; paper bag, kasbon yang diambil pegawai, dan <b>prive owner</b> (kategori Owner — biaya hidup pemilik yang diambil dari laci; terhitung keluar dari kas supaya hitungan malam cocok, tapi TIDAK pernah masuk biaya toko atau mengurangi laba). Penjualan <b>kredit belum dihitung</b> di sini sampai pelanggannya melunasi — barangnya sudah keluar tapi uangnya belum diterima. Aturan pakai: entri Owner HANYA untuk uang yang keluar dari laci — belanja pribadi dari dompet sendiri jangan dicatat sama sekali. Ini arus kas, BUKAN laba: margin kotor ada di tab Laba (berbasis HPP barang terjual).</div>
+    <div class="info-box ring-lama-hp">Dua angka ini cuma menghitung uang yang BENAR-BENAR berpindah, dan rinciannya ada di tab <b>Arus Kas</b>. Masuk = penjualan tunai + QRIS, pelunasan piutang, kasbon yang dikembalikan. Keluar = belanja beras, biaya bulanan, pengeluaran harian kategori Toko, refund retur, beli kantong kemasan &amp; paper bag, kasbon yang diambil pegawai, dan <b>prive owner</b> (kategori Owner — biaya hidup pemilik yang diambil dari laci; terhitung keluar dari kas supaya hitungan malam cocok, tapi TIDAK pernah masuk biaya toko atau mengurangi laba). Penjualan <b>kredit belum dihitung</b> di sini sampai pelanggannya melunasi — barangnya sudah keluar tapi uangnya belum diterima. Aturan pakai: entri Owner HANYA untuk uang yang keluar dari laci — belanja <b>pribadi</b> dari dompet sendiri jangan dicatat sama sekali. Belanja <b>toko</b> yang dibayar dompet pribadi lain perkara: catat lewat layar Belanja — bebannya memotong laba, kas di sini tidak bergerak, dan yang lahir adalah utang toko kepada owner. Ini arus kas, BUKAN laba: margin kotor ada di tab Laba (berbasis HPP barang terjual).</div>
 
     <div class="kartu ring-lama-hp">
       <div class="panel-kepala"><h2>Perlu Perhatian</h2></div>
@@ -6561,6 +6654,49 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     <div id="tgKaca"></div>
   </div>
 
+  <!-- ══ BELANJA (gelombang 4) — dua pertanyaan, satu catatan ══
+       Halaman Harian menanyakan SATU hal ("kategori apa") dan karenanya tidak punya
+       tempat untuk sel keempat: belanja toko yang dibayar dompet pribadi. Layar ini
+       memecah pertanyaan itu jadi dua sumbu yang memang berbeda — UNTUK SIAPA
+       belanjanya, dan DARI KANTONG MANA uangnya — lalu memperlihatkan akibatnya
+       sebelum disimpan. Sama seperti Tangani, dia tidak punya versi desktop lama,
+       jadi tidak digerbangi lebar: menggerbanginya cuma memberi halaman kosong. -->
+  <div id="halamanBelanja" class="halaman k6a">
+    <div class="judul-halaman"><h2>Belanja</h2><span class="jh-sub">dua pertanyaan, satu catatan</span></div>
+
+    <div class="kg-panel bj-panel">
+      <div class="kg-label">Nominal</div>
+      <div class="bj-angka" id="bjAngka">Rp0</div>
+      <input type="number" id="bjNominal" class="bj-isian" placeholder="0" inputmode="numeric" oninput="bjUbah()">
+      <div class="bj-chip">
+        <button type="button" onclick="bjIsiNominal(10000)">Rp10.000</button>
+        <button type="button" onclick="bjIsiNominal(25000)">Rp25.000</button>
+        <button type="button" onclick="bjIsiNominal(50000)">Rp50.000</button>
+        <button type="button" onclick="bjIsiNominal(100000)">Rp100.000</button>
+        <button type="button" class="bj-hapus" onclick="bjIsiNominal(0)">Kosongkan</button>
+      </div>
+    </div>
+
+    <div class="kg-panel bj-panel">
+      <div class="kg-label">Untuk apa</div>
+      <input type="text" id="bjKeterangan" class="bj-isian bj-teks" placeholder="Contoh: karung + tali rafia" oninput="bjUbah()">
+      <div class="bj-chip" id="bjChipKet"></div>
+    </div>
+
+    <!-- Dua sumbu, empat sel. Sel "pribadi" ikut gembok yang sama dengan kategori
+         Owner di halaman Harian — bukan aturan baru, aturan lama yang dipatuhi. -->
+    <div class="bj-tanya">
+      <button type="button" id="bjUntukToko" onclick="bjPilih('untuk','toko')"><b>Untuk toko</b><i>beban toko</i></button>
+      <button type="button" id="bjUntukPribadi" class="tab-owner-blok" onclick="bjPilih('untuk','pribadi')"><b>Untuk pribadi</b><i>bukan beban</i></button>
+      <button type="button" id="bjDariLaci" onclick="bjPilih('dari','laci')"><b>Dari laci</b><i>kas toko</i></button>
+      <button type="button" id="bjDariDompet" onclick="bjPilih('dari','dompet')"><b>Dari dompet</b><i>uang sendiri</i></button>
+    </div>
+
+    <div id="bjVonis"></div>
+    <button type="button" class="bj-simpan" id="bjSimpan" onclick="bjSimpan()" disabled>Ketik nominalnya dulu</button>
+    <div id="bjPapan"></div>
+  </div>
+
   <div id="halamanPemasok" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Pemasok</h2>
@@ -7002,7 +7138,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <div class="kd-judul"><h3>Hari ini</h3><span class="kd-hitung" id="harianHitungHariIni"></span></div>
       <div id="daftarHarianHariIni"></div>
     </div>
-    <p class="catatan-kecil">Hanya kategori Toko yang ikut kas keluar. Owner murni pribadi.</p>
+    <p class="catatan-kecil">Hanya kategori Toko yang ikut kas keluar. Owner murni pribadi.
+      Belanja toko yang dibayar dompet pribadi punya pintunya sendiri di layar <b>Belanja</b> —
+      di sana bebannya tetap masuk toko, tapi kas toko tidak berkurang.</p>
 
     <div class="kartu" id="kartuRiwayatHarian" style="margin-top:12px;">
       <div class="panel-kepala"><h2>Riwayat pengeluaran</h2></div>
@@ -7221,6 +7359,16 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // ke kas toko, jadi arus kas BERGERAK. Yang sama pada keempatnya: TIDAK menyentuh laba.
   // Menyetor modal bukan pendapatan; menarik modal bukan biaya.
   const KOLEKSI_MODAL = 'modalOwner';
+  // UTANG TOKO KE OWNER (6 Sep 2026, keputusan My DeV). Lahir dari belanja TOKO yang
+  // dibayar dompet pribadi: bebannya beban toko, tapi kas toko TIDAK bergerak sesen pun.
+  // Yang dicabut hari itu adalah LARANGAN MENCATAT-nya — bukan pemisahan kantongnya;
+  // uang pribadi dan uang toko tetap dua kantong berbeda. Karena itu koleksi ini TIDAK
+  // boleh digabung ke modalOwner: modal = penyertaan (menggerakkan kas, tidak wajib
+  // kembali), utang = kewajiban (tidak menggerakkan kas saat lahir, wajib kembali).
+  // Isinya HANYA pelunasan: { id, tipe:'bayar', nominal, tanggal, jam, catatan }.
+  // Sisi timbulnya adalah dokumen pengeluaranHarian berkategori 'tokoDompet' itu sendiri,
+  // jadi saldonya DITURUNKAN dari mutasi, tidak pernah disimpan sebagai angka jadi.
+  const KOLEKSI_UTANG_OWNER = 'utangOwnerMutasi';
   // UTANG PEMASOK (25 Agu 2026) — KOREKSI MODEL BISNIS: batch beras TIDAK selalu
   // dibayar tunai saat datang. RODA MAS berjalan dengan BON: beras datang = utang,
   // hanya bongkar yang tunai hari itu; bon dibayar pada kedatangan berikutnya (kebiasaan
@@ -7290,6 +7438,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   const KUNCI_PENY_KEMASAN = 'miqbal_penyesuaian_kemasan_v1';
   const KUNCI_AMPLOP = 'miqbal_amplop_laba_v1';
   const KUNCI_MODAL = 'miqbal_modal_owner_v1';
+  const KUNCI_UTANG_OWNER = 'miqbal_utang_owner_v1';
   const KUNCI_UTANG_PEMASOK = 'miqbal_utang_pemasok_v1';
   const KUNCI_JENIS_BERAS = 'miqbal_jenis_beras_v1';
   const KUNCI_THR = 'miqbal_thr_pelanggan_v1';
@@ -7418,7 +7567,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // Keduanya cuma punya pintu di lembar Menu, TANPA tombol tab — jadi penyetelan
     // 'aktif' wajib berpenjaga null, kalau tidak pindahHalaman melempar TypeError dan
     // seluruh navigasi mati.
-    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan','pemasok','setelan','pesanan','tangani'].forEach(n => {
+    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan','pemasok','setelan','pesanan','tangani','belanja'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       const tombolTab = document.getElementById('tab' + kapital(n));
       if (tombolTab) tombolTab.classList.toggle('aktif', n === nama);
@@ -7429,7 +7578,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       b.classList.toggle('aktif', b.getAttribute('data-halaman') === nama);
     });
     const tbMenu = document.getElementById('tombolLembarMenu');
-    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan','pemasok','tangani'].indexOf(nama) >= 0);
+    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan','pemasok','tangani','belanja'].indexOf(nama) >= 0);
     if (document.body.classList.contains('lembar-menu-terbuka')) toggleLembarMenu(false);
     if (document.body.classList.contains('lembar-merk-terbuka')) tutupLembarMerk();
     document.body.classList.toggle('di-halaman-masuk', nama === 'input');
@@ -7442,6 +7591,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     document.body.classList.toggle('ada-bilah-simpan', ['jual', 'input', 'produksi', 'bulanan', 'harian'].indexOf(nama) >= 0);
     if (nama === 'ringkasan') tampilkanRingkasan();
     if (nama === 'tangani') { tampilkanRingkasan(); tampilkanTangani(); }   // daftar dibangun tampilkanRingkasan
+    if (nama === 'belanja') tampilkanBelanja();
     if (nama === 'rekap') { tampilkanRekap(); tampilkanRiwayatJual(); tampilkanRiwayat(); }
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); tampilkanSlipGaji(); }
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); isiSaranPelanggan(); }
@@ -8421,7 +8571,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     tutupHari: 'tutup hari', piutangMutasi: 'mutasi piutang', kasbonMutasi: 'mutasi kasbon',
     pelangganCatatan: 'catatan pelanggan', pesanan: 'pesanan', setoranKas: 'setoran kas',
     amplopLaba: 'amplop laba', modalOwner: 'modal owner', utangPemasokMutasi: 'utang pemasok',
-    thrPelanggan: 'THR pelanggan', pemasokCatatan: 'catatan pemasok', ringkasanKasir: 'ringkasan kasir'
+    thrPelanggan: 'THR pelanggan', pemasokCatatan: 'catatan pemasok', ringkasanKasir: 'ringkasan kasir',
+    utangOwnerMutasi: 'utang ke owner'
   };
   function labelKoleksi(k) { return LABEL_KOLEKSI[k] || k; }
   function izinkanKoleksiKosong(koleksi, menit) {
@@ -8755,6 +8906,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   pasangSinkronisasi(KOLEKSI_HARIAN, KUNCI_HARIAN, (d) => { _cacheHarian = d; }, () => {
     segarkanArusKasJikaTampil();
     if (document.getElementById('halamanHarian').classList.contains('tampil')) { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); }
+    if (document.getElementById('halamanBelanja').classList.contains('tampil')) tampilkanBelanja();
     // Kategori 'toko' otomatis ikut Kas Keluar Bulan Ini — dashboard harus refresh tiap ada pengeluaran harian baru.
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'harian');
@@ -8843,6 +8995,16 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     segarkanLaporanJikaTerbuka();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'modalOwner');
+
+  // Pelunasan utang ke owner: mengubah KAS (baris keluar) dan NERACA (kewajiban
+  // menyusut), tapi TIDAK mengubah laba — bebannya sudah diakui saat belanjanya
+  // dicatat. Karena itu yang disegarkan arus kas, laporan, dan Ringkasan; halaman
+  // Laba sengaja tidak ikut supaya tidak menyiratkan angkanya berubah.
+  pasangSinkronisasi(KOLEKSI_UTANG_OWNER, KUNCI_UTANG_OWNER, () => {}, () => {
+    segarkanArusKasJikaTampil();
+    segarkanLaporanJikaTerbuka();
+    if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
+  }, 'id', 'utangOwner');
 
   pasangSinkronisasi(KOLEKSI_UTANG_PEMASOK, KUNCI_UTANG_PEMASOK, (d) => { _cacheUtangPemasok = d; }, () => {
     segarkanArusKasJikaTampil();
@@ -9953,8 +10115,14 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // Kategori 'Ben Mohsein' dicabut 12 Agu 2026; catatan lama berkategori itu tetap ada
   // dan tetap terbaca lewat filter "semua" (lihat labelKategoriHarian).
   // Aturan keras (instruksi proyek + konfirmasi My DeV): kategori 'ben' & 'owner' MURNI PRIBADI.
-  // TIDAK pernah masuk kasKeluarBulanIni, TIDAK masuk totalBiayaBulanan, TIDAK masuk laporan bulanan.
+  // TIDAK pernah masuk totalBiayaBulanan, TIDAK masuk laporan bulanan sebagai biaya.
   // Hanya kategori 'toko' yang otomatis ikut Kas Keluar Bulan Ini di dashboard Ringkasan.
+  // 'tokoDompet' (6 Sep 2026, lahir di layar Belanja): belanja TOKO yang dibayar dompet
+  // pribadi owner. Beban toko ya, kas toko TIDAK — selisihnya jadi utang toko kepada
+  // owner. Halaman Harian ini sengaja tidak menawarkannya: dia cuma punya satu sumbu
+  // pertanyaan ("kategori apa"), dan sel ini butuh dua. Pintunya di layar Belanja.
+  // Dua predikat resmi: bebanTokoKategori() dan kasTokoKeluarKategori() — jangan lagi
+  // menulis h.kategori === 'toko' langsung untuk menjawab dua pertanyaan berbeda itu.
   let kategoriHarianAktif = 'toko';
   let filterHarianAktif = 'semua';
 
@@ -10026,13 +10194,16 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       const buka = ownerSudahUnlock();
       const semua = (buka ? ambilPengeluaranHarian() : ambilPengeluaranHarian().filter(h => h.kategori !== 'owner'))
         .filter(h => h.tanggal === hariIni);
-      const toko = semua.filter(h => h.kategori === 'toko').reduce((a, h) => a + (h.nominal || 0), 0);
-      const pribadi = semua.filter(h => h.kategori !== 'toko').reduce((a, h) => a + (h.nominal || 0), 0);
+      // Angka besar = BEBAN toko (laci + dompet). Yang dipisah di kalimat bawahnya
+      // adalah kantongnya, bukan bebannya — persis pembedaan yang dijaga sistem ini.
+      const toko = semua.filter(h => bebanTokoKategori(h.kategori)).reduce((a, h) => a + (h.nominal || 0), 0);
+      const dompet = semua.filter(h => h.kategori === 'tokoDompet').reduce((a, h) => a + (h.nominal || 0), 0);
+      const pribadi = semua.filter(h => !bebanTokoKategori(h.kategori)).reduce((a, h) => a + (h.nominal || 0), 0);
       wL.innerHTML = `<div class="kg-panel"><div class="kg-label">Dicatat hari ini</div>
         <div class="hz-angka">${formatRupiah(toko)} <i>beban toko &middot; ${semua.length} catatan</i></div>
         <div class="hz-kalimat">${buka
-          ? `Beban toko ${formatRupiah(toko)} &middot; pribadi owner ${formatRupiah(pribadi)}. Dua kantong ini tidak pernah dijumlahkan.`
-          : 'Hanya kategori Toko yang ikut kas keluar. Catatan pribadi owner terkunci PIN.'}</div></div>`;
+          ? `Dari laci ${formatRupiah(toko - dompet)}${dompet > 0 ? ' &middot; dompet owner ' + formatRupiah(dompet) + ' (jadi utang toko)' : ''} &middot; pribadi owner ${formatRupiah(pribadi)}. Kantong pribadi tidak pernah dijumlahkan ke beban toko.`
+          : `Beban toko ${formatRupiah(toko)}${dompet > 0 ? ', ' + formatRupiah(dompet) + ' di antaranya dibayar dompet owner' : ''}. Catatan pribadi owner terkunci PIN.`}</div></div>`;
     } catch (e) { console.error('gambarKacaHarian:', e); }
   }
   function pilihZonaHarian(z) {
@@ -10080,10 +10251,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     kont.innerHTML = semua.length === 0
       ? '<div class="kosong-info"><b>Belum ada catatan hari ini</b><span>Pengeluaran yang disimpan akan langsung muncul di sini.</span></div>'
       : semua.slice().sort((a, b) => (b.id || 0) - (a.id || 0)).map(h => {
-        const pribadi = h.kategori !== 'toko';
+        const pribadi = !bebanTokoKategori(h.kategori);
+        const dompet = h.kategori === 'tokoDompet';
         return `<div class="baris-44${pribadi ? ' baris-pribadi' : ''}">
           <span class="jam">${escapeHtml((h.jam || '').slice(0, 5) || '—')}</span>
-          <span class="nama">${escapeHtml(h.keterangan || '')}<small>${labelKategoriHarian(h.kategori)} · ${pribadi ? 'pribadi, di luar kas toko' : 'ikut kas keluar'}</small></span>
+          <span class="nama">${escapeHtml(h.keterangan || '')}<small>${labelKategoriHarian(h.kategori)} · ${pribadi ? 'pribadi, di luar kas toko' : dompet ? 'beban toko, kas toko tidak keluar' : 'ikut kas keluar'}</small></span>
           <span class="angka">${formatRupiah(h.nominal || 0)}</span>
         </div>`;
       }).join('');
@@ -10094,8 +10266,18 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // Kalau baris ini dibuang, catatan itu diam-diam berubah label jadi "Owner" — salah
   // atribusi pengeluaran, dan uang orang tidak boleh berpindah nama diam-diam.
   function labelKategoriHarian(kat) {
-    return kat === 'toko' ? 'Toko' : kat === 'ben' ? 'Ben Mohsein (kategori lama)' : 'Owner';
+    return kat === 'toko' ? 'Toko'
+      : kat === 'tokoDompet' ? 'Toko · dompet owner'
+      : kat === 'ben' ? 'Ben Mohsein (kategori lama)' : 'Owner';
   }
+  // Tiga kategori, DUA sumbu yang tidak boleh dicampur: untuk siapa belanjanya,
+  // dan dari kantong mana uangnya. 'tokoDompet' adalah satu-satunya yang kedua
+  // sumbunya menyimpang — untuk toko, tapi dibayar dompet pribadi.
+  function bebanTokoKategori(kat) { return kat === 'toko' || kat === 'tokoDompet'; }
+  // Prive owner ikut: uangnya keluar dari LACI YANG SAMA (aturan 21 Agu), cuma bukan
+  // beban. Predikat ini untuk MENGGAMBAR — mesin kas tetap memisahkan keduanya jadi
+  // dua baris sendiri di hitungArusKasInti, dan itu tidak boleh disatukan di sana.
+  function kasTokoKeluarKategori(kat) { return kat === 'toko' || kat === 'owner'; }
 
   async function simpanPengeluaranHarian() {
     const kategori = document.getElementById('harianKategori').value || 'toko';
@@ -10172,6 +10354,226 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       </div>
     `).join('');
     terapkanStatusOwner();   // lihat catatan di tampilkanRekap() — sama sebabnya
+  }
+
+
+  // ============ LAYAR BELANJA (gelombang 4, 6 Sep 2026) ============
+  // Empat sel, bukan dua kategori. Sumbunya: UNTUK SIAPA x DARI KANTONG MANA.
+  // Sel TD (toko x dompet) adalah yang selama ini tidak punya tempat: bebannya
+  // beban toko, tapi kas toko tidak boleh berkurang sesen pun — selisihnya lahir
+  // sebagai UTANG TOKO KEPADA OWNER, bukan sebagai "uang owner jadi kas toko".
+  // Sel PD (pribadi x dompet) sengaja DITOLAK: tidak menyentuh toko sama sekali,
+  // dan mencatatnya cuma mengotori buku dengan kejadian yang bukan urusan toko.
+  const BJ_KASUS = {
+    TL: { kategori: 'toko', judul: 'Belanja toko dari laci',
+      isi: 'Beban toko naik dan kas laci turun sebesar yang sama — satu kejadian, dua buku. Ini satu-satunya sel yang sudah punya tempat rapi sejak awal.',
+      beban: true, kas: true, owner: false, boleh: true, tombol: 'Simpan sebagai Toko' },
+    TD: { kategori: 'tokoDompet', judul: 'Belanja toko dari dompet pribadi',
+      isi: 'Bebannya milik toko, tapi kas toko TIDAK berkurang — uangnya tidak dari laci. Yang lahir di sini utang toko kepada owner: kewajiban yang harus dilunasi, bukan modal yang menambah kas.',
+      beban: true, kas: false, owner: true, boleh: true, tombol: 'Simpan + terbitkan utang ke owner' },
+    PL: { kategori: 'owner', judul: 'Belanja pribadi dari laci',
+      isi: 'Prive. Kas laci turun supaya hitungan malam cocok, tapi ini bukan beban toko dan laba tidak boleh ikut turun karenanya.',
+      beban: false, kas: true, owner: true, boleh: true, tombol: 'Simpan sebagai prive owner' },
+    PD: { kategori: null, judul: 'Belanja pribadi dari dompet pribadi',
+      isi: 'Tidak menyentuh toko sama sekali: bukan beban toko, dan tidak ada rupiah toko yang bergerak. Aturan sistem ini sejak awal — jangan dicatat.',
+      beban: false, kas: false, owner: false, boleh: false, tombol: 'Tidak dicatat — memang begitu aturannya' }
+  };
+  let _bjUntuk = 'toko';
+  let _bjDari = 'laci';
+  let _bjPilih = null;
+  function bjSel() { return (_bjUntuk === 'toko' ? 'T' : 'P') + (_bjDari === 'laci' ? 'L' : 'D'); }
+  function bjNominal() { return Math.round(parseFloat((document.getElementById('bjNominal') || {}).value) || 0); }
+  function bjKeterangan() { return ((document.getElementById('bjKeterangan') || {}).value || '').trim(); }
+  function bjIsiNominal(v) {
+    const el = document.getElementById('bjNominal');
+    if (el) el.value = v > 0 ? v : '';
+    tampilkanBelanja();
+  }
+  function bjUbah() { tampilkanBelanja(); }
+  function bjPilih(sumbu, nilai) {
+    if (sumbu === 'untuk') _bjUntuk = nilai; else _bjDari = nilai;
+    tampilkanBelanja();
+  }
+  function bjPilihBaris(id) { _bjPilih = (_bjPilih === id ? null : id); tampilkanBelanja(); }
+
+  async function bjSimpan() {
+    const k = BJ_KASUS[bjSel()];
+    const nominal = bjNominal();
+    const keterangan = bjKeterangan();
+    if (!k.boleh) { alert(k.judul + '\n\n' + k.isi); return; }
+    if (!(nominal > 0)) { alert('Isi nominalnya dulu.'); return; }
+    if (!keterangan) { alert('Isi dulu untuk apa belanjanya — tanpa itu catatannya tidak bisa ditelusuri nanti.'); return; }
+    // Konfirmasi menyebut KETIGA akibatnya sekaligus, karena tepat di sinilah
+    // beban, kas, dan kewajiban bisa berpisah jalan. Angka yang tidak bergerak
+    // tetap disebut "Rp0" — diam bukan jawaban di layar uang.
+    const rp = formatRupiah(nominal);
+    const pesan = k.judul + ' — ' + rp + '\n' + keterangan
+      + '\n\nBeban toko: ' + (k.beban ? '+ ' + rp : 'Rp0')
+      + '\nKas toko keluar: ' + (k.kas ? '− ' + rp : 'Rp0')
+      + '\nUtang toko ke owner: ' + (k.kategori === 'tokoDompet' ? '+ ' + rp : 'Rp0')
+      + '\n\nSimpan?';
+    if (!confirm(pesan)) return;
+    const id = idUnik();
+    try {
+      await simpanKeFirestore(KOLEKSI_HARIAN, {
+        id, kategori: k.kategori, tanggal: tanggalLokalIso(), keterangan, nominal,
+        jam: new Date().toTimeString().slice(0, 5)
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
+      return;
+    }
+    document.getElementById('bjNominal').value = '';
+    document.getElementById('bjKeterangan').value = '';
+    _bjPilih = id;
+    tampilkanBelanja();
+  }
+
+  // Pelunasan: SATU-SATUNYA hal yang ditulis ke koleksi utangOwnerMutasi. Sisi
+  // timbulnya sudah berupa dokumen pengeluaranHarian 'tokoDompet', jadi saldonya
+  // selalu turunan — tidak ada angka saldo yang disimpan dan bisa jadi basi.
+  async function bjLunasi() {
+    const u = hitungUtangOwner();
+    if (!(u.sisa > 0)) { alert('Tidak ada utang ke owner yang belum dilunasi.'); return; }
+    const jawab = prompt('Bayar utang toko ke owner.\nSisa sekarang ' + formatRupiah(u.sisa)
+      + '\n\nBerapa yang dibayar hari ini?', String(u.sisa));
+    if (jawab === null) return;
+    const nominal = Math.round(parseFloat(jawab) || 0);
+    if (!(nominal > 0)) { alert('Isi nominalnya dulu.'); return; }
+    if (nominal > u.sisa) { alert('Lebih besar dari sisa utang ' + formatRupiah(u.sisa) + '. Kalau ini setoran modal, catat di Arus Kas → Modal owner.'); return; }
+    const rp = formatRupiah(nominal);
+    if (!confirm('Bayar ' + rp + ' dari kas toko ke owner.'
+      + '\n\nKas toko keluar: − ' + rp
+      + '\nLaba: TIDAK berubah — bebannya sudah diakui waktu belanjanya dicatat.'
+      + '\nUtang ke owner: ' + formatRupiah(u.sisa) + ' → ' + formatRupiah(u.sisa - nominal)
+      + '\n\nLanjutkan?')) return;
+    try {
+      await simpanKeFirestore(KOLEKSI_UTANG_OWNER, {
+        id: idUnik(), tipe: 'bayar', nominal, tanggal: tanggalLokalIso(),
+        jam: new Date().toTimeString().slice(0, 5), catatan: ''
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
+      return;
+    }
+    tampilkanBelanja();
+  }
+
+  function tampilkanBelanja() {
+    const wV = document.getElementById('bjVonis');
+    if (!wV) return;
+    try {
+      const k = BJ_KASUS[bjSel()];
+      const nominal = bjNominal();
+      const keterangan = bjKeterangan();
+
+      const elA = document.getElementById('bjAngka');
+      if (elA) { elA.textContent = formatRupiah(nominal); elA.classList.toggle('nol', !(nominal > 0)); }
+      [['bjUntukToko', _bjUntuk === 'toko'], ['bjUntukPribadi', _bjUntuk === 'pribadi'],
+       ['bjDariLaci', _bjDari === 'laci'], ['bjDariDompet', _bjDari === 'dompet']].forEach(x => {
+        const el = document.getElementById(x[0]);
+        if (el) el.classList.toggle('kg-terpilih', x[1]);
+      });
+
+      wV.innerHTML = '<div class="kg-panel bj-vonis' + (k.boleh ? '' : ' tolak') + '">'
+        + '<div class="kg-label">' + escapeHtml(k.judul) + '</div>'
+        + '<div class="bj-vonis-isi">' + escapeHtml(k.isi) + '</div></div>';
+
+      const btn = document.getElementById('bjSimpan');
+      if (btn) {
+        const sah = k.boleh && nominal > 0 && keterangan.length > 0;
+        btn.disabled = !sah;
+        btn.textContent = !k.boleh ? k.tombol
+          : nominal <= 0 ? 'Ketik nominalnya dulu'
+          : !keterangan ? 'Isi dulu untuk apa belanjanya'
+          : k.tombol + ' — ' + formatRupiah(nominal);
+      }
+
+      const chip = document.getElementById('bjChipKet');
+      if (chip) {
+        const hitung = {};
+        ambilPengeluaranHarian().forEach(h => {
+          const t = (h.keterangan || '').trim();
+          if (t) hitung[t] = (hitung[t] || 0) + 1;
+        });
+        const atas = Object.keys(hitung).sort((a, b) => hitung[b] - hitung[a]).slice(0, 5);
+        chip.innerHTML = atas.map(t =>
+          '<button type="button" onclick="bjPakaiKet(' + escapeHtml(JSON.stringify(t)) + ')">' + escapeHtml(t) + '</button>').join('');
+        chip.style.display = atas.length ? 'flex' : 'none';
+      }
+
+      // ── Papan tiga kolom: hari ini, dari catatan yang sudah tersimpan ──
+      // Kolom pribadi owner tetap disembunyikan dari non-owner, sama seperti di
+      // Harian — kalau tidak, layar ini jadi pintu belakang ke angka yang digembok.
+      const hariIni = tanggalLokalIso();
+      const buka = ownerSudahUnlock();
+      const hari = (buka ? ambilPengeluaranHarian() : ambilPengeluaranHarian().filter(h => h.kategori !== 'owner'))
+        .filter(h => h.tanggal === hariIni);
+      const jml = f => hari.filter(f).reduce((a, h) => a + (h.nominal || 0), 0);
+      const beban = jml(h => bebanTokoKategori(h.kategori));
+      const kas = jml(h => kasTokoKeluarKategori(h.kategori));
+      const milikOwner = jml(h => h.kategori === 'tokoDompet' || h.kategori === 'owner');
+      const dipilih = hari.filter(h => String(h.id) === String(_bjPilih))[0] || null;
+      const on = key => dipilih ? (key === 'beban' ? bebanTokoKategori(dipilih.kategori)
+        : key === 'kas' ? kasTokoKeluarKategori(dipilih.kategori)
+        : (dipilih.kategori === 'tokoDompet' || dipilih.kategori === 'owner')) : false;
+      const kol = (key, label, nilai, ket, warna) =>
+        '<div class="bj-kol' + (on(key) ? ' sorot' : '') + '"><b>' + label + '</b>'
+        + '<u style="color:' + warna + '">' + formatRupiah(nilai) + '</u><i>' + ket + '</i></div>';
+
+      let h = '<div class="kg-label" style="margin-top:14px;">Papan tiga kolom &middot; hari ini</div>'
+        + '<div class="bj-kolom">'
+        + kol('beban', 'Beban toko', beban, 'memotong laba', '#e2cda6')
+        + kol('kas', 'Kas keluar', kas, 'uang berpindah', '#e8c3b2')
+        + kol('owner', 'Milik owner', milikOwner, 'prive + utang', '#cfd4da')
+        + '</div>';
+
+      if (hari.length === 0) {
+        h += '<div class="kg-panel bj-utang"><div class="bj-vonis-isi">Belum ada belanja tercatat hari ini.</div></div>';
+      } else {
+        h += hari.slice().sort((a, b) => (b.id || 0) - (a.id || 0)).map(x => {
+          const kk = x.kategori === 'toko' ? BJ_KASUS.TL
+            : x.kategori === 'tokoDompet' ? BJ_KASUS.TD
+            : x.kategori === 'owner' ? BJ_KASUS.PL : null;
+          const bBeban = bebanTokoKategori(x.kategori);
+          const bKas = kasTokoKeluarKategori(x.kategori);
+          const bOwner = x.kategori === 'tokoDompet' || x.kategori === 'owner';
+          const dib = String(x.id) === String(_bjPilih);
+          return '<button type="button" class="bj-baris' + (dib ? ' buka' : '') + '" onclick="bjPilihBaris(' + JSON.stringify(String(x.id)) + ')">'
+            + '<span class="bj-baris-atas"><span>' + escapeHtml(x.keterangan || '') + '</span>'
+            + '<b>' + formatRupiah(x.nominal || 0) + '</b></span>'
+            + '<span class="bj-tanda">'
+            + '<span class="' + (bBeban ? 'on-beban' : '') + '">beban</span>'
+            + '<span class="' + (bKas ? 'on-kas' : '') + '">kas</span>'
+            + '<span class="' + (bOwner ? 'on-owner' : '') + '">owner</span></span>'
+            + (dib ? '<span class="bj-alasan">' + escapeHtml(kk ? kk.isi : labelKategoriHarian(x.kategori)) + '</span>' : '')
+            + '</button>';
+        }).join('');
+      }
+
+      // ── Utang toko ke owner: saldo turunan + pelunasan ──
+      const u = hitungUtangOwner();
+      h += '<div class="kg-panel bj-utang"><div class="kg-label">Utang toko ke owner</div>'
+        + '<div class="bj-utang-nilai">' + formatRupiah(u.sisa) + '</div>'
+        + '<div class="bj-vonis-isi">' + (u.timbul > 0
+          ? 'Timbul ' + formatRupiah(u.timbul) + ' &middot; sudah dibayar ' + formatRupiah(u.bayar)
+            + '. Ini kewajiban toko, bukan modal: dia mengurangi kekayaan di neraca sampai dilunasi.'
+          : 'Belum ada belanja toko yang dibayar dompet pribadi. Kalau ada, utangnya lahir di sini sendiri.')
+        + '</div>'
+        + (u.sisa > 0
+          ? '<button type="button" class="bj-lunasi tab-owner-blok" onclick="bjLunasi()">Bayar dari kas toko</button>'
+          : '') + '</div>';
+
+      document.getElementById('bjPapan').innerHTML = h;
+      terapkanStatusOwner();   // tombol Bayar lahir dari innerHTML — gemboknya wajib dipasang ulang
+    } catch (e) { console.error('tampilkanBelanja:', e); }
+  }
+  function bjPakaiKet(t) {
+    const el = document.getElementById('bjKeterangan');
+    if (el) el.value = t;
+    tampilkanBelanja();
   }
 
   // ============ SEARCH LINTAS-RIWAYAT (semua koleksi, dari cache di memori) ============
@@ -10347,6 +10749,21 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // Saldo amplop DITURUNKAN dari mutasinya, tidak pernah disimpan sebagai angka jadi —
   // pola yang sama dengan piutang, kasbon, dan stok. Angka jadi bisa melenceng diam-diam;
   // angka turunan tidak bisa.
+  function ambilUtangOwnerMutasi() {
+    try { return JSON.parse(localStorage.getItem(KUNCI_UTANG_OWNER) || '[]'); } catch (e) { return []; }
+  }
+  // Saldo utang ke owner = Σ belanja toko-dibayar-dompet − Σ pelunasan. Turunan murni.
+  function hitungUtangOwner(sampaiIso) {
+    const sd = t => !sampaiIso || (t || '') <= sampaiIso;
+    const timbul = ambilPengeluaranHarian()
+      .filter(h => h.kategori === 'tokoDompet' && sd(h.tanggal))
+      .reduce((a, h) => a + (h.nominal || 0), 0);
+    const bayar = ambilUtangOwnerMutasi()
+      .filter(m => m.tipe === 'bayar' && sd(m.tanggal))
+      .reduce((a, m) => a + (m.nominal || 0), 0);
+    return { timbul, bayar, sisa: Math.max(0, timbul - bayar) };
+  }
+
   function ambilModalOwner() {
     if (_cacheModal.length > 0) return _cacheModal;
     const data = localStorage.getItem(KUNCI_MODAL);
@@ -10383,7 +10800,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // Bongkar TIDAK pernah ikut utang — selalu tunai ke kuli & supir saat datang.
   // Pembayaran dipasangkan ke bon lewat bonTanggal+bonId supaya sisa PER BON terbaca;
   // pembayaran tanpa penunjuk bon mengurangi bon tertua dulu (cadangan aman).
-  function hitungUtangPemasok() {
+  function hitungUtangPemasok(sampaiIso) {
+    const sd = t => !sampaiIso || String(t || '') <= sampaiIso;
     const per = {}; // pemasok -> { pemasok, bon: [{id, tanggal, nilai, dibayar}], saldoAwalTotal, dibayarTotal }
     const pastikan = nm => {
       const kunci = String(nm || '').trim();
@@ -10393,6 +10811,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     };
     ambilSemuaBatch().forEach(k => {
       if (k.stokAwal || !batchDiutang(k)) return;
+      if (!sd(k.tanggal)) return;
       const px = pastikan(k.pemasok);
       if (!px) return;
       const nilai = (k.merkList || []).reduce((a, m) => a + (m.subtotalHarga || 0), 0);
@@ -10400,6 +10819,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     });
     ambilUtangPemasokMutasi().forEach(m => {
       if (m.tipe !== 'saldoAwal') return;
+      // Bon pra-sistem: umurnya dipegang bonTanggal, bukan tanggal dicatatnya.
+      // Bon tanpa tanggal ('') selalu lolos — dia memang yang tertua.
+      if (!sd(m.bonTanggal || m.tanggal)) return;
       const px = pastikan(m.pemasok);
       if (!px) return;
       // Tanggal bon HARUS tanggal bonnya sendiri — bukan tanggal dicatatnya. Bon lama
@@ -10410,6 +10832,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     Object.values(per).forEach(px => px.bon.sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))));
     ambilUtangPemasokMutasi().forEach(m => {
       if (m.tipe !== 'bayar') return;
+      if (!sd(m.tanggal)) return;
       const px = per[String(m.pemasok || '').trim()];
       if (!px) return;
       let sisa = m.nominal || 0;
@@ -10435,8 +10858,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     });
     return hasil.sort((a, b) => b.totalUtang - a.totalUtang);
   }
-  function totalUtangPemasokSemua() {
-    return hitungUtangPemasok().reduce((a, x) => ({ nominal: a.nominal + x.totalUtang, nBon: a.nBon + x.bon.length }), { nominal: 0, nBon: 0 });
+  function totalUtangPemasokSemua(sampaiIso) {
+    return hitungUtangPemasok(sampaiIso).reduce((a, x) => ({ nominal: a.nominal + x.totalUtang, nBon: a.nBon + x.bon.length }), { nominal: 0, nBon: 0 });
   }
 
   function saldoAmplop(sampaiIso) {
@@ -15307,11 +15730,20 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // PRIVE OWNER (21 Agu 2026, keputusan My DeV): biaya hidup pemilik untuk sementara
     // memang diambil dari laci toko — belum ada kas pribadi terpisah. Aturannya:
     // pengeluaran kategori Owner = uang KELUAR dari laci (supaya hitungan malam cocok),
-    // tapi BUKAN biaya toko (tidak menyentuh laba — laba tetap membaca kategori 'toko'
-    // saja). Bukunya yang memisahkan uang pribadi dan uang toko, bukan lacinya.
+    // tapi BUKAN biaya toko (tidak menyentuh laba). Bukunya yang memisahkan uang
+    // pribadi dan uang toko, bukan lacinya.
     // Konsekuensi disiplin: entri Owner HANYA untuk uang yang benar-benar keluar dari
-    // laci — belanja pribadi dari dompet sendiri jangan dicatat di sistem sama sekali.
+    // laci — belanja PRIBADI dari dompet sendiri tetap jangan dicatat sama sekali.
+    // (6 Sep 2026) Yang berubah cuma sisi laba: sejak layar Belanja lahir, laba
+    // membaca 'toko' DAN 'tokoDompet'. Sisi kas di sini TIDAK ikut berubah — kalau
+    // 'tokoDompet' diberi baris keluar di sini, kas toko akan turun saat owner
+    // membayar pakai uangnya sendiri, dan itu persis kekeliruan yang dilarang.
     const harianOwner = ambilPengeluaranHarian().filter(h => h.kategori === 'owner' && cocok(h.tanggal));
+    // PELUNASAN UTANG KE OWNER: uang benar-benar keluar laci, tapi BUKAN biaya —
+    // bebannya sudah diakui saat belanjanya dicatat. Pola yang sama dengan bayar bon
+    // pemasok. Belanja 'tokoDompet' sendiri TIDAK punya baris di sini, dan justru
+    // ketiadaannya yang membuat kas toko tidak bergerak saat utang itu lahir.
+    const bayarUtangOwner = ambilUtangOwnerMutasi().filter(m => m.tipe === 'bayar' && cocok(m.tanggal));
     const returDipakai = ambilRetur().filter(r => cocok(r.tanggal));
     // BRUTO, bukan neto (12 Agu 2026): selisih tukar yang pelanggan TAMBAHKAN adalah
     // uang yang sungguh masuk laci — dulu dijaringkan diam-diam ke angka refund,
@@ -15346,6 +15778,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           : 'belum ada pos yang tercatat dibayar' },
       { label: 'Pengeluaran harian (Toko)', nominal: jmlNominal(harianToko), n: harianToko.length, satuan: 'catatan' },
       { label: 'Prive owner — hidup dari laci', nominal: jmlNominal(harianOwner), n: harianOwner.length, satuan: 'catatan' },
+      { label: 'Bayar utang ke owner', nominal: jmlNominal(bayarUtangOwner), n: bayarUtangOwner.length, satuan: 'pembayaran' },
       { label: 'Refund retur', nominal: refund, n: returDipakai.length, satuan: 'retur' },
       { label: 'Beli kantong kemasan', nominal: jmlHarga(beliKemasan), n: beliKemasan.length, satuan: 'pembelian' },
       { label: 'Beli paper bag literan', nominal: jmlHarga(beliLiteran), n: beliLiteran.length, satuan: 'pembelian' },
@@ -15534,8 +15967,14 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       // Owner ikut Buku Kas sebagai prive (21 Agu 2026) — uangnya keluar dari laci
       // yang sama, jadi wajib kelihatan di buku; labelnya membedakan, bukan disembunyikan.
       if (h.kategori === 'owner') { dorong(h.tanggal, '', h.id, 'Prive owner — ' + (h.keterangan || ''), 0, h.nominal); return; }
+      // 'tokoDompet' (belanja toko dibayar dompet pribadi) sengaja TIDAK didorong:
+      // bebannya masuk laba, tapi tidak ada rupiah yang keluar dari laci toko.
       if (h.kategori !== 'toko') return;
       dorong(h.tanggal, '', h.id, 'Harian — ' + (h.keterangan || ''), 0, h.nominal);
+    });
+    ambilUtangOwnerMutasi().forEach(m => {
+      if (m.tipe !== 'bayar' || !(m.nominal > 0)) return;
+      dorong(m.tanggal, m.jam || '', m.id, 'Bayar utang ke owner' + (m.catatan ? ' — ' + m.catatan : ''), 0, m.nominal);
     });
     ambilRetur().forEach(r => {
       const nama = r.merkSumber || r.namaProduk || '';
@@ -16085,7 +16524,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const el = document.getElementById('jatahIsi');
     if (!el) return;
     const harian = ambilPengeluaranHarian().filter(h => h.tanggal === hariIni);
-    const belanja = harian.filter(h => h.kategori === 'toko').reduce((a, h) => a + (h.nominal || 0), 0);
+    const belanja = harian.filter(h => bebanTokoKategori(h.kategori)).reduce((a, h) => a + (h.nominal || 0), 0);
     const prive = harian.filter(h => h.kategori === 'owner').reduce((a, h) => a + (h.nominal || 0), 0);
 
     // Baris jatah: hijau selama masih di dalam pagar, amber begitu lewat. Lewat bukan
@@ -16098,7 +16537,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         + ` <small style="font-weight:400;">dari ${formatRupiah(jatah)}`
         + (lewat ? ' · lewat ' + formatRupiah(sisa) : ' · sisa ' + formatRupiah(sisa)) + '</small></b></div>';
     };
+    // Jatah dipagari per HARI, bukan per kantong: belanja Rp100.000 tetap belanja
+    // Rp100.000 walau dibayar dompet sendiri. Tapi bagian dompetnya disebut, karena
+    // itulah yang nanti ditagih balik ke toko.
+    const dompetHari = harian.filter(h => h.kategori === 'tokoDompet').reduce((a, h) => a + (h.nominal || 0), 0);
     el.innerHTML = baris('Belanja toko', belanja, JATAH_BELANJA_TOKO)
+      + (dompetHari > 0 ? `<div class="ph-baris"><span><small>&mdash; dibayar dompet owner</small></span><b style="font-weight:600;"><small>${formatRupiah(dompetHari)} &middot; jadi utang toko</small></b></div>` : '')
       + baris('Prive owner', prive, JATAH_PRIVE_OWNER)
       + `<div class="ph-baris"><span><b>Sisihkan ke amplop laba</b></span><b>${formatRupiah(SISIHAN_LABA_HARI)}</b></div>`;
 
@@ -16907,8 +17351,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // ===== NERACA RINGKAS (Modul ERP #3, 14 Agustus 2026) =====
   // Kaki ketiga akuntansi (laba-rugi & arus kas sudah ada): posisi kekayaan toko.
   // Kekayaan = kas + nilai stok @HPP (modal, bukan harga jual — konservatif & jujur)
-  // + piutang pelanggan + kasbon pegawai. Tidak ada sisi kewajiban: belanja selalu
-  // tunai di tempat (konfirmasi pemilik 13 Agu) dan tidak ada pinjaman tercatat.
+  // + piutang pelanggan + kasbon pegawai, DIKURANGI kewajiban.
+  // Sisi kewajiban lahir 6 Sep 2026 dan berisi dua hal: utang ke pemasok (bon yang
+  // belum dibayar, mekanismenya sudah ada sejak 25 Agu tapi dulu tidak pernah ikut
+  // dihitung — jadi "kekayaan" di sini sempat melebih-lebihkan sebesar bon berjalan),
+  // dan utang toko ke owner (belanja toko yang dibayar dompet pribadi).
   // Pembandingnya TITIK KAS terakhir — hari terakhir pemilik menghitung uang fisik;
   // identitas yang dijaga pengujian: perubahan kekayaan = margin − biaya sejak titik,
   // karena belanja stok cuma memindahkan wujud uang, bukan mengubah kekayaan.
@@ -16938,10 +17385,16 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const kasbon = daftarKasbon.reduce((a, x) => a + x.sisa, 0);
     const kas = kasPada(sampai || null);
     const stok = Math.round(nilaiSack + nilaiBags + nilaiBahan);
+    const uo = hitungUtangOwner(sampai || null);
+    const utangOwner = uo.sisa;
+    const up = totalUtangPemasokSemua(sampai || null);
+    const utangPemasok = up.nominal || 0;
     return { kas, nilaiSack: Math.round(nilaiSack), nilaiBags: Math.round(nilaiBags),
       nilaiBahan: Math.round(nilaiBahan), stok, piutang, nPiutang: daftarPiutang.length,
       kasbon, nKasbon: daftarKasbon.length,
-      total: kas === null ? null : Math.round(kas + stok + piutang + kasbon) };
+      utangOwner, utangPemasok, nBonPemasok: up.nBon || 0,
+      kewajiban: utangOwner + utangPemasok,
+      total: kas === null ? null : Math.round(kas + stok + piutang + kasbon - utangOwner - utangPemasok) };
   }
   function tampilkanNeraca() {
     const kont = document.getElementById('daftarNeraca');
@@ -16958,21 +17411,37 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     baris.push(brs('Nilai stok (modal)', `sack ${formatRupiah(kini.nilaiSack)} · bags ${formatRupiah(kini.nilaiBags)} · bahan ${formatRupiah(kini.nilaiBahan)}`, kini.stok));
     baris.push(brs('Piutang pelanggan', kini.nPiutang + ' orang', kini.piutang));
     baris.push(brs('Kasbon pegawai', kini.nKasbon + ' orang', kini.kasbon));
+    // KEWAJIBAN (6 Sep 2026) — dikirim NEGATIF supaya jumlah di bawahnya terbaca
+    // sebagai penjumlahan lurus dari atas ke bawah, tanpa pembaca harus mengingat
+    // tandanya sendiri. Dua-duanya uang orang lain yang kebetulan sedang di sini.
+    if (kini.utangPemasok > 0) baris.push(brs('Utang ke pemasok', kini.nBonPemasok + ' bon belum dibayar', -kini.utangPemasok));
+    if (kini.utangOwner > 0) baris.push(brs('Utang toko ke owner', 'belanja toko yang dibayar dompet pribadi', -kini.utangOwner));
     baris.push(`<div class="baris-44 baris-jumlah">
       <span class="nama"><i class="trx-nama"><b>Kekayaan toko hari ini</b></i>${kini.total === null ? '<small>belum utuh — kas belum bisa dihitung tanpa titik kas</small>' : ''}</span>
       <span class="angka">${kini.total === null ? '—' : rp(kini.total)}</span>
     </div>`);
     kont.innerHTML = baris.join('');
     const ket = document.getElementById('neracaBanding');
-    if (!titik || kini.total === null) { ket.innerHTML = 'Stok dinilai dengan HPP (harga modal), bukan harga jual — sengaja konservatif.'; return; }
+    const harta = kini.total === null ? null : kini.kas + kini.stok + kini.piutang + kini.kasbon;
+    const ketWajib = kini.kewajiban > 0
+      ? ' Kewajiban ' + formatRupiah(kini.kewajiban) + ' sudah dikurangkan — yang tersisa di sini benar-benar milik toko, bukan yang sedang dipegang toko.'
+        + (kini.total !== null && kini.total < 0
+          ? ' <b>Angkanya minus karena kewajiban ' + formatRupiah(kini.kewajiban) + ' lebih besar dari harta tercatat ' + formatRupiah(harta) + '.</b>'
+            + ' Itu bukan otomatis berarti toko rugi: bon pemasok memang dipakai sebagai modal kerja, dan barang yang dibelinya sebagian sudah jadi omzet.'
+            + ' Yang benar dibaca dari sini cuma satu — kalau semua bon ditagih hari ini, yang tercatat di toko belum cukup menutupnya.'
+          : '')
+      : '';
+    if (!titik || kini.total === null) { ket.innerHTML = 'Stok dinilai dengan HPP (harga modal), bukan harga jual — sengaja konservatif.' + ketWajib; return; }
     const awal = hitungNeraca(titik.tanggal);
     if (awal.total === null) { ket.innerHTML = ''; return; }
     const selisih = kini.total - awal.total;
-    ket.innerHTML = `Saat titik kas ${escapeHtml(formatTanggal(titik.tanggal))} kekayaan ${formatRupiah(awal.total)} — `
+    // rp(), bukan formatRupiah(): sejak sisi kewajiban lahir (6 Sep 2026) angka ini
+    // bisa minus, dan formatRupiah menaruh tanda di tempat yang salah — "Rp-98.253.112".
+    ket.innerHTML = `Saat titik kas ${escapeHtml(formatTanggal(titik.tanggal))} kekayaan ${rp(awal.total)} — `
       + (selisih === 0 ? '<b>belum bergeser</b>.'
         : `sejak itu <b>${selisih > 0 ? 'naik ' : 'turun '}${formatRupiah(Math.abs(selisih))}</b>.`)
       + ' Belanja stok tidak menggerakkan angka ini — uangnya cuma berubah wujud; yang menggerakkannya untung dan biaya.'
-      + ' Stok dinilai dengan HPP (modal), bukan harga jual.';
+      + ' Stok dinilai dengan HPP (modal), bukan harga jual.' + ketWajib;
   }
 
   // ===== KECERDASAN STOK (Modul ERP #2, 14 Agustus 2026) =====
@@ -18141,8 +18610,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const cocok = t => !!t && t >= dariIso && t <= sampaiIso;
     const laba = hitungLabaRentang(cocok);
     const bayaran = bayaranBln || bayaranBiayaBulanan();
-    const harianRows = ambilPengeluaranHarian().filter(h => h.kategori === 'toko' && cocok(h.tanggal));
+    // BEBAN TOKO = belanja toko dari laci ('toko') DAN dari dompet pribadi owner
+    // ('tokoDompet'). Keduanya beban toko yang sama besarnya; yang membedakan cuma
+    // dari kantong mana uangnya keluar — dan itu urusan KAS, bukan urusan laba.
+    // PENTING: pasangan baris ini di hitungArusKasInti (kas) SENGAJA tetap 'toko' saja.
+    // Dua baris yang terlihat kembar itu memang harus menyimpang; lihat komentar di sana.
+    const harianRows = ambilPengeluaranHarian().filter(h => (h.kategori === 'toko' || h.kategori === 'tokoDompet') && cocok(h.tanggal));
     const harianToko = harianRows.reduce((a, h) => a + (h.nominal || 0), 0);
+    const dompetRows = harianRows.filter(h => h.kategori === 'tokoDompet');
+    const harianDompet = dompetRows.reduce((a, h) => a + (h.nominal || 0), 0);
     const hapusRows = ambilPiutangMutasi().filter(m => m.tipe === 'hapusBuku' && cocok(m.tanggal));
     const hapusBuku = hapusRows.reduce((a, m) => a + (m.nominal || 0), 0);
     // SUSUT & SELISIH STOK — sukunya sendiri, sengaja tidak diselipkan ke biaya toko
@@ -18156,6 +18632,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const biayaToko = harianToko + jatahBulanan;
     return Object.assign(laba, {
       dariIso, sampaiIso, nHari, harianToko, nHarian: harianRows.length, jatahBulanan, biayaToko,
+      harianDompet, nDompet: dompetRows.length,
       hapusBuku, nHapus: hapusRows.length, susutStok, nSusut: susutRows.length,
       labaBersih: laba.margin - biayaToko - hapusBuku + susutStok
     });
@@ -18265,7 +18742,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       ${barisLap('Omzet penuh', laba.jumlahTrx + ' transaksi, termasuk kredit', laba.omzetPenuh, 'lb-utama')}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', laba.margin)}
       ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya bulanan', 'ditagihkan ke bulan ini' + (totalPotongan > 0 ? ' · gaji dihitung penuh' : ''), -totalBiaya)
-        + barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan', -bersih.harianToko)
+        + barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan' + ketDompet(bersih), -bersih.harianToko)
         + (totalHapus > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama — bukan uang keluar', -totalHapus) : '')
         + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', bersih.susutStok)}
       ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko' + (totalHapus > 0 ? ' − hapus buku' : '') + (bersih.susutStok !== 0 ? ' ± susut stok' : ''), labaBersih, 'lb-jumlah')}
@@ -18295,7 +18772,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
               + (x.dipotong > 0 ? ' · gaji penuh; ' + formatRupiah(x.dipotong) + ' dilunasi potong kasbon (piutang pegawai, bukan pengurang biaya)' : ''),
               -x.nominalKotor)).join('')
         : '<div class="lap-kosong">Biaya bulanan bulan ini belum diisi — laba di atas masih laba kotor.</div>'}
-      ${barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan sebulan', -bersih.harianToko)}
+      ${barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan sebulan' + ketDompet(bersih), -bersih.harianToko)}
       ${hapusBln.map(m => barisLap('Hapus buku — ' + (m.namaPelanggan || ''), m.alasan || '', -(m.nominal || 0))).join('')}
       ${susutBln.map(brsSusut).join('')}
       ${(biayaBln.length || hapusBln.length || susutBln.length || bersih.harianToko > 0) ? barisLap('Laba bersih perkiraan', '', labaBersih, 'lb-jumlah') : ''}
@@ -18498,6 +18975,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       omzetBolong: jml(x => x.laba.omzetTanpaHpp), nBolong: jml(x => x.laba.jumlahTanpaHpp), nTrx: jml(x => x.laba.jumlahTrx),
       kasMasuk: jml(x => x.kas.totalMasuk), kasKeluar: jml(x => x.kas.totalKeluar),
       biaya: jml(x => x.bersih.jatahBulanan), harianToko: jml(x => x.bersih.harianToko),
+      harianDompet: jml(x => x.bersih.harianDompet || 0),
       hapusBuku: jml(x => x.bersih.hapusBuku), susutStok: jml(x => x.bersih.susutStok),
       labaBersih: jml(x => x.bersih.labaBersih),
       kenaPajak, pajak: Math.round(kenaPajak * 0.005)
@@ -18520,7 +18998,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       ${barisLap('Omzet penuh setahun', nTrx + ' transaksi, termasuk kredit', omzet, 'lb-utama')}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', margin)}
       ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya bulanan setahun', 'ditagihkan ke tahun ini', -biaya)
-        + barisLap('Pengeluaran harian (Toko) setahun', '', -T.harianToko)
+        + barisLap('Pengeluaran harian (Toko) setahun', T.harianDompet > 0 ? formatRupiah(T.harianDompet) + ' di antaranya dibayar dompet owner' : '', -T.harianToko)
         + (hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama', -hapusBuku) : '')
         + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', susutStok)}
       ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko − hapus buku ± susut stok', labaBersih, 'lb-jumlah')}
@@ -18565,6 +19043,14 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // hitungArusKasInti dengan predikat satu tanggal — mesin yang sama dengan Bulanan,
   // Tahunan, Ikhtisar, dan Arus Kas. Daftar nama (pengeluaran, kredit, pelunasan) hanya
   // PERINCIAN dari sumber yang sama; totalnya tetap milik mesin.
+  // Beban toko yang dibayar dompet owner tetap beban toko — jadi dia TIDAK dipisah
+  // jadi baris sendiri (itu akan menyiratkan dua jenis beban). Yang disebut cuma
+  // kantongnya, di keterangan, karena kantong itulah yang jadi utang.
+  function ketDompet(b) {
+    return (b && b.harianDompet > 0)
+      ? ' · ' + formatRupiah(b.harianDompet) + ' dibayar dompet owner (jadi utang toko)'
+      : '';
+  }
   function dataLaporanHari(iso, bayaran) {
     const cocok = t => t === iso;
     const harian = ambilPengeluaranHarian().filter(h => cocok(h.tanggal));
@@ -18572,7 +19058,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       iso,
       bersih: hitungLabaBersihRentang(iso, iso, bayaran),
       kas: hitungArusKasInti(cocok, bayaran),
-      harianToko: harian.filter(h => h.kategori === 'toko'),
+      harianToko: harian.filter(h => bebanTokoKategori(h.kategori)),
       harianOwner: harian.filter(h => h.kategori === 'owner'),
       kreditRows: ambilPenjualan().filter(p => cocok(p.tanggal) && caraBayarKunci(p) === 'kredit'),
       pelunasanRows: ambilPiutangMutasi().filter(m => m.tipe === 'bayar' && cocok(m.tanggal)),
@@ -18618,7 +19104,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     bagian.push(`<div class="lap-bagian"><h2>Ikhtisar hari ini</h2>
       ${barisLap('Omzet', L.jumlahTrx + ' transaksi, termasuk kredit', L.omzetPenuh, 'lb-utama')}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', L.margin)}
-      ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya toko hari ini', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ' + jatah biaya bulanan ' + formatRupiah(L.jatahBulanan), -L.biayaToko)
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya toko hari ini', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ketDompet(L) + ' + jatah biaya bulanan ' + formatRupiah(L.jatahBulanan), -L.biayaToko)
         + (L.hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian — bukan uang keluar', -L.hapusBuku) : '')
         + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', L.susutStok)}
       ${barisLap('Laba bersih hari ini', 'margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : '') + (L.susutStok !== 0 ? ' ± susut stok' : ''), L.labaBersih, 'lb-jumlah')}
@@ -18637,7 +19123,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (iso < TANGGAL_STOK_AWAL) cat.push('Penjualan tercatat di sistem mulai 8 Agustus 2026 — untuk tanggal ini hanya ada total omzet di catatan manual, tanpa rincian produk dan HPP. Kosongnya laporan ini memang benar.');
     if (L.jumlahTanpaHpp > 0) cat.push(`<b>${L.jumlahTanpaHpp} transaksi tidak ikut dihitung margin</b> karena HPP-nya tidak tercatat — omzetnya ${formatRupiah(L.omzetTanpaHpp)}. Isi lewat tab Laba.`);
     catatanPosKosong([bl]).forEach(c => cat.push(c));
-    const brsHarian = h => barisLap(h.keterangan || '(tanpa keterangan)', h.jam || '', -(h.nominal || 0));
+    // Baris dompet menyebut kantongnya di kolom keterangan: nominalnya sama-sama
+    // memotong laba, jadi tandanya tidak boleh berupa nominal yang diredupkan.
+    const brsHarian = h => barisLap(h.keterangan || '(tanpa keterangan)',
+      (h.jam || '') + (h.kategori === 'tokoDompet' ? (h.jam ? ' · ' : '') + 'dibayar dompet owner — jadi utang toko' : ''),
+      -(h.nominal || 0));
     bagian.push(`<div class="lap-bagian"><h2>Laba</h2>
       ${barisLap('Omzet yang bisa dihitung', L.jumlahHitung + ' dari ' + L.jumlahTrx + ' transaksi', L.omzetHitung)}
       ${barisLap('Harga pokok (HPP)', '', -L.hpp)}
@@ -18724,7 +19214,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       ${barisLap('Omzet', L.jumlahTrx + ' transaksi, termasuk kredit', L.omzetPenuh, 'lb-utama')}
       ${lapKodePembaca() === 'K' ? '' : barisLap('Harga pokok (HPP)', L.jumlahHitung + ' transaksi ber-HPP', -L.hpp)}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', L.margin)}
-      ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya toko', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ' + jatah biaya bulanan 7 hari ' + formatRupiah(L.jatahBulanan), -L.biayaToko)
+      ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya toko', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ketDompet(L) + ' + jatah biaya bulanan 7 hari ' + formatRupiah(L.jatahBulanan), -L.biayaToko)
         + (L.hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian — bukan uang keluar', -L.hapusBuku) : '')
         + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', L.susutStok)}
       ${barisLap('Laba bersih minggu ini', 'margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : '') + (L.susutStok !== 0 ? ' ± susut stok' : ''), L.labaBersih, 'lb-jumlah')}
@@ -18779,6 +19269,66 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   }
 
   // ===== UJI KONSISTENSI LINTAS PERIODE (22 Agustus 2026) =====
+  // Dipanggil dari konsol: ujiUtangOwner(). Menjaga SATU batas yang tidak boleh
+  // longgar: belanja toko yang dibayar dompet pribadi owner menaikkan BEBAN dan
+  // KEWAJIBAN, tapi TIDAK MENGGERAKKAN KAS TOKO SESEN PUN. Kalau suatu hari ada
+  // yang "merapikan" filter kas jadi ikut membaca 'tokoDompet', uji ini yang
+  // berteriak — bukan pemilik toko yang menemukan lacinya tekor di malam hari.
+  function ujiUtangOwner() {
+    const salah = [];
+    const cek = (nama, a, b) => { if (Math.round(a) !== Math.round(b)) salah.push(nama + ': ' + Math.round(a) + ' ≠ ' + Math.round(b)); };
+    const H = ambilPengeluaranHarian();
+    const jml = f => H.filter(f).reduce((x, h) => x + (h.nominal || 0), 0);
+    const nToko = H.filter(h => h.kategori === 'toko').length;
+    const sToko = jml(h => h.kategori === 'toko');
+    const sDompet = jml(h => h.kategori === 'tokoDompet');
+    const nDompet = H.filter(h => h.kategori === 'tokoDompet').length;
+    const semua = t => !!t;
+    const bayaran = bayaranBiayaBulanan();
+
+    // 1 — LABA memakai dua-duanya, dan menyebut bagian dompetnya apa adanya.
+    const L = hitungLabaBersihRentang('2000-01-01', '2999-12-31', bayaran);
+    cek('laba: beban harian toko = toko + dompet', L.harianToko, sToko + sDompet);
+    cek('laba: harianDompet', L.harianDompet, sDompet);
+    cek('laba: nDompet', L.nDompet, nDompet);
+
+    // 2 — KAS tidak boleh menyentuh 'tokoDompet'. Baris "Pengeluaran harian (Toko)"
+    //     wajib persis sebesar kategori 'toko' saja, cacahnya pun harus cocok.
+    const K = hitungArusKasInti(semua, bayaran);
+    const brs = K.keluar.filter(x => x.label === 'Pengeluaran harian (Toko)')[0];
+    if (!brs) salah.push('kas: baris "Pengeluaran harian (Toko)" hilang');
+    else { cek('kas: harian toko TANPA dompet', brs.nominal, sToko); cek('kas: cacah harian toko', brs.n, nToko); }
+
+    // 3 — Buku kas tidak boleh punya baris untuk dokumen 'tokoDompet' mana pun.
+    const idDompet = {};
+    H.forEach(h => { if (h.kategori === 'tokoDompet') idDompet[String(h.id)] = 1; });
+    const bocor = daftarGerakanKas().filter(r => idDompet[String(r.id)]);
+    if (bocor.length) salah.push('buku kas: ' + bocor.length + ' baris lahir dari belanja dompet — kas toko ikut bergerak');
+
+    // 4 — NERACA: kewajiban = timbul − bayar, dan total sudah dikurangi kewajiban.
+    const u = hitungUtangOwner();
+    const bayar = ambilUtangOwnerMutasi().filter(m => m.tipe === 'bayar').reduce((x, m) => x + (m.nominal || 0), 0);
+    cek('utang owner: timbul', u.timbul, sDompet);
+    cek('utang owner: bayar', u.bayar, bayar);
+    cek('utang owner: sisa', u.sisa, Math.max(0, sDompet - bayar));
+    const N = hitungNeraca();
+    cek('neraca: utangOwner', N.utangOwner, u.sisa);
+    cek('neraca: kewajiban', N.kewajiban, N.utangOwner + N.utangPemasok);
+    if (N.total !== null) cek('neraca: total dikurangi kewajiban',
+      N.total, Math.round(N.kas + N.stok + N.piutang + N.kasbon - N.kewajiban));
+
+    // 5 — Pelunasan: uang keluar laci, tapi TIDAK menambah beban.
+    const brsBayar = K.keluar.filter(x => x.label === 'Bayar utang ke owner')[0];
+    if (!brsBayar) salah.push('kas: baris "Bayar utang ke owner" hilang');
+    else cek('kas: pelunasan utang owner', brsBayar.nominal, bayar);
+
+    if (salah.length) { console.error('ujiUtangOwner GAGAL:', salah); return { lulus: false, salah }; }
+    console.log('ujiUtangOwner LULUS — ' + nDompet + ' belanja dompet (' + formatRupiah(sDompet)
+      + '), dilunasi ' + formatRupiah(bayar) + ', sisa utang ' + formatRupiah(u.sisa)
+      + '. Beban naik, kas toko tidak bergerak, kewajiban terbawa ke neraca.');
+    return { lulus: true, nDompet, sDompet, bayar, sisa: u.sisa };
+  }
+
   // Dipanggil dari konsol: ujiKonsistensiLaporan(2026). Membuktikan dengan angka bahwa
   // Σ 7 hari = minggu, Σ hari-dalam-bulan = bulan, dan Σ 12 bulan = tahun — untuk laba
   // (omzet, HPP, margin, pengeluaran Toko, jatah bulanan, hapus buku, laba bersih) dan
@@ -19018,7 +19568,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const jualKemarin = ambilPenjualan().some(p => p.tanggal === kemarin);
     const tutupKemarin = ambilTutupHari().some(x => x.tanggal === kemarin);
     const priveN = harian.filter(h => h.kategori === 'owner').length;
-    const belanja = harian.filter(h => h.kategori === 'toko').reduce((a, h) => a + (h.nominal || 0), 0);
+    const belanja = harian.filter(h => bebanTokoKategori(h.kategori)).reduce((a, h) => a + (h.nominal || 0), 0);
     const darurat = daftarDaruratBelumRinci().length;
 
     const item = [];
@@ -21121,7 +21671,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         id: h.id, jenis: 'harian', tanggal: h.tanggal || '', jam: '',
         nama: h.keterangan || 'Pengeluaran',
         ket: 'Harian · ' + labelKategoriHarian(h.kategori),
-        nom: formatRibuan(h.nominal || 0), nomRedup: h.kategori !== 'toko', masuk: 0,
+        nom: formatRibuan(h.nominal || 0), nomRedup: !bebanTokoKategori(h.kategori), masuk: 0,
         bisaDibuka: false, cari: [h.keterangan, labelKategoriHarian(h.kategori), h.nominal].join(' ')
       });
     });
@@ -22823,6 +23373,14 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (!sudahUnlock) {
       if (kategoriHarianAktif === 'owner') pilihKategoriHarian('toko');
       if (filterHarianAktif === 'owner') filterHarian('semua');
+      // Sumbu "untuk siapa" di layar Belanja ikut jatuh balik. Aman dari rekursi:
+      // tampilkanBelanja() memanggil fungsi ini lagi, tapi saat itu _bjUntuk sudah
+      // 'toko' sehingga penjaganya tidak menyala kedua kali.
+      if (_bjUntuk === 'pribadi') {
+        _bjUntuk = 'toko';
+        const hb = document.getElementById('halamanBelanja');
+        if (hb && hb.classList.contains('tampil')) tampilkanBelanja();
+      }
     }
   }
 
@@ -23085,6 +23643,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.gambarLaporan = gambarLaporan;
   window.langkahLaporan = langkahLaporan;
   window.ujiKonsistensiLaporan = ujiKonsistensiLaporan;
+  window.ujiUtangOwner = ujiUtangOwner;
   window.segarkanLaporanJikaTerbuka = segarkanLaporanJikaTerbuka;
   window.tawarkanSelaraskanAmplop = tawarkanSelaraskanAmplop;
   window.catatModalOwner = catatModalOwner;
@@ -23191,6 +23750,13 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.ik8PagiBuka = ik8PagiBuka;
   window.ik8TanganiToggle = ik8TanganiToggle;
   window.ik8PeriksaLagi = ik8PeriksaLagi;
+  window.bjUbah = bjUbah;
+  window.bjPilih = bjPilih;
+  window.bjIsiNominal = bjIsiNominal;
+  window.bjPilihBaris = bjPilihBaris;
+  window.bjPakaiKet = bjPakaiKet;
+  window.bjSimpan = bjSimpan;
+  window.bjLunasi = bjLunasi;
   window.tgPilihGrup = tgPilihGrup;
   window.tgMulaiAntre = tgMulaiAntre;
   window.tgKeGrup = tgKeGrup;

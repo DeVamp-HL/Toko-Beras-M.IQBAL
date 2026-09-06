@@ -123,8 +123,12 @@ def arus_kas(kol, cocok, bayaran):
     beras_diutang = sum(nilai_beras(k) for k in batch if diutang(k))
     bayar_bon = [m for m in kol('utangPemasokMutasi') if m.get('tipe') == 'bayar' and cocok(m.get('tanggal'))]
     bayar_terhitung = [x for x in bayaran if x['tanggal'] and cocok(x['tanggal']) and x['nominal'] > 0]
+    # 'tokoDompet' sengaja TIDAK di sini: belanja toko yang dibayar dompet pribadi owner
+    # tidak mengeluarkan sepeser pun dari laci. Yang mengeluarkannya adalah PELUNASAN-nya,
+    # di baris bayar_utang_owner di bawah. Cerminan hitungArusKasInti di index.html.
     harian_toko = [h for h in kol('pengeluaranHarian') if h.get('kategori') == 'toko' and cocok(h.get('tanggal'))]
     harian_owner = [h for h in kol('pengeluaranHarian') if h.get('kategori') == 'owner' and cocok(h.get('tanggal'))]
+    bayar_utang_owner = [m for m in kol('utangOwnerMutasi') if m.get('tipe') == 'bayar' and cocok(m.get('tanggal'))]
     retur = [r for r in kol('retur') if cocok(r.get('tanggal'))]
     refund = sum((r.get('nominalRefund') or 0) + max(0, r.get('selisihHargaTukar') or 0) for r in retur)
     tukar_masuk = sum(max(0, -(r.get('selisihHargaTukar') or 0)) for r in retur)
@@ -134,7 +138,7 @@ def arus_kas(kol, cocok, bayaran):
     masuk = s(tunai) + s(qris) + sn(piutang_bayar) + sn(kasbon_bayar) + tukar_masuk + sn(modal_setor)
     keluar = (belanja + sn(bayar_bon) + sum(x['nominal'] for x in bayar_terhitung)
               + sn(harian_toko) + sn(harian_owner) + refund + s(beli_kemasan) + s(beli_literan)
-              + sn(kasbon_ambil) + sn(setoran))
+              + sn(kasbon_ambil) + sn(setoran) + sn(bayar_utang_owner))
     return {
         'masuk': masuk, 'keluar': keluar, 'bersih': masuk - keluar,
         'omzet': s(jual), 'kredit': s(kredit),
@@ -145,7 +149,8 @@ def arus_kas(kol, cocok, bayaran):
                 'biayaBulanan': sum(x['nominal'] for x in bayar_terhitung),
                 'harian': sn(harian_toko), 'prive': sn(harian_owner),
                 'beliKemasan': s(beli_kemasan), 'beliLiteran': s(beli_literan),
-                'setoran': sn(setoran), 'modalSetor': sn(modal_setor)}}
+                'setoran': sn(setoran), 'modalSetor': sn(modal_setor),
+                'bayarUtangOwner': sn(bayar_utang_owner)}}
 
 # ===== hitungLabaRentang + hitungLabaBersihRentang (index.html) =====
 def laba_rentang(kol, cocok):
@@ -191,8 +196,10 @@ def jatah_hari(bl, hari, total_kotor_bulan):
 def laba_bersih_rentang(kol, dari, sampai, bayaran):
     cocok = lambda t: bool(t) and dari <= t <= sampai
     laba = laba_rentang(kol, cocok)
+    # Beban toko = 'toko' + 'tokoDompet'. Sengaja MENYIMPANG dari sisi kas di atas:
+    # bebannya sama besar, kantongnya yang beda — dan itu urusan kas, bukan laba.
     harian = sum((h.get('nominal') or 0) for h in kol('pengeluaranHarian')
-                 if h.get('kategori') == 'toko' and cocok(h.get('tanggal')))
+                 if h.get('kategori') in ('toko', 'tokoDompet') and cocok(h.get('tanggal')))
     hapus = sum((m.get('nominal') or 0) for m in kol('piutangMutasi')
                 if m.get('tipe') == 'hapusBuku' and cocok(m.get('tanggal')))
     kotor_per_bulan = collections.defaultdict(int)
@@ -431,8 +438,12 @@ def utama():
         jadi_piutang = K['kredit'] - p['pelunasan']
         jadi_kasbon = p['kasbonAmbil'] - p['kasbonBayar']
         biaya_nyata = p['biayaBulanan'] + p['harian'] + p['beliKemasan'] + p['beliLiteran'] + p['refund'] - p['tukarMasuk']
+        # Pelunasan utang ke owner: kas keluar tanpa beban baru (bebannya sudah diakui
+        # waktu belanjanya dicatat), jadi dia berdiri sendiri sebagai suku pengurang —
+        # persis seperti bayarBon. Tanpa suku ini identitasnya patah sebesar pelunasan.
         identitas = (L['margin'] + L['omzetBolong'] - jadi_stok - jadi_piutang - jadi_kasbon
-                     + p['berasDiutang'] - p['bayarBon'] + p['modalSetor'] - p['setoran'] - p['prive'] - biaya_nyata)
+                     + p['berasDiutang'] - p['bayarBon'] + p['modalSetor'] - p['setoran'] - p['prive']
+                     - p['bayarUtangOwner'] - biaya_nyata)
         id_ok = abs(identitas - K['bersih']) < 0.5
         print(f"  {bl}: omzet {rp(L['omzet'])} · margin {rp(L['margin'])} · laba bersih {rp(L['labaBersih'])}"
               f" · kas {rp(K['masuk'])}−{rp(K['keluar'])}={rp(K['bersih'])}"
