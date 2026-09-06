@@ -55,7 +55,19 @@
 // index.html pada push yang sama; dengan cache lama, kasir.html masih menagih Rp51.750
 // sementara layar owner menagih Rp52.000 untuk barang yang sama — dua pintu beda angka,
 // persis penyakit yang perubahan ini dibuat untuk menyembuhkan, dan diamnya sempurna.
-const VERSI = 'kasir-v23';
+// v24 (6 September 2026): DENYUT PERANGKAT di KEDUA berkas — kasir-darurat-nominal.html
+// (dipegang Gono & Hasan sejak pembagian 9 Agu 2026) DAN kasir.html (alat owner) menulis
+// perangkatStatus/{id} tiap 5 menit selagi layarnya terlihat, membawa cacah antrean
+// tertahan. Yang menentukan adalah berkas DARURAT: itu satu-satunya cara owner tahu DARI
+// JAUH bahwa penjualan di HP pegawai berhenti diam-diam. Tanpa ini HP pegawai tidak
+// pernah muncul sama sekali di layar Akun & Perangkat — dan memasangnya cuma di
+// kasir.html akan memajang HP owner saja sambil diam soal HP yang justru perlu dipantau.
+// Denyutnya sengaja DI LUAR antrean (tembak-lalu-lupa, gagal = diam) supaya satu denyut
+// yang ditolak tidak pernah membekukan penjualan di belakangnya. WAJIB naik: dengan cache
+// lama HP pegawai tetap menjalankan berkas tanpa denyut, jadi di layar owner ia terbaca
+// "tidak pernah terhubung" — persis kebalikan dari keadaan sebenarnya, dan diamnya
+// sempurna. Kedua berkas sudah ada di FILES, jadi satu kenaikan versi menyegarkan dua-duanya.
+const VERSI = 'kasir-v24';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

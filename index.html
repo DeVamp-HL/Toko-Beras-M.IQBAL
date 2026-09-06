@@ -3442,6 +3442,74 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   width:100%; min-height:44px; margin-top:14px; background:none; border:0;
   font:700 11px/1 -apple-system,system-ui; letter-spacing:.06em; color:#8f959d; cursor:pointer;
 }
+/* ── AKUN & PERANGKAT (gelombang 5) ── */
+/* Awalan ap-, bukan ak- (itu sudah milik Arus Kas sejak zona kaca-nya). */
+.k6a .ap-tab{ display:flex; gap:7px; margin-bottom:11px; }
+.k6a .ap-tab button{
+  flex:1; min-height:44px; border-radius:12px; cursor:pointer; font-family:inherit;
+  font:700 12px/1 -apple-system,system-ui;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); color:#a7adb5;
+}
+.k6a .ap-tab button.kg-terpilih{
+  border:0; background:linear-gradient(160deg,#fdf6e7,#e2cda6 62%,#bfa16a); color:#2a1f13;
+}
+.k6a .ap-kartu{
+  margin-bottom:8px; border-radius:15px; overflow:hidden;
+  background:linear-gradient(158deg,rgba(255,255,255,.07),rgba(255,255,255,.028));
+  border:1px solid rgba(255,255,255,.08);
+}
+.k6a .ap-kartu.awas{ border-color:rgba(201,112,94,.38); }
+.k6a .ap-kartu.ini{ border-color:rgba(226,205,166,.3); }
+.k6a .ap-baris{ width:100%; min-height:60px; display:flex; align-items:center; gap:11px;
+  padding:11px 13px; background:none; border:0; font-family:inherit; text-align:left;
+  color:#e8e4dc; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.k6a .ap-lampu{ flex:none; width:9px; height:9px; border-radius:50%; }
+.k6a .ap-sisi{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.k6a .ap-nama{ font:400 13px/1.3 -apple-system,system-ui; color:#e8e4dc; }
+.k6a .ap-akun{ font:400 10px/1.35 ui-monospace,Menlo,monospace; color:#8f959d;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.k6a .ap-kanan{ flex:none; display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.k6a .ap-denyut{ font-family:var(--pf-serif); font-style:italic; font-size:11px; color:#a7adb5; }
+.k6a .ap-antre{ padding:3px 8px; border-radius:99px; font:700 9px/1 -apple-system,system-ui;
+  letter-spacing:.08em; text-transform:uppercase;
+  color:#5f676d; border:1px solid rgba(255,255,255,.07); background:rgba(255,255,255,.02); }
+.k6a .ap-antre.ada{ color:#e8c3b2; border-color:rgba(201,112,94,.38); background:rgba(201,112,94,.12); }
+.k6a .ap-rinci{ padding:0 13px 12px; font:400 11.5px/1.6 -apple-system,system-ui; color:#a7adb5; }
+.k6a .ap-rinci b{ color:#e8e4dc; font-weight:600; }
+.k6a .ap-teknis{ font:400 10px/1.5 ui-monospace,Menlo,monospace; color:#7c848a; margin-top:9px; }
+.k6a .ap-batas{
+  margin-top:12px; padding:13px; border-radius:15px;
+  background:rgba(255,255,255,.035); border:1px dashed rgba(207,212,218,.28);
+}
+.k6a .ap-batas .kg-label{ color:#b7bcc3; }
+.k6a .ap-batas p{ font:400 11.5px/1.6 -apple-system,system-ui; color:#a7adb5; margin:8px 0 0; }
+.k6a .ap-izin-kepala, .k6a .ap-izin-baris{ display:flex; align-items:center; gap:9px; padding:9px 12px; }
+.k6a .ap-izin-kepala span:first-child, .k6a .ap-izin-baris span:first-child{ flex:1; min-width:0; }
+.k6a .ap-izin-kepala span:not(:first-child){ width:34px; text-align:center;
+  font:700 8.5px/1 -apple-system,system-ui; letter-spacing:.1em; text-transform:uppercase; color:#8f959d; }
+.k6a .ap-izin-baris{ background:rgba(255,255,255,.035); border-top:1px solid rgba(255,255,255,.05); }
+.k6a .ap-izin-baris span:first-child{ font:400 10.5px/1.35 ui-monospace,Menlo,monospace; color:#e8e4dc; }
+.k6a .ap-izin-baris u{ width:34px; text-align:center; text-decoration:none;
+  font:700 13px/1 -apple-system,system-ui; }
+.k6a .ap-izin-baris u.ya{ color:#cfe0c4; }
+.k6a .ap-izin-baris u.tidak{ color:#7c848a; }
+.k6a .ap-izin-baris u.syarat{ color:#e2cda6; }
+.k6a .ap-kisi{ border-radius:13px; overflow:hidden; border:1px solid rgba(255,255,255,.08); }
+.k6a .ap-log{ padding:8px 2px; border-bottom:1px solid rgba(255,255,255,.05); }
+.k6a .ap-log b{ display:block; font:600 11.5px/1.35 -apple-system,system-ui; color:#e8e4dc; }
+.k6a .ap-log i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); margin-top:2px; }
+.k6a .ap-pita{ display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; padding-bottom:2px; }
+.k6a .ap-pita button{ flex:0 0 auto; min-height:44px; padding:0 13px; border-radius:99px; cursor:pointer;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04);
+  color:#cfd4da; font:700 11px/1 -apple-system,system-ui; }
+.k6a .ap-pita button.kg-terpilih{ border:0; background:linear-gradient(160deg,#fdf6e7,#e2cda6 62%,#bfa16a); color:#2a1f13; }
+.k6a .ap-aksi{
+  width:100%; min-height:48px; margin-top:10px; border-radius:12px; cursor:pointer;
+  border:1px solid rgba(226,205,166,.4); background:none; color:#e2cda6;
+  font:700 11.5px/1.35 -apple-system,system-ui; padding:8px 12px;
+}
+.k6a .ap-aksi:disabled{ border-color:rgba(207,212,218,.12); color:rgba(167,173,181,.6); cursor:default; }
+
 /* ── BELANJA (gelombang 4): dua pertanyaan + papan tiga kolom ── */
 /* Sama seperti Tangani, layar ini tidak menggantikan versi desktop mana pun,
    jadi dia TIDAK digerbangi lebar. Awalan bj- (bukan bl-, yang sudah milik
@@ -3963,12 +4031,6 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   border:1px solid var(--pf-tepi); background:linear-gradient(168deg,rgba(255,255,255,.05),rgba(255,255,255,.018)); }
 #setelanKaca .st6-baris b{ font-size:12px; font-weight:700; display:block; }
 #setelanKaca .st6-baris i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); }
-#setelanKaca .st6-saring{ margin:6px 0; }
-#setelanKaca .st6-saring button{ flex:0 0 auto; min-height:44px; padding:0 13px; border-radius:99px;
-  font-size:10px; font-weight:700; color:var(--pf-abu); border:1px solid var(--pf-tepi); background:none; }
-#setelanKaca .st6-log{ padding:6px 2px; border-bottom:1px solid rgba(255,255,255,.05); }
-#setelanKaca .st6-log b{ font-size:11px; font-weight:600; display:block; }
-#setelanKaca .st6-log i{ font-family:var(--pf-serif); font-style:italic; font-size:9.5px; color:var(--pf-abu); }
 
 /* --- KACA EMAS G3: Pesanan (satu putaran, bukan uang) --- */
 @media (min-width:700px){ #pesanan6a{ display:none; } }
@@ -4956,6 +5018,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   <div class="lm-grup">Orang &amp; kunci <span>siapa boleh apa</span></div>
   <div class="lm-kisi">
   <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()" disabled><b>Jaga Toko</b><i>siapa bertugas</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="akun" onclick="pindahDariMenu('akun')" disabled><b>Akun &amp; Perangkat</b><i>denyut, izin, jejak</i><span class="kg-titik-emas"></span></button>
   <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaSetelPin()" disabled><b>PIN Owner</b><i>setel / ganti</i><span class="kg-titik-emas"></span></button>
   </div>
   <div class="lm-kaki">
@@ -6649,6 +6712,25 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
        kartunya duduk di kaki Ringkasan. Isinya daftar YANG SAMA (_ik6Perhatian);
        yang beda cuma cara membacanya: dikelompokkan menurut jenis kekhawatiran,
        lalu bisa diubah jadi antrean satu-per-satu yang punya ujung. -->
+  <!-- ══ AKUN & PERANGKAT (gelombang G5) ══
+       Tiga tab. Yang membuatnya berdiri sendiri, bukan salinan Setelan: daftar
+       perangkat di sini datang dari koleksi perangkatStatus (denyut yang ditulis tiap
+       perangkat sendiri), BUKAN diturunkan dari jejak. Bedanya menentukan — HP yang
+       menyala tapi belum menulis data uang muncul di sini dan tidak akan pernah muncul
+       di daftar yang diturunkan dari jejak. Zona "Orang" di Setelan dicabut pada
+       gelombang yang sama supaya tidak ada dua layar menjawab satu pertanyaan dari dua
+       sumber. Seperti Tangani & Belanja, layar ini tidak menggantikan versi desktop mana
+       pun, jadi tidak digerbangi lebar. -->
+  <div id="halamanAkun" class="halaman k6a">
+    <div class="judul-halaman"><h2>Akun &amp; Perangkat</h2><span class="jh-sub">siapa, dari mana, sejak kapan</span></div>
+    <div class="ap-tab">
+      <button type="button" id="apTabPerangkat" class="kg-terpilih" onclick="apPilihTab('perangkat')">Perangkat</button>
+      <button type="button" id="apTabIzin" onclick="apPilihTab('izin')">Izin</button>
+      <button type="button" id="apTabJejak" onclick="apPilihTab('jejak')">Jejak</button>
+    </div>
+    <div id="apIsi"></div>
+  </div>
+
   <div id="halamanTangani" class="halaman k6a">
     <div class="judul-halaman"><h2>Tangani</h2><span class="jh-sub">menuntut tindakan</span></div>
     <div id="tgKaca"></div>
@@ -7241,6 +7323,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (benar) {
       tutupModalLoginToko();
       pasangUlangSinkronisasiMati();   // sembuhkan sesi yang pendengarnya terlanjur mati
+      // Denyut & dua pendengar G5 dipasang SESUDAH akun yang benar masuk — sebelum itu
+      // rules menolaknya, dan memasangnya lebih awal cuma menghasilkan listener mati
+      // yang tidak pernah dipasang ulang (penyakit yang komentar di atas jelaskan).
+      pasangDenyutPerangkat();
+      pasangPendengarPerangkat();
+      pasangPendengarKatalog();
     } else if (u) {
       bukaModalLoginToko('Perangkat ini masih masuk sebagai ' + email
         + '. Masukkan sandi OWNER untuk berpindah akun.');
@@ -7568,7 +7656,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // Keduanya cuma punya pintu di lembar Menu, TANPA tombol tab — jadi penyetelan
     // 'aktif' wajib berpenjaga null, kalau tidak pindahHalaman melempar TypeError dan
     // seluruh navigasi mati.
-    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan','pemasok','setelan','pesanan','tangani','belanja'].forEach(n => {
+    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan','pemasok','setelan','pesanan','tangani','belanja','akun'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       const tombolTab = document.getElementById('tab' + kapital(n));
       if (tombolTab) tombolTab.classList.toggle('aktif', n === nama);
@@ -7579,7 +7667,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       b.classList.toggle('aktif', b.getAttribute('data-halaman') === nama);
     });
     const tbMenu = document.getElementById('tombolLembarMenu');
-    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan','pemasok','tangani','belanja'].indexOf(nama) >= 0);
+    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan','pemasok','tangani','belanja','akun'].indexOf(nama) >= 0);
     if (document.body.classList.contains('lembar-menu-terbuka')) toggleLembarMenu(false);
     if (document.body.classList.contains('lembar-merk-terbuka')) tutupLembarMerk();
     document.body.classList.toggle('di-halaman-masuk', nama === 'input');
@@ -7593,6 +7681,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (nama === 'ringkasan') tampilkanRingkasan();
     if (nama === 'tangani') { tampilkanRingkasan(); tampilkanTangani(); }   // daftar dibangun tampilkanRingkasan
     if (nama === 'belanja') tampilkanBelanja();
+    if (nama === 'akun') { pasangLogAktivitas(); tampilkanAkun(); }   // jejak dipasang malas, sama seperti Setelan
     if (nama === 'rekap') { tampilkanRekap(); tampilkanRiwayatJual(); tampilkanRiwayat(); }
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); tampilkanSlipGaji(); }
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); isiSaranPelanggan(); }
@@ -8734,9 +8823,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   /* Di HP pil status cuma titik (lihat CSS .pil-status di <700px) — kalimat lengkapnya
      dipindah ke kaki lembar Menu supaya tetap terbaca, dan ke title pilnya. */
   // ===== KACA EMAS G3 — Setelan (rapor + zona) =====
-  let _setZona = 'aman', _setSaring = 'semua';
+  let _setZona = 'aman';
   function setelanPilihZona(z) { _setZona = { aman: 1, orang: 1, mesin: 1 }[z] ? z : 'aman'; gambarSetelanKaca(); }
-  function setelanPilihSaring(x) { _setSaring = x; gambarSetelanKaca(); }
   function segarkanSetelanKacaJikaTampil() {
     const el = document.getElementById('halamanSetelan');
     if (el && el.classList.contains('tampil')) gambarSetelanKaca();
@@ -8783,31 +8871,26 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           + brs("document.getElementById('inputMuatFile') && document.getElementById('inputMuatFile').click()", 'Muat dari file', 'pulihkan dari backup')
           + '<div class="kg-rincian st6-sela">' + rpH(ambilSemuaBatch().length) + ' catatan kedatangan tersimpan di HP ini sebagai cadangan offline.</div>';
       } else if (_setZona === 'orang') {
-        const semuaLog = _cacheLog || [];
-        // Jejak lama ditulis dengan id acak (sebelum HP dinamai) — keduanya = HP ini.
-        const milikKu = p => p === perangkatRingkas() || p === idPerangkat();
-        const perangkatUnik = [...new Set(semuaLog.map(l => l.perangkat || ''))].filter(Boolean);
-        const tampilLog = semuaLog.filter(l => _setSaring === 'semua' ? true
-          : _setSaring === 'ini' ? milikKu(l.perangkat) : !milikKu(l.perangkat));
-        const barisLog = tampilLog.slice(0, 30);   // cacah label dari daftar yang DIGAMBAR
+        // DICABUT 6 Sep 2026 — pindah ke layar Akun & Perangkat, seluruhnya.
+        // Dulu zona ini menurunkan daftar perangkat dari JEJAK; layar baru menurunkannya
+        // dari perangkatStatus. Membiarkan keduanya hidup berarti dua layar menjawab
+        // "perangkat mana yang aktif" dari dua sumber berbeda — dan sejak denyut lahir
+        // keduanya PASTI berselisih: HP yang menyala tapi belum menulis data uang muncul
+        // di satu layar dan tidak di layar lain. Dua pintu, satu pertanyaan, jawaban beda
+        // adalah pola yang sudah dua kali menggigit sistem ini.
         html += '<div class="kg-label st6-sela">Siapa boleh apa, dari HP mana</div>'
-          + brs('bukaSetelPin()', 'PIN owner', pinSudahDisetel() ? 'terpasang — ubah di sini' : 'BELUM disetel — tab uang terbuka')
-          + brs('ubahNamaPerangkat()', 'Nama perangkat ini', escapeHtml(perangkatRingkas()))
-          + (perangkatUnik.length ? '<div class="kg-rincian st6-sela">Perangkat di jejak: ' + perangkatUnik.map(p =>
-              escapeHtml(p) + (milikKu(p) ? ' (HP ini)' : '')).join(' · ') + '</div>' : '')
-          + '<div class="kg-label st6-sela">Jejak aktivitas · ' + barisLog.length + (tampilLog.length > barisLog.length ? ' dari ' + tampilLog.length : '') + ' ditampilkan</div>'
-          + '<div class="kg-pita st6-saring">' + [['semua', 'Semua'], ['ini', 'HP ini'], ['lain', 'Lainnya']].map(x =>
-              '<button type="button"' + (_setSaring === x[0] ? ' class="kg-terpilih"' : '') + ' onclick="setelanPilihSaring(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>'
-          + (tampilLog.length === 0 ? '<div class="kg-rincian">Belum ada jejak' + (semuaLog.length ? ' di saringan ini' : ' — terisi begitu ada tulisan baru (butuh sambungan)') + '.</div>'
-            : barisLog.map(l => '<div class="st6-log"><b>' + escapeHtml(l.aksi || '') + ' · ' + escapeHtml(l.koleksi || '') + '</b>'
-              + '<i>' + escapeHtml(waktuJejakLokal(l.pada)) + ' · ' + escapeHtml(l.oleh || '') + ' @ ' + escapeHtml(l.perangkat || '')
-              + (l.ringkas ? ' · ' + escapeHtml(l.ringkas) : '') + '</i></div>').join(''));
+          + brs("pindahDariMenu('akun')", 'Akun &amp; Perangkat', 'perangkat, denyut, antrean tertahan, izin, dan jejak — semuanya di sana')
+          + brs('bukaSetelPin()', 'PIN owner', pinSudahDisetel() ? 'terpasang — ubah di sini' : 'BELUM disetel — tab uang terbuka');
       } else {
         html += '<div class="kg-label st6-sela">Bagaimana sistemnya berjalan</div>'
           + '<div class="kg-panel st6-mini"><span class="kg-titik-lcd' + (tersambung ? '' : ' mati') + '"></span> '
           + '<b>' + (tersambung ? 'Tersambung' : (_sudahLoginToko ? 'Menyambungkan…' : 'Belum masuk — perlu sandi')) + '</b>'
-          + (nTunda > 0 ? '<i>' + nTunda + ' catatan menunggu sinyal</i>' : '<i>semua catatan terkirim</i>') + '</div>'
-          + (nTunda > 0 ? brs('kirimAntreanTunda()', 'Kirim sekarang', nTunda + ' catatan di antrean') : '')
+          + '<i>sambungan HP ini ke database</i></div>'
+          // Cacah antrean DICABUT dari sini: dia sekarang tinggal di kartu perangkat
+          // (Akun & Perangkat), bersama antrean perangkat LAIN. Satu angka, satu rumah —
+          // kalau ditampilkan di dua tempat, yang satu akan bicara soal HP ini saja
+          // sementara yang lain bicara soal semua HP, dan keduanya memakai kata yang sama.
+          + brs("pindahDariMenu('akun')", 'Antrean &amp; perangkat', nTunda > 0 ? nTunda + ' catatan menunggu sinyal di HP ini' : 'semua catatan HP ini terkirim')
           + brs("bukaModalLoginToko('Masukkan sandi OWNER untuk login ulang database.')", 'Login database', 'sandi OWNER')
           + '<div class="kg-label st6-sela">Pintu data dagang</div>'
           + brs("pindahDariMenu('harga')", 'Jenis beras &amp; katalog harga', 'di halaman Harga')
@@ -9032,7 +9115,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     clearTimeout(_timerRingkasanKasir);
     _timerRingkasanKasir = setTimeout(terbitkanRingkasanKasir, 4000);
   }
-  async function terbitkanRingkasanKasir() {
+  // Isi katalog yang dibaca kasir — SATU penyusun, dipakai penerbit DAN pembanding.
+  function susunIsiKatalogKasir() {
     try {
       const stokKemasan = hitungStokKemasan();
       const stokKarung = hitungStokKarungPerMerk();
@@ -9078,6 +9162,16 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       const piutang = hitungPiutang().filter(p => p.sisa > 0)
         .map(p => ({ nama: p.nama, sisa: p.sisa }));
 
+      return { kemasan, merkKarung, bahanLiteran, piutang };
+    } catch (e) { console.error('Gagal menyusun katalog kasir', e); return null; }
+  }
+
+  async function terbitkanRingkasanKasir() {
+    try {
+      const isi = susunIsiKatalogKasir();
+      if (!isi) return;
+      const kemasan = isi.kemasan, merkKarung = isi.merkKarung,
+            bahanLiteran = isi.bahanLiteran, piutang = isi.piutang;
       const isiTetap = JSON.stringify({ kemasan, merkKarung, bahanLiteran, piutang });
       if (localStorage.getItem('miqbal_ringkasan_terakhir') === isiTetap) return;
       await Promise.race([
@@ -9092,6 +9186,104 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       // "Harga di kasir" di ritual pagi tidak punya sumber lain. Bukan angka uang.
       localStorage.setItem('miqbal_ringkasan_terbit_v1', new Date().toISOString());
     } catch (e) { console.error('Gagal terbitkan ringkasan kasir', e); }
+  }
+
+  // ============ DENYUT PERANGKAT & KATALOG SERVER (G5) ============
+  // Aturan Firestore v2 sudah menyediakan koleksi perangkatStatus sejak Fase 2 ("tiap
+  // perangkat menulis statusnya sendiri"), tapi tidak ada satu pun kode yang pernah
+  // menulisnya — di index.html maupun kasir.html. Akibatnya layar mana pun yang mau
+  // menjawab "perangkat mana yang masih hidup, dan berapa yang tersangkut di sana"
+  // tidak punya bahan sama sekali.
+  //
+  // SYARAT MATI (keputusan pemilik 6 Sep 2026): DENYUT TIDAK BOLEH LEWAT ANTREAN.
+  // Ditulis LANGSUNG lewat setDoc, tembak-lalu-lupa, gagal berarti diam. TIDAK lewat
+  // simpanKeFirestore — kalau lewat sana ia masuk antrean tunda yang FIFO, dan satu
+  // denyut yang ditolak akan membekukan seluruh catatan uang di belakangnya. Layar yang
+  // dibangun untuk MENGUNGKAP catatan tersangkut justru jadi penyebabnya. Lewat setDoc
+  // langsung ia juga tidak memicu catatLogAktivitas maupun jadwalkanRingkasanKasir,
+  // jadi tidak ada lingkaran dan tidak ada jejak sampah.
+  const KOLEKSI_PERANGKAT = 'perangkatStatus';
+  let _cachePerangkat = [], _denyutTerakhir = 0;
+
+  function kirimDenyutPerangkat() {
+    if (!_sudahLoginToko) return;                 // belum masuk: tidak ada yang bisa ditulis
+    const sekarang = Date.now();
+    if (sekarang - _denyutTerakhir < 60000) return;   // paling cepat sekali per menit
+    _denyutTerakhir = sekarang;
+    try {
+      setDoc(doc(db, KOLEKSI_PERANGKAT, idPerangkat()), {
+        id: idPerangkat(),
+        nama: localStorage.getItem('miqbal_perangkat_label_v1') || '',
+        akun: String((auth.currentUser && auth.currentUser.email) || ''),
+        aplikasi: 'sistem',
+        pada: new Date().toISOString(),
+        antrean: ambilAntreanTunda().length,
+        gagal: 0,
+        versi: 'sistem'
+      }).catch(() => {});                          // gagal = diam. Denyut bukan data uang.
+    } catch (e) { /* denyut tidak boleh merusak apa pun */ }
+  }
+
+  // Perangkat yang layarnya mati berhenti berdenyut — itu memang artinya "tidak sedang
+  // dipakai", bukan kekurangan. Yang TIDAK bisa dibedakan: HP mati vs HP tanpa sinyal.
+  let _denyutTerpasang = false;
+  function pasangDenyutPerangkat() {
+    if (_denyutTerpasang) { kirimDenyutPerangkat(); return; }
+    _denyutTerpasang = true;
+    kirimDenyutPerangkat();
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) kirimDenyutPerangkat(); });
+    window.addEventListener('online', kirimDenyutPerangkat);
+    setInterval(function () { if (!document.hidden) kirimDenyutPerangkat(); }, 300000);
+  }
+
+  let _pendengarPerangkatTerpasang = false;
+  function pasangPendengarPerangkat() {
+    if (_pendengarPerangkatTerpasang) return;
+    _pendengarPerangkatTerpasang = true;
+    try {
+      onSnapshot(collection(db, KOLEKSI_PERANGKAT), snap => {
+        _cachePerangkat = [];
+        snap.forEach(d => _cachePerangkat.push(d.data()));
+        if (document.getElementById('halamanAkun') &&
+            document.getElementById('halamanAkun').classList.contains('tampil')) tampilkanAkun();
+      }, () => { /* offline / ditolak: daftar tampil kosong dengan sebabnya */ });
+    } catch (e) { console.error(e); }
+  }
+
+  // ── Katalog kasir: apa yang SUNGGUH ada di server ──
+  // Sampai sekarang satu-satunya penanda adalah stempel LOKAL per perangkat
+  // (miqbal_ringkasan_terbit_v1): dia menjawab "kapan HP INI terakhir menerbitkan",
+  // bukan "apa yang sekarang dibaca kasir". Di HP owner yang baru, atau sesudah data
+  // situs dibersihkan, stempel itu kosong walau katalognya mutakhir — dan sebaliknya,
+  // ia tetap terlihat segar walau perubahan terbaru tidak pernah sampai.
+  //
+  // kasir.html SENGAJA tidak memakai diperbaruiPada, dan alasannya benar: dokumen ini
+  // cuma ditulis ulang kalau isinya berubah, jadi umurnya bisa berhari-hari padahal
+  // harganya masih benar. Umur BUKAN alarm. Yang benar-benar berbahaya adalah
+  // KETERTINGGALAN: ada perubahan di sini yang belum pernah sampai ke meja kasir.
+  let _katalogServer = null, _pendengarKatalogTerpasang = false;
+  function pasangPendengarKatalog() {
+    if (_pendengarKatalogTerpasang) return;
+    _pendengarKatalogTerpasang = true;
+    try {
+      onSnapshot(doc(db, 'ringkasanKasir', 'aktif'), snap => {
+        _katalogServer = snap.exists() ? snap.data() : null;
+        if (document.getElementById('halamanAkun') &&
+            document.getElementById('halamanAkun').classList.contains('tampil')) tampilkanAkun();
+      }, () => { /* ditolak / offline: keadaan katalog tidak diketahui, dikatakan apa adanya */ });
+    } catch (e) { console.error(e); }
+  }
+
+  // Membandingkan ISI, bukan umur. null = belum bisa tahu (belum tersambung / ditolak).
+  function katalogKasirTertinggal() {
+    if (!_katalogServer) return null;
+    const kini = susunIsiKatalogKasir();
+    if (!kini) return null;
+    const bandingkan = x => JSON.stringify({
+      kemasan: x.kemasan || [], merkKarung: x.merkKarung || [],
+      bahanLiteran: x.bahanLiteran || {}, piutang: x.piutang || []
+    });
+    return bandingkan(kini) !== bandingkan(_katalogServer);
   }
 
   // Simpan satu dokumen ke Firestore. id dipakai sebagai nama dokumen supaya
@@ -9178,7 +9370,24 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     if (_logTerpasang) return;
     _logTerpasang = true;
     try {
-      onSnapshot(query(collection(db, KOLEKSI_LOG), orderBy('pada', 'desc'), limit(100)), snap => {
+      // JENDELA 500 — dipilih, bukan diwarisi. Angka 100 yang lama tidak pernah punya
+      // alasan tertulis, dan jangkauannya bergantung pada rasio yang tak pernah diukur:
+      // jejak HANYA ditulis simpanKeFirestore/hapusDariFirestore di index.html, jadi
+      // penjualan yang dicatat dari kasir.html & kasir-darurat TIDAK menghasilkan satu
+      // baris pun. Dari cadangan 26 Agu: penjualan median 99/hari, dan tulisan owner
+      // NON-penjualan (harian, piutang, kasbon, batch, produksi, penyesuaian, tutup)
+      // sekitar 20/hari. Jadi lajunya antara ~20/hari (kalau semua penjualan lewat kasir)
+      // dan ~120/hari (kalau semuanya dicatat dari sini). Pada 100, kasus terburuknya
+      // TIDAK SAMPAI SATU HARI — jendela yang jangkauannya kebetulan, bukan keputusan.
+      // 500 menutup empat hari di kasus terburuk: cukup menjawab "apa yang terjadi
+      // selagi saya pergi akhir pekan panjang", yang memang alasan layar ini dibangun.
+      // Ongkosnya bukan pengikat: pendengar dipasang MALAS (hanya saat layarnya dibuka),
+      // 500 dokumen x ~10 kali buka = 5.000 baca/hari = 10% kuota gratis Firestore.
+      // Berat gambarnya juga tidak ikut naik — layar menggambar sepotong, bukan seluruh
+      // jendela. Yang WAJIB ikut: kalau jendelanya penuh, layar harus mengatakannya,
+      // supaya sunyi tidak pernah terbaca sebagai "tidak ada yang terjadi".
+      // Catatan: logAktivitas TIDAK ikut dipangkas tutup buku — dia tumbuh selamanya.
+      onSnapshot(query(collection(db, KOLEKSI_LOG), orderBy('pada', 'desc'), limit(500)), snap => {
         _cacheLog = [];
         snap.forEach(d => _cacheLog.push(d.data()));
         gambarLogAktivitas();
@@ -10373,6 +10582,205 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     terapkanStatusOwner();   // lihat catatan di tampilkanRekap() — sama sebabnya
   }
 
+
+  // ============ LAYAR AKUN & PERANGKAT (gelombang 5) ============
+  let _apTab = 'perangkat', _apBuka = null, _apSaring = 'semua';
+  function apPilihTab(t) { _apTab = t; _apBuka = null; tampilkanAkun(); }
+  function apPilihBaris(id) { _apBuka = (_apBuka === id ? null : id); tampilkanAkun(); }
+  function apPilihSaring(x) { _apSaring = x; tampilkanAkun(); }
+
+  // Umur denyut dibaca dari selisih jam — dan itu selisih terhadap jam HP INI, sementara
+  // capnya ditulis jam HP SANA. Dua HP yang jamnya meleset akan memberi umur yang meleset
+  // sebesar selisihnya. Disebutkan di batas layar, bukan disembunyikan.
+  function apUmur(pada) {
+    if (!pada) return { teks: 'belum pernah', menit: null };
+    const t = new Date(pada).getTime();
+    if (isNaN(t)) return { teks: 'belum pernah', menit: null };
+    const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+    if (m < 2) return { teks: 'sekarang', menit: m };
+    if (m < 60) return { teks: m + ' menit lalu', menit: m };
+    if (m < 1440) return { teks: Math.round(m / 60) + ' jam lalu', menit: m };
+    return { teks: Math.round(m / 1440) + ' hari lalu', menit: m };
+  }
+  function apWarna(menit) {
+    if (menit === null) return '#5f676d';
+    if (menit <= 15) return '#8ca67e';
+    if (menit <= 1440) return '#b7bcc3';
+    if (menit <= 4320) return '#e2cda6';
+    return '#c9705e';
+  }
+
+  // Tabel izin dibaca dari firestore.rules yang ADA di repo (97 baris, v2 26 Agu 2026).
+  // Yang tidak bisa dipastikan aplikasi: apakah berkas itu benar-benar yang TERPASANG —
+  // deploy-nya salin-tempel manual ke Console Firebase. Karena itu tabel ini disebut
+  // "menurut berkas aturan", dan batas itu ditulis di layar, bukan dianggap sepele.
+  const AP_IZIN = [
+    { n: 'penjualan',            b: 'ya', t: 'ya', u: 'sama', h: 'tidak' },
+    { n: 'piutangMutasi',        b: 'ya', t: 'ya', u: 'sama', h: 'tidak' },
+    { n: 'stokBahanLiteran',     b: 'ya', t: 'ya', u: 'sama', h: 'tidak' },
+    { n: 'logAktivitas',         b: 'tidak', t: 'ya', u: 'tidak', h: 'tidak' },
+    { n: 'ringkasanKasir',       b: 'ya', t: 'tidak', u: 'tidak', h: 'tidak' },
+    { n: 'pengaturan/aksesKasir', b: 'ya', t: 'tidak', u: 'tidak', h: 'tidak' },
+    { n: 'perangkatStatus',      b: 'tidak', t: 'ya', u: 'ya', h: 'ya' },
+    { n: 'semua koleksi lain',   b: 'tidak', t: 'tidak', u: 'tidak', h: 'tidak' }
+  ];
+
+  function tampilkanAkun() {
+    const w = document.getElementById('apIsi');
+    if (!w) return;
+    try {
+      ['perangkat', 'izin', 'jejak'].forEach(t => {
+        const el = document.getElementById('apTab' + kapital(t));
+        if (el) el.classList.toggle('kg-terpilih', _apTab === t);
+      });
+      let h = '';
+
+      if (_apTab === 'perangkat') {
+        const daftar = (_cachePerangkat || []).slice()
+          .sort((a, b) => String(b.pada || '').localeCompare(String(a.pada || '')));
+        const iniId = idPerangkat();
+        if (!daftar.length) {
+          h += '<div class="kg-panel"><div class="kg-label">Belum ada denyut</div>'
+            + '<div class="ap-rinci" style="padding:9px 0 0;">Perangkat mulai muncul begitu ia membuka aplikasinya dalam keadaan tersambung. '
+            + 'HP kasir baru berdenyut sesudah aplikasinya menyegarkan diri ke versi terbaru.</div></div>';
+        }
+        h += daftar.map(d => {
+          const u = apUmur(d.pada);
+          const ini = String(d.id) === iniId;
+          const nAntre = d.antrean || 0;
+          const dib = _apBuka === String(d.id);
+          const app = d.aplikasi === 'darurat' ? 'kasir darurat (staf)'
+            : d.aplikasi === 'kasir' ? 'kasir kalkulator (owner)' : 'sistem lengkap';
+          return '<div class="ap-kartu' + (nAntre > 0 ? ' awas' : (ini ? ' ini' : '')) + '">'
+            + '<button type="button" class="ap-baris" onclick="apPilihBaris(' + JSON.stringify(String(d.id)) + ')">'
+            + '<span class="ap-lampu" style="background:' + apWarna(u.menit) + '"></span>'
+            + '<span class="ap-sisi"><span class="ap-nama">' + escapeHtml(d.nama || '(belum dinamai)')
+            + (ini ? ' &middot; HP ini' : '') + '</span>'
+            + '<span class="ap-akun">' + escapeHtml(d.akun || '') + '</span></span>'
+            + '<span class="ap-kanan"><span class="ap-denyut">' + escapeHtml(u.teks) + '</span>'
+            + '<span class="ap-antre' + (nAntre > 0 ? ' ada' : '') + '">'
+            + (nAntre > 0 ? nAntre + ' tertahan' : 'antrean bersih') + '</span></span></button>'
+            + (dib ? '<div class="ap-rinci">' + escapeHtml(app)
+                + (nAntre > 0
+                  ? ' &middot; <b>' + nAntre + ' catatan belum sampai server.</b> Antreannya satu-per-satu: '
+                    + 'yang paling depan menahan semua di belakangnya. Kalau angkanya tidak turun-turun, '
+                    + 'HP itu perlu dibuka dan disambungkan.'
+                  : ' &middot; semua catatan dari perangkat ini sudah sampai server.')
+                + ((d.gagal || 0) > 0 ? ' <b>' + d.gagal + ' catatan masuk daftar gagal</b> — ditolak server, perlu diperiksa langsung di HP itu.' : '')
+                + '<div class="ap-teknis">' + escapeHtml(String(d.id)) + (d.versi ? ' &middot; ' + escapeHtml(String(d.versi)) : '') + '</div>'
+                + '</div>' : '')
+            + '</div>';
+        }).join('');
+
+        // ── Katalog kasir: perkara nomor satu ──
+        // Yang ditanya BUKAN umur katalog. kasir.html sendiri menolak memakai
+        // diperbaruiPada dengan alasan yang benar: dokumen ini cuma ditulis ulang kalau
+        // isinya berubah, jadi umurnya bisa berhari-hari padahal harganya masih benar.
+        // Yang berbahaya adalah KETERTINGGALAN: ada perubahan di sini yang belum sampai.
+        const tertinggal = katalogKasirTertinggal();
+        const stempel = _katalogServer && _katalogServer.diperbaruiPada
+          ? waktuJejakLokal(_katalogServer.diperbaruiPada) : null;
+        h += '<div class="kg-panel ap-batas" style="border-style:solid;border-color:'
+          + (tertinggal === true ? 'rgba(201,112,94,.38)' : 'rgba(255,255,255,.08)') + ';">'
+          + '<div class="kg-label">Katalog harga di kasir</div>'
+          + '<p>' + (tertinggal === null
+            ? 'Belum bisa dibaca dari server — HP ini belum tersambung, atau dokumennya belum pernah ada. Selama begitu, keadaan katalog di meja kasir tidak diketahui.'
+            : tertinggal
+              ? '<b>Ada perubahan di sini yang BELUM sampai ke kasir.</b> Harga atau stok berubah sesudah katalog terakhir diterbitkan, jadi meja kasir masih menagih angka lama.'
+              : 'Kasir memegang katalog yang sama dengan yang ada di sini. Umurnya tidak penting — dokumen ini memang hanya ditulis ulang saat isinya berubah.')
+          + (stempel ? ' Terbit terakhir ' + escapeHtml(stempel) + '.' : '')
+          + '</p>'
+          + '<button type="button" class="ap-aksi" onclick="apTerbitkanKatalog()"'
+          + (tertinggal === true ? '' : ' disabled') + '>'
+          + (tertinggal === true ? 'Terbitkan katalog sekarang' : 'Tidak ada yang perlu diterbitkan')
+          + '</button></div>';
+
+        h += '<button type="button" class="ap-aksi" onclick="ubahNamaPerangkat(); tampilkanAkun();">'
+          + 'Beri nama HP ini &mdash; sekarang: ' + escapeHtml(perangkatRingkas()) + '</button>';
+
+        h += '<div class="ap-batas"><div class="kg-label">Batas yang perlu diketahui</div>'
+          + '<p>Denyut ditulis tiap 5 menit <b>selagi layar perangkatnya terlihat</b>. HP yang tergeletak '
+          + 'dengan layar mati berhenti berdenyut — itu artinya "tidak sedang dipakai", bukan rusak. '
+          + 'Yang <b>tidak</b> bisa dibedakan dari sini: HP mati, HP tanpa sinyal, dan aplikasi yang belum '
+          + 'disegarkan ke versi berdenyut. Umur dihitung dengan jam HP ini terhadap cap jam HP sana; '
+          + 'kalau salah satu jamnya meleset, umurnya ikut meleset.</p></div>';
+
+      } else if (_apTab === 'izin') {
+        h += '<div class="kg-panel"><div class="kg-label">Dua akun, dua peran</div>'
+          + '<div class="ap-rinci" style="padding:9px 0 0;">'
+          + '<b>owner@tokoberasmiqbal.web.app</b> &mdash; sistem lengkap ini. Akses penuh ke semua koleksi.<br>'
+          + '<b>kasir@tokoberasmiqbal.web.app</b> &mdash; kasir kalkulator &amp; kasir darurat. Hanya '
+          + 'MEMBUAT penjualan, mutasi piutang, dan pemakaian bahan literan; membaca katalog &amp; roster. '
+          + 'Tidak bisa membaca laporan, mengubah, atau menghapus apa pun.</div></div>';
+        h += '<div class="kg-label" style="margin:14px 2px 8px;">Yang boleh dilakukan akun kasir</div>'
+          + '<div class="ap-kisi"><div class="ap-izin-kepala"><span></span><span>baca</span><span>buat</span><span>ubah</span><span>hapus</span></div>'
+          + AP_IZIN.map(r => {
+            const sel = v => v === 'ya' ? '<u class="ya">ya</u>' : v === 'sama' ? '<u class="syarat">sama</u>' : '<u class="tidak">&mdash;</u>';
+            return '<div class="ap-izin-baris"><span>' + escapeHtml(r.n) + '</span>'
+              + sel(r.b) + sel(r.t) + sel(r.u) + sel(r.h) + '</div>';
+          }).join('') + '</div>';
+        h += '<div class="ap-batas"><div class="kg-label">Arti kolom "sama", dan satu batas</div>'
+          + '<p><b>sama</b> = kasir boleh menulis ulang dokumen yang sudah ada HANYA kalau isinya sama '
+          + 'persis. Itu ada supaya kiriman ulang antrean yang jawabannya hilang di tengah jalan tidak '
+          + 'ditolak dan membekukan seluruh penjualan di belakangnya; perubahan sungguhan tetap ditolak.</p>'
+          + '<p><b>Batas:</b> tabel ini dibaca dari berkas <code>firestore.rules</code> di dalam kode. '
+          + 'Berkas itu <b>niat</b>, bukan bukti — pemasangannya salin-tempel manual ke Console Firebase, '
+          + 'dan aplikasi tidak punya cara memastikan yang terpasang di server sama dengan yang tertulis '
+          + 'di sini. Kalau aturan pernah diubah langsung di Console, layar ini tidak akan tahu.</p></div>';
+
+      } else {
+        const semua = (_cacheLog || []);
+        const kelas = l => (l.aksi === 'hapus' || l.aksi === 'batalkan' || l.aksi === 'tandai-koreksi') ? 'koreksi'
+          : (['penjualan', 'piutangMutasi', 'kasbonMutasi', 'pengeluaranHarian', 'modalOwner', 'amplopLaba',
+              'utangPemasokMutasi', 'utangOwnerMutasi', 'setoranKas', 'biayaBulanan'].indexOf(l.koleksi) >= 0) ? 'uang' : 'barang';
+        const tampil = semua.filter(l => _apSaring === 'semua' || kelas(l) === _apSaring);
+        const baris = tampil.slice(0, 60);
+        h += '<div class="ap-pita">' + [['semua', 'Semua'], ['koreksi', 'Hapus &amp; koreksi'], ['uang', 'Uang'], ['barang', 'Barang']]
+          .map(x => '<button type="button"' + (_apSaring === x[0] ? ' class="kg-terpilih"' : '')
+            + ' onclick="apPilihSaring(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
+        h += '<div class="kg-label" style="margin:0 2px 8px;">' + baris.length
+          + (tampil.length > baris.length ? ' dari ' + tampil.length : '') + ' kejadian</div>';
+        h += baris.length === 0
+          ? '<div class="kg-panel"><div class="ap-rinci" style="padding:11px 0 0;">Belum ada jejak'
+            + (semua.length ? ' di saringan ini' : ' — terisi begitu ada tulisan baru dari sistem lengkap') + '.</div></div>'
+          : '<div class="kg-panel" style="padding:4px 13px 11px;">' + baris.map(l =>
+              '<div class="ap-log"><b>' + escapeHtml(l.aksi || '') + ' &middot; ' + escapeHtml(l.koleksi || '') + '</b>'
+              + '<i>' + escapeHtml(waktuJejakLokal(l.pada)) + ' &middot; ' + escapeHtml(l.oleh || '')
+              + ' @ ' + escapeHtml(l.perangkat || '(tanpa nama)')
+              + (l.ringkas ? ' &middot; ' + escapeHtml(l.ringkas) : '') + '</i></div>').join('') + '</div>';
+        // Jendela penuh WAJIB dikatakan: kalau tidak, sunyi terbaca sebagai "tidak ada
+        // yang terjadi", padahal artinya "lebih tua dari ini tidak dimuat".
+        h += '<div class="ap-batas"><div class="kg-label">Sejauh apa jejak ini menjangkau</div>'
+          + '<p>Yang dimuat <b>500 kejadian terakhir</b>'
+          + (semua.length >= 500
+            ? ' &mdash; <b>dan jendelanya sedang penuh.</b> Yang lebih tua dari kejadian terbawah tidak dimuat; '
+              + 'sunyi di bawah sana bukan berarti tidak ada yang terjadi.'
+            : ' &mdash; jendelanya belum penuh, jadi ini seluruh riwayat yang ada.')
+          + '</p>'
+          + '<p>Jejak hanya mencatat tulisan dari <b>sistem lengkap ini</b>. Penjualan yang dicatat lewat '
+          + 'kasir kalkulator atau kasir darurat <b>tidak menghasilkan satu baris pun</b> di sini &mdash; '
+          + 'untuk itu bacalah Riwayat. Cap waktunya memakai jam HP yang menulis, bukan jam server.</p></div>';
+      }
+
+      w.innerHTML = h;
+    } catch (e) { console.error('tampilkanAkun:', e); }
+  }
+
+  async function apTerbitkanKatalog() {
+    try {
+      // Paksa terbit: penjaga isi-sama di terbitkanRingkasanKasir membandingkan dengan
+      // localStorage HP INI, jadi HP yang belum pernah menerbitkan akan tertahan justru
+      // saat katalognya tertinggal. Mengosongkan penanda lokal membuat perbandingannya
+      // jatuh ke server, tempat jawaban yang benar berada.
+      localStorage.removeItem('miqbal_ringkasan_terakhir');
+      await terbitkanRingkasanKasir();
+      alert('Katalog diterbitkan. Kasir menerimanya begitu HP-nya menyegarkan diri.');
+    } catch (e) {
+      console.error(e);
+      alert('Gagal menerbitkan katalog. Periksa sambungan lalu coba lagi.');
+    }
+    tampilkanAkun();
+  }
 
   // ============ LAYAR BELANJA (gelombang 4, 6 Sep 2026) ============
   // Empat sel, bukan dua kategori. Sumbunya: UNTUK SIAPA x DARI KANTONG MANA.
@@ -23948,6 +24356,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.ik8PagiBuka = ik8PagiBuka;
   window.ik8TanganiToggle = ik8TanganiToggle;
   window.ik8PeriksaLagi = ik8PeriksaLagi;
+  window.apPilihTab = apPilihTab;
+  window.apPilihBaris = apPilihBaris;
+  window.apPilihSaring = apPilihSaring;
+  window.apTerbitkanKatalog = apTerbitkanKatalog;
   window.bjUbah = bjUbah;
   window.bjPilih = bjPilih;
   window.bjIsiNominal = bjIsiNominal;
@@ -23970,7 +24382,6 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.p6KirimWa = p6KirimWa;
   window.gantiPembacaLaporan = gantiPembacaLaporan;
   window.setelanPilihZona = setelanPilihZona;
-  window.setelanPilihSaring = setelanPilihSaring;
   window.kirimAntreanTunda = kirimAntreanTunda;
   window.bukaRiwayatHariPlatina = bukaRiwayatHariPlatina;
   window.tampilkanRiwayat = tampilkanRiwayat;

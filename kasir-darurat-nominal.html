@@ -441,6 +441,47 @@ function dariFs(v) {
 }
 
 // ---------- antrean offline ----------
+// ============ DENYUT PERANGKAT (perangkatStatus) ============
+// BERKAS INILAH yang dipegang staf (Gono/Hasan) sejak keputusan 9 Agu 2026 — kasir.html
+// jadi alat owner. Tanpa denyut dari sini, layar Akun & Perangkat milik owner TIDAK
+// AKAN PERNAH memperlihatkan HP pegawai, dan cacah antrean tertahan di HP mereka —
+// satu-satunya cara owner tahu dari jauh bahwa penjualan berhenti diam-diam — mustahil
+// dibaca. Aturan Firestore v2 sudah menyediakan koleksinya sejak Fase 2 dengan
+// `allow write: if masuk()`, jadi akun kasir memang boleh menulisnya.
+//
+// SYARAT MATI — DENYUT TIDAK BOLEH LEWAT ANTREAN.
+// Ditulis LANGSUNG, tembak-lalu-lupa, gagal berarti diam. TIDAK mengulang, TIDAK masuk
+// darurat_antrean_v1, TIDAK pernah menunda satu detik pun penjualan.
+// Sebabnya: antreannya FIFO satu-per-satu dan MENAHAN kepalanya saat ditolak. Satu
+// denyut yang ditolak akan membekukan seluruh penjualan di belakangnya — dan layar yang
+// dibangun untuk MENGUNGKAP transaksi tersandera justru jadi penyebabnya. Kalau nanti
+// ada yang tergoda memindahkannya ke antrean supaya "tidak hilang saat offline":
+// jangan. Denyut yang hilang tidak berbahaya; penjualan yang beku berbahaya.
+var denyutTerakhirD = 0;
+function kirimDenyutD() {
+  if (!navigator.onLine || !sudahLogin()) return;
+  var sekarang = Date.now();
+  if (sekarang - denyutTerakhirD < 60000) return;   // paling cepat sekali per menit
+  denyutTerakhirD = sekarang;
+  var isi = {
+    id: idPerangkatD(),
+    nama: localStorage.getItem(K_OPERATOR) || '',
+    akun: EMAIL_TOKO,
+    aplikasi: 'darurat',
+    pada: new Date().toISOString(),
+    antrean: ambilAntrean().length,
+    gagal: ambilGagal().length,
+    versi: 'kasir-v24'
+  };
+  var f = {}; for (var k in isi) f[k] = keFs(isi[k]);
+  denganAuth({ method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: f }) })
+    .then(function (opsi) {
+      return fetch(DASAR + 'perangkatStatus/' + encodeURIComponent(isi.id) + '?key=' + KUNCI_API, opsi);
+    })
+    .catch(function () { /* gagal = diam. Denyut bukan data uang. */ });
+}
+
 function ambilAntrean() { try { return JSON.parse(localStorage.getItem(K_ANTREAN) || '[]'); } catch (e) { return []; } }
 function simpanAntrean(a) { localStorage.setItem(K_ANTREAN, JSON.stringify(a)); }
 function ambilGagal() { try { return JSON.parse(localStorage.getItem(K_GAGAL) || '[]'); } catch (e) { return []; } }
@@ -847,6 +888,13 @@ perbaruiBarAntrean();
 window.addEventListener('online', function () { kirimAntrean(false); setStatus(true); segarkanRingkasanD(); });
 window.addEventListener('offline', function () { setStatus(false); });
 setInterval(function () { kirimAntrean(false); }, 25000);
+// Denyut: saat dibuka, saat HP dibangunkan, saat sinyal balik, lalu tiap 5 menit selagi
+// layarnya benar-benar terlihat. HP yang tergeletak dengan layar mati berhenti berdenyut
+// — itu memang artinya "tidak sedang dipakai", bukan kekurangan.
+kirimDenyutD();
+document.addEventListener('visibilitychange', function () { if (!document.hidden) kirimDenyutD(); });
+window.addEventListener('online', kirimDenyutD);
+setInterval(function () { if (!document.hidden) kirimDenyutD(); }, 300000);
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw-kasir.js').catch(function () {}); }
 kirimAntrean(false);
 </script>
