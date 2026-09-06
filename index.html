@@ -3365,6 +3365,79 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 }
 @media (prefers-reduced-motion:reduce){ .k6a .ik8-refraksi{animation:none} }
 
+/* ── TANGANI (gelombang 2): layar "semua" untuk daftar di kaki Ringkasan ── */
+/* Tangani TIDAK punya versi desktop lama yang digantikan — kalau digerbangi
+   seperti renderer kaca lain, membukanya di layar lebar memberi halaman kosong.
+   Jadi dia tampil di semua lebar; isinya sama karena daftarnya juga sama. */
+.k6a .tg-grup{
+  margin-bottom:8px; border-radius:15px; overflow:hidden;
+  background:linear-gradient(158deg,rgba(255,255,255,.07),rgba(255,255,255,.028));
+  border:1px solid rgba(255,255,255,.08);
+}
+.k6a .tg-grup.buka{ border-color:rgba(226,205,166,.3); }
+.k6a .tg-grup-kepala{
+  width:100%; min-height:60px; display:flex; align-items:center; gap:11px; padding:10px 13px;
+  background:none; border:0; font-family:inherit; text-align:left; color:#e8e4dc; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.k6a .tg-titik{ flex:none; width:8px; height:8px; border-radius:50%; }
+.k6a .tg-grup-sisi{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.k6a .tg-grup-sisi b{
+  font:700 9.5px/1 -apple-system,system-ui; letter-spacing:.2em; text-transform:uppercase; color:#e2cda6;
+}
+.k6a .tg-grup-sisi i{ font-style:normal; font:400 11.5px/1.3 -apple-system,system-ui; color:#a7adb5; }
+.k6a .tg-grup-n{ flex:none; font:600 21px/1 var(--pf-serif); color:#cfd4da; }
+.k6a .tg-panah{ flex:none; width:14px; text-align:center; font-size:14px; color:#8f959d; }
+.k6a .tg-isi{ padding:0 13px 12px; }
+.k6a .tg-baris{
+  display:flex; align-items:flex-start; gap:9px; padding:9px 0;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.k6a .tg-btitik{ flex:none; width:6px; height:6px; border-radius:50%; margin-top:5px; background:#e2cda6; }
+.k6a .tg-btitik.merah{ background:#c9705e; }
+.k6a .tg-bteks{ flex:1; min-width:0; font:400 12.5px/1.45 -apple-system,system-ui; color:#e8e4dc; }
+.k6a .tg-mulai{
+  width:100%; min-height:48px; margin-top:11px; border:0; border-radius:14px;
+  background:linear-gradient(160deg,#fdf6e7,#e2cda6 62%,#bfa16a); color:#2a1f13;
+  font:700 12px/1 -apple-system,system-ui; cursor:pointer;
+}
+.k6a .tg-kaki{
+  font-family:var(--pf-serif); font-style:italic; font-size:11.5px; line-height:1.55;
+  color:#8f959d; padding:6px 2px 0;
+}
+.k6a .tg-ulang{
+  display:block; min-height:44px; margin-top:4px; padding:0; background:none; border:0;
+  font:700 10px/1 -apple-system,system-ui; letter-spacing:.08em; color:#a7adb5; cursor:pointer;
+}
+/* mode antrean */
+.k6a .tg-bilah{ height:3px; border-radius:2px; background:rgba(255,255,255,.08); overflow:hidden; }
+.k6a .tg-bilah i{ display:block; height:100%; background:linear-gradient(90deg,#c2a678,#fdf6e7); }
+.k6a .tg-antre-kepala{ display:flex; align-items:baseline; justify-content:space-between; gap:9px; margin:10px 2px 12px; }
+.k6a .tg-maju{ font-family:var(--pf-serif); font-style:italic; font-size:11px; color:#a7adb5; }
+.k6a .tg-kartu{ padding:16px 15px; border-color:rgba(201,112,94,.38); }
+.k6a .tg-kartu.tg-beres{ border-color:rgba(140,166,126,.3); }
+.k6a .tg-jenis{
+  display:flex; align-items:center; gap:7px;
+  font:700 9px/1 -apple-system,system-ui; letter-spacing:.2em; color:#8f959d;
+}
+.k6a .tg-jenis i{ width:7px; height:7px; border-radius:50%; }
+.k6a .tg-teks{ font:600 22px/1.3 var(--pf-serif); color:#f7ecd6; margin-top:11px; }
+.k6a .tg-rinci{ font:400 12.5px/1.6 -apple-system,system-ui; color:#a7adb5; margin-top:9px; }
+.k6a .tg-utama{
+  width:100%; min-height:52px; margin-top:12px; border:0; border-radius:14px;
+  background:linear-gradient(160deg,#fdf6e7,#e2cda6 62%,#bfa16a); color:#2a1f13;
+  font:700 12.5px/1 -apple-system,system-ui; cursor:pointer;
+}
+.k6a .tg-nanti{
+  width:100%; min-height:44px; margin-top:6px; border-radius:13px;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03);
+  font:600 11.5px/1 -apple-system,system-ui; color:#a7adb5; cursor:pointer;
+}
+.k6a .tg-nanti:disabled{ border-color:rgba(207,212,218,.12); background:rgba(207,212,218,.05); color:rgba(167,173,181,.6); cursor:default; }
+.k6a .tg-balik{
+  width:100%; min-height:44px; margin-top:14px; background:none; border:0;
+  font:700 11px/1 -apple-system,system-ui; letter-spacing:.06em; color:#8f959d; cursor:pointer;
+}
 /* ── ritual pagi: menggantikan lembar penuh #lembarBukaToko ──
    Kartu ini duduk di kepala Ringkasan supaya kerja tidak terhalang: boleh
    dilewati dengan menggulir, dan hilang sendiri sesudah ditekan sekali. */
@@ -6467,6 +6540,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     <div class="info-box" style="margin-top:12px;">Pesanan <b>bukan uang</b>: nilai di atas hanya perkiraan. Omzet, kas, dan stok baru bergerak saat pesanan <b>dicatat jualnya</b> lewat tombol di kartu — persis seperti penjualan biasa (stok terpotong, HPP dihitung, bisa nego/kredit).</div>
   </div>
 
+  <!-- TANGANI (Prototipe Lengkap, gelombang 2) — layar "semua" untuk daftar yang
+       kartunya duduk di kaki Ringkasan. Isinya daftar YANG SAMA (_ik6Perhatian);
+       yang beda cuma cara membacanya: dikelompokkan menurut jenis kekhawatiran,
+       lalu bisa diubah jadi antrean satu-per-satu yang punya ujung. -->
+  <div id="halamanTangani" class="halaman k6a">
+    <div class="judul-halaman"><h2>Tangani</h2><span class="jh-sub">menuntut tindakan</span></div>
+    <div id="tgKaca"></div>
+  </div>
+
   <div id="halamanPemasok" class="halaman k6a">
     <div class="judul-halaman">
       <h2>Pemasok</h2>
@@ -7324,7 +7406,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // Keduanya cuma punya pintu di lembar Menu, TANPA tombol tab — jadi penyetelan
     // 'aktif' wajib berpenjaga null, kalau tidak pindahHalaman melempar TypeError dan
     // seluruh navigasi mati.
-    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan','pemasok','setelan','pesanan'].forEach(n => {
+    ['ringkasan','jual','input','produksi','rekap','stok','laba','aruskas','tutup','harga','bulanan','harian','piutang','pelanggan','pemasok','setelan','pesanan','tangani'].forEach(n => {
       document.getElementById('halaman' + kapital(n)).classList.toggle('tampil', n === nama);
       const tombolTab = document.getElementById('tab' + kapital(n));
       if (tombolTab) tombolTab.classList.toggle('aktif', n === nama);
@@ -7335,7 +7417,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       b.classList.toggle('aktif', b.getAttribute('data-halaman') === nama);
     });
     const tbMenu = document.getElementById('tombolLembarMenu');
-    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan','pemasok'].indexOf(nama) >= 0);
+    if (tbMenu) tbMenu.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan','pemasok','tangani'].indexOf(nama) >= 0);
     if (document.body.classList.contains('lembar-menu-terbuka')) toggleLembarMenu(false);
     if (document.body.classList.contains('lembar-merk-terbuka')) tutupLembarMerk();
     document.body.classList.toggle('di-halaman-masuk', nama === 'input');
@@ -7347,6 +7429,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // Sisakan ruang di kaki <main> selama bilah Simpan melayang menutupi halaman
     document.body.classList.toggle('ada-bilah-simpan', ['jual', 'input', 'produksi', 'bulanan', 'harian'].indexOf(nama) >= 0);
     if (nama === 'ringkasan') tampilkanRingkasan();
+    if (nama === 'tangani') { tampilkanRingkasan(); tampilkanTangani(); }   // daftar dibangun tampilkanRingkasan
     if (nama === 'rekap') { tampilkanRekap(); tampilkanRiwayatJual(); tampilkanRiwayat(); }
     if (nama === 'bulanan') { tampilkanBulanan(); perbaruiKeadaanBulanan(); tampilkanSlipGaji(); }
     if (nama === 'jual') { isiDropdownJual(); perbaruiStokJual(); tampilkanJualHariIni(); isiSaranPelanggan(); }
@@ -19127,34 +19210,42 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const elPerhatianHp = document.getElementById('ringPerhatianHp');
     if (elPerhatianHp) {
       const daftarHp = [];
-      Object.keys(_cadanganTertahan).forEach(kol => daftarHp.push({ w: 'var(--merah)',
+      Object.keys(_cadanganTertahan).forEach(kol => daftarHp.push({ w: 'var(--merah)', j: 'mesin',
         t: `Cadangan ${escapeHtml(_cadanganTertahan[kol].label)} tidak diperbarui — server mengirim data kosong (${_cadanganTertahan[kol].n} dokumen tersimpan di HP ini)`,
+        r: 'Server mengirim koleksi kosong padahal HP ini masih memegang isinya. Cadangan sengaja DITAHAN supaya data lama tidak tertimpa kosong — sampai lu memutuskan mana yang benar.',
         k: `terimaKoleksiKosong('${escapeHtml(kol)}')`, a: 'Terima' }));
-      merkMenipis.forEach(m => daftarHp.push({ w: 'var(--merah)', t: `Stok ${escapeHtml(m)} tinggal ${stokKarung[m].sisaKg} kg`, h: 'stok', a: 'Stok' }));
-      kemasanMenipis.forEach(k => daftarHp.push({ w: 'var(--merah)', t: `${escapeHtml(stokKemasan[k].namaProduk)} ${stokKemasan[k].ukuranKemasan}kg tinggal ${stokKemasan[k].sisaUnit} unit`, h: 'stok', a: 'Stok' }));
+      merkMenipis.forEach(m => daftarHp.push({ w: 'var(--merah)', j: 'barang', t: `Stok ${escapeHtml(m)} tinggal ${stokKarung[m].sisaKg} kg`,
+        r: 'Di bawah 50 kg satu sack tidak lagi cukup untuk sehari ramai. Yang menipis diam-diam biasanya ketahuan waktu pembeli sudah di depan.', h: 'stok', a: 'Stok' }));
+      kemasanMenipis.forEach(k => daftarHp.push({ w: 'var(--merah)', j: 'barang', t: `${escapeHtml(stokKemasan[k].namaProduk)} ${stokKemasan[k].ukuranKemasan}kg tinggal ${stokKemasan[k].sisaUnit} unit`,
+        r: 'Kemasan jadi habis lebih cepat dari sacknya karena dia yang diambil pembeli buru-buru. Repack sebelum kosong, bukan sesudah.', h: 'stok', a: 'Stok' }));
       // Merah, dan ditaruh di atas peringatan harga/karantina: ini satu-satunya baris yang
       // artinya "angka uang Anda sedang salah", bukan sekadar "stok perlu diisi ulang".
-      if (hppNol.length > 0) daftarHp.push({ w: 'var(--merah)',
+      if (hppNol.length > 0) daftarHp.push({ w: 'var(--merah)', j: 'uang',
         t: `${hppNol.length} produk ber-HPP Rp0 — ${escapeHtml(hppNol.slice(0, 2).join(', '))}${hppNol.length > 2 ? ', dll' : ''}. Penjualannya tidak terhitung di margin`,
+        r: 'Ini satu-satunya baris yang artinya "angka uang lu sedang salah", bukan sekadar stok perlu diisi. Selama HPP Rp0, penjualannya keluar dari hitungan margin dan laba tampak lebih besar dari yang sebenarnya.',
         h: 'stok', a: 'Stok' });
       const katalogK = ambilHargaKemasan();
       const tanpaHarga = Object.keys(stokKemasan).filter(k => stokKemasan[k].sisaUnit > 0 &&
         !katalogK.some(x => x.merk === stokKemasan[k].namaProduk && x.ukuran === stokKemasan[k].ukuranKemasan && x.hargaPerUnit > 0));
-      if (tanpaHarga.length > 0) daftarHp.push({ w: 'var(--amber)', t: `${tanpaHarga.length} produk belum punya harga — belum bisa dijual`, h: 'harga', a: 'Harga' });
-      if (karantinaMenunggu.length > 0) daftarHp.push({ w: 'var(--amber)', t: `${karantinaMenunggu.length} barang di Karantina menunggu keputusan`, h: 'stok', a: 'Stok' });
+      if (tanpaHarga.length > 0) daftarHp.push({ w: 'var(--amber)', j: 'uang', t: `${tanpaHarga.length} produk belum punya harga — belum bisa dijual`,
+        r: 'Kasir menarik harga dari katalog. Produk tanpa harga tidak bisa dijual dari kasir sama sekali — barangnya ada di gudang tapi tidak ada di meja.', h: 'harga', a: 'Harga' });
+      if (karantinaMenunggu.length > 0) daftarHp.push({ w: 'var(--amber)', j: 'barang', t: `${karantinaMenunggu.length} barang di Karantina menunggu keputusan`,
+        r: 'Barang karantina tidak dihitung sebagai stok siap jual dan tidak juga dibuang dari buku. Selama menggantung, angka stok lu benar tapi tidak lengkap.', h: 'stok', a: 'Stok' });
       const lajuHp = hitungLajuPakai();
       const stokHp2 = hitungStokKarungPerMerk();
       Object.keys(stokHp2)
         .map(m => ({ merk: m, sisa: stokHp2[m].sisaKg, hari: hariHabis(stokHp2[m].sisaKg, lajuHp.kgMerk[m] || 0) }))
         .filter(x => x.hari !== null && x.hari <= 4)
         .sort((a, b) => a.hari - b.hari)
-        .forEach(x => daftarHp.push({ w: x.hari <= 2 ? 'var(--merah)' : 'var(--amber)',
+        .forEach(x => daftarHp.push({ w: x.hari <= 2 ? 'var(--merah)' : 'var(--amber)', j: 'barang',
           t: `${escapeHtml(x.merk)} diperkirakan ${kataHabis(x.hari)} — sisa ${Math.round(x.sisa)} kg, laju 14 hari`,
+          r: 'Habisnya dihitung dari laju jual 14 hari terakhir, bukan dari sisa kg. Yang laris lebih genting dari yang banyak.',
           h: 'input', a: 'Belanja' }));
       // G5: pesanan berjalan — pengingat lembut supaya tidak ada janji antar terlupa
       const psAktif = ambilPesanan().filter(x => x.status === 'dipesan' || x.status === 'diantar');
-      if (psAktif.length > 0) daftarHp.push({ w: 'var(--amber)',
+      if (psAktif.length > 0) daftarHp.push({ w: 'var(--amber)', j: 'barang',
         t: `${psAktif.length} pesanan berjalan — ${escapeHtml(psAktif.slice(0, 2).map(x => x.namaPelanggan).join(', '))}${psAktif.length > 2 ? ', dll' : ''}`,
+        r: 'Pesanan bukan uang. Sampai jualnya dicatat, dia tidak menaikkan omzet dan tidak mengurangi stok — barangnya sudah keluar tapi bukunya belum tahu.',
         h: 'pesanan', a: 'Pesanan' });
       // KR2: janji bayar jatuh tempo — pengingat muncul PADA tanggalnya (dan sesudahnya
       // selama piutangnya masih bersisa). Janji terbaru per pelanggan yang dipakai.
@@ -19169,38 +19260,45 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           const j = janjiPer[x.kunci];
           if (!j || x.sisa <= 0 || j > hariIniIso) return;
           const telat = Math.round((isoKeTanggal(hariIniIso) - isoKeTanggal(j)) / 86400000);
-          daftarHp.push({ w: telat > 0 ? 'var(--merah)' : 'var(--amber)',
+          daftarHp.push({ w: telat > 0 ? 'var(--merah)' : 'var(--amber)', j: 'orang',
             t: `Janji bayar ${escapeHtml(x.nama)} ${telat > 0 ? 'lewat ' + telat + ' hari' : 'HARI INI'} — sisa ${formatRupiah(x.sisa)}`,
+            r: 'Umur lebih menentukan daripada besarnya. Piutang yang lewat 90 hari jarang kembali utuh, dan menagihnya makin canggung tiap minggu ditunda.',
             h: 'piutang', a: 'Tagih' });
         });
       }
       const utangPmHp = totalUtangPemasokSemua();
-      if (utangPmHp.nominal > 0) daftarHp.push({ w: 'var(--amber)',
+      if (utangPmHp.nominal > 0) daftarHp.push({ w: 'var(--amber)', j: 'uang',
         t: `Utang pemasok berjalan ${formatRupiah(utangPmHp.nominal)} (${utangPmHp.nBon} bon) — kas di tangan bukan uang bebas`,
+        r: 'Bon pemasok sudah menaikkan stok tapi belum mengurangi kas. Uang di laci terlihat besar padahal sebagiannya sudah punya nama.',
         h: 'pemasok', a: 'Pemasok' });
       // Kemasan jadi bersisa MINUS = penjualan mendahului produksi. Biasanya cuma
       // catatan produksi yang telat, tapi harus KELIHATAN — bukan diam sampai ketahuan
       // waktu opname (kejadian BMW 20 kg, 25 Agu).
       const kemasanMinus = Object.values(hitungStokKemasan()).filter(x => x.sisaUnit < 0);
-      if (kemasanMinus.length > 0) daftarHp.push({ w: 'var(--merah)',
+      if (kemasanMinus.length > 0) daftarHp.push({ w: 'var(--merah)', j: 'barang',
+        r: 'Sisa minus berarti penjualan mendahului produksi — biasanya catatan repack yang telat, bukan barang hilang. Tapi selama minus, stok dan HPP-nya ikut salah.',
         t: kemasanMinus.length + ' kemasan jadi bersisa MINUS: '
           + kemasanMinus.slice(0, 3).map(x => escapeHtml(x.namaProduk) + ' ' + x.ukuranKemasan + ' kg (' + x.sisaUnit + ')').join(', ')
           + (kemasanMinus.length > 3 ? ', dll' : '') + ' — penjualan mendahului produksi',
         h: 'stok', a: 'Stok' });
-      if (!pinSudahDisetel()) daftarHp.push({ w: 'var(--merah)',
+      if (!pinSudahDisetel()) daftarHp.push({ w: 'var(--merah)', j: 'mesin',
         t: 'PIN owner belum disetel — tab uang terbuka di HP yang sudah masuk',
+        r: 'Tanpa PIN, siapa pun yang memegang HP ini sesudah lu masuk bisa membuka Laba, Arus Kas, dan Piutang. Menyetelnya makan sepuluh detik.',
         k: 'bukaSetelPin()', a: 'Setel' });
       const belumTutupHp = hariBelumDitutup();
-      if (belumTutupHp.length > 0) daftarHp.push({ w: 'var(--amber)',
+      if (belumTutupHp.length > 0) daftarHp.push({ w: 'var(--amber)', j: 'ritual',
         t: `${belumTutupHp.length} hari berjualan belum ditutup — kas & stoknya belum dicocokkan`,
+        r: 'Selama hari itu belum dikunci, selisih kasnya tidak punya tempat berpijak dan besok alasannya sudah tidak diingat.',
         h: 'tutup', a: 'Tutup' });
       const rapikanHp = daftarPerluRapikan();
-      if (rapikanHp.length > 0) daftarHp.push({ w: 'var(--merah)',
+      if (rapikanHp.length > 0) daftarHp.push({ w: 'var(--merah)', j: 'uang',
         t: `${rapikanHp.length} penjualan kasir perlu dirapikan — jumlah belum pasti, sebagian stok belum terpotong`,
+        r: 'Kasir menerima harga di luar katalog supaya pembeli tidak menunggu. Barangnya ditanya belakangan — dan selama belum dirapikan, stok yang terpotong belum tentu benar.',
         h: 'rekap', a: 'Riwayat' });
       const daruratBelum = daftarDaruratBelumRinci();
-      if (daruratBelum.length > 0) daftarHp.push({ w: 'var(--amber)',
+      if (daruratBelum.length > 0) daftarHp.push({ w: 'var(--amber)', j: 'uang',
         t: `${daruratBelum.length} penjualan kasir darurat belum dirinci — ${formatRupiah(daruratBelum.reduce((a, p) => a + (p.hargaTotal || 0), 0))} tanpa produk & HPP`,
+        r: 'Uangnya sudah masuk dan sudah benar. Yang belum ada cuma barangnya — jadi omzet betul, tapi margin dan stok belum ikut bergerak sampai dirinci.',
         k: 'mulaiAntreanRinci()', a: 'Rinci' });
       elPerhatianHp.innerHTML = daftarHp.length === 0
         ? '<div class="kosong-info"><b>Semua aman</b><span>Tidak ada stok menipis, harga kosong, atau retur menggantung.</span></div>'
@@ -23081,6 +23179,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.ik8PagiBuka = ik8PagiBuka;
   window.ik8TanganiToggle = ik8TanganiToggle;
   window.ik8PeriksaLagi = ik8PeriksaLagi;
+  window.tgPilihGrup = tgPilihGrup;
+  window.tgMulaiAntre = tgMulaiAntre;
+  window.tgKeGrup = tgKeGrup;
+  window.tgNanti = tgNanti;
+  window.tgBuka = tgBuka;
+  window.tgUlangSemua = tgUlangSemua;
   window.labaPilihKeping = labaPilihKeping;
   window.labaPilihZona = labaPilihZona;
   window.pilihZonaArusKas = pilihZonaArusKas;
@@ -23248,7 +23352,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // Ritual pagi (Prototipe Lengkap 6 Sep 2026) — menggantikan lembar #lembarBukaToko.
   // Keadaan disimpan di MODUL, bukan di kelas CSS: tampilkanIkhtisar6a dipanggil ulang
   // dari luar interaksi (segel laba menutup sendiri 45 dtk) dan akan meruntuhkan akordeon.
-  let _ik8PagiFakta = null, _ik8PagiKantong = false, _ik8TanganiSemua = false;
+  let _ik8PagiFakta = null, _ik8PagiKantong = false;
   const KUNCI_BUKA_TOKO = 'miqbal_buka_toko_v2';   // v1 (string tanggal polos) jadi kunci mati
   const KUNCI_TERBIT_KASIR = 'miqbal_ringkasan_terbit_v1';
   let _ik6LabaSampai = 0, _ik6TahanTimer = null, _ik6TahanMulai = 0, _ik6MaskTimer = null;
@@ -23392,7 +23496,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   }
   function ik8PagiPilih(id) { _ik8PagiFakta = (_ik8PagiFakta === id) ? null : id; tampilkanIkhtisar6a(); }
   function ik8PagiKantongToggle() { _ik8PagiKantong = !_ik8PagiKantong; tampilkanIkhtisar6a(); }
-  function ik8TanganiToggle() { _ik8TanganiSemua = !_ik8TanganiSemua; tampilkanIkhtisar6a(); }
+  function ik8TanganiToggle() { pindahHalaman('tangani'); }   // layar Tangani lahir di gelombang 2
   function ik8PeriksaLagi() { tampilkanRingkasan(); }
 
   // Tiga fakta pagi — semuanya pembacaan mesin lama, nol rumus baru.
@@ -23678,7 +23782,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
          sort, supaya urutan penulis di dalam tiap warna terjaga persis. ── */
       const tg = D.tangani || [];
       const tgUrut = tg.filter(x => x.w === 'var(--merah)').concat(tg.filter(x => x.w !== 'var(--merah)'));
-      const tgTampil = _ik8TanganiSemua ? tgUrut : tgUrut.slice(0, 3);
+      const tgTampil = tgUrut.slice(0, 3);   // kartu Ringkasan tidak pernah tumbuh; sisanya punya layar sendiri
       document.getElementById('ik8TanganiBlok').style.display = tg.length ? 'block' : 'none';
       document.getElementById('ik8TanganiKosong').style.display = tg.length ? 'none' : 'flex';
       if (tg.length) {
@@ -23692,7 +23796,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         // Layar Tangani sendiri lahir di gelombang berikutnya; sampai itu kakinya
         // membentangkan daftarnya di tempat — jujur, bukan tombol mati.
         kaki.style.display = tg.length > 3 ? 'block' : 'none';
-        kaki.textContent = _ik8TanganiSemua ? 'Tampilkan 3 teratas ‹' : (tg.length - 3) + ' lagi ›';
+        kaki.textContent = (tg.length - 3) + ' lagi ›';
       }
       pfHitungNaik(['ik8Kas', 'ik8Omzet', 'ik8Margin'].concat(terbuka ? ['ik8Laba'] : []));
     } catch (e) { console.warn('[ik8]', e); }
@@ -23720,6 +23824,123 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     clearInterval(_ik6TahanTimer);
     const bar = document.getElementById('ik8Progres');
     if (bar) bar.style.width = '0';
+  }
+
+
+  // ============ TANGANI (gelombang 2) — layar "semua" ============
+  // Daftar yang SAMA dengan kartu di kaki Ringkasan: _ik6Perhatian, dibangun
+  // tampilkanRingkasan (15 sumber). Layar ini tidak menghitung apa pun sendiri —
+  // dia cuma menyusun ulang bacaannya: kelompok kekhawatiran, lalu antrean.
+  // Antrean punya UJUNG; daftar tidak. Itu sebabnya dia ada.
+  let _tgMode = 'grup', _tgGrup = null, _tgAntre = null, _tgUrut = null, _tgSelesai = [];
+  const TG_GRUP = [
+    { id: 'uang',   nama: 'Uang',   ket: 'harga, margin, dan yang belum pasti', warna: '#e8c3b2' },
+    { id: 'barang', nama: 'Barang', ket: 'stok, minus, pesanan',                warna: '#e2cda6' },
+    { id: 'orang',  nama: 'Orang',  ket: 'piutang & janji bayar',               warna: '#cfd4da' },
+    { id: 'ritual', nama: 'Ritual', ket: 'tutup hari & pencocokan',             warna: '#8ca67e' },
+    { id: 'mesin',  nama: 'Mesin',  ket: 'kunci & sinkron data',                warna: '#b7bcc3' }
+  ];
+  function tgSisa() {
+    return (_ik6Perhatian || []).filter(x => _tgSelesai.indexOf(tgKunci(x)) < 0);
+  }
+  // Kunci identitas item: daftarnya dibangun ulang tiap render dan tidak punya id,
+  // jadi teksnya yang jadi kunci. Begitu keadaannya berubah, baris lama hilang sendiri
+  // dari daftar — dan penandaan "sudah dibuka" ikut gugur, memang begitu maunya.
+  function tgKunci(x) { return (x.h || x.k || '') + '|' + (x.t || '').slice(0, 60); }
+  function tgPilihGrup(id) { _tgGrup = (_tgGrup === id) ? null : id; tampilkanTangani(); }
+  function tgMulaiAntre(id) { _tgMode = 'antre'; _tgAntre = id; _tgUrut = null; tampilkanTangani(); }
+  function tgKeGrup() { _tgMode = 'grup'; _tgAntre = null; _tgUrut = null; tampilkanTangani(); }
+  function tgAntreIsi() {
+    const isi = tgSisa().filter(x => (x.j || 'mesin') === _tgAntre);
+    if (_tgUrut === null) return isi;
+    const peta = {}; isi.forEach(x => { peta[tgKunci(x)] = x; });
+    const urut = _tgUrut.map(k => peta[k]).filter(Boolean);          // yang sudah gugur rontok sendiri
+    isi.forEach(x => { if (urut.indexOf(x) < 0) urut.push(x); });    // yang baru muncul ikut di belakang
+    return urut;
+  }
+  function tgNanti() {
+    const isi = tgAntreIsi();
+    if (isi.length < 2) return;                                       // pagar: tidak ada di belakangnya
+    _tgUrut = isi.slice(1).map(tgKunci).concat([tgKunci(isi[0])]);
+    tampilkanTangani();
+  }
+  // "Buka" = benar-benar pindah ke layar yang mengurusnya, dan menandai barisnya sudah
+  // dibuka supaya antreannya maju. Bukan menandai "beres" — yang menentukan beres tetap
+  // datanya sendiri; begitu keadaannya benar, barisnya hilang dari 15 sumber.
+  function tgBuka() {
+    const isi = tgAntreIsi();
+    if (!isi.length) return;
+    const x = isi[0];
+    _tgSelesai = _tgSelesai.concat([tgKunci(x)]);
+    _tgUrut = null;
+    if (x.k) { try { eval(x.k); } catch (e) { console.warn('[tg]', e); } return; }
+    pindahHalaman(x.h || 'ringkasan');
+  }
+  function tgUlangSemua() { _tgSelesai = []; _tgUrut = null; _tgMode = 'grup'; _tgAntre = null; tampilkanTangani(); }
+
+  function tampilkanTangani() {
+    const w = document.getElementById('tgKaca');
+    if (!w) return;
+    try {
+      const sisa = tgSisa();
+      const hitung = id => sisa.filter(x => (x.j || 'mesin') === id).length;
+      let h = '';
+      if (_tgMode === 'antre') {
+        const isi = tgAntreIsi();
+        const grup = TG_GRUP.filter(g2 => g2.id === _tgAntre)[0] || TG_GRUP[0];
+        const awal = (_ik6Perhatian || []).filter(x => (x.j || 'mesin') === _tgAntre).length;
+        const maju = awal ? Math.round((awal - isi.length) / awal * 100) : 100;
+        h += '<div class="tg-bilah"><i style="width:' + maju + '%"></i></div>'
+          + '<div class="tg-antre-kepala"><span class="kg-label">' + grup.nama + '</span>'
+          + '<span class="tg-maju">' + (awal - isi.length) + ' dari ' + awal + ' dibuka</span></div>';
+        if (isi.length) {
+          const x = isi[0];
+          h += '<div class="kg-panel tg-kartu">'
+            + '<div class="tg-jenis"><i style="background:' + grup.warna + '"></i>' + grup.nama.toUpperCase() + '</div>'
+            + '<div class="tg-teks">' + x.t + '</div>'
+            + (x.r ? '<div class="tg-rinci">' + escapeHtml(x.r) + '</div>' : '')
+            + '</div>'
+            + '<button type="button" class="tg-utama" onclick="tgBuka()">Buka ' + escapeHtml(x.a || 'layarnya') + ' &mdash; tangani sekarang</button>'
+            + '<button type="button" class="tg-nanti"' + (isi.length < 2 ? ' disabled' : '') + ' onclick="tgNanti()">'
+            + (isi.length < 2 ? 'Tidak ada lagi di belakangnya' : 'Nanti &mdash; taruh di belakang antrean') + '</button>';
+        } else {
+          h += '<div class="kg-panel tg-kartu tg-beres"><div class="tg-teks">Kelompok ini beres</div>'
+            + '<div class="tg-rinci">Itu gunanya antrean: dia punya ujung — daftar tidak.</div></div>';
+        }
+        h += '<button type="button" class="tg-balik" onclick="tgKeGrup()">&lsaquo; Kembali ke kelompok</button>';
+      } else {
+        if (!sisa.length) {
+          h += '<div class="ik8-pita"><i class="ik8-pita-titik"></i>'
+            + '<span>Tidak ada yang menuntut tindakan.</span></div>'
+            + '<div class="tg-kaki">Daftar ini dibangun ulang tiap Ringkasan dibuka — kalau ada yang muncul lagi, '
+            + 'itu karena datanya berubah, bukan karena ditandai.</div>';
+        } else {
+          h += TG_GRUP.map(g2 => {
+            const n = hitung(g2.id);
+            if (!n) return '';
+            const buka = _tgGrup === g2.id;
+            const isi = sisa.filter(x => (x.j || 'mesin') === g2.id);
+            return '<div class="tg-grup' + (buka ? ' buka' : '') + '">'
+              + '<button type="button" class="tg-grup-kepala" onclick="tgPilihGrup(\'' + g2.id + '\')">'
+              +   '<i class="tg-titik" style="background:' + g2.warna + '"></i>'
+              +   '<span class="tg-grup-sisi"><b>' + g2.nama + '</b><i>' + g2.ket + '</i></span>'
+              +   '<span class="tg-grup-n">' + n + '</span>'
+              +   '<span class="tg-panah">' + (buka ? '‹' : '›') + '</span>'
+              + '</button>'
+              + (buka ? '<div class="tg-isi">'
+                  + isi.map(x => '<div class="tg-baris"><span class="tg-btitik' + (x.w === 'var(--merah)' ? ' merah' : '') + '"></span>'
+                    + '<span class="tg-bteks">' + x.t + '</span></div>').join('')
+                  + '<button type="button" class="tg-mulai" onclick="tgMulaiAntre(\'' + g2.id + '\')">Tangani ' + n + ' hal ini berurutan</button>'
+                  + '</div>' : '')
+              + '</div>';
+          }).join('')
+          + '<div class="tg-kaki">Kelompoknya menurut jenis kekhawatiran, bukan abjad — jadi tempat menanganinya tidak dicari dua kali.'
+          + (_tgSelesai.length ? ' <button type="button" class="tg-ulang" onclick="tgUlangSemua()">Tampilkan lagi ' + _tgSelesai.length + ' yang sudah dibuka</button>' : '')
+          + '</div>';
+        }
+      }
+      w.innerHTML = h;
+    } catch (e) { console.warn('[tg]', e); }
   }
 
   function segarkanVisualRingkasan() {
