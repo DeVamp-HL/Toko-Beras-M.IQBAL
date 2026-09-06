@@ -11327,7 +11327,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     }, 0);
   }
   function mutasiAmplopRentang(dariIso, sampaiIso) {
-    const isi = ambilAmplopLaba().filter(x => x.tanggal >= dariIso && x.tanggal <= sampaiIso);
+    const isi = ambilAmplopLaba().filter(x => x.tanggal >= dariIso && x.tanggal <= sampaiIso && !x.tutupBuku);
     const setor = isi.filter(x => x.tipe !== 'ambil').reduce((a, x) => a + (x.nominal || 0), 0);
     const ambil = isi.filter(x => x.tipe === 'ambil').reduce((a, x) => a + (x.nominal || 0), 0);
     return { isi, setor, ambil, bersih: setor - ambil };
@@ -18624,7 +18624,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         const saldo = hitungSaldoTutup(tahun);
         const nBonPembuka = saldo.utangPemasok.reduce((a, px) => a + px.bon.length, 0);
         const rpPemasok = saldo.utangPemasok.reduce((a, px) => a + px.bon.reduce((x, b) => x + b.sisa, 0), 0);
-        const dokPembuka = (saldo.karung.length ? 1 : 0) + saldo.kemasan.length + saldo.bahanK.length + saldo.bahanL.length + saldo.piutang.length + saldo.kasbon.length + nBonPembuka + (saldo.utangOwner > 0 ? 1 : 0) + 1;
+        const dokPembuka = (saldo.karung.length ? 1 : 0) + saldo.kemasan.length + saldo.bahanK.length + saldo.bahanL.length + saldo.piutang.length + saldo.kasbon.length + nBonPembuka + (saldo.utangOwner > 0 ? 1 : 0) + (saldo.amplop > 0 ? 1 : 0) + 1;
         const dokSemua = tbDaftarKoleksi(new Date().getFullYear()).reduce((a, d) => a + d.dok.length, 0);
         const kg = saldo.karung.reduce((a, x) => a + x.sisaKg, 0), bags = saldo.kemasan.reduce((a, x) => a + x.sisaUnit, 0);
         const pcs = saldo.bahanK.reduce((a, x) => a + x.sisaPcs, 0) + saldo.bahanL.reduce((a, x) => a + x.sisaPcs, 0);
@@ -18637,6 +18637,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
             <div><div class="label">Bahan</div><div class="nilai">${pcs.toLocaleString('id-ID')} pcs<i>${saldo.bahanK.length + saldo.bahanL.length} jenis</i></div></div>
             <div><div class="label">Piutang</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(piu)}<i>${saldo.piutang.length} pelanggan · umur terbawa</i></div></div>
             <div><div class="label">Kasbon</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(kas)}<i>${saldo.kasbon.length} pegawai</i></div></div>
+            <div><div class="label">Amplop laba</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(saldo.amplop)}<i>${saldo.amplop > 0 ? 'isi amplop menyeberang' : 'amplop kosong'}</i></div></div>
             <div><div class="label">Utang pemasok</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(rpPemasok)}<i>${nBonPembuka} bon · umur terbawa</i></div></div>
             <div><div class="label">Utang ke owner</div><div class="nilai kg-uang-piutang" style="font-size:13px;">${rp(saldo.utangOwner)}<i>${saldo.utangOwner > 0 ? 'belum dilunasi' : 'tidak ada'}</i></div></div>
             <div><div class="label">Tidak menyeberang</div><div class="nilai">${K.totalDok.toLocaleString('id-ID')}<i>catatan ${tahun}</i></div></div>
@@ -18789,12 +18790,21 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     // menampilkannya, hilangnya jadi lompatan kekayaan yang tidak bisa dijelaskan.
     // Utang pemasok dibawa PER BON supaya umur dan nama pemasoknya tetap jujur —
     // pola yang sama dengan piutang di atas.
+    // AMPLOP LABA ikut menyeberang. amplopLaba ADA di tbDaftarKoleksi — dokumennya
+    // diarsipkan lalu DIHAPUS langkah 3 — tapi sampai 6 Sep 2026 tidak ada saldo pembuka
+    // yang menggantikannya. Kelas cacat yang sama dengan kewajiban di 78053f8; bedanya
+    // di sini yang lenyap bukan utang, melainkan TEMPAT UANG. Akibatnya dua: laporan
+    // bulanan memajang "Saldo amplop sekarang Rp0" padahal amplop fisiknya berisi, dan
+    // penjaga kejujuran amplop tiap malam berteriak "LEBIH" sebesar isi amplop —
+    // selamanya. Alarm yang selalu bohong akhirnya diabaikan, lalu alarm yang benar
+    // ikut diabaikan.
+    const amplop = saldoAmplop(cutoff);
     const utangOwner = hitungUtangOwner(cutoff).sisa;
     const utangPemasok = hitungUtangPemasok(cutoff).map(px => ({
       pemasok: px.pemasok,
       bon: px.bon.map(b => ({ sisa: b.sisa, bonTanggal: b.tanggal || '', catatan: b.catatan || '' }))
     }));
-    return { tahun, cutoff, karung, kemasan, bahanK, bahanL, piutang, kasbon, utangOwner, utangPemasok };
+    return { tahun, cutoff, karung, kemasan, bahanK, bahanL, piutang, kasbon, amplop, utangOwner, utangPemasok };
   }
 
   // Dokumen milik tahun <= cutoff per koleksi — daftar id untuk arsip & penghapusan.
@@ -18943,7 +18953,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     const punya = arr => arr.some(x => x.tutupBuku && x.tahunDari === tahun);
     return punya(ambilSemuaBatch()) || punya(ambilPiutangMutasi()) || punya(ambilKasbonMutasi())
       || punya(ambilProduksi()) || punya(ambilBahanKemasan()) || punya(ambilBahanLiteran())
-      || punya(ambilUtangPemasokMutasi()) || punya(ambilUtangOwnerMutasi());
+      || punya(ambilUtangPemasokMutasi()) || punya(ambilUtangOwnerMutasi()) || punya(ambilAmplopLaba());
   }
 
   async function tulisSaldoPembuka(tahun) {
@@ -19015,6 +19025,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           nominal: b.sisa, bonTanggal: b.bonTanggal, tanggal: tglBuka, tutupBuku: true, tahunDari: tahun,
           catatan: 'Saldo pembuka tutup buku ' + tahun + (b.catatan ? ' — ' + b.catatan : '') });
       }
+    }
+    if (saldo.amplop > 0) {
+      await tulis(KOLEKSI_AMPLOP, { id: idUnik(), tipe: 'setor', nominal: saldo.amplop,
+        tanggal: tglBuka, jam: '00:00', tutupBuku: true, tahunDari: tahun,
+        catatan: 'Saldo pembuka tutup buku ' + tahun + ' — isi amplop laba yang menyeberang tahun' });
     }
     if (saldo.utangOwner > 0) {
       await tulis(KOLEKSI_UTANG_OWNER, { id: idUnik(), tipe: 'saldoAwal', nominal: saldo.utangOwner,
@@ -19356,7 +19371,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       ${barisLap('Laba bersih bulan ini', 'margin kotor − biaya toko' + (totalHapus > 0 ? ' − hapus buku' : '') + (bersih.susutStok !== 0 ? ' ± susut stok' : ''), labaBersih)}
       ${barisLap('Disisihkan ke amplop bulan ini', amp.ambil > 0 ? 'setor ' + formatRupiah(amp.setor) + ' − diambil ' + formatRupiah(amp.ambil) : amp.isi.length + ' kali setor', amp.bersih)}
       ${barisLap('Selisih', 'laba bersih dikurangi yang disisihkan', selisihAmplop, 'lb-jumlah')}
-      ${barisLap('Saldo amplop sekarang', 'seluruh riwayat sampai hari ini', saldoAmp)}
+      ${barisLap('Saldo amplop sekarang', ambilAmplopLaba().some(x => x.tutupBuku)
+        ? 'saldo pembuka tutup buku + mutasi sesudahnya'
+        : 'seluruh riwayat sampai hari ini', saldoAmp)}
       <div class="lap-catatan${selisihAmplop === 0 ? '' : ' lap-peringatan'}">${
         selisihAmplop > 0
           ? `<b>Pindahkan ${formatRupiah(selisihAmplop)} dari laci ke amplop</b> supaya isi amplop sama dengan laba bulan ini.`
