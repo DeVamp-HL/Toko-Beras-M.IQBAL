@@ -1428,6 +1428,10 @@
     #lembarMenu h3 { margin: 0; font-family: 'Prata', Georgia, 'Times New Roman', serif; font-size: 17px; font-weight: 700; letter-spacing: .5px; color: var(--teks); }
     #lembarMenu .lm-kepala span { font-size: 10.5px; color: var(--redup); flex: 0 0 auto; }
     #lembarMenu .lm-grup { font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--redup); font-weight: 800; padding: 10px 2px 4px; opacity: .85; }
+    /* Keterangan kelompok (prototipe): kenapa petak-petak ini duduk bersama —
+       "menambah data" vs "membaca saja" vs "siapa boleh apa". */
+    #lembarMenu .lm-grup span { text-transform: none; letter-spacing: normal; font-weight: 400;
+      font-size: 10.5px; color: #7c848a; margin-left: 7px; }
     /* Baris menu: satu kolom penuh, 48 px, nama kiri — anak panah kanan (mockup).
        Bekas kisi 2 kolom dibuang: dua nama pendek berdampingan lebih sulit dipindai
        daripada satu kolom, dan keterangannya tidak muat. */
@@ -4825,33 +4829,41 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     <span id="lmKetGembok">Halaman bertitik emas perlu PIN owner</span>
     <button type="button" class="lm-tombol-kunci" id="lmTombolKunci" onclick="ketukKunciMenu()">BUKA</button>
   </div>
-  <div class="lm-grup">Catat</div>
+  <div class="lm-grup">Catat <span>menambah data</span></div>
   <div class="lm-kisi">
+  <button type="button" class="lm-petak kg-petak" data-halaman="jual" onclick="pindahDariMenu('jual')"><b>Jual</b><i>lima jalur penjualan</i></button>
   <button type="button" class="lm-petak kg-petak" data-halaman="input" onclick="pindahDariMenu('input')"><b>Masuk</b><i>batch beli karung</i></button>
   <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="pemasok" onclick="pindahDariMenu('pemasok')" disabled><b>Pemasok</b><i>riwayat harga beli</i><span class="kg-titik-emas"></span></button>
   <button type="button" class="lm-petak kg-petak" data-halaman="produksi" onclick="pindahDariMenu('produksi')"><b>Produksi</b><i>repack ke kemasan</i></button>
   <button type="button" class="lm-petak kg-petak" data-halaman="pesanan" onclick="pindahDariMenu('pesanan')"><b>Pesanan</b><i>dipesan &#183; diantar</i></button>
   </div>
-  <div class="lm-grup">Data</div>
+  <div class="lm-grup">Data <span>daftar acuan</span></div>
   <div class="lm-kisi">
   <button type="button" class="lm-petak kg-petak" data-halaman="stok" onclick="pindahDariMenu('stok')"><b>Stok</b><i>sack, kemasan, bahan</i></button>
   <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="harga" onclick="pindahDariMenu('harga')" disabled><b>Harga</b><i>katalog &amp; jenis beras</i><span class="kg-titik-emas"></span></button>
   <button type="button" class="lm-petak kg-petak" data-halaman="setelan" onclick="pindahDariMenu('setelan')"><b>Setelan</b><i>PIN, cadangan, login</i></button>
   </div>
-  <div class="lm-grup">Laporan</div>
+  <div class="lm-grup">Laporan <span>membaca saja</span></div>
   <div class="lm-kisi">
   <button type="button" class="lm-petak kg-petak" data-halaman="rekap" onclick="pindahDariMenu('rekap')"><b>Riwayat</b><i>semua catatan</i></button>
+  <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="pelanggan" onclick="pindahDariMenu('pelanggan')" disabled><b>Pelanggan</b><i>buku &amp; ciri pengenal</i><span class="kg-titik-emas"></span></button>
+  <button type="button" class="lm-petak kg-petak" data-halaman="tangani" onclick="pindahDariMenu('tangani')"><b>Tangani</b><i>yang menuntut tindakan</i></button>
   <button type="button" class="lm-petak kg-petak" data-halaman="harian" onclick="pindahDariMenu('harian')"><b>Harian</b><i>pengeluaran harian</i></button>
   <button type="button" class="lm-petak kg-petak" data-halaman="bulanan" onclick="pindahDariMenu('bulanan')"><b>Bulanan</b><i>gaji &amp; biaya tetap</i></button>
   <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="laba" onclick="pindahDariMenu('laba')" disabled><b>Laba</b><i>margin per transaksi</i><span class="kg-titik-emas"></span></button>
   <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="tutup" onclick="pindahDariMenu('tutup')" disabled><b>Tutup Hari</b><i>ritual malam</i><span class="kg-titik-emas"></span></button>
   <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="aruskas" onclick="pindahDariMenu('aruskas')" disabled><b>Arus Kas</b><i>uang masuk &amp; keluar</i><span class="kg-titik-emas"></span></button>
-  <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="pelanggan" onclick="pindahDariMenu('pelanggan')" disabled><b>Pelanggan</b><i>buku &amp; ciri pengenal</i><span class="kg-titik-emas"></span></button>
   <button type="button" class="lm-petak kg-petak tab-owner" data-halaman="piutang" onclick="pindahDariMenu('piutang')" disabled><b>Piutang</b><i>yang berutang</i><span class="kg-titik-emas"></span></button>
   <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaLaporan()" disabled><b>Laporan</b><i>cetak / PDF</i><span class="kg-titik-emas"></span></button>
   <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaTutupBuku()" disabled><b>Tutup Buku</b><i>arsip tahunan</i><span class="kg-titik-emas"></span></button>
+  </div>
+  <!-- Kelompok keempat (prototipe): wewenang dipisah dari laporan. Petak "Akun &
+       Perangkat" menyusul bersama layarnya; petak yang menunjuk halaman belum ada
+       cuma akan memberi layar kosong, jadi dia dipasang saat layarnya lahir. -->
+  <div class="lm-grup">Orang &amp; kunci <span>siapa boleh apa</span></div>
+  <div class="lm-kisi">
+  <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()" disabled><b>Jaga Toko</b><i>siapa bertugas</i><span class="kg-titik-emas"></span></button>
   <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaSetelPin()" disabled><b>PIN Owner</b><i>setel / ganti</i><span class="kg-titik-emas"></span></button>
-  <button type="button" class="lm-petak kg-petak tab-owner" onclick="toggleLembarMenu(false); bukaModalJaga()" disabled><b>Jaga Toko</b><i>siapa bertugas</i></button>
   </div>
   <div class="lm-kaki">
     <div class="lm-avatar">MD</div>
