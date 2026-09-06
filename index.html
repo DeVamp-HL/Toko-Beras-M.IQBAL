@@ -3318,7 +3318,7 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   font-weight:700; letter-spacing:.05em; color:var(--pf-abu);
   background:linear-gradient(168deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
   border:1px solid var(--pf-tepi); }
-#halamanStok .st-kisi{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-bottom:12px; }
+#halamanStok .st-kisi{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-bottom:8px; }
 /* Tabung: karungnya SAMA BESAR (biar bisa ditekan), yang beda TINGGI ISINYA —
    benda yang bisa ditekan tidak dipakai sebagai tanda data. Tinggi diisi --isi
    dari variabel yang sama dengan label sisa di bawahnya. */
@@ -3335,6 +3335,12 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 #halamanStok .st-tabung .tb-sisa{ position:relative; font-family:var(--pf-serif); font-weight:600; font-size:12.5px; color:var(--pf-platina); }
 #halamanStok .st-tabung i{ position:relative; font-style:italic; font-family:var(--pf-serif); font-size:9px; color:var(--pf-abu); }
 #halamanStok .st-tabung.genting i{ color:var(--pf-amber); }
+/* Tanpa laju, WAKTU tidak berlaku — tabungnya penuh tapi pudar, supaya tidak terbaca
+   "hampir habis" (yang salah) maupun "aman" (yang belum tentu). Merk begini justru
+   pekerjaan kartu Yang Mandek di bawahnya. */
+#halamanStok .st-tabung.tanpa-laju .tb-isi{ background:linear-gradient(180deg,rgba(207,212,218,.13),rgba(207,212,218,.05)); }
+#halamanStok .st-kisi-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  color:var(--pf-abu); line-height:1.5; margin:0 2px 12px; }
 /* Papan kapur: angka lama dicoret, tidak dihapus. */
 #halamanStok #daftarPapanKapur s{ opacity:.55; }
 #halamanStok #daftarPapanKapur .angka.redup{ color:var(--pf-abu); }
@@ -6040,6 +6046,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       <button type="button" data-mode="bahan" onclick="stokPilihMode('bahan')">Bahan pakai</button>
     </div>
     <div class="st-kisi" id="stokKisiTabung"></div>
+    <div class="st-kisi-ket" id="stokKisiKet"></div>
     <div class="kartu" id="stokMandek" style="display:none;">
       <div class="panel-kepala"><h2>Yang Mandek <span class="keterangan">tak bergerak 14 hari</span></h2></div>
       <div id="daftarStokMandek" class="daftar-batch"></div>
@@ -15883,15 +15890,32 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
           satuan: 'pcs', hari: hariHabis(st.sisaPcs, d.laju.pcsBahan[j] || 0) });
       });
     }
-    const maks = Math.max(1, ...item.map(x => x.sisa));
+    // TINGGI TABUNG = BERAPA HARI LAGI HABIS, bukan pecahan kg (keputusan pemilik 6 Sep).
+    // Yang lama membandingkan sisa terhadap sisa TERBESAR di set, jadi merk terbesar
+    // selalu penuh dan tabung lain jadi bayangannya — dan gambarnya berubah sendiri tiap
+    // kali merk terbesar berganti. Desain mengusulkan "stok penuh per merk", tapi angka
+    // itu harus dikarang lalu dirawat: stok beras bukan kapasitas tetap, isinya sebesar
+    // kedatangan terakhir. hariHabis() + hitungLajuPakai() 14 hari sudah terpasang dan
+    // sudah dipakai Ringkasan — dan "berapa hari lagi habis" persis yang dijanjikan
+    // sub-judul halaman ini. Merk 200 kg yang laris BERDIRI LEBIH PENDEK daripada merk
+    // 800 kg yang diam, dan itu memang yang benar.
+    const HARI_PENUH = 30;                       // 30 hari = tabung penuh; di atasnya rata
+    const AMBANG_GENTING = 7;                    // desain: oksida kalau habis <= 7 hari
+    // Urutan: yang paling cepat habis berdiri paling depan. Sesudah tingginya berarti
+    // waktu, urutan menurut rupiah membuat deret tingginya terbaca acak.
+    item.sort((a, b) => {
+      const ha = a.hari === null ? Infinity : a.hari, hb = b.hari === null ? Infinity : b.hari;
+      return ha - hb || String(a.nama).localeCompare(String(b.nama));
+    });
     wadahTabung.innerHTML = item.length === 0
       ? '<div class="kosong-info"><b>Belum ada stok di kelompok ini</b><span>Ganti saklar di atas, atau catat kedatangan/pembelian dulu.</span></div>'
       : item.map(x => {
-          const genting = x.hari !== null && x.hari <= 2;
-          const isi = Math.max(4, Math.round(x.sisa / maks * 100));
-          // "46 kg bisa lebih genting dari 118 kg": yang dijawab tabung adalah SISA,
-          // yang dijawab teks kecil adalah BERAPA HARI LAGI — dua pertanyaan, dua tanda.
-          return '<button type="button" class="st-tabung' + (genting ? ' genting' : '') + '" style="--isi:' + isi + '%;"'
+          const genting = x.hari !== null && x.hari <= AMBANG_GENTING;
+          const tanpaLaju = x.hari === null;
+          // Tanpa laju: waktu tidak berlaku, jadi tabungnya penuh tapi pudar — bukan
+          // kosong (yang berarti "hampir habis" dan itu salah).
+          const isi = tanpaLaju ? 100 : Math.max(4, Math.min(100, Math.round(x.hari / HARI_PENUH * 100)));
+          return '<button type="button" class="st-tabung' + (genting ? ' genting' : '') + (tanpaLaju ? ' tanpa-laju' : '') + '" style="--isi:' + isi + '%;"'
             + ' onclick="stokKetukTabung(' + JSON.stringify(x.jenis || '') .replace(/"/g, '&quot;') + ', ' + JSON.stringify(x.cari).replace(/"/g, '&quot;') + ')">'
             + '<span class="tb-isi" aria-hidden="true"></span>'
             + '<b>' + escapeHtml(x.nama) + '</b>'
@@ -15899,6 +15923,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
             + '<i>' + (x.hari !== null ? escapeHtml(kataHabis(x.hari)) : 'belum ada laju') + '</i>'
             + '</button>';
         }).join('');
+
+    const elKisiKet = document.getElementById('stokKisiKet');
+    if (elKisiKet) elKisiKet.textContent = item.length === 0 ? ''
+      : 'Tinggi isi = berapa hari lagi habis menurut laju 14 hari, bukan pecahan kg — '
+        + 'yang paling cepat habis berdiri paling depan. Tabung oksida = habis ' + AMBANG_GENTING
+        + ' hari lagi atau kurang. Tabung pudar = belum ada laju, jadi waktunya belum bisa dihitung.';
 
     // --- Yang Mandek: sisa ada, laju 14 hari nol — uangnya tertidur paling nyenyak ---
     const mandek = [];
