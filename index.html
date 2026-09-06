@@ -3083,30 +3083,6 @@
 .ps-tautan { color: #e2cda6; font-weight: 700; letter-spacing: .06em; }
 .ps-batal { margin-left: auto; background: none; border: none; font-family: inherit;
   font-size: 10px; font-weight: 700; color: #d3a08b; letter-spacing: .08em; padding: 4px 2px; }
-#lembarBukaToko { display: none; position: fixed; inset: 0; z-index: 90; flex-direction: column;
-  align-items: center; justify-content: center; text-align: center; gap: 12px;
-  padding: 30px 26px calc(30px + env(safe-area-inset-bottom, 0px));
-  background: radial-gradient(120% 80% at 50% 0%, #1a1e23, #0f1113); }
-#lembarBukaToko.tampil { display: flex; }
-#lembarBukaToko .bt-logo { width: 52px; height: 52px; border-radius: 50%;
-  background: linear-gradient(160deg, #fdf7e8, #e2cda6 52%, #bfa476); color: #231a08;
-  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; }
-#lembarBukaToko h3 { margin: 0; font-family: var(--pf-serif); font-weight: 400; font-size: 22px; color: var(--teks); }
-#lembarBukaToko .bt-sub { margin: 0; font-size: 9px; letter-spacing: .24em; text-transform: uppercase;
-  font-weight: 700; color: #9aa2a8; }
-#lembarBukaToko .bt-kas { width: 100%; max-width: 330px; margin-top: 14px; padding: 16px;
-  border-radius: 18px; background: linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
-  border: 1px solid rgba(226,205,166,.3); }
-#lembarBukaToko .bt-kas i { display: block; font-style: normal; font-size: 9px; letter-spacing: .22em;
-  text-transform: uppercase; font-weight: 700; color: #e2cda6; }
-#lembarBukaToko .bt-kas b { display: block; font-family: var(--pf-serif); font-weight: 400; font-size: 32px;
-  margin-top: 6px; background: linear-gradient(180deg, #fdf6e7, #eadcbd 55%, #c9b085);
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-#lembarBukaToko .bt-kas span { display: block; font-family: var(--pf-serif); font-style: italic;
-  font-size: 11px; color: #9aa2a8; margin-top: 7px; line-height: 1.5; }
-#lembarBukaToko .wz-lanjut { max-width: 330px; }
-#lembarBukaToko .bt-beda { background: none; border: none; font-family: inherit; font-size: 12px;
-  font-weight: 700; color: #d3a08b; letter-spacing: .04em; padding: 10px; }
 /* Halaman lama ber-k6a: kemunculan berjenjang ringan yang sama */
 #halamanStok > *, #halamanHarga > *, #halamanRekap > *, #halamanInput > *,
 #halamanProduksi > *, #halamanBulanan > *, #halamanHarian > *, #halamanLaba > *,
@@ -3389,9 +3365,93 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 }
 @media (prefers-reduced-motion:reduce){ .k6a .ik8-refraksi{animation:none} }
 
+/* ── ritual pagi: menggantikan lembar penuh #lembarBukaToko ──
+   Kartu ini duduk di kepala Ringkasan supaya kerja tidak terhalang: boleh
+   dilewati dengan menggulir, dan hilang sendiri sesudah ditekan sekali. */
+.k6a .ik8-pagi{
+  margin-bottom:12px; padding:14px; border-radius:15px;
+  background:linear-gradient(158deg,rgba(240,220,187,.14),rgba(255,255,255,.028));
+  border:1px solid rgba(226,205,166,.3);
+  box-shadow:0 20px 44px -26px rgba(0,0,0,.8);
+}
+.k6a .ik8-pagi-kepala{ display:flex; align-items:center; justify-content:space-between; gap:9px; }
+.k6a .ik8-pagi-judul{
+  font:700 9px/1 -apple-system,system-ui; letter-spacing:.22em;
+  text-transform:uppercase; color:#e2cda6;
+}
+.k6a .ik8-pagi-cap{ font-family:var(--pf-serif); font-style:italic; font-size:11px; color:#a7adb5; }
+.k6a .ik8-pagi-daftar{ display:flex; flex-direction:column; gap:7px; margin-top:11px; }
+.k6a .ik8-pagi-baris{
+  border-radius:13px; overflow:hidden;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+}
+.k6a .ik8-pagi-tombol{
+  width:100%; min-height:48px; display:flex; align-items:center; justify-content:space-between;
+  gap:10px; padding:10px 13px; background:none; border:0; text-align:left;
+  font-family:inherit; color:#e8e4dc; cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.k6a .ik8-pagi-kiri{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.k6a .ik8-pagi-label{
+  font:700 8.5px/1 -apple-system,system-ui; letter-spacing:.2em;
+  text-transform:uppercase; color:#8f959d;
+}
+.k6a .ik8-pagi-isi{ font:400 13px/1.3 -apple-system,system-ui; color:#e8e4dc; }
+.k6a .ik8-pagi-tanda{
+  flex:none; max-width:96px; text-align:right;
+  font:700 9px/1.25 -apple-system,system-ui; letter-spacing:.04em;
+}
+.k6a .ik8-pagi-tanda.aman{ color:#cfe0c4; }
+.k6a .ik8-pagi-tanda.awas{ color:#e8c3b2; }
+.k6a .ik8-pagi-tanda.netral{ color:#cfd4da; }
+.k6a .ik8-pagi-rinci{
+  padding:0 13px 12px; font:400 11.5px/1.6 -apple-system,system-ui; color:#a7adb5;
+}
+.k6a .ik8-pagi-ktombol{
+  width:100%; min-height:44px; margin-top:9px; border-radius:13px;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03);
+  font:600 11.5px/1 -apple-system,system-ui; color:#a7adb5; cursor:pointer;
+}
+.k6a .ik8-pagi-kantong{ margin-top:8px; }
+.k6a .ik8-pagi-krow{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  min-height:30px; padding:0 2px;
+}
+.k6a .ik8-pagi-knama{
+  font:700 8.5px/1 -apple-system,system-ui; letter-spacing:.14em;
+  text-transform:uppercase; color:#8f959d;
+}
+.k6a .ik8-pagi-knilai{ font:600 15px/1.15 var(--pf-serif); color:#cfd4da; }
+.k6a .ik8-pagi-utama{
+  width:100%; min-height:52px; margin-top:11px; border:0; border-radius:14px;
+  background:linear-gradient(160deg,#fdf6e7,#e2cda6 62%,#bfa16a); color:#2a1f13;
+  font:700 12.5px/1 -apple-system,system-ui; cursor:pointer;
+}
+.k6a .ik8-pagi-beda{
+  width:100%; min-height:44px; margin-top:4px; background:none; border:0;
+  font:700 11.5px/1 -apple-system,system-ui; color:#e8c3b2; cursor:pointer;
+}
+/* pita hijau: dua pemakai — ritual sudah selesai, dan TANGANI kosong */
+.k6a .ik8-pita{
+  display:flex; align-items:center; gap:9px; margin-bottom:12px;
+  padding:11px 13px; border-radius:13px;
+  background:rgba(140,166,126,.1); border:1px solid rgba(140,166,126,.3);
+}
+.k6a .ik8-pita-titik{ flex:none; width:7px; height:7px; border-radius:50%; background:#8ca67e; }
+.k6a .ik8-pita span{ flex:1; min-width:0; font:400 12px/1.4 -apple-system,system-ui; color:#cfe0c4; }
+.k6a .ik8-pita.bisa{ cursor:pointer; }
+.k6a .ik8-pita-aksi{
+  flex:none; min-height:44px; padding:0 4px; background:none; border:0;
+  font:700 10px/1 -apple-system,system-ui; letter-spacing:.08em; color:#8f959d; cursor:pointer;
+}
+/* kaki TANGANI — membentang di tempat sampai layar Tangani lahir (gelombang 2) */
+.k6a .ik8-tkaki{
+  width:100%; min-height:48px; margin-top:7px; border-radius:13px;
+  border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);
+  font:700 10.5px/1 -apple-system,system-ui; letter-spacing:.08em; color:#a7adb5; cursor:pointer;
+}
 /* ── panel kas: satu-satunya yang pakai backdrop-filter ── */
 .k6a .ik8-kas{
-  position:relative; overflow:hidden; border-radius:5px; padding:16px 17px 15px; margin-top:12px;
+  position:relative; overflow:hidden; border-radius:5px; padding:16px 17px 15px;
   background:linear-gradient(158deg,rgba(240,220,187,.2),rgba(240,220,187,.05) 42%,rgba(207,212,218,.09));
   backdrop-filter:blur(14px) saturate(150%);
   -webkit-backdrop-filter:blur(14px) saturate(150%);
@@ -4618,20 +4678,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 </div>
 <div id="overlayLembarMenu" onclick="toggleLembarMenu(false)"></div>
 
-<!-- LEMBAR BUKA TOKO (G5/BT1): ritual pagi 10 detik — kas menurut catatan
-     dicocokkan mata sebelum jualan; selisih ketahuan PAGI, bukan malam. -->
-<div id="lembarBukaToko" class="k6a" role="dialog" aria-modal="true">
-  <div class="bt-logo">IQ</div>
-  <h3>Toko Beras M.IQBAL</h3>
-  <p class="bt-sub" id="btTanggal"></p>
-  <div class="bt-kas">
-    <i>Kas menurut catatan</i>
-    <b id="btKas">—</b>
-    <span id="btKasKet"></span>
-  </div>
-  <button type="button" class="wz-lanjut" onclick="bukaTokoCocok()">Cocok — buka toko</button>
-  <button type="button" class="bt-beda" onclick="bukaTokoBeda()">Beda dengan isi laci — cocokkan kas</button>
-</div>
+
 
 <!-- LEMBAR HARI (wireframe Riwayat): ketuk batang kalender -> ringkasan hari
      dua tingkat; ketuk kepalanya utk membesar, ketuk latar utk menutup. -->
@@ -5157,6 +5204,21 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
            (saldo per kantong hari ini tidak ada di sistem); jam toko = SATU simpul per jam;
            kredit tidak masuk karung mana pun. Menggantikan 8a G2 (papan+kantong+Jalannya
            hari+pantau) dan trio stok. Markup lama pra-kaca di bawah tetap di DOM. -->
+      <!-- Ritual pagi (Prototipe Lengkap, 6 Sep 2026): menggantikan lembar penuh
+           #lembarBukaToko yang dicabut. Isinya dibangun JS; di sini cuma wadahnya. -->
+      <div class="ik8-pagi" id="ik8PagiBlok">
+        <div class="ik8-pagi-kepala">
+          <span class="ik8-pagi-judul">Toko belum dibuka</span>
+          <span class="ik8-pagi-cap">3 hal, 10 detik</span>
+        </div>
+        <div class="ik8-pagi-daftar" id="ik8PagiDaftar"></div>
+        <button type="button" class="ik8-pagi-ktombol" id="ik8PagiKantongTombol" onclick="ik8PagiKantongToggle()">Lihat 4 kantong dulu</button>
+        <div class="ik8-pagi-kantong" id="ik8PagiKantong"></div>
+        <button type="button" class="ik8-pagi-utama" onclick="ik8PagiBuka('cocok')">Cocok &mdash; buka toko</button>
+        <button type="button" class="ik8-pagi-beda" onclick="ik8PagiBuka('beda')">Beda dengan isi laci &mdash; cocokkan kas</button>
+      </div>
+      <div class="ik8-pita" id="ik8Pita"><i class="ik8-pita-titik"></i><span id="ik8PitaTeks"></span></div>
+
       <div class="ik8-kas">
         <span class="ik8-refraksi"></span>
         <div style="position:relative">
@@ -5181,10 +5243,6 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         <div class="ik8-jamnota" id="ik8JamNota"></div>
       </div>
 
-      <div class="ik8-grup">Tangani &middot; <span id="ik8TanganiCacah">0 hal</span></div>
-      <div class="ik8-kartu ik8-tangani" id="ik8Tangani"></div>
-
-      <div class="ik8-grup">Pantau</div>
       <div class="ik8-mini-baris">
         <div class="ik8-mini">
           <span class="ik8-refraksi"></span>
@@ -5192,6 +5250,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
             <div class="ik8-label">Omzet hari ini</div>
             <div class="ik8-nomzet" id="ik8Omzet">Rp0</div>
             <div class="ik8-spark" id="ik8Spark"></div>
+            <div class="ik8-ket" id="ik8OmzetTrx"></div>
           </div>
         </div>
         <div class="ik8-mini">
@@ -5212,6 +5271,15 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         <div class="ik8-ket" id="ik8LabaKet"></div>
         <span class="ik8-progres" id="ik8Progres"></span>
       </div>
+
+      <div id="ik8TanganiBlok">
+        <div class="ik8-grup">Tangani &middot; <span id="ik8TanganiCacah">0 hal</span></div>
+        <div class="ik8-kartu ik8-tangani" id="ik8Tangani"></div>
+        <button type="button" class="ik8-tkaki" id="ik8TanganiKaki" onclick="ik8TanganiToggle()"></button>
+      </div>
+      <div class="ik8-pita" id="ik8TanganiKosong" style="display:none;"><i class="ik8-pita-titik"></i>
+        <span>Tidak ada yang menuntut tindakan.</span>
+        <button type="button" class="ik8-pita-aksi" onclick="ik8PeriksaLagi()">PERIKSA LAGI</button></div>
     </div>
 
     <!-- Versi MOBILE — porting desain final 6 Agu 2026: SATU angka utama per layar.
@@ -8761,6 +8829,10 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 8000))
       ]);
       localStorage.setItem('miqbal_ringkasan_terakhir', isiTetap);
+      // Stempel LOKAL kapan katalog terakhir terbit dari HP ini. Dokumen Firestore punya
+      // diperbaruiPada, tapi tidak pernah dibaca balik (getDoc tidak diimpor), jadi fakta
+      // "Harga di kasir" di ritual pagi tidak punya sumber lain. Bukan angka uang.
+      localStorage.setItem('miqbal_ringkasan_terbit_v1', new Date().toISOString());
     } catch (e) { console.error('Gagal terbitkan ringkasan kasir', e); }
   }
 
@@ -11197,37 +11269,6 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     }
   }
 
-  // Bikin grid tombol pilih generik. daftarOpsi = [{ kunci, label, subLabel, sisa }]
-  // ============ LEMBAR BUKA TOKO (BT1) — sekali sehari, HP saja ============
-  const KUNCI_BUKA_TOKO = 'miqbal_buka_toko_v1';
-  function tampilkanBukaToko() {
-    try {
-      if (window.matchMedia('(min-width: 700px)').matches) return;
-      if (localStorage.getItem(KUNCI_BUKA_TOKO) === tanggalLokalIso()) return;
-      const gerbang = document.getElementById('gerbangSistem');
-      if (gerbang && gerbang.classList.contains('tampil')) return;   // masih di gerbang
-      const el = document.getElementById('lembarBukaToko');
-      const kini = new Date();
-      document.getElementById('btTanggal').textContent =
-        NAMA_HARI[kini.getDay()] + ', ' + kini.getDate() + ' ' + BULAN_SINGKAT[kini.getMonth()] + ' ' + kini.getFullYear();
-      const kas = ik6KasSekarang();
-      document.getElementById('btKas').textContent = kas === null ? '\u2014' : ik6Rp(kas);
-      document.getElementById('btKasKet').textContent = kas === null
-        ? 'titik kas belum disetel \u2014 setel lewat Arus Kas supaya angka ini hidup'
-        : 'laci + rekening \u00b7 cocokkan sekilas dengan isi laci';
-      el.classList.add('tampil');
-    } catch (e) { /* ritual — tidak boleh menghalangi kerja */ }
-  }
-  function bukaTokoCocok() {
-    localStorage.setItem(KUNCI_BUKA_TOKO, tanggalLokalIso());
-    document.getElementById('lembarBukaToko').classList.remove('tampil');
-  }
-  function bukaTokoBeda() {
-    localStorage.setItem(KUNCI_BUKA_TOKO, tanggalLokalIso());
-    document.getElementById('lembarBukaToko').classList.remove('tampil');
-    pindahDariMenu('aruskas');
-  }
-  setTimeout(tampilkanBukaToko, 900);
 
   // ============ PESANAN (G5) — dipesan -> diantar -> dibayar (lewat Jual) ============
   let _pesananKeJual = null;
@@ -11421,7 +11462,6 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       && !document.body.classList.contains('lembar-menu-terbuka')
       && !document.body.classList.contains('konfirmasi-terbuka')
       && !document.body.classList.contains('lembar-hari-rw-terbuka')
-      && !document.getElementById('lembarBukaToko').classList.contains('tampil')
       && !document.querySelector('.modal-pin-bg.tampil');
     document.addEventListener('touchstart', e => {
       if (!bolehGeser() || e.touches.length !== 1) { x0 = null; return; }
@@ -23026,8 +23066,7 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   window.bukaLembarHariRw = bukaLembarHariRw; window.tutupLembarHariRw = tutupLembarHariRw;
   window.rwHariTingkat = rwHariTingkat;
   window.rtAlasanPilih = rtAlasanPilih; window.rtIsiDariTrx = rtIsiDariTrx;
-  window.bukaTokoCocok = bukaTokoCocok; window.bukaTokoBeda = bukaTokoBeda;
-  window.bukaModalLoginToko = bukaModalLoginToko; window.bukaSetelPin = window.bukaSetelPin || bukaSetelPin;
+   window.bukaModalLoginToko = bukaModalLoginToko; window.bukaSetelPin = window.bukaSetelPin || bukaSetelPin;
   window.unduhBackup = window.unduhBackup || unduhBackup;
   window.simpanPesanan = simpanPesanan; window.majukanPesanan = majukanPesanan;
   window.batalkanPesanan = batalkanPesanan; window.catatJualPesanan = catatJualPesanan;
@@ -23037,6 +23076,11 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   // (Tertangkap saat uji beruntun G4.)
   window.ik8PilihKarung = ik8PilihKarung;
   window.ik8PilihSimpul = ik8PilihSimpul;
+  window.ik8PagiPilih = ik8PagiPilih;
+  window.ik8PagiKantongToggle = ik8PagiKantongToggle;
+  window.ik8PagiBuka = ik8PagiBuka;
+  window.ik8TanganiToggle = ik8TanganiToggle;
+  window.ik8PeriksaLagi = ik8PeriksaLagi;
   window.labaPilihKeping = labaPilihKeping;
   window.labaPilihZona = labaPilihZona;
   window.pilihZonaArusKas = pilihZonaArusKas;
@@ -23201,6 +23245,12 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   //  · Sorot karung↔kejadian dari SATU keadaan; memilih yang satu menolkan yang lain.
   //  · Jam toko: SATU simpul per jam (54–79 kejadian/hari) + slot lepas Tanpa jam & Kredit.
   let _ik6Perhatian = [], _ik8Karung = null, _ik8Simpul = null, _ik8SegelTerpasang = false;
+  // Ritual pagi (Prototipe Lengkap 6 Sep 2026) — menggantikan lembar #lembarBukaToko.
+  // Keadaan disimpan di MODUL, bukan di kelas CSS: tampilkanIkhtisar6a dipanggil ulang
+  // dari luar interaksi (segel laba menutup sendiri 45 dtk) dan akan meruntuhkan akordeon.
+  let _ik8PagiFakta = null, _ik8PagiKantong = false, _ik8TanganiSemua = false;
+  const KUNCI_BUKA_TOKO = 'miqbal_buka_toko_v2';   // v1 (string tanggal polos) jadi kunci mati
+  const KUNCI_TERBIT_KASIR = 'miqbal_ringkasan_terbit_v1';
   let _ik6LabaSampai = 0, _ik6TahanTimer = null, _ik6TahanMulai = 0, _ik6MaskTimer = null;
   const IK8_URUT = ['laci', 'rekening', 'amplop', 'brankas'];
   const IK8_NAMA = { laci: 'Laci', rekening: 'Rekening', amplop: 'Amplop', brankas: 'Brankas' };
@@ -23286,6 +23336,9 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       karung: { laci: t ? (t.laci || 0) : 0, rekening: t ? (t.rekening || 0) : 0, amplop: t ? (t.amplop || 0) : 0, brankas: t ? (t.brankas || 0) : 0 },
       jamBuka: JAM_BUKA_SISTEM, jamTutup: JAM_TUTUP_SISTEM,
       kejadian: ik8Ember(gerakan, kredit, JAM_BUKA_SISTEM, JAM_TUTUP_SISTEM),
+      rentang: ik8RentangKejadian(gerakan, kredit),
+      pagi: ik8PagiKeadaan(),
+      nTrx: L.jumlahTrx || 0,
       tangani: _ik6Perhatian,
       omzet: L.omzetPenuh || 0, omzetHitung: L.omzetHitung || 0, margin: L.margin || 0,
       omzet7: omzet7Hari().map(h => h.total),
@@ -23315,6 +23368,89 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
     tampilkanIkhtisar6a();
   }
 
+  // ── Ritual pagi ────────────────────────────────────────────────────────────
+  // Sekali sehari, HP saja. Nilai kunci: {t,jalur,jam,kas}. `kas` DIBEKUKAN saat ditekan
+  // karena pitanya berbunyi "kas AWAL" — kalau dibaca hidup, angkanya bergeser sepanjang
+  // hari dan berhenti jadi kas awal. Membekukan bukan rumus baru: nilainya dari
+  // ik6KasSekarang() yang sama, cuma disimpan.
+  function ik8PagiKeadaan() {
+    try {
+      const o = JSON.parse(localStorage.getItem(KUNCI_BUKA_TOKO) || 'null');
+      if (!o || o.t !== tanggalLokalIso()) return { dibuka: false };
+      return { dibuka: true, jalur: o.jalur || 'cocok', jam: o.jam || '', kas: (typeof o.kas === 'number' ? o.kas : null) };
+    } catch (e) { return { dibuka: false }; }
+  }
+  function ik8PagiBuka(jalur) {
+    try {
+      localStorage.setItem(KUNCI_BUKA_TOKO, JSON.stringify({
+        t: tanggalLokalIso(), jalur: jalur, jam: new Date().toTimeString().slice(0, 5), kas: ik6KasSekarang()
+      }));
+    } catch (e) { /* penyimpanan penuh — ritual tetap boleh lewat */ }
+    _ik8PagiFakta = null; _ik8PagiKantong = false;
+    if (jalur === 'beda') { pindahDariMenu('aruskas'); return; }
+    tampilkanIkhtisar6a();
+  }
+  function ik8PagiPilih(id) { _ik8PagiFakta = (_ik8PagiFakta === id) ? null : id; tampilkanIkhtisar6a(); }
+  function ik8PagiKantongToggle() { _ik8PagiKantong = !_ik8PagiKantong; tampilkanIkhtisar6a(); }
+  function ik8TanganiToggle() { _ik8TanganiSemua = !_ik8TanganiSemua; tampilkanIkhtisar6a(); }
+  function ik8PeriksaLagi() { tampilkanRingkasan(); }
+
+  // Tiga fakta pagi — semuanya pembacaan mesin lama, nol rumus baru.
+  function ik8PagiBaris(D) {
+    const b = [];
+    // 1) kas menurut catatan — mesin yang SAMA dengan panel kas di bawahnya
+    const t = D.titik;
+    b.push(D.kas === null
+      ? { id: 'kas', label: 'Kas menurut catatan', isi: '—', tanda: 'titik kas belum disetel', kelas: 'awas',
+          rinci: 'Angka kas belum bisa dihitung sebelum titik kas disetel lewat kartu Cocokkan Kas di Arus Kas.' }
+      : { id: 'kas', label: 'Kas menurut catatan', isi: ik6Rp(D.kas), tanda: 'belum dicocokkan', kelas: 'awas',
+          rinci: 'Yang bisa dihitung tangan pagi ini cuma laci ' + ik6Rp(D.karung.laci)
+            + (t ? ' menurut hitungan ' + formatTanggal(t.tanggal) : '') + '. Tiga kantong lain tidak berubah tanpa catatan.' });
+    // 2) harga di kasir — stempel lokal per perangkat; TIDAK ada di dokumen mana pun
+    let terbit = '';
+    try { terbit = localStorage.getItem(KUNCI_TERBIT_KASIR) || ''; } catch (e) { terbit = ''; }
+    b.push(terbit
+      ? { id: 'harga', label: 'Harga di kasir', isi: 'Terbaru · ' + waktuJejakLokal(terbit), tanda: 'aman', kelas: 'aman',
+          rinci: 'Kasir menarik harga sendiri tiap kali dibuka, jadi tidak ada tombol TERBITKAN yang menunggu. '
+            + 'Jam ini dari HP ini — kalau terbit dari HP lain, di sini tetap kosong.' }
+      : { id: 'harga', label: 'Harga di kasir', isi: 'Belum pernah terbit dari HP ini', tanda: 'belum terbit', kelas: 'awas',
+          rinci: 'Katalog kasir terbit otomatis begitu harga atau stok berubah di HP ini. Selama belum pernah, '
+            + 'jamnya tidak bisa disebut — bukan berarti kasir tidak punya harga.' });
+    // 3) paling dekat habis — rantai yang SAMA dengan Tangani (laju 14 hari, ambang 4)
+    const laju = hitungLajuPakai();
+    const stok = hitungStokKarungPerMerk();
+    const calon = Object.keys(stok)
+      .map(m => ({ merk: m, sisa: stok[m].sisaKg, hari: hariHabis(stok[m].sisaKg, laju.kgMerk[m] || 0) }))
+      .filter(x => x.hari !== null)
+      .sort((a, b2) => a.hari - b2.hari);
+    b.push(calon.length
+      ? { id: 'stok', label: 'Paling dekat habis', isi: escapeHtml(calon[0].merk) + ' · ' + kataHabis(calon[0].hari),
+          tanda: Math.round(calon[0].sisa).toLocaleString('id-ID') + ' kg', kelas: calon[0].hari <= 4 ? 'awas' : 'aman',
+          rinci: 'Dihitung dari laju jual 14 hari terakhir, bukan dari sisa kg. '
+            + Math.round(calon[0].sisa).toLocaleString('id-ID') + ' kg yang laris lebih genting dari tumpukan yang diam.' }
+      : { id: 'stok', label: 'Paling dekat habis', isi: 'Belum ada laju jual 14 hari', tanda: 'belum bisa dihitung', kelas: 'netral',
+          rinci: 'Perkiraan habis lahir dari penjualan 14 hari terakhir. Selama belum ada penjualan yang menggerakkan sack, '
+            + 'tidak ada yang bisa diperkirakan — dan menebaknya lebih berbahaya daripada diam.' });
+    return b;
+  }
+
+  // Rentang jam kejadian hari ini. Diambil dari baris MENTAH, bukan dari ember: e.jam
+  // sudah bulat dan sudah dijepit ke jam toko, jadi menitnya hilang. Ember "tanpa jam"
+  // tidak ikut (menurut definisi tidak punya waktu); kredit IKUT karena judulnya
+  // "Jam toko", bukan "jam kas" — kredit tetap tidak masuk karung mana pun.
+  function ik8RentangKejadian(gerakan, kredit) {
+    const sah = j => /^\d{2}:\d{2}$/.test(j || '');
+    const jam = [];
+    gerakan.forEach(r => { if (sah(r.jam)) jam.push(r.jam); });
+    kredit.forEach(x => { if (sah(x.jam)) jam.push(x.jam); });
+    const n = gerakan.length + kredit.length;
+    if (!n) return { teks: '', n: 0, nTanpaJam: 0 };   // '' = pemanggil memakai jam toko apa adanya
+    if (!jam.length) return { teks: 'jamnya tidak tercatat', n: n, nTanpaJam: n };
+    jam.sort();
+    const a = jam[0].replace(':', '.'), b = jam[jam.length - 1].replace(':', '.');
+    return { teks: a === b ? a : a + '–' + b, n: n, nTanpaJam: n - jam.length };
+  }
+
   function tampilkanIkhtisar6a() {
     try {
       const wrap = document.querySelector('.ikhtisar-6a');
@@ -23333,11 +23469,50 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
       const t = D.titik;
       const namaKe = ke => IK8_URUT.filter(k => ke && ke[k]).map(k => IK8_NAMA[k]).join(' & ');   // urutan tetap: Laci & Rekening
 
+      /* ── ritual pagi: kartu (belum dibuka) atau pita (sudah) ── */
+      const pagi = D.pagi;
+      const elPagi = document.getElementById('ik8PagiBlok');
+      const elPita = document.getElementById('ik8Pita');
+      elPagi.style.display = pagi.dibuka ? 'none' : 'block';
+      elPita.style.display = pagi.dibuka ? 'flex' : 'none';
+      if (!pagi.dibuka) {
+        document.getElementById('ik8PagiDaftar').innerHTML = ik8PagiBaris(D).map(f =>
+          '<div class="ik8-pagi-baris">'
+          + '<button type="button" class="ik8-pagi-tombol" onclick="ik8PagiPilih(\'' + f.id + '\')">'
+          +   '<span class="ik8-pagi-kiri"><span class="ik8-pagi-label">' + f.label + '</span>'
+          +     '<span class="ik8-pagi-isi">' + f.isi + '</span></span>'
+          +   '<span class="ik8-pagi-tanda ' + f.kelas + '">' + f.tanda + '</span>'
+          + '</button>'
+          + (_ik8PagiFakta === f.id ? '<div class="ik8-pagi-rinci">' + f.rinci + '</div>' : '')
+          + '</div>').join('');
+        document.getElementById('ik8PagiKantongTombol').textContent =
+          _ik8PagiKantong ? 'Sembunyikan kantongnya' : 'Lihat 4 kantong dulu';
+        const elK = document.getElementById('ik8PagiKantong');
+        elK.style.display = _ik8PagiKantong ? 'block' : 'none';
+        if (_ik8PagiKantong) elK.innerHTML = IK8_URUT.map(id =>
+          '<div class="ik8-pagi-krow"><span class="ik8-pagi-knama">' + IK8_NAMA[id] + '</span>'
+          + '<span class="ik8-pagi-knilai">' + (t ? ik6Rp(D.karung[id] || 0) : '—') + '</span></div>').join('');
+      } else {
+        const pt = document.getElementById('ik8PitaTeks');
+        const titikHariIni = !!(t && t.tanggal === tanggalLokalIso());
+        pt.textContent = pagi.jalur === 'beda'
+          ? (titikHariIni ? 'Dibuka ' + pagi.jam + ' · kas dicocokkan ulang hari ini'
+                          : 'Dibuka ' + pagi.jam + ' · kas belum dicocokkan — buka Arus Kas')
+          : (pagi.kas === null ? 'Dibuka ' + pagi.jam + ' · kas belum bisa dihitung (titik kas kosong)'
+                               : 'Dibuka ' + pagi.jam + ' · kas awal ' + ik6Rp(pagi.kas));
+        // Pita jadi jalan pintas HANYA saat memang masih ada yang harus dicocokkan.
+        const perlu = pagi.jalur === 'beda' && !titikHariIni;
+        elPita.classList.toggle('bisa', perlu);
+        elPita.onclick = perlu ? function () { pindahDariMenu('aruskas'); } : null;
+      }
+
       /* ── panel kas ── */
       document.getElementById('ik8Kas').textContent = D.kas === null ? '—' : ik6Rp(D.kas);
       document.getElementById('ik8KasKet').textContent = D.kas === null
         ? 'titik kas belum disetel — isi lewat Arus Kas'
-        : 'menurut catatan · titik ' + formatTanggal(t.tanggal) + ' + gerakan sesudahnya · kredit tidak dihitung';
+        : (pagi.dibuka
+          ? 'Kas awal hari terkunci ' + pagi.jam + ' · menurut catatan'
+          : 'Menurut catatan · belum dicocokkan dengan isi laci');
 
       /* ── empat karung: porsi dipakai untuk tinggi DAN label (satu pembagi). Ambang tinta
          dari geometri labelnya (7px dari dasar + tinggi baris 10px pada tabung 153px). ── */
@@ -23387,7 +23562,8 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 
       /* ── jam toko tegak: ember per jam + slot lepas di dasar ── */
       const jamA = D.jamBuka, jamB = D.jamTutup;
-      document.getElementById('ik8RentangJam').textContent = pad2(jamA) + '.00–' + pad2(jamB) + '.00';
+      document.getElementById('ik8RentangJam').textContent =
+        D.rentang.teks || (pad2(jamA) + '.00–' + pad2(jamB) + '.00');
       const emberJam = kej.filter(e => e.jenis === 'jam');
       const emberLepas = kej.filter(e => e.jenis !== 'jam');
       const SLOT = 58, JARAK = 52, TINGGI_SIMPUL = 44;
@@ -23448,25 +23624,21 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
             ? 'Kejadian tanpa jam: dicatat tanpa waktu, uangnya tetap dihitung — karung ' + namaKe(e.ke) + ' menyala di atas.'
             : e.n + ' kejadian pukul ' + pad2(e.jam) + ' · masuk karung ' + namaKe(e.ke) + ' — karungnya menyala di atas.');
       } else if (!kej.length) {
-        jn.textContent = 'Belum ada kejadian hari ini. Garis tegaknya jam buka, titik terang itu sekarang.';
+        jn.textContent = 'Belum ada kejadian hari ini. Garis tegaknya jam toko ' + pad2(jamA) + '.00–' + pad2(jamB)
+          + '.00, titik terang itu sekarang.';
       } else {
-        jn.textContent = 'Garis tegaknya jam buka, titik terang itu sekarang. Satu simpul = satu jam. Ketuk satu simpul untuk melihat karung mana yang berubah.';
+        // Judul memuat rentang KEJADIAN, sumbunya tetap jam toko — bedanya disebut, bukan didiamkan.
+        jn.textContent = 'Garisnya jam toko ' + pad2(jamA) + '.00–' + pad2(jamB) + '.00; rentang di judul itu kejadian '
+          + 'pertama sampai terakhir hari ini. Satu simpul = satu jam.'
+          + (D.rentang.nTanpaJam ? ' ' + D.rentang.nTanpaJam + ' kejadian tanpa jam tidak ikut menentukannya.' : '')
+          + ' Ketuk satu simpul untuk melihat karung mana yang berubah.';
       }
 
-      /* ── TANGANI: daftar yang SAMA dengan Perlu Perhatian lama (_ik6Perhatian) ── */
-      const tg = D.tangani || [];
-      document.getElementById('ik8TanganiCacah').textContent = tg.length + ' hal';
-      document.getElementById('ik8Tangani').innerHTML = tg.length
-        ? tg.map(x => '<div class="ik8-trow">'
-            + '<span class="ik8-ttitik' + (x.w === 'var(--merah)' ? ' merah' : '') + '"></span>'
-            + '<span class="ik8-tteks">' + x.t + '</span>'
-            + '<button type="button" class="ik8-pil" onclick="' + (x.k || ("pindahDariMenu('" + x.h + "')")).replace(/"/g, '&quot;') + '">'
-            + escapeHtml(x.a || 'Buka') + '</button></div>').join('')
-        : '<div class="ik8-trow"><span class="ik8-tteks">Tidak ada yang menuntut sekarang.</span></div>';
 
       /* ── PANTAU ── */
       document.getElementById('ik8Omzet').textContent = ik6Rp(D.omzet);
       document.getElementById('ik8Margin').textContent = ik6Rp(D.margin);
+      document.getElementById('ik8OmzetTrx').textContent = D.nTrx ? D.nTrx + ' transaksi' : 'belum ada transaksi';
       document.getElementById('ik8MarginPct').textContent = D.omzetHitung
         ? (Math.round(D.margin / D.omzetHitung * 1000) / 10).toLocaleString('id-ID', { minimumFractionDigits: 1 }) + '% dari omzet ber-HPP'
         : (D.omzet ? 'belum ada HPP tercatat' : '');
@@ -23498,6 +23670,29 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
         blok.addEventListener('pointerup', ik6TahanLabaBatal);
         blok.addEventListener('pointerleave', ik6TahanLabaBatal);
         blok.addEventListener('pointercancel', ik6TahanLabaBatal);
+      }
+      /* ── TANGANI di kaki: daftar yang SAMA dengan Perlu Perhatian lama (_ik6Perhatian).
+         MERAH DULU — urutan penyusunan aslinya menaruh amber (pesanan, utang pemasok) di
+         atas merah (kemasan minus, PIN belum disetel, perlu dirapikan), jadi slice(0,3)
+         apa adanya bisa menyembunyikan yang genting selamanya. concat dua ember, bukan
+         sort, supaya urutan penulis di dalam tiap warna terjaga persis. ── */
+      const tg = D.tangani || [];
+      const tgUrut = tg.filter(x => x.w === 'var(--merah)').concat(tg.filter(x => x.w !== 'var(--merah)'));
+      const tgTampil = _ik8TanganiSemua ? tgUrut : tgUrut.slice(0, 3);
+      document.getElementById('ik8TanganiBlok').style.display = tg.length ? 'block' : 'none';
+      document.getElementById('ik8TanganiKosong').style.display = tg.length ? 'none' : 'flex';
+      if (tg.length) {
+        document.getElementById('ik8TanganiCacah').textContent = tg.length + ' hal';
+        document.getElementById('ik8Tangani').innerHTML = tgTampil.map(x => '<div class="ik8-trow">'
+          + '<span class="ik8-ttitik' + (x.w === 'var(--merah)' ? ' merah' : '') + '"></span>'
+          + '<span class="ik8-tteks">' + x.t + '</span>'
+          + '<button type="button" class="ik8-pil" onclick="' + (x.k || ("pindahDariMenu('" + x.h + "')")).replace(/"/g, '&quot;') + '">'
+          + escapeHtml(x.a || 'Buka') + '</button></div>').join('');
+        const kaki = document.getElementById('ik8TanganiKaki');
+        // Layar Tangani sendiri lahir di gelombang berikutnya; sampai itu kakinya
+        // membentangkan daftarnya di tempat — jujur, bukan tombol mati.
+        kaki.style.display = tg.length > 3 ? 'block' : 'none';
+        kaki.textContent = _ik8TanganiSemua ? 'Tampilkan 3 teratas ‹' : (tg.length - 3) + ' lagi ›';
       }
       pfHitungNaik(['ik8Kas', 'ik8Omzet', 'ik8Margin'].concat(terbuka ? ['ik8Laba'] : []));
     } catch (e) { console.warn('[ik8]', e); }
