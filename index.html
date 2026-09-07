@@ -753,6 +753,9 @@
   }
   /* Rekap */
   .daftar-batch { display: flex; flex-direction: column; gap: 12px; }
+  .item-batch .batch-cara{ margin-top:4px; font-size:10.5px; font-weight:600; letter-spacing:.02em; line-height:1.45; }
+  .item-batch .batch-cara.bon{ color:#b06a4c; }
+  .item-batch .batch-cara.tunai{ color:#7a7a72; font-weight:400; }
   .item-batch {
     background: #1a1e23; border: 1px solid var(--kaca-garis); border-radius: 14px; padding: 14px 16px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
@@ -10533,6 +10536,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             <span class="pemasok-nama">${escapeHtml(k.pemasok) || '-'}</span>
             <span class="tanggal">${formatTanggal(k.tanggal)}</span>
           </div>
+          <!-- CARA BAYAR TERTULIS DI TIAP BARIS. Sebelum ini daftar riwayat kedatangan
+               tidak pernah menyebutnya sama sekali: bon dan tunai tergambar sama persis,
+               dan satu-satunya tempat bon terlihat adalah kartu utang pemasok — yang
+               menurut definisinya cuma memuat bon yang caraBayar-nya BENAR. Jadi bon yang
+               tercatat salah tidak punya satu pun tempat untuk ketahuan. Ini alat untuk
+               memeriksanya, bukan hiasan. -->
+          <div class="batch-cara ${batchDiutang(k) ? 'bon' : 'tunai'}">${batchDiutang(k)
+            ? 'BON PEMASOK — nilai beras jadi utang, yang keluar kas hari itu cuma bongkar'
+            : 'TUNAI saat datang — beras + bongkar keluar dari kas hari itu'}</div>
           <div style="font-size:13px; color:#666;">
             ${k.merkList.length} merk · <span class="badge-karung">${totalKarungSemua} karung${totalKarungSemua < 60 && totalKarungSemua > 0 ? ' ' : ''}</span> · ${totalKgSemua} kg total
           </div>
