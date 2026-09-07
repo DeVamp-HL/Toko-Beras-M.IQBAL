@@ -4900,6 +4900,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 #produksiKacaAdukan .pr6-porsi{ margin:4px 2px 0; font-family:var(--pf-serif); font-style:italic;
   font-size:9.5px; line-height:1.5; color:var(--pf-abu); }
 #produksiKacaAdukan .pr6-mustahil{ font-size:10px; font-weight:600; line-height:1.25; display:block; }
+/* Hero yang menolak menghitung keluar dari tipografi uang emas: angka yang tidak ada
+   tidak boleh memakai wajah yang sama dengan angka yang ada. */
+#produksiKacaAdukan .kg-uang-dagang.pr6-lubang{ background:none; -webkit-text-fill-color:var(--pf-abu);
+  color:var(--pf-abu); }
 #produksiKacaAdukan .pr6-tiga{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px;
   padding-top:8px; border-top:1px solid rgba(255,255,255,.06); }
 #produksiKacaAdukan .pr6-tiga .label{ font-size:8px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--pf-abu); }
@@ -15434,8 +15438,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         : 'Isi minimal satu baris hasil (nama + ukuran + unit).';
       elHasilInfo.className = 'stok-tersedia' + (totalKg > 0 && Math.abs(susut) > totalKg * 0.15 ? ' kurang' : '');
     }
+    // Merk sumber yang HPP-nya BELUM TERCATAT dikumpulkan DI SINI — di tempat stokKarung
+    // sudah ada — lalu dibawa ke penggambar. Kalau kaca menghitungnya sendiri, ia jadi
+    // pembaca kedua untuk kebenaran yang sama dan keduanya bisa berselisih diam-diam.
+    const merkTanpaHpp = sumber.filter(s => !((stokKarung[s.merk] || {}).hppTerakhirPerKg > 0)).map(s => s.merk);
     gambarPratinjauProduksi({ merk: sumber.length + sumberKemasan.length, totalKg, hppPerKg,
-      totalKgJadi, hppKgHasil, rincianUnit: hasil.map(h => h.unit) });
+      totalKgJadi, hppKgHasil, rincianUnit: hasil.map(h => h.unit), merkTanpaHpp });
     perbaruiKesiapanProduksi();
   }
 
@@ -15455,7 +15463,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Kaca di HP sudah menyebutnya "bahan" (15638); ini menyamakan keduanya.
     document.getElementById('ppJumlahMerk').textContent = d.merk + ' bahan';
     document.getElementById('ppTotalKg').innerHTML = angkaRapi(d.totalKg) + ' <i>kg</i>';
-    document.getElementById('ppHppKg').innerHTML = angkaRapi(Math.round(d.hppPerKg)) + ' <i>/kg</i>';
+    // Penjaga yang sama dengan kaca HP: Rp0 untuk beras itu lubang data, bukan bahan
+    // gratis. Angka yang bohong tidak jadi benar cuma karena layarnya lebih lebar.
+    document.getElementById('ppHppKg').innerHTML = d.hppPerKg > 0
+      ? angkaRapi(Math.round(d.hppPerKg)) + ' <i>/kg</i>'
+      : '— <i>HPP bahan belum tercatat</i>';
 
     const kgHasil = d.totalKgJadi || 0;
     const susut = Math.round((d.totalKg - kgHasil) * 1000) / 1000;
@@ -15611,6 +15623,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // +5 kg itu susut BESAR (beras hilang), −5 kg itu MUSTAHIL (hasil lebih berat dari
       // bahan) — selalu salah ketik ukuran atau unit. Yang mustahil menolak menggambar
       // angka dan menyebut sebabnya; yang berat cuma diwarnai.
+      // Rp0 UNTUK BERAS BUKAN NOL, ITU LUBANG DATA. Rumah ini sudah menuliskan prinsipnya
+      // di dua kartu peringatan yang lain ("N produk berstok tapi HPP Rp0 — penjualannya
+      // terekam untung penuh"), tapi kaca Produksi tidak pernah menerapkannya: kalau HPP
+      // karung sumber belum tercatat, hero mencetak "Rp0" dengan gradien emas dan baris
+      // hasilnya berbunyi "margin 100,0%" — lalu BERDIRI DI PUNCAK daftar, karena
+      // urutannya menurut persen. Ukuran yang datanya paling bolong terbaca paling untung.
+      const hppSiap = d.hppPerKg > 0;
+      const hppHasilSiap = d.hppKgHasil > 0;
+      const merkBolong = d.merkTanpaHpp || [];
       const susutMustahil = d.totalKgJadi > 0 && susut < 0;
       const susutBerat = d.totalKgJadi > 0 && susut > d.totalKg * 0.15;
       // Lebar kaki = PORSI kg-nya, dihitung di sini sebagai persen — bukan dititipkan
@@ -15639,8 +15660,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         escapeHtml(k.label || k.nama) + ' ' + angkaRapi(k.kg) + ' kg (' + porsiTxt(k.kg, total) + ')').join(' &middot; ')}</div>`;
       let h = `<div class="kg-panel pr6-panel">
         <div class="pr6-kepala"><span class="kg-label">Nilai adukan &middot; per kg</span><i>${d.merk} bahan</i></div>
-        <div class="kg-uang-dagang">${formatRupiah(d.hppPerKg)}</div>
-        <div class="pr6-sub">nilai bahan per kg — belum termasuk kantong &amp; upah; HPP hasil ${d.totalKgJadi > 0 ? formatRupiah(d.hppKgHasil) + '/kg' : 'menunggu baris hasil'}.</div>
+        <div class="kg-uang-dagang${hppSiap ? '' : ' pr6-lubang'}">${hppSiap ? formatRupiah(d.hppPerKg) : '—'}</div>
+        <div class="pr6-sub">${hppSiap
+          ? 'nilai bahan per kg — belum termasuk kantong &amp; upah; HPP hasil ' + (d.totalKgJadi > 0 ? formatRupiah(d.hppKgHasil) + '/kg' : 'menunggu baris hasil') + '.'
+          : 'HPP bahan belum tercatat, jadi nilai adukan tidak dihitung. Rp0 untuk beras bukan harga pokok yang mungkin — itu tanda datanya bolong, bukan bahan gratis.'}</div>
         <div class="pr6-kaki atas">${kakiAtas.map(k => kakiSpan(k, d.totalKg)).join('')}</div>
         ${barisPorsi(kakiAtas, d.totalKg)}
         <div class="pr6-kolam">${angkaRapi(d.totalKg)} kg <i>adukan</i></div>
@@ -15667,8 +15690,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           const hppUnit = d.hppKgHasil * x.ukuran;
           const hj = hargaK.find(p => p.merk === x.nama && Number(p.ukuran) === Number(x.ukuran) && p.hargaPerUnit > 0);
           const harga = hj ? hj.hargaPerUnit : null;
-          const margin = harga !== null ? harga - hppUnit : null;
-          const persen = harga ? margin / harga * 100 : null;
+          // HPP belum siap = margin TIDAK DIHITUNG, cetakan yang sama dengan harga jual
+          // yang belum ada. Tanpa ini, hppUnit 0 melahirkan margin = harga penuh dan
+          // persen 100,0%.
+          const margin = (harga !== null && hppHasilSiap) ? harga - hppUnit : null;
+          const persen = (harga && hppHasilSiap) ? margin / harga * 100 : null;
           return { x, hppUnit, harga, margin, persen };
         }).sort((a, b) => (b.persen === null ? -1e9 : b.persen) - (a.persen === null ? -1e9 : a.persen));
         // Catatan kejujuran yang sama dengan pratinjau lama: HPP ini baru beras bila
@@ -15677,10 +15703,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         const butuhKantong = hasil.some(x => x.kantongJenis);
         const upahR = parseFloat((document.getElementById('produksiUpahRepacking') || {}).value) || 0;
         const belumIsi = [];
+        if (!hppHasilSiap) belumIsi.push('HPP bahan beras');
         if (butuhKantong && kantongN <= 0) belumIsi.push('kantong');
         if (upahR <= 0) belumIsi.push('upah repacking');
         h += `<div class="kg-panel pr6-panel"><div class="pr6-kepala"><span class="kg-label">Hasil &middot; diurut margin %</span><i>${baris.length} ukuran &middot; harga dari Katalog Harga</i></div>
-          ${belumIsi.length ? `<div class="pr6-catatan kg-tepi-putus">HPP ini baru bahan berasnya — ${belumIsi.join(' &amp; ')} belum diisi, angka per unit masih akan naik.</div>` : ''}`;
+          ${belumIsi.length ? `<div class="pr6-catatan kg-tepi-putus">HPP ini baru bahan berasnya — ${belumIsi.join(' &amp; ')} belum diisi, angka per unit masih akan naik.</div>` : ''}
+          ${merkBolong.length && hppSiap ? `<div class="pr6-catatan kg-tepi-putus">${merkBolong.length} merk sumber belum punya HPP tercatat (${merkBolong.map(escapeHtml).join(', ')}), jadi angka di atas MENGECIL dari kenyataan — bagiannya terhitung Rp0.</div>` : ''}`;
         h += baris.map(r => {
           const kurangKantong = r.x.kantongJenis && butuh[r.x.kantongJenis] > ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)
             ? `<button type="button" class="pr6-kurang" onclick="prodPilihTab('bahan', 'k', '${r.x.kantongJenis}')">Kantong ${escapeHtml(LABEL_BAHAN_KEMASAN[r.x.kantongJenis] || r.x.kantongJenis)} sisa ${Math.round((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)} — kurang ${Math.round(butuh[r.x.kantongJenis] - ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0))}. Ketuk untuk beli.</button>` : '';
@@ -15697,13 +15725,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           // dengan margin nol, dua keadaan berbeda tergambar identik.
           return `<div class="pr6-hasil">
             <div class="atas"><b>${escapeHtml(r.x.nama)} ${angkaRapi(r.x.ukuran)} kg &times; ${angkaRapi(r.x.unit)}</b>${r.margin !== null ? `<span class="kg-uang-dagang${rugi ? ' rugi' : ''}">${(rugi ? '\u2212' : '') + formatRupiah(Math.abs(r.margin))}</span>` : ''}</div>
-            ${r.harga === null
+            ${!hppHasilSiap
+              ? `<small>jual ${r.harga !== null ? formatRupiah(r.harga) : 'belum ada di Katalog Harga'}</small><div class="putus kg-tepi-putus">HPP bahan belum tercatat — margin tidak dihitung. Isi HPP karung sumber lewat Masuk atau Stok Awal.</div>`
+              : (r.harga === null
               ? `<small>HPP ${formatRupiah(r.hppUnit)}/unit</small><div class="putus kg-tepi-putus">harga jual belum ada di Katalog Harga — margin tidak ditebak.</div>`
               : (rugi
                 ? `<small>HPP ${formatRupiah(r.hppUnit)}/unit &middot; jual ${formatRupiah(r.harga)}</small>
                    <div class="putus kg-tepi-putus">rugi ${formatRupiah(Math.abs(r.margin))}/unit — harga jual di bawah HPP, bilah tidak digambar.</div>`
                 : `<small>HPP ${formatRupiah(r.hppUnit)}/unit &middot; jual ${formatRupiah(r.harga)} &middot; margin ${r.persen.toFixed(1).replace('.', ',')}% dari harga jual</small>
-                   <div class="pr6-belah" aria-hidden="true"><i style="--isi:${Math.round(r.hppUnit / r.harga * 100)}%"></i></div>`)}
+                   <div class="pr6-belah" aria-hidden="true"><i style="--isi:${Math.round(r.hppUnit / r.harga * 100)}%"></i></div>`))}
             ${kurangKantong}
           </div>`;
         }).join('');
