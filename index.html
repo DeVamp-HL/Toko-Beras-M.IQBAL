@@ -3357,10 +3357,45 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
 #lembarStokMerk .sm-kepala{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
 #lembarStokMerk .sm-kepala span{ font-family:var(--pf-serif); font-size:19px; color:var(--teks); }
 #lembarStokMerk .sm-kepala b{ font-family:var(--pf-serif); font-weight:600; font-size:21px; color:var(--pf-platina); }
-#lembarStokMerk .sm-keran{ display:flex; align-items:flex-end; gap:3px; height:52px; margin-top:6px; }
-#lembarStokMerk .sm-keran span{ flex:1; border-radius:2px 2px 0 0;
-  background:linear-gradient(180deg,rgba(226,205,166,.55),rgba(226,205,166,.18)); }
-#lembarStokMerk .sm-keran span.nol{ background:rgba(255,255,255,.07); }
+/* ALIRAN 14 HARI - dua sisi satu garis. MASUK di atas (platina, dingin: barang
+   datang), KELUAR di bawah (emas, hangat: barang laku). Desain memberi emas kepada
+   MASUK dan oksida kepada keluar; itu SENGAJA tidak diikuti, dua alasan. Emas sudah
+   berarti "laku" di halaman ini sejak keran lama, dan membaliknya membalikkan
+   kebiasaan baca pemilik pada hari pemasangan tanpa ada yang diuntungkan. Lebih
+   penting lagi, oksida/amber di berkas ini berarti PERINGATAN (tabung genting,
+   lencana-amber) - mewarnai penjualan dengan warna peringatan menyesatkan.
+   Skala kedua sisi SATU maks bersama, jadi tinggi di atas dan di bawah garis
+   memang bisa dibandingkan mata; dan totalnya dicetak sebagai angka kg supaya
+   gambar ini punya jangkar mutlak, bukan cuma bentuk. */
+#lembarStokMerk .sm-aliran{ margin-top:6px; }
+#lembarStokMerk .al-atas,
+#lembarStokMerk .al-bawah{ display:flex; gap:3px; height:30px; }
+#lembarStokMerk .al-atas{ align-items:flex-end; }
+#lembarStokMerk .al-bawah{ align-items:flex-start; }
+#lembarStokMerk .al-garis{ height:1px; background:rgba(242,239,233,.22); }
+#lembarStokMerk .al-atas span,
+#lembarStokMerk .al-bawah span{ flex:1; }
+#lembarStokMerk .al-atas span{ border-radius:2px 2px 0 0;
+  background:linear-gradient(180deg,var(--pf-platina),rgba(240,226,196,.28)); }
+#lembarStokMerk .al-bawah span{ border-radius:0 0 2px 2px;
+  background:linear-gradient(180deg,rgba(226,205,166,.6),rgba(226,205,166,.18)); }
+#lembarStokMerk .al-atas span.nol,
+#lembarStokMerk .al-bawah span.nol{ background:rgba(255,255,255,.07); }
+/* LANTAI PIKSEL. Skala dibagi bersama supaya dua sisi bisa dibandingkan - itu benar,
+   dan konsekuensinya hari 60 kg memang cuma 4% dari hari 1.400 kg. Yang TIDAK boleh
+   terjadi: 4% dari 30px = 1,2px, dan di layar itu terbaca sebagai "tidak ada gerak".
+   Hari yang ada geraknya wajib terlihat berbeda dari hari yang benar-benar kosong,
+   sekecil apa pun proporsinya. Lantai ini menambah tinggi, tidak mengubah proporsi
+   yang dihitung - jadi ia memperbaiki keterbacaan tanpa membohongi bentuknya. */
+#lembarStokMerk .al-atas span:not(.nol),
+#lembarStokMerk .al-bawah span:not(.nol){ min-height:3px; }
+#lembarStokMerk .sm-alir-angka{ display:flex; justify-content:space-between; gap:9px; margin-top:8px;
+  font-size:10.5px; font-weight:600; }
+#lembarStokMerk .sm-alir-angka .aa-masuk{ color:var(--pf-platina); }
+#lembarStokMerk .sm-alir-angka .aa-keluar{ color:var(--emas); }
+#lembarStokMerk .sm-alir-arah{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.55; color:var(--pf-abu); margin-top:7px; }
+#lembarStokMerk .sm-alir-arah.menyusut{ color:var(--pf-amber); }
 #lembarStokMerk .sm-daftar{ margin-top:4px; }
 #lembarStokMerk .sm-tempat{ display:block; width:100%; min-height:44px; margin-top:8px; padding:8px 12px;
   border-radius:12px; border:1px dashed rgba(226,205,166,.28); background:rgba(255,255,255,.03);
@@ -5033,8 +5068,17 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   </div>
   <div class="kg-rincian" id="smRingkas"></div>
   <button type="button" class="sm-tempat" id="smTempat" onclick="ubahTempatSimpanMerkIni()"></button>
-  <div class="kg-label" style="margin-top:10px;">Keran 14 hari &middot; kg keluar per hari</div>
-  <div class="sm-keran" id="smKeran" aria-hidden="true"></div>
+  <div class="kg-label" style="margin-top:10px;">Aliran 14 hari &middot; masuk di atas garis, keluar di bawah</div>
+  <div class="sm-aliran">
+    <div class="al-atas" id="smAlirMasuk" aria-hidden="true"></div>
+    <div class="al-garis" aria-hidden="true"></div>
+    <div class="al-bawah" id="smAlirKeluar" aria-hidden="true"></div>
+  </div>
+  <div class="sm-alir-angka">
+    <span class="aa-masuk" id="smAlirMasukTotal"></span>
+    <span class="aa-keluar" id="smAlirKeluarTotal"></span>
+  </div>
+  <div class="sm-alir-arah" id="smAlirArah"></div>
   <div class="kg-label" style="margin-top:10px;">Batch yang membentuk stok ini</div>
   <div class="sm-daftar" id="smBatch"></div>
   <button type="button" class="tombol-utama-kartu" style="margin-top:10px;" onclick="stokDariLembarKeDaftar()">Lihat di daftar rinci</button>
@@ -14854,8 +14898,8 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
       if (!daftar.length) {
         t = `<button type="button" class="pr6-bilah" onclick="prodPilihTab('bahan')">Belum ada stok kantong tercatat — sistem tidak menebaknya. Ketuk untuk mencatat pembelian.</button>`;
       } else if (tipis.length) {
-        const t = tipis[0];
-        t = `<button type="button" class="pr6-bilah oks" onclick="prodPilihTab('bahan')"><span><b>${tipis.length} jenis kantong menipis</b> — ${escapeHtml(t.label)}: sisa ${Math.round(t.sisa).toLocaleString('id-ID')} lembar${t.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(t.hari)) : ''}${tipis.length > 1 ? ' &middot; +' + (tipis.length - 1) + ' lagi' : ''}. Ketuk untuk beli.</span></button>`;
+        const tp = tipis[0];
+        t = `<button type="button" class="pr6-bilah oks" onclick="prodPilihTab('bahan')"><span><b>${tipis.length} jenis kantong menipis</b> — ${escapeHtml(tp.label)}: sisa ${Math.round(tp.sisa).toLocaleString('id-ID')} lembar${tp.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(tp.hari)) : ''}${tipis.length > 1 ? ' &middot; +' + (tipis.length - 1) + ' lagi' : ''}. Ketuk untuk beli.</span></button>`;
       } else {
         t = `<div class="pr6-bilah"><span class="kg-titik-lcd"></span><span>Kantong aman untuk produksi — ${daftar.length} jenis tercatat, tidak ada yang di bawah 10 lembar (literan 5) atau habis ≤4 hari.</span></div>`;
       }
@@ -15878,13 +15922,19 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
       'HPP ' + formatRupiah(Math.round(st.hppTerakhirPerKg)) + '/kg'
       + ' · tertidur ' + formatRupiah(Math.round(st.sisaKg * st.hppTerakhirPerKg))
       + ' · ' + (hr !== null ? kataHabis(hr) + ' (laju ' + (Math.round(laju * 10) / 10).toLocaleString('id-ID') + ' kg/hari)' : 'belum ada laju 14 hari');
-    // Keran 14 hari: kg keluar per hari dari koleksi yang sama dengan hitungLajuPakai
-    // (penjualan karung/repacking/literan + produksi) — satu batang satu hari.
+    // ALIRAN 14 HARI - dua arah. KELUAR dari koleksi yang sama dengan hitungLajuPakai
+    // (penjualan karung/repacking/literan + produksi); MASUK dari batch kedatangan.
+    // Satu batang satu hari, dua sisi satu garis.
+    //
+    // Sebelumnya halaman ini cuma menggambar KELUAR, dan itu membuat pertanyaan yang
+    // paling sering ditanya pemilik tidak terjawab: "merk ini menyusut atau tidak?"
+    // Keluar deras tanpa masuk berarti menyusut; keluar deras dengan masuk lebih deras
+    // berarti menumpuk. Dua-duanya tampak sama persis di gambar satu arah.
     const hariIni = new Date(); hariIni.setHours(12, 0, 0, 0);
-    const perHari = {};
+    const perHari = {}, perHariMasuk = {};
     for (let i = 13; i >= 0; i--) {
       const t = new Date(hariIni); t.setDate(t.getDate() - i);
-      perHari[tanggalLokalIso(t)] = 0;
+      perHari[tanggalLokalIso(t)] = 0; perHariMasuk[tanggalLokalIso(t)] = 0;
     }
     ambilPenjualan().forEach(p => {
       if (!(p.tanggal in perHari)) return;
@@ -15897,11 +15947,47 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
         pr.sumberList.forEach(x => { if (x.merk === merk) perHari[pr.tanggal] += (x.kg || 0); });
       else if (pr.merkSumber === merk && !pr.beliJadi) perHari[pr.tanggal] += (pr.kgDipakai || 0);
     });
-    const seri = Object.keys(perHari).map(t => perHari[t]);
-    const maks = Math.max(1, ...seri);
-    document.getElementById('smKeran').innerHTML = seri.map(v =>
-      '<span style="height:' + Math.max(3, Math.round(v / maks * 100)) + '%;"'
-      + (v === 0 ? ' class="nol"' : '') + ' title="' + (Math.round(v * 10) / 10) + ' kg"></span>').join('');
+    // Batch stokAwal DISARING - pola yang sama dengan Papan Kapur (k.stokAwal di loop
+    // batch-nya). Saldo pembuka tutup buku bertanggal 1 Januari; kalau ia ikut, keran
+    // masuk meledak jadi satu batang raksasa yang menekan semua batang lain ke lantai,
+    // dan karena skalanya dibagi bersama, arus KELUAR ikut lenyap dari layar. Keran
+    // menjawab "belanja masuk berapa", bukan "kapan buku dibuka".
+    ambilSemuaBatch().forEach(k => {
+      if (!(k.tanggal in perHariMasuk) || k.stokAwal) return;
+      (k.merkList || []).forEach(m => {
+        if (m.merk === merk && m.bentuk !== 'bal') perHariMasuk[k.tanggal] += (m.totalKg || 0);
+      });
+    });
+    const tgl = Object.keys(perHari);
+    const seriKeluar = tgl.map(t => perHari[t]);
+    const seriMasuk = tgl.map(t => perHariMasuk[t]);
+    // SATU maks untuk dua seri. Kalau tiap sisi memakai maksnya sendiri, hari dengan
+    // masuk 5 kg akan berdiri setinggi hari dengan keluar 500 kg - dua gambar yang
+    // tidak boleh dibandingkan diletakkan berhadapan dan mengundang dibandingkan.
+    const maks = Math.max(1, ...seriKeluar, ...seriMasuk);
+    const batang = (v, judul) => '<span style="height:' + Math.max(3, Math.round(v / maks * 100)) + '%;"'
+      + (v === 0 ? ' class="nol"' : '') + ' title="' + (Math.round(v * 10) / 10) + ' kg ' + judul + '"></span>';
+    document.getElementById('smAlirMasuk').innerHTML = seriMasuk.map(v => batang(v, 'masuk')).join('');
+    document.getElementById('smAlirKeluar').innerHTML = seriKeluar.map(v => batang(v, 'keluar')).join('');
+    // JANGKAR MUTLAK. Tinggi batang cuma bentuk - ia dibagi maks kelompoknya sendiri,
+    // jadi ia menjawab "hari mana paling deras", bukan "berapa". Dua angka di bawah ini
+    // yang menjawab "berapa", dan tanpa keduanya gambar di atas tidak bisa dipertanggungjawabkan
+    // (title= tidak pernah muncul di HP).
+    const totMasuk = seriMasuk.reduce((a, v) => a + v, 0);
+    const totKeluar = seriKeluar.reduce((a, v) => a + v, 0);
+    const bulat = v => (Math.round(v * 10) / 10).toLocaleString('id-ID');
+    document.getElementById('smAlirMasukTotal').textContent = 'masuk ' + bulat(totMasuk) + ' kg';
+    document.getElementById('smAlirKeluarTotal').textContent = 'keluar ' + bulat(totKeluar) + ' kg';
+    const arah = Math.round((totMasuk - totKeluar) * 10) / 10;
+    const elArah = document.getElementById('smAlirArah');
+    elArah.classList.toggle('menyusut', arah < 0);
+    elArah.textContent = arah < 0
+      ? 'Kolamnya menyusut ' + bulat(-arah) + ' kg dalam 14 hari \u2014 keluar lebih deras dari masuk.'
+      : (arah > 0
+        ? 'Kolamnya bertambah ' + bulat(arah) + ' kg dalam 14 hari.'
+        : (totKeluar === 0 && totMasuk === 0
+          ? 'Tidak ada gerak sama sekali dalam 14 hari \u2014 tidak masuk, tidak keluar.'
+          : 'Masuk dan keluar seimbang dalam 14 hari.'));
     // Batch pembentuk: umur dihitung dari tanggalnya — beras juga menua.
     const kini = isoKeTanggal(tanggalLokalIso());
     const batch = [];
