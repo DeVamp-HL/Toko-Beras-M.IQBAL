@@ -7573,7 +7573,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     </div>
 
     <div class="kartu bl-z-isi">
-      <div class="panel-kepala"><h2>Gaji <span class="keterangan">Rp60.000 / hari-orang</span></h2></div>
+      <div class="panel-kepala"><h2>Gaji <span class="keterangan">Rp60.000 / hari-orang &middot; bawaan</span></h2></div>
       <!-- Diisi dalam HARI, bukan rupiah: tarifnya sudah ada di sistem, jadi pemakai
            menghitung hari (yang dia tahu) bukan rupiah (yang harus dikalikan). Prinsip 2. -->
       <div class="baris-isian"><span class="bi-nama">Ben Mohsein</span><span class="bi-isi"><input type="number" id="gajiHariBen" placeholder="0" inputmode="numeric" oninput="hitungPerkiraanGaji(); perbaruiTotalBulanan();"><i>hari</i></span><span class="bi-tgl"><i>dibayar</i><input type="date" id="tglGajiBen" onchange="perbaruiTotalBulanan(); ejaTanggalBulanan();" aria-label="Tanggal bayar gaji Ben Mohsein"><u id="tglGajiBenBaca"></u></span><button type="button" class="kal-buka" id="kalBuka0" onclick="toggleKalender(0)">Tandai tanggal masuk</button><div class="kal-wadah" id="kalWadah0" style="display:none;"></div></div>
@@ -10400,8 +10400,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const aktif = dipilih.indexOf(tgl) >= 0;
       html += '<button type="button" class="kal-hari' + (aktif ? ' pilih' : '') + '" onclick="toggleHariMasuk(' + i + ',\'' + tgl + '\')">' + d + '</button>';
     }
+    // Tarif orang INI, bukan konstanta — sama dengan yang dipakai bacaHariGajiPegawai
+    // saat benar-benar menghitung gajinya. Kalau berbeda, kaki kalender menjanjikan
+    // angka yang tidak akan muncul di kartunya.
+    const tarifOrang = rateGajiOrang(NAMA_PEGAWAI_GAJI[i]);
     html += '</div><div class="kal-kaki">' + dipilih.length + ' hari ditandai · '
-      + formatRupiah(dipilih.length * RATE_GAJI_PER_HARI_ORANG) + '</div>';
+      + formatRupiah(Math.round(dipilih.length * tarifOrang))
+      + (Math.round(tarifOrang) !== RATE_GAJI_PER_HARI_ORANG
+        ? ' · ' + formatRupiah(Math.round(tarifOrang)) + '/hari' : '') + '</div>';
     w.innerHTML = html;
   }
 
@@ -10438,7 +10444,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const el = document.getElementById('gajiPerkiraanInfo');
     const totalGaji = rincian.reduce((a, r) => a + r.gaji, 0);
     const totalHari = rincian.reduce((a, r) => a + r.hari, 0);
-    if (el) el.textContent = `${totalHari} hari-orang × ${formatRupiah(RATE_GAJI_PER_HARI_ORANG)} = ${formatRupiah(totalGaji)}`;
+    // PERKALIAN CUMA DICETAK KALAU TARIFNYA MEMANG SERAGAM. Tiap orang punya tarif
+    // efektifnya sendiri; menjumlahkan hari lalu mengalikannya dengan satu tarif
+    // menghasilkan angka yang tidak sama dengan totalGaji begitu ada satu orang yang
+    // tarifnya berbeda. Kalau beragam, yang dicetak totalnya saja — benar, dan tidak
+    // berpura-pura bisa dikerjakan ulang di kepala.
+    if (el) {
+      const tarif = rincian.filter(r => r.hari > 0).map(r => Math.round(r.gaji / r.hari));
+      const seragam = tarif.length > 0 && tarif.every(t => t === tarif[0]);
+      el.textContent = seragam
+        ? `${totalHari} hari-orang × ${formatRupiah(tarif[0])} = ${formatRupiah(totalGaji)}`
+        : `${totalHari} hari-orang, tarif berbeda per orang = ${formatRupiah(totalGaji)}`;
+    }
     // Baris "Gaji" di kartu biaya tetap cuma bayangan dari hitungan di atas —
     // angkanya tidak bisa diketik langsung supaya tidak pernah beda dari harinya.
     const bayang = document.getElementById('bulananGajiBayang');
@@ -18865,7 +18882,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function susunSlipGaji(d, bulan) {
     const baris = ['*TOKO BERAS M.IQBAL*', 'Slip Gaji ' + namaBulanPanjang(bulan + '-01'), d.nama, ''];
     baris.push('Hari masuk: ' + d.hari + ' hari');
-    baris.push('Gaji: ' + d.hari + ' × ' + formatRupiah(RATE_GAJI_PER_HARI_ORANG) + ' = ' + formatRupiah(d.gaji));
+    // TARIF DITURUNKAN DARI ANGKA YANG DICETAK DI SLIP INI SENDIRI, bukan dari
+    // konstanta. Gaji dihitung dengan rateGajiOrang(nama) — tarif efektif orang itu,
+    // yang bisa berbeda dari Rp60.000 bawaan begitu gajinya pernah dikunci. Mencetak
+    // konstanta di sebelah hasil perkalian yang memakai tarif lain melahirkan slip
+    // yang TIDAK MENGHASILKAN ANGKANYA SENDIRI: "22 hari × Rp60.000 = Rp1.430.000".
+    // Pegawai yang membaca slip gajinya sendiri tidak bisa mengulang hitungannya, dan
+    // yang dia curigai bukan tarifnya — melainkan jumlah yang dia terima.
+    // Diturunkan dari d.gaji ÷ d.hari, jadi perkaliannya benar MENURUT KONSTRUKSI dan
+    // tidak bergantung pada bulan mana yang sedang terbuka di formulir.
+    if (d.hari > 0) {
+      baris.push('Gaji: ' + d.hari + ' × ' + formatRupiah(Math.round(d.gaji / d.hari)) + ' = ' + formatRupiah(d.gaji));
+    } else {
+      // Nol hari: tidak ada tarif yang bisa dibagi. Jangan mengarang perkalian.
+      baris.push('Gaji: ' + formatRupiah(d.gaji) + ' (belum ada hari masuk tercatat)');
+    }
     if (d.potongan > 0) baris.push('Potongan kasbon: −' + formatRupiah(d.potongan));
     baris.push('*Diterima: ' + formatRupiah(d.diterima) + '*');
     baris.push(d.tglBayar ? 'Dibayar: ' + formatTanggal(d.tglBayar) : 'Status: belum dibayar');
