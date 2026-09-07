@@ -4456,6 +4456,32 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #hargaKaca .hg-baris .kg-uang-dagang{ font-size:17px; }
 #hargaKaca .hg-kanan{ text-align:right; font-size:9.5px; color:var(--pf-abu); line-height:1.5; }
 #hargaKaca .hg-kanan .oks{ color:#d3a08b; font-weight:700; }
+/* TUAS TARGET MARGIN. Tuasnya 44px, dua tombolnya 44x44 — dipakai dengan ibu jari
+   sambil memegang HP, bukan dengan kursor. */
+#hargaKaca .hg-tuas-panel{ margin-top:8px; }
+#hargaKaca .hg-tuas-atas{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+#hargaKaca .hg-tuas-atas b{ font-family:var(--pf-serif); font-weight:600; font-size:26px;
+  color:var(--pf-platina); line-height:1; }
+#hargaKaca .hg-tuas-atas b u{ text-decoration:none; font-family:var(--pf-serif); font-style:italic;
+  font-weight:400; font-size:10.5px; color:var(--pf-abu); margin-left:6px; }
+#hargaKaca .hg-tuas-baris{ display:flex; align-items:center; gap:9px; margin-top:9px; }
+#hargaKaca .hg-tuas-tombol{ flex:none; width:44px; min-height:44px; border-radius:11px;
+  border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06);
+  font-family:inherit; font-size:19px; color:#e8e4dc; cursor:pointer; }
+#hargaKaca #hgTuas{ flex:1; min-width:0; height:44px; accent-color:var(--emas);
+  background:none; cursor:pointer; }
+#hargaKaca .hg-tuas-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.55; color:var(--pf-abu); margin-top:8px; }
+/* Tombol setel per baris. SENGAJA tidak ada padanan massalnya di layar — lihat
+   komentar panjang di atas tampilkanHargaKaca. */
+#hargaKaca .hg-setel{ display:flex; align-items:center; justify-content:space-between; gap:10px;
+  width:100%; min-height:44px; margin-top:5px; padding:7px 11px; text-align:left;
+  border-radius:10px; border:1px solid rgba(226,205,166,.32); background:rgba(226,205,166,.07);
+  font-family:inherit; font-size:10.5px; color:var(--pf-abu); cursor:pointer; }
+#hargaKaca .hg-setel u{ flex:none; text-decoration:none; font-family:var(--pf-serif);
+  font-weight:600; font-size:14px; color:var(--pf-platina); }
+#hargaKaca .hg-setel u i{ font-style:italic; font-weight:400; font-size:9.5px; color:var(--pf-abu); }
+
 /* BILAH BELAH HPP | MARGIN. Sisi kiri (gelap) = bagian harga jual yang dimakan modal;
    sisi kanan (emas) = yang tersisa jadi margin. Penyebutnya harga jual baris itu
    sendiri, jadi dua baris berbeda BOLEH dibandingkan mata — beda dengan bilah yang
@@ -23028,6 +23054,67 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   // digerakkan harga yang sama dengan barisnya — anak yang NAIK ditandai oksida.
   // Harga jual = wujud uang dagang; bukan kas, jadi kg-uang-kas dilarang di sini.
   // Kartu lama tetap diisi untuk desktop; kaca hanya memanggil handler lembar lama.
+  // ═══ TUAS TARGET MARGIN (rancangan Harga - Gabungan) ═══════════════════════
+  // Geser target, tiap baris menandai dirinya meleset atau tidak, dan yang meleset
+  // membawa angka usul yang bisa disetel SEKALI KETUK.
+  //
+  // TOMBOL MASSAL "Setel N harga ke target" SENGAJA TIDAK DIBANGUN — dan ini bukan
+  // kelupaan. simpanKeFirestore memberi tiap dokumen timeout 4 detiknya sendiri dan
+  // menaruh yang gagal ke antrean tunda, jadi menyapu 42 harga bisa berhenti separuh
+  // baru separuh lama; jadwalkanRingkasanKasir() lalu menerbitkan katalog setengah
+  // jadi itu ke HP kasir beberapa detik kemudian, tanpa jalan mundur. Keputusan
+  // pemilik 7 Sep: kalau kelak dibangun, syaratnya SEMUA-ATAU-TIDAK-SAMA-SEKALI —
+  // satu batch, satu terbit — plus layar konfirmasi berdaftar dan cadangan diunduh
+  // dulu. Gelombang sendiri.
+  //
+  // Yang dibangun di sini berhenti satu langkah sebelum menulis: ia mengisi kotak
+  // harga di lembar yang sudah ada lalu berhenti. Pemilik yang menekan Simpan, lewat
+  // penjaga nominal<=0 dan pratinjau margin yang sudah lama terpasang.
+  let _hgTarget = null;               // sesi saja; null = belum dihitung
+  const HG_TOLERANSI = 2;             // POIN PERSEN, bukan persen dari target
+  // Pembulatan mengikuti angka yang benar-benar ditempel di rak: ribuan untuk kemasan
+  // per unit, lima ratusan untuk harga per kg dan per liter. Desain membulatkan ke
+  // ratusan, yang akan mengusulkan Rp372.700 di toko yang setiap harganya bulat.
+  function hgBulatkanUsul(nilai, kem) {
+    const kelipatan = kem ? 1000 : 500;
+    return Math.max(kelipatan, Math.round(nilai / kelipatan) * kelipatan);
+  }
+  function hgUsulHarga(hpp, target, kem) {
+    if (!(hpp > 0) || !(target > 0) || target >= 100) return 0;
+    return hgBulatkanUsul(hpp / (1 - target / 100), kem);
+  }
+  function hgGeserTarget(delta) {
+    const inp = document.getElementById('hgTuas');
+    const n = parseInt((inp && inp.value) || _hgTarget, 10) || 0;
+    hgSetTarget(n + (delta || 0));
+  }
+  function hgKetikTuas() {
+    const inp = document.getElementById('hgTuas');
+    hgSetTarget(parseInt(inp.value, 10));
+  }
+  function hgSetTarget(n) {
+    _hgTarget = Math.max(5, Math.min(40, isNaN(n) ? 20 : n));
+    tampilkanHargaKaca();
+  }
+  // Setel satu baris: pinjam jalur ubahHarga*(id) yang sudah ada — ia yang membuka
+  // lembar dan mengisi merk/ukuran — lalu TIMPA kotak nominalnya dengan angka usul.
+  // Urutannya aman: ubahHarga* mengisi nominal SEBELUM bukaLembarHarga, dan
+  // bukaLembarHarga tidak mengosongkannya, jadi menimpa sesudahnya bertahan.
+  function hgSetelBaris(jenis, id, usul) {
+    const peta = {
+      literan: ['hargaLiteranNominal', ubahHargaLiteran],
+      kemasan: ['hargaKemasanNominal', ubahHargaKemasan],
+      karung: ['hargaKarungNominal', ubahHargaKarung]
+    }[jenis];
+    if (!peta) return;
+    peta[1](id);
+    const kotak = document.getElementById(peta[0]);
+    if (kotak) { kotak.value = usul; }
+    // Pratinjau margin dipanggil supaya akibat angka usul terlihat SEBELUM Simpan
+    // ditekan — panggung itu sudah ada sejak lama, tinggal dibangunkan.
+    if (typeof perbaruiPratinjauHarga === 'function') perbaruiPratinjauHarga();
+  }
+
   function tampilkanHargaKaca() {
     const wadah = document.getElementById('hargaKaca');
     if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
@@ -23076,7 +23163,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
         const hppKg = (stokKar[h.merk] || {}).hppTerakhirPerKg || 0;
         if (!(h.hargaPerLiter > 0)) { lubangNol('L|' + h.merk, h.merk, 'Literan',
           `isiHargaLiteran(${escapeHtml(JSON.stringify(h.merk))})`); return; }
-        slotM(h.merk).baris.push({ urut: -1, pil: 'Literan /L', harga: h.hargaPerLiter,
+        slotM(h.merk).baris.push({ jenis: 'literan', id: h.id, urut: -1, pil: 'Literan /L', harga: h.hargaPerLiter,
           perKg: h.hargaPerLiter / rasio, hpp: hppKg > 0 ? hppKg * rasio : 0,
           umur: umurHari(h.diubahPada), aksi: `ubahHargaLiteran(${escapeHtml(JSON.stringify(h.id))})` });
       });
@@ -23085,7 +23172,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
         if (!(h.hargaPerUnit > 0)) { lubangNol('K|' + h.merk + '|' + h.ukuran, h.merk,
           escapeHtml(String(h.ukuran)) + ' kg',
           `isiHargaKemasan(${escapeHtml(JSON.stringify(h.merk))}, ${Number(h.ukuran) || 0})`); return; }
-        slotM(h.merk).baris.push({ urut: kg > 0 ? kg : 9999, pil: escapeHtml(String(h.ukuran)) + ' kg', kem: true,
+        slotM(h.merk).baris.push({ jenis: 'kemasan', id: h.id, urut: kg > 0 ? kg : 9999, pil: escapeHtml(String(h.ukuran)) + ' kg', kem: true,
           harga: h.hargaPerUnit, perKg: kg > 0 ? h.hargaPerUnit / kg : null,
           hpp: (stokKem[h.merk + '|' + h.ukuran] || {}).hppRataRataPerUnit || 0,
           umur: umurHari(h.diubahPada), aksi: `ubahHargaKemasan(${escapeHtml(JSON.stringify(h.id))})` });
@@ -23093,7 +23180,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
       karung.forEach(h => {
         if (!(h.hargaPerKg > 0)) { lubangNol('C|' + h.merk, h.merk, 'curah /kg',
           `isiHargaKarung(${escapeHtml(JSON.stringify(h.merk))})`); return; }
-        slotM(h.merk).baris.push({ urut: 99999, pil: 'curah /kg', harga: h.hargaPerKg,
+        slotM(h.merk).baris.push({ jenis: 'karung', id: h.id, urut: 99999, pil: 'curah /kg', harga: h.hargaPerKg,
           perKg: h.hargaPerKg, hpp: (stokKar[h.merk] || {}).hppTerakhirPerKg || 0,
           umur: umurHari(h.diubahPada), aksi: `ubahHargaKarung(${escapeHtml(JSON.stringify(h.id))})` });
       });
@@ -23112,12 +23199,50 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
       let nSiap = 0, nLubang = 0;
       daftarMerk.forEach(m => { nSiap += peta[m].baris.length; nLubang += peta[m].lubang.length; });
 
+      // NILAI AWAL TUAS = RATA-RATA MARGIN KATALOG YANG SEDANG BERLAKU, bukan angka
+      // karangan desain (22%). Kalau tuas mulai dari angka yang tidak pernah dipilih
+      // pemilik, membuka halaman Harga menyalakan puluhan baris "di bawah target"
+      // sekaligus — termasuk karung IR64 yang margin nolnya keputusan sadar. Halaman
+      // yang menyalakan puluhan alarm saat dibuka akan diabaikan seluruhnya dalam
+      // seminggu, dan saat alarm yang benar menyala ia ikut diabaikan.
+      // Dihitung SEKALI per sesi, lalu dipegang: kalau ia dihitung ulang tiap gambar,
+      // menyetel satu baris menggeser rata-ratanya dan targetnya mengejar ekornya
+      // sendiri.
+      if (_hgTarget === null) {
+        // Baris bermargin NOL ikut dihitung (<=, bukan <): itu margin nyata yang
+        // sedang dijalani toko, dan mengeluarkannya membuat rata-rata mengaku lebih
+        // tinggi dari kenyataan. Baris RUGI tetap dikeluarkan — rugi bukan margin yang
+        // dipilih, ia kecelakaan yang mau diperbaiki, dan satu baris -120% akan
+        // menyeret target ke angka yang tidak masuk akal buat seluruh katalog.
+        const mgSemua = [];
+        daftarMerk.forEach(m => peta[m].baris.forEach(b => {
+          if (b.hpp > 0 && b.harga > 0 && b.hpp <= b.harga) mgSemua.push((b.harga - b.hpp) / b.harga * 100);
+        }));
+        _hgTarget = mgSemua.length
+          ? Math.max(5, Math.min(40, Math.round(mgSemua.reduce((a, v) => a + v, 0) / mgSemua.length)))
+          : 20;
+      }
+      const target = _hgTarget;
+
       let h = `<div class="kg-panel hg-utama">
         <div class="kg-label">Sumber harga resmi kasir</div>
         <b>${nSiap} dari ${nSiap + nLubang} harga siap</b>
         ${nLubang > 0
           ? `<i class="oks">${nLubang} lubang harga — kasir akan menabraknya.</i>`
           : '<i>Semua ukuran yang ada stoknya punya harga. Kasir tidak akan menabrak lubang.</i>'}
+      </div>
+      <div class="kg-panel hg-tuas-panel">
+        <div class="hg-tuas-atas">
+          <span class="kg-label">Target margin</span>
+          <b>${target}%<u>dari harga jual</u></b>
+        </div>
+        <div class="hg-tuas-baris">
+          <button type="button" class="hg-tuas-tombol" onclick="hgGeserTarget(-1)" aria-label="Turunkan target satu persen">&minus;</button>
+          <input type="range" id="hgTuas" min="5" max="40" step="1" value="${target}"
+            oninput="hgKetikTuas()" aria-label="Target margin persen">
+          <button type="button" class="hg-tuas-tombol" onclick="hgGeserTarget(1)" aria-label="Naikkan target satu persen">+</button>
+        </div>
+        <div class="hg-tuas-ket" id="hgTuasKet"></div>
       </div>`;
 
       h += daftarMerk.map(m => {
@@ -23145,7 +23270,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
           // tulisannya "margin 0,0%" bertanda tipis. Itu yang benar-benar terjadi.
           const bisa = b.hpp > 0 && b.harga > 0;
           const rugi = bisa && b.hpp > b.harga;
-          let kanan, bilah = '';
+          let kanan, bilah = '', mgBaris = null;
           if (!(b.harga > 0)) kanan = '<span class="oks">harga belum diisi</span>';
           else if (!(b.hpp > 0)) kanan = '<span class="oks">HPP belum ada</span>';
           else if (rugi) {
@@ -23156,7 +23281,8 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
             // tidak.
             kanan = `<span class="oks">rugi Rp${Math.round(b.hpp - b.harga).toLocaleString('id-ID')}/${b.kem ? 'unit' : (b.pil === 'Literan /L' ? 'liter' : 'kg')}</span>`;
           } else {
-            const mg = (b.harga - b.hpp) / b.harga * 100;
+            mgBaris = (b.harga - b.hpp) / b.harga * 100;
+            const mg = mgBaris;
             const porsiHpp = Math.round(b.hpp / b.harga * 100);
             kanan = `<span class="${mg < 5 ? 'oks' : ''}">margin ${mg.toFixed(1).replace('.', ',')}%</span>`;
             // TANPA lantai minimum: margin 0,3% memang harus terlihat nyaris tidak ada.
@@ -23166,12 +23292,35 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
           }
           const umur = b.umur !== null && b.umur !== undefined && !isNaN(b.umur)
             ? `<br>${b.umur} hr${b.umur > 60 ? '<span class="hg-titik-tua"></span>' : ''}` : '';
+          // MELESET dihitung dalam POIN PERSEN, bukan persen dari target: selisih 2
+          // poin sama beratnya di target 10% maupun 35%. Baris rugi selalu meleset.
+          // Baris tanpa HPP TIDAK PERNAH ditandai — tidak ada dasar menuduhnya apa pun.
+          //
+          // HANYA KE BAWAH — dan ini SENGAJA menyimpang dari desain. Desain menandai
+          // simpangan dua arah dan menawarkan setel untuk keduanya, jadi baris bermargin
+          // 20% terhadap target 13% akan membawa tombol "setel ke" berisi harga yang
+          // LEBIH RENDAH dari harga sekarang. Risikonya tidak simetris: satu ketukan
+          // salah ke arah bawah membuang margin yang sudah didapat, diam-diam, pada
+          // baris yang sebenarnya sedang sehat — sementara tidak menawarkan apa-apa di
+          // baris sehat tidak merugikan siapa pun. Marginnya tetap tercetak berikut
+          // bilahnya, jadi tidak ada informasi yang disembunyikan; yang dicabut cuma
+          // AJAKAN menurunkan harga. Tuas ini alat mencari yang kurang untung, bukan
+          // alat meratakan margin ke bawah.
+          const meleset = bisa && (rugi || mgBaris < target - HG_TOLERANSI);
+          const usul = meleset ? hgUsulHarga(b.hpp, target, b.kem) : 0;
+          const satuan = b.kem ? 'unit' : (b.pil === 'Literan /L' ? 'liter' : 'kg');
+          const barisSetel = (meleset && usul > 0 && usul !== Math.round(b.harga))
+            ? `<button type="button" class="hg-setel" onclick="hgSetelBaris('${b.jenis}', ${escapeHtml(JSON.stringify(String(b.id)))}, ${usul})">
+                 <span>${rugi ? 'Di bawah modal' : 'Di bawah target'} &middot; setel ke</span>
+                 <u>Rp${usul.toLocaleString('id-ID')}<i>/${satuan}</i></u>
+               </button>`
+            : '';
           return `<button type="button" class="hg-baris${bilah ? ' ada-bilah' : ''}" onclick="${b.aksi}">
             <span class="hg-ukuran">${b.pil}</span>
             <span class="kg-uang-dagang">Rp${Math.round(b.harga).toLocaleString('id-ID')}</span>
             <span class="hg-kanan">${kanan}${umur}</span>
             ${bilah}
-          </button>`;
+          </button>${barisSetel}`;
         }).join('');
         x += d.lubang.map(l => `<button type="button" class="hg-lubang" onclick="${l.aksi}">
           <span>${l.pil} belum ada harganya — kasir akan menabraknya</span><u>ISI</u>
@@ -23204,6 +23353,20 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 
       h += `<button type="button" class="kg-terpilih hg-tambah" onclick="bukaLembarHarga('literan')">Tambah Harga</button>`;
       wadah.innerHTML = h;
+      // Cacah meleset dibaca dari DOM YANG SUDAH JADI, bukan dihitung ulang dari data —
+      // supaya angka di kepala mustahil berbeda dari jumlah tanda yang benar-benar
+      // tergambar di bawahnya. Wajib SESUDAH penulisan innerHTML terakhir; percobaan
+      // pertama saya menaruhnya sesudah penulisan pertama dan hasilnya langsung
+      // tertimpa penulisan kedua, diam-diam.
+      const elKet = document.getElementById('hgTuasKet');
+      if (elKet) {
+        const nSetel = wadah.querySelectorAll('.hg-setel').length;
+        elKet.textContent = nSetel === 0
+          ? 'Semua harga yang punya HPP sudah dalam ' + HG_TOLERANSI + ' poin dari target.'
+          : nSetel + ' harga lebih dari ' + HG_TOLERANSI + ' poin DI BAWAH target. Setel satu per satu — '
+            + 'tiap ketukan membuka lembar harga dengan angka usul terisi, dan Simpan tetap di tangan kamu. '
+            + 'Harga yang marginnya di ATAS target sengaja tidak ditawari turun.';
+      }
     } catch (e) { console.error('tampilkanHargaKaca:', e); }
   }
 
@@ -25274,6 +25437,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   window.hitungPerkiraan = hitungPerkiraan;
   window.hapusBarisMerk = hapusBarisMerk;
   // Pola form baku (Lembar 1 Penyempurnaan, 7 Agu 2026)
+  window.hgGeserTarget = hgGeserTarget; window.hgKetikTuas = hgKetikTuas; window.hgSetelBaris = hgSetelBaris;
   window.ubahTempatSimpan = ubahTempatSimpan; window.ubahTempatSimpanMerkIni = ubahTempatSimpanMerkIni;
   window.tutupLembarKarantina = tutupLembarKarantina; window.karantinaDariLembar = karantinaDariLembar;
   window.bukaKeliling = bukaKeliling; window.tutupKeliling = tutupKeliling;
