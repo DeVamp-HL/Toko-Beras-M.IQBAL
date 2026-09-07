@@ -4210,6 +4210,18 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 /* Batas belum terbentuk: relnya bertepi putus dan kosong. Bilah kosong bisa terbaca
    "aman"; tepi putus mengatakan yang sebenarnya — belum ada yang diukur. */
 #piutang6a .p6-batas .bar.belum{ background:none; border:1px dashed rgba(255,255,255,.16); height:6px; }
+/* DUA KERAN. Patokan lebar = keran yang lebih deras bulan ini; keduanya dicetak
+   sebagai rupiah di sebelahnya, jadi batangnya menjawab "mana lebih deras" dan
+   angkanya menjawab "berapa". Tanpa lantai minimum: nol harus terlihat nol. */
+#piutang6a .p6-keran{ margin-top:9px; }
+#piutang6a .p6-keran-baris{ display:grid; grid-template-columns:74px 1fr auto; align-items:center;
+  gap:8px; min-height:26px; }
+#piutang6a .p6-keran-baris .lbl{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); }
+#piutang6a .p6-keran-baris .rel{ height:6px; border-radius:99px; background:rgba(255,255,255,.06); overflow:hidden; }
+#piutang6a .p6-keran-baris .rel i{ display:block; height:100%; border-radius:99px; }
+#piutang6a .p6-keran-baris .rel i.masuk{ background:var(--pf-amber); }
+#piutang6a .p6-keran-baris .rel i.keluar{ background:var(--emas); }
+#piutang6a .p6-keran-baris b{ font-family:var(--pf-serif); font-weight:600; font-size:11.5px; color:var(--pf-platina); }
 #piutang6a .baris-44 .kg-uang-piutang{ font-size:13px; }
 /* --- KACA EMAS G3: Setelan (rapor + zona) --- */
 @media (min-width:700px){ #setelanKaca{ display:none; } }
@@ -22019,6 +22031,49 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             + '<div class="kg-rincian">Saldo awal ' + rp(sAwal) + ' + kredit ' + rp(sKredit) + ' − bayar ' + rp(sBayar)
             + (sHapus > 0 ? ' − dihapus buku ' + rp(sHapus) : '') + ' = ' + rp(totalP)
             + '. Dihitung ulang tiap dibuka — tidak pernah disimpan.</div></div>';
+
+          // ── BERAPA KARUNG: piutang diterjemahkan jadi barang ──
+          // KG DIBACA DARI DOKUMEN PENJUALAN, bukan rupiah dibagi harga. Membagi dengan
+          // harga membuat angka gudang bergoyang tiap kali katalog disentuh: menaikkan
+          // harga karung sekali saja akan MENURUNKAN "berapa karung yang dibawa" walau
+          // tidak seorang pun membayar sesen. Utang itu jumlah uang yang tetap; barang
+          // di belakangnya juga tetap, dan totalKg mencatatnya apa adanya.
+          // Join lewat idTrx dari mutasi 'jual' — bukan menyaring caraBayar lagi —
+          // supaya cakupannya persis sama dengan yang dipakai mesin piutang.
+          const idKredit = {};
+          berutang.forEach(x => (x.d.mutasi || []).forEach(m => {
+            if (m.jenis === 'jual' && m.idTrx) idKredit[m.idTrx] = 1;
+          }));
+          let kgKredit = 0, rpBerkarung = 0;
+          ambilPenjualan().forEach(t2 => {
+            if (!idKredit[t2.id]) return;
+            // Whitelist jenis yang benar-benar membawa kg. 'kasir_darurat_nominal'
+            // (nota nominal tanpa rincian barang) dan 'potongan' sengaja terbuang.
+            if (t2.jenis !== 'karung' && t2.jenis !== 'repacking'
+              && t2.jenis !== 'literan' && t2.jenis !== 'kemasan') return;
+            if (!(t2.totalKg > 0)) return;
+            kgKredit += t2.totalKg;
+            rpBerkarung += t2.hargaTotal || 0;
+          });
+          const rpTanpaBarang = Math.max(0, sKredit + sAwal - rpBerkarung);
+          if (kgKredit > 0) {
+            // TANDA ± WAJIB. Pembayaran belum dialokasikan ke penjualan tertentu, jadi
+            // kg di sini sedikit LEBIH BESAR dari "karung yang benar-benar belum
+            // dibayar". Kalimatnya juga menyebut suku yang benar — "kredit sebesar …
+            // itu …", bukan "sisa utang = … karung".
+            const karung = kgKredit / 50;
+            html += '<div class="kg-panel p6-sela"><div class="kg-label">Barang di belakang utang</div>'
+              + '<b class="p6-besar">±' + (Math.round(karung * 10) / 10).toLocaleString('id-ID') + ' karung</b>'
+              + '<div class="kg-rincian">Kredit sebesar ' + rp(rpBerkarung) + ' itu '
+              + Math.round(kgKredit).toLocaleString('id-ID') + ' kg &mdash; kira-kira segitu karung 50 kg '
+              + 'yang sudah keluar tapi belum dibayar. Tanda ± karena pembayaran belum '
+              + 'dialokasikan ke nota tertentu, jadi angkanya sedikit lebih besar dari yang sebenarnya masih terutang.'
+              + (rpTanpaBarang > 0
+                ? ' ' + rp(rpTanpaBarang) + ' sisanya saldo awal atau nota tanpa rincian barang &mdash; tidak ada karung di belakangnya.'
+                : '')
+              + '</div></div>';
+          }
+
           // kolam bulan ini dari mutasi keluaran mesin
           const bl = bulanLokalIso();
           let baru = 0, dibayar = 0, dihapus = 0;
@@ -22029,10 +22084,35 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             else baru += m.nominal || 0;
           }));
           const selisih = baru - dibayar - dihapus;
+          // ── DUA KERAN. Angka yang SAMA dengan sebelumnya, cuma tergambar: satu batang
+          // utang baru masuk, satu batang uang keluar (bayar + hapus buku). Ini
+          // MENGGANTI isi kartu lama, bukan menambah kartu — dua kartu yang menggambar
+          // angka yang sama di zona yang sama adalah dua tempat yang akan berselisih.
+          //
+          // WADAH KOLAMNYA SENGAJA TIDAK DIGAMBAR, meski desain memakainya. Aliran
+          // (rupiah PER BULAN) dan genangan (rupiah kumulatif sejak toko berdiri) dua
+          // satuan berbeda; menaruhnya dalam satu gambar adalah bentuk yang sama persis
+          // dengan cacat 48x di layar Harga. Yang tinggal cuma dua kerannya.
+          //
+          // Patokan lebar = keran yang lebih deras di bulan ini, dan itu perbandingan
+          // dua angka yang dicetak berdampingan — bukan keadaan mutlak. TANPA lantai
+          // minimum: keran yang nol harus terlihat nol, bukan disulap jadi sesuatu.
+          const keluar = dibayar + dihapus;
+          const maksKeran = Math.max(baru, keluar);
+          const lebar = v => maksKeran > 0 ? Math.round(v / maksKeran * 100) : 0;
           html += '<div class="kg-panel p6-sela"><div class="kg-label">' + (selisih >= 0 ? 'Piutang naik bulan ini' : 'Piutang turun bulan ini') + '</div>'
             + '<b class="kg-uang-piutang">' + (selisih >= 0 ? '+' : '−') + rp(selisih) + '</b>'
-            + '<div class="kg-rincian">baru ' + rp(baru) + ' · dibayar ' + rp(dibayar)
-            + (dihapus > 0 ? ' · dihapus buku ' + rp(dihapus) : '') + '</div></div>';
+            + '<div class="p6-keran">'
+              + '<div class="p6-keran-baris"><span class="lbl">utang baru</span>'
+                + '<span class="rel"><i class="masuk" style="width:' + lebar(baru) + '%"></i></span>'
+                + '<b>' + rp(baru) + '</b></div>'
+              + '<div class="p6-keran-baris"><span class="lbl">uang kembali</span>'
+                + '<span class="rel"><i class="keluar" style="width:' + lebar(keluar) + '%"></i></span>'
+                + '<b>' + rp(keluar) + '</b></div>'
+            + '</div>'
+            + '<div class="kg-rincian">Uang kembali = dibayar ' + rp(dibayar)
+            + (dihapus > 0 ? ' + dihapus buku ' + rp(dihapus) : '')
+            + '. Panjang batang membandingkan dua angka ini satu sama lain, bukan terhadap seluruh piutang.</div></div>';
           html += '<div class="kg-label p6-sela">Tiga ruang tunggu · tua dulu</div>';
           [['Di atas 90 hari', x => (x.d.umurHari || 0) > 90, true], ['31–90 hari', x => (x.d.umurHari || 0) > 30 && (x.d.umurHari || 0) <= 90, false], ['0–30 hari', x => (x.d.umurHari || 0) <= 30, false]]
             .forEach(r => {
