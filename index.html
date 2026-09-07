@@ -4913,9 +4913,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 #produksiKacaAdukan .pr6-hasil small{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px;
   color:var(--pf-abu); margin-top:2px; }
 /* Bilah belah: bagian HPP = --isi (dari HPP/harga yang sama dengan angkanya), sisanya margin. */
+/* POLARITAS DISAMAKAN DENGAN #hargaKaca .hg-belah (4696-4703), yang sudah lebih dulu
+   menabrak cacat ini dan menuliskan alasannya di sana: lapisan HPP yang TERANG di atas
+   emas membuat bilah 100%-HPP terlihat penuh emas — kebalikan persis dari artinya.
+   Pelajarannya dicatat di layar Harga dan tidak pernah menyeberang ke sini; bilah
+   Produksi masih memakai rgba(255,255,255,.14) sampai hari ini. Jalur = emas (laba),
+   lapisan modal = GELAP, dipaku dari kiri. */
 #produksiKacaAdukan .pr6-belah{ display:flex; height:5px; border-radius:99px; overflow:hidden; margin-top:6px;
-  background:rgba(226,205,166,.55); }
-#produksiKacaAdukan .pr6-belah i{ display:block; width:var(--isi,0%); background:rgba(255,255,255,.14); }
+  background:linear-gradient(90deg,var(--emas),var(--pf-platina)); }
+#produksiKacaAdukan .pr6-belah i{ display:block; width:var(--isi,0%); background:rgba(10,9,8,.72); }
+#produksiKacaAdukan .pr6-hasil .atas .kg-uang-dagang.rugi{ background:none;
+  -webkit-text-fill-color:#d3a08b; color:#d3a08b; }
 #produksiKacaAdukan .pr6-catatan{ margin:8px 0 2px; padding:7px 10px; border-radius:9px; font-family:var(--pf-serif);
   font-style:italic; font-size:10px; line-height:1.5; color:#d3a08b; border-color:rgba(211,160,139,.5) !important; }
 #produksiKacaAdukan .pr6-hasil .putus{ margin-top:6px; padding:7px 10px; border-radius:9px; font-family:var(--pf-serif);
@@ -15618,17 +15626,31 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         const belumIsi = [];
         if (butuhKantong && kantongN <= 0) belumIsi.push('kantong');
         if (upahR <= 0) belumIsi.push('upah repacking');
-        h += `<div class="kg-panel pr6-panel"><div class="pr6-kepala"><span class="kg-label">Hasil &middot; diurut margin</span><i>${baris.length} ukuran &middot; harga dari Katalog Harga</i></div>
+        h += `<div class="kg-panel pr6-panel"><div class="pr6-kepala"><span class="kg-label">Hasil &middot; diurut margin %</span><i>${baris.length} ukuran &middot; harga dari Katalog Harga</i></div>
           ${belumIsi.length ? `<div class="pr6-catatan kg-tepi-putus">HPP ini baru bahan berasnya — ${belumIsi.join(' &amp; ')} belum diisi, angka per unit masih akan naik.</div>` : ''}`;
         h += baris.map(r => {
           const kurangKantong = r.x.kantongJenis && butuh[r.x.kantongJenis] > ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)
             ? `<button type="button" class="pr6-kurang" onclick="prodPilihTab('bahan')">Kantong ${escapeHtml(LABEL_BAHAN_KEMASAN[r.x.kantongJenis] || r.x.kantongJenis)} sisa ${Math.round((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)} — kurang ${Math.round(butuh[r.x.kantongJenis] - ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0))}. Ketuk untuk beli.</button>` : '';
+          // AMBANGNYA TEGAS < 0, BUKAN <= 0 — aturan yang sama dengan layar Harga
+          // (24294-24299). Margin PERSIS nol bukan rugi; di toko ini itu keadaan yang
+          // dipilih sadar (karung IR64 sengaja belum dinaikkan), dan menyebutnya
+          // "rugi Rp0" menuduh keputusan yang disengaja sebagai kecelakaan. Baris
+          // margin-nol jatuh ke cabang bawah: bilahnya gelap penuh, tulisannya
+          // "margin 0,0%".
+          const rugi = r.margin !== null && r.margin < 0;
+          // RUGI TIDAK DIGAMBAR SEBAGAI BILAH. Bilah membagi SATU harga jual jadi dua
+          // bagian; kalau HPP melampaui harga jual tidak ada yang bisa dibagi, dan
+          // Math.min(100,...) yang lama mencekiknya jadi bilah penuh — persis sama
+          // dengan margin nol, dua keadaan berbeda tergambar identik.
           return `<div class="pr6-hasil">
-            <div class="atas"><b>${escapeHtml(r.x.nama)} ${angkaRapi(r.x.ukuran)} kg &times; ${angkaRapi(r.x.unit)}</b>${r.margin !== null ? `<span class="kg-uang-dagang">${(r.margin < 0 ? '−' : '') + formatRupiah(Math.abs(r.margin))}</span>` : ''}</div>
-            ${r.harga !== null
-              ? `<small>HPP ${formatRupiah(r.hppUnit)}/unit &middot; jual ${formatRupiah(r.harga)} &middot; margin ${r.persen.toFixed(1).replace('.', ',')}% per unit</small>
-                 <div class="pr6-belah"><i style="--isi:${Math.max(0, Math.min(100, Math.round(r.hppUnit / r.harga * 100)))}%"></i></div>`
-              : `<small>HPP ${formatRupiah(r.hppUnit)}/unit</small><div class="putus kg-tepi-putus">harga jual belum ada di Katalog Harga — margin tidak ditebak.</div>`}
+            <div class="atas"><b>${escapeHtml(r.x.nama)} ${angkaRapi(r.x.ukuran)} kg &times; ${angkaRapi(r.x.unit)}</b>${r.margin !== null ? `<span class="kg-uang-dagang${rugi ? ' rugi' : ''}">${(rugi ? '\u2212' : '') + formatRupiah(Math.abs(r.margin))}</span>` : ''}</div>
+            ${r.harga === null
+              ? `<small>HPP ${formatRupiah(r.hppUnit)}/unit</small><div class="putus kg-tepi-putus">harga jual belum ada di Katalog Harga — margin tidak ditebak.</div>`
+              : (rugi
+                ? `<small>HPP ${formatRupiah(r.hppUnit)}/unit &middot; jual ${formatRupiah(r.harga)}</small>
+                   <div class="putus kg-tepi-putus">rugi ${formatRupiah(Math.abs(r.margin))}/unit — harga jual di bawah HPP, bilah tidak digambar.</div>`
+                : `<small>HPP ${formatRupiah(r.hppUnit)}/unit &middot; jual ${formatRupiah(r.harga)} &middot; margin ${r.persen.toFixed(1).replace('.', ',')}% dari harga jual</small>
+                   <div class="pr6-belah" aria-hidden="true"><i style="--isi:${Math.round(r.hppUnit / r.harga * 100)}%"></i></div>`)}
             ${kurangKantong}
           </div>`;
         }).join('');
