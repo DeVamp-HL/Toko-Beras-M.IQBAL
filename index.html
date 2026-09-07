@@ -4456,6 +4456,28 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #hargaKaca .hg-baris .kg-uang-dagang{ font-size:17px; }
 #hargaKaca .hg-kanan{ text-align:right; font-size:9.5px; color:var(--pf-abu); line-height:1.5; }
 #hargaKaca .hg-kanan .oks{ color:#d3a08b; font-weight:700; }
+/* TIMBANGAN. Kemiringan berpatokan TETAP (0,55 derajat per poin margin, dibatasi
+   +-18), bukan dibagi margin terbesar di antara merk. */
+#hargaKaca .hg-timbang{ margin-top:11px; padding-top:9px; border-top:1px solid rgba(255,255,255,.06); }
+#hargaKaca .tm-alat{ position:relative; height:58px; margin-top:6px; }
+#hargaKaca .tm-lengan{ position:absolute; left:6%; right:6%; top:16px; height:2px;
+  display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(90deg,rgba(207,212,218,.28),var(--pf-platina));
+  transform-origin:50% 50%; transition:transform .3s cubic-bezier(.3,.9,.3,1); }
+#hargaKaca .tm-sisi{ display:flex; flex-direction:column; align-items:center; gap:1px;
+  padding:0 4px; transform:translateY(-2px); }
+#hargaKaca .tm-sisi b{ font-family:var(--pf-serif); font-weight:600; font-size:13px; color:var(--pf-platina); }
+#hargaKaca .tm-sisi i{ font-family:var(--pf-serif); font-style:italic; font-size:9px; color:var(--pf-abu); }
+#hargaKaca .tm-sisi.kiri b{ color:var(--pf-abu); }
+#hargaKaca .tm-tiang{ position:absolute; left:50%; top:17px; bottom:2px; width:1px;
+  margin-left:-0.5px; background:rgba(207,212,218,.2); }
+#hargaKaca .tm-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.55; color:var(--pf-abu); margin-top:3px; }
+#hargaKaca .tm-tipis{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.55; color:var(--pf-amber); margin-top:5px; }
+#hargaKaca .tm-tipis b{ font-style:normal; }
+@media (prefers-reduced-motion:reduce){ #hargaKaca .tm-lengan{ transition:none } }
+
 /* CATATAN TAWAR. Rel bersumbu MUTLAK: jarum harga daftar selalu di 66,7%, jadi dua
    baris berbeda boleh dibandingkan mata. Jangan pernah mengganti twPos() dengan
    pembagian terhadap maksimum kelompok. */
@@ -23703,6 +23725,48 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         x += d.lubang.map(l => `<button type="button" class="hg-lubang" onclick="${l.aksi}">
           <span>${l.pil} belum ada harganya — kasir akan menabraknya</span><u>ISI</u>
         </button>`).join('');
+        // ── TIMBANGAN: beli lawan jual, lengannya miring sesuai margin ──
+        // KEMIRINGANNYA BERPATOKAN TETAP: 0,55 derajat per poin margin, dibatasi ±18.
+        // Bukan dibagi margin terbesar di antara merk — kalau begitu, memperbaiki satu
+        // merk akan MEMIRINGKAN merk lain yang tidak disentuh sama sekali, dan
+        // gambarnya berhenti berarti apa pun.
+        const brsHpp = d.baris.filter(b => b.perKg > 0 && b.hpp > 0 && b.harga > 0);
+        if (brsHpp.length) {
+          // Jual per kg dipakai MEDIAN, bukan rata-rata: satu ukuran yang harganya
+          // menyimpang jauh tidak boleh menyeret seluruh lengan.
+          const jualKg = twMedian(brsHpp.map(b => b.perKg));
+          const hppKgT = hppKg > 0 ? hppKg : 0;
+          if (hppKgT > 0 && jualKg > 0) {
+            const mgMerk = (jualKg - hppKgT) / jualKg * 100;
+            const derajat = Math.max(-18, Math.min(18, mgMerk * 0.55));
+            // UKURAN PALING TIPIS WAJIB DISEBUT. Ini bukan hiasan kalimat: satu merk
+            // dengan curah 25% dan kemasan 3% memberi lengan yang tampak sehat di 14%,
+            // dan ukuran yang sekarat bersembunyi persis di balik gambar yang
+            // menenangkan itu. Timbangan tanpa kalimat ini bukan versi setengah — ia
+            // versi yang menyesatkan ke arah berlawanan dari gunanya.
+            let tipis = null, mgTipis = Infinity;
+            brsHpp.forEach(b => { const mm = (b.harga - b.hpp) / b.harga * 100;
+              if (mm < mgTipis) { mgTipis = mm; tipis = b; } });
+            const pers = v => v.toFixed(1).replace('.', ',') + '%';
+            x += `<div class="hg-timbang">
+              <div class="kg-label">Timbangan &middot; beli lawan jual</div>
+              <div class="tm-alat">
+                <span class="tm-lengan" style="transform:rotate(${derajat.toFixed(1)}deg)">
+                  <span class="tm-sisi kiri"><b>${formatRupiah(Math.round(hppKgT))}</b><i>modal /kg</i></span>
+                  <span class="tm-sisi kanan"><b>${formatRupiah(Math.round(jualKg))}</b><i>jual /kg</i></span>
+                </span>
+                <span class="tm-tiang" aria-hidden="true"></span>
+              </div>
+              <div class="tm-ket">Sisi yang lebih berat turun &mdash; miring ${pers(mgMerk)}.
+                Itu margin ukuran TENGAH merk ini, bukan seluruh ukurannya.</div>
+              ${(brsHpp.length > 1 && mgTipis < mgMerk - 0.05)
+                ? `<div class="tm-tipis">Yang paling tipis: <b>${tipis.pil}</b> di ${pers(mgTipis)}.
+                     Rata-rata merk menyembunyikannya.</div>`
+                : ''}
+            </div>`;
+          }
+        }
+
         const anak = d.baris.filter(b => b.perKg > 0);
         if (anak.length >= 2) {
           const maksKg = Math.max.apply(null, anak.map(b => b.perKg));
