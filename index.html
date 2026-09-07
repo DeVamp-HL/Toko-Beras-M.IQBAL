@@ -4897,6 +4897,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   font-size:15px; color:var(--pf-platina); }
 #produksiKacaAdukan .pr6-kolam i{ font-size:9.5px; font-style:italic; color:var(--pf-abu); }
 #produksiKacaAdukan .pr6-kaki.bawah span{ border-style:dashed; }
+#produksiKacaAdukan .pr6-porsi{ margin:4px 2px 0; font-family:var(--pf-serif); font-style:italic;
+  font-size:9.5px; line-height:1.5; color:var(--pf-abu); }
+#produksiKacaAdukan .pr6-mustahil{ font-size:10px; font-weight:600; line-height:1.25; display:block; }
 #produksiKacaAdukan .pr6-tiga{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px;
   padding-top:8px; border-top:1px solid rgba(255,255,255,.06); }
 #produksiKacaAdukan .pr6-tiga .label{ font-size:8px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--pf-abu); }
@@ -15528,28 +15531,70 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const daftarBahan = prodDaftarBahan();
       gambarKacaBilahKantong(daftarBahan);
       if (!d || !(d.totalKg > 0)) {
-        w.innerHTML = `<div class="kg-panel pr6-panel"><div class="kg-label">Nilai adukan &middot; per kg</div>
+        // Cabang kosong WAJIB ikut mencatat _pr6. Dulu tidak, dan akibatnya diam:
+        // isi 400 kg (cache = html-400) -> hapus isinya (layar berganti jadi "belum ada
+        // bahan", cache MASIH html-400) -> ketik 400 lagi -> html yang dihitung sama
+        // persis dengan cache, penjaga di ujung fungsi menyimpulkan "tidak berubah", dan
+        // layar TIDAK ditulis ulang. Pemilik melihat "Belum ada bahan adukan" sementara
+        // kotak kg-nya berisi 400 dan perhitungannya sudah jalan.
+        const kosong = `<div class="kg-panel pr6-panel"><div class="kg-label">Nilai adukan &middot; per kg</div>
           <div class="pr6-sub">Belum ada bahan adukan — pilih karung sumber di bawah. Sistem tidak menebaknya.</div></div>`;
+        if (w._pr6 !== kosong) { w.innerHTML = kosong; w._pr6 = kosong; }
         return;
       }
       const sumber = bacaSumberProduksi();
       const sumberKem = bacaSumberKemasanProduksi();
       const hasil = bacaHasilProduksi();
       const susut = Math.round((d.totalKg - (d.totalKgJadi || 0)) * 1000) / 1000;
-      const susutBerat = d.totalKgJadi > 0 && Math.abs(susut) > d.totalKg * 0.15;
+      // Math.abs dulu menyamakan susut −5 kg dengan +5 kg. Padahal keduanya beda jenis:
+      // +5 kg itu susut BESAR (beras hilang), −5 kg itu MUSTAHIL (hasil lebih berat dari
+      // bahan) — selalu salah ketik ukuran atau unit. Yang mustahil menolak menggambar
+      // angka dan menyebut sebabnya; yang berat cuma diwarnai.
+      const susutMustahil = d.totalKgJadi > 0 && susut < 0;
+      const susutBerat = d.totalKgJadi > 0 && susut > d.totalKg * 0.15;
+      // Lebar kaki = PORSI kg-nya, dihitung di sini sebagai persen — bukan dititipkan
+      // ke flex-grow. Dua sebab. (a) flex-grow membagi RUANG SISA, dan padding 7px kiri
+      // + 7px kanan tiap kaki tidak ikut dibagi: kaki kecil selalu kelebihan lebar, dan
+      // makin banyak kakinya makin melenceng. (b) --kg dulu dibulatkan ke bilangan bulat
+      // dengan lantai 1 — dua kaki 0,4 kg dan 1,4 kg tergambar sama lebar. Dengan
+      // flex-basis persen + box-sizing:border-box, paddingnya masuk ke dalam persen itu.
+      const kakiAtas = sumber.map(x => ({ nama: x.merk, kg: x.kg, ket: '' }))
+        .concat(sumberKem.map(x => ({ nama: x.namaProduk + ' ' + x.ukuranKemasan + ' kg',
+          kg: x.ukuranKemasan * x.unit, ket: 'kemasan jadi' })));
+      const kakiBawah = hasil.map(x => ({ nama: x.nama, kg: x.ukuran * x.unit,
+        ket: angkaRapi(x.ukuran) + ' kg × ' + angkaRapi(x.unit),
+        // Di kaki BAWAH yang membedakan baris bukan namanya — tiga ukuran seadukan
+        // biasanya satu merk yang sama. Barisnya menyebut ukuran, kalau tidak baris
+        // porsi berbunyi "Angsa Pulen · Angsa Pulen · Angsa Pulen".
+        label: x.nama + ' ' + angkaRapi(x.ukuran) + ' kg × ' + angkaRapi(x.unit) }));
+      const kgBawah = kakiBawah.reduce((a, x) => a + x.kg, 0);
+      const porsiTxt = (kg, total) => total > 0
+        ? (kg / total * 100).toFixed(1).replace('.', ',') + '%' : '—';
+      // Kaki di bawah ±12% tidak akan pernah cukup lebar untuk memuat tulisannya, jadi
+      // syarat "angkanya tertulis di layar" dipenuhi oleh baris teks di bawah corong —
+      // bukan oleh lebar kaki yang bisa menyempit sampai hilang.
+      const kakiSpan = (k, total) => `<span style="flex:0 0 ${(total > 0 ? k.kg / total * 100 : 0).toFixed(2)}%" title="${escapeHtml(k.nama)} · ${angkaRapi(k.kg)} kg · ${porsiTxt(k.kg, total)}"><b>${escapeHtml(k.ket || k.nama)}</b><i>${k.ket ? escapeHtml(k.nama) : angkaRapi(k.kg) + ' kg'}</i></span>`;
+      const barisPorsi = (daftar, total) => `<div class="pr6-porsi">${daftar.map(k =>
+        escapeHtml(k.label || k.nama) + ' ' + angkaRapi(k.kg) + ' kg (' + porsiTxt(k.kg, total) + ')').join(' &middot; ')}</div>`;
       let h = `<div class="kg-panel pr6-panel">
         <div class="pr6-kepala"><span class="kg-label">Nilai adukan &middot; per kg</span><i>${d.merk} bahan</i></div>
         <div class="kg-uang-dagang">${formatRupiah(d.hppPerKg)}</div>
         <div class="pr6-sub">nilai bahan per kg — belum termasuk kantong &amp; upah; HPP hasil ${d.totalKgJadi > 0 ? formatRupiah(d.hppKgHasil) + '/kg' : 'menunggu baris hasil'}.</div>
-        <div class="pr6-kaki atas">${sumber.map(s => `<span style="--kg:${Math.max(1, Math.round(s.kg))}"><b>${escapeHtml(s.merk)}</b><i>${angkaRapi(s.kg)} kg</i></span>`).join('')}${sumberKem.map(k => `<span style="--kg:${Math.max(1, Math.round(k.ukuranKemasan * k.unit))}"><b>${escapeHtml(k.namaProduk)} ${k.ukuranKemasan} kg</b><i>${angkaRapi(k.ukuranKemasan * k.unit)} kg &middot; kemasan jadi</i></span>`).join('')}</div>
+        <div class="pr6-kaki atas">${kakiAtas.map(k => kakiSpan(k, d.totalKg)).join('')}</div>
+        ${barisPorsi(kakiAtas, d.totalKg)}
         <div class="pr6-kolam">${angkaRapi(d.totalKg)} kg <i>adukan</i></div>
-        <div class="pr6-kaki bawah">${hasil.length
-          ? hasil.map(x => `<span style="--kg:${Math.max(1, Math.round(x.ukuran * x.unit))}"><b>${angkaRapi(x.ukuran)} kg &times; ${angkaRapi(x.unit)}</b><i>${escapeHtml(x.nama)}</i></span>`).join('')
-          : '<span style="--kg:1"><b>—</b><i>belum ada baris hasil</i></span>'}</div>
+        <div class="pr6-kaki bawah">${kakiBawah.length
+          ? kakiBawah.map(k => kakiSpan(k, kgBawah)).join('')
+          : '<span style="flex:1 1 0"><b>—</b><i>belum ada baris hasil</i></span>'}</div>
+        ${kakiBawah.length ? barisPorsi(kakiBawah, kgBawah) : ''}
         <div class="pr6-tiga">
           <div><div class="label">Masuk</div><div class="nilai">${angkaRapi(d.totalKg)} kg</div></div>
           <div><div class="label">Keluar</div><div class="nilai">${d.totalKgJadi > 0 ? angkaRapi(d.totalKgJadi) + ' kg' : '—'}</div></div>
-          <div><div class="label">Susut</div><div class="nilai${susutBerat ? ' oks' : ''}">${d.totalKgJadi > 0 ? angkaRapi(susut) + ' kg' : '—'}</div></div>
+          <div><div class="label">Susut</div><div class="nilai${susutBerat || susutMustahil ? ' oks' : ''}">${susutMustahil
+            ? '<span class="pr6-mustahil">hasil lebih berat dari bahan</span>'
+            : (d.totalKgJadi > 0
+              ? angkaRapi(susut) + ' kg &middot; ' + (susut / d.totalKg * 100).toFixed(1).replace('.', ',') + '%'
+              : '—')}</div></div>
         </div>
       </div>`;
       if (hasil.length && d.totalKgJadi > 0) {
