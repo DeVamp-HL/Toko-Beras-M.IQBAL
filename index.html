@@ -4855,6 +4855,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   background:linear-gradient(90deg,rgba(226,205,166,.9),rgba(226,205,166,.4)); }
 #masukKaca .mk-ambang.oks .bilah{ background:linear-gradient(90deg,rgba(211,160,139,.9),rgba(211,160,139,.4)); }
 #masukKaca .mk-ambang.oks span:last-child{ color:#d3a08b; }
+#masukKaca .mk-catatan{ margin-top:8px; padding:7px 10px; border-radius:9px;
+  font-family:var(--pf-serif); font-style:italic; font-size:10px; line-height:1.5;
+  color:#d3a08b; border:1px dashed rgba(211,160,139,.45); }
 #masukKaca .mk-chip{ display:inline-block; margin-top:7px; padding:4px 10px; border-radius:99px;
   border:1px dashed rgba(211,160,139,.5); color:#d3a08b; font-family:var(--pf-serif);
   font-style:italic; font-size:10px; }
@@ -7530,6 +7533,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <span class="bi-nama bi-redup">Porsi bongkar per kg</span>
         <span class="bi-terkunci" id="rmPorsi">&mdash;</span>
       </div>
+      <!-- Kembaran kalimat "angka ini belum lengkap" di kepala kaca. Cacatnya sama di
+           kedua lebar — hitungPerkiraan berjalan di dua-duanya — jadi kejujurannya juga
+           harus ada di dua-duanya. -->
+      <p class="keterangan" id="rmTanpaMerk" style="display:none; color:var(--amber);"></p>
     </div>
 
     <div class="hasil" id="kotakHasil" style="display:none;">
@@ -9020,13 +9027,42 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     hitungPerkiraan();
   }
 
+  // BARIS YANG SUDAH BERISI TAPI BELUM BERNAMA. Satu penolong untuk TIGA pemakai —
+  // penjaga Simpan, kepala kaca, dan kartu Rincian desktop — supaya nomor baris yang
+  // disebut penjaga tidak pernah berbeda dari yang disebut pratinjau.
+  //
+  // Kenapa ini penting: pratinjau memberi SELURUH baris ke hitungHppMerkDalamBatch (9022)
+  // sementara simpanan cuma memberi yang bermerk & ber-kg (10280). Fungsi mesinnya sama,
+  // daftarnya beda — dan penyebut alokasi bongkar ikut beda. Akibatnya dua arah sekaligus:
+  //   · "Nilai beras mobil ini" LEBIH BESAR dari yang akan tersimpan (baris tanpa merk
+  //     ikut dijumlah, lalu lenyap saat Simpan);
+  //   · HPP per baris LEBIH MURAH dari yang akan tersimpan (porsi bongkar dibagi ke kg
+  //     yang tidak akan ikut disimpan).
+  // Yang kedua itu yang berbahaya: ia salah ke arah yang menenangkan, dan angka itulah
+  // yang dibaca pemilik untuk memutuskan harga jual.
+  // Nomor barisnya 1-based mengikuti urutan DOM — sama dengan yang dipakai
+  // perbaruiPenunjukBaris, jadi "Baris 2" di pesan menunjuk baris yang sama dengan
+  // "Baris 2 dari 3" di penunjuk.
+  function barisTanpaMerk(baris) {
+    const hasil = [];
+    (baris || bacaBarisMerk()).forEach((b, i) => {
+      if (b.merk) return;
+      if (!(b.totalKg > 0) && !(b.subtotalHarga > 0)) return;   // baris kosong bukan urusan ini
+      hasil.push({ ke: i + 1, isi: b.bentuk === 'bal'
+        ? angkaRapi(b.jumlahBal) + ' bal × ' + angkaRapi(b.isiPerBal) + ' pcs'
+        : angkaRapi(b.jumlahKarung) + ' karung × ' + angkaRapi(b.beratKarung) + ' kg',
+        rp: b.subtotalHarga });
+    });
+    return hasil;
+  }
   function ringkasBarisMasuk() {
     const baris = bacaBarisMerk();
     const bongkar = parseFloat((document.getElementById('biayaBongkar') || {}).value) || 0;
     const totalKgSemua = baris.reduce((a, b) => a + b.totalKg, 0);
     const totalKarungSemua = baris.filter(b => b.satuan === 'karung').reduce((a, b) => a + b.jumlahKarung, 0);
     const totalHargaBeli = baris.reduce((a, b) => a + b.subtotalHarga, 0);
-    return { baris, bongkar, totalKgSemua, totalKarungSemua, totalHargaBeli, totalSemua: totalHargaBeli + bongkar };
+    return { baris, bongkar, totalKgSemua, totalKarungSemua, totalHargaBeli,
+      totalSemua: totalHargaBeli + bongkar, tanpaMerk: barisTanpaMerk(baris) };
   }
   // Kaca Emas G3: keadaan disabled tombol saran diturunkan dari baris form yang ADA,
   // disegarkan tiap hitungPerkiraan (pilih merk lewat lembar, hapus baris) — bukan
@@ -9044,7 +9080,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function hitungPerkiraan() {
     if (typeof simpanDrafMasuk === 'function') simpanDrafMasuk();
     // Satu penolong untuk kartu lama DAN kepala kaca — tidak ada rumus tandingan.
-    const { baris, bongkar, totalKgSemua, totalKarungSemua, totalHargaBeli, totalSemua } = ringkasBarisMasuk();
+    // RINGKASNYA DISIMPAN UTUH, bukan cuma dipreteli. Dulu barisnya cuma mendestrukturisasi
+    // enam field lalu MERAKIT ULANG objek baru untuk gambarMasukKaca — jadi tiap field yang
+    // ditambahkan ke ringkasBarisMasuk diam-diam tidak sampai ke kepala kaca. Bentuk kecil
+    // dari penyakit yang sama: satu kebenaran, dua bentuk.
+    const ringkas = ringkasBarisMasuk();
+    const { baris, bongkar, totalKgSemua, totalKarungSemua, totalHargaBeli, totalSemua } = ringkas;
 
     // Tampilkan subtotal per baris (alokasi bongkar proporsional kg) — pakai rumus tunggal hitungHppMerkDalamBatch
     const barisDenganHpp = hitungHppMerkDalamBatch(baris, bongkar);
@@ -9104,6 +9145,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // yang sama persis, jadi satu layar memberi dua jawaban.
         document.getElementById('rmPorsi').textContent =
           totalKgSemua > 0 && bongkar > 0 ? formatRupiah(bongkar / totalKgSemua) + '/kg' : '—';
+        const elTM = document.getElementById('rmTanpaMerk');
+        if (elTM) {
+          const tm = barisTanpaMerk(baris);
+          elTM.style.display = tm.length > 0 ? 'block' : 'none';
+          if (tm.length > 0) elTM.textContent = tm.length + ' baris (' + tm.map(x => 'baris ' + x.ke).join(', ')
+            + ') sudah berisi tapi belum dipilih merknya. Angka di atas menghitungnya; yang tersimpan nanti tidak — '
+            + 'jadi nilai ini terlalu besar dan HPP tiap baris terlalu murah.';
+        }
       }
     }
 
@@ -9119,7 +9168,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       kotak.style.display = 'none';
     }
     segarkanTombolSaran(baris);
-    gambarMasukKaca({ baris, bongkar, totalKgSemua, totalKarungSemua, totalHargaBeli, totalSemua });
+    gambarMasukKaca(ringkas);
   }
 
   // ============ KACA EMAS G3: MASUK — TIMBANGAN MOBIL (hanya <700px) ============
@@ -9148,6 +9197,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <div class="mk-atas"><span class="kg-label">Nilai beras mobil ini</span><span class="mk-cara${utang ? '' : ' tunai'}">${utang ? 'BON PEMASOK' : 'TUNAI'}</span></div>
         <div class="kg-uang-dagang mk-nilai">${d.totalHargaBeli > 0 ? formatRupiah(d.totalHargaBeli) : '—'}</div>
         <div class="mk-ket">${d.totalHargaBeli > 0 && merkTerisi > 0 ? merkTerisi + ' merk &middot; ' : ''}${ket}</div>`;
+      // SYARAT KEDUA dari keputusan pemilik: selama baris tanpa merk masih ada, pratinjau
+      // WAJIB menyebut bahwa angkanya belum lengkap — berikut ARAH kesalahannya. Menahan
+      // Simpan saja tidak cukup: angka yang terpajang tetap HPP yang lebih murah dari
+      // kenyataan, cuma dengan tombol yang terkunci.
+      const tm = d.tanpaMerk || [];
+      if (tm.length > 0) {
+        h += `<div class="mk-catatan">${tm.length} baris (${tm.map(x => 'baris ' + x.ke).join(', ')}) sudah berisi tapi belum dipilih merknya.
+          Angka di atas MENGHITUNGNYA; yang tersimpan nanti tidak. Jadi nilai ini terlalu besar, dan HPP tiap baris terlalu murah.</div>`;
+      }
       if (krg > 0) {
         h += `<div class="mk-ambang${kurang ? ' oks' : ''}"><span class="rel"><span class="bilah" style="--isi:${Math.min(100, Math.round(krg / 60 * 100))}%"></span></span><span>${krg} / 60 krg</span></div>`;
         if (kurang) h += `<span class="mk-chip">belum sampai 60 — cek lagi, tetap bisa disimpan</span>`;
@@ -10277,6 +10335,25 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     let pemasok = document.getElementById('pemasok').value;
     if (pemasok === 'Lainnya') pemasok = document.getElementById('pemasokLain').value.trim();
 
+    // MENAHAN, bukan mendiamkan. Keputusan pemilik 9 Sep 2026: baris yang sudah diketik
+    // tidak boleh lenyap diam-diam saat Simpan, dan tidak boleh diabaikan — orangnya
+    // disuruh menyelesaikannya, karena ongkosnya rendah (barisnya ada di depan mata,
+    // satu ketukan). Aman di layar INI: Masuk dikerjakan saat mobil datang, bukan saat
+    // pembeli menunggu.
+    // Pesannya menyebut BARIS MANA. "Ada baris belum lengkap" adalah pesan yang menyuruh
+    // orang mencari sendiri — pelajaran dari Bulanan, yang dulu menyuruh "isi tanggalnya
+    // di tab Bulanan" tanpa menyebut pos mana.
+    const belumBernama = barisTanpaMerk(baris);
+    if (belumBernama.length > 0) {
+      alert(belumBernama.length + ' baris sudah diisi tapi merknya belum dipilih:\n\n'
+        + belumBernama.map(x => '· Baris ' + x.ke + ' — ' + x.isi
+          + (x.rp > 0 ? ' · ' + formatRupiah(x.rp) : '')).join('\n')
+        + '\n\nBaris tanpa merk TIDAK IKUT tersimpan, dan angkanya sudah ikut dijumlah di '
+        + 'layar — jadi kalau disimpan begini, nilai yang tercatat lebih kecil daripada yang '
+        + 'tadi terbaca, dan HPP tiap baris justru lebih mahal daripada yang tadi terbaca.\n\n'
+        + 'Pilih merknya, atau hapus barisnya kalau memang salah ketik.');
+      return;
+    }
     const barisValid = baris.filter(b => b.merk && b.totalKg > 0);
     if (barisValid.length === 0) { alert('Isi minimal satu baris: merk + jumlahnya (sack, atau bal beserta isinya).'); return; }
     if (barisValid.some(b => b.bentuk !== 'bal' && b.hargaPerKg <= 0)) { alert('Ada baris sack yang harga beli per kg-nya belum diisi.'); return; }
