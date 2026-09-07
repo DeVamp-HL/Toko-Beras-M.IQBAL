@@ -4924,6 +4924,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   font-size:15px; color:var(--pf-platina); }
 #produksiKacaAdukan .pr6-kolam i{ font-size:9.5px; font-style:italic; color:var(--pf-abu); }
 #produksiKacaAdukan .pr6-kaki.bawah span{ border-style:dashed; }
+.tb-tinggal{ margin-top:9px; padding:9px 11px; border-radius:9px;
+  border:1px dashed rgba(211,160,139,.5); background:rgba(211,160,139,.07);
+  font-family:var(--pf-serif); font-style:italic; font-size:11px; line-height:1.55; color:#d3a08b; }
 .wz-pesanan{ display:flex; align-items:center; gap:10px; margin:0 0 10px; padding:9px 11px;
   border-radius:10px; border:1px dashed rgba(211,160,139,.5); background:rgba(211,160,139,.07);
   font-family:var(--pf-serif); font-style:italic; font-size:11px; line-height:1.5; color:#d3a08b; }
@@ -20730,6 +20733,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
   // Dokumen milik tahun <= cutoff per koleksi — daftar id untuk arsip & penghapusan.
   // Katalog harga, pengaturan, catatan pelanggan, dan THR TIDAK ikut: itu data hidup.
+  // PESANAN YANG BELUM TUNTAS TIDAK IKUT DIHAPUS — dan tidak diberi saldo pembuka.
+  // Ini kejadian KETIGA dari keluarga yang sama (utang pemasok 78053f8, amplop laba
+  // 3f25635), tapi bentuk perbaikannya BEDA, dan itu yang penting.
+  // Amplop dan utang bisa kembali lewat SALDO PEMBUKA: keduanya angka, satu baris cukup
+  // mewakili keadaan akhir tahun. Pesanan bukan saldo — ia janji: nama orang, tanggal
+  // antar, barang yang ditahan. Tidak ada satu angka yang bisa mewakilinya, jadi
+  // satu-satunya perbaikan yang jujur adalah TIDAK MENGHAPUSNYA sama sekali sampai
+  // statusnya selesai atau batal.
+  // Kalau dibiarkan: tutup buku Desember menghapus janji yang belum ditepati tanpa jejak
+  // dan tanpa satu kalimat pun. Orang datang menagih pesanannya, dan sistem tidak punya
+  // catatan bahwa dia pernah memesan.
+  function pesananBelumTuntas(p) {
+    const st = String(p.status || '');
+    return st !== 'dibayar' && st !== 'batal';
+  }
   function tbDaftarKoleksi(tahun) {
     const cutoff = tbCutoff(tahun);
     // Pembuka piutang sengaja bertanggal utang tertuanya (supaya umurnya jujur), jadi
@@ -20750,7 +20768,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       { koleksi: KOLEKSI_RETUR,          label: 'retur',              dok: tgl(ambilRetur()) },
       { koleksi: KOLEKSI_KARANTINA,      label: 'karantina',          dok: tgl(ambilKarantina()) },
       { koleksi: KOLEKSI_HARIAN,         label: 'pengeluaran harian', dok: tgl(ambilPengeluaranHarian()) },
-      { koleksi: KOLEKSI_PESANAN,        label: 'pesanan',            dok: tgl(ambilPesanan()) },
+      // Yang belum tuntas disaring keluar SEBELUM tgl() — jadi ia tidak diarsipkan sebagai
+      // riwayat (memang bukan riwayat, ia masih berjalan) dan tidak ikut dihapus.
+      { koleksi: KOLEKSI_PESANAN,        label: 'pesanan',            dok: tgl(ambilPesanan().filter(p => !pesananBelumTuntas(p))) },
       { koleksi: KOLEKSI_SETORAN,        label: 'setoran kas',        dok: tgl(ambilSetoranKas()) },
       { koleksi: KOLEKSI_PENY_KEMASAN,   label: 'penyesuaian kemasan', dok: tgl(ambilPenyesuaianKemasan()) },
       { koleksi: KOLEKSI_AMPLOP,         label: 'amplop laba',        dok: tgl(ambilAmplopLaba()) },
@@ -20823,8 +20843,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       HPP terbawa sebagai rata-rata tertimbang penutupan, jadi laba ${tahun + 1} menghitung modal yang benar.</div>
     </div>`);
 
+    // Yang DIKECUALIKAN wajib disebut. Dokumen yang tinggal diam-diam sama menyesatkannya
+    // dengan dokumen yang hilang diam-diam: pemilik perlu tahu bahwa sesudah tutup buku,
+    // sistem masih memuat janji-janji tahun lalu — itu bukan sisa yang terlewat.
+    const psTinggal = ambilPesanan().filter(p => (p.tanggal || '') <= tbCutoff(tahun) && pesananBelumTuntas(p));
     b.push(`<div class="lap-bagian"><h2>Yang diarsipkan &amp; dihapus</h2>
       ${daftar.filter(d => d.dok.length > 0).map(d => barisLap(d.label, '', d.dok.length + ' dokumen')).join('') || '<div class="lap-kosong">Tidak ada dokumen pada tahun ini.</div>'}
+      ${psTinggal.length ? `<div class="tb-tinggal">${psTinggal.length} pesanan ${tahun} yang BELUM TUNTAS sengaja tidak ikut —
+        tidak diarsipkan, tidak dihapus, tetap hidup di sistem: ${psTinggal.slice(0, 3).map(p => escapeHtml(p.namaPelanggan || '(tanpa nama)')).join(', ')}${psTinggal.length > 3 ? ', dll' : ''}.
+        Pesanan bukan saldo — tidak ada satu angka yang bisa mewakili janji antar, jadi ia
+        tidak bisa dikembalikan lewat saldo pembuka. Selesaikan atau batalkan dulu kalau mau ikut terarsip.</div>` : ''}
     </div>`);
 
     b.push(`<div class="tb-langkah ${arsipBeres ? 'beres' : 'siap'}">
