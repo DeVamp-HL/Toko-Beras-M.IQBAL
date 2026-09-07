@@ -12977,8 +12977,31 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // antrean tunda — kalau dibiarkan, transaksi yang sudah dibatalkan bangkit
     // lagi begitu sinyal balik. Antrean ikut dibersihkan.
     setAntreanTunda(ambilAntreanTunda().filter(q => !(q.koleksi === KOLEKSI_PENJUALAN && idBatal.has(q.data && q.data.id))));
+    // PESANAN IKUT DIKEMBALIKAN. Urungkan menghapus dokumen penjualannya, tapi pesanan yang
+    // ditutup oleh penjualan itu tetap berstatus 'dibayar' dan trxIdJual-nya menunjuk dokumen
+    // yang sudah tidak ada. Pesanannya pindah ke daftar Selesai, hilang dari janji berjalan,
+    // dan layar mencetak "omzet, kas, dan stok sudah bergerak" — kalimat yang justru baru saja
+    // dibatalkan. Arahnya menenangkan: satu janji yang belum ditepati lenyap dari daftar.
+    // KUNCINYA BUKAN idBatal. daftarBatal berisi dokumen ITEM (trx.id masing-masing),
+    // sedangkan trxIdJual menyimpan id KERANJANG — 15054 memanggil tampilkanUrungkan dengan
+    // { id: trxId, _grup: items.map(...) }, jadi id keranjang cuma ada di trx.id, tidak
+    // pernah di dalam _grup. Memakai idBatal saja membuat jalur keranjang (yaitu jalur HP,
+    // yang justru paling sering) tidak pernah cocok. Dibandingkan sebagai STRING karena
+    // dokumen yang pulang dari Firestore bisa membawa id bertipe lain.
+    const kunciBatal = new Set(daftarBatal.map(t => String(t.id)).concat([String(trx.id)]));
+    const psBalik = ambilPesanan().filter(p => p.trxIdJual && kunciBatal.has(String(p.trxIdJual)));
+    for (const p of psBalik) {
+      p.status = 'diantar';          // dikembalikan ke langkah SEBELUM dibayar, bukan ke 'dipesan':
+                                     // barangnya memang sudah sempat diserahkan sebelum dibatalkan
+      delete p.trxIdJual;
+      (p.riwayatStatus = p.riwayatStatus || []).push({ status: 'diantar', pada: new Date().toISOString(), sebab: 'penjualan diurungkan' });
+      try { await simpanKeFirestore(KOLEKSI_PESANAN, p); } catch (err) { console.error(err); }
+      tulisPesananLokal(p);
+    }
     perbaruiStokJual(); isiDropdownJual(); tampilkanJualHariIni();
-    alert('Transaksi dibatalkan. Omzet dan stok kembali seperti sebelumnya.');
+    if (psBalik.length) tampilkanPesanan();
+    alert('Transaksi dibatalkan. Omzet dan stok kembali seperti sebelumnya.'
+      + (psBalik.length ? '\n\n' + psBalik.length + ' pesanan ikut kembali ke DIANTAR — belum dianggap dibayar.' : ''));
   }
 
   // ============ RETUR (Tahap 4) ============
