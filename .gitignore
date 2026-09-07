@@ -54,6 +54,7 @@ __pycache__/
 
 # Kotak pasir tulis-nol untuk uji browser — dibangun ulang tiap sesi, bukan bagian aplikasi
 kotak-uji.html
+kotak-lama.html
 kotak-main.html
 kotak-prac4.html
 kotak-pra.html

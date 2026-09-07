@@ -16165,6 +16165,25 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // menghitung biaya tapi tidak pernah dicatat 'pakai', jadi sisaPcs tidak pernah turun.
     const butuhKantong = {};
     hasilList.forEach(h => { if (h.kantongJenis && h.kantongJumlah > 0) butuhKantong[h.kantongJenis] = (butuhKantong[h.kantongJenis] || 0) + h.kantongJumlah; });
+    // PENJAGA YANG HILANG: baris yang MEMILIH jenis kantong tapi membiarkan cacahnya
+    // kosong. Ia lolos dari semua pemeriksaan di bawah karena butuhKantong hanya diisi
+    // dari baris ber-kantongJumlah > 0 — jadi tidak ada peringatan, biaya kantongnya
+    // Rp0, dan tidak ada dokumen 'pakai' yang ditulis. Akibatnya BUKAN cuma satu baris
+    // salah: biaya kantong masuk totalBiaya, dan bagiBiayaAdukan membagi total yang
+    // terlalu kecil itu ke SEMUA baris — hppPerUnit seluruh adukan tersimpan lebih murah
+    // dari kenyataan, dan marginnya terbaca lebih baik dari yang sebenarnya. Salah ke
+    // arah yang menenangkan. Dropdown-nya punya pilihan sendiri untuk "tidak pakai
+    // kantong" (sack 50 kg), jadi jenis-tanpa-cacah tidak punya arti yang sah.
+    const kantongTanpaCacah = hasilList.filter(h => h.kantongJenis && !(h.kantongJumlah > 0));
+    if (kantongTanpaCacah.length > 0) {
+      const daftarTxt = kantongTanpaCacah.map(h => '· ' + h.nama + ' ' + angkaRapi(h.ukuran) + ' kg × ' + angkaRapi(h.unit)
+        + ' → kantong ' + (LABEL_BAHAN_KEMASAN[h.kantongJenis] || h.kantongJenis)).join('\n');
+      if (!confirm(kantongTanpaCacah.length + ' baris memilih jenis kantong tapi cacahnya kosong:\n\n' + daftarTxt
+        + '\n\nKalau disimpan begini, kantongnya terhitung GRATIS: biayanya tidak masuk HPP, '
+        + 'stoknya tidak berkurang, dan margin seluruh adukan ini akan terbaca lebih baik dari kenyataan.\n\n'
+        + 'Kalau baris itu memang tidak pakai kantong (mis. sack 50 kg), pilih "tanpa kantong" di dropdownnya.\n\n'
+        + 'Tetap simpan?')) return;
+    }
     const stokBahanKemasan = hitungStokBahanKemasan();
     for (const jenis of Object.keys(butuhKantong)) {
       const sisa = stokBahanKemasan[jenis]?.sisaPcs || 0;
@@ -16261,19 +16280,47 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         suntikCachePenyesuaian(KOLEKSI_PRODUKSI, dokumen[i]);
         const h = hasilList[i];
         if (h.kantongJenis && h.kantongJumlah > 0) {
-          await simpanKeFirestore(KOLEKSI_BAHAN_KEMASAN, {
+          // Dokumen pemakaian kantong WAJIB ikut disuntik, alasannya sama persis dengan
+          // dokumen produksinya sendiri di atas — dan tanpa itu keduanya jadi sepasang
+          // yang timpang: begitu tulisan tertahan (antre karena offline, ATAU listener
+          // Firestore mati diam-diam dengan sinyal bagus), stok Kemasan Jadi NAIK karena
+          // dokumen produksinya disuntik sementara stok kantong TIDAK TURUN sebutir pun.
+          // Bilah kaca lalu berkata "Kantong aman untuk produksi" tepat sesudah ratusan
+          // lembar habis, dan penjaga di fungsi ini membaca sisa yang sama — jadi adukan
+          // berikutnya pun lolos tanpa peringatan. KOLEKSI_BAHAN_KEMASAN memang sudah
+          // terdaftar di peta suntik; yang hilang cuma panggilannya.
+          const dokKantong = {
             id: dokumen[i].id + 1, tipe: 'pakai', jenis: h.kantongJenis,
             jumlah: h.kantongJumlah, hargaTotal: 0,
             tanggal, catatan: 'Otomatis dari produksi id ' + dokumen[i].id
-          });
+          };
+          await simpanKeFirestore(KOLEKSI_BAHAN_KEMASAN, dokKantong);
+          suntikCachePenyesuaian(KOLEKSI_BAHAN_KEMASAN, dokKantong);
         }
       }
     } catch (err) {
       console.error(err);
-      alert('Gagal simpan ke database (offline?). Data disimpan sementara di HP ini saja — coba lagi kalau internet sudah nyambung.');
-      const semuaLokal = ambilProduksi();
-      dokumen.forEach(d => semuaLokal.unshift(d));
-      localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(semuaLokal));
+      // JANGAN unshift telanjang. Loop di atas sudah MENYUNTIK tiap dokumen yang berhasil
+      // ke cache; kalau ia putus di baris ke-3 dari 5, dua dokumen pertama sudah ada di
+      // sana. Menambahkan seluruh daftar lagi menaruh dua di antaranya DUA KALI — dan
+      // dokumen pertama itulah yang membawa sumberList, kgDipakai, dan sumberKemasanList,
+      // jadi hitungStokKarungPerMerk memotong karung sumber dua kali sekaligus
+      // hitungStokKemasan memotong unit bahan dua kali DAN menambah unit hasil dua kali.
+      // Stok dan nilai persediaan dua-duanya salah, tanpa satu tanda pun di layar.
+      // suntikCachePenyesuaian idempoten lewat penjaga id, jadi memanggilnya untuk SEMUA
+      // dokumen aman: yang sudah masuk dilewati, yang belum ditambahkan.
+      dokumen.forEach(d => suntikCachePenyesuaian(KOLEKSI_PRODUKSI, d));
+      // Pesannya JANGAN menuduh "offline". simpanKeFirestore menelan galat jaringannya
+      // sendiri dan mengantrekan dokumennya (lihat catch di sana), jadi offline adalah
+      // satu-satunya sebab yang TIDAK PERNAH sampai ke sini. Yang sampai ke sini kegagalan
+      // di luar jaringan — penyimpanan HP penuh yang paling mungkin. Pesan yang menyebut
+      // sebab yang salah menyuruh pemilik memeriksa sinyal sementara masalahnya di tempat
+      // lain, dan ia akan menekan Simpan lagi.
+      alert('Gagal menyelesaikan penyimpanan produksi.\n\n'
+        + 'Ini BUKAN soal internet — kalau internetnya mati, catatan masuk antrean dan '
+        + 'terkirim sendiri nanti. Sebab yang paling mungkin: penyimpanan HP penuh.\n\n'
+        + 'Adukan ini sudah tercatat di HP ini dan angkanya sudah benar. Jangan menekan '
+        + 'Simpan lagi — periksa Setelan › Cadangan data, lalu beri tahu pemilik.');
     }
     if (btnProduksi) { btnProduksi.disabled = false; btnProduksi.textContent = ' Simpan Produksi Kemasan'; }
     unduhBackup(true);
