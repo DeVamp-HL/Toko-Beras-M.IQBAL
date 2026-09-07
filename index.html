@@ -3339,6 +3339,28 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
    "hampir habis" (yang salah) maupun "aman" (yang belum tentu). Merk begini justru
    pekerjaan kartu Yang Mandek di bawahnya. */
 #halamanStok .st-tabung.tanpa-laju .tb-isi{ background:linear-gradient(180deg,rgba(207,212,218,.13),rgba(207,212,218,.05)); }
+/* PETAK GERAK - 14 hari, kiri paling lama. POLARITAS: petak GELAP = diam, petak
+   TERANG = ada yang keluar hari itu. Dipilih begitu karena kartunya bernama "Yang
+   Mandek": deretan gelap harus terbaca sebagai "tidak terjadi apa-apa", dan itu
+   memang keadaan yang sedang dilaporkan. Sama arahnya dengan tabung di atas, tempat
+   isi berarti ada. Jangan dibalik tanpa mengubah nama kartunya. */
+#halamanStok .st-gerak{ display:flex; gap:2px; margin-top:5px; }
+#halamanStok .st-gerak i{ flex:0 0 auto; width:6px; height:6px; border-radius:1px;
+  background:rgba(207,212,218,.1); }
+#halamanStok .st-gerak i.on{ background:var(--pf-platina); }
+/* Baris mandek membawa TIGA tingkat (nama, sisa+gerak, petak) di dalam .baris-44
+   yang tingginya dipatok 44px. Muat, tapi tanpa satu piksel pun ruang tumbuh: nama
+   merk yang membungkus dua baris langsung meluap. Dilepas ke auto dengan lantai
+   yang lebih tinggi - sasaran sentuh tetap jauh di atas 44px. */
+#halamanStok .st-mandek-baris{ height:auto; min-height:58px; padding:7px 0; align-items:center; }
+#halamanStok .st-mandek-baris .nama{ min-width:0; }
+#halamanStok .st-pil-baru{ flex:none; display:flex; flex-direction:column; align-items:flex-end;
+  gap:2px; font-size:9.5px; font-weight:700; letter-spacing:.04em; color:var(--pf-abu);
+  text-transform:uppercase; }
+#halamanStok .st-pil-baru i{ font-style:italic; font-weight:400; font-size:10px;
+  letter-spacing:0; text-transform:none; font-family:var(--pf-serif); }
+#halamanStok .st-gerak-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10px;
+  line-height:1.5; color:var(--pf-abu); margin-top:8px; }
 #halamanStok .st-kisi-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
   color:var(--pf-abu); line-height:1.5; margin:0 2px 12px; }
 /* Papan kapur: angka lama dicoret, tidak dihapus. */
@@ -6194,7 +6216,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
     <div class="st-kisi-ket" id="stokKisiKet"></div>
     <button type="button" class="st-tombol-keliling" id="stokTombolKeliling" onclick="bukaKeliling()"></button>
     <div class="kartu" id="stokMandek" style="display:none;">
-      <div class="panel-kepala"><h2>Yang Mandek <span class="keterangan">tak bergerak 14 hari</span></h2></div>
+      <div class="panel-kepala"><h2>Yang Mandek <span class="keterangan" id="stokMandekSub">tak bergerak 14 hari</span></h2></div>
       <div id="daftarStokMandek" class="daftar-batch"></div>
     </div>
     <div class="kartu" id="stokPapanKapur">
@@ -15888,7 +15910,8 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
     tampilkanKarantina();
     // KACA EMAS G1: kepala halaman digambar dari DATA YANG SAMA dengan daftar rinci
     // di atas — satu sumber, semua angka. Tidak ada hitung ulang.
-    stokGambarKacaEmas({ stokKarung, stokKemasan, stokBahanKemasan, stokBahanLiteran, laju: _lajuStok });
+    stokGambarKacaEmas({ stokKarung, stokKemasan, stokBahanKemasan, stokBahanLiteran, laju: _lajuStok,
+      gerak: hitungGerak14(), umurTermuda: umurTermudaPeta() });
     cariMerkStok(); // daftar baru digambar — terapkan lagi saringan yang sedang aktif
   }
 
@@ -16486,29 +16509,76 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
       elTblKel.textContent = 'Keliling gudang \u00b7 opname ' + nKel + ' barang';
     }
 
-    // --- Yang Mandek: sisa ada, laju 14 hari nol — uangnya tertidur paling nyenyak ---
+    // --- Yang Mandek: gerak <=1 hari dari 14 (dulu: laju 14 hari NOL) ---
+    // Kriteria lama menuntut kesunyian sempurna. Satu karung terjual sekali dalam dua
+    // minggu sudah cukup membuat merk itu menghilang dari daftar — padahal uangnya
+    // sama tidurnya. Desain memakai "<=1 gerak dari 14"; angka itu yang dipakai
+    // sekarang, dan angka yang sama digambar sebagai 14 petak di sebelahnya supaya
+    // pemilik tidak disuruh percaya begitu saja.
+    //
+    // PELONGGARAN INI HANYA BISA MEMPERPANJANG DAFTAR, tidak pernah memendekkannya:
+    // laju nol menjamin gerak nol, jadi semua yang dulu masuk tetap masuk.
+    //
+    // BARANG BARU DATANG bukan uang tidur. Karung yang dibongkar kemarin lalu terjual
+    // sekali adalah barang SEHAT, tapi kriteria <=1 gerak menjaringnya juga. Desain
+    // membiarkan alarm palsu itu menyala; di sini TIDAK — barangnya tetap ditampilkan
+    // (tidak ada yang disembunyikan dari pemilik) tapi dengan pil "baru datang" dan
+    // tanpa dihitung ke dalam rupiah tidur di kepala kartu. Alarm yang selalu bohong
+    // akhirnya diabaikan, dan saat alarm yang benar menyala ia ikut diabaikan.
+    const AMBANG_BARU_HARI = 3;
     const mandek = [];
     if (!bahanMode) {
+      const petakDari = kunci => (d.gerak && d.gerak[kunci]) || null;
+      const nGerak = kunci => { const g = petakDari(kunci); return g ? g.reduce((a, v) => a + v, 0) : 0; };
+      const tambah = (kunci, nama, sisaTeks, nilai) => {
+        const n = nGerak(kunci);
+        if (n > 1) return;
+        const umur = d.umurTermuda ? d.umurTermuda[kunci] : undefined;
+        const baru = umur !== undefined && umur <= AMBANG_BARU_HARI;
+        mandek.push({ nama, sisaTeks, nilai, n, baru, umur,
+          petak: petakDari(kunci) || new Array(PETAK_GERAK_HARI).fill(0) });
+      };
       Object.keys(d.stokKarung).forEach(m => {
         const st = d.stokKarung[m];
-        if (st.sisaKg > 0 && !(d.laju.kgMerk[m] > 0)) mandek.push({
-          nama: m, ket: (Math.round(st.sisaKg * 10) / 10).toLocaleString('id-ID') + ' kg diam 14 hari',
-          nilai: st.sisaKg * (st.hppTerakhirPerKg || 0) });
+        if (st.sisaKg > 0) tambah('K|' + m, m,
+          (Math.round(st.sisaKg * 10) / 10).toLocaleString('id-ID') + ' kg',
+          st.sisaKg * (st.hppTerakhirPerKg || 0));
       });
       Object.keys(d.stokKemasan).forEach(k => {
         const st = d.stokKemasan[k];
-        if (st.sisaUnit > 0 && !(d.laju.unitKemasan[k] > 0)) mandek.push({
-          nama: st.namaProduk + ' ' + st.ukuranKemasan + ' kg', ket: st.sisaUnit + ' unit diam 14 hari',
-          nilai: st.sisaUnit * (st.hppRataRataPerUnit || 0) });
+        if (st.sisaUnit > 0) tambah('U|' + k, st.namaProduk + ' ' + st.ukuranKemasan + ' kg',
+          st.sisaUnit + ' unit', st.sisaUnit * (st.hppRataRataPerUnit || 0));
       });
     }
     const kartuMandek = document.getElementById('stokMandek');
     if (kartuMandek) {
       kartuMandek.style.display = mandek.length ? '' : 'none';
-      if (mandek.length) document.getElementById('daftarStokMandek').innerHTML =
-        '<div class="kartu-daftar">' + mandek.sort((a, b) => b.nilai - a.nilai).map(x =>
-          '<div class="baris-44"><span class="nama">' + escapeHtml(x.nama) + '<small>' + escapeHtml(x.ket)
-          + '</small></span><span class="angka">' + rp(x.nilai) + '</span></div>').join('') + '</div>';
+      if (mandek.length) {
+        // Rupiah tidur di sub-judul TIDAK memuat barang baru datang — angka itu
+        // dibaca sebagai "uang yang bermasalah", dan barang kemarin belum bermasalah.
+        const rpTidur = mandek.filter(x => !x.baru).reduce((a, x) => a + x.nilai, 0);
+        const nBaru = mandek.filter(x => x.baru).length;
+        const elSub = document.getElementById('stokMandekSub');
+        if (elSub) elSub.textContent = 'bergerak paling banyak 1x dari 14 hari'
+          + (rpTidur > 0 ? ' \u00b7 ' + rp(rpTidur) + ' tertidur' : '')
+          + (nBaru > 0 ? ' \u00b7 ' + nBaru + ' baru datang, belum dihitung' : '');
+        document.getElementById('daftarStokMandek').innerHTML =
+          '<div class="kartu-daftar">' + mandek
+            .sort((a, b) => (a.baru === b.baru ? b.nilai - a.nilai : (a.baru ? 1 : -1)))
+            .map(x =>
+              '<div class="baris-44 st-mandek-baris"><span class="nama">' + escapeHtml(x.nama)
+              + '<small>' + escapeHtml(x.sisaTeks) + ' \u00b7 '
+              + (x.n === 0 ? 'tidak bergerak sama sekali' : 'bergerak 1x') + '</small>'
+              + '<span class="st-gerak" aria-hidden="true">'
+              + x.petak.map(v => '<i' + (v ? ' class="on"' : '') + '></i>').join('')
+              + '</span></span>'
+              + (x.baru
+                ? '<span class="st-pil-baru">baru datang<i>' + x.umur + ' hari</i></span>'
+                : '<span class="angka">' + rp(x.nilai) + '</span>')
+              + '</div>').join('')
+          + '</div><div class="st-gerak-ket">Empat belas petak = empat belas hari, kiri paling lama. '
+          + 'Petak terang = ada yang keluar hari itu. Kedatangan belanja tidak dihitung sebagai gerak.</div>';
+      }
     }
 
     // --- Papan Kapur: perubahan HARI INI, angka lama dicoret — perubahan stok tidak
@@ -18544,6 +18614,79 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
     const bagi = o => { const h = {}; Object.keys(o).forEach(k => { h[k] = o[k] / JENDELA_LAJU_HARI; }); return h; };
     return { kgMerk: bagi(kgMerk), unitKemasan: bagi(unitKemasan), pcsBahan: bagi(pcsBahan) };
   }
+  // ═══ GERAK 14 HARI per barang — 14 nilai 0/1, satu per hari ═══════════════
+  // Dipakai kartu "Yang Mandek": kriterianya dan gambarnya dari SATU sumber, jadi
+  // petak yang terlihat memang petak yang dipakai memutuskan.
+  //
+  // "Gerak" DI SINI BERARTI KELUAR SAJA — penjualan dan pemakaian produksi. Batch
+  // kedatangan SENGAJA tidak dihitung sebagai gerak. Kalau kedatangan ikut, karung
+  // yang baru dibongkar tapi belum laku sebutir pun akan terlihat "bergerak" dan
+  // keluar dari daftar; padahal justru itu barang yang paling perlu ada di sana.
+  // (Bandingkan aliran di lembar merk, yang memang menggambar dua arah — pertanyaannya
+  // beda: di sana "menyusut atau menumpuk", di sini "laku atau diam".)
+  //
+  // Jendelanya 14 TANGGAL, sedikit lebih sempit daripada hitungLajuPakai yang memakai
+  // >= (hari ini - 14) alias 15 tanggal. Bedanya disengaja dan tidak berbahaya: laju
+  // nol menjamin gerak nol, tidak sebaliknya — jadi tidak mungkin ada barang yang
+  // laju-nya nol tapi petaknya menyala.
+  //
+  // Kunci berawalan jenis, sama dengan tempat simpan: 'K|' karung, 'U|' kemasan jadi.
+  // Bahan ('B|') belum dibangun karena kartu Yang Mandek masih dipagari ke kolam Siap
+  // jual; ditambahkan bersama pembukaan kolam bahan, bukan sebelumnya.
+  const PETAK_GERAK_HARI = 14;
+  function hitungGerak14() {
+    const hariIni = new Date(); hariIni.setHours(12, 0, 0, 0);
+    const idx = {};                       // tanggal -> posisi 0..13
+    for (let i = PETAK_GERAK_HARI - 1; i >= 0; i--) {
+      const t = new Date(hariIni); t.setDate(t.getDate() - i);
+      idx[tanggalLokalIso(t)] = PETAK_GERAK_HARI - 1 - i;
+    }
+    const peta = {};
+    const tandai = (kunci, tanggal) => {
+      const i = idx[tanggal];
+      if (i === undefined) return;
+      if (!peta[kunci]) peta[kunci] = new Array(PETAK_GERAK_HARI).fill(0);
+      peta[kunci][i] = 1;
+    };
+    ambilPenjualan().forEach(p => {
+      if (!(p.tanggal in idx)) return;
+      if ((p.jenis === 'karung' || p.jenis === 'repacking' || p.jenis === 'literan') && p.merkSumber)
+        tandai('K|' + p.merkSumber, p.tanggal);
+      if (p.jenis === 'kemasan' && p.namaProduk)
+        tandai('U|' + kunciKemasan(p.namaProduk, p.ukuranKemasan), p.tanggal);
+    });
+    ambilProduksiBerlaku().forEach(pr => {
+      if (!(pr.tanggal in idx)) return;
+      if (Array.isArray(pr.sumberList) && pr.sumberList.length > 0)
+        pr.sumberList.forEach(x => { if (x.merk) tandai('K|' + x.merk, pr.tanggal); });
+      else if (pr.merkSumber && !pr.beliJadi) tandai('K|' + pr.merkSumber, pr.tanggal);
+      (pr.sumberKemasanList || []).forEach(sk =>
+        tandai('U|' + kunciKemasan(sk.namaProduk, sk.ukuranKemasan), pr.tanggal));
+    });
+    return peta;
+  }
+  // Umur batch termuda per merk/kemasan — untuk membedakan "baru datang, belum sempat
+  // laku" dari "sudah lama diam". Dua-duanya bergerak <=1 kali; cuma satu yang masalah.
+  function umurTermudaPeta() {
+    const kini = isoKeTanggal(tanggalLokalIso());
+    const umur = {};
+    const catat = (kunci, tanggal) => {
+      if (!tanggal) return;
+      const h = Math.round((kini - isoKeTanggal(tanggal)) / 86400000);
+      if (umur[kunci] === undefined || h < umur[kunci]) umur[kunci] = h;
+    };
+    ambilSemuaBatch().forEach(k => {
+      if (k.stokAwal) return;             // saldo pembuka bukan kedatangan
+      (k.merkList || []).forEach(m => { if (m.merk && m.bentuk !== 'bal') catat('K|' + m.merk, k.tanggal); });
+    });
+    ambilProduksiBerlaku().forEach(pr => {
+      if (pr.stokAwal) return;
+      if (pr.namaProduk && pr.jumlahUnit)
+        catat('U|' + kunciKemasan(pr.namaProduk, pr.ukuranKemasan), pr.tanggal);
+    });
+    return umur;
+  }
+
   // hari sampai habis — null kalau tak ada laju (tidak menebak).
   function hariHabis(sisa, laju) {
     if (!(sisa > 0) || !(laju > 0)) return null;
