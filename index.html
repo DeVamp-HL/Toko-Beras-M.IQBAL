@@ -21271,8 +21271,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       ${hapusBln.map(m => barisLap('Hapus buku — ' + (m.namaPelanggan || ''), m.alasan || '', -(m.nominal || 0))).join('')}
       ${susutBln.map(brsSusut).join('')}
       ${(biayaBln.length || hapusBln.length || susutBln.length || bersih.harianToko > 0) ? barisLap('Laba bersih perkiraan', '', labaBersih, 'lb-jumlah') : ''}
-      ${catLaba.length ? `<div class="lap-catatan${(laba.jumlahTanpaHpp > 0 || kosongBln.kosong.length) ? ' lap-peringatan' : ''}">${catLaba.join('<br>')}</div>` : ''}
     </div>`);
+    // PERINGATAN INTEGRITAS BERDIRI SENDIRI, di LUAR potongan 'Laba'.
+    // Sebelumnya ia dicetak DI DALAM potongan itu, dan LAP_BAGIAN_UNTUK memberi
+    // 'Laba': 'OB' — tanpa K. Jadi saringan membuang seluruh potongan untuk Keluarga,
+    // dan peringatan "laba di atas terlihat lebih besar dari sebenarnya" ikut terbuang
+    // bersamanya — tepat pada pembaca yang tetap diperlihatkan baris laba bersihnya di
+    // Ikhtisar. Pintu darurat di saringBagianLaporan hanya melepaskan potongan yang
+    // TIDAK punya <h2>, jadi satu-satunya cara adalah memisahkannya. Mode Minggu sudah
+    // melakukannya sejak dulu; Bulan dan Hari tidak.
+    if (catLaba.length) bagian.push(`<div class="lap-catatan${(laba.jumlahTanpaHpp > 0 || kosongBln.kosong.length) ? ' lap-peringatan' : ''}">${catLaba.join('<br>')}</div>`);
 
     const brsKas = x => barisLap(x.label, x.ket || (x.n > 0 && x.satuan ? x.n + ' ' + x.satuan : ''), x.nominal);
     bagian.push(`<div class="lap-bagian"><h2>Uang masuk</h2>
@@ -21546,8 +21554,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     </div>`);
     const catatan = [];
     if (nBolong > 0) catatan.push(`<b>${nBolong} transaksi ber-HPP bolong</b> (omzet ${formatRupiah(omzetBolong)}) — margin setahun tercatat lebih rendah dari kenyataan; isi lewat tab Laba.`);
+    // POS BULANAN KOSONG AKHIRNYA DIPERIKSA DI MODE TAHUN.
+    // posBulananKosong punya lima pemanggil — Bulan, Hari, Minggu, Amplop, dan satu di
+    // luar laporan — dan mode Tahun bukan salah satunya. Padahal justru mode inilah yang
+    // menjumlahkan dua belas bulan sekaligus: satu bulan yang pos biayanya belum diisi
+    // membuat "Biaya bulanan setahun" terlalu kecil dan "Laba bersih perkiraan" terlalu
+    // besar, untuk SEMUA pembaca termasuk owner, tanpa satu kata pun. Diringkas jadi satu
+    // kalimat supaya dua belas kalimat tidak menenggelamkan lembarnya — tapi tidak
+    // dihilangkan, dan bulan-bulannya disebut namanya.
+    const blKosong = T.perBulan.map(x => x.bl).filter(bl => posBulananKosong(bl).kosong.length > 0);
+    if (blKosong.length) catatan.push(`<b>${blKosong.length} dari ${T.perBulan.length} bulan pos biayanya masih kosong</b> (${blKosong.map(bl => escapeHtml(namaBulanPanjang(bl + '-01'))).join(', ')}) — biaya bulanan setahun di atas terlalu kecil, jadi laba bersihnya terlihat lebih besar dari sebenarnya sampai pos itu terisi.`);
     catatan.push('Angka tahunan dijumlah dari mesin laporan bulanan yang sama — tidak ada rumus tandingan.');
-    bagian.push(`<div class="lap-catatan${nBolong > 0 ? ' lap-peringatan' : ''}">${catatan.join(' ')}</div>`);
+    bagian.push(`<div class="lap-catatan${(nBolong > 0 || blKosong.length) ? ' lap-peringatan' : ''}">${catatan.join(' ')}</div>`);
     bagian.push(`<div class="lap-kaki">Dibuat otomatis oleh Sistem Toko M.IQBAL dari catatan yang tersimpan.
       Transaksi yang dibatalkan atau dikoreksi tidak ikut dihitung.</div>`);
     document.getElementById('lapKertas').innerHTML = saringBagianLaporan(bagian).join('');
@@ -21652,8 +21670,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       ${d.hapusRows.map(m => barisLap('Hapus buku — ' + (m.namaPelanggan || ''), m.alasan || '', -(m.nominal || 0))).join('')}
       ${d.susutRows.map(brsSusut).join('')}
       ${barisLap('Laba bersih hari ini', '', L.labaBersih, 'lb-jumlah')}
-      ${cat.length ? `<div class="lap-catatan${(L.jumlahTanpaHpp > 0 || cat.length > (iso < TANGGAL_STOK_AWAL ? 1 : 0)) ? ' lap-peringatan' : ''}">${cat.join('<br>')}</div>` : ''}
     </div>`);
+    // Alasannya sama persis dengan mode Bulan di atas: peringatan integritas tidak boleh
+    // ikut terbuang bersama potongan 'Laba' yang memang tidak untuk Keluarga.
+    if (cat.length) bagian.push(`<div class="lap-catatan${(L.jumlahTanpaHpp > 0 || cat.length > (iso < TANGGAL_STOK_AWAL ? 1 : 0)) ? ' lap-peringatan' : ''}">${cat.join('<br>')}</div>`);
 
     bagian.push(`<div class="lap-bagian"><h2>Prive owner — terpisah</h2>
       ${d.harianOwner.length ? d.harianOwner.map(brsHarian).join('') + barisLap('Jumlah prive', d.harianOwner.length + ' catatan', -K.pos.prive, 'lb-jumlah') : '<div class="lap-kosong">Tidak ada prive owner hari ini.</div>'}
@@ -22038,11 +22058,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (document.body.classList.contains('lembar-laporan-terbuka')) gambarLaporan();
   }
 
+  // Pembaca dikembalikan ke Owner tiap lembar dibuka. _pembacaLaporan variabel modul tanpa
+  // localStorage, jadi pilihan "Bank" bertahan sesudah lembar ditutup — dan lembar yang
+  // dibuka lagi besok akan tampil TERPOTONG tanpa pemilik pernah memilihnya lagi. Satu-
+  // satunya tandanya cap 11px redup. Memilih pembaca lain sekarang selalu tindakan sadar.
   function bukaLaporan() {
     const el = document.getElementById('lapBulan');
     if (!el.value) el.value = bulanLokalIso();
     const elH = document.getElementById('lapTanggal'); if (!elH.value) elH.value = tanggalLokalIso();
     const elM = document.getElementById('lapMinggu'); if (!elM.value) elM.value = tanggalLokalIso();
+    gantiPembacaLaporan('owner');   // ia sudah memanggil gambarLaporan()
     gambarLaporan();
     document.body.classList.add('lembar-laporan-terbuka');
     document.getElementById('lembarLaporan').scrollTop = 0;
