@@ -8814,6 +8814,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           tanggal: document.getElementById('tanggal').value,
           pemasok: document.getElementById('pemasok').value,
           pemasokLain: document.getElementById('pemasokLain').value,
+          // Cara bayar IKUT DISIMPAN. Tanpa ini draf memulihkan segalanya kecuali satu
+          // hal yang menentukan puluhan juta jadi kewajiban atau kas keluar — dan
+          // memulihkannya sebagai 'tunai' (nilai bawaan markup) tanpa sepatah kata pun.
+          caraBayar: (document.getElementById('batchCaraBayar') || {}).value || 'tunai',
           biayaBongkar: bongkar, baris
         }));
       } catch (e) { console.warn('draf gagal disimpan', e); }
@@ -8839,7 +8843,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const nilai = d.baris.reduce((a, b) => a + (b.subtotalHarga || 0), 0) + (d.biayaBongkar || 0);
     const pemasok = d.pemasok === 'Lainnya' ? (d.pemasokLain || 'Pemasok lain') : (d.pemasok || 'Pemasok');
     const ket = document.getElementById('sdKeterangan');
-    if (ket) ket.textContent = 'Draf Masuk ' + pemasok + ' — ' + lengkap + ' baris lengkap' +
+    if (ket) ket.textContent = 'Draf Masuk ' + pemasok + (d.caraBayar === 'utang' ? ' (BON)' : '') + ' — ' + lengkap + ' baris lengkap' +
       (separuh > 0 ? ' + ' + separuh + ' baris setengah terisi' : '') + '. Tersimpan otomatis ' +
       waktu.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) + ' · ' + formatRupiah(nilai) + ' sementara.';
     const tl = document.getElementById('sdTombolLanjut');
@@ -8855,6 +8859,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       document.getElementById('pemasokLain').style.display = d.pemasok === 'Lainnya' ? 'block' : 'none';
     }
     if (d.pemasokLain) document.getElementById('pemasokLain').value = d.pemasokLain;
+    // Draf lama (ditulis sebelum tambalan ini) tidak punya caraBayar — jatuhkan ke
+    // 'tunai', nilai yang sama dengan bawaan markup, supaya tidak ada draf yang
+    // memulihkan keadaan yang tidak pernah dipilih siapa pun.
+    pilihCaraBayarBatch(d.caraBayar === 'utang' ? 'utang' : 'tunai');
     isiBiayaBongkar(d.biayaBongkar);
     document.getElementById('daftarBarisMerk').innerHTML = '';
     idBaris = 0;
@@ -9140,7 +9148,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // yang tampil bertitik, yang dibaca kode tetap digit mentah di #biayaBongkar.
   pasangRibuan(document.getElementById('biayaBongkarTampil'), function (nilai) {
     document.getElementById('biayaBongkar').value = nilai > 0 ? nilai : '';
-    if (typeof pilihCaraBayarBatch === 'function' && document.getElementById('batchCaraBayar')) pilihCaraBayarBatch('tunai');
+    // DULU DI SINI ADA pilihCaraBayarBatch('tunai') — lahir di e4829d0 (25 Agu 2026),
+    // commit yang JUSTRU melahirkan utang pemasok. Ia jelas dimaksudkan sebagai penyetel
+    // keadaan awal, tapi terlanjur diletakkan DI DALAM callback pasangRibuan, yang menyala
+    // pada event 'input', yaitu TIAP KETUKAN. Akibatnya: pemilik menekan "Bon / utang",
+    // lalu mengetik biaya bongkar — urutan paling wajar, karena itu urutan di layar — dan
+    // pilihannya diam-diam kembali ke Tunai sebelum Simpan ditekan.
+    // Keadaan awalnya memang sudah benar TANPA kode: markup 7445 memberi class="pilih"
+    // pada tombol Tunai, 7448 memberi value="tunai", dan 7449 menyembunyikan
+    // keterangannya. Jadi barisnya dicabut, bukan dipindahkan.
     // pasangRibuan memanggil ukurIsian, yang menyetel lebar dalam ch INKLUSIF padding.
     // Di baris merk padding-nya 0 jadi pas; di .baris-isian padding-nya 12px kiri-kanan,
     // sehingga "220.000" terpotong jadi "220.0". Kotak ini memang berlebar tetap
@@ -10303,6 +10319,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     idBaris = 0;
     tambahBarisMerk();
     isiBiayaBongkar(0);
+    // Cara bayar ikut direset. Sebelumnya tidak, dan 'Bon' MENEMPEL ke mobil berikutnya:
+    // isiBiayaBongkar menulis kedua kotak langsung tanpa memicu event 'input', jadi tidak
+    // ada apa pun di jalur reset yang menyentuh #batchCaraBayar. Dua cacat ini saling
+    // menutupi — selama ketikan bongkar masih memaksa 'tunai', bon yang menempel jarang
+    // terlihat; begitu pintu pertama ditambal sendirian, yang ini langsung terasa. Karena
+    // itu keduanya WAJIB satu commit.
+    pilihCaraBayarBatch('tunai');
     gambarMasukKaca();   // isiBiayaBongkar tidak lewat hitungPerkiraan — kepala harus ikut nol
     document.getElementById('tanggal').value = tanggalLokalIso();
     document.getElementById('kotakHasil').style.display = 'none';
