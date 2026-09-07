@@ -1477,7 +1477,9 @@
       --gerak-sentuh-tekan: 120ms; --gerak-sentuh-lepas: 120ms;
     }
     .halaman.tampil, #lembarMenu, #lembarKonfirmasi, #lembarMerk, #lembarHarga, #lembarTrx, #lembarPiutang, #lembarKasbon, #lembarKoreksiProduksi, #lembarIsiHpp, #lembarPelanggan, #lembarPemasok,
+    #lembarStokMerk, #lembarKarantina, #lembarKeliling,
     #overlayLembarMenu, #overlayKonfirmasi, #overlayLembarMerk, #overlayLembarHarga, #overlayLembarTrx, #overlayLembarPiutang, #overlayLembarKasbon, #overlayLembarKoreksiProduksi, #overlayLembarIsiHpp, #overlayLembarPelanggan, #overlayLembarPemasok,
+    #overlayStokMerk, #overlayKarantina,
     #spandukDraf, #bilahUrungkan, .baris-merk, .baris-sumber-produksi {
       animation-duration: 120ms !important; transition-duration: 120ms !important;
     }
@@ -4454,6 +4456,20 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #hargaKaca .hg-baris .kg-uang-dagang{ font-size:17px; }
 #hargaKaca .hg-kanan{ text-align:right; font-size:9.5px; color:var(--pf-abu); line-height:1.5; }
 #hargaKaca .hg-kanan .oks{ color:#d3a08b; font-weight:700; }
+/* BILAH BELAH HPP | MARGIN. Sisi kiri (gelap) = bagian harga jual yang dimakan modal;
+   sisi kanan (emas) = yang tersisa jadi margin. Penyebutnya harga jual baris itu
+   sendiri, jadi dua baris berbeda BOLEH dibandingkan mata — beda dengan bilah yang
+   dibagi maks kelompok, yang berubah sendiri tiap kali anggota terbesarnya berganti.
+   Membentang penuh lebar baris di bawah ketiga kolomnya. */
+#hargaKaca .hg-baris.ada-bilah{ grid-template-rows:auto auto; }
+#hargaKaca .hg-belah{ grid-column:1 / -1; display:block; height:5px; border-radius:99px;
+  overflow:hidden; margin-top:3px; background:linear-gradient(90deg,var(--emas),var(--pf-platina)); }
+/* Lapisan MODAL dipaku dari kiri dan GELAP. Percobaan pertama memberinya lapisan
+   terang di atas emas: bilah 100%-HPP jadi terlihat penuh emas, yaitu kebalikan
+   persis dari artinya - "seluruh harga jual adalah laba" untuk baris yang labanya
+   nol. Ketahuan dari melihat layar, bukan dari mengukur; lebarnya memang sudah 100%
+   yang benar sejak awal. */
+#hargaKaca .hg-belah i{ display:block; height:100%; background:rgba(10,9,8,.72); }
 #hargaKaca .hg-titik-tua{ display:inline-block; width:5px; height:5px; border-radius:99px;
   background:#d3a08b; margin-left:3px; vertical-align:1px; }
 #hargaKaca .hg-lubang{ display:flex; align-items:center; justify-content:space-between;
@@ -23034,21 +23050,49 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
       const umurHari = t => t ? Math.floor((Date.now() - Date.parse(t)) / 86400000) : null;
       const peta = {};
       const slotM = m => (peta[m] = peta[m] || { baris: [], lubang: [] });
+
+      // DOKUMEN KATALOG BERHARGA NOL ADALAH LUBANG, BUKAN BARIS (tambalan 7 Sep).
+      // Sebelum ini ia jadi BARIS berbunyi "Rp0 · margin -Infinity%", dan untuk kemasan
+      // yang berstok ia sekaligus muncul lagi sebagai lubang di kartu yang sama — satu
+      // produk mengaku punya harga DAN tidak punya harga dalam satu layar.
+      // Yang lebih berbahaya keadaan diamnya: dokumen literan atau karung berharga nol
+      // TIDAK tertangkap daftar *Kosong (daftar itu memeriksa "ada dokumennya atau
+      // tidak", bukan "harganya masuk akal atau tidak"), jadi ia lolos sebagai baris
+      // Rp0 tanpa satu pun peringatan — lubang yang tak terlihat, di halaman yang
+      // seluruh gunanya menandai lubang sebelum kasir menabraknya.
+      // Kunci dedupe supaya lubang tidak dicatat dua kali oleh dua jalur.
+      const kunciLubang = {};
+      literanKosong.forEach(m => { kunciLubang['L|' + m] = 1; });
+      karungKosong.forEach(m => { kunciLubang['C|' + m] = 1; });
+      kemasanKosong.forEach(x => { kunciLubang['K|' + x.merk + '|' + x.ukuran] = 1; });
+      const lubangNol = (kunci, merk, pil, aksi) => {
+        if (kunciLubang[kunci]) return;      // sudah dicatat daftar *Kosong
+        kunciLubang[kunci] = 1;
+        slotM(merk).lubang.push({ pil, aksi });
+      };
+
       literan.forEach(h => {
         const rasio = RASIO_KONVERSI[h.merk] || RASIO_DEFAULT;
         const hppKg = (stokKar[h.merk] || {}).hppTerakhirPerKg || 0;
+        if (!(h.hargaPerLiter > 0)) { lubangNol('L|' + h.merk, h.merk, 'Literan',
+          `isiHargaLiteran(${escapeHtml(JSON.stringify(h.merk))})`); return; }
         slotM(h.merk).baris.push({ urut: -1, pil: 'Literan /L', harga: h.hargaPerLiter,
           perKg: h.hargaPerLiter / rasio, hpp: hppKg > 0 ? hppKg * rasio : 0,
           umur: umurHari(h.diubahPada), aksi: `ubahHargaLiteran(${escapeHtml(JSON.stringify(h.id))})` });
       });
       kemasan.forEach(h => {
         const kg = Number(h.ukuran);
+        if (!(h.hargaPerUnit > 0)) { lubangNol('K|' + h.merk + '|' + h.ukuran, h.merk,
+          escapeHtml(String(h.ukuran)) + ' kg',
+          `isiHargaKemasan(${escapeHtml(JSON.stringify(h.merk))}, ${Number(h.ukuran) || 0})`); return; }
         slotM(h.merk).baris.push({ urut: kg > 0 ? kg : 9999, pil: escapeHtml(String(h.ukuran)) + ' kg', kem: true,
           harga: h.hargaPerUnit, perKg: kg > 0 ? h.hargaPerUnit / kg : null,
           hpp: (stokKem[h.merk + '|' + h.ukuran] || {}).hppRataRataPerUnit || 0,
           umur: umurHari(h.diubahPada), aksi: `ubahHargaKemasan(${escapeHtml(JSON.stringify(h.id))})` });
       });
       karung.forEach(h => {
+        if (!(h.hargaPerKg > 0)) { lubangNol('C|' + h.merk, h.merk, 'curah /kg',
+          `isiHargaKarung(${escapeHtml(JSON.stringify(h.merk))})`); return; }
         slotM(h.merk).baris.push({ urut: 99999, pil: 'curah /kg', harga: h.hargaPerKg,
           perKg: h.hargaPerKg, hpp: (stokKar[h.merk] || {}).hppTerakhirPerKg || 0,
           umur: umurHari(h.diubahPada), aksi: `ubahHargaKarung(${escapeHtml(JSON.stringify(h.id))})` });
@@ -23087,18 +23131,46 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
           <button type="button" class="hg-pil-jenis${jenis ? '' : ' oks'}" onclick="${aksiJenis}">${jenis ? escapeHtml(jenis) : 'varietas?'}</button>
         </div>`;
         x += d.baris.map(b => {
-          let kanan;
-          if (!(b.hpp > 0)) kanan = '<span class="oks">HPP belum ada</span>';
-          else {
+          // PENYEBUT BILAH ADALAH HARGA JUAL, bukan maks kelompok. HPP dan margin dua
+          // bagian dari SATU harga jual, jadi bilahnya porsi-dari-total — patokan yang
+          // tidak bisa berubah sendiri saat baris lain berubah. Bandingkan tangga Rp/kg
+          // di bawah, yang memang membandingkan antar-ukuran dan karena itu boleh
+          // memakai maks; bedanya: tangga menjawab "mana lebih mahal", bilah menjawab
+          // "berapa bagian yang laba".
+          // AMBANGNYA TEGAS >, BUKAN >=. Harga jual yang PERSIS sama dengan HPP bukan
+          // rugi — ia margin nol, dan di toko ini itu keadaan yang dipilih sadar oleh
+          // pemilik (karung IR64 sengaja belum dinaikkan). "rugi Rp0" bukan cuma
+          // janggal; ia menuduh keputusan yang disengaja sebagai kecelakaan. Dengan
+          // ambang tegas, baris itu jatuh ke cabang margin: bilahnya gelap penuh,
+          // tulisannya "margin 0,0%" bertanda tipis. Itu yang benar-benar terjadi.
+          const bisa = b.hpp > 0 && b.harga > 0;
+          const rugi = bisa && b.hpp > b.harga;
+          let kanan, bilah = '';
+          if (!(b.harga > 0)) kanan = '<span class="oks">harga belum diisi</span>';
+          else if (!(b.hpp > 0)) kanan = '<span class="oks">HPP belum ada</span>';
+          else if (rugi) {
+            // RUGI TIDAK DIGAMBAR SEBAGAI BILAH. Bilah adalah pembagian satu harga jual
+            // jadi dua bagian; kalau HPP melampaui harga jual, tidak ada yang bisa
+            // dibagi dan bilah apa pun akan berbohong. Angka mutlak lebih terbaca juga:
+            // "-120,0%" menuntut pembaca bertanya "persen dari apa", "rugi Rp72.000"
+            // tidak.
+            kanan = `<span class="oks">rugi Rp${Math.round(b.hpp - b.harga).toLocaleString('id-ID')}/${b.kem ? 'unit' : (b.pil === 'Literan /L' ? 'liter' : 'kg')}</span>`;
+          } else {
             const mg = (b.harga - b.hpp) / b.harga * 100;
+            const porsiHpp = Math.round(b.hpp / b.harga * 100);
             kanan = `<span class="${mg < 5 ? 'oks' : ''}">margin ${mg.toFixed(1).replace('.', ',')}%</span>`;
+            // TANPA lantai minimum: margin 0,3% memang harus terlihat nyaris tidak ada.
+            // Lantai piksel benar untuk deret waktu (satu hari ada gerak atau tidak);
+            // di sini justru kebalikannya — margin setipis rambut adalah beritanya.
+            bilah = `<span class="hg-belah" aria-hidden="true"><i style="width:${porsiHpp}%"></i></span>`;
           }
           const umur = b.umur !== null && b.umur !== undefined && !isNaN(b.umur)
             ? `<br>${b.umur} hr${b.umur > 60 ? '<span class="hg-titik-tua"></span>' : ''}` : '';
-          return `<button type="button" class="hg-baris" onclick="${b.aksi}">
+          return `<button type="button" class="hg-baris${bilah ? ' ada-bilah' : ''}" onclick="${b.aksi}">
             <span class="hg-ukuran">${b.pil}</span>
             <span class="kg-uang-dagang">Rp${Math.round(b.harga).toLocaleString('id-ID')}</span>
             <span class="hg-kanan">${kanan}${umur}</span>
+            ${bilah}
           </button>`;
         }).join('');
         x += d.lubang.map(l => `<button type="button" class="hg-lubang" onclick="${l.aksi}">
