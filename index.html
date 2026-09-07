@@ -4924,6 +4924,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   font-size:15px; color:var(--pf-platina); }
 #produksiKacaAdukan .pr6-kolam i{ font-size:9.5px; font-style:italic; color:var(--pf-abu); }
 #produksiKacaAdukan .pr6-kaki.bawah span{ border-style:dashed; }
+.wz-pesanan{ display:flex; align-items:center; gap:10px; margin:0 0 10px; padding:9px 11px;
+  border-radius:10px; border:1px dashed rgba(211,160,139,.5); background:rgba(211,160,139,.07);
+  font-family:var(--pf-serif); font-style:italic; font-size:11px; line-height:1.5; color:#d3a08b; }
+.wz-pesanan span{ flex:1; min-width:0; }
+.wz-pesanan b{ font-style:normal; }
+.wz-pesanan button{ flex:none; min-height:44px; padding:0 13px; border-radius:9px; border:1px solid rgba(211,160,139,.45);
+  background:none; color:#d3a08b; font-family:inherit; font-size:11px; font-style:italic; }
 #produksiKacaAdukan .pr6-porsi{ margin:4px 2px 0; font-family:var(--pf-serif); font-style:italic;
   font-size:9.5px; line-height:1.5; color:var(--pf-abu); }
 #produksiKacaAdukan .pr6-mustahil{ font-size:10px; font-weight:600; line-height:1.25; display:block; }
@@ -6243,6 +6250,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <button type="button" class="wz-batal" id="wzBatal" onclick="wzReset(true)" style="display:none;">✕</button>
       </div>
       <div class="wz-sering" id="wzSering" style="display:none;"></div>
+      <!-- Pita ikatan pesanan. Sebelum ini ikatannya TIDAK TERLIHAT di mana pun: satu-satunya
+           tandanya alert sekali lewat saat "Catat jualnya" ditekan. Keranjang yang diam-diam
+           terikat ke pesanan orang lain adalah keadaan yang wajib kelihatan. -->
+      <div class="wz-pesanan" id="wzPitaPesanan" style="display:none;"></div>
       <div class="wz-tanya" id="wzTanya"></div>
       <!-- KACA EMAS G4 (rancangan Jual - Gabungan): STRUK HIDUP — yang akan dipegang
            pembeli, tampil di tiap langkah; dibaca dari keranjang & form lama, tidak
@@ -13247,14 +13258,48 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     tulisPesananLokal(d);
     tampilkanPesanan();
   }
+  // JEMBATAN PESANAN — SATU penolong untuk SEMUA jalur simpan penjualan.
+  // Dulu bloknya hidup di dalam simpanKeranjangJual saja, dan lanjutSimpanJual bercabang
+  // ke TIGA jalur (12905-12908): retur, keranjang (wizard, HP), dan simpanPenjualan (form
+  // lama, dipakai di layar >=700px). Jadi di desktop pemilik menekan "catat jualnya",
+  // mengisi form lama, menyimpan — omzet, kas, HPP, dan stok BERGERAK, tapi pesanannya
+  // tetap 'diantar' selamanya, trxIdJual tetap null, dan penunjuknya menggantung untuk
+  // dipungut penjualan berikutnya. Alert di catatJualPesanan menjanjikan sebaliknya, jadi
+  // pemilik tidak pernah memeriksa daftarnya sesudah itu.
+  // RETUR SENGAJA TIDAK IKUT: barang kembali bukan pemenuhan pesanan.
+  async function tutupPesananDariJual(trxId) {
+    if (!_pesananKeJual) return;
+    const ps = ambilPesananDoc(_pesananKeJual);
+    _pesananKeJual = null;              // dilepas lebih dulu supaya galat apa pun di bawah
+                                        // tidak meninggalkan penunjuk menggantung
+    if (!ps) return;
+    ps.status = 'dibayar'; ps.trxIdJual = trxId;
+    (ps.riwayatStatus = ps.riwayatStatus || []).push({ status: 'dibayar', pada: new Date().toISOString() });
+    try { await simpanKeFirestore(KOLEKSI_PESANAN, ps); } catch (e) { console.error(e); }
+    tulisPesananLokal(ps);
+    if (typeof wzRender === 'function') wzRender();   // pita ikatan ikut padam
+  }
   function catatJualPesanan(id) {
     const d = ambilPesananDoc(id);
     if (!d) return;
-    _pesananKeJual = String(id);
     pindahHalaman('jual');
-    wzReset();
+    wzReset();                       // reset DULU — ia yang melepas ikatan lama
+    _pesananKeJual = String(id);     // baru ikat yang ini
     wzNama(d.namaPelanggan || '');
+    wzRender();                      // pita ikatan muncul seketika, bukan menunggu ketikan
     alert('Susun keranjangnya untuk pesanan ' + (d.namaPelanggan || '') + ' — begitu tersimpan, pesanan otomatis jadi DIBAYAR.');
+  }
+  // Melepas ikatan tanpa membuang keranjang: pemilik terlanjur menekan "Catat jualnya"
+  // untuk pesanan yang salah, atau berubah pikiran dan mau menjual ke orang lain dengan
+  // barang yang sudah telanjur disusun.
+  function wzLepasPesanan() {
+    if (!_pesananKeJual) return;
+    const d = ambilPesananDoc(_pesananKeJual);
+    if (!confirm('Lepas keranjang ini dari pesanan ' + ((d && d.namaPelanggan) || '') + '?\n\n'
+      + 'Barang di keranjang TIDAK dibuang. Yang dilepas cuma tautannya: pesanan itu akan '
+      + 'tetap berstatus dipesan sesudah keranjang ini disimpan.')) return;
+    _pesananKeJual = null;
+    wzRender();
   }
   function tampilkanPesanan() {
     tampilkanPesanan6a();   // di baris pertama: jalur keluar dini pun wajib menggambar kaca
@@ -13905,6 +13950,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function wzKe(langkah) { _wz.langkah = langkah; wzRender(); }
   function wzReset(tanya) {
     if (tanya && _wzItems.length && !confirm('Buang ' + _wzItems.length + ' item di keranjang?')) return;
+    // IKATAN PESANAN IKUT DILEPAS. Sebelum ini _pesananKeJual hanya dibersihkan di jalur
+    // SUKSES simpanKeranjangJual, jadi ia bertahan melewati wizard yang ditinggalkan —
+    // dan keranjang BERIKUTNYA, untuk siapa pun, menandai pesanan lama itu DIBAYAR.
+    _pesananKeJual = null;
     _wzItems = []; _wzPotongan = 0; _wzPotonganMode = 'tanpa'; _wzUang = 0;
     _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0;
     _wzJanji = null; _wzKreditBuka = false;
@@ -14305,6 +14354,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const wrap = document.getElementById('wzJual');
       if (!wrap || window.matchMedia('(min-width: 700px)').matches) return;
       wzGambarStruk();   // struk hidup di tiap langkah — sebelum semua return di bawah
+      // Pita ikatan digambar SEBELUM semua return di bawah, alasannya sama dengan struk:
+      // langkah mana pun boleh keluar dini, keadaan ini tetap harus terlihat.
+      const elPita = document.getElementById('wzPitaPesanan');
+      if (elPita) {
+        const dPs = _pesananKeJual ? ambilPesananDoc(_pesananKeJual) : null;
+        elPita.style.display = dPs ? 'block' : 'none';
+        if (dPs) elPita.innerHTML = '<span>Keranjang ini untuk pesanan <b>' + wzEsc(dPs.namaPelanggan || '(tanpa nama)')
+          + '</b> — pesanan itu jadi <b>DIBAYAR</b> begitu keranjang ini disimpan.</span>'
+          + '<button type="button" onclick="wzLepasPesanan()">lepas</button>';
+      }
       if (document.getElementById('halamanJual').classList.contains('wz-retur')) {
         document.getElementById('wzLangkahLabel').textContent = 'Retur';
         document.getElementById('wzTanya').innerHTML =
@@ -14975,18 +15034,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + ' \u00b7 PIUTANG ' + formatRupiah(totalBayar - bayarSebagian) + ' atas nama ' + namaPelanggan);
     if (_lastKembalianInfo) { ket.push(_lastKembalianInfo); _lastKembalianInfo = ''; }
     ket.push('masuk Riwayat #' + String(trxId).slice(-4));
-    // Jembatan Pesanan (G5): keranjang ini dicatat DARI sebuah pesanan ->
-    // pesanan itu resmi DIBAYAR dan tertaut ke nomor transaksinya.
-    if (_pesananKeJual) {
-      const ps = ambilPesananDoc(_pesananKeJual);
-      if (ps) {
-        ps.status = 'dibayar'; ps.trxIdJual = trxId;
-        (ps.riwayatStatus = ps.riwayatStatus || []).push({ status: 'dibayar', pada: new Date().toISOString() });
-        try { await simpanKeFirestore(KOLEKSI_PESANAN, ps); } catch (e) { console.error(e); }
-        tulisPesananLokal(ps);
-      }
-      _pesananKeJual = null;
-    }
+    await tutupPesananDariJual(trxId);
     tampilkanUrungkan({ id: trxId, _grup: items.map(x => x.trx) }, ket.join(' \u00b7 '), 'Keranjang tersimpan');
     wzReset();                                     // wizard pulang — deterministik, bukan lewat pengamat
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -15175,6 +15223,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // pernah diblokir jaringan, jadi yang berubah cuma kalimatnya, bukan alurnya.
     const tertunda = ambilAntreanTunda().length > 0;
     if (tertunda) bagian.push('terkirim otomatis saat ada sinyal');
+    await tutupPesananDariJual(transaksi.id);   // jalur form lama (layar >=700px) ikut menutup pesanannya
     _idJualBaru = transaksi.id;
     tampilkanJualHariIni();
     tampilkanUrungkan(transaksi, bagian.join(' · '),
@@ -27122,6 +27171,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.lihatRiwayatHari = lihatRiwayatHari;
   window.pilihHariPlatina = pilihHariPlatina;
   window.wzReset = wzReset; window.wzKe = wzKe; window.wzPilihJalur = wzPilihJalur;
+  window.wzLepasPesanan = wzLepasPesanan;
   window.wzPilihJenis = wzPilihJenis; window.wzPilihMerk = wzPilihMerk; window.wzKlikOpsi = wzKlikOpsi;
   window.wzPilihSack = wzPilihSack; window.wzSering = wzSering; window.wzIsiJumlah = wzIsiJumlah;
   window.wzUbah = wzUbah; window.wzBayar = wzBayar; window.wzNama = wzNama; window.wzSimpan = wzSimpan;
