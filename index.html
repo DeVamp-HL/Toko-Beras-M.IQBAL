@@ -3313,6 +3313,11 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 #halamanStok .st-pita .sp-sack{ background:var(--emas); }
 #halamanStok .st-pita .sp-bags{ background:var(--pf-platina); }
 #halamanStok .st-pita .sp-bahan{ background:rgba(226,205,166,.35); }
+/* Segmen kolam Bahan pakai. .sp-bahan lama DIBIARKAN hidup: tidak ada gunanya
+   mencabutnya, dan aturan induk .st-pita span tidak punya background sendiri -
+   segmen yang kehilangan kelas warnanya lenyap tanpa galat. */
+#halamanStok .st-pita .sp-kantong{ background:var(--pf-platina); }
+#halamanStok .st-pita .sp-literan{ background:rgba(226,205,166,.45); }
 #halamanStok .st-saklar{ display:flex; gap:7px; margin:12px 0 10px; }
 #halamanStok .st-saklar button{ flex:1; min-height:44px; border-radius:4px; font-size:11.5px;
   font-weight:700; letter-spacing:.05em; color:var(--pf-abu);
@@ -6203,7 +6208,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
          daftar rinci — kepala ini tidak menghitung sendiri. -->
     <button type="button" class="st-bilah-karantina kg-tepi-putus" id="stokBilahKarantina" style="display:none;" onclick="stokKeKarantina()"></button>
     <div class="kg-panel" id="stokUangTidur">
-      <div class="kg-label">Modal tertanam di stok &middot; menurut HPP</div>
+      <div class="kg-label" id="stokUangTidurLabel">Modal tertanam di stok</div>
       <div class="st-uang" id="stokUangTidurNilai">&mdash;</div>
       <div class="st-pita" id="stokUangTidurPita" aria-hidden="true"></div>
       <div class="kg-rincian" id="stokUangTidurRinci"></div>
@@ -16398,6 +16403,11 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
     if (!wadahTabung) return;
     const rp = n => 'Rp' + Math.round(n || 0).toLocaleString('id-ID');
 
+    // Kolam yang sedang aktif ditentukan DULU — kepala di bawah ini membacanya.
+    // Sebelumnya bahanMode lahir sesudah kepala digambar, dan itulah sebabnya kepala
+    // tidak pernah tahu saklar mana yang ditekan.
+    const bahanMode = _stokMode === 'bahan';
+
     // --- bilah karantina: bukan stok jual, dan itu DISEBUT di bilahnya ---
     const nKar = ambilKarantina().filter(x => x.statusTindakan === 'belum_diputuskan').length;
     const bilah = document.getElementById('stokBilahKarantina');
@@ -16407,24 +16417,63 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
         + '<i>bukan stok jual — tidak dihitung di Uang Tertidur</i>';
     }
 
-    // --- Uang Tertidur: nilai stok dari hitungNeraca (mesin yang sudah ada) ---
+    // --- Uang Tertidur: IKUT KOLAM yang sedang aktif (keputusan pemilik 7 Sep) ---
+    // Saklar yang tidak menggerakkan kepala adalah saklar yang setengah hidup. Angka
+    // besar sekarang cuma menjumlahkan kolam yang sedang ditampilkan.
+    //
+    // SYARAT MUTLAK yang datang bersama keputusan itu: SELALU ada satu baris yang
+    // menyebut total seluruh toko. Tanpa baris itu, halaman Stok dan halaman Laporan
+    // memajang dua angka berbeda dengan nama mirip, dan itu penyakit yang sudah tiga
+    // kali menggigit proyek ini — karung yang tidak menjumlah ke kepala, kekayaan toko
+    // tanpa kewajiban, kasir yang menagih beda dari owner.
+    //
+    // PITA IKUT KOLAM JUGA, TAPI SEGMENNYA TETAP BERNAMA. Desain mengusulkan pita porsi
+    // lima merk teratas; itu ditolak pemilik dengan alasan yang benar — desainnya tidak
+    // memberi nama pada segmen, jadi empat dari lima balok jadi hiasan tanpa nama dan
+    // seluruh isinya bergantung pada satu kalimat yang cuma menyebut juara pertama.
+    // Dua segmen bernama per kolam: Siap jual = sack + bags, Bahan pakai = kantong
+    // kemasan + literan. Kepala dan pita jadi satu cakupan, dan tiap balok punya
+    // namanya di baris rincian.
+    //
+    // Kelas .sp-sack/.sp-bags SENGAJA dipertahankan, bukan diganti. Aturan induk
+    // .st-pita span tidak punya background sendiri — segmen yang kehilangan kelas
+    // warnanya tidak berubah warna, ia LENYAP, tanpa satu pun galat. Dan grep tidak
+    // menolong: nama kelasnya dirangkai di JS ('sp-' + kunci), jadi pencarian teks
+    // untuk 'sp-sack' cuma menemukan barisnya di CSS dan menyimpulkan tidak ada pemakai.
     const nrc = hitungNeraca();
+    // Bahan dipecah dua di sini, memakai FIELD YANG SAMA dengan hitungNeraca supaya
+    // keduanya menjumlah persis ke nrc.nilaiBahan — bukan mesin baru, cuma pembacaan
+    // ulang keluaran mesin yang sudah dititipkan lewat argumen d.
+    const nilaiKantong = Object.keys(d.stokBahanKemasan).reduce((a, j) =>
+      a + Math.max(0, d.stokBahanKemasan[j].sisaPcs || 0) * (d.stokBahanKemasan[j].hppPerPcs || 0), 0);
+    const nilaiLiteran = Object.keys(d.stokBahanLiteran).reduce((a, j) =>
+      a + Math.max(0, d.stokBahanLiteran[j].sisaPcs || 0) * (d.stokBahanLiteran[j].hargaPerPcs || 0), 0);
+    const seg = bahanMode
+      ? [['kantong', 'kantong kemasan', Math.round(nilaiKantong)], ['literan', 'literan', Math.round(nilaiLiteran)]]
+      : [['sack', 'sack', nrc.nilaiSack], ['bags', 'bags', nrc.nilaiBags]];
+    const totalKolam = seg.reduce((a, x) => a + x[2], 0);
+    const elLabel = document.getElementById('stokUangTidurLabel');
+    if (elLabel) elLabel.textContent = 'Modal tertanam di stok \u00b7 ' + (bahanMode ? 'bahan pakai' : 'siap jual');
     const elNilai = document.getElementById('stokUangTidurNilai');
-    if (elNilai) elNilai.textContent = rp(nrc.stok);
+    if (elNilai) elNilai.textContent = rp(totalKolam);
     const pita = document.getElementById('stokUangTidurPita');
     if (pita) {
-      const total = Math.max(1, nrc.stok);
-      pita.innerHTML = [['sack', nrc.nilaiSack], ['bags', nrc.nilaiBags], ['bahan', nrc.nilaiBahan]]
-        .map(x => '<span class="sp-' + x[0] + '" style="width:' + (x[1] / total * 100) + '%;"></span>').join('');
+      const total = Math.max(1, totalKolam);
+      pita.innerHTML = seg.map(x =>
+        '<span class="sp-' + x[0] + '" style="width:' + (x[2] / total * 100) + '%;"></span>').join('');
     }
     const rinci = document.getElementById('stokUangTidurRinci');
-    if (rinci) rinci.textContent = 'sack ' + rp(nrc.nilaiSack) + ' · bags ' + rp(nrc.nilaiBags)
-      + ' · bahan ' + rp(nrc.nilaiBahan) + (nKar > 0 ? ' · karantina tidak dihitung' : '');
+    // Total penjembatan memakai nrc.stok, BUKAN penjumlahan tiga suku: nilaiSack/
+    // nilaiBags/nilaiBahan masing-masing dibulatkan sendiri sedangkan nrc.stok
+    // dibulatkan sekali dari jumlah mentahnya, jadi menjumlah ulang bisa meleset
+    // sampai dua rupiah dari angka yang dipajang halaman Laporan.
+    if (rinci) rinci.textContent = seg.map(x => x[1] + ' ' + rp(x[2])).join(' \u00b7 ')
+      + ' \u00b7 seluruh toko ' + rp(nrc.stok)
+      + (nKar > 0 ? ' \u00b7 karantina tidak dihitung' : '');
 
     // --- saklar ---
     document.querySelectorAll('#stokSaklar button').forEach(b =>
       b.classList.toggle('kg-terpilih', b.dataset.mode === _stokMode));
-    const bahanMode = _stokMode === 'bahan';
     [['kartuStokKarung', !bahanMode], ['kartuStokKemasan', !bahanMode],
      ['kartuStokBahanKemasan', bahanMode], ['kartuStokBahanLiteran', bahanMode]].forEach(x => {
       const el = document.getElementById(x[0]);
