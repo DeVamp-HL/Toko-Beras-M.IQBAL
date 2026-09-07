@@ -3364,6 +3364,16 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   text-transform:uppercase; }
 #halamanStok .st-pil-baru i{ font-style:italic; font-weight:400; font-size:10px;
   letter-spacing:0; text-transform:none; font-family:var(--pf-serif); }
+/* Kartu Gudang Karantina lama: disembunyikan di HP begitu lembarnya ada, TETAP HIDUP
+   di desktop (keputusan pemilik 7 Sep, pola yang sama dengan penyimpangan #6 untuk
+   kartu Jenis Beras lama).
+   MEDIA QUERY-NYA DITULIS EKSPLISIT DI SINI, dan itu perlu: blok CSS kaca Stok di
+   sekitarnya TIDAK berada di dalam @media mana pun — kepala Stok memang sengaja
+   tampil di semua lebar. Tanpa pembungkus ini aturannya berlaku juga di desktop,
+   dan kartunya lenyap di tempat yang justru harus mempertahankannya. */
+@media (max-width:699px){
+  #halamanStok #kartuKarantina{ display:none; }
+}
 #halamanStok .st-gerak-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10px;
   line-height:1.5; color:var(--pf-abu); margin-top:8px; }
 #halamanStok .st-kisi-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
@@ -3429,6 +3439,41 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
   font-family:var(--pf-serif); font-style:italic; font-size:11.5px; line-height:1.5; color:var(--pf-abu);
   text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent; }
 #lembarStokMerk .sm-tempat.terisi{ border-style:solid; border-color:rgba(226,205,166,.22); color:var(--pf-platina); }
+
+/* ═══ GUDANG KARANTINA - lembar naik dari bawah (sumbu C) ═══════════════════
+   Meniru pola #lembarStokMerk persis - overlay + kelas di body + transform.
+   Kartu lama #kartuKarantina DISEMBUNYIKAN DI HP saja, tetap hidup di desktop.
+   Itu bukan aturan baru: penyimpangan #6 sudah menempuh jalan yang sama untuk kartu
+   Jenis Beras lama begitu penggantinya ada. Dua pintu ke keputusan yang sama adalah
+   pola yang sudah beberapa kali menggigit proyek ini - kartu dan lembar akan
+   berselisih suatu hari, dan selisihnya diam. */
+#overlayKarantina{ display:none; position:fixed; inset:0; z-index:41; background:rgba(8,7,6,.55); }
+body.lembar-karantina-terbuka #overlayKarantina{ display:block; }
+#lembarKarantina{ position:fixed; left:0; right:0; bottom:0; z-index:42; max-height:76vh; max-height:76dvh;
+  background:linear-gradient(180deg,#20242a,#14171a); border:1px solid rgba(226,205,166,.3); border-bottom:none;
+  border-radius:22px 22px 0 0; box-shadow:0 -18px 50px rgba(0,0,0,.6);
+  padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));
+  transform:translateY(105%); transition:transform .3s cubic-bezier(.16,.84,.28,1);
+  display:flex; flex-direction:column; overflow-y:auto; }
+body.lembar-karantina-terbuka #lembarKarantina{ transform:translateY(0); }
+#lembarKarantina .lk-kepala{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+#lembarKarantina .lk-kepala span{ font-family:var(--pf-serif); font-size:19px; color:var(--teks); }
+#lembarKarantina .lk-kepala b{ font-family:var(--pf-serif); font-weight:600; font-size:15px; color:var(--pf-amber); }
+#lembarKarantina .lk-daftar{ margin-top:10px; }
+#lembarKarantina .lk-item{ border-radius:14px; padding:12px 13px; margin-bottom:9px;
+  background:linear-gradient(158deg,rgba(255,255,255,.07),rgba(255,255,255,.028));
+  border:1px solid rgba(255,255,255,.09); }
+#lembarKarantina .lk-nama{ font-family:var(--pf-serif); font-weight:600; font-size:15px; color:#f7ecd6; }
+#lembarKarantina .lk-sub{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.5; color:var(--pf-abu); margin-top:4px; }
+#lembarKarantina .lk-tombol{ display:flex; gap:7px; margin-top:11px; }
+#lembarKarantina .lk-tombol button{ flex:1; min-height:48px; border-radius:11px; font-family:inherit;
+  font-size:11.5px; font-weight:700; line-height:1.3; cursor:pointer; padding:4px 6px; }
+#lembarKarantina .lk-balik{ border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.05); color:#e8e4dc; }
+#lembarKarantina .lk-rework{ border:1px solid rgba(138,177,125,.5); background:rgba(138,177,125,.16); color:#cfe3c6; }
+#lembarKarantina .lk-buang{ border:1px solid rgba(211,160,139,.5); background:rgba(211,160,139,.12); color:var(--pf-amber); }
+#lembarKarantina .lk-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10px; line-height:1.55;
+  color:var(--pf-abu); margin-top:4px; }
 
 /* ═══ KELILING GUDANG (rancangan Stok - Gabungan, sumbu L) ═══════════════════
    Lembar opname berpandu: satu barang satu layar, dua tombol besar. Sengaja
@@ -5109,6 +5154,21 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   <div class="kg-label" style="margin-top:10px;">Batch yang membentuk stok ini</div>
   <div class="sm-daftar" id="smBatch"></div>
   <button type="button" class="tombol-utama-kartu" style="margin-top:10px;" onclick="stokDariLembarKeDaftar()">Lihat di daftar rinci</button>
+</div>
+
+<!-- GUDANG KARANTINA (rancangan Stok - Gabungan, sumbu C): lembar naik-dari-bawah.
+     Tombolnya MEMANGGIL putuskanKarantina() yang sudah ada - tidak ada jalur tulis
+     baru di sini, dan seluruh confirm serta penulisan dokumen rework tetap milik
+     fungsi itu. -->
+<div id="overlayKarantina" onclick="tutupLembarKarantina()"></div>
+<div id="lembarKarantina" class="k6a" role="dialog" aria-modal="true" aria-label="Gudang karantina">
+  <div class="lm-pegangan" onclick="tutupLembarKarantina()"></div>
+  <div class="lk-kepala">
+    <span id="lkJudul">Gudang karantina</span>
+    <b id="lkCacah"></b>
+  </div>
+  <div class="kg-rincian">Barang di sini <b>tidak</b> masuk stok jual dan tidak dihitung di Modal tertanam. Tiap barang butuh satu keputusan.</div>
+  <div class="lk-daftar" id="lkDaftar"></div>
 </div>
 
 <!-- KELILING GUDANG (rancangan Stok - Gabungan, sumbu L): lembar opname berpandu.
@@ -9176,6 +9236,11 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   }, 'id', 'retur');
 
   pasangSinkronisasi(KOLEKSI_KARANTINA, KUNCI_KARANTINA, (d) => { _cacheKarantina = d; }, () => {
+    // Lembar yang sedang terbuka WAJIB ikut disegarkan. tampilkanStok() tidak mengenal
+    // gambarLembarKarantina, jadi tanpa baris ini pemilik menekan tombol di dalam
+    // lembar, kartu di belakangnya berubah, dan lembar di depannya tetap memajang
+    // barang yang sudah tidak ada.
+    if (document.body.classList.contains('lembar-karantina-terbuka')) gambarLembarKarantina();
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
     if (document.getElementById('halamanRingkasan').classList.contains('tampil')) tampilkanRingkasan();
   }, 'id', 'karantina');
@@ -16394,10 +16459,47 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
     return { lulus: gagal.length === 0, gagal };
   }
 
-  function stokKeKarantina() {
-    const kartu = document.getElementById('kartuKarantina');
-    if (kartu) kartu.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // ===== Lembar gudang karantina (sumbu C) =====
+  // MURNI PEMBUNGKUS. Tiga tombolnya memanggil putuskanKarantina() yang sudah ada,
+  // jadi confirm-nya, penulisan dokumen rework-nya, dan pesan gagalnya tetap milik
+  // fungsi itu. Tidak ada jalur tulis kedua ke koleksi karantina.
+  function gambarLembarKarantina() {
+    const kont = document.getElementById('lkDaftar');
+    if (!kont) return;
+    const antre = ambilKarantina().filter(x => x.statusTindakan === 'belum_diputuskan');
+    document.getElementById('lkCacah').textContent = antre.length
+      ? antre.length + ' menunggu keputusan' : 'kosong';
+    kont.innerHTML = antre.length === 0
+      ? '<div class="kosong-info"><b>Tidak ada barang di karantina</b><span>Retur yang kondisinya tidak utuh masuk ke sini dan menunggu satu keputusan.</span></div>'
+      : antre.map(it => {
+        const nama = it.jenisAsal === 'kemasan'
+          ? (it.namaProduk || '') + ' ' + it.ukuranKemasan + ' kg'
+          : (it.merkSumber || '');
+        return '<div class="lk-item"><div class="lk-nama">' + escapeHtml(nama) + '</div>'
+          + '<div class="lk-sub">' + escapeHtml(formatTanggal(it.tanggal)) + ' \u00b7 '
+          + (Math.round((it.totalKg || 0) * 10) / 10).toLocaleString('id-ID') + ' kg'
+          + (it.catatan ? ' \u00b7 ' + escapeHtml(it.catatan) : '') + '</div>'
+          + '<div class="lk-tombol">'
+          + '<button type="button" class="lk-balik" onclick="karantinaDariLembar(' + it.id + ', \'dikembalikan_pemasok\')">Balik ke<br>pemasok</button>'
+          + '<button type="button" class="lk-rework" onclick="karantinaDariLembar(' + it.id + ', \'dirework\')">Rework<br>ke stok</button>'
+          + '<button type="button" class="lk-buang" onclick="karantinaDariLembar(' + it.id + ', \'dibuang\')">Buang</button>'
+          + '</div></div>';
+      }).join('')
+      + '<div class="lk-ket">Keputusan yang diambil hari ini muncul di Papan Kapur, '
+      + 'dan cuma hari ini \u2014 barang yang sudah diputuskan hilang dari layar. '
+      + 'Tombol Buang belum mencatat kerugian dalam rupiah.</div>';
   }
+  async function karantinaDariLembar(id, tindakan) {
+    await putuskanKarantina(id, tindakan);
+    gambarLembarKarantina();
+    if (ambilKarantina().filter(x => x.statusTindakan === 'belum_diputuskan').length === 0)
+      tutupLembarKarantina();
+  }
+  function stokKeKarantina() {
+    gambarLembarKarantina();
+    document.body.classList.add('lembar-karantina-terbuka');
+  }
+  function tutupLembarKarantina() { document.body.classList.remove('lembar-karantina-terbuka'); }
   function stokGambarKacaEmas(d) {
     const wadahTabung = document.getElementById('stokKisiTabung');
     if (!wadahTabung) return;
@@ -25101,6 +25203,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   window.hapusBarisMerk = hapusBarisMerk;
   // Pola form baku (Lembar 1 Penyempurnaan, 7 Agu 2026)
   window.ubahTempatSimpan = ubahTempatSimpan; window.ubahTempatSimpanMerkIni = ubahTempatSimpanMerkIni;
+  window.tutupLembarKarantina = tutupLembarKarantina; window.karantinaDariLembar = karantinaDariLembar;
   window.bukaKeliling = bukaKeliling; window.tutupKeliling = tutupKeliling;
   window.klCocok = klCocok; window.klLewati = klLewati; window.klMulaiBeda = klMulaiBeda;
   window.klBatalBeda = klBatalBeda; window.klNudge = klNudge; window.klKetikNyata = klKetikNyata;
