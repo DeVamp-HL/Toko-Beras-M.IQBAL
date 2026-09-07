@@ -105,6 +105,11 @@
     border: 1px solid var(--garis); border-radius: 8px; padding: 4px 6px 4px 12px; margin-bottom: 5px;
   }
   #daftarBaris .br .no { color: #9aa3ab; font-size: .8rem; flex: 0 0 auto; }
+  /* Baris pembulatan (8 Sep 2026). Sengaja BUKAN baris barang: tanpa nomor, tanpa tombol
+     hapus, warnanya lebih redup — ia hasil aturan toko, bukan sesuatu yang Gono ketuk. */
+  #daftarBaris .br.bulat { background: #23272c; border-style: dashed; padding-left: 12px; }
+  #daftarBaris .br.bulat .lbl { color: #9aa3ab; font-style: italic; }
+  #daftarBaris .br.bulat .nilai { color: #cfd6dc; }
   /* Nama barang di baris (13 Agu 2026) — baris dari tuts bernama menyebut barangnya,
      baris ketikan angka polos membiarkannya kosong. */
   #daftarBaris .br .lbl {
@@ -539,10 +544,46 @@ var nominalDiketik = '';
 // barang apa yang diketuk, karena itulah yang membuatnya tidak perlu dirinci lagi.
 var barisItems = [];
 function totalBaris() { return barisItems.reduce(function (a, b) { return a + b.h; }, 0); }
+
+// ---------- pembulatan Rp500 untuk baris berharga KATALOG (8 September 2026) ----------
+// Aturan toko 5 Sep 2026: total TUNAI ditagih ke kelipatan Rp500 di atasnya. Waktu itu
+// index.html dan kasir.html dipasangi, berkas ini TIDAK — dengan alasan "kasir darurat
+// mencatat nominal ketikan, jadi angkanya sudah uang yang benar-benar diterima".
+// Alasan itu benar untuk JALUR ANGKA POLOS dan salah untuk berkas ini: sejak tuts bernama
+// (13 Agu 2026) berkas ini juga menghasilkan dokumen jual berharga KATALOG yang menurut
+// catatannya sendiri "SAMA PERSIS dengan buatan kasir biasa" dan sengaja tidak masuk
+// antrean rinci — jadi tidak pernah lewat hargaPas. Akibatnya HP staf menagih Rp51.750
+// untuk keranjang yang di layar owner berbunyi Rp52.000: penyakit yang sama persis dengan
+// yang kasir-v23 dibangun untuk menyembuhkan, masih hidup di berkas yang justru dipegang
+// Gono dan Hasan.
+//
+// SYARAT SEMPIT, DAN SENGAJA. Nota dibulatkan HANYA kalau SETIAP barisnya datang dari
+// tuts bernama. Satu saja angka ketikan di dalamnya dan nota itu dibiarkan apa adanya —
+// angka ketikan adalah uang yang sudah dihitung orang, dan membulatkannya berarti
+// mengarang Rp250-450 yang tidak pernah diterima siapa pun. QRIS membayar angka persis;
+// Kredit masuk piutang. Keduanya tidak dibulatkan, sama dengan dua berkas kasir lainnya.
+function bulatKeAtas500(n) { return Math.ceil(Math.round(n) / 500) * 500; }
+function semuaDariTuts(daftar) {
+  if (!daftar.length) return false;
+  for (var i = 0; i < daftar.length; i++) if (!daftar[i].p) return false;
+  return true;
+}
+function pembulatanDaftar(daftar) {
+  if (bayarDAktif !== 'Tunai') return 0;
+  if (!semuaDariTuts(daftar)) return 0;
+  var t = daftar.reduce(function (a, b) { return a + b.h; }, 0);
+  if (!(t > 0)) return 0;
+  return bulatKeAtas500(t) - Math.round(t);
+}
+// Angka yang sedang diketik belum jadi baris. Selama ada ketikan, LCD memang menampilkan
+// ketikan itu — dan nota yang memuatnya tidak akan dibulatkan saat disimpan.
+function pembulatanNotaD() { return nominalDiketik !== '' ? 0 : pembulatanDaftar(barisItems); }
 function gambarLcd() {
   // Yang diketik menang di layar; kalau tidak ada, tampilkan total yang sudah terkumpul —
   // supaya Gono tidak perlu menjumlah sendiri untuk tahu berapa yang harus ditagih.
-  var angka = nominalDiketik !== '' ? parseInt(nominalDiketik, 10) : totalBaris();
+  // LCD WAJIB menampilkan yang benar-benar ditagih, termasuk pembulatannya — kalau tidak,
+  // Gono menagih jumlah mentahnya dan selisihnya hilang di laci tanpa tercatat di mana pun.
+  var angka = nominalDiketik !== '' ? parseInt(nominalDiketik, 10) : (totalBaris() + pembulatanNotaD());
   $('lcdAngka').textContent = rupiah(angka);
 }
 function gambarBaris() {
@@ -563,12 +604,16 @@ function gambarBaris() {
   var lh = $('logHari');
   if (lh) lh.style.display = sedangIsi ? 'none' : '';
   if (!sedangIsi) { wadah.innerHTML = ''; return; }
+  var bulat = pembulatanNotaD();
   wadah.innerHTML = barisItems.map(function (it, i) {
     return '<div class="br"><span class="no">' + (i + 1) + '</span>' +
       '<span class="lbl">' + (it.p ? esk(it.p.label) : '') + '</span>' +
       '<span class="nilai">' + rupiah(it.h) + '</span>' +
       '<button type="button" onclick="hapusBaris(' + i + ')" aria-label="Hapus barang ' + (i + 1) + '">&times;</button></div>';
-  }).join('');
+  }).join('') + (bulat > 0
+    ? '<div class="br bulat"><span class="lbl">Pembulatan tunai Rp500</span>' +
+      '<span class="nilai">+' + rupiah(bulat) + '</span></div>'
+    : '');
   wadah.scrollTop = wadah.scrollHeight;
 }
 // ---------- tuts harga cepat (belajar dari kebiasaan sendiri) ----------
@@ -769,6 +814,10 @@ function pilihBayarD(c) {
   var el = $('namaPembeliD');
   el.placeholder = c === 'Kredit' ? 'Nama pembeli (WAJIB untuk kredit)' : 'Nama pembeli (boleh dikosongkan)';
   if (c !== 'Kredit') el.classList.remove('kurang');
+  // Pembulatan hanya untuk Tunai, jadi berpindah ke QRIS/Kredit HARUS mengubah angka yang
+  // terpajang. Tanpa ini, LCD tetap menunjukkan angka bulat untuk pembayaran yang menuntut
+  // angka persis.
+  gambarLcd(); gambarBaris();
 }
 function tandaiNamaD() {
   var el = $('namaPembeliD');
@@ -783,6 +832,19 @@ function simpanNominal() {
   var sisa = parseInt(nominalDiketik || '0', 10);
   if (sisa > 0) daftar.push({ h: sisa, p: null });
   if (daftar.length === 0) { tolakEntri(); return; }
+  // PEMBULATAN MELEKAT KE BARIS TERAKHIR YANG BERNILAI, pola yang sama persis dengan
+  // kasir.html (1652) dan index.html (tempelPembulatan): selisihnya masuk ke hargaTotal
+  // dokumen itu berikut jejak field `pembulatan`, jadi setiap pembaca yang menjumlahkan
+  // hargaTotal apa adanya — kas, laba, laporan, audit.py — ikut benar tanpa tahu-menahu
+  // soal pembulatan. Perhatikan urutannya: dihitung SESUDAH `sisa` masuk daftar, supaya
+  // nota bercampur (tuts bernama + angka ketikan) jatuh ke syarat sempit dan tidak
+  // dibulatkan sama sekali.
+  var bulat = pembulatanDaftar(daftar);
+  if (bulat > 0) {
+    for (var b = daftar.length - 1; b >= 0; b--) {
+      if (daftar[b].h > 0) { daftar[b].bulat = bulat; daftar[b].h += bulat; break; }
+    }
+  }
   var nama = ($('namaPembeliD').value || '').trim();
   if (bayarDAktif === 'Kredit' && !nama) {
     var elN = $('namaPembeliD');
@@ -825,6 +887,7 @@ function simpanNominal() {
         caraBayar: bayarDAktif, namaPelanggan: nama, grupNota: grup };
       if (ket) trx.keteranganDarurat = ket;
     }
+    if (it.bulat) trx.pembulatan = it.bulat;
     if (op) trx.operator = op;
     // Fase 1: tiap catatan bernama pelaku & perangkat — kalau nama operator tidak
     // pernah dipilih, jujur ditulis begitu, bukan dibiarkan kosong.

@@ -67,7 +67,16 @@
 // lama HP pegawai tetap menjalankan berkas tanpa denyut, jadi di layar owner ia terbaca
 // "tidak pernah terhubung" — persis kebalikan dari keadaan sebenarnya, dan diamnya
 // sempurna. Kedua berkas sudah ada di FILES, jadi satu kenaikan versi menyegarkan dua-duanya.
-const VERSI = 'kasir-v24';
+// v25 (8 September 2026): PEMBULATAN Rp500 masuk ke kasir-darurat-nominal.html untuk
+// baris berharga KATALOG (tuts bernama). Waktu aturan pembulatan lahir 5 Sep, berkas ini
+// dilewati dengan alasan "kasir darurat mencatat nominal ketikan" — benar untuk jalur
+// angka polos, salah untuk berkasnya, karena tuts bernama (13 Agu) menghasilkan dokumen
+// jual berharga katalog yang tidak pernah lewat hargaPas. WAJIB NAIK, dan alasannya sama
+// persis dengan v23 di bawah: dengan cache lama, HP Gono & Hasan tetap menjalankan berkas
+// TANPA pembulatan sementara layar owner sudah membulatkan — Rp51.750 lawan Rp52.000
+// untuk barang yang sama, di dua pintu yang dipakai bersamaan, dan diamnya sempurna.
+// Berkas ini sudah ada di FILES, jadi satu kenaikan versi menyegarkannya.
+const VERSI = 'kasir-v25';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 
