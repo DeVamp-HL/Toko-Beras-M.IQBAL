@@ -4248,6 +4248,35 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 .kal-tanpa-tgl .kal-mulai{ width:100%; min-height:44px; margin-top:9px; border-radius:10px;
   border:1px solid rgba(226,205,166,.35); background:rgba(226,205,166,.08);
   font-family:inherit; font-size:11.5px; font-weight:700; color:var(--pf-platina); cursor:pointer; }
+/* ZONA PAKAI / ISI / PAHAM — tiga kartu kaca Bulanan. */
+#blPakaiKaca .p6-besar u{ text-decoration:none; font-family:var(--pf-serif); font-style:italic;
+  font-weight:400; font-size:12px; color:var(--pf-abu); margin-left:4px; }
+#blPakaiKaca .bl-perjam{ font-family:var(--pf-serif); font-weight:600; font-size:15px;
+  color:var(--pf-platina); margin-top:4px; }
+#blIsiKisi .bl-kisi{ margin-bottom:12px; }
+#blIsiKisi .bl-pos{ display:grid; grid-template-columns:1fr auto; align-items:center;
+  gap:2px 10px; width:100%; min-height:48px; padding:7px 2px; text-align:left;
+  background:none; border:0; border-top:1px solid rgba(255,255,255,.05);
+  color:inherit; font-family:inherit; cursor:pointer; }
+#blIsiKisi .bl-pos .nm{ font-size:12px; font-weight:600; }
+#blIsiKisi .bl-pos .rp{ font-family:var(--pf-serif); font-weight:600; font-size:14px; color:var(--pf-platina); }
+#blIsiKisi .bl-pos .rp i{ font-style:italic; font-weight:400; font-size:10.5px; color:var(--pf-abu); }
+#blIsiKisi .bl-pos .st{ grid-column:1 / -1; font-family:var(--pf-serif); font-style:italic;
+  font-size:9.5px; color:var(--pf-abu); }
+#blIsiKisi .bl-pos.belum .st{ color:var(--pf-amber); }
+#blPahamKaca .bl-sim-baris{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:10px; min-height:30px; font-size:12px; color:var(--pf-abu); }
+#blPahamKaca .bl-sim-baris b{ font-family:var(--pf-serif); font-weight:600; color:#e8e4dc; }
+#blPahamKaca .bl-sim-baris b u{ text-decoration:none; color:var(--pf-amber); }
+#blPahamKaca .bl-sim-pos{ display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+#blPahamKaca .bl-sim-tombol{ min-height:44px; padding:0 13px; border-radius:11px;
+  border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05);
+  font-family:inherit; font-size:11.5px; color:#e8e4dc; cursor:pointer; }
+#blPahamKaca .bl-sim-tombol.mati{ border-color:rgba(211,160,139,.5); background:rgba(211,160,139,.12);
+  color:var(--pf-amber); text-decoration:line-through; }
+#blPahamKaca .bl-sim-reset{ width:100%; min-height:44px; margin-top:10px; border-radius:11px;
+  border:1px solid rgba(255,255,255,.14); background:none;
+  font-family:inherit; font-size:12px; color:var(--pf-abu); cursor:pointer; }
 #piutang6a .baris-44 .kg-uang-piutang{ font-size:13px; }
 /* --- KACA EMAS G3: Setelan (rapor + zona) --- */
 @media (min-width:700px){ #setelanKaca{ display:none; } }
@@ -7558,6 +7587,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <div id="bulananKaca"></div>
 
     <!-- LAPORAN RINGKAS BULAN (hi-fi Bulanan): hero + enam bulan terakhir + baris inti. -->
+    <div id="blPakaiKaca" class="bl-z-pakai"></div>
+    <div id="blIsiKisi" class="bl-z-isi"></div>
+    <div id="blPahamKaca" class="bl-z-paham"></div>
     <div class="kartu-hero bl-z-pakai" style="margin-bottom:12px;">
       <i class="pf-nafas" aria-hidden="true"></i>
       <div class="label">Omzet bulan ini <span class="keterangan">sampai hari ini</span></div>
@@ -10523,6 +10555,130 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   }
 
+
+  // ═══ ZONA PAKAI: jatah harian + biaya per jam buka ═══════════════════════════
+  // SATU kartu, satu pembilang. Memisahkannya jadi dua kartu berarti dua tempat yang
+  // bisa berselisih untuk satu angka.
+  // PEMBAGINYA MENYALIN jatahBiayaBulananHari APA ADANYA: jumlah hari KALENDER bulan
+  // itu dari akhirBulanIso — TIDAK PERNAH 30. Rumus yang sama sudah tercetak di
+  // Laporan Harian; dua layar yang membagi dengan angka berbeda melahirkan dua jatah
+  // harian yang keduanya mengaku benar.
+  // DIHITUNG SAAT DIPAKAI, bukan di lingkup modul. JAM_BUKA_SISTEM / JAM_TUTUP_SISTEM
+  // dideklarasikan `const` sekitar 15.000 baris DI BAWAH sini; membacanya saat modul
+  // dievaluasi masuk temporal dead zone dan MELEMPAR — yang berarti seluruh modul mati,
+  // bukan cuma kartu ini. Sintaksnya lulus jsc; yang menangkap cuma menjalankannya.
+  function blJamBuka() { return JAM_TUTUP_SISTEM - JAM_BUKA_SISTEM; }   // 19 − 5 = 14
+  function blTotalBulan(bl, matikan) {
+    return bayaranBiayaBulanan().filter(x => x.bulan === bl)
+      .filter(x => !(matikan && matikan[x.pos]))
+      .reduce((a, x) => a + (x.nominalKotor === undefined ? x.nominal : x.nominalKotor), 0);
+  }
+  function gambarBulananPakai() {
+    const el = document.getElementById('blPakaiKaca');
+    if (!el || window.matchMedia('(min-width: 700px)').matches) return;
+    const bl = (document.getElementById('bulanBiaya') || {}).value || bulanLokalIso();
+    const total = blTotalBulan(bl, null);
+    if (!(total > 0)) {
+      // Belum ada yang bisa dibagi. Menulis "Rp0 per hari" mengaku sudah menghitung.
+      el.innerHTML = '<div class="kg-panel"><div class="kg-label">Jatah harian</div>'
+        + '<div class="kg-rincian">Biaya ' + escapeHtml(namaBulanPanjang(bl) || 'bulan ini')
+        + ' belum ada isinya, jadi belum ada yang bisa dibagi ke hari.</div></div>';
+      return;
+    }
+    const nHari = parseInt(akhirBulanIso(bl).slice(8, 10), 10);
+    const dasar = Math.floor(total / nHari);
+    const perJam = Math.floor(dasar / blJamBuka());
+    el.innerHTML = '<div class="kg-panel"><div class="kg-label">Jatah harian &middot; '
+      + escapeHtml(namaBulanPanjang(bl) || '') + '</div>'
+      + '<b class="p6-besar">' + formatRupiah(dasar) + '<u>/hari</u></b>'
+      + '<div class="bl-perjam">= ' + formatRupiah(perJam) + ' tiap jam buka</div>'
+      + '<div class="kg-rincian">' + formatRupiah(total) + ' &divide; ' + nHari
+      + ' hari kalender. Hari terakhir menyerap sisa pembagian, jadi jumlah sebulannya '
+      + 'tetap persis. Jam buka dihitung ' + blJamBuka() + ' jam (05.00&ndash;19.00), tiap hari '
+      + 'kalender &mdash; hari libur tidak dikecualikan.</div></div>';
+  }
+
+  // ═══ ZONA ISI: kisi pos, BACA-SAJA ═══════════════════════════════════════════
+  // Menutup rujukan menggantung: beberapa tempat menyuruh pemilik "isi tanggalnya di
+  // tab Bulanan", ke layar yang tidak pernah menunjukkan pos MANA yang menggantung.
+  // Ketukan = gulir + fokus ke kolom tanggal pos itu. TIDAK MENULIS APA PUN — menandai
+  // pos dibayar mengubah dokumen yang dibaca arus kas, dan itu bukan tampilan.
+  function gambarBulananKisi() {
+    const el = document.getElementById('blIsiKisi');
+    if (!el || window.matchMedia('(min-width: 700px)').matches) return;
+    const bl = (document.getElementById('bulanBiaya') || {}).value || bulanLokalIso();
+    const dok = ambilBiayaBulanan().find(b => b.bulan === bl);
+    if (!dok) { el.innerHTML = ''; return; }
+    const baris = POS_BIAYA_BULANAN.map(pos => {
+      // NOMINAL, bukan nominalKotor — kartu ini bicara tentang uang yang keluar laci.
+      const n = dok[pos.kunci] || 0;
+      const tgl = dok[pos.idTgl] || (dok.tanggalBayarPos || {})[pos.kunci] || '';
+      return { label: pos.label, idTgl: pos.idTgl, n, tgl };
+    });
+    const belum = baris.filter(b => b.n > 0 && !b.tgl).length;
+    el.innerHTML = '<div class="kartu bl-kisi"><div class="kg-label">Pos bulan ini</div>'
+      + baris.map(b => '<button type="button" class="bl-pos' + (b.n > 0 && !b.tgl ? ' belum' : '')
+          + '" onclick="blKeTanggalPos(' + JSON.stringify(b.idTgl).replace(/"/g, '&quot;') + ')">'
+          + '<span class="nm">' + escapeHtml(b.label) + '</span>'
+          + '<span class="rp">' + (b.n > 0 ? formatRupiah(b.n) : '<i>belum diisi</i>') + '</span>'
+          + '<span class="st">' + (b.n > 0
+            ? (b.tgl ? 'dibayar ' + escapeHtml(formatTanggal(b.tgl)) : 'tanggal bayar kosong')
+            : '&mdash;') + '</span></button>').join('')
+      + '<div class="kg-rincian">Daftar ini membaca kolom tanggal bayar, bukan uang di laci. '
+      + (belum > 0
+        ? '<b style="font-style:normal;color:var(--pf-amber);">' + belum + ' pos punya nominal tapi tanggalnya kosong</b> — '
+          + 'ketuk barisnya untuk lompat ke kolom tanggalnya.'
+        : 'Semua pos yang ada nominalnya sudah punya tanggal bayar.')
+      + '</div></div>';
+  }
+  function blKeTanggalPos(idTgl) {
+    const inp = document.getElementById(idTgl);
+    if (!inp) return;
+    inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => { try { inp.focus(); } catch (e) { } }, 320);
+  }
+
+  // ═══ ZONA PAHAM: simulasi "tanpa pos ini" ════════════════════════════════════
+  // BUKAN "tuas" — kata itu sudah berarti penggeser bersinambung di layar Harga.
+  // BUKAN "potong" — sudah berarti potongan kasbon dari gaji orang.
+  // Keadaannya hidup di objek modul sendiri dan TIDAK PERNAH menyentuh nilai <input>
+  // zona ISI, walau sebentar: simpanBiayaBulanan membaca isian itu apa adanya.
+  // Dibuang saat ganti bulan dan saat keluar zona, supaya simulasi tidak pernah
+  // tertinggal menyamar jadi keadaan sebenarnya.
+  let _blMatikan = {};
+  function blToggleMatikan(pos) {
+    if (_blMatikan[pos]) delete _blMatikan[pos]; else _blMatikan[pos] = 1;
+    gambarBulananPaham();
+  }
+  function blResetSimulasi() { _blMatikan = {}; gambarBulananPaham(); }
+  function gambarBulananPaham() {
+    const el = document.getElementById('blPahamKaca');
+    if (!el || window.matchMedia('(min-width: 700px)').matches) return;
+    const bl = (document.getElementById('bulanBiaya') || {}).value || bulanLokalIso();
+    const semua = bayaranBiayaBulanan().filter(x => x.bulan === bl);
+    if (!semua.length) { el.innerHTML = '<div class="p6-kosong">Belum ada pos tersimpan di bulan ini untuk disimulasikan.</div>'; return; }
+    const nyata = blTotalBulan(bl, null);
+    const simulasi = blTotalBulan(bl, _blMatikan);
+    const nHari = parseInt(akhirBulanIso(bl).slice(8, 10), 10);
+    const adaMati = Object.keys(_blMatikan).length > 0;
+    // PEMBEDA SIMULASI MENEMPEL PADA ANGKANYA, sebagai PASANGAN — bukan label mikro di
+    // atas kartu yang bisa terlewat saat menggulir.
+    const pasang = (a, b) => adaMati
+      ? formatRupiah(a) + ' <u>&rarr; ≈' + formatRupiah(b) + '</u>'
+      : formatRupiah(a);
+    el.innerHTML = '<div class="kg-panel"><div class="kg-label">Kalau pos ini tidak ada</div>'
+      + '<div class="bl-sim-baris"><span>Total tersimpan</span><b>' + pasang(nyata, simulasi) + '</b></div>'
+      + '<div class="bl-sim-baris"><span>Jatah harian</span><b>'
+        + pasang(Math.floor(nyata / nHari), Math.floor(simulasi / nHari)) + '</b></div>'
+      + '<div class="kg-rincian">Ini hitungan andai-andai. Tidak ada yang tersimpan, dan angka '
+      + 'di zona lain tidak bergeser.</div></div>'
+      + '<div class="bl-sim-pos">' + semua.map(x =>
+          '<button type="button" class="bl-sim-tombol' + (_blMatikan[x.pos] ? ' mati' : '') + '"'
+          + ' onclick="blToggleMatikan(' + JSON.stringify(String(x.pos)).replace(/"/g, '&quot;') + ')">'
+          + escapeHtml(x.label || String(x.pos)) + '</button>').join('') + '</div>'
+      + (adaMati ? '<button type="button" class="bl-sim-reset" onclick="blResetSimulasi()">Kembalikan semua</button>' : '');
+  }
+
   function perbaruiTotalBulanan() {
     const rincian = bacaHariGajiPegawai();
     const gaji = rincian.reduce((a, r) => a + r.gaji, 0);
@@ -10589,6 +10745,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     }
     perbaruiTotalBulanan();
     tampilkanBulananKaca();   // rantai sinkron & ganti bulan lewat sini
+    // Simulasi DIBUANG tiap kali bulan berganti — angka andai-andai yang tertinggal
+    // dari bulan lain menyamar jadi keadaan bulan yang sedang ditatap.
+    _blMatikan = {};
+    gambarBulananPakai(); gambarBulananKisi(); gambarBulananPaham();
   }
 
   const PETA_ISIAN_BULANAN = {
@@ -10869,7 +11029,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       wadah.innerHTML = h;
     } catch (e) { console.error('tampilkanBulananKaca:', e); }
   }
-  function bulananPilihZona(z) { _blZona = z; tampilkanBulananKaca(); }
+  function bulananPilihZona(z) {
+    // Keluar dari zona PAHAM membuang simulasinya. Kembali ke sana harus mulai dari
+    // keadaan sebenarnya, bukan dari andai-andai yang ditinggal sesi lalu.
+    if (_blZona === 'paham' && z !== 'paham') _blMatikan = {};
+    _blZona = z; tampilkanBulananKaca();
+    gambarBulananPakai(); gambarBulananKisi(); gambarBulananPaham();
+  }
 
   function tampilkanBulanan() {
     tampilkanBulananKaca();   // baris pertama: jalur keluar dini pun wajib menggambar kaca
@@ -26360,6 +26526,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.hapusBarisMerk = hapusBarisMerk;
   // Pola form baku (Lembar 1 Penyempurnaan, 7 Agu 2026)
   window.p6BukuBonWa = p6BukuBonWa; window.kalMulaiTandai = kalMulaiTandai;
+  window.blKeTanggalPos = blKeTanggalPos; window.blToggleMatikan = blToggleMatikan;
+  window.blResetSimulasi = blResetSimulasi;
   window.hgGeserTarget = hgGeserTarget; window.hgKetikTuas = hgKetikTuas; window.hgSetelBaris = hgSetelBaris;
   window.ujiCakupanTawar = ujiCakupanTawar;
   window.bukaHitungMundur = bukaHitungMundur; window.tutupHitungMundur = tutupHitungMundur;
