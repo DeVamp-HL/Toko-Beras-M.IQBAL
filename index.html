@@ -3113,11 +3113,18 @@
   font-family: var(--pf-serif); font-style: italic; font-size: 10px; color: #9aa2a8; }
 /* ---------- Kalender omzet harian + lembar hari (wireframe R3) ---------- */
 .rw-kal-kartu { margin-bottom: 12px; }
-.rw-kal { display: flex; gap: 3px; align-items: flex-end; height: 96px; margin-top: 10px;
-  overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+/* KISI 7 KOLOM 44px, bukan strip 16px yang menggulir. Petak selebar 16px adalah
+   sasaran sentuh yang gagal aturan 44px rumah ini sendiri — dan aturan itu ditulis
+   di berkas ini juga, di kalender pegawai: "aturan sentuh 44x44 berlaku tanpa
+   kecuali. Kalender dilebarkan keluar dari padding kartu supaya tiap tanggal tetap
+   44 px, bukan tombolnya yang dikecilkan." Pola yang sama dipakai di sini, jadi
+   31 petak muat penuh tanpa gulir dan gestur geser halaman tidak perlu lagi
+   dikecualikan. */
+.rw-kal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 10px;
+  width: calc(100% + 24px); margin-left: -12px; margin-right: -12px; }
 .rw-kal::-webkit-scrollbar { display: none; }
-.rw-kal-hari { flex: 1 0 16px; min-width: 16px; height: 100%; display: flex; flex-direction: column;
-  align-items: center; justify-content: flex-end; gap: 3px; background: none; border: none;
+.rw-kal-hari { min-height: 44px; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end; gap: 2px; background: none; border: none;
   padding: 0; font-family: inherit; transition: transform .14s ease; }
 .rw-kal-hari:active { transform: scale(.92); }
 .rw-kal-hari .batang { width: 100%; border-radius: 3px 3px 0 0; background: rgba(226,205,166,.34);
@@ -3297,6 +3304,16 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
   background:linear-gradient(160deg,#f7ecd6,#c2a678); border-color:transparent; color:#2a1f13; }
 #halamanRekap .riw-chip button.pilih > span u{ color:#2a1f13; opacity:.8; }
 /* Petak kalender yang belum terjadi: tepi putus samar, batang tak digambar penuh. */
+#halamanRekap .riw-lama-saring{ display:none; align-items:center; justify-content:space-between;
+  gap:10px; min-height:44px; margin-bottom:8px; padding:6px 11px; border-radius:10px;
+  background:rgba(226,205,166,.07); border:1px solid rgba(226,205,166,.28); font-size:11.5px; }
+#halamanRekap .riw-lama-saring b{ color:var(--teks); }
+#halamanRekap .riw-lama-saring button{ flex:none; min-height:36px; padding:0 12px; border-radius:9px;
+  border:1px solid var(--garis); background:var(--kartu); color:var(--teks);
+  font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; }
+#halamanRekap .rw-kal-kaki{ font-family:var(--pf-serif); font-style:italic; font-size:10px;
+  line-height:1.55; color:var(--redup); margin-top:8px; }
+#halamanRekap .rw-kal-hari .batang{ width:100%; }
 #halamanRekap .rw-kal-hari.depan{ opacity:.35; cursor:default; }
 #halamanRekap .rw-kal-hari.depan .batang{ background:none; border-top:1px dashed rgba(226,205,166,.35); }
 #halamanRekap .rw-kal-hari:disabled:active{ transform:none; }
@@ -7513,6 +7530,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <div class="kartu rw-kal-kartu">
       <div class="panel-kepala"><h2>Omzet harian</h2><span class="kd-hitung" id="rwKalBulan"></span></div>
       <div class="rw-kal" id="rwKal"></div>
+      <div class="rw-kal-kaki" id="rwKalKaki"></div>
     </div>
     <!-- TANPA style="display:none" inline: gaya inline mengalahkan aturan penulis yang
          tidak ber-!important, jadi .riw-ringkas.tampil { display:flex } tidak pernah
@@ -7571,7 +7589,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
     <!-- Daftar lama tetap di DOM: masih diisi tampilkanRiwayatJual() dan dipakai layar
          lebar. Di HP digantikan daftar gabungan di atas. -->
+    <!-- SARINGAN YANG HIDUP TANPA KENDALINYA. Di >=700px seluruh baris chip
+         (.riw-kepala) disembunyikan CSS, sementara kartu ini TETAP tunduk pada
+         _saringRiwayat.hari yang awalnya '0' — jadi daftarnya terkunci ke hari ini
+         setiap hari, tanpa pemilik pernah menekan apa pun dan tanpa satu pun tanda.
+         Barisnya di bawah menyebutkan saringan yang sedang berlaku dan menyediakan
+         jalan keluarnya. -->
     <div class="kartu riw-lama-hp">
+      <div class="riw-lama-saring" id="riwLamaSaring"></div>
       <div class="panel-kepala"><h2>Riwayat Penjualan</h2><span class="kd-hitung" id="hitungRiwayatJual"></span></div>
       <div id="daftarRiwayatJual" class="daftar-batch"></div>
     </div>
@@ -13378,14 +13403,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!el) return;
     const kini = new Date();
     const bulanIso = bulanLokalIso();
-    document.getElementById('rwKalBulan').textContent =
-      BULAN_SINGKAT[kini.getMonth()] + ' ' + kini.getFullYear();
+    // JANGKAR MUTLAK. Tinggi batang dibagi hari TERAMAI bulan ini — patokan yang
+    // bergeser sendiri tiap ada rekor baru, jadi satu hari panen memendekkan seluruh
+    // hari sebelumnya tanpa satu angka pun berubah. Itu sah sebagai PERBANDINGAN
+    // antar-hari, dan cuma sah selama angkanya tertulis: sebelum ini rupiah per hari
+    // hanya ada di aria-label, yang tidak pernah muncul di layar HP.
+    const elBl = document.getElementById('rwKalBulan');
     const nHari = new Date(kini.getFullYear(), kini.getMonth() + 1, 0).getDate();
     const per = {};
     ambilPenjualan().forEach(x => {
       if ((x.tanggal || '').slice(0, 7) === bulanIso) per[x.tanggal] = (per[x.tanggal] || 0) + (x.hargaTotal || 0);
     });
     const maks = Math.max(1, ...Object.values(per));
+    const totalBln = Object.values(per).reduce((a, v) => a + v, 0);
+    if (elBl) elBl.textContent = BULAN_SINGKAT[kini.getMonth()] + ' ' + kini.getFullYear()
+      + (totalBln > 0 ? ' \u00b7 ' + formatRupiah(totalBln) : '');
     const hariIni = kini.getDate();
     let html = '';
     for (let d = 1; d <= nHari; d++) {
@@ -13404,9 +13436,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + '<span class="tgl">' + d + '</span></button>';
     }
     el.innerHTML = html;
-    // hari ini selalu terlihat — gulir kisi sampai batang hari ini di tengah
-    const ini = el.querySelector('.rw-kal-hari.ini');
-    if (ini) el.scrollLeft = Math.max(0, ini.offsetLeft - el.clientWidth / 2 + ini.offsetWidth / 2);
+    // Kisi 7 kolom muat penuh — tidak ada yang perlu digulir ke tengah lagi.
+    const kaki = document.getElementById('rwKalKaki');
+    if (kaki) {
+      const hariTeramai = Object.keys(per).find(k => per[k] === maks);
+      kaki.innerHTML = totalBln > 0
+        ? 'Makin tinggi batangnya, makin besar omzet hari itu &mdash; diukur terhadap hari '
+          + 'teramai bulan ini (' + (hariTeramai ? formatTanggal(hariTeramai) + ', ' : '')
+          + formatRupiah(maks) + '). Petak bertepi putus: hari yang belum terjadi, '
+          + 'bukan hari tanpa penjualan.'
+        : 'Belum ada penjualan bulan ini, jadi belum ada yang bisa dibandingkan.';
+    }
   }
   function bukaLembarHariRw(iso) {
     _rwHariIso = iso; _rwHariPenuh = false;
@@ -24788,6 +24828,29 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     _riwPengamat.observe(sentinel);
   }
 
+  function riwLamaSaringInfo() {
+    const el = document.getElementById('riwLamaSaring');
+    if (!el) return;
+    const h = _saringRiwayat.hari, j = _saringRiwayat.jenis;
+    const adaSaringan = (h && h !== 'semua') || (j && j !== 'semua');
+    el.style.display = adaSaringan ? 'flex' : 'none';
+    if (!adaSaringan) return;
+    const bagian = [];
+    if (h && h !== 'semua') bagian.push(labelHariRiwayat(h));
+    if (j && j !== 'semua') bagian.push(j);
+    el.innerHTML = '<span>Disaring: <b>' + escapeHtml(bagian.join(' \u00b7 ')) + '</b></span>'
+      + '<button type="button" onclick="riwLamaSemua()">Tampilkan semua</button>';
+  }
+  function riwLamaSemua() {
+    _saringRiwayat = { jenis: 'semua', hari: 'semua' };
+    _riwTampil = RIW_SEKALI;
+    // KEDUANYA, bukan salah satu. tampilkanRiwayat menggambar daftar HP; kartu lama
+    // (dan baris saringan ini) hidup di tampilkanRiwayatJual. Memanggil satu saja
+    // membuat tombolnya bekerja tapi bannernya tidak hilang — kendali yang tampak
+    // tidak berakibat, yang justru lebih buruk daripada kendali yang tersembunyi.
+    tampilkanRiwayatJual();
+    tampilkanRiwayat();
+  }
   function tampilkanRiwayatJual() {
     const kont = document.getElementById('daftarRiwayatJual');
     if (!kont) return;
@@ -24804,6 +24867,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (rhJ) daftar = rhJ.tepat
       ? daftar.filter(p => p.tanggal === rhJ.tepat)
       : daftar.filter(p => (p.tanggal || '') >= rhJ.dari);
+    riwLamaSaringInfo();
     daftar.sort((a, b) => (b.id || 0) - (a.id || 0));
     const hitung = document.getElementById('hitungRiwayatJual');
     if (hitung) {
@@ -26552,6 +26616,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.hitungPerkiraan = hitungPerkiraan;
   window.hapusBarisMerk = hapusBarisMerk;
   // Pola form baku (Lembar 1 Penyempurnaan, 7 Agu 2026)
+  window.riwLamaSemua = riwLamaSemua;
   window.p6BukuBonWa = p6BukuBonWa; window.kalMulaiTandai = kalMulaiTandai;
   window.blKeTanggalPos = blKeTanggalPos; window.blToggleMatikan = blToggleMatikan;
   window.blResetSimulasi = blResetSimulasi;
