@@ -7514,7 +7514,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div class="panel-kepala"><h2>Omzet harian</h2><span class="kd-hitung" id="rwKalBulan"></span></div>
       <div class="rw-kal" id="rwKal"></div>
     </div>
-    <div class="riw-ringkas" id="riwRingkasSaring" style="display:none;">
+    <!-- TANPA style="display:none" inline: gaya inline mengalahkan aturan penulis yang
+         tidak ber-!important, jadi .riw-ringkas.tampil { display:flex } tidak pernah
+         menang dan baris ini TIDAK PERNAH tergambar sekali pun sejak dipasang.
+         Penyembunyiannya sudah dikerjakan CSS (display:none untuk semua lebar), lalu
+         dibuka lagi oleh .tampil di dalam @media HP. -->
+    <div class="riw-ringkas" id="riwRingkasSaring">
       <span id="riwRingkasTeks"></span>
       <button type="button" onclick="hapusSemuaSaringRiwayat()">Hapus semua</button>
     </div>
@@ -24591,23 +24596,37 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Nominal tanpa "Rp": di daftar yang semuanya rupiah, huruf Rp cuma menambah lebar.
   function formatRibuan(n) { return Math.round(n || 0).toLocaleString('id-ID'); }
 
+  // SATU PEMBACA untuk kedua bentuk _saringRiwayat.hari. Field itu menampung DUA
+  // bahasa — kode offset ('0'/'1'/'7') dari chip, dan tanggal ISO persis dari
+  // lihatRiwayatHari — dan selama tiap pemakai menerjemahkannya sendiri, pemakai
+  // berikutnya akan mengulangi kesalahan yang sama. Sudah terjadi sekali:
+  // tampilkanRiwayatJual memanggil parseInt('2026-08-05') dan mendapat 2026, lalu
+  // menyaring "sejak 2026 hari lalu" — yaitu meloloskan hampir semuanya. Komentar di
+  // saringRiwayat bahkan sudah meramalkan cacat itu kata per kata, di pemakai yang
+  // TIDAK ikut membacanya.
+  // Mengembalikan { tepat } untuk satu tanggal, atau { dari } untuk rentang.
+  function rentangSaringHari(nilai) {
+    if (!nilai || nilai === 'semua') return null;
+    if (POLA_TANGGAL_ISO.test(nilai)) return { tepat: nilai };
+    const n = parseInt(nilai, 10);
+    if (isNaN(n)) return null;
+    const d = new Date(); d.setHours(12, 0, 0, 0);
+    // "7 HARI TERAKHIR" HARUS 7 TANGGAL, BUKAN 8. Mundur 7 hari lalu menyaring
+    // ">= tanggal itu" menjaring hari ini + 7 hari ke belakang = DELAPAN tanggal,
+    // sementara chipnya berjanji tujuh. Mundur n−1 membuat cacah yang muncul cocok
+    // dengan nama yang dijanjikan chipnya.
+    d.setDate(d.getDate() - (n >= 7 ? n - 1 : n));
+    const iso = tanggalLokalIso(d);
+    return n >= 7 ? { dari: iso } : { tepat: iso };
+  }
   function saringRiwayat(semua) {
     const kata = ((document.getElementById('riwCari') || {}).value || '').trim().toLowerCase();
     let hasil = semua;
     if (_saringRiwayat.jenis !== 'semua') hasil = hasil.filter(r => r.jenis === _saringRiwayat.jenis);
-    if (_saringRiwayat.hari !== 'semua') {
-      if (POLA_TANGGAL_ISO.test(_saringRiwayat.hari)) {
-        // Tanggal PERSIS (dari ketuk batang Omzet 7 Hari lewat lihatRiwayatHari) —
-        // bukan kode offset "N hari lalu". parseInt("2026-08-05") akan kebaca 2026
-        // dan menghitung tanggal 5+ tahun ke belakang kalau tidak dipisah di sini.
-        hasil = hasil.filter(r => r.tanggal === _saringRiwayat.hari);
-      } else {
-        const n = parseInt(_saringRiwayat.hari, 10);
-        const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n);
-        const iso = tanggalLokalIso(d);
-        hasil = n >= 7 ? hasil.filter(r => r.tanggal >= iso) : hasil.filter(r => r.tanggal === iso);
-      }
-    }
+    const rh = rentangSaringHari(_saringRiwayat.hari);
+    if (rh) hasil = rh.tepat
+      ? hasil.filter(r => r.tanggal === rh.tepat)
+      : hasil.filter(r => (r.tanggal || '') >= rh.dari);
     if (kata) hasil = hasil.filter(r => (r.nama + ' ' + r.ket + ' ' + r.nom + ' ' + r.cari).toLowerCase().includes(kata));
     return { hasil, kata };
   }
@@ -24668,11 +24687,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (kata) aktif.push('"' + escapeHtml(kata) + '"');
     if (_saringRiwayat.jenis !== 'semua') aktif.push(labelJenisRiwayat(_saringRiwayat.jenis));
     if (_saringRiwayat.hari !== 'semua') aktif.push(labelHariRiwayat(_saringRiwayat.hari));
+    // AMBANGNYA BUKAN CUMA "dua saringan menumpuk". Saringan tanggal ISO — dari ketuk
+    // batang omzet lewat lihatRiwayatHari — TIDAK PUNYA CHIP yang bisa menyala, karena
+    // daftar chip cuma memuat kunci '0'/'1'/'7'/'semua'. Akibatnya daftar mendadak
+    // pendek tanpa satu pun tanda di layar, dan justru keadaan itu yang paling butuh
+    // kalimat penjelas.
+    const perluRingkas = aktif.length >= 2 || POLA_TANGGAL_ISO.test(_saringRiwayat.hari);
     const ringkas = document.getElementById('riwRingkasSaring');
-    ringkas.classList.toggle('tampil', aktif.length >= 2);
-    if (aktif.length >= 2) {
+    ringkas.classList.toggle('tampil', perluRingkas);
+    if (perluRingkas) {
       document.getElementById('riwRingkasTeks').innerHTML =
-        '<b>' + hasil.length + ' hasil</b> · ' + aktif.join(' · ');
+        '<b>' + hasil.length + ' hasil</b> · ' + (aktif.length ? aktif.join(' · ') : labelHariRiwayat(_saringRiwayat.hari));
     }
 
     if (hasil.length === 0) {
@@ -24770,13 +24795,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Saringan JENIS tidak dipakai di sini lagi: sejak Lembar 5, nilainya adalah jenis
     // catatan (jual/masuk/produksi/...), bukan sub-jenis penjualan (kemasan/literan/...).
     // Daftar lama ini cuma dipakai layar lebar dan tetap menampilkan seluruh penjualan.
-    if (_saringRiwayat.hari !== 'semua') {
-      const n = parseInt(_saringRiwayat.hari, 10);
-      const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - n);
-      const iso = tanggalLokalIso(d);
-      // "Hari ini" & "Kemarin" = tanggal persis; "7 hari" = rentang
-      daftar = n >= 7 ? daftar.filter(p => (p.tanggal || '') >= iso) : daftar.filter(p => p.tanggal === iso);
-    }
+    // DULU parseInt LANGSUNG DI SINI, tanpa penjaga bentuk ISO. Untuk
+    // _saringRiwayat.hari = '2026-08-05' ia membaca 2026, menghitung tanggal 2026 hari
+    // ke belakang, lalu — karena 2026 >= 7 — menyaring "sejak tanggal itu", yang
+    // meloloskan HAMPIR SELURUH riwayat. Kartu ini karena itu memajang semuanya persis
+    // saat pemilik menyaring ke satu hari.
+    const rhJ = rentangSaringHari(_saringRiwayat.hari);
+    if (rhJ) daftar = rhJ.tepat
+      ? daftar.filter(p => p.tanggal === rhJ.tepat)
+      : daftar.filter(p => (p.tanggal || '') >= rhJ.dari);
     daftar.sort((a, b) => (b.id || 0) - (a.id || 0));
     const hitung = document.getElementById('hitungRiwayatJual');
     if (hitung) {
