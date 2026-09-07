@@ -2456,7 +2456,15 @@
        satu tempat, di paruh bawah layar. Di 700px ke atas kotak lama tetap dipakai. */
     #kotakHasil { display: none !important; }
     .bm-penunjuk.tampil { position: sticky; top: 50px; z-index: 8; }
-    body.di-halaman-masuk main,
+    /* DULU di sini ada `body.di-halaman-masuk main,` — pemilih menggantung berkoma tanpa
+       badan, jadi parser membuang seluruh aturannya. Pasangannya
+       (`body.di-halaman-stokawal main { padding-bottom: calc(236px + …) }`) ikut terhapus
+       di commit 7bf4ccf saat formulir Stok Awal dicabut, dan komanya tertinggal.
+       Ruang bawahnya tetap cukup tanpa aturan itu — terukur getComputedStyle(main)
+       .paddingBottom = 210px dari .ada-bilah-simpan (1355), plus 190px pada body (2453).
+       Barisnya dicabut, bukan dipulihkan: yang berbahaya bukan 26px-nya, melainkan bahwa
+       siapa pun yang menambah deklarasi di bawahnya akan mengira dirinya di dalam @media
+       padahal deklarasinya menempel pada pemilih yang dibuang. */
   }
   @media (min-width: 700px) {
     .bm-isi { flex-direction: row; align-items: center; flex-wrap: wrap; }
@@ -4821,8 +4829,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 }
 #masukKaca .mk-kepala{ padding:11px 14px 10px; margin-bottom:12px; }
 #masukKaca .mk-atas{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+/* Dua keadaan, dua wujud. Kelas .tunai SUDAH dipancarkan penggambarnya sejak awal tapi
+   aturannya tidak pernah ditulis, jadi TUNAI dan BON PEMASOK tergambar identik — terukur
+   sama persis: warna rgb(226,205,166), tepi rgba(226,205,166,.5) untuk KEDUANYA. Padahal
+   lencana ini satu-satunya tempat di layar yang mengatakan puluhan juta ini jadi kewajiban
+   atau kas keluar; kalau ia tidak bisa dibedakan, cara bayar yang berubah sendiri pun
+   tidak akan pernah tertangkap mata. BON memakai oksida — warna perhatian rumah ini —
+   karena ia meninggalkan kewajiban; TUNAI emas biasa. */
 #masukKaca .mk-cara{ font-size:9px; font-weight:700; letter-spacing:.12em; padding:4px 9px; border-radius:99px;
-  border:1px solid rgba(226,205,166,.5); color:#e2cda6; white-space:nowrap; }
+  border:1px solid rgba(211,160,139,.6); color:#d3a08b; background:rgba(211,160,139,.08);
+  white-space:nowrap; }
+#masukKaca .mk-cara.tunai{ border-color:rgba(226,205,166,.5); color:#e2cda6; background:none; }
 #masukKaca .mk-nilai{ margin:4px 0 2px; }
 #masukKaca .mk-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; line-height:1.5;
   color:var(--pf-abu); }
@@ -4830,7 +4847,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   font-weight:700; letter-spacing:.08em; color:var(--pf-abu); }
 #masukKaca .mk-ambang .rel{ flex:1; height:5px; border-radius:99px; background:rgba(255,255,255,.07); overflow:hidden; }
 /* Bilah digerakkan --isi dari cacah karung yang SAMA dengan labelnya. */
-#masukKaca .mk-ambang .bilah{ height:100%; width:var(--isi,0%); border-radius:99px;
+/* display:block WAJIB — <span> itu inline, dan elemen inline mengabaikan width & height.
+   Tanpa ini bilahnya tidak pernah sekali pun tergambar: terukur display:inline dengan
+   lebar 0 dan tinggi 0 padahal --isi sudah benar 50%. Tiga saudara kandungnya di berkas
+   yang sama (.p6-keran-baris .rel i, .pr6-bahan .rel i, .pr6-belah i) semuanya punya. */
+#masukKaca .mk-ambang .bilah{ display:block; height:100%; width:var(--isi,0%); border-radius:99px;
   background:linear-gradient(90deg,rgba(226,205,166,.9),rgba(226,205,166,.4)); }
 #masukKaca .mk-ambang.oks .bilah{ background:linear-gradient(90deg,rgba(211,160,139,.9),rgba(211,160,139,.4)); }
 #masukKaca .mk-ambang.oks span:last-child{ color:#d3a08b; }
@@ -6074,7 +6095,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           <div class="nilai" id="ringMarginHariIni">Rp0</div>
         </div>
         <div class="kartu-mini">
-          <div class="label">Belanja beras<br>minggu ini</div>
+          <div class="label">Belanja beras<br>minggu ini <span class="keterangan">(harga beli + bongkar)</span></div>
           <div class="nilai" id="ringBelanjaMingguIni">Rp0</div>
         </div>
       </div>
@@ -9076,8 +9097,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         document.getElementById('rmBongkar').textContent = formatRupiah(bongkar);
         // Selama kg masih nol, porsinya BELUM ADA — bukan Rp0. Menulis "Rp0" di sini
         // sama saja mengaku sudah dihitung padahal pembaginya belum ada (Prinsip 1).
+        // Syaratnya dua, bukan satu. Komentar di atas sudah menulis aturannya dengan
+        // benar — "porsinya BELUM ADA, bukan Rp0" — tapi penjaganya cuma memeriksa
+        // pembaginya. Selama BONGKARNYA sendiri belum diisi, Rp0 di sini juga mengaku
+        // sudah dihitung; dan ubin sebelahnya di kepala kaca menulis "—" untuk fakta
+        // yang sama persis, jadi satu layar memberi dua jawaban.
         document.getElementById('rmPorsi').textContent =
-          totalKgSemua > 0 ? formatRupiah(bongkar / totalKgSemua) + '/kg' : '—';
+          totalKgSemua > 0 && bongkar > 0 ? formatRupiah(bongkar / totalKgSemua) + '/kg' : '—';
       }
     }
 
@@ -9128,7 +9154,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       }
       h += `<div class="mk-tiga">
         <div><div class="label">Bongkar &middot; tunai</div><div class="nilai${d.bongkar > 0 ? '' : ' kosong'}">${d.bongkar > 0 ? formatRupiah(d.bongkar) : '—'}</div></div>
-        <div><div class="label">Porsi bongkar/kg</div><div class="nilai${d.totalKgSemua > 0 ? '' : ' kosong'}">${d.totalKgSemua > 0 ? formatRupiah(d.bongkar / d.totalKgSemua) : '—'}</div></div>
+        <div><div class="label">Porsi bongkar/kg</div><div class="nilai${d.totalKgSemua > 0 && d.bongkar > 0 ? '' : ' kosong'}">${d.totalKgSemua > 0 && d.bongkar > 0 ? formatRupiah(d.bongkar / d.totalKgSemua) : '—'}</div></div>
         <div><div class="label">Total kg</div><div class="nilai${d.totalKgSemua > 0 ? '' : ' kosong'}">${d.totalKgSemua > 0 ? Math.round(d.totalKgSemua).toLocaleString('id-ID') + ' kg' : '—'}</div></div>
       </div></div>`;
       wadah.innerHTML = h;
