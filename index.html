@@ -16204,6 +16204,82 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
     tampilkanStok();
   }
 
+
+  // ═══ UJI TALI KELILING GUDANG - jalankan dari konsol: ujiTaliKeliling() ═══
+  // Keliling gudang sengaja TIDAK menulis sendiri; ia mengisi field form "Cocokkan
+  // stok / kemasan / bahan" lalu memanggil fungsi simpan milik form itu. Harga yang
+  // dibayar untuk tidak menyalin empat penjaga adalah TALI YANG TIDAK TERLIHAT: kalau
+  // suatu hari id form itu berganti - atau input tersembunyinya diganti tombol tanpa
+  // input - Keliling patah DIAM-DIAM. Tidak ada galat, cuma penyesuaian yang tidak
+  // pernah tercatat, dan itu jenis kerusakan paling mahal karena baru ketahuan saat
+  // stok sudah lama meleset.
+  //
+  // Uji ini tidak membuat patahnya mustahil. Ia membuat patahnya BERBUNYI.
+  //
+  // Yang diperiksa bukan cuma "id-nya ada", tapi juga "elemennya bisa diisi .value".
+  // Itu pembedaan yang penting: mengganti <input type="hidden"> jadi <div> membuat
+  // dokumen id-nya tetap ketemu sementara penugasan .value jadi no-op senyap.
+  // Sengaja tidak menyentuh data apa pun - murni pembacaan DOM.
+  function ujiTaliKeliling() {
+    const hasil = [];
+    const bisaDiisi = id => {
+      const e = document.getElementById(id);
+      if (!e) return false;
+      const t = e.tagName;
+      return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT';
+    };
+    // 1. Sembilan field yang benar-benar diisi klCatatSemua, per jalur.
+    [['karung', ['opnameMerk', 'opnameKgFisik', 'opnameAlasan']],
+     ['kemasan jadi', ['opnameKemasanKunci', 'opnameKemasanFisik', 'opnameKemasanAlasan']],
+     ['bahan', ['opnameBahanJenis', 'opnameBahanFisik', 'opnameBahanAlasan']]].forEach(x => {
+      const kurang = x[1].filter(id => !bisaDiisi(id));
+      hasil.push(['jalur ' + x[0] + ': 3 field ada & bisa diisi .value'
+        + (kurang.length ? ' [hilang/tak-bisa-diisi: ' + kurang.join(', ') + ']' : ''), kurang.length === 0]);
+    });
+    // 2. Elemen milik lembar Keliling sendiri.
+    const milikSendiri = ['klKe', 'klBar', 'klIsi', 'lembarKeliling', 'stokTombolKeliling'];
+    const hilang = milikSendiri.filter(id => !document.getElementById(id));
+    hasil.push(['elemen lembar Keliling utuh'
+      + (hilang.length ? ' [hilang: ' + hilang.join(', ') + ']' : ''), hilang.length === 0]);
+    // 3. Tiga fungsi simpan + enam pembaca yang dipanggil lintas-modul.
+    // Disebut satu per satu dengan `typeof` LANGSUNG, bukan lewat eval atau window[]:
+    // fungsi-fungsi ini hidup di lingkup modul dan sebagian TIDAK diekspor ke window,
+    // jadi window[nama] akan melaporkan hilang padahal ada. `typeof namaYangTakAda`
+    // aman - ia mengembalikan 'undefined', tidak melempar - jadi penghapusan fungsi
+    // tetap tertangkap.
+    const fnHilang = [
+      ['simpanPenyesuaianStok', typeof simpanPenyesuaianStok],
+      ['simpanPenyesuaianKemasan', typeof simpanPenyesuaianKemasan],
+      ['simpanOpnameBahan', typeof simpanOpnameBahan],
+      ['sistemKarungKini', typeof sistemKarungKini],
+      ['sistemKemasanKini', typeof sistemKemasanKini],
+      ['sistemBahanKini', typeof sistemBahanKini],
+      ['ambilPenyesuaianStok', typeof ambilPenyesuaianStok],
+      ['ambilPenyesuaianKemasan', typeof ambilPenyesuaianKemasan],
+      ['ambilBahanKemasan', typeof ambilBahanKemasan],
+      ['ambilBahanLiteran', typeof ambilBahanLiteran],
+      ['jenisBahanLiteran', typeof jenisBahanLiteran],
+      ['tempatUntuk', typeof tempatUntuk]
+    ].filter(x => x[1] !== 'function').map(x => x[0]);
+    hasil.push(['12 fungsi sandaran masih ada'
+      + (fnHilang.length ? ' [hilang: ' + fnHilang.join(', ') + ']' : ''), fnHilang.length === 0]);
+    // 4. UJI BERGIGI - kalau pemeriksanya sendiri rusak, semua di atas hijau palsu.
+    //    Id karangan harus DITOLAK, dan elemen yang bukan input harus ditolak juga.
+    const bukanInput = document.getElementById('klIsi');   // <div>, ada tapi tidak bisa .value
+    hasil.push(['bergigi: id karangan ditolak', bisaDiisi('opnameMerkYangTidakPernahAda') === false]);
+    hasil.push(['bergigi: elemen non-input ditolak walau id-nya ada',
+      !!bukanInput && bisaDiisi('klIsi') === false]);
+    // 5. Rute keliling masih bisa dibangun tanpa melempar (murni baca).
+    let ruteOk = false, nRute = -1;
+    try { nRute = daftarKeliling().length; ruteOk = true; } catch (e) { ruteOk = false; }
+    hasil.push(['daftarKeliling() jalan tanpa melempar (kolam ' + _stokMode + ': ' + nRute + ' barang)', ruteOk]);
+    const gagal = hasil.filter(x => !x[1]).map(x => x[0]);
+    console.log(hasil.map(x => (x[1] ? '✓ ' : '✗ ') + x[0]).join('\n'));
+    if (gagal.length) console.warn('KELILING GUDANG PATAH: ' + gagal.length + ' tali putus. '
+      + 'Selisih yang dihitung pemilik TIDAK akan tercatat.');
+    return { lulus: gagal.length === 0, gagal };
+  }
+
   function stokKeKarantina() {
     const kartu = document.getElementById('kartuKarantina');
     if (kartu) kartu.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -24700,6 +24776,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   window.klCocok = klCocok; window.klLewati = klLewati; window.klMulaiBeda = klMulaiBeda;
   window.klBatalBeda = klBatalBeda; window.klNudge = klNudge; window.klKetikNyata = klKetikNyata;
   window.klSimpanBeda = klSimpanBeda; window.klUbahTempat = klUbahTempat; window.klCatatSemua = klCatatSemua;
+  window.ujiTaliKeliling = ujiTaliKeliling;
   window.bukaLembarMerk = bukaLembarMerk; window.tutupLembarMerk = tutupLembarMerk;
   window.pilihMerkDariLembar = pilihMerkDariLembar;
   window.mintaHapusBaris = mintaHapusBaris; window.batalHapusBaris = batalHapusBaris;
