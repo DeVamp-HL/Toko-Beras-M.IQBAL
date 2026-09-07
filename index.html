@@ -21225,11 +21225,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     bagian.push(`<div class="lap-bagian"><h2>Ikhtisar</h2>
       ${barisLap('Omzet penuh', laba.jumlahTrx + ' transaksi, termasuk kredit', laba.omzetPenuh, 'lb-utama')}
       ${barisLap('Margin kotor', 'omzet ber-HPP dikurangi harga pokok', laba.margin)}
-      ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya bulanan', 'ditagihkan ke bulan ini' + (totalPotongan > 0 ? ' · gaji dihitung penuh' : ''), -totalBiaya)
+      ${/* SARINGAN PER BARIS, bukan per bagian — dan itu melanggar aturan yang ditulis
+             sendiri di LAP_BAGIAN_UNTUK: "menyembunyikan barisnya saja membuat jumlah tak
+             lagi sama dengan barisnya". Untuk Keluarga, ketiga pengurangnya memang
+             disembunyikan sengaja (isi rumah tangga bukan urusan lembar ini), tapi
+             subjudul "Laba bersih perkiraan" tetap menyebut nama baris-baris yang tidak
+             ada di halaman — pembacanya melihat total yang lebih kecil dari margin kotor
+             tanpa satu pun sebab yang terlihat, dan tidak bisa memeriksanya.
+             Subjudulnya kini berganti untuk Keluarga: menyebut BAHWA sudah dikurangi, dan
+             menyebut bahwa rinciannya memang tidak ditampilkan. Apakah Keluarga boleh
+             melihat baris laba bersihnya SAMA SEKALI adalah keputusan pemilik, bukan
+             keputusan saya — sampai itu diputuskan, yang diperbaiki cuma kejujurannya. */
+        lapKodePembaca() === 'K' ? '' : barisLap('Biaya bulanan', 'ditagihkan ke bulan ini' + (totalPotongan > 0 ? ' · gaji dihitung penuh' : ''), -totalBiaya)
         + barisLap('Pengeluaran harian (Toko)', bersih.nHarian + ' catatan' + ketDompet(bersih), -bersih.harianToko)
         + (totalHapus > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama — bukan uang keluar', -totalHapus) : '')
         + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', bersih.susutStok)}
-      ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko' + (totalHapus > 0 ? ' − hapus buku' : '') + (bersih.susutStok !== 0 ? ' ± susut stok' : ''), labaBersih, 'lb-jumlah')}
+      ${barisLap('Laba bersih perkiraan', lapKetLabaBersih('margin kotor − biaya bulanan − pengeluaran harian Toko' + (totalHapus > 0 ? ' − hapus buku' : '') + (bersih.susutStok !== 0 ? ' ± susut stok' : '')), labaBersih, 'lb-jumlah')}
       ${lapKodePembaca() === 'K' ? '' : barisLap('Kas bersih', 'uang yang benar-benar berpindah bulan ini', kas.bersih, 'lb-jumlah')}
     </div>`);
 
@@ -21381,6 +21392,24 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     'Tutup hari': 'O', 'Hari per hari': 'OKB', 'Dibanding minggu lalu': 'OKB'
   };
   function lapKodePembaca() { return _pembacaLaporan === 'owner' ? 'O' : _pembacaLaporan === 'keluarga' ? 'K' : 'B'; }
+  // SUBJUDUL LABA BERSIH — satu penolong untuk KEEMPAT mode.
+  // Untuk Keluarga, baris-baris pengurangnya (biaya toko, biaya bulanan, pengeluaran
+  // harian, susut) sengaja tidak dirender — isi rumah tangga bukan urusan lembar ini.
+  // Tapi subjudulnya tetap menyebut nama baris yang TIDAK ADA di halaman, jadi pembacanya
+  // melihat total yang lebih kecil daripada margin kotor tanpa satu pun sebab yang
+  // terlihat, dan tidak bisa memeriksanya. Itu melanggar aturan yang ditulis sendiri di
+  // LAP_BAGIAN_UNTUK: "menyembunyikan barisnya saja membuat jumlah tak lagi sama dengan
+  // barisnya".
+  // SATU penolong, bukan empat salinan ternary: empat salinan berarti empat peluang
+  // menyimpang, dan mode yang terlupa akan lulus diam-diam — persis yang terjadi waktu
+  // tambalan pertama cuma memperbaiki mode Bulan.
+  // Apakah Keluarga boleh melihat baris laba bersihnya SAMA SEKALI adalah keputusan
+  // pemilik; sampai itu diputuskan, yang diperbaiki cuma kejujurannya.
+  function lapKetLabaBersih(rinci) {
+    return lapKodePembaca() === 'K'
+      ? 'sudah dikurangi biaya toko — rinciannya tidak ditampilkan di lembar ini'
+      : rinci;
+  }
   function saringBagianLaporan(bagian) {
     const kode = lapKodePembaca();
     if (kode === 'O') return bagian;
@@ -21487,7 +21516,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + barisLap('Pengeluaran harian (Toko) setahun', T.harianDompet > 0 ? formatRupiah(T.harianDompet) + ' di antaranya dibayar dompet owner' : '', -T.harianToko)
         + (hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian kredit lama', -hapusBuku) : '')
         + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', susutStok)}
-      ${barisLap('Laba bersih perkiraan', 'margin kotor − biaya bulanan − pengeluaran harian Toko − hapus buku ± susut stok', labaBersih, 'lb-jumlah')}
+      ${barisLap('Laba bersih perkiraan', lapKetLabaBersih('margin kotor − biaya bulanan − pengeluaran harian Toko − hapus buku ± susut stok'), labaBersih, 'lb-jumlah')}
       ${lapKodePembaca() === 'K' ? '' : barisLap('Kas bersih setahun', 'masuk ' + formatRupiah(kasMasuk) + ' − keluar ' + formatRupiah(kasKeluar), kasMasuk - kasKeluar, 'lb-jumlah')}
     </div>`);
     bagian.push(`<div class="lap-bagian"><h2>Pajak final UMKM — hitungan kasar</h2>
@@ -21593,7 +21622,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya toko hari ini', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ketDompet(L) + ' + jatah biaya bulanan ' + formatRupiah(L.jatahBulanan), -L.biayaToko)
         + (L.hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian — bukan uang keluar', -L.hapusBuku) : '')
         + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', L.susutStok)}
-      ${barisLap('Laba bersih hari ini', 'margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : '') + (L.susutStok !== 0 ? ' ± susut stok' : ''), L.labaBersih, 'lb-jumlah')}
+      ${barisLap('Laba bersih hari ini', lapKetLabaBersih('margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : '') + (L.susutStok !== 0 ? ' ± susut stok' : '')), L.labaBersih, 'lb-jumlah')}
       ${lapKodePembaca() === 'K' ? '' : barisLap('Kas bersih hari ini', 'masuk ' + formatRupiah(K.totalMasuk) + ' − keluar ' + formatRupiah(K.totalKeluar), K.bersih, 'lb-jumlah')}
     </div>`);
 
@@ -21703,7 +21732,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       ${lapKodePembaca() === 'K' ? '' : barisLap('Biaya toko', 'pengeluaran Toko ' + formatRupiah(L.harianToko) + ketDompet(L) + ' + jatah biaya bulanan 7 hari ' + formatRupiah(L.jatahBulanan), -L.biayaToko)
         + (L.hapusBuku > 0 ? barisLap('Piutang dihapus buku', 'kerugian — bukan uang keluar', -L.hapusBuku) : '')
         + barisLap('Susut & selisih stok', 'barang hilang/lebih dari hitungan fisik — bukan uang keluar', L.susutStok)}
-      ${barisLap('Laba bersih minggu ini', 'margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : '') + (L.susutStok !== 0 ? ' ± susut stok' : ''), L.labaBersih, 'lb-jumlah')}
+      ${barisLap('Laba bersih minggu ini', lapKetLabaBersih('margin kotor − biaya toko' + (L.hapusBuku > 0 ? ' − hapus buku' : '') + (L.susutStok !== 0 ? ' ± susut stok' : '')), L.labaBersih, 'lb-jumlah')}
       ${lapKodePembaca() === 'K' ? '' : barisLap('Kas masuk', '', K.totalMasuk)
         + barisLap('Kas keluar', '', -K.totalKeluar)
         + barisLap('Kas bersih minggu ini', 'uang yang benar-benar berpindah', K.bersih, 'lb-jumlah')}
