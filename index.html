@@ -4207,6 +4207,9 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #piutang6a .p6-batas .bar{ height:4px; border-radius:99px; background:rgba(255,255,255,.06); overflow:hidden; }
 #piutang6a .p6-batas .bar i{ display:block; height:100%; background:var(--emas); }
 #piutang6a .p6-batas .bar i.lewat{ background:var(--pf-amber); }
+/* Batas belum terbentuk: relnya bertepi putus dan kosong. Bilah kosong bisa terbaca
+   "aman"; tepi putus mengatakan yang sebenarnya — belum ada yang diukur. */
+#piutang6a .p6-batas .bar.belum{ background:none; border:1px dashed rgba(255,255,255,.16); height:6px; }
 #piutang6a .baris-44 .kg-uang-piutang{ font-size:13px; }
 /* --- KACA EMAS G3: Setelan (rapor + zona) --- */
 @media (min-width:700px){ #setelanKaca{ display:none; } }
@@ -22046,7 +22049,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           berutang.forEach(x => {
             const info = infoKreditPelanggan(x.d.nama);
             const adaBatas = info.ada && info.batas > 0;
-            const isi = adaBatas ? Math.min(100, Math.round(x.d.sisa / info.batas * 100)) : 100;
+            // BILAH KOSONG, BUKAN PENUH, saat batasnya belum terbentuk. Sebelum ini
+            // pelanggan tanpa riwayat belanja digambar 100% EMAS — dan bilah penuh di
+            // kartu bernama "batas kredit" cuma punya satu arti: sudah mentok. Yang
+            // sebenarnya terjadi kebalikannya — belum ada batas sama sekali, karena
+            // belum ada belanja yang bisa dipakai menghitungnya. Keterangan kecil di
+            // sebelahnya sudah berkata benar sejak dulu, tapi mata membaca bilahnya.
+            const isi = adaBatas ? Math.min(100, Math.round(x.d.sisa / info.batas * 100)) : 0;
             const lebihi = adaBatas && x.d.sisa > info.batas;
             if (lebihi || (info.ada && !info.terdaftar)) lewat++;
             html += '<div class="p6-batas"><span class="nm">' + escapeHtml(x.d.nama)
@@ -22054,7 +22063,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
                 : !adaBatas ? 'belum ada riwayat belanja — batas belum terbentuk'
                 : rp(x.d.sisa) + ' dari batas ' + rp(info.batas)
                   + (lebihi ? ' · LEWAT — kasir menolak kredit baru' : ' · sisa jatah ' + rp(info.batas - x.d.sisa))) + '</small></span>'
-              + '<span class="bar"><i style="width:' + isi + '%;"' + (lebihi ? ' class="lewat"' : '') + '></i></span></div>';
+              + '<span class="bar' + (adaBatas ? '' : ' belum') + '"><i style="width:' + isi + '%;"' + (lebihi ? ' class="lewat"' : '') + '></i></span></div>';
           });
           html += '<div class="kg-rincian p6-sela">' + (lewat ? lewat + ' pelanggan lewat batas / belum terdaftar.' : 'Semua masih di bawah batasnya.') + '</div>';
         }
