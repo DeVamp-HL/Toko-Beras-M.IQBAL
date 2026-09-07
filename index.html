@@ -16622,18 +16622,61 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
     ambilPenyesuaianKemasan().forEach(o => {
       if (o.tanggal === hariIni) catat('U|' + kunciKemasan(o.namaProduk, o.ukuranKemasan), (o.namaProduk || '') + ' ' + o.ukuranKemasan + ' kg', 'unit', o.selisihUnit || 0);
     });
+    // BAHAN PAKAI (kantong & literan). Selama ini papan ini diam soal bahan, jadi
+    // kantong yang dipakai produksi hari ini atau hilang lewat opname tidak pernah
+    // punya baris — padahal itu perubahan stok, persis yang papan ini janjikan.
+    // Tandanya mengikuti hitungStokBahanKemasan PERSIS, jangan ditebak:
+    //   'pakai'     -> totalTerpakai bertambah  -> delta NEGATIF
+    //   'opname'    -> penyesuaian bertambah    -> delta = jumlah apa adanya (sudah bertanda)
+    //   'beli'      -> totalBeli bertambah      -> delta POSITIF
+    //   'saldoAwal' -> DISARING, sama alasannya dengan k.stokAwal & pr.stokAwal
+    ambilBahanKemasan().concat(ambilBahanLiteran()).forEach(b => {
+      if (b.tanggal !== hariIni || b.tipe === 'saldoAwal') return;
+      const n = b.tipe === 'pakai' ? -(b.jumlah || 0) : (b.jumlah || 0);
+      catat('B|' + b.jenis, labelBahan(b.jenis), 'pcs', n);
+    });
     const kapur = Object.keys(delta).map(kunci => {
       const x = delta[kunci];
       let kini;
-      if (kunci.charAt(0) === 'K') { const st = d.stokKarung[kunci.slice(2)]; kini = st ? st.sisaKg : 0; }
-      else { const st = d.stokKemasan[kunci.slice(2)]; kini = st ? st.sisaUnit : 0; }
+      // TIGA cabang, bukan dua. Sebelum bahan ikut, cabang 'else' menampung SEMUA
+      // yang bukan 'K|' dan mencarinya di stokKemasan. Kunci 'B|paperbag5l' akan
+      // jatuh ke sana, tidak ketemu, dan kini menjadi 0 — lalu lama = 0 - delta.
+      // Papan akan mencetak "-40 pcs, 160 -> 0 pcs" untuk kantong yang sisanya utuh,
+      // tanpa melempar apa pun. Cabang ini dan loop bahan di atas WAJIB satu suntingan.
+      const jns = kunci.charAt(0), id = kunci.slice(2);
+      if (jns === 'K') { const st = d.stokKarung[id]; kini = st ? st.sisaKg : 0; }
+      else if (jns === 'B') {
+        const st = d.stokBahanKemasan[id] || d.stokBahanLiteran[id];
+        kini = st ? st.sisaPcs : 0;
+      }
+      else { const st = d.stokKemasan[id]; kini = st ? st.sisaUnit : 0; }
       const lama = Math.round((kini - x.d) * 100) / 100;
       return { nama: x.nama, satuan: x.satuan, d: Math.round(x.d * 100) / 100, lama, kini: Math.round(kini * 100) / 100 };
     }).filter(x => x.d !== 0).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+    // KEPUTUSAN KARANTINA hari ini. SENGAJA TIDAK lewat catat(), dan ini bukan selera:
+    // barang karantina tidak pernah ikut hitungStokKarungPerMerk maupun hitungStokKemasan,
+    // jadi memutuskannya TIDAK menggerakkan satu pun angka stok. Menyuntikkannya ke
+    // delta berarti rumus lama = kini - delta akan menerbitkan riwayat stok yang tidak
+    // pernah terjadi — tepat kebalikan dari janji papan ini.
+    // Yang benar-benar bergerak cuma CACAH ANTREAN, dan itu yang dicoret di sini.
+    // (Rework kemasan tetap muncul sebagai baris 'U|' lewat dokumen produksinya sendiri
+    // — itu memang perubahan stok, dan sumbernya bukan baris ini.)
+    const LABEL_TINDAKAN = { dikembalikan_pemasok: 'balik ke pemasok', dirework: 'rework ke stok', dibuang: 'dibuang' };
+    const putusHariIni = ambilKarantina().filter(x =>
+      x.statusTindakan && x.statusTindakan !== 'belum_diputuskan' && x.tanggalKeputusan === hariIni);
+    const antreanKini = ambilKarantina().filter(x => x.statusTindakan === 'belum_diputuskan').length;
+    const barisKarantina = putusHariIni.length === 0 ? '' :
+      '<div class="baris-44"><span class="nama">Antrean karantina'
+      + '<small>' + putusHariIni.map(x => escapeHtml(
+          (x.jenisAsal === 'kemasan' ? (x.namaProduk || '') + ' ' + x.ukuranKemasan + ' kg' : (x.merkSumber || ''))
+          + ' \u00b7 ' + (LABEL_TINDAKAN[x.statusTindakan] || x.statusTindakan))).join(' \u00b7 ')
+      + '</small></span><span class="angka redup"><s>' + (antreanKini + putusHariIni.length)
+      + '</s> &rarr; ' + antreanKini + ' <u>barang</u></span></div>';
+
     const elKapur = document.getElementById('daftarPapanKapur');
-    if (elKapur) elKapur.innerHTML = kapur.length === 0
-      ? '<div class="kosong-info"><b>Belum ada perubahan hari ini</b><span>Setiap jual, masuk, produksi, dan penyesuaian hari ini tercatat di sini.</span></div>'
-      : '<div class="kartu-daftar">' + kapur.map(x =>
+    if (elKapur) elKapur.innerHTML = (kapur.length === 0 && !barisKarantina)
+      ? '<div class="kosong-info"><b>Belum ada perubahan hari ini</b><span>Setiap jual, masuk, produksi, penyesuaian, pemakaian bahan, dan keputusan karantina hari ini tercatat di sini.</span></div>'
+      : '<div class="kartu-daftar">' + barisKarantina + kapur.map(x =>
           '<div class="baris-44"><span class="nama">' + escapeHtml(x.nama)
           + '<small><s>' + x.lama.toLocaleString('id-ID') + ' ' + x.satuan + '</s> &rarr; '
           + x.kini.toLocaleString('id-ID') + ' ' + x.satuan + '</small></span>'
