@@ -4456,6 +4456,53 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #hargaKaca .hg-baris .kg-uang-dagang{ font-size:17px; }
 #hargaKaca .hg-kanan{ text-align:right; font-size:9.5px; color:var(--pf-abu); line-height:1.5; }
 #hargaKaca .hg-kanan .oks{ color:#d3a08b; font-weight:700; }
+/* HITUNG MUNDUR - lembar naik dari bawah, pola sama dengan #lembarStokMerk. */
+#overlayMundur{ display:none; position:fixed; inset:0; z-index:41; background:rgba(8,7,6,.55); }
+body.lembar-mundur-terbuka #overlayMundur{ display:block; }
+#lembarMundur{ position:fixed; left:0; right:0; bottom:0; z-index:42; max-height:82vh; max-height:82dvh;
+  background:linear-gradient(180deg,#20242a,#14171a); border:1px solid rgba(226,205,166,.3); border-bottom:none;
+  border-radius:22px 22px 0 0; box-shadow:0 -18px 50px rgba(0,0,0,.6);
+  padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));
+  transform:translateY(105%); transition:transform .3s cubic-bezier(.16,.84,.28,1);
+  display:flex; flex-direction:column; overflow-y:auto; }
+body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
+#lembarMundur .hm-kepala{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+#lembarMundur .hm-kepala span{ font-family:var(--pf-serif); font-size:18px; color:var(--teks); }
+#lembarMundur .hm-kepala i{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); }
+#lembarMundur .hm-target{ margin-top:12px; padding:13px; border-radius:14px;
+  background:linear-gradient(158deg,rgba(226,205,166,.12),rgba(226,205,166,.04));
+  border:1px solid rgba(226,205,166,.28); }
+#lembarMundur .hm-target b{ display:block; font-family:var(--pf-serif); font-weight:600; font-size:27px;
+  color:var(--pf-platina); line-height:1.1; margin-top:3px; }
+#lembarMundur .hm-baris-tuas{ display:flex; align-items:center; gap:9px; margin-top:10px; }
+#lembarMundur .hm-baris-tuas button{ flex:none; width:44px; min-height:44px; border-radius:11px;
+  border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06);
+  font-family:inherit; font-size:19px; color:#e8e4dc; cursor:pointer; }
+#lembarMundur .hm-baris-tuas input{ flex:1; min-width:0; height:44px; accent-color:var(--emas);
+  background:none; cursor:pointer; }
+#lembarMundur .hm-panah{ text-align:center; font-size:15px; color:var(--pf-abu); margin:9px 0 4px; }
+#lembarMundur .hm-hasil{ border-radius:14px; padding:11px 13px;
+  background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.07); }
+#lembarMundur .hm-brs{ display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  min-height:30px; font-size:12px; color:var(--pf-abu); }
+#lembarMundur .hm-brs b{ font-family:var(--pf-serif); font-weight:600; color:#e8e4dc; }
+#lembarMundur .hm-pisah{ border-top:1px dashed rgba(255,255,255,.16); margin:9px 0 7px; }
+#lembarMundur .hm-jadi{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+#lembarMundur .hm-jadi span{ font-size:12px; color:var(--pf-abu); }
+#lembarMundur .hm-jadi b{ font-family:var(--pf-serif); font-weight:600; font-size:23px; color:var(--emas); }
+#lembarMundur .hm-akibat{ font-family:var(--pf-serif); font-style:italic; font-size:11px; line-height:1.6;
+  color:var(--pf-abu); margin-top:11px; }
+#lembarMundur .hm-pakai{ width:100%; min-height:50px; margin-top:11px; border-radius:12px;
+  border:1px solid rgba(226,205,166,.5); background:rgba(226,205,166,.16);
+  font-family:inherit; font-size:13px; font-weight:700; color:var(--pf-platina); cursor:pointer; }
+#lembarMundur .hm-tolak{ border-radius:14px; padding:13px; margin-top:12px;
+  background:rgba(211,160,139,.09); border:1px solid rgba(211,160,139,.4);
+  font-family:var(--pf-serif); font-size:11.5px; line-height:1.6; color:var(--pf-amber); }
+#lembarMundur .hm-tolak b{ display:block; font-style:normal; font-size:13px; margin-bottom:5px; }
+#hargaKaca .hg-mundur{ width:100%; min-height:46px; margin-top:9px; border-radius:11px;
+  border:1px solid rgba(226,205,166,.3); background:rgba(226,205,166,.07);
+  font-family:inherit; font-size:12px; font-weight:700; color:var(--pf-platina); cursor:pointer; }
+
 /* JAM RAMAI LITERAN - pemeriksa kelayakan, bukan fitur harga sore. */
 #hargaKaca .hg-jamramai{ margin-top:8px; }
 #hargaKaca .jr-kisi{ display:flex; align-items:flex-end; gap:2px; height:46px; margin-top:7px; }
@@ -5210,6 +5257,20 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   <div class="kg-label" style="margin-top:10px;">Batch yang membentuk stok ini</div>
   <div class="sm-daftar" id="smBatch"></div>
   <button type="button" class="tombol-utama-kartu" style="margin-top:10px;" onclick="stokDariLembarKeDaftar()">Lihat di daftar rinci</button>
+</div>
+
+<!-- HITUNG MUNDUR (rancangan Harga - Gabungan): kalkulator TERBALIK setingkat toko.
+     Dari "mau untung bersih berapa sebulan" turun ke "berarti margin berapa persen
+     yang harus dipasang" - bukan sebaliknya. Murni pembaca; satu-satunya tombol yang
+     berakibat menyetel TUAS di layar, bukan menulis harga. -->
+<div id="overlayMundur" onclick="tutupHitungMundur()"></div>
+<div id="lembarMundur" class="k6a" role="dialog" aria-modal="true" aria-label="Hitung mundur">
+  <div class="lm-pegangan" onclick="tutupHitungMundur()"></div>
+  <div class="hm-kepala">
+    <span>Mau untung berapa sebulan?</span>
+    <i id="hmJendela"></i>
+  </div>
+  <div id="hmIsi"></div>
 </div>
 
 <!-- GUDANG KARANTINA (rancangan Stok - Gabungan, sumbu C): lembar naik-dari-bawah.
@@ -23129,6 +23190,147 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
     if (typeof perbaruiPratinjauHarga === 'function') perbaruiPratinjauHarga();
   }
 
+
+  // ═══ HITUNG MUNDUR — kalkulator TERBALIK setingkat toko ════════════════════
+  // Dari "mau untung bersih berapa sebulan" turun ke "berarti margin berapa persen
+  // yang harus dipasang". Murni pembaca: seluruh bahannya keluar dari SATU panggilan
+  // hitungLabaBersihRentang yang sudah dipakai halaman Laporan tiap hari.
+  //
+  // RUMUS DESAIN DIPERBAIKI, dan salahnya selalu ke arah yang sama. Desain memakai
+  //   butuh = laba + biaya bulanan
+  // yang melewatkan hapus buku piutang DAN susut stok — dua-duanya sudah memotong
+  // laba bersih di mesin ini sejak 1 Sep 2026. Melewatkannya membuat target margin
+  // tampak LEBIH RENDAH dari yang sebenarnya perlu, yaitu arah kesalahan yang paling
+  // berbahaya untuk alat yang gunanya membuat waspada.
+  //   butuh = targetLaba + biayaToko + hapusBuku − susutStok
+  // (susut bertanda: susut yang menambah laba mengurangi margin yang perlu dikejar.)
+  //
+  // JENDELANYA 30 HARI TERAKHIR YANG BERAKHIR KEMARIN, dan itu tertulis di lembar.
+  // Bulan berjalan ditolak: dibuka tanggal 3, ia melaporkan omzet tiga hari dan
+  // melahirkan target margin ngawur.
+  let _hmTarget = null;
+  function hmAngka() {
+    const sampai = geserHari(tanggalLokalIso(), -1);
+    const dari = geserHari(sampai, -29);
+    const L = hitungLabaBersihRentang(dari, sampai, bayaranBiayaBulanan());
+    return { dari, sampai, L };
+  }
+  function bukaHitungMundur() {
+    const a = hmAngka();
+    if (_hmTarget === null) {
+      // Nilai awal = laba bersih 30 hari terakhir, dibulatkan ke atas ke 500rb —
+      // angka yang pemilik kenali, bukan 8,5 juta karangan mockup.
+      const lb = a.L.labaBersih || 0;
+      _hmTarget = lb > 0 ? Math.ceil(lb / 500000) * 500000 : 2000000;
+    }
+    document.body.classList.add('lembar-mundur-terbuka');
+    gambarHitungMundur();
+  }
+  function tutupHitungMundur() { document.body.classList.remove('lembar-mundur-terbuka'); }
+  function hmGeser(delta) {
+    const inp = document.getElementById('hmTuas');
+    const n = parseInt((inp && inp.value) || _hmTarget, 10) || 0;
+    hmSet(n + (delta || 0) * 250000);
+  }
+  function hmKetik() { hmSet(parseInt(document.getElementById('hmTuas').value, 10)); }
+  function hmSet(n) {
+    const maks = hmMaks();
+    _hmTarget = Math.max(0, Math.min(maks, isNaN(n) ? 0 : n));
+    gambarHitungMundur();
+  }
+  function hmMaks() {
+    const lb = (hmAngka().L.labaBersih) || 0;
+    return Math.max(10000000, Math.ceil(lb * 2 / 500000) * 500000);
+  }
+  function hmPakaiTarget(persen) {
+    // Satu-satunya tombol berakibat di lembar ini, dan akibatnya menyetel TUAS di
+    // layar — bukan menulis satu pun harga. Tuas itu sendiri berhenti sebelum menulis.
+    tutupHitungMundur();
+    hgSetTarget(Math.round(persen));
+    const el = document.getElementById('hargaKaca');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function gambarHitungMundur() {
+    const isi = document.getElementById('hmIsi');
+    if (!isi) return;
+    const a = hmAngka(), L = a.L;
+    document.getElementById('hmJendela').textContent =
+      formatTanggal(a.dari) + ' – ' + formatTanggal(a.sampai) + ' · 30 hari';
+
+    // ── TIGA PENJAGA KEJUJURAN. Semuanya MENGGANTIKAN angka besar dengan kalimat,
+    //    bukan menampilkan angka lalu menempelkan catatan kecil di bawahnya. Alat
+    //    yang gunanya membuat waspada tidak boleh punya versi yang menenangkan.
+    const tolak = (judul, sebab) =>
+      `<div class="hm-tolak"><b>${escapeHtml(judul)}</b>${sebab}</div>`;
+    if (!(L.omzetHitung > 0)) {
+      isi.innerHTML = tolak('Target margin tidak bisa dihitung',
+        'Belum ada penjualan ber-HPP di jendela ini. Margin dihitung dari omzet yang HPP-nya diketahui; tanpa itu tidak ada penyebut.');
+      return;
+    }
+    const pb = posBulananKosong(bulanLokalIso(new Date()));
+    if (pb.kosong.length) {
+      isi.innerHTML = tolak('Biaya bulanan belum lengkap',
+        'Pos yang masih kosong: <b style="font-style:normal;">' + escapeHtml(pb.kosong.join(', ')) + '</b>. '
+        + 'Selama itu kosong, laba bersih tampak LEBIH BESAR dari sebenarnya, dan target margin yang '
+        + 'dihitung dari sini akan keluar TERLALU RENDAH — alat yang seharusnya membuat waspada '
+        + 'malah menenangkan. Isi dulu di halaman Bulanan.');
+      return;
+    }
+
+    const target = _hmTarget;
+    const butuh = target + (L.biayaToko || 0) + (L.hapusBuku || 0) - (L.susutStok || 0);
+    const persen = butuh / L.omzetHitung * 100;
+    const maks = hmMaks();
+    const rp = n => 'Rp' + Math.round(n || 0).toLocaleString('id-ID');
+    const brs = (nama, nilai) => `<div class="hm-brs"><span>${nama}</span><b>${rp(nilai)}</b></div>`;
+
+    // Berapa harga di daftar yang masih di bawah persen ini — dibaca dari nilai margin
+    // yang SUDAH tergambar di kartu, bukan dihitung ulang dengan rumus kedua.
+    let nBawah = 0, nPunyaHpp = 0;
+    document.querySelectorAll('#hargaKaca .hg-baris .hg-kanan').forEach(el => {
+      const m = el.textContent.match(/margin\s+(-?[\d,]+)%/);
+      if (!m) return;
+      nPunyaHpp++;
+      if (parseFloat(m[1].replace(',', '.')) < persen) nBawah++;
+    });
+
+    const terlaluTinggi = persen >= 100;
+    isi.innerHTML =
+      `<div class="hm-target">
+        <div class="kg-label">Target laba bersih · sebulan</div>
+        <b>${rp(target)}</b>
+        <div class="hm-baris-tuas">
+          <button type="button" onclick="hmGeser(-1)" aria-label="Turunkan target">&minus;</button>
+          <input type="range" id="hmTuas" min="0" max="${maks}" step="250000" value="${target}"
+            oninput="hmKetik()" aria-label="Target laba bersih sebulan">
+          <button type="button" onclick="hmGeser(1)" aria-label="Naikkan target">+</button>
+        </div>
+      </div>
+      <div class="hm-panah">&#9660;</div>
+      <div class="hm-hasil">
+        ${brs('Biaya toko sebulan', L.biayaToko)}
+        ${(L.hapusBuku || 0) !== 0 ? brs('Hapus buku piutang', L.hapusBuku) : ''}
+        ${(L.susutStok || 0) !== 0 ? `<div class="hm-brs"><span>Susut &amp; selisih stok</span><b>${(L.susutStok < 0 ? '−' : '+')}${rp(Math.abs(L.susutStok))}</b></div>` : ''}
+        ${brs('Margin kotor yang dibutuhkan', butuh)}
+        ${brs('Omzet sebulan (yang ber-HPP)', L.omzetHitung)}
+        <div class="hm-pisah"></div>
+        <div class="hm-jadi"><span>Target margin jadinya</span>
+          <b>${persen.toFixed(1).replace('.', ',')}%</b></div>
+      </div>
+      <div class="hm-akibat">${terlaluTinggi
+        ? 'Margin di atas 100% tidak mungkin dipasang — target labanya melebihi seluruh omzet ber-HPP sebulan. Turunkan targetnya, atau kejar omzet dulu.'
+        : (nPunyaHpp === 0
+          ? 'Belum ada harga ber-HPP di daftar untuk dibandingkan.'
+          : (nBawah === 0
+            ? 'Semua ' + nPunyaHpp + ' harga yang punya HPP sudah di atas ' + persen.toFixed(1).replace('.', ',') + '%.'
+            : 'Dengan margin ' + persen.toFixed(1).replace('.', ',') + '%, <b style="font-style:normal;color:var(--pf-platina);">'
+              + nBawah + ' dari ' + nPunyaHpp + '</b> harga di daftar ini masih di bawahnya.'))}
+      </div>
+      ${terlaluTinggi || persen < 5 || persen > 40 ? '' :
+        `<button type="button" class="hm-pakai" onclick="hmPakaiTarget(${persen})">Pakai ${Math.round(persen)}% sebagai target tuas</button>`}`;
+    isi.scrollTop = 0;
+  }
+
   function tampilkanHargaKaca() {
     const wadah = document.getElementById('hargaKaca');
     if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
@@ -23245,6 +23447,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
           ? `<i class="oks">${nLubang} lubang harga — kasir akan menabraknya.</i>`
           : '<i>Semua ukuran yang ada stoknya punya harga. Kasir tidak akan menabrak lubang.</i>'}
       </div>
+      <button type="button" class="hg-mundur" onclick="bukaHitungMundur()">Hitung mundur &middot; dari untung yang kamu mau</button>
       <div class="kg-panel hg-tuas-panel">
         <div class="hg-tuas-atas">
           <span class="kg-label">Target margin</span>
@@ -25511,6 +25714,8 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   window.hapusBarisMerk = hapusBarisMerk;
   // Pola form baku (Lembar 1 Penyempurnaan, 7 Agu 2026)
   window.hgGeserTarget = hgGeserTarget; window.hgKetikTuas = hgKetikTuas; window.hgSetelBaris = hgSetelBaris;
+  window.bukaHitungMundur = bukaHitungMundur; window.tutupHitungMundur = tutupHitungMundur;
+  window.hmGeser = hmGeser; window.hmKetik = hmKetik; window.hmPakaiTarget = hmPakaiTarget;
   window.ubahTempatSimpan = ubahTempatSimpan; window.ubahTempatSimpanMerkIni = ubahTempatSimpanMerkIni;
   window.tutupLembarKarantina = tutupLembarKarantina; window.karantinaDariLembar = karantinaDariLembar;
   window.bukaKeliling = bukaKeliling; window.tutupKeliling = tutupKeliling;
