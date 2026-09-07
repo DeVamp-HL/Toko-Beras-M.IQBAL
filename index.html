@@ -6441,7 +6441,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
     <div class="kartu" id="kartuBeliBahanKemasan">
       <div class="panel-kepala"><h2> Beli Stok Bahan Kemasan</h2></div>
-      <p class="keterangan" style="margin-top:-8px;">Stok kantong plastik kosong per ukuran + merek beras — harga per lembar diketik tiap beli (harga bisa berubah), HPP dihitung rata-rata tertimbang dari sisa stok.</p>
+      <p class="keterangan" style="margin-top:-8px;">Stok kantong plastik kosong per ukuran + merek beras — harga per lembar diketik tiap beli (harga bisa berubah), HPP dihitung rata-rata tertimbang dari seluruh riwayat pembelian.</p>
       <label>Jenis kantong (ukuran — merek)</label>
       <div class="kartu-jenis-jual" style="grid-template-columns: repeat(2,1fr);" id="beliBahanKemasanTombolWrap"></div>
       <input type="hidden" id="beliBahanKemasanJenis" value="5kg_kembangbmw">
@@ -6462,7 +6462,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
     <div class="kartu" id="kartuBeliBahanLiteran">
       <div class="panel-kepala"><h2> Beli Stok Kemasan Literan (paper bag / karung bekas)</h2></div>
-      <p class="keterangan" style="margin-top:-8px;">Harga per lembar/karung diketik tiap beli (harga bisa berubah), HPP dihitung rata-rata tertimbang dari sisa stok.</p>
+      <p class="keterangan" style="margin-top:-8px;">Harga per lembar/karung diketik tiap beli (harga bisa berubah), HPP dihitung rata-rata tertimbang dari seluruh riwayat pembelian.</p>
       <label>Jenis</label>
       <div class="kartu-jenis-jual" style="grid-template-columns: 1fr 1fr 1fr;">
         <button type="button" id="beliBahanLiteranPaperbag5l" class="pilih" onclick="pilihJenisBeliBahanLiteran('paperbag5l')">Paper Bag<br>5L</button>
@@ -15450,7 +15450,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     perbaruiLencanaBahanProduksi();
     if (!d || d.totalKg <= 0) { kartu.style.display = 'none'; return; }
     kartu.style.display = 'block';
-    document.getElementById('ppJumlahMerk').textContent = d.merk + ' merk';
+    // "bahan", bukan "merk": d.merk = sumber.length + sumberKemasan.length, jadi baris
+    // kemasan-jadi ikut terhitung dan "3 merk" bisa berarti 2 merk + 1 kemasan jadi.
+    // Kaca di HP sudah menyebutnya "bahan" (15638); ini menyamakan keduanya.
+    document.getElementById('ppJumlahMerk').textContent = d.merk + ' bahan';
     document.getElementById('ppTotalKg').innerHTML = angkaRapi(d.totalKg) + ' <i>kg</i>';
     document.getElementById('ppHppKg').innerHTML = angkaRapi(Math.round(d.hppPerKg)) + ' <i>/kg</i>';
 
@@ -15503,15 +15506,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const wrap = document.getElementById('tombolSimpanProduksiWrap');
     if (wrap) wrap.classList.toggle('prod-bahan', _prodMode === 'bahan');
   }
-  function prodPilihTab(mode) {
+  // Argumen kedua opsional: jenis kantong yang harus ikut terpilih di kartu beli.
+  // Tanpa itu, tombol "kurang kantong 5 kg" menyebutkan jenisnya lalu MELEPASKANNYA di
+  // tengah jalan — pemakai mendarat di daftar dan harus mencari sendiri jenis yang baru
+  // saja disebutkan kepadanya.
+  function prodPilihTab(mode, kelompok, jenis) {
     _prodMode = mode === 'bahan' ? 'bahan' : 'adukan';
     prodTerapkanMode();
     gambarKacaProduksiBahan();
     if (_prodMode === 'adukan') hitungCampuranProduksi();   // lembar adukan dari stok kantong terkini
-    if (_prodMode === 'bahan') {
-      const w = document.getElementById('produksiKacaBilah');
-      if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (_prodMode === 'bahan' && kelompok && jenis) { prodKetukBahan(kelompok, jenis); return; }
+    // Kedua arah berlabuh di titik yang sama. Sebelumnya hanya cabang 'bahan' yang
+    // menggulir, jadi kembali ke Adukan meninggalkan pemakai di ketinggian gulir kartu
+    // beli — halaman berganti isi tanpa berganti tempat.
+    const w = document.getElementById('produksiKacaBilah');
+    if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   // Daftar jenis kantong yang pernah dibeli (pola saringan totalBeli > 0), kemasan lalu literan.
   function prodDaftarBahan() {
@@ -15563,7 +15572,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         t = `<button type="button" class="pr6-bilah" onclick="prodPilihTab('bahan')">Belum ada stok kantong tercatat — sistem tidak menebaknya. Ketuk untuk mencatat pembelian.</button>`;
       } else if (tipis.length) {
         const tp = tipis[0];
-        t = `<button type="button" class="pr6-bilah oks" onclick="prodPilihTab('bahan')"><span><b>${tipis.length} jenis kantong menipis</b> — ${escapeHtml(tp.label)}: sisa ${Math.round(tp.sisa).toLocaleString('id-ID')} ${tp.satuan === 'krg' ? 'karung' : 'lembar'}${tp.sisa <= 0 ? ' &middot; habis' : (tp.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(tp.hari)) : '')}${tipis.length > 1 ? ' &middot; +' + (tipis.length - 1) + ' lagi' : ''}. Ketuk untuk beli.</span></button>`;
+        t = `<button type="button" class="pr6-bilah oks" onclick="prodPilihTab('bahan', '${tp.kelompok}', '${tp.jenis}')"><span><b>${tipis.length} jenis kantong menipis</b> — ${escapeHtml(tp.label)}: sisa ${Math.round(tp.sisa).toLocaleString('id-ID')} ${tp.satuan === 'krg' ? 'karung' : 'lembar'}${tp.sisa <= 0 ? ' &middot; habis' : (tp.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(tp.hari)) : '')}${tipis.length > 1 ? ' &middot; +' + (tipis.length - 1) + ' lagi' : ''}. Ketuk untuk beli.</span></button>`;
+        // Bilah ini tergambar di KEDUA mode (ia tidak ikut aturan sembunyi 4863-4870).
+        // Dulu ketukannya cuma memanggil prodPilihTab('bahan'): saat pemakai SUDAH di
+        // tab Bahan, ia menyetel mode ke nilai yang sama lalu menggulir ke bilah itu
+        // sendiri — tombol yang tidak berakibat apa-apa. Sekarang ia membawa jenis
+        // paling tipis dan mendarat di kartu beli dengan jenis itu sudah terpilih.
       } else {
         t = `<div class="pr6-bilah"><span class="kg-titik-lcd"></span><span>Kantong aman untuk produksi — ${daftar.length} jenis tercatat, tidak ada yang di bawah ${AMBANG_KANTONG_KRITIS} lembar (literan ${AMBANG_LITERAN_KRITIS}) atau habis ≤${AMBANG_HARI_KRITIS} hari.</span></div>`;
       }
@@ -15669,7 +15683,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           ${belumIsi.length ? `<div class="pr6-catatan kg-tepi-putus">HPP ini baru bahan berasnya — ${belumIsi.join(' &amp; ')} belum diisi, angka per unit masih akan naik.</div>` : ''}`;
         h += baris.map(r => {
           const kurangKantong = r.x.kantongJenis && butuh[r.x.kantongJenis] > ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)
-            ? `<button type="button" class="pr6-kurang" onclick="prodPilihTab('bahan')">Kantong ${escapeHtml(LABEL_BAHAN_KEMASAN[r.x.kantongJenis] || r.x.kantongJenis)} sisa ${Math.round((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)} — kurang ${Math.round(butuh[r.x.kantongJenis] - ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0))}. Ketuk untuk beli.</button>` : '';
+            ? `<button type="button" class="pr6-kurang" onclick="prodPilihTab('bahan', 'k', '${r.x.kantongJenis}')">Kantong ${escapeHtml(LABEL_BAHAN_KEMASAN[r.x.kantongJenis] || r.x.kantongJenis)} sisa ${Math.round((stokK[r.x.kantongJenis] || {}).sisaPcs || 0)} — kurang ${Math.round(butuh[r.x.kantongJenis] - ((stokK[r.x.kantongJenis] || {}).sisaPcs || 0))}. Ketuk untuk beli.</button>` : '';
           // AMBANGNYA TEGAS < 0, BUKAN <= 0 — aturan yang sama dengan layar Harga
           // (24294-24299). Margin PERSIS nol bukan rugi; di toko ini itu keadaan yang
           // dipilih sadar (karung IR64 sengaja belum dinaikkan), dan menyebutnya
@@ -15730,7 +15744,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           </button>`).join('');
         h += `<div class="pr6-sub">Ketuk jenis untuk mengisi kartu pembelian di bawah. Oksida = di bawah ${AMBANG_KANTONG_KRITIS} lembar (literan ${AMBANG_LITERAN_KRITIS}) atau habis ≤${AMBANG_HARI_KRITIS} hari menurut laju 14 hari. Garis tipis di bilah = ambang itu; bilah penuh = tiga kali ambang ke atas.</div>`;
       }
-      w.innerHTML = h + `</div>`;
+      // Penjaga yang sama dengan dua kaca tetangganya: node tidak diganti kalau isinya
+      // sama. Fungsi ini ikut terpanggil tiap snapshot mendarat — tanpa penjaga, tombol
+      // yang sedang disentuh diganti node-nya di tengah ketukan dan ketukannya batal.
+      const isi = h + `</div>`;
+      if (w._pr6 !== isi) { w.innerHTML = isi; w._pr6 = isi; }
     } catch (e) { console.error('gambarKacaProduksiBahan:', e); }
   }
   function prodKetukBahan(kelompok, jenis) {
