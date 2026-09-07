@@ -4237,6 +4237,17 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   font-family:inherit; font-size:12px; font-weight:700; color:var(--pf-platina); cursor:pointer; }
 #piutang6a .p6-bukubon i{ display:block; font-family:var(--pf-serif); font-style:italic;
   font-weight:400; font-size:9.5px; color:var(--pf-abu); margin-top:2px; }
+/* Kalender pegawai, keadaan ketiga: hari tercatat tanpa tanggal. Kisi tidak digambar
+   sama sekali — 31 petak kosong berarti "tidak masuk sehari pun". */
+.kal-tanpa-tgl{ padding:11px 12px; border-radius:11px; background:rgba(255,255,255,.04);
+  border:1px dashed rgba(255,255,255,.16); }
+.kal-tanpa-tgl b{ display:block; font-family:var(--pf-serif); font-weight:600; font-size:13px;
+  color:var(--pf-platina); }
+.kal-tanpa-tgl i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.55; color:var(--pf-abu); margin-top:5px; }
+.kal-tanpa-tgl .kal-mulai{ width:100%; min-height:44px; margin-top:9px; border-radius:10px;
+  border:1px solid rgba(226,205,166,.35); background:rgba(226,205,166,.08);
+  font-family:inherit; font-size:11.5px; font-weight:700; color:var(--pf-platina); cursor:pointer; }
 #piutang6a .baris-44 .kg-uang-piutang{ font-size:13px; }
 /* --- KACA EMAS G3: Setelan (rapor + zona) --- */
 @media (min-width:700px){ #setelanKaca{ display:none; } }
@@ -10342,6 +10353,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // yang sudah tersimpan tetap dipakai apa adanya dan kolomnya tetap bisa diketik —
   // supaya membuka bulan lama tidak menihilkan gajinya.
   let _hariMasukForm = {};   // { namaPegawai: ['YYYY-MM-DD', ...] } untuk bulan yang sedang dibuka
+  // KEADAAN KETIGA, di variabel TERPISAH — _hariMasukForm TIDAK BOLEH berubah bentuk
+  // karena ia yang menentukan gaji yang tersimpan (bacaHariGajiPegawai membacanya).
+  //   tanggalMasuk ADA + kosong  -> orangnya memang tidak masuk sehari pun bulan itu
+  //   tanggalMasuk ABSEN         -> dokumen lama, harinya diketik tanpa tanggal
+  // Dua-duanya menghasilkan [] hari ini, jadi kalender menggambar 31 petak kosong dan
+  // kakinya berkata "0 hari ditandai · Rp0" untuk orang yang sebenarnya masuk 22 hari.
+  // Itu menggambar "tidak tahu" persis seperti "nol".
+  let _tglMasukAda = {};     // { namaPegawai: true } kalau dokumennya memang punya larik
+  let _hariTersimpan = {};   // { namaPegawai: hari } dari dokumen, untuk kalimat penjelas
   const HARI_SINGKAT = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
   // TARIF YANG SUDAH DIBAYAR TIDAK IKUT BERUBAH (21 Agu 2026). Sebelum ini, menyimpan
@@ -10395,6 +10415,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // getDay(): 0=Minggu. Digeser supaya Senin jadi kolom pertama (kebiasaan Indonesia).
     const geser = (new Date(th, bl - 1, 1).getDay() + 6) % 7;
     const dipilih = _hariMasukForm[nama] || [];
+    // KEADAAN KETIGA: dokumen lama yang harinya diketik tanpa tanggal. Kisinya TIDAK
+    // digambar — 31 petak kosong berarti "tidak masuk sehari pun", dan itu bukan yang
+    // diketahui. Yang diketahui: berapa harinya, tapi bukan tanggal berapa saja.
+    if (!_tglMasukAda[nama] && _hariTersimpan[nama] > 0 && dipilih.length === 0) {
+      w.innerHTML = '<div class="kal-tanpa-tgl"><b>' + _hariTersimpan[nama]
+        + ' hari tercatat tanpa tanggal</b>'
+        + '<i>Bulan ini disimpan sebelum kalender ada, jadi tanggal masuknya tidak diketahui — '
+        + 'cuma jumlah harinya. Menandai tanggal di sini akan MENGGANTI angka ' + _hariTersimpan[nama]
+        + ' hari itu dengan jumlah tanggal yang kamu tandai.</i>'
+        + '<button type="button" class="kal-mulai" onclick="kalMulaiTandai(' + i + ')">Mulai tandai tanggalnya</button></div>';
+      return;
+    }
     let html = '<div class="kal-kepala">' + HARI_SINGKAT.map(d => '<span>' + d + '</span>').join('') + '</div><div class="kal-isi">';
     for (let k = 0; k < geser; k++) html += '<span class="kal-kosong"></span>';
     for (let d = 1; d <= jmlHari; d++) {
@@ -10413,6 +10445,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     w.innerHTML = html;
   }
 
+  // Melepas keadaan ketiga: pemilik menyatakan mau menandai tanggalnya sendiri.
+  // Tidak menulis apa pun — cuma membuka kisinya. Gaji baru berubah kalau ada tanggal
+  // yang benar-benar ditandai, dan itu lewat toggleHariMasuk seperti biasa.
+  function kalMulaiTandai(i) {
+    _tglMasukAda[NAMA_PEGAWAI_GAJI[i]] = true;
+    gambarKalenderPegawai(i);
+  }
   function toggleHariMasuk(i, tgl) {
     const nama = NAMA_PEGAWAI_GAJI[i];
     const arr = _hariMasukForm[nama] || [];
@@ -10435,7 +10474,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const tb = document.getElementById('kalBuka' + i);
       if (!tb) return;
       const n = (_hariMasukForm[nama] || []).length;
-      tb.textContent = n > 0 ? 'Tanggal masuk — ' + n + ' hari ditandai' : 'Tandai tanggal masuk';
+      tb.textContent = n > 0 ? 'Tanggal masuk — ' + n + ' hari ditandai'
+        : (!_tglMasukAda[nama] && _hariTersimpan[nama] > 0
+          ? 'Tanggal masuk — ' + _hariTersimpan[nama] + ' hari tanpa tanggal'
+          : 'Tandai tanggal masuk');
       const el = document.getElementById(ID_FIELD_GAJI_PEGAWAI[nama]);
       if (el) el.readOnly = n > 0;
     });
@@ -10583,10 +10625,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     });
     // Tanggal gaji per pegawai; dokumen lama jatuh balik ke tanggal gaji gabungan.
     // Hari masuk dimuat dari dokumen; kalau belum ada, kolom hari tetap bisa diketik.
-    _hariMasukForm = {};
+    _hariMasukForm = {}; _tglMasukAda = {}; _hariTersimpan = {};
     NAMA_PEGAWAI_GAJI.forEach(nama => {
       const r = d && (d.rincianGaji || []).find(x => x.nama === nama);
-      _hariMasukForm[nama] = (r && Array.isArray(r.tanggalMasuk)) ? r.tanggalMasuk.slice() : [];
+      _tglMasukAda[nama] = !!(r && Array.isArray(r.tanggalMasuk));
+      _hariTersimpan[nama] = (r && r.hari) || 0;
+      _hariMasukForm[nama] = _tglMasukAda[nama] ? r.tanggalMasuk.slice() : [];
     });
     perbaruiLabelKalender();
     NAMA_PEGAWAI_GAJI.forEach((nama, i) => {
@@ -26295,7 +26339,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.hitungPerkiraan = hitungPerkiraan;
   window.hapusBarisMerk = hapusBarisMerk;
   // Pola form baku (Lembar 1 Penyempurnaan, 7 Agu 2026)
-  window.p6BukuBonWa = p6BukuBonWa;
+  window.p6BukuBonWa = p6BukuBonWa; window.kalMulaiTandai = kalMulaiTandai;
   window.hgGeserTarget = hgGeserTarget; window.hgKetikTuas = hgKetikTuas; window.hgSetelBaris = hgSetelBaris;
   window.ujiCakupanTawar = ujiCakupanTawar;
   window.bukaHitungMundur = bukaHitungMundur; window.tutupHitungMundur = tutupHitungMundur;
