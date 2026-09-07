@@ -4939,7 +4939,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 #produksiKacaBahan .pr6-bahan b{ display:block; font-size:12px; }
 #produksiKacaBahan .pr6-bahan small{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:9.5px;
   color:var(--pf-abu); margin-top:1px; }
-#produksiKacaBahan .pr6-bahan .rel{ grid-column:2 / 4; height:4px; border-radius:99px; background:rgba(255,255,255,.07); overflow:hidden; }
+#produksiKacaBahan .pr6-bahan .rel{ grid-column:2 / 4; height:4px; border-radius:99px; background:rgba(255,255,255,.07);
+  overflow:hidden; position:relative; }
+/* Garis ambang. Patokan bilah = 3x ambang, jadi ambangnya selalu tepat di sepertiga —
+   satu-satunya cara membaca "cukup atau tidak" tanpa membandingkan baris tetangga. */
+#produksiKacaBahan .pr6-bahan .rel::after{ content:''; position:absolute; left:33.33%; top:0; bottom:0;
+  width:1px; background:rgba(255,255,255,.34); }
 #produksiKacaBahan .pr6-bahan .rel i{ display:block; height:100%; width:var(--isi,0%); border-radius:99px;
   background:linear-gradient(90deg,rgba(226,205,166,.85),rgba(226,205,166,.35)); }
 #produksiKacaBahan .pr6-bahan.oks .pil{ border-color:rgba(211,160,139,.5); color:#d3a08b; }
@@ -8102,6 +8107,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // HARGA_AWAL_BAHAN_LITERAN cuma nilai default form (batch pertama: Rp305/Rp395/Rp1.500).
   const HARGA_AWAL_BAHAN_LITERAN = { 'paperbag5l': 305, 'paperbag10l': 395, 'karungbekas': 1500 };
   const LABEL_BAHAN_LITERAN = { 'paperbag5l': 'Paper bag 5 liter', 'paperbag10l': 'Paper bag 10 liter', 'karungbekas': 'Karung bekas' };
+  // Karung bekas dibeli dan dihitung PER KARUNG, bukan per lembar (satu transaksi = satu
+  // karung, lihat aturan 1 Agustus 2026 di bawah). Satuannya dibawa sebagai data supaya
+  // layar tidak menebaknya dari kelompoknya — Produksi sempat menulis "Rp1.500/lbr"
+  // untuk harga yang artinya per karung.
+  const SATUAN_BAHAN_LITERAN = { 'paperbag5l': 'lbr', 'paperbag10l': 'lbr', 'karungbekas': 'krg' };
+
+  // AMBANG "MENIPIS" UNTUK KANTONG KOSONG — satu rumah untuk tiga angka yang sebelumnya
+  // diketik tangan di empat tempat (penjaga kaca Produksi, dua daftar di Stok) dan
+  // dikutip di dua kalimat yang sudah sempat berselisih: bilah menyebut "10 lembar
+  // (literan 5)", kaki panel cuma menyebut 10 padahal panelnya memuat baris literan.
+  // Kedua kalimat sekarang dirangkai dari konstanta ini.
+  const AMBANG_KANTONG_KRITIS = 10;   // lembar, kantong plastik kemasan
+  const AMBANG_LITERAN_KRITIS = 5;    // lembar/karung, paper bag & karung bekas
+  const AMBANG_HARI_KRITIS = 4;       // hari tersisa menurut laju 14 hari
 
   // Tentukan jenis kemasan literan dari jumlah liter yang dibeli
   // (aturan My DeV 1 Agustus 2026, ditegaskan ulang 2 Agustus 2026: karung bekas DEFAULT untuk minimal 13 liter):
@@ -15502,31 +15521,51 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     JENIS_BAHAN_KEMASAN.forEach(j => {
       const s = stokK[j]; if (!s || !(s.totalBeli > 0)) return;
       daftar.push({ kelompok: 'k', jenis: j, label: LABEL_BAHAN_KEMASAN[j] || j, sisa: s.sisaPcs, hpp: s.hppPerPcs,
-        hari: hariHabis(s.sisaPcs, laju[j] || 0) });
+        satuan: 'lbr', ambang: AMBANG_KANTONG_KRITIS, hari: hariHabis(s.sisaPcs, laju[j] || 0) });
     });
     Object.keys(LABEL_BAHAN_LITERAN).forEach(j => {
       const s = stokL[j]; if (!s || !(s.totalBeli > 0)) return;
       daftar.push({ kelompok: 'l', jenis: j, label: LABEL_BAHAN_LITERAN[j] || j, sisa: s.sisaPcs, hpp: s.hargaPerPcs,
+        satuan: SATUAN_BAHAN_LITERAN[j] || 'lbr', ambang: AMBANG_LITERAN_KRITIS,
         hari: hariHabis(s.sisaPcs, laju[j] || 0) });
     });
-    // Ambang kritis sama dengan Stok › Cocok Bahan: kemasan <10 lembar, literan <5.
-    daftar.forEach(x => { x.menipis = x.sisa < (x.kelompok === 'l' ? 5 : 10) || (x.hari !== null && x.hari <= 4); });
+    // Ambang kritis sama dengan dua daftar bahan di halaman Stok (tampilkanStok —
+    // "Stok Bahan Kemasan" & "Stok Bahan Literan"), BUKAN kartu "Cocokkan Bahan" seperti
+    // yang tertulis di sini sebelumnya. Ketiganya kini memakai konstanta yang sama.
+    daftar.forEach(x => { x.menipis = x.sisa < x.ambang || (x.hari !== null && x.hari <= AMBANG_HARI_KRITIS); });
     return daftar;
+  }
+  // TIGA KEADAAN, BUKAN DUA. hariHabis() mengembalikan null untuk DUA sebab yang berbeda:
+  // sisa habis, dan laju nol. Kalimat lama menyapu keduanya jadi "laju belum terbaca" —
+  // jadi kantong yang benar-benar HABIS dilaporkan seolah datanya yang kurang. Laju nol
+  // adalah fakta yang terbaca, bukan data yang hilang.
+  function prodKataSisa(x) {
+    if (x.sisa < 0) return 'tercatat minus ' + Math.abs(Math.round(x.sisa)).toLocaleString('id-ID') + ' — periksa opname';
+    if (x.sisa === 0) return 'habis';
+    if (x.hari !== null) return kataHabis(x.hari);
+    return 'belum terpakai 14 hari terakhir';
   }
   function gambarKacaBilahKantong(daftar) {
     const w = document.getElementById('produksiKacaBilah');
     if (!w || window.matchMedia('(min-width: 700px)').matches) return;
     try {
       daftar = daftar || prodDaftarBahan();
-      const tipis = daftar.filter(x => x.menipis);
+      // Kepala berita dulu selalu jenis PERTAMA di daftar — dan urutan daftar ditetapkan
+      // JENIS_BAHAN_KEMASAN, jadi 5 kg Kembang/BMW selalu menang hanya karena ia yang
+      // pertama ditulis di konstanta. Sekarang yang paling dekat habis yang bicara;
+      // yang sisanya nol atau minus mengalahkan semuanya.
+      const tipis = daftar.filter(x => x.menipis).sort((a, b) =>
+        (a.sisa <= 0 ? -1 : 0) - (b.sisa <= 0 ? -1 : 0)
+        || (a.hari === null ? 1e9 : a.hari) - (b.hari === null ? 1e9 : b.hari)
+        || a.sisa - b.sisa);
       let t = '';
       if (!daftar.length) {
         t = `<button type="button" class="pr6-bilah" onclick="prodPilihTab('bahan')">Belum ada stok kantong tercatat — sistem tidak menebaknya. Ketuk untuk mencatat pembelian.</button>`;
       } else if (tipis.length) {
         const tp = tipis[0];
-        t = `<button type="button" class="pr6-bilah oks" onclick="prodPilihTab('bahan')"><span><b>${tipis.length} jenis kantong menipis</b> — ${escapeHtml(tp.label)}: sisa ${Math.round(tp.sisa).toLocaleString('id-ID')} lembar${tp.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(tp.hari)) : ''}${tipis.length > 1 ? ' &middot; +' + (tipis.length - 1) + ' lagi' : ''}. Ketuk untuk beli.</span></button>`;
+        t = `<button type="button" class="pr6-bilah oks" onclick="prodPilihTab('bahan')"><span><b>${tipis.length} jenis kantong menipis</b> — ${escapeHtml(tp.label)}: sisa ${Math.round(tp.sisa).toLocaleString('id-ID')} ${tp.satuan === 'krg' ? 'karung' : 'lembar'}${tp.sisa <= 0 ? ' &middot; habis' : (tp.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(tp.hari)) : '')}${tipis.length > 1 ? ' &middot; +' + (tipis.length - 1) + ' lagi' : ''}. Ketuk untuk beli.</span></button>`;
       } else {
-        t = `<div class="pr6-bilah"><span class="kg-titik-lcd"></span><span>Kantong aman untuk produksi — ${daftar.length} jenis tercatat, tidak ada yang di bawah 10 lembar (literan 5) atau habis ≤4 hari.</span></div>`;
+        t = `<div class="pr6-bilah"><span class="kg-titik-lcd"></span><span>Kantong aman untuk produksi — ${daftar.length} jenis tercatat, tidak ada yang di bawah ${AMBANG_KANTONG_KRITIS} lembar (literan ${AMBANG_LITERAN_KRITIS}) atau habis ≤${AMBANG_HARI_KRITIS} hari.</span></div>`;
       }
       if (w._pr6 !== t) { w.innerHTML = t; w._pr6 = t; }   // node tak diganti bila isinya sama (fokus tombol aman)
     } catch (e) { console.error('gambarKacaBilahKantong:', e); }
@@ -15671,14 +15710,25 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (!daftar.length) {
         h += `<div class="pr6-sub">Belum ada pembelian kantong tercatat — catat lewat kartu di bawah.</div>`;
       } else {
-        const maks = Math.max.apply(null, daftar.map(x => x.sisa).concat([1]));
+        // PATOKAN BILAH TIDAK BOLEH ANGGOTA TERBESAR DI DAFTAR INI. Dulu begitu, dan
+        // akibatnya terukur: satu jenis bersisa 580 lembar memaku skala, sehingga jenis
+        // yang tinggal 6 lembar — yang justru beritanya — tergambar 2,5 px dari 253 px,
+        // dan yang sisanya 0 tergambar 0 px alias tidak tergambar sama sekali. Patokannya
+        // bergeser sendiri tiap ada pembelian besar: seluruh baris lain memendek tanpa
+        // satu angka pun berubah.
+        //
+        // Penggantinya patokan TETAP dan bermakna: tiga kali ambang menipis kelompoknya
+        // sendiri. Ambang selalu jatuh di sepertiga bilah, jadi "di bawah garis" bisa
+        // dibaca tanpa membandingkan tetangga — dan kelompok kemasan (ambang 10) tidak
+        // lagi diadu dengan kelompok literan (ambang 5) yang satuannya pun beda.
+        // Yang di atas tiga kali ambang mentok penuh; itu benar, semuanya "cukup".
         h += daftar.map(x => `<button type="button" class="pr6-bahan${x.menipis ? ' oks' : ''}" onclick="prodKetukBahan('${x.kelompok}', '${x.jenis}')">
             <span class="pil">${escapeHtml(x.label.split(' — ')[0].replace(/^Paper bag /, 'PB '))}</span>
-            <span><b>${escapeHtml(x.label)}</b><small>${x.hpp > 0 ? 'HPP Rp' + Math.round(x.hpp).toLocaleString('id-ID') + '/lbr' : 'HPP —'}${x.hari !== null ? ' &middot; ' + escapeHtml(kataHabis(x.hari)) : ' &middot; laju belum terbaca'}</small></span>
-            <span class="sisa">${Math.round(x.sisa).toLocaleString('id-ID')} lbr</span>
-            <span class="rel"><i style="--isi:${Math.max(0, Math.min(100, Math.round(x.sisa / maks * 100)))}%"></i></span>
+            <span><b>${escapeHtml(x.label)}</b><small>${x.hpp > 0 ? 'HPP Rp' + Math.round(x.hpp).toLocaleString('id-ID') + '/' + x.satuan : 'HPP —'} &middot; ${prodKataSisa(x)}</small></span>
+            <span class="sisa">${Math.round(x.sisa).toLocaleString('id-ID')} ${x.satuan}</span>
+            <span class="rel"><i style="--isi:${Math.max(0, Math.min(100, Math.round(x.sisa / (x.ambang * 3) * 100)))}%"></i></span>
           </button>`).join('');
-        h += `<div class="pr6-sub">Ketuk jenis untuk mengisi kartu pembelian di bawah. Oksida = di bawah 10 lembar atau habis ≤4 hari menurut laju 14 hari.</div>`;
+        h += `<div class="pr6-sub">Ketuk jenis untuk mengisi kartu pembelian di bawah. Oksida = di bawah ${AMBANG_KANTONG_KRITIS} lembar (literan ${AMBANG_LITERAN_KRITIS}) atau habis ≤${AMBANG_HARI_KRITIS} hari menurut laju 14 hari. Garis tipis di bilah = ambang itu; bilah penuh = tiga kali ambang ke atas.</div>`;
       }
       w.innerHTML = h + `</div>`;
     } catch (e) { console.error('gambarKacaProduksiBahan:', e); }
@@ -16542,11 +16592,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     kontBahanKemasan.innerHTML = bahanKemasanList.length === 0 ?
       '<div class="kosong-info"><b>Belum ada bahan kemasan</b><span>Beli plastik kosong dulu supaya produksi bisa jalan.</span></div>' :
       '<div class="kartu-daftar">' + bahanKemasanList.map(j => {
-        const s = stokBahanKemasan[j], kritis = s.sisaPcs < 10;
+        const s = stokBahanKemasan[j], kritis = s.sisaPcs < AMBANG_KANTONG_KRITIS;
         const hrB = hariHabis(s.sisaPcs, _lajuStok.pcsBahan[j] || 0);
         return `<div class="baris-44">
           <span class="titik${kritis ? ' kritis' : ''}"></span>
-          <span class="nama">${LABEL_BAHAN_KEMASAN[j] || j}<small>HPP ${formatRupiah(s.hppPerPcs)}/lembar${hrB !== null ? (hrB <= 4 ? ` · <b style="color:${hrB <= 2 ? 'var(--merah)' : 'var(--amber)'};">${escapeHtml(kataHabis(hrB))}</b>` : ' · ' + escapeHtml(kataHabis(hrB))) : ''}</small></span>
+          <span class="nama">${LABEL_BAHAN_KEMASAN[j] || j}<small>HPP ${formatRupiah(s.hppPerPcs)}/lembar${hrB !== null ? (hrB <= AMBANG_HARI_KRITIS ? ` · <b style="color:${hrB <= 2 ? 'var(--merah)' : 'var(--amber)'};">${escapeHtml(kataHabis(hrB))}</b>` : ' · ' + escapeHtml(kataHabis(hrB))) : ''}</small></span>
           <span class="angka${kritis ? ' kritis' : ''}">${s.sisaPcs} <u>lembar</u></span>
         </div>`;
       }).join('') + '</div>';
@@ -16557,12 +16607,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     kontBahanLiteran.innerHTML = bahanLiteranList.length === 0 ?
       '<div class="kosong-info"><b>Belum ada kemasan literan</b><span>Paper bag dan karung bekas dibeli lewat halaman Produksi.</span></div>' :
       '<div class="kartu-daftar">' + bahanLiteranList.map(j => {
-        const s = stokBahanLiteran[j], kritis = s.sisaPcs < 5;
+        const s = stokBahanLiteran[j], kritis = s.sisaPcs < AMBANG_LITERAN_KRITIS;
         const hrL = hariHabis(s.sisaPcs, _lajuStok.pcsBahan[j] || 0);
         return `<div class="baris-44">
           <span class="titik${kritis ? ' kritis' : ''}"></span>
-          <span class="nama">${LABEL_BAHAN_LITERAN[j]}<small>HPP ${formatRupiah(s.hargaPerPcs)}/unit${hrL !== null ? (hrL <= 4 ? ` · <b style="color:${hrL <= 2 ? 'var(--merah)' : 'var(--amber)'};">${escapeHtml(kataHabis(hrL))}</b>` : ' · ' + escapeHtml(kataHabis(hrL))) : ''}</small></span>
-          <span class="angka${kritis ? ' kritis' : ''}">${s.sisaPcs} <u>lembar</u></span>
+          <span class="nama">${LABEL_BAHAN_LITERAN[j]}<small>HPP ${formatRupiah(s.hargaPerPcs)}/${SATUAN_BAHAN_LITERAN[j] === 'krg' ? 'karung' : 'lembar'}${hrL !== null ? (hrL <= AMBANG_HARI_KRITIS ? ` · <b style="color:${hrL <= 2 ? 'var(--merah)' : 'var(--amber)'};">${escapeHtml(kataHabis(hrL))}</b>` : ' · ' + escapeHtml(kataHabis(hrL))) : ''}</small></span>
+          <span class="angka${kritis ? ' kritis' : ''}">${s.sisaPcs} <u>${SATUAN_BAHAN_LITERAN[j] === 'krg' ? 'karung' : 'lembar'}</u></span>
         </div>`;
       }).join('') + '</div>';
 
