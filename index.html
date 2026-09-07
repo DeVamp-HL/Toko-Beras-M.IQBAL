@@ -4232,9 +4232,11 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #piutang6a .p6-janji-baris .tg i{ display:block; font-size:9px; font-style:italic; }
 #piutang6a .p6-janji-baris.telat .tg{ color:var(--pf-amber); }
 #piutang6a .p6-janji-baris b{ font-size:12.5px; }
-#piutang6a .p6-bukubon{ width:100%; min-height:46px; margin-top:11px; border-radius:11px;
+#piutang6a .p6-bukubon{ width:100%; min-height:50px; margin-top:11px; border-radius:11px;
   border:1px solid rgba(226,205,166,.3); background:rgba(226,205,166,.07);
   font-family:inherit; font-size:12px; font-weight:700; color:var(--pf-platina); cursor:pointer; }
+#piutang6a .p6-bukubon i{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-weight:400; font-size:9.5px; color:var(--pf-abu); margin-top:2px; }
 #piutang6a .baris-44 .kg-uang-piutang{ font-size:13px; }
 /* --- KACA EMAS G3: Setelan (rapor + zona) --- */
 @media (min-width:700px){ #setelanKaca{ display:none; } }
@@ -7600,7 +7602,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     </div>
 
     <div class="kartu-total-bulanan bl-z-isi" id="kartuTotalBulanan">
-      <div class="ktb-kiri"><div class="ktb-label" id="ktbLabel">Total bulan ini</div><div class="ktb-hitung" id="ktbHitung">0 dari 7 isian terisi</div></div>
+      <div class="ktb-kiri"><div class="ktb-label" id="ktbLabel">Total bulan ini</div><div class="ktb-hitung" id="ktbHitung">&mdash;</div></div>
       <div class="ktb-nilai" id="ktbNilai">Rp0</div>
     </div>
 
@@ -10497,7 +10499,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const iso = (document.getElementById('bulanBiaya') || {}).value || '';
     if (label) label.textContent = 'Total ' + (namaBulanPanjang(iso) || 'bulan ini');
     if (nilai) nilai.innerHTML = total > 0 ? angkaKartuMini(total, true) : 'Rp0';
-    if (hitung) hitung.textContent = terisi + ' dari 7 isian terisi';
+    // CACAHNYA DIHITUNG, BUKAN DIKETIK. Angka 7 di sini sisa dari sebelum 'bensin' &
+    // 'benang' dikeluarkan dari POS_BIAYA_BULANAN (21 Agu 2026) — sesudah itu isiannya
+    // tinggal empat pos + gaji, jadi kartu ini TIDAK PERNAH BISA membaca "7 dari 7".
+    // Pencacah yang mustahil penuh mengajari pemilik mengabaikan pencacahnya sendiri,
+    // dan sesudah diabaikan ia tidak lagi memberi tahu apa pun saat benar-benar kurang.
+    const totalIsian = ISIAN_BULANAN.length + 1;   // +1 = gaji
+    if (hitung) hitung.textContent = terisi + ' dari ' + totalIsian + ' isian terisi';
     // Kartu total bergaris putus amber selama kosong, dan tombol Simpan tetap mati
     // sampai ada satu isian — bentuknya sendiri yang bilang "belum siap",
     // bukan peringatan sesudah ditekan (Prinsip 1).
@@ -10711,18 +10719,54 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const pk = posBulananKosong(bl);
       const lalu = bulanSebelum(bl);
       const dokLalu = ambilBiayaBulanan().find(b => b.bulan === lalu);
+      // DASAR SEPARUH HARUS DIAKUI. Pos yang kosong bulan ini DAN kosong juga bulan
+      // lalu tidak punya dasar apa pun — `|| 0` diam-diam menyumbang nol, dan
+      // hasilnya kalimat "laba tampak +Rp X lebih besar" yang X-nya cuma sebagian.
+      // Dihitung terpisah supaya kalimatnya bisa berkata "SETIDAKNYA".
       let taksir = 0;
+      const posTanpaDasar = [];
+      let nPunyaDasar = 0;
       if (dokLalu) {
-        POS_BIAYA_BULANAN.forEach(p => { if (pk.kosong.indexOf(p.label) >= 0) taksir += dokLalu[p.kunci] || 0; });
-        if (pk.kosong.indexOf('Gaji') >= 0) taksir += (dokLalu.rincianGaji || []).reduce((a, r) => a + (r.gaji || 0), 0);
+        POS_BIAYA_BULANAN.forEach(p => {
+          if (pk.kosong.indexOf(p.label) < 0) return;
+          const n = dokLalu[p.kunci] || 0;
+          if (n > 0) { taksir += n; nPunyaDasar++; } else posTanpaDasar.push(p.label);
+        });
+        if (pk.kosong.indexOf('Gaji') >= 0) {
+          const gl = (dokLalu.rincianGaji || []).reduce((a, r) => a + (r.gaji || 0), 0);
+          if (gl > 0) { taksir += gl; nPunyaDasar++; } else posTanpaDasar.push('Gaji');
+        }
+      } else {
+        pk.kosong.forEach(l => posTanpaDasar.push(l));
       }
       const bayaran = bayaranBiayaBulanan().filter(x => x.bulan === bl);
       const belum = bayaran.filter(x => !x.tanggal && x.nominal > 0);
 
       let h = '';
       if (pk.kosong.length > 0) {
-        const kalimatTaksir = taksir > 0
-          ? 'Selama kosong, laba di halaman Laba tampak +' + formatRupiah(taksir) + ' lebih besar dari sebenarnya. ' : '';
+        // TIGA CABANG, bukan dua. Cabang ketiga adalah wujud keempat aturan "tiga
+        // keadaan kosong": menolak menggambar angka, dan mengatakan sebabnya. Sebelum
+        // ini cabang tanpa dasar diam sama sekali — lencana tidak pernah menyebut bahwa
+        // laba sedang keliru, justru di keadaan TERBURUK (dua bulan berturut kosong).
+        // Nama bulannya ikut disebut, dan tudingannya dialihkan ke Laporan kalau yang
+        // ditatap bukan bulan berjalan: halaman Laba versi HP cuma pernah menggambar
+        // bulan berjalan.
+        const namaBl = namaBulanPanjang(bl) || 'bulan ini';
+        const tujuan = (bl === bulanLokalIso()) ? 'halaman Laba' : 'Laporan ' + namaBl;
+        let kalimatTaksir = '';
+        if (taksir > 0 && posTanpaDasar.length === 0) {
+          kalimatTaksir = 'Selama kosong, laba di ' + tujuan + ' tampak +' + formatRupiah(taksir)
+            + ' lebih besar dari sebenarnya — sebesar pos yang sama di ' + (namaBulanPanjang(lalu) || 'bulan lalu') + '. ';
+        } else if (taksir > 0) {
+          kalimatTaksir = 'Laba di ' + tujuan + ' tampak SETIDAKNYA +' + formatRupiah(taksir)
+            + ' lebih besar dari sebenarnya. Itu baru ' + nPunyaDasar + ' dari '
+            + (nPunyaDasar + posTanpaDasar.length) + ' pos yang punya angka di '
+            + (namaBulanPanjang(lalu) || 'bulan lalu') + '; ' + escapeHtml(posTanpaDasar.join(', '))
+            + ' belum pernah diisi, jadi lebihnya tidak bisa dihitung penuh. ';
+        } else if (pk.kosong.length > 0) {
+          kalimatTaksir = 'Laba di ' + tujuan + ' sedang lebih besar dari sebenarnya, tapi berapa besarnya '
+            + 'tidak bisa dihitung: ' + (namaBulanPanjang(lalu) || 'bulan lalu') + ' belum diisi juga. ';
+        }
         // Salin HANYA ditawarkan untuk bulan yang BELUM tersimpan — gerbang yang sama dengan
         // #bulananKosong lama. salinBiayaBulanLalu menimpa seluruh form & mengosongkan tanggal
         // bayar; untuk bulan yang sudah ada isiannya, lencana ini cuma menunjuk, tidak menulis.
@@ -22023,7 +22067,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + 'WhatsApp akan terbuka berisi daftarnya. Kamu masih bisa membatalkan di sana.'
       + (sisaBaris > 0 ? '\n\nDaftarnya dipotong di ' + BATAS + ' nama; ' + sisaBaris + ' sisanya tidak ikut.' : ''))) return;
     const rpW = n => 'Rp' + Math.round(n || 0).toLocaleString('id-ID');
-    const baris = ['*BUKU BON — ' + formatTanggal(tanggalLokalIso()) + '*', ''];
+    const baris = ['*BUKU BON — ' + formatTanggal(tanggalLokalIso()) + '*',
+      '_Daftar pelanggan yang berutang ke toko._', ''];
     let jml = 0;
     dipakai.forEach((d, i) => {
       jml += d.sisa;
@@ -22244,7 +22289,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           }
 
           html += '<div class="kg-label p6-sela">Tiga ruang tunggu · tua dulu</div>';
-          html += '<button type="button" class="p6-bukubon" onclick="p6BukuBonWa()">Buku bon &middot; kirim seluruh daftar lewat WA</button>';
+          // ARAHNYA TERTULIS DUA KALI — di sini dan di baris pertama pesan WA-nya.
+          // Layar Bulanan kelak punya "Papan tagihan", daftar yang juga keluar lewat WA
+          // tapi arahnya berlawanan (utang TOKO ke pemasok/pos, bukan utang ORANG ke
+          // toko). Nama saja tidak cukup membedakan dua daftar yang sama-sama keluar
+          // toko: tangan yang lelah pukul sembilan malam tidak memegang perbedaan
+          // sehalus "bon" lawan "tagihan", dan salah kirim di sini berarti daftar
+          // siapa-berutang-apa sampai ke orang yang salah.
+          html += '<button type="button" class="p6-bukubon" onclick="p6BukuBonWa()">'
+            + 'Buku bon &middot; kirim daftar lewat WA<i>siapa berutang ke toko</i></button>';
           [['Di atas 90 hari', x => (x.d.umurHari || 0) > 90, true], ['31–90 hari', x => (x.d.umurHari || 0) > 30 && (x.d.umurHari || 0) <= 90, false], ['0–30 hari', x => (x.d.umurHari || 0) <= 30, false]]
             .forEach(r => {
               const grup = berutang.filter(r[1]);
