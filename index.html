@@ -4456,6 +4456,41 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #hargaKaca .hg-baris .kg-uang-dagang{ font-size:17px; }
 #hargaKaca .hg-kanan{ text-align:right; font-size:9.5px; color:var(--pf-abu); line-height:1.5; }
 #hargaKaca .hg-kanan .oks{ color:#d3a08b; font-weight:700; }
+/* CATATAN TAWAR. Rel bersumbu MUTLAK: jarum harga daftar selalu di 66,7%, jadi dua
+   baris berbeda boleh dibandingkan mata. Jangan pernah mengganti twPos() dengan
+   pembagian terhadap maksimum kelompok. */
+#hargaKaca .hg-tawar{ margin-top:11px; padding-top:9px; border-top:1px solid rgba(255,255,255,.06); }
+#hargaKaca .tw-baris{ display:grid; grid-template-columns:auto 1fr auto; align-items:center;
+  gap:3px 9px; min-height:56px; padding:6px 0; }
+#hargaKaca .tw-pil{ min-width:52px; padding:3px 8px; border-radius:8px; text-align:center;
+  border:1px solid var(--pf-tepi); font-size:10px; font-weight:600; color:var(--pf-platina); }
+#hargaKaca .tw-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; color:var(--pf-abu); }
+#hargaKaca .tw-rp{ font-family:var(--pf-serif); font-weight:600; font-size:14px; color:var(--pf-platina); }
+/* Rupiah rata DISEMBUNYIKAN di bawah 4 nota. Menulis "belum cukup untuk pola" lalu
+   memajang angka rata yang presisi di baris yang sama adalah dua pernyataan yang
+   saling menyangkal, dan mata akan percaya angkanya. Titik-titiknya tetap digambar,
+   jadi pemilik tetap melihat di mana nota-nota itu jatuh. */
+#hargaKaca .tw-rp .tw-belum{ font-style:normal; color:var(--pf-abu); opacity:.6; }
+#hargaKaca .tw-rel{ grid-column:1 / -1; position:relative; display:block; height:16px; margin-top:3px;
+  border-radius:99px; background:rgba(255,255,255,.05); overflow:hidden; }
+#hargaKaca .tw-awan{ position:absolute; top:3px; height:10px; border-radius:99px;
+  background:rgba(226,205,166,.3); }
+#hargaKaca .tw-takik{ position:absolute; top:2px; width:1px; height:12px; background:rgba(10,9,8,.75); }
+#hargaKaca .tw-titik{ position:absolute; top:6px; width:4px; height:4px; margin-left:-2px;
+  border-radius:99px; background:rgba(226,205,166,.55); }
+#hargaKaca .tw-jarum{ position:absolute; top:0; width:3px; height:100%; margin-left:-1px;
+  border-radius:2px; background:var(--pf-platina); }
+#hargaKaca .tw-panah{ position:absolute; top:1px; font-size:11px; line-height:14px; color:var(--pf-amber); }
+#hargaKaca .tw-panah.kiri{ left:1px; } #hargaKaca .tw-panah.kanan{ right:1px; }
+#hargaKaca .tw-legenda{ display:flex; align-items:center; gap:5px; flex-wrap:wrap;
+  font-family:var(--pf-serif); font-style:italic; font-size:9.5px; color:var(--pf-abu); margin-top:4px; }
+#hargaKaca .tw-legenda i{ display:inline-block; width:14px; height:6px; border-radius:99px;
+  background:rgba(226,205,166,.3); margin-right:2px; }
+#hargaKaca .tw-legenda i.l-jarum{ width:3px; height:11px; border-radius:2px;
+  background:var(--pf-platina); margin-left:8px; }
+#hargaKaca .tw-kaki{ font-family:var(--pf-serif); font-style:italic; font-size:9.5px;
+  line-height:1.5; color:var(--pf-abu); opacity:.8; margin-top:5px; }
+
 /* HITUNG MUNDUR - lembar naik dari bawah, pola sama dengan #lembarStokMerk. */
 #overlayMundur{ display:none; position:fixed; inset:0; z-index:41; background:rgba(8,7,6,.55); }
 body.lembar-mundur-terbuka #overlayMundur{ display:block; }
@@ -23191,6 +23226,131 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
 
 
+
+  // ═══ CATATAN TAWAR — harga yang BENAR-BENAR dibayar, 30 hari ═══════════════
+  // Katalog menyimpan harga DAFTAR. Yang benar-benar masuk laci sering lebih rendah:
+  // pembeli menawar, kasir memberi potongan nota, pembulatan tunai menggerus sisa.
+  // Blok ini menaruh keduanya di satu rel supaya jaraknya terlihat.
+  //
+  // SUMBUNYA MUTLAK, DIPAKU KE JARUM — dan ini yang paling penting. Rasio r
+  // (dibayar ÷ daftar) dipetakan pos(r) = (r − 0,60) / 0,60 × 100, dijepit 2..98.
+  // Rel membentang rasio 0,60 di kiri sampai 1,20 di kanan, dan jarum harga daftar
+  // (r = 1,00) SELALU duduk di 66,7% — posisi sama di tiap baris, tiap merk, tiap
+  // hari. Awan yang lebih jauh ke kiri berarti tawarnya lebih dalam, titik.
+  // HARAM menggantinya jadi pembagian terhadap maksimum kelompok: begitu patokannya
+  // anggota terbesar, gambar ini berubah sendiri tiap kali merk lain berubah, dan
+  // "seberapa dalam ditawar" berhenti bisa dibaca.
+  // (Desain memakai (r−0,20)×100 dengan jarum di 80%; itu memboroskan 60% rel untuk
+  // rasio 0,20–0,60 yang mustahil terjadi di toko beras.)
+  const TW_HARI = 30;
+  function twPos(r) { return Math.max(2, Math.min(98, (r - 0.60) / 0.60 * 100)); }
+  // Harga satuan yang BENAR-BENAR dibayar. Tiga koreksi, semuanya sudah ada datanya:
+  //   1. pembulatan tunai dikembalikan — ia melekat ke item terakhir, bukan harga
+  //   2. potongan nota jalur kasir diprorata ke tiap baris se-nota
+  //   3. jalur wizard TIDAK diprorata: potongannya sudah dikurangkan saat simpan.
+  //      Dibedakan dari ADA/TIDAKNYA baris 'potongan' se-nota, bukan dari menebak jalur.
+  // SATUANNYA WAJIB SATU BAHASA DENGAN HARGA DAFTARNYA. jumlahTrx() memberi
+  // 'jumlahKarung' untuk karung, sementara katalog karung menyimpan harga PER KG —
+  // memakai keduanya berpasangan menghasilkan rasio 48x (679.000 per karung dibagi
+  // 14.000 per kg). Ketahuan dari layar berbunyi "rata dibayar 4850,0% dari daftar";
+  // tidak akan pernah ketahuan dari membaca rumusnya, karena tiap sisinya benar
+  // sendiri-sendiri. Di sini satuannya dipilih EKSPLISIT supaya pasangannya tidak
+  // bisa lepas lagi.
+  function twBanyak(p) {
+    if (p.jenis === 'literan') return p.jumlahLiter || 0;      // lawan hargaPerLiter
+    if (p.jenis === 'kemasan') return p.jumlahUnit || 0;       // lawan hargaPerUnit
+    return p.totalKg || 0;                                     // karung & repacking, lawan hargaPerKg
+  }
+  function twSatuanDibayar(p, potNota, subNota) {
+    const t = { nilai: twBanyak(p) };
+    if (!(t.nilai > 0)) return null;
+    const bersih = (p.hargaTotal || 0) - (p.pembulatan || 0);
+    if (!(bersih > 0)) return null;
+    const pas = (potNota > 0 && subNota > 0) ? bersih * (1 - potNota / subNota) : bersih;
+    return pas / t.nilai;
+  }
+  // Harga DAFTAR pembanding. Dua tingkat, yang pertama menang.
+  function twHargaDaftar(p) {
+    if (p.hargaAsliSatuan > 0) return { nilai: p.hargaAsliSatuan, kebalRiwayat: true };
+    // Jatuh ke katalog HARI INI — dan itu cuma sah untuk penjualan yang terjadi
+    // SESUDAH harga itu terakhir diubah. Membandingkan nota tiga minggu lalu dengan
+    // harga hari ini melahirkan rasio yang tidak pernah terjadi.
+    let dok = null, nilai = 0;
+    if (p.jenis === 'literan') {
+      dok = ambilHargaLiteran().find(h => h.merk === p.merkSumber);
+      nilai = dok ? dok.hargaPerLiter : 0;
+    } else if (p.jenis === 'kemasan') {
+      dok = ambilHargaKemasan().find(h => h.merk === p.namaProduk && Number(h.ukuran) === Number(p.ukuranKemasan));
+      nilai = dok ? dok.hargaPerUnit : 0;
+    } else {
+      dok = ambilHargaKarung().find(h => h.merk === p.merkSumber);
+      nilai = dok ? dok.hargaPerKg : 0;
+    }
+    if (!dok || !(nilai > 0)) return null;
+    if (dok.diubahPada && (p.tanggal || '') < String(dok.diubahPada).slice(0, 10)) return null;
+    return { nilai, kebalRiwayat: false };
+  }
+  // Kumpulkan rasio per merk per ukuran. Mengembalikan { 'merk': { 'pil': {...} } }.
+  function twKumpulkan() {
+    const batas = tanggalLokalIso(new Date(Date.now() - TW_HARI * 86400000));
+    const semua = ambilPenjualan().filter(p => (p.tanggal || '') >= batas);
+    // Potongan nota jalur kasir, dijumlah per nota lebih dulu.
+    const potPerNota = {}, subPerNota = {};
+    semua.forEach(p => {
+      const k = p.trxId || p.grupNota;
+      if (!k) return;
+      if (p.jenis === 'potongan') potPerNota[k] = (potPerNota[k] || 0) + Math.abs(p.hargaTotal || 0);
+      else subPerNota[k] = (subPerNota[k] || 0) + ((p.hargaTotal || 0) - (p.pembulatan || 0));
+    });
+    const peta = {};
+    semua.forEach(p => {
+      if (p.jenis === 'potongan') return;
+      const merk = p.jenis === 'kemasan' ? p.namaProduk : p.merkSumber;
+      if (!merk) return;
+      const pil = p.jenis === 'literan' ? 'Literan /L'
+        : (p.jenis === 'kemasan' ? String(p.ukuranKemasan) + ' kg' : 'curah /kg');
+      if (!peta[merk]) peta[merk] = {};
+      if (!peta[merk][pil]) peta[merk][pil] = { rasio: [], daftar: 0, takTerbaca: 0, kebal: 0 };
+      const slot = peta[merk][pil];
+      const k = p.trxId || p.grupNota;
+      const bayar = twSatuanDibayar(p, potPerNota[k] || 0, subPerNota[k] || 0);
+      const daftar = twHargaDaftar(p);
+      if (bayar === null || daftar === null) { slot.takTerbaca++; return; }
+      slot.daftar = daftar.nilai;
+      if (daftar.kebalRiwayat) slot.kebal++;
+      slot.rasio.push(bayar / daftar.nilai);
+    });
+    return peta;
+  }
+  function twMedian(arr) {
+    const a = arr.slice().sort((x, y) => x - y);
+    const t = Math.floor(a.length / 2);
+    return a.length % 2 ? a[t] : (a[t - 1] + a[t]) / 2;
+  }
+  // Uji dari konsol di HP yang datanya nyata: ujiCakupanTawar().
+  // Menjawab pertanyaan yang tidak bisa dijawab kotak pasir — berapa nota yang benar-
+  // benar terbaca sesudah jendela dipotong di diubahPada katalognya. Kalau cakupannya
+  // tipis, blok Catatan Tawar memang akan sering diam, dan itu ketahuan dari sini
+  // bukan dari menebak. Murni membaca, tidak menyentuh data apa pun.
+  function ujiCakupanTawar() {
+    const peta = twKumpulkan();
+    const baris = [];
+    let terbaca = 0, hilang = 0, kebal = 0;
+    Object.keys(peta).forEach(m => Object.keys(peta[m]).forEach(pil => {
+      const d = peta[m][pil];
+      terbaca += d.rasio.length; hilang += d.takTerbaca; kebal += d.kebal;
+      baris.push({ merk: m, ukuran: pil, terbaca: d.rasio.length, takTerbaca: d.takTerbaca,
+        kebalRiwayat: d.kebal, cukupUntukAwan: d.rasio.length >= 4 });
+    }));
+    console.table(baris);
+    const cukup = baris.filter(b => b.cukupUntukAwan).length;
+    console.log('Terbaca ' + terbaca + ' nota, tidak terbaca ' + hilang
+      + ' (' + Math.round(hilang / Math.max(1, terbaca + hilang) * 100) + '%). '
+      + cukup + ' dari ' + baris.length + ' ukuran punya >=4 nota (cukup untuk awan). '
+      + kebal + ' nota kebal-riwayat lewat hargaAsliSatuan.');
+    return { terbaca, takTerbaca: hilang, kebalRiwayat: kebal, ukuranCukup: cukup, ukuranTotal: baris.length, baris };
+  }
+
   // ═══ HITUNG MUNDUR — kalkulator TERBALIK setingkat toko ════════════════════
   // Dari "mau untung bersih berapa sebulan" turun ke "berarti margin berapa persen
   // yang harus dipasang". Murni pembaca: seluruh bahannya keluar dari SATU panggilan
@@ -23439,6 +23599,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           : 20;
       }
       const target = _hgTarget;
+      const petaTawar = twKumpulkan();
 
       let h = `<div class="kg-panel hg-utama">
         <div class="kg-label">Sumber harga resmi kasir</div>
@@ -23555,6 +23716,54 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           }).join('');
           if (adaNaik) x += `<div class="hg-tangga-ket">Ukuran bertanda lebih mahal per kg daripada ukuran di bawahnya — diskon ukuran harusnya turun rapi.</div>`;
           x += `</div>`;
+        }
+
+        // ── CATATAN TAWAR: yang benar-benar dibayar vs harga daftar ──
+        const tw = petaTawar[m];
+        if (tw) {
+          const pils = Object.keys(tw).filter(k => tw[k].rasio.length > 0 || tw[k].takTerbaca > 0);
+          if (pils.length) {
+            let nTerbaca = 0, nHilang = 0;
+            let isiTw = '';
+            pils.forEach(pil => {
+              const d = tw[pil];
+              nTerbaca += d.rasio.length; nHilang += d.takTerbaca;
+              if (!d.rasio.length) return;
+              const med = twMedian(d.rasio);
+              const lo = Math.min.apply(null, d.rasio), hi = Math.max.apply(null, d.rasio);
+              const cukup = d.rasio.length >= 4;
+              // AWAN CUMA DARI 4 NOTA KE ATAS. Awan dari dua titik adalah kebohongan
+              // grafis: ia menggambar sebaran dari data yang belum punya sebaran.
+              // Di bawah itu, titiknya digambar apa adanya dan cacahnya disebut.
+              const rel = cukup
+                ? `<span class="tw-awan" style="left:${twPos(lo)}%;width:${Math.max(2, twPos(hi) - twPos(lo))}%"></span>
+                   <span class="tw-takik" style="left:${twPos(med)}%"></span>`
+                : d.rasio.map(r => `<span class="tw-titik" style="left:${twPos(r)}%"></span>`).join('');
+              // Jepitan dibuat JUJUR: rasio di luar rel diberi panah, tidak menyamar
+              // sebagai nilai tepi.
+              const lewatKiri = lo < 0.60, lewatKanan = hi > 1.20;
+              isiTw += `<div class="tw-baris">
+                <span class="tw-pil">${pil}</span>
+                <span class="tw-ket">${cukup
+                  ? 'rata dibayar ' + (med * 100).toFixed(1).replace('.', ',') + '% dari daftar'
+                  : d.rasio.length + ' nota — belum cukup untuk pola'}</span>
+                <span class="tw-rp">${cukup
+                  ? 'Rp' + Math.round(med * d.daftar).toLocaleString('id-ID')
+                  : '<i class="tw-belum">&mdash;</i>'}</span>
+                <span class="tw-rel">${lewatKiri ? '<span class="tw-panah kiri">&lsaquo;</span>' : ''}${rel}${lewatKanan ? '<span class="tw-panah kanan">&rsaquo;</span>' : ''}<span class="tw-jarum" style="left:${twPos(1)}%"></span></span>
+              </div>`;
+            });
+            if (isiTw) {
+              x += `<div class="hg-tawar"><div class="kg-label">Catatan tawar &middot; ${TW_HARI} hari</div>`
+                + isiTw
+                + `<div class="tw-legenda"><i class="l-awan"></i>yang benar-benar dibayar
+                     <i class="l-jarum"></i>harga daftar</div>`
+                + (nHilang > 0
+                  ? `<div class="tw-kaki">${nTerbaca} nota terbaca, ${nHilang} tidak &mdash; nota yang harganya berubah sesudah itu tidak ikut dihitung.</div>`
+                  : '')
+                + `</div>`;
+            }
+          }
         }
         return x + `</div>`;
       }).join('');
@@ -25714,6 +25923,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.hapusBarisMerk = hapusBarisMerk;
   // Pola form baku (Lembar 1 Penyempurnaan, 7 Agu 2026)
   window.hgGeserTarget = hgGeserTarget; window.hgKetikTuas = hgKetikTuas; window.hgSetelBaris = hgSetelBaris;
+  window.ujiCakupanTawar = ujiCakupanTawar;
   window.bukaHitungMundur = bukaHitungMundur; window.tutupHitungMundur = tutupHitungMundur;
   window.hmGeser = hmGeser; window.hmKetik = hmKetik; window.hmPakaiTarget = hmPakaiTarget;
   window.ubahTempatSimpan = ubahTempatSimpan; window.ubahTempatSimpanMerkIni = ubahTempatSimpanMerkIni;
