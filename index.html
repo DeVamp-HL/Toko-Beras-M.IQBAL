@@ -4222,6 +4222,19 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #piutang6a .p6-keran-baris .rel i.masuk{ background:var(--pf-amber); }
 #piutang6a .p6-keran-baris .rel i.keluar{ background:var(--emas); }
 #piutang6a .p6-keran-baris b{ font-family:var(--pf-serif); font-weight:600; font-size:11.5px; color:var(--pf-platina); }
+#piutang6a .p6-ruang .p6-ket u{ text-decoration:none; color:var(--pf-platina); font-style:normal; font-weight:600; }
+/* Janji bayar: tanggal yang benar-benar dijanjikan. Tidak ada padanan taksiran di
+   layar ini, jadi tidak ada yang bisa tertukar dengannya. */
+#piutang6a .p6-janji-baris{ display:grid; grid-template-columns:1fr auto auto; align-items:center;
+  gap:10px; min-height:44px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+#piutang6a .p6-janji-baris .nm{ font-size:11.5px; font-weight:600; min-width:0; }
+#piutang6a .p6-janji-baris .tg{ font-family:var(--pf-serif); font-size:10.5px; color:var(--pf-abu); text-align:right; }
+#piutang6a .p6-janji-baris .tg i{ display:block; font-size:9px; font-style:italic; }
+#piutang6a .p6-janji-baris.telat .tg{ color:var(--pf-amber); }
+#piutang6a .p6-janji-baris b{ font-size:12.5px; }
+#piutang6a .p6-bukubon{ width:100%; min-height:46px; margin-top:11px; border-radius:11px;
+  border:1px solid rgba(226,205,166,.3); background:rgba(226,205,166,.07);
+  font-family:inherit; font-size:12px; font-weight:700; color:var(--pf-platina); cursor:pointer; }
 #piutang6a .baris-44 .kg-uang-piutang{ font-size:13px; }
 /* --- KACA EMAS G3: Setelan (rapor + zona) --- */
 @media (min-width:700px){ #setelanKaca{ display:none; } }
@@ -5609,6 +5622,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <span>Sisa utang</span>
     <b id="piutangSisaNilai">Rp0</b>
   </div>
+  <!-- Kalimat ini satu-satunya isi "kartu utang cetak" desain yang belum ada di mana
+       pun. Lembar ini sudah memuat semua sisanya (nama, ringkasan, rincian belum
+       lunas, riwayat) - jadi lembar cetak terpisah akan jadi kembar tiga lapis. -->
+  <p class="lk-sub" style="margin-top:6px;">Angka ini dihitung ulang tiap lembar dibuka &mdash; saldo awal + kredit &minus; bayar &minus; hapus buku. Tidak pernah disimpan, jadi tidak bisa basi.</p>
 
   <!-- Rincian belum-lunas DI LAYAR (13 Agu 2026): tidak semua pelanggan punya
        WhatsApp — untuk mereka, rincian yang sama dengan isi pesan tagihan tampil
@@ -21954,6 +21971,44 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   let _p6Buku = 'pelanggan', _p6Zona = 'tagih';
   function p6PilihBuku(b) { _p6Buku = b === 'pegawai' ? 'pegawai' : 'pelanggan'; tampilkanPiutang6a(); }
   function p6PilihZona(z) { _p6Zona = { tagih: 1, paham: 1, atur: 1 }[z] ? z : 'tagih'; tampilkanPiutang6a(); }
+  // ═══ BUKU BON → WA ═══════════════════════════════════════════════════════════
+  // Desain menyebutnya "lembar cetak". Ini HP, dan toko ini tidak punya jalur cetak
+  // selain satu blok @media print yang terkunci ke lembar Laporan — menambah blok
+  // kedua yang tidak sadar blok pertama adalah cara tercepat mendapat halaman kosong.
+  // WA memang satu-satunya saluran keluar toko ini, dan jalurnya sudah terbukti
+  // dipakai tagihan per orang. Jadi bukunya dikirim, bukan dicetak.
+  function p6BukuBonWa() {
+    const daftar = (_piutangTampil || []).filter(d => d.sisa > 0)
+      .slice().sort((a, b) => (b.umurHari || 0) - (a.umurHari || 0));
+    if (!daftar.length) { alert('Tidak ada yang sedang berutang — buku bonnya kosong.'); return; }
+    // BATAS 40 BARIS. Pesan WA yang terlalu panjang dipotong sendiri oleh WhatsApp di
+    // tempat yang tidak bisa ditebak; lebih baik kita yang memotong dan mengatakannya.
+    const BATAS = 40;
+    const dipakai = daftar.slice(0, BATAS);
+    const sisaBaris = daftar.length - dipakai.length;
+    // KONFIRMASI DULU, sebut jumlah namanya. Ini membuka WhatsApp berisi nama-nama
+    // pelanggan; pemilik harus tahu berapa banyak sebelum layar berpindah.
+    if (!confirm('Susun buku bon untuk ' + daftar.length + ' pelanggan yang sedang berutang?\n\n'
+      + 'WhatsApp akan terbuka berisi daftarnya. Kamu masih bisa membatalkan di sana.'
+      + (sisaBaris > 0 ? '\n\nDaftarnya dipotong di ' + BATAS + ' nama; ' + sisaBaris + ' sisanya tidak ikut.' : ''))) return;
+    const rpW = n => 'Rp' + Math.round(n || 0).toLocaleString('id-ID');
+    const baris = ['*BUKU BON — ' + formatTanggal(tanggalLokalIso()) + '*', ''];
+    let jml = 0;
+    dipakai.forEach((d, i) => {
+      jml += d.sisa;
+      baris.push((i + 1) + '. ' + d.nama + ' — ' + rpW(d.sisa)
+        + (d.umurHari ? ' (' + umurKeKata(d.umurHari) + ')' : ''));
+    });
+    baris.push('');
+    // JANGAN memakai d.total sebagai suku 'kredit': total = kredit + saldoAwal, jadi
+    // memakainya di sini menghitung saldo awal dua kali. Yang dijumlah cuma SISA.
+    baris.push('Jumlah ' + dipakai.length + ' nama: ' + rpW(jml));
+    if (sisaBaris > 0) baris.push('(' + sisaBaris + ' nama lain tidak ikut daftar ini)');
+    baris.push('');
+    baris.push('_Sisa dihitung dari saldo awal + kredit − bayar − hapus buku._');
+    window.open('https://wa.me/?text=' + encodeURIComponent(baris.join('\n')), '_blank');
+  }
+
   function p6KirimWa(kunci) {
     const lama = _piutangTerbuka;
     _piutangTerbuka = kunci;
@@ -22040,9 +22095,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           // di belakangnya juga tetap, dan totalKg mencatatnya apa adanya.
           // Join lewat idTrx dari mutasi 'jual' — bukan menyaring caraBayar lagi —
           // supaya cakupannya persis sama dengan yang dipakai mesin piutang.
+          // Peta id-nota -> kunci pemiliknya, bukan sekadar penanda ada. Dipakai dua
+          // kali: menghitung kg, dan menghitung BERAPA PELANGGAN yang notanya benar-benar
+          // ikut terhitung untung.
           const idKredit = {};
           berutang.forEach(x => (x.d.mutasi || []).forEach(m => {
-            if (m.jenis === 'jual' && m.idTrx) idKredit[m.idTrx] = 1;
+            if (m.jenis === 'jual' && m.idTrx) idKredit[m.idTrx] = x.d.kunci;
           }));
           let kgKredit = 0, rpBerkarung = 0;
           ambilPenjualan().forEach(t2 => {
@@ -22113,14 +22171,66 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             + '<div class="kg-rincian">Uang kembali = dibayar ' + rp(dibayar)
             + (dihapus > 0 ? ' + dihapus buku ' + rp(dihapus) : '')
             + '. Panjang batang membandingkan dua angka ini satu sama lain, bukan terhadap seluruh piutang.</div></div>';
+          // ── UNTUNG YANG MASIH NYANGKUT DI PIUTANG ──
+          // Kartu ini kena BUTA yang persis sama dengan sebaran margin yang ditolak:
+          // utang tertua masuk lewat saldo awal — tidak punya dokumen penjualan, tidak
+          // punya HPP — jadi margin yang tersangkut di sana tidak bisa dihitung sama
+          // sekali. Angkanya karena itu SELALU LEBIH KECIL dari kenyataan.
+          // Cakupannya WAJIB tercetak di layar, bukan cuma diketahui: tanpa itu ia jadi
+          // angka yang menenangkan secara keliru. Pola yang sama dengan tiga penjaga
+          // kejujuran di lembar Hitung Mundur.
+          let untungNyangkut = 0, nPunyaHpp = 0, nTanpaHpp = 0;
+          // PELANGGAN DIHITUNG DARI NOTA YANG BENAR-BENAR IKUT, bukan dari siapa yang
+          // punya mutasi jual. Versi pertama menghitung yang kedua dan melaporkan
+          // "2 nota milik 2 pelanggan" untuk dua nota yang ternyata milik SATU orang —
+          // kalimat cakupan yang sendiri tidak akurat lebih buruk daripada tidak ada.
+          const orangIkut = {};
+          ambilPenjualan().forEach(t2 => {
+            const pemilik = idKredit[t2.id];
+            if (!pemilik) return;
+            if (!(t2.hppTotalSaatJual > 0)) { nTanpaHpp++; return; }
+            nPunyaHpp++;
+            orangIkut[pemilik] = 1;
+            untungNyangkut += (t2.hargaTotal || 0) - t2.hppTotalSaatJual;
+          });
+          const nOrangPunya = Object.keys(orangIkut).length;
+          const nOrangTanpa = berutang.filter(x => !orangIkut[x.d.kunci]).length;
+          if (nPunyaHpp > 0) {
+            html += '<div class="kg-panel p6-sela"><div class="kg-label">Untung yang masih nyangkut di piutang</div>'
+              + '<b class="kg-uang-piutang p6-besar">' + rp(untungNyangkut) + '</b>'
+              + '<div class="kg-rincian">Dari ' + nPunyaHpp + ' nota kredit yang HPP-nya tercatat, milik '
+              + nOrangPunya + ' dari ' + berutang.length + ' pelanggan yang berutang. '
+              + (nOrangTanpa > 0 || nTanpaHpp > 0
+                ? '<b style="font-style:normal;color:var(--pf-amber);">Belum termasuk '
+                  + (nOrangTanpa > 0 ? nOrangTanpa + ' pelanggan yang sama sekali tidak punya nota ber-HPP' : '')
+                  + (nOrangTanpa > 0 && nTanpaHpp > 0 ? ' dan ' : '')
+                  + (nTanpaHpp > 0 ? nTanpaHpp + ' nota tanpa HPP tercatat' : '')
+                  + '</b> — utang yang masuk lewat saldo awal atau nota nominal tidak punya dokumen '
+                  + 'penjualan di belakangnya, jadi untungnya tidak bisa dihitung. '
+                  + 'Angka di atas selalu lebih kecil dari yang sebenarnya tersangkut.'
+                : 'Semua yang sedang berutang punya nota ber-HPP.')
+              + '</div></div>';
+          }
+
           html += '<div class="kg-label p6-sela">Tiga ruang tunggu · tua dulu</div>';
+          html += '<button type="button" class="p6-bukubon" onclick="p6BukuBonWa()">Buku bon &middot; kirim seluruh daftar lewat WA</button>';
           [['Di atas 90 hari', x => (x.d.umurHari || 0) > 90, true], ['31–90 hari', x => (x.d.umurHari || 0) > 30 && (x.d.umurHari || 0) <= 90, false], ['0–30 hari', x => (x.d.umurHari || 0) <= 30, false]]
             .forEach(r => {
               const grup = berutang.filter(r[1]);
               const nilai = grup.reduce((a, x) => a + x.d.sisa, 0);
+              // UMUR TERTUA di ruang ini. "Di atas 90 hari" itu pintu masuk yang lebar —
+              // utang 91 hari dan utang empat tahun duduk di ruang yang sama, dan
+              // rupiahnya menjumlah mereka jadi satu angka yang tidak membedakan
+              // keduanya. Umur tertua yang membedakannya. SENGAJA hanya umur: "pernah
+              // menyetor Rp…" sempat diusulkan tapi ditolak — d.bayar itu pembayaran
+              // seumur hidup pelanggan, dan FIFO sudah memakainya menutup utang-utang
+              // tertua, jadi menuliskannya di sebelah "tertua 4 tahun" membuat pembaca
+              // mengira uang itu disetor untuk utang tua itu.
+              const tertua = grup.length ? Math.max.apply(null, grup.map(x => x.d.umurHari || 0)) : 0;
               html += '<div class="kg-panel p6-ruang' + (r[2] && grup.length ? ' merah' : '') + '"><div class="p6-ruang-atas"><span class="kg-label">' + r[0] + '</span>'
                 + '<b class="kg-uang-piutang">' + (grup.length ? rp(nilai) : 'tidak ada') + '</b></div>'
-                + (grup.length ? '<i class="p6-ket">' + grup.map(x => escapeHtml(x.d.nama)).join(' · ') + '</i>' : '') + '</div>';
+                + (grup.length ? '<i class="p6-ket"><u>tertua ' + escapeHtml(umurKeKata(tertua)) + '</u> &middot; '
+                    + grup.map(x => escapeHtml(x.d.nama)).join(' · ') + '</i>' : '') + '</div>';
             });
         } else {
           html += '<div class="kg-label p6-sela">Batas kredit per pelanggan · KR1: 2× rata belanja 90 hari</div>';
@@ -22146,6 +22256,32 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
               + '<span class="bar' + (adaBatas ? '' : ' belum') + '"><i style="width:' + isi + '%;"' + (lebihi ? ' class="lewat"' : '') + '></i></span></div>';
           });
           html += '<div class="kg-rincian p6-sela">' + (lewat ? lewat + ' pelanggan lewat batas / belum terdaftar.' : 'Semua masih di bawah batasnya.') + '</div>';
+
+          // ── JANJI BAYAR: tanggal yang BENAR-BENAR dijanjikan, bukan perkiraan ──
+          // SENGAJA tidak ada satu pun tanggal taksiran di sini. Perkiraan pelunasan
+          // ditolak: tanggal tebakan yang duduk di sebelah tanggal janji adalah cara
+          // tercepat membuat pemilik menagih orang pada hari yang tidak pernah
+          // disepakati. Kata "janji" disita untuk field janjiBayar saja.
+          const janjiDaftar = [];
+          berutang.forEach(x => { if (janjiPer[x.d.kunci]) janjiDaftar.push({ d: x.d, tgl: janjiPer[x.d.kunci] }); });
+          janjiDaftar.sort((a, b) => a.tgl < b.tgl ? -1 : 1);
+          html += '<div class="kg-label p6-sela">Janji bayar &middot; yang benar-benar dijanjikan</div>';
+          if (janjiDaftar.length === 0) {
+            html += '<div class="p6-kosong">Belum ada yang menjanjikan tanggal. Janji cuma lahir kalau kasir menekan chip janji saat mencatat kredit.</div>';
+          } else {
+            janjiDaftar.forEach(j2 => {
+              const telat = j2.tgl < hariIniIso;
+              const hari = Math.round((isoKeTanggal(j2.tgl) - isoKeTanggal(hariIniIso)) / 86400000);
+              html += '<div class="p6-janji-baris' + (telat ? ' telat' : '') + '">'
+                + '<span class="nm">' + escapeHtml(j2.d.nama) + '</span>'
+                + '<span class="tg">' + escapeHtml(formatTanggal(j2.tgl))
+                  + '<i>' + (telat ? 'lewat ' + Math.abs(hari) + ' hari' : (hari === 0 ? 'hari ini' : hari + ' hari lagi')) + '</i></span>'
+                + '<b class="kg-uang-piutang">' + rp(j2.d.sisa) + '</b></div>';
+            });
+            html += '<div class="kg-rincian">' + janjiDaftar.length + ' dari ' + berutang.length
+              + ' yang berutang punya tanggal janji. Sisanya belum pernah menjanjikan apa pun — '
+              + 'tidak ada perkiraan yang dikarang untuk mereka.</div>';
+          }
         }
       } else {
         // ===== buku PEGAWAI =====
@@ -26075,6 +26211,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.hitungPerkiraan = hitungPerkiraan;
   window.hapusBarisMerk = hapusBarisMerk;
   // Pola form baku (Lembar 1 Penyempurnaan, 7 Agu 2026)
+  window.p6BukuBonWa = p6BukuBonWa;
   window.hgGeserTarget = hgGeserTarget; window.hgKetikTuas = hgKetikTuas; window.hgSetelBaris = hgSetelBaris;
   window.ujiCakupanTawar = ujiCakupanTawar;
   window.bukaHitungMundur = bukaHitungMundur; window.tutupHitungMundur = tutupHitungMundur;
