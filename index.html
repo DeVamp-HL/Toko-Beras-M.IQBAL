@@ -4456,6 +4456,20 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #hargaKaca .hg-baris .kg-uang-dagang{ font-size:17px; }
 #hargaKaca .hg-kanan{ text-align:right; font-size:9.5px; color:var(--pf-abu); line-height:1.5; }
 #hargaKaca .hg-kanan .oks{ color:#d3a08b; font-weight:700; }
+/* JAM RAMAI LITERAN - pemeriksa kelayakan, bukan fitur harga sore. */
+#hargaKaca .hg-jamramai{ margin-top:8px; }
+#hargaKaca .jr-kisi{ display:flex; align-items:flex-end; gap:2px; height:46px; margin-top:7px; }
+#hargaKaca .jr-batang{ flex:1; border-radius:2px 2px 0 0; min-height:2px;
+  background:linear-gradient(180deg,rgba(226,205,166,.6),rgba(226,205,166,.18)); }
+#hargaKaca .jr-batang.nol{ background:rgba(255,255,255,.07); }
+#hargaKaca .jr-sumbu{ display:flex; justify-content:space-between; font-size:9px;
+  color:var(--pf-abu); margin-top:4px; }
+#hargaKaca .jr-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.55; color:var(--pf-abu); margin-top:7px; }
+#hargaKaca .jr-ket b{ font-style:normal; color:var(--pf-platina); }
+#hargaKaca .jr-catatan{ font-family:var(--pf-serif); font-style:italic; font-size:9.5px;
+  line-height:1.5; color:var(--pf-abu); opacity:.75; margin-top:6px; }
+
 /* TUAS TARGET MARGIN. Tuasnya 44px, dua tombolnya 44x44 — dipakai dengan ibu jari
    sambil memegang HP, bukan dengan kursor. */
 #hargaKaca .hg-tuas-panel{ margin-top:8px; }
@@ -23349,6 +23363,65 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
         h += `<div class="kg-panel hg-merk"><div class="hg-kepala"><div><b>Merk tanpa stok &amp; harga</b><small>${merkLain.length} merk — varietasnya masih bisa diisi</small></div></div>
           <div class="hg-lain">` + merkLain.map(m => { const j = jenisUntukMerk(m);
             return `<button type="button" class="hg-pil-jenis${j ? '' : ' oks'}" onclick="ubahJenisBeras(${escapeHtml(JSON.stringify(m))})">${escapeHtml(m)} &middot; ${j ? escapeHtml(j) : 'varietas?'}</button>`; }).join('') + `</div></div>`;
+      }
+
+      // ═══ JAM RAMAI LITERAN — 30 hari ═══════════════════════════════════════
+      // INI BUKAN sumbu "Harga Berjam", dan labelnya di layar mengatakan begitu.
+      // Harga Berjam (harga literan turun otomatis menjelang tutup) menuntut field
+      // baru di dokumen yang dibaca kasir, mewajibkan sw-kasir.js naik versi, dan
+      // membalik keputusan 9 Agu 2026 yang mencabut gerbang jam di kasir — kali ini
+      // menyentuh UANG, bukan akses. Ia juga mengubah kebiasaan kerja penjaga toko,
+      // bukan cuma layar. Itu perkara kebijakan, bukan fitur, dan dikeluarkan dari
+      // gelombang ini atas keputusan pemilik.
+      //
+      // Yang dibangun di sini cuma PEMERIKSA KELAYAKANNYA: kalau literan ternyata
+      // habis sebelum sore, seluruh gagasan diskon sore mati dan tujuh titik sentuh
+      // di tiga berkas tidak pernah perlu disentuh. Blok pasif, tanpa tombol, tanpa
+      // tulisan. Datanya nyata: kasir.html memang menulis `jam` di tiap transaksi.
+      const isoAwal = tanggalLokalIso(new Date(Date.now() - 30 * 86400000));
+      const perJam = new Array(24).fill(0);
+      let nLiteran = 0, nTanpaJam = 0;
+      ambilPenjualan().forEach(pj => {
+        if (pj.jenis !== 'literan' || (pj.tanggal || '') < isoAwal) return;
+        nLiteran++;
+        const jj = parseInt(String(pj.jam || '').slice(0, 2), 10);
+        if (isNaN(jj) || jj < 0 || jj > 23) { nTanpaJam++; return; }
+        perJam[jj]++;
+      });
+      if (nLiteran > 0) {
+        const jamAda = [];
+        for (let j = 0; j < 24; j++) if (perJam[j] > 0) jamAda.push(j);
+        const jamAwal = Math.max(0, Math.min.apply(null, jamAda) - 1);
+        const jamAkhir = Math.min(23, Math.max.apply(null, jamAda) + 1);
+        // Patokan tinggi = jam TERAMAI di rentang ini. Itu perbandingan antar-jam
+        // dalam satu deret, dan cacahnya dicetak di keterangan bawah — jadi gambar ini
+        // menjawab "jam mana paling ramai", bukan "berapa", dan tidak berpura-pura
+        // menjawab yang kedua.
+        const maksJam = Math.max.apply(null, perJam);
+        let bar = '';
+        for (let j = jamAwal; j <= jamAkhir; j++) {
+          bar += `<span class="jr-batang${perJam[j] === 0 ? ' nol' : ''}" style="height:${perJam[j] === 0 ? 3 : Math.max(8, Math.round(perJam[j] / maksJam * 100))}%;" title="${j}:00 — ${perJam[j]} nota"></span>`;
+        }
+        // "Sore" = pukul 16 ke atas, sejalan dengan jam tutup toko yang lazim di sini.
+        const sore = perJam.slice(16).reduce((a, v) => a + v, 0);
+        // PENYEBUTNYA NOTA YANG PUNYA JAM, bukan seluruh nota. Yang diukur sebaran
+        // WAKTU; memasukkan nota tanpa jam ke penyebut menekan persentasenya ke bawah
+        // dengan data yang justru tidak tahu jam berapa. Cacah yang dikeluarkan tetap
+        // disebut di kalimatnya, jadi tidak ada yang dibuang diam-diam.
+        const nBerjam = nLiteran - nTanpaJam;
+        const persenSore = nBerjam > 0 ? Math.round(sore / nBerjam * 100) : 0;
+        h += `<div class="kg-panel hg-jamramai">
+          <div class="kg-label">Jam ramai literan &middot; 30 hari</div>
+          <div class="jr-kisi">${bar}</div>
+          <div class="jr-sumbu"><span>${jamAwal}:00</span><span>${jamAkhir}:00</span></div>
+          <div class="jr-ket">${nBerjam} nota literan berjam. <b>${persenSore}% terjadi pukul 16:00 ke atas.</b>
+            ${persenSore < 15
+              ? 'Literan hampir habis sebelum sore — diskon sore tidak akan banyak menolong.'
+              : 'Cukup banyak yang terjadi menjelang tutup.'}
+            ${nTanpaJam > 0 ? nTanpaJam + ' nota tanpa jam tidak ikut dihitung.' : ''}</div>
+          <div class="jr-catatan">Ini bukan fitur harga sore &mdash; cuma pemeriksa apakah harga sore ada gunanya.
+            Harga yang berubah menurut jam mengubah cara kasir bekerja, jadi ia dibicarakan terpisah.</div>
+        </div>`;
       }
 
       h += `<button type="button" class="kg-terpilih hg-tambah" onclick="bukaLembarHarga('literan')">Tambah Harga</button>`;
