@@ -16601,7 +16601,15 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
       (k.merkList || []).forEach(m => catat('K|' + m.merk, m.merk, 'kg', m.totalKg || 0));
     });
     ambilProduksiBerlaku().forEach(pr => {
-      if (pr.tanggal !== hariIni) return;
+      // pr.stokAwal DISARING, menyamai k.stokAwal di loop batch tepat di atas.
+      // Saldo pembuka kemasan ditulis sebagai dokumen PRODUKSI ber-beliJadi + stokAwal
+      // (lihat tulisSaldoPembuka). Sisi SUMBER-nya sudah kebal lewat !pr.beliJadi di
+      // bawah, tapi sisi HASIL-nya tidak: baris 'U|' di ujung loop ini tidak memeriksa
+      // apa pun selain namaProduk & jumlahUnit. Akibatnya, pagi 1 Januari sesudah tutup
+      // buku, Papan Kapur akan mengumumkan SELURUH stok kemasan sebagai "masuk hari ini"
+      // — perubahan yang tidak pernah terjadi, di papan yang seluruh gunanya adalah
+      // berjanji bahwa perubahan stok tidak pernah hilang atau muncul diam-diam.
+      if (pr.tanggal !== hariIni || pr.stokAwal) return;
       if (Array.isArray(pr.sumberList) && pr.sumberList.length > 0)
         pr.sumberList.forEach(x => { if (x.merk) catat('K|' + x.merk, x.merk, 'kg', -(x.kg || 0)); });
       else if (pr.merkSumber && !pr.beliJadi) catat('K|' + pr.merkSumber, pr.merkSumber, 'kg', -(pr.kgDipakai || 0));
