@@ -18959,8 +18959,28 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const el = document.getElementById('slipBulan');
     if (!el.value) el.value = bulanLokalIso();
     const daftar = dataSlipGaji(el.value);
+    // TIGA KEADAAN KOSONG, bukan satu kalimat untuk semuanya. Kalimat lama menyuruh
+    // "isi gaji di formulir atas" — benar untuk satu keadaan dari tiga, dan menyesatkan
+    // untuk dua lainnya: bulan yang dokumennya belum pernah disimpan sama sekali, dan
+    // bulan yang gajinya memang nol karena tidak ada yang masuk.
+    const dokBln = ambilBiayaBulanan().find(b => b.bulan === el.value);
+    const namaBln = namaBulanPanjang(el.value + '-01') || 'bulan itu';
+    let kosongHtml;
+    if (!dokBln) {
+      kosongHtml = '<div class="kosong-info"><b>' + escapeHtml(namaBln) + ' belum pernah disimpan</b>'
+        + '<span>Bukan berarti gajinya nol — bulan ini belum punya catatan sama sekali. '
+        + 'Isi di formulir atas lalu Simpan, slipnya menyusun sendiri dari sana.</span></div>';
+    } else if (!(dokBln.rincianGaji || []).length) {
+      kosongHtml = '<div class="kosong-info"><b>Catatan ' + escapeHtml(namaBln) + ' ada, tapi tanpa baris gaji</b>'
+        + '<span>Pos biaya lain sudah tersimpan; bagian gajinya yang belum. Isi hari masuk '
+        + 'tiap orang di formulir atas.</span></div>';
+    } else {
+      kosongHtml = '<div class="kosong-info"><b>Gaji ' + escapeHtml(namaBln) + ' tercatat Rp0</b>'
+        + '<span>Barisnya ada tapi semua nol hari — kalau memang tidak ada yang masuk bulan itu, '
+        + 'ini sudah benar dan tidak ada slip yang perlu dikirim.</span></div>';
+    }
     kont.innerHTML = daftar.length === 0
-      ? '<div class="kosong-info"><b>Belum ada gaji tercatat bulan ini</b><span>Isi gaji pegawai di formulir atas dulu — slipnya menyusun dari sana.</span></div>'
+      ? kosongHtml
       : daftar.map((d, i) => `<button type="button" class="baris-44 baris-ketuk" onclick="bukaSlipGaji(${i})">
           <span class="nama"><i class="trx-nama">${escapeHtml(d.nama)}</i><small>${d.hari} hari${d.potongan > 0 ? ' · potongan kasbon ' + formatRupiah(d.potongan) : ''}${d.tglBayar ? ' · dibayar ' + formatTanggal(d.tglBayar) : ' · belum dibayar'}</small></span>
           <span class="angka">${formatRupiah(d.diterima)}</span>
