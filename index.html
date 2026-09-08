@@ -4155,6 +4155,9 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   min-height:26px; font-size:11px; color:var(--teks); }
 #labaKaca .lb6-terjun b{ font-family:var(--pf-serif); font-weight:600; font-size:12.5px; }
 #labaKaca .lb6-terjun.total{ border-top:1px solid var(--pf-tepi); padding-top:6px; margin-top:3px; }
+/* Baris syarat berdiri DI LUAR panel keping — tepi putus-putus supaya terbaca sebagai
+   syarat yang menempel pada ketiga angka, bukan sebagai isi salah satu keping. */
+#labaKaca .lb6-syarat{ margin-top:8px; padding-top:7px; border-top:1px dashed rgba(226,205,166,.28); }
 #labaKaca .lb6-zona-saklar{ display:flex; gap:7px; margin-top:12px; }
 #labaKaca .lb6-zona-saklar button{ flex:1; min-height:44px; border-radius:4px; font-size:11.5px; font-weight:700;
   letter-spacing:.05em; color:var(--pf-abu); border:1px solid var(--pf-tepi);
@@ -23156,13 +23159,43 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       }
       html += '</div>';
 
+      // PENJAGA BERDIRI DI LUAR APA YANG DIJAGANYA — aturan pertama gelombang Laporan,
+      // dipakai lagi di sini. Sampai commit ini, DUA hal yang mengecilkan KETIGA angka
+      // kepala hanya diucapkan di dalam cabang keping 'kotor': berapa omzet yang tidak
+      // ikut dihitung, dan berapa refund yang sudah memotongnya. Keping "Laba bersih" dan
+      // "Diterima tunai" berdiri di atas L.margin yang SAMA — sudah mengeluarkan seluruh
+      // omzet tanpa HPP dan sudah dipotong seluruh returUang — tapi satu ketukan pada
+      // kepingnya membuang syaratnya tanpa jejak. Bawaan layar ini 'kotor', jadi
+      // syaratnya terlihat sampai pemilik menyentuh apa pun, lalu hilang.
+      // Sekarang baris ini digambar di luar panel: keping mana pun yang dipilih, ia tetap.
+      const syarat = [];
+      if (L.jumlahTanpaHpp > 0) syarat.push(L.jumlahTanpaHpp + ' trx tanpa HPP (' + rp(L.omzetTanpaHpp) + ') tidak masuk ketiga angka di atas');
+      if (L.returJumlah > 0) syarat.push(L.returJumlah + ' retur sudah memotongnya ' + rp(L.returUang));
+      if (syarat.length) html += '<div class="kg-rincian lb6-syarat">' + syarat.join(' · ') + '</div>';
+
+      // "DIJUAL DI BAWAH HPP" JUGA KELUAR DARI CABANG ZONA. Ini satu-satunya kalimat di
+      // halaman ini yang menunjuk TINDAKAN (cek Daftar Harga), dan dulu ia hidup di dalam
+      // if (_labaZona === 'dari'). Menekan "Ke mana" menggambar ulang tanpa blok itu, tanpa
+      // salinan di mana pun — jadi peringatan yang paling bisa ditindaklanjuti hilang oleh
+      // satu ketukan, dan tidak meninggalkan jejak bahwa tadi ada sesuatu yang diperingatkan.
+      // merk dihitung SEKALI di sini dan dipakai ulang oleh zona "Dari mana" di bawah,
+      // supaya tidak lahir dua daftar merk yang bisa berselisih.
+      const merkBulan = kelompokMerkLaba(cocok).sort((a, b) => b.margin - a.margin);
+      const rugiMerk = merkBulan.filter(x => x.margin < 0);
+      if (rugiMerk.length) {
+        html += '<div class="kg-label lb6-sela oks">Dijual di bawah HPP · ' + rugiMerk.length + ' merk</div>'
+          + rugiMerk.map(x => '<div class="lb6-merk"><span class="nm">' + escapeHtml(x.nama)
+            + '<small>jual di bawah harga pokoknya — cek Daftar Harga</small></span>'
+            + '<b class="rugi">' + rp(x.margin) + '</b></div>').join('');
+      }
+
       // --- saklar zona ---
       html += '<div class="lb6-zona-saklar">'
         + '<button type="button"' + (_labaZona === 'dari' ? ' class="kg-terpilih"' : '') + ' onclick="labaPilihZona(\'dari\')">Dari mana</button>'
         + '<button type="button"' + (_labaZona === 'ke' ? ' class="kg-terpilih"' : '') + ' onclick="labaPilihZona(\'ke\')">Ke mana</button></div>';
 
       if (_labaZona === 'dari') {
-        const merk = kelompokMerkLaba(cocok).sort((a, b) => b.margin - a.margin);
+        const merk = merkBulan;   // satu daftar, dihitung di atas
         const maksM = Math.max(1, ...merk.map(x => Math.abs(x.margin)));
         html += '<div class="kg-label lb6-sela">Margin per merk · diurut margin · ' + namaBulan + '</div>';
         html += merk.length === 0 ? '<div class="lb6-kosong">Belum ada transaksi ber-HPP bulan ini.</div>'
@@ -23171,13 +23204,6 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
               + '<span class="bar"><i style="width:' + Math.round(Math.abs(x.margin) / maksM * 100) + '%;"'
               + (x.margin < 0 ? ' class="rugi"' : '') + '></i></span>'
               + '<b' + (x.margin < 0 ? ' class="rugi"' : '') + '>' + rp(x.margin) + '</b></div>').join('');
-        const rugi = merk.filter(x => x.margin < 0);
-        if (rugi.length) {
-          html += '<div class="kg-label lb6-sela oks">Dijual di bawah HPP · ' + rugi.length + ' merk</div>'
-            + rugi.map(x => '<div class="lb6-merk"><span class="nm">' + escapeHtml(x.nama)
-              + '<small>jual di bawah harga pokoknya — cek Daftar Harga</small></span>'
-              + '<b class="rugi">' + rp(x.margin) + '</b></div>').join('');
-        }
       } else {
         // --- KE MANA ---
         const susutRows = barisSusutStok(t => cocok(t));
