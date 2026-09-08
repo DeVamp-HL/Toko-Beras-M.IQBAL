@@ -23097,7 +23097,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // jadi dua angka bertetangga di satu keping mengeja arah dengan dua tanda berbeda.
       const minus = '<span class="lb6-tanda-minus">\u2212</span>';
       const rp = n => (n < 0 ? minus : '') + 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
-      // margin kredit = rumus margin per-trx daftar lama, disaring kredit — bukan estimasi
+      // margin kredit = rumus margin per-trx daftar lama, disaring kredit — bukan estimasi.
+      // RUMUS SAINGAN, dan sejak afe724e ia berselisih dengan mesinnya: L.labaBersih sudah
+      // dipotong seluruh uang kembali retur, sementara marginKredit di bawah dihitung
+      // langsung dari penjualan dan TIDAK pernah menyentuh retur. Jadi
+      // tunai = L.labaBersih − marginKredit mengurangkan dua angka berbasis berbeda.
+      // Membuat marginKredit sadar-retur menuntut MEMBEBANKAN refund ke tunai lawan kredit
+      // — aturan uang baru, dan dokumen retur tidak menyimpan cara bayar aslinya. Jadi yang
+      // dikerjakan di sini: mengaku, bukan menebak. Sama dengan sikap di kartu desktop.
       let marginKredit = 0, omzetKredit = 0;
       ambilPenjualan().forEach(p => {
         if (!cocok(p.tanggal) || caraBayarKunci(p) !== 'kredit') return;
@@ -23188,6 +23195,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           + '<b class="kg-uang-laba lb6-besar' + kelasArah(tunai) + '">' + rp(tunai) + '</b>'
           + '<div class="kg-rincian">laba bersih ' + rp(L.labaBersih) + ' − margin yang masih kredit ' + rp(marginKredit)
           + ' · kredit ' + pct(omzetKredit, L.omzetHitung + L.omzetTanpaHpp) + ' dari omzet ' + namaBulan + '</div>'
+          + (L.returJumlah > 0
+            ? '<div class="kg-rincian lb6-oks">Laba bersih di atas sudah dipotong refund retur ' + rp(L.returUang)
+              + ', tapi "margin yang masih kredit" belum — refund tidak menyimpan cara bayar aslinya, jadi tidak bisa dibebankan ke tunai atau kredit tanpa menebak.</div>'
+            : '')
           + (daftarP.length ? '<div class="kg-label" style="margin-top:8px;">Piutang berjalan · semua periode</div>'
             + daftarP.map(x => '<div class="lb6-terjun"><span>' + escapeHtml(x.nama)
               + (x.umurHari != null ? ' · ' + x.umurHari + ' hari' : '') + '</span><b class="kg-uang-piutang">'
@@ -23287,10 +23298,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         const ongkos = L.biayaToko + L.hapusBuku - L.susutStok;
         let kum = 0, merdeka = null;
         Object.keys(perTgl).sort().forEach(t2 => { kum += perTgl[t2]; if (merdeka === null && kum >= ongkos) merdeka = t2; });
+        // KUMULATIFNYA RETUR-KOTOR, PEMBANDINGNYA RETUR-BERSIH. perTgl dijumlah langsung
+        // dari penjualan; ongkos memakai L yang sudah retur-bersih. Membebankan refund per
+        // TANGGAL menuntut aturan baru (tanggal retur, bukan tanggal jualnya) — jadi di
+        // sini pun: mengaku, bukan menebak. Tanpa kalimat itu, satu layar memajang TIGA
+        // angka bernama margin dengan tiga basis berbeda tanpa satu kata pembeda.
         html += '<div class="kg-label lb6-sela">Sejak tanggal ini untung</div>'
           + '<div class="kg-rincian">' + (merdeka
             ? 'Margin kumulatif menutup ongkos bulan (' + rp(ongkos) + ') sejak <b>' + formatTanggal(merdeka) + '</b> — sesudahnya tiap margin jadi laba.'
-            : 'Belum menutup ongkos bulan ini (' + rp(ongkos) + ') — margin kumulatif masih ' + rp(kum) + '.') + '</div>';
+            : 'Belum menutup ongkos bulan ini (' + rp(ongkos) + ') — margin kumulatif masih ' + rp(kum) + '.') + '</div>'
+          + (L.returJumlah > 0
+            ? '<div class="kg-rincian lb6-oks">Kumulatif di atas belum dipotong refund retur ' + rp(L.returUang)
+              + ' — jadi tanggalnya bisa lebih cepat daripada yang sebenarnya.</div>'
+            : '');
         // 100 petak
         if (L.omzetHitung > 0) {
           // GAMBAR SERATUS PETAK ADALAH BENTUK PALING MUDAH DIPERCAYA DI HALAMAN INI —
