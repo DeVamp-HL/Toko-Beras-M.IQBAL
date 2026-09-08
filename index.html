@@ -4148,6 +4148,9 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #labaKaca .lb6-tanda-minus{ margin-right:.12em; }
 #labaKaca .lb6-pita{ height:5px; border-radius:99px; overflow:hidden; background:rgba(211,160,139,.25); }
 #labaKaca .lb6-pita span{ display:block; height:100%; background:var(--emas); }
+/* MENOLAK MENGGAMBAR, bukan menggambar nol. Bilah kosong terbaca "0%" — padahal yang benar
+   "belum bisa dihitung". Tepi putus-putus wujud yang sudah dipakai rumah ini untuk itu. */
+#labaKaca .lb6-pita.kosong{ background:none; border:1px dashed rgba(226,205,166,.3); }
 #labaKaca .lb6-terjun{ display:flex; justify-content:space-between; align-items:baseline; gap:10px;
   min-height:26px; font-size:11px; color:var(--teks); }
 #labaKaca .lb6-terjun b{ font-family:var(--pf-serif); font-weight:600; font-size:12.5px; }
@@ -23092,12 +23095,29 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // --- panel syarat ---
       html += '<div class="kg-panel lb6-panel">';
       if (K === 'kotor') {
-        const cakupan = (L.omzetHitung + L.omzetTanpaHpp) > 0 ? L.omzetHitung / (L.omzetHitung + L.omzetTanpaHpp) : 1;
+        // PITA INI DULU MENGGAMBAR EMAS PENUH PERSIS DI DUA KEADAAN TERBURUKNYA.
+        // (a) Penyebut <= 0 (bulan tanpa satu transaksi pun) jatuh ke : 1 lalu width:100% —
+        //     bulan yang tidak punya apa-apa tergambar sempurna, dan di layar ini penuh
+        //     berarti "seluruh omzet sudah ber-HPP". Itu bukan 100%, itu BELUM BISA DIHITUNG.
+        // (b) Pembilang negatif atas penyebut positif memberi width negatif; terukur
+        //     width:-47,3% tergambar 313,0px dari wadah 313,0px — juga penuh.
+        // Tiga keadaan yang wajib berbeda digambar identik, dan wujud yang dipilih yang
+        // paling menenangkan. Sekarang: belum bisa dihitung -> pitanya MENOLAK menggambar
+        // dan menyebut sebabnya; bisa dihitung -> lebarnya dijepit 0..100.
+        const penyebutCakupan = L.omzetHitung + L.omzetTanpaHpp;
+        const bisaCakupan = penyebutCakupan > 0;
+        const cakupan = bisaCakupan ? L.omzetHitung / penyebutCakupan : null;
+        const lebarPita = bisaCakupan ? Math.max(0, Math.min(100, cakupan * 100)) : 0;
         html += '<div class="kg-label">Syarat margin kotor</div>'
           + '<b class="kg-uang-dagang lb6-besar' + kelasArah(L.margin) + '">' + rp(L.margin) + '</b>'
-          + '<div class="lb6-pita"><span style="width:' + (cakupan * 100) + '%;"></span></div>'
-          + '<div class="kg-rincian">terhitung ' + pct(L.omzetHitung, L.omzetHitung + L.omzetTanpaHpp)
-          + (L.jumlahTanpaHpp ? ' · luput ' + L.jumlahTanpaHpp + ' trx (' + rp(L.omzetTanpaHpp) + ' omzet tanpa HPP)' : ' · semua transaksi ber-HPP') + '</div>'
+          + (bisaCakupan
+            ? '<div class="lb6-pita"><span style="width:' + lebarPita.toFixed(1) + '%;"></span></div>'
+              + (cakupan < 0 ? '<div class="kg-rincian lb6-oks">margin kotor sedang minus — pita ini mengukur cakupan omzet, bukan untung</div>' : '')
+            : '<div class="lb6-pita kosong"></div>')
+          + '<div class="kg-rincian">' + (bisaCakupan
+            ? 'terhitung ' + pct(L.omzetHitung, penyebutCakupan)
+              + (L.jumlahTanpaHpp ? ' · luput ' + L.jumlahTanpaHpp + ' trx (' + rp(L.omzetTanpaHpp) + ' omzet tanpa HPP)' : ' · semua transaksi ber-HPP')
+            : 'belum ada transaksi bulan ini — cakupan belum bisa dihitung') + '</div>'
           + (L.returJumlah > 0
             ? '<div class="kg-rincian">sudah dikurangi ' + L.returJumlah + ' retur: uang kembali '
               + rp(L.returUang) + (L.returHpp > 0 ? ' · HPP barang utuh yang kembali ' + rp(L.returHpp) : '')
