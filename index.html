@@ -4424,24 +4424,38 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   color:var(--pf-abu); margin:9px 2px 2px; }
 #pelanggan6a .pel6-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
   line-height:1.5; color:var(--pf-abu); }
-#pelanggan6a .pel6-chips{ display:flex; gap:7px; overflow-x:auto; margin:11px 0 4px;
-  -webkit-overflow-scrolling:touch; scrollbar-width:none; }
-#pelanggan6a .pel6-chips::-webkit-scrollbar{ display:none; }
+/* MELIPAT, bukan menggulir — seperti desainnya. Rute datang dari kolom teks bebas,
+   jadi cacahnya tidak dibatasi apa pun; begitu pitanya menggulir, mengetuk chip di
+   ujung kanan menggambar ulang innerHTML, scrollLeft balik ke nol, dan chip yang
+   barusan dipilih keluar dari layar. Melipat juga mengembalikan ruang untuk cincin
+   fokus chip (outline-offset 2 + tebal 2) yang dulu terpotong wadah gulirnya. */
+#pelanggan6a .pel6-chips{ display:flex; flex-wrap:wrap; gap:7px; margin:11px 0 4px; }
 #pelanggan6a .pel6-chip{ flex:0 0 auto; min-height:44px; padding:0 14px; border-radius:99px;
   border:1px solid var(--pf-tepi); background:none; color:var(--pf-abu);
   font-family:inherit; font-size:11px; font-weight:600; }
 #pelanggan6a .pel6-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10px;
   color:var(--pf-abu); line-height:1.5; margin:7px 2px 10px; }
+/* Tepi & latar pindah ke KARTU; barisnya <button> telanjang di dalamnya. Dengan
+   begitu rincian berdiri sebagai saudara baris (bukan anaknya) tanpa rupanya berubah:
+   satu kartu, satu kotak. */
+#pelanggan6a .pel6-kartu{ position:relative; margin-bottom:8px; border:1px solid var(--pf-tepi);
+  border-radius:13px; background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+  overflow:hidden; }
 #pelanggan6a .pel6-baris{ position:relative; display:block; width:100%; text-align:left;
-  padding:11px 13px; margin-bottom:8px; border:1px solid var(--pf-tepi); border-radius:13px;
-  background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
-  color:inherit; font-family:inherit; overflow:hidden; }
+  padding:11px 13px; border:none; border-radius:0; background:none;
+  color:inherit; font-family:inherit; }
 /* Bilah total di belakang nama: lebarnya var(--isi) — variabel yang SAMA dengan
    angka Total belanja di rinciannya, bukan hitungan kedua. */
 #pelanggan6a .pel6-bilah{ position:absolute; top:0; left:0; bottom:0; width:var(--isi,0%);
   background:linear-gradient(90deg,rgba(226,205,166,.11),rgba(226,205,166,.015)); pointer-events:none; }
 #pelanggan6a .pel6-dalam{ position:relative; }
-#pelanggan6a .pel6-atas{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+/* Dua halaman kembar (Buku Pemasok & Buku Pelanggan) memakai jangkar mata yang sama.
+   Ukuran, warna, dan cara mengambil hurufnya ditiru persis dari 4803/20447. */
+#pelanggan6a .pel6-atas{ display:grid; grid-template-columns:34px 1fr auto; gap:10px;
+  align-items:center; }
+#pelanggan6a .pel6-inisial{ width:34px; height:34px; border-radius:50%; display:flex;
+  align-items:center; justify-content:center; font-family:var(--pf-serif); font-weight:600;
+  font-size:14px; color:var(--pf-platina); border:1px solid var(--pf-tepi2); }
 #pelanggan6a .pel6-ciri{ font-size:13px; font-weight:600; line-height:1.4; }
 #pelanggan6a .pel6-ciri.kosong{ color:var(--pf-abu); font-weight:400;
   font-family:var(--pf-serif); font-style:italic; }
@@ -4456,8 +4470,12 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   box-shadow:0 0 5px rgba(200,211,189,.4); }
 #pelanggan6a .pel6-irama{ margin-left:auto; font-family:var(--pf-serif); font-style:italic;
   font-size:9.5px; color:var(--pf-abu); }
-#pelanggan6a .pel6-rinci{ margin-top:9px; padding-top:9px; border-top:1px dashed rgba(255,255,255,.1);
+#pelanggan6a .pel6-rinci{ margin:0 13px 11px; padding-top:9px;
+  border-top:1px dashed rgba(255,255,255,.1);
   display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; }
+/* Kosong yang jujur: pudar + miring + menyebut sebabnya, sama dengan .pel6-ciri.kosong. */
+#pelanggan6a .pel6-rinci .nilai.pel6-kosong{ color:var(--pf-abu);
+  font-family:var(--pf-serif); font-style:italic; font-size:11px; }
 #pelanggan6a .pel6-rinci .label{ font-size:8.5px; font-weight:600; letter-spacing:.12em;
   text-transform:uppercase; color:var(--pf-abu); }
 #pelanggan6a .pel6-rinci .nilai{ font-size:12px; margin-top:2px; }
@@ -4468,6 +4486,11 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #pelanggan6a .pel6-thr-baris button{ flex:none; width:44px; height:44px; border-radius:11px;
   border:1px solid var(--pf-tepi2); background:none; color:var(--pf-platina);
   font-family:inherit; font-size:19px; }
+/* Yang tidak bisa ditekan wajib kelihatan tidak bisa ditekan — di 2020 tombol '-'
+   dulu tergambar persis sama dengan yang hidup, ditekan, dan layar diam saja.
+   Ragamnya meniru stepper lama di berkas ini (2446). */
+#pelanggan6a .pel6-thr-baris button:disabled{ color:var(--pf-abu); opacity:.5;
+  border-color:rgba(255,255,255,.08); }
 #pelanggan6a .pel6-thr-baris b{ font-family:var(--pf-serif); font-weight:600; font-size:21px;
   color:var(--pf-platina); }
 #pelanggan6a .pel6-thr-baris i{ margin-left:auto; font-family:var(--pf-serif); font-style:italic;
@@ -7224,8 +7247,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div class="panel-kepala"><h2>THR Ramadan <span class="keterangan">pelanggan setia</span></h2><span class="kd-hitung" id="thrRingkas"></span></div>
       <label for="thrTahun">Tahun</label>
       <input type="number" id="thrTahun" inputmode="numeric" onchange="tampilkanPelanggan()" style="max-width:120px;">
-      <p class="keterangan" style="margin-top:8px;">Penerima ditandai ✓ di daftar bawah — urutan daftar sudah dari yang paling
-        sering belanja. Catat lewat kartu pelanggannya. Belanja barang THR-nya sendiri dicatat di tab Harian (Toko).</p>
+      <!-- Urutannya BUKAN "paling sering belanja": hitungPelanggan() menutup dengan
+           .sort() atas `terakhir` — tanggal datang paling baru. Kalimat lama menyuruh
+           memilih penerima THR dari atas daftar, jadi pembeli sekali seumur hidup yang
+           kebetulan mampir kemarin naik ke atas dan langganan mingguan yang belum datang
+           dua pekan tenggelam. Yang diperbaiki KALIMATNYA, bukan pengurutannya —
+           mengubah urutan menggeser layar yang sudah dipakai sehari-hari. -->
+      <p class="keterangan" style="margin-top:8px;">Penerima ditandai ✓ di daftar bawah — urutan daftar dari yang paling
+        BARU datang, bukan yang paling sering. Catat lewat kartu pelanggannya. Belanja barang THR-nya sendiri dicatat di tab Harian (Toko).</p>
     </div>
 
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
@@ -19573,7 +19602,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (_pel6Rute && _pel6Rutes.indexOf(_pel6Rute) < 0) _pel6Rute = null;   // rutenya benar-benar lenyap dari buku
       if (_pel6Rutes.length) {
         h += `<div class="pel6-chips">` + _pel6Rutes.map((r, ri) =>
-          `<button type="button" class="pel6-chip${r === _pel6Rute ? ' kg-terpilih' : ''}" onclick="pel6Rute(${ri})">${escapeHtml(r)}</button>`
+          `<button type="button" class="pel6-chip${r === _pel6Rute ? ' kg-terpilih' : ''}" data-fok="chip:${escapeHtml(r)}" onclick="pel6Rute(${ri})">${escapeHtml(r)}</button>`
         ).join('') + `</div>`;
       }
 
@@ -19590,8 +19619,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (!tampil.length) {
         const kata = (document.getElementById('cariPelanggan').value || '').trim();
         const menyaring = !!(kata || _pel6Rute);
-        h += `<div class="kosong-info"><b>${menyaring ? 'Tidak ketemu' : 'Belum ada pelanggan bernama'}</b><span>${menyaring
-          ? 'Coba kata lain — nama, ciri pengenal, rute, atau barang langganannya.'
+        // Kalimat desainnya menenangkan dulu, baru menyuruh — "Datanya tidak hilang"
+        // menjawab ketakutan yang sebenarnya (buku pelanggan terhapus), dan menyebut
+        // DUA jalan keluar yang benar-benar ada di layar: lepas chip, atau kosongkan cari.
+        h += `<div class="kosong-info"><b>${menyaring ? 'Tidak ada yang cocok' : 'Belum ada pelanggan bernama'}</b><span>${menyaring
+          ? 'Datanya tidak hilang — lepas chip rutenya, atau kosongkan kolom carinya.'
           : 'Isi kolom nama pembeli saat menjual — tunai dan QRIS juga bisa, bukan cuma kredit.'}</span></div>`;
       } else {
         h += `<div class="pel6-ket">Bilah emas di belakang baris = total belanja seumur hidup, dibandingkan pelanggan terbesar di SELURUH buku — panjangnya tidak berubah waktu disaring. Utang disebut apa adanya — piutang bukan kas.</div>`;
@@ -19626,23 +19658,45 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           const irama = hariAda.length
             ? 'biasanya ' + hariAda.map(d => NAMA_HARI_PENDEK[d]).join(' \u00b7 ')
             : (x.terakhir ? 'terakhir datang ' + formatTanggal(x.terakhir) : 'belum pernah belanja');
-          return `<div class="pel6-baris" onclick="pel6Baris(${i})" role="button" tabindex="0">
-            <span class="pel6-bilah" style="--isi:${porsi}%"></span>
-            <div class="pel6-dalam">
-              <div class="pel6-atas">
-                <span><span class="pel6-ciri${(x.ciri || x.catatan) ? '' : ' kosong'}">${escapeHtml(x.ciri || x.catatan || 'belum ada ciri')}${x.favorit ? ' &middot; langganan ' + escapeHtml(x.favorit) : ''}</span>
-                <span class="pel6-nama">${escapeHtml(x.nama)}${petaThr[x.kunci] ? ' &middot; THR ✓' : ''}</span></span>
-                ${x.sisaUtang > 0 ? '<span class="lencana-amber">utang ' + formatRupiah(x.sisaUtang) + '</span>' : `<span class="pel6-total">${formatRupiah(x.total)}</span>`}
+          const terbuka = _pel6Buka === x.kunci;
+          // Tiga tanda kosong yang dulu SEMUANYA em-dash telanjang. Tiga sebab berbeda —
+          // belum pernah belanja / belum pernah tercatat / kolom belum diisi — berhak
+          // tiga kalimat, dan wujud pudar yang sudah dipakai .pel6-ciri.kosong di layar
+          // yang sama. Satu sebab yang TIDAK bisa dibedakan di sini sengaja dibiarkan:
+          // "Langganan" juga kosong kalau semua belanjanya lewat kasir darurat (19410
+          // memaksa barang=''), dan memisahkan itu perlu penanda baru dari lintasan jual.
+          const kosong = (t) => `<span class="nilai pel6-kosong">${t}</span>`;
+          const nilai = (t) => `<span class="nilai">${t}</span>`;
+          // Baris = <button> SUNGGUHAN, rinciannya SAUDARA, bukan anak. Dulu barisnya
+          // <div role="button" tabindex="0"> dengan panel rincian DI DALAMNYA. Satu
+          // keputusan struktur itu melahirkan enam cacat sekaligus: Enter/Spasi tidak
+          // membuka (nol pendengar keydown di seluruh berkas — dua yang ada dua-duanya
+          // kotak sandi), namanya tidak terbaca di pohon aksesibilitas, buka/tutup tidak
+          // pernah dikabarkan, cincin fokus aplikasi (1340) hanya menyebut button/summary/a
+          // sehingga sebuah div[tabindex] mendapat cincin oranye bawaan Chrome di layar
+          // yang seluruhnya emas, umpan balik sentuh (button:active, 1248) tidak berlaku,
+          // dan mengetuk angka di dalam rincian justru MENUTUP kartunya.
+          // Susunan desainnya (Gabungan, baris 121-149) sudah benar sejak awal.
+          return `<div class="pel6-kartu">
+            <button type="button" class="pel6-baris" data-fok="baris:${escapeHtml(x.kunci)}" onclick="pel6Baris(${i})" aria-expanded="${terbuka ? 'true' : 'false'}">
+              <span class="pel6-bilah" style="--isi:${porsi}%"></span>
+              <div class="pel6-dalam">
+                <div class="pel6-atas">
+                  <span class="pel6-inisial" aria-hidden="true">${escapeHtml(String(x.nama).trim().charAt(0).toUpperCase())}</span>
+                  <span><span class="pel6-ciri${(x.ciri || x.catatan) ? '' : ' kosong'}">${escapeHtml(x.ciri || x.catatan || 'belum ada ciri')}${x.favorit ? ' &middot; langganan ' + escapeHtml(x.favorit) : ''}</span>
+                  <span class="pel6-nama">${escapeHtml(x.nama)}${petaThr[x.kunci] ? ' &middot; THR ✓' : ''}</span></span>
+                  ${x.sisaUtang > 0 ? '<span class="lencana-amber">utang ' + formatRupiah(x.sisaUtang) + '</span>' : `<span class="pel6-total">${formatRupiah(x.total)}</span>`}
+                </div>
+                <div class="pel6-kaki">${titik}<span class="pel6-irama">${irama}</span></div>
               </div>
-              <div class="pel6-kaki">${titik}<span class="pel6-irama">${irama}</span></div>
-              ${_pel6Buka === x.kunci ? `<div class="pel6-rinci">
-                <span><span class="label">Total belanja</span><span class="nilai">${formatRupiah(x.total)}</span></span>
-                <span><span class="label">Langganan</span><span class="nilai">${escapeHtml(x.favorit || '—')}</span></span>
-                <span><span class="label">Terakhir datang</span><span class="nilai">${x.terakhir ? escapeHtml(formatTanggal(x.terakhir)) : '—'}</span></span>
-                <span><span class="label">Rute antar</span><span class="nilai">${escapeHtml(x.rute || '—')}</span></span>
-                <button type="button" class="kg-terpilih pel6-buka" onclick="event.stopPropagation(); bukaLembarPelanggan(${i})">Buka kartu</button>
-              </div>` : ''}
-            </div>
+            </button>
+            ${terbuka ? `<div class="pel6-rinci">
+              <span><span class="label">Total belanja</span>${x.total > 0 ? nilai(formatRupiah(x.total)) : kosong('belum pernah belanja')}</span>
+              <span><span class="label">Langganan</span>${x.favorit ? nilai(escapeHtml(x.favorit)) : kosong('belum tercatat')}</span>
+              <span><span class="label">Terakhir datang</span>${x.terakhir ? nilai(escapeHtml(formatTanggal(x.terakhir))) : kosong('belum pernah datang')}</span>
+              <span><span class="label">Rute antar</span>${x.rute ? nilai(escapeHtml(x.rute)) : kosong('belum diisi')}</span>
+              <button type="button" class="kg-terpilih pel6-buka" onclick="bukaLembarPelanggan(${i})">Buka kartu</button>
+            </div>` : ''}
           </div>`;
         }).join('');
       }
@@ -19660,15 +19714,26 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       h += `<div class="kg-panel kg-tepi-putus pel6-thr">
         <div class="kg-label">THR Ramadan — pelanggan setia</div>
         <div class="pel6-thr-baris">
-          <button type="button" onclick="pel6Thr(-1)" aria-label="tahun sebelumnya"${tahunThr <= 2020 ? ' disabled' : ''}>−</button>
+          <button type="button" data-fok="thr:-1" onclick="pel6Thr(-1)" aria-label="tahun sebelumnya"${tahunThr <= 2020 ? ' disabled' : ''}>−</button>
           <b>${tahunThr}</b>
-          <button type="button" onclick="pel6Thr(1)" aria-label="tahun berikutnya"${tahunThr >= 2100 ? ' disabled' : ''}>+</button>
+          <button type="button" data-fok="thr:1" onclick="pel6Thr(1)" aria-label="tahun berikutnya"${tahunThr >= 2100 ? ' disabled' : ''}>+</button>
           <i>${escapeHtml(ringkasThr)}</i>
         </div>
-        <div class="pel6-nota">Penerima tahun ini bertanda ✓ di daftar. Uang barangnya keluar lewat tab Harian (Toko) — bukan di sini, supaya tidak terhitung dua kali.</div>
+        <div class="pel6-nota">Penerima tahun ini bertanda ✓ di daftar. Mencatatnya: ketuk baris orangnya &rarr; Buka kartu &rarr; Catat THR — panel ini cuma membaca. Uang barangnya keluar lewat tab Harian (Toko), bukan di sini, supaya tidak terhitung dua kali.</div>
       </div>`;
 
+      // MENGGANTI innerHTML MENGHANCURKAN SIMPUL YANG SEDANG DIPEGANG FOKUS, dan fokusnya
+      // jatuh ke <body>. Paling terasa di stepper THR: menekan '+' sekali membunuh tombol
+      // yang barusan ditekan, jadi maju tiga tahun berturut-turut dengan papan ketik
+      // mustahil tanpa Tab ulang tiap kali. Penanda data-fok bertahan lintas penggambaran
+      // karena kuncinya identitas (rute / kunci pelanggan / arah stepper), bukan indeks.
+      const fokusLama = document.activeElement && wadah.contains(document.activeElement)
+        ? document.activeElement.getAttribute('data-fok') : null;
       wadah.innerHTML = h;
+      if (fokusLama) {
+        const kembali = wadah.querySelector('[data-fok="' + fokusLama.replace(/"/g, '\\"') + '"]');
+        if (kembali && !kembali.disabled) kembali.focus();
+      }
     } catch (e) { console.error('tampilkanPelanggan6a:', e); }
   }
   function pel6Baris(i) {
