@@ -4143,6 +4143,10 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #labaKaca .lb6-keping .kg-uang-laba{ font-size:13px; padding:2px 6px; }
 #labaKaca .lb6-keping i{ white-space:normal; }
 #labaKaca .lb6-panel{ margin-top:8px; display:flex; flex-direction:column; gap:5px; }
+/* Kartu lama yang tetap tampil di HP WAJIB menyebut periodenya, karena kaca di atasnya
+   memakai bulan berjalan dan keduanya terbaca dalam satu gulungan. */
+.kd-judul .kd-periode{ font-family:var(--pf-serif); font-style:italic; font-weight:400;
+  font-size:10px; color:var(--pf-abu); margin-left:6px; letter-spacing:0; text-transform:none; }
 #labaKaca .lb6-besar{ font-size:26px; }
 /* ANGKA PAHLAWAN PUNYA DUA TINGKAT, karena panelnya menaungi dua jenis angka.
    26px disimpan untuk angka DAGANG (margin kotor). "Diterima tunai" adalah kesimpulan
@@ -6833,13 +6837,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
          Sejak 1 Sep 2026 ia memotong laba; kartunya berdiri sendiri supaya besarnya
          kelihatan dan bisa ditagih perbaikannya, bukan larut di antara biaya toko. -->
     <div class="kartu-daftar kd-kepala" id="labaKartuSusut" style="display:none; margin-top:12px;">
-      <div class="kd-judul"><h3>Susut &amp; selisih stok</h3><span class="kd-hitung" id="labaSusutTotal"></span></div>
+      <!-- Periode DISEBUT: kartu ini sepanjang masa, sementara kaca di atasnya bulan
+           berjalan. Tidak disembunyikan di HP walau style inline mengalahkan @media —
+           menyembunyikannya menutup satu-satunya pintu memperbaiki HPP dari layar ini. -->
+      <div class="kd-judul"><h3>Susut &amp; selisih stok <span class="kd-periode">sepanjang masa</span></h3><span class="kd-hitung" id="labaSusutTotal"></span></div>
       <div id="daftarLabaSusut"></div>
       <p class="keterangan" style="padding:0 16px 12px; margin:0;">Karung sumber, kemasan jadi, dan bahan — semua yang tercatat sejak 1 September 2026. Memotong laba, tidak menyentuh kas.</p>
     </div>
 
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
-      <div class="kd-judul"><h3>Per transaksi</h3><span class="kd-hitung" id="labaHitungRugi"></span></div>
+      <div class="kd-judul"><h3>Per transaksi <span class="kd-periode">sepanjang masa</span></h3><span class="kd-hitung" id="labaHitungRugi"></span></div>
       <div id="daftarLaba"></div>
     </div>
 
@@ -23066,7 +23073,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   function tampilkanLabaKaca() {
     const wadah = document.getElementById('labaKaca');
-    if (!wadah || window.matchMedia('(min-width: 700px)').matches) return;
+    // KELUAR DINI WAJIB MENGOSONGKAN APA YANG IA SENDIRI TULIS. #labaSubBulan diisi nama
+    // bulan oleh kaca (yang periodenya BULAN BERJALAN). Di HP tulisan itu tidak pernah
+    // terbaca — CSS 399 menjatuhkan .jh-sub di <700px dan hanya membuka kembali yang
+    // [data-sub-desain]. Tapi begitu lebar menyeberang ke >=700px, fungsi ini keluar dini
+    // TANPA menghapusnya, sementara yang tampil di sana kartu lama yang SEPANJANG MASA.
+    // Hasilnya kepala halaman berbunyi "September 2026" di atas angka seluruh riwayat —
+    // label bulan yang bocor ke pembaca yang salah, dan hanya di sana ia terbaca.
+    if (!wadah || window.matchMedia('(min-width: 700px)').matches) {
+      const subLepas = document.getElementById('labaSubBulan');
+      if (subLepas) subLepas.textContent = '';
+      return;
+    }
     try {
       const bl = bulanLokalIso();
       const namaBulan = namaBulanPanjang(bl + '-01');
@@ -23327,14 +23345,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('labaPersen').textContent = persen === null ? '—'
       : (persen < 0 ? '−' : '') + Math.abs(persen).toFixed(1).replace('.', ',') + '%';
 
-    // Syarat angka utama: dari berapa transaksi, dan apakah biaya bulanan sudah masuk.
-    const bulanIni = bulanLokalIso();
-    const adaBiayaBulanIni = ambilBiayaBulanan().some(b => b.bulan === bulanIni);
+    // SYARAT YANG MENYEBUT PERIODENYA SENDIRI. Angka di atas dijumlah dari SELURUH
+    // riwayat (totalMargin, 23151-23153), tapi kalimatnya dulu berbunyi "belum dikurangi
+    // biaya bulanan BULAN BERJALAN" dan penjaganya cuma memeriksa bulanLokalIso().
+    // Itu membuat yang belum dipotong terdengar sebesar SATU bulan, padahal yang belum
+    // dipotong adalah biaya SEMUA bulan yang pernah ada di dalam angka itu.
+    // Dan sejak afe724e ada pengurang kedua yang juga tidak disebut: retur.
     const syarat = [];
-    syarat.push(`Dari ${terhitung.length} dari ${semua.length} transaksi.`);
-    syarat.push(adaBiayaBulanIni
-      ? 'Belum dikurangi biaya bulanan bulan berjalan.'
-      : 'Belum dikurangi biaya bulanan — bulan ini belum diisi.');
+    syarat.push('Sepanjang masa — dari ' + terhitung.length + ' dari ' + semua.length + ' transaksi.');
+    syarat.push('Belum dikurangi biaya bulanan bulan mana pun.');
+    const returSemua = ambilRetur().reduce((a, r) => a + uangKembaliRetur(r), 0);
+    if (returSemua > 0) syarat.push('Sudah dikurangi refund retur ' + formatRupiah(returSemua) + '.');
     document.getElementById('labaSyarat').textContent = syarat.join(' ');
 
     const rugi = terhitung.filter(p => (p.hargaTotal || 0) - p.hppTotalSaatJual < 0);
