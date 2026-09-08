@@ -18003,7 +18003,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             <button type="button" onclick="putuskanKarantina(${item.id}, 'dikembalikan_pemasok')" style="padding:10px 4px; border:2px solid var(--garis); background:var(--kartu); border-radius:8px; font-size:12px; font-weight:700;"> Balik ke Pemasok</button>
             <button type="button" onclick="putuskanKarantina(${item.id}, 'dirework')" style="padding:10px 4px; border:2px solid var(--hijau); background:var(--kartu); color:var(--hijau-tua); border-radius:8px; font-size:12px; font-weight:700;"> Rework → Stok</button>
           </div>
-          <button type="button" onclick="putuskanKarantina(${item.id}, 'dibuang')" style="width:100%; margin-top:8px; padding:10px; border:2px solid var(--merah); background:var(--kartu); color:var(--merah); border-radius:8px; font-size:12px; font-weight:700;"> Buang (catat kerugian)</button>
+          <button type="button" onclick="putuskanKarantina(${item.id}, 'dibuang')" style="width:100%; margin-top:8px; padding:10px; border:2px solid var(--merah); background:var(--kartu); color:var(--merah); border-radius:8px; font-size:12px; font-weight:700;"> Buang barang ini</button>
         </div>
       `;
     }).join('');
@@ -18016,7 +18016,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     let pesanKonfirmasi = '';
     if (tindakan === 'dikembalikan_pemasok') pesanKonfirmasi = 'Kembalikan barang ini ke pemasok? Barang TIDAK masuk stok jual.';
     if (tindakan === 'dirework') pesanKonfirmasi = 'Barang ini sudah dirework dan siap masuk stok jual lagi?';
-    if (tindakan === 'dibuang') pesanKonfirmasi = 'Buang barang ini dan catat sebagai kerugian? Barang TIDAK masuk stok jual.';
+    // LABELNYA DULU BERBUNYI "Buang (catat kerugian)" dan menjanjikan pencatatan yang
+    // tidak pernah terjadi: cabang ini hanya mengubah statusTindakan, nol dokumen
+    // kerugian ditulis. Sejak retur masuk laba (afe724e) janji itu berubah bentuk, bukan
+    // hilang: kerugiannya SUDAH tercatat — di returnya, bukan di pembuangannya. Barang
+    // karantina hanya lahir dari retur TIDAK UTUH (13330), dan cabang tidak-utuh tidak
+    // membalik HPP, jadi biayanya sudah lewat laba sejak hari retur itu dicatat.
+    // Diukur di kotak pasir: margin kotor −Rp700.000 SEBELUM Buang dan −Rp700.000
+    // SESUDAHNYA — tidak berubah, karena memang tidak ada lagi yang bisa hilang.
+    // Menulis dokumen kerugian kedua di sini akan MENGHITUNGNYA DUA KALI. Jadi yang
+    // diperbaiki labelnya, bukan ditambah dokumennya — dan kalimatnya menyebut di mana
+    // kerugiannya sudah berdiri, supaya tidak ada yang mencarinya lagi.
+    if (tindakan === 'dibuang') pesanKonfirmasi = 'Buang barang ini?\n\n'
+      + 'Kerugiannya SUDAH tercatat waktu returnya dicatat — barang ini nol di pembukuan sejak saat itu, '
+      + 'dan membuangnya TIDAK mengubah laba. Yang berubah cuma antrean karantina.';
     if (!confirm(pesanKonfirmasi)) return;
 
     try {
