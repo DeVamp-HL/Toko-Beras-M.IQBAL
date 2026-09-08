@@ -8274,7 +8274,42 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     else mqKaca.addListener(gambarUlangHalamanAktif);
   } catch (e) { /* matchMedia tak tersedia — abaikan */ }
 
+  // ===== GEMBOK HALAMAN OWNER — MELEKAT PADA HALAMANNYA, BUKAN PADA PINTUNYA =====
+  // Sampai 8 Sep 2026 seluruh gembok owner hidup di PINTU: petak lembar Menu diberi
+  // .tab-owner + disabled, tombol tab diberi .tab-owner (display:none). pindahHalaman()
+  // sendiri tidak pernah bertanya siapa yang mengetuk. Selama cuma ada satu pintu itu
+  // setara — dan setiap pintu yang lahir belakangan mewarisi NOL penjagaan sambil
+  // gemboknya tetap TERLIHAT terpasang di layar. Yang ditemukan: enam pintu, dan tidak
+  // satu pun dari dua daftar yang dibuat sebelumnya lengkap:
+  //   - lembar Setelan lama (7267, 7268) -> Harga, Arus Kas
+  //   - ritual Buka Toko jalur 'beda' (27738) + pitanya (27854) -> Arus Kas, jalur STAF
+  //   - antrean Tangani/Perhatian (tgBuka 28132) -> h:'piutang','pemasok','tutup','harga'
+  //     lewat layar yang bukan halaman owner, dari HP siapa pun yang sudah masuk
+  //   - ambang 700px (8271) menggambar ulang halaman aktif lewat pintu yang sama
+  // Menambal per pintu berarti mengulang cacat yang sama satu putaran lebih dalam.
+  // Jadi pemeriksaannya pindah ke SATU tempat yang dilewati semuanya, DI SAAT KETUK —
+  // bukan saat digambar, karena lembar yang tergambar waktu kunci masih terbuka tetap
+  // bisa diketuk sesudah dikunci.
+  function halamanPerluOwner(nama) {
+    if (['pemasok', 'harga', 'pelanggan', 'laba', 'tutup', 'aruskas', 'piutang', 'akun'].indexOf(nama) >= 0) return true;
+    // GABUNGAN, bukan salah satu. Daftar harfiah di atas yang berkuasa (ia tidak bisa
+    // gagal-terbuka kalau markup Menu hilang atau berganti nama), tapi petak Menu yang
+    // bertanda owner ikut mengunci walau belum tercatat di sana. Akibatnya perbedaan
+    // antara dua sumber itu cuma bisa membuat penjaga LEBIH ketat, tidak pernah lebih
+    // longgar — halaman owner baru mewarisi gemboknya tanpa ada yang perlu ingat.
+    if (!/^[a-z]+$/.test(String(nama))) return false;
+    return !!document.querySelector('#lembarMenu .lm-petak.tab-owner[data-halaman="' + nama + '"]');
+  }
   function pindahHalaman(nama) {
+    if (halamanPerluOwner(nama) && !ownerSudahUnlock()) {
+      // Tidak berhenti diam-diam: tombol yang ditekan tapi tidak melakukan apa pun
+      // adalah cacatnya sendiri. Dan tidak ditinggal di halaman owner mana pun —
+      // 'ringkasan' tidak ada di daftar, jadi panggilan ini tidak berputar.
+      if (document.body.classList.contains('lembar-menu-terbuka')) toggleLembarMenu(false);
+      pindahHalaman('ringkasan');
+      bukaModalPin();
+      return;
+    }
     // SEMUA 17 halaman ikut dipadamkan/dinyalakan. 'setelan' & 'pesanan' dulu TIDAK ada
     // di daftar ini padahal keduanya punya <div class="halaman"> sendiri: membukanya
     // memadamkan 15 halaman lain tanpa menyalakan apa pun — LAYAR KOSONG TOTAL, dan
@@ -9579,7 +9614,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + z[1] + (gagalZona(z[0]) ? '<u>' + gagalZona(z[0]) + '</u>' : '') + '</button>').join('') + '</div>';
       const brs = (aksi, judul, ket) => '<button type="button" class="st6-baris" onclick="' + aksi + '">'
         + '<span><b>' + judul + '</b>' + (ket ? '<i>' + ket + '</i>' : '') + '</span></button>';
-      // PINTU SAMPING DITUTUP. Petak halaman owner di lembar Menu benar-benar digembok
+      // KOSMETIK, BUKAN KUNCI. Yang benar-benar menahan adalah penjaga di pindahHalaman()
+      // — satu daftar halaman owner, satu pemeriksaan, di saat KETUK. Baris di bawah ini
+      // memeriksa saat DIGAMBAR, jadi ia tidak boleh dipercaya sendirian: lembar yang
+      // tergambar selagi kunci terbuka tetap tersaji sesudah dikunci, dan ketukannya cuma
+      // dihentikan oleh penjaga yang sesungguhnya. Gunanya tetap ada dan cuma itu:
+      // memudarkan baris yang memang tidak akan terbuka, supaya pemilik tidak menekan
+      // sesuatu yang pasti menolak.
+      // Petak halaman owner di lembar Menu benar-benar digembok
       // (kelas .tab-owner + disabled, dijaga terapkanKunciMenu), tapi petak SETELAN tidak
       // ber-tab-owner — dan dari dalam Setelan kaca ini membuat pintu keduanya sendiri
       // lewat pindahDariMenu('akun'/'harga'/'aruskas'), yang tidak melewati satu penjaga
@@ -27735,7 +27777,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       }));
     } catch (e) { /* penyimpanan penuh — ritual tetap boleh lewat */ }
     _ik8PagiFakta = null; _ik8PagiKantong = false;
-    if (jalur === 'beda') { pindahDariMenu('aruskas'); return; }
+    // Jalur 'beda' dulu melempar SIAPA PUN yang membuka toko pagi itu langsung ke Arus
+    // Kas — halaman owner, lewat ritual yang justru paling sering dipakai staf. Sekarang
+    // yang menjaga adalah penjaga di pindahHalaman(); baris ini cuma menghindari ketukan
+    // yang sudah pasti ditolak, supaya staf tidak disodori modal PIN tiap pagi.
+    // Yang penting sudah aman: keadaan 'beda' SUDAH tertulis di atas sebelum baris ini,
+    // dan pita Ringkasan tetap berbunyi "kas belum dicocokkan — buka Arus Kas". Jadi
+    // selisihnya tercatat dan terlihat menggantung, bukan hilang.
+    if (jalur === 'beda' && ownerSudahUnlock()) { pindahDariMenu('aruskas'); return; }
     tampilkanIkhtisar6a();
   }
   function ik8PagiPilih(id) { _ik8PagiFakta = (_ik8PagiFakta === id) ? null : id; tampilkanIkhtisar6a(); }
@@ -27849,7 +27898,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           : (pagi.kas === null ? 'Dibuka ' + pagi.jam + ' · kas belum bisa dihitung (titik kas kosong)'
                                : 'Dibuka ' + pagi.jam + ' · kas awal ' + ik6Rp(pagi.kas));
         // Pita jadi jalan pintas HANYA saat memang masih ada yang harus dicocokkan.
-        const perlu = pagi.jalur === 'beda' && !titikHariIni;
+        const perlu = pagi.jalur === 'beda' && !titikHariIni && ownerSudahUnlock();
         elPita.classList.toggle('bisa', perlu);
         elPita.onclick = perlu ? function () { pindahDariMenu('aruskas'); } : null;
       }
@@ -28126,6 +28175,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const isi = tgAntreIsi();
     if (!isi.length) return;
     const x = isi[0];
+    // Baris yang mengarah ke halaman owner selagi terkunci TIDAK boleh dianggap sudah
+    // dibuka. Tanpa penjaga ini, penjaga baru di pindahHalaman() melahirkan cacatnya
+    // sendiri: staf menekan "Buka", modal PIN muncul, tapi barisnya sudah terlanjur
+    // dicoret dan antreannya maju — persoalan yang belum disentuh siapa pun hilang dari
+    // layar orang yang menekannya. Antrean maju hanya kalau ketukannya benar-benar
+    // mendarat di suatu tempat.
+    if (x.h && halamanPerluOwner(x.h) && !ownerSudahUnlock()) { pindahHalaman(x.h); return; }
     _tgSelesai = _tgSelesai.concat([tgKunci(x)]);
     _tgUrut = null;
     if (x.k) { try { eval(x.k); } catch (e) { console.warn('[tg]', e); } return; }
