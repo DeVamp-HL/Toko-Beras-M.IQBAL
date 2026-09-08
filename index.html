@@ -4147,6 +4147,11 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
    memakai bulan berjalan dan keduanya terbaca dalam satu gulungan. */
 .kd-judul .kd-periode{ font-family:var(--pf-serif); font-style:italic; font-weight:400;
   font-size:10px; color:var(--pf-abu); margin-left:6px; letter-spacing:0; text-transform:none; }
+/* "belum ada" bukan angka — jadi tidak memakai wujud uang mana pun. */
+#labaKaca .lb6-belum{ font-family:var(--pf-serif); font-style:italic; font-weight:400;
+  font-size:12px; color:var(--pf-abu); }
+#labaKaca .lb6-terjun small{ font-family:var(--pf-serif); font-style:italic;
+  font-size:9.5px; color:var(--pf-abu); }
 #labaKaca .lb6-besar{ font-size:26px; }
 /* ANGKA PAHLAWAN PUNYA DUA TINGKAT, karena panelnya menaungi dua jenis angka.
    26px disimpan untuk angka DAGANG (margin kotor). "Diterima tunai" adalah kesimpulan
@@ -23203,7 +23208,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           + '<div class="lb6-terjun total"><span>Laba bersih</span><b class="kg-uang-laba">' + rp(L.labaBersih) + '</b></div>'
           + '<div class="kg-rincian">margin − biaya toko − hapus buku ± susut · ' + namaBulan + '</div>';
       } else {
-        const daftarP = hitungPiutang().filter(x => x.sisa > 0).slice(0, 5);
+        // POKOK BUKAN MARGIN. Panel ini subjeknya marginKredit — laba yang belum jadi uang.
+        // Deretan di bawahnya POKOK piutang, besaran yang beberapa kali lipat lebih besar,
+        // dan berdiri tanpa terjemahan di panel yang seluruhnya bicara laba. Gampang
+        // dibaca sebagai "laba yang tertahan sebesar itu".
+        // Terjemahannya dihitung dengan laju margin bulan berjalan — TAKSIRAN, dan disebut
+        // begitu. Tanpa laju yang bisa dihitung (omzet ber-HPP nol), tidak ada terjemahan
+        // yang jujur, jadi tidak dipajang sama sekali.
+        const piutangSemua = hitungPiutang().filter(x => x.sisa > 0);
+        const daftarP = piutangSemua.slice(0, 5);
+        const omzetKotorBulan = L.omzetHitung + L.returUang;
+        const lajuMargin = omzetKotorBulan > 0 ? L.margin / omzetKotorBulan : null;
         html += '<div class="kg-label">Syarat diterima tunai</div>'
           // WUJUD LABA, BUKAN WUJUD KAS. Doktrin 3251-3257 menyimpan platina-besar untuk
           // "angka terukur"; "Diterima tunai" justru angka PALING TURUNAN di halaman ini —
@@ -23219,10 +23234,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             ? '<div class="kg-rincian lb6-oks">Laba bersih di atas sudah dipotong refund retur ' + rp(L.returUang)
               + ', tapi "margin yang masih kredit" belum — refund tidak menyimpan cara bayar aslinya, jadi tidak bisa dibebankan ke tunai atau kredit tanpa menebak.</div>'
             : '')
-          + (daftarP.length ? '<div class="kg-label" style="margin-top:8px;">Piutang berjalan · semua periode</div>'
+          + (daftarP.length ? '<div class="kg-label" style="margin-top:8px;">Piutang berjalan &middot; '
+              + (piutangSemua.length > daftarP.length ? daftarP.length + ' tertua dari ' + piutangSemua.length + ' orang' : piutangSemua.length + ' orang')
+              + ' &middot; semua periode</div>'
+            + '<div class="kg-rincian">Angka di sini POKOK piutang, bukan margin — yang memotong "diterima tunai" cuma bagian marginnya.</div>'
             + daftarP.map(x => '<div class="lb6-terjun"><span>' + escapeHtml(x.nama)
-              + (x.umurHari != null ? ' · ' + x.umurHari + ' hari' : '') + '</span><b class="kg-uang-piutang">'
-              + rp(x.sisa) + '</b></div>').join('') : '');
+              + (x.umurHari != null ? ' · ' + x.umurHari + ' hari' : '')
+              + (lajuMargin !== null ? '<small> · marginnya ± ' + rp(x.sisa * lajuMargin) + '</small>' : '')
+              + '</span><b class="kg-uang-piutang">'
+              + rp(x.sisa) + '</b></div>').join('')
+            + (piutangSemua.length > daftarP.length
+              ? '<div class="kg-rincian">' + (piutangSemua.length - daftarP.length) + ' orang lagi tidak ditampilkan di sini — daftar penuhnya di layar Piutang.</div>'
+              : '') : '');
       }
       html += '</div>';
 
@@ -23303,10 +23326,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           // DUA UBIN INI SELURUH GUNANYA MENGAJARKAN BEDA LABA DAN KAS — jadi keduanya
           // wajib memakai dua WUJUD yang berbeda. Dulu dua-duanya <b> polos 15px platina:
           // pelajaran tentang beda, digambar dengan dua angka yang tampak sama.
-          + '<div class="kg-panel lb6-mini"><span class="kg-label">Laba</span><b class="kg-uang-laba">' + (L.susutStok ? rp(L.susutStok) : 'Rp0') + '</b><i>susut memotong laba</i></div>'
+          // TIGA KEADAAN, TIGA GAMBAR. (L.susutStok ? … : 'Rp0') menyamakan "belum ada satu
+          // pun catatan" dengan "catatannya ada tapi saling meniadakan" — dua hal yang
+          // sangat berbeda kalau yang dicari sebabnya. Yang belum ada catatannya menolak
+          // menggambar angka.
+          + '<div class="kg-panel lb6-mini"><span class="kg-label">Laba</span>'
+          + (susutRows.length === 0
+            ? '<b class="lb6-belum">belum ada</b>'
+            : '<b class="kg-uang-laba">' + rp(L.susutStok) + '</b>')
+          + '<i>susut memotong laba</i></div>'
           + '<div class="kg-panel lb6-mini"><span class="kg-label">Kas</span><b class="kg-uang-kas">Rp0</b><i>susut tidak menyentuh kas</i></div></div>';
+        // BATAS PERIODE BERDIRI SENDIRI, tidak menumpang pada kalimat keadaan-kosong.
+        // Dulu "mulai dihitung 1 September 2026" hanya muncul saat daftarnya KOSONG —
+        // jadi begitu ada satu catatan saja, batas yang membuat angkanya bisa dimengerti
+        // menghilang justru saat angkanya mulai ada.
+        html += '<div class="kg-rincian">Susut dihitung sejak 1 September 2026 — sebelum itu tidak tercatat, bukan nol.</div>';
         html += susutRows.length === 0
-          ? '<div class="lb6-kosong">Belum ada susut tercatat — mulai dihitung 1 September 2026.</div>'
+          ? '<div class="lb6-kosong">Belum ada susut tercatat bulan ini.</div>'
           : susutRows.map(x => '<div class="lb6-terjun"><span>' + escapeHtml(x.nama) + ' · ' + (x.jumlah > 0 ? '+' : '') + x.jumlah + ' ' + escapeHtml(x.satuan) + '</span><b>' + rp(x.nilaiRp) + '</b></div>').join('');
         const upah = L.nHari > 0 ? L.labaBersih / L.nHari : 0;
         html += '<div class="kg-label lb6-sela">Lu dibayar berapa per hari</div>'
