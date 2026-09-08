@@ -18020,9 +18020,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!confirm(pesanKonfirmasi)) return;
 
     try {
-      // Update status di dokumen karantina (bukan hapus — supaya riwayat keputusan tetap ada).
-      await simpanKeFirestore(KOLEKSI_KARANTINA, { ...item, statusTindakan: tindakan, tanggalKeputusan: tanggalLokalIso() });
-
+      // BARANGNYA DULU, STATUSNYA BELAKANGAN. Dulu urutannya terbalik: status ditulis
+      // lebih dulu, lalu cabang karung buntu di sebuah alert. Akibatnya dari SATU ketukan
+      // hilang DUA hal — karungnya tidak pernah kembali ke stok, DAN kartu karantinanya
+      // lenyap dari antrean (penyaring yang sama membaca statusTindakan), jadi pengingat
+      // untuk membereskannya ikut hilang. Cacat yang menghapus pengingat dirinya sendiri
+      // tidak akan pernah ditemukan lewat pemakaian sehari-hari.
+      // Dengan urutan ini, kalau penulisan stoknya gagal, statusnya belum berubah dan
+      // barangnya masih berdiri di antrean menunggu keputusan.
       if (tindakan === 'dirework') {
         // Barang rework masuk balik ke stok lewat jalur produksi/masuk yang sudah ada,
         // supaya HPP tetap tercatat wajar (bukan langsung nambah stok tanpa jejak biaya rework).
@@ -18050,9 +18055,37 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             catatan: 'Hasil rework dari karantina (retur id ' + item.id + ')'
           });
         } else if (item.jenisAsal === 'karung') {
-          alert('Karung rework: tambahkan kembali sebagai kedatangan/penyesuaian manual lewat tab Masuk kalau perlu, karena HPP karung mengikuti batch aslinya.');
+          // Karung kembali lewat PENYESUAIAN STOK, bukan kedatangan baru. Alasannya sama
+          // dengan jalur retur UTUH yang sudah ada (12704): mengurangi 'terpakai' menambah
+          // sisa TANPA menyentuh 'totalMasuk', jadi HPP rata-rata tertimbang tidak bergerak
+          // dan karungnya kembali di harga batch aslinya — persis yang dijanjikan pesan
+          // lama, tapi sekarang dikerjakan kodenya.
+          // Lewat dokumen, BUKAN dengan menyentuh hitungStokKarungPerMerk: fungsi itu
+          // mesin uang dan wajib byte-identik.
+          // nilaiRp SENGAJA 0 (keputusan pemilik 9 Sep 2026) supaya perlakuannya SERAGAM
+          // dengan rework kemasan di atas, yang juga menambah nilai stok tanpa catatan
+          // lawan. Bukan karena itu pasti benar — tapi karena kalau ternyata keduanya
+          // salah, salahnya satu bentuk dan bisa dibetulkan sekali jalan. barisSusutStok
+          // melewati dokumen ber-nilaiRp 0, jadi laba tidak bergerak di hari rework.
+          if (!item.merkSumber) {
+            alert('Karung ini tidak menyimpan merk asalnya, jadi sistem tidak tahu stok merk mana yang harus bertambah.\n\n'
+              + 'Keputusannya BELUM disimpan — barangnya tetap di antrean karantina. Catat manual lewat tab Masuk.');
+            return;
+          }
+          const dokRework = {
+            id: idUnik(), tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5),
+            merk: item.merkSumber, kgSistem: null, kgFisik: null,
+            selisihKg: item.totalKg, alasan: 'Rework dari karantina (retur id ' + item.id + ')',
+            nilaiRp: 0, hppPerKgSaatOpname: 0, dariRework: true
+          };
+          await simpanKeFirestore(KOLEKSI_PENYESUAIAN, dokRework);
+          if (!masihTertunda(KOLEKSI_PENYESUAIAN, dokRework.id)) suntikCachePenyesuaian(KOLEKSI_PENYESUAIAN, dokRework);
         }
       }
+
+      // Baru sekarang statusnya berubah — sesudah barangnya benar-benar punya tempat.
+      // (bukan hapus — supaya riwayat keputusan tetap ada)
+      await simpanKeFirestore(KOLEKSI_KARANTINA, { ...item, statusTindakan: tindakan, tanggalKeputusan: tanggalLokalIso() });
     } catch (err) {
       console.error(err);
       alert('Gagal update database (offline?). Coba lagi kalau internet sudah nyambung.');
