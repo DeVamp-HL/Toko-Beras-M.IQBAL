@@ -4422,6 +4422,9 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #pelanggan6a .pel6-ciri-n.gembos{ color:#d3a08b; }
 #pelanggan6a .pel6-cacah{ font-family:var(--pf-serif); font-style:italic; font-size:10px;
   color:var(--pf-abu); margin:9px 2px 2px; }
+#pelanggan6a .pel6-lepas{ padding:12px 13px; margin-bottom:10px; border-color:rgba(211,160,139,.45); }
+#pelanggan6a .pel6-lepas-nama{ margin-top:8px; font-size:11.5px; line-height:1.7; color:#d3a08b; }
+#pelanggan6a .pel6-lepas-nama i{ font-family:var(--pf-serif); font-style:italic; color:var(--pf-abu); }
 #pelanggan6a .pel6-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
   line-height:1.5; color:var(--pf-abu); }
 /* MELIPAT, bukan menggulir — seperti desainnya. Rute datang dari kolom teks bebas,
@@ -13963,10 +13966,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Keputusan pemilik: kredit hanya untuk pelanggan TERDAFTAR di buku Pelanggan,
   // batas = 2 x rata-rata belanja bulanan (90 hari terakhir / 3, semua cara bayar).
   // Murni pembaca — identitas nama memakai kunciPelanggan yang sama dengan piutang.
+  // "TERDAFTAR" = ADA ISINYA, bukan sekadar ada dokumennya. Sampai 9 Sep 2026 gerbang
+  // kredit KR1 cuma memeriksa KEBERADAAN dokumen pelangganCatatan — dan satu-satunya
+  // penulisnya (simpanCatatanPelanggan) menulis dokumen walau ketiga kolomnya kosong.
+  // Akibatnya menekan "Simpan catatan" pada kartu yang tidak diisi apa-apa memindahkan
+  // orang dari "kredit dimatikan" ke "kredit boleh", tanpa satu kata pun tentang kredit
+  // di tombolnya, dan TANPA jalan mencabutnya (nol hapusDariFirestore untuk koleksi ini,
+  // sementara koleksi lain punya 25). Diukur di kotak pasir, satu ketukan pada kartu
+  // kosong: "kredit baru ditolak kasir" -> "sisa jatah Rp1.933.334".
+  // Maksud aslinya "kami tahu ini siapa"; dokumen kosong tidak membuktikan apa pun.
+  function catatanPelangganBerisi(c) {
+    return !!(c && (String(c.catatan || '').trim() || String(c.ciri || '').trim() || String(c.rute || '').trim()));
+  }
   function infoKreditPelanggan(nama) {
     const k = kunciPelanggan(nama);
     if (!k) return { ada: false };
-    const terdaftar = ambilPelangganCatatan().some(c => kunciPelanggan(c.nama || c.id) === k);
+    const terdaftar = ambilPelangganCatatan().some(c => kunciPelanggan(c.nama || c.id) === k && catatanPelangganBerisi(c));
     const rekor = hitungPiutang().find(x => x.kunci === k);
     const sisa = rekor ? Math.max(0, rekor.sisa || 0) : 0;
     const batasIso = tanggalLokalIso(new Date(Date.now() - 89 * 86400000));
@@ -14550,7 +14565,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!nama) return 'Isi nama pelanggan untuk penjualan kredit.';
     const info = infoKreditPelanggan(nama);
     if (_wzKreditBuka) return null;
-    if (!info.terdaftar) return nama + ' belum terdaftar di buku Pelanggan \u2014 kredit dimatikan (KR1).';
+    if (!info.terdaftar) return nama + ' belum terdaftar di buku Pelanggan \u2014 kredit dimatikan (KR1). Isi ciri, catatan, atau rute di kartunya dulu.';
     if (info.batas <= 0) return 'Belum ada riwayat belanja \u2014 batas kredit belum terbentuk (KR1).';
     if (info.sisa + total > info.batas)
       return 'Melewati batas kredit ' + formatRupiah(info.batas) + ' (piutang ' + formatRupiah(info.sisa) + ' + transaksi ini).';
@@ -19598,6 +19613,28 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // pilihan rute yang bisa dilihat pemilik — dan chip yang sedang aktif dicabut
       // tanpa sepatah kata, sehingga daftarnya mendadak melebar di tengah mengetik.
       // Sekarang menunya dari `semua`: yang berubah karena mengetik cuma HASILNYA.
+      // SIAPA YANG TERPENGARUH, DISEBUT NAMANYA. Aturan "terdaftar = ada isinya" (13966)
+      // membuat sebagian pelanggan lama berhenti terdaftar dalam semalam — mereka yang
+      // dokumennya pernah tertulis tapi ketiga kolomnya kosong. Perubahan kebijakan uang
+      // yang tidak kelihatan adalah cacat itu sendiri, jadi layarnya menyebut mereka satu
+      // per satu, dan yang sedang berutang disebut lebih dulu. Memperbaikinya sepuluh
+      // detik per orang: ketuk barisnya, Buka kartu, isi cirinya.
+      const kosongDok = ambilPelangganCatatan()
+        .filter(c => !catatanPelangganBerisi(c))
+        .map(c => kunciPelanggan(c.nama || c.id))
+        .filter(Boolean);
+      if (kosongDok.length) {
+        const kena = semua.filter(x => kosongDok.indexOf(x.kunci) >= 0)
+          .sort((a, b) => (b.sisaUtang || 0) - (a.sisaUtang || 0));
+        const nBon = kena.filter(x => x.sisaUtang > 0).length;
+        h += `<div class="kg-panel kg-tepi-putus pel6-lepas">
+          <div class="kg-label">Kartunya kosong — kredit barunya ditolak kasir</div>
+          <div class="pel6-nota">${kena.length} orang punya kartu tanpa ciri, catatan, maupun rute. Aturan KR1 hanya memberi kredit kepada yang dikenali, jadi kasir menolak bon baru mereka${nBon > 0 ? ` — dan ${nBon} di antaranya masih punya bon berjalan` : ''}. Ketuk barisnya &rarr; Buka kartu &rarr; isi salah satu kolomnya.</div>
+          <div class="pel6-lepas-nama">${kena.map(x => escapeHtml(x.nama)
+            + (x.sisaUtang > 0 ? ' <i>' + formatRupiah(x.sisaUtang) + '</i>' : '')).join(' &middot; ')}</div>
+        </div>`;
+      }
+
       _pel6Rutes = [...new Set(semua.map(x => x.rute).filter(Boolean))];
       if (_pel6Rute && _pel6Rutes.indexOf(_pel6Rute) < 0) _pel6Rute = null;   // rutenya benar-benar lenyap dari buku
       if (_pel6Rutes.length) {
@@ -19813,6 +19850,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     _cachePelangganCat = semua;
     localStorage.setItem(KUNCI_PELANGGAN_CAT, JSON.stringify(semua));
     try { await simpanKeFirestore(KOLEKSI_PELANGGAN_CAT, dok); } catch (e) { console.error(e); }
+    // Menyimpan kartu yang ketiga kolomnya kosong BUKAN tidak berakibat: sejak gerbang
+    // KR1 membaca isinya, kartu kosong berarti orang itu TIDAK terdaftar dan kasir akan
+    // menolak kredit barunya. Dikatakan di sini, bukan ditemukan di depan pembeli.
+    if (!catatanPelangganBerisi(dok)) {
+      alert(dok.nama + ' tersimpan tanpa ciri, catatan, maupun rute.\n\n'
+        + 'Selama ketiganya kosong, kasir MENOLAK kredit baru untuk ' + dok.nama
+        + ' (aturan KR1: kredit hanya untuk yang dikenali). Isi salah satu untuk membukanya.');
+    }
     tutupLembarPelanggan();
     tampilkanPelanggan();
   }
