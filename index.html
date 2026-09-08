@@ -10308,6 +10308,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // diam-diam kehilangan seluruh catatan utang. pelangganCatatan ikut sejak lahir.
       versi: 5,
       diunduhPada: new Date().toISOString(),
+      // CAP ERA. Berkas cadangan tidak bisa dipakai lintas tutup buku: isinya riwayat
+      // yang tutup buku HAPUS dan ganti dengan saldo pembuka, jadi memuatnya kembali
+      // menghitung stok, piutang, dan utang DUA KALI. Sampai cap ini ada, satu-satunya
+      // yang dijaga adalah berkas arsip — padahal yang berbahaya justru berkas backup
+      // biasa yang kelihatan sah. null = diunduh saat belum pernah ada tutup buku.
+      eraTutupBuku: eraTutupBuku(),
       batchMasuk: ambilSemuaBatch(),
       biayaBulanan: ambilBiayaBulanan(),
       penjualan: ambilPenjualanSemua(),
@@ -10377,6 +10383,43 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             + 'sekali lagi dari saldo pembukanya.\n\n'
             + 'Simpan berkas ini sebagai catatan. Untuk memulihkan data, pakai berkas '
             + 'backup-batch-…json dari menu Cadangan.');
+          event.target.value = '';
+          return;
+        }
+
+        // ===== PENJAGA ERA =====
+        // Penjaga di atas cuma mengenali berkas ARSIP. Yang benar-benar berbahaya justru
+        // berkas backup BIASA yang kelihatan sah: cadangan yang diunduh SEBELUM tutup
+        // buku memuat riwayat yang tutup buku hapus dan ganti dengan saldo pembuka.
+        // Id-nya sudah tidak ada di database, jadi seluruhnya lolos saringan "sudahAda"
+        // di bawah dan terunggah lagi — stok, piutang, dan utang terhitung DUA KALI,
+        // sekali dari riwayat yang kembali, sekali dari saldo pembukanya. Kalimat itu
+        // sudah tertulis di peringatan arsip sejak lama; yang belum ada cuma penjaganya.
+        //
+        // Ini jalur PEMULIHAN — dipakai justru ketika keadaan sudah kacau dan orangnya
+        // sedang panik. Ritual Tutup Buku sendiri membuka dengan "unduh cadangan dulu",
+        // lalu ritual Cocokkan berkata "kalau tidak sama, pulihkan dari berkas cadangan".
+        // Dua kalimat itu menuntun lurus ke sini.
+        //
+        // Selama BELUM pernah tutup buku (eraDb === null) tidak ada yang bisa dilanggar,
+        // jadi berkas tanpa cap pun tetap boleh — jangan menghalangi pemulihan yang wajar
+        // demi bahaya yang belum ada.
+        const eraDb = eraTutupBuku();
+        if (eraDb !== null && isi.eraTutupBuku !== eraDb) {
+          const asal = isi.eraTutupBuku === undefined
+            ? 'Berkas ini tidak punya cap era sama sekali — artinya diunduh sebelum cap ini ada, jadi SEBELUM tutup buku ' + eraDb + '.'
+            : (isi.eraTutupBuku === null
+              ? 'Berkas ini diunduh waktu belum pernah ada tutup buku.'
+              : 'Berkas ini diunduh pada era tutup buku ' + isi.eraTutupBuku + '.');
+          alert('DITOLAK — berkas cadangan ini dari era yang berbeda.\n\n'
+            + asal + '\nDatabase sekarang sudah melewati tutup buku ' + eraDb + '.\n\n'
+            + 'Memuatnya akan mengembalikan riwayat yang sengaja dihapus saat tutup buku, '
+            + 'sementara saldo pembukanya tetap ada — stok, piutang, dan utang akan '
+            + 'terhitung DUA KALI, dan angkanya tidak akan kelihatan salah sampai berbulan-bulan.\n\n'
+            + 'Yang bisa dipakai: berkas backup yang diunduh SESUDAH tutup buku ' + eraDb + '. '
+            + 'Kalau memang harus memakai berkas ini, saldo pembukanya (dokumen bertanda '
+            + 'tutupBuku tahun ' + eraDb + ') wajib dihapus lebih dulu — dan itu belum ada '
+            + 'tombolnya, jadi jangan dikerjakan sendiri tanpa mencatat rencananya.');
           event.target.value = '';
           return;
         }
@@ -20999,11 +21042,29 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // karung dan tanpa piutang tapi punya kewajiban akan lolos, lalu saldo pembukanya
   // tertulis dua kali dan utangnya berlipat. Tiap koleksi yang bisa menerima saldo pembuka
   // wajib ada di sini.
+  // SATU daftar, dua penjaga. sudahAdaSaldoPembuka() mencegah tutup buku ditulis dua
+  // kali; eraTutupBuku() mencegah backup dari era LAMA dimuat sesudah tutup buku.
+  // Kalau daftarnya disalin jadi dua, cepat atau lambat yang satu ketinggalan koleksi
+  // yang sudah ditambahkan ke yang lain — dan penjaga yang bocor lebih buruk daripada
+  // tidak ada penjaga, karena ia tetap terlihat terpasang.
+  function dokSaldoPembukaSemua() {
+    return [].concat(ambilSemuaBatch(), ambilPiutangMutasi(), ambilKasbonMutasi(),
+      ambilProduksi(), ambilBahanKemasan(), ambilBahanLiteran(),
+      ambilUtangPemasokMutasi(), ambilUtangOwnerMutasi(), ambilAmplopLaba())
+      .filter(x => x && x.tutupBuku);
+  }
   function sudahAdaSaldoPembuka(tahun) {
-    const punya = arr => arr.some(x => x.tutupBuku && x.tahunDari === tahun);
-    return punya(ambilSemuaBatch()) || punya(ambilPiutangMutasi()) || punya(ambilKasbonMutasi())
-      || punya(ambilProduksi()) || punya(ambilBahanKemasan()) || punya(ambilBahanLiteran())
-      || punya(ambilUtangPemasokMutasi()) || punya(ambilUtangOwnerMutasi()) || punya(ambilAmplopLaba());
+    return dokSaldoPembukaSemua().some(x => x.tahunDari === tahun);
+  }
+  // Era database = tahun tutup buku TERAKHIR yang saldo pembukanya sudah tertulis.
+  // null = belum pernah tutup buku, jadi belum ada era yang bisa dilanggar.
+  function eraTutupBuku() {
+    let t = null;
+    dokSaldoPembukaSemua().forEach(x => {
+      const n = Number(x.tahunDari);
+      if (isFinite(n) && (t === null || n > t)) t = n;
+    });
+    return t;
   }
 
   async function tulisSaldoPembuka(tahun) {
