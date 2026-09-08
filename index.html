@@ -22367,14 +22367,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     else cek('kas: pelunasan utang owner', brsBayar.nominal, bayar);
 
     // 6 — Identitas kartu "Ke mana uang bulan ini" harus berjumlah kas bersih.
-    // Dihitung dengan rumus yang sama dengan tampilkanKeManaUang, jadi suku yang lupa
-    // ditambahkan di sana akan langsung terlihat di sini sebagai selisih.
+    // Memakai sukuKeManaUang() yang SAMA dengan penggambarnya — bukan salinan yang mirip,
+    // supaya klaim "rumus yang sama" ini tidak bisa lagi jadi usang tanpa ada yang tahu.
     const L2 = hitungLabaBersihRentang('2000-01-01', '2999-12-31', bayaran);
     const q = K.pos;
-    const jadiStok = q.belanja + q.berasDiutang - L2.hpp;
-    const jadiPiutang = K.kreditBulanIni - q.pelunasan;   // nama field arus kas, bukan 'kredit'
-    const jadiKasbon = q.kasbonAmbil - q.kasbonBayar;
-    const biayaNyata = q.biayaBulanan + q.harian + q.beliKemasan + q.beliLiteran + q.refund - q.tukarMasuk;
+    // SUKU YANG SAMA PERSIS dengan yang digambar — bukan salinan yang mirip.
+    const s2 = sukuKeManaUang(q, L2, K.kreditBulanIni);   // nama field arus kas, bukan 'kredit'
+    const jadiStok = s2.jadiStok, jadiPiutang = s2.jadiPiutang, jadiKasbon = s2.jadiKasbon;
+    const biayaNyata = s2.biayaNyata;
     const identitas = L2.margin + L2.omzetTanpaHpp - jadiStok - jadiPiutang - jadiKasbon
       + q.berasDiutang - q.bayarBon + q.modalSetor - q.setoran - q.prive
       - (q.bayarUtangOwner || 0) - biayaNyata;
@@ -22568,6 +22568,24 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // jadi jumlahnya sama persis sampai rupiah terakhir. Pengujian membandingkan kedua
   // jalur dan menolak selisih Rp1 sekalipun.
   // Angka BULANANNYA memakai hitungLabaBulan — mesin yang sama dengan Laporan Bulanan.
+  // SUKU-SUKU KARTU "KE MANA UANG" — SATU rumus, dipakai penggambarnya DAN penjaganya.
+  // Dulu keduanya menyimpan salinannya sendiri, dan komentar di penjaga mengaku "rumus yang
+  // sama dengan tampilkanKeManaUang" — klaim yang benar saat ditulis lalu diam-diam jadi
+  // salah begitu satu sisi berubah. Persis pola "dijaga di satu tempat, bocor di tempat
+  // lain", dengan bentuk paling licik: yang bocor adalah PENJAGANYA sendiri, sambil
+  // menuliskan kesamaan yang tidak lagi berlaku.
+  // Sekarang tidak ada sisi kedua yang bisa ketinggalan.
+  function sukuKeManaUang(pos, laba, kreditBulanIni) {
+    return {
+      jadiStok: pos.belanja + (pos.berasDiutang || 0) - laba.hpp,
+      jadiPiutang: kreditBulanIni - pos.pelunasan,
+      jadiKasbon: pos.kasbonAmbil - pos.kasbonBayar,
+      // pos.refund SENGAJA TIDAK ADA DI SINI: sejak afe724e refund sudah ikut mengurangi
+      // laba.margin. Menambahkannya lagi memotongnya dua kali — dan itulah regresi yang
+      // ditangkap ujiUtangOwner() dengan selisih persis sebesar nominal refund.
+      biayaNyata: pos.biayaBulanan + pos.harian + pos.beliKemasan + pos.beliLiteran - pos.tukarMasuk
+    };
+  }
   function tampilkanKeManaUang(d) {
     const kont = document.getElementById('daftarKeMana');
     if (!kont || !d.pos) return;
@@ -22577,11 +22595,26 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Belanja kas kini hanya tunai+bongkar. Stok yang datang lewat BON menambah gudang
     // TANPA uang keluar — sukunya sendiri; bayar bon = uang keluar yang MENGURANGI UTANG,
     // bukan stok baru dan bukan biaya. Tanpa dua suku ini identitasnya patah.
-    const jadiStok = pos.belanja + (pos.berasDiutang || 0) - laba.hpp;
-    const jadiPiutang = d.kreditBulanIni - pos.pelunasan;
-    const jadiKasbon = pos.kasbonAmbil - pos.kasbonBayar;
-    const biayaNyata = pos.biayaBulanan + pos.harian + pos.beliKemasan + pos.beliLiteran
-      + pos.refund - pos.tukarMasuk;
+    const suku = sukuKeManaUang(pos, laba, d.kreditBulanIni);
+    const jadiStok = suku.jadiStok, jadiPiutang = suku.jadiPiutang, jadiKasbon = suku.jadiKasbon;
+    // (catatan refund pindah ke sukuKeManaUang di atas)
+    // REFUND SUDAH DI DALAM laba.margin SEJAK afe724e — jangan dipotong dua kali.
+    // Sebelum retur masuk laba, pos.refund adalah SATU-SATUNYA tempat refund muncul di
+    // kartu ini dan identitasnya berjumlah. Sesudahnya laba.margin sendiri sudah berkurang
+    // sebesar uang kembali, jadi menambahkannya lagi di sini memotongnya DUA KALI.
+    // Ditangkap penjaga proyek sendiri, ujiUtangOwner(): "kartu Ke-Mana-Uang berjumlah kas
+    // bersih: -23072750 != -22372750" — meleset persis Rp700.000, nominal refund benihnya.
+    //
+    // Kenapa refund TIDAK diberi barisnya sendiri seperti bayar bon / modal setor: tiga suku
+    // itu berdiri sendiri karena TIDAK ada di suku lain mana pun. Refund berbeda — ia sudah
+    // ikut di dalam margin. Memberinya baris yang ikut berjumlah akan memotongnya dua kali
+    // lagi, cuma dengan nama yang lebih rapi. Jadi ia disebut di KETERANGAN baris marginnya,
+    // di tempat pengurangannya benar-benar terjadi: satu nama satu angka lintas layar
+    // (sama dengan layar Laba), dan angka yang berkurang tetap menyebut pengurangnya.
+    // returHpp tidak ikut masalah ini: ia saling meniadakan antara laba.margin dan jadiStok
+    // (lewat laba.hpp), dan itu terukur — selisih penjaga selalu PERSIS returUang saja,
+    // sama besar untuk retur utuh maupun tidak utuh.
+    const biayaNyata = suku.biayaNyata;
     // Bulan kosong: kartunya diam, tidak memajang deretan Rp0.
     const adaIsi = d.totalMasuk !== 0 || d.totalKeluar !== 0 || laba.margin !== 0;
     kartu.style.display = adaIsi ? 'block' : 'none';
@@ -22593,7 +22626,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <span class="angka ${nilai === 0 ? '' : (arah > 0 ? 'ph-hijau' : 'ph-merah')}">${nilai === 0 ? 'Rp0' : (arah > 0 ? '+' : '−') + formatRupiah(Math.abs(nilai))}</span>
     </div>`;
     const baris = [];
-    baris.push(brs('Untung kotor barang terjual', 'omzet ber-HPP dikurangi harga pokoknya', laba.margin, laba.margin >= 0 ? 1 : -1));
+    baris.push(brs('Untung kotor barang terjual',
+      'omzet ber-HPP dikurangi harga pokoknya'
+        + (laba.returUang > 0 ? ' \u00b7 sudah dikurangi refund retur ' + formatRupiah(laba.returUang) : ''),
+      laba.margin, laba.margin >= 0 ? 1 : -1));
     if (laba.omzetTanpaHpp > 0) {
       baris.push(brs('Penjualan yang HPP-nya bolong', laba.jumlahTanpaHpp + ' transaksi — uangnya masuk penuh, untungnya belum terukur', laba.omzetTanpaHpp, 1));
     }
@@ -22625,7 +22661,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     }
     baris.push(brs('Disetor ke owner & tarik modal', 'pengambilan pemilik — bukan biaya toko', pos.setoran || 0, -1));
     baris.push(brs('Prive owner dari laci', 'biaya hidup pemilik — keluar dari laci, bukan biaya toko', pos.prive || 0, -1));
-    baris.push(brs('Habis untuk biaya, bahan & refund', 'listrik, gaji, harian, kantong, refund (bersih)', biayaNyata, -1));
+    baris.push(brs('Habis untuk biaya & bahan', 'listrik, gaji, harian, kantong \u2014 refund ada di baris untung kotor', biayaNyata, -1));
     baris.push(`<div class="baris-44 baris-jumlah">
       <span class="nama"><i class="trx-nama"><b>Jumlah — kas bersih</b></i></span>
       <span class="angka">${(d.bersih < 0 ? '−' : '') + formatRupiah(Math.abs(d.bersih))}</span>
