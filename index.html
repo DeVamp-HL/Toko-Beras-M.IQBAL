@@ -23196,14 +23196,39 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
       if (_labaZona === 'dari') {
         const merk = merkBulan;   // satu daftar, dihitung di atas
-        const maksM = Math.max(1, ...merk.map(x => Math.abs(x.margin)));
+        // PATOKAN PINDAH DARI KELOMPOK KE BARISNYA SENDIRI. Dulu lebar bilah =
+        // |margin| / maks|margin| SELURUH merk yang sedang tampil — pola bernama "patokan
+        // terbesar di kelompoknya", kejadian keenam. Akibatnya merk yang sama menggambar
+        // bilah PENUH di bulan sepi dan bilah pendek di bulan ramai walau rupiahnya persis
+        // sama: dua bulan berdampingan tidak bisa dibandingkan lewat panjang.
+        // Sekarang penyebutnya omzet merk itu sendiri, jadi bilahnya menjawab satu
+        // pertanyaan yang tetap: BERAPA BAGIAN DARI PENJUALAN MERK INI YANG JADI MARGIN.
+        // Itu sebanding lintas merk DAN lintas bulan, dan tidak berubah waktu daftarnya
+        // disaring. Rugi tetap dibedakan lewat kelas .rugi (amber), bukan lewat panjang —
+        // panjang tidak pernah bisa membawa arah.
+        const porsiMargin = x => x.omzet > 0
+          ? Math.max(0, Math.min(100, Math.round(Math.abs(x.margin) / x.omzet * 100))) : 0;
         html += '<div class="kg-label lb6-sela">Margin per merk · diurut margin · ' + namaBulan + '</div>';
         html += merk.length === 0 ? '<div class="lb6-kosong">Belum ada transaksi ber-HPP bulan ini.</div>'
           : merk.map(x => '<div class="lb6-merk"><span class="nm">' + escapeHtml(x.nama) + '<small>' + x.n + ' trx'
               + (x.perKg !== null ? ' · ' + rp(x.perKg) + '/kg' : '') + '</small></span>'
-              + '<span class="bar"><i style="width:' + Math.round(Math.abs(x.margin) / maksM * 100) + '%;"'
+              + '<span class="bar"><i style="width:' + porsiMargin(x) + '%;"'
               + (x.margin < 0 ? ' class="rugi"' : '') + '></i></span>'
-              + '<b' + (x.margin < 0 ? ' class="rugi"' : '') + '>' + rp(x.margin) + '</b></div>').join('');
+              + '<b' + (x.margin < 0 ? ' class="rugi"' : '') + '>' + rp(x.margin) + '</b></div>').join('')
+          + '<div class="kg-rincian">Panjang bilah = bagian omzet merk itu yang jadi margin — bukan dibandingkan merk lain, jadi tidak berubah waktu daftarnya disaring.</div>';
+        // SELISIHNYA DINAMAI, bukan didiamkan. kelompokMerkLaba membaca ambilPenjualan()
+        // saja — nol pembacaan retur — sementara keping di atas sudah dipotong returUang.
+        // Jadi jumlah bilah di sini SELALU lebih besar atau sama, dan arah selisihnya selalu
+        // ke atas: ke arah menenangkan. Judul "Margin per merk" membuat daftar ini terbaca
+        // sebagai penguraian angka kepala; kalau memang belum, itu harus dikatakan.
+        // Membuat bilahnya sungguh sadar-retur menuntut membebankan refund per merk —
+        // aturan uang baru, gelombang sendiri. MENAMAI selisihnya murni tampilan.
+        const jumlahBilah = merk.reduce((a, x) => a + x.margin, 0);
+        if (merk.length && Math.round(jumlahBilah) !== Math.round(L.margin)) {
+          html += '<div class="kg-rincian lb6-oks">Jumlah baris di atas ' + rp(jumlahBilah)
+            + ', sementara Margin kotor di kepala ' + rp(L.margin) + ' — bedanya '
+            + rp(jumlahBilah - L.margin) + ', karena retur belum dibebankan ke merk mana pun.</div>';
+        }
       } else {
         // --- KE MANA ---
         const susutRows = barisSusutStok(t => cocok(t));
@@ -23229,14 +23254,31 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             : 'Belum menutup ongkos bulan ini (' + rp(ongkos) + ') — margin kumulatif masih ' + rp(kum) + '.') + '</div>';
         // 100 petak
         if (L.omzetHitung > 0) {
-          const petakHpp = Math.max(0, Math.min(100, Math.round(L.hpp / L.omzetHitung * 100)));
-          const petakBiaya = Math.max(0, Math.min(100 - petakHpp, Math.round(ongkos / L.omzetHitung * 100)));
-          const petakLaba = Math.max(0, 100 - petakHpp - petakBiaya);
-          html += '<div class="kg-label lb6-sela">Dari 100 karung terjual</div><div class="lb6-petak100">';
-          for (let p2 = 0; p2 < 100; p2++)
-            html += '<i class="' + (p2 < petakHpp ? 'hpp' : p2 < petakHpp + petakBiaya ? 'biaya' : 'laba') + '"></i>';
-          html += '</div><div class="kg-rincian">balik jadi HPP ' + petakHpp + ' petak · biaya &amp; susut ' + petakBiaya
-            + ' petak · jadi laba ' + petakLaba + ' petak' + (L.labaBersih < 0 ? ' — bulan ini masih RUGI' : '') + '</div>';
+          // GAMBAR SERATUS PETAK ADALAH BENTUK PALING MUDAH DIPERCAYA DI HALAMAN INI —
+          // dan justru ia yang paling gampang berbohong, karena penjepitnya diam.
+          // Dulu: petakHpp dijepit ke 100 saat HPP melebihi omzet, lalu petakBiaya dijepit
+          // ke 100 − 100 = 0. Kalimatnya jadi berbunyi "biaya & susut 0 petak" PERSIS di
+          // bulan yang biayanya sedang menenggelamkan toko. Diuji dengan rumus aslinya:
+          // hpp 120jt / omzet 100jt / ongkos 20jt memberi "hpp=100 biaya=0 laba=0".
+          // Sebuah pembagian hanya bisa digambar sebagai 100 petak kalau bagian-bagiannya
+          // MUAT di dalam 100. Kalau tidak muat, yang jujur bukan memotong salah satunya —
+          // tapi menolak menggambar dan menyebut selisihnya.
+          const totalKeluar = L.hpp + ongkos;
+          if (totalKeluar > L.omzetHitung) {
+            html += '<div class="kg-label lb6-sela">Dari 100 karung terjual</div>'
+              + '<div class="kg-rincian lb6-oks">Tidak bisa digambar bulan ini: HPP + biaya ' + rp(totalKeluar)
+              + ' sudah melebihi omzet ' + rp(L.omzetHitung) + ' — selisih ' + rp(totalKeluar - L.omzetHitung)
+              + '. Pembagian seratus petak cuma sanggup menggambarkan bulan yang omzetnya masih menutup keduanya.</div>';
+          } else {
+            const petakHpp = Math.max(0, Math.min(100, Math.round(L.hpp / L.omzetHitung * 100)));
+            const petakBiaya = Math.max(0, Math.min(100 - petakHpp, Math.round(ongkos / L.omzetHitung * 100)));
+            const petakLaba = Math.max(0, 100 - petakHpp - petakBiaya);
+            html += '<div class="kg-label lb6-sela">Dari 100 karung terjual</div><div class="lb6-petak100">';
+            for (let p2 = 0; p2 < 100; p2++)
+              html += '<i class="' + (p2 < petakHpp ? 'hpp' : p2 < petakHpp + petakBiaya ? 'biaya' : 'laba') + '"></i>';
+            html += '</div><div class="kg-rincian">balik jadi HPP ' + petakHpp + ' petak · biaya &amp; susut ' + petakBiaya
+              + ' petak · jadi laba ' + petakLaba + ' petak' + (L.labaBersih < 0 ? ' — bulan ini masih RUGI' : '') + '</div>';
+          }
         }
       }
       wadah.innerHTML = html;
