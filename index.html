@@ -21430,16 +21430,75 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // SATU rumus margin kotor untuk semua periode: yang berganti predikat tanggalnya
   // (hari / minggu / bulan / tahun), rumusnya tidak. hitungLabaBulan tinggal pembungkus —
   // dulu rumusnya ada di sini, sekarang dipindah supaya tidak pernah ada dua salinan.
+  // Uang yang KEMBALI ke pembeli pada satu retur. Bentuknya disamakan PERSIS dengan
+  // jalur kas (18225) supaya laba dan kas tidak pernah memakai dua rumus untuk satu
+  // kejadian: sebuah retur hanya mengisi salah satu dari keduanya, jadi menjumlahkannya
+  // aman. Tukar yang MENAMBAH bayaran (selisih negatif) bukan uang kembali.
+  function uangKembaliRetur(r) {
+    return (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0);
+  }
+  // HPP barang yang diretur — DITAKSIR, karena dokumen retur tidak menyimpan rujukan ke
+  // penjualan aslinya (tidak ada idPenjualan di simpanRetur). Cara menaksirnya sengaja
+  // sama dengan yang sudah dipakai rework kemasan (hppRataRataPerUnit) dan opname karung
+  // (hppTerakhirPerKg): satu cara menaksir untuk satu pertanyaan, supaya kalau taksirannya
+  // perlu dibetulkan, betulnya sekali jalan di semua tempat.
+  function hppTaksiranRetur(r, stokKrg, stokKem) {
+    if (r.jenisAsal === 'karung') {
+      const st = stokKrg[r.merkSumber];
+      return Math.round((r.totalKg || 0) * ((st && st.hppTerakhirPerKg) || 0));
+    }
+    const st = stokKem[kunciKemasan(r.namaProduk, r.ukuranKemasan)];
+    return Math.round((r.jumlahUnit || 0) * ((st && st.hppRataRataPerUnit) || 0));
+  }
   function hitungLabaRentang(cocok) {
     const semua = ambilPenjualan().filter(p => cocok(p.tanggal));
     const terhitung = semua.filter(hppTercatat);
     const tanpaHpp = semua.filter(p => !hppTercatat(p));
-    const omzetHitung = terhitung.reduce((a, p) => a + (p.hargaTotal || 0), 0);
-    const hpp = terhitung.reduce((a, p) => a + (p.hppTotalSaatJual || 0), 0);
+    const omzetHitungKotor = terhitung.reduce((a, p) => a + (p.hargaTotal || 0), 0);
+    const hppKotor = terhitung.reduce((a, p) => a + (p.hppTotalSaatJual || 0), 0);
+    // ===== RETUR IKUT LABA (perintah pemilik 9 Sep 2026) =====
+    // Sampai commit ini fungsi ini hanya membaca ambilPenjualan(); ia TIDAK PERNAH
+    // menyentuh ambilRetur(), dan simpanRetur tidak pernah menyentuh dokumen penjualannya.
+    // Akibatnya refund keluar dari KAS tapi laba tidak bergerak satu rupiah pun — diukur
+    // di kotak pasir: refund Rp1.000.000 menurunkan kas Rp1.000.000 sementara margin kotor
+    // tetap Rp300.000. Laba lebih besar dari kenyataan sebesar SELURUH refund yang pernah
+    // dibayar, sejak kapan pun jalur retur mulai dipakai, dan tidak ada satu layar pun yang
+    // menyebutnya. Arahnya menenangkan — itu sebabnya ia bertahan paling lama.
+    //
+    // Bentuknya: uang kembali SELALU mengurangi omzet. HPP ikut dibalik HANYA kalau
+    // kondisinya 'utuh', karena hanya barang utuh yang benar-benar kembali ke stok
+    // (hitungStokKarungPerMerk 12704 & hitungStokKemasan 12802 sama-sama hanya menghitung
+    // kondisi 'utuh'). Barang TIDAK UTUH tidak kembali, jadi biayanya tetap terbebankan —
+    // dan itulah yang membuat rugi retur tidak-utuh tergambar sebesar barang yang hilang.
+    //
+    // TIDAK BERTABRAKAN dengan nilaiRp 0 pada rework karantina (744e3ef): karantina cuma
+    // punya SATU pintu masuk (13343) yang berpagar kondisi === 'tidak_utuh' (13330), dan
+    // cabang tidak-utuh di sini tidak membalik HPP. Jadi biaya barang karantina tetap
+    // sudah lewat laba, persis alasan nilaiRp 0 itu ditulis. Diperiksa sebelum baris ini
+    // ditulis, bukan sesudahnya.
+    const returPeriode = ambilRetur().filter(r => cocok(r.tanggal));
+    let returUang = 0, returHpp = 0;
+    if (returPeriode.length > 0) {
+      returUang = returPeriode.reduce((a, r) => a + uangKembaliRetur(r), 0);
+      const adaUtuh = returPeriode.some(r => r.kondisi === 'utuh');
+      // Stok baru dihitung kalau memang ada retur utuh di periode ini — fungsi ini
+      // dipanggil per bulan dalam pengulangan laporan, dan sebagian besar periode nihil.
+      if (adaUtuh) {
+        const stokKrg = hitungStokKarungPerMerk(), stokKem = hitungStokKemasan();
+        returPeriode.forEach(r => {
+          if (r.kondisi === 'utuh') returHpp += hppTaksiranRetur(r, stokKrg, stokKem);
+        });
+      }
+    }
+    const omzetHitung = omzetHitungKotor - returUang;
+    const hpp = hppKotor - returHpp;
     return {
       jumlahTrx: semua.length, jumlahHitung: terhitung.length, jumlahTanpaHpp: tanpaHpp.length,
-      omzetPenuh: semua.reduce((a, p) => a + (p.hargaTotal || 0), 0),
+      omzetPenuh: semua.reduce((a, p) => a + (p.hargaTotal || 0), 0) - returUang,
       omzetHitung, hpp, margin: omzetHitung - hpp,
+      // Dipajang terpisah supaya layar bisa MENYEBUT pengurangnya, bukan cuma memajang
+      // hasil yang lebih kecil tanpa sebab. Omzet - HPP tetap = margin.
+      returUang, returHpp, returJumlah: returPeriode.length,
       omzetTanpaHpp: tanpaHpp.reduce((a, p) => a + (p.hargaTotal || 0), 0)
     };
   }
@@ -22968,11 +23027,27 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           + '<b class="kg-uang-dagang lb6-besar">' + rp(L.margin) + '</b>'
           + '<div class="lb6-pita"><span style="width:' + (cakupan * 100) + '%;"></span></div>'
           + '<div class="kg-rincian">terhitung ' + pct(L.omzetHitung, L.omzetHitung + L.omzetTanpaHpp)
-          + (L.jumlahTanpaHpp ? ' · luput ' + L.jumlahTanpaHpp + ' trx (' + rp(L.omzetTanpaHpp) + ' omzet tanpa HPP)' : ' · semua transaksi ber-HPP') + '</div>';
+          + (L.jumlahTanpaHpp ? ' · luput ' + L.jumlahTanpaHpp + ' trx (' + rp(L.omzetTanpaHpp) + ' omzet tanpa HPP)' : ' · semua transaksi ber-HPP') + '</div>'
+          + (L.returJumlah > 0
+            ? '<div class="kg-rincian">sudah dikurangi ' + L.returJumlah + ' retur: uang kembali '
+              + rp(L.returUang) + (L.returHpp > 0 ? ' · HPP barang utuh yang kembali ' + rp(L.returHpp) : '')
+              + '</div>'
+            : '');
       } else if (K === 'bersih') {
+        // Kalau ada retur, omzet & HPP di sini SUDAH bersih dari retur — jadi barisnya
+        // dipecah supaya penjumlahan di layar benar-benar bisa diikuti mata, dan pengurang
+        // yang membuat angkanya kecil punya namanya sendiri. Tanpa retur, ketiga baris
+        // lamanya tetap persis seperti sebelumnya.
+        const barisKotor = L.returJumlah > 0
+          ? [['Omzet penjualan', L.omzetHitung + L.returUang],
+             ['Retur & refund (' + L.returJumlah + ')', -L.returUang],
+             ['HPP barang', -(L.hpp + L.returHpp)]]
+              .concat(L.returHpp > 0 ? [['HPP barang utuh yang kembali', L.returHpp]] : [])
+              .concat([['Margin kotor', L.margin], ['Biaya toko', -L.biayaToko]])
+          : [['Omzet terhitung', L.omzetHitung], ['HPP barang', -L.hpp], ['Margin kotor', L.margin],
+             ['Biaya toko', -L.biayaToko]];
         html += '<div class="kg-label">Dari kotor turun ke bersih</div>'
-          + [['Omzet terhitung', L.omzetHitung], ['HPP barang', -L.hpp], ['Margin kotor', L.margin],
-             ['Biaya toko', -L.biayaToko]]
+          + barisKotor
             .concat(L.hapusBuku ? [['Hapus buku piutang', -L.hapusBuku]] : [])
             .concat([['Susut stok', L.susutStok]])
             .map(x => '<div class="lb6-terjun"><span>' + x[0] + '</span><b>' + rp(x[1]) + '</b></div>').join('')
