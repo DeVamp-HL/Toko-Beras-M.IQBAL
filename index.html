@@ -9487,6 +9487,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       jadwalkanRingkasanKasir();
     }, (err) => {
       console.error('Firestore sync gagal untuk ' + nomorKoleksi, err);
+      // PENDENGAR YANG MATI HARUS IKUT MEMATIKAN STATUSNYA. Sebelum ini
+      // `_sambunganAktif[kunciStatus] = true` (baris di atas) adalah SATU-SATUNYA
+      // penulisnya — nol tempat mengembalikannya ke false. Jadi begitu sebuah pendengar
+      // pernah berhasil sekali, ia terhitung "tersambung" seumur sesi, walau Firestore
+      // sudah mengakhirinya karena galat. Rapor Setelan lalu berkata "Tersambung ke
+      // database", lencana zona Mesin tidak menyalakan apa pun, dan pil status ikut
+      // hijau — padahal cachenya sudah beku dan tiap perubahan dari perangkat lain
+      // tidak pernah sampai.
+      //
+      // Arahnya MENENANGKAN, dan itu yang membuatnya berbahaya: pesan opname menyuruh
+      // pemilik "tunggu sampai statusnya hijau" sebelum menghitung stok. Hijau yang
+      // berarti "pernah hijau" mengizinkan opname di atas data basi.
+      // Komentar di 8105-8113 memperbaiki cacat sekeluarga (daftar kunci yang kurang)
+      // supaya "hijau berarti semuanya siap"; yang ini melengkapinya dengan "dan masih
+      // siap sampai sekarang".
+      _sambunganAktif[kunciStatus] = false;
+      segarkanSetelanKacaJikaTampil();   // rapor & lencana zona ikut berubah seketika
       // Kalau ditolak karena belum login (database sudah dikunci), minta sandi —
       // jangan cuma tampil "Offline", karena penyebabnya bukan sinyal. Ditandai MATI
       // supaya bisa dipasang ulang begitu akun yang benar masuk.
