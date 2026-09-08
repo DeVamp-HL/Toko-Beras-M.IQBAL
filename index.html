@@ -23354,8 +23354,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const syarat = [];
     syarat.push('Sepanjang masa — dari ' + terhitung.length + ' dari ' + semua.length + ' transaksi.');
     syarat.push('Belum dikurangi biaya bulanan bulan mana pun.');
+    // "BELUM", BUKAN "SUDAH" — dan ini koreksi kesalahan saya sendiri di 60db76c.
+    // totalMargin (23337) dijumlah LANGSUNG dari ambilPenjualan(); ia tidak pernah
+    // menyentuh ambilRetur(). Jadi angka besar di kartu desktop retur-KOTOR, sementara
+    // kaca di HP retur-BERSIH sejak afe724e. Diukur di kotak pasir dengan benih yang sama:
+    // kartu desktop Rp2.200.000, sedangkan kalau retur dipotong Rp1.800.000 — beda persis
+    // Rp400.000, nominal refund benihnya.
+    // Dua pembaca, dua angka bernama "Margin kotor". Menyamakannya berarti mengubah angka
+    // besar yang dibaca pemilik di desktop — keputusan pemilik, gelombang sendiri. Yang
+    // WAJIB sekarang: angkanya mengaku apa adanya, bukan mengaku sudah dipotong.
     const returSemua = ambilRetur().reduce((a, r) => a + uangKembaliRetur(r), 0);
-    if (returSemua > 0) syarat.push('Sudah dikurangi refund retur ' + formatRupiah(returSemua) + '.');
+    if (returSemua > 0) syarat.push('BELUM dikurangi refund retur ' + formatRupiah(returSemua)
+      + ' — angka di HP sudah dipotong itu, angka ini belum.');
     document.getElementById('labaSyarat').textContent = syarat.join(' ');
 
     const rugi = terhitung.filter(p => (p.hargaTotal || 0) - p.hppTotalSaatJual < 0);
