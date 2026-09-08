@@ -4134,10 +4134,23 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #labaKaca .lb6-keping{ display:flex; gap:7px; margin-top:2px; }
 #labaKaca .lb6-keping .kg-petak{ flex:1; min-height:82px; }
 #labaKaca .lb6-keping .kg-uang-dagang{ font-size:15px; }
+/* SATU ATURAN UNTUK SELURUH KACA, bukan dua penyempit ad-hoc. Aturan rumah berbunyi
+   "laba bersih wujud TERKECIL"; dulu ia ditegakkan di keping (13px) dan di air terjun
+   (12,5px), lalu bocor di tempat ketiga — upah per hari mendarat di .kg-panel.lb6-panel
+   polos dan mewarisi 17px, jadi angka TERBESAR di zona "Ke mana" adalah turunan dari
+   laba bersih. Bentuk "dijaga di satu tempat, bocor di tempat lain" pada sumbu ukuran. */
+#labaKaca .kg-uang-laba{ font-size:13px; }
 #labaKaca .lb6-keping .kg-uang-laba{ font-size:13px; padding:2px 6px; }
 #labaKaca .lb6-keping i{ white-space:normal; }
 #labaKaca .lb6-panel{ margin-top:8px; display:flex; flex-direction:column; gap:5px; }
 #labaKaca .lb6-besar{ font-size:26px; }
+/* ANGKA PAHLAWAN PUNYA DUA TINGKAT, karena panelnya menaungi dua jenis angka.
+   26px disimpan untuk angka DAGANG (margin kotor). "Diterima tunai" adalah kesimpulan
+   dari kesimpulan — laba bersih dikurangi margin yang masih kredit — jadi ia tidak boleh
+   digambar sebesar angka yang benar-benar diukur, apalagi DUA KALI ukuran laba bersih
+   yang jadi induknya (12,5px di air terjunnya sendiri). Tetap pahlawan di panelnya,
+   tetap bertepi putus, tapi urutannya jujur: dagang 26 > kesimpulan 17 > 13 > 12,5. */
+#labaKaca .lb6-besar.kg-uang-laba{ font-size:17px; }
 /* ARAH DI TIGA WUJUD SEKALIGUS. Mekanismenya sudah ada di bilah merk (4160-4161); yang
    kurang cuma pemasangannya di angka-angka besar. Emas dan platina dua-duanya terbaca
    "baik" di layar gelap ini — jadi rugi WAJIB berganti warna, bukan cuma berganti tanda. */
@@ -23093,7 +23106,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + '<button type="button" class="kg-petak' + (K === 'bersih' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'bersih\')">'
         + '<span class="kg-label">Laba bersih</span><b class="kg-uang-laba' + kelasArah(L.labaBersih) + '">' + rp(L.labaBersih) + '</b><i>sudah &minus; biaya &amp; susut</i></button>'
         + '<button type="button" class="kg-petak' + (K === 'tunai' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'tunai\')">'
-        + '<span class="kg-label">Diterima tunai</span><b class="kg-uang-dagang' + kelasArah(tunai) + '">' + rp(tunai) + '</b><i>laba yang sudah jadi uang</i></button></div>';
+        + '<span class="kg-label">Diterima tunai</span><b class="kg-uang-laba' + kelasArah(tunai) + '">' + rp(tunai) + '</b><i>laba yang sudah jadi uang</i></button></div>';
 
       // --- panel syarat ---
       html += '<div class="kg-panel lb6-panel">';
@@ -23149,7 +23162,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       } else {
         const daftarP = hitungPiutang().filter(x => x.sisa > 0).slice(0, 5);
         html += '<div class="kg-label">Syarat diterima tunai</div>'
-          + '<b class="kg-uang-kas lb6-besar' + kelasArah(tunai) + '">' + rp(tunai) + '</b>'
+          // WUJUD LABA, BUKAN WUJUD KAS. Doktrin 3251-3257 menyimpan platina-besar untuk
+          // "angka terukur"; "Diterima tunai" justru angka PALING TURUNAN di halaman ini —
+          // laba bersih (yang sendirinya kesimpulan) dikurangi margin yang masih kredit.
+          // Digambar 26px padat memakai kostum kas, ia terbaca sebagai uang yang sudah
+          // dihitung di laci. Ia bukan itu.
+          + '<b class="kg-uang-laba lb6-besar' + kelasArah(tunai) + '">' + rp(tunai) + '</b>'
           + '<div class="kg-rincian">laba bersih ' + rp(L.labaBersih) + ' − margin yang masih kredit ' + rp(marginKredit)
           + ' · kredit ' + pct(omzetKredit, L.omzetHitung + L.omzetTanpaHpp) + ' dari omzet ' + namaBulan + '</div>'
           + (daftarP.length ? '<div class="kg-label" style="margin-top:8px;">Piutang berjalan · semua periode</div>'
@@ -23233,8 +23251,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // --- KE MANA ---
         const susutRows = barisSusutStok(t => cocok(t));
         html += '<div class="lb6-dua">'
-          + '<div class="kg-panel lb6-mini"><span class="kg-label">Laba</span><b>' + (L.susutStok ? rp(L.susutStok) : 'Rp0') + '</b><i>susut memotong laba</i></div>'
-          + '<div class="kg-panel lb6-mini"><span class="kg-label">Kas</span><b>Rp0</b><i>susut tidak menyentuh kas</i></div></div>';
+          // DUA UBIN INI SELURUH GUNANYA MENGAJARKAN BEDA LABA DAN KAS — jadi keduanya
+          // wajib memakai dua WUJUD yang berbeda. Dulu dua-duanya <b> polos 15px platina:
+          // pelajaran tentang beda, digambar dengan dua angka yang tampak sama.
+          + '<div class="kg-panel lb6-mini"><span class="kg-label">Laba</span><b class="kg-uang-laba">' + (L.susutStok ? rp(L.susutStok) : 'Rp0') + '</b><i>susut memotong laba</i></div>'
+          + '<div class="kg-panel lb6-mini"><span class="kg-label">Kas</span><b class="kg-uang-kas">Rp0</b><i>susut tidak menyentuh kas</i></div></div>';
         html += susutRows.length === 0
           ? '<div class="lb6-kosong">Belum ada susut tercatat — mulai dihitung 1 September 2026.</div>'
           : susutRows.map(x => '<div class="lb6-terjun"><span>' + escapeHtml(x.nama) + ' · ' + (x.jumlah > 0 ? '+' : '') + x.jumlah + ' ' + escapeHtml(x.satuan) + '</span><b>' + rp(x.nilaiRp) + '</b></div>').join('');
