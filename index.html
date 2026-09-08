@@ -4138,6 +4138,14 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #labaKaca .lb6-keping i{ white-space:normal; }
 #labaKaca .lb6-panel{ margin-top:8px; display:flex; flex-direction:column; gap:5px; }
 #labaKaca .lb6-besar{ font-size:26px; }
+/* ARAH DI TIGA WUJUD SEKALIGUS. Mekanismenya sudah ada di bilah merk (4160-4161); yang
+   kurang cuma pemasangannya di angka-angka besar. Emas dan platina dua-duanya terbaca
+   "baik" di layar gelap ini — jadi rugi WAJIB berganti warna, bukan cuma berganti tanda. */
+#labaKaca .kg-uang-dagang.rugi, #labaKaca .kg-uang-laba.rugi, #labaKaca .kg-uang-kas.rugi{
+  background:none; color:var(--pf-amber); -webkit-text-fill-color:var(--pf-amber); }
+/* Tandanya diberi ruang sendiri supaya tidak menempel pada "Rp" dan tidak hilang dibaca
+   sekilas — di font Prata glyph minus mudah tertukar dengan spasi kerning. */
+#labaKaca .lb6-tanda-minus{ margin-right:.12em; }
 #labaKaca .lb6-pita{ height:5px; border-radius:99px; overflow:hidden; background:rgba(211,160,139,.25); }
 #labaKaca .lb6-pita span{ display:block; height:100%; background:var(--emas); }
 #labaKaca .lb6-terjun{ display:flex; justify-content:space-between; align-items:baseline; gap:10px;
@@ -23047,7 +23055,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (sub) sub.textContent = namaBulan;
       const cocok = t => !!t && bulanDari(t) === bl;
       const L = hitungLabaBersihRentang(bl + '-01', akhirBulanIso(bl));
-      const rp = n => (n < 0 ? '−' : '') + 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
+      // Minus dibungkus supaya bisa diberi wujud, dan rp() serta pct() memakai glyph yang
+      // SAMA (U+2212). Dulu rp() memakai '−' sementara pct() memakai '-' bawaan toFixed,
+      // jadi dua angka bertetangga di satu keping mengeja arah dengan dua tanda berbeda.
+      const minus = '<span class="lb6-tanda-minus">\u2212</span>';
+      const rp = n => (n < 0 ? minus : '') + 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
       // margin kredit = rumus margin per-trx daftar lama, disaring kredit — bukan estimasi
       let marginKredit = 0, omzetKredit = 0;
       ambilPenjualan().forEach(p => {
@@ -23056,24 +23068,33 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         if (hppTercatat(p)) marginKredit += (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0);
       });
       const tunai = L.labaBersih - marginKredit;
-      const pct = (a, b) => b > 0 ? (a / b * 100).toFixed(1).replace('.', ',') + '%' : '—';
+      const pct = (a, b) => b > 0
+        ? (a < 0 ? minus : '') + Math.abs(a / b * 100).toFixed(1).replace('.', ',') + '%'
+        : '—';
+      // ARAH ADALAH BAGIAN DARI ANGKANYA. Mekanisme "rugi = amber" sudah hidup dan terbukti
+      // di bilah merk (CSS 4160-4161), tapi tidak pernah dipasang di tiga keping kepala
+      // maupun di dua angka lb6-besar — justru angka TERBESAR di halaman. Akibatnya bulan
+      // rugi tergambar dengan emas perayaan yang sama persis dengan bulan untung, dan
+      // satu-satunya pembedanya cuma tanda minus setinggi 3 mm di depan digitnya.
+      // Ini satu-satunya cacat di layar ini yang membuat pemilik salah baca dalam SATU tatapan.
+      const kelasArah = n => (n < 0 ? ' rugi' : '');
       const K = _labaKeping;
 
       // --- tiga keping ---
       let html = '<div class="lb6-keping">'
         + '<button type="button" class="kg-petak' + (K === 'kotor' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'kotor\')">'
-        + '<span class="kg-label">Margin kotor</span><b class="kg-uang-dagang">' + rp(L.margin) + '</b><i>' + pct(L.margin, L.omzetHitung) + ' dari omzet ber-HPP</i></button>'
+        + '<span class="kg-label">Margin kotor</span><b class="kg-uang-dagang' + kelasArah(L.margin) + '">' + rp(L.margin) + '</b><i>' + pct(L.margin, L.omzetHitung) + ' dari omzet ber-HPP</i></button>'
         + '<button type="button" class="kg-petak' + (K === 'bersih' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'bersih\')">'
-        + '<span class="kg-label">Laba bersih</span><b class="kg-uang-laba">' + rp(L.labaBersih) + '</b><i>sudah − biaya &amp; susut</i></button>'
+        + '<span class="kg-label">Laba bersih</span><b class="kg-uang-laba' + kelasArah(L.labaBersih) + '">' + rp(L.labaBersih) + '</b><i>sudah &minus; biaya &amp; susut</i></button>'
         + '<button type="button" class="kg-petak' + (K === 'tunai' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'tunai\')">'
-        + '<span class="kg-label">Diterima tunai</span><b class="kg-uang-dagang">' + rp(tunai) + '</b><i>laba yang sudah jadi uang</i></button></div>';
+        + '<span class="kg-label">Diterima tunai</span><b class="kg-uang-dagang' + kelasArah(tunai) + '">' + rp(tunai) + '</b><i>laba yang sudah jadi uang</i></button></div>';
 
       // --- panel syarat ---
       html += '<div class="kg-panel lb6-panel">';
       if (K === 'kotor') {
         const cakupan = (L.omzetHitung + L.omzetTanpaHpp) > 0 ? L.omzetHitung / (L.omzetHitung + L.omzetTanpaHpp) : 1;
         html += '<div class="kg-label">Syarat margin kotor</div>'
-          + '<b class="kg-uang-dagang lb6-besar">' + rp(L.margin) + '</b>'
+          + '<b class="kg-uang-dagang lb6-besar' + kelasArah(L.margin) + '">' + rp(L.margin) + '</b>'
           + '<div class="lb6-pita"><span style="width:' + (cakupan * 100) + '%;"></span></div>'
           + '<div class="kg-rincian">terhitung ' + pct(L.omzetHitung, L.omzetHitung + L.omzetTanpaHpp)
           + (L.jumlahTanpaHpp ? ' · luput ' + L.jumlahTanpaHpp + ' trx (' + rp(L.omzetTanpaHpp) + ' omzet tanpa HPP)' : ' · semua transaksi ber-HPP') + '</div>'
@@ -23105,7 +23126,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       } else {
         const daftarP = hitungPiutang().filter(x => x.sisa > 0).slice(0, 5);
         html += '<div class="kg-label">Syarat diterima tunai</div>'
-          + '<b class="kg-uang-kas lb6-besar">' + rp(tunai) + '</b>'
+          + '<b class="kg-uang-kas lb6-besar' + kelasArah(tunai) + '">' + rp(tunai) + '</b>'
           + '<div class="kg-rincian">laba bersih ' + rp(L.labaBersih) + ' − margin yang masih kredit ' + rp(marginKredit)
           + ' · kredit ' + pct(omzetKredit, L.omzetHitung + L.omzetTanpaHpp) + ' dari omzet ' + namaBulan + '</div>'
           + (daftarP.length ? '<div class="kg-label" style="margin-top:8px;">Piutang berjalan · semua periode</div>'
