@@ -23129,7 +23129,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + '<button type="button" class="kg-petak' + (K === 'kotor' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'kotor\')">'
         + '<span class="kg-label">Margin kotor</span><b class="kg-uang-dagang' + kelasArah(L.margin) + '">' + rp(L.margin) + '</b><i>' + pct(L.margin, L.omzetHitung) + ' dari omzet ber-HPP</i></button>'
         + '<button type="button" class="kg-petak' + (K === 'bersih' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'bersih\')">'
-        + '<span class="kg-label">Laba bersih</span><b class="kg-uang-laba' + kelasArah(L.labaBersih) + '">' + rp(L.labaBersih) + '</b><i>sudah &minus; biaya &amp; susut</i></button>'
+        + '<span class="kg-label">Laba bersih</span><b class="kg-uang-laba' + kelasArah(L.labaBersih) + '">' + rp(L.labaBersih) + '</b><i>sudah &minus; biaya, hapus buku &amp; susut</i></button>'
         + '<button type="button" class="kg-petak' + (K === 'tunai' ? ' kg-terpilih' : '') + '" onclick="labaPilihKeping(\'tunai\')">'
         + '<span class="kg-label">Diterima tunai</span><b class="kg-uang-laba' + kelasArah(tunai) + '">' + rp(tunai) + '</b><i>laba yang sudah jadi uang</i></button></div>';
 
@@ -23145,9 +23145,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // Tiga keadaan yang wajib berbeda digambar identik, dan wujud yang dipilih yang
         // paling menenangkan. Sekarang: belum bisa dihitung -> pitanya MENOLAK menggambar
         // dan menyebut sebabnya; bisa dihitung -> lebarnya dijepit 0..100.
-        const penyebutCakupan = L.omzetHitung + L.omzetTanpaHpp;
+        // PEMBILANG DAN PENYEBUT SATU BASIS. Cakupan menjawab "berapa bagian penjualan yang
+        // sudah ber-HPP" — pertanyaan tentang NOTA, bukan tentang refund. Tapi omzetHitung
+        // sudah dipotong SELURUH returUang (mesin 21504) sementara omzetTanpaHpp tidak,
+        // jadi refund yang berasal dari transaksi TANPA HPP tetap dipotongkan ke sisi
+        // ber-HPP dan menurunkan cakupan yang tidak bersalah. Terukur di peta: omzet
+        // ber-HPP Rp9jt, tanpa HPP Rp1jt, retur Rp1jt -> layar menulis 88,9% padahal
+        // cakupan jujurnya 90,0%.
+        // Dua-duanya dikembalikan ke basis KOTOR — dan ini tambalan sungguhan, bukan
+        // pengakuan: pertanyaannya memang tidak menyangkut retur sama sekali.
+        const omzetHitungKotor2 = L.omzetHitung + L.returUang;
+        const penyebutCakupan = omzetHitungKotor2 + L.omzetTanpaHpp;
         const bisaCakupan = penyebutCakupan > 0;
-        const cakupan = bisaCakupan ? L.omzetHitung / penyebutCakupan : null;
+        const cakupan = bisaCakupan ? omzetHitungKotor2 / penyebutCakupan : null;
         const lebarPita = bisaCakupan ? Math.max(0, Math.min(100, cakupan * 100)) : 0;
         html += '<div class="kg-label">Syarat margin kotor</div>'
           + '<b class="kg-uang-dagang lb6-besar' + kelasArah(L.margin) + '">' + rp(L.margin) + '</b>'
@@ -23156,13 +23166,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
               + (cakupan < 0 ? '<div class="kg-rincian lb6-oks">margin kotor sedang minus — pita ini mengukur cakupan omzet, bukan untung</div>' : '')
             : '<div class="lb6-pita kosong"></div>')
           + '<div class="kg-rincian">' + (bisaCakupan
-            ? 'terhitung ' + pct(L.omzetHitung, penyebutCakupan)
+            ? 'terhitung ' + pct(omzetHitungKotor2, penyebutCakupan)
               + (L.jumlahTanpaHpp ? ' · luput ' + L.jumlahTanpaHpp + ' trx (' + rp(L.omzetTanpaHpp) + ' omzet tanpa HPP)' : ' · semua transaksi ber-HPP')
             : 'belum ada transaksi bulan ini — cakupan belum bisa dihitung') + '</div>'
           + (L.returJumlah > 0
-            ? '<div class="kg-rincian">sudah dikurangi ' + L.returJumlah + ' retur: uang kembali '
-              + rp(L.returUang) + (L.returHpp > 0 ? ' · HPP barang utuh yang kembali ' + rp(L.returHpp) : '')
-              + '</div>'
+            // DUA SUKU, DUA ARAH, DUA KALIMAT. Dulu keduanya berbagi satu kata "dikurangi",
+            // padahal returHpp DITAMBAHKAN kembali (barang utuh kembali ke stok, jadi
+            // biayanya dibatalkan). Satu kata untuk dua arah membuat salah satunya salah.
+            ? '<div class="kg-rincian">' + L.returJumlah + ' retur: margin turun ' + rp(L.returUang)
+              + ' karena uang kembali'
+              + (L.returHpp > 0 ? ', lalu naik ' + rp(L.returHpp) + ' karena HPP barang utuh yang kembali dibatalkan' : '')
+              + '.</div>'
             : '');
       } else if (K === 'bersih') {
         // Kalau ada retur, omzet & HPP di sini SUDAH bersih dari retur — jadi barisnya
@@ -23170,7 +23184,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // yang membuat angkanya kecil punya namanya sendiri. Tanpa retur, ketiga baris
         // lamanya tetap persis seperti sebelumnya.
         const barisKotor = L.returJumlah > 0
-          ? [['Omzet penjualan', L.omzetHitung + L.returUang],
+          // "Omzet TERHITUNG", bukan "Omzet penjualan". Kata pembatasnya dulu dicabut
+          // persis di cabang yang angkanya lebih besar (sebelum retur) — padahal isinya
+          // tetap HANYA nota ber-HPP, sama dengan cabang sebelahnya. Melepas pembatas di
+          // angka yang lebih besar membuatnya terbaca seolah mencakup seluruh penjualan.
+          ? [['Omzet terhitung', L.omzetHitung + L.returUang],
              ['Retur & refund (' + L.returJumlah + ')', -L.returUang],
              ['HPP barang', -(L.hpp + L.returHpp)]]
               .concat(L.returHpp > 0 ? [['HPP barang utuh yang kembali', L.returHpp]] : [])
@@ -23194,7 +23212,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           // dihitung di laci. Ia bukan itu.
           + '<b class="kg-uang-laba lb6-besar' + kelasArah(tunai) + '">' + rp(tunai) + '</b>'
           + '<div class="kg-rincian">laba bersih ' + rp(L.labaBersih) + ' − margin yang masih kredit ' + rp(marginKredit)
-          + ' · kredit ' + pct(omzetKredit, L.omzetHitung + L.omzetTanpaHpp) + ' dari omzet ' + namaBulan + '</div>'
+          // omzetKredit dijumlah langsung dari penjualan (kotor), jadi penyebutnya pun kotor —
+          // kalau tidak, persennya membandingkan dua basis dan selalu terlalu besar.
+          + ' · kredit ' + pct(omzetKredit, L.omzetHitung + L.returUang + L.omzetTanpaHpp) + ' dari omzet ' + namaBulan + '</div>'
           + (L.returJumlah > 0
             ? '<div class="kg-rincian lb6-oks">Laba bersih di atas sudah dipotong refund retur ' + rp(L.returUang)
               + ', tapi "margin yang masih kredit" belum — refund tidak menyimpan cara bayar aslinya, jadi tidak bisa dibebankan ke tunai atau kredit tanpa menebak.</div>'
