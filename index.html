@@ -4326,6 +4326,10 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #setelanKaca .st6-rapor b i{ font-size:11px; font-style:italic; color:var(--pf-abu); }
 #setelanKaca .st6-rapor.oks{ border-color:rgba(211,160,139,.4); }
 #setelanKaca .st6-oks{ color:var(--pf-amber); }
+/* Baris yang pintunya sedang terkunci: tetap terlihat (kalau disembunyikan, pemilik
+   mengira fiturnya hilang), tapi wujudnya jelas bukan pintu yang terbuka. */
+#setelanKaca .st6-baris.st6-gembok{ border-style:dashed; opacity:.72; }
+#setelanKaca .st6-baris.st6-gembok i{ color:#d3a08b; }
 #setelanKaca .st6-cek{ display:flex; align-items:baseline; gap:8px; min-height:24px; font-size:11px; }
 #setelanKaca .st6-cek i{ flex:0 0 7px; width:7px; height:7px; border-radius:99px; align-self:center; }
 #setelanKaca .st6-cek i.beres{ background:#c8d3bd; box-shadow:0 0 6px rgba(200,211,189,.4); }
@@ -9575,6 +9579,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + z[1] + (gagalZona(z[0]) ? '<u>' + gagalZona(z[0]) + '</u>' : '') + '</button>').join('') + '</div>';
       const brs = (aksi, judul, ket) => '<button type="button" class="st6-baris" onclick="' + aksi + '">'
         + '<span><b>' + judul + '</b>' + (ket ? '<i>' + ket + '</i>' : '') + '</span></button>';
+      // PINTU SAMPING DITUTUP. Petak halaman owner di lembar Menu benar-benar digembok
+      // (kelas .tab-owner + disabled, dijaga terapkanKunciMenu), tapi petak SETELAN tidak
+      // ber-tab-owner — dan dari dalam Setelan kaca ini membuat pintu keduanya sendiri
+      // lewat pindahDariMenu('akun'/'harga'/'aruskas'), yang tidak melewati satu penjaga
+      // pun: kontrol positif, ownerSudahUnlock() punya 17 pemakaian nyata di berkas ini
+      // dan NOL di jalur pindahHalaman/pindahDariMenu.
+      // Akibatnya gembok TERLIHAT terpasang — petaknya mati dan bertitik emas — sementara
+      // satu ketukan lewat Setelan mendarat di Akun & Perangkat lengkap dengan daftar
+      // perangkat, kisi izin, dan 500 baris jejak. Itu bentuk terburuk dari "merasa aman":
+      // bukan angka yang salah, tapi gembok yang tampak terpasang padahal ada pintu lain.
+      // Barisnya TETAP TERLIHAT (menyembunyikannya membuat pemilik mengira fiturnya
+      // hilang) — ia cuma berhenti membuka pintunya dan menyebut sebabnya.
+      const brsOwner = (aksi, judul, ket) => ownerSudahUnlock()
+        ? brs(aksi, judul, ket)
+        : '<button type="button" class="st6-baris st6-gembok" onclick="ketukKunciMenu()">'
+          + '<span><b>' + judul + '</b><i>terkunci — perlu PIN owner</i></span></button>';
       if (_setZona === 'aman') {
         html += '<div class="kg-label st6-sela">Kalau catatannya hilang</div>'
           + '<div class="kg-panel st6-mini">' + (umurBackup === null
@@ -9592,7 +9612,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // di satu layar dan tidak di layar lain. Dua pintu, satu pertanyaan, jawaban beda
         // adalah pola yang sudah dua kali menggigit sistem ini.
         html += '<div class="kg-label st6-sela">Siapa boleh apa, dari HP mana</div>'
-          + brs("pindahDariMenu('akun')", 'Akun &amp; Perangkat', 'perangkat, denyut, antrean tertahan, izin, dan jejak — semuanya di sana')
+          + brsOwner("pindahDariMenu('akun')", 'Akun &amp; Perangkat', 'perangkat, denyut, antrean tertahan, izin, dan jejak — semuanya di sana')
           + brs('bukaSetelPin()', 'PIN owner', pinSudahDisetel() ? 'terpasang — ubah di sini' : 'BELUM disetel — tab uang terbuka');
       } else {
         html += '<div class="kg-label st6-sela">Bagaimana sistemnya berjalan</div>'
@@ -9603,11 +9623,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           // (Akun & Perangkat), bersama antrean perangkat LAIN. Satu angka, satu rumah —
           // kalau ditampilkan di dua tempat, yang satu akan bicara soal HP ini saja
           // sementara yang lain bicara soal semua HP, dan keduanya memakai kata yang sama.
-          + brs("pindahDariMenu('akun')", 'Antrean &amp; perangkat', nTunda > 0 ? nTunda + ' catatan menunggu sinyal di HP ini' : 'semua catatan HP ini terkirim')
+          + brsOwner("pindahDariMenu('akun')", 'Antrean &amp; perangkat', nTunda > 0 ? nTunda + ' catatan menunggu sinyal di HP ini' : 'semua catatan HP ini terkirim')
           + brs("bukaModalLoginToko('Masukkan sandi OWNER untuk login ulang database.')", 'Login database', 'sandi OWNER')
           + '<div class="kg-label st6-sela">Pintu data dagang</div>'
-          + brs("pindahDariMenu('harga')", 'Jenis beras &amp; katalog harga', 'di halaman Harga')
-          + brs("pindahDariMenu('aruskas')", 'Titik hitung kas', 'kartu Cocokkan Kas di Arus Kas');
+          + brsOwner("pindahDariMenu('harga')", 'Jenis beras &amp; katalog harga', 'di halaman Harga')
+          + brsOwner("pindahDariMenu('aruskas')", 'Titik hitung kas', 'kartu Cocokkan Kas di Arus Kas');
       }
       w.innerHTML = html;
     } catch (e) { console.error('setelan kaca gagal', e); }
@@ -10228,7 +10248,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // transaksi memicu unduhan file, di HP memunculkan dialog download per jual
     // (temuan audit 2 Agustus 2026, salah satu biang "lambat" di lapangan).
     if (diam && localStorage.getItem('miqbal_backup_auto_tanggal') === tanggalLokalIso()) return;
-    if (diam) localStorage.setItem('miqbal_backup_auto_tanggal', tanggalLokalIso());
+    // CAP TANGGALNYA DIPASANG DI UJUNG, BUKAN DI SINI. Dulu barisnya berdiri persis di
+    // tempat ini — sebelum objeknya dirakit dari ~28 pemanggilan ambil*(), sebelum blob,
+    // sebelum a.click(). Kalau ada satu saja yang melempar di antaranya, capnya sudah
+    // terlanjur tertulis dan rapor Setelan berkata "Backup otomatis segar (hari ini)"
+    // untuk berkas yang TIDAK PERNAH ADA — lalu penjaga sekali-sehari di baris atas
+    // memastikan percobaan berikutnya hari itu juga tidak pernah dijalankan.
+    // Arahnya menenangkan, di satu-satunya butir yang seluruh zona AMAN dibangun untuk
+    // menjawabnya: "kalau HP ini hilang, berapa hari catatan yang ikut hilang?".
     // Versi 4 (audit 9 Agu 2026): SEMUA koleksi ikut. Versi 3 cuma menyimpan 4 koleksi
     // dan penjualan yang hidup saja — restore dari file lama membuat stok salah (retur
     // yang mengembalikan barang ke stok hilang), katalog harga kosong, dan jejak
@@ -10286,6 +10313,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    // Baru DI SINI capnya dipasang: sesudah seluruh koleksi terbaca, blob terbentuk, dan
+    // unduhannya dimulai. Yang tidak bisa dibuktikan dari sini tetap tidak diklaim —
+    // apakah berkasnya benar-benar mendarat di penyimpanan HP tidak terjangkau kode ini.
+    if (diam) localStorage.setItem('miqbal_backup_auto_tanggal', tanggalLokalIso());
     if (!diam) alert('Backup terunduh. Simpan file ini di tempat aman (misal folder Download HP) — ini cadangan kalau riwayat di browser hilang lagi.');
   }
 
@@ -26949,6 +26980,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       el.classList.toggle('tampil-owner', sudahUnlock);
     });
     terapkanKunciMenu();
+    // Kaca Setelan ikut digambar ulang, karena baris pintu owner di sana membaca
+    // ownerSudahUnlock() saat DIGAMBAR — bukan saat diketuk.
+    // JUJUR SOAL APA YANG DIBELINYA HARI INI: kedua jalur yang membalik keadaan owner
+    // (ketukKunciMenu untuk mengunci, modal PIN untuk membuka) sama-sama diakhiri
+    // pindahHalaman('ringkasan'), dan membuka Setelan lagi memang menggambar ulang
+    // kacanya (lihat cabang 'setelan' di pindahHalaman). Jadi hari ini baris ini TIDAK
+    // menambal cacat yang hidup — ia menutup kelasnya: jalur berikutnya yang membalik
+    // keadaan owner tanpa berpindah halaman tidak perlu ingat memanggilnya. Ongkosnya
+    // satu penggambaran ulang; penjaganya sendiri diam kalau Setelan tidak sedang tampil.
+    segarkanSetelanKacaJikaTampil();
     // Kalau belum unlock dan kebetulan lagi di kategori/filter 'owner' (mis. baru logout
     // di perangkat ini), jatuhkan balik ke default supaya tidak nyangkut di pilihan tersembunyi.
     if (!sudahUnlock) {
