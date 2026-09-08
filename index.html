@@ -4412,6 +4412,16 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #pelanggan6a .pel6-kisi b{ display:block; font-family:var(--pf-serif); font-weight:600;
   font-size:24px; color:var(--pf-platina); margin-top:3px; }
 #pelanggan6a .pel6-kisi b i{ font-size:11px; font-style:italic; color:var(--pf-abu); }
+/* Cakupan pengenal adalah PEMERIKSA KESEHATAN rancangan halaman ini: seluruhnya
+   bersandar pada "kenali lewat cirinya". 1 dari 40 tidak boleh tergambar setenang
+   6 dari 6, dan angkanya tidak boleh menunggu kalimat kecil di bawahnya untuk
+   dimengerti. Warnanya dibaca lewat getComputedStyle waktu diuji, bukan lewat mata —
+   di layar gelap emas dan platina terlalu mirip. */
+#pelanggan6a .pel6-ciri-n.penuh{ color:#c8d3bd; }
+#pelanggan6a .pel6-ciri-n.sebagian{ color:var(--emas); }
+#pelanggan6a .pel6-ciri-n.gembos{ color:#d3a08b; }
+#pelanggan6a .pel6-cacah{ font-family:var(--pf-serif); font-style:italic; font-size:10px;
+  color:var(--pf-abu); margin:9px 2px 2px; }
 #pelanggan6a .pel6-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
   line-height:1.5; color:var(--pf-abu); }
 #pelanggan6a .pel6-chips{ display:flex; gap:7px; overflow-x:auto; margin:11px 0 4px;
@@ -19424,15 +19434,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const t = slot(c.nama || c.id, 0);
       if (t) { t.catatan = c.catatan || ''; t.ciri = c.ciri || ''; t.rute = c.rute || ''; }
     });
+    // BEDA "nol" DARI "tidak punya barisnya" — hitungPiutang() hanya melahirkan orang
+    // dari penjualan berCaraBayar 'Kredit' (12527) dan mutasi piutang (12535). Pembeli
+    // tunai murni tidak pernah punya baris di sana. Tanpa penanda ini `|| 0` di bawah
+    // menghapus bedanya, dan lembar pelanggan mengubah nol itu jadi kata "Lunas" —
+    // riwayat bayar yang tidak pernah ada, dibaca tepat saat kasir bertanya "boleh
+    // ngebon lagi?". Pola tiga keadaan kosong: kosong bukan nol.
     const utang = {};
-    hitungPiutang().forEach(x => { utang[x.kunci] = x.sisa; });
+    const pernahPiutang = {};
+    hitungPiutang().forEach(x => { utang[x.kunci] = x.sisa; pernahPiutang[x.kunci] = true; });
     return Object.keys(peta).map(k => {
       const t = peta[k];
       let favorit = '', maxN = 0;
       Object.keys(t.produk).forEach(b => { if (t.produk[b] > maxN) { maxN = t.produk[b]; favorit = b; } });
       return { kunci: t.kunci, nama: t.nama, n: t.n, total: t.total, terakhir: t.terakhir,
         favorit, kunjungan: Object.keys(t.kunjungan).length, catatan: t.catatan,
-        ciri: t.ciri, rute: t.rute, sisaUtang: utang[k] || 0 };
+        ciri: t.ciri, rute: t.rute, sisaUtang: utang[k] || 0, pernahKredit: !!pernahPiutang[k] };
     }).sort((a, b) => String(b.terakhir).localeCompare(String(a.terakhir)) || a.nama.localeCompare(b.nama));
   }
 
@@ -19496,6 +19513,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // tinggi Vario merah", bukan huruf besar di KTP. Bilah total digerakkan variabel
   // yang sama dengan angka rinciannya; utang disebut apa adanya — piutang bukan kas.
   // Kartu lama tetap diisi untuk desktop; kolom cari memakai input lama.
+  const NAMA_HARI_PENDEK = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];   // getDay(): 0 = Minggu
   let _pel6Buka = null;    // kunci pelanggan yang rinciannya terbuka
   let _pel6Rute = null;    // saring chip rute aktif
   let _pel6Rutes = [];     // daftar rute unik pada render terakhir (untuk handler indeks)
@@ -19505,8 +19523,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     try {
       semua = semua || hitungPelanggan();
       const daftar = _daftarPelRender || [];
-      const nCiri = semua.filter(x => x.ciri).length;
+      // CATATAN IKUT DIHITUNG. Kolom "Catatan pengenal" (5903) sudah dipakai pemilik
+      // sejak Agustus dengan isi seperti "bapak tinggi, Vario merah" — persis kegunaan
+      // kolom ciri. Kaca dulu tidak pernah membacanya sama sekali (kontrol positif:
+      // kata `catatan` nol kali di badan kaca ini, `ciri` enam kali), jadi barisnya
+      // berkata "belum ada ciri" pada orang yang cirinya sudah ditulis, dan angka di
+      // kepala menyuruh mengerjakan pekerjaan yang sudah dikerjakan.
+      // Kartu desktop (19445) sengaja TIDAK diubah supaya >=700px nol regresi — karena
+      // itu labelnya di sini berbunyi lain, bukan kembar dengan label desktop.
+      const punyaPengenal = x => !!(x.ciri || x.catatan);
+      const nCiri = semua.filter(punyaPengenal).length;
       const belumCiri = semua.length - nCiri;
+      // Kartu ini pemeriksa kesehatan seluruh rancangan halaman: kalau cakupannya
+      // gembos, pendekatan "kenali lewat cirinya" ikut gembos. 1 dari 40 tidak boleh
+      // tergambar setenang 6 dari 6.
+      const rasioCiri = semua.length > 0 ? nCiri / semua.length : 1;
+      const kelasCiri = semua.length === 0 ? '' : (rasioCiri >= 1 ? ' penuh' : (rasioCiri < 0.7 ? ' gembos' : ' sebagian'));
       const tahunThr = tahunThrAktif();
       const petaThr = {};
       ambilThrPelanggan().forEach(x => { if (x.tahun === tahunThr) petaThr[x.kunci] = x; });
@@ -19523,17 +19555,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       let h = `<div class="kg-panel pel6-kepala">
         <div class="pel6-kisi">
           <div><div class="kg-label">Dikenal sistem</div><b>${semua.length} <i>orang</i></b></div>
-          <div><div class="kg-label">Punya ciri pengenal</div><b>${nCiri} <i>dari ${semua.length}</i></b></div>
+          <div><div class="kg-label">Sudah dikenali</div><b class="pel6-ciri-n${kelasCiri}">${nCiri} <i>dari ${semua.length}</i></b></div>
         </div>
         <div class="pel6-nota">${semua.length === 0
           ? 'Belum ada pelanggan bernama — nama masuk sendiri dari transaksi yang menyebut pembelinya.'
           : belumCiri > 0
-            ? `${belumCiri} orang belum punya ciri pengenal — sistem tidak menebaknya. Isi cirinya waktu mereka datang lagi.`
-            : 'Semua pelanggan punya ciri pengenal.'}</div>
+            ? `${belumCiri} orang belum punya ciri maupun catatan pengenal — sistem tidak menebaknya. Isi waktu mereka datang lagi.`
+            : 'Semua pelanggan sudah punya ciri atau catatan pengenal.'}</div>
       </div>`;
 
-      _pel6Rutes = [...new Set(daftar.map(x => x.rute).filter(Boolean))];
-      if (_pel6Rute && _pel6Rutes.indexOf(_pel6Rute) < 0) _pel6Rute = null;
+      // MENU PENYARING TIDAK BOLEH IKUT DISARING. Dulu daftar chip diturunkan dari
+      // `daftar` yang sudah tersaring kolom cari, jadi mengetik satu huruf memangkas
+      // pilihan rute yang bisa dilihat pemilik — dan chip yang sedang aktif dicabut
+      // tanpa sepatah kata, sehingga daftarnya mendadak melebar di tengah mengetik.
+      // Sekarang menunya dari `semua`: yang berubah karena mengetik cuma HASILNYA.
+      _pel6Rutes = [...new Set(semua.map(x => x.rute).filter(Boolean))];
+      if (_pel6Rute && _pel6Rutes.indexOf(_pel6Rute) < 0) _pel6Rute = null;   // rutenya benar-benar lenyap dari buku
       if (_pel6Rutes.length) {
         h += `<div class="pel6-chips">` + _pel6Rutes.map((r, ri) =>
           `<button type="button" class="pel6-chip${r === _pel6Rute ? ' kg-terpilih' : ''}" onclick="pel6Rute(${ri})">${escapeHtml(r)}</button>`
@@ -19541,6 +19578,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       }
 
       const tampil = daftar.map((x, i) => ({ x, i })).filter(p => !_pel6Rute || p.x.rute === _pel6Rute);
+      // Cacah hasil hidup DI DALAM kaca. Simpul lamanya (#pelangganHitung, 19459) ada
+      // di dalam .kartu-daftar yang di-display:none justru di bawah 700px (4406-4407) —
+      // penjaga yang melekat pada kartu yang dimatikan tepat di lebar tempat kaca hidup.
+      // Ia juga belum memperhitungkan chip rute, karena chip baru menyaring di sini.
+      // Angka ini sekaligus penjaga bilah: kalau layar berbunyi "2 dari 37", bilah yang
+      // tiba-tiba memanjang bisa dicurigai.
+      h += `<div class="pel6-cacah">${tampil.length === semua.length
+        ? `${semua.length} orang`
+        : `${tampil.length} dari ${semua.length} orang`}</div>`;
       if (!tampil.length) {
         const kata = (document.getElementById('cariPelanggan').value || '').trim();
         const menyaring = !!(kata || _pel6Rute);
@@ -19548,19 +19594,43 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           ? 'Coba kata lain — nama, ciri pengenal, rute, atau barang langganannya.'
           : 'Isi kolom nama pembeli saat menjual — tunai dan QRIS juga bisa, bukan cuma kredit.'}</span></div>`;
       } else {
-        h += `<div class="pel6-ket">Bilah emas di belakang baris = total belanja seumur hidup, digerakkan angka yang sama dengan rinciannya. Utang disebut apa adanya — piutang bukan kas.</div>`;
-        const maks = Math.max.apply(null, tampil.map(p => p.x.total).concat([1]));
+        h += `<div class="pel6-ket">Bilah emas di belakang baris = total belanja seumur hidup, dibandingkan pelanggan terbesar di SELURUH buku — panjangnya tidak berubah waktu disaring. Utang disebut apa adanya — piutang bukan kas.</div>`;
+        // PATOKAN DARI SELURUH BUKU, BUKAN DARI YANG SEDANG TAMPIL. Dulu `maks` diambil
+        // dari `tampil` — daftar yang sudah disaring kolom cari DAN chip rute. Akibatnya
+        // menekan sebuah chip memanjangkan bilah orang yang sama tanpa satu rupiah pun
+        // berpindah, dan orang terkecil di kelompok kecil bisa melompat ke 100%.
+        // Ini kejadian ke-5 pola "patokan terbesar di kelompoknya", dan bentuk terburuknya
+        // karena kelompoknya ditentukan PEMAKAI. Desainnya sendiri menghitung maksTotal
+        // dari seluruh orang sebelum penyaringan.
+        const maks = Math.max.apply(null, semua.map(x => x.total).concat([1]));
         h += tampil.map(({ x, i }) => {
-          const porsi = Math.round((x.total / maks) * 100);
+          // LANTAI, seperti lima bilah lain di berkas ini (13685, 13813, 17152, 28117) dan
+          // seperti desainnya. Tanpa lantai, belanja Rp150.000 di sebelah pelanggan
+          // Rp42 juta membulat jadi 0% — tidak bisa dibedakan dari yang belum belanja
+          // sama sekali. Nol tetap nol: itu keadaan yang berbeda dan berhak digambar beda.
+          const porsi = x.total > 0 ? Math.max(4, Math.round((x.total / maks) * 100)) : 0;
           const hari = hariPel[x.kunci] || {};
-          const nHari = Object.keys(hari).length;
           const titik = [0, 1, 2, 3, 4, 5, 6].map(d => `<span class="pel6-titik${hari[d] ? ' isi' : ''}"></span>`).join('');
-          const irama = nHari === 0 ? 'tidak tentu' : nHari + ' hari dalam sepekan';
+          // SEBUT HARI MANA, BUKAN BERAPA HARI. `hari` adalah himpunan hari-dalam-pekan
+          // yang pernah dipakai 90 hari terakhir, bukan cacah kunjungan — jadi "1 hari
+          // dalam sepekan" sama bunyinya untuk yang datang SEKALI 80 hari lalu dan untuk
+          // langganan tiap Rabu tigabelas kali. Frasa itu menjanjikan laju mingguan yang
+          // kodenya tidak pernah hitung. Nama harinya gratis: dari himpunan yang sama.
+          // getDay() 0 = Minggu, jadi lariknya mulai dari Minggu.
+          const hariAda = [0, 1, 2, 3, 4, 5, 6].filter(d => hari[d]);
+          // Dan nol titik menyala BUKAN "tidak tentu" — itu berarti nol belanja dalam 90
+          // hari. Pelanggan tiga tahun yang berhenti empat bulan lalu dan orang yang belum
+          // pernah belanja dulu menggambar baris yang byte-identik. Padahal pertanyaan yang
+          // membuat sumbu irama ini dipilih justru "siapa yang hilang". Bahannya sudah ada
+          // di objek barisnya sejak awal (x.terakhir), cuma tidak pernah dipajang.
+          const irama = hariAda.length
+            ? 'biasanya ' + hariAda.map(d => NAMA_HARI_PENDEK[d]).join(' \u00b7 ')
+            : (x.terakhir ? 'terakhir datang ' + formatTanggal(x.terakhir) : 'belum pernah belanja');
           return `<div class="pel6-baris" onclick="pel6Baris(${i})" role="button" tabindex="0">
             <span class="pel6-bilah" style="--isi:${porsi}%"></span>
             <div class="pel6-dalam">
               <div class="pel6-atas">
-                <span><span class="pel6-ciri${x.ciri ? '' : ' kosong'}">${escapeHtml(x.ciri || 'belum ada ciri')}${x.favorit ? ' &middot; langganan ' + escapeHtml(x.favorit) : ''}</span>
+                <span><span class="pel6-ciri${(x.ciri || x.catatan) ? '' : ' kosong'}">${escapeHtml(x.ciri || x.catatan || 'belum ada ciri')}${x.favorit ? ' &middot; langganan ' + escapeHtml(x.favorit) : ''}</span>
                 <span class="pel6-nama">${escapeHtml(x.nama)}${petaThr[x.kunci] ? ' &middot; THR ✓' : ''}</span></span>
                 ${x.sisaUtang > 0 ? '<span class="lencana-amber">utang ' + formatRupiah(x.sisaUtang) + '</span>' : `<span class="pel6-total">${formatRupiah(x.total)}</span>`}
               </div>
@@ -19577,7 +19647,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         }).join('');
       }
 
-      const ringkasThr = (document.getElementById('thrRingkas') || {}).textContent || '';
+      // DIHITUNG DI SINI, bukan disalin dari textContent #thrRingkas. Simpul itu milik
+      // kartu desktop yang justru disembunyikan CSS di bawah 700px, dan di jalur keluar
+      // dini 19442 ia tidak pernah diisi sama sekali — panel THR lalu menggambar <i>
+      // kosong: bukan "0 penerima", bukan "belum dihitung", tapi DIAM. Bahannya sudah
+      // dibangun di kaca ini (petaThr), jadi menyalin string layar lain tidak pernah perlu.
+      const penerimaThr = Object.keys(petaThr);
+      const nilaiThrKaca = penerimaThr.reduce((a, k) => a + (petaThr[k].nilai || 0), 0);
+      const ringkasThr = penerimaThr.length === 0
+        ? 'belum ada penerima'
+        : penerimaThr.length + ' penerima' + (nilaiThrKaca > 0 ? ' \u00b7 \u00b1' + formatRupiah(nilaiThrKaca) : '');
       h += `<div class="kg-panel kg-tepi-putus pel6-thr">
         <div class="kg-label">THR Ramadan — pelanggan setia</div>
         <div class="pel6-thr-baris">
@@ -19609,7 +19688,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Stepper kaca menulis input lama yang tersembunyi — tahunThrAktif() membacanya,
     // jadi kartu lama, ringkas, dan kaca tergambar ulang dari SATU sumber tahun.
     // Dijepit dengan batas yang SAMA dengan tahunThrAktif (2020–2100) — tampilan & input satu nilai.
-    el.value = Math.min(2100, Math.max(2020, (parseInt(el.value, 10) || new Date().getFullYear()) + d));
+    // Dijepit dari tahunThrAktif(), BUKAN dari el.value mentah. tahunThrAktif (19670)
+    // MENGABAIKAN nilai di luar 2020-2100 dan memulangkan tahun berjalan — jadi kolom
+    // berisi 1999 sementara seluruh layar memakai 2026, dan menjepit dari 1999 melompat
+    // ke 2020: enam tahun, bukan satu. Satu tahun, satu sumber.
+    el.value = Math.min(2100, Math.max(2020, tahunThrAktif() + d));
     tampilkanPelanggan();
   }
 
@@ -19624,7 +19707,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('pelFavorit').textContent = x.favorit || '—';
     document.getElementById('pelTerakhir').textContent = x.terakhir ? formatTanggal(x.terakhir) : '—';
     document.getElementById('pelTotal').textContent = formatRupiah(x.total);
-    document.getElementById('pelUtang').textContent = x.sisaUtang > 0 ? formatRupiah(x.sisaUtang) : 'Lunas';
+    // "Lunas" adalah pernyataan tentang RIWAYAT, bukan tentang angka nol. Yang tidak
+    // pernah punya baris di piutang belum melunasi apa pun.
+    document.getElementById('pelUtang').textContent = x.sisaUtang > 0
+      ? formatRupiah(x.sisaUtang)
+      : (x.pernahKredit ? 'Lunas' : 'belum pernah ngebon');
     document.getElementById('pelCatatan').value = x.catatan || '';
     document.getElementById('pelCiri').value = x.ciri || '';
     document.getElementById('pelRute').value = x.rute || '';
