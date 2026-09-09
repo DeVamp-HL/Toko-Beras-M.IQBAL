@@ -18968,15 +18968,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           `<button type="button" onclick="thAlasanCepat(${escapeHtml(JSON.stringify(t))})">${t}</button>`).join('')}</div>` : '')
         + `<div class="th-isi4${nIsi < 4 ? ' oks' : ''}">${nIsi} dari 4 tempat uang diisi${nIsi < 4 ? ' — yang kosong dihitung Rp0' : ''}</div>`
         + `<button type="button" class="th-lembar-buka" onclick="thLembarBuka()">Hitung lembar → isi laci</button>`
-        // "terkunci" adalah klaim yang kode belum tepati: dokumen tutupHari ber-id TANGGAL,
-        // dan tutup ulang dari perangkat yang sama menimpanya — angka lama hilang tanpa jejak
-        // (penjaga runTransaction cuma menjaga ANTAR-perangkat; jalur luring tanpa penjaga).
-        // Desainnya menjanjikan "koreksi jadi catatan baru bertanggal, bukan menimpa".
-        // Kalimat ini dijujurkan dengan cara yang MENYEBUT apa yang kurang, bukan dengan cara
-        // yang menghapus tuntutannya — melunakkannya jadi "tercatat" saja akan membunuh
-        // janjinya diam-diam, dan penyimpanannya tidak akan pernah dibangun.
+        // Kalimat ini bergerak bersama penyimpanannya. Sebelum riwayat[] ada, ia berbunyi
+        // "koreksi masih menimpa — belum jadi catatan baru" dan berwarna oksida karena
+        // menyebut utang yang belum dibayar. Sekarang utangnya dibayar: versi lama turun ke
+        // riwayat[] di dalam dokumen tanggal yang sama, di kedua jalur tulis. Warnanya ikut
+        // kembali ke abu — oksida di layar ini berarti "belum lengkap, perlu diisi", dan
+        // membiarkannya oksida sesudah lengkap adalah kebohongan ke arah sebaliknya.
         + `<div class="kg-panel th-30"><div class="kg-label">Selisih 30 malam tercatat</div>`
-        + `<i class="oks">koreksi masih menimpa — belum jadi catatan baru</i>`
+        + `<i>koreksi jadi catatan baru bertanggal — versi lama turun ke riwayat, tidak ditimpa</i>`
         + (malam.length ? `<div class="rel">${malam.map(x => `<span class="${(x.selisih || 0) < 0 ? 'oks' : ''}" style="--isi:${Math.round(Math.abs(x.selisih || 0) / pembagi * 100)}" title="${escapeHtml(x.tanggal)}"></span>`).join('')}</div>
           <i>${malam.length} malam · ${maksSel > 0 ? 'terbesar ' + formatRupiah(maksSel) + ' · oksida = kurang' : 'semua cocok'}</i>` : '<i>belum ada malam tercatat — bar ini terisi begitu malam pertama ditutup</i>') + `</div>`);
       // Pagar & lawan kemarin (seksi 6).
@@ -19063,7 +19062,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       document.getElementById('tutupSudahKet').textContent =
         'Kas tercatat ' + formatRupiah((sudah.kasFisikLaci || 0) + (sudah.kasFisikRekening || 0) + (sudah.kasFisikAmplop || 0) + (sudah.kasFisikBrankas || 0))
         + (sudah.selisih ? ' · selisih ' + (sudah.selisih > 0 ? 'lebih ' : 'kurang ') + formatRupiah(Math.abs(sudah.selisih)) : ' · cocok persis')
-        + '. Menutup lagi akan menimpa catatan itu dan memajukan patokan kas sekali lagi.';
+        + '. Menutup lagi menulis catatan baru — yang lama turun ke riwayat, tidak hilang — dan memajukan patokan kas sekali lagi.';
     }
 
     // --- angka hari ini ---
@@ -19242,6 +19241,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     perbaruiSelisihTutup();
   }
 
+  // Mendorong versi lama satu tingkat ke bawah, bukan membuangnya: dokumen tutupHari tetap
+  // SATU per tanggal (enam pembaca mengandalkan itu — lima .find x.tanggal === dan .filter
+  // x.tanggal < di penghitung "30 malam"), dan sejarahnya tinggal DI DALAM dokumen itu.
+  // Karena KOLEKSI_TUTUP sudah terdaftar di tbDaftarKoleksi, riwayat ikut terarsip dan
+  // terhapus saat Tutup Buku dengan sendirinya — nol koleksi baru, nol risiko data yatim.
+  // Salinan yang didorong DIBUANG riwayat-nya supaya tidak bersarang berlipat, dan
+  // penetapan (bukan penambahan) membuat pemanggilan ulang tidak menggandakan.
+  function thDorongRiwayat(dokBaru, lama) {
+    if (!lama) return;
+    const salin = {};
+    Object.keys(lama).forEach(k => { if (k !== 'riwayat') salin[k] = lama[k]; });
+    salin.digantiPada = dokBaru.diubahPada;
+    dokBaru.riwayat = (lama.riwayat || []).concat([salin]);
+  }
+
   async function simpanTutupHari() {
     const hariIni = tanggalTutupAktif();
     const laci = document.getElementById('tutupLaci').value;
@@ -19257,7 +19271,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (selisih !== 0 && !alasan) { alert('Selisih ' + formatRupiah(Math.abs(selisih)) + ' harus ada keterangannya — supaya bisa ditelusuri nanti.'); return; }
 
     const sudah = ambilTutupHari().find(x => x.tanggal === hariIni);
-    if (sudah && !confirm('Hari ini sudah pernah ditutup jam ' + (sudah.jam || '') + '.\n\nMenutup lagi menimpa catatan itu dan memajukan patokan kas sekali lagi. Lanjutkan?')) return;
+    if (sudah && !confirm('Hari ini sudah pernah ditutup jam ' + (sudah.jam || '') + '.\n\nMenutup lagi menulis catatan baru; yang lama turun ke riwayat bertanggal, tidak hilang. Patokan kas tetap maju sekali lagi. Lanjutkan?')) return;
 
     // SETORAN (langkah 4): dari laci, sisa jadi kas awal besok (disetujui 21 Agu 2026)
     const sisihan = Math.max(0, Math.round(parseFloat(document.getElementById('tutupSisihan').value) || 0));
@@ -19321,6 +19335,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             const server = snap.data();
             const dilihat = sudah ? String(sudah.diubahPada || sudah.jam || '') : '';
             if (String(server.diubahPada || server.jam || '') !== dilihat) return { tolak: server };
+            // Dorong versi SERVER (bukan cache) ke riwayat, di dalam transaksi yang sama
+            // dengan penulisannya: yang membuka wajib menutup. Dua tulisan berurutan akan
+            // meninggalkan jendela di mana yang lama sudah hilang dan yang baru belum ada.
+            thDorongRiwayat(dokTutup, server);
           }
           tx.set(refTutup, dokTutup);
           tx.set(doc(db, KOLEKSI_SETORAN, dokSetoran.id), dokSetoran);
@@ -19334,7 +19352,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         const lain = hasilTx.tolak;
         alert('DITOLAK — hari ini SUDAH ditutup dari perangkat lain jam ' + (lain.jam || '?')
           + ' (kas tercatat ' + formatRupiah((lain.kasFisikLaci || 0) + (lain.kasFisikRekening || 0) + (lain.kasFisikAmplop || 0) + (lain.kasFisikBrankas || 0)) + ').\n\n'
-          + 'Muat ulang dulu, lihat catatannya, baru putuskan mau menimpa atau tidak.');
+          + 'Muat ulang dulu, lihat catatannya, baru putuskan mau menutup ulang atau tidak. Kalau ditutup ulang, catatan itu turun ke riwayat — tidak hilang.');
         tampilkanTutupHari();
         return;
       }
@@ -19343,6 +19361,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       lewatTx = true;
     }
     if (lewatTx) {
+      // Jalur luring WAJIB mendorong juga. Kalau cuma transaksi yang mendorong, koreksi
+      // luring kehilangan sejarahnya diam-diam — cacat yang sama, cuma pindah pintu.
+      // Sumbernya cache (`sudah`), karena server memang tidak terjangkau di sini; itu
+      // versi terakhir yang dilihat perangkat ini, dan konfirmasi di atas memakai versi
+      // yang sama. Penetapan, bukan penambahan: aman walau transaksi sempat mencoba.
+      thDorongRiwayat(dokTutup, sudah);
       await simpanKeFirestore(KOLEKSI_TUTUP, dokTutup);
       await simpanKeFirestore(KOLEKSI_SETORAN, dokSetoran);
       await simpanKeFirestore(KOLEKSI_MODAL, dokModal);
