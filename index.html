@@ -8223,10 +8223,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // `Object.values(_sambunganAktif).every(v => v)` menghitung 14 dan berkata "Tersambung
   // semua perangkat" padahal listener penyesuaian / tutup hari / setoran / amplop /
   // modal / utang pemasok belum pernah sekali pun mengirim. Itu berbahaya justru karena
-  // pesan opname baru menyuruh pemilik "tunggu sampai status hijau". Semua 22 kunci kini
-  // dideklarasikan false sejak awal, sehingga hijau berarti benar-benar semuanya siap.
+  // pesan opname baru menyuruh pemilik "tunggu sampai status hijau".
+  // JANGAN menaruh cacah di kalimat ini: angka yang diketik di komentar sudah basi dua
+  // kali (14 -> 22 -> 25) sementara koleksinya terus lahir. Yang menegakkan aturan ini
+  // bukan daftar di bawah melainkan pasangSinkronisasi, yang mendeklarasikan kunci tiap
+  // koleksi saat ia didaftarkan. Daftar ini tinggal sabuk kedua.
   let _sambunganAktif = { batch: false, bulanan: false, penjualan: false, produksi: false, retur: false, karantina: false, harian: false, bahanKemasan: false, bahanLiteran: false, hargaLiteran: false, hargaKemasan: false, hargaKarung: false, piutang: false, kasbon: false,
-    penyesuaian: false, penyesuaianKemasan: false, tutup: false, pelangganCat: false, pesanan: false, setoranKas: false, amplopLaba: false, modalOwner: false, utangPemasok: false, thr: false, pemasokCat: false };
+    penyesuaian: false, penyesuaianKemasan: false, tutup: false, pelangganCat: false, pesanan: false, setoranKas: false, amplopLaba: false, modalOwner: false, utangOwner: false, utangPemasok: false, thr: false, pemasokCat: false };
 
   const KUNCI_SIMPAN = 'miqbal_batch_masuk_v2';
   const KUNCI_BULANAN = 'miqbal_biaya_bulanan';
@@ -9615,10 +9618,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       hasil.push(['penghapusan disengaja: tanpa peringatan', !_cadanganTertahan[KOL]]);
       // 5) daftar penyetel cache benar-benar terisi saat boot — tanpa ini tombol Terima
       // cuma mengosongkan localStorage sementara _cacheX lama tetap dipakai ambil*().
-      hasil.push(['daftar penyetel cache terisi (25 koleksi)',
+      // Ambang DITURUNKAN, bukan diketik: '>= 25' sudah terlampaui sejak koleksi ke-26
+      // lahir, jadi ia tidak akan pernah berbunyi lagi — uji yang tidak bisa gagal.
+      // Sekarang ia mengadu dua daftar yang WAJIB sama panjang, dan keduanya tumbuh
+      // sendiri dari pendaftaran yang sama.
+      hasil.push(['daftar penyetel cache selengkap daftar status',
         typeof _setelCacheKoleksi[KOLEKSI_PENJUALAN] === 'function'
         && typeof _setelCacheKoleksi[KOLEKSI_PENYESUAIAN] === 'function'
-        && Object.keys(_setelCacheKoleksi).length >= 25]);
+        && Object.keys(_setelCacheKoleksi).length >= Object.keys(_sambunganAktif).length]);
     } finally {
       localStorage.removeItem(KUNCI);
       delete _cadanganTertahan[KOL]; delete _bolehKoleksiKosong[KOL];
@@ -9644,6 +9651,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     console.warn('Memasang ulang ' + mati.length + ' pendengar yang mati karena izin ditolak.');
   }
   function pasangSinkronisasi(nomorKoleksi, kunciLocalStorage, setelCache, onBerubah, fieldUrut, kunciStatus) {
+    // KUNCI STATUS DIDEKLARASIKAN DI SINI, bukan dititipkan ke daftar literal di atas.
+    // Daftar literal itu sudah basi sekali (26 Agu) dan basi LAGI sebelas hari kemudian:
+    // utangOwnerMutasi lahir 6 Sep dengan kunci 'utangOwner' yang tidak pernah masuk daftar,
+    // jadi kuncinya baru LAHIR saat listener-nya sukses pertama kali — dan sampai saat itu
+    // `Object.values(_sambunganAktif).every(v => v)` tidak menghitungnya sama sekali.
+    // Akibatnya pil "Tersambung semua perangkat" dan rapor Setelan bisa hijau sebelum
+    // koleksi itu pernah sekali pun mengirim. Penjaga yang melekat pada DAFTAR akan lupa
+    // lagi di koleksi berikutnya; yang melekat pada PENDAFTARAN tidak bisa.
+    if (kunciStatus && !(kunciStatus in _sambunganAktif)) _sambunganAktif[kunciStatus] = false;
     _setelCacheKoleksi[nomorKoleksi] = setelCache;
     _argSinkron[nomorKoleksi] = [nomorKoleksi, kunciLocalStorage, setelCache, onBerubah, fieldUrut, kunciStatus];
     const kol = collection(db, nomorKoleksi);
