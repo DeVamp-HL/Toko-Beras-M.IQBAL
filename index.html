@@ -13167,6 +13167,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const kepala = 'Catatan bilang sisa ' + tercatat + ' ' + satuan
       + ', diminta ' + diminta + ' ' + satuan + (asal ? ' (' + asal + ')' : '')
       + ' \u2014 kurang ' + kurang + ' ' + satuan + '.';
+    // PIN OWNER WAJIB ADA, dan syaratnya disebut DI SINI — di tempat ia ditegakkan.
+    // mintaPinOwner baris pertamanya `if (!pinSudahDisetel()) return true`: kelonggaran yang
+    // memang dibutuhkan pemanggil lain, jadi JANGAN diubah di sana. Tapi jalan lewat INI
+    // didefinisikan oleh "owner HADIR SEKARANG", dan toko tanpa PIN owner tidak punya cara
+    // membuktikannya — jadi ia tidak bisa menembus. Tanpa klausa ini seluruh ongkos jalan
+    // lewat bersandar pada satu setelan yang tidak dijaga siapa pun: PIN dicabut, dan
+    // tembusan jadi gratis untuk siapa saja tanpa satu pesan pun.
+    //
+    // Ditolak DI DEPAN confirm, bukan sesudahnya: pintu yang tidak bisa dibuka tidak boleh
+    // ditawarkan. Yang jujur adalah mengatakan penembusan tidak tersedia, bukan mengundang
+    // lalu menutup di langkah keempat.
+    if (typeof pinSudahDisetel !== 'function' || !pinSudahDisetel()) {
+      alert(kepala + '\n\nPIN owner belum disetel, jadi "owner hadir" tidak bisa dibuktikan \u2014 penembusan TIDAK tersedia.'
+        + '\n\nSetel PIN di Setelan, atau betulkan catatan stoknya lewat Cocokkan Stok.');
+      return false;
+    }
     if (!confirm(kepala + '\n\nTimbang dulu kalau bisa: membetulkan catatan lebih murah daripada menembusnya.\n\nTembus dengan izin pemilik?')) return false;
     const alasan = String(prompt(kepala + '\n\nAlasan menembus \u2014 satu kalimat, dibaca lagi saat opname:') || '').trim();
     // DIKETIK, bukan dipilih dari chip: chip diketuk refleks. Ambang panjang ini satu-satunya
