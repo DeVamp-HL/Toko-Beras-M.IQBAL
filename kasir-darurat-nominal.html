@@ -59,6 +59,14 @@
     font-size: 2.9rem; font-weight: 700; text-align: right; letter-spacing: 1px;
     line-height: 1.15; white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums;
   }
+  /* Baris kalimat LCD: TIDAK pernah memakan ruang selagi kosong (display:none), supaya
+     #lcd yang flex:0 0 auto tidak tumbuh permanen dan menghimpit daftar barang — cacat
+     yang sama persis dengan temuan uji 9 Agu 2026 tentang blok yang tidak boleh menyusut. */
+  #lcdPesan {
+    display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(28,35,24,.45);
+    font-size: .78rem; line-height: 1.35; text-align: left; color: var(--lcd-teks);
+  }
+  #lcdPesan b { font-weight: 800; }
   #lcd.lcd-tolak #lcdAngka { color: var(--merah) !important; }
   #lcd.lcd-tolak { animation: goyangTolak .3s linear 2; }
   @keyframes goyangTolak { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
@@ -231,7 +239,7 @@
 <div id="bilahAtas"><b>M.IQBAL</b><span id="chipStatus">Menyambungkan…</span></div>
 <div id="judulDarurat">Kasir Darurat — Catat Per Barang</div>
 
-<div id="lcd"><div id="lcdAngka">Rp0</div></div>
+<div id="lcd"><div id="lcdAngka">Rp0</div><div id="lcdPesan"></div></div>
 
 <div id="daftarBaris"></div>
 
@@ -585,6 +593,11 @@ function gambarLcd() {
   // Gono menagih jumlah mentahnya dan selisihnya hilang di laci tanpa tercatat di mana pun.
   var angka = nominalDiketik !== '' ? parseInt(nominalDiketik, 10) : (totalBaris() + pembulatanNotaD());
   $('lcdAngka').textContent = rupiah(angka);
+  // Pesan penolakan stok bertahan sampai PERBUATAN BERIKUTNYA, bukan sampai jeda waktu:
+  // dua angka tidak bisa dibaca dalam 900 md di depan antrean. Tiap tuts, tiap hapus,
+  // tiap baris baru lewat sini — jadi tidak ada tombol yang perlu ingat membersihkannya.
+  var pesan = $('lcdPesan');
+  if (pesan && pesan.style.display !== 'none') { pesan.style.display = 'none'; pesan.innerHTML = ''; }
 }
 function gambarBaris() {
   var wadah = $('daftarBaris');
@@ -636,7 +649,10 @@ function muatRingkasanD() {
   (r.kemasan || []).forEach(function (q) {
     if (!q || !q.namaProduk || !(q.hargaPerUnit > 0)) return;
     daftarProdukD.push({ t: 'kemasan', label: q.namaProduk + ' ' + q.ukuran + 'kg', harga: q.hargaPerUnit,
-      namaProduk: q.namaProduk, ukuran: q.ukuran, hppPerUnit: q.hppPerUnit || 0 });
+      namaProduk: q.namaProduk, ukuran: q.ukuran, hppPerUnit: q.hppPerUnit || 0,
+      // Angka stok SUDAH ada di dokumen ini sejak lama — yang tidak ada cuma pembacanya.
+      // null (bukan 0) kalau katalognya lama: tidak tahu bukan nol. Lihat izinTambahProdukD.
+      sisaUnit: typeof q.sisaUnit === 'number' ? q.sisaUnit : null });
   });
   (r.merkKarung || []).forEach(function (m) {
     if (!m || !m.merk) return;
@@ -648,7 +664,9 @@ function muatRingkasanD() {
       var hargaKrg = u[2] || ((m.hargaPerKg || 0) * berat);
       if (!(hargaKrg > 0)) return;
       daftarProdukD.push({ t: 'karung', label: 'SACK' + berat + ' ' + m.merk, harga: hargaKrg,
-        merk: m.merk, berat: berat, hppPerKg: m.hppPerKg || 0 });
+        merk: m.merk, berat: berat, hppPerKg: m.hppPerKg || 0,
+        // SATU angka untuk SACK50 dan SACK25 merk ini — memang satu kolam beras yang sama.
+        sisaKg: typeof m.sisaKg === 'number' ? m.sisaKg : null });
     });
   });
 }
@@ -719,9 +737,72 @@ function gambarTutsCepat() {
     return '<button type="button" onclick="tambahHargaCepat(' + h + ')">' + Math.round(h).toLocaleString('id-ID') + '</button>';
   }).join('');
 }
+// ---------- penjaga stok untuk tuts bernama (10 Sep 2026) ----------
+// Satu ketukan tuts bernama = satu barang KELUAR dari stok. Angka stoknya sudah ada di HP
+// ini sejak dokumen ringkasanKasir lahir (sisaUnit & sisaKg); yang tidak pernah ada cuma
+// pembacanya — muatRingkasanD menyalin nama, ukuran, harga, HPP, lalu melewati sisanya.
+// Jalur angka polos TIDAK dijaga dan tidak boleh dijaga: ia cuma mencatat rupiah, tidak
+// menyentuh stok sama sekali, dan barangnya baru lahir waktu owner merincinya.
+//
+// SATUAN, karena dari dua tipe cuma satu yang satuannya bertemu sendiri:
+//   kemasan  1 ketukan = 1 unit  lawan sisaUnit  -> unit lawan unit, banding langsung
+//   karung   1 ketukan = 1 sack  lawan sisaKg    -> WAJIB dikalikan beratnya dulu; dan
+//            SACK50 + SACK25 satu merk menarik dari KOLAM YANG SAMA, jadi isi struk
+//            dijumlah dalam KG, bukan dalam cacah sack. Membandingkan sack lawan kg
+//            akan lulus tiap uji dangkal dan salah delapan kali lipat di rak.
+// Literan tidak pernah jadi tuts bernama (keputusan 13 Agu), jadi tidak ada yang dijaga.
+//
+// SISA YANG TIDAK DIKETAHUI BUKAN SISA NOL. HP yang katalognya belum pernah tersegarkan
+// tidak membawa angkanya; menganggap null sebagai 0 akan menolak SETIAP penjualan jam 7
+// pagi, di berkas yang justru ada supaya penjualan tidak pernah berhenti. Tidak tahu =
+// tidak menolak, dan itu ditulis sebagai cabang tersendiri, bukan disandarkan ke `|| 0`.
+function diKeranjangD(t, merkAtauNama, ukuran) {
+  var n = 0;
+  barisItems.forEach(function (it) {
+    var p = it && it.p;
+    if (!p || p.t !== t) return;
+    if (t === 'kemasan') {
+      if (p.namaProduk === merkAtauNama && p.ukuran === ukuran) n += 1;
+      return;
+    }
+    if (p.merk === merkAtauNama) n += (p.berat || 50);   // dijumlah dalam KG
+  });
+  return n;
+}
+// Penolakan berbicara lewat LCD, bukan alert: berkas ini nol alert() sejak lahir, dan
+// kotak yang harus ditutup di depan antrean adalah ongkos yang dibayar pembeli berikutnya.
+function tolakStokD(judul, sisaTeks, adaTeks) {
+  var el = $('lcdPesan');
+  if (el) {
+    el.innerHTML = '<b>' + esk(judul) + '</b> · catatan sisa ' + esk(sisaTeks)
+      + ' · di struk ini sudah ' + esk(adaTeks)
+      + '<br>Panggil pemilik — HP ini tidak bisa menembus stok.'
+      + '<br>Uangnya tetap bisa dicatat: ketik angkanya.';
+    el.style.display = 'block';
+  }
+  tolakEntri();
+  return false;
+}
+function angkaRingkasD(n) {
+  return (Math.round(n * 100) / 100).toLocaleString('id-ID');
+}
+function izinTambahProdukD(q) {
+  if (q.t === 'kemasan') {
+    if (typeof q.sisaUnit !== 'number') return true;          // belum bisa dihitung
+    var adaU = diKeranjangD('kemasan', q.namaProduk, q.ukuran);
+    if (adaU + 1 <= q.sisaUnit) return true;
+    return tolakStokD(q.label, angkaRingkasD(q.sisaUnit) + ' pcs', adaU + ' pcs');
+  }
+  if (typeof q.sisaKg !== 'number') return true;              // belum bisa dihitung
+  var adaKg = diKeranjangD('karung', q.merk);
+  var mintaKg = q.berat || 50;
+  if (adaKg + mintaKg <= q.sisaKg) return true;
+  return tolakStokD(q.label, angkaRingkasD(q.sisaKg) + ' kg', angkaRingkasD(adaKg) + ' kg');
+}
 function tambahProdukD(i) {
   var q = daftarProdukD[i];
   if (!q) return;
+  if (!izinTambahProdukD(q)) return;
   // Angka yang terlanjur diketik jangan hilang gara-gara menekan tuts.
   var sisa = parseInt(nominalDiketik || '0', 10);
   if (sisa > 0) barisItems.push({ h: sisa, p: null });

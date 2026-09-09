@@ -76,7 +76,15 @@
 // TANPA pembulatan sementara layar owner sudah membulatkan — Rp51.750 lawan Rp52.000
 // untuk barang yang sama, di dua pintu yang dipakai bersamaan, dan diamnya sempurna.
 // Berkas ini sudah ada di FILES, jadi satu kenaikan versi menyegarkannya.
-const VERSI = 'kasir-v25';
+// v26 (10 September 2026): PENJAGA STOK untuk tuts bernama di kasir-darurat-nominal.html.
+// Angka sisa (sisaUnit/sisaKg) sudah lama ikut di dokumen ringkasanKasir; pembacanya yang
+// tidak pernah ada. Sekarang satu ketukan tuts bernama ditolak kalau catatan stok tidak
+// menanggungnya, dengan isi struk berjalan ikut dihitung. WAJIB NAIK, dan ini alasan yang
+// paling keras dari semua kenaikan sejauh ini: dengan cache lama HP Gono & Hasan tetap
+// menjalankan berkas TANPA penjaga, jadi layar owner akan menampilkan penjaga yang menurut
+// kodenya terpasang sementara HP yang benar-benar dipakai menjual terus melewatinya —
+// penjaga yang ada di berkas tapi tidak ada di tangan, dan diamnya sempurna.
+const VERSI = 'kasir-v26';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 
