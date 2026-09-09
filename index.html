@@ -13029,23 +13029,47 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
   // Batas jumlah yang boleh diisi untuk jenis jual yang sedang aktif.
   // null = tidak ada batas keras (repacking/literan dihitung dari kg, bukan unit).
-  function batasJumlahJual() {
-    if (jenisJualAktif === 'kemasan') {
-      const kunci = document.getElementById('jualKemasanProduk').value;
-      if (!kunci) return null;
-      const s = hitungStokKemasan()[kunci];
-      return s ? Math.max(0, s.sisaUnit) : null;
-    }
-    if (jenisJualAktif === 'karung') {
-      const merk = document.getElementById('jualKarungMerk').value;
-      if (!merk) return null;
-      const s = hitungStokKarungPerMerk()[merk];
-      const berat = parseFloat(document.getElementById('jualKarungBerat').value) || 50;
+  // SATU SUMBER ANGKA untuk langit-langit jual, dibaca dari MESIN dan dikembalikan dalam
+  // satuan KOLOMNYA sendiri (WZ_PETA_JUMLAH menyimpan satuan tiap jalur: unit/sack/liter/kg).
+  //
+  // Menggantikan wzMaksDariSub, yang mengorek angka pertama dari TEKS sub-label tombol.
+  // Label itu dibangun sebagai `sisa ${sisaKg} kg` — Number JS mentah lewat template literal,
+  // jadi pemisah desimalnya TITIK, dan parseInt sesudah titiknya dibuang MEMBESARKAN:
+  // 'sisa 12.5 kg' -> 125, 'sisa 566.72 kg' -> 56672. Bukan penjaga yang bocor melainkan
+  // penjaga yang MENGUNDANG — dan angkanya sampai ke layar: peringatan wizard mencetaknya,
+  // dan tombol jalan keluarnya menuliskannya ke kolom.
+  //
+  // literan & repacking SENGAJA tetap null di sini. Keduanya hari ini tidak punya
+  // langit-langit sama sekali, dan memberi mereka angka akan menyalakan penolakan di CTA
+  // wizard tanpa jalan lewat — gerbang yang lahir tanpa pintunya, dan yang gagal bukan
+  // ritual setahun sekali melainkan meja kasir jam tujuh pagi. Menyalakannya adalah
+  // pekerjaan kebocoran, bukan pekerjaan satuan, dan datang bersama jalan lewatnya.
+  function stokMaksJalur(jalur, kunci) {
+    if (!kunci) return null;
+    if (jalur === 'kemasan') { const s = hitungStokKemasan()[kunci]; return s ? Math.max(0, s.sisaUnit) : null; }
+    if (jalur === 'karung') {
+      const s = hitungStokKarungPerMerk()[kunci];
+      const berat = parseFloat((document.getElementById('jualKarungBerat') || {}).value) || 50;
       // SETENGAH SACK boleh (permintaan pemilik 21 Agu 2026: 0,5 / 1,5 / 2,5).
       // Dibulatkan ke bawah ke kelipatan 0,5 supaya stok tetap TIDAK PERNAH minus:
       // sisa 629,84 kg / 50 = 12,596 -> 12,5 sack (625 kg), bukan 12,59.
       return s ? Math.max(0, Math.floor(s.sisaKg / berat * 2) / 2) : null;
     }
+    return null;
+  }
+  // Proporsi tabung di rak wizard — angka BANDINGAN, bukan langit-langit, jadi keempat jalur
+  // boleh punya nilai. Dulu memakai parser teks yang sama, sehingga petak berdesimal membesar
+  // 10x sementara petak bulat tidak: tabungnya berbanding salah SATU SAMA LAIN, bukan sekadar
+  // salah nilainya. Karung, literan, dan repacking menimba kolam kg yang sama.
+  function stokSisaRak(jalur, kunci) {
+    if (!kunci) return 0;
+    if (jalur === 'kemasan') { const s = hitungStokKemasan()[kunci]; return s ? Math.max(0, s.sisaUnit) : 0; }
+    const s = hitungStokKarungPerMerk()[kunci];
+    return s ? Math.max(0, s.sisaKg) : 0;
+  }
+  function batasJumlahJual() {
+    if (jenisJualAktif === 'kemasan') return stokMaksJalur('kemasan', document.getElementById('jualKemasanProduk').value);
+    if (jenisJualAktif === 'karung') return stokMaksJalur('karung', document.getElementById('jualKarungMerk').value);
     return null;
   }
 
@@ -14289,7 +14313,6 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       el: b
     }));
   }
-  function wzMaksDariSub(sub) { const m = String(sub).match(/(\d+[\d.]*)/); return m ? parseInt(m[1].replace(/\./g, ''), 10) : null; }
   function wzEsc(t) { return escapeHtml(String(t || '')); }
 
   function wzKe(langkah) { _wz.langkah = langkah; wzRender(); }
@@ -14331,7 +14354,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (b.dataset.habis) { b.click(); return; }       // handler lama menawarkan Produksi
     b.click();                                        // handler LAMA yang berjalan
     const opsi = wzBacaTombol(idKontainer).find(o => o.kunci === kunci);
-    _wz.maks = opsi ? wzMaksDariSub(opsi.sub) : null;
+    _wz.maks = stokMaksJalur(_wz.jalur, kunci);
     _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0;
     // Saklar RUPIAH tetap hidup sesudah ganti merk: teksnya diturunkan dari liter yang
     // masih ada di form (harga merk baru); merk tanpa harga → kembali ke LITER.
@@ -14484,12 +14507,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return nama || 'Item';
   }
   // Rak: petak per pilihan dari tombol form lama; tabung --isi = sisa/maks daftar,
-  // sisa dibaca dengan parser yang sama dengan _wz.maks. Petak habis TETAP bisa
+  // sisa dibaca dari MESIN, sumber yang sama dengan _wz.maks. Petak habis TETAP bisa
   // diketuk (handler lama menawarkan Produksi) — bertepi putus, bukan disabled.
   function wzKacaRak(idKontainer, langkahLanjut, opsi, labelDari) {
     opsi = opsi || wzBacaTombol(idKontainer).filter(o => o.kunci);
     if (!opsi.length) return '';
-    const sisaDari = o => { const n = wzMaksDariSub(o.sub); return n === null ? 0 : n; };
+    const sisaDari = o => stokSisaRak(_wz.jalur, o.kunci);
     const maks = Math.max.apply(null, opsi.map(sisaDari).concat([1]));
     return '<div class="wz-rak">' + opsi.map(o => {
       const sisa = sisaDari(o);
@@ -14568,7 +14591,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const cermin = pb && pb.style.display !== 'none' && pb.textContent.trim()
       ? '<div class="wz-peringatan"><span>' + wzEsc(pb.textContent.trim()) + '</span>'
         + '<div class="aksi"><button type="button" onclick="pindahDariMenu(\'produksi\')">repack dulu</button></div></div>' : '';
-    const lebihHtml = lebih ? '<div class="wz-peringatan"><span>\u26a0 Melebihi stok \u2014 sisa ' + _wz.maks + ' ' + satuan + '. Stok tidak boleh minus.</span>'
+    // DUA angka disebut, bukan satu: selisih antara yang tercatat dan yang diminta adalah
+    // pengukuran yang baru saja didapat gratis, dan itulah yang dibutuhkan opname berikutnya.
+    // Pesan yang cuma bilang "stok tidak cukup" membuangnya.
+    const lebihHtml = lebih ? '<div class="wz-peringatan"><span>\u26a0 Catatan bilang sisa ' + _wz.maks + ' ' + satuan + ', diminta ' + nNum + '. Stok tidak boleh minus.</span>'
       + '<div class="aksi"><button type="button" onclick="wzIsiJumlah(\'' + idInput + '\',' + _wz.maks + ')">jual ' + _wz.maks + ' saja</button>'
       + '<button type="button" onclick="pindahDariMenu(\'produksi\')">repack dulu</button></div></div>' : '';
     const elP = document.getElementById('wzPeringatan');
