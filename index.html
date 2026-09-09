@@ -9149,6 +9149,31 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // ===== Baris berdata: id dibawa di data-*, BUKAN di dalam onclick =====
+  // JSON.stringify SELALU memakai kutip ganda. Menaruh hasilnya mentah ke dalam atribut
+  // yang juga berkutip ganda memutus atributnya di kutip pertama — tombolnya lahir mati.
+  // Meng-escape kutipnya menyembuhkan hari ini lalu patah lagi pada tanda kutip berikutnya
+  // (nilai yang memuat & atau " tetap bisa menyeberang). Atribut data-* tidak pernah
+  // menampung KODE, jadi tidak ada yang bisa putus: yang terburuk cuma id yang salah baca,
+  // dan escapeHtml sudah menutup & < > " ' sekaligus.
+  // Satu pendengar terdelegasi, dipasang SEKALI di document — penggambar boleh menggambar
+  // ulang sesering apa pun tanpa menumpuk pendengar.
+  const BARIS_AKSI = {
+    ap: function (id) { apPilihBaris(id); },                                  // kartu perangkat, Akun & Perangkat
+    bj: function (id) { bjPilihBaris(id); },                                  // baris papan, Belanja
+    rw: function (id) { tutupLembarHariRw(); bukaLembarTrx(id); }             // baris trx, lembar hari Riwayat
+  };
+  // Dipakai penggambar: barisData('bj', x.id) -> ` data-baris="bj" data-baris-id="..."`.
+  function barisData(aksi, id) {
+    return ' data-baris="' + aksi + '" data-baris-id="' + escapeHtml(String(id)) + '"';
+  }
+  document.addEventListener('click', function (e) {
+    const t = (e.target && e.target.closest) ? e.target.closest('[data-baris]') : null;
+    if (!t) return;
+    const f = BARIS_AKSI[t.getAttribute('data-baris')];
+    if (f) f(t.getAttribute('data-baris-id') || '');
+  });
+
   // ============ HPP PER BATCH (Tahap 3) ============
   // Satu-satunya tempat rumus HPP per merk dihitung — dipakai oleh form Input
   // (hitungPerkiraan), tab Riwayat (tampilkanRekap), dan tab HPP baru.
@@ -11843,7 +11868,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           const app = d.aplikasi === 'darurat' ? 'kasir darurat (staf)'
             : d.aplikasi === 'kasir' ? 'kasir kalkulator (owner)' : 'sistem lengkap';
           return '<div class="ap-kartu' + (nAntre > 0 ? ' awas' : (ini ? ' ini' : '')) + '">'
-            + '<button type="button" class="ap-baris" onclick="apPilihBaris(' + JSON.stringify(String(d.id)) + ')">'
+            + '<button type="button" class="ap-baris"' + barisData('ap', d.id) + '>'
             + '<span class="ap-lampu" style="background:' + apWarna(u.menit) + '"></span>'
             + '<span class="ap-sisi"><span class="ap-nama">' + escapeHtml(d.nama || '(belum dinamai)')
             + (ini ? ' &middot; HP ini' : '') + '</span>'
@@ -12157,7 +12182,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           const bKas = kasTokoKeluarKategori(x.kategori);
           const bOwner = x.kategori === 'tokoDompet' || x.kategori === 'owner';
           const dib = String(x.id) === String(_bjPilih);
-          return '<button type="button" class="bj-baris' + (dib ? ' buka' : '') + '" onclick="bjPilihBaris(' + JSON.stringify(String(x.id)) + ')">'
+          return '<button type="button" class="bj-baris' + (dib ? ' buka' : '') + '"' + barisData('bj', x.id) + '>'
             + '<span class="bj-baris-atas"><span>' + escapeHtml(x.keterangan || '') + '</span>'
             + '<b>' + formatRupiah(x.nominal || 0) + '</b></span>'
             + '<span class="bj-tanda">'
@@ -13958,7 +13983,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       { l: 'Keluar', v: ik6Rp(keluar) }
     ].map(x => '<div><i>' + x.l + '</i><b>' + x.v + '</b></div>').join('');
     document.getElementById('rwHariDaftar').innerHTML = trx.length
-      ? trx.map(x => '<button type="button" class="rw-hari-trx" onclick="tutupLembarHariRw();bukaLembarTrx(' + JSON.stringify(String(x.id)) + ')">'
+      ? trx.map(x => '<button type="button" class="rw-hari-trx"' + barisData('rw', x.id) + '>'
         + '<span class="jam">' + wzEsc(x.jam || '\u2014') + '</span>'
         + '<span class="nama">' + wzEsc(namaSingkatTrx(x)) + (x.trxId ? '<i>keranjang #' + String(x.trxId).slice(-4) + '</i>' : '') + '</span>'
         + '<b>' + formatRupiah(x.hargaTotal || 0) + '</b></button>').join('')
