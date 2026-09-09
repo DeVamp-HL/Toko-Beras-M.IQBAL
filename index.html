@@ -11803,9 +11803,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // deploy-nya salin-tempel manual ke Console Firebase. Karena itu tabel ini disebut
   // "menurut berkas aturan", dan batas itu ditulis di layar, bukan dianggap sepele.
   const AP_IZIN = [
-    { n: 'penjualan',            b: 'ya', t: 'ya', u: 'sama', h: 'tidak' },
-    { n: 'piutangMutasi',        b: 'ya', t: 'ya', u: 'sama', h: 'tidak' },
-    { n: 'stokBahanLiteran',     b: 'ya', t: 'ya', u: 'sama', h: 'tidak' },
+    // Ketiganya: `allow read, delete: if owner()` — kasir MENAMBAH tapi tidak pernah
+    // membaca kembali. Kolom baca sempat berbunyi 'ya' dan membantah paragraf di atas
+    // tabel ini ("Tidak bisa membaca laporan..."), yang sejak awal sudah benar.
+    { n: 'penjualan',            b: 'tidak', t: 'ya', u: 'sama', h: 'tidak' },
+    { n: 'piutangMutasi',        b: 'tidak', t: 'ya', u: 'sama', h: 'tidak' },
+    { n: 'stokBahanLiteran',     b: 'tidak', t: 'ya', u: 'sama', h: 'tidak' },
     { n: 'logAktivitas',         b: 'tidak', t: 'ya', u: 'tidak', h: 'tidak' },
     { n: 'ringkasanKasir',       b: 'ya', t: 'tidak', u: 'tidak', h: 'tidak' },
     { n: 'pengaturan/aksesKasir', b: 'ya', t: 'tidak', u: 'tidak', h: 'tidak' },
