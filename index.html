@@ -5198,6 +5198,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 /* Oksida = yang masih menunggu, sama artinya dengan .oks di seluruh layar ini. Dipakai
    baris "koreksi masih menimpa": ia menyebut kekurangan yang belum ditambal, bukan hiasan. */
 #thAlatKas .th-30 i.oks{ color:#d3a08b; }
+/* Malam yang punya riwayat koreksi: tanda emas di puncak bilahnya. Emas = "ada yang bisa
+   dibuka di sini", bukan peringatan — selisih kurang tetap oksida, dan keduanya bisa
+   menempel di bilah yang sama tanpa saling menghapus. */
+#thAlatKas .th-30 .rel span.rev{ box-shadow:inset 0 3px 0 0 #e2cda6; }
+#thAlatKas .th-30 .th-rev-buka{ display:block; width:100%; min-height:44px; margin-top:10px;
+  border-radius:9px; border:1px solid rgba(226,205,166,.3); background:none; color:#e2cda6;
+  font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.08em; }
+#thAlatKas .th-30 .th-rev-malam{ margin-top:12px; }
+#thAlatKas .th-30 .th-rev-baris{ display:flex; align-items:baseline; gap:8px; padding:7px 0;
+  border-top:1px dashed rgba(255,255,255,.08); }
+#thAlatKas .th-30 .th-rev-baris span{ flex:none; width:42px; font-size:10px; color:var(--pf-abu); }
+#thAlatKas .th-30 .th-rev-baris b{ flex:none; font-family:var(--pf-serif); font-size:13px; color:var(--pf-platina); }
+#thAlatKas .th-30 .th-rev-baris i{ flex:1; margin:0; font-size:10px; }
+/* Baris yang berlaku sekarang dibedakan tepinya, bukan cuma katanya — supaya ujung rantai
+   ketahuan tanpa membaca. */
+#thAlatKas .th-30 .th-rev-baris.kini{ border-top-style:solid; border-top-color:rgba(226,205,166,.45); }
+#thAlatKas .th-30 .th-rev-baris.kini b{ color:#e2cda6; }
 #thLembar{ padding:12px 14px; margin-top:10px; }
 #thLembar .th-pecahan{ display:grid; grid-template-columns:1fr 44px 40px 44px; gap:6px 8px; align-items:center; min-height:48px;
   border-bottom:1px solid rgba(255,255,255,.05); }
@@ -18964,6 +18981,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         .sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))).slice(-30);
       const maksSel = Math.max.apply(null, malam.map(x => Math.abs(x.selisih || 0)).concat([0]));
       const pembagi = Math.max(maksSel, 1);   // penjaga pembagi nol — TIDAK ikut dicetak
+      const nRev6 = malam.filter(x => (x.riwayat || []).length > 0).length;   // dihitung, bukan diketik
       thTulis('thAlatKas', (alasanTampak ? `<div class="th-chip">${['Kembalian kurang', 'Uang jajan diambil', 'Belum dicatat'].map(t =>
           `<button type="button" onclick="thAlasanCepat(${escapeHtml(JSON.stringify(t))})">${t}</button>`).join('')}</div>` : '')
         + `<div class="th-isi4${nIsi < 4 ? ' oks' : ''}">${nIsi} dari 4 tempat uang diisi${nIsi < 4 ? ' — yang kosong dihitung Rp0' : ''}</div>`
@@ -18976,8 +18994,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // membiarkannya oksida sesudah lengkap adalah kebohongan ke arah sebaliknya.
         + `<div class="kg-panel th-30"><div class="kg-label">Selisih 30 malam tercatat</div>`
         + `<i>koreksi jadi catatan baru bertanggal — versi lama turun ke riwayat, tidak ditimpa</i>`
-        + (malam.length ? `<div class="rel">${malam.map(x => `<span class="${(x.selisih || 0) < 0 ? 'oks' : ''}" style="--isi:${Math.round(Math.abs(x.selisih || 0) / pembagi * 100)}" title="${escapeHtml(x.tanggal)}"></span>`).join('')}</div>
-          <i>${malam.length} malam · ${maksSel > 0 ? 'terbesar ' + formatRupiah(maksSel) + ' · oksida = kurang' : 'semua cocok'}</i>` : '<i>belum ada malam tercatat — bar ini terisi begitu malam pertama ditutup</i>') + `</div>`);
+        + (malam.length ? `<div class="rel">${malam.map(x => {
+            const nRev = (x.riwayat || []).length;
+            return `<span class="${(x.selisih || 0) < 0 ? 'oks' : ''}${nRev ? ' rev' : ''}" style="--isi:${Math.round(Math.abs(x.selisih || 0) / pembagi * 100)}" title="${escapeHtml(x.tanggal)}${nRev ? ' · ' + nRev + ' koreksi' : ''}"></span>`;
+          }).join('')}</div>
+          <i>${malam.length} malam · ${maksSel > 0 ? 'terbesar ' + formatRupiah(maksSel) + ' · oksida = kurang' : 'semua cocok'}${nRev6 ? ' · ' + nRev6 + ' malam punya riwayat' : ''}</i>`
+          // Kalimat di atas berjanji "versi lama turun ke riwayat, tidak ditimpa". Janji yang
+          // tidak bisa dilihat pemiliknya tetap harus dipercaya begitu saja — posisi yang
+          // sama persis yang membuat butir 10 & 11 KEPUTUSAN-DESAIN dicoret. Jadi yang
+          // dibangun bukan hiasan segel di ATAS fakta, melainkan faktanya dibuat kelihatan:
+          // malam yang punya riwayat ditandai, dan tandanya bisa dibuka untuk membaca angka
+          // lama beserta tanggalnya. Cacahnya DIHITUNG dari malam yang dibangun, bukan
+          // diketik. Tombol 44px, bukan bar selebar 10px — target sentuh tidak dilanggar.
+          + (nRev6 ? `<button type="button" class="th-rev-buka" onclick="thRiwayatToggle()">${_thRiwayatBuka ? 'Tutup riwayat koreksi' : 'Lihat riwayat koreksi (' + nRev6 + ')'}</button>`
+              + (_thRiwayatBuka ? thRiwayatDaftar(malam) : '') : '')
+          : '<i>belum ada malam tercatat — bar ini terisi begitu malam pertama ditutup</i>') + `</div>`);
       // Pagar & lawan kemarin (seksi 6).
       const kemarinIso = _thInfo.hariIni ? tanggalLokalIso(new Date(isoKeTanggal(_thInfo.hariIni).getTime() - 86400000)) : '';
       const kem = kemarinIso ? ambilTutupHari().find(x => x.tanggal === kemarinIso) : null;
@@ -19248,6 +19279,38 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // terhapus saat Tutup Buku dengan sendirinya — nol koleksi baru, nol risiko data yatim.
   // Salinan yang didorong DIBUANG riwayat-nya supaya tidak bersarang berlipat, dan
   // penetapan (bukan penambahan) membuat pemanggilan ulang tidak menggandakan.
+  // Daftar riwayat koreksi: yang dibaca pemilik untuk MEMERIKSA SENDIRI kalimat panelnya,
+  // bukan mempercayainya. Tiap versi lama disebut angkanya, alasannya, dan kapan ia diganti;
+  // baris terakhir adalah versi yang berlaku sekarang, supaya rantainya terbaca utuh dan
+  // pembaca tahu di mana ujungnya. Nol rumus uang: semua angka dibaca apa adanya dari
+  // dokumen yang tersimpan.
+  let _thRiwayatBuka = false;
+  function thRiwayatToggle() { _thRiwayatBuka = !_thRiwayatBuka; tampilkanTutupHari(); }
+  function thRiwayatDaftar(malam) {
+    const punya = malam.filter(x => (x.riwayat || []).length > 0)
+      .sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)));
+    const jam = s => String(s || '').slice(11, 16);
+    return '<div class="th-rev-daftar">' + punya.map(x => {
+      const baris = (x.riwayat || []).map(r =>
+        `<div class="th-rev-baris"><span>${escapeHtml(r.jam || '—')}</span>`
+        + `<b>${formatRupiah((r.kasFisikLaci || 0) + (r.kasFisikRekening || 0) + (r.kasFisikAmplop || 0) + (r.kasFisikBrankas || 0))}</b>`
+        + `<i>${escapeHtml(r.alasanSelisih || 'tanpa keterangan')}${r.digantiPada ? ' · diganti ' + escapeHtml(jam(r.digantiPada)) : ''}</i></div>`).join('')
+        + `<div class="th-rev-baris kini"><span>${escapeHtml(x.jam || '—')}</span>`
+        + `<b>${formatRupiah((x.kasFisikLaci || 0) + (x.kasFisikRekening || 0) + (x.kasFisikAmplop || 0) + (x.kasFisikBrankas || 0))}</b>`
+        + `<i>${escapeHtml(x.alasanSelisih || 'tanpa keterangan')} · berlaku sekarang</i></div>`;
+      return `<div class="th-rev-malam"><div class="kg-label">${escapeHtml(formatTanggal(x.tanggal))} · ${(x.riwayat || []).length} koreksi</div>${baris}</div>`;
+    }).join('') + '</div>';
+  }
+
+  // Penetapan (bukan push) BUKAN sekadar jaga-jaga: runTransaction MENGULANG callback-nya
+  // sendiri saat rebutan — perilaku normal Firestore, bukan kasus tepi. Tiap pengulangan
+  // menjalankan fungsi ini lagi pada dokTutup yang sama dengan snapshot server yang baru;
+  // penetapan membuatnya kebal ulang, push akan menumpuk satu salinan palsu per percobaan.
+  //
+  // LANGIT-LANGIT, ditulis sekali supaya tidak ditemukan: Firestore membatasi satu dokumen
+  // di 1 MiB. Tiap koreksi menambah satu salinan penuh — terukur ~500 byte (1.547 byte
+  // sesudah dua koreksi), jadi ribuan koreksi pada SATU malam sebelum dokumennya tidak bisa
+  // ditulis lagi. Bukan risiko nyata, apalagi dokumennya dihapus tiap Tutup Buku.
   function thDorongRiwayat(dokBaru, lama) {
     if (!lama) return;
     const salin = {};
@@ -28071,6 +28134,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.simpanTitikKas = simpanTitikKas;
   window.tampilkanTutupHari = tampilkanTutupHari;
   window.thKe = thKe; window.thAlasanCepat = thAlasanCepat; window.thLembarBuka = thLembarBuka;
+  window.thRiwayatToggle = thRiwayatToggle;
   window.thLembarTutup = thLembarTutup; window.thLembarUbah = thLembarUbah; window.thLembarPakai = thLembarPakai;
   window.bukaTutupBuku = bukaTutupBuku;
   window.tutupTutupBuku = tutupTutupBuku;
