@@ -20912,8 +20912,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return { tahun, daftar, totalDok, jaga, saldoAda, nyata, ef, cadangan, antrean, daring: !!navigator.onLine };
   }
   function tbKacaBolehLanjut(k, K) {
+    // K.antrean IKUT menggembok. Barisnya di layar (cek 'Antrean tunda') sudah berkata
+    // "tunggu sampai kosong" — janji yang tergambar mengikat lebih keras daripada janji yang
+    // belum diucapkan. Bandingkan hppBolong tepat di atasnya: ia juga tidak menggembok, tapi
+    // MENGAKUINYA di labelnya sendiri ("ikut terarsip apa adanya"); antrean tidak.
+    // Ritual bisa macet di HP yang antreannya tidak jalan, dan itu memang diinginkan: tulisan
+    // yang belum sampai database tidak boleh hilang saat riwayatnya dihapus.
+    // Latihan tetap lolos lewat short-circuit di depan — antrean macet tidak menghalangi hafalan.
     if (k === 0) return _tbKaca.latihan || (K.jaga.darurat === 0 && K.jaga.rapikan === 0 && K.cadangan === 0 && K.daring
-      && K.perangkat_semua_ok);
+      && K.antrean === 0 && K.perangkat_semua_ok);
     if (k === 1) return K.ef.arsip;
     if (k === 2) return K.ef.saldo;
     if (k === 3) return K.ef.saldo && _tbKaca.paraf.owner && _tbKaca.paraf.saksi && (_tbKaca.latihan || K.daring);
