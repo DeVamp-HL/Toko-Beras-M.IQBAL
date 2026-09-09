@@ -11603,8 +11603,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
 
   // ============ KACA EMAS G3: HARIAN — ZONA CATAT / LIHAT (hanya <700px) ============
-  // CATAT memperlihatkan AKIBATNYA sebelum disimpan: Toko = kas toko keluar &
-  // tercatat beban; Owner = murni pribadi, kas toko tidak bergerak. LIHAT
+  // CATAT memperlihatkan AKIBATNYA sebelum disimpan: Toko = kas toko keluar & tercatat
+  // beban; Owner = kas toko KELUAR dari laci yang sama tapi bukan beban (laba tidak
+  // berkurang) — bukan "tidak bergerak", itu kalimat lama yang menabrak mesinnya. LIHAT
   // memisahkan dua kantong yang tidak pernah dijumlahkan. Angka dari mesin yang
   // sama dengan kartu lama; saat owner terkunci angka pribadi tidak dibocorkan.
   let zonaHarianAktif = 'catat';
@@ -11618,16 +11619,32 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (nominal <= 0) {
         wA.innerHTML = `<div class="kg-panel"><div class="kg-label">Belum ada nominal</div>
           <div class="hz-kalimat">Isi nominalnya dulu — akibatnya muncul di sini sebelum disimpan.</div></div>`;
-      } else if (kat === 'toko') {
-        wA.innerHTML = `<div class="kg-panel"><div class="kg-label">Kalau disimpan sekarang</div>
-          <div class="hz-baris"><span class="label">Beban toko</span><span class="nilai">+ ${formatRupiah(nominal)}</span></div>
-          <div class="hz-baris akhir"><span class="label">Kas toko keluar</span><span class="nilai">− ${formatRupiah(nominal)}</span></div>
-          <div class="hz-kalimat">Kas toko keluar ${formatRupiah(nominal)} dan tercatat sebagai beban toko — dua buku, satu kejadian.</div></div>`;
       } else {
+        // Kedua baris diputus oleh PREDIKAT YANG SAMA dengan mesin (11715 & 11719), bukan
+        // oleh nama kategorinya — supaya kategori yang belum ada hari ini tidak pernah
+        // jatuh ke kalimat yang tidak melayaninya. Dulu satu cabang 'else' melayani owner
+        // DAN tokoDompet dengan kalimat "Kas toko dan beban toko tidak bergerak sama
+        // sekali", padahal keduanya bergerak — ke arah BERLAWANAN:
+        //   owner       : kas toko KELUAR (hitungArusKasInti punya barisnya sendiri,
+        //                 "Prive owner — hidup dari laci"), tapi BUKAN beban, jadi
+        //                 hitungLabaBersihRentang (21653) tidak menghitungnya.
+        //   tokoDompet  : beban toko NAIK dan laba ikut turun (ada di saringan 21662),
+        //                 tapi kas toko tidak bergerak — dompet pribadi yang menalangi.
+        // Nol rumus uang baru: dua predikat itu dibaca, tidak diubah.
+        const beban = bebanTokoKategori(kat);
+        const kas = kasTokoKeluarKategori(kat);
+        const rpN = formatRupiah(nominal);
+        const kalimat = beban && kas
+          ? `Kas toko keluar ${rpN} dan tercatat sebagai beban toko — dua buku, satu kejadian.`
+          : kas
+            ? `Kas toko keluar ${rpN} dari laci yang sama, tapi ini BUKAN beban toko — laba tidak berkurang, kasnya yang berkurang.`
+            : beban
+              ? `Beban toko naik ${rpN} dan laba ikut turun, tapi kas toko tidak bergerak — yang menalangi dompet pribadi, bukan laci toko.`
+              : 'Tidak menyentuh kas toko maupun beban toko.';
         wA.innerHTML = `<div class="kg-panel"><div class="kg-label">Kalau disimpan sekarang</div>
-          <div class="hz-baris redup"><span class="label">Beban toko</span><span class="nilai">Rp0</span></div>
-          <div class="hz-baris redup akhir"><span class="label">Kas toko keluar</span><span class="nilai">Rp0 &middot; uang pribadi terpakai</span></div>
-          <div class="hz-kalimat">Murni pribadi. Kas toko dan beban toko tidak bergerak sama sekali.</div></div>`;
+          <div class="hz-baris${beban ? '' : ' redup'}"><span class="label">Beban toko</span><span class="nilai">${beban ? '+ ' + rpN : 'Rp0'}</span></div>
+          <div class="hz-baris${kas ? '' : ' redup'} akhir"><span class="label">Kas toko keluar</span><span class="nilai">${kas ? '− ' + rpN : 'Rp0 &middot; bukan dari laci toko'}</span></div>
+          <div class="hz-kalimat">${kalimat}</div></div>`;
       }
       const hariIni = tanggalLokalIso();
       const buka = ownerSudahUnlock();
@@ -11690,11 +11707,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     kont.innerHTML = semua.length === 0
       ? '<div class="kosong-info"><b>Belum ada catatan hari ini</b><span>Pengeluaran yang disimpan akan langsung muncul di sini.</span></div>'
       : semua.slice().sort((a, b) => (b.id || 0) - (a.id || 0)).map(h => {
+        // Keempat penanda diputus oleh DUA PREDIKAT, nol pemeriksaan nama kategori. Dulu
+        // baris owner ditandai "pribadi, di luar kas toko" — padahal prive KELUAR dari laci
+        // yang sama; yang di luar buku toko cuma bebannya. Dan cabang bawahnya sempat masih
+        // menanyakan `h.kategori === 'tokoDompet'`: kategori ber-beban-tanpa-kas yang namanya
+        // lain akan jatuh ke "ikut kas keluar" — penyakit yang sama, satu lantai di bawah.
         const pribadi = !bebanTokoKategori(h.kategori);
-        const dompet = h.kategori === 'tokoDompet';
+        const kasKeluar = kasTokoKeluarKategori(h.kategori);
+        const tanda = pribadi
+          ? (kasKeluar ? 'pribadi — bukan beban, tapi kas toko keluar' : 'pribadi, di luar kas toko')
+          : (kasKeluar ? 'ikut kas keluar' : 'beban toko, kas toko tidak keluar');
         return `<div class="baris-44${pribadi ? ' baris-pribadi' : ''}">
           <span class="jam">${escapeHtml((h.jam || '').slice(0, 5) || '—')}</span>
-          <span class="nama">${escapeHtml(h.keterangan || '')}<small>${labelKategoriHarian(h.kategori)} · ${pribadi ? 'pribadi, di luar kas toko' : dompet ? 'beban toko, kas toko tidak keluar' : 'ikut kas keluar'}</small></span>
+          <span class="nama">${escapeHtml(h.keterangan || '')}<small>${labelKategoriHarian(h.kategori)} · ${tanda}</small></span>
           <span class="angka">${formatRupiah(h.nominal || 0)}</span>
         </div>`;
       }).join('');

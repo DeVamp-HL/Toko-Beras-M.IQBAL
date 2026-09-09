@@ -1,6 +1,6 @@
 # Keputusan desain — penyimpangan yang SUDAH disetujui
 
-Sebelas keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
+Dua belas keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
 Semuanya sudah diperiksa dan disetujui pemilik. **Membetulkannya ke prototipe = merusak.**
 
 Berkas ini ada di repo dengan sengaja. Perintah kerja (`PROMPT-*.md`) dan catatan bisnis
@@ -56,6 +56,24 @@ seperti "Rework ke stok karung" dan "Buang (catat kerugian)" punya jalur yang **
 bisa dibetulkan. Dua ini **tidak punya jalur sama sekali**. Kalau keaslian dokumen memang
 mau dibuktikan kelak, itu **gelombang sendiri dengan penyimpanannya lebih dulu** — bukan
 gambar QR yang tidak menunjuk ke mana-mana.
+
+12. **Harian tidak menawarkan "dibayar pakai apa" (Laci toko / Uang pribadi), meski berkas
+    desainnya menyebut sumbu itu "tulang halaman ini".**
+    Harian cuma punya **satu sumbu pertanyaan** — *untuk siapa belanjanya* (Toko / Owner).
+    Sel `tokoDompet` (belanja **toko** yang dibayar **dompet pribadi**) butuh **dua** sumbu
+    sekaligus, dan memasang sumbu kedua di layar satu-sumbu membuat empat kombinasi yang
+    tiga di antaranya harus ditolak di tempat. Pintunya sengaja ditaruh di layar **Belanja**,
+    yang memang dibangun sebagai kisi 2×2 (untuk siapa × uang dari mana) dan sudah melahirkan
+    kolom utang toko ke owner di data dan neraca.
+
+    Akibatnya kartu akibat di Harian punya **dua** baris, bukan tiga: baris "Utang toko ke
+    owner" tidak pernah tergambar di sana. Itu benar — di Harian utang itu memang tidak bisa
+    lahir.
+
+    Penolakan ini sudah tertulis panjang sebagai komentar kode di `index.html` (dekat
+    `kategoriHarianAktif`), tapi komentar tidak ikut ter-*clone* sebagai keputusan. Dicatat di
+    sini supaya orang berikutnya tidak "melengkapi" Harian dan diam-diam membuat satu layar
+    menjawab dua pertanyaan dengan satu tombol.
 
 ---
 
