@@ -5233,6 +5233,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   border-bottom:1px solid rgba(255,255,255,.05); font-size:12px; }
 #thPagar .th-pg .tanda{ font-size:12px; color:#c8d3bd; text-align:center; }
 #thPagar .th-pg .tanda.oks{ color:#d3a08b; }
+/* Netral, bukan hijau: langkah yang cuma dilewati tidak boleh memakai lambang lulus. */
+#thPagar .th-pg .tanda.lewat{ color:var(--pf-abu); }
+#thPagar .th-legenda{ margin-top:9px; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); }
+#thPagar .th-legenda .tanda{ font-style:normal; color:#c8d3bd; }
+#thPagar .th-legenda .tanda.lewat{ color:var(--pf-abu); }
 #thPagar .th-pg i{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); text-align:right; }
 #thPagar .th-lawan{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px; }
 #thPagar .th-lawan .label{ font-size:8px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--pf-abu); }
@@ -18895,19 +18900,29 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   const TH_TEMPAT = ['', 'laci → amplop', 'laci · rekening · amplop · brankas', 'meja kasir', 'gudang', 'laci → kantong owner', 'pintu depan'];
   function thTampil(id) { const e = document.getElementById(id); return !!e && e.style.display === 'block'; }
   function thNilai(id) { return (document.getElementById(id) || {}).value || ''; }
+  // `periksa` memisahkan yang benar-benar MEMERIKSA dari yang cuma DILEWATI. Pagar 2 menuntut
+  // blok selisih dan bisa menolak; pagar 5 menolak setoran melebihi isi laci. Pagar 1, 3, 4
+  // tidak punya syarat apa pun — mereka mengembalikan ok:true tanpa memandang apa-apa.
+  // Kelimanya dulu memakai ✓ yang SAMA di panel bernama "Pagar", jadi satu lambang memikul
+  // dua arti: "sudah diperiksa dan lulus" dan "sudah dilewati". Penyakit yang sama dengan
+  // tabel izin yang memberi 'ya' pada kolom baca, dan dengan legenda oksida yang tidak
+  // mencakup semua yang memakai warnanya.
+  // Menggerbangkan yang tiga itu BUKAN perbaikan tampilan — kondisinya belum ada sama sekali,
+  // jadi menambahkannya berarti mengarang tiga aturan baru tentang kapan toko boleh menutup
+  // harinya, dan itu jatuh tiap malam. Lihat KEPUTUSAN-DESAIN.md butir 13.
   function thPagar(n) {
-    if (n === 1) { const s = Math.round(parseFloat(thNilai('tutupSisihan')) || 0); return { ok: true, ket: s > 0 ? 'disisihkan ' + formatRupiah(s) : 'tanpa sisihan malam ini' }; }
+    if (n === 1) { const s = Math.round(parseFloat(thNilai('tutupSisihan')) || 0); return { ok: true, periksa: false, ket: s > 0 ? 'disisihkan ' + formatRupiah(s) : 'tanpa sisihan malam ini' }; }
     if (n === 2) {
       const adaIsi = thTampil('tutupSelisih');
       const alasanWajib = thTampil('tutupAlasanBlok') && thNilai('tutupAlasan').trim() === '';
       const negatif = ['tutupLaci', 'tutupRekening', 'tutupAmplop', 'tutupBrankas'].some(id => thNilai(id) !== '' && parseFloat(thNilai(id)) < 0);
-      if (!adaIsi) return { ok: false, ket: 'isi uang di laci dulu' };
-      if (negatif) return { ok: false, ket: 'jumlah uang tidak mungkin negatif' };
-      if (alasanWajib) return { ok: false, ket: 'selisih butuh keterangan' };
-      return { ok: true, ket: thTampil('tutupAlasanBlok') ? 'selisih dicatat beserta alasannya' : 'cocok dengan catatan' };
+      if (!adaIsi) return { ok: false, periksa: true, ket: 'isi uang di laci dulu' };
+      if (negatif) return { ok: false, periksa: true, ket: 'jumlah uang tidak mungkin negatif' };
+      if (alasanWajib) return { ok: false, periksa: true, ket: 'selisih butuh keterangan' };
+      return { ok: true, periksa: true, ket: thTampil('tutupAlasanBlok') ? 'selisih dicatat beserta alasannya' : 'cocok dengan catatan' };
     }
-    if (n === 3) return { ok: true, ket: _thInfo.nGantung ? _thInfo.nGantung + ' hal menggantung — sudah dilihat' : 'tidak ada yang menggantung' };
-    if (n === 4) return { ok: true, ket: _thInfo.nOpname ? _thInfo.nOpname + ' merk paling bergerak untuk ditimbang' : 'tidak ada beras keluar' };
+    if (n === 3) return { ok: true, periksa: false, ket: _thInfo.nGantung ? _thInfo.nGantung + ' hal menggantung — sudah dilihat' : 'tidak ada yang menggantung' };
+    if (n === 4) return { ok: true, periksa: false, ket: _thInfo.nOpname ? _thInfo.nOpname + ' merk paling bergerak untuk ditimbang' : 'tidak ada beras keluar' };
     if (n === 5) {
       const info = document.getElementById('tutupSetoranInfo');
       const merah = !!(info && info.style.display === 'block' && info.querySelector('.ph-merah'));
@@ -18918,12 +18933,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // tersimpan Rp0 oleh simpanTutupHari, jadi akibatnya ikut disebut — bukan disembunyikan.
       const mentah = thNilai('tutupSetoran').trim();
       const s = Math.round(parseFloat(mentah) || 0);
-      if (merah) return { ok: false, ket: 'setoran melebihi isi laci' };
-      if (mentah === '') return { ok: true, ket: 'belum diisi — tersimpan sebagai Rp0' };
-      return { ok: true, ket: s > 0 ? 'setor ' + formatRupiah(s) : 'Rp0 — tidak setor malam ini' };
+      if (merah) return { ok: false, periksa: true, ket: 'setoran melebihi isi laci' };
+      if (mentah === '') return { ok: true, periksa: true, ket: 'belum diisi — tersimpan sebagai Rp0' };
+      return { ok: true, periksa: true, ket: s > 0 ? 'setor ' + formatRupiah(s) : 'Rp0 — tidak setor malam ini' };
     }
-    if (n === 6) { const a = thPagar(2), b = thPagar(5); return { ok: a.ok && b.ok, ket: a.ok ? (b.ok ? 'siap dikunci' : b.ket) : a.ket }; }
-    return { ok: true, ket: '' };
+    if (n === 6) { const a = thPagar(2), b = thPagar(5); return { ok: a.ok && b.ok, periksa: true, ket: a.ok ? (b.ok ? 'siap dikunci' : b.ket) : a.ket }; }
+    return { ok: true, periksa: false, ket: '' };
   }
   // Langkah tanpa pagar mesin (1, 3, 4, 5) baru "beres" sesudah DILEWATI — bukan sejak awal.
   // Langkah 6 diukur dari FAKTA, bukan dari bendera navigasi: _thDilihat[i] hanya disetel
@@ -19030,8 +19045,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const kem = kemarinIso ? ambilTutupHari().find(x => x.tanggal === kemarinIso) : null;
       thTulis('thPagar', `<div class="kg-panel th-pagar"><div class="kg-label">Pagar sebelum kunci</div>` + [1, 2, 3, 4, 5].map(i => {
           const pg = thPagar(i);
-          return `<div class="th-pg"><span class="tanda${pg.ok ? '' : ' oks'}">${pg.ok ? '✓' : '!'}</span><span>${TH_JUDUL[i]}</span><i>${escapeHtml(pg.ket)}</i></div>`;
-        }).join('') + `<div class="kg-label" style="margin-top:10px;">Lawan kemarin</div>
+          // Dua tanda, bukan satu: ✓ hanya untuk yang benar-benar memeriksa, titik netral untuk
+          // yang cuma dilewati. Panelnya TETAP bernama Pagar — di dalamnya memang ada pagar
+          // sungguhan (2 dan 5), dan menamai ulang seluruh panel akan menurunkan dua yang asli
+          // demi menemani tiga yang bukan.
+          return `<div class="th-pg"><span class="tanda${pg.periksa ? (pg.ok ? '' : ' oks') : ' lewat'}">${pg.periksa ? (pg.ok ? '✓' : '!') : '·'}</span><span>${TH_JUDUL[i]}</span><i>${escapeHtml(pg.ket)}</i></div>`;
+        }).join('')
+        // Legenda WAJIB seiring dengan tanda keduanya: tanda yang legendanya tidak mencakup
+        // semua pemakainya adalah cacat yang sama, cuma berpindah lambang.
+        + `<div class="th-legenda"><span class="tanda">✓</span> diperiksa &middot; <span class="tanda lewat">·</span> sudah dilewati, tidak diperiksa</div>`
+        + `<div class="kg-label" style="margin-top:10px;">Lawan kemarin</div>
         <div class="th-lawan">
           <div><div class="label">Omzet</div><div class="nilai">${formatRupiah(_thInfo.omzet || 0)}<i>${kem ? 'kemarin ' + formatRupiah(kem.omzet || 0) : 'kemarin belum dikunci'}</i></div></div>
           <div><div class="label">Transaksi</div><div class="nilai">${_thInfo.nJual || 0}<i>${kem ? 'kemarin ' + (kem.jumlahTransaksi || 0) : '—'}</i></div></div>

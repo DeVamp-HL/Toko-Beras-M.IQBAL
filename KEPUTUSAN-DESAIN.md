@@ -1,6 +1,6 @@
 # Keputusan desain — penyimpangan yang SUDAH disetujui
 
-Dua belas keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
+Tiga belas keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
 Semuanya sudah diperiksa dan disetujui pemilik. **Membetulkannya ke prototipe = merusak.**
 
 Berkas ini ada di repo dengan sengaja. Perintah kerja (`PROMPT-*.md`) dan catatan bisnis
@@ -74,6 +74,34 @@ gambar QR yang tidak menunjuk ke mana-mana.
     `kategoriHarianAktif`), tapi komentar tidak ikut ter-*clone* sebagai keputusan. Dicatat di
     sini supaya orang berikutnya tidak "melengkapi" Harian dan diam-diam membuat satu layar
     menjawab dua pertanyaan dengan satu tombol.
+
+13. **Tutup Hari: tiga dari lima baris "Pagar" sengaja TIDAK menggembok** — sisihan amplop,
+    hal menggantung, dan opname gudang. Ketiganya mengembalikan `ok: true` tanpa syarat apa
+    pun; yang benar-benar bisa menolak cuma pagar 2 (kas & selisih) dan pagar 5 (setoran
+    melebihi isi laci).
+
+    **Kenapa tidak digerbangkan, dan kenapa ini beda dari gerbang antrean Tutup Buku** —
+    dua perkara yang terlihat kembar tapi berpisah di satu titik yang menentukan:
+
+    | | antrean tunda | Pagar 1, 3, 4 |
+    |---|---|---|
+    | kondisinya | **sudah ada**, sudah dihitung, sudah tergambar dengan tanda `!` | **belum ada sama sekali** |
+    | menambahkannya berarti | memakai fakta yang sudah diukur | **mengarang tiga aturan baru** |
+    | kalau macet | ritual setahun sekali tertunda | **tutup hari gagal, saldo awal besok salah** |
+
+    Menggerbangkan yang tiga itu adalah **keputusan kebijakan tentang kapan toko boleh
+    menutup harinya**, dan itu jatuh tiap malam. Preseden yang berlaku di sini `hppBolong`
+    (pemeriksaan yang tidak menggembok, tapi mengaku di labelnya sendiri), bukan antrean.
+
+    **Yang DIKERJAKAN sebagai gantinya:** berhenti menggambarnya seperti gerbang. Kelimanya
+    dulu memakai `✓` yang sama di panel bernama "Pagar" — satu lambang, dua arti. Sekarang
+    dua tanda: `✓` untuk yang benar-benar memeriksa, titik netral untuk "sudah dilewati",
+    plus satu baris legenda. Panelnya **tetap** bernama Pagar: di dalamnya memang ada pagar
+    sungguhan, dan menamai ulang seluruh panel akan menurunkan dua yang asli demi menemani
+    tiga yang bukan.
+
+    Ini **penundaan sadar, bukan cacat**. Tanpa butir ini, sapuan berikutnya akan
+    "membetulkannya" dengan mengarang tiga kondisi yang belum pernah diputuskan siapa pun.
 
 ---
 
