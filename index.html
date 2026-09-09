@@ -5195,6 +5195,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   background:rgba(226,205,166,.55); }
 #thAlatKas .th-30 .rel span.oks{ background:rgba(211,160,139,.8); }
 #thAlatKas .th-30 i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); margin-top:6px; }
+/* Oksida = yang masih menunggu, sama artinya dengan .oks di seluruh layar ini. Dipakai
+   baris "koreksi masih menimpa": ia menyebut kekurangan yang belum ditambal, bukan hiasan. */
+#thAlatKas .th-30 i.oks{ color:#d3a08b; }
 #thLembar{ padding:12px 14px; margin-top:10px; }
 #thLembar .th-pecahan{ display:grid; grid-template-columns:1fr 44px 40px 44px; gap:6px 8px; align-items:center; min-height:48px;
   border-bottom:1px solid rgba(255,255,255,.05); }
@@ -18965,9 +18968,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           `<button type="button" onclick="thAlasanCepat(${escapeHtml(JSON.stringify(t))})">${t}</button>`).join('')}</div>` : '')
         + `<div class="th-isi4${nIsi < 4 ? ' oks' : ''}">${nIsi} dari 4 tempat uang diisi${nIsi < 4 ? ' — yang kosong dihitung Rp0' : ''}</div>`
         + `<button type="button" class="th-lembar-buka" onclick="thLembarBuka()">Hitung lembar → isi laci</button>`
-        + `<div class="kg-panel th-30"><div class="kg-label">Selisih 30 malam terkunci</div>`
+        // "terkunci" adalah klaim yang kode belum tepati: dokumen tutupHari ber-id TANGGAL,
+        // dan tutup ulang dari perangkat yang sama menimpanya — angka lama hilang tanpa jejak
+        // (penjaga runTransaction cuma menjaga ANTAR-perangkat; jalur luring tanpa penjaga).
+        // Desainnya menjanjikan "koreksi jadi catatan baru bertanggal, bukan menimpa".
+        // Kalimat ini dijujurkan dengan cara yang MENYEBUT apa yang kurang, bukan dengan cara
+        // yang menghapus tuntutannya — melunakkannya jadi "tercatat" saja akan membunuh
+        // janjinya diam-diam, dan penyimpanannya tidak akan pernah dibangun.
+        + `<div class="kg-panel th-30"><div class="kg-label">Selisih 30 malam tercatat</div>`
+        + `<i class="oks">koreksi masih menimpa — belum jadi catatan baru</i>`
         + (malam.length ? `<div class="rel">${malam.map(x => `<span class="${(x.selisih || 0) < 0 ? 'oks' : ''}" style="--isi:${Math.round(Math.abs(x.selisih || 0) / pembagi * 100)}" title="${escapeHtml(x.tanggal)}"></span>`).join('')}</div>
-          <i>${malam.length} malam · ${maksSel > 0 ? 'terbesar ' + formatRupiah(maksSel) + ' · oksida = kurang' : 'semua cocok'}</i>` : '<i>belum ada malam terkunci — bar ini terisi begitu malam pertama dikunci</i>') + `</div>`);
+          <i>${malam.length} malam · ${maksSel > 0 ? 'terbesar ' + formatRupiah(maksSel) + ' · oksida = kurang' : 'semua cocok'}</i>` : '<i>belum ada malam tercatat — bar ini terisi begitu malam pertama ditutup</i>') + `</div>`);
       // Pagar & lawan kemarin (seksi 6).
       const kemarinIso = _thInfo.hariIni ? tanggalLokalIso(new Date(isoKeTanggal(_thInfo.hariIni).getTime() - 86400000)) : '';
       const kem = kemarinIso ? ambilTutupHari().find(x => x.tanggal === kemarinIso) : null;
