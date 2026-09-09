@@ -18911,16 +18911,32 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (n === 5) {
       const info = document.getElementById('tutupSetoranInfo');
       const merah = !!(info && info.style.display === 'block' && info.querySelector('.ph-merah'));
-      const s = Math.round(parseFloat(thNilai('tutupSetoran')) || 0);
+      // BELUM DINYATAKAN bukan DINYATAKAN NOL. Kolom kosong membuat parseFloat gagal, `|| 0`
+      // menutupinya jadi nol, dan layar dulu mencetak "Rp0 — tidak setor malam ini" — sebuah
+      // PERNYATAAN yang tidak pernah diucapkan pemilik. Aturan tiga keadaan kosong: kosong,
+      // nol, dan belum-bisa-dihitung tidak boleh digambar sama. Nilainya memang tetap
+      // tersimpan Rp0 oleh simpanTutupHari, jadi akibatnya ikut disebut — bukan disembunyikan.
+      const mentah = thNilai('tutupSetoran').trim();
+      const s = Math.round(parseFloat(mentah) || 0);
       if (merah) return { ok: false, ket: 'setoran melebihi isi laci' };
+      if (mentah === '') return { ok: true, ket: 'belum diisi — tersimpan sebagai Rp0' };
       return { ok: true, ket: s > 0 ? 'setor ' + formatRupiah(s) : 'Rp0 — tidak setor malam ini' };
     }
     if (n === 6) { const a = thPagar(2), b = thPagar(5); return { ok: a.ok && b.ok, ket: a.ok ? (b.ok ? 'siap dikunci' : b.ket) : a.ket }; }
     return { ok: true, ket: '' };
   }
   // Langkah tanpa pagar mesin (1, 3, 4, 5) baru "beres" sesudah DILEWATI — bukan sejak awal.
-  function thBeresI(i) { return !!_thDilihat[i] && thPagar(i).ok && (i !== 2 || thTampil('tutupSelisih')); }
-  function thBeres() { let n = 0; for (let i = 1; i <= 5; i++) if (thBeresI(i)) n++; return n; }
+  // Langkah 6 diukur dari FAKTA, bukan dari bendera navigasi: _thDilihat[i] hanya disetel
+  // untuk langkah yang sudah DITINGGALKAN (thKe: `for i < n`), dan langkah 6 tidak pernah
+  // ditinggalkan — jadi _thDilihat[6] mustahil terisi. Cincinnya dulu menghitung 1..5 lalu
+  // dicetak "N/6": penunjuk kemajuan yang tidak mungkin selesai, mentok 5/6 selamanya.
+  // _thInfo.sudah adalah fakta yang SUDAH dibaca daftar langkah untuk mencetak "sudah
+  // dikunci" — cincinnya kini membaca fakta yang sama, bukan sumber kedua.
+  function thBeresI(i) {
+    if (i === 6) return !!_thInfo.sudah;
+    return !!_thDilihat[i] && thPagar(i).ok && (i !== 2 || thTampil('tutupSelisih'));
+  }
+  function thBeres() { let n = 0; for (let i = 1; i <= 6; i++) if (thBeresI(i)) n++; return n; }
   function thTulis(id, html) { const el = document.getElementById(id); if (el && _thTerakhir[id] !== html) { el.innerHTML = html; _thTerakhir[id] = html; } }
   function thTerapkanLangkah() {
     const hal = document.getElementById('halamanTutup');
