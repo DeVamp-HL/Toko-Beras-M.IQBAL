@@ -5226,6 +5226,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 #tbKaca .tb6-mode button{ flex:1; min-height:44px; border-radius:10px; border:1px solid var(--pf-tepi); background:none;
   color:var(--pf-abu); font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.12em; }
 #tbKaca .tb6-mode button.lat.kg-terpilih{ background:linear-gradient(160deg,#dfe8d8,#a9b7a0) !important; }
+/* Tanpa baris ini tombol mode yang disabled tergambar PERSIS seperti yang hidup (color di
+   .tb6-mode button mengalahkan bawaan Chrome) — terukur: opacity 1 dan border solid di kedua
+   keadaan. Sebahasa dengan .tb6-pita button:disabled di bawah. */
+#tbKaca .tb6-mode button:disabled{ border-style:dashed; opacity:.55; }
 #tbKaca .tb6-kalimat{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; line-height:1.5; color:var(--pf-abu); margin:0 2px 10px; }
 #tbKaca .tb6-kalimat.lat{ color:#c8d3bd; }
 #tbKaca .tb6-pita{ display:flex; gap:4px; margin-bottom:12px; }
@@ -20855,7 +20859,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Kaca hanya memanggil unduhArsipTahun / tulisSaldoPembuka / hapusDokumenTahun yang
   // sudah ada (pagar & confirm/prompt di dalamnya tetap jalan). Mode LATIHAN = bendera
   // dry-run: hanya membalik _tbKaca.lat.*, tidak pernah memanggil ketiganya.
-  let _tbKaca = { tahun: null, langkah: 0, latihan: false, lat: { arsip: false, saldo: false, hapus: false },
+  // Bawaan LATIHAN (rancangan Tutup Buku - Gabungan: state mulai di mode 'latihan'). Ritual ini
+  // cuma jalan sekali setahun dan langkah 3-nya menghapus permanen — pintu pertama tidak boleh
+  // membuka di sisi yang menulis. Aman untuk ritual setengah jalan: pagar jendela dobel (20956)
+  // membanting balik ke SUNGGUHAN sebelum apa pun digambar, dan awal:true di bawah tetap
+  // melompatkan pemilik ke layar Hapus persis seperti hari ini.
+  let _tbKaca = { tahun: null, langkah: 0, latihan: true, lat: { arsip: false, saldo: false, hapus: false },
     paraf: { owner: false, saksi: false }, perangkatOk: {}, sebelum: null, perangkat: [], hapusSelesai: false,
     awal: true, maks: 0, progres: '', latihanDitutup: false };
   function tbSaldoAda(tahun) {   // ekspresi yang sama dengan penerimaan di hapusDokumenTahun
@@ -20863,7 +20872,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       || ambilPiutangMutasi().some(m => m.tutupBuku && m.tahunDari === tahun);
   }
   function tbKacaReset(tahun) {
-    _tbKaca = { tahun, langkah: 0, latihan: _tbKaca.latihan, lat: { arsip: false, saldo: false, hapus: false },
+    // Pembukaan pertama TIDAK mewarisi: _tbKaca.tahun lahir null, jadi syarat ini benar tepat
+    // sekali per muat halaman. Sesudah itu warisan dipertahankan — reset ini juga berjalan tiap
+    // kali #tbTahun diganti, dan melempar pemilik yang sedang di SUNGGUHAN kembali ke latihan
+    // akan menutupi kemajuan nyatanya (K.ef lalu membaca lat.* yang semuanya false).
+    _tbKaca = { tahun, langkah: 0, latihan: _tbKaca.tahun === null ? true : _tbKaca.latihan, lat: { arsip: false, saldo: false, hapus: false },
       paraf: { owner: false, saksi: false }, perangkatOk: {}, sebelum: null, perangkat: [], hapusSelesai: false,
       awal: true, maks: 0, progres: '', latihanDitutup: false };
   }
@@ -20915,7 +20928,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // bukan hanya di tombolnya: saldo pembuka sudah tertulis + riwayat masih ada = wajib Hapus.
       if (_tbKaca.latihan && K.nyata.saldo && K.totalDok > 0) {
         _tbKaca.latihan = false; _tbKaca.lat = { arsip: false, saldo: false, hapus: false };
-        _tbKaca.paraf = { owner: false, saksi: false }; _tbKaca.langkah = 0; _tbKaca.latihanDitutup = true;
+        // maks ikut dinolkan: ia hanya bisa NAIK (20972). Tanpa ini, putaran latihan yang
+        // sudah sampai layar 4 meninggalkan maks=4, lalu sesudah dilempar ke SUNGGUHAN pita
+        // langkah membuka layar 4 — dan layar itu berbunyi "riwayat tahun ini kini hanya di
+        // berkas arsip" sementara dokumennya masih ada. Kalimat yang mengaku sesuatu sudah
+        // terjadi pada data nyata; itu garis merah.
+        _tbKaca.paraf = { owner: false, saksi: false }; _tbKaca.langkah = 0; _tbKaca.latihanDitutup = true; _tbKaca.maks = 0;
         K = tbKeadaan();
       }
       K.perangkat_semua_ok = _tbKaca.perangkat.every(p => _tbKaca.perangkatOk[p.nama]);
@@ -20935,10 +20953,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const rp = formatRupiah;
       const JUDUL = ['Periksa', 'Arsip', 'Saldo pembuka', 'Hapus', 'Selesai'];
       let h = `<div class="tb6-mode">
-        <button type="button" class="lat${lat ? ' kg-terpilih' : ''}" onclick="tbKacaMode('latihan')">LATIHAN</button>
-        <button type="button" class="${lat ? '' : 'kg-terpilih'}" onclick="tbKacaMode('sungguhan')"${K.nyata.saldo && K.totalDok > 0 ? '' : ''}>SUNGGUHAN</button></div>
+        <button type="button" class="lat${lat ? ' kg-terpilih' : ''}" onclick="tbKacaMode('latihan')"${K.nyata.saldo && K.totalDok > 0 ? ' disabled' : ''}>LATIHAN</button>
+        <button type="button" class="${lat ? '' : 'kg-terpilih'}" onclick="tbKacaMode('sungguhan')">SUNGGUHAN</button></div>
         <div class="tb6-kalimat${lat ? ' lat' : ''}">${lat ? 'LATIHAN · tidak ada dokumen yang tersentuh — jalankan seluruh putaran untuk hafal urutannya.' : 'SUNGGUHAN · tiga langkah tulis di jalur ini mengubah database toko. Dari SATU perangkat saja.'}</div>
-        ${_tbKaca.latihanDitutup ? `<div class="tb6-ket oks">Latihan ditutup: jendela dobel ${tahun} sedang terbuka — selesaikan Hapus dulu.</div>` : ''}
+        ${_tbKaca.latihanDitutup || (K.nyata.saldo && K.totalDok > 0) ? `<div class="tb6-ket oks">${_tbKaca.latihanDitutup ? 'Latihan ditutup' : 'Latihan terkunci'}: jendela dobel ${tahun} sedang terbuka — selesaikan Hapus dulu.</div>` : ''}
         <div class="tb6-pita">${JUDUL.map((j, i) => `<button type="button" onclick="tbKacaKe(${i})"${i > _tbKaca.maks || (i === 2 && kunciSaldo) || l === 4 ? ' disabled' : ''} class="${i < l ? 'beres' : ''}${i === l ? ' kg-terpilih' : ''}">${i}·${j}</button>`).join('')}</div>`;
       const nav = (bisa, ket, label) => `<div class="tb6-nav">${l > 0 ? `<button type="button" class="mundur" onclick="tbKacaMundur()">← Kembali</button>` : ''}
         <button type="button" class="kg-terpilih lanjut" onclick="tbKacaLanjut()"${bisa ? '' : ' disabled'}>${label || 'Lanjut → ' + JUDUL[l + 1]}</button></div>
@@ -21037,7 +21055,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (lat) { const K = tbKeadaan(); if (K.nyata.saldo && K.totalDok > 0) { alert('Jendela dobel sedang terbuka — selesaikan Hapus dulu sebelum latihan.'); return; } }
     _tbKaca.latihan = lat;
     _tbKaca.lat = { arsip: false, saldo: false, hapus: false };
-    _tbKaca.paraf = { owner: false, saksi: false };
+    // perangkatOk ikut dikosongkan: centang "sudah diberi tahu" adalah PENGAKUAN KESELAMATAN
+    // yang dibaca gerbang nyata K.perangkat_semua_ok (20961). Tanpa baris ini, centang yang
+    // didapat saat LATIHAN menyeberang ke SUNGGUHAN dan memuaskan gerbang itu tanpa ada
+    // orang yang benar-benar diberi tahu — dan sejak latihan jadi bawaan, jalur itu rutin.
+    _tbKaca.paraf = { owner: false, saksi: false }; _tbKaca.perangkatOk = {};
     _tbKaca.langkah = 0; _tbKaca.sebelum = null; _tbKaca.hapusSelesai = false;
     _tbKaca.maks = 0; _tbKaca.progres = ''; _tbKaca.latihanDitutup = false; _tbKaca.awal = !lat;
     gambarTutupBukuKaca();
