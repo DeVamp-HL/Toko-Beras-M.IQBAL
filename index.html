@@ -3488,6 +3488,39 @@ body.lembar-stok-merk-terbuka #lembarStokMerk{ transform:translateY(0); }
    Jenis Beras lama begitu penggantinya ada. Dua pintu ke keputusan yang sama adalah
    pola yang sudah beberapa kali menggigit proyek ini - kartu dan lembar akan
    berselisih suatu hari, dan selisihnya diam. */
+/* ===== LEMBAR J "SATU ANGKA JUJUR" (rancangan Laba - Gabungan, sumbu J) =====
+   SATU-SATUNYA tempat laba bersih boleh digambar besar — dan justru itu alasannya ada.
+   Doktrin 3251-3257 mengecilkan laba bersih supaya kesimpulan tidak menyamar pengukuran;
+   kekhawatiran itu berlaku waktu syaratnya TIDAK kelihatan. Di lembar ini syaratnya tidak
+   bisa disembunyikan: ketiganya berdiri di bawah angkanya, tanpa keping, tanpa zona, tanpa
+   satu pun cabang yang bisa dipotong pemakai. Tepi putus-putusnya tetap dipakai. */
+#overlayJujur{ display:none; position:fixed; inset:0; z-index:41; background:rgba(8,7,6,.62); }
+body.lembar-jujur-terbuka #overlayJujur{ display:block; }
+#lembarJujur{ position:fixed; left:0; right:0; bottom:0; z-index:42; max-height:88vh; max-height:88dvh;
+  background:linear-gradient(180deg,#20242a,#14171a); border:1px solid rgba(226,205,166,.3); border-bottom:none;
+  border-radius:22px 22px 0 0; box-shadow:0 -18px 50px rgba(0,0,0,.6);
+  padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px));
+  transform:translateY(105%); transition:transform .3s cubic-bezier(.16,.84,.28,1);
+  display:flex; flex-direction:column; overflow-y:auto; }
+body.lembar-jujur-terbuka #lembarJujur{ transform:translateY(0); }
+#lembarJujur .lj-angka{ font-size:38px; margin:6px 0 2px; }
+#lembarJujur .lj-sah{ font-family:var(--pf-serif); font-style:italic; font-size:12px;
+  line-height:1.6; color:var(--pf-abu); margin-bottom:4px; }
+#lembarJujur .lj-syarat{ display:flex; align-items:flex-start; gap:11px; padding:12px 13px;
+  border-radius:3px; margin-top:8px; }
+/* Dua polaritas, dan bedanya BUKAN hiasan: oksida bertepi putus = syarat yang MENGURANGI
+   kepercayaan pada angkanya; emas bertepi utuh = syarat yang MENEGASKAN. */
+#lembarJujur .lj-syarat.kurang{ background:rgba(217,166,147,.09); border:1px dashed rgba(217,166,147,.4); }
+#lembarJujur .lj-syarat.tegas{ background:rgba(226,205,166,.08); border:1px solid rgba(226,205,166,.3); }
+#lembarJujur .lj-lampu{ display:block; flex:none; width:8px; height:8px; border-radius:99px; margin-top:4px; }
+#lembarJujur .lj-syarat.kurang .lj-lampu{ background:var(--pf-amber); }
+#lembarJujur .lj-syarat.tegas .lj-lampu{ background:var(--emas); }
+#lembarJujur .lj-syarat b{ display:block; font-size:12.5px; font-weight:600; line-height:1.35; }
+#lembarJujur .lj-syarat i{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:10.5px; line-height:1.55; color:var(--pf-abu); margin-top:3px; }
+#labaKaca .lb6-jujur{ width:100%; min-height:44px; margin-top:10px; border-radius:4px;
+  border:1px dashed rgba(226,205,166,.4); background:none; color:var(--emas);
+  font-family:inherit; font-size:11.5px; font-weight:700; letter-spacing:.06em; }
 #overlayKarantina{ display:none; position:fixed; inset:0; z-index:41; background:rgba(8,7,6,.55); }
 body.lembar-karantina-terbuka #overlayKarantina{ display:block; }
 #lembarKarantina{ position:fixed; left:0; right:0; bottom:0; z-index:42; max-height:76vh; max-height:76dvh;
@@ -5565,6 +5598,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
      Tombolnya MEMANGGIL putuskanKarantina() yang sudah ada - tidak ada jalur tulis
      baru di sini, dan seluruh confirm serta penulisan dokumen rework tetap milik
      fungsi itu. -->
+<!-- Lembar J: satu angka, dan ketiga syaratnya menempel. Diisi gambarLembarJujur(). -->
+<div id="overlayJujur" onclick="tutupLembarJujur()"></div>
+<div id="lembarJujur" class="k6a" role="dialog" aria-modal="true" aria-label="Satu angka jujur">
+  <div class="lm-pegangan" onclick="tutupLembarJujur()"></div>
+  <div id="ljIsi"></div>
+</div>
+
 <div id="overlayKarantina" onclick="tutupLembarKarantina()"></div>
 <div id="lembarKarantina" class="k6a" role="dialog" aria-modal="true" aria-label="Gudang karantina">
   <div class="lm-pegangan" onclick="tutupLembarKarantina()"></div>
@@ -23076,6 +23116,84 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return Object.values(per).map(e => ({ ...e, margin: e.omzet - e.hpp,
       perKg: e.kg > 0 ? (e.omzet - e.hpp) / e.kg : null }));
   }
+  // ANGKA BULAN INI, SATU PERHITUNGAN. Dipakai kaca DAN lembar "Satu angka jujur".
+  // Kalau lembarnya menghitung sendiri, ia jadi rumus saingan ketiga di halaman yang
+  // sepanjang hari ini dibersihkan dari rumus saingan — dan lembarnya justru yang paling
+  // tidak boleh berselisih, karena seluruh gunanya menjamin satu angka.
+  function angkaJujurBulan() {
+    const bl = bulanLokalIso();
+    const cocok = t => !!t && bulanDari(t) === bl;
+    const L = hitungLabaBersihRentang(bl + '-01', akhirBulanIso(bl));
+    let marginKredit = 0, omzetKredit = 0;
+    ambilPenjualan().forEach(p => {
+      if (!cocok(p.tanggal) || caraBayarKunci(p) !== 'kredit') return;
+      omzetKredit += p.hargaTotal || 0;
+      if (hppTercatat(p)) marginKredit += (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0);
+    });
+    const omzetKotor = L.omzetHitung + L.returUang;
+    const penyebut = omzetKotor + L.omzetTanpaHpp;
+    return { bl, cocok, L, marginKredit, omzetKredit, omzetKotor,
+      bisaCakupan: penyebut > 0, cakupan: penyebut > 0 ? omzetKotor / penyebut : null,
+      namaBulan: namaBulanPanjang(bl + '-01') };
+  }
+  // ===== LEMBAR J "SATU ANGKA JUJUR" =====
+  // Sumbu J dari rancangan Laba, ditunda sejak lahirnya kaca (komentar markup 6790) dan
+  // dibuka lagi atas keputusan pemilik 9 Sep 2026. Alasan penundaannya sudah tidak berlaku:
+  // J adalah SATU-SATUNYA tempat di seluruh rancangan yang menaruh syarat DI LUAR keping —
+  // dan syarat yang berdiri di luar angkanya persis yang ditambal berulang kali hari ini
+  // (23632e9 mengangkat dua penjaga keluar dari cabang; afe724e menambah pengurang keempat
+  // yang ikut terkubur di cabang yang sama). Menundanya lebih lama berarti menerima bahwa
+  // dua dari tiga angka kepala bisa dibaca tanpa pernah tahu syaratnya.
+  function bukaLembarJujur() { gambarLembarJujur(); document.body.classList.add('lembar-jujur-terbuka'); }
+  function tutupLembarJujur() { document.body.classList.remove('lembar-jujur-terbuka'); }
+  function gambarLembarJujur() {
+    const w = document.getElementById('ljIsi');
+    if (!w) return;
+    try {
+      const A = angkaJujurBulan();          // SATU perhitungan, sama dengan kacanya
+      const L = A.L;
+      const rp = n => (n < 0 ? '<span class="lb6-tanda-minus">\u2212</span>' : '')
+        + 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
+      const pctTxt = A.bisaCakupan
+        ? (A.cakupan < 0 ? '\u2212' : '') + Math.abs(A.cakupan * 100).toFixed(1).replace('.', ',') + '%'
+        : null;
+      // Kalimat pengesah: menyebut apa yang SUDAH dipotong, supaya angkanya tidak bisa
+      // dibaca sebagai margin kotor. Kalau cakupannya belum bisa dihitung, kalimatnya
+      // menolak menyebut persen — bukan memajang '—' yang terbaca seperti nol.
+      const sah = 'Sudah dipotong HPP, biaya bulanan, hapus buku, dan susut'
+        + (pctTxt ? ' \u00b7 dihitung dari ' + pctTxt + ' omzet ' + A.namaBulan : ' \u00b7 ' + A.namaBulan)
+        + ' \u2014 jadi ini benar-benar laba, bukan margin kotor.';
+      // TIGA SYARAT YANG MENEMPEL. Dua mengurangi kepercayaan (oksida, tepi putus), satu
+      // menegaskan (emas, tepi utuh). Polaritasnya diambil apa adanya dari rancangannya.
+      const syarat = [];
+      syarat.push({ kelas: 'kurang',
+        judul: pctTxt ? 'Menghitung ' + pctTxt + ' omzet' : 'Cakupan belum bisa dihitung',
+        ket: L.omzetTanpaHpp > 0
+          ? rp(L.omzetTanpaHpp) + ' dijual tanpa HPP, jadi tidak masuk angka ini'
+          : 'belum ada transaksi bulan ini yang bisa dipakai menghitung cakupan' });
+      syarat.push({ kelas: 'kurang',
+        judul: rp(A.marginKredit) + ' belum jadi uang',
+        ket: 'margin dari kredit sudah dicatat untung, tapi uangnya masih di pelanggan' });
+      syarat.push({ kelas: 'tegas',
+        judul: 'Biaya bulanan dan susut sudah dipotong',
+        ket: rp(L.biayaToko) + ' biaya toko'
+          + (L.hapusBuku ? ', ' + rp(L.hapusBuku) + ' hapus buku piutang' : '')
+          + ', dan susut ' + rp(L.susutStok)
+          + ' \u2014 potongan terpisah, semuanya sudah di dalam angka di atas' });
+      if (L.returJumlah > 0) {
+        syarat.push({ kelas: 'kurang',
+          judul: L.returJumlah + ' retur memotong ' + rp(L.returUang),
+          ket: 'uang yang kembali ke pembeli sudah mengurangi angka di atas'
+            + (L.returHpp > 0 ? ', dan HPP barang utuh yang kembali ' + rp(L.returHpp) + ' dibatalkan' : '') });
+      }
+      w.innerHTML = '<div class="kg-label">Satu angka jujur \u00b7 ' + A.namaBulan + '</div>'
+        + '<b class="kg-uang-laba lj-angka' + (L.labaBersih < 0 ? ' rugi' : '') + '">' + rp(L.labaBersih) + '</b>'
+        + '<div class="lj-sah">' + sah + '</div>'
+        + '<div class="kg-label" style="margin-top:12px;">Syarat yang menempel</div>'
+        + syarat.map(y => '<div class="lj-syarat ' + y.kelas + '"><span class="lj-lampu"></span>'
+          + '<span><b>' + y.judul + '</b><i>' + y.ket + '</i></span></div>').join('');
+    } catch (e) { console.error('lembar jujur gagal', e); }
+  }
   function tampilkanLabaKaca() {
     const wadah = document.getElementById('labaKaca');
     // KELUAR DINI WAJIB MENGOSONGKAN APA YANG IA SENDIRI TULIS. #labaSubBulan diisi nama
@@ -23088,6 +23206,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!wadah || window.matchMedia('(min-width: 700px)').matches) {
       const subLepas = document.getElementById('labaSubBulan');
       if (subLepas) subLepas.textContent = '';
+      // Lembar J juga ditutup. Pintunya cuma ada di kaca (<700px); kalau lebar menyeberang
+      // selagi lembarnya terbuka, ia bertahan menutupi tampilan desktop yang tidak punya
+      // tombol pemanggilnya — dan satu-satunya jalan keluar tinggal pegangan kecil di
+      // atasnya. Aturan yang sama dengan baris di atas: yang membuka wajib menutup.
+      tutupLembarJujur();
       return;
     }
     try {
@@ -23262,6 +23385,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (L.jumlahTanpaHpp > 0) syarat.push(L.jumlahTanpaHpp + ' trx tanpa HPP (' + rp(L.omzetTanpaHpp) + ') tidak masuk ketiga angka di atas');
       if (L.returJumlah > 0) syarat.push(L.returJumlah + ' retur sudah memotongnya ' + rp(L.returUang));
       if (syarat.length) html += '<div class="kg-rincian lb6-syarat">' + syarat.join(' · ') + '</div>';
+      // Pintu ke lembar J. Ditaruh DI LUAR panel keping, sejajar dengan baris syarat —
+      // supaya keping mana pun yang sedang dipilih, jalan ke angka jujurnya tetap ada.
+      html += '<button type="button" class="lb6-jujur" onclick="bukaLembarJujur()">SATU ANGKA JUJUR &middot; PENUH LAYAR</button>';
 
       // "DIJUAL DI BAWAH HPP" JUGA KELUAR DARI CABANG ZONA. Ini satu-satunya kalimat di
       // halaman ini yang menunjuk TINDAKAN (cek Daftar Harga), dan dulu ia hidup di dalam
@@ -28100,6 +28226,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.tgNanti = tgNanti;
   window.tgBuka = tgBuka;
   window.tgUlangSemua = tgUlangSemua;
+  window.bukaLembarJujur = bukaLembarJujur;
+  window.tutupLembarJujur = tutupLembarJujur;
   window.labaPilihKeping = labaPilihKeping;
   window.labaPilihZona = labaPilihZona;
   window.pilihZonaArusKas = pilihZonaArusKas;
