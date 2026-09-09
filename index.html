@@ -13065,7 +13065,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       }
       // Karung, literan, dan repacking menimba kolam KG YANG SAMA (hitungStokKarungPerMerk),
       // jadi dikurangi dalam KG lalu dikonversi SEKALI di ujung — bukan dijumlahkan silang.
-      if (t.merkSumber === kunci) n += (t.totalKg || 0);
+      //
+      // JENISNYA DISEBUT, tidak disiratkan. Mesin menyatakan aturan ini lantang di LIMA
+      // tempat (12806, 17353, 18064, 20449, 20509), kata demi kata: kolam kg cuma dikurangi
+      // oleh karung, repacking, dan literan. Penjaga ini tempat KEENAM — dan tanpa klausa
+      // di bawah ia satu-satunya yang menyatakannya lewat KELALAIAN.
+      // Hari ini itu tidak tertangkap: baris jenis 'kemasan' (15504, dan 27148 di jalur
+      // kasir) tidak menyetel merkSumber. Tapi baris itu MEMBAWA totalKg — ukuranKemasan ×
+      // jumlahUnit — jadi field yang dijumlah sudah ada; yang belum ada cuma field yang
+      // dicocokkan. Satu field jaraknya dari memotong dua kali: kg yang sudah meninggalkan
+      // kolam karung saat produksi, dipotong lagi saat bag-nya dijual.
+      // Dan merkSumber di seluruh berkas ini berarti ASAL-USUL. Suatu hari seseorang akan
+      // menambahkannya ke baris kemasan karena itu memang artinya — lalu langit-langit
+      // karung mengetat diam-diam dan mulai menolak penjualan yang SAH, di meja kasir.
+      // Cocok dengan mesin karena MENYETUJUI, bukan karena diam.
+      if ((t.jenis === 'karung' || t.jenis === 'repacking' || t.jenis === 'literan')
+        && t.merkSumber === kunci) n += (t.totalKg || 0);
     });
     return n;
   }
