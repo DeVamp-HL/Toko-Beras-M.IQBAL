@@ -4364,6 +4364,72 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
      untuk yang diutang. Ia menjawab "ini punya atau utang" tanpa membaca sub-kepalanya
      dulu, dan tetap benar walau barisnya tergulir jauh dari kepala kelompoknya. */
   #akNeracaIsi, #akSiapaIsi{ margin-top:10px; }
+  /* KOLAM DUA KERAN (sumbu K). Keran atas mengisi, keran bawah menguras; tebal pancuran
+     sebanding besar arusnya, jadi "masuk besar tapi keluar lebih besar" terbaca sebelum
+     angkanya dibaca. Tinggi air = kas sekarang terhadap kas saat titik hitung, dan garis
+     putus di dalam kolam adalah patokan titik itu. */
+  .ak-kolam-nilai{ font-family:var(--pf-serif); font-weight:600; font-size:31px; line-height:1.1;
+    margin-top:9px; color:var(--pf-krem,#f7ecd6); font-variant-numeric:tabular-nums; }
+  #akKolamKaca.kurang .ak-kolam-nilai{ color:#e8c3b2; }
+  #akKolamKaca.kurang{ border-color:rgba(217,166,147,.34); }
+  #akKolamKaca.kurang .kg-label{ color:#d9a693; }
+  .ak-kolam-panggung{ position:relative; height:160px; margin-top:12px; }
+  .ak-kolam-panggung .keran{ position:absolute; width:34px; height:11px; border-radius:2px; display:block; }
+  .ak-kolam-panggung .keran.masuk{ left:14px; top:0; background:rgba(226,205,166,.4); }
+  .ak-kolam-panggung .keran.keluar{ right:14px; bottom:0; background:rgba(217,166,147,.45); }
+  .ak-kolam-panggung .pancur{ position:absolute; display:block; width:var(--tebal,4px); }
+  .ak-kolam-panggung .pancur.masuk{ left:27px; top:11px; height:46px;
+    background:linear-gradient(180deg,#f7ecd6,rgba(247,236,214,.28)); }
+  .ak-kolam-panggung .pancur.keluar{ right:27px; bottom:11px; height:22px;
+    background:linear-gradient(180deg,rgba(217,166,147,.34),#d9a693); }
+  .ak-kolam-panggung .kolam{ position:absolute; left:0; right:0; top:57px; height:74px;
+    border-radius:3px 3px 6px 6px; overflow:hidden; background:rgba(255,255,255,.03);
+    border:1px solid rgba(226,205,166,.3); display:flex; flex-direction:column; justify-content:flex-end; }
+  .ak-kolam-panggung .air{ display:block; width:100%; height:var(--tinggi,50%);
+    background:linear-gradient(180deg,rgba(247,236,214,.42),rgba(194,166,120,.3)); }
+  .ak-kolam-panggung .patokan{ position:absolute; left:0; right:0; top:38%; height:0; display:block;
+    border-top:1px dashed rgba(247,236,214,.6); }
+  .ak-kolam-kaki{ display:flex; justify-content:space-between; margin-top:9px;
+    font-size:10px; font-weight:600; line-height:1.4; }
+  .ak-kolam-kaki .masuk{ color:var(--emas,#e2cda6); }
+  .ak-kolam-kaki .keluar{ color:#d9a693; }
+  /* KE MANA UANG — batang proporsi + tanda warna, hanya di HP. Kartunya sama, barisnya
+     sama, angkanya sama: yang ditambahkan cuma dua saluran BACA. */
+  #daftarKeMana .km-tanda{ display:block; flex:none; width:3px; height:17px; border-radius:2px;
+    background:var(--tanda,rgba(226,205,166,.6)); margin-right:9px; }
+  /* Ruang di kaki baris supaya batang proporsi tidak menempel garis pemisah baris
+     BERIKUTNYA — batang yang menyentuh garis di bawahnya terbaca milik baris di bawah. */
+  #daftarKeMana .baris-44{ flex-wrap:wrap; padding-bottom:6px; }
+  /* PEMUTUS BARIS ber-lebar penuh. "flex:1 0 100%" saja TIDAK cukup untuk memaksa batang
+     turun: begitu ia juga diberi max-width, ukuran hipotetisnya ikut menyusut dan
+     pemecah baris memutuskan ia masih muat di baris pertama — batangnya lalu duduk di
+     sebelah angka dan mencuri lebar dari kolom nama (terukur: nama tinggal 80px dari
+     328px, tingginya melar jadi 133px). Pemutus ini tidak punya max-width, jadi ia
+     selalu memulai baris baru. */
+  #daftarKeMana .km-putus{ display:block; flex:1 0 100%; height:0; }
+  #daftarKeMana .km-bar{ display:block; flex:0 0 auto; height:9px; border-radius:2px; margin-top:7px;
+    width:var(--w,0%);
+    background:linear-gradient(90deg,rgba(226,205,166,.34),rgba(226,205,166,.62)); }
+  #daftarKeMana .baris-44.km-habis .km-bar{ background:linear-gradient(90deg,rgba(217,166,147,.5),#d9a693); }
+  #daftarKeMana .baris-44.km-masuk .km-bar{ background:linear-gradient(90deg,#c2a678,#f7ecd6); }
+  #daftarKeMana .baris-jumlah .km-bar{ display:none; }
+  /* EMPAT WUJUD: kisi 2x2. Tiga kotak masih milik toko, kotak keempat benar-benar habis —
+     dan yang keempat beroksida supaya bedanya terbaca tanpa membaca keterangannya. */
+  .ak-wujud{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .ak-wujud > div{ display:flex; flex-direction:column; gap:5px; padding:11px 11px 12px;
+    border-radius:3px; background:rgba(226,205,166,.07); border:1px solid rgba(226,205,166,.28); }
+  .ak-wujud > div.habis{ background:rgba(217,166,147,.08); border-color:rgba(217,166,147,.32); }
+  .ak-wujud i{ display:block; width:14px; height:14px; border-radius:2px;
+    background:linear-gradient(160deg,rgba(247,236,214,.6),rgba(194,166,120,.32)); }
+  .ak-wujud > div.habis i{ background:linear-gradient(160deg,rgba(232,195,178,.6),rgba(201,112,94,.35)); }
+  .ak-wujud b{ font-size:11.5px; font-weight:600; color:var(--teks); }
+  .ak-wujud strong{ font-family:var(--pf-serif); font-weight:600; font-size:16px;
+    color:var(--pf-krem,#f7ecd6); font-variant-numeric:tabular-nums; }
+  .ak-wujud > div.habis strong{ color:#e8c3b2; }
+  .ak-wujud small{ font-family:var(--pf-serif); font-style:italic; font-size:9.5px;
+    line-height:1.35; color:var(--pf-abu2,#a7adb5); }
+  /* Kembaran lama dipadamkan di HP — satu angka satu tempat. */
+  #kartuHeroArusKas, #akDuaMini{ display:none; }
   .ak-nr-grup{ font-size:8px; font-weight:800; letter-spacing:.2em; text-transform:uppercase;
     color:var(--pf-abu2,#a7adb5); padding:0 0 7px; }
   .ak-nr-grup.oks{ color:#d9a693; padding-top:13px; }
@@ -4454,7 +4520,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   #akKepala{ background:none; border:none; box-shadow:none; padding:0; margin-bottom:0; }
   #akKepala > .kg-label, #akKepala .ak-keping, #akKepalaKosong{ display:none !important; }
   .ak-jam{ display:none; }   /* gayanya cuma ada di <700px — tanpa ini ia jadi kotak telanjang */
-  #akNeracaKaca, #akSiapaKaca{ display:none !important; }   /* desktop memakai kartu lama */
+  #akNeracaKaca, #akSiapaKaca, #akKolamKaca, #akWujudKaca{ display:none !important; }   /* desktop memakai kartu lama */
 }
 /* --- KACA EMAS G2: Piutang & Kasbon --- */
 @media (min-width:700px){ #piutang6a{ display:none; } }
@@ -7613,14 +7679,30 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <label for="arusKasBulan">Bulan</label>
     <input type="month" id="arusKasBulan" onchange="tampilkanArusKas()">
 
-    <div class="kartu-hero" style="margin-top:12px;">
+    <!-- KOLAM DUA KERAN (sumbu K, rupa rancangan): kas bersih bulan ini digambar sebagai
+         kolam dengan keran masuk di atas dan keran keluar di bawah. Tebal pancurannya
+         sebanding besar arusnya, dan tinggi airnya kas sekarang terhadap kas saat titik.
+         Kartu hero + dua kartu mini di bawah tetap ada — desktop memakainya. -->
+    <div class="kartu kg-panel" id="akKolamKaca" style="display:none;">
+      <div class="kg-label" id="akKolamLabel">Kas bersih bulan ini</div>
+      <div class="ak-kolam-nilai" id="akKolamNilai">Rp0</div>
+      <div class="ak-kolam-panggung">
+        <span class="keran masuk"></span><span class="pancur masuk" id="akPancurMasuk"></span>
+        <div class="kolam"><span class="air" id="akKolamAir"></span><span class="patokan"></span></div>
+        <span class="keran keluar"></span><span class="pancur keluar" id="akPancurKeluar"></span>
+      </div>
+      <div class="ak-kolam-kaki"><span class="masuk" id="akKolamMasuk"></span><span class="keluar" id="akKolamKeluar"></span></div>
+      <div class="ak-sisa-nota" id="akKolamNota"></div>
+    </div>
+
+    <div class="kartu-hero" id="kartuHeroArusKas" style="margin-top:12px;">
       <i class="pf-nafas" aria-hidden="true"></i>
       <div class="label">Kas bersih bulan ini</div>
       <div class="hero-nilai" id="arusKasBersih">Rp0</div>
       <div class="hero-syarat" id="arusKasSyarat"></div>
     </div>
 
-    <div class="kpi-mini kpi-dua" style="margin-top:10px;">
+    <div class="kpi-mini kpi-dua" id="akDuaMini" style="margin-top:10px;">
       <div class="kartu-mini"><div class="label">Uang masuk</div><div class="nilai" id="arusKasTotalMasuk">Rp0</div></div>
       <div class="kartu-mini"><div class="label">Uang keluar</div><div class="nilai" id="arusKasTotalKeluar">Rp0</div></div>
     </div>
@@ -7629,6 +7711,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div class="kd-judul"><h3>Ke mana uang bulan ini</h3></div>
       <div id="daftarKeMana"></div>
       <div class="info-box" id="keManaVonis" style="margin:10px 12px 12px;"></div>
+    </div>
+
+    <!-- EMPAT WUJUD BARUNYA (sumbu D, rupa rancangan): tiga wujud yang MASIH MILIK TOKO
+         (stok, piutang, kasbon) plus satu kotak HABIS yang menjumlah semua yang benar-benar
+         keluar. Angkanya diambil dari suku yang sama dengan kartu di atasnya — satu
+         perhitungan, dua gambar; bukan dua perhitungan yang kebetulan sepakat hari ini. -->
+    <div class="kartu kg-panel" id="akWujudKaca" style="display:none;">
+      <div class="kg-label">Empat wujud barunya</div>
+      <div class="ak-wujud" id="akWujudKisi"></div>
+      <div class="ak-sisa-nota" id="akWujudKet"></div>
     </div>
 
     <!-- SALDO SEJAK TITIK (hi-fi: saldo kas 30 hari) — garis kecil dari titik kas
@@ -20692,6 +20784,79 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       : 'Tercatat. Modal tertanam sekarang ' + formatRupiah(saldoModalOwner()) + '.');
   }
 
+  // ---------- D: EMPAT WUJUD BARUNYA (rupa kaca) ----------
+  // Kas yang turun tidak selalu hilang. Tiga kotak pertama MASIH MILIK TOKO — stok di
+  // gudang, piutang pelanggan, kasbon pegawai — dan kotak keempat menjumlah yang
+  // benar-benar keluar (biaya, prive, setoran ke owner). Kotak keempat beroksida supaya
+  // bedanya terbaca tanpa membaca keterangannya.
+  //
+  // Angkanya DIOPER dari tampilkanKeManaUang, bukan dihitung ulang di sini: dua rumus
+  // untuk satu angka akan sepakat hari ini lalu berpisah diam-diam begitu salah satunya
+  // disentuh (lihat pola "dijaga di satu tempat, bocor di tempat lain").
+  function gambarEmpatWujud(jadiStok, jadiPiutang, jadiKasbon, biayaNyata, pos, d) {
+    const kartu = document.getElementById('akWujudKaca');
+    if (!kartu || window.matchMedia('(min-width: 700px)').matches) return;
+    const kisi = document.getElementById('akWujudKisi');
+    const ket = document.getElementById('akWujudKet');
+    kartu.style.display = 'block';
+    const habis = Math.max(0, biayaNyata) + Math.max(0, pos.prive || 0) + Math.max(0, pos.setoran || 0);
+    const kotak = [
+      { label: 'Stok', rp: Math.max(0, jadiStok), sub: 'masih milik toko' },
+      { label: 'Piutang', rp: Math.max(0, jadiPiutang), sub: 'masih milik toko' },
+      { label: 'Kasbon', rp: Math.max(0, jadiKasbon), sub: 'masih milik toko' },
+      { label: 'Habis', rp: habis, sub: 'biaya, prive & setoran \u00b7 benar-benar keluar', habis: true }
+    ];
+    kisi.innerHTML = kotak.map(k =>
+      '<div' + (k.habis ? ' class="habis"' : '') + '><i></i><b>' + escapeHtml(k.label) + '</b>'
+      + '<strong>' + formatRupiah(k.rp) + '</strong>'
+      + '<small>' + escapeHtml(k.sub) + '</small></div>').join('');
+    const wujud = kotak.slice(0, 3).reduce((a, k) => a + k.rp, 0);
+    ket.textContent = wujud > 0
+      ? 'Tiga kotak pertama masih milik toko: ' + formatRupiah(wujud)
+        + ' bisa dijual atau ditagih. Kotak keempat ' + formatRupiah(habis) + ' tidak.'
+      : 'Bulan ini tidak ada kas yang berubah wujud \u2014 yang keluar '
+        + formatRupiah(habis) + ' benar-benar keluar.';
+  }
+
+  // ---------- K: KOLAM DUA KERAN (rupa kaca) ----------
+  // Keran atas mengisi, keran bawah menguras. TEBAL pancurannya sebanding besar arusnya,
+  // jadi "masuk besar tapi keluar lebih besar" terbaca sebelum angkanya dibaca. Tinggi
+  // air = kas sekarang terhadap kas saat titik hitung; garis putus di dalam kolam adalah
+  // patokan titik itu. Kalau titik hitung belum disetel, airnya tidak digambar sama sekali
+  // — ketinggian tanpa patokan bukan informasi, cuma hiasan yang tampak seperti fakta.
+  function gambarKolamKas(d, kasSekarang, titik) {
+    const kartu = document.getElementById('akKolamKaca');
+    if (!kartu || window.matchMedia('(min-width: 700px)').matches) return;
+    kartu.style.display = 'block';
+    const masuk = d.totalMasuk || 0, keluar = d.totalKeluar || 0, bersih = d.bersih || 0;
+    kartu.classList.toggle('kurang', bersih < 0);
+    document.getElementById('akKolamNilai').textContent = rpTanda(bersih);
+    const jumlah = masuk + keluar;
+    const tebal = (n) => (jumlah > 0 ? Math.max(3, n / jumlah * 12) : 3).toFixed(1) + 'px';
+    document.getElementById('akPancurMasuk').style.setProperty('--tebal', tebal(masuk));
+    document.getElementById('akPancurKeluar').style.setProperty('--tebal', tebal(keluar));
+    const air = document.getElementById('akKolamAir');
+    const titikTotal = titik ? (titik.laci || 0) + (titik.rekening || 0) + (titik.amplop || 0) + (titik.brankas || 0) : 0;
+    if (titik && titikTotal > 0 && kasSekarang !== null && kasSekarang !== undefined) {
+      air.style.display = '';
+      air.style.setProperty('--tinggi', Math.max(6, Math.min(96, kasSekarang / titikTotal * 62)).toFixed(1) + '%');
+    } else {
+      air.style.display = 'none';   // tanpa patokan, tinggi air tidak berarti apa-apa
+    }
+    document.getElementById('akKolamMasuk').textContent = 'masuk ' + formatRupiah(masuk);
+    document.getElementById('akKolamKeluar').textContent = 'keluar ' + formatRupiah(keluar);
+    document.getElementById('akKolamNota').textContent =
+      (bersih < 0
+        ? 'Keran keluar menang ' + formatRupiah(Math.abs(bersih)) + ' atas keran masuk bulan ini.'
+        : bersih > 0
+          ? 'Keran masuk menang ' + formatRupiah(bersih) + ' atas keran keluar bulan ini.'
+          : 'Masuk dan keluar bulan ini sama besar.')
+      + (titik && titikTotal > 0
+          ? ' Tinggi air = kas sekarang terhadap kas saat titik hitung ' + formatTanggal(titik.tanggal)
+            + ' (garis putus).'
+          : ' Titik hitung belum disetel, jadi tinggi airnya tidak digambar \u2014 tanpa patokan ia cuma hiasan.');
+  }
+
   // ---------- H: NERACA RINGKAS (rupa kaca) ----------
   // Kembaran KACA dari kartu Neraca Ringkas: angkanya dari hitungNeraca yang sama persis,
   // yang berbeda cuma gambarnya. Dibangun terpisah supaya kartu lama tetap utuh untuk
@@ -21261,6 +21426,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <span class="nama"><i class="trx-nama">${escapeHtml(r.label)}</i><small>${escapeHtml(formatTanggal(r.t))}${r.jam ? ' · ' + r.jam : ''}${r.saldo !== null ? ' · saldo ' + rpTanda(r.saldo) : ''}</small></span>
       <span class="angka ${r.masuk > 0 ? 'ph-hijau' : 'ph-merah'}">${r.masuk > 0 ? '+' : '−'}${formatRupiah(r.masuk > 0 ? r.masuk : r.keluar).replace('Rp', 'Rp')}</span>
     </div>`).join('');
+    return t ? saldo : null;   // dipakai kolam kas — satu angka, bukan dua hitungan
   }
 
   // ===== KACA EMAS G2 — Arus Kas: tiga zona + kepala dua keadaan =====
@@ -21316,7 +21482,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     tampilkanKeManaUang(d);
     tampilkanNeraca();
     gambarNeracaKaca();     // kembaran kaca: angka sama, gambar rancangan (hanya <700px)
-    tampilkanBukuKas(d.bulan);
+    const kasSekarangBK = tampilkanBukuKas(d.bulan);
+    gambarKolamKas(d, kasSekarangBK, ambilTitikKas());
     tampilkanRencanaKeluar();
     tampilkanSparkSaldo();
     tampilkanModalOwner();
@@ -24514,10 +24681,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!adaIsi) return;
 
     // Baris bertanda: arah uangnya ikut kalimatnya, bukan cuma tanda minus.
-    const brs = (label, ket, nilai, arah) => `<div class="baris-44${nilai === 0 ? ' baris-nol' : ''}">
-      <span class="nama"><i class="trx-nama">${escapeHtml(label)}</i>${ket ? `<small>${escapeHtml(ket)}</small>` : ''}</span>
+    // Tiap baris membawa DUA saluran baca tambahan yang cuma tergambar di HP (gerbang CSS):
+    //   · tanda 3px berwarna — masuk / berubah wujud (masih milik toko) / benar-benar habis
+    //   · batang proporsi     — besarnya relatif baris komponen TERBESAR
+    // Lebarnya disetel SESUDAH baris jadi, dan baris "Jumlah" sengaja tidak ikut jadi
+    // patokan: ia selalu yang terbesar dan akan menekan semua batang lain jadi rata
+    // (pola "patokan terbesar di kelompoknya").
+    const KM_WARNA = { masuk: '#f7ecd6', wujud: 'rgba(226,205,166,.6)', habis: '#d9a693' };
+    const brs = (label, ket, nilai, arah, jenis) => {
+      const j = jenis || (arah > 0 ? 'masuk' : 'habis');
+      return `<div class="baris-44 km-${j}${nilai === 0 ? ' baris-nol' : ''}" data-nilai="${Math.abs(nilai)}" style="--tanda:${KM_WARNA[j]}">
+      <i class="km-tanda"></i><span class="nama"><i class="trx-nama">${escapeHtml(label)}</i>${ket ? `<small>${escapeHtml(ket)}</small>` : ''}</span>
       <span class="angka ${nilai === 0 ? '' : (arah > 0 ? 'ph-hijau' : 'ph-merah')}">${nilai === 0 ? 'Rp0' : (arah > 0 ? '+' : '−') + formatRupiah(Math.abs(nilai))}</span>
+      <i class="km-putus"></i><span class="km-bar"></span>
     </div>`;
+    };
     const baris = [];
     baris.push(brs('Untung kotor barang terjual',
       'omzet ber-HPP dikurangi harga pokoknya'
@@ -24527,11 +24705,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       baris.push(brs('Penjualan yang HPP-nya bolong', laba.jumlahTanpaHpp + ' transaksi — uangnya masuk penuh, untungnya belum terukur', laba.omzetTanpaHpp, 1));
     }
     baris.push(jadiStok >= 0
-      ? brs('Jadi stok di gudang', 'belanja beras melebihi harga pokok yang terjual', jadiStok, -1)
-      : brs('Diambil dari stok lama', 'yang terjual melebihi belanja — stok menyusut jadi uang', -jadiStok, 1));
+      ? brs('Jadi stok di gudang', 'belanja beras melebihi harga pokok yang terjual', jadiStok, -1, 'wujud')
+      : brs('Diambil dari stok lama', 'yang terjual melebihi belanja — stok menyusut jadi uang', -jadiStok, 1, 'masuk'));
     baris.push(jadiPiutang >= 0
-      ? brs('Jadi piutang pelanggan', 'kredit baru melebihi pelunasan — uangnya menyusul', jadiPiutang, -1)
-      : brs('Piutang mengempis', 'pelunasan melebihi kredit baru', -jadiPiutang, 1));
+      ? brs('Jadi piutang pelanggan', 'kredit baru melebihi pelunasan — uangnya menyusul', jadiPiutang, -1, 'wujud')
+      : brs('Piutang mengempis', 'pelunasan melebihi kredit baru', -jadiPiutang, 1, 'masuk'));
     if ((pos.berasDiutang || 0) > 0) {
       baris.push(brs('Beras masuk lewat bon', 'stok bertambah tanpa uang keluar — jadi utang pemasok', pos.berasDiutang, 1));
     }
@@ -24545,8 +24723,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       baris.push(brs('Melunasi utang ke owner — kewajiban berkurang', 'uang keluar untuk belanja toko yang dulu dibayar dompet pribadi', pos.bayarUtangOwner, -1));
     }
     baris.push(jadiKasbon >= 0
-      ? brs('Jadi kasbon pegawai', 'diambil melebihi yang dikembalikan', jadiKasbon, -1)
-      : brs('Kasbon kembali', 'dikembalikan melebihi yang diambil', -jadiKasbon, 1));
+      ? brs('Jadi kasbon pegawai', 'diambil melebihi yang dikembalikan', jadiKasbon, -1, 'wujud')
+      : brs('Kasbon kembali', 'dikembalikan melebihi yang diambil', -jadiKasbon, 1, 'masuk'));
     // Modal yang disetor menambah kas TANPA menambah untung — kalau tidak diberi
     // sukunya sendiri, identitas kartu ini tidak lagi berjumlah kas bersih.
     if ((pos.modalSetor || 0) > 0) {
@@ -24560,6 +24738,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <span class="angka">${(d.bersih < 0 ? '−' : '') + formatRupiah(Math.abs(d.bersih))}</span>
     </div>`);
     kont.innerHTML = baris.join('');
+    // Lebar batang proporsi disetel di sini, sesudah barisnya berdiri. Patokannya baris
+    // komponen TERBESAR — baris "Jumlah" tidak punya data-nilai, jadi ia tidak bisa jadi
+    // patokan walau angkanya paling besar.
+    const nilaiBaris = [].map.call(kont.querySelectorAll('.baris-44[data-nilai]'),
+      el => parseFloat(el.getAttribute('data-nilai')) || 0);
+    const maksBaris = Math.max.apply(null, nilaiBaris.concat([1]));
+    [].forEach.call(kont.querySelectorAll('.baris-44[data-nilai]'), el => {
+      const v = parseFloat(el.getAttribute('data-nilai')) || 0;
+      // Nol digambar TANPA batang sama sekali, bukan batang setipis mungkin: lantai minimum
+      // membuat "nol" dan "sedikit sekali" jadi kembar (aturan repo melarangnya).
+      el.style.setProperty('--w', v > 0 ? Math.max(4, Math.round(v / maksBaris * 100)) + '%' : '0%');
+    });
+
+    // EMPAT WUJUD BARUNYA — dari suku yang SAMA dengan baris di atas, bukan hitungan kedua.
+    gambarEmpatWujud(jadiStok, jadiPiutang, jadiKasbon, biayaNyata, pos, d);
 
     // Vonisnya dibunyikan terang-terangan: berapa yang berubah wujud, berapa
     // hasil operasional. Kalau operasionalnya minus, dikatakan minus.
