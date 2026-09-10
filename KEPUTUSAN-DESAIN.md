@@ -1,6 +1,6 @@
 # Keputusan desain — penyimpangan yang SUDAH disetujui
 
-Dua puluh keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
+Dua puluh satu keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
 Semuanya sudah diperiksa dan disetujui pemilik. **Membetulkannya ke prototipe = merusak.**
 
 Berkas ini ada di repo dengan sengaja. Perintah kerja (`PROMPT-*.md`) dan catatan bisnis
@@ -206,6 +206,26 @@ gambar QR yang tidak menunjuk ke mana-mana.
     Jadi urutannya tetap urutan pos, dan **kartunya mengatakan itu di kalimatnya sendiri**
     supaya tidak ada yang membacanya sebagai urutan tempo. Butir ini gugur begitu catatan
     biaya bulanan benar-benar punya tanggal jatuh tempo — itu penambahan DATA, bukan rupa.
+
+21. **Tuas Arus Kas punya DUA arah, jadi dua gerak — rancangan cuma menggambar satu** —
+    rancangan `Arus Kas - Gabungan` menggambar setiap tuas yang ditarik dengan cara yang
+    sama: batangnya **jatuh ke 8% dan menghijau**. Sistem tidak mengikutinya untuk keempat
+    tuas, dan itu disengaja.
+
+    **Sebabnya: keempat tuas tidak melakukan hal yang sama.** Di `akBakaranHarian`, dua
+    tuas **MENAHAN** (biaya bulanan, belanja toko — posnya dikeluarkan dari bakaran, kas
+    jadi lebih awet) dan dua tuas **MENGIKUTKAN** (beli beras, prive owner — posnya
+    ditambahkan ke bakaran, kas jadi lebih cepat habis). Menggambar keduanya sebagai
+    batang yang jatuh-dan-menghijau akan **berbohong tentang separuhnya**: menekan
+    "beras" memperpendek sisa hari, dan gerak turun berwarna lega mengatakan kebalikannya.
+
+    Jadi arah tuas juga arah gambarnya: **ditahan → jatuh & hijau; diikutkan → naik penuh
+    & oksida.** Rupanya menyimpang dari rancangan tepat di titik yang membuat rancangan
+    itu benar untuk datanya sendiri tapi salah untuk data toko ini.
+
+    Butir ini gugur kalau suatu hari keempat tuas benar-benar berarah sama — itu
+    perubahan MESIN (`akBakaranHarian`), bukan perubahan rupa, dan harus diputuskan
+    sebagai perubahan mesin.
 
 ---
 
