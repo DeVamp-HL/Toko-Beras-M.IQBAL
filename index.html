@@ -13038,41 +13038,26 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + '?\n\nSesudah disetujui, catatan ini masuk buku pengeluaran dan '
       + (kasTokoKeluarKategori(t.kategori) ? 'kas toko BERKURANG' : 'kas toko TIDAK berubah')
       + ' \u2014 sekarang, bukan nanti.')) return;
-    // PINTU KEDUA ke buku pengeluaran — penjaga yang sama berlaku di sini. Penjaga yang
-    // cuma menjaga satu dari dua pintu bukan penjaga.
-    const pagarT = periksaPagarPrive(t.kategori, t.tanggal, t.nominal || 0);
-    if (!pagarT.boleh) {
-      alert(kalimatPagarPrive(pagarT));
-      bukaPaksaPrive(pagarT, async (alasan) => {
-        try {
-          await simpanKeFirestore(KOLEKSI_HARIAN, {
-            id: t.id, tanggal: t.tanggal, kategori: t.kategori,
-            keterangan: t.keterangan, nominal: t.nominal, jam: t.jam,
-            alasanPaksa: alasan, dipaksaPada: tanggalLokalIso()
-          });
-        } catch (err) { console.error(err); alert('Gagal memasukkan ke buku pengeluaran (offline?). Titipannya TIDAK dihapus.'); return; }
-        try { await hapusDariFirestore(KOLEKSI_TITIPAN, t.id); } catch (err) { console.error(err); }
+    // PINTU KEDUA ke buku pengeluaran — lewat GERBANG YANG SAMA. Pagarnya tidak
+    // dipanggil di sini: ia sudah hidup di dalam gerbangnya, dan memanggilnya dua kali
+    // cuma melahirkan kesempatan bagi keduanya berselisih.
+    // Id titipan DIPERTAHANKAN, jadi menyetujui dua kali menimpa dokumen yang sama —
+    // bukan melahirkan dua pengeluaran.
+    await tulisPengeluaranHarian({
+      id: t.id, kategori: t.kategori, tanggal: t.tanggal,
+      keterangan: t.keterangan, nominal: t.nominal, jam: t.jam,
+      // Titipan dihapus SESUDAH dokumennya lahir di buku pengeluaran — aturan rumah:
+      // yang bisa hilang ditulis TERAKHIR.
+      sesudah: async () => {
+        try { await hapusDariFirestore(KOLEKSI_TITIPAN, t.id); }
+        catch (err) {
+          console.error(err);
+          alert('Catatannya SUDAH masuk buku pengeluaran, tapi titipannya belum terhapus. '
+            + 'Ia akan tetap tampil di sini sampai terhapus \u2014 jangan disetujui dua kali.');
+        }
         gambarLencanaTitipan(); gambarLembarTitipan(); tampilkanHarianHariIni(); gambarKacaHarian();
-      });
-      return;
-    }
-    try {
-      await simpanKeFirestore(KOLEKSI_HARIAN, {
-        id: t.id, tanggal: t.tanggal, kategori: t.kategori,
-        keterangan: t.keterangan, nominal: t.nominal, jam: t.jam
-      });
-    } catch (err) {
-      console.error(err);
-      alert('Gagal memasukkan ke buku pengeluaran (offline?). Titipannya TIDAK dihapus \u2014 coba lagi nanti.');
-      return;
-    }
-    try { await hapusDariFirestore(KOLEKSI_TITIPAN, t.id); }
-    catch (err) {
-      console.error(err);
-      alert('Catatannya SUDAH masuk buku pengeluaran, tapi titipannya belum terhapus. '
-        + 'Ia akan tetap tampil di sini sampai terhapus \u2014 jangan disetujui dua kali.');
-    }
-    gambarLencanaTitipan(); gambarLembarTitipan(); tampilkanHarianHariIni(); gambarKacaHarian();
+      }
+    });
   }
   async function tolakTitipan(id) {
     const t = ambilTitipanHarian().find(x => String(x.id) === String(id));
@@ -13512,23 +13497,54 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     await sesudah(alasan);
   }
 
-  // SATU JALUR TULIS dipakai jalan biasa maupun jalan paksa. Kalau jalan paksa punya
-  // penulisnya sendiri, suatu hari salah satunya akan menulis bentuk dokumen yang berbeda.
-  // alasanPaksa hanya ADA kalau memang dipaksa — dokumen biasa tidak membawa kolom kosong.
-  async function tulisPengeluaranHarian(kategori, tanggal, keterangan, nominal, alasanPaksa, takTerperiksa) {
+  // ================= SATU GERBANG KE BUKU PENGELUARAN =================
+  // Pagarnya ada DI DALAM penulisnya, bukan di pintu-pintunya. Sebelum koreksi ini pagar
+  // dipasang di dua pemanggil, dan pintu KETIGA — bjSimpan() di layar Belanja — menulis
+  // sendiri ke KOLEKSI_HARIAN tanpa pernah menyentuh pagarnya. Kasus BJ_KASUS.PL
+  // ("untuk pribadi × dari laci") berkategori 'owner' dan tombolnya berbunyi "Simpan
+  // sebagai prive owner": prive yang lewat Harian ditolak, prive yang lewat Belanja
+  // tersimpan diam-diam. Pagar yang punya jalan memutar bukan pagar.
+  //
+  // Sekarang SATU fungsi memanggil simpanKeFirestore(KOLEKSI_HARIAN, ...). Pintu kelima
+  // yang lahir bulan depan ikut terjaga tanpa dikerjakan lagi — itu gunanya menaruh pagar
+  // di barangnya, bukan di pintunya.
+  //
+  // Bentuk dokumen TIDAK berubah: enam field yang sama persis (id, kategori, tanggal,
+  // keterangan, nominal, jam). alasanPaksa & dipaksaPada hanya ADA kalau memang dipaksa.
+  async function tulisPengeluaranHarian(o) {
+    const kategori = o.kategori, tanggal = o.tanggal;
+    const keterangan = o.keterangan, nominal = o.nominal;
+    let takTerperiksa = false;
+    if (!o.alasanPaksa) {
+      const pagar = periksaPagarPrive(kategori, tanggal, nominal);
+      if (!pagar.boleh) {
+        alert(kalimatPagarPrive(pagar));
+        // Jalan paksa memanggil GERBANG YANG SAMA, cuma membawa alasannya. Kalau jalan
+        // paksa punya penulisnya sendiri, suatu hari salah satunya akan menulis bentuk
+        // dokumen yang berbeda.
+        bukaPaksaPrive(pagar, (alasan) => {
+          const lagi = {}; for (const k in o) lagi[k] = o[k];
+          lagi.alasanPaksa = alasan;
+          return tulisPengeluaranHarian(lagi);
+        });
+        return { ok: false, ditahan: true };
+      }
+      takTerperiksa = !!pagar.takTerperiksa;
+    }
+    const id = o.id || idUnik();
     const dok = {
-      id: idUnik(), kategori, tanggal, keterangan, nominal,
-      jam: new Date().toTimeString().slice(0, 5)
+      id, kategori, tanggal, keterangan, nominal,
+      jam: o.jam || new Date().toTimeString().slice(0, 5)
     };
-    if (alasanPaksa) { dok.alasanPaksa = alasanPaksa; dok.dipaksaPada = tanggalLokalIso(); }
+    if (o.alasanPaksa) { dok.alasanPaksa = o.alasanPaksa; dok.dipaksaPada = tanggalLokalIso(); }
     try {
       await simpanKeFirestore(KOLEKSI_HARIAN, dok);
     } catch (err) {
       console.error(err);
       alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
-      return false;
+      return { ok: false, gagal: true };
     }
-    if (alasanPaksa) {
+    if (o.alasanPaksa) {
       alert('Tercatat MELEBIHI kas, dengan alasan tertulis.\n\nJejaknya permanen dan ikut '
         + 'terbaca di Buku Kas serta Riwayat pengeluaran.');
     } else if (takTerperiksa) {
@@ -13538,7 +13554,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + 'kas belum disetel, atau tanggalnya mundur dari titik), jadi penjaga prive TIDAK '
         + 'memeriksa apakah kasnya cukup.');
     }
-    return true;
+    if (typeof o.sesudah === 'function') await o.sesudah(id);
+    return { ok: true, id };
   }
 
   async function simpanPengeluaranHarian() {
@@ -13550,25 +13567,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!keterangan) { alert('Isi keterangan dulu (untuk apa pengeluaran ini).'); return; }
     if (nominal <= 0) { alert('Isi nominal dulu.'); return; }
 
-    // PENJAGA DI TEMPAT UANG KELUAR — bukan di layar yang menggambar, dan bukan confirm()
-    // yang bisa ditekan buta. Menolak berarti menolak: tidak ada tombol "lanjut" di sini.
-    const pagar = periksaPagarPrive(kategori, tanggal, nominal);
-    if (!pagar.boleh) {
-      alert(kalimatPagarPrive(pagar));
-      bukaPaksaPrive(pagar, (alasan) => tulisPengeluaranHarian(kategori, tanggal, keterangan, nominal, alasan));
-      return;
-    }
-    await tulisPengeluaranHarian(kategori, tanggal, keterangan, nominal,
-      null, pagar.takTerperiksa);
-
-    document.getElementById('harianKeterangan').value = '';
-    document.getElementById('harianNominal').value = '';
-    document.getElementById('harianTanggal').value = tanggalLokalIso();
-    perbaruiRingkasHarian();
-    tampilkanHarianHariIni();
-    gambarChipKeteranganHarian();
-    document.getElementById('pesanOkHarian').style.display = 'block';
-    setTimeout(() => { document.getElementById('pesanOkHarian').style.display = 'none'; }, 2000);
+    // Pagarnya TIDAK dipanggil di sini lagi — ia hidup di dalam gerbangnya. Pemanggil
+    // cuma menyerahkan barangnya dan apa yang harus terjadi sesudah ia benar-benar
+    // tertulis; jalan biasa maupun jalan paksa melewati kalimat yang sama ini.
+    await tulisPengeluaranHarian({
+      kategori, tanggal, keterangan, nominal,
+      sesudah: () => {
+        document.getElementById('harianKeterangan').value = '';
+        document.getElementById('harianNominal').value = '';
+        document.getElementById('harianTanggal').value = tanggalLokalIso();
+        perbaruiRingkasHarian();
+        tampilkanHarianHariIni();
+        gambarChipKeteranganHarian();
+        document.getElementById('pesanOkHarian').style.display = 'block';
+        setTimeout(() => { document.getElementById('pesanOkHarian').style.display = 'none'; }, 2000);
+      }
+    });
   }
 
   async function hapusHarian(id) {
@@ -13901,21 +13915,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + '\nUtang toko ke owner: ' + (k.kategori === 'tokoDompet' ? '+ ' + rp : 'Rp0')
       + '\n\nSimpan?';
     if (!confirm(pesan)) return;
-    const id = idUnik();
-    try {
-      await simpanKeFirestore(KOLEKSI_HARIAN, {
-        id, kategori: k.kategori, tanggal: tanggalLokalIso(), keterangan, nominal,
-        jam: new Date().toTimeString().slice(0, 5)
-      });
-    } catch (err) {
-      console.error(err);
-      alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
-      return;
-    }
-    document.getElementById('bjNominal').value = '';
-    document.getElementById('bjKeterangan').value = '';
-    _bjPilih = id;
-    tampilkanBelanja();
+    // PINTU KETIGA. Layar ini punya kasus PL yang kategorinya 'owner' — prive, sama
+    // persis dengan yang dijaga di Harian. Karena itu ia menulis lewat GERBANG yang
+    // sama, bukan lewat simpanKeFirestore sendiri. Sebelumnya ia menulis sendiri, dan
+    // prive melebihi kas lolos diam-diam di sini sementara ditolak di Harian.
+    // TL & TD tetap lewat tanpa ditegur: pagarnya cuma menyentuh kategori 'owner'.
+    await tulisPengeluaranHarian({
+      kategori: k.kategori, tanggal: tanggalLokalIso(), keterangan, nominal,
+      sesudah: (id) => {
+        document.getElementById('bjNominal').value = '';
+        document.getElementById('bjKeterangan').value = '';
+        _bjPilih = id;
+        tampilkanBelanja();
+      }
+    });
   }
 
   // Pelunasan: SATU-SATUNYA hal yang ditulis ke koleksi utangOwnerMutasi. Sisi
