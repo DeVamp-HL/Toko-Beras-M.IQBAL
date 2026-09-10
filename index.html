@@ -4248,6 +4248,48 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   background:linear-gradient(168deg,rgba(255,255,255,.055),rgba(255,255,255,.02)); }
 @media (max-width:699.98px){
   .ak-zona:not(.aktif){ display:none; }
+  /* HARI PALING KERING — petak per hari, gelap = kas tipis. --tebal menggerakkan opacity
+     isian, dan angkanya SAMA dengan saldo hari itu (bukan literal kedua). Hari terendah
+     dapat tepi emas; hari MINUS dapat oksida — dua keadaan berbeda, dua tanda berbeda. */
+  .ak-petak-hari{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin:8px 2px 0; }
+  .ak-petak{ display:block; height:22px; border-radius:3px; border:1px solid rgba(255,255,255,.07);
+    background:linear-gradient(180deg, rgba(226,205,166,.55), rgba(191,164,118,.3));
+    opacity:calc(.18 + (var(--tebal,50%) / 100% ) * .82); }
+  .ak-petak.kering{ border-color:rgba(226,205,166,.75); opacity:1;
+    background:linear-gradient(180deg,#f7ecd6,#c2a678); }
+  .ak-petak.minus{ opacity:1; border-color:rgba(201,112,94,.6);
+    background:linear-gradient(180deg,rgba(232,195,178,.55),rgba(201,112,94,.4)); }
+  .ak-legenda{ display:flex; gap:12px; flex-wrap:wrap; margin:10px 2px 0;
+    font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:#8f959d; }
+  .ak-legenda span{ display:flex; align-items:center; gap:5px; }
+  .ak-legenda span::before{ content:''; width:12px; height:3px; border-radius:99px; background:currentColor; }
+  .ak-legenda .lg-tebal{ color:#e2cda6; } .ak-legenda .lg-tipis{ color:#6f6a63; }
+  .ak-legenda .lg-tercatat{ color:#f7ecd6; } .ak-legenda .lg-ramal{ color:rgba(226,205,166,.72); }
+  .ak-legenda .lg-batas{ color:#d9a693; }
+  .ak-kering-baris{ display:flex; flex-direction:column; gap:3px; margin:11px 2px 0; }
+  .ak-kering-baris b{ font-family:var(--pf-serif); font-size:13px; color:var(--teks); }
+  .ak-kering-baris span, .ak-kering-kosong{ font-family:var(--pf-serif); font-style:italic;
+    font-size:10.5px; color:var(--pf-abu2,#a7adb5); line-height:1.5; }
+  /* RAMALAN — garis padat (tercatat) vs putus-putus (tebakan). Bedanya WAJIB terlihat:
+     tebakan yang tergambar sama dengan catatan adalah kebohongan yang paling mudah dibuat. */
+  .ak-ramal-wrap{ position:relative; height:126px; margin:10px 0 4px; }
+  .ak-ramal-wrap svg{ width:100%; height:116px; display:block; overflow:visible; }
+  /* TUAS SIMULASI — tinggi batang = besar posnya dalam 30 hari; ditekan = aktif. */
+  .ak-tuas{ display:flex; align-items:flex-end; gap:8px; height:120px; margin:10px 2px 0; }
+  .ak-tuas-btn{ flex:1; height:100%; padding:4px; border-radius:4px; background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.09); display:flex; align-items:flex-end; min-width:44px; }
+  .ak-tuas-btn .isi{ display:block; width:100%; height:var(--tinggi,0%); border-radius:3px;
+    background:linear-gradient(180deg,rgba(226,205,166,.42),rgba(191,164,118,.24)); }
+  .ak-tuas-btn.aktif{ border-color:rgba(240,220,187,.55); background:rgba(240,220,187,.08); }
+  .ak-tuas-btn.aktif .isi{ background:linear-gradient(180deg,#f7ecd6,#c2a678); }
+  .ak-tuas-label{ display:flex; gap:8px; margin:7px 2px 0; }
+  .ak-tuas-label span{ flex:1; text-align:center; font-size:9px; letter-spacing:.12em;
+    text-transform:uppercase; color:#8f959d; }
+  .ak-tuas-label span.aktif{ color:#e2cda6; }
+  .ak-tahan-hasil{ margin-top:12px; padding-top:11px; border-top:1px solid rgba(255,255,255,.07); }
+  .ak-tahan-baris{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; min-height:38px; }
+  .ak-tahan-baris span{ font-size:11.5px; color:var(--pf-abu2,#a7adb5); }
+  .ak-tahan-baris b{ font-family:var(--pf-serif); font-size:17px; color:var(--pf-putih,#fdf6e7); }
   /* KAS HABIS BERAPA HARI LAGI — angka Prata besar seperti angka uang lain di layar ini,
      tapi SATUANNYA HARI, bukan rupiah. Karena itu ia sengaja TIDAK memakai gradien sampanye
      maupun platina: empat jenis uang punya wujudnya masing-masing, dan angka yang bukan uang
@@ -7416,6 +7458,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div id="daftarArusKasKeluar"></div>
     </div>
 
+    <!-- HARI PALING KERING (sumbu N). Petak per hari sejak titik: gelap = kas tipis,
+         terang = kas tebal. Yang dicari bukan rata-rata, tapi HARI TERENDAH — itu hari
+         yang menentukan apakah toko sempat kehabisan, dan rata-rata menyembunyikannya. -->
+    <div class="kartu kg-panel" id="kartuHariKering" style="display:none; margin-top:12px;">
+      <div class="kg-label">Hari paling kering</div>
+      <div class="ak-petak-hari" id="akPetakHari"></div>
+      <div class="ak-legenda"><span class="lg-tebal">kas tebal</span><span class="lg-tipis">kas tipis</span></div>
+      <div class="ak-kering-baris" id="akKeringBaris"></div>
+    </div>
+
     <!-- BUKU KAS (12 Agu 2026): pergerakan uang satu per satu, urut tanggal, dengan
          saldo berjalan — jawaban untuk "pergerakan uang masuk & keluar", bukan cuma
          total per kategori. Saldo hanya terisi untuk gerakan SESUDAH titik hitung. -->
@@ -7433,6 +7485,30 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="akRencanaKartu">
       <div class="kd-judul"><h3>Rencana keluar bulan ini</h3><span class="kd-hitung" id="akRencanaCukup"></span></div>
       <div id="akRencanaDaftar"></div>
+    </div>
+
+    <!-- RAMALAN TUJUH HARI (sumbu Q). Garis PADAT = yang sudah tercatat, garis PUTUS-PUTUS
+         = ramalan. Keduanya sengaja digambar beda supaya tebakan tidak pernah terbaca
+         sebagai catatan. Garis oksida = batas aman (nol). -->
+    <div class="kartu kg-panel" id="kartuRamalan" style="display:none; margin-top:12px;">
+      <div class="kg-label">Ramalan tujuh hari</div>
+      <div class="ak-ramal-wrap"><svg id="akRamalSvg" viewBox="0 0 264 116" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+      <div class="ak-legenda"><span class="lg-tercatat">tercatat</span><span class="lg-ramal">ramalan</span><span class="lg-batas">batas aman</span></div>
+      <div class="ak-sisa-nota" id="akRamalKet"></div>
+    </div>
+
+    <!-- KALAU INI DITAHAN (sumbu R). Empat tuas: tiap satu ditekan, posnya dikeluarkan dari
+         bakaran harian dan sisa hari dihitung ulang. Ia SIMULASI, bukan catatan — tidak ada
+         satu pun dokumen yang ditulis, dan kalimatnya menyebut itu. -->
+    <div class="kartu kg-panel" id="kartuTuasTahan" style="display:none; margin-top:12px;">
+      <div class="kg-label">Kalau ini ditahan</div>
+      <div class="ak-tuas" id="akTuasBaris"></div>
+      <div class="ak-tuas-label" id="akTuasLabel"></div>
+      <div class="ak-tahan-hasil">
+        <div class="ak-tahan-baris"><span>Kas kalau ditahan</span><b id="akTahanKas">—</b></div>
+        <div class="ak-tahan-baris"><span>Sisa hari</span><b id="akTahanHari">—</b></div>
+        <div class="ak-sisa-nota" id="akTahanKet"></div>
+      </div>
     </div>
 
     </div>
@@ -20421,6 +20497,185 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       : 'Tercatat. Modal tertanam sekarang ' + formatRupiah(saldoModalOwner()) + '.');
   }
 
+  // ---------- DERET SALDO HARIAN: SATU sumber untuk tiga kartu ----------
+  // Hari paling kering, ramalan tujuh hari, dan tuas simulasi semuanya bertanya hal yang
+  // sama: berapa kas di penghujung tiap hari. Menghitungnya tiga kali akan melahirkan tiga
+  // rumus saingan yang sepakat hari ini lalu berpisah diam-diam. Deretnya dihitung dengan
+  // cara yang SAMA PERSIS dengan tampilkanBukuKas: mulai dari titik, tambah gerakan
+  // kronologis, ambil saldo penutup tiap tanggal.
+  function akSeriSaldoHarian() {
+    const t = ambilTitikKas();
+    if (!t) return null;
+    const semua = daftarGerakanKas();
+    let saldo = (t.laci || 0) + (t.rekening || 0) + (t.amplop || 0) + (t.brankas || 0);
+    const peta = new Map();
+    semua.forEach(r => {
+      if (r.t > t.tanggal) { saldo += r.masuk - r.keluar; peta.set(r.t, saldo); }
+    });
+    const hari = [...peta.entries()].map(([tgl, s]) => ({ t: tgl, saldo: s })).sort((a, b) => a.t < b.t ? -1 : 1);
+    return { titik: t, hari, akhir: hari.length ? hari[hari.length - 1].saldo : saldo };
+  }
+
+  // ---------- BAKARAN HARIAN: satu perhitungan, dipakai sisa hari & tuas ----------
+  // Aturannya dari rancangan Arus Kas - Gabungan: keluar RUTIN saja. Beli beras di luar
+  // (bisa ditunda), prive owner di luar (uang pemilik, bukan ongkos toko). `tahan` berisi
+  // pos yang sedang "ditahan" oleh tuas simulasi.
+  const AK_POS_TAHAN = [
+    { id: 'biaya', nama: 'Biaya bulanan', singkat: 'Biaya', ambil: pos => pos.biayaBulanan || 0 },
+    { id: 'toko', nama: 'Belanja toko', singkat: 'Toko', ambil: pos => pos.harian || 0 },
+    { id: 'beras', nama: 'Beli beras', singkat: 'Beras', ambil: pos => pos.belanja || 0 },
+    { id: 'prive', nama: 'Prive owner', singkat: 'Prive', ambil: pos => pos.prive || 0 }
+  ];
+  let _akTahan = {};
+  function akPos30() {
+    try {
+      const sejak = tanggalLokalIso(new Date(Date.now() - 30 * 86400000));
+      return hitungArusKasInti(iso => iso >= sejak, bayaranBiayaBulanan()).pos;
+    } catch (e) { console.error('pos 30 hari:', e); return null; }
+  }
+  // Bakaran BAWAAN cuma dua pos rutin. Tuas boleh MENAHAN yang rutin, dan boleh MENAMBAHKAN
+  // dua yang tidak rutin ke dalam hitungan — arah tuasnya beda per pos, dan itu disebut di
+  // labelnya supaya tidak terbaca sebagai satu jenis saklar.
+  function akBakaranHarian(pos, tahan) {
+    if (!pos) return null;
+    tahan = tahan || {};
+    let total = 0;
+    if (!tahan.biaya) total += pos.biayaBulanan || 0;
+    if (!tahan.toko) total += pos.harian || 0;
+    if (tahan.beras) total += pos.belanja || 0;      // tuas beras = IKUTKAN, bukan tahan
+    if (tahan.prive) total += pos.prive || 0;        // sama
+    return total / 30;
+  }
+
+  // ---------- N: HARI PALING KERING ----------
+  function gambarHariPalingKering() {
+    const kartu = document.getElementById('kartuHariKering');
+    if (!kartu) return;
+    const petak = document.getElementById('akPetakHari');
+    const baris = document.getElementById('akKeringBaris');
+    const seri = akSeriSaldoHarian();
+    kartu.style.display = 'block';
+    if (!seri || !seri.hari.length) {
+      petak.innerHTML = '';
+      baris.innerHTML = '<span class="ak-kering-kosong">' + (seri
+        ? 'Belum ada gerakan uang sesudah titik hitung — belum ada hari untuk dibandingkan.'
+        : 'Titik hitung kas belum disetel, jadi saldo harian belum bisa dihitung.') + '</span>';
+      return;
+    }
+    const hari = seri.hari.slice(-28);            // empat minggu terakhir, tujuh per baris
+    const nilai = hari.map(h => h.saldo);
+    const maks = Math.max.apply(null, nilai);
+    const min = Math.min.apply(null, nilai);
+    const rentang = maks - min;
+    // TIGA KEADAAN dibedakan: kas minus punya warnanya sendiri (oksida), bukan cuma
+    // "paling gelap". Kalau semua hari sama, nol pembagi — semuanya digambar sedang,
+    // bukan semuanya gelap: rentang nol bukan berarti kering.
+    petak.innerHTML = hari.map(h => {
+      const p = rentang > 0 ? (h.saldo - min) / rentang : 0.5;
+      const kls = h.saldo < 0 ? ' minus' : (h.saldo === min && rentang > 0 ? ' kering' : '');
+      return '<span class="ak-petak' + kls + '" style="--tebal:' + Math.round(p * 100) + '%" title="'
+        + escapeHtml(formatTanggal(h.t) + ' · ' + rpTanda(h.saldo)) + '"></span>';
+    }).join('');
+    const kering = hari.reduce((a, h) => h.saldo < a.saldo ? h : a, hari[0]);
+    baris.innerHTML = '<b>' + escapeHtml(formatTanggal(kering.t)) + '</b>'
+      + '<span>kas paling tipis dalam ' + hari.length + ' hari terakhir — '
+      + rpTanda(kering.saldo) + (kering.saldo < 0 ? '. Hari itu catatan bilang kas sudah minus.' : '.') + '</span>';
+  }
+
+  // ---------- Q: RAMALAN TUJUH HARI ----------
+  function gambarRamalanTujuhHari() {
+    const kartu = document.getElementById('kartuRamalan');
+    if (!kartu) return;
+    const svg = document.getElementById('akRamalSvg');
+    const ket = document.getElementById('akRamalKet');
+    const seri = akSeriSaldoHarian();
+    kartu.style.display = 'block';
+    const pos = akPos30();
+    const perHari = akBakaranHarian(pos, {});
+    if (!seri || !seri.hari.length || !(perHari > 0)) {
+      svg.innerHTML = '';
+      ket.textContent = !seri ? 'Titik hitung kas belum disetel — ramalan belum punya titik berangkat.'
+        : (!seri.hari.length ? 'Belum ada gerakan uang sesudah titik hitung.'
+          : 'Tiga puluh hari terakhir nol keluar rutin, jadi tidak ada yang bisa diramalkan turunnya.');
+      return;
+    }
+    const lalu = seri.hari.slice(-14);
+    const ramal = [];
+    let s = seri.akhir;
+    for (let i = 1; i <= 7; i++) { s -= perHari; ramal.push(s); }
+    const semuaY = lalu.map(h => h.saldo).concat(ramal).concat([0]);
+    const atas = Math.max.apply(null, semuaY), bawah = Math.min.apply(null, semuaY);
+    const span = (atas - bawah) || 1;
+    const W = 264, H = 116;
+    const n = lalu.length + ramal.length - 1;
+    const x = i => n > 0 ? (i / n) * W : 0;
+    const y = v => H - ((v - bawah) / span) * H;
+    const jalurLalu = lalu.map((h, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(h.saldo).toFixed(1)).join(' ');
+    const mulai = lalu.length - 1;
+    const jalurRamal = ['M' + x(mulai).toFixed(1) + ' ' + y(seri.akhir).toFixed(1)]
+      .concat(ramal.map((v, i) => 'L' + x(mulai + 1 + i).toFixed(1) + ' ' + y(v).toFixed(1))).join(' ');
+    const yNol = y(0).toFixed(1);
+    // Titik tembus: hari pertama ramalan yang jatuh di bawah nol. Kalau tidak ada, nol
+    // lingkaran digambar — bukan lingkaran di tepi yang menyiratkan ada.
+    let tembus = -1;
+    for (let i = 0; i < ramal.length; i++) { if (ramal[i] < 0) { tembus = i; break; } }
+    svg.innerHTML =
+      '<path d="M0 ' + yNol + ' L' + W + ' ' + yNol + '" fill="none" stroke="rgba(217,166,147,.6)" stroke-width="1.3" stroke-dasharray="3 4"></path>'
+      + '<path d="' + jalurLalu + '" fill="none" stroke="#f7ecd6" stroke-width="1.8"></path>'
+      + '<path d="' + jalurRamal + '" fill="none" stroke="rgba(226,205,166,.72)" stroke-width="1.7" stroke-dasharray="5 4"></path>'
+      + (tembus >= 0 ? '<circle cx="' + x(mulai + 1 + tembus).toFixed(1) + '" cy="' + yNol + '" r="5" fill="#d9a693"></circle>' : '');
+    ket.textContent = (seri.akhir < 0
+      ? 'Kas sudah ' + rpTanda(seri.akhir) + ' hari ini; garis putus-putus menunjukkan ia makin dalam kalau keluar rutin berlanjut.'
+      : (tembus >= 0
+        ? 'Kalau keluar rutin ' + formatRupiah(Math.round(perHari)) + '/hari berlanjut, kas menembus nol di hari ke-' + (tembus + 1) + '.'
+        : 'Kalau keluar rutin ' + formatRupiah(Math.round(perHari)) + '/hari berlanjut, kas masih di atas nol sampai hari ketujuh.'))
+      + ' Garis putus-putus TEBAKAN, bukan catatan.';
+  }
+
+  // ---------- R: KALAU INI DITAHAN ----------
+  function akToggleTahan(id) { _akTahan[id] = !_akTahan[id]; gambarTuasTahan(); }
+  function gambarTuasTahan() {
+    const kartu = document.getElementById('kartuTuasTahan');
+    if (!kartu) return;
+    const pos = akPos30();
+    const seri = akSeriSaldoHarian();
+    kartu.style.display = 'block';
+    const wadah = document.getElementById('akTuasBaris');
+    const label = document.getElementById('akTuasLabel');
+    const ket = document.getElementById('akTahanKet');
+    if (!pos) {
+      wadah.innerHTML = ''; label.innerHTML = '';
+      document.getElementById('akTahanKas').textContent = '—';
+      document.getElementById('akTahanHari').textContent = '—';
+      ket.textContent = 'Gerakan uang 30 hari terakhir belum bisa dibaca.';
+      return;
+    }
+    const maks = Math.max.apply(null, AK_POS_TAHAN.map(x => x.ambil(pos)).concat([1]));
+    wadah.innerHTML = AK_POS_TAHAN.map(x => {
+      const n = x.ambil(pos);
+      const tinggi = Math.round((n / maks) * 100);
+      const on = !!_akTahan[x.id];
+      return '<button type="button" class="ak-tuas-btn' + (on ? ' aktif' : '') + '" onclick="akToggleTahan(\'' + x.id + '\')"'
+        + ' aria-pressed="' + on + '" aria-label="' + escapeHtml(x.nama + ' ' + formatRupiah(n) + ' dalam 30 hari') + '">'
+        + '<span class="isi" style="--tinggi:' + tinggi + '%"></span></button>';
+    }).join('');
+    label.innerHTML = AK_POS_TAHAN.map(x =>
+      '<span class="' + (_akTahan[x.id] ? 'aktif' : '') + '">' + escapeHtml(x.singkat) + '</span>').join('');
+    const dasar = akBakaranHarian(pos, {});
+    const baru = akBakaranHarian(pos, _akTahan);
+    const kas = seri ? seri.akhir : null;
+    document.getElementById('akTahanKas').textContent = kas === null ? '—' : rpTanda(kas);
+    const elHari = document.getElementById('akTahanHari');
+    if (kas === null) { elHari.textContent = '—'; }
+    else if (kas <= 0) { elHari.textContent = '0 hari'; }
+    else if (!(baru > 0)) { elHari.textContent = '∞'; }
+    else { elHari.textContent = Math.floor(kas / baru) + ' hari'; }
+    const adaTuas = Object.keys(_akTahan).some(k => _akTahan[k]);
+    ket.textContent = (!adaTuas
+      ? 'Ketuk tuasnya: Biaya & Toko DITAHAN (dikeluarkan dari bakaran), Beras & Prive DIIKUTKAN (ditambahkan).'
+      : 'Bakaran ' + formatRupiah(Math.round(dasar)) + '/hari → ' + formatRupiah(Math.round(baru)) + '/hari.')
+      + ' Ini SIMULASI — nol catatan ditulis, nol angka toko berubah.';
+  }
   // ---------- KAS HABIS BERAPA HARI LAGI (sumbu L) ----------
   // ATURANNYA DARI RANCANGANNYA SENDIRI, disalin apa adanya karena ia keputusan, bukan
   // rumus: "Sisa hari dihitung dari keluar rutin saja — biaya bulanan dan belanja toko.
@@ -20452,14 +20707,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       taruh('—', '', 'Titik hitung kas belum disetel, jadi kas sekarang belum diketahui — sisa hari belum bisa dihitung. Setel titiknya dari Tutup Hari.');
       return;
     }
-    let ak = null;
-    try {
-      const sejak = tanggalLokalIso(new Date(Date.now() - 30 * 86400000));
-      ak = hitungArusKasInti(iso => iso >= sejak, bayaranBiayaBulanan());
-    } catch (e) { console.error('sisa hari kas:', e); }
-    if (!ak) { taruh('—', '', 'Gerakan uang 30 hari terakhir belum bisa dibaca — sisa hari belum bisa dihitung.'); return; }
-    const rutin30 = (ak.pos.biayaBulanan || 0) + (ak.pos.harian || 0);
-    const perHari = rutin30 / 30;
+    // BAKARAN DIPINJAM dari akBakaranHarian — perhitungan yang SAMA dengan tuas simulasi.
+    // Dua rumus bakaran di satu layar akan sepakat hari ini lalu berpisah diam-diam begitu
+    // salah satunya disentuh.
+    const pos = akPos30();
+    if (!pos) { taruh('—', '', 'Gerakan uang 30 hari terakhir belum bisa dibaca — sisa hari belum bisa dihitung.'); return; }
+    const perHari = akBakaranHarian(pos, {});
     if (saldoKas <= 0) {
       // rpTanda, BUKAN formatRupiah: yang kedua menaruh minusnya DI DALAM ("Rp-8.588.790")
       // sementara kepala halaman menulisnya di luar ("\u2212Rp8.588.790"). Dua wujud untuk
@@ -20473,8 +20726,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     }
     const hari = Math.floor(saldoKas / perHari);
     taruh(String(hari), hari === 1 ? 'hari' : 'hari',
-      'Dari keluar RUTIN saja — biaya bulanan ' + formatRupiah(ak.pos.biayaBulanan || 0)
-      + ' + belanja toko ' + formatRupiah(ak.pos.harian || 0) + ' dalam 30 hari, rata-rata '
+      'Dari keluar RUTIN saja — biaya bulanan ' + formatRupiah(pos.biayaBulanan || 0)
+      + ' + belanja toko ' + formatRupiah(pos.harian || 0) + ' dalam 30 hari, rata-rata '
       + formatRupiah(Math.round(perHari)) + '/hari. Beli beras sengaja tidak dihitung: ia bisa ditunda.',
       hari <= 7 ? 'ak-gawat' : 'ak-tenang');
   }
@@ -20503,6 +20756,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       wrap.style.display = 'none';
     }
     gambarSisaHariKas(t ? saldo : null);
+    gambarHariPalingKering();
+    gambarRamalanTujuhHari();
+    gambarTuasTahan();
     const bulanIni = semua.filter(r => bulanDari(r.t) === bl);
     document.getElementById('bukuKasHitung').textContent = bulanIni.length + ' gerakan';
     if (bulanIni.length === 0) {
@@ -29168,6 +29424,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.wzJumlahDiketik = wzJumlahDiketik; window.wzHargaDiketik = wzHargaDiketik;
   window.wzNegoUbah = wzNegoUbah; window.wzBonusToggle = wzBonusToggle; window.wzTambahItem = wzTambahItem;
   window.wzPembeliLain = wzPembeliLain; window.wzTukarKeranjang = wzTukarKeranjang;
+  window.akToggleTahan = akToggleTahan;
   window.wzBuangKeranjang = wzBuangKeranjang;
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
