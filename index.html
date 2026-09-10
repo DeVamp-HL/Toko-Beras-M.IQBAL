@@ -3421,7 +3421,16 @@ body.lembar-hari-rw-terbuka #lembarHariRw { transform: translateY(0); }
 .k6a .kg-uang-piutang{ font-family:var(--pf-serif); font-weight:600; font-size:15px;
   color:var(--pf-platina); opacity:.78; }
 /* --- KACA EMAS G1: Menu kisi (rancangan Menu - Gabungan) --- */
-#lembarMenu .lm-kisi{ display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin:2px 0 12px; }
+/* minmax(0,1fr), BUKAN 1fr. "1fr" berarti minmax(auto,1fr): jalur grid MELAR mengikuti
+   isi terpanjangnya, jadi keterangan panjang seperti "PIN, cadangan, login" mendorong
+   kolom ketiga keluar lembar — terukur 382px pada lembar selebar 375px, dan lembarnya
+   ikut menggulir mendatar. Dengan minmax(0,1fr) ketiga kolom sama rata dan tidak pernah
+   melampaui wadahnya; ellipsis pada keterangan baru benar-benar bekerja. */
+#lembarMenu .lm-kisi{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin:2px 0 12px; }
+#lembarMenu .lm-petak{ min-width:0; }
+/* Nama petak boleh DUA BARIS (rancangan): "Tutup Hari" dan "Pelanggan" utuh tanpa
+   dipotong elipsis. Yang boleh dipotong cuma keterangannya. */
+#lembarMenu .lm-petak b{ white-space:normal; overflow-wrap:anywhere; }
 /* Menimpa .tab-owner{display:none} global KHUSUS petak menu: terkunci = TAMPIL,
    matinya dijaga atribut disabled (di markup sejak lahir, dibuka terapkanKunciMenu). */
 #lembarMenu .lm-petak.tab-owner{ display:flex; }
