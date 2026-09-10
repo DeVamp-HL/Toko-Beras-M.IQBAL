@@ -13456,22 +13456,49 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // mengeluarkan uang yang tidak ada di laci.
   function periksaPagarPrive(kategori, tanggal, nominal) {
     if (kategori !== 'owner') return { boleh: true };
-    let kas = null;
-    try { kas = kasPada(tanggal); } catch (e) { console.error('pagar prive:', e); kas = null; }
-    // BELUM DINYATAKAN != DINYATAKAN NOL. Kalau kas pada tanggal itu tidak bisa dihitung
-    // (titik kas belum disetel, atau tanggalnya mundur dari titik), penjaga ini TIDAK
-    // BOLEH mengaku tahu bahwa kasnya kurang — tidak ada yang bisa "melebihi" angka yang
-    // tidak ada. Ia lewat, tapi mengaku bahwa ia tidak memeriksa.
-    if (kas === null) return { boleh: true, takTerperiksa: true };
-    if (nominal <= kas) return { boleh: true, kas };
-    return { boleh: false, kas, nominal, kurang: nominal - kas, tanggal };
+    const hariIni = tanggalLokalIso();
+    let kasTgl = null, kasKini = null;
+    try { kasTgl = kasPada(tanggal); } catch (e) { console.error('pagar prive:', e); kasTgl = null; }
+    // TANGGAL MUNDUR. Prive bertanggal lampau tidak cuma mengurangi kas PADA tanggal itu —
+    // ia mengurangi kas setiap hari SESUDAHNYA sampai hari ini (daftarGerakanKas memasukkan
+    // prive sebagai kas keluar). Dulu cuma kas pada tanggal dokumen yang diperiksa, jadi
+    // memundurkan tanggal ke hari yang kasnya masih tebal meloloskan prive yang tidak muat
+    // di laci HARI INI — tanpa satu kata pun, karena itu bukan cabang takTerperiksa.
+    // Sekarang ia harus muat di KEDUANYA. (Hari-hari di antara keduanya tidak diperiksa
+    // satu per satu: yang ditutup di sini jalan pintas yang nyata, tanggal mundur ke kas
+    // yang lebih tebal.)
+    if (tanggal && tanggal < hariIni) {
+      try { kasKini = kasPada(); } catch (e) { console.error('pagar prive (kini):', e); kasKini = null; }
+    }
+    const cek = [];
+    if (kasTgl !== null) cek.push({ kas: kasTgl, tanggalKas: tanggal });
+    if (kasKini !== null) cek.push({ kas: kasKini, tanggalKas: hariIni });
+    // BELUM DINYATAKAN != DINYATAKAN NOL. Kalau tidak satu pun kas bisa dihitung (titik
+    // kas belum disetel), penjaga ini TIDAK BOLEH mengaku tahu bahwa kasnya kurang —
+    // tidak ada yang bisa "melebihi" angka yang tidak ada. Ia lewat, tapi mengaku bahwa
+    // ia tidak memeriksa.
+    if (!cek.length) return { boleh: true, takTerperiksa: true };
+    const ikat = cek.reduce((m, c) => (c.kas < m.kas ? c : m));
+    // Tanggal mundur MELEWATI titik kas: kas tanggal itu tidak bisa dihitung, yang
+    // diperiksa cuma kas hari ini — dan itu diakui, bukan dianggap pemeriksaan penuh.
+    const sebagian = kasTgl === null;
+    if (nominal <= ikat.kas) return { boleh: true, kas: ikat.kas, sebagian };
+    return { boleh: false, kas: ikat.kas, tanggalKas: ikat.tanggalKas, kasTgl, kasKini,
+      nominal, kurang: nominal - ikat.kas, tanggal };
   }
   function kalimatPagarPrive(p) {
+    const mundur = p.tanggalKas !== p.tanggal;
     return 'Prive ' + formatRupiah(p.nominal) + ' melebihi KAS toko pada '
-      + formatTanggal(p.tanggal) + '.\n\n'
-      + 'Kas tanggal itu   : ' + formatRupiah(p.kas) + '\n'
+      + formatTanggal(p.tanggalKas) + (mundur ? ' (hari ini)' : '') + '.\n\n'
+      + (mundur && p.kasTgl !== null
+          ? 'Kas pada ' + formatTanggal(p.tanggal) + ' : ' + formatRupiah(p.kasTgl) + '\n' : '')
+      + 'Kas pada ' + formatTanggal(p.tanggalKas) + ' : ' + formatRupiah(p.kas) + '\n'
       + 'Diminta           : ' + formatRupiah(p.nominal) + '\n'
       + 'Kurang            : ' + formatRupiah(p.kurang) + '\n\n'
+      + (mundur
+          ? 'Prive bertanggal ' + formatTanggal(p.tanggal) + ' tetap mengurangi kas setiap hari '
+            + 'sampai HARI INI, jadi ia harus muat di kas hari ini juga.\n\n'
+          : '')
       + 'Yang membatasi di sini KAS, bukan laba \u2014 uang yang tidak ada di laci tidak '
       + 'bisa dikeluarkan. Kalau memang harus dicatat begitu (mis. kas sungguhan lebih '
       + 'besar dari catatan), catat paksa dengan menulis alasannya.';
@@ -13502,7 +13529,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     alert(kalimat);
     _paksaPrive = { p, sesudah };
     document.getElementById('ppAngka').innerHTML =
-      '<div class="pp-baris"><span>Kas toko ' + escapeHtml(formatTanggal(p.tanggal)) + '</span><b>' + formatRupiah(p.kas) + '</b></div>'
+      '<div class="pp-baris"><span>Kas toko ' + escapeHtml(formatTanggal(p.tanggalKas))
+        + (p.tanggalKas !== p.tanggal ? ' (hari ini)' : '') + '</span><b>' + formatRupiah(p.kas) + '</b></div>'
       + '<div class="pp-baris"><span>Prive diminta</span><b>' + formatRupiah(p.nominal) + '</b></div>'
       + '<div class="pp-baris kurang"><span>Kurang</span><b>' + formatRupiah(p.kurang) + '</b></div>';
     document.getElementById('ppAlasan').value = '';
@@ -13546,7 +13574,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   async function tulisPengeluaranHarian(o) {
     const kategori = o.kategori, tanggal = o.tanggal;
     const keterangan = o.keterangan, nominal = o.nominal;
-    let takTerperiksa = false;
+    let takTerperiksa = false, sebagian = false;
     if (!o.alasanPaksa) {
       const pagar = periksaPagarPrive(kategori, tanggal, nominal);
       if (!pagar.boleh) {
@@ -13563,6 +13591,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         return { ok: false, ditahan: true };
       }
       takTerperiksa = !!pagar.takTerperiksa;
+      sebagian = !!pagar.sebagian;
     }
     const id = o.id || idUnik();
     const dok = {
@@ -13586,6 +13615,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       alert('Tersimpan.\n\nCatatan: kas pada tanggal itu belum bisa dihitung (titik hitung '
         + 'kas belum disetel, atau tanggalnya mundur dari titik), jadi penjaga prive TIDAK '
         + 'memeriksa apakah kasnya cukup.');
+    } else if (sebagian) {
+      alert('Tersimpan.\n\nCatatan: tanggalnya mundur melewati titik hitung kas, jadi kas pada '
+        + 'tanggal itu tidak bisa dihitung. Yang diperiksa penjaga prive cuma kas HARI INI.');
     }
     if (typeof o.sesudah === 'function') await o.sesudah(id);
     return { ok: true, id };
