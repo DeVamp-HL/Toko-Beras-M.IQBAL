@@ -5102,9 +5102,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   .wz-saklar button{ flex:1; min-height:44px; border-radius:10px; border:1px solid var(--pf-tepi); background:none;
     color:var(--pf-abu); font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.1em; }
   .wz-saklar button:disabled{ border-style:dashed; opacity:.55; }
-  .wz-chip-takar{ display:flex; gap:6px; overflow-x:auto; margin:8px 0 4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  /* Prototipe menaruh delapan takaran sebagai KISI 4x2 — semuanya terlihat sekaligus.
+     Baris menggulir yang lama menyembunyikan dua chip terakhir di luar tepi kanan; di
+     mode Rupiah itu berarti 500rb & 620rb tidak pernah ketemu jempol. */
+  .wz-chip-takar{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin:8px 0 4px; }
   .wz-chip-takar::-webkit-scrollbar{ display:none; }
-  .wz-chip-takar button{ flex:0 0 auto; min-height:44px; padding:0 13px; border-radius:99px; border:1px solid var(--pf-tepi2);
+  .wz-chip-takar button{ min-height:44px; padding:0 6px; border-radius:99px; border:1px solid var(--pf-tepi2);
     background:none; color:var(--pf-platina); font-family:inherit; font-size:11.5px; font-weight:700; }
   .wz-chip-takar button:disabled{ border-style:dashed; color:var(--pf-abu); opacity:.6; }
   /* SATU HALAMAN: tiap langkah jadi satu bagian bertumpuk, semuanya terlihat sekaligus.
@@ -5112,9 +5115,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
      diubah di tempat — itu bedanya dari wizard, bukan rupanya. */
   .wz-bagian{ margin:0 0 14px; padding-top:2px; }
   .wz-bagian + .wz-bagian{ border-top:1px solid rgba(255,255,255,.06); padding-top:14px; }
-  .wz-bagian-tanya{ font-family:var(--pf-serif); font-size:13px; color:var(--pf-abu2,#a7adb5);
-    margin:0 2px 9px; line-height:1.3; }
-  .wz-bagian.kini > .wz-bagian-tanya{ font-size:19px; color:var(--teks); }
+  /* Kepala bagian mengikuti prototipe: LABEL MIKRO KAPITAL di kiri, dan slot kanan yang
+     memuat dasar harga + saklar di BARIS YANG SAMA — bukan tiga baris bertumpuk. */
+  .wz-bagian-kepala{ display:flex; align-items:center; gap:10px; margin:0 2px 9px; flex-wrap:wrap; }
+  .wz-bagian-judul{ font-size:9px; letter-spacing:.22em; text-transform:uppercase; font-weight:800;
+    color:#8f959d; flex:none; }
+  .wz-kepala-kanan{ margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    justify-content:flex-end; }
+  .wz-dasar-inline{ font-family:var(--pf-serif); font-style:italic; font-size:11.5px;
+    color:var(--pf-abu2,#a7adb5); }
+  /* Saklar di baris judul mengecil, TAPI tetap >=44px sasaran sentuhnya — aturan pemilik
+     dijaga dengan padding, bukan dengan mengecilkan kotak ketuknya. */
+  .wz-kepala-kanan .wz-saklar{ margin:0; gap:4px; }
+  .wz-kepala-kanan .wz-saklar button{ flex:none; min-height:44px; padding:0 14px; font-size:10px; }
+  .wz-kepala-kanan .wz-dasar-inline + i{ display:block; width:100%; text-align:right; }
   /* Bagian yang sudah terjawab mengalah: ia tetap terbaca dan tetap bisa disentuh,
      cuma berhenti berebut mata dengan pertanyaan yang sedang dijawab. */
   .wz-bagian:not(.kini) .kg-petak, .wz-bagian:not(.kini) .wz-baris{ min-height:48px; }
@@ -14667,6 +14681,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     }
     return null;
   }
+  // Versi RINGKAS untuk baris judul (prototipe: "BERAPA   Rp13.500 / liter"). Isinya turun
+  // dari wzDasarHargaTeks() yang sama — satu sumber, dua wujud, bukan dua rumus.
+  function wzDasarHargaRingkas() {
+    const t = wzDasarHargaTeks();
+    if (!t) return '<span class="wz-dasar-kosong">harga belum di katalog</span>';
+    return '<span class="wz-dasar-inline">' + t.replace(/<i>[\s\S]*?<\/i>/, '') + '</span>'
+      + (/<i>/.test(t) ? t.match(/<i>[\s\S]*?<\/i>/)[0] : '');
+  }
   function wzDasarHargaHtml() {
     const t = wzDasarHargaTeks();
     // TIGA KEADAAN KOSONG: dasar yang belum bisa dibaca TIDAK digambar sebagai "Rp0 / unit".
@@ -14980,6 +15002,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   let _wzTarget = null;   // {panel, tanya, label} saat sedang dikumpulkan; null saat menggambar sungguhan
   // Rantai langkah per jalur — diturunkan dari wzPilihJalur & tujuan wzKe tiap langkah,
   // bukan dikarang: literan->produkL, kemasan->jenis, karung->ukuranSack, sisanya->merkR.
+  // Label kelompok tiap bagian — KATA-KATANYA DIAMBIL DARI PROTOTIPE, bukan dikarang:
+  // "JALUR JUAL", "BERAS APA · TINGGI ISI = SISA STOK", "BERAPA". Prototipe memakai label
+  // mikro kapital, bukan pertanyaan ("Jual apa?"), karena di satu halaman semua bagian
+  // terlihat sekaligus — deretan pertanyaan terbaca seperti wawancara, bukan formulir.
+  const WZ_JUDUL = {
+    jalur: 'JALUR JUAL',
+    jenis: 'JENIS BERAS',
+    merk: 'MERK',
+    ukuran: 'PRODUK KEMASAN \u00b7 SISA UNIT',
+    ukuranSack: 'UKURAN SACK',
+    merkK: 'BERAS APA \u00b7 TINGGI ISI = SISA STOK',
+    merkR: 'BERAS APA \u00b7 TINGGI ISI = SISA STOK',
+    namaR: 'JADI PRODUK APA',
+    produkL: 'BERAS APA \u00b7 TINGGI ISI = SISA STOK',
+    jumlah: 'BERAPA',
+    bayar: 'CARA BAYAR'
+  };
   const WZ_RANTAI = {
     literan:   ['jalur', 'produkL', 'jumlah', 'bayar'],
     kemasan:   ['jalur', 'jenis', 'merk', 'ukuran', 'jumlah', 'bayar'],
@@ -15010,9 +15049,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // Bagian yang isinya habis sesudah tombol balik dicabut TIDAK boleh jadi ruang hampa:
         // pertanyaan tanpa jawaban apa pun di bawahnya terbaca sebagai layar rusak. Sabuk
         // kedua ini menjaga SETIAP langkah, bukan cuma yang sudah ketahuan.
-        const isiAman = isi.trim() ? isi : '<div class="wz-info">Belum ada pilihan di langkah ini.</div>';
+        let isiAman = isi.trim() ? isi : '<div class="wz-info">Belum ada pilihan di langkah ini.</div>';
+        // SLOT KANAN: prototipe menaruh dasar harga & saklar L|Rp di BARIS YANG SAMA dengan
+        // label "BERAPA". Langkahnya menandainya dengan .wz-kanan di awal isinya; penumpuk
+        // yang mengangkatnya ke baris judul. Langkah tetap tidak tahu-menahu soal tumpukan.
+        let kanan = '';
+        const mK = isiAman.match(/^\s*<div class="wz-kanan">([\s\S]*?)<\/div><!--\/kanan-->/);
+        if (mK) { kanan = mK[1]; isiAman = isiAman.slice(mK[0].length); }
         bagian.push('<section class="wz-bagian' + (i === sampai ? ' kini' : '') + '">'
-          + '<div class="wz-bagian-tanya">' + wzEsc(jt.textContent || '') + '</div>' + isiAman + '</section>');
+          + '<div class="wz-bagian-kepala"><div class="wz-bagian-judul">'
+          + wzEsc(WZ_JUDUL[rantai[i]] || jt.textContent || '') + '</div>'
+          + (kanan ? '<div class="wz-kepala-kanan">' + kanan + '</div>' : '') + '</div>'
+          + isiAman + '</section>');
       }
     } finally {
       _wzTarget = null;
@@ -15024,6 +15072,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('wzLangkahLabel').textContent = 'Jual';
     document.getElementById('wzLangkahLabel').dataset.keranjang = _wzItems.length || '';
     document.getElementById('wzBatal').style.display = 'block';
+    // WILAYAH DINAMIS DIISI SESUDAH TUMPUKAN MASUK DOM. Cabang 'jumlah' mengisi #wzTakar,
+    // #wzInfoStok, #wzPeringatan, #wzNegoBlok, #wzCta lewat getElementById — waktu ia
+    // dijalankan di penampung, id itu belum ada di dokumen sehingga isiannya jatuh ke ruang
+    // hampa (chip takaran hilang tanpa satu pun galat). Ini sambungannya, dan letaknya
+    // memang harus di sini: sesudah innerHTML, bukan sebelum.
+    if (_wz.langkah === 'jumlah') wzJumlahRefresh();
   }
   function wzRenderLangkah() {
     try {
@@ -15182,8 +15236,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // angka lompat. Sekarang mengetik hanya memperbarui WILAYAH DINAMIS
         // (#wzInfoStok, #wzPeringatan, #wzNegoBlok, #wzCta) — kolom tak tersentuh.
         panel.innerHTML = balik(_wz.jalur === 'kemasan' ? 'ukuran' : (_wz.jalur === 'repacking' ? 'namaR' : (_wz.jalur === 'karung' ? 'merkK' : 'produkL')))
-          + wzDasarHargaHtml()
-          + saklar
+          + '<div class="wz-kanan">' + wzDasarHargaRingkas() + saklar + '</div><!--/kanan-->'
           + '<div class="stepper-jumlah wz-jumlah-wrap">'
           + (rpMode ? '<span class="st-kurang" style="visibility:hidden"></span>'
             : '<button type="button" class="st-kurang" onclick="wzUbah(-' + tambah + ')" aria-label="Kurangi">\u2212</button>')
