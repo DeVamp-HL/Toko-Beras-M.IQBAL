@@ -5107,6 +5107,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   .wz-chip-takar button{ flex:0 0 auto; min-height:44px; padding:0 13px; border-radius:99px; border:1px solid var(--pf-tepi2);
     background:none; color:var(--pf-platina); font-family:inherit; font-size:11.5px; font-weight:700; }
   .wz-chip-takar button:disabled{ border-style:dashed; color:var(--pf-abu); opacity:.6; }
+  /* Dasar harga aktif — baris data, BUKAN sasaran sentuh: tidak ada tombol di dalamnya,
+     jadi aturan 44px tidak berlaku dan tidak ada min-width yang dipasang di bilah. */
+  .wz-dasar{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; margin:2px 2px 10px;
+    font-size:11.5px; line-height:1.45; color:var(--pf-abu2, #a7adb5); }
+  .wz-dasar-lbl{ font-size:8.5px; letter-spacing:.2em; text-transform:uppercase; font-weight:700;
+    color:#9aa2a8; flex:none; }
+  /* Selisih dua katalog: baris sendiri, tinta oksida terang (bukan #c9705e — terlalu gelap
+     untuk teks kecil di atas kartu). Ia MEMPERLIHATKAN perselisihan, tidak menyelesaikannya. */
+  .wz-dasar i{ display:block; width:100%; font-style:italic; font-size:10.5px; color:#e8c3b2; margin-top:2px; }
+  .wz-dasar-kosong{ font-style:italic; color:#9aa2a8; }
+  .wz-dasar-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+    color:var(--pf-abu, #8f959d); margin:2px 2px 8px; line-height:1.5; }
+  .wz-dasar-nota b{ font-style:normal; font-weight:700; color:var(--pf-teks, #e8e4dc); }
   .wz-konversi{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; color:var(--pf-abu); margin:4px 2px 6px; line-height:1.5; }
   #wzStruk{ margin:0 0 12px; }
   .wz-struk-kertas{ padding:12px 14px 10px; }
@@ -14562,7 +14575,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // rupiah yang tersimpan tetap dari mesin lama. Escaping argumen: JSON.stringify.
   const WZ_TAKAR = { literan: [0.5, 1, 1.5, 2, 2.5, 5, 10, 20], karung: [0.5, 1, 2, 3, 5],
     repacking: [5, 10, 12.5, 20, 25, 30, 40, 50], kemasan: [1, 2, 3, 5] };
-  const WZ_TAKAR_RP = [20000, 50000, 100000, 200000, 500000];
+  // Delapan nominal, sampai 620rb (rancangan Jual - Gabungan). Yang tiga terakhir bukan
+  // angka bulat sembarangan: 250rb & 300rb mengisi lompatan 200->500 yang dulu memaksa
+  // mengetik, dan 620rb adalah satu sack 50 kg di harga literan — ketukan yang paling
+  // sering hilang justru di ujung atas.
+  const WZ_TAKAR_RP = [20000, 50000, 100000, 200000, 250000, 300000, 500000, 620000];
   function wzHargaLiterKini() {
     const merk = (document.getElementById('jualLiteranJenis') || {}).value;
     const h = merk ? ambilHargaLiteran().find(x => x.merk === merk) : null;   // pencarian yang sama dengan hitungTotalJual
@@ -14580,6 +14597,71 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function wzLiterDariNominal(nominal) {
     const harga = wzHargaLiterKini();
     return harga > 0 ? Math.floor(nominal / harga * 10 + 1e-9) / 10 : 0;
+  }
+  // ---------- DASAR HARGA AKTIF (rancangan Jual - Gabungan) ----------
+  // "Dasar yang aktif selalu tercetak di kanan label Berapa, jadi tidak ada angka tanpa
+  // dasarnya." Mesinnya sudah ada SELURUHNYA; yang tidak ada cuma tempat memajangnya di HP.
+  // #kartuHargaBayarJual memang milik layar lebar dan sengaja disembunyikan bersama semua
+  // form lama (CSS 2980) — itu BUKAN salah pasang, jadi yang benar adalah wizard menggambar
+  // dasarnya sendiri, bukan membuka kembali kartu lama.
+  //
+  // Tiap cabang memakai PENCARIAN YANG SAMA dengan mesin harganya (ambilHargaKemasan /
+  // cariHargaKarungPerKg / hargaKarungUtuh / wzHargaLiterKini), bukan rumus sendiri: rumus
+  // saingan yang sepakat hari ini tetap rumus saingan.
+  //
+  // SACK UTUH MENYEBUT SUMBERNYA, TIDAK MEMILIH SATU. Harganya bisa datang dari Katalog
+  // Kemasan (menang, aturan 4 Agu 2026) atau dari harga/kg dikali berat sack —
+  // hargaKarungUtuh() memang sudah lama mengembalikan `sumber`. Kalau dua-duanya ada dan
+  // BERSELISIH, selisihnya ikut dicetak dengan angkanya: pertanyaan "per karung atau per kg
+  // yang benar" diputuskan pemilik sesudah selisihnya kelihatan, bukan ditebak di sini.
+  function wzDasarHargaTeks() {
+    const nilai = id => (document.getElementById(id) || {}).value;
+    if (_wz.jalur === 'literan') {
+      const h = wzHargaLiterKini();
+      return h > 0 ? formatRupiah(h) + ' / liter \u00b7 katalog Literan' : null;
+    }
+    if (_wz.jalur === 'kemasan') {
+      const kunci = nilai('jualKemasanProduk');
+      if (!kunci) return null;
+      const potongan = String(kunci).split('|');
+      const h = ambilHargaKemasan().find(x => x.merk === potongan[0] && x.ukuran === parseFloat(potongan[1]));
+      return h && h.hargaPerUnit > 0 ? formatRupiah(h.hargaPerUnit) + ' / unit \u00b7 katalog Kemasan' : null;
+    }
+    if (_wz.jalur === 'repacking') {
+      const merk = nilai('jualRepackingMerk');
+      const pk = merk ? cariHargaKarungPerKg(merk) : null;
+      return pk > 0 ? formatRupiah(pk) + ' / kg \u00b7 katalog Karung' : null;
+    }
+    if (_wz.jalur === 'karung') {
+      const merk = nilai('jualKarungMerk');
+      const berat = parseFloat(nilai('jualKarungBerat')) || 50;
+      if (!merk) return null;
+      const u = hargaKarungUtuh(merk, berat);
+      if (!u) return null;
+      const pk = cariHargaKarungPerKg(merk);
+      if (u.sumber === 'kemasan') {
+        let teks = formatRupiah(u.perUnit) + ' / sack ' + wzAngkaTampil(berat) + ' kg \u00b7 katalog Kemasan';
+        if (pk > 0) {
+          const lewatKg = Math.round(pk * berat);
+          if (lewatKg !== u.perUnit) {
+            teks += '<i>katalog Karung memberi ' + formatRupiah(lewatKg) + ' \u2014 selisih '
+              + formatRupiah(Math.abs(lewatKg - u.perUnit)) + '</i>';
+          }
+        }
+        return teks;
+      }
+      return formatRupiah(pk) + ' / kg \u00b7 katalog Karung \u2014 ' + formatRupiah(u.perUnit)
+        + ' per sack ' + wzAngkaTampil(berat) + ' kg';
+    }
+    return null;
+  }
+  function wzDasarHargaHtml() {
+    const t = wzDasarHargaTeks();
+    // TIGA KEADAAN KOSONG: dasar yang belum bisa dibaca TIDAK digambar sebagai "Rp0 / unit".
+    // Halaman ini menolak menggambar, dan menyebut sebabnya.
+    return '<div class="wz-dasar">' + (t
+      ? '<span class="wz-dasar-lbl">Dasar harga</span>' + t
+      : '<span class="wz-dasar-lbl">Dasar harga</span><span class="wz-dasar-kosong">belum ada di katalog \u2014 harganya diketik sendiri di baris nego</span>') + '</div>';
   }
   function wzSaklarIsian(mode) {
     const on = mode === 'rp';
@@ -14609,12 +14691,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const harga = rp ? wzHargaLiterKini() : 0;
     const daftar = rp ? WZ_TAKAR_RP : (WZ_TAKAR[_wz.jalur] || []);
     const satuan = WZ_PETA_JUMLAH[_wz.jalur][1];
-    return '<div class="wz-chip-takar">' + daftar.map(n => {
+    // Judul baris chip: tanpa ini deretan angka telanjang tidak mengaku sedang menawarkan
+    // APA — takaran atau nominal — dan dua mode itu memang berganti di tempat yang sama.
+    const judul = '<div class="wz-sering-judul">' + (rp ? 'Nominal yang sering' : 'Takaran yang sering') + '</div>';
+    // Nota mode Rp: kalimat penjelas adalah KLAIM tentang angkanya. Perilakunya sudah benar
+    // sejak lama (nominal dibagi harga katalog, yang tersimpan tetap liter), tapi klaim itu
+    // tidak pernah sampai ke mata pemakai. Pembulatan ke BAWAH disebut apa adanya — butir 15.
+    const nota = rp && harga > 0
+      ? '<div class="wz-dasar-nota">Nominal dibagi ' + formatRupiah(harga)
+        + '/liter, dibulatkan ke bawah ke 0,1 L. Yang tercatat tetap <b>liter</b> \u2014 bukan dasar harga baru.</div>'
+      : '';
+    return judul + '<div class="wz-chip-takar">' + daftar.map(n => {
       const nilaiSatuan = rp ? wzLiterDariNominal(n) : n;
       const lebih = _wz.maks !== null && nilaiSatuan > _wz.maks;   // pagar yang SAMA dengan wzJumlahRefresh
       return '<button type="button" onclick="wzIsiCepat(' + n + ')"' + (lebih ? ' disabled' : '') + '>'
         + (rp ? (n / 1000) + 'rb' : wzAngkaTampil(n) + ' ' + satuan) + '</button>';
-    }).join('') + '</div>';
+    }).join('') + '</div>' + nota;
   }
   function wzKonversiTeks(nNum) {
     const bagian = [];
@@ -15014,6 +15106,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // angka lompat. Sekarang mengetik hanya memperbarui WILAYAH DINAMIS
         // (#wzInfoStok, #wzPeringatan, #wzNegoBlok, #wzCta) — kolom tak tersentuh.
         panel.innerHTML = balik(_wz.jalur === 'kemasan' ? 'ukuran' : (_wz.jalur === 'repacking' ? 'namaR' : (_wz.jalur === 'karung' ? 'merkK' : 'produkL')))
+          + wzDasarHargaHtml()
           + saklar
           + '<div class="stepper-jumlah wz-jumlah-wrap">'
           + (rpMode ? '<span class="st-kurang" style="visibility:hidden"></span>'
