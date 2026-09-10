@@ -1,6 +1,6 @@
 # Keputusan desain — penyimpangan yang SUDAH disetujui
 
-Tujuh belas keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
+Delapan belas keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
 Semuanya sudah diperiksa dan disetujui pemilik. **Membetulkannya ke prototipe = merusak.**
 
 Berkas ini ada di repo dengan sengaja. Perintah kerja (`PROMPT-*.md`) dan catatan bisnis
@@ -138,6 +138,35 @@ gambar QR yang tidak menunjuk ke mana-mana.
     `wzNegoUbah` 14306), dengan tombol ±500 tetap ada. Desain hanya punya satu kolom angka.
     Nego adalah perbuatan sehari-hari di toko beras; tanpa kolom ini harga nego harus dihitung
     mundur jadi jumlah, dan itu yang dulu memisahkan jumlah dari uang.
+
+
+18. **Jual memakai WADAH SATU HALAMAN dengan bagian-bagian wizard — bukan wizard bertanya
+    satu-satu, dan bukan pula form satu-halaman lama.** Ini keadaan KETIGA, dan ia lahir
+    dari perbandingan gambar-lawan-gambar antara prototipe dan sistem, 10 September 2026.
+
+    **Apa yang sebenarnya berbeda.** Selama tiga gelombang tiap ELEMEN Jual dicocokkan ke
+    desain sampai habis, dan layarnya tetap tidak terlihat seperti rancangan. Sebabnya bukan
+    bagian-bagiannya melainkan wadahnya: rancangan `Jual - Gabungan` menaruh SEMUANYA di satu
+    gulungan — jalur, rak, "Berapa", struk, cara bayar — sedangkan sistem bertanya satu per
+    satu dengan tombol "← balik". Memasang bagian yang benar ke bangunan yang berbeda tetap
+    menghasilkan bangunan yang berbeda.
+
+    **Yang dipilih.** Cangkang wizard DIPERTAHANKAN — kartu, rak beras, chip takaran, struk
+    hidup, saklar L⇄Rp, dasar harga, semuanya tetap milik langkahnya masing-masing dan nol
+    yang dibuang. Yang berhenti cuma MENYEMBUNYIKANNYA satu per satu: seluruh rantai langkah
+    digambar bertumpuk di satu halaman, tiap bagian masih bisa diubah di tempat.
+
+    **Kenapa bukan A (pertahankan wizard apa adanya):** rupanya tidak akan pernah menjadi
+    rancangan itu, dan gelombang berikutnya akan mengejar bayangan yang sama lagi.
+    **Kenapa bukan B murni (bangun ulang jadi form satu-halaman):** form ≥700px memang punya
+    susunannya, tapi kulitnya desktop lama — sidebar, kartu lebar, skala huruf desktop —
+    bukan Kaca Emas. Mengambilnya utuh berarti membuang rupa yang sudah benar.
+
+    **Yang TIDAK diketahui, dan sengaja ditulis di sini sebagai lubang:** *kenapa wizard dulu
+    dipasang.* Tidak ada satu baris pun di repo yang menyebutkan alasannya — cuma satu
+    komentar HTML yang menyatakan keberadaannya. Kalau ternyata ada alasan lapangan (jempol,
+    salah pencet, kecepatan di jam ramai), alasan itu mengubah butir ini dan wajib ditulis
+    ke sini. Butir ini mencatat KEPUTUSANNYA, bukan berpura-pura tahu sebab aslinya.
 
 ---
 
