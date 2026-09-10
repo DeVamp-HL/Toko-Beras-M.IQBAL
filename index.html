@@ -5005,21 +5005,78 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   border:1px solid var(--pf-tepi); background:none; color:var(--pf-abu);
   font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.14em; }
 @media (min-width:700px){ #halamanHarian .hz-zona, #kacaAkibatHarian, #kacaLihatHarian,
+  #hzLariKeMana, #hzPola,
   #halamanHarian .hz-tanya, #pilihKantongHarianWrap{ display:none; } }
 @media (max-width:699.98px){
   /* Rekap (dan tombol Kirim rekap → WA yang hanya ada di situ) hidup di zona LIHAT —
      Ringkasan owner-only, jadi kasir di HP tetap punya jalan mengirim rekap. */
   #kartuRekapHarian{ display:none; }
   /* Zona CATAT (bawaan): sisi LIHAT disembunyikan. */
-  #kacaLihatHarian, #kartuHariIniHarian, #halamanHarian .catatan-kecil, #kartuRiwayatHarian{ display:none; }
+  #kacaLihatHarian, #hzLariKeMana, #hzPola,
+  #kartuHariIniHarian, #halamanHarian .catatan-kecil, #kartuRiwayatHarian{ display:none; }
+  /* Pertanyaan bernomor & pilihan kantong milik zona CATAT — keduanya WAJIB ikut padam
+     di LIHAT. Tanpa dua pemilih terakhir di daftar ini, "1 · 2 · 3 · 4" dan kartu
+     Laci/Pribadi menggantung di atas bagan LIHAT sebagai judul tanpa isi. */
   body.hz-lihat #pilihKategoriHarianWrap, body.hz-lihat #halamanHarian .kartu-nominal,
-  body.hz-lihat #kartuIsianHarian, body.hz-lihat #kacaAkibatHarian{ display:none; }
+  body.hz-lihat #kartuIsianHarian, body.hz-lihat #kacaAkibatHarian,
+  body.hz-lihat #halamanHarian .hz-tanya, body.hz-lihat #pilihKantongHarianWrap{ display:none; }
   /* Wrap simpan di luar halaman & display-nya ditulis inline oleh pengalih —
      kelas body + !important satu-satunya cara aman tanpa menulis display kedua. */
   body.hz-lihat #tombolSimpanHarianWrap{ display:none !important; }
-  body.hz-lihat #kacaLihatHarian, body.hz-lihat #kartuHariIniHarian,
+  body.hz-lihat #kacaLihatHarian, body.hz-lihat #hzLariKeMana, body.hz-lihat #hzPola,
+  body.hz-lihat #kartuHariIniHarian,
   body.hz-lihat #kartuRekapHarian, body.hz-lihat #kartuRiwayatHarian{ display:block; }
 }
+/* ===== ZONA LIHAT: sumbu G (uang toko lari ke mana) & H (kebiasaan 28 hari) ===== */
+/* Bagan batang mendatar. Panjang menjawab "berapa", WARNA menjawab "dari kantong siapa" —
+   dua pertanyaan, dua saluran, dan yang kedua tetap terbaca walau batangnya pendek. */
+#hzLariKeMana .hz-bagan{ display:flex; flex-direction:column; gap:6px; margin:10px 0 12px;
+  padding-left:9px; border-left:3px solid rgba(226,205,166,.34); }
+#hzLariKeMana .hz-batang{ display:block; height:11px; border-radius:2px; width:var(--w,4%);
+  background:linear-gradient(90deg,#c2a678,rgba(247,236,214,.55)); }
+#hzLariKeMana .hz-batang.pribadi{ background:linear-gradient(90deg,rgba(217,166,147,.5),#d9a693); }
+#hzLariKeMana .hz-batang.owner{ background:linear-gradient(90deg,rgba(207,212,218,.28),rgba(207,212,218,.5)); }
+#hzLariKeMana .hz-item{ display:flex; align-items:center; gap:10px; min-height:46px;
+  border-bottom:1px solid rgba(207,212,218,.07); }
+#hzLariKeMana .hz-item:last-child{ border-bottom:none; }
+#hzLariKeMana .hz-item > i{ display:block; flex:none; width:3px; height:20px; border-radius:2px;
+  background:rgba(226,205,166,.62); }
+#hzLariKeMana .hz-item.pribadi > i{ background:#d9a693; }
+#hzLariKeMana .hz-item.owner > i{ background:rgba(207,212,218,.4); }
+#hzLariKeMana .hz-item > span{ flex:1; min-width:0; }
+#hzLariKeMana .hz-item b{ display:block; font-size:12.5px; font-weight:600; color:var(--teks); }
+#hzLariKeMana .hz-item em{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:10.5px; color:var(--pf-abu2,#a7adb5); margin-top:2px; }
+#hzLariKeMana .hz-item > strong{ flex:none; font-family:var(--pf-serif); font-weight:600;
+  font-size:14px; color:rgba(242,239,233,.88); font-variant-numeric:tabular-nums; }
+#hzLariKeMana .hz-item.pribadi > strong{ color:#e8c3b2; }
+#hzLariKeMana .hz-item.owner > strong{ color:var(--pf-abu); }
+/* Kebiasaan 28 hari: 28 petak, satu petak satu hari. Hari yang MENYIMPANG beroksida —
+   dan hari NOL bertepi putus, karena "tidak keluar" bukan "keluar sedikit". */
+#hzPola .hz-cip{ display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  padding:0 2px 10px; margin-top:2px; }
+#hzPola .hz-cip button{ flex:none; min-height:44px; padding:0 14px; border-radius:99px;
+  font-family:inherit; font-size:11.5px; color:var(--pf-abu);
+  border:1px solid var(--pf-tepi); background:rgba(255,255,255,.03); white-space:nowrap; }
+#hzPola .hz-cip button.pilih{ color:var(--pf-krem,#f7ecd6); border-color:rgba(226,205,166,.5);
+  background:rgba(226,205,166,.1); }
+#hzPola .hz-pola-bagan{ display:flex; align-items:flex-end; gap:2px; height:74px; margin:4px 0 10px;
+  padding-bottom:6px; border-bottom:1px solid rgba(226,205,166,.24); }
+#hzPola .hz-pola-bagan span{ flex:1; min-width:0; display:block; height:var(--t,0%); border-radius:2px 2px 0 0;
+  background:linear-gradient(180deg,rgba(226,205,166,.6),rgba(191,164,118,.3)); }
+#hzPola .hz-pola-bagan span.simpang{ background:linear-gradient(180deg,#e8b9a6,#d9a693); }
+#hzPola .hz-pola-bagan span.kosong{ height:3px; background:none;
+  border-bottom:2px dashed rgba(207,212,218,.28); border-radius:0; }
+#hzPola .hz-pola-kaki{ display:flex; align-items:baseline; gap:10px; margin-bottom:11px; }
+#hzPola .hz-pola-kaki .lbl{ font-size:8.5px; font-weight:700; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--pf-abu2,#a7adb5); }
+#hzPola .hz-pola-kaki b{ font-family:var(--pf-serif); font-weight:600; font-size:21px;
+  color:var(--pf-krem,#f7ecd6); font-variant-numeric:tabular-nums; }
+#hzPola .hz-pola-kaki em{ margin-left:auto; font-family:var(--pf-serif); font-style:italic;
+  font-size:10.5px; color:var(--pf-abu); }
+#hzLariKeMana .hz-kalimat, #hzPola .hz-kalimat{ font-family:var(--pf-serif); font-style:italic;
+  font-size:11px; line-height:1.55; color:var(--pf-abu2,#a7adb5); margin-top:10px; }
+#hzLariKeMana .hz-kalimat b{ color:var(--pf-krem,#f7ecd6); font-weight:600; font-style:normal; }
 /* PERTANYAAN BERNOMOR (rancangan Harian - Gabungan). Nomornya bagian dari labelnya,
    bukan hiasan: ia menyatakan ada urutan, dan urutan itulah keputusan rancangannya. */
 .hz-tanya{ font-size:9px; font-weight:800; letter-spacing:.2em; text-transform:uppercase;
@@ -8840,6 +8897,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
          sebelum disimpan; zona LIHAT memisahkan dua kantong yang tak pernah
          dijumlahkan. Hanya <700px; kartu lama tetap diisi untuk desktop. -->
     <div id="kacaAkibatHarian"></div>
+    <!-- Zona LIHAT (rancangan): dua bagan sebelum ringkasan teks — G "uang toko lari ke
+         mana hari ini" dan H "kebiasaan 28 hari". Keduanya dari catatan yang SAMA dengan
+         daftar di bawahnya; nol data baru, nol dokumen baru. -->
+    <div id="hzLariKeMana"></div>
+    <div id="hzPola"></div>
     <div id="kacaLihatHarian"></div>
 
     <div class="kartu-daftar kd-kepala" id="kartuHariIniHarian" style="margin-top:12px;">
@@ -12593,6 +12655,136 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     gambarKacaHarian();
   }
 
+  // ---------- G: UANG TOKO LARI KE MANA (hari ini) ----------
+  // Bagan batang mendatar per keterangan, digerakkan CATATAN HARI INI YANG SAMA dengan
+  // daftar di bawahnya — bukan data kedua. Tanda warna menjawab pertanyaan yang berbeda
+  // dari panjang batangnya: panjang = berapa, warna = dari kantong siapa. Satu batang
+  // panjang beroksida berarti "besar DAN ditalangi dompet pribadi", dan itu dua kabar.
+  function hzKelompokHariIni() {
+    const hariIni = tanggalLokalIso();
+    const buka = ownerSudahUnlock();
+    const semua = ambilPengeluaranHarian()
+      .filter(h => h.tanggal === hariIni)
+      .filter(h => buka || h.kategori !== 'owner');   // pribadi owner terkunci PIN
+    const peta = new Map();
+    semua.forEach(h => {
+      const nama = (h.keterangan || '').trim() || 'Tanpa keterangan';
+      const kunci = nama + '\u0000' + (h.kategori || 'toko');
+      const ada = peta.get(kunci) || { nama, kategori: h.kategori || 'toko', rp: 0, n: 0 };
+      ada.rp += h.nominal || 0; ada.n += 1;
+      peta.set(kunci, ada);
+    });
+    return { baris: [...peta.values()].sort((a, b) => b.rp - a.rp), semua };
+  }
+  function gambarHzLariKeMana() {
+    const wadah = document.getElementById('hzLariKeMana');
+    if (!wadah) return;
+    const { baris, semua } = hzKelompokHariIni();
+    // TIGA KEADAAN KOSONG: nol catatan hari ini bukan "batang sependek mungkin",
+    // melainkan tidak ada batang. Bagannya tidak digambar dan kalimatnya menyebut sebabnya.
+    if (!baris.length) {
+      wadah.innerHTML = '<div class="kg-panel"><div class="kg-label">Uang toko lari ke mana \u00b7 hari ini</div>'
+        + '<div class="hz-kalimat">Belum ada pengeluaran tercatat hari ini \u2014 belum ada yang bisa digambar.</div></div>';
+      return;
+    }
+    const maks = Math.max.apply(null, baris.map(b => b.rp).concat([1]));
+    const beban = baris.filter(b => bebanTokoKategori(b.kategori)).reduce((a, b) => a + b.rp, 0);
+    const kas = baris.filter(b => kasTokoKeluarKategori(b.kategori)).reduce((a, b) => a + b.rp, 0);
+    const utang = baris.filter(b => b.kategori === 'tokoDompet').reduce((a, b) => a + b.rp, 0);
+    const sumber = k => k === 'tokoDompet' ? 'dibayar uang pribadi \u00b7 toko berutang'
+      : k === 'owner' ? 'pribadi owner \u00b7 bukan beban toko' : 'dari laci toko';
+    wadah.innerHTML = '<div class="kg-panel"><div class="kg-label">Uang toko lari ke mana \u00b7 hari ini</div>'
+      + '<div class="hz-bagan">' + baris.map(b =>
+          '<span class="hz-batang' + (b.kategori === 'tokoDompet' ? ' pribadi' : (b.kategori === 'owner' ? ' owner' : ''))
+          + '" style="--w:' + Math.max(4, Math.round(b.rp / maks * 100)) + '%"></span>').join('') + '</div>'
+      + '<div class="hz-daftar">' + baris.map(b =>
+          '<div class="hz-item' + (b.kategori === 'tokoDompet' ? ' pribadi' : (b.kategori === 'owner' ? ' owner' : '')) + '">'
+          + '<i></i><span><b>' + escapeHtml(b.nama) + '</b><em>' + sumber(b.kategori)
+          + (b.n > 1 ? ' \u00b7 ' + b.n + ' catatan' : '') + '</em></span>'
+          + '<strong>' + formatRupiah(b.rp) + '</strong></div>').join('') + '</div>'
+      + '<div class="hz-kalimat">Beban toko ' + formatRupiah(beban) + ' \u00b7 kas keluar ' + formatRupiah(kas)
+      + (utang > 0 ? ' \u00b7 utang ke owner ' + formatRupiah(utang) : '') + '.</div>'
+      + hzKalimatKg(beban)
+      + '</div>';
+  }
+
+  // ---------- H: KEBIASAAN 28 HARI ----------
+  // Yang ditanya bukan "berapa rata-rata" melainkan "mana yang MENYIMPANG dari kebiasaan".
+  // Patokannya MEDIAN hari-hari berisi, bukan rata-rata: satu hari raksasa akan menaikkan
+  // rata-ratanya sendiri, lalu ia terbaca wajar terhadap patokan yang ia bikin sendiri —
+  // persis pola "patokan terbesar di kelompoknya" dalam bentuk lain.
+  let _hzPolaPilihan = null;
+  const HZ_POLA_HARI = 28;
+  function hzDeretPola(nama) {
+    const kini = tanggalLokalIso();
+    const hari = [];
+    for (let i = HZ_POLA_HARI - 1; i >= 0; i--) hari.push(geserHari(kini, -i));
+    const buka = ownerSudahUnlock();
+    const catatan = ambilPengeluaranHarian()
+      .filter(h => buka || h.kategori !== 'owner')
+      .filter(h => (h.keterangan || '').trim() === nama);
+    const perHari = hari.map((t, i) => ({
+      t, ke: i + 1,
+      rp: catatan.filter(h => h.tanggal === t).reduce((a, h) => a + (h.nominal || 0), 0)
+    }));
+    const isi = perHari.filter(x => x.rp > 0).map(x => x.rp).sort((a, b) => a - b);
+    if (!isi.length) return null;
+    const tengah = isi.length % 2 ? isi[(isi.length - 1) / 2]
+      : (isi[isi.length / 2 - 1] + isi[isi.length / 2]) / 2;
+    let menyimpang = null;
+    perHari.forEach(x => {
+      if (x.rp > 0 && tengah > 0 && x.rp / tengah >= 2 && (!menyimpang || x.rp > menyimpang.rp)) {
+        menyimpang = { ke: x.ke, t: x.t, rp: x.rp, kali: x.rp / tengah };
+      }
+    });
+    return { perHari, biasanya: tengah, nHari: isi.length, menyimpang, maks: Math.max.apply(null, isi) };
+  }
+  function gambarHzPola() {
+    const wadah = document.getElementById('hzPola');
+    if (!wadah) return;
+    const buka = ownerSudahUnlock();
+    const hitung = {};
+    ambilPengeluaranHarian()
+      .filter(h => buka || h.kategori !== 'owner')
+      .forEach(h => { const k = (h.keterangan || '').trim(); if (k) hitung[k] = (hitung[k] || 0) + 1; });
+    const nama = Object.keys(hitung).sort((a, b) => hitung[b] - hitung[a]).slice(0, 6);
+    if (!nama.length) {
+      wadah.innerHTML = '<div class="kg-panel"><div class="kg-label">Kebiasaan 28 hari</div>'
+        + '<div class="hz-kalimat">Belum ada catatan pengeluaran berketerangan \u2014 kebiasaan belum punya bentuk.</div></div>';
+      return;
+    }
+    if (!_hzPolaPilihan || nama.indexOf(_hzPolaPilihan) < 0) _hzPolaPilihan = nama[0];
+    const d = hzDeretPola(_hzPolaPilihan);
+    let isi = '<div class="hz-cip">' + nama.map(n =>
+      '<button type="button" class="' + (n === _hzPolaPilihan ? 'pilih' : '') + '" onclick="pilihPolaHarian('
+      + escapeHtml(JSON.stringify(n)) + ')">' + escapeHtml(n) + '</button>').join('') + '</div>';
+    if (!d) {
+      isi += '<div class="kg-panel"><div class="hz-kalimat">Tidak ada catatan "' + escapeHtml(_hzPolaPilihan)
+        + '" dalam ' + HZ_POLA_HARI + ' hari terakhir.</div></div>';
+    } else {
+      isi += '<div class="kg-panel">'
+        + '<div class="hz-pola-bagan">' + d.perHari.map(x =>
+            '<span class="' + (d.menyimpang && x.ke === d.menyimpang.ke ? 'simpang' : (x.rp > 0 ? '' : 'kosong'))
+            + '" style="--t:' + (d.maks > 0 ? Math.round(x.rp / d.maks * 100) : 0) + '%" title="'
+            + escapeHtml(formatTanggal(x.t) + ' \u00b7 ' + formatRupiah(x.rp)) + '"></span>').join('') + '</div>'
+        + '<div class="hz-pola-kaki"><span class="lbl">Biasanya</span><b>' + formatRupiah(Math.round(d.biasanya))
+        + '</b><em>' + d.nHari + ' dari ' + HZ_POLA_HARI + ' hari</em></div>'
+        + (d.menyimpang
+            ? '<div class="ak-vonis awas"><i></i><span><b>' + escapeHtml(formatTanggal(d.menyimpang.t))
+              + ' \u00b7 ' + formatRupiah(d.menyimpang.rp) + '</b><small>'
+              + (Math.round(d.menyimpang.kali * 10) / 10).toLocaleString('id-ID', { maximumFractionDigits: 1 })
+              + '\u00d7 dari kebiasaan \u2014 layak diperiksa notanya.</small></span></div>'
+            : '')
+        + '<div class="hz-kalimat">' + escapeHtml(_hzPolaPilihan) + ' keluar ' + d.nHari + ' dari '
+        + HZ_POLA_HARI + ' hari. '
+        + (d.menyimpang ? 'Yang menyimpang ditandai, bukan disimpan diam-diam.'
+                        : 'Tidak ada yang menyimpang dua kali lipat dari kebiasaannya.')
+        + '</div></div>';
+    }
+    wadah.innerHTML = isi;
+  }
+  function pilihPolaHarian(nama) { _hzPolaPilihan = nama; gambarHzPola(); }
+
   // ---------- O: RUPIAH JADI KG BERAS ----------
   // Rancangan: "beban dibagi margin kotor per kg, jadi rupiah punya bentuk yang bisa
   // dibayangkan". Rp340.000 tidak berarti apa-apa sampai ia jadi "28,1 kg beras yang
@@ -12693,6 +12885,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <div class="hz-kalimat">${buka
           ? `Dari laci ${formatRupiah(toko - dompet)}${dompet > 0 ? ' &middot; dompet owner ' + formatRupiah(dompet) + ' (jadi utang toko)' : ''} &middot; pribadi owner ${formatRupiah(pribadi)}. Kantong pribadi tidak pernah dijumlahkan ke beban toko.`
           : `Beban toko ${formatRupiah(toko)}${dompet > 0 ? ', ' + formatRupiah(dompet) + ' di antaranya dibayar dompet owner' : ''}. Catatan pribadi owner terkunci PIN.`}</div></div>`;
+      gambarHzLariKeMana();
+      gambarHzPola();
     } catch (e) { console.error('gambarKacaHarian:', e); }
   }
   function pilihZonaHarian(z) {
@@ -30722,6 +30916,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.hapusBulanan = hapusBulanan;
   window.pilihKategoriHarian = pilihKategoriHarian;
   window.pilihKantongHarian = pilihKantongHarian;
+  window.pilihPolaHarian = pilihPolaHarian;
   window.pilihZonaHarian = pilihZonaHarian;
   window.simpanPengeluaranHarian = simpanPengeluaranHarian;
   window.hapusHarian = hapusHarian;
