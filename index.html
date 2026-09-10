@@ -5106,17 +5106,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
      = sisa stok. Memilih merk sekalian melihat mana yang hampir habis; itu seluruh gunanya,
      dan itu yang hilang waktu ia digambar sebagai dua kolom kartu dengan sliver 6px.
      Mekanismenya (--isi) sudah ada sejak lama — yang tidak pernah ada cuma rupanya. */
-  /* RAK MENGGULIR DI DALAM DIRINYA SENDIRI. Di kotak pasir 4 merk, flex:1 tampak benar; di
-     toko ada EMPAT BELAS merk, dan 14 tabung x 44px mendorong SELURUH HALAMAN ke kanan —
-     bilah bawah, struk, dan judul ikut bergeser. Lebar TETAP + overflow-x pada raknya sendiri
-     membuat yang menggulir cuma raknya. Ini bentuk "kotak pasir menyempitkan cakupannya
-     sendiri lalu lapor lulus": benihnya terlalu kecil untuk melahirkan keadaannya. */
-  .wz-rak{ display:flex; gap:6px; align-items:flex-end; overflow-x:auto; padding-bottom:2px;
-    -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-snap-type:x proximity; }
-  .wz-rak::-webkit-scrollbar{ display:none; }
-  .wz-rak .kg-petak{ position:relative; overflow:hidden; flex:0 0 64px; width:64px; height:88px;
-    padding:3px; box-sizing:border-box; display:block; text-align:center; scroll-snap-align:start;
-    scroll-margin-inline:12px; border-radius:2px 2px 5px 5px; transition:border-color .18s ease; }
+  /* RAK BERTUMPUK, BUKAN MENGGULIR. Di toko ada EMPAT BELAS merk. Sederet mendatar berarti
+     separuhnya tidak terlihat sampai dicari — dan memilih beras sambil melihat mana yang
+     hampir habis itu seluruh gunanya rak ini; yang tersembunyi tidak ikut menjawab apa pun.
+     Kisi auto-fill membuat semuanya tampak sekaligus, sejajar, tanpa satu pun gulir:
+     di 390px jadi lima kolom, dan ia menyesuaikan sendiri di layar lain tanpa angka ajaib.
+     (Sebelum ini flex:1 — benar untuk 4 merk di kotak pasir, mendorong seluruh halaman ke
+     kanan untuk 14 merk di toko.) */
+  .wz-rak{ display:grid; grid-template-columns:repeat(auto-fill, minmax(62px, 1fr)); gap:6px; }
+  .wz-rak .kg-petak{ position:relative; overflow:hidden; width:100%; height:84px;
+    padding:3px; box-sizing:border-box; display:block; text-align:center;
+    border-radius:2px 2px 5px 5px; transition:border-color .18s ease; }
   .wz-rak .tb-rel{ position:absolute; left:3px; right:3px; top:3px; bottom:3px;
     display:flex; align-items:flex-end; background:none; border-radius:2px; }
   /* Isi tabung: tenunan karung (garis miring rapat) di atas gradien emas. Yang terpilih
@@ -5129,6 +5129,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   .wz-rak .kg-petak.kg-terpilih .tb-isi{
     background-image:repeating-linear-gradient(115deg,rgba(93,73,36,.32) 0 1px,transparent 1px 5px),
       linear-gradient(180deg,#f7ecd6,#c2a678); }
+  /* HABIS (nol) WAJIB BEDA DARI HAMPIR HABIS — tiga keadaan kosong tidak boleh digambar
+     sama. Tipis punya garis dasar PADAT; habis punya tepi PUTUS-PUTUS dan nol garis dasar. */
+  .wz-rak .kg-petak.kg-tepi-putus{ border:1px dashed rgba(211,160,139,.5); box-shadow:none;
+    background:rgba(211,160,139,.04); }
   .wz-rak .kg-petak.kg-tepi-putus .tb-isi{
     background-image:repeating-linear-gradient(115deg,rgba(93,73,36,.32) 0 1px,transparent 1px 5px),
       linear-gradient(180deg,rgba(217,166,147,.5),rgba(201,112,94,.28)); }
@@ -5142,9 +5146,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     border-radius:3px; background:rgba(18,15,11,.86); color:#f2efe9; padding:2px 1px;
     display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
     white-space:normal; word-break:break-word; }
-  /* HAMPIR HABIS: tepi & tinta oksida. Saluran ini tidak bergantung pada tinggi isi, jadi ia
-     tetap menjawab walau satu merk raksasa membuat yang lain tampak rata-rata kosong. */
-  .wz-rak .kg-petak.kg-tipis{ border:1px solid rgba(217,166,147,.45); background:rgba(217,166,147,.06); }
+  /* HAMPIR HABIS. Saluran ini tidak bergantung pada tinggi isi — dan di data toko itu bukan
+     kemewahan melainkan keharusan: dengan satu merk 434 kg jadi patokan, merk 6 kg tergambar
+     SATU PIKSEL dan merk 3 kg juga satu piksel. Di bawah ~4px tinggi berhenti membawa
+     keterangan; 1px dan 2px sudah kembar SEBELUM ada lantai minimum dipasang.
+     Jawabannya bukan memalsukan tingginya (lantai justru dilarang aturan repo, dan memang
+     akan mengembarkan yang lain lagi) melainkan MENANDAI KEADAANNYA: garis dasar oksida
+     setebal 3px yang mengatakan "ada, tapi sedikit". Ia TANDA, bukan bilah data — tingginya
+     tetap jujur di angka berapa pun, dan angka persisnya ada di nota di bawah rak. */
+  .wz-rak .kg-petak.kg-tipis{ border:1px solid rgba(217,166,147,.55);
+    background:rgba(217,166,147,.09);
+    box-shadow:inset 0 -3px 0 rgba(217,166,147,.55); }
   .wz-rak .kg-petak b em{ display:block; font-style:normal; font-weight:500; font-size:7px;
     letter-spacing:.01em; color:rgba(242,239,233,.72); margin-top:1px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
