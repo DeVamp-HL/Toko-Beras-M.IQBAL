@@ -5962,6 +5962,31 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 #thKrom .th-krom b{ display:block; font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--pf-platina); margin-top:2px; }
 #thKrom .th-krom i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); margin-top:2px; }
 /* Cincin beres: --isi dari cacah pagar yang SAMA dengan label x/6. */
+/* ===== TUTUP HARI: sumbu K (pintu rolling), I (sisa waktu), R (peta rute) ===== */
+/* Pintu rolling: enam bilah, satu per langkah, TURUN saat langkahnya beres. Digerakkan
+   cacah yang sama dengan cincin di sebelahnya — bukan angka kedua yang bisa berselisih. */
+#thKrom .th-bilah-atas{ display:flex; align-items:center; gap:10px; margin-top:9px; }
+#thKrom .th-rol{ display:flex; gap:3px; flex:none; }
+#thKrom .th-rol i{ display:block; width:13px; height:16px; border-radius:2px;
+  border:1px solid rgba(226,205,166,.28); background:rgba(255,255,255,.03);
+  transition:background .25s ease, border-color .25s ease; }
+#thKrom .th-rol i.turun{ background:linear-gradient(180deg,#f7ecd6,#c2a678); border-color:transparent; }
+#thKrom .th-sisa{ flex:1; min-width:0; display:flex; align-items:center; gap:7px;
+  font-family:var(--pf-serif); font-style:italic; font-size:11px; color:var(--pf-abu2,#a7adb5); }
+#thKrom .th-sisa em{ display:block; flex:none; width:8px; height:8px; border-radius:99px;
+  background:var(--emas,#e2cda6); font-style:normal; }
+#thKrom .th-sisa.dekat{ color:#e8c3b2; } #thKrom .th-sisa.dekat em{ background:#d9a693; }
+#thKrom .th-sisa.lewat{ color:#e8c3b2; } #thKrom .th-sisa.lewat em{ background:#c9705e; }
+/* Peta rute: enam tempat berhenti di dalam toko. Titik yang sudah dilewati padat, yang
+   sedang dituju bercincin, dan garis menujunya PUTUS-PUTUS — yang sudah dilalui padat,
+   yang berikutnya masih rencana. */
+.th-peta-rute{ margin:0 0 10px; padding:10px 12px 12px; border-radius:15px;
+  background:linear-gradient(158deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+  border:1px solid var(--pf-tepi); }
+.th-peta-rute svg{ display:block; width:100%; height:150px; }
+.th-peta-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.5; color:var(--pf-abu2,#a7adb5); margin-top:6px; }
+@media (min-width:700px){ .th-peta-rute, #thKrom .th-bilah-atas{ display:none; } }
 #thKrom .th-cincin{ width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center;
   font-size:11px; font-weight:700; color:var(--pf-platina);
   background:conic-gradient(#e2cda6 calc(var(--isi,0) * 1%), rgba(255,255,255,.08) 0); position:relative; }
@@ -21097,6 +21122,65 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const hal = document.getElementById('halamanTutup');
     if (hal) hal.addEventListener('click', ev => { if (ev.target && ev.target.closest && ev.target.closest('.pil-aksi')) thSegar(); });
   }
+  // ---------- K: PINTU ROLLING + I: SISA WAKTU ----------
+  // Dua kiasan rancangan digerakkan CACAH LANGKAH YANG SAMA dengan cincin di sebelahnya —
+  // bukan angka kedua. Pintu turun sebilah tiap langkah beres; enam bilah turun berarti
+  // hari terkunci. Ia rasa selesai, bukan hiasan.
+  function thBilahAtasHtml(beres) {
+    const bilah = [1, 2, 3, 4, 5, 6].map(i =>
+      '<i class="' + (i <= beres ? 'turun' : '') + '"></i>').join('');
+    return '<div class="th-bilah-atas">' + thSisaWaktuHtml() + '<span class="th-rol" aria-hidden="true">'
+      + bilah + '</span></div>';
+  }
+  // Sisa waktu sampai jam tutup toko. Sesudah lewat jam tutup ia TIDAK menghitung mundur
+  // angka negatif — ia bilang apa adanya. Hitungan mundur yang sudah lewat bukan
+  // informasi, ia cuma bentuk lain dari angka yang salah.
+  function thSisaWaktuHtml() {
+    const now = new Date();
+    const menitKini = now.getHours() * 60 + now.getMinutes();
+    const menitTutup = JAM_TUTUP_SISTEM * 60;
+    if (menitKini >= menitTutup || now.getHours() < JAM_BUKA_SISTEM) {
+      return '<span class="th-sisa lewat"><em></em>sudah lewat jam tutup '
+        + JAM_TUTUP_SISTEM + '.00 \u2014 ritual malam ini terlambat</span>';
+    }
+    const sisa = menitTutup - menitKini;
+    const teks = sisa >= 60
+      ? '\u00b1 ' + Math.floor(sisa / 60) + ' jam ' + (sisa % 60 ? (sisa % 60) + ' menit' : '')
+      : '\u00b1 ' + sisa + ' menit';
+    return '<span class="th-sisa' + (sisa <= 30 ? ' dekat' : '') + '"><em></em>sisa ' + teks.trim()
+      + ' sebelum toko tutup</span>';
+  }
+  // ---------- R: PETA RUTE ENAM TEMPAT BERHENTI ----------
+  // Enam langkah itu enam tempat berhenti DI DALAM TOKO, jadi urutannya masuk akal
+  // sendiri sebelum mulai. Titik yang sudah dilewati terisi, yang sedang dituju diberi
+  // garis putus — sama seperti peta jalan: yang sudah dilalui padat, yang menuju berikutnya
+  // masih rencana.
+  const TH_RUTE = [
+    { x: 30, y: 128, nama: 'Laci' }, { x: 92, y: 46, nama: 'Amplop' },
+    { x: 176, y: 30, nama: 'Meja kasir' }, { x: 248, y: 58, nama: 'Gudang' },
+    { x: 286, y: 122, nama: 'Kantong owner' }, { x: 168, y: 158, nama: 'Pintu depan' }
+  ];
+  function thPetaRuteHtml(beres) {
+    const jalur = TH_RUTE.map((t, i) => (i ? 'L' : 'M') + t.x + ' ' + t.y).join(' ') + ' Z';
+    const kini = Math.min(beres, TH_RUTE.length - 1);
+    const dari = TH_RUTE[Math.max(0, kini - 1)], ke = TH_RUTE[kini];
+    const titik = TH_RUTE.map((t, i) =>
+      '<circle cx="' + t.x + '" cy="' + t.y + '" r="' + (i === beres ? 7 : 5) + '" fill="'
+      + (i < beres ? '#f7ecd6' : i === beres ? '#f7ecd6' : 'rgba(207,212,218,.34)') + '"'
+      + (i === beres ? ' stroke="rgba(247,236,214,.35)" stroke-width="6"' : '') + '></circle>').join('');
+    const menuju = beres > 0 && beres < TH_RUTE.length
+      ? '<path d="M' + dari.x + ' ' + dari.y + ' L' + ke.x + ' ' + ke.y
+        + '" fill="none" stroke="#f7ecd6" stroke-width="2.4" stroke-dasharray="7 6"></path>'
+      : '';
+    return '<div class="th-peta-rute"><svg viewBox="0 0 316 188" preserveAspectRatio="xMidYMid meet" aria-hidden="true">'
+      + '<path d="' + jalur + '" fill="none" stroke="rgba(226,205,166,.3)" stroke-width="1.6"></path>'
+      + menuju + titik + '</svg>'
+      + '<div class="th-peta-ket">' + (beres >= 6
+          ? 'Enam tempat berhenti sudah dilewati \u2014 hari ini terkunci.'
+          : 'Berikutnya: ' + escapeHtml(TH_RUTE[beres].nama) + ' \u00b7 '
+            + (6 - beres) + ' tempat berhenti lagi.') + '</div></div>';
+  }
+
   function thSegar() {
     if (window.matchMedia('(min-width: 700px)').matches) return;
     try {
@@ -21104,7 +21188,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const l = _thLangkah;
       thTulis('thKrom', `<div class="kg-panel th-krom"><div><div class="kg-label">${l === 0 ? 'Peta putaran' : 'Langkah ' + l + ' dari 6'}</div>
         <b>${TH_JUDUL[l]}</b><i>${l === 0 ? (_thInfo.hariIni ? 'malam ' + escapeHtml(formatTanggal(_thInfo.hariIni)) : '') : escapeHtml(TH_TEMPAT[l])}</i></div>
-        <div class="th-cincin" style="--isi:${Math.round(beres / 6 * 100)}"><span>${beres}/6</span></div></div>`);
+        <div class="th-cincin" style="--isi:${Math.round(beres / 6 * 100)}"><span>${beres}/6</span></div></div>
+        ${thBilahAtasHtml(beres)}`);
       // Peta: baris per langkah, status dari pagar yang sama.
       const belum = (typeof hariBelumDitutup === 'function' ? (hariBelumDitutup() || []) : []);
       const nBelum = Array.isArray(belum) ? belum.length : 0;
@@ -21120,7 +21205,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           <small class="${beresI || (i === 6 && _thInfo.sudah) ? '' : (i === pertamaBelum ? '' : 'oks')}">${beresI ? 'beres' : (i === 6 && _thInfo.sudah ? 'sudah dikunci' : (i === pertamaBelum ? 'sekarang' : '—'))}</small></button>`;
       }).join('');
       const tujuan = pertamaBelum === 7 ? 6 : pertamaBelum;
-      thTulis('thPeta', `<div class="kg-panel" style="padding:6px 12px 12px;">${barisPeta}
+      thTulis('thPeta', `<div class="kg-label" style="margin:14px 2px 8px;">Putaran malam ini \u00b7 6 tempat berhenti</div>
+        ${thPetaRuteHtml(beres)}
+        <div class="kg-panel" style="padding:6px 12px 12px;">${barisPeta}
         ${nBelum > 0 ? `<div class="th-peringatan">${nBelum} hari sebelumnya belum dikunci — kunci malam ini dulu, hari lain menyusul lewat tanggal.</div>` : ''}
         <button type="button" class="kg-terpilih th-mulai" onclick="thKe(${tujuan})">${beres === 0 ? 'Mulai putaran malam' : (pertamaBelum === 7 ? 'Semua langkah beres — ke kunci' : 'Lanjut ke langkah ' + tujuan)}</button></div>`);
       // Alat seksi 2: chip alasan, cacah isian, lembar, selisih 30 malam.
