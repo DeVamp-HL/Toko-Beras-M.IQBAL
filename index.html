@@ -5114,7 +5114,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
      (Sebelum ini flex:1 — benar untuk 4 merk di kotak pasir, mendorong seluruh halaman ke
      kanan untuk 14 merk di toko.) */
   .wz-rak{ display:grid; grid-template-columns:repeat(auto-fill, minmax(62px, 1fr)); gap:6px; }
-  .wz-rak .kg-petak{ position:relative; overflow:hidden; width:100%; height:84px;
+  /* TINGGI DITEKAN dari 84px ke 62px. Bertumpuk memang lebih rapi daripada menggeser, tapi
+     tiga baris x 84px memakan 264px — struk terdorong keluar layar, dan rak yang menghabiskan
+     halaman berhenti jadi pemilih dan berubah jadi penghalang. 62px masih cukup untuk membaca
+     proporsi isi, dan tiga baris jadi ~200px. */
+  .wz-rak .kg-petak{ position:relative; overflow:hidden; width:100%; height:62px;
     padding:3px; box-sizing:border-box; display:block; text-align:center;
     border-radius:2px 2px 5px 5px; transition:border-color .18s ease; }
   .wz-rak .tb-rel{ position:absolute; left:3px; right:3px; top:3px; bottom:3px;
@@ -5141,11 +5145,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
      emas — tidak terbaca. Plat gelap membuatnya benar di tinggi isi berapa pun. */
   /* Nama boleh DUA BARIS: di toko ada "Perahu Layar" dan "Bahan campuran standar", dan satu
      baris memotongnya jadi "Pera..." — nama terpotong tidak menjawab pertanyaan apa pun. */
-  .wz-rak .kg-petak b{ position:absolute; left:2px; right:2px; bottom:3px; text-align:center;
-    pointer-events:none; font:600 8px/1.25 -apple-system,system-ui; letter-spacing:.02em;
-    border-radius:3px; background:rgba(18,15,11,.86); color:#f2efe9; padding:2px 1px;
-    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
-    white-space:normal; word-break:break-word; }
+  /* Plat nama TINGGI TETAP dua baris. Sebelum ini plat satu-baris dan dua-baris punya tinggi
+     berbeda, jadi dasar tabung bergerigi dan kisinya terbaca berantakan justru waktu ia
+     sedang berusaha rapi. Tinggi tetap membuat semua plat sejajar; nama pendek tinggal
+     menyisakan ruang kosong yang tidak mengganggu. */
+  .wz-rak .kg-petak b{ position:absolute; left:2px; right:2px; bottom:2px; text-align:center;
+    pointer-events:none; font:600 8px/1.2 -apple-system,system-ui; letter-spacing:.02em;
+    border-radius:3px; background:rgba(18,15,11,.88); color:#f2efe9; padding:2px 1px;
+    height:22px; box-sizing:border-box;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    overflow:hidden; white-space:normal; word-break:break-word; }
+  .wz-rak .kg-petak b > :first-child{ display:block; }
   /* HAMPIR HABIS. Saluran ini tidak bergantung pada tinggi isi — dan di data toko itu bukan
      kemewahan melainkan keharusan: dengan satu merk 434 kg jadi patokan, merk 6 kg tergambar
      SATU PIKSEL dan merk 3 kg juga satu piksel. Di bawah ~4px tinggi berhenti membawa
@@ -5241,6 +5251,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   .wz-tab-antre.aktif{ background:linear-gradient(160deg,#f6ecd6,#e2cda6 60%,#c9b085); color:#2a1f13; }
   .wz-antre-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:#7d7a73;
     margin-top:6px; line-height:1.5; }
+  /* Buang keranjang: tepi putus-putus oksida — perbuatan yang MENGHILANGKAN, dan ia tidak
+     boleh terlihat sama dengan tombol yang menyelesaikan. Tetap 44px sasaran sentuhnya. */
+  .wz-buang-keranjang{ width:100%; margin-top:7px; min-height:44px; border-radius:3px;
+    font-family:inherit; font:700 9.5px/1 -apple-system,system-ui; letter-spacing:.12em;
+    background:transparent; border:1px dashed rgba(211,160,139,.42); color:#d3a08b; }
   /* Parkir: tepi PUTUS-PUTUS — perbuatan yang menunda, bukan yang menyelesaikan. */
   .wz-pembeli-lain{ width:100%; margin-top:9px; min-height:44px; border-radius:3px;
     font-family:inherit; font:700 10.5px/1 -apple-system,system-ui; letter-spacing:.14em;
@@ -14577,6 +14592,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     _wzAktifId = id;
     if (i >= 0) { const k = _wzAntre[i].beku; _wzAntre.splice(i, 1); wzPakaiKeranjang(k); }
   }
+  // PEMBELI BATAL. Di toko beras orang mengantre lalu pergi — keranjangnya harus bisa
+  // dibuang tanpa menyimpan apa pun. Ini BUKAN wzReset: reset membuang keranjang yang sedang
+  // dipegang lalu berhenti; ini mengeluarkan satu pembeli DARI ANTREAN lalu membuka yang
+  // berikutnya, sama seperti sesudah bayar — bedanya nol dokumen ditulis.
+  //
+  // Konfirmasi HANYA kalau ada isinya, dan kalimatnya menyebut NAMA + jumlah barangnya:
+  // membuang keranjang orang lain karena salah tab adalah kerugian yang tidak bisa diurungkan
+  // dari sini, jadi yang dibuang harus disebut namanya sebelum hilang.
+  function wzBuangKeranjang() {
+    if (_wzUrutan.length < 2) return;                 // antrean satu orang: pakai ✕ (wzReset)
+    const urut = _wzUrutan.indexOf(_wzAktifId);
+    const l = wzLabelKeranjang(_wzAktifId, urut < 0 ? 0 : urut);
+    if (_wzItems.length && !confirm('Buang keranjang ' + l.teks + '?\n\nBarangnya tidak jadi dijual dan tidak dicatat ke mana pun. Antrean lanjut ke pembeli berikutnya.')) return;
+    wzAntreSelesai();                                 // keluar dari antrean, buka yang depan
+  }
   function wzLabelKeranjang(id, urut) {
     const nama = id === _wzAktifId
       ? ((document.getElementById('jualNamaPelanggan') || {}).value || '').trim()
@@ -14606,7 +14636,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + wzEsc(l.teks) + '</button>';
     }).join('');
     return '<div class="wz-antre">' + tab + '</div>'
-      + '<div class="wz-antre-nota">' + _wzUrutan.length + ' pembeli di antrean \u2014 keranjang yang tidak aktif tetap tersimpan, dan yang sudah bayar keluar sendiri.</div>';
+      + '<div class="wz-antre-nota">' + _wzUrutan.length + ' pembeli di antrean \u2014 keranjang yang tidak aktif tetap tersimpan, dan yang sudah bayar keluar sendiri.</div>'
+      // Tombolnya duduk DI SINI, bukan di bagian bayar: pembeli yang batal sering keranjangnya
+      // masih KOSONG, dan bagian bayar tidak digambar waktu kosong — tombolnya jadi tidak
+      // pernah bisa dijangkau justru pada keadaan yang paling sering membutuhkannya.
+      + '<button type="button" class="wz-buang-keranjang" onclick="wzBuangKeranjang()">'
+      + 'PEMBELI TIDAK JADI \u00b7 BUANG KERANJANG INI</button>';
   }
   function wzSatuanKini() {
     // harga satuan menurut form lama SAAT INI (katalog x jumlah / jumlah)
@@ -29071,6 +29106,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.wzJumlahDiketik = wzJumlahDiketik; window.wzHargaDiketik = wzHargaDiketik;
   window.wzNegoUbah = wzNegoUbah; window.wzBonusToggle = wzBonusToggle; window.wzTambahItem = wzTambahItem;
   window.wzPembeliLain = wzPembeliLain; window.wzTukarKeranjang = wzTukarKeranjang;
+  window.wzBuangKeranjang = wzBuangKeranjang;
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
   window.wzBukaKreditSekali = wzBukaKreditSekali; window.wzPilihJanji = wzPilihJanji;
