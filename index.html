@@ -4281,12 +4281,26 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   .ak-gerbong-baris .nilai{ flex:none; font-family:var(--pf-serif); font-size:15px;
     color:var(--pf-putih,#fdf6e7); font-variant-numeric:tabular-nums; }
   .ak-gerbong-baris.balik .nilai{ color:#e8c3b2; }
+  /* Penjepit KAS: kotak penuh emas — ia bukan tempat menunggu, ia titik awal & akhir. */
+  .ak-gerbong-baris.kas .kotak{ background:rgba(226,205,166,.1); border-color:rgba(226,205,166,.42); }
+  .ak-gerbong-baris.kas .isi{ background:linear-gradient(90deg,#f7ecd6,#c2a678); }
+  .ak-gerbong-baris.kas .nilai{ color:var(--pf-abu); }
+  /* Gerbong KOSONG: tepi putus. Bedanya dengan "sedikit" harus terlihat tanpa membaca angka.
+     Kelasnya BUKAN ".kosong": nama itu sudah dipakai global untuk "daftar kosong"
+     (text-align:center; padding:40px) dan meminjamnya membuat baris gerbong melar 112px
+     dan teksnya rata tengah — tertangkap karena tingginya diukur, bukan dilihat sekilas. */
+  .ak-gerbong-baris.gb-kosong .kotak{ border-style:dashed; border-color:rgba(207,212,218,.22); background:none; }
   /* UANG TERTIDUR — kolom per ember umur, tinggi = nilai relatif ember terbesar.
      Ember TUA (>30 hari) beroksida: bukan salah, tapi patut dilihat. */
   .ak-tidur{ display:flex; align-items:flex-end; gap:8px; height:110px; margin:10px 2px 0;
     padding-bottom:8px; border-bottom:2px solid rgba(226,205,166,.3); }
+  /* Kolom TANPA rel latar. Rel setinggi penuh membuat ember kosong tergambar sebagai
+     batang abu setinggi ember terpenuh — mata membaca empat batang, padahal cuma satu
+     yang berisi. Ember kosong sekarang benar-benar kosong, dengan satu garis putus di
+     dasarnya yang mengatakan "sudah diukur, isinya nol" (bukan "belum digambar"). */
   .ak-tidur-kolom{ flex:1; height:100%; display:flex; align-items:flex-end;
-    border-radius:3px 3px 0 0; background:rgba(255,255,255,.03); }
+    border-radius:3px 3px 0 0; background:none; }
+  .ak-tidur-kolom.nol{ border-bottom:2px dashed rgba(207,212,218,.28); }
   .ak-tidur-kolom .isi{ display:block; width:100%; height:var(--tinggi,0%); border-radius:3px 3px 0 0;
     background-image:repeating-linear-gradient(115deg,rgba(93,73,36,.3) 0 1px,transparent 1px 5px),
       linear-gradient(180deg,rgba(226,205,166,.5),rgba(191,164,118,.28)); }
@@ -4345,6 +4359,63 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
      tapi SATUANNYA HARI, bukan rupiah. Karena itu ia sengaja TIDAK memakai gradien sampanye
      maupun platina: empat jenis uang punya wujudnya masing-masing, dan angka yang bukan uang
      tidak boleh menyamar jadi salah satunya. */
+  /* NERACA RINGKAS & UANG SIAPA — rupa rancangan.
+     Tanda 3px di kiri tiap baris adalah SALURAN KEDUA: emas untuk yang dipunya, oksida
+     untuk yang diutang. Ia menjawab "ini punya atau utang" tanpa membaca sub-kepalanya
+     dulu, dan tetap benar walau barisnya tergulir jauh dari kepala kelompoknya. */
+  #akNeracaIsi, #akSiapaIsi{ margin-top:10px; }
+  .ak-nr-grup{ font-size:8px; font-weight:800; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--pf-abu2,#a7adb5); padding:0 0 7px; }
+  .ak-nr-grup.oks{ color:#d9a693; padding-top:13px; }
+  .ak-nr-baris{ display:flex; align-items:center; gap:10px; min-height:42px;
+    border-bottom:1px solid rgba(207,212,218,.07); }
+  .ak-nr-baris > i{ display:block; flex:none; width:3px; height:18px; border-radius:2px;
+    background:var(--tanda,rgba(226,205,166,.5)); }
+  .ak-nr-baris > span{ flex:1; min-width:0; font-size:12px; line-height:1.4; color:rgba(242,239,233,.8); }
+  .ak-nr-baris > span small{ display:block; font-family:var(--pf-serif); font-style:italic;
+    font-size:10px; color:var(--pf-abu); margin-top:2px; }
+  .ak-nr-baris > b{ flex:none; font-family:var(--pf-serif); font-weight:600; font-size:12.5px;
+    color:rgba(242,239,233,.86); font-variant-numeric:tabular-nums; }
+  .ak-nr-baris.utang > b{ color:#e8c3b2; }
+  .ak-nr-bersih{ display:block; min-height:58px; padding:11px 12px; margin-top:12px;
+    border-radius:3px; background:rgba(226,205,166,.08); border:1px solid rgba(226,205,166,.32); }
+  .ak-nr-bersih i{ display:block; font-style:normal; font-size:9px; font-weight:700;
+    letter-spacing:.2em; text-transform:uppercase; color:var(--pf-abu2,#a7adb5); }
+  .ak-nr-bersih b{ display:block; font-family:var(--pf-serif); font-weight:600; font-size:21px;
+    color:var(--pf-krem,#f7ecd6); margin-top:6px; font-variant-numeric:tabular-nums; }
+  .ak-nr-bersih b.kurang{ color:#e8c3b2; }
+  .ak-nr-bersih small{ display:block; font-family:var(--pf-serif); font-style:italic;
+    font-size:10px; color:var(--pf-abu); margin-top:5px; line-height:1.5; }
+  /* UANG SIAPA: dua kolom sama lebar. Yang emas adalah yang dihasilkan usaha; yang abu
+     adalah uang pribadi yang dititipkan. Warnanya membedakan ASAL, bukan besarnya. */
+  .ak-siapa{ display:flex; gap:8px; }
+  .ak-siapa > div{ flex:1; min-width:0; display:flex; flex-direction:column; gap:7px;
+    padding:12px 11px; border-radius:3px; }
+  .ak-siapa .kol-modal{ background:rgba(207,212,218,.05); border:1px solid rgba(207,212,218,.2); }
+  .ak-siapa .kol-usaha{ background:rgba(226,205,166,.08); border:1px solid rgba(226,205,166,.32); }
+  .ak-siapa i{ font-style:normal; font-size:8.5px; font-weight:700; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--pf-abu2,#a7adb5); }
+  .ak-siapa .kol-usaha i{ color:var(--emas,#e2cda6); }
+  .ak-siapa b{ font-family:var(--pf-serif); font-weight:600; font-size:16px;
+    color:rgba(242,239,233,.7); font-variant-numeric:tabular-nums; }
+  .ak-siapa .kol-usaha b{ color:var(--pf-krem,#f7ecd6); }
+  .ak-siapa small{ font-family:var(--pf-serif); font-style:italic; font-size:9.5px;
+    line-height:1.35; color:var(--pf-abu2,#a7adb5); }
+  .ak-vonis{ display:flex; align-items:flex-start; gap:11px; padding:12px 13px; margin-top:11px;
+    border-radius:3px; background:rgba(200,211,189,.07); border:1px solid rgba(200,211,189,.28); }
+  .ak-vonis.awas{ background:rgba(217,166,147,.09); border-color:rgba(217,166,147,.34); }
+  .ak-vonis > i{ display:block; flex:none; width:9px; height:9px; border-radius:99px;
+    margin-top:3px; background:#c8d3bd; }
+  .ak-vonis.awas > i{ background:#d9a693; }
+  .ak-vonis > span{ flex:1; min-width:0; }
+  .ak-vonis b{ display:block; font-size:12.5px; font-weight:600; line-height:1.3; color:var(--teks); }
+  .ak-vonis small{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+    line-height:1.45; color:var(--pf-abu2,#a7adb5); margin-top:3px; }
+  /* Kartu lama yang sudah punya kembaran kaca dipadamkan di HP — dua kali angka yang
+     sama di satu layar adalah cara termurah membuat pembacanya ragu mana yang benar. */
+  #kartuNeracaLama, #kartuModalOwner #modalRingkas, #kartuModalOwner #modalVonis{ display:none; }
+  #kartuModalOwner .panel-kepala h2{ font-size:9px; font-weight:700; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--pf-abu); font-family:inherit; font-style:normal; }
   /* JAM PASIR (rancangan Arus Kas - Gabungan, sumbu L). Ia di KIRI angka, bukan di atasnya:
      rancangan menaruh gambar dan angka pada satu baris supaya keduanya terbaca sekali pandang.
      Pasir atas = sisa hari terhadap 30 hari; sesudah 30 hari jam pasirnya penuh dan berhenti
@@ -4383,6 +4454,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   #akKepala{ background:none; border:none; box-shadow:none; padding:0; margin-bottom:0; }
   #akKepala > .kg-label, #akKepala .ak-keping, #akKepalaKosong{ display:none !important; }
   .ak-jam{ display:none; }   /* gayanya cuma ada di <700px — tanpa ini ia jadi kotak telanjang */
+  #akNeracaKaca, #akSiapaKaca{ display:none !important; }   /* desktop memakai kartu lama */
 }
 /* --- KACA EMAS G2: Piutang & Kasbon --- */
 @media (min-width:700px){ #piutang6a{ display:none; } }
@@ -7452,7 +7524,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     </div>
     <!-- NERACA RINGKAS (Modul ERP #3): kaki ketiga akuntansi — posisi kekayaan toko
          hari ini, dibandingkan saat titik kas terakhir. -->
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+    <!-- NERACA RINGKAS, rupa rancangan (KEKAYAAN TOKO · NERACA RINGKAS): dua sub-kepala
+         PUNYA & UTANG, tiap baris bertanda warna di kirinya, dan kekayaan bersih duduk di
+         kotak tersemat — bukan sekadar baris terakhir yang mudah terlewat. ANGKANYA tetap
+         dari hitungNeraca (mesin uang tidak disentuh); yang berubah cuma gambarnya.
+         Kartu lama di bawah tetap ada dan tetap diisi — desktop memakainya. -->
+    <div class="kartu kg-panel" id="akNeracaKaca" style="display:none;">
+      <div class="kg-label">Kekayaan toko · neraca ringkas</div>
+      <div id="akNeracaIsi"></div>
+    </div>
+
+    <div class="kartu-daftar kd-kepala" id="kartuNeracaLama" style="margin-top:12px;">
       <div class="kd-judul"><h3>Neraca Ringkas <span class="keterangan">kekayaan toko</span></h3></div>
       <div id="daftarNeraca"></div>
       <div class="info-box" id="neracaBanding" style="margin:10px 12px 12px;"></div>
@@ -7464,6 +7546,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
          kas bersih — dijaga pengujian, bukan janji komentar. -->
     <!-- MODAL OWNER (23 Agu 2026) — uang pribadi yang ditanam jadi perputaran kas toko,
          dan penjaga supaya pengambilan harian tidak diam-diam memakan modal itu. -->
+    <!-- UANG SIAPA (sumbu G, rupa rancangan): dua kolom bersebelahan — MODAL OWNER (uang
+         pribadi yang ditanam) lawan DARI USAHA (laba yang tidak diambil) — lalu satu kotak
+         vonis berlampu. Dua kolom, bukan tabel tiga baris: pertanyaannya perbandingan,
+         dan perbandingan dibaca berdampingan, bukan bertumpuk. -->
+    <div class="kartu kg-panel" id="akSiapaKaca" style="display:none;">
+      <div class="kg-label">Uang siapa</div>
+      <div id="akSiapaIsi"></div>
+    </div>
+
     <div class="kartu" style="margin-top:12px;" id="kartuModalOwner">
       <div class="panel-kepala"><h2>Modal Owner</h2></div>
       <div class="pratinjau-harga" id="modalRingkas"></div>
@@ -20560,7 +20651,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const tarikBln = semua.filter(x => x.tipe !== 'setor' && x.tanggal >= awal && x.tanggal <= hariIni)
       .reduce((a, x) => a + (x.nominal || 0), 0);
     const diambil = prive + tarikBln;
-    const lebih = diambil - L.labaBersih;
+    // Nol yang diambil tidak bisa memakan apa pun. Tanpa syarat "diambil > 0" kartu ini
+    // berteriak AWAS di bulan yang labanya minus padahal pemilik belum mengambil sepeser
+    // pun — alarm yang menyalahkan orang atas sesuatu yang tidak ia lakukan. Syarat yang
+    // sama dipakai di kartu kaca Uang Siapa; satu perbandingan tidak boleh punya dua vonis.
+    const lebih = diambil > 0 ? diambil - L.labaBersih : 0;
     elV.innerHTML =
       `<div class="ph-baris"><span>Diambil pemilik bulan ini</span><b>${formatRupiah(diambil)}</b></div>` +
       `<div class="ph-baris"><span>Laba bersih bulan berjalan</span><b>${formatRupiah(L.labaBersih)}</b></div>` +
@@ -20595,6 +20690,113 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     alert(tertunda
       ? 'Tersimpan di HP — menyusul ke server begitu ada sinyal.'
       : 'Tercatat. Modal tertanam sekarang ' + formatRupiah(saldoModalOwner()) + '.');
+  }
+
+  // ---------- H: NERACA RINGKAS (rupa kaca) ----------
+  // Kembaran KACA dari kartu Neraca Ringkas: angkanya dari hitungNeraca yang sama persis,
+  // yang berbeda cuma gambarnya. Dibangun terpisah supaya kartu lama tetap utuh untuk
+  // desktop — itu aturan Kaca Emas, bukan kelalaian.
+  function gambarNeracaKaca() {
+    const kartu = document.getElementById('akNeracaKaca');
+    if (!kartu || window.matchMedia('(min-width: 700px)').matches) return;
+    const isi = document.getElementById('akNeracaIsi');
+    kartu.style.display = 'block';
+    let k = null, titik = null;
+    try { k = hitungNeraca(); titik = ambilTitikKas(); } catch (e) { console.error('neraca kaca:', e); }
+    if (!k) {
+      isi.innerHTML = '<div class="ak-nr-bersih"><i>Kekayaan bersih</i><b>—</b>'
+        + '<small>Neraca belum bisa dibaca, jadi kekayaan toko belum bisa dihitung.</small></div>';
+      return;
+    }
+    // TIGA KEADAAN KOSONG dibedakan: kas null (titik belum disetel) digambar "—" dengan
+    // alasannya, BUKAN Rp0. Rp0 berarti "sudah dihitung, hasilnya nol" — pernyataan lain.
+    const rp = n => n === null || n === undefined ? '—' : rpTanda(n);
+    const baris = (nama, ket, nilai, alpha, utang) =>
+      '<div class="ak-nr-baris' + (utang ? ' utang' : '') + '" style="--tanda:rgba('
+        + (utang ? '217,166,147,' : '226,205,166,') + alpha + ')">'
+      + '<i></i><span>' + escapeHtml(nama) + (ket ? '<small>' + escapeHtml(ket) + '</small>' : '')
+      + '</span><b>' + rp(nilai) + '</b></div>';
+    let html = '<div class="ak-nr-grup">Punya</div>';
+    html += baris('Kas (empat tempat)',
+      titik ? 'dari titik hitung ' + formatTanggal(titik.tanggal) : 'titik hitung belum disetel — belum bisa dihitung',
+      k.kas, '.68');
+    html += baris('Stok di gudang',
+      'sack ' + formatRupiah(k.nilaiSack) + ' \u00b7 bags ' + formatRupiah(k.nilaiBags) + ' \u00b7 bahan ' + formatRupiah(k.nilaiBahan),
+      k.stok, '.56');
+    html += baris('Piutang pelanggan', k.nPiutang + ' orang', k.piutang, '.44');
+    html += baris('Kasbon pegawai', k.nKasbon + ' orang', k.kasbon, '.32');
+    if (k.utangPemasok > 0 || k.utangOwner > 0) {
+      html += '<div class="ak-nr-grup oks">Utang</div>';
+      if (k.utangPemasok > 0) html += baris('Bon pemasok', k.nBonPemasok + ' bon belum dibayar', k.utangPemasok, '.66', true);
+      if (k.utangOwner > 0) html += baris('Utang toko ke owner', 'belanja toko yang dibayar dompet pribadi', k.utangOwner, '.5', true);
+    }
+    const belumUtuh = k.total === null;
+    html += '<div class="ak-nr-bersih"><i>Kekayaan bersih</i>'
+      + '<b' + (!belumUtuh && k.total < 0 ? ' class="kurang"' : '') + '>' + rp(k.total) + '</b>'
+      + '<small>' + (belumUtuh
+          ? 'Belum utuh \u2014 kas belum bisa dihitung tanpa titik hitung, jadi kekayaan tidak ditebak.'
+          : 'Punya dikurangi utang. Stok dinilai dengan HPP (harga modal), bukan harga jual.')
+      + '</small></div>';
+    isi.innerHTML = html;
+  }
+
+  // ---------- G: UANG SIAPA (rupa kaca) ----------
+  // Kekayaan bersih toko dipecah menurut ASALNYA: berapa yang uang pribadi pemilik
+  // (modal tertanam) dan berapa yang dihasilkan usaha sendiri (sisanya). Vonisnya sama
+  // dengan penjaga "jangan makan modal" di kartu Modal Owner — SATU perbandingan, dua
+  // tempat menggambar, dan keduanya membacanya dari hitungan yang sama.
+  function gambarUangSiapa() {
+    const kartu = document.getElementById('akSiapaKaca');
+    if (!kartu || window.matchMedia('(min-width: 700px)').matches) return;
+    const isi = document.getElementById('akSiapaIsi');
+    kartu.style.display = 'block';
+    let k = null, modal = null, L = null, prive = 0, tarikBln = 0;
+    const hariIni = tanggalLokalIso();
+    const awal = bulanLokalIso() + '-01';
+    try {
+      k = hitungNeraca();
+      const semua = daftarModalOwner();
+      const setor = semua.filter(x => x.tipe === 'setor').reduce((a, x) => a + (x.nominal || 0), 0);
+      const tarik = semua.filter(x => x.tipe !== 'setor').reduce((a, x) => a + (x.nominal || 0), 0);
+      modal = setor - tarik;
+      tarikBln = semua.filter(x => x.tipe !== 'setor' && x.tanggal >= awal && x.tanggal <= hariIni)
+        .reduce((a, x) => a + (x.nominal || 0), 0);
+      L = hitungLabaBersihRentang(awal, hariIni);
+      prive = ambilPengeluaranHarian()
+        .filter(h => h.kategori === 'owner' && h.tanggal >= awal && h.tanggal <= hariIni)
+        .reduce((a, h) => a + (h.nominal || 0), 0);
+    } catch (e) { console.error('uang siapa:', e); }
+    if (modal === null || !L) {
+      isi.innerHTML = '<div class="ak-vonis"><i></i><span><b>Belum bisa dipisah</b>'
+        + '<small>Catatan modal atau laba bulan berjalan belum bisa dibaca.</small></span></div>';
+      return;
+    }
+    // Dari usaha = kekayaan bersih − modal tertanam. Kalau kekayaan belum utuh (kas belum
+    // bisa dihitung), pecahannya juga belum bisa — dan itu dikatakan, bukan diisi nol.
+    const dariUsaha = k && k.total !== null ? k.total - modal : null;
+    const diambil = prive + tarikBln;
+    const makanModal = diambil > 0 && diambil > L.labaBersih;   // syarat sama dengan kartu lama
+    isi.innerHTML =
+      '<div class="ak-siapa">'
+      + '<div class="kol-modal"><i>Modal owner</i><b>' + rpTanda(modal) + '</b>'
+        + '<small>uang pribadi yang ditanam</small></div>'
+      + '<div class="kol-usaha"><i>Dari usaha</i><b>'
+        + (dariUsaha === null ? '—' : rpTanda(dariUsaha)) + '</b>'
+        + '<small>' + (dariUsaha === null
+            ? 'belum bisa dihitung tanpa titik kas'
+            : 'kekayaan bersih dikurangi modal') + '</small></div>'
+      + '</div>'
+      + '<div class="ak-vonis' + (makanModal ? ' awas' : '') + '"><i></i><span>'
+      + '<b>' + (makanModal ? 'Prive memakan modal sendiri' : 'Prive masih di bawah laba') + '</b>'
+      + '<small>Diambil pemilik bulan ini ' + rpTanda(diambil) + ' (prive ' + formatRupiah(prive)
+      + ' + tarik modal ' + formatRupiah(tarikBln) + ') lawan laba bersih bulan berjalan '
+      + rpTanda(L.labaBersih) + '.'
+      + (makanModal
+          ? ' Selisih ' + formatRupiah(diambil - L.labaBersih) + ' diambil dari modal, bukan dari untung.'
+          : (diambil > 0
+              ? ' Selama begini, yang diambil memang untung \u2014 modal tidak tersentuh.'
+              : ' Bulan ini pemilik belum mengambil apa pun, jadi tidak ada yang bisa memakan modal.'))
+      + ' Dihitung ' + formatTanggal(awal) + ' sampai hari ini.</small></span></div>';
   }
 
   // ---------- P: PERJALANAN SATU RUPIAH ----------
@@ -20650,14 +20852,30 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       { nama: 'Ditemani utang pemasok', ket: 'selama pemasok menunggu, itu bukan uang kita yang tertahan', hari: hari(sisaUtang, hppHari), arah: -1 }
     ];
     const maks = Math.max.apply(null, g.map(x => x.hari || 0).concat([1]));
-    daftar.innerHTML = g.map(x => {
+    // DUA PENJEPIT KAS, dari rancangan: perjalanan dimulai dari kas dan berakhir jadi kas
+    // lagi. Tanpa keduanya deret ini terbaca sebagai tiga pos yang berdiri sendiri, bukan
+    // satu PUTARAN — dan seluruh gunanya kartu ini justru putarannya. Keduanya bukan
+    // angka hitungan: kas tidak menginap, jadi lamanya "—", dan kotaknya penuh.
+    const barisG = (x) => {
+      if (x.kas) {
+        return '<div class="ak-gerbong-baris kas">'
+          + '<span class="kotak"><span class="isi" style="--lebar:100%"></span></span>'
+          + '<span class="teks"><b>' + escapeHtml(x.nama) + '</b><i>' + escapeHtml(x.ket) + '</i></span>'
+          + '<span class="nilai">—</span></div>';
+      }
       const ada = x.hari !== null;
       const lebar = ada ? Math.round((x.hari / maks) * 100) : 0;
-      return '<div class="ak-gerbong-baris' + (x.arah < 0 ? ' balik' : '') + '">'
+      // Gerbong KOSONG bertepi putus, bukan kotak terisi nol: kotak kosong bertepi utuh
+      // terbaca "sudah diukur, hasilnya sangat sedikit" — padahal artinya tidak ada isinya.
+      return '<div class="ak-gerbong-baris' + (x.arah < 0 ? ' balik' : '') + (ada ? '' : ' gb-kosong') + '">'
         + '<span class="kotak"><span class="isi" style="--lebar:' + lebar + '%"></span></span>'
         + '<span class="teks"><b>' + escapeHtml(x.nama) + '</b><i>' + escapeHtml(x.ket) + '</i></span>'
         + '<span class="nilai">' + (ada ? (x.arah < 0 ? '−' : '') + x.hari + ' hr' : '—') + '</span></div>';
-    }).join('');
+    };
+    daftar.innerHTML = [{ nama: 'Kas di laci', ket: 'siap dipakai', kas: true }]
+      .concat(g)
+      .concat([{ nama: 'Kas lagi', ket: 'selesai satu putaran', kas: true }])
+      .map(barisG).join('');
     const bersih = g.reduce((a, x) => a + (x.hari || 0) * x.arah, 0);
     const kurang = g.filter(x => x.hari === null).map(x => x.nama.toLowerCase());
     ket.textContent = (hppHari > 0
@@ -20729,7 +20947,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     kolom.innerHTML = ember.map((e, i) => {
       const tinggi = Math.round((e.nilai / maks) * 100);
       const tua = i >= 2 && e.nilai > 0;
-      return '<div class="ak-tidur-kolom' + (tua ? ' tua' : '') + '" title="' + escapeHtml(e.label + ' · ' + formatRupiah(e.nilai)) + '">'
+      return '<div class="ak-tidur-kolom' + (tua ? ' tua' : '') + (e.nilai > 0 ? '' : ' nol')
+        + '" title="' + escapeHtml(e.label + ' \u00b7 ' + formatRupiah(e.nilai)) + '">'
         + '<span class="isi" style="--tinggi:' + tinggi + '%"></span></div>';
     }).join('');
     label.innerHTML = ember.map((e, i) =>
@@ -21096,10 +21315,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('daftarArusKasKeluar').innerHTML = d.keluar.map(barisArusKas).join('');
     tampilkanKeManaUang(d);
     tampilkanNeraca();
+    gambarNeracaKaca();     // kembaran kaca: angka sama, gambar rancangan (hanya <700px)
     tampilkanBukuKas(d.bulan);
     tampilkanRencanaKeluar();
     tampilkanSparkSaldo();
     tampilkanModalOwner();
+    gambarUangSiapa();      // idem — dipanggil SESUDAH tampilkanModalOwner, sumber sama
     terapkanZonaArusKas();   // KACA EMAS G2: zona bertahan lintas render + kepala 2 keadaan
     pfHitungNaik(PF_ANGKA_ARUSKAS);   // sesudah tampilkanBukuKas: hero "kas sekarang" diisi di sana
 
