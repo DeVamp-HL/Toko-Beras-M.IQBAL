@@ -5480,6 +5480,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   text-transform:uppercase; color:var(--pf-abu); }
 #halamanPemasok .pm6-dua .nilai{ font-size:13px; font-weight:600; color:var(--pf-platina); margin-top:2px; }
 #halamanPemasok .pm6-dua .nilai.kosong{ color:var(--pf-abu); font-weight:400; }
+/* ".kosong" adalah kelas GLOBAL untuk DAFTAR kosong (baris 796: text-align:center;
+   padding:40px 16px; font-size:15px). Di beberapa tempat ia dipinjam sebagai PENANDA
+   pada .nilai — dan padding 40px-nya ikut terbawa diam-diam. Terukur di kartu pemasok:
+   sel "tidak ada" setinggi 97px lawan 17px sel sebelahnya, teksnya rata tengah, dan
+   kartunya melar 80px tanpa sebab. Ini kejadian KEDUA dari pola yang sama (yang pertama
+   di baris gerbong Arus Kas, ditambal jadi .gb-kosong). Di sini nama globalnya tidak
+   bisa dilepas tanpa menyentuh tiga layar sekaligus, jadi yang terbawa DIBATALKAN
+   di tempat ia dipinjam — dan disebut, supaya tidak dikira gaya yang disengaja. */
+.pm6-dua .nilai.kosong, #masukKaca .mk-tiga .nilai.kosong{
+  padding:0; text-align:left; font-size:13px; }
 #halamanPemasok .pm6-keping{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
 #halamanPemasok .pm6-keping button{ min-height:44px; padding:5px 10px; border-radius:9px;
   border:1px solid var(--pf-tepi); background:rgba(255,255,255,.03); color:inherit;
