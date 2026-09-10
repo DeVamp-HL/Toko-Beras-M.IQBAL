@@ -4428,6 +4428,30 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   .ak-wujud > div.habis strong{ color:#e8c3b2; }
   .ak-wujud small{ font-family:var(--pf-serif); font-style:italic; font-size:9.5px;
     line-height:1.35; color:var(--pf-abu2,#a7adb5); }
+  /* KAS CUKUP/KURANG UNTUK RENCANA KELUAR (sumbu E). Dua bilah bertumpuk pada satu
+     patokan: yang terpanjang di antara kas & rencana. Penanda tegak berdiri di ujung
+     bilah kas, jadi "sampai mana uangnya cukup" terbaca sebagai TEMPAT, bukan angka. */
+  .ak-rencana-nilai{ font-family:var(--pf-serif); font-weight:600; font-size:30px; line-height:1.1;
+    margin-top:9px; color:var(--pf-krem,#f7ecd6); font-variant-numeric:tabular-nums; }
+  #akRencanaKepala.kurang .ak-rencana-nilai{ color:#e8c3b2; }
+  #akRencanaKepala.kurang{ border-color:rgba(217,166,147,.34); }
+  #akRencanaKepala.kurang .kg-label{ color:#d9a693; }
+  .ak-rencana-bilah{ position:relative; height:36px; margin-top:12px; }
+  .ak-rencana-bilah .bar{ position:absolute; left:0; height:12px; border-radius:2px; display:block;
+    width:var(--w,0%); }
+  .ak-rencana-bilah .bar.kas{ top:4px; background:linear-gradient(90deg,#c2a678,#f7ecd6); }
+  .ak-rencana-bilah .bar.rencana{ top:20px;
+    background:linear-gradient(90deg,rgba(217,166,147,.32),#d9a693); }
+  .ak-rencana-bilah .penanda{ position:absolute; top:0; left:var(--x,0%); width:2px; height:36px;
+    display:block; background:rgba(247,236,214,.6); }
+  .ak-rencana-kaki{ display:flex; justify-content:space-between; margin-top:9px;
+    font-size:10px; font-weight:600; line-height:1.4; }
+  .ak-rencana-kaki .kas{ color:var(--emas,#e2cda6); }
+  .ak-rencana-kaki .rencana{ color:#d9a693; }
+  /* Baris rencana dapat tanda oksida: semuanya uang yang akan KELUAR. */
+  #akRencanaDaftar .baris-44 > .rn-tanda{ display:block; flex:none; width:3px; height:17px;
+    border-radius:2px; background:rgba(217,166,147,.6); margin-right:9px; }
+  #akRencanaDaftar .baris-44 .angka{ color:#e8c3b2; }
   /* Kembaran lama dipadamkan di HP — satu angka satu tempat. */
   #kartuHeroArusKas, #akDuaMini{ display:none; }
   .ak-nr-grup{ font-size:8px; font-weight:800; letter-spacing:.2em; text-transform:uppercase;
@@ -4520,7 +4544,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   #akKepala{ background:none; border:none; box-shadow:none; padding:0; margin-bottom:0; }
   #akKepala > .kg-label, #akKepala .ak-keping, #akKepalaKosong{ display:none !important; }
   .ak-jam{ display:none; }   /* gayanya cuma ada di <700px — tanpa ini ia jadi kotak telanjang */
-  #akNeracaKaca, #akSiapaKaca, #akKolamKaca, #akWujudKaca{ display:none !important; }   /* desktop memakai kartu lama */
+  #akNeracaKaca, #akSiapaKaca, #akKolamKaca, #akWujudKaca, #akRencanaKepala{ display:none !important; }   /* desktop memakai kartu lama */
 }
 /* --- KACA EMAS G2: Piutang & Kasbon --- */
 @media (min-width:700px){ #piutang6a{ display:none; } }
@@ -7765,6 +7789,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <div class="ak-zona" id="akZonaNanti">
     <!-- RENCANA KELUAR (hi-fi Arus Kas): pos bulan ini yang BELUM dibayar
          (biaya + gaji per orang) vs kas sekarang — cukup / kurang berapa. -->
+    <!-- KAS CUKUP / KURANG UNTUK RENCANA KELUAR (sumbu E, rupa rancangan): dua bilah
+         bertumpuk — bilah atas kas yang ada, bilah bawah rencana keluar — dengan penanda
+         tegak di ujung kas. Panjang relatifnya menjawab "cukup atau tidak" sebelum
+         angkanya dibaca, dan penandanya menunjukkan DI MANA kas berhenti. -->
+    <div class="kartu kg-panel" id="akRencanaKepala" style="display:none;">
+      <div class="kg-label" id="akRencanaJudul">Kas untuk rencana keluar</div>
+      <div class="ak-rencana-nilai" id="akRencanaSelisih">Rp0</div>
+      <div class="ak-rencana-bilah">
+        <span class="bar kas" id="akBarKas"></span>
+        <span class="bar rencana" id="akBarRencana"></span>
+        <span class="penanda" id="akBarPenanda"></span>
+      </div>
+      <div class="ak-rencana-kaki"><span class="kas" id="akRencanaKasTxt"></span><span class="rencana" id="akRencanaTotalTxt"></span></div>
+      <div class="ak-sisa-nota" id="akRencanaNota"></div>
+    </div>
+
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="akRencanaKartu">
       <div class="kd-judul"><h3>Rencana keluar bulan ini</h3><span class="kd-hitung" id="akRencanaCukup"></span></div>
       <div id="akRencanaDaftar"></div>
@@ -14643,6 +14683,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const total = belum.reduce((a, x) => a + x.nominal, 0);
     const kas = ik6KasSekarang();
     const cukupEl = document.getElementById('akRencanaCukup');
+    gambarRencanaKepala(belum, total, kas);
     if (!belum.length) {
       document.getElementById('akRencanaDaftar').innerHTML =
         '<div class="kosong-info"><b>Semua pos bulan ini sudah dibayar</b><span>Tidak ada rencana keluar yang menunggu.</span></div>';
@@ -14653,8 +14694,77 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       : kas >= total ? formatRupiah(total) + ' \u00b7 kas cukup'
       : formatRupiah(total) + ' \u00b7 <b class="ph-merah">kurang ' + formatRupiah(total - kas) + '</b>';
     document.getElementById('akRencanaDaftar').innerHTML = belum.map(x =>
-      `<div class="baris-44"><span class="nama">${escapeHtml(x.label)}<small>belum dibayar bulan ini</small></span>
+      `<div class="baris-44"><i class="rn-tanda"></i><span class="nama">${escapeHtml(x.label)}<small>belum dibayar bulan ini</small></span>
        <span class="angka">${formatRupiah(x.nominal)}</span></div>`).join('');
+  }
+
+  // ---------- E: KAS CUKUP / KURANG UNTUK RENCANA KELUAR (rupa kaca) ----------
+  // Dua bilah bertumpuk pada SATU patokan (yang terpanjang di antara kas & rencana), dengan
+  // penanda tegak di ujung bilah kas. Panjang relatifnya menjawab "cukup atau tidak" sebelum
+  // angkanya dibaca, dan penandanya menunjukkan DI MANA kas berhenti.
+  //
+  // Angkanya dioper dari tampilkanRencanaKeluar — pemanggilnya yang sudah menghitung
+  // bayaranBiayaBulanan dan ik6KasSekarang; kartu ini tidak menghitung ulang apa pun.
+  function gambarRencanaKepala(belum, total, kas) {
+    const kartu = document.getElementById('akRencanaKepala');
+    if (!kartu || window.matchMedia('(min-width: 700px)').matches) return;
+    kartu.style.display = 'block';
+    const judul = document.getElementById('akRencanaJudul');
+    const nilai = document.getElementById('akRencanaSelisih');
+    const nota = document.getElementById('akRencanaNota');
+    const barKas = document.getElementById('akBarKas');
+    const barRen = document.getElementById('akBarRencana');
+    const penanda = document.getElementById('akBarPenanda');
+    // TIGA KEADAAN KOSONG dibedakan di kartu ini:
+    //   kas null      -> titik hitung belum disetel: perbandingan tidak bisa dibuat sama sekali
+    //   total 0       -> semua pos sudah dibayar: perbandingannya ADA, hasilnya "tidak ada rencana"
+    //   selisih < 0   -> ada rencana dan kasnya kurang
+    if (kas === null || kas === undefined) {
+      kartu.classList.remove('kurang');
+      judul.textContent = 'Kas untuk rencana keluar';
+      nilai.textContent = '—';
+      // Bilah yang tidak menggambar apa-apa DIPADAMKAN, bukan digambar kosong: strip
+      // kosong setinggi 36px terbaca "dua bilah sepanjang nol", padahal panjangnya
+      // memang tidak diketahui.
+      barKas.parentElement.style.display = 'none';
+      barKas.style.setProperty('--w', '0%'); barRen.style.setProperty('--w', '0%');
+      penanda.style.display = 'none';
+      document.getElementById('akRencanaKasTxt').textContent = 'kas belum diketahui';
+      document.getElementById('akRencanaTotalTxt').textContent = 'rencana ' + formatRupiah(total);
+      nota.textContent = 'Titik hitung kas belum disetel, jadi kas sekarang belum diketahui — '
+        + 'cukup atau tidaknya belum bisa dijawab. Sistem tidak menebaknya.';
+      return;
+    }
+    barKas.parentElement.style.display = '';
+    if (!(total > 0)) {
+      kartu.classList.remove('kurang');
+      judul.textContent = 'Tidak ada rencana keluar';
+      nilai.textContent = rpTanda(kas);
+      barKas.style.setProperty('--w', '100%'); barRen.style.setProperty('--w', '0%');
+      penanda.style.display = 'none';
+      document.getElementById('akRencanaKasTxt').textContent = 'kas ' + formatRupiah(kas);
+      document.getElementById('akRencanaTotalTxt').textContent = 'rencana Rp0';
+      nota.textContent = 'Semua pos bulan ini sudah dibayar, jadi tidak ada yang menunggu kas.';
+      return;
+    }
+    const patokan = Math.max(kas, total) || 1;
+    const persenKas = Math.min(100, Math.max(0, kas) / patokan * 100);
+    const persenRen = Math.min(100, total / patokan * 100);
+    const selisih = kas - total;
+    kartu.classList.toggle('kurang', selisih < 0);
+    judul.textContent = selisih < 0 ? 'Kas kurang untuk rencana keluar' : 'Kas cukup untuk rencana keluar';
+    nilai.textContent = rpTanda(selisih);
+    barKas.style.setProperty('--w', persenKas.toFixed(0) + '%');
+    barRen.style.setProperty('--w', persenRen.toFixed(0) + '%');
+    penanda.style.display = '';
+    penanda.style.setProperty('--x', persenKas.toFixed(0) + '%');
+    document.getElementById('akRencanaKasTxt').textContent = 'kas ' + formatRupiah(kas);
+    document.getElementById('akRencanaTotalTxt').textContent = 'rencana ' + formatRupiah(total);
+    nota.textContent = belum.length + ' pos belum dibayar bulan ini, jumlahnya ' + formatRupiah(total) + '. '
+      + (selisih < 0
+          ? 'Kas sekarang ' + formatRupiah(kas) + ' kurang ' + formatRupiah(-selisih) + '.'
+          : 'Kas sekarang ' + formatRupiah(kas) + ', sisa ' + formatRupiah(selisih) + ' sesudah semuanya dibayar.')
+      + ' Urutannya urutan pos, BUKAN urutan jatuh tempo — catatan biaya bulanan tidak menyimpan tanggal jatuh tempo.';
   }
 
   function tampilkanSparkSaldo() {
