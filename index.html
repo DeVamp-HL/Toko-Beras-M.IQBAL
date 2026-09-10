@@ -5962,6 +5962,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 #thKrom .th-krom b{ display:block; font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--pf-platina); margin-top:2px; }
 #thKrom .th-krom i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); margin-top:2px; }
 /* Cincin beres: --isi dari cacah pagar yang SAMA dengan label x/6. */
+/* ===== TUTUP BUKU: kepala lembar berhenti memakan 169px ===== */
+/* .lap-bilah dipakai bersama layar Laporan, yang memang punya baris kedua & ketiga dan
+   BUTUH flex-wrap. Di lembar Tutup Buku isinya cuma tiga: Tutup, tahun, Segarkan —
+   tapi "margin-left:auto" pada tombol terakhir memakan seluruh sisa ruang, jadi barisnya
+   membungkus dan kepala setinggi 169px pada layar 812px. Seperenam layar habis untuk tiga
+   tombol. Dikurung ke lembar ini saja supaya Laporan tidak ikut berubah. */
+#lembarTutupBuku .lap-bilah{ flex-wrap:nowrap; }
+#lembarTutupBuku .lap-bilah input{ flex:1 1 0; min-width:0; }
 /* ===== TUTUP HARI: sumbu K (pintu rolling), I (sisa waktu), R (peta rute) ===== */
 /* Pintu rolling: enam bilah, satu per langkah, TURUN saat langkahnya beres. Digerakkan
    cacah yang sama dengan cincin di sebelahnya — bukan angka kedua yang bisa berselisih. */
