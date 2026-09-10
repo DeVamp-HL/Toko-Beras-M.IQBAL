@@ -4248,6 +4248,22 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   background:linear-gradient(168deg,rgba(255,255,255,.055),rgba(255,255,255,.02)); }
 @media (max-width:699.98px){
   .ak-zona:not(.aktif){ display:none; }
+  /* KAS HABIS BERAPA HARI LAGI — angka Prata besar seperti angka uang lain di layar ini,
+     tapi SATUANNYA HARI, bukan rupiah. Karena itu ia sengaja TIDAK memakai gradien sampanye
+     maupun platina: empat jenis uang punya wujudnya masing-masing, dan angka yang bukan uang
+     tidak boleh menyamar jadi salah satunya. */
+  .ak-sisa-hari{ display:flex; align-items:baseline; gap:8px; margin:6px 2px 0; }
+  .ak-sisa-hari > span{ font-family:var(--pf-serif); font-size:40px; font-weight:600;
+    line-height:1.05; color:var(--pf-putih,#fdf6e7); font-variant-numeric:tabular-nums; }
+  .ak-sisa-hari > i{ font-style:normal; font-size:11px; letter-spacing:.22em;
+    text-transform:uppercase; color:#8f959d; }
+  .ak-sisa-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+    color:var(--pf-abu2,#a7adb5); margin:8px 2px 0; line-height:1.5; }
+  /* Tujuh hari atau kurang = oksida. Ambangnya sama dengan "tenggat dekat" di palet, dan
+     warnanya menempel ke KARTUNYA supaya terbaca tanpa membaca angkanya dulu. */
+  #kartuSisaHariKas.ak-gawat{ border-color:rgba(201,112,94,.38); }
+  #kartuSisaHariKas.ak-gawat .ak-sisa-hari > span{ color:#e8c3b2; }
+  #kartuSisaHariKas.ak-gawat .ak-sisa-hari > i{ color:#c9705e; }
 }
 @media (min-width:700px){
   #akSaklarZona{ display:none; }   /* desktop: ketiga zona tampil semua — gerbang CSS */
@@ -7284,6 +7300,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <button type="button" data-z="nanti" onclick="pilihZonaArusKas('nanti')">Nanti</button>
     </div>
     <div class="ak-zona aktif" id="akZonaSekarang">
+    <!-- KAS HABIS BERAPA HARI LAGI (sumbu L, rancangan Arus Kas - Gabungan). Rancangan
+         menaruhnya MEMIMPIN zona SEKARANG: pertanyaan pertama pemilik tiap pagi bukan
+         "berapa kas saya" tapi "cukup sampai kapan". -->
+    <div class="kartu kg-panel" id="kartuSisaHariKas" style="display:none;">
+      <div class="kg-label">Kas habis berapa hari lagi</div>
+      <div class="ak-sisa-hari"><span id="sisaHariAngka"></span><i id="sisaHariSatuan"></i></div>
+      <div class="ak-sisa-nota" id="sisaHariNota"></div>
+    </div>
     <!-- NERACA RINGKAS (Modul ERP #3): kaki ketiga akuntansi — posisi kekayaan toko
          hari ini, dibandingkan saat titik kas terakhir. -->
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
@@ -20397,6 +20421,63 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       : 'Tercatat. Modal tertanam sekarang ' + formatRupiah(saldoModalOwner()) + '.');
   }
 
+  // ---------- KAS HABIS BERAPA HARI LAGI (sumbu L) ----------
+  // ATURANNYA DARI RANCANGANNYA SENDIRI, disalin apa adanya karena ia keputusan, bukan
+  // rumus: "Sisa hari dihitung dari keluar rutin saja — biaya bulanan dan belanja toko.
+  // Beli beras TIDAK dihitung karena dia bisa ditunda, dan memasukkannya bikin sisa hari
+  // terbaca dua hari padahal toko tidak sedang gawat." Prive owner juga di luar: itu uang
+  // pemilik, bukan ongkos toko berjalan.
+  //
+  // Angka kasnya DITERIMA sebagai argumen dari tampilkanBukuKas — saldo yang SAMA PERSIS
+  // dengan yang tercetak di kepala halaman. Menghitungnya ulang di sini akan melahirkan
+  // rumus saingan yang sepakat hari ini lalu berpisah diam-diam nanti.
+  //
+  // TIGA KEADAAN KOSONG dibedakan, karena ketiganya beda arti dan cuma satu yang gawat:
+  //   titik kas belum disetel  -> BELUM BISA DIHITUNG (bukan nol hari)
+  //   kas sudah <= 0           -> sudah lewat, bukan "0 hari lagi"
+  //   keluar rutin 30 hari = 0 -> tidak ada yang membakar; pembaginya nol
+  function gambarSisaHariKas(saldoKas) {
+    const kartu = document.getElementById('kartuSisaHariKas');
+    if (!kartu) return;
+    const angka = document.getElementById('sisaHariAngka');
+    const satuan = document.getElementById('sisaHariSatuan');
+    const nota = document.getElementById('sisaHariNota');
+    kartu.style.display = 'block';
+    kartu.classList.remove('ak-gawat', 'ak-tenang');
+    const taruh = (a, sat, n, kelas) => {
+      angka.textContent = a; satuan.textContent = sat; nota.textContent = n;
+      if (kelas) kartu.classList.add(kelas);
+    };
+    if (saldoKas === null || saldoKas === undefined) {
+      taruh('—', '', 'Titik hitung kas belum disetel, jadi kas sekarang belum diketahui — sisa hari belum bisa dihitung. Setel titiknya dari Tutup Hari.');
+      return;
+    }
+    let ak = null;
+    try {
+      const sejak = tanggalLokalIso(new Date(Date.now() - 30 * 86400000));
+      ak = hitungArusKasInti(iso => iso >= sejak, bayaranBiayaBulanan());
+    } catch (e) { console.error('sisa hari kas:', e); }
+    if (!ak) { taruh('—', '', 'Gerakan uang 30 hari terakhir belum bisa dibaca — sisa hari belum bisa dihitung.'); return; }
+    const rutin30 = (ak.pos.biayaBulanan || 0) + (ak.pos.harian || 0);
+    const perHari = rutin30 / 30;
+    if (saldoKas <= 0) {
+      // rpTanda, BUKAN formatRupiah: yang kedua menaruh minusnya DI DALAM ("Rp-8.588.790")
+      // sementara kepala halaman menulisnya di luar ("\u2212Rp8.588.790"). Dua wujud untuk
+      // satu angka yang sama, di layar yang sama, adalah cara paling murah membuat pembacanya ragu.
+      taruh('0', 'hari', 'Kas menurut catatan sudah ' + rpTanda(saldoKas) + ' — bukan "habis nanti", tapi sudah lewat. Cocokkan kas dulu kalau angkanya terasa salah.', 'ak-gawat');
+      return;
+    }
+    if (!(perHari > 0)) {
+      taruh('—', '', 'Tiga puluh hari terakhir nol biaya bulanan dan nol belanja toko, jadi tidak ada yang membakar kas — sisa hari tidak punya pembagi.');
+      return;
+    }
+    const hari = Math.floor(saldoKas / perHari);
+    taruh(String(hari), hari === 1 ? 'hari' : 'hari',
+      'Dari keluar RUTIN saja — biaya bulanan ' + formatRupiah(ak.pos.biayaBulanan || 0)
+      + ' + belanja toko ' + formatRupiah(ak.pos.harian || 0) + ' dalam 30 hari, rata-rata '
+      + formatRupiah(Math.round(perHari)) + '/hari. Beli beras sengaja tidak dihitung: ia bisa ditunda.',
+      hari <= 7 ? 'ak-gawat' : 'ak-tenang');
+  }
   function tampilkanBukuKas(bl) {
     const kont = document.getElementById('daftarBukuKas');
     if (!kont) return;
@@ -20421,6 +20502,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     } else {
       wrap.style.display = 'none';
     }
+    gambarSisaHariKas(t ? saldo : null);
     const bulanIni = semua.filter(r => bulanDari(r.t) === bl);
     document.getElementById('bukuKasHitung').textContent = bulanIni.length + ' gerakan';
     if (bulanIni.length === 0) {
