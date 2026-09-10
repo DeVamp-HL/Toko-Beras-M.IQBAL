@@ -3174,6 +3174,55 @@
 .rw-kal-hari.nol .batang { background: rgba(255,255,255,.08); }
 .rw-kal-hari .tgl { font-size: 7.5px; font-weight: 700; letter-spacing: .04em; color: #7c848a; }
 .rw-kal-hari.ini .tgl { color: #e2cda6; }
+/* ===== SUMBU Q: LENCANA TITIPAN + LEMBAR PERSETUJUAN (Harian) ===== */
+/* Tepi PUTUS-PUTUS beroksida: ini bukan kartu berisi angka jadi, ini sesuatu yang masih
+   menggantung. Bentuknya sendiri yang mengatakan "belum selesai". */
+.hz-lencana{ display:flex; align-items:center; gap:11px; width:100%; min-height:56px;
+  padding:11px 13px; margin-bottom:12px; border-radius:5px; text-align:left;
+  font-family:inherit; background:rgba(217,166,147,.07);
+  border:1px dashed rgba(217,166,147,.45); }
+.hz-lencana > i{ display:block; flex:none; width:9px; height:9px; border-radius:99px; background:#d9a693; }
+.hz-lencana > span{ flex:1; min-width:0; }
+.hz-lencana b{ display:block; font-size:12.5px; font-weight:600; color:var(--teks); }
+.hz-lencana em{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  color:var(--pf-abu2,#a7adb5); margin-top:2px; }
+.hz-lencana > u{ flex:none; text-decoration:none; font-size:17px; color:var(--pf-abu); }
+@media (min-width:700px){ .hz-lencana{ display:none !important; } }
+/* Dua pintu berdampingan: Titipkan (tepi saja) dan Simpan (emas penuh). Berat visualnya
+   sengaja beda — yang mengubah kas sekarang adalah yang menonjol. */
+.hz-dua-pintu{ display:flex; gap:8px; }
+.hz-dua-pintu #btnSimpanHarian{ flex:1.6; }
+.hz-dua-pintu .hz-titip{ flex:1; min-height:52px; border-radius:12px; font-family:inherit;
+  font-size:14px; font-weight:600; color:var(--emas,#e2cda6);
+  background:rgba(255,255,255,.04); border:1px solid rgba(226,205,166,.4); }
+.hz-dua-pintu .hz-titip:disabled{ color:var(--pf-abu); border-color:var(--pf-tepi); opacity:.55; }
+#overlayTitipan{ display:block; position:fixed; inset:0; z-index:41; background:#000;
+  opacity:0; pointer-events:none; transition:opacity .22s ease; }
+body.lembar-titipan-terbuka #overlayTitipan{ opacity:.68; pointer-events:auto; }
+#lembarTitipan{ position:fixed; left:0; right:0; bottom:0; z-index:42; height:76vh; height:76dvh;
+  background:linear-gradient(180deg,#20242a,#14171a); border:1px solid rgba(226,205,166,.3);
+  border-bottom:none; border-radius:22px 22px 0 0; box-shadow:0 -18px 50px rgba(0,0,0,.6);
+  padding:10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  transform:translateY(105%); transition:transform .3s cubic-bezier(.16,.84,.28,1);
+  display:flex; flex-direction:column; overflow:hidden; }
+body.lembar-titipan-terbuka #lembarTitipan{ transform:translateY(0); }
+#lembarTitipan .lm-pegangan{ width:40px; height:4.5px; border-radius:3px;
+  background:rgba(228,232,234,.25); margin:2px auto 8px; flex:none; cursor:pointer; }
+#lembarTitipan .tt-baris{ padding:13px 0; border-bottom:1px solid rgba(207,212,218,.07); }
+#lembarTitipan .tt-atas{ display:flex; align-items:baseline; gap:10px; }
+#lembarTitipan .tt-nama{ flex:1; min-width:0; font-size:13px; font-weight:600; color:var(--teks); }
+#lembarTitipan .tt-rp{ flex:none; font-family:var(--pf-serif); font-weight:600; font-size:15px;
+  color:var(--pf-krem,#f7ecd6); font-variant-numeric:tabular-nums; }
+#lembarTitipan .tt-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.5; color:var(--pf-abu2,#a7adb5); margin-top:4px; }
+#lembarTitipan .tt-aksi{ display:flex; gap:8px; margin-top:10px; }
+#lembarTitipan .tt-aksi button{ flex:1; min-height:44px; border-radius:4px; font-family:inherit;
+  font-size:12.5px; font-weight:600; }
+#lembarTitipan .tt-tolak{ color:#e8c3b2; background:rgba(217,166,147,.08);
+  border:1px solid rgba(217,166,147,.38); }
+#lembarTitipan .tt-setuju{ color:#2a1f13; border:0;
+  background:linear-gradient(160deg,#f7ecd6,#c2a678); }
+@media (min-width:700px){ #overlayTitipan, #lembarTitipan{ display:none; } }
 /* ===== LEMBAR BUKU KAS (Arus Kas sumbu F) ===== */
 #overlayBukuKas { display: block; position: fixed; inset: 0; z-index: 41; background: #000;
   opacity: 0; pointer-events: none; transition: opacity .22s ease; }
@@ -6279,6 +6328,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 <!-- LEMBAR HARI (wireframe Riwayat): ketuk batang kalender -> ringkasan hari
      dua tingkat; ketuk kepalanya utk membesar, ketuk latar utk menutup. -->
 <!-- LEMBAR BUKU KAS (Arus Kas, sumbu F). Mekanisme lembar rumah: overlay + kelas di body. -->
+<!-- LEMBAR TITIPAN HARIAN (sumbu Q). Menyetujui MEMINDAHKAN dokumen dari titipanHarian
+     ke pengeluaranHarian — di situlah kas benar-benar berubah, dan tidak sedetik lebih awal. -->
+<div id="overlayTitipan" onclick="tutupLembarTitipan()"></div>
+<div id="lembarTitipan" class="k6a" role="dialog" aria-modal="true">
+  <div class="lm-pegangan" onclick="tutupLembarTitipan()"></div>
+  <div class="bk-kepala">
+    <button type="button" class="bk-tutup" onclick="tutupLembarTitipan()">Tutup</button>
+    <span class="bk-judul">Titipan menunggu</span>
+    <span class="bk-imbang"></span>
+  </div>
+  <div class="bk-mikro" id="ttKepala"></div>
+  <div class="bk-daftar" id="ttDaftar"></div>
+</div>
+
 <div id="overlayBukuKas" onclick="tutupLembarBukuKas()"></div>
 <div id="lembarBukuKas" class="k6a" role="dialog" aria-modal="true">
   <div class="lm-pegangan" onclick="tutupLembarBukuKas()"></div>
@@ -8841,6 +8904,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
        cepat didahulukan supaya papan ketik cuma naik sekali (Prinsip 2). -->
   <div id="halamanHarian" class="halaman k6a">
     <div class="judul-halaman"><h2>Harian</h2><span class="jh-sub" data-tanggal-halaman></span></div>
+    <!-- LENCANA TITIPAN (sumbu Q). Ia menyebut angka yang benar-benar bisa dibuktikan:
+         titipan belum ada di buku pengeluaran, jadi "kas belum berubah" bukan janji —
+         itu pernyataan tentang di mana dokumennya berada. -->
+    <button type="button" class="hz-lencana" id="hzLencanaTitipan" style="display:none;" onclick="bukaLembarTitipan()">
+      <i></i><span><b id="hzLencanaJudul"></b><em id="hzLencanaKet"></em></span><u>&rsaquo;</u>
+    </button>
     <div class="hz-zona">
       <button type="button" id="hzCatat" class="kg-terpilih" onclick="pilihZonaHarian('catat')">CATAT</button>
       <button type="button" id="hzLihat" onclick="pilihZonaHarian('lihat')">LIHAT</button>
@@ -8960,7 +9029,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 <div class="tombol-simpan" id="tombolSimpanHarianWrap" style="display:none;">
   <!-- Tombol membawa ulang nominal & kategori: pemeriksaan terakhir tepat di tempat
        jempol sudah berada (Lembar 7). -->
-  <button onclick="simpanPengeluaranHarian()" id="btnSimpanHarian">Simpan</button>
+  <!-- DUA PINTU, DUA AKIBAT YANG BEDA (sumbu Q): "Simpan" langsung masuk buku dan kas
+       berubah sekarang; "Titipkan" menunggu disetujui dan kas belum berubah. Keduanya
+       memakai isian & pemeriksaan yang sama — tidak ada jalan masuk yang lebih longgar. -->
+  <div class="hz-dua-pintu">
+    <button type="button" onclick="titipkanPengeluaranHarian()" id="btnTitipHarian" class="hz-titip">Titipkan</button>
+    <button onclick="simpanPengeluaranHarian()" id="btnSimpanHarian">Simpan</button>
+  </div>
 </div>
 <div class="tombol-simpan" id="tombolSimpanProduksiWrap" style="display:none;">
   <!-- Penyempurnaan Lembar 3: pratinjau naik pangkat dari satu baris teks jadi kartu
@@ -9089,6 +9164,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   const KOLEKSI_RETUR = 'retur';
   const KOLEKSI_KARANTINA = 'karantina';
   const KOLEKSI_HARIAN = 'pengeluaranHarian';
+  // TITIPAN HARIAN (sumbu Q, rancangan Harian - Gabungan). Pengeluaran yang SUDAH dicatat
+  // tapi BELUM disetujui hidup di koleksi TERPISAH — bukan sebagai kolom status di
+  // pengeluaranHarian. Sebabnya keras: seluruh mesin uang (hitungArusKasInti,
+  // hitungLabaBersihRentang, dan kawan-kawannya) membaca pengeluaranHarian apa adanya
+  // dan WAJIB tetap byte-identik. Kalau titipan ditaruh di sana dengan penanda status,
+  // mesinnya tetap menghitungnya — dan lencana yang berbunyi "kas belum berubah" jadi
+  // bohong sejak detik pertama. Di koleksi sendiri, kalimat itu benar apa adanya:
+  // titipan memang belum ada di buku pengeluaran. Menyetujui = MEMINDAHKANNYA ke sana.
+  const KOLEKSI_TITIPAN = 'titipanHarian';
   const KOLEKSI_BAHAN_KEMASAN = 'stokBahanKemasan';
   const KOLEKSI_BAHAN_LITERAN = 'stokBahanLiteran';
   const KOLEKSI_HARGA_LITERAN = 'katalogHargaLiteran';
@@ -9195,6 +9279,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   let _cacheTutup = [];
   let _cachePelangganCat = [];
   let _cachePesanan = [];
+  let _cacheTitipan = [];
   let _cacheSetoran = [];
   let _cachePenyKemasan = [];
   let _cacheAmplop = [];
@@ -9236,6 +9321,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   const KUNCI_TUTUP = 'miqbal_tutup_hari_v1';
   const KUNCI_PELANGGAN_CAT = 'miqbal_pelanggan_catatan_v1';
   const KUNCI_PESANAN = 'miqbal_pesanan_v1';
+  const KUNCI_TITIPAN = 'miqbal_titipan_harian_v1';
   const KUNCI_SETORAN = 'miqbal_setoran_kas_v1';
   const KUNCI_PENY_KEMASAN = 'miqbal_penyesuaian_kemasan_v1';
   const KUNCI_AMPLOP = 'miqbal_amplop_laba_v1';
@@ -9462,7 +9548,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (nama === 'pesanan') tampilkanPesanan();
     if (nama === 'pemasok') tampilkanPemasok();
     if (nama === 'harga') { tampilkanHarga(); tampilkanJenisBeras(); }
-    if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); }
+    if (nama === 'harian') { tampilkanHarian(); tampilkanHarianHariIni(); gambarChipKeteranganHarian(); perbaruiRingkasHarian(); gambarLencanaTitipan(); }
     if (nama === 'input') { periksaDrafMasuk(); isiPilihanPemasok(); tampilkanSaranBelanja(); gambarMasukKaca(); }
     if (nama === 'setelan') {
       gambarSetelanKaca();
@@ -10979,6 +11065,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   pasangSinkronisasi(KOLEKSI_PESANAN, KUNCI_PESANAN, (d) => { _cachePesanan = d; }, () => {
     if (document.getElementById('halamanPesanan').classList.contains('tampil')) tampilkanPesanan();
   }, 'id', 'pesanan');
+
+  pasangSinkronisasi(KOLEKSI_TITIPAN, KUNCI_TITIPAN, (d) => { _cacheTitipan = d; }, () => {
+    if (document.getElementById('halamanHarian').classList.contains('tampil')) {
+      gambarLencanaTitipan(); gambarLembarTitipan();
+    }
+  }, 'id', 'titipanHarian');
 
   pasangSinkronisasi(KOLEKSI_SETORAN, KUNCI_SETORAN, (d) => { _cacheSetoran = d; }, () => {
     if (document.getElementById('halamanAruskas').classList.contains('tampil')) tampilkanArusKas();
@@ -12667,8 +12759,130 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       btn.textContent = sah
         ? 'Simpan — ' + formatRupiah(nominal) + ' · ' + labelKategoriHarian(kategoriHarianAktif)
         : (nominal <= 0 ? 'Isi nominal dulu' : 'Isi keterangan dulu');
+      // Pintu kedua memakai pemeriksaan yang SAMA. Tombol yang tampak mati wajib
+      // benar-benar disabled — dijaga di kode, bukan di gaya (aturan CLAUDE.md desain).
+      const btnT = document.getElementById('btnTitipHarian');
+      if (btnT) btnT.disabled = !sah;
     }
     gambarKacaHarian();
+  }
+
+  // ============ SUMBU Q: TITIPAN — dicatat dulu, kas berubah sesudah disetujui ============
+  // Dua watak pekerjaan yang beda (rancangan): mencatat itu berdiri, tangan kotor,
+  // pembeli menunggu; menyetujui itu duduk, malam, mau paham. Titipan memisahkan
+  // keduanya TANPA menyentuh satu pun mesin uang: selama masih titipan, dokumennya
+  // bukan pengeluaran — ia belum ada di buku yang dibaca mesin.
+  function gambarLencanaTitipan() {
+    const el = document.getElementById('hzLencanaTitipan');
+    if (!el) return;
+    const t = ambilTitipanHarian();
+    if (!t.length) { el.style.display = 'none'; return; }
+    const rp = t.reduce((a, x) => a + (x.nominal || 0), 0);
+    el.style.display = 'flex';
+    document.getElementById('hzLencanaJudul').textContent =
+      t.length + ' titipan menunggu disetujui';
+    document.getElementById('hzLencanaKet').textContent =
+      formatRupiah(rp) + ' \u00b7 belum masuk buku pengeluaran, kas belum berubah';
+  }
+  function gambarLembarTitipan() {
+    const daftar = document.getElementById('ttDaftar');
+    const kep = document.getElementById('ttKepala');
+    if (!daftar) return;
+    const t = ambilTitipanHarian().slice().sort((a, b) => String(b.id).localeCompare(String(a.id)));
+    if (kep) kep.textContent = t.length
+      ? t.length + ' titipan \u00b7 ' + formatRupiah(t.reduce((a, x) => a + (x.nominal || 0), 0))
+      : 'tidak ada titipan';
+    if (!t.length) {
+      daftar.innerHTML = '<div class="bk-kosong">Tidak ada titipan yang menunggu. '
+        + 'Pengeluaran yang dicatat lewat tombol "Titipkan" muncul di sini sampai disetujui.</div>';
+      return;
+    }
+    daftar.innerHTML = t.map(x => {
+      const beban = bebanTokoKategori(x.kategori), kas = kasTokoKeluarKategori(x.kategori);
+      return '<div class="tt-baris">'
+        + '<div class="tt-atas"><span class="tt-nama">' + escapeHtml(x.keterangan || '(tanpa keterangan)') + '</span>'
+        + '<b class="tt-rp">' + formatRupiah(x.nominal || 0) + '</b></div>'
+        + '<div class="tt-ket">' + escapeHtml(formatTanggal(x.tanggal)) + (x.jam ? ' \u00b7 ' + escapeHtml(x.jam) : '')
+        + ' \u00b7 ' + escapeHtml(labelKategoriHarian(x.kategori))
+        + ' \u00b7 kalau disetujui: ' + (beban ? 'beban toko naik' : 'bukan beban')
+        + ', ' + (kas ? 'kas toko keluar' : 'kas toko tidak bergerak') + '</div>'
+        + '<div class="tt-aksi">'
+        + '<button type="button" class="tt-tolak" onclick="tolakTitipan(' + escapeHtml(JSON.stringify(String(x.id))) + ')">Tolak</button>'
+        + '<button type="button" class="tt-setuju" onclick="setujuiTitipan(' + escapeHtml(JSON.stringify(String(x.id))) + ')">Setujui</button>'
+        + '</div></div>';
+    }).join('')
+      + '<div class="bk-nota">Menyetujui memindahkan catatan ini ke buku pengeluaran \u2014 '
+      + 'di situlah kas dan laba berubah, dan tidak sedetik lebih awal.</div>';
+  }
+  function bukaLembarTitipan() { gambarLembarTitipan(); document.body.classList.add('lembar-titipan-terbuka'); }
+  function tutupLembarTitipan() { document.body.classList.remove('lembar-titipan-terbuka'); }
+
+  // MENYETUJUI = dua tulisan yang harus SELESAI berurutan: dokumen lahir di buku
+  // pengeluaran DULU, titipannya dihapus SESUDAHNYA. Urutan ini bukan selera —
+  // aturan rumah: yang bisa hilang ditulis TERAKHIR. Kalau dibalik dan tulisan kedua
+  // gagal, catatannya lenyap dari dua-duanya. Dengan urutan ini, kegagalan paling buruk
+  // meninggalkan titipan yang sudah disetujui masih tampil — kelihatan, bisa diulang,
+  // dan tidak ada uang yang hilang dari catatan.
+  async function setujuiTitipan(id) {
+    const t = ambilTitipanHarian().find(x => String(x.id) === String(id));
+    if (!t) { alert('Titipan itu sudah tidak ada.'); return; }
+    if (!confirm('Setujui ' + formatRupiah(t.nominal || 0) + ' \u2014 ' + (t.keterangan || '(tanpa keterangan)')
+      + '?\n\nSesudah disetujui, catatan ini masuk buku pengeluaran dan '
+      + (kasTokoKeluarKategori(t.kategori) ? 'kas toko BERKURANG' : 'kas toko TIDAK berubah')
+      + ' \u2014 sekarang, bukan nanti.')) return;
+    try {
+      await simpanKeFirestore(KOLEKSI_HARIAN, {
+        id: t.id, tanggal: t.tanggal, kategori: t.kategori,
+        keterangan: t.keterangan, nominal: t.nominal, jam: t.jam
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Gagal memasukkan ke buku pengeluaran (offline?). Titipannya TIDAK dihapus \u2014 coba lagi nanti.');
+      return;
+    }
+    try { await hapusDariFirestore(KOLEKSI_TITIPAN, t.id); }
+    catch (err) {
+      console.error(err);
+      alert('Catatannya SUDAH masuk buku pengeluaran, tapi titipannya belum terhapus. '
+        + 'Ia akan tetap tampil di sini sampai terhapus \u2014 jangan disetujui dua kali.');
+    }
+    gambarLencanaTitipan(); gambarLembarTitipan(); tampilkanHarianHariIni(); gambarKacaHarian();
+  }
+  async function tolakTitipan(id) {
+    const t = ambilTitipanHarian().find(x => String(x.id) === String(id));
+    if (!t) return;
+    if (!confirm('Tolak ' + formatRupiah(t.nominal || 0) + ' \u2014 ' + (t.keterangan || '(tanpa keterangan)')
+      + '?\n\nCatatan ini dibuang dan TIDAK pernah masuk buku pengeluaran.')) return;
+    try { await hapusDariFirestore(KOLEKSI_TITIPAN, t.id); }
+    catch (err) { console.error(err); alert('Gagal menghapus (offline?). Coba lagi nanti.'); return; }
+    gambarLencanaTitipan(); gambarLembarTitipan();
+  }
+
+  // MENITIPKAN memakai isian yang sama dengan Simpan — pemeriksaannya pun sama, supaya
+  // tidak ada jalan masuk yang lebih longgar dari yang lain.
+  async function titipkanPengeluaranHarian() {
+    const kategori = document.getElementById('harianKategori').value || 'toko';
+    const tanggal = document.getElementById('harianTanggal').value;
+    const keterangan = document.getElementById('harianKeterangan').value.trim();
+    const nominal = parseFloat(document.getElementById('harianNominal').value) || 0;
+    if (!tanggal) { alert('Pilih tanggal dulu.'); return; }
+    if (!keterangan) { alert('Isi keterangan dulu (untuk apa pengeluaran ini).'); return; }
+    if (nominal <= 0) { alert('Isi nominal dulu.'); return; }
+    try {
+      await simpanKeFirestore(KOLEKSI_TITIPAN, {
+        id: idUnik(), tanggal, kategori, keterangan, nominal,
+        jam: new Date().toTimeString().slice(0, 5)
+      });
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menitipkan (offline?). Coba lagi kalau internet sudah nyambung.');
+      return;
+    }
+    document.getElementById('harianKeterangan').value = '';
+    document.getElementById('harianNominal').value = '';
+    perbaruiRingkasHarian();
+    gambarLencanaTitipan();
+    alert('Dititipkan. Kas BELUM berubah \u2014 ia baru berubah sesudah disetujui di lencana atas.');
   }
 
   // ---------- G: UANG TOKO LARI KE MANA (hari ini) ----------
@@ -13670,6 +13884,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function ambilSetoranKas() {
     if (_cacheSetoran.length > 0) return _cacheSetoran;
     const data = localStorage.getItem(KUNCI_SETORAN);
+    return data ? JSON.parse(data) : [];
+  }
+  function ambilTitipanHarian() {
+    if (_cacheTitipan.length > 0) return _cacheTitipan;
+    const data = localStorage.getItem(KUNCI_TITIPAN);
     return data ? JSON.parse(data) : [];
   }
   function ambilPenyesuaianKemasan() {
@@ -30951,6 +31170,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.pilihKategoriHarian = pilihKategoriHarian;
   window.pilihKantongHarian = pilihKantongHarian;
   window.pilihPolaHarian = pilihPolaHarian;
+  window.bukaLembarTitipan = bukaLembarTitipan; window.tutupLembarTitipan = tutupLembarTitipan;
+  window.setujuiTitipan = setujuiTitipan; window.tolakTitipan = tolakTitipan;
+  window.titipkanPengeluaranHarian = titipkanPengeluaranHarian;
   window.pilihZonaHarian = pilihZonaHarian;
   window.simpanPengeluaranHarian = simpanPengeluaranHarian;
   window.hapusHarian = hapusHarian;
