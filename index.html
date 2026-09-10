@@ -4308,13 +4308,30 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   font-size:10px; font-variant-numeric:tabular-nums; line-height:1.15;
   white-space:nowrap; letter-spacing:-.015em; }
 #akKepala #akKepalaKosong b{ font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--teks); }
+#akKepala .ak-kosong-garis{ position:relative; height:44px; margin-top:13px; }
+#akKepala .ak-kosong-garis .kabur{ position:absolute; left:0; width:48%; top:24px; height:2px;
+  border-radius:2px; display:block;
+  background:repeating-linear-gradient(90deg,rgba(207,212,218,.26) 0 4px,transparent 4px 9px); }
+#akKepala .ak-kosong-garis .jelas{ position:absolute; left:48%; right:0; top:14px; height:2px;
+  border-radius:2px; display:block; background:linear-gradient(90deg,#c2a678,#f7ecd6); }
+#akKepala .ak-kosong-garis .penanda{ position:absolute; left:48%; top:2px; width:3px; height:34px;
+  border-radius:2px; display:block; background:#f7ecd6; }
 #akKepala #akKepalaKosong p{ margin:4px 0 8px; font-size:11px; color:var(--pf-abu); line-height:1.5; }
 }
-.ak-saklar{ display:flex; gap:7px; margin-bottom:12px; }
-.ak-saklar button{ flex:1; min-height:44px; border-radius:4px; font-size:11px; font-weight:700;
-  letter-spacing:.06em; text-transform:uppercase; color:var(--pf-abu); border:1px solid var(--pf-tepi);
-  background:linear-gradient(168deg,rgba(255,255,255,.055),rgba(255,255,255,.02)); }
+/* SAKLAR ZONA sebagai SATU ALAT TIGA PILIHAN (rancangan): satu baki berlatar & bertepi,
+   tiga tombol di dalamnya. Tiga tombol lepas bertepi sendiri-sendiri terbaca sebagai tiga
+   perintah berbeda; baki mengatakan mereka satu pilihan yang saling meniadakan. */
+.ak-saklar{ display:flex; gap:4px; margin-bottom:12px; padding:4px; border-radius:6px;
+  background:rgba(255,255,255,.045); border:1px solid var(--pf-tepi); }
+.ak-saklar button{ flex:1; min-height:42px; border-radius:3px; font-size:11px; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--pf-abu); border:0;
+  background:transparent; }
 @media (max-width:699.98px){
+  /* Berganti zona adalah MEMBUKA LIPATAN, bukan menukar halaman. Tanpa gerak, saklar
+     terasa seperti tiga layar yang saling menimpa. Rancangan memakai naikHalus; berkas
+     ini sudah punya bentuk yang persis sama bernama riwMasuk — dipakai, bukan dibuat lagi. */
+  .ak-zona.ak-masuk{ animation: riwMasuk .22s cubic-bezier(.25,.9,.3,1) both; }
+  @media (prefers-reduced-motion:reduce){ .ak-zona.ak-masuk{ animation:none; } }
   .ak-zona:not(.aktif){ display:none; }
   /* PERJALANAN SATU RUPIAH — baris gerbong. Lebar isian = lama menginap relatif gerbong
      terpanjang. Gerbong BALIK (utang pemasok) mengisi dari KANAN dan beroksida: ia
@@ -4397,17 +4414,46 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   .ak-ramal-wrap{ position:relative; height:126px; margin:10px 0 4px; }
   .ak-ramal-wrap svg{ width:100%; height:116px; display:block; overflow:visible; }
   /* TUAS SIMULASI — tinggi batang = besar posnya dalam 30 hari; ditekan = aktif. */
+  /* TUAS YANG BENAR-BENAR BERGERAK (rancangan sumbu R). Batang bergeser waktu ditarik dan
+     pegangan putih ikut naik-turun bersamanya — itu yang membuatnya terbaca sebagai TUAS,
+     bukan batang bagan yang kebetulan bisa diketuk. Dua ARAH, dua warna:
+       ditahan -> jatuh ke 8%, hijau  (bakaran berkurang, kas lebih awet)
+       diikut  -> naik penuh, oksida  (bakaran bertambah, kas lebih cepat habis)
+     Menggambar keduanya dengan gerak yang sama akan berbohong tentang salah satunya. */
   .ak-tuas{ display:flex; align-items:flex-end; gap:8px; height:120px; margin:10px 2px 0; }
-  .ak-tuas-btn{ flex:1; height:100%; padding:4px; border-radius:4px; background:rgba(255,255,255,.04);
-    border:1px solid rgba(255,255,255,.09); display:flex; align-items:flex-end; min-width:44px; }
-  .ak-tuas-btn .isi{ display:block; width:100%; height:var(--tinggi,0%); border-radius:3px;
-    background:linear-gradient(180deg,rgba(226,205,166,.42),rgba(191,164,118,.24)); }
-  .ak-tuas-btn.aktif{ border-color:rgba(240,220,187,.55); background:rgba(240,220,187,.08); }
-  .ak-tuas-btn.aktif .isi{ background:linear-gradient(180deg,#f7ecd6,#c2a678); }
+  .ak-tuas-btn{ position:relative; flex:1; height:100%; padding:0; border-radius:4px; overflow:hidden;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09);
+    display:flex; flex-direction:column; justify-content:flex-end; min-width:44px; }
+  .ak-tuas-btn .isi{ display:block; width:100%; height:var(--tinggi,0%);
+    background:linear-gradient(180deg,#f7ecd6,#c2a678);
+    transition:height .18s cubic-bezier(.25,.9,.3,1); }
+  .ak-tuas-btn .pegangan{ position:absolute; left:2px; right:2px; height:10px; border-radius:2px;
+    display:block; background:#f2efe9; box-shadow:0 0 0 1px rgba(226,205,166,.6);
+    bottom:calc(var(--tinggi,0%) - 5px); transition:bottom .18s cubic-bezier(.25,.9,.3,1); }
+  .ak-tuas-btn.ditahan{ border-color:rgba(200,211,189,.42); background:rgba(200,211,189,.06); }
+  .ak-tuas-btn.ditahan .isi{ background:linear-gradient(180deg,rgba(200,211,189,.5),rgba(200,211,189,.26)); }
+  .ak-tuas-btn.ditahan .pegangan{ box-shadow:0 0 0 1px rgba(200,211,189,.62); }
+  .ak-tuas-btn.diikut{ border-color:rgba(217,166,147,.45); background:rgba(217,166,147,.06); }
+  .ak-tuas-btn.diikut .isi{ background:linear-gradient(180deg,rgba(232,195,178,.55),rgba(201,112,94,.3)); }
+  .ak-tuas-btn.diikut .pegangan{ box-shadow:0 0 0 1px rgba(217,166,147,.62); }
   .ak-tuas-label{ display:flex; gap:8px; margin:7px 2px 0; }
   .ak-tuas-label span{ flex:1; text-align:center; font-size:9px; letter-spacing:.12em;
     text-transform:uppercase; color:#8f959d; }
-  .ak-tuas-label span.aktif{ color:#e2cda6; }
+  .ak-tuas-label span.ditahan{ color:#c8d3bd; }
+  .ak-tuas-label span.diikut{ color:#e8c3b2; }
+  /* Tuas untuk pos yang Rp0: tepi putus, tanpa batang, tanpa pegangan, dan mati.
+     Ia mengaku "tidak ada yang bisa ditahan" — bukan "ditahan sedikit sekali". */
+  .ak-tuas-btn.tuas-nol{ border-style:dashed; border-color:rgba(207,212,218,.2);
+    background:none; opacity:.7; }
+  .ak-tuas-label span.tuas-nol{ color:#6d747a; }
+  /* Label mikro kartu dampak — berubah menurut tuas yang ditarik. */
+  .ak-tahan-label{ font-size:9px; font-weight:700; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--pf-abu2,#a7adb5); margin-bottom:6px; }
+  .ak-tahan-label.menahan{ color:#c8d3bd; }
+  .ak-tahan-label.mengikut{ color:#e8c3b2; }
+  #kartuTuasTahan.ak-tuas-hidup{ border-color:rgba(200,211,189,.3); }
+  .ak-tahan-baris b.lebih-awet{ color:#c8d3bd; }
+  .ak-tahan-baris b.lebih-cepat{ color:#e8c3b2; }
   .ak-tahan-hasil{ margin-top:12px; padding-top:11px; border-top:1px solid rgba(255,255,255,.07); }
   .ak-tahan-baris{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; min-height:38px; }
   .ak-tahan-baris span{ font-size:11.5px; color:var(--pf-abu2,#a7adb5); }
@@ -4525,6 +4571,22 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
      begitu sub disembunyikan di layar sempit, lencana menempel rapat ke huruf terakhir
      judul (terukur: jarak 0px). Rancangan menyebut gap 9px — sekarang sistem juga. */
   #halamanAruskas .judul-halaman{ gap:9px; }
+  /* TIGA KARTU masih memakai krom desktop di layar HP — judul serif besar (h2/h3) di
+     antara tetangga yang semuanya berlabel mikro huruf-besar. Yang berubah cuma RUPA
+     judulnya; markup & isinya tidak disentuh, jadi desktop tetap seperti semula. */
+  #kartuKeMana .kd-judul h3, #akRencanaKartu .kd-judul h3, #akSparkKartu .panel-kepala h2{
+    font-family:inherit; font-style:normal; font-size:9px; font-weight:700; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--pf-abu); }
+  #kartuKeMana .kd-judul h3 .keterangan, #akRencanaKartu .kd-judul h3 .keterangan{
+    letter-spacing:.04em; text-transform:none; }
+  /* HARI PALING KERING adalah satu-satunya kelompok GAWAT di layar ini — rancangan
+     memberi judulnya warna oksida (grupOks), bukan abu seperti yang lain. Isyaratnya
+     ada di JUDUL supaya terbaca sebelum petaknya sempat dipelajari. */
+  #kartuHariKering > .kg-label{ color:#d9a693; }
+  /* Sapuan cahaya (refraksi) di tiga kartu KEPALA zona — sama seperti kartu kepala kas.
+     Kartunya wajib memotong sapuan yang melewati tepinya, kalau tidak cahayanya menyapu
+     kartu tetangga juga. */
+  #kartuSisaHariKas, #akKolamKaca, #akRencanaKepala{ overflow:hidden; }
   /* Bulan di kepala halaman Arus Kas — didorong ke kanan seperti rancangan. */
   #halamanAruskas .judul-halaman .jh-bulan{ margin-left:auto; flex:none;
     font-family:var(--pf-serif); font-style:italic; font-size:12.5px; color:var(--pf-abu); }
@@ -7675,6 +7737,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div id="akKepalaKosong" style="display:none;">
         <b>Belum bisa tahu</b>
         <p>Titik hitung belum disetel, jadi saldo sebelum itu tidak diketahui. Sistem tidak menebaknya.</p>
+        <!-- GAMBAR yang menerangkan penolakannya (rancangan): garis PUTUS-PUTUS kabur di
+             kiri = masa sebelum titik hitung, yang memang tidak diketahui; garis EMAS jelas
+             di kanan = sesudahnya, yang tercatat; penanda tegak di persimpangannya = titik
+             hitung itu sendiri. Kalimatnya sudah benar — yang kurang gambarnya, dan
+             gambarlah yang membuat "kenapa menolak" terbaca dalam sekali pandang. -->
+        <div class="ak-kosong-garis" aria-hidden="true">
+          <span class="kabur"></span><span class="jelas"></span><span class="penanda"></span>
+        </div>
         <button type="button" class="tombol-utama-kartu" onclick="gulirKeCocokkanKas()">Setel titik hitung</button>
       </div>
     </div>
@@ -7688,6 +7758,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
          menaruhnya MEMIMPIN zona SEKARANG: pertanyaan pertama pemilik tiap pagi bukan
          "berapa kas saya" tapi "cukup sampai kapan". -->
     <div class="kartu kg-panel" id="kartuSisaHariKas" style="display:none;">
+      <i class="ik8-refraksi" aria-hidden="true"></i>
       <div class="ak-jam-baris">
         <!-- Jam pasir: pasir ATAS = sisa hari (dipotong 30 hari sebagai penuh), pasir BAWAH
              sisanya. Ia gambar KEADAAN, bukan hiasan — karena itu tingginya dihitung, dan
@@ -7706,24 +7777,6 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       </div>
     </div>
 
-    <!-- UANG TERTIDUR DI GUDANG (sumbu O). Stok BUKAN kas, tapi ia uang toko yang sedang
-         tidak bisa dipakai — dan makin lama tidur, makin mahal ongkos diamnya. -->
-    <div class="kartu kg-panel" id="kartuTertidur" style="display:none;">
-      <div class="kg-label">Uang tertidur di gudang</div>
-      <div class="ak-tidur" id="akTidurKolom"></div>
-      <div class="ak-tidur-label" id="akTidurLabel"></div>
-      <div class="ak-sisa-nota" id="akTidurKet"></div>
-    </div>
-
-    <!-- PERJALANAN SATU RUPIAH (sumbu P). Berapa hari satu rupiah menginap di tiap gerbong
-         sebelum kembali jadi kas. Bukan angka uang — angka WAKTU. -->
-    <div class="kartu kg-panel" id="kartuGerbong" style="display:none;">
-      <div class="kg-label">Perjalanan satu rupiah</div>
-      <div class="ak-gerbong" id="akGerbongDaftar"></div>
-      <div class="ak-sisa-nota" id="akGerbongKet"></div>
-    </div>
-    <!-- NERACA RINGKAS (Modul ERP #3): kaki ketiga akuntansi — posisi kekayaan toko
-         hari ini, dibandingkan saat titik kas terakhir. -->
     <!-- NERACA RINGKAS, rupa rancangan (KEKAYAAN TOKO · NERACA RINGKAS): dua sub-kepala
          PUNYA & UTANG, tiap baris bertanda warna di kirinya, dan kekayaan bersih duduk di
          kotak tersemat — bukan sekadar baris terakhir yang mudah terlewat. ANGKANYA tetap
@@ -7755,6 +7808,24 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div id="akSiapaIsi"></div>
     </div>
 
+    <!-- UANG TERTIDUR DI GUDANG (sumbu O). Stok BUKAN kas, tapi ia uang toko yang sedang
+         tidak bisa dipakai — dan makin lama tidur, makin mahal ongkos diamnya. -->
+    <div class="kartu kg-panel" id="kartuTertidur" style="display:none;">
+      <div class="kg-label">Uang tertidur di gudang</div>
+      <div class="ak-tidur" id="akTidurKolom"></div>
+      <div class="ak-tidur-label" id="akTidurLabel"></div>
+      <div class="ak-sisa-nota" id="akTidurKet"></div>
+    </div>
+
+    <!-- PERJALANAN SATU RUPIAH (sumbu P). Berapa hari satu rupiah menginap di tiap gerbong
+         sebelum kembali jadi kas. Bukan angka uang — angka WAKTU. -->
+    <div class="kartu kg-panel" id="kartuGerbong" style="display:none;">
+      <div class="kg-label">Perjalanan satu rupiah</div>
+      <div class="ak-gerbong" id="akGerbongDaftar"></div>
+      <div class="ak-sisa-nota" id="akGerbongKet"></div>
+    </div>
+    <!-- NERACA RINGKAS (Modul ERP #3): kaki ketiga akuntansi — posisi kekayaan toko
+         hari ini, dibandingkan saat titik kas terakhir. -->
     <div class="kartu" style="margin-top:12px;" id="kartuModalOwner">
       <div class="panel-kepala"><h2>Modal Owner</h2></div>
       <div class="pratinjau-harga" id="modalRingkas"></div>
@@ -7818,6 +7889,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
          sebanding besar arusnya, dan tinggi airnya kas sekarang terhadap kas saat titik.
          Kartu hero + dua kartu mini di bawah tetap ada — desktop memakainya. -->
     <div class="kartu kg-panel" id="akKolamKaca" style="display:none;">
+      <i class="ik8-refraksi" aria-hidden="true"></i>
       <div class="kg-label" id="akKolamLabel">Kas bersih bulan ini</div>
       <div class="ak-kolam-nilai" id="akKolamNilai">Rp0</div>
       <div class="ak-kolam-panggung">
@@ -7934,6 +8006,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
          tegak di ujung kas. Panjang relatifnya menjawab "cukup atau tidak" sebelum
          angkanya dibaca, dan penandanya menunjukkan DI MANA kas berhenti. -->
     <div class="kartu kg-panel" id="akRencanaKepala" style="display:none;">
+      <i class="ik8-refraksi" aria-hidden="true"></i>
       <div class="kg-label" id="akRencanaJudul">Kas untuk rencana keluar</div>
       <div class="ak-rencana-nilai" id="akRencanaSelisih">Rp0</div>
       <div class="ak-rencana-bilah">
@@ -7968,6 +8041,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div class="ak-tuas" id="akTuasBaris"></div>
       <div class="ak-tuas-label" id="akTuasLabel"></div>
       <div class="ak-tahan-hasil">
+        <!-- Label yang BERUBAH: ia menyebut apa yang sedang disimulasikan, bukan cuma
+             "hasil". Tanpa ini pembaca harus mengingat sendiri tuas mana yang ia tarik. -->
+        <div class="ak-tahan-label" id="akTahanLabel">Ketuk tuas untuk menahan</div>
         <div class="ak-tahan-baris"><span>Kas kalau ditahan</span><b id="akTahanKas">—</b></div>
         <div class="ak-tahan-baris"><span>Sisa hari</span><b id="akTahanHari">—</b></div>
         <div class="ak-sisa-nota" id="akTahanKet"></div>
@@ -21540,11 +21616,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Aturannya dari rancangan Arus Kas - Gabungan: keluar RUTIN saja. Beli beras di luar
   // (bisa ditunda), prive owner di luar (uang pemilik, bukan ongkos toko). `tahan` berisi
   // pos yang sedang "ditahan" oleh tuas simulasi.
+  // ARAH tiap tuas ikut definisinya, bukan disimpulkan pemakainya. DUA tuas MENAHAN
+  // (mengeluarkan pos dari bakaran, kas jadi lebih awet) dan DUA tuas MENGIKUTKAN
+  // (menambahkan pos ke bakaran, kas jadi lebih cepat habis) — lihat akBakaranHarian.
+  // Ini penting untuk RUPA-nya: rancangan menggambar tuas yang ditarik sebagai batang
+  // yang JATUH dan menghijau. Untuk tuas "ikutkan" gambar itu akan BERBOHONG — menekannya
+  // memperpendek sisa hari, bukan memperpanjang. Jadi arahnya juga arah gambarnya.
   const AK_POS_TAHAN = [
-    { id: 'biaya', nama: 'Biaya bulanan', singkat: 'Biaya', ambil: pos => pos.biayaBulanan || 0 },
-    { id: 'toko', nama: 'Belanja toko', singkat: 'Toko', ambil: pos => pos.harian || 0 },
-    { id: 'beras', nama: 'Beli beras', singkat: 'Beras', ambil: pos => pos.belanja || 0 },
-    { id: 'prive', nama: 'Prive owner', singkat: 'Prive', ambil: pos => pos.prive || 0 }
+    { id: 'biaya', nama: 'Biaya bulanan', singkat: 'Biaya', arah: 'tahan', ambil: pos => pos.biayaBulanan || 0 },
+    { id: 'toko', nama: 'Belanja toko', singkat: 'Toko', arah: 'tahan', ambil: pos => pos.harian || 0 },
+    { id: 'beras', nama: 'Beli beras', singkat: 'Beras', arah: 'ikut', ambil: pos => pos.belanja || 0 },
+    { id: 'prive', nama: 'Prive owner', singkat: 'Prive', arah: 'ikut', ambil: pos => pos.prive || 0 }
   ];
   let _akTahan = {};
   function akPos30() {
@@ -21680,25 +21762,77 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       return;
     }
     const maks = Math.max.apply(null, AK_POS_TAHAN.map(x => x.ambil(pos)).concat([1]));
+    // Tuas BERGERAK waktu ditarik — gerakannya sendiri yang mengatakan apa yang terjadi.
+    // MENAHAN: batang jatuh ke 8% dan menghijau (bakaran berkurang, kas lebih awet).
+    // MENGIKUTKAN: batang naik penuh dan beroksida (bakaran bertambah, kas lebih cepat
+    // habis). Pegangan putih duduk di ujung atas isian dan ikut bergerak, jadi ia terbaca
+    // sebagai tuas yang ditarik — bukan batang bagan yang kebetulan bisa diketuk.
     wadah.innerHTML = AK_POS_TAHAN.map(x => {
       const n = x.ambil(pos);
       const tinggi = Math.round((n / maks) * 100);
       const on = !!_akTahan[x.id];
-      return '<button type="button" class="ak-tuas-btn' + (on ? ' aktif' : '') + '" onclick="akToggleTahan(\'' + x.id + '\')"'
-        + ' aria-pressed="' + on + '" aria-label="' + escapeHtml(x.nama + ' ' + formatRupiah(n) + ' dalam 30 hari') + '">'
-        + '<span class="isi" style="--tinggi:' + tinggi + '%"></span></button>';
+      const tahan = x.arah !== 'ikut';
+      // POS NOL TIDAK PUNYA TUAS. Menariknya tidak mengubah apa pun, dan tombol yang
+      // ditekan tanpa akibat adalah cacatnya sendiri — aturan yang sudah tertulis di
+      // pindahHalaman. Ia digambar bertepi putus tanpa batang: bedanya dengan "sedikit
+      // sekali" harus terlihat, dan lantai minimum justru membuat keduanya kembar.
+      const kosong = !(n > 0);
+      const h = kosong ? 0 : (on ? (tahan ? 8 : 100) : tinggi);
+      const kelas = 'ak-tuas-btn' + (kosong ? ' tuas-nol' : (on ? (tahan ? ' ditahan' : ' diikut') : ''));
+      return '<button type="button" class="' + kelas + '"'
+        + (kosong ? ' disabled' : ' onclick="akToggleTahan(\'' + x.id + '\')"')
+        + ' aria-pressed="' + (kosong ? 'false' : on) + '" style="--tinggi:' + h + '%"'
+        + ' aria-label="' + escapeHtml(kosong
+            ? x.nama + ' Rp0 dalam 30 hari — tidak ada yang bisa ' + (tahan ? 'ditahan' : 'diikutkan')
+            : (on ? 'Batalkan ' : '') + (tahan ? 'tahan ' : 'ikutkan ') + x.nama + ' ' + formatRupiah(n) + ' dalam 30 hari') + '">'
+        + '<span class="isi"></span>' + (kosong ? '' : '<span class="pegangan"></span>') + '</button>';
     }).join('');
-    label.innerHTML = AK_POS_TAHAN.map(x =>
-      '<span class="' + (_akTahan[x.id] ? 'aktif' : '') + '">' + escapeHtml(x.singkat) + '</span>').join('');
+    label.innerHTML = AK_POS_TAHAN.map(x => {
+      const nol = !(x.ambil(pos) > 0);
+      const kls = nol ? 'tuas-nol' : (_akTahan[x.id] ? (x.arah === 'ikut' ? 'diikut' : 'ditahan') : '');
+      return '<span class="' + kls + '">' + escapeHtml(x.singkat) + '</span>';
+    }).join('');
     const dasar = akBakaranHarian(pos, {});
     const baru = akBakaranHarian(pos, _akTahan);
     const kas = seri ? seri.akhir : null;
     document.getElementById('akTahanKas').textContent = kas === null ? '—' : rpTanda(kas);
     const elHari = document.getElementById('akTahanHari');
-    if (kas === null) { elHari.textContent = '—'; }
-    else if (kas <= 0) { elHari.textContent = '0 hari'; }
-    else if (!(baru > 0)) { elHari.textContent = '∞'; }
-    else { elHari.textContent = Math.floor(kas / baru) + ' hari'; }
+    // SELISIHNYA ikut ditulis. Angka mutlak saja memaksa pembaca mengingat angka
+    // sebelumnya lalu mengurangkannya di kepala — pekerjaan yang justru dihindari
+    // seluruh kartu ini. Selisih cuma ditulis kalau memang ada tuas yang ditarik.
+    const hariDari = (bakar) => (kas === null) ? null
+      : kas <= 0 ? 0 : (!(bakar > 0) ? Infinity : Math.floor(kas / bakar));
+    const hBaru = hariDari(baru), hDasar = hariDari(dasar);
+    const tulisHari = (h) => h === null ? '—' : (h === Infinity ? '\u221e' : h + ' hari');
+    let teksHari = tulisHari(hBaru);
+    if (hBaru !== null && hDasar !== null && hBaru !== hDasar
+        && hBaru !== Infinity && hDasar !== Infinity) {
+      const beda = hBaru - hDasar;
+      teksHari += ' \u00b7 ' + (beda > 0 ? '+' : '\u2212') + Math.abs(beda);
+    } else if (hBaru === Infinity && hDasar !== Infinity && hDasar !== null) {
+      teksHari += ' \u00b7 tak terbatas';
+    }
+    elHari.textContent = teksHari;
+    elHari.classList.toggle('lebih-awet', hBaru !== null && hDasar !== null && (hBaru > hDasar || hBaru === Infinity));
+    elHari.classList.toggle('lebih-cepat', hBaru !== null && hDasar !== null && hBaru < hDasar);
+    // Label mikro kartu dampak: menyebut APA yang sedang disimulasikan, bukan cuma
+    // "hasil". Dua arah tuas berarti dua kalimat yang mungkin, dan keduanya bisa
+    // menyala bersamaan.
+    const rpTahan = AK_POS_TAHAN.filter(x => x.arah !== 'ikut' && _akTahan[x.id])
+      .reduce((a, x) => a + x.ambil(pos), 0);
+    const rpIkut = AK_POS_TAHAN.filter(x => x.arah === 'ikut' && _akTahan[x.id])
+      .reduce((a, x) => a + x.ambil(pos), 0);
+    const elDampak = document.getElementById('akTahanLabel');
+    if (elDampak) {
+      const bagian = [];
+      if (rpTahan > 0) bagian.push('DITAHAN ' + formatRupiah(rpTahan));
+      if (rpIkut > 0) bagian.push('DIIKUTKAN ' + formatRupiah(rpIkut));
+      elDampak.textContent = bagian.length ? bagian.join(' \u00b7 ') : 'Ketuk tuas untuk menahan';
+      elDampak.classList.toggle('menahan', rpTahan > 0 && rpIkut === 0);
+      elDampak.classList.toggle('mengikut', rpIkut > 0);
+    }
+    const kartuTuas = document.getElementById('kartuTuasTahan');
+    if (kartuTuas) kartuTuas.classList.toggle('ak-tuas-hidup', rpTahan > 0 || rpIkut > 0);
     const adaTuas = Object.keys(_akTahan).some(k => _akTahan[k]);
     ket.textContent = (!adaTuas
       ? 'Ketuk tuasnya: Biaya & Toko DITAHAN (dikeluarkan dari bakaran), Beras & Prive DIIKUTKAN (ditambahkan).'
@@ -21884,20 +22018,34 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // simpanTitikKas bisa menyimpan 0); yang berganti hanya kelas tampil.
   let _akZona = 'sekarang';
   function pilihZonaArusKas(z) {
+    const sebelum = _akZona;
     _akZona = { sekarang: 1, bulan: 1, nanti: 1 }[z] ? z : 'sekarang';
-    terapkanZonaArusKas();
+    // Gerak masuk hanya untuk PERGANTIAN zona — bukan tiap render. Halaman ini
+    // digambar ulang tiap onSnapshot; kalau animasinya menempel di kelas .aktif, ia
+    // memutar ulang tiap kali dan zonanya berkedip pudar sendiri di tengah pemakaian
+    // (tertangkap waktu potret layar berulang kali menangkap zona kosong).
+    terapkanZonaArusKas(sebelum !== _akZona);
   }
   function gulirKeCocokkanKas() {
     pilihZonaArusKas('sekarang');
     const el = document.getElementById('kasTitikTanggal');
     if (el) el.closest('.kartu').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  function terapkanZonaArusKas() {
+  function terapkanZonaArusKas(berganti) {
     document.querySelectorAll('#akSaklarZona button').forEach(b =>
       b.classList.toggle('kg-terpilih', b.dataset.z === _akZona));
     [['akZonaSekarang', 'sekarang'], ['akZonaBulan', 'bulan'], ['akZonaNanti', 'nanti']].forEach(x => {
       const el = document.getElementById(x[0]);
-      if (el) el.classList.toggle('aktif', x[1] === _akZona);
+      if (!el) return;
+      const aktif = x[1] === _akZona;
+      el.classList.toggle('aktif', aktif);
+      // Kelas gerak dilepas lagi sesudah animasinya selesai, jadi render berikutnya
+      // tidak mewarisinya. Satu ketukan, satu gerak.
+      el.classList.remove('ak-masuk');
+      if (aktif && berganti) {
+        void el.offsetWidth;                 // paksa reflow supaya animasinya benar-benar mengulang
+        el.classList.add('ak-masuk');
+      }
     });
     // Kepala dua keadaan: hero lama tetap penulisnya (tampilkanBukuKas men-toggle
     // #kasSekarangWrap); di sini hanya keadaan kosong + empat keping SAAT TITIK.
