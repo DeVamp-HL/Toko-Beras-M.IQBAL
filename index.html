@@ -5090,14 +5090,63 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   .wz-jalur-kisi .kg-petak b, .wz-rak .kg-petak b{ display:block; font-size:12.5px; }
   .wz-jalur-kisi .kg-petak i, .wz-rak .kg-petak i{ display:block; font-family:var(--pf-serif); font-style:italic;
     font-size:9.5px; color:var(--pf-abu); margin-top:2px; white-space:normal; }
-  .wz-rak{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .wz-rak .kg-petak{ min-height:72px; padding-left:22px; }
-  /* Tabung sisa: tinggi dari --isi = sisa/maks daftar yang SAMA dengan teks sisanya. */
-  .wz-rak .tb-rel{ position:absolute; left:8px; top:10px; bottom:10px; width:6px; border-radius:99px;
-    background:rgba(255,255,255,.07); overflow:hidden; }
-  .wz-rak .tb-isi{ position:absolute; left:0; right:0; bottom:0; height:var(--isi,0%); border-radius:99px;
-    background:linear-gradient(180deg,rgba(226,205,166,.9),rgba(226,205,166,.4)); }
-  .wz-rak .kg-petak.kg-tepi-putus .tb-isi{ background:rgba(211,160,139,.5); }
+  /* RAK BERAS — bentuknya diambil dari rancangan Jual - Gabungan: BUKAN kartu berlist,
+     melainkan deretan TABUNG setinggi 88px yang berdiri di satu garis dasar, tinggi isinya
+     = sisa stok. Memilih merk sekalian melihat mana yang hampir habis; itu seluruh gunanya,
+     dan itu yang hilang waktu ia digambar sebagai dua kolom kartu dengan sliver 6px.
+     Mekanismenya (--isi) sudah ada sejak lama — yang tidak pernah ada cuma rupanya. */
+  .wz-rak{ display:flex; gap:6px; align-items:flex-end; }
+  .wz-rak .kg-petak{ position:relative; overflow:hidden; flex:1; min-width:44px; height:88px;
+    padding:3px; box-sizing:border-box; display:block; text-align:center;
+    border-radius:2px 2px 5px 5px; transition:border-color .18s ease; }
+  .wz-rak .tb-rel{ position:absolute; left:3px; right:3px; top:3px; bottom:3px;
+    display:flex; align-items:flex-end; background:none; border-radius:2px; }
+  /* Isi tabung: tenunan karung (garis miring rapat) di atas gradien emas. Yang terpilih
+     emasnya pekat, yang lain pudar — beda TERPILIH, bukan beda penuh/kosong. */
+  .wz-rak .tb-isi{ position:relative; display:block; width:100%; height:var(--isi,0%);
+    border-radius:2px; pointer-events:none; transform-origin:bottom;
+    animation:wzTumbuh .5s cubic-bezier(.22,1,.36,1) both;
+    background-image:repeating-linear-gradient(115deg,rgba(93,73,36,.32) 0 1px,transparent 1px 5px),
+      linear-gradient(180deg,rgba(226,205,166,.42),rgba(191,164,118,.24)); }
+  .wz-rak .kg-petak.kg-terpilih .tb-isi{
+    background-image:repeating-linear-gradient(115deg,rgba(93,73,36,.32) 0 1px,transparent 1px 5px),
+      linear-gradient(180deg,#f7ecd6,#c2a678); }
+  .wz-rak .kg-petak.kg-tepi-putus .tb-isi{
+    background-image:repeating-linear-gradient(115deg,rgba(93,73,36,.32) 0 1px,transparent 1px 5px),
+      linear-gradient(180deg,rgba(217,166,147,.5),rgba(201,112,94,.28)); }
+  /* Nama SELALU berplat gelap. Rancangannya menyebut alasannya: dulu tintanya ditentukan
+     "karung penuh atau tidak" dengan ambang 22%, dan merk 14% dapat tinta terang di atas
+     emas — tidak terbaca. Plat gelap membuatnya benar di tinggi isi berapa pun. */
+  .wz-rak .kg-petak b{ position:absolute; left:3px; right:3px; bottom:4px; text-align:center;
+    pointer-events:none; font:600 8px/1.4 -apple-system,system-ui; letter-spacing:.06em;
+    border-radius:3px; background:rgba(18,15,11,.8); color:#f2efe9;
+    display:block; -webkit-line-clamp:unset; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .wz-rak .kg-petak.kg-tepi-putus b{ color:#e8c3b2; }
+  /* Keterangan sisa TIDAK muat di dalam tabung — ia pindah ke baris nota di bawah rak,
+     sama seperti rancangannya ("IR64 Premium · sisa 842 kg · 9,8 kg sudah di struk"). */
+  .wz-rak .kg-petak i{ display:none; }
+  /* KARTU ANGKA — bentuk "kaca" dari rancangan: gradien emas tipis, backdrop-filter,
+     tepi atas terang. Label satuan di atas, petunjuk di dalam kartu, angkanya di tengah. */
+  .wz-kartu-angka{ position:relative; overflow:hidden; border-radius:5px; padding:12px 14px 11px;
+    background:linear-gradient(158deg,rgba(240,220,187,.2),rgba(240,220,187,.05) 42%,rgba(207,212,218,.09));
+    backdrop-filter:blur(14px) saturate(150%); -webkit-backdrop-filter:blur(14px) saturate(150%);
+    border:1px solid rgba(240,220,187,.24);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.42), inset 0 -1px 0 rgba(0,0,0,.4), 0 24px 48px -22px rgba(0,0,0,.85);
+    margin:2px 0 4px; }
+  .wz-kartu-lbl{ font:400 8.5px/1.5 -apple-system,system-ui; letter-spacing:.3em;
+    text-transform:uppercase; color:#8f959d; text-align:center; }
+  .wz-kartu-hint{ font-family:var(--pf-serif); font-style:italic; font-size:10px;
+    color:#b7bcc3; text-align:center; margin-top:6px; line-height:1.45; }
+  .wz-kartu-angka .wz-jumlah-wrap{ background:none; border:0; box-shadow:none; margin:0; }
+  /* Saklar L|Rp: jejak tipis seperti rancangannya, tapi kotak ketuknya TETAP 44px —
+     rupanya boleh mengecil, sasaran sentuhnya tidak. */
+  .wz-kepala-kanan .wz-saklar{ margin:0; gap:3px; padding:3px; border-radius:3px;
+    background:rgba(207,212,218,.07); }
+  .wz-kepala-kanan .wz-saklar button{ flex:none; min-height:44px; min-width:44px; padding:0 10px;
+    font-size:11px; letter-spacing:.06em; }
+  .wz-rak-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+    color:var(--pf-abu2,#a7adb5); margin:7px 2px 0; line-height:1.45; }
+  @keyframes wzTumbuh{ from{ transform:scaleY(0); } to{ transform:scaleY(1); } }
   .wz-saklar{ display:flex; gap:6px; margin:0 0 8px; }
   .wz-saklar button{ flex:1; min-height:44px; border-radius:10px; border:1px solid var(--pf-tepi); background:none;
     color:var(--pf-abu); font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.1em; }
@@ -6416,8 +6465,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <!-- KACA EMAS G4 (rancangan Jual - Gabungan): STRUK HIDUP — yang akan dipegang
            pembeli, tampil di tiap langkah; dibaca dari keranjang & form lama, tidak
            menghitung uang sendiri. Di dalam #wzJual = otomatis hanya <700px. -->
-      <div id="wzStruk" class="wz-struk"></div>
       <div class="wz-panel" id="wzPanel"></div>
+      <!-- STRUK DI BAWAH, bukan di atas. Rancangan Jual - Gabungan menaruhnya SESUDAH kolom
+           angka: struk itu HASIL dari mengisi, jadi ia tumbuh ke bawah mengikuti urutan
+           perbuatan. Di atas, ia jadi kartu kosong yang menyita layar paling atas justru
+           waktu belum ada apa-apa untuk ditampilkan. -->
+      <div id="wzStruk" class="wz-struk"></div>
     </div>
 
     <div class="kartu-jenis-jual" style="grid-template-columns: repeat(5,1fr);">
@@ -14778,17 +14831,43 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Rak: petak per pilihan dari tombol form lama; tabung --isi = sisa/maks daftar,
   // sisa dibaca dari MESIN, sumber yang sama dengan _wz.maks. Petak habis TETAP bisa
   // diketuk (handler lama menawarkan Produksi) — bertepi putus, bukan disabled.
+  // Kolom form lama yang memegang pilihan tiap jalur — dipakai menandai tabung MANA yang
+  // sedang terpilih. Dibaca dari sumber yang sama dengan mesinnya, bukan disimpan sendiri.
+  const WZ_KOLOM_PILIH = {
+    pilihKemasanTombol: 'jualKemasanProduk', pilihKarungTombol: 'jualKarungMerk',
+    pilihLiteranTombol: 'jualLiteranJenis', pilihRepackingTombol: 'jualRepackingMerk'
+  };
   function wzKacaRak(idKontainer, langkahLanjut, opsi, labelDari) {
     opsi = opsi || wzBacaTombol(idKontainer).filter(o => o.kunci);
     if (!opsi.length) return '';
     const sisaDari = o => stokSisaRak(_wz.jalur, o.kunci);
     const maks = Math.max.apply(null, opsi.map(sisaDari).concat([1]));
-    return '<div class="wz-rak">' + opsi.map(o => {
+    const kolom = WZ_KOLOM_PILIH[idKontainer];
+    const dipilih = kolom ? ((document.getElementById(kolom) || {}).value || '') : '';
+    const rak = '<div class="wz-rak">' + opsi.map(o => {
       const sisa = sisaDari(o);
-      return '<button type="button" class="kg-petak' + (o.habis ? ' kg-tepi-putus' : '') + '" onclick="wzKlikOpsi(\'' + idKontainer + '\',' + escapeHtml(JSON.stringify(String(o.kunci))) + ',\'' + langkahLanjut + '\')">'
+      const on = dipilih && String(o.kunci) === String(dipilih);
+      return '<button type="button" class="kg-petak' + (o.habis ? ' kg-tepi-putus' : '') + (on ? ' kg-terpilih' : '') + '" onclick="wzKlikOpsi(\'' + idKontainer + '\',' + escapeHtml(JSON.stringify(String(o.kunci))) + ',\'' + langkahLanjut + '\')">'
         + '<span class="tb-rel"><span class="tb-isi" style="--isi:' + Math.round(sisa / maks * 100) + '%"></span></span>'
         + '<b>' + wzEsc(labelDari ? labelDari(o) : o.label) + '</b><i>' + wzEsc(o.sub || (o.habis ? 'habis \u2014 ketuk untuk produksi' : '')) + '</i></button>';
     }).join('') + '</div>';
+    // NOTA DI BAWAH RAK, seperti rancangannya: "IR64 Premium · sisa 842 kg · 9,8 kg sudah
+    // di struk". Keterangan sisa tidak muat di dalam tabung, dan yang SUDAH di struk itu
+    // angka yang paling mudah dilupakan waktu menambah baris kedua untuk merk yang sama.
+    let nota = '';
+    if (dipilih) {
+      const t = opsi.find(o => String(o.kunci) === String(dipilih));
+      if (t) {
+        const sisa = sisaDari(t);
+        const satuan = _wz.jalur === 'kemasan' ? 'unit' : 'kg';
+        const diKeranjang = wzDiKeranjang(_wz.jalur === 'kemasan' ? 'kemasan' : 'karung', t.kunci);
+        nota = '<div class="wz-rak-nota">' + wzEsc(labelDari ? labelDari(t) : t.label)
+          + ' \u00b7 sisa ' + wzAngkaTampil(sisa) + ' ' + satuan
+          + (diKeranjang > 0 ? ' \u00b7 ' + wzAngkaTampil(diKeranjang) + ' ' + satuan + ' sudah di struk' : '')
+          + '</div>';
+      }
+    }
+    return rak + nota;
   }
   function wzLembarKembalian(k) {
     const pecahan = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500];   // koin 500 hidup sejak tagihan dibulatkan ke 500
@@ -15228,8 +15307,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         tanya.textContent = rpMode ? 'Berapa rupiah?' : 'Berapa ' + satuan + '?';
         const desimal = _wz.jalur !== 'kemasan';   // sack, liter, kg boleh setengahan
         const saklar = _wz.jalur === 'literan'
-          ? '<div class="wz-saklar"><button type="button" class="' + (rpMode ? '' : 'kg-terpilih') + '" onclick="wzSaklarIsian(\'liter\')">LITER</button>'
-            + '<button type="button" class="' + (rpMode ? 'kg-terpilih' : '') + '" onclick="wzSaklarIsian(\'rp\')"' + (wzHargaLiterKini() > 0 ? '' : ' disabled') + '>RUPIAH</button></div>'
+          ? '<div class="wz-saklar"><button type="button" class="' + (rpMode ? '' : 'kg-terpilih') + '" onclick="wzSaklarIsian(\'liter\')">L</button>'
+            + '<button type="button" class="' + (rpMode ? 'kg-terpilih' : '') + '" onclick="wzSaklarIsian(\'rp\')"' + (wzHargaLiterKini() > 0 ? '' : ' disabled') + '>Rp</button></div>'
           : '';
         // Kolom diisi LANGSUNG dengan papan ketik HP. Dulu tiap ketukan memicu
         // render ulang panel -> kolomnya dihancurkan, papan ketik menutup, dan
@@ -15237,6 +15316,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // (#wzInfoStok, #wzPeringatan, #wzNegoBlok, #wzCta) — kolom tak tersentuh.
         panel.innerHTML = balik(_wz.jalur === 'kemasan' ? 'ukuran' : (_wz.jalur === 'repacking' ? 'namaR' : (_wz.jalur === 'karung' ? 'merkK' : 'produkL')))
           + '<div class="wz-kanan">' + wzDasarHargaRingkas() + saklar + '</div><!--/kanan-->'
+          + '<div class="wz-kartu-angka">'
+          + '<div class="wz-kartu-lbl">' + (rpMode ? 'RUPIAH' : String(satuan).toUpperCase()) + '</div>'
           + '<div class="stepper-jumlah wz-jumlah-wrap">'
           + (rpMode ? '<span class="st-kurang" style="visibility:hidden"></span>'
             : '<button type="button" class="st-kurang" onclick="wzUbah(-' + tambah + ')" aria-label="Kurangi">\u2212</button>')
@@ -15249,6 +15330,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
               + ' onfocus="this.select()" oninput="wzJumlahDiketik(this.value)"') + '>'
           + (rpMode ? '<span class="st-tambah" style="visibility:hidden"></span>'
             : '<button type="button" class="st-tambah" onclick="wzUbah(' + tambah + ')" aria-label="Tambah">+</button>')
+          + '</div>'
+          + '<div class="wz-kartu-hint">' + (rpMode
+            ? 'ketik rupiahnya \u2014 liternya dihitung dari katalog'
+            : (_wz.jalur === 'literan' ? 'ketik liternya \u2014 rupiahnya muncul sendiri'
+              : 'ketik jumlahnya \u2014 harganya muncul sendiri')) + '</div>'
           + '</div>'
           + '<div id="wzTakar"></div>'
           + '<div id="wzInfoStok"></div>'
