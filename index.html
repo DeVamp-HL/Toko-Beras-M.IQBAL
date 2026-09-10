@@ -351,6 +351,17 @@
        Layar lebar (>=700px) tetap ber-header. */
     header { display: none !important; }
     main { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+    /* TUDUNG BILAH STATUS. padding-top saja cuma benar SEBELUM digulir: begitu halaman naik,
+       isinya lewat di bawah jam & baterai iOS, dan tinta emas di atas tinta putih sistem jadi
+       tidak terbaca sama sekali (terlihat di HP: judul "JUAL" tertimpa "19:19", tombol ✕
+       tertimpa baterai). Tudung ini menutup jalur itu dengan warna latar halaman, tanpa
+       menggeser apa pun — tingginya persis setinggi inset, jadi ia nol pada perangkat yang
+       tidak punya takik. */
+    body::before {
+      content: ''; position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+      height: env(safe-area-inset-top, 0px);
+      background: #131316; pointer-events: none;
+    }
     header { padding: 8px 16px 8px; gap: 10px; align-items: center; }
     header > div, #headerJudul, #subjudulHeader, #tombolTema, .tombol-logo-drawer { display: none !important; }
     /* flex-basis auto (bukan 0): blok merek dulu menyusut jadi 0 px karena chip
@@ -5095,10 +5106,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
      = sisa stok. Memilih merk sekalian melihat mana yang hampir habis; itu seluruh gunanya,
      dan itu yang hilang waktu ia digambar sebagai dua kolom kartu dengan sliver 6px.
      Mekanismenya (--isi) sudah ada sejak lama — yang tidak pernah ada cuma rupanya. */
-  .wz-rak{ display:flex; gap:6px; align-items:flex-end; }
-  .wz-rak .kg-petak{ position:relative; overflow:hidden; flex:1; min-width:44px; height:88px;
-    padding:3px; box-sizing:border-box; display:block; text-align:center;
-    border-radius:2px 2px 5px 5px; transition:border-color .18s ease; }
+  /* RAK MENGGULIR DI DALAM DIRINYA SENDIRI. Di kotak pasir 4 merk, flex:1 tampak benar; di
+     toko ada EMPAT BELAS merk, dan 14 tabung x 44px mendorong SELURUH HALAMAN ke kanan —
+     bilah bawah, struk, dan judul ikut bergeser. Lebar TETAP + overflow-x pada raknya sendiri
+     membuat yang menggulir cuma raknya. Ini bentuk "kotak pasir menyempitkan cakupannya
+     sendiri lalu lapor lulus": benihnya terlalu kecil untuk melahirkan keadaannya. */
+  .wz-rak{ display:flex; gap:6px; align-items:flex-end; overflow-x:auto; padding-bottom:2px;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none; scroll-snap-type:x proximity; }
+  .wz-rak::-webkit-scrollbar{ display:none; }
+  .wz-rak .kg-petak{ position:relative; overflow:hidden; flex:0 0 64px; width:64px; height:88px;
+    padding:3px; box-sizing:border-box; display:block; text-align:center; scroll-snap-align:start;
+    scroll-margin-inline:12px; border-radius:2px 2px 5px 5px; transition:border-color .18s ease; }
   .wz-rak .tb-rel{ position:absolute; left:3px; right:3px; top:3px; bottom:3px;
     display:flex; align-items:flex-end; background:none; border-radius:2px; }
   /* Isi tabung: tenunan karung (garis miring rapat) di atas gradien emas. Yang terpilih
@@ -5117,10 +5135,24 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   /* Nama SELALU berplat gelap. Rancangannya menyebut alasannya: dulu tintanya ditentukan
      "karung penuh atau tidak" dengan ambang 22%, dan merk 14% dapat tinta terang di atas
      emas — tidak terbaca. Plat gelap membuatnya benar di tinggi isi berapa pun. */
-  .wz-rak .kg-petak b{ position:absolute; left:3px; right:3px; bottom:4px; text-align:center;
-    pointer-events:none; font:600 8px/1.4 -apple-system,system-ui; letter-spacing:.06em;
-    border-radius:3px; background:rgba(18,15,11,.8); color:#f2efe9;
-    display:block; -webkit-line-clamp:unset; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  /* Nama boleh DUA BARIS: di toko ada "Perahu Layar" dan "Bahan campuran standar", dan satu
+     baris memotongnya jadi "Pera..." — nama terpotong tidak menjawab pertanyaan apa pun. */
+  .wz-rak .kg-petak b{ position:absolute; left:2px; right:2px; bottom:3px; text-align:center;
+    pointer-events:none; font:600 8px/1.25 -apple-system,system-ui; letter-spacing:.02em;
+    border-radius:3px; background:rgba(18,15,11,.86); color:#f2efe9; padding:2px 1px;
+    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
+    white-space:normal; word-break:break-word; }
+  /* HAMPIR HABIS: tepi & tinta oksida. Saluran ini tidak bergantung pada tinggi isi, jadi ia
+     tetap menjawab walau satu merk raksasa membuat yang lain tampak rata-rata kosong. */
+  .wz-rak .kg-petak.kg-tipis{ border:1px solid rgba(217,166,147,.45); background:rgba(217,166,147,.06); }
+  .wz-rak .kg-petak b em{ display:block; font-style:normal; font-weight:500; font-size:7px;
+    letter-spacing:.01em; color:rgba(242,239,233,.72); margin-top:1px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .wz-rak .kg-petak.kg-tipis b{ color:#e8c3b2; }
+  .wz-rak .kg-petak.kg-tipis b em{ color:rgba(232,195,178,.75); }
+  .wz-rak .kg-petak.kg-tipis .tb-isi{
+    background-image:repeating-linear-gradient(115deg,rgba(93,73,36,.32) 0 1px,transparent 1px 5px),
+      linear-gradient(180deg,rgba(232,195,178,.5),rgba(201,112,94,.3)); }
   .wz-rak .kg-petak.kg-tepi-putus b{ color:#e8c3b2; }
   /* Keterangan sisa TIDAK muat di dalam tabung — ia pindah ke baris nota di bawah rak,
      sama seperti rancangannya ("IR64 Premium · sisa 842 kg · 9,8 kg sudah di struk"). */
@@ -15022,9 +15054,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const rak = '<div class="wz-rak">' + opsi.map(o => {
       const sisa = sisaDari(o);
       const on = dipilih && String(o.kunci) === String(dipilih);
-      return '<button type="button" class="kg-petak' + (o.habis ? ' kg-tepi-putus' : '') + (on ? ' kg-terpilih' : '') + '" onclick="wzKlikOpsi(\'' + idKontainer + '\',' + escapeHtml(JSON.stringify(String(o.kunci))) + ',\'' + langkahLanjut + '\')">'
+      // TIPIS = hampir habis, ambangnya dari rancangan (sisa < 60). Ini SALURAN KEDUA, dan ia
+      // yang menyelamatkan rak waktu satu merk jauh lebih besar dari yang lain: tinggi isi jadi
+      // tidak terbaca (semua tampak kosong di sebelah si raksasa), tapi WARNA tetap menjawab
+      // "siapa yang hampir habis" tanpa bergantung pada patokan terbesar sama sekali.
+      const tipis = !o.habis && sisa > 0 && sisa < 60;
+      return '<button type="button" class="kg-petak' + (o.habis ? ' kg-tepi-putus' : '') + (tipis ? ' kg-tipis' : '') + (on ? ' kg-terpilih' : '') + '" onclick="wzKlikOpsi(\'' + idKontainer + '\',' + escapeHtml(JSON.stringify(String(o.kunci))) + ',\'' + langkahLanjut + '\')">'
         + '<span class="tb-rel"><span class="tb-isi" style="--isi:' + Math.round(sisa / maks * 100) + '%"></span></span>'
-        + '<b>' + wzEsc(labelDari ? labelDari(o) : o.label) + '</b><i>' + wzEsc(o.sub || (o.habis ? 'habis \u2014 ketuk untuk produksi' : '')) + '</i></button>';
+        + '<b>' + wzEsc(labelDari ? labelDari(o) : o.label)
+        // ATURAN 3 AGU 2026 TETAP: tuts literan bertuliskan HARGA, bukan nama merk — pembeli
+        // hafal harga. Tapi di tabung selebar 64px harga SENDIRIAN membuat merknya tidak bisa
+        // dikenali sama sekali ("Rp13.500" — yang mana?). Merknya ditambahkan sebagai baris
+        // kecil DI BAWAH harga: aturannya tidak dilanggar (harga tetap yang utama), dan
+        // tabungnya jadi bisa ditunjuk. Kalau labelnya memang sudah nama merk, nol perubahan.
+        + (!labelDari && String(o.label).trim() !== String(o.kunci).trim()
+          ? '<em>' + wzEsc(o.kunci) + '</em>' : '')
+        + '</b><i>' + wzEsc(o.sub || (o.habis ? 'habis \u2014 ketuk untuk produksi' : '')) + '</i></button>';
     }).join('') + '</div>';
     // NOTA DI BAWAH RAK, seperti rancangannya: "IR64 Premium · sisa 842 kg · 9,8 kg sudah
     // di struk". Keterangan sisa tidak muat di dalam tabung, dan yang SUDAH di struk itu
