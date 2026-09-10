@@ -5180,6 +5180,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   .wz-bayar-tab{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:11px; }
   .wz-bayar-tab button{ min-height:44px; border-radius:3px; font-family:inherit;
     font:700 10.5px/1 -apple-system,system-ui; letter-spacing:.12em; text-transform:uppercase; }
+  /* ANTRE (2c): tab keranjang. Hanya tergambar kalau keranjang kedua benar-benar dibuka —
+     di jam sepi ia tidak menambah satu ketukan pun, dan itu syarat rancangannya. */
+  .wz-antre{ display:flex; gap:5px; margin-top:15px; }
+  .wz-tab-antre{ flex:1; min-height:44px; border:0; border-radius:2px; font-family:inherit;
+    font:700 10.5px/1.3 -apple-system,system-ui; letter-spacing:.08em;
+    background:rgba(207,212,218,.06); color:#b7bcc3; }
+  .wz-tab-antre.aktif{ background:linear-gradient(160deg,#f6ecd6,#e2cda6 60%,#c9b085); color:#2a1f13; }
+  .wz-antre-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:#7d7a73;
+    margin-top:6px; line-height:1.5; }
+  /* Parkir: tepi PUTUS-PUTUS — perbuatan yang menunda, bukan yang menyelesaikan. */
+  .wz-pembeli-lain{ width:100%; margin-top:9px; min-height:44px; border-radius:3px;
+    font-family:inherit; font:700 10.5px/1 -apple-system,system-ui; letter-spacing:.14em;
+    background:transparent; border:1px dashed rgba(207,212,218,.28); color:#8f959d; }
   .wz-rak-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
     color:var(--pf-abu2,#a7adb5); margin:7px 2px 0; line-height:1.45; }
   @keyframes wzTumbuh{ from{ transform:scaleY(0); } to{ transform:scaleY(1); } }
@@ -6507,6 +6520,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
            perbuatan. Di atas, ia jadi kartu kosong yang menyita layar paling atas justru
            waktu belum ada apa-apa untuk ditampilkan. -->
       <div id="wzStruk" class="wz-struk"></div>
+      <!-- Wadah KEDUA, khusus bagian bayar. Urutan rancangan: isian -> struk -> cara bayar
+           -> SIMPAN. Dulu saya memindahkan #wzStruk ke dalam #wzPanel dengan insertBefore;
+           itu salah dan diamnya sempurna — tiap panel.innerHTML berikutnya MEMUSNAHKAN node
+           struknya, dan getElementById('wzStruk') mengembalikan null selamanya sesudah itu.
+           Dua wadah bersaudara tidak bisa saling menghapus. -->
+      <div class="wz-panel" id="wzPanelBayar"></div>
     </div>
 
     <div class="kartu-jenis-jual" style="grid-template-columns: repeat(5,1fr);">
@@ -14425,6 +14444,64 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Kaca Emas G4: saklar LITER⇄RUPIAH (hanya jalur literan) + struk hidup.
   let _wzNominalOn = false, _wzNominalTeks = '', _wzStrukHtml = '';
 
+  // ---------- SUMBU 2c: ANTRE / KERANJANG KEDUA (10 Sep 2026) ----------
+  // Sumbu terakhir rancangan Jual - Gabungan yang belum punya mesin. Pembeli beras sering
+  // bolak-balik ambil barang; tanpa keranjang kedua kasir harus menahan orang di belakangnya
+  // atau membuang struk yang sudah setengah jadi.
+  //
+  // TAB HANYA ADA KALAU KERANJANG KEDUA DIBUKA. Di jam sepi ia tidak menambah satu ketukan
+  // pun — itu syarat rancangannya, dan syarat yang paling mudah dilanggar diam-diam.
+  //
+  // Yang dibekukan adalah SELURUH keadaan yang menentukan uang. Cara bayar dan nama pembeli
+  // tinggal di FORM LAMA, bukan di variabel wizard — jadi keduanya dibaca & ditulis lewat
+  // form, sumber yang sama dengan yang dipakai mesin uang waktu menyimpan. Membekukannya
+  // dari tempat lain akan menghasilkan keranjang yang kelihatan benar tapi menyimpan salah.
+  let _wzParkir = null, _wzKeranjangAktif = 'a';
+  function wzBekuKeranjang() {
+    return { items: _wzItems.slice(), potongan: _wzPotongan, potonganMode: _wzPotonganMode,
+      uang: _wzUang, janji: _wzJanji, kreditBuka: _wzKreditBuka,
+      cara: wzCaraBayarAktif(), nama: (document.getElementById('jualNamaPelanggan') || {}).value || '' };
+  }
+  function wzTulisNama(v) {
+    const el = document.getElementById('jualNamaPelanggan');
+    if (el) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }
+  }
+  function wzPakaiKeranjang(k) {
+    _wzItems = k.items.slice(); _wzPotongan = k.potongan; _wzPotonganMode = k.potonganMode;
+    _wzUang = k.uang; _wzJanji = k.janji; _wzKreditBuka = k.kreditBuka;
+    wzTulisNama(k.nama);
+    wzBayar(k.cara);            // wzBayar menutup dengan wzRender()
+  }
+  function wzPembeliLain() {
+    if (!_wzItems.length || _wzParkir) return;   // tidak ada yang diparkir, atau sudah penuh dua
+    _wzParkir = wzBekuKeranjang();
+    _wzItems = []; _wzPotongan = 0; _wzPotonganMode = 'tanpa'; _wzUang = 0;
+    _wzJanji = null; _wzKreditBuka = false;
+    wzTulisNama('');
+    _wzKeranjangAktif = _wzKeranjangAktif === 'a' ? 'b' : 'a';
+    _wz.jalur = null; _wz.langkah = 'jalur'; _wz.merk = null; _wz.maks = null;
+    wzBayar('Tunai');
+  }
+  function wzTukarKeranjang(tuju) {
+    // MENEKAN TAB YANG SUDAH AKTIF TIDAK MENUKAR APA PUN — aturan rancangan #9. Tanpa ini,
+    // menyenggol tab yang sedang dipakai menukar keranjang dengan salinan bekunya sendiri,
+    // dan satu ketukan salah bisa membuang struk orang.
+    if (!_wzParkir || tuju === _wzKeranjangAktif) return;
+    const beku = wzBekuKeranjang();
+    const ambil = _wzParkir;
+    _wzParkir = beku;
+    _wzKeranjangAktif = tuju;
+    _wz.jalur = null; _wz.langkah = 'jalur'; _wz.merk = null; _wz.maks = null;
+    wzPakaiKeranjang(ambil);
+  }
+  function wzTabAntreHtml() {
+    if (!_wzParkir) return '';
+    const n = k => k === _wzKeranjangAktif ? _wzItems.length : _wzParkir.items.length;
+    const tab = k => '<button type="button" class="wz-tab-antre' + (k === _wzKeranjangAktif ? ' aktif' : '')
+      + '" onclick="wzTukarKeranjang(\'' + k + '\')">PEMBELI ' + (k === 'a' ? '1' : '2') + ' \u00b7 ' + n(k) + ' brg</button>';
+    return '<div class="wz-antre">' + tab('a') + tab('b') + '</div>'
+      + '<div class="wz-antre-nota">Keranjang yang tidak aktif tetap tersimpan \u2014 pembeli boleh bolak-balik ambil barang.</div>';
+  }
   function wzSatuanKini() {
     // harga satuan menurut form lama SAAT INI (katalog x jumlah / jumlah)
     const peta = { kemasan: 'jualKemasanJumlah', karung: 'jualKarungJumlah', literan: 'jualLiteranJumlah', repacking: 'jualRepackingKg' };
@@ -15147,7 +15224,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const rantai = WZ_RANTAI[_wz.jalur];
     const sampai = rantai ? rantai.indexOf(_wz.langkah) : -1;
     // Retur, dan keadaan sebelum jalur dipilih, tetap satu panel: tidak ada rantai untuk ditumpuk.
-    if (sampai < 0 || document.getElementById('halamanJual').classList.contains('wz-retur')) { wzRenderLangkah(); return; }
+    if (sampai < 0 || document.getElementById('halamanJual').classList.contains('wz-retur')) {
+      // Jalur belum dipilih (atau Retur): satu panel saja. Wadah bayar DIKOSONGKAN — kalau
+      // tidak, bagian bayar milik keadaan sebelumnya tertinggal di layar dan terbaca sebagai
+      // milik keranjang yang sekarang. Tab tetap digambar: keranjang kedua hidup di langkah
+      // mana pun, termasuk sebelum jalur dipilih.
+      wzRenderLangkah();
+      const pb = document.getElementById('wzPanelBayar');
+      if (pb) pb.innerHTML = '';
+      const pp = document.getElementById('wzPanel');
+      if (pp && _wzParkir) pp.innerHTML = wzTabAntreHtml() + pp.innerHTML;
+      return;
+    }
     const asli = _wz.langkah;
     // SATU HALAMAN PENUH: begitu keranjang berisi, bagian BAYAR ikut digambar di kaki
     // tumpukan walau langkahnya belum ke sana. Rancangannya memang menaruh cara bayar dan
@@ -15189,7 +15277,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       _wz.langkah = asli;   // dipulihkan APA PUN yang terjadi — satu langkah yang bocor mematikan seluruh layar
     }
     wzGambarStruk();
-    document.getElementById('wzPanel').innerHTML = bagian.join('');
+    // TAB KERANJANG DI PUNCAK — kata rancangannya sendiri. Ia harus terlihat di langkah mana
+    // pun selagi keranjang kedua hidup; menaruhnya di blok CTA (langkah 'jumlah' saja) membuat
+    // tab hilang justru sesudah barang dimasukkan, tepat saat kasir perlu berpindah pembeli.
+    const iBayar = rantaiGambar.indexOf('bayar');
+    const atas = iBayar < 0 ? bagian : bagian.slice(0, iBayar);
+    const bawah = iBayar < 0 ? [] : bagian.slice(iBayar);
+    document.getElementById('wzPanel').innerHTML = wzTabAntreHtml() + atas.join('');
+    document.getElementById('wzPanelBayar').innerHTML = bawah.join('');
     document.getElementById('wzTanya').textContent = '';
     document.getElementById('wzLangkahLabel').textContent = 'Jual';
     document.getElementById('wzLangkahLabel').dataset.keranjang = _wzItems.length || '';
@@ -15200,15 +15295,6 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // hampa (chip takaran hilang tanpa satu pun galat). Ini sambungannya, dan letaknya
     // memang harus di sini: sesudah innerHTML, bukan sebelum.
     if (_wz.langkah === 'jumlah') wzJumlahRefresh();
-    // STRUK DUDUK DI ANTARA ISIAN DAN CARA BAYAR, seperti rancangannya: struk -> cara bayar
-    // -> SIMPAN. Elemennya DIPINDAH, bukan digambar dua kali — satu #wzStruk, satu id, dan
-    // wzGambarStruk tidak perlu tahu ke mana ia dipindahkan.
-    const elStruk = document.getElementById('wzStruk');
-    const secBayar = document.querySelector('#wzPanel section[data-langkah="bayar"]');
-    if (elStruk) {
-      if (secBayar) { if (elStruk.nextElementSibling !== secBayar) secBayar.parentNode.insertBefore(elStruk, secBayar); }
-      else if (elStruk.parentNode !== wrap) wrap.appendChild(elStruk);
-    }
   }
   function wzRenderLangkah() {
     try {
@@ -15437,7 +15523,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           + '<div class="wz-nota-simpan">' + (matiSimpan
             ? (!_wzItems.length ? 'Keranjang masih kosong.'
               : (caraAktif === 'Kredit' ? wzEsc(String(wzKreditTerkunci(total) || 'Lengkapi data kredit dulu.')) : 'Pilih cara bayar dulu.'))
-            : 'Tersimpan langsung ke buku \u2014 stok & laba ikut bergerak.') + '</div>';
+            : 'Tersimpan langsung ke buku \u2014 stok & laba ikut bergerak.') + '</div>'
+          // Tombol PARKIR hanya lahir kalau ADA yang bisa diparkir dan slot keduanya masih
+          // kosong. Tidak ada tombol mati yang menganggur di sini: kalau ia tidak bisa
+          // berbuat apa-apa, ia tidak digambar.
+          + (_wzItems.length && !_wzParkir
+            ? '<button type="button" class="wz-pembeli-lain" onclick="wzPembeliLain()">\uff0b PEMBELI LAIN \u00b7 PARKIR STRUK INI</button>'
+            : '');
         return;
       }
         } catch (e) { /* kulit — jangan ganggu jalur uang */ }
@@ -28835,6 +28927,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.wzUbah = wzUbah; window.wzBayar = wzBayar; window.wzNama = wzNama; window.wzSimpan = wzSimpan;
   window.wzJumlahDiketik = wzJumlahDiketik; window.wzHargaDiketik = wzHargaDiketik;
   window.wzNegoUbah = wzNegoUbah; window.wzBonusToggle = wzBonusToggle; window.wzTambahItem = wzTambahItem;
+  window.wzPembeliLain = wzPembeliLain; window.wzTukarKeranjang = wzTukarKeranjang;
   window.wzHapusItem = wzHapusItem; window.wzPotonganSet = wzPotonganSet; window.wzPotonganNominal = wzPotonganNominal;
   window.wzUangSet = wzUangSet; window.wzUangPas = wzUangPas; window.wzKonfirmasiKeranjang = wzKonfirmasiKeranjang;
   window.wzBukaKreditSekali = wzBukaKreditSekali; window.wzPilihJanji = wzPilihJanji;
