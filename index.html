@@ -4248,6 +4248,43 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   background:linear-gradient(168deg,rgba(255,255,255,.055),rgba(255,255,255,.02)); }
 @media (max-width:699.98px){
   .ak-zona:not(.aktif){ display:none; }
+  /* PERJALANAN SATU RUPIAH — baris gerbong. Lebar isian = lama menginap relatif gerbong
+     terpanjang. Gerbong BALIK (utang pemasok) mengisi dari KANAN dan beroksida: ia
+     mengurangi perjalanan, dan arah yang berbeda harus terlihat berbeda. */
+  .ak-gerbong{ margin:10px 0 2px; }
+  .ak-gerbong-baris{ display:flex; align-items:center; gap:11px; min-height:50px; }
+  .ak-gerbong-baris .kotak{ flex:0 0 52px; height:26px; border-radius:3px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+    display:flex; align-items:center; overflow:hidden; }
+  .ak-gerbong-baris .isi{ display:block; height:100%; width:var(--lebar,0%);
+    background:linear-gradient(90deg,rgba(226,205,166,.5),rgba(191,164,118,.28)); }
+  .ak-gerbong-baris.balik .kotak{ justify-content:flex-end; }
+  .ak-gerbong-baris.balik .isi{ background:linear-gradient(270deg,rgba(232,195,178,.55),rgba(201,112,94,.3)); }
+  .ak-gerbong-baris .teks{ flex:1; min-width:0; }
+  .ak-gerbong-baris .teks b{ display:block; font-size:12px; font-weight:600; color:var(--teks); }
+  .ak-gerbong-baris .teks i{ display:block; font-family:var(--pf-serif); font-style:italic;
+    font-size:10px; color:var(--pf-abu,#8f959d); margin-top:2px; line-height:1.4; }
+  .ak-gerbong-baris .nilai{ flex:none; font-family:var(--pf-serif); font-size:15px;
+    color:var(--pf-putih,#fdf6e7); font-variant-numeric:tabular-nums; }
+  .ak-gerbong-baris.balik .nilai{ color:#e8c3b2; }
+  /* UANG TERTIDUR — kolom per ember umur, tinggi = nilai relatif ember terbesar.
+     Ember TUA (>30 hari) beroksida: bukan salah, tapi patut dilihat. */
+  .ak-tidur{ display:flex; align-items:flex-end; gap:8px; height:110px; margin:10px 2px 0;
+    padding-bottom:8px; border-bottom:2px solid rgba(226,205,166,.3); }
+  .ak-tidur-kolom{ flex:1; height:100%; display:flex; align-items:flex-end;
+    border-radius:3px 3px 0 0; background:rgba(255,255,255,.03); }
+  .ak-tidur-kolom .isi{ display:block; width:100%; height:var(--tinggi,0%); border-radius:3px 3px 0 0;
+    background-image:repeating-linear-gradient(115deg,rgba(93,73,36,.3) 0 1px,transparent 1px 5px),
+      linear-gradient(180deg,rgba(226,205,166,.5),rgba(191,164,118,.28)); }
+  .ak-tidur-kolom.tua .isi{
+    background-image:repeating-linear-gradient(115deg,rgba(93,73,36,.3) 0 1px,transparent 1px 5px),
+      linear-gradient(180deg,rgba(232,195,178,.55),rgba(201,112,94,.32)); }
+  .ak-tidur-label{ display:flex; gap:8px; margin:8px 2px 0; }
+  .ak-tidur-label span{ flex:1; text-align:center; font-size:8.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:#8f959d; }
+  .ak-tidur-label span.tua{ color:#e8c3b2; }
+  .ak-tidur-label i{ display:block; font-style:normal; font-family:var(--pf-serif);
+    font-size:10.5px; letter-spacing:0; text-transform:none; color:var(--pf-abu2,#a7adb5); margin-top:3px; }
   /* HARI PALING KERING — petak per hari, gelap = kas tipis. --tebal menggerakkan opacity
      isian, dan angkanya SAMA dengan saldo hari itu (bukan literal kedua). Hari terendah
      dapat tepi emas; hari MINUS dapat oksida — dua keadaan berbeda, dua tanda berbeda. */
@@ -7349,6 +7386,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div class="kg-label">Kas habis berapa hari lagi</div>
       <div class="ak-sisa-hari"><span id="sisaHariAngka"></span><i id="sisaHariSatuan"></i></div>
       <div class="ak-sisa-nota" id="sisaHariNota"></div>
+    </div>
+
+    <!-- UANG TERTIDUR DI GUDANG (sumbu O). Stok BUKAN kas, tapi ia uang toko yang sedang
+         tidak bisa dipakai — dan makin lama tidur, makin mahal ongkos diamnya. -->
+    <div class="kartu kg-panel" id="kartuTertidur" style="display:none;">
+      <div class="kg-label">Uang tertidur di gudang</div>
+      <div class="ak-tidur" id="akTidurKolom"></div>
+      <div class="ak-tidur-label" id="akTidurLabel"></div>
+      <div class="ak-sisa-nota" id="akTidurKet"></div>
+    </div>
+
+    <!-- PERJALANAN SATU RUPIAH (sumbu P). Berapa hari satu rupiah menginap di tiap gerbong
+         sebelum kembali jadi kas. Bukan angka uang — angka WAKTU. -->
+    <div class="kartu kg-panel" id="kartuGerbong" style="display:none;">
+      <div class="kg-label">Perjalanan satu rupiah</div>
+      <div class="ak-gerbong" id="akGerbongDaftar"></div>
+      <div class="ak-sisa-nota" id="akGerbongKet"></div>
     </div>
     <!-- NERACA RINGKAS (Modul ERP #3): kaki ketiga akuntansi — posisi kekayaan toko
          hari ini, dibandingkan saat titik kas terakhir. -->
@@ -20497,6 +20551,150 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       : 'Tercatat. Modal tertanam sekarang ' + formatRupiah(saldoModalOwner()) + '.');
   }
 
+  // ---------- P: PERJALANAN SATU RUPIAH ----------
+  // Berapa hari satu rupiah menginap di tiap gerbong sebelum kembali jadi kas. Ini angka
+  // WAKTU, bukan angka uang — dan itu sebabnya ia tidak memakai wujud uang mana pun.
+  //
+  //   beras di gudang  = nilai stok / HPP terjual per hari      (uang yang jadi beras)
+  //   piutang berjalan = piutang / omzet per hari                (uang yang sudah keluar
+  //                                                               barangnya tapi belum kembali)
+  //   utang pemasok    = utang / HPP terjual per hari            (uang PEMASOK yang menemani
+  //                                                               kita — ia MENGURANGI)
+  //
+  // Gerbong utang sengaja bertanda MINUS: selama pemasok masih menunggu, uang itu bukan uang
+  // kita yang tertahan. Menggambarnya searah dengan dua gerbong lain akan membuat perjalanan
+  // terbaca lebih panjang dari yang sebenarnya.
+  function gambarPerjalananRupiah() {
+    const kartu = document.getElementById('kartuGerbong');
+    if (!kartu) return;
+    const daftar = document.getElementById('akGerbongDaftar');
+    const ket = document.getElementById('akGerbongKet');
+    kartu.style.display = 'block';
+    let stok = null, piutang = null, utang = null, ak = null;
+    try {
+      stok = hitungStokKarungPerMerk();
+      piutang = hitungPiutang();
+      utang = hitungUtangPemasok();
+      const sejak = tanggalLokalIso(new Date(Date.now() - 30 * 86400000));
+      ak = hitungArusKasInti(iso => iso >= sejak, bayaranBiayaBulanan());
+    } catch (e) { console.error('perjalanan rupiah:', e); }
+    if (!stok || !ak) {
+      daftar.innerHTML = '';
+      ket.textContent = 'Stok atau gerakan uang 30 hari terakhir belum bisa dibaca — perjalanan belum bisa dihitung.';
+      return;
+    }
+    const nilaiStok = Object.keys(stok).reduce((a, m) => {
+      const s = stok[m]; return a + Math.max(0, s.sisaKg || 0) * (s.hppTerakhirPerKg || 0);
+    }, 0);
+    const sisaPiutang = (piutang || []).reduce((a, p) => a + Math.max(0, p.sisa || 0), 0);
+    const sisaUtang = (utang || []).reduce((a, u) => a + Math.max(0, u.sisa || 0), 0);
+    const omzet30 = ak.omzetPenuh || 0;
+    // HPP terjual 30 hari dibaca dari penjualannya sendiri — sumber yang sama dengan Laba.
+    let hpp30 = 0;
+    try {
+      const sejak = tanggalLokalIso(new Date(Date.now() - 30 * 86400000));
+      hpp30 = ambilPenjualan().filter(p => (p.tanggal || '') >= sejak)
+        .reduce((a, p) => a + (p.hppTotalSaatJual || 0), 0);
+    } catch (e) { hpp30 = 0; }
+    const hppHari = hpp30 / 30, omzetHari = omzet30 / 30;
+    const hari = (nilai, perHari) => (perHari > 0 && nilai > 0) ? Math.round(nilai / perHari) : null;
+    const g = [
+      { nama: 'Beras di gudang', ket: 'uang yang sedang berwujud beras', hari: hari(nilaiStok, hppHari), arah: 1 },
+      { nama: 'Piutang berjalan', ket: 'barang sudah keluar, uang belum kembali', hari: hari(sisaPiutang, omzetHari), arah: 1 },
+      { nama: 'Ditemani utang pemasok', ket: 'selama pemasok menunggu, itu bukan uang kita yang tertahan', hari: hari(sisaUtang, hppHari), arah: -1 }
+    ];
+    const maks = Math.max.apply(null, g.map(x => x.hari || 0).concat([1]));
+    daftar.innerHTML = g.map(x => {
+      const ada = x.hari !== null;
+      const lebar = ada ? Math.round((x.hari / maks) * 100) : 0;
+      return '<div class="ak-gerbong-baris' + (x.arah < 0 ? ' balik' : '') + '">'
+        + '<span class="kotak"><span class="isi" style="--lebar:' + lebar + '%"></span></span>'
+        + '<span class="teks"><b>' + escapeHtml(x.nama) + '</b><i>' + escapeHtml(x.ket) + '</i></span>'
+        + '<span class="nilai">' + (ada ? (x.arah < 0 ? '−' : '') + x.hari + ' hr' : '—') + '</span></div>';
+    }).join('');
+    const bersih = g.reduce((a, x) => a + (x.hari || 0) * x.arah, 0);
+    const kurang = g.filter(x => x.hari === null).map(x => x.nama.toLowerCase());
+    ket.textContent = (hppHari > 0
+      ? 'Satu rupiah menempuh sekitar ' + bersih + ' hari sebelum kembali jadi kas.'
+      : 'Tiga puluh hari terakhir nol barang terjual, jadi kecepatan perjalanannya belum punya pembagi.')
+      + (kurang.length ? ' Gerbong ' + kurang.join(' & ') + ' kosong, jadi tidak ikut dihitung.' : '')
+      + ' Angka ini WAKTU, bukan uang.';
+  }
+  // ---------- O: UANG TERTIDUR DI GUDANG ----------
+  // Stok BUKAN kas — ia uang toko yang sedang tidak bisa dipakai. Yang ditanya kartu ini
+  // bukan "berapa nilai stok" (itu sudah ada di Neraca) melainkan BERAPA LAMA uang itu
+  // sudah diam, karena beras yang tidur tiga bulan dan beras yang baru datang kemarin
+  // sama-sama "nilai stok" di neraca padahal sangat berbeda artinya.
+  //
+  // BATAS UKURNYA DISEBUT DI KARTUNYA SENDIRI, bukan disembunyikan: sistem ini TIDAK
+  // melacak karung mana berasal dari batch mana (nol FIFO per karung). Jadi umur diukur
+  // dari KEDATANGAN TERAKHIR merk itu — perkiraan yang jujur, dan kartunya mengaku begitu.
+  // Menyajikannya seolah umur per karung akan lebih rapi dan lebih bohong.
+  const AK_EMBER_UMUR = [
+    { maks: 7, label: '≤ 7 hari' },
+    { maks: 30, label: '8–30 hari' },
+    { maks: 60, label: '31–60 hari' },
+    { maks: Infinity, label: '> 60 hari' }
+  ];
+  function gambarUangTertidur() {
+    const kartu = document.getElementById('kartuTertidur');
+    if (!kartu) return;
+    const kolom = document.getElementById('akTidurKolom');
+    const label = document.getElementById('akTidurLabel');
+    const ket = document.getElementById('akTidurKet');
+    kartu.style.display = 'block';
+    let stok = null, batch = null;
+    try { stok = hitungStokKarungPerMerk(); batch = ambilSemuaBatch(); } catch (e) { console.error('uang tertidur:', e); }
+    if (!stok || !batch) {
+      kolom.innerHTML = ''; label.innerHTML = '';
+      ket.textContent = 'Stok atau catatan kedatangan belum bisa dibaca — uang tertidur belum bisa dihitung.';
+      return;
+    }
+    // Kedatangan TERAKHIR per merk
+    const terakhir = {};
+    batch.forEach(b => (b.merkList || []).forEach(m => {
+      if (!m.merk || !b.tanggal) return;
+      if (!terakhir[m.merk] || b.tanggal > terakhir[m.merk]) terakhir[m.merk] = b.tanggal;
+    }));
+    const kini = new Date(tanggalLokalIso() + 'T00:00:00');
+    const ember = AK_EMBER_UMUR.map(e => ({ label: e.label, maks: e.maks, nilai: 0, merk: [] }));
+    let tanpaTanggal = 0;
+    Object.keys(stok).forEach(merk => {
+      const s = stok[merk];
+      const sisa = Math.max(0, s.sisaKg || 0);
+      if (!(sisa > 0)) return;
+      const nilai = sisa * (s.hppTerakhirPerKg || 0);
+      if (!(nilai > 0)) return;
+      const tgl = terakhir[merk];
+      if (!tgl) { tanpaTanggal += nilai; return; }
+      const umur = Math.max(0, Math.round((kini - new Date(tgl + 'T00:00:00')) / 86400000));
+      const e = ember.find(x => umur <= x.maks) || ember[ember.length - 1];
+      e.nilai += nilai; e.merk.push(merk);
+    });
+    const total = ember.reduce((a, e) => a + e.nilai, 0);
+    if (!(total > 0)) {
+      kolom.innerHTML = ''; label.innerHTML = '';
+      ket.textContent = 'Nol stok bernilai di gudang — tidak ada uang yang sedang tertidur.';
+      return;
+    }
+    const maks = Math.max.apply(null, ember.map(e => e.nilai).concat([1]));
+    // Tinggi = nilai relatif ember TERBESAR. Ember kosong digambar NOL, bukan sesuatu yang
+    // kecil: umur yang tidak punya stok bukan "sedikit uang", melainkan tidak ada uang.
+    kolom.innerHTML = ember.map((e, i) => {
+      const tinggi = Math.round((e.nilai / maks) * 100);
+      const tua = i >= 2 && e.nilai > 0;
+      return '<div class="ak-tidur-kolom' + (tua ? ' tua' : '') + '" title="' + escapeHtml(e.label + ' · ' + formatRupiah(e.nilai)) + '">'
+        + '<span class="isi" style="--tinggi:' + tinggi + '%"></span></div>';
+    }).join('');
+    label.innerHTML = ember.map((e, i) =>
+      '<span class="' + (i >= 2 && e.nilai > 0 ? 'tua' : '') + '">' + escapeHtml(e.label)
+      + '<i>' + (e.nilai > 0 ? formatRupiah(e.nilai) : '—') + '</i></span>').join('');
+    const tuaNilai = ember[2].nilai + ember[3].nilai;
+    ket.textContent = 'Total ' + formatRupiah(total) + ' uang toko sedang berwujud beras'
+      + (tuaNilai > 0 ? '; ' + formatRupiah(tuaNilai) + ' di antaranya sudah lebih dari 30 hari.' : '.')
+      + (tanpaTanggal > 0 ? ' ' + formatRupiah(tanpaTanggal) + ' tidak punya catatan kedatangan, jadi umurnya tidak dihitung.' : '')
+      + ' Umur diukur dari KEDATANGAN TERAKHIR merk itu — sistem tidak melacak karung mana dari batch mana.';
+  }
   // ---------- DERET SALDO HARIAN: SATU sumber untuk tiga kartu ----------
   // Hari paling kering, ramalan tujuh hari, dan tuas simulasi semuanya bertanya hal yang
   // sama: berapa kas di penghujung tiap hari. Menghitungnya tiga kali akan melahirkan tiga
@@ -20756,6 +20954,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       wrap.style.display = 'none';
     }
     gambarSisaHariKas(t ? saldo : null);
+    gambarUangTertidur();
+    gambarPerjalananRupiah();
     gambarHariPalingKering();
     gambarRamalanTujuhHari();
     gambarTuasTahan();
