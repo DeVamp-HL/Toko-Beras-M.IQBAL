@@ -3212,6 +3212,13 @@
     line-height:1.1; color:var(--pf-krem,#f7ecd6); margin-top:6px; font-variant-numeric:tabular-nums; }
   .la-usul small{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
     line-height:1.55; color:var(--pf-abu2,#a7adb5); margin-top:7px; }
+  /* BULAN RUGI memakai oksida, bukan krem. Angkanya sendiri tetap Rp0 (tidak ada yang
+     boleh diambil), jadi yang harus membedakan rugi dari impas adalah WARNA dan
+     kalimatnya \u2014 bukan angka usulannya, yang kebetulan sama. Nama berawalan la-
+     karena .awas dan .rugi dua-duanya sudah punya arti global di berkas ini. */
+  .la-usul.la-awas{ background:rgba(217,166,147,.09); border-color:rgba(217,166,147,.42); }
+  .la-usul.la-awas b{ color:#e8c3b2; }
+  .la-usul.la-awas i{ color:#d9a693; }
   /* Penolakan menggambar usulan: oksida, bertepi putus — bentuknya sendiri mengatakan
      "ada yang belum lengkap", bukan "hasilnya nol". */
   .la-tolak{ display:flex; align-items:flex-start; gap:11px; margin-top:12px; padding:12px 13px;
@@ -26849,14 +26856,35 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         .reduce((a, h) => a + (h.nominal || 0), 0);
     } catch (e) { console.error('aman: prive', e); prive = null; }
     if (prive === null) kosong.push('prive yang sudah diambil');
+    // TIGA KEADAAN KOSONG, dan yang KETIGA tidak punya penanya sendiri. Mesin laba
+    // mengembalikan angka 0 untuk bulan yang IMPAS dan untuk bulan yang toko belum
+    // punya catatan apa-apa — dua hal yang sama sekali berbeda artinya bagi pemilik.
+    // Mesin uang tidak boleh disentuh, jadi yang membedakan dicacah DI SINI: berapa
+    // dokumen yang benar-benar bertanggal di bulan itu. Penjualan dihitung dari
+    // ambilPenjualanSemua (termasuk yang dibatalkan) — bulan yang isinya cuma penjualan
+    // batal tetap bulan yang ADA catatannya, cuma hasilnya nol.
+    let catatan = null;
+    try {
+      catatan = ambilPenjualanSemua().filter(x => bulanDari(x.tanggal) === bl).length
+              + ambilPengeluaranHarian().filter(x => bulanDari(x.tanggal) === bl).length;
+    } catch (e) { console.error('aman: catatan', e); catatan = null; }
+    if (catatan === null) kosong.push('jumlah catatan bulan itu');
     // BELUM DINYATAKAN != DINYATAKAN NOL. Satu baris yang tidak bisa dihitung membuat
     // usulannya TIDAK BOLEH digambar — bukan dianggap nol lalu diteruskan. Tidak ada || 0
     // di seluruh fungsi ini; yang kosong tetap null sampai ia disebut namanya.
-    if (kosong.length) return { bisa: false, kosong, labaBersih, kas, utang, prive };
+    if (kosong.length) return { bisa: false, kosong, labaBersih, kas, utang, prive, catatan };
+    // Bulan tanpa satu pun catatan: usulannya ditahan. Menggambar "Rp0" di sini terbaca
+    // sebagai putusan ("tidak ada yang boleh diambil"), padahal yang benar adalah
+    // "sistem tidak tahu apa-apa tentang bulan ini".
+    if (catatan === 0) return { bisa: false, tanpaCatatan: true, kosong: [], labaBersih, kas, utang, prive, catatan };
     const dariLaba = labaBersih - prive;
     const dariKas = kas - utang;
     const usulan = Math.max(0, Math.min(dariLaba, dariKas));
-    return { bisa: true, labaBersih, kas, utang, prive, dariLaba, dariKas, usulan,
+    return { bisa: true, labaBersih, kas, utang, prive, dariLaba, dariKas, usulan, catatan,
+      // RUGI bukan "sudah habis diambil". Math.max(0, ...) di atas memotong angka minus
+      // jadi Rp0 tanpa mengaku — penjepit yang diam. Yang dipotongnya dibawa keluar di
+      // sini supaya kalimatnya bisa menyebut selisihnya, bukan menyembunyikannya.
+      rugi: labaBersih < 0,
       pengikat: dariLaba <= dariKas ? 'laba' : 'kas' };
   }
   function gambarLabaAman(bl) {
@@ -26879,6 +26907,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // ke arah yang aman.
     h += baris('Utang pemasok (seluruhnya)', 'hitungUtangPemasok \u00b7 tanggal jatuh tempo tidak dicatat sistem, jadi dipakai semuanya',
       a.utang === null ? null : -a.utang);
+    if (a.tanpaCatatan) {
+      // Bulan yang tidak punya satu pun catatan DIGAMBAR BEDA dari bulan yang impas.
+      // Dulu keduanya berbunyi "Rp0 \u2014 sudah habis diambil", dan itu memberi tahu
+      // pemilik sesuatu yang tidak pernah terjadi.
+      h += '<div class="la-tolak"><i></i><span><b>Usulan tidak digambar</b><small>'
+        + 'Tidak ada satu pun catatan penjualan atau pengeluaran bertanggal '
+        + escapeHtml(nama) + '. Sistem tidak tahu apa-apa tentang bulan itu \u2014 itu '
+        + 'berbeda dari bulan yang untungnya nol, jadi angkanya ditahan daripada menebak.'
+        + '</small></span></div></div>';
+      w.innerHTML = h;
+      return;
+    }
     if (!a.bisa) {
       h += '<div class="la-tolak"><i></i><span><b>Usulan tidak digambar</b><small>'
         + escapeHtml(a.kosong.join(' dan ')) + ' belum bisa dihitung. Belum dinyatakan bukan '
@@ -26888,10 +26928,24 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       w.innerHTML = h;
       return;
     }
-    h += '<div class="la-usul"><i>Usulan</i><b>' + rpTanda(a.usulan) + '</b>'
+    // TIGA SEBAB BERBEDA kenapa usulannya Rp0, dan dulu ketiganya memakai SATU kalimat
+    // yang cuma benar untuk salah satunya. Bulan RUGI dikatakan "sudah habis diambil"
+    // walau prive-nya Rp0 \u2014 layar yang berbohong soal uang, persis di layar tempat
+    // pemilik memutuskan berapa yang diambil.
+    h += '<div class="la-usul' + (a.rugi ? ' la-awas' : '') + '"><i>Usulan</i><b>' + rpTanda(a.usulan) + '</b>'
       + '<small>' + (a.usulan <= 0
           ? (a.pengikat === 'laba'
-              ? 'Laba bersih ' + nama + ' sudah habis diambil \u2014 mengambil lagi bulan ini memakan modal, bukan untung.'
+              ? (a.rugi
+                  ? 'Bulan ini RUGI ' + formatRupiah(-a.labaBersih) + ', bukan untung'
+                    + (a.prive > 0
+                        ? ' \u2014 dan prive ' + formatRupiah(a.prive) + ' sudah terlanjur diambil di atas kerugian itu.'
+                        : ', dan belum ada prive yang diambil.')
+                    + ' Tidak ada untung yang bisa diambil bulan ini; yang diambil sekarang memakan modal.'
+                  : (a.prive > 0
+                      ? 'Laba bersih ' + formatRupiah(a.labaBersih) + ' sudah habis diambil sebagai prive '
+                        + formatRupiah(a.prive) + ' \u2014 mengambil lagi bulan ini memakan modal, bukan untung.'
+                      : 'Bulan ini IMPAS: laba bersihnya Rp0 dan belum ada prive yang diambil. '
+                        + 'Belum ada untung yang bisa diambil \u2014 bukan karena sudah diambil.'))
               : 'Kas toko sekarang ' + formatRupiah(a.kas) + ' tidak cukup menutup utang pemasok '
                 + formatRupiah(a.utang) + ' \u2014 belum ada yang bebas diambil.')
           : (a.pengikat === 'laba'
