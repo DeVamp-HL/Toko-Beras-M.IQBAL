@@ -5962,6 +5962,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 #thKrom .th-krom b{ display:block; font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--pf-platina); margin-top:2px; }
 #thKrom .th-krom i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); margin-top:2px; }
 /* Cincin beres: --isi dari cacah pagar yang SAMA dengan label x/6. */
+/* Judul kartu vonis Belanja SENGAJA emas, bukan abu seperti label bagian lain: ia satu-
+   satunya label yang BERUBAH mengikuti pilihan, jadi ia jawaban, bukan penanda bagian. */
+#bjVonis .kg-label{ color:var(--emas,#e2cda6); }
+#lembarKeliling .kl-judul{ font-family:var(--pf-serif); font-size:15px; color:var(--pf-krem,#f7ecd6);
+  margin-right:10px; flex:none; }
 /* Alasan kecurigaan tergambar DI DALAM kartu barangnya — kecurigaan tanpa alasan cuma
    firasat yang menyamar jadi data. */
 #lembarKeliling .kl-curiga{ display:flex; align-items:flex-start; gap:9px; margin:8px 0 2px;
@@ -6497,6 +6502,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
      opname yang sudah ada, bukan jalur baru. -->
 <div id="lembarKeliling" class="k6a" role="dialog" aria-modal="true" aria-label="Keliling gudang">
   <div class="kl-kepala">
+    <span class="kl-judul" id="klJudul"></span>
     <span class="kl-ke" id="klKe"></span>
     <span class="kl-bar"><i id="klBar"></i></span>
     <button type="button" class="kl-tutup" onclick="tutupKeliling()">Tutup</button>
@@ -7024,7 +7030,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <button type="button" class="ik8-pagi-utama" onclick="ik8PagiBuka('cocok')">Cocok &mdash; buka toko</button>
         <button type="button" class="ik8-pagi-beda" onclick="ik8PagiBuka('beda')">Beda dengan isi laci &mdash; cocokkan kas</button>
       </div>
-      <div class="ik8-pita" id="ik8Pita"><i class="ik8-pita-titik"></i><span id="ik8PitaTeks"></span></div>
+      <!-- ULANG (rancangan): ritual pagi harus bisa DIURUNGKAN. Tanpa ini, satu ketukan
+           keliru pada "Cocok — buka toko" mengunci keadaan itu untuk sisa hari —
+           KUNCI_BUKA_TOKO cuma pernah dibaca dan ditulis, tidak pernah dihapus. Tombolnya
+           memakai gaya tombol-di-pita yang sudah ada (dipakai pita Tangani). -->
+      <div class="ik8-pita" id="ik8Pita"><i class="ik8-pita-titik"></i><span id="ik8PitaTeks"></span>
+        <button type="button" class="ik8-pita-aksi" onclick="ik8PagiUlang()">ULANG</button></div>
 
       <div class="ik8-kas">
         <span class="ik8-refraksi"></span>
@@ -8504,7 +8515,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
        sumber. Seperti Tangani & Belanja, layar ini tidak menggantikan versi desktop mana
        pun, jadi tidak digerbangi lebar. -->
   <div id="halamanAkun" class="halaman k6a">
-    <div class="judul-halaman"><h2>Akun &amp; Perangkat</h2><span class="jh-sub" data-sub-desain>siapa, dari mana, sejak kapan</span></div>
+    <div class="judul-halaman"><h2>Akun &amp; Perangkat</h2><span class="jh-sub" data-sub-desain id="apSub">siapa, dari mana, sejak kapan</span></div>
     <div class="ap-tab">
       <button type="button" id="apTabPerangkat" class="kg-terpilih" onclick="apPilihTab('perangkat')">Perangkat</button>
       <button type="button" id="apTabIzin" onclick="apPilihTab('izin')">Izin</button>
@@ -8514,7 +8525,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   </div>
 
   <div id="halamanTangani" class="halaman k6a">
-    <div class="judul-halaman"><h2>Tangani</h2><span class="jh-sub" data-sub-desain>menuntut tindakan</span></div>
+    <div class="judul-halaman"><h2>Tangani</h2><span class="jh-sub" data-sub-desain id="tgSub">menuntut tindakan</span></div>
     <div id="tgKaca"></div>
   </div>
 
@@ -13368,6 +13379,28 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // ============ LAYAR AKUN & PERANGKAT (gelombang 5) ============
   let _apTab = 'perangkat', _apBuka = null, _apSaring = 'semua';
   function apPilihTab(t) { _apTab = t; _apBuka = null; tampilkanAkun(); }
+  // Sub-judul kepala IKUT TAB (rancangan). Ia baris paling atas layar, jadi ia satu-
+  // satunya tempat yang bisa mengatakan "kamu sedang melihat apa" tanpa menggulir.
+  // Cacahnya dihitung dari daftar yang benar-benar dibangun, bukan diketik.
+  function apSubJudul() {
+    const el = document.getElementById('apSub');
+    if (!el) return;
+    if (_apTab === 'izin') { el.textContent = 'aturan v2 · siapa boleh apa'; return; }
+    if (_apTab === 'jejak') {
+      // Dibaca dari cache yang SAMA dengan daftarnya (_cacheLog), bukan dari nama fungsi
+      // yang saya kira ada. Sub-judul yang menghitung dari sumber lain akan berselisih
+      // dengan daftar di bawahnya suatu hari.
+      const n = _cacheLog.length;
+      el.textContent = n ? n + ' kejadian terakhir' : 'belum ada kejadian tercatat';
+      return;
+    }
+    const d = _cachePerangkat || [];
+    const nP = d.length;
+    const nPerlu = d.filter(x => (x.antrean || 0) > 0).length;
+    el.textContent = nP
+      ? nP + ' perangkat' + (nPerlu ? ' · ' + nPerlu + ' perlu tindakan' : '')
+      : 'belum ada perangkat berdenyut';
+  }
   function apPilihBaris(id) { _apBuka = (_apBuka === id ? null : id); tampilkanAkun(); }
   function apPilihSaring(x) { _apSaring = x; tampilkanAkun(); }
 
@@ -13413,6 +13446,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function tampilkanAkun() {
     const w = document.getElementById('apIsi');
     if (!w) return;
+    apSubJudul();   // sub-judul kepala ikut tab & ikut cacah yang benar-benar ada
     try {
       ['perangkat', 'izin', 'jejak'].forEach(t => {
         const el = document.getElementById('apTab' + kapital(t));
@@ -19732,7 +19766,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!isi) return;
     const n = _klDaftar.length;
     const selesai = _klLangkah >= n;
-    document.getElementById('klKe').textContent = selesai ? 'selesai' : (_klLangkah + 1) + ' / ' + n;
+    // Layar yang tidak menyebut namanya sendiri sulit diceritakan ke orang lain
+    // ("buka yang ada bilah kemajuannya" bukan petunjuk). Judulnya ikut MODE-nya.
+    const elJdl = document.getElementById('klJudul');
+    if (elJdl) elJdl.textContent = _klPindaian ? 'Pindaian' : 'Keliling gudang';
+    document.getElementById('klKe').textContent = selesai ? 'selesai'
+      : (_klPindaian ? (_klLangkah + 1) + ' dari ' + n + ' dicurigai' : (_klLangkah + 1) + ' / ' + n);
     document.getElementById('klBar').style.width = Math.round(Math.min(_klLangkah, n) / Math.max(1, n) * 100) + '%';
 
     if (!selesai) {
@@ -31532,6 +31571,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.ik8PilihKarung = ik8PilihKarung;
   window.ik8PilihSimpul = ik8PilihSimpul;
   window.ik8PagiPilih = ik8PagiPilih;
+  window.ik8PagiUlang = ik8PagiUlang;
   window.ik8PagiKantongToggle = ik8PagiKantongToggle;
   window.ik8PagiBuka = ik8PagiBuka;
   window.ik8TanganiToggle = ik8TanganiToggle;
@@ -31903,6 +31943,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     tampilkanIkhtisar6a();
   }
   function ik8PagiPilih(id) { _ik8PagiFakta = (_ik8PagiFakta === id) ? null : id; tampilkanIkhtisar6a(); }
+  // Mengurungkan ritual pagi. Ia TIDAK menyentuh satu pun catatan uang — yang dihapus
+  // cuma penanda "toko sudah dibuka hari ini" di HP ini. Disebut di konfirmasinya supaya
+  // tidak ada yang mengira ini membatalkan penjualan.
+  function ik8PagiUlang() {
+    if (!confirm('Ulangi ritual pagi?\n\nKartu tiga hal akan muncul lagi dan toko dihitung '
+      + 'belum dibuka di HP ini.\n\nNol catatan uang berubah — penjualan, kas, dan laba '
+      + 'tetap apa adanya.')) return;
+    try { localStorage.removeItem(KUNCI_BUKA_TOKO); } catch (e) { /* penyimpanan terkunci */ }
+    _ik8PagiFakta = null; _ik8PagiKantong = false;
+    tampilkanIkhtisar6a();
+  }
   function ik8PagiKantongToggle() { _ik8PagiKantong = !_ik8PagiKantong; tampilkanIkhtisar6a(); }
   function ik8TanganiToggle() { pindahHalaman('tangani'); }   // layar Tangani lahir di gelombang 2
   function ik8PeriksaLagi() { tampilkanRingkasan(); }
@@ -32277,6 +32328,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function tgPilihGrup(id) { _tgGrup = (_tgGrup === id) ? null : id; tampilkanTangani(); }
   function tgMulaiAntre(id) { _tgMode = 'antre'; _tgAntre = id; _tgUrut = null; tampilkanTangani(); }
   function tgKeGrup() { _tgMode = 'grup'; _tgAntre = null; _tgUrut = null; tampilkanTangani(); }
+  // Sub-judul kepala ikut MODE (rancangan): di mode kelompok ia menyebut berapa hal
+  // menuntut tindakan; di mode antrean ia menyebut sudah berapa yang beres dari berapa.
+  // Angkanya dari daftar yang sama dengan isinya, bukan hitungan kedua.
+  function tgSubJudul(nHal, nGrup) {
+    const el = document.getElementById('tgSub');
+    if (!el) return;
+    if (_tgMode === 'antre') {
+      const total = nHal + _tgSelesai.length;
+      el.textContent = total ? _tgSelesai.length + ' dari ' + total + ' beres' : 'antrean kosong';
+      return;
+    }
+    el.textContent = nHal
+      ? nHal + ' hal \u00b7 ' + nGrup + (nGrup === 1 ? ' kekhawatiran' : ' kekhawatiran')
+      : 'tidak ada yang menuntut tindakan';
+  }
   function tgAntreIsi() {
     const isi = tgSisa().filter(x => (x.j || 'mesin') === _tgAntre);
     if (_tgUrut === null) return isi;
@@ -32318,6 +32384,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     try {
       const sisa = tgSisa();
       const hitung = id => sisa.filter(x => (x.j || 'mesin') === id).length;
+      // Sub-judul ditulis dari daftar yang SAMA dengan isinya — bukan hitungan kedua.
+      tgSubJudul(sisa.length, TG_GRUP.filter(g2 => hitung(g2.id) > 0).length);
       let h = '';
       if (_tgMode === 'antre') {
         const isi = tgAntreIsi();
