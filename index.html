@@ -5004,7 +5004,8 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #halamanHarian .hz-zona button{ flex:1; min-height:46px; border-radius:12px;
   border:1px solid var(--pf-tepi); background:none; color:var(--pf-abu);
   font-family:inherit; font-size:11px; font-weight:700; letter-spacing:.14em; }
-@media (min-width:700px){ #halamanHarian .hz-zona, #kacaAkibatHarian, #kacaLihatHarian{ display:none; } }
+@media (min-width:700px){ #halamanHarian .hz-zona, #kacaAkibatHarian, #kacaLihatHarian,
+  #halamanHarian .hz-tanya, #pilihKantongHarianWrap{ display:none; } }
 @media (max-width:699.98px){
   /* Rekap (dan tombol Kirim rekap → WA yang hanya ada di situ) hidup di zona LIHAT —
      Ringkasan owner-only, jadi kasir di HP tetap punya jalan mengirim rekap. */
@@ -5019,6 +5020,19 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   body.hz-lihat #kacaLihatHarian, body.hz-lihat #kartuHariIniHarian,
   body.hz-lihat #kartuRekapHarian, body.hz-lihat #kartuRiwayatHarian{ display:block; }
 }
+/* PERTANYAAN BERNOMOR (rancangan Harian - Gabungan). Nomornya bagian dari labelnya,
+   bukan hiasan: ia menyatakan ada urutan, dan urutan itulah keputusan rancangannya. */
+.hz-tanya{ font-size:9px; font-weight:800; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--pf-abu2,#a7adb5); margin:16px 2px 8px; display:flex; align-items:baseline; gap:8px; }
+.hz-tanya::before{ content:attr(data-nomor) " \00b7"; color:var(--emas,#e2cda6); flex:none; }
+#halamanHarian .pilih-kategori b{ font-family:var(--pf-serif); font-weight:600; font-size:17px; }
+#halamanHarian .pilih-kategori i{ font-family:var(--pf-serif); font-style:italic; font-size:11px; }
+/* Baris akibat yang menyala oksida: utang ke owner adalah kewajiban yang lahir, bukan
+   uang yang keluar — ia beda jenis dari dua baris di atasnya, jadi beda warna. */
+#kacaAkibatHarian .hz-baris.oks .nilai{ color:#e8c3b2; }
+#kacaAkibatHarian .hz-baris.oks .label{ color:#d9a693; }
+#kacaAkibatHarian .hz-kalimat.redup{ color:var(--pf-abu); }
+#kacaAkibatHarian .hz-kalimat b{ color:var(--pf-krem,#f7ecd6); font-weight:600; font-style:normal; }
 #kacaAkibatHarian .kg-panel, #kacaLihatHarian .kg-panel{ padding:14px 15px 12px; margin-bottom:12px; }
 #kacaAkibatHarian .hz-kalimat, #kacaLihatHarian .hz-kalimat{ font-family:var(--pf-serif);
   font-style:italic; font-size:11px; line-height:1.55; color:var(--pf-abu); margin-top:7px; }
@@ -8772,14 +8786,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <button type="button" class="tombol-utama-kartu" style="margin:10px 12px 12px; width:auto; display:block;" onclick="kirimRekapHarianWa()">Kirim rekap → WA</button>
     </div>
 
+    <!-- KACA EMAS G3 (rancangan Harian - Gabungan): zona CATAT adalah EMPAT PERTANYAAN
+         BERNOMOR, bukan tumpukan kartu. Nomornya bukan hiasan — ia menyatakan urutan yang
+         dipilih sengaja: kategori dulu (satu ketukan), nominal kedua (butuh papan angka),
+         baru dari kantong mana, baru untuk apa. -->
+    <div class="hz-tanya" data-nomor="1">Uang siapa yang dipakai habis</div>
     <!-- Akibat terbesar halaman ini ada di pilihan kategori, jadi keterangannya
-         ("ikut kas" / "pribadi") menempel di dalam tombolnya (Prinsip 1). -->
+         ("jadi beban toko" / "murni pribadi") menempel di dalam tombolnya (Prinsip 1). -->
     <div class="pilih-kategori" id="pilihKategoriHarianWrap">
-      <button type="button" id="kategoriHarianToko" class="pilih" onclick="pilihKategoriHarian('toko')"><b>Toko</b><i>ikut kas</i></button>
-      <button type="button" id="kategoriHarianOwner" class="tab-owner-blok" onclick="pilihKategoriHarian('owner')"><b>Owner</b><i>pribadi</i></button>
+      <button type="button" id="kategoriHarianToko" class="pilih" onclick="pilihKategoriHarian('toko')"><b>Toko</b><i>jadi beban toko</i></button>
+      <button type="button" id="kategoriHarianOwner" class="tab-owner-blok" onclick="pilihKategoriHarian('owner')"><b>Owner</b><i>murni pribadi</i></button>
     </div>
     <input type="hidden" id="harianKategori" value="toko">
 
+    <div class="hz-tanya" data-nomor="2">Berapa</div>
     <div class="kartu-nominal">
       <div class="kn-label">Nominal</div>
       <div class="kn-baris">
@@ -8789,6 +8809,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div class="kn-eja" id="harianEja">nol rupiah</div>
     </div>
 
+    <!-- 3 · DIBAYAR PAKAI APA (sumbu P — tulang halaman ini menurut rancangan).
+         Belanja toko yang ditalangi dompet pribadi TETAP beban toko, tapi kas toko TIDAK
+         berkurang; yang lahir justru utang toko ke owner. Sebelum ini pertanyaan itu cuma
+         punya pintu di layar Belanja, jadi pencatat di Harian tidak pernah ditanya — dan
+         satu-satunya cara mencatatnya salah adalah dengan tidak ditanya.
+         MESINNYA TIDAK BARU: kategori 'tokoDompet' sudah ada, sudah dibaca
+         bebanTokoKategori & kasTokoKeluarKategori, dan simpanPengeluaranHarian menulis
+         apa pun yang ada di #harianKategori. Yang lahir di sini cuma PINTUNYA.
+         Pertanyaan ini hanya berarti kalau belanjanya untuk TOKO — kalau Owner, uang
+         pribadi memang sudah jawabannya, jadi ia disembunyikan. -->
+    <div class="hz-tanya" data-nomor="3" id="hzTanyaKantong">Dibayar pakai apa</div>
+    <div class="pilih-kategori" id="pilihKantongHarianWrap">
+      <button type="button" id="kantongHarianLaci" class="pilih" onclick="pilihKantongHarian('laci')"><b>Laci toko</b><i>kas toko berkurang</i></button>
+      <button type="button" id="kantongHarianPribadi" onclick="pilihKantongHarian('pribadi')"><b>Uang pribadi</b><i>toko berutang ke owner</i></button>
+    </div>
+
+    <div class="hz-tanya" data-nomor="4">Untuk apa</div>
     <div class="kartu" id="kartuIsianHarian">
       <label style="margin-top:0;">Untuk apa</label>
       <input type="text" id="harianKeterangan" placeholder="Contoh: bensin motor, beli galon" oninput="perbaruiRingkasHarian()">
@@ -12494,12 +12531,43 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return data ? JSON.parse(data) : [];
   }
 
-  function pilihKategoriHarian(kat) {
-    kategoriHarianAktif = kat;
+  // Dua sumbu yang TIDAK BOLEH dicampur: untuk siapa belanjanya (toko / owner) dan dari
+  // kantong mana uangnya (laci / pribadi). Yang disimpan tetap SATU kategori seperti
+  // sebelumnya — perkawinan keduanya sudah punya namanya di sistem ini:
+  //     toko  + laci    -> 'toko'        (beban toko, kas toko keluar)
+  //     toko  + pribadi -> 'tokoDompet'  (beban toko, kas TIDAK keluar, utang ke owner)
+  //     owner + apa pun -> 'owner'       (bukan beban, kas keluar dari laci yang sama)
+  // Pertanyaan kantong sengaja TIDAK ditanyakan untuk Owner: uang pribadi memang sudah
+  // jawabannya, dan menanyakannya akan melahirkan gabungan yang tidak punya nama.
+  let kantongHarianAktif = 'laci';
+  function kategoriHarianGabungan() {
+    if (kategoriHarianAktif === 'owner') return 'owner';
+    return kantongHarianAktif === 'pribadi' ? 'tokoDompet' : 'toko';
+  }
+  function terapkanKategoriHarian() {
+    const kat = kategoriHarianGabungan();
+    kategoriHarianAktif = kat;                       // dibaca gambarKacaHarian & tombol simpan
     document.getElementById('harianKategori').value = kat;
-    document.getElementById('kategoriHarianToko').classList.toggle('pilih', kat === 'toko');
-    document.getElementById('kategoriHarianOwner').classList.toggle('pilih', kat === 'owner');
+    const bukanOwner = kat !== 'owner';
+    document.getElementById('kategoriHarianToko').classList.toggle('pilih', bukanOwner);
+    document.getElementById('kategoriHarianOwner').classList.toggle('pilih', !bukanOwner);
+    const tanya = document.getElementById('hzTanyaKantong');
+    const wrap = document.getElementById('pilihKantongHarianWrap');
+    if (tanya) tanya.style.display = bukanOwner ? '' : 'none';
+    if (wrap) wrap.style.display = bukanOwner ? '' : 'none';
+    const laci = document.getElementById('kantongHarianLaci');
+    const pri = document.getElementById('kantongHarianPribadi');
+    if (laci) laci.classList.toggle('pilih', kantongHarianAktif === 'laci');
+    if (pri) pri.classList.toggle('pilih', kantongHarianAktif === 'pribadi');
     perbaruiRingkasHarian();
+  }
+  function pilihKategoriHarian(kat) {
+    kategoriHarianAktif = kat === 'owner' ? 'owner' : 'toko';
+    terapkanKategoriHarian();
+  }
+  function pilihKantongHarian(k) {
+    kantongHarianAktif = k === 'pribadi' ? 'pribadi' : 'laci';
+    terapkanKategoriHarian();
   }
 
   // ===== Penyempurnaan Lembar 7 =====
@@ -12523,6 +12591,42 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         : (nominal <= 0 ? 'Isi nominal dulu' : 'Isi keterangan dulu');
     }
     gambarKacaHarian();
+  }
+
+  // ---------- O: RUPIAH JADI KG BERAS ----------
+  // Rancangan: "beban dibagi margin kotor per kg, jadi rupiah punya bentuk yang bisa
+  // dibayangkan". Rp340.000 tidak berarti apa-apa sampai ia jadi "28,1 kg beras yang
+  // harus terjual buat menutupnya".
+  //
+  // NOL RUMUS UANG BARU. Marginnya dibaca dari hitungLabaRentang (mesin beku, tidak
+  // disentuh); yang ditambahkan cuma pembagi — kilogram dari penjualan yang SAMA.
+  // Subsetnya wajib sama: hitungLabaRentang cuma menghitung margin dari penjualan yang
+  // HPP-nya tercatat, jadi kg-nya pun cuma dari penjualan itu. Menjumlahkan kg dari
+  // SEMUA penjualan akan membagi margin sebagian dengan kilogram seluruhnya, dan
+  // hasilnya margin per kg yang terlalu kecil — angka masuk akal yang diam-diam salah.
+  function marginKotorPerKg() {
+    try {
+      const sejak = tanggalLokalIso(new Date(Date.now() - 30 * 86400000));
+      const cocok = t => (t || '') >= sejak;
+      const L = hitungLabaRentang(cocok);
+      const kg = ambilPenjualan()
+        .filter(pj => cocok(pj.tanggal) && hppTercatat(pj))      // subset yang SAMA dengan margin
+        .reduce((a, pj) => a + (pj.totalKg || 0), 0);
+      if (!(kg > 0) || !(L.margin > 0)) return null;   // tidak bisa dihitung != nol
+      return { perKg: L.margin / kg, kg, margin: L.margin, hari: 30 };
+    } catch (e) { console.error('margin per kg:', e); return null; }
+  }
+  // Kalimatnya MENOLAK digambar kalau pembaginya belum ada — bukan menulis "0 kg", yang
+  // akan terbaca "tidak perlu jual apa-apa untuk menutupnya".
+  function hzKalimatKg(nominal) {
+    if (!(nominal > 0)) return '';
+    const m = marginKotorPerKg();
+    if (!m) return '<div class="hz-kalimat redup">Margin kotor 30 hari terakhir belum bisa dibaca, '
+      + 'jadi beban ini belum bisa diterjemahkan jadi kilogram beras.</div>';
+    const kg = nominal / m.perKg;
+    return '<div class="hz-kalimat">Setara <b>' + kg.toLocaleString('id-ID', { maximumFractionDigits: 1 })
+      + ' kg beras</b> yang harus terjual buat menutupnya \u2014 margin kotor '
+      + formatRupiah(Math.round(m.perKg)) + '/kg, dari 30 hari terakhir.</div>';
   }
 
   // ============ KACA EMAS G3: HARIAN — ZONA CATAT / LIHAT (hanya <700px) ============
@@ -12564,10 +12668,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             : beban
               ? `Beban toko naik ${rpN} dan laba ikut turun, tapi kas toko tidak bergerak — yang menalangi dompet pribadi, bukan laci toko.`
               : 'Tidak menyentuh kas toko maupun beban toko.';
+        // TIGA angka, bukan dua (rancangan): beban toko, kas keluar, DAN utang ke owner.
+        // Ketiganya wajib terlihat beda — itu seluruh sebab halaman ini ada. Sebelumnya
+        // utang ke owner cuma disebut di kalimat, jadi ia satu-satunya dari tiga akibat
+        // yang tidak punya angkanya sendiri.
+        const utang = kat === 'tokoDompet';
         wA.innerHTML = `<div class="kg-panel"><div class="kg-label">Kalau disimpan sekarang</div>
           <div class="hz-baris${beban ? '' : ' redup'}"><span class="label">Beban toko</span><span class="nilai">${beban ? '+ ' + rpN : 'Rp0'}</span></div>
-          <div class="hz-baris${kas ? '' : ' redup'} akhir"><span class="label">Kas toko keluar</span><span class="nilai">${kas ? '− ' + rpN : 'Rp0 &middot; bukan dari laci toko'}</span></div>
-          <div class="hz-kalimat">${kalimat}</div></div>`;
+          <div class="hz-baris${kas ? '' : ' redup'}"><span class="label">Kas toko keluar</span><span class="nilai">${kas ? '− ' + rpN : 'Rp0 &middot; bukan dari laci toko'}</span></div>
+          <div class="hz-baris${utang ? ' oks' : ' redup'} akhir"><span class="label">Utang toko ke owner</span><span class="nilai">${utang ? '+ ' + rpN : 'Rp0'}</span></div>
+          <div class="hz-kalimat">${kalimat}</div>${hzKalimatKg(nominal)}</div>`;
       }
       const hariIni = tanggalLokalIso();
       const buka = ownerSudahUnlock();
@@ -30611,6 +30721,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.putuskanKarantina = putuskanKarantina;
   window.hapusBulanan = hapusBulanan;
   window.pilihKategoriHarian = pilihKategoriHarian;
+  window.pilihKantongHarian = pilihKantongHarian;
   window.pilihZonaHarian = pilihZonaHarian;
   window.simpanPengeluaranHarian = simpanPengeluaranHarian;
   window.hapusHarian = hapusHarian;
