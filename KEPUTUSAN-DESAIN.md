@@ -1,6 +1,6 @@
 # Keputusan desain — penyimpangan yang SUDAH disetujui
 
-Tiga belas keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
+Tujuh belas keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
 Semuanya sudah diperiksa dan disetujui pemilik. **Membetulkannya ke prototipe = merusak.**
 
 Berkas ini ada di repo dengan sengaja. Perintah kerja (`PROMPT-*.md`) dan catatan bisnis
@@ -102,6 +102,42 @@ gambar QR yang tidak menunjuk ke mana-mana.
 
     Ini **penundaan sadar, bukan cacat**. Tanpa butir ini, sapuan berikutnya akan
     "membetulkannya" dengan mengarang tiga kondisi yang belum pernah diputuskan siapa pun.
+
+
+14. **Sack Utuh menerima SETENGAHAN** — 0,5 / 1,5 / 2,5 sack — meski desain menyatakan sack
+    utuh bilangan bulat. Steppernya melangkah 0,5 dan kolomnya menerima koma
+    (`WZ_PETA_JUMLAH`, 14513-14517); langit-langitnya dibulatkan ke bawah ke kelipatan 0,5
+    supaya stok tidak pernah minus — sisa 629,84 kg / 50 = 12,596 jadi **12,5** sack, bukan
+    12,59 (`stokMaksJalur`, 13129-13134).
+
+    **Kenapa ini penting lebih dari kelihatannya:** halaman desain membangun seluruh
+    argumennya di atas sack yang bulat — "begitu sacknya dibuka, dia berhenti jadi sack",
+    karena itu setengah karung dialihkan ke Repacking atau Literan. Butir ini **mencabut
+    alasan itu**. Toko sudah berjalan dengan setengahan; mengembalikannya ke bulat bukan
+    mempercantik, tapi **mengubah cara penjualan dicatat**.
+
+    **Saksinya:** dua komentar kode, 13129 dan 14514, dua-duanya menyebut "permintaan
+    pemilik"; yang di 13129 bertanggal **21 Agustus 2026** dan menyebut contoh angkanya.
+    Sebelum butir ini, aturannya hidup HANYA di sana — persis celah yang berkas ini dibuat
+    untuk menutup.
+
+15. **Nominal → liter dibulatkan KE BAWAH** (`Math.floor`, dengan epsilon `1e-9` supaya tahan
+    galat pecahan biner), bukan `Math.round` seperti desain — `wzLiterDariNominal`, 14580-14583.
+    Alasannya: yang tercatat **tidak boleh lebih besar dari uang yang disebut pembeli**.
+    Selisihnya tidak disembunyikan — baris konversi mengakuinya sendiri ("Rp200 lebih sedikit
+    dari yang diketik"). Untuk contoh desain (Rp200.000 @ Rp13.500) hasil floor dan round
+    kebetulan sama; di harga lain keduanya berbeda 0,1 L.
+
+16. **Jalur jual ada LIMA, bukan empat** — keempat jalur desain plus **Retur**
+    (`wzPilihJalur('retur')`, 14919). Berkas desainnya sendiri mengakui `#halamanJual` punya
+    lima kolom lalu memilih menggambar empat. Retur memakai form lama apa adanya lewat kelas
+    `.wz-retur` (CSS 2982-2984); mencabutnya berarti menghapus satu-satunya pintu retur di HP.
+
+17. **Ada kolom angka KEDUA yang tidak ada di desain** — harga satuan boleh **diketik langsung**
+    untuk nego (`#wzHargaInput` di `#wzNegoBlok`, 14743-14761; `wzHargaDiketik` 14788,
+    `wzNegoUbah` 14306), dengan tombol ±500 tetap ada. Desain hanya punya satu kolom angka.
+    Nego adalah perbuatan sehari-hari di toko beras; tanpa kolom ini harga nego harus dihitung
+    mundur jadi jumlah, dan itu yang dulu memisahkan jumlah dari uang.
 
 ---
 
