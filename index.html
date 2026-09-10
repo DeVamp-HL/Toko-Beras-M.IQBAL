@@ -4230,15 +4230,29 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 @media (max-width:699.98px){
 #akKepala{ margin-bottom:12px; }
 #akKepala #kasSekarangWrap{ background:none; border:none; box-shadow:none; padding:6px 0 0; margin-bottom:0; }
-#akKepala .ak-keping{ display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; }
-#akKepala .keping{ flex:1 1 40%; display:flex; flex-direction:column; gap:1px; padding:7px 10px;
+/* Cap "MI" dipadamkan DI KARTU INI SAJA. Di kartu hero lain ia duduk di ruang kosong;
+   di sini kalimat penjelasnya panjang dan hurufnya jatuh persis di belakang teks — dua
+   lapis huruf saling menumpang. Rancangan memakai sapuan cahaya, bukan huruf. */
+#akKepala #kasSekarangWrap .pf-mi{ display:none; }
+/* Empat keping SATU BARIS (rancangan Arus Kas - Gabungan), bukan 2x2: keempatnya
+   adalah satu angka yang dipecah, dan tumpukan dua-dua membacanya seperti dua pasang.
+   Lebar kolom SAMA RATA lewat grid + minmax(0,1fr) — "flex:1 1 40%" dulu melar mengikuti
+   isi, jadi keping dengan angka terpanjang mencuri lebar dari tetangganya. */
+#akKepala .ak-keping{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr));
+  gap:6px; margin-top:9px; }
+#akKepala .keping{ display:flex; flex-direction:column; gap:3px; padding:7px 6px; min-width:0;
   border-radius:4px; border:1px solid var(--pf-tepi);
   background:linear-gradient(168deg,rgba(255,255,255,.05),rgba(255,255,255,.018)); }
-#akKepala .keping i{ font-style:normal; font-size:8.5px; font-weight:700; letter-spacing:.16em;
+#akKepala .keping i{ font-style:normal; font-size:7.5px; font-weight:700; letter-spacing:.13em;
   text-transform:uppercase; color:var(--pf-abu); }
-#akKepala .keping b{ font-family:var(--pf-serif); font-weight:600; font-size:14px; color:var(--pf-platina); }
-#akKepala .keping-ket{ flex:1 1 100%; font-family:var(--pf-serif); font-style:italic;
-  font-size:9.5px; color:var(--pf-abu); }
+/* Angka keping WAJIB satu baris. Empat kolom sama rata di layar 390px cuma menyisakan
+   ~66px isi, sementara rupiah puluhan juta butuh lebih — jadi hurufnya yang mengecil,
+   bukan angkanya yang dipatahkan. "overflow-wrap:anywhere" sempat dipakai di sini dan
+   hasilnya "Rp9.500.0 / 00": angka utuh, terbaca salah. Ukur dengan TINGGI BARIS, bukan
+   scrollWidth — teks yang membungkus tidak pernah meluap. */
+#akKepala .keping b{ font-family:var(--pf-serif); font-weight:600; color:var(--pf-platina);
+  font-size:10px; font-variant-numeric:tabular-nums; line-height:1.15;
+  white-space:nowrap; letter-spacing:-.015em; }
 #akKepala #akKepalaKosong b{ font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--teks); }
 #akKepala #akKepalaKosong p{ margin:4px 0 8px; font-size:11px; color:var(--pf-abu); line-height:1.5; }
 }
@@ -4331,6 +4345,24 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
      tapi SATUANNYA HARI, bukan rupiah. Karena itu ia sengaja TIDAK memakai gradien sampanye
      maupun platina: empat jenis uang punya wujudnya masing-masing, dan angka yang bukan uang
      tidak boleh menyamar jadi salah satunya. */
+  /* JAM PASIR (rancangan Arus Kas - Gabungan, sumbu L). Ia di KIRI angka, bukan di atasnya:
+     rancangan menaruh gambar dan angka pada satu baris supaya keduanya terbaca sekali pandang.
+     Pasir atas = sisa hari terhadap 30 hari; sesudah 30 hari jam pasirnya penuh dan berhenti
+     bercerita — itu memang batasnya, dan kalimat di bawah yang meneruskan. */
+  .ak-jam-baris{ display:flex; align-items:center; gap:15px; }
+  .ak-jam{ flex:none; display:block; }
+  .ak-jam-teks{ flex:1; min-width:0; }
+  .ak-jam .jam-atas, .ak-jam .jam-bawah{ width:70px; height:44px; display:flex; align-items:flex-end;
+    overflow:hidden; background:rgba(255,255,255,.04); border:1px solid rgba(226,205,166,.3); }
+  .ak-jam .jam-atas{ border-radius:3px 3px 0 0; clip-path:polygon(0 0,100% 0,58% 100%,42% 100%); }
+  .ak-jam .jam-bawah{ border-radius:0 0 3px 3px; clip-path:polygon(42% 0,58% 0,100% 100%,0 100%); }
+  .ak-jam .jam-atas span{ display:block; width:100%; height:var(--atas,50%);
+    background:linear-gradient(180deg,#c2a678,#f7ecd6); }
+  .ak-jam .jam-bawah span{ display:block; width:100%; height:var(--bawah,50%);
+    background:linear-gradient(180deg,rgba(217,166,147,.5),#d9a693); }
+  .ak-jam .jam-leher{ display:flex; justify-content:center; }
+  .ak-jam .jam-leher i{ display:block; width:9px; height:7px; background:rgba(226,205,166,.42); }
+  #kartuSisaHariKas{ border-color:rgba(226,205,166,.32); }
   .ak-sisa-hari{ display:flex; align-items:baseline; gap:8px; margin:6px 2px 0; }
   .ak-sisa-hari > span{ font-family:var(--pf-serif); font-size:40px; font-weight:600;
     line-height:1.05; color:var(--pf-putih,#fdf6e7); font-variant-numeric:tabular-nums; }
@@ -4350,6 +4382,7 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
      Gaya dasarnya sudah dikurung media <700px; di sini tinggal krom kg-panel + isi baru. */
   #akKepala{ background:none; border:none; box-shadow:none; padding:0; margin-bottom:0; }
   #akKepala > .kg-label, #akKepala .ak-keping, #akKepalaKosong{ display:none !important; }
+  .ak-jam{ display:none; }   /* gayanya cuma ada di <700px — tanpa ini ia jadi kotak telanjang */
 }
 /* --- KACA EMAS G2: Piutang & Kasbon --- */
 @media (min-width:700px){ #piutang6a{ display:none; } }
@@ -7383,9 +7416,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
          menaruhnya MEMIMPIN zona SEKARANG: pertanyaan pertama pemilik tiap pagi bukan
          "berapa kas saya" tapi "cukup sampai kapan". -->
     <div class="kartu kg-panel" id="kartuSisaHariKas" style="display:none;">
-      <div class="kg-label">Kas habis berapa hari lagi</div>
-      <div class="ak-sisa-hari"><span id="sisaHariAngka"></span><i id="sisaHariSatuan"></i></div>
-      <div class="ak-sisa-nota" id="sisaHariNota"></div>
+      <div class="ak-jam-baris">
+        <!-- Jam pasir: pasir ATAS = sisa hari (dipotong 30 hari sebagai penuh), pasir BAWAH
+             sisanya. Ia gambar KEADAAN, bukan hiasan — karena itu tingginya dihitung, dan
+             saat sisa hari belum bisa dihitung jam pasirnya tidak digambar sama sekali
+             (bukan digambar kosong: kosong berarti "nol hari", dan itu bukan yang terjadi). -->
+        <div class="ak-jam" id="sisaHariJam" aria-hidden="true">
+          <div class="jam-atas"><span id="sisaHariPasirAtas"></span></div>
+          <div class="jam-leher"><i></i></div>
+          <div class="jam-bawah"><span id="sisaHariPasirBawah"></span></div>
+        </div>
+        <div class="ak-jam-teks">
+          <div class="kg-label">Kas habis berapa hari lagi</div>
+          <div class="ak-sisa-hari"><span id="sisaHariAngka"></span><i id="sisaHariSatuan"></i></div>
+          <div class="ak-sisa-nota" id="sisaHariNota"></div>
+        </div>
+      </div>
     </div>
 
     <!-- UANG TERTIDUR DI GUDANG (sumbu O). Stok BUKAN kas, tapi ia uang toko yang sedang
@@ -20897,9 +20943,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const nota = document.getElementById('sisaHariNota');
     kartu.style.display = 'block';
     kartu.classList.remove('ak-gawat', 'ak-tenang');
-    const taruh = (a, sat, n, kelas) => {
+    // Jam pasir digambar dari angka yang SAMA dengan yang tercetak. Kalau sisa hari
+    // tidak bisa dihitung, jamnya DISEMBUNYIKAN — bukan digambar kosong; jam kosong
+    // sudah punya arti sendiri ("nol hari"), dan dua keadaan berbeda tidak boleh
+    // memakai satu gambar. Lihat pola "tiga keadaan kosong".
+    const jam = document.getElementById('sisaHariJam');
+    const taruh = (a, sat, n, kelas, hari) => {
       angka.textContent = a; satuan.textContent = sat; nota.textContent = n;
       if (kelas) kartu.classList.add(kelas);
+      if (!jam) return;
+      if (hari === null || hari === undefined) { jam.style.display = 'none'; return; }
+      jam.style.display = '';
+      const isi = Math.max(6, Math.min(94, hari / 30 * 100));
+      jam.style.setProperty('--atas', isi.toFixed(0) + '%');
+      jam.style.setProperty('--bawah', (100 - isi).toFixed(0) + '%');
     };
     if (saldoKas === null || saldoKas === undefined) {
       taruh('—', '', 'Titik hitung kas belum disetel, jadi kas sekarang belum diketahui — sisa hari belum bisa dihitung. Setel titiknya dari Tutup Hari.');
@@ -20915,7 +20972,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // rpTanda, BUKAN formatRupiah: yang kedua menaruh minusnya DI DALAM ("Rp-8.588.790")
       // sementara kepala halaman menulisnya di luar ("\u2212Rp8.588.790"). Dua wujud untuk
       // satu angka yang sama, di layar yang sama, adalah cara paling murah membuat pembacanya ragu.
-      taruh('0', 'hari', 'Kas menurut catatan sudah ' + rpTanda(saldoKas) + ' — bukan "habis nanti", tapi sudah lewat. Cocokkan kas dulu kalau angkanya terasa salah.', 'ak-gawat');
+      taruh('0', 'hari', 'Kas menurut catatan sudah ' + rpTanda(saldoKas) + ' — bukan "habis nanti", tapi sudah lewat. Cocokkan kas dulu kalau angkanya terasa salah.', 'ak-gawat', 0);
       return;
     }
     if (!(perHari > 0)) {
@@ -20927,7 +20984,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       'Dari keluar RUTIN saja — biaya bulanan ' + formatRupiah(pos.biayaBulanan || 0)
       + ' + belanja toko ' + formatRupiah(pos.harian || 0) + ' dalam 30 hari, rata-rata '
       + formatRupiah(Math.round(perHari)) + '/hari. Beli beras sengaja tidak dihitung: ia bisa ditunda.',
-      hari <= 7 ? 'ak-gawat' : 'ak-tenang');
+      hari <= 7 ? 'ak-gawat' : 'ak-tenang', hari);
   }
   function tampilkanBukuKas(bl) {
     const kont = document.getElementById('daftarBukuKas');
@@ -20946,10 +21003,24 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (t) {
       wrap.style.display = 'block';
       document.getElementById('kasSekarangNilai').innerHTML = angkaUtamaHtml(saldo);
+      // Kalimat kepala dulu mengeja keempat kantong satu per satu — persis angka yang
+      // sudah berdiri sendiri sebagai empat keping tepat di bawahnya, DAN sekali lagi di
+      // keterangan keping. Satu angka tiga kali di satu kartu. Sekarang kalimatnya
+      // menerangkan ASAL angka besarnya (titik + gerakan), seperti di rancangan, dan
+      // rinciannya diserahkan ke keping.
+      const titikTotal = (t.laci || 0) + (t.rekening || 0) + (t.amplop || 0) + (t.brankas || 0);
+      const gerakan = saldo - titikTotal;
+      // Di layar >=700px keping memang tidak digambar (gerbang CSS), jadi di sanalah
+      // rincian per kantong tetap disebut — kalau tidak, angkanya hilang sama sekali.
+      const kepingTergambar = !window.matchMedia('(min-width: 700px)').matches;
       document.getElementById('kasSekarangSyarat').textContent =
-        'Titik ' + formatTanggal(t.tanggal) + ': laci ' + formatRupiah(t.laci || 0) + ' \u00b7 rekening ' + formatRupiah(t.rekening || 0)
-        + ' \u00b7 amplop ' + formatRupiah(t.amplop || 0) + ' \u00b7 brankas ' + formatRupiah(t.brankas || 0)
-        + '. Sesudahnya bercampur \u2014 pisah per kanal hanya diketahui saat titik.';
+        'Menurut catatan: dari titik hitung ' + formatTanggal(t.tanggal) + ' ' + formatRupiah(titikTotal)
+        + ' ditambah gerakan ' + rpTanda(gerakan) + '.'
+        + (kepingTergambar
+            ? ' Keempat keping di bawah adalah wujudnya SAAT TITIK \u2014 sesudahnya bercampur, jadi pisah per kantong hanya diketahui saat titik.'
+            : ' Saat itu: laci ' + formatRupiah(t.laci || 0) + ' \u00b7 rekening ' + formatRupiah(t.rekening || 0)
+              + ' \u00b7 amplop ' + formatRupiah(t.amplop || 0) + ' \u00b7 brankas ' + formatRupiah(t.brankas || 0)
+              + '. Sesudahnya bercampur \u2014 pisah per kantong hanya diketahui saat titik.');
     } else {
       wrap.style.display = 'none';
     }
@@ -21004,8 +21075,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (keping) {
       keping.innerHTML = !t ? '' :
         [['Laci', t.laci], ['Rekening', t.rekening], ['Amplop', t.amplop], ['Brankas', t.brankas]]
-          .map(x => '<span class="keping"><i>' + x[0] + '</i><b>Rp' + Math.round(x[1] || 0).toLocaleString('id-ID') + '</b></span>').join('')
-        + '<span class="keping-ket">saat titik ' + escapeHtml(formatTanggal(t.tanggal)) + ' — sesudahnya bercampur; pisah per kantong hanya diketahui saat titik</span>';
+          .map(x => '<span class="keping"><i>' + x[0] + '</i><b>Rp' + Math.round(x[1] || 0).toLocaleString('id-ID') + '</b></span>').join('');
     }
   }
 
