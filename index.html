@@ -6521,7 +6521,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <label for="ppAlasan">Alasan — wajib</label>
     <input type="text" id="ppAlasan" placeholder="Contoh: kas laci sebenarnya lebih besar, belum dicocokkan" oninput="ppPeriksaAlasan()">
     <button type="button" class="pp-lanjut" id="ppLanjut" onclick="lanjutkanPaksaPrive()" disabled>Tetap catat</button>
-    <p class="pp-ket">Jejaknya permanen dan ikut terbaca di Buku Kas serta Riwayat pengeluaran.</p>
+    <p class="pp-ket">Alasannya tersimpan permanen bersama catatan ini dan terbaca di daftar Harian serta layar Riwayat.</p>
   </div>
 </div>
 
@@ -13417,7 +13417,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           : (kasKeluar ? 'ikut kas keluar' : 'beban toko, kas toko tidak keluar');
         return `<div class="baris-44${pribadi ? ' baris-pribadi' : ''}">
           <span class="jam">${escapeHtml((h.jam || '').slice(0, 5) || '—')}</span>
-          <span class="nama">${escapeHtml(h.keterangan || '')}<small>${labelKategoriHarian(h.kategori)} · ${tanda}</small></span>
+          <span class="nama">${escapeHtml(h.keterangan || '')}<small>${labelKategoriHarian(h.kategori)} · ${tanda}${h.alasanPaksa
+            ? ' · <b>dicatat melebihi kas — alasan: “' + escapeHtml(h.alasanPaksa) + '”</b>' : ''}</small></span>
           <span class="angka">${formatRupiah(h.nominal || 0)}</span>
         </div>`;
       }).join('');
@@ -13607,8 +13608,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       return { ok: false, gagal: true };
     }
     if (o.alasanPaksa) {
-      alert('Tercatat MELEBIHI kas, dengan alasan tertulis.\n\nJejaknya permanen dan ikut '
-        + 'terbaca di Buku Kas serta Riwayat pengeluaran.');
+      alert('Tercatat MELEBIHI kas, dengan alasan tertulis.\n\nAlasannya tersimpan permanen '
+        + 'bersama catatan ini dan terbaca di daftar Harian serta layar Riwayat.');
     } else if (takTerperiksa) {
       // Penjaga yang tidak bisa memeriksa WAJIB mengaku. Diam di sini akan terbaca
       // sebagai "sudah diperiksa dan aman" — persis kebalikan dari yang terjadi.
@@ -13690,7 +13691,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         </div>
         <div style="font-size:13px; color:#666;">
           <span class="badge-karung">${labelKategoriHarian(h.kategori)}</span>
-        </div>
+        </div>${h.alasanPaksa ? `
+        <div style="font-size:12.5px; color:#9a4a2e; margin-top:4px;">Dicatat MELEBIHI kas${h.dipaksaPada ? ' pada ' + formatTanggal(h.dipaksaPada) : ''} — alasan: “${escapeHtml(h.alasanPaksa)}”</div>` : ''}
         <div class="total-baris"><span>Nominal</span><span>${formatRupiah(h.nominal || 0)}</span></div>
         <button class="tombol-hapus tab-owner-blok" onclick="hapusHarian(${h.id})">Hapus</button>
       </div>
@@ -29823,9 +29825,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       baris.push({
         id: h.id, jenis: 'harian', tanggal: h.tanggal || '', jam: '',
         nama: h.keterangan || 'Pengeluaran',
-        ket: 'Harian · ' + labelKategoriHarian(h.kategori),
+        // Alasan paksa ikut di baris keterangan: tanpa ini ia cuma tersimpan di database
+        // dan tidak pernah terbaca di mana pun, padahal layar menjanjikan sebaliknya.
+        ket: 'Harian · ' + labelKategoriHarian(h.kategori)
+          + (h.alasanPaksa ? ' · DICATAT MELEBIHI KAS — alasan: “' + h.alasanPaksa + '”' : ''),
         nom: formatRibuan(h.nominal || 0), nomRedup: !bebanTokoKategori(h.kategori), masuk: 0,
-        bisaDibuka: false, cari: [h.keterangan, labelKategoriHarian(h.kategori), h.nominal].join(' ')
+        bisaDibuka: false, cari: [h.keterangan, labelKategoriHarian(h.kategori), h.nominal, h.alasanPaksa || ''].join(' ')
       });
     });
     // Terbaru dulu: tanggal menurun, lalu JAM menurun di hari yang sama. Catatan lama
