@@ -353,14 +353,22 @@
     main { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
     /* TUDUNG BILAH STATUS. padding-top saja cuma benar SEBELUM digulir: begitu halaman naik,
        isinya lewat di bawah jam & baterai iOS, dan tinta emas di atas tinta putih sistem jadi
-       tidak terbaca sama sekali (terlihat di HP: judul "JUAL" tertimpa "19:19", tombol ✕
-       tertimpa baterai). Tudung ini menutup jalur itu dengan warna latar halaman, tanpa
-       menggeser apa pun — tingginya persis setinggi inset, jadi ia nol pada perangkat yang
-       tidak punya takik. */
+       tidak terbaca (terlihat di HP: "JUAL" tertimpa "19:19", ✕ tertimpa baterai).
+       LATARNYA WAJIB GRADIEN YANG SAMA DENGAN body, DENGAN background-attachment:fixed.
+       Percobaan pertama memakai warna rata #131316 dan hasilnya PONI: di sudut kiri-atas
+       gradien halaman hangat (#241d16) sementara tudungnya dingin dan rata, jadi ia terbaca
+       sebagai pita gelap tersendiri di bawah jam — menukar satu cacat dengan cacat lain.
+       Dengan gradien yang sama dan attachment:fixed, kedua latar dihitung terhadap viewport
+       yang sama sehingga bertemu persis: tudungnya menutup, tapi tidak terlihat. */
     body::before {
       content: ''; position: fixed; top: 0; left: 0; right: 0; z-index: 60;
       height: env(safe-area-inset-top, 0px);
-      background: #131316; pointer-events: none;
+      background: radial-gradient(130% 80% at 20% -10%, #241d16, #131316);
+      background-attachment: fixed;   /* SAMA PERSIS dengan body, dan background-size SENGAJA
+        tidak disetel: begitu attachment:fixed, wilayah hitungnya viewport untuk keduanya.
+        Menyetel 100vw/100vh di sini saja akan membuatnya BEDA dari body di layar bergaris
+        gulir — persis cara poni itu lahir. */
+      pointer-events: none;
     }
     header { padding: 8px 16px 8px; gap: 10px; align-items: center; }
     header > div, #headerJudul, #subjudulHeader, #tombolTema, .tombol-logo-drawer { display: none !important; }
