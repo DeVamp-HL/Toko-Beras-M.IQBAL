@@ -5182,10 +5182,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     font:700 10.5px/1 -apple-system,system-ui; letter-spacing:.12em; text-transform:uppercase; }
   /* ANTRE (2c): tab keranjang. Hanya tergambar kalau keranjang kedua benar-benar dibuka —
      di jam sepi ia tidak menambah satu ketukan pun, dan itu syarat rancangannya. */
-  .wz-antre{ display:flex; gap:5px; margin-top:15px; }
-  .wz-tab-antre{ flex:1; min-height:44px; border:0; border-radius:2px; font-family:inherit;
-    font:700 10.5px/1.3 -apple-system,system-ui; letter-spacing:.08em;
-    background:rgba(207,212,218,.06); color:#b7bcc3; }
+  /* Bilah antre MENGGULIR MENYAMPING: antrean toko beras bisa lima orang, dan memaksa lima
+     tab muat di 390px membuat semuanya tidak terbaca. Yang menggulir tetap 44px sasaran
+     sentuhnya, dan yang aktif digulirkan ke pandangan lewat scroll-margin. */
+  .wz-antre{ display:flex; gap:5px; margin-top:15px; overflow-x:auto; padding-bottom:2px;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .wz-antre::-webkit-scrollbar{ display:none; }
+  .wz-tab-antre{ flex:0 0 auto; max-width:62%; min-height:44px; border:0; border-radius:2px;
+    font-family:inherit; font:700 10.5px/1.3 -apple-system,system-ui; letter-spacing:.08em;
+    padding:0 13px; background:rgba(207,212,218,.06); color:#b7bcc3;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; scroll-margin-inline:12px; }
+  /* Tab bernama tidak dikapitalkan paksa: nama orang bukan label sistem. */
+  .wz-tab-antre.bernama{ letter-spacing:.02em; }
   .wz-tab-antre.aktif{ background:linear-gradient(160deg,#f6ecd6,#e2cda6 60%,#c9b085); color:#2a1f13; }
   .wz-antre-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:#7d7a73;
     margin-top:6px; line-height:1.5; }
@@ -14456,7 +14464,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // tinggal di FORM LAMA, bukan di variabel wizard — jadi keduanya dibaca & ditulis lewat
   // form, sumber yang sama dengan yang dipakai mesin uang waktu menyimpan. Membekukannya
   // dari tempat lain akan menghasilkan keranjang yang kelihatan benar tapi menyimpan salah.
-  let _wzParkir = null, _wzKeranjangAktif = 'a';
+  let _wzAntre = [];        // keranjang TERPARKIR: [{id, beku}] — yang aktif tinggal di variabel hidup
+  let _wzUrutan = [1];      // id menurut urutan antre; nomor "Pembeli N" diambil dari posisi di sini
+  let _wzAktifId = 1, _wzIdBerikut = 2;
   function wzBekuKeranjang() {
     return { items: _wzItems.slice(), potongan: _wzPotongan, potonganMode: _wzPotonganMode,
       uang: _wzUang, janji: _wzJanji, kreditBuka: _wzKreditBuka,
@@ -14466,41 +14476,93 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const el = document.getElementById('jualNamaPelanggan');
     if (el) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }
   }
+  function wzKosongkanKeranjang() {
+    _wzItems = []; _wzPotongan = 0; _wzPotonganMode = 'tanpa'; _wzUang = 0;
+    _wzJanji = null; _wzKreditBuka = false;
+    _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0;
+    _wzNominalOn = false; _wzNominalTeks = '';
+    wzTulisNama('');
+    _wz = { jalur: null, langkah: 'jalur', merk: null, maks: null };
+  }
   function wzPakaiKeranjang(k) {
     _wzItems = k.items.slice(); _wzPotongan = k.potongan; _wzPotonganMode = k.potonganMode;
     _wzUang = k.uang; _wzJanji = k.janji; _wzKreditBuka = k.kreditBuka;
+    _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0;
+    _wzNominalOn = false; _wzNominalTeks = '';
+    _wz = { jalur: null, langkah: 'jalur', merk: null, maks: null };
     wzTulisNama(k.nama);
     wzBayar(k.cara);            // wzBayar menutup dengan wzRender()
   }
+  function wzParkirAktif() {
+    _wzAntre.push({ id: _wzAktifId, beku: wzBekuKeranjang() });
+  }
+  // PEMBELI BARU. Tidak ada batas dua: yang mengantre di toko beras bisa lima orang, dan
+  // batas buatan memaksa kasir membuang struk yang sudah setengah jadi.
   function wzPembeliLain() {
-    if (!_wzItems.length || _wzParkir) return;   // tidak ada yang diparkir, atau sudah penuh dua
-    _wzParkir = wzBekuKeranjang();
-    _wzItems = []; _wzPotongan = 0; _wzPotonganMode = 'tanpa'; _wzUang = 0;
-    _wzJanji = null; _wzKreditBuka = false;
-    wzTulisNama('');
-    _wzKeranjangAktif = _wzKeranjangAktif === 'a' ? 'b' : 'a';
-    _wz.jalur = null; _wz.langkah = 'jalur'; _wz.merk = null; _wz.maks = null;
+    if (!_wzItems.length) return;          // tidak ada yang perlu diparkir
+    wzParkirAktif();
+    const id = _wzIdBerikut++;
+    _wzUrutan.push(id);
+    _wzAktifId = id;
+    wzKosongkanKeranjang();
     wzBayar('Tunai');
   }
-  function wzTukarKeranjang(tuju) {
+  function wzTukarKeranjang(id) {
     // MENEKAN TAB YANG SUDAH AKTIF TIDAK MENUKAR APA PUN — aturan rancangan #9. Tanpa ini,
-    // menyenggol tab yang sedang dipakai menukar keranjang dengan salinan bekunya sendiri,
-    // dan satu ketukan salah bisa membuang struk orang.
-    if (!_wzParkir || tuju === _wzKeranjangAktif) return;
-    const beku = wzBekuKeranjang();
-    const ambil = _wzParkir;
-    _wzParkir = beku;
-    _wzKeranjangAktif = tuju;
-    _wz.jalur = null; _wz.langkah = 'jalur'; _wz.merk = null; _wz.maks = null;
+    // menyenggol tab yang sedang dipakai memarkir keranjang lalu memuatnya kembali, dan
+    // sekali salah urutan struk orang bisa terbuang.
+    id = parseInt(id, 10);
+    if (id === _wzAktifId) return;
+    const i = _wzAntre.findIndex(x => x.id === id);
+    if (i < 0) return;
+    const ambil = _wzAntre[i].beku;
+    _wzAntre.splice(i, 1);
+    wzParkirAktif();
+    _wzAktifId = id;
     wzPakaiKeranjang(ambil);
   }
+  // Dipanggil SESUDAH satu keranjang benar-benar tersimpan: ia keluar dari antrean, dan
+  // kalau masih ada yang menunggu, yang paling depan langsung dibuka. Tanpa ini, pembeli
+  // yang sudah bayar tetap duduk di bilah tab dan kasir menagihnya dua kali.
+  function wzAntreSelesai() {
+    const sisa = _wzUrutan.filter(x => x !== _wzAktifId);
+    _wzUrutan = sisa;
+    if (!sisa.length) { _wzUrutan = [_wzIdBerikut]; _wzAktifId = _wzIdBerikut++; _wzAntre = []; return; }
+    const id = sisa[0];
+    const i = _wzAntre.findIndex(x => x.id === id);
+    _wzAktifId = id;
+    if (i >= 0) { const k = _wzAntre[i].beku; _wzAntre.splice(i, 1); wzPakaiKeranjang(k); }
+  }
+  function wzLabelKeranjang(id, urut) {
+    const nama = id === _wzAktifId
+      ? ((document.getElementById('jualNamaPelanggan') || {}).value || '').trim()
+      : (((_wzAntre.find(x => x.id === id) || {}).beku || {}).nama || '').trim();
+    const brg = id === _wzAktifId ? _wzItems.length : (((_wzAntre.find(x => x.id === id) || {}).beku || {}).items || []).length;
+    // NAMA MENANG ATAS NOMOR. Nomor cuma cadangan buat pembeli yang belum menyebut namanya —
+    // di antrean lima orang, "PEMBELI 3" tidak memberi tahu siapa pun sedang dilayani.
+    return { teks: (nama || 'PEMBELI ' + (urut + 1)) + ' \u00b7 ' + brg + ' brg', punyaNama: !!nama };
+  }
+  // Menyegarkan HANYA bilah tab. wzRender() penuh akan menghancurkan kolom nama yang sedang
+  // diketik dan menutup papan tuts di tengah kalimat — cacat yang persis sama pernah ditambal
+  // di kolom jumlah, dan komentarnya masih ada di langkah 'jumlah'.
+  function wzPerbaruiTabAntre() {
+    const bilah = document.querySelector('#wzPanel .wz-antre');
+    if (!bilah) return;
+    const bungkus = document.createElement('div');
+    bungkus.innerHTML = wzTabAntreHtml();
+    const baru = bungkus.querySelector('.wz-antre');
+    if (baru) bilah.innerHTML = baru.innerHTML;
+  }
   function wzTabAntreHtml() {
-    if (!_wzParkir) return '';
-    const n = k => k === _wzKeranjangAktif ? _wzItems.length : _wzParkir.items.length;
-    const tab = k => '<button type="button" class="wz-tab-antre' + (k === _wzKeranjangAktif ? ' aktif' : '')
-      + '" onclick="wzTukarKeranjang(\'' + k + '\')">PEMBELI ' + (k === 'a' ? '1' : '2') + ' \u00b7 ' + n(k) + ' brg</button>';
-    return '<div class="wz-antre">' + tab('a') + tab('b') + '</div>'
-      + '<div class="wz-antre-nota">Keranjang yang tidak aktif tetap tersimpan \u2014 pembeli boleh bolak-balik ambil barang.</div>';
+    if (_wzUrutan.length < 2) return '';     // antrean satu orang tidak butuh bilah tab
+    const tab = _wzUrutan.map((id, i) => {
+      const l = wzLabelKeranjang(id, i);
+      return '<button type="button" class="wz-tab-antre' + (id === _wzAktifId ? ' aktif' : '')
+        + (l.punyaNama ? ' bernama' : '') + '" onclick="wzTukarKeranjang(' + id + ')">'
+        + wzEsc(l.teks) + '</button>';
+    }).join('');
+    return '<div class="wz-antre">' + tab + '</div>'
+      + '<div class="wz-antre-nota">' + _wzUrutan.length + ' pembeli di antrean \u2014 keranjang yang tidak aktif tetap tersimpan, dan yang sudah bayar keluar sendiri.</div>';
   }
   function wzSatuanKini() {
     // harga satuan menurut form lama SAAT INI (katalog x jumlah / jumlah)
@@ -15119,6 +15181,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     el.value = v; el.dispatchEvent(new Event('input', { bubbles: true }));
     _wzKreditBuka = false;                       // izin owner melekat ke nama, bukan ke form
     clearTimeout(wzNama._t);
+    wzPerbaruiTabAntre();                            // label tab ikut nama, seketika
     wzNama._t = setTimeout(wzPerbaruiKredit, 350);   // kartu kredit diperbarui tanpa merusak fokus ketik
   }
   async function wzBukaKreditSekali() {
@@ -15218,6 +15281,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     karung:    ['jalur', 'ukuranSack', 'merkK', 'jumlah', 'bayar'],
     repacking: ['jalur', 'merkR', 'namaR', 'jumlah', 'bayar']
   };
+  // Menggambar SATU bagian 'bayar' lewat penampung yang sama dengan penumpuk — bukan
+  // menyalin markupnya. Satu sumber, dipakai dua jalur render.
+  function wzBagianBayarHtml() {
+    const asli = _wz.langkah;
+    const kotak = document.createElement('div'), jt = document.createElement('div'), jl = document.createElement('div');
+    try {
+      _wz.langkah = 'bayar';
+      _wzTarget = { panel: kotak, tanya: jt, label: jl };
+      wzRenderLangkah();
+    } finally { _wzTarget = null; _wz.langkah = asli; }
+    const isi = kotak.innerHTML.replace(/<button[^>]*class="wz-balik"[^>]*>[\s\S]*?<\/button>/g, '');
+    return '<section class="wz-bagian kini" data-langkah="bayar">'
+      + '<div class="wz-bagian-kepala"><div class="wz-bagian-judul">' + wzEsc(WZ_JUDUL.bayar) + '</div></div>'
+      + isi + '</section>';
+  }
   function wzRender() {
     const wrap = document.getElementById('wzJual');
     if (!wrap || window.matchMedia('(min-width: 700px)').matches) return;
@@ -15231,9 +15309,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // mana pun, termasuk sebelum jalur dipilih.
       wzRenderLangkah();
       const pb = document.getElementById('wzPanelBayar');
-      if (pb) pb.innerHTML = '';
+      // KERANJANG BERISI TAPI JALUR BELUM DIPILIH — inilah keadaan sesudah berpindah pembeli.
+      // Bagian BAYAR tetap digambar, jadi menekan tab seorang pembeli langsung menampilkan
+      // struk + cara bayar + SIMPAN: "tinggal simpan atau ubah". Tanpa ini kasir harus
+      // memilih jalur dulu cuma untuk sampai ke tombol bayar pembeli yang sudah selesai.
+      if (pb) pb.innerHTML = _wzItems.length ? wzBagianBayarHtml() : '';
       const pp = document.getElementById('wzPanel');
-      if (pp && _wzParkir) pp.innerHTML = wzTabAntreHtml() + pp.innerHTML;
+      if (pp && _wzUrutan.length > 1) pp.innerHTML = wzTabAntreHtml() + pp.innerHTML;
       return;
     }
     const asli = _wz.langkah;
@@ -15527,7 +15609,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           // Tombol PARKIR hanya lahir kalau ADA yang bisa diparkir dan slot keduanya masih
           // kosong. Tidak ada tombol mati yang menganggur di sini: kalau ia tidak bisa
           // berbuat apa-apa, ia tidak digambar.
-          + (_wzItems.length && !_wzParkir
+          + (_wzItems.length
             ? '<button type="button" class="wz-pembeli-lain" onclick="wzPembeliLain()">\uff0b PEMBELI LAIN \u00b7 PARKIR STRUK INI</button>'
             : '');
         return;
@@ -16007,6 +16089,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     await tutupPesananDariJual(trxId);
     tampilkanUrungkan({ id: trxId, _grup: items.map(x => x.trx) }, ket.join(' \u00b7 '), 'Keranjang tersimpan');
     wzReset();                                     // wizard pulang — deterministik, bukan lewat pengamat
+    // ANTREAN DIURUS SESUDAH wzReset, bukan sebelumnya. wzReset mengosongkan keranjang; kalau
+    // pembeli berikutnya dimuat lebih dulu, ia yang kena sapu — terukur di kotak pasir:
+    // Pak Gono terbuka dengan "0 brg" padahal barangnya satu. Urutannya yang menentukan.
+    if (typeof wzAntreSelesai === 'function') wzAntreSelesai();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   let _lastKembalianInfo = '';
