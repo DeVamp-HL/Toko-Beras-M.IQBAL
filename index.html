@@ -5121,14 +5121,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
      di 390px jadi lima kolom, dan ia menyesuaikan sendiri di layar lain tanpa angka ajaib.
      (Sebelum ini flex:1 — benar untuk 4 merk di kotak pasir, mendorong seluruh halaman ke
      kanan untuk 14 merk di toko.) */
-  .wz-rak{ display:grid; grid-template-columns:repeat(auto-fill, minmax(62px, 1fr)); gap:6px; }
-  /* TINGGI DITEKAN dari 84px ke 62px. Bertumpuk memang lebih rapi daripada menggeser, tapi
-     tiga baris x 84px memakan 264px — struk terdorong keluar layar, dan rak yang menghabiskan
-     halaman berhenti jadi pemilih dan berubah jadi penghalang. 62px masih cukup untuk membaca
-     proporsi isi, dan tiga baris jadi ~200px. */
-  .wz-rak .kg-petak{ position:relative; overflow:hidden; width:100%; height:62px;
-    padding:3px; box-sizing:border-box; display:block; text-align:center;
-    border-radius:2px 2px 5px 5px; transition:border-color .18s ease; }
+  /* EMPAT kolom, bukan lima: di 390px tiap tabung dapat ~85px, dan nama seperti
+     "Perahu Layar" atau "Bahan campuran standar" akhirnya punya ruang untuk dibaca. */
+  .wz-rak{ display:grid; grid-template-columns:repeat(auto-fill, minmax(76px, 1fr)); gap:7px; }
+  /* TABUNG DIBUAT LAPANG, dan sekarang MEMANG BOLEH. Waktu langkah ditumpuk, rak berebut
+     layar dengan struk sehingga harus ditekan ke 62px; begitu wizard kembali tap-demi-tap,
+     langkah rak memiliki layarnya sendiri. 96px membuat proporsi isi benar-benar terbaca —
+     dan itu seluruh guna rak ini. */
+  .wz-rak .kg-petak{ position:relative; overflow:hidden; width:100%; height:96px;
+    padding:4px; box-sizing:border-box; display:block; text-align:center;
+    border-radius:2px 2px 6px 6px; transition:border-color .18s ease; }
   .wz-rak .tb-rel{ position:absolute; left:3px; right:3px; top:3px; bottom:3px;
     display:flex; align-items:flex-end; background:none; border-radius:2px; }
   /* Isi tabung: tenunan karung (garis miring rapat) di atas gradien emas. Yang terpilih
@@ -5157,10 +5159,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
      berbeda, jadi dasar tabung bergerigi dan kisinya terbaca berantakan justru waktu ia
      sedang berusaha rapi. Tinggi tetap membuat semua plat sejajar; nama pendek tinggal
      menyisakan ruang kosong yang tidak mengganggu. */
-  .wz-rak .kg-petak b{ position:absolute; left:2px; right:2px; bottom:2px; text-align:center;
-    pointer-events:none; font:600 8px/1.2 -apple-system,system-ui; letter-spacing:.02em;
-    border-radius:3px; background:rgba(18,15,11,.88); color:#f2efe9; padding:2px 1px;
-    height:22px; box-sizing:border-box;
+  .wz-rak .kg-petak b{ position:absolute; left:3px; right:3px; bottom:3px; text-align:center;
+    pointer-events:none; font:600 9px/1.25 -apple-system,system-ui; letter-spacing:.02em;
+    border-radius:3px; background:rgba(18,15,11,.88); color:#f2efe9; padding:3px 2px;
+    height:28px; box-sizing:border-box;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     overflow:hidden; white-space:normal; word-break:break-word; }
   .wz-rak .kg-petak b > :first-child{ display:block; }
@@ -5175,7 +5177,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   .wz-rak .kg-petak.kg-tipis{ border:1px solid rgba(217,166,147,.55);
     background:rgba(217,166,147,.09);
     box-shadow:inset 0 -3px 0 rgba(217,166,147,.55); }
-  .wz-rak .kg-petak b em{ display:block; font-style:normal; font-weight:500; font-size:7px;
+  .wz-rak .kg-petak b em{ display:block; font-style:normal; font-weight:500; font-size:7.5px;
     letter-spacing:.01em; color:rgba(242,239,233,.72); margin-top:1px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .wz-rak .kg-petak.kg-tipis b{ color:#e8c3b2; }
@@ -14587,6 +14589,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     wzParkirAktif();
     _wzAktifId = id;
     wzPakaiKeranjang(ambil);
+    // TAP SATU PEMBELI = LANGSUNG TINGGAL SIMPAN. Di wizard tap-demi-tap, "tinggal simpan"
+    // dicapai dengan MEMBAWA WIZARDNYA ke langkah bayar — bukan dengan menggambar bagian
+    // bayar di luar sistem langkah. Satu langkah, satu layar, tetap utuh.
+    if (_wzItems.length) { _wz.langkah = 'bayar'; wzRender(); }
   }
   // Dipanggil SESUDAH satu keranjang benar-benar tersimpan: ia keluar dari antrean, dan
   // kalau masih ada yang menunggu, yang paling depan langsung dibuka. Tanpa ini, pembeli
@@ -14598,7 +14604,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const id = sisa[0];
     const i = _wzAntre.findIndex(x => x.id === id);
     _wzAktifId = id;
-    if (i >= 0) { const k = _wzAntre[i].beku; _wzAntre.splice(i, 1); wzPakaiKeranjang(k); }
+    if (i >= 0) {
+      const k = _wzAntre[i].beku; _wzAntre.splice(i, 1); wzPakaiKeranjang(k);
+      if (_wzItems.length) { _wz.langkah = 'bayar'; wzRender(); }
+    }
   }
   // PEMBELI BATAL. Di toko beras orang mengantre lalu pergi — keranjangnya harus bisa
   // dibuang tanpa menyimpan apa pun. Ini BUKAN wzReset: reset membuang keranjang yang sedang
@@ -15381,101 +15390,64 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     karung:    ['jalur', 'ukuranSack', 'merkK', 'jumlah', 'bayar'],
     repacking: ['jalur', 'merkR', 'namaR', 'jumlah', 'bayar']
   };
-  // Menggambar SATU bagian 'bayar' lewat penampung yang sama dengan penumpuk — bukan
-  // menyalin markupnya. Satu sumber, dipakai dua jalur render.
-  function wzBagianBayarHtml() {
+  // Menggambar SATU langkah lewat penampung, lalu membungkusnya dengan cangkang rupa yang
+  // sama untuk semua langkah: label kelompok kapital di kiri, dan slot kanan (.wz-kanan)
+  // diangkat ke baris judul — itu yang membuat baris "BERAPA · Rp13.500/liter · L|Rp" jadi
+  // satu baris. Cabang langkahnya sendiri tidak tahu-menahu soal cangkang ini.
+  function wzBagianHtml(langkah) {
     const asli = _wz.langkah;
     const kotak = document.createElement('div'), jt = document.createElement('div'), jl = document.createElement('div');
     try {
-      _wz.langkah = 'bayar';
+      _wz.langkah = langkah;
       _wzTarget = { panel: kotak, tanya: jt, label: jl };
       wzRenderLangkah();
     } finally { _wzTarget = null; _wz.langkah = asli; }
-    const isi = kotak.innerHTML.replace(/<button[^>]*class="wz-balik"[^>]*>[\s\S]*?<\/button>/g, '');
-    return '<section class="wz-bagian kini" data-langkah="bayar">'
-      + '<div class="wz-bagian-kepala"><div class="wz-bagian-judul">' + wzEsc(WZ_JUDUL.bayar) + '</div></div>'
+    // TOMBOL "BALIK" DIPERTAHANKAN. Waktu langkah ditumpuk ia tidak punya arti — langkahnya
+    // ada di layar. Di wizard tap-demi-tap ia satu-satunya jalan mundur, jadi mencabutnya
+    // akan mengurung kasir di langkah yang salah.
+    let isi = kotak.innerHTML.trim() ? kotak.innerHTML : '<div class="wz-info">Belum ada pilihan di langkah ini.</div>';
+    let kanan = '';
+    const mK = isi.match(/^\s*<div class="wz-kanan">([\s\S]*?)<\/div><!--\/kanan-->/);
+    if (mK) { kanan = mK[1]; isi = isi.slice(mK[0].length); }
+    return '<section class="wz-bagian kini" data-langkah="' + langkah + '">'
+      + '<div class="wz-bagian-kepala"><div class="wz-bagian-judul">'
+      + wzEsc(WZ_JUDUL[langkah] || jt.textContent || '') + '</div>'
+      + (kanan ? '<div class="wz-kepala-kanan">' + kanan + '</div>' : '') + '</div>'
       + isi + '</section>';
   }
+  // ---------- WIZARD TAP-DEMI-TAP (dikembalikan atas permintaan pemilik 10 Sep 2026) ----------
+  // SATU LANGKAH SATU LAYAR, seperti mekanisme semula. Yang TIDAK dikembalikan: rupanya —
+  // label kelompok kapital, rak tabung, kartu angka kaca, saklar L|Rp, struk berhuruf mesin
+  // ketik, cara bayar tiga kolom, SIMPAN, bilah antre. Semuanya tetap seperti sekarang.
+  // Yang dicabut cuma PERULANGANNYA: dulu seluruh rantai langkah digambar bertumpuk.
+  //
+  // Urutan blok tetap milik rancangan — isian, lalu struk, lalu bayar. Karena itu langkah
+  // 'bayar' digambar ke #wzPanelBayar (di BAWAH struk) sedangkan langkah lain ke #wzPanel
+  // (di ATAS struk). Wadah yang tidak dipakai dikosongkan, bukan dibiarkan — sisa langkah
+  // sebelumnya yang tertinggal akan terbaca sebagai milik keadaan yang sekarang.
   function wzRender() {
     const wrap = document.getElementById('wzJual');
     if (!wrap || window.matchMedia('(min-width: 700px)').matches) return;
-    const rantai = WZ_RANTAI[_wz.jalur];
-    const sampai = rantai ? rantai.indexOf(_wz.langkah) : -1;
-    // Retur, dan keadaan sebelum jalur dipilih, tetap satu panel: tidak ada rantai untuk ditumpuk.
-    if (sampai < 0 || document.getElementById('halamanJual').classList.contains('wz-retur')) {
-      // Jalur belum dipilih (atau Retur): satu panel saja. Wadah bayar DIKOSONGKAN — kalau
-      // tidak, bagian bayar milik keadaan sebelumnya tertinggal di layar dan terbaca sebagai
-      // milik keranjang yang sekarang. Tab tetap digambar: keranjang kedua hidup di langkah
-      // mana pun, termasuk sebelum jalur dipilih.
-      wzRenderLangkah();
-      const pb = document.getElementById('wzPanelBayar');
-      // KERANJANG BERISI TAPI JALUR BELUM DIPILIH — inilah keadaan sesudah berpindah pembeli.
-      // Bagian BAYAR tetap digambar, jadi menekan tab seorang pembeli langsung menampilkan
-      // struk + cara bayar + SIMPAN: "tinggal simpan atau ubah". Tanpa ini kasir harus
-      // memilih jalur dulu cuma untuk sampai ke tombol bayar pembeli yang sudah selesai.
-      if (pb) pb.innerHTML = _wzItems.length ? wzBagianBayarHtml() : '';
-      const pp = document.getElementById('wzPanel');
-      if (pp && _wzUrutan.length > 1) pp.innerHTML = wzTabAntreHtml() + pp.innerHTML;
+    const pp = document.getElementById('wzPanel');
+    const pb = document.getElementById('wzPanelBayar');
+    if (document.getElementById('halamanJual').classList.contains('wz-retur')) {
+      wzRenderLangkah();                       // Retur memakai form lama apa adanya (butir 16)
+      if (pb) pb.innerHTML = '';
       return;
     }
-    const asli = _wz.langkah;
-    // SATU HALAMAN PENUH: begitu keranjang berisi, bagian BAYAR ikut digambar di kaki
-    // tumpukan walau langkahnya belum ke sana. Rancangannya memang menaruh cara bayar dan
-    // SIMPAN selalu terlihat di bawah struk — menyembunyikannya di balik satu langkah lagi
-    // mengembalikan wizard lewat pintu belakang, tepat di tempat uangnya diselesaikan.
-    const rantaiGambar = rantai.slice(0, sampai + 1);
-    if (_wzItems.length && rantaiGambar.indexOf('bayar') < 0) rantaiGambar.push('bayar');
-    const kotak = document.createElement('div');
-    const jt = document.createElement('div');
-    const jl = document.createElement('div');
-    const bagian = [];
-    try {
-      for (let i = 0; i < rantaiGambar.length; i++) {
-        _wz.langkah = rantaiGambar[i];
-        _wzTarget = { panel: kotak, tanya: jt, label: jl };
-        kotak.innerHTML = ''; jt.textContent = '';
-        wzRenderLangkah();
-        // Tombol "balik" dibuang dari tumpukan: waktu semua bagian terlihat sekaligus,
-        // "kembali ke langkah sebelumnya" tidak punya arti — langkahnya ada di layar.
-        const isi = kotak.innerHTML.replace(/<button[^>]*class="wz-balik"[^>]*>[\s\S]*?<\/button>/g, '');
-        // Bagian yang isinya habis sesudah tombol balik dicabut TIDAK boleh jadi ruang hampa:
-        // pertanyaan tanpa jawaban apa pun di bawahnya terbaca sebagai layar rusak. Sabuk
-        // kedua ini menjaga SETIAP langkah, bukan cuma yang sudah ketahuan.
-        let isiAman = isi.trim() ? isi : '<div class="wz-info">Belum ada pilihan di langkah ini.</div>';
-        // SLOT KANAN: prototipe menaruh dasar harga & saklar L|Rp di BARIS YANG SAMA dengan
-        // label "BERAPA". Langkahnya menandainya dengan .wz-kanan di awal isinya; penumpuk
-        // yang mengangkatnya ke baris judul. Langkah tetap tidak tahu-menahu soal tumpukan.
-        let kanan = '';
-        const mK = isiAman.match(/^\s*<div class="wz-kanan">([\s\S]*?)<\/div><!--\/kanan-->/);
-        if (mK) { kanan = mK[1]; isiAman = isiAman.slice(mK[0].length); }
-        bagian.push('<section class="wz-bagian' + (rantaiGambar[i] === asli ? ' kini' : '') + '" data-langkah="' + rantaiGambar[i] + '">'
-          + '<div class="wz-bagian-kepala"><div class="wz-bagian-judul">'
-          + wzEsc(WZ_JUDUL[rantaiGambar[i]] || jt.textContent || '') + '</div>'
-          + (kanan ? '<div class="wz-kepala-kanan">' + kanan + '</div>' : '') + '</div>'
-          + isiAman + '</section>');
-      }
-    } finally {
-      _wzTarget = null;
-      _wz.langkah = asli;   // dipulihkan APA PUN yang terjadi — satu langkah yang bocor mematikan seluruh layar
-    }
     wzGambarStruk();
-    // TAB KERANJANG DI PUNCAK — kata rancangannya sendiri. Ia harus terlihat di langkah mana
-    // pun selagi keranjang kedua hidup; menaruhnya di blok CTA (langkah 'jumlah' saja) membuat
-    // tab hilang justru sesudah barang dimasukkan, tepat saat kasir perlu berpindah pembeli.
-    const iBayar = rantaiGambar.indexOf('bayar');
-    const atas = iBayar < 0 ? bagian : bagian.slice(0, iBayar);
-    const bawah = iBayar < 0 ? [] : bagian.slice(iBayar);
-    document.getElementById('wzPanel').innerHTML = wzTabAntreHtml() + atas.join('');
-    document.getElementById('wzPanelBayar').innerHTML = bawah.join('');
+    const tab = wzTabAntreHtml();              // bilah antre di puncak, langkah mana pun
+    const diBayar = _wz.langkah === 'bayar';
+    const bagian = wzBagianHtml(_wz.langkah);
+    if (pp) pp.innerHTML = tab + (diBayar ? '' : bagian);
+    if (pb) pb.innerHTML = diBayar ? bagian : '';
     document.getElementById('wzTanya').textContent = '';
-    document.getElementById('wzLangkahLabel').textContent = 'Jual';
-    document.getElementById('wzLangkahLabel').dataset.keranjang = _wzItems.length || '';
-    document.getElementById('wzBatal').style.display = 'block';
-    // WILAYAH DINAMIS DIISI SESUDAH TUMPUKAN MASUK DOM. Cabang 'jumlah' mengisi #wzTakar,
-    // #wzInfoStok, #wzPeringatan, #wzNegoBlok, #wzCta lewat getElementById — waktu ia
-    // dijalankan di penampung, id itu belum ada di dokumen sehingga isiannya jatuh ke ruang
-    // hampa (chip takaran hilang tanpa satu pun galat). Ini sambungannya, dan letaknya
-    // memang harus di sini: sesudah innerHTML, bukan sebelum.
+    const label = document.getElementById('wzLangkahLabel');
+    label.textContent = 'Jual';
+    label.dataset.keranjang = _wzItems.length || '';
+    document.getElementById('wzBatal').style.display = (_wz.langkah === 'jalur' && !_wzItems.length) ? 'none' : 'block';
+    // Wilayah dinamis diisi SESUDAH panel masuk DOM: cabang 'jumlah' mencari #wzTakar dkk
+    // lewat getElementById, dan waktu ia dijalankan di penampung id itu belum ada.
     if (_wz.langkah === 'jumlah') wzJumlahRefresh();
   }
   function wzRenderLangkah() {
