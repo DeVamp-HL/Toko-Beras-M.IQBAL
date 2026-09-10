@@ -3185,6 +3185,46 @@
     background:var(--kartu); color:var(--teks); border:1px solid var(--pf-tepi);
     border-radius:10px; padding:0 12px; font-family:inherit; font-size:14px; }
 }
+/* ===== BERAPA YANG AMAN DIAMBIL (lubang 3) ===== */
+@media (max-width:699.98px){
+  .la-panel{ margin-bottom:12px; }
+  .la-baris{ display:flex; align-items:center; gap:10px; min-height:46px;
+    border-bottom:1px solid rgba(207,212,218,.07); }
+  .la-baris:last-of-type{ border-bottom:none; }
+  .la-baris > span{ flex:1; min-width:0; }
+  .la-baris b{ display:block; font-size:12px; font-weight:600; color:var(--teks); }
+  .la-baris i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:9.5px;
+    line-height:1.45; color:var(--pf-abu2,#a7adb5); margin-top:2px; }
+  .la-baris > strong{ flex:none; font-family:var(--pf-serif); font-weight:600; font-size:13.5px;
+    color:rgba(242,239,233,.88); font-variant-numeric:tabular-nums; }
+  /* Baris yang BELUM BISA DIHITUNG digambar pudar dan bertanda "—", bukan Rp0.
+     Nol adalah pernyataan; "—" adalah ketiadaan pernyataan.
+     Kelasnya "la-kosong", BUKAN "kosong": nama itu sudah dipakai global untuk daftar
+     kosong (text-align:center; padding:40px 16px) dan meminjamnya membuat barisnya rata
+     tengah dengan celah 80px. Kejadian KETIGA pola yang sama di proyek ini. */
+  .la-baris.la-kosong > strong{ color:var(--pf-abu); }
+  .la-baris.la-kosong b{ color:var(--pf-abu2,#a7adb5); }
+  .la-usul{ margin-top:12px; padding:13px 14px; border-radius:5px;
+    background:rgba(226,205,166,.09); border:1px solid rgba(226,205,166,.34); }
+  .la-usul i{ display:block; font-style:normal; font-size:9px; font-weight:700;
+    letter-spacing:.2em; text-transform:uppercase; color:var(--pf-abu2,#a7adb5); }
+  .la-usul b{ display:block; font-family:var(--pf-serif); font-weight:600; font-size:29px;
+    line-height:1.1; color:var(--pf-krem,#f7ecd6); margin-top:6px; font-variant-numeric:tabular-nums; }
+  .la-usul small{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+    line-height:1.55; color:var(--pf-abu2,#a7adb5); margin-top:7px; }
+  /* Penolakan menggambar usulan: oksida, bertepi putus — bentuknya sendiri mengatakan
+     "ada yang belum lengkap", bukan "hasilnya nol". */
+  .la-tolak{ display:flex; align-items:flex-start; gap:11px; margin-top:12px; padding:12px 13px;
+    border-radius:5px; background:rgba(217,166,147,.08); border:1px dashed rgba(217,166,147,.45); }
+  .la-tolak > i{ display:block; flex:none; width:9px; height:9px; border-radius:99px;
+    background:#d9a693; margin-top:4px; }
+  .la-tolak b{ display:block; font-size:12.5px; font-weight:600; color:#e8c3b2; }
+  .la-tolak small{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+    line-height:1.55; color:var(--pf-abu2,#a7adb5); margin-top:4px; }
+  .la-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px; line-height:1.55;
+    color:var(--pf-abu2,#a7adb5); margin-top:11px; }
+  .la-nota b{ color:var(--pf-krem,#f7ecd6); font-style:normal; }
+}
 /* ===== CATAT PAKSA PRIVE (lubang 2) ===== */
 #overlayPaksaPrive{ display:block; position:fixed; inset:0; z-index:41; background:#000;
   opacity:0; pointer-events:none; transition:opacity .22s ease; }
@@ -7845,6 +7885,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <input type="month" id="labaBulan" onchange="pilihBulanLaba()">
     </div>
     <div id="labaKaca"></div>
+
+    <!-- LUBANG 3 (perintah 11 Sep 2026): tidak ada satu pun angka "berapa yang aman
+         diambil". Terukur sebelum ini: amanDiambil 0 · batasPrive 0 · sisaAman 0 ·
+         bolehAmbil 0 · dapatDiambil 0 — nol di seluruh berkas. Pemilik harus membuka tiga
+         tab, mengingat tiga angka, lalu mengurangkannya sendiri. Itu persis pekerjaan
+         yang seharusnya dilakukan sistem. -->
+    <div id="labaAman"></div>
 
     <div class="kartu-hero">
       <div class="label">Margin kotor · terhitung</div>
@@ -26758,6 +26805,96 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   function pilihBulanLaba() { tampilkanLaba(); }
 
+  // ============ BERAPA YANG AMAN DIAMBIL (lubang 3) ============
+  // Panel ini MEMBACA mesin uang; ia tidak menulis ulang satu pun rumusnya. Empat baris,
+  // tiap baris menyebut dari mana angkanya datang, lalu SATU angka usulan.
+  //
+  // Usulannya dua batas yang harus dua-duanya dipenuhi, diambil yang lebih kecil:
+  //   dari laba : laba bersih bulan itu − prive yang sudah diambil bulan itu
+  //   dari kas  : kas toko sekarang − utang pemasok
+  // Yang pertama menjaga supaya tidak mengambil lebih dari yang dihasilkan bulan itu;
+  // yang kedua menjaga supaya tidak mengambil uang yang sudah punya tuan.
+  //
+  // ANGKA INI HITUNGAN, BUKAN NASIHAT. Keputusan berapa yang diambil tetap milik pemilik.
+  function hitungAmanDiambil(bl) {
+    const kosong = [];
+    let labaBersih = null, kas = null, utang = null, prive = null;
+    try {
+      const L = hitungLabaBersihRentang(bl + '-01', akhirBulanIso(bl));
+      labaBersih = (L && typeof L.labaBersih === 'number') ? L.labaBersih : null;
+    } catch (e) { console.error('aman: laba', e); }
+    if (labaBersih === null) kosong.push('laba bersih bulan itu');
+    try { kas = kasPada(); } catch (e) { console.error('aman: kas', e); kas = null; }
+    if (kas === null) kosong.push('kas toko sekarang');
+    try {
+      utang = (hitungUtangPemasok() || []).reduce((a, u) => a + (u.totalUtang || 0), 0);
+    } catch (e) { console.error('aman: utang', e); utang = null; }
+    if (utang === null) kosong.push('utang pemasok');
+    try {
+      prive = ambilPengeluaranHarian()
+        .filter(h => h.kategori === 'owner' && bulanDari(h.tanggal) === bl)
+        .reduce((a, h) => a + (h.nominal || 0), 0);
+    } catch (e) { console.error('aman: prive', e); prive = null; }
+    if (prive === null) kosong.push('prive yang sudah diambil');
+    // BELUM DINYATAKAN != DINYATAKAN NOL. Satu baris yang tidak bisa dihitung membuat
+    // usulannya TIDAK BOLEH digambar — bukan dianggap nol lalu diteruskan. Tidak ada || 0
+    // di seluruh fungsi ini; yang kosong tetap null sampai ia disebut namanya.
+    if (kosong.length) return { bisa: false, kosong, labaBersih, kas, utang, prive };
+    const dariLaba = labaBersih - prive;
+    const dariKas = kas - utang;
+    const usulan = Math.max(0, Math.min(dariLaba, dariKas));
+    return { bisa: true, labaBersih, kas, utang, prive, dariLaba, dariKas, usulan,
+      pengikat: dariLaba <= dariKas ? 'laba' : 'kas' };
+  }
+  function gambarLabaAman(bl) {
+    const w = document.getElementById('labaAman');
+    if (!w || window.matchMedia('(min-width: 700px)').matches) { if (w) w.innerHTML = ''; return; }
+    const a = hitungAmanDiambil(bl);
+    const nama = namaBulanPanjang(bl + '-01');
+    const rp = n => n === null ? '—' : rpTanda(n);
+    const baris = (label, sumber, nilai, kelas) =>
+      '<div class="la-baris' + (kelas ? ' ' + kelas : '') + (nilai === null ? ' la-kosong' : '') + '">'
+      + '<span><b>' + escapeHtml(label) + '</b><i>' + escapeHtml(sumber) + '</i></span>'
+      + '<strong>' + rp(nilai) + '</strong></div>';
+    let h = '<div class="kartu kg-panel la-panel"><div class="kg-label">Berapa yang aman diambil \u00b7 '
+      + escapeHtml(nama) + '</div>';
+    h += baris('Laba bersih ' + nama, 'dari mesin laba (hitungLabaBersihRentang)', a.labaBersih);
+    h += baris('Prive sudah diambil ' + nama, 'pengeluaran harian kategori Owner', a.prive === null ? null : -a.prive);
+    h += baris('Kas toko sekarang', 'kasPada() \u00b7 laci + rekening + amplop + brankas', a.kas);
+    // JATUH TEMPO TIDAK ADA DI DATA — dan itu disebut di labelnya sendiri, bukan
+    // disembunyikan. Memakai SELURUH utang membuat usulannya lebih kecil, jadi salahnya
+    // ke arah yang aman.
+    h += baris('Utang pemasok (seluruhnya)', 'hitungUtangPemasok \u00b7 tanggal jatuh tempo tidak dicatat sistem, jadi dipakai semuanya',
+      a.utang === null ? null : -a.utang);
+    if (!a.bisa) {
+      h += '<div class="la-tolak"><i></i><span><b>Usulan tidak digambar</b><small>'
+        + escapeHtml(a.kosong.join(' dan ')) + ' belum bisa dihitung. Belum dinyatakan bukan '
+        + 'berarti nol, jadi angka usulannya ditahan sampai barisnya terisi.'
+        + (a.kas === null ? ' Setel titik hitung kas di Arus Kas supaya kas bisa dihitung.' : '')
+        + '</small></span></div></div>';
+      w.innerHTML = h;
+      return;
+    }
+    h += '<div class="la-usul"><i>Usulan</i><b>' + rpTanda(a.usulan) + '</b>'
+      + '<small>' + (a.usulan <= 0
+          ? (a.pengikat === 'laba'
+              ? 'Laba bersih ' + nama + ' sudah habis diambil \u2014 mengambil lagi bulan ini memakan modal, bukan untung.'
+              : 'Kas toko sekarang ' + formatRupiah(a.kas) + ' tidak cukup menutup utang pemasok '
+                + formatRupiah(a.utang) + ' \u2014 belum ada yang bebas diambil.')
+          : (a.pengikat === 'laba'
+              ? 'Laba bersih ' + formatRupiah(a.labaBersih) + ' dikurangi prive yang sudah diambil '
+                + formatRupiah(a.prive) + '. Yang membatasi di sini LABA, bukan kas \u2014 kas masih menyisakan '
+                + formatRupiah(a.dariKas) + ' sesudah utang pemasok.'
+              : 'Kas toko ' + formatRupiah(a.kas) + ' dikurangi utang pemasok ' + formatRupiah(a.utang)
+                + '. Yang membatasi di sini KAS, bukan laba \u2014 laba bulan ini masih menyisakan '
+                + formatRupiah(a.dariLaba) + '.'))
+      + '</small></div>';
+    h += '<div class="la-nota">Angka ini <b>hitungan, bukan nasihat</b>. Berapa yang benar-benar '
+      + 'diambil tetap keputusan pemilik \u2014 sistem cuma menghitungkan supaya tidak perlu '
+      + 'membuka tiga tab dan mengurangkannya sendiri.</div></div>';
+    w.innerHTML = h;
+  }
+
   function tampilkanLabaKaca() {
     const wadah = document.getElementById('labaKaca');
     // KELUAR DINI WAJIB MENGOSONGKAN APA YANG IA SENDIRI TULIS. #labaSubBulan diisi nama
@@ -26770,12 +26907,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!wadah || window.matchMedia('(min-width: 700px)').matches) {
       const subLepas = document.getElementById('labaSubBulan');
       if (subLepas) subLepas.textContent = '';
+      const amanLepas = document.getElementById('labaAman');
+      if (amanLepas) amanLepas.innerHTML = '';
       return;
     }
     try {
       // Bulan datang dari PEMILIHNYA, bukan dari jam. Bawaannya bulan berjalan, jadi
       // perilaku lama tetap perilaku bawaan — yang bertambah cuma kemampuan memintanya.
       const bl = labaBulanTerpilih();
+      gambarLabaAman(bl);          // panel "aman diambil" memakai BULAN YANG SAMA
       const namaBulan = namaBulanPanjang(bl + '-01');
       const sub = document.getElementById('labaSubBulan');
       if (sub) sub.textContent = namaBulan;
