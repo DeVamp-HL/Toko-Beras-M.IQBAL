@@ -15007,8 +15007,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // Tombol "balik" dibuang dari tumpukan: waktu semua bagian terlihat sekaligus,
         // "kembali ke langkah sebelumnya" tidak punya arti — langkahnya ada di layar.
         const isi = kotak.innerHTML.replace(/<button[^>]*class="wz-balik"[^>]*>[\s\S]*?<\/button>/g, '');
+        // Bagian yang isinya habis sesudah tombol balik dicabut TIDAK boleh jadi ruang hampa:
+        // pertanyaan tanpa jawaban apa pun di bawahnya terbaca sebagai layar rusak. Sabuk
+        // kedua ini menjaga SETIAP langkah, bukan cuma yang sudah ketahuan.
+        const isiAman = isi.trim() ? isi : '<div class="wz-info">Belum ada pilihan di langkah ini.</div>';
         bagian.push('<section class="wz-bagian' + (i === sampai ? ' kini' : '') + '">'
-          + '<div class="wz-bagian-tanya">' + wzEsc(jt.textContent || '') + '</div>' + isi + '</section>');
+          + '<div class="wz-bagian-tanya">' + wzEsc(jt.textContent || '') + '</div>' + isiAman + '</section>');
       }
     } finally {
       _wzTarget = null;
@@ -15091,10 +15095,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           const j = jenisUntukMerk(merk) || 'Belum diberi jenis';
           (grup[j] = grup[j] || []).push(o);
         });
-        panel.innerHTML = balik('jalur') + Object.keys(grup).sort().map(j =>
+        // CADANGAN YANG DULU TIDAK PERNAH BISA BERBUNYI: sisi kiri `||` selalu benar karena
+        // balik('jalur') sendiri sudah string tak-kosong, jadi pesan "belum ada stok" tidak
+        // pernah sekali pun tergambar. Tersembunyi selama tombol balik menemaninya; telanjang
+        // begitu langkah ditumpuk. Kurungnya dibetulkan — nol perubahan perilaku saat ADA stok.
+        panel.innerHTML = balik('jalur') + (Object.keys(grup).sort().map(j =>
           baris("wzPilihJenis('" + wzEsc(j).replace(/'/g, "\\'") + "')", wzEsc(j),
             grup[j].length + ' produk', grup[j].every(o => o.habis))).join('')
-          || balik('jalur') + '<div class="wz-info">Belum ada stok kemasan jadi \u2014 buat lewat Produksi.</div>';
+          || '<div class="wz-info">Belum ada stok kemasan jadi \u2014 buat lewat Produksi.</div>');
         return;
       }
       if (l === 'merk') {
