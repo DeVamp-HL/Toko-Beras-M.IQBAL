@@ -140,9 +140,20 @@ gambar QR yang tidak menunjuk ke mana-mana.
     mundur jadi jumlah, dan itu yang dulu memisahkan jumlah dari uang.
 
 
-18. **Jual memakai WADAH SATU HALAMAN dengan bagian-bagian wizard — bukan wizard bertanya
-    satu-satu, dan bukan pula form satu-halaman lama.** Ini keadaan KETIGA, dan ia lahir
-    dari perbandingan gambar-lawan-gambar antara prototipe dan sistem, 10 September 2026.
+18. **Jual memakai WIZARD TAP-DEMI-TAP dengan RUPA prototipe — satu langkah satu layar,
+    tapi berpakaian Kaca Emas hasil gelombang desain.** Ini keadaan KETIGA, dan ia lahir dari
+    perbandingan gambar-lawan-gambar antara prototipe dan sistem, 10 September 2026.
+
+    **DIREVISI hari yang sama.** Butir ini semula mencatat kebalikannya — wadah SATU HALAMAN
+    dengan bagian-bagian wizard ditumpuk. Wadah itu dibangun, dilihat pemilik di HP, lalu
+    **dicabut atas permintaannya**: mekanismenya kembali bertanya satu-satu. Yang TIDAK ikut
+    dicabut adalah rupanya. Jadi pemisahannya sekarang tegas dan itu bagian terpenting butir
+    ini: **MEKANISME = wizard (seperti semula). RUPA = prototipe (hasil gelombang).**
+
+    Akibat praktisnya yang mudah dilupakan: karena tiap langkah memiliki layarnya sendiri,
+    komponen boleh LAPANG. Rak stok sempat ditekan ke 62px waktu langkah ditumpuk (ia berebut
+    layar dengan struk); begitu wizard kembali, ia dikembalikan ke 96px. Kalau suatu saat
+    wadahnya ditumpuk lagi, ukuran itu ikut harus ditinjau — keduanya terikat.
 
     **Apa yang sebenarnya berbeda.** Selama tiga gelombang tiap ELEMEN Jual dicocokkan ke
     desain sampai habis, dan layarnya tetap tidak terlihat seperti rancangan. Sebabnya bukan
@@ -151,10 +162,11 @@ gambar QR yang tidak menunjuk ke mana-mana.
     satu dengan tombol "← balik". Memasang bagian yang benar ke bangunan yang berbeda tetap
     menghasilkan bangunan yang berbeda.
 
-    **Yang dipilih.** Cangkang wizard DIPERTAHANKAN — kartu, rak beras, chip takaran, struk
-    hidup, saklar L⇄Rp, dasar harga, semuanya tetap milik langkahnya masing-masing dan nol
-    yang dibuang. Yang berhenti cuma MENYEMBUNYIKANNYA satu per satu: seluruh rantai langkah
-    digambar bertumpuk di satu halaman, tiap bagian masih bisa diubah di tempat.
+    **Yang dipilih (sesudah revisi).** Wizard bertanya satu-satu DIPERTAHANKAN, termasuk
+    tombol `← balik` yang di wadah tumpukan sempat dicabut karena tidak punya arti di sana.
+    Yang diambil dari prototipe hanya rupanya: label kelompok kapital, rak tabung, kartu angka
+    kaca, saklar L⇄Rp sebaris dengan dasar harga, struk berhuruf mesin ketik dengan gigi
+    sobek, cara bayar tiga kolom, dan SIMPAN yang menyebut sebab kalau ia mati.
 
     **Kenapa bukan A (pertahankan wizard apa adanya):** rupanya tidak akan pernah menjadi
     rancangan itu, dan gelombang berikutnya akan mengejar bayangan yang sama lagi.
