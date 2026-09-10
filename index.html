@@ -3185,6 +3185,42 @@
     background:var(--kartu); color:var(--teks); border:1px solid var(--pf-tepi);
     border-radius:10px; padding:0 12px; font-family:inherit; font-size:14px; }
 }
+/* ===== CATAT PAKSA PRIVE (lubang 2) ===== */
+#overlayPaksaPrive{ display:block; position:fixed; inset:0; z-index:41; background:#000;
+  opacity:0; pointer-events:none; transition:opacity .22s ease; }
+body.lembar-paksa-prive-terbuka #overlayPaksaPrive{ opacity:.7; pointer-events:auto; }
+#lembarPaksaPrive{ position:fixed; left:0; right:0; bottom:0; z-index:42;
+  background:linear-gradient(180deg,#241d18,#16130f);
+  border:1px solid rgba(217,166,147,.42); border-bottom:none;
+  border-radius:22px 22px 0 0; box-shadow:0 -18px 50px rgba(0,0,0,.6);
+  padding:10px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  transform:translateY(105%); transition:transform .3s cubic-bezier(.16,.84,.28,1);
+  display:flex; flex-direction:column; max-height:88vh; max-height:88dvh; overflow:hidden; }
+body.lembar-paksa-prive-terbuka #lembarPaksaPrive{ transform:translateY(0); }
+#lembarPaksaPrive .lm-pegangan{ width:40px; height:4.5px; border-radius:3px;
+  background:rgba(228,232,234,.25); margin:2px auto 8px; flex:none; cursor:pointer; }
+#lembarPaksaPrive .pp-isi{ overflow-y:auto; padding-top:12px; }
+#lembarPaksaPrive .pp-baris{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:10px; min-height:42px; border-bottom:1px solid rgba(207,212,218,.08); }
+#lembarPaksaPrive .pp-baris span{ font-size:12px; color:rgba(242,239,233,.8); }
+#lembarPaksaPrive .pp-baris b{ font-family:var(--pf-serif); font-weight:600; font-size:15px;
+  color:var(--pf-krem,#f7ecd6); font-variant-numeric:tabular-nums; }
+#lembarPaksaPrive .pp-baris.kurang b{ color:#e8c3b2; }
+#lembarPaksaPrive .pp-baris.kurang span{ color:#d9a693; }
+#lembarPaksaPrive .pp-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
+  line-height:1.55; color:var(--pf-abu2,#a7adb5); margin:11px 0 0; }
+#lembarPaksaPrive .pp-ket b{ color:var(--pf-krem,#f7ecd6); font-style:normal; }
+#lembarPaksaPrive label{ display:block; margin:14px 0 6px; font-size:9px; font-weight:700;
+  letter-spacing:.16em; text-transform:uppercase; color:#d9a693; }
+#lembarPaksaPrive input{ width:100%; min-height:48px; box-sizing:border-box; margin:0;
+  background:rgba(255,255,255,.04); color:var(--teks); border:1px solid rgba(217,166,147,.4);
+  border-radius:10px; padding:0 12px; font-family:inherit; font-size:14px; }
+#lembarPaksaPrive .pp-lanjut{ width:100%; min-height:52px; margin-top:12px; border-radius:12px;
+  font-family:inherit; font-size:14px; font-weight:600; color:#2a1f13; border:0;
+  background:linear-gradient(160deg,#e8c3b2,#c9705e); }
+#lembarPaksaPrive .pp-lanjut:disabled{ background:none; color:var(--pf-abu);
+  border:1px solid var(--pf-tepi); }
+@media (min-width:700px){ #overlayPaksaPrive, #lembarPaksaPrive{ display:none; } }
 /* ===== SUMBU Q: LENCANA TITIPAN + LEMBAR PERSETUJUAN (Harian) ===== */
 /* Tepi PUTUS-PUTUS beroksida: ini bukan kartu berisi angka jadi, ini sesuatu yang masih
    menggantung. Bentuknya sendiri yang mengatakan "belum selesai". */
@@ -6414,6 +6450,29 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 <!-- LEMBAR BUKU KAS (Arus Kas, sumbu F). Mekanisme lembar rumah: overlay + kelas di body. -->
 <!-- LEMBAR TITIPAN HARIAN (sumbu Q). Menyetujui MEMINDAHKAN dokumen dari titipanHarian
      ke pengeluaranHarian — di situlah kas benar-benar berubah, dan tidak sedetik lebih awal. -->
+<!-- CATAT PAKSA PRIVE (lubang 2). Terpisah dari jalur biasa, dan alasannya WAJIB —
+     pola yang sama dengan simpanHapusBuku: "jejak ini permanen". Tombol lanjutnya
+     benar-benar disabled sampai alasannya terisi, bukan cuma tampak redup. -->
+<div id="overlayPaksaPrive" onclick="tutupPaksaPrive()"></div>
+<div id="lembarPaksaPrive" class="k6a" role="dialog" aria-modal="true">
+  <div class="lm-pegangan" onclick="tutupPaksaPrive()"></div>
+  <div class="bk-kepala">
+    <button type="button" class="bk-tutup" onclick="tutupPaksaPrive()">Batal</button>
+    <span class="bk-judul">Catat paksa</span>
+    <span class="bk-imbang"></span>
+  </div>
+  <div class="pp-isi">
+    <div id="ppAngka"></div>
+    <p class="pp-ket">Yang membatasi di sini <b>kas</b>, bukan laba. Kalau kas sungguhan
+      memang lebih besar dari catatan, cocokkan kas dulu di Arus Kas — memaksa di sini
+      membuat catatan kas jadi minus, dan minusnya akan terbawa ke mana-mana.</p>
+    <label for="ppAlasan">Alasan — wajib</label>
+    <input type="text" id="ppAlasan" placeholder="Contoh: kas laci sebenarnya lebih besar, belum dicocokkan" oninput="ppPeriksaAlasan()">
+    <button type="button" class="pp-lanjut" id="ppLanjut" onclick="lanjutkanPaksaPrive()" disabled>Tetap catat</button>
+    <p class="pp-ket">Jejaknya permanen dan ikut terbaca di Buku Kas serta Riwayat pengeluaran.</p>
+  </div>
+</div>
+
 <div id="overlayTitipan" onclick="tutupLembarTitipan()"></div>
 <div id="lembarTitipan" class="k6a" role="dialog" aria-modal="true">
   <div class="lm-pegangan" onclick="tutupLembarTitipan()"></div>
@@ -12932,6 +12991,24 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + '?\n\nSesudah disetujui, catatan ini masuk buku pengeluaran dan '
       + (kasTokoKeluarKategori(t.kategori) ? 'kas toko BERKURANG' : 'kas toko TIDAK berubah')
       + ' \u2014 sekarang, bukan nanti.')) return;
+    // PINTU KEDUA ke buku pengeluaran — penjaga yang sama berlaku di sini. Penjaga yang
+    // cuma menjaga satu dari dua pintu bukan penjaga.
+    const pagarT = periksaPagarPrive(t.kategori, t.tanggal, t.nominal || 0);
+    if (!pagarT.boleh) {
+      alert(kalimatPagarPrive(pagarT));
+      bukaPaksaPrive(pagarT, async (alasan) => {
+        try {
+          await simpanKeFirestore(KOLEKSI_HARIAN, {
+            id: t.id, tanggal: t.tanggal, kategori: t.kategori,
+            keterangan: t.keterangan, nominal: t.nominal, jam: t.jam,
+            alasanPaksa: alasan, dipaksaPada: tanggalLokalIso()
+          });
+        } catch (err) { console.error(err); alert('Gagal memasukkan ke buku pengeluaran (offline?). Titipannya TIDAK dihapus.'); return; }
+        try { await hapusDariFirestore(KOLEKSI_TITIPAN, t.id); } catch (err) { console.error(err); }
+        gambarLencanaTitipan(); gambarLembarTitipan(); tampilkanHarianHariIni(); gambarKacaHarian();
+      });
+      return;
+    }
     try {
       await simpanKeFirestore(KOLEKSI_HARIAN, {
         id: t.id, tanggal: t.tanggal, kategori: t.kategori,
@@ -13320,6 +13397,103 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // dua baris sendiri di hitungArusKasInti, dan itu tidak boleh disatukan di sana.
   function kasTokoKeluarKategori(kat) { return kat === 'toko' || kat === 'owner'; }
 
+  // ================= PENJAGA PRIVE (lubang 2, perintah 11 Sep 2026) =================
+  // Terukur sebelum ini: simpanPengeluaranHarian() 28 baris, dan di dalamnya kasPada 0 ·
+  // saldo 0 · confirm( 0 · mintaPinOwner 0 · kata "tidak cukup" 0. Artinya prive Rp50 juta
+  // di hari kas tinggal Rp3 juta tersimpan TANPA SATU KATA PUN; kas jadi minus dan yang
+  // tahu cuma pemiliknya besok pagi.
+  //
+  // Penjaganya melekat pada BARANGNYA, bukan pada pintunya: ia dipanggil di setiap tempat
+  // sebuah dokumen menjadi pengeluaran nyata — simpanPengeluaranHarian DAN setujuiTitipan.
+  // Jalan lewat yang murah sama saja dengan tidak ada penjaga.
+  //
+  // YANG MEMBATASI ADALAH KAS, BUKAN LABA. Prive boleh melebihi laba (itu memakan modal,
+  // dan sudah punya vonisnya sendiri di kartu Uang Siapa); yang tidak boleh adalah
+  // mengeluarkan uang yang tidak ada di laci.
+  function periksaPagarPrive(kategori, tanggal, nominal) {
+    if (kategori !== 'owner') return { boleh: true };
+    let kas = null;
+    try { kas = kasPada(tanggal); } catch (e) { console.error('pagar prive:', e); kas = null; }
+    // BELUM DINYATAKAN != DINYATAKAN NOL. Kalau kas pada tanggal itu tidak bisa dihitung
+    // (titik kas belum disetel, atau tanggalnya mundur dari titik), penjaga ini TIDAK
+    // BOLEH mengaku tahu bahwa kasnya kurang — tidak ada yang bisa "melebihi" angka yang
+    // tidak ada. Ia lewat, tapi mengaku bahwa ia tidak memeriksa.
+    if (kas === null) return { boleh: true, takTerperiksa: true };
+    if (nominal <= kas) return { boleh: true, kas };
+    return { boleh: false, kas, nominal, kurang: nominal - kas, tanggal };
+  }
+  function kalimatPagarPrive(p) {
+    return 'Prive ' + formatRupiah(p.nominal) + ' melebihi KAS toko pada '
+      + formatTanggal(p.tanggal) + '.\n\n'
+      + 'Kas tanggal itu   : ' + formatRupiah(p.kas) + '\n'
+      + 'Diminta           : ' + formatRupiah(p.nominal) + '\n'
+      + 'Kurang            : ' + formatRupiah(p.kurang) + '\n\n'
+      + 'Yang membatasi di sini KAS, bukan laba \u2014 uang yang tidak ada di laci tidak '
+      + 'bisa dikeluarkan. Kalau memang harus dicatat begitu (mis. kas sungguhan lebih '
+      + 'besar dari catatan), pakai "Catat paksa" dan tulis alasannya.';
+  }
+
+  // ---- Jalan paksa: terpisah, dan WAJIB menulis alasannya (pola simpanHapusBuku) ----
+  let _paksaPrive = null;
+  function bukaPaksaPrive(p, sesudah) {
+    _paksaPrive = { p, sesudah };
+    document.getElementById('ppAngka').innerHTML =
+      '<div class="pp-baris"><span>Kas toko ' + escapeHtml(formatTanggal(p.tanggal)) + '</span><b>' + formatRupiah(p.kas) + '</b></div>'
+      + '<div class="pp-baris"><span>Prive diminta</span><b>' + formatRupiah(p.nominal) + '</b></div>'
+      + '<div class="pp-baris kurang"><span>Kurang</span><b>' + formatRupiah(p.kurang) + '</b></div>';
+    document.getElementById('ppAlasan').value = '';
+    ppPeriksaAlasan();
+    document.body.classList.add('lembar-paksa-prive-terbuka');
+  }
+  function tutupPaksaPrive() { document.body.classList.remove('lembar-paksa-prive-terbuka'); _paksaPrive = null; }
+  // Tombol yang tampak mati WAJIB benar-benar disabled — dijaga di kode, bukan di gaya.
+  function ppPeriksaAlasan() {
+    const b = document.getElementById('ppLanjut');
+    const a = (document.getElementById('ppAlasan').value || '').trim();
+    if (b) b.disabled = a.length < 4;
+  }
+  async function lanjutkanPaksaPrive() {
+    if (!_paksaPrive) return;
+    const alasan = (document.getElementById('ppAlasan').value || '').trim();
+    if (alasan.length < 4) {
+      alert('Alasan wajib diisi \u2014 jejak ini permanen dan dibaca lagi bertahun-tahun ke depan.');
+      document.getElementById('ppAlasan').focus();
+      return;
+    }
+    const sesudah = _paksaPrive.sesudah;
+    tutupPaksaPrive();
+    await sesudah(alasan);
+  }
+
+  // SATU JALUR TULIS dipakai jalan biasa maupun jalan paksa. Kalau jalan paksa punya
+  // penulisnya sendiri, suatu hari salah satunya akan menulis bentuk dokumen yang berbeda.
+  // alasanPaksa hanya ADA kalau memang dipaksa — dokumen biasa tidak membawa kolom kosong.
+  async function tulisPengeluaranHarian(kategori, tanggal, keterangan, nominal, alasanPaksa, takTerperiksa) {
+    const dok = {
+      id: idUnik(), kategori, tanggal, keterangan, nominal,
+      jam: new Date().toTimeString().slice(0, 5)
+    };
+    if (alasanPaksa) { dok.alasanPaksa = alasanPaksa; dok.dipaksaPada = tanggalLokalIso(); }
+    try {
+      await simpanKeFirestore(KOLEKSI_HARIAN, dok);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
+      return false;
+    }
+    if (alasanPaksa) {
+      alert('Tercatat MELEBIHI kas, dengan alasan tertulis.\n\nJejaknya permanen dan ikut '
+        + 'terbaca di Buku Kas serta Riwayat pengeluaran.');
+    } else if (takTerperiksa) {
+      // Penjaga yang tidak bisa memeriksa WAJIB mengaku. Diam di sini akan terbaca
+      // sebagai "sudah diperiksa dan aman" — persis kebalikan dari yang terjadi.
+      alert('Tersimpan.\n\nCatatan: kas pada tanggal itu belum bisa dihitung (titik hitung '
+        + 'kas belum disetel, atau tanggalnya mundur dari titik), jadi penjaga prive TIDAK '
+        + 'memeriksa apakah kasnya cukup.');
+    }
+    return true;
+  }
+
   async function simpanPengeluaranHarian() {
     const kategori = document.getElementById('harianKategori').value || 'toko';
     const tanggal = document.getElementById('harianTanggal').value;
@@ -13329,15 +13503,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!keterangan) { alert('Isi keterangan dulu (untuk apa pengeluaran ini).'); return; }
     if (nominal <= 0) { alert('Isi nominal dulu.'); return; }
 
-    const id = idUnik();
-    try {
-      const jam = new Date().toTimeString().slice(0, 5);
-      await simpanKeFirestore(KOLEKSI_HARIAN, { id, kategori, tanggal, keterangan, nominal, jam });
-    } catch (err) {
-      console.error(err);
-      alert('Gagal simpan ke database (offline?). Coba lagi kalau internet sudah nyambung.');
+    // PENJAGA DI TEMPAT UANG KELUAR — bukan di layar yang menggambar, dan bukan confirm()
+    // yang bisa ditekan buta. Menolak berarti menolak: tidak ada tombol "lanjut" di sini.
+    const pagar = periksaPagarPrive(kategori, tanggal, nominal);
+    if (!pagar.boleh) {
+      alert(kalimatPagarPrive(pagar));
+      bukaPaksaPrive(pagar, (alasan) => tulisPengeluaranHarian(kategori, tanggal, keterangan, nominal, alasan));
       return;
     }
+    await tulisPengeluaranHarian(kategori, tanggal, keterangan, nominal,
+      null, pagar.takTerperiksa);
 
     document.getElementById('harianKeterangan').value = '';
     document.getElementById('harianNominal').value = '';
@@ -31444,6 +31619,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.hapusBulanan = hapusBulanan;
   window.pilihKategoriHarian = pilihKategoriHarian;
   window.pilihBulanLaba = pilihBulanLaba;
+  window.tutupPaksaPrive = tutupPaksaPrive; window.ppPeriksaAlasan = ppPeriksaAlasan;
+  window.lanjutkanPaksaPrive = lanjutkanPaksaPrive;
   window.pilihKantongHarian = pilihKantongHarian;
   window.pilihPolaHarian = pilihPolaHarian;
   window.bukaLembarTitipan = bukaLembarTitipan; window.tutupLembarTitipan = tutupLembarTitipan;
