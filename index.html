@@ -5144,6 +5144,42 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     background:rgba(207,212,218,.07); }
   .wz-kepala-kanan .wz-saklar button{ flex:none; min-height:44px; min-width:44px; padding:0 10px;
     font-size:11px; letter-spacing:.06em; }
+  /* ---------- SEPARUH BAWAH, angka gaya disalin dari Jual - Gabungan.dc.html ---------- */
+  /* Satu perbuatan pokok, satu tombol lebar. Emas BERGARIS (bukan padat): ia mengajak,
+     tapi belum menyelesaikan apa pun — yang menyelesaikan cuma SIMPAN. */
+  .wz-tambah-struk{ width:100%; margin-top:9px; min-height:48px; border-radius:3px;
+    font:700 10.5px/1 -apple-system,system-ui; letter-spacing:.14em; font-family:inherit;
+    border:1px solid rgba(240,220,187,.4); background:rgba(240,220,187,.1); color:#e2cda6; }
+  .wz-tambah-struk:disabled{ border:1px solid rgba(207,212,218,.16);
+    background:rgba(207,212,218,.05); color:#7d7a73; }
+  .wz-ke-bayar{ width:100%; margin-top:7px; min-height:44px; border-radius:3px; border:0;
+    font:700 10.5px/1 -apple-system,system-ui; letter-spacing:.14em; font-family:inherit;
+    background:rgba(207,212,218,.07); color:#b7bcc3; }
+  .wz-ke-bayar:disabled{ color:#7d7a73; }
+  /* SIMPAN: satu-satunya emas PADAT di layar ini. Mati = benar-benar disabled, dan
+     kalimat di bawahnya menyebut SEBABNYA — bukan tombol abu tanpa penjelasan. */
+  .wz-simpan-besar{ width:100%; margin-top:11px; min-height:54px; border:0; border-radius:3px;
+    font:800 14px/1 -apple-system,system-ui; letter-spacing:.06em; font-family:inherit;
+    background:linear-gradient(160deg,#fdf7e8,#e2cda6 52%,#bfa476); color:#231a08;
+    box-shadow:0 8px 26px rgba(226,205,166,.18); }
+  .wz-simpan-besar:disabled{ background:rgba(207,212,218,.06); color:#7d7a73; box-shadow:none; }
+  .wz-nota-simpan{ font-family:var(--pf-serif); font-style:italic; font-size:10px; color:#7d7a73;
+    text-align:center; margin-top:8px; line-height:1.5; }
+  /* STRUK: huruf MONOSPACE seperti struk sungguhan, dan GIGI SOBEK di kakinya. Dua hal itu
+     yang membuatnya terbaca sebagai kertas yang akan dipegang pembeli, bukan tabel biasa. */
+  .wz-struk-kertas .wz-struk-baris .nama,
+  .wz-struk-kertas .wz-struk-baris b{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:10.5px; }
+  .wz-struk-kertas .wz-struk-baris b{ color:#cfd4da; font-weight:400; }
+  .wz-struk-kertas .wz-struk-total{ padding:11px; background:rgba(226,205,166,.06);
+    border-top:1px dashed rgba(255,255,255,.16); margin-top:6px; }
+  .wz-struk-kertas .wz-struk-total .kg-label{ font-family:ui-monospace,Menlo,monospace;
+    font-size:10.5px; color:#e2cda6; letter-spacing:0; }
+  .wz-struk-kertas::after{ content:''; display:block; height:4px; margin:0 -12px -12px;
+    background:repeating-linear-gradient(90deg,rgba(19,19,22,.95) 0 4px,transparent 4px 8px); }
+  /* Cara bayar: tiga kolom sama lebar, kapital — rancangannya repeat(3,1fr) gap 6px. */
+  .wz-bayar-tab{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:11px; }
+  .wz-bayar-tab button{ min-height:44px; border-radius:3px; font-family:inherit;
+    font:700 10.5px/1 -apple-system,system-ui; letter-spacing:.12em; text-transform:uppercase; }
   .wz-rak-nota{ font-family:var(--pf-serif); font-style:italic; font-size:10.5px;
     color:var(--pf-abu2,#a7adb5); margin:7px 2px 0; line-height:1.45; }
   @keyframes wzTumbuh{ from{ transform:scaleY(0); } to{ transform:scaleY(1); } }
@@ -14980,10 +15016,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const btnLama = document.getElementById('btnSimpanJual');
       const alasan = ((document.getElementById('alasanJual') || {}).textContent || '').trim();
       elC.innerHTML = (btnLama && btnLama.disabled && alasan && nNum > 0 ? '<div class="wz-info">' + wzEsc(alasan) + '</div>' : '')
-        + '<div class="wz-cta2">'
-        + '<button type="button" class="wz-lanjut sekunder" onclick="wzTambahItem(\'jalur\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>\uff0b masukkan ke struk</button>'
-        + '<button type="button" class="wz-lanjut" onclick="wzTambahItem(\'bayar\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>ke bayar</button>'
-        + '</div>';
+        // Rancangan menaruh SATU tombol lebar "＋ MASUKKAN KE STRUK", bukan dua tombol
+        // berdampingan. "ke bayar" tetap ada — di sistem ini ia yang membuka bagian bayar —
+        // tapi ia turun jadi baris kedua supaya perbuatan pokoknya cuma satu.
+        + '<button type="button" class="wz-tambah-struk" onclick="wzTambahItem(\'jalur\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>\uff0b MASUKKAN KE STRUK</button>'
+        + '<button type="button" class="wz-ke-bayar" onclick="wzTambahItem(\'bayar\')" ' + (nNum > 0 && !lebih ? '' : 'disabled') + '>KE BAYAR</button>';
     }
     wzGambarStruk();
   }
@@ -15112,13 +15149,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Retur, dan keadaan sebelum jalur dipilih, tetap satu panel: tidak ada rantai untuk ditumpuk.
     if (sampai < 0 || document.getElementById('halamanJual').classList.contains('wz-retur')) { wzRenderLangkah(); return; }
     const asli = _wz.langkah;
+    // SATU HALAMAN PENUH: begitu keranjang berisi, bagian BAYAR ikut digambar di kaki
+    // tumpukan walau langkahnya belum ke sana. Rancangannya memang menaruh cara bayar dan
+    // SIMPAN selalu terlihat di bawah struk — menyembunyikannya di balik satu langkah lagi
+    // mengembalikan wizard lewat pintu belakang, tepat di tempat uangnya diselesaikan.
+    const rantaiGambar = rantai.slice(0, sampai + 1);
+    if (_wzItems.length && rantaiGambar.indexOf('bayar') < 0) rantaiGambar.push('bayar');
     const kotak = document.createElement('div');
     const jt = document.createElement('div');
     const jl = document.createElement('div');
     const bagian = [];
     try {
-      for (let i = 0; i <= sampai; i++) {
-        _wz.langkah = rantai[i];
+      for (let i = 0; i < rantaiGambar.length; i++) {
+        _wz.langkah = rantaiGambar[i];
         _wzTarget = { panel: kotak, tanya: jt, label: jl };
         kotak.innerHTML = ''; jt.textContent = '';
         wzRenderLangkah();
@@ -15135,9 +15178,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         let kanan = '';
         const mK = isiAman.match(/^\s*<div class="wz-kanan">([\s\S]*?)<\/div><!--\/kanan-->/);
         if (mK) { kanan = mK[1]; isiAman = isiAman.slice(mK[0].length); }
-        bagian.push('<section class="wz-bagian' + (i === sampai ? ' kini' : '') + '">'
+        bagian.push('<section class="wz-bagian' + (rantaiGambar[i] === asli ? ' kini' : '') + '" data-langkah="' + rantaiGambar[i] + '">'
           + '<div class="wz-bagian-kepala"><div class="wz-bagian-judul">'
-          + wzEsc(WZ_JUDUL[rantai[i]] || jt.textContent || '') + '</div>'
+          + wzEsc(WZ_JUDUL[rantaiGambar[i]] || jt.textContent || '') + '</div>'
           + (kanan ? '<div class="wz-kepala-kanan">' + kanan + '</div>' : '') + '</div>'
           + isiAman + '</section>');
       }
@@ -15157,6 +15200,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // hampa (chip takaran hilang tanpa satu pun galat). Ini sambungannya, dan letaknya
     // memang harus di sini: sesudah innerHTML, bukan sebelum.
     if (_wz.langkah === 'jumlah') wzJumlahRefresh();
+    // STRUK DUDUK DI ANTARA ISIAN DAN CARA BAYAR, seperti rancangannya: struk -> cara bayar
+    // -> SIMPAN. Elemennya DIPINDAH, bukan digambar dua kali — satu #wzStruk, satu id, dan
+    // wzGambarStruk tidak perlu tahu ke mana ia dipindahkan.
+    const elStruk = document.getElementById('wzStruk');
+    const secBayar = document.querySelector('#wzPanel section[data-langkah="bayar"]');
+    if (elStruk) {
+      if (secBayar) { if (elStruk.nextElementSibling !== secBayar) secBayar.parentNode.insertBefore(elStruk, secBayar); }
+      else if (elStruk.parentNode !== wrap) wrap.appendChild(elStruk);
+    }
   }
   function wzRenderLangkah() {
     try {
@@ -15381,7 +15433,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           + '<label style="margin-top:12px;">Nama pembeli' + (caraAktif === 'Kredit' ? ' \u2014 wajib untuk kredit' : ' \u2014 boleh kosong') + '</label>'
           + '<input type="text" value="' + wzEsc(document.getElementById('jualNamaPelanggan').value) + '" placeholder="Nama pembeli" oninput="wzNama(this.value)" list="saranPelanggan">'
           + (caraAktif === 'Kredit' ? wzKartuKreditHtml(total) : '')
-          + '<button type="button" class="wz-lanjut" id="wzSimpanKeranjang" onclick="wzKonfirmasiKeranjang()"' + (matiSimpan ? ' disabled' : '') + '>Periksa & Simpan \u00b7 ' + formatRupiah(total) + '</button>';
+          + '<button type="button" class="wz-lanjut wz-simpan-besar" id="wzSimpanKeranjang" onclick="wzKonfirmasiKeranjang()"' + (matiSimpan ? ' disabled' : '') + '>SIMPAN \u00b7 ' + formatRupiah(total) + '</button>'
+          + '<div class="wz-nota-simpan">' + (matiSimpan
+            ? (!_wzItems.length ? 'Keranjang masih kosong.'
+              : (caraAktif === 'Kredit' ? wzEsc(String(wzKreditTerkunci(total) || 'Lengkapi data kredit dulu.')) : 'Pilih cara bayar dulu.'))
+            : 'Tersimpan langsung ke buku \u2014 stok & laba ikut bergerak.') + '</div>';
         return;
       }
         } catch (e) { /* kulit — jangan ganggu jalur uang */ }
