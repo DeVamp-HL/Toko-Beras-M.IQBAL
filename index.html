@@ -3233,10 +3233,15 @@
   .la-nota b{ color:var(--pf-krem,#f7ecd6); font-style:normal; }
 }
 /* ===== CATAT PAKSA PRIVE (lubang 2) ===== */
-#overlayPaksaPrive{ display:block; position:fixed; inset:0; z-index:41; background:#000;
+/* z-index 46/47, BUKAN 41/42 seperti lembar lain. Lembar ini dibuka DARI DALAM lembar lain
+   (Setujui di lembar Titipan). Pada z-index seri, yang belakangan di DOM menang \u2014
+   #lembarTitipan (76vh) menutup lembar ini seluruhnya dan penolakannya jadi buntu.
+   Ia keputusan modal, jadi ia di atas SEMUA lembar (maks 43) dan bilah urungkan (45),
+   tapi tetap di bawah modal PIN (100). */
+#overlayPaksaPrive{ display:block; position:fixed; inset:0; z-index:46; background:#000;
   opacity:0; pointer-events:none; transition:opacity .22s ease; }
 body.lembar-paksa-prive-terbuka #overlayPaksaPrive{ opacity:.7; pointer-events:auto; }
-#lembarPaksaPrive{ position:fixed; left:0; right:0; bottom:0; z-index:42;
+#lembarPaksaPrive{ position:fixed; left:0; right:0; bottom:0; z-index:47;
   background:linear-gradient(180deg,#241d18,#16130f);
   border:1px solid rgba(217,166,147,.42); border-bottom:none;
   border-radius:22px 22px 0 0; box-shadow:0 -18px 50px rgba(0,0,0,.6);
@@ -13469,12 +13474,32 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + 'Kurang            : ' + formatRupiah(p.kurang) + '\n\n'
       + 'Yang membatasi di sini KAS, bukan laba \u2014 uang yang tidak ada di laci tidak '
       + 'bisa dikeluarkan. Kalau memang harus dicatat begitu (mis. kas sungguhan lebih '
-      + 'besar dari catatan), pakai "Catat paksa" dan tulis alasannya.';
+      + 'besar dari catatan), catat paksa dengan menulis alasannya.';
   }
 
   // ---- Jalan paksa: terpisah, dan WAJIB menulis alasannya (pola simpanHapusBuku) ----
   let _paksaPrive = null;
+  // JALAN KELUAR WAJIB ADA DI SETIAP LEBAR TEMPAT PAGARNYA MENOLAK. Pagarnya JS murni —
+  // ia menolak di HP maupun di laptop — tapi lembar "Catat paksa" adalah komponen kaca
+  // yang display:none di >=700px. Dulu di laptop pemilik disuruh menekan tombol yang
+  // tidak pernah digambar: prive yang sah tidak bisa dicatat sama sekali, dan jalan
+  // pintas yang paling mungkin (mengganti kategori jadi Toko) memindahkan uang pribadi
+  // ke BEBAN toko dan menurunkan laba sebesar itu. Di >=700px jalan keluarnya prompt(),
+  // idiom desktop berkas ini (bjLunasi) — alasannya tetap wajib, bentuk dokumennya sama.
+  // Keputusan lebar diambil DI SINI, sekali, bukan tersebar di pemanggil.
   function bukaPaksaPrive(p, sesudah) {
+    const kalimat = kalimatPagarPrive(p);
+    if (window.matchMedia('(min-width: 700px)').matches) {
+      let a = prompt(kalimat + '\n\nUntuk tetap mencatat, tulis alasannya (minimal 4 huruf).'
+        + '\nBatal = tidak dicatat.', '');
+      while (a !== null && a.trim().length < 4) {
+        a = prompt('Alasan wajib diisi, minimal 4 huruf \u2014 jejak ini permanen.'
+          + '\n\nBatal = tidak dicatat.', a);
+      }
+      if (a === null) { alert('Tidak dicatat. Isiannya dibiarkan seperti semula.'); return; }
+      return sesudah(a.trim());
+    }
+    alert(kalimat);
     _paksaPrive = { p, sesudah };
     document.getElementById('ppAngka').innerHTML =
       '<div class="pp-baris"><span>Kas toko ' + escapeHtml(formatTanggal(p.tanggal)) + '</span><b>' + formatRupiah(p.kas) + '</b></div>'
@@ -13525,7 +13550,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!o.alasanPaksa) {
       const pagar = periksaPagarPrive(kategori, tanggal, nominal);
       if (!pagar.boleh) {
-        alert(kalimatPagarPrive(pagar));
+        // Kalimat penolakannya diucapkan bukaPaksaPrive — ia yang tahu jalan keluar mana
+        // yang ada di lebar layar ini, jadi ia juga yang tahu cara mengatakannya.
         // Jalan paksa memanggil GERBANG YANG SAMA, cuma membawa alasannya. Kalau jalan
         // paksa punya penulisnya sendiri, suatu hari salah satunya akan menulis bentuk
         // dokumen yang berbeda.
