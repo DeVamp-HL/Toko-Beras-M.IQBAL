@@ -3174,6 +3174,17 @@
 .rw-kal-hari.nol .batang { background: rgba(255,255,255,.08); }
 .rw-kal-hari .tgl { font-size: 7.5px; font-weight: 700; letter-spacing: .04em; color: #7c848a; }
 .rw-kal-hari.ini .tgl { color: #e2cda6; }
+/* Pemilih bulan tab Laba — hanya <700px, karena kaca emas yang dikendalikannya juga
+   hanya hidup di sana. Sasaran sentuh 48px. */
+.laba-pilih-bulan{ display:none; }
+@media (max-width:699.98px){
+  .laba-pilih-bulan{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .laba-pilih-bulan label{ flex:none; font-size:9px; font-weight:700; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--pf-abu); margin:0; }
+  .laba-pilih-bulan input{ flex:1; min-width:0; min-height:48px; margin:0;
+    background:var(--kartu); color:var(--teks); border:1px solid var(--pf-tepi);
+    border-radius:10px; padding:0 12px; font-family:inherit; font-size:14px; }
+}
 /* ===== SUMBU Q: LENCANA TITIPAN + LEMBAR PERSETUJUAN (Harian) ===== */
 /* Tepi PUTUS-PUTUS beroksida: ini bukan kartu berisi angka jadi, ini sesuatu yang masih
    menggantung. Bentuknya sendiri yang mengatakan "belum selesai". */
@@ -7763,6 +7774,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
          Hanya <700px; desktop tetap kartu lama di bawah. PERIODE KACA = BULAN BERJALAN
          (kartu lama tetap sepanjang-masa). Diisi tampilkanLabaKaca() dari dalam
          tampilkanLaba. Tiga lembar desain (jujur/tambal/surat) DITUNDA. -->
+    <!-- LUBANG 1 (perintah 11 Sep 2026): tab Laba tidak pernah bisa diminta menampilkan
+         bulan yang sudah lewat. Terukur sebelum ini: NOL type="date" dan NOL type="month"
+         di seluruh #halamanLaba, jadi periodenya dipatok di kode dan membuka tab ini hari
+         ini selalu menampilkan bulan berjalan. Sistem yang dipakai memutuskan pengambilan
+         untung BULANAN tidak bisa melihat bulan yang sudah ditutup.
+         Pemilihnya hanya di <700px — kaca emas memang cuma hidup di sana, dan pemilih
+         yang tidak mengubah apa pun di desktop akan jadi tombol yang berbohong. -->
+    <div class="laba-pilih-bulan">
+      <label for="labaBulan">Bulan yang dilihat</label>
+      <input type="month" id="labaBulan" onchange="pilihBulanLaba()">
+    </div>
     <div id="labaKaca"></div>
 
     <div class="kartu-hero">
@@ -26549,6 +26571,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return Object.values(per).map(e => ({ ...e, margin: e.omzet - e.hpp,
       perKg: e.kg > 0 ? (e.omzet - e.hpp) / e.kg : null }));
   }
+  // Satu tempat yang menentukan bulan tab Laba. Kalau pemilihnya belum terisi (render
+  // pertama), ia mengisi dirinya dengan bulan berjalan — bukan mengembalikan bulan
+  // berjalan diam-diam sambil membiarkan kotaknya kosong. Kotak kosong di sebelah angka
+  // bulan adalah dua pernyataan yang tidak sepakat.
+  function labaBulanTerpilih() {
+    const el = document.getElementById('labaBulan');
+    if (!el) return bulanLokalIso();
+    if (!el.value) el.value = bulanLokalIso();
+    return el.value;
+  }
+  function pilihBulanLaba() { tampilkanLaba(); }
+
   function tampilkanLabaKaca() {
     const wadah = document.getElementById('labaKaca');
     // KELUAR DINI WAJIB MENGOSONGKAN APA YANG IA SENDIRI TULIS. #labaSubBulan diisi nama
@@ -26564,7 +26598,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       return;
     }
     try {
-      const bl = bulanLokalIso();
+      // Bulan datang dari PEMILIHNYA, bukan dari jam. Bawaannya bulan berjalan, jadi
+      // perilaku lama tetap perilaku bawaan — yang bertambah cuma kemampuan memintanya.
+      const bl = labaBulanTerpilih();
       const namaBulan = namaBulanPanjang(bl + '-01');
       const sub = document.getElementById('labaSubBulan');
       if (sub) sub.textContent = namaBulan;
@@ -31407,6 +31443,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.putuskanKarantina = putuskanKarantina;
   window.hapusBulanan = hapusBulanan;
   window.pilihKategoriHarian = pilihKategoriHarian;
+  window.pilihBulanLaba = pilihBulanLaba;
   window.pilihKantongHarian = pilihKantongHarian;
   window.pilihPolaHarian = pilihPolaHarian;
   window.bukaLembarTitipan = bukaLembarTitipan; window.tutupLembarTitipan = tutupLembarTitipan;
