@@ -7054,7 +7054,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <div class="ik8-mini">
           <span class="ik8-refraksi"></span>
           <div style="position:relative">
-            <div class="ik8-label">Omzet hari ini</div>
+            <div class="ik8-label" id="ik8LabelOmzet">Omzet hari ini</div>
             <div class="ik8-nomzet" id="ik8Omzet">Rp0</div>
             <div class="ik8-spark" id="ik8Spark"></div>
             <div class="ik8-ket" id="ik8OmzetTrx"></div>
@@ -7063,7 +7063,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <div class="ik8-mini">
           <span class="ik8-refraksi"></span>
           <div style="position:relative">
-            <div class="ik8-label">Margin kotor</div>
+            <div class="ik8-label" id="ik8LabelMargin">Margin kotor</div>
             <div class="ik8-nmargin" id="ik8Margin">Rp0</div>
             <div class="ik8-ket" id="ik8MarginPct"></div>
           </div>
@@ -7071,7 +7071,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       </div>
       <div class="ik8-laba segel" id="ik8LabaBlok">
         <div class="ik8-laba-atas">
-          <span class="ik8-label">Laba bersih hari ini</span>
+          <span class="ik8-label" id="ik8LabelLaba">Laba bersih hari ini</span>
           <span class="ik8-nlaba" id="ik8Laba">Rp &bull;&bull;&bull;&bull;&bull;&bull;</span>
         </div>
         <div id="ik8Potongan" style="margin-top:11px"></div>
@@ -31815,13 +31815,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
 
   function ik8Data() {
-    const iso = tanggalLokalIso();
+    // PERIODE IKUT KEADAAN, dan LABELNYA IKUT PERIODE (rancangan "Ringkasan pagi").
+    // Sebelum toko dibuka, "omzet hari ini" NOL menurut definisinya sendiri — kartunya
+    // memakai tempat tanpa mengajarkan apa pun, dan segel tahan-2-detik dihabiskan untuk
+    // membuka angka nol. Yang berguna di pagi hari adalah angka KEMARIN. Sesudah toko
+    // dibuka, hari ini yang berlaku lagi.
+    // Angka dan namanya bergerak BERSAMA — satu-satunya cara ini tidak menyesatkan.
+    // Mesinnya tidak disentuh: hitungLabaBersihRentang cuma dipanggil dengan tanggal lain.
+    const pagiKeadaan = ik8PagiKeadaan();
+    const hariIni = tanggalLokalIso();
+    const iso = pagiKeadaan.dibuka ? hariIni : geserHari(hariIni, -1);
+    const periodeTxt = pagiKeadaan.dibuka ? 'hari ini' : 'kemarin';
     const t = ambilTitikKas();
     const L = hitungLabaBersihRentang(iso, iso);   // omzetPenuh/omzetHitung/margin + harianToko/jatahBulanan/hapusBuku/susutStok/labaBersih
     const gerakan = daftarGerakanKas().filter(r => r.t === iso);                       // kredit sudah dibuang di sumbernya
     const kredit = ambilPenjualan().filter(p => p.tanggal === iso && caraBayarKunci(p) === 'kredit');
     const potongan = [
-      { nama: 'Belanja toko hari ini', rp: L.harianToko || 0 },
+      { nama: 'Belanja toko ' + periodeTxt, rp: L.harianToko || 0 },
       { nama: 'Jatah biaya bulanan', rp: L.jatahBulanan || 0 }
     ];
     if (L.hapusBuku) potongan.push({ nama: 'Hapus buku piutang', rp: L.hapusBuku });
@@ -31832,7 +31842,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       jamBuka: JAM_BUKA_SISTEM, jamTutup: JAM_TUTUP_SISTEM,
       kejadian: ik8Ember(gerakan, kredit, JAM_BUKA_SISTEM, JAM_TUTUP_SISTEM),
       rentang: ik8RentangKejadian(gerakan, kredit),
-      pagi: ik8PagiKeadaan(),
+      pagi: pagiKeadaan, periodeTxt, periodeIso: iso,
       nTrx: L.jumlahTrx || 0,
       tangani: _ik6Perhatian,
       omzet: L.omzetPenuh || 0, omzetHitung: L.omzetHitung || 0, margin: L.margin || 0,
@@ -31973,6 +31983,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
       /* ── ritual pagi: kartu (belum dibuka) atau pita (sudah) ── */
       const pagi = D.pagi;
+      // Label ditulis dari periode yang SAMA dengan angkanya — bukan diketik di markup.
+      // Kalau keduanya ditulis di dua tempat, suatu hari salah satunya akan tertinggal.
+      const elLO = document.getElementById('ik8LabelOmzet');
+      if (elLO) elLO.textContent = 'Omzet ' + D.periodeTxt;
+      const elLM = document.getElementById('ik8LabelMargin');
+      if (elLM) elLM.textContent = 'Margin kotor ' + D.periodeTxt;
+      const elLL = document.getElementById('ik8LabelLaba');
+      if (elLL) elLL.textContent = 'Laba bersih ' + D.periodeTxt;
       const elPagi = document.getElementById('ik8PagiBlok');
       const elPita = document.getElementById('ik8Pita');
       elPagi.style.display = pagi.dibuka ? 'none' : 'block';
