@@ -1,6 +1,6 @@
 # Keputusan desain — penyimpangan yang SUDAH disetujui
 
-Delapan belas keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
+Dua puluh keputusan sadar tentang **di mana sistem sengaja TIDAK mengikuti berkas desain**.
 Semuanya sudah diperiksa dan disetujui pemilik. **Membetulkannya ke prototipe = merusak.**
 
 Berkas ini ada di repo dengan sengaja. Perintah kerja (`PROMPT-*.md`) dan catatan bisnis
@@ -179,6 +179,33 @@ gambar QR yang tidak menunjuk ke mana-mana.
     komentar HTML yang menyatakan keberadaannya. Kalau ternyata ada alasan lapangan (jempol,
     salah pencet, kecepatan di jam ramai), alasan itu mengubah butir ini dan wajib ditulis
     ke sini. Butir ini mencatat KEPUTUSANNYA, bukan berpura-pura tahu sebab aslinya.
+
+19. **Label kelompok Arus Kas tetap DI DALAM kartu, bukan di luarnya** — rancangan
+    `Arus Kas - Gabungan` menaruh nama kelompok (`KEKAYAAN TOKO · NERACA RINGKAS`,
+    `UANG SIAPA`, `EMPAT WUJUD BARUNYA`) sebagai teks huruf-besar **di atas** kartunya,
+    di luar bingkai. Sistem tidak mengikutinya.
+
+    **Alasannya bukan malas, tapi kosakata yang sudah berdiri.** Seluruh Kaca Emas —
+    Stok, Harga, Piutang, Bulanan, Produksi, Jual — memakai `.kg-label` **di dalam**
+    kartu. Kalau Arus Kas sendirian memakai label di luar, satu layar akan terbaca
+    seperti dua sistem yang ditempel: kartu berlabel-dalam dan kartu berlabel-luar
+    berselang-seling. Konsistensi lintas layar lebih mahal daripada kemiripan satu layar.
+
+    **Yang diambil dari rancangan tetap diambil:** hurufnya, jaraknya, warnanya, dan
+    irama kelompoknya. Yang tidak diambil cuma POSISI label — dan cuma di sini.
+
+20. **"Diurut jatuh tempo" di zona NANTI tidak dibangun** — rancangan mengurutkan rencana
+    keluar menurut tanggal jatuh tempo dan menandai di baris mana kas habis
+    (*"jatuh tempo 30 Agu · kas habis di pos ini"*).
+
+    **Datanya tidak ada.** Catatan biaya bulanan menyimpan `bulan` dan `tanggalBayar`
+    saja — tidak ada tanggal jatuh tempo di mana pun. Mengurutkan menurut sesuatu yang
+    tidak ada berarti mengarang urutan, lalu menarik kesimpulan ("kas habis di sini")
+    dari urutan karangan itu. Kesimpulannya akan terlihat persis seperti fakta.
+
+    Jadi urutannya tetap urutan pos, dan **kartunya mengatakan itu di kalimatnya sendiri**
+    supaya tidak ada yang membacanya sebagai urutan tempo. Butir ini gugur begitu catatan
+    biaya bulanan benar-benar punya tanggal jatuh tempo — itu penambahan DATA, bukan rupa.
 
 ---
 

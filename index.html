@@ -4234,6 +4234,13 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
    di sini kalimat penjelasnya panjang dan hurufnya jatuh persis di belakang teks — dua
    lapis huruf saling menumpang. Rancangan memakai sapuan cahaya, bukan huruf. */
 #akKepala #kasSekarangWrap .pf-mi{ display:none; }
+/* "Nafas" (kilau bulat) juga dipadamkan DI SINI SAJA. Ia dirancang untuk kartu hero yang
+   punya bingkai sendiri; di kartu kepala ini bingkainya sudah dicabut (kartu di dalam
+   kartu), jadi kotak membulat si nafas berdiri sendiri dan memotong kalimat penjelas
+   dengan tepi kartu palsu. Dibuktikan dengan mematikan satu per satu: nafas mati -> tepi
+   hilang; satin mati -> tepi tetap ada. Satin (sapuan diagonal) TETAP hidup — ia padanan
+   refraksi di rancangan. */
+#akKepala #kasSekarangWrap .pf-nafas{ display:none; }
 /* Empat keping SATU BARIS (rancangan Arus Kas - Gabungan), bukan 2x2: keempatnya
    adalah satu angka yang dipecah, dan tumpukan dua-dua membacanya seperti dua pasang.
    Lebar kolom SAMA RATA lewat grid + minmax(0,1fr) — "flex:1 1 40%" dulu melar mengikuti
