@@ -3174,6 +3174,53 @@
 .rw-kal-hari.nol .batang { background: rgba(255,255,255,.08); }
 .rw-kal-hari .tgl { font-size: 7.5px; font-weight: 700; letter-spacing: .04em; color: #7c848a; }
 .rw-kal-hari.ini .tgl { color: #e2cda6; }
+/* ===== LEMBAR BUKU KAS (Arus Kas sumbu F) ===== */
+#overlayBukuKas { display: block; position: fixed; inset: 0; z-index: 41; background: #000;
+  opacity: 0; pointer-events: none; transition: opacity .22s ease; }
+body.lembar-buku-kas-terbuka #overlayBukuKas { opacity: .68; pointer-events: auto; }
+#lembarBukuKas { position: fixed; left: 0; right: 0; bottom: 0; z-index: 42; height: 84vh; height: 84dvh;
+  background: linear-gradient(180deg, #20242a, #14171a); border: 1px solid rgba(226,205,166,.3); border-bottom: none;
+  border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgba(0,0,0,.6);
+  padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(105%); transition: transform .3s cubic-bezier(.16,.84,.28,1);
+  display: flex; flex-direction: column; overflow: hidden; }
+body.lembar-buku-kas-terbuka #lembarBukuKas { transform: translateY(0); }
+#lembarBukuKas .lm-pegangan { width: 40px; height: 4.5px; border-radius: 3px;
+  background: rgba(228,232,234,.25); margin: 2px auto 8px; flex: none; cursor: pointer; }
+#lembarBukuKas .bk-kepala { display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex: none; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,.06); }
+#lembarBukuKas .bk-tutup { width: 54px; text-align: left; background: none; border: none; padding: 0;
+  font-family: inherit; font-size: 12px; font-weight: 600; color: var(--pf-abu); }
+#lembarBukuKas .bk-judul { font-family: var(--pf-serif); font-size: 16px; color: var(--teks); }
+#lembarBukuKas .bk-imbang { width: 54px; flex: none; }   /* judul benar-benar di tengah */
+#lembarBukuKas .bk-mikro { flex: none; margin: 11px 0 4px; font-size: 9px; font-weight: 700;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--pf-abu2,#a7adb5); }
+#lembarBukuKas .bk-daftar { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding-bottom: 12px; }
+/* Baris buku: tanggal · tanda arah · nama · nominal · saldo berjalan. Saldo memakai
+   kolomnya sendiri supaya mata bisa menyusurinya lurus ke bawah. */
+#lembarBukuKas .bk-baris { display: flex; align-items: center; gap: 9px; min-height: 46px;
+  border-bottom: 1px solid rgba(207,212,218,.07); }
+#lembarBukuKas .bk-tgl { flex: none; width: 34px; font-size: 9px; line-height: 1.25;
+  color: var(--pf-abu); font-variant-numeric: tabular-nums; }
+#lembarBukuKas .bk-tanda { display: block; flex: none; width: 3px; height: 18px; border-radius: 2px;
+  background: rgba(226,205,166,.6); }
+#lembarBukuKas .bk-baris.keluar .bk-tanda { background: #d9a693; }
+/* Nama dijepit DUA BARIS supaya satu gerakan tidak memakan empat baris layar; nama
+   utuhnya tetap ada di atribut title, jadi tidak ada yang benar-benar hilang. */
+#lembarBukuKas .bk-nama { flex: 1; min-width: 0; font-size: 11.5px; line-height: 1.3;
+  color: rgba(242,239,233,.86); overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#lembarBukuKas .bk-nilai { flex: none; font-family: var(--pf-serif); font-weight: 600; font-size: 11.5px;
+  color: rgba(242,239,233,.86); font-variant-numeric: tabular-nums; }
+#lembarBukuKas .bk-baris.keluar .bk-nilai { color: #e8c3b2; }
+#lembarBukuKas .bk-saldo { flex: none; width: 70px; text-align: right; font-family: var(--pf-serif);
+  font-style: italic; font-size: 9.5px; color: var(--pf-abu); font-variant-numeric: tabular-nums; }
+#lembarBukuKas .bk-nota { font-family: var(--pf-serif); font-style: italic; font-size: 10.5px;
+  line-height: 1.5; color: var(--pf-abu2,#a7adb5); margin: 12px 2px 0; }
+#lembarBukuKas .bk-kosong { font-family: var(--pf-serif); font-style: italic; font-size: 11.5px;
+  color: var(--pf-abu); padding: 22px 2px; }
+@media (min-width: 700px) { #overlayBukuKas, #lembarBukuKas { display: none; } }
 #overlayLembarHariRw { display: block; position: fixed; inset: 0; z-index: 41; background: #000;
   opacity: 0; pointer-events: none; transition: opacity .22s ease; }
 body.lembar-hari-rw-terbuka #overlayLembarHariRw { opacity: .62; pointer-events: auto; }
@@ -4305,10 +4352,13 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
      batang abu setinggi ember terpenuh — mata membaca empat batang, padahal cuma satu
      yang berisi. Ember kosong sekarang benar-benar kosong, dengan satu garis putus di
      dasarnya yang mengatakan "sudah diukur, isinya nol" (bukan "belum digambar"). */
-  .ak-tidur-kolom{ flex:1; height:100%; display:flex; align-items:flex-end;
-    border-radius:3px 3px 0 0; background:none; }
+  .ak-tidur-kolom{ flex:1; min-width:0; height:100%; display:flex; flex-direction:column-reverse;
+    justify-content:flex-start; gap:2px; background:none; }
   .ak-tidur-kolom.nol{ border-bottom:2px dashed rgba(207,212,218,.28); }
-  .ak-tidur-kolom .isi{ display:block; width:100%; height:var(--tinggi,0%); border-radius:3px 3px 0 0;
+  /* Karung teratas saja yang membulat di pundaknya — tumpukan, bukan deretan kapsul. */
+  .ak-tidur-kolom .isi:last-child{ border-radius:3px 3px 0 0; }
+  .ak-tidur-kolom .isi{ display:block; width:100%; flex:none; height:var(--tinggi,0%); border-radius:1px;
+    box-sizing:border-box;
     background-image:repeating-linear-gradient(115deg,rgba(93,73,36,.3) 0 1px,transparent 1px 5px),
       linear-gradient(180deg,rgba(226,205,166,.5),rgba(191,164,118,.28)); }
   .ak-tidur-kolom.tua .isi{
@@ -4459,8 +4509,41 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   #akRencanaDaftar .baris-44 > .rn-tanda{ display:block; flex:none; width:3px; height:17px;
     border-radius:2px; background:rgba(217,166,147,.6); margin-right:9px; }
   #akRencanaDaftar .baris-44 .angka{ color:#e8c3b2; }
+  /* SUNGAI BERCABANG (sumbu M). Lebarnya tetap dan SVG-nya menyesuaikan; tidak ada
+     gulir mendatar — deret aliran tumbuh ke BAWAH (y), bukan ke samping. */
+  .ak-sungai{ position:relative; height:216px; margin:10px 0 4px; }
+  .ak-sungai svg{ display:block; width:100%; height:208px; overflow:visible; }
+  .ak-legenda .lg-masuk, .ak-legenda .lg-keluar{ display:inline-flex; align-items:center; gap:6px; }
+  .ak-legenda .lg-masuk::before, .ak-legenda .lg-keluar::before{ content:''; display:block;
+    width:14px; height:3px; border-radius:2px; }
+  .ak-legenda .lg-masuk{ color:var(--emas,#e2cda6); }
+  .ak-legenda .lg-masuk::before{ background:linear-gradient(90deg,#c2a678,#f7ecd6); }
+  .ak-legenda .lg-keluar{ color:#d9a693; }
+  .ak-legenda .lg-keluar::before{ background:linear-gradient(90deg,rgba(217,166,147,.4),#d9a693); }
+  /* Jarak antar bagian kepala WAJIB disebut di sini. Selama ini pemisah antara judul dan
+     lencana OWNER bukan gap melainkan .jh-sub yang kebetulan berdiri di tengah keduanya;
+     begitu sub disembunyikan di layar sempit, lencana menempel rapat ke huruf terakhir
+     judul (terukur: jarak 0px). Rancangan menyebut gap 9px — sekarang sistem juga. */
+  #halamanAruskas .judul-halaman{ gap:9px; }
+  /* Bulan di kepala halaman Arus Kas — didorong ke kanan seperti rancangan. */
+  #halamanAruskas .judul-halaman .jh-bulan{ margin-left:auto; flex:none;
+    font-family:var(--pf-serif); font-style:italic; font-size:12.5px; color:var(--pf-abu); }
+  /* Di layar sempit kalimat "ke mana uangnya" mengalah — bulan lebih berguna, karena
+     seluruh zona BULAN INI bicara tentang bulan itu. Kalimatnya tetap di DOM untuk
+     >=700px, di mana ruangnya cukup untuk keduanya. */
+  @media (max-width:429.98px){
+    #halamanAruskas .judul-halaman .jh-sub[data-sub-desain]{ display:none; }
+  }
+  /* TOMBOL BERTEPI (rancangan): pintu ke lembar, bukan kartu. Ia sengaja tidak seperti
+     tombol utama emas — yang di baliknya bacaan, bukan tindakan yang mengubah apa pun. */
+  .ak-tombol-tepi{ display:block; width:100%; margin-top:12px; min-height:48px; padding:13px 15px;
+    border-radius:4px; background:rgba(255,255,255,.03); border:1px solid rgba(226,205,166,.28);
+    font-family:inherit; font-size:12px; font-weight:600; letter-spacing:.02em; color:var(--emas,#e2cda6);
+    text-align:left; }
+  .ak-tombol-tepi b{ font-family:var(--pf-serif); font-weight:600; color:var(--pf-krem,#f7ecd6); }
+  .ak-tombol-tepi:active{ background:rgba(226,205,166,.08); }
   /* Kembaran lama dipadamkan di HP — satu angka satu tempat. */
-  #kartuHeroArusKas, #akDuaMini{ display:none; }
+  #kartuHeroArusKas, #akDuaMini, #kartuBukuKasLama{ display:none; }
   .ak-nr-grup{ font-size:8px; font-weight:800; letter-spacing:.2em; text-transform:uppercase;
     color:var(--pf-abu2,#a7adb5); padding:0 0 7px; }
   .ak-nr-grup.oks{ color:#d9a693; padding-top:13px; }
@@ -4551,7 +4634,9 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
   #akKepala{ background:none; border:none; box-shadow:none; padding:0; margin-bottom:0; }
   #akKepala > .kg-label, #akKepala .ak-keping, #akKepalaKosong{ display:none !important; }
   .ak-jam{ display:none; }   /* gayanya cuma ada di <700px — tanpa ini ia jadi kotak telanjang */
-  #akNeracaKaca, #akSiapaKaca, #akKolamKaca, #akWujudKaca, #akRencanaKepala{ display:none !important; }   /* desktop memakai kartu lama */
+  #akNeracaKaca, #akSiapaKaca, #akKolamKaca, #akWujudKaca, #akRencanaKepala,
+  #akSungaiKaca, #akTombolBuku{ display:none !important; }   /* desktop memakai kartu lama */
+  #halamanAruskas .judul-halaman .jh-bulan{ display:none; }
 }
 /* --- KACA EMAS G2: Piutang & Kasbon --- */
 @media (min-width:700px){ #piutang6a{ display:none; } }
@@ -6048,6 +6133,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
 <!-- LEMBAR HARI (wireframe Riwayat): ketuk batang kalender -> ringkasan hari
      dua tingkat; ketuk kepalanya utk membesar, ketuk latar utk menutup. -->
+<!-- LEMBAR BUKU KAS (Arus Kas, sumbu F). Mekanisme lembar rumah: overlay + kelas di body. -->
+<div id="overlayBukuKas" onclick="tutupLembarBukuKas()"></div>
+<div id="lembarBukuKas" class="k6a" role="dialog" aria-modal="true">
+  <div class="lm-pegangan" onclick="tutupLembarBukuKas()"></div>
+  <div class="bk-kepala">
+    <button type="button" class="bk-tutup" onclick="tutupLembarBukuKas()">Tutup</button>
+    <span class="bk-judul">Buku kas</span>
+    <span class="bk-imbang"></span>
+  </div>
+  <div class="bk-mikro" id="bkLembarKepala"></div>
+  <div class="bk-daftar" id="bkLembarDaftar"></div>
+</div>
+
 <div id="overlayLembarHariRw" onclick="tutupLembarHariRw()"></div>
 <div id="lembarHariRw" class="k6a" role="dialog" aria-modal="true">
   <div class="lm-pegangan" onclick="rwHariTingkat()"></div>
@@ -7549,6 +7647,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <h2>Arus Kas</h2>
       <span class="jh-sub" data-sub-desain>ke mana uangnya</span>
       <span class="lencana-owner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></svg>OWNER</span>
+      <!-- BULAN YANG SEDANG DILIHAT (rancangan): kepala halaman menyebut periodenya,
+           didorong ke kanan. Tanpa ini seluruh zona BULAN INI bicara tentang sebuah bulan
+           yang namanya cuma tertulis di dalam sebuah kolom isian jauh di bawah — dan
+           pemakai yang menggulir ke tengah halaman kehilangan jejak sedang melihat apa. -->
+      <span class="jh-bulan" id="akJudulBulan"></span>
     </div>
 
     <!-- KACA EMAS G2 (rancangan Arus Kas - Gabungan): SATU kartu kepala dua keadaan
@@ -7726,6 +7829,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div class="ak-sisa-nota" id="akKolamNota"></div>
     </div>
 
+    <!-- VONIS "KOK KAS GUA MINUS" (sumbu B, rupa rancangan): satu kotak berlampu yang
+         berdiri SENDIRI tepat di bawah kolam — kas yang turun belum tentu hilang, dan
+         itu kalimat pertama yang harus terbaca sesudah melihat angka merahnya. Kalimat
+         yang sama dulu terkubur sebagai info-box di kaki daftar "ke mana uang". -->
+    <div id="akVonisKaca" style="display:none;"></div>
+
     <div class="kartu-hero" id="kartuHeroArusKas" style="margin-top:12px;">
       <i class="pf-nafas" aria-hidden="true"></i>
       <div class="label">Kas bersih bulan ini</div>
@@ -7741,6 +7850,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <div class="kartu-daftar kd-kepala" style="margin-top:12px;" id="kartuKeMana">
       <div class="kd-judul"><h3>Ke mana uang bulan ini</h3></div>
       <div id="daftarKeMana"></div>
+      <!-- IDENTITAS BERJUMLAH, dinyatakan di layar (rancangan): keenam baris di atas HARUS
+           menjumlah tepat sama dengan kas bersih. Selama ini identitas itu dijaga di
+           pengujian saja; kalau suatu hari ia patah di HP pemilik, layarnya akan tetap
+           tampak wajar. Sekarang kartunya sendiri yang memeriksa dan mengaku. -->
+      <div id="akJumlahCocok" style="display:none;"></div>
       <div class="info-box" id="keManaVonis" style="margin:10px 12px 12px;"></div>
     </div>
 
@@ -7754,11 +7868,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <div class="ak-sisa-nota" id="akWujudKet"></div>
     </div>
 
+    <!-- MASUK DARI MANA, KELUAR KE MANA (sumbu M, rupa rancangan): sungai bercabang.
+         Semua sumber uang masuk mengalir dari kiri ke satu titik kas di tengah, lalu
+         bercabang lagi ke kanan jadi tujuan uang keluar. TEBAL tiap aliran sebanding
+         besarnya, jadi "yang paling menggerus" terlihat sebagai aliran paling tebal —
+         tanpa harus membaca satu angka pun. -->
+    <div class="kartu kg-panel" id="akSungaiKaca" style="display:none;">
+      <div class="kg-label">Masuk dari mana, keluar ke mana</div>
+      <div class="ak-sungai"><svg id="akSungaiSvg" viewBox="0 0 264 208" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+      <div class="ak-legenda"><span class="lg-masuk">masuk</span><span class="lg-keluar">keluar</span></div>
+      <div class="ak-sisa-nota" id="akSungaiKet"></div>
+    </div>
+
     <!-- SALDO SEJAK TITIK (hi-fi: saldo kas 30 hari) — garis kecil dari titik kas
          ke hari ini; sebelum titik saldo tidak diketahui (jujur, tidak menebak). -->
     <div class="kartu" style="margin-top:12px;" id="akSparkKartu">
       <div class="panel-kepala"><h2>Saldo kas berjalan</h2><span class="kd-hitung" id="akSparkKet"></span></div>
-      <svg id="akSpark" viewBox="0 0 300 46" preserveAspectRatio="none" aria-hidden="true" style="display:block;width:100%;height:52px;margin-top:8px;"><path fill="none" stroke="#e2cda6" stroke-width="1.4" d=""/></svg>
+      <svg id="akSpark" viewBox="-6 -2 312 50" preserveAspectRatio="none" aria-hidden="true" style="display:block;width:100%;height:58px;margin-top:8px;overflow:visible;"><path fill="none" stroke="#e2cda6" stroke-width="1.4" d=""/><g id="akSparkTanda"></g></svg>
       <div class="ak-spark-kaki"><span id="akSparkAwal"></span><span id="akSparkAkhir"></span></div>
     </div>
 
@@ -7785,7 +7911,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <!-- BUKU KAS (12 Agu 2026): pergerakan uang satu per satu, urut tanggal, dengan
          saldo berjalan — jawaban untuk "pergerakan uang masuk & keluar", bukan cuma
          total per kategori. Saldo hanya terisi untuk gerakan SESUDAH titik hitung. -->
-    <div class="kartu-daftar kd-kepala" style="margin-top:12px;">
+    <!-- BUKU KAS (sumbu F, rupa rancangan): di HP ia LEMBAR, dibuka lewat tombol bertepi.
+         Alasannya bukan gaya: buku kas adalah daftar TERPANJANG di layar ini (satu baris
+         per gerakan, bisa ratusan), dan menaruhnya inline membuat semua kartu di bawahnya
+         praktis tak terjangkau. Kartu inline di bawah tetap ada — desktop memakainya. -->
+    <button type="button" class="ak-tombol-tepi" id="akTombolBuku" style="display:none;"
+      onclick="bukaLembarBukuKas()">Buku kas · <b id="akTombolBukuCacah">0 gerakan</b></button>
+
+    <div class="kartu-daftar kd-kepala" id="kartuBukuKasLama" style="margin-top:12px;">
       <div class="kd-judul"><h3>Buku Kas</h3><span class="kd-hitung" id="bukuKasHitung"></span></div>
       <div id="daftarBukuKas"></div>
     </div>
@@ -9110,6 +9243,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (tbMenu) tbMenu.classList.toggle('aktif', ['input','produksi','rekap','bulanan','harian','laba','aruskas','tutup','piutang','pelanggan','pemasok','tangani','belanja','akun'].indexOf(nama) >= 0);
     if (document.body.classList.contains('lembar-menu-terbuka')) toggleLembarMenu(false);
     if (document.body.classList.contains('lembar-merk-terbuka')) tutupLembarMerk();
+    // Lembar buku kas milik Arus Kas saja. Tanpa baris ini ia menggantung di atas halaman
+    // lain sesudah pemakai berpindah — lembar tanpa induk yang tidak bisa dijelaskan.
+    if (document.body.classList.contains('lembar-buku-kas-terbuka')) tutupLembarBukuKas();
     document.body.classList.toggle('di-halaman-masuk', nama === 'input');
     document.getElementById('tombolSimpanWrap').style.display = nama === 'input' ? 'block' : 'none';
     document.getElementById('tombolSimpanJualWrap').style.display = nama === 'jual' ? 'block' : 'none';
@@ -14582,6 +14718,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       && !document.body.classList.contains('lembar-menu-terbuka')
       && !document.body.classList.contains('konfirmasi-terbuka')
       && !document.body.classList.contains('lembar-hari-rw-terbuka')
+      && !document.body.classList.contains('lembar-buku-kas-terbuka')
       && !document.querySelector('.modal-pin-bg.tampil');
     document.addEventListener('touchstart', e => {
       if (!bolehGeser() || e.touches.length !== 1) { x0 = null; return; }
@@ -14794,10 +14931,34 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       titik.push(saldo);
     }
     const min = Math.min(...titik), maks = Math.max(...titik);
-    const seg = 300 / Math.max(1, nHari - 1);
-    const d2 = titik.map((v, i) => (i === 0 ? 'M' : 'L') + (i * seg).toFixed(1) + ' '
-      + (42 - (maks === min ? 0.5 : (v - min) / (maks - min)) * 38).toFixed(1)).join(' ');
+    // Garis saldo dimulai dari x=26, bukan 0: ruang di kirinya dipakai segmen PUTUS-PUTUS
+    // yang menyatakan "sebelum titik hitung tidak diketahui". Tanpa ruang itu garisnya
+    // seolah bermula dari ketiadaan, dan pembaca tidak punya isyarat bahwa ada masa
+    // sebelum titik yang memang tidak dicatat. (Rancangan sumbu I.)
+    const X0 = 26, X1 = 300;
+    const seg = (X1 - X0) / Math.max(1, nHari - 1);
+    const y = v => (42 - (maks === min ? 0.5 : (v - min) / (maks - min)) * 38);
+    const x = i => X0 + i * seg;
+    const d2 = titik.map((v, i) => (i === 0 ? 'M' : 'L') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
     svg.querySelector('path').setAttribute('d', d2);
+    // TIGA PENANDA, semuanya dari deret yang SAMA dengan garisnya — bukan angka kedua:
+    //   krem di titik hitung (awal) · OKSIDA di hari paling kering · krem di kas sekarang.
+    // Hari kering ditandai di sini juga supaya dua kartu yang menceritakan hari yang sama
+    // (garis saldo & petak hari kering) tidak perlu dicocokkan sendiri oleh pembacanya.
+    let iKering = 0;
+    titik.forEach((v, i) => { if (v < titik[iKering]) iKering = i; });
+    const yAwal = y(titik[0]).toFixed(1), yAkhir = y(titik[titik.length - 1]).toFixed(1);
+    const tanda = svg.querySelector('#akSparkTanda');
+    if (tanda) {
+      tanda.innerHTML =
+        '<path d="M0 ' + yAwal + ' L' + X0 + ' ' + yAwal + '" fill="none" '
+          + 'stroke="rgba(207,212,218,.24)" stroke-width="1.4" stroke-dasharray="4 4"></path>'
+        + '<circle cx="' + X0 + '" cy="' + yAwal + '" r="3.4" fill="#f7ecd6"></circle>'
+        + (nHari > 1 && titik[iKering] !== titik[titik.length - 1]
+            ? '<circle cx="' + x(iKering).toFixed(1) + '" cy="' + y(titik[iKering]).toFixed(1) + '" r="4" fill="#d9a693"></circle>'
+            : '')
+        + '<circle cx="' + X1 + '" cy="' + yAkhir + '" r="3.4" fill="#f7ecd6"></circle>';
+    }
     document.getElementById('akSparkKet').textContent = 'sejak titik \u00b7 ' + (nHari - 1) + ' hari';
     document.getElementById('akSparkAwal').textContent = formatTanggal(t.tanggal) + ' \u00b7 ' + singkatJuta(titik[0]) + (titik[0] >= 1e6 ? ' jt' : '');
     document.getElementById('akSparkAkhir').textContent = 'kini \u00b7 ' + singkatJuta(saldo) + (saldo >= 1e6 ? ' jt' : '');
@@ -20935,6 +21096,111 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + formatRupiah(habis) + ' benar-benar keluar.';
   }
 
+  // ---------- B: VONIS "KOK KAS GUA MINUS" (rupa kaca) ----------
+  // Kartu berlampu yang berdiri sendiri TEPAT DI BAWAH KOLAM, karena inilah kalimat
+  // pertama yang harus terbaca sesudah melihat angka merah: kas yang turun belum tentu
+  // hilang. Angkanya dioper dari tampilkanKeManaUang — bukan hitungan kedua.
+  function gambarVonisKas(jadiStok, jadiPiutang, jadiKasbon, biayaNyata, pos, d) {
+    const kotak = document.getElementById('akVonisKaca');
+    if (!kotak || window.matchMedia('(min-width: 700px)').matches) return;
+    const wujud = Math.max(0, jadiStok) + Math.max(0, jadiPiutang) + Math.max(0, jadiKasbon);
+    const habis = Math.max(0, biayaNyata) + Math.max(0, pos.prive || 0) + Math.max(0, pos.setoran || 0);
+    const bersih = d.bersih || 0;
+    kotak.style.display = 'block';
+    let judul, isi;
+    if (bersih < 0 && wujud > 0) {
+      judul = 'Kas turun ' + formatRupiah(-bersih) + ', tapi tidak hilang';
+      isi = formatRupiah(wujud) + ' berubah wujud jadi stok, piutang, dan kasbon \u2014 masih milik toko. '
+        + 'Yang benar-benar keluar cuma ' + formatRupiah(habis) + ' (biaya, prive & setoran).';
+    } else if (bersih < 0) {
+      judul = 'Kas turun ' + formatRupiah(-bersih) + ', dan memang keluar';
+      isi = 'Bulan ini tidak ada kas yang berubah wujud jadi stok, piutang, atau kasbon. '
+        + formatRupiah(habis) + ' benar-benar keluar.';
+    } else if (bersih > 0) {
+      judul = 'Kas naik ' + formatRupiah(bersih);
+      isi = (wujud > 0
+        ? formatRupiah(wujud) + ' di antaranya berubah wujud jadi stok, piutang, dan kasbon. '
+        : '')
+        + 'Yang benar-benar keluar bulan ini ' + formatRupiah(habis) + '.';
+    } else {
+      judul = 'Kas tidak bergerak bulan ini';
+      isi = 'Masuk dan keluar sama besar \u2014 saldo akhir sama dengan saldo awal.';
+    }
+    // Lampu OKSIDA cuma untuk kas turun yang benar-benar keluar; kas turun yang berubah
+    // wujud bukan kabar buruk, dan lampu merah untuknya akan menakuti tanpa sebab.
+    const awas = bersih < 0 && !(wujud > 0);
+    kotak.innerHTML = '<div class="ak-vonis' + (awas ? ' awas' : '') + '" style="margin-top:12px;"><i></i><span>'
+      + '<b>' + escapeHtml(judul) + '</b><small>' + escapeHtml(isi) + '</small></span></div>';
+  }
+
+  // ---------- M: MASUK DARI MANA, KELUAR KE MANA (rupa kaca) ----------
+  // Sungai bercabang: semua sumber uang masuk mengalir dari kiri ke satu titik kas di
+  // tengah, lalu bercabang lagi ke kanan jadi tujuan uang keluar. TEBAL tiap aliran
+  // sebanding besarnya terhadap arus terbesar di layar ini, jadi "yang paling menggerus"
+  // terlihat sebagai aliran paling tebal tanpa membaca satu angka pun.
+  //
+  // TIDAK ADA PEMOTONGAN DIAM-DIAM. Kalau posnya lebih banyak dari yang muat digambar,
+  // sisanya DIGABUNG jadi satu aliran bernama "lainnya" — bukan dibuang. Daftar yang
+  // memangkas tanpa mengaku akan terbaca sebagai daftar lengkap.
+  const AK_SUNGAI_MAKS = 4;   // aliran tergambar per sisi, sisanya jadi satu "lainnya"
+  function akAliranTergambar(daftar) {
+    const isi = (daftar || []).filter(x => (x.nominal || 0) > 0)
+      .map(x => ({ label: x.label, rp: x.nominal }))
+      .sort((a, b) => b.rp - a.rp);
+    if (isi.length <= AK_SUNGAI_MAKS) return { alir: isi, digabung: 0, rpGabung: 0 };
+    const tampil = isi.slice(0, AK_SUNGAI_MAKS - 1);
+    const sisa = isi.slice(AK_SUNGAI_MAKS - 1);
+    const rpSisa = sisa.reduce((a, x) => a + x.rp, 0);
+    tampil.push({ label: sisa.length + ' pos lainnya', rp: rpSisa, gabungan: true });
+    return { alir: tampil, digabung: sisa.length, rpGabung: rpSisa };
+  }
+  function gambarSungaiKas(d) {
+    const kartu = document.getElementById('akSungaiKaca');
+    if (!kartu || window.matchMedia('(min-width: 700px)').matches) return;
+    const svg = document.getElementById('akSungaiSvg');
+    const ket = document.getElementById('akSungaiKet');
+    kartu.style.display = 'block';
+    const M = akAliranTergambar(d.masuk), K = akAliranTergambar(d.keluar);
+    // TIGA KEADAAN KOSONG: nol gerakan sama sekali bukan "sungai setipis mungkin",
+    // melainkan tidak ada sungai. Bagannya tidak digambar dan kalimatnya bilang kenapa.
+    if (!M.alir.length && !K.alir.length) {
+      svg.innerHTML = '';
+      svg.style.display = 'none';
+      ket.textContent = 'Bulan ini tidak ada uang yang berpindah sama sekali — tidak ada aliran untuk digambar.';
+      return;
+    }
+    svg.style.display = '';
+    const maksAlir = Math.max(
+      M.alir.length ? M.alir[0].rp : 0,
+      K.alir.length ? K.alir[0].rp : 0) || 1;
+    const tebal = rp => Math.max(3, rp / maksAlir * 26).toFixed(1);
+    // Sebaran y: aliran disebar merata 26..182 berapa pun banyaknya. Satu aliran
+    // digambar lurus di tengah — bukan menempel di tepi atas.
+    const sebar = (i, n) => n <= 1 ? 100 : 26 + i * (156 / (n - 1));
+    let html = '';
+    M.alir.forEach((m, i) => {
+      const y = sebar(i, M.alir.length).toFixed(1);
+      html += '<path d="M0 ' + y + ' C60 ' + y + ' 72 100 128 100" fill="none" stroke="rgba(226,205,166,'
+        + Math.max(0.2, 0.58 - i * 0.12).toFixed(2) + ')" stroke-width="' + tebal(m.rp) + '"></path>';
+    });
+    K.alir.forEach((k, i) => {
+      const y = sebar(i, K.alir.length).toFixed(1);
+      html += '<path d="M128 100 C186 100 198 ' + y + ' 264 ' + y + '" fill="none" stroke="rgba(217,166,147,'
+        + Math.max(0.2, 0.52 - i * 0.09).toFixed(2) + ')" stroke-width="' + tebal(k.rp) + '"></path>';
+    });
+    html += '<circle cx="128" cy="100" r="7" fill="#f7ecd6"></circle>';
+    svg.innerHTML = html;
+    const terbesar = K.alir.length ? K.alir[0] : null;
+    ket.textContent = 'Tebal aliran sebanding besarnya; titik di tengah adalah kas. '
+      + (terbesar
+          ? 'Aliran keluar paling tebal ' + terbesar.label.toLowerCase() + ' ' + formatRupiah(terbesar.rp) + '. '
+          : 'Bulan ini tidak ada uang keluar sama sekali. ')
+      + (M.digabung || K.digabung
+          ? 'Pos yang lebih kecil digabung jadi satu aliran supaya bagannya terbaca — '
+            + 'tidak ada yang dibuang, jumlahnya tetap utuh.'
+          : 'Semua pos bergerak bulan ini digambar; tidak ada yang digabung.');
+  }
+
   // ---------- K: KOLAM DUA KERAN (rupa kaca) ----------
   // Keran atas mengisi, keran bawah menguras. TEBAL pancurannya sebanding besar arusnya,
   // jadi "masuk besar tapi keluar lebih besar" terbaca sebelum angkanya dibaca. Tinggi
@@ -21229,9 +21495,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     kolom.innerHTML = ember.map((e, i) => {
       const tinggi = Math.round((e.nilai / maks) * 100);
       const tua = i >= 2 && e.nilai > 0;
+      // TUMPUKAN KARUNG, bukan satu blok (rancangan sumbu O). Batang yang bergaris jadi
+      // beberapa ruas terbaca sebagai BARANG yang ditumpuk — dan itu memang yang sedang
+      // digambar: karung beras, bukan batang bagan. Cacah ruasnya ikut tingginya, jadi
+      // ember yang lebih tinggi punya lebih banyak karung — bukan karung yang melar.
+      const nKarung = e.nilai > 0 ? Math.max(1, Math.min(6, Math.round(tinggi / 22))) : 0;
+      let karung = '';
+      for (let k = 0; k < nKarung; k++) {
+        karung += '<span class="isi" style="--tinggi:' + (tinggi / nKarung).toFixed(2) + '%"></span>';
+      }
       return '<div class="ak-tidur-kolom' + (tua ? ' tua' : '') + (e.nilai > 0 ? '' : ' nol')
         + '" title="' + escapeHtml(e.label + ' \u00b7 ' + formatRupiah(e.nilai)) + '">'
-        + '<span class="isi" style="--tinggi:' + tinggi + '%"></span></div>';
+        + karung + '</div>';
     }).join('');
     label.innerHTML = ember.map((e, i) =>
       '<span class="' + (i >= 2 && e.nilai > 0 ? 'tua' : '') + '">' + escapeHtml(e.label)
@@ -21322,9 +21597,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + escapeHtml(formatTanggal(h.t) + ' · ' + rpTanda(h.saldo)) + '"></span>';
     }).join('');
     const kering = hari.reduce((a, h) => h.saldo < a.saldo ? h : a, hari[0]);
-    baris.innerHTML = '<b>' + escapeHtml(formatTanggal(kering.t)) + '</b>'
-      + '<span>kas paling tipis dalam ' + hari.length + ' hari terakhir — '
-      + rpTanda(kering.saldo) + (kering.saldo < 0 ? '. Hari itu catatan bilang kas sudah minus.' : '.') + '</span>';
+    // Kesimpulannya duduk di KOTAK BERLAMPU seperti rancangan, bukan dua baris teks polos.
+    // Lampunya oksida kalau kas hari itu sudah minus, dan hijau kalau titik terendah pun
+    // masih di atas nol — dua kabar yang sangat berbeda, dua warna.
+    const keringMinus = kering.saldo < 0;
+    baris.innerHTML = '<div class="ak-vonis' + (keringMinus ? ' awas' : '') + '"><i></i><span>'
+      + '<b>' + escapeHtml(formatTanggal(kering.t)) + '</b>'
+      + '<small>kas paling tipis dalam ' + hari.length + ' hari terakhir \u2014 '
+      + rpTanda(kering.saldo)
+      + (keringMinus
+          ? '. Hari itu catatan bilang kas sudah minus.'
+          : '. Titik terendah pun masih di atas nol.')
+      + '</small></span></div>';
   }
 
   // ---------- Q: RAMALAN TUJUH HARI ----------
@@ -21535,16 +21819,63 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('bukuKasHitung').textContent = bulanIni.length + ' gerakan';
     if (bulanIni.length === 0) {
       kont.innerHTML = '<div class="kosong-info"><b>Belum ada gerakan uang bulan ini</b><span>Penjualan tunai/QRIS, belanja, dan biaya akan tercatat di sini.</span></div>';
-      return;
+      bkIsiLembar([], bl);
+      // WAJIB mengembalikan saldo juga di cabang ini. Tanpa ini kolam kas menerima
+      // undefined di bulan yang belum bergerak, lalu mengira titik hitung belum disetel —
+      // padahal ia sudah ada. Satu "return" telanjang, satu kartu berbohong.
+      return t ? saldo : null;
     }
     // Terbaru di atas — kebiasaan yang sama dengan Riwayat; saldo tetap benar karena
     // dihitung kronologis sebelum dibalik.
-    kont.innerHTML = bulanIni.slice().reverse().map(r => `<div class="baris-44">
+    const urut = bulanIni.slice().reverse();
+    kont.innerHTML = urut.map(r => `<div class="baris-44">
       <span class="nama"><i class="trx-nama">${escapeHtml(r.label)}</i><small>${escapeHtml(formatTanggal(r.t))}${r.jam ? ' · ' + r.jam : ''}${r.saldo !== null ? ' · saldo ' + rpTanda(r.saldo) : ''}</small></span>
       <span class="angka ${r.masuk > 0 ? 'ph-hijau' : 'ph-merah'}">${r.masuk > 0 ? '+' : '−'}${formatRupiah(r.masuk > 0 ? r.masuk : r.keluar).replace('Rp', 'Rp')}</span>
     </div>`).join('');
+    bkIsiLembar(urut, bl);   // lembar HP diisi dari deret yang SAMA — bukan hitungan kedua
     return t ? saldo : null;   // dipakai kolam kas — satu angka, bukan dua hitungan
   }
+
+  // ---------- F: LEMBAR BUKU KAS ----------
+  // Di HP, buku kas adalah LEMBAR — bukan daftar inline. Alasannya bukan gaya: ia daftar
+  // terpanjang di layar ini (satu baris per gerakan, bisa ratusan), dan menaruhnya inline
+  // membuat setiap kartu di bawahnya praktis tak terjangkau ibu jari.
+  //
+  // Isinya ditulis dari DERET YANG SAMA dengan kartu desktop, di dalam satu panggilan —
+  // bukan dihitung ulang. Dua daftar yang menghitung sendiri-sendiri akan sepakat hari
+  // ini lalu berpisah diam-diam.
+  function bkIsiLembar(urut, bl) {
+    const daftar = document.getElementById('bkLembarDaftar');
+    const tombol = document.getElementById('akTombolBuku');
+    const cacah = document.getElementById('akTombolBukuCacah');
+    if (!daftar) return;
+    if (tombol && !window.matchMedia('(min-width: 700px)').matches) tombol.style.display = 'block';
+    if (cacah) cacah.textContent = urut.length + (urut.length === 1 ? ' gerakan' : ' gerakan');
+    const kep = document.getElementById('bkLembarKepala');
+    if (kep) kep.textContent = (bl ? namaBulanPanjang(bl) + ' \u00b7 ' : '') + urut.length + ' gerakan';
+    if (!urut.length) {
+      daftar.innerHTML = '<div class="bk-kosong">Belum ada gerakan uang bulan ini. '
+        + 'Penjualan tunai/QRIS, belanja, dan biaya akan tercatat di sini.</div>';
+      return;
+    }
+    daftar.innerHTML = urut.map(r => {
+      const keluar = !(r.masuk > 0);
+      const rp = formatRupiah(r.masuk > 0 ? r.masuk : r.keluar);
+      return '<div class="bk-baris' + (keluar ? ' keluar' : '') + '">'
+        + '<span class="bk-tgl">' + escapeHtml(formatTanggal(r.t).replace(/\s\d{4}$/, '')) + '</span>'
+        + '<span class="bk-tanda"></span>'
+        + '<span class="bk-nama" title="' + escapeHtml(r.label) + '">' + escapeHtml(r.label) + '</span>'
+        + '<span class="bk-nilai">' + (keluar ? '\u2212' : '+') + rp + '</span>'
+        // Saldo hanya terisi untuk gerakan SESUDAH titik hitung. Sebelum itu sistem tidak
+        // tahu, jadi kolomnya dibiarkan kosong — bukan diisi tebakan.
+        + '<span class="bk-saldo">' + (r.saldo === null || r.saldo === undefined ? '' : rpTanda(r.saldo)) + '</span>'
+        + '</div>';
+    }).join('')
+      + '<div class="bk-nota">Saldo hanya terisi untuk gerakan sesudah titik hitung kas. '
+      + 'Sebelum itu sistem tidak tahu, jadi kolomnya dibiarkan kosong — bukan diisi tebakan.</div>';
+  }
+  function bukaLembarBukuKas() { document.body.classList.add('lembar-buku-kas-terbuka'); }
+  function tutupLembarBukuKas() { document.body.classList.remove('lembar-buku-kas-terbuka'); }
 
   // ===== KACA EMAS G2 — Arus Kas: tiga zona + kepala dua keadaan =====
   // Zona disimpan di state modul (bukan dibaca dari DOM yang dibangun ulang) supaya
@@ -21589,6 +21920,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!elBulan.value) elBulan.value = bulanLokalIso();
     const d = hitungArusKas(elBulan.value);
 
+    // Bulan di kepala diambil dari d.bulan — bulan yang BENAR-BENAR dipakai kartu di
+    // bawahnya, bukan dari kolom isiannya. Kalau suatu saat keduanya berselisih, yang
+    // tertulis di kepala tetap yang dihitung.
+    const elJudulBulan = document.getElementById('akJudulBulan');
+    if (elJudulBulan) {
+      const nm = namaBulanPanjang(d.bulan);                       // "September 2026"
+      const thIni = tanggalLokalIso().slice(0, 4);
+      elJudulBulan.textContent = d.bulan.slice(0, 4) === thIni ? nm.replace(' ' + thIni, '') : nm;
+    }
     document.getElementById('arusKasBersih').innerHTML = angkaUtamaHtml(d.bersih);
     document.getElementById('arusKasSyarat').textContent =
       'Masuk ' + formatRupiah(d.totalMasuk) + ' − keluar ' + formatRupiah(d.totalKeluar);
@@ -21601,6 +21941,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     gambarNeracaKaca();     // kembaran kaca: angka sama, gambar rancangan (hanya <700px)
     const kasSekarangBK = tampilkanBukuKas(d.bulan);
     gambarKolamKas(d, kasSekarangBK, ambilTitikKas());
+    gambarSungaiKas(d);     // sumbu M — dari d.masuk & d.keluar yang sama dengan tabelnya
     tampilkanRencanaKeluar();
     tampilkanSparkSaldo();
     tampilkanModalOwner();
@@ -24805,7 +25146,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // patokan: ia selalu yang terbesar dan akan menekan semua batang lain jadi rata
     // (pola "patokan terbesar di kelompoknya").
     const KM_WARNA = { masuk: '#f7ecd6', wujud: 'rgba(226,205,166,.6)', habis: '#d9a693' };
+    // Dijumlahkan SAMBIL digambar, dari angka yang benar-benar tercetak — bukan dihitung
+    // ulang dari sumbernya. Kalau baris dan jumlah dihitung dari dua tempat, keduanya bisa
+    // sepakat padahal barisnya salah.
+    let jumlahPecah = 0;
     const brs = (label, ket, nilai, arah, jenis) => {
+      jumlahPecah += (arah > 0 ? 1 : -1) * Math.abs(nilai);
       const j = jenis || (arah > 0 ? 'masuk' : 'habis');
       return `<div class="baris-44 km-${j}${nilai === 0 ? ' baris-nol' : ''}" data-nilai="${Math.abs(nilai)}" style="--tanda:${KM_WARNA[j]}">
       <i class="km-tanda"></i><span class="nama"><i class="trx-nama">${escapeHtml(label)}</i>${ket ? `<small>${escapeHtml(ket)}</small>` : ''}</span>
@@ -24868,8 +25214,28 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       el.style.setProperty('--w', v > 0 ? Math.max(4, Math.round(v / maksBaris * 100)) + '%' : '0%');
     });
 
+    // IDENTITAS BERJUMLAH — diperiksa dari angka yang tercetak, lalu DINYATAKAN di layar.
+    // Selisih di bawah Rp1 dianggap cocok: pembulatan rupiah bukan cacat identitas.
+    const kotakJumlah = document.getElementById('akJumlahCocok');
+    if (kotakJumlah && !window.matchMedia('(min-width: 700px)').matches) {
+      const selisihJumlah = Math.round(jumlahPecah - d.bersih);
+      const cocok = Math.abs(selisihJumlah) < 1;
+      kotakJumlah.style.display = 'block';
+      kotakJumlah.innerHTML = '<div class="ak-vonis' + (cocok ? '' : ' awas') + '" style="margin:10px 12px 0;"><i></i><span>'
+        + '<b>' + (cocok
+            ? 'Keenam baris menjumlah tepat ' + rpTanda(d.bersih)
+            : 'Baris di atas TIDAK berjumlah kas bersih') + '</b>'
+        + '<small>' + (cocok
+            ? 'Sama dengan kas bersih bulan ini \u2014 tidak ada uang yang hilang dari pecahannya.'
+            : 'Jumlah baris ' + rpTanda(jumlahPecah) + ' lawan kas bersih ' + rpTanda(d.bersih)
+              + ', selisih ' + rpTanda(selisihJumlah) + '. Salah satu barisnya keliru; jangan pakai kartu ini sampai selisihnya nol.')
+        + '</small></span></div>';
+    } else if (kotakJumlah) { kotakJumlah.style.display = 'none'; }
+
     // EMPAT WUJUD BARUNYA — dari suku yang SAMA dengan baris di atas, bukan hitungan kedua.
     gambarEmpatWujud(jadiStok, jadiPiutang, jadiKasbon, biayaNyata, pos, d);
+    // VONIS "kok kas gua minus" — kartu berlampu tepat di bawah kolam.
+    gambarVonisKas(jadiStok, jadiPiutang, jadiKasbon, biayaNyata, pos, d);
 
     // Vonisnya dibunyikan terang-terangan: berapa yang berubah wujud, berapa
     // hasil operasional. Kalau operasionalnya minus, dikatakan minus.
@@ -30235,6 +30601,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.kirimRekapHarianWa = kirimRekapHarianWa; window.kirimBelanjaWa = kirimBelanjaWa;
   window.perbaruiSetoranTutup = perbaruiSetoranTutup; window.kirimRekapTutupWa = kirimRekapTutupWa;
   window.bukaLembarHariRw = bukaLembarHariRw; window.tutupLembarHariRw = tutupLembarHariRw;
+  window.bukaLembarBukuKas = bukaLembarBukuKas; window.tutupLembarBukuKas = tutupLembarBukuKas;
   window.rwHariTingkat = rwHariTingkat;
   window.rtAlasanPilih = rtAlasanPilih; window.rtIsiDariTrx = rtIsiDariTrx;
    window.bukaModalLoginToko = bukaModalLoginToko; window.bukaSetelPin = window.bukaSetelPin || bukaSetelPin;
