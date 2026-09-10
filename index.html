@@ -5962,6 +5962,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 #thKrom .th-krom b{ display:block; font-family:var(--pf-serif); font-weight:600; font-size:19px; color:var(--pf-platina); margin-top:2px; }
 #thKrom .th-krom i{ display:block; font-family:var(--pf-serif); font-style:italic; font-size:10px; color:var(--pf-abu); margin-top:2px; }
 /* Cincin beres: --isi dari cacah pagar yang SAMA dengan label x/6. */
+/* Alasan kecurigaan tergambar DI DALAM kartu barangnya — kecurigaan tanpa alasan cuma
+   firasat yang menyamar jadi data. */
+#lembarKeliling .kl-curiga{ display:flex; align-items:flex-start; gap:9px; margin:8px 0 2px;
+  padding:9px 11px; border-radius:4px; background:rgba(217,166,147,.09);
+  border:1px solid rgba(217,166,147,.34); }
+#lembarKeliling .kl-curiga i{ display:block; flex:none; width:8px; height:8px; border-radius:99px;
+  background:#d9a693; margin-top:5px; }
+#lembarKeliling .kl-curiga span{ flex:1; min-width:0; font-family:var(--pf-serif); font-style:italic;
+  font-size:11px; line-height:1.5; color:#e8c3b2; }
+/* Yang TIDAK dihitung diakui di layar penutup, bukan disembunyikan. */
+#lembarKeliling .kl-sisa{ margin:12px 0 4px; padding:11px 12px; border-radius:4px;
+  background:rgba(255,255,255,.03); border:1px dashed var(--pf-tepi); }
+#lembarKeliling .kl-sisa b{ display:block; font-size:12.5px; font-weight:600; color:var(--teks); }
+#lembarKeliling .kl-sisa span{ display:block; font-family:var(--pf-serif); font-style:italic;
+  font-size:10.5px; line-height:1.55; color:var(--pf-abu2,#a7adb5); margin-top:4px; }
+#stokTombolPindai{ border-color:rgba(217,166,147,.42); color:#e8c3b2; }
 /* ===== TUTUP BUKU: kepala lembar berhenti memakan 169px ===== */
 /* .lap-bilah dipakai bersama layar Laporan, yang memang punya baris kedua & ketiga dan
    BUTUH flex-wrap. Di lembar Tutup Buku isinya cuma tiga: Tutup, tahun, Segarkan —
@@ -7603,6 +7619,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     </div>
     <div class="st-kisi" id="stokKisiTabung"></div>
     <div class="st-kisi-ket" id="stokKisiKet"></div>
+    <button type="button" class="st-tombol-keliling" id="stokTombolPindai" onclick="bukaPindaian()"></button>
     <button type="button" class="st-tombol-keliling" id="stokTombolKeliling" onclick="bukaKeliling()"></button>
     <div class="kartu" id="stokMandek" style="display:none;">
       <div class="panel-kepala"><h2>Yang Mandek <span class="keterangan" id="stokMandekSub">tak bergerak 14 hari</span></h2></div>
@@ -19599,7 +19616,51 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return item;
   }
 
+  // ---------- PINDAIAN: yang DICURIGAI saja ----------
+  // Rancangan "Opname" tidak meminta opname penuh — ia meminta PINDAIAN: barang yang
+  // paling mungkin salah diperiksa lebih dulu, dan yang tidak diperiksa DIAKUI, bukan
+  // disembunyikan. Sebabnya waktu: keliling penuh 14 barang butuh sekitar satu jam dan
+  // karena itu tidak pernah benar-benar dikerjakan; tiga barang butuh lima menit.
+  //
+  // NOL RUMUS UANG BARU. Kecurigaan bukan angka uang — ia URUTAN, disusun dari angka
+  // yang sudah ada (sisa menurut catatan, dan sudah berapa lama merk itu tidak
+  // kedatangan). Tiap barang MENYEBUT alasannya; kecurigaan tanpa alasan cuma firasat
+  // yang menyamar jadi data.
+  const PINDAI_MAKS = 3;
+  function alasanCuriga(it) {
+    if (it.sistem < 0) return { skor: 100, teks: 'catatan MINUS ' + klAngka(it.sistem, it.desimal)
+      + ' \u2014 mustahil secara fisik, jadi salah satu catatannya keliru' };
+    if (it.sistem === 0) return { skor: 60, teks: 'catatan nol \u2014 kalau ternyata masih ada isinya, penjualannya tidak tercatat' };
+    if (it.sistem > 0 && it.sistem < 10) return { skor: 40, teks: 'tinggal ' + klAngka(it.sistem, it.desimal)
+      + ' \u2014 sisa tipis paling sering meleset' };
+    return null;
+  }
+  function daftarPindaian() {
+    const semua = daftarKeliling();
+    const bercuriga = semua.map(it => {
+      const a = alasanCuriga(it);
+      return a ? Object.assign({}, it, { curiga: a.teks, skor: a.skor }) : null;
+    }).filter(Boolean).sort((a, b) => b.skor - a.skor);
+    return { pilih: bercuriga.slice(0, PINDAI_MAKS), semua: semua.length, bercuriga: bercuriga.length };
+  }
+  function bukaPindaian() {
+    const d = daftarPindaian();
+    if (!d.pilih.length) {
+      alert('Tidak ada barang yang mencurigakan sekarang.\n\n'
+        + 'Nol catatan minus, nol yang kosong, nol yang sisanya tipis. '
+        + 'Kalau tetap mau menghitung, pakai "Keliling gudang" untuk memeriksa semuanya.');
+      return;
+    }
+    _klDaftar = d.pilih;
+    _klLangkah = 0; _klBeda = false; _klNyata = 0; _klKoreksi = []; _klLewat = 0;
+    _klPindaian = { dilewati: d.semua - d.pilih.length, semua: d.semua, bercuriga: d.bercuriga };
+    document.body.classList.add('lembar-keliling-terbuka');
+    gambarLangkahKeliling();
+  }
+  let _klPindaian = null;
+
   function bukaKeliling() {
+    _klPindaian = null;                      // keliling penuh: bukan pindaian
     _klDaftar = daftarKeliling();
     if (_klDaftar.length === 0) {
       alert('Belum ada barang yang bisa dikelilingi di kelompok ini.\n\nGanti saklar di atas, atau catat kedatangan dulu.');
@@ -19682,6 +19743,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + '<div class="kl-nama">' + escapeHtml(it.nama) + '</div>'
         + '<button type="button" class="kl-tempat" onclick="klUbahTempat()">'
           + (tmp ? escapeHtml(tmp) : '<u>Tempat simpan belum ditulis - ketuk untuk mengisi</u>') + '</button>'
+        + (it.curiga
+            ? '<div class="kl-curiga"><i></i><span>' + escapeHtml(it.curiga) + '</span></div>'
+            : '')
         + '<div class="kl-catat"><b>' + klAngka(it.sistem, it.desimal) + '</b>'
           + '<span>' + it.satuan + ' menurut catatan</span></div>'
         + (_klBeda
@@ -19711,12 +19775,22 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
     // ── Layar penutup: papan kapur dulu, baru tombol catat ──
     const nBeda = _klKoreksi.length;
-    const ringkas = n + ' barang dikelilingi'
+    const ringkas = n + (_klPindaian ? ' barang dipindai' : ' barang dikelilingi')
       + (_klLewat > 0 ? ', ' + _klLewat + ' dilewati' : '')
       + '. ' + (nBeda === 0 ? 'Semua cocok dengan catatan.' : nBeda + ' selisih ditemukan.');
     isi.innerHTML =
-      '<div class="kl-nama">Keliling selesai</div>'
+      '<div class="kl-nama">' + (_klPindaian ? 'Pindaian selesai' : 'Keliling selesai') + '</div>'
       + '<div class="kl-ket" style="text-align:left;margin-top:6px;">' + escapeHtml(ringkas) + '</div>'
+      // YANG TIDAK DIHITUNG DIAKUI, bukan disembunyikan. Pindaian sengaja tidak memeriksa
+      // semuanya; kalau layar penutupnya diam soal itu, ia akan terbaca seperti opname
+      // penuh yang bersih — dan itu klaim yang melampaui yang benar-benar dikerjakan.
+      + (_klPindaian && _klPindaian.dilewati > 0
+          ? '<div class="kl-sisa"><b>' + _klPindaian.dilewati + ' barang lain belum dihitung</b>'
+            + '<span>Dan itu memang niatnya. Memeriksa ' + _klPindaian.semua
+            + ' barang butuh berjam-jam, jadi jarang benar-benar dikerjakan; '
+            + 'yang paling mungkin salah sudah diperiksa dalam beberapa menit. '
+            + 'Untuk menghitung semuanya, pakai "Keliling gudang".</span></div>'
+          : '')
       + '<div class="kl-papan">'
       + (nBeda === 0
         ? '<div class="kl-ket" style="text-align:left;margin:0;">Tidak ada yang perlu dicoret. Stok tidak akan berubah.</div>'
@@ -20075,6 +20149,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const nKel = daftarKeliling().length;
       elTblKel.style.display = nKel > 0 ? '' : 'none';
       elTblKel.textContent = 'Keliling gudang \u00b7 opname ' + nKel + ' barang';
+    }
+    // PINDAIAN berdiri di ATAS keliling penuh: ia yang dipakai tiap minggu, keliling
+    // penuh yang sesekali. Cacah & alasannya dihitung dari daftar yang benar-benar
+    // dibangun — tombolnya menghilang kalau tidak ada satu pun yang mencurigakan,
+    // bukan tampil lalu mengaku kosong sesudah diketuk.
+    const elTblPin = document.getElementById('stokTombolPindai');
+    if (elTblPin) {
+      const dp = daftarPindaian();
+      elTblPin.style.display = dp.pilih.length > 0 ? '' : 'none';
+      elTblPin.textContent = 'Pindaian cepat \u00b7 ' + dp.pilih.length + ' yang paling dicurigai';
+      elTblPin.classList.add('st-tombol-pindai');
     }
 
     // --- Yang Mandek: gerak <=1 hari dari 14 (dulu: laju 14 hari NOL) ---
@@ -31257,6 +31342,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.ubahTempatSimpan = ubahTempatSimpan; window.ubahTempatSimpanMerkIni = ubahTempatSimpanMerkIni;
   window.tutupLembarKarantina = tutupLembarKarantina; window.karantinaDariLembar = karantinaDariLembar;
   window.bukaKeliling = bukaKeliling; window.tutupKeliling = tutupKeliling;
+  window.bukaPindaian = bukaPindaian;
   window.klCocok = klCocok; window.klLewati = klLewati; window.klMulaiBeda = klMulaiBeda;
   window.klBatalBeda = klBatalBeda; window.klNudge = klNudge; window.klKetikNyata = klKetikNyata;
   window.klSimpanBeda = klSimpanBeda; window.klUbahTempat = klUbahTempat; window.klCatatSemua = klCatatSemua;
