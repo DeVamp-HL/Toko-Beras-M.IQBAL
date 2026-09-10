@@ -31350,6 +31350,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Fase 1: dipanggil dari onclick di Setelan. Di <script type="module"> fungsi TIDAK
   // otomatis global — tanpa baris ini tombolnya diam saja tanpa pesan apa pun.
   window.ubahNamaPerangkat = ubahNamaPerangkat;
+  // tampilkanAkun DIPANGGIL dari onclick petak "Beri nama HP ini"
+  // (onclick="ubahNamaPerangkat(); tampilkanAkun();"). Tanpa baris ini separuh tombolnya
+  // BERHASIL — namanya benar-benar berganti — lalu panggilan kedua melempar
+  // ReferenceError, panelnya tidak pernah menyegar, dan nama barunya tidak muncul.
+  // Pemakai melihat tombol yang seolah gagal padahal datanya sudah berubah: tombol
+  // setengah bekerja lebih menyesatkan daripada tombol yang mati sama sekali.
+  window.tampilkanAkun = tampilkanAkun;
   // Dipanggil 7 kolom tanggal bayar di Biaya Bulanan lewat onchange. Tanpa baris ini
   // tiap kali pemilik memilih tanggal, handler-nya melempar ReferenceError dan ejaan
   // tanggal di sebelah kolom membeku di nilai lama. Cacat lama, bukan bawaan Fase 1.
