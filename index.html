@@ -5077,6 +5077,18 @@ body.lembar-keliling-terbuka{ overflow:hidden; }
 #hzLariKeMana .hz-kalimat, #hzPola .hz-kalimat{ font-family:var(--pf-serif); font-style:italic;
   font-size:11px; line-height:1.55; color:var(--pf-abu2,#a7adb5); margin-top:10px; }
 #hzLariKeMana .hz-kalimat b{ color:var(--pf-krem,#f7ecd6); font-weight:600; font-style:normal; }
+/* Chip cepat di bawah kartu nominal: menggulir mendatar, lebar TETAP per chip supaya
+   deret panjang tidak melebarkan halaman (yang menggulir wadahnya sendiri, bukan layar). */
+/* nowrap WAJIB disebut: kelas .chip-keterangan yang menumpang di sini membawa
+   flex-wrap:wrap, jadi tanpa baris ini chipnya membungkus jadi tiga baris dan mendorong
+   pertanyaan 3 turun jauh — bukan menggulir seperti rancangan. */
+#halamanHarian .hz-cip-cepat{ display:flex; flex-wrap:nowrap; gap:7px; overflow-x:auto;
+  -webkit-overflow-scrolling:touch; padding:2px 2px 4px; margin-top:9px; }
+#halamanHarian .hz-cip-cepat button{ flex:none; min-height:44px; padding:0 14px; border-radius:99px;
+  font-family:inherit; font-size:11.5px; color:var(--pf-abu); white-space:nowrap;
+  border:1px solid var(--pf-tepi); background:rgba(255,255,255,.03); }
+#halamanHarian .hz-cip-cepat button i{ font-style:normal; font-family:var(--pf-serif);
+  color:var(--pf-krem,#f7ecd6); margin-left:5px; font-variant-numeric:tabular-nums; }
 /* PERTANYAAN BERNOMOR (rancangan Harian - Gabungan). Nomornya bagian dari labelnya,
    bukan hiasan: ia menyatakan ada urutan, dan urutan itulah keputusan rancangannya. */
 .hz-tanya{ font-size:9px; font-weight:800; letter-spacing:.2em; text-transform:uppercase;
@@ -8876,6 +8888,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
          apa pun yang ada di #harianKategori. Yang lahir di sini cuma PINTUNYA.
          Pertanyaan ini hanya berarti kalau belanjanya untuk TOKO — kalau Owner, uang
          pribadi memang sudah jawabannya, jadi ia disembunyikan. -->
+    <!-- Chip cepat (rancangan): ia duduk TEPAT DI BAWAH kartu nominal dan membawa
+         NOMINALNYA sendiri — "Bensin motor · 25.000" — jadi satu ketukan menjawab
+         pertanyaan 2 DAN 4 sekaligus. Sebelumnya chip cuma membawa keterangan dan
+         berdiri di bawah isian "untuk apa", jadi ia menghemat mengetik nama tapi tidak
+         menghemat mengetik angka — padahal angkanya yang butuh papan ketik. -->
+    <div class="chip-keterangan hz-cip-cepat" id="chipKeteranganHarian"></div>
+
     <div class="hz-tanya" data-nomor="3" id="hzTanyaKantong">Dibayar pakai apa</div>
     <div class="pilih-kategori" id="pilihKantongHarianWrap">
       <button type="button" id="kantongHarianLaci" class="pilih" onclick="pilihKantongHarian('laci')"><b>Laci toko</b><i>kas toko berkurang</i></button>
@@ -8886,9 +8905,6 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <div class="kartu" id="kartuIsianHarian">
       <label style="margin-top:0;">Untuk apa</label>
       <input type="text" id="harianKeterangan" placeholder="Contoh: bensin motor, beli galon" oninput="perbaruiRingkasHarian()">
-      <!-- Chip diambil dari catatan terbanyak pemakai sendiri: untuk pengeluaran yang
-           berulang tiap hari, mengetik jadi memilih (Prinsip 2). -->
-      <div class="chip-keterangan" id="chipKeteranganHarian"></div>
       <label>Tanggal</label>
       <input type="date" id="harianTanggal">
     </div>
@@ -12903,19 +12919,37 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function gambarChipKeteranganHarian() {
     const wadah = document.getElementById('chipKeteranganHarian');
     if (!wadah) return;
-    const hitung = {};
+    // Nominal khas tiap keterangan = MEDIAN catatannya, bukan yang terakhir dan bukan
+    // rata-rata. Yang terakhir bisa kebetulan hari aneh; rata-rata ditarik satu hari
+    // raksasa. Median menjawab "biasanya berapa" — dan itu memang yang ditanya chip ini.
+    const kelompok = {};
     ambilPengeluaranHarian().forEach(h => {
       const k = (h.keterangan || '').trim();
-      if (k) hitung[k] = (hitung[k] || 0) + 1;
+      if (!k) return;
+      (kelompok[k] = kelompok[k] || []).push(h.nominal || 0);
     });
-    const teratas = Object.keys(hitung).sort((a, b) => hitung[b] - hitung[a]).slice(0, 5);
-    wadah.innerHTML = teratas.map(k =>
-      `<button type="button" onclick="pakaiChipKeterangan(${escapeHtml(JSON.stringify(k))})">${escapeHtml(k)}</button>`).join('');
+    const teratas = Object.keys(kelompok)
+      .sort((a, b) => kelompok[b].length - kelompok[a].length).slice(0, 5);
+    wadah.innerHTML = teratas.map(k => {
+      const n = kelompok[k].slice().sort((a, b) => a - b);
+      const khas = n.length % 2 ? n[(n.length - 1) / 2] : (n[n.length / 2 - 1] + n[n.length / 2]) / 2;
+      const rp = Math.round(khas);
+      // Chip TANPA nominal khas (semua catatannya nol) cuma mengisi keterangan — ia tidak
+      // berpura-pura punya angka. Nol bukan "biasanya nol", ia "belum pernah ada angkanya".
+      return '<button type="button" onclick="pakaiChipKeterangan('
+        + escapeHtml(JSON.stringify(k)) + ', ' + rp + ')">' + escapeHtml(k)
+        + (rp > 0 ? '<i>\u00b7 ' + rp.toLocaleString('id-ID') + '</i>' : '') + '</button>';
+    }).join('');
     wadah.style.display = teratas.length ? 'flex' : 'none';
   }
-  function pakaiChipKeterangan(teks) {
+  // Satu ketukan menjawab DUA pertanyaan: berapa (2) dan untuk apa (4). Nominal cuma
+  // ditimpa kalau kolomnya masih kosong — kalau pemakai sudah mengetik angka sendiri,
+  // angkanya menang; chip tidak boleh menghapus ketikan orang.
+  function pakaiChipKeterangan(teks, nominal) {
     const el = document.getElementById('harianKeterangan');
     if (el) el.value = teks;
+    const eln = document.getElementById('harianNominal');
+    if (eln && nominal > 0 && !(parseFloat(eln.value) > 0)) eln.value = nominal;
     perbaruiRingkasHarian();
   }
 
