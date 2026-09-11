@@ -3750,6 +3750,8 @@ body.lembar-karantina-terbuka #lembarKarantina{ transform:translateY(0); }
 #lembarKarantina .lk-balik{ border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.05); color:#e8e4dc; }
 #lembarKarantina .lk-rework{ border:1px solid rgba(138,177,125,.5); background:rgba(138,177,125,.16); color:#cfe3c6; }
 #lembarKarantina .lk-buang{ border:1px solid rgba(211,160,139,.5); background:rgba(211,160,139,.12); color:var(--pf-amber); }
+#lembarKarantina .lk-layak{ width:100%; min-height:44px; margin-top:7px; border-radius:11px; font-family:inherit; font-size:12px; font-weight:600;
+  border:1px solid rgba(138,177,125,.35); background:transparent; color:#cfe3c6; }
 #lembarKarantina .lk-ket{ font-family:var(--pf-serif); font-style:italic; font-size:10px; line-height:1.55;
   color:var(--pf-abu); margin-top:4px; }
 
@@ -7542,8 +7544,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <input type="hidden" id="returKarungMerk">
         <input type="hidden" id="returBeratKarung" value="50">
         <div id="rtKarungJumlahWrap">
-        <label>Jumlah karung diretur</label>
-        <input type="number" id="returKarungJumlah" placeholder="0" inputmode="numeric">
+        <label>Jumlah karung diretur <span class="keterangan">— boleh pecahan: 40 kg dari sack 50 = 0,8</span></label>
+        <input type="number" id="returKarungJumlah" placeholder="0" inputmode="decimal" step="0.01">
         </div>
         <div id="rtKgWrap" hidden>
           <label for="rtKgKembali">Kg dikembalikan <span class="keterangan">— dari nota yang ditunjuk, boleh sebagian</span></label>
@@ -7551,12 +7553,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         </div>
       </div>
 
-      <label>Kondisi barang retur</label>
+      <label>Barang yang kembali — boleh dijual lagi?</label>
       <div class="tab-bayar">
-        <button type="button" id="returKondisiUtuh" class="pilih" onclick="pilihReturKondisi('utuh')">Utuh, masih bagus</button>
-        <button type="button" id="returKondisiTidakUtuh" onclick="pilihReturKondisi('tidak_utuh')">Tidak utuh / diragukan</button>
+        <button type="button" id="returKondisiUtuh" onclick="pilihReturKondisi('utuh')">Layak dijual → kembali ke stok</button>
+        <button type="button" id="returKondisiTidakUtuh" onclick="pilihReturKondisi('tidak_utuh')">Rusak / diragukan → Karantina</button>
       </div>
-      <p class="keterangan" id="returKeteranganKondisi">Barang utuh balik ke stok jual. Barang tidak utuh masuk Gudang Karantina — TIDAK langsung dijual lagi, owner putuskan dulu (retur ke pemasok / rework / buang) lewat tab Stok.</p>
+      <p class="keterangan" id="returKeteranganKondisi">Berapa yang kembali dicatat di kolom jumlah/kg di atas — boleh sebagian (mis. 41,5 kg dari sack 50). Di sini cuma satu pertanyaan: barangnya boleh dijual lagi? Layak → kembali ke stok jual. Rusak / diragukan → Gudang Karantina, owner putuskan dulu (balik ke pemasok / rework / buang).</p>
 
       <label>Cara penyelesaian</label>
       <div class="tab-bayar">
@@ -7565,7 +7567,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       </div>
 
       <div id="returBlokRefund">
-        <label>Nominal refund (Rp) <span class="keterangan">— sesuaikan kalau barang tidak utuh penuh, tidak harus sama dengan harga jual awal</span></label>
+        <label>Nominal refund (Rp) <span class="keterangan">— sesuaikan kalau yang kembali cuma sebagian, tidak harus sama dengan harga jual awal</span></label>
         <input type="number" id="returNominalRefund" placeholder="0" inputmode="numeric">
       </div>
       <div id="returBlokTukar" style="display:none;">
@@ -7823,7 +7825,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     </div>
     <div class="kartu" id="kartuKarantina">
       <div class="panel-kepala"><h2>Gudang Karantina <span class="keterangan">retur belum diputuskan</span></h2></div>
-      <p class="keterangan catatan-luwes" style="margin-top:0;">Barang di sini TIDAK masuk stok jual. Putuskan salah satu tindakan untuk tiap item: balik ke pemasok, rework lalu masuk stok, atau buang (kerugian).</p>
+      <p class="keterangan catatan-luwes" style="margin-top:0;">Barang di sini TIDAK masuk stok jual. Putuskan salah satu tindakan untuk tiap item: balik ke pemasok, rework lalu masuk stok, atau buang. Kalau barangnya ternyata layak jual (salah pilih waktu retur), tekan "Ternyata layak jual".</p>
       <div id="daftarKarantina" class="daftar-batch"></div>
     </div>
     <div class="kartu">
@@ -14898,7 +14900,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Retur tidak pakai kartu "Harga & Bayar" biasa — punya kartunya sendiri.
     document.getElementById('kartuHargaBayarJual').style.display = jenis === 'retur' ? 'none' : 'block';
     document.getElementById('btnSimpanJual').textContent = jenis === 'retur' ? ' Simpan Retur' : ' Simpan Penjualan';
-    if (jenis === 'retur') { rtLepasNota(); isiDropdownRetur(); rtRenderHariIni(); }
+    if (jenis === 'retur') { rtLepasNota(); isiDropdownRetur(); rtRenderHariIni(); pilihReturKondisi(null); }
     isiDropdownJual();
     perbaruiStokJual();
     tkGambarPita();
@@ -15416,7 +15418,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
   // ============ RETUR (Tahap 4) ============
   let returJenisAsalAktif = 'kemasan';
-  let returKondisiAktif = 'utuh';
+  let returKondisiAktif = null;   // TANPA bawaan (11 Sep): tiap retur wajib menjawab "boleh dijual lagi?" — "tidak utuh" pernah dibaca "sebagian"
+  const TEKS_KONDISI_AWAL = 'Berapa yang kembali dicatat di kolom jumlah/kg di atas — boleh sebagian (mis. 41,5 kg dari sack 50). Di sini cuma satu pertanyaan: barangnya boleh dijual lagi? Layak → kembali ke stok jual. Rusak / diragukan → Gudang Karantina, owner putuskan dulu (balik ke pemasok / rework / buang).';
   let returPenyelesaianAktif = 'refund';
 
   function pilihReturJenisAsal(jenis) {
@@ -15436,9 +15439,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('returKondisiUtuh').classList.toggle('pilih', kondisi === 'utuh');
     document.getElementById('returKondisiTidakUtuh').classList.toggle('pilih', kondisi === 'tidak_utuh');
     const ket = document.getElementById('returKeteranganKondisi');
+    // Arti MESIN field ini (hitungStokKarungPerMerk, hitungStokKemasan, hitungLabaRentang): 'utuh' = barangnya
+    // KEMBALI KE STOK JUAL (modalnya dibatalkan), 'tidak_utuh' = masuk Karantina. JUMLAHNYA — penuh atau
+    // sebagian — dicatat di kolom kg/jumlah, BUKAN di sini (pemilik pernah membaca "tidak utuh" = sebagian).
     ket.textContent = kondisi === 'utuh'
-      ? 'Barang utuh — balik ke stok jual seperti sedia kala.'
-      : 'Barang tidak utuh / diragukan — masuk Gudang Karantina, TIDAK langsung dijual lagi. Owner putuskan tindakan (retur ke pemasok / rework / buang) lewat tab Stok.';
+      ? 'Layak dijual — kembali ke stok jual, modalnya dibatalkan dari laba.'
+      : (kondisi === 'tidak_utuh'
+        ? 'Rusak / diragukan — masuk Gudang Karantina, TIDAK langsung dijual lagi. Owner putuskan (balik ke pemasok / rework / buang) lewat tab Stok.'
+        : TEKS_KONDISI_AWAL);
   }
 
   function pilihReturPenyelesaian(cara) {
@@ -15489,6 +15497,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // KR3 (papan keputusan pemilik): alasan retur WAJIB — retur tanpa alasan
     // tidak bisa diaudit ("kenapa uang keluar?" harus selalu terjawab).
     if (!catatan) { alert('Pilih / isi alasan retur dulu (salah beli, kualitas, kelebihan, dll).'); return; }
+    if (kondisi !== 'utuh' && kondisi !== 'tidak_utuh') {
+      alert('Jawab dulu: barang yang kembali BOLEH DIJUAL LAGI?\n\nLayak → kembali ke stok jual.\nRusak / diragukan → Gudang Karantina.\n\n'
+        + 'Berapa yang kembali (boleh sebagian) sudah dicatat di kolom jumlah/kg.');
+      return;
+    }
 
     let dataRetur = null;
     let rtNilai = null;
@@ -15631,6 +15644,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('returCatatan').value = '';
     document.getElementById('returKemasanProduk').value = '';
     document.getElementById('returKarungMerk').value = '';
+    pilihReturKondisi(null);
     rtLepasNota();
     isiDropdownRetur();
     perbaruiStokJual();
@@ -15661,7 +15675,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         : (Number.isInteger(r.jumlahKarung || 0)
             ? `${escapeHtml(r.merkSumber) || '-'} × ${r.jumlahKarung || 0} karung`
             : `${escapeHtml(r.merkSumber) || '-'} × ${(r.totalKg || 0).toLocaleString('id-ID')} kg (sebagian karung)`);
-      const labelKondisi = r.kondisi === 'tidak_utuh' ? 'Tidak utuh → Karantina' : 'Utuh → balik stok';
+      const labelKondisi = r.kondisi === 'utuh' ? (r.koreksiKondisi ? 'Kembali ke stok · dikoreksi layak jual' : 'Layak jual → balik stok') : 'Rusak/diragukan → Karantina';
+      const kR = r.kondisi === 'utuh' ? null : ambilKarantina().find(x => String(x.id) === String(r.id));
+      const bisaLayak = r.kondisi !== 'utuh' && !(kR && kR.statusTindakan && kR.statusTindakan !== 'belum_diputuskan');
       const hT = r.hitunganTukarSistem || {};
       const labelNominal = r.penyelesaian === 'refund'
         ? `Refund ${formatRupiah(r.nominalRefund || 0)}`
@@ -15677,6 +15693,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             <span class="tanggal">${formatTanggal(r.tanggal)}</span>
           </div>
           <div style="font-size:13px; color:#666;">${labelKondisi} · ${labelNominal}</div>
+          ${bisaLayak ? `<div class="tab-owner-blok" style="margin-top:6px;"><button type="button" data-id="${escapeHtml(String(r.id))}" onclick="returJadiLayakJual(this.dataset.id)" style="padding:6px 10px; border:1px solid var(--hijau); background:var(--kartu); color:var(--hijau-tua); border-radius:8px; font-size:12px; font-weight:700;">Ternyata layak jual → kembali ke stok</button></div>` : ''}
           <button class="tombol-hapus tab-owner-blok" onclick="hapusRetur(${r.id})">Hapus</button>
         </div>
       `;
@@ -15686,6 +15703,116 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
   // Owner-only — hapus dari koleksi retur. Kalau retur ini juga tercatat di Karantina
   // (kondisi tidak_utuh, id sama), hapus juga dari sana supaya tidak jadi entri yatim.
+  // KOREKSI "TIDAK UTUH" YANG TERNYATA LAYAK JUAL (11 Sep 2026). Pemilik memakai "tidak utuh" untuk
+  // "yang kembali cuma sebagian" (41,5 kg dari sack 50); sistem membacanya "rusak → Karantina", jadi
+  // berasnya tidak kembali ke stok dan modalnya tidak dibatalkan — seluruh nilai retur tercatat rugi.
+  // Aksi ini membetulkan SATU retur: kondisi jadi 'utuh' (arti mesin: kembali ke stok jual) dan kartu
+  // karantinanya ditutup 'layak_jual'. TIDAK ada dokumen stok yang ditulis: hitungStokKarungPerMerk,
+  // hitungStokKemasan & hitungLabaRentang membaca retur 'utuh' sendiri. Karena itu kartu yang sudah
+  // di-rework / dibuang / dikembalikan DITOLAK — barangnya sudah bergerak lewat keputusan itu.
+  // Ditulis lewat TRANSAKSI: retur & karantina dibaca ulang dari server, supaya perubahan perangkat
+  // lain (mis. tanda pengganti tukar) tidak tertimpa salinan basi. Karena itu butuh sinyal.
+  async function returJadiLayakJual(id) {
+    const r = ambilRetur().find(x => String(x.id) === String(id));
+    if (!r) { alert('Retur itu tidak ditemukan lagi.'); return false; }
+    if (r.kondisi === 'utuh') { alert('Retur ini sudah tercatat kembali ke stok.'); return false; }
+    const k = ambilKarantina().find(x => String(x.id) === String(id));
+    if (k && k.statusTindakan && k.statusTindakan !== 'belum_diputuskan') {
+      alert('Kartu karantina retur ini sudah diputuskan (' + k.statusTindakan + ').\n\n'
+        + 'Barangnya sudah bergerak lewat keputusan itu — koreksi ini ditolak supaya stok tidak terhitung dua kali.');
+      return false;
+    }
+    if (masihTertunda(KOLEKSI_RETUR, r.id) || masihTertunda(KOLEKSI_KARANTINA, r.id)) {
+      alert('Retur ini masih menunggu sinyal di perangkat ini. Tunggu tersambung dulu, lalu ulangi.');
+      return false;
+    }
+    const tahunR = Number(String(r.tanggal || '').slice(0, 4));
+    const era = eraTutupBuku();
+    if ((era !== null && String(r.tanggal || '') <= tbCutoff(era)) || _tbArsipDiunduh === tahunR) {
+      alert('Retur ' + formatTanggal(r.tanggal) + ' ada di tahun yang sudah/sedang ditutup buku — arsip & saldo pembukanya dihitung dari kondisi lama. Koreksi ditolak.');
+      return false;
+    }
+    const karung = r.jenisAsal !== 'kemasan';
+    const kunci = karung ? r.merkSumber : kunciKemasan(r.namaProduk, r.ukuranKemasan);
+    const st = kunci ? (karung ? hitungStokKarungPerMerk() : hitungStokKemasan())[kunci] : null;
+    const nama = karung ? (r.merkSumber || '') : ((r.namaProduk || '') + ' ' + r.ukuranKemasan + ' kg');
+    if (!st) {
+      alert('Stok "' + nama + '" tidak dikenal sistem — kalau dikoreksi, tidak ada stok yang bertambah. Koreksi ditolak.');
+      return false;
+    }
+    const jml = karung ? (r.totalKg || 0) : (r.jumlahUnit || 0);
+    const satuan = karung ? 'kg' : 'unit';
+    const sisa = karung ? st.sisaKg : st.sisaUnit;
+    const jamR = r.jam || '00:00';
+    const sesudahRetur = x => (x.tanggal || '') > r.tanggal || ((x.tanggal || '') === r.tanggal && (x.jam || '99:99') >= jamR);
+    const opname = karung
+      ? ambilPenyesuaianStok().filter(x => x.merk === r.merkSumber && !x.dariRework && sesudahRetur(x))
+      : ambilPenyesuaianKemasan().filter(x => kunciKemasan(x.namaProduk, x.ukuranKemasan) === kunci && sesudahRetur(x));
+    if (opname.length && !confirm('Sesudah retur ini ada OPNAME ' + nama + ': '
+        + opname.map(x => formatTanggal(x.tanggal) + (x.jam ? ' ' + x.jam : '')).join(', ') + '.\n\n'
+        + 'Kalau opname itu MENIMBANG barang retur ini, stok & labanya SUDAH naik lewat opname — koreksi ini akan menaikkannya dua kali: tekan Batal.\n'
+        + 'Kalau barang ini disimpan terpisah dan TIDAK ikut ditimbang: OK.')) return false;
+    const hpp = karung ? (st.hppTerakhirPerKg || 0) : (st.hppRataRataPerUnit || 0);
+    const naik = Math.round(jml * hpp);
+    const alasan = prompt('Retur ' + formatTanggal(r.tanggal) + ' · ' + nama + ' ' + jml.toLocaleString('id-ID') + ' ' + satuan
+      + ' tercatat RUSAK → Karantina.\n\nKalau barangnya ternyata layak jual, koreksi ini:\n'
+      + '· stok ' + nama + ' +' + jml.toLocaleString('id-ID') + ' ' + satuan + ' (sekarang ' + (Math.round((sisa || 0) * 100) / 100).toLocaleString('id-ID') + ' ' + satuan + ')\n'
+      + (naik > 0
+        ? '· margin & laba ' + formatTanggal(r.tanggal) + ' naik ±' + formatRupiah(naik) + ' — modal barang ini dibatalkan (taksiran HPP rata-rata saat ini, bisa bergeser)\n'
+        : '· HPP barang ini belum bisa ditaksir (Rp0) — laba belum ikut naik\n')
+      + '· nilai stok & kekayaan toko ikut naik; KAS tidak berubah\n'
+      + '· kartu karantinanya ditutup "ternyata layak jual"\n'
+      + (karung ? '· barangnya karung TERBUKA — jual lewat kiloan, bukan sebagai sack utuh\n' : '')
+      + '\nTulis alasannya (wajib):', '');
+    if (alasan === null) return false;
+    if (!alasan.trim()) { alert('Alasan wajib diisi — supaya jejaknya bisa dibaca nanti.'); return false; }
+    const pada = new Date().toISOString();
+    const cap = d => Object.assign(d, { diubahOleh: OLEH_TETAP, diubahPerangkat: perangkatRingkas(), diubahPada: pada });
+    let hasil = null;
+    try {
+      hasil = await Promise.race([
+        runTransaction(db, async (tx) => {
+          const refR = doc(db, KOLEKSI_RETUR, String(r.id));
+          const refK = doc(db, KOLEKSI_KARANTINA, String(r.id));
+          const sR = await tx.get(refR);
+          const sK = await tx.get(refK);
+          if (!sR.exists()) return { tolak: 'Retur itu sudah tidak ada di server.' };
+          const server = sR.data();
+          if (server.kondisi === 'utuh') return { tolak: 'Retur ini sudah tercatat kembali ke stok (percobaan sebelumnya atau perangkat lain).' };
+          const kS = sK.exists() ? sK.data() : null;
+          if (kS && kS.statusTindakan && kS.statusTindakan !== 'belum_diputuskan')
+            return { tolak: 'Kartu karantinanya sudah diputuskan (' + kS.statusTindakan + ') dari perangkat lain.' };
+          const dokR = cap(Object.assign({}, server, { kondisi: 'utuh',
+            koreksiKondisi: { dari: server.kondisi || null, pada, alasan: alasan.trim(), oleh: OLEH_TETAP } }));
+          tx.set(refR, dokR);
+          let dokK = null;
+          if (kS) {
+            dokK = cap(Object.assign({}, kS, { statusTindakan: 'layak_jual', tanggalKeputusan: tanggalLokalIso(), catatanKeputusan: alasan.trim() }));
+            tx.set(refK, dokK);
+          }
+          return { ok: true, dokR, dokK };
+        }),
+        new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 8000))
+      ]);
+    } catch (err) {
+      console.error(err);
+      alert('Koreksi ini butuh sinyal — dokumennya dibaca ulang dari server supaya perubahan perangkat lain tidak tertimpa. Coba lagi saat tersambung.');
+      return false;
+    }
+    if (!hasil || hasil.tolak) { alert((hasil && hasil.tolak) || 'Koreksi gagal.'); return false; }
+    catatLogAktivitas(KOLEKSI_RETUR, hasil.dokR);
+    if (hasil.dokK) catatLogAktivitas(KOLEKSI_KARANTINA, hasil.dokK);
+    setTimeout(() => { tampilkanRetur(); tampilkanKarantina(); perbaruiStokJual(); }, 300);
+    alert('Dikoreksi: ' + nama + ' +' + jml.toLocaleString('id-ID') + ' ' + satuan + ' kembali ke stok.');
+    return true;
+  }
+  async function karantinaLayakDariLembar(id) {
+    await returJadiLayakJual(id);
+    setTimeout(() => {
+      gambarLembarKarantina();
+      if (ambilKarantina().filter(x => x.statusTindakan === 'belum_diputuskan').length === 0) tutupLembarKarantina();
+    }, 400);
+  }
   async function hapusRetur(id) {
     if (!confirm('Hapus catatan retur ini? Kalau barangnya sempat masuk Gudang Karantina, catatan karantinanya ikut terhapus juga.')) return;
     try {
@@ -16461,6 +16588,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const ringkas = (draf.merkSumber || draf.namaProduk || 'barang') + ' ' + (draf.jumlahDikembalikan || 0).toLocaleString('id-ID')
       + ' ' + (draf.satuanNota || '') + ' (nota ' + formatTanggal(draf.notaAsalTanggal || '') + ')';
     if (!tkIkat({ returDraf: draf, kredit: draf.nominalRefund, ringkas, jenisAwal: draf.jenisAsal })) return false;
+    pilihReturKondisi(null);   // retur berikutnya menjawab sendiri
     alert('Retur ' + ringkas + ' senilai ' + formatRupiah(draf.nominalRefund) + ' diikat ke keranjang.\n\n'
       + 'Sekarang pilih barang PENGGANTINYA seperti menjual biasa. Nilai retur dipotong dari keranjang, '
       + 'dan retur + penjualan pengganti tercatat BERSAMA saat keranjang disimpan.');
@@ -18621,7 +18749,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (bayarSebagian > 0) ket.push('dibayar ' + formatRupiah(bayarSebagian)
       + ' \u00b7 PIUTANG ' + formatRupiah(totalBayar - bayarSebagian) + ' atas nama ' + namaPelanggan);
     if (_lastKembalianInfo) { ket.push(_lastKembalianInfo); _lastKembalianInfo = ''; }
-    if (returTukar) ket.push('tukar: retur ' + formatRupiah(kreditTukar) + ' · pembeli bayar ' + formatRupiah(tagihanNota));
+    if (returTukar) ket.push('tukar: retur ' + formatRupiah(kreditTukar) + ' · pembeli bayar ' + formatRupiah(tagihanNota)
+      + (returTukar.kondisi === 'utuh' ? ' · barang retur → kembali ke stok' : ' · barang retur → Karantina'));
     if (tk && tk.susulanReturId) ket.push('susulan pengganti tukar');
     ket.push('masuk Riwayat #' + String(trxId).slice(-4));
     await tutupPesananDariJual(trxId);
@@ -18866,7 +18995,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (rincianSebelumSimpan && rincianSebelumSimpan.stokSesudah) {
       bagian.push('stok jadi ' + rincianSebelumSimpan.stokSesudah[1] + ' ' + rincianSebelumSimpan.stokSesudah[2]);
     }
-    if (returTukar) bagian.push('tukar: retur ' + formatRupiah(kreditTukar) + ' · pembeli bayar ' + formatRupiah(transaksi.hargaTotal - kreditTukar));
+    if (returTukar) bagian.push('tukar: retur ' + formatRupiah(kreditTukar) + ' · pembeli bayar ' + formatRupiah(transaksi.hargaTotal - kreditTukar)
+      + (returTukar.kondisi === 'utuh' ? ' · barang retur → kembali ke stok' : ' · barang retur → Karantina'));
     if (tk && tk.susulanReturId) bagian.push('susulan pengganti tukar');
     bagian.push('masuk Riwayat #' + String(transaksi.id).slice(-4));
     // UX Alur 1 cabang offline: kabarnya jujur dan tanpa istilah teknis — kerja tidak
@@ -21103,7 +21233,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('lkCacah').textContent = antre.length
       ? antre.length + ' menunggu keputusan' : 'kosong';
     kont.innerHTML = antre.length === 0
-      ? '<div class="kosong-info"><b>Tidak ada barang di karantina</b><span>Retur yang kondisinya tidak utuh masuk ke sini dan menunggu satu keputusan.</span></div>'
+      ? '<div class="kosong-info"><b>Tidak ada barang di karantina</b><span>Retur yang barangnya rusak / diragukan masuk ke sini dan menunggu satu keputusan.</span></div>'
       : antre.map(it => {
         const nama = it.jenisAsal === 'kemasan'
           ? (it.namaProduk || '') + ' ' + it.ukuranKemasan + ' kg'
@@ -21116,7 +21246,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           + '<button type="button" class="lk-balik" onclick="karantinaDariLembar(' + it.id + ', \'dikembalikan_pemasok\')">Balik ke<br>pemasok</button>'
           + '<button type="button" class="lk-rework" onclick="karantinaDariLembar(' + it.id + ', \'dirework\')">Rework<br>ke stok</button>'
           + '<button type="button" class="lk-buang" onclick="karantinaDariLembar(' + it.id + ', \'dibuang\')">Buang</button>'
-          + '</div></div>';
+          + '</div>' + (it.asalRetur ? '<button type="button" class="lk-layak" data-id="' + escapeHtml(String(it.id)) + '" onclick="karantinaLayakDariLembar(this.dataset.id)">Ternyata layak jual → kembali ke stok</button>' : '') + '</div>';
       }).join('')
       + '<div class="lk-ket">Keputusan yang diambil hari ini muncul di Papan Kapur, '
       + 'dan cuma hari ini \u2014 barang yang sudah diputuskan hilang dari layar. '
@@ -21434,6 +21564,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     ambilPenyesuaianKemasan().forEach(o => {
       if (o.tanggal === hariIni) catat('U|' + kunciKemasan(o.namaProduk, o.ukuranKemasan), (o.namaProduk || '') + ' ' + o.ukuranKemasan + ' kg', 'unit', o.selisihUnit || 0);
     });
+    // Retur yang DIKOREKSI layak jual hari ini: stoknya bergerak lewat returnya (bertanggal lama),
+    // bukan lewat dokumen hari ini — tanpa baris ini "lama = kini − delta" meleset sebesar itu.
+    ambilRetur().forEach(r => {
+      if (r.kondisi !== 'utuh' || !r.koreksiKondisi || !r.koreksiKondisi.pada) return;
+      if (tanggalLokalIso(new Date(r.koreksiKondisi.pada)) !== hariIni) return;
+      if (r.jenisAsal === 'kemasan') catat('U|' + kunciKemasan(r.namaProduk, r.ukuranKemasan), (r.namaProduk || '') + ' ' + r.ukuranKemasan + ' kg', 'unit', r.jumlahUnit || 0);
+      else if (r.merkSumber) catat('K|' + r.merkSumber, r.merkSumber, 'kg', r.totalKg || 0);
+    });
     // BAHAN PAKAI (kantong & literan). Selama ini papan ini diam soal bahan, jadi
     // kantong yang dipakai produksi hari ini atau hilang lewat opname tidak pernah
     // punya baris — padahal itu perubahan stok, persis yang papan ini janjikan.
@@ -21473,7 +21611,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Yang benar-benar bergerak cuma CACAH ANTREAN, dan itu yang dicoret di sini.
     // (Rework kemasan tetap muncul sebagai baris 'U|' lewat dokumen produksinya sendiri
     // — itu memang perubahan stok, dan sumbernya bukan baris ini.)
-    const LABEL_TINDAKAN = { dikembalikan_pemasok: 'balik ke pemasok', dirework: 'rework ke stok', dibuang: 'dibuang' };
+    // KECUALI 'layak_jual' (11 Sep): itu mengoreksi RETURNYA ke 'utuh', jadi stok memang bergerak —
+    // barisnya dicatat di delta di atas lewat retur ber-koreksiKondisi, bukan dari baris ini.
+    const LABEL_TINDAKAN = { dikembalikan_pemasok: 'balik ke pemasok', dirework: 'rework ke stok', dibuang: 'dibuang', layak_jual: 'ternyata layak jual → stok' };
     const putusHariIni = ambilKarantina().filter(x =>
       x.statusTindakan && x.statusTindakan !== 'belum_diputuskan' && x.tanggalKeputusan === hariIni);
     const antreanKini = ambilKarantina().filter(x => x.statusTindakan === 'belum_diputuskan').length;
@@ -21520,6 +21660,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             <button type="button" onclick="putuskanKarantina(${item.id}, 'dirework')" style="padding:10px 4px; border:2px solid var(--hijau); background:var(--kartu); color:var(--hijau-tua); border-radius:8px; font-size:12px; font-weight:700;"> Rework → Stok</button>
           </div>
           <button type="button" onclick="putuskanKarantina(${item.id}, 'dibuang')" style="width:100%; margin-top:8px; padding:10px; border:2px solid var(--merah); background:var(--kartu); color:var(--merah); border-radius:8px; font-size:12px; font-weight:700;"> Buang barang ini</button>
+          ${item.asalRetur ? `<button type="button" data-id="${escapeHtml(String(item.id))}" onclick="returJadiLayakJual(this.dataset.id)" style="width:100%; margin-top:8px; padding:10px; border:2px solid var(--hijau); background:var(--kartu); color:var(--hijau-tua); border-radius:8px; font-size:12px; font-weight:700;"> Ternyata layak jual → kembali ke stok</button>` : ''}
         </div>
       `;
     }).join('');
@@ -21528,6 +21669,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   async function putuskanKarantina(id, tindakan) {
     const item = ambilKarantina().find(k => k.id === id);
     if (!item) return;
+    // Retur asalnya sudah dikoreksi LAYAK JUAL = barangnya sudah kembali ke stok lewat returnya.
+    // Rework/buang/balik di sini akan menggerakkan barang yang sama DUA KALI.
+    const rAsal = ambilRetur().find(x => String(x.id) === String(item.id));
+    if (rAsal && rAsal.kondisi === 'utuh') {
+      alert('Retur asal barang ini sudah dikoreksi LAYAK JUAL — barangnya sudah kembali ke stok.\n\nKeputusan karantina ditolak supaya stok tidak terhitung dua kali.');
+      return;
+    }
 
     let pesanKonfirmasi = '';
     if (tindakan === 'dikembalikan_pemasok') pesanKonfirmasi = 'Kembalikan barang ini ke pemasok? Barang TIDAK masuk stok jual.';
@@ -27989,7 +28137,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             // biayanya dibatalkan). Satu kata untuk dua arah membuat salah satunya salah.
             ? '<div class="kg-rincian">' + L.returJumlah + ' retur: margin turun ' + rp(L.returUang)
               + ' karena uang kembali'
-              + (L.returHpp > 0 ? ', lalu naik ' + rp(L.returHpp) + ' karena HPP barang utuh yang kembali dibatalkan' : '')
+              + (L.returHpp > 0 ? ', lalu naik ' + rp(L.returHpp) + ' karena modal barang yang kembali ke stok dibatalkan' : '')
               + '.</div>'
             : '');
       } else if (K === 'bersih') {
@@ -28005,7 +28153,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           ? [['Omzet terhitung', L.omzetHitung + L.returUang],
              ['Retur & refund (' + L.returJumlah + ')', -L.returUang],
              ['HPP barang', -(L.hpp + L.returHpp)]]
-              .concat(L.returHpp > 0 ? [['HPP barang utuh yang kembali', L.returHpp]] : [])
+              .concat(L.returHpp > 0 ? [['HPP barang yang kembali ke stok', L.returHpp]] : [])
               .concat([['Margin kotor', L.margin], ['Biaya toko', -L.biayaToko]])
           : [['Omzet terhitung', L.omzetHitung], ['HPP barang', -L.hpp], ['Margin kotor', L.margin],
              ['Biaya toko', -L.biayaToko]];
@@ -32771,7 +32919,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.simpanIsiHpp = simpanIsiHpp;
   window.tampilkanRetur = tampilkanRetur;
   window.hapusRetur = hapusRetur;
-  window.putuskanKarantina = putuskanKarantina;
+  window.putuskanKarantina = putuskanKarantina; window.returJadiLayakJual = returJadiLayakJual; window.karantinaLayakDariLembar = karantinaLayakDariLembar;
   window.hapusBulanan = hapusBulanan;
   window.pilihKategoriHarian = pilihKategoriHarian;
   window.pilihBulanLaba = pilihBulanLaba;
