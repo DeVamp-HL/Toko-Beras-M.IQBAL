@@ -9361,6 +9361,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       pasangDenyutPerangkat();
       pasangPendengarPerangkat();
       pasangPendengarKatalog();
+      // Jual = halaman pendarat STATIS: pindahHalaman('jual') tidak jalan saat aplikasi dibuka,
+      // jadi tukar setengah jadi diperiksa juga di sini, sesudah data sempat datang.
+      setTimeout(() => { tkCekSetengah(); }, 8000);
     } else if (u) {
       bukaModalLoginToko('Perangkat ini masih masuk sebagai ' + email
         + '. Masukkan sandi OWNER untuk berpindah akun.');
@@ -11577,7 +11580,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           setDoc(doc(db, item.koleksi, String(item.data.id)), item.data),
           new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 8000))
         ]);
-        const sisa = ambilAntreanTunda(); sisa.shift(); setAntreanTunda(sisa);
+        // Buang item YANG TADI DIKIRIM, bukan kepala antrean: urungkan bisa menyaring antrean selagi
+        // kiriman ini menunggu, dan shift() lalu membuang tulisan lain yang belum terkirim.
+        const sisa = ambilAntreanTunda();
+        const iKirim = sisa.findIndex(q => q.koleksi === item.koleksi && String(q.data && q.data.id) === String(item.data.id));
+        if (iKirim >= 0) sisa.splice(iKirim, 1);
+        setAntreanTunda(sisa);
       }
     } catch (e) { mintaLoginKalauDitolak(e); /* selain itu: masih offline — dicoba lagi otomatis */ }
     _sedangKirimTunda = false;
@@ -14912,6 +14920,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Tukar: ditolak SEBELUM lembar konfirmasi (dulu lembarnya terbuka dengan total minus lalu
     // baru ditolak saat Simpan). Kalimatnya sama dengan penjaga di simpanPenjualan.
     if (_tukarKeJual) {
+      if (_tukarKeJual.susulanReturId) { const cekS = tkCekSusulan(_tukarKeJual.susulanReturId); if (cekS) { alert(cekS); return; } }
       if (rincian.cara === 'Kredit') { alert('Tukar tidak bisa dicatat KREDIT. Pilih Tunai atau QRIS.'); return; }
       if (!_tukarKeJual.susulanReturId && rincian.totalKatalog - rincian.kreditTukar < 0) {
         alert('Nilai retur ' + formatRupiah(rincian.kreditTukar) + ' lebih besar dari harga pengganti ' + formatRupiah(rincian.totalKatalog)
@@ -14946,7 +14955,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     nilai.innerHTML = angkaUtamaHtml(total);
     const r = bacaRincianJual();
     rincian.textContent = (r ? r.baris.slice(0, 2).map(b => b[1]).join(' · ') : 'Belum ada isian')
-      + (r && r.bulat > 0 ? ' · ditagih ' + formatRupiah(r.total) + ' (bulat +' + formatRupiah(r.bulat) + ')' : '');
+      + (r && (r.bulat > 0 || r.kreditTukar > 0)
+        ? (r.total < 0 ? ' · retur lebih besar dari harga ini — belum bisa disimpan'
+          : ' · ditagih ' + formatRupiah(r.total) + (r.kreditTukar > 0 ? ' (tukar −' + formatRupiah(r.kreditTukar) + ')' : '')
+            + (r.bulat > 0 ? ' (bulat +' + formatRupiah(r.bulat) + ')' : ''))
+        : '');
     const katalog = document.getElementById('ktjKatalog');
     if (katalog) katalog.style.display = total > 0 ? 'inline-flex' : 'none';
     if (total > 0) sorotAngka(nilai);
@@ -15276,7 +15289,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const kreditTk = tkKreditTagihan();
     if (kreditTk > 0) baris.push(['Barang kembali (tukar)', '<b>−' + formatRupiah(kreditTk) + '</b> — ' + escapeHtml(_tukarKeJual.ringkas) + ', dipotong dari harga ini']);
     if (_tukarKeJual && _tukarKeJual.susulanReturId) baris.push(['Susulan pengganti tukar', 'dicatat PENUH — uang tukarnya sudah diterima saat tukar']);
-    const bulat = document.getElementById('jualPenggantiRetur').checked ? 0 : pembulatanTunai(total - kreditTk, bayar);
+    const bulat = document.getElementById('jualPenggantiRetur').checked ? 0 : tkBulat(total, bayar);
     if (bulat > 0) baris.push(['Dibulatkan ke Rp500', '+' + formatRupiah(bulat) + ' <span style="color:var(--redup);font-weight:400;">aturan meja kasir, tunai</span>']);
     baris.push(['Cara bayar', bayar]);
     const plg = el('jualNamaPelanggan').value.trim();
@@ -15344,14 +15357,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const daftarBatal = trx._grup || [trx];
     // TUKAR GABUNGAN: returnya ikut dibatalkan, DAN lebih dulu. Kalau penjualan pengganti
     // terhapus sementara returnya tertinggal, lahir lagi "Refund … keluar" tanpa penjualan.
+    // ANTREAN DULU, BARU HAPUS. hapusDariFirestore menggantung selama offline; kalau antrean baru
+    // disaring sesudahnya, kirimAntreanTunda sempat mengirim ulang retur yang sedang diurungkan
+    // begitu sinyal kembali — lahir "refund tanpa penjualan" (sisir 11 Sep).
+    const idBatal0 = new Set(daftarBatal.map(t => t.id));
+    setAntreanTunda(ambilAntreanTunda().filter(q => !(q.koleksi === KOLEKSI_PENJUALAN && idBatal0.has(q.data && q.data.id))
+      && !(trx._retur && (q.koleksi === KOLEKSI_RETUR || q.koleksi === KOLEKSI_KARANTINA) && String(q.data && q.data.id) === String(trx._retur))));
     if (trx._retur) {
+      tkJurnalHapus(trx._retur);
       try {
         await hapusDariFirestore(KOLEKSI_RETUR, trx._retur);
         await hapusDariFirestore(KOLEKSI_KARANTINA, trx._retur);
       } catch (err) { console.error(err); }
-      setAntreanTunda(ambilAntreanTunda().filter(q => !((q.koleksi === KOLEKSI_RETUR || q.koleksi === KOLEKSI_KARANTINA)
-        && String(q.data && q.data.id) === String(trx._retur))));
-      tkJurnalHapus();
     }
     for (const t of daftarBatal) {
       try {
@@ -15483,6 +15500,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (!t) { alert('Nota yang ditunjuk tidak ditemukan lagi — dibatalkan, dikoreksi, atau dihapus. Retur ini TIDAK disimpan. Lepas notanya lalu tunjuk nota yang berlaku.'); return; }
       const d = rtDasarNota(t);
       if (!d.ok) { alert(d.sebab); return; }
+      // Tukar yang penggantinya belum tercatat atas nota yang SAMA: mengulang tukarnya dari nota
+      // mengkredit barang yang sama dua kali (sisir 11 Sep). Jalan yang benar: "catat penggantinya".
+      const yatimNota = tkReturYatim().filter(r => [String(t.id), String(t.koreksiDari || ''), _rtNota.id].indexOf(String(r.notaAsalId)) >= 0);
+      if (yatimNota.length && !confirm('Nota ini sudah punya TUKAR yang penggantinya belum tercatat ('
+        + yatimNota.map(r => formatTanggal(r.tanggal) + ' ' + (r.jam || '') + ' · retur ' + formatRupiah(r.nominalRefund || 0)).join(', ') + ').\n\n'
+        + 'Kalau ini barang YANG SAMA, tekan Batal lalu "catat penggantinya" di atas daftar nota — kalau diulang, barangnya terkredit dua kali.\n\n'
+        + 'OK = ini retur BARU untuk barang lain dari nota yang sama.')) return;
       const jml = rtJumlahKembali();
       if (jml === null) { alert('Isi berapa ' + d.satuan + ' yang dikembalikan — kolomnya kosong atau bukan angka.'); return; }
       if (d.satuan === 'unit' && Math.round(jml) !== jml) { alert('Retur kemasan dihitung per UNIT utuh. ' + jml.toLocaleString('id-ID') + ' unit bukan bilangan bulat.'); return; }
@@ -15755,6 +15779,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const d = ambilPesananDoc(id);
     if (!d) return;
     pindahHalaman('jual');
+    if (_tukarKeJual) { alert('Keranjang sedang terikat TUKAR (' + (_tukarKeJual.ringkas || '') + '). Simpan keranjang tukarnya atau tekan "batal tukar" dulu, baru catat jual pesanan.'); return; }
     wzReset();                       // reset DULU — ia yang melepas ikatan lama
     _pesananKeJual = String(id);     // baru ikat yang ini
     wzNama(d.namaPelanggan || '');
@@ -16307,8 +16332,26 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   let _tukarKeJual = null;   // { returDraf, kredit, ringkas }  atau  { susulanReturId, kredit: 0, ... }
   const KUNCI_TUKAR_SETENGAH = 'miqbal_tukar_setengah_v1';
   function tkKreditTagihan() { return (_tukarKeJual && !_tukarKeJual.susulanReturId) ? (_tukarKeJual.kredit || 0) : 0; }
-  function tkJurnalTulis(isi) { try { localStorage.setItem(KUNCI_TUKAR_SETENGAH, JSON.stringify(isi)); } catch (e) { console.error(e); } }
-  function tkJurnalHapus() { try { localStorage.removeItem(KUNCI_TUKAR_SETENGAH); } catch (e) { /* abaikan */ } }
+  // Jurnal BANYAK slot, satu per retur: tukar berikutnya tidak boleh menimpa tukar yang masih
+  // setengah jadi (sisir 11 Sep). Bentuk lama (satu objek) tetap terbaca.
+  function tkJurnalBaca() {
+    let j = null;
+    try { j = JSON.parse(localStorage.getItem(KUNCI_TUKAR_SETENGAH) || 'null'); } catch (e) { j = null; }
+    if (!j) return [];
+    return (Array.isArray(j) ? j : [j]).filter(x => x && x.returDoc && x.returDoc.id != null);
+  }
+  function tkJurnalSimpan(daftar) {
+    try {
+      if (daftar.length) localStorage.setItem(KUNCI_TUKAR_SETENGAH, JSON.stringify(daftar));
+      else localStorage.removeItem(KUNCI_TUKAR_SETENGAH);
+    } catch (e) { console.error(e); }
+  }
+  function tkJurnalTulis(isi) {
+    const id = String(isi.returDoc.id);
+    tkJurnalSimpan(tkJurnalBaca().filter(x => String(x.returDoc.id) !== id).concat([Object.assign({ pada: Date.now() }, isi)]));
+  }
+  function tkJurnalHapus(id) { tkJurnalSimpan(tkJurnalBaca().filter(x => String(x.returDoc.id) !== String(id))); }
+  let _tkMenyimpan = false;   // simpan tukar sedang berjalan — pemulihan TIDAK boleh berbunyi di tengahnya
   // Satu penulis retur (+ Karantina bila tidak utuh) untuk SEMUA jalur: simpanRetur dan tukar.
   // Bentuk dokumen Karantina persis seperti sejak dulu — satu tempat, jadi tidak bisa berselisih.
   async function tulisReturDanKarantina(doc) {
@@ -16329,7 +16372,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     }
   }
   async function tkTulisRetur(doc) {
-    try { await tulisReturDanKarantina(doc); tkJurnalHapus(); return true; }
+    try { await tulisReturDanKarantina(doc); tkJurnalHapus(doc.id); return true; }
     catch (err) {
       console.error(err);
       alert('Penjualan pengganti tersimpan, tetapi RETURNYA GAGAL tersimpan.\n\nBuka lagi halaman Jual — sistem akan menawarkan menulis returnya. Sampai itu, kas tercatat lebih sebesar nilai retur.');
@@ -16375,44 +16418,123 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   // Mengikat: form Retur direset, keranjang HP dibersihkan (pesanan ikut lepas), lalu Jual.
   function tkIkat(ikatan) {
+    // Satu keranjang memikul SATU tukar. Ikatan yang masih terbuka tidak boleh ditimpa diam-diam:
+    // draf retur pertama belum tertulis di mana pun (sisir 11 Sep).
+    if (_tukarKeJual) {
+      if (!confirm('Keranjang ini MASIH terikat tukar: ' + (_tukarKeJual.ringkas || '') + '.\n\n'
+        + 'Satu keranjang cuma memikul satu tukar. OK = lepas tukar lama (returnya BELUM tercatat — ulangi nanti) dan pakai yang baru.\n'
+        + 'Batal = tetap tukar lama; simpan keranjangnya dulu, baru catat tukar berikutnya.')) return false;
+      _tukarKeJual = null;
+    }
+    if (_pesananKeJual && !confirm('Keranjang ini sedang mencatat PESANAN. OK = lepas ikatan pesanannya (pesanan tetap belum dibayar) lalu catat tukar.')) return false;
     ['returKemasanJumlah', 'returKarungJumlah', 'returNominalRefund', 'returSelisihTukar', 'returCatatan',
       'returKemasanProduk', 'returKarungMerk'].forEach(i => { const e = document.getElementById(i); if (e) e.value = ''; });
     rtLepasNota();
     const lebar = window.matchMedia('(min-width: 700px)').matches;
-    if (!lebar) wzReset();        // HP: keranjang bersih; wzReset juga melepas ikatan pesanan & tukar lama
+    if (!lebar) {
+      // Barang yang SUDAH di keranjang tidak dibuang diam-diam: ikut jadi pengganti (pembeli
+      // yang sama) atau diparkir sebagai pembeli lain.
+      const ada = _wzItems.length ? _wzItems.slice() : null;
+      let ikut = false;
+      if (ada) {
+        ikut = confirm('Keranjang berisi ' + ada.length + ' barang (' + formatRupiah(ada.reduce((a, x) => a + (x.trx.hargaTotal || 0), 0)) + ').\n\n'
+          + 'OK = barang itu milik PEMBELI YANG SAMA dan ikut jadi pengganti tukar.\n'
+          + 'Batal = keranjang itu DIPARKIR sebagai pembeli lain; tukar mulai di keranjang kosong.');
+        if (!ikut) { wzParkirAktif(); const idB = _wzIdBerikut++; _wzUrutan.push(idB); _wzAktifId = idB; }
+      }
+      wzReset();                  // melepas ikatan pesanan; ikatan tukar lama sudah dilepas di atas
+      if (ikut) _wzItems = ada;
+    }
     _pesananKeJual = null;        // tukar & pesanan saling meniadakan (layar lebar tidak lewat wzReset)
     _tukarKeJual = ikatan;
     // jenisJualAktif WAJIB keluar dari 'retur': lanjutSimpanJual memeriksanya LEBIH DULU, jadi
     // tanpa baris ini tombol Simpan keranjang pengganti memanggil simpanRetur lagi.
     pilihJenisJual(ikatan.jenisAwal === 'kemasan' ? 'kemasan' : 'karung');
     tkGambarPita();
-    if (!lebar) wzRender();
+    if (!lebar) { if (_wzItems.length) _wz.langkah = 'bayar'; wzRender(); }
+    return true;
   }
   function tkIkatRetur(draf) {
     const ringkas = (draf.merkSumber || draf.namaProduk || 'barang') + ' ' + (draf.jumlahDikembalikan || 0).toLocaleString('id-ID')
       + ' ' + (draf.satuanNota || '') + ' (nota ' + formatTanggal(draf.notaAsalTanggal || '') + ')';
-    tkIkat({ returDraf: draf, kredit: draf.nominalRefund, ringkas, jenisAwal: draf.jenisAsal });
+    if (!tkIkat({ returDraf: draf, kredit: draf.nominalRefund, ringkas, jenisAwal: draf.jenisAsal })) return false;
     alert('Retur ' + ringkas + ' senilai ' + formatRupiah(draf.nominalRefund) + ' diikat ke keranjang.\n\n'
       + 'Sekarang pilih barang PENGGANTINYA seperti menjual biasa. Nilai retur dipotong dari keranjang, '
       + 'dan retur + penjualan pengganti tercatat BERSAMA saat keranjang disimpan.');
   }
   // ---- Retur tukar TANPA penjualan pengganti (model B 170b867, atau penggantinya terhapus) ----
+  // Tertaut = NILAI penjualan pengganti yang MASIH BERLAKU per retur. Dulu cukup satu dokumen
+  // tertaut: membatalkan SATU barang dari keranjang tukar 2 barang membuat kas kurang tanpa tanda
+  // (sisir 11 Sep). Retur gabung menyimpan nilai penggantinya, jadi kurangnya bisa diukur.
   function tkSetTertaut() {
-    const s2 = new Set();
-    ambilPenjualan().forEach(pj => { if (pj.tukarReturId) s2.add(String(pj.tukarReturId)); });
-    return s2;
+    const m = new Map();
+    ambilPenjualan().forEach(pj => {
+      if (!pj.tukarReturId) return;
+      const k = String(pj.tukarReturId);
+      const a = m.get(k) || { n: 0, rp: 0, bulat: 0 };
+      a.n++; a.rp += pj.hargaTotal || 0; a.bulat += pj.pembulatan || 0;
+      m.set(k, a);
+    });
+    return m;
+  }
+  // Penjualan hidup di UJUNG rantai koreksi (Isi HPP melahirkan id baru ber-koreksiDari).
+  function tkPenjualanHidup(id) {
+    const semua = ambilPenjualanSemua();
+    let p = semua.find(x => String(x.id) === String(id));
+    for (let i = 0; p && p.dikoreksiOleh && i < 20; i++) { const nx = String(p.dikoreksiOleh); p = semua.find(x => String(x.id) === nx); }
+    return p && penjualanMasihBerlaku(p) ? p : null;
+  }
+  // Nilai pengganti yang harus tercatat supaya kas retur ini utuh. Gabung: pengganti + pembulatan
+  // (lahir di simpan yang sama). Retur model B lama tidak menyimpan angka pasti → cukup satu.
+  function tkTargetPengganti(r) {
+    const h = r.hitunganTukarSistem || {};
+    return r.tukarModel === 'kreditBarangGabung' && h.pengganti > 0 ? h.pengganti + (h.pembulatan || 0) : null;
   }
   function tkApakahYatim(r, tertaut) {
-    return (r.tukarModel === 'kreditBarang' || r.tukarModel === 'kreditBarangGabung')
-      && !r.penggantiDikonfirmasi && !tertaut.has(String(r.id));
+    if (!(r.tukarModel === 'kreditBarang' || r.tukarModel === 'kreditBarangGabung')) return false;
+    if (r.penggantiDikonfirmasi && tkPenjualanHidup(r.penggantiDikonfirmasi.penjualanId)) return false;
+    const a = tertaut.get(String(r.id));
+    const target = tkTargetPengganti(r);
+    if (target === null) return !(a && a.n > 0);
+    return !(a && a.rp >= target - 1);
+  }
+  function tkTeksKurang(r, tertaut) {
+    const target = tkTargetPengganti(r);
+    if (target === null) return '';
+    const a = tertaut.get(String(r.id)); const rp = a ? a.rp : 0;
+    return rp > 0 ? ' · pengganti tercatat ' + formatRupiah(rp) + ' dari ' + formatRupiah(target) + ' — kurang ' + formatRupiah(target - rp)
+      : ' · pengganti ' + formatRupiah(target) + ' tidak tercatat lagi';
+  }
+  // Susulan dibaca ULANG saat simpan: di antara ikat dan simpan, retur itu bisa sudah dapat
+  // pengganti (keranjang terparkir lain, perangkat lain, "sudah dijual di nota lain").
+  function tkCekSusulan(id) {
+    const r = ambilRetur().find(x => String(x.id) === String(id));
+    if (!r) return 'Retur yang disusul keranjang ini tidak ditemukan lagi. Tekan "batal tukar" di pita dulu.';
+    if (!tkApakahYatim(r, tkSetTertaut())) return 'Retur ' + formatTanggal(r.tanggal) + ' ' + (r.jam || '')
+      + ' SUDAH punya pengganti tercatat — keranjang ini akan mencatatnya DUA KALI.\n\n'
+      + 'Tekan "batal tukar" di pita. Kalau barangnya memang untuk pembeli lain, simpan sebagai penjualan biasa.';
+    return null;
+  }
+  // Pembulatan keranjang yang terikat tukar. Tukar/biasa: atas (keranjang − kredit). SUSULAN retur
+  // GABUNG: uang yang dulu diterima = pengganti − nilai + bulat(pengganti − nilai), jadi pembulatan
+  // dihitung atas selisih yang sama, dikurangi pembulatan yang MASIH menempel di penjualan tertaut
+  // yang tersisa. Susulan retur model B: nilai returnya sudah menyerap pembulatan → atas harga penuh.
+  function tkBulat(total, cara) {
+    const tk = _tukarKeJual;
+    if (tk && tk.susulanReturId && tk.modelRetur === 'kreditBarangGabung') {
+      const a = tkSetTertaut().get(String(tk.susulanReturId)) || { rp: 0, bulat: 0 };
+      return Math.max(0, pembulatanTunai(a.rp - a.bulat + total - (tk.nilaiRetur || 0), cara) - a.bulat);
+    }
+    return pembulatanTunai(total - tkKreditTagihan(), cara);
   }
   function tkReturYatim() { const t = tkSetTertaut(); return ambilRetur().filter(r => tkApakahYatim(r, t)); }
   function tkHtmlYatim() {
     const y = tkReturYatim();
+    const tY = tkSetTertaut();
     if (!y.length) return '';
     return '<div class="rt-hitung">' + y.map(r => '<div class="rt-nota"><span><b>PENGGANTI BELUM TERCATAT</b> · tukar '
         + escapeHtml(formatTanggal(r.tanggal)) + ' ' + escapeHtml(r.jam || '') + ' · ' + escapeHtml(r.merkSumber || r.namaProduk || '')
-        + ' · retur ' + formatRupiah(r.nominalRefund || 0) + '</span>'
+        + ' · retur ' + formatRupiah(r.nominalRefund || 0) + tkTeksKurang(r, tY) + '</span>'
         + '<button type="button" class="rt-lepas" onclick="tkSusul(\'' + r.id + '\')">catat penggantinya</button>'
         + '<button type="button" class="rt-lepas" onclick="tkSudahDijual(\'' + r.id + '\')">sudah dijual di nota lain</button></div>').join('')
       + '<div class="rt-kg">Selama penggantinya belum tercatat, kas tercatat KURANG sebesar harga pengganti dan Tutup Hari terbaca LEBIH. '
@@ -16421,12 +16543,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function tkSusul(id) {
     const r = ambilRetur().find(x => String(x.id) === String(id));
     if (!r) { alert('Retur itu tidak ditemukan lagi.'); return; }
+    if (!tkApakahYatim(r, tkSetTertaut())) { alert('Retur itu sudah punya pengganti tercatat.'); rtRenderHariIni(); return; }
     const hT = r.hitunganTukarSistem || {};
     if (!confirm('Catat penjualan PENGGANTI untuk tukar ' + formatTanggal(r.tanggal) + ' ' + (r.jam || '') + ' (retur ' + formatRupiah(r.nominalRefund || 0) + ')?'
       + (hT.pengganti ? '\n\nHarga pengganti waktu itu: ' + formatRupiah(hT.pengganti) + '.' : '')
-      + '\n\nKeranjang ini dicatat PENUH, tunai — uang tukarnya sudah diterima saat tukar. '
+      + '\n\nKeranjang ini dicatat PENUH' + (hT.caraBayar ? ' (waktu tukar dibayar ' + hT.caraBayar + ' — pilih cara bayar yang sama)' : '') + ' — uang tukarnya sudah diterima saat tukar. '
       + 'Pastikan penggantinya BELUM pernah dijual di nota lain; kalau sudah, pakai "sudah dijual di nota lain".')) return;
-    tkIkat({ susulanReturId: String(r.id), kredit: 0, tanggalRetur: r.tanggal, jamRetur: r.jam, nilaiRetur: r.nominalRefund,
+    tkIkat({ susulanReturId: String(r.id), kredit: 0, tanggalRetur: r.tanggal, jamRetur: r.jam, nilaiRetur: r.nominalRefund, modelRetur: r.tukarModel,
       ringkas: r.merkSumber || r.namaProduk || '', jenisAwal: 'karung' });
   }
   function tkMenit(j) { const m = /^(\d{1,2}):(\d{2})/.exec(j || ''); return m ? (+m[1]) * 60 + (+m[2]) : 0; }
@@ -16434,12 +16557,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const r = ambilRetur().find(x => String(x.id) === String(id));
     if (!r) { alert('Retur itu tidak ditemukan lagi.'); return; }
     const hT = r.hitunganTukarSistem || {};
-    const sudahDipakai = new Set(ambilRetur().map(x => x.penggantiDikonfirmasi && x.penggantiDikonfirmasi.penjualanId).filter(Boolean).map(String));
-    const calon = ambilPenjualan().filter(pj => pj.tanggal === r.tanggal && (pj.hargaTotal || 0) > 0 && !pj.penggantiRetur
+    const sudahDipakai = new Set(ambilRetur().map(x => x.penggantiDikonfirmasi && tkPenjualanHidup(x.penggantiDikonfirmasi.penjualanId)).filter(Boolean).map(pj => String(pj.id)));
+    const hariIniSd = tanggalLokalIso();
+    const calon = ambilPenjualan().filter(pj => pj.tanggal >= r.tanggal && pj.tanggal <= hariIniSd && (pj.hargaTotal || 0) > 0 && !pj.penggantiRetur
         && !pj.tukarReturId && !sudahDipakai.has(String(pj.id)))
-      .sort((a, b) => Math.abs(tkMenit(a.jam) - tkMenit(r.jam)) - Math.abs(tkMenit(b.jam) - tkMenit(r.jam))).slice(0, 12);
-    if (!calon.length) { alert('Tidak ada penjualan bertanggal ' + formatTanggal(r.tanggal) + ' yang bisa jadi penggantinya. Pakai "catat penggantinya".'); return; }
-    const daftar = calon.map((pj, i) => (i + 1) + ') ' + (pj.jam || '--:--') + ' · ' + namaSingkatTrx(pj) + ' · ' + formatRupiah(pj.hargaTotal)).join('\n');
+      .sort((a, b) => (a.tanggal === b.tanggal ? 0 : (a.tanggal < b.tanggal ? -1 : 1)) || Math.abs(tkMenit(a.jam) - tkMenit(r.jam)) - Math.abs(tkMenit(b.jam) - tkMenit(r.jam))).slice(0, 12);
+    if (!calon.length) { alert('Tidak ada penjualan sejak ' + formatTanggal(r.tanggal) + ' yang bisa jadi penggantinya. Pakai "catat penggantinya".'); return; }
+    const daftar = calon.map((pj, i) => (i + 1) + ') ' + (pj.tanggal !== r.tanggal ? formatTanggal(pj.tanggal) + ' ' : '') + (pj.jam || '--:--') + ' · ' + namaSingkatTrx(pj) + ' · ' + formatRupiah(pj.hargaTotal)).join('\n');
     const jawab = prompt('Tukar ' + formatTanggal(r.tanggal) + ' ' + (r.jam || '') + ' · retur ' + formatRupiah(r.nominalRefund || 0)
       + (hT.pengganti ? ' · pengganti waktu itu ' + formatRupiah(hT.pengganti) : '')
       + '\n\nPenjualan mana yang PENGGANTINYA? Ketik nomornya:\n\n' + daftar, '');
@@ -16458,19 +16582,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Tukar setengah jadi: penjualan pengganti tersimpan tetapi returnya tidak (halaman mati di
   // antara dua tulisan). Diperiksa tiap halaman Jual dibuka.
   async function tkCekSetengah() {
-    let j = null;
-    try { j = JSON.parse(localStorage.getItem(KUNCI_TUKAR_SETENGAH) || 'null'); } catch (e) { j = null; }
-    if (!j || !j.returDoc) return;
-    const id = String(j.returDoc.id);
+    if (_tkMenyimpan) return;
     const antre = ambilAntreanTunda();
-    if (ambilRetur().some(r => String(r.id) === id) || antre.some(q => q.koleksi === KOLEKSI_RETUR && String(q.data && q.data.id) === id)) { tkJurnalHapus(); return; }
-    const adaJual = ambilPenjualan().some(pj => String(pj.tukarReturId) === id)
-      || antre.some(q => q.koleksi === KOLEKSI_PENJUALAN && String(q.data && q.data.tukarReturId) === id);
-    if (!adaJual) { tkJurnalHapus(); return; }   // penjualannya pun tidak lahir — tidak ada yang setengah
-    if (!confirm('TUKAR SETENGAH JADI: penjualan pengganti sudah tersimpan, tetapi returnya ('
-      + (j.returDoc.merkSumber || j.returDoc.namaProduk || '') + ', ' + formatRupiah(j.returDoc.nominalRefund || 0) + ') BELUM.\n\n'
-      + 'Tanpa returnya kas tercatat LEBIH sebesar nilai retur. Tulis returnya sekarang?')) return;
-    if (await tkTulisRetur(j.returDoc)) alert('Returnya sudah tertulis.');
+    for (const j of tkJurnalBaca()) {
+      const id = String(j.returDoc.id);
+      if (Date.now() - (j.pada || 0) < 20000) continue;   // bisa jadi simpan yang masih berjalan (tab lain)
+      if (ambilRetur().some(r => String(r.id) === id) || antre.some(q => q.koleksi === KOLEKSI_RETUR && String(q.data && q.data.id) === id)) { tkJurnalHapus(id); continue; }
+      const adaJual = ambilPenjualan().some(pj => String(pj.tukarReturId) === id)
+        || antre.some(q => q.koleksi === KOLEKSI_PENJUALAN && String(q.data && q.data.tukarReturId) === id);
+      if (!adaJual) { tkJurnalHapus(id); continue; }   // penjualannya pun tidak lahir — tidak ada yang setengah
+      if (!confirm('TUKAR SETENGAH JADI: penjualan pengganti sudah tersimpan, tetapi returnya ('
+        + (j.returDoc.merkSumber || j.returDoc.namaProduk || '') + ', ' + formatRupiah(j.returDoc.nominalRefund || 0) + ') BELUM.\n\n'
+        + 'Tanpa returnya kas tercatat LEBIH sebesar nilai retur. Tulis returnya sekarang?')) continue;   // Batal: jurnal TETAP
+      if (await tkTulisRetur(j.returDoc)) alert('Returnya sudah tertulis.');
+    }
   }
   function rtKunciNota(p) { return String(p.trxId || p.grupNota || p.id); }
   function rtBacaAngka(id) {
@@ -16979,7 +17104,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // simpanPenjualan, bacaRincianJual); keempatnya wajib memotong angka yang sama.
     const kredit = tkKreditTagihan();
     const bersih = total - kredit;
-    const bulat = pembulatanTunai(bersih, cara);
+    const bulat = tkBulat(total, cara);
     return { sub, pot, total, cara, bulat, kredit, bersih, tagihan: bersih + bulat };
   }
   // Chip "bulat 1rb / bulat 5rb" (pembulatan KE BAWAH sebagai potongan) DICABUT 5 Sep 2026:
@@ -17013,6 +17138,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Tukar: ditolak DI SINI, sebelum lembar konfirmasi menjanjikan "JADI PIUTANG" yang toh
     // ditolak simpanKeranjangJual. Kalimatnya sama dengan penjaga di jalur tulis.
     if (_tukarKeJual) {
+      if (_tukarKeJual.susulanReturId) { const cekS = tkCekSusulan(_tukarKeJual.susulanReturId); if (cekS) { alert(cekS); return; } }
       if (cara === 'Kredit') {
         alert('Tukar tidak bisa dicatat KREDIT — ' + (_tukarKeJual.susulanReturId ? 'uang tukarnya sudah diterima saat tukar.' : 'barangnya dibayar dengan barang yang kembali, bukan dengan utang.')
           + '\n\nPilih Tunai atau QRIS.');
@@ -17070,7 +17196,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
   function wzKe(langkah) { _wz.langkah = langkah; wzRender(); }
   function wzReset(tanya) {
-    if (tanya && _wzItems.length && !confirm('Buang ' + _wzItems.length + ' item di keranjang?')) return;
+    if (tanya && _tukarKeJual) {
+      if (!confirm('Batalkan keranjang ini? Ikatan tukar (' + (_tukarKeJual.ringkas || '') + ') ikut DILEPAS — returnya BELUM tercatat.'
+        + (_wzItems.length ? '\n\n' + _wzItems.length + ' item di keranjang ikut dibuang.' : ''))) return;
+    } else if (tanya && _wzItems.length && !confirm('Buang ' + _wzItems.length + ' item di keranjang?')) return;
     // IKATAN PESANAN IKUT DILEPAS. Sebelum ini _pesananKeJual hanya dibersihkan di jalur
     // SUKSES simpanKeranjangJual, jadi ia bertahan melewati wizard yang ditinggalkan —
     // dan keranjang BERIKUTNYA, untuk siapa pun, menandai pesanan lama itu DIBAYAR.
@@ -17100,6 +17229,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('halamanJual').classList.remove('wz-retur');
     document.body.classList.remove('wz-retur-aktif');
     wzKe(j === 'kemasan' ? 'jenis' : (j === 'karung' ? 'ukuranSack' : (j === 'literan' ? 'produkL' : 'merkR')));
+  }
+  // Keluar dari mode Retur di HP TANPA membuang keranjang atau ikatan tukarnya. Dulu tombolnya
+  // wzReset(): keranjang yang sedang disusun dan ikatan tukar hilang tanpa sepatah kata.
+  function wzKeluarRetur() {
+    if (!_wzItems.length && !_tukarKeJual) { wzReset(); return; }
+    rtLepasNota();
+    document.getElementById('halamanJual').classList.remove('wz-retur');
+    document.body.classList.remove('wz-retur-aktif');
+    pilihJenisJual(_tukarKeJual && _tukarKeJual.jenisAwal === 'kemasan' ? 'kemasan' : 'karung');
+    _wz = { jalur: null, langkah: _wzItems.length ? 'bayar' : 'jalur', merk: null, maks: null };
+    tkGambarPita();
+    wzRender();
   }
   function wzPilihJenis(jenis) { _wz.jenisBeras = jenis; wzKe('merk'); }
   function wzPilihMerk(nama) { _wz.merk = nama; wzKe('ukuran'); }
@@ -17723,7 +17864,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (document.getElementById('halamanJual').classList.contains('wz-retur')) {
         document.getElementById('wzLangkahLabel').textContent = 'Retur';
         document.getElementById('wzTanya').innerHTML =
-          '<button type="button" class="wz-balik" onclick="wzReset()">\u2190 balik ke Jual</button>';
+          '<button type="button" class="wz-balik" onclick="wzKeluarRetur()">\u2190 balik ke Jual</button>';
         document.getElementById('wzBatal').style.display = 'none';
         document.getElementById('wzSering').style.display = 'none';
         return;
@@ -18329,6 +18470,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + '\n\nPilih Tunai atau QRIS.');
       return;
     }
+    if (tk && tk.susulanReturId) { const cekS = tkCekSusulan(tk.susulanReturId); if (cekS) { alert(cekS); return; } }
     if (tk && !tk.susulanReturId) {
       if (totalSetelahPot - kreditTukar < 0) {
         alert('Nilai retur ' + formatRupiah(kreditTukar) + ' lebih besar dari keranjang pengganti ' + formatRupiah(totalSetelahPot)
@@ -18338,7 +18480,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const cek = tkCekDraf(tk.returDraf);
       if (cek) { alert(cek); return; }
     }
-    const bulatNota = pembulatanTunai(totalSetelahPot - kreditTukar, caraBayar);   // atas SELISIH BERSIH bila tukar
+    const bulatNota = tkBulat(totalSetelahPot, caraBayar);   // atas SELISIH BERSIH bila tukar
     const tagihanNota = totalSetelahPot - kreditTukar + bulatNota;
     if (tk && _wzUang > 0 && _wzUang < tagihanNota) {
       alert('Tukar tidak bisa dibayar sebagian: uang diterima ' + formatRupiah(_wzUang) + ', yang harus dibayar ' + formatRupiah(tagihanNota) + '.');
@@ -18389,7 +18531,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       hitunganTukarSistem: { pengganti: totalSetelahPot, kredit: kreditTukar, bersih: totalSetelahPot - kreditTukar,
         pembulatan: bulatNota, caraBayar, dibayarPembeli: tagihanNota, dikembalikanToko: 0 }
     }) : null;
-    if (returTukar) tkJurnalTulis({ returDoc: returTukar, trxId: String(trxId) });
+    if (returTukar) { _tkMenyimpan = true; tkJurnalTulis({ returDoc: returTukar, trxId: String(trxId) }); }
     for (const x of items) {
       const trx = x.trx;
       trx.id = idUnik(); trx.trxId = trxId; trx.tanggal = tanggal; trx.jam = jam;
@@ -18415,7 +18557,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       }
     }
     // RETUR TUKAR ditulis SESUDAH semua penjualan pengganti (lihat TUKAR → JUAL: urutan tulis).
-    if (returTukar) await tkTulisRetur(returTukar);
+    if (returTukar) { await tkTulisRetur(returTukar); _tkMenyimpan = false; }
     // Pelunasan sebagian ditulis SESUDAH semua item tersimpan — kalau penjualannya gagal
     // tersimpan, jangan sampai lahir pelunasan atas utang yang tidak pernah ada.
     if (bayarSebagian > 0) {
@@ -18611,6 +18753,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const kreditTukar = tkKreditTagihan();
     if (tk) {
       if (transaksi.caraBayar === 'Kredit') { alert('Tukar tidak bisa dicatat KREDIT. Pilih Tunai atau QRIS.'); return; }
+      if (tk.susulanReturId) { const cekS = tkCekSusulan(tk.susulanReturId); if (cekS) { alert(cekS); return; } }
       if (!tk.susulanReturId) {
         if (transaksi.hargaTotal - kreditTukar < 0) {
           alert('Nilai retur ' + formatRupiah(kreditTukar) + ' lebih besar dari harga pengganti ' + formatRupiah(transaksi.hargaTotal)
@@ -18623,7 +18766,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       transaksi.tukarReturId = String(tk.susulanReturId || tk.returDraf.id);
     }
     const hargaPengganti = transaksi.hargaTotal;
-    const bulatJual = pembulatanTunai(transaksi.hargaTotal - kreditTukar, transaksi.caraBayar);   // atas SELISIH BERSIH bila tukar
+    const bulatJual = tkBulat(transaksi.hargaTotal, transaksi.caraBayar);   // atas SELISIH BERSIH bila tukar
     tempelPembulatan([transaksi], bulatJual);   // tunai: ke atas Rp500
     const returTukar = (tk && !tk.susulanReturId) ? Object.assign({}, tk.returDraf, {
       tanggal: transaksi.tanggal, jam: transaksi.jam, penjualanPenggantiId: String(transaksi.id),
@@ -18645,7 +18788,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       }
     }
 
-    if (returTukar) tkJurnalTulis({ returDoc: returTukar, trxId: String(transaksi.id) });
+    if (returTukar) { _tkMenyimpan = true; tkJurnalTulis({ returDoc: returTukar, trxId: String(transaksi.id) }); }
     try {
       await simpanKeFirestore(KOLEKSI_PENJUALAN, transaksi);
       // Catat pemakaian kemasan literan (mengurangi stok) — sepasang dengan transaksi jual, jadi
@@ -18664,7 +18807,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       semuaLokal.unshift(transaksi);
       localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(semuaLokal));
     }
-    if (returTukar) await tkTulisRetur(returTukar);   // retur SESUDAH penjualan penggantinya
+    if (returTukar) { await tkTulisRetur(returTukar); _tkMenyimpan = false; }   // retur SESUDAH penjualan penggantinya
     _tukarKeJual = null;
     tkGambarPita();
     unduhBackup(true);
@@ -30838,6 +30981,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     baris.push(['Total tercatat', formatRupiah(p.hargaTotal || 0)]);
     if (p.pembulatan > 0) baris.push(['Termasuk pembulatan', '+' + formatRupiah(p.pembulatan) + ' ke Rp500 (tunai, aturan meja kasir)']);
     if (p.caraBayar) baris.push(['Cara bayar', p.caraBayar]);
+    if (p.tukarReturId) {
+      const rT = ambilRetur().find(x => String(x.id) === String(p.tukarReturId));
+      const hT = (rT && rT.hitunganTukarSistem) || {};
+      const asli = rT && rT.tukarModel === 'kreditBarangGabung'
+        && (String(rT.penjualanPenggantiTrxId || '') === String(p.trxId || '-') || String(rT.penjualanPenggantiId || '') === String(p.id));
+      baris.push(['Tukar', asli
+        ? 'pengganti tukar — barang kembali senilai ' + formatRupiah(rT.nominalRefund || 0) + ' dipotong dari nota ini'
+          + (hT.dibayarPembeli != null ? '; pembeli membayar ' + formatRupiah(hT.dibayarPembeli) + ' untuk seluruh nota' : '')
+          + '. Total tercatat = harga barang penuh; nilai yang kembali tercatat di retur.'
+        : 'susulan pengganti tukar' + (rT ? ' ' + formatTanggal(rT.tanggal) + ' ' + (rT.jam || '') : '') + ' — uangnya diterima saat tukar']);
+    }
     if (p.penggantiRetur) baris.push(['Pengganti retur', 'Omzet & kas Rp0 — nilai barang ' + formatRupiah(p.nilaiBarangPengganti || 0) + '. Uangnya terwakili penjualan asli + selisih di catatan Retur.']);
     if (p.perluKoreksi) baris.push(['Dari kasir', '<b class="ph-amber">Perlu dirapikan</b> — harga di luar katalog, jumlah belum pasti' + (jumlahTrx(p) && jumlahTrx(p).nilai > 0 ? '' : ', <b class="ph-merah">stok belum terpotong</b>')]);
     else if (p.jumlahDiturunkan) baris.push(['Dari kasir', 'Jumlah diturunkan dari harga (bukan ketikan) — pembagiannya pas']);
@@ -30908,6 +31062,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     });
     baris.push('------------------------------');
     baris.push('*TOTAL   ' + formatRupiah(total) + '*');
+    // Struk tukar: tanpa baris ini struk menyatakan pembeli membayar harga penuh.
+    const idTukar = grup.map(x => x.tukarReturId).filter(Boolean)[0];
+    const rT = idTukar ? ambilRetur().find(x => String(x.id) === String(idTukar)) : null;
+    if (rT && rT.tukarModel === 'kreditBarangGabung'
+      && (String(rT.penjualanPenggantiTrxId || '') === String(p.trxId || '-') || String(rT.penjualanPenggantiId || '') === String(p.id))) {
+      const hT = rT.hitunganTukarSistem || {};
+      const penuh = total >= (hT.pengganti || 0) + (hT.pembulatan || 0) - 1;
+      baris.push('Tukar: barang kembali   −' + formatRupiah(rT.nominalRefund || 0));
+      if (hT.dibayarPembeli != null) baris.push('*DIBAYAR PEMBELI   ' + formatRupiah(hT.dibayarPembeli) + '*' + (penuh ? '' : ' (seluruh nota tukar)'));
+    }
     if (caraBayarKunci(p) === 'kredit') {
       baris.push('KREDIT — belum dibayar');
       if (p.namaPelanggan) baris.push('a.n. ' + p.namaPelanggan);
@@ -30940,7 +31104,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!_trxTerbuka) return;
     // Pengganti TUKAR tidak boleh dikoreksi jumlahnya: koreksi membulatkan ulang atas harga
     // KOTOR dan memutus hitungan tukarnya (pembulatan atas selisih bersih lenyap).
-    if (_trxTerbuka.tukarReturId) { alert('Penjualan ini pengganti TUKAR. Mengoreksi jumlahnya memutus hitungan tukarnya.\n\nBatalkan transaksi ini, lalu ulangi tukarnya dari Retur.'); return; }
+    if (_trxTerbuka.tukarReturId) { alert('Penjualan ini pengganti TUKAR. Mengoreksi jumlahnya memutus hitungan tukarnya.\n\nBatalkan transaksi ini, lalu di layar Retur tekan "catat penggantinya" pada tukarnya. JANGAN ulangi tukarnya dari nota — barang yang kembali akan terkredit dua kali.'); return; }
     const j = jumlahTrx(_trxTerbuka);
     document.getElementById('labelKoreksiJumlah').textContent = `Jumlah yang benar (${j.satuan})`;
     document.getElementById('koreksiJumlah').value = j.nilai;
@@ -31093,6 +31257,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   async function mulaiBatalkanTrx() {
     if (!_trxTerbuka) return;
     const p = _trxTerbuka;
+    if (p.tukarReturId && !confirm('Penjualan ini PENGGANTI TUKAR. Membatalkannya TIDAK membatalkan returnya — retur itu akan tampil '
+      + '"PENGGANTI BELUM TERCATAT" di layar Retur, dan kas tercatat kurang sampai penggantinya dicatat lagi lewat "catat penggantinya".\n\nLanjut membatalkan?')) return;
     const alasan = prompt('Kenapa transaksi ini dibatalkan?\n(Barisnya tetap tersimpan dan ditandai "dibatalkan" — tidak dihapus.)', '');
     if (alasan === null) return;
     if (!alasan.trim()) { alert('Alasan wajib diisi supaya jejaknya bisa dibaca nanti.'); return; }
@@ -32717,7 +32883,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.wzLepasPesanan = wzLepasPesanan;
   window.wzPilihJenis = wzPilihJenis; window.wzPilihMerk = wzPilihMerk; window.wzKlikOpsi = wzKlikOpsi;
   window.wzPilihSack = wzPilihSack; window.wzSering = wzSering; window.wzIsiJumlah = wzIsiJumlah;
-  window.wzUbah = wzUbah; window.wzBayar = wzBayar; window.wzNama = wzNama; window.wzSimpan = wzSimpan;
+  window.wzUbah = wzUbah; window.wzBayar = wzBayar; window.wzNama = wzNama; window.wzSimpan = wzSimpan; window.wzKeluarRetur = wzKeluarRetur;
   window.wzJumlahDiketik = wzJumlahDiketik; window.wzHargaDiketik = wzHargaDiketik;
   window.wzNegoUbah = wzNegoUbah; window.wzBonusToggle = wzBonusToggle; window.wzTambahItem = wzTambahItem;
   window.wzPembeliLain = wzPembeliLain; window.wzTukarKeranjang = wzTukarKeranjang;
