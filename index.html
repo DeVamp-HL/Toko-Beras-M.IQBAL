@@ -6753,6 +6753,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   <div id="lembarTrxForm" style="display:none;">
     <label id="labelKoreksiJumlah">Jumlah yang benar</label>
     <input type="number" id="koreksiJumlah" placeholder="0" inputmode="numeric" oninput="perbaruiDampakKoreksi()">
+    <div id="koreksiUangWrap">
+      <label>Total nota (uang / piutang)</label>
+      <div class="tab-bayar">
+        <button type="button" id="koreksiUangIkut" onclick="pilihKoreksiUang('ikut')">Ikut jumlah baru</button>
+        <button type="button" id="koreksiUangTetap" onclick="pilihKoreksiUang('tetap')">Tetap — jumlahnya salah catat</button>
+      </div>
+      <p class="keterangan">Wajib dipilih. <b>Ikut jumlah baru</b>: harga per satuan tetap, total nota ikut berubah. <b>Tetap</b>: total nota sudah benar (uang di laci, QRIS, atau piutangnya), cuma jumlah barangnya salah catat — total tidak berubah, modal &amp; stok mengikuti jumlah yang benar.</p>
+    </div>
     <label>Alasan koreksi</label>
     <input type="text" id="koreksiAlasan" placeholder="Contoh: salah jumlah, salah produk">
     <div id="dampakKoreksi" class="pratinjau-harga" style="display:none;"></div>
@@ -31250,7 +31258,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Berlabel "Koreksi", bukan "Asal": dokumen darurat yang cara bayar/namanya
     // diperbaiki punya DUA baris asal-usul sekaligus (dari kasir darurat + koreksi dari
     // dokumen sebelumnya), dan dua baris berlabel sama persis bertumpuk itu membingungkan.
-    if (p.koreksiDari && !p.asalDarurat) baris.push(['Koreksi', 'Dari #' + String(p.koreksiDari).slice(-4) + ' — ' + escapeHtml(p.alasanKoreksi || '')]);
+    if (p.asalDarurat && p.koreksiDari && p.koreksiUangTetap && String(p.koreksiUangTetap) === String(p.koreksiDari))
+      baris.push(['Koreksi', 'jumlah dibetulkan, total tetap — ' + escapeHtml(p.alasanKoreksi || '')]);
+    if (p.koreksiDari && !p.asalDarurat) baris.push(['Koreksi', 'Dari #' + String(p.koreksiDari).slice(-4) + ' — ' + escapeHtml(p.alasanKoreksi || '') + (p.koreksiUangTetap && String(p.koreksiUangTetap) === String(p.koreksiDari) ? ' · jumlah dibetulkan, total tetap' : '')]);
     document.getElementById('lembarTrxRincian').innerHTML = baris.map(b =>
       `<div class="ltx-baris"><span>${b[0]}</span><b>${b[1]}</b></div>`).join('');
     // Transaksi yang sudah mati (dibatalkan/dikoreksi) tidak bisa dikoreksi lagi —
@@ -31339,6 +31349,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('labelKoreksiJumlah').textContent = `Jumlah yang benar (${j.satuan})`;
     document.getElementById('koreksiJumlah').value = j.nilai;
     document.getElementById('koreksiAlasan').value = '';
+    _koreksiUang = null;   // TANPA bawaan: "jumlah salah, uang benar" dan "pembeli memang ambil lebih" beda arti uangnya
+    ['koreksiUangIkut', 'koreksiUangTetap'].forEach(i => document.getElementById(i).classList.remove('pilih'));
+    document.getElementById('koreksiUangWrap').style.display = j.nilai > 0 ? 'block' : 'none';
     document.getElementById('lembarTrxAksi').style.display = 'none';
     document.getElementById('lembarTrxForm').style.display = 'block';
     perbaruiDampakKoreksi();
@@ -31368,20 +31381,72 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const bulatLama = p.pembulatan || 0;   // pembulatan Rp500 bukan harga barang — dikeluarkan dulu, dibulatkan ulang sesudahnya
     const satuanHarga = j.nilai > 0 ? ((p.hargaTotal || 0) - bulatLama) / j.nilai : 0;
     const katalogBaru = Math.round(satuanHarga * baru);
-    const totalBaru = isiPertama ? (p.hargaTotal || 0) : katalogBaru + (koreksiTanggungBulat(p) ? bulatKeAtas500(katalogBaru) - katalogBaru : 0);
+    const totalIkut = katalogBaru + (koreksiTanggungBulat(p) ? bulatKeAtas500(katalogBaru) - katalogBaru : 0);
+    const tetap = !isiPertama && _koreksiUang === 'tetap';
+    const totalBaru = (isiPertama || tetap) ? (p.hargaTotal || 0) : totalIkut;
     const selisih = totalBaru - (p.hargaTotal || 0);
     const kembali = j.nilai - baru;
+    const stokS = koreksiStokSesudah(p, j, baru);
+    const returN = tetap ? koreksiReturNota(p) : [];
+    const hppBaruT = j.nilai > 0 ? Math.round((p.hppTotalSaatJual || 0) / j.nilai * baru) : 0;
     el.style.display = 'block';
     el.innerHTML =
       `<div class="ph-baris"><span>Jumlah</span><b>${j.nilai} → ${baru} ${j.satuan}</b></div>` +
       `<div class="ph-baris"><span>Stok ${escapeHtml(p.namaProduk || p.merkSumber || '')}</span><b>${kembali > 0 ? 'kembali ' + kembali : 'berkurang ' + Math.abs(kembali)} ${j.satuan}</b></div>` +
+      (stokS ? `<div class="ph-baris"><span>Sisa stok</span><b class="${stokS.sesudah < 0 ? 'ph-merah' : ''}">${stokS.kini.toLocaleString('id-ID')} → ${stokS.sesudah.toLocaleString('id-ID')} ${stokS.satuan}${stokS.sesudah < 0 ? ' — MINUS: cocokkan dengan rak dulu' : ''}</b></div>` : '') +
       (isiPertama
         ? `<div class="ph-baris"><span>Uang</span><b>${formatRupiah(totalBaru)} — tidak diubah</b></div>` +
           `<div class="ph-catatan">Jumlah baru diisi pertama kali (dari kasir tanpa katalog). Uang yang diterima kasir dipertahankan; HPP diisi dari stok terkini.</div>`
-        : `<div class="ph-baris"><span>Omzet ${escapeHtml(formatTanggal(p.tanggal))}</span><b class="${selisih < 0 ? 'ph-merah' : 'ph-hijau'}">${selisih < 0 ? '−' : '+'} ${formatRupiah(Math.abs(selisih))}</b></div>` +
-          `<div class="ph-baris"><span>Total baru</span><b>${formatRupiah(totalBaru)}</b></div>`);
+        : (!_koreksiUang
+          // Belum memilih: kedua akibat disebut dengan angkanya, supaya pilihannya dibuat dengan mata terbuka.
+          ? `<div class="ph-baris"><span>Ikut jumlah baru</span><b>total ${formatRupiah(totalIkut)} (omzet ${totalIkut - (p.hargaTotal || 0) < 0 ? '−' : '+'} ${formatRupiah(Math.abs(totalIkut - (p.hargaTotal || 0)))})</b></div>` +
+            `<div class="ph-baris"><span>Uang tetap</span><b>total tetap ${formatRupiah(p.hargaTotal || 0)}</b></div>` +
+            `<div class="ph-catatan">Pilih dulu salah satu di atas.</div>`
+          : (tetap
+            ? (!(baru > 0)
+              ? `<div class="ph-catatan ph-merah">Jumlah 0 dengan total tetap ditolak — barangnya tidak ada tapi uangnya diterima. Tutup lembar ini, buka lagi, lalu tekan "Batalkan transaksi".</div>`
+              : returN.length
+                ? `<div class="ph-catatan ph-merah">Nota ini sudah diretur (${returN.length}×) — "tetap" ditolak: harga per satuan yang dipakai retur akan berubah dan refund bisa melebihi uang yang diterima. Pakai "Ikut jumlah baru", atau hapus returnya dulu.</div>`
+                : `<div class="ph-baris"><span>Total nota ${escapeHtml(formatTanggal(p.tanggal))}</span><b>${formatRupiah(p.hargaTotal || 0)} — tetap</b></div>` +
+                  `<div class="ph-baris"><span>Harga per ${escapeHtml(j.satuan)}</span><b>${formatRupiah(Math.round(((p.hargaTotal || 0) - bulatLama) / baru))}</b></div>` +
+                  (p.jenis === 'literan'
+                    ? `<div class="ph-catatan">Modal beras & kemasan dihitung ulang saat disimpan.</div>`
+                    : (!hppTercatat(p)
+                      ? `<div class="ph-catatan">Modal nota ini belum tercatat — laba belum bisa dihitung. Isi lewat "Isi HPP".</div>`
+                      : `<div class="ph-baris"><span>Modal (HPP)</span><b>${formatRupiah(hppBaruT)} — laba ${escapeHtml(formatTanggal(p.tanggal))} ${baru > j.nilai ? 'turun' : 'naik'} ${formatRupiah(Math.abs(hppBaruT - (p.hppTotalSaatJual || 0)))}</b></div>` +
+                        (hppBaruT > (p.hargaTotal || 0) ? `<div class="ph-catatan ph-merah">Sesudah koreksi nota ini RUGI ${formatRupiah(hppBaruT - (p.hargaTotal || 0))} — modal lebih besar dari totalnya. Yakin jumlah & totalnya benar?</div>` : ''))))
+            : `<div class="ph-baris"><span>Omzet ${escapeHtml(formatTanggal(p.tanggal))}</span><b class="${selisih < 0 ? 'ph-merah' : 'ph-hijau'}">${selisih < 0 ? '−' : '+'} ${formatRupiah(Math.abs(selisih))}</b></div>` +
+              `<div class="ph-baris"><span>Total baru</span><b>${formatRupiah(totalBaru)}</b></div>`)));
   }
 
+  let _koreksiUang = null;   // 'ikut' | 'tetap' | null — lihat mulaiKoreksiTrx
+  // Retur yang menunjuk nota ini (seluruh rantai koreksinya). "Uang tetap" mengubah harga per satuan yang
+  // dipakai retur berikutnya: retur lama dinilai dengan harga lama, sisanya dengan harga baru — total refund
+  // bisa melebihi uang yang pernah diterima (sisir 11 Sep). Selama nota sudah diretur, "tetap" ditolak.
+  function koreksiReturNota(p) {
+    const rantai = rtRantaiNota(p);
+    return ambilRetur().filter(r => r.notaAsalId != null && rantai.indexOf(String(r.notaAsalId)) >= 0);
+  }
+  // Sisa stok sesudah koreksi — bukti yang dicari pemilik ("apa stoknya jadi minus?"). Mesin stok sudah
+  // memotong jumlah LAMA; koreksi menambah potongan sebesar selisihnya.
+  function koreksiStokSesudah(p, j, baru) {
+    const beda = baru - j.nilai;
+    if (p.jenis === 'kemasan') {
+      const sk = hitungStokKemasan()[kunciKemasan(p.namaProduk, p.ukuranKemasan)];
+      return sk ? { kini: sk.sisaUnit, sesudah: sk.sisaUnit - beda, satuan: 'unit' } : null;
+    }
+    const st = p.merkSumber ? hitungStokKarungPerMerk()[p.merkSumber] : null;
+    if (!st) return null;
+    const kg = p.jenis === 'karung' ? beda * (p.beratKarungAcuan || 50)
+      : (p.jenis === 'literan' ? beda * (p.rasioPakai || RASIO_DEFAULT) : beda);
+    return { kini: st.sisaKg, sesudah: Math.round((st.sisaKg - kg) * 100) / 100, satuan: 'kg' };
+  }
+  function pilihKoreksiUang(m) {
+    _koreksiUang = m;
+    document.getElementById('koreksiUangIkut').classList.toggle('pilih', m === 'ikut');
+    document.getElementById('koreksiUangTetap').classList.toggle('pilih', m === 'tetap');
+    perbaruiDampakKoreksi();
+  }
   async function simpanKoreksiTrx() {
     if (!_trxTerbuka) return;
     const p = _trxTerbuka;
@@ -31391,6 +31456,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!(baru >= 0)) { alert('Isi jumlah yang benar.'); return; }
     if (baru === j.nilai) { alert('Jumlahnya sama dengan yang tercatat — tidak ada yang perlu dikoreksi.'); return; }
     if (!alasan) { alert('Isi alasan koreksinya — supaya jejaknya bisa dibaca nanti.'); return; }
+    if (j.nilai > 0 && _koreksiUang !== 'ikut' && _koreksiUang !== 'tetap') {
+      alert('Pilih dulu: uang yang diterima IKUT jumlah baru, atau TETAP (jumlahnya yang salah catat).'); return;
+    }
+    if (j.nilai > 0 && _koreksiUang === 'tetap' && !(baru > 0)) {
+      alert('Jumlah 0 dengan total tetap tidak masuk akal — barangnya tidak ada tapi uangnya diterima.\n\nTutup lembar ini, buka lagi, lalu tekan "Batalkan transaksi".'); return;
+    }
+    if (j.nilai > 0 && _koreksiUang === 'tetap') {
+      const returN = koreksiReturNota(p);
+      if (returN.length) {
+        alert('Nota ini sudah diretur (' + returN.length + '×). Koreksi "total tetap" mengubah harga per satuan yang dipakai retur — refund berikutnya bisa melebihi uang yang pernah diterima.\n\n'
+          + 'Pakai "Ikut jumlah baru", atau hapus returnya dulu lalu catat ulang sesudah koreksi.'); return;
+      }
+    }
     const bulatLama = p.pembulatan || 0;
     const satuanHarga = j.nilai > 0 ? ((p.hargaTotal || 0) - bulatLama) / j.nilai : 0;
     const katalogBaru = Math.round(satuanHarga * baru);
@@ -31403,10 +31481,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Sekarang: uang dipertahankan apa adanya, dan HPP diisi dari stok terkini —
     // pola yang sama dengan rincian kasir darurat.
     const isiPertamaKali = !(j.nilai > 0);
+    // UANG TETAP: total nota (dan pembulatannya) dipertahankan apa adanya — uang di laci sudah benar,
+    // Tutup Hari hari itu tidak boleh bergeser. Modal & stok tetap mengikuti jumlah yang benar (di bawah).
+    const uangTetap = !isiPertamaKali && _koreksiUang === 'tetap';
     const pengganti = {
       ...p, id: idBaru,
       [j.field]: baru,
-      hargaTotal: isiPertamaKali ? (p.hargaTotal || 0) : katalogBaru + bulatBaru,
+      hargaTotal: (isiPertamaKali || uangTetap) ? (p.hargaTotal || 0) : katalogBaru + bulatBaru,
       hppTotalSaatJual: j.nilai > 0 ? Math.round((p.hppTotalSaatJual || 0) / j.nilai * baru) : 0,
       koreksiDari: p.id, alasanKoreksi: alasan,
       dikoreksiPada: new Date().toISOString()
@@ -31415,7 +31496,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // "Rapikan dari kasir" benar-benar kosong sesudah dirapikan.
     delete pengganti.perluKoreksi;
     delete pengganti.jumlahDiturunkan;
-    if (!isiPertamaKali) { if (bulatBaru > 0) pengganti.pembulatan = bulatBaru; else delete pengganti.pembulatan; }
+    if (!isiPertamaKali && !uangTetap) { if (bulatBaru > 0) pengganti.pembulatan = bulatBaru; else delete pengganti.pembulatan; }
+    // Penanda DIIKAT ke induknya (id nota yang dikoreksi): koreksi berikutnya, Isi HPP, dan perbaikan cara bayar
+    // menyalin dokumen dengan {...p}; penanda yang cuma "true" akan ikut dan mengaku "uang tetap" untuk langkah
+    // yang justru mengubah uang. hargaAsliSatuan (harga DAFTAR sebelum tawar) sengaja TIDAK disentuh.
+    if (uangTetap) pengganti.koreksiUangTetap = String(p.id);
+    else delete pengganti.koreksiUangTetap;
     // setDoc MENOLAK nilai undefined (beda dengan null) — dulu ditulis
     // "dikoreksiOleh: undefined" dan simpan koreksi selalu gagal. Dihapus dari objek.
     delete pengganti.dikoreksiOleh;
@@ -31457,6 +31543,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       pengganti.jumlahKemasanLiteranDipakai = dipakaiBaru;
       pengganti.biayaKemasanLiteran = biayaBaru;
     }
+    if (uangTetap && hppTercatat(p) && (pengganti.hppTotalSaatJual || 0) > (pengganti.hargaTotal || 0)
+      && !confirm('Sesudah koreksi nota ini RUGI ' + formatRupiah((pengganti.hppTotalSaatJual || 0) - (pengganti.hargaTotal || 0))
+        + ': modal ' + formatRupiah(pengganti.hppTotalSaatJual || 0) + ' lebih besar dari totalnya ' + formatRupiah(pengganti.hargaTotal || 0) + '.\n\n'
+        + 'Yakin jumlahnya ' + baru + ' ' + j.satuan + ' dan totalnya memang tetap?')) return;
     try {
       await simpanKeFirestore(KOLEKSI_PENJUALAN, pengganti);
       // Dokumen pemakaian bahan SELALU milik transaksi yang hidup: yang lama (id asli+1)
@@ -33182,7 +33272,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.hapusSemuaSaringRiwayat = hapusSemuaSaringRiwayat;
   window.bukaLembarTrx = bukaLembarTrx;
   window.tutupLembarTrx = tutupLembarTrx;
-  window.mulaiKoreksiTrx = mulaiKoreksiTrx;
+  window.mulaiKoreksiTrx = mulaiKoreksiTrx; window.pilihKoreksiUang = pilihKoreksiUang;
   window.mulaiBatalkanTrx = mulaiBatalkanTrx;
   window.simpanKoreksiTrx = simpanKoreksiTrx;
   window.perbaruiDampakKoreksi = perbaruiDampakKoreksi;
