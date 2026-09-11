@@ -7568,7 +7568,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <input type="number" id="returNominalRefund" placeholder="0" inputmode="numeric">
       </div>
       <div id="returBlokTukar" style="display:none;">
-        <p class="keterangan">Pelanggan tukar dengan produk lain. Catat lewat transaksi Jual baru seperti biasa untuk barang penggantinya, lalu isi selisih di sini kalau ada.</p>
+        <p class="keterangan">Pelanggan tukar dengan produk lain. <b>Kalau notanya ditunjuk</b>: sistem menghitung, lalu jual barang penggantinya PENUH di Jual (jangan centang "pengganti retur"). <b>Tanpa nota</b> (cara lama): jual pengganti dengan centang "pengganti retur", lalu isi selisih di sini.</p>
         <div id="rtPenggantiWrap" hidden>
           <label for="rtHargaPengganti">Harga barang pengganti (Rp) <span class="keterangan">— untuk menghitung yang dibayar pembeli</span></label>
           <input type="number" id="rtHargaPengganti" placeholder="0" inputmode="numeric" oninput="rtHitungUlang()">
@@ -7603,7 +7603,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
            Rp160rb yang tidak pernah diterima. -->
       <label style="display:flex; align-items:center; gap:10px; min-height:44px; cursor:pointer;">
         <input type="checkbox" id="jualPenggantiRetur" style="width:22px; height:22px; flex:0 0 auto;">
-        <span>Barang <b>pengganti retur</b> (tukar) — stok terpotong, omzet &amp; kas Rp0</span>
+        <span>Barang <b>pengganti retur</b> (tukar <b>tanpa</b> nota) — stok terpotong, omzet &amp; kas Rp0. Tukar yang menunjuk nota: JANGAN dicentang, jual penuh.</span>
       </label>
       <label>Cara bayar</label>
       <div class="tab-bayar">
@@ -15590,6 +15590,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       return;
     }
 
+    // Model B: retur baru separuh kejadian. Perintah menjual penggantinya diulang SESUDAH
+    // simpan, karena panel hitungan (tempat perintah itu tadi tertulis) ikut direset.
+    if (dataRetur.tukarModel === 'kreditBarang') {
+      const hT = dataRetur.hitunganTukarSistem || {};
+      alert('Retur tersimpan senilai ' + formatRupiah(dataRetur.nominalRefund) + '.\n\n'
+        + 'Sekarang JUAL barang pengganti ' + formatRupiah(hT.pengganti || 0) + ' di Jual — PENUH, sebagai nota '
+        + (hT.caraBayar === 'Qris' ? 'QRIS' : 'tunai') + ' tersendiri, TANPA centang "pengganti retur".'
+        + (hT.dibayarPembeli > 0 ? '\n\nPembeli membayar ' + formatRupiah(hT.dibayarPembeli) + '.'
+          : (hT.dikembalikanToko > 0 ? '\n\nToko mengembalikan ' + formatRupiah(hT.dikembalikanToko) + '.' : '')));
+    }
     // Reset form retur
     document.getElementById('returKemasanJumlah').value = '';
     document.getElementById('returKarungJumlah').value = '';
@@ -16478,7 +16488,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             + (k.pembulatanPengganti > 0 ? ' + pembulatan penjualan pengganti ' + formatRupiah(k.pembulatanPengganti) : '')
             + '), lalu barang pengganti <b>dijual biasa ' + formatRupiah(k.pengganti) + '</b> di Jual sebagai nota ' + cara + ' tersendiri.</div>';
           h += '<div class="rt-tolak">Saat menjual penggantinya JANGAN centang "pengganti retur" — penjualannya harus penuh '
-            + formatRupiah(k.pengganti) + '. Kalau dicentang, kas toko kurang sebesar harga pengganti.</div>';
+            + formatRupiah(k.pengganti) + '. Kalau dicentang, kas TERCATAT kurang ' + formatRupiah(k.pengganti)
+            + ' dari uang yang sungguh ada di laci, dan Tutup Hari akan terbaca LEBIH sebesar itu.</div>';
+          // QRIS: dokumen retur tidak menyimpan kantong, dan daftarGerakanKas (pemasok kasPada,
+          // tidak disentuh) mencatat setiap uang keluar dari LACI. Totalnya benar, pembagiannya
+          // tidak — dan itu dikatakan, bukan dibiarkan jadi kejutan di Cocokkan Kas.
+          if (k.caraBayar === 'Qris') {
+            h += '<div class="rt-tolak">Catatan QRIS: dokumen retur tidak menyimpan kantong, jadi di Buku Kas kredit '
+              + formatRupiah(k.kreditBarang) + ' tercatat keluar dari LACI dan penjualan QRIS ' + formatRupiah(k.pengganti)
+              + ' masuk REKENING penuh. Totalnya benar dan Tutup Hari tetap cocok, tapi laci terbaca kurang dan rekening lebih '
+              + formatRupiah(k.kreditBarang) + ' sampai kas dicocokkan lagi.</div>';
+          }
         }
       }
     }
@@ -18349,7 +18369,27 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // SEMUA pembaca hargaTotal (omzet, laba, arus kas, piutang, komposisi) otomatis
     // benar tanpa perlu dikejar satu-satu. HPP tetap utuh: barangnya sungguh keluar,
     // dan biaya penukaran memang pantas terbaca di Laba.
-    if (document.getElementById('jualPenggantiRetur').checked) {
+    // PENJAGA MODEL B. Tukar yang menunjuk nota (retur tukarModel 'kreditBarang') sudah
+    // mengkredit barang yang dikembalikan di dokumen returnya; penggantinya WAJIB dijual
+    // PENUH. Centang ini (cara lama, untuk tukar TANPA nota) membuat penjualan pengganti Rp0
+    // — barang yang sama terkredit dua kali dan kas tercatat kurang sebesar harga pengganti.
+    // Peringatan di layar Retur hilang begitu retur disimpan, jadi penjaganya di SINI: di
+    // satu-satunya tempat centang ini benar-benar mengubah uang.
+    let penggantiRp0 = document.getElementById('jualPenggantiRetur').checked;
+    if (penggantiRp0) {
+      const tukarB = ambilRetur().filter(r => r.tukarModel === 'kreditBarang' && r.tanggal === tanggalLokalIso());
+      if (tukarB.length) {
+        const r = tukarB[tukarB.length - 1], hT = r.hitunganTukarSistem || {};
+        const lepas = confirm('Hari ini ada ' + tukarB.length + ' tukar yang MENUNJUK NOTA — terakhir: retur senilai '
+          + formatRupiah(r.nominalRefund || 0) + (hT.pengganti ? ', pengganti ' + formatRupiah(hT.pengganti) : '') + '.\n\n'
+          + 'Untuk tukar bernota, barang pengganti WAJIB dijual PENUH. Centang "pengganti retur" membuat penjualan ini Rp0, '
+          + 'dan kas tercatat kurang ' + formatRupiah(hargaTotal) + ' dari uang yang sungguh ada di laci.\n\n'
+          + 'OK = lepas centang, jual penuh ' + formatRupiah(hargaTotal) + '.\n'
+          + 'Batal = tetap Rp0 (hanya untuk tukar TANPA nota).');
+        if (lepas) { document.getElementById('jualPenggantiRetur').checked = false; penggantiRp0 = false; }
+      }
+    }
+    if (penggantiRp0) {
       transaksi.penggantiRetur = true;
       transaksi.nilaiBarangPengganti = hargaTotal;
       transaksi.hargaTotal = 0;
