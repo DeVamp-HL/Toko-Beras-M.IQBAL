@@ -3233,6 +3233,20 @@
   .la-nota b{ color:var(--pf-krem,#f7ecd6); font-style:normal; }
 }
 /* ===== CATAT PAKSA PRIVE (lubang 2) ===== */
+/* RETUR MENUNJUK NOTA — kotak cari & panel hitungan. Global, karena formulir retur yang
+   sama dipakai di HP (wz-retur) dan di layar lebar. Nama berawalan rt- (sudah digrep:
+   nol definisi global untuk rt-cari / rt-hitung / rt-lepas / rt-nota / rt-kg). */
+.rt-cari label { display:block; font-size:12px; margin:4px 0 6px; }
+.rt-cari input { width:100%; min-height:44px; box-sizing:border-box; }
+.rt-hitung { margin:10px 0 12px; padding:11px 12px; border-radius:11px; font-size:12.5px; line-height:1.6;
+  border:1px solid rgba(226,205,166,.4); background:rgba(226,205,166,.07); }
+.rt-hitung .rt-nota { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+.rt-hitung .rt-nota b { font-weight:700; }
+.rt-hitung .rt-tolak { color:#b5563a; font-weight:600; }
+.rt-hitung .rt-hasil { font-weight:700; }
+.rt-hitung .rt-kg { opacity:.8; font-style:italic; }
+.rt-lepas { min-height:36px; padding:4px 12px; border-radius:9px; font:inherit; font-size:12px; cursor:pointer;
+  border:1px solid rgba(226,205,166,.5); background:transparent; color:inherit; }
 /* z-index 46/47, BUKAN 41/42 seperti lembar lain. Lembar ini dibuka DARI DALAM lembar lain
    (Setujui di lembar Titipan). Pada z-index seri, yang belakangan di DOM menang \u2014
    #lembarTitipan (76vh) menutup lembar ini seluruhnya dan penolakannya jadi buntu.
@@ -7486,7 +7500,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <!-- KR3 (HP): retur berangkat dari TRANSAKSI HARI INI — ketuk salah satu,
            form di bawah terisi otomatis (produk, jumlah, nominal). Daftar manual
            tetap ada untuk layar lebar / kasus lama. -->
+      <div class="rt-cari">
+        <label for="rtCariNota">Cari nota — nama pembeli, merk, atau tanggal</label>
+        <input type="search" id="rtCariNota" placeholder="kosong = transaksi hari ini" oninput="rtRenderHariIni()" autocomplete="off">
+      </div>
       <div class="rt-hariini" id="rtHariIni"></div>
+      <div class="rt-hitung" id="rtHitung" hidden></div>
       <div class="rt-alasan" id="rtAlasan">
         <i>Alasan retur — wajib pilih</i>
         <div>
@@ -7507,7 +7526,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         </div>
         <input type="hidden" id="returKemasanProduk">
         <label>Jumlah unit diretur</label>
-        <input type="number" id="returKemasanJumlah" placeholder="0" inputmode="numeric">
+        <input type="number" id="returKemasanJumlah" placeholder="0" inputmode="numeric" oninput="rtHitungUlang()">
       </div>
       <div id="returPilihKarungWrap" style="display:none;">
         <div class="rt-manual">
@@ -7521,8 +7540,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         </div>
         <input type="hidden" id="returKarungMerk">
         <input type="hidden" id="returBeratKarung" value="50">
+        <div id="rtKarungJumlahWrap">
         <label>Jumlah karung diretur</label>
         <input type="number" id="returKarungJumlah" placeholder="0" inputmode="numeric">
+        </div>
+        <div id="rtKgWrap" hidden>
+          <label for="rtKgKembali">Kg dikembalikan <span class="keterangan">— dari nota yang ditunjuk, boleh sebagian</span></label>
+          <input type="number" id="rtKgKembali" placeholder="0" inputmode="decimal" step="0.1" oninput="rtHitungUlang()">
+        </div>
       </div>
 
       <label>Kondisi barang retur</label>
@@ -7544,8 +7569,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       </div>
       <div id="returBlokTukar" style="display:none;">
         <p class="keterangan">Pelanggan tukar dengan produk lain. Catat lewat transaksi Jual baru seperti biasa untuk barang penggantinya, lalu isi selisih di sini kalau ada.</p>
+        <div id="rtPenggantiWrap" hidden>
+          <label for="rtHargaPengganti">Harga barang pengganti (Rp) <span class="keterangan">— untuk menghitung yang dibayar pembeli</span></label>
+          <input type="number" id="rtHargaPengganti" placeholder="0" inputmode="numeric" oninput="rtHitungUlang()">
+        </div>
         <label>Selisih harga (Rp) <span class="keterangan">— isi angka positif kalau TOKO refund kelebihan ke pelanggan, angka negatif kalau PELANGGAN nambah kekurangan</span></label>
         <input type="number" id="returSelisihTukar" placeholder="0" inputmode="numeric">
+      </div>
+      <div id="rtAlasanTimpaWrap" hidden>
+        <label for="rtAlasanTimpa">Alasan menimpa nominal hitungan sistem — wajib</label>
+        <input type="text" id="rtAlasanTimpa" placeholder="Contoh: sebagian beras rusak, disepakati dipotong">
       </div>
 
       <label>Alasan / catatan retur</label>
@@ -15337,6 +15370,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   let returPenyelesaianAktif = 'refund';
 
   function pilihReturJenisAsal(jenis) {
+    // Berpindah jenis dengan tangan = meninggalkan nota yang ditunjuk. Tanpa ini nota
+    // karung tetap menempel sementara formulir sudah bicara kemasan.
+    if (_rtNota && _rtNota.t.jenis !== jenis) rtLepasNota();
     returJenisAsalAktif = jenis;
     document.getElementById('returJenisKemasan').classList.toggle('pilih', jenis === 'kemasan');
     document.getElementById('returJenisKarung').classList.toggle('pilih', jenis === 'karung');
@@ -15361,6 +15397,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('returSelesaiTukar').classList.toggle('pilih', cara === 'tukar');
     document.getElementById('returBlokRefund').style.display = cara === 'refund' ? 'block' : 'none';
     document.getElementById('returBlokTukar').style.display = cara === 'tukar' ? 'block' : 'none';
+    rtHitungUlang();
   }
 
   function isiDropdownRetur() {
@@ -15403,7 +15440,35 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!catatan) { alert('Pilih / isi alasan retur dulu (salah beli, kualitas, kelebihan, dll).'); return; }
 
     let dataRetur = null;
-    if (returJenisAsalAktif === 'kemasan') {
+    let rtNilai = null;
+    if (_rtNota) {
+      // RETUR MENUNJUK NOTA. Notanya dibaca ULANG saat simpan: di antara ketukan dan
+      // simpan ia bisa dibatalkan, dikoreksi, atau diretur dari perangkat lain.
+      // Nota lama TIDAK ditulis — yang lahir cuma dokumen retur yang menunjuknya.
+      const t = ambilPenjualan().find(x => String(x.id) === _rtNota.id);
+      if (!t) { alert('Nota yang ditunjuk tidak ditemukan lagi — dibatalkan, dikoreksi, atau dihapus. Retur ini TIDAK disimpan. Lepas notanya lalu tunjuk nota yang berlaku.'); return; }
+      const d = rtDasarNota(t);
+      if (!d.ok) { alert(d.sebab); return; }
+      const jml = rtJumlahKembali();
+      if (jml === null) { alert('Isi berapa ' + d.satuan + ' yang dikembalikan — kolomnya kosong atau bukan angka.'); return; }
+      if (d.satuan === 'unit' && Math.round(jml) !== jml) { alert('Retur kemasan dihitung per UNIT utuh. ' + jml.toLocaleString('id-ID') + ' unit bukan bilangan bulat.'); return; }
+      if (jml > d.sisa) { alert(rtKalimatLebih(d, jml)); return; }
+      rtNilai = Math.round(jml * d.perSatuan);
+      if (t.jenis === 'kemasan') {
+        const uk = parseFloat(t.ukuranKemasan);
+        dataRetur = { jenisAsal: 'kemasan', namaProduk: t.namaProduk, ukuranKemasan: uk, jumlahUnit: jml, totalKg: uk * jml };
+      } else {
+        // Karung sebagian (41,5 kg dari sack 50) disimpan dalam arti LAMA field-nya:
+        // totalKg = kg sungguhan, jumlahKarung = pecahannya. Mesin stok membaca totalKg.
+        const berat = t.beratKarungAcuan || 50;
+        dataRetur = { jenisAsal: 'karung', merkSumber: t.merkSumber, jumlahKarung: jml / berat, beratKarungAcuan: berat, totalKg: jml };
+      }
+      Object.assign(dataRetur, {
+        notaAsalId: String(t.id), notaAsalTanggal: t.tanggal || '', notaAsalKunci: rtKunciNota(t),
+        hargaPerSatuanNota: d.perSatuan, satuanNota: d.satuan, jumlahDikembalikan: jml,
+        nilaiDikembalikan: rtNilai, dasarHargaNota: d.dasar
+      });
+    } else if (returJenisAsalAktif === 'kemasan') {
       const kunci = document.getElementById('returKemasanProduk').value;
       const jumlahUnit = parseFloat(document.getElementById('returKemasanJumlah').value) || 0;
       if (!kunci) { alert('Pilih produk kemasan yang diretur dulu.'); return; }
@@ -15453,13 +15518,32 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     dataRetur.tanggal = tanggalLokalIso();
     dataRetur.jam = new Date().toTimeString().slice(0,5);
 
+    // `|| 0` DICABUT dari kedua kolom nominal. Salah ketik yang membuat kolom kosong dulu
+    // tersimpan sebagai Rp0 tanpa satu kata pun — nol yang dihitung dan nol karena gagal
+    // terbaca sama saja. Sekarang yang tidak terbaca MENOLAK simpan dan menyebut sebabnya.
     if (penyelesaian === 'refund') {
-      const nominalRefund = parseFloat(document.getElementById('returNominalRefund').value) || 0;
-      if (nominalRefund <= 0) { alert('Isi nominal refund.'); return; }
+      let nominalRefund;
+      if (_rtNota && !_rtTimpa) {
+        nominalRefund = rtNilai;                       // hitungan sistem, kolomnya terkunci
+      } else {
+        nominalRefund = rtBacaAngka('returNominalRefund');
+        if (nominalRefund === null || isNaN(nominalRefund)) { alert('Nominal refund belum terbaca — kolomnya kosong atau bukan angka. Retur tidak disimpan.'); return; }
+        if (nominalRefund <= 0) { alert('Isi nominal refund.'); return; }
+        if (_rtNota && _rtTimpa) {
+          const alasanTimpa = (document.getElementById('rtAlasanTimpa').value || '').trim();
+          if (alasanTimpa.length < 4) { alert('Alasan wajib diisi — nominal hitungan sistem ' + formatRupiah(rtNilai) + ' sedang ditimpa, dan jejak ini permanen.'); document.getElementById('rtAlasanTimpa').focus(); return; }
+          dataRetur.nominalSistem = rtNilai;
+          dataRetur.alasanTimpaNominal = alasanTimpa;
+        }
+      }
       dataRetur.nominalRefund = nominalRefund;
     } else {
-      const selisih = parseFloat(document.getElementById('returSelisihTukar').value) || 0;
+      const selisih = rtBacaAngka('returSelisihTukar');
+      if (selisih === null || isNaN(selisih)) { alert('Selisih tukar belum terbaca — kolomnya kosong atau bukan angka. Ketik 0 kalau memang tidak ada selisih. Retur tidak disimpan.'); return; }
       dataRetur.selisihHargaTukar = selisih; // positif = toko refund ke pelanggan, negatif = pelanggan nambah
+      // Hitungan sistem untuk tukar DISIMPAN SEBAGAI JEJAK, TIDAK dipakai mengisi selisih:
+      // cara mencatat tukar menunggu keputusan pemilik (lihat rtHitungUlang).
+      if (_rtNota) { const h = rtHitunganTukar(rtNilai); if (h) dataRetur.hitunganTukarSistem = h; }
     }
 
     try {
@@ -15494,6 +15578,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('returCatatan').value = '';
     document.getElementById('returKemasanProduk').value = '';
     document.getElementById('returKarungMerk').value = '';
+    rtLepasNota();
     isiDropdownRetur();
     perbaruiStokJual();
 
@@ -16158,41 +16243,204 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.querySelectorAll('#rtAlasan button').forEach(b =>
       b.classList.toggle('pilih', b.textContent === alasan));
   }
+  // ============ RETUR MENUNJUK NOTA (perintah 11 Sep 2026) ============
+  // Barang yang diretur dinilai dengan HARGA NOTA LAMA (keputusan pemilik 11 Sep), bukan
+  // angka ketikan dan bukan katalog hari ini. Satu aturan harga per satuan di sistem ini:
+  // twSatuanDibayar — (hargaTotal − pembulatan tunai), potongan dokumen 'potongan' se-nota
+  // (kasir.html) diprorata. DIPAKAI, bukan ditulis ulang. Pembulatan tunai TIDAK ikut:
+  // ia menempel ke item terakhir sebuah nota, jadi kalau ikut, harga per kg baris itu
+  // menggelembung sementara baris lain di nota yang sama tidak.
+  let _rtNota = null;          // { id, t } nota yang ditunjuk
+  let _rtTimpa = false;        // nominal refund sedang ditimpa (butuh alasan)
+  function rtKunciNota(p) { return String(p.trxId || p.grupNota || p.id); }
+  function rtBacaAngka(id) {
+    const raw = String((document.getElementById(id) || {}).value || '').trim();
+    if (raw === '') return null;
+    const n = Number(raw);
+    return isFinite(n) ? n : NaN;
+  }
+  function rtJumlahKembali() {
+    if (!_rtNota) return null;
+    const n = rtBacaAngka(_rtNota.t.jenis === 'kemasan' ? 'returKemasanJumlah' : 'rtKgKembali');
+    return (n === null || isNaN(n) || !(n > 0)) ? null : n;
+  }
+  function rtDasarNota(t) {
+    if (t.jenis !== 'karung' && t.jenis !== 'kemasan') {
+      return { ok: false, sebab: 'Jalur retur untuk literan / repacking belum ada — pakai koreksi transaksi di Riwayat.' };
+    }
+    if (caraBayarKunci(t) === 'kredit') {
+      return { ok: false, sebab: 'Nota ini KREDIT — pembeli belum membayarnya, jadi retur tidak boleh jadi uang keluar dari laci. '
+        + 'Retur yang mengurangi piutang belum ada di sistem. Tidak dihitung.' };
+    }
+    if (t.perluKoreksi) {
+      return { ok: false, sebab: 'Nota ini masih bertanda perlu dikoreksi (jumlahnya hasil hitung balik dari harga). Rapikan dulu di Riwayat, baru bisa ditunjuk retur.' };
+    }
+    if (t.jenis === 'kemasan' && (t.bonusUnit || 0) > 0) {
+      return { ok: false, sebab: 'Nota ini memuat unit BONUS (gratis), jadi harga per unit tidak bisa diturunkan tanpa tahu unit mana yang kembali. '
+        + 'Lepas notanya dan isi nominal refund dengan tangan.' };
+    }
+    const kunci = rtKunciNota(t);
+    const senota = ambilPenjualan().filter(x => rtKunciNota(x) === kunci);
+    const potNota = senota.filter(x => x.jenis === 'potongan').reduce((a, x) => a + Math.max(0, -(x.hargaTotal || 0)), 0);
+    const subNota = senota.filter(x => (x.hargaTotal || 0) > 0).reduce((a, x) => a + (x.hargaTotal || 0) - (x.pembulatan || 0), 0);
+    const perSatuan = twSatuanDibayar(t, potNota, subNota);
+    if (!(perSatuan > 0)) return { ok: false, sebab: 'Harga per satuan nota ini tidak bisa diturunkan (total atau jumlahnya nol).' };
+    const satuan = t.jenis === 'kemasan' ? 'unit' : 'kg';
+    const banyakNota = t.jenis === 'kemasan' ? (t.jumlahUnit || 0) : (t.totalKg || 0);
+    const sudahDiretur = ambilRetur().filter(r => String(r.notaAsalId) === String(t.id))
+      .reduce((a, r) => a + (r.jumlahDikembalikan || 0), 0);
+    const sisa = Math.round((banyakNota - sudahDiretur) * 1000) / 1000;
+    if (!(sisa > 0)) return { ok: false, sebab: 'Nota ini sudah diretur seluruhnya: ' + sudahDiretur.toLocaleString('id-ID') + ' dari ' + banyakNota.toLocaleString('id-ID') + ' ' + satuan + '.' };
+    const dasar = 'hargaTotal ' + formatRupiah(t.hargaTotal || 0)
+      + ((t.pembulatan || 0) > 0 ? ' − pembulatan tunai ' + formatRupiah(t.pembulatan) : '')
+      + (potNota > 0 ? ' − potongan nota diprorata' : '')
+      + ' ÷ ' + banyakNota.toLocaleString('id-ID') + ' ' + satuan;
+    return { ok: true, perSatuan, satuan, banyakNota, sudahDiretur, sisa, potNota, dasar };
+  }
+  function rtKalimatLebih(d, jml) {
+    return 'Yang dikembalikan ' + jml.toLocaleString('id-ID') + ' ' + d.satuan + ' melebihi sisa nota: '
+      + d.banyakNota.toLocaleString('id-ID') + ' ' + d.satuan + ' di nota'
+      + (d.sudahDiretur > 0 ? ', ' + d.sudahDiretur.toLocaleString('id-ID') + ' sudah diretur sebelumnya' : '')
+      + ' — sisa ' + d.sisa.toLocaleString('id-ID') + ' ' + d.satuan + '. Retur tidak disimpan.';
+  }
+  // Hitungan tukar: yang dibayar pembeli = pengganti − nilai retur, dibulatkan dengan
+  // pembulatanTunai YANG SUDAH ADA (ia mengembalikan SELISIH pembulatannya, jadi hasilnya
+  // x + pembulatanTunai(x), bukan pembulatanTunai(x)). Cara bayar ditulis eksplisit
+  // 'Tunai' — tanpa argumen kedua bakuCaraBayar juga jatuh ke Tunai, tapi diam.
+  function rtHitunganTukar(nilai) {
+    const pg = rtBacaAngka('rtHargaPengganti');
+    if (pg === null || isNaN(pg) || !(pg > 0) || nilai === null) return null;
+    const x = pg - nilai;
+    if (x >= 0) {
+      const bulat = pembulatanTunai(x, 'Tunai');
+      return { pengganti: pg, nilaiRetur: nilai, selisih: x, pembulatan: bulat, dibayarPembeli: x + bulat };
+    }
+    return { pengganti: pg, nilaiRetur: nilai, selisih: x, pembulatan: 0, dikembalikanToko: -x };
+  }
+  function rtTerapkanKunci() {
+    const ada = !!_rtNota;
+    const karung = ada && _rtNota.t.jenis === 'karung';
+    document.getElementById('rtKgWrap').hidden = !karung;
+    document.getElementById('rtKarungJumlahWrap').hidden = karung;
+    document.getElementById('rtPenggantiWrap').hidden = !ada;
+    // Refund terkunci selama nota ditunjuk dan tidak sedang ditimpa. Kolom selisih tukar
+    // TIDAK dikunci: cara mencatat tukar menunggu keputusan pemilik.
+    document.getElementById('returNominalRefund').readOnly = ada && !_rtTimpa;
+    document.getElementById('rtAlasanTimpaWrap').hidden = !(ada && _rtTimpa);
+  }
+  function rtMintaTimpa() { _rtTimpa = true; rtTerapkanKunci(); rtHitungUlang(); document.getElementById('returNominalRefund').focus(); }
+  function rtBatalTimpa() { _rtTimpa = false; document.getElementById('rtAlasanTimpa').value = ''; rtTerapkanKunci(); rtHitungUlang(); }
+  function rtLepasNota() {
+    _rtNota = null; _rtTimpa = false;
+    ['rtKgKembali', 'rtHargaPengganti', 'rtAlasanTimpa', 'returNominalRefund'].forEach(i => {
+      const e = document.getElementById(i); if (e) e.value = '';
+    });
+    rtTerapkanKunci(); rtHitungUlang(); rtRenderHariIni();
+  }
+  function rtHitungUlang() {
+    const el = document.getElementById('rtHitung');
+    if (!el) return;
+    if (!_rtNota) { el.hidden = true; el.innerHTML = ''; return; }
+    const t = _rtNota.t;
+    const d = rtDasarNota(t);
+    const tgl = formatTanggal(t.tanggal);
+    let h = '<div class="rt-nota"><span><b>Nota ' + escapeHtml(tgl) + '</b> · ' + escapeHtml(namaSingkatTrx(t))
+      + (t.namaPelanggan ? ' · ' + escapeHtml(t.namaPelanggan) : '') + '</span>'
+      + '<button type="button" class="rt-lepas" onclick="rtLepasNota()">lepas nota</button></div>';
+    if (!d.ok) { el.innerHTML = h + '<div class="rt-tolak">' + escapeHtml(d.sebab) + '</div>'; el.hidden = false; return; }
+    h += '<div>Harga nota: <b>' + formatRupiah(Math.round(d.perSatuan)) + ' / ' + d.satuan + '</b> '
+      + '<span class="rt-kg">(' + escapeHtml(d.dasar) + ')</span></div>';
+    if (d.sudahDiretur > 0) h += '<div>Sudah diretur sebelumnya ' + d.sudahDiretur.toLocaleString('id-ID') + ' ' + d.satuan
+      + ' — sisa ' + d.sisa.toLocaleString('id-ID') + ' ' + d.satuan + '.</div>';
+    const jml = rtJumlahKembali();
+    const refund = document.getElementById('returNominalRefund');
+    if (jml === null) {
+      h += '<div>Isi berapa ' + d.satuan + ' yang dikembalikan.</div>';
+      if (!_rtTimpa) refund.value = '';
+    } else if (jml > d.sisa) {
+      h += '<div class="rt-tolak">' + escapeHtml(rtKalimatLebih(d, jml)) + '</div>';
+      if (!_rtTimpa) refund.value = '';
+    } else {
+      const nilai = Math.round(jml * d.perSatuan);
+      h += '<div>Nilai retur: ' + jml.toLocaleString('id-ID') + ' ' + d.satuan + ' × ' + formatRupiah(Math.round(d.perSatuan))
+        + ' = <span class="rt-hasil">' + formatRupiah(nilai) + '</span></div>';
+      if (returPenyelesaianAktif === 'refund') {
+        if (_rtTimpa) {
+          h += '<div class="rt-tolak">Nominal refund DITIMPA — hitungan sistem ' + formatRupiah(nilai)
+            + '. Alasan wajib diisi di bawah.</div>'
+            + '<button type="button" class="rt-lepas" onclick="rtBatalTimpa()">pakai hitungan sistem</button>';
+        } else {
+          refund.value = nilai;
+          h += '<div>Uang keluar dari laci (refund): <span class="rt-hasil">' + formatRupiah(nilai) + '</span> — diisi sistem, kolomnya terkunci. '
+            + '<button type="button" class="rt-lepas" onclick="rtMintaTimpa()">timpa nominal</button></div>';
+        }
+      } else {
+        const k = rtHitunganTukar(nilai);
+        if (!k) h += '<div>Isi harga barang pengganti untuk melihat berapa yang dibayar pembeli.</div>';
+        else if (k.dibayarPembeli !== undefined) {
+          h += '<div class="rt-hasil">Pengganti ' + formatRupiah(k.pengganti) + ' − kembalian ' + jml.toLocaleString('id-ID') + ' ' + d.satuan
+            + ' × ' + formatRupiah(Math.round(d.perSatuan)) + ' (nota ' + escapeHtml(tgl) + ') = ' + formatRupiah(k.selisih)
+            + (k.pembulatan > 0 ? ', dibulatkan ' + formatRupiah(k.dibayarPembeli) : '') + ' — dibayar pembeli (tunai).</div>';
+        } else {
+          h += '<div class="rt-hasil">Nilai retur ' + formatRupiah(nilai) + ' lebih besar dari pengganti ' + formatRupiah(k.pengganti)
+            + ' — toko mengembalikan ' + formatRupiah(k.dikembalikanToko) + '.</div>';
+        }
+        h += '<div class="rt-tolak">Kolom selisih di bawah BELUM diisi sistem. Cara mencatat tukar menunggu keputusan pemilik '
+          + '(penjualan pengganti Rp0 atau penjualan biasa memberi laba yang berbeda). Kalau diisi dengan tangan, '
+          + 'ingat tandanya: pembeli MENAMBAH = angka NEGATIF.</div>';
+      }
+    }
+    el.innerHTML = h;
+    el.hidden = false;
+  }
   function rtIsiDariTrx(id) {
     const t = ambilPenjualan().find(x => String(x.id) === String(id));
-    if (!t) return;
+    if (!t) { alert('Nota itu tidak ditemukan lagi — dibatalkan, dikoreksi, atau dihapus. Retur tidak bisa menunjuknya.'); return; }
+    const d = rtDasarNota(t);
+    if (!d.ok) { alert(d.sebab); return; }
+    _rtNota = { id: String(t.id), t };
+    _rtTimpa = false;
     if (t.jenis === 'kemasan') {
       pilihReturJenisAsal('kemasan');
-      const kunci = kunciKemasan(t.namaProduk, t.ukuranKemasan);
-      const b = document.querySelector('#pilihReturKemasanTombol button[data-kunci="' + CSS.escape(kunci) + '"]');
-      if (b) b.click();
-      document.getElementById('returKemasanJumlah').value = t.jumlahUnit || 1;
-    } else if (t.jenis === 'karung') {
+      document.getElementById('returKemasanProduk').value = kunciKemasan(t.namaProduk, t.ukuranKemasan);
+      document.getElementById('returKemasanJumlah').value = d.sisa;
+    } else {
       pilihReturJenisAsal('karung');
       pilihReturBeratSack(t.beratKarungAcuan || 50);
-      const b = document.querySelector('#pilihReturKarungTombol button[data-kunci="' + CSS.escape(t.merkSumber || '') + '"]');
-      if (b) b.click();
-      document.getElementById('returKarungJumlah').value = t.jumlahKarung || 1;
-    } else {
-      alert('Jalur retur untuk literan / repacking belum ada — pakai koreksi transaksi di Riwayat.');
-      return;
+      document.getElementById('returKarungMerk').value = t.merkSumber || '';
+      document.getElementById('rtKgKembali').value = d.sisa;
     }
-    document.getElementById('returNominalRefund').value = t.hargaTotal || 0;
-    document.querySelectorAll('#rtHariIni .rt-trx').forEach(el =>
-      el.classList.toggle('pilih', String(el.dataset.id) === String(id)));
+    rtTerapkanKunci();
+    rtHitungUlang();
+    rtRenderHariIni();
   }
+  // Daftar nota: kosong = hari ini (perilaku lama); diisi kata = SEMUA penjualan yang
+  // berlaku, dicari di nama pembeli, merk/produk, dan tanggal. Batas 30 disebut di layar,
+  // bukan dipotong diam-diam. Penjualan pengganti retur (Rp0) tidak ikut: ia bukan nota.
   function rtRenderHariIni() {
     const el = document.getElementById('rtHariIni');
     if (!el) return;
+    const kata = ((document.getElementById('rtCariNota') || {}).value || '').trim().toLowerCase();
     const hariIni = tanggalLokalIso();
-    const trx = ambilPenjualan().filter(x => x.tanggal === hariIni && (x.hargaTotal || 0) > 0)
-      .sort((a, b) => (b.jam || '').localeCompare(a.jam || ''));
-    el.innerHTML = '<i>Transaksi hari ini — ketuk yang diretur</i>'
-      + (trx.length ? trx.map(t => '<button type="button" class="rt-trx" data-id="' + t.id + '" onclick="rtIsiDariTrx(\'' + t.id + '\')">'
-        + '<span class="jam">' + wzEsc(t.jam || '') + '</span>'
-        + '<span class="nama">' + wzEsc(namaSingkatTrx(t)) + '</span>'
+    const semua = ambilPenjualan().filter(x => (x.hargaTotal || 0) > 0 && !x.penggantiRetur);
+    let daftar = kata
+      ? semua.filter(x => [namaSingkatTrx(x), x.namaPelanggan || '', x.merkSumber || '', x.namaProduk || '',
+          x.tanggal || '', formatTanggal(x.tanggal)].join(' ').toLowerCase().indexOf(kata) >= 0)
+      : semua.filter(x => x.tanggal === hariIni);
+    daftar.sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '') || (b.jam || '').localeCompare(a.jam || ''));
+    const BATAS = 30;
+    const lebih = daftar.length - BATAS;
+    daftar = daftar.slice(0, BATAS);
+    const judul = kata ? 'Nota cocok "' + wzEsc(kata) + '" — ketuk yang diretur' : 'Transaksi hari ini — ketuk yang diretur';
+    el.innerHTML = '<i>' + judul + '</i>'
+      + (daftar.length ? daftar.map(t => '<button type="button" class="rt-trx' + (_rtNota && _rtNota.id === String(t.id) ? ' pilih' : '')
+          + '" data-id="' + t.id + '" onclick="rtIsiDariTrx(\'' + t.id + '\')">'
+        + '<span class="jam">' + wzEsc(kata ? formatTanggal(t.tanggal) : (t.jam || '')) + '</span>'
+        + '<span class="nama">' + wzEsc(namaSingkatTrx(t)) + (t.namaPelanggan ? ' · ' + wzEsc(t.namaPelanggan) : '') + '</span>'
         + '<b>' + formatRupiah(t.hargaTotal || 0) + '</b></button>').join('')
-      : '<div class="kosong-info" style="margin-top:6px;"><b>Belum ada transaksi hari ini</b><span>Retur berangkat dari penjualan hari ini. Untuk kasus lama, pakai pemilih manual di bawah (layar lebar) atau koreksi di Riwayat.</span></div>');
+        + (lebih > 0 ? '<div class="kosong-info" style="margin-top:6px;"><b>' + lebih + ' nota lain juga cocok</b><span>Persempit pencariannya — cuma 30 teratas yang ditampilkan.</span></div>' : '')
+      : '<div class="kosong-info" style="margin-top:6px;"><b>' + (kata ? 'Tidak ada nota yang cocok' : 'Belum ada transaksi hari ini')
+        + '</b><span>' + (kata ? 'Coba nama pembeli, merk, atau tanggal (mis. "9 Sep").' : 'Untuk nota hari lain, ketik nama pembeli, merk, atau tanggal di kotak cari.') + '</span></div>');
   }
 
   // ============ G4: BATAS KREDIT (KR1) + JANJI BAYAR (KR2) ============
@@ -32097,6 +32345,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.bukaLembarBukuKas = bukaLembarBukuKas; window.tutupLembarBukuKas = tutupLembarBukuKas;
   window.rwHariTingkat = rwHariTingkat;
   window.rtAlasanPilih = rtAlasanPilih; window.rtIsiDariTrx = rtIsiDariTrx;
+  window.rtRenderHariIni = rtRenderHariIni; window.rtHitungUlang = rtHitungUlang; window.rtLepasNota = rtLepasNota;
+  window.rtMintaTimpa = rtMintaTimpa; window.rtBatalTimpa = rtBatalTimpa;
    window.bukaModalLoginToko = bukaModalLoginToko; window.bukaSetelPin = window.bukaSetelPin || bukaSetelPin;
   window.unduhBackup = window.unduhBackup || unduhBackup;
   window.simpanPesanan = simpanPesanan; window.majukanPesanan = majukanPesanan;
