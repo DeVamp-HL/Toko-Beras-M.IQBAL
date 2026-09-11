@@ -7572,9 +7572,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <div id="rtPenggantiWrap" hidden>
           <label for="rtHargaPengganti">Harga barang pengganti (Rp) <span class="keterangan">— untuk menghitung yang dibayar pembeli</span></label>
           <input type="number" id="rtHargaPengganti" placeholder="0" inputmode="numeric" oninput="rtHitungUlang()">
+          <label>Pembeli membayar selisihnya dengan</label>
+          <div class="tab-bayar">
+            <button type="button" id="rtBayarTunai" class="pilih" onclick="rtPilihBayar('Tunai')">Tunai</button>
+            <button type="button" id="rtBayarQris" onclick="rtPilihBayar('Qris')">QRIS</button>
+          </div>
         </div>
+        <div id="rtSelisihWrap">
         <label>Selisih harga (Rp) <span class="keterangan">— isi angka positif kalau TOKO refund kelebihan ke pelanggan, angka negatif kalau PELANGGAN nambah kekurangan</span></label>
         <input type="number" id="returSelisihTukar" placeholder="0" inputmode="numeric">
+        </div>
       </div>
       <div id="rtAlasanTimpaWrap" hidden>
         <label for="rtAlasanTimpa">Alasan menimpa nominal hitungan sistem — wajib</label>
@@ -15542,13 +15549,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         }
       }
       dataRetur.nominalRefund = nominalRefund;
+    } else if (_rtNota) {
+      // TUKAR BERNOTA — model B (keputusan pemilik 11 Sep). Retur ini membawa NILAI yang
+      // dikredit lewat nominalRefund, jalur yang sudah dibaca mesin kas & laba sejak lama.
+      // selisihHargaTukar 0: uang dari pembeli masuk lewat PENJUALAN pengganti yang dicatat
+      // petugas di Jual, bukan lewat dokumen ini. Retur TIDAK menulis penjualan apa pun.
+      const k = rtHitunganTukar(rtNilai);
+      if (!k) { alert('Isi harga barang pengganti dulu — tanpa itu nilai yang dicatat retur dan yang dibayar pembeli tidak bisa dihitung. Retur tidak disimpan.'); document.getElementById('rtHargaPengganti').focus(); return; }
+      dataRetur.nominalRefund = k.kreditBarang;
+      dataRetur.selisihHargaTukar = 0;
+      dataRetur.tukarModel = 'kreditBarang';
+      dataRetur.hitunganTukarSistem = k;
     } else {
       const selisih = rtBacaAngka('returSelisihTukar');
       if (selisih === null || isNaN(selisih)) { alert('Selisih tukar belum terbaca — kolomnya kosong atau bukan angka. Ketik 0 kalau memang tidak ada selisih. Retur tidak disimpan.'); return; }
       dataRetur.selisihHargaTukar = selisih; // positif = toko refund ke pelanggan, negatif = pelanggan nambah
-      // Hitungan sistem untuk tukar DISIMPAN SEBAGAI JEJAK, TIDAK dipakai mengisi selisih:
-      // cara mencatat tukar menunggu keputusan pemilik (lihat rtHitungUlang).
-      if (_rtNota) { const h = rtHitunganTukar(rtNilai); if (h) dataRetur.hitunganTukarSistem = h; }
     }
 
     try {
@@ -15613,9 +15628,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             ? `${escapeHtml(r.merkSumber) || '-'} × ${r.jumlahKarung || 0} karung`
             : `${escapeHtml(r.merkSumber) || '-'} × ${(r.totalKg || 0).toLocaleString('id-ID')} kg (sebagian karung)`);
       const labelKondisi = r.kondisi === 'tidak_utuh' ? 'Tidak utuh → Karantina' : 'Utuh → balik stok';
+      const hT = r.hitunganTukarSistem || {};
       const labelNominal = r.penyelesaian === 'refund'
         ? `Refund ${formatRupiah(r.nominalRefund || 0)}`
-        : `Tukar (selisih ${formatRupiah(r.selisihHargaTukar || 0)})`;
+        : (r.tukarModel === 'kreditBarang'
+            ? `Tukar · retur senilai ${formatRupiah(r.nominalRefund || 0)} · pengganti dijual ${formatRupiah(hT.pengganti || 0)}`
+              + (hT.dibayarPembeli > 0 ? ` · pembeli bayar ${formatRupiah(hT.dibayarPembeli)}` : '')
+            : `Tukar (selisih ${formatRupiah(r.selisihHargaTukar || 0)})`);
       return `
         <div class="item-batch">
           <div class="baris-atas">
@@ -16259,6 +16278,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // menggelembung sementara baris lain di nota yang sama tidak.
   let _rtNota = null;          // { id, t } nota yang ditunjuk
   let _rtTimpa = false;        // nominal refund sedang ditimpa (butuh alasan)
+  let _rtBayar = 'Tunai';      // cara pembeli membayar selisih tukar (menentukan pembulatan)
+  function rtPilihBayar(cara) {
+    _rtBayar = cara === 'Qris' ? 'Qris' : 'Tunai';
+    document.getElementById('rtBayarTunai').classList.toggle('pilih', _rtBayar === 'Tunai');
+    document.getElementById('rtBayarQris').classList.toggle('pilih', _rtBayar === 'Qris');
+    rtHitungUlang();
+  }
   function rtKunciNota(p) { return String(p.trxId || p.grupNota || p.id); }
   function rtBacaAngka(id) {
     const raw = String((document.getElementById(id) || {}).value || '').trim();
@@ -16335,19 +16361,31 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + (d.sudahDiretur > 0 ? ', ' + d.sudahDiretur.toLocaleString('id-ID') + ' sudah diretur sebelumnya' : '')
       + ' — sisa ' + d.sisa.toLocaleString('id-ID') + ' ' + d.satuan + '. Retur tidak disimpan.';
   }
-  // Hitungan tukar: yang dibayar pembeli = pengganti − nilai retur, dibulatkan dengan
-  // pembulatanTunai YANG SUDAH ADA (ia mengembalikan SELISIH pembulatannya, jadi hasilnya
-  // x + pembulatanTunai(x), bukan pembulatanTunai(x)). Cara bayar ditulis eksplisit
-  // 'Tunai' — tanpa argumen kedua bakuCaraBayar juga jatuh ke Tunai, tapi diam.
+  // TUKAR, KEPUTUSAN PEMILIK 11 SEP (model B): retur dicatat SENILAI BARANG YANG DIKEMBALIKAN,
+  // barang pengganti DIJUAL BIASA di Jual sebagai nota tersendiri. Dua dokumen jujur pada
+  // nilainya masing-masing; mesin laba sudah tahu cara mengurangkan retur, jadi tidak ada
+  // mesin uang yang disentuh. (Cara lama — selisih bersih + pengganti Rp0 — memberi kas benar
+  // tapi laba kurang sebesar yang dibayar pembeli di SETIAP tukar: uangKembaliRetur memakai
+  // max(0, selisih).)
+  //
+  // PEMBULATAN wajib punya rumah. Pembeli membayar (pengganti − nilai) dibulatkan
+  // pembulatanTunai; penjualan pengganti dibulatkan Jual sendiri. Supaya kas toko naik PERSIS
+  // sebesar yang dibayar pembeli, nilai yang dikredit retur =
+  //   nilai barang + pembulatan penjualan pengganti − pembulatan selisih.
+  // Kasus pemilik: 597.600 + 0 − 100 = 597.500 → kas 735.000 − 597.500 = +137.500.
+  // pembulatanTunai DIPAKAI (ia mengembalikan SELISIH pembulatan, dan 0 untuk angka ≤ 0),
+  // cara bayar diteruskan eksplisit. Tepat bila pengganti dijual sebagai nota TERSENDIRI.
   function rtHitunganTukar(nilai) {
     const pg = rtBacaAngka('rtHargaPengganti');
     if (pg === null || isNaN(pg) || !(pg > 0) || nilai === null) return null;
+    const cara = _rtBayar;
     const x = pg - nilai;
-    if (x >= 0) {
-      const bulat = pembulatanTunai(x, 'Tunai');
-      return { pengganti: pg, nilaiRetur: nilai, selisih: x, pembulatan: bulat, dibayarPembeli: x + bulat };
-    }
-    return { pengganti: pg, nilaiRetur: nilai, selisih: x, pembulatan: 0, dikembalikanToko: -x };
+    const bulatPengganti = pembulatanTunai(pg, cara);
+    const bulatSelisih = pembulatanTunai(x, cara);
+    return { pengganti: pg, caraBayar: cara, nilaiRetur: nilai, selisih: x,
+      pembulatanPengganti: bulatPengganti, pembulatanSelisih: bulatSelisih,
+      dibayarPembeli: x > 0 ? x + bulatSelisih : 0, dikembalikanToko: x < 0 ? -x : 0,
+      kreditBarang: nilai + bulatPengganti - bulatSelisih };
   }
   function rtTerapkanKunci() {
     const ada = !!_rtNota;
@@ -16358,6 +16396,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Refund terkunci selama nota ditunjuk dan tidak sedang ditimpa. Kolom selisih tukar
     // TIDAK dikunci: cara mencatat tukar menunggu keputusan pemilik.
     document.getElementById('returNominalRefund').readOnly = ada && !_rtTimpa;
+    document.getElementById('rtSelisihWrap').hidden = ada;
     document.getElementById('rtAlasanTimpaWrap').hidden = !(ada && _rtTimpa && returPenyelesaianAktif === 'refund');
     // Selama nota menempel, barangnya MILIK nota: chip produk/merk/ukuran manual disembunyikan.
     // Dulu chip itu tetap bisa diketuk di layar lebar, menyala, lalu diabaikan saat simpan.
@@ -16367,7 +16406,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function rtBatalTimpa() { _rtTimpa = false; document.getElementById('rtAlasanTimpa').value = ''; rtTerapkanKunci(); rtHitungUlang(); }
   function rtLepasNota() {
     const adaNota = !!_rtNota;
-    _rtNota = null; _rtTimpa = false;
+    _rtNota = null; _rtTimpa = false; _rtBayar = 'Tunai';
+    document.getElementById('rtBayarTunai').classList.add('pilih');
+    document.getElementById('rtBayarQris').classList.remove('pilih');
     ['rtKgKembali', 'rtHargaPengganti', 'rtAlasanTimpa', 'returNominalRefund'].forEach(i => {
       const e = document.getElementById(i); if (e) e.value = '';
     });
@@ -16422,18 +16463,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         }
       } else {
         const k = rtHitunganTukar(nilai);
-        if (!k) h += '<div>Isi harga barang pengganti untuk melihat berapa yang dibayar pembeli.</div>';
-        else if (k.dibayarPembeli !== undefined) {
-          h += '<div class="rt-hasil">Pengganti ' + formatRupiah(k.pengganti) + ' − kembalian ' + jml.toLocaleString('id-ID') + ' ' + d.satuan
-            + ' × ' + rtRpSatuan(d.perSatuan) + ' (nota ' + escapeHtml(tgl) + ') = ' + formatRupiah(k.selisih)
-            + (k.pembulatan > 0 ? ', dibulatkan ' + formatRupiah(k.dibayarPembeli) : '') + ' — dibayar pembeli (tunai).</div>';
-        } else {
-          h += '<div class="rt-hasil">Nilai retur ' + formatRupiah(nilai) + ' lebih besar dari pengganti ' + formatRupiah(k.pengganti)
-            + ' — toko mengembalikan ' + formatRupiah(k.dikembalikanToko) + '.</div>';
+        if (!k) h += '<div>Isi harga barang pengganti — dipakai menghitung yang dibayar pembeli dan nilai yang dicatat retur.</div>';
+        else {
+          const cara = k.caraBayar === 'Qris' ? 'QRIS' : 'tunai';
+          const dasarKalimat = 'Pengganti ' + formatRupiah(k.pengganti) + ' − kembalian ' + jml.toLocaleString('id-ID') + ' ' + d.satuan
+            + ' × ' + rtRpSatuan(d.perSatuan) + ' (nota ' + escapeHtml(tgl) + ') = ' + formatRupiah(k.selisih);
+          h += k.selisih >= 0
+            ? '<div class="rt-hasil">' + dasarKalimat + (k.pembulatanSelisih > 0 ? ', dibulatkan ' + formatRupiah(k.dibayarPembeli) : '')
+              + ' — dibayar pembeli (' + cara + ').</div>'
+            : '<div class="rt-hasil">Nilai retur ' + formatRupiah(nilai) + ' lebih besar dari pengganti ' + formatRupiah(k.pengganti)
+              + ' — toko mengembalikan ' + formatRupiah(k.dikembalikanToko) + '.</div>';
+          h += '<div>Yang dicatat: <b>retur senilai ' + formatRupiah(k.kreditBarang) + '</b> (nilai barang ' + formatRupiah(nilai)
+            + (k.pembulatanSelisih > 0 ? ' − pembulatan ' + formatRupiah(k.pembulatanSelisih) + ' yang dibayar pembeli' : '')
+            + (k.pembulatanPengganti > 0 ? ' + pembulatan penjualan pengganti ' + formatRupiah(k.pembulatanPengganti) : '')
+            + '), lalu barang pengganti <b>dijual biasa ' + formatRupiah(k.pengganti) + '</b> di Jual sebagai nota ' + cara + ' tersendiri.</div>';
+          h += '<div class="rt-tolak">Saat menjual penggantinya JANGAN centang "pengganti retur" — penjualannya harus penuh '
+            + formatRupiah(k.pengganti) + '. Kalau dicentang, kas toko kurang sebesar harga pengganti.</div>';
         }
-        h += '<div class="rt-tolak">Kolom selisih di bawah BELUM diisi sistem. Cara mencatat tukar menunggu keputusan pemilik '
-          + '(penjualan pengganti Rp0 atau penjualan biasa memberi laba yang berbeda). Kalau diisi dengan tangan, '
-          + 'ingat tandanya: pembeli MENAMBAH = angka NEGATIF.</div>';
       }
     }
     el.innerHTML = h;
@@ -32402,7 +32448,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.rwHariTingkat = rwHariTingkat;
   window.rtAlasanPilih = rtAlasanPilih; window.rtIsiDariTrx = rtIsiDariTrx;
   window.rtRenderHariIni = rtRenderHariIni; window.rtHitungUlang = rtHitungUlang; window.rtLepasNota = rtLepasNota;
-  window.rtMintaTimpa = rtMintaTimpa; window.rtBatalTimpa = rtBatalTimpa;
+  window.rtMintaTimpa = rtMintaTimpa; window.rtBatalTimpa = rtBatalTimpa; window.rtPilihBayar = rtPilihBayar;
    window.bukaModalLoginToko = bukaModalLoginToko; window.bukaSetelPin = window.bukaSetelPin || bukaSetelPin;
   window.unduhBackup = window.unduhBackup || unduhBackup;
   window.simpanPesanan = simpanPesanan; window.majukanPesanan = majukanPesanan;
