@@ -7567,7 +7567,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       </div>
 
       <div id="returBlokRefund">
-        <label>Nominal refund (Rp) <span class="keterangan">— sesuaikan kalau yang kembali cuma sebagian, tidak harus sama dengan harga jual awal</span></label>
+        <label>Nominal refund (Rp) <span class="keterangan">— nota ditunjuk: dihitung sistem dari kg/jumlah yang kembali (sebagian? ubah kg-nya, bukan nominal ini). Tanpa nota: isi nilai barang yang kembali</span></label>
         <input type="number" id="returNominalRefund" placeholder="0" inputmode="numeric">
       </div>
       <div id="returBlokTukar" style="display:none;">
@@ -15675,9 +15675,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         : (Number.isInteger(r.jumlahKarung || 0)
             ? `${escapeHtml(r.merkSumber) || '-'} × ${r.jumlahKarung || 0} karung`
             : `${escapeHtml(r.merkSumber) || '-'} × ${(r.totalKg || 0).toLocaleString('id-ID')} kg (sebagian karung)`);
-      const labelKondisi = r.kondisi === 'utuh' ? (r.koreksiKondisi ? 'Kembali ke stok · dikoreksi layak jual' : 'Layak jual → balik stok') : 'Rusak/diragukan → Karantina';
       const kR = r.kondisi === 'utuh' ? null : ambilKarantina().find(x => String(x.id) === String(r.id));
-      const bisaLayak = r.kondisi !== 'utuh' && !(kR && kR.statusTindakan && kR.statusTindakan !== 'belum_diputuskan');
+      // Kartu 'layak_jual' tetapi retur BUKAN 'utuh' = koreksinya tertimpa salinan basi dari perangkat lain.
+      const koreksiHilang = !!(kR && kR.statusTindakan === 'layak_jual');
+      const labelKondisi = r.kondisi === 'utuh' ? (r.koreksiKondisi ? 'Kembali ke stok · dikoreksi layak jual' : 'Layak jual → balik stok')
+        : (koreksiHilang ? 'KOREKSI LAYAK JUAL HILANG (tertimpa perangkat lain) — tekan lagi' : 'Rusak/diragukan → Karantina');
+      const bisaLayak = r.kondisi !== 'utuh' && !(kR && kR.statusTindakan && kR.statusTindakan !== 'belum_diputuskan' && !koreksiHilang);
       const hT = r.hitunganTukarSistem || {};
       const labelNominal = r.penyelesaian === 'refund'
         ? `Refund ${formatRupiah(r.nominalRefund || 0)}`
@@ -15715,9 +15718,26 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   async function returJadiLayakJual(id) {
     const r = ambilRetur().find(x => String(x.id) === String(id));
     if (!r) { alert('Retur itu tidak ditemukan lagi.'); return false; }
-    if (r.kondisi === 'utuh') { alert('Retur ini sudah tercatat kembali ke stok.'); return false; }
+    // Koreksi ini mengubah laba surut — gerbang yang sama dengan aksi owner lain.
+    if (!ownerSudahUnlock() && !(await mintaPinOwner('PIN owner — koreksi retur jadi layak jual'))) return false;
+    if (r.kondisi === 'utuh') {
+      // Kartu karantina bisa MENYUSUL sesudah koreksi (tertahan di antrean perangkat lain). Rework/buang/
+      // balik menolaknya, jadi tanpa jalan ini ia jadi antrean abadi.
+      const kU = ambilKarantina().find(x => String(x.id) === String(id));
+      if (kU && kU.statusTindakan === 'belum_diputuskan') {
+        if (!confirm('Retur ini SUDAH tercatat kembali ke stok, tetapi kartu karantinanya masih menunggu (datang belakangan dari perangkat lain).\n\n'
+          + 'Tutup kartunya sebagai "ternyata layak jual"? Stok TIDAK bertambah lagi.')) return false;
+        try {
+          await simpanKeFirestore(KOLEKSI_KARANTINA, Object.assign({}, kU, { statusTindakan: 'layak_jual', tanggalKeputusan: tanggalLokalIso(), catatanKeputusan: 'kartu menyusul sesudah koreksi' }));
+        } catch (err) { console.error(err); alert('Gagal menutup kartunya (offline?). Coba lagi.'); return false; }
+        setTimeout(() => { tampilkanKarantina(); tampilkanStok(); }, 300);
+        return true;
+      }
+      alert('Retur ini sudah tercatat kembali ke stok.'); return false;
+    }
     const k = ambilKarantina().find(x => String(x.id) === String(id));
-    if (k && k.statusTindakan && k.statusTindakan !== 'belum_diputuskan') {
+    // 'layak_jual' dengan retur yang BUKAN 'utuh' = koreksi yang tertimpa — boleh diterapkan ulang.
+    if (k && k.statusTindakan && k.statusTindakan !== 'belum_diputuskan' && k.statusTindakan !== 'layak_jual') {
       alert('Kartu karantina retur ini sudah diputuskan (' + k.statusTindakan + ').\n\n'
         + 'Barangnya sudah bergerak lewat keputusan itu — koreksi ini ditolak supaya stok tidak terhitung dua kali.');
       return false;
@@ -15738,6 +15758,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const nama = karung ? (r.merkSumber || '') : ((r.namaProduk || '') + ' ' + r.ukuranKemasan + ' kg');
     if (!st) {
       alert('Stok "' + nama + '" tidak dikenal sistem — kalau dikoreksi, tidak ada stok yang bertambah. Koreksi ditolak.');
+      return false;
+    }
+    // Rework menulis BARANGNYA dulu, statusnya belakangan (putuskanKarantina). Kalau status kartunya belum
+    // sampai, dokumen rework-nya tetap bersaksi — dicari lewat jejak "retur id X" yang ditulisnya sendiri.
+    const jejakRework = 'retur id ' + r.id + ')';
+    const sudahRework = (karung ? ambilPenyesuaianStok().filter(x => x.dariRework) : ambilProduksi())
+      .some(x => String(x.alasan || x.catatan || '').indexOf(jejakRework) >= 0);
+    if (sudahRework) {
+      alert('Retur ini SUDAH pernah di-rework ke stok (dokumen rework-nya ada, walau status kartunya belum berubah).\n\n'
+        + 'Barangnya sudah kembali lewat rework — koreksi ditolak supaya stok tidak terhitung dua kali.');
       return false;
     }
     const jml = karung ? (r.totalKg || 0) : (r.jumlahUnit || 0);
@@ -15780,7 +15810,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           const server = sR.data();
           if (server.kondisi === 'utuh') return { tolak: 'Retur ini sudah tercatat kembali ke stok (percobaan sebelumnya atau perangkat lain).' };
           const kS = sK.exists() ? sK.data() : null;
-          if (kS && kS.statusTindakan && kS.statusTindakan !== 'belum_diputuskan')
+          if (kS && kS.statusTindakan && kS.statusTindakan !== 'belum_diputuskan' && kS.statusTindakan !== 'layak_jual')
             return { tolak: 'Kartu karantinanya sudah diputuskan (' + kS.statusTindakan + ') dari perangkat lain.' };
           const dokR = cap(Object.assign({}, server, { kondisi: 'utuh',
             koreksiKondisi: { dari: server.kondisi || null, pada, alasan: alasan.trim(), oleh: OLEH_TETAP } }));
@@ -15796,13 +15826,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       ]);
     } catch (err) {
       console.error(err);
-      alert('Koreksi ini butuh sinyal — dokumennya dibaca ulang dari server supaya perubahan perangkat lain tidak tertimpa. Coba lagi saat tersambung.');
+      alert('Koreksi ini butuh sinyal — dokumennya dibaca ulang dari server supaya perubahan perangkat lain tidak tertimpa.\n\n'
+        + 'Kalau barusan cuma LAMBAT, koreksinya mungkin tetap tersimpan — lihat Riwayat Retur dulu. Mencoba lagi aman: sistem menolak kalau sudah tercatat.');
       return false;
     }
     if (!hasil || hasil.tolak) { alert((hasil && hasil.tolak) || 'Koreksi gagal.'); return false; }
     catatLogAktivitas(KOLEKSI_RETUR, hasil.dokR);
     if (hasil.dokK) catatLogAktivitas(KOLEKSI_KARANTINA, hasil.dokK);
-    setTimeout(() => { tampilkanRetur(); tampilkanKarantina(); perbaruiStokJual(); }, 300);
+    setTimeout(() => { tampilkanRetur(); tampilkanKarantina(); perbaruiStokJual(); tampilkanStok(); }, 300);
     alert('Dikoreksi: ' + nama + ' +' + jml.toLocaleString('id-ID') + ' ' + satuan + ' kembali ke stok.');
     return true;
   }
@@ -16723,9 +16754,30 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const pj = calon[n - 1];
     if (!confirm('Tandai penjualan ' + (pj.jam || '') + ' · ' + namaSingkatTrx(pj) + ' · ' + formatRupiah(pj.hargaTotal)
       + ' sebagai pengganti tukar ini?\n\nPenjualannya TIDAK diubah — tandanya disimpan di dokumen retur.')) return;
+    // Lewat TRANSAKSI, bukan salinan cache penuh: returnya bisa sudah dikoreksi dari perangkat lain
+    // ("Ternyata layak jual") — salinan basi yang ditulis penuh akan membatalkannya diam-diam.
+    let hasilSd = null;
     try {
-      await simpanKeFirestore(KOLEKSI_RETUR, Object.assign({}, r, { penggantiDikonfirmasi: { penjualanId: String(pj.id), pada: new Date().toISOString() } }));
-    } catch (err) { console.error(err); alert('Gagal menyimpan tandanya (offline?). Coba lagi.'); return; }
+      hasilSd = await Promise.race([
+        runTransaction(db, async (tx) => {
+          const ref = doc(db, KOLEKSI_RETUR, String(r.id));
+          const sn = await tx.get(ref);
+          if (!sn.exists()) return { tolak: 'Retur itu sudah tidak ada di server.' };
+          const kini = new Date().toISOString();
+          const dok = Object.assign({}, sn.data(), { penggantiDikonfirmasi: { penjualanId: String(pj.id), pada: kini },
+            diubahOleh: OLEH_TETAP, diubahPerangkat: perangkatRingkas(), diubahPada: kini });
+          tx.set(ref, dok);
+          return { ok: true, dok };
+        }),
+        new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 8000))
+      ]);
+    } catch (err) {
+      console.error(err);
+      alert('Menandai pengganti butuh sinyal — dokumen returnya dibaca ulang dari server.\n\nKalau barusan cuma lambat, tandanya mungkin tetap tersimpan — lihat layar Retur dulu sebelum mencoba lagi.');
+      return;
+    }
+    if (!hasilSd || hasilSd.tolak) { alert((hasilSd && hasilSd.tolak) || 'Gagal menyimpan tandanya.'); return; }
+    catatLogAktivitas(KOLEKSI_RETUR, hasilSd.dok);
     rtRenderHariIni();
     tampilkanRetur();
     // Snapshot yang membawa tanda itu bisa datang SESUDAH gambar di atas (HP lambat, sandbox) —
@@ -21673,7 +21725,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Rework/buang/balik di sini akan menggerakkan barang yang sama DUA KALI.
     const rAsal = ambilRetur().find(x => String(x.id) === String(item.id));
     if (rAsal && rAsal.kondisi === 'utuh') {
-      alert('Retur asal barang ini sudah dikoreksi LAYAK JUAL — barangnya sudah kembali ke stok.\n\nKeputusan karantina ditolak supaya stok tidak terhitung dua kali.');
+      alert('Retur asal barang ini sudah dikoreksi LAYAK JUAL — barangnya sudah kembali ke stok.\n\nRework / buang / balik ditolak supaya stok tidak terhitung dua kali. Kartu ini cukup ditutup lewat "Ternyata layak jual".');
       return;
     }
 
