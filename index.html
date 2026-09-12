@@ -11025,6 +11025,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return teks;
   }
   function bacaCadanganLokal(kunci) {
+    // Tulisan yang masih di pekerja adalah yang BERLAKU — tanpa ini, saat offline sejak boot
+    // (cache memori kosong) pesanan yang baru disimpan tidak tampak sampai render berikutnya,
+    // dan dua tulisan beruntun (baca-ubah-tulis) menjatuhkan yang pertama.
+    const tertunda = _kemasTertunda[kunci];
+    if (tertunda) { try { return JSON.parse(tertunda.teks); } catch (e) { return []; } }
     let mentah = null;
     try { mentah = localStorage.getItem(kunci); } catch (e) { mentah = null; }
     if (!mentah) return [];
@@ -11035,6 +11040,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (!_cadanganRusakDilaporkan[kunci]) {
         _cadanganRusakDilaporkan[kunci] = true;
         laporGalatLokal('Cadangan lokal ' + kunci + ' tidak terbaca (' + ((e && e.message) || 'galat') + ') — angka di HP ini belum lengkap sampai data server datang.');
+        // Pil status ikut menyebutnya (bertahan walau bilah ditutup). Ditunda satu putaran: pembaca ini
+        // bisa berjalan saat modul dievaluasi, sebelum keadaan yang dibaca perbaruiStatusSambungan lahir.
+        setTimeout(perbaruiStatusSambungan, 0);
       }
       return [];
     }
@@ -11046,8 +11054,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       _pekerjaKemas.onmessage = (e) => {
         const d = e.data || {};
         if (_kemasTerbaru[d.kunci] !== d.id) return;   // sudah ada tulisan yang lebih baru
+        const t = _kemasTertunda[d.kunci];
         delete _kemasTertunda[d.kunci];
-        if (typeof d.hasil === 'string') simpanLokal(d.kunci, TANDA_KEMAS + d.hasil);
+        if (typeof d.hasil === 'string') {
+          const mentah = TANDA_KEMAS + d.hasil;
+          if (t) _cadanganDekode[d.kunci] = { mentah: mentah, teks: t.teks };   // baca berikutnya tanpa dekompresi
+          if (simpanLokal(d.kunci, mentah)) cabutCadanganRusak(d.kunci);
+        } else if (t) {
+          // Kompresi gagal di pekerja (mis. memori habis): tulis POLOS, jangan diam.
+          if (simpanLokal(d.kunci, t.teks)) cabutCadanganRusak(d.kunci);
+          laporKabarLokal('Kompresi cadangan ' + d.kunci + ' gagal — disimpan apa adanya.');
+        }
       };
       _pekerjaKemas.onerror = () => {
         // Pekerja mati (berkas tak termuat, dsb.): bilas yang tertunda secara sinkron, lalu
@@ -11055,18 +11072,51 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         _pekerjaKemasGagal = true;
         try { _pekerjaKemas.terminate(); } catch (e) {}
         _pekerjaKemas = null;
-        Object.keys(_kemasTertunda).forEach(k => { const t = _kemasTertunda[k]; delete _kemasTertunda[k]; simpanLokal(k, kemasCadangan(t.teks)); });
+        bilasKemasTertunda();
       };
     } catch (e) { _pekerjaKemasGagal = true; _pekerjaKemas = null; }
     return _pekerjaKemas;
+  }
+  // Bilas sinkron: dipakai saat pekerja mati DAN saat halaman disembunyikan/ditutup (pagehide,
+  // visibilitychange) supaya boot offline berikutnya tidak memakai cadangan yang basi satu snapshot.
+  function bilasKemasTertunda() {
+    Object.keys(_kemasTertunda).forEach(k => {
+      const t = _kemasTertunda[k]; delete _kemasTertunda[k];
+      _kemasTerbaru[k] = ++_nomorKemas;   // balasan pekerja yang datang sesudah ini dibuang
+      if (simpanLokal(k, kemasCadangan(t.teks))) cabutCadanganRusak(k);
+    });
+  }
+  window.addEventListener('pagehide', bilasKemasTertunda);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') bilasKemasTertunda(); });
+  // Dipanggil dari konsol SEBELUM mundur ke versi index.html yang belum mengenal cadangan
+  // terkompresi: versi lama JSON.parse('\u0001LZ…') melempar di ambil*() dan mati saat boot.
+  function polosKanCadangan() {
+    let n = 0;
+    Object.keys(_argSinkron).forEach(k => {
+      const kunci = _argSinkron[k][1];
+      const daftar = bacaCadanganLokal(kunci);
+      _kemasTerbaru[kunci] = ++_nomorKemas; delete _kemasTertunda[kunci];
+      if (simpanLokal(kunci, JSON.stringify(daftar))) n++;
+    });
+    console.log('cadangan dipolos-kan: ' + n + ' kunci');
+    return n;
+  }
+  function cabutCadanganRusak(kunci) {
+    if (!_cadanganRusakDilaporkan[kunci]) return;
+    delete _cadanganRusakDilaporkan[kunci];
+    setTimeout(perbaruiStatusSambungan, 0);   // pil status ikut pulih tanpa menunggu snapshot berikut
   }
   function tulisCadanganLokal(kunci, daftar, segera) {
     const teks = JSON.stringify(daftar);
     _kemasTerbaru[kunci] = ++_nomorKemas;   // tulisan ini yang berlaku; hasil pekerja yang lebih tua dibuang
     delete _kemasTertunda[kunci];
-    if (segera || !window.LZString || teks.length < AMBANG_KEMAS) return simpanLokal(kunci, kemasCadangan(teks));
+    if (segera || !window.LZString || teks.length < AMBANG_KEMAS) {
+      const ok = simpanLokal(kunci, kemasCadangan(teks));
+      if (ok) cabutCadanganRusak(kunci);
+      return ok;
+    }
     const w = pekerjaKemas();
-    if (!w) return simpanLokal(kunci, kemasCadangan(teks));
+    if (!w) { const ok = simpanLokal(kunci, kemasCadangan(teks)); if (ok) cabutCadanganRusak(kunci); return ok; }
     _kemasTertunda[kunci] = { id: _kemasTerbaru[kunci], teks: teks };
     w.postMessage({ id: _kemasTerbaru[kunci], kunci: kunci, teks: teks });
     return true;   // tertunda beberapa ratus ms; kegagalan kuota tetap dilaporkan saat hasilnya ditulis
@@ -11250,9 +11300,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       return;
     }
     const semuaSiap = Object.values(_sambunganAktif).every(v => v);
-    const awalan = (nTunda > 0 ? (_antreanTundaMemori !== null ? 'DI MEMORI · ' : '') + nTunda + ' menunggu sinyal · ' : '') + (_sudahLoginToko ? '' : ' belum masuk · ');
+    const nRusak = Object.keys(_cadanganRusakDilaporkan).length;
+    const awalan = (nRusak > 0 ? nRusak + ' cadangan tak terbaca · ' : '')
+      + (nTunda > 0 ? (_antreanTundaMemori !== null ? 'DI MEMORI · ' : '') + nTunda + ' menunggu sinyal · ' : '') + (_sudahLoginToko ? '' : ' belum masuk · ');
     el.textContent = awalan + (semuaSiap ? 'Tersambung semua perangkat' : 'Menyambungkan…');
-    tulisStatusSambunganHp(el.textContent, nTunda > 0 || !_sudahLoginToko || !semuaSiap);
+    tulisStatusSambunganHp(el.textContent, nTunda > 0 || nRusak > 0 || !_sudahLoginToko || !semuaSiap);
   }
 
   /* Di HP pil status cuma titik (lihat CSS .pil-status di <700px) — kalimat lengkapnya
@@ -33146,7 +33198,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.cekPinOwner = cekPinOwner;
   window.unduhBackup = unduhBackup;
   window.muatDariFile = muatDariFile;
-  window.pindahHalaman = pindahHalaman;
+  window.pindahHalaman = pindahHalaman; window.polosKanCadangan = polosKanCadangan;
   // Lembar Menu bawah (porting desain final 6 Agu 2026)
   function toggleLembarMenu(paksa) {
     const buka = typeof paksa === 'boolean' ? paksa : !document.body.classList.contains('lembar-menu-terbuka');

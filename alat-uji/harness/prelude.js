@@ -69,4 +69,8 @@ globalThis.screen = { width: 390, height: 844 };
 globalThis.visualViewport = { height: 844, width: 390, addEventListener() {} };
 globalThis.speechSynthesis = undefined;
 globalThis.setTimeout = (f) => 0; globalThis.setInterval = (f) => 0; globalThis.clearTimeout = () => {}; globalThis.clearInterval = () => {};
+// Pustaka kompresi nyata (disalin jalankan.sh dari lib/) + Worker palsu yang menahan pesan: jalur
+// kompresi/pekerja ikut dievaluasi, bukan dilewati karena "tanpa pustaka".
+try { load('lz-string.js'); } catch (e) {}
+globalThis.Worker = class { constructor() { this.tertahan = []; } postMessage(m) { this.tertahan.push(m); } terminate() {} };
 globalThis.console = { log() {}, warn() {}, error() {}, info() {}, debug() {}, table() {}, group() {}, groupEnd() {} };

@@ -18,7 +18,7 @@ for c in \
 done
 [[ -n "${JSC:-}" ]] || { echo "GAGAL: jsc tidak ditemukan"; exit 3; }
 KERJA="$(mktemp -d)"
-cp "$DIR"/prelude.js "$DIR"/stub-firebase-*.js "$KERJA"/
+cp "$DIR"/prelude.js "$DIR"/stub-firebase-*.js "$KERJA"/ && cp "$AKAR"/lib/lz-string.js "$KERJA"/ 2>/dev/null
 
 # Ekstrak <script type="module"> lalu tulis-ulang 3 specifier gstatic ke stub lokal.
 # $1 = berkas html, $2 = folder kerja, $3 = nama modul keluaran, $4 = suntikan (opsional)

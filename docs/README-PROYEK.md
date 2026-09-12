@@ -13,7 +13,7 @@ keputusan desain produk ada di `KEPUTUSAN-DESAIN.md`.
 | `kasir.html` | Kasir ringan **alat pemilik** (nama berkasnya menyesatkan). |
 | `kasir-darurat-nominal.html` + `sw-kasir.js` + `manifest-kasir.json` | Kasir **staf** (PWA offline). Akan disatukan menjadi satu kasir tablet — **jangan disentuh** sampai sistem utama selesai dirapikan. Setiap perubahan `kasir*.html` wajib menaikkan `VERSI` di `sw-kasir.js`. |
 | `firestore.rules` + `firebase.json` | Aturan akses Firestore. Rules dipasang ke Console oleh pemilik. |
-| `lib/lz-string.js` + `lib/kemas-worker.js` | Kompresi cadangan 28 koleksi di localStorage (LZ-string, dikompres di Web Worker supaya utas utama tidak tersendat). Tanpa berkas ini sistem tetap jalan dengan cadangan polos. |
+| `lib/lz-string.js` + `lib/kemas-worker.js` | Kompresi cadangan 28 koleksi di localStorage (LZ-string, dikompres di Web Worker supaya utas utama tidak tersendat). Tanpa berkas ini sistem tetap jalan dengan cadangan polos. Sumber: cdnjs `lz-string/1.5.0/lz-string.js` (header berkas menyebut 1.4.5), sha256 `550034b8…dab0e5e`. **Mundur ke versi index.html yang belum mengenal cadangan terkompresi WAJIB didahului `polosKanCadangan()` dari konsol di tiap HP** — versi lama mati saat boot membaca cadangan terkompresi. |
 | `alat-uji/` | Jaring pengaman yang dijalankan CI sebelum terbit (lihat bawah). |
 | `alat-audit/audit.py` | Pemeriksa independen (Python) yang menghitung ulang uang dari berkas backup. |
 | `.github/workflows/pages.yml` | CI: job `uji` di setiap push/PR; `terbitkan` hanya di `main` sesudah `uji` hijau. |
