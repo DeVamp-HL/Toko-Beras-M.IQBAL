@@ -9328,31 +9328,39 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
      disentuh: yang diperiksa hanya ada-tidaknya modul, bukan teks gerbangnya. -->
 <script>
 (function () {
-  var bilah = null, terakhir = '', jumlah = 0;
-  function tampil(pesan) {
-    pesan = String(pesan || 'galat tanpa pesan');
-    try { console.error('[pelapor galat] ' + pesan); } catch (e) {}
-    if (!bilah) {
-      bilah = document.createElement('div');
-      bilah.id = 'bilahGalat';
-      bilah.setAttribute('role', 'alert');
-      bilah.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#8b1a1a;color:#fff;'
-        + 'font:14px/1.4 -apple-system,system-ui,sans-serif;padding:10px 44px 10px 12px;'
-        + 'padding-top:calc(10px + env(safe-area-inset-top,0px));box-shadow:0 2px 8px rgba(0,0,0,.4);word-break:break-word;';
-      var isi = document.createElement('div'); isi.id = 'bilahGalatIsi';
-      var tutup = document.createElement('button');
-      tutup.type = 'button'; tutup.textContent = '\u00d7'; tutup.setAttribute('aria-label', 'Tutup');
-      tutup.style.cssText = 'position:absolute;top:calc(4px + env(safe-area-inset-top,0px));right:8px;width:32px;height:32px;'
-        + 'border:0;background:transparent;color:#fff;font-size:22px;line-height:32px;';
-      tutup.onclick = function () { bilah.style.display = 'none'; };
-      bilah.appendChild(isi); bilah.appendChild(tutup);
-      (document.body || document.documentElement).appendChild(bilah);
-    }
-    if (pesan === terakhir) jumlah++; else { terakhir = pesan; jumlah = 1; }
-    document.getElementById('bilahGalatIsi').textContent = 'Sistem menemukan galat' + (jumlah > 1 ? ' (' + jumlah + '\u00d7)' : '') + ': ' + pesan;
-    bilah.style.display = '';
+  var bilah = null, isi = null, terakhir = '', jumlah = 0;
+  window.__jumlahGalat = 0;
+  function tampil(pesan, kabar) {   // kabar = bukan galat (mis. "penyimpanan lega"): tanpa ajakan tangkap layar
+    try {
+      pesan = String(pesan || 'galat tanpa pesan');
+      if (!kabar) window.__jumlahGalat++;
+      try { console.error('[pelapor galat] ' + pesan); } catch (e) {}
+      if (!bilah) {
+        bilah = document.createElement('div');
+        bilah.id = 'bilahGalat';
+        bilah.setAttribute('role', 'alert');
+        bilah.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#8b1a1a;color:#fff;'
+          + 'font:14px/1.4 -apple-system,system-ui,sans-serif;padding:10px 52px 10px 12px;'
+          + 'padding-top:calc(10px + env(safe-area-inset-top,0px));box-shadow:0 2px 8px rgba(0,0,0,.4);word-break:break-word;';
+        isi = document.createElement('div');
+        var tutup = document.createElement('button');
+        tutup.type = 'button'; tutup.textContent = '\u00d7'; tutup.setAttribute('aria-label', 'Tutup');
+        tutup.style.cssText = 'position:absolute;top:calc(2px + env(safe-area-inset-top,0px));right:4px;width:44px;height:44px;'
+          + 'border:0;background:transparent;color:#fff;font-size:26px;line-height:44px;';
+        tutup.onclick = function () { bilah.style.display = 'none'; };
+        bilah.appendChild(isi); bilah.appendChild(tutup);
+        (document.body || document.documentElement).appendChild(bilah);
+      }
+      if (pesan === terakhir) jumlah++; else { terakhir = pesan; jumlah = 1; }
+      bilah.style.background = kabar ? '#2f4f5f' : '#8b1a1a';
+      isi.textContent = kabar
+        ? 'Kabar sistem: ' + pesan
+        : 'Sistem menemukan galat' + (jumlah > 1 ? ' (' + jumlah + '\u00d7)' : '') + ': ' + pesan + ' \u2014 tangkap layar ini lalu kirim.';
+      bilah.style.display = '';
+    } catch (e) { try { console.error('[pelapor galat gagal menggambar]', e, pesan); } catch (e2) {} }
   }
   window.__laporGalat = tampil;
+  window.__laporKabar = function (pesan) { tampil(pesan, true); };
   window.addEventListener('error', function (e) {
     var m = (e && e.message) || 'galat';
     if (e && e.filename) m += ' \u2014 ' + String(e.filename).split('/').pop() + ':' + (e.lineno || '?');
@@ -9360,15 +9368,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   });
   window.addEventListener('unhandledrejection', function (e) {
     var r = e && e.reason;
-    tampil('janji ditolak: ' + ((r && (r.message || r.code || String(r))) || 'tanpa alasan'));
+    tampil('proses gagal: ' + ((r && (r.message || r.code || String(r))) || 'tanpa alasan'));
   });
+  // 'load' baru terjadi SESUDAH modul selesai dievaluasi (atau gagal), jadi jeda pendek cukup dan
+  // tidak ada alarm palsu karena jaringan lambat. Kalau sudah ada galat terlapor, teksnya TIDAK
+  // ditimpa — itu isi tangkapan layar yang menunjuk akar masalahnya.
   window.addEventListener('load', function () {
     setTimeout(function () {
       if (typeof window.pindahHalaman === 'function') return;
       var p = document.getElementById('gerbangPesan');
       if (p) p.textContent = 'Sistem gagal dimuat di perangkat ini. Muat ulang halaman; kalau tetap begini, kirim tangkapan layar ini.';
-      tampil('modul sistem tidak selesai dimuat (pindahHalaman tidak terpasang) \u2014 galat di kode, atau SDK gagal diunduh');
-    }, 5000);
+      if (!terakhir) tampil('modul sistem tidak selesai dimuat (pindahHalaman tidak terpasang) \u2014 galat di kode, atau SDK gagal diunduh');
+    }, 1500);
   });
 })();
 </script>
@@ -10945,6 +10956,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   //     "sinyal jelek"; (2) di dalam catch simpanKeFirestore → antrean tunda gagal ditulis, transaksi
   //     HILANG tanpa suara. Sekarang satu pintu: gagal = kembali false + lapor ke bilah galat.
   // Jalur sukses identik dengan sebelumnya (setItem yang sama, nilai yang sama).
+  // Catatan SDK: Firestore 10.13 menjalankan callback onSnapshot lewat setTimeout(0), jadi lemparan
+  // di dalamnya tidak mematikan SDK — tapi ekor callback terlewat pada TIAP snapshot, dan itulah
+  // gejala "layar diam" yang ditutup di sini. Pembaca yang membaca localStorage LANGSUNG (titik kas,
+  // gembok owner, PIN, QRIS, draf) memang tertinggal saat penuh — kalimat bilah tidak berjanji lain.
   const _kuotaDilaporkan = {};   // per kunci per sesi — 28 snapshot tidak boleh berteriak bergantian
   function simpanLokal(kunci, nilai, senyap) {
     try {
@@ -10954,7 +10969,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     } catch (e) {
       if (!senyap && !_kuotaDilaporkan[kunci]) {
         _kuotaDilaporkan[kunci] = true;
-        laporGalatLokal('Penyimpanan HP penuh — ' + kunci + ' tidak tersimpan (' + ((e && e.name) || 'galat') + '). Data di layar tetap benar; cadangan offline HP ini tertinggal.');
+        laporGalatLokal('Penyimpanan HP penuh — ' + kunci + ' tidak tersimpan (' + ((e && e.name) || 'galat') + '). Yang tampil di HP ini bisa tertinggal sampai penyimpanan lega.');
       }
       return false;
     }
@@ -10962,6 +10977,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function laporGalatLokal(pesan) {
     try { console.error(pesan); } catch (e) {}
     if (typeof window.__laporGalat === 'function') window.__laporGalat(pesan);
+  }
+  function laporKabarLokal(pesan) {
+    try { console.log(pesan); } catch (e) {}
+    if (typeof window.__laporKabar === 'function') window.__laporKabar(pesan);
   }
   function simpanCadanganLokal(koleksi, kunci, terurut) {
     // Jalur normal (tidak sedang menahan, snapshot berisi) memintas seluruh blok ini —
@@ -11005,8 +11024,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const isi = [{ id: 1 }, { id: 2 }, { id: 3 }];
     const hasil = [];
     const jml = () => { try { return JSON.parse(localStorage.getItem(KUNCI) || '[]').length; } catch (e) { return -1; } };
+    // Tiga keadaan: lulus / gagal / TIDAK BISA DIUJI (penyimpanan penuh) — yang ketiga bukan tuduhan.
+    if (!simpanLokal(KUNCI, JSON.stringify(isi))) return { lulus: false, tidakBisaDiuji: true, gagal: ['penyimpanan HP penuh — uji tidak bisa dijalankan'] };
     try {
-      simpanLokal(KUNCI, JSON.stringify(isi));
       delete _cadanganTertahan[KOL]; delete _bolehKoleksiKosong[KOL];
       // 1) snapshot KOSONG tanpa izin -> cadangan wajib utuh, peringatan wajib muncul
       simpanCadanganLokal(KOL, KUNCI, []);
@@ -11140,7 +11160,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       return;
     }
     const semuaSiap = Object.values(_sambunganAktif).every(v => v);
-    const awalan = (nTunda > 0 ? nTunda + ' menunggu sinyal · ' : '') + (_sudahLoginToko ? '' : ' belum masuk · ');
+    const awalan = (nTunda > 0 ? (_antreanTundaMemori !== null ? 'DI MEMORI · ' : '') + nTunda + ' menunggu sinyal · ' : '') + (_sudahLoginToko ? '' : ' belum masuk · ');
     el.textContent = awalan + (semuaSiap ? 'Tersambung semua perangkat' : 'Menyambungkan…');
     tulisStatusSambunganHp(el.textContent, nTunda > 0 || !_sudahLoginToko || !semuaSiap);
   }
@@ -11661,20 +11681,32 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // HP penuh, dulu setItem melempar di sini dan transaksinya HILANG tanpa suara (dibuktikan di kotak
   // pasir: antrean 0 sesudah simpan gagal). Sekarang antrean tetap hidup di memori selama halaman
   // terbuka, dilaporkan di layar, dan kembali ke localStorage begitu penyimpanan lega.
-  let _antreanTundaMemori = null;   // null = localStorage bisa dipercaya; array = yang berlaku adalah memori
+  // Memori menyimpan STRING JSON yang persis gagal ditulis — bentuknya sama dengan mode storage
+  // (field undefined dibuang, tidak ada referensi objek hidup yang bisa berubah sesudah antre).
+  // Catatan: storage yang tertinggal di bawahnya bisa lebih TUA dari memori; muat ulang saat
+  // penuh bisa mengirim ulang item lama. Tidak ada obat murni di klien saat penyimpanan penuh.
+  let _antreanTundaMemori = null;   // null = localStorage bisa dipercaya; string = yang berlaku adalah memori
   function ambilAntreanTunda() {
-    if (_antreanTundaMemori) return _antreanTundaMemori.slice();
+    if (_antreanTundaMemori !== null) { try { return JSON.parse(_antreanTundaMemori); } catch (e) { return []; } }
     try { return JSON.parse(localStorage.getItem(KUNCI_ANTREAN_TUNDA) || '[]'); } catch (e) { return []; }
   }
   function setAntreanTunda(a) {
-    if (simpanLokal(KUNCI_ANTREAN_TUNDA, JSON.stringify(a), true)) {
+    const teks = JSON.stringify(a);
+    const tadiMemori = _antreanTundaMemori !== null;
+    if (simpanLokal(KUNCI_ANTREAN_TUNDA, teks, true)) {
       _antreanTundaMemori = null;
+      if (tadiMemori) laporKabarLokal('Penyimpanan HP lega — antrean kembali tersimpan di HP' + (a.length ? ' (' + a.length + ' menunggu sinyal).' : '.'));
     } else {
-      _antreanTundaMemori = a.slice();
-      if (a.length) laporGalatLokal('Penyimpanan HP penuh: ' + a.length + ' transaksi menunggu di MEMORI — jangan tutup halaman ini sampai status sambungan bersih.');
+      _antreanTundaMemori = teks;
+      if (a.length) laporGalatLokal('Penyimpanan HP penuh: ' + a.length + ' transaksi menunggu di MEMORI — jangan tutup halaman ini sampai pil status tidak lagi berkata "menunggu sinyal" (di HP: kaki lembar Menu).');
     }
     perbaruiStatusSambungan();
   }
+  // Menahan tutup/muat-ulang yang DISENGAJA selagi antrean hanya hidup di memori. Dialognya
+  // muncul di desktop; iOS tidak menjaminnya, jadi kalimat di bilah tetap pagar utamanya.
+  window.addEventListener('beforeunload', (e) => {
+    if (_antreanTundaMemori !== null && ambilAntreanTunda().length) { e.preventDefault(); e.returnValue = ''; }
+  });
   let _sedangKirimTunda = false;
   async function kirimAntreanTunda() {
     if (_sedangKirimTunda) return;
@@ -11703,12 +11735,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // antar HP/iPad owner adalah id perangkat (sekali dibuat, menetap di localStorage)
   // plus label yang bisa dinamai dari Setelan.
   const OLEH_TETAP = 'Owner';
+  let _idPerangkat = null;   // satu sesi satu id, walau penyimpanan penuh dan gagal ditulis
   function idPerangkat() {
+    if (_idPerangkat) return _idPerangkat;
     let d = localStorage.getItem('miqbal_perangkat_v1');
     if (!d) {
       d = 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
       simpanLokal('miqbal_perangkat_v1', d);
     }
+    _idPerangkat = d;
     return d;
   }
   function perangkatRingkas() {
@@ -18736,9 +18771,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         let data;
         try { data = kanvas.toDataURL('image/jpeg', 0.9); } catch (e) { data = ''; }
         if (!data) { alert('Gambar tidak bisa diproses di HP ini.'); return; }
-        try {
-          simpanLokal(KUNCI_QRIS, data);
-        } catch (e) {
+        // simpanLokal tidak melempar — nilai baliknya yang menyatakan gagal (penyimpanan penuh).
+        if (!simpanLokal(KUNCI_QRIS, data)) {
           alert('Penyimpanan HP penuh, kode QRIS tidak tersimpan. Coba gambar yang lebih kecil.');
           return;
         }
@@ -22473,10 +22507,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!tanggal) { alert('Pilih tanggal penghitungannya dulu.'); return; }
     if (laci <= 0 && rekening <= 0 && amplop <= 0 && brankas <= 0) { alert('Isi minimal salah satu: uang laci, saldo rekening, amplop laba, atau brankas.'); return; }
     const data = { id: 'titikKas', tanggal, laci, rekening, amplop, brankas, diubahPada: new Date().toISOString() };
-    simpanLokal(KUNCI_TITIK_KAS, JSON.stringify(data));
+    const lokalOk = simpanLokal(KUNCI_TITIK_KAS, JSON.stringify(data));
     try { await simpanKeFirestore('pengaturan', data); } catch (e) { console.error(e); }
     tampilkanCocokKas();
-    alert('Titik hitung tersimpan. Mulai sekarang sistem menghitung saldo kas dari sini.');
+    alert(lokalOk
+      ? 'Titik hitung tersimpan. Mulai sekarang sistem menghitung saldo kas dari sini.'
+      : 'Titik hitung tersimpan di SERVER, tapi TIDAK di HP ini (penyimpanan penuh) — cocok kas di HP ini masih memakai titik lama sampai penyimpanan lega.');
   }
 
   function tampilkanCocokKas() {
@@ -23252,7 +23288,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // menumpuk berbulan-bulan sampai tidak ada yang bisa menelusurinya lagi.
     // Patokan besok = laci SESUDAH setoran + rekening — persis isi laci esok pagi.
     const titik = { id: 'titikKas', tanggal: hariIni, laci: nLaci - setoran, rekening: nRek, amplop: nAmplop, brankas: nBrankas, diubahPada: new Date().toISOString() };
-    simpanLokal(KUNCI_TITIK_KAS, JSON.stringify(titik));
+    const titikOk = simpanLokal(KUNCI_TITIK_KAS, JSON.stringify(titik));
     try { await simpanKeFirestore('pengaturan', titik); } catch (e) { console.error(e); }
 
     document.getElementById('tutupLaci').value = '';
@@ -23263,7 +23299,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('tutupBrankas').value = '';
     document.getElementById('tutupSisihan').value = '';
     tampilkanTutupHari();
-    alert('Hari ' + formatTanggal(hariIni) + ' dikunci. Kas fisik ' + formatRupiah(nLaci + nRek + nAmplop + nBrankas)
+    alert((titikOk ? '' : 'PERHATIAN: titik kas besok tersimpan di server, TIDAK di HP ini (penyimpanan penuh). ')
+      + 'Hari ' + formatTanggal(hariIni) + ' dikunci. Kas fisik ' + formatRupiah(nLaci + nRek + nAmplop + nBrankas)
       + (selisih === 0 ? ' — cocok persis.' : ' · selisih ' + (selisih > 0 ? 'lebih ' : 'kurang ') + formatRupiah(Math.abs(selisih)) + '.')
       + (setoran > 0 ? '\nDisetor ke owner ' + formatRupiah(setoran) + ' — kas awal besok ' + formatRupiah(nLaci - setoran + nRek + nAmplop + nBrankas) + '.' : '\nKas awal besok ' + formatRupiah(nLaci + nRek + nAmplop + nBrankas) + '.')
       + '\nKirim rekap WA lewat tombol di atas kalau perlu.');
@@ -32722,7 +32759,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const garam = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
     const acak = await acakPin(pinBaru, garam);
     const data = { id: 'keamanan', garam, acak, diubahPada: new Date().toISOString() };
-    simpanLokal(KUNCI_PIN_LOKAL, JSON.stringify({ garam, acak }));
+    // HP ini dulu: kalau penyimpanan penuh, server JANGAN ditulis — kalau tidak, perangkat lain
+    // memakai PIN baru sementara HP ini tetap menerima PIN lama (pinOwnerBenar membaca lokal).
+    if (!simpanLokal(KUNCI_PIN_LOKAL, JSON.stringify({ garam, acak }))) throw new Error('penyimpanan HP penuh');
     await simpanKeFirestore('pengaturan', data);
   }
 
@@ -32974,7 +33013,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       await simpanPinOwnerBaru(baru);
     } catch (err) {
       console.error(err);
-      tunjuk('Gagal menyimpan ke database (offline?). PIN belum berubah di perangkat lain.');
+      tunjuk(String(err && err.message).indexOf('penyimpanan HP penuh') >= 0
+        ? 'Penyimpanan HP ini penuh — PIN TIDAK diganti di mana pun. Kosongkan penyimpanan dulu.'
+        : 'Gagal menyimpan ke database (offline?). PIN belum berubah di perangkat lain.');
       return;
     }
     bersihkanCobaPin();
@@ -33685,11 +33726,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     } catch (e) { return { dibuka: false }; }
   }
   function ik8PagiBuka(jalur) {
-    try {
-      simpanLokal(KUNCI_BUKA_TOKO, JSON.stringify({
-        t: tanggalLokalIso(), jalur: jalur, jam: new Date().toTimeString().slice(0, 5), kas: ik6KasSekarang()
-      }));
-    } catch (e) { /* penyimpanan penuh — ritual tetap boleh lewat */ }
+    // Penyimpanan penuh: simpanLokal melapor sendiri dan ritual tetap boleh lewat.
+    simpanLokal(KUNCI_BUKA_TOKO, JSON.stringify({
+      t: tanggalLokalIso(), jalur: jalur, jam: new Date().toTimeString().slice(0, 5), kas: ik6KasSekarang()
+    }));
     _ik8PagiFakta = null; _ik8PagiKantong = false;
     // Jalur 'beda' dulu melempar SIAPA PUN yang membuka toko pagi itu langsung ke Arus
     // Kas — halaman owner, lewat ritual yang justru paling sering dipakai staf. Sekarang
