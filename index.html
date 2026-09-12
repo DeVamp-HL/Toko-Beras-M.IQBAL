@@ -9318,6 +9318,60 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   <button onclick="simpanProduksi()" id="btnSimpanProduksi"> Simpan Produksi Kemasan</button>
 </div>
 
+<!-- ===== PELAPOR GALAT (rapi-rapi 0, 13 Sep 2026) =====
+     Skrip KLASIK yang dipasang SEBELUM modul: satu ReferenceError/TDZ saat modul dievaluasi
+     mematikan seluruh aplikasi tanpa pesan (tiga kali pada 7 Sep 2026) dan layarnya tampak
+     seperti "belum tersambung". Sekarang setiap galat tak tertangani tampil di bilah merah, dan
+     kalau modul tidak selesai dimuat (5 detik sesudah load typeof pindahHalaman bukan function —
+     termasuk SDK Firebase gagal diunduh saat buka pertama tanpa sinyal, yang TIDAK lewat onerror),
+     gerbang mengatakannya. Gerbang yang tampil di luar jam toko atau sebelum buka kunci TIDAK
+     disentuh: yang diperiksa hanya ada-tidaknya modul, bukan teks gerbangnya. -->
+<script>
+(function () {
+  var bilah = null, terakhir = '', jumlah = 0;
+  function tampil(pesan) {
+    pesan = String(pesan || 'galat tanpa pesan');
+    try { console.error('[pelapor galat] ' + pesan); } catch (e) {}
+    if (!bilah) {
+      bilah = document.createElement('div');
+      bilah.id = 'bilahGalat';
+      bilah.setAttribute('role', 'alert');
+      bilah.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#8b1a1a;color:#fff;'
+        + 'font:14px/1.4 -apple-system,system-ui,sans-serif;padding:10px 44px 10px 12px;'
+        + 'padding-top:calc(10px + env(safe-area-inset-top,0px));box-shadow:0 2px 8px rgba(0,0,0,.4);word-break:break-word;';
+      var isi = document.createElement('div'); isi.id = 'bilahGalatIsi';
+      var tutup = document.createElement('button');
+      tutup.type = 'button'; tutup.textContent = '\u00d7'; tutup.setAttribute('aria-label', 'Tutup');
+      tutup.style.cssText = 'position:absolute;top:calc(4px + env(safe-area-inset-top,0px));right:8px;width:32px;height:32px;'
+        + 'border:0;background:transparent;color:#fff;font-size:22px;line-height:32px;';
+      tutup.onclick = function () { bilah.style.display = 'none'; };
+      bilah.appendChild(isi); bilah.appendChild(tutup);
+      (document.body || document.documentElement).appendChild(bilah);
+    }
+    if (pesan === terakhir) jumlah++; else { terakhir = pesan; jumlah = 1; }
+    document.getElementById('bilahGalatIsi').textContent = 'Sistem menemukan galat' + (jumlah > 1 ? ' (' + jumlah + '\u00d7)' : '') + ': ' + pesan;
+    bilah.style.display = '';
+  }
+  window.__laporGalat = tampil;
+  window.addEventListener('error', function (e) {
+    var m = (e && e.message) || 'galat';
+    if (e && e.filename) m += ' \u2014 ' + String(e.filename).split('/').pop() + ':' + (e.lineno || '?');
+    tampil(m);
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e && e.reason;
+    tampil('janji ditolak: ' + ((r && (r.message || r.code || String(r))) || 'tanpa alasan'));
+  });
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      if (typeof window.pindahHalaman === 'function') return;
+      var p = document.getElementById('gerbangPesan');
+      if (p) p.textContent = 'Sistem gagal dimuat di perangkat ini. Muat ulang halaman; kalau tetap begini, kirim tangkapan layar ini.';
+      tampil('modul sistem tidak selesai dimuat (pindahHalaman tidak terpasang) \u2014 galat di kode, atau SDK gagal diunduh');
+    }, 5000);
+  });
+})();
+</script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import {
@@ -10360,7 +10414,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // bukan "musnahkan draf" — penghapusan resmi tetap lewat simpan sukses,
         // tombol buang, dan pemulihan.
         if (baris.length === 0 && bongkar === 0) return;
-        localStorage.setItem(KUNCI_DRAF_MASUK, JSON.stringify({
+        simpanLokal(KUNCI_DRAF_MASUK, JSON.stringify({
           disimpanPada: new Date().toISOString(),
           tanggal: document.getElementById('tanggal').value,
           pemasok: document.getElementById('pemasok').value,
@@ -10884,6 +10938,31 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function izinkanKoleksiKosong(koleksi, menit) {
     _bolehKoleksiKosong[koleksi] = Date.now() + (menit || 5) * 60000;
   }
+  // ===== TULIS localStorage YANG BERBUNYI (rapi-rapi 0, 13 Sep 2026) =====
+  // Cadangan lokal seluruh koleksi tumbuh ±62 rb karakter per hari; kuota peramban ±5 MB.
+  // Sebelum ini setItem dipanggil telanjang di 43 tempat. Saat kuota penuh ia MELEMPAR:
+  // (1) di dalam callback onSnapshot → render & status sambungan terlewat, layar diam seperti
+  //     "sinyal jelek"; (2) di dalam catch simpanKeFirestore → antrean tunda gagal ditulis, transaksi
+  //     HILANG tanpa suara. Sekarang satu pintu: gagal = kembali false + lapor ke bilah galat.
+  // Jalur sukses identik dengan sebelumnya (setItem yang sama, nilai yang sama).
+  const _kuotaDilaporkan = {};   // per kunci per sesi — 28 snapshot tidak boleh berteriak bergantian
+  function simpanLokal(kunci, nilai, senyap) {
+    try {
+      localStorage.setItem(kunci, nilai);
+      delete _kuotaDilaporkan[kunci];
+      return true;
+    } catch (e) {
+      if (!senyap && !_kuotaDilaporkan[kunci]) {
+        _kuotaDilaporkan[kunci] = true;
+        laporGalatLokal('Penyimpanan HP penuh — ' + kunci + ' tidak tersimpan (' + ((e && e.name) || 'galat') + '). Data di layar tetap benar; cadangan offline HP ini tertinggal.');
+      }
+      return false;
+    }
+  }
+  function laporGalatLokal(pesan) {
+    try { console.error(pesan); } catch (e) {}
+    if (typeof window.__laporGalat === 'function') window.__laporGalat(pesan);
+  }
   function simpanCadanganLokal(koleksi, kunci, terurut) {
     // Jalur normal (tidak sedang menahan, snapshot berisi) memintas seluruh blok ini —
     // penting, karena fungsi ini jalan pada TIAP snapshot dari 25 koleksi.
@@ -10898,7 +10977,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         return;
       }
     }
-    localStorage.setItem(kunci, JSON.stringify(terurut));
+    simpanLokal(kunci, JSON.stringify(terurut));
     delete _cadanganTertahan[koleksi];
   }
   // Jalan keluar eksplisit — dipakai kalau pengosongan itu memang disengaja (mis.
@@ -10911,7 +10990,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + 'Lakukan HANYA kalau isi ' + t.label + ' memang sengaja dihapus semuanya. '
       + 'Sesudah ini cadangan offline ' + t.label + ' hilang dari HP ini dan layar '
       + 'mengikuti server yang kosong.')) return;
-    localStorage.setItem(t.kunci, '[]');
+    simpanLokal(t.kunci, '[]');
     if (_setelCacheKoleksi[koleksi]) _setelCacheKoleksi[koleksi]([]);   // cache memori ikut
     delete _cadanganTertahan[koleksi];
     izinkanKoleksiKosong(koleksi, 60);
@@ -10927,7 +11006,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const hasil = [];
     const jml = () => { try { return JSON.parse(localStorage.getItem(KUNCI) || '[]').length; } catch (e) { return -1; } };
     try {
-      localStorage.setItem(KUNCI, JSON.stringify(isi));
+      simpanLokal(KUNCI, JSON.stringify(isi));
       delete _cadanganTertahan[KOL]; delete _bolehKoleksiKosong[KOL];
       // 1) snapshot KOSONG tanpa izin -> cadangan wajib utuh, peringatan wajib muncul
       simpanCadanganLokal(KOL, KUNCI, []);
@@ -11464,11 +11543,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         }),
         new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 8000))
       ]);
-      localStorage.setItem('miqbal_ringkasan_terakhir', isiTetap);
+      simpanLokal('miqbal_ringkasan_terakhir', isiTetap);
       // Stempel LOKAL kapan katalog terakhir terbit dari HP ini. Dokumen Firestore punya
       // diperbaruiPada, tapi tidak pernah dibaca balik (getDoc tidak diimpor), jadi fakta
       // "Harga di kasir" di ritual pagi tidak punya sumber lain. Bukan angka uang.
-      localStorage.setItem('miqbal_ringkasan_terbit_v1', new Date().toISOString());
+      simpanLokal('miqbal_ringkasan_terbit_v1', new Date().toISOString());
     } catch (e) { console.error('Gagal terbitkan ringkasan kasir', e); }
   }
 
@@ -11577,8 +11656,25 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // halaman ditutup. Sekarang: tunggu maks 4 detik; lewat itu transaksi masuk antrean
   // lokal dan dikirim ulang otomatis saat sinyal balik. Alur pemanggil tetap sukses.
   const KUNCI_ANTREAN_TUNDA = 'miqbal_antrean_tunda_v1';
-  function ambilAntreanTunda() { try { return JSON.parse(localStorage.getItem(KUNCI_ANTREAN_TUNDA) || '[]'); } catch (e) { return []; } }
-  function setAntreanTunda(a) { localStorage.setItem(KUNCI_ANTREAN_TUNDA, JSON.stringify(a)); perbaruiStatusSambungan(); }
+  // PENYELAMAT TRANSAKSI (rapi-rapi 0, 13 Sep 2026). setAntreanTunda dipanggil DI DALAM catch
+  // simpanKeFirestore — satu-satunya tempat transaksi yang gagal terkirim disimpan. Kalau penyimpanan
+  // HP penuh, dulu setItem melempar di sini dan transaksinya HILANG tanpa suara (dibuktikan di kotak
+  // pasir: antrean 0 sesudah simpan gagal). Sekarang antrean tetap hidup di memori selama halaman
+  // terbuka, dilaporkan di layar, dan kembali ke localStorage begitu penyimpanan lega.
+  let _antreanTundaMemori = null;   // null = localStorage bisa dipercaya; array = yang berlaku adalah memori
+  function ambilAntreanTunda() {
+    if (_antreanTundaMemori) return _antreanTundaMemori.slice();
+    try { return JSON.parse(localStorage.getItem(KUNCI_ANTREAN_TUNDA) || '[]'); } catch (e) { return []; }
+  }
+  function setAntreanTunda(a) {
+    if (simpanLokal(KUNCI_ANTREAN_TUNDA, JSON.stringify(a), true)) {
+      _antreanTundaMemori = null;
+    } else {
+      _antreanTundaMemori = a.slice();
+      if (a.length) laporGalatLokal('Penyimpanan HP penuh: ' + a.length + ' transaksi menunggu di MEMORI — jangan tutup halaman ini sampai status sambungan bersih.');
+    }
+    perbaruiStatusSambungan();
+  }
   let _sedangKirimTunda = false;
   async function kirimAntreanTunda() {
     if (_sedangKirimTunda) return;
@@ -11611,7 +11707,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     let d = localStorage.getItem('miqbal_perangkat_v1');
     if (!d) {
       d = 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
-      localStorage.setItem('miqbal_perangkat_v1', d);
+      simpanLokal('miqbal_perangkat_v1', d);
     }
     return d;
   }
@@ -11622,7 +11718,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const lama = localStorage.getItem('miqbal_perangkat_label_v1') || '';
     const baru = prompt('Nama perangkat ini (contoh: iPhone Owner, iPad Toko):', lama);
     if (baru === null) return;
-    if (baru.trim()) localStorage.setItem('miqbal_perangkat_label_v1', baru.trim());
+    if (baru.trim()) simpanLokal('miqbal_perangkat_label_v1', baru.trim());
     else localStorage.removeItem('miqbal_perangkat_label_v1');
     const el = document.getElementById('setelNamaPerangkat');
     if (el) el.textContent = '— ' + perangkatRingkas();
@@ -11874,7 +11970,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Baru DI SINI capnya dipasang: sesudah seluruh koleksi terbaca, blob terbentuk, dan
     // unduhannya dimulai. Yang tidak bisa dibuktikan dari sini tetap tidak diklaim —
     // apakah berkasnya benar-benar mendarat di penyimpanan HP tidak terjangkau kode ini.
-    if (diam) localStorage.setItem('miqbal_backup_auto_tanggal', tanggalLokalIso());
+    if (diam) simpanLokal('miqbal_backup_auto_tanggal', tanggalLokalIso());
     if (!diam) alert('Backup terunduh. Simpan file ini di tempat aman (misal folder Download HP) — ini cadangan kalau riwayat di browser hilang lagi.');
   }
 
@@ -11971,11 +12067,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         ];
         // Peta jenis beras: satu dokumen pengaturan, dipulihkan langsung (bukan per-id).
         if (isi.petaJenisBeras && Object.keys(isi.petaJenisBeras).length > 0) {
-          localStorage.setItem(KUNCI_JENIS_BERAS, JSON.stringify(isi.petaJenisBeras));
+          simpanLokal(KUNCI_JENIS_BERAS, JSON.stringify(isi.petaJenisBeras));
           try { await simpanKeFirestore('pengaturan', { id: 'jenisBeras', peta: isi.petaJenisBeras, diubahPada: new Date().toISOString() }); } catch (e) { console.error(e); }
         }
         if (isi.petaTempatSimpan && Object.keys(isi.petaTempatSimpan).length > 0) {
-          localStorage.setItem(KUNCI_TEMPAT_SIMPAN, JSON.stringify(isi.petaTempatSimpan));
+          simpanLokal(KUNCI_TEMPAT_SIMPAN, JSON.stringify(isi.petaTempatSimpan));
           try { await simpanKeFirestore('pengaturan', { id: 'tempatSimpan', peta: isi.petaTempatSimpan, diubahPada: new Date().toISOString() }); } catch (e) { console.error(e); }
         }
         const laporan = [];
@@ -12058,7 +12154,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       alert('Gagal simpan ke database (offline?). Data disimpan sementara di HP ini saja — coba lagi kalau internet sudah nyambung.');
       const semuaLokal = ambilSemuaBatch();
       semuaLokal.unshift(kedatangan);
-      localStorage.setItem(KUNCI_SIMPAN, JSON.stringify(semuaLokal));
+      simpanLokal(KUNCI_SIMPAN, JSON.stringify(semuaLokal));
     }
     // Baris BAL juga menulis dokumen produksi beli-jadi (pola formulir Stok Awal dulu):
     // stok kemasan, laba, dan ringkasan kasir membacanya tanpa logika baru. HPP per pcs
@@ -12080,7 +12176,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         console.error(err);
         const lokal = ambilProduksi();
         lokal.unshift(dokProduksi);
-        localStorage.setItem(KUNCI_PRODUKSI, JSON.stringify(lokal));
+        simpanLokal(KUNCI_PRODUKSI, JSON.stringify(lokal));
       }
     }
     btn.disabled = false; btn.textContent = ' Simpan Kedatangan Ini';
@@ -15392,7 +15488,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // bersihkan juga salinan lokal (kalau tadi tersimpan offline)
     const idBatal = new Set(daftarBatal.map(t => t.id));
     const sisa = ambilPenjualan().filter(x => !idBatal.has(x.id));
-    localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(sisa));
+    simpanLokal(KUNCI_PENJUALAN, JSON.stringify(sisa));
     // Lubang lama (ketahuan saat G3): dokumen yang sama masih bisa MENUNGGU di
     // antrean tunda — kalau dibiarkan, transaksi yang sudah dibatalkan bangkit
     // lagi begitu sinyal balik. Antrean ikut dibersihkan.
@@ -15873,7 +15969,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const semua = ambilPesanan().slice();
     const i = semua.findIndex(x => String(x.id) === String(doc.id));
     if (i >= 0) semua[i] = doc; else if (baru) semua.unshift(doc);
-    localStorage.setItem(KUNCI_PESANAN, JSON.stringify(semua));
+    simpanLokal(KUNCI_PESANAN, JSON.stringify(semua));
     if (_cachePesanan.length) _cachePesanan = semua;
   }
   function simpanPesanan() {
@@ -16508,7 +16604,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   function tkJurnalSimpan(daftar) {
     try {
-      if (daftar.length) localStorage.setItem(KUNCI_TUKAR_SETENGAH, JSON.stringify(daftar));
+      if (daftar.length) simpanLokal(KUNCI_TUKAR_SETENGAH, JSON.stringify(daftar));
       else localStorage.removeItem(KUNCI_TUKAR_SETENGAH);
     } catch (e) { console.error(e); }
   }
@@ -18641,7 +18737,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         try { data = kanvas.toDataURL('image/jpeg', 0.9); } catch (e) { data = ''; }
         if (!data) { alert('Gambar tidak bisa diproses di HP ini.'); return; }
         try {
-          localStorage.setItem(KUNCI_QRIS, data);
+          simpanLokal(KUNCI_QRIS, data);
         } catch (e) {
           alert('Penyimpanan HP penuh, kode QRIS tidak tersimpan. Coba gambar yang lebih kecil.');
           return;
@@ -18769,7 +18865,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         console.error(err);
         const semuaLokal = ambilPenjualan();
         semuaLokal.unshift(trx);
-        localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(semuaLokal));
+        simpanLokal(KUNCI_PENJUALAN, JSON.stringify(semuaLokal));
       }
     }
     // RETUR TUKAR ditulis SESUDAH semua penjualan pengganti (lihat TUKAR → JUAL: urutan tulis).
@@ -19022,7 +19118,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       alert('Gagal simpan ke database (offline?). Data disimpan sementara di HP ini saja — coba lagi kalau internet sudah nyambung.');
       const semuaLokal = ambilPenjualan();
       semuaLokal.unshift(transaksi);
-      localStorage.setItem(KUNCI_PENJUALAN, JSON.stringify(semuaLokal));
+      simpanLokal(KUNCI_PENJUALAN, JSON.stringify(semuaLokal));
     }
     if (returTukar) { await tkTulisRetur(returTukar); _tkMenyimpan = 0; }   // retur SESUDAH penjualan penggantinya
     _tukarKeJual = null;
@@ -22361,7 +22457,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Jangan biarkan gema server yang lebih tua menimpa setelan lokal yang lebih baru
     // (terjadi saat offline: lokal sudah baru, server masih lama sampai antrean terkirim).
     if (lokal && String(lokal.diubahPada || '') > String(d.diubahPada || '')) return;
-    localStorage.setItem(KUNCI_TITIK_KAS, JSON.stringify(d));
+    simpanLokal(KUNCI_TITIK_KAS, JSON.stringify(d));
     segarkanArusKasJikaTampil();
   }, (err) => { /* offline / belum masuk — pakai salinan lokal, jangan berisik */ });
   async function simpanTitikKas() {
@@ -22377,7 +22473,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!tanggal) { alert('Pilih tanggal penghitungannya dulu.'); return; }
     if (laci <= 0 && rekening <= 0 && amplop <= 0 && brankas <= 0) { alert('Isi minimal salah satu: uang laci, saldo rekening, amplop laba, atau brankas.'); return; }
     const data = { id: 'titikKas', tanggal, laci, rekening, amplop, brankas, diubahPada: new Date().toISOString() };
-    localStorage.setItem(KUNCI_TITIK_KAS, JSON.stringify(data));
+    simpanLokal(KUNCI_TITIK_KAS, JSON.stringify(data));
     try { await simpanKeFirestore('pengaturan', data); } catch (e) { console.error(e); }
     tampilkanCocokKas();
     alert('Titik hitung tersimpan. Mulai sekarang sistem menghitung saldo kas dari sini.');
@@ -23150,13 +23246,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     } else {
       // Transaksi sukses menulis langsung ke server — cache lokal ikut disegarkan
       // supaya tampilan tidak menunggu gema onSnapshot.
-      localStorage.setItem(KUNCI_TUTUP, JSON.stringify([dokTutup].concat(ambilTutupHari().filter(x => x.id !== dokTutup.id))));
+      simpanLokal(KUNCI_TUTUP, JSON.stringify([dokTutup].concat(ambilTutupHari().filter(x => x.id !== dokTutup.id))));
     }
     // Patokan kas maju ke hitungan malam ini — inti ritualnya. Tanpa ini, selisih
     // menumpuk berbulan-bulan sampai tidak ada yang bisa menelusurinya lagi.
     // Patokan besok = laci SESUDAH setoran + rekening — persis isi laci esok pagi.
     const titik = { id: 'titikKas', tanggal: hariIni, laci: nLaci - setoran, rekening: nRek, amplop: nAmplop, brankas: nBrankas, diubahPada: new Date().toISOString() };
-    localStorage.setItem(KUNCI_TITIK_KAS, JSON.stringify(titik));
+    simpanLokal(KUNCI_TITIK_KAS, JSON.stringify(titik));
     try { await simpanKeFirestore('pengaturan', titik); } catch (e) { console.error(e); }
 
     document.getElementById('tutupLaci').value = '';
@@ -24666,7 +24762,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const semua = ambilPelangganCatatan().filter(c => c.id !== dok.id);
     semua.push(dok);
     _cachePelangganCat = semua;
-    localStorage.setItem(KUNCI_PELANGGAN_CAT, JSON.stringify(semua));
+    simpanLokal(KUNCI_PELANGGAN_CAT, JSON.stringify(semua));
     try { await simpanKeFirestore(KOLEKSI_PELANGGAN_CAT, dok); } catch (e) { console.error(e); }
     // Menyimpan kartu yang ketiga kolomnya kosong BUKAN tidak berakibat: sejak gerbang
     // KR1 membaca isinya, kartu kosong berarti orang itu TIDAK terdaftar dan kasir akan
@@ -24698,7 +24794,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + '.\n\nHapus catatannya (salah catat)?')) {
         try { await hapusDariFirestore(KOLEKSI_THR, sudah.id); } catch (e) { console.error(e); }
         _cacheThr = ambilThrPelanggan().filter(x => x.id !== sudah.id);
-        localStorage.setItem(KUNCI_THR, JSON.stringify(_cacheThr));
+        simpanLokal(KUNCI_THR, JSON.stringify(_cacheThr));
         tutupLembarPelanggan(); tampilkanPelanggan();
       }
       return;
@@ -24713,7 +24809,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       bentuk: bentuk.trim(), nilai, tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5) };
     // Salinan lokal dulu supaya layar jujur walau offline (pola catatan pelanggan).
     const semua = ambilThrPelanggan().slice(); semua.push(dok);
-    _cacheThr = semua; localStorage.setItem(KUNCI_THR, JSON.stringify(semua));
+    _cacheThr = semua; simpanLokal(KUNCI_THR, JSON.stringify(semua));
     try { await simpanKeFirestore(KOLEKSI_THR, dok); } catch (e) { console.error(e); }
     tutupLembarPelanggan();
     tampilkanPelanggan();
@@ -25550,7 +25646,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const semua = ambilPemasokCatatan().filter(c => c.id !== dok.id);
     semua.push(dok);
     _cachePemasokCat = semua;
-    localStorage.setItem(KUNCI_PEMASOK_CAT, JSON.stringify(semua));
+    simpanLokal(KUNCI_PEMASOK_CAT, JSON.stringify(semua));
     try { await simpanKeFirestore(KOLEKSI_PEMASOK_CAT, dok); } catch (e) { console.error(e); }
     tutupLembarPemasok();
     tampilkanPemasok();
@@ -29355,7 +29451,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (lama.some(x => String(x.id) === String(dok.id))) return;   // gema server sudah datang
       const baru = [dok].concat(lama);
       tulis(baru);
-      localStorage.setItem(kunci, JSON.stringify(baru));
+      simpanLokal(kunci, JSON.stringify(baru));
     } catch (e) { console.error('suntik cache gagal', e); }
   }
 
@@ -32394,7 +32490,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function gantiTema() {
     const skrgGelap = document.documentElement.getAttribute('data-tema') === 'gelap';
     const temaBaru = skrgGelap ? 'terang' : 'gelap';
-    localStorage.setItem(KUNCI_TEMA, temaBaru);
+    simpanLokal(KUNCI_TEMA, temaBaru);
     terapkanTema(temaBaru);
   }
 
@@ -32453,7 +32549,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const salah = st.salah + 1;
     let jeda = 0;
     if (salah >= 5) jeda = JEDA_PIN[Math.min(salah - 5, JEDA_PIN.length - 1)];
-    localStorage.setItem(KUNCI_COBA_PIN, JSON.stringify({ salah, bolehLagi: Date.now() + jeda * 1000 }));
+    simpanLokal(KUNCI_COBA_PIN, JSON.stringify({ salah, bolehLagi: Date.now() + jeda * 1000 }));
     return jeda;
   }
   function bersihkanCobaPin() { localStorage.removeItem(KUNCI_COBA_PIN); }
@@ -32502,7 +32598,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (!snap.exists()) return;
       const d = snap.data();
       if (d && d.peta) {
-        localStorage.setItem(KUNCI_JENIS_BERAS, JSON.stringify(d.peta));
+        simpanLokal(KUNCI_JENIS_BERAS, JSON.stringify(d.peta));
         if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
         if (document.getElementById('halamanHarga').classList.contains('tampil')) tampilkanJenisBeras();
       }
@@ -32512,7 +32608,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   async function simpanJenisBeras(merk, jenis) {
     const peta = ambilPetaJenisBeras();
     peta[merk] = jenis;
-    localStorage.setItem(KUNCI_JENIS_BERAS, JSON.stringify(peta));
+    simpanLokal(KUNCI_JENIS_BERAS, JSON.stringify(peta));
     try {
       await simpanKeFirestore('pengaturan', { id: 'jenisBeras', peta, diubahPada: new Date().toISOString() });
     } catch (e) { console.error(e); }
@@ -32585,7 +32681,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (!snap.exists()) return;
       const d = snap.data();
       if (d && d.peta) {
-        localStorage.setItem(KUNCI_TEMPAT_SIMPAN, JSON.stringify(d.peta));
+        simpanLokal(KUNCI_TEMPAT_SIMPAN, JSON.stringify(d.peta));
         if (_smMerk && document.body.classList.contains('lembar-stok-merk-terbuka')) gambarTempatLembarMerk();
       }
     }, () => { /* offline - pakai salinan perangkat */ });
@@ -32597,7 +32693,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Dikosongkan = kuncinya DIBUANG, bukan disimpan sebagai string kosong. Peta yang
     // penuh kunci bernilai '' tidak bisa dibedakan dari peta yang memang terisi.
     if (teks) peta[k] = teks; else delete peta[k];
-    localStorage.setItem(KUNCI_TEMPAT_SIMPAN, JSON.stringify(peta));
+    simpanLokal(KUNCI_TEMPAT_SIMPAN, JSON.stringify(peta));
     try {
       await simpanKeFirestore('pengaturan', { id: 'tempatSimpan', peta, diubahPada: new Date().toISOString() });
     } catch (e) { console.error(e); }
@@ -32617,7 +32713,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     onSnapshot(doc(db, 'pengaturan', 'keamanan'), (snap) => {
       if (!snap.exists()) return;
       const d = snap.data();
-      if (d && d.acak && d.garam) localStorage.setItem(KUNCI_PIN_LOKAL, JSON.stringify({ garam: d.garam, acak: d.acak }));
+      if (d && d.acak && d.garam) simpanLokal(KUNCI_PIN_LOKAL, JSON.stringify({ garam: d.garam, acak: d.acak }));
     }, () => { /* offline / belum masuk — pakai salinan perangkat */ });
   }
   setTimeout(pasangPendengarPin, 0);
@@ -32626,7 +32722,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const garam = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
     const acak = await acakPin(pinBaru, garam);
     const data = { id: 'keamanan', garam, acak, diubahPada: new Date().toISOString() };
-    localStorage.setItem(KUNCI_PIN_LOKAL, JSON.stringify({ garam, acak }));
+    simpanLokal(KUNCI_PIN_LOKAL, JSON.stringify({ garam, acak }));
     await simpanKeFirestore('pengaturan', data);
   }
 
@@ -32655,8 +32751,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   async function gerbangJalurOwner() {
     if (!(await mintaPinOwner('PIN owner:'))) return;
-    localStorage.setItem(KUNCI_UNLOCK_OWNER, '1');
-    localStorage.setItem(KUNCI_GERBANG, 'ya');
+    simpanLokal(KUNCI_UNLOCK_OWNER, '1');
+    simpanLokal(KUNCI_GERBANG, 'ya');
     terapkanStatusOwner();
     terapkanGerbang();
   }
@@ -32727,7 +32823,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         return null;
       };
       const o = {}; const f = j.fields || {}; for (const k in f) o[k] = baca(f[k]);
-      localStorage.setItem(KUNCI_ROSTER, JSON.stringify(o));
+      simpanLokal(KUNCI_ROSTER, JSON.stringify(o));
       terapkanGerbang();
     } catch (e) { /* offline — pakai cache */ }
   }
@@ -32758,7 +32854,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     });
     const data = { id: 'aksesKasir', operator, diubahPada: new Date().toISOString() };
     await simpanKeFirestore('pengaturan', data);
-    localStorage.setItem(KUNCI_ROSTER, JSON.stringify(data));
+    simpanLokal(KUNCI_ROSTER, JSON.stringify(data));
     tutupModalJaga();
     alert('Tersimpan. Berlaku di semua HP begitu HP-nya online.');
   }
@@ -32909,7 +33005,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     }
     if (await pinOwnerBenar(nilai)) {
       bersihkanCobaPin();
-      localStorage.setItem(KUNCI_UNLOCK_OWNER, '1');
+      simpanLokal(KUNCI_UNLOCK_OWNER, '1');
       terapkanStatusOwner();
       tutupModalPin();
       pindahHalaman('ringkasan');
@@ -33590,7 +33686,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   function ik8PagiBuka(jalur) {
     try {
-      localStorage.setItem(KUNCI_BUKA_TOKO, JSON.stringify({
+      simpanLokal(KUNCI_BUKA_TOKO, JSON.stringify({
         t: tanggalLokalIso(), jalur: jalur, jam: new Date().toTimeString().slice(0, 5), kas: ik6KasSekarang()
       }));
     } catch (e) { /* penyimpanan penuh — ritual tetap boleh lewat */ }
