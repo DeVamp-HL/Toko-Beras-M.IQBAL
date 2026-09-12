@@ -1,26 +1,68 @@
-# Alur kerja Pages sederhana — Toko Beras M.IQBAL
-# Dipakai 6 Agustus 2026 setelah pembangun bawaan "pages build and deployment"
-# gagal 5 kali berturut-turut (job menunggu mesin 15 menit lalu dibatalkan).
-# Tidak ada build: file di repo disalin apa adanya, karena sistem ini memang
-# satu file HTML statis tanpa framework.
-name: Terbitkan Pages
+# Alur kerja Pages — Toko Beras M.IQBAL
+# Dipakai sejak 6 Agustus 2026 setelah pembangun bawaan Pages gagal berulang.
+# Tidak ada build: berkas di repo disalin apa adanya (satu HTML statis tanpa framework).
+#
+# Sejak putaran rapi-rapi 0 (13 Sep 2026): job `uji` berjalan di SETIAP push/PR dan
+# job `terbitkan` hanya jalan di main SESUDAH `uji` hijau. Sebelumnya setiap push ke main
+# langsung terbit ke toko tanpa satu pun langkah uji — dan satu referensi salah lingkup
+# pernah tiga kali mematikan seluruh aplikasi (7 Sep 2026).
+name: Uji lalu terbitkan Pages
 
 on:
   push:
-    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  uji:
+    # macos-latest: jsc (JavaScriptCore) tersedia bawaan — sama dengan mesin pengembang.
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - name: Ambil isi repo
+        uses: actions/checkout@v4
+
+      - name: Sintaks modul, lantai Chrome 80, id ganda, onclick, getElementById
+        run: alat-uji/periksa.sh index.html
+
+      - name: Harness jsc — seluruh modul dievaluasi sampai akhir
+        run: alat-uji/harness/jalankan.sh index.html
+
+      - name: Harness jsc — kontrol positif (modul cacat wajib gagal)
+        run: alat-uji/harness/jalankan.sh --kontrol
+
+      - name: 28 mesin uang beku — byte-identik dengan sidik kanonik
+        run: python3 alat-uji/beku2.py --sidik
+
+      - name: beku2 — uji diri (alat terbukti melihat perubahan)
+        run: python3 alat-uji/beku2.py --uji-diri
+
+      - name: Lingkup statis — nama dipanggil tanpa deklarasi
+        run: python3 alat-uji/lingkup.py index.html
+
+      - name: Lingkup statis — kontrol positif
+        run: python3 alat-uji/lingkup.py --kontrol
+
+      - name: audit.py masih terkompilasi
+        run: python3 -m py_compile alat-audit/audit.py
+
   terbitkan:
+    needs: uji
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
