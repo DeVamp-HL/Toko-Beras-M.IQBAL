@@ -13,6 +13,7 @@ keputusan desain produk ada di `KEPUTUSAN-DESAIN.md`.
 | `kasir.html` | Kasir ringan **alat pemilik** (nama berkasnya menyesatkan). |
 | `kasir-darurat-nominal.html` + `sw-kasir.js` + `manifest-kasir.json` | Kasir **staf** (PWA offline). Akan disatukan menjadi satu kasir tablet — **jangan disentuh** sampai sistem utama selesai dirapikan. Setiap perubahan `kasir*.html` wajib menaikkan `VERSI` di `sw-kasir.js`. |
 | `firestore.rules` + `firebase.json` | Aturan akses Firestore. Rules dipasang ke Console oleh pemilik. |
+| `lib/lz-string.js` + `lib/kemas-worker.js` | Kompresi cadangan 28 koleksi di localStorage (LZ-string, dikompres di Web Worker supaya utas utama tidak tersendat). Tanpa berkas ini sistem tetap jalan dengan cadangan polos. |
 | `alat-uji/` | Jaring pengaman yang dijalankan CI sebelum terbit (lihat bawah). |
 | `alat-audit/audit.py` | Pemeriksa independen (Python) yang menghitung ulang uang dari berkas backup. |
 | `.github/workflows/pages.yml` | CI: job `uji` di setiap push/PR; `terbitkan` hanya di `main` sesudah `uji` hijau. |
@@ -34,6 +35,9 @@ Semua bisa dijalankan dari folder mana pun, tanpa Node, cukup macOS (jsc bawaan)
 | `python3 alat-uji/beku2.py --uji-diri` | alat pembanding terbukti MELIHAT perubahan (mutasi di memori pada satu mesin & satu kontrol) | 3 |
 | `python3 alat-uji/lingkup.py index.html` | tidak ada nama fungsi yang dipanggil tanpa pernah dideklarasikan (statis, kasar) | 2 |
 | `python3 alat-uji/lingkup.py --kontrol` | pemeriksa lingkup terbukti menangkap nama palsu | 3 |
+
+Harness menyemai 28 kunci cadangan koleksi dengan `[]` supaya jalur *baca* cadangan ikut dievaluasi —
+tanpa itu TDZ pada keadaan pembaca cadangan pernah lolos (13 Sep 2026).
 
 Yang **tidak** dibuktikan alat-alat ini: tampilan, klik, dan angka. Untuk itu ada kotak pasir
 tulis-nol di peramban (lihat `docs/` putaran berikutnya) dan uji identitas dari konsol

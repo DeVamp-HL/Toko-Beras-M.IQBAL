@@ -9383,6 +9383,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   });
 })();
 </script>
+<!-- LZ-string (MIT, Pieroxy) untuk cadangan koleksi terkompresi — lihat kemasCadangan di modul.
+     Gagal dimuat bukan bencana: modul memeriksa window.LZString dan jatuh ke bentuk polos. -->
+<script src="lib/lz-string.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import {
@@ -9404,6 +9407,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
   const appFirebase = initializeApp(firebaseConfig);
   const db = getFirestore(appFirebase);
+
+  // Keadaan CADANGAN KOLEKSI TERKOMPRESI dideklarasikan DI SINI, paling atas, karena ambil*()
+  // sudah dipanggil saat modul dievaluasi (perbaruiCounterBackup) dan membaca cadangan lewat
+  // bacaCadanganLokal — deklarasi yang lebih bawah kena TDZ dan seluruh modul mati (kejadian
+  // 13 Sep 2026, tertangkap pelapor galat di kotak pasir; harness kini menyemai cadangan). Fungsi
+  // dan penjelasannya ada di bagian TULIS localStorage YANG BERBUNYI.
+  const TANDA_KEMAS = '\u0001LZ';
+  const AMBANG_KEMAS = 2000;        // di bawah ini kompresi tidak berguna
+  const _cadanganDekode = {};       // kunci -> { mentah, teks } — dekompresi diingat, dihitung sekali
+  const _cadanganRusakDilaporkan = {};
+  let _pekerjaKemas = null, _pekerjaKemasGagal = false, _nomorKemas = 0;
+  const _kemasTerbaru = {};         // kunci -> nomor pekerjaan terakhir (hasil yang lebih tua dibuang)
+  const _kemasTertunda = {};        // kunci -> { id, teks } — dibilas sinkron bila pekerja mati
 
   // ===== Login toko (Jalan benar, 2 Agustus 2026) =====
   // Database dikunci: hanya yang login boleh baca/tulis. Sandi TIDAK ditulis di kode —
@@ -10982,13 +10998,86 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     try { console.log(pesan); } catch (e) {}
     if (typeof window.__laporKabar === 'function') window.__laporKabar(pesan);
   }
-  function simpanCadanganLokal(koleksi, kunci, terurut) {
+  // ===== CADANGAN KOLEKSI TERKOMPRESI (rapi-rapi 0, keputusan D8, 13 Sep 2026) =====
+  // Cadangan 28 koleksi memakan ±2,1 juta karakter localStorage (85% di penjualan; angka toko
+  // 11 Sep 2026) dan tumbuh ±62 rb/hari — batas peramban ±5 juta tersentuh awal November, SEBELUM
+  // Tutup Buku Desember yang justru mengecilkannya. Jembatannya: simpan terkompresi (LZ-string,
+  // lib/lz-string.js) dengan penanda di depan. Pembaca menerima kedua bentuk, jadi cadangan lama
+  // tetap terbaca; tanpa pustaka (harness, berkas gagal dimuat) semuanya jatuh ke bentuk polos.
+  // Hanya 28 kunci koleksi yang lewat sini; kunci pengaturan kecil tetap polos.
+  // Cache memori TIDAK diisi dari localStorage saat boot — ambil*() membaca cadangan pada tiap
+  // panggilan selama cache kosong (offline). Karena itu hasil dekompresi diingat per kunci
+  // (dibandingkan dengan teks mentahnya) supaya biayanya sekali, bukan tiap panggilan.
+  function kemasCadangan(teks) {
+    const LZ = window.LZString;
+    if (!LZ || teks.length < AMBANG_KEMAS) return teks;
+    try { return TANDA_KEMAS + LZ.compressToUTF16(teks); } catch (e) { return teks; }
+  }
+  function bukaCadangan(kunci, mentah) {
+    if (mentah.slice(0, 3) !== TANDA_KEMAS) return mentah;
+    const d = _cadanganDekode[kunci];
+    if (d && d.mentah === mentah) return d.teks;
+    const LZ = window.LZString;
+    if (!LZ) throw new Error('pustaka kompresi tidak dimuat');
+    const teks = LZ.decompressFromUTF16(mentah.slice(3));
+    if (!teks) throw new Error('hasil dekompresi kosong');
+    _cadanganDekode[kunci] = { mentah: mentah, teks: teks };
+    return teks;
+  }
+  function bacaCadanganLokal(kunci) {
+    let mentah = null;
+    try { mentah = localStorage.getItem(kunci); } catch (e) { mentah = null; }
+    if (!mentah) return [];
+    try {
+      return JSON.parse(bukaCadangan(kunci, mentah));
+    } catch (e) {
+      // BERBUNYI, bukan diam: cadangan yang tak terbaca = angka di HP ini belum lengkap sampai sinyal.
+      if (!_cadanganRusakDilaporkan[kunci]) {
+        _cadanganRusakDilaporkan[kunci] = true;
+        laporGalatLokal('Cadangan lokal ' + kunci + ' tidak terbaca (' + ((e && e.message) || 'galat') + ') — angka di HP ini belum lengkap sampai data server datang.');
+      }
+      return [];
+    }
+  }
+  function pekerjaKemas() {
+    if (_pekerjaKemas || _pekerjaKemasGagal) return _pekerjaKemas;
+    try {
+      _pekerjaKemas = new Worker('lib/kemas-worker.js');
+      _pekerjaKemas.onmessage = (e) => {
+        const d = e.data || {};
+        if (_kemasTerbaru[d.kunci] !== d.id) return;   // sudah ada tulisan yang lebih baru
+        delete _kemasTertunda[d.kunci];
+        if (typeof d.hasil === 'string') simpanLokal(d.kunci, TANDA_KEMAS + d.hasil);
+      };
+      _pekerjaKemas.onerror = () => {
+        // Pekerja mati (berkas tak termuat, dsb.): bilas yang tertunda secara sinkron, lalu
+        // semua tulisan berikutnya sinkron. Cadangan tidak boleh tertinggal diam-diam.
+        _pekerjaKemasGagal = true;
+        try { _pekerjaKemas.terminate(); } catch (e) {}
+        _pekerjaKemas = null;
+        Object.keys(_kemasTertunda).forEach(k => { const t = _kemasTertunda[k]; delete _kemasTertunda[k]; simpanLokal(k, kemasCadangan(t.teks)); });
+      };
+    } catch (e) { _pekerjaKemasGagal = true; _pekerjaKemas = null; }
+    return _pekerjaKemas;
+  }
+  function tulisCadanganLokal(kunci, daftar, segera) {
+    const teks = JSON.stringify(daftar);
+    _kemasTerbaru[kunci] = ++_nomorKemas;   // tulisan ini yang berlaku; hasil pekerja yang lebih tua dibuang
+    delete _kemasTertunda[kunci];
+    if (segera || !window.LZString || teks.length < AMBANG_KEMAS) return simpanLokal(kunci, kemasCadangan(teks));
+    const w = pekerjaKemas();
+    if (!w) return simpanLokal(kunci, kemasCadangan(teks));
+    _kemasTertunda[kunci] = { id: _kemasTerbaru[kunci], teks: teks };
+    w.postMessage({ id: _kemasTerbaru[kunci], kunci: kunci, teks: teks });
+    return true;   // tertunda beberapa ratus ms; kegagalan kuota tetap dilaporkan saat hasilnya ditulis
+  }
+  function simpanCadanganLokal(koleksi, kunci, terurut, segera) {
     // Jalur normal (tidak sedang menahan, snapshot berisi) memintas seluruh blok ini —
     // penting, karena fungsi ini jalan pada TIAP snapshot dari 25 koleksi.
     const bolehKosong = _bolehKoleksiKosong[koleksi] > Date.now();
     if (!bolehKosong && (terurut.length === 0 || _cadanganTertahan[koleksi])) {
       let lama = [];
-      try { lama = JSON.parse(localStorage.getItem(kunci) || '[]') || []; } catch (e) { lama = []; }
+      lama = bacaCadanganLokal(kunci) || [];
       if (lama.length > terurut.length) {
         _cadanganTertahan[koleksi] = { kunci, n: lama.length, label: labelKoleksi(koleksi) };
         console.warn('Cadangan ' + koleksi + ' TIDAK diperbarui — server mengirim '
@@ -10996,7 +11085,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         return;
       }
     }
-    simpanLokal(kunci, JSON.stringify(terurut));
+    tulisCadanganLokal(kunci, terurut, segera);
     delete _cadanganTertahan[koleksi];
   }
   // Jalan keluar eksplisit — dipakai kalau pengosongan itu memang disengaja (mis.
@@ -11009,6 +11098,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + 'Lakukan HANYA kalau isi ' + t.label + ' memang sengaja dihapus semuanya. '
       + 'Sesudah ini cadangan offline ' + t.label + ' hilang dari HP ini dan layar '
       + 'mengikuti server yang kosong.')) return;
+    _kemasTerbaru[t.kunci] = ++_nomorKemas; delete _kemasTertunda[t.kunci];   // hasil pekerja yang masih di jalan dibuang
     simpanLokal(t.kunci, '[]');
     if (_setelCacheKoleksi[koleksi]) _setelCacheKoleksi[koleksi]([]);   // cache memori ikut
     delete _cadanganTertahan[koleksi];
@@ -11023,13 +11113,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const KOL = '__ujiPenjaga', KUNCI = 'miqbal_uji_penjaga_v1';
     const isi = [{ id: 1 }, { id: 2 }, { id: 3 }];
     const hasil = [];
-    const jml = () => { try { return JSON.parse(localStorage.getItem(KUNCI) || '[]').length; } catch (e) { return -1; } };
+    const jml = () => { try { return bacaCadanganLokal(KUNCI).length; } catch (e) { return -1; } };
     // Tiga keadaan: lulus / gagal / TIDAK BISA DIUJI (penyimpanan penuh) — yang ketiga bukan tuduhan.
-    if (!simpanLokal(KUNCI, JSON.stringify(isi))) return { lulus: false, tidakBisaDiuji: true, gagal: ['penyimpanan HP penuh — uji tidak bisa dijalankan'] };
+    if (!tulisCadanganLokal(KUNCI, isi, true)) return { lulus: false, tidakBisaDiuji: true, gagal: ['penyimpanan HP penuh — uji tidak bisa dijalankan'] };
     try {
       delete _cadanganTertahan[KOL]; delete _bolehKoleksiKosong[KOL];
       // 1) snapshot KOSONG tanpa izin -> cadangan wajib utuh, peringatan wajib muncul
-      simpanCadanganLokal(KOL, KUNCI, []);
+      simpanCadanganLokal(KOL, KUNCI, [], true);
       hasil.push(['kosong tanpa izin: cadangan utuh', jml() === 3]);
       hasil.push(['kosong tanpa izin: tercatat perlu perhatian', !!_cadanganTertahan[KOL]]);
       tampilkanRingkasan();
@@ -11046,16 +11136,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // 2) masih menahan, snapshot MENGKERUT (1 dokumen) -> wajib tetap ditahan.
       // Inilah cacat yang nyaris lolos: penjaga yang cuma melihat angka nol akan padam
       // begitu satu dokumen masuk, dan justru di detik itu cadangannya hilang.
-      simpanCadanganLokal(KOL, KUNCI, [{ id: 9 }]);
+      simpanCadanganLokal(KOL, KUNCI, [{ id: 9 }], true);
       hasil.push(['snapshot mengkerut: cadangan tetap utuh', jml() === 3]);
       hasil.push(['snapshot mengkerut: peringatan tetap menyala', !!_cadanganTertahan[KOL]]);
       // 3) snapshot BERISI penuh -> menimpa seperti biasa, peringatan padam
-      simpanCadanganLokal(KOL, KUNCI, isi.concat({ id: 4 }));
+      simpanCadanganLokal(KOL, KUNCI, isi.concat({ id: 4 }), true);
       hasil.push(['snapshot berisi: cadangan diperbarui', jml() === 4]);
       hasil.push(['snapshot berisi: peringatan padam', !_cadanganTertahan[KOL]]);
       // 4) penghapusan DISENGAJA -> kosong boleh menimpa (jalur hapusDariFirestore)
       izinkanKoleksiKosong(KOL);
-      simpanCadanganLokal(KOL, KUNCI, []);
+      simpanCadanganLokal(KOL, KUNCI, [], true);
       hasil.push(['penghapusan disengaja: cadangan ikut kosong', jml() === 0]);
       hasil.push(['penghapusan disengaja: tanpa peringatan', !_cadanganTertahan[KOL]]);
       // 5) daftar penyetel cache benar-benar terisi saat boot — tanpa ini tombol Terima
@@ -11915,8 +12005,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
   function ambilSemuaBatch() {
     if (_cacheBatch.length > 0) return _cacheBatch;
-    const data = localStorage.getItem(KUNCI_SIMPAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_SIMPAN);
   }
 
   function perbaruiCounterBackup() {
@@ -12189,7 +12278,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       alert('Gagal simpan ke database (offline?). Data disimpan sementara di HP ini saja — coba lagi kalau internet sudah nyambung.');
       const semuaLokal = ambilSemuaBatch();
       semuaLokal.unshift(kedatangan);
-      simpanLokal(KUNCI_SIMPAN, JSON.stringify(semuaLokal));
+      tulisCadanganLokal(KUNCI_SIMPAN, semuaLokal);
     }
     // Baris BAL juga menulis dokumen produksi beli-jadi (pola formulir Stok Awal dulu):
     // stok kemasan, laba, dan ringkasan kasir membacanya tanpa logika baru. HPP per pcs
@@ -12211,7 +12300,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         console.error(err);
         const lokal = ambilProduksi();
         lokal.unshift(dokProduksi);
-        simpanLokal(KUNCI_PRODUKSI, JSON.stringify(lokal));
+        tulisCadanganLokal(KUNCI_PRODUKSI, lokal);
       }
     }
     btn.disabled = false; btn.textContent = ' Simpan Kedatangan Ini';
@@ -12371,8 +12460,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // --- Biaya Bulanan ---
   function ambilBiayaBulanan() {
     if (_cacheBulanan.length > 0) return _cacheBulanan;
-    const data = localStorage.getItem(KUNCI_BULANAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_BULANAN);
   }
 
   // id field HTML per pegawai: "Ben Mohsein" -> "gajiHariBen", "Hasan" -> "gajiHariHasan", dst.
@@ -13101,8 +13189,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
   function ambilPengeluaranHarian() {
     if (_cacheHarian.length > 0) return _cacheHarian;
-    const data = localStorage.getItem(KUNCI_HARIAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_HARIAN);
   }
 
   // Dua sumbu yang TIDAK BOLEH dicampur: untuk siapa belanjanya (toko / owner) dan dari
@@ -14438,16 +14525,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   function ambilPenjualanSemua() {
     if (_cachePenjualan.length > 0) return _cachePenjualan;
-    const data = localStorage.getItem(KUNCI_PENJUALAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_PENJUALAN);
   }
   function ambilPenjualan() {
     return ambilPenjualanSemua().filter(penjualanMasihBerlaku);
   }
   function ambilProduksi() {
     if (_cacheProduksi.length > 0) return _cacheProduksi;
-    const data = localStorage.getItem(KUNCI_PRODUKSI);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_PRODUKSI);
   }
   // Pola SAMA dengan penjualanMasihBerlaku: catatan produksi yang HPP-nya sudah
   // dikoreksi TIDAK dihapus — ditandai dikoreksiOleh, tetap terbaca di Riwayat
@@ -14459,69 +14544,58 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function ambilProduksiBerlaku() { return ambilProduksi().filter(produksiMasihBerlaku); }
   function ambilRetur() {
     if (_cacheRetur.length > 0) return _cacheRetur;
-    const data = localStorage.getItem(KUNCI_RETUR);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_RETUR);
   }
   function ambilKarantina() {
     if (_cacheKarantina.length > 0) return _cacheKarantina;
-    const data = localStorage.getItem(KUNCI_KARANTINA);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_KARANTINA);
   }
   function ambilPiutangMutasi() {
     if (_cachePiutang.length > 0) return _cachePiutang;
-    const data = localStorage.getItem(KUNCI_PIUTANG);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_PIUTANG);
   }
   function ambilKasbonMutasi() {
     if (_cacheKasbon.length > 0) return _cacheKasbon;
-    const data = localStorage.getItem(KUNCI_KASBON);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_KASBON);
   }
   function ambilPenyesuaianStok() {
     if (_cachePenyesuaian.length > 0) return _cachePenyesuaian;
-    const data = localStorage.getItem(KUNCI_PENYESUAIAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_PENYESUAIAN);
   }
   function ambilPelangganCatatan() {
     if (_cachePelangganCat.length > 0) return _cachePelangganCat;
-    const data = localStorage.getItem(KUNCI_PELANGGAN_CAT);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_PELANGGAN_CAT);
   }
   function ambilPesanan() {
     if (_cachePesanan.length > 0) return _cachePesanan;
-    const data = localStorage.getItem(KUNCI_PESANAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_PESANAN);
   }
   function ambilSetoranKas() {
     if (_cacheSetoran.length > 0) return _cacheSetoran;
-    const data = localStorage.getItem(KUNCI_SETORAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_SETORAN);
   }
   function ambilTitipanHarian() {
     if (_cacheTitipan.length > 0) return _cacheTitipan;
-    const data = localStorage.getItem(KUNCI_TITIPAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_TITIPAN);
   }
   function ambilPenyesuaianKemasan() {
     if (_cachePenyKemasan.length > 0) return _cachePenyKemasan;
-    const data = localStorage.getItem(KUNCI_PENY_KEMASAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_PENY_KEMASAN);
   }
   function ambilAmplopLaba() {
     if (_cacheAmplop.length > 0) return _cacheAmplop;
-    const data = localStorage.getItem(KUNCI_AMPLOP);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_AMPLOP);
   }
   // Saldo amplop DITURUNKAN dari mutasinya, tidak pernah disimpan sebagai angka jadi —
   // pola yang sama dengan piutang, kasbon, dan stok. Angka jadi bisa melenceng diam-diam;
   // angka turunan tidak bisa.
   function ambilTembusanStok() {
     if (_cacheTembusan.length > 0) return _cacheTembusan;
-    try { return JSON.parse(localStorage.getItem(KUNCI_TEMBUSAN) || '[]'); } catch (e) { return []; }
+    return bacaCadanganLokal(KUNCI_TEMBUSAN);
   }
   function ambilUtangOwnerMutasi() {
     if (_cacheUtangOwner.length > 0) return _cacheUtangOwner;
-    try { return JSON.parse(localStorage.getItem(KUNCI_UTANG_OWNER) || '[]'); } catch (e) { return []; }
+    return bacaCadanganLokal(KUNCI_UTANG_OWNER);
   }
   // Saldo utang ke owner = Σ belanja toko-dibayar-dompet + Σ saldo pembuka − Σ pelunasan.
   // Turunan murni; tidak ada angka saldo yang pernah disimpan.
@@ -14550,8 +14624,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
   function ambilModalOwner() {
     if (_cacheModal.length > 0) return _cacheModal;
-    const data = localStorage.getItem(KUNCI_MODAL);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_MODAL);
   }
   // SATU daftar kanonik gerakan modal — inilah yang menjaga tidak ada yang terhitung dua
   // kali. Koleksi setoranKas lama sebenarnya penarikan modal SATU ARAH; dibaca di sini
@@ -14574,8 +14647,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   function ambilUtangPemasokMutasi() {
     if (_cacheUtangPemasok.length > 0) return _cacheUtangPemasok;
-    const data = localStorage.getItem(KUNCI_UTANG_PEMASOK);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_UTANG_PEMASOK);
   }
   // Cara bayar batch: dokumen lama tanpa field = TUNAI — perilaku lama utuh, tanpa migrasi.
   function batchDiutang(k) { return k.caraBayar === 'utang'; }
@@ -14677,18 +14749,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   function ambilPemasokCatatan() {
     if (_cachePemasokCat.length > 0) return _cachePemasokCat;
-    const data = localStorage.getItem(KUNCI_PEMASOK_CAT);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_PEMASOK_CAT);
   }
   function ambilThrPelanggan() {
     if (_cacheThr.length > 0) return _cacheThr;
-    const data = localStorage.getItem(KUNCI_THR);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_THR);
   }
   function ambilTutupHari() {
     if (_cacheTutup.length > 0) return _cacheTutup;
-    const data = localStorage.getItem(KUNCI_TUTUP);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_TUTUP);
   }
 
   // Sisa kasbon per pegawai = yang diambil − yang sudah dikembalikan. Tidak ada angka
@@ -15523,7 +15592,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // bersihkan juga salinan lokal (kalau tadi tersimpan offline)
     const idBatal = new Set(daftarBatal.map(t => t.id));
     const sisa = ambilPenjualan().filter(x => !idBatal.has(x.id));
-    simpanLokal(KUNCI_PENJUALAN, JSON.stringify(sisa));
+    tulisCadanganLokal(KUNCI_PENJUALAN, sisa);
     // Lubang lama (ketahuan saat G3): dokumen yang sama masih bisa MENUNGGU di
     // antrean tunda — kalau dibiarkan, transaksi yang sudah dibatalkan bangkit
     // lagi begitu sinyal balik. Antrean ikut dibersihkan.
@@ -16004,7 +16073,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const semua = ambilPesanan().slice();
     const i = semua.findIndex(x => String(x.id) === String(doc.id));
     if (i >= 0) semua[i] = doc; else if (baru) semua.unshift(doc);
-    simpanLokal(KUNCI_PESANAN, JSON.stringify(semua));
+    tulisCadanganLokal(KUNCI_PESANAN, semua);
     if (_cachePesanan.length) _cachePesanan = semua;
   }
   function simpanPesanan() {
@@ -18899,7 +18968,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         console.error(err);
         const semuaLokal = ambilPenjualan();
         semuaLokal.unshift(trx);
-        simpanLokal(KUNCI_PENJUALAN, JSON.stringify(semuaLokal));
+        tulisCadanganLokal(KUNCI_PENJUALAN, semuaLokal);
       }
     }
     // RETUR TUKAR ditulis SESUDAH semua penjualan pengganti (lihat TUKAR → JUAL: urutan tulis).
@@ -19152,7 +19221,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       alert('Gagal simpan ke database (offline?). Data disimpan sementara di HP ini saja — coba lagi kalau internet sudah nyambung.');
       const semuaLokal = ambilPenjualan();
       semuaLokal.unshift(transaksi);
-      simpanLokal(KUNCI_PENJUALAN, JSON.stringify(semuaLokal));
+      tulisCadanganLokal(KUNCI_PENJUALAN, semuaLokal);
     }
     if (returTukar) { await tkTulisRetur(returTukar); _tkMenyimpan = 0; }   // retur SESUDAH penjualan penggantinya
     _tukarKeJual = null;
@@ -20079,8 +20148,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // 1 Agustus 2026: harga cenderung berubah) — pola sama dengan HPP karung sumber beras.
   function ambilBahanKemasan() {
     if (_cacheBahanKemasan.length > 0) return _cacheBahanKemasan;
-    const data = localStorage.getItem(KUNCI_BAHAN_KEMASAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_BAHAN_KEMASAN);
   }
 
   function hitungStokBahanKemasan(sampai) {
@@ -20202,8 +20270,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // — sama seperti bahan kemasan biasa. HARGA_AWAL_BAHAN_LITERAN cuma nilai default form.
   function ambilBahanLiteran() {
     if (_cacheBahanLiteran.length > 0) return _cacheBahanLiteran;
-    const data = localStorage.getItem(KUNCI_BAHAN_LITERAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_BAHAN_LITERAN);
   }
 
   function hitungStokBahanLiteran(sampai) {
@@ -23282,7 +23349,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     } else {
       // Transaksi sukses menulis langsung ke server — cache lokal ikut disegarkan
       // supaya tampilan tidak menunggu gema onSnapshot.
-      simpanLokal(KUNCI_TUTUP, JSON.stringify([dokTutup].concat(ambilTutupHari().filter(x => x.id !== dokTutup.id))));
+      tulisCadanganLokal(KUNCI_TUTUP, [dokTutup].concat(ambilTutupHari().filter(x => x.id !== dokTutup.id)));
     }
     // Patokan kas maju ke hitungan malam ini — inti ritualnya. Tanpa ini, selisih
     // menumpuk berbulan-bulan sampai tidak ada yang bisa menelusurinya lagi.
@@ -24799,7 +24866,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const semua = ambilPelangganCatatan().filter(c => c.id !== dok.id);
     semua.push(dok);
     _cachePelangganCat = semua;
-    simpanLokal(KUNCI_PELANGGAN_CAT, JSON.stringify(semua));
+    tulisCadanganLokal(KUNCI_PELANGGAN_CAT, semua);
     try { await simpanKeFirestore(KOLEKSI_PELANGGAN_CAT, dok); } catch (e) { console.error(e); }
     // Menyimpan kartu yang ketiga kolomnya kosong BUKAN tidak berakibat: sejak gerbang
     // KR1 membaca isinya, kartu kosong berarti orang itu TIDAK terdaftar dan kasir akan
@@ -24831,7 +24898,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         + '.\n\nHapus catatannya (salah catat)?')) {
         try { await hapusDariFirestore(KOLEKSI_THR, sudah.id); } catch (e) { console.error(e); }
         _cacheThr = ambilThrPelanggan().filter(x => x.id !== sudah.id);
-        simpanLokal(KUNCI_THR, JSON.stringify(_cacheThr));
+        tulisCadanganLokal(KUNCI_THR, _cacheThr);
         tutupLembarPelanggan(); tampilkanPelanggan();
       }
       return;
@@ -24846,7 +24913,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       bentuk: bentuk.trim(), nilai, tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5) };
     // Salinan lokal dulu supaya layar jujur walau offline (pola catatan pelanggan).
     const semua = ambilThrPelanggan().slice(); semua.push(dok);
-    _cacheThr = semua; simpanLokal(KUNCI_THR, JSON.stringify(semua));
+    _cacheThr = semua; tulisCadanganLokal(KUNCI_THR, semua);
     try { await simpanKeFirestore(KOLEKSI_THR, dok); } catch (e) { console.error(e); }
     tutupLembarPelanggan();
     tampilkanPelanggan();
@@ -25683,7 +25750,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const semua = ambilPemasokCatatan().filter(c => c.id !== dok.id);
     semua.push(dok);
     _cachePemasokCat = semua;
-    simpanLokal(KUNCI_PEMASOK_CAT, JSON.stringify(semua));
+    tulisCadanganLokal(KUNCI_PEMASOK_CAT, semua);
     try { await simpanKeFirestore(KOLEKSI_PEMASOK_CAT, dok); } catch (e) { console.error(e); }
     tutupLembarPemasok();
     tampilkanPemasok();
@@ -29488,7 +29555,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       if (lama.some(x => String(x.id) === String(dok.id))) return;   // gema server sudah datang
       const baru = [dok].concat(lama);
       tulis(baru);
-      simpanLokal(kunci, JSON.stringify(baru));
+      tulisCadanganLokal(kunci, baru);
     } catch (e) { console.error('suntik cache gagal', e); }
   }
 
@@ -29967,18 +30034,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // (itu tahap berikutnya, setelah katalog ini diisi lengkap oleh owner).
   function ambilHargaLiteran() {
     if (_cacheHargaLiteran.length > 0) return _cacheHargaLiteran;
-    const data = localStorage.getItem(KUNCI_HARGA_LITERAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_HARGA_LITERAN);
   }
   function ambilHargaKemasan() {
     if (_cacheHargaKemasan.length > 0) return _cacheHargaKemasan;
-    const data = localStorage.getItem(KUNCI_HARGA_KEMASAN);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_HARGA_KEMASAN);
   }
   function ambilHargaKarung() {
     if (_cacheHargaKarung.length > 0) return _cacheHargaKarung;
-    const data = localStorage.getItem(KUNCI_HARGA_KARUNG);
-    return data ? JSON.parse(data) : [];
+    return bacaCadanganLokal(KUNCI_HARGA_KARUNG);
   }
   // ATURAN HARGA KARUNG UTUH (4 Agu 2026, permintaan My DeV):
   // Kalau merk+ukuran karung itu SUDAH punya harga di Katalog Harga Kemasan (per unit),

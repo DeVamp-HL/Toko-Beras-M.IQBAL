@@ -27,6 +27,16 @@ const mkEl = () => {
 const ls = (() => { let m = {}; return {
   getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); },
   removeItem: k => { delete m[k]; }, clear: () => { m = {}; }, key: i => Object.keys(m)[i] || null, get length() { return Object.keys(m).length; } }; })();
+// Benih cadangan koleksi: tanpa ini jalur baca cadangan (bacaCadanganLokal) tidak pernah dievaluasi
+// dan TDZ pada keadaannya lolos — kejadian nyata 13 Sep 2026 (kotak pasir menangkapnya, harness tidak).
+['miqbal_penjualan_v1','miqbal_batch_masuk_v2','miqbal_retur_v1','miqbal_produksi_kemasan_v1','miqbal_karantina_v1',
+ 'miqbal_piutang_mutasi_v1','miqbal_kasbon_mutasi_v1','miqbal_penyesuaian_stok_v1','miqbal_pelanggan_catatan_v1',
+ 'miqbal_pesanan_v1','miqbal_setoran_kas_v1','miqbal_titipan_harian_v1','miqbal_penyesuaian_kemasan_v1',
+ 'miqbal_amplop_laba_v1','miqbal_tembusan_stok_v1','miqbal_utang_owner_v1','miqbal_modal_owner_v1',
+ 'miqbal_utang_pemasok_v1','miqbal_pemasok_catatan_v1','miqbal_thr_pelanggan_v1','miqbal_tutup_hari_v1',
+ 'miqbal_biaya_bulanan','miqbal_pengeluaran_harian_v1','miqbal_stok_bahan_kemasan_v1','miqbal_stok_bahan_literan_v1',
+ 'miqbal_katalog_harga_literan_v1','miqbal_katalog_harga_kemasan_v1','miqbal_katalog_harga_karung_v1'
+].forEach(k => ls.setItem(k, '[]'));
 const doc = mkEl();
 globalThis.window = globalThis;
 globalThis.document = doc;
