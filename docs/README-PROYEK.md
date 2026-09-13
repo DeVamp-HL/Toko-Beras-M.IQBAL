@@ -15,6 +15,7 @@ keputusan desain produk ada di `KEPUTUSAN-DESAIN.md`.
 | `firestore.rules` + `firebase.json` | Aturan akses Firestore. Rules dipasang ke Console oleh pemilik. |
 | `lib/lz-string.js` + `lib/kemas-worker.js` | Kompresi cadangan 28 koleksi di localStorage (LZ-string, dikompres di Web Worker supaya utas utama tidak tersendat). Tanpa berkas ini sistem tetap jalan dengan cadangan polos. Sumber: cdnjs `lz-string/1.5.0/lz-string.js` (header berkas menyebut 1.4.5), sha256 `550034b8…dab0e5e`. **Mundur ke versi index.html yang belum mengenal cadangan terkompresi WAJIB didahului `polosKanCadangan()` dari konsol di tiap HP** — versi lama mati saat boot membaca cadangan terkompresi. |
 | `alat-uji/` | Jaring pengaman yang dijalankan CI sebelum terbit (lihat bawah). |
+| `alat-uji/kotak/` | Pembangun **kotak pasir tulis-nol**: `index.html` dengan Firebase distub (server = `window.__data` dari berkas backup, hanya dibaca), untuk uji di peramban tanpa satu byte pun ke toko. Lihat "Kotak pasir". |
 | `alat-audit/audit.py` | Pemeriksa independen (Python) yang menghitung ulang uang dari berkas backup. |
 | `.github/workflows/pages.yml` | CI: job `uji` di setiap push/PR; `terbitkan` hanya di `main` sesudah `uji` hijau. |
 | `docs/` | Dokumen proyek (tanpa angka bisnis). |
@@ -47,6 +48,22 @@ tulis-nol di peramban (lihat `docs/` putaran berikutnya) dan uji identitas dari 
 `alat-uji/beku.sha256` hanya boleh berubah lewat `python3 alat-uji/beku2.py --catat`
 **atas perintah pemilik**, dalam commit yang menyebut "membekukan ulang" dan mesin mana yang
 berubah beserta alasannya. CI menolak deploy bila sidik tidak cocok.
+
+## Kotak pasir tulis-nol
+
+```bash
+python3 alat-uji/kotak/bangun.py index.html /tmp/kotak/kotak.html --benih backup-batch-miqbal-YYYY-MM-DD.json
+```
+lalu layani foldernya (`python3 -m http.server 8742 --directory /tmp/kotak`) dan buka `kotak.html` —
+modul relatif menolak `file://`. Berkas backup **tidak pernah** ditulis; semua tulisan tercatat di
+`window.__rekam` dan diterapkan ke "server" kotak (`window.__data`) lalu digemakan ke pendengar.
+Kait uji: `__terapkan(koleksi, arr)`, `__terapkanDok(kol, id)`, `__setDocGagal`, `__urutanAwal`,
+`__simpan`, `__antrean`, `__kirim`, `__baca`, `__tulis`, `__kasPada`, `__era`, `__neraca`.
+Dua kotak di **origin yang sama berbagi localStorage** — bersihkan kunci `miqbal_*` dari halaman
+netral (bukan dari halaman aplikasi: `pagehide` membilas cadangan yang tertunda).
+
+Backup versi 6 (13 Sep 2026) membawa `titipanHarian` dan `titikKas`; akar berkas tetap datar
+sehingga kode lama membaca 27 kunci yang sama dan mengabaikan yang baru.
 
 ## Prinsip kerja
 

@@ -408,6 +408,12 @@ def utama():
                     "kas keluar & neraca di bawah ini kurang sebesar pelunasan yang hilang. "
                     "Unduh backup baru dari aplikasi versi 6 Sep 2026 ke atas.")
 
+    # Versi 6 (13 Sep 2026): titipanHarian + titikKas ikut. Berkas yang mengaku v6 tapi tidak
+    # membawa keduanya = kode penulisnya lupa; keberadaan KUNCI yang diperiksa, bukan panjangnya.
+    if (d.get('versi') or 0) >= 6:
+        for k in ('titipanHarian', 'titikKas'):
+            if k not in d: beda.append(f"backup versi {d.get('versi')} tidak punya kunci '{k}'")
+
     print("=" * 72)
     print("AUDIT INDEPENDEN — dari", path, "· versi backup", d.get('versi'), "· diunduh", str(d.get('diunduhPada'))[:19])
     print("=" * 72)

@@ -9419,7 +9419,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   const _cadanganRusakDilaporkan = {};
   let _pekerjaKemas = null, _pekerjaKemasGagal = false, _nomorKemas = 0;
   const _kemasTerbaru = {};         // kunci -> nomor pekerjaan terakhir (hasil yang lebih tua dibuang)
-  const _kemasTertunda = {};        // kunci -> { id, teks } — dibilas sinkron bila pekerja mati
+  const _kemasTertunda = {};        // kunci -> { id, teks, dikirim } — satu berjalan, satu menunggu; dibilas sinkron bila pekerja mati
 
   // ===== Login toko (Jalan benar, 2 Agustus 2026) =====
   // Database dikunci: hanya yang login boleh baca/tulis. Sandi TIDAK ditulis di kode —
@@ -10959,7 +10959,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     pelangganCatatan: 'catatan pelanggan', pesanan: 'pesanan', setoranKas: 'setoran kas',
     amplopLaba: 'amplop laba', modalOwner: 'modal owner', utangPemasokMutasi: 'utang pemasok',
     thrPelanggan: 'THR pelanggan', pemasokCatatan: 'catatan pemasok', ringkasanKasir: 'ringkasan kasir',
-    utangOwnerMutasi: 'utang ke owner', tembusanStok: 'tembusan stok'
+    utangOwnerMutasi: 'utang ke owner', tembusanStok: 'tembusan stok', titipanHarian: 'titipan harian'
   };
   function labelKoleksi(k) { return LABEL_KOLEKSI[k] || k; }
   function izinkanKoleksiKosong(koleksi, menit) {
@@ -11053,8 +11053,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       _pekerjaKemas = new Worker('lib/kemas-worker.js');
       _pekerjaKemas.onmessage = (e) => {
         const d = e.data || {};
-        if (_kemasTerbaru[d.kunci] !== d.id) return;   // sudah ada tulisan yang lebih baru
         const t = _kemasTertunda[d.kunci];
+        if (_kemasTerbaru[d.kunci] !== d.id) {
+          // Balasan untuk tulisan yang sudah digantikan: buang hasilnya, lepaskan tanda "sedang
+          // dikirim" (pekerjaan itu memang sudah selesai), lalu kirim teks terbaru yang menunggu.
+          if (t) { t.dikirim = false; kirimKeKemas(d.kunci); }
+          return;
+        }
         delete _kemasTertunda[d.kunci];
         if (typeof d.hasil === 'string') {
           const mentah = TANDA_KEMAS + d.hasil;
@@ -11106,19 +11111,31 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     delete _cadanganRusakDilaporkan[kunci];
     setTimeout(perbaruiStatusSambungan, 0);   // pil status ikut pulih tanpa menunggu snapshot berikut
   }
+  // Satu pekerjaan berjalan per kunci; tulisan baru selagi menunggu hanya MENGGANTI teks yang antre
+  // (bukan menumpuk pesan). Tanpa ini, pemulihan ribuan dokumen memicu ribuan salinan teks
+  // besar ke pekerja dan pekerja mengerjakan semuanya walau hasilnya dibuang.
+  function kirimKeKemas(kunci) {
+    const t = _kemasTertunda[kunci];
+    const w = pekerjaKemas();
+    if (!t || t.dikirim || !w) return;
+    t.dikirim = true;
+    w.postMessage({ id: t.id, kunci: kunci, teks: t.teks });
+  }
   function tulisCadanganLokal(kunci, daftar, segera) {
     const teks = JSON.stringify(daftar);
     _kemasTerbaru[kunci] = ++_nomorKemas;   // tulisan ini yang berlaku; hasil pekerja yang lebih tua dibuang
-    delete _kemasTertunda[kunci];
     if (segera || !window.LZString || teks.length < AMBANG_KEMAS) {
+      delete _kemasTertunda[kunci];
       const ok = simpanLokal(kunci, kemasCadangan(teks));
       if (ok) cabutCadanganRusak(kunci);
       return ok;
     }
     const w = pekerjaKemas();
-    if (!w) { const ok = simpanLokal(kunci, kemasCadangan(teks)); if (ok) cabutCadanganRusak(kunci); return ok; }
-    _kemasTertunda[kunci] = { id: _kemasTerbaru[kunci], teks: teks };
-    w.postMessage({ id: _kemasTerbaru[kunci], kunci: kunci, teks: teks });
+    if (!w) { delete _kemasTertunda[kunci]; const ok = simpanLokal(kunci, kemasCadangan(teks)); if (ok) cabutCadanganRusak(kunci); return ok; }
+    const t = _kemasTertunda[kunci];
+    if (t && t.dikirim) { t.id = _kemasTerbaru[kunci]; t.teks = teks; return true; }   // menunggu giliran
+    _kemasTertunda[kunci] = { id: _kemasTerbaru[kunci], teks: teks, dikirim: false };
+    kirimKeKemas(kunci);
     return true;   // tertunda beberapa ratus ms; kegagalan kuota tetap dilaporkan saat hasilnya ditulis
   }
   function simpanCadanganLokal(koleksi, kunci, terurut, segera) {
@@ -12087,7 +12104,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // versi 5 (13 Agu 2026): piutangMutasi + kasbonMutasi AKHIRNYA ikut — dua-duanya
       // data uang tapi selama ini tidak pernah masuk file backup, jadi pulihkan-dari-file
       // diam-diam kehilangan seluruh catatan utang. pelangganCatatan ikut sejak lahir.
-      versi: 5,
+      // versi 6 (13 Sep 2026): titipanHarian + pengaturan/titikKas ikut. Tanpa titik kas, pulihan
+      // ke database kosong membuat kasPada() null — kas & total neraca kosong sampai titiknya
+      // disetel ulang; tanpa titipan, catatan yang menunggu persetujuan hilang. Akar berkas
+      // tetap DATAR (kode lama membaca 27 kunci yang sama; kunci baru diabaikannya).
+      versi: 6,
       diunduhPada: new Date().toISOString(),
       // CAP ERA. Berkas cadangan tidak bisa dipakai lintas tutup buku: isinya riwayat
       // yang tutup buku HAPUS dan ganti dengan saldo pembuka, jadi memuatnya kembali
@@ -12125,13 +12146,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // memulihkan backup menghidupkan lagi utang yang sudah dibayar.
       utangOwnerMutasi: ambilUtangOwnerMutasi(),
       tembusanStok: ambilTembusanStok(),
+      titipanHarian: ambilTitipanHarian(),
       // Peta merk->jenis beras (dok pengaturan, bukan koleksi ber-id) — audit 14 Agu
       // 2026: sebelumnya tidak ikut backup, pulihkan-dari-file membuat petanya kosong.
       petaJenisBeras: ambilPetaJenisBeras(),
       // Peta tempat simpan (6 Sep 2026) - dok pengaturan juga, jadi ia menabrak
       // lubang yang sama dengan petaJenisBeras dulu: tanpa baris ini, pulihkan-dari-
       // file mengembalikan seluruh stok tapi melupakan di mana barangnya berada.
-      petaTempatSimpan: ambilPetaTempatSimpan()
+      petaTempatSimpan: ambilPetaTempatSimpan(),
+      // Titik hitung kas (dok pengaturan; null bila belum pernah disetel) — jangkar kasPada.
+      titikKas: ambilTitikKas()
     };
     const blob = new Blob([JSON.stringify(isi, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -12239,7 +12263,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           { kunci: 'utangOwnerMutasi',    koleksi: KOLEKSI_UTANG_OWNER,   ada: ambilUtangOwnerMutasi(), field: 'id',    label: 'utang ke owner' },
           { kunci: 'thrPelanggan',        koleksi: KOLEKSI_THR,           ada: ambilThrPelanggan(),     field: 'id',    label: 'THR pelanggan' },
           { kunci: 'pemasokCatatan',      koleksi: KOLEKSI_PEMASOK_CAT,   ada: ambilPemasokCatatan(),   field: 'id',    label: 'catatan pemasok' },
-          { kunci: 'tembusanStok',        koleksi: KOLEKSI_TEMBUSAN,      ada: ambilTembusanStok(),     field: 'id',    label: 'tembusan stok' }
+          { kunci: 'tembusanStok',        koleksi: KOLEKSI_TEMBUSAN,      ada: ambilTembusanStok(),     field: 'id',    label: 'tembusan stok' },
+          { kunci: 'titipanHarian',       koleksi: KOLEKSI_TITIPAN,       ada: ambilTitipanHarian(),    field: 'id',    label: 'titipan harian' }
         ];
         // Peta jenis beras: satu dokumen pengaturan, dipulihkan langsung (bukan per-id).
         if (isi.petaJenisBeras && Object.keys(isi.petaJenisBeras).length > 0) {
@@ -12251,6 +12276,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           try { await simpanKeFirestore('pengaturan', { id: 'tempatSimpan', peta: isi.petaTempatSimpan, diubahPada: new Date().toISOString() }); } catch (e) { console.error(e); }
         }
         const laporan = [];
+        // Titik kas (versi 6): jangkar kasPada. Aturannya sama dengan pendengar pengaturan/titikKas:
+        // salinan lokal yang lebih baru tidak ditimpa. Yang dipulihkan ditulis ke server juga,
+        // supaya perangkat lain ikut (simpanKeFirestore memberi cap diubahPada baru, jadi
+        // pendengar di perangkat lain menerimanya).
+        if (isi.titikKas && isi.titikKas.tanggal) {
+          const lokal = ambilTitikKas();
+          if (lokal && String(lokal.diubahPada || '') >= String(isi.titikKas.diubahPada || '')) {
+            console.log('titik kas dari berkas dilewati — salinan HP ini sama atau lebih baru');
+          } else {
+            const t = Object.assign({}, isi.titikKas, { id: 'titikKas' });
+            simpanLokal(KUNCI_TITIK_KAS, JSON.stringify(t));
+            try { await simpanKeFirestore('pengaturan', t); } catch (e) { console.error(e); }
+            laporan.push('titik kas');
+          }
+        }
         for (const k of daftarKoleksi) {
           const dariFile = isi[k.kunci] || [];
           if (dariFile.length === 0) continue;
