@@ -14,7 +14,10 @@ window.__urutanAwal = window.__urutanAwal || 'koleksiDulu';
 function dokPeta(nama, id) {
   const arr = D()[nama] || [];
   let x = arr.find(y => String(y.id) === String(id));
-  if (!x && nama === 'pengaturan' && window.__peta) x = window.__peta[id] || window.__peta['peta' + id.charAt(0).toUpperCase() + id.slice(1)];
+  if (!x && nama === 'pengaturan' && window.__peta) {
+    if (window.__peta[id]) x = window.__peta[id];                                   // mis. titikKas: dokumen apa adanya
+    else { const p = window.__peta['peta' + id.charAt(0).toUpperCase() + id.slice(1)]; if (p) x = { id: id, peta: p }; }   // jenisBeras/tempatSimpan: bentuk dokumen {id, peta}
+  }
   return x;
 }
 function snapKoleksi(nama) {
@@ -51,11 +54,16 @@ function terapkanTulis(kol, id, data) {
   window.__terapkan(kol, arr);
   window.__terapkanDok(kol, id);
 }
+// CATATAN: gema ke pendengar di sini SINKRON di dalam panggilan setDoc — beda dari Firestore (pendengar
+// dijalankan belakangan, terpisah dari pemanggil). Akibatnya galat di pendengar bocor ke catch pemanggil
+// (simpanKeFirestore lalu memasukkannya ke antrean tunda). Uji tulis WAJIB menegaskan __antrean().length === 0
+// di akhir. window.__setDocLambat = ms menunda resolve untuk mengeksekusi jalur timeout (4/8 dtk).
 export function setDoc(ref, data) {
   window.__rekam.push({ kol: ref._kol, id: ref._id, data });
   if (window.__setDocGagal) return Promise.reject(new Error('kotak: setDoc dimatikan (simulasi offline)'));
   terapkanTulis(ref._kol, ref._id, data);
-  return Promise.resolve();
+  const lambat = Number(window.__setDocLambat) || 0;
+  return lambat ? new Promise(r => setTimeout(r, lambat)) : Promise.resolve();
 }
 export function deleteDoc(ref) {
   window.__rekam.push({ hapus: true, kol: ref._kol, id: ref._id });

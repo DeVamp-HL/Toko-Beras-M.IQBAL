@@ -34,20 +34,25 @@ jangkar = '\n  async function hapusDariFirestore('
 assert s.count(jangkar) == 1
 kait = [('__simpan', 'simpanKeFirestore'), ('__antrean', 'ambilAntreanTunda'), ('__kirim', 'kirimAntreanTunda'),
         ('__baca', 'bacaCadanganLokal'), ('__tulis', 'tulisCadanganLokal'), ('__kasPada', 'kasPada'),
-        ('__era', 'eraTutupBuku'), ('__neraca', 'hitungNeraca')]
+        ('__era', 'eraTutupBuku'), ('__neraca', 'hitungNeraca'), ('__tbPenjaga', 'tbPenjaga'),
+        ('__tbDaftar', 'tbDaftarKoleksi'), ('__sinyalTutupBuku', 'terapkanSinyalTutupBuku'), ('__batalTutupBuku', 'batalkanTutupBuku')]
 # hanya fungsi yang ADA di sumber (kotak juga dibangun dari index.html versi lama untuk pembanding)
 baris = ' '.join('window.%s = %s;' % (a, b) for a, b in kait if ('function %s(' % b) in s)
+if 'const _cadanganTertahan' in s: baris += ' window.__tertahan = _cadanganTertahan;'
 s = s.replace(jangkar, '\n  ' + baris + jangkar, 1)
 if suntik:
     j = '\n  const firebaseConfig = {'
     assert s.count(j) == 1
     s = s.replace(j, '\n  ' + suntik + j, 1)
-io.open(tujuan, 'w', encoding='utf-8').write(s)
-# stub & lib disalin ke folder tujuan (kalau belum ada / berbeda)
 folder = os.path.dirname(os.path.abspath(tujuan))
+if os.path.abspath(folder).startswith(akar + os.sep) or os.path.abspath(folder) == akar:
+    sys.exit('TOLAK: bangun kotak di LUAR repo (mis. scratchpad) — kotak.html tidak boleh ikut commit')
+# stub & lib disalin dulu; berkas tujuan ditulis TERAKHIR supaya kegagalan tidak meninggalkan kotak setengah jadi
 for f in ('stub-firebase-app.js', 'stub-firebase-auth.js', 'stub-firebase-firestore.js'):
     shutil.copy(os.path.join(os.path.dirname(__file__), f), os.path.join(folder, f))
 lib_dst = os.path.join(folder, 'lib'); os.makedirs(lib_dst, exist_ok=True)
 for f in os.listdir(os.path.join(akar, 'lib')):
-    shutil.copy(os.path.join(akar, 'lib', f), os.path.join(lib_dst, f))
+    src, dst = os.path.join(akar, 'lib', f), os.path.join(lib_dst, f)
+    if not (os.path.exists(dst) and os.path.samefile(src, dst)): shutil.copy(src, dst)
+io.open(tujuan, 'w', encoding='utf-8').write(s)
 print('kotak:', tujuan, '| benih:', benih or '-', '| suntik:', 'ya' if suntik else '-')

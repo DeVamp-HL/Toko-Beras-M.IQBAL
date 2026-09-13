@@ -63,7 +63,10 @@ Dua kotak di **origin yang sama berbagi localStorage** — bersihkan kunci `miqb
 netral (bukan dari halaman aplikasi: `pagehide` membilas cadangan yang tertunda).
 
 Backup versi 6 (13 Sep 2026) membawa `titipanHarian` dan `titikKas`; akar berkas tetap datar
-sehingga kode lama membaca 27 kunci yang sama dan mengabaikan yang baru.
+sehingga kode lama membaca 27 kunci yang sama dan mengabaikan yang baru. Batas yang sudah lama ada:
+pemulih membandingkan isi berkas dengan cache/cadangan HP, jadi **pulih ke database kosong harus dari
+perangkat yang cadangannya kosong** (perangkat baru, atau sesudah cadangan `miqbal_*` dibersihkan) —
+kalau tidak, semuanya terbaca "sudah ada" dan tidak ada yang diunggah.
 
 ## Prinsip kerja
 
