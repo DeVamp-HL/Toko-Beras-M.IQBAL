@@ -9420,6 +9420,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   let _pekerjaKemas = null, _pekerjaKemasGagal = false, _nomorKemas = 0;
   const _kemasTerbaru = {};         // kunci -> nomor pekerjaan terakhir (hasil yang lebih tua dibuang)
   const _kemasTertunda = {};        // kunci -> { id, teks, dikirim } — satu berjalan, satu menunggu; dibilas sinkron bila pekerja mati
+  // Tutup Buku antarperangkat (putaran 4B): dokumen pengaturan/tutupBuku terakhir dari server, dan
+  // kunci stempel dokumen yang sudah ditindak HP ini (snapshot dokumen dikirim tiap kali dipasang).
+  let _tutupBukuServer = null;
+  const KUNCI_TUTUP_BUKU_DILIHAT = 'miqbal_tutup_buku_dilihat_v1';
 
   // ===== Login toko (Jalan benar, 2 Agustus 2026) =====
   // Database dikunci: hanya yang login boleh baca/tulis. Sandi TIDAK ditulis di kode —
@@ -22663,6 +22667,62 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     simpanLokal(KUNCI_TITIK_KAS, JSON.stringify(d));
     segarkanArusKasJikaTampil();
   }, (err) => { /* offline / belum masuk — pakai salinan lokal, jangan berisik */ });
+
+  // ===== PENDENGAR TUTUP BUKU ANTARPERANGKAT (rapi-rapi 0 putaran 4B, keputusan pemilik 13 Sep 2026) =====
+  // pengaturan/tutupBuku ditulis di ujung langkah 2 (tulisSaldoPembuka, BEKU: {tahunDitutup, padaTanggal}),
+  // dan sejak putaran ini juga di ujung langkah 3 (hapusSelesai) dan saat batal (dibatalkanTahun). Sampai
+  // putaran ini dokumen itu TIDAK punya pendengar: HP lain yang dibuka sesudah ritual menahan cadangan
+  // tahun lama (penjaga cadangan mengira server kehilangan data) → stok & kewajiban terhitung DUA KALI.
+  // Dua tahap, sengaja: tahap 2 hanya MEMBUKA jendela izin kosong 24 jam (server masih berisi riwayat —
+  // penahanan yang menyala saat itu bukan karena tutup buku); tahap 3 / batal yang MELEPAS cadangan
+  // tertahan. Pelepasan ini OTOMATIS — pengecualian tunggal atas "tidak pernah otomatis" di
+  // terimaKoleksiKosong, atas keputusan pemilik, karena sinyalnya datang dari ritual pemilik sendiri —
+  // dan selalu berkabar di layar. Urutan snapshot koleksi vs dokumen tidak dijamin; keduanya konvergen.
+  onSnapshot(doc(db, 'pengaturan', 'tutupBuku'), (snap) => {
+    if (!snap.exists()) return;
+    const d = snap.data();
+    _tutupBukuServer = d;
+    terapkanSinyalTutupBuku(d);
+  }, (err) => { /* offline / belum masuk — jangan berisik */ });
+  function stempelTutupBuku(d) {
+    return String(d.diubahPada || d.hapusSelesaiPada || d.dibatalkanPada || d.padaTanggal || '');
+  }
+  function terapkanSinyalTutupBuku(d) {
+    const stempel = stempelTutupBuku(d);
+    let dilihat = null;
+    try { dilihat = localStorage.getItem(KUNCI_TUTUP_BUKU_DILIHAT); } catch (e) { dilihat = null; }
+    if (stempel && stempel === dilihat) return { diabaikan: true };
+    const tahun = Number(d.dibatalkanTahun || d.tahunDitutup);
+    if (!isFinite(tahun)) return { diabaikan: true };
+    // Nama koleksi dari mesin beku (bukan salinan daftar 21 koleksi — pola "dijaga di satu tempat").
+    const koleksi = tbDaftarKoleksi(tahun).map(x => x.koleksi);
+    koleksi.forEach(k => izinkanKoleksiKosong(k, 24 * 60));
+    const selesai = !!d.dibatalkanTahun || (d.hapusSelesai !== undefined && Number(d.hapusSelesai) === Number(d.tahunDitutup));
+    const dilepas = selesai ? lepaskanCadanganTutupBuku(koleksi) : 0;
+    simpanLokal(KUNCI_TUTUP_BUKU_DILIHAT, stempel);
+    if (selesai) {
+      laporKabarLokal((d.dibatalkanTahun ? 'Pembatalan tutup buku ' : 'Tutup buku ') + tahun
+        + ' diterima dari perangkat lain — ' + (dilepas ? 'cadangan tahun lama di HP ini dilepas (' + dilepas + ' koleksi).' : 'tidak ada cadangan yang tertahan di HP ini.'));
+    }
+    perbaruiStatusSambungan();
+    if (typeof tampilkanRingkasan === 'function') tampilkanRingkasan();
+    return { diabaikan: false, tahun, selesai, dilepas, koleksi: koleksi.length };
+  }
+  // Badan pelepas yang sama dengan terimaKoleksiKosong, tanpa confirm; dipisah supaya bisa diuji
+  // dari konsol dengan koleksi palsu.
+  function lepaskanCadanganTutupBuku(daftarKoleksi) {
+    let n = 0;
+    daftarKoleksi.forEach(k => {
+      const t = _cadanganTertahan[k];
+      if (!t) return;
+      _kemasTerbaru[t.kunci] = ++_nomorKemas; delete _kemasTertunda[t.kunci];
+      simpanLokal(t.kunci, '[]');
+      if (_setelCacheKoleksi[k]) _setelCacheKoleksi[k]([]);
+      delete _cadanganTertahan[k];
+      n++;
+    });
+    return n;
+  }
   async function simpanTitikKas() {
     const tanggal = document.getElementById('kasTitikTanggal').value;
     const laci = parseFloat(document.getElementById('kasTitikLaci').value) || 0;
@@ -26502,6 +26562,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       alert('Tulis saldo pembukanya dulu (langkah 2).'); return;
     }
     if (!navigator.onLine) { alert('Langkah ini butuh internet — penghapusan langsung ke database, tidak lewat antrean.'); return; }
+    // Saldo pembuka yang masih duduk di antrean tunda belum sampai database: kalau riwayatnya dihapus
+    // sekarang dan HP ini mati, server punya pembuka sebagian + riwayat yang sudah hilang.
+    if (ambilAntreanTunda().some(q => q && q.data && q.data.tutupBuku && Number(q.data.tahunDari) === Number(tahun))) {
+      alert('Saldo pembuka tahun ' + tahun + ' masih ada di antrean tunda HP ini (belum sampai database). '
+        + 'Tunggu sampai status sambungan tidak lagi berkata "menunggu sinyal", baru ulangi langkah 3.'); return;
+    }
     const daftar = tbDaftarKoleksi(tahun);
     const totalDok = daftar.reduce((a, d) => a + d.dok.length, 0);
     const ketik = prompt('SATU ARAH: ' + totalDok.toLocaleString('id-ID') + ' dokumen tahun ' + tahun
@@ -26524,6 +26590,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       alert('Penghapusan terhenti di ' + sudah + ' dari ' + totalDok + '. Aman: ulangi langkah 3, yang sudah terhapus tidak diulang.');
       return;
     }
+    // Tahap 3 (4B): sinyal "penghapusan selesai" untuk perangkat lain — baru sesudah ini cadangan
+    // tahun lama di HP lain boleh dilepas. Field tahap 2 disalin ulang: setDoc mengganti seluruh dokumen.
+    await simpanKeFirestore('pengaturan', Object.assign({}, _tutupBukuServer || {},
+      { id: 'tutupBuku', tahunDitutup: tahun, hapusSelesai: tahun, hapusSelesaiPada: new Date().toISOString() }));
     if (el) el.textContent = '✓ Selesai — ' + sudah + ' dokumen tahun ' + tahun + ' dihapus. Sistem sekarang hanya memuat tahun berjalan.';
     alert('Tutup buku ' + tahun + ' SELESAI. Riwayatnya ada di file arsip; sistem sekarang ringan.');
     gambarTutupBuku();

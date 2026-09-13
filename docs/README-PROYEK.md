@@ -68,6 +68,19 @@ pemulih membandingkan isi berkas dengan cache/cadangan HP, jadi **pulih ke datab
 perangkat yang cadangannya kosong** (perangkat baru, atau sesudah cadangan `miqbal_*` dibersihkan) —
 kalau tidak, semuanya terbaca "sudah ada" dan tidak ada yang diunggah.
 
+## Tutup Buku antarperangkat
+
+Dokumen `pengaturan/tutupBuku` kini punya **pendengar** di setiap perangkat, dua tahap:
+- tahap 2 (`tahunDitutup`, ditulis di ujung langkah 2) hanya membuka jendela izin "koleksi boleh kosong"
+  24 jam untuk 21 koleksi yang dihapus ritual;
+- tahap 3 (`hapusSelesai`, ditulis di ujung langkah 3) dan pembatalan (`dibatalkanTahun`) **melepas**
+  cadangan tahun lama yang tertahan penjaga cadangan — otomatis, atas keputusan pemilik 13 Sep 2026
+  (pengecualian tunggal atas "tidak pernah otomatis" di `terimaKoleksiKosong`), dan selalu berkabar di layar.
+Tanpa ini, HP kedua yang dibuka sesudah ritual menghitung stok dan kewajiban dua kali. Langkah 3 juga
+menolak berjalan selagi saldo pembuka masih duduk di antrean tunda HP. Uji di kotak pasir: HP kedua
+diberi cadangan pra-ritual dan benih server pasca-ritual; kode tanpa pendengar (kontrol) menahan 7
+koleksi, kode ini melepasnya di kedua urutan snapshot.
+
 ## Prinsip kerja
 
 1. **28 mesin uang beku byte-identik.** `beku2.py` dijalankan sebelum setiap commit; hasilnya
