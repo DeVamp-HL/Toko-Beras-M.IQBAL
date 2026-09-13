@@ -12236,9 +12236,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             + 'sementara saldo pembukanya tetap ada — stok, piutang, dan utang akan '
             + 'terhitung DUA KALI, dan angkanya tidak akan kelihatan salah sampai berbulan-bulan.\n\n'
             + 'Yang bisa dipakai: berkas backup yang diunduh SESUDAH tutup buku ' + eraDb + '. '
-            + 'Kalau memang harus memakai berkas ini, saldo pembukanya (dokumen bertanda '
-            + 'tutupBuku tahun ' + eraDb + ') wajib dihapus lebih dulu — dan itu belum ada '
-            + 'tombolnya, jadi jangan dikerjakan sendiri tanpa mencatat rencananya.');
+            + 'Kalau memang harus memakai berkas ini: buka lembar Tutup Buku dan tekan '
+            + '"Batalkan tutup buku ' + eraDb + '" (hanya boleh selagi belum ada catatan tahun baru), '
+            + 'baru muat berkas ini lagi.');
           event.target.value = '';
           return;
         }
@@ -26136,6 +26136,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       } else {
         const sb = _tbKaca.sebelum;
         h += `<div class="tb6-jilid"><div class="kg-label">Buku dijilid</div><b>${tahun}</b><div class="tb6-ket">${lat ? 'latihan selesai — tidak ada yang tersentuh' : 'riwayat tahun ini kini hanya di berkas arsip'}</div></div>
+          ${!lat && eraTutupBuku() === tahun ? `<div class="kg-panel tb6-panel"><h3>Jalan pulang</h3>
+          <div class="tb6-ket">Hanya kalau ternyata ada yang salah dan toko belum mencatat apa pun di ${tahun + 1}: semua saldo pembuka dihapus, lalu muat backup yang diunduh SEBELUM tutup buku dari HP ini.</div>
+          <button type="button" class="tb6-aksi bahaya" onclick="batalkanTutupBuku(${tahun})">Batalkan tutup buku ${tahun}</button></div>` : ''}
           <div class="kg-panel tb6-panel"><h3>Berita acara</h3>
           <div class="tb6-baris"><span>Tanggal</span><b>${escapeHtml(formatTanggal(tanggalLokalIso()))}</b></div>
           <div class="tb6-baris"><span>Berkas arsip</span><b>arsip-miqbal-${tahun}.json</b></div>
@@ -26420,6 +26423,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       <button type="button" ${saldoBeres ? '' : 'disabled'} onclick="hapusDokumenTahun(${tahun})">Hapus ${totalDok.toLocaleString('id-ID')} dokumen ${tahun}</button>
       <div class="tb-status" id="tbProgresHapus"></div>
     </div>`);
+    if (eraTutupBuku() === tahun) {
+      b.push(`<div class="tb-langkah tb-bahaya siap">
+        <h3>Jalan pulang — batalkan tutup buku ${tahun}</h3>
+        <p>Hanya kalau sesudah tutup buku ternyata ada yang salah dan toko BELUM mencatat apa pun di ${tahun + 1}. Menghapus semua dokumen saldo pembuka, lalu kamu memuat berkas backup yang diunduh SEBELUM tutup buku dari HP ini.</p>
+        <button type="button" onclick="batalkanTutupBuku(${tahun})">Batalkan tutup buku ${tahun}</button>
+      </div>`);
+    }
     document.getElementById('tbKertas').innerHTML = b.join('');
     gambarTutupBukuKaca();   // satu-satunya jalur keluar — kaca ikut di semua pemicu lama
   }
@@ -26450,11 +26460,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Kalau daftarnya disalin jadi dua, cepat atau lambat yang satu ketinggalan koleksi
   // yang sudah ditambahkan ke yang lain — dan penjaga yang bocor lebih buruk daripada
   // tidak ada penjaga, karena ia tetap terlihat terpasang.
+  // SATU daftar koleksi yang menampung dokumen saldo pembuka (9 — sama dengan yang ditulis
+  // tulisSaldoPembuka). Pembaca era dan pembatal tutup buku sama-sama menurunkan daftarnya dari sini.
+  function daftarKoleksiSaldoPembuka() {
+    return [[KOLEKSI_BATCH, ambilSemuaBatch()], [KOLEKSI_PIUTANG, ambilPiutangMutasi()], [KOLEKSI_KASBON, ambilKasbonMutasi()],
+      [KOLEKSI_PRODUKSI, ambilProduksi()], [KOLEKSI_BAHAN_KEMASAN, ambilBahanKemasan()], [KOLEKSI_BAHAN_LITERAN, ambilBahanLiteran()],
+      [KOLEKSI_UTANG_PEMASOK, ambilUtangPemasokMutasi()], [KOLEKSI_UTANG_OWNER, ambilUtangOwnerMutasi()], [KOLEKSI_AMPLOP, ambilAmplopLaba()]];
+  }
   function dokSaldoPembukaSemua() {
-    return [].concat(ambilSemuaBatch(), ambilPiutangMutasi(), ambilKasbonMutasi(),
-      ambilProduksi(), ambilBahanKemasan(), ambilBahanLiteran(),
-      ambilUtangPemasokMutasi(), ambilUtangOwnerMutasi(), ambilAmplopLaba())
-      .filter(x => x && x.tutupBuku);
+    return [].concat.apply([], daftarKoleksiSaldoPembuka().map(x => x[1])).filter(x => x && x.tutupBuku);
   }
   function sudahAdaSaldoPembuka(tahun) {
     return dokSaldoPembukaSemua().some(x => x.tahunDari === tahun);
@@ -26592,11 +26606,76 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     }
     // Tahap 3 (4B): sinyal "penghapusan selesai" untuk perangkat lain — baru sesudah ini cadangan
     // tahun lama di HP lain boleh dilepas. Field tahap 2 disalin ulang: setDoc mengganti seluruh dokumen.
-    await simpanKeFirestore('pengaturan', Object.assign({}, _tutupBukuServer || {},
-      { id: 'tutupBuku', tahunDitutup: tahun, hapusSelesai: tahun, hapusSelesaiPada: new Date().toISOString() }));
+    await simpanKeFirestore('pengaturan', { id: 'tutupBuku', tahunDitutup: tahun,
+      padaTanggal: (_tutupBukuServer && _tutupBukuServer.padaTanggal) || tanggalLokalIso(),
+      hapusSelesai: tahun, hapusSelesaiPada: new Date().toISOString() });
     if (el) el.textContent = '✓ Selesai — ' + sudah + ' dokumen tahun ' + tahun + ' dihapus. Sistem sekarang hanya memuat tahun berjalan.';
     alert('Tutup buku ' + tahun + ' SELESAI. Riwayatnya ada di file arsip; sistem sekarang ringan.');
     gambarTutupBuku();
+  }
+
+  // ===== BATALKAN TUTUP BUKU — jalan pulang (rapi-rapi 0 putaran 4C, keputusan pemilik 13 Sep 2026) =====
+  // Sebelum ini tidak ada jalan pulang: berkas backup pra-ritual ditolak penjaga era, dan saldo pembuka
+  // hanya bisa dihapus tangan. Pembatalan = menghapus semua dokumen berpenanda tutupBuku && tahunDari
+  // (penyaring PENANDA, bukan tanggal — piutang pembuka bertanggal tertua), lalu era turun dengan
+  // sendirinya karena eraTutupBuku dibaca dari DOKUMEN. Sesudah itu pemilik memuat berkas backup yang
+  // diunduh SEBELUM ritual. Ditolak KERAS bila sudah ada dokumen tahun baru (Q1): jalan pulang berlaku
+  // SEGERA sesudah ritual, bukan mesin waktu. Urutan tulis: hapus dulu, verifikasi lewat gema, baru
+  // dokumen pengaturan — yang bisa hilang ditulis terakhir.
+  async function batalkanTutupBuku(tahun) {
+    tahun = Number(tahun);
+    const era = eraTutupBuku();
+    if (era === null) { alert('Belum pernah ada tutup buku — tidak ada yang bisa dibatalkan.'); return false; }
+    if (era !== tahun) {
+      alert(era > tahun ? 'Batalkan tutup buku ' + era + ' yang lebih baru dulu.' : 'Tutup buku terakhir adalah ' + era + ', bukan ' + tahun + '.'); return false;
+    }
+    if (!navigator.onLine) { alert('Butuh internet — penghapusan langsung ke database.'); return false; }
+    const nAntre = ambilAntreanTunda().length;
+    if (nAntre > 0) { alert('Masih ada ' + nAntre + ' tulisan menunggu sinyal. Tunggu sampai bersih — dokumen pembuka yang belum sampai database akan hidup lagi sesudah pembatalan.'); return false; }
+    if (Object.keys(_cadanganTertahan).length > 0) { alert('Ada cadangan lokal yang tertahan (lihat Perlu Perhatian). Bereskan dulu.'); return false; }
+    // Q1: tolak keras bila toko sudah mencatat apa pun di tahun baru (selain dokumen pembuka).
+    const awalBaru = (tahun + 1) + '-01-01';
+    const tglDok = x => x.tanggal || (x.bulan ? x.bulan + '-01' : '');
+    const baru = tbDaftarKoleksi(tahun + 1)
+      .map(d => ({ label: d.label, n: d.dok.filter(x => !x.tutupBuku && tglDok(x) >= awalBaru).length }))
+      .filter(x => x.n > 0);
+    if (baru.length) {
+      alert('DITOLAK: sudah ada ' + baru.reduce((a, x) => a + x.n, 0) + ' dokumen tahun ' + (tahun + 1) + ' ('
+        + baru.map(x => x.n + ' ' + x.label).join(', ') + '). Pembatalan hanya boleh SEGERA sesudah tutup buku, sebelum toko mencatat apa pun di tahun baru.');
+      return false;
+    }
+    if (!(await mintaPinOwner('PIN owner untuk MEMBATALKAN tutup buku ' + tahun + ':'))) return false;
+    const target = daftarKoleksiSaldoPembuka().map(x => ({ koleksi: x[0], dok: x[1].filter(d => d && d.tutupBuku && Number(d.tahunDari) === tahun) }));
+    const total = target.reduce((a, d) => a + d.dok.length, 0);
+    const eraTarget = dokSaldoPembukaSemua().filter(x => Number(x.tahunDari) !== tahun)
+      .reduce((t, x) => { const n = Number(x.tahunDari); return isFinite(n) && (t === null || n > t) ? n : t; }, null);
+    const ketik = prompt('MEMBATALKAN tutup buku ' + tahun + ': ' + total + ' dokumen saldo pembuka akan DIHAPUS dari database, '
+      + 'era kembali ke ' + (eraTarget === null ? 'belum pernah tutup buku' : eraTarget) + '.\n\nSesudahnya WAJIB memuat berkas backup yang diunduh SEBELUM tutup buku ' + tahun
+      + ' dari HP INI.\n\nKetik "' + tahun + '" untuk melanjutkan:');
+    if (ketik === null) return false;
+    if (ketik.trim() !== String(tahun)) { alert('Tidak jadi — ketikan tidak cocok.'); return false; }
+    let sudah = 0;
+    try {
+      for (const d of target) for (const dok of d.dok) { await hapusDariFirestore(d.koleksi, dok.id); sudah++; }
+    } catch (err) {
+      console.error(err);
+      alert('Pembatalan terhenti di ' + sudah + ' dari ' + total + ' — cek internet lalu ulangi Batalkan; yang sudah terhapus tidak diulang.');
+      return false;
+    }
+    // Verifikasi DI TEMPAT penjaga ditegakkan: tunggu gema server sampai pembuka tidak terbaca lagi.
+    const t0 = Date.now();
+    while (sudahAdaSaldoPembuka(tahun) && Date.now() - t0 < 15000) await new Promise(r => setTimeout(r, 250));
+    if (sudahAdaSaldoPembuka(tahun)) {
+      alert('Sebagian dokumen pembuka masih terbaca (gema server belum datang). JANGAN muat cadangan dulu — ulangi Batalkan sebentar lagi.');
+      gambarTutupBuku(); return false;
+    }
+    await simpanKeFirestore('pengaturan', { id: 'tutupBuku', tahunDitutup: eraTarget, dibatalkanTahun: tahun, dibatalkanPada: new Date().toISOString() });
+    _tbSaldoDitulis = null; _tbArsipDiunduh = null;
+    _tbKaca.hapusSelesai = false; _tbKaca.sebelum = null; _tbKaca.latihanDitutup = false; _tbKaca.langkah = 0; _tbKaca.maks = 0; _tbKaca.awal = true;
+    gambarTutupBuku();
+    alert('Tutup buku ' + tahun + ' DIBATALKAN (' + sudah + ' dokumen pembuka dihapus). Sekarang muat berkas backup yang diunduh SEBELUM tutup buku '
+      + tahun + ' dari HP ini lewat Cadangan → Muat dari file. Berkas yang diunduh sesudahnya sudah jadi sejarah.');
+    return true;
   }
 
   // ===== LAPORAN BULANAN (12 Agustus 2026) =====
@@ -33474,7 +33553,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.gambarTutupBuku = gambarTutupBuku;
   window.unduhArsipTahun = unduhArsipTahun;
   window.tulisSaldoPembuka = tulisSaldoPembuka;
-  window.hapusDokumenTahun = hapusDokumenTahun;
+  window.hapusDokumenTahun = hapusDokumenTahun; window.batalkanTutupBuku = batalkanTutupBuku;
   window.tbKacaMode = tbKacaMode; window.tbKacaKe = tbKacaKe; window.tbKacaLanjut = tbKacaLanjut; window.tbKacaMundur = tbKacaMundur;
   window.tbKacaCentangPerangkat = tbKacaCentangPerangkat; window.tbKacaArsip = tbKacaArsip; window.tbKacaSaldo = tbKacaSaldo;
   window.tbKacaParaf = tbKacaParaf; window.tbKacaHapus = tbKacaHapus; window.tbKacaSelesai = tbKacaSelesai;

@@ -81,6 +81,15 @@ menolak berjalan selagi saldo pembuka masih duduk di antrean tunda HP. Uji di ko
 diberi cadangan pra-ritual dan benih server pasca-ritual; kode tanpa pendengar (kontrol) menahan 7
 koleksi, kode ini melepasnya di kedua urutan snapshot.
 
+**Jalan pulang** — tombol *Batalkan tutup buku N* (lembar Tutup Buku, kertas maupun kaca) menghapus
+semua dokumen saldo pembuka bertanda `tutupBuku && tahunDari === N`, menunggu gema server, lalu
+menulis `dibatalkanTahun` ke `pengaturan/tutupBuku`; sesudahnya pemilik memuat backup yang diunduh
+SEBELUM ritual dari HP yang sama. Ditolak keras bila sudah ada dokumen tahun N+1 (keputusan pemilik
+13 Sep 2026), bila antrean tunda belum kosong, atau bila ada cadangan tertahan. Uji identitas di kotak
+pasir: neraca/stok/piutang/kewajiban dan himpunan id tiap koleksi sebelum ritual = sesudah
+ritual + batal + muat. Catatan gladi: kas tidak dibawa sebagai saldo pembuka — titik kas harus
+bertanggal 1 Januari (Tutup Hari 31 Desember) sebelum langkah 3.
+
 ## Prinsip kerja
 
 1. **28 mesin uang beku byte-identik.** `beku2.py` dijalankan sebelum setiap commit; hasilnya
