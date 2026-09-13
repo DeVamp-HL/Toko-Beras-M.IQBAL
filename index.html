@@ -9456,6 +9456,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       pasangDenyutPerangkat();
       pasangPendengarPerangkat();
       pasangPendengarKatalog();
+      pasangPendengarTutupBuku();
       // Jual = halaman pendarat STATIS: pindahHalaman('jual') tidak jalan saat aplikasi dibuka,
       // jadi tukar setengah jadi diperiksa juga di sini, sesudah data sempat datang.
       setTimeout(() => { tkCekSetengah(); }, 8000);
@@ -11159,7 +11160,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       let lama = [];
       lama = bacaCadanganLokal(kunci) || [];
       if (lama.length > terurut.length) {
-        _cadanganTertahan[koleksi] = { kunci, n: lama.length, label: labelKoleksi(koleksi) };
+        // `terakhir` = snapshot server yang ditolak — saat tahanan dilepas, INI yang dipakai (bukan []):
+        // koleksi bisa tertahan sambil berisi (snapshot mengkerut), dan dokumen barunya tidak boleh hilang.
+        _cadanganTertahan[koleksi] = { kunci, n: lama.length, label: labelKoleksi(koleksi), terakhir: terurut };
         console.warn('Cadangan ' + koleksi + ' TIDAK diperbarui — server mengirim '
           + terurut.length + ' dokumen padahal cadangan lokal berisi ' + lama.length + '.');
         return;
@@ -11177,10 +11180,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!confirm('Buang cadangan lokal ' + t.label + ' (' + t.n + ' dokumen)?\n\n'
       + 'Lakukan HANYA kalau isi ' + t.label + ' memang sengaja dihapus semuanya. '
       + 'Sesudah ini cadangan offline ' + t.label + ' hilang dari HP ini dan layar '
-      + 'mengikuti server yang kosong.')) return;
-    _kemasTerbaru[t.kunci] = ++_nomorKemas; delete _kemasTertunda[t.kunci];   // hasil pekerja yang masih di jalan dibuang
-    simpanLokal(t.kunci, '[]');
-    if (_setelCacheKoleksi[koleksi]) _setelCacheKoleksi[koleksi]([]);   // cache memori ikut
+      + 'mengikuti server (' + ((t.terakhir || []).length) + ' dokumen).')) return;
+    const isiServer = t.terakhir || [];
+    tulisCadanganLokal(t.kunci, isiServer, true);   // sinkron; hasil pekerja yang masih di jalan dibuang di dalamnya
+    if (_setelCacheKoleksi[koleksi]) _setelCacheKoleksi[koleksi](isiServer);   // cache memori ikut — isi server, bukan kosong
     delete _cadanganTertahan[koleksi];
     izinkanKoleksiKosong(koleksi, 60);
     tampilkanRingkasan();
@@ -11219,6 +11222,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       simpanCadanganLokal(KOL, KUNCI, [{ id: 9 }], true);
       hasil.push(['snapshot mengkerut: cadangan tetap utuh', jml() === 3]);
       hasil.push(['snapshot mengkerut: peringatan tetap menyala', !!_cadanganTertahan[KOL]]);
+      // 2b) dilepas SAMBIL BERISI (tutup buku / tombol Terima) -> cadangan = snapshot server terakhir, bukan kosong.
+      //     Cacat yang tertangkap sisir 13 Sep 2026: pelepasan menulis [] dan dokumen baru lenyap dari layar.
+      lepaskanCadanganTutupBuku([KOL]);
+      hasil.push(['dilepas sambil berisi: cadangan = snapshot terakhir', jml() === 1]);
+      hasil.push(['dilepas sambil berisi: peringatan padam', !_cadanganTertahan[KOL]]);
+      _cadanganTertahan[KOL] = { kunci: KUNCI, n: 3, label: KOL, terakhir: [{ id: 9 }] };   // pulihkan keadaan untuk langkah 3
       // 3) snapshot BERISI penuh -> menimpa seperti biasa, peringatan padam
       simpanCadanganLokal(KOL, KUNCI, isi.concat({ id: 4 }), true);
       hasil.push(['snapshot berisi: cadangan diperbarui', jml() === 4]);
@@ -22678,12 +22687,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // tertahan. Pelepasan ini OTOMATIS — pengecualian tunggal atas "tidak pernah otomatis" di
   // terimaKoleksiKosong, atas keputusan pemilik, karena sinyalnya datang dari ritual pemilik sendiri —
   // dan selalu berkabar di layar. Urutan snapshot koleksi vs dokumen tidak dijamin; keduanya konvergen.
-  onSnapshot(doc(db, 'pengaturan', 'tutupBuku'), (snap) => {
-    if (!snap.exists()) return;
-    const d = snap.data();
-    _tutupBukuServer = d;
-    terapkanSinyalTutupBuku(d);
-  }, (err) => { /* offline / belum masuk — jangan berisik */ });
+  // Dipasang SESUDAH akun yang benar masuk (dari onAuthStateChanged, seperti pendengar katalog):
+  // pendengar yang dipasang sebelum login ditolak rules, diakhiri Firestore, dan tidak pernah
+  // dipasang ulang — perangkat itu lalu tidak pernah menerima sinyal tutup buku, diam-diam.
+  let _pendengarTutupBukuTerpasang = false;
+  function pasangPendengarTutupBuku() {
+    if (_pendengarTutupBukuTerpasang) return;
+    _pendengarTutupBukuTerpasang = true;
+    onSnapshot(doc(db, 'pengaturan', 'tutupBuku'), (snap) => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      _tutupBukuServer = d;
+      terapkanSinyalTutupBuku(d);
+    }, (err) => { _pendengarTutupBukuTerpasang = false; /* ditolak/putus: dipasang lagi saat login berikutnya */ });
+  }
   function stempelTutupBuku(d) {
     return String(d.diubahPada || d.hapusSelesaiPada || d.dibatalkanPada || d.padaTanggal || '');
   }
@@ -22715,9 +22732,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     daftarKoleksi.forEach(k => {
       const t = _cadanganTertahan[k];
       if (!t) return;
-      _kemasTerbaru[t.kunci] = ++_nomorKemas; delete _kemasTertunda[t.kunci];
-      simpanLokal(t.kunci, '[]');
-      if (_setelCacheKoleksi[k]) _setelCacheKoleksi[k]([]);
+      const isiServer = t.terakhir || [];   // dokumen yang sudah dikirim server selagi tertahan TIDAK boleh hilang
+      tulisCadanganLokal(t.kunci, isiServer, true);
+      if (_setelCacheKoleksi[k]) _setelCacheKoleksi[k](isiServer);
       delete _cadanganTertahan[k];
       n++;
     });
