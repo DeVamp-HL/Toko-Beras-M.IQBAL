@@ -11329,7 +11329,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const cek = [
         { z: 'mesin', gagal: nTunda > 0, t: nTunda > 0 ? nTunda + ' catatan menunggu sinyal — belum sampai server' : 'Semua catatan sudah terkirim' },
         { z: 'mesin', gagal: !tersambung, t: tersambung ? 'Tersambung ke database' : 'Belum tersambung penuh ke database' },
-        { z: 'orang', gagal: !pinSudahDisetel(), t: pinSudahDisetel() ? 'PIN owner terpasang' : 'PIN owner belum disetel — tab uang terbuka' },
+        { z: 'orang', gagal: !pinSudahDisetel(), t: pinSudahDisetel() ? 'PIN owner terpasang' : (pinTakTerbaca() ? 'Keadaan PIN owner TIDAK BISA DIBACA di HP ini' : 'PIN owner belum disetel — tab uang terbuka') },
         { z: 'aman', gagal: umurBackup === null || umurBackup > 1,
           t: umurBackup === null ? 'Backup otomatis belum pernah jalan di HP ini'
             : umurBackup > 1 ? umurBackup + ' hari catatan tidak tercadang di HP ini' : 'Backup otomatis segar (hari ini/kemarin)' },
@@ -11390,7 +11390,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // adalah pola yang sudah dua kali menggigit sistem ini.
         html += '<div class="kg-label st6-sela">Siapa boleh apa, dari HP mana</div>'
           + brsOwner("pindahDariMenu('akun')", 'Akun &amp; Perangkat', 'perangkat, denyut, antrean tertahan, izin, dan jejak — semuanya di sana')
-          + brs('bukaSetelPin()', 'PIN owner', pinSudahDisetel() ? 'terpasang — ubah di sini' : 'BELUM disetel — tab uang terbuka');
+          + brs('bukaSetelPin()', 'PIN owner', pinSudahDisetel() ? 'terpasang — ubah di sini' : (pinTakTerbaca() ? 'TIDAK BISA DIBACA di HP ini — muat ulang halaman' : 'BELUM disetel — tab uang terbuka'));
       } else {
         html += '<div class="kg-label st6-sela">Bagaimana sistemnya berjalan</div>'
           + '<div class="kg-panel st6-mini"><span class="kg-titik-lcd' + (tersambung ? '' : ' mati') + '"></span> '
@@ -11828,9 +11828,26 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Catatan: storage yang tertinggal di bawahnya bisa lebih TUA dari memori; muat ulang saat
   // penuh bisa mengirim ulang item lama. Tidak ada obat murni di klien saat penyimpanan penuh.
   let _antreanTundaMemori = null;   // null = localStorage bisa dipercaya; string = yang berlaku adalah memori
+  // Daftar kosong dari `catch` berarti "TIDAK BISA DIBACA", dan itu bukan hal yang sama dengan
+  // "memang kosong" — padahal gerbang Tutup Buku memakai cacahnya sebagai IZIN. Pembacanya
+  // tetap mengembalikan array (pemanggil lain tidak berubah), tapi kegagalannya kini punya
+  // penanda sendiri yang bisa ditanya gerbang.
+  let _antreanTundaGagalBaca = false;
   function ambilAntreanTunda() {
-    if (_antreanTundaMemori !== null) { try { return JSON.parse(_antreanTundaMemori); } catch (e) { return []; } }
-    try { return JSON.parse(localStorage.getItem(KUNCI_ANTREAN_TUNDA) || '[]'); } catch (e) { return []; }
+    if (_antreanTundaMemori !== null) {
+      try { _antreanTundaGagalBaca = false; return JSON.parse(_antreanTundaMemori); }
+      catch (e) { _antreanTundaGagalBaca = true; return []; }
+    }
+    try { _antreanTundaGagalBaca = false; return JSON.parse(localStorage.getItem(KUNCI_ANTREAN_TUNDA) || '[]'); }
+    catch (e) { _antreanTundaGagalBaca = true; return []; }
+  }
+  // RAPUH = tidak bisa dipercaya sebagai izin. Dua sebab, dan keduanya diakui berkas ini sendiri
+  // di komentar tepat di atas: (1) gagal dibaca; (2) antreannya cuma hidup di MEMORI karena
+  // penyimpanan HP penuh — dan komentar itu menulis "storage yang tertinggal di bawahnya bisa
+  // lebih TUA dari memori; muat ulang saat penuh bisa mengirim ulang item lama".
+  function antreanTundaRapuh() {
+    ambilAntreanTunda();
+    return _antreanTundaGagalBaca || _antreanTundaMemori !== null;
   }
   function setAntreanTunda(a) {
     const teks = JSON.stringify(a);
@@ -12762,7 +12779,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const belum = baris.filter(b => b.n > 0 && !b.tgl).length;
     el.innerHTML = '<div class="kartu bl-kisi"><div class="kg-label">Pos bulan ini</div>'
       + baris.map(b => '<button type="button" class="bl-pos' + (b.n > 0 && !b.tgl ? ' belum' : '')
-          + '" onclick="blKeTanggalPos(' + JSON.stringify(b.idTgl).replace(/"/g, '&quot;') + ')">'
+          + '" onclick="blKeTanggalPos(' + escapeHtml(JSON.stringify(b.idTgl)) + ')">'
           + '<span class="nm">' + escapeHtml(b.label) + '</span>'
           + '<span class="rp">' + (b.n > 0 ? formatRupiah(b.n) : '<i>belum diisi</i>') + '</span>'
           + '<span class="st">' + (b.n > 0
@@ -12818,7 +12835,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + 'di zona lain tidak bergeser.</div></div>'
       + '<div class="bl-sim-pos">' + semua.map(x =>
           '<button type="button" class="bl-sim-tombol' + (_blMatikan[x.pos] ? ' mati' : '') + '"'
-          + ' onclick="blToggleMatikan(' + JSON.stringify(String(x.pos)).replace(/"/g, '&quot;') + ')">'
+          + ' onclick="blToggleMatikan(' + escapeHtml(JSON.stringify(String(x.pos))) + ')">'
           + escapeHtml(x.label || String(x.pos)) + '</button>').join('') + '</div>'
       + (adaMati ? '<button type="button" class="bl-sim-reset" onclick="blResetSimulasi()">Kembalikan semua</button>' : '');
   }
@@ -14765,6 +14782,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         const ambil = Math.min(sisa, b.nilai - b.dibayar);
         b.dibayar += ambil; sisa -= ambil;
       });
+      // KELEBIHAN BAYAR TIDAK BOLEH MENGUAP. Kalau sesudah dua gelung di atas masih ada
+      // `sisa`, artinya pembayaran ke pemasok ini melebihi SELURUH bon yang tercatat —
+      // dan itu berarti ada kedatangan yang bonnya belum masuk buku. Dulu angka itu dibuang
+      // tanpa jejak; hitungUtangOwner (tepat di atas) sudah membawa `tekor` keluar dengan
+      // alasan yang sama, utang pemasok cuma belum kebagian.
+      if (sisa > 0.5) px.tekor = Math.round((px.tekor || 0) + sisa);
     });
     const hasil = [];
     Object.values(per).forEach(px => {
@@ -14772,7 +14795,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         .map(b => Object.assign(b, { sisa: Math.round(b.nilai - b.dibayar),
           umurHari: b.tanggal ? Math.max(0, Math.round((isoKeTanggal(tanggalLokalIso()) - isoKeTanggal(b.tanggal)) / 86400000)) : null }));
       px.totalUtang = px.bon.reduce((a, b) => a + b.sisa, 0);
-      if (px.totalUtang > 0) hasil.push(px);
+      px.tekor = px.tekor || 0;   // selalu ada kolomnya, supaya pembaca tidak perlu menebak
+      // Pemasok yang utangnya nol TAPI kelebihan dibayar tetap ikut keluar — kalau tidak, satu-
+      // satunya jejak kelebihan bayar hilang lagi. totalUtang-nya 0, jadi totalUtangPemasokSemua
+      // dan nBon tidak bergeser sedikit pun.
+      if (px.totalUtang > 0 || px.tekor > 0) hasil.push(px);
     });
     return hasil.sort((a, b) => b.totalUtang - a.totalUtang);
   }
@@ -14929,9 +14956,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         s.tanggalTertua = u.tanggal || null;   // utang pertama yang belum tertutup penuh
         break;
       }
-      s.umurHari = (s.sisa > 0 && s.tanggalTertua)
-        ? Math.max(0, Math.round((isoKeTanggal(tanggalLokalIso()) - isoKeTanggal(s.tanggalTertua)) / 86400000))
+      // Math.max(0, ...) dulu mengubah tanggal MASA DEPAN (salah ketik tahun) jadi "umur 0 hari"
+      // — tak terbedakan dari utang yang lahir hari ini. Sekarang dibedakan: umurHari tetap
+      // seperti dulu untuk tanggal yang wajar, dan tanggalJanggal menyala kalau tanggalnya
+      // mendahului hari ini, supaya layar bisa menyebutnya alih-alih memajang nol yang wajar.
+      const _umur = s.tanggalTertua
+        ? Math.round((isoKeTanggal(tanggalLokalIso()) - isoKeTanggal(s.tanggalTertua)) / 86400000)
         : null;
+      s.tanggalJanggal = !!(s.sisa > 0 && _umur !== null && _umur < 0);
+      s.umurHari = (s.sisa > 0 && s.tanggalTertua) ? Math.max(0, _umur) : null;
       return s;
     });
     // Yang masih berutang di atas, TERTUA dulu — bukan terbesar. Yang menua diam-diam
@@ -15291,6 +15324,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     });
     return n;
   }
+  // stokMaksMentah: nilai SEBELUM dijepit. Langit-langit jual memang tidak boleh minus —
+  // itu benar. Yang salah adalah MENGUCAPKAN nilai terjepit sebagai hasil pengukuran:
+  // dengan catatan stok −704 kg, layar berkata "Catatan bilang sisa 0 kg". Satu nilai untuk
+  // MEMBANDINGKAN, satu nilai untuk DIUCAPKAN — dan yang diucapkan harus yang mentah.
+  function stokMaksMentah(jalur, kunci) {
+    if (!kunci) return null;
+    if (jalur === 'kemasan') { const s = hitungStokKemasan()[kunci]; return s ? (s.sisaUnit - wzDiKeranjang('kemasan', kunci)) : null; }
+    if (jalur === 'karung') {
+      const s = hitungStokKarungPerMerk()[kunci];
+      return s ? Math.round((s.sisaKg - wzDiKeranjang('karung', kunci)) * 100) / 100 : null;
+    }
+    return null;
+  }
   function stokMaksJalur(jalur, kunci) {
     if (!kunci) return null;
     if (jalur === 'kemasan') { const s = hitungStokKemasan()[kunci]; return s ? Math.max(0, s.sisaUnit - wzDiKeranjang('kemasan', kunci)) : null; }
@@ -15331,6 +15377,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Kasir mengetik 20 sack; kolamnya kg. Menyebut 1000 kg saja benar untuk opname tapi bukan
   // angka yang ia ketik, jadi ia tidak mengenali kesalahannya sendiri. Dua-duanya disebut.
   async function tolakStokAtauTembus(jalur, kunci, satuan, tercatat, diminta, asal) {
+    // CATATAN YANG SUDAH MINUS BUKAN "KURANG SEDIKIT". Penembusan dirancang untuk keadaan
+    // "barangnya ada, catatannya telat" — kalau catatannya sudah minus sebelum nota ini, yang
+    // rusak catatannya sendiri, dan menembusnya cuma memperdalam lubang tanpa ada yang tahu.
+    // Ditolak DI DEPAN, sama alasannya dengan penolakan tanpa PIN owner di bawah: pintu yang
+    // tidak seharusnya dibuka tidak boleh ditawarkan.
+    if (tercatat < 0) {
+      alert('Catatan stok ' + kunci + ' sudah MINUS ' + (Math.round(Math.abs(tercatat) * 1000) / 1000) + ' ' + satuan
+        + ' SEBELUM nota ini \u2014 bukan kurang sedikit, catatannya yang rusak.\n\n'
+        + 'Penembusan tidak tersedia untuk keadaan ini. Jalankan Cocokkan Stok dulu.');
+      return false;
+    }
     const kurang = Math.round((diminta - tercatat) * 1000) / 1000;
     // DUA angka disebut, bukan satu. Selisihnya pengukuran yang baru saja jatuh gratis ke
     // tangan, dan itulah yang dicari opname berikutnya — pesan yang cuma bilang "stok tidak
@@ -16958,12 +17015,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // GABUNG: uang yang dulu diterima = pengganti − nilai + bulat(pengganti − nilai), jadi pembulatan
   // dihitung atas selisih yang sama, dikurangi pembulatan yang MASIH menempel di penjualan tertaut
   // yang tersisa. Susulan retur model B: nilai returnya sudah menyerap pembulatan → atas harga penuh.
+  // Selisih bertanda disimpan di _tkBulatLebih supaya lembar konfirmasi bisa menyebutnya.
+  // Field `pembulatan` pada nota memang hanya bisa NAIK — jepitannya benar. Yang salah adalah
+  // MENDIAMKAN arah satunya: kelebihan itu uang pembeli.
+  let _tkBulatLebih = 0;
   function tkBulat(total, cara) {
     const tk = _tukarKeJual;
     if (tk && tk.susulanReturId && tk.modelRetur === 'kreditBarangGabung') {
       const a = tkSetTertaut().get(String(tk.susulanReturId)) || { rp: 0, bulat: 0 };
-      return Math.max(0, pembulatanTunai(a.rp - a.bulat + total - (tk.nilaiRetur || 0), cara) - a.bulat);
+      const d = pembulatanTunai(a.rp - a.bulat + total - (tk.nilaiRetur || 0), cara) - a.bulat;
+      _tkBulatLebih = d < 0 ? -d : 0;
+      return Math.max(0, d);
     }
+    _tkBulatLebih = 0;
     return pembulatanTunai(total - tkKreditTagihan(), cara);
   }
   function tkReturYatim() { const t = tkSetTertaut(); return ambilRetur().filter(r => tkApakahYatim(r, t)); }
@@ -17481,12 +17545,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const t = parseFloat(document.getElementById('jualHargaTotal').value) || 0;
     return q > 0 ? Math.round(t / q) : 0;
   }
+  // LANTAI NEGO PUNYA SATU RUMAH. Dulu tuas nego punya DUA pintu dengan DUA aturan: tombol
+  // \u00b1 berlantai Rp500, tapi MENGETIK harganya berlantai nol — dan nol penjaga di hilirnya
+  // memeriksa ambang itu lagi. Ketik 300, dan Rp300/kg langsung ditulis ke jualHargaTotal.
+  // Lantainya disebut DI LAYAR tempat ia ditegakkan, bukan disembunyikan di dalam Math.max.
+  const NEGO_LANTAI = 500;
+  function wzNegoSah(n) { return Math.max(NEGO_LANTAI, Math.round(n || 0)); }
   function wzNegoUbah(delta) {
     const asli = _wzSatuanAsli || wzSatuanKini();
     if (!asli) return;
     _wzSatuanAsli = asli;
     const kini = _wzNego === null ? asli : _wzNego;
-    _wzNego = Math.max(500, kini + delta);
+    _wzNego = wzNegoSah(kini + delta);
     if (_wzNego === asli) _wzNego = null;
     const kotak = document.getElementById('wzHargaInput');
     if (kotak) kotak.value = _wzNego === null ? asli : _wzNego;
@@ -17564,7 +17634,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // Satu sumber angka tagihan wizard: subtotal − potongan, + pembulatan Rp500 bila tunai.
   function wzTagihan() {
     const sub = wzSubtotal();
-    const pot = Math.min(Math.round(_wzPotongan || 0), sub);
+    const potMinta = Math.round(_wzPotongan || 0);   // yang DIKETIK — dibawa keluar utuh
+    const pot = Math.min(potMinta, sub);             // yang DIPAKAI — memang tidak boleh lewat
     const total = sub - pot;
     const cara = wzCaraBayarAktif();
     // TUKAR: nilai barang yang kembali dipotong SEBELUM pembulatan — pembulatan tunai dihitung
@@ -17573,7 +17644,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const kredit = tkKreditTagihan();
     const bersih = total - kredit;
     const bulat = tkBulat(total, cara);
-    return { sub, pot, total, cara, bulat, kredit, bersih, tagihan: bersih + bulat };
+    return { sub, pot, potMinta, potLewat: Math.max(0, potMinta - sub),
+      total, cara, bulat, kredit, bersih, tagihan: bersih + bulat };
   }
   // Chip "bulat 1rb / bulat 5rb" (pembulatan KE BAWAH sebagai potongan) DICABUT 5 Sep 2026:
   // arah pembulatan di toko adalah ke ATAS ke Rp500 (pembulatanTunai). Potongan tinggal
@@ -17622,12 +17694,21 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         return;
       }
     }
+    // Lembar konfirmasi adalah tempat TERAKHIR angka bisa dibetulkan sebelum jadi nota. Ia
+    // tidak boleh mengulang angka yang sudah dipangkas seolah itu yang diminta.
+    if (T.potLewat > 0) {
+      alert('Potongan yang diketik ' + formatRupiah(T.potMinta) + ' lebih besar ' + formatRupiah(T.potLewat)
+        + ' dari isi keranjang ' + formatRupiah(T.sub) + '.\n\nBetulkan potongannya, atau tambah barang.');
+      return;
+    }
     const baris = _wzItems.map(x => [x.label, formatRupiah(x.trx.hargaTotal)]);
     if (pot > 0) baris.push(['Potongan', '\u2212' + formatRupiah(pot)]);
     // Tukar: tanpa baris ini lembar konfirmasi menjumlah Rp735.000 + Rp100 lalu menagih Rp137.500.
     if (T.kredit > 0) baris.push(['Barang kembali (tukar)', '\u2212' + formatRupiah(T.kredit) + ' \u2014 ' + escapeHtml(_tukarKeJual.ringkas)]);
     if (_tukarKeJual && _tukarKeJual.susulanReturId) baris.push(['Susulan pengganti tukar', 'dicatat PENUH \u2014 uang tukarnya sudah diterima saat tukar']);
     if (T.bulat > 0) baris.push(['Dibulatkan ke Rp500', '+' + formatRupiah(T.bulat)]);
+    if (_tkBulatLebih > 0) baris.push(['Pembulatan nota sebelumnya KELEBIHAN',
+      formatRupiah(_tkBulatLebih) + ' \u2014 kembalikan ke pembeli, atau catat sebagai koreksi']);
     baris.push(['Cara bayar', cara + (nama ? ' \u2014 ' + escapeHtml(nama) : '')]);
     if (cara === 'Kredit' && _wzJanji) baris.push(['Janji bayar', formatTanggal(tanggalJanji(_wzJanji))]);
     if (cara === 'Kredit' && _wzKreditBuka) baris.push(['Kredit', 'dibuka owner untuk transaksi ini']);
@@ -17661,6 +17742,15 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     }));
   }
   function wzEsc(t) { return escapeHtml(String(t || '')); }
+  // Nama merek & jenis beras adalah TEKS BEBAS yang diketik orang. Yang diantar lewat atribut
+  // onclick cuma NOMOR URUT ke lumbung ini — angka tidak bisa salah escape. Lumbungnya ditulis
+  // ulang tiap penggambaran, jadi nomornya tidak pernah basi.
+  let _wzPil = [];
+  function wzPilSimpan(daftar) { _wzPil = daftar.slice(); return _wzPil; }
+  function wzPilAmbil(i) { return _wzPil[i]; }
+  function wzSeringIdx(i) { const v = wzPilAmbil(i); if (v !== undefined) wzSering(v); }
+  function wzPilihJenisIdx(i) { const v = wzPilAmbil(i); if (v !== undefined) wzPilihJenis(v); }
+  function wzPilihMerkIdx(i) { const v = wzPilAmbil(i); if (v !== undefined) wzPilihMerk(v); }
 
   function wzKe(langkah) { _wz.langkah = langkah; wzRender(); }
   function wzReset(tanya) {
@@ -17719,6 +17809,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     b.click();                                        // handler LAMA yang berjalan
     const opsi = wzBacaTombol(idKontainer).find(o => o.kunci === kunci);
     _wz.maks = stokMaksJalur(_wz.jalur, kunci);
+    _wz.maksMentah = stokMaksMentah(_wz.jalur, kunci);   // yang DIUCAPKAN, bukan yang membandingkan
     _wzNego = null; _wzBonus = false; _wzSatuanAsli = 0;
     // Saklar RUPIAH tetap hidup sesudah ganti merk: teksnya diturunkan dari liter yang
     // masih ada di form (harga merk baru); merk tanpa harga → kembali ke LITER.
@@ -18089,9 +18180,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // DUA angka disebut, bukan satu: selisih antara yang tercatat dan yang diminta adalah
     // pengukuran yang baru saja didapat gratis, dan itulah yang dibutuhkan opname berikutnya.
     // Pesan yang cuma bilang "stok tidak cukup" membuangnya.
-    const lebihHtml = lebih ? '<div class="wz-peringatan"><span>\u26a0 Catatan bilang sisa ' + _wz.maks + ' ' + satuan + ', diminta ' + nNum + '. Stok tidak boleh minus.</span>'
+    // KALIMATNYA BERCABANG PADA NILAI SEBELUM JEPITAN. Kalau catatannya sudah minus, berkata
+    // "sisa 0" menyembunyikan justru pengukuran yang paling berharga — dan menawarkan
+    // "jual 0 saja" adalah tombol yang tidak menjual apa pun.
+    const mentahW = (_wz.maksMentah === null || _wz.maksMentah === undefined) ? _wz.maks : _wz.maksMentah;
+    const rusakW = mentahW < 0;
+    const lebihHtml = lebih ? (rusakW
+      ? '<div class="wz-peringatan"><span>\u26a0 Catatan stok ' + (_wz.merk || '') + ' sudah MINUS ' + Math.abs(mentahW) + ' ' + satuan
+        + ' sebelum nota ini \u2014 bukan kurang sedikit, catatannya yang rusak. Cocokkan Stok dulu.</span></div>'
+      : '<div class="wz-peringatan"><span>\u26a0 Catatan bilang sisa ' + _wz.maks + ' ' + satuan + ', diminta ' + nNum + '. Stok tidak boleh minus.</span>'
       + '<div class="aksi"><button type="button" onclick="wzIsiJumlah(\'' + idInput + '\',' + _wz.maks + ')">jual ' + _wz.maks + ' saja</button>'
-      + '<button type="button" onclick="pindahDariMenu(\'produksi\')">repack dulu</button></div></div>' : '';
+      + '<button type="button" onclick="pindahDariMenu(\'produksi\')">repack dulu</button></div></div>') : '';
     const elP = document.getElementById('wzPeringatan');
     if (elP) elP.innerHTML = cermin + lebihHtml;
     // NEGO (NG1): harga satuan boleh DIKETIK langsung, tombol ±500 tetap ada.
@@ -18104,7 +18203,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         const jual = _wzNego !== null ? _wzNego : asli;
         const selisih = jual - asli;
         const fokusHarga = document.activeElement && document.activeElement.id === 'wzHargaInput';
-        elN.innerHTML = '<div class="wz-nego"><i>Harga satuan \u2014 ketik atau ubah</i>'
+        // PENUGASANNYA HILANG. Baris di atas ditutup titik koma, lalu seluruh rangkaian di bawah
+        // berdiri sendiri sebagai ekspresi buangan (unary plus atas string) — sah menurut sintaks,
+        // diam menurut layar. Akibatnya SELURUH blok nego tidak pernah tergambar di HP: tombol
+        // ±500, kotak harga, baris "ditawar −Rp", dan tombol "Bonus 1 kemasan". Empat saudaranya
+        // di fungsi yang sama (elInfo, elT, elP, elC) semuanya memakai penugasan; hanya cabang ini
+        // yang tidak — itu kontrol positifnya.
+        elN.innerHTML = '<div class="wz-nego"><i>Harga satuan \u2014 ketik atau ubah (paling rendah ' + formatRupiah(NEGO_LANTAI) + ')</i>'
           + '<div class="wz-nego-baris">'
           + '<button type="button" onclick="wzNegoUbah(-500)">\u2212</button>'
           + '<input type="number" id="wzHargaInput" inputmode="numeric" step="500" enterkeyhint="done"'
@@ -18137,7 +18242,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   function wzHargaDiketik(v) {
     const asli = _wzSatuanAsli || wzSatuanKini();
-    const n = Math.max(0, Math.round(parseFloat(v) || 0));
+    const nKetik = Math.max(0, Math.round(parseFloat(v) || 0));
+    // Pintu KEDUA lantai nego. Yang diketik di bawah lantai TIDAK didiamkan lalu dipakai —
+    // ia diangkat ke lantainya DAN dikatakan, supaya kasir tahu harga yang tersimpan bukan
+    // harga yang ia ketik. Nol tetap berarti "batal nego", bukan "gratis".
+    const n = (nKetik > 0 && nKetik < NEGO_LANTAI) ? wzNegoSah(nKetik) : nKetik;
+    if (n !== nKetik) {
+      const elh = document.getElementById('wzHargaInput');
+      if (elh) elh.value = n;
+      alert('Harga nego tidak bisa di bawah ' + formatRupiah(NEGO_LANTAI) + '/satuan.\n\n'
+        + 'Yang diketik ' + formatRupiah(nKetik) + ' \u2014 dipakai ' + formatRupiah(n) + '.');
+    }
     _wzNego = (n === asli || n === 0) ? null : n;
     if (_wzNego === null) { wzTulisJumlah(document.getElementById(WZ_PETA_JUMLAH[_wz.jalur][0]).value); }
     else wzTerapkanNego();
@@ -18360,8 +18475,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         const laku = wzBacaTombol('pilihKemasanTombol').filter(o => !o.habis && o.kunci).slice(0, 3);
         if (laku.length) {
           sering.style.display = 'block';
+          wzPilSimpan(laku.map(o => o.kunci));
           sering.innerHTML = '<div class="wz-sering-judul">Sering dijual \u00b7 2 ketukan</div><div class="wz-sering-baris">'
-            + laku.map(o => '<button type="button" class="wz-chip" onclick="wzSering(\'' + wzEsc(o.kunci).replace(/'/g, "\\'") + '\')"><b>' + wzEsc(o.label) + '</b><i>' + wzEsc(o.sub) + '</i></button>').join('') + '</div>';
+            + laku.map((o, i) => '<button type="button" class="wz-chip" onclick="wzSeringIdx(' + i + ')"><b>' + wzEsc(o.label) + '</b><i>' + wzEsc(o.sub) + '</i></button>').join('') + '</div>';;
         }
         const petak = (onclick, isi, sub) => '<button type="button" class="kg-petak" onclick="' + onclick + '"><b>' + isi + '</b><i>' + sub + '</i></button>';
         panel.innerHTML = '<div class="wz-jalur-kisi">' + [
@@ -18388,8 +18504,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         // balik('jalur') sendiri sudah string tak-kosong, jadi pesan "belum ada stok" tidak
         // pernah sekali pun tergambar. Tersembunyi selama tombol balik menemaninya; telanjang
         // begitu langkah ditumpuk. Kurungnya dibetulkan — nol perubahan perilaku saat ADA stok.
-        panel.innerHTML = balik('jalur') + (Object.keys(grup).sort().map(j =>
-          baris("wzPilihJenis('" + wzEsc(j).replace(/'/g, "\\'") + "')", wzEsc(j),
+        const jnsUrut = Object.keys(grup).sort();
+        wzPilSimpan(jnsUrut);
+        panel.innerHTML = balik('jalur') + (jnsUrut.map((j, i) =>
+          baris('wzPilihJenisIdx(' + i + ')', wzEsc(j),
             grup[j].length + ' produk', grup[j].every(o => o.habis))).join('')
           || '<div class="wz-info">Belum ada stok kemasan jadi \u2014 buat lewat Produksi.</div>');
         return;
@@ -18401,8 +18519,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           (jenisUntukMerk(o.kunci.split('|')[0]) || 'Belum diberi jenis') === _wz.jenisBeras);
         const merk = {};
         opsi.forEach(o => { const m = o.kunci.split('|')[0]; (merk[m] = merk[m] || []).push(o); });
-        panel.innerHTML = balik('jenis') + Object.keys(merk).map(m =>
-          baris("wzPilihMerk('" + wzEsc(m).replace(/'/g, "\\'") + "')", wzEsc(m),
+        const merkUrut = Object.keys(merk);
+        wzPilSimpan(merkUrut);
+        panel.innerHTML = balik('jenis') + merkUrut.map((m, i) =>
+          baris('wzPilihMerkIdx(' + i + ')', wzEsc(m),
             merk[m].map(o => o.kunci.split('|')[1] + ' kg').join(' \u00b7 '), merk[m].every(o => o.habis))).join('');
         return;
       }
@@ -18508,7 +18628,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         const pot = T.pot, total = T.tagihan, caraAktif = T.cara;
         const kembali = _wzUang > 0 ? _wzUang - total : null;
         const tukarMinus = !!_tukarKeJual && T.bersih < 0;   // retur > keranjang: tidak ada angka "Bayar" yang benar
-        const matiSimpan = !_wzItems.length || tukarMinus || (caraAktif === 'Kredit' && !!wzKreditTerkunci(total));
+        // POTONGAN LEWAT: bentuk yang sama dengan tukarMinus, jadi ditangani dengan cara yang
+        // sama — MENOLAK menggambar angka Bayar, sebut selisihnya, matikan SIMPAN.
+        const potLewat = T.potLewat > 0;
+        const matiSimpan = !_wzItems.length || tukarMinus || potLewat || (caraAktif === 'Kredit' && !!wzKreditTerkunci(total));
         panel.innerHTML = balik('jalur')
           + '<div class="wz-item total"><span class="nama">Subtotal \u00b7 ' + _wzItems.length + ' item \u2014 rincian di struk atas</span><b>' + formatRupiah(wzSubtotal()) + '</b></div>'
           + '<i class="wz-label-kecil">Potongan (diskon, bila ada)</i>'
@@ -18516,10 +18639,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           + '<button type="button" class="' + (_wzPotonganMode === 'tanpa' ? 'pilih' : '') + '" onclick="wzPotonganSet(\'tanpa\')">tanpa</button>'
           + '<input type="number" inputmode="numeric" placeholder="nominal Rp" value="' + (_wzPotonganMode === 'nominal' && _wzPotongan ? _wzPotongan : '') + '" onchange="wzPotonganNominal(this.value)">'
           + '</div>'
-          + (pot > 0 ? '<div class="wz-info">Potongan \u2212' + formatRupiah(pot) + ' \u00b7 dibagi ke tiap item saat disimpan</div>' : '')
+          + (potLewat
+            ? '<div class="wz-peringatan"><span>\u26a0 Potongan yang diketik ' + formatRupiah(T.potMinta)
+              + ' lebih besar ' + formatRupiah(T.potLewat) + ' dari isi keranjang ' + formatRupiah(T.sub)
+              + ' \u2014 betulkan potongannya, atau tambah barang.</span></div>'
+            : (pot > 0 ? '<div class="wz-info">Potongan \u2212' + formatRupiah(pot) + ' \u00b7 dibagi ke tiap item saat disimpan</div>' : ''))
           + (T.kredit > 0 ? '<div class="wz-item"><span class="nama">Barang kembali (tukar) · dipotong</span><b>−' + formatRupiah(T.kredit) + '</b></div>' : '')
           + (T.bulat > 0 ? '<div class="wz-item"><span class="nama">Dibulatkan ke Rp500 \u00b7 aturan meja kasir, tunai</span><b>+' + formatRupiah(T.bulat) + '</b></div>' : '')
-          + (tukarMinus
+          + (potLewat
+            ? '<div class="wz-item total besar"><span class="nama">Bayar</span><b>—</b></div>'
+            : tukarMinus
             ? '<div class="wz-item total besar"><span class="nama">Bayar</span><b>—</b></div>'
               + '<div class="wz-info">Retur ' + formatRupiah(T.kredit) + ' lebih besar dari keranjang ' + formatRupiah(T.total)
               + ' — kurang ' + formatRupiah(-T.bersih) + '. Tambah barang, atau batal tukar lalu catat sebagai refund.</div>'
@@ -18547,6 +18676,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           + '<button type="button" class="wz-lanjut wz-simpan-besar" id="wzSimpanKeranjang" onclick="wzKonfirmasiKeranjang()"' + (matiSimpan ? ' disabled' : '') + '>SIMPAN' + (tukarMinus ? '' : ' \u00b7 ' + formatRupiah(total)) + '</button>'
           + '<div class="wz-nota-simpan">' + (matiSimpan
             ? (!_wzItems.length ? 'Keranjang masih kosong.'
+              : potLewat ? 'Potongan ' + formatRupiah(T.potMinta) + ' lebih besar dari isi keranjang ' + formatRupiah(T.sub) + '.'
               : tukarMinus ? 'Retur lebih besar dari keranjang — tambah barang, atau batal tukar.'
               : (caraAktif === 'Kredit' ? wzEsc(String(wzKreditTerkunci(total) || 'Lengkapi data kredit dulu.')) : 'Pilih cara bayar dulu.'))
             : 'Tersimpan langsung ke buku \u2014 stok & laba ikut bergerak.') + '</div>'
@@ -19101,8 +19231,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // Mesin cuma membaca dokumen TERSIMPAN; item keranjang belum jadi dokumen. Tanpa
     // pengurangan ini penjaga TERAKHIR buta keranjang lagi — dan begitu klem senyap dicabut,
     // dialah satu-satunya yang tersisa. Ini syarat, bukan pelengkap.
-    const sisaKgEfektif = m => Math.max(0, ((stokKarung[m] && stokKarung[m].sisaKg) || 0) - wzDiKeranjang('karung', m));
-    const sisaUnitEfektif = k => Math.max(0, ((stokKemasan[k] && stokKemasan[k].sisaUnit) || 0) - wzDiKeranjang('kemasan', k));
+    // TANPA JEPITAN. Nilainya dipakai untuk DUA hal: membandingkan (perbandingan `< diminta`
+    // tetap benar walau minus) dan DIUCAPKAN di pesan penolakan — dan yang diucapkan itu yang
+    // dulu berbohong: dengan catatan −704 kg dan permintaan 5 kg, layar berkata "sisa 0 kg,
+    // kurang 5 kg". Yang benar kurang 709,7 kg. Nilai ini juga ditulis permanen ke dokumen
+    // tembusanStok yang dibaca opname berbulan-bulan kemudian.
+    const sisaKgEfektif = m => (((stokKarung[m] && stokKarung[m].sisaKg) || 0) - wzDiKeranjang('karung', m));
+    const sisaUnitEfektif = k => (((stokKemasan[k] && stokKemasan[k].sisaUnit) || 0) - wzDiKeranjang('kemasan', k));
 
     if (jenisJualAktif === 'literan') {
       const jenis = document.getElementById('jualLiteranJenis').value;
@@ -21726,7 +21861,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           // kosong (yang berarti "hampir habis" dan itu salah).
           const isi = tanpaLaju ? 100 : Math.max(4, Math.min(100, Math.round(x.hari / HARI_PENUH * 100)));
           return '<button type="button" class="st-tabung' + (genting ? ' genting' : '') + (tanpaLaju ? ' tanpa-laju' : '') + '" style="--isi:' + isi + '%;"'
-            + ' onclick="stokKetukTabung(' + JSON.stringify(x.jenis || '') .replace(/"/g, '&quot;') + ', ' + JSON.stringify(x.cari).replace(/"/g, '&quot;') + ')">'
+            + ' onclick="stokKetukTabung(' + escapeHtml(JSON.stringify(x.jenis || '')) + ', ' + escapeHtml(JSON.stringify(x.cari)) + ')">'
             + '<span class="tb-isi" aria-hidden="true"></span>'
             + '<b>' + escapeHtml(x.nama) + '</b>'
             + '<span class="tb-sisa">' + (Math.round(x.sisa * 10) / 10).toLocaleString('id-ID') + ' ' + x.satuan + '</span>'
@@ -22911,8 +23046,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         <div class="th-cincin" style="--isi:${Math.round(beres / 6 * 100)}"><span>${beres}/6</span></div></div>
         ${thBilahAtasHtml(beres)}`);
       // Peta: baris per langkah, status dari pagar yang sama.
-      const belum = (typeof hariBelumDitutup === 'function' ? (hariBelumDitutup() || []) : []);
-      const nBelum = Array.isArray(belum) ? belum.length : 0;
+      // Sama bentuknya dengan gerbang Tutup Buku: daftar kosong di sini berarti "tidak ada hari
+      // yang tertinggal", dan itulah yang memadamkan peringatan di bawah. null = tidak bisa
+      // ditanya, dan peringatannya bercabang ke kalimatnya sendiri — bukan menghilang.
+      const belum = (typeof hariBelumDitutup === 'function' ? (hariBelumDitutup() || []) : null);
+      const nBelum = Array.isArray(belum) ? belum.length : null;
       let boleh = true; let pertamaBelum = 7;
       const barisPeta = [1, 2, 3, 4, 5, 6].map(i => {
         const pg = thPagar(i);
@@ -22928,7 +23066,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       thTulis('thPeta', `<div class="kg-label" style="margin:14px 2px 8px;">Putaran malam ini \u00b7 6 tempat berhenti</div>
         ${thPetaRuteHtml(beres)}
         <div class="kg-panel" style="padding:6px 12px 12px;">${barisPeta}
-        ${nBelum > 0 ? `<div class="th-peringatan">${nBelum} hari sebelumnya belum dikunci — kunci malam ini dulu, hari lain menyusul lewat tanggal.</div>` : ''}
+        ${nBelum === null ? `<div class="th-peringatan">Hari yang belum dikunci TIDAK BISA DITANYA — jangan anggap bersih; muat ulang halaman dulu.</div>` : (nBelum > 0 ? `<div class="th-peringatan">${nBelum} hari sebelumnya belum dikunci — kunci malam ini dulu, hari lain menyusul lewat tanggal.</div>` : '')}
         <button type="button" class="kg-terpilih th-mulai" onclick="thKe(${tujuan})">${beres === 0 ? 'Mulai putaran malam' : (pertamaBelum === 7 ? 'Semua langkah beres — ke kunci' : 'Lanjut ke langkah ' + tujuan)}</button></div>`);
       // Alat seksi 2: chip alasan, cacah isian, lembar, selisih 30 malam.
       const nIsi = ['tutupLaci', 'tutupRekening', 'tutupAmplop', 'tutupBrankas'].filter(id => thNilai(id) !== '').length;
@@ -23293,9 +23431,19 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const nLaci = parseFloat(laci) || 0, nRek = parseFloat(rek) || 0, nAmplop = parseFloat(amp) || 0, nBrankas = parseFloat(brk) || 0;
     if (nLaci < 0 || nRek < 0 || nAmplop < 0 || nBrankas < 0) { alert('Jumlah uang tidak mungkin negatif.'); return; }
     const seharusnya = kasSeharusnyaSekarang();
-    const selisih = seharusnya === null ? 0 : Math.round((nLaci + nRek + nAmplop + nBrankas) - seharusnya);
+    // NOL DI SINI DULU PUNYA DUA ARTI: "cocok persis" dan "tidak bisa dihitung" (patokan kas
+    // belum pernah disetel, atau gagal dibaca). Yang kedua lalu menyelinap lewat pagar
+    // keterangan di bawah tanpa satu kata pun, dan tersimpan ke riwayat sebagai malam yang
+    // cocok. Sekarang dibedakan: null = belum bisa dihitung, dan itu DISEBUT.
+    const bisaDihitung = seharusnya !== null;
+    const selisih = bisaDihitung ? Math.round((nLaci + nRek + nAmplop + nBrankas) - seharusnya) : null;
     const alasan = document.getElementById('tutupAlasan').value.trim();
-    if (selisih !== 0 && !alasan) { alert('Selisih ' + formatRupiah(Math.abs(selisih)) + ' harus ada keterangannya — supaya bisa ditelusuri nanti.'); return; }
+    if (!bisaDihitung && !alasan) {
+      alert('Patokan kas belum bisa dihitung, jadi selisih malam ini TIDAK BISA DITANYA \u2014 itu bukan berarti cocok.\n\n'
+        + 'Tulis keterangannya dulu, supaya nanti bisa ditelusuri kenapa malam ini tanpa patokan.');
+      return;
+    }
+    if (bisaDihitung && selisih !== 0 && !alasan) { alert('Selisih ' + formatRupiah(Math.abs(selisih)) + ' harus ada keterangannya — supaya bisa ditelusuri nanti.'); return; }
 
     const sudah = ambilTutupHari().find(x => x.tanggal === hariIni);
     if (sudah && !confirm('Hari ini sudah pernah ditutup jam ' + (sudah.jam || '') + '.\n\nMenutup lagi menulis catatan baru; yang lama turun ke riwayat bertanggal, tidak hilang. Patokan kas tetap maju sekali lagi. Lanjutkan?')) return;
@@ -23538,22 +23686,38 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const ket = document.getElementById('akWujudKet');
     kartu.style.display = 'block';
     const habis = Math.max(0, biayaNyata) + Math.max(0, pos.prive || 0) + Math.max(0, pos.setoran || 0);
+    // TIGA KAKI INI DUA ARAH. Menjepitnya jadi Rp0 lalu memberi label 'masih milik toko'
+    // membuat stok yang MENYUSUT digambar sebagai nol yang sehat — di HP, perangkat utama
+    // pemilik. Kembaran desktop (27711-27731) sudah punya kalimat arah satunya; dipakai di sini.
     const kotak = [
-      { label: 'Stok', rp: Math.max(0, jadiStok), sub: 'masih milik toko' },
-      { label: 'Piutang', rp: Math.max(0, jadiPiutang), sub: 'masih milik toko' },
-      { label: 'Kasbon', rp: Math.max(0, jadiKasbon), sub: 'masih milik toko' },
+      jadiStok >= 0 ? { label: 'Stok', rp: jadiStok, sub: 'masih milik toko' }
+        : { label: 'Dari stok lama', rp: -jadiStok, sub: 'yang terjual melebihi belanja \u2014 stok menyusut jadi uang' },
+      jadiPiutang >= 0 ? { label: 'Piutang', rp: jadiPiutang, sub: 'masih milik toko' }
+        : { label: 'Piutang mengempis', rp: -jadiPiutang, sub: 'pelunasan melebihi kredit baru' },
+      jadiKasbon >= 0 ? { label: 'Kasbon', rp: jadiKasbon, sub: 'masih milik toko' }
+        : { label: 'Kasbon kembali', rp: -jadiKasbon, sub: 'dikembalikan melebihi yang diambil' },
       { label: 'Habis', rp: habis, sub: 'biaya, prive & setoran \u00b7 benar-benar keluar', habis: true }
     ];
     kisi.innerHTML = kotak.map(k =>
       '<div' + (k.habis ? ' class="habis"' : '') + '><i></i><b>' + escapeHtml(k.label) + '</b>'
       + '<strong>' + formatRupiah(k.rp) + '</strong>'
       + '<small>' + escapeHtml(k.sub) + '</small></div>').join('');
-    const wujud = kotak.slice(0, 3).reduce((a, k) => a + k.rp, 0);
-    ket.textContent = wujud > 0
-      ? 'Tiga kotak pertama masih milik toko: ' + formatRupiah(wujud)
-        + ' bisa dijual atau ditagih. Kotak keempat ' + formatRupiah(habis) + ' tidak.'
-      : 'Bulan ini tidak ada kas yang berubah wujud \u2014 yang keluar '
-        + formatRupiah(habis) + ' benar-benar keluar.';
+    // Kalimatnya bercabang pada TANDA ASLI tiap kaki, bukan pada jumlah yang sudah dijepit.
+    // Tiga keadaan, bukan dua — kalau tandanya campur, DUA ARAH disebut sekaligus dan
+    // selisihnya dinamai, bukan dijumlahkan jadi satu angka yang menenangkan.
+    const kaki = [['stok', jadiStok], ['piutang', jadiPiutang], ['kasbon', jadiKasbon]];
+    const naik = kaki.filter(x => x[1] > 0), turun = kaki.filter(x => x[1] < 0);
+    const rpNaik = naik.reduce((a, x) => a + x[1], 0), rpTurun = -turun.reduce((a, x) => a + x[1], 0);
+    const sebut = a => a.map(x => x[0]).join(', ');
+    ket.textContent = (!naik.length && !turun.length)
+      ? 'Bulan ini tidak ada kas yang berubah wujud \u2014 yang keluar ' + formatRupiah(habis) + ' benar-benar keluar.'
+      : !turun.length
+        ? 'Masih milik toko: ' + formatRupiah(rpNaik) + ' (' + sebut(naik) + ') bisa dijual atau ditagih. Kotak "Habis" ' + formatRupiah(habis) + ' tidak.'
+        : !naik.length
+          ? formatRupiah(rpTurun) + ' justru MENCAIR BALIK jadi kas (' + sebut(turun) + ') \u2014 bulan ini tidak ada kas yang berubah wujud. Yang keluar ' + formatRupiah(habis) + ' benar-benar keluar.'
+          : formatRupiah(rpNaik) + ' berubah wujud jadi ' + sebut(naik) + ', sementara ' + formatRupiah(rpTurun)
+            + ' mencair balik jadi kas dari ' + sebut(turun) + ' \u2014 bersihnya ' + formatRupiah(Math.abs(rpNaik - rpTurun))
+            + (rpNaik >= rpTurun ? ' masih tersimpan sebagai barang & tagihan.' : ' justru kembali jadi uang.');
   }
 
   // ---------- B: VONIS "KOK KAS GUA MINUS" (rupa kaca) ----------
@@ -23563,14 +23727,29 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function gambarVonisKas(jadiStok, jadiPiutang, jadiKasbon, biayaNyata, pos, d) {
     const kotak = document.getElementById('akVonisKaca');
     if (!kotak || window.matchMedia('(min-width: 700px)').matches) return;
-    const wujud = Math.max(0, jadiStok) + Math.max(0, jadiPiutang) + Math.max(0, jadiKasbon);
+    // SAKLAR KALIMAT, bukan cuma angka: baris `if (bersih < 0 && wujud > 0)` memilih antara dua
+    // vonis yang isinya bertolak belakang. Kalau saklarnya membaca jumlah TERJEPIT, satu kaki
+    // positif bisa menutupi dua kaki negatif yang lebih besar — layar menenangkan pemilik
+    // padahal stoknya justru mencair. Saklarnya kini membaca tanda ASLI tiap kaki.
+    const kakiV = [['stok', jadiStok], ['piutang', jadiPiutang], ['kasbon', jadiKasbon]];
+    const naikV = kakiV.filter(x => x[1] > 0), turunV = kakiV.filter(x => x[1] < 0);
+    const rpNaikV = naikV.reduce((a, x) => a + x[1], 0), rpTurunV = -turunV.reduce((a, x) => a + x[1], 0);
+    const sebutV = a => a.map(x => x[0]).join(', ');
+    const wujud = rpNaikV - rpTurunV;
     const habis = Math.max(0, biayaNyata) + Math.max(0, pos.prive || 0) + Math.max(0, pos.setoran || 0);
     const bersih = d.bersih || 0;
     kotak.style.display = 'block';
     let judul, isi;
-    if (bersih < 0 && wujud > 0) {
+    if (bersih < 0 && turunV.length && naikV.length) {
+      // TANDANYA CAMPUR: jangan pilih salah satu vonis. Sebut dua arah sekaligus.
+      judul = 'Kas turun ' + formatRupiah(-bersih) + ' \u2014 dua arah sekaligus';
+      isi = formatRupiah(rpNaikV) + ' berubah wujud jadi ' + sebutV(naikV) + ', sementara ' + formatRupiah(rpTurunV)
+        + ' justru mencair balik jadi kas dari ' + sebutV(turunV) + '. Bersihnya ' + formatRupiah(Math.abs(wujud))
+        + (wujud >= 0 ? ' masih milik toko. ' : ' malah kembali jadi uang. ')
+        + 'Yang benar-benar keluar ' + formatRupiah(habis) + ' (biaya, prive & setoran).';
+    } else if (bersih < 0 && rpNaikV > 0) {
       judul = 'Kas turun ' + formatRupiah(-bersih) + ', tapi tidak hilang';
-      isi = formatRupiah(wujud) + ' berubah wujud jadi stok, piutang, dan kasbon \u2014 masih milik toko. '
+      isi = formatRupiah(rpNaikV) + ' berubah wujud jadi ' + sebutV(naikV) + ' \u2014 masih milik toko. '
         + 'Yang benar-benar keluar cuma ' + formatRupiah(habis) + ' (biaya, prive & setoran).';
     } else if (bersih < 0) {
       judul = 'Kas turun ' + formatRupiah(-bersih) + ', dan memang keluar';
@@ -25098,11 +25277,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   function hitungNeraca(sampai) {
     const stokK = hitungStokKarungPerMerk(sampai);
+    // STOK MINUS MENGURANGI KEKAYAAN, tidak dinilai Rp0. Menjepitnya membuat merek yang
+    // catatannya minus terbaca sama dengan merek yang pas habis — dan kekayaan toko memajang
+    // barang yang menurut bukunya sendiri tidak ada. Diukur 16 Sep 2026 dengan mesin ini atas
+    // cadangan 11 Sep: nol merek minus, jadi angka hari ini TIDAK bergeser sedikit pun; yang
+    // berubah cuma apa yang terjadi kalau minusnya kembali.
     const nilaiSack = Object.keys(stokK).reduce((a, m) =>
-      a + Math.max(0, stokK[m].sisaKg || 0) * (stokK[m].hppTerakhirPerKg || 0), 0);
+      a + (stokK[m].sisaKg || 0) * (stokK[m].hppTerakhirPerKg || 0), 0);
+    const sackMinus = Object.keys(stokK).filter(m => (stokK[m].sisaKg || 0) < -0.05);
     const stokB = hitungStokKemasan(sampai);
     const nilaiBags = Object.keys(stokB).reduce((a, k) =>
-      a + Math.max(0, stokB[k].sisaUnit || 0) * (stokB[k].hppRataRataPerUnit || 0), 0);
+      a + (stokB[k].sisaUnit || 0) * (stokB[k].hppRataRataPerUnit || 0), 0);
+    const bagsMinus = Object.keys(stokB).filter(k => (stokB[k].sisaUnit || 0) < 0);
     const bhk = hitungStokBahanKemasan(sampai), bhl = hitungStokBahanLiteran(sampai);
     const nilaiBahan = Object.keys(bhk).reduce((a, j) => a + Math.max(0, bhk[j].sisaPcs || 0) * (bhk[j].hppPerPcs || 0), 0)
       + Object.keys(bhl).reduce((a, j) => a + Math.max(0, bhl[j].sisaPcs || 0) * (bhl[j].hargaPerPcs || 0), 0);
@@ -25120,6 +25306,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       nilaiBahan: Math.round(nilaiBahan), stok, piutang, nPiutang: daftarPiutang.length,
       kasbon, nKasbon: daftarKasbon.length,
       utangOwner, utangPemasok, nBonPemasok: up.nBon || 0,
+      // Daftar merek yang catatannya MINUS dibawa keluar supaya layar bisa menyebutnya.
+      // Tanpa ini nilai minus cuma mengurangi diam-diam, dan pembaca melihat kekayaan yang
+      // lebih kecil tanpa tahu sebabnya — menukar satu kebohongan dengan kebohongan lain.
+      sackMinus, bagsMinus, adaStokMinus: (sackMinus.length + bagsMinus.length) > 0,
       kewajiban: utangOwner + utangPemasok,
       total: kas === null ? null : Math.round(kas + stok + piutang + kasbon - utangOwner - utangPemasok) };
   }
@@ -25422,7 +25612,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         return `<div class="baris-44" style="border-bottom:none;">
             <span class="nama"><i class="trx-nama"><b>${escapeHtml(px.pemasok)}</b></i><small>${px.bon.length} bon berjalan</small></span>
             <span class="angka">${formatRupiah(px.totalUtang)}</span>
-            <button type="button" class="pil-aksi" onclick="bukaLembarBayarBon(${JSON.stringify(String(px.pemasok)).replace(/"/g, '&quot;')})">Bayar bon</button>
+            <button type="button" class="pil-aksi" onclick="bukaLembarBayarBon(${escapeHtml(JSON.stringify(String(px.pemasok)))})">Bayar bon</button>
           </div>` + barisBon;
       }).join('');
   }
@@ -25440,7 +25630,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function gambarPilihanBon(px) {
     const kont = document.getElementById('bayarBonDaftar');
     kont.innerHTML = '<div class="bon-pilih">' + px.bon.map(b =>
-      `<button type="button" class="${_bayarBon.bonId === b.id ? 'pilih' : ''}" onclick="pilihBonDibayar(${JSON.stringify(String(b.id)).replace(/"/g, '&quot;')})">
+      `<button type="button" class="${_bayarBon.bonId === b.id ? 'pilih' : ''}" onclick="pilihBonDibayar(${escapeHtml(JSON.stringify(String(b.id)))})">
         <b>Bon ${escapeHtml(b.tanggal ? formatTanggal(b.tanggal) : '(tanpa tanggal)')}</b>
         <i>${b.umurHari === null ? '' : b.umurHari + ' hari'}</i>
         <span class="angka">${formatRupiah(b.sisa)}</span>
@@ -25622,7 +25812,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             const lcd = termurah[m] && termurah[m].pemasok === x.nama && pemilikMerk[m] > 1;
             return `<button type="button" onclick="event.stopPropagation(); pm6BukaGaris(${idx})">${lcd ? '<span class="kg-titik-lcd"></span>' : ''}${escapeHtml(m)} <i>Rp${Math.round(t.hargaPerKg).toLocaleString('id-ID')}/kg</i></button>`;
           }).join('');
-          const aksiBon = pxList.map(u => `<button type="button" onclick="event.stopPropagation(); bukaLembarBayarBon(${JSON.stringify(String(u.pemasok)).replace(/"/g, '&quot;')})">Bayar bon${pxList.length > 1 ? ' &middot; ' + escapeHtml(u.pemasok) : ''}</button>`).join('');
+          const aksiBon = pxList.map(u => `<button type="button" onclick="event.stopPropagation(); bukaLembarBayarBon(${escapeHtml(JSON.stringify(String(u.pemasok)))})">Bayar bon${pxList.length > 1 ? ' &middot; ' + escapeHtml(u.pemasok) : ''}</button>`).join('');
           return `<div class="kg-panel pm6-kartu" onclick="bukaLembarPemasok(${i})" role="button" tabindex="0">
             <div class="pm6-atas"><span class="pm6-inisial">${escapeHtml(x.nama.trim().charAt(0).toUpperCase())}</span>
               <span><b>${escapeHtml(x.nama)}</b><small>${x.kedatangan} kedatangan${x.terakhir ? ' &middot; terakhir ' + escapeHtml(formatTanggal(x.terakhir)) : ''}</small></span>
@@ -25648,7 +25838,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           <span class="pm6-lencana${u.bon.some(b => (b.umurHari || 0) > 14) ? ' oks' : ''}">${u.bon.length} BON</span></div>
         <div class="pm6-dua"><div><div class="label">Bon berjalan &middot; utang</div><div class="kg-uang-piutang nilai">${formatRupiah(u.totalUtang)}</div></div>
           <div><div class="label">Belanja 12 bulan</div><div class="nilai kosong">tidak ada kedatangan</div></div></div>
-        <div class="pm6-aksi"><button type="button" onclick="bukaLembarBayarBon(${JSON.stringify(String(u.pemasok)).replace(/"/g, '&quot;')})">Bayar bon</button></div>
+        <div class="pm6-aksi"><button type="button" onclick="bukaLembarBayarBon(${escapeHtml(JSON.stringify(String(u.pemasok)))})">Bayar bon</button></div>
       </div>`).join('');
       g += `<button type="button" class="pm6-pra" onclick="bukaSaldoAwalUtang()">+ Catat bon lama (pra-sistem)</button>`;
       g += `<div class="pm6-catatan"><span class="kg-titik-lcd"></span>titik hijau lembut = termurah di antara pemasok yang memasok merk itu; bon adalah utang, bukan kas, dan tidak dijumlahkan ke belanja.</div>`;
@@ -25889,7 +26079,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     }));
     _tbKaca.perangkat = Object.keys(peta).sort().map(n => ({ nama: n, terakhir: peta[n] }));
     const cadangan = Object.keys(_cadanganTertahan || {}).length;
-    const antrean = (typeof ambilAntreanTunda === 'function') ? ambilAntreanTunda().length : 0;
+    // FALLBACK YANG GAGAL KE ARAH MEMBUKA — ditambal. Nol di sini bukan angka, ia IZIN:
+    // tbKacaBolehLanjut langkah 0 menuntut `K.antrean === 0`. Cadangan lama memilih 0, jadi
+    // kalau ambilAntreanTunda pernah tidak terjangkau, gerbangnya MEMBUKA justru pada saat
+    // sistemnya tidak bisa ditanya — kebalikan dari maksud yang tertulis di gerbangnya sendiri
+    // ("ritual bisa macet di HP yang antreannya tidak jalan, dan itu memang diinginkan").
+    // null = TIDAK BISA DITANYA. null !== 0, jadi gerbangnya menahan tanpa perlu diubah.
+    const antrean = (typeof ambilAntreanTunda !== 'function' || antreanTundaRapuh()) ? null : ambilAntreanTunda().length;
     return { tahun, daftar, totalDok, jaga, saldoAda, nyata, ef, cadangan, antrean, daring: !!navigator.onLine };
   }
   function tbKacaBolehLanjut(k, K) {
@@ -25957,7 +26153,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           ${cek(K.jaga.rapikan === 0, 'Penjualan perlu dirapikan', K.jaga.rapikan === 0 ? 'nol' : K.jaga.rapikan + ' — bereskan di Riwayat')}
           ${cek(K.jaga.hppBolong === 0, 'HPP bolong (ikut terarsip apa adanya)', K.jaga.hppBolong === 0 ? 'nol' : K.jaga.hppBolong + ' trx — isi di tab Laba bila mau')}
           ${cek(K.cadangan === 0, 'Cadangan tertahan di HP ini', K.cadangan === 0 ? 'nol' : K.cadangan + ' koleksi')}
-          ${cek(K.antrean === 0, 'Antrean tunda (belum terkirim)', K.antrean === 0 ? 'kosong' : K.antrean + ' tulisan — tunggu sampai kosong')}
+          ${cek(K.antrean === 0, 'Antrean tunda (belum terkirim)', K.antrean === null ? 'TIDAK BISA DITANYA — ritual ditahan; muat ulang halaman dulu' : (K.antrean === 0 ? 'kosong' : K.antrean + ' tulisan — tunggu sampai kosong'))}
           ${cek(K.daring, 'Sambungan internet', K.daring ? 'daring' : 'luring — langkah hapus butuh internet')}
           <div class="kg-label" style="margin-top:10px;">Perangkat ini</div><div class="tb6-ket">${escapeHtml(perangkatRingkas())} — ritual dijalankan dari sini saja.</div>
           <div class="kg-label" style="margin-top:8px;">Perangkat lain yang pernah menulis</div>
@@ -26018,7 +26214,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
             <button type="button" class="tb6-chip${_tbKaca.paraf.owner ? ' aktif' : ''}" onclick="tbKacaParaf('owner')">${_tbKaca.paraf.owner ? '✓ Pemilik' : 'Paraf pemilik (PIN)'}</button>
             <button type="button" class="tb6-chip${_tbKaca.paraf.saksi ? ' aktif' : ''}" onclick="tbKacaParaf('saksi')">${_tbKaca.paraf.saksi ? '✓ Saksi' : 'Paraf saksi'}</button>
           </div>
-          ${typeof pinSudahDisetel === 'function' && !pinSudahDisetel() ? '<div class="tb6-ket oks">PIN owner belum disetel — paraf pemilik lewat tanpa PIN.</div>' : ''}
+          ${typeof pinSudahDisetel !== 'function' ? '<div class="tb6-ket oks">Keadaan PIN owner TIDAK BISA DITANYA — anggap paraf pemilik TIDAK terjaga.</div>' : (!pinSudahDisetel() ? '<div class="tb6-ket oks">PIN owner belum disetel — paraf pemilik lewat tanpa PIN.</div>' : '')}
           <button type="button" class="tb6-aksi bahaya" onclick="tbKacaHapus()"${tbKacaBolehLanjut(3, K) ? '' : ' disabled'}>${lat ? 'Hapus (latihan) ' : 'Hapus '}${K.totalDok.toLocaleString('id-ID')} dokumen ${tahun}</button>
           <div class="tb6-progres" id="tbKacaProgres">${escapeHtml(_tbKaca.progres || '')}</div>
           <div class="tb6-ket">${tbKacaBolehLanjut(3, K) ? 'SATU ARAH. Ketik tahunnya saat diminta.' : (!K.ef.saldo ? 'Tulis saldo pembuka dulu.' : (!K.daring && !lat ? 'Butuh internet.' : 'Dua paraf dulu.'))}</div>
@@ -26450,6 +26646,27 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     const saldoAda = sudahAdaSaldoPembuka(tahun);
     if (_tbSaldoDitulis !== tahun && !saldoAda) {
       alert('Tulis saldo pembukanya dulu (langkah 2).'); return;
+    }
+    // PAGAR ANTREAN DIPINDAH KE SINI. Dulu ia cuma hidup di lembar kaca, dan lembar itu pulang
+    // lebih dulu kalau lebar jendela >= 700px — jadi pemisahnya bukan "HP lawan desktop"
+    // melainkan LEBAR JENDELA di perangkat yang sama. Memutar tablet melewati gerbangnya.
+    // Satu pintu, dilewati kedua layar: tulisan yang belum sampai database tidak boleh hilang
+    // saat riwayatnya dihapus — dan itu benar di lebar layar mana pun.
+    if (typeof ambilAntreanTunda !== 'function' || antreanTundaRapuh()) {
+      alert('Keadaan antrean tunda TIDAK BISA DIBACA di HP ini \u2014 itu BUKAN berarti kosong.\n\n'
+        + 'Penghapusan ditahan. Muat ulang halaman; kalau tetap begini, penyimpanan HP mungkin penuh.');
+      return;
+    }
+    const nAntre = ambilAntreanTunda().length;
+    if (nAntre > 0) {
+      alert(nAntre + ' tulisan masih menunggu terkirim ke database.\n\n'
+        + 'Penghapusan ditahan sampai antreannya kosong \u2014 kalau tidak, tulisan itu hilang bersama riwayat yang dihapus.');
+      return;
+    }
+    const nTertahan = Object.keys(_cadanganTertahan || {}).length;
+    if (nTertahan > 0) {
+      alert(nTertahan + ' cadangan masih tertahan di HP ini.\n\nPenghapusan ditahan sampai semuanya terkirim.');
+      return;
     }
     if (!navigator.onLine) { alert('Langkah ini butuh internet — penghapusan langsung ke database, tidak lewat antrean.'); return; }
     const daftar = tbDaftarKoleksi(tahun);
@@ -27771,14 +27988,25 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
     // Vonisnya dibunyikan terang-terangan: berapa yang berubah wujud, berapa
     // hasil operasional. Kalau operasionalnya minus, dikatakan minus.
-    const berubahWujud = Math.max(0, jadiStok) + Math.max(0, jadiPiutang) + Math.max(0, jadiKasbon);
+    // Menjepit tiap kaki lalu menjumlahkannya membuang kaki yang berjalan ke arah BERLAWANAN —
+    // dan kartu ini sendiri sudah menggambar arah itu beberapa sentimeter di atasnya
+    // ('Diambil dari stok lama', 'Piutang mengempis', 'Kasbon kembali'). Tanpa arah sebaliknya,
+    // berubahWujud bisa LEBIH BESAR dari kas yang turun, dan kalimatnya menunjuk piutang sebagai
+    // tempat uang bersembunyi justru di bulan piutang MENGEMBALIKAN uang.
+    const kakiW = [['stok', jadiStok], ['piutang', jadiPiutang], ['kasbon', jadiKasbon]];
+    const naikW = kakiW.filter(x => x[1] > 0), turunW = kakiW.filter(x => x[1] < 0);
+    const balikWujud = -turunW.reduce((a, x) => a + x[1], 0);
+    const sebutW = a => a.map(x => x[0]).join(', ');
+    const berubahWujud = naikW.reduce((a, x) => a + x[1], 0);
     // Operasional = untung jualan melawan biaya SAJA. Perubahan wujud dua arah tidak
     // ikut — stok yang mencair jadi uang itu konversi, bukan untung; sempat keliru
     // dihitung beban dan membuat bulan sehat divonis "biaya menang" (uji Sep 2026).
     const operasional = laba.margin + laba.omzetTanpaHpp - biayaNyata;
     let vonis = '';
-    if (d.bersih < 0 && berubahWujud > 0) {
-      vonis += `Dari kas yang turun, <b>${formatRupiah(berubahWujud)} bukan hilang — berubah wujud</b> jadi stok, piutang, dan kasbon di atas. `;
+    if (d.bersih < 0 && berubahWujud > 0 && balikWujud > 0) {
+      vonis += `<b>${formatRupiah(berubahWujud)} berubah wujud</b> jadi ${sebutW(naikW)}, sementara <b>${formatRupiah(balikWujud)} justru kembali jadi uang</b> dari ${sebutW(turunW)} — bersihnya <b>${formatRupiah(Math.abs(berubahWujud - balikWujud))}</b> ${berubahWujud >= balikWujud ? 'masih tersimpan sebagai barang &amp; tagihan' : 'malah mencair'}. `;
+    } else if (d.bersih < 0 && berubahWujud > 0) {
+      vonis += `Dari kas yang turun, <b>${formatRupiah(berubahWujud)} bukan hilang — berubah wujud</b> jadi ${sebutW(naikW)} di atas. `;
     }
     if ((pos.setoran || 0) > 0) {
       vonis += `<b>${formatRupiah(pos.setoran)} disetor ke owner</b> — pengambilan pemilik, bukan beban toko. `;
@@ -28648,7 +28876,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           // MUAT di dalam 100. Kalau tidak muat, yang jujur bukan memotong salah satunya —
           // tapi menolak menggambar dan menyebut selisihnya.
           const totalKeluar = L.hpp + ongkos;
-          if (totalKeluar > L.omzetHitung) {
+          // ARAH KEDUA, yang dulu terbuka: ongkos = biayaToko + hapusBuku \u2212 susutStok, dan
+          // susut BERTANDA di mesin laba. Bulan yang selisih opnamenya LEBIH besar dari biaya
+          // memberi ongkos NEGATIF; gerbang lama meloloskannya (totalKeluar malah lebih kecil
+          // dari omzet), lalu dua jepitan bekerja bersama dan petaknya berbohong dua kali.
+          if (ongkos < 0) {
+            html += '<div class="kg-label lb6-sela">Dari 100 karung terjual</div>'
+              + '<div class="kg-rincian lb6-oks">Tidak bisa digambar bulan ini: susut &amp; selisih stok MENAMBAH '
+              + rp(-ongkos) + ' \u2014 lebih besar dari biaya toko + hapus buku, jadi bagian biayanya bertanda minus. '
+              + 'Seratus petak cuma sanggup menggambarkan bagian yang bertanda positif.</div>';
+          } else if (totalKeluar > L.omzetHitung) {
             html += '<div class="kg-label lb6-sela">Dari 100 karung terjual</div>'
               + '<div class="kg-rincian lb6-oks">Tidak bisa digambar bulan ini: HPP + biaya ' + rp(totalKeluar)
               + ' sudah melebihi omzet ' + rp(L.omzetHitung) + ' — selisih ' + rp(totalKeluar - L.omzetHitung)
@@ -28957,7 +29194,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
               + '<b class="kg-uang-piutang p6-besar">' + rp(f.d.sisa) + '</b></div>'
               + '<i class="p6-ket">' + escapeHtml(umurKeKata(f.d.umurHari)) + ' · sejak ' + escapeHtml(formatTanggal(f.d.tanggalTertua)) + '</i>'
               + chipJanji(f.d)
-              + '<div class="p6-aksi"><button type="button" onclick="p6KirimWa(' + JSON.stringify(f.d.kunci).replace(/"/g, '&quot;') + ')">Susun tagihan WA</button>'
+              + '<div class="p6-aksi"><button type="button" onclick="p6KirimWa(' + escapeHtml(JSON.stringify(f.d.kunci)) + ')">Susun tagihan WA</button>'
               + '<button type="button" onclick="bukaLembarPiutang(' + f.i + ')">Catat bayar</button></div></div>';
             html += '<div class="kg-label p6-sela">Antrean · diurut umur × besarnya</div>';
             urut.slice(1).forEach(x => {
@@ -30324,6 +30561,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // harga di lembar yang sudah ada lalu berhenti. Pemilik yang menekan Simpan, lewat
   // penjaga nominal<=0 dan pratinjau margin yang sudah lama terpasang.
   let _hgTarget = null;               // sesi saja; null = belum dihitung
+  let _hgTargetRata = null;           // rata-rata margin katalog SEBELUM dijepit ke 5..40
   const HG_TOLERANSI = 2;             // POIN PERSEN, bukan persen dari target
   // Pembulatan mengikuti angka yang benar-benar ditempel di rak: ribuan untuk kemasan
   // per unit, lima ratusan untuk harga per kg dan per liter. Desain membulatkan ke
@@ -30740,6 +30978,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         _hgTarget = mgSemua.length
           ? Math.max(5, Math.min(40, Math.round(mgSemua.reduce((a, v) => a + v, 0) / mgSemua.length)))
           : 20;
+        // Nilai awal tuas = rata-rata margin katalog YANG SEDANG BERLAKU (keputusan pemilik:
+        // jangan mulai dari angka karangan). Tapi kalau rata-ratanya di luar 5..40 ia dijepit,
+        // dan layar memajang angka yang tidak pernah diukur DAN tidak pernah dipilih pemilik.
+        // Nilai sebelum jepitan disimpan supaya kalimatnya bisa bercabang padanya.
+        _hgTargetRata = mgSemua.length ? Math.round(mgSemua.reduce((a, v) => a + v, 0) / mgSemua.length) : null;
       }
       const target = _hgTarget;
       const petaTawar = twKumpulkan();
@@ -31031,11 +31274,17 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       const elKet = document.getElementById('hgTuasKet');
       if (elKet) {
         const nSetel = wadah.querySelectorAll('.hg-setel').length;
-        elKet.textContent = nSetel === 0
+        // Kalau nilai awal tuas DIJEPIT, katakan — kalau tidak, layar memajang target yang tidak
+        // pernah diukur dan tidak pernah dipilih pemilik, lalu menandai baris berdasarkan itu.
+        const dijepit = (_hgTargetRata !== null && _hgTargetRata !== _hgTarget)
+          ? 'Rata-rata margin katalog yang sedang berjalan ' + _hgTargetRata + '% \u2014 di luar rentang tuas ('
+            + _hgTarget + '% dipakai). Baris yang marginnya di antara keduanya ikut tertandai karena itu. '
+          : '';
+        elKet.textContent = dijepit + (nSetel === 0
           ? 'Semua harga yang punya HPP sudah dalam ' + HG_TOLERANSI + ' poin dari target.'
           : nSetel + ' harga lebih dari ' + HG_TOLERANSI + ' poin DI BAWAH target. Setel satu per satu — '
             + 'tiap ketukan membuka lembar harga dengan angka usul terisi, dan Simpan tetap di tangan kamu. '
-            + 'Harga yang marginnya di ATAS target sengaja tidak ditawari turun.';
+            + 'Harga yang marginnya di ATAS target sengaja tidak ditawari turun.');
       }
     } catch (e) { console.error('tampilkanHargaKaca:', e); }
   }
@@ -32679,8 +32928,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
   function pinLokal() {
-    try { return JSON.parse(localStorage.getItem(KUNCI_PIN_LOKAL) || 'null'); } catch (e) { return null; }
+    // BEDAKAN "gagal dibaca" dari "belum pernah disetel". Dulu keduanya null, dan null di sini
+    // dipakai sebagai IZIN oleh TIGA tempat sekaligus (pinSudahDisetel -> mintaPinOwner, dan
+    // pinOwnerBenar yang meloloskan masukan apa pun). Kelonggaran "HP baru" memang keputusan
+    // sadar My DeV 12 Agu 2026 — tapi keputusan itu dibuat untuk keadaan yang DIKETAHUI, bukan
+    // untuk kegagalan baca yang menyamar jadi keadaan itu. PIN toko ini sudah disetel sejak
+    // 13 Agu 2026, jadi kosong di HP hari ini hampir pasti berarti GAGAL BACA: penyimpanan HP
+    // penuh (cadangan lokal tumbuh tiap hari), mode pribadi, atau site data diblokir.
+    try { return JSON.parse(localStorage.getItem(KUNCI_PIN_LOKAL) || 'null'); } catch (e) { return { takTerbaca: true }; }
   }
+  function pinTakTerbaca() { const d = pinLokal(); return !!(d && d.takTerbaca); }
   // Pemilik TIDAK BISA terkunci: kalau perangkat belum pernah menyalin PIN (HP baru,
   // database belum terjangkau), gerbang PIN dilewati dan yang menjaga adalah sandi toko
   // — penjaga yang sesungguhnya. Keputusan My DeV 12 Agu 2026.
@@ -32715,6 +32972,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // di salah satu pemanggil.
   async function pinOwnerBenar(masukan) {
     const d = pinLokal();
+    if (d && d.takTerbaca) return false;   // tidak bisa ditanya -> MENOLAK, jangan meloloskan apa pun
     if (!d || !d.acak) return true;   // belum disetel di perangkat ini — lihat pinSudahDisetel()
     return (await acakPin(masukan, d.garam)) === d.acak;
   }
@@ -32916,6 +33174,12 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // jalannya membuat jeda dan pencatatan salah mustahil terlewat di salah satunya.
   // Mengembalikan true kalau boleh masuk (termasuk saat PIN memang belum disetel).
   async function mintaPinOwner(judul) {
+    // MENOLAK, lalu SEBUT SEBABNYA — bukan diam-diam memilih nilai yang meloloskan.
+    if (pinTakTerbaca()) {
+      alert('Keadaan PIN owner TIDAK BISA DIBACA di HP ini \u2014 itu BUKAN berarti aman.\n\n'
+        + 'Muat ulang halaman. Kalau tetap begini, penyimpanan HP mungkin penuh atau site data diblokir.');
+      return false;
+    }
     if (!pinSudahDisetel()) return true;
     const st = statusCobaPin();
     if (st.sisaDetik > 0) {
@@ -34286,9 +34550,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // layar orang yang menekannya. Antrean maju hanya kalau ketukannya benar-benar
     // mendarat di suatu tempat.
     if (x.h && halamanPerluOwner(x.h) && !ownerSudahUnlock()) { pindahHalaman(x.h); return; }
+    // ANTREAN MAJU SESUDAH AKSINYA MENDARAT, bukan sebelumnya. Dulu barisnya sudah dicoret
+    // lebih dulu; kalau x.k melempar, catch cuma menulis ke console dan persoalan yang belum
+    // disentuh siapa pun HILANG dari layar orang yang menekannya — persis yang dilarang
+    // komentar di atas ini. Sekarang lemparan membatalkan pencoretannya.
+    if (x.k) {
+      try { eval(x.k); }
+      catch (e) {
+        console.warn('[tg]', e);
+        alert('Tindakan ini tidak jadi jalan \u2014 barisnya TIDAK dicoret. Buka layarnya langsung.');
+        return;
+      }
+      _tgSelesai = _tgSelesai.concat([tgKunci(x)]);
+      _tgUrut = null;
+      return;
+    }
     _tgSelesai = _tgSelesai.concat([tgKunci(x)]);
     _tgUrut = null;
-    if (x.k) { try { eval(x.k); } catch (e) { console.warn('[tg]', e); } return; }
     pindahHalaman(x.h || 'ringkasan');
   }
   function tgUlangSemua() { _tgSelesai = []; _tgUrut = null; _tgMode = 'grup'; _tgAntre = null; tampilkanTangani(); }
