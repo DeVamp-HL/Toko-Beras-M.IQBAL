@@ -15293,9 +15293,40 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   //
   // Pola "penjaga membaca keranjang" bukan barang baru di berkas ini: penjaga UANG sudah
   // memakainya (wzSubtotal -> wzKreditTerkunci). Yang kurang cuma pemakaiannya di sisi stok.
+  // SIAPA CEPAT DIA DAPAT (perintah pemilik 17 Sep 2026). Pembeli yang datang duluan
+  // memegang jatahnya walau struknya diparkir menunggu ia balik ambil barang.
+  //
+  // Sebelum ini penjaga cuma melihat keranjang yang SEDANG DIPEGANG: rak 12 sack, struk
+  // Bu A diparkir memuat 5, Pak B minta 8 -> Pak B LOLOS, dua-duanya tersimpan, rak jadi
+  // minus 1 tanpa satu peringatan pun. Cacatnya menumpuk tiap hari sampai ketahuan opname.
+  //
+  // AMAN dari potong-dua-kali, dan sebabnya wajib disebut: stok di berkas ini TIDAK PERNAH
+  // disimpan — ia diturunkan dari dokumen yang tersimpan. Ketujuh pemakai fungsi ini
+  // (15333, 15336, 15342, 15351, 18096, 19239, 19240) semuanya LANGIT-LANGIT; nol di
+  // antaranya mengurangi stok. Kalau suatu hari ada yang memakai fungsi ini untuk MEMOTONG,
+  // ia wajib memakai wzDiKeranjangAktif() di bawah, bukan yang ini.
   function wzDiKeranjang(jalur, kunci) {
+    return wzDiKeranjangAktif(jalur, kunci) + wzDiKeranjangParkir(jalur, kunci);
+  }
+  // Yang DIPARKIR: dijumlah dari beku-an tiap keranjang antre. Bentuk isinya sama persis
+  // dengan _wzItems (wzBekuKeranjang menyimpan _wzItems.slice()), jadi penjumlahnya sama.
+  function wzDiKeranjangParkir(jalur, kunci) {
+    return (_wzAntre || []).reduce(function (a, x) {
+      return a + wzJumlahDiDaftar(((x || {}).beku || {}).items || [], jalur, kunci);
+    }, 0);
+  }
+  // Siapa yang memegangnya — NAMANYA, bukan cuma jumlahnya. Kasir harus bisa melihat struk
+  // siapa yang perlu dibatalkan kalau orangnya ternyata tidak jadi.
+  function wzSiapaParkir(jalur, kunci) {
+    const n = (_wzAntre || []).filter(function (x) {
+      return wzJumlahDiDaftar(((x || {}).beku || {}).items || [], jalur, kunci) > 0;
+    }).map(function (x, i) { return (((x || {}).beku || {}).nama || '').trim() || ('pembeli ke-' + (i + 1)); });
+    return n.length === 1 ? n[0] : (n.length ? n.length + ' struk diparkir' : '');
+  }
+  function wzDiKeranjangAktif(jalur, kunci) { return wzJumlahDiDaftar(_wzItems || [], jalur, kunci); }
+  function wzJumlahDiDaftar(daftar, jalur, kunci) {
     let n = 0;
-    (_wzItems || []).forEach(function (it) {
+    (daftar || []).forEach(function (it) {
       const t = (it && it.trx) || {};
       if (jalur === 'kemasan') {
         // Kunci dibangun oleh kunciKemasan, sama dengan yang dipakai mesinnya — bukan
@@ -17413,7 +17444,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     return { items: _wzItems.slice(), potongan: _wzPotongan, potonganMode: _wzPotonganMode,
       uang: _wzUang, janji: _wzJanji, kreditBuka: _wzKreditBuka,
       cara: wzCaraBayarAktif(), nama: (document.getElementById('jualNamaPelanggan') || {}).value || '',
-      tukar: _tukarKeJual };   // ikatan tukar ikut diparkir — kalau tidak, ia pindah ke pembeli berikutnya
+      tukar: _tukarKeJual,     // ikatan tukar ikut diparkir — kalau tidak, ia pindah ke pembeli berikutnya
+      // IKATAN PESANAN IKUT DIPARKIR, sebab yang sama persis dengan tukar di baris atas.
+      // Tanpa ini: pemilik menekan "Catat jualnya" untuk pesanan Bu A, lalu menekan
+      // "Pembeli lain" karena Pak B mengantre — dan begitu keranjang Pak B disimpan,
+      // pesanan BU A yang ditandai DIBAYAR, padahal Bu A belum bayar sepeser pun.
+      // Penulis berkas ini sudah menyadari pola ini untuk tukar dan melewatkannya di sini.
+      pesanan: _pesananKeJual };
   }
   function wzTulisNama(v) {
     const el = document.getElementById('jualNamaPelanggan');
@@ -17426,6 +17463,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     _wzNominalOn = false; _wzNominalTeks = '';
     wzTulisNama('');
     _tukarKeJual = null;
+    _pesananKeJual = null;   // dilepas BERSAMA tukar; dua ikatan, satu nasib
     _wz = { jalur: null, langkah: 'jalur', merk: null, maks: null };
   }
   function wzPakaiKeranjang(k) {
@@ -17435,6 +17473,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     _wzNominalOn = false; _wzNominalTeks = '';
     _wz = { jalur: null, langkah: 'jalur', merk: null, maks: null };
     _tukarKeJual = k.tukar || null;
+    _pesananKeJual = k.pesanan || null;
     tkGambarPita();
     wzTulisNama(k.nama);
     wzBayar(k.cara);            // wzBayar menutup dengan wzRender()
