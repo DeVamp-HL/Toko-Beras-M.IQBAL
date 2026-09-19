@@ -36,7 +36,9 @@ BELUM_DIPINDAH = {'tulisSaldoPembuka': 'ritual Tutup Buku, memakai alert/confirm
 TAMBAHAN = ['penjualanMasihBerlaku', 'produksiMasihBerlaku', 'wzJumlahDiDaftar', 'kunciKemasan',
             # pembaca yang dipakai layar Jual sistem baru — verbatim juga, supaya harga & sisa dibaca dengan aturan yang sama
             'merkPunyaKarungBerat', 'hargaKarungUtuh', 'cariHargaKarungPerKg', 'tentukanKemasanLiteran', 'jumlahKemasanLiteran',
-            'hargaBahanLiteranEfektif', 'catatanPelangganBerisi', 'infoKreditPelanggan', 'pesananBelumTuntas']
+            'hargaBahanLiteranEfektif', 'catatanPelangganBerisi', 'infoKreditPelanggan', 'pesananBelumTuntas',
+            # putaran 4 — RETUR menunjuk nota: dasar harga, sisa yang boleh kembali, rantai koreksi — verbatim, supaya nilai retur dihitung dengan aturan yang sama
+            'rtKunciNota', 'rtRantaiNota', 'rtDasarNota', 'rtKalimatLebih', 'twBanyak', 'twSatuanDibayar']
 # Konstanta aturan toko yang dibaca layar Jual (rasio liter→kg, lantai nego) — verbatim dari index.html
 KONSTANTA_TAMBAHAN = ['RASIO_KONVERSI', 'RASIO_DEFAULT', 'NEGO_LANTAI', 'JENIS_LITERAN_KHUSUS', 'KAPASITAS_KARUNG_BEKAS_LITER']
 # Batas lapisan data: tidak disalin, diimpor dari baru/js/data/toko.js

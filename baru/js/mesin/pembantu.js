@@ -387,5 +387,75 @@ import { bayaranBiayaBulanan, hitungPiutang, hitungUtangPemasok } from './beku.j
     const rataBulanan = Math.round(total90 / 3);
     return { ada: true, terdaftar, sisa, rataBulanan, batas: rataBulanan * 2 };
   }
+  function rtKunciNota(p) { return String(p.trxId || p.grupNota || p.id); }
+  function rtRantaiNota(t) {
+    const semua = ambilPenjualanSemua();
+    const ids = [String(t.id)];
+    let kini = t, jaga = 0;
+    while (kini && kini.koreksiDari != null && jaga++ < 50) {
+      const idLama = String(kini.koreksiDari);
+      if (ids.indexOf(idLama) >= 0) break;
+      ids.push(idLama);
+      kini = semua.find(x => String(x.id) === idLama);
+    }
+    return ids;
+  }
+  function twBanyak(p) {
+    if (p.jenis === 'literan') return p.jumlahLiter || 0;      // lawan hargaPerLiter
+    if (p.jenis === 'kemasan') return p.jumlahUnit || 0;       // lawan hargaPerUnit
+    return p.totalKg || 0;                                     // karung & repacking, lawan hargaPerKg
+  }
+  function twSatuanDibayar(p, potNota, subNota) {
+    const t = { nilai: twBanyak(p) };
+    if (!(t.nilai > 0)) return null;
+    const bersih = (p.hargaTotal || 0) - (p.pembulatan || 0);
+    if (!(bersih > 0)) return null;
+    const pas = (potNota > 0 && subNota > 0) ? bersih * (1 - potNota / subNota) : bersih;
+    return pas / t.nilai;
+  }
+  function rtDasarNota(t) {
+    if (t.jenis !== 'karung' && t.jenis !== 'kemasan') {
+      return { ok: false, sebab: 'Jalur retur untuk literan / repacking belum ada — pakai koreksi transaksi di Riwayat.' };
+    }
+    // Penolakan di bawah ini BUKAN soal nota yang tidak ada: barangnya jelas, cuma nilainya
+    // tidak boleh / tidak bisa dihitung sistem. Karena itu mereka membawa `cadangan` —
+    // rtIsiDariTrx tetap mengisi barang & jumlah seperti di main, tanpa menunjuk nota,
+    // dan nominalnya diketik tangan. Tanpa cadangan, di HP (pemilih manual tersembunyi)
+    // nota semacam ini jadi jalan buntu.
+    if (caraBayarKunci(t) === 'kredit') {
+      return { ok: false, cadangan: true, sebab: 'Nota ini KREDIT — pembeli belum membayarnya. Sistem tidak menghitung nilainya: '
+        + 'kalau refund, uangnya JANGAN keluar dari laci (retur yang mengurangi piutang belum ada di sistem).' };
+    }
+    if (t.perluKoreksi) {
+      return { ok: false, cadangan: true, sebab: 'Nota ini masih bertanda perlu dikoreksi (jumlahnya hasil hitung balik dari harga), jadi harga per satuannya tidak dipercaya.' };
+    }
+    if (t.jenis === 'kemasan' && (t.bonusUnit || 0) > 0) {
+      return { ok: false, cadangan: true, sebab: 'Nota ini memuat unit BONUS (gratis), jadi harga per unit tidak bisa diturunkan tanpa tahu unit mana yang kembali.' };
+    }
+    const kunci = rtKunciNota(t);
+    const senota = ambilPenjualan().filter(x => rtKunciNota(x) === kunci);
+    const potNota = senota.filter(x => x.jenis === 'potongan').reduce((a, x) => a + Math.max(0, -(x.hargaTotal || 0)), 0);
+    const subNota = senota.filter(x => (x.hargaTotal || 0) > 0).reduce((a, x) => a + (x.hargaTotal || 0) - (x.pembulatan || 0), 0);
+    const perSatuan = twSatuanDibayar(t, potNota, subNota);
+    if (!(perSatuan > 0)) return { ok: false, cadangan: true, sebab: 'Harga per satuan nota ini tidak bisa diturunkan (total atau jumlahnya nol).' };
+    const satuan = t.jenis === 'kemasan' ? 'unit' : 'kg';
+    const banyakNota = t.jenis === 'kemasan' ? (t.jumlahUnit || 0) : (t.totalKg || 0);
+    const rantai = rtRantaiNota(t);
+    const sudahDiretur = ambilRetur().filter(r => r.notaAsalId != null && rantai.indexOf(String(r.notaAsalId)) >= 0)
+      .reduce((a, r) => a + (r.jumlahDikembalikan || 0), 0);
+    const sisa = Math.round((banyakNota - sudahDiretur) * 1000) / 1000;
+    if (!(sisa > 0)) return { ok: false, sebab: 'Nota ini sudah diretur seluruhnya: ' + sudahDiretur.toLocaleString('id-ID') + ' dari ' + banyakNota.toLocaleString('id-ID') + ' ' + satuan + '.' };
+    const dasar = 'hargaTotal ' + formatRupiah(t.hargaTotal || 0)
+      + ((t.pembulatan || 0) > 0 ? ' − pembulatan tunai ' + formatRupiah(t.pembulatan) : '')
+      + (potNota > 0 ? ' − potongan nota diprorata' : '')
+      + ' ÷ ' + banyakNota.toLocaleString('id-ID') + ' ' + satuan;
+    return { ok: true, perSatuan, satuan, banyakNota, sudahDiretur, sisa, potNota, dasar };
+  }
+  function rtKalimatLebih(d, jml) {
+    return 'Yang dikembalikan ' + jml.toLocaleString('id-ID') + ' ' + d.satuan + ' melebihi sisa nota: '
+      + d.banyakNota.toLocaleString('id-ID') + ' ' + d.satuan + ' di nota'
+      + (d.sudahDiretur > 0 ? ', ' + d.sudahDiretur.toLocaleString('id-ID') + ' sudah diretur sebelumnya' : '')
+      + ' — sisa ' + d.sisa.toLocaleString('id-ID') + ' ' + d.satuan + '. Retur tidak disimpan.';
+  }
 
-export { HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_BAHAN_KEMASAN, JENIS_LITERAN_KHUSUS, KAPASITAS_KARUNG_BEKAS_LITER, KOLEKSI_AMPLOP, KOLEKSI_BAHAN_KEMASAN, KOLEKSI_BAHAN_LITERAN, KOLEKSI_BATCH, KOLEKSI_BULANAN, KOLEKSI_HARIAN, KOLEKSI_KARANTINA, KOLEKSI_KASBON, KOLEKSI_MODAL, KOLEKSI_PENJUALAN, KOLEKSI_PENYESUAIAN, KOLEKSI_PENY_KEMASAN, KOLEKSI_PESANAN, KOLEKSI_PIUTANG, KOLEKSI_PRODUKSI, KOLEKSI_RETUR, KOLEKSI_SETORAN, KOLEKSI_TEMBUSAN, KOLEKSI_TUTUP, KOLEKSI_UTANG_OWNER, KOLEKSI_UTANG_PEMASOK, LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, NEGO_LANTAI, POS_BIAYA_BULANAN, RASIO_DEFAULT, RASIO_KONVERSI, TANGGAL_STOK_AWAL, batchDiutang, caraBayarKunci, cocok, daftarModalOwner, kasbonPotongGaji, kunciKemasan, hppTaksiranRetur, hppTercatat, jumlahTrx, uangKembaliRetur, labelBahan, formatRupiah, potonganGajiPerPegawai, tanggalLokalIso, geserHari, akhirBulanIso, bulanDari, isoKeTanggal, kunciPelanggan, namaSingkatTrx, formatTanggal, namaBulanPanjang, penjualanMasihBerlaku, tkPenjualanHidup, tkTargetPengganti, tkApakahYatim, tkSetTertaut, daftarGerakanKas, totalUtangPemasokSemua, bakuCaraBayar, bulatKeAtas500, pesananBelumTuntas, tbCutoff, tbPunyaBerat, produksiMasihBerlaku, wzJumlahDiDaftar, merkPunyaKarungBerat, cariHargaKarungPerKg, hargaKarungUtuh, tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan };
+export { HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_BAHAN_KEMASAN, JENIS_LITERAN_KHUSUS, KAPASITAS_KARUNG_BEKAS_LITER, KOLEKSI_AMPLOP, KOLEKSI_BAHAN_KEMASAN, KOLEKSI_BAHAN_LITERAN, KOLEKSI_BATCH, KOLEKSI_BULANAN, KOLEKSI_HARIAN, KOLEKSI_KARANTINA, KOLEKSI_KASBON, KOLEKSI_MODAL, KOLEKSI_PENJUALAN, KOLEKSI_PENYESUAIAN, KOLEKSI_PENY_KEMASAN, KOLEKSI_PESANAN, KOLEKSI_PIUTANG, KOLEKSI_PRODUKSI, KOLEKSI_RETUR, KOLEKSI_SETORAN, KOLEKSI_TEMBUSAN, KOLEKSI_TUTUP, KOLEKSI_UTANG_OWNER, KOLEKSI_UTANG_PEMASOK, LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, NEGO_LANTAI, POS_BIAYA_BULANAN, RASIO_DEFAULT, RASIO_KONVERSI, TANGGAL_STOK_AWAL, batchDiutang, caraBayarKunci, cocok, daftarModalOwner, kasbonPotongGaji, kunciKemasan, hppTaksiranRetur, hppTercatat, jumlahTrx, uangKembaliRetur, labelBahan, formatRupiah, potonganGajiPerPegawai, tanggalLokalIso, geserHari, akhirBulanIso, bulanDari, isoKeTanggal, kunciPelanggan, namaSingkatTrx, formatTanggal, namaBulanPanjang, penjualanMasihBerlaku, tkPenjualanHidup, tkTargetPengganti, tkApakahYatim, tkSetTertaut, daftarGerakanKas, totalUtangPemasokSemua, bakuCaraBayar, bulatKeAtas500, pesananBelumTuntas, tbCutoff, tbPunyaBerat, produksiMasihBerlaku, wzJumlahDiDaftar, merkPunyaKarungBerat, cariHargaKarungPerKg, hargaKarungUtuh, tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan, rtKunciNota, rtRantaiNota, twBanyak, twSatuanDibayar, rtDasarNota, rtKalimatLebih };
