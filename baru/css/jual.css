@@ -27,7 +27,7 @@
 /* deretan tombol sejajar: preset jumlah, cara bayar, tombol keranjang */
 .tombol-baris { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
 .tombol-baris.tegak { grid-auto-flow: row; }
-.ketik-nama { width: 100%; box-sizing: border-box; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--kaca-tepi); background: var(--seg); color: var(--teks); font: inherit; font-size: 15px; outline: none; }
+.ketik-nama { width: 100%; box-sizing: border-box; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--kaca-tepi); background: var(--seg); color: var(--teks); font: inherit; font-size: 16px; outline: none; } /* ≥16px: iPhone tidak memperbesar layar saat kotak diketik */
 .ketik-nama:focus { border-color: var(--aktif); }
 .daftar-nama { display: flex; flex-direction: column; max-height: 42vh; overflow-y: auto; }
 .baris-nama { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding: 9px 4px; border-bottom: 1px solid var(--garis); cursor: pointer; font-size: 14px; }

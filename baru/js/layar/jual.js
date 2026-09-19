@@ -97,7 +97,7 @@ export function pasangLayarJual(akar, opsi) {
     document.body.classList.toggle('keranjang-terbuka', s.lembar === 'keranjang');
     pasang(akar, h`
       <input type="hidden" id="jualKarungBerat" value="${s.satuanKarung}">
-      <div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div>
+      <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">
         <div><div class="serif" style="font-size: 26px;">Jual</div><div class="ket">${tanggalPendek(hari.iso)} · ${opsi.statusTeks()}</div></div>
         <div style="display: flex; gap: 8px; align-items: center;">

@@ -2,10 +2,14 @@
    HP  (< 720px)      : satu kolom, nav bawah, keranjang jadi laci di bawah, lembar melayang.
    Tablet (720–1099)  : dua kolom (rak | keranjang), nav bawah, lembar duduk di kolom kanan.
    Mac (≥ 1100px)     : menu samping + tiga kolom (rak | keranjang | hari ini). */
-html { height: 100%; }
-body { min-height: 100%; overflow: auto; position: relative; margin: 0;
+/* Halaman tidak boleh bisa digeser ke samping / memantul (iPhone): lebar dikunci ke layar, gerakan tarik di tepi dimatikan */
+html { height: 100%; overflow-x: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+body { min-height: 100%; overflow-x: hidden; overflow-y: auto; position: relative; margin: 0; overscroll-behavior: none;
   background: linear-gradient(160deg, var(--bg1), var(--bg2) 48%, var(--bg3)) fixed; color: var(--teks); }
-body > .bola { position: fixed; }
+/* Bola cahaya latar dikurung dalam kotak seukuran layar: Safari iPhone menghitung elemen fixed yang menjulur ke luar
+   layar (bola kanan −150px, kiri −170px) sebagai lebar halaman, sehingga halaman bisa ditarik ke samping (19 Sep). */
+.latar-bola { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+.latar-bola > .bola { position: absolute; }
 .side { display: none; }
 main.layar-jual { position: relative; z-index: 1; display: grid; gap: 12px; padding: 14px 14px 110px; box-sizing: border-box;
   grid-template-columns: minmax(0, 1fr); grid-template-areas: "kepala" "pita" "kabar" "rak" "samping"; max-width: 1480px; margin: 0 auto; padding-bottom: 190px; }
@@ -16,7 +20,6 @@ main.layar-jual > .kabar-kotak:empty { display: none; }
 .kabar-kotak > .pita-info:not(.urung) { cursor: pointer; }
 main.layar-jual > .jual-rak { grid-area: rak; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 main.layar-jual > .jual-samping { grid-area: samping; min-width: 0; }
-main.layar-jual > .bola { position: fixed; }
 main.layar-jual > input[type="hidden"] { display: none; }
 
 /* keranjang: di HP jadi laci bawah yang bisa dibuka */
