@@ -4,6 +4,13 @@
    Mac (≥ 1100px)     : menu samping + tiga kolom (rak | keranjang | hari ini). */
 /* Halaman tidak boleh bisa digeser ke samping / memantul (iPhone): lebar dikunci ke layar, gerakan tarik di tepi dimatikan */
 html { height: 100%; overflow-x: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+/* Warna dasar elemen akar = ujung atas gradien halaman (--bg1). Safari iOS 26/27 mengecat daerah poni/jam dari
+   warna dasar + color-scheme elemen akar (bukan theme-color): tanpa ini poninya putih di mode gelap. Token ada di
+   body, jadi nilainya ditulis langsung dan kelas .gelap dipasang app.js di <html> juga. */
+html { background-color: #eef1f4; color-scheme: light; }
+html.gelap { background-color: #111516; color-scheme: dark; }
+/* Tudung tetap setinggi poni, warna sama dengan ujung atas gradien: isi yang digulir lewat di bawah jam tidak bocor */
+body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg1); pointer-events: none; }
 body { min-height: 100%; overflow-x: hidden; overflow-y: auto; position: relative; margin: 0; overscroll-behavior: none;
   background: linear-gradient(160deg, var(--bg1), var(--bg2) 48%, var(--bg3)) fixed; color: var(--teks); }
 /* Bola cahaya latar dikurung dalam kotak seukuran layar: Safari iPhone menghitung elemen fixed yang menjulur ke luar
@@ -12,7 +19,8 @@ body { min-height: 100%; overflow-x: hidden; overflow-y: auto; position: relativ
 .latar-bola > .bola { position: absolute; }
 .side { display: none; }
 main.layar-jual { position: relative; z-index: 1; display: grid; gap: 12px; padding: 14px 14px 110px; box-sizing: border-box;
-  grid-template-columns: minmax(0, 1fr); grid-template-areas: "kepala" "pita" "kabar" "rak" "samping"; max-width: 1480px; margin: 0 auto; padding-bottom: 190px; }
+  grid-template-columns: minmax(0, 1fr); grid-template-areas: "kepala" "pita" "kabar" "rak" "samping"; max-width: 1480px; margin: 0 auto; padding-bottom: 190px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px)); }   /* judul tidak masuk ke bawah jam saat halaman menjulur ke poni */
 main.layar-jual > .kepala-jual { grid-area: kepala; }
 main.layar-jual > .pita-info.baca-saja { grid-area: pita; }
 main.layar-jual > .kabar-kotak { grid-area: kabar; display: flex; flex-direction: column; gap: 8px; }
