@@ -18,7 +18,7 @@ import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanLiteran, hit
 import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaKarungBerat, hargaKarungUtuh, cariHargaKarungPerKg,
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
-import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, setelKeranjang,
+import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, setelKeranjang,
   wzDiKeranjangParkir, sumberData } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina } from './retur-logika.js';
@@ -26,6 +26,15 @@ import { returAwal, cekDrafTukar, dokumenKarantina } from './retur-logika.js';
 export const JALUR = [['sering', 'Sering'], ['literan', 'Literan'], ['kemasan', 'Kemasan'], ['karung', 'Karung'], ['repack', 'Repack'], ['retur', 'Retur']];
 export const JALUR_NANTI = [['wadah', 'Wadah']];   // putaran berikutnya
 export const PECAHAN = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500];
+// ---------- WADAH LITERAN (kotak kayu bergunung) — praktik lapangan, keterangan owner 14 Sep & 19 Sep 2026 ----------
+// Delapan kotak wadah; tiap wadah ±50 kg saat baru diisi (berasnya MENGGUNUNG di atas bibir kotak), diisi ulang begitu
+// berkurang ±40 kg. Literan lain (ketan dll.) diserok langsung dari karung → bukan wadah.
+// INI ALAT UKUR "kapan harus isi ulang", bukan stok: stok literan tetap dipotong dari kolam merek oleh mesin yang sama.
+// Tiga angka di bawah adalah KEBIJAKAN owner — kelak diatur dari layar Stok khusus wadah, bukan dari kode.
+export const DAFTAR_WADAH = ['Angsa', 'IR64 Elevate', 'Perahu Layar', 'IR64 Apex', 'IR42 Select', 'IR42 Value', 'Pandan Wangi', 'IR64 Ascent'];
+export const WADAH_PENUH_KG = 50;        // isi wadah tepat sesudah diisi ulang (menggunung)
+export const WADAH_ISI_ULANG_KG = 10;    // tersisa segini (sudah berkurang ±40 kg) → saatnya isi ulang
+export const WADAH_RATA_BAGIAN = 0.6;    // di atas 60% isinya masih menggunung; di bawahnya permukaan rata lalu turun
 export const STATUS_PESANAN = { dipesan: 'DIPESAN', diantar: 'DIANTAR', dibayar: 'DIBAYAR', batal: 'BATAL' };
 
 export function keadaanAwal() {
@@ -94,7 +103,14 @@ export function susunRak(s) {
       ukuranKg: Number(st.ukuranKemasan), sisa: maks === null ? 0 : maks, sisaTeks: (maks === null ? 0 : maks) + ' sisa', hppPerUnit: st.hppRataRataPerUnit || 0,
       dipegang: wzDiKeranjangParkir('kemasan', kunci) });
   });
-  rak.kemasan.sort((a, b) => a.nama.localeCompare(b.nama) || a.ukuranKg - b.ukuranKg);
+  // TATA LETAK (owner 19 Sep, seperti papan harga di toko): per kategori ukuran, tiap kategori dari yang TERMURAH
+  const termurah = (a, b) => a.harga - b.harga || a.nama.localeCompare(b.nama);
+  rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || termurah(a, b));
+  rak.karung.sort((a, b) => b.berat - a.berat || termurah(a, b));
+  rak.literan.sort(termurah); rak.repack.sort(termurah);
+  rak.literan.forEach((c) => { c.wadah = tinggiWadah(c.kunci, s); });
+  const kelompokkan = (daftar, kunci, judul) => { const out = []; daftar.forEach((c) => { const k = kunci(c); let g = out.find((x) => x.k === k); if (!g) { g = { k, judul: judul(c), daftar: [] }; out.push(g); } g.daftar.push(c); }); return out; };
+  rak.kelompok = { kemasan: kelompokkan(rak.kemasan, (c) => c.ukuranKg, (c) => String(c.ukuranKg).replace('.', ',') + ' kg'), karung: kelompokkan(rak.karung, (c) => c.berat, (c) => 'Karung ' + c.berat + ' kg') };
   // SERING: barang yang biasa dibeli orang ini (90 hari); tanpa nama → yang paling laku 28 hari terakhir
   rak.sering = susunSering(s, rak);
   return rak;
@@ -612,3 +628,32 @@ export function ikatTukar(s, ikat) {
   return { tukar: ikat, pesananId: null, cara: s.cara === 'Kredit' ? 'Tunai' : s.cara };
 }
 export function batalTukar(s) { return s.tukar ? { tukar: null, kabar: 'Tukar dibatalkan — returnya TIDAK tercatat; barang di keranjang tetap', kabarAwas: false } : {}; }
+
+// ---------- wadah literan: tinggi isi & penanda isi ulang ----------
+const cap = (p) => (p.tanggal || '') + ' ' + (p.jam || '');
+/**
+ * Tinggi isi satu wadah SEKARANG: isi saat terakhir ditandai diisi ulang − literan merek itu yang terjual sesudahnya
+ * − literan merek itu yang sedang di keranjang / struk parkir (supaya gunungnya turun begitu barang masuk keranjang).
+ * null = merek ini bukan wadah (diserok dari karung). diketahui:false = belum pernah ditandai → layar MENOLAK menggambar isi.
+ */
+export function tinggiWadah(merk, s) {
+  if (DAFTAR_WADAH.indexOf(merk) < 0) return null;
+  const tanda = ambilWadahLiteran().filter((w) => w.wadah === merk && w.tipe === 'isi').sort((a, b) => cap(b).localeCompare(cap(a)) || String(b.id).localeCompare(String(a.id)))[0];
+  if (!tanda) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH_KG };
+  const sejak = cap(tanda);
+  const terjual = ambilPenjualan().reduce((a, p) => a + (p.jenis === 'literan' && p.merkSumber === merk && cap(p) > sejak ? (p.totalKg || 0) : 0), 0);
+  const literKeranjang = (daftar) => (daftar || []).reduce((a, b) => a + (b.trx.jenis === 'literan' && b.trx.merkSumber === merk ? (b.trx.totalKg || 0) : 0), 0);
+  const dipegang = literKeranjang(s && s.keranjang) + ((s && s.antrean) || []).reduce((a, x) => a + literKeranjang(x.beku.items), 0);
+  const isi = Number(tanda.isiKg) || WADAH_PENUH_KG;
+  const sisaKg = Math.round((isi - terjual - dipegang) * 100) / 100;
+  const bagian = Math.max(0, Math.min(1, sisaKg / WADAH_PENUH_KG));
+  return { wadah: true, diketahui: true, penuhKg: WADAH_PENUH_KG, sisaKg: Math.max(0, sisaKg), lewat: sisaKg < 0 ? -sisaKg : 0, bagian,
+    gunung: Math.max(0, Math.min(1, (bagian - WADAH_RATA_BAGIAN) / (1 - WADAH_RATA_BAGIAN))), dalam: Math.max(0, Math.min(1, bagian / WADAH_RATA_BAGIAN)),
+    perluIsi: sisaKg <= WADAH_ISI_ULANG_KG, sejakTanggal: tanda.tanggal || '', sejakJam: tanda.jam || '' };
+}
+/** Tandai wadah baru diisi ulang (penuh, menggunung lagi). Dokumen koleksi wadahLiteran — alat ukur, bukan stok. */
+export function susunIsiUlangWadah(merk, w) {
+  if (DAFTAR_WADAH.indexOf(merk) < 0) return { tolak: merk + ' bukan wadah kotak — literannya diserok langsung dari karung' };
+  return { dokumen: [{ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: merk, tipe: 'isi', isiKg: WADAH_PENUH_KG } }],
+    patch: { kabar: 'Wadah ' + merk + ' ditandai PENUH lagi (±' + WADAH_PENUH_KG + ' kg, menggunung) — dihitung turun dari penjualan literan berikutnya', kabarAwas: false } };
+}

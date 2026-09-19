@@ -44,9 +44,9 @@ main.layar-jual > input[type="hidden"] { display: none; }
 .nav > div { cursor: pointer; }
 .kabar-nav { position: fixed; left: 14px; right: 14px; bottom: 96px; z-index: 6; padding: 10px 14px; border-radius: 14px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--kaca-tepi); font-size: 13px; }
 
-/* lembar melayang (HP). Animasi naik hanya di kelas .muncul (render pertama), supaya tiap ketukan tidak mengedipkan lembar */
-.lembar { animation: none; }
-.lembar.muncul { animation: naikLembar 480ms cubic-bezier(.2,.8,.2,1); }
+/* lembar melayang (HP). Sejak layar dimorf (elemen hidup terus), animasi naik cukup di elemennya: ia hanya berjalan saat
+   lembar itu LAHIR (data-k berbeda per jenis lembar), tidak terulang tiap ketukan. */
+.lembar { animation: naikLembar 480ms cubic-bezier(.2,.8,.2,1); }
 .lembar { position: fixed; z-index: 7; left: 12px; right: 12px; bottom: 96px; max-height: 78vh; overflow-y: auto;
   /* lembar melayang di atas rak yang ramai: dasar padat + kaca, supaya tulisan di belakangnya tidak tembus */
   background-color: var(--bg2); background-image: linear-gradient(var(--kaca), var(--kaca)); }

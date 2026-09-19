@@ -47,6 +47,13 @@ Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko
 - Perpindahan layar: tiap layar punya `<main>` sendiri yang disembunyikan — keranjang Jual tidak hilang saat pindah; layar terakhir diingat per perangkat. Stok · Pelanggan · Menu masih di sistem lama.
 - Yang sengaja beda dari papan: kartu "Kas laci / Rekening" diganti "Kas tercatat · semua kantong" + "Uang hari ini (laci · rekening)" — sistem lama tidak punya saldo per kantong, jadi tidak dikarang.
 
+## Putaran 6 (19 Sep 2026) — layar Jual yang HIDUP + gambar barang + wadah literan bergunung
+- **Layar dimorf, bukan digambar ulang** (`inti/dom.js` `pasang()`): pohon HTML baru dibandingkan dengan yang hidup, atribut/teks diselaraskan di tempat, anak dicocokkan lewat `data-k`/`id`. Elemen yang sama tetap hidup → isi gambar, gunung beras, dan angka bisa **bertransisi**; animasi masuk hanya berjalan saat elemen benar-benar lahir (chip per jalur, baris keranjang, lembar per jenis). Kotak isian yang sedang diketik tidak ditimpa.
+- `inti/gerak.js`: `gulirkan()` (angka ber-`data-gulir` bergulir dari nilai lama ke baru: total keranjang, ditagih, diterima, kembalian, omzet hari ini), `terbangkan()` (tetes emas dari tombol yang diketuk ke bilah keranjang, bilahnya memegas), `sekali()`. Tab tersembunyi & "kurangi gerakan" → nilai akhir langsung.
+- **Gambar sesuai barang** (SVG, isi naik-turun lewat `transform` supaya bertransisi di semua peramban): karung utuh (berangka 50/25), kemasan (kantong berlabel angka ukurannya), karung terbuka + serok (repack & literan yang diserok dari karung), dan **kotak wadah literan** dengan **gunung beras**.
+- **Wadah literan** (keterangan owner 14 & 19 Sep; foto kotak kayu bergunung): delapan wadah (`DAFTAR_WADAH`), penuh ±50 kg, isi ulang saat tersisa ≤ 10 kg, di atas 60% masih menggunung lalu rata lalu turun (`WADAH_*` — angka KEBIJAKAN owner, kelak diatur dari layar Stok khusus wadah). Tinggi isi = isi saat terakhir **ditandai isi ulang** − literan merek itu yang terjual sesudahnya − literan di keranjang/struk parkir. Tombol "Wadah baru diisi ulang" ada di lembar jumlah literan → dokumen koleksi BARU `wadahLiteran` `{wadah, tipe 'isi', isiKg, tanggal, jam}`. **Alat ukur, BUKAN stok**: stok literan tetap dipotong dari kolam merek oleh mesin yang sama; sistem lama tidak mengenal koleksi ini dan cadangan sistem lama tidak memuatnya. Belum pernah ditandai → kotak bergaris putus bertanda "?" (tidak ditebak penuh); terjual melebihi isi tanda → selisihnya dilaporkan.
+- **Tata letak seperti papan harga toko**: kemasan dikelompokkan per ukuran (5 · 10 · 20 · 25 · … kg), karung per 50/25 kg, tiap kelompok **dari yang termurah**; literan & repack dari yang termurah.
+
 ## Struktur
 ```
 baru/
@@ -79,7 +86,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | alat | membuktikan |
 |---|---|
 | `alat-uji/pindah_mesin.py --periksa` | tiap mesin di `js/mesin/beku.js` = sidik `alat-uji/beku.sha256` |
-| `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 156 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan + retur & tukar) di kotak pasir; 56 kontrol positif berbunyi; kunci dokumen vs baris nyata & vs yang ditulis index.html |
+| `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 171 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan + retur & tukar) + tata letak & wadah literan) di kotak pasir; 66 kontrol positif berbunyi; kunci dokumen vs baris nyata & vs yang ditulis index.html |
 | `alat-uji/uji_ringkasan_baru.py` (+ `--kontrol`) | 28 skenario logika Ringkasan (jam tetap, zona waktu dikunci WIB) + 14 kontrol; di cadangan toko: omzet hari/bulan/tahun = jumlah langsung barisnya |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 

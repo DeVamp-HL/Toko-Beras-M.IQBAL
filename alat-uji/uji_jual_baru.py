@@ -52,7 +52,7 @@ function chip(jalur, kunci, berat) { var r = susunRak(s); return r[jalur].find(f
 
 // ---- rak dibaca dari mesin (bukan hitungan sendiri)
 var rak = susunRak(s);
-ok('rak karung: Angsa 50 & 25, Apex 50 — tiga chip berharga', rak.karung.length === 3 && rak.karung.map(function (c) { return c.nama + c.berat; }).join() === 'Angsa50,Angsa25,IR64 Apex50', JSON.stringify(rak.karung.map(function (c) { return c.nama + c.berat; })));
+ok('rak karung: tiga chip berharga, per ukuran (50 dulu) lalu TERMURAH dulu: Angsa 50 (690.000) · Apex 50 (730.000) · Angsa 25', rak.karung.length === 3 && rak.karung.map(function (c) { return c.nama + c.berat; }).join() === 'Angsa50,IR64 Apex50,Angsa25', JSON.stringify(rak.karung.map(function (c) { return c.nama + c.berat; })));
 ok('harga karung Angsa 25 dari katalog KEMASAN (menang atas per kg): 340.000; Angsa 50 = 13.800 × 50', chip('karung', 'Angsa', 25).harga === 340000 && chip('karung', 'Angsa', 50).harga === 690000, chip('karung', 'Angsa', 50).harga);
 ok('sisa Angsa: (750 − 50 terjual) / 50 = 14 karung; per 25 = 28', chip('karung', 'Angsa', 50).sisa === 14 && chip('karung', 'Angsa', 25).sisa === 28, chip('karung', 'Angsa', 50).sisa + '/' + chip('karung', 'Angsa', 25).sisa);
 ok('kemasan Kembang 5: 40 dibuat − 3 terjual = 37, harga 72.000', rak.kemasan.length === 1 && rak.kemasan[0].sisa === 37 && rak.kemasan[0].harga === 72000, JSON.stringify(rak.kemasan));
@@ -307,6 +307,36 @@ terapkanKeCache([{ koleksi: 'retur', data: { id: 'rLain', tanggal: '2026-09-19',
 ok('M: perangkat lain meretur 30 kg dari nota yang sama → mencatat tukar 50 kg DITAHAN (sisa tinggal 20)', /melebihi sisa nota/.test(alasanTolak(s)), alasanTolak(s));
 terapkanKeCache([{ koleksi: 'retur', hapus: 'rLain' }]); terap(batalTukar(s)); ok('M: batal tukar → ikatan lepas, keranjang tetap, retur tidak pernah tercatat', s.tukar === null && s.keranjang.length === 1);
 
+// ================= PUTARAN 6: tata letak per ukuran (termurah dulu) & WADAH LITERAN bergunung =================
+mulaiNota(); terap(Object.assign(returAwal(), { tukar: null }));
+pasok('katalogHargaKemasan', [{ id: 'hm1', merk: 'Kembang', ukuran: 5, hargaPerUnit: 72000 }, { id: 'hm2', merk: 'Angsa', ukuran: 25, hargaPerUnit: 340000 }, { id: 'hm3', merk: 'Melati', ukuran: 5, hargaPerUnit: 65000 }, { id: 'hm4', merk: 'Melati', ukuran: 10, hargaPerUnit: 128000 }]);
+pasok('produksiKemasan', cacheMentah('produksi').concat([{ id: 'p2', tanggal: '2026-09-02', namaProduk: 'Melati', ukuranKemasan: 5, jumlahUnit: 20, hppPerUnit: 60000 }, { id: 'p3', tanggal: '2026-09-02', namaProduk: 'Melati', ukuranKemasan: 10, jumlahUnit: 10, hppPerUnit: 118000 }]));
+pasok('katalogHargaLiteran', [{ id: 'hl1', merk: 'Angsa', hargaPerLiter: 13500 }, { id: 'hl2', merk: 'IR64 Apex', hargaPerLiter: 12500 }]);
+rak = susunRak(s);
+ok('N: kemasan dikelompokkan per ukuran seperti papan harga toko — "5 kg" lalu "10 kg"; dalam kelompok dari TERMURAH (Melati 65.000 sebelum Kembang 72.000)', rak.kelompok.kemasan.map(function (g) { return g.judul; }).join() === '5 kg,10 kg' && rak.kelompok.kemasan[0].daftar.map(function (c) { return c.nama; }).join() === 'Melati,Kembang' && rak.kelompok.kemasan[1].daftar[0].nama === 'Melati', JSON.stringify(rak.kelompok.kemasan.map(function (g) { return [g.judul, g.daftar.map(function (c) { return c.nama + ':' + c.harga; })]; })));
+ok('N: karung dikelompokkan "Karung 50 kg" lalu "Karung 25 kg"', rak.kelompok.karung.map(function (g) { return g.judul; }).join() === 'Karung 50 kg,Karung 25 kg', JSON.stringify(rak.kelompok.karung.map(function (g) { return g.judul; })));
+ok('N: literan dari termurah: IR64 Apex 12.500 sebelum Angsa 13.500; repack: Angsa 13.800 sebelum Apex 14.600', rak.literan.map(function (c) { return c.nama; }).join() === 'IR64 Apex,Angsa' && rak.repack.map(function (c) { return c.nama; }).join() === 'Angsa,IR64 Apex', JSON.stringify([rak.literan.map(function (c) { return c.nama; }), rak.repack.map(function (c) { return c.nama; })]));
+ok('O: Angsa & IR64 Apex = WADAH kotak; belum pernah ditandai isi ulang → isi TIDAK diketahui (layar menolak menggambar isinya, bukan menebak penuh)', chip('literan', 'Angsa').wadah.wadah === true && chip('literan', 'Angsa').wadah.diketahui === false, JSON.stringify(chip('literan', 'Angsa').wadah));
+ok('O: merek di luar daftar wadah (mis. Kembang) bukan wadah; menandainya ditolak', tinggiWadah('Kembang', s) === null && /bukan wadah/.test(susunIsiUlangWadah('Kembang', W).tolak || ''));
+var IU = susunIsiUlangWadah('Angsa', { tanggal: '2026-09-19', jam: '09:30', idUnik: W.idUnik });
+ok('O: tandai isi ulang = SATU dokumen wadahLiteran {wadah, tipe isi, isiKg 50, tanggal, jam} — tidak menyentuh penjualan/stok', IU.dokumen.length === 1 && IU.dokumen[0].koleksi === 'wadahLiteran' && IU.dokumen[0].data.wadah === 'Angsa' && IU.dokumen[0].data.tipe === 'isi' && IU.dokumen[0].data.isiKg === 50 && IU.dokumen[0].data.jam === '09:30', JSON.stringify(IU.dokumen));
+var kgSblm = chip('repack', 'Angsa').sisa; terapkanKeCache(IU.dokumen);
+ok('O: sesudah ditandai: penuh 50 kg, gunung 1, isi dalam 1, belum perlu isi ulang; STOK merek tidak berubah (alat ukur, bukan stok)', chip('literan', 'Angsa').wadah.sisaKg === 50 && chip('literan', 'Angsa').wadah.gunung === 1 && chip('literan', 'Angsa').wadah.dalam === 1 && chip('literan', 'Angsa').wadah.perluIsi === false && chip('repack', 'Angsa').sisa === kgSblm, JSON.stringify(chip('literan', 'Angsa').wadah));
+terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '10' }); terap(masukkan(s));
+ok('O: 10 L (8,2 kg) MASUK KERANJANG → gunung langsung turun: sisa 41,8 kg, gunung (0,836−0,6)/0,4 = 0,59', chip('literan', 'Angsa').wadah.sisaKg === 41.8 && Math.abs(chip('literan', 'Angsa').wadah.gunung - 0.59) < 0.001, JSON.stringify(chip('literan', 'Angsa').wadah));
+terap(parkir(s)); ok('O: struk diparkir tetap dihitung (berasnya sudah keluar dari wadah)', chip('literan', 'Angsa').wadah.sisaKg === 41.8); terap(buangAntrean(s, s.antrean[0].id)); ok('O: struk dibuang → gunung kembali 50', chip('literan', 'Angsa').wadah.sisaKg === 50);
+terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'w1', tanggal: '2026-09-19', jam: '09:45', caraBayar: 'Tunai', jenis: 'literan', merkSumber: 'Angsa', jumlahLiter: 30, totalKg: 24.6, hargaTotal: 405000, hppTotalSaatJual: 330000 } },
+  { koleksi: 'penjualan', data: { id: 'w0', tanggal: '2026-09-19', jam: '09:00', caraBayar: 'Tunai', jenis: 'literan', merkSumber: 'Angsa', jumlahLiter: 20, totalKg: 16.4, hargaTotal: 270000, hppTotalSaatJual: 220000 } }]);
+var wd = chip('literan', 'Angsa').wadah;
+ok('O: hanya literan SESUDAH tanda 09:30 yang mengurangi (09:45 → 24,6 kg; yang 09:00 tidak): sisa 25,4 kg = 50,8% → gunung HILANG (rata), isi dalam 0,847', wd.sisaKg === 25.4 && wd.gunung === 0 && Math.abs(wd.dalam - 0.8467) < 0.001 && wd.perluIsi === false, JSON.stringify(wd));
+terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'w2', tanggal: '2026-09-19', jam: '11:00', caraBayar: 'Tunai', jenis: 'literan', merkSumber: 'Angsa', jumlahLiter: 20, totalKg: 16.4, hargaTotal: 270000, hppTotalSaatJual: 220000 } }]);
+wd = chip('literan', 'Angsa').wadah; ok('O: tersisa 9 kg (≤ 10) → PERLU ISI ULANG', wd.sisaKg === 9 && wd.perluIsi === true, JSON.stringify(wd));
+terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'w3', tanggal: '2026-09-19', jam: '11:30', caraBayar: 'Tunai', jenis: 'literan', merkSumber: 'Angsa', jumlahLiter: 20, totalKg: 16.4, hargaTotal: 270000, hppTotalSaatJual: 220000 } }]);
+wd = chip('literan', 'Angsa').wadah; ok('O: terjual lebih dari isi tanda (lupa menandai) → sisa 0, selisihnya DILAPORKAN 7,4 kg, tetap perlu isi', wd.sisaKg === 0 && wd.lewat === 7.4 && wd.perluIsi === true, JSON.stringify(wd));
+terapkanKeCache(susunIsiUlangWadah('Angsa', { tanggal: '2026-09-19', jam: '11:40', idUnik: W.idUnik }).dokumen);
+ok('O: ditandai isi ulang lagi 11:40 → gunung MUNCUL KEMBALI (50 kg), wadah lain tidak ikut', chip('literan', 'Angsa').wadah.sisaKg === 50 && chip('literan', 'Angsa').wadah.gunung === 1 && chip('literan', 'IR64 Apex').wadah.diketahui === false);
+ok('O: literan merek lain / karung / kemasan tidak mengurangi wadah Angsa', (function () { terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'w4', tanggal: '2026-09-19', jam: '12:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', beratKarungAcuan: 50, jumlahKarung: 1, totalKg: 50, hargaTotal: 690000, hppTotalSaatJual: 650000 } }]); var x = chip('literan', 'Angsa').wadah.sisaKg; terapkanKeCache([{ koleksi: 'penjualan', hapus: 'w4' }]); return x === 50; })());
+
 // kunci dokumen yang dihasilkan — dibandingkan python dengan kunci yang DITULIS index.html (cadangan toko belum punya retur bernota)
 var KUNCI = { retur: {}, karantina: {} };
 [rd, r0].forEach(function (d) { Object.keys(d || {}).forEach(function (k) { KUNCI.retur[k] = 1; }); });
@@ -426,6 +456,17 @@ if __name__ == '__main__':
             'pembatalan nota tukar meninggalkan returnya': js.replace("if (notaTerakhir.retur) { hapus.push({ koleksi: 'retur', id: notaTerakhir.retur.id });", "if (false) { hapus.push({ koleksi: 'retur', id: notaTerakhir.retur.id });"),
             'parkir melepas ikatan tukar': js.replace("pesananId: s.pesananId || null, tukar: s.tukar || null };", "pesananId: s.pesananId || null, tukar: null };"),
             'draf tukar tidak dibaca ulang saat mencatat': js.replace("const cek = cekDrafTukar(s.tukar.returDraf); if (cek) return cek;", ""),
+            # ---- putaran 6: tata letak & wadah ----
+            'kemasan tidak diurutkan dari termurah': js.replace("rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || termurah(a, b));", "rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || b.harga - a.harga);"),
+            'kemasan tidak dikelompokkan per ukuran': js.replace("kemasan: kelompokkan(rak.kemasan, (c) => c.ukuranKg,", "kemasan: kelompokkan(rak.kemasan, (c) => 0,"),
+            'wadah yang belum pernah ditandai digambar PENUH (ditebak)': js.replace("if (!tanda) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH_KG };", "if (!tanda) return { wadah: true, diketahui: true, sisaKg: 50, gunung: 1, dalam: 1, perluIsi: false };"),
+            'literan SEBELUM tanda isi ulang ikut mengurangi': js.replace("p.merkSumber === merk && cap(p) > sejak ? (p.totalKg || 0) : 0), 0);", "p.merkSumber === merk ? (p.totalKg || 0) : 0), 0);"),
+            'keranjang tidak menurunkan gunung': js.replace("const dipegang = literKeranjang(s && s.keranjang) +", "const dipegang = 0 * literKeranjang(s && s.keranjang) + 0 *"),
+            'gunung tidak pernah hilang (tanpa ambang rata)': js.replace("gunung: Math.max(0, Math.min(1, (bagian - WADAH_RATA_BAGIAN) / (1 - WADAH_RATA_BAGIAN))),", "gunung: bagian,"),
+            'tidak pernah minta isi ulang': js.replace("perluIsi: sisaKg <= WADAH_ISI_ULANG_KG,", "perluIsi: false,"),
+            'kelebihan jual sesudah tanda disembunyikan': js.replace("lewat: sisaKg < 0 ? -sisaKg : 0,", "lewat: 0,"),
+            'tanda isi ulang satu wadah mengisi semua wadah': js.replace("ambilWadahLiteran().filter((w) => w.wadah === merk && w.tipe === 'isi')", "ambilWadahLiteran().filter((w) => w.tipe === 'isi')"),
+            'karung/kemasan ikut mengurangi wadah': js.replace("a + (p.jenis === 'literan' && p.merkSumber === merk && cap(p) > sejak", "a + (p.merkSumber === merk && cap(p) > sejak"),
             'dokumen retur membawa kunci yang tidak dikenal index.html': js.replace("kondisi: s.rtKondisi, penyelesaian:", "kunciAsingUji: 1, kondisi: s.rtKondisi, penyelesaian:"),
             'dokumen karantina membawa kunci yang tidak dikenal index.html': js.replace("statusTindakan: 'belum_diputuskan' } };", "statusTindakan: 'belum_diputuskan', kunciAsingUji: 1 } };"),
             'dua tukar diikat ke satu keranjang': js.replace("if (s.tukar) return { kabar: 'Keranjang ini MASIH terikat tukar: '", "if (false) return { kabar: 'Keranjang ini MASIH terikat tukar: '"),
