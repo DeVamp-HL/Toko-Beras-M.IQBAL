@@ -53,6 +53,16 @@ jobs:
       - name: audit.py masih terkompilasi
         run: python3 -m py_compile alat-audit/audit.py
 
+      # ---- SISTEM BARU (baru/) — mulai 19 Sep 2026 ----
+      - name: "Sistem baru — mesin beku yang dipindah tetap byte-identik"
+        run: python3 alat-uji/pindah_mesin.py --periksa
+
+      - name: "Sistem baru — logika layar Jual (kotak pasir) + kontrol positif"
+        run: python3 alat-uji/uji_jual_baru.py && python3 alat-uji/uji_jual_baru.py --kontrol
+
+      - name: "Sistem baru — identitas angka lama vs baru (dilewati di CI, cadangan toko tidak ada di repo)"
+        run: python3 alat-uji/uji_identitas_baru.py
+
   terbitkan:
     needs: uji
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e2e7ec">
+<title>Toko Beras M.IQBAL · Sistem baru</title>
+<!--
+  SISTEM BARU (mulai 19 Sep 2026) — tampilan baru di atas DATA YANG SAMA dengan index.html.
+  Hidup berdampingan di alamat /baru/; index.html tetap alat yang dipakai toko sampai yang baru terbukti.
+  Putaran 1: layar JUAL, baca saja. Struktur: css/ (identitas C1, kerangka tiga lebar, layar),
+  js/inti (format, dom, keadaan) · js/data (koleksi, toko, firebase, cadangan) · js/mesin (beku & pembantu,
+  DIBUAT ALAT dari index.html — jangan disunting tangan) · js/layar (jual-logika tanpa DOM, jual gambar).
+-->
+<link rel="icon" href="../icon-sistem-32.png">
+<link rel="apple-touch-icon" href="../icon-sistem-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500;6..96,600&family=Jost:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/identitas.css">
+<link rel="stylesheet" href="css/kerangka.css">
+<link rel="stylesheet" href="css/jual.css">
+</head>
+<body>
+<aside class="side" aria-label="Menu samping">
+  <div class="merek"><div class="serif" style="font-size: 20px;">M.IQBAL</div><div class="label">sistem baru · putaran 1</div></div>
+  <div class="item" data-tujuan="ringkasan">Ringkasan</div>
+  <div class="item" data-tujuan="stok">Stok</div>
+  <div class="item aktif" data-tujuan="jual">Jual</div>
+  <div class="item" data-tujuan="pelanggan">Pelanggan</div>
+  <div class="item" data-tujuan="menu">Menu</div>
+  <div class="ket" style="margin-top: auto; padding: 0 14px;">Layar lain masih di <a href="../index.html">sistem lama</a>.</div>
+</aside>
+
+<main id="layar" class="layar-jual" aria-live="polite"></main>
+
+<nav class="nav" aria-label="Menu bawah">
+  <div data-tujuan="ringkasan">Ringkasan</div>
+  <div data-tujuan="stok">Stok</div>
+  <div class="aktif" data-tujuan="jual">Jual</div>
+  <div data-tujuan="pelanggan">Pelanggan</div>
+  <div data-tujuan="menu">Menu</div>
+</nav>
+<div id="kabarNav" class="kabar-nav" hidden></div>
+
+<div id="modalMasuk" class="modal-bg">
+  <form id="formMasuk" class="modal kartu" autocomplete="off">
+    <div class="serif" style="font-size: 22px;">Masuk sebagai owner</div>
+    <div id="pesanMasuk" class="ket">Masukkan sandi OWNER. Cukup sekali per perangkat.</div>
+    <input id="isianSandi" type="password" class="ketik-nama" placeholder="Sandi owner" autocomplete="current-password">
+    <div id="salahMasuk" class="pita-info awas" hidden></div>
+    <button id="tombolMasuk" type="submit" class="utama">Masuk</button>
+    <div class="ket">Sandinya tidak disimpan di halaman ini — diteruskan ke Firebase lalu dilupakan. Akun & database sama dengan sistem lama.</div>
+  </form>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

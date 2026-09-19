@@ -1,0 +1,69 @@
+/* KERANGKA — satu markup, tiga lebar (keputusan owner 13 Sep: HP + Tablet + Mac).
+   HP  (< 720px)      : satu kolom, nav bawah, keranjang jadi laci di bawah, lembar melayang.
+   Tablet (720–1099)  : dua kolom (rak | keranjang), nav bawah, lembar duduk di kolom kanan.
+   Mac (≥ 1100px)     : menu samping + tiga kolom (rak | keranjang | hari ini). */
+html { height: 100%; }
+body { min-height: 100%; overflow: auto; position: relative; margin: 0;
+  background: linear-gradient(160deg, var(--bg1), var(--bg2) 48%, var(--bg3)) fixed; color: var(--teks); }
+body > .bola { position: fixed; }
+.side { display: none; }
+main.layar-jual { position: relative; z-index: 1; display: grid; gap: 12px; padding: 14px 14px 110px; box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr); grid-template-areas: "kepala" "pita" "kabar" "rak" "samping"; max-width: 1480px; margin: 0 auto; padding-bottom: 190px; }
+main.layar-jual > .kepala-jual { grid-area: kepala; }
+main.layar-jual > .pita-info.baca-saja { grid-area: pita; }
+main.layar-jual > .kabar-kotak { grid-area: kabar; display: flex; flex-direction: column; gap: 8px; }
+main.layar-jual > .kabar-kotak:empty { display: none; }
+.kabar-kotak > .pita-info:not(.urung) { cursor: pointer; }
+main.layar-jual > .jual-rak { grid-area: rak; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+main.layar-jual > .jual-samping { grid-area: samping; min-width: 0; }
+main.layar-jual > .bola { position: fixed; }
+main.layar-jual > input[type="hidden"] { display: none; }
+
+/* keranjang: di HP jadi laci bawah yang bisa dibuka */
+.jual-keranjang { position: fixed; left: 10px; right: 10px; bottom: 92px; z-index: 4; display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 14px; max-height: 60px; overflow: hidden; border-radius: 20px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--kaca-tepi); box-shadow: 0 -10px 40px -22px var(--bayang), inset 0 1px 0 var(--kaca-sorot); transition: max-height 320ms cubic-bezier(.2,.8,.2,1); }
+.jual-keranjang.terbuka { max-height: 78vh; overflow-y: auto; }
+.jual-keranjang .ringkas-keranjang { display: flex; justify-content: space-between; align-items: center; min-height: 40px; cursor: pointer; font-weight: 600; flex: none; }
+.jual-keranjang .isi-keranjang { display: none; flex-direction: column; gap: 8px; }
+.jual-keranjang.terbuka .isi-keranjang { display: flex; }
+
+/* nav bawah */
+.nav { position: fixed; left: 14px; right: 14px; bottom: 16px; }
+.nav > div { cursor: pointer; }
+.kabar-nav { position: fixed; left: 14px; right: 14px; bottom: 96px; z-index: 6; padding: 10px 14px; border-radius: 14px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--kaca-tepi); font-size: 13px; }
+
+/* lembar melayang (HP). Animasi naik hanya di kelas .muncul (render pertama), supaya tiap ketukan tidak mengedipkan lembar */
+.lembar { animation: none; }
+.lembar.muncul { animation: naikLembar 480ms cubic-bezier(.2,.8,.2,1); }
+.lembar { position: fixed; z-index: 7; left: 12px; right: 12px; bottom: 96px; max-height: 78vh; overflow-y: auto;
+  /* lembar melayang di atas rak yang ramai: dasar padat + kaca, supaya tulisan di belakangnya tidak tembus */
+  background-color: var(--bg2); background-image: linear-gradient(var(--kaca), var(--kaca)); }
+.lembar.tirai { position: fixed; inset: 0; z-index: 6; background: var(--bayang); opacity: 0.25; border-radius: 0; animation: none; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; box-shadow: none; max-height: none; }
+
+/* modal masuk */
+.modal-bg { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); padding: 16px; }
+.modal-bg.tampil { display: flex; }
+.modal { width: min(420px, 100%); gap: 10px; }
+.modal .utama { width: 100%; border: 1px solid rgba(255,255,255,0.6); font-family: inherit; }
+
+@media (min-width: 720px) {
+  main.layar-jual { grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.95fr); grid-template-areas: "kepala kepala" "pita pita" "kabar kabar" "rak keranjang" "samping keranjang"; align-items: start; padding-bottom: 110px; }
+  .jual-keranjang { grid-area: keranjang; position: sticky; top: 14px; left: auto; right: auto; bottom: auto; max-height: none; overflow: visible; }
+  .jual-keranjang .ringkas-keranjang { cursor: default; }
+  .jual-keranjang .isi-keranjang { display: flex; }
+  .lembar { position: fixed; left: auto; right: 14px; top: 14px; bottom: 100px; width: min(460px, 46vw); max-height: none; }
+}
+@media (min-width: 1100px) {
+  body { padding-left: 232px; }
+  .side { display: flex; flex-direction: column; gap: 4px; position: fixed; left: 0; top: 0; bottom: 0; width: 232px; padding: 22px 12px; box-sizing: border-box; z-index: 5;
+    background: var(--side); border-right: 1px solid var(--garis); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  .side .merek { padding: 0 14px 16px; }
+  .side .item { cursor: pointer; }
+  .nav { display: none; }
+  main.layar-jual { grid-template-columns: minmax(0, 1.3fr) minmax(340px, 0.9fr) minmax(280px, 0.8fr); grid-template-areas: "kepala kepala kepala" "pita pita pita" "kabar kabar kabar" "rak keranjang samping"; padding: 22px 28px 40px; }
+  .jual-keranjang { position: sticky; top: 22px; }
+  .lembar { position: fixed; right: 28px; top: 22px; bottom: 28px; width: 440px; max-height: none; }
+  .kabar-nav { right: auto; left: 250px; width: 360px; bottom: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { .jual-keranjang, .lembar { transition: none; animation: none; } }

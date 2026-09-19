@@ -1,0 +1,152 @@
+/* IDENTITAS C1 (dikunci owner 13 Sep 2026): kaca buram emas/sampanye/platina, Bodoni Moda + Jost, dua mode.
+   Diturunkan dari papan desain J2 yang dikunci; token di body / body.gelap. Latar mode terang = platina. */
+
+    body { margin: 0; font-family: Jost, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #8a6512; } a:hover { color: #2b241a; }
+    body { position: relative; overflow: hidden; box-sizing: border-box; color: var(--teks); background: linear-gradient(160deg, var(--bg1), var(--bg2) 48%, var(--bg3)); transition: color 480ms ease; }
+    .bola { position: absolute; z-index: 0; pointer-events: none; border-radius: 50%; filter: blur(4px); transition: background 700ms ease, transform 640ms cubic-bezier(.2,.8,.2,1), opacity 640ms ease; }
+    .bola.emas { width: 440px; height: 440px; right: -150px; top: -170px; background: radial-gradient(circle, var(--bola-emas), transparent 68%); }
+    .bola.platina { width: 400px; height: 400px; left: -170px; bottom: -130px; background: radial-gradient(circle, var(--bola-platina), transparent 68%); }
+    .bola.sampanye { width: 320px; height: 320px; left: 38%; top: 34%; background: radial-gradient(circle, var(--bola-sampanye), transparent 70%); }
+    .serif { font-family: "Bodoni Moda", Didot, Georgia, serif; font-weight: 500; }
+    .angka { font-family: "Bodoni Moda", Didot, Georgia, serif; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+    .label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--redup); transition: color 480ms ease; }
+    .kartu { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 14px 16px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--kaca-tepi); border-radius: 20px; box-shadow: 0 20px 40px -22px var(--bayang), inset 0 1px 0 var(--kaca-sorot); transition: background-color 480ms ease, border-color 480ms ease; box-sizing: border-box; }
+    .kartu > * { position: relative; z-index: 1; }
+    .kartu.hero { background: linear-gradient(160deg, var(--hero1), var(--hero2)); border-color: var(--hero-tepi); }
+    .kartu.hero.mendarat { box-shadow: 0 20px 40px -22px var(--bayang), inset 0 0 0 1px var(--mendarat); }
+    .kartu.platina { background: var(--platina); }
+    .dagang { background: linear-gradient(180deg, var(--emas1), var(--emas2) 50%, var(--emas3)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .pil { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--seg); border: 1px solid var(--kaca-tepi); color: var(--teks); transition: background-color 480ms ease, color 480ms ease; }
+    .pil.kedip { animation: kedip 600ms ease; }
+    @keyframes kedip { 0% { opacity: 1; } 50% { opacity: 0.35; } 100% { opacity: 1; } }
+    .titik { width: 7px; height: 7px; border-radius: 50%; background: linear-gradient(160deg, var(--logam1), var(--logam3)); }
+    .tombol-mode { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--seg); border: 1px solid var(--kaca-tepi); color: var(--aktif); cursor: pointer; transition: transform 160ms cubic-bezier(.2,.8,.2,1), background-color 480ms ease; }
+    .tombol-mode:active { transform: scale(0.94); }
+    .tombol-mode svg { width: 18px; height: 18px; }
+    .seg { flex: none; padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; background: var(--seg); border: 1px solid transparent; color: var(--redup); cursor: pointer; transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, padding 220ms ease; }
+    .seg.aktif { background: var(--seg-aktif); border-color: var(--kaca-tepi); color: var(--aktif); padding: 7px 15px; }
+    @keyframes alir { 0% { transform: translateY(8px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+    @keyframes ganti { 0% { opacity: 0.2; transform: translateX(6px); } 100% { opacity: 1; transform: none; } }
+    @keyframes naik { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
+    .baris.akhir { border-bottom: 0; }
+    .umpan .u.baru { animation: hangat 2400ms ease; }
+    @keyframes hangat { 0% { background: var(--umpan-hangat); } 100% { background: transparent; } }
+    .umpan .u .w { color: var(--redup); font-variant-numeric: tabular-nums; }
+    .btn.isi { background: linear-gradient(160deg, var(--logam1), var(--logam2) 55%, var(--logam3)); color: var(--logam-teks); border-color: rgba(255,255,255,0.6); }
+    .nav { position: absolute; z-index: 3; left: 14px; right: 14px; bottom: 16px; height: 68px; border-radius: 22px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; background: var(--nav); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--kaca-tepi); box-shadow: 0 14px 34px -16px var(--bayang), inset 0 1px 0 var(--kaca-sorot); transition: background-color 480ms ease; }
+    .nav > div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 600; min-height: 44px; color: var(--nav-teks); }
+    .nav > div.aktif, .nav .fab-label { color: var(--aktif); }
+    .nav svg { width: 22px; height: 22px; }
+    .fab { width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-top: -30px; background: linear-gradient(160deg, var(--logam1), var(--logam2) 55%, var(--logam3)); border: 1px solid rgba(255,255,255,0.6); color: var(--logam-teks); box-shadow: 0 0 26px var(--logam-glow), 0 12px 26px -8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.75); cursor: pointer; transition: transform 280ms cubic-bezier(.34,1.56,.64,1); }
+    .fab:active { transform: scale(0.94); }
+    .fab svg { width: 26px; height: 26px; }
+    @keyframes terbang { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.6); } }
+    .side .item { display: flex; align-items: center; gap: 11px; min-height: 42px; padding: 0 14px; font-size: 14px; font-weight: 500; border-radius: 12px; color: var(--redup); }
+    .side .item.aktif { background: var(--seg-aktif); border: 1px solid var(--kaca-tepi); color: var(--aktif); }
+    .ket { font-size: 12.5px; color: var(--redup); transition: color 480ms ease; }
+    svg text { font-family: Jost, sans-serif; }
+    @media (prefers-reduced-motion: reduce) { .bola, .seg, .tetes-terbang, .kartu, .angka-besar .klp, .angka-besar, .chip-naik, .umpan .u, .pil { transition: none; animation: none; } }
+    body { --bg1: #eef1f4; --bg2: #e2e7ec; --bg3: #d5dce3; --teks: #2b241a; --redup: #6f6a60; --kaca: rgba(255,255,255,0.46); --kaca-tepi: rgba(255,255,255,0.8); --kaca-sorot: rgba(255,255,255,0.95); --hero1: rgba(243,220,150,0.6); --hero2: rgba(212,175,94,0.42); --hero-tepi: rgba(255,255,255,0.85); --emas1: #8a6a1e; --emas2: #b8862b; --emas3: #6f5416; --emas-garis: #b8862b; --emas-tepi: #8a6a1e; --hero-label: #7a5a12; --logam1: #f6e2a8; --logam2: #cfa649; --logam3: #a67d22; --logam-teks: #3a2a08; --logam-glow: rgba(232,201,108,0.3); --mendarat: rgba(232,201,108,0.6); --platina: rgba(244,247,249,0.66); --platina1: #66727e; --platina2: #3b4550; --hantu: rgba(107,117,128,0.5); --rel: rgba(43,36,26,0.25); --garis: rgba(43,36,26,0.09); --nav: rgba(255,255,255,0.58); --nav-teks: #857d6e; --aktif: #7a5a12; --awas: #9a4b12; --bola-emas: rgba(232,201,108,0.75); --bola-platina: rgba(184,196,208,0.75); --bola-sampanye: rgba(250,238,208,0.95); --bayang: rgba(80,60,20,0.3); --seg: rgba(255,255,255,0.45); --seg-aktif: rgba(255,255,255,0.9); --kilau: rgba(255,255,255,0.5); --side: rgba(255,255,255,0.38); --bon: #d9c48a; --qris: #6b7580; --umpan-hangat: rgba(232,201,108,0.22); }
+    body.gelap { --bg1: #111516; --bg2: #0b0d0f; --bg3: #090b0d; --teks: #efe9dc; --redup: #a39b8c; --kaca: rgba(255,255,255,0.06); --kaca-tepi: rgba(255,255,255,0.14); --kaca-sorot: rgba(255,255,255,0.18); --hero1: rgba(201,179,122,0.24); --hero2: rgba(168,147,101,0.12); --hero-tepi: rgba(201,179,122,0.5); --emas1: #efe4c2; --emas2: #c9b37a; --emas3: #8f7a45; --emas-garis: #c9b37a; --emas-tepi: #e6d7ad; --hero-label: #c9b37a; --logam1: #e6d7ad; --logam2: #c9b37a; --logam3: #8f7a45; --logam-teks: #2b2413; --logam-glow: rgba(201,179,122,0.3); --mendarat: rgba(201,179,122,0.7); --platina: rgba(197,206,214,0.10); --platina1: #f4f6f8; --platina2: #98a3ad; --hantu: rgba(152,163,173,0.45); --rel: rgba(239,233,220,0.25); --garis: rgba(255,255,255,0.09); --nav: rgba(16,19,20,0.62); --nav-teks: #8f8878; --aktif: #c9b37a; --awas: #e0a072; --bola-emas: rgba(201,179,122,0.5); --bola-platina: rgba(184,196,208,0.5); --bola-sampanye: rgba(247,232,200,0.28); --bayang: rgba(0,0,0,0.85); --seg: rgba(255,255,255,0.06); --seg-aktif: rgba(255,255,255,0.16); --kilau: rgba(255,255,255,0.14); --side: rgba(255,255,255,0.04); --bon: #e8d9a8; --qris: #98a3ad; --umpan-hangat: rgba(201,179,122,0.16); }
+    .kepala-jual { display: flex; justify-content: space-between; align-items: center; min-height: 52px; }
+    .cincin-mini { width: 44px; height: 44px; display: block; overflow: visible; }
+    .cincin-mini .sektor { fill: none; stroke: var(--emas-garis); transition: stroke-dasharray 560ms cubic-bezier(.2,.8,.2,1); }
+    .cincin-mini .rel { fill: none; stroke: var(--rel); }
+    .jalur { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+    .bilah-antre { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    .bilah-antre::-webkit-scrollbar { display: none; }
+    .tab-antre { flex: 0 0 auto; max-width: 62%; min-height: 40px; display: flex; align-items: center;
+      padding: 0 11px; border-radius: 2px; cursor: pointer; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; font-size: 12px; font-weight: 600; color: var(--redup);
+      background: var(--kaca); border: 1px solid var(--garis); }
+    .tab-antre.aktif { background: linear-gradient(160deg, #f6ecd6, #e2cda6 60%, #c9b085); color: #2a1f13; border-color: transparent; }
+    .tab-antre.bernama { letter-spacing: .02em; }
+    .jalur::-webkit-scrollbar { display: none; }
+    .jalur .seg { padding: 6px 12px; }
+    .chip { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 10px; min-height: 72px; border-radius: 16px; background: var(--kaca); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--kaca-tepi); box-shadow: inset 0 1px 0 var(--kaca-sorot); cursor: pointer; transition: transform 160ms cubic-bezier(.2,.8,.2,1), border-color 160ms ease, opacity 300ms ease, background-color 480ms ease; box-sizing: border-box; }
+    .chip:active { transform: scale(0.97); }
+    .chip.habis { opacity: 0.45; border-style: dashed; }
+    .chip.kurang { border-style: dashed; border-color: var(--awas); }
+    .chip.dipilih { border-color: var(--emas-garis); }
+    .chip > * { position: relative; z-index: 1; }
+    .chip .isian { position: absolute; z-index: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(232,201,108,0.10), rgba(232,201,108,0.32)); transition: height 480ms cubic-bezier(.2,.8,.2,1); }
+    .chip .nama { font-size: 12.5px; font-weight: 600; letter-spacing: 0.02em; }
+    .chip .harga { font-family: "Bodoni Moda", Georgia, serif; font-size: 15px; font-variant-numeric: tabular-nums; }
+    .chip .stok { font-size: 10.5px; color: var(--redup); }
+    .keranjang { display: flex; flex-direction: column; }
+    .keranjang .b { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; min-height: 46px; font-size: 13px; border-bottom: 1px solid var(--garis); animation: masuk 480ms cubic-bezier(.2,.8,.2,1); }
+    @keyframes masuk { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .keranjang .b .h { font-family: "Bodoni Moda", Georgia, serif; font-size: 14px; font-variant-numeric: tabular-nums; border-bottom: 1px dotted var(--redup); cursor: pointer; }
+    .keranjang .b .coret { text-decoration: line-through; color: var(--redup); font-size: 11px; margin-right: 4px; }
+    .keranjang .b .t { font-family: "Bodoni Moda", Georgia, serif; font-size: 15px; font-variant-numeric: tabular-nums; }
+    .keranjang .kosong { min-height: 46px; display: flex; align-items: center; font-size: 12.5px; color: var(--redup); border: 1px dashed var(--kaca-tepi); border-radius: 12px; padding: 0 12px; }
+    .gelembung .seg { padding: 5px 10px; font-size: 11.5px; }
+    .lembar { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--kaca-tepi); border-radius: 20px; box-shadow: 0 -10px 40px -22px var(--bayang), inset 0 1px 0 var(--kaca-sorot); box-sizing: border-box; animation: naikLembar 480ms cubic-bezier(.2,.8,.2,1); overflow: hidden; transition: background-color 480ms ease; }
+    @keyframes naikLembar { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+    .lembar .judul { font-size: 13px; font-weight: 600; }
+    .lembar .judul.putus { border: 1px dashed var(--awas); border-radius: 10px; padding: 8px 10px; }
+    .total { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .total .n { font-family: "Bodoni Moda", Georgia, serif; font-size: 32px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .bulat { font-size: 11.5px; color: var(--redup); min-height: 16px; }
+    .utama { min-height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 15px; background: linear-gradient(160deg, var(--logam1), var(--logam2) 55%, var(--logam3)); color: var(--logam-teks); border: 1px solid rgba(255,255,255,0.6); box-shadow: 0 10px 22px -10px var(--logam-glow), inset 0 1px 0 rgba(255,255,255,0.6); cursor: pointer; transition: transform 280ms cubic-bezier(.34,1.56,.64,1); }
+    .utama:active { transform: scale(0.97); }
+    .utama.pegas { animation: pegas 480ms cubic-bezier(.34,1.56,.64,1); }
+    @keyframes pegas { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: scale(1); } }
+    .utama.gelap { background: var(--seg-aktif); color: var(--teks); box-shadow: none; }
+    .tombol-baris { display: grid; gap: 8px; }
+    .kaca-btn { min-height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: var(--seg); border: 1px solid var(--kaca-tepi); color: var(--teks); cursor: pointer; transition: background-color 220ms ease; padding: 0 8px; text-align: center; }
+    .kaca-btn.aktif { background: var(--seg-aktif); color: var(--aktif); }
+    .kaca-btn.awas { color: var(--awas); }
+    .kaca-btn.putus { border-style: dashed; color: var(--redup); }
+    .tuts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .tuts .k { min-height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: "Bodoni Moda", Georgia, serif; font-size: 18px; background: var(--seg); border: 1px solid var(--kaca-tepi); cursor: pointer; }
+    .tuts .k.f { font-family: Jost, sans-serif; font-size: 11.5px; font-weight: 600; color: var(--aktif); }
+    .tuts .k.f.aksi { background: linear-gradient(160deg, var(--logam1), var(--logam2) 55%, var(--logam3)); color: var(--logam-teks); border-color: rgba(255,255,255,0.6); }
+    .tuts .k.f.kosong { opacity: 0; pointer-events: none; }
+    .pin-titik { display: flex; gap: 12px; justify-content: center; padding: 4px 0; }
+    .pin-titik span { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--emas-garis); }
+    .pin-titik span.isi { background: var(--emas-garis); }
+    .pita-info { font-size: 12px; padding: 8px 10px; border-radius: 10px; background: var(--seg); border: 1px solid var(--kaca-tepi); }
+    .pita-info.emas { border-color: var(--emas-garis); color: var(--aktif); font-weight: 600; }
+    .pita-info.awas { border-style: dashed; border-color: var(--awas); }
+    .hari { display: flex; flex-direction: column; }
+    .hari .r { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 40px; font-size: 12.5px; border-bottom: 1px solid var(--garis); }
+    .hari .r.baru { animation: hangat 2400ms ease; }
+    .hari .r .w { color: var(--redup); font-variant-numeric: tabular-nums; }
+    .hari .r .n { font-family: "Bodoni Moda", Georgia, serif; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .hari .r.belumSerah .ket { color: var(--awas); }
+    .hari .r.koreksi .ket, .tab-meja .r.koreksi .ket { font-style: italic; }
+    .hari .r.batal { opacity: 0.5; text-decoration: line-through; }
+    .mendarat-kartu { display: flex; flex-direction: column; gap: 6px; }
+    .mendarat-kartu .besar { font-family: "Bodoni Moda", Georgia, serif; font-size: 34px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .urung { display: flex; justify-content: space-between; align-items: center; min-height: 48px; padding: 0 14px; border-radius: 14px; background: var(--seg-aktif); border: 1px solid var(--kaca-tepi); font-size: 12.5px; position: relative; overflow: hidden; cursor: pointer; }
+    .urung .garis { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--emas-garis); transition: width 1000ms linear; }
+    .terbilang { font-size: 12px; color: var(--redup); font-style: italic; }
+    .step { display: inline-flex; align-items: center; gap: 0; border: 1px solid var(--kaca-tepi); border-radius: 10px; overflow: hidden; flex: none; }
+    .step span { min-width: 30px; min-height: 30px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; }
+    .step span.n { font-family: "Bodoni Moda", Georgia, serif; min-width: 34px; padding: 0 8px; white-space: nowrap; flex: none; background: var(--seg); }
+    .ubin { min-height: 96px; }
+    .ubin .ukuran { font-family: "Bodoni Moda", Georgia, serif; font-size: 20px; line-height: 1; }
+    .ubin .isian { background: linear-gradient(180deg, rgba(247,232,200,0.25), rgba(232,201,108,0.5)); }
+    .ubin.tipis .isian { background: repeating-linear-gradient(45deg, rgba(232,201,108,0.35) 0 4px, transparent 4px 8px); }
+    .cincin-keranjang { width: 112px; height: 112px; display: block; overflow: visible; flex: none; }
+    .cincin-keranjang .sektor { fill: none; stroke: var(--emas-garis); transition: stroke-dasharray 480ms cubic-bezier(.2,.8,.2,1), stroke-dashoffset 480ms cubic-bezier(.2,.8,.2,1), stroke 480ms ease; }
+    .cincin-keranjang .sektor.nego { stroke: var(--emas3); }
+    .cincin-keranjang .sektor.putus { stroke-dasharray: 3 3; stroke: var(--awas); }
+    .cincin-keranjang .rel { fill: none; stroke: var(--rel); }
+    .cincin-keranjang .pusat { font-family: "Bodoni Moda", Georgia, serif; font-size: 13px; fill: var(--teks); }
+    .cincin-keranjang .pusat-ket { font-size: 7.5px; fill: var(--redup); letter-spacing: 0.06em; }
+    .lembar.tinggi { position: absolute; z-index: 5; left: 12px; right: 12px; bottom: 96px; }
+    .struk .kepala-struk.putus { border: 1px dashed var(--awas); border-radius: 10px; padding: 4px 8px; }
+    .struk .baris-struk .t { font-family: "Bodoni Moda", Georgia, serif; font-size: 15px; font-variant-numeric: tabular-nums; }
+    .pita-total .n { font-family: "Bodoni Moda", Georgia, serif; font-size: 28px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .pita-total .utama { min-width: 112px; min-height: 48px; }
+    .chip-deret .chip { flex: none; width: 132px; min-height: 64px; }
+    .tab-meja .r { display: grid; grid-template-columns: 56px 90px minmax(0, 1fr) 70px auto 100px; gap: 10px; align-items: center; min-height: 40px; font-size: 12.5px; border-bottom: 1px solid var(--garis); }
+    .tab-meja .r .n { font-family: "Bodoni Moda", Georgia, serif; font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; }
+    .tab-meja .r.baru { animation: hangat 2400ms ease; }
+    .tab-meja .r .w { color: var(--redup); }
+    @media (prefers-reduced-motion: reduce) { .lembar, .keranjang .b, .gelembung, .struk .baris-struk, .utama.pegas, .hari .r.baru, .tab-meja .r.baru, .umpan .u.baru { animation: none; } .chip .isian, .cincin-keranjang .sektor, .cincin-mini .sektor, .urung .garis, .chip, .utama { transition: none; } }
+    .chip.ubin .nama { font-size: 11.5px; } .chip.ubin .harga { font-size: 13.5px; }
+  
