@@ -1,6 +1,7 @@
 // SISTEM BARU — pintu masuk. Putaran 1 (19 Sep 2026): layar JUAL membaca data toko yang sama dengan index.html.
 // Sumber data: Firestore toko (bawaan) atau berkas cadangan (?cadangan=…/backup-batch-….json, untuk mencoba di komputer).
 import { pasangLayarJual } from './layar/jual.js';
+import { pasangLayarRingkasan } from './layar/ringkasan.js';
 import * as fb from './data/firebase.js';
 import { muatCadangan } from './data/cadangan.js';
 import { dengarkan, sumberData } from './data/toko.js';
@@ -20,7 +21,7 @@ function terapkanMode() {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = gelap ? '#111516' : '#eef1f4';
 }
-function gantiMode() { mode = mode === 'gelap' ? 'terang' : 'gelap'; try { localStorage.setItem(KUNCI_MODE, mode); } catch (e) { /* abaikan */ } terapkanMode(); layar.gambar(); }
+function gantiMode() { mode = mode === 'gelap' ? 'terang' : 'gelap'; try { localStorage.setItem(KUNCI_MODE, mode); } catch (e) { /* abaikan */ } terapkanMode(); layar.gambar(); ringkasan.gambar(); }
 function statusTeks() {
   const s = sumberData();
   if (s.jenis === 'cadangan') return 'membaca cadangan (bukan data hidup)';
@@ -35,6 +36,23 @@ terapkanMode();
 const akar = document.getElementById('layar');
 const layar = pasangLayarJual(akar, { gantiMode, mode: () => mode, statusTeks, versiData: () => versi });
 dengarkan(() => { versi += 1; });
+
+// ---- perpindahan layar: tiap layar punya <main> sendiri yang disembunyikan, supaya keranjang Jual tidak hilang saat pindah ----
+const KUNCI_TAB = 'miqbal_baru_tab';
+let sekarangCadangan = null;   // mode cadangan: "sekarang" = saat cadangan diunduh
+const statusRingkas = () => (statusFb.offline ? 'tanpa internet' : statusFb.menunggu > 0 ? 'menunggu server' : statusFb.koleksiSiap < statusFb.koleksiTotal ? 'memuat…' : 'data toko');
+const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
+const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan') };
+function pindah(tujuan) {
+  if (!LAYAR_ADA[tujuan]) return false;
+  Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].hidden = k !== tujuan; });
+  document.querySelectorAll('[data-tujuan]').forEach((el) => el.classList.toggle('aktif', el.dataset.tujuan === tujuan));
+  document.body.classList.toggle('di-jual', tujuan === 'jual');
+  ringkasan.tampilkan(tujuan === 'ringkasan');
+  try { localStorage.setItem(KUNCI_TAB, tujuan); } catch (e) { /* abaikan */ }
+  window.scrollTo(0, 0);
+  return true;
+}
 
 // ---- masuk (sandi diketik owner; kode ini cuma meneruskannya ke Firebase, tidak menyimpan) ----
 const modal = document.getElementById('modalMasuk');
@@ -54,18 +72,22 @@ document.getElementById('formMasuk').addEventListener('submit', async (ev) => {
 if (q.get('cadangan')) {
   muatCadangan(q.get('cadangan')).then((r) => {
     // "hari ini" di cadangan = hari cadangan itu diunduh, bukan hari komputer ini — supaya kartu Hari ini tidak kosong menyesatkan
-    layar.keadaan.setel({ sekarang: r.diunduhPada ? new Date(r.diunduhPada) : null });
+    sekarangCadangan = r.diunduhPada ? new Date(r.diunduhPada) : null;
+    layar.keadaan.setel({ sekarang: sekarangCadangan }); ringkasan.gambar();
     console.log('cadangan dimuat:', r.koleksi, 'koleksi'); })
     .catch((e) => { const p = document.createElement('div'); p.className = 'pita-info awas'; p.textContent = 'Cadangan tidak terbaca: ' + String(e.message); akar.prepend(p); });
 } else {
-  fb.dengarkanStatus((st) => { statusFb = st; if (st.masuk) modal.classList.remove('tampil'); layar.gambar(); });
+  fb.dengarkanStatus((st) => { statusFb = st; if (st.masuk) modal.classList.remove('tampil'); layar.gambar(); ringkasan.gambar(); });
   fb.mulai(bukaMasuk);
 }
 
 // nav bawah / samping: hanya Jual yang hidup di putaran ini — tujuan lain mengaku belum ada
 document.querySelectorAll('[data-tujuan]').forEach((el) => el.addEventListener('click', () => {
   const t = el.dataset.tujuan;
-  if (t === 'jual') return;
-  const kabar = document.getElementById('kabarNav'); kabar.textContent = 'Layar ' + el.textContent.trim() + ' belum ada di putaran ini — masih di sistem lama (index.html).'; kabar.hidden = false;
+  if (pindah(t)) return;
+  const kabar = document.getElementById('kabarNav'); kabar.textContent = 'Layar ' + el.textContent.trim() + ' belum ada di sistem baru — masih di sistem lama (index.html).'; kabar.hidden = false;
   clearTimeout(kabar._t); kabar._t = setTimeout(() => { kabar.hidden = true; }, 3200);
 }));
+
+// layar pembuka: yang terakhir dipakai di perangkat ini (bawaan: Jual)
+pindah((() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })()) || pindah('jual');

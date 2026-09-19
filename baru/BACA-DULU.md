@@ -33,6 +33,14 @@ Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko
 - **Tukar**: retur TIDAK ditulis saat itu — diikat ke keranjang (`tukarModel 'kreditBarangGabung'`); nilai barang kembali dipotong sebelum pembulatan (pembulatan atas selisih bersih); saat nota dicatat, penjualan pengganti (`tukarReturId`) + retur (`penjualanPenggantiTrxId`, `hitunganTukarSistem`) + karantina masuk **dalam SATU batch** (index.html menulis berurutan dan menjaga dengan jurnal localStorage; di sini tidak bisa setengah jadi). Tukar tidak bisa bon, tidak bisa bayar sebagian, pengganti tidak boleh lebih murah dari barang kembali; draf dibaca ulang saat mencatat; ikatan ikut diparkir; tukar & pesanan saling meniadakan. Batalkan nota barusan mencabut retur + karantinanya juga.
 - Belum: retur TANPA nota (ketik tangan), retur tukar lama yang "yatim" (catat penggantinya / pengganti sudah tercatat) — tetap lewat sistem lama.
 
+## Putaran 5 (19 Sep 2026) — layar RINGKASAN (R2 "Cincin Bersarang"), baca saja
+- Desain yang dikunci owner 13 Sep: tujuh skala (Langsung · Menit · Jam · Hari · Minggu · Bulan · Tahun), tiap skala tiga lapis cincin (luar · induk · kakek) + satu angka besar; geometri cincin = rumus papan R2 (tebal ∝ akar nilai, sel berjalan di jam 12).
+- Angka dari data toko lewat mesin yang sama: omzet = baris penjualan berlaku; **margin kotor** (K1) dari `hitungLabaRentang` dan layar menyebut baris tanpa modal yang tidak ikut; bon dari `hitungPiutang`, utang pemasok dari `hitungUtangPemasok`, menipis = sisa ÷ laju jual (`hitungLajuPakai`) ≤ `AMBANG_HARI_KRITIS` (verbatim), kas dari `kasPada()`.
+- Kejujuran: pembanding selalu **sampai titik yang sama** (kemarin jam segini · minggu lalu sampai hari & jam yang sama · bulan lalu sampai tanggal yang sama) dan **ditolak** kalau jendelanya mendahului catatan pertama toko; periode berjalan bertepi putus, yang belum terjadi tipis, yang sebelum ada catatan "absen" (bukan nol); saldo kas **tidak ditebak** kalau titik kas belum disetel di perangkat itu (titik kas = localStorage sistem lama, asal-usul sama).
+- Hidup: jam berdetak tiap detik; layar digambar ulang saat data berubah / menit berganti; nota baru "mendarat" (angka mengalir per kelompok ribuan, chip +Rp).
+- Perpindahan layar: tiap layar punya `<main>` sendiri yang disembunyikan — keranjang Jual tidak hilang saat pindah; layar terakhir diingat per perangkat. Stok · Pelanggan · Menu masih di sistem lama.
+- Yang sengaja beda dari papan: kartu "Kas laci / Rekening" diganti "Kas tercatat · semua kantong" + "Uang hari ini (laci · rekening)" — sistem lama tidak punya saldo per kantong, jadi tidak dikarang.
+
 ## Struktur
 ```
 baru/
@@ -66,6 +74,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 |---|---|
 | `alat-uji/pindah_mesin.py --periksa` | tiap mesin di `js/mesin/beku.js` = sidik `alat-uji/beku.sha256` |
 | `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 156 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan + retur & tukar) di kotak pasir; 56 kontrol positif berbunyi; kunci dokumen vs baris nyata & vs yang ditulis index.html |
+| `alat-uji/uji_ringkasan_baru.py` (+ `--kontrol`) | 28 skenario logika Ringkasan (jam tetap, zona waktu dikunci WIB) + 14 kontrol; di cadangan toko: omzet hari/bulan/tahun = jumlah langsung barisnya |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
