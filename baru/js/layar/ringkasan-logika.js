@@ -96,12 +96,28 @@ function rkDataLapis(nama, ix, kini) {
   return { sel, jalan, vmax };
 }
 
-/** Geometri cincin — rumus papan R2 (sektorVals): jari-jari per peran, tebal ∝ akar nilai, sel berjalan di jam 12. */
+/**
+ * Geometri cincin — rumus papan R2 (sektorVals). KETUJUH lapis selalu ada: tiga yang berperan (luar · induk · kakek) di jari-jari
+ * 86 · 66 · 49, sisanya menunggu di luar (108) atau di dalam (22) dengan opasitas 0. Karena tiap sel punya identitas tetap
+ * (lapis + urutan), mengganti skala = cincin BERGESER masuk/keluar (transisi r), bukan digambar ulang.
+ * Tiap sel membawa label & nilainya supaya bisa diketuk.
+ */
+const RK_LABEL_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+function rkLabelSel(nama, i, n, kini, ix) {
+  if (nama === 'm15' || nama === 'menit') { const d = new Date(kini.getTime() - (n - 1 - i) * 60000); return rkP2(d.getHours()) + '.' + rkP2(d.getMinutes()); }
+  if (nama === 'jam') return 'Jam ' + rkP2(JAM_BUKA + i) + '.00–' + rkP2(JAM_BUKA + i) + '.59';
+  if (nama === 'hari') { const d = rkGeser(kini, -(n - 1 - i)); return RK_NAMA_HARI[d.getDay()] + ', ' + d.getDate() + ' ' + RK_LABEL_BULAN[d.getMonth()]; }
+  if (nama === 'minggu') { const a = rkGeser(rkAwalMinggu(kini), -7 * (n - 1 - i)), z = rkGeser(a, 6); return 'Minggu ' + a.getDate() + ' ' + RK_LABEL_BULAN[a.getMonth()] + '–' + z.getDate() + ' ' + RK_LABEL_BULAN[z.getMonth()]; }
+  if (nama === 'bulan') return namaBulanPanjang(kini.getFullYear() + '-' + rkP2(i + 1));
+  if (nama === 'tahun') return String((ix.mulai ? Number(ix.mulai.slice(0, 4)) : kini.getFullYear()) + i);
+  return '';
+}
 export function susunSektor(skala, ix, kini) {
   const peran = LAPISAN[skala]; const R = [86, 66, 49], WMAX = [13, 11, 9]; const out = [];
-  peran.forEach((nama, idx) => {
-    if (!nama) return;
-    const d = rkDataLapis(nama, ix, kini); const r = R[idx], wmax = WMAX[idx];
+  const urutAktif = SEMUA_LAPIS.indexOf(peran[0]);
+  SEMUA_LAPIS.forEach((nama, urut) => {
+    const idx = peran.indexOf(nama);
+    const d = rkDataLapis(nama, ix, kini); const r = idx >= 0 ? R[idx] : (urut < urutAktif ? 108 : 22), wmax = idx >= 0 ? WMAX[idx] : 6, op = idx >= 0 ? 1 : 0;
     const n = d.sel.length, C = 2 * Math.PI * r, span = C / n, gap = Math.min(2.2, span * 0.18), geser = (d.jalan + 0.5) * span;
     d.sel.forEach((c, i) => {
       let w = wmax, kelas = c.kelas, len = span - gap;
@@ -110,11 +126,23 @@ export function susunSektor(skala, ix, kini) {
       else if (c.kelas === 'titik') { w = 5; len = 2; }
       else { const v = typeof c.v === 'number' ? c.v : 0; w = Math.max(1.5, wmax * Math.sqrt(Math.min(1, v / d.vmax))); if (v === 0 && c.kelas !== 'berjalan') { w = 1; kelas = 'rel'; } }
       let start = i * span - geser; while (start < 0) start += C;
-      out.push({ lapis: nama, r, w: Math.round(w * 100) / 100, da: len.toFixed(2) + ' ' + (C - len).toFixed(2), do: (-start).toFixed(2), kelas });
+      out.push({ id: nama + ':' + i, lapis: nama, i, n, jalan: d.jalan, r, w: Math.round(w * 100) / 100, da: len.toFixed(2) + ' ' + (C - len).toFixed(2), do: (-start).toFixed(2), op, kelas,
+        label: rkLabelSel(nama, i, n, kini, ix), nilai: c.v === null ? null : c.v === 'rel' ? (c.kelas === 'rel' && nama !== 'm15' && nama !== 'menit' ? 'rel' : 0) : (nama === 'm15' ? null : c.v), keadaan: c.v === null ? 'absen' : c.v === 'rel' ? 'rel' : c.kelas });
     });
   });
   return out;
 }
+/** Ketukan di cincin → sel mana: jarak dari pusat memilih lapis yang sedang berperan, sudut (searah jarum jam dari jam 12) memilih selnya. */
+export function selDariKetukan(sektor, jarak, sudutDerajat) {
+  const tampak = sektor.filter((s) => s.op === 1); if (!tampak.length) return null;
+  const jari = Array.from(new Set(tampak.map((s) => s.r))); let rPilih = null, beda = 1e9;
+  jari.forEach((r) => { const b = Math.abs(r - jarak); if (b < beda) { beda = b; rPilih = r; } });
+  if (beda > 14) return null;
+  const sel = tampak.filter((s) => s.r === rPilih); const n = sel[0].n, jalan = sel[0].jalan;
+  const langkah = 360 / n; let i = Math.round(((sudutDerajat % 360) + 360) % 360 / langkah) + jalan; i = ((i % n) + n) % n;
+  return sel.find((s) => s.i === i) || null;
+}
+export const SKALA_DARI_LAPIS = { m15: 'langsung', menit: 'menit', jam: 'jam', hari: 'hari', minggu: 'minggu', bulan: 'bulan', tahun: 'tahun' };
 
 function rkMarginTeks(cocok) {
   const l = hitungLabaRentang(cocok);
@@ -173,7 +201,7 @@ export function susunRingkasan(skala, ix, kini) {
     bulan: [namaBulanPanjang(hari.slice(0, 7)).split(' ')[0], RP(BL.omzet), BL.nota + ' nota' + (blLalu ? ' · ' + namaBlLalu.split(' ')[0] + ' ' + RP(blLalu.omzet) : '')],
     tahun: [hari.slice(0, 4), RP(TH.omzet), TH.hariBuka + ' hari buka · ' + TH.nota + ' nota'],
   };
-  const lapisan = LAPISAN[skala].filter(Boolean).map((p, i) => ({ nama: ['Luar', 'Induk', 'Kakek'][i] + ' · ' + nilaiLapis[p][0], nilai: nilaiLapis[p][1], ket: nilaiLapis[p][2] }));
+  const lapisan = LAPISAN[skala].filter(Boolean).map((p, i) => ({ lapis: p, nama: ['Luar', 'Induk', 'Kakek'][i] + ' · ' + nilaiLapis[p][0], nilai: nilaiLapis[p][1], ket: nilaiLapis[p][2] }));
 
   // umpan: nota hari ini, terbaru dulu
   const petaNota = {}; barisHari.forEach((p) => { const k = rkKunciNota(p); const o = petaNota[k] || (petaNota[k] = { k, jam: p.jam || '', rp: 0, isi: [], cara: bakuCaraBayar(p.caraBayar), nama: p.namaPelanggan || '' }); o.rp += p.hargaTotal || 0; o.isi.push(rkTeksBaris(p)); if ((p.jam || '') > o.jam) o.jam = p.jam; });
