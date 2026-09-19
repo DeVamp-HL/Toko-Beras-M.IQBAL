@@ -101,6 +101,19 @@
 .judul-kelompok .ket { font-family: Jost, sans-serif; font-size: 11px; }
 .baris-wadah { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; }
 .baris-wadah > div:last-child { display: flex; flex-direction: column; gap: 6px; }
+/* panel isi ulang wadah — takar demi takar (dipakai lembar literan di Jual & rincian wadah di Stok) */
+.panel-wadah { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 14px; border: 1px solid var(--kaca-tepi); background: var(--seg); }
+.baris-takar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; min-height: 46px; }
+.baris-takar .kiri { display: flex; flex-direction: column; min-width: 0; } .baris-takar .nm { font-weight: 600; font-size: 13.5px; } .baris-takar .w { font-size: 11px; color: var(--redup); }
+.baris-takar .langkah { display: grid; grid-template-columns: 44px minmax(64px, auto) 44px; gap: 6px; align-items: center; text-align: center; }
+.baris-takar .langkah .kaca-btn { min-height: 44px; font-size: 20px; padding: 0; } .baris-takar .n { font-family: 'Bodoni Moda', Georgia, serif; font-size: 18px; font-variant-numeric: tabular-nums; }
+.baris-takar .n.kg { font-size: 13px; font-family: Jost, sans-serif; color: var(--redup); min-width: 54px; text-align: right; }
+.baris-takar .bawah { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; margin-top: -4px; } .baris-takar .buang { cursor: pointer; text-decoration: underline; font-size: 11px; flex: none; }
+.tombol-baris.rapat { grid-auto-flow: row; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 6px; } .tombol-baris.rapat .kaca-btn { min-height: 38px; font-size: 12.5px; }
+.kaca-btn.mati { opacity: 0.4; } .kaca-btn.emas { background: linear-gradient(160deg, var(--logam1), var(--logam2)); color: #1b1712; font-weight: 600; letter-spacing: 0.04em; }
+.tautan { cursor: pointer; text-decoration: underline; } .ketik-nama.sempit { min-height: 38px; }
+.gb .gulung { fill: var(--seg-aktif); stroke: var(--emas-garis); stroke-width: 1.4; stroke-linejoin: round; } .gb.karung.stok.perlu-isi .kotak, .gb.karung.stok.perlu-isi .gulung { stroke: var(--awas); } .gb.karung.stok.perlu-isi .isi-dalam { fill: var(--awas); opacity: 0.6; }
+.gb.karung.stok.tak-diketahui .kotak { stroke-dasharray: 3 3; opacity: 0.6; }
 /* keranjang & angka */
 .keranjang .b { animation: masuk 420ms cubic-bezier(.2,.8,.2,1); }
 .jual-keranjang.pegas { animation: pegas 520ms cubic-bezier(.2,.8,.2,1); }

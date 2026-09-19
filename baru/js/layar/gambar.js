@@ -36,6 +36,19 @@ export function gambarKarungBuka(id, isi) {
     <path class="kotak" d="M15 20 Q32 26 49 20 Q54 42 50 59 Q32 63 14 59 Q10 42 15 20 Z"/><ellipse class="kotak" cx="32" cy="20" rx="17" ry="4.5"/>
     <path class="serok" d="M40 6 L47 20 M35 17 h14 l-2 8 h-10 z"/></svg>`;
 }
+/**
+ * KARUNG TERBUKA di belakang wadah ("stok wadah", owner 19 Sep): mulut karung digulung ke bawah seperti di toko, isi turun tiap takar diambil.
+ * Belum pernah ditandai → garis putus + "?" (tidak ditebak). Hampir habis → warna awas.
+ */
+export function gambarKarungStok(k) {
+  const c = 'cs_' + idAman(k.merk || 'x');
+  const badan = 'M14 24 Q32 29 50 24 Q55 43 51 59 Q32 63 13 59 Q9 43 14 24 Z';
+  if (!k.diketahui) return `<svg class="gb karung stok tak-diketahui" viewBox="0 0 64 64" aria-hidden="true"><path class="kotak" d="${badan}"/><text x="32" y="48" text-anchor="middle" class="tanya">?</text></svg>`;
+  return `<svg class="gb karung stok ${k.sisaKg <= 5 ? 'perlu-isi' : ''}" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="${c}"><path d="${badan}"/></clipPath></defs>
+    <g clip-path="url(#${c})"><rect class="isi-dalam" x="8" y="24" width="48" height="38" style="transform: scaleY(${bulat2(k.bagian)});"/></g>
+    <path class="kotak" d="${badan}"/><path class="gulung" d="M12 24 Q32 31 52 24 Q54 19 50 17 Q32 23 14 17 Q10 19 12 24 Z"/><path class="bilah" d="M22 34v20M42 34v20"/>
+    <text x="32" y="49" text-anchor="middle" class="ukuran">50</text></svg>`;
+}
 export function gambarChipBarang(c, penuh) {
   const isi = (c.sisa || 0) / penuh; const id = c.jalur + '-' + c.kunci + '-' + (c.berat || '');
   if (c.jalur === 'literan') return c.wadah ? gambarWadah(c.wadah) : gambarKarungBuka(id, isi);

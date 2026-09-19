@@ -1,5 +1,6 @@
 // ADEGAN — animasi cerita di layar Jual (permintaan owner 19 Sep 2026: "biar gua gak gampang bosen waktu di toko").
 //   · literan masuk keranjang  → SEROK dari wadah kotak → dituang ke kantong kertas → diikat → dikemas
+//   · isi ulang wadah          → serok dari KARUNG TERBUKA di belakang → dituang ke kotak wadah, permukaannya naik
 //   · kemasan masuk keranjang  → kemasan jatuh ke keranjang belanja, keranjangnya memantul
 //   · nota dicatat (literan/kemasan) → SERAH TERIMA: dua tangan toko (atas & bawah kemasan) → dua tangan pembeli → jadi UANG
 //   · nota dicatat (karung)    → karung DIANGKUT, tangan pembeli memberi uang ke tangan toko → jadi UANG
@@ -53,6 +54,18 @@ export function adeganSerok({ nama, jumlahTeks, dariKarung, kemasanLiteran, sero
     <g class="jalur-serok">${serok()}</g>
   </svg>`;
   return mainkan(svg, '<b>' + esc(nama) + '</b> · ' + esc(jumlahTeks) + (kemasanLiteran ? ' · dikemas &amp; diikat' : ' · diserok'), lama);
+}
+/** Isi ulang wadah: serok dari KARUNG TERBUKA di belakang → dituang ke KOTAK WADAH, permukaannya naik (menggunung bila lewat rata). */
+export function adeganIsiUlang({ nama, keterangan, serokan, dari, ke }) {
+  const n = Math.max(1, Math.min(3, Number(serokan) || 1)); const satu = 820; const lama = n * satu + 700;
+  const b3 = (x) => Math.round(Math.max(0, Math.min(1, x)) * 1000) / 1000;
+  const svg = `<svg class="adegan serok isi-ulang" viewBox="0 0 320 170" style="--n: ${n}; --satu: ${satu}ms; --total: ${n * satu}ms; --dalam-dari: ${b3(dari.dalam)}; --dalam-ke: ${b3(ke.dalam)}; --gunung-dari: ${b3(dari.gunung)}; --gunung-ke: ${b3(ke.gunung)};">
+    <g transform="translate(86 112)">${karungBuka()}</g>
+    <g transform="translate(232 112)"><g class="wadah-adegan"><path class="gunung-adegan gunung-naik" d="M-44 0 Q-24 -2 -12 -24 Q0 -40 12 -24 Q24 -2 44 0 Z"/><clipPath id="klipIsiWadah"><path d="M-47 0 h94 l-5.6 45 h-82.8 z"/></clipPath><g clip-path="url(#klipIsiWadah)"><rect class="isi-kantong isi-wadah-naik" x="-48" y="0" width="96" height="46"/></g><path class="kotak-adegan kosong" d="M-48 0 h96 l-6 46 h-84 z"/><path class="lipat" d="M-46 16 h92 M-44 32 h88"/></g></g>
+    <g class="butir"><circle cx="232" cy="66" r="2"/><circle cx="226" cy="60" r="1.6"/><circle cx="238" cy="58" r="1.6"/><circle cx="231" cy="52" r="1.4"/></g>
+    <g class="jalur-serok">${serok()}</g>
+  </svg>`;
+  return mainkan(svg, '<b>Isi ulang ' + esc(nama) + '</b> · ' + esc(keterangan), lama);
 }
 /** Kemasan masuk keranjang belanja. */
 export function adeganKemasanMasuk({ nama, ukuran, jumlahTeks }) {

@@ -26,15 +26,19 @@ import { returAwal, cekDrafTukar, dokumenKarantina } from './retur-logika.js';
 export const JALUR = [['sering', 'Sering'], ['literan', 'Literan'], ['kemasan', 'Kemasan'], ['karung', 'Karung'], ['repack', 'Repack'], ['retur', 'Retur']];
 export const JALUR_NANTI = [['wadah', 'Wadah']];   // putaran berikutnya
 export const PECAHAN = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500];
-// ---------- WADAH LITERAN (kotak kayu bergunung) — praktik lapangan, keterangan owner 14 Sep & 19 Sep 2026 ----------
-// Delapan kotak wadah; tiap wadah ±50 kg saat baru diisi (berasnya MENGGUNUNG di atas bibir kotak), diisi ulang begitu
-// berkurang ±40 kg. Literan lain (ketan dll.) diserok langsung dari karung → bukan wadah.
-// INI ALAT UKUR "kapan harus isi ulang", bukan stok: stok literan tetap dipotong dari kolam merek oleh mesin yang sama.
-// Tiga angka di bawah adalah KEBIJAKAN owner — kelak diatur dari layar Stok khusus wadah, bukan dari kode.
+// ---------- WADAH LITERAN (kotak kayu) — praktik lapangan, keterangan owner 13–14 Sep & koreksi 19 Sep 2026 ----------
+// Rantai berasnya di toko:  TUMPUKAN karung 50 kg di gudang → satu KARUNG TERBUKA di belakang wadah ("stok wadah") → KOTAK WADAH → dijual per liter.
+// Wadah diisi ulang TAKAR demi TAKAR (serok 1,8 kg) dari karung terbuka; boleh dicampur beberapa merek dengan perbandingan (2:1, 1:1, …).
+// Rata sejajar bibir kotak = 50 kg; di atas itu MENGGUNUNG sampai ±60 kg; diisi ulang begitu berkurang ±40 kg.
+// Literan lain (ketan dll.) diserok langsung dari karung → bukan wadah.
+// Semua angka di bawah adalah KEBIJAKAN owner — bawaan saja; yang berlaku diatur owner dari layar Stok → Wadah literan.
 export const DAFTAR_WADAH = ['Angsa', 'IR64 Elevate', 'Perahu Layar', 'IR64 Apex', 'IR42 Select', 'IR42 Value', 'Pandan Wangi', 'IR64 Ascent'];
-export const WADAH_PENUH_KG = 50;        // isi wadah tepat sesudah diisi ulang (menggunung)
+export const WADAH_PENUH_KG = 50;        // beras RATA sejajar bibir kotak
+export const WADAH_PUNCAK_KG = 60;       // batas menggunung — lebih dari ini tidak muat
 export const WADAH_ISI_ULANG_KG = 10;    // tersisa segini (sudah berkurang ±40 kg) → saatnya isi ulang
-export const WADAH_RATA_BAGIAN = 0.6;    // di atas 60% isinya masih menggunung; di bawahnya permukaan rata lalu turun
+export const WADAH_TAKAR_KG = 1.8;       // satu serok logam
+export const KARUNG_BELAKANG_KG = 50;    // satu karung utuh yang dibuka di belakang wadah
+export const WADAH_MAKS_RESEP = 6;       // paling banyak enam merek dalam satu campuran
 export const STATUS_PESANAN = { dipesan: 'DIPESAN', diantar: 'DIANTAR', dibayar: 'DIBAYAR', batal: 'BATAL' };
 
 export function keadaanAwal() {
@@ -629,54 +633,200 @@ export function ikatTukar(s, ikat) {
 }
 export function batalTukar(s) { return s.tukar ? { tukar: null, kabar: 'Tukar dibatalkan — returnya TIDAK tercatat; barang di keranjang tetap', kabarAwas: false } : {}; }
 
-// ---------- wadah literan: tinggi isi & penanda isi ulang ----------
+// ---------- wadah literan: tinggi isi, takar isi ulang, karung terbuka di belakangnya ----------
 const cap = (p) => (p.tanggal || '') + ' ' + (p.jam || '');
+const wdAngka = (v) => Math.round(Number(String(v === undefined || v === null ? '' : v).replace(',', '.')) * 100) / 100;
+const wdKG = (n) => String(Math.round(n * 10) / 10).replace('.', ',') + ' kg';
+const wdB2 = (n) => Math.round(n * 100) / 100;
+/** Urutan dua catatan wadah: tanggal+jam dulu; semenit yang sama → id (id = jam mesin saat ditulis, jadi naik terus). */
+function wdSesudah(x, y) {
+  const c = cap(x).localeCompare(cap(y)); if (c) return c > 0;
+  const nx = Number(x.id); const ny = Number(y.id);
+  return isFinite(nx) && isFinite(ny) ? nx > ny : String(x.id) > String(y.id);
+}
+const wdTerbaru = (daftar) => daftar.reduce((a, x) => (!a || wdSesudah(x, a) ? x : a), null);
+
 /**
- * Tinggi isi satu wadah SEKARANG: isi saat terakhir ditandai diisi ulang − literan merek itu yang terjual sesudahnya
- * − literan merek itu yang sedang di keranjang / struk parkir (supaya gunungnya turun begitu barang masuk keranjang).
- * null = merek ini bukan wadah (diserok dari karung). diketahui:false = belum pernah ditandai → layar MENOLAK menggambar isi.
- */
-/**
- * Angka kebijakan wadah yang BERLAKU: dokumen wadahLiteran bertipe 'atur' yang terbaru (diatur owner dari layar Stok → Wadah);
- * belum pernah diatur → bawaan dari keterangan owner 14 & 19 Sep (50 kg · isi ulang saat sisa 10 kg · delapan wadah).
+ * Angka kebijakan wadah yang BERLAKU: dokumen wadahLiteran bertipe 'atur' yang terbaru (diatur owner dari layar Stok → Wadah literan);
+ * belum pernah diatur → bawaan dari keterangan owner (rata 50 kg · menggunung sampai 60 kg · isi ulang saat sisa 10 kg · takar 1,8 kg · delapan wadah).
+ * daftar = URUTAN posisi kotak di toko (W1, W2, …); resep[wadah] = campuran bawaan wadah itu (kosong = merek itu sendiri).
  */
 export function aturWadah() {
-  const a = ambilWadahLiteran().filter((w) => w.tipe === 'atur').sort((x, y) => cap(y).localeCompare(cap(x)) || String(y.id).localeCompare(String(x.id)))[0];
+  const a = wdTerbaru(ambilWadahLiteran().filter((w) => w.tipe === 'atur'));
   const penuhKg = a && Number(a.penuhKg) > 0 ? Number(a.penuhKg) : WADAH_PENUH_KG;
+  // aturan lama (sebelum koreksi 19 Sep) belum punya batas menggunung → sebanding bawaan (60/50 dari isi rata)
+  const puncakKg = a && Number(a.puncakKg) >= penuhKg ? Number(a.puncakKg) : (a ? Math.round(penuhKg * (WADAH_PUNCAK_KG / WADAH_PENUH_KG) * 10) / 10 : WADAH_PUNCAK_KG);
   const isiUlangKg = a && Number(a.isiUlangKg) >= 0 && Number(a.isiUlangKg) < penuhKg ? Number(a.isiUlangKg) : Math.min(WADAH_ISI_ULANG_KG, penuhKg - 1);
+  const takarKg = a && Number(a.takarKg) > 0 ? Number(a.takarKg) : WADAH_TAKAR_KG;
   const daftar = a && Array.isArray(a.daftar) && a.daftar.length ? a.daftar.map(String) : DAFTAR_WADAH.slice();
-  return { penuhKg, isiUlangKg, daftar, dariOwner: !!a, sejak: a ? (a.tanggal || '') : '' };
+  const resep = {}; const mentah = (a && a.resep && typeof a.resep === 'object') ? a.resep : {};
+  daftar.forEach((m) => { const r = Array.isArray(mentah[m]) ? mentah[m].filter((x) => x && x.merk && Number(x.takar) > 0).map((x) => ({ merk: String(x.merk), takar: Math.round(Number(x.takar)) })) : []; if (r.length) resep[m] = r; });
+  return { penuhKg, puncakKg, isiUlangKg, takarKg, daftar, resep, dariOwner: !!a, sejak: a ? (a.tanggal || '') : '' };
 }
-/** Owner mengubah angka kebijakan wadah — dokumen baru bertipe 'atur' (riwayatnya tersimpan; yang terbaru berlaku). */
+/** Campuran bawaan satu wadah: yang disimpan owner, atau 1 takar mereknya sendiri. */
+export function resepWadah(merk) { const r = aturWadah().resep[merk]; return r && r.length ? r.map((x) => ({ merk: x.merk, takar: x.takar })) : [{ merk, takar: 1 }]; }
+
+/** Owner mengubah aturan wadah — dokumen baru bertipe 'atur' berisi SELURUH aturan (riwayatnya tersimpan; yang terbaru berlaku). */
 export function susunAturWadah(isi, w) {
-  const penuh = Math.round(Number(String(isi.penuhKg || '').replace(',', '.')) * 10) / 10; const ulang = Math.round(Number(String(isi.isiUlangKg || '').replace(',', '.')) * 10) / 10;
-  if (!(penuh > 0)) return { tolak: 'Isi wadah saat penuh harus lebih dari 0 kg' };
+  const kini = aturWadah(); const ada = (v) => v !== undefined && v !== null && String(v).trim() !== '';
+  const penuh = Math.round(wdAngka(isi.penuhKg) * 10) / 10;
+  const puncak = ada(isi.puncakKg) ? Math.round(wdAngka(isi.puncakKg) * 10) / 10 : Math.max(penuh, kini.puncakKg);
+  const ulang = Math.round(wdAngka(isi.isiUlangKg) * 10) / 10;
+  const takar = ada(isi.takarKg) ? wdAngka(isi.takarKg) : kini.takarKg;
+  if (!(penuh > 0)) return { tolak: 'Isi wadah saat rata harus lebih dari 0 kg' };
+  if (!(puncak >= penuh)) return { tolak: 'Batas menggunung tidak boleh di bawah isi rata (' + wdKG(penuh) + ')' };
   if (!(ulang >= 0) || ulang >= penuh) return { tolak: 'Batas isi ulang harus di antara 0 dan ' + String(penuh).replace('.', ',') + ' kg' };
+  if (!(takar > 0) || takar > puncak) return { tolak: 'Isi satu takar harus lebih dari 0 kg dan tidak melebihi isi wadah' };
   const daftar = (isi.daftar || []).map((x) => String(x).trim()).filter(Boolean);
   if (!daftar.length) return { tolak: 'Daftar wadah tidak boleh kosong' };
-  return { dokumen: [{ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'atur', penuhKg: penuh, isiUlangKg: ulang, daftar } }],
-    patch: { kabar: 'Aturan wadah disimpan — penuh ' + String(penuh).replace('.', ',') + ' kg · isi ulang saat sisa ' + String(ulang).replace('.', ',') + ' kg · ' + daftar.length + ' wadah', kabarAwas: false } };
+  const kembar = daftar.find((m, i) => daftar.indexOf(m) !== i);
+  if (kembar) return { tolak: kembar + ' tertulis dua kali — satu beras satu wadah' };
+  const resep = {}; const asal = isi.resep === undefined ? kini.resep : (isi.resep || {});
+  for (const m of daftar) {
+    const r = (asal[m] || []).filter((x) => x && x.merk && Number(x.takar) > 0).map((x) => ({ merk: String(x.merk), takar: Math.round(Number(x.takar)) }));
+    if (r.length > WADAH_MAKS_RESEP) return { tolak: 'Campuran ' + m + ' paling banyak ' + WADAH_MAKS_RESEP + ' merek' };
+    if (r.some((x, i) => r.findIndex((y) => y.merk === x.merk) !== i)) return { tolak: 'Campuran ' + m + ' menyebut satu merek dua kali' };
+    if (r.length && !(r.length === 1 && r[0].merk === m && r[0].takar === 1)) resep[m] = r;
+  }
+  return { dokumen: [{ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'atur', penuhKg: penuh, puncakKg: puncak, isiUlangKg: ulang, takarKg: takar, daftar, resep } }],
+    patch: { kabar: 'Aturan wadah disimpan — rata ' + wdKG(penuh) + ' · menggunung sampai ' + wdKG(puncak) + ' · isi ulang saat sisa ' + wdKG(ulang) + ' · 1 takar ' + String(takar).replace('.', ',') + ' kg · ' + daftar.length + ' wadah', kabarAwas: false } };
 }
-export function tinggiWadah(merk, s) {
-  const atur = aturWadah(); const WADAH_PENUH = atur.penuhKg; const WADAH_ULANG = atur.isiUlangKg;
+/** Susunan posisi kotak (murni, tanpa menulis): geser satu langkah, ganti beras di satu posisi, tambah, lepas. */
+export function geserWadah(daftar, i, arah) { const d = daftar.slice(); const j = i + arah; if (i < 0 || j < 0 || i >= d.length || j >= d.length) return d; const t = d[i]; d[i] = d[j]; d[j] = t; return d; }
+export function gantiBerasWadah(daftar, i, merk) { if (!merk || daftar.indexOf(merk) >= 0 || i < 0 || i > daftar.length) return daftar.slice(); const d = daftar.slice(); d[i] = merk; return d; }
+export function lepasWadah(daftar, i) { return daftar.filter((_, k) => k !== i); }
+
+/**
+ * Tinggi isi satu wadah SEKARANG = isi saat terakhir DISAMAKAN dengan kenyataan (dokumen 'isi') + semua TAKAR yang dituang sesudahnya
+ * − literan merek itu yang terjual sesudahnya − literan merek itu yang sedang di keranjang / struk parkir (+ tambahKg = pratinjau takar yang belum dicatat).
+ * null = merek ini bukan wadah (diserok dari karung). diketahui:false = belum pernah disamakan → layar MENOLAK menggambar isi.
+ * Gambar: dalam 0..1 = isi di dalam kotak (1 = RATA sejajar bibir, penuhKg); gunung 0..1 = bagian di atas bibir (1 = puncakKg).
+ */
+export function tinggiWadah(merk, s, tambahKg) {
+  const atur = aturWadah(); const WADAH_PENUH = atur.penuhKg; const WADAH_PUNCAK = atur.puncakKg; const WADAH_ULANG = atur.isiUlangKg;
   if (atur.daftar.indexOf(merk) < 0) return null;
-  const tanda = ambilWadahLiteran().filter((w) => w.wadah === merk && w.tipe === 'isi').sort((a, b) => cap(b).localeCompare(cap(a)) || String(b.id).localeCompare(String(a.id)))[0];
-  if (!tanda) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH };
+  const semua = ambilWadahLiteran();
+  const tanda = wdTerbaru(semua.filter((w) => w.wadah === merk && w.tipe === 'isi'));
+  if (!tanda) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH, puncakKg: WADAH_PUNCAK, takarKg: atur.takarKg };
   const sejak = cap(tanda);
   const terjual = ambilPenjualan().reduce((a, p) => a + (p.jenis === 'literan' && p.merkSumber === merk && cap(p) > sejak ? (p.totalKg || 0) : 0), 0);
+  const dituang = semua.reduce((a, t) => a + (t.tipe === 'takar' && t.wadah === merk && wdSesudah(t, tanda) ? (Number(t.kg) || 0) : 0), 0);
+  const takarAkhir = wdTerbaru(semua.filter((t) => t.tipe === 'takar' && t.wadah === merk && wdSesudah(t, tanda)));
   const literKeranjang = (daftar) => (daftar || []).reduce((a, b) => a + (b.trx.jenis === 'literan' && b.trx.merkSumber === merk ? (b.trx.totalKg || 0) : 0), 0);
   const dipegang = literKeranjang(s && s.keranjang) + ((s && s.antrean) || []).reduce((a, x) => a + literKeranjang(x.beku.items), 0);
-  const isi = Number(tanda.isiKg) || WADAH_PENUH;
-  const sisaKg = Math.round((isi - terjual - dipegang) * 100) / 100;
-  const bagian = Math.max(0, Math.min(1, sisaKg / WADAH_PENUH));
-  return { wadah: true, diketahui: true, penuhKg: WADAH_PENUH, sisaKg: Math.max(0, sisaKg), lewat: sisaKg < 0 ? -sisaKg : 0, bagian,
-    gunung: Math.max(0, Math.min(1, (bagian - WADAH_RATA_BAGIAN) / (1 - WADAH_RATA_BAGIAN))), dalam: Math.max(0, Math.min(1, bagian / WADAH_RATA_BAGIAN)),
-    perluIsi: sisaKg <= WADAH_ULANG, sejakTanggal: tanda.tanggal || '', sejakJam: tanda.jam || '' };
+  const isi = Number(tanda.isiKg) >= 0 && tanda.isiKg !== undefined && tanda.isiKg !== null ? Number(tanda.isiKg) : WADAH_PENUH;
+  const nyata = wdB2(isi + dituang - terjual - dipegang);            // tanpa pratinjau — dasar keputusan "perlu isi ulang"
+  const sisaKg = wdB2(nyata + (Number(tambahKg) || 0));
+  return { wadah: true, diketahui: true, penuhKg: WADAH_PENUH, puncakKg: WADAH_PUNCAK, takarKg: atur.takarKg, sisaKg: Math.max(0, sisaKg), sisaNyataKg: Math.max(0, nyata), lewat: sisaKg < 0 ? wdB2(-sisaKg) : 0,
+    bagian: Math.max(0, Math.min(1, sisaKg / WADAH_PENUH)), dalam: Math.max(0, Math.min(1, sisaKg / WADAH_PENUH)),
+    gunung: WADAH_PUNCAK > WADAH_PENUH ? Math.max(0, Math.min(1, (sisaKg - WADAH_PENUH) / (WADAH_PUNCAK - WADAH_PENUH))) : 0,
+    muatKg: Math.max(0, wdB2(WADAH_PUNCAK - Math.max(0, nyata))), perluIsi: nyata <= WADAH_ULANG,
+    sejakTanggal: tanda.tanggal || '', sejakJam: tanda.jam || '', isiTerakhirTanggal: (takarAkhir || tanda).tanggal || '', isiTerakhirJam: (takarAkhir || tanda).jam || '', dituangKg: wdB2(dituang) };
 }
-/** Tandai wadah baru diisi ulang (penuh, menggunung lagi). Dokumen koleksi wadahLiteran — alat ukur, bukan stok. */
-export function susunIsiUlangWadah(merk, w) {
-  const WADAH_PENUH_KINI = aturWadah().penuhKg;
-  if (aturWadah().daftar.indexOf(merk) < 0) return { tolak: merk + ' bukan wadah kotak — literannya diserok langsung dari karung' };
-  return { dokumen: [{ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: merk, tipe: 'isi', isiKg: WADAH_PENUH_KINI } }],
-    patch: { kabar: 'Wadah ' + merk + ' ditandai PENUH lagi (±' + WADAH_PENUH_KINI + ' kg, menggunung) — dihitung turun dari penjualan literan berikutnya', kabarAwas: false } };
+/** SAMAKAN dengan kenyataan: isi wadah sekarang memang segini (bawaan: rata). Titik hitung baru — takar & penjualan sebelum ini tidak dihitung lagi. */
+export function susunIsiUlangWadah(merk, w, isiKg) {
+  const atur = aturWadah();
+  if (atur.daftar.indexOf(merk) < 0) return { tolak: merk + ' bukan wadah kotak — literannya diserok langsung dari karung' };
+  const kg = isiKg === undefined || isiKg === null || isiKg === '' ? atur.penuhKg : Math.round(wdAngka(isiKg) * 10) / 10;
+  if (!(kg >= 0) || kg > atur.puncakKg) return { tolak: 'Isi wadah harus di antara 0 dan ' + wdKG(atur.puncakKg) + ' (batas menggunung)' };
+  return { dokumen: [{ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: merk, tipe: 'isi', isiKg: kg } }],
+    patch: { kabar: 'Wadah ' + merk + ' disamakan: isinya sekarang ±' + wdKG(kg) + (kg > atur.penuhKg ? ' (menggunung)' : kg === atur.penuhKg ? ' (rata bibir kotak)' : '') + ' — dihitung naik dari takar dan turun dari literan berikutnya', kabarAwas: false } };
+}
+
+/**
+ * KARUNG TERBUKA di belakang wadah ("stok wadah"), per merek: sisa = titik samakan terakhir ('karungIsi') + 50 kg × karung yang dibuka sesudahnya
+ * − semua takar merek itu yang dituang sesudahnya. Belum pernah dibuka/disamakan lewat layar ini → diketahui:false (tidak ditebak).
+ */
+export function karungBelakang(merk) {
+  const semua = ambilWadahLiteran();
+  const dasar = wdTerbaru(semua.filter((k) => k.tipe === 'karungIsi' && k.merk === merk));
+  const buka = semua.filter((k) => k.tipe === 'karung' && k.merk === merk && (!dasar || wdSesudah(k, dasar)));
+  if (!dasar && !buka.length) return { merk, diketahui: false, penuhKg: KARUNG_BELAKANG_KG };
+  const mulai = dasar || buka.reduce((a, x) => (!a || wdSesudah(a, x) ? x : a), null);
+  const masuk = (dasar ? Number(dasar.isiKg) || 0 : 0) + buka.reduce((a, k) => a + (Number(k.kg) || KARUNG_BELAKANG_KG), 0);
+  const diambil = semua.reduce((a, t) => a + (t.tipe === 'takar' && (wdSesudah(t, mulai)) ? (t.sumber || []).reduce((b, x) => b + (x.merk === merk ? (Number(x.kg) || 0) : 0), 0) : 0), 0);
+  const sisa = wdB2(masuk - diambil); const akhir = wdTerbaru(buka.concat(dasar ? [dasar] : []));
+  return { merk, diketahui: true, penuhKg: KARUNG_BELAKANG_KG, sisaKg: Math.max(0, sisa), lewat: sisa < 0 ? wdB2(-sisa) : 0, bagian: Math.max(0, Math.min(1, sisa / KARUNG_BELAKANG_KG)),
+    dibuka: buka.length, sejakTanggal: akhir.tanggal || '', sejakJam: akhir.jam || '' };
+}
+/** Ambil satu karung utuh dari tumpukan gudang, buka di belakang wadah. Alat ukur — buku stok merek TIDAK disentuh (berasnya belum keluar dari toko). */
+export function susunBukaKarung(merk, w) {
+  if (!merk) return { tolak: 'Pilih merek karungnya dulu' };
+  return { dokumen: [{ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karung', merk, kg: KARUNG_BELAKANG_KG } }],
+    patch: { kabar: 'Satu karung ' + merk + ' ' + KARUNG_BELAKANG_KG + ' kg diambil dari tumpukan, dibuka di belakang wadah', kabarAwas: false } };
+}
+/** SAMAKAN karung terbuka dengan kenyataan: sisanya memang segini. */
+export function susunSamakanKarung(merk, isiKg, w) {
+  const kg = Math.round(wdAngka(isiKg) * 10) / 10;
+  if (!merk) return { tolak: 'Pilih merek karungnya dulu' };
+  if (!(kg >= 0) || kg > KARUNG_BELAKANG_KG) return { tolak: 'Sisa karung harus di antara 0 dan ' + KARUNG_BELAKANG_KG + ' kg' };
+  return { dokumen: [{ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk, isiKg: kg } }],
+    patch: { kabar: 'Karung terbuka ' + merk + ' disamakan: sisanya ±' + wdKG(kg), kabarAwas: false } };
+}
+
+/** Beras yang boleh ditaruh di satu kotak wadah: yang punya harga literan dan belum punya wadah. */
+export function calonBerasWadah(daftar) { return ambilHargaLiteran().map((x) => String(x.merk || '')).filter((m, i, a) => m && a.indexOf(m) === i && (daftar || []).indexOf(m) < 0).sort(); }
+/** Merek yang boleh dicampurkan ke wadah: yang menurut buku masih punya beras, di luar yang sudah ada di campuran. */
+export function calonCampur(sudahAda) {
+  const stok = hitungStokKarungPerMerk(); const ada = sudahAda || [];
+  return Object.keys(stok).filter((m) => stok[m].sisaKg > 0 && ada.indexOf(m) < 0).sort();
+}
+/**
+ * TUMPUKAN di gudang (perkiraan) = beras merek itu menurut BUKU − yang sudah di karung terbuka − yang sudah di wadahnya sendiri.
+ * Buku sendiri baru berkurang saat literan TERJUAL, jadi tiga tempat ini berjumlah sama dengan buku — beras yang sama tidak dipotong dua kali.
+ * Campuran lintas merek belum dipindahkan di buku (keputusan owner), jadi angka ini perkiraan; yang tidak diketahui DISEBUT.
+ */
+export function tumpukanGudang(merk) {
+  const buku = hitungStokKarungPerMerk()[merk]; const k = karungBelakang(merk); const w = tinggiWadah(merk, null);
+  if (!buku) return { merk, adaBuku: false };
+  const diBelakang = k.diketahui ? k.sisaKg : 0; const diWadah = w && w.diketahui ? w.sisaNyataKg : 0;
+  const kg = wdB2(buku.sisaKg - diBelakang - diWadah);
+  return { merk, adaBuku: true, bukuKg: buku.sisaKg, diBelakangKg: diBelakang, diWadahKg: diWadah, kg, karung: Math.max(0, Math.floor((kg + 0.0001) / KARUNG_BELAKANG_KG)),
+    lengkap: k.diketahui && (!w || w.diketahui), minus: kg < 0 };
+}
+/** Hitung satu isian takar (belum menulis): kg tiap merek, isi wadah jadinya, karung yang perlu dibuka. */
+export function hitungTakar(merk, baris, s) {
+  const atur = aturWadah(); const w = tinggiWadah(merk, s);
+  const bersih = (baris || []).filter((x) => x && x.merk && Number(x.takar) > 0).map((x) => ({ merk: String(x.merk), takar: Math.round(Number(x.takar)) }));
+  const sumber = bersih.map((x) => { const kg = wdB2(x.takar * atur.takarKg); const k = karungBelakang(x.merk);
+    const kurang = k.diketahui ? kg - k.sisaKg : 0;   // karung yang belum pernah ditandai TIDAK dibuka diam-diam — sisanya memang belum diketahui
+    const buka = kurang > 0.0001 ? Math.ceil((kurang - 0.0001) / KARUNG_BELAKANG_KG) : 0;
+    return { merk: x.merk, takar: x.takar, kg, karung: k, bukaKarung: buka }; });
+  const takar = sumber.reduce((a, x) => a + x.takar, 0); const kg = wdB2(sumber.reduce((a, x) => a + x.kg, 0));
+  const isiBaru = w && w.diketahui ? wdB2(w.sisaNyataKg + kg) : null;
+  return { wadah: w, sumber, takar, kg, isiBaru, lewat: isiBaru !== null && isiBaru > atur.puncakKg + 0.0001, takarKg: atur.takarKg, puncakKg: atur.puncakKg, penuhKg: atur.penuhKg,
+    banding: sumber.length > 1 ? sumber.map((x) => x.takar).join(' : ') : '' };
+}
+/** Berapa kali campuran ini harus diulang supaya wadah sampai targetKg (rata / menggunung) — dibulatkan ke BAWAH, tidak pernah melewati target. */
+export function takarSampai(merk, baris, targetKg, s) {
+  const atur = aturWadah(); const w = tinggiWadah(merk, s); if (!w || !w.diketahui) return null;
+  const dasar = (baris && baris.length ? baris : resepWadah(merk)).filter((x) => Number(x.takar) > 0); const satu = dasar.reduce((a, x) => a + Number(x.takar), 0);
+  if (!satu) return null;
+  // perbandingan dasar = resep dibagi FPB-nya, supaya "2:1 × 8 putaran" tetap 2:1
+  const fpb = (a, b) => (b ? fpb(b, a % b) : a); const g = dasar.reduce((a, x) => fpb(a, Math.round(Number(x.takar))), 0) || 1;
+  const pola = dasar.map((x) => ({ merk: x.merk, takar: Math.round(Number(x.takar)) / g })); const polaTakar = pola.reduce((a, x) => a + x.takar, 0);
+  const putaran = Math.max(0, Math.floor((targetKg - w.sisaNyataKg + 0.0001) / (polaTakar * atur.takarKg)));
+  return pola.map((x) => ({ merk: x.merk, takar: x.takar * putaran }));
+}
+/**
+ * CATAT ISI ULANG: takar-takar ini dituang ke wadah. Satu dokumen 'takar' (+ dokumen 'karung' lebih dulu bila karung terbuka merek itu tidak cukup).
+ * Alat ukur — BUKU stok merek tidak disentuh (literan tetap memotong buku saat TERJUAL; memotongnya lagi di sini = beras yang sama dipotong dua kali).
+ */
+export function susunTakarWadah(merk, baris, w, s) {
+  const atur = aturWadah();
+  if (atur.daftar.indexOf(merk) < 0) return { tolak: merk + ' bukan wadah kotak — literannya diserok langsung dari karung' };
+  const h = hitungTakar(merk, baris, s);
+  if (!h.takar) return { tolak: 'Belum ada takar — ketuk + untuk tiap takar yang dituang' };
+  if (!h.wadah.diketahui) return { tolak: 'Wadah ' + merk + ' belum pernah disamakan dengan kenyataan — tandai dulu isinya sekarang (rata / menggunung / angka), baru takarnya bisa dihitung' };
+  if (h.lewat) return { tolak: 'Isian ini membuat wadah jadi ' + wdKG(h.isiBaru) + ', melebihi ' + wdKG(atur.puncakKg) + ' yang muat. Kurangi takarnya — layar tidak memotong diam-diam.' };
+  if (h.sumber.length > WADAH_MAKS_RESEP) return { tolak: 'Campuran paling banyak ' + WADAH_MAKS_RESEP + ' merek' };
+  const dokumen = [];
+  h.sumber.forEach((x) => { for (let i = 0; i < x.bukaKarung; i++) dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karung', merk: x.merk, kg: KARUNG_BELAKANG_KG, otomatis: true } }); });
+  dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'takar', wadah: merk, takar: h.takar, kgPerTakar: atur.takarKg, kg: h.kg,
+    sumber: h.sumber.map((x) => ({ merk: x.merk, takar: x.takar, kg: x.kg })) } });
+  const dibuka = h.sumber.filter((x) => x.bukaKarung); const buta = h.sumber.filter((x) => !x.karung.diketahui);
+  return { dokumen, hitung: h,
+    patch: { kabar: 'Wadah ' + merk + ' diisi ' + h.takar + ' takar = ' + wdKG(h.kg) + (h.sumber.length > 1 ? ' (' + h.sumber.map((x) => x.merk + ' ' + x.takar).join(' + ') + ')' : '') + ' → isinya ±' + wdKG(h.isiBaru)
+      + (dibuka.length ? ' · karung di belakang habis: ' + dibuka.map((x) => x.bukaKarung + ' karung ' + x.merk).join(', ') + ' diambil dari tumpukan' : '')
+      + (buta.length ? ' · karung terbuka ' + buta.map((x) => x.merk).join(', ') + ' belum pernah ditandai, jadi sisanya belum bisa digambar' : ''), kabarAwas: false } };
 }
