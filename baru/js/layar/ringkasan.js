@@ -131,7 +131,8 @@ export function pasangLayarRingkasan(akar, opsi) {
         el.style.r = s.r + 'px'; el.style.strokeWidth = s.w + 'px'; el.style.strokeDasharray = '0 ' + (2 * Math.PI * s.r).toFixed(2); el.style.strokeDashoffset = s.do + 'px'; el.style.opacity = '0';
         g.appendChild(el); lingkar.set(s.id, el);
       }
-      el.setAttribute('class', 'sektor ' + s.kelas + (s.id === pilihId ? ' dipilih' : ''));
+      const tetapSembunyi = el.style.opacity === '0' && s.op === 0 && !pertama;   // tersembunyi → tersembunyi: pindah tanpa transisi (hemat ±90 transisi per ganti skala)
+      el.setAttribute('class', 'sektor ' + s.kelas + (s.id === pilihId ? ' dipilih' : '') + (tetapSembunyi ? ' diam' : ''));
       const pasang = () => { el.style.r = s.r + 'px'; el.style.strokeWidth = s.w + 'px'; el.style.strokeDasharray = s.da; el.style.strokeDashoffset = s.do + 'px'; el.style.opacity = String(s.op); };
       if (pertama && !document.hidden) { el.style.transitionDelay = (s.op ? Math.min(420, s.i * 9) : 0) + 'ms'; setTimeout(pasang, 40); setTimeout(() => { el.style.transitionDelay = ''; }, 1400); } else pasang();
     });

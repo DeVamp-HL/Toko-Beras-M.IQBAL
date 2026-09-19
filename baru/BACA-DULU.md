@@ -54,6 +54,15 @@ Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko
 - **Wadah literan** (keterangan owner 14 & 19 Sep; foto kotak kayu bergunung): delapan wadah (`DAFTAR_WADAH`), penuh ±50 kg, isi ulang saat tersisa ≤ 10 kg, di atas 60% masih menggunung lalu rata lalu turun (`WADAH_*` — angka KEBIJAKAN owner, kelak diatur dari layar Stok khusus wadah). Tinggi isi = isi saat terakhir **ditandai isi ulang** − literan merek itu yang terjual sesudahnya − literan di keranjang/struk parkir. Tombol "Wadah baru diisi ulang" ada di lembar jumlah literan → dokumen koleksi BARU `wadahLiteran` `{wadah, tipe 'isi', isiKg, tanggal, jam}`. **Alat ukur, BUKAN stok**: stok literan tetap dipotong dari kolam merek oleh mesin yang sama; sistem lama tidak mengenal koleksi ini dan cadangan sistem lama tidak memuatnya. Belum pernah ditandai → kotak bergaris putus bertanda "?" (tidak ditebak penuh); terjual melebihi isi tanda → selisihnya dilaporkan.
 - **Tata letak seperti papan harga toko**: kemasan dikelompokkan per ukuran (5 · 10 · 20 · 25 · … kg), karung per 50/25 kg, tiap kelompok **dari yang termurah**; literan & repack dari yang termurah.
 
+## Putaran 6b (19 Sep 2026) — kinerja di Mac + adegan cerita
+- **Patah-patah di Mac** (`css/kinerja.css`): penyebabnya elemen ber-`backdrop-filter` yang bergerak / berisi gerak (belasan chip kaca buram masuk bergiliran, bola cahaya ber-`filter: blur`, latar `background-attachment: fixed`) → tiap bingkai latar dikaburkan & dicat ulang. Kini kaca buram hanya untuk permukaan besar yang diam (nav bawah, laci keranjang HP); chip/kartu/lembar memakai kaca tanpa buram (`--kaca-chip`, `--kaca-kartu`), latar jadi satu lapisan fixed (`body::after`), bola tanpa blur/transisi, chip `contain: layout paint`. Ringkasan: lapis cincin yang tetap tersembunyi pindah tanpa transisi (kelas `diam`).
+- **Adegan** (`js/layar/adegan.js`, `css/adegan.css`; hanya `transform` & `opacity`, tidak menghalangi ketukan, dilewati saat tab tersembunyi / "kurangi gerakan"):
+  - literan & repack masuk keranjang → **serok** dari wadah kotak (atau karung terbuka) → dituang ke kantong kertas (1–3 serokan menurut kg) → **diikat** → memegas; ≥ 13 L memakai karung kecil.
+  - kemasan masuk keranjang → kemasan berlabel ukurannya jatuh ke **keranjang belanja** yang memantul.
+  - nota dicatat (literan/kemasan) → **serah terima**: dua tangan toko (lengan emas, atas & bawah kemasan) → dua tangan pembeli (lengan platina) → berubah jadi alat bayarnya.
+  - nota dicatat (karung terbesar nilainya) → karung **diangkut** dua tangan → tangan pembeli memberi → tangan toko menerima → jadi alat bayarnya.
+  - Kejujuran: hanya **Tunai** yang jadi uang; **QRIS** = ponsel ber-centang; **BON** = kertas bon bertulis "belum ada uang". Adegan nota hanya main sesudah tulisan SUNGGUH berhasil.
+
 ## Struktur
 ```
 baru/

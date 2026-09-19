@@ -1,0 +1,26 @@
+/* KINERJA — owner 19 Sep: "geraknya kurang mulus di Mac, masih lag / patah-patah".
+   Penyebabnya bukan geraknya, tapi APA yang digerakkan: elemen ber-backdrop-filter (kaca buram) yang bergerak atau punya
+   isi bergerak memaksa peramban mengaburkan ulang latarnya TIAP bingkai. Di rak ada belasan chip kaca buram yang masuk
+   bergiliran + bola cahaya ber-filter blur + latar gradien 'fixed' → tiap bingkai seluruh layar dicat ulang.
+   Aturan: kaca buram hanya untuk permukaan BESAR yang DIAM dan ada isi menggulir di bawahnya (nav bawah, laci keranjang HP).
+   Sisanya memakai kaca tanpa buram (warna tembus yang sedikit lebih pekat) — di atas latar gradien halus tampilannya nyaris sama. */
+body { --kaca-chip: rgba(255,255,255,0.6); --kaca-kartu: rgba(255,255,255,0.56); }
+body.gelap { --kaca-chip: rgba(255,255,255,0.075); --kaca-kartu: rgba(255,255,255,0.07); }
+
+/* latar: satu lapisan fixed yang dikomposit sekali — bukan background-attachment: fixed (dicat ulang tiap gulir) */
+body { background: none; }
+body::after { content: ''; position: fixed; inset: 0; z-index: -3; pointer-events: none; background: linear-gradient(160deg, var(--bg1), var(--bg2) 48%, var(--bg3)); }
+.bola { filter: none; transition: none; }   /* radial-gradient sudah lembut; blur + transisi pada elemen 440px = mahal tanpa beda tampilan */
+
+/* chip & kartu: tanpa buram, dibatasi wilayah catnya */
+.chip { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--kaca-chip); contain: layout paint style; }
+.kartu { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: var(--kaca-kartu); }
+.kartu.hero { background-color: transparent; }   /* hero memakai gradien emasnya sendiri */
+.lembar:not(.tirai) { backdrop-filter: none; -webkit-backdrop-filter: none; }   /* lembar sudah berdasar padat */
+.kabar-nav, .pita-info { backdrop-filter: none; -webkit-backdrop-filter: none; }
+@media (min-width: 720px) { .jual-keranjang { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--kaca-kartu); } }
+@media (min-width: 1100px) { .side { backdrop-filter: none; -webkit-backdrop-filter: none; } }
+
+/* yang bergerak diberi lapisannya sendiri HANYA selama bergerak */
+.chip, .keranjang .b, .kelompok-rak, .lembar:not(.tirai) { backface-visibility: hidden; }
+.gb .isi-dalam, .gb .gunung { will-change: transform; }

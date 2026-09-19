@@ -7,6 +7,7 @@ import * as L from './jual-logika.js';
 import * as RT from './retur-logika.js';
 import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
+import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganKarung } from './adegan.js';
 
 // ---------- GAMBAR BARANG (owner 19 Sep: "gambar sesuaikan sama nama") ----------
 // Semua gambar punya ISI yang naik-turun lewat transform (bisa bertransisi di semua peramban; bentuk path tidak).
@@ -102,10 +103,12 @@ export function pasangLayarJual(akar, opsi) {
     simpan: async () => {
       const r = L.simpanNota(S());
       if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
+      const keranjangTadi = S().keranjang.slice(); const uangTadi = S().cara === 'Tunai' ? S().uang : 0;
       set({ kabar: 'Mencatat…', kabarAwas: false });
       try {
         const h = await tulisDokumen(r.dokumen);
         if (h && h.gagal) return set({ kabar: 'DITOLAK, nota tidak tersimpan: ' + h.pesan, kabarAwas: true });
+        adeganNota(r.nota, keranjangTadi, uangTadi);   // hanya sesudah nota SUNGGUH tercatat — adegan tidak boleh merayakan nota yang ditolak
         set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI (cadangan, tidak ke Firestore) — ' : h && h.antre ? 'Tersimpan di perangkat, menunggu server — ' : 'Tersimpan — ') + r.ringkas }));
       } catch (e) { set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
     },
@@ -165,8 +168,27 @@ export function pasangLayarJual(akar, opsi) {
   // barang masuk keranjang → tetes emas terbang dari tombol yang diketuk ke bilah keranjang, bilahnya memegas
   function masukDenganGerak(patch, el) {
     const dari = el ? tengah(el) : null; const masuk = patch.keranjang && patch.keranjang.length > S().keranjang.length;
+    const baris = masuk ? patch.keranjang[patch.keranjang.length - 1].trx : null;
     set(patch);
-    if (masuk && dari) requestAnimationFrame(() => { const bilah = akar.querySelector('.ringkas-keranjang'); terbangkan(dari, bilah); setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 420); });
+    if (!masuk) return;
+    // ADEGAN (owner 19 Sep): literan/repack = serok → kantong → ikat; kemasan = masuk keranjang belanja; karung cukup saat nota dicatat
+    let lamaAdegan = 0;
+    if (baris.jenis === 'literan' || baris.jenis === 'repacking') {
+      const kg = baris.totalKg || 0; const serokan = kg <= 2 ? 1 : kg <= 6 ? 2 : 3;   // serok ±1,8 kg — digambar paling banyak tiga kali
+      if (adeganSerok({ nama: baris.label, jumlahTeks: DESIMAL(baris.jumlah) + ' ' + baris.satuan, dariKarung: baris.jenis === 'repacking' || L.DAFTAR_WADAH.indexOf(baris.merkSumber) < 0, kemasanLiteran: baris.kemasanLiteran || (baris.jenis === 'repacking' ? 'kantong' : null), serokan })) lamaAdegan = serokan * 820 + 700;
+    } else if (baris.jenis === 'kemasan') {
+      if (adeganKemasanMasuk({ nama: baris.label, ukuran: String(baris.ukuranKemasan).replace('.', ','), jumlahTeks: DESIMAL(baris.jumlah) + ' kemasan' + (baris.bonusUnit ? ' + bonus' : '') })) lamaAdegan = 900;
+    }
+    const mendarat = () => { const bilah = akar.querySelector('.ringkas-keranjang'); if (dari) terbangkan(lamaAdegan ? { x: innerWidth / 2, y: 150 } : dari, bilah); setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 420); };
+    setTimeout(() => requestAnimationFrame(mendarat), lamaAdegan);
+  }
+  // nota dicatat → adegan menurut barang TERBESAR nilainya: karung diangkut, selain itu serah terima (kantong kertas / kemasan)
+  function adeganNota(nota, keranjang, uangDiterima) {
+    const utama = keranjang.slice().sort((a, b) => (b.trx.nilaiBarangPengganti || b.trx.hargaTotal || 0) - (a.trx.nilaiBarangPengganti || a.trx.hargaTotal || 0))[0]; if (!utama) return;
+    const t = utama.trx; const cara = nota.cara; const kembali = cara === 'Tunai' && uangDiterima > nota.tagihan ? 'kembali ' + RP(uangDiterima - nota.tagihan) : nota.bayarSebagian ? 'sisa jadi bon' : '';
+    const data = { cara: nota.bayarSebagian ? 'Tunai' : cara, jumlahRp: RP(nota.bayarSebagian || nota.tagihan), ket: kembali };
+    if (t.jenis === 'karung') adeganKarung(Object.assign(data, { berat: String(t.beratKarungAcuan || 50), banyak: DESIMAL(t.jumlah) + ' karung ' + (t.merkSumber || '') }));
+    else adeganSerahTerima(Object.assign(data, { jenis: t.jenis === 'kemasan' ? 'kemasan' : 'kantong', ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : '' }));
   }
   async function tulisPesanan(r) {
     if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
