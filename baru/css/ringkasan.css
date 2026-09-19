@@ -87,3 +87,5 @@ main.layar-ringkasan.masuk > .kartu:last-child { animation-delay: 300ms; }
   .layar-ringkasan .sektor, .layar-ringkasan .jarum-detik, .layar-ringkasan .kartu.hero, .layar-ringkasan .lapis > div, .layar-ringkasan .pita .seg { transition: none; }
   .layar-ringkasan .kilau.sapu, .layar-ringkasan .ganti-teks, .layar-ringkasan .kartu.hero.mendarat, .layar-ringkasan .umpan .u.baru, main.layar-ringkasan.masuk > * { animation: none; }
 }
+
+.layar-ringkasan .sektor.diam { transition: none; }
