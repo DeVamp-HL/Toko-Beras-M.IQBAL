@@ -11,7 +11,9 @@ main.layar-jual { position: relative; z-index: 1; display: grid; gap: 12px; padd
   grid-template-columns: minmax(0, 1fr); grid-template-areas: "kepala" "pita" "kabar" "rak" "samping"; max-width: 1480px; margin: 0 auto; padding-bottom: 190px; }
 main.layar-jual > .kepala-jual { grid-area: kepala; }
 main.layar-jual > .pita-info.baca-saja { grid-area: pita; }
-main.layar-jual > .pita-info:not(.baca-saja) { grid-area: kabar; cursor: pointer; }
+main.layar-jual > .kabar-kotak { grid-area: kabar; display: flex; flex-direction: column; gap: 8px; }
+main.layar-jual > .kabar-kotak:empty { display: none; }
+.kabar-kotak > .pita-info:not(.urung) { cursor: pointer; }
 main.layar-jual > .jual-rak { grid-area: rak; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 main.layar-jual > .jual-samping { grid-area: samping; min-width: 0; }
 main.layar-jual > .bola { position: fixed; }

@@ -85,3 +85,33 @@ export function wzDiKeranjangParkir(jalur, kunci) {
   }, 0);
 }
 export { bacaCadanganLokal, urutkanTerbaru };
+
+// ---- MENULIS (putaran 2) — satu pintu untuk layar; penulisnya Firestore, atau SIMULASI ke cache saat memakai cadangan ----
+let _penulis = null;   // { tulis(daftar) → Promise<{ok|antre|gagal}>, hapus(daftar) → Promise }
+export function setelPenulis(p) { _penulis = p; }
+export function adaPenulis() { return !!_penulis; }
+/** Terapkan dokumen ke cache lokal (upsert per id) — dipakai simulasi cadangan; Firestore melakukannya sendiri lewat onSnapshot. */
+export function terapkanKeCache(daftar) {
+  const kena = {};
+  daftar.forEach(({ koleksi, data, hapus }) => {
+    const k = KOLEKSI.find((x) => x.nama === koleksi); if (!k) return;
+    const id = String((data && data.id) || hapus);
+    const sisa = _cache[k.cache].filter((d) => String(d.id) !== id);
+    _cache[k.cache] = hapus ? sisa : urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut);
+    kena[koleksi] = true;
+  });
+  Object.keys(kena).forEach((n) => _pendengar.forEach((f) => { try { f(n); } catch (e) { console.error('pendengar data', e); } }));
+}
+/** daftar = [{ koleksi, data }] — semua dokumen satu nota, sekali jalan. */
+export async function tulisDokumen(daftar) {
+  if (_penulis) return _penulis.tulis(daftar);
+  terapkanKeCache(daftar);
+  return { simulasi: true };
+}
+/** daftar = [{ koleksi, id }] */
+export async function hapusDokumen(daftar) {
+  if (_penulis) return _penulis.hapus(daftar);
+  terapkanKeCache(daftar.map((x) => ({ koleksi: x.koleksi, hapus: x.id })));
+  return { simulasi: true };
+}
+

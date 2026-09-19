@@ -7,12 +7,14 @@
 //  - struk yang diparkir MEMEGANG jatah stoknya — "siapa cepat dia dapat" (17 Sep);
 //  - uang kurang → sisanya OTOMATIS jadi bon atas nama pembeli, nama wajib (17 Sep);
 //  - nego hanya menyentuh harga, lantai Rp500 (NEGO_LANTAI live), tercatat di baris;
-//  - putaran ini BACA SAJA: simpan() tidak menulis ke Firestore — ia menolak dengan alasan.
+//  - PUTARAN 2: nota DICATAT dengan bentuk dokumen yang sama persis dengan simpanKeranjangJual() index.html
+//    (potongan dibagi proporsional, pembulatan melekat ke baris terakhir, bayar sebagian = Kredit + pelunasan,
+//    kemasan literan dipakai = dokumen stokBahanLiteran id+1); KR1 untuk bon; batalkan = tandai dibatalkan.
 import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanLiteran, hitungPiutang, stokMaksJalur } from '../mesin/beku.js';
 import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaKarungBerat, hargaKarungUtuh,
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
-import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPelangganCatatan, ambilPesanan, setelKeranjang,
+import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, setelKeranjang,
   wzDiKeranjangParkir, sumberData } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
 
@@ -26,6 +28,7 @@ export function keadaanAwal() {
     keranjang: [], negoId: null, potongan: 0,
     pelanggan: '', cariPelanggan: '', cara: 'Tunai', uang: 0,
     antrean: [], aktifId: 1, idBerikut: 2, urutBaris: 0,
+    kreditDibuka: false, notaTerakhir: null,
     kabar: '', kabarAwas: false, sekarang: null,
   };
 }
@@ -113,12 +116,12 @@ export function bangunBaris(chip, jumlah, s) {
   if (chip.jalur === 'karung') {
     const totalKg = j * chip.berat;
     return { jenis: 'karung', merkSumber: chip.kunci, jumlahKarung: j, beratKarungAcuan: chip.berat, totalKg,
-      namaProduk: chip.kunci + ' (karung utuh)', hargaSatuan: chip.harga, hargaTotal: Math.round(chip.harga * j),
+      namaProduk: chip.kunci + ' (karung utuh)', hargaSatuan: chip.harga, hargaAsli: chip.harga, hargaTotal: Math.round(chip.harga * j),
       hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * totalKg), label: chip.nama + ' ' + chip.berat + ' kg', satuan: 'karung', jumlah: j };
   }
   if (chip.jalur === 'kemasan') {
     return { jenis: 'kemasan', namaProduk: chip.nama, ukuranKemasan: chip.ukuranKg, jumlahUnit: j, totalKg: chip.ukuranKg * j,
-      hargaSatuan: chip.harga, hargaTotal: Math.round(chip.harga * j), hppTotalSaatJual: Math.round((chip.hppPerUnit || 0) * j),
+      hargaSatuan: chip.harga, hargaAsli: chip.harga, hargaTotal: Math.round(chip.harga * j), hppTotalSaatJual: Math.round((chip.hppPerUnit || 0) * j),
       label: chip.nama + ' ' + chip.ukuranKg + ' kg', satuan: 'kemasan', jumlah: j };
   }
   if (chip.jalur === 'literan') {
@@ -127,7 +130,7 @@ export function bangunBaris(chip, jumlah, s) {
     const jenisK = tentukanKemasanLiteran(j); const nK = jenisK ? jumlahKemasanLiteran(j) : 0;
     const biayaK = jenisK ? hargaBahanLiteranEfektif(jenisK, hitungStokBahanLiteran()) * nK : 0;
     return { jenis: 'literan', merkSumber: chip.kunci, namaProduk: chip.kunci, jumlahLiter: j, rasioPakai: rasio, totalKg,
-      hargaSatuan: chip.harga, hargaTotal: Math.round(chip.harga * j), hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * totalKg) + biayaK,
+      hargaSatuan: chip.harga, hargaAsli: chip.harga, hargaTotal: Math.round(chip.harga * j), hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * totalKg) + biayaK,
       kemasanLiteran: jenisK, biayaKemasanLiteran: biayaK, jumlahKemasanLiteranDipakai: nK, label: chip.nama + ' literan', satuan: 'L', jumlah: j };
   }
   return null;
@@ -317,6 +320,28 @@ export function tambahUang(s, pecahan) { return { uang: (s.uang || 0) + pecahan 
 export function uangPas(s) { return { uang: hitungTagihan(s).total }; }
 export function uangKetik(s) { const n = angkaKetik(s.ketik); return n > 0 ? { uang: n, ketik: '' } : {}; }
 
+/** KR1 — sama dengan wzKreditTerkunci() index.html, tanpa DOM; null = boleh. */
+export function alasanKunciKredit(s, totalKredit) {
+  const nama = String(s.pelanggan || '').trim();
+  if (!nama) return 'Isi nama pelanggan untuk penjualan kredit.';
+  if (s.kreditDibuka) return null;   // owner membuka kredit sekali untuk nota ini (jejaknya kreditDibukaOwner)
+  const info = infoKreditPelanggan(nama);
+  if (!info.terdaftar) return nama + ' belum terdaftar di buku Pelanggan — kredit dimatikan (KR1). Isi ciri, catatan, atau rute di kartunya dulu.';
+  if (info.batas <= 0) return 'Belum ada riwayat belanja — batas kredit belum terbentuk (KR1).';
+  if (info.sisa + totalKredit > info.batas) return 'Melewati batas kredit ' + RP(info.batas) + ' (bon ' + RP(info.sisa) + ' + nota ini ' + RP(totalKredit) + ').';
+  return null;
+}
+/** Stok dicek ULANG saat mencatat (bisa berubah sejak dimasukkan): baris pertama yang melampaui langit-langit. */
+export function periksaStokKeranjang(s) {
+  for (const b of s.keranjang) {
+    const chip = chipDariBaris(b.trx); if (!chip) continue;
+    const lain = Object.assign({}, s, { keranjang: s.keranjang.filter((x) => x.id !== b.id) }); sinkronKeranjang(lain);
+    const maks = maksUntuk(chip);
+    if (maks !== null && b.trx.jumlah > maks) { sinkronKeranjang(s); return b.trx.label + ': yang bebas dijual tinggal ' + tulisJumlah(maks, chip) + ', di keranjang ' + tulisJumlah(b.trx.jumlah, chip); }
+  }
+  sinkronKeranjang(s);
+  return '';
+}
 /** Alasan nota belum bisa dicatat — '' kalau sah. */
 export function alasanTolak(s) {
   if (!s.keranjang.length) return 'Keranjang kosong';
@@ -325,12 +350,97 @@ export function alasanTolak(s) {
   if (s.cara === 'Kredit' && !nama) return 'Bon harus ada nama pembelinya';
   if (t.sisaJadiBon && !nama) return 'Uangnya kurang ' + RP(t.kurang) + ' — sisanya jadi bon, pilih nama pembelinya dulu';
   if (s.cara === 'Tunai' && t.uang <= 0) return 'Ketuk uang yang diterima (atau PAS)';
+  if (s.cara === 'Kredit') { const k = alasanKunciKredit(s, t.total); if (k) return k; }   // bayar sebagian TIDAK kena KR1 (seperti live)
   return '';
 }
-/** PUTARAN BACA SAJA: menolak dengan jujur, tidak menulis apa pun. */
-export function simpan(s) {
-  const tolak = alasanTolak(s);
-  if (tolak) return { kabar: tolak, kabarAwas: true };
-  const sumber = sumberData();
-  return { kabar: 'Nota sah (' + RP(hitungTagihan(s).total) + ') — putaran ini BACA SAJA, belum dicatat ke ' + (sumber.jenis === 'firestore' ? 'Firestore' : 'data toko') + '. Catat lewat sistem lama dulu.', kabarAwas: true };
+
+/**
+ * Susun dokumen nota — bentuk & urutan angka PERSIS simpanKeranjangJual() index.html:
+ *   potongan proporsional (sisa ke baris terakhir) → pembulatan melekat ke baris terakhir bernilai →
+ *   uang kurang: semua baris KREDIT + satu pelunasan piutang sebesar uang yang diterima →
+ *   literan berkantong: dokumen stokBahanLiteran {id: id+1, tipe 'pakai'}.
+ * w = { tanggal, jam, idUnik } supaya bisa diuji tanpa jam dinding.
+ */
+export function susunNotaDokumen(s, w) {
+  const items = s.keranjang.map((b) => Object.assign({}, b.trx));
+  const nama = String(s.pelanggan || '').trim();
+  const subtotal = items.reduce((a, t) => a + t.hargaTotal, 0);
+  const pot = Math.max(0, Math.round(s.potongan || 0));
+  const potDipakai = Math.min(pot, subtotal);
+  const totalSetelahPot = subtotal - potDipakai;
+  let cara = bakuCaraBayar(s.cara); const caraAsli = cara;
+  const bulatNota = pembulatanTagihan(totalSetelahPot, cara);
+  const tagihan = totalSetelahPot + bulatNota;
+  let bayarSebagian = 0;
+  const uang = cara === 'Tunai' ? Math.round(s.uang || 0) : 0;
+  if (cara !== 'Kredit' && uang > 0 && uang < tagihan) { bayarSebagian = uang; cara = 'Kredit'; }
+  let terpakai = 0;
+  items.forEach((t, i) => {
+    const bagian = i === items.length - 1 ? potDipakai - terpakai : Math.min(t.hargaTotal, Math.round(potDipakai * t.hargaTotal / (subtotal || 1)));
+    terpakai += bagian;
+    if (bagian > 0) { t.potonganTransaksi = bagian; t.hargaTotal -= bagian; }
+  });
+  if (bulatNota > 0) { for (let i = items.length - 1; i >= 0; i--) { if (items[i].hargaTotal > 0) { items[i].pembulatan = bulatNota; items[i].hargaTotal += bulatNota; break; } } }
+  const totalBayar = items.reduce((a, t) => a + t.hargaTotal, 0);
+  const trxId = w.idUnik();
+  const dokumen = [];
+  items.forEach((t) => {
+    const d = Object.assign({}, t);
+    ['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego'].forEach((k) => { delete d[k]; });
+    d.id = w.idUnik(); d.trxId = trxId; d.tanggal = w.tanggal; d.jam = w.jam; d.caraBayar = cara; d.namaPelanggan = nama;
+    d.hargaAsliSatuan = t.hargaAsli;                                   // harga daftar sebelum tawar (kebal riwayat)
+    if (t.nego) d.negoSelisih = t.hargaSatuan - t.hargaAsli;          // jejak tawar (NG1)
+    if (cara === 'Kredit' && s.kreditDibuka) d.kreditDibukaOwner = true;
+    if (uang > 0 && cara === 'Tunai') { d.uangDiterima = uang; d.kembalian = Math.max(0, uang - totalBayar); }
+    dokumen.push({ koleksi: 'penjualan', data: d });
+    if (d.kemasanLiteran && d.jumlahKemasanLiteranDipakai > 0) {
+      dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: d.id + 1, tipe: 'pakai', jenis: d.kemasanLiteran, jumlah: d.jumlahKemasanLiteranDipakai,
+        hargaTotal: 0, tanggal: w.tanggal, catatan: 'Otomatis dari penjualan literan id ' + d.id } });
+    }
+  });
+  let piutangId = null;
+  if (bayarSebagian > 0) {
+    piutangId = w.idUnik();
+    dokumen.push({ koleksi: 'piutangMutasi', data: { id: piutangId, tipe: 'bayar', namaPelanggan: nama, nominal: bayarSebagian, tanggal: w.tanggal, jam: w.jam,
+      caraBayar: caraAsli, dicatatDi: 'sistem', catatan: 'Dibayar langsung saat beli — sisa ' + RP(totalBayar - bayarSebagian) + ' jadi piutang' } });
+  }
+  const ket = [items.length + ' barang · ' + RP(totalBayar)];
+  if (potDipakai > 0) ket.push('potongan ' + RP(potDipakai));
+  if (bulatNota > 0) ket.push('dibulatkan +' + RP(bulatNota));
+  if (bayarSebagian > 0) ket.push('dibayar ' + RP(bayarSebagian) + ' · BON ' + RP(totalBayar - bayarSebagian) + ' atas nama ' + nama);
+  else if (cara === 'Kredit') ket.push('BON atas nama ' + nama);
+  else if (uang > totalBayar) ket.push('kembalian ' + RP(uang - totalBayar));
+  return { dokumen, trxId, totalBayar, tagihan, bulatNota, potDipakai, bayarSebagian, cara, ringkas: ket.join(' · '),
+    idPenjualan: dokumen.filter((x) => x.koleksi === 'penjualan').map((x) => x.data.id), piutangId };
 }
+
+/** Jam dinding untuk mencatat (dipisah supaya uji bisa memberi jam tetap). */
+export function waktuSekarang(d) {
+  d = d || new Date();
+  return { tanggal: hariIniIso(d), jam: d.toTimeString().slice(0, 5), idUnik: () => Date.now() + Math.random() };
+}
+
+/** Siapkan pencatatan: {tolak} atau {dokumen, patch, ringkas}. Menulisnya urusan layar (lewat toko.tulisDokumen). */
+export function simpanNota(s, w) {
+  const tolak = alasanTolak(s) || periksaStokKeranjang(s);
+  if (tolak) return { tolak };
+  const n = susunNotaDokumen(s, w || waktuSekarang(s.sekarang || undefined));
+  const patch = { keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, lembar: null, ketik: '', kreditDibuka: false,
+    notaTerakhir: { trxId: n.trxId, idPenjualan: n.idPenjualan, piutangId: n.piutangId, pada: Date.now(), ringkas: n.ringkas, nama: String(s.pelanggan || '').trim() },
+    kabar: 'Tersimpan — ' + n.ringkas, kabarAwas: false };
+  return { dokumen: n.dokumen, patch, ringkas: n.ringkas, nota: n };
+}
+
+/** Batalkan nota barusan: tiap baris ditandai dibatalkan (tidak dihapus, seperti mulaiBatalkanTrx live); kantong literan & pelunasan sebagiannya dilepas. */
+export function susunPembatalan(notaTerakhir, alasan) {
+  if (!notaTerakhir) return null;
+  const ids = notaTerakhir.idPenjualan.map(String);
+  const baris = ambilPenjualanSemua().filter((p) => ids.indexOf(String(p.id)) >= 0 && !p.dibatalkan);
+  if (!baris.length) return null;
+  const kini = new Date().toISOString();
+  const dokumen = baris.map((p) => ({ koleksi: 'penjualan', data: Object.assign({}, p, { dibatalkan: true, alasanKoreksi: alasan || 'Diurungkan dari sistem baru', dikoreksiPada: kini, dibatalkanPada: kini }) }));
+  const hapus = baris.filter((p) => p.jenis === 'literan' && p.kemasanLiteran).map((p) => ({ koleksi: 'stokBahanLiteran', id: p.id + 1 }));
+  if (notaTerakhir.piutangId) hapus.push({ koleksi: 'piutangMutasi', id: notaTerakhir.piutangId });
+  return { dokumen, hapus, jumlah: baris.length };
+}
+export const BATAS_URUNGKAN_DETIK = 90;

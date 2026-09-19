@@ -4,7 +4,7 @@ import { h, mentah, gabung, pasang, delegasi } from '../inti/dom.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { RP, ANGKA, DESIMAL, tanggalPendek } from '../inti/format.js';
 import * as L from './jual-logika.js';
-import { sumberData, dengarkan } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -46,7 +46,26 @@ export function pasangLayarJual(akar, opsi) {
     uangPas: () => set(L.uangPas(S())),
     uangKetik: () => set(L.uangKetik(S())),
     hapusUang: () => set({ uang: 0 }),
-    simpan: () => set(L.simpan(S())),
+    simpan: async () => {
+      const r = L.simpanNota(S());
+      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
+      set({ kabar: 'Mencatat…', kabarAwas: false });
+      try {
+        const h = await tulisDokumen(r.dokumen);
+        if (h && h.gagal) return set({ kabar: 'DITOLAK, nota tidak tersimpan: ' + h.pesan, kabarAwas: true });
+        set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI (cadangan, tidak ke Firestore) — ' : h && h.antre ? 'Tersimpan di perangkat, menunggu server — ' : 'Tersimpan — ') + r.ringkas }));
+      } catch (e) { set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+    },
+    bukaKredit: () => set({ kreditDibuka: true, kabar: 'Kredit dibuka sekali untuk nota ini — keputusan owner, tercatat di nota', kabarAwas: false }),
+    batalkanNota: async () => {
+      const p = L.susunPembatalan(S().notaTerakhir, 'Diurungkan dari sistem baru');
+      if (!p) return set({ notaTerakhir: null, kabar: 'Tidak ada nota yang bisa dibatalkan', kabarAwas: true });
+      try {
+        await tulisDokumen(p.dokumen);
+        if (p.hapus.length) await hapusDokumen(p.hapus);
+        set({ notaTerakhir: null, kabar: 'Nota dibatalkan — ' + p.jumlah + ' baris ditandai dibatalkan (tidak dihapus)', kabarAwas: false });
+      } catch (e) { set({ kabar: 'GAGAL membatalkan: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+    },
     bukaPelanggan: () => set({ lembar: 'pelanggan', cariPelanggan: '' }),
     pilihPelanggan: ({ nama }) => set({ pelanggan: nama, lembar: null, cariPelanggan: '', kabar: '' }),
     lepasPelanggan: () => set({ pelanggan: '', kabar: '' }),
@@ -73,6 +92,7 @@ export function pasangLayarJual(akar, opsi) {
     const info = L.infoPelanggan(s.pelanggan);
     // lembar hanya "naik" saat pertama dibuka — tiap ketukan menggambar ulang, jangan mengulang animasinya
     const muncul = s.lembar !== _lembarSebelum ? 'muncul' : ''; _lembarSebelum = s.lembar;
+    const adaUrung = !!(s.notaTerakhir && Date.now() - s.notaTerakhir.pada < L.BATAS_URUNGKAN_DETIK * 1000);
     document.body.classList.toggle('ada-lembar', !!s.lembar && s.lembar !== 'keranjang');
     document.body.classList.toggle('keranjang-terbuka', s.lembar === 'keranjang');
     pasang(akar, h`
@@ -85,8 +105,11 @@ export function pasangLayarJual(akar, opsi) {
           <div class="tombol-mode" data-aksi="mode" title="${opsi.mode() === 'gelap' ? 'Mode terang' : 'Mode gelap'}">${mentah(IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap'])}</div>
         </div>
       </header>
-      <div class="pita-info emas baca-saja">BACA SAJA — angka dari ${sumber.keterangan || 'data toko'}; nota belum bisa dicatat dari sini (putaran berikutnya).</div>
-      ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : ''}" data-aksi="tutupKabar">${s.kabar}</div>` : ''}
+      ${sumber.jenis === 'cadangan' ? h`<div class="pita-info emas baca-saja">SIMULASI — angka dari ${sumber.keterangan}; nota yang dicatat di sini TIDAK masuk Firestore.</div>` : sumber.jenis !== 'firestore' ? h`<div class="pita-info awas baca-saja">Belum tersambung ke data toko — masuk dulu sebagai owner.</div>` : h`<div class="pita-info emas baca-saja">Nota dicatat ke data toko yang sama dengan sistem lama · ${opsi.statusTeks()}</div>`}
+      ${s.kabar || adaUrung ? h`<div class="kabar-kotak">
+        ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : ''}" data-aksi="tutupKabar">${s.kabar}</div>` : ''}
+        ${adaUrung ? h`<div class="pita-info urung"><span>Nota barusan: ${s.notaTerakhir.ringkas}</span><span class="kaca-btn putus" data-aksi="batalkanNota">Batalkan nota barusan</span></div>` : ''}
+      </div>` : ''}
 
       <section class="jual-rak">
         <div class="jalur">
@@ -158,6 +181,7 @@ export function pasangLayarJual(akar, opsi) {
   }
 
   function gambarLembar(s, rak, t, info, muncul) {
+    const sumber = sumberData();
     if (!s.lembar || s.lembar === 'keranjang') return '';
     const L1 = h`<div class="lembar tirai" data-aksi="tutup"></div>`;
     const kepala = (judul, ket) => h`<div style="display: flex; justify-content: space-between; align-items: baseline;"><span class="judul">${judul}</span><span class="ket" style="cursor: pointer; text-decoration: underline;" data-aksi="tutup">tutup</span></div>${ket ? h`<div class="ket">${ket}</div>` : ''}`;
@@ -201,6 +225,7 @@ export function pasangLayarJual(akar, opsi) {
     }
     if (s.lembar === 'bayar') {
       const tolak = L.alasanTolak(s);
+      const kunciKredit = s.cara === 'Kredit' && !t.sisaJadiBon && s.keranjang.length ? L.alasanKunciKredit(s, t.total) : null;
       return h`${L1}<div class="lembar ${muncul}">
         ${kepala('Bayar', s.keranjang.length + ' barang' + (s.pelanggan ? ' · ' + s.pelanggan : ''))}
         <div class="total"><span class="label">Ditagih</span><span class="n">${RP(t.total)}</span></div>
@@ -214,10 +239,12 @@ export function pasangLayarJual(akar, opsi) {
           ${t.sisaJadiBon ? h`<div class="pita-info awas">kurang ${RP(t.kurang)} — sisanya jadi bon atas nama ${s.pelanggan || '… (pilih nama pembelinya)'}. Yang kurang dicatat di buku bon, bukan ditolak, bukan dianggap lunas.</div>` : ''}
 ` : ''}
         ${s.cara === 'QRIS' ? h`<div class="pita-info">QRIS = angka persis, tidak dibulatkan. Yang masuk rekening sudah dipotong MDR — catatan toko, tidak dicetak di struk.</div>` : ''}
-        ${s.cara === 'Kredit' ? h`<div class="pita-info ${s.pelanggan ? '' : 'awas'}">Bon ${s.pelanggan ? 'atas nama ' + s.pelanggan + (info && info.sisa > 0 ? ' — bon lama ' + RP(info.sisa) : '') : 'harus ada nama pembelinya'}${info && info.batas ? ' · biasa belanja ' + RP(info.rataBulanan) + '/bulan' : ''}</div>` : ''}
+        ${s.cara === 'Kredit' ? h`<div class="pita-info ${s.pelanggan ? '' : 'awas'}">Bon ${s.pelanggan ? 'atas nama ' + s.pelanggan + (info && info.sisa > 0 ? ' — bon lama ' + RP(info.sisa) : '') : 'harus ada nama pembelinya'}${info && info.batas ? ' · batas ' + RP(info.batas) + ' (2× belanja bulanan)' : ''}</div>` : ''}
+        ${kunciKredit && s.pelanggan ? h`<div class="pita-info awas">${kunciKredit}</div><div class="kaca-btn putus" data-aksi="bukaKredit">Buka kredit SEKALI untuk nota ini (keputusan owner, tercatat)</div>` : ''}
+        ${s.kreditDibuka && s.cara === 'Kredit' ? h`<div class="ket">kredit dibuka sekali oleh owner — nota membawa tanda kreditDibukaOwner</div>` : ''}
         <div class="kaca-btn" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli'}</div>
         <div class="utama ${tolak ? 'redup' : ''}" data-aksi="simpan">${tolak || 'CATAT NOTA · ' + RP(t.total)}</div>
-        <div class="ket" style="text-align: center;">putaran ini BACA SAJA — tombol ini memeriksa notanya, belum menyimpan</div>
+        <div class="ket" style="text-align: center;">${sumber.jenis === 'cadangan' ? 'SIMULASI — tidak ke Firestore' : 'masuk ke koleksi penjualan yang sama dengan sistem lama; bisa dibatalkan ' + L.BATAS_URUNGKAN_DETIK + ' detik sesudahnya'}</div>
         ${s.cara === 'Tunai' ? h`<div class="bulat"></div><div class="ket">atau ketik nominal uang yang diterima:</div><div class="angka" style="font-size: 20px;">${s.ketik ? RP(L.angkaKetik(s.ketik)) : 'Rp0'}</div>${tuts('uangKetik', 'PAKAI NOMINAL INI')}` : ''}
       </div>`;
     }
@@ -225,6 +252,8 @@ export function pasangLayarJual(akar, opsi) {
   }
 
   K.dengar(gambar);
+  let _jamUrung = null;
+  K.dengar((s) => { clearTimeout(_jamUrung); if (s.notaTerakhir) _jamUrung = setTimeout(gambar, Math.max(0, L.BATAS_URUNGKAN_DETIK * 1000 - (Date.now() - s.notaTerakhir.pada) + 50)); });
   dengarkan(() => { _rak = null; gambar(); });
   gambar();
   return { keadaan: K, gambar };

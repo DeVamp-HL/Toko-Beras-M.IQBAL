@@ -19,7 +19,8 @@ function statusTeks() {
   if (!statusFb.masuk) return 'belum masuk';
   if (statusFb.galat) return 'ada koleksi yang ditolak: ' + statusFb.galat;
   if (statusFb.koleksiSiap < statusFb.koleksiTotal) return 'memuat ' + statusFb.koleksiSiap + '/' + statusFb.koleksiTotal + ' koleksi';
-  return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat' : 'tersambung · ' + statusFb.koleksiTotal + ' koleksi';
+  if (statusFb.menunggu > 0) return 'menunggu server mengaku ' + statusFb.menunggu + ' catatan';
+  return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : 'tersambung · ' + statusFb.koleksiTotal + ' koleksi';
 }
 
 terapkanMode();

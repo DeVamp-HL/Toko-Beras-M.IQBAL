@@ -4,12 +4,20 @@ Tampilan baru di atas **data yang sama** dengan `index.html` (Firestore proyek `
 Hidup berdampingan di alamat `/baru/`; `index.html` tetap alat yang dipakai toko sampai yang baru terbukti.
 Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko**; 17 Sep: *"mulai sambungkan ke data asli"*.
 
-## Putaran 1 (19 Sep 2026) — layar JUAL, baca saja
+## Putaran 1 (19 Sep 2026) — layar JUAL, baca
 - Rak (Sering · Literan · Kemasan · Karung) dibaca dari data toko lewat **mesin beku yang sama** dengan `index.html`.
 - Keranjang, nego, potongan, antrean (struk parkir **memegang** stoknya), bayar (Tunai/QRIS/Bon), nama pembeli, kartu Hari ini.
 - Aturan owner yang dipasang: pembulatan Rp500 ke atas untuk **Tunai dan Bon**, QRIS persis (17 Sep); uang kurang → sisanya jadi bon atas nama (17 Sep); siapa cepat dia dapat (17 Sep).
-- **Tidak menulis apa pun** ke Firestore (nol `setDoc`). Tombol "Catat nota" memeriksa notanya lalu mengaku: putaran ini baca saja.
 - Belum: Wadah, Repack, Retur, Pesanan, cetak struk, dan semua layar lain (masih di sistem lama).
+
+## Putaran 2 (19 Sep 2026) — nota DICATAT
+- Satu pintu tulis `toko.tulisDokumen()` → Firestore `writeBatch` (semua dokumen satu nota masuk bersama; index.html menulis satu per satu) + satu baris `logAktivitas` per dokumen; atribusi `oleh/perangkat/diubah*` persis `simpanKeFirestore()` lama. Tanpa internet: tulisan mengantre di cache tetap Firestore, layar bilang "menunggu server".
+- Bentuk dokumen = `simpanKeranjangJual()` index.html: potongan dibagi proporsional (sisa ke baris terakhir), pembulatan melekat ke baris terakhir bernilai (`pembulatan`), `uangDiterima`/`kembalian` di tiap baris tunai, `hargaAsliSatuan` + `negoSelisih`, `trxId` satu nota; **uang kurang** = semua baris `Kredit` + satu `piutangMutasi` tipe `bayar` sebesar uang yang diterima; literan berkantong = `stokBahanLiteran {id: id+1, tipe 'pakai'}`. Diuji: kunci dokumen yang dihasilkan ⊆ kunci baris nyata di cadangan toko.
+- KR1 untuk bon murni (belum terdaftar / batas belum terbentuk / lewat batas 2× belanja bulanan) — owner bisa **buka kredit sekali** (tanda `kreditDibukaOwner`), tanpa PIN karena ini alat owner sendiri. Bayar sebagian tidak kena KR1 (sama dengan live).
+- Stok dicek ULANG saat mencatat (bisa berubah sejak dimasukkan). Belum ada jalur "tembus stok" — kalau kurang, ditahan.
+- **Batalkan nota barusan** (90 detik): baris ditandai `dibatalkan` + `alasanKoreksi` (tidak dihapus, seperti `mulaiBatalkanTrx` live); kantong literan `id+1` dan pelunasan sebagiannya dilepas.
+- Mode `?cadangan=` = SIMULASI: menulis ke cache lokal saja, dilabeli di layar.
+- Belum: Wadah, Repack, Retur/Tukar, Pesanan → nota, cetak struk, janji bayar, urungkan sesudah 90 detik (lewat sistem lama).
 
 ## Struktur
 ```
@@ -43,7 +51,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | alat | membuktikan |
 |---|---|
 | `alat-uji/pindah_mesin.py --periksa` | tiap mesin di `js/mesin/beku.js` = sidik `alat-uji/beku.sha256` |
-| `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 46 skenario logika Jual di kotak pasir; 11 kontrol positif berbunyi |
+| `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 70 skenario logika Jual (baca + catat + batalkan) di kotak pasir; 20 kontrol positif berbunyi; kunci dokumen vs baris nyata |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
