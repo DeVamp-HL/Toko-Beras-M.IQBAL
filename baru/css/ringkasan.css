@@ -49,3 +49,41 @@ main[hidden] { display: none !important; }
 .layar-ringkasan .jarum { stroke: var(--platina2); stroke-width: 1; opacity: 0.7; }
 .layar-ringkasan .pusat-jam { font-family: "Bodoni Moda", Georgia, serif; font-size: 17px; fill: var(--teks); }
 .layar-ringkasan .pusat-ket { font-size: 9.5px; fill: var(--redup); letter-spacing: 0.08em; }
+
+/* ---------- GERAK (permintaan owner 13 Sep: "lebih interaktif, lebih hidup, ada animasi motion") ----------
+   Elemen layar ini hidup terus (tidak digambar ulang), jadi perubahan nilainya bisa bertransisi. Gerak = kejadian. */
+.layar-ringkasan .sektor { cursor: pointer; transition: r 560ms cubic-bezier(.2,.8,.2,1), stroke-dasharray 560ms cubic-bezier(.2,.8,.2,1), stroke-dashoffset 560ms cubic-bezier(.2,.8,.2,1),
+  stroke-width 480ms cubic-bezier(.2,.8,.2,1), opacity 420ms ease, stroke 320ms ease, stroke-opacity 240ms ease; }
+.layar-ringkasan .cincin.memilih .sektor:not(.dipilih) { stroke-opacity: 0.35; }
+.layar-ringkasan .sektor.dipilih { stroke: var(--emas-tepi); stroke-opacity: 1; filter: drop-shadow(0 0 3px var(--logam-glow)); }
+.layar-ringkasan .cincin { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.layar-ringkasan .jarum-detik { stroke: var(--emas-tepi); stroke-width: 1.6; stroke-linecap: round; transform-box: view-box; transform-origin: 100px 100px;
+  transition: transform 420ms cubic-bezier(.34,1.56,.64,1), opacity 480ms ease; opacity: 0.9; }
+.layar-ringkasan .rk-detail { min-height: 18px; font-size: 11.5px; text-align: center; color: var(--redup); opacity: 0.6; transition: opacity 240ms ease, color 240ms ease; }
+.layar-ringkasan .rk-detail.tampil { opacity: 1; color: var(--teks); font-weight: 600; }
+/* kilau: diam di luar kartu, MENYAPU saat skala berganti atau nota mendarat */
+.layar-ringkasan .kilau { transform: translateX(-130%); }
+.layar-ringkasan .kilau.sapu { animation: rkSapu 1100ms cubic-bezier(.2,.8,.2,1); }
+@keyframes rkSapu { from { transform: translateX(-130%); } to { transform: translateX(130%); } }
+.layar-ringkasan .ganti-teks { animation: ganti 380ms cubic-bezier(.2,.8,.2,1); }
+.layar-ringkasan .kartu.hero { transition: box-shadow 480ms ease, background-color 480ms ease, border-color 480ms ease, transform 480ms cubic-bezier(.2,.8,.2,1); }
+.layar-ringkasan .kartu.hero.mendarat { animation: pegas 520ms cubic-bezier(.2,.8,.2,1); }
+.layar-ringkasan .lapis > div[data-lapis] { cursor: pointer; border-radius: 10px; padding: 2px 4px; margin: -2px -4px; transition: transform 160ms cubic-bezier(.2,.8,.2,1), background-color 240ms ease; }
+.layar-ringkasan .lapis > div[data-lapis]:active { transform: scale(0.97); background-color: var(--seg); }
+.layar-ringkasan .pita .seg { transition: transform 160ms cubic-bezier(.2,.8,.2,1), background-color 220ms ease, color 220ms ease, border-color 220ms ease; }
+.layar-ringkasan .pita .seg:active { transform: scale(0.94); }
+.layar-ringkasan .umpan .u { transition: background-color 480ms ease; }
+.layar-ringkasan .umpan .u.baru { animation: masuk 480ms cubic-bezier(.2,.8,.2,1), hangat 1600ms ease; }
+.layar-ringkasan .tetes-terbang { position: fixed; z-index: 40; }
+.layar-ringkasan .angka-besar { font-variant-numeric: tabular-nums; }
+/* masuk layar: kartu naik bergiliran */
+main.layar-ringkasan.masuk > header, main.layar-ringkasan.masuk > .kartu, main.layar-ringkasan.masuk > .dua { animation: rkNaik 620ms cubic-bezier(.2,.8,.2,1) both; }
+main.layar-ringkasan.masuk > .kartu.hero { animation-delay: 70ms; }
+main.layar-ringkasan.masuk > .kartu:not(.hero) { animation-delay: 160ms; }
+main.layar-ringkasan.masuk > .dua { animation-delay: 230ms; }
+main.layar-ringkasan.masuk > .kartu:last-child { animation-delay: 300ms; }
+@keyframes rkNaik { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .layar-ringkasan .sektor, .layar-ringkasan .jarum-detik, .layar-ringkasan .kartu.hero, .layar-ringkasan .lapis > div, .layar-ringkasan .pita .seg { transition: none; }
+  .layar-ringkasan .kilau.sapu, .layar-ringkasan .ganti-teks, .layar-ringkasan .kartu.hero.mendarat, .layar-ringkasan .umpan .u.baru, main.layar-ringkasan.masuk > * { animation: none; }
+}

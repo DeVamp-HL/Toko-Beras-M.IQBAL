@@ -59,6 +59,13 @@ ok('cincin jam: sel 14 BERJALAN (tepi putus), jam 15–21 rel (belum terjadi) wa
 ok('cincin hari: hari sebelum 25 Agu ABSEN (bukan nol), hari ini berjalan, hari tanpa jualan = rel tipis', sHari[0].kelas === 'absen' && sHari[29].kelas === 'berjalan' && sHari.filter(function (x) { return x.kelas === 'absen'; }).length === 4 && sHari[28].kelas === 'emas', JSON.stringify(sHari.map(function (x) { return x.kelas; })));
 ok('cincin bulan: Jan–Jul absen, Agu emas, Sep berjalan, Okt–Des rel', sBulan.slice(0, 7).every(function (x) { return x.kelas === 'absen'; }) && sBulan[7].kelas === 'emas' && sBulan[8].kelas === 'berjalan' && sBulan.slice(9).every(function (x) { return x.kelas === 'rel'; }), JSON.stringify(sBulan.map(function (x) { return x.kelas; })));
 ok('cincin: tebal ∝ akar nilai dan tak pernah melebihi tebal maksimum lapisnya', sJam.every(function (x) { return x.w <= 13; }) && sHari.every(function (x) { return x.w <= 11; }) && sJam[10 - 0] && sJam.filter(function (x) { return x.kelas === 'emas'; })[0].w > 1.5);
+ok('cincin: KETUJUH lapis selalu ada (147 sel + tahun); yang tak berperan menunggu di luar r=108 (lebih halus dari skala) atau di dalam r=22, opasitas 0', R.sektor.length === 15 + 60 + 17 + 30 + 12 + 12 + 1 && R.sektor.filter(function (x) { return x.lapis === 'menit'; }).every(function (x) { return x.r === 108 && x.op === 0; }) && R.sektor.filter(function (x) { return x.lapis === 'tahun'; }).every(function (x) { return x.r === 22 && x.op === 0; }) && sJam.every(function (x) { return x.op === 1; }), String(R.sektor.length));
+ok('cincin: identitas sel tetap antar skala (lapis:urutan) — syarat cincin bisa BERGESER, bukan digambar ulang', JSON.stringify(R.sektor.map(function (x) { return x.id; })) === JSON.stringify(susunRingkasan('tahun', ix, KINI).sektor.map(function (x) { return x.id; })));
+ok('cincin: sel membawa label & nilai untuk diketuk — hari ke-29 (kemarin) "Jumat, 18 Sep" Rp880.000; sel bulan Agustus 950.000; hari sebelum catatan nilai null', sHari[28].label === 'Jumat, 18 Sep' && sHari[28].nilai === 880000 && sBulan[7].label === 'Agustus 2026' && sBulan[7].nilai === 950000 && sHari[0].nilai === null && sHari[0].keadaan === 'absen', JSON.stringify([sHari[28].label, sHari[28].nilai, sBulan[7].label, sBulan[7].nilai]));
+var kt = selDariKetukan(R.sektor, 86, 0); ok('ketukan: jam 12 di cincin luar = sel BERJALAN (jam 14)', kt && kt.lapis === 'jam' && kt.i === 9, JSON.stringify(kt && [kt.lapis, kt.i]));
+kt = selDariKetukan(R.sektor, 64, -12); ok('ketukan: cincin induk, satu sel ke kiri dari jam 12 = KEMARIN (Jumat, 18 Sep)', kt && kt.lapis === 'hari' && kt.label === 'Jumat, 18 Sep', JSON.stringify(kt && [kt.lapis, kt.label]));
+ok('ketukan: di luar semua cincin (jarak 130) atau di pusat (jarak 10) → tidak memilih apa-apa; lapis tersembunyi tak bisa diketuk', selDariKetukan(R.sektor, 130, 0) === null && selDariKetukan(R.sektor, 10, 0) === null && selDariKetukan(R.sektor, 108, 0) === null);
+ok('lapisan menyebut lapisnya → ketuk "Induk · Hari ini" pindah ke skala hari', R.lapisan[1].lapis === 'hari' && SKALA_DARI_LAPIS[R.lapisan[1].lapis] === 'hari' && SKALA_DARI_LAPIS.m15 === 'langsung');
 R = susunRingkasan('menit', ix, KINI);
 ok('menit: 60 menit terakhir (13:08–14:07) = 200.000 + 40.000 + 60.000 = 300.000, 3 nota; nota 15:30 TIDAK ikut', R.angka === 300000 && /3 nota/.test(R.sub) && /Rp100\.000\/nota/.test(R.sub), JSON.stringify([R.angka, R.sub]));
 ok('menit: pembanding = kemarin jendela yang sama (13:30 → 80.000, 1 nota, +275%)', /kemarin jendela ini 1 nota · Rp80\.000 \(\+275%\)/.test(R.banding), R.banding);
@@ -73,7 +80,7 @@ R = susunRingkasan('bulan', ix, KINI);
 ok('bulan: September berjalan = 5.854.000; Agustus hanya sejak tanggal 25 → MENOLAK membandingkan', R.angka === 3354000 + 1250000 + 250000 + 1000000 * 0 && /Agustus 2026 hanya sejak tanggal 25 · belum bisa dibandingkan/.test(R.banding), R.angka + ' | ' + R.banding);
 ok('bulan: dua lapis saja (bulan · tahun), hari buka dihitung dari hari yang ada jualannya', R.lapisan.length === 2 && /7 hari buka/.test(R.sub), R.sub);
 R = susunRingkasan('tahun', ix, KINI);
-ok('tahun: 2026 · sejak 25 Agustus; 9 hari buka; pembanding tahun lalu DITOLAK dengan sebabnya', /2026 · sejak 25 Agustus/.test(R.judul) && /9 hari buka/.test(R.sub) && /belum ada/.test(R.banding) && R.lapisan.length === 1 && R.sektor.length === 1, R.judul + ' | ' + R.sub + ' | ' + R.banding);
+ok('tahun: 2026 · sejak 25 Agustus; 9 hari buka; pembanding tahun lalu DITOLAK dengan sebabnya', /2026 · sejak 25 Agustus/.test(R.judul) && /9 hari buka/.test(R.sub) && /belum ada/.test(R.banding) && R.lapisan.length === 1 && R.sektor.filter(function (x) { return x.op === 1; }).length === 1, R.judul + ' | ' + R.sub + ' | ' + R.banding);
 ok('tahun: angka = semua baris berlaku 2026 = 5.804.000', R.angka === 5804000, String(R.angka));
 var P = susunPerhatian();
 ok('perhatian: bon belum lunas 1 nama Rp200.000 (tertua ≥ 30 hari → awas); pesanan belum dibayar 1 (1 sudah diantar)', P.some(function (x) { return /Bon belum lunas · 1 nama/.test(x.teks) && x.nilai === 'Rp200.000' && x.awas; }) && P.some(function (x) { return /Pesanan belum dibayar · 1 sudah diantar/.test(x.teks) && x.nilai === '1 pesanan'; }), JSON.stringify(P));
@@ -133,6 +140,9 @@ if __name__ == '__main__':
             'margin tidak menyebut persennya': js.replace("' · ' + pct + '%'", "''"),
             'tebal cincin linear melebihi batas lapis': js.replace("w = Math.max(1.5, wmax * Math.sqrt(Math.min(1, v / d.vmax)));", "w = Math.max(1.5, wmax * 2 * (v / d.vmax));"),
             'sejak-nota-terakhir memakai nota berjam sesudah sekarang': js.replace("return m !== null && m <= menitKini && m > a ? m : a; }, -1);", "return m !== null && m > a ? m : a; }, -1);"),
+            'lapis yang tak berperan ikut tampak (opasitas 1)': js.replace("wmax = idx >= 0 ? WMAX[idx] : 6, op = idx >= 0 ? 1 : 0;", "wmax = idx >= 0 ? WMAX[idx] : 6, op = 1;"),
+            'ketukan memilih sel yang salah (tidak digeser ke sel berjalan)': js.replace("let i = Math.round(((sudutDerajat % 360) + 360) % 360 / langkah) + jalan;", "let i = Math.round(((sudutDerajat % 360) + 360) % 360 / langkah);"),
+            'label sel hari meleset sehari': js.replace("if (nama === 'hari') { const d = rkGeser(kini, -(n - 1 - i));", "if (nama === 'hari') { const d = rkGeser(kini, -(n - i));"),
             'pesanan yang sudah dibayar ikut "belum dibayar"': js.replace("const ps = ambilPesanan().filter(pesananBelumTuntas);", "const ps = ambilPesanan();"),
         }
         kode = 0
