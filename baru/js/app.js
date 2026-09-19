@@ -11,7 +11,15 @@ let mode = (() => { try { return localStorage.getItem(KUNCI_MODE) || 'terang'; }
 let versi = 0;
 let statusFb = { masuk: false, koleksiSiap: 0, koleksiTotal: 0, offline: false, galat: '' };
 
-function terapkanMode() { document.body.classList.toggle('gelap', mode === 'gelap'); }
+// Kelas gelap juga di <html>: Safari iOS 26/27 mewarnai daerah poni/jam dari warna dasar & color-scheme elemen akar,
+// bukan dari theme-color — tanpa ini poninya putih di mode gelap. theme-color ikut diganti untuk peramban lain.
+function terapkanMode() {
+  const gelap = mode === 'gelap';
+  document.body.classList.toggle('gelap', gelap);
+  document.documentElement.classList.toggle('gelap', gelap);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = gelap ? '#111516' : '#eef1f4';
+}
 function gantiMode() { mode = mode === 'gelap' ? 'terang' : 'gelap'; try { localStorage.setItem(KUNCI_MODE, mode); } catch (e) { /* abaikan */ } terapkanMode(); layar.gambar(); }
 function statusTeks() {
   const s = sumberData();
