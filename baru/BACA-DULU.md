@@ -17,7 +17,14 @@ Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko
 - Stok dicek ULANG saat mencatat (bisa berubah sejak dimasukkan). Belum ada jalur "tembus stok" — kalau kurang, ditahan.
 - **Batalkan nota barusan** (90 detik): baris ditandai `dibatalkan` + `alasanKoreksi` (tidak dihapus, seperti `mulaiBatalkanTrx` live); kantong literan `id+1` dan pelunasan sebagiannya dilepas.
 - Mode `?cadangan=` = SIMULASI: menulis ke cache lokal saja, dilabeli di layar.
-- Belum: Wadah, Repack, Retur/Tukar, Pesanan → nota, cetak struk, janji bayar, urungkan sesudah 90 detik (lewat sistem lama).
+- Belum: Wadah, Retur/Tukar, cetak struk, janji bayar, urungkan sesudah 90 detik (lewat sistem lama).
+
+## Putaran 3 (19 Sep 2026) — paritas layar Jual lama
+- **Repacking Dadakan** (jalur `repack`): kg bebas dari kolam karung merek itu (kolam yang sama dengan karung & literan), harga per kg katalog (`cariHargaKarungPerKg`), nama jual bebas (kosong = nama merek). Dokumen `jenis 'repacking'` persis `bangunTrxJualDariForm` 19333: `{merkSumber, namaProduk, totalKg, hppTotalSaatJual, hargaTotal, …}`.
+- **Bonus kemasan +1** (pil di baris keranjang): `bonusUnit 1`, `jumlahUnit` = unit bayar + 1 → stok & HPP ikut, uang tidak (`wzTambahItem` 17633). Langit-langit stok dan pemeriksaan ulang saat mencatat menghitung bonusnya.
+- **Pengganti retur** (pil di baris; cara lama untuk tukar TANPA nota): `penggantiRetur true`, `nilaiBarangPengganti` = nilai, `hargaTotal 0` — omzet & kas Rp0, HPP tetap keluar, baris ini tidak dapat potongan/pembulatan (19383). Penjaga model B: kalau hari ini ada tukar bernota (`tukarModel 'kreditBarang'`), ketukan pertama cuma memperingatkan.
+- **Pesanan** (tombol di keranjang → lembar): catat pesanan baru (bentuk `simpanPesanan` 16224), dipesan → diantar, batalkan; **"catat jualnya"** mengikat keranjang ke pesanan (nama ikut, ikatan ikut diparkir) dan saat nota dicatat, dokumen pesanan `status 'dibayar'` + `trxIdJual` masuk **dalam batch yang sama** (index.html menulisnya terpisah sesudah nota — 16272). Batalkan nota barusan memulihkan statusnya. Pesanan BUKAN uang & BUKAN stok sampai notanya dicatat (G5).
+- Belum: Retur/Tukar (subsistem sendiri — putaran 4), Wadah dijual (fitur baru, mesin laba harus diajari dulu), cetak/kirim struk.
 
 ## Struktur
 ```
@@ -51,7 +58,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | alat | membuktikan |
 |---|---|
 | `alat-uji/pindah_mesin.py --periksa` | tiap mesin di `js/mesin/beku.js` = sidik `alat-uji/beku.sha256` |
-| `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 70 skenario logika Jual (baca + catat + batalkan) di kotak pasir; 20 kontrol positif berbunyi; kunci dokumen vs baris nyata |
+| `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 116 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan) di kotak pasir; 32 kontrol positif berbunyi; kunci dokumen vs baris nyata |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
