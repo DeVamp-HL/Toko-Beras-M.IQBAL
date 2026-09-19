@@ -78,3 +78,6 @@ main.layar-jual > input[type="hidden"] { display: none; }
   .kabar-nav { right: auto; left: 250px; width: 360px; bottom: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { .jual-keranjang, .lembar { transition: none; animation: none; } }
+
+/* lembar & laci Jual bersifat fixed — ikut tersembunyi bersama <main>-nya (display:none pada induk menyembunyikan anak fixed) */
+main[hidden] { display: none !important; }

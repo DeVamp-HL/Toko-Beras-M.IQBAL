@@ -1,0 +1,51 @@
+/* LAYAR RINGKASAN — R2 "Cincin Bersarang" (dikunci owner 13 Sep 2026). Aturan di bawah disalin dari helmet papan R2
+   (yang belum ada di identitas.css), dibatasi ke .layar-ringkasan supaya .sektor dkk. tidak bertabrakan dengan cincin keranjang Jual. */
+main.layar-ringkasan { position: relative; z-index: 1; display: grid; gap: 10px; padding: 14px 14px 110px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr); max-width: 1480px; margin: 0 auto; }
+main[hidden] { display: none !important; }
+.layar-ringkasan .kartu.hero { min-height: 300px; gap: 4px; }
+.layar-ringkasan .badan-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 42%); gap: 8px; align-items: center; margin-top: 2px; }
+.layar-ringkasan .lapis { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.layar-ringkasan .lapis .label { font-size: 8.5px; letter-spacing: 0.14em; }
+.layar-ringkasan .lapis .angka { font-size: 13.5px; }
+.layar-ringkasan .lapis .ket { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.layar-ringkasan .dua { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.layar-ringkasan .kartu.platina { min-height: 84px; }
+.layar-ringkasan .pita .seg { cursor: pointer; }
+.layar-ringkasan .baris.akhir { border-bottom: 0; }
+.layar-ringkasan .baris .awas { color: var(--awas); }
+@media (min-width: 720px) {
+  main.layar-ringkasan { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; padding-bottom: 110px; }
+  .layar-ringkasan .kepala-ringkasan, .layar-ringkasan .kartu.hero { grid-column: 1 / -1; }
+  .layar-ringkasan .badan-hero { grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); }
+  .layar-ringkasan .lapis .angka { font-size: 17px; } .layar-ringkasan .lapis .ket { font-size: 12px; } .layar-ringkasan .lapis .label { font-size: 10px; }
+}
+@media (min-width: 1100px) { main.layar-ringkasan { padding: 22px 28px 40px; } }
+.layar-ringkasan .kilau { position: absolute; z-index: 0; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 42%, var(--kilau) 50%, transparent 58%); }
+.layar-ringkasan .kas { background: linear-gradient(180deg, var(--platina1), var(--platina2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.layar-ringkasan .pita { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; -webkit-overflow-scrolling: touch; }
+.layar-ringkasan .pita::-webkit-scrollbar { display: none; }
+.layar-ringkasan .angka-besar { display: flex; gap: 0; align-items: baseline; line-height: 1.1; }
+.layar-ringkasan .angka-besar .klp:first-child { margin-right: 0.22em; }
+.layar-ringkasan .angka-besar .klp { display: inline-block; }
+.layar-ringkasan .angka-besar .klp.ubah { animation: alir 480ms cubic-bezier(.2,.8,.2,1); }
+.layar-ringkasan .angka-besar.ganti { animation: ganti 200ms ease; }
+.layar-ringkasan .chip-naik { position: absolute; right: 16px; top: 12px; font-size: 12px; font-weight: 600; color: var(--aktif); opacity: 0; pointer-events: none; }
+.layar-ringkasan .chip-naik.tampil { animation: naik 1200ms ease forwards; }
+.layar-ringkasan .baris { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 38px; font-size: 13.5px; font-weight: 500; border-bottom: 1px solid var(--garis); }
+.layar-ringkasan .umpan { display: flex; flex-direction: column; }
+.layar-ringkasan .umpan .u { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 36px; font-size: 12.5px; border-bottom: 1px solid var(--garis); }
+.layar-ringkasan .tetes-terbang { position: absolute; z-index: 4; width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(160deg, var(--logam1), var(--logam2)); box-shadow: 0 0 10px var(--logam-glow); opacity: 0; pointer-events: none; }
+.layar-ringkasan .tetes-terbang.terbang { animation: terbang 480ms cubic-bezier(.2,.8,.2,1) forwards; }
+.layar-ringkasan .menolak { font-size: 12px; color: var(--redup); opacity: 0.7; font-style: italic; }
+.layar-ringkasan .cincin-wadah { display: flex; align-items: center; justify-content: center; }
+.layar-ringkasan .cincin { width: 100%; height: auto; display: block; overflow: visible; }
+.layar-ringkasan .sektor { fill: none; stroke: var(--emas-garis); stroke-linecap: butt; transition: r 560ms cubic-bezier(.2,.8,.2,1), stroke-dasharray 480ms cubic-bezier(.2,.8,.2,1), stroke-dashoffset 480ms cubic-bezier(.2,.8,.2,1), stroke-width 480ms cubic-bezier(.2,.8,.2,1), opacity 300ms ease, stroke 480ms ease; }
+.layar-ringkasan .sektor.berjalan { stroke: var(--emas-tepi); stroke-dasharray: 3 3; opacity: 0.9; }
+.layar-ringkasan .sektor.rel { stroke: var(--rel); }
+.layar-ringkasan .sektor.absen { stroke: var(--rel); }
+.layar-ringkasan .sektor.hantu { stroke: var(--hantu); }
+.layar-ringkasan .sektor.titik { stroke: var(--emas-garis); stroke-linecap: round; }
+.layar-ringkasan .jarum { stroke: var(--platina2); stroke-width: 1; opacity: 0.7; }
+.layar-ringkasan .pusat-jam { font-family: "Bodoni Moda", Georgia, serif; font-size: 17px; fill: var(--teks); }
+.layar-ringkasan .pusat-ket { font-size: 9.5px; fill: var(--redup); letter-spacing: 0.08em; }
