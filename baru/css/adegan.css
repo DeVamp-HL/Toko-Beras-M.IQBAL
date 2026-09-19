@@ -49,6 +49,13 @@
 .adegan.serok .kantong-isi { transform-origin: 50% 100%; animation: pegasPaket 520ms cubic-bezier(.2,.8,.2,1) calc(var(--total) + 420ms) both; }
 @keyframes pegasPaket { 0% { transform: scale(1); } 40% { transform: scale(1.08, 0.94); } 100% { transform: scale(1); } }
 .adegan.serok .kantong-isi.karung-kecil .paket { transform: scale(0.9); }
+/* ---- ISI ULANG: karung terbuka → kotak wadah; isi di dalam kotak naik dulu, lewat rata baru menggunung ---- */
+.adegan.isi-ulang .kotak-adegan.kosong { fill: none; }
+.adegan.isi-ulang .isi-wadah-naik { transform-box: fill-box; transform-origin: 50% 100%; animation: isiWadahNaik var(--total) linear both; }
+@keyframes isiWadahNaik { from { transform: scaleY(var(--dalam-dari)); } to { transform: scaleY(var(--dalam-ke)); } }
+.adegan.isi-ulang .gunung-naik { transform-box: fill-box; transform-origin: 50% 100%; animation: gunungNaik var(--total) linear both; }
+@keyframes gunungNaik { from { transform: scaleY(var(--gunung-dari)); } to { transform: scaleY(var(--gunung-ke)); } }
+.adegan.isi-ulang .wadah-adegan { transform-box: fill-box; transform-origin: 50% 100%; animation: pegasPaket 520ms cubic-bezier(.2,.8,.2,1) calc(var(--total) + 120ms) both; }
 
 /* ---- KEMASAN masuk keranjang ---- */
 .adegan.masuk-keranjang .jatuh { animation: kemasanJatuh 1150ms cubic-bezier(.3,.1,.3,1) both; will-change: transform; }

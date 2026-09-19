@@ -7,9 +7,10 @@ import * as L from './jual-logika.js';
 import * as RT from './retur-logika.js';
 import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
-import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganKarung } from './adegan.js';
+import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganKarung, adeganIsiUlang } from './adegan.js';
 
-import { gambarWadah, gambarChipBarang } from './gambar.js';
+import { gambarChipBarang } from './gambar.js';
+import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -26,18 +27,12 @@ export function pasangLayarJual(akar, opsi) {
   const aksi = {
     jalur: ({ jalur }) => set({ jalur, lembar: null, pilih: null }),
     mode: () => opsi.gantiMode(),
-    chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(L.ketukChip(S(), c)); },
+    chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(Object.assign({ isiW: null }, L.ketukChip(S(), c))); },
     sering: ({ id }) => { const c = rakKini().sering.find((x) => x.id === id); if (c) set(L.ketukChip(S(), c)); },
     tuts: ({ t }) => set(L.tekanTuts(S(), t)),
     preset: ({ n }, el) => masukDenganGerak(L.masukkan(S(), Number(n)), el),
     masukkan: (arg, el) => masukDenganGerak(L.masukkan(S()), el),
-    isiUlangWadah: async ({ merk }) => {
-      const r = L.susunIsiUlangWadah(merk, L.waktuSekarang(S().sekarang || undefined));
-      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
-      try { const h = await tulisDokumen(r.dokumen); if (h && h.gagal) return set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true }); set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar })); }
-      catch (e) { set({ kabar: 'GAGAL menandai isi ulang: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
-    },
-    tutup: () => set({ lembar: null, pilih: null, negoId: null, ketik: '' }),
+    tutup: () => set({ lembar: null, pilih: null, negoId: null, ketik: '', isiW: null }),
     bukaKeranjang: () => set({ lembar: S().lembar === 'keranjang' ? null : 'keranjang' }),
     hapusBaris: ({ id }) => set(L.hapusBaris(S(), id)),
     kurangBaris: ({ id, langkah }) => set(L.ubahJumlahBaris(S(), id, -Number(langkah || 1))),
@@ -155,6 +150,16 @@ export function pasangLayarJual(akar, opsi) {
       set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar }));
     } catch (e) { set({ kabar: 'GAGAL menulis pesanan: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
   }
+  // panel isi ulang wadah (takar demi takar) — penangan bersama dengan layar Stok
+  async function tulisWadah(r) {
+    if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
+    try { const x = await tulisDokumen(r.dokumen); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; }
+      set(Object.assign({}, r.patch, { kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar })); return true; }
+    catch (e) { set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
+  }
+  Object.assign(aksi, aksiPanelWadah({ set, st: S, tulis: tulisWadah, keranjang: S, waktu: () => L.waktuSekarang(S().sekarang || undefined),
+    sesudahCatat: (wadah, r) => { const hsl = r.hitung; const dulu = hsl.wadah; const kini = L.tinggiWadah(wadah, S());
+      adeganIsiUlang({ nama: wadah, keterangan: hsl.takar + ' takar · ' + DESIMAL(hsl.kg) + ' kg' + (hsl.banding ? ' · campur ' + hsl.banding : ''), serokan: Math.ceil(hsl.takar / 8), dari: dulu, ke: kini || dulu }); } }));
   delegasi(akar, aksi);
 
   let _rak = null, _rakUntuk = '', _lembarSebelum = null;
@@ -305,9 +310,7 @@ export function pasangLayarJual(akar, opsi) {
       const preset = c.jalur === 'karung' ? [1, 2, 5, 10] : c.jalur === 'kemasan' ? [1, 2, 3, 5] : c.jalur === 'repack' ? [5, 10, 20, 25] : [1, 2, 5, 10];
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala(c.nama + ' ' + c.ukuran, RP(c.harga) + '/' + c.satuan + ' · bebas dijual ' + (maks === null ? '—' : DESIMAL(maks) + ' ' + c.satuan))}
-        ${c.jalur === 'literan' && c.wadah ? (() => { const w = L.tinggiWadah(c.kunci, s); return h`<div class="baris-wadah"><div class="gambar-chip besar">${mentah(gambarWadah(w))}</div>
-          <div><div class="ket">${!w.diketahui ? 'Wadah ini belum pernah ditandai diisi ulang, jadi isinya belum bisa digambar.' : 'Isi wadah ±' + DESIMAL(w.sisaKg) + ' kg dari ' + w.penuhKg + ' kg · ditandai penuh ' + tanggalPendek(w.sejakTanggal) + ' ' + w.sejakJam + (w.lewat ? ' · sudah terjual ' + DESIMAL(w.lewat) + ' kg LEBIH dari isinya — lupa menandai?' : '')}</div>
-            <div class="kaca-btn ${w.diketahui && !w.perluIsi ? '' : 'aktif'}" data-aksi="isiUlangWadah" data-merk="${c.kunci}">Wadah baru diisi ulang (penuh, menggunung)</div></div></div>`; })() : ''}
+        ${c.jalur === 'literan' && c.wadah ? panelIsiUlang(c.kunci, s, s, { lipat: true }) : ''}
         ${c.jalur === 'repack' ? h`<div class="ket">Jadi produk apa (nama jual di nota) — kosong = nama mereknya</div><input class="ketik-nama" id="namaRepack" type="text" value="${s.namaRepack}" data-ketik="namaRepack" placeholder="${c.nama}">` : ''}
         <div class="tombol-baris">${preset.map((n) => h`<div class="kaca-btn" data-aksi="preset" data-n="${n}">${n} ${c.satuan}</div>`)}</div>
         <div class="label">Jumlah</div><div class="angka">${s.ketik || '0'} <span class="ket">${c.satuan}</span>${s.ketik ? h` <span class="ket">= ${RP(c.harga * L.angkaKetik(s.ketik))}</span>` : ''}</div>

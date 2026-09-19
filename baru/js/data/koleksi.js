@@ -31,7 +31,8 @@ export const KOLEKSI = [
   { nama: 'thrPelanggan',        urut: 'id',    cache: 'thr' },
   { nama: 'pemasokCatatan',      urut: 'id',    cache: 'pemasokCat' },
   // KOLEKSI BARU milik sistem baru (19 Sep 2026) — sistem lama tidak mengenalnya dan cadangan sistem lama TIDAK memuatnya.
-  // Isinya penanda "wadah literan diisi ulang": ALAT UKUR kapan harus isi ulang, BUKAN pencatatan stok/uang (stok literan tetap
-  // dipotong dari kolam merek seperti biasa). Aturan Firestore: jatuh ke aturan umum "owner saja".
+  // Isinya catatan wadah literan: samakan isi, TAKAR isi ulang (dengan merek asalnya), karung yang dibuka di belakang wadah, dan aturan
+  // owner (posisi, campuran, angka). ALAT UKUR kapan harus isi ulang, BUKAN pencatatan stok/uang (stok literan tetap dipotong dari
+  // kolam merek saat TERJUAL). Aturan Firestore: jatuh ke aturan umum "owner saja".
   { nama: 'wadahLiteran',        urut: 'id',    cache: 'wadah' },
 ];

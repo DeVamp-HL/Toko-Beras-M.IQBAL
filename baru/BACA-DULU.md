@@ -73,6 +73,16 @@ Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko
 - Barang masuk · Adukan · Cocokkan · keputusan karantina masih lewat sistem lama (layar kerja ST1–ST6 menyusul).
 - `gambar.js` = gambar barang bersama (Jual & Stok). `index.html`: penjaga muat-ulang SEKALI bila peramban memegang campuran modul lama & baru sesudah terbit.
 
+## Putaran 8 (19 Sep 2026) — wadah literan diisi TAKAR demi TAKAR (koreksi owner)
+Praktik toko (pesan owner 13–14 Sep, dikoreksi 19 Sep dengan foto): **tumpukan karung 50 kg di gudang → satu karung terbuka di belakang wadah ("stok wadah") → kotak wadah → dijual per liter**. Wadah diisi ulang dengan serok 1,8 kg, boleh dicampur beberapa merek (2 : 1, 1 : 1, …).
+- **Gambar**: 50 kg = beras RATA sejajar bibir kotak; di atas itu MENGGUNUNG sampai 60 kg; di bawahnya permukaan turun. (Dulu 50 kg digambar menggunung.)
+- **Lembar literan di Jual**: tombol "Wadah baru diisi ulang" diganti panel **− / + takar** (dilipat; dibuka dengan satu ketukan supaya tuts jual tidak terdorong) + "sampai rata" / "sampai menggunung" / "+ campur merek lain" + **ISI ULANG · CATAT n TAKAR**. Gambar wadah ikut naik selagi + diketuk (pratinjau); yang memutuskan "perlu isi ulang" tetap isi nyata. Isian yang melewati batas menggunung DITOLAK, tidak dipotong diam-diam.
+- **Karung di belakang wadah** (per merek): tiap takar mengurangi karung terbuka merek ASALNYA; karungnya habis → satu karung baru otomatis diambil dari tumpukan (dokumen `karung`, ditulis lebih dulu, disebut di kabar). Karung yang belum pernah ditandai TIDAK dibuka diam-diam — sisanya "?".
+- **Stok → Wadah literan** (S15): petak **W1–W8 menurut posisi di toko**, tiap petak = karung terbuka di belakang + kotak wadah di depan; rincian: sisa karung, perkiraan tumpukan gudang (= buku − karung terbuka − isi wadah), buka karung baru, samakan. **Atur susunan**: ‹ › memindah posisi, ketuk nama mengganti beras, tambah/lepas wadah, campuran bawaan per wadah, dan empat angka (rata, batas menggunung, batas isi ulang, isi satu takar).
+- **Alat ukur, bukan buku**: buku stok merek tetap baru berkurang saat literan TERJUAL (mesin beku tak disentuh) — memotongnya lagi saat isi ulang = beras yang sama dipotong dua kali. Tiga tempat (tumpukan + karung terbuka + wadah) berjumlah sama dengan buku. Sumber tiap takar dicatat per merek, supaya keputusan owner soal **memindahkan buku untuk campuran lintas merek** kelak bisa diterapkan.
+- Dokumen `wadahLiteran`: `isi` (samakan wadah) · `takar` {wadah, takar, kgPerTakar, kg, sumber[{merk, takar, kg}]} · `karung` {merk, kg 50} · `karungIsi` (samakan karung) · `atur` {penuhKg, puncakKg, isiUlangKg, takarKg, daftar berurut, resep}. Aturan lama tanpa `puncakKg` → sebanding bawaan (60/50 × rata).
+- Adegan baru `adeganIsiUlang`: serok dari karung terbuka ke kotak wadah, permukaannya naik dari isi lama ke isi baru.
+
 ## Struktur
 ```
 baru/
@@ -105,9 +115,9 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | alat | membuktikan |
 |---|---|
 | `alat-uji/pindah_mesin.py --periksa` | tiap mesin di `js/mesin/beku.js` = sidik `alat-uji/beku.sha256` |
-| `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 171 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan + retur & tukar) + tata letak & wadah literan) di kotak pasir; 66 kontrol positif berbunyi; kunci dokumen vs baris nyata & vs yang ditulis index.html |
+| `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 197 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan + retur & tukar + tata letak + wadah literan: takar, karung di belakang, campuran, susunan) di kotak pasir; 86 kontrol positif berbunyi; kunci dokumen vs baris nyata & vs yang ditulis index.html |
 | `alat-uji/uji_ringkasan_baru.py` (+ `--kontrol`) | 28 skenario logika Ringkasan (jam tetap, zona waktu dikunci WIB) + 14 kontrol; di cadangan toko: omzet hari/bulan/tahun = jumlah langsung barisnya |
-| `alat-uji/uji_stok_baru.py` (+ `--kontrol`) | 19 skenario logika Stok (jam & zona waktu dikunci) + 12 kontrol; di cadangan toko: nilai stok layar = mesin neraca |
+| `alat-uji/uji_stok_baru.py` (+ `--kontrol`) | 24 skenario logika Stok (jam & zona waktu dikunci) + 18 kontrol; di cadangan toko: nilai stok layar = mesin neraca |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
