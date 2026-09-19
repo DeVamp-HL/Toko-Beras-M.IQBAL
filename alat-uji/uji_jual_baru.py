@@ -113,7 +113,7 @@ ok('Pak Budi minta 10 → ditolak, kalimat menyebut BU ANI memegang 250 kg', /be
 terap({ ketik: '3' }); terap(masukkan(s)); ok('3 karung boleh untuk pembeli kedua', s.keranjang.length === 1);
 ok('literan Angsa juga berkurang karena kolam kg sama: (700 − 250 − 150) / 0,82', chip('literan', 'Angsa').sisa === Math.floor(300 / 0.82 * 10) / 10, chip('literan', 'Angsa').sisa);
 terap(pakaiAntrean(s, 1)); ok('membuka struk Bu Ani MEMARKIR yang sedang jalan (bukan dibuang) dan memulihkan 5 karung', s.keranjang.length === 1 && s.keranjang[0].trx.jumlahKarung === 5 && s.pelanggan === 'Bu Ani' && s.antrean.length === 1 && s.antrean[0].beku.items[0].trx.jumlahKarung === 3, JSON.stringify(s.antrean));
-terap(buangAntrean(s, s.antrean[0].id)); ok('buang struk → stoknya bebas lagi: 14 − 5 aktif = 9', s.antrean.length === 0 && chip('karung', 'Angsa', 50).sisa === 9);
+terap(buangAntrean(s, s.antrean.length ? s.antrean[0].id : 0)); ok('buang struk → stoknya bebas lagi: 14 − 5 aktif = 9', s.antrean.length === 0 && chip('karung', 'Angsa', 50).sisa === 9);
 terap(pembeliLain(s)); ok('pembeli lain = parkir', s.antrean.length === 1 && s.keranjang.length === 0);
 
 // ---- pelanggan & hari ini
@@ -123,7 +123,7 @@ var hi = hariIni(s); ok('hari ini 19 Sep: 2 baris, 2 nota, omzet 834.000, Tunai 
 
 // ================= PUTARAN 2: MENCATAT NOTA (bentuk dokumen = simpanKeranjangJual index.html) =================
 var __id = 1000; var W = { tanggal: '2026-09-19', jam: '10:15', idUnik: function () { __id += 1; return __id; } };
-function mulaiNota() { terap({ keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, kreditDibuka: false, antrean: [], lembar: null, notaTerakhir: null }); }
+function mulaiNota() { terap({ keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, kreditDibuka: false, antrean: [], lembar: null, notaTerakhir: null, pesananId: null, namaRepack: '', penggantiTanya: null, ketik: '' }); }
 // A. tunai + potongan + pembulatan: literan 1,3 L (17.550) + Kembang 5 kg (72.000) = 89.550; potongan 1.000 → 88.550 → bulat +450 = 89.000; uang 100.000
 mulaiNota(); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '1,3' }); terap(masukkan(s)); terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '1' }); terap(masukkan(s));
 terap(setelPotongan(s, 1000)); terap(tambahUang(s, 100000));
@@ -169,6 +169,79 @@ terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'sX', tanggal: '2026-09-19'
 R = simpanNota(s, W); ok('F: 2 karung terjual di perangkat lain → mencatat 14 DITAHAN: bebas tinggal 12', /bebas dijual tinggal 12 karung/.test(R.tolak || ''), R.tolak);
 terapkanKeCache([{ koleksi: 'penjualan', hapus: 'sX' }]);
 
+// ================= PUTARAN 3: paritas Jual lama =================
+W.kini = '2026-09-19T03:15:00.000Z';
+// H. REPACKING DADAKAN: kg bebas dari kolam karung, harga per kg katalog, nama jual bebas
+mulaiNota(); rak = susunRak(s);
+ok('H: rak repack = merek berharga per kg: Angsa 13.800/kg & Apex 14.600/kg, satuan kg, sisa Angsa ±700 kg', rak.repack.length === 2 && rak.repack[0].kunci === 'Angsa' && rak.repack[0].harga === 13800 && rak.repack[0].satuan === 'kg' && rak.repack[0].sisa === 700, JSON.stringify(rak.repack));
+terap(ketukChip(s, chip('repack', 'Angsa'))); terap(tekanTuts(s, '1')); terap(tekanTuts(s, '2')); terap(tekanTuts(s, ',')); terap(tekanTuts(s, '5'));
+ok('H: tuts koma boleh untuk repack (12,5)', s.ketik === '12,5', s.ketik);
+terap({ namaRepack: 'Angsa eceran 12,5' }); terap(masukkan(s));
+ok('H: baris repacking {jenis repacking, merkSumber Angsa, namaProduk dari ketikan, totalKg 12,5, hargaTotal 172.500, HPP 12,5 × hpp/kg}', s.keranjang.length === 1 && s.keranjang[0].trx.jenis === 'repacking' && s.keranjang[0].trx.merkSumber === 'Angsa' && s.keranjang[0].trx.namaProduk === 'Angsa eceran 12,5' && s.keranjang[0].trx.totalKg === 12.5 && s.keranjang[0].trx.hargaTotal === 172500 && s.keranjang[0].trx.hppTotalSaatJual === Math.round(chip('repack', 'Angsa').hppPerKg * 12.5) && s.namaRepack === '', JSON.stringify(s.keranjang[0].trx));
+ok('H: kolam kg SAMA — chip karung Angsa 50 bebas 13 (687,5 kg), literan & repack ikut turun', chip('karung', 'Angsa', 50).sisa === 13.5 && chip('repack', 'Angsa').sisa === 687.5 && chip('literan', 'Angsa').sisa === Math.floor(687.5 / 0.82 * 10) / 10, chip('karung', 'Angsa', 50).sisa + '/' + chip('repack', 'Angsa').sisa);
+terap(ketukChip(s, chip('repack', 'Angsa'))); terap({ ketik: '700' }); p = masukkan(s); ok('H: minta 700 kg padahal bebas 687,5 → ditolak', s.keranjang.length === 1 && /bebas dijual sekarang 687,5 kg/.test(p.kabar), p.kabar); terap({ lembar: null, pilih: null, ketik: '' });
+terap(ubahJumlahBaris(s, s.keranjang[0].id, 1)); ok('H: +1 kg → 13,5 kg, nama jual dipertahankan', s.keranjang[0].trx.totalKg === 13.5 && s.keranjang[0].trx.namaProduk === 'Angsa eceran 12,5' && s.keranjang[0].trx.hargaTotal === 186300, JSON.stringify(s.keranjang[0].trx));
+terap(uangPas(s)); pj = susunNotaDokumen(s, W).dokumen[0].data;
+ok('H: dokumen repacking = bentuk index.html 19333: {jenis, merkSumber, namaProduk, totalKg, hppTotalSaatJual, hargaTotal, hargaAsliSatuan} tanpa jumlahKarung/jumlahLiter', pj.jenis === 'repacking' && pj.totalKg === 13.5 && pj.hargaAsliSatuan === 13800 && !('jumlahKarung' in pj) && !('jumlahLiter' in pj) && !('jumlah' in pj) && !('label' in pj), JSON.stringify(pj));
+terap(ketukChip(s, chip('repack', 'IR64 Apex'))); terap({ ketik: '5' }); terap(masukkan(s)); ok('H: tanpa nama ketikan → nama jual = merek', s.keranjang[1].trx.namaProduk === 'IR64 Apex' && s.keranjang[1].trx.label === 'Repack IR64 Apex', s.keranjang[1].trx.label);
+ok('H: ringkasan hari ini mengenal repacking', /^Repack /.test((function () { terapkanKeCache([{ koleksi: 'penjualan', data: Object.assign({}, pj, { id: 'sR', tanggal: '2026-09-19' }) }]); var r = hariIni(s).terakhir.find(function (x) { return /Repack/.test(x.teks); }); terapkanKeCache([{ koleksi: 'penjualan', hapus: 'sR' }]); return r ? r.teks : ''; })()));
+// I. BONUS kemasan +1: stok & HPP ikut, uang tidak
+mulaiNota(); terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '10' }); terap(masukkan(s)); id = s.keranjang[0].id;
+terap(toggleBonus(s, id)); var tb = s.keranjang[0].trx;
+ok('I: bonus → jumlahUnit 11, totalKg 55, HPP 11 × 66.000, hargaTotal TETAP 10 × 72.000, bonusUnit 1', tb.jumlahUnit === 11 && tb.totalKg === 55 && tb.hppTotalSaatJual === 726000 && tb.hargaTotal === 720000 && tb.bonusUnit === 1 && tb.jumlah === 10, JSON.stringify(tb));
+ok('I: stok Kembang bebas 37 − 11 = 26 (bonus memotong stok)', chip('kemasan', 'Kembang|5').sisa === 26, chip('kemasan', 'Kembang|5').sisa);
+terap(ubahJumlahBaris(s, id, 1)); ok('I: +1 unit bayar → 11 bayar + 1 bonus = 12 unit, uang 11 × 72.000', s.keranjang[0].trx.jumlahUnit === 12 && s.keranjang[0].trx.hargaTotal === 792000 && s.keranjang[0].trx.bonusUnit === 1, JSON.stringify(s.keranjang[0].trx));
+terap(ubahJumlahBaris(s, id, 25)); ok('I: 36 bayar + 1 bonus = 37 = pas stok → boleh', s.keranjang[0].trx.jumlahUnit === 37, JSON.stringify(s.keranjang[0].trx));
+p = ubahJumlahBaris(s, id, 1); ok('I: 37 bayar + bonus = 38 > 37 → ditolak, kalimat menyebut termasuk bonus', /termasuk bonus/.test(p.kabar) && s.keranjang[0].trx.jumlahUnit === 37, p.kabar);
+terap(toggleBonus(s, id)); ok('I: bonus dilepas → 36 unit, tanpa bonusUnit', s.keranjang[0].trx.jumlahUnit === 36 && !('bonusUnit' in s.keranjang[0].trx), JSON.stringify(s.keranjang[0].trx));
+terap(ubahJumlahBaris(s, id, 1)); p = toggleBonus(s, id); ok('I: 37 bayar, minta bonus → stok tidak cukup, ditolak', /Bonus butuh 1 unit lagi/.test(p.kabar) && !s.keranjang[0].trx.bonusUnit, p.kabar);
+terap(ubahJumlahBaris(s, id, -35)); terap(toggleBonus(s, id)); terap(terapkanNego(s, id, 70000)); ok('I: nego pada baris berbonus: uang 2 × 70.000, unit tetap 3', s.keranjang[0].trx.hargaTotal === 140000 && s.keranjang[0].trx.jumlahUnit === 3, JSON.stringify(s.keranjang[0].trx));
+terap(uangPas(s)); pj = susunNotaDokumen(s, W).dokumen[0].data; ok('I: dokumen membawa bonusUnit 1, jumlahUnit 3, hargaTotal 140.000, negoSelisih −2.000', pj.bonusUnit === 1 && pj.jumlahUnit === 3 && pj.hargaTotal === 140000 && pj.negoSelisih === -2000, JSON.stringify(pj));
+ok('I: 140.000 pas; stok cukup → periksaStokKeranjang diam', periksaStokKeranjang(s) === '' && !simpanNota(s, W).tolak);
+terap(ubahJumlahBaris(s, id, 34)); terap(uangPas(s)); ok('I: 36 bayar + 1 bonus = 37 = pas stok', s.keranjang[0].trx.jumlahUnit === 37);
+terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'sY', tanggal: '2026-09-19', jam: '10:20', caraBayar: 'Tunai', namaPelanggan: '', jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, totalKg: 5, hargaTotal: 72000, hppTotalSaatJual: 66000 } }]);
+ok('I: 1 unit terjual di perangkat lain → 36 bayar + bonus = 37 > 36: mencatat DITAHAN, kalimat menyebut termasuk bonus', /termasuk bonus/.test(simpanNota(s, W).tolak || '') && /tinggal 36 kemasan/.test(simpanNota(s, W).tolak || ''), simpanNota(s, W).tolak);
+terapkanKeCache([{ koleksi: 'penjualan', hapus: 'sY' }]);
+// J. PENGGANTI RETUR: omzet & kas Rp0, nilai barang jadi jejak, HPP tetap, tanpa pembulatan
+mulaiNota(); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '1,3' }); terap(masukkan(s)); id = s.keranjang[0].id;
+terap(togglePenggantiRetur(s, id)); var tp = s.keranjang[0].trx;
+ok('J: hargaTotal 0, nilaiBarangPengganti 17.550, penggantiRetur true, HPP tetap', tp.hargaTotal === 0 && tp.nilaiBarangPengganti === 17550 && tp.penggantiRetur === true && tp.hppTotalSaatJual > 0, JSON.stringify(tp));
+t = hitungTagihan(s); ok('J: tagihan 0 → tanpa pembulatan; nota tunai tanpa uang SAH (tidak ada yang ditagih)', t.total === 0 && t.bulat === 0 && alasanTolak(s) === '', alasanTolak(s));
+terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '1' }); terap(masukkan(s)); terap(uangPas(s)); N = susunNotaDokumen(s, W); pj = N.dokumen.map(function (x) { return x.data; });
+ok('J: pembulatan 0 (72.000 pas); baris pengganti tidak dapat potongan/pembulatan; baris kemasan normal', pj[0].hargaTotal === 0 && !('pembulatan' in pj[0]) && pj[1].hargaTotal === 72000 && N.totalBayar === 72000, JSON.stringify(pj));
+terap(setelPotongan(s, 1000)); N = susunNotaDokumen(s, W); pj = N.dokumen.map(function (x) { return x.data; });
+ok('J: potongan 1.000 semua ke baris bernilai (72.000 → 71.000), baris Rp0 tetap 0; bulat +0 (71.000 pas)', !('potonganTransaksi' in pj[0]) && pj[1].potonganTransaksi === 1000 && pj[1].hargaTotal === 71000 && /1 pengganti retur Rp0/.test(N.ringkas), JSON.stringify(pj) + N.ringkas);
+terap(terapkanNego(s, id, 13000)); ok('J: nego pada baris pengganti: nilai jejak ikut 16.900, uang tetap 0', s.keranjang[0].trx.nilaiBarangPengganti === 16900 && s.keranjang[0].trx.hargaTotal === 0, JSON.stringify(s.keranjang[0].trx));
+terap(togglePenggantiRetur(s, id)); ok('J: dilepas → dijual penuh 16.900 (harga nego), jejak hilang', s.keranjang[0].trx.hargaTotal === 16900 && !('nilaiBarangPengganti' in s.keranjang[0].trx) && !('penggantiRetur' in s.keranjang[0].trx), JSON.stringify(s.keranjang[0].trx));
+terapkanKeCache([{ koleksi: 'retur', data: { id: 'rB', tanggal: '2026-09-19', tukarModel: 'kreditBarang', nominalRefund: 50000 } }]);
+p = togglePenggantiRetur(s, id); ok('J: hari ini ada tukar BERNOTA → ketukan pertama cuma memperingatkan (penjaga model B)', /MENUNJUK NOTA/.test(p.kabar) && p.penggantiTanya === id && !s.keranjang[0].trx.penggantiRetur, p.kabar); terap(p);
+terap(togglePenggantiRetur(s, id)); ok('J: ketukan kedua pada baris yang sama → jadi pengganti', s.keranjang[0].trx.penggantiRetur === true && s.penggantiTanya === null);
+terapkanKeCache([{ koleksi: 'retur', hapus: 'rB' }]);
+// K. PESANAN: dipesan → diantar → DIBAYAR hanya lewat nota; ikatan ikut parkir; batal nota memulihkan
+mulaiNota(); terap({ psNama: 'Bu Ani', psIsi: '2 karung Angsa', psAlamat: 'Jl. Melati 3', psNilai: '1.380.000' });
+var PS = susunPesananBaru(s, W); ok('K: pesanan baru = bentuk simpanPesanan: status dipesan, trxIdJual null, riwayatStatus [dipesan], nilaiPerkiraan 1.380.000', PS.dokumen && PS.dokumen[0].koleksi === 'pesanan' && PS.dokumen[0].data.status === 'dipesan' && PS.dokumen[0].data.trxIdJual === null && PS.dokumen[0].data.riwayatStatus.length === 1 && PS.dokumen[0].data.nilaiPerkiraan === 1380000 && PS.dokumen[0].data.alamat === 'Jl. Melati 3', JSON.stringify(PS));
+ok('K: tanpa isi ditolak', !!susunPesananBaru(Object.assign({}, s, { psIsi: '' }), W).tolak);
+terapkanKeCache(PS.dokumen); terap(PS.patch); var psId = PS.dokumen[0].data.id;
+ok('K: daftar pesanan aktif memuat Bu Ani; saring "dek" kosong', daftarPesanan('').length === 1 && daftarPesanan('')[0].nama === 'Bu Ani' && daftarPesanan('dek').length === 0);
+ok('K: pesanan BUKAN uang & BUKAN stok: omzet hari ini & stok Angsa tidak berubah', hariIni(s).omzet === 834000 && chip('karung', 'Angsa', 50).sisa === 14);
+var PA = susunPesananAntar(psId, W); ok('K: antar → status diantar, riwayat 2', PA.dokumen[0].data.status === 'diantar' && PA.dokumen[0].data.riwayatStatus.length === 2, JSON.stringify(PA)); terapkanKeCache(PA.dokumen);
+ok('K: antar dua kali ditolak (sudah DIANTAR)', /sudah DIANTAR/.test(susunPesananAntar(psId, W).tolak || ''), JSON.stringify(susunPesananAntar(psId, W)));
+terap(ikatPesanan(s, psId)); ok('K: ikat → nama Bu Ani terisi, pesananId terpasang', s.pesananId === String(psId) && s.pelanggan === 'Bu Ani');
+terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap({ ketik: '2' }); terap(masukkan(s));
+terap(parkir(s)); ok('K: parkir membawa ikatan pesanan; keranjang baru tanpa ikatan', s.pesananId === null && s.antrean[0].beku.pesananId === String(psId));
+terap(pakaiAntrean(s, s.antrean[0].id)); ok('K: buka lagi → ikatan kembali', s.pesananId === String(psId) && s.pelanggan === 'Bu Ani');
+terap(uangPas(s)); R = simpanNota(s, W); ok('K: nota sah', !R.tolak, R.tolak); N = R.nota;
+var dps = N.dokumen.filter(function (x) { return x.koleksi === 'pesanan'; });
+ok('K: satu dokumen pesanan DIBAYAR dalam batch yang sama, trxIdJual = trxId nota, riwayat 3, ringkasan menyebutnya', dps.length === 1 && dps[0].data.status === 'dibayar' && dps[0].data.trxIdJual === N.trxId && dps[0].data.riwayatStatus.length === 3 && /pesanan Bu Ani DIBAYAR/.test(N.ringkas), JSON.stringify(dps) + N.ringkas);
+terapkanKeCache(N.dokumen); terap(R.patch);
+ok('K: sesudah dicatat: pesanan hilang dari daftar aktif, ikatan lepas, notaTerakhir ingat pesanannya', daftarPesanan('').length === 0 && s.pesananId === null && s.notaTerakhir.pesanan.id === String(psId) && s.notaTerakhir.pesanan.statusSebelum === 'diantar');
+P = susunPembatalan(s.notaTerakhir, 'uji', W); var dpsB = P.dokumen.filter(function (x) { return x.koleksi === 'pesanan'; });
+ok('K: batalkan nota → pesanan kembali DIANTAR, trxIdJual null, riwayat 4', dpsB.length === 1 && dpsB[0].data.status === 'diantar' && dpsB[0].data.trxIdJual === null && dpsB[0].data.riwayatStatus.length === 4, JSON.stringify(dpsB));
+terapkanKeCache(P.dokumen); ok('K: pesanan aktif lagi', daftarPesanan('').length === 1 && daftarPesanan('')[0].status === 'diantar');
+terap(ikatPesanan(s, psId)); terapkanKeCache(susunPesananBatal(psId, W).dokumen || []); ok('K: pesanan dibatalkan orang lain saat terikat → nota DITAHAN', /sudah tuntas/.test(alasanTolak(Object.assign({}, s, { keranjang: [{ id: 'x', trx: bangunBaris(chip('kemasan', 'Kembang|5'), 1, s) }], uang: 72000 }))), alasanTolak(s));
+ok('K: pesanan batal tidak bisa diikat lagi', /sudah tuntas/.test(ikatPesanan(s, psId).kabar));
+terap(lepasPesanan(s)); ok('K: lepas ikatan', s.pesananId === null);
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
 
@@ -178,13 +251,15 @@ Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[
 var s = keadaanAwal(); sinkronKeranjang(s); var rak = susunRak(s); var hi = hariIni(s); var d = daftarPelanggan('');
 // bentuk dokumen dari data toko: kunci yang dihasilkan wajib sudah dikenal baris penjualan nyata (kecuali 'pembulatan' yang lahir 5 Sep)
 var dikenal = {}; (CAD.penjualan || []).forEach(function (p) { Object.keys(p).forEach(function (k) { dikenal[k] = true; }); }); dikenal.pembulatan = true;
+// bendera yang ADA di kode live tapi bisa belum pernah terpakai di cadangan: bonusUnit (17633), penggantiRetur & nilaiBarangPengganti (19384)
+dikenal.bonusUnit = true; dikenal.penggantiRetur = true; dikenal.nilaiBarangPengganti = true;
 function terap(p) { s = Object.assign({}, s, p); sinkronKeranjang(s); }
 var asing = [];
-[['karung', rak.karung[0]], ['literan', rak.literan[0]], ['kemasan', rak.kemasan[0]]].forEach(function (x) {
+[['karung', rak.karung[0]], ['literan', rak.literan[0]], ['kemasan', rak.kemasan[0]], ['repack', rak.repack[0]]].forEach(function (x) {
   if (!x[1]) return; terap({ keranjang: [] }); terap(ketukChip(s, x[1])); terap({ ketik: x[0] === 'literan' ? '6' : '1' }); terap(masukkan(s)); terap({ uang: 0 }); terap(uangPas(s));
   susunNotaDokumen(s, { tanggal: '2026-09-11', jam: '10:00', idUnik: function () { return Math.random(); } }).dokumen.forEach(function (dk) { if (dk.koleksi !== 'penjualan') return; Object.keys(dk.data).forEach(function (k) { if (!dikenal[k]) asing.push(x[0] + ':' + k); }); });
 });
-print(JSON.stringify({ karung: rak.karung.length, kemasan: rak.kemasan.length, literan: rak.literan.length, sering: rak.sering.length, pelanggan: d.length, tanpaHarga: rak.karung.concat(rak.kemasan, rak.literan).filter(function (c) { return !(c.harga > 0); }).length, kunciAsing: asing }));
+print(JSON.stringify({ karung: rak.karung.length, kemasan: rak.kemasan.length, literan: rak.literan.length, repack: rak.repack.length, pesanan: daftarPesanan('').length, sering: rak.sering.length, pelanggan: d.length, tanpaHarga: rak.karung.concat(rak.kemasan, rak.literan, rak.repack).filter(function (c) { return !(c.harga > 0); }).length, kunciAsing: asing }));
 """
 
 
@@ -226,6 +301,19 @@ if __name__ == '__main__':
             'stok tidak dicek ulang saat mencatat': js.replace("const tolak = alasanTolak(s) || periksaStokKeranjang(s);", "const tolak = alasanTolak(s);"),
             'pembatalan tidak melepas pelunasan sebagian': js.replace("if (notaTerakhir.piutangId) hapus.push({ koleksi: 'piutangMutasi', id: notaTerakhir.piutangId });", ""),
             'isian layar bocor ke dokumen (label/satuan)': js.replace("['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego'].forEach((k) => { delete d[k]; });", ""),
+            # ---- putaran 3 ----
+            'repacking tidak menimba kolam kg (stok karung tidak turun)': js.replace("(b.trx.jenis === 'karung' || b.trx.jenis === 'literan' || b.trx.jenis === 'repacking')", "(b.trx.jenis === 'karung' || b.trx.jenis === 'literan')"),
+            'repacking tanpa langit-langit kg': js.replace("if (chip.jalur === 'repack') return bebasKg(chip.kunci);", "if (chip.jalur === 'repack') return null;"),
+            'bonus ikut ditagih (uang = unit + bonus)': js.replace("const nilai = Math.round(t.hargaSatuan * t.jumlah);", "const nilai = Math.round(t.hargaSatuan * (t.jumlahUnit || t.jumlah));"),
+            'bonus tidak memotong stok & HPP': js.replace("const bonus = e.bonusUnit ? 1 : 0; const unit = j + bonus;", "const bonus = e.bonusUnit ? 1 : 0; const unit = j;"),
+            'pemeriksaan stok buta bonus': js.replace("const butuhStok = (t) => t.jenis === 'kemasan' ? t.jumlah + (t.bonusUnit || 0) : t.jumlah;", "const butuhStok = (t) => t.jumlah;"),
+            'pengganti retur tetap memakan omzet': js.replace("if (penggantiRetur) { t.penggantiRetur = true; t.nilaiBarangPengganti = nilai; t.hargaTotal = 0; }", "if (penggantiRetur) { t.penggantiRetur = true; t.nilaiBarangPengganti = nilai; t.hargaTotal = nilai; }"),
+            'penjaga model B dilewati (tukar bernota tidak diperingatkan)': js.replace("if (nyalakan && s.penggantiTanya !== id) {", "if (false) {"),
+            'pesanan tidak ditutup saat nota dicatat': js.replace("if (ps && pesananBelumTuntas(ps)) { dokumen.push(pesananGanti(ps, 'dibayar', w, trxId));", "if (false) { dokumen.push(pesananGanti(ps, 'dibayar', w, trxId));"),
+            'parkir melepas ikatan pesanan (pindah ke pembeli berikutnya)': js.replace("potongan: s.potongan, pesananId: s.pesananId || null };", "potongan: s.potongan, pesananId: null };"),
+            'pembatalan nota tidak memulihkan pesanan': js.replace("if (ps && ps.status === 'dibayar' && String(ps.trxIdJual) === String(notaTerakhir.trxId)) dokumen.push", "if (false) dokumen.push"),
+            'pesanan bisa langsung DIBAYAR tanpa nota (majukan dua kali)': js.replace("if (ps.status !== 'dipesan') return { tolak:", "if (false) return { tolak:"),
+            'nota atas pesanan yang sudah batal tetap lolos': js.replace("if (s.pesananId) { const ps = ambilPesananDoc(s.pesananId); if (!ps || !pesananBelumTuntas(ps)) return", "if (false) { return"),
         }
         kode = 0
         for nama, isi in rusak.items():
@@ -241,6 +329,6 @@ if __name__ == '__main__':
         c = json.load(open(cad[-1], encoding='utf-8'))
         h, e = jalan(js + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP)
         if h is None: print('ASAP DATA TOKO: JSC JATUH ' + e); g.append('asap')
-        else: print('ASAP DATA TOKO (%s): rak karung %d · kemasan %d · literan %d · sering %d · pelanggan %d · chip tanpa harga %d · kunci dokumen asing %s' % (os.path.basename(cad[-1]), h['karung'], h['kemasan'], h['literan'], h['sering'], h['pelanggan'], h['tanpaHarga'], h['kunciAsing'] or 'nihil'))
+        else: print('ASAP DATA TOKO (%s): rak karung %d · kemasan %d · literan %d · repack %d · pesanan aktif %d · sering %d · pelanggan %d · chip tanpa harga %d · kunci dokumen asing %s' % (os.path.basename(cad[-1]), h['karung'], h['kemasan'], h['literan'], h['repack'], h['pesanan'], h['sering'], h['pelanggan'], h['tanpaHarga'], h['kunciAsing'] or 'nihil'))
         if h and (h['karung'] == 0 or h['tanpaHarga'] > 0 or h['kunciAsing']): g.append('asap: rak kosong, chip tanpa harga, atau kunci dokumen yang tidak dikenal baris nyata')
     sys.exit(2 if g else 0)

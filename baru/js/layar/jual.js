@@ -72,13 +72,37 @@ export function pasangLayarJual(akar, opsi) {
     cariPelanggan: (v) => set({ cariPelanggan: String(v || '').slice(0, 40) },),
     enterPelanggan: (v) => { const n = String(v || '').trim(); if (n) set({ pelanggan: n, lembar: null, cariPelanggan: '' }); },
     tutupKabar: () => set({ kabar: '' }),
+    // ---- putaran 3 ----
+    namaRepack: (v) => set({ namaRepack: String(v || '').slice(0, 60) }),
+    bonus: ({ id }) => set(L.toggleBonus(S(), id)),
+    penggantiRetur: ({ id }) => set(L.togglePenggantiRetur(S(), id)),
+    bukaPesanan: ({ saring }) => set({ lembar: 'pesanan', psSaring: saring || '' }),
+    psSaring: (v) => set({ psSaring: String(v || '').slice(0, 40) }),
+    psNama: (v) => set({ psNama: String(v || '').slice(0, 40) }),
+    psIsi: (v) => set({ psIsi: String(v || '').slice(0, 200) }),
+    psAlamat: (v) => set({ psAlamat: String(v || '').slice(0, 120) }),
+    psNilai: (v) => set({ psNilai: String(v || '').slice(0, 15) }),
+    simpanPesanan: () => tulisPesanan(L.susunPesananBaru(S(), L.waktuSekarang(S().sekarang || undefined))),
+    antarPesanan: ({ id }) => tulisPesanan(L.susunPesananAntar(id, L.waktuSekarang(S().sekarang || undefined))),
+    batalPesanan: ({ id }) => tulisPesanan(L.susunPesananBatal(id, L.waktuSekarang(S().sekarang || undefined))),
+    ikatPesanan: ({ id }) => set(L.ikatPesanan(S(), id)),
+    lepasPesanan: () => set(L.lepasPesanan(S())),
   };
+  async function tulisPesanan(r) {
+    if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
+    try {
+      const h = await tulisDokumen(r.dokumen);
+      if (h && h.gagal) return set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true });
+      set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar }));
+    } catch (e) { set({ kabar: 'GAGAL menulis pesanan: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+  }
   delegasi(akar, aksi);
 
   let _rak = null, _rakUntuk = '', _lembarSebelum = null;
   function rakKini() {
     const s = S(); L.sinkronKeranjang(s);
-    const tanda = s.pelanggan + '|' + s.keranjang.length + '|' + s.antrean.length + '|' + opsi.versiData();
+    // rak bergantung pada ISI keranjang (jumlah + bonus), bukan cuma banyaknya baris — +1 unit atau bonus mengubah sisa chip
+    const tanda = s.pelanggan + '|' + s.keranjang.map((b) => b.trx.jenis + ':' + b.trx.jumlah + ':' + (b.trx.bonusUnit || 0)).join(',') + '|' + s.antrean.length + '|' + opsi.versiData();
     if (!_rak || _rakUntuk !== tanda) { _rak = L.susunRak(s); _rakUntuk = tanda; }
     return _rak;
   }
@@ -90,6 +114,8 @@ export function pasangLayarJual(akar, opsi) {
     const hari = L.hariIni(s);
     const sumber = sumberData();
     const info = L.infoPelanggan(s.pelanggan);
+    const nPesanan = L.daftarPesanan('').length;
+    const psIkat = s.pesananId ? L.ambilPesananDoc(s.pesananId) : null;
     // lembar hanya "naik" saat pertama dibuka — tiap ketukan menggambar ulang, jangan mengulang animasinya
     const muncul = s.lembar !== _lembarSebelum ? 'muncul' : ''; _lembarSebelum = s.lembar;
     const adaUrung = !!(s.notaTerakhir && Date.now() - s.notaTerakhir.pada < L.BATAS_URUNGKAN_DETIK * 1000);
@@ -129,20 +155,26 @@ export function pasangLayarJual(akar, opsi) {
         </div>
         <div class="isi-keranjang">
           <div class="keranjang">
-            ${s.keranjang.length ? s.keranjang.map((b) => h`<div class="b">
-              <div class="t"><div style="font-weight: 600;">${b.trx.label}</div><div class="ket">${DESIMAL(b.trx.jumlah)} ${b.trx.satuan} × ${RP(b.trx.hargaSatuan)}${b.trx.nego ? ' · nego' : ''}${b.trx.kemasanLiteran ? ' · ' + (b.trx.jumlahKemasanLiteranDipakai || 1) + ' kantong' : ''}</div></div>
+            ${s.keranjang.length ? s.keranjang.map((b) => h`<div class="b ${b.trx.penggantiRetur ? 'pengganti' : ''}">
+              <div class="t"><div style="font-weight: 600;">${b.trx.label}</div><div class="ket">${DESIMAL(b.trx.jumlah)} ${b.trx.satuan} × ${RP(b.trx.hargaSatuan)}${b.trx.nego ? ' · nego' : ''}${b.trx.kemasanLiteran ? ' · ' + (b.trx.jumlahKemasanLiteranDipakai || 1) + ' kantong' : ''}${b.trx.bonusUnit ? ' · +1 bonus (stok ' + b.trx.jumlahUnit + ')' : ''}${b.trx.penggantiRetur ? ' · PENGGANTI RETUR, nilai ' + RP(b.trx.nilaiBarangPengganti) : ''}</div></div>
               <span class="step"><span data-aksi="kurangBaris" data-id="${b.id}" data-langkah="${b.trx.satuan === 'karung' ? 0.5 : 1}">−</span><span class="n">${DESIMAL(b.trx.jumlah)}</span><span data-aksi="tambahBaris" data-id="${b.id}" data-langkah="${b.trx.satuan === 'karung' ? 0.5 : 1}">+</span></span>
               <div class="h" data-aksi="nego" data-id="${b.id}" title="ketuk untuk nego">${RP(b.trx.hargaTotal)}</div>
               <span class="hapus" data-aksi="hapusBaris" data-id="${b.id}">${mentah(IKON.hapus)}</span>
+              <div class="bendera">
+                ${b.trx.jenis === 'kemasan' ? h`<span class="pil ${b.trx.bonusUnit ? 'nyala' : ''}" data-aksi="bonus" data-id="${b.id}" title="1 unit gratis: stok & modal ikut, uang tidak">${b.trx.bonusUnit ? '✓ bonus +1' : '+1 bonus'}</span>` : ''}
+                <span class="pil awas ${b.trx.penggantiRetur ? 'nyala' : ''} ${s.penggantiTanya === b.id ? 'nyala' : ''}" data-aksi="penggantiRetur" data-id="${b.id}" title="tukar tanpa nota: omzet & kas Rp0, modal tetap keluar">${b.trx.penggantiRetur ? '✓ pengganti retur' : s.penggantiTanya === b.id ? 'ketuk lagi: pengganti retur' : 'pengganti retur'}</span>
+              </div>
             </div>`) : h`<div class="kosong">Ketuk barang di rak untuk mulai.</div>`}
           </div>
+          ${s.pesananId && psIkat ? h`<div class="pita-info emas">Keranjang ini untuk PESANAN ${psIkat.namaPelanggan || ''} — ${psIkat.isi || ''}. Begitu nota dicatat, pesanannya jadi DIBAYAR. <span style="text-decoration: underline; cursor: pointer;" data-aksi="lepasPesanan">lepas</span></div>` : ''}
           <div class="tombol-baris">
             <div class="kaca-btn ${s.pelanggan ? 'aktif' : ''}" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli'}</div>
             <div class="kaca-btn ${t.potongan ? 'aktif' : ''}" data-aksi="bukaPotongan">${t.potongan ? 'Potongan ' + RP(t.potongan) : 'Potongan'}</div>
+            <div class="kaca-btn ${nPesanan ? 'aktif' : ''}" data-aksi="bukaPesanan" data-saring="">Pesanan${nPesanan ? ' · ' + nPesanan : ''}</div>
             <div class="kaca-btn" data-aksi="pembeliLain">Pembeli lain</div>
           </div>
           ${info && info.sisa > 0 ? h`<div class="ket">Bon ${s.pelanggan} sekarang ${RP(info.sisa)} · biasa belanja ${RP(info.rataBulanan)}/bulan</div>` : ''}
-          ${info && info.pesanan && info.pesanan.length ? h`<div class="pita-info">${info.pesanan.length} pesanan ${s.pelanggan} belum tuntas — buka di layar Pesanan (putaran berikutnya)</div>` : ''}
+          ${info && info.pesanan && info.pesanan.length && !s.pesananId ? h`<div class="pita-info" data-aksi="bukaPesanan" data-saring="${s.pelanggan}" style="cursor: pointer;">${info.pesanan.length} pesanan ${s.pelanggan} belum tuntas — ketuk untuk melihat / mencatat jualnya</div>` : ''}
           <div class="bulat"></div>
           <div class="total"><span class="label">Subtotal</span><span class="n" style="font-size: 16px;">${RP(t.subtotal)}</span></div>
           ${t.potongan ? h`<div class="total"><span class="label">Potongan</span><span class="n" style="font-size: 16px;">− ${RP(t.potongan)}</span></div>` : ''}
@@ -188,9 +220,10 @@ export function pasangLayarJual(akar, opsi) {
     const tuts = (aksiMasuk, label) => h`<div class="tuts">${TUTS.map((k) => h`<div class="k ${/^\d$/.test(k) ? '' : 'f'}" data-aksi="tuts" data-t="${k}">${k}</div>`)}<div class="k f aksi" style="grid-column: span 4;" data-aksi="${aksiMasuk}">${label}</div></div>`;
     if (s.lembar === 'jumlah' && s.pilih) {
       const c = s.pilih; const maks = L.maksUntuk(c);
-      const preset = c.jalur === 'karung' ? [1, 2, 5, 10] : c.jalur === 'kemasan' ? [1, 2, 3, 5] : [1, 2, 5, 10];
+      const preset = c.jalur === 'karung' ? [1, 2, 5, 10] : c.jalur === 'kemasan' ? [1, 2, 3, 5] : c.jalur === 'repack' ? [5, 10, 20, 25] : [1, 2, 5, 10];
       return h`${L1}<div class="lembar ${muncul}">
         ${kepala(c.nama + ' ' + c.ukuran, RP(c.harga) + '/' + c.satuan + ' · bebas dijual ' + (maks === null ? '—' : DESIMAL(maks) + ' ' + c.satuan))}
+        ${c.jalur === 'repack' ? h`<div class="ket">Jadi produk apa (nama jual di nota) — kosong = nama mereknya</div><input class="ketik-nama" id="namaRepack" type="text" value="${s.namaRepack}" data-ketik="namaRepack" placeholder="${c.nama}">` : ''}
         <div class="tombol-baris">${preset.map((n) => h`<div class="kaca-btn" data-aksi="preset" data-n="${n}">${n} ${c.satuan}</div>`)}</div>
         <div class="label">Jumlah</div><div class="angka">${s.ketik || '0'} <span class="ket">${c.satuan}</span>${s.ketik ? h` <span class="ket">= ${RP(c.harga * L.angkaKetik(s.ketik))}</span>` : ''}</div>
         ${tuts('masukkan', 'MASUKKAN KE KERANJANG')}
@@ -221,6 +254,32 @@ export function pasangLayarJual(akar, opsi) {
         <div class="daftar-nama">${daftar.map((o) => h`<div class="baris-nama ${o.sisaBon > 0 ? 'berutang' : ''}" data-aksi="pilihPelanggan" data-nama="${o.nama}">
           <span>${o.nama}${o.terdaftar ? ' ✓' : ''}</span><span class="ket">${o.sisaBon > 0 ? 'bon ' + RP(o.sisaBon) + (o.umurHari ? ' · ' + o.umurHari + ' hari' : '') : o.kali + '× belanja'}</span></div>`)}
         ${daftar.length ? '' : h`<div class="ket">Belum ada nama itu — tekan Enter untuk memakai nama baru.</div>`}
+      </div>`;
+    }
+    if (s.lembar === 'pesanan') {
+      const daftar = L.daftarPesanan(s.psSaring);
+      return h`${L1}<div class="lembar ${muncul}">
+        ${kepala('Pesanan', 'BUKAN uang & BUKAN stok sampai notanya dicatat · dipesan → diantar → dibayar lewat nota')}
+        <input class="ketik-nama" id="psSaring" type="text" value="${s.psSaring}" data-ketik="psSaring" placeholder="saring nama pemesan">
+        <div class="daftar-nama">${daftar.map((o) => h`<div class="ps-kartu">
+          <div class="atas"><b>${o.nama}</b><span class="pil status-${o.status}">${L.STATUS_PESANAN[o.status] || o.status}</span></div>
+          <div class="isi">${o.isi}${o.alamat ? h` · <span class="ket">${o.alamat}</span>` : ''}</div>
+          <div class="ket">${tanggalPendek(o.tanggal)}${o.jam ? ' · ' + o.jam : ''}${o.nilai ? ' · perkiraan ' + RP(o.nilai) : ''}</div>
+          <div class="aksi">
+            ${o.status === 'dipesan' ? h`<span class="pil" data-aksi="antarPesanan" data-id="${o.id}">→ antar</span>` : ''}
+            ${s.pesananId === o.id ? h`<span class="pil utamaKecil" data-aksi="lepasPesanan">✓ terikat ke keranjang · lepas</span>` : h`<span class="pil utamaKecil" data-aksi="ikatPesanan" data-id="${o.id}">catat jualnya →</span>`}
+            <span class="pil" data-aksi="batalPesanan" data-id="${o.id}">batalkan</span>
+          </div>
+        </div>`)}${daftar.length ? '' : h`<div class="ket" style="padding: 10px 4px;">${s.psSaring ? 'Tidak ada pesanan aktif atas nama itu.' : 'Belum ada pesanan aktif.'}</div>`}</div>
+        <div class="bulat"></div>
+        <div class="judul">Pesanan baru</div>
+        <div class="ps-form">
+          <input class="ketik-nama" id="psNama" type="text" value="${s.psNama}" data-ketik="psNama" placeholder="Nama pemesan">
+          <input class="ketik-nama" id="psIsi" type="text" value="${s.psIsi}" data-ketik="psIsi" placeholder="Pesan apa (mis. 2 karung Angsa)">
+          <input class="ketik-nama" id="psAlamat" type="text" value="${s.psAlamat}" data-ketik="psAlamat" placeholder="Alamat antar (boleh kosong)">
+          <input class="ketik-nama" id="psNilai" type="text" inputmode="numeric" value="${s.psNilai}" data-ketik="psNilai" placeholder="Perkiraan nilai Rp (boleh kosong)">
+          <div class="kaca-btn aktif" data-aksi="simpanPesanan">CATAT PESANAN</div>
+        </div>
       </div>`;
     }
     if (s.lembar === 'bayar') {

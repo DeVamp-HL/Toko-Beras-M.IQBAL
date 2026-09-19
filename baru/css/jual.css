@@ -11,7 +11,25 @@
 .tab-antre .buang { display: inline-flex; opacity: 0.7; cursor: pointer; }
 .tab-antre .buang:hover { opacity: 1; color: var(--awas); }
 
-.keranjang .b { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "t h x" "t step x"; gap: 4px 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--garis); }
+.keranjang .b { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "t h x" "t step x" "bendera bendera bendera"; gap: 4px 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--garis); }
+/* bendera baris (putaran 3): bonus +1 kemasan, pengganti retur — pil kecil yang bisa diketuk, nyala saat aktif */
+.keranjang .b .bendera { grid-area: bendera; display: flex; flex-wrap: wrap; gap: 6px; }
+.keranjang .b .bendera:empty { display: none; }
+.bendera .pil { cursor: pointer; opacity: 0.75; }
+.bendera .pil.nyala { opacity: 1; background: var(--seg-aktif); border-color: var(--emas-garis); color: var(--emas1); }
+.bendera .pil.awas.nyala { border-color: var(--awas); color: var(--awas); }
+.keranjang .b.pengganti .h { text-decoration: line-through; color: var(--redup); }
+/* pesanan */
+.ps-kartu { display: flex; flex-direction: column; gap: 4px; padding: 10px 4px; border-bottom: 1px solid var(--garis); }
+.ps-kartu .atas { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ps-kartu .isi { font-size: 13px; }
+.ps-kartu .aksi { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.ps-kartu .aksi .pil { cursor: pointer; }
+.ps-kartu .aksi .pil.utamaKecil { background: var(--seg-aktif); border-color: var(--emas-garis); color: var(--emas1); }
+.pil.status-dipesan { color: var(--redup); }
+.pil.status-diantar { color: var(--emas1); border-color: var(--emas-garis); }
+.ps-form { display: flex; flex-direction: column; gap: 6px; }
+.ps-form .ketik-nama { min-height: 40px; }
 .keranjang .b .t { grid-area: t; min-width: 0; }
 .keranjang .b .h { grid-area: h; text-align: right; }
 .keranjang .b .step { grid-area: step; justify-self: end; }
