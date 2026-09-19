@@ -459,11 +459,11 @@ if __name__ == '__main__':
             # ---- putaran 6: tata letak & wadah ----
             'kemasan tidak diurutkan dari termurah': js.replace("rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || termurah(a, b));", "rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || b.harga - a.harga);"),
             'kemasan tidak dikelompokkan per ukuran': js.replace("kemasan: kelompokkan(rak.kemasan, (c) => c.ukuranKg,", "kemasan: kelompokkan(rak.kemasan, (c) => 0,"),
-            'wadah yang belum pernah ditandai digambar PENUH (ditebak)': js.replace("if (!tanda) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH_KG };", "if (!tanda) return { wadah: true, diketahui: true, sisaKg: 50, gunung: 1, dalam: 1, perluIsi: false };"),
+            'wadah yang belum pernah ditandai digambar PENUH (ditebak)': js.replace("if (!tanda) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH };", "if (!tanda) return { wadah: true, diketahui: true, sisaKg: 50, gunung: 1, dalam: 1, perluIsi: false };"),
             'literan SEBELUM tanda isi ulang ikut mengurangi': js.replace("p.merkSumber === merk && cap(p) > sejak ? (p.totalKg || 0) : 0), 0);", "p.merkSumber === merk ? (p.totalKg || 0) : 0), 0);"),
             'keranjang tidak menurunkan gunung': js.replace("const dipegang = literKeranjang(s && s.keranjang) +", "const dipegang = 0 * literKeranjang(s && s.keranjang) + 0 *"),
             'gunung tidak pernah hilang (tanpa ambang rata)': js.replace("gunung: Math.max(0, Math.min(1, (bagian - WADAH_RATA_BAGIAN) / (1 - WADAH_RATA_BAGIAN))),", "gunung: bagian,"),
-            'tidak pernah minta isi ulang': js.replace("perluIsi: sisaKg <= WADAH_ISI_ULANG_KG,", "perluIsi: false,"),
+            'tidak pernah minta isi ulang': js.replace("perluIsi: sisaKg <= WADAH_ULANG,", "perluIsi: false,"),
             'kelebihan jual sesudah tanda disembunyikan': js.replace("lewat: sisaKg < 0 ? -sisaKg : 0,", "lewat: 0,"),
             'tanda isi ulang satu wadah mengisi semua wadah': js.replace("ambilWadahLiteran().filter((w) => w.wadah === merk && w.tipe === 'isi')", "ambilWadahLiteran().filter((w) => w.tipe === 'isi')"),
             'karung/kemasan ikut mengurangi wadah': js.replace("a + (p.jenis === 'literan' && p.merkSumber === merk && cap(p) > sejak", "a + (p.merkSumber === merk && cap(p) > sejak"),

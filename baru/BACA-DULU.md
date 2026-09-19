@@ -63,6 +63,16 @@ Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko
   - nota dicatat (karung terbesar nilainya) → karung **diangkut** dua tangan → tangan pembeli memberi → tangan toko menerima → jadi alat bayarnya.
   - Kejujuran: hanya **Tunai** yang jadi uang; **QRIS** = ponsel ber-centang; **BON** = kertas bon bertulis "belum ada uang". Adegan nota hanya main sesudah tulisan SUNGGUH berhasil.
 
+## Putaran 7 (19 Sep 2026) — layar STOK: Beranda S9 + Wadah literan
+- **Gudang** (papan S9 yang dikunci owner): empat pertanyaan, dijawab dari mesin yang sama —
+  *Apa yang harus dibeli hari ini?* (laju jual 14 hari `hitungLajuPakai` × 7 hari − sisa, dibulatkan ke karung penuh; kemasan = "aduk N unit"; barang berisi tanpa gerak 14 hari DISEBUT tidak bisa dijawab) ·
+  *Modal saya tidur di mana?* · *Apa yang tidak bergerak?* (tak terukur ≠ nol; atau cukup > 30 hari) · *Mana yang belum dicocokkan?* (hari sejak `penyesuaianStok`/`penyesuaianKemasan`; "belum pernah" paling atas).
+- **Penilaian stok — temuan:** mesin lama (`hppTerakhirPerKg`, namanya menyesatkan) menilai dengan **rata-rata tertimbang**, sedangkan aturan owner 13 Sep = **harga beli terbaru**. Layar memajang **nilai di buku** (rata-rata; diuji = `nilaiSack + nilaiBags` mesin neraca) sebagai angka utama dan nilai bila **harga beli terbaru** (`hargaTerakhirPerKg`) sebagai pembanding berlabel. Mengganti penilaian = mengubah mesin beku & laba historis = keputusan owner.
+- **Wadah literan**: kedelapan kotak wadah bergunung (gambar yang sama dengan layar Jual, ikut keranjang Jual yang sedang jalan), tombol "Baru diisi ulang", dan **Aturan wadah** yang diatur owner dari layar (penuh kg · minta isi ulang saat tersisa kg · daftar merek berwadah) → dokumen `wadahLiteran` bertipe `atur` (terbaru berlaku, riwayat tersimpan). Tetap ALAT UKUR, bukan stok.
+- **Papan Kapur** (perubahan stok hari ini: barang masuk, adukan, cocokkan, barang kembali, isi ulang wadah, terjual per jam·barang) dan **Karantina** (yang belum diputuskan) — baca saja.
+- Barang masuk · Adukan · Cocokkan · keputusan karantina masih lewat sistem lama (layar kerja ST1–ST6 menyusul).
+- `gambar.js` = gambar barang bersama (Jual & Stok). `index.html`: penjaga muat-ulang SEKALI bila peramban memegang campuran modul lama & baru sesudah terbit.
+
 ## Struktur
 ```
 baru/
@@ -97,6 +107,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/pindah_mesin.py --periksa` | tiap mesin di `js/mesin/beku.js` = sidik `alat-uji/beku.sha256` |
 | `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 171 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan + retur & tukar) + tata letak & wadah literan) di kotak pasir; 66 kontrol positif berbunyi; kunci dokumen vs baris nyata & vs yang ditulis index.html |
 | `alat-uji/uji_ringkasan_baru.py` (+ `--kontrol`) | 28 skenario logika Ringkasan (jam tetap, zona waktu dikunci WIB) + 14 kontrol; di cadangan toko: omzet hari/bulan/tahun = jumlah langsung barisnya |
+| `alat-uji/uji_stok_baru.py` (+ `--kontrol`) | 19 skenario logika Stok (jam & zona waktu dikunci) + 12 kontrol; di cadangan toko: nilai stok layar = mesin neraca |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.

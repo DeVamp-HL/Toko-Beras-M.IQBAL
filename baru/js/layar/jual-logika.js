@@ -636,24 +636,47 @@ const cap = (p) => (p.tanggal || '') + ' ' + (p.jam || '');
  * − literan merek itu yang sedang di keranjang / struk parkir (supaya gunungnya turun begitu barang masuk keranjang).
  * null = merek ini bukan wadah (diserok dari karung). diketahui:false = belum pernah ditandai → layar MENOLAK menggambar isi.
  */
+/**
+ * Angka kebijakan wadah yang BERLAKU: dokumen wadahLiteran bertipe 'atur' yang terbaru (diatur owner dari layar Stok → Wadah);
+ * belum pernah diatur → bawaan dari keterangan owner 14 & 19 Sep (50 kg · isi ulang saat sisa 10 kg · delapan wadah).
+ */
+export function aturWadah() {
+  const a = ambilWadahLiteran().filter((w) => w.tipe === 'atur').sort((x, y) => cap(y).localeCompare(cap(x)) || String(y.id).localeCompare(String(x.id)))[0];
+  const penuhKg = a && Number(a.penuhKg) > 0 ? Number(a.penuhKg) : WADAH_PENUH_KG;
+  const isiUlangKg = a && Number(a.isiUlangKg) >= 0 && Number(a.isiUlangKg) < penuhKg ? Number(a.isiUlangKg) : Math.min(WADAH_ISI_ULANG_KG, penuhKg - 1);
+  const daftar = a && Array.isArray(a.daftar) && a.daftar.length ? a.daftar.map(String) : DAFTAR_WADAH.slice();
+  return { penuhKg, isiUlangKg, daftar, dariOwner: !!a, sejak: a ? (a.tanggal || '') : '' };
+}
+/** Owner mengubah angka kebijakan wadah — dokumen baru bertipe 'atur' (riwayatnya tersimpan; yang terbaru berlaku). */
+export function susunAturWadah(isi, w) {
+  const penuh = Math.round(Number(String(isi.penuhKg || '').replace(',', '.')) * 10) / 10; const ulang = Math.round(Number(String(isi.isiUlangKg || '').replace(',', '.')) * 10) / 10;
+  if (!(penuh > 0)) return { tolak: 'Isi wadah saat penuh harus lebih dari 0 kg' };
+  if (!(ulang >= 0) || ulang >= penuh) return { tolak: 'Batas isi ulang harus di antara 0 dan ' + String(penuh).replace('.', ',') + ' kg' };
+  const daftar = (isi.daftar || []).map((x) => String(x).trim()).filter(Boolean);
+  if (!daftar.length) return { tolak: 'Daftar wadah tidak boleh kosong' };
+  return { dokumen: [{ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'atur', penuhKg: penuh, isiUlangKg: ulang, daftar } }],
+    patch: { kabar: 'Aturan wadah disimpan — penuh ' + String(penuh).replace('.', ',') + ' kg · isi ulang saat sisa ' + String(ulang).replace('.', ',') + ' kg · ' + daftar.length + ' wadah', kabarAwas: false } };
+}
 export function tinggiWadah(merk, s) {
-  if (DAFTAR_WADAH.indexOf(merk) < 0) return null;
+  const atur = aturWadah(); const WADAH_PENUH = atur.penuhKg; const WADAH_ULANG = atur.isiUlangKg;
+  if (atur.daftar.indexOf(merk) < 0) return null;
   const tanda = ambilWadahLiteran().filter((w) => w.wadah === merk && w.tipe === 'isi').sort((a, b) => cap(b).localeCompare(cap(a)) || String(b.id).localeCompare(String(a.id)))[0];
-  if (!tanda) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH_KG };
+  if (!tanda) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH };
   const sejak = cap(tanda);
   const terjual = ambilPenjualan().reduce((a, p) => a + (p.jenis === 'literan' && p.merkSumber === merk && cap(p) > sejak ? (p.totalKg || 0) : 0), 0);
   const literKeranjang = (daftar) => (daftar || []).reduce((a, b) => a + (b.trx.jenis === 'literan' && b.trx.merkSumber === merk ? (b.trx.totalKg || 0) : 0), 0);
   const dipegang = literKeranjang(s && s.keranjang) + ((s && s.antrean) || []).reduce((a, x) => a + literKeranjang(x.beku.items), 0);
-  const isi = Number(tanda.isiKg) || WADAH_PENUH_KG;
+  const isi = Number(tanda.isiKg) || WADAH_PENUH;
   const sisaKg = Math.round((isi - terjual - dipegang) * 100) / 100;
-  const bagian = Math.max(0, Math.min(1, sisaKg / WADAH_PENUH_KG));
-  return { wadah: true, diketahui: true, penuhKg: WADAH_PENUH_KG, sisaKg: Math.max(0, sisaKg), lewat: sisaKg < 0 ? -sisaKg : 0, bagian,
+  const bagian = Math.max(0, Math.min(1, sisaKg / WADAH_PENUH));
+  return { wadah: true, diketahui: true, penuhKg: WADAH_PENUH, sisaKg: Math.max(0, sisaKg), lewat: sisaKg < 0 ? -sisaKg : 0, bagian,
     gunung: Math.max(0, Math.min(1, (bagian - WADAH_RATA_BAGIAN) / (1 - WADAH_RATA_BAGIAN))), dalam: Math.max(0, Math.min(1, bagian / WADAH_RATA_BAGIAN)),
-    perluIsi: sisaKg <= WADAH_ISI_ULANG_KG, sejakTanggal: tanda.tanggal || '', sejakJam: tanda.jam || '' };
+    perluIsi: sisaKg <= WADAH_ULANG, sejakTanggal: tanda.tanggal || '', sejakJam: tanda.jam || '' };
 }
 /** Tandai wadah baru diisi ulang (penuh, menggunung lagi). Dokumen koleksi wadahLiteran — alat ukur, bukan stok. */
 export function susunIsiUlangWadah(merk, w) {
-  if (DAFTAR_WADAH.indexOf(merk) < 0) return { tolak: merk + ' bukan wadah kotak — literannya diserok langsung dari karung' };
-  return { dokumen: [{ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: merk, tipe: 'isi', isiKg: WADAH_PENUH_KG } }],
-    patch: { kabar: 'Wadah ' + merk + ' ditandai PENUH lagi (±' + WADAH_PENUH_KG + ' kg, menggunung) — dihitung turun dari penjualan literan berikutnya', kabarAwas: false } };
+  const WADAH_PENUH_KINI = aturWadah().penuhKg;
+  if (aturWadah().daftar.indexOf(merk) < 0) return { tolak: merk + ' bukan wadah kotak — literannya diserok langsung dari karung' };
+  return { dokumen: [{ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: merk, tipe: 'isi', isiKg: WADAH_PENUH_KINI } }],
+    patch: { kabar: 'Wadah ' + merk + ' ditandai PENUH lagi (±' + WADAH_PENUH_KINI + ' kg, menggunung) — dihitung turun dari penjualan literan berikutnya', kabarAwas: false } };
 }

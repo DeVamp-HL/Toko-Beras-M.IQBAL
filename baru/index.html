@@ -19,8 +19,20 @@
 <link rel="stylesheet" href="css/kerangka.css">
 <link rel="stylesheet" href="css/jual.css">
 <link rel="stylesheet" href="css/ringkasan.css">
+<link rel="stylesheet" href="css/stok.css">
 <link rel="stylesheet" href="css/adegan.css">
 <link rel="stylesheet" href="css/kinerja.css">
+<script>
+  // Sesudah versi baru terbit, peramban bisa sesaat memegang campuran berkas lama & baru (cache 10 menit GitHub Pages):
+  // modul baru meminta sesuatu yang belum ada di modul lama → seluruh aplikasi gagal dimuat. Obatnya muat ulang SEKALI
+  // (muat ulang memaksa peramban menanyakan ulang tiap berkas); tanda di sessionStorage mencegah putaran tanpa henti.
+  window.addEventListener('error', function (e) {
+    var m = String((e && e.message) || '');
+    if (!/does not provide an export|Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module/i.test(m)) return;
+    try { if (sessionStorage.getItem('miqbal_muat_ulang_modul')) return; sessionStorage.setItem('miqbal_muat_ulang_modul', '1'); } catch (x) { return; }
+    location.reload();
+  });
+</script>
 </head>
 <body>
 <aside class="side" aria-label="Menu samping">
@@ -34,6 +46,7 @@
 </aside>
 
 <main id="layarRingkasan" class="layar-ringkasan" hidden></main>
+<main id="layarStok" class="layar-stok" hidden></main>
 <main id="layar" class="layar-jual" aria-live="polite"></main>
 
 <nav class="nav" aria-label="Menu bawah">

@@ -2,6 +2,7 @@
 // Sumber data: Firestore toko (bawaan) atau berkas cadangan (?cadangan=…/backup-batch-….json, untuk mencoba di komputer).
 import { pasangLayarJual } from './layar/jual.js';
 import { pasangLayarRingkasan } from './layar/ringkasan.js';
+import { pasangLayarStok } from './layar/stok.js';
 import * as fb from './data/firebase.js';
 import { muatCadangan } from './data/cadangan.js';
 import { dengarkan, sumberData } from './data/toko.js';
@@ -21,7 +22,7 @@ function terapkanMode() {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = gelap ? '#111516' : '#eef1f4';
 }
-function gantiMode() { mode = mode === 'gelap' ? 'terang' : 'gelap'; try { localStorage.setItem(KUNCI_MODE, mode); } catch (e) { /* abaikan */ } terapkanMode(); layar.gambar(); ringkasan.gambar(); }
+function gantiMode() { mode = mode === 'gelap' ? 'terang' : 'gelap'; try { localStorage.setItem(KUNCI_MODE, mode); } catch (e) { /* abaikan */ } terapkanMode(); layar.gambar(); ringkasan.gambar(); stok.gambar(); }
 function statusTeks() {
   const s = sumberData();
   if (s.jenis === 'cadangan') return 'membaca cadangan (bukan data hidup)';
@@ -42,13 +43,14 @@ const KUNCI_TAB = 'miqbal_baru_tab';
 let sekarangCadangan = null;   // mode cadangan: "sekarang" = saat cadangan diunduh
 const statusRingkas = () => (statusFb.offline ? 'tanpa internet' : statusFb.menunggu > 0 ? 'menunggu server' : statusFb.koleksiSiap < statusFb.koleksiTotal ? 'memuat…' : 'data toko');
 const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
-const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan') };
+const stok = pasangLayarStok(document.getElementById('layarStok'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, keranjangJual: () => layar.keadaan.baca() });
+const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok') };
 function pindah(tujuan) {
   if (!LAYAR_ADA[tujuan]) return false;
   Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].hidden = k !== tujuan; });
   document.querySelectorAll('[data-tujuan]').forEach((el) => el.classList.toggle('aktif', el.dataset.tujuan === tujuan));
   document.body.classList.toggle('di-jual', tujuan === 'jual');
-  ringkasan.tampilkan(tujuan === 'ringkasan');
+  ringkasan.tampilkan(tujuan === 'ringkasan'); stok.tampilkan(tujuan === 'stok');
   try { localStorage.setItem(KUNCI_TAB, tujuan); } catch (e) { /* abaikan */ }
   window.scrollTo(0, 0);
   return true;
@@ -73,11 +75,11 @@ if (q.get('cadangan')) {
   muatCadangan(q.get('cadangan')).then((r) => {
     // "hari ini" di cadangan = hari cadangan itu diunduh, bukan hari komputer ini — supaya kartu Hari ini tidak kosong menyesatkan
     sekarangCadangan = r.diunduhPada ? new Date(r.diunduhPada) : null;
-    layar.keadaan.setel({ sekarang: sekarangCadangan }); ringkasan.gambar();
+    layar.keadaan.setel({ sekarang: sekarangCadangan }); ringkasan.gambar(); stok.gambar();
     console.log('cadangan dimuat:', r.koleksi, 'koleksi'); })
     .catch((e) => { const p = document.createElement('div'); p.className = 'pita-info awas'; p.textContent = 'Cadangan tidak terbaca: ' + String(e.message); akar.prepend(p); });
 } else {
-  fb.dengarkanStatus((st) => { statusFb = st; if (st.masuk) modal.classList.remove('tampil'); layar.gambar(); ringkasan.gambar(); });
+  fb.dengarkanStatus((st) => { statusFb = st; if (st.masuk) modal.classList.remove('tampil'); layar.gambar(); ringkasan.gambar(); stok.gambar(); });
   fb.mulai(bukaMasuk);
 }
 
@@ -91,3 +93,4 @@ document.querySelectorAll('[data-tujuan]').forEach((el) => el.addEventListener('
 
 // layar pembuka: yang terakhir dipakai di perangkat ini (bawaan: Jual)
 pindah((() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })()) || pindah('jual');
+try { sessionStorage.removeItem('miqbal_muat_ulang_modul'); } catch (e) { /* abaikan */ }   // aplikasi berhasil dimuat utuh → penjaga muat-ulang disiapkan lagi
