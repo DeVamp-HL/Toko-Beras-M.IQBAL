@@ -72,3 +72,43 @@
 .baris-nota.tak-bisa { opacity: 0.6; cursor: default; }
 .awas-teks { color: var(--awas); }
 .lembar .bendera { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---------- PUTARAN 6: gambar barang + layar Jual yang HIDUP ---------- */
+/* chip: teks di kiri, gambar barang di kanan */
+.chip { flex-direction: row; align-items: center; justify-content: space-between; gap: 6px; min-height: 84px; animation: masukChip 420ms cubic-bezier(.2,.8,.2,1) backwards; animation-delay: calc(var(--urut, 0) * 28ms); }   /* backwards saja: isian akhir 'both' akan mengalahkan :active */
+.chip:active { transform: scale(0.97); }
+.chip .teks-chip { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; position: relative; z-index: 1; }
+.chip .gambar-chip { flex: none; width: 52px; height: 52px; position: relative; z-index: 1; }
+.gambar-chip.besar { width: 84px; height: 84px; flex: none; }
+@keyframes masukChip { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+.gb { width: 100%; height: 100%; display: block; overflow: visible; }
+.gb .kotak { fill: none; stroke: var(--emas-garis); stroke-width: 1.8; stroke-linejoin: round; }
+.gb .bilah, .gb .ikat, .gb .serok { fill: none; stroke: var(--emas-garis); stroke-width: 1.2; stroke-linecap: round; opacity: 0.55; }
+.gb .serok { opacity: 0.9; stroke-width: 1.6; }
+.gb .isi-dalam { fill: var(--logam1); opacity: 0.85; transform-box: fill-box; transform-origin: 50% 100%; transition: transform 640ms cubic-bezier(.2,.8,.2,1), fill 480ms ease; }
+.gb .gunung { transform-box: fill-box; transform-origin: 50% 100%; transition: transform 640ms cubic-bezier(.2,.8,.2,1); }
+.gb .gunung path { fill: var(--logam1); opacity: 0.92; stroke: var(--emas-garis); stroke-width: 1; stroke-linejoin: round; }
+.gb .gunung circle { fill: var(--emas-garis); opacity: 0.5; }
+.gb .ukuran { font-family: Jost, sans-serif; font-size: 13px; font-weight: 700; fill: var(--teks); opacity: 0.8; }
+.gb .label-kantong { fill: var(--seg-aktif); stroke: var(--emas-garis); stroke-width: 0.8; opacity: 0.9; }
+.gb.wadah.perlu-isi .kotak { stroke: var(--awas); } .gb.wadah.perlu-isi .isi-dalam { fill: var(--awas); opacity: 0.6; }
+.gb.wadah.tak-diketahui .kotak { stroke-dasharray: 3 3; opacity: 0.6; } .gb .tanya { font-family: 'Bodoni Moda', Georgia, serif; font-size: 18px; fill: var(--redup); }
+.chip.isi-ulang { border-color: var(--awas); } .chip .wadah-ket { font-weight: 600; } .chip.isi-ulang .wadah-ket { color: var(--awas); }
+.chip.habis .gb { opacity: 0.5; }
+/* kelompok ukuran (seperti papan harga toko: 5 · 10 · 20 · 25 kg) */
+.kelompok-rak { display: flex; flex-direction: column; gap: 6px; animation: masuk 420ms cubic-bezier(.2,.8,.2,1); }
+.judul-kelompok { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 2px 0; font-family: 'Bodoni Moda', Georgia, serif; font-size: 17px; border-bottom: 1px solid var(--garis); padding-bottom: 4px; }
+.judul-kelompok .ket { font-family: Jost, sans-serif; font-size: 11px; }
+.baris-wadah { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; }
+.baris-wadah > div:last-child { display: flex; flex-direction: column; gap: 6px; }
+/* keranjang & angka */
+.keranjang .b { animation: masuk 420ms cubic-bezier(.2,.8,.2,1); }
+.jual-keranjang.pegas { animation: pegas 520ms cubic-bezier(.2,.8,.2,1); }
+.seg { transition: transform 160ms cubic-bezier(.2,.8,.2,1), background-color 220ms ease, color 220ms ease, border-color 220ms ease; } .seg:active { transform: scale(0.94); }
+.kaca-btn:active, .utama:active, .tuts .k:active, .pecahan .kaca-btn:active { transform: scale(0.96); } .kaca-btn, .tuts .k { transition: transform 140ms cubic-bezier(.2,.8,.2,1), background-color 220ms ease; }
+.kabar-kotak > .pita-info { animation: masuk 380ms cubic-bezier(.2,.8,.2,1); }
+[data-gulir] { font-variant-numeric: tabular-nums; }
+/* tetes emas terbang (barang masuk keranjang) */
+.tetes-gerak { position: fixed; z-index: 60; width: 12px; height: 12px; border-radius: 50%; pointer-events: none; opacity: 0; background: linear-gradient(160deg, var(--logam1), var(--logam2)); box-shadow: 0 0 12px var(--logam-glow); }
+.tetes-gerak.terbang { animation: terbang 600ms cubic-bezier(.2,.8,.2,1) forwards; }
+@media (prefers-reduced-motion: reduce) { .chip, .kelompok-rak, .keranjang .b, .kabar-kotak > .pita-info, .jual-keranjang.pegas, .tetes-gerak.terbang { animation: none; } .gb .isi-dalam, .gb .gunung, .seg, .kaca-btn, .tuts .k { transition: none; } }

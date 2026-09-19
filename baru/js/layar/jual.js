@@ -6,6 +6,52 @@ import { RP, ANGKA, DESIMAL, tanggalPendek } from '../inti/format.js';
 import * as L from './jual-logika.js';
 import * as RT from './retur-logika.js';
 import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
+import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
+
+// ---------- GAMBAR BARANG (owner 19 Sep: "gambar sesuaikan sama nama") ----------
+// Semua gambar punya ISI yang naik-turun lewat transform (bisa bertransisi di semua peramban; bentuk path tidak).
+const idAman = (t) => String(t).replace(/[^a-zA-Z0-9]/g, '_');
+const bulat2 = (n) => Math.round(Math.max(0, Math.min(1, n)) * 1000) / 1000;
+/** Kotak wadah literan (potongan depan): isi di dalam kotak + GUNUNG beras di atas bibirnya. Belum ditandai → garis putus, tanpa isi. */
+function gambarWadah(w) {
+  if (!w.diketahui) return `<svg class="gb wadah tak-diketahui" viewBox="0 0 64 64" aria-hidden="true"><path class="kotak" d="M8 28h48l-3 30H11z"/><text x="32" y="48" text-anchor="middle" class="tanya">?</text></svg>`;
+  return `<svg class="gb wadah ${w.perluIsi ? 'perlu-isi' : ''}" viewBox="0 0 64 64" aria-hidden="true">
+    <g class="gunung" style="transform: scaleY(${bulat2(w.gunung)});"><path d="M9 28 Q20 27 26 14 Q32 4 38 14 Q44 27 55 28 Z"/><circle cx="27" cy="21" r="0.9"/><circle cx="34" cy="16" r="0.9"/><circle cx="38" cy="23" r="0.9"/><circle cx="31" cy="25" r="0.9"/></g>
+    <rect class="isi-dalam" x="10.5" y="28" width="43" height="29" style="transform: scaleY(${bulat2(w.dalam)});"/>
+    <path class="kotak" d="M8 28h48l-3 30H11z"/><path class="bilah" d="M9.2 38h45.6M10.2 48h43.6"/>
+  </svg>`;
+}
+/** Karung utuh (terikat di atas); isi = sisa stok relatif di kelompoknya. */
+function gambarKarung(id, isi, berat) {
+  const c = 'ck_' + idAman(id);
+  return `<svg class="gb karung" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="${c}"><path d="M17 17 Q32 22 47 17 L51 24 Q55 42 51 59 Q32 63 13 59 Q9 42 13 24 Z"/></clipPath></defs>
+    <g clip-path="url(#${c})"><rect class="isi-dalam" x="8" y="16" width="48" height="46" style="transform: scaleY(${bulat2(isi)});"/></g>
+    <path class="kotak" d="M17 17 Q32 22 47 17 L51 24 Q55 42 51 59 Q32 63 13 59 Q9 42 13 24 Z"/><path class="ikat" d="M24 10 Q28 16 22 17M40 10 Q36 16 42 17M22 17 Q32 21 42 17"/>
+    <text x="32" y="45" text-anchor="middle" class="ukuran">${berat}</text></svg>`;
+}
+/** Kemasan (kantong bersegel atas-bawah, berlabel angka ukurannya). */
+function gambarKemasan(id, isi, ukuran) {
+  const c = 'cm_' + idAman(id);
+  return `<svg class="gb kemasan" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="${c}"><rect x="15" y="12" width="34" height="46" rx="5"/></clipPath></defs>
+    <g clip-path="url(#${c})"><rect class="isi-dalam" x="15" y="12" width="34" height="46" style="transform: scaleY(${bulat2(isi)});"/></g>
+    <rect class="kotak" x="15" y="12" width="34" height="46" rx="5"/><path class="bilah" d="M15 18h34M15 52h34"/><rect class="label-kantong" x="20" y="27" width="24" height="17" rx="3"/>
+    <text x="32" y="40" text-anchor="middle" class="ukuran">${String(ukuran).replace('.', ',')}</text></svg>`;
+}
+/** Karung terbuka + serok: repack dadakan & literan yang diserok langsung dari karung. */
+function gambarKarungBuka(id, isi) {
+  const c = 'cb_' + idAman(id);
+  return `<svg class="gb karung buka" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="${c}"><path d="M15 20 Q32 26 49 20 Q54 42 50 59 Q32 63 14 59 Q10 42 15 20 Z"/></clipPath></defs>
+    <g clip-path="url(#${c})"><rect class="isi-dalam" x="8" y="20" width="48" height="42" style="transform: scaleY(${bulat2(isi)});"/></g>
+    <path class="kotak" d="M15 20 Q32 26 49 20 Q54 42 50 59 Q32 63 14 59 Q10 42 15 20 Z"/><ellipse class="kotak" cx="32" cy="20" rx="17" ry="4.5"/>
+    <path class="serok" d="M40 6 L47 20 M35 17 h14 l-2 8 h-10 z"/></svg>`;
+}
+function gambarChipBarang(c, penuh) {
+  const isi = (c.sisa || 0) / penuh; const id = c.jalur + '-' + c.kunci + '-' + (c.berat || '');
+  if (c.jalur === 'literan') return c.wadah ? gambarWadah(c.wadah) : gambarKarungBuka(id, isi);
+  if (c.jalur === 'karung') return gambarKarung(id, isi, c.berat);
+  if (c.jalur === 'kemasan') return gambarKemasan(id, isi, c.ukuranKg);
+  return gambarKarungBuka(id, isi);
+}
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -25,8 +71,14 @@ export function pasangLayarJual(akar, opsi) {
     chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(L.ketukChip(S(), c)); },
     sering: ({ id }) => { const c = rakKini().sering.find((x) => x.id === id); if (c) set(L.ketukChip(S(), c)); },
     tuts: ({ t }) => set(L.tekanTuts(S(), t)),
-    preset: ({ n }) => set(L.masukkan(S(), Number(n))),
-    masukkan: () => set(L.masukkan(S())),
+    preset: ({ n }, el) => masukDenganGerak(L.masukkan(S(), Number(n)), el),
+    masukkan: (arg, el) => masukDenganGerak(L.masukkan(S()), el),
+    isiUlangWadah: async ({ merk }) => {
+      const r = L.susunIsiUlangWadah(merk, L.waktuSekarang(S().sekarang || undefined));
+      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
+      try { const h = await tulisDokumen(r.dokumen); if (h && h.gagal) return set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true }); set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar })); }
+      catch (e) { set({ kabar: 'GAGAL menandai isi ulang: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+    },
     tutup: () => set({ lembar: null, pilih: null, negoId: null, ketik: '' }),
     bukaKeranjang: () => set({ lembar: S().lembar === 'keranjang' ? null : 'keranjang' }),
     hapusBaris: ({ id }) => set(L.hapusBaris(S(), id)),
@@ -110,6 +162,12 @@ export function pasangLayarJual(akar, opsi) {
     },
     batalTukar: () => set(L.batalTukar(S())),
   };
+  // barang masuk keranjang → tetes emas terbang dari tombol yang diketuk ke bilah keranjang, bilahnya memegas
+  function masukDenganGerak(patch, el) {
+    const dari = el ? tengah(el) : null; const masuk = patch.keranjang && patch.keranjang.length > S().keranjang.length;
+    set(patch);
+    if (masuk && dari) requestAnimationFrame(() => { const bilah = akar.querySelector('.ringkas-keranjang'); terbangkan(dari, bilah); setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 420); });
+  }
   async function tulisPesanan(r) {
     if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
     try {
@@ -173,11 +231,11 @@ export function pasangLayarJual(akar, opsi) {
       <section class="jual-keranjang ${s.lembar === 'keranjang' ? 'terbuka' : ''}">
         <div class="ringkas-keranjang" data-aksi="bukaKeranjang">
           <span>${s.keranjang.length ? s.keranjang.length + ' barang' : 'Keranjang kosong'}${s.pelanggan ? ' · ' + s.pelanggan : ''}</span>
-          <span class="serif" style="font-size: 20px;">${RP(t.total)}</span>
+          <span class="serif" style="font-size: 20px;" data-gulir="${Math.max(0, t.total)}">${RP(Math.max(0, t.total))}</span>
         </div>
         <div class="isi-keranjang">
           <div class="keranjang">
-            ${s.keranjang.length ? s.keranjang.map((b) => h`<div class="b ${b.trx.penggantiRetur ? 'pengganti' : ''}">
+            ${s.keranjang.length ? s.keranjang.map((b) => h`<div class="b ${b.trx.penggantiRetur ? 'pengganti' : ''}" data-k="baris-${b.id}">
               <div class="t"><div style="font-weight: 600;">${b.trx.label}</div><div class="ket">${DESIMAL(b.trx.jumlah)} ${b.trx.satuan} × ${RP(b.trx.hargaSatuan)}${b.trx.nego ? ' · nego' : ''}${b.trx.kemasanLiteran ? ' · ' + (b.trx.jumlahKemasanLiteranDipakai || 1) + ' kantong' : ''}${b.trx.bonusUnit ? ' · +1 bonus (stok ' + b.trx.jumlahUnit + ')' : ''}${b.trx.penggantiRetur ? ' · PENGGANTI RETUR, nilai ' + RP(b.trx.nilaiBarangPengganti) : ''}</div></div>
               <span class="step"><span data-aksi="kurangBaris" data-id="${b.id}" data-langkah="${b.trx.satuan === 'karung' ? 0.5 : 1}">−</span><span class="n">${DESIMAL(b.trx.jumlah)}</span><span data-aksi="tambahBaris" data-id="${b.id}" data-langkah="${b.trx.satuan === 'karung' ? 0.5 : 1}">+</span></span>
               <div class="h" data-aksi="nego" data-id="${b.id}" title="ketuk untuk nego">${RP(b.trx.hargaTotal)}</div>
@@ -203,7 +261,7 @@ export function pasangLayarJual(akar, opsi) {
           ${t.potongan ? h`<div class="total"><span class="label">Potongan</span><span class="n" style="font-size: 16px;">− ${RP(t.potongan)}</span></div>` : ''}
           ${t.kredit ? h`<div class="total"><span class="label">Barang kembali (tukar)</span><span class="n" style="font-size: 16px;">− ${RP(t.kredit)}</span></div>` : ''}
           ${t.bulat ? h`<div class="total"><span class="label">Pembulatan Rp500 (${s.cara === 'Kredit' ? 'bon' : 'tunai'})</span><span class="n" style="font-size: 16px;">+ ${RP(t.bulat)}</span></div>` : ''}
-          <div class="total"><span class="label">Ditagih</span><span class="n">${RP(t.total)}</span></div>
+          <div class="total"><span class="label">Ditagih</span><span class="n" data-gulir="${Math.max(0, t.total)}">${RP(Math.max(0, t.total))}</span></div>
           <div class="utama" data-aksi="bukaBayar">BAYAR · ${RP(Math.max(0, t.total))}</div>
           <div class="ket" style="text-align: center; cursor: pointer;" data-aksi="parkir">parkir struk ini — stoknya tetap dipegang</div>
         </div>
@@ -212,7 +270,7 @@ export function pasangLayarJual(akar, opsi) {
       <aside class="jual-samping">
         <div class="kartu hari">
           <div class="label">Hari ini · ${hari.baris} baris · ${hari.nota} nota</div>
-          <div class="serif" style="font-size: 24px;">${RP(hari.omzet)}</div>
+          <div class="serif" style="font-size: 24px;" data-gulir="${hari.omzet}">${RP(hari.omzet)}</div>
           <div class="ket">${Object.keys(hari.perCara).map((c) => c + ' ' + RP(hari.perCara[c])).join(' · ') || 'belum ada penjualan'} · ${DESIMAL(hari.kg)} kg</div>
           ${hari.terakhir.map((r) => h`<div class="r"><span class="w">${r.jam}</span><span class="t">${r.teks}${r.nama ? ' · ' + r.nama : ''}</span><span class="n">${RP(r.n)}</span></div>`)}
         </div>
@@ -237,28 +295,40 @@ export function pasangLayarJual(akar, opsi) {
     if (s.jalur === 'retur') return gambarRetur(s);
     const daftar = s.jalur === 'sering' ? rak.sering : (rak[s.jalur] || []);
     if (!daftar.length) return h`<div class="pita-info">${s.jalur === 'sering' ? (s.pelanggan ? s.pelanggan + ' belum punya kebiasaan belanja 90 hari terakhir' : 'Belum ada yang laku 28 hari terakhir') : 'Belum ada barang berharga di jalur ini — isi harganya di Katalog'}</div>`;
-    const penuh = Math.max(1, ...daftar.map((c) => c.sisa || 0));   // isian chip = sisa relatif terhadap yang paling banyak di jalur ini
-    return h`<div class="rak-chip">${daftar.map((c) => h`<div class="chip ${s.pilih && s.pilih.kunci === c.kunci && s.pilih.jalur === c.jalur && (s.pilih.berat || 0) === (c.berat || 0) ? 'dipilih' : ''} ${c.sisa <= 0 ? 'habis' : c.sisa <= 2 ? 'kurang' : ''}"
+    // isi gambar = sisa relatif terhadap yang paling banyak DI KELOMPOKNYA (wadah literan memakai isinya sendiri, bukan perbandingan)
+    const satuChip = (c, penuh, i) => h`<div class="chip ${s.pilih && s.pilih.kunci === c.kunci && s.pilih.jalur === c.jalur && (s.pilih.berat || 0) === (c.berat || 0) ? 'dipilih' : ''} ${c.sisa <= 0 ? 'habis' : c.sisa <= 2 ? 'kurang' : ''} ${c.wadah && c.wadah.diketahui && c.wadah.perluIsi ? 'isi-ulang' : ''}"
+        data-k="chip-${s.jalur}-${c.jalur}-${c.kunci}-${c.berat || ''}" style="--urut: ${Math.min(i, 14)};"
         data-aksi="${s.jalur === 'sering' ? 'sering' : 'chip'}" data-id="${c.id || ''}" data-jalur="${c.jalur}" data-kunci="${c.kunci}" data-berat="${c.berat || ''}">
-      <div class="isian" style="height: ${Math.round(Math.min(100, (c.sisa || 0) / penuh * 100))}%;"></div>
-      <div class="nama">${c.nama}</div>
-      <div class="rinci">${c.ukuran}${c.keterangan ? ' · ' + c.keterangan : ''}</div>
-      <div class="harga">${RP(c.harga)}<span class="satuan">/${c.satuan}</span></div>
-      <div class="stok">${c.sisa <= 0 ? 'habis' : c.sisaTeks}${c.dipegang > 0 ? ' · ' + (c.jalur === 'kemasan' ? c.dipegang + ' unit' : DESIMAL(c.dipegang) + ' kg') + ' dipegang struk lain' : ''}</div>
-    </div>`)}</div>`;
+      <div class="teks-chip">
+        <div class="nama">${c.nama}</div>
+        <div class="rinci">${c.ukuran}${c.keterangan ? ' · ' + c.keterangan : ''}</div>
+        <div class="harga">${RP(c.harga)}<span class="satuan">/${c.satuan}</span></div>
+        <div class="stok">${c.sisa <= 0 ? 'habis' : c.sisaTeks}${c.dipegang > 0 ? ' · ' + (c.jalur === 'kemasan' ? c.dipegang + ' unit' : DESIMAL(c.dipegang) + ' kg') + ' dipegang struk lain' : ''}</div>
+        ${c.wadah ? h`<div class="stok wadah-ket">${!c.wadah.diketahui ? 'wadah belum ditandai isi ulang' : c.wadah.perluIsi ? 'WADAH ±' + DESIMAL(c.wadah.sisaKg) + ' kg — ISI ULANG' : 'wadah ±' + DESIMAL(c.wadah.sisaKg) + ' kg'}</div>` : ''}
+      </div>
+      <div class="gambar-chip">${mentah(gambarChipBarang(c, penuh))}</div>
+    </div>`;
+    const maks = (d) => Math.max(1, ...d.map((c) => c.sisa || 0));
+    const kelompok = s.jalur !== 'sering' && rak.kelompok && rak.kelompok[s.jalur] ? rak.kelompok[s.jalur] : null;
+    if (kelompok) return h`${kelompok.map((g) => h`<div class="kelompok-rak" data-k="kel-${s.jalur}-${g.k}"><div class="judul-kelompok"><span>${g.judul}</span><span class="ket">${g.daftar.length} barang · termurah dulu</span></div>
+      <div class="rak-chip">${g.daftar.map((c, i) => satuChip(c, maks(g.daftar), i))}</div></div>`)}`;
+    return h`<div class="rak-chip" data-k="rak-${s.jalur}">${daftar.map((c, i) => satuChip(c, maks(daftar), i))}</div>`;
   }
 
   function gambarLembar(s, rak, t, info, muncul) {
     const sumber = sumberData();
     if (!s.lembar || s.lembar === 'keranjang') return '';
-    const L1 = h`<div class="lembar tirai" data-aksi="tutup"></div>`;
+    const L1 = h`<div class="lembar tirai" data-k="tirai" data-aksi="tutup"></div>`;
     const kepala = (judul, ket) => h`<div style="display: flex; justify-content: space-between; align-items: baseline;"><span class="judul">${judul}</span><span class="ket" style="cursor: pointer; text-decoration: underline;" data-aksi="tutup">tutup</span></div>${ket ? h`<div class="ket">${ket}</div>` : ''}`;
     const tuts = (aksiMasuk, label) => h`<div class="tuts">${TUTS.map((k) => h`<div class="k ${/^\d$/.test(k) ? '' : 'f'}" data-aksi="tuts" data-t="${k}">${k}</div>`)}${aksiMasuk ? h`<div class="k f aksi" style="grid-column: span 4;" data-aksi="${aksiMasuk}">${label}</div>` : ''}</div>`;
     if (s.lembar === 'jumlah' && s.pilih) {
       const c = s.pilih; const maks = L.maksUntuk(c);
       const preset = c.jalur === 'karung' ? [1, 2, 5, 10] : c.jalur === 'kemasan' ? [1, 2, 3, 5] : c.jalur === 'repack' ? [5, 10, 20, 25] : [1, 2, 5, 10];
-      return h`${L1}<div class="lembar ${muncul}">
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala(c.nama + ' ' + c.ukuran, RP(c.harga) + '/' + c.satuan + ' · bebas dijual ' + (maks === null ? '—' : DESIMAL(maks) + ' ' + c.satuan))}
+        ${c.jalur === 'literan' && c.wadah ? (() => { const w = L.tinggiWadah(c.kunci, s); return h`<div class="baris-wadah"><div class="gambar-chip besar">${mentah(gambarWadah(w))}</div>
+          <div><div class="ket">${!w.diketahui ? 'Wadah ini belum pernah ditandai diisi ulang, jadi isinya belum bisa digambar.' : 'Isi wadah ±' + DESIMAL(w.sisaKg) + ' kg dari ' + w.penuhKg + ' kg · ditandai penuh ' + tanggalPendek(w.sejakTanggal) + ' ' + w.sejakJam + (w.lewat ? ' · sudah terjual ' + DESIMAL(w.lewat) + ' kg LEBIH dari isinya — lupa menandai?' : '')}</div>
+            <div class="kaca-btn ${w.diketahui && !w.perluIsi ? '' : 'aktif'}" data-aksi="isiUlangWadah" data-merk="${c.kunci}">Wadah baru diisi ulang (penuh, menggunung)</div></div></div>`; })() : ''}
         ${c.jalur === 'repack' ? h`<div class="ket">Jadi produk apa (nama jual di nota) — kosong = nama mereknya</div><input class="ketik-nama" id="namaRepack" type="text" value="${s.namaRepack}" data-ketik="namaRepack" placeholder="${c.nama}">` : ''}
         <div class="tombol-baris">${preset.map((n) => h`<div class="kaca-btn" data-aksi="preset" data-n="${n}">${n} ${c.satuan}</div>`)}</div>
         <div class="label">Jumlah</div><div class="angka">${s.ketik || '0'} <span class="ket">${c.satuan}</span>${s.ketik ? h` <span class="ket">= ${RP(c.harga * L.angkaKetik(s.ketik))}</span>` : ''}</div>
@@ -267,14 +337,14 @@ export function pasangLayarJual(akar, opsi) {
     }
     if (s.lembar === 'nego') {
       const b = s.keranjang.find((x) => x.id === s.negoId); if (!b) return '';
-      return h`${L1}<div class="lembar ${muncul}">
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Nego ' + b.trx.label, 'harga sekarang ' + RP(b.trx.hargaSatuan) + '/' + b.trx.satuan + ' · ketik harga barunya')}
         <div class="angka">${s.ketik ? RP(L.angkaKetik(s.ketik)) : 'Rp0'}</div>
         ${tuts('terapkanNego', 'PAKAI HARGA INI')}
       </div>`;
     }
     if (s.lembar === 'potongan') {
-      return h`${L1}<div class="lembar ${muncul}">
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Potongan nota', 'nominal, dipotong dari subtotal ' + RP(t.subtotal))}
         <div class="angka">${s.ketik ? RP(L.angkaKetik(s.ketik)) : 'Rp0'}</div>
         ${tuts('terapkanPotongan', 'PAKAI POTONGAN')}
@@ -283,7 +353,7 @@ export function pasangLayarJual(akar, opsi) {
     }
     if (s.lembar === 'pelanggan') {
       const daftar = L.daftarPelanggan(s.cariPelanggan);
-      return h`${L1}<div class="lembar ${muncul}">
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Siapa pembelinya?', 'nama dari catatan penjualan & kartu pelanggan toko')}
         <input class="ketik-nama" id="cariPelanggan" type="text" value="${s.cariPelanggan}" data-ketik="cariPelanggan" data-enter="enterPelanggan" placeholder="Ketik namanya — Enter untuk memakai nama baru">
         ${s.pelanggan ? h`<div class="kaca-btn putus" data-aksi="lepasPelanggan">Tanpa nama</div>` : ''}
@@ -294,9 +364,9 @@ export function pasangLayarJual(akar, opsi) {
     }
     if (s.lembar === 'retur') {
       const n = RT.notaDitunjuk(s);
-      if (!n || n.hilang || !n.d.ok) return h`${L1}<div class="lembar ${muncul}">${kepala('Retur', 'nota ini tidak bisa ditunjuk lagi')}<div class="pita-info awas">${!n || n.hilang ? 'Nota tidak ditemukan lagi — dibatalkan, dikoreksi, atau dihapus.' : n.d.sebab}</div></div>`;
+      if (!n || n.hilang || !n.d.ok) return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">${kepala('Retur', 'nota ini tidak bisa ditunjuk lagi')}<div class="pita-info awas">${!n || n.hilang ? 'Nota tidak ditemukan lagi — dibatalkan, dikoreksi, atau dihapus.' : n.d.sebab}</div></div>`;
       const d = n.d; const tukar = s.rtPenyelesaian === 'tukar';
-      return h`${L1}<div class="lembar ${muncul}">
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Retur · ' + n.teks, 'nota ' + tanggalPendek(n.t.tanggal) + (n.t.namaPelanggan ? ' · ' + n.t.namaPelanggan : '') + ' · boleh kembali ' + DESIMAL(d.sisa) + ' ' + d.satuan + (d.sudahDiretur ? ' (' + DESIMAL(d.sudahDiretur) + ' sudah diretur)' : ''))}
         <div class="ket">Harga dibayar per ${d.satuan}: ${RP(d.perSatuan)} — dari ${d.dasar}</div>
         <div class="label">Berapa ${d.satuan} yang kembali${d.satuan === 'kg' ? ' (boleh sebagian)' : ''}</div>
@@ -318,7 +388,7 @@ export function pasangLayarJual(akar, opsi) {
     }
     if (s.lembar === 'pesanan') {
       const daftar = L.daftarPesanan(s.psSaring);
-      return h`${L1}<div class="lembar ${muncul}">
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Pesanan', 'BUKAN uang & BUKAN stok sampai notanya dicatat · dipesan → diantar → dibayar lewat nota')}
         <input class="ketik-nama" id="psSaring" type="text" value="${s.psSaring}" data-ketik="psSaring" placeholder="saring nama pemesan">
         <div class="daftar-nama">${daftar.map((o) => h`<div class="ps-kartu">
@@ -345,7 +415,7 @@ export function pasangLayarJual(akar, opsi) {
     if (s.lembar === 'bayar') {
       const tolak = L.alasanTolak(s);
       const kunciKredit = s.cara === 'Kredit' && !t.sisaJadiBon && s.keranjang.length ? L.alasanKunciKredit(s, t.total) : null;
-      return h`${L1}<div class="lembar ${muncul}">
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Bayar', s.keranjang.length + ' barang' + (s.pelanggan ? ' · ' + s.pelanggan : ''))}
         ${t.kredit ? h`<div class="ket">keranjang ${RP(t.subtotal - t.potongan)} − barang kembali (tukar) ${RP(t.kredit)}</div>` : ''}
         <div class="total"><span class="label">${t.kredit ? 'Pembeli bayar' : 'Ditagih'}</span><span class="n">${RP(Math.max(0, t.total))}</span></div>
@@ -354,8 +424,8 @@ export function pasangLayarJual(akar, opsi) {
         ${s.cara === 'Tunai' ? h`
           <div class="label">Uang yang diterima — ketuk lembarannya</div>
           <div class="pecahan">${L.PECAHAN.map((p) => h`<div class="kaca-btn" data-aksi="pecahan" data-n="${p}">${p >= 1000 ? p / 1000 + ' rb' : p}</div>`)}<div class="kaca-btn aktif" data-aksi="uangPas">PAS</div></div>
-          <div class="total"><span class="label">diterima ${t.uang ? h`<span class="ket" style="text-decoration: underline; cursor: pointer;" data-aksi="hapusUang">hapus</span>` : ''}</span><span class="n" style="font-size: 20px;">${RP(t.uang)}</span></div>
-          ${t.kembalian ? h`<div class="total"><span class="label">Kembalian</span><span class="n" style="font-size: 20px;">${RP(t.kembalian)}</span></div>` : ''}
+          <div class="total"><span class="label">diterima ${t.uang ? h`<span class="ket" style="text-decoration: underline; cursor: pointer;" data-aksi="hapusUang">hapus</span>` : ''}</span><span class="n" style="font-size: 20px;" data-gulir="${t.uang}">${RP(t.uang)}</span></div>
+          ${t.kembalian ? h`<div class="total" data-k="kembalian"><span class="label">Kembalian</span><span class="n" style="font-size: 20px;" data-gulir="${t.kembalian}">${RP(t.kembalian)}</span></div>` : ''}
           ${t.sisaJadiBon ? h`<div class="pita-info awas">kurang ${RP(t.kurang)} — sisanya jadi bon atas nama ${s.pelanggan || '… (pilih nama pembelinya)'}. Yang kurang dicatat di buku bon, bukan ditolak, bukan dianggap lunas.</div>` : ''}
 ` : ''}
         ${s.cara === 'QRIS' ? h`<div class="pita-info">QRIS = angka persis, tidak dibulatkan. Yang masuk rekening sudah dipotong MDR — catatan toko, tidak dicetak di struk.</div>` : ''}
@@ -371,10 +441,10 @@ export function pasangLayarJual(akar, opsi) {
     return '';
   }
 
-  K.dengar(gambar);
+  K.dengar(() => { gambar(); gulirkan(akar, RP); });
   let _jamUrung = null;
   K.dengar((s) => { clearTimeout(_jamUrung); if (s.notaTerakhir) _jamUrung = setTimeout(gambar, Math.max(0, L.BATAS_URUNGKAN_DETIK * 1000 - (Date.now() - s.notaTerakhir.pada) + 50)); });
-  dengarkan(() => { _rak = null; gambar(); });
-  gambar();
+  dengarkan(() => { _rak = null; gambar(); gulirkan(akar, RP); });
+  gambar(); gulirkan(akar, RP);
   return { keadaan: K, gambar };
 }
