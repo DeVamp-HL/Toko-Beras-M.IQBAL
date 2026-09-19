@@ -61,6 +61,8 @@ jobs:
         run: python3 alat-uji/uji_jual_baru.py && python3 alat-uji/uji_jual_baru.py --kontrol
       - name: "Sistem baru — logika layar Ringkasan + kontrol positif"
         run: python3 alat-uji/uji_ringkasan_baru.py && python3 alat-uji/uji_ringkasan_baru.py --kontrol
+      - name: "Sistem baru — logika layar Stok + kontrol positif"
+        run: python3 alat-uji/uji_stok_baru.py && python3 alat-uji/uji_stok_baru.py --kontrol
 
       - name: "Sistem baru — identitas angka lama vs baru (dilewati di CI, cadangan toko tidak ada di repo)"
         run: python3 alat-uji/uji_identitas_baru.py
