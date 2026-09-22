@@ -96,6 +96,12 @@ Koreksi owner 21 Sep: nama seperti "IR64 Elevate / Ascent / Apex / IR42 Value / 
 - **Tinjau 22 Sep** (alur 9 agen atas izin Ultracode owner: 3 peninjau + 1 pembantah per temuan; 21 temuan mentah, 6 terbukti — semua ditambal & diuji): karung senama di dua tempat dijumlah (→ nama × tempat); nota literan di MENIT yang sama sesudah samakan tidak dipotong (→ pemutus seri id seperti takar); rework karantina (`penyesuaianStok` `dariRework`, `kgFisik` null) dianggap hitungan gudang (→ dilewati, juga di kartu "belum dicocokkan"); campuran satu baris yang menyalin nama karung di belakang wadah ikut tersimpan lalu terpaku ke nama lama (→ dianggap bawaan, tidak disimpan); "samakan sisa karung"/"pakai angka ini" dengan kotak kosong menulis 0 kg / rata (→ ditolak); calon karung tidak memberi tahu nama yang sudah terbuka di belakang wadah lain (→ disebut).
 - Catatan lama (sebelum 21 Sep, tanpa kolom `wadah`) tetap dikenali sebagai karung di belakang wadah senama. Cadangan toko untuk uji lokal boleh di akar, `_privat/`, atau `_arsip-mockup/` (semua di-gitignore; yang terbaru menurut tanggal di namanya).
 
+## Putaran 9b (22 Sep 2026) — adegan angkut: panggul, motor/mobil, tuang & jahit (permintaan owner)
+- **Karung 50 kg masuk keranjang** → `adeganPanggul`: orang mengangkat karung dari lantai ke pundaknya. **Kemasan ≥ 10 kg** sama (kemasan 5 kg tetap jatuh ke keranjang belanja).
+- **Setengah karung** (1,5 = 25 kg dari karung 50 kg; tuts koma kini boleh untuk karung) → `adeganTuangJahit`: karung 50 kg diangkat & dimiringkan, dituang ke karung bekas sampai separuh, lalu mulut karung bekas dijahit.
+- **Nota dicatat** → `adeganMuat`: orang yang memanggul berjalan ke kendaraan, menaruh muatan, kendaraan pergi (roda berputar) → jadi alat bayar. Kendaraan dihitung **per nota** (`kendaraanUntuk`): karung > 3 → **mobil** (bak terbuka), selain itu **motor**; kemasan ≥ 10 kg sama seperti karung; kemasan 5 kg > 20 → mobil, > 1 → motor; literan > 10 L → motor; repack > 10 kg → motor. Tidak ada yang memenuhi → serah terima tangan seperti sebelumnya.
+- Teknis: grup yang dianimasikan CSS tidak boleh membawa atribut `transform` (CSS `transform` menimpanya → gambar terlempar ke pojok) — posisinya di grup pembungkus.
+
 ## Struktur
 ```
 baru/

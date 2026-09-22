@@ -5,6 +5,9 @@
 //   · kemasan masuk keranjang  → kemasan jatuh ke keranjang belanja, keranjangnya memantul
 //   · nota dicatat (literan/kemasan) → SERAH TERIMA: dua tangan toko (atas & bawah kemasan) → dua tangan pembeli → jadi UANG
 //   · nota dicatat (karung)    → karung DIANGKUT, tangan pembeli memberi uang ke tangan toko → jadi UANG
+//   · (owner 22 Sep) karung 50 kg / kemasan ≥ 10 kg masuk keranjang → ORANG MEMANGGUL karung ke pundaknya;
+//     nota dicatat → orang yang tadi memanggul menaruhnya ke MOTOR (banyak → MOBIL bak terbuka), kendaraan pergi → jadi alat bayar;
+//     setengah karung (25 kg dari karung 50 kg) → karung 50 kg DITUANG ke karung bekas, lalu mulutnya DIJAHIT
 // Kejujuran: yang "jadi uang" hanya Tunai. QRIS digambar ponsel ber-centang; BON digambar kertas bon — bukan uang,
 // karena belum ada uang yang berpindah (memori: status yang berbohong soal uang).
 // Teknis: hanya transform & opacity (dikomposit GPU → mulus), tidak menghalangi ketukan (pointer-events: none),
@@ -40,6 +43,16 @@ const bon = () => `<g class="alat-bayar bon"><path class="kertas" d="M-24 -30 h4
 const alatBayar = (cara) => (cara === 'QRIS' ? qris() : cara === 'Kredit' ? bon() : uang());
 const wadahKotak = () => `<g class="wadah-adegan"><path class="gunung-adegan" d="M-44 0 Q-24 -2 -12 -24 Q0 -40 12 -24 Q24 -2 44 0 Z"/><path class="kotak-adegan" d="M-48 0 h96 l-6 46 h-84 z"/><path class="lipat" d="M-46 16 h92 M-44 32 h88"/></g>`;
 const karungBuka = () => `<g class="wadah-adegan"><path class="gunung-adegan" d="M-30 -4 Q0 -22 30 -4 Z"/><path class="kotak-adegan" d="M-32 -6 Q0 2 32 -6 Q40 26 34 46 Q0 52 -34 46 Q-40 26 -32 -6 Z"/></g>`;
+// orang menghadap kanan, titik asal di kakinya; .beban = barang yang dipanggul di pundak (diisi pemanggil)
+const orang = (beban) => `<g class="orang"><g class="tubuh"><path class="kaki kaki-kiri" d="M-4 -34 L-9 0"/><path class="kaki kaki-kanan" d="M4 -34 L9 0"/><path class="badan-orang" d="M-12 -36 Q-15 -70 0 -74 Q15 -70 12 -36 Z"/><circle class="kepala" cx="0" cy="-85" r="9.5"/><path class="lengan-orang" d="M9 -66 Q26 -64 24 -84"/><g class="beban">${beban || ''}</g></g></g>`;
+const motor = () => `<g class="kendaraan motor"><g class="roda-grup"><circle class="roda" cx="-32" cy="0" r="13"/><circle class="jari" cx="-32" cy="0" r="5.5"/></g><g class="roda-grup"><circle class="roda" cx="34" cy="0" r="13"/><circle class="jari" cx="34" cy="0" r="5.5"/></g><path class="rangka" d="M-32 0 L-14 -26 L16 -26 L34 0 M16 -26 L26 -44"/><path class="jok" d="M-44 -34 h34 l6 8 h-44 z"/><path class="tangki" d="M-10 -40 h24 l8 12 h-32 z"/><path class="setang" d="M18 -48 h18"/><circle class="lampu" cx="38" cy="-40" r="3.5"/><path class="knalpot" d="M-8 -14 h-30 v4 h30 z"/></g>`;
+const mobil = () => `<g class="kendaraan mobil"><path class="bodi" d="M-80 -24 h68 v-26 h30 l18 24 h14 v26 h-130 z"/><path class="bak-garis" d="M-80 -24 h68 v-16 h-68 z M-12 -24 v-26"/><rect class="kaca" x="-6" y="-46" width="24" height="18" rx="3"/><circle class="lampu" cx="48" cy="-14" r="3"/><g class="roda-grup"><circle class="roda" cx="-52" cy="0" r="12"/><circle class="jari" cx="-52" cy="0" r="5"/></g><g class="roda-grup"><circle class="roda" cx="26" cy="0" r="12"/><circle class="jari" cx="26" cy="0" r="5"/></g></g>`;
+const karungBekas = () => `<g class="karung-bekas"><clipPath id="klipBekas"><path d="M-27 -38 h54 Q54 -8 30 40 Q0 46 -30 40 Q-54 -8 -27 -38 Z"/></clipPath><g clip-path="url(#klipBekas)"><rect class="isi-kantong isi-bekas" x="-56" y="-40" width="112" height="86"/></g><path class="badan bekas" d="M-27 -38 h54 Q54 -8 30 40 Q0 46 -30 40 Q-54 -8 -27 -38 Z"/><path class="lipat" d="M-18 -26 v56 M18 -26 v56"/><path class="jahitan" pathLength="100" d="M-27 -38 l4 -6 l4 6 l4 -6 l4 6 l4 -6 l4 6 l4 -6 l4 6 l4 -6 l4 6 l4 -6 l4 6 l4 -6 l2 6"/></g>`;
+const jarum = () => `<g class="jarum"><path class="benang" d="M-4 6 q-10 10 -4 24"/><path class="batang-jarum" d="M-16 14 L14 -6"/><circle class="lubang" cx="10" cy="-3" r="2"/></g>`;
+// muatan di kendaraan: sampai tiga buah ditumpuk
+const muatan = (jenis, ukuran, banyak) => { const n = Math.max(1, Math.min(3, Math.ceil(Number(banyak) || 1))); const satu = jenis === 'karung' ? karung(ukuran || '50') : jenis === 'kemasan' ? kemasan(ukuran || '') : kantongKertas();
+  return Array.from({ length: n }).map((_, i) => `<g transform="translate(${i * 7} ${-i * 6}) scale(0.58)">${satu}</g>`).join(''); };
+const bebanPundak = (jenis, ukuran) => `<g transform="translate(16 -106) rotate(-10) scale(0.7)">${jenis === 'kemasan' ? kemasan(ukuran || '') : karung(ukuran || '50')}</g>`;
 const serok = () => `<g class="serok-adegan"><path class="gagang" d="M10 -34 L0 -8"/><path class="mangkuk" d="M-16 -8 h32 l-4 16 h-24 z"/><path class="beras-serok" d="M-14 -8 q14 -12 28 0 z"/></g>`;
 
 // ---------- adegan ----------
@@ -78,6 +91,38 @@ export function adeganBukaKarung({ nama, wadah, berat, dariKarung, keKarung, dar
     <g transform="translate(244 122) scale(0.7)">${wadahKotak().replace('class="gunung-adegan"', 'class="gunung-adegan" style="opacity: 0;"')}</g>
   </svg>`;
   return mainkan(svg, '<b>Karung ' + esc(nama) + '</b> diambil dari tumpukan gudang' + (wadah ? ' → di belakang wadah ' + esc(wadah) : '') + ' · tumpukan ' + esc(dariKg) + ' → ' + esc(keKg) + ' kg', 2300);
+}
+/** Karung / kemasan besar masuk keranjang: orang mengangkat karung dari lantai ke PUNDAKNYA (memanggul). */
+export function adeganPanggul({ nama, jenis, ukuran, berat, jumlahTeks }) {
+  const isi = jenis === 'kemasan' ? kemasan(ukuran || '') : karung(berat || '50');
+  const svg = `<svg class="adegan panggul" viewBox="0 0 320 170">
+    <path class="lantai" d="M40 150 h240"/>
+    <g transform="translate(128 150)">${orang('')}<g class="beban-lantai"><g transform="translate(58 -34) scale(0.7)">${isi}</g></g></g>
+  </svg>`;
+  return mainkan(svg, '<b>' + esc(nama) + '</b> · ' + esc(jumlahTeks) + ' · dipanggul', 1700);
+}
+/** Nota dicatat: orang yang memanggul berjalan ke kendaraan, menaruh muatannya, kendaraan pergi → jadi alat bayar. kendaraan: 'motor' | 'mobil'. */
+export function adeganMuat({ kendaraan, jenis, ukuran, banyak, banyakTeks, cara, jumlahRp, ket }) {
+  const mobilKah = kendaraan === 'mobil'; const lama = 3800;
+  const svg = `<svg class="adegan muat ${mobilKah ? 'mobil' : 'motor'}" viewBox="0 0 320 170" style="--lama: ${lama}ms;">
+    <path class="lantai" d="M0 150 h320"/>
+    <!-- grup yang dianimasikan CSS TIDAK boleh membawa atribut transform (CSS transform menimpanya) → posisinya di grup pembungkus -->
+    <g transform="translate(${mobilKah ? 226 : 214} 150)"><g class="kendaraan-grup">${mobilKah ? mobil() : motor()}<g transform="translate(${mobilKah ? -62 : -30} ${mobilKah ? -30 : -40})"><g class="muatan">${muatan(jenis, ukuran, banyak)}</g></g></g></g>
+    <g transform="translate(-40 150)"><g class="pembawa">${orang(bebanPundak(jenis, ukuran))}</g></g>
+    <g transform="translate(160 66)"><g class="grup-bayar">${alatBayar(cara)}</g></g>
+  </svg>`;
+  return mainkan(svg, '<b>Naik ' + (mobilKah ? 'mobil' : 'motor') + '</b> · ' + esc(banyakTeks) + ' · ' + keteranganBayar(cara, jumlahRp, ket), lama);
+}
+/** Setengah karung: karung 50 kg diangkat, DITUANG ke karung bekas sampai separuh, lalu mulut karung bekasnya DIJAHIT. */
+export function adeganTuangJahit({ nama, berat, kg }) {
+  const lama = 3400;
+  const svg = `<svg class="adegan tuang-jahit" viewBox="0 0 320 170" style="--lama: ${lama}ms;">
+    <path class="lantai" d="M40 152 h240"/>
+    <g transform="translate(104 118)"><g class="karung-tuang">${karung(berat || '50')}</g></g>
+    <g class="butir"><circle cx="196" cy="74" r="2"/><circle cx="204" cy="66" r="1.7"/><circle cx="212" cy="78" r="1.6"/><circle cx="200" cy="86" r="1.5"/><circle cx="208" cy="58" r="1.4"/></g>
+    <g transform="translate(218 118)">${karungBekas()}<g transform="translate(-34 -46)"><g class="jalur-jarum">${jarum()}</g></g></g>
+  </svg>`;
+  return mainkan(svg, '<b>' + esc(kg) + ' kg ' + esc(nama) + '</b> · dituang dari karung ' + esc(berat || '50') + ' kg ke karung bekas, lalu dijahit', lama);
 }
 /** Kemasan masuk keranjang belanja. */
 export function adeganKemasanMasuk({ nama, ukuran, jumlahTeks }) {
