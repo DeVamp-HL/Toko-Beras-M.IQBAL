@@ -416,6 +416,6 @@ export function pasangLayarHarga(akar, opsi) {
   K.dengar(gambar); dengarkan(() => gambar());
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
   // dipanggil layar Menu / Stok: buka keluarga (katalog | bon | belanja) — lewat penangan yang sama dengan ketukan; pemasok = buka bukunya
-  const buka = (keluarga, t) => { AKSI.keluarga({ k: ['katalog', 'bon', 'belanja'].indexOf(keluarga) >= 0 ? keluarga : 'katalog' }); if (t && t.pemasok) set({ bukuNama: t.pemasok, tabB: 'buku' }); if (t && t.tab) set(keluarga === 'katalog' ? { tabH: t.tab } : keluarga === 'bon' ? { tabB: t.tab } : { tabL: t.tab }); };
+  const buka = (keluarga, t) => { AKSI.keluarga({ nama: ['katalog', 'bon', 'belanja'].indexOf(keluarga) >= 0 ? keluarga : 'katalog' }); if (t && t.pemasok) set({ bukuNama: t.pemasok, tabB: 'buku' }); if (t && t.tab) set(keluarga === 'katalog' ? { tabH: t.tab } : keluarga === 'bon' ? { tabB: t.tab } : { tabL: t.tab }); };
   return { gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
 }
