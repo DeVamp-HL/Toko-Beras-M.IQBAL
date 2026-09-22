@@ -160,4 +160,12 @@
 @keyframes jarumJahit { 0%, 66% { opacity: 0; transform: translate(0, 0); } 70% { opacity: 1; transform: translate(0, 0); } 74% { transform: translate(8px, -6px); } 78% { transform: translate(16px, 0); } 82% { transform: translate(28px, -6px); } 86% { transform: translate(40px, 0); } 90% { transform: translate(54px, -6px); } 94% { opacity: 1; transform: translate(68px, 0); } 100% { opacity: 0; transform: translate(72px, -4px); } }
 .adegan.tuang-jahit .jahitan { animation: jahitTampak var(--lama, 3400ms) linear both; }
 @keyframes jahitTampak { 0%, 69% { stroke-dashoffset: 100; } 94%, 100% { stroke-dashoffset: 0; } }
+/* ADUKAN: karung diangkat & dimiringkan, butir jatuh, kemasan hasil muncul satu per satu (--urut) di bawah curahan */
+.adegan.adukan .karung-tuang { transform-box: fill-box; transform-origin: 50% 50%; animation: karungTuangAdukan var(--lama, 3600ms) cubic-bezier(.35,.05,.35,1) both; will-change: transform; }
+@keyframes karungTuangAdukan { 0%, 8% { transform: none; } 26% { transform: translate(52px, -74px) rotate(112deg); } 72% { transform: translate(52px, -74px) rotate(112deg); } 86%, 100% { transform: none; } }
+.adegan.adukan .butir circle { animation: butirAdukan var(--lama, 3600ms) linear both; }
+.adegan.adukan .butir circle:nth-child(2) { animation-delay: 110ms; } .adegan.adukan .butir circle:nth-child(3) { animation-delay: 230ms; } .adegan.adukan .butir circle:nth-child(4) { animation-delay: 70ms; } .adegan.adukan .butir circle:nth-child(5) { animation-delay: 170ms; }
+@keyframes butirAdukan { 0%, 26% { opacity: 0; transform: translateY(0); } 30% { opacity: 1; transform: translateY(0); } 38% { opacity: 1; transform: translateY(46px); } 39% { opacity: 0; transform: translateY(0); } 43% { opacity: 1; } 51% { opacity: 1; transform: translateY(46px); } 52% { opacity: 0; transform: translateY(0); } 56% { opacity: 1; } 64% { opacity: 1; transform: translateY(46px); } 65%, 100% { opacity: 0; transform: translateY(46px); } }
+.adegan.adukan .kemasan-jadi { transform-box: fill-box; transform-origin: 50% 100%; opacity: 0; animation: kemasanMuncul var(--lama, 3600ms) cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--lama, 3600ms) * 0.09 * var(--urut, 0)); will-change: transform, opacity; }
+@keyframes kemasanMuncul { 0%, 32% { opacity: 0; transform: translateY(10px) scale(0.6); } 44% { opacity: 1; transform: translateY(-5px) scale(1.06); } 50%, 100% { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .panggung { display: none !important; } }

@@ -120,6 +120,13 @@ Dua tombol di Stok → Gudang kini sungguhan (Adukan masih ke sistem lama). Logi
 - **Atur** (angka owner, koleksi baru `aturanToko`, id `catatStok`): minimal karung per mobil (60), tempo bon pemasok (21 hari), selisih wajar (3 %), ambang stok bertambah (Rp250.000) — bawaan = angka sistem berjalan.
 - Uji asap di cadangan toko: kolom dokumen barang masuk & cocokkan yang dihasilkan wajib dikenal cadangan (kolom tambahan sistem baru — `jam`, `alasanKoreksi`, `riwayat` — disebut eksplisit).
 
+## Putaran 12 (23 Sep 2026) — ADUKAN (ST2 "Timbangan Adukan") & keputusan KARANTINA
+Tombol ketiga di Stok → Gudang (Adukan) dan tab Karantina kini sungguhan. Logika di `stok-adukan-logika.js` & `stok-karantina-logika.js` (tanpa DOM, dijaga `uji_stok_baru.py`); mesin beku tidak disentuh — `bagiBiayaAdukan` dipakai apa adanya.
+- **Adukan**: bahan = karung dari tumpukan gudang (nama + kg; "+1 karung 50" / "+25 kg") dan/atau kemasan jadi 50/25 kg yang dibongkar; hasil = baris nama · ukuran (5/10/20/25/50) · unit · kantong (jenis untuk ukuran itu, lembar = unit, boleh diubah, atau "tanpa"); upah kemas. Kartu paling atas = **timbangan**: kg & rupiah bahan masuk ⇄ hasil jadi, susut disebut (terserap ke modal hasil). SATU ADUKAN = SATU KESATUAN BIAYA: bahan (kg × modal rata-rata / unit × modal kemasan) + kantong (lembar × modal per lembar, `hitungStokBahanKemasan`) + upah, dibagi ke tiap hasil menurut kg, sisa pembulatan ke baris terakhir → Σ persis. Dokumen `produksiKemasan` PERSIS `simpanProduksi` index.html (sumberList/kgDipakai/sumberKemasanList/kgKemasanDipakai/upahRepacking hanya di dokumen pertama; batchProduksi/barisKe/jumlahBaris; jadiKarungUtuh false; kolom tambahan `jam`) + pasangan `stokBahanKemasan` {id = id produksi + 1, tipe pakai}. Penjaga (urutan simpanProduksi): baris tak lengkap ditolak menyebut barisnya; bahan = hasil (lingkaran) ditolak; stok bahan / kemasan / kantong kurang, kantong dipilih tanpa lembar ("terhitung GRATIS"), susut > 15 % — masing-masing dua ketukan. Draf di localStorage `miqbal_baru_draf_adukan`. Adegan: karung dituang, kemasan hasil muncul satu per satu.
+- **Buku adukan** (beli-jadi kedatangan & pindah buku takar tidak ikut; rework karantina tampil tapi tidak bisa diubah): rincian biaya & pembagian per hasil, timbangan, jejak koreksi. **Koreksi** = TOTAL biaya yang benar → dibagi ulang ke semua baris (`simpanKoreksiHpp` cabang adukan: pengganti ber-`koreksiDari`, lama ditandai `dikoreksiOleh`); alasan wajib; baris seadukan tidak lengkap ditolak. **Hapus** = seluruh adukan + pasangan kantong id + 1 (`hapusProduksi`), alasan wajib, dua ketukan, jejak ke `bukuHapus`; DITOLAK bila hasilnya sudah terjual/terpakai sehingga stok kemasan jadi minus (koreksi saja).
+- **Karantina**: tiap barang punya empat pilihan dengan kalimat akibatnya, dan penjaga yang sama menentukan apa yang tampil dan apa yang ditulis. *Ternyata layak jual* (alasan wajib) = retur dikoreksi `kondisi 'utuh'` + `koreksiKondisi` dan kartu `layak_jual` — tanpa dokumen stok (mesin membaca retur utuh sendiri; laba tanggal retur naik); ditolak bila sudah pernah di-rework, stok tidak dikenal, retur tahun lain; cocokkan sesudah retur → dua ketukan. *Rework* = kemasan → dokumen produksi tanpa bahan (modal = rata-rata produk sekarang, `catatan` "Hasil rework dari karantina (retur id …)"), karung → `penyesuaianStok` `dariRework` nilai Rp0 — barangnya dulu, statusnya belakangan, satu writeBatch. *Balik ke pemasok* / *Buang* = status saja, dua ketukan, kalimat jujur: kerugiannya SUDAH tercatat saat retur, laba tidak berubah lagi. Retur yang sudah dikoreksi utuh menolak rework/buang/balik (barang bergerak dua kali). Beda dari sistem lama: ditulis writeBatch dari salinan perangkat ini (bukan transaksi baca-ulang server) — putuskan dari satu perangkat.
+- Belum: adukan "menunggu owner" dari tablet (menyusul bersama layar tablet), bal/beli-jadi, kantong (ST4), tempat (ST5), HPP (ST6).
+
 ## Struktur
 ```
 baru/
@@ -137,6 +144,8 @@ baru/
   js/mesin/pembantu.js  fungsi & konstanta pembantu mesin — DIBUAT ALAT juga
   js/layar/jual-logika.js   logika Jual tanpa DOM (diuji di jsc)
   js/layar/jual.js          gambar & ketukan
+  js/layar/stok-logika.js, stok-catat-logika.js (ST1/ST3), stok-adukan-logika.js (ST2), stok-karantina-logika.js   logika Stok tanpa DOM
+  js/layar/stok.js          gambar & ketukan layar Stok
 ```
 Belum dipindah (terikat layar lama): `tulisSaldoPembuka` (ritual Tutup Buku), `thPagar` (Tutup Hari).
 Jangkar warisan: `stokMaksJalur()` membaca `#jualKarungBerat` dari DOM — layar menyediakan `<input type="hidden" id="jualKarungBerat">`.
@@ -154,7 +163,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/pindah_mesin.py --periksa` | tiap mesin di `js/mesin/beku.js` = sidik `alat-uji/beku.sha256` |
 | `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 216 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan + retur & tukar + tata letak + wadah literan: takar, karung bernama di belakang, campuran, susunan, rantai stok & pindah nama) di kotak pasir; 106 kontrol positif berbunyi; kunci dokumen vs baris nyata & vs yang ditulis index.html |
 | `alat-uji/uji_ringkasan_baru.py` (+ `--kontrol`) | 28 skenario logika Ringkasan (jam tetap, zona waktu dikunci WIB) + 14 kontrol; di cadangan toko: omzet hari/bulan/tahun = jumlah langsung barisnya |
-| `alat-uji/uji_stok_baru.py` (+ `--kontrol`) | 31 skenario logika Stok (jam & zona waktu dikunci; rantai stok "Berasnya ada di mana?", karung bernama) + 28 kontrol; di cadangan toko: nilai stok layar = mesin neraca |
+| `alat-uji/uji_stok_baru.py` (+ `--kontrol`) | 82 skenario logika Stok (jam & zona waktu dikunci; rantai stok "Berasnya ada di mana?", karung bernama; barang masuk, cocokkan, adukan, karantina) + 66 kontrol; di cadangan toko: nilai stok layar = mesin neraca, kolom dokumen catat dikenal cadangan |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.

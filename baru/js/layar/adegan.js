@@ -7,6 +7,7 @@
 //     bercentang, BON = kertas bon — bukan uang), BARU disusul adegan barangnya:
 //   · nota dicatat (literan/kemasan) → SERAH TERIMA: dua tangan toko (atas & bawah kemasan) → dua tangan pembeli
 //   · nota dicatat (karung)    → karung DIANGKUT, tangan pembeli memberi uang ke tangan toko (jalur lama, kini tak dipakai adeganNota)
+//   · adukan dicatat (Stok, 23 Sep) → karung 50 kg DITUANG, kemasan hasilnya muncul satu per satu
 //   · (owner 22 Sep) karung 50 kg / kemasan ≥ 10 kg masuk keranjang → ORANG MEMANGGUL karung ke pundaknya;
 //     nota dicatat → orang yang tadi memanggul menaruhnya ke MOTOR (banyak → MOBIL bak terbuka), kendaraan pergi → jadi alat bayar;
 //     setengah karung (25 kg dari karung 50 kg) → karung 50 kg DITUANG ke karung bekas, lalu mulutnya DIJAHIT
@@ -140,6 +141,17 @@ export function adeganTuangJahit({ nama, berat, kg }) {
     <g transform="translate(218 118)">${karungBekas()}<g transform="translate(-34 -46)"><g class="jalur-jarum">${jarum()}</g></g></g>
   </svg>`;
   return mainkan(svg, '<b>' + esc(kg) + ' kg ' + esc(nama) + '</b> · dituang dari karung ' + esc(berat || '50') + ' kg ke karung bekas, lalu dijahit', lama);
+}
+/** Adukan dicatat (owner, Stok): karung 50 kg diangkat & dituang, kemasan-kemasan hasilnya muncul satu per satu di bawah curahannya. */
+export function adeganAdukan({ bahanTeks, hasilTeks, ukuran, banyak }) {
+  const lama = 3600; const n = Math.max(1, Math.min(4, Math.ceil(Number(banyak) || 1)));
+  const svg = `<svg class="adegan adukan" viewBox="0 0 320 170" style="--lama: ${lama}ms;">
+    <path class="lantai" d="M30 152 h260"/>
+    <g transform="translate(92 118)"><g class="karung-tuang">${karung('50')}</g></g>
+    <g class="butir"><circle cx="186" cy="64" r="2"/><circle cx="196" cy="58" r="1.7"/><circle cx="206" cy="68" r="1.6"/><circle cx="192" cy="76" r="1.5"/><circle cx="202" cy="50" r="1.4"/></g>
+    ${Array.from({ length: n }).map((_, i) => `<g transform="translate(${170 + i * 38} 122) scale(0.62)"><g class="kemasan-jadi" style="--urut: ${i};">${kemasan(String(ukuran || '').replace('.', ','))}</g></g>`).join('')}
+  </svg>`;
+  return mainkan(svg, '<b>Adukan</b> · ' + esc(bahanTeks) + ' → ' + esc(hasilTeks), lama);
 }
 /** Kemasan masuk keranjang belanja. */
 export function adeganKemasanMasuk({ nama, ukuran, jumlahTeks }) {
