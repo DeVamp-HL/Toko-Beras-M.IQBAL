@@ -13,6 +13,8 @@ export async function muatCadangan(url) {
 export function isiDariCadangan(cad, keterangan) {
   let n = 0;
   Object.keys(cad).forEach((nama) => { if (Array.isArray(cad[nama]) && pasok(nama, cad[nama])) n += 1; });
+  // peta tempat simpan di cadangan (petaTempatSimpan, dari localStorage sistem lama) → dokumen pengaturan/tempatSimpan yang dibaca layar Stok
+  if (cad.petaTempatSimpan && typeof cad.petaTempatSimpan === 'object' && !Array.isArray(cad.pengaturan)) { pasok('pengaturan', [{ id: 'tempatSimpan', peta: cad.petaTempatSimpan }]); n += 1; }
   // peta jenis beras di cadangan v5 ikut dibawa ke localStorage (kunci yang sama dengan index.html)
   if (cad.petaJenisBeras && typeof cad.petaJenisBeras === 'object') {
     try { localStorage.setItem('miqbal_jenis_beras_v1', JSON.stringify(cad.petaJenisBeras)); } catch (e) { /* penyimpanan terkunci */ }
