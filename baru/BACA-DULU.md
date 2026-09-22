@@ -135,18 +135,32 @@ Layar keempat hidup: `layar/pelanggan.js` + `css/pelanggan.css`; logika di `pela
 - **Atur** (`aturanToko/pelanggan`): bangku kosong (× selang), nota yang perlu nama, waktunya ditagih, macet, anggaran THR, salam tagihan, cip ciri (+ kelompoknya), arah, urusan titipan, alasan hapus, bentuk THR — baris yang masih dipakai tidak bisa dihapus.
 - Uji asap di cadangan toko: kunjungan layar = pasangan nama×hari nyata, belanja bernama = baris nyata, sisa bon = mesin beku, kolom dokumen bayar/hapus/kartu dikenal, kop tagihan tetap.
 
+## Putaran 14 (23 Sep 2026) — layar MENU (N1 + pita jam N9) & SISTEM (SS1–SS5)
+Layar kelima hidup: `layar/menu.js` + `css/menu.css`; logika `menu-logika.js` (prefiks `mn`) & `sistem-logika.js` (`ss`), tanpa DOM, dijaga `uji_menu_baru.py`. Kelima petak nav kini hidup — tidak ada lagi petak yang "mengaku belum ada".
+- **Menu = rangka laci N1** (dikunci owner 16 Sep: "pertahankan desain UI di layar N1"; CSS `.mn-*` diambil mentah dari helmet N1): kepala kelompok buka-tutup (diingat per perangkat), tiap baris ikon + judul + sub + angka + keterangan; lencana merah = belum beres. Laci PALING ATAS = **pita jam** (N9): tujuh pekerjaan yang jamnya terbaca (nota meja, rinci karcis, tutup hari, belanja, buku bon, opname, katalog) di bagian hari SEKARANG — tujuh baris selalu tujuh dan tidak berpindah tempat; laci "Ganti bagian hari" tertutup sejak lahir. Di bawahnya sepuluh laci N1 (Buku besar · Alat toko · Toko ini) **+ dua baris Sistem** (Lokasi, Pengingat) di "Toko ini" — keluarga Sistem lahir sesudah Menu dan desainnya berkata "di bawah Menu". Baris "Akun & PIN" desain menjadi "Peran & persetujuan": sistem baru tidak punya kolom PIN (aturan tetap; kunci perangkat diatur di perangkatnya).
+- **Semua angka DIBACA** dari data toko lewat mesin yang sama (hitungUtangPemasok, hitungPiutang, hitungLabaBersihRentang, hitungNeraca, kasPada, hitungKasbon, hitungStokKarungPerMerk …); tidak ada angka yang lahir di layar Menu. Yang belum bisa dihitung ditulis begitu (kas & kekayaan tanpa titik kas), tidak ditebak.
+- **Tujuan tiap baris**: layar sistem baru dibuka lewat PENANGAN yang sama dengan ketukan di layar itu (`stok.buka(lembar|tab)`, `pelanggan.buka(keluarga, orang)`), lembar Sistem di dalam Menu, atau **sistem lama** (Pemasok, Harga, Laba, Setelan, Tutup Hari, Harian, Bulanan — belum ada di sini): kabarnya menyebut halamannya + tautan `../index.html` (tidak ada tautan dalam ke halaman sistem lama; index.html tidak disentuh).
+- **Empat dasar penyusunan lain** = tab (rangka laci yang sama): **Tanya** (N2: sepuluh pertanyaan, jawabannya kelihatan sebelum diketuk), **Jam** (N5: lima laci bagian hari), **Orang** (N6: satu nama seluruh buku — dua sisi buku, pemasok, pembeli, pegawai, yang menulis), **Tertutup** (N8: pintu yang tertutup berikut sebab & pembukanya; yang sudah terbuka — hapus buku sejak putaran 13 — ditulis terbuka). **Cari** layar / merek / nama orang sungguh mengetik.
+- **Sistem (SS1–SS5, dikunci 19 Sep) sebagai lembar Menu**, angka & daftar owner di `aturanToko/{perangkat,peran,cadangan,lokasi,pengingat}` (bawaan = angka desain):
+  - **Perangkat & antrean (SS1)**: kartu dari `perangkatStatus` (denyut sistem lama; sistem baru kini menulis denyutnya sendiri `aplikasi 'baru'` + pemegang + lokasi); **antrean = catatan yang sungguh belum diakui server** (`hasPendingWrites` tiap dokumen, bukan hitungan sendiri) — dikirim Firestore sendiri, tidak ada tombol kirim, tidak ada yang bisa dibuang; "Periksa: sudah sampai semua?" = `waitForPendingWrites` berbatas waktu. Jejak = `logAktivitas` **150 tulisan terakhir** (koleksi berbatas `batas` di koleksi.js — bukan seluruh riwayat), "belum sampai" = masih di antrean. Pemegang perangkat ini (daftar Atur, Owner tak terhapus) → kolom `oleh`/`diubahOleh` tulisan berikutnya (bawaan Owner = sama dengan dulu). Nama perangkat = kunci localStorage yang sama dengan sistem lama.
+  - **Peran & persetujuan (SS2)**: 13 tindakan × (Ben, karyawan) → boleh sendiri / minta owner / tidak boleh (ketuk memutar; owner selalu boleh, dijaga dua lapis); papan persetujuan membaca koleksi baru `persetujuan` (ditulis tablet karyawan kelak — sekarang kosong dan mengaku); tolak wajib alasan; "setujui semua yang kecil" ≤ batas Atur.
+  - **Cadangan & simpanan (SS3, pilihan C)**: UNDUH berkas = bentuk `unduhBackup()` sistem lama (versi 5, cap era tutup buku dari saldo pembuka) + koleksi baru, tanpa jejak & denyut; tiap unduhan dicatat ke koleksi baru `cadanganCatatan`; kalender 14 hari; kuota = ukuran localStorage alamat ini (simpanan lokal SISTEM LAMA) vs ±5 MB dengan laju ±62 KB/hari (PERKIRAAN, pengukuran 15 Sep) + `navigator.storage.estimate`; memulihkan dari berkas TETAP lewat Setelan sistem lama (tidak dibangun; keputusan owner dua kali cadangan).
+  - **Lokasi (SS4, fondasi)**: daftar lokasi (tepat satu utama), lokasi perangkat ini → kolom `lokasi` pada tiap tulisan berikutnya (hanya bila owner menyetelnya); pindah stok = DUA catatan `pindahStok` (keluar di asal, masuk di tujuan; ≤ stok asal; pengantar dari daftar) — buku mesin lama tidak disentuh; laporan per lokasi membaca kolom `lokasi` (catatan lama = lokasi utama); tumpukan per lokasi menutup buku (identitas diuji). Lokasi berisi stok / dipakai perangkat / utama tidak bisa dihapus.
+  - **Pengingat (SS5, pilihan B + C)**: lima sumber dari data — bon pemasok (tanggal bon + tempo `aturanToko/catatStok`), janji bayar (`tagihPelanggan`, gugur bila sudah membayar sesudah ditagih), kantong menipis (laju pakai 14 hari; tanpa laju TIDAK ditebak), opname rutin, cadangan berkas; hari-sebelum per jenis, penerima Owner/Ben; keadaan (selesai dengan catatan — wajib bila lewat; tunda berbatas; WA janji = kalimat tagihan Pelanggan, kedua kali sehari ditanya) di koleksi baru `pengingat`. "Selesai" tidak mencatat uang.
+- Uji asap di cadangan toko: angka laci pemasok & piutang = mesin beku; pita = silang jam; berkas cadangan sistem baru memuat SEMUA koleksi cadangan lama dengan jumlah yang sama.
+
 ## Struktur
 ```
 baru/
   index.html            cangkang: nav bawah (HP/Tablet), menu samping (Mac), formulir masuk, <main id="layar">
   css/identitas.css     token C1 (kaca buram emas/sampanye/platina, Bodoni Moda + Jost, body / body.gelap) + komponen dasar
   css/kerangka.css      SATU markup tiga lebar: HP < 720 · Tablet 720–1099 · Mac ≥ 1100
-  css/jual.css          bagian khas layar Jual
+  css/jual.css          bagian khas layar Jual (ringkasan/stok/pelanggan/menu.css: layar lain)
   js/app.js             pintu masuk: mode, sumber data (Firestore / ?cadangan=), masuk, nav
   js/inti/{format,dom,keadaan}.js   pemformat, penggambar (escape + delegasi data-aksi), penyimpan keadaan
-  js/data/koleksi.js    tabel 28 koleksi + kolom pengurut
+  js/data/koleksi.js    tabel koleksi (28 lama + baru milik sistem baru) + kolom pengurut; `batas` = hanya N terbaru dibaca (logAktivitas)
   js/data/toko.js       cache di memori + ambil*() (nama = index.html) + keranjang aktif/parkir
-  js/data/firebase.js   Firestore BACA SAJA, cache tetap IndexedDB (jalan tanpa internet), masuk akun owner
+  js/data/firebase.js   Firestore (baca + writeBatch), cache tetap IndexedDB, antrean hasPendingWrites, denyut perangkatStatus, atribusi oleh/lokasi per perangkat
   js/data/cadangan.js   sumber pengganti: berkas backup-batch-*.json (lokal, tidak di repo)
   js/mesin/beku.js      26 dari 28 MESIN UANG BEKU — DIBUAT ALAT (alat-uji/pindah_mesin.py), byte-identik, JANGAN DISUNTING
   js/mesin/pembantu.js  fungsi & konstanta pembantu mesin — DIBUAT ALAT juga
@@ -156,6 +170,8 @@ baru/
   js/layar/stok.js          gambar & ketukan layar Stok
   js/layar/pelanggan-logika.js (Kenali + THR), bon-logika.js (Bon)   logika Pelanggan tanpa DOM
   js/layar/pelanggan.js     gambar & ketukan layar Pelanggan
+  js/layar/menu-logika.js (laci N1, pita jam, tanya, jam, orang, tertutup, cari), sistem-logika.js (SS1–SS5)   logika Menu & Sistem tanpa DOM
+  js/layar/menu.js          gambar & ketukan layar Menu + lembar Sistem
 ```
 Belum dipindah (terikat layar lama): `tulisSaldoPembuka` (ritual Tutup Buku), `thPagar` (Tutup Hari).
 Jangkar warisan: `stokMaksJalur()` membaca `#jualKarungBerat` dari DOM — layar menyediakan `<input type="hidden" id="jualKarungBerat">`.
@@ -175,6 +191,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_ringkasan_baru.py` (+ `--kontrol`) | 28 skenario logika Ringkasan (jam tetap, zona waktu dikunci WIB) + 14 kontrol; di cadangan toko: omzet hari/bulan/tahun = jumlah langsung barisnya |
 | `alat-uji/uji_stok_baru.py` (+ `--kontrol`) | 82 skenario logika Stok (jam & zona waktu dikunci; rantai stok "Berasnya ada di mana?", karung bernama; barang masuk, cocokkan, adukan, karantina) + 66 kontrol; di cadangan toko: nilai stok layar = mesin neraca, kolom dokumen catat dikenal cadangan |
 | `alat-uji/uji_pelanggan_baru.py` (+ `--kontrol`) | 38 skenario logika Pelanggan (jam dikunci penuh — `new Date()` pun; orang, wajah, tampah, belanja, jam, minggu, benang, hafalan, kartu, gabung, atur, THR, bon, tagih, bayar, hapus buku) + 27 kontrol; di cadangan toko: kunjungan/belanja/sisa bon = baris nyata & mesin, kolom dokumen dikenal |
+| `alat-uji/uji_menu_baru.py` (+ `--kontrol`) | 53 skenario logika Menu & Sistem (jam dikunci penuh; silang jam, laci, tanya, jam, orang, tertutup, cari; perangkat, jejak, peran, persetujuan, cadangan, lokasi & pindah stok, pengingat, atur) + 32 kontrol; di cadangan toko: laci pemasok/piutang = mesin, pita = silang, berkas cadangan memuat semua koleksi lama |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.

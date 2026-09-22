@@ -8,7 +8,7 @@
 <!--
   SISTEM BARU (mulai 19 Sep 2026) — tampilan baru di atas DATA YANG SAMA dengan index.html.
   Hidup berdampingan di alamat /baru/; index.html tetap alat yang dipakai toko sampai yang baru terbukti.
-  Putaran 1: layar JUAL, baca saja. Struktur: css/ (identitas C1, kerangka tiga lebar, layar),
+  Putaran 1–14: Jual · Ringkasan · Stok · Pelanggan · Menu (+ Sistem). Struktur: css/ (identitas C1, kerangka tiga lebar, layar),
   js/inti (format, dom, keadaan) · js/data (koleksi, toko, firebase, cadangan) · js/mesin (beku & pembantu,
   DIBUAT ALAT dari index.html — jangan disunting tangan) · js/layar (jual-logika tanpa DOM, jual gambar).
 -->
@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="css/ringkasan.css">
 <link rel="stylesheet" href="css/stok.css">
 <link rel="stylesheet" href="css/pelanggan.css">
+<link rel="stylesheet" href="css/menu.css">
 <link rel="stylesheet" href="css/adegan.css">
 <link rel="stylesheet" href="css/kinerja.css">
 <script>
@@ -43,12 +44,13 @@
   <div class="item aktif" data-tujuan="jual">Jual</div>
   <div class="item" data-tujuan="pelanggan">Pelanggan</div>
   <div class="item" data-tujuan="menu">Menu</div>
-  <div class="ket" style="margin-top: auto; padding: 0 14px;">Layar lain masih di <a href="../index.html">sistem lama</a>.</div>
+  <div class="ket" style="margin-top: auto; padding: 0 14px;">Harga, pemasok & laporan masih di <a href="../index.html">sistem lama</a>.</div>
 </aside>
 
 <main id="layarRingkasan" class="layar-ringkasan" hidden></main>
 <main id="layarStok" class="layar-stok" hidden></main>
 <main id="layarPelanggan" class="layar-pelanggan" hidden></main>
+<main id="layarMenu" class="layar-menu" hidden></main>
 <main id="layar" class="layar-jual" aria-live="polite"></main>
 
 <nav class="nav" aria-label="Menu bawah">

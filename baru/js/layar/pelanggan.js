@@ -50,7 +50,7 @@ export function pasangLayarPelanggan(akar, opsi) {
   }
   const ubahKartu = (f) => { const d = JSON.parse(JSON.stringify(st().kartu)); if (!d) return; f(d); set({ kartu: d }); };
   const bukaKartu = (kunci) => { const o = P.kartuOrang(kini(), kunci); if (!o) return set({ kabar: 'Orangnya tidak ditemukan', kabarAwas: true }); set({ kartu: { kunci, nama: o.nama, cip: o.cip.slice(), catatan: o.catatan, arah: o.arah, asli: o.asli, kontak: o.kontak, biasa: o.biasa }, baru: null, gabung: null, kabar: '' }); };
-  delegasi(akar, {
+  const AKSI = {
     keluarga: ({ ke }) => { const k = ke; set({ keluarga: k, kabar: '', kartu: null, baru: null, gabung: null, orangBon: null, lembarBon: null, thrOrang: null, atur: null }); ingatTab(); },
     tabK: ({ t }) => { set({ tabK: t, kabar: '' }); ingatTab(); }, tabB: ({ t }) => set({ tabB: t, kabar: '' }), tabT: ({ t }) => set({ tabT: t, kabar: '' }),
     mode: () => opsi.gantiMode(), tutupKabar: () => set({ kabar: '' }),
@@ -111,7 +111,8 @@ export function pasangLayarPelanggan(akar, opsi) {
     aturTambah: ({ daftar: k }) => { const a = JSON.parse(JSON.stringify(st().atur)); a[k].push(k === 'ciriDaftar' ? { nama: '', grup: 'lain' } : k === 'bentukThr' ? { nama: '', n: 0 } : ''); set({ atur: a }); },
     aturLepas: ({ daftar: k, i }) => { const a = JSON.parse(JSON.stringify(st().atur)); a[k].splice(Number(i), 1); set({ atur: a }); },
     simpanAtur: async () => { const a = st().atur; if (!a) return; const isi = Object.assign({}, a, { kosongKali: String(Math.round((Number(String(a.kosongKali).replace(',', '.')) || 0) * 10)) }); if (await tulis(P.susunAturPelanggan(isi, waktu()))) set({ atur: null }); },
-  });
+  };
+  delegasi(akar, AKSI);
 
   function gambar() {
     if (!tampil) return;
@@ -347,5 +348,7 @@ export function pasangLayarPelanggan(akar, opsi) {
 
   K.dengar(gambar);
   dengarkan(() => gambar());
-  return { gambar, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
+  // dipanggil layar Menu: buka keluarga (kenali | bon | thr), dan kalau ada, kartu / bon satu orang — lewat penangan yang sama dengan ketukan
+  const buka = (keluarga, orang) => { AKSI.keluarga({ ke: keluarga || 'kenali' }); if (orang && keluarga === 'bon') AKSI.bukaOrangBon({ kunci: orang }); else if (orang) AKSI.bukaKartu({ kunci: orang }); };
+  return { gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
 }

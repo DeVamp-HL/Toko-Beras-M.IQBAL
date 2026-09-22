@@ -41,4 +41,14 @@ export const KOLEKSI = [
   { nama: 'bukuHapus',           urut: 'id',    cache: 'bukuHapus' },
   { nama: 'tagihPelanggan',      urut: 'id',    cache: 'tagih' },       // tagihan bon lewat WhatsApp + janji bayar (putaran 13)
   { nama: 'pelangganTitip',      urut: 'id',    cache: 'titip' },       // yang datang bukan orangnya (benang merah)
+  // Putaran 14 (23 Sep 2026) — layar MENU & SISTEM:
+  //  perangkatStatus = denyut tiap perangkat (koleksi sistem lama; sistem baru ikut menulis denyutnya sendiri, `aplikasi: 'baru'`).
+  //  logAktivitas    = jejak siapa menulis apa (koleksi sistem lama); DIBACA TERBATAS `batas` baris terbaru — bukan seluruh koleksi.
+  //  cadanganCatatan, pengingat, persetujuan, pindahStok = koleksi BARU sistem baru (aturan Firestore jatuh ke "owner saja").
+  { nama: 'perangkatStatus',     urut: 'pada',  cache: 'perangkat' },
+  { nama: 'logAktivitas',        urut: 'pada',  cache: 'log', batas: 150 },
+  { nama: 'cadanganCatatan',     urut: 'id',    cache: 'cadangan' },     // tiap cadangan berkas yang diunduh dari sistem baru
+  { nama: 'pengingat',           urut: 'id',    cache: 'pengingat' },    // keadaan tiap pengingat (selesai / ditunda / WA hari ini)
+  { nama: 'persetujuan',         urut: 'id',    cache: 'persetujuan' },  // permintaan "minta owner" dari tablet/Mac + keputusannya
+  { nama: 'pindahStok',          urut: 'id',    cache: 'pindahStok' },   // pindah stok antarlokasi: dua catatan (keluar & masuk)
 ];
