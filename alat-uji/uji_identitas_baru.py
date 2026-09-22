@@ -135,7 +135,7 @@ def banding(cadangan, mod, js_baru):
 def cari_cadangan(argv):
     for x in argv[1:]:
         if x.endswith('.json'): return x
-    kandidat = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')))
+    kandidat = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')), key=os.path.basename)   # cadangan toko boleh di akar, _privat/ atau _arsip-mockup/ (semua di-gitignore); yang terbaru menurut tanggal di namanya
     return kandidat[-1] if kandidat else None
 
 

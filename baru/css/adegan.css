@@ -91,4 +91,12 @@
 .adegan.angkut .grup-bayar { animation-name: jadiUangKarung; }
 @keyframes jadiUangKarung { 0%, 72% { opacity: 0; transform: scale(0.1) rotate(-20deg); } 84% { opacity: 1; transform: scale(1.2) rotate(4deg); } 92%, 100% { opacity: 1; transform: scale(1) rotate(0deg); } }
 
+/* buka karung: diangkat dari tumpukan gudang → mendarat & dibuka di belakang wadah; angka tumpukan berganti */
+.adegan.buka-karung .karung-diangkat { transform-box: view-box; animation: karungDariTumpukan 1500ms cubic-bezier(.45,.05,.35,1) both; will-change: transform, opacity; }
+@keyframes karungDariTumpukan { 0%, 12% { transform: translate(0, 0); opacity: 1; } 34% { transform: translate(10px, -40px) rotate(-6deg); } 74% { transform: translate(150px, -46px) rotate(5deg); opacity: 1; } 92%, 100% { transform: translate(166px, -10px) rotate(0deg); opacity: 0; } }
+.adegan.buka-karung .karung-mendarat { transform-box: fill-box; transform-origin: 50% 100%; animation: karungMendarat 700ms cubic-bezier(.2,.8,.2,1) 1320ms both; }
+@keyframes karungMendarat { 0% { opacity: 0; transform: translateY(-16px) scale(0.9); } 60% { opacity: 1; transform: translateY(0) scale(1.06, 0.94); } 100% { opacity: 1; transform: none; } }
+.adegan.buka-karung .angka-tumpuk { font-family: 'Bodoni Moda', Georgia, serif; font-size: 13px; fill: var(--teks); }
+.adegan.buka-karung .angka-tumpuk.dari { animation: angkaPergi 500ms ease 900ms both; } .adegan.buka-karung .angka-tumpuk.ke { animation: angkaDatang 500ms ease 1200ms both; }
+@keyframes angkaPergi { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-8px); } } @keyframes angkaDatang { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .panggung { display: none !important; } }
