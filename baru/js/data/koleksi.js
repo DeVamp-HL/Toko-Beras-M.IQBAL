@@ -55,4 +55,9 @@ export const KOLEKSI = [
   //  koleksi bahan sistem lama); strukKeluar = tiap struk yang dikirim WA / dicetak. Keduanya koleksi BARU (aturan Firestore: owner saja).
   { nama: 'hargaWadah',          urut: 'id',    cache: 'hargaWadah' },
   { nama: 'strukKeluar',         urut: 'id',    cache: 'strukKeluar' },
+  // Putaran 16 (23 Sep 2026) — Stok ST4–ST6: pengaturan = koleksi sistem lama (dokumen tempatSimpan {peta} = peta tempat simpan yang sama dengan index.html);
+  //  pindahTempat = catatan pindah tempat; koreksiHpp = jejak koreksi harga kedatangan per nama (Δ nilai rak). Dua terakhir koleksi BARU (owner saja).
+  { nama: 'pengaturan',          urut: 'id',    cache: 'pengaturan' },
+  { nama: 'pindahTempat',        urut: 'id',    cache: 'pindahTempat' },
+  { nama: 'koreksiHpp',          urut: 'id',    cache: 'koreksiHpp' },
 ];
