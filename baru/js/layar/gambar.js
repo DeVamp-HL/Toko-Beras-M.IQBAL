@@ -49,8 +49,20 @@ export function gambarKarungStok(k) {
     <path class="kotak" d="${badan}"/><path class="gulung" d="M12 24 Q32 31 52 24 Q54 19 50 17 Q32 23 14 17 Q10 19 12 24 Z"/><path class="bilah" d="M22 34v20M42 34v20"/>
     <text x="32" y="49" text-anchor="middle" class="ukuran">${Number(k.penuhKg) || 50}</text></svg>`;
 }
+/** Wadah KOSONG yang dijual sebagai barang (putaran 15): kantong terlipat tanpa isi (garis putus di dalam), berlabel muatannya; karung bekas = karung kempis. */
+export function gambarWadahKosong(id, isi, ukuran, karung) {
+  const c = 'cw_' + idAman(id);
+  if (karung) return `<svg class="gb karung kosong" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="${c}"><path d="M14 30 Q32 34 50 30 L52 58 Q32 62 12 58 Z"/></clipPath></defs>
+    <g clip-path="url(#${c})"><rect class="isi-dalam" x="8" y="30" width="48" height="32" style="transform: scaleY(${bulat2(isi)});"/></g>
+    <path class="kotak" d="M14 30 Q32 34 50 30 L52 58 Q32 62 12 58 Z"/><path class="ikat" d="M18 30 Q32 24 46 30M20 40h24M20 48h24"/><text x="32" y="55" text-anchor="middle" class="ukuran" style="font-size: 9px;">bekas</text></svg>`;
+  return `<svg class="gb kemasan kosong" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="${c}"><rect x="15" y="14" width="34" height="44" rx="5"/></clipPath></defs>
+    <g clip-path="url(#${c})"><rect class="isi-dalam" x="15" y="14" width="34" height="44" style="transform: scaleY(${bulat2(isi)});"/></g>
+    <rect class="kotak" x="15" y="14" width="34" height="44" rx="5" style="stroke-dasharray: 3 2;"/><path class="bilah" d="M15 20h34M22 30l20 18M42 30 22 48"/><rect class="label-kantong" x="20" y="27" width="24" height="17" rx="3"/>
+    <text x="32" y="40" text-anchor="middle" class="ukuran">${String(ukuran || '').replace('.', ',')}</text></svg>`;
+}
 export function gambarChipBarang(c, penuh) {
   const isi = (c.sisa || 0) / penuh; const id = c.jalur + '-' + c.kunci + '-' + (c.berat || '');
+  if (c.jalur === 'wadah') return gambarWadahKosong(id, isi, c.ukuranKg, c.hasilSamping);
   if (c.jalur === 'literan') return c.wadah ? gambarWadah(c.wadah) : gambarKarungBuka(id, isi);
   if (c.jalur === 'karung') return gambarKarung(id, isi, c.berat);
   if (c.jalur === 'kemasan') return gambarKemasan(id, isi, c.ukuranKg);
