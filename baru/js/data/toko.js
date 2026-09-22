@@ -68,6 +68,9 @@ export function ambilPemasokCatatan() { return _cache.pemasokCat; }
 export function ambilHargaWadah() { return _cache.hargaWadah || []; }     // putaran 15: harga jual wadah per lembar (id = jenis)
 export function ambilStrukKeluar() { return _cache.strukKeluar || []; }   // putaran 15: struk yang sudah dikirim/dicetak
 export function ambilPengaturan() { return _cache.pengaturan || []; }     // koleksi pengaturan sistem lama (tempatSimpan)
+export function ambilHargaPasar() { return _cache.hargaPasar || []; }       // putaran 17: catatan harga pasar per harga (id = kunci)
+export function ambilHargaTerbit() { return _cache.hargaTerbit || []; }     // putaran 17: riwayat terbit katalog
+export function ambilPesananPemasok() { return _cache.pesananPemasok || []; } // putaran 17: pesanan belanja ke pemasok
 // Titik kas & peta jenis beras hidup di localStorage perangkat di index.html (kunci yang sama);
 // karena sistem baru ada di asal (origin) yang sama, localStorage-nya pun sama.
 export function ambilTitikKas() {

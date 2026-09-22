@@ -66,6 +66,7 @@ export function pasangLayarMenu(akar, opsi) {
     if (t.ke === 'sistem') { set({ sistem: t.sistem, kabar: '', buka: null, tabS: Object.assign({}, st().tabS, t.tab ? { [t.sistem]: t.tab } : {}) }); ukurSimpanan(); return; }
     if (t.ke === 'stok') { opsi.bukaStok && opsi.bukaStok(t.lembar || null, t.tab || null); return; }
     if (t.ke === 'pelanggan') { opsi.bukaPelanggan && opsi.bukaPelanggan(t.keluarga || 'kenali', t.orang || null); return; }
+    if (t.ke === 'harga') { opsi.bukaHarga && opsi.bukaHarga(t.keluarga || 'katalog', t); return; }   // putaran 17: Harga & Pemasok
     if (t.ke === 'jual' || t.ke === 'ringkasan') { opsi.pindah(t.ke); return; }
     if (t.ke === 'lama') { set({ kabar: 'Layar ini belum ada di sistem baru — di sistem lama: ' + (HALAMAN_LAMA[t.halaman] || t.halaman) + '. ', kabarAwas: false, bukaLama: t.halaman }); return; }
     set({ kabar: 'Belum ada layarnya di sistem baru.', kabarAwas: true });

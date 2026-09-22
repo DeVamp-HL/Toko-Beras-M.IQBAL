@@ -60,4 +60,10 @@ export const KOLEKSI = [
   { nama: 'pengaturan',          urut: 'id',    cache: 'pengaturan' },
   { nama: 'pindahTempat',        urut: 'id',    cache: 'pindahTempat' },
   { nama: 'koreksiHpp',          urut: 'id',    cache: 'koreksiHpp' },
+  // Putaran 17 (23 Sep 2026) — HARGA & PEMASOK: hargaPasar = catatan owner harga toko lain per harga (id = kunci merek|satuan); hargaTerbit = tiap kali katalog
+  //  diterbitkan (daftar lama → baru); pesananPemasok = pesanan belanja yang dikirim ke pemasok (menunggu datang / batal). Draf harga, "sengaja dibiarkan",
+  //  label rak yang belum diganti = dokumen aturanToko (hargaDraf, hargaSengaja, hargaLabel). Semua koleksi BARU (aturan Firestore: owner saja).
+  { nama: 'hargaPasar',          urut: 'id',    cache: 'hargaPasar' },
+  { nama: 'hargaTerbit',         urut: 'id',    cache: 'hargaTerbit' },
+  { nama: 'pesananPemasok',      urut: 'id',    cache: 'pesananPemasok' },
 ];
