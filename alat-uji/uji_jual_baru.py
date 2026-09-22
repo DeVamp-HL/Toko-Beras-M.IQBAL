@@ -68,7 +68,9 @@ ok('sesudah masuk, chip Angsa 50 bebas tinggal 12 (langit-langit ikut keranjang 
 terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap({ ketik: '13' }); var p = masukkan(s);
 ok('minta 13 padahal bebas 12 → DITOLAK, kalimat menyebut yang bebas', s.keranjang.length === 1 && /bebas dijual sekarang 12 karung/.test(p.kabar) && p.kabarAwas, p.kabar); terap(p);
 terap({ ketik: '1,5' }); terap(masukkan(s)); ok('1,5 karung boleh (setengah sack) → baris kedua 75 kg', s.keranjang.length === 2 && s.keranjang[1].trx.totalKg === 75, JSON.stringify(s.keranjang.map(function (b) { return b.trx.totalKg; })));
-terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap({ ketik: '0,3' }); p = masukkan(s); ok('0,3 karung ditolak (bukan kelipatan setengah)', s.keranjang.length === 2 && /setengah/.test(p.kabar), p.kabar); terap({ lembar: null, pilih: null, ketik: '' });
+terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap({ ketik: '0,3' }); p = masukkan(s); ok('0,3 karung ditolak (bukan kelipatan setengah)', s.keranjang.length === 2 && /setengah/.test(p.kabar), p.kabar);
+ok('tuts koma BOLEH untuk karung (setengah karung, owner 22 Sep) dan literan, TIDAK untuk kemasan', tekanTuts(Object.assign({}, s, { ketik: '1' }), ',').ketik === '1,' && tekanTuts(Object.assign({}, s, { ketik: '1', pilih: rak.kemasan[0] }), ',').ketik === undefined && tekanTuts(Object.assign({}, s, { ketik: '1,', pilih: rak.literan[0] }), ',').ketik === undefined, JSON.stringify(tekanTuts(Object.assign({}, s, { ketik: '1' }), ',')));
+terap({ lembar: null, pilih: null, ketik: '' });
 
 // ---- tagihan & pembulatan (Tunai + Bon dibulatkan, QRIS persis)
 terap({ keranjang: [], potongan: 0 }); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '1,3' }); terap(masukkan(s));
@@ -610,6 +612,7 @@ if __name__ == '__main__':
             'rework karantina dianggap hitungan gudang (pindahan nama dibuang, beras dihitung dua kali)': js.replace("if (o.merk && hitunganFisik(o) && (!cocokAkhir[o.merk]", "if (o.merk && (!cocokAkhir[o.merk]"),
             'campuran satu baris yang menyalin karung di belakang wadah ikut disimpan (terpaku ke nama lama)': js.replace("(r[0].merk === m || r[0].merk === bawaan) && r[0].takar === 1", "r[0].merk === m && r[0].takar === 1"),
             'samakan karung dengan kotak kosong menulis 0 kg': js.replace("if (String(isiKg === undefined || isiKg === null ? '' : isiKg).trim() === '') return { tolak:", "if (false) return { tolak:"),
+            'tuts koma ditolak untuk karung (setengah karung tidak bisa diketik)': js.replace("(s.pilih && s.pilih.jalur === 'kemasan'))", "(s.pilih && s.pilih.jalur !== 'literan' && s.pilih.jalur !== 'repack'))"),
             'takar senama selalu mengambil dari karung di belakang wadah lain (bukan wadahnya sendiri)': js.replace("if (karungUntukWadah(wadah).merk === merk) return wadah;", "if (false) return wadah;"),
             'buka karung tidak mencatat di belakang wadah mana': js.replace("tipe: 'karung', merk, kg }, di ? { wadah: di } : { lepas: true }) }],", "tipe: 'karung', merk, kg }, { lepas: true }) }],"),
             'karung otomatis tidak mencatat di belakang wadah mana': js.replace("kg: berat, otomatis: true }, x.dari ? { wadah: x.dari } : { lepas: true }) });", "kg: berat, otomatis: true }, { lepas: true }) });"),

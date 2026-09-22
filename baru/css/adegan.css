@@ -99,4 +99,54 @@
 .adegan.buka-karung .angka-tumpuk { font-family: 'Bodoni Moda', Georgia, serif; font-size: 13px; fill: var(--teks); }
 .adegan.buka-karung .angka-tumpuk.dari { animation: angkaPergi 500ms ease 900ms both; } .adegan.buka-karung .angka-tumpuk.ke { animation: angkaDatang 500ms ease 1200ms both; }
 @keyframes angkaPergi { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-8px); } } @keyframes angkaDatang { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* ---- orang, kendaraan, karung bekas (owner 22 Sep) ---- */
+.adegan .lantai { fill: none; stroke: var(--emas-garis); stroke-width: 1.2; opacity: 0.45; stroke-linecap: round; }
+.adegan .kaki { fill: none; stroke: var(--platina2); stroke-width: 5.5; stroke-linecap: round; transform-box: fill-box; transform-origin: 50% 0%; }
+.adegan .badan-orang { fill: var(--logam2); stroke: var(--logam3); stroke-width: 1.6; stroke-linejoin: round; }
+.adegan .kepala { fill: var(--seg-aktif); stroke: var(--teks); stroke-width: 1.6; }
+.adegan .lengan-orang { fill: none; stroke: var(--logam3); stroke-width: 5; stroke-linecap: round; }
+.adegan .roda { fill: var(--teks); opacity: 0.85; } .adegan .jari { fill: var(--seg-aktif); stroke: var(--emas-garis); stroke-width: 1; }
+.adegan .roda-grup { transform-box: fill-box; transform-origin: 50% 50%; }
+.adegan .rangka { fill: none; stroke: var(--platina2); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.adegan .jok, .adegan .bodi { fill: var(--platina1); stroke: var(--platina2); stroke-width: 2; stroke-linejoin: round; }
+.adegan .tangki { fill: var(--logam2); stroke: var(--logam3); stroke-width: 1.4; stroke-linejoin: round; }
+.adegan .setang, .adegan .bak-garis { fill: none; stroke: var(--platina2); stroke-width: 2.4; stroke-linecap: round; }
+.adegan .knalpot { fill: var(--platina2); opacity: 0.7; } .adegan .lampu { fill: var(--logam1); stroke: var(--logam3); stroke-width: 1; } .adegan .kaca { fill: var(--seg-aktif); stroke: var(--platina2); stroke-width: 1.4; }
+.adegan .badan.bekas { fill: var(--seg); } .adegan .isi-bekas { transform-box: fill-box; transform-origin: 50% 100%; }
+.adegan .jahitan { fill: none; stroke: var(--awas); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 100; stroke-dashoffset: 100; }
+.adegan .batang-jarum { fill: none; stroke: var(--platina1); stroke-width: 2.4; stroke-linecap: round; } .adegan .lubang { fill: none; stroke: var(--platina1); stroke-width: 1.4; } .adegan .benang { fill: none; stroke: var(--awas); stroke-width: 1.4; stroke-linecap: round; }
+
+/* PANGGUL: karung di lantai diangkat ke pundak, badannya membungkuk lalu tegak */
+.adegan.panggul .beban-lantai { transform-box: view-box; animation: bebanKePundak 1700ms cubic-bezier(.3,.05,.3,1) both; will-change: transform; }
+@keyframes bebanKePundak { 0%, 12% { transform: translate(0, 0) rotate(0deg); } 40% { transform: translate(-14px, -52px) rotate(-24deg); } 64%, 100% { transform: translate(-32px, -64px) rotate(-10deg); } }
+.adegan.panggul .tubuh { transform-box: view-box; transform-origin: 0 0; animation: membungkuk 1700ms cubic-bezier(.3,.05,.3,1) both; }
+@keyframes membungkuk { 0%, 8% { transform: rotate(0deg); } 34% { transform: rotate(18deg); } 66%, 100% { transform: rotate(0deg); } }
+
+/* MUAT: pembawa berjalan ke kendaraan → muatan pindah → pembawa mundur → kendaraan pergi (roda berputar) → jadi alat bayar */
+.adegan.muat .pembawa { transform-box: view-box; animation: pembawaJalan var(--lama, 3800ms) cubic-bezier(.35,.05,.35,1) both; will-change: transform, opacity; }
+@keyframes pembawaJalan { 0% { transform: translateX(0); opacity: 1; } 36%, 50% { transform: translateX(150px); opacity: 1; } 62%, 100% { transform: translateX(118px); opacity: 0; } }
+.adegan.muat .pembawa .kaki-kiri { animation: langkah 380ms ease-in-out 4 alternate both; } .adegan.muat .pembawa .kaki-kanan { animation: langkah 380ms ease-in-out 4 alternate-reverse both; }
+@keyframes langkah { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+.adegan.muat .pembawa .beban { transform-box: fill-box; animation: bebanTurun var(--lama, 3800ms) linear both; }
+@keyframes bebanTurun { 0%, 38% { opacity: 1; } 45%, 100% { opacity: 0; } }
+.adegan.muat .muatan { transform-box: fill-box; transform-origin: 50% 100%; animation: muatanNaik var(--lama, 3800ms) cubic-bezier(.2,.8,.2,1) both; }
+@keyframes muatanNaik { 0%, 38% { opacity: 0; transform: translate(-24px, -34px); } 46% { opacity: 1; transform: translate(0, 0) scale(1.06, 0.94); } 52%, 100% { opacity: 1; transform: none; } }
+.adegan.muat .kendaraan-grup { transform-box: view-box; animation: kendaraanPergi var(--lama, 3800ms) cubic-bezier(.5,0,.8,.6) both; will-change: transform, opacity; }
+@keyframes kendaraanPergi { 0%, 58% { transform: translateX(0); opacity: 1; } 90% { transform: translateX(290px); opacity: 1; } 96%, 100% { transform: translateX(320px); opacity: 0; } }
+.adegan.muat .roda-grup { animation: rodaPutar var(--lama, 3800ms) cubic-bezier(.5,0,.8,.6) both; }
+@keyframes rodaPutar { 0%, 58% { transform: rotate(0deg); } 96%, 100% { transform: rotate(900deg); } }
+.adegan.muat .grup-bayar { animation-name: jadiUangKarung; }
+
+/* TUANG & JAHIT: karung 50 kg diangkat & dimiringkan, butir jatuh, karung bekas terisi separuh, jarum menjahit mulutnya */
+.adegan.tuang-jahit .karung-tuang { transform-box: fill-box; transform-origin: 50% 50%; animation: karungTuang var(--lama, 3400ms) cubic-bezier(.35,.05,.35,1) both; will-change: transform; }
+@keyframes karungTuang { 0%, 10% { transform: none; } 30% { transform: translate(40px, -76px) rotate(118deg); } 56% { transform: translate(40px, -76px) rotate(118deg); } 70%, 100% { transform: none; } }
+.adegan.tuang-jahit .butir circle { animation: butirTuang var(--lama, 3400ms) linear both; }
+.adegan.tuang-jahit .butir circle:nth-child(2) { animation-delay: 120ms; } .adegan.tuang-jahit .butir circle:nth-child(3) { animation-delay: 240ms; } .adegan.tuang-jahit .butir circle:nth-child(4) { animation-delay: 60ms; } .adegan.tuang-jahit .butir circle:nth-child(5) { animation-delay: 180ms; }
+@keyframes butirTuang { 0%, 28% { opacity: 0; transform: translateY(0); } 32% { opacity: 1; transform: translateY(0); } 42% { opacity: 1; transform: translateY(40px); } 43% { opacity: 0; transform: translateY(0); } 47% { opacity: 1; } 55% { opacity: 1; transform: translateY(40px); } 56%, 100% { opacity: 0; transform: translateY(40px); } }
+.adegan.tuang-jahit .isi-bekas { animation: isiBekasNaik var(--lama, 3400ms) linear both; }
+@keyframes isiBekasNaik { 0%, 30% { transform: scaleY(0.05); } 58%, 100% { transform: scaleY(0.62); } }
+.adegan.tuang-jahit .jalur-jarum { transform-box: view-box; animation: jarumJahit var(--lama, 3400ms) linear both; will-change: transform, opacity; }
+@keyframes jarumJahit { 0%, 66% { opacity: 0; transform: translate(0, 0); } 70% { opacity: 1; transform: translate(0, 0); } 74% { transform: translate(8px, -6px); } 78% { transform: translate(16px, 0); } 82% { transform: translate(28px, -6px); } 86% { transform: translate(40px, 0); } 90% { transform: translate(54px, -6px); } 94% { opacity: 1; transform: translate(68px, 0); } 100% { opacity: 0; transform: translate(72px, -4px); } }
+.adegan.tuang-jahit .jahitan { animation: jahitTampak var(--lama, 3400ms) linear both; }
+@keyframes jahitTampak { 0%, 69% { stroke-dashoffset: 100; } 94%, 100% { stroke-dashoffset: 0; } }
 @media (prefers-reduced-motion: reduce) { .panggung { display: none !important; } }

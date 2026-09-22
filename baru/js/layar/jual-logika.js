@@ -296,7 +296,8 @@ export function ketukChip(s, chip) {
 }
 export function tekanTuts(s, t) {
   if (t === '⌫') return { ketik: s.ketik.slice(0, -1) };
-  if (t === ',') { if (s.ketik.indexOf(',') >= 0 || (s.pilih && s.pilih.jalur !== 'literan' && s.pilih.jalur !== 'repack')) return {}; return { ketik: (s.ketik || '0') + ',' }; }
+  // koma: literan (liter pecahan), repack (kg), dan KARUNG (setengah karung, mis. 1,5 — owner 22 Sep: 25 kg dituang ke karung bekas); kemasan tidak
+  if (t === ',') { if (s.ketik.indexOf(',') >= 0 || (s.pilih && s.pilih.jalur === 'kemasan')) return {}; return { ketik: (s.ketik || '0') + ',' }; }
   if (!/^\d+$/.test(t)) return {};
   if (s.ketik === '' && t === '0') return {};
   if ((s.ketik + t).replace(',', '').length > 9) return {};

@@ -7,7 +7,7 @@ import * as L from './jual-logika.js';
 import * as RT from './retur-logika.js';
 import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
-import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganKarung, adeganIsiUlang } from './adegan.js';
+import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganKarung, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit } from './adegan.js';
 
 import { gambarChipBarang } from './gambar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
@@ -128,18 +128,45 @@ export function pasangLayarJual(akar, opsi) {
     if (baris.jenis === 'literan' || baris.jenis === 'repacking') {
       const kg = baris.totalKg || 0; const serokan = kg <= 2 ? 1 : kg <= 6 ? 2 : 3;   // serok ±1,8 kg — digambar paling banyak tiga kali
       if (adeganSerok({ nama: baris.label, jumlahTeks: DESIMAL(baris.jumlah) + ' ' + baris.satuan, dariKarung: baris.jenis === 'repacking' || L.aturWadah().daftar.indexOf(baris.merkSumber) < 0, kemasanLiteran: baris.kemasanLiteran || (baris.jenis === 'repacking' ? 'kantong' : null), serokan })) lamaAdegan = serokan * 820 + 700;
+    } else if (baris.jenis === 'karung') {
+      // owner 22 Sep: karung utuh → dipanggul ke pundak; setengah karung (0,5 = 25 kg dari karung 50 kg) → dituang ke karung bekas lalu dijahit
+      const j = baris.jumlah || 0; const berat = baris.beratKarungAcuan || 50;
+      if (j % 1) { if (adeganTuangJahit({ nama: baris.merkSumber, berat: String(berat), kg: DESIMAL(Math.round((j % 1) * berat * 10) / 10) })) lamaAdegan = 3400; }
+      else if (adeganPanggul({ nama: baris.merkSumber, jenis: 'karung', berat: String(berat), jumlahTeks: DESIMAL(j) + ' karung ' + berat + ' kg' })) lamaAdegan = 1700;
     } else if (baris.jenis === 'kemasan') {
-      if (adeganKemasanMasuk({ nama: baris.label, ukuran: String(baris.ukuranKemasan).replace('.', ','), jumlahTeks: DESIMAL(baris.jumlah) + ' kemasan' + (baris.bonusUnit ? ' + bonus' : '') })) lamaAdegan = 900;
+      const uk = Number(baris.ukuranKemasan) || 0; const ukT = String(baris.ukuranKemasan).replace('.', ',');
+      if (uk >= 10) { if (adeganPanggul({ nama: baris.namaProduk, jenis: 'kemasan', ukuran: ukT, jumlahTeks: DESIMAL(baris.jumlah) + ' kemasan ' + ukT + ' kg' + (baris.bonusUnit ? ' + bonus' : '') })) lamaAdegan = 1700; }
+      else if (adeganKemasanMasuk({ nama: baris.label, ukuran: ukT, jumlahTeks: DESIMAL(baris.jumlah) + ' kemasan' + (baris.bonusUnit ? ' + bonus' : '') })) lamaAdegan = 900;
     }
     const mendarat = () => { const bilah = akar.querySelector('.ringkas-keranjang'); if (dari) terbangkan(lamaAdegan ? { x: innerWidth / 2, y: 150 } : dari, bilah); setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 420); };
     setTimeout(() => requestAnimationFrame(mendarat), lamaAdegan);
   }
-  // nota dicatat → adegan menurut barang TERBESAR nilainya: karung diangkut, selain itu serah terima (kantong kertas / kemasan)
+  // Kendaraan pembeli menurut isi keranjang (aturan owner 22 Sep): karung > 3 → mobil, selain itu motor; kemasan ≥ 10 kg sama seperti karung;
+  // kemasan 5 kg: > 20 mobil, > 1 motor; literan > 10 L motor; repack > 10 kg motor. Satu saja yang minta mobil → mobil. Tidak ada → serah terima biasa.
+  function kendaraanUntuk(keranjang) {
+    // dijumlah per nota (bukan per baris): 2 karung + 2 karung = 4 karung → mobil
+    const j = { karung: 0, besar: 0, kecil: 0, liter: 0, kg: 0 };
+    keranjang.forEach((b) => { const t = b.trx;
+      if (t.jenis === 'karung') j.karung += t.jumlahKarung || 0;
+      else if (t.jenis === 'kemasan') { if ((Number(t.ukuranKemasan) || 0) >= 10) j.besar += t.jumlahUnit || 0; else j.kecil += t.jumlahUnit || 0; }
+      else if (t.jenis === 'literan') j.liter += t.jumlahLiter || 0;
+      else if (t.jenis === 'repacking') j.kg += t.totalKg || 0; });
+    if (j.karung > 3 || j.besar > 3 || j.kecil > 20) return 'mobil';
+    if (j.karung > 0 || j.besar > 0 || j.kecil > 1 || j.liter > 10 || j.kg > 10) return 'motor';
+    return null;
+  }
+  // nota dicatat → adegan menurut barang TERBESAR nilainya: diangkut motor/mobil bila muatannya besar, selain itu serah terima (kantong kertas / kemasan)
   function adeganNota(nota, keranjang, uangDiterima) {
     const utama = keranjang.slice().sort((a, b) => (b.trx.nilaiBarangPengganti || b.trx.hargaTotal || 0) - (a.trx.nilaiBarangPengganti || a.trx.hargaTotal || 0))[0]; if (!utama) return;
     const t = utama.trx; const cara = nota.cara; const kembali = cara === 'Tunai' && uangDiterima > nota.tagihan ? 'kembali ' + RP(uangDiterima - nota.tagihan) : nota.bayarSebagian ? 'sisa jadi bon' : '';
     const data = { cara: nota.bayarSebagian ? 'Tunai' : cara, jumlahRp: RP(nota.bayarSebagian || nota.tagihan), ket: kembali };
-    if (t.jenis === 'karung') adeganKarung(Object.assign(data, { berat: String(t.beratKarungAcuan || 50), banyak: DESIMAL(t.jumlah) + ' karung ' + (t.merkSumber || '') }));
+    const kend = kendaraanUntuk(keranjang);
+    if (kend) {
+      const jenis = t.jenis === 'karung' ? 'karung' : t.jenis === 'kemasan' ? 'kemasan' : 'kantong';
+      const banyak = t.jenis === 'karung' ? Math.ceil(t.jumlahKarung || 1) : t.jenis === 'kemasan' ? (t.jumlahUnit || 1) : Math.ceil((t.jenis === 'literan' ? (t.jumlahLiter || 0) / 10 : (t.totalKg || 0) / 10) || 1);
+      const banyakTeks = t.jenis === 'karung' ? DESIMAL(t.jumlah) + ' karung ' + (t.merkSumber || '') : t.jenis === 'kemasan' ? DESIMAL(t.jumlahUnit) + ' kemasan ' + String(t.ukuranKemasan).replace('.', ',') + ' kg' : DESIMAL(t.jumlah) + ' ' + (t.satuan || '') + ' ' + (t.merkSumber || t.namaProduk || '');
+      adeganMuat(Object.assign(data, { kendaraan: kend, jenis, ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : String(t.beratKarungAcuan || 50), banyak, banyakTeks: banyakTeks + (keranjang.length > 1 ? ' + ' + (keranjang.length - 1) + ' baris lain' : '') }));
+    } else if (t.jenis === 'karung') adeganKarung(Object.assign(data, { berat: String(t.beratKarungAcuan || 50), banyak: DESIMAL(t.jumlah) + ' karung ' + (t.merkSumber || '') }));
     else adeganSerahTerima(Object.assign(data, { jenis: t.jenis === 'kemasan' ? 'kemasan' : 'kantong', ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : '' }));
   }
   async function tulisPesanan(r) {
