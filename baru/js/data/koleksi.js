@@ -51,4 +51,8 @@ export const KOLEKSI = [
   { nama: 'pengingat',           urut: 'id',    cache: 'pengingat' },    // keadaan tiap pengingat (selesai / ditunda / WA hari ini)
   { nama: 'persetujuan',         urut: 'id',    cache: 'persetujuan' },  // permintaan "minta owner" dari tablet/Mac + keputusannya
   { nama: 'pindahStok',          urut: 'id',    cache: 'pindahStok' },   // pindah stok antarlokasi: dua catatan (keluar & masuk)
+  // Putaran 15 (23 Sep 2026) — wadah DIJUAL & struk: hargaWadah = harga jual per lembar tiap jenis wadah (id = jenis, kunci sama dengan
+  //  koleksi bahan sistem lama); strukKeluar = tiap struk yang dikirim WA / dicetak. Keduanya koleksi BARU (aturan Firestore: owner saja).
+  { nama: 'hargaWadah',          urut: 'id',    cache: 'hargaWadah' },
+  { nama: 'strukKeluar',         urut: 'id',    cache: 'strukKeluar' },
 ];

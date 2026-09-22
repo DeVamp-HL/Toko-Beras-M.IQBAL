@@ -37,7 +37,7 @@ function statusTeks() {
 
 terapkanMode();
 const akar = document.getElementById('layar');
-const layar = pasangLayarJual(akar, { gantiMode, mode: () => mode, statusTeks, versiData: () => versi });
+const layar = pasangLayarJual(akar, { gantiMode, mode: () => mode, statusTeks, versiData: () => versi, pemegang: () => fb.pemegangPerangkat() });
 dengarkan(() => { versi += 1; });
 
 // ---- perpindahan layar: tiap layar punya <main> sendiri yang disembunyikan, supaya keranjang Jual tidak hilang saat pindah ----

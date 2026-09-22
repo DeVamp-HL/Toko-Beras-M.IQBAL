@@ -8,7 +8,7 @@
 <!--
   SISTEM BARU (mulai 19 Sep 2026) — tampilan baru di atas DATA YANG SAMA dengan index.html.
   Hidup berdampingan di alamat /baru/; index.html tetap alat yang dipakai toko sampai yang baru terbukti.
-  Putaran 1–14: Jual · Ringkasan · Stok · Pelanggan · Menu (+ Sistem). Struktur: css/ (identitas C1, kerangka tiga lebar, layar),
+  Putaran 1–15: Jual (+ wadah dijual & struk) · Ringkasan · Stok · Pelanggan · Menu (+ Sistem). Struktur: css/ (identitas C1, kerangka tiga lebar, layar),
   js/inti (format, dom, keadaan) · js/data (koleksi, toko, firebase, cadangan) · js/mesin (beku & pembantu,
   DIBUAT ALAT dari index.html — jangan disunting tangan) · js/layar (jual-logika tanpa DOM, jual gambar).
 -->
@@ -61,6 +61,7 @@
   <div data-tujuan="menu">Menu</div>
 </nav>
 <div id="kabarNav" class="kabar-nav" hidden></div>
+<pre id="cetakStruk" class="cetak-struk" aria-hidden="true"></pre>
 
 <div id="modalMasuk" class="modal-bg">
   <form id="formMasuk" class="modal kartu" autocomplete="off">
