@@ -39,4 +39,6 @@ export const KOLEKSI = [
   // yang dihapus (beralasan). Sistem lama tidak membacanya; aturan Firestore jatuh ke "owner saja".
   { nama: 'aturanToko',          urut: 'id',    cache: 'aturan' },
   { nama: 'bukuHapus',           urut: 'id',    cache: 'bukuHapus' },
+  { nama: 'tagihPelanggan',      urut: 'id',    cache: 'tagih' },       // tagihan bon lewat WhatsApp + janji bayar (putaran 13)
+  { nama: 'pelangganTitip',      urut: 'id',    cache: 'titip' },       // yang datang bukan orangnya (benang merah)
 ];
