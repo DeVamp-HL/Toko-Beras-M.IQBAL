@@ -55,6 +55,7 @@ export function pasangLayarStok(akar, opsi) {
   const AKSI = Object.assign({
     tab: ({ t }) => { try { localStorage.setItem(KUNCI_TAB, t); } catch (e) { /* abaikan */ } set({ tab: t, kabar: '' }); },
     tanya: ({ id }) => set({ tanya: id }),
+    keBelanja: () => opsi.bukaHarga && opsi.bukaHarga('belanja'),   // putaran 17: Harga & Pemasok → Belanja (saran yang sama, per pemasok, muatan truk, pesanan WA)
     mode: () => opsi.gantiMode(),
     tutupKabar: () => set({ kabar: '' }),
     pilihWadah: ({ merk }) => set({ wadahAktif: st().wadahAktif === merk ? null : merk, isiW: null, krKetik: '', krNama: '', krPilih: false }),
@@ -219,6 +220,7 @@ export function pasangLayarStok(akar, opsi) {
           : h`<div class="menolak" style="padding: 12px 0;">${j.kosong}</div>`}
         <div class="rumus">${j.rumus}</div>
         ${j.takTeks ? h`<div class="ket" style="font-size: 11.5px;">${j.takTeks}</div>` : ''}
+        ${g.aktif === 'beli' ? h`<div class="kaca-btn kecil" data-aksi="keBelanja" data-k="ke-belanja" style="align-self: flex-start;">Susun belanja per pemasok & kirim pesanan WhatsApp ›</div>` : ''}
       </div>
       <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="bukaMasuk">Barang masuk</div><div class="kaca-btn aktif" data-aksi="bukaAdukan">Adukan</div><div class="kaca-btn aktif" data-aksi="bukaCocok">Cocokkan</div></div>
       <div class="tombol-baris" data-k="tombol-16"><div class="kaca-btn" data-aksi="bukaKantong">Kantong</div><div class="kaca-btn" data-aksi="bukaTempat">Tempat simpan</div><div class="kaca-btn" data-aksi="bukaHpp">HPP / modal</div></div>

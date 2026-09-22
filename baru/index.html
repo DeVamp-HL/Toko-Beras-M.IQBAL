@@ -8,13 +8,13 @@
 <!--
   SISTEM BARU (mulai 19 Sep 2026) — tampilan baru di atas DATA YANG SAMA dengan index.html.
   Hidup berdampingan di alamat /baru/; index.html tetap alat yang dipakai toko sampai yang baru terbukti.
-  Putaran 1–16: Jual (+ wadah dijual & struk) · Ringkasan · Stok (+ kantong, tempat simpan, HPP) · Pelanggan · Menu (+ Sistem). Struktur: css/ (identitas C1, kerangka tiga lebar, layar),
+  Putaran 1–17: Jual (+ wadah dijual & struk) · Ringkasan · Stok (+ kantong, tempat simpan, HPP) · Pelanggan · Menu (+ Sistem) · Harga & Pemasok (katalog, bon pemasok, belanja). Struktur: css/ (identitas C1, kerangka tiga lebar, layar),
   js/inti (format, dom, keadaan) · js/data (koleksi, toko, firebase, cadangan) · js/mesin (beku & pembantu,
   DIBUAT ALAT dari index.html — jangan disunting tangan) · js/layar (jual-logika tanpa DOM, jual gambar).
 -->
 <link rel="icon" href="../icon-sistem-32.png">
 <link rel="apple-touch-icon" href="../icon-sistem-180.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500;6..96,600&family=Jost:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500;6..96,600&family=Jost:wght@400;500;600;700&family=Kalam:wght@400;700&display=swap">
 <link rel="stylesheet" href="css/identitas.css">
 <link rel="stylesheet" href="css/kerangka.css">
 <link rel="stylesheet" href="css/jual.css">
@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="css/stok.css">
 <link rel="stylesheet" href="css/pelanggan.css">
 <link rel="stylesheet" href="css/menu.css">
+<link rel="stylesheet" href="css/harga.css">
 <link rel="stylesheet" href="css/adegan.css">
 <link rel="stylesheet" href="css/kinerja.css">
 <script>
@@ -44,13 +45,15 @@
   <div class="item aktif" data-tujuan="jual">Jual</div>
   <div class="item" data-tujuan="pelanggan">Pelanggan</div>
   <div class="item" data-tujuan="menu">Menu</div>
-  <div class="ket" style="margin-top: auto; padding: 0 14px;">Harga, pemasok & laporan masih di <a href="../index.html">sistem lama</a>.</div>
+  <div class="item" data-tujuan="harga">Harga & Pemasok</div>
+  <div class="ket" style="margin-top: auto; padding: 0 14px;">Laporan, uang & tutup hari masih di <a href="../index.html">sistem lama</a>.</div>
 </aside>
 
 <main id="layarRingkasan" class="layar-ringkasan" hidden></main>
 <main id="layarStok" class="layar-stok" hidden></main>
 <main id="layarPelanggan" class="layar-pelanggan" hidden></main>
 <main id="layarMenu" class="layar-menu" hidden></main>
+<main id="layarHarga" class="layar-harga" hidden></main>
 <main id="layar" class="layar-jual" aria-live="polite"></main>
 
 <nav class="nav" aria-label="Menu bawah">

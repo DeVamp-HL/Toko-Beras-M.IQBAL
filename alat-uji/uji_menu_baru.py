@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/sistem-logika.js', 'baru/js/layar/menu-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js', 'baru/js/layar/menu-logika.js']
 def kunci_jam(iso):
     return ("var __RealDate = Date; var __KINI = new __RealDate('%s').getTime();\n"
             "Date = function (a, b, c, d, e, f, g) { if (!(this instanceof Date)) return new __RealDate(__KINI).toString(); if (arguments.length === 0) return new __RealDate(__KINI); if (arguments.length === 1) return new __RealDate(a); return new __RealDate(a, b, c === undefined ? 1 : c, d || 0, e || 0, f || 0, g || 0); };\n"
@@ -90,7 +90,7 @@ ok('jam: mnJam membaca HH:MM, HH.MM, ISO (jam setempat) dan menolak sampah', mnJ
 var LC = susunLaci(KINI, LOKAL); var br = function (id) { var r = null; LC.forEach(function (g) { g.isi.forEach(function (b) { if (b.id === id) r = b; }); }); return r; };
 var UP = hitungUtangPemasok(); var totalUP = UP.reduce(function (a, x) { return a + x.totalUtang; }, 0);
 ok('laci: tiga kelompok 3 · 4 · 5 baris (Buku besar, Alat toko, Toko ini + Lokasi & Pengingat)', LC.length === 3 && J(LC.map(function (g) { return g.isi.length; })) === '[3,4,5]', J(LC.map(function (g) { return g.id + ':' + g.isi.length; })));
-ok('laci pemasok: angka = mesin beku (26 jt + 21 jt = 47 jt), 1 pemasok, 2 bon terbuka; bon 20 Agu lewat tempo 21 hari → AWAS, tujuan sistem lama Pemasok', totalUP === 47000000 && br('pemasok').angka === 'Rp47.000.000' && /1 pemasok · 2 bon terbuka · 1 lewat tempo 21 hari/.test(br('pemasok').sub) && br('pemasok').awas && br('pemasok').tujuan.ke === 'lama' && br('pemasok').tujuan.halaman === 'Pemasok', J(br('pemasok')) + ' ' + totalUP);
+ok('laci pemasok: angka = mesin beku (26 jt + 21 jt = 47 jt), 1 pemasok, 2 bon terbuka; bon 20 Agu lewat tempo 21 hari (tempo umum, kartu kosong) → AWAS, tujuan layar Harga & Pemasok → Bon', totalUP === 47000000 && br('pemasok').angka === 'Rp47.000.000' && /1 pemasok · 2 bon terbuka · 1 lewat tempo/.test(br('pemasok').sub) && br('pemasok').awas && br('pemasok').tujuan.ke === 'harga' && br('pemasok').tujuan.keluarga === 'bon', J(br('pemasok')) + ' ' + totalUP);
 var PI = hitungPiutang().filter(function (x) { return x.sisa > 0; }); var totalPI = PI.reduce(function (a, x) { return a + x.sisa; }, 0);
 ok('laci pelanggan: angka = mesin beku piutang; Pak Hartawan (2022, tanpa bayar) macet → AWAS; tujuan Pelanggan → Bon', br('pelanggan').angka === RP(totalPI) && /macet/.test(br('pelanggan').sub) && br('pelanggan').awas && br('pelanggan').tujuan.keluarga === 'bon', J(br('pelanggan')) + ' ' + totalPI);
 ok('laci laporan: umur buku 48 hari sejak 3 Agu; sub menyebut laba bersih bulan ini; tujuan sistem lama Laba', br('laporan').angka === '48 hari' && /catatan pertama 3 Agu 2026/.test(br('laporan').sub) && /laba bersih bulan ini/.test(br('laporan').sub) && br('laporan').tujuan.halaman === 'Laba', J(br('laporan')));
@@ -201,10 +201,10 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
-            'tempo bon pemasok tidak dipakai (jatuh = tanggal bon)': js.replace("jatuh: b.tanggal ? ssTambahHari(b.tanggal, tempo) : ''", "jatuh: b.tanggal ? b.tanggal : ''"),
+            'tempo bon pemasok tidak dipakai (jatuh = tanggal bon)': js.replace("jatuh: b.tanggal && T.hari > 0 ? ssTambahHari(b.tanggal, T.hari) : ''", "jatuh: b.tanggal ? b.tanggal : ''"),
             'baris pita berpindah tempat (diurut menurut jumlah)': js.replace("awas: false, tujuan: k.tujuan, n: k.sel[b] }));", "awas: false, tujuan: k.tujuan, n: k.sel[b] })).sort((p, q) => q.n - p.n);"),
             'nota karcis dihitung sebagai nota meja': js.replace("jual: (d) => (d.dirinciPada ? null : mnJam(d.jam))", "jual: (d) => mnJam(d.jam)"),
-            'laci pemasok tidak menyala saat bon lewat tempo': js.replace("U.lewat.length > 0 || U.tekor > 0, { ke: 'lama', halaman: 'Pemasok'", "false, { ke: 'lama', halaman: 'Pemasok'"),
+            'laci pemasok tidak menyala saat bon lewat tempo': js.replace("U.lewat.length > 0 || U.tekor > 0, { ke: 'harga', keluarga: 'bon'", "false, { ke: 'harga', keluarga: 'bon'"),
             'laci opname tidak menyala walau 14 hari tidak dicocokkan': js.replace("opUmur === null || opUmur >= 14, { ke: 'stok', lembar: 'cocok'", "false, { ke: 'stok', lembar: 'cocok'"),
             'kas ditebak walau titik kas belum disetel': js.replace("kas === null ? 'belum bisa dihitung' : RP(kas)", "RP(kas || 0)"),
             'kekayaan ditebak walau kas belum bisa dihitung': js.replace("N.total === null ? 'belum bisa dihitung' : RP(N.total)", "RP(N.total || 0)"),
