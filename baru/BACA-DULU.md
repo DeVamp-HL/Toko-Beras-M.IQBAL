@@ -102,6 +102,13 @@ Koreksi owner 21 Sep: nama seperti "IR64 Elevate / Ascent / Apex / IR42 Value / 
 - **Nota dicatat** → `adeganMuat`: orang yang memanggul berjalan ke kendaraan, menaruh muatan, kendaraan pergi (roda berputar) → jadi alat bayar. Kendaraan dihitung **per nota** (`kendaraanUntuk`): karung > 3 → **mobil** (bak terbuka), selain itu **motor**; kemasan ≥ 10 kg sama seperti karung; kemasan 5 kg > 20 → mobil, > 1 → motor; literan > 10 L → motor; repack > 10 kg → motor. Tidak ada yang memenuhi → serah terima tangan seperti sebelumnya.
 - Teknis: grup yang dianimasikan CSS tidak boleh membawa atribut `transform` (CSS `transform` menimpanya → gambar terlempar ke pojok) — posisinya di grup pembungkus.
 
+## Putaran 10 (22 Sep 2026) — PINDAH BUKU untuk takar lintas nama (keputusan owner: pilihan A)
+Sebelumnya takar dari karung nama lain (Tawon → wadah Perahu Layar) hanya dibetulkan di TAMPILAN (`pindahNama`), bukunya tidak: buku Tawon tetap tinggi, buku Perahu Layar turun terus (akar stok minus). Owner memilih **A**: tiap catat takar yang memakai karung nama lain juga **memindahkan buku** — keluar dari karung asalnya, masuk ke nama wadah **dengan modal karung asalnya**.
+- Ditulis sebagai satu dokumen `produksiKemasan` **jadi karung utuh** (`jadiKarungUtuh: true`, `merkTujuan` = nama wadah, `sumberList` = karung asal, `kgDipakai` = `ukuranKemasan` × 1 unit, `hppSumberPerKgDipakai` = modal rata-rata tertimbang sumber, `dariTakar: true`, `takarId`; tanpa upah/kantong). Jalur ini sudah dibaca `hitungStokKarungPerMerk` di kedua sistem (pembuatannya dari layar Adukan dicabut 23 Agu, pembacaannya sengaja tetap) — **mesin beku tidak disentuh (28/28)**, `hitungStokKemasan` melewatinya (bukan kemasan jadi), sistem lama ikut benar.
+- Dokumen takarnya menunjuk `produksiId`; `pindahNama()` (layar) melewati takar yang pindahannya sudah ada di buku — catatan lama (sebelum putaran ini) tetap dihitung di layar seperti dulu. Semua dokumen satu catat masuk satu `writeBatch`.
+- Papan Kapur: "Pindah nama di buku (takar wadah): Tawon 5,4 kg → Perahu Layar ↔ 5,4 kg". Kabar catat menyebut "BUKU: Tawon −5,4 kg → Perahu Layar +5,4 kg (modal ikut)".
+- Takar dari karung SENAMA tetap alat ukur saja (buku baru dipotong saat literan terjual).
+
 ## Struktur
 ```
 baru/

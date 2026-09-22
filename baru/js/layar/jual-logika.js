@@ -18,7 +18,7 @@ import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanLiteran, hit
 import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaKarungBerat, hargaKarungUtuh, cariHargaKarungPerKg,
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
-import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, setelKeranjang,
+import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
   wzDiKeranjangParkir, sumberData } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina } from './retur-logika.js';
@@ -835,16 +835,18 @@ export function calonKarung() {
 }
 /**
  * Beras yang PINDAH NAMA lewat takar: takar dari karung K yang dituang ke wadah N (K ≠ N) dijual — dan dipotong dari buku — sebagai N.
- * Buku mesin lama tidak tahu itu; di sini dijumlah supaya tumpukan K tidak "naik lagi" saat ditakar: keluar[K] & masuk[N].
- * Hanya takar SESUDAH hitungan gudang ("cocokkan") terakhir nama itu — hitungan fisik menyamakan buku dengan kenyataan, jadi pindahan sebelum
- * itu sudah termasuk di dalamnya (menghitungnya lagi = dipotong dua kali).
+ * Sejak keputusan owner A (22 Sep) takar lintas nama juga MEMINDAHKAN BUKU (dokumen produksiKemasan 'jadi karung utuh', lihat susunTakarWadah) —
+ * takar yang punya `produksiId` dan dokumennya ada TIDAK dihitung lagi di sini (sudah ada di buku). Yang dihitung hanya catatan LAMA (sebelum
+ * pindah buku) dan hanya yang SESUDAH hitungan gudang ("cocokkan") terakhir nama itu — hitungan fisik menyamakan buku dengan kenyataan, jadi
+ * pindahan sebelum itu sudah termasuk di dalamnya (menghitungnya lagi = dipotong dua kali).
  */
 /** Dokumen penyesuaianStok yang benar-benar HITUNGAN FISIK: index.html juga menulis rework karantina ke koleksi ini ({dariRework, kgFisik null}) — itu cuma menambah buku, bukan menyamakan buku dengan gudang. */
 export const hitunganFisik = (o) => !!o && !o.dariRework && o.kgFisik !== null && o.kgFisik !== undefined;
 export function pindahNama() {
   const cocokAkhir = {}; ambilPenyesuaianStok().forEach((o) => { if (o.merk && hitunganFisik(o) && (!cocokAkhir[o.merk] || wdSesudah(o, cocokAkhir[o.merk]))) cocokAkhir[o.merk] = o; });
-  const keluar = {}; const masuk = {};
+  const keluar = {}; const masuk = {}; const diBuku = {}; ambilProduksiBerlaku().forEach((p) => { if (p.dariTakar) diBuku[String(p.id)] = 1; });
   ambilWadahLiteran().forEach((t) => { if (t.tipe !== 'takar' || !t.wadah) return;
+    if (t.produksiId !== undefined && t.produksiId !== null && diBuku[String(t.produksiId)]) return;   // sudah pindah di BUKU
     (t.sumber || []).forEach((x) => { const kg = Number(x.kg) || 0; if (!x.merk || x.merk === t.wadah || !(kg > 0)) return;
       if (!cocokAkhir[x.merk] || wdSesudah(t, cocokAkhir[x.merk])) keluar[x.merk] = wdB2((keluar[x.merk] || 0) + kg);
       if (!cocokAkhir[t.wadah] || wdSesudah(t, cocokAkhir[t.wadah])) masuk[t.wadah] = wdB2((masuk[t.wadah] || 0) + kg); }); });
@@ -895,7 +897,11 @@ export function takarSampai(merk, baris, targetKg, s) {
 }
 /**
  * CATAT ISI ULANG: takar-takar ini dituang ke wadah. Satu dokumen 'takar' (sumber[].dari = tempat karung asalnya) + dokumen 'karung' lebih dulu bila karung di tempat itu tidak cukup.
- * Alat ukur — BUKU stok merek tidak disentuh (literan tetap memotong buku saat TERJUAL; memotongnya lagi di sini = beras yang sama dipotong dua kali).
+ * Takar dari karung SENAMA: alat ukur saja — buku tidak disentuh (literan tetap memotong buku saat TERJUAL; memotongnya lagi = dipotong dua kali).
+ * Takar dari karung NAMA LAIN (keputusan owner A, 22 Sep): berasnya berpindah nama di BUKU — keluar dari karung asalnya, masuk ke nama wadah dengan
+ * MODAL karung asalnya. Ditulis sebagai satu dokumen produksiKemasan 'jadi karung utuh' (sumberList = karung asal, merkTujuan = nama wadah): jalur
+ * yang sudah dibaca hitungStokKarungPerMerk di DUA sistem (mesin beku tidak disentuh; pembuatannya dari layar Adukan dicabut 23 Agu, pembacaannya tetap).
+ * Semua dokumen satu catat masuk satu writeBatch — ada semua atau tidak sama sekali.
  */
 export function susunTakarWadah(merk, baris, w, s) {
   const atur = aturWadah();
@@ -910,12 +916,23 @@ export function susunTakarWadah(merk, baris, w, s) {
   h.sumber.forEach((x) => { if (!x.bukaKarung) return; const berat = beratKarungBuka(x.merk); const t = tumpukanGudang(x.merk);
     for (let i = 0; i < x.bukaKarung; i++) dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karung', merk: x.merk, kg: berat, otomatis: true }, x.dari ? { wadah: x.dari } : { lepas: true }) });
     if (t.adaBuku) gudang.push({ merk: x.merk, kgKarung: berat, dariKg: t.kg, keKg: wdB2(t.kg - berat * x.bukaKarung) }); });
-  dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'takar', wadah: merk, takar: h.takar, kgPerTakar: atur.takarKg, kg: h.kg,
-    sumber: h.sumber.map((x) => ({ merk: x.merk, takar: x.takar, kg: x.kg, dari: x.dari })) } });
+  const asing = h.sumber.filter((x) => x.merk !== merk && x.kg > 0); const idTakar = w.idUnik(); let produksi = null;
+  if (asing.length) {
+    const stok = hitungStokKarungPerMerk(); const kgP = wdB2(asing.reduce((a, x) => a + x.kg, 0));
+    const nilai = asing.reduce((a, x) => a + x.kg * ((stok[x.merk] || {}).hppTerakhirPerKg || 0), 0); const idP = w.idUnik();
+    // bentuk dokumen mengikuti simpanProduksi index.html (semua kolomnya ada, nilainya jujur: tanpa upah, tanpa kantong)
+    produksi = { id: idP, tanggal: w.tanggal, jam: w.jam, merkSumber: asing.map((x) => x.merk).join(' + '), namaProduk: merk, ukuranKemasan: kgP, jumlahUnit: 1,
+      biayaKemasan: 0, upahRepacking: 0, kantongJenis: null, kantongJumlah: 0, hppSumberPerKgDipakai: kgP > 0 ? nilai / kgP : 0, hppPerUnit: nilai,
+      sumberList: asing.map((x) => ({ merk: x.merk, kg: x.kg })), kgDipakai: kgP, sumberKemasanList: [], kgKemasanDipakai: 0, batchProduksi: idP, barisKe: 1, jumlahBaris: 1,
+      jadiKarungUtuh: true, merkTujuan: merk, dariTakar: true, takarId: idTakar, keterangan: 'Takar wadah literan: ' + asing.map((x) => x.merk + ' ' + wdKG(x.kg)).join(' + ') + ' → ' + merk };
+  }
+  dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: idTakar, tanggal: w.tanggal, jam: w.jam, tipe: 'takar', wadah: merk, takar: h.takar, kgPerTakar: atur.takarKg, kg: h.kg,
+    sumber: h.sumber.map((x) => ({ merk: x.merk, takar: x.takar, kg: x.kg, dari: x.dari })) }, produksi ? { produksiId: produksi.id } : {}) });
+  if (produksi) dokumen.push({ koleksi: 'produksiKemasan', data: produksi });
   const dibuka = h.sumber.filter((x) => x.bukaKarung); const buta = h.sumber.filter((x) => !x.karung.diketahui);
-  const asing = h.sumber.filter((x) => x.merk !== merk);
-  return { dokumen, hitung: h, gudang,
+  return { dokumen, hitung: h, gudang, pindahBuku: produksi,
     patch: { kabar: 'Wadah ' + merk + ' diisi ' + h.takar + ' takar = ' + wdKG(h.kg) + (h.sumber.length > 1 || asing.length ? ' (' + h.sumber.map((x) => 'karung ' + x.merk + ' ' + x.takar).join(' + ') + ')' : '') + ' → isinya ±' + wdKG(h.isiBaru)
       + (dibuka.length ? ' · karung di belakang habis: ' + dibuka.map((x) => x.bukaKarung + ' karung ' + x.merk).join(', ') + ' diambil dari tumpukan' + (gudang.length ? ' gudang (' + gudang.map((g) => g.merk + ' ' + wdKG(g.dariKg) + ' → ' + wdKG(g.keKg)).join(', ') + ')' : '') : '')
+      + (produksi ? ' · BUKU: ' + asing.map((x) => x.merk + ' −' + wdKG(x.kg)).join(', ') + ' → ' + merk + ' +' + wdKG(produksi.kgDipakai) + ' (modal ikut)' : '')
       + (buta.length ? ' · karung terbuka ' + buta.map((x) => x.merk).join(', ') + ' belum pernah ditandai, jadi sisanya belum bisa digambar' : ''), kabarAwas: false } };
 }
