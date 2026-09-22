@@ -48,4 +48,14 @@ main.layar-stok { position: relative; z-index: 1; display: flex; flex-direction:
 main.layar-stok.masuk > header, main.layar-stok.masuk > .jalur { animation: rkNaik 520ms cubic-bezier(.2,.8,.2,1) both; }
 @media (min-width: 720px) { .layar-stok .tanya { grid-template-columns: repeat(5, minmax(0, 1fr)); } .layar-stok .tanya .kartu-t:last-child:nth-child(odd) { grid-column: auto; min-height: 74px; } .layar-stok .petak-wadah { gap: 12px; } .layar-stok .petak { padding: 12px 8px 14px; } .layar-stok .petak .nm { font-size: 14px; } .layar-stok .petak .ket { font-size: 12px; } .layar-stok .tumpuk-gambar { max-width: 128px; } }
 @media (min-width: 1100px) { main.layar-stok { padding: 22px 28px 40px; } }
+/* ---- Barang masuk & Cocokkan (23 Sep) ---- */
+.layar-stok .kepala-lembar { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; } .layar-stok .kepala-lembar .kaca-btn { flex: none; min-height: 36px; padding: 0 14px; }
+.layar-stok .stok-masuk, .layar-stok .stok-cocok { display: flex; flex-direction: column; gap: 10px; }
+.layar-stok .ps-form.tiga { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .layar-stok .ps-form.tiga .ketik-nama { min-height: 40px; } .layar-stok .ps-form.tiga > :nth-child(3) { grid-column: 1 / -1; }
+@media (min-width: 720px) { .layar-stok .ps-form.tiga { grid-template-columns: 1fr 1fr 1fr; } .layar-stok .ps-form.tiga > :nth-child(3) { grid-column: auto; } }
+.layar-stok .kaca-btn.kecil { min-height: 30px; font-size: 11.5px; padding: 0 10px; } .layar-stok .jalur.rapat .seg { min-height: 36px; font-size: 12px; }
+.layar-stok .baris-masuk.awas { border-color: var(--awas); }
+.layar-stok .op-ringkas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; } .layar-stok .op-ringkas div { border-radius: 12px; padding: 7px 9px; background: var(--seg); border: 1px solid var(--kaca-tepi); font-size: 10.5px; color: var(--redup); }
+.layar-stok .op-ringkas b { display: block; font-family: 'Bodoni Moda', Georgia, serif; font-size: 15px; font-weight: 500; color: var(--teks); white-space: nowrap; }
+.layar-stok .jawab.dipilih { border-color: var(--emas-garis); background: var(--seg-aktif); }
 @media (prefers-reduced-motion: reduce) { .layar-stok section, .layar-stok .jawab, .layar-stok .kapur { animation: none; } .layar-stok .isi-batang, .layar-stok .kartu-t { transition: none; } .layar-stok .tumpuk-mini i { animation: none; } }
