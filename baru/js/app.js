@@ -3,6 +3,7 @@
 import { pasangLayarJual } from './layar/jual.js';
 import { pasangLayarRingkasan } from './layar/ringkasan.js';
 import { pasangLayarStok } from './layar/stok.js';
+import { pasangLayarPelanggan } from './layar/pelanggan.js';
 import * as fb from './data/firebase.js';
 import { muatCadangan } from './data/cadangan.js';
 import { dengarkan, sumberData } from './data/toko.js';
@@ -22,7 +23,7 @@ function terapkanMode() {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = gelap ? '#111516' : '#eef1f4';
 }
-function gantiMode() { mode = mode === 'gelap' ? 'terang' : 'gelap'; try { localStorage.setItem(KUNCI_MODE, mode); } catch (e) { /* abaikan */ } terapkanMode(); layar.gambar(); ringkasan.gambar(); stok.gambar(); }
+function gantiMode() { mode = mode === 'gelap' ? 'terang' : 'gelap'; try { localStorage.setItem(KUNCI_MODE, mode); } catch (e) { /* abaikan */ } terapkanMode(); layar.gambar(); ringkasan.gambar(); stok.gambar(); pelanggan.gambar(); }
 function statusTeks() {
   const s = sumberData();
   if (s.jenis === 'cadangan') return 'membaca cadangan (bukan data hidup)';
@@ -44,13 +45,14 @@ let sekarangCadangan = null;   // mode cadangan: "sekarang" = saat cadangan diun
 const statusRingkas = () => (statusFb.offline ? 'tanpa internet' : statusFb.menunggu > 0 ? 'menunggu server' : statusFb.koleksiSiap < statusFb.koleksiTotal ? 'memuat…' : 'data toko');
 const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
 const stok = pasangLayarStok(document.getElementById('layarStok'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, keranjangJual: () => layar.keadaan.baca() });
-const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok') };
+const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
+const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok'), pelanggan: document.getElementById('layarPelanggan') };
 function pindah(tujuan) {
   if (!LAYAR_ADA[tujuan]) return false;
   Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].hidden = k !== tujuan; });
   document.querySelectorAll('[data-tujuan]').forEach((el) => el.classList.toggle('aktif', el.dataset.tujuan === tujuan));
   document.body.classList.toggle('di-jual', tujuan === 'jual');
-  ringkasan.tampilkan(tujuan === 'ringkasan'); stok.tampilkan(tujuan === 'stok');
+  ringkasan.tampilkan(tujuan === 'ringkasan'); stok.tampilkan(tujuan === 'stok'); pelanggan.tampilkan(tujuan === 'pelanggan');
   try { localStorage.setItem(KUNCI_TAB, tujuan); } catch (e) { /* abaikan */ }
   window.scrollTo(0, 0);
   return true;
