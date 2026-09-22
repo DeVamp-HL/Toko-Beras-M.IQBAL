@@ -3,8 +3,10 @@
 //   · isi ulang wadah          → serok dari KARUNG TERBUKA di belakang → dituang ke kotak wadah, permukaannya naik
 //   · buka karung (owner 21 Sep) → satu karung DIANGKAT dari TUMPUKAN GUDANG (tumpukannya berkurang satu) → ditaruh & dibuka di belakang wadah
 //   · kemasan masuk keranjang  → kemasan jatuh ke keranjang belanja, keranjangnya memantul
-//   · nota dicatat (literan/kemasan) → SERAH TERIMA: dua tangan toko (atas & bawah kemasan) → dua tangan pembeli → jadi UANG
-//   · nota dicatat (karung)    → karung DIANGKUT, tangan pembeli memberi uang ke tangan toko → jadi UANG
+//   · nota dicatat → (owner 23 Sep) SELALU dimulai dengan TERIMA UANG: tangan pembeli menyerahkan uang ke tangan toko (QRIS = ponsel
+//     bercentang, BON = kertas bon — bukan uang), BARU disusul adegan barangnya:
+//   · nota dicatat (literan/kemasan) → SERAH TERIMA: dua tangan toko (atas & bawah kemasan) → dua tangan pembeli
+//   · nota dicatat (karung)    → karung DIANGKUT, tangan pembeli memberi uang ke tangan toko (jalur lama, kini tak dipakai adeganNota)
 //   · (owner 22 Sep) karung 50 kg / kemasan ≥ 10 kg masuk keranjang → ORANG MEMANGGUL karung ke pundaknya;
 //     nota dicatat → orang yang tadi memanggul menaruhnya ke MOTOR (banyak → MOBIL bak terbuka), kendaraan pergi → jadi alat bayar;
 //     setengah karung (25 kg dari karung 50 kg) → karung 50 kg DITUANG ke karung bekas, lalu mulutnya DIJAHIT
@@ -40,7 +42,7 @@ const karung = (berat) => `<g class="paket karung"><path class="badan" d="M-24 -
 const uang = () => `<g class="alat-bayar uang"><g transform="rotate(-14)"><rect class="lembar-uang" x="-34" y="-17" width="68" height="34" rx="4"/></g><g transform="rotate(6)"><rect class="lembar-uang" x="-34" y="-17" width="68" height="34" rx="4"/><circle class="cap" cx="0" cy="0" r="9"/><text class="rp" x="0" y="4" text-anchor="middle">Rp</text></g><circle class="koin" cx="40" cy="16" r="8"/><circle class="koin" cx="-42" cy="18" r="6"/></g>`;
 const qris = () => `<g class="alat-bayar qris"><rect class="ponsel" x="-20" y="-32" width="40" height="64" rx="7"/><path class="kotak-qr" d="M-12 -20 h9 v9 h-9 z M3 -20 h9 v9 h-9 z M-12 -5 h9 v9 h-9 z M4 -4 h3 v3 h-3 z M9 1 h3 v3 h-3 z"/><circle class="cap" cx="0" cy="20" r="8"/><path class="centang" d="M-4 20 l3 3 l6 -7"/></g>`;
 const bon = () => `<g class="alat-bayar bon"><path class="kertas" d="M-24 -30 h48 v56 l-8 -5 l-8 5 l-8 -5 l-8 5 l-8 -5 l-8 5 z"/><path class="baris-bon" d="M-16 -18 h32 M-16 -8 h32 M-16 2 h20"/><text class="rp" x="0" y="18" text-anchor="middle">BON</text></g>`;
-const alatBayar = (cara) => (cara === 'QRIS' ? qris() : cara === 'Kredit' ? bon() : uang());
+const alatBayar = (cara, sisaBon) => (cara === 'QRIS' ? qris() : cara === 'Kredit' ? bon() : (sisaBon ? `<g transform="translate(34 -22) scale(0.62)">${bon()}</g>` : '') + uang());
 const wadahKotak = () => `<g class="wadah-adegan"><path class="gunung-adegan" d="M-44 0 Q-24 -2 -12 -24 Q0 -40 12 -24 Q24 -2 44 0 Z"/><path class="kotak-adegan" d="M-48 0 h96 l-6 46 h-84 z"/><path class="lipat" d="M-46 16 h92 M-44 32 h88"/></g>`;
 const karungBuka = () => `<g class="wadah-adegan"><path class="gunung-adegan" d="M-30 -4 Q0 -22 30 -4 Z"/><path class="kotak-adegan" d="M-32 -6 Q0 2 32 -6 Q40 26 34 46 Q0 52 -34 46 Q-40 26 -32 -6 Z"/></g>`;
 // orang menghadap kanan, titik asal di kakinya; .beban = barang yang dipanggul di pundak (diisi pemanggil)
@@ -101,17 +103,32 @@ export function adeganPanggul({ nama, jenis, ukuran, berat, jumlahTeks }) {
   </svg>`;
   return mainkan(svg, '<b>' + esc(nama) + '</b> · ' + esc(jumlahTeks) + ' · dipanggul', 1700);
 }
-/** Nota dicatat: orang yang memanggul berjalan ke kendaraan, menaruh muatannya, kendaraan pergi → jadi alat bayar. kendaraan: 'motor' | 'mobil'. */
-export function adeganMuat({ kendaraan, jenis, ukuran, banyak, banyakTeks, cara, jumlahRp, ket }) {
+/**
+ * TERIMA UANG (adegan pertama tiap nota, owner 23 Sep): tangan pembeli datang dari kanan membawa alat bayar, tangan toko datang dari kiri,
+ * alat bayarnya berpindah ke tangan toko, tangan pembeli mundur. Tunai = uang (bayar sebagian: + kertas bon kecil), QRIS = ponsel bercentang,
+ * BON = KERTAS BON (bukan uang — belum ada uang yang berpindah). Mengembalikan lamanya (ms) supaya adegan barang bisa disusulkan.
+ */
+export function adeganTerimaUang({ cara, jumlahRp, ket }) {
+  const lama = 2300; const sisaBon = /bon/i.test(ket || '');
+  const svg = `<svg class="adegan terima ${cara === 'Kredit' ? 'bon' : cara === 'QRIS' ? 'qris' : 'tunai'}" viewBox="0 0 320 170" style="--lama: ${lama}ms;">
+    <g transform="translate(160 92)">
+      <g class="grup-toko"><g transform="translate(-58 6) scale(1 -1)">${tangan('toko')}</g></g>
+      <g class="grup-pembeli"><g transform="translate(58 -10) scale(-1 1)">${tangan('pembeli')}</g></g>
+      <g transform="translate(0 -14)"><g class="alat-pindah">${alatBayar(cara, sisaBon)}</g></g>
+    </g>
+  </svg>`;
+  return mainkan(svg, keteranganBayar(cara, jumlahRp, ket), lama) ? lama : false;
+}
+/** Nota dicatat (sesudah terima uang): orang yang memanggul berjalan ke kendaraan, menaruh muatannya, kendaraan pergi. kendaraan: 'motor' | 'mobil'. */
+export function adeganMuat({ kendaraan, jenis, ukuran, banyak, banyakTeks }) {
   const mobilKah = kendaraan === 'mobil'; const lama = 3800;
   const svg = `<svg class="adegan muat ${mobilKah ? 'mobil' : 'motor'}" viewBox="0 0 320 170" style="--lama: ${lama}ms;">
     <path class="lantai" d="M0 150 h320"/>
     <!-- grup yang dianimasikan CSS TIDAK boleh membawa atribut transform (CSS transform menimpanya) → posisinya di grup pembungkus -->
     <g transform="translate(${mobilKah ? 226 : 214} 150)"><g class="kendaraan-grup">${mobilKah ? mobil() : motor()}<g transform="translate(${mobilKah ? -62 : -30} ${mobilKah ? -30 : -40})"><g class="muatan">${muatan(jenis, ukuran, banyak)}</g></g></g></g>
     <g transform="translate(-40 150)"><g class="pembawa">${orang(bebanPundak(jenis, ukuran))}</g></g>
-    <g transform="translate(160 66)"><g class="grup-bayar">${alatBayar(cara)}</g></g>
   </svg>`;
-  return mainkan(svg, '<b>Naik ' + (mobilKah ? 'mobil' : 'motor') + '</b> · ' + esc(banyakTeks) + ' · ' + keteranganBayar(cara, jumlahRp, ket), lama);
+  return mainkan(svg, '<b>Naik ' + (mobilKah ? 'mobil' : 'motor') + '</b> · ' + esc(banyakTeks) + ' · diantar ke kendaraan pembeli', lama);
 }
 /** Setengah karung: karung 50 kg diangkat, DITUANG ke karung bekas sampai separuh, lalu mulut karung bekasnya DIJAHIT. */
 export function adeganTuangJahit({ nama, berat, kg }) {
@@ -132,18 +149,17 @@ export function adeganKemasanMasuk({ nama, ukuran, jumlahTeks }) {
   </svg>`;
   return mainkan(svg, '<b>' + esc(nama) + '</b> · ' + esc(jumlahTeks) + ' masuk keranjang', 1250);
 }
-/** Nota dicatat — serah terima dua pasang tangan, lalu jadi alat bayarnya. jenis: 'kantong' | 'kemasan'. */
-export function adeganSerahTerima({ jenis, ukuran, cara, jumlahRp, ket }) {
+/** Nota dicatat (sesudah terima uang) — serah terima barang: dua tangan toko → dua tangan pembeli. jenis: 'kantong' | 'kemasan'. */
+export function adeganSerahTerima({ jenis, ukuran, namaTeks }) {
   const paket = jenis === 'kemasan' ? kemasan(ukuran || '') : kantongKertas();
-  const svg = `<svg class="adegan serah" viewBox="0 0 320 170">
+  const svg = `<svg class="adegan serah" viewBox="0 0 320 170" style="--lama: 2300ms;">
     <g transform="translate(160 86)">
       <g class="grup-toko"><g transform="translate(-20 -44)">${tangan('toko')}</g><g transform="translate(-20 50) scale(1 -1)">${tangan('toko')}</g></g>
       <g class="grup-pembeli"><g transform="translate(20 -44) scale(-1 1)">${tangan('pembeli')}</g><g transform="translate(20 50) scale(-1 -1)">${tangan('pembeli')}</g></g>
       <g class="grup-paket">${paket}</g>
-      <g class="grup-bayar">${alatBayar(cara)}</g>
     </g>
   </svg>`;
-  return mainkan(svg, keteranganBayar(cara, jumlahRp, ket), 2700);
+  return mainkan(svg, '<b>Serah terima</b> · ' + esc(namaTeks || '') + ' · diserahkan ke pembeli', 2300);
 }
 /** Nota dicatat (karung) — karung diangkut, tangan pembeli memberi alat bayar ke tangan toko. */
 export function adeganKarung({ berat, cara, jumlahRp, ket, banyak }) {
