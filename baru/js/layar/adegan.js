@@ -1,6 +1,7 @@
 // ADEGAN — animasi cerita di layar Jual (permintaan owner 19 Sep 2026: "biar gua gak gampang bosen waktu di toko").
 //   · literan masuk keranjang  → SEROK dari wadah kotak → dituang ke kantong kertas → diikat → dikemas
 //   · isi ulang wadah          → serok dari KARUNG TERBUKA di belakang → dituang ke kotak wadah, permukaannya naik
+//   · buka karung (owner 21 Sep) → satu karung DIANGKAT dari TUMPUKAN GUDANG (tumpukannya berkurang satu) → ditaruh & dibuka di belakang wadah
 //   · kemasan masuk keranjang  → kemasan jatuh ke keranjang belanja, keranjangnya memantul
 //   · nota dicatat (literan/kemasan) → SERAH TERIMA: dua tangan toko (atas & bawah kemasan) → dua tangan pembeli → jadi UANG
 //   · nota dicatat (karung)    → karung DIANGKUT, tangan pembeli memberi uang ke tangan toko → jadi UANG
@@ -66,6 +67,17 @@ export function adeganIsiUlang({ nama, keterangan, serokan, dari, ke }) {
     <g class="jalur-serok">${serok()}</g>
   </svg>`;
   return mainkan(svg, '<b>Isi ulang ' + esc(nama) + '</b> · ' + esc(keterangan), lama);
+}
+/** Buka karung: satu karung diangkat dari tumpukan gudang (kiri) → mendarat di belakang kotak wadah (kanan) → mulutnya dibuka. Angka tumpukan ikut turun. */
+export function adeganBukaKarung({ nama, wadah, berat, dariKarung, keKarung, dariKg, keKg }) {
+  const tumpuk = [[-30, 40], [30, 40], [0, 40], [-15, 8], [15, 8]].map(([x, y]) => `<g transform="translate(${x} ${y}) scale(0.62)">${karung('')}</g>`).join('');
+  const svg = `<svg class="adegan buka-karung" viewBox="0 0 320 170">
+    <g transform="translate(78 84)">${tumpuk}<g class="karung-diangkat"><g transform="translate(0 -24) scale(0.62)">${karung(berat || 50)}</g></g></g>
+    <text class="angka-tumpuk dari" x="78" y="160" text-anchor="middle">${esc(dariKarung)} karung</text><text class="angka-tumpuk ke" x="78" y="160" text-anchor="middle">${esc(keKarung)} karung</text>
+    <g transform="translate(244 78) scale(0.62)"><g class="karung-mendarat">${karungBuka()}</g></g>
+    <g transform="translate(244 122) scale(0.7)">${wadahKotak().replace('class="gunung-adegan"', 'class="gunung-adegan" style="opacity: 0;"')}</g>
+  </svg>`;
+  return mainkan(svg, '<b>Karung ' + esc(nama) + '</b> diambil dari tumpukan gudang' + (wadah ? ' → di belakang wadah ' + esc(wadah) : '') + ' · tumpukan ' + esc(dariKg) + ' → ' + esc(keKg) + ' kg', 2300);
 }
 /** Kemasan masuk keranjang belanja. */
 export function adeganKemasanMasuk({ nama, ukuran, jumlahTeks }) {

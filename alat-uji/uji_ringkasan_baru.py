@@ -154,7 +154,7 @@ if __name__ == '__main__':
         sys.exit(kode)
     l, g = utama(js)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
-    cad = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')))
+    cad = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')), key=os.path.basename)   # cadangan toko boleh di akar, _privat/ atau _arsip-mockup/ (semua di-gitignore); yang terbaru menurut tanggal di namanya
     if cad:
         c = json.load(open(cad[-1], encoding='utf-8'))
         h, e = jalan(js + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP)

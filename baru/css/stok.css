@@ -2,6 +2,10 @@
 main.layar-stok { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 110px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); box-sizing: border-box; max-width: 1180px; margin: 0 auto; }
 .layar-stok section { display: flex; flex-direction: column; gap: 10px; animation: masuk 420ms cubic-bezier(.2,.8,.2,1); }
 .layar-stok .tanya { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.layar-stok .tanya .kartu-t:last-child:nth-child(odd) { grid-column: 1 / -1; min-height: 58px; }
+/* tumpukan karung kecil di jawaban "Berasnya ada di mana?" — satu kotak = satu karung di tumpukan gudang */
+.layar-stok .tumpuk-mini { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; margin: 3px 0 1px; } .layar-stok .tumpuk-mini i { width: 11px; height: 8px; border-radius: 3px 3px 4px 4px; background: var(--emas-garis); opacity: 0.85; animation: karungTumbuh 320ms ease both; }
+.layar-stok .tumpuk-mini b { font-size: 10.5px; font-weight: 500; color: var(--redup); } @keyframes karungTumbuh { from { transform: scale(0.2); opacity: 0; } to { transform: none; opacity: 0.85; } }
 .layar-stok .kartu-t { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; min-height: 74px; border-radius: 16px; background: var(--kaca-chip, var(--kaca)); border: 1px solid var(--kaca-tepi); cursor: pointer;
   transition: transform 160ms cubic-bezier(.2,.8,.2,1), border-color 220ms ease, background-color 220ms ease; }
 .layar-stok .kartu-t:active { transform: scale(0.97); }
@@ -42,6 +46,6 @@ main.layar-stok { position: relative; z-index: 1; display: flex; flex-direction:
 .layar-stok .kapur:last-child { border-bottom: 0; } .layar-stok .kapur .isi-kapur { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .layar-stok .kapur.masuk .n { color: var(--emas1); } .layar-stok .kapur.keluar .n { color: var(--teks); } .layar-stok .kapur.opname .n { color: var(--awas); } .layar-stok .kapur.wadah .n { color: var(--platina1); }
 main.layar-stok.masuk > header, main.layar-stok.masuk > .jalur { animation: rkNaik 520ms cubic-bezier(.2,.8,.2,1) both; }
-@media (min-width: 720px) { .layar-stok .tanya { grid-template-columns: repeat(4, minmax(0, 1fr)); } .layar-stok .petak-wadah { gap: 12px; } .layar-stok .petak { padding: 12px 8px 14px; } .layar-stok .petak .nm { font-size: 14px; } .layar-stok .petak .ket { font-size: 12px; } .layar-stok .tumpuk-gambar { max-width: 128px; } }
+@media (min-width: 720px) { .layar-stok .tanya { grid-template-columns: repeat(5, minmax(0, 1fr)); } .layar-stok .tanya .kartu-t:last-child:nth-child(odd) { grid-column: auto; min-height: 74px; } .layar-stok .petak-wadah { gap: 12px; } .layar-stok .petak { padding: 12px 8px 14px; } .layar-stok .petak .nm { font-size: 14px; } .layar-stok .petak .ket { font-size: 12px; } .layar-stok .tumpuk-gambar { max-width: 128px; } }
 @media (min-width: 1100px) { main.layar-stok { padding: 22px 28px 40px; } }
-@media (prefers-reduced-motion: reduce) { .layar-stok section, .layar-stok .jawab, .layar-stok .kapur { animation: none; } .layar-stok .isi-batang, .layar-stok .kartu-t { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .layar-stok section, .layar-stok .jawab, .layar-stok .kapur { animation: none; } .layar-stok .isi-batang, .layar-stok .kartu-t { transition: none; } .layar-stok .tumpuk-mini i { animation: none; } }

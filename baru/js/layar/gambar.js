@@ -47,7 +47,7 @@ export function gambarKarungStok(k) {
   return `<svg class="gb karung stok ${k.sisaKg <= 5 ? 'perlu-isi' : ''}" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="${c}"><path d="${badan}"/></clipPath></defs>
     <g clip-path="url(#${c})"><rect class="isi-dalam" x="8" y="24" width="48" height="38" style="transform: scaleY(${bulat2(k.bagian)});"/></g>
     <path class="kotak" d="${badan}"/><path class="gulung" d="M12 24 Q32 31 52 24 Q54 19 50 17 Q32 23 14 17 Q10 19 12 24 Z"/><path class="bilah" d="M22 34v20M42 34v20"/>
-    <text x="32" y="49" text-anchor="middle" class="ukuran">50</text></svg>`;
+    <text x="32" y="49" text-anchor="middle" class="ukuran">${Number(k.penuhKg) || 50}</text></svg>`;
 }
 export function gambarChipBarang(c, penuh) {
   const isi = (c.sisa || 0) / penuh; const id = c.jalur + '-' + c.kunci + '-' + (c.berat || '');
