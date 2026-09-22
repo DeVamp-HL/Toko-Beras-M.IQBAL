@@ -7,7 +7,7 @@ import * as L from './jual-logika.js';
 import * as RT from './retur-logika.js';
 import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
-import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganKarung, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit } from './adegan.js';
+import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit } from './adegan.js';
 
 import { gambarChipBarang } from './gambar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
@@ -155,19 +155,23 @@ export function pasangLayarJual(akar, opsi) {
     if (j.karung > 0 || j.besar > 0 || j.kecil > 1 || j.liter > 10 || j.kg > 10) return 'motor';
     return null;
   }
-  // nota dicatat → adegan menurut barang TERBESAR nilainya: diangkut motor/mobil bila muatannya besar, selain itu serah terima (kantong kertas / kemasan)
+  // nota dicatat (owner 23 Sep) → SELALU dimulai adegan TERIMA UANG (BON = kertas bon), lalu disusul adegan barang menurut barang TERBESAR nilainya:
+  // diangkut motor/mobil bila muatannya besar, selain itu serah terima (kantong kertas / kemasan)
   function adeganNota(nota, keranjang, uangDiterima) {
     const utama = keranjang.slice().sort((a, b) => (b.trx.nilaiBarangPengganti || b.trx.hargaTotal || 0) - (a.trx.nilaiBarangPengganti || a.trx.hargaTotal || 0))[0]; if (!utama) return;
     const t = utama.trx; const cara = nota.cara; const kembali = cara === 'Tunai' && uangDiterima > nota.tagihan ? 'kembali ' + RP(uangDiterima - nota.tagihan) : nota.bayarSebagian ? 'sisa jadi bon' : '';
-    const data = { cara: nota.bayarSebagian ? 'Tunai' : cara, jumlahRp: RP(nota.bayarSebagian || nota.tagihan), ket: kembali };
+    const uang = { cara: nota.bayarSebagian ? 'Tunai' : cara, jumlahRp: RP(nota.bayarSebagian || nota.tagihan), ket: kembali };
     const kend = kendaraanUntuk(keranjang);
-    if (kend) {
-      const jenis = t.jenis === 'karung' ? 'karung' : t.jenis === 'kemasan' ? 'kemasan' : 'kantong';
-      const banyak = t.jenis === 'karung' ? Math.ceil(t.jumlahKarung || 1) : t.jenis === 'kemasan' ? (t.jumlahUnit || 1) : Math.ceil((t.jenis === 'literan' ? (t.jumlahLiter || 0) / 10 : (t.totalKg || 0) / 10) || 1);
-      const banyakTeks = t.jenis === 'karung' ? DESIMAL(t.jumlah) + ' karung ' + (t.merkSumber || '') : t.jenis === 'kemasan' ? DESIMAL(t.jumlahUnit) + ' kemasan ' + String(t.ukuranKemasan).replace('.', ',') + ' kg' : DESIMAL(t.jumlah) + ' ' + (t.satuan || '') + ' ' + (t.merkSumber || t.namaProduk || '');
-      adeganMuat(Object.assign(data, { kendaraan: kend, jenis, ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : String(t.beratKarungAcuan || 50), banyak, banyakTeks: banyakTeks + (keranjang.length > 1 ? ' + ' + (keranjang.length - 1) + ' baris lain' : '') }));
-    } else if (t.jenis === 'karung') adeganKarung(Object.assign(data, { berat: String(t.beratKarungAcuan || 50), banyak: DESIMAL(t.jumlah) + ' karung ' + (t.merkSumber || '') }));
-    else adeganSerahTerima(Object.assign(data, { jenis: t.jenis === 'kemasan' ? 'kemasan' : 'kantong', ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : '' }));
+    const banyakTeks = (t.jenis === 'karung' ? DESIMAL(t.jumlah) + ' karung ' + (t.merkSumber || '') : t.jenis === 'kemasan' ? DESIMAL(t.jumlahUnit) + ' kemasan ' + String(t.ukuranKemasan).replace('.', ',') + ' kg' : DESIMAL(t.jumlah) + ' ' + (t.satuan || '') + ' ' + (t.merkSumber || t.namaProduk || '')) + (keranjang.length > 1 ? ' + ' + (keranjang.length - 1) + ' baris lain' : '');
+    const barang = () => {
+      if (kend) {
+        const jenis = t.jenis === 'karung' ? 'karung' : t.jenis === 'kemasan' ? 'kemasan' : 'kantong';
+        const banyak = t.jenis === 'karung' ? Math.ceil(t.jumlahKarung || 1) : t.jenis === 'kemasan' ? (t.jumlahUnit || 1) : Math.ceil((t.jenis === 'literan' ? (t.jumlahLiter || 0) / 10 : (t.totalKg || 0) / 10) || 1);
+        adeganMuat({ kendaraan: kend, jenis, ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : String(t.beratKarungAcuan || 50), banyak, banyakTeks });
+      } else adeganSerahTerima({ jenis: t.jenis === 'kemasan' ? 'kemasan' : 'kantong', ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : '', namaTeks: banyakTeks });
+    };
+    const lamaUang = adeganTerimaUang(uang);
+    if (lamaUang) setTimeout(barang, lamaUang + 200); else barang();
   }
   async function tulisPesanan(r) {
     if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });

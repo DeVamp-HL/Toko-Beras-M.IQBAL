@@ -74,6 +74,17 @@
 .adegan .grup-bayar { transform-origin: 50% 50%; animation: jadiUang var(--lama, 2700ms) cubic-bezier(.2,.8,.2,1) both; will-change: transform, opacity; }
 @keyframes jadiUang { 0%, 72% { opacity: 0; transform: scale(0.1) rotate(-20deg); } 84% { opacity: 1; transform: scale(1.22) rotate(4deg); } 92%, 100% { opacity: 1; transform: scale(1) rotate(0deg); } }
 
+/* ---- TERIMA UANG (adegan pertama tiap nota): tangan pembeli membawa alat bayar → berpindah ke tangan toko → pembeli mundur ---- */
+.adegan.terima .grup-toko, .adegan.terima .grup-pembeli { transform-box: view-box; will-change: transform, opacity; }
+.adegan.terima .grup-pembeli { animation: pembeliMembawa var(--lama, 2300ms) cubic-bezier(.3,.1,.3,1) both; }
+@keyframes pembeliMembawa { 0% { transform: translateX(230px); opacity: 0; } 8% { opacity: 1; } 30%, 52% { transform: translateX(0); opacity: 1; } 74%, 100% { transform: translateX(240px); opacity: 0; } }
+.adegan.terima .grup-toko { animation: tokoMenyambut var(--lama, 2300ms) cubic-bezier(.3,.1,.3,1) both; }
+@keyframes tokoMenyambut { 0%, 12% { transform: translateX(-230px); opacity: 0; } 20% { opacity: 1; } 36%, 100% { transform: translateX(0); opacity: 1; } }
+.adegan.terima .alat-pindah { transform-box: fill-box; transform-origin: 50% 50%; animation: alatBerpindah var(--lama, 2300ms) cubic-bezier(.3,.1,.3,1) both; will-change: transform; }
+@keyframes alatBerpindah { 0% { transform: translateX(250px) scale(0.9); opacity: 0; } 8% { opacity: 1; } 30%, 44% { transform: translateX(20px) scale(0.9); } 60% { transform: translateX(-34px) scale(1.12); } 72%, 100% { transform: translateX(-34px) scale(1); opacity: 1; } }
+.adegan.terima.bon .alat-pindah { animation-name: alatBerpindahBon; }
+@keyframes alatBerpindahBon { 0% { transform: translateX(250px) rotate(8deg); opacity: 0; } 8% { opacity: 1; } 30%, 44% { transform: translateX(20px) rotate(8deg); } 60% { transform: translateX(-34px) rotate(-3deg) scale(1.08); } 72%, 100% { transform: translateX(-34px) rotate(0deg) scale(1); opacity: 1; } }
+
 /* ---- KARUNG diangkut → pembeli memberi → jadi alat bayar ---- */
 .adegan.angkut .grup-angkut, .adegan.angkut .grup-beri, .adegan.angkut .grup-terima { transform-box: view-box; will-change: transform, opacity; }
 .adegan.angkut .grup-angkut { animation: karungDiangkut var(--lama, 3100ms) cubic-bezier(.3,.1,.3,1) both; }
