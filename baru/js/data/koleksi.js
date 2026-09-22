@@ -35,4 +35,8 @@ export const KOLEKSI = [
   // owner (posisi, campuran, angka). ALAT UKUR kapan harus isi ulang, BUKAN pencatatan stok/uang (stok literan tetap dipotong dari
   // kolam merek saat TERJUAL). Aturan Firestore: jatuh ke aturan umum "owner saja".
   { nama: 'wadahLiteran',        urut: 'id',    cache: 'wadah' },
+  // KOLEKSI BARU sistem baru (23 Sep 2026): angka kebijakan owner untuk pencatatan stok (id tetap, mis. 'catatStok') dan jejak kedatangan
+  // yang dihapus (beralasan). Sistem lama tidak membacanya; aturan Firestore jatuh ke "owner saja".
+  { nama: 'aturanToko',          urut: 'id',    cache: 'aturan' },
+  { nama: 'bukuHapus',           urut: 'id',    cache: 'bukuHapus' },
 ];
