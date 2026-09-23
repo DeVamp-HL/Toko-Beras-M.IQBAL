@@ -68,6 +68,7 @@ export function pasangLayarMenu(akar, opsi) {
     if (t.ke === 'pelanggan') { opsi.bukaPelanggan && opsi.bukaPelanggan(t.keluarga || 'kenali', t.orang || null); return; }
     if (t.ke === 'harga') { opsi.bukaHarga && opsi.bukaHarga(t.keluarga || 'katalog', t); return; }   // putaran 17: Harga & Pemasok
     if (t.ke === 'uang') { opsi.bukaUang && opsi.bukaUang(t.keluarga || 'keluar', t); return; }   // putaran 18: Uang (K1–K6)
+    if (t.ke === 'laporan') { opsi.bukaLaporan && opsi.bukaLaporan(t.keluarga || 'laba', t); return; }   // putaran 19: Laporan & Dokumen
     if (t.ke === 'jual' || t.ke === 'ringkasan') { opsi.pindah(t.ke); return; }
     if (t.ke === 'lama') { set({ kabar: 'Layar ini belum ada di sistem baru — di sistem lama: ' + (HALAMAN_LAMA[t.halaman] || t.halaman) + '. ', kabarAwas: false, bukaLama: t.halaman }); return; }
     set({ kabar: 'Belum ada layarnya di sistem baru.', kabarAwas: true });

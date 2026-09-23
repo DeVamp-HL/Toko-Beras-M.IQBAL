@@ -74,4 +74,8 @@ export const KOLEKSI = [
   { nama: 'absenKaryawan',       urut: 'id',    cache: 'absen' },
   { nama: 'slipUpah',            urut: 'id',    cache: 'slipUpah' },
   { nama: 'tutupBukuAcara',      urut: 'id',    cache: 'tutupBukuAcara' },
+  // Putaran 19 (23 Sep 2026) — LAPORAN & DOKUMEN: dokumenCetak = tiap dokumen yang keluar bernomor urut (laporan berkop, rekap omzet, bukti, slip, kartu, salinan nota):
+  //  nomor, jenis, judul, periode, cara (cetak/pdf/wa), versi kop, DRAF atau final, salinan ke-N untuk nota. Kop & identitas usaha, ragam kop per dokumen, nomor awal,
+  //  tarif/batas/tanda-lapor rekap omzet, aset tetap = dokumen aturanToko (identitas, dokumen, rekapOmzet, laporan). Koleksi BARU (aturan Firestore: owner saja).
+  { nama: 'dokumenCetak',        urut: 'id',    cache: 'dokumenCetak' },
 ];
