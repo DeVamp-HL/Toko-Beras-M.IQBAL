@@ -40,7 +40,7 @@ export function pasangLayarRingkasan(akar, opsi) {
     <div class="tetes-terbang" id="rkTetes"></div>
     <header class="kepala-jual kepala-ringkasan">
       <div><div class="label"><span id="rkTanggal"></span> · <span id="rkJam" style="letter-spacing: 0.1em;"></span></div><div class="serif" style="font-size: 22px;" id="rkSalam"></div></div>
-      <div style="display: flex; gap: 8px; align-items: center;"><div class="pil" id="rkPil"></div><div class="tombol-mode" id="rkMode"></div></div>
+      <div style="display: flex; gap: 8px; align-items: center;"><div class="pil pil-akun" id="rkPil" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar"></div><div class="tombol-mode" id="rkMode"></div></div>
     </header>
     <div id="rkSumber"></div>
     <div class="kartu hero" id="rkHero"><div class="kilau" id="rkKilau"></div>

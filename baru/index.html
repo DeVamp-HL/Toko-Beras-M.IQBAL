@@ -107,8 +107,13 @@
     <button id="keranjangKosongkan" type="button" class="kaca-btn">Kosongkan lalu keluar</button>
   </div>
 </div>
-<!-- nama & peran orang yang sedang masuk tampil di SETIAP layar; tombol Keluar selalu terlihat -->
-<div id="chipAkun" class="chip-akun" hidden><span id="chipNama"></span><span id="chipAntre" class="chip-antre" hidden></span><button id="tombolKeluar" type="button">Keluar</button></div>
+<!-- nama & peran orang yang masuk tampil di pil kepala SETIAP layar (owner 24 Sep: bilah atas dicabut); ketuk pil = lembar ini -->
+<div id="lembarAkun" class="lembar-akun kartu" role="dialog" aria-label="Akun yang masuk">
+  <div class="label">Masuk sebagai</div>
+  <div id="lembarAkunNama" class="serif" style="font-size: 20px;"></div>
+  <div id="lembarAkunKet" class="ket"></div>
+  <button id="tombolKeluar" type="button" class="kaca-btn">Keluar</button>
+</div>
 
 <script type="module" src="js/app.js"></script>
 </body>
