@@ -85,6 +85,7 @@ export function pasangLayarMenu(akar, opsi) {
     // ---- SISTEM
     sistem: ({ s }) => { set({ sistem: s || null, kabar: '', atur: null, pilihP: null, mintaKe: null, pilihG: null }); if (s) ukurSimpanan(); }, tabS: ({ t }) => set({ tabS: Object.assign({}, st().tabS, { [st().sistem]: t }), kabar: '', atur: null }),
     pilihP: ({ id }) => set({ pilihP: st().pilihP === id ? null : id }), saring: ({ nama }) => set({ saring: st().saring === nama ? '' : nama }),
+    stafKe: ({ t }) => opsi.pindah(t),
     periksaSambung: async () => { set({ sambungTeks: 'memeriksa…' }); const r = opsi.periksaSambungan ? await opsi.periksaSambungan() : { teks: 'tidak tersedia di mode ini' }; set({ sambungTeks: r.teks, kabar: r.teks, kabarAwas: r.hasil === 'gagal' }); },
     // putaran 23: akun per orang — owner mendaftarkan / menolak permintaan, mengubah peran, menonaktifkan (dua ketukan)
     akunPilihPeran: ({ uid, peran }) => { const a = Object.assign({}, st().akunPilih); a[uid] = peran; set({ akunPilih: a }); },
@@ -159,6 +160,9 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="mn-isi">${s.tutup[g.id] ? '' : g.isi.map((b) => barisLaci(b, s.buka === b.id))}</div>
     </div>`;
   function gambarMenu(s, d) {
+    // putaran 23 (Tahap 3 tipis): bukan-owner tidak melihat laci owner — barisnya memajang angka uang dari koleksi yang tidak didengarkannya
+    const akunM = opsi.akun ? opsi.akun() : null;
+    if (akunM && akunM.jenis === 'aktif') return gambarStaf(s, d, akunM);
     const cari = M.susunCari(d, s.cari); const L = lokal();
     return h`<section class="mn-gulir" data-k="menu">
       <div class="jalur kisi5" data-k="susunan">${M.MN_SUSUNAN.map(([id, nm]) => h`<div class="seg ${s.susunan === id ? 'aktif' : ''}" data-aksi="susunan" data-s="${id}">${nm}</div>`)}</div>
@@ -169,6 +173,17 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="mn-kaki" data-k="kaki">${s.susunan === 'laci' ? 'Laci paling atas berubah menurut bagian hari; sepuluh laci di bawahnya (dan dua baris Sistem) tidak pernah berpindah tempat — menu yang isinya berpindah-pindah wajib dibaca ulang tiap kali dibuka, dan jempol tidak pernah hafal. Lencana merah = barisnya menyimpan sesuatu yang belum beres, bukan sekadar besar.'
         : s.susunan === 'tanya' ? 'Tiap baris satu pertanyaan, dan jawabannya sudah kelihatan sebelum diketuk. Yang belum bisa dihitung ditulis begitu — tidak ditebak.' : s.susunan === 'jam' ? 'Jam diambil dari tulisan yang jamnya terbaca; tulisan tanpa jam tidak dihitung dan disebut jumlahnya.' : s.susunan === 'orang' ? 'Satu nama, seluruh buku yang menyentuhnya — sistem lama menyusun semuanya menurut BUKU, tidak ada satu tempat pun menurut orang.' : 'Pintu yang tertutup dibiarkan tampak, berikut sebabnya dan apa yang membukanya. Pintu yang sudah terbuka ditulis terbuka.'}
         ${sumberData().jenis === 'cadangan' ? ' Angka di layar ini dari CADANGAN yang sedang dibaca, bukan data toko hari ini.' : ' Semua angka dari data toko lewat mesin yang sama dengan sistem lama; tidak ada angka yang lahir di layar Menu.'}</div>
+    </section>`;
+  }
+  function gambarStaf(s, d, akunM) {
+    const namaP = (S.SS_PERAN.find((p) => p.id === akunM.peran) || {}).nama || akunM.peran; const L = lokal();
+    const AL = opsi.antreLokal ? opsi.antreLokal() : { belum: [], ditolak: [] };
+    return h`<section class="mn-staf" data-k="staf" style="display: flex; flex-direction: column; gap: 10px;">
+      <div class="kartu" data-k="staf-akun" style="gap: 4px;"><div class="label">Masuk sebagai</div><div class="serif" style="font-size: 20px;">${akunM.nama}</div><div class="k2">${namaP} · ${L.namaPerangkat || 'perangkat ini'}</div></div>
+      <div class="tombol-baris" data-k="staf-layar">${[['jual', 'Jual'], ['pelanggan', 'Pelanggan'], ['stok', 'Stok']].map(([t, n]) => h`<div class="kaca-btn aktif" data-aksi="stafKe" data-t="${t}">${n}</div>`)}</div>
+      <div class="kartu" data-k="staf-antre" style="gap: 4px;"><div class="label">Catatan dari perangkat ini</div>
+        <div class="k2">${(L.antre || []).length ? (L.antre || []).length + ' menunggu server' : 'semua sudah sampai server'} · ${AL.ditolak.length ? AL.ditolak.length + ' DITOLAK server — menunggu owner memutuskan' : 'tidak ada yang ditolak'}</div></div>
+      <div class="pita-info" data-k="staf-ket">Laci menu owner (uang, laporan, harga, setelan) tidak termasuk hak ${namaP}. Server menegakkan: baca & catat baru; koreksi, hapus, dan "minta owner" tertutup sampai alur persetujuan ada.</div>
     </section>`;
   }
   function gambarLaci(s, d, L) {

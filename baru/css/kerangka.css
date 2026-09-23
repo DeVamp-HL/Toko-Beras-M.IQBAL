@@ -96,10 +96,15 @@ main.layar-jual > input[type="hidden"] { display: none; }
 
 /* lembar & laci Jual bersifat fixed — ikut tersembunyi bersama <main>-nya (display:none pada induk menyembunyikan anak fixed) */
 main[hidden] { display: none !important; }
-/* putaran 23: masuk per orang — penanda "masuk sebagai" di setiap layar + tombol Keluar selalu terlihat */
-.chip-akun { position: fixed; top: 8px; right: 10px; z-index: 19; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border-radius: 999px; background: var(--kaca); border: 1px solid var(--kaca-tepi); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 12px; max-width: calc(100vw - 20px); }
-.chip-akun #chipNama { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chip-akun button { font: inherit; font-size: 12px; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--kaca-tepi); background: var(--seg-aktif); color: var(--teks); cursor: pointer; }
+/* putaran 23: masuk per orang — bilah tipis "masuk sebagai" di ATAS setiap layar (mendorong isi ke bawah, tidak menutupi kepala layar) + Keluar selalu terlihat */
+.chip-akun { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 19; height: 34px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 0 10px 0 14px; box-sizing: border-box;
+  background: var(--nav); border-bottom: 1px solid var(--kaca-tepi); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 12px; }
+body.ada-akun { padding-top: 34px; }   /* poni sudah dihitung kepala tiap layar (baris 23); bilah duduk tepat di bawah poni */
+@media (min-width: 1100px) { .chip-akun { left: 72px; } }
+.chip-akun[hidden], .chip-akun .chip-antre[hidden] { display: none; }
+[data-tujuan][hidden] { display: none !important; }   /* menu & nav menyembunyikan layar yang bukan hak peran itu */
+.chip-akun #chipNama { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.chip-akun button { flex: none; font: inherit; font-size: 12px; min-height: 26px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--kaca-tepi); background: var(--seg-aktif); color: var(--teks); cursor: pointer; }
 .chip-akun .chip-antre { color: var(--awas); font-weight: 600; white-space: nowrap; }
 #panelAkun { display: flex; flex-direction: column; } #panelAkun[hidden] { display: none; } #mintaAkun { display: flex; flex-direction: column; gap: 8px; } #mintaAkun[hidden] { display: none; }
 

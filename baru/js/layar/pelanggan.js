@@ -8,6 +8,7 @@ import * as P from './pelanggan-logika.js';
 import * as B from './bon-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, hapusDokumen, perbaruiKolom } from '../data/toko.js';
+import { bukanOwner } from './akses-layar.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -144,8 +145,8 @@ export function pasangLayarPelanggan(akar, opsi) {
           <div class="tombol-mode" data-aksi="mode">${mentah(IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap'])}</div></div>
       </header>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
-      <div class="jalur" data-k="keluarga">${KELUARGA.map(([id, nm]) => h`<div class="seg ${s.keluarga === id ? 'aktif' : ''}" data-aksi="keluarga" data-ke="${id}">${nm}</div>`)}</div>
-      ${s.atur ? gambarAtur(s) : s.kartu ? gambarKartu(s) : s.baru ? gambarBaru(s) : s.gabung ? gambarGabung(s) : s.keluarga === 'bon' ? gambarBon(s, d) : s.keluarga === 'thr' ? gambarThr(s, d) : gambarKenali(s, d)}
+      <div class="jalur" data-k="keluarga">${KELUARGA.filter(([id]) => id !== 'thr' || !bukanOwner(opsi.akun ? opsi.akun() : null)).map(([id, nm]) => h`<div class="seg ${s.keluarga === id ? 'aktif' : ''}" data-aksi="keluarga" data-ke="${id}">${nm}</div>`)}</div>
+      ${s.atur ? gambarAtur(s) : s.kartu ? gambarKartu(s) : s.baru ? gambarBaru(s) : s.gabung ? gambarGabung(s) : s.keluarga === 'bon' ? gambarBon(s, d) : s.keluarga === 'thr' && !bukanOwner(opsi.akun ? opsi.akun() : null) ? gambarThr(s, d) : gambarKenali(s, d)}
     `);
     gulirkan(akar, RP);
   }
@@ -160,7 +161,7 @@ export function pasangLayarPelanggan(akar, opsi) {
       ${s.tabK === 'wajah' ? gambarWajah(s, W) : s.tabK === 'tampah' ? gambarTampah(s, d) : s.tabK === 'belanja' ? gambarBelanja(s, d) : s.tabK === 'jam' ? gambarJam(d) : s.tabK === 'minggu' ? gambarMinggu(d) : s.tabK === 'benang' ? gambarBenang(s, d) : gambarHafal(s, d)}
       ${W.kembar.length ? h`<div class="kartu" data-k="kembar" style="gap: 6px;"><div class="label">Mungkin orang yang sama — ketuk untuk memeriksa (tidak pernah digabung sendiri)</div>${W.kembar.map((p) => h`<div class="jawab" data-k="kb-${p.k}" data-aksi="bukaGabung" data-pasangan="${p.k}" data-a="${p.a}"><span class="kiri"><div><span class="nm">${p.teks}</span></div></span><span class="ket">periksa ›</span></div>`)}</div>` : ''}
       ${W.belumJadi.length ? h`<div class="pita-info" data-k="belum-jadi" style="cursor: pointer;" data-aksi="bukaKartu" data-kunci="${W.belumJadi[0].kunci}">${W.belumJadi.length} nama belum jadi (mis. "${W.belumJadi[0].nama}") — ketuk untuk membetulkan</div>` : ''}
-      <div class="tombol-baris"><div class="kaca-btn putus" data-aksi="bukaBaru">＋ Orang baru</div><div class="kaca-btn" data-aksi="bukaAtur">Atur: cip ciri, arah, bangku kosong, tagihan, THR</div></div>
+      <div class="tombol-baris"><div class="kaca-btn putus" data-aksi="bukaBaru">＋ Orang baru</div>${bukanOwner(opsi.akun ? opsi.akun() : null) ? '' : h`<div class="kaca-btn" data-aksi="bukaAtur">Atur: cip ciri, arah, bangku kosong, tagihan, THR</div>`}</div>
     </section>`;
   }
   function gambarWajah(s, W) {
@@ -302,7 +303,7 @@ export function pasangLayarPelanggan(akar, opsi) {
           <div class="tombol-baris" style="margin-top: 8px;"><div class="kaca-btn aktif" data-aksi="bukaOrangBon" data-kunci="${Bn.buku.kunci}">tagih · bayar · hapus</div></div></div>` : h`<div class="menolak">Tidak ada bon yang terbuka.</div>`}</div>` : ''}
       ${s.tabB === 'papan' ? h`<div data-k="papan" style="display: flex; flex-direction: column; gap: 8px;">${Bn.papan.map((p, i) => (p.lajur ? h`<div class="bp-lajur ${p.awas ? 'awas' : ''}" data-k="lj-${i}"><span class="judul">${p.judul} · ${p.n}</span><span class="n">${RP(p.jumlah)}</span></div>` : kartuBon(p)))}</div>` : ''}
       ${s.tabB === 'umur' ? h`<div data-k="umur" style="display: flex; flex-direction: column; gap: 10px;"><div class="ember" data-k="ember">${Bn.ember.map((e) => h`<div class="${e.aktif ? 'aktif' : ''} ${e.tua ? 'tua' : ''}" data-aksi="emberPilih" data-id="${e.id}"><b>${RP(e.jumlah).replace('Rp', '')}</b><span>${e.label} · ${e.n}</span></div>`)}</div><div class="ket">${Bn.umurTeks}</div>${Bn.perUmur.map(kartuBon)}</div>` : ''}
-      <div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAtur">Atur: waktunya ditagih, macet, alasan hapus, salam tagihan</div></div>
+      ${bukanOwner(opsi.akun ? opsi.akun() : null) ? '' : h`<div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAtur">Atur: waktunya ditagih, macet, alasan hapus, salam tagihan</div></div>`}
     </section>`;
   }
   function gambarLembarBon(s, d, O) {

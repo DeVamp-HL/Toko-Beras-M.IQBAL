@@ -46,16 +46,16 @@ function statusTeks() {
 
 terapkanMode();
 const akar = document.getElementById('layar');
-const layar = pasangLayarJual(akar, { gantiMode, mode: () => mode, statusTeks, versiData: () => versi, pemegang: () => fb.pemegangPerangkat() });
+const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, versiData: () => versi, pemegang: () => fb.pemegangPerangkat() });
 dengarkan(() => { versi += 1; });
 
 // ---- perpindahan layar: tiap layar punya <main> sendiri yang disembunyikan, supaya keranjang Jual tidak hilang saat pindah ----
 const KUNCI_TAB = 'miqbal_baru_tab';
 let sekarangCadangan = null;   // mode cadangan: "sekarang" = saat cadangan diunduh
 const statusRingkas = () => (statusFb.offline ? 'tanpa internet' : statusFb.menunggu > 0 ? 'menunggu server' : statusFb.koleksiSiap < statusFb.koleksiTotal ? 'memuat…' : 'DATA TOKO');
-const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
-const stok = pasangLayarStok(document.getElementById('layarStok'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); } });
-const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
+const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
+const stok = pasangLayarStok(document.getElementById('layarStok'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); } });
+const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
 // Menu (putaran 14): laci N1 + pita jam + Sistem (SS1–SS5). Tujuan baris = layar lain lewat pintu yang sama dengan ketukan di layar itu.
 const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab) => { pindah('stok'); stok.buka(lembar, tab); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); }, bukaUang: (keluarga, t) => { pindah('uang'); uang.buka(keluarga, t); }, bukaLaporan: (keluarga, t) => { pindah('laporan'); laporan.buka(keluarga, t); }, bukaJual: (lembar) => { pindah('jual'); layar.keadaan.setel({ lembar, kabar: '' }); },
@@ -63,14 +63,14 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, 
   periksaSambungan: () => fb.periksaSambungan(4000), setelLokasi: (id) => fb.setelLokasi(id), namaiPerangkat: (n) => fb.namaiPerangkat(n),
   akun: akunKini, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id) => fb.tulisUlangDitolak(id) });
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.
-const harga = pasangLayarHarga(document.getElementById('layarHarga'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
+const harga = pasangLayarHarga(document.getElementById('layarHarga'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
 // Uang (putaran 18): layar ketujuh — Uang keluar · Orang & upah · Owner & toko · Pindah uang · Tutup hari · Tutup buku. Dibuka dari Menu; di Mac ada di menu samping.
 const lokalPerangkat = () => ({ antre: statusFb.antre || [], menunggu: statusFb.menunggu || 0, idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), offline: statusFb.offline });
-const uang = pasangLayarUang(document.getElementById('layarUang'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), lokal: lokalPerangkat });
+const uang = pasangLayarUang(document.getElementById('layarUang'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), lokal: lokalPerangkat });
 // Laporan & Dokumen (putaran 19): layar kedelapan — Laba · Harian · Bulanan · Neraca · Dokumen (berkop, paket bank, dokumen kecil) · Setelan (kop & identitas). Dibuka dari Menu; di Mac ada di menu samping.
 // keTujuan = satu pintu ke layar lain dengan bentuk tujuan yang sama dengan baris Menu ({ ke, keluarga, tab, lembar, sistem }).
 const keTujuan = (t) => { if (!t) return; if (t.ke === 'stok') { pindah('stok'); stok.buka(t.lembar || null, t.tab || null); } else if (t.ke === 'pelanggan') { pindah('pelanggan'); pelanggan.buka(t.keluarga || 'kenali', t.orang || null); } else if (t.ke === 'harga') { pindah('harga'); harga.buka(t.keluarga || 'katalog', t); } else if (t.ke === 'uang') { pindah('uang'); uang.buka(t.keluarga || 'keluar', t); } else if (t.ke === 'laporan') { pindah('laporan'); laporan.buka(t.keluarga || 'laba', t); } else if (t.ke === 'sistem') { pindah('menu'); menu.buka && menu.buka(t.sistem || 'perangkat', t.tab || null); } else if (t.ke === 'jual' && t.lembar) { pindah('jual'); layar.keadaan.setel({ lembar: t.lembar, kabar: '' }); } else pindah(t.ke); };
-const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), keTujuan });
+const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), keTujuan });
 const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok'), pelanggan: document.getElementById('layarPelanggan'), menu: document.getElementById('layarMenu'), harga: document.getElementById('layarHarga'), uang: document.getElementById('layarUang'), laporan: document.getElementById('layarLaporan') };
 function pindah(tujuan) {
   if (!LAYAR_ADA[tujuan]) return false;
@@ -138,7 +138,7 @@ document.getElementById('tombolKeluarAkun').addEventListener('click', keluarAkun
 /** Nama & peran di setiap layar + menu/nav menyembunyikan layar yang bukan hak peran itu. */
 function gambarChipDanNav() {
   const a = akunKini(); const chip = document.getElementById('chipAkun'); const kerja = !!a && bisaBekerja(a) && sumberData().jenis !== 'cadangan';
-  chip.hidden = !kerja;
+  chip.hidden = !kerja; document.body.classList.toggle('ada-akun', kerja);
   if (kerja) { document.getElementById('chipNama').textContent = 'Masuk sebagai: ' + teksMasukSebagai(a); const n = (statusFb.lokal || {}).belum || 0; const ca = document.getElementById('chipAntre'); ca.hidden = !n; ca.textContent = n ? n + ' belum terkirim' : ''; }
   document.querySelectorAll('[data-tujuan]').forEach((el) => { el.hidden = !!a && !bolehLayar(a, el.dataset.tujuan); });
   const tab = (() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })();

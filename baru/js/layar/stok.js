@@ -13,6 +13,7 @@ import * as KT from './stok-kantong-logika.js';
 import * as TP from './stok-tempat-logika.js';
 import * as HP from './stok-hpp-logika.js';
 import { gambarWadah, gambarKarungStok } from './gambar.js';
+import { tombolAkun, tombolLuarKisi, bukanOwner } from './akses-layar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
 import { adeganIsiUlang, adeganBukaKarung, adeganAdukan } from './adegan.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
@@ -53,6 +54,7 @@ export function pasangLayarStok(akar, opsi) {
   const drafAtur = () => { const a = L.aturWadah(); const t = (n) => String(n).replace('.', ','); return { penuh: t(a.penuhKg), puncak: t(a.puncakKg), ulang: t(a.isiUlangKg), takar: t(a.takarKg), daftar: a.daftar.slice(), resep: JSON.parse(JSON.stringify(a.resep)), pilih: null, resepUntuk: null }; };
   const ubahAtur = (f) => { const d = JSON.parse(JSON.stringify(st().atur || drafAtur())); f(d); set({ atur: d }); };
   const AKSI = Object.assign({
+    tombolMati: ({ kal }) => set({ kabar: kal, kabarAwas: true }),   // putaran 23: tombol peran — mati dengan kalimat sebabnya
     tab: ({ t }) => { try { localStorage.setItem(KUNCI_TAB, t); } catch (e) { /* abaikan */ } set({ tab: t, kabar: '' }); },
     tanya: ({ id }) => set({ tanya: id }),
     keBelanja: () => opsi.bukaHarga && opsi.bukaHarga('belanja'),   // putaran 17: Harga & Pemasok → Belanja (saran yang sama, per pemasok, muatan truk, pesanan WA)
@@ -232,8 +234,9 @@ export function pasangLayarStok(akar, opsi) {
         ${j.takTeks ? h`<div class="ket" style="font-size: 11.5px;">${j.takTeks}</div>` : ''}
         ${g.aktif === 'beli' ? h`<div class="kaca-btn kecil" data-aksi="keBelanja" data-k="ke-belanja" style="align-self: flex-start;">Susun belanja per pemasok & kirim pesanan WhatsApp ›</div>` : ''}
       </div>
-      <div class="tombol-baris"><div class="kaca-btn aktif" data-aksi="bukaMasuk">Barang masuk</div><div class="kaca-btn aktif" data-aksi="bukaAdukan">Adukan</div><div class="kaca-btn aktif" data-aksi="bukaCocok">Cocokkan</div></div>
-      <div class="tombol-baris" data-k="tombol-16"><div class="kaca-btn" data-aksi="bukaKantong">Kantong</div><div class="kaca-btn" data-aksi="bukaTempat">Tempat simpan</div><div class="kaca-btn" data-aksi="bukaHpp">HPP / modal</div></div>
+      ${(() => { const ak = opsi.akun ? opsi.akun() : null; const t = (aksi, nama, tb, kelas) => (tb.boleh ? h`<div class="kaca-btn ${kelas || ''}" data-aksi="${aksi}">${nama}</div>` : h`<div class="kaca-btn mati" data-aksi="tombolMati" data-kal="${tb.kalimat}">${nama}</div>`);
+        return h`<div class="tombol-baris">${t('bukaMasuk', 'Barang masuk', tombolAkun(ak, 'kedatangan'), 'aktif')}${t('bukaAdukan', 'Adukan', tombolAkun(ak, 'adukan'), 'aktif')}${t('bukaCocok', 'Cocokkan', tombolLuarKisi(ak), 'aktif')}</div>
+      <div class="tombol-baris" data-k="tombol-16">${t('bukaKantong', 'Kantong', tombolLuarKisi(ak))}${t('bukaTempat', 'Tempat simpan', tombolLuarKisi(ak))}${bukanOwner(ak) ? h`<div class="kaca-btn mati" data-aksi="tombolMati" data-kal="HPP / modal tidak termasuk hak ${ak.nama}">HPP / modal</div>` : h`<div class="kaca-btn" data-aksi="bukaHpp">HPP / modal</div>`}</div>`; })()}
     </section>`;
   }
   const kepalaLembar = (judul, ket) => h`<div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">${judul}</div><div class="ket">${ket}</div></div><div class="kaca-btn" data-aksi="tutupLembar">tutup</div></div>`;
