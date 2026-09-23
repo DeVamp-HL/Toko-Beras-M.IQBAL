@@ -29,7 +29,7 @@ export function mnJam(teks) {
 // Tujuh pekerjaan yang jamnya terbaca (urutannya TETAP — baris tidak boleh berpindah tempat) + pintunya
 export const MN_KERJA = [
   { id: 'jual', nama: 'Jual — nota di meja', ikon: 'keranjang', ket: 'jam yang tertulis di nota', tujuan: { ke: 'jual', teks: 'buka Jual' } },
-  { id: 'karcis', nama: 'Rinci karcis — waktu disalin', ikon: 'karcis', ket: 'jam mesin waktu karcis darurat disalin jadi nota', tujuan: { ke: 'lama', halaman: 'Jual', teks: 'rinci karcis di sistem lama' } },
+  { id: 'karcis', nama: 'Rinci karcis — waktu disalin', ikon: 'karcis', ket: 'jam mesin waktu karcis darurat disalin jadi nota', tujuan: { ke: 'jual', lembar: 'karcis', teks: 'buka Jual → Karcis' } },
   { id: 'tutup', nama: 'Tutup hari & kas', ikon: 'bulan', ket: 'penutupan kas malam', tujuan: { ke: 'uang', keluarga: 'tutup', teks: 'buka Uang → Tutup hari' } },
   { id: 'belanja', nama: 'Belanja harian', ikon: 'dompet', ket: 'kopi, bensin, upah harian', tujuan: { ke: 'uang', keluarga: 'keluar', teks: 'buka Uang → Uang keluar' } },
   { id: 'bon', nama: 'Buku bon pelanggan', ikon: 'buku', ket: 'bayar & saldo awal', tujuan: { ke: 'pelanggan', keluarga: 'bon', teks: 'buka Pelanggan → Bon' } },

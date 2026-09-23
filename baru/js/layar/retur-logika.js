@@ -10,12 +10,15 @@
 //  - refund: uang keluar sebesar hitungan; boleh DITIMPA hanya ke BAWAH dengan alasan (nominalSistem + alasanTimpaNominal);
 //  - tukar: TIDAK ditulis di sini — disusun lengkap lalu DIIKAT ke keranjang Jual (tukarModel 'kreditBarangGabung');
 //    retur + penjualan penggantinya lahir dalam SATU tulisan saat nota dicatat (jual-logika.js susunNotaDokumen).
-import { rtDasarNota, rtKalimatLebih, rtKunciNota, kunciPelanggan, bakuCaraBayar, formatTanggal } from '../mesin/pembantu.js';
-import { ambilPenjualan } from '../data/toko.js';
+import { rtDasarNota, rtKalimatLebih, rtKunciNota, kunciPelanggan, bakuCaraBayar, formatTanggal, merkPunyaKarungBerat, kunciKemasan, namaSingkatTrx, tkApakahYatim, tkSetTertaut, tkTargetPengganti, tkPenjualanHidup } from '../mesin/pembantu.js';
+import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
+import { ambilPenjualan, ambilRetur } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
 
 export const ALASAN_RETUR = ['salah beli', 'kualitas kurang', 'kelebihan', 'kemasan rusak'];
-export const returAwal = () => ({ rtCari: '', rtNotaId: null, rtKondisi: null, rtPenyelesaian: 'refund', rtAlasan: '', rtTimpa: false, rtNominal: '', rtAlasanTimpa: '' });
+export const returAwal = () => ({ rtCari: '', rtNotaId: null, rtKondisi: null, rtPenyelesaian: 'refund', rtAlasan: '', rtTimpa: false, rtNominal: '', rtAlasanTimpa: '',
+  // PUTARAN 20: retur TANPA nota (ketik tangan) & tukar yatim
+  rtJenis: 'karung', rtBarang: '', rtBerat: 50, rtSelisih: '', rtYakin: false, rtPengganti: null });
 
 const angka = (teks) => parseFloat(String(teks || '').replace(',', '.')) || 0;
 const rupiah = (teks) => Math.round(Number(String(teks || '').replace(/[^\d]/g, '')) || 0);
@@ -121,3 +124,84 @@ export function cekDrafTukar(draf) {
   return null;
 }
 export const kunciNama = kunciPelanggan;
+
+// ==================== PUTARAN 20 · RETUR TANPA NOTA (ketik tangan) ====================
+// Cabang simpanRetur() index.html TANPA _rtNota (15905–15943): barang dipilih (karung merek+berat / kemasan), jumlah diketik, nominal uang kembali DIKETIK (tidak ada nota
+// untuk menghitungnya), tukar = selisih diketik (positif = toko mengembalikan, negatif = pembeli menambah) dan penggantinya dijual sebagai baris "pengganti retur" (model A).
+// Penjaga sistem lama: retur melebihi yang pernah terjual − sudah diretur → confirm; di sini = ketukan kedua (rtYakin). Dokumen = bentuk lama + kolom `tanpaNota: true`.
+/** Barang yang bisa diretur tanpa nota: karung per merek & berat (yang pernah ada di buku), kemasan per produk; berikut yang pernah terjual & sudah diretur. */
+export function daftarBarangRetur() {
+  const jual = ambilPenjualan(); const retur = ambilRetur(); const karung = []; const kemasan = [];
+  Object.keys(hitungStokKarungPerMerk()).sort().forEach((merk) => { [50, 25].forEach((b) => { if (!merkPunyaKarungBerat(merk, b)) return;
+    const terjual = jual.filter((p) => p.jenis === 'karung' && p.merkSumber === merk && (p.beratKarungAcuan || 50) === b).reduce((a, p) => a + (p.jumlahKarung || 0), 0);
+    const diretur = retur.filter((r) => r.jenisAsal === 'karung' && r.merkSumber === merk && (r.beratKarungAcuan || 50) === b).reduce((a, r) => a + (r.jumlahKarung || 0), 0);
+    karung.push({ kunci: merk + '|' + b, merk, berat: b, nama: merk + ' ' + b + ' kg', terjual, diretur, satuan: 'karung' }); }); });
+  const sk = hitungStokKemasan(); Object.keys(sk).sort().forEach((k) => { const x = sk[k]; const uk = parseFloat(x.ukuranKemasan);
+    const terjual = jual.filter((p) => p.jenis === 'kemasan' && p.namaProduk === x.namaProduk && parseFloat(p.ukuranKemasan) === uk).reduce((a, p) => a + (p.jumlahUnit || 0), 0);
+    const diretur = retur.filter((r) => r.jenisAsal === 'kemasan' && r.namaProduk === x.namaProduk && parseFloat(r.ukuranKemasan) === uk).reduce((a, r) => a + (r.jumlahUnit || 0), 0);
+    kemasan.push({ kunci: k, namaProduk: x.namaProduk, ukuran: uk, nama: x.namaProduk + ' ' + uk + ' kg', terjual, diretur, satuan: 'unit' }); });
+  return { karung, kemasan };
+}
+export function barangReturDipilih(s) { const D = daftarBarangRetur(); return s.rtJenis === 'kemasan' ? D.kemasan.find((x) => x.kunci === s.rtBarang) || null : D.karung.find((x) => x.kunci === s.rtBarang) || null; }
+/** Catat retur tanpa nota: {tolak[, perluYakin]} atau {dokumen, patch}. */
+export function susunReturTanpaNota(s, w) {
+  const B = barangReturDipilih(s); if (!B) return { tolak: 'Pilih barang yang dikembalikan dulu' };
+  const jml = angka(s.ketik); if (!(jml > 0)) return { tolak: 'Isi berapa ' + B.satuan + ' yang dikembalikan' };
+  if (s.rtJenis === 'kemasan' && Math.round(jml) !== jml) return { tolak: 'Retur kemasan dihitung per UNIT utuh' };
+  if (s.rtJenis !== 'kemasan' && (jml * 2) % 1 !== 0) return { tolak: 'Retur karung tanpa nota dihitung per karung utuh atau setengah' };
+  const catatan = String(s.rtAlasan || '').trim(); if (!catatan) return { tolak: 'Pilih / isi alasan retur dulu (salah beli, kualitas, kelebihan, dll)' };
+  if (s.rtKondisi !== 'utuh' && s.rtKondisi !== 'tidak_utuh') return { tolak: 'Jawab dulu: barang yang kembali BOLEH DIJUAL LAGI? Layak → kembali ke stok; rusak/diragukan → Karantina' };
+  const bebas = B.terjual - B.diretur;
+  if (jml > bebas && !s.rtYakin) return { tolak: B.nama + ' cuma pernah terjual ' + String(B.terjual).replace('.', ',') + ' ' + B.satuan + ' (sudah diretur ' + String(B.diretur).replace('.', ',') + ') — retur ' + String(jml).replace('.', ',') + ' melebihi itu, mungkin salah ketik. Ketuk sekali lagi kalau memang benar.', perluYakin: true };
+  const draf = s.rtJenis === 'kemasan' ? { jenisAsal: 'kemasan', namaProduk: B.namaProduk, ukuranKemasan: B.ukuran, jumlahUnit: jml, totalKg: B.ukuran * jml } : { jenisAsal: 'karung', merkSumber: B.merk, jumlahKarung: jml, beratKarungAcuan: B.berat, totalKg: jml * B.berat };
+  Object.assign(draf, { kondisi: s.rtKondisi, penyelesaian: s.rtPenyelesaian === 'tukar' ? 'tukar' : 'refund', catatan, id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tanpaNota: true });
+  let uang = 0;
+  if (draf.penyelesaian === 'refund') { const n = rupiah(s.rtNominal); if (!(n > 0)) return { tolak: 'Isi nominal uang yang dikembalikan — tanpa nota tidak ada yang bisa menghitungnya untukmu' }; draf.nominalRefund = n; uang = n; }
+  else { const t = String(s.rtSelisih || '').trim(); if (t === '') return { tolak: 'Isi selisih tukarnya — ketik 0 kalau memang tidak ada selisih' }; const n = Math.round(Number(t.replace(/\./g, '').replace(',', '.'))); if (!isFinite(n)) return { tolak: 'Selisih tukar bukan angka' }; draf.selisihHargaTukar = n; uang = Math.max(0, n); }
+  const dokumen = [{ koleksi: 'retur', data: draf }]; if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));
+  const ringkas = B.nama + ' × ' + String(jml).replace('.', ',') + ' ' + B.satuan;
+  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '', kabar: 'Retur TANPA NOTA dicatat — ' + ringkas + (draf.penyelesaian === 'refund' ? ' · uang keluar ' + RP(uang) : ' · tukar, selisih ' + (draf.selisihHargaTukar >= 0 ? 'toko mengembalikan ' : 'pembeli menambah ') + RP(Math.abs(draf.selisihHargaTukar)) + ' — jual penggantinya dengan pil "pengganti retur" supaya tidak dihitung omzet dua kali') + (draf.kondisi === 'utuh' ? ' · barang kembali ke stok jual' : ' · barang masuk Gudang Karantina'), kabarAwas: false }) };
+}
+
+// ==================== PUTARAN 20 · TUKAR YATIM (penggantinya belum tercatat) ====================
+// tkReturYatim / tkSusul / tkSudahDijual index.html 17064–17135: retur tukar yang penjualan penggantinya tidak (atau belum cukup) tercatat.
+// "catat penggantinya" = keranjang diikat sebagai SUSULAN: baris nota membawa tukarReturId, TIDAK ada retur baru; "pengganti sudah tercatat" = tanda penggantiDikonfirmasi di dokumen retur.
+export function returYatim() {
+  const T = tkSetTertaut();
+  return ambilRetur().filter((r) => tkApakahYatim(r, T)).map((r) => { const target = tkTargetPengganti(r); const a = T.get(String(r.id)); const rp = a ? a.rp : 0;
+    return { id: String(r.id), tanggal: r.tanggal || '', jam: r.jam || '', barang: r.merkSumber || r.namaProduk || '', nominal: r.nominalRefund || 0, model: r.tukarModel, target, tercatat: rp, kurang: target === null ? null : Math.max(0, target - rp),
+      teks: target === null ? 'tukar lama (nilai pengganti tidak tercatat)' : rp > 0 ? 'pengganti tercatat ' + RP(rp) + ' dari ' + RP(target) + ' — kurang ' + RP(target - rp) : 'pengganti ' + RP(target) + ' tidak tercatat lagi' }; })
+    .sort((a, b) => (b.tanggal + b.jam).localeCompare(a.tanggal + a.jam));
+}
+/** Ikat keranjang sebagai SUSULAN pengganti tukar yatim (tkSusul 17078). Hasil = ikatan untuk ikatTukar(): kredit 0 (uangnya sudah diterima saat tukar). */
+export function ikatSusulan(id) {
+  const y = returYatim().find((r) => r.id === String(id)); if (!y) return { tolak: 'Retur itu tidak ada lagi di daftar yatim — sudah punya pengganti tercatat' };
+  const r = ambilRetur().find((x) => String(x.id) === String(id)); const hT = (r && r.hitunganTukarSistem) || {};
+  return { ikat: { susulanReturId: y.id, kredit: 0, ringkas: 'SUSULAN tukar ' + formatTanggal(y.tanggal) + ' ' + y.jam + ' · ' + y.barang, model: y.model, kurang: y.kurang, nilaiRetur: y.nominal, caraTukar: hT.caraBayar || '' },
+    kabar: 'Keranjang ini jadi PENGGANTI tukar ' + formatTanggal(y.tanggal) + ' ' + y.jam + (y.kurang !== null ? ' — catat HANYA yang belum: ' + RP(y.kurang) : '') + (hT.caraBayar ? ' · waktu tukar dibayar ' + hT.caraBayar + ', pilih cara bayar yang sama' : '') + '. Dicatat PENUH, uang tukarnya sudah diterima saat tukar; retur TIDAK ditulis lagi.' };
+}
+/** Dibaca ULANG saat nota dicatat (tkCekSusulan 17036). null = sah. */
+export function cekSusulan(id, total, yakinLebih) {
+  const r = ambilRetur().find((x) => String(x.id) === String(id)); if (!r) return 'Retur yang disusul keranjang ini tidak ditemukan lagi. Batal tukar dulu.';
+  if (!tkApakahYatim(r, tkSetTertaut())) return 'Retur ' + formatTanggal(r.tanggal) + ' ' + (r.jam || '') + ' SUDAH punya pengganti tercatat — keranjang ini akan mencatatnya DUA KALI. Batal tukar; kalau barangnya untuk pembeli lain, jual biasa.';
+  const target = tkTargetPengganti(r); if (target !== null) { const a = tkSetTertaut().get(String(r.id)); const kurang = Math.max(0, target - (a ? a.rp : 0)); if (total > kurang + 499 && !yakinLebih) return 'Keranjang ' + RP(total) + ' MELEBIHI yang belum tercatat untuk tukar ini (' + RP(kurang) + ') — barang yang sudah tercatat jangan dicatat lagi. Ketuk "nilainya memang berubah" kalau benar.'; }
+  return null;
+}
+/** Calon penjualan yang bisa dianggap pengganti tukar yatim (tkSudahDijual 17093): sejak tanggal retur, bukan pengganti-retur, belum dipakai retur lain, terdekat jamnya dulu. */
+export function calonPengganti(id, kini) {
+  const r = ambilRetur().find((x) => String(x.id) === String(id)); if (!r) return [];
+  const menit = (j) => { const m = /^(\d{1,2}):(\d{2})/.exec(j || ''); return m ? (+m[1]) * 60 + (+m[2]) : 0; };
+  const dipakai = new Set(ambilRetur().map((x) => x.penggantiDikonfirmasi && tkPenjualanHidup(x.penggantiDikonfirmasi.penjualanId)).filter(Boolean).map((pj) => String(pj.id)));
+  const iso = hariIniIso(kini);
+  return ambilPenjualan().filter((pj) => pj.tanggal >= r.tanggal && pj.tanggal <= iso && (pj.hargaTotal || 0) > 0 && !pj.penggantiRetur && (!pj.tukarReturId || String(pj.tukarReturId) === String(r.id)) && !dipakai.has(String(pj.id)))
+    .sort((a, b) => (a.tanggal === b.tanggal ? 0 : (a.tanggal < b.tanggal ? -1 : 1)) || Math.abs(menit(a.jam) - menit(r.jam)) - Math.abs(menit(b.jam) - menit(r.jam))).slice(0, 12)
+    .map((pj) => ({ id: String(pj.id), tanggal: pj.tanggal, jam: pj.jam || '', teks: namaSingkatTrx(pj), nama: pj.namaPelanggan || '', hargaTotal: pj.hargaTotal || 0, sudahTertaut: String(pj.tukarReturId) === String(r.id) }));
+}
+/** Tandai penjualan sebagai pengganti tukar yatim: dokumen retur ditulis ulang dengan penggantiDikonfirmasi {penjualanId, pada}; penjualannya TIDAK diubah. */
+export function susunPenggantiTercatat(id, penjualanId, w) {
+  const r = ambilRetur().find((x) => String(x.id) === String(id)); if (!r) return { tolak: 'Retur itu tidak ditemukan lagi' };
+  if (!tkApakahYatim(r, tkSetTertaut())) return { tolak: 'Retur itu sudah punya pengganti tercatat' };
+  const c = calonPengganti(id, new Date(String(w.tanggal) + 'T12:00:00')).find((x) => x.id === String(penjualanId)); if (!c) return { tolak: 'Penjualan itu tidak ada di daftar calon pengganti' };
+  return { dokumen: [{ koleksi: 'retur', data: Object.assign({}, r, { penggantiDikonfirmasi: { penjualanId: String(penjualanId), pada: w.kini || new Date().toISOString() } }) }],
+    patch: { rtPengganti: null, lembar: null, kabar: 'Penjualan ' + c.jam + ' · ' + c.teks + ' · ' + RP(c.hargaTotal) + ' ditandai sebagai pengganti tukar ' + formatTanggal(r.tanggal) + ' — penjualannya tidak diubah, tandanya di dokumen retur', kabarAwas: false } };
+}

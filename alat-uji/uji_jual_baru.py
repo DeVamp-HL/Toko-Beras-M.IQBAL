@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/karcis-logika.js']
 
 # KOTAK PASIR — angka contoh, bukan angka toko
 KOTAK = {
@@ -598,6 +598,101 @@ ok('S: Dilayani = kolom oleh baris nota bila disertakan', (function () { terapka
 ok('S: nota lama sistem lama (tanpa trxId, tanpa grupNota) = satu baris satu nota; kembalian lama (kembalianUangDiterima/kembalianNominal) terbaca', (function () { terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'sl1', tanggal: '2026-09-19', jam: '13:00', caraBayar: 'Tunai', namaPelanggan: '', jenis: 'literan', merkSumber: 'Angsa', jumlahLiter: 2, totalKg: 1.64, hargaTotal: 27000, hppTotalSaatJual: 22000, kembalianUangDiterima: 50000, kembalianNominal: 23000 } }]); var n = notaDari({ id: 'sl1' }); var x = susunStruk(n, A0, null); terapkanKeCache([{ koleksi: 'penjualan', hapus: 'sl1' }]); return n.baris.length === 1 && x.kertas.some(function (t) { return /^Uang diterima\s+Rp50\.000$/.test(t); }) && x.kertas.some(function (t) { return /^Kembali\s+Rp23\.000$/.test(t); }) && x.kertas.some(function (t) { return /^  2 L × 13\.500\s+Rp27\.000$/.test(t); }); })());
 terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
 
+// ================= PUTARAN 20: RINCI KARCIS (karcis-logika) · RETUR TANPA NOTA · TUKAR YATIM =================
+terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
+terapkanKeCache([
+  { koleksi: 'penjualan', data: { id: 'k1', tanggal: '2026-09-19', jam: '09:30', caraBayar: 'Tunai', jenis: 'kasir_darurat_nominal', hargaTotal: 690000, operator: 'Gono' } },
+  { koleksi: 'penjualan', data: { id: 'k2', tanggal: '2026-09-19', jam: '09:45', caraBayar: 'Qris', jenis: 'kasir_darurat_nominal', hargaTotal: 40500 } },
+  { koleksi: 'penjualan', data: { id: 'k3', tanggal: '2026-09-18', jam: '16:00', caraBayar: 'Tunai', jenis: 'kasir_darurat_nominal', hargaTotal: 200000 } },
+  { koleksi: 'penjualan', data: { id: 'r1', tanggal: '2026-09-19', jam: '08:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', beratKarungAcuan: 50, jumlahKarung: 0, totalKg: 0, hargaTotal: 690000, hppTotalSaatJual: 0, perluKoreksi: true } }]);
+var KCd = daftarKarcis(s.sekarang);
+ok('T: antrean karcis: 3 karcis + 1 perlu dirapikan, terbaru dulu (k2, k1, r1, k3), total karcis 930.500; k1 menyebut oleh Gono', KCd.nKarcis === 3 && KCd.nRapikan === 1 && KCd.daftar.map(function (k) { return k.id; }).join() === 'k2,k1,r1,k3' && KCd.total === 930500 && KCd.daftar[1].oleh === 'Gono' && KCd.daftar[2].jenisAsal === 'rapikan', JSON.stringify(KCd));
+var TB = tebakanKarcis(690000); ok('T: tebakan 690.000: "Karung 50 kg Angsa × 1" tepat ada', TB.some(function (t) { return t.label === 'Karung 50 kg Angsa × 1' && t.tepat; }), JSON.stringify(TB.map(function (t) { return t.label; })));
+TB = tebakanKarcis(40500); ok('T: 40.500 = Angsa 3 L tepat (urutan pertama)', TB[0].label === 'Angsa 3 L' && TB[0].tepat && TB[0].isi[0].jumlah === 3, JSON.stringify(TB));
+TB = tebakanKarcis(40800); ok('T: 40.800 = Angsa 3 L · bulat +Rp300 (toleransi < 500), harga PAS 40.800 dibawa; 41.000 (selisih 500) TIDAK ditebak', TB.some(function (t) { return /Angsa 3 L · bulat \+Rp300/.test(t.label) && t.isi[0].hargaPas === 40800 && !t.tepat; }) && !tebakanKarcis(41000).some(function (t) { return /Angsa 3 L/.test(t.label); }), JSON.stringify(TB));
+ok('T: tebakan kombinasi: 730.500 = Karung 50 IR64 Apex × 1 (730.000)… tidak; 703.500 = karung Angsa 690.000 + Angsa 1 L 13.500 ADA', tebakanKarcis(703500).some(function (t) { return /Karung 50 Angsa × 1 \+ Angsa 1 L|Angsa 1 L \+ Karung 50 Angsa × 1/.test(t.label) && t.isi.length === 2; }), JSON.stringify(tebakanKarcis(703500).map(function (t) { return t.label; })));
+terap(ikatKarcis(s, 'k1', s.sekarang)); ok('T: karcis k1 terikat: cara Tunai, pelanggan kosong, hitung = belum ada barang', s.karcis && s.karcis.id === 'k1' && s.cara === 'Tunai' && hitungKarcis(s).teks === 'belum ada barang', JSON.stringify(s.karcis));
+ok('T: mengikat karcis kedua DITOLAK; parkir DITOLAK; catat nota biasa DITOLAK menyebut SIMPAN RINCIAN', /sedang merinci karcis/.test(ikatKarcis(s, 'k2', s.sekarang).kabar) && /merinci karcis/.test(parkir(s).kabar) && /SIMPAN RINCIAN/.test(alasanTolak(s)));
+ok('T: keranjang kosong → simpan rincian DITOLAK', /Tambahkan barangnya dulu/.test(susunRinciDokumen(s, W).tolak));
+terap(pakaiTebakan(s, tebakanKarcis(690000).find(function (t) { return t.label === 'Karung 50 kg Angsa × 1'; })));
+ok('T: tebakan mengisi keranjang: 1 baris karung Angsa 50 kg 690.000 → PAS', s.keranjang.length === 1 && s.keranjang[0].trx.hargaTotal === 690000 && hitungKarcis(s).pas, JSON.stringify(hitungKarcis(s)));
+var RR = susunRinciDokumen(s, W); var brs = RR.dokumen.filter(function (d) { return d.koleksi === 'penjualan' && d.data.asalDarurat; }); var asli = RR.dokumen[RR.dokumen.length - 1].data;
+ok('T: dokumen = simpanRinciTrx: baris karung {tanggal 19 Sep, jam 09:30 DARI KARCIS, caraBayar Tunai, grupNota, asalDarurat, rinciDari k1, koreksiDari k1, alasanKoreksi "Rincian dari kasir darurat #…k1", dirinciPada, operator Gono, hppTotalSaatJual > 0}; asli ditandai dikoreksiOleh = id baris pertama & alasan "Dirinci jadi 1 barang"; tanpa sisa', brs.length === 1 && brs[0].data.tanggal === '2026-09-19' && brs[0].data.jam === '09:30' && brs[0].data.caraBayar === 'Tunai' && brs[0].data.grupNota === RR.rinci.grupNota && brs[0].data.rinciDari === 'k1' && brs[0].data.koreksiDari === 'k1' && /Rincian dari kasir darurat #/.test(brs[0].data.alasanKoreksi) && brs[0].data.dirinciPada && brs[0].data.operator === 'Gono' && brs[0].data.hppTotalSaatJual > 0 && asli.id === 'k1' && asli.dikoreksiOleh === brs[0].data.id && /Dirinci jadi 1 barang/.test(asli.alasanKoreksi) && !/sisa/.test(asli.alasanKoreksi) && brs[0].data.jenis === 'karung', JSON.stringify(RR.dokumen));
+var kgSebelumK = hitungStokKarungPerMerk()['Angsa'].sisaKg; terapkanKeCache(RR.dokumen); terap(RR.patch);
+ok('T: sesudah simpan: k1 keluar dari antrean (2 karcis), keranjang kosong, notaTerakhir.rinci menunjuk grup, stok buku Angsa turun 50 kg (rak sudah menahannya sejak di keranjang)', daftarKarcis(s.sekarang).nKarcis === 2 && !s.keranjang.length && !s.karcis && s.notaTerakhir.rinci.asliId === 'k1' && Math.abs(hitungStokKarungPerMerk()['Angsa'].sisaKg - (kgSebelumK - 50)) < 0.01, JSON.stringify([kgSebelumK, hitungStokKarungPerMerk()['Angsa'].sisaKg]));
+// sisa belum terurai → karcis baru
+terap(ikatKarcis(s, 'k3', s.sekarang)); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '10' }); terap(masukkan(s));
+var HK = hitungKarcis(s); ok('T: k3 200.000 − Angsa 10 L 135.000 = sisa 65.000 belum terurai — boleh disimpan (bukan ditolak)', HK.sisa === 65000 && !HK.lebih && /boleh disimpan/.test(HK.teks), JSON.stringify(HK));
+RR = susunRinciDokumen(s, W); var sisaDoc = RR.dokumen.find(function (d) { return d.koleksi === 'penjualan' && d.data.jenis === 'kasir_darurat_nominal' && d.data.asalDarurat; }); asli = RR.dokumen[RR.dokumen.length - 1].data;
+ok('T: sisa 65.000 jadi karcis baru {asalDarurat, rinciDari k3, grupNota sama, alasan "Sisa belum diurai"}; kantong literan id+1 ikut; asli menyebut "+ sisa Rp65.000"', !RR.tolak && sisaDoc && sisaDoc.data.hargaTotal === 65000 && sisaDoc.data.rinciDari === 'k3' && sisaDoc.data.grupNota === RR.rinci.grupNota && /Sisa belum diurai/.test(sisaDoc.data.alasanKoreksi) && RR.dokumen.some(function (d) { return d.koleksi === 'stokBahanLiteran' && d.data.tipe === 'pakai'; }) && /sisa Rp65\.000 belum diurai/.test(asli.alasanKoreksi), JSON.stringify(RR.dokumen));
+terapkanKeCache(RR.dokumen); terap(RR.patch); KCd = daftarKarcis(s.sekarang);
+ok('T: antrean: k2 + sisa k3 (65.000, teks "Sisa karcis") + r1; riwayat rinci hari ini 2 grup utuh', KCd.nKarcis === 2 && KCd.daftar.some(function (k) { return k.nominal === 65000 && /Sisa karcis/.test(k.teks) && k.sisaDari === 'k3'; }) && riwayatRinci('2026-09-19').length === 2 && riwayatRinci('2026-09-19').every(function (r) { return r.utuh; }), JSON.stringify(KCd.daftar));
+// kelebihan · potongan · bon tanpa nama
+terap(ikatKarcis(s, 'k2', s.sekarang)); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '4' }); terap(masukkan(s));
+ok('T: barang 54.000 > karcis 40.500 → KELEBIHAN 13.500 DITOLAK menyebut nominal', /KELEBIHAN Rp13\.500 dari nominal Rp40\.500/.test(susunRinciDokumen(s, W).tolak), susunRinciDokumen(s, W).tolak);
+terap({ keranjang: [] }); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '3' }); terap(masukkan(s)); terap({ potongan: 500 }); ok('T: potongan nota saat merinci DITOLAK', /Potongan nota tidak dipakai/.test(susunRinciDokumen(s, W).tolak)); terap({ potongan: 0 });
+terap(pilihCara(s, 'Kredit')); ok('T: bon tanpa nama DITOLAK', /nama pembeli/.test(susunRinciDokumen(s, W).tolak)); terap(pilihCara(s, 'QRIS'));
+// hanya perbaiki cara bayar / nama
+terap({ pelanggan: 'Bu Suti' }); var PB = susunPerbaikanKarcis(s, W);
+ok('T: perbaikan: pengganti {caraBayar QRIS, namaPelanggan Bu Suti, koreksiDari k2, jenis tetap karcis, TANPA dikoreksiOleh} + asli k2 ditandai; barang keranjang tidak ditulis', !PB.tolak && PB.dokumen.length === 2 && PB.dokumen[0].data.namaPelanggan === 'Bu Suti' && PB.dokumen[0].data.caraBayar === 'QRIS' && PB.dokumen[0].data.koreksiDari === 'k2' && PB.dokumen[0].data.jenis === 'kasir_darurat_nominal' && !('dikoreksiOleh' in PB.dokumen[0].data) && PB.dokumen[1].data.id === 'k2' && PB.dokumen[1].data.dikoreksiOleh === PB.dokumen[0].data.id, JSON.stringify(PB));
+terap({ pelanggan: '' }); ok('T: perbaikan tanpa perubahan DITOLAK', /Tidak ada yang berubah/.test(susunPerbaikanKarcis(s, W).tolak));
+terapkanKeCache(PB.dokumen); terap(PB.patch); KCd = daftarKarcis(s.sekarang);
+ok('T: sesudah perbaikan: tetap 2 karcis, pengganti k2 bernama Bu Suti menggantikan; karcis dilepas dari keranjang, barang keranjang tetap', KCd.nKarcis === 2 && KCd.daftar.some(function (k) { return k.nama === 'Bu Suti' && k.nominal === 40500; }) && !KCd.daftar.some(function (k) { return k.id === 'k2'; }) && !s.karcis && s.keranjang.length === 1, JSON.stringify(KCd.daftar));
+terap({ keranjang: [] });
+// rapikan (perluKoreksi): uang tetap, harus pas
+terap(ikatKarcis(s, 'r1', s.sekarang)); terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap({ ketik: '0,5' }); terap(masukkan(s));
+ok('T: rapikan bersisa (345.000 dari 690.000) DITOLAK — harus menutup persis', /menutup Rp690\.000 persis/.test(susunRinciDokumen(s, W).tolak), susunRinciDokumen(s, W).tolak);
+terap({ keranjang: [] }); terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap({ ketik: '1' }); terap(masukkan(s)); RR = susunRinciDokumen(s, W); var br = RR.dokumen[0].data;
+ok('T: rapikan PAS: baris karung {jumlahKarung 1, hpp > 0, koreksiDari r1, alasan "Dirapikan dari kasir", TANPA asalDarurat/rinciDari, tanpa perluKoreksi}; asli r1 ditandai "Dirapikan jadi 1 barang"', !RR.tolak && br.jumlahKarung === 1 && br.hppTotalSaatJual > 0 && br.koreksiDari === 'r1' && /Dirapikan dari kasir/.test(br.alasanKoreksi) && !br.asalDarurat && !br.rinciDari && !br.perluKoreksi && RR.dokumen[RR.dokumen.length - 1].data.id === 'r1' && /Dirapikan jadi 1 barang/.test(RR.dokumen[RR.dokumen.length - 1].data.alasanKoreksi), JSON.stringify(RR.dokumen));
+terapkanKeCache(RR.dokumen); terap(RR.patch); ok('T: antrean rapikan kosong', daftarKarcis(s.sekarang).nRapikan === 0);
+// tarik balik
+var RU = susunUrungRinci(RR.rinci, W);
+ok('T: tarik balik rapikan: 1 baris dibatalkan (alasan "Rincian diurungkan"), asli r1 pulih TANPA dikoreksiOleh & alasanKoreksi', !RU.tolak && RU.jumlah === 1 && RU.dokumen[0].data.dibatalkan === true && /Rincian diurungkan/.test(RU.dokumen[0].data.alasanKoreksi) && RU.dokumen[1].data.id === 'r1' && !('dikoreksiOleh' in RU.dokumen[1].data) && !('alasanKoreksi' in RU.dokumen[1].data) && RU.dokumen[1].data.perluKoreksi === true, JSON.stringify(RU));
+terapkanKeCache(RU.dokumen); ok('T: r1 kembali ke antrean rapikan', daftarKarcis(s.sekarang).nRapikan === 1);
+var grupK3 = riwayatRinci('2026-09-19').find(function (r) { return r.asliId === 'k3'; }); var barisK3 = ambilPenjualanSemua().find(function (x) { return x.grupNota === grupK3.grupNota && x.jenis === 'literan'; });
+terapkanKeCache([{ koleksi: 'penjualan', data: Object.assign({}, barisK3, { dikoreksiOleh: 'zzz' }) }]);
+ok('T: grup yang sebagian sudah dikoreksi TIDAK bisa ditarik balik (menyebut catatannya); riwayat menandai tidak utuh', /sudah dikoreksi\/dirinci lagi/.test(susunUrungRinci({ grupNota: grupK3.grupNota, asliId: 'k3' }, W).tolak) && riwayatRinci('2026-09-19').find(function (r) { return r.asliId === 'k3'; }).utuh === false, susunUrungRinci({ grupNota: grupK3.grupNota, asliId: 'k3' }, W).tolak);
+terapkanKeCache([{ koleksi: 'penjualan', data: barisK3 }]);
+// ---- RETUR TANPA NOTA (ketik tangan)
+mulaiNota(); terap(Object.assign(returAwal(), { lembar: 'returTanpa' }));
+var DB = daftarBarangRetur();
+ok('T: barang retur tanpa nota: karung per merek & berat (Angsa 50 · Angsa 25 · IR64 Apex 50) dengan terjual & diretur; kemasan Kembang 5 kg', DB.karung.map(function (x) { return x.kunci; }).join() === 'Angsa|50,Angsa|25,IR64 Apex|50' && DB.kemasan.some(function (x) { return x.kunci === 'Kembang|5' && x.terjual >= 3; }) && DB.karung.find(function (x) { return x.kunci === 'Angsa|50'; }).terjual >= 2, JSON.stringify(DB));
+ok('T: tanpa barang DITOLAK; tanpa jumlah DITOLAK; karung 0,3 DITOLAK; kemasan 1,5 DITOLAK', /Pilih barang/.test(susunReturTanpaNota(s, W).tolak) && (terap({ rtBarang: 'Angsa|50' }), /berapa karung/.test(susunReturTanpaNota(s, W).tolak)) && (terap({ ketik: '0,3' }), /utuh atau setengah/.test(susunReturTanpaNota(s, W).tolak)) && (terap({ rtJenis: 'kemasan', rtBarang: 'Kembang|5', ketik: '1,5' }), /UNIT utuh/.test(susunReturTanpaNota(s, W).tolak)));
+terap({ rtJenis: 'karung', rtBarang: 'Angsa|50', ketik: '1' }); ok('T: tanpa alasan DITOLAK; tanpa kondisi DITOLAK', /alasan retur/.test(susunReturTanpaNota(s, W).tolak) && (terap({ rtAlasan: 'salah beli' }), /BOLEH DIJUAL LAGI/.test(susunReturTanpaNota(s, W).tolak)));
+terap({ rtKondisi: 'utuh' }); ok('T: refund tanpa nominal DITOLAK — tanpa nota tidak ada yang menghitungkannya', /Isi nominal uang yang dikembalikan/.test(susunReturTanpaNota(s, W).tolak));
+terap({ rtNominal: '650.000' }); var RTN = susunReturTanpaNota(s, W); var rtd = RTN.dokumen && RTN.dokumen[0].data;
+ok('T: dokumen retur tanpa nota = cabang lama: {jenisAsal karung, merkSumber Angsa, jumlahKarung 1, beratKarungAcuan 50, totalKg 50, kondisi utuh, penyelesaian refund, catatan, nominalRefund 650.000, tanpaNota true, TANPA notaAsalId}; kabar menyebut uang keluar', !RTN.tolak && rtd.jenisAsal === 'karung' && rtd.merkSumber === 'Angsa' && rtd.jumlahKarung === 1 && rtd.beratKarungAcuan === 50 && rtd.totalKg === 50 && rtd.kondisi === 'utuh' && rtd.penyelesaian === 'refund' && rtd.nominalRefund === 650000 && rtd.tanpaNota === true && !('notaAsalId' in rtd) && RTN.dokumen.length === 1 && /uang keluar Rp650\.000/.test(RTN.patch.kabar), JSON.stringify(RTN));
+terap({ ketik: '5' }); RTN = susunReturTanpaNota(s, W); ok('T: 5 karung melebihi yang pernah terjual − diretur → perluYakin (ketukan kedua), menyebut angkanya', RTN.perluYakin && /cuma pernah terjual/.test(RTN.tolak) && /mungkin salah ketik/.test(RTN.tolak), RTN.tolak);
+terap({ rtYakin: true }); ok('T: dengan ketukan kedua → tercatat', !susunReturTanpaNota(s, W).tolak);
+terap({ ketik: '1', rtYakin: false, rtPenyelesaian: 'tukar', rtSelisih: '' }); ok('T: tukar tanpa selisih DITOLAK (ketik 0 kalau tidak ada)', /Isi selisih tukarnya/.test(susunReturTanpaNota(s, W).tolak));
+terap({ rtSelisih: '-20.000', rtKondisi: 'tidak_utuh' }); RTN = susunReturTanpaNota(s, W); rtd = RTN.dokumen[0].data;
+ok('T: tukar tanpa nota: selisihHargaTukar −20.000 (pembeli menambah), tanpa nominalRefund, karantina ikut (id sama), kabar menyuruh pil "pengganti retur"', rtd.penyelesaian === 'tukar' && rtd.selisihHargaTukar === -20000 && !('nominalRefund' in rtd) && RTN.dokumen[1].koleksi === 'karantina' && RTN.dokumen[1].data.id === rtd.id && /pembeli menambah Rp20\.000/.test(RTN.patch.kabar) && /pengganti retur/.test(RTN.patch.kabar), JSON.stringify(RTN));
+terap({ rtSelisih: '0' }); ok('T: selisih 0 sah', !susunReturTanpaNota(s, W).tolak && susunReturTanpaNota(s, W).dokumen[0].data.selisihHargaTukar === 0);
+// ---- TUKAR YATIM: catat penggantinya (susulan) & pengganti sudah tercatat
+terapkanKeCache([{ koleksi: 'retur', data: { id: 'ry1', tanggal: '2026-09-18', jam: '15:00', jenisAsal: 'karung', merkSumber: 'Angsa', jumlahKarung: 1, beratKarungAcuan: 50, totalKg: 50, kondisi: 'utuh', penyelesaian: 'tukar', nominalRefund: 690000, selisihHargaTukar: 0, tukarModel: 'kreditBarangGabung', notaAsalId: 's2', catatan: 'salah beli',
+  hitunganTukarSistem: { pengganti: 730000, kredit: 690000, bersih: 40000, pembulatan: 0, caraBayar: 'Tunai', dibayarPembeli: 40000, dikembalikanToko: 0 } } }]);
+var Y = returYatim(); ok('T: 1 tukar yatim ry1: target 730.000, tercatat 0, kurang 730.000, teks "tidak tercatat lagi"', Y.length === 1 && Y[0].id === 'ry1' && Y[0].target === 730000 && Y[0].tercatat === 0 && Y[0].kurang === 730000 && /tidak tercatat lagi/.test(Y[0].teks), JSON.stringify(Y));
+mulaiNota(); var IS = ikatSusulan('ry1'); terap(ikatTukar(s, IS.ikat));
+ok('T: ikatan susulan: kredit 0, susulanReturId ry1, model gabung; kabar menyebut catat HANYA yang belum Rp730.000 & dibayar Tunai', s.tukar && s.tukar.kredit === 0 && s.tukar.susulanReturId === 'ry1' && s.tukar.model === 'kreditBarangGabung' && /HANYA yang belum: Rp730\.000/.test(IS.kabar) && /dibayar Tunai/.test(IS.kabar), IS.kabar);
+terap(ketukChip(s, chip('karung', 'IR64 Apex', 50))); terap({ ketik: '1' }); terap(masukkan(s)); t = hitungTagihan(s);
+ok('T: susulan gabung: pembulatan atas selisih yang dulu diterima (730.000 − 690.000 = 40.000 → 0), kredit 0 → total 730.000', t.kredit === 0 && t.bulat === 0 && t.total === 730000, JSON.stringify(t));
+terap(pilihCara(s, 'Kredit')); ok('T: susulan BON DITOLAK', /Susulan tukar tidak bisa BON/.test(alasanTolak(s)), alasanTolak(s)); terap(pilihCara(s, 'Tunai')); terap(uangPas(s)); ok('T: sah dicatat', alasanTolak(s) === '', alasanTolak(s));
+var SN = simpanNota(s, W); var rowsS = SN.dokumen.filter(function (d) { return d.koleksi === 'penjualan'; });
+ok('T: nota susulan: tiap baris membawa tukarReturId ry1; TIDAK ada dokumen retur baru; ringkas menyebut SUSULAN; notaTerakhir.retur null', rowsS.length === 1 && rowsS[0].data.tukarReturId === 'ry1' && !SN.dokumen.some(function (d) { return d.koleksi === 'retur'; }) && /SUSULAN tukar/.test(SN.ringkas) && SN.nota.retur === null, JSON.stringify(SN.dokumen));
+terapkanKeCache(SN.dokumen); terap(SN.patch); ok('T: sesudah dicatat: ry1 tidak yatim lagi', returYatim().length === 0);
+terapkanKeCache([{ koleksi: 'retur', data: { id: 'ry2', tanggal: '2026-09-19', jam: '09:00', jenisAsal: 'karung', merkSumber: 'Angsa', jumlahKarung: 1, beratKarungAcuan: 50, totalKg: 50, kondisi: 'utuh', penyelesaian: 'tukar', nominalRefund: 690000, selisihHargaTukar: 0, tukarModel: 'kreditBarangGabung', notaAsalId: 's2', catatan: 'x', hitunganTukarSistem: { pengganti: 72000, kredit: 690000, bersih: -618000, pembulatan: 0, caraBayar: 'Tunai' } } }]);
+mulaiNota(); terap(ikatTukar(s, ikatSusulan('ry2').ikat)); terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap({ ketik: '1' }); terap(masukkan(s)); terap(uangPas(s));
+ok('T: keranjang 690.000 MELEBIHI yang belum tercatat (72.000) → DITOLAK sampai "nilainya memang berubah"', /MELEBIHI yang belum tercatat/.test(alasanTolak(s)) && (terap(yakinLebihSusulan(s)), alasanTolak(s) === ''), alasanTolak(s));
+ok('T: susulan untuk retur yang tidak yatim DITOLAK', /sudah punya pengganti tercatat/.test(ikatSusulan('ry1').tolak));
+terapkanKeCache([{ koleksi: 'retur', data: { id: 'ry3', tanggal: '2026-09-18', jam: '09:00', jenisAsal: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, totalKg: 5, kondisi: 'utuh', penyelesaian: 'tukar', nominalRefund: 72000, selisihHargaTukar: 0, tukarModel: 'kreditBarang', notaAsalId: 's3', catatan: 'x' } }]);
+var CP = calonPengganti('ry3', s.sekarang);
+ok('T: calon pengganti ry3 (18 Sep 09:00, model lama): penjualan sejak 18 Sep, bukan pengganti-retur, tidak tertaut retur lain, terdekat jamnya dulu (s5 09:30 sebelum s3 10:00); nota batal s4 tidak ikut', CP.length >= 2 && CP[0].id === 's5' && CP.some(function (c) { return c.id === 's3'; }) && !CP.some(function (c) { return c.id === 's4'; }), JSON.stringify(CP.map(function (c) { return c.id + ' ' + c.tanggal + ' ' + c.jam; })));
+ok('T: menandai penjualan yang bukan calon DITOLAK', /tidak ada di daftar calon/.test(susunPenggantiTercatat('ry3', 'tidak-ada', W).tolak));
+var PT = susunPenggantiTercatat('ry3', 's3', W); ok('T: pengganti sudah tercatat: dokumen retur ry3 ditulis ulang dengan penggantiDikonfirmasi {penjualanId s3, pada}; penjualan tidak disentuh', !PT.tolak && PT.dokumen.length === 1 && PT.dokumen[0].koleksi === 'retur' && PT.dokumen[0].data.penggantiDikonfirmasi.penjualanId === 's3' && PT.dokumen[0].data.penggantiDikonfirmasi.pada, JSON.stringify(PT));
+terapkanKeCache(PT.dokumen); ok('T: sesudah ditandai: ry3 keluar dari daftar yatim (ry2 masih)', returYatim().length === 1 && returYatim()[0].id === 'ry2', JSON.stringify(returYatim()));
+
+terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
+
 // kunci dokumen yang dihasilkan — dibandingkan python dengan kunci yang DITULIS index.html (cadangan toko belum punya retur bernota)
 var KUNCI = { retur: {}, karantina: {} };
 [rd, r0].forEach(function (d) { Object.keys(d || {}).forEach(function (k) { KUNCI.retur[k] = 1; }); });
@@ -663,6 +758,20 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- PUTARAN 20: rinci karcis · retur tanpa nota · tukar yatim
+            'rinci: kelebihan barang atas uang yang masuk lolos': js.replace("const H = hitungKarcis(s); if (H.lebih) return { tolak: 'Jumlah barang '", "const H = hitungKarcis(s); if (false) return { tolak: 'Jumlah barang '"),
+            'rinci: baris tanpa tanda asalDarurat/rinciDari (tarik balik & penjaga karcis buta)': js.replace("if (karcis) { d.asalDarurat = true; d.rinciDari = p.id; d.alasanKoreksi = 'Rincian dari kasir darurat ' + kcEkor(p.id); }", "if (false) { d.asalDarurat = true; d.rinciDari = p.id; }"),
+            'rinci: sisa yang belum terurai hilang (uang masuk berkurang)': js.replace("if (karcis && H.sisa > 0) { const sisaDoc =", "if (false) { const sisaDoc ="),
+            'rinci: karcis asli tidak ditandai (uang dua kali)': js.replace("  dokumen.push({ koleksi: 'penjualan', data: asli });\n  const ringkas = (karcis ? 'Karcis ' : 'Nota ')", "\n  const ringkas = (karcis ? 'Karcis ' : 'Nota ')"),
+            'rinci: tanggal baris = hari ini, bukan tanggal karcis (omzet pindah hari)': js.replace("d.id = w.idUnik(); d.tanggal = p.tanggal; d.jam = p.jam || ''; d.caraBayar = cara;", "d.id = w.idUnik(); d.tanggal = w.tanggal; d.jam = w.jam; d.caraBayar = cara;"),
+            'rapikan boleh bersisa (uang nota bergeser)': js.replace("if (k.jenisAsal === 'rapikan' && H.sisa !== 0) return { tolak:", "if (false) return { tolak:"),
+            'tarik balik grup yang sudah tersentuh (uang dobel)': js.replace("if (tersentuh) return { tolak: 'Tidak bisa ditarik balik:", "if (false) return { tolak: 'Tidak bisa ditarik balik:"),
+            'retur tanpa nota: melebihi yang pernah terjual lolos tanpa ketukan kedua': js.replace("if (jml > bebas && !s.rtYakin) return { tolak:", "if (false) return { tolak:"),
+            'retur tanpa nota: refund tanpa nominal lolos (Rp0 diam-diam)': js.replace("if (!(n > 0)) return { tolak: 'Isi nominal uang yang dikembalikan", "if (false) return { tolak: 'Isi nominal uang yang dikembalikan"),
+            'susulan menulis retur BARU lagi (barang terkredit dua kali)': js.replace("if (tk && !tk.susulanReturId) {\n    const rd = Object.assign({}, tk.returDraf,", "if (tk) {\n    const rd = Object.assign({}, tk.returDraf,"),
+            'susulan boleh BON': js.replace("if (s.cara === 'Kredit') return 'Susulan tukar tidak bisa BON", "if (false) return 'Susulan tukar tidak bisa BON"),
+            'keranjang susulan melebihi yang belum tercatat lolos diam-diam': js.replace("if (total > kurang + 499 && !yakinLebih) return 'Keranjang '", "if (false) return 'Keranjang '"),
+            '"pengganti sudah tercatat" tidak meninggalkan tanda di retur': js.replace("penggantiDikonfirmasi: { penjualanId: String(penjualanId), pada:", "penggantiDikonfirmasiX: { penjualanId: String(penjualanId), pada:"),
             'QRIS ikut dibulatkan': js.replace("return (c === 'Tunai' || c === 'Kredit') && total > 0 ?", "return total > 0 ?"),
             'bon tidak dibulatkan (aturan lama)': js.replace("return (c === 'Tunai' || c === 'Kredit') && total > 0 ?", "return c === 'Tunai' && total > 0 ?"),
             'struk parkir tidak memegang stok': js.replace("s.antrean.map((a) => ({ beku: { items: a.beku.items.map((b) => ({ trx: b.trx })), nama: a.beku.pelanggan } }))", "[]"),
@@ -709,11 +818,11 @@ if __name__ == '__main__':
             'kemasan boleh diretur pecahan unit': js.replace("if (d.satuan === 'unit' && Math.round(jml) !== jml) return", "if (false) return"),
             'tukar menulis retur SEKARANG (tanpa pengganti → kas kurang)': js.replace("if (draf.penyelesaian === 'tukar') {", "if (false) {"),
             'kredit tukar tidak dipotong dari tagihan': js.replace("const kredit = s.tukar ? Math.round(s.tukar.kredit || 0) : 0;", "const kredit = 0;"),
-            'pembulatan tukar atas keranjang penuh, bukan selisih': js.replace("const bulatNota = pembulatanTagihan(totalSetelahPot - kreditTukar, cara);", "const bulatNota = pembulatanTagihan(totalSetelahPot, cara);"),
+            'pembulatan tukar atas keranjang penuh, bukan selisih': js.replace("const bulatNota = bulatKeranjang(Object.assign({}, s, { cara }), totalSetelahPot - kreditTukar);", "const bulatNota = bulatKeranjang(Object.assign({}, s, { cara }), totalSetelahPot);"),
             'tukar boleh dicatat BON': js.replace("if (s.cara === 'Kredit') return 'Tukar tidak bisa dicatat BON", "if (false) return 'Tukar tidak bisa dicatat BON"),
             'tukar boleh dibayar sebagian': js.replace("if (t.uang > 0 && t.uang < t.total) return 'Tukar tidak bisa dibayar sebagian", "if (false) return 'Tukar tidak bisa dibayar sebagian"),
             'pengganti lebih murah dari retur lolos': js.replace("if (t.bersih < 0) return 'Nilai retur '", "if (false) return 'Nilai retur '"),
-            'penjualan pengganti tanpa tukarReturId': js.replace("if (tk) d.tukarReturId = String(tk.returDraf.id);", ""),
+            'penjualan pengganti tanpa tukarReturId': js.replace("if (tk) d.tukarReturId = String(tk.susulanReturId || tk.returDraf.id);", ""),
             'retur tukar tidak ikut ditulis bersama notanya': js.replace("    dokumen.push({ koleksi: 'retur', data: rd });\n", ""),
             'kembalian tukar dihitung dari nilai keranjang': js.replace("d.kembalian = Math.max(0, uang - (totalBayar - kreditTukar));", "d.kembalian = Math.max(0, uang - totalBayar);"),
             'pembatalan nota tukar meninggalkan returnya': js.replace("if (notaTerakhir.retur) { hapus.push({ koleksi: 'retur', id: notaTerakhir.retur.id });", "if (false) { hapus.push({ koleksi: 'retur', id: notaTerakhir.retur.id });"),
