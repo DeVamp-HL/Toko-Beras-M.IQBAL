@@ -18,6 +18,7 @@ import { riwayatUpah } from './upah-logika.js';
 import { semuaBon } from './bon-logika.js';
 import { daftarPemasok, bukuBon } from './bon-pemasok-logika.js';
 import { bukuOwner } from './owner-toko-logika.js';
+import { pjOmzetSistem, pjGabungRekap, pjTahun, PJ_LABEL } from './pajak-logika.js';
 
 export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep
 export const JENIS_LAPORAN = [['labarugi', 'Laba-Rugi'], ['neraca', 'Neraca'], ['aruskas', 'Arus Kas']];
@@ -102,18 +103,21 @@ export const tarifTeks = (n) => (n / 10).toFixed(1).replace('.', ',') + '%';
 export function susunAturRekap(isi, w) {
   const A = aturRekap(); const tarif = ugKosong(isi.tarifPerMil) ? 0 : ugAngka(isi.tarifPerMil); const batas = ugKosong(isi.batasOmzet) ? 0 : ugAngka(isi.batasOmzet); const tgl = ugKosong(isi.tanggalLapor) ? 15 : ugAngka(isi.tanggalLapor);
   if (!(tarif >= 0 && tarif <= 1000)) return { tolak: 'Tarif ditulis per seribu: 0–1000 (5 = 0,5 % dari omzet)' }; if (batas < 0) return { tolak: 'Batas omzet tidak boleh minus' }; if (!(tgl >= 1 && tgl <= 28)) return { tolak: 'Tanggal lapor 1–28' };
-  return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'rekapOmzet', tanggal: w.tanggal, jam: w.jam, tarifPerMil: Math.round(tarif), batasOmzet: Math.round(batas), tanggalLapor: Math.round(tgl), lapor: A.lapor } }], patch: { aturR: null, kabar: 'Setelan rekap omzet tersimpan — ' + (tarif ? 'tarif perkiraan ' + tarifTeks(tarif) : 'tanpa kolom perkiraan') + ' · ' + (batas ? 'batas ' + RP(batas) : 'batas belum diatur') + ' · lapor tiap tanggal ' + Math.round(tgl) + '. Ini setelan owner, bukan nasihat pajak.', kabarAwas: false } };
+  return { dokumen: [{ koleksi: 'aturanToko', data: pjGabungRekap({ tarifPerMil: Math.round(tarif), batasOmzet: Math.round(batas), tanggalLapor: Math.round(tgl), lapor: A.lapor }, w) }], patch: { aturR: null, kabar: 'Setelan rekap omzet tersimpan — ' + (tarif ? 'tarif perkiraan ' + tarifTeks(tarif) : 'tanpa kolom perkiraan') + ' · ' + (batas ? 'batas ' + RP(batas) : 'batas belum diatur') + ' · lapor tiap tanggal ' + Math.round(tgl) + '. Ini setelan owner, bukan nasihat pajak.', kabarAwas: false } };
 }
 /** DK3: 12 bulan omzet (mesin laba, satu sumber), kumulatif tahun berjalan, tanda dilaporkan, tarif & batas setelan owner, tempo lapor. */
 export function rekapOmzet(kini) {
   const iso = hariIniIso(kini); const akhir = lpKey(iso); const tahunIni = Number(akhir.slice(0, 4)); const A = aturRekap(); const daftar = []; let kum = 0; const p0 = lpPertama(); const awalBuku = p0 ? lpKey(p0) : akhir;
-  for (let i = 11; i >= 0; i--) { const k = lpGeserBulan(akhir, -i); const L = hitungLabaRentang((t) => !!t && bulanDari(t) === k); const th = Number(k.slice(0, 4)); if (th === tahunIni) kum += L.omzetPenuh; daftar.push({ key: k, nama: lpNamaBulan(k), pendek: lpBulanPendek(k, k.slice(5, 7) === '01' || i === 11), omzet: L.omzetPenuh, n: L.jumlahTrx, final: lpFinal(k), berjalan: i === 0, absen: k < awalBuku, kum: th === tahunIni ? kum : null, lapor: A.lapor[k] || null, perkiraan: A.tarifPerMil ? Math.round(L.omzetPenuh * A.tarifPerMil / 1000) : null }); }
-  const totalTahun = kum; const adaTarif = A.tarifPerMil > 0, adaBatas = A.batasOmzet > 0; const lewatBatas = adaBatas && totalTahun > A.batasOmzet; const finalTerakhir = daftar.filter((b) => b.final).pop() || null;
+  // putaran 24: omzet = pjOmzetSistem (satu sumber dengan layar Pajak); perkiraan = hitungan pajak (dengan batas bebas) — dua layar, satu angka
+  const PJ = {}; const pjBulan = (k) => { const th = Number(k.slice(0, 4)); if (!PJ[th]) PJ[th] = pjTahun(th, kini); return PJ[th].daftar.find((b) => b.key === k) || null; };
+  for (let i = 11; i >= 0; i--) { const k = lpGeserBulan(akhir, -i); const S = pjOmzetSistem(k); const th = Number(k.slice(0, 4)); if (th === tahunIni) kum += S.omzet; const pb = A.tarifPerMil ? pjBulan(k) : null;
+    daftar.push({ key: k, nama: lpNamaBulan(k), pendek: lpBulanPendek(k, k.slice(5, 7) === '01' || i === 11), omzet: S.omzet, n: S.n, final: lpFinal(k), berjalan: i === 0, absen: k < awalBuku, kum: th === tahunIni ? kum : null, lapor: A.lapor[k] || null, perkiraan: pb ? pb.pph : null, perkiraanLengkap: pb ? pb.lengkapSejauhIni : false }); }
+  const totalTahun = kum; const pjIni = A.tarifPerMil ? (PJ[tahunIni] || pjTahun(tahunIni, kini)) : null; const adaTarif = A.tarifPerMil > 0, adaBatas = A.batasOmzet > 0; const lewatBatas = adaBatas && totalTahun > A.batasOmzet; const finalTerakhir = daftar.filter((b) => b.final).pop() || null;
   const belumLapor = daftar.filter((b) => b.final && Number(b.key.slice(0, 4)) === tahunIni && !b.lapor); const hariIni = Number(iso.slice(8, 10)); const maks = Math.max(1, ...daftar.map((b) => b.omzet));
   let tempo = null; if (finalTerakhir) { const bulanBerikut = lpGeserBulan(finalTerakhir.key, 1); const lewat = akhir > bulanBerikut || (akhir === bulanBerikut && hariIni > A.tanggalLapor); tempo = { bulan: finalTerakhir, teks: 'lapor ' + lpBulanPendek(finalTerakhir.key) + ' paling lambat ' + A.tanggalLapor + ' ' + lpBulanPendek(bulanBerikut), sudah: !!finalTerakhir.lapor, lewat: !finalTerakhir.lapor && lewat, sisaHari: akhir === bulanBerikut ? A.tanggalLapor - hariIni : null }; }
-  return { daftar, maks, tahunIni, totalTahun, adaTarif, adaBatas, lewatBatas, sisaBatas: adaBatas ? A.batasOmzet - totalTahun : null, perkiraanTahun: adaTarif ? Math.round(totalTahun * A.tarifPerMil / 1000) : null, A, finalTerakhir, belumLapor, tempo, adaFinal: !!finalTerakhir,
-    totalTeks: 'Tahun ' + tahunIni + ' sampai ' + lpBulanPendek(akhir) + ': ' + RP(totalTahun) + (adaBatas ? (lewatBatas ? ' — LEWAT batas yang diatur owner (' + RP(A.batasOmzet) + ')' : ' — ' + RP(A.batasOmzet - totalTahun) + ' lagi sampai batas yang diatur owner') : ' — batas belum diatur (Atur)'),
-    tarifTeks: adaTarif ? 'Perkiraan menurut tarif ' + tarifTeks(A.tarifPerMil) + ' yang diatur owner: tahun ini ' + RP(Math.round(totalTahun * A.tarifPerMil / 1000)) + ' — bukan nasihat pajak' : 'Tarif belum diatur → kolom perkiraan tidak dicetak (Atur)' };
+  return { daftar, maks, tahunIni, totalTahun, adaTarif, adaBatas, lewatBatas, sisaBatas: adaBatas ? A.batasOmzet - totalTahun : null, perkiraanTahun: pjIni ? pjIni.totalPph : null, A, finalTerakhir, belumLapor, tempo, adaFinal: !!finalTerakhir,
+    totalTeks: 'Tahun ' + tahunIni + ' sampai ' + lpBulanPendek(akhir) + ' (omzet di sistem saja): ' + RP(totalTahun) + (adaBatas ? (lewatBatas ? ' — LEWAT batas yang diatur owner (' + RP(A.batasOmzet) + ')' : ' — ' + RP(A.batasOmzet - totalTahun) + ' lagi sampai batas yang diatur owner') : ' — batas belum diatur (Atur)') + '. Kumulatif lengkap dengan omzet di luar sistem: Laporan › Pajak',
+    tarifTeks: pjIni ? (pjIni.totalPph === null ? 'Perkiraan PPh tidak dihitung (jenis wajib pajak: badan — tanyakan konsultan)' : 'Perkiraan PPh ' + tarifTeks(A.tarifPerMil) + (pjIni.P.batasBebas ? ' sesudah batas bebas ' + RP(pjIni.P.batasBebas) : ' (batas bebas belum diisi)') + ': tahun ini ' + RP(pjIni.totalPph) + (pjIni.kosong ? ' — ' + pjIni.kosong + ' bulan belum diisi, bisa kurang' : '') + ' — ' + PJ_LABEL) : 'Tarif belum diatur → kolom perkiraan tidak dicetak (Atur)' };
 }
 /** Tandai / batalkan tanda "sudah dilaporkan" satu bulan — hanya bulan FINAL; membatalkan butuh ketukan kedua. */
 export function susunTandaLapor(key, w, yakin) {
@@ -121,7 +125,7 @@ export function susunTandaLapor(key, w, yakin) {
   const lapor = Object.assign({}, A.lapor); const sudah = !!lapor[key];
   if (sudah) { if (!yakin) return { tolak: 'Ketuk sekali lagi untuk membatalkan tanda ' + lpNamaBulan(key), perluYakin: true }; delete lapor[key]; }
   else lapor[key] = { tgl: w.tanggal, jam: w.jam };
-  return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'rekapOmzet', tanggal: w.tanggal, jam: w.jam, tarifPerMil: A.tarifPerMil, batasOmzet: A.batasOmzet, tanggalLapor: A.tanggalLapor, lapor } }], patch: { yakinBatal: false, kabar: sudah ? 'Tanda dilaporkan ' + lpNamaBulan(key) + ' dibatalkan' : lpNamaBulan(key) + ' ditandai sudah dilaporkan ' + tanggalPendek(w.tanggal), kabarAwas: false } };
+  return { dokumen: [{ koleksi: 'aturanToko', data: pjGabungRekap({ lapor }, w) }], patch: { yakinBatal: false, kabar: sudah ? 'Tanda dilaporkan ' + lpNamaBulan(key) + ' dibatalkan' : lpNamaBulan(key) + ' ditandai sudah dilaporkan ' + tanggalPendek(w.tanggal), kabarAwas: false } };
 }
 /** Bukti omzet dari bulan yang dipilih: Σ baris = jumlah (penjaga identitas tergambar); hanya bulan final. */
 export function buktiOmzet(pilih, kini) {
