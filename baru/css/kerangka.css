@@ -96,3 +96,10 @@ main.layar-jual > input[type="hidden"] { display: none; }
 
 /* lembar & laci Jual bersifat fixed — ikut tersembunyi bersama <main>-nya (display:none pada induk menyembunyikan anak fixed) */
 main[hidden] { display: none !important; }
+/* putaran 23: masuk per orang — penanda "masuk sebagai" di setiap layar + tombol Keluar selalu terlihat */
+.chip-akun { position: fixed; top: 8px; right: 10px; z-index: 19; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border-radius: 999px; background: var(--kaca); border: 1px solid var(--kaca-tepi); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 12px; max-width: calc(100vw - 20px); }
+.chip-akun #chipNama { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip-akun button { font: inherit; font-size: 12px; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--kaca-tepi); background: var(--seg-aktif); color: var(--teks); cursor: pointer; }
+.chip-akun .chip-antre { color: var(--awas); font-weight: 600; white-space: nowrap; }
+#panelAkun { display: flex; flex-direction: column; } #panelAkun[hidden] { display: none; } #mintaAkun { display: flex; flex-direction: column; gap: 8px; } #mintaAkun[hidden] { display: none; }
+

@@ -37,11 +37,11 @@ const HALAMAN_LAMA = { Pemasok: 'Menu → Pemasok', Harga: 'Menu → Harga', Lab
 const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']] };
 const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat' };
 
-/** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelPemegang, setelLokasi, namaiPerangkat */
+/** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelLokasi, namaiPerangkat, akun(), antreLokal(), buangDitolak(id), tulisUlangDitolak(id) */
 export function pasangLayarMenu(akar, opsi) {
   const tabAwal = bacaLokal(KUNCI_TAB) || {}; const laciAwal = bacaLokal(KUNCI_LACI) || {};
   const K = buatKeadaan({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
-    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null });
+    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null });
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false;
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -49,7 +49,7 @@ export function pasangLayarMenu(akar, opsi) {
   const ingat = () => { simpanLokal(KUNCI_TAB, { susunan: st().susunan }); simpanLokal(KUNCI_LACI, { tutup: st().tutup }); };
   async function tulis(r) {
     if (!r || r.tolak) { set({ kabar: (r && r.tolak) || 'Tidak ada yang ditulis', kabarAwas: true }); return false; }
-    try { const x = await tulisDokumen(r.dokumen || []); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; }
+    try { const x = await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus }); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; }
       set(Object.assign({}, r.patch || {}, { kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + ((r.patch && r.patch.kabar) || 'Tersimpan') })); return true; }
     catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
@@ -86,7 +86,16 @@ export function pasangLayarMenu(akar, opsi) {
     sistem: ({ s }) => { set({ sistem: s || null, kabar: '', atur: null, pilihP: null, mintaKe: null, pilihG: null }); if (s) ukurSimpanan(); }, tabS: ({ t }) => set({ tabS: Object.assign({}, st().tabS, { [st().sistem]: t }), kabar: '', atur: null }),
     pilihP: ({ id }) => set({ pilihP: st().pilihP === id ? null : id }), saring: ({ nama }) => set({ saring: st().saring === nama ? '' : nama }),
     periksaSambung: async () => { set({ sambungTeks: 'memeriksa…' }); const r = opsi.periksaSambungan ? await opsi.periksaSambungan() : { teks: 'tidak tersedia di mode ini' }; set({ sambungTeks: r.teks, kabar: r.teks, kabarAwas: r.hasil === 'gagal' }); },
-    pemegang: ({ nama }) => { if (!opsi.setelPemegang) return; opsi.setelPemegang(nama); set({ kabar: 'Catatan berikutnya dari perangkat ini atas nama ' + nama, kabarAwas: false }); },
+    // putaran 23: akun per orang — owner mendaftarkan / menolak permintaan, mengubah peran, menonaktifkan (dua ketukan)
+    akunPilihPeran: ({ uid, peran }) => { const a = Object.assign({}, st().akunPilih); a[uid] = peran; set({ akunPilih: a }); },
+    daftarkan: ({ uid }) => tulis(S.susunDaftarkan(uid, st().akunPilih[uid], waktu())),
+    alasanAkses: (v) => set({ alasanAkses: String(v).slice(0, 120) }),
+    tolakAkses: ({ uid }) => tulis(S.susunTolakAkses(uid, st().alasanAkses, waktu())),
+    ubahPeranAkun: ({ uid, peran }) => tulis(S.susunUbahAkun(uid, { peran }, waktu(), false)),
+    saklarAkun: async ({ uid, aktif }) => { const kunci = uid + ':' + aktif; const r = S.susunUbahAkun(uid, { aktif: aktif === '1' }, waktu(), st().yakinAkun === kunci); if (r.perluYakin) return set({ yakinAkun: kunci, kabar: r.tolak, kabarAwas: true }); await tulis(r); },
+    // putaran 23 (7b): kiriman yang ditolak server — owner memutuskan: tulis ulang atas namanya, atau buang (dua ketukan)
+    tulisUlangDitolak: async ({ id }) => { if (!opsi.tulisUlangDitolak) return; const r = await opsi.tulisUlangDitolak(id); set({ kabar: r && r.gagal ? 'DITOLAK: ' + r.pesan : 'Ditulis ulang atas nama owner' + (r && r.antre ? ' (masuk antrean)' : ''), kabarAwas: !!(r && r.gagal) }); },
+    buangDitolak: ({ id }) => { if (!opsi.buangDitolak) return; if (st().yakinBuang !== id) return set({ yakinBuang: id, kabar: 'Ketuk sekali lagi untuk membuang kiriman itu — isinya tidak akan pernah masuk data toko', kabarAwas: true }); opsi.buangDitolak(id); set({ yakinBuang: null, kabar: 'Kiriman yang ditolak dibuang', kabarAwas: false }); },
     namaiPerangkat: (v) => set({ namaBaru: String(v).slice(0, 30) }), namaiSimpan: () => { if (!opsi.namaiPerangkat) return; opsi.namaiPerangkat(st().namaBaru || ''); set({ kabar: 'Perangkat ini kini bernama ' + (st().namaBaru || '(tanpa nama)') + ' — jejak & denyut memakai nama itu', kabarAwas: false, namaBaru: '' }); },
     peran: ({ id }) => set({ peran: id, kabar: '' }), putarHak: async ({ peran, t }) => { await tulis(S.susunPutarHak(peran, t, waktu())); },
     mintaKe: ({ id }) => set({ mintaKe: st().mintaKe === id ? null : id, alasan: '' }), alasan: (v) => set({ alasan: String(v).slice(0, 80) }),
@@ -198,6 +207,11 @@ export function pasangLayarMenu(akar, opsi) {
         <div class="ket">Catatan yang belum sampai disimpan Firestore di perangkat ini dan dikirim SENDIRI begitu tersambung — tidak ada tombol kirim yang perlu ditekan, dan tidak ada yang bisa dibuang dari sini. Dua perangkat menulis catatan yang sama: yang terakhir ditulis yang dipakai; keduanya tercatat di Jejak.</div>
         <div class="kaca-btn aktif" data-aksi="periksaSambung">${s.sambungTeks || 'Periksa: sudah sampai semua?'}</div>
         ${P.lainAntre ? h`<div class="ket awas-teks">${P.lainAntre} catatan menunggu di perangkat LAIN menurut denyut terakhirnya — hanya perangkat itu yang bisa mengirimnya.</div>` : ''}</div>
+      ${(() => { const AL = opsi.antreLokal ? opsi.antreLokal() : { belum: [], ditolak: [] }; const owner = !opsi.akun || !opsi.akun() || opsi.akun().jenis === 'owner';
+        return h`<div class="kartu ${AL.ditolak.length ? 'awas' : ''}" data-k="ditolak-server" style="gap: 6px;"><div style="font-weight: 700;">${AL.ditolak.length ? AL.ditolak.length + ' kiriman DITOLAK SERVER' : 'Tidak ada kiriman yang ditolak server'}</div>
+          <div class="k2">Salinan tiap kiriman disimpan di perangkat ini sampai server mengaku (${AL.belum.length} masih menunggu). Yang ditolak (mis. akunnya dinonaktifkan saat perangkat offline) tidak hilang — tampil di sini sampai owner memutuskan.</div>
+          ${AL.ditolak.map((x) => h`<div class="pr-antre lama" data-k="dt-${x.id}"><span class="j">${String(x.padaTolak || x.pada || '').slice(11, 16)}</span><span>${x.akunNama} (${x.peran || '?'}) · ${(x.dokumen || []).map((d) => d.koleksi).join(', ')} <div class="k2">${(x.dokumen || []).length} dokumen · alasan: ${x.alasan || '-'}</div>
+            ${owner ? h`<div class="hg-pil"><div class="seg" data-aksi="tulisUlangDitolak" data-id="${x.id}">tulis ulang atas nama owner</div><div class="seg ${s.yakinBuang === x.id ? 'aktif' : ''}" data-aksi="buangDitolak" data-id="${x.id}">${s.yakinBuang === x.id ? 'yakin buang' : 'buang'}</div></div>` : h`<div class="k2">Menunggu owner memutuskan.</div>`}</span></div>`)}</div>`; })()}
       <div class="ket" data-k="ket-antre" style="font-size: 11px;">Batas "lama" ${P.atur.batasAntre} menit (Atur).</div>${pintuAtur('Atur batas antrean, denyut & pencatat', 'antrean lama ' + P.atur.batasAntre + ' menit · denyut lama ' + P.atur.batasDenyut + ' menit · ' + P.atur.pemegang.length + ' pencatat')}`;
     if (tab === 'jejak') { const J = S.ssJejak(d, L.antre, s.saring); return h`<div class="hg-pil" data-k="saring"><div class="seg ${!s.saring ? 'aktif' : ''}" data-aksi="saring" data-nama="">Semua</div>${J.perOrang.map((o) => h`<div class="seg ${s.saring === o.nama ? 'aktif' : ''}" data-aksi="saring" data-nama="${o.nama}">${o.nama}</div>`)}</div>
       <div class="kartu" data-k="jejak" style="gap: 2px;"><div class="label">${J.hariIni} catatan hari ini${s.saring ? ' · saring ' + s.saring : ''} · ${J.belumSampai} belum sampai</div>
@@ -212,8 +226,8 @@ export function pasangLayarMenu(akar, opsi) {
       ${!P.daftar.length ? h`<div class="ket">Denyut ditulis tiap perangkat yang masuk (sistem lama & baru) paling cepat sekali per menit. Kalau daftar ini kosong padahal HP sedang dipakai, aturan Firestore untuk koleksi perangkatStatus belum terpasang.</div>` : ''}</div>
       ${pilih && pilih.ini ? h`<div class="kartu" data-k="panel-ini" style="gap: 6px;"><div style="font-weight: 700;">Perangkat ini</div>
         <div class="label">Nama perangkat ini</div><div style="display: flex; gap: 6px;"><input class="ketik-nama" type="text" placeholder="${L.namaPerangkat || 'mis. iPhone owner, Mac toko'}" value="${s.namaBaru || ''}" data-ketik="namaiPerangkat"><div class="kaca-btn aktif" style="min-width: 84px;" data-aksi="namaiSimpan">simpan</div></div>
-        <div class="label">Siapa yang mencatat di perangkat ini</div><div class="hg-pil">${P.atur.pemegang.map((n) => h`<div class="seg ${(L.pemegang || 'Owner') === n ? 'aktif' : ''}" data-aksi="pemegang" data-nama="${n}">${n}</div>`)}</div>
-        <div class="k2">Catatan berikutnya membawa nama ini di kolom penulis (jejak & nota). Daftar namanya di Atur. Kunci perangkat diatur di perangkatnya sendiri, bukan di sini.</div></div>` : pilih ? h`<div class="kartu" data-k="panel-lain" style="gap: 4px;"><div style="font-weight: 700;">${pilih.nama}</div><div class="k2">${pilih.denyutTeks} · ${pilih.aplikasi}</div><div class="k2">Antrean & pemegang perangkat lain hanya bisa diubah dari perangkat itu sendiri.</div></div>` : ''}
+        <div class="label">Yang mencatat di perangkat ini</div><div class="pita-info" data-k="masuk-sebagai">Masuk sebagai: <b>${(() => { const a = opsi.akun ? opsi.akun() : null; return a ? (a.jenis === 'owner' ? 'Owner' : a.nama + ' (' + ((S.SS_PERAN.find((p) => p.id === a.peran) || {}).nama || a.peran) + ')') : 'Owner'; })()}</b></div>
+        <div class="k2">Catatan membawa nama & uid akun yang MASUK — bukan pilihan di perangkat. Ganti orang = Keluar lalu masuk dengan akunnya sendiri (tombol Keluar di pojok atas).</div></div>` : pilih ? h`<div class="kartu" data-k="panel-lain" style="gap: 4px;"><div style="font-weight: 700;">${pilih.nama}</div><div class="k2">${pilih.denyutTeks} · ${pilih.aplikasi}</div><div class="k2">Antrean & pemegang perangkat lain hanya bisa diubah dari perangkat itu sendiri.</div></div>` : ''}
       ${pintuAtur('Atur batas antrean, denyut & pencatat', 'antrean lama ' + P.atur.batasAntre + ' menit · denyut lama ' + P.atur.batasDenyut + ' menit · ' + P.atur.pemegang.length + ' pencatat')}`;
   }
   function gambarPeran(s, d, tab) {
@@ -225,7 +239,18 @@ export function pasangLayarMenu(akar, opsi) {
       ${Q.riwayat.length ? h`<div class="kartu" data-k="riwayat" style="gap: 2px;"><div class="label">Keputusan sebelumnya</div>${Q.riwayat.map((x) => h`<div class="k2" data-k="r-${x.id}">${tanggalPendek(x.diputusTanggal)} · ${x.status.toUpperCase()}: ${x.teks} (${x.dari})${x.alasanTolak ? ' · ' + x.alasanTolak : ''}</div>`)}</div>` : ''}
       ${pintuAtur('Atur batas setujui sekaligus & jatah nego', 'sekaligus ≤ ' + RP(P.batasSekaligus) + ' · jatah nego Ben ' + P.jatahBen + '% margin')}`; }
     const PR = S.SS_PERAN.find((p) => p.id === s.peran) || S.SS_PERAN[1];
-    return h`<div style="display: flex; flex-direction: column; gap: 6px;" data-k="peran">${P.peran.map((p) => h`<div class="pn-orang ${PR.id === p.id ? 'aktif' : ''}" data-k="pr-${p.id}" data-aksi="peran" data-id="${p.id}"><b>${p.nama}</b><div class="k2">${p.ket}</div></div>`)}</div>
+    const A = S.ssAkun(); const ownerKini = !opsi.akun || !opsi.akun() || opsi.akun().jenis === 'owner';
+    const kartuAkun = !ownerKini ? '' : h`<div class="kartu" data-k="minta-akses" style="gap: 6px;"><div class="label">Permintaan akses · ${A.minta.length}</div>
+        ${A.minta.length ? A.minta.map((m) => h`<div class="pn-minta" data-k="ma-${m.uid}"><b style="font-size: 12.5px;">${m.nama || '(tanpa nama)'}</b> <span class="k2">${m.email} · ${String(m.pada).slice(0, 16).replace('T', ' ')}</span>
+          <div class="hg-pil">${S.SS_PERAN_AKUN.map((p) => h`<div class="seg ${s.akunPilih[m.uid] === p.id ? 'aktif' : ''}" data-aksi="akunPilihPeran" data-uid="${m.uid}" data-peran="${p.id}">${p.nama}</div>`)}</div>
+          <div class="pn-dua"><div class="kaca-btn aktif emas" data-aksi="daftarkan" data-uid="${m.uid}">DAFTARKAN</div><div class="kaca-btn awas" data-aksi="tolakAkses" data-uid="${m.uid}">TOLAK</div></div></div>`) : h`<div class="k2">Tidak ada. Orang baru masuk dengan akun yang lu buat di Firebase Console, lalu menekan "Minta didaftarkan".</div>`}
+        ${A.minta.length ? h`<input class="ketik-nama" type="text" placeholder="Alasan kalau menolak (wajib)" value="${s.alasanAkses}" data-ketik="alasanAkses">` : ''}</div>
+      <div class="kartu" data-k="akun-terdaftar" style="gap: 6px;"><div class="label">Akun terdaftar</div>
+        <div class="pn-orang" data-k="ak-owner"><b>Owner</b><div class="k2">dikenali lewat email owner · semua boleh · tidak diubah dari sini</div></div>
+        ${A.akun.map((a) => h`<div class="pn-orang ${a.aktif ? '' : 'diam'}" data-k="ak-${a.uid}"><b>${a.nama || a.email}</b> <span class="k2">${a.email} · ${a.namaPeran} · ${a.aktif ? 'aktif' : 'NONAKTIF'}</span>
+          <div class="hg-pil">${S.SS_PERAN_AKUN.map((p) => h`<div class="seg ${a.peran === p.id ? 'aktif' : ''}" data-aksi="ubahPeranAkun" data-uid="${a.uid}" data-peran="${p.id}">${p.nama}</div>`)}
+            <div class="seg ${s.yakinAkun === a.uid + ':' + (a.aktif ? '0' : '1') ? 'aktif' : ''}" data-aksi="saklarAkun" data-uid="${a.uid}" data-aktif="${a.aktif ? '0' : '1'}">${a.aktif ? 'nonaktifkan' : 'aktifkan'}</div></div></div>`)}</div>`;
+    return h`<div class="pita-info" data-k="kalimat-server">${S.SS_KALIMAT_SERVER}</div>${kartuAkun}<div style="display: flex; flex-direction: column; gap: 6px;" data-k="peran">${P.peran.map((p) => h`<div class="pn-orang ${PR.id === p.id ? 'aktif' : ''}" data-k="pr-${p.id}" data-aksi="peran" data-id="${p.id}"><b>${p.nama}</b><div class="k2">${p.ket}</div></div>`)}</div>
       <div class="kartu" data-k="hak" style="gap: 0;"><div class="label" style="padding-top: 2px;">Hak ${PR.nama} — ketuk untuk memutar</div>
         ${P.tindakan.map((t) => { const v = P.hak(PR.id, t.id); return h`<div class="pn-hak" data-k="h-${t.id}" data-aksi="putarHak" data-peran="${PR.id}" data-t="${t.id}"><div><div style="font-weight: 600;">${t.nama}</div><div class="k2">${t.modul}</div></div><span class="pn-nilai ${v} ${PR.id === 'owner' ? 'kunci' : ''}">${S.SS_LABEL_HAK[v]}</span></div>`; })}</div>
       ${P.jejak.length ? h`<div class="kartu" data-k="jejak-hak" style="gap: 2px;"><div class="label">Perubahan hak terakhir</div>${P.jejak.map((j, i) => h`<div class="k2" data-k="jh-${i}">${tanggalPendek(j.tanggal)} ${j.jam} · ${j.teks}</div>`)}</div>` : ''}

@@ -31,6 +31,8 @@ export function setelSumber(jenis, keterangan) { _sumber.jenis = jenis; _sumber.
 export function sumberData() { return Object.assign({}, _sumber); }
 export function dengarkan(f) { _pendengar.add(f); return () => _pendengar.delete(f); }
 export function cacheMentah(nama) { return _cache[nama] || []; }
+/** Dokumen satu koleksi (nama koleksi Firestore) menurut cache — dipakai penulis pusat untuk membedakan create dari update (putaran 23). */
+export function dokDiCache(koleksi, id) { const k = KOLEKSI.find((x) => x.nama === koleksi); return k ? (_cache[k.cache] || []).find((d) => String(d.id) === String(id)) || null : null; }
 
 // ---- batas data untuk mesin beku (nama & bentuk = index.html) ----
 function bacaCadanganLokal() { return []; }   // cadangan lokal buatan sendiri tidak ada di sistem baru
@@ -119,10 +121,10 @@ export function terapkanKeCache(daftar) {
   });
   Object.keys(kena).forEach((n) => _pendengar.forEach((f) => { try { f(n); } catch (e) { console.error('pendengar data', e); } }));
 }
-/** daftar = [{ koleksi, data }] — semua dokumen satu nota, sekali jalan. */
-export async function tulisDokumen(daftar) {
-  if (_penulis) return _penulis.tulis(daftar);
-  terapkanKeCache(daftar);
+/** daftar = [{ koleksi, data }] — semua dokumen satu nota, sekali jalan. hapus (opsional, owner) = [{ koleksi, id }] di batch YANG SAMA; opsi.jejakHapus = kalimat jejaknya. */
+export async function tulisDokumen(daftar, hapus, opsi) {
+  if (_penulis) return _penulis.tulis(daftar, hapus, opsi);
+  terapkanKeCache(daftar.concat((hapus || []).map((x) => ({ koleksi: x.koleksi, hapus: x.id }))));
   return { simulasi: true };
 }
 /** daftar = [{ koleksi, id }] */

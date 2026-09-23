@@ -120,6 +120,42 @@ export function susunPutarHak(peran, tindakan, w) {
   r.dokumen[0].data.jejak = [{ tanggal: w.tanggal, jam: w.jam, teks: R.nama + ' · ' + T.nama + ': ' + SS_LABEL_HAK[lama] + ' → ' + SS_LABEL_HAK[baru] }].concat(P.jejak).slice(0, 40);
   r.patch = { kabar: R.nama + ' kini ' + SS_LABEL_HAK[baru] + ' untuk "' + T.nama + '" — berlaku di tablet begitu tersambung', kabarAwas: false }; return r;
 }
+// ---------- SS2 · AKUN PER ORANG (putaran 23): permintaan akses & akun terdaftar — HANYA owner menulis (rules: aksesAkun tulis = owner, peran ∈ ben/karyawan) ----------
+export const SS_KALIMAT_SERVER = 'Server menegakkan: baca & catat baru. Koreksi, hapus, dan \'minta owner\' tertutup sampai alur persetujuan ada.';
+export const SS_PERAN_AKUN = SS_PERAN.filter((p) => p.id !== 'owner');   // aksesAkun TIDAK pernah memberi peran owner (owner = email)
+export function ssAkun() {
+  const akunDok = cacheMentah('aksesAkun'); const terdaftar = (uid) => akunDok.some((a) => String(a.uid || a.id) === uid);
+  const minta = cacheMentah('permintaanAkses').map((m) => ({ uid: String(m.uid || m.id), email: String(m.email || ''), nama: String(m.nama || ''), pada: String(m.pada || '') }))
+    .filter((m) => !terdaftar(m.uid)).sort((a, b) => b.pada.localeCompare(a.pada));
+  const akun = akunDok.map((a) => ({ uid: String(a.uid || a.id), nama: String(a.nama || ''), email: String(a.email || ''), peran: String(a.peran || ''), aktif: a.aktif === true,
+    namaPeran: (SS_PERAN.find((p) => p.id === a.peran) || { nama: String(a.peran || '?') }).nama })).sort((x, y) => (Number(y.aktif) - Number(x.aktif)) || x.nama.localeCompare(y.nama));
+  return { minta, akun };
+}
+/** Daftarkan = tulis aksesAkun/{uid} DAN hapus permintaannya — satu batch (tulisDokumen dengan hapus). */
+export function susunDaftarkan(uid, peran, w) {
+  const m = ssAkun().minta.find((x) => x.uid === String(uid)); if (!m) return { tolak: 'Permintaannya sudah tidak ada' };
+  if (!SS_PERAN_AKUN.some((p) => p.id === peran)) return { tolak: 'Pilih perannya dulu (' + SS_PERAN_AKUN.map((p) => p.nama).join(' atau ') + ') — akun tidak pernah bisa jadi owner' };
+  const data = { id: m.uid, uid: m.uid, nama: m.nama, email: m.email, peran, aktif: true, dibuatPada: w.kini };
+  return { dokumen: [{ koleksi: 'aksesAkun', data }], hapus: [{ koleksi: 'permintaanAkses', id: m.uid }], jejakHapus: 'minta akses disetujui: ' + m.email + ' → ' + peran,
+    patch: { akunPilih: {}, kabar: m.nama + ' (' + m.email + ') didaftarkan sebagai ' + (SS_PERAN.find((p) => p.id === peran) || {}).nama + ' — layarnya terbuka sendiri di perangkatnya.', kabarAwas: false } };
+}
+export function susunTolakAkses(uid, alasan, w) {
+  const m = ssAkun().minta.find((x) => x.uid === String(uid)); if (!m) return { tolak: 'Permintaannya sudah tidak ada' };
+  if (ssKosong(alasan)) return { tolak: 'Menolak butuh alasan — dicatat di jejak' };
+  void w;
+  return { dokumen: [], hapus: [{ koleksi: 'permintaanAkses', id: m.uid }], jejakHapus: 'minta akses DITOLAK: ' + m.email + ' — ' + String(alasan).trim().slice(0, 120),
+    patch: { alasanAkses: '', kabar: 'Permintaan ' + m.email + ' ditolak dan dicatat di jejak. Orangnya bisa minta lagi.', kabarAwas: false } };
+}
+/** Ubah peran / aktif. Menonaktifkan & mengaktifkan = dua ketukan; nonaktif langsung mencabut semua pendengar di perangkat orang itu. */
+export function susunUbahAkun(uid, ubah, w, yakin) {
+  const a = cacheMentah('aksesAkun').find((x) => String(x.uid || x.id) === String(uid)); if (!a) return { tolak: 'Akun itu tidak ditemukan' };
+  const U = ubah || {}; void w;
+  if (U.peran !== undefined && !SS_PERAN_AKUN.some((p) => p.id === U.peran)) return { tolak: 'Peran tidak dikenal — akun tidak pernah bisa jadi owner' };
+  if (U.aktif !== undefined && !yakin) return { tolak: 'Ketuk sekali lagi untuk ' + (U.aktif ? 'mengaktifkan' : 'menonaktifkan') + ' ' + (a.nama || a.email) + (U.aktif ? '' : ' — perangkatnya langsung berhenti membaca data toko'), perluYakin: true };
+  const data = Object.assign({}, a, U.peran !== undefined ? { peran: U.peran } : {}, U.aktif !== undefined ? { aktif: U.aktif === true } : {});
+  const teks = U.peran !== undefined ? 'kini ' + (SS_PERAN.find((p) => p.id === U.peran) || {}).nama : U.aktif ? 'diaktifkan lagi' : 'DINONAKTIFKAN';
+  return { dokumen: [{ koleksi: 'aksesAkun', data }], patch: { yakinAkun: null, kabar: (a.nama || a.email) + ' ' + teks + '.', kabarAwas: U.aktif === false } };
+}
 /** Permintaan "minta owner" (ditulis tablet/Mac ke koleksi persetujuan): yang menunggu + riwayat keputusan. */
 export function ssPersetujuan(kini) {
   const semua = cacheMentah('persetujuan').slice().sort(ssUrutTerbaru); const P = ssPeran();
