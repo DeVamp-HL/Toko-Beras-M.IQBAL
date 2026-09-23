@@ -77,6 +77,14 @@ jobs:
       - name: "Sistem baru — identitas angka lama vs baru (dilewati di CI, cadangan toko tidak ada di repo)"
         run: python3 alat-uji/uji_identitas_baru.py
 
+      # ---- PUTARAN 23 — akun per orang ----
+      - name: "Sistem baru — akses per orang: akun, pendengar, penjaga kiriman, jejak, salinan antre (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_akses_baru.py && python3 alat-uji/uji_akses_baru.py --kontrol
+      - name: "firestore.rules v3 — pemeriksa statis (blok per koleksi, owner via email, jalur kasir@, uid penulis, peran = akses.js) + kontrol"
+        run: python3 alat-uji/periksa_rules.py && python3 alat-uji/periksa_rules.py --kontrol
+      - name: "Kiriman bukan-owner — access call terburuk per jenis kiriman ≤ 18 (batas Firebase 20, sisa 2) + kontrol"
+        run: python3 alat-uji/peta_akses.py --kiriman && python3 alat-uji/peta_akses.py --kiriman --kontrol
+
   terbitkan:
     needs: uji
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

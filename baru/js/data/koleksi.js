@@ -78,4 +78,9 @@ export const KOLEKSI = [
   //  nomor, jenis, judul, periode, cara (cetak/pdf/wa), versi kop, DRAF atau final, salinan ke-N untuk nota. Kop & identitas usaha, ragam kop per dokumen, nomor awal,
   //  tarif/batas/tanda-lapor rekap omzet, aset tetap = dokumen aturanToko (identitas, dokumen, rekapOmzet, laporan). Koleksi BARU (aturan Firestore: owner saja).
   { nama: 'dokumenCetak',        urut: 'id',    cache: 'dokumenCetak' },
+  // Putaran 23 (24 Sep 2026) — AKUN PER ORANG: aksesAkun/{uid} = peran & aktif tiap akun bukan-owner (ditulis owner; dibaca rules lewat get());
+  //  permintaanAkses/{uid} = "minta didaftarkan" dari akun yang belum terdaftar. Hanya OWNER yang mendengarkan kedua koleksi ini;
+  //  akun bukan-owner mendengarkan dokumen aksesAkun-nya sendiri saja (firebase.js). Lihat docs/peta-hak-akses.md.
+  { nama: 'aksesAkun',           urut: 'id',    cache: 'aksesAkun' },
+  { nama: 'permintaanAkses',     urut: 'pada',  cache: 'permintaanAkses' },
 ];

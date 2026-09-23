@@ -75,16 +75,31 @@
 <pre id="cetakStruk" class="cetak-struk" aria-hidden="true"></pre>
 <div id="cetakDokumen" aria-hidden="true"></div>
 
+<!-- Putaran 23: masuk PER ORANG. Perangkat bisa dipakai bergantian: sandi tidak pernah diisi otomatis, email terakhir boleh diingat (bisa dihapus satu ketukan). -->
 <div id="modalMasuk" class="modal-bg">
   <form id="formMasuk" class="modal kartu" autocomplete="off">
-    <div class="serif" style="font-size: 22px;">Masuk sebagai Owner</div>
-    <div id="pesanMasuk" class="ket">Masukkan sandi OWNER. Cukup sekali per perangkat.</div>
-    <input id="isianSandi" type="password" class="ketik-nama" placeholder="Sandi owner" autocomplete="current-password">
+    <div class="serif" style="font-size: 22px;">Masuk</div>
+    <div id="pesanMasuk" class="ket">Masuk dengan akun lu sendiri. Akun dibuat owner.</div>
+    <input id="isianEmail" type="email" class="ketik-nama" placeholder="Email" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="email">
+    <div id="ingatEmail" class="ket" hidden>Email terakhir di perangkat ini. <span class="tautan" id="lupakanEmail">Lupakan email ini</span></div>
+    <input id="isianSandi" type="password" class="ketik-nama" placeholder="Sandi" autocomplete="off" readonly>
     <div id="salahMasuk" class="pita-info awas" hidden></div>
     <button id="tombolMasuk" type="submit" class="utama">Masuk</button>
-    <div class="ket">Sandinya tidak disimpan di halaman ini — diteruskan ke Firebase lalu dilupakan. Akun & database sama dengan sistem lama.</div>
+    <div class="ket">Sandinya tidak disimpan di halaman ini — diteruskan ke Firebase lalu dilupakan. Database sama dengan sistem lama.</div>
   </form>
+  <div id="panelAkun" class="modal kartu" hidden>
+    <div id="judulAkun" class="serif" style="font-size: 22px;">Akun ini belum didaftarkan owner</div>
+    <div id="pesanAkun" class="ket"></div>
+    <div id="mintaAkun" hidden>
+      <input id="isianNamaAkun" type="text" class="ketik-nama" placeholder="Nama lu (supaya owner tahu ini siapa)" autocomplete="off" maxlength="40">
+      <button id="tombolMinta" type="button" class="utama">Minta didaftarkan</button>
+    </div>
+    <div id="hasilAkun" class="pita-info" hidden></div>
+    <button id="tombolKeluarAkun" type="button" class="kaca-btn">Keluar</button>
+  </div>
 </div>
+<!-- nama & peran orang yang sedang masuk tampil di SETIAP layar; tombol Keluar selalu terlihat -->
+<div id="chipAkun" class="chip-akun" hidden><span id="chipNama"></span><span id="chipAntre" class="chip-antre" hidden></span><button id="tombolKeluar" type="button">Keluar</button></div>
 
 <script type="module" src="js/app.js"></script>
 </body>

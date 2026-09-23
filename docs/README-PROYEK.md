@@ -1,7 +1,7 @@
 # Sistem Toko Beras M.IQBAL — panduan proyek
 
-Sistem kasir + pembukuan toko beras: satu berkas `index.html` (HTML + CSS + satu modul JavaScript)
-yang berbicara langsung ke Firebase Firestore, diterbitkan lewat GitHub Pages dari cabang `main`.
+Sistem kasir + pembukuan toko beras yang berbicara langsung ke Firebase Firestore, diterbitkan lewat GitHub Pages dari cabang `main`.
+Dua sistem hidup berdampingan di atas data yang SAMA: sistem baru `baru/` (sistem utama owner) dan sistem lama `index.html` (satu berkas).
 Tidak ada build, tidak ada framework, tidak ada Node. Dokumen ini tentang *cara kerja repo*;
 keputusan desain produk ada di `KEPUTUSAN-DESAIN.md`.
 
@@ -9,9 +9,10 @@ keputusan desain produk ada di `KEPUTUSAN-DESAIN.md`.
 
 | Berkas | Peran |
 |---|---|
-| `index.html` | **Sistem utama** (alat pemilik). Akan menjadi aplikasi native iOS/Android. |
+| `baru/` | **Sistem utama owner** (sejak Sep 2026; panduannya `baru/BACA-DULU.md`). Kelak dibungkus menjadi aplikasi native — lihat bagian Arah di bawah. |
+| `index.html` | **Sistem lama** (alat pemilik). Tidak diperbaiki lagi (keputusan owner 19 Sep 2026); **pensiun setelah `baru/` lengkap**. |
 | `kasir.html` | Kasir ringan **alat pemilik** (nama berkasnya menyesatkan). |
-| `kasir-darurat-nominal.html` + `sw-kasir.js` + `manifest-kasir.json` | Kasir **staf** (PWA offline). Akan disatukan menjadi satu kasir tablet — **jangan disentuh** sampai sistem utama selesai dirapikan. Setiap perubahan `kasir*.html` wajib menaikkan `VERSI` di `sw-kasir.js`. |
+| `kasir-darurat-nominal.html` + `sw-kasir.js` + `manifest-kasir.json` | Kasir **staf** (PWA offline). Kelak digantikan tablet kasir (lihat Arah) — **jangan disentuh** sampai itu. Setiap perubahan `kasir*.html` wajib menaikkan `VERSI` di `sw-kasir.js`. |
 | `firestore.rules` + `firebase.json` | Aturan akses Firestore. Rules dipasang ke Console oleh pemilik. |
 | `lib/lz-string.js` + `lib/kemas-worker.js` | Kompresi cadangan 28 koleksi di localStorage (LZ-string, dikompres di Web Worker supaya utas utama tidak tersendat). Tanpa berkas ini sistem tetap jalan dengan cadangan polos. Sumber: cdnjs `lz-string/1.5.0/lz-string.js` (header berkas menyebut 1.4.5), sha256 `550034b8…dab0e5e`. **Mundur ke versi index.html yang belum mengenal cadangan terkompresi WAJIB didahului `polosKanCadangan()` dari konsol di tiap HP** — versi lama mati saat boot membaca cadangan terkompresi. |
 | `alat-uji/` | Jaring pengaman yang dijalankan CI sebelum terbit (lihat bawah). |
@@ -20,6 +21,15 @@ keputusan desain produk ada di `KEPUTUSAN-DESAIN.md`.
 | `docs/` | Dokumen proyek (tanpa angka bisnis). |
 
 Catatan bisnis (omzet, piutang, utang, harga beli) **tidak pernah** masuk repo — lihat `.gitignore`.
+
+## Arah (keputusan owner 24 Sep 2026)
+
+- **`baru/` = sistem utama owner**, kelak dibungkus menjadi aplikasi native. Catatan lama tanggal 13 Sep (di mesin owner,
+  `_privat/rapikan-2026-09-13/peta_native.md` dan `skeptis_native.md`: Capacitor, Ad Hoc/TestFlight + APK, tanpa App Store) masih menyebut
+  `index.html` — itu **bahan, bukan keputusan**.
+- **Tablet kasir = offline-first**, satu perangkat dipakai bergantian, semua akun seizin owner. Pilihan identitasnya (login per orang, atau satu
+  akun tablet + PIN per orang) diputuskan di putaran tablet; putaran 23 (akun per orang) sengaja tidak menutup salah satunya.
+- **`index.html` pensiun** setelah `baru/` lengkap. Sampai saat itu keduanya membaca & menulis data yang sama.
 
 ## Jaring pengaman (`alat-uji/`)
 

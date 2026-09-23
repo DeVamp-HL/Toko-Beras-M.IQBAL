@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/uang-logika.js', 'baru/js/layar/sistem-logika.js', 'baru/js/layar/menu-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/uang-logika.js', 'baru/js/data/akses.js', 'baru/js/layar/sistem-logika.js', 'baru/js/layar/menu-logika.js']
 def kunci_jam(iso):
     return ("var __RealDate = Date; var __KINI = new __RealDate('%s').getTime();\n"
             "Date = function (a, b, c, d, e, f, g) { if (!(this instanceof Date)) return new __RealDate(__KINI).toString(); if (arguments.length === 0) return new __RealDate(__KINI); if (arguments.length === 1) return new __RealDate(a); return new __RealDate(a, b, c === undefined ? 1 : c, d || 0, e || 0, f || 0, g || 0); };\n"
@@ -128,7 +128,8 @@ var JK = ssJejak(KINI, ANTRE, '');
 ok('jejak: 3 tulisan, 2 hari ini; yang masih di antrean (piutangMutasi 999) BELUM sampai, nota 309 sampai; terbaru dulu; saring Ben → 1', JK.semua === 3 && JK.hariIni === 2 && JK.belumSampai === 1 && JK.tampil[0].id === '1103' && JK.tampil[0].sampai === false && JK.tampil[1].sampai === true && ssJejak(KINI, ANTRE, 'Ben').tampil.length === 1 && JK.perOrang[0].nama === 'Owner', J(JK.tampil.map(function (l) { return l.id + ':' + l.sampai + ':' + l.jam; })));
 // ---- SS2 PERAN & PERSETUJUAN
 var PN = ssPeran();
-ok('peran: bawaan desain — Ben 7 sendiri · 3 minta owner · 3 tidak; karyawan 5 · 1 · 7; owner semua boleh', PN.peran[1].ket === '7 boleh sendiri · 3 minta owner · 3 tidak boleh' && PN.peran[2].ket === '5 boleh sendiri · 1 minta owner · 7 tidak boleh' && PN.hak('owner', 'hapus') === 'sendiri', J(PN.peran));
+ok('peran: bawaan desain — Ben 7 sendiri · 3 minta owner · 3 tidak; karyawan 5 · 1 · 7 (nilai kisi tersimpan tetap); YANG DIGAMBAR = kebenaran server (23c): Ben 5 boleh · 2 tertutup server (hitung laci, kedatangan) · 3 · 3, karyawan 4 · 1 tertutup server (kedatangan) · 1 · 7; owner semua boleh',
+  PN.peran[1].ket === '5 boleh sendiri · 2 tertutup server · 3 minta owner · 3 tidak boleh' && PN.peran[2].ket === '4 boleh sendiri · 1 tertutup server · 1 minta owner · 7 tidak boleh' && PN.hak('ben', 'hitungLaci') === 'sendiri' && PN.hak('karyawan', 'kedatangan') === 'sendiri' && PN.hak('owner', 'hapus') === 'sendiri', J(PN.peran));
 var PH = susunPutarHak('ben', 'nego', W);
 ok('putar hak: Ben nego "minta owner" → "tidak boleh" (putaran sendiri → owner → tidak), dokumen aturanToko/peran menyimpan jejaknya; hak owner DITOLAK', PH.dokumen && PH.dokumen[0].data.id === 'peran' && PH.dokumen[0].data.hak.ben.nego === 'tidak' && PH.dokumen[0].data.hak.karyawan.jualBon === 'owner' && PH.dokumen[0].data.jejak.length === 1 && /minta owner → tidak boleh/.test(PH.dokumen[0].data.jejak[0].teks) && !!susunPutarHak('owner', 'nego', W).tolak && /owner/i.test(susunAturSistem('peran', { hak: { owner: { nego: 'tidak' } } }, W).tolak || ''), J(PH));
 pasok('aturanToko', KOTAK.aturanToko.concat([PH.dokumen[0].data])); var PH2 = susunPutarHak('ben', 'nego', W); ok('putar hak lagi: tidak boleh → boleh sendiri; jejak jadi 2', PH2.dokumen[0].data.hak.ben.nego === 'sendiri' && PH2.dokumen[0].data.jejak.length === 2, J(PH2)); pasok('aturanToko', KOTAK.aturanToko);

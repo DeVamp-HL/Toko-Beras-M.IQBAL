@@ -11,6 +11,7 @@ import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir da
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso } from '../inti/format.js';
 import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
+import { tombolAkun, batasBarisNota } from './akses-layar.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
 import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit } from './adegan.js';
 
@@ -28,17 +29,19 @@ export function pasangLayarJual(akar, opsi) {
   const K = buatKeadaan(L.keadaanAwal());
   const set = (patch) => K.setel(patch);
   const S = () => K.baca();
+  // putaran 23c: akun bukan-owner — batas baris per nota (batas sekali kirim ke server) ikut ke logika setiap kali keranjang bertambah / nota dicatat
+  const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null) });
 
   const aksi = {
     jalur: ({ jalur }) => set({ jalur, lembar: null, pilih: null }),
     mode: () => opsi.gantiMode(),
     chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(Object.assign({ isiW: null }, L.ketukChip(S(), c))); },
     sering: ({ id }) => { const c = rakKini().sering.find((x) => x.id === id); if (c) set(L.ketukChip(S(), c)); },
-    ulangiTerakhir: ({ g }) => { const r = L.ulangiPembelian(S(), rakKini(), g); set(r); if (r.keranjang) setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 60); },
+    ulangiTerakhir: ({ g }) => { const r = L.ulangiPembelian(SB(), rakKini(), g); set(r); if (r.keranjang) setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 60); },
     pakaiBenang: ({ nama }) => set({ pelanggan: nama, kabar: 'Nama diganti ke yang punya urusan: ' + nama + ' — nota, bon, dan pembayarannya atas nama itu', kabarAwas: false }),
     tuts: ({ t }) => set(L.tekanTuts(S(), t)),
-    preset: ({ n }, el) => masukDenganGerak(L.masukkan(S(), Number(n)), el),
-    masukkan: (arg, el) => masukDenganGerak(L.masukkan(S()), el),
+    preset: ({ n }, el) => masukDenganGerak(L.masukkan(SB(), Number(n)), el),
+    masukkan: (arg, el) => masukDenganGerak(L.masukkan(SB()), el),
     tutup: () => set({ lembar: null, pilih: null, negoId: null, ketik: '', isiW: null }),
     bukaKeranjang: () => set({ lembar: S().lembar === 'keranjang' ? null : 'keranjang' }),
     hapusBaris: ({ id }) => set(L.hapusBaris(S(), id)),
@@ -54,14 +57,15 @@ export function pasangLayarJual(akar, opsi) {
     antrean: ({ id }) => set(L.pakaiAntrean(S(), Number(id))),
     buangAntrean: ({ id }) => set(L.buangAntrean(S(), Number(id))),
     bukaBayar: () => set({ lembar: 'bayar', ketik: '' }),
-    cara: ({ cara }) => set(L.pilihCara(S(), cara)),
+    // putaran 23: jual dengan bon hanya bila kisi SS2 & server membuka untuk peran ini (karyawan: minta owner) — tombol mati berkata sebabnya
+    cara: ({ cara }) => { const tb = cara === 'Kredit' ? tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon') : { boleh: true }; if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.pilihCara(S(), cara)); },
     pecahan: ({ n }) => set(L.tambahUang(S(), Number(n))),
     uangPas: () => set(L.uangPas(S())),
     uangKetik: () => set(L.uangKetik(S())),
     hapusUang: () => set({ uang: 0 }),
     simpan: async () => {
       if (S().karcis) return aksi.simpanRinci();
-      const r = L.simpanNota(S());
+      const r = L.simpanNota(SB());
       if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
       const keranjangTadi = S().keranjang.slice(); const uangTadi = S().cara === 'Tunai' ? S().uang : 0;
       set({ kabar: 'Mencatat…', kabarAwas: false });
@@ -578,7 +582,7 @@ export function pasangLayarJual(akar, opsi) {
         <div class="total"><span class="label">Barang di keranjang</span><span class="n" style="font-size: 20px;" data-gulir="${KH.total}">${RP(KH.total)}</span></div>
         <div class="pita-info ${KH.lebih ? 'awas' : KH.pas ? 'emas' : ''}">${KH.teks}</div>
         <div class="label">Cara bayar waktu itu</div>
-        <div class="tombol-baris">${[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Kredit', 'Bon']].map(([c, nm]) => h`<div class="kaca-btn ${s.cara === c ? 'aktif' : ''}" data-aksi="cara" data-cara="${c}">${nm}</div>`)}</div>
+        <div class="tombol-baris">${[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Kredit', 'Bon']].map(([c, nm]) => h`<div class="kaca-btn ${s.cara === c ? 'aktif' : ''} ${c === 'Kredit' && !tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon').boleh ? 'mati' : ''}" data-aksi="cara" data-cara="${c}">${nm}</div>`)}</div>
         <div class="kaca-btn" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli' + (s.cara === 'Kredit' ? ' (wajib untuk bon)' : ' (boleh kosong)')}</div>
         <div class="utama ${KH.lebih || !s.keranjang.length ? 'redup' : ''}" data-aksi="simpanRinci">${!s.keranjang.length ? 'Tambahkan barangnya dulu' : KH.lebih ? 'Kelebihan — betulkan dulu' : 'SIMPAN RINCIAN · ' + s.keranjang.length + ' barang'}</div>
         ${k.jenisAsal === 'karcis' ? h`<div class="kaca-btn putus" data-aksi="karcisPerbaiki" style="min-height: 36px; font-size: 12px;">hanya perbaiki cara bayar / nama (barangnya belum diingat)</div>` : ''}
@@ -622,7 +626,7 @@ export function pasangLayarJual(akar, opsi) {
         ${t.kredit ? h`<div class="ket">keranjang ${RP(t.subtotal - t.potongan)} − barang kembali (tukar) ${RP(t.kredit)}</div>` : ''}
         <div class="total"><span class="label">${t.kredit ? 'Pembeli bayar' : 'Ditagih'}</span><span class="n">${RP(Math.max(0, t.total))}</span></div>
         ${t.bulat ? h`<div class="ket">termasuk pembulatan ke Rp500 ${RP(t.bulat)} (${s.cara === 'Kredit' ? 'bon ikut dibulatkan' : 'tunai'})</div>` : ''}
-        <div class="tombol-baris">${[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Kredit', 'Bon']].map(([c, nm]) => h`<div class="kaca-btn ${s.cara === c ? 'aktif' : ''}" data-aksi="cara" data-cara="${c}">${nm}</div>`)}</div>
+        <div class="tombol-baris">${[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Kredit', 'Bon']].map(([c, nm]) => h`<div class="kaca-btn ${s.cara === c ? 'aktif' : ''} ${c === 'Kredit' && !tombolAkun(opsi.akun ? opsi.akun() : null, 'jualBon').boleh ? 'mati' : ''}" data-aksi="cara" data-cara="${c}">${nm}</div>`)}</div>
         ${s.cara === 'Tunai' ? h`
           <div class="label">Uang yang diterima — ketuk lembarannya</div>
           <div class="pecahan">${L.PECAHAN.map((p) => h`<div class="kaca-btn" data-aksi="pecahan" data-n="${p}">${p >= 1000 ? p / 1000 + ' rb' : p}</div>`)}<div class="kaca-btn aktif" data-aksi="uangPas">PAS</div></div>

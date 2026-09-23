@@ -344,6 +344,14 @@ export const angkaKetik = (teks) => parseFloat(String(teks || '').replace(',', '
 /** Rupiah yang diketik bebas ("1.380.000", "1380000", "Rp 1.380.000") → bilangan bulat. */
 export const angkaRupiah = (teks) => Math.round(Number(String(teks || '').replace(/[^\d]/g, '')) || 0);
 
+/**
+ * Putaran 23c (owner 24 Sep): akun bukan-owner — satu nota paling banyak s.batasBaris baris (layar mengisinya dari akses.js; 0 = owner, tanpa batas).
+ * Sebabnya batas sekali kirim ke server (access call, sisa 2): alat-uji/peta_akses.py --kiriman. '' = masih muat.
+ */
+export function alasanBatasBaris(s, nBaris) {
+  const b = Number(s.batasBaris) || 0;
+  return b > 0 && nBaris > b ? 'Satu nota paling banyak ' + b + ' baris untuk akun bukan-owner — batas sekali kirim ke server. Simpan nota ini dulu, sisanya jadi nota kedua.' : '';
+}
 /** Masukkan chip terpilih ke keranjang sejumlah ketikan/preset; ditolak kalau melampaui langit-langit. */
 export function masukkan(s, jumlah) {
   const chip = s.pilih; if (!chip) return { kabar: 'Pilih barangnya dulu', kabarAwas: true };
@@ -381,6 +389,7 @@ export function masukkan(s, jumlah) {
   let urut = s.urutBaris; const tambah = [{ id: 'b' + (++urut), trx: baris }];
   if (barisWadah) tambah.push({ id: 'b' + (++urut), trx: barisWadah });
   const keranjang = s.keranjang.concat(tambah);
+  const lewat = alasanBatasBaris(s, keranjang.length); if (lewat) return { kabar: lewat, kabarAwas: true };
   return { keranjang, urutBaris: urut, pilih: null, lembar: null, ketik: '', namaRepack: '', rpWadah: '', rpLembar: '', rpDijual: true, rpUpah: '',
     kabar: baris.label + ' × ' + tulisJumlah(j, chip) + ketWadah + ' masuk', kabarAwas: false };
 }
@@ -553,6 +562,7 @@ export function periksaStokKeranjang(s) {
 export function alasanTolak(s) {
   if (s.karcis) return 'Keranjang ini sedang merinci karcis — pakai SIMPAN RINCIAN (atau lepas karcisnya)';
   if (!s.keranjang.length) return 'Keranjang kosong';
+  const lewat = alasanBatasBaris(s, s.keranjang.length); if (lewat) return lewat;   // keranjang dari antrean / ulangi nota juga tertangkap di sini
   const t = hitungTagihan(s);
   const nama = kunciPelanggan(s.pelanggan);
   if (s.tukar && s.tukar.susulanReturId) {   // PUTARAN 20: susulan pengganti tukar yatim (tkCekSusulan, tkLebihSusulanBoleh)

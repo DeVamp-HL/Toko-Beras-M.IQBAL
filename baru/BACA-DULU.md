@@ -4,6 +4,11 @@ Tampilan baru di atas **data yang sama** dengan `index.html` (Firestore proyek `
 Hidup berdampingan di alamat `/baru/`; `index.html` tetap alat yang dipakai toko sampai yang baru terbukti.
 Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko**; 17 Sep: *"mulai sambungkan ke data asli"*.
 
+## Arah (keputusan owner 24 Sep 2026)
+- **`baru/` = sistem utama owner**, kelak dibungkus menjadi aplikasi native. Catatan native 13 Sep (`_privat/rapikan-2026-09-13/peta_native.md`, `skeptis_native.md` — di mesin owner) masih menyebut `index.html`: **bahan, bukan keputusan**.
+- **Tablet kasir = offline-first**, satu perangkat dipakai bergantian, semua akun seizin owner. Pilihan identitasnya (login per orang vs satu akun tablet + PIN per orang) diputuskan di putaran tablet — jangan ditutup.
+- **`index.html` pensiun** setelah `baru/` lengkap. Sampai saat itu keduanya membaca & menulis data yang sama; `index.html` tidak diperbaiki lagi (19 Sep).
+
 ## Putaran 1 (19 Sep 2026) — layar JUAL, baca
 - Rak (Sering · Literan · Kemasan · Karung) dibaca dari data toko lewat **mesin beku yang sama** dengan `index.html`.
 - Keranjang, nego, potongan, antrean (struk parkir **memegang** stoknya), bayar (Tunai/QRIS/Bon), nama pembeli, kartu Hari ini.
@@ -234,6 +239,27 @@ Keputusan owner, menggantikan "serinci mungkin" putaran 21: **toko tidak mencata
 3. **Lembar "Bersihkan ciri yang dicabut"** (di atas Atur Pelanggan, tampil hanya selama ada yang perlu dibersihkan): pratinjau `rincianBersihkanCiri` TANPA menulis (kartu, cip dibuang, yang jadi tanpa cip + yang jadi "belum dikenal" di KR1, setelan ikut atau tidak, jumlah batch); tombol mati tanpa cadangan berkas HARI INI (`cadanganCatatan`); dua ketukan → `susunBersihkanCiri` → `perbaruiKolom` (toko.js) / `perbaruiBerkas` (firebase.js): **update kolom** `cip`+`ciri` (kartu gaya lama: `ciri` saja) & `ciriDaftar` setelan — tanpa atribusi, kolom lain byte-sama; potongan 200 dokumen, setelan di potongan terakhir, SATU baris `logAktivitas` berisi jumlah saja. Teks bebas (catatan/biasa/arah) yang berkata terlarang & jejak log cuma DILAPORKAN.
 - Uji: Pelanggan 57 (+13; 2 skenario P21 kulit/suku DIGANTI) / 56 kontrol (+24; "sketsa mengabaikan warna kulit" DIGANTI "sketsa membaca warna kulit lagi"); asap cadangan 23 Sep: 0 kartu terdampak, suntikan ke kartu nyata → kolom selain cip/ciri byte-sama. Layar lain tetap: Jual 335/150 · Ringkasan 35/17 · Stok 135/98 · Menu 53/32 · Harga 105/47 · Uang 129/45 · Laporan 65/30.
 
+## Putaran 23 (24 Sep 2026) — TULANG PUNGGUNG 1: AKUN PER ORANG (cabang, belum merge)
+Tiap orang punya akun sendiri; hak ditegakkan di SERVER (`firestore.rules` v3), bukan di layar. Dasar semua baris: `docs/peta-hak-akses.md` (Tahap 0, dari kode). Jawaban owner 24 Sep menang atas teks prompt.
+- **Masuk** (`data/akses.js` = logika tanpa DOM, `firebase.js` = sambungan): email + sandi (sandi readonly sampai diketuk, email terakhir bisa dilupakan); owner lewat EMAIL; akun lain lewat `aksesAkun/{uid}` yang didengarkan terus (nonaktif = cabut semua pendengar & kosongkan angka); tanpa `aksesAkun` = nol pendengar + "Minta didaftarkan" (`permintaanAkses/{uid}`); kasir@ tidak bisa masuk sebagai orang. Bilah "Masuk sebagai … · Keluar" di atas setiap layar; Keluar menanyakan catatan yang belum terkirim.
+- **Atribusi**: penulis pusat menulis `olehUid`/`diubahOlehUid` (owner tetap `oleh:'Owner'`); bukan-owner diperiksa SEBELUM dikirim (`periksaKiriman` = peta), tanpa hapus/bersihkan/arsip, pencipta tak pernah ditambah pada update; SATU baris jejak per kiriman bukan-owner berisi daftar dokumennya; kiriman > 18 access call ditolak di perangkat (batas Firebase 20, sisa 2).
+- **Salinan antre** (`data/antre-lokal.js`): tiap kiriman disalin di perangkat sampai server mengaku; ditolak → Menu › Sistem › Perangkat › Antrean "ditolak server" (owner: tulis ulang atas namanya / buang).
+- **Layar** (tipis): pendengar per peran (koleksi utuh + `aturanToko`/`pengaturan` per dokumen); bukan-owner cuma Jual · Pelanggan · Stok · Menu kecil; tombol kedatangan/cocokkan/kantong/tempat/HPP/Bon(karyawan) mati berkalimat; SS2 kartu Permintaan akses & Akun terdaftar + kalimat "Server menegakkan …".
+- **Rules v3**: blok per koleksi; `owner()` email; `kasir()` email (v2 membuka jalur kasir untuk siapa pun yang login — dipersempit); bukan-owner create dengan `jujur()` + 2 update terbatas kolom; `firestore.rules.v2` untuk mundur. Uji server: `docs/uji-rules-v3.md` (Playground + proyek Firebase kedua lewat `?pasangProyekUji=` — bilah merah PROYEK UJI).
+- Tertutup walau kisi bilang `sendiri`: hitung laci (menimpa angka uang tercatat) & kedatangan (wajib harga beli). Utang: id peran `ben` = nama orang.
+
+### Putaran 23c (24 Sep 2026) — urutan pasang dipecah, kiriman bersisa 2, kisi = kebenaran server
+- **Owner tidak masuk /baru/ di tablet bersama sampai cache dibersihkan saat Keluar.** (Keluar sekarang menutup layar & pendengar, tapi data yang
+  sudah diunduh Firestore tetap di IndexedDB perangkat itu.)
+- **Urutan pasang** (kepala `firestore.rules`, `docs/uji-rules-v3.md`): SEKARANG = Playground ★ dengan v3 di editor proyek toko → tempel v3 → satu
+  nota kasir darurat masuk. GERBANG TABLET (sebelum akun bukan-owner pertama disetujui) = proyek Firebase kedua, harga beli/modal tidak terkirim ke
+  staf (7 koleksi — `docs/peta-hak-akses.md` §8, termasuk siapa yang mengisi HPP nota staf), cache dibersihkan saat Keluar, jaga CI ≤ 18 hijau,
+  akun dibuat di Console dengan **email huruf kecil semua**, lalu disetujui.
+- **Kiriman bukan-owner ≤ 18 access call**: satu nota paling banyak **7 baris**, satu adukan **8 hasil** (kalimat jelas di layar; owner tanpa batas);
+  pagar umum penulis pusat 18; rules `stafJejak` ≤ 17 dokumen. Terburuk per jenis kiriman dihitung dari fungsi asli: `alat-uji/peta_akses.py --kiriman`.
+- **Kisi SS2** menggambar yang ditegakkan server: kisi `sendiri` yang ditutup rules tampil **"tertutup server"** + sebabnya (hitung laci Ben,
+  kedatangan Ben & karyawan); "minta owner" menyebut alurnya belum ada. Nilai kisi tersimpan tidak berubah.
+
 ## Struktur
 ```
 baru/
@@ -285,6 +311,9 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_harga_baru.py` (+ `--kontrol`) | 105 skenario logika Harga & Pemasok (jam dikunci; katalog: baris, status, draf, pasar, sengaja, usul, kalimat, dampak, belah, papan/WA, terbit satu batch, label; bon: mesin beku, tempo kartu/umum, tusukan, garis & kas, buku, bayar + admin, urung, bon lama, kartu, atur; belanja: saran, sumber harga, truk, penuhi, kertas, pesanan WA, datang/batal, atur) + 47 kontrol; di cadangan toko: tiap dokumen katalog = satu baris dengan angka yang sama, total bon = mesin, hari habis = mesin, kolom dokumen dikenal |
 | `alat-uji/uji_laporan_baru.py` (+ `--kontrol`) | 65 skenario logika Laporan & Dokumen (+ Mingguan & Tahunan) (laba bulan = mesin, tunai = bersih − margin bon, MDR dipisah, tangga menutup; rekap hari = arus kas, teks WA; enam bulan, inti, rekap omzet: kumulatif, tanda lapor hanya final, tarif/batas/tanggal owner, bukti Σ; neraca dua sisi + aset tetap + pembanding; identitas berversi + struk ikut, ragam kop, nomor awal; laporan berkop DRAF/final, arus kas = kasPada, paket bank hanya final, banding; dokumen kecil lima jenis, salinan ke-N, nota batal ditolak; kop belum lengkap menolak semua) + 27 kontrol; di cadangan toko: laba bulan & laba-rugi berkop = mesin, neraca seimbang |
 | `alat-uji/uji_uang_baru.py` (+ `--kontrol`) | 129 skenario logika Uang (+ HR, gaji tengah bulan, bonus) (saldo per tempat = kasPada di tiap langkah; K1 arti/penjaga/kasbon owner/titipan/tagihan; K4 pindah + admin + rutin; K2 sejak terakhir dibayar, hari kosong, bayar = baris bertanggal + 'Dipotong upah' + slip; K3 delapan perbuatan; K5 hitung laci, QRIS/MDR, sisih, timbang, amankan, tutup sekaligus, tutup ulang; K6 gerbang, 12 baris sebelum/sesudah, pembuka = sistem lama, kunci + arsip, batal, selesai) + 40 kontrol; di cadangan toko: identitas kantong (bila titik ada), posisi owner, karyawan, tagihan |
+| `alat-uji/uji_akses_baru.py` (+ `--kontrol`) | 30 skenario akses per orang (keadaan akun, owner hanya via email, pendengar/layar/tombol per peran, penjaga kiriman = peta, pagar 18, batas per akun, atribusi olehUid, satu jejak per kiriman, salinan antre, SS2 akun & kisi = kebenaran server, sambungan firebase.js/app.js diperiksa sumbernya) + 33 kontrol |
+| `alat-uji/periksa_rules.py` (+ `--kontrol`) | `firestore.rules` v3 statis: blok per koleksi, owner & kasir via email, tanpa `masuk()` telanjang, jalur kasir@ utuh, tulis bukan-owner wajib uid, tanpa delete bukan-owner, payung owner, daftar peran = `akses.js`, jejak ≤ 17 dokumen = pagar `akses.js` + 17 kontrol |
+| `alat-uji/peta_akses.py --kiriman` (+ `--kontrol`) | access call TERBURUK per jenis kiriman bukan-owner (nota Ben/karyawan, adukan, terima bon, pelanggan baru, struk) dari fungsi asli di jsc, lewat `periksaKiriman` asli; gagal bila > 18; tiap tindakan yang dibuka server wajib terhitung; layar wajib menyerahkan batasnya + 10 kontrol |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
