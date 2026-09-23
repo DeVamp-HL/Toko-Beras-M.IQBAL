@@ -7,7 +7,7 @@ import { RP, DESIMAL, tanggalPendek, hariIniIso, jamKini } from '../inti/format.
 import * as P from './pelanggan-logika.js';
 import * as B from './bon-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, hapusDokumen, perbaruiKolom } from '../data/toko.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -30,7 +30,7 @@ function svgSketsa(sk, kelas) {
     + (sk.tahiLalat ? '<circle class="tahi-lalat" cx="38" cy="' + (cy + 8) + '" r="1.3"/>' : '') + (sk.kacamata ? '<g class="kacamata"><circle cx="26" cy="' + (cy + 1) + '" r="4.5"/><circle cx="38" cy="' + (cy + 1) + '" r="4.5"/><path d="M30.5 ' + (cy + 1) + 'h3"/></g>' : '');
   const isi = sk.kosong ? '<rect class="tepi-putus" x="3" y="3" width="58" height="58" rx="3"/><text class="tanya" x="32" y="42" text-anchor="middle">?</text>'
     : '<ellipse class="bahu" cx="32" cy="66" rx="' + rx + '" ry="18"/>' + kepala + (sk.naik ? lencana(12, sk.naik) : '') + (sk.beli ? lencana(52, sk.beli) : '');
-  return '<svg class="sk w' + (sk.warna || 0) + ' k' + (sk.kulit || 0) + ' ' + (kelas || '') + '" viewBox="0 0 64 64" aria-hidden="true"><rect class="latar" width="64" height="64" rx="4"/>' + isi + '</svg>';
+  return '<svg class="sk w' + (sk.warna || 0) + ' ' + (kelas || '') + '" viewBox="0 0 64 64" aria-hidden="true"><rect class="latar" width="64" height="64" rx="4"/>' + isi + '</svg>';
 }
 const KUNCI_TAB = 'miqbal_baru_pelanggan_tab'; const KUNCI_HAFAL = 'miqbal_baru_hafal';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
@@ -44,7 +44,7 @@ export function pasangLayarPelanggan(akar, opsi) {
   const K = buatKeadaan({ keluarga: KELUARGA.some((k) => k[0] === tabAwal.keluarga) ? tabAwal.keluarga : 'kenali', tabK: TAB_K.some((t) => t[0] === tabAwal.tabK) ? tabAwal.tabK : 'wajah', tabB: 'buku', tabT: 'daftar', kabar: '', kabarAwas: false,
     cari: '', tampi: [], notaKunci: null, keranjang: [], benangSiapa: null, titip: null, titipCari: '', kuis: kuisKosong(), hafal: bacaLokal(KUNCI_HAFAL) || null,
     kartu: null, yakinHapusNama: false, baru: null, gabung: null, bukuKunci: null, ember: '', orangBon: null, lembarBon: null, bayar: { nominal: '', cara: 'Tunai', catatan: '', pengantar: '' }, hapusIsi: { nominal: '', alasan: '' }, yakinHapus: false, janji: 7,
-    tahun: (opsi.sekarang() || new Date()).getFullYear(), thrOrang: null, beri: { bentuk: '', lain: '', nilai: '' }, usulBentuk: null, atur: null });
+    tahun: (opsi.sekarang() || new Date()).getFullYear(), thrOrang: null, beri: { bentuk: '', lain: '', nilai: '' }, usulBentuk: null, atur: null, bersih: null });
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false;
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -115,11 +115,20 @@ export function pasangLayarPelanggan(akar, opsi) {
     thrSerah: async ({ id }) => { if (await tulis(P.susunSerahThr(id, waktu()))) set({ thrOrang: null }); }, thrHapus: async ({ id }) => { if (await tulis(P.susunHapusThr(id))) set({ thrOrang: null }); },
     usulBentuk: ({ nama }) => set({ usulBentuk: nama }), usulPakai: async () => { await tulis(P.susunUsulThr(kini(), st().tahun, st().usulBentuk, waktu())); },
     // ---- atur (angka & daftar kebijakan owner)
-    bukaAtur: () => { if (st().atur) return set({ atur: null }); const a = P.aturPelanggan(); set({ atur: { kosongKali: String(a.kosongKali / 10).replace('.', ','), notaBesar: String(a.notaBesar), tagihHari: String(a.tagihHari), macetHari: String(a.macetHari), anggaranThr: String(a.anggaranThr), salamTagih: a.salamTagih, ciriDaftar: a.ciriDaftar.map((c) => Object.assign({}, c)), arahDaftar: a.arahDaftar.slice(), titipDaftar: a.titipDaftar.slice(), alasanHapus: a.alasanHapus.slice(), bentukThr: a.bentukThr.map((b) => Object.assign({}, b)) }, kabar: '' }); },
+    bukaAtur: () => { if (st().atur) return set({ atur: null }); const a = P.aturPelanggan(); set({ atur: { kosongKali: String(a.kosongKali / 10).replace('.', ','), notaBesar: String(a.notaBesar), tagihHari: String(a.tagihHari), macetHari: String(a.macetHari), anggaranThr: String(a.anggaranThr), salamTagih: a.salamTagih, ciriDaftar: a.ciriDaftar.map((c) => Object.assign({}, c)), arahDaftar: a.arahDaftar.slice(), titipDaftar: a.titipDaftar.slice(), alasanHapus: a.alasanHapus.slice(), bentukThr: a.bentukThr.map((b) => Object.assign({}, b)) }, bersih: null, kabar: '' }); },
     aturKetik: (v, el) => { const a = JSON.parse(JSON.stringify(st().atur)); const k = el.dataset.kolom; const i = el.dataset.i; const sub = el.dataset.sub; if (i === undefined) a[k] = String(v).slice(0, k === 'salamTagih' ? 200 : 14); else if (sub) a[k][Number(i)][sub] = String(v).slice(0, 40); else a[k][Number(i)] = String(v).slice(0, 40); set({ atur: a }); },
     aturGrup: ({ i, grup }) => { const a = JSON.parse(JSON.stringify(st().atur)); a.ciriDaftar[Number(i)].grup = grup; set({ atur: a }); },
     aturTambah: ({ daftar: k }) => { const a = JSON.parse(JSON.stringify(st().atur)); a[k].push(k === 'ciriDaftar' ? { nama: '', grup: 'lain' } : k === 'bentukThr' ? { nama: '', n: 0 } : ''); set({ atur: a }); },
     aturLepas: ({ daftar: k, i }) => { const a = JSON.parse(JSON.stringify(st().atur)); a[k].splice(Number(i), 1); set({ atur: a }); },
+    // putaran 23b: Bersihkan ciri yang dicabut — pratinjau dulu (tanpa menulis), cadangan hari ini, dua ketukan; hasil per batch lalu lembarnya hilang di kunjungan berikut
+    bsBersihkan: async () => { const b = st().bersih || {}; if (b.menulis) return; const r = P.susunBersihkanCiri(kini(), !!b.yakin);
+      if (r.perluYakin) return set({ bersih: { yakin: true }, kabar: r.tolak, kabarAwas: true }); if (r.tolak) return set({ bersih: null, kabar: r.tolak, kabarAwas: true });
+      set({ bersih: { menulis: true } });
+      try { const x = await perbaruiKolom(r.ubahKolom, r.ringkas); const KATA = { ok: 'tersimpan', antre: 'masuk antrean (terkirim begitu tersambung)', gagal: 'DITOLAK', simulasi: 'SIMULASI' };
+        const baris = (x.potongan || []).map((p, i) => 'Batch ' + (i + 1) + ' dari ' + r.ubahKolom.length + ': ' + p.n + ' dokumen — ' + (KATA[p.keadaan] || p.keadaan) + (p.pesan ? ' (' + p.pesan + ')' : ''));
+        set({ bersih: { hasil: { baris, kartu: r.rincian.kartu.length, cip: r.rincian.cip, atur: r.rincian.atur, gagal: !!x.gagal } }, kabar: (x.simulasi ? 'SIMULASI — ' : '') + (x.gagal ? 'Pembersihan berhenti — ' + (x.pesan || 'ada batch yang ditolak') : 'Bersih: ' + r.rincian.kartu.length + ' kartu, ' + r.rincian.cip + ' cip dibuang' + (r.rincian.atur ? ', setelan cip ikut' : '') + '. Unduh cadangan baru sekarang.'), kabarAwas: !!x.gagal }); }
+      catch (e) { set({ bersih: null, kabar: 'GAGAL membersihkan: ' + (e && e.message ? e.message : e), kabarAwas: true }); } },
+    bsBukaKartu: ({ kunci }) => { set({ atur: null, bersih: null }); bukaKartu(kunci); },
     simpanAtur: async () => { const a = st().atur; if (!a) return; const isi = Object.assign({}, a, { kosongKali: String(Math.round((Number(String(a.kosongKali).replace(',', '.')) || 0) * 10)) }); if (await tulis(P.susunAturPelanggan(isi, waktu()))) set({ atur: null }); },
   };
   delegasi(akar, AKSI);
@@ -157,7 +166,7 @@ export function pasangLayarPelanggan(akar, opsi) {
   function gambarWajah(s, W) {
     return h`<div data-k="wajah" style="display: flex; flex-direction: column; gap: 10px;">
       <input class="ketik-nama" id="plCari" type="text" placeholder="Cari nama… atau lihat wajahnya di bawah" value="${s.cari}" data-ketik="cari">
-      <div class="ket">${W.kiniTeks}. Gambar disusun dari ciri di kartu: warna kulit, perawakan, kumis/janggut, kerudung/peci/topi, kacamata, uban/botak/rambut panjang; kiri bawah = datang naik apa, kanan bawah = biasa beli apa.</div>
+      <div class="ket">${W.kiniTeks}. Gambar disusun dari ciri di kartu: perawakan, kumis/janggut, kerudung/peci/topi, kacamata, uban/botak/rambut panjang; kiri bawah = datang naik apa, kanan bawah = biasa beli apa.</div>
       ${W.daftar.length ? h`<div class="sk-dinding" data-k="dinding">${W.daftar.map((o, i) => h`<div class="polaroid" data-k="pf-${o.kunci}" data-aksi="bukaKartu" data-kunci="${o.kunci}" style="--urut: ${Math.min(i, 24)};">${o.titik ? h`<span class="titik ${o.titik === 'tadi' ? '' : 'awas'}">${o.titik}</span>` : ''}${sk(o)}<div class="cp">${o.nama}</div><div class="sb">${o.sub}</div></div>`)}</div>` : h`<div class="menolak">Tidak ada nama yang cocok.</div>`}
       <div class="ket">${W.tanpaCiri} dari ${W.semua} orang belum punya ciri — di tebakan mereka cuma bisa cocok lewat jam datangnya, dan kasir menolak bon barunya.</div>
     </div>`;
@@ -256,6 +265,7 @@ export function pasangLayarPelanggan(akar, opsi) {
         <input class="ketik-nama" id="kBiasa" type="text" placeholder="Yang biasa dibeli, mis. Angsa 50 kg tiap sore" value="${d.biasa}" data-ketik="kKetik" data-kolom="biasa">
         ${o.benang && o.benang.ada ? h`<div class="pita-info" data-k="kartu-benang"><b>Benang:</b> ${o.benang.untuk.map((x) => x.teks).concat(o.benang.dari.map((x) => x.teks)).join(' · ')} — nota & bon tetap atas nama yang punya urusan.</div>` : ''}
         <input class="ketik-nama" id="kCatatan" type="text" placeholder="Catatan bebas, mis. ojek, suka nitip uang" value="${d.catatan}" data-ketik="kKetik" data-kolom="catatan">
+        <div class="ket catatan-larang" data-k="catatan-larang">Jangan tulis suku, agama, warna kulit, atau kesehatan.</div>
         <div class="ps-form dua"><input class="ketik-nama" id="kAsli" type="text" placeholder="Nama asli" value="${d.asli}" data-ketik="kKetik" data-kolom="asli"><input class="ketik-nama" id="kKontak" type="text" inputmode="tel" placeholder="Nomor WhatsApp" value="${d.kontak}" data-ketik="kKetik" data-kolom="kontak"></div>
         <div class="pita-info ${dikenali ? '' : 'awas'}">${dikenali ? 'Dikenali → kasir BOLEH mencatat bon baru atas namanya.' : 'Belum dikenali → kasir MENOLAK bon baru (aturan KR1). Isi salah satu: ciri, catatan, atau arah datangnya.'}</div>
         <div class="tombol-baris"><div class="kaca-btn" data-aksi="keBon" data-kunci="${d.kunci}">${o.utang > 0 ? 'buku bonnya · ' + RP(o.utang) : 'buku bon'}</div><div class="kaca-btn aktif emas" data-aksi="kSimpan">SIMPAN KARTU</div></div>
@@ -337,6 +347,26 @@ export function pasangLayarPelanggan(akar, opsi) {
     </section>`;
   }
   // ---------- ATUR ----------
+  /** Putaran 23b: lembar "Bersihkan ciri yang dicabut" — tampil hanya selama masih ada yang perlu dibersihkan (atau hasilnya baru saja keluar).
+   *  Teks bebas yang memuat kata terlarang cuma DIDAFTAR (owner memutuskan per kartu); jejak log cuma dihitung. */
+  function gambarBersihkan(s) {
+    const b = s.bersih || {}; const R = P.rincianBersihkanCiri(kini()); const daftarNama = (xs) => xs.map((k) => k.nama).join(', ');
+    const bebas = R.bebas.length ? h`<div class="bs-bebas" data-k="bs-bebas"><div class="ket">Teks bebas yang memuat kata terlarang — TIDAK diubah otomatis (kata "kulit" bisa berarti lain). Ketuk nama untuk membuka kartunya, putuskan sendiri:</div>
+      ${R.bebas.map((x) => h`<div class="bs-baris tautan" data-aksi="bsBukaKartu" data-kunci="${x.kunci}" data-k="bs-bebas-${x.kunci}"><span>${x.nama}</span><span class="ket">${x.kolom.join(', ')}</span></div>`)}</div>` : '';
+    const log = R.logKena ? h`<div class="ket" data-k="bs-log">Jejak aktivitas yang menyebut ciri itu: ${R.logKena} dari ${R.logDimuat} jejak terakhir yang dimuat. Jejak tidak diubah.</div>` : '';
+    if (b.hasil) return h`<div class="kartu bs-lembar" data-k="bersihkan" style="gap: 6px;"><div class="label">Bersihkan ciri yang dicabut · selesai</div>
+      <div class="pita-info ${b.hasil.gagal ? 'awas' : ''}">${b.hasil.kartu} kartu · ${b.hasil.cip} cip dibuang${b.hasil.atur ? ' · setelan cip ikut dibersihkan' : ''}. Langkah berikutnya: unduh cadangan BARU, lalu hapus berkas cadangan lama yang masih memuat ciri itu.</div>
+      ${b.hasil.baris.map((t, i) => h`<div class="ket" data-k="bs-hasil-${i}">${t}</div>`)}${bebas}${log}</div>`;
+    if (!R.ada) return R.bebas.length || R.logKena ? h`<div class="kartu bs-lembar tenang" data-k="bersihkan" style="gap: 6px;"><div class="label">Ciri yang dicabut · periksa sendiri</div><div class="ket">Kartu & setelan sudah bersih dari cip warna kulit dan suku/logat.</div>${bebas}${log}</div>` : '';
+    const tombol = !R.cadangan ? h`<div class="kaca-btn mati" data-k="bs-tombol">Unduh cadangan dulu dari Sistem › Cadangan.</div>`
+      : h`<div class="kaca-btn ${b.yakin ? 'awas' : 'aktif emas'}" data-aksi="bsBersihkan" data-k="bs-tombol">${b.menulis ? 'membersihkan…' : b.yakin ? 'KETUK SEKALI LAGI — BERSIHKAN (tidak bisa diurungkan)' : 'BERSIHKAN'}</div>`;
+    return h`<div class="kartu bs-lembar" data-k="bersihkan" style="gap: 6px;"><div class="label">Bersihkan ciri yang dicabut</div>
+      <div class="ket">Toko tidak lagi mencatat suku, ras, atau warna kulit pelanggan. Cip itu masih tersimpan di kartu lama — di bawah ini pratinjaunya; belum ada yang ditulis.</div>
+      <div class="bs-angka"><div><div class="ket">Kartu yang memuat cip itu</div><div class="besar">${R.kartu.length}</div></div><div><div class="ket">Cip yang dibuang</div><div class="besar">${R.cip}</div></div><div><div class="ket">Sesudahnya tanpa cip sama sekali</div><div class="besar">${R.tanpaCip.length}</div></div></div>
+      ${R.tanpaCip.length ? h`<div class="ket">Tanpa cip sesudahnya: ${daftarNama(R.tanpaCip)}.${R.belumDikenal.length ? ' Yang juga tanpa catatan & arah — di kasir sistem lama jadi "belum dikenal" (bon barunya ditolak) sampai kartunya diisi lagi: ' + daftarNama(R.belumDikenal) + '.' : ' Semuanya masih punya catatan atau arah, jadi tetap dikenal di kasir sistem lama.'}</div>` : ''}
+      <div class="ket">Setelan cip owner: ${R.atur ? 'ikut dibersihkan (' + R.aturBuang + ' cip)' : 'tidak berubah'}. ${R.batch > 1 ? 'Ditulis dalam ' + R.batch + ' batch.' : ''} Kolom lain di kartu tidak disentuh.</div>
+      <div class="tombol-baris">${tombol}</div>${bebas}${log}</div>`;
+  }
   function gambarAtur(s) {
     const a = s.atur; const daftar = (k, judul, ket, tambah) => h`<div class="kartu" data-k="atur-${k}" style="gap: 6px;"><div class="label">${judul}</div><div class="ket">${ket}</div>
       ${a[k].map((x, i) => h`<div style="display: grid; grid-template-columns: minmax(0, 1fr) ${k === 'ciriDaftar' || k === 'bentukThr' ? 'auto' : ''} auto; gap: 6px; align-items: center;" data-k="${k}-${i}">
@@ -345,6 +375,7 @@ export function pasangLayarPelanggan(akar, opsi) {
         <span class="ket tautan" data-aksi="aturLepas" data-daftar="${k}" data-i="${i}">lepas</span></div>`)}
       <div class="kaca-btn putus" data-aksi="aturTambah" data-daftar="${k}">${tambah}</div></div>`;
     return h`<section data-k="atur"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Atur pelanggan · angka & daftar milik owner</div><div class="ket">Semua yang di sini boleh lu ubah sendiri; layar membacanya saat itu juga.</div></div><div class="kaca-btn" data-aksi="bukaAtur">batal</div></div>
+      ${gambarBersihkan(s)}
       <div class="kartu" style="gap: 8px;"><div class="ps-form dua">
         <div><div class="ket">Bangku kosong sesudah (× selangnya sendiri)</div><input class="ketik-nama" type="text" inputmode="decimal" value="${a.kosongKali}" data-ketik="aturKetik" data-kolom="kosongKali"></div>
         <div><div class="ket">Nota sebesar ini ke atas perlu nama (Rp)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${a.notaBesar}" data-ketik="aturKetik" data-kolom="notaBesar"></div>

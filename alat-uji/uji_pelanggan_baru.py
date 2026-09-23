@@ -177,8 +177,9 @@ ok('hapus buku: alasan wajib; ketukan pertama DITANYA dengan kalimat "BUKAN uang
   && (function () { var s = simpan(); terapkan(HB); var r = hitungPiutang().find(function (x) { return x.kunci === 'pak hartawan'; }).sisa === 0 && hitungPiutang().find(function (x) { return x.kunci === 'pak hartawan'; }).dihapus === 250000; pulih(s); return r; })() && /melebihi sisa/.test(susunHapusBon(KINI, 'pak hartawan', '300.000', 'x', W, true).tolak), JSON.stringify([HB0, HB]));
 // ---- PUTARAN 21 (owner 23 Sep): ciri serinci mungkin & sketsanya; nama paku benang utuh; benang di kartu; urusan ojek/kurir
 var SK1 = sketsa({ cip: ['sawo matang', 'kumis', 'gemuk', 'botak', 'naik motor', '40-an', 'Sunda'] }); var SK2 = sketsa({ cip: ['kerudung', 'kulit putih', 'kurus', 'tinggi', 'kacamata'] }); var SK3 = sketsa({ cip: ['brewok', 'rambut panjang', 'kulit gelap', 'pendek'] });
-ok('P21 ciri: kelompok bertambah (umur, perawakan, kulit, wajah & rambut, suku/logat) dan tiap cip bawaan punya kelompoknya; urusan titipan bawaan memuat ojek / kurir langganan', TANYA_CIRI.length === 9 && ATUR_PELANGGAN_BAWAAN.ciriDaftar.every(function (c) { return TANYA_CIRI.some(function (t) { return t[0] === c.grup; }); }) && ATUR_PELANGGAN_BAWAAN.ciriDaftar.length > 40 && ATUR_PELANGGAN_BAWAAN.titipDaftar.indexOf('ojek / kurir langganan') >= 0);
-ok('P21 sketsa ikut ciri: sawo matang → kulit 3, kumis, gemuk, botak (tanpa rambut), motor; kerudung + kulit putih + kurus + tinggi + kacamata; brewok = kumis & janggut, rambut panjang, kulit gelap 4, pendek', SK1.kulit === 3 && SK1.kumis && !SK1.janggut && SK1.gemuk && SK1.botak && !SK1.rambut && SK1.naik === 'motor' && SK2.kerudung && SK2.kulit === 1 && SK2.kurus && SK2.tinggi && SK2.kacamata && !SK2.rambut && SK3.kumis && SK3.janggut && SK3.panjang && SK3.kulit === 4 && SK3.pendek && SK3.rambut, JSON.stringify([SK1, SK2, SK3]));
+ok('P21 ciri (DIGANTI 23b): 7 kelompok (umur, perawakan, wajah & rambut, yang dipakai, naik, beli) — warna kulit & suku/logat TIDAK ada lagi; tiap cip bawaan punya kelompoknya & tidak satu pun terlarang; urusan titipan bawaan memuat ojek / kurir langganan', TANYA_CIRI.length === 7 && !TANYA_CIRI.some(function (t) { return GRUP_DICABUT.indexOf(t[0]) >= 0; }) && ATUR_PELANGGAN_BAWAAN.ciriDaftar.every(function (c) { return TANYA_CIRI.some(function (t) { return t[0] === c.grup; }) && !cipTerlarang(c.nama) && GRUP_DICABUT.indexOf(c.grup) < 0; }) && ATUR_PELANGGAN_BAWAAN.ciriDaftar.length > 40 && ATUR_PELANGGAN_BAWAAN.titipDaftar.indexOf('ojek / kurir langganan') >= 0);
+ok('P21 sketsa ikut ciri (DIGANTI 23b: warna kulit tidak lagi dibaca — satu nada netral): kumis, gemuk, botak (tanpa rambut), motor; kerudung + kurus + tinggi + kacamata; brewok = kumis & janggut, rambut panjang, pendek; cip kulit/suku tidak meninggalkan jejak apa pun di bahan sketsa', !('kulit' in SK1) && !('kulit' in SK2) && !('kulit' in SK3) && SK1.kumis && !SK1.janggut && SK1.gemuk && SK1.botak && !SK1.rambut && SK1.naik === 'motor' && SK2.kerudung && SK2.kurus && SK2.tinggi && SK2.kacamata && !SK2.rambut && SK3.kumis && SK3.janggut && SK3.panjang && SK3.pendek && SK3.rambut
+  && JSON.stringify(sketsa({ cip: ['kumis', 'sawo matang', 'Sunda', 'kulit gelap'] })) === JSON.stringify(sketsa({ cip: ['kumis'] })), JSON.stringify([SK1, SK2, SK3]));
 ok('P21 nama paku benang: "Al - Yamin" utuh jadi "Al-Yamin" (bukan "Al -"); nama pendek utuh; nama panjang = dua kata pertama yang berhuruf', plNamaPendek('Al - Yamin') === 'Al-Yamin' && plNamaPendek('Bang Togar') === 'Bang Togar' && plNamaPendek('Ibu Rahma Warung Makan Sederhana') === 'Ibu Rahma' && plNamaPendek('H. - Ahmad Sudirman Jaya') === 'H.-Ahmad Sudirman');
 var BO = benangOrang(KINI, 'uda feri'); var BT2 = benangOrang(KINI, 'bang togar');
 ok('P21 benang di kartu: kartu Feri menyebut Togar yang datang (3×); kartu Togar menyebut ia datang untuk Feri; orang tanpa benang → tidak ada', BO.ada && BO.dari.length === 1 && BO.dari[0].nama === 'Bang Togar' && BO.dari[0].kali === 3 && BT2.untuk.length === 1 && BT2.untuk[0].nama === 'Uda Feri' && kartuOrang(KINI, 'uda feri').benang.ada && !benangOrang(KINI, 'pak darto').ada, JSON.stringify([BO, BT2]));
@@ -190,6 +191,78 @@ ok('P22 hapus nama "b": rincian ≥ 2 nota ("b" & "B" satu kunci); ketukan perta
   && /buku bon/.test(rincianHapusNama(KINI, 'pak darto').tolak) && /buku bon|THR|tagihan/.test(rincianHapusNama(KINI, 'uda feri').tolak || 'x'), JSON.stringify([RHN.arti, HN0.tolak, rincianHapusNama(KINI, 'uda feri').tolak]));
 (function () { var s0 = simpan(); terapkan(HN); ok('P22 sesudah dihapus: "b" hilang dari daftar orang; omzet nota tetap terhitung (tanpa nama)', !semuaOrang(KINI).some(function (o) { return o.kunci === 'b'; }) && ambilPenjualanSemua().filter(function (p) { return p.namaDihapus; }).length === nB); pulih(s0); })();
 terapkanKeCache([{ koleksi: 'penjualan', hapus: 'sTypo1' }, { koleksi: 'penjualan', hapus: 'sTypo2' }]);
+// ---- PUTARAN 23b (owner 23 Sep malam): cip warna kulit & suku/logat DICABUT — pintu ditutup, layar tak pernah menanyakan/menampilkan, data lama dibersihkan
+(function () {
+  var s23 = simpan(); var cadAwal = cacheMentah('cadangan').slice(); var logAwal = cacheMentah('log').slice();
+  var larang = function (t) { return String(t || '').split(/\s*[·,;]\s*/).some(function (x) { return cipTerlarang(x); }); };
+  var tolakAtur = function (tambah) { var r = susunAturPelanggan({ ciriDaftar: ATUR_PELANGGAN_BAWAAN.ciriDaftar.concat([tambah]) }, W); return r.tolak === TOLAK_CIRI_DICABUT; };
+  ok('P23b pintu Atur: kelompok kulit / asal DITOLAK dengan kalimat owner; cip berkata kulit, suku, logat, ras, etnis (huruf besar-kecil apa saja) & cip bawaan lama ("sawo matang") DITOLAK walau ditaruh di kelompok lain; "suka beras merah" (beras ≠ ras) & "berkacamata" LOLOS',
+    tolakAtur({ nama: 'hitam', grup: 'kulit' }) && tolakAtur({ nama: 'orang pesisir', grup: 'asal' }) && tolakAtur({ nama: 'kulit sawo', grup: 'wajah' }) && tolakAtur({ nama: 'SUKU pedalaman', grup: 'lain' }) && tolakAtur({ nama: 'Logat Medan', grup: 'lain' }) && tolakAtur({ nama: 'ras campuran', grup: 'lain' }) && tolakAtur({ nama: 'Etnis', grup: 'lain' }) && tolakAtur({ nama: 'sawo matang', grup: 'wajah' })
+    && !susunAturPelanggan({ ciriDaftar: ATUR_PELANGGAN_BAWAAN.ciriDaftar.concat([{ nama: 'suka beras merah', grup: 'beli' }, { nama: 'berkacamata', grup: 'tampak' }]) }, W).tolak, TOLAK_CIRI_DICABUT);
+  // setelan owner tersimpan SEBELUM keputusan (salinan bawaan lama + cip owner sendiri di kelompok kulit) & kartu-kartu yang memakainya
+  var ciriLama = ATUR_PELANGGAN_BAWAAN.ciriDaftar.concat([{ nama: 'sawo matang', grup: 'kulit' }, { nama: 'Sunda', grup: 'asal' }, { nama: 'hitam manis', grup: 'kulit' }, { nama: 'berkacamata', grup: 'tampak' }, { nama: 'suka beras merah', grup: 'beli' }]);
+  var aturLama = { id: 'pelanggan', tanggal: '2026-09-22', jam: '10:00', kosongKali: 20, notaBesar: 500000, tagihHari: 14, macetHari: 180, anggaranThr: 500000, ciriDaftar: ciriLama, salamTagih: 'salam', diubahOleh: 'Owner', diubahPada: '2026-09-22T03:00:00.000Z' };
+  var cA = ['ibu-ibu', 'sawo matang', 'berkacamata', 'Sunda', 'hitam manis', 'suka beras merah', 'kerudung'];
+  var KA = { id: 'bu tuti', nama: 'Bu Tuti', catatan: 'langganan pagi', ciri: cA.join(' · '), rute: '', cip: cA, arah: '', asli: '', kontak: '0812 0000 7777', biasa: 'literan Angsa', diubahPada: '2026-09-20T01:00:00.000Z', diubahOleh: 'Owner', diubahPerangkat: 'Mac', oleh: 'Owner', perangkat: 'Mac' };
+  var KB = { id: 'pak oni', nama: 'Pak Oni', catatan: '', ciri: 'bapak-bapak · kulit gelap · peci', rute: '' };   // kartu gaya lama: cuma teks ciri
+  var KC = { id: 'mas ucok', nama: 'Mas Ucok', catatan: '', ciri: 'kulit putih', rute: '', cip: ['kulit putih'], arah: '', asli: '', kontak: '', biasa: '' };
+  var KD = { id: 'teh imas', nama: 'Teh Imas', catatan: 'orang Madura, ramah', ciri: 'Jawa', rute: '', cip: ['Jawa'], arah: '', asli: '', kontak: '', biasa: '' };
+  var KF = { id: 'bang udin', nama: 'Bang Udin', catatan: '', ciri: 'peci · Batak', rute: '', cip: ['peci', 'Batak'], arah: '', asli: '', kontak: '', biasa: '' };   // sesudahnya tinggal SATU cip
+  var KE = { id: 'bu lilis', nama: 'Bu Lilis', catatan: 'jual jaket kulit', ciri: 'ibu-ibu', rute: '', cip: ['ibu-ibu'], arah: '', asli: '', kontak: '', biasa: '' };
+  pasok('aturanToko', [aturLama]); pasok('pelangganCatatan', cacheMentah('pelangganCat').concat([KA, KB, KC, KD, KE, KF]));
+  pasok('logAktivitas', [{ id: 1, pada: '2026-09-22T03:00:00.000Z', aksi: 'tulis', koleksi: 'pelangganCatatan', idDok: 'x', ringkas: 'Bu Tuti · sawo matang' }, { id: 2, pada: '2026-09-22T03:01:00.000Z', aksi: 'tulis', koleksi: 'penjualan', idDok: 'y', ringkas: 'Angsa · Rp10.000' }]);
+  var AP = aturPelanggan();
+  ok('P23b setelan tersimpan yang masih memuat cip dicabut TIDAK sampai ke layar: daftar cip Atur/kartu tanpa sawo matang, Sunda, hitam manis (cip owner di kelompok kulit); berkacamata & suka beras merah tetap ada',
+    !AP.ciriDaftar.some(function (c) { return cipTerlarang(c.nama) || GRUP_DICABUT.indexOf(c.grup) >= 0; }) && AP.ciriDaftar.some(function (c) { return c.nama === 'berkacamata'; }) && AP.ciriDaftar.some(function (c) { return c.nama === 'suka beras merah'; }) && cipTerlarang('hitam manis') && !cipTerlarang('berkacamata'), JSON.stringify(AP.ciriDaftar.slice(-4)));
+  var jawab = [], ditanya = []; for (var i = 0; i < 80; i++) { var T = susunTampah(KINI, jawab); if (!T.tanya) break; ditanya.push(T.tanya.c + '|' + T.tanya.grup + '|' + T.label); jawab.push({ c: T.tanya.c, j: 'entah' }); }
+  var dekH = susunHafalan(KINI, null).dek; var hafal = []; for (var n = 0; n < dekH; n++) { var H = susunHafalan(KINI, { putaran: 1, no: n, jawab: null, benar: 0, salah: [], hanya: null }); hafal.push(H.kartu.ciriTeks); var H2 = susunHafalan(KINI, { putaran: 1, no: n, jawab: 'x', benar: 0, salah: [], hanya: null }); hafal.push(H2.hasil); }
+  var wajah = susunWajah(KINI, '').daftar.map(function (b) { return b.sub; }); var kA = kartuOrang(KINI, 'bu tuti');
+  ok('P23b Tampah, Hafalan & Wajah TIDAK PERNAH menanyakan/menampilkan kelompok yang dicabut: seluruh pertanyaan Tampah (dijawab "tidak kelihatan" sampai habis), seluruh dek Hafalan (ciri & jawaban), julukan Wajah, dan cip di kartu — nol cip terlarang; berkacamata tetap ditampilkan',
+    ditanya.length >= 5 && !ditanya.some(function (q) { return larang(q.split('|')[0]) || GRUP_DICABUT.indexOf(q.split('|')[1]) >= 0 || /kulit|suku/i.test(q.split('|')[2]); }) && dekH >= 5 && !hafal.some(larang) && !wajah.some(larang)
+    && !kA.cip.some(function (c) { return cipTerlarang(c); }) && kA.cip.indexOf('berkacamata') >= 0 && kA.cip.indexOf('suka beras merah') >= 0, JSON.stringify({ ditanya: ditanya, kA: kA.cip }));
+  ok('P23b sketsa & kartu di layar: svg sketsa tanpa kelas nada kulit (k1–k4), CSS nada kulit dibuang, kalimat Wajah tidak menyebut warna kulit; kolom catatan kartu punya keterangan tetap "Jangan tulis suku, agama, warna kulit, atau kesehatan."',
+    LAYAR_PL.js.indexOf('sk.kulit') < 0 && !/' k' \+/.test(LAYAR_PL.js) && !/\.sk\.k[1-4]/.test(LAYAR_PL.css) && LAYAR_PL.js.indexOf('ciri di kartu: warna kulit') < 0 && LAYAR_PL.js.indexOf('Jangan tulis suku, agama, warna kulit, atau kesehatan.') >= 0);
+  var SKD = susunSimpanKartu(KINI, 'pak darto', { nama: 'Pak Darto', cip: ['bapak-bapak', 'sawo matang', 'peci', 'Batak'], catatan: 'beli tiap sore' }, W);
+  ok('P23b kartu: cip "sawo matang" & "Batak" TIDAK lolos ke kartu yang disimpan — cip & ciri gabungannya bersih, cip lain utuh', !SKD.tolak && JSON.stringify(SKD.dokumen[0].data.cip) === JSON.stringify(['bapak-bapak', 'peci']) && SKD.dokumen[0].data.ciri === 'bapak-bapak · peci', JSON.stringify(SKD.dokumen && SKD.dokumen[0].data));
+  var ATS = susunAturPelanggan({ kosongKali: '30' }, W);
+  ok('P23b simpan Atur biasa: cip owner di kelompok lama yang MASIH menempel di kartu dibawa apa adanya (bukti terlarangnya tidak hilang sebelum dibersihkan) — tidak pernah tampil',
+    !ATS.tolak && ATS.dokumen[0].data.ciriDaftar.some(function (c) { return c.nama === 'hitam manis' && c.grup === 'kulit'; }) && (function () { var s0 = simpan(); terapkan(ATS); var r = cipTerlarang('hitam manis') && kartuOrang(KINI, 'bu tuti').cip.indexOf('hitam manis') < 0 && !aturPelanggan().ciriDaftar.some(function (c) { return c.nama === 'hitam manis'; }); pulih(s0); return r; })());
+  // ---- pratinjau: TIDAK menulis apa pun
+  pasok('cadanganCatatan', []);
+  var jepret = function () { return JSON.stringify([simpan(), cacheMentah('cadangan'), cacheMentah('log')]); }; var j0 = jepret(); var R = rincianBersihkanCiri(KINI); var j1 = jepret();
+  var nm = function (xs) { return xs.map(function (k) { return k.nama; }).sort().join(','); };
+  ok('P23b pratinjau menulis NOL dokumen & menghitung benar: 5 kartu (termasuk kartu gaya lama yang cuma punya teks ciri), 7 cip dibuang (berkacamata & suka beras merah TIDAK), setelan owner ikut (3 cip), 1 batch; teks bebas cuma dilaporkan (Teh Imas catatan "Madura", Bu Lilis "jaket kulit"); jejak log yang menyebut ciri itu = 1',
+    j0 === j1 && !R.ubahKolom && R.kartu.length === 5 && R.cip === 7 && R.atur && R.aturBuang === 3 && R.batch === 1 && R.ada && R.bebas.length === 2 && nm(R.bebas) === 'Bu Lilis,Teh Imas' && R.bebas.every(function (x) { return x.kolom.join() === 'catatan'; }) && R.logKena === 1 && !R.cadangan, JSON.stringify({ n: R.kartu.length, cip: R.cip, atur: R.aturBuang, bebas: R.bebas, log: R.logKena }));
+  ok('P23b hitungan "tanpa cip sama sekali": Mas Ucok (cuma kulit putih) & Teh Imas (cuma Jawa) = 2 orang (Bang Udin tinggal satu cip = BUKAN tanpa cip); yang juga jadi "belum dikenal" di KR1 sistem lama = Mas Ucok saja (Teh Imas masih punya catatan)', nm(R.tanpaCip) === 'Mas Ucok,Teh Imas' && nm(R.belumDikenal) === 'Mas Ucok', nm(R.tanpaCip) + ' / ' + nm(R.belumDikenal));
+  // ---- syarat cadangan hari ini & dua ketukan
+  var tanpa = susunBersihkanCiri(KINI, true); pasok('cadanganCatatan', [{ id: 1, tanggal: '2026-09-18', jam: '20:00', ok: true }]); var kemarin = susunBersihkanCiri(KINI, true);
+  pasok('cadanganCatatan', [{ id: 2, tanggal: '2026-09-19', jam: '08:00', ok: false }]); var gagalC = susunBersihkanCiri(KINI, true);
+  pasok('cadanganCatatan', [{ id: 3, tanggal: '2026-09-19', jam: '09:30', ok: true, nama: 'backup-batch-miqbal-2026-09-19.json' }]); var sekali = susunBersihkanCiri(KINI, false); var BS = susunBersihkanCiri(KINI, true);
+  ok('P23b tombol MATI tanpa cadangan hari ini ("Unduh cadangan dulu dari Sistem › Cadangan."): tanpa catatan, cadangan kemarin, cadangan hari ini yang gagal — semua ditolak; dengan cadangan hari ini: ketukan pertama DITANYA, kedua baru menyusun tulisan',
+    tanpa.tolak === 'Unduh cadangan dulu dari Sistem › Cadangan.' && !tanpa.ubahKolom && kemarin.tolak === tanpa.tolak && gagalC.tolak === tanpa.tolak && sekali.perluYakin === true && !sekali.ubahKolom && !BS.tolak && BS.ubahKolom.length === 1, JSON.stringify([tanpa.tolak, kemarin.tolak, gagalC.tolak, sekali.tolak]));
+  var semuaUbah = BS.ubahKolom[0]; var akhir = semuaUbah[semuaUbah.length - 1];
+  ok('P23b yang ditulis cuma kolom cip & ciri (kartu gaya lama: ciri saja) dan ciriDaftar setelan — setelan di URUTAN TERAKHIR; baris log satu, berisi JUMLAH saja tanpa isi cip yang dibuang',
+    semuaUbah.length === 6 && semuaUbah.slice(0, 5).every(function (u) { return u.koleksi === 'pelangganCatatan' && Object.keys(u.kolom).every(function (k) { return k === 'cip' || k === 'ciri'; }); }) && semuaUbah.filter(function (u) { return Object.keys(u.kolom).join() === 'ciri'; }).length === 1 && akhir.koleksi === 'aturanToko' && Object.keys(akhir.kolom).join() === 'ciriDaftar'
+    && /5 kartu · 7 cip dibuang · setelan cip ikut \(3\)/.test(BS.ringkas) && !/sawo|sunda|hitam|jawa|madura|kulit|batak/i.test(BS.ringkas), BS.ringkas);
+  // ---- bersihkan (penulis simulasi = update kolom): kolom lain byte-sama
+  var buang2 = function (d) { var x = JSON.parse(JSON.stringify(d)); delete x.cip; delete x.ciri; return JSON.stringify(x); }; var sblm = {}; cacheMentah('pelangganCat').forEach(function (c) { sblm[c.id] = c; }); var atSblm = cacheMentah('aturan')[0];
+  var HS = perbaruiKolom(BS.ubahKolom, BS.ringkas); var ssd = {}; cacheMentah('pelangganCat').forEach(function (c) { ssd[c.id] = c; }); var atSsd = cacheMentah('aturan').find(function (d) { return d.id === 'pelanggan'; });
+  var dibersihkan = ['bu tuti', 'pak oni', 'mas ucok', 'teh imas', 'bang udin'];
+  ok('P23b BERSIHKAN membuang TEPAT cip terlarang: Bu Tuti tinggal ibu-ibu · berkacamata · suka beras merah · kerudung (urutan tetap), Pak Oni (gaya lama) ciri tanpa kulit gelap & tetap tanpa larik cip, Mas Ucok & Teh Imas kosong; ciri = gabungan cip sesudahnya; SEMUA kolom lain byte-sama; kartu yang tak kena (Darto, Lilis) utuh; setelan: 3 cip terlarang hilang, kolom lainnya byte-sama',
+    JSON.stringify(ssd['bu tuti'].cip) === JSON.stringify(['ibu-ibu', 'berkacamata', 'suka beras merah', 'kerudung']) && ssd['bu tuti'].ciri === ssd['bu tuti'].cip.join(' · ') && ssd['pak oni'].ciri === 'bapak-bapak · peci' && !('cip' in ssd['pak oni'])
+    && JSON.stringify(ssd['bang udin'].cip) === '["peci"]' && ssd['bang udin'].ciri === 'peci' && ssd['mas ucok'].cip.length === 0 && ssd['mas ucok'].ciri === '' && ssd['teh imas'].cip.length === 0 && ssd['teh imas'].ciri === '' && dibersihkan.every(function (id) { return buang2(ssd[id]) === buang2(sblm[id]); })
+    && JSON.stringify(ssd['pak darto']) === JSON.stringify(sblm['pak darto']) && JSON.stringify(ssd['bu lilis']) === JSON.stringify(sblm['bu lilis'])
+    && atSsd.ciriDaftar.length === atSblm.ciriDaftar.length - 3 && !atSsd.ciriDaftar.some(function (c) { return c.nama === 'sawo matang' || c.nama === 'Sunda' || c.nama === 'hitam manis'; }) && atSsd.ciriDaftar.some(function (c) { return c.nama === 'berkacamata'; })
+    && (function () { var a = JSON.parse(JSON.stringify(atSsd)), b = JSON.parse(JSON.stringify(atSblm)); delete a.ciriDaftar; delete b.ciriDaftar; return JSON.stringify(a) === JSON.stringify(b); })(), JSON.stringify([ssd['bu tuti'], ssd['pak oni']]));
+  var R2 = rincianBersihkanCiri(KINI);
+  ok('P23b sesudah bersih: tidak ada lagi yang perlu dibersihkan (lembar hilang), teks bebas tetap dilaporkan & TIDAK diubah; Mas Ucok kini "belum dikenal" di KR1 sistem lama, Teh Imas tetap dikenal lewat catatan',
+    !R2.ada && R2.kartu.length === 0 && R2.bebas.length === 2 && ssd['teh imas'].catatan === 'orang Madura, ramah' && ssd['bu lilis'].catatan === 'jual jaket kulit' && !catatanPelangganBerisi(ssd['mas ucok']) && catatanPelangganBerisi(ssd['teh imas']) && /tidak ada yang perlu/.test(susunBersihkanCiri(KINI, true).tolak) && typeof HS.then === 'function', JSON.stringify({ ada: R2.ada, n: R2.kartu.length, bebas: R2.bebas.length }));
+  // ---- batas satu writeBatch: 201 kartu → 2 batch (200 + 1)
+  var banyak = []; for (var b = 0; b < 201; b++) banyak.push({ id: 'uji' + b, nama: 'Uji ' + b, catatan: '', ciri: 'Sunda', rute: '', cip: ['Sunda'] }); pasok('pelangganCatatan', cacheMentah('pelangganCat').concat(banyak));
+  var BB = susunBersihkanCiri(KINI, true);
+  ok('P23b batas batch: 201 kartu → 2 batch (200 + 1), dilaporkan per batch', !BB.tolak && BB.ubahKolom.length === 2 && BB.ubahKolom[0].length === BATAS_BERSIHKAN && BB.ubahKolom[1].length === 1 && BB.rincian.batch === 2, BB.tolak);
+  pulih(s23); pasok('cadanganCatatan', cadAwal); pasok('logAktivitas', logAwal);
+})();
 var LB = lembarBon(KINI, 'uda feri');
 ok('lembar orang: rincian 2 bon terbuka (yang pertama "dari Rp780.000"), riwayat memuat pembayaran & tagihan (terbaru dulu), pilihan alasan hapus dari aturan', LB.rinci.length === 2 && /dari Rp780\.000/.test(LB.rinci[0].teks) && LB.rinci[0].n === 670000 && LB.riwayat.length === 2 && /ditagih · janji/.test(LB.riwayat[0].teks) && LB.riwayat[1].n === -110000 && LB.alasanPilihan.length === 4, JSON.stringify(LB.riwayat));
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
@@ -209,8 +282,24 @@ var berutang = SB.filter(function (b) { return b.sisa > 0; })[0]; if (berutang) 
 var kenalK = {}; (CAD.pelangganCatatan || []).forEach(function (c) { Object.keys(c).forEach(function (k) { kenalK[k] = 1; }); }); ['cip', 'arah', 'asli', 'kontak', 'biasa', 'diubahPada'].forEach(function (k) { kenalK[k] = 1; });
 var kartuAda = O.find(function (b) { return b.kartu; }); if (kartuAda) { var sk = susunSimpanKartu(KINI, kartuAda.kunci, { nama: kartuAda.nama, cip: kartuAda.cip, catatan: kartuAda.catatan, arah: kartuAda.arah }, WX); if (sk.dokumen) Object.keys(sk.dokumen[0].data).forEach(function (k) { if (!kenalK[k]) asing.push('kartu.' + k); }); else asing.push('kartu ditolak: ' + sk.tolak); }
 var pt = berutang ? pesanTagih(KINI, berutang.kunci) : null;
+// ---- 23b: pratinjau Bersihkan di data toko (TIDAK menulis) + suntikan: kartu nyata diberi cip dicabut, dibersihkan, kolom selain cip/ciri wajib byte-sama
+var jepretT = function () { return JSON.stringify(cacheMentah('pelangganCat')) + JSON.stringify(cacheMentah('aturan')); }; var jt0 = jepretT(); var RB = rincianBersihkanCiri(KINI); var pratinjauDiam = jt0 === jepretT();
+var asli = {}; cacheMentah('pelangganCat').forEach(function (c) { asli[c.id] = JSON.parse(JSON.stringify(c)); });
+var calonCip = cacheMentah('pelangganCat').filter(function (c) { return Array.isArray(c.cip) && c.cip.length; }).slice(0, 3); var calonLama = cacheMentah('pelangganCat').filter(function (c) { return !Array.isArray(c.cip) && String(c.ciri || '').trim(); }).slice(0, 1);
+terapkanKeCache(calonCip.map(function (c) { var cip = c.cip.concat(['sawo matang', 'Sunda']); return { koleksi: 'pelangganCatatan', data: Object.assign({}, c, { cip: cip, ciri: cip.join(' · ') }) }; }).concat(calonLama.map(function (c) { return { koleksi: 'pelangganCatatan', data: Object.assign({}, c, { ciri: c.ciri + ' · kulit gelap' }) }; })));
+var disuntik = {}; cacheMentah('pelangganCat').forEach(function (c) { disuntik[c.id] = JSON.parse(JSON.stringify(c)); });
+pasok('cadanganCatatan', [{ id: 'asap', tanggal: hariIniIso(KINI), jam: '20:00', ok: true }]); var BSx = susunBersihkanCiri(KINI, true); if (BSx.ubahKolom) perbaruiKolom(BSx.ubahKolom, BSx.ringkas);
+// data toko bisa SUDAH memuat cip dicabut (cadangan 24 Sep: ya) — yang wajib ditulis = semua kartu yang memuatnya sesudah suntikan, bukan cuma yang disuntik
+var tanpaCipCiri = function (d) { var x = JSON.parse(JSON.stringify(d)); delete x.cip; delete x.ciri; return JSON.stringify(x); }; var kena = calonCip.concat(calonLama).map(function (c) { return String(c.id); }); var identik = true, pulihCip = true;
+var token = function (d) { return (Array.isArray(d.cip) ? d.cip.map(String) : []).concat(String(d.ciri || '').split(/\s*[·,;]\s*/)); }; var bersihDari = function (a) { return a.filter(function (x) { return !cipTerlarang(x); }); };
+var harus = Object.keys(disuntik).filter(function (id) { return token(disuntik[id]).some(cipTerlarang); }).sort(); var ditulisId = (BSx.ubahKolom || []).reduce(function (a, p) { return a.concat(p); }, []).filter(function (u) { return u.koleksi === 'pelangganCatatan'; }).map(function (u) { return String(u.id); }).sort();
+if (JSON.stringify(harus) !== JSON.stringify(ditulisId)) identik = false;
+cacheMentah('pelangganCat').forEach(function (c) { var id = String(c.id); if (ditulisId.indexOf(id) >= 0) { if (tanpaCipCiri(c) !== tanpaCipCiri(disuntik[id])) identik = false;
+    if (Array.isArray(c.cip) ? JSON.stringify(c.cip) !== JSON.stringify(bersihDari(disuntik[id].cip)) || c.ciri !== c.cip.join(' · ') : token(c).some(cipTerlarang)) pulihCip = false;
+    if (kena.indexOf(id) >= 0 && Array.isArray(c.cip) && JSON.stringify(c.cip) !== JSON.stringify(bersihDari(asli[id].cip))) pulihCip = false; } else if (JSON.stringify(c) !== JSON.stringify(disuntik[id])) identik = false; });
 print(JSON.stringify({ orang: O.length, dikenali: O.filter(function (b) { return b.dikenali; }).length, kunjunganLayar: kunjunganLayar, kunjunganNyata: kunjunganNyata, belanjaLayar: belanjaLayar, belanjaNyata: belanjaNyata, sisaLayar: sisaLayar, sisaMesin: sisaMesin, berutang: SB.filter(function (b) { return b.sisa > 0; }).length,
-  kembar: pasanganKembar(O).length, kosong: O.filter(function (b) { return b.kosong; }).length, diharap: O.filter(function (b) { return b.diharap; }).length, tampah: susunTampah(KINI, []).tanya ? susunTampah(KINI, []).tanya.c : null, wajah: susunWajah(KINI, '').daftar.length, asing: asing, waKop: pt ? pt.baris[0] : null, thr: susunThr(KINI, 2026).daftar.length }));
+  kembar: pasanganKembar(O).length, kosong: O.filter(function (b) { return b.kosong; }).length, diharap: O.filter(function (b) { return b.diharap; }).length, tampah: susunTampah(KINI, []).tanya ? susunTampah(KINI, []).tanya.c : null, wajah: susunWajah(KINI, '').daftar.length, asing: asing, waKop: pt ? pt.baris[0] : null, thr: susunThr(KINI, 2026).daftar.length,
+  bs: { kartu: RB.kartu.length, cip: RB.cip, tanpaCip: RB.tanpaCip.length, belumDikenal: RB.belumDikenal.length, atur: RB.atur, bebas: RB.bebas.length, bebasKolom: RB.bebas.map(function (x) { return x.kolom.join('+'); }), pratinjauDiam: pratinjauDiam, suntik: kena.length, suntikLama: calonLama.length, harus: harus.length + (BSx.rincian && BSx.rincian.atur ? 1 : 0), ditulis: (BSx.ubahKolom || []).reduce(function (a, p) { return a + p.length; }, 0), identik: identik, pulih: pulihCip, tolak: BSx.tolak || '' } }));
 """
 
 
@@ -227,16 +316,46 @@ def utama(js):
     return h['lulus'], h['gagal']
 
 
+LAYAR_JS = open(os.path.join(AKAR, 'baru/js/layar/pelanggan.js'), encoding='utf-8').read()
+LAYAR_CSS = open(os.path.join(AKAR, 'baru/css/pelanggan.css'), encoding='utf-8').read()
+def dengan_layar(js, lj=LAYAR_JS, lc=LAYAR_CSS): return js + '\nvar LAYAR_PL = ' + json.dumps({'js': lj, 'css': lc}) + ';\n'
+
+
 if __name__ == '__main__':
-    js = bundel_baru.bundel(MODUL)
+    inti = bundel_baru.bundel(MODUL); js = dengan_layar(inti)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- putaran 23b: cip warna kulit & suku/logat dicabut
+            'cip sawo matang lolos ke kartu': js.replace(".filter((x, i, a) => x && a.indexOf(x) === i).filter((x) => !cipTerlarang(x)); const lama = kartuTersimpan(kunci);", ".filter((x, i, a) => x && a.indexOf(x) === i); const lama = kartuTersimpan(kunci);"),
+            'pembersihan ikut membuang cip berkacamata': js.replace("const sisa = (punyaCip ? dariCip : dariCiri).filter((x) => !cipTerlarang(x));", "const sisa = (punyaCip ? dariCip : dariCiri).filter((x) => !cipTerlarang(x) && x !== 'berkacamata');"),
+            'kata terlarang dicocokkan sebagai potongan (beras kena "ras")': js.replace("export const KATA_DICABUT = /\\b(kulit|suku|logat|ras|etnis|etnik)(nya)?\\b/i;", "export const KATA_DICABUT = /(kulit|suku|logat|ras|etnis|etnik)/i;").replace("const KATA_DICABUT = /\\b(kulit|suku|logat|ras|etnis|etnik)(nya)?\\b/i;", "const KATA_DICABUT = /(kulit|suku|logat|ras|etnis|etnik)/i;"),
+            'ciri tidak ditulis ulang': js.replace("const kolom = punyaCip ? { cip: sisa, ciri: sisa.join(' · ') } : { ciri: sisa.join(' · ') };", "const kolom = punyaCip ? { cip: sisa } : {};"),
+            'pratinjau menulis dokumen': js.replace("const nama = String(c.nama || c.id); cip += buang.length;", "const nama = String(c.nama || c.id); cip += buang.length; terapkanKeCache([{ koleksi: 'pelangganCatatan', data: Object.assign({}, c, kolom) }]);"),
+            'tombol hidup tanpa cadangan hari ini': js.replace("if (!r.cadangan) return { tolak: 'Unduh cadangan dulu", "if (false) return { tolak: 'Unduh cadangan dulu"),
+            'cadangan kemarin dianggap cukup': js.replace("c.tanggal === iso && c.ok !== false", "c.tanggal <= iso && c.ok !== false"),
+            'bersihkan tanpa ketukan kedua': js.replace("if (!yakin) return { tolak: 'Ketuk sekali lagi untuk membersihkan '", "if (false) return { tolak: 'Ketuk sekali lagi untuk membersihkan '"),
+            'hitungan "tanpa cip" salah (sisa satu dianggap kosong)': js.replace("tanpaCip: sisa.length === 0,", "tanpaCip: sisa.length <= 1,"),
+            '"belum dikenal" tidak melihat catatan & arah': js.replace("belumDikenal: !catatanPelangganBerisi(Object.assign({}, c, kolom))", "belumDikenal: sisa.length === 0"),
+            'baris log memuat isi cip yang dibuang': js.replace("ringkas: 'bersihkan ciri yang dicabut: ' + r.kartu.length", "ringkas: 'bersihkan ciri yang dicabut (' + CIP_DICABUT.join(', ') + '): ' + r.kartu.length"),
+            'setelan cip owner tidak ikut dibersihkan': js.replace("if (r.atur) ubah.push({ koleksi: 'aturanToko'", "if (false) ubah.push({ koleksi: 'aturanToko'"),
+            'setelan ditulis lebih dulu (kalau terputus, bukti terlarang hilang)': js.replace("const ubah = r.kartu.map((k) => ({ koleksi: 'pelangganCatatan', id: k.id, kolom: k.kolom })); if (r.atur) ubah.push(", "const ubah = r.kartu.map((k) => ({ koleksi: 'pelangganCatatan', id: k.id, kolom: k.kolom })); if (r.atur) ubah.unshift("),
+            'batas batch diabaikan (201 kartu sekali tulis)': js.replace("for (let i = 0; i < ubah.length; i += BATAS_BERSIHKAN) ubahKolom.push(ubah.slice(i, i + BATAS_BERSIHKAN));", "ubahKolom.push(ubah);"),
+            'Atur menerima kelompok kulit / asal': js.replace("if (Array.isArray(isi.ciriDaftar) && isi.ciriDaftar.some((x) => x && !plKosong(x.nama) && ciriDicabut(x.nama, x.grup))) return { tolak: TOLAK_CIRI_DICABUT };", ""),
+            'Atur menerima cip berkata suku selama kelompoknya lain': js.replace("const ciriDicabut = (nama, grup) => GRUP_DICABUT.indexOf(String(grup || '')) >= 0 || cipTerlarang(nama);", "const ciriDicabut = (nama, grup) => GRUP_DICABUT.indexOf(String(grup || '')) >= 0;"),
+            'setelan tersimpan yang memuat cip dicabut sampai ke daftar cip layar': js.replace("ciriDaftar: daftar('ciriDaftar', (x) => (x && x.nama && !ciriDicabut(x.nama, x.grup) ?", "ciriDaftar: daftar('ciriDaftar', (x) => (x && x.nama ?"),
+            'kartu lama menampilkan cip dicabut (Hafalan / Wajah)': js.replace("cip: cip.filter((x) => !cipTerlarang(x)), catatan: String(c.catatan || ''),", "cip, catatan: String(c.catatan || ''),"),
+            'kedua saringan lepas: Tampah menanyakan sawo matang': js.replace("ciriDaftar: daftar('ciriDaftar', (x) => (x && x.nama && !ciriDicabut(x.nama, x.grup) ?", "ciriDaftar: daftar('ciriDaftar', (x) => (x && x.nama ?").replace("cip: cip.filter((x) => !cipTerlarang(x)), catatan: String(c.catatan || ''),", "cip, catatan: String(c.catatan || ''),"),
+            'cip owner di kelompok lama hilang saat simpan Atur biasa': js.replace("ciriDaftar: ciri.concat(bawa), arahDaftar: arah,", "ciriDaftar: ciri, arahDaftar: arah,"),
+            'cip bawaan lama dikenali cuma lewat kelompoknya (Sunda di kartu lolos)': js.replace("if (KATA_DICABUT.test(t) || CIP_DICABUT.some((c) => c.toLowerCase() === k)) return true;", "if (KATA_DICABUT.test(t)) return true;"),
+            'svg sketsa memberi kelas nada kulit lagi': dengan_layar(inti, lj=LAYAR_JS.replace("'<svg class=\"sk w' + (sk.warna || 0) + ' ' + (kelas", "'<svg class=\"sk w' + (sk.warna || 0) + ' k' + (sk.kulit || 0) + ' ' + (kelas")),
+            'CSS nada kulit kembali': dengan_layar(inti, lc=LAYAR_CSS + '\n.layar-pelanggan .sk.k3 .kepala { fill: #b97f52; }'),
+            'keterangan tetap di bawah catatan hilang': dengan_layar(inti, lj=LAYAR_JS.replace('Jangan tulis suku, agama, warna kulit, atau kesehatan.', '')),
             # ---- putaran 22
             'hapus nama tanpa ketukan kedua': js.replace("if (!yakin) return { tolak: 'Ketuk sekali lagi untuk menghapus nama \"'", "if (false) return { tolak: 'Ketuk sekali lagi untuk menghapus nama \"'"),
             'nama berbon boleh dihapus (bonnya jadi yatim)': js.replace("const tolak = piutang.length || O.utang > 0 ? '\"' + O.nama + '\" punya buku bon", "const tolak = false ? '\"' + O.nama + '\" punya buku bon"),
             # ---- putaran 21
             'nama paku benang dipotong di tanda hubung ("Al -")': js.replace("const n = String(nama || '').replace(/\\s*-\\s*/g, '-').trim(); if (n.length <= 16) return n;", "const n = String(nama || '').trim(); if (n.length <= 16) return n.split(/\\s+/).slice(0, 2).join(' ');"),
-            'sketsa mengabaikan warna kulit': js.replace("kulit: kulit ? kulit[1] : 0, gemuk:", "kulit: 0, gemuk:"),
+            'sketsa membaca warna kulit lagi (DIGANTI 23b; dulu "sketsa mengabaikan warna kulit")': js.replace("return { kosong: !b.cip.length, kerudung:", "return { kosong: !b.cip.length, kulit: punya(b, 'sawo matang') ? 3 : 0, kerudung:"),
             'brewok tidak menggambar janggut': js.replace("janggut: punya(b, 'janggut') || punya(b, 'brewok')", "janggut: punya(b, 'janggut')"),
             'pembayar bon tidak dihitung datang': js.replace("if (o && m.tipe === 'bayar' && m.tanggal) o.hari[m.tanggal] = (o.hari[m.tanggal] || 0) + 1;", ""),
             'selang dihitung walau kurang dari 3 kedatangan': js.replace("const selang = kunjungan >= 3 ?", "const selang = kunjungan >= 2 ?"),
@@ -286,4 +405,10 @@ if __name__ == '__main__':
             if h['kunjunganLayar'] != h['kunjunganNyata'] or h['belanjaLayar'] != h['belanjaNyata'] or h['sisaLayar'] != h['sisaMesin'] or h['wajah'] != h['orang']: g.append('asap: angka layar tidak cocok dengan baris nyata / mesin')
             print('ASAP DATA TOKO: kolom dokumen (bayar, hapus buku, kartu) vs cadangan: %s · kop WhatsApp: %s' % (', '.join(h['asing']) or 'semua dikenal', h['waKop']))
             if h['asing'] or h['waKop'] != '*TOKO BERAS M.IQBAL*': g.append('asap: dokumen punya kolom yang tidak dikenal cadangan / kop tagihan berubah')
+            b = h['bs']
+            print('ASAP DATA TOKO 23b · pratinjau Bersihkan: %d kartu memuat cip dicabut · %d cip dibuang · %d jadi tanpa cip (%d belum dikenal di KR1) · setelan ikut: %s · teks bebas berkata terlarang: %d (%s) · pratinjau menulis nol: %s'
+                  % (b['kartu'], b['cip'], b['tanpaCip'], b['belumDikenal'], b['atur'], b['bebas'], ', '.join(b['bebasKolom']) or '-', b['pratinjauDiam']))
+            print('ASAP DATA TOKO 23b · suntikan %d kartu nyata (%d gaya lama tanpa larik cip) → %d ditulis dari %d yang wajib · kolom selain cip/ciri byte-sama & kartu lain utuh: %s · cip = semula tanpa cip dicabut & ciri = gabungan cip: %s%s'
+                  % (b['suntik'], b['suntikLama'], b['ditulis'], b['harus'], b['identik'], b['pulih'], (' · DITOLAK: ' + b['tolak']) if b['tolak'] else ''))
+            if not (b['pratinjauDiam'] and b['identik'] and b['pulih'] and b['ditulis'] == b['harus']): g.append('asap 23b: pembersihan di data toko tidak identik')
     sys.exit(2 if g else 0)

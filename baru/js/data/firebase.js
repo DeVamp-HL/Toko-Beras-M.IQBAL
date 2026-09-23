@@ -44,7 +44,7 @@ export function mulai(saatPerluSandi) {
   onAuthStateChanged(auth, (u) => {
     const email = String((u && u.email) || '').toLowerCase();
     status.masuk = !!u && email === EMAIL_TOKO; status.email = email;
-    if (status.masuk) { pasangPendengar(); setelSumber('firestore', 'Firestore toko'); setelPenulis({ tulis: tulisBerkas, hapus: hapusBerkas, arsipkan: arsipkanBerkas, bacaArsip: bacaArsipBerkas, pulihkan: pulihkanBerkas }); pasangDenyut(); }
+    if (status.masuk) { pasangPendengar(); setelSumber('firestore', 'Firestore toko'); setelPenulis({ tulis: tulisBerkas, hapus: hapusBerkas, arsipkan: arsipkanBerkas, bacaArsip: bacaArsipBerkas, pulihkan: pulihkanBerkas, perbarui: perbaruiBerkas }); pasangDenyut(); }
     else saatPerluSandi(u ? 'Perangkat ini masih masuk sebagai ' + email + '. Masukkan sandi OWNER.' : 'Masukkan sandi OWNER. Cukup sekali per perangkat.');
     beriTahu();
   });
@@ -179,6 +179,26 @@ export async function hapusBerkas(daftar) {
   const b = writeBatch(db);
   daftar.forEach(({ koleksi, id }) => b.delete(doc(db, koleksi, String(id))));
   return Promise.race([b.commit().then(() => ({ ok: true })), new Promise((r) => setTimeout(() => r({ antre: true }), 1500))]);
+}
+
+/** Putaran 23b (Bersihkan ciri yang dicabut): UPDATE kolom tertentu saja — TANPA beriAtribusi, supaya kolom lain byte-sama sebelum & sesudah.
+ *  Satu writeBatch per potongan (≤ 200 dokumen); SATU baris log (jumlah saja, tanpa isi cip) di potongan terakhir. Berhenti di potongan yang ditolak. */
+export async function perbaruiBerkas(potongan, ringkas) {
+  if (!db) throw new Error('belum tersambung');
+  if (!status.masuk) throw new Error('belum masuk sebagai owner');
+  const hasil = [];
+  for (let i = 0; i < potongan.length; i++) {
+    const p = potongan[i]; const b = writeBatch(db);
+    p.forEach((x) => b.update(doc(db, x.koleksi, String(x.id)), x.kolom));
+    if (i === potongan.length - 1) { const log = { id: idUnik(), pada: new Date().toISOString(), aksi: 'bersihkan', koleksi: 'pelangganCatatan', idDok: 'ciri-dicabut', oleh: pemegangPerangkat(), perangkat: perangkatRingkas(), ringkas: String(ringkas || '') }; b.set(doc(db, KOLEKSI_LOG, String(log.id)), log); }
+    status.menunggu += 1; beriTahu();
+    const janji = b.commit().then(() => ({ n: p.length, keadaan: 'ok' }))
+      .catch((e) => { status.galat = 'bersihkan ditolak: ' + String((e && e.code) || e); beriTahu(); return { n: p.length, keadaan: 'gagal', pesan: status.galat }; })
+      .finally(() => { status.menunggu = Math.max(0, status.menunggu - 1); beriTahu(); });
+    const h = await Promise.race([janji, new Promise((r) => setTimeout(() => r({ n: p.length, keadaan: 'antre' }), 1500))]);
+    hasil.push(h); if (h.keadaan === 'gagal') break;
+  }
+  return { potongan: hasil, gagal: hasil.some((h) => h.keadaan === 'gagal') };
 }
 
 // ---- ARSIP TAHUN (putaran 18, Tutup buku): pindah ke koleksi arsipTahun per potongan 200 dokumen (400 tulisan < batas 500 writeBatch) ----
