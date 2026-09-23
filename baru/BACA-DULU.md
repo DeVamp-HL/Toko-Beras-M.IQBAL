@@ -4,6 +4,11 @@ Tampilan baru di atas **data yang sama** dengan `index.html` (Firestore proyek `
 Hidup berdampingan di alamat `/baru/`; `index.html` tetap alat yang dipakai toko sampai yang baru terbukti.
 Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko**; 17 Sep: *"mulai sambungkan ke data asli"*.
 
+## Arah (keputusan owner 24 Sep 2026)
+- **`baru/` = sistem utama owner**, kelak dibungkus menjadi aplikasi native. Catatan native 13 Sep (`_privat/rapikan-2026-09-13/peta_native.md`, `skeptis_native.md` — di mesin owner) masih menyebut `index.html`: **bahan, bukan keputusan**.
+- **Tablet kasir = offline-first**, satu perangkat dipakai bergantian, semua akun seizin owner. Pilihan identitasnya (login per orang vs satu akun tablet + PIN per orang) diputuskan di putaran tablet — jangan ditutup.
+- **`index.html` pensiun** setelah `baru/` lengkap. Sampai saat itu keduanya membaca & menulis data yang sama; `index.html` tidak diperbaiki lagi (19 Sep).
+
 ## Putaran 1 (19 Sep 2026) — layar JUAL, baca
 - Rak (Sering · Literan · Kemasan · Karung) dibaca dari data toko lewat **mesin beku yang sama** dengan `index.html`.
 - Keranjang, nego, potongan, antrean (struk parkir **memegang** stoknya), bayar (Tunai/QRIS/Bon), nama pembeli, kartu Hari ini.
