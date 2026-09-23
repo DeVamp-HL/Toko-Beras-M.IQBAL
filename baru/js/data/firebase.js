@@ -4,7 +4,7 @@
 // Proyek, koleksi, akun, dan atribusi (oleh/perangkat/diubah*) sama dengan index.html; jalan tanpa internet
 // diserahkan ke cache tetap Firestore (tulisan mengantre sendiri, terkirim begitu tersambung).
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, onSnapshot, writeBatch, doc, setDoc, query, orderBy, limit, waitForPendingWrites }
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, onSnapshot, writeBatch, doc, setDoc, query, orderBy, limit, where, getDocs, waitForPendingWrites }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
@@ -44,7 +44,7 @@ export function mulai(saatPerluSandi) {
   onAuthStateChanged(auth, (u) => {
     const email = String((u && u.email) || '').toLowerCase();
     status.masuk = !!u && email === EMAIL_TOKO; status.email = email;
-    if (status.masuk) { pasangPendengar(); setelSumber('firestore', 'Firestore toko'); setelPenulis({ tulis: tulisBerkas, hapus: hapusBerkas }); pasangDenyut(); }
+    if (status.masuk) { pasangPendengar(); setelSumber('firestore', 'Firestore toko'); setelPenulis({ tulis: tulisBerkas, hapus: hapusBerkas, arsipkan: arsipkanBerkas, bacaArsip: bacaArsipBerkas, pulihkan: pulihkanBerkas }); pasangDenyut(); }
     else saatPerluSandi(u ? 'Perangkat ini masih masuk sebagai ' + email + '. Masukkan sandi OWNER.' : 'Masukkan sandi OWNER. Cukup sekali per perangkat.');
     beriTahu();
   });
@@ -179,5 +179,47 @@ export async function hapusBerkas(daftar) {
   const b = writeBatch(db);
   daftar.forEach(({ koleksi, id }) => b.delete(doc(db, koleksi, String(id))));
   return Promise.race([b.commit().then(() => ({ ok: true })), new Promise((r) => setTimeout(() => r({ antre: true }), 1500))]);
+}
+
+// ---- ARSIP TAHUN (putaran 18, Tutup buku): pindah ke koleksi arsipTahun per potongan 200 dokumen (400 tulisan < batas 500 writeBatch) ----
+// Langsung ke server (menunggu commit, bukan 1,5 detik): ritual ini wajib internet & satu perangkat. Satu baris log per potongan, bukan per dokumen.
+const KOLEKSI_ARSIP = 'arsipTahun';
+const POTONG = 200;
+export async function arsipkanBerkas(tahun, daftar, progres) {
+  if (!db) throw new Error('belum tersambung');
+  if (!status.masuk) throw new Error('belum masuk sebagai owner');
+  let sudah = 0;
+  for (let i = 0; i < daftar.length; i += POTONG) {
+    const b = writeBatch(db); const potong = daftar.slice(i, i + POTONG);
+    potong.forEach((x) => {
+      b.set(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.id), { id: tahun + '|' + x.koleksi + '|' + x.id, tahun, koleksi: x.koleksi, idAsli: String(x.id), dok: x.data, pada: new Date().toISOString(), oleh: pemegangPerangkat(), perangkat: perangkatRingkas() });
+      b.delete(doc(db, x.koleksi, String(x.id)));
+    });
+    const log = { id: idUnik(), pada: new Date().toISOString(), aksi: 'arsip', koleksi: KOLEKSI_ARSIP, idDok: String(tahun), oleh: pemegangPerangkat(), perangkat: perangkatRingkas(), ringkas: 'tutup buku ' + tahun + ': ' + potong.length + ' dokumen diarsipkan' };
+    b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
+    await b.commit();
+    sudah += potong.length; if (progres) progres(sudah, daftar.length);
+  }
+  return { ok: true, n: sudah };
+}
+export async function bacaArsipBerkas(tahun) {
+  if (!db) throw new Error('belum tersambung');
+  const snap = await getDocs(query(collection(db, KOLEKSI_ARSIP), where('tahun', '==', tahun)));
+  const out = []; snap.forEach((d) => { const a = d.data(); out.push({ koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok }); });
+  return out;
+}
+export async function pulihkanBerkas(tahun, daftar, progres) {
+  if (!db) throw new Error('belum tersambung');
+  if (!status.masuk) throw new Error('belum masuk sebagai owner');
+  let sudah = 0;
+  for (let i = 0; i < daftar.length; i += POTONG) {
+    const b = writeBatch(db); const potong = daftar.slice(i, i + POTONG);
+    potong.forEach((x) => { b.set(doc(db, x.koleksi, String(x.idAsli)), x.dok); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });
+    const log = { id: idUnik(), pada: new Date().toISOString(), aksi: 'pulihkan', koleksi: KOLEKSI_ARSIP, idDok: String(tahun), oleh: pemegangPerangkat(), perangkat: perangkatRingkas(), ringkas: 'batal tutup buku ' + tahun + ': ' + potong.length + ' dokumen dikembalikan' };
+    b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
+    await b.commit();
+    sudah += potong.length; if (progres) progres(sudah, daftar.length);
+  }
+  return { ok: true, n: sudah };
 }
 

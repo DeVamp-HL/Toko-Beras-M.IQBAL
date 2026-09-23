@@ -66,4 +66,12 @@ export const KOLEKSI = [
   { nama: 'hargaPasar',          urut: 'id',    cache: 'hargaPasar' },
   { nama: 'hargaTerbit',         urut: 'id',    cache: 'hargaTerbit' },
   { nama: 'pesananPemasok',      urut: 'id',    cache: 'pesananPemasok' },
+  // Putaran 18 (23 Sep 2026) — UANG (K1–K6): pindahUang = uang berpindah tempat (laci · brankas · rekening; biaya admin bank = pengeluaranHarian);
+  //  absenKaryawan = hari kerja per orang per bulan (penuh · setengah · tidak masuk); slipUpah = tiap pembayaran upah (rentang hari, potongan kasbon, slip);
+  //  tutupBukuAcara = berita acara tutup buku per tahun (langkah, paraf, sebelum/sesudah, status). Semua koleksi BARU (aturan Firestore: owner saja).
+  //  Arsip tahun yang ditutup (arsipTahun) SENGAJA TIDAK di daftar ini: isinya ribuan dokumen tahun lalu, dibaca hanya saat "Batalkan tutup buku".
+  { nama: 'pindahUang',          urut: 'id',    cache: 'pindahUang' },
+  { nama: 'absenKaryawan',       urut: 'id',    cache: 'absen' },
+  { nama: 'slipUpah',            urut: 'id',    cache: 'slipUpah' },
+  { nama: 'tutupBukuAcara',      urut: 'id',    cache: 'tutupBukuAcara' },
 ];
