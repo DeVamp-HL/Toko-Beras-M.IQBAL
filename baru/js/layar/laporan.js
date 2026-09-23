@@ -6,6 +6,7 @@ import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { RP, ANGKA, tanggalPendek } from '../inti/format.js';
 import * as LP from './laporan-logika.js';
+import * as PJ from './pajak-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen } from '../data/toko.js';
@@ -26,7 +27,8 @@ export function pasangLayarLaporan(akar, opsi) {
     bulanB: null, tabB: 'ringkas', aturR: null, yakinBatal: false, pilihBukti: {},
     sampaiN: '', aturN: null,
     tabD: 'laporan', jenisD: 'labarugi', keD: null, rentangD: 1, bandingD: null, paket: PAKET_AWAL(), jenisK: 'setor', pilihK: {}, cariK: '',
-    drafI: null, isiI: null, aturD: null, sibuk: false });
+    drafI: null, isiI: null, aturD: null, sibuk: false,
+    drafPj: null, drafSetor: null, drafLuar: null, yakinPj: null });
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
@@ -74,6 +76,21 @@ export function pasangLayarLaporan(akar, opsi) {
     blPilihBukti: ({ b }) => { const p = Object.assign({}, st().pilihBukti); p[b] = !p[b]; set({ pilihBukti: p, kabar: '' }); },
     blBuktiKeluar: async ({ cara }) => { const B = LP.buktiOmzet(st().pilihBukti, kini()); const I = LP.identitasUsaha(); const D = { kop: LP.kopUntuk(LP.pakaiKop().pakai.omzet, I), judul: 'Bukti Omzet', sub: B.judul, baris: B.baris.map((b) => ({ nama: b.nama + ' · ' + b.tanda, teks: RP(b.n) })).concat([{ nama: 'Jumlah', teks: RP(B.total), kelas: 'jumlah' }]), catatan: 'Jumlah = Σ bulan yang dipilih · dari mesin laba (satu sumber)', tolak: B.tolak || (I.lengkap ? '' : 'Kop belum lengkap: nama & alamat wajib') }; await keluarkan(D, { jenis: 'bukti', judul: 'Bukti omzet', periode: B.n + ' bulan' }, cara); },
     blRekapKeluar: async ({ cara }) => { const D = dokRekap(); await keluarkan(D, { jenis: 'omzet', judul: 'Rekap omzet 12 bulan', periode: D.periode, draf: true }, cara); },
+    // ---- PAJAK (putaran 24, owner saja) — perkiraan, bukan nasihat pajak
+    pjProfilBuka: () => { const P = PJ.pjProfil(); const s2 = (v) => (v === null || v === undefined || v === 0 ? '' : String(v)); set({ drafPj: { wpAtasNama: P.wpAtasNama, jenisWp: P.jenisWp, statusPkp: P.statusPkp, tahunMulaiTarifFinal: s2(P.tahunMulaiTarifFinal), omzetTahunLalu: P.omzetTahunLalu === null ? '' : String(P.omzetTahunLalu), batasBebas: P.batasBebas === null ? '' : String(P.batasBebas), batasOmzet: s2(P.batasOmzet), tarifPerMil: s2(P.tarifPerMil) } }); },
+    pjProfilTutup: () => set({ drafPj: null }), pjProfilKetik: (v, el) => { const d = Object.assign({}, st().drafPj); d[el.dataset.kunci] = String(v).slice(0, 80); set({ drafPj: d }); },
+    pjProfilPilih: ({ kunci, nilai }) => { const d = Object.assign({}, st().drafPj); d[kunci] = nilai; set({ drafPj: d }); }, pjProfilSimpan: () => tulis(PJ.susunProfilPajak(st().drafPj || {}, waktu())),
+    pjPakaiAturan: () => tulis(PJ.susunPakaiAturan(waktu())),
+    pjLuarBuka: ({ b, sumber }) => set({ drafLuar: { bulan: b || bulanKini(), sumber: sumber || 'catatanLama', jumlah: (() => { const n = PJ.pjOmzetLuar(b || bulanKini(), sumber || 'catatanLama'); return n === null ? '' : String(n); })(), keterangan: '' }, yakinPj: null }),
+    pjLuarTutup: () => set({ drafLuar: null }), pjLuarKetik: (v, el) => { const d = Object.assign({}, st().drafLuar); d[el.dataset.kunci] = String(v).slice(0, 120); set({ drafLuar: d }); },
+    pjLuarPilih: ({ kunci, nilai }) => { const d = Object.assign({}, st().drafLuar); d[kunci] = nilai; set({ drafLuar: d }); }, pjLuarSimpan: () => tulis(PJ.susunOmzetLuar(st().drafLuar || {}, waktu())),
+    pjLuarHapus: async ({ id }) => { const r = PJ.susunHapusOmzetLuar(id, st().yakinPj === 'l:' + id); if (r.perluYakin) return set({ yakinPj: 'l:' + id, kabar: r.tolak, kabarAwas: false }); await tulis(r); },
+    pjSetorBuka: ({ b }) => { const T = PJ.pjTahun(null, kini()); const bl = T.daftar.find((x) => x.key === b) || null; set({ drafSetor: { masaPajak: b || '', tanggalSetor: iso(), jumlah: bl && bl.pph > 0 ? String(Math.max(0, bl.pph - bl.jumlahSetor)) : '', ntpn: '', atasNama: PJ.pjProfil().wpAtasNama, catatan: '' }, yakinPj: null }); },
+    pjSetorTutup: () => set({ drafSetor: null }), pjSetorKetik: (v, el) => { const d = Object.assign({}, st().drafSetor); d[el.dataset.kunci] = String(v).slice(0, 160); set({ drafSetor: d }); },
+    pjSetorKetikMasa: ({ b }) => { const d = Object.assign({}, st().drafSetor); d.masaPajak = b; set({ drafSetor: d }); },
+    pjSetorSimpan: () => tulis(PJ.susunSetoran(st().drafSetor || {}, waktu(), kini())),
+    pjSetorHapus: async ({ id }) => { const r = PJ.susunHapusSetoran(id, st().yakinPj === 's:' + id); if (r.perluYakin) return set({ yakinPj: 's:' + id, kabar: r.tolak, kabarAwas: false }); await tulis(r); },
+    pjKeluar: async ({ cara }) => { const T = PJ.pjTahun(null, kini()); const D = PJ.dokRekapPajak(T, LP.kopUntuk(LP.pakaiKop().pakai.omzet, LP.identitasUsaha())); const I = LP.identitasUsaha(); if (!I.lengkap) D.tolak = 'Kop belum lengkap: nama & alamat wajib (Setelan → Kop & identitas)'; await keluarkan(D, { jenis: 'pajak', judul: 'Rekap pajak untuk konsultan', periode: String(T.tahun), draf: !T.lengkap }, cara); },
     // ---- NERACA
     nrSampai: (v) => set({ sampaiN: /^\d{4}-\d{2}-\d{2}$/.test(v) && v <= iso() ? v : '', kabar: '' }), nrHariIni: () => set({ sampaiN: '' }),
     nrAturBuka: () => { const A = LP.aturLaporan(); set({ aturN: { asetTetap: A.asetTetap ? String(A.asetTetap) : '', asetKet: A.asetKet } }); }, nrAturTutup: () => set({ aturN: null }), nrAturKetik: (v, el) => { const a = Object.assign({}, st().aturN); a[el.dataset.kunci] = v; set({ aturN: a }); }, nrAturSimpan: () => tulis(LP.susunAturLaporan(st().aturN || {}, waktu())),
@@ -116,7 +133,7 @@ export function pasangLayarLaporan(akar, opsi) {
       </header>
       <div class="jalur rapat" data-k="keluarga">${LP.KELUARGA_LAPORAN.map(([id, nm]) => h`<div class="seg ${s.keluarga === id ? 'aktif' : ''}" data-aksi="keluarga" data-nama="${id}" data-k="kg-${id}">${nm}</div>`)}</div>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
-      ${s.keluarga === 'laba' ? gambarLaba(s, L) : s.keluarga === 'harian' ? gambarHarian(s, L) : s.keluarga === 'mingguan' ? gambarMingguan(s, L) : s.keluarga === 'bulanan' ? gambarBulanan(s, L) : s.keluarga === 'tahunan' ? gambarTahunan(s, L) : s.keluarga === 'neraca' ? gambarNeraca(s, L) : s.keluarga === 'dokumen' ? gambarDokumen(s, L) : gambarSetelan(s, L)}
+      ${s.keluarga === 'laba' ? gambarLaba(s, L) : s.keluarga === 'harian' ? gambarHarian(s, L) : s.keluarga === 'mingguan' ? gambarMingguan(s, L) : s.keluarga === 'bulanan' ? gambarBulanan(s, L) : s.keluarga === 'pajak' ? gambarPajak(s, L) : s.keluarga === 'tahunan' ? gambarTahunan(s, L) : s.keluarga === 'neraca' ? gambarNeraca(s, L) : s.keluarga === 'dokumen' ? gambarDokumen(s, L) : gambarSetelan(s, L)}
     `);
     gulirkan(akar, RP);
   }
@@ -209,9 +226,70 @@ export function pasangLayarLaporan(akar, opsi) {
     const atur = s.aturR ? h`<div class="kartu lp-lembar" data-k="aturR" style="gap: 8px;"><div class="kepala-lembar"><div class="serif" style="font-size: 18px;">Atur rekap omzet</div><div class="kaca-btn" data-aksi="blAturTutup">tutup</div></div>
       ${[['tarifPerMil', 'Tarif perkiraan — per seribu dari omzet (5 = 0,5 %). 0 = kolom tidak dicetak. Setelan owner, BUKAN nasihat pajak.'], ['batasOmzet', 'Batas omzet tahunan (rupiah). 0 = belum diatur.'], ['tanggalLapor', 'Tanggal lapor tiap bulan (1–28): bulan final dianggap terlambat kalau lewat tanggal ini di bulan berikutnya.']].map(([k, ket]) => h`<div data-k="ar-${k}"><div class="label">${ket}</div><input class="ketik-nama" type="text" inputmode="numeric" value="${s.aturR[k]}" data-ketik="blAturKetik" data-kunci="${k}"></div>`)}<div class="utama" data-aksi="blAturSimpan">SIMPAN</div></div>`
       : h`<div class="kaca-btn" data-aksi="blAturBuka" data-k="aturR-buka" style="min-height: 38px; font-size: 12px;">Atur tarif perkiraan, batas omzet & tanggal lapor${A.dariOwner ? ' · ' + (A.tarifPerMil ? LP.tarifTeks(A.tarifPerMil) : 'tanpa tarif') + ' · ' + (A.batasOmzet ? RP(A.batasOmzet) : 'tanpa batas') + ' · tgl ' + A.tanggalLapor : ' · belum diatur'}</div>`;
+    const kePajak = h`<div class="kaca-btn aktif" data-aksi="keluarga" data-nama="pajak" data-k="ke-pajak" style="min-height: 38px; font-size: 12px;">Rincian pajak → · status per bulan, setoran & NTPN, omzet di luar sistem</div>`;
     const kaki = h`<div class="lp-kaki">Omzet dari mesin laba (satu sumber). Tanda "dilaporkan" hanya untuk bulan yang sudah tutup buku — sampai tutup buku pertama semua bulan DRAF. Tarif & batas diatur owner; bawaan belum diatur, barisnya tidak dicetak.</div>`;
-    if (L === 'hp') return h`<section data-k="bulanan">${hero}${inti}${tab}${grafik}${isiB}${atur}${riwayatHtml()}${kaki}</section>`;
-    return h`<section data-k="bulanan">${grid(L, [h`${hero}${inti}${atur}${kaki}`, h`${tab}${isiB}`, h`${grafik}${riwayatHtml()}`])}</section>`;
+    if (L === 'hp') return h`<section data-k="bulanan">${hero}${inti}${tab}${grafik}${isiB}${kePajak}${atur}${riwayatHtml()}${kaki}</section>`;
+    return h`<section data-k="bulanan">${grid(L, [h`${hero}${inti}${kePajak}${atur}${kaki}`, h`${tab}${isiB}`, h`${grafik}${riwayatHtml()}`])}</section>`;
+  }
+
+  // ---------- PAJAK (putaran 24) · empat kartu + rekap untuk konsultan — semua angka PERKIRAAN, bukan nasihat pajak
+  function gambarPajak(s, L) {
+    const T = PJ.pjTahun(null, kini()); const P = T.P; const A = T.ambang; const pil = (v, id, aksi, kunci) => h`<div class="seg ${v === id ? 'aktif' : ''}" data-aksi="${aksi}" data-kunci="${kunci}" data-nilai="${id}">`;
+    const label = h`<div class="pj-label" data-k="pj-label">${PJ.PJ_LABEL}${T.anggapanOp ? ' · ' + PJ.PJ_ANGGAPAN_OP : ''}</div>`;
+    const diketik = (n, sumber) => h`<span class="pj-diketik" title="diketik owner · ${sumber}">${RP(n)}<small>diketik owner · ${sumber}</small></span>`;
+    // 1 · profil
+    const d = s.drafPj; const profil = d ? h`<div class="kartu lp-lembar" data-k="pj-profil-atur" style="gap: 8px;"><div class="kepala-lembar"><div class="serif" style="font-size: 18px;">Profil wajib pajak</div><div class="kaca-btn" data-aksi="pjProfilTutup">tutup</div></div>
+        <div class="label">Atas nama (nama saja — tanpa NIK, NPWP, atau nomor rekening)</div><input class="ketik-nama" type="text" value="${d.wpAtasNama}" data-ketik="pjProfilKetik" data-kunci="wpAtasNama" placeholder="nama wajib pajak">
+        <div class="label">Jenis wajib pajak</div><div class="jalur rapat">${PJ.PJ_JENIS_WP.map((j) => h`${pil(d.jenisWp, j.id, 'pjProfilPilih', 'jenisWp')}${j.nama}</div>`)}</div>
+        <div class="label">Status PKP</div><div class="jalur rapat">${PJ.PJ_STATUS_PKP.map((j) => h`${pil(d.statusPkp, j.id, 'pjProfilPilih', 'statusPkp')}${j.nama}</div>`)}</div>
+        ${[['tahunMulaiTarifFinal', 'Tahun mulai tarif final (kosong = tidak tahu)'], ['omzetTahunLalu', 'Omzet tahun lalu, rupiah (kosong = tidak diketahui — beda dengan nol)'], ['tarifPerMil', 'Tarif per seribu dari omzet (5 = 0,5 %)'], ['batasBebas', 'Batas bebas setahun, rupiah (orang pribadi)'], ['batasOmzet', 'Batas atas omzet setahun, rupiah']].map(([k, ket]) => h`<div data-k="pj-${k}"><div class="label">${ket}</div><input class="ketik-nama" type="text" inputmode="numeric" value="${d[k]}" data-ketik="pjProfilKetik" data-kunci="${k}"></div>`)}
+        <div class="utama" data-aksi="pjProfilSimpan">SIMPAN PROFIL</div><div class="k2">${PJ.PJ_LABEL}.</div></div>`
+      : h`<div class="kartu" data-k="pj-profil" style="gap: 2px;"><div class="label">1 · Profil wajib pajak</div>
+        ${[['Atas nama', P.wpAtasNama || 'belum diisi'], ['Jenis', (PJ.PJ_JENIS_WP.find((j) => j.id === P.jenisWp) || {}).nama], ['Status PKP', (PJ.PJ_STATUS_PKP.find((j) => j.id === P.statusPkp) || {}).nama], ['Tahun mulai tarif final', P.tahunMulaiTarifFinal === null ? 'tidak diketahui' : String(P.tahunMulaiTarifFinal)], ['Omzet tahun lalu', P.omzetTahunLalu === null ? 'tidak diketahui' : RP(P.omzetTahunLalu)],
+          ['Tarif', P.tarifPerMil ? (P.tarifPerMil / 10).toFixed(1).replace('.', ',') + ' %' : 'belum diatur'], ['Batas bebas', P.batasBebas === null ? 'belum diisi' : RP(P.batasBebas)], ['Batas atas', P.batasOmzet ? RP(P.batasOmzet) : 'belum diatur']].map(([nm, v], i) => h`<div class="lp-terjun" data-k="pp-${i}"><span>${nm}</span><b>${v}</b></div>`)}
+        ${T.anggapanOp ? h`<div class="pita-info emas" data-k="pj-anggapan">${PJ.PJ_ANGGAPAN_OP}</div>` : ''}${P.jenisWp === 'badan' ? h`<div class="pita-info awas">Badan: kolom PPh tidak dihitung — tanyakan konsultan.</div>` : ''}
+        <div class="k2">${P.sumberAturan ? 'Aturan: ' + P.sumberAturan.teks + ' · diisi ' + tanggalPendek(P.sumberAturan.tanggal) : 'Aturan belum diisi — tombol di bawah mengisinya; tiap angka tetap bisa lu ubah.'}</div>
+        <div class="pj-dua"><div class="utama" data-aksi="pjPakaiAturan" data-k="pj-aturan">Pakai aturan PP 55/2022 jo. PP 20/2026</div><div class="kaca-btn" data-aksi="pjProfilBuka">ubah profil & angka</div></div></div>`;
+    // 2 · tahun berjalan
+    const skala = Math.max(1, ...T.daftar.map((b) => b.gabung));
+    const bulan = h`<div class="kartu" data-k="pj-tahun" style="gap: 6px;"><div class="label">2 · Tahun ${T.tahun} · kumulatif ${T.kumTeks}</div>
+      ${T.peringatanTahunLalu ? h`<div class="pita-info awas" data-k="pj-tahun-lalu">${T.peringatanTahunLalu}</div>` : ''}
+      ${A.ada ? h`<div class="pj-ambang" data-k="pj-ambang"><div class="pj-rel"><span style="width: ${Math.min(100, A.pct).toFixed(1)}%;" class="${A.level >= 85 ? 'awas' : ''}"></span>${A.proyeksi ? h`<i class="proyeksi" style="left: ${Math.min(100, A.proyeksi.pct).toFixed(1)}%;" title="proyeksi akhir tahun [PERKIRAAN]"></i>` : ''}${PJ.PJ_AMBANG.map((x) => h`<em style="left: ${x}%;" class="${A.level >= x ? 'lewat' : ''}">${x}</em>`)}</div>
+        <div class="k2">${A.teks}</div>${A.akibat ? h`<div class="pita-info awas">${A.akibat}</div>` : ''}</div>` : h`<div class="k2">Batas atas belum diatur — ambang Rp4,8 miliar tidak digambar.</div>`}
+      <div class="pj-bulan" data-k="pj-bulan">${T.daftar.map((b) => h`<div class="pj-b ${b.status.awas ? 'awas' : ''} ${b.berjalan ? 'jalan' : ''}" data-k="pb-${b.key}">
+        <div class="nm"><b>${b.pendek}</b><i style="height: ${Math.max(3, Math.round(b.gabung / skala * 40))}px;" class="${b.lengkap ? '' : 'kosong'}"></i></div>
+        <div class="isi"><div>${b.lengkap ? RP(b.omzet) : '—'}${b.sistem !== null ? h` <small>sistem ${RP(b.sistem)}${b.sebagian ? ' (mulai ' + tanggalPendek(b.awalSistem) + ')' : ''}</small>` : h` <small>tidak ada di sistem</small>`}</div>
+          ${b.lama !== null || b.lain !== null || b.pasangan !== null ? h`<div class="k2">${b.lama !== null ? diketik(b.lama, 'catatan lama') : ''} ${b.lain !== null ? diketik(b.lain, 'usaha lain') : ''} ${b.pasangan !== null ? diketik(b.pasangan, 'usaha pasangan, ambang saja') : ''}</div>` : ''}
+          <div class="k2">kumulatif ${RP(b.kum)}${b.pph !== null ? ' · PPh ' + RP(b.pph) : ''}${b.setor.length ? ' · disetor ' + RP(b.jumlahSetor) : ''}</div></div>
+        <div class="st"><span class="pj-status ${b.status.kode}">${b.status.teks}</span>${b.lengkap ? '' : h`<span class="tautan" data-aksi="pjLuarBuka" data-b="${b.key}" data-sumber="catatanLama">isi omzet</span>`}${b.pph > 0 && b.status.kode !== 'disetor' && !b.berjalan ? h`<span class="tautan" data-aksi="pjSetorBuka" data-b="${b.key}">catat setoran</span>` : ''}</div></div>`)}</div>
+      <div class="k2">Jumlah perkiraan ${T.totalPph === null ? 'tidak dihitung' : RP(T.totalPph)} · setoran tercatat ${RP(T.totalSetor)} · setor s.d. tanggal ${P.tanggalLapor} bulan berikutnya, KAP-KJS 411128-420 lewat Coretax.</div>${label}</div>`;
+    // 3 · setoran
+    const ds = s.drafSetor; const semuaSetor = PJ.pjSetoranSemua().slice().reverse();
+    const setoran = h`<div class="kartu" data-k="pj-setoran" style="gap: 6px;"><div class="label">3 · Setoran (bukti dari Coretax / bank) · ${semuaSetor.length}</div>
+      ${ds ? h`<div class="pj-form" data-k="pj-setor-form"><div class="label">Masa pajak (bulan omzet yang disetori)</div><div class="lp-bulan">${T.daftar.slice().reverse().map((b) => h`<div class="seg ${ds.masaPajak === b.key ? 'aktif' : ''}" data-aksi="pjSetorKetikMasa" data-b="${b.key}">${b.pendek}</div>`)}</div>
+        ${[['tanggalSetor', 'Tanggal setor', 'date'], ['jumlah', 'Jumlah disetor (rupiah)', 'text'], ['ntpn', 'NTPN (16 karakter angka/huruf di bukti setor)', 'text'], ['atasNama', 'Atas nama (nama saja)', 'text'], ['catatan', 'Catatan (wajib kalau dicatat mundur atau tanpa NTPN)', 'text']].map(([k, ket, tp]) => h`<div data-k="ps-${k}"><div class="label">${ket}</div><input class="ketik-nama" type="${tp}" ${k === 'jumlah' ? mentah('inputmode="numeric"') : ''} value="${ds[k]}" data-ketik="pjSetorKetik" data-kunci="${k}"></div>`)}
+        ${ds.ntpn && PJ.pjCekNtpn(ds.ntpn) ? h`<div class="pita-info awas">${PJ.pjCekNtpn(ds.ntpn)}</div>` : ''}<div class="pj-dua"><div class="utama" data-aksi="pjSetorSimpan">CATAT SETORAN</div><div class="kaca-btn" data-aksi="pjSetorTutup">batal</div></div></div>`
+        : h`<div class="kaca-btn aktif" data-aksi="pjSetorBuka" data-k="pj-setor-buka" style="min-height: 40px;">+ catat setoran</div>`}
+      ${semuaSetor.map((x) => h`<div class="lp-baris dua" data-k="ps-${x.id}"><div><div>${LP.lpNamaBulan(x.masaPajak)} · ${RP(x.jumlah)}</div><div class="k2">disetor ${tanggalPendek(x.tanggalSetor)} · ${x.ntpn ? 'NTPN ' + x.ntpn : 'tanpa NTPN'}${x.catatan ? ' · ' + x.catatan : ''}${x.omzetSaatSetor !== null && x.omzetSaatSetor !== undefined ? ' · omzet saat dicatat ' + RP(x.omzetSaatSetor) : ''}</div></div>
+        <div class="tautan ${s.yakinPj === 's:' + x.id ? 'awas-teks' : ''}" data-aksi="pjSetorHapus" data-id="${x.id}">${s.yakinPj === 's:' + x.id ? 'yakin hapus' : 'hapus'}</div></div>`)}
+      <div class="k2">Setoran boleh untuk bulan yang belum tutup buku (kewajiban setor bulanan). Tanda "dilaporkan" di Bulanan tetap ada; untuk bulan yang punya setoran, statusnya diambil dari setoran.</div></div>`;
+    // 4 · omzet di luar sistem
+    const dl = s.drafLuar; const luar = PJ.pjOmzetLuarSemua().slice().sort((a, b) => String(b.id).localeCompare(String(a.id)));
+    const kartuLuar = h`<div class="kartu" data-k="pj-luar" style="gap: 6px;"><div class="label">4 · Omzet di luar sistem · diketik owner</div>
+      <div class="k2">Sistem ini mencatat sejak ${T.awalSistem ? tanggalPendek(T.awalSistem) : '—'}. Bulan sebelumnya (angka dari ayah), usaha lain wajib pajak yang sama, dan usaha pasangan diketik di sini — tampil beda dari hitungan sistem. Kosong ≠ nol.</div>
+      ${dl ? h`<div class="pj-form" data-k="pj-luar-form"><div class="label">Sumber</div><div class="jalur rapat">${PJ.PJ_SUMBER_LUAR.map((x) => h`${pil(dl.sumber, x.id, 'pjLuarPilih', 'sumber')}${x.nama}</div>`)}</div><div class="k2">${(PJ.PJ_SUMBER_LUAR.find((x) => x.id === dl.sumber) || {}).ket}</div>
+        <div class="label">Bulan</div><input class="ketik-nama" type="month" value="${dl.bulan}" max="${bulanKini()}" data-ketik="pjLuarKetik" data-kunci="bulan">
+        <div class="label">Jumlah (rupiah; ketik 0 kalau memang nol)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${dl.jumlah}" data-ketik="pjLuarKetik" data-kunci="jumlah">
+        <div class="label">Keterangan (dari mana angkanya)</div><input class="ketik-nama" type="text" value="${dl.keterangan}" data-ketik="pjLuarKetik" data-kunci="keterangan">
+        <div class="pj-dua"><div class="utama" data-aksi="pjLuarSimpan">SIMPAN</div><div class="kaca-btn" data-aksi="pjLuarTutup">batal</div></div></div>`
+        : h`<div class="kaca-btn aktif" data-aksi="pjLuarBuka" data-k="pj-luar-buka" style="min-height: 40px;">+ isi omzet di luar sistem</div>`}
+      ${luar.map((x) => h`<div class="lp-baris dua" data-k="pl-${x.id}"><div><div>${LP.lpNamaBulan(x.bulan)} · ${diketik(x.jumlah, (PJ.PJ_SUMBER_LUAR.find((y) => y.id === x.sumber) || {}).nama || x.sumber)}</div>${x.keterangan ? h`<div class="k2">${x.keterangan}</div>` : ''}</div>
+        <div class="tautan ${s.yakinPj === 'l:' + x.id ? 'awas-teks' : ''}" data-aksi="pjLuarHapus" data-id="${x.id}">${s.yakinPj === 'l:' + x.id ? 'yakin hapus' : 'hapus'}</div></div>`)}</div>`;
+    const Dk = PJ.dokRekapPajak(T, LP.kopUntuk(LP.pakaiKop().pakai.omzet, LP.identitasUsaha())); if (!LP.identitasUsaha().lengkap) Dk.tolak = 'Kop belum lengkap';
+    const cetak = h`${kertas(Dk, null, 'kertas-pajak')}${tigaTombol('pjKeluar', Dk.tolak)}`;
+    const sumber = h`<div class="kartu platina" data-k="pj-sumber" style="gap: 2px;"><div class="label">Sumber aturan · dilihat 24 Sep 2026</div>${PJ.PJ_SUMBER.map((x, i) => h`<div class="k2" data-k="sa-${i}">${x.terverifikasi ? '' : h`<b class="awas-teks">[BELUM TERVERIFIKASI]</b> `}${x.klaim}</div>`)}</div>`;
+    if (L === 'hp') return h`<section data-k="pajak">${label}${bulan}${profil}${setoran}${kartuLuar}${cetak}${sumber}</section>`;
+    return h`<section data-k="pajak">${label}${grid(L, [h`${bulan}`, h`${profil}${kartuLuar}`, h`${setoran}${cetak}${sumber}`])}</section>`;
   }
 
   // ---------- NERACA

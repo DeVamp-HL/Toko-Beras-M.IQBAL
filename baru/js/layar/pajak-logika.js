@@ -157,10 +157,10 @@ export function pjStatus(B, P, iso, hitung) {
   if (!hitung) return { kode: 'aturan', teks: 'aturan belum diatur', awas: false };
   if (B.setor.length) {
     if (B.berubah) return { kode: 'berubah', teks: 'angka berubah sejak disetor: omzet ' + (B.berubah.omzet > 0 ? '+' : '−') + RP(Math.abs(B.berubah.omzet)) + (B.berubah.pph ? ' · perkiraan PPh ' + (B.berubah.pph > 0 ? '+' : '−') + RP(Math.abs(B.berubah.pph)) : ''), awas: true };
-    const d = B.jumlahSetor - B.pph;
-    if (d < 0) return { kode: 'kurang', teks: 'kurang setor ' + RP(-d), awas: true };
-    if (d > 0) return { kode: 'lebih', teks: 'lebih setor ' + RP(d), awas: false };
-    return { kode: 'disetor', teks: 'disetor' + (B.ntpn.length ? ' · NTPN ' + B.ntpn.join(', ') : ' · tanpa NTPN'), awas: false };
+    const d = B.jumlahSetor - B.pph; const kurangData = B.lengkapSejauhIni ? '' : ' (data belum lengkap — perkiraannya bisa lebih besar)';
+    if (d < 0) return { kode: 'kurang', teks: 'kurang setor ' + RP(-d) + kurangData, awas: true };
+    if (d > 0) return { kode: 'lebih', teks: 'lebih setor ' + RP(d) + kurangData, awas: false };
+    return { kode: 'disetor', teks: 'disetor' + (B.ntpn.length ? ' · NTPN ' + B.ntpn.join(', ') : ' · tanpa NTPN') + kurangData, awas: false };
   }
   if (!B.lengkapSejauhIni) return { kode: 'belumLengkap', teks: 'data belum lengkap' + (B.pph > 0 ? ' — terutang paling sedikit ' + RP(B.pph) : ' — bisa jadi sudah terutang'), awas: true };
   if (B.pph > 0 && !B.berjalan && iso > B.tempo) return { kode: 'lewatTempo', teks: 'lewat tempo ' + tanggalPendek(B.tempo) + ' · terutang ' + RP(B.pph), awas: true };
@@ -222,15 +222,15 @@ export function pjSumberPengingat(kini) {
 // ==================== cetak: Rekap pajak untuk konsultan ====================
 export function dokRekapPajak(T, kop) {
   const P = T.P; const baris = [{ nama: 'Profil wajib pajak', kelas: 'kel' }, { nama: 'Atas nama', teks: P.wpAtasNama || '(belum diisi)' },
-    { nama: 'Jenis wajib pajak', teks: (PJ_JENIS_WP.find((j) => j.id === P.jenisWp) || {}).nama + (T.anggapanOp ? ' — ' + PJ_ANGGAPAN_OP : '') }, { nama: 'Status PKP', teks: (PJ_STATUS_PKP.find((j) => j.id === P.statusPkp) || {}).nama },
+    { nama: 'Jenis wajib pajak: ' + (PJ_JENIS_WP.find((j) => j.id === P.jenisWp) || {}).nama + (T.anggapanOp ? ' — ' + PJ_ANGGAPAN_OP : ''), teks: '' }, { nama: 'Status PKP', teks: (PJ_STATUS_PKP.find((j) => j.id === P.statusPkp) || {}).nama },
     { nama: 'Tahun mulai tarif final', teks: P.tahunMulaiTarifFinal === null ? 'tidak diketahui' : String(P.tahunMulaiTarifFinal) }, { nama: 'Omzet tahun lalu', teks: P.omzetTahunLalu === null ? 'tidak diketahui' : RP(P.omzetTahunLalu) },
-    { nama: 'Tarif · bebas · batas', teks: (P.tarifPerMil ? (P.tarifPerMil / 10).toFixed(1).replace('.', ',') + ' %' : 'belum diatur') + ' · ' + (P.batasBebas === null ? 'bebas belum diisi' : RP(P.batasBebas)) + ' · ' + (P.batasOmzet ? RP(P.batasOmzet) : 'batas belum diatur') },
+    { nama: 'Tarif', teks: P.tarifPerMil ? (P.tarifPerMil / 10).toFixed(1).replace('.', ',') + ' %' : 'belum diatur' }, { nama: 'Batas bebas setahun', teks: P.batasBebas === null ? 'belum diisi' : RP(P.batasBebas) }, { nama: 'Batas atas setahun', teks: P.batasOmzet ? RP(P.batasOmzet) : 'belum diatur' },
     { nama: 'Per bulan ' + T.tahun, kelas: 'kel' }];
   T.daftar.forEach((b) => {
     const luar = [b.lama !== null ? 'catatan lama ' + RP(b.lama) : '', b.lain !== null ? 'usaha lain ' + RP(b.lain) : '', b.pasangan !== null ? 'usaha pasangan ' + RP(b.pasangan) + ' (ambang saja)' : ''].filter(Boolean).join(' · ');
     baris.push({ nama: b.nama + (b.sebagian ? ' (sistem mulai ' + tanggalPendek(b.awalSistem) + ')' : ''), teks: b.lengkap ? RP(b.omzet) : '—' });
     baris.push({ nama: '  sistem ' + (b.sistem === null ? '—' : RP(b.sistem)) + (luar ? ' · diketik owner: ' + luar : '') + ' · kumulatif ' + RP(b.kum), teks: b.pph === null ? 'PPh tidak dihitung' : 'PPh ' + RP(b.pph) });
-    baris.push({ nama: '  setoran ' + (b.setor.length ? RP(b.jumlahSetor) + (b.ntpn.length ? ' · NTPN ' + b.ntpn.join(', ') : ' · tanpa NTPN') : '—'), teks: b.status.teks });
+    baris.push({ nama: '  setoran ' + (b.setor.length ? RP(b.jumlahSetor) + (b.ntpn.length ? ' · NTPN ' + b.ntpn.join(', ') : ' · tanpa NTPN') : '—') + ' · ' + b.status.teks, teks: '' });
   });
   baris.push({ nama: 'Jumlah perkiraan PPh ' + T.tahun, teks: T.totalPph === null ? 'tidak dihitung' : RP(T.totalPph), kelas: 'jumlah' }, { nama: 'Jumlah setoran tercatat', teks: RP(T.totalSetor), kelas: 'jumlah' });
   baris.push({ nama: 'Sumber aturan (dilihat 24 Sep 2026)', kelas: 'kel' }); PJ_SUMBER.forEach((s) => baris.push({ nama: (s.terverifikasi ? '' : '[BELUM TERVERIFIKASI] ') + s.klaim, teks: '' }));

@@ -168,6 +168,13 @@ ok('WA janji: url wa.me ke 62813… dengan kalimat tagihan yang sama; mencatat w
 ok('aturan pengingat: saklar bon → mati (dokumen nyala.bon=false), yang lewat tetap tercatat; penerima: melepas satu-satunya penerima DITOLAK, menambah Ben → 2', susunSaklarPengingat('bon', W).dokumen[0].data.nyala.bon === false && !!susunKePengingat('bon', 'Owner', W).tolak && J(susunKePengingat('bon', 'Ben', W).dokumen[0].data.ke.bon) === '["Owner","Ben"]' && susunKePengingat('bon', 'Ben', W).dokumen[0].data.ke.janji.length === 2);
 pasok('aturanToko', KOTAK.aturanToko.concat([susunSaklarPengingat('bon', W).dokumen[0].data])); ok('pengingat jenis mati tidak lagi aktif (bon hilang dari aktif) tapi sumbernya tetap ada', !ssPengingat(KINI, LOKAL).aktif.some(function (p) { return p.jenis === 'bon'; }) && ssPengingat(KINI, LOKAL).sumber.some(function (p) { return p.jenis === 'bon'; })); pasok('aturanToko', KOTAK.aturanToko);
 ok('atur pengingat: hariBon 99 ditolak; nyala tanpa penerima ditolak; sah menyimpan opnameTiap 7', /hariBon harus/.test(susunAturSistem('pengingat', { hariBon: 99 }, W).tolak) && /Minimal satu orang/.test(susunAturSistem('pengingat', { ke: { bon: [] } }, W).tolak) && susunAturSistem('pengingat', { opnameTiap: 7 }, W).dokumen[0].data.opnameTiap === 7);
+// ---- putaran 24: pengingat PAJAK — sumbernya dari modul pajak (owner saja) lewat lokal.pajak; H-3 sebelum tanggal 15
+var LP_PJ = Object.assign({}, LOKAL, { pajak: [{ id: 'pajak|2026-08', jenis: 'pajak', kunci: '2026-08', teks: 'Setor PPh final Agustus 2026', siapa: 'pajak', jatuh: '2026-09-21', n: 350000, ket: 'perkiraan' }] });
+var PGP = ssPengingat(KINI, LP_PJ); var pp = PGP.sumber.find(function (p) { return p.id === 'pajak|2026-08'; });
+ok('pengingat pajak: jenis baru "Setoran PPh final bulan lalu" (H-3, penerima Owner); jatuh 21 Sep = 2 hari lagi → aktif; tanpa lokal.pajak (bukan owner / sudah disetor) → tidak ada; jatuh 25 Sep (6 hari) → belum berbunyi',
+  SS_JENIS_PENGINGAT.some(function (j) { return j.id === 'pajak' && j.kunci === 'hariPajak'; }) && ssAtur('pengingat').hariPajak === 3 && J(ssAtur('pengingat').ke.pajak) === '["Owner"]' && pp && pp.sisa === 2 && PGP.aktif.some(function (p) { return p.id === 'pajak|2026-08'; })
+  && !ssPengingat(KINI, LOKAL).sumber.some(function (p) { return p.jenis === 'pajak'; }) && !ssPengingat(KINI, Object.assign({}, LOKAL, { pajak: [Object.assign({}, LP_PJ.pajak[0], { jatuh: '2026-09-25' })] })).aktif.some(function (p) { return p.jenis === 'pajak'; })
+  && /hariPajak/.test(susunAturSistem('pengingat', { hariPajak: 30 }, W).tolak || ''), J(pp));
 // ---- bentuk dokumen: semua yang ditulis punya id & koleksi yang dikenal koleksi.js
 var semuaDok = [].concat(PH.dokumen, CC.dokumen, susunPindahStok('Angsa', 'toko', 'gudang', 50, 'Ben', W).dokumen, susunSelesaiPengingat(pg('bon|402'), '', W).dokumen, susunPutusPersetujuan('m2', true, '', W).dokumen, susunAturSistem('cadangan', { simpanHari: 60 }, W).dokumen);
 ok('dokumen: semua punya id & koleksi yang ada di koleksi.js', semuaDok.every(function (d) { return d.data && d.data.id !== undefined && KOLEKSI.some(function (k) { return k.nama === d.koleksi; }); }), J(semuaDok.map(function (d) { return d.koleksi + ':' + d.data.id; })));
@@ -202,6 +209,8 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            'pengingat pajak dari modul pajak diabaikan': js.replace("(lokal && Array.isArray(lokal.pajak) ? lokal.pajak : []).forEach(", "([]).forEach("),
+            'pengingat pajak tanpa tenggang H-3 (bawaan 0)': js.replace("hariCadangan: 0, hariPajak: 3,", "hariCadangan: 0, hariPajak: 0,"),
             'tempo bon pemasok tidak dipakai (jatuh = tanggal bon)': js.replace("jatuh: b.tanggal && T.hari > 0 ? ssTambahHari(b.tanggal, T.hari) : ''", "jatuh: b.tanggal ? b.tanggal : ''"),
             'baris pita berpindah tempat (diurut menurut jumlah)': js.replace("awas: false, tujuan: k.tujuan, n: k.sel[b] }));", "awas: false, tujuan: k.tujuan, n: k.sel[b] })).sort((p, q) => q.n - p.n);"),
             'nota karcis dihitung sebagai nota meja': js.replace("jual: (d) => (d.dirinciPada ? null : mnJam(d.jam))", "jual: (d) => mnJam(d.jam)"),

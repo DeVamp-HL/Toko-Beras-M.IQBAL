@@ -31,7 +31,7 @@ export const SS_NILAI_HAK = ['sendiri', 'owner', 'tidak'];
 export const SS_LABEL_HAK = { sendiri: 'boleh sendiri', owner: 'minta owner', tidak: 'tidak boleh' };
 const SS_HAK_BAWAAN = { ben: { jualTunai: 'sendiri', jualBon: 'sendiri', nego: 'owner', terimaBon: 'sendiri', hitungLaci: 'sendiri', uangKeluar: 'owner', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'owner', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak' },
   karyawan: { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak' } };
-export const SS_JENIS_PENGINGAT = [['bon', 'Bon pemasok jatuh tempo', 'hariBon'], ['janji', 'Janji bayar pelanggan', 'hariJanji'], ['kantong', 'Kantong menipis', 'hariKantong'], ['opname', 'Opname rutin', 'hariOpname'], ['cadangan', 'Cadangan berkas', 'hariCadangan']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));
+export const SS_JENIS_PENGINGAT = [['bon', 'Bon pemasok jatuh tempo', 'hariBon'], ['janji', 'Janji bayar pelanggan', 'hariJanji'], ['kantong', 'Kantong menipis', 'hariKantong'], ['opname', 'Opname rutin', 'hariOpname'], ['cadangan', 'Cadangan berkas', 'hariCadangan'], ['pajak', 'Setoran PPh final bulan lalu', 'hariPajak']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));
 export const SS_PENERIMA = ['Owner', 'Ben'];
 
 // ---------- ATUR SENDIRI — angka & daftar kebijakan owner, satu dokumen aturanToko per layar; bawaan = angka desain terkunci ----------
@@ -40,8 +40,8 @@ export const SS_ATUR_BAWAAN = {
   peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: 50, jejak: [] },
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
   lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben', 'Gono'] },
-  pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'] },
-    hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, tundaHari: 2, maksTunda: 2, opnameTiap: 14 },
+  pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'] },
+    hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, tundaHari: 2, maksTunda: 2, opnameTiap: 14 },
 };
 const ssSalin = (x) => JSON.parse(JSON.stringify(x));
 /** Setelan layar `id` (perangkat | peran | cadangan | lokasi | pengingat): dokumen owner ditimpakan ke bawaan, kolom demi kolom (bawaan mengisi yang belum diatur). */
@@ -69,7 +69,7 @@ export function susunAturSistem(id, isi, w) {
     else { const hilang = A.daftar.filter((l) => !daftar.some((x) => x.id === l.id)); const isi3 = ssStokLokasi(); const perangkat = cacheMentah('perangkat');
       hilang.forEach((l) => { if (tolak) return; const kg = Object.keys(isi3).reduce((a, m) => a + (isi3[m][l.id] || 0), 0); if (kg > 0.05) tolak = 'Masih ada ' + ANGKA(kg) + ' kg stok di ' + l.nama + ' — pindahkan dulu'; else if (perangkat.some((p) => p.lokasi === l.id)) tolak = perangkat.filter((p) => p.lokasi === l.id).map((p) => p.nama || p.id).join(', ') + ' masih mencatat di ' + l.nama; }); }
     o.daftar = daftar; o.pengantar = nama(isi.pengantar !== undefined ? isi.pengantar : A.pengantar); }
-  else if (id === 'pengingat') { tolak = angka('hariBon', 0, 60, 'hari') || angka('hariJanji', 0, 60, 'hari') || angka('hariKantong', 0, 90, 'hari') || angka('hariOpname', 0, 60, 'hari') || angka('hariCadangan', 0, 60, 'hari') || angka('tundaHari', 1, 30, 'hari') || angka('maksTunda', 0, 10, 'kali') || angka('opnameTiap', 1, 90, 'hari');
+  else if (id === 'pengingat') { tolak = angka('hariBon', 0, 60, 'hari') || angka('hariJanji', 0, 60, 'hari') || angka('hariKantong', 0, 90, 'hari') || angka('hariOpname', 0, 60, 'hari') || angka('hariCadangan', 0, 60, 'hari') || angka('hariPajak', 0, 14, 'hari') || angka('tundaHari', 1, 30, 'hari') || angka('maksTunda', 0, 10, 'kali') || angka('opnameTiap', 1, 90, 'hari');
     o.nyala = Object.assign({}, A.nyala, isi.nyala || {}); o.ke = Object.assign({}, A.ke); Object.keys(isi.ke || {}).forEach((j) => { o.ke[j] = nama(isi.ke[j], 4); }); SS_JENIS_PENGINGAT.forEach((j) => { if (!tolak && o.nyala[j.id] && !(o.ke[j.id] || []).length) tolak = 'Minimal satu orang yang diingatkan untuk ' + j.nama.toLowerCase(); }); }
   else return { tolak: 'Setelan tidak dikenal' };
   if (tolak) return { tolak };
@@ -280,6 +280,8 @@ export function ssSumberPengingat(kini, lokal) {
   out.push({ id: 'opname|' + (opnameAkhir ? ssTambahHari(opnameAkhir, A.opnameTiap) : iso), jenis: 'opname', kunci: 'stok', teks: opnameAkhir ? 'Opname rutin (terakhir ' + tanggalPendek(opnameAkhir) + ')' : 'Opname pertama — belum pernah dicocokkan', siapa: 'stok', jatuh: opnameAkhir ? ssTambahHari(opnameAkhir, A.opnameTiap) : iso, n: 0, ket: 'tiap ' + A.opnameTiap + ' hari (Atur)' });
   const C = ssAtur('cadangan'); let cadAkhir = (lokal && lokal.autoTanggal) || ''; cacheMentah('cadangan').forEach((c) => { if (c.ok !== false && (c.tanggal || '') > cadAkhir) cadAkhir = c.tanggal; });
   out.push({ id: 'cadangan|' + (cadAkhir ? ssTambahHari(cadAkhir, C.cadanganTiap) : iso), jenis: 'cadangan', kunci: 'cadangan', teks: cadAkhir ? 'Cadangan berkas (terakhir ' + tanggalPendek(cadAkhir) + ')' : 'Belum pernah ada cadangan berkas', siapa: 'cadangan', jatuh: cadAkhir ? ssTambahHari(cadAkhir, C.cadanganTiap) : iso, n: 0, ket: 'tiap ' + C.cadanganTiap + ' hari (Atur cadangan)' });
+  // putaran 24: pajak — sumbernya dihitung modul pajak (owner saja) dan diteruskan lewat lokal.pajak: tanggal setor bulan lalu, hanya kalau bulan itu terutang & belum disetor
+  (lokal && Array.isArray(lokal.pajak) ? lokal.pajak : []).forEach((p) => { if (p && p.jenis === 'pajak' && /^\d{4}-\d{2}-\d{2}$/.test(String(p.jatuh || ''))) out.push(p); });
   out.bonTanpaTanggal = bonTanpaTanggal; return out;
 }
 /** Semua pengingat + keadaannya (selesai / ditunda / WA hari ini) menurut aturan owner; kalender −3 … +10 hari. */

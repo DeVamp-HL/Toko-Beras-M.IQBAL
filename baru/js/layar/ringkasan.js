@@ -14,6 +14,7 @@ import { terkunci } from '../inti/kunci.js';
 import { RP } from '../inti/format.js';
 import * as R from './ringkasan-logika.js';
 import { sumberData, dengarkan } from '../data/toko.js';
+import { pjPerhatian } from './pajak-logika.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -25,6 +26,8 @@ const p2 = (n) => String(n).padStart(2, '0');
 const tenggelam = (t) => 1 - Math.pow(1 - t, 3);
 
 export function pasangLayarRingkasan(akar, opsi) {
+  // putaran 24: satu baris pajak di Perlu perhatian — owner saja; modul pajak yang galat tidak boleh mematikan beranda
+  const perhatianPajak = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return []; try { return pjPerhatian(k); } catch (e) { console.error('perhatian pajak', e); return []; } };
   let skala = (() => { try { return localStorage.getItem(KUNCI_SKALA) || 'jam'; } catch (e) { return 'jam'; } })();
   if (!R.SKALA.some((s) => s[0] === skala)) skala = 'jam';
   let ix = null, tampil = false, menitLama = -1, kunciNotaLama = null, angkaTampil = null, rafAngka = 0, sektorKini = [], pilihId = null, jamPilih = 0, detikTotal = 0, jagaAngka = 0;
@@ -150,7 +153,7 @@ export function pasangLayarRingkasan(akar, opsi) {
     if (!tampil || terkunci()) return;
     if (!$('rkHero')) bangun();   // tirai baru terbuka: kerangka dibangun ulang
     if (!ix) ix = R.bangunIndeks();
-    const k = kini(); const r = R.susunRingkasan(skala, ix, k); const kas = R.susunKas(k); const perhatian = R.susunPerhatian(); const sumber = sumberData();
+    const k = kini(); const r = R.susunRingkasan(skala, ix, k); const kas = R.susunKas(k); const perhatian = R.susunPerhatian().concat(perhatianPajak(k)); const sumber = sumberData();
     menitLama = k.getHours() * 60 + k.getMinutes(); sektorKini = r.sektor;
     const pertama = sebab === 'tampil'; const gantiSk = sebab === 'skala';
     const kunciBaru = r.umpan.length ? r.umpan[0].k : ''; const mendarat = !pertama && kunciNotaLama !== null && !!kunciBaru && kunciBaru !== kunciNotaLama; kunciNotaLama = kunciBaru;
