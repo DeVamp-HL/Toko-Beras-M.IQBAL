@@ -7,6 +7,7 @@ import * as L from './jual-logika.js';
 import * as RT from './retur-logika.js';
 import * as WJ from './wadah-jual-logika.js';
 import * as ST from './struk-logika.js';
+import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso } from '../inti/format.js';
 import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
@@ -57,6 +58,7 @@ export function pasangLayarJual(akar, opsi) {
     uangKetik: () => set(L.uangKetik(S())),
     hapusUang: () => set({ uang: 0 }),
     simpan: async () => {
+      if (S().karcis) return aksi.simpanRinci();
       const r = L.simpanNota(S());
       if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
       const keranjangTadi = S().keranjang.slice(); const uangTadi = S().cara === 'Tunai' ? S().uang : 0;
@@ -69,7 +71,39 @@ export function pasangLayarJual(akar, opsi) {
       } catch (e) { set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
     },
     bukaKredit: () => set({ kreditDibuka: true, kabar: 'Kredit dibuka sekali untuk nota ini — keputusan owner, tercatat di nota', kabarAwas: false }),
+    // ---- PUTARAN 20: rinci karcis kasir darurat (karcis-logika.js) ----
+    bukaKarcis: () => set({ lembar: 'karcis', kabar: '' }),
+    karcisPilih: ({ id }) => set(KC.ikatKarcis(S(), id, S().sekarang || new Date())),
+    karcisTebak: ({ i }) => { const s = S(); if (!s.karcis) return; const T = KC.tebakanKarcis(s.karcis.nominal)[Number(i)]; if (!T) return; set(KC.pakaiTebakan(s, T)); },
+    karcisLepas: () => set(KC.lepasKarcis(S())),
+    karcisPerbaiki: () => tulisUmum(KC.susunPerbaikanKarcis(S(), L.waktuSekarang(S().sekarang || undefined))),
+    urungRinci: async ({ g, asli }) => { const r = KC.susunUrungRinci({ grupNota: g, asliId: asli }, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); try { await tulisDokumen(r.dokumen); if (r.hapus.length) await hapusDokumen(r.hapus); set(Object.assign({}, r.patch, { lembar: 'karcis' })); } catch (e) { set({ kabar: 'GAGAL menarik balik: ' + (e && e.message ? e.message : e), kabarAwas: true }); } },
+    simpanRinci: async () => {
+      const r = KC.susunRinciDokumen(S(), L.waktuSekarang(S().sekarang || undefined));
+      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
+      set({ kabar: 'Menyimpan rincian…', kabarAwas: false });
+      try { const h = await tulisDokumen(r.dokumen); if (h && h.gagal) return set({ kabar: 'DITOLAK, rincian tidak tersimpan: ' + h.pesan, kabarAwas: true });
+        set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI (cadangan, tidak ke Firestore) — ' : h && h.antre ? 'Tersimpan di perangkat, menunggu server — ' : 'Tersimpan — ') + r.ringkas }));
+      } catch (e) { set({ kabar: 'GAGAL menyimpan rincian: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+    },
+    // ---- PUTARAN 20: retur TANPA nota & tukar yatim (retur-logika.js) ----
+    rtTanpaBuka: () => set(Object.assign(RT.returAwal(), { rtCari: S().rtCari, lembar: 'returTanpa', ketik: '' })),
+    rtJenis: ({ v }) => set({ rtJenis: v, rtBarang: '', rtYakin: false, ketik: '' }),
+    rtBarang: ({ k }) => set({ rtBarang: k, rtYakin: false }),
+    rtSelisih: (v) => set({ rtSelisih: String(v || '').slice(0, 15) }),
+    catatReturTanpa: async () => {
+      const r = RT.susunReturTanpaNota(S(), L.waktuSekarang(S().sekarang || undefined));
+      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, rtYakin: !!r.perluYakin });
+      try { const h = await tulisDokumen(r.dokumen); if (h && h.gagal) return set({ kabar: 'DITOLAK, retur tidak tersimpan: ' + h.pesan, kabarAwas: true });
+        set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar })); } catch (e) { set({ kabar: 'GAGAL mencatat retur: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+    },
+    tkSusul: ({ id }) => { const r = RT.ikatSusulan(id); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); const p = L.ikatTukar(S(), r.ikat); if (p.kabar) return set(p); set(Object.assign({}, p, { jalur: 'sering', lembar: null, kabar: r.kabar, kabarAwas: false })); },
+    tkYakinLebih: () => set(L.yakinLebihSusulan(S())),
+    tkSudahBuka: ({ id }) => set({ rtPengganti: id, lembar: 'pengganti', kabar: '' }),
+    tkSudahPilih: ({ id }) => tulisUmum(RT.susunPenggantiTercatat(S().rtPengganti, id, L.waktuSekarang(S().sekarang || undefined))),
     batalkanNota: async () => {
+      const nt = S().notaTerakhir;
+      if (nt && nt.rinci) { const r = KC.susunUrungRinci(nt.rinci, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); try { await tulisDokumen(r.dokumen); if (r.hapus.length) await hapusDokumen(r.hapus); set(r.patch); } catch (e) { set({ kabar: 'GAGAL menarik balik: ' + (e && e.message ? e.message : e), kabarAwas: true }); } return; }
       const p = L.susunPembatalan(S().notaTerakhir, 'Diurungkan dari sistem baru');
       if (!p) return set({ notaTerakhir: null, kabar: 'Tidak ada nota yang bisa dibatalkan', kabarAwas: true });
       try {
@@ -261,7 +295,7 @@ export function pasangLayarJual(akar, opsi) {
   function rakKini() {
     const s = S(); L.sinkronKeranjang(s);
     // rak bergantung pada ISI keranjang (jumlah + bonus), bukan cuma banyaknya baris — +1 unit atau bonus mengubah sisa chip
-    const tanda = (s.tukar ? 'tk' : '') + s.pelanggan + '|' + s.keranjang.map((b) => b.trx.jenis + ':' + b.trx.jumlah + ':' + (b.trx.bonusUnit || 0) + ':' + (b.trx.kemasanRepack || '') + (b.trx.jumlahKemasanRepackDipakai || '')).join(',') + '|' + s.antrean.length + '|' + opsi.versiData();
+    const tanda = (s.tukar ? 'tk' : '') + (s.karcis ? 'kc' + s.karcis.id : '') + s.pelanggan + '|' + s.keranjang.map((b) => b.trx.jenis + ':' + b.trx.jumlah + ':' + (b.trx.bonusUnit || 0) + ':' + (b.trx.kemasanRepack || '') + (b.trx.jumlahKemasanRepackDipakai || '')).join(',') + '|' + s.antrean.length + '|' + opsi.versiData();
     if (!_rak || _rakUntuk !== tanda) { _rak = L.susunRak(s); _rakUntuk = tanda; }
     return _rak;
   }
@@ -278,6 +312,7 @@ export function pasangLayarJual(akar, opsi) {
     // lembar hanya "naik" saat pertama dibuka — tiap ketukan menggambar ulang, jangan mengulang animasinya
     const muncul = s.lembar !== _lembarSebelum ? 'muncul' : ''; _lembarSebelum = s.lembar;
     const adaUrung = !!(s.notaTerakhir && Date.now() - s.notaTerakhir.pada < L.BATAS_URUNGKAN_DETIK * 1000);
+    const KCn = KC.daftarKarcis(s.sekarang || new Date()); const KH = KC.hitungKarcis(s);   // PUTARAN 20
     document.body.classList.toggle('ada-lembar', !!s.lembar && s.lembar !== 'keranjang');
     document.body.classList.toggle('keranjang-terbuka', s.lembar === 'keranjang');
     pasang(akar, h`
@@ -291,9 +326,11 @@ export function pasangLayarJual(akar, opsi) {
         </div>
       </header>
       ${sumber.jenis === 'cadangan' ? h`<div class="pita-info emas baca-saja">SIMULASI — angka dari ${sumber.keterangan}; nota yang dicatat di sini TIDAK masuk Firestore.</div>` : sumber.jenis !== 'firestore' ? h`<div class="pita-info awas baca-saja">Belum tersambung ke data toko — masuk dulu sebagai owner.</div>` : h`<div class="pita-info emas baca-saja">Nota dicatat ke data toko yang sama dengan sistem lama · ${opsi.statusTeks()}</div>`}
-      ${s.kabar || adaUrung ? h`<div class="kabar-kotak">
+      ${s.kabar || adaUrung || s.karcis || (KCn.daftar.length && s.lembar !== 'karcis') ? h`<div class="kabar-kotak">
         ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : ''}" data-aksi="tutupKabar">${s.kabar}</div>` : ''}
-        ${adaUrung ? h`<div class="pita-info urung"><span>Nota barusan: ${s.notaTerakhir.ringkas}</span><span style="display: flex; gap: 6px;"><span class="kaca-btn" data-aksi="bukaStruk" data-trx="${s.notaTerakhir.trxId}">Struk ›</span><span class="kaca-btn putus" data-aksi="batalkanNota">Batalkan nota barusan</span></span></div>` : ''}
+        ${s.karcis ? h`<div class="pita-info emas" data-k="pita-karcis" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>${s.karcis.jenisAsal === 'karcis' ? 'RINCI KARCIS' : 'RAPIKAN NOTA'} ${KC.kcEkor(s.karcis.id)} · ${RP(s.karcis.nominal)} · ${KH ? KH.teks : ''}</span><span style="display: flex; gap: 6px;"><span class="kaca-btn" data-aksi="bukaKarcis">tebakan ›</span><span class="kaca-btn putus" data-aksi="karcisLepas">lepas</span></span></div>` : ''}
+        ${!s.karcis && KCn.daftar.length && s.lembar !== 'karcis' ? h`<div class="pita-info awas" data-k="pita-antrean-karcis" data-aksi="bukaKarcis" style="cursor: pointer;">${KCn.nKarcis ? KCn.nKarcis + ' karcis kasir belum dirinci (' + RP(KCn.total) + ')' : ''}${KCn.nKarcis && KCn.nRapikan ? ' · ' : ''}${KCn.nRapikan ? KCn.nRapikan + ' nota kasir perlu dirapikan' : ''} — ketuk untuk merinci</div>` : ''}
+        ${adaUrung ? h`<div class="pita-info urung"><span>${s.notaTerakhir.rinci ? 'Rincian barusan' : 'Nota barusan'}: ${s.notaTerakhir.ringkas}</span><span style="display: flex; gap: 6px;">${s.notaTerakhir.rinci ? '' : h`<span class="kaca-btn" data-aksi="bukaStruk" data-trx="${s.notaTerakhir.trxId}">Struk ›</span>`}<span class="kaca-btn putus" data-aksi="batalkanNota">${s.notaTerakhir.rinci ? 'Tarik balik rincian' : 'Batalkan nota barusan'}</span></span></div>` : ''}
       </div>` : ''}
 
       <section class="jual-rak">
@@ -361,8 +398,10 @@ export function pasangLayarJual(akar, opsi) {
   }
 
   function gambarRetur(s) {
-    const daftar = RT.daftarNotaRetur(s);
+    const daftar = RT.daftarNotaRetur(s); const yatim = RT.returYatim();
     return h`<div class="pita-info">Retur MENUNJUK NOTA: ketuk nota barangnya, isi berapa yang kembali — nilainya dihitung dari nota itu. Uang kembali atau tukar barang.</div>
+      ${yatim.length ? h`<div class="kartu" data-k="yatim" style="gap: 6px; border-color: var(--awas);"><div class="label">Tukar yang penggantinya belum tercatat · ${yatim.length}</div>${yatim.map((y) => h`<div class="baris-nota" data-k="y-${y.id}" style="cursor: default;"><div class="atas"><span><b>${y.barang}</b> · tukar ${tanggalPendek(y.tanggal)} ${y.jam}</span><span class="n">${RP(y.nominal)}</span></div><div class="ket">${y.teks}</div><div class="tombol-baris" style="grid-template-columns: 1fr 1fr; margin-top: 4px;"><div class="kaca-btn aktif" data-aksi="tkSusul" data-id="${y.id}">catat penggantinya</div><div class="kaca-btn" data-aksi="tkSudahBuka" data-id="${y.id}">pengganti sudah tercatat</div></div></div>`)}<div class="ket">Selama penggantinya belum tercatat, kas tercatat KURANG dan Tutup Hari terbaca LEBIH. "Pengganti sudah tercatat" kalau penggantinya sudah dijual sebagai nota biasa — jangan dicatat dua kali.</div></div>` : ''}
+      <div class="kaca-btn putus" data-aksi="rtTanpaBuka" data-k="tanpa-nota" style="min-height: 40px;">Tidak ada notanya? Retur ketik tangan ›</div>
       <input class="ketik-nama" id="rtCari" type="text" value="${s.rtCari}" data-ketik="rtCari" placeholder="cari nama pembeli / barang (60 hari terakhir)">
       <div class="kartu daftar-nota">${daftar.map((o) => h`<div class="baris-nota ${o.bisa ? '' : 'tak-bisa'}" ${o.bisa ? mentah('data-aksi="tunjukNota"') : ''} data-id="${o.id}">
         <div class="atas"><span><b>${o.teks}</b>${o.nama ? ' · ' + o.nama : ''}</span><span class="n">${RP(o.hargaTotal)}</span></div>
@@ -466,6 +505,66 @@ export function pasangLayarJual(akar, opsi) {
             ${s.rtTimpa ? h`<input class="ketik-nama" id="rtNominal" type="text" inputmode="numeric" value="${s.rtNominal}" data-ketik="rtNominal" placeholder="uang yang dikembalikan (Rp), paling banyak ${RP(n.nilai)}"><input class="ketik-nama" id="rtAlasanTimpa" type="text" value="${s.rtAlasanTimpa}" data-ketik="rtAlasanTimpa" placeholder="kenapa lebih kecil (wajib, jejak permanen)">` : ''}`}
         ${s.kabar && s.kabarAwas ? h`<div class="pita-info awas">${s.kabar}</div>` : ''}
         <div class="utama" data-aksi="catatRetur">${tukar ? 'IKAT KE KERANJANG · pilih penggantinya' : 'CATAT RETUR · uang keluar ' + RP(s.rtTimpa ? L.angkaRupiah(s.rtNominal) : n.nilai)}</div>
+      </div>`;
+    }
+    if (s.lembar === 'returTanpa') {
+      const D = RT.daftarBarangRetur(); const B = RT.barangReturDipilih(s); const tukar = s.rtPenyelesaian === 'tukar'; const daftar = s.rtJenis === 'kemasan' ? D.kemasan : D.karung;
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
+        ${kepala('Retur tanpa nota', 'ketik tangan — tidak ada nota yang menghitungkan nilainya')}
+        <div class="tombol-baris"><div class="kaca-btn ${s.rtJenis === 'karung' ? 'aktif' : ''}" data-aksi="rtJenis" data-v="karung">Karung</div><div class="kaca-btn ${s.rtJenis === 'kemasan' ? 'aktif' : ''}" data-aksi="rtJenis" data-v="kemasan">Kemasan</div></div>
+        <div class="bendera">${daftar.map((x) => h`<span class="pil ${s.rtBarang === x.kunci ? 'nyala' : ''}" data-aksi="rtBarang" data-k="${x.kunci}">${x.nama}</span>`)}</div>
+        ${B ? h`<div class="ket">${B.nama}: pernah terjual ${DESIMAL(B.terjual)} ${B.satuan}, sudah diretur ${DESIMAL(B.diretur)}</div>` : h`<div class="ket">pilih barangnya</div>`}
+        <div class="label">Berapa ${B ? B.satuan : ''} yang kembali</div>
+        <div class="angka">${s.ketik || '0'} <span class="ket">${B ? B.satuan : ''}</span></div>
+        ${tuts(null, '')}
+        <div class="label">Barangnya boleh dijual lagi?</div>
+        <div class="tombol-baris"><div class="kaca-btn ${s.rtKondisi === 'utuh' ? 'aktif' : ''}" data-aksi="rtKondisi" data-v="utuh">Layak → kembali ke stok</div><div class="kaca-btn ${s.rtKondisi === 'tidak_utuh' ? 'aktif' : ''}" data-aksi="rtKondisi" data-v="tidak_utuh">Rusak / ragu → Karantina</div></div>
+        <div class="label">Alasan (wajib)</div>
+        <div class="bendera">${RT.ALASAN_RETUR.map((a) => h`<span class="pil ${s.rtAlasan === a ? 'nyala' : ''}" data-aksi="rtAlasanChip" data-v="${a}">${a}</span>`)}</div>
+        <input class="ketik-nama" id="rtAlasan" type="text" value="${s.rtAlasan}" data-ketik="rtAlasan" placeholder="atau tulis alasannya">
+        <div class="label">Diselesaikan dengan</div>
+        <div class="tombol-baris"><div class="kaca-btn ${tukar ? '' : 'aktif'}" data-aksi="rtPenyelesaian" data-v="refund">Uang kembali</div><div class="kaca-btn ${tukar ? 'aktif' : ''}" data-aksi="rtPenyelesaian" data-v="tukar">Tukar barang</div></div>
+        ${tukar ? h`<input class="ketik-nama" id="rtSelisih" type="text" inputmode="numeric" value="${s.rtSelisih}" data-ketik="rtSelisih" placeholder="selisih tukar (Rp) — 0 kalau tidak ada; minus = pembeli menambah"><div class="pita-info">Penggantinya dijual seperti biasa dengan pil <b>pengganti retur</b> di baris keranjang (omzet Rp0, modal tetap keluar).</div>`
+          : h`<input class="ketik-nama" id="rtNominal" type="text" inputmode="numeric" value="${s.rtNominal}" data-ketik="rtNominal" placeholder="uang yang dikembalikan (Rp) — wajib">`}
+        ${s.kabar && s.kabarAwas ? h`<div class="pita-info awas">${s.kabar}</div>` : ''}
+        <div class="utama ${s.rtYakin ? 'pegas' : ''}" data-aksi="catatReturTanpa">${s.rtYakin ? 'YA, MEMANG BENAR — CATAT' : tukar ? 'CATAT RETUR TUKAR (tanpa nota)' : 'CATAT RETUR · uang keluar ' + RP(L.angkaRupiah(s.rtNominal))}</div>
+      </div>`;
+    }
+    if (s.lembar === 'pengganti') {
+      const calon = RT.calonPengganti(s.rtPengganti, s.sekarang || new Date()); const y = RT.returYatim().find((x) => x.id === String(s.rtPengganti));
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
+        ${kepala('Pengganti sudah tercatat', y ? 'tukar ' + tanggalPendek(y.tanggal) + ' ' + y.jam + ' · ' + y.barang + ' · ' + y.teks : 'retur tidak ditemukan')}
+        <div class="ket">Penjualan mana yang PENGGANTINYA? Memilih = pengganti tukar ini dianggap SUDAH BENAR walau nilainya berbeda. Penjualannya tidak diubah — tandanya disimpan di dokumen retur.</div>
+        <div class="kartu daftar-nota">${calon.map((c) => h`<div class="baris-nota" data-aksi="tkSudahPilih" data-id="${c.id}" data-k="c-${c.id}"><div class="atas"><span><b>${c.teks}</b>${c.nama ? ' · ' + c.nama : ''}${c.sudahTertaut ? ' · sudah tertaut' : ''}</span><span class="n">${RP(c.hargaTotal)}</span></div><div class="ket">${tanggalPendek(c.tanggal)} ${c.jam}</div></div>`)}${calon.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Tidak ada penjualan sejak tanggal tukar yang bisa jadi penggantinya — pakai "catat penggantinya".</div>`}</div>
+      </div>`;
+    }
+    if (s.lembar === 'karcis') {
+      const KCn = KC.daftarKarcis(s.sekarang || new Date()); const KH = KC.hitungKarcis(s); const T = s.karcis ? KC.tebakanKarcis(s.karcis.nominal) : []; const R = KC.riwayatRinci(hariIniIso(s.sekarang || new Date()));
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
+        ${kepala('Karcis kasir', KCn.daftar.length ? KCn.nKarcis + ' karcis · ' + KCn.nRapikan + ' perlu dirapikan' : 'antrean kosong')}
+        ${s.karcis ? h`<div class="pita-info emas">${s.karcis.jenisAsal === 'karcis' ? 'Merinci karcis' : 'Merapikan nota'} ${KC.kcEkor(s.karcis.id)} · ${RP(s.karcis.nominal)} · ${tanggalPendek(s.karcis.tanggal)} ${s.karcis.jam}${s.karcis.oleh ? ' · oleh ' + s.karcis.oleh : ''} — ${KH.teks}</div>
+          <div class="label">Tebakan dari katalog · sekali ketuk mengisi keranjang</div>
+          ${T.length ? h`<div class="bendera">${T.map((t, i) => h`<span class="pil ${t.tepat ? '' : 'awas'}" data-aksi="karcisTebak" data-i="${i}">${t.label}</span>`)}</div>` : h`<div class="ket">Tidak ada tebakan pas dari katalog — kemungkinan ada harga nego di dalamnya. Pilih barangnya dari rak satu per satu; barang nego ketuk harganya.</div>`}
+          <div class="tombol-baris"><div class="kaca-btn" data-aksi="tutup">ke rak ›</div><div class="kaca-btn putus" data-aksi="karcisLepas">lepas karcis</div></div>` : ''}
+        <div class="label">Antrean · ketuk untuk merinci</div>
+        <div class="kartu daftar-nota">${KCn.daftar.map((k) => h`<div class="baris-nota ${s.karcis && s.karcis.id === k.id ? 'dipilih' : ''}" data-aksi="karcisPilih" data-id="${k.id}" data-k="kc-${k.id}"><div class="atas"><span><b>${k.teks}</b>${k.nama ? ' · ' + k.nama : ''}</span><span class="n">${RP(k.nominal)}</span></div><div class="ket">${k.hariIni ? 'hari ini' : tanggalPendek(k.tanggal)} ${k.jam} · ${k.cara}${k.oleh ? ' · ' + k.oleh : ''}</div></div>`)}${KCn.daftar.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Semua karcis sudah dirinci.</div>`}</div>
+        ${R.length ? h`<div class="label">Rincian hari ini · tarik balik kalau keliru</div><div class="kartu daftar-nota">${R.map((r) => h`<div class="baris-nota" data-k="rr-${r.grupNota}" style="cursor: default;"><div class="atas"><span>${r.n} barang dari karcis ${KC.kcEkor(r.asliId)} · ${r.jam}</span><span class="n">${RP(r.total)}</span></div>${r.utuh ? h`<div class="kaca-btn putus" style="min-height: 32px; font-size: 11.5px; margin-top: 4px;" data-aksi="urungRinci" data-g="${r.grupNota}" data-asli="${r.asliId}">tarik balik rincian ini</div>` : h`<div class="ket">sebagian sudah dikoreksi — tidak bisa ditarik balik utuh</div>`}</div>`)}</div>` : ''}
+        <div class="ket">Rincian ditulis dengan tanggal & jam karcisnya; sisa yang belum terurai tetap jadi karcis (uang masuk tidak pernah hilang); karcis asli ditandai, tidak dihapus. Yang ditolak cuma barang melebihi uang yang masuk.</div>
+      </div>`;
+    }
+    if (s.lembar === 'bayar' && s.karcis) {
+      const k = s.karcis; const KH = KC.hitungKarcis(s);
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-bayar-karcis">
+        ${kepala(k.jenisAsal === 'karcis' ? 'Simpan rincian' : 'Simpan rapikan', 'karcis ' + KC.kcEkor(k.id) + ' · ' + tanggalPendek(k.tanggal) + ' ' + k.jam)}
+        <div class="total"><span class="label">Uang yang masuk (karcis)</span><span class="n">${RP(k.nominal)}</span></div>
+        <div class="total"><span class="label">Barang di keranjang</span><span class="n" style="font-size: 20px;" data-gulir="${KH.total}">${RP(KH.total)}</span></div>
+        <div class="pita-info ${KH.lebih ? 'awas' : KH.pas ? 'emas' : ''}">${KH.teks}</div>
+        <div class="label">Cara bayar waktu itu</div>
+        <div class="tombol-baris">${[['Tunai', 'Tunai'], ['QRIS', 'QRIS'], ['Kredit', 'Bon']].map(([c, nm]) => h`<div class="kaca-btn ${s.cara === c ? 'aktif' : ''}" data-aksi="cara" data-cara="${c}">${nm}</div>`)}</div>
+        <div class="kaca-btn" data-aksi="bukaPelanggan">${s.pelanggan ? s.pelanggan : 'Nama pembeli' + (s.cara === 'Kredit' ? ' (wajib untuk bon)' : ' (boleh kosong)')}</div>
+        <div class="utama ${KH.lebih || !s.keranjang.length ? 'redup' : ''}" data-aksi="simpanRinci">${!s.keranjang.length ? 'Tambahkan barangnya dulu' : KH.lebih ? 'Kelebihan — betulkan dulu' : 'SIMPAN RINCIAN · ' + s.keranjang.length + ' barang'}</div>
+        ${k.jenisAsal === 'karcis' ? h`<div class="kaca-btn putus" data-aksi="karcisPerbaiki" style="min-height: 36px; font-size: 12px;">hanya perbaiki cara bayar / nama (barangnya belum diingat)</div>` : ''}
+        <div class="ket" style="text-align: center;">${sumber.jenis === 'cadangan' ? 'SIMULASI — tidak ke Firestore' : 'bentuk dokumen sama dengan Rinci Darurat sistem lama; bisa ditarik balik ' + L.BATAS_URUNGKAN_DETIK + ' detik sesudahnya (atau dari daftar karcis)'}</div>
       </div>`;
     }
     if (s.lembar === 'pesanan') {

@@ -18,14 +18,15 @@
 //    sendiri, menambah omzet, buku kantong dipotong lewat dokumen `pakai` id+1); di Repack wadahnya dipilih (merek → ukuran), lembarnya bebas,
 //    DIJUAL (baris sendiri) atau DITANGGUNG toko (masuk HPP baris repack seperti biayaKemasanLiteran), upah repack per nota melekat ke baris
 //    repack (upahRepack, ikut hargaTotal seperti pembulatan). Logikanya di wadah-jual-logika.js; struknya di struk-logika.js.
-import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanLiteran, hitungPiutang, stokMaksJalur } from '../mesin/beku.js';
+import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanLiteran, hitungPiutang, stokMaksJalur, pembulatanTunai } from '../mesin/beku.js';
 import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaKarungBerat, hargaKarungUtuh, cariHargaKarungPerKg,
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
   wzDiKeranjangParkir, sumberData } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
-import { returAwal, cekDrafTukar, dokumenKarantina } from './retur-logika.js';
+import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan } from './retur-logika.js';
+import { tkSetTertaut } from '../mesin/pembantu.js';
 import { susunRakWadah, bangunBarisWadah, biayaWadahRepack, koleksiWadah, jenisWadah, bebasWadah } from './wadah-jual-logika.js';
 
 export const JALUR = [['sering', 'Sering'], ['literan', 'Literan'], ['kemasan', 'Kemasan'], ['karung', 'Karung'], ['wadah', 'Wadah'], ['repack', 'Repack'], ['retur', 'Retur']];
@@ -54,7 +55,8 @@ export function keadaanAwal() {
     antrean: [], aktifId: 1, idBerikut: 2, urutBaris: 0,
     kreditDibuka: false, notaTerakhir: null,
     pesananId: null, psNama: '', psIsi: '', psAlamat: '', psNilai: '', psSaring: '',
-    tukar: null,   // PUTARAN 4: { returDraf, kredit, ringkas } — retur tukar yang diikat ke keranjang ini (_tukarKeJual index.html 16838)
+    tukar: null,   // PUTARAN 4: { returDraf, kredit, ringkas } — retur tukar yang diikat ke keranjang ini (_tukarKeJual index.html 16838); PUTARAN 20: { susulanReturId, kredit 0, … } = pengganti tukar yatim
+    karcis: null,  // PUTARAN 20: karcis kasir darurat / nota perlu-dirapikan yang sedang dirinci lewat keranjang ini (karcis-logika.js)
     // PUTARAN 15: isian repack (wadah dipilih, lembar, dijual/ditanggung, upah) & struk (nota yang dibuka, timpaan kertas/sertakan, draf setelan)
     rpWadah: '', rpLembar: '', rpDijual: true, rpUpah: '',
     strukKunci: null, strukKertas: null, strukSertakan: null, aturStruk: null, aturWadah: null,
@@ -258,13 +260,19 @@ export function pembulatanTagihan(total, cara) {
   const c = bakuCaraBayar(cara);
   return (c === 'Tunai' || c === 'Kredit') && total > 0 ? bulatKeAtas500(total) - Math.round(total) : 0;
 }
+/** Pembulatan keranjang ini. SUSULAN tukar GABUNG (tkBulat 17051): pembulatan dihitung atas selisih yang dulu diterima (pengganti − nilai retur), dikurangi pembulatan yang masih menempel di penjualan tertaut; susulan model lama: atas harga penuh. */
+export function bulatKeranjang(s, bersih) {
+  const tk = s.tukar;
+  if (tk && tk.susulanReturId && tk.model === 'kreditBarangGabung') { const a = tkSetTertaut().get(String(tk.susulanReturId)) || { rp: 0, bulat: 0 }; return Math.max(0, pembulatanTunai(a.rp - a.bulat + bersih - (tk.nilaiRetur || 0), s.cara) - a.bulat); }
+  return pembulatanTagihan(bersih, s.cara);
+}
 export function hitungTagihan(s) {
   const subtotal = s.keranjang.reduce((a, b) => a + (b.trx.hargaTotal || 0), 0);
   const potongan = Math.min(Math.max(0, Math.round(s.potongan || 0)), subtotal);
   // TUKAR: nilai barang yang kembali dipotong SEBELUM pembulatan — pembulatan dihitung atas selisih bersih (wzTagihan 17680)
   const kredit = s.tukar ? Math.round(s.tukar.kredit || 0) : 0;
   const bersih = subtotal - potongan - kredit;
-  const bulat = pembulatanTagihan(bersih, s.cara);
+  const bulat = bulatKeranjang(s, bersih);
   const total = bersih + bulat;
   const uang = s.cara === 'Tunai' ? Math.round(s.uang || 0) : 0;
   const kembalian = s.cara === 'Tunai' ? Math.max(0, uang - total) : 0;
@@ -453,6 +461,7 @@ export function setelPotongan(s, nominal) { const sub = s.keranjang.reduce((a, b
 
 // ---------- antrean: parkir memegang stok ----------
 export function parkir(s) {
+  if (s.karcis) return { kabar: 'Keranjang sedang merinci karcis — simpan rinciannya atau lepas karcisnya dulu, baru parkir', kabarAwas: true };
   if (!s.keranjang.length) return { kabar: 'Keranjang kosong — tidak ada yang diparkir', kabarAwas: true };
   // ikatan pesanan ikut diparkir (wzBekuKeranjang 17453) — kalau tidak, ia pindah ke pembeli berikutnya
   const beku = { items: s.keranjang, pelanggan: s.pelanggan, cara: s.cara, uang: s.uang, potongan: s.potongan, pesananId: s.pesananId || null, tukar: s.tukar || null };
@@ -542,10 +551,15 @@ export function periksaStokKeranjang(s) {
 }
 /** Alasan nota belum bisa dicatat — '' kalau sah. */
 export function alasanTolak(s) {
+  if (s.karcis) return 'Keranjang ini sedang merinci karcis — pakai SIMPAN RINCIAN (atau lepas karcisnya)';
   if (!s.keranjang.length) return 'Keranjang kosong';
   const t = hitungTagihan(s);
   const nama = kunciPelanggan(s.pelanggan);
-  if (s.tukar) {   // simpanKeranjangJual 19103–19123
+  if (s.tukar && s.tukar.susulanReturId) {   // PUTARAN 20: susulan pengganti tukar yatim (tkCekSusulan, tkLebihSusulanBoleh)
+    if (s.cara === 'Kredit') return 'Susulan tukar tidak bisa BON — uangnya sudah diterima saat tukar';
+    if (t.uang > 0 && t.uang < t.total) return 'Susulan tukar tidak bisa dibayar sebagian';
+    const cek = cekSusulan(s.tukar.susulanReturId, t.subtotal - t.potongan, !!s.tukar.yakinLebih); if (cek) return cek;
+  } else if (s.tukar) {   // simpanKeranjangJual 19103–19123
     if (s.cara === 'Kredit') return 'Tukar tidak bisa dicatat BON — barangnya dibayar dengan barang yang kembali, bukan dengan utang. Pilih Tunai atau QRIS.';
     if (t.bersih < 0) return 'Nilai retur ' + RP(t.kredit) + ' lebih besar dari keranjang pengganti ' + RP(t.subtotal - t.potongan) + ' — tambah barang, atau batal tukar lalu catat sebagai uang kembali';
     if (t.uang > 0 && t.uang < t.total) return 'Tukar tidak bisa dibayar sebagian: diterima ' + RP(t.uang) + ', yang harus dibayar ' + RP(t.total);
@@ -575,7 +589,7 @@ export function susunNotaDokumen(s, w) {
   const totalSetelahPot = subtotal - potDipakai;
   let cara = bakuCaraBayar(s.cara); const caraAsli = cara;
   const tk = s.tukar || null; const kreditTukar = tk ? Math.round(tk.kredit || 0) : 0;
-  const bulatNota = pembulatanTagihan(totalSetelahPot - kreditTukar, cara);   // atas SELISIH BERSIH bila tukar
+  const bulatNota = bulatKeranjang(Object.assign({}, s, { cara }), totalSetelahPot - kreditTukar);   // atas SELISIH BERSIH bila tukar; susulan gabung punya rumusnya sendiri
   const tagihan = totalSetelahPot - kreditTukar + bulatNota;
   let bayarSebagian = 0;
   const uang = cara === 'Tunai' ? Math.round(s.uang || 0) : 0;
@@ -596,7 +610,7 @@ export function susunNotaDokumen(s, w) {
     d.id = w.idUnik(); d.trxId = trxId; d.tanggal = w.tanggal; d.jam = w.jam; d.caraBayar = cara; d.namaPelanggan = nama;
     d.hargaAsliSatuan = t.hargaAsli;                                   // harga daftar sebelum tawar (kebal riwayat)
     if (t.nego) d.negoSelisih = t.hargaSatuan - t.hargaAsli;          // jejak tawar (NG1)
-    if (tk) d.tukarReturId = String(tk.returDraf.id);                  // tautan ke retur tukarnya (19175)
+    if (tk) d.tukarReturId = String(tk.susulanReturId || tk.returDraf.id);   // tautan ke retur tukarnya (19175); susulan menunjuk retur yatim yang sudah ada
     if (cara === 'Kredit' && s.kreditDibuka) d.kreditDibukaOwner = true;
     if (uang > 0 && cara === 'Tunai') { d.uangDiterima = uang; d.kembalian = Math.max(0, uang - (totalBayar - kreditTukar)); }
     dokumen.push({ koleksi: 'penjualan', data: d });
@@ -624,7 +638,7 @@ export function susunNotaDokumen(s, w) {
   // RETUR TUKAR lahir BERSAMA penjualan penggantinya — satu batch (index.html menulis penjualan dulu lalu retur, dijaga jurnal
   // localStorage kalau halaman mati di antaranya; di sini keduanya masuk atau tidak sama sekali). Bentuk: 19165.
   let retur = null;
-  if (tk) {
+  if (tk && !tk.susulanReturId) {
     const rd = Object.assign({}, tk.returDraf, { tanggal: w.tanggal, jam: w.jam, penjualanPenggantiTrxId: String(trxId),
       hitunganTukarSistem: { pengganti: totalSetelahPot, kredit: kreditTukar, bersih: totalSetelahPot - kreditTukar, pembulatan: bulatNota, caraBayar: cara, dibayarPembeli: tagihan, dikembalikanToko: 0 } });
     dokumen.push({ koleksi: 'retur', data: rd });
@@ -648,7 +662,7 @@ export function susunNotaDokumen(s, w) {
   if (bayarSebagian > 0) ket.push('dibayar ' + RP(bayarSebagian) + ' · BON ' + RP(totalBayar - bayarSebagian) + ' atas nama ' + nama);
   else if (cara === 'Kredit') ket.push('BON atas nama ' + nama);
   else if (uang > totalBayar - kreditTukar) ket.push('kembalian ' + RP(uang - (totalBayar - kreditTukar)));
-  if (tk) ket.push('TUKAR: barang kembali ' + RP(kreditTukar) + ' · pembeli bayar ' + RP(tagihan));
+  if (tk && tk.susulanReturId) ket.push(tk.ringkas + ' — dicatat penuh, retur tidak ditulis lagi'); else if (tk) ket.push('TUKAR: barang kembali ' + RP(kreditTukar) + ' · pembeli bayar ' + RP(tagihan));
   if (pesanan) ket.push('pesanan ' + pesanan.nama + ' DIBAYAR');
   return { dokumen, trxId, totalBayar, tagihan, bulatNota, potDipakai, bayarSebagian, cara, ringkas: ket.join(' · '),
     idPenjualan: dokumen.filter((x) => x.koleksi === 'penjualan').map((x) => x.data.id), piutangId, pesanan, retur };
@@ -702,7 +716,8 @@ export function ikatTukar(s, ikat) {
   if (s.tukar) return { kabar: 'Keranjang ini MASIH terikat tukar: ' + s.tukar.ringkas + '. Catat notanya atau batal tukar dulu.', kabarAwas: true };
   return { tukar: ikat, pesananId: null, cara: s.cara === 'Kredit' ? 'Tunai' : s.cara };
 }
-export function batalTukar(s) { return s.tukar ? { tukar: null, kabar: 'Tukar dibatalkan — returnya TIDAK tercatat; barang di keranjang tetap', kabarAwas: false } : {}; }
+export function batalTukar(s) { return s.tukar ? { tukar: null, kabar: s.tukar.susulanReturId ? 'Ikatan susulan dilepas — retur yatimnya tetap menunggu pengganti; barang di keranjang tetap' : 'Tukar dibatalkan — returnya TIDAK tercatat; barang di keranjang tetap', kabarAwas: false } : {}; }
+export function yakinLebihSusulan(s) { return s.tukar && s.tukar.susulanReturId ? { tukar: Object.assign({}, s.tukar, { yakinLebih: true }), kabar: 'Dicatat: nilai pengganti memang berubah — keranjang boleh melebihi yang belum tercatat', kabarAwas: false } : {}; }
 
 // ---------- wadah literan: tinggi isi, takar isi ulang, karung terbuka di belakangnya ----------
 const cap = (p) => (p.tanggal || '') + ' ' + (p.jam || '');
