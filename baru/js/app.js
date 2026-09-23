@@ -74,7 +74,7 @@ const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { ak
 const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok'), pelanggan: document.getElementById('layarPelanggan'), menu: document.getElementById('layarMenu'), harga: document.getElementById('layarHarga'), uang: document.getElementById('layarUang'), laporan: document.getElementById('layarLaporan') };
 function pindah(tujuan) {
   if (!LAYAR_ADA[tujuan]) return false;
-  const a = akunKini(); if (a && !bolehLayar(a, tujuan)) { kabarSebentar('Layar ini tidak termasuk hak ' + teksMasukSebagai(a) + '.'); return true; }
+  const a = akunKini(); if (a && bisaBekerja(a) && !bolehLayar(a, tujuan)) { kabarSebentar('Layar ini tidak termasuk hak ' + teksMasukSebagai(a) + '.'); return true; }
   Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].hidden = k !== tujuan; });
   document.querySelectorAll('[data-tujuan]').forEach((el) => el.classList.toggle('aktif', el.dataset.tujuan === tujuan || ((tujuan === 'harga' || tujuan === 'uang' || tujuan === 'laporan') && el.dataset.tujuan === 'menu' && el.closest('nav'))));   // Harga & Pemasok / Uang tidak punya petak di nav bawah: petak Menu yang menyala (pintunya)
   document.body.classList.toggle('di-jual', tujuan === 'jual');
@@ -142,8 +142,21 @@ function gambarChipDanNav() {
   if (kerja) { document.getElementById('chipNama').textContent = 'Masuk sebagai: ' + teksMasukSebagai(a); const n = (statusFb.lokal || {}).belum || 0; const ca = document.getElementById('chipAntre'); ca.hidden = !n; ca.textContent = n ? n + ' belum terkirim' : ''; }
   document.querySelectorAll('[data-tujuan]').forEach((el) => { el.hidden = !!a && !bolehLayar(a, el.dataset.tujuan); });
   const tab = (() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })();
-  if (a && !bolehLayar(a, tab)) pindah('jual');
+  if (a && bisaBekerja(a) && !bolehLayar(a, tab)) pindah('jual');
 }
+
+// ---- PROYEK UJI (gerbang rules v3): setelan per perangkat, bilah merah di setiap layar selama aktif ----
+(function () {
+  const hasil = fb.aturProyekUjiDariAlamat(q);
+  if (hasil === 'pasang' || hasil === 'lepas') { location.replace(location.pathname); return; }
+  if (hasil) kabarSebentar(hasil);
+  const uji = fb.proyekUji(); if (!uji) return;
+  const bilah = document.createElement('div'); bilah.className = 'bilah-uji'; bilah.setAttribute('role', 'status');
+  bilah.innerHTML = '<span>PROYEK UJI <b></b> — bukan data toko</span>'; bilah.querySelector('b').textContent = uji.projectId;
+  const kembali = document.createElement('button'); kembali.type = 'button'; kembali.textContent = 'Kembali ke data toko';
+  kembali.addEventListener('click', () => { try { localStorage.removeItem(fb.KUNCI_PROYEK_UJI); } catch (e) { /* abaikan */ } location.replace(location.pathname); });
+  bilah.appendChild(kembali); document.body.appendChild(bilah); document.body.classList.add('proyek-uji');
+})();
 
 if (q.get('cadangan')) {
   muatCadangan(q.get('cadangan')).then((r) => {

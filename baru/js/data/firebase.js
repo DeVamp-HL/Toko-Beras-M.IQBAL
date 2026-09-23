@@ -21,6 +21,23 @@ const firebaseConfig = {
   messagingSenderId: '149034588465',
   appId: '1:149034588465:web:42316713d21c6fc994b810',
 };
+// ---- PROYEK UJI (putaran 23, gerbang owner 24 Sep): SEBELUM akun bukan-owner pertama disetujui, rules v3 diuji di proyek Firebase KEDUA.
+// Satu setelan per perangkat yang mudah dikembalikan: /baru/?pasangProyekUji=<config JSON proyek uji> menyimpannya, ?lepasProyekUji=1 membuangnya.
+// Proyek toko asli DITOLAK sebagai proyek uji. Selama aktif, app.js memasang bilah merah "PROYEK UJI" di setiap layar. docs/uji-rules-v3.md.
+export const KUNCI_PROYEK_UJI = 'miqbal_baru_proyek_uji';
+const PROYEK_TOKO = firebaseConfig.projectId;
+export function aturProyekUjiDariAlamat(q) {
+  try {
+    if (q.get('lepasProyekUji')) { localStorage.removeItem(KUNCI_PROYEK_UJI); return 'lepas'; }
+    const t = q.get('pasangProyekUji'); if (!t) return '';
+    const c = JSON.parse(t); if (!c || !c.projectId || !c.apiKey || !c.appId) return 'Config proyek uji tidak lengkap (perlu projectId, apiKey, appId)';
+    if (c.projectId === PROYEK_TOKO) return 'Itu proyek TOKO, bukan proyek uji — ditolak';
+    localStorage.setItem(KUNCI_PROYEK_UJI, JSON.stringify({ apiKey: c.apiKey, authDomain: c.authDomain || c.projectId + '.firebaseapp.com', projectId: c.projectId, appId: c.appId, messagingSenderId: c.messagingSenderId || '', storageBucket: c.storageBucket || '' }));
+    return 'pasang';
+  } catch (e) { return 'Config proyek uji tidak terbaca: ' + String(e.message || e); }
+}
+export function proyekUji() { try { const c = JSON.parse(localStorage.getItem(KUNCI_PROYEK_UJI) || 'null'); return c && c.projectId && c.projectId !== PROYEK_TOKO ? c : null; } catch (e) { return null; } }
+
 // Putaran 23 (24 Sep 2026): masuk PER ORANG. Owner dikenali lewat email (akses.js); akun lain lewat dokumen aksesAkun/{uid} yang ditulis owner.
 // Sandi TIDAK ada di kode dan tidak pernah disimpan di sini; diketik sekali per sesi, sesinya disimpan peramban (browserLocalPersistence).
 
@@ -47,7 +64,7 @@ let _lepasAkses = null;   // pendengar dokumen aksesAkun milik akun bukan-owner 
 /** saatAkun(akun) dipanggil tiap keadaan akun berubah (keluar · belum terdaftar · nonaktif · kasir@ · owner · aktif) — app.js menggambar layar masuknya. */
 export function mulai(saatAkun) {
   if (app) return;
-  app = initializeApp(firebaseConfig);
+  app = initializeApp(proyekUji() || firebaseConfig);   // proyek uji (kalau disetel di perangkat ini) — cache & sesi Firebase terpisah per proyek
   db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
   auth = getAuth(app);
   setPersistence(auth, browserLocalPersistence).catch(() => {});
