@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="css/menu.css">
 <link rel="stylesheet" href="css/harga.css">
 <link rel="stylesheet" href="css/uang.css">
+<link rel="stylesheet" href="css/laporan.css">
 <link rel="stylesheet" href="css/adegan.css">
 <link rel="stylesheet" href="css/kinerja.css">
 <script>
@@ -49,7 +50,8 @@
   <div class="item" data-tujuan="menu">Menu</div>
   <div class="item" data-tujuan="harga">Harga & Pemasok</div>
   <div class="item" data-tujuan="uang">Uang</div>
-  <div class="ket" style="margin-top: auto; padding: 0 14px;">Laporan & dokumen masih di <a href="../index.html">sistem lama</a>.</div>
+  <div class="item" data-tujuan="laporan">Laporan</div>
+  <div class="ket" style="margin-top: auto; padding: 0 14px;">Semua layar sudah di sistem baru. <a href="../index.html">Sistem lama</a> tetap ada.</div>
 </aside>
 
 <main id="layarRingkasan" class="layar-ringkasan" hidden></main>
@@ -58,6 +60,7 @@
 <main id="layarMenu" class="layar-menu" hidden></main>
 <main id="layarHarga" class="layar-harga" hidden></main>
 <main id="layarUang" class="layar-uang" hidden></main>
+<main id="layarLaporan" class="layar-laporan" hidden></main>
 <main id="layar" class="layar-jual" aria-live="polite"></main>
 
 <nav class="nav" aria-label="Menu bawah">
@@ -69,6 +72,7 @@
 </nav>
 <div id="kabarNav" class="kabar-nav" hidden></div>
 <pre id="cetakStruk" class="cetak-struk" aria-hidden="true"></pre>
+<div id="cetakDokumen" aria-hidden="true"></div>
 
 <div id="modalMasuk" class="modal-bg">
   <form id="formMasuk" class="modal kartu" autocomplete="off">

@@ -75,6 +75,7 @@ export function ambilPindahUang() { return _cache.pindahUang || []; }         //
 export function ambilAbsenKaryawan() { return _cache.absen || []; }           // putaran 18: hari kerja per orang per bulan
 export function ambilSlipUpah() { return _cache.slipUpah || []; }             // putaran 18: tiap pembayaran upah
 export function ambilTutupBukuAcara() { return _cache.tutupBukuAcara || []; } // putaran 18: berita acara tutup buku per tahun
+export function ambilDokumenCetak() { return _cache.dokumenCetak || []; }     // putaran 19: tiap dokumen yang keluar, bernomor urut
 // Titik kas & peta jenis beras hidup di localStorage perangkat di index.html (kunci yang sama);
 // karena sistem baru ada di asal (origin) yang sama, localStorage-nya pun sama.
 // Putaran 18: dokumen pengaturan/titikKas (ditulis Tutup hari sistem baru & lama) MENANG bila lebih baru dari salinan perangkat — persis pendengar onSnapshot titikKas
