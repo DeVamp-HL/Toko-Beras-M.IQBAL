@@ -182,6 +182,14 @@ ok('P21 sketsa ikut ciri: sawo matang → kulit 3, kumis, gemuk, botak (tanpa ra
 ok('P21 nama paku benang: "Al - Yamin" utuh jadi "Al-Yamin" (bukan "Al -"); nama pendek utuh; nama panjang = dua kata pertama yang berhuruf', plNamaPendek('Al - Yamin') === 'Al-Yamin' && plNamaPendek('Bang Togar') === 'Bang Togar' && plNamaPendek('Ibu Rahma Warung Makan Sederhana') === 'Ibu Rahma' && plNamaPendek('H. - Ahmad Sudirman Jaya') === 'H.-Ahmad Sudirman');
 var BO = benangOrang(KINI, 'uda feri'); var BT2 = benangOrang(KINI, 'bang togar');
 ok('P21 benang di kartu: kartu Feri menyebut Togar yang datang (3×); kartu Togar menyebut ia datang untuk Feri; orang tanpa benang → tidak ada', BO.ada && BO.dari.length === 1 && BO.dari[0].nama === 'Bang Togar' && BO.dari[0].kali === 3 && BT2.untuk.length === 1 && BT2.untuk[0].nama === 'Uda Feri' && kartuOrang(KINI, 'uda feri').benang.ada && !benangOrang(KINI, 'pak darto').ada, JSON.stringify([BO, BT2]));
+// ---- PUTARAN 22: hapus nama salah ketik (owner 23 Sep: "b", "40000")
+terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'sTypo1', tanggal: '2026-09-18', jam: '09:00', caraBayar: 'Tunai', namaPelanggan: 'b', jenis: 'literan', merkSumber: 'Angsa', jumlahLiter: 2, totalKg: 1.64, hargaTotal: 27000, hppTotalSaatJual: 21000 } }, { koleksi: 'penjualan', data: { id: 'sTypo2', tanggal: '2026-09-19', jam: '08:00', caraBayar: 'Tunai', namaPelanggan: 'B', jenis: 'literan', merkSumber: 'Angsa', jumlahLiter: 1, totalKg: 0.82, hargaTotal: 13500, hppTotalSaatJual: 10500 } }]);
+var RHN = rincianHapusNama(KINI, 'b'); var HN0 = susunHapusNama(KINI, 'b', W, false); var HN = susunHapusNama(KINI, 'b', W, true);
+var nB = RHN.penjualan.length;
+ok('P22 hapus nama "b": rincian ≥ 2 nota ("b" & "B" satu kunci); ketukan pertama DITANYA; ketukan kedua → semua notanya ditulis ulang TANPA nama dengan jejak namaDihapus, rupiah tetap; nama berbon (Darto) & nama dengan benang+kartu (Feri) DITOLAK dihapus', !RHN.tolak && nB >= 2 && HN0.perluYakin === true && !HN.tolak && HN.dokumen.length === nB && HN.dokumen.every(function (d) { return d.koleksi === 'penjualan' && d.data.namaPelanggan === '' && /^b$/i.test(d.data.namaDihapus) && d.data.hargaTotal > 0; }) && HN.hapus.length === 0
+  && /buku bon/.test(rincianHapusNama(KINI, 'pak darto').tolak) && /buku bon|THR|tagihan/.test(rincianHapusNama(KINI, 'uda feri').tolak || 'x'), JSON.stringify([RHN.arti, HN0.tolak, rincianHapusNama(KINI, 'uda feri').tolak]));
+(function () { var s0 = simpan(); terapkan(HN); ok('P22 sesudah dihapus: "b" hilang dari daftar orang; omzet nota tetap terhitung (tanpa nama)', !semuaOrang(KINI).some(function (o) { return o.kunci === 'b'; }) && ambilPenjualanSemua().filter(function (p) { return p.namaDihapus; }).length === nB); pulih(s0); })();
+terapkanKeCache([{ koleksi: 'penjualan', hapus: 'sTypo1' }, { koleksi: 'penjualan', hapus: 'sTypo2' }]);
 var LB = lembarBon(KINI, 'uda feri');
 ok('lembar orang: rincian 2 bon terbuka (yang pertama "dari Rp780.000"), riwayat memuat pembayaran & tagihan (terbaru dulu), pilihan alasan hapus dari aturan', LB.rinci.length === 2 && /dari Rp780\.000/.test(LB.rinci[0].teks) && LB.rinci[0].n === 670000 && LB.riwayat.length === 2 && /ditagih · janji/.test(LB.riwayat[0].teks) && LB.riwayat[1].n === -110000 && LB.alasanPilihan.length === 4, JSON.stringify(LB.riwayat));
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
@@ -223,6 +231,9 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- putaran 22
+            'hapus nama tanpa ketukan kedua': js.replace("if (!yakin) return { tolak: 'Ketuk sekali lagi untuk menghapus nama \"'", "if (false) return { tolak: 'Ketuk sekali lagi untuk menghapus nama \"'"),
+            'nama berbon boleh dihapus (bonnya jadi yatim)': js.replace("const tolak = piutang.length || O.utang > 0 ? '\"' + O.nama + '\" punya buku bon", "const tolak = false ? '\"' + O.nama + '\" punya buku bon"),
             # ---- putaran 21
             'nama paku benang dipotong di tanda hubung ("Al -")': js.replace("const n = String(nama || '').replace(/\\s*-\\s*/g, '-').trim(); if (n.length <= 16) return n;", "const n = String(nama || '').trim(); if (n.length <= 16) return n.split(/\\s+/).slice(0, 2).join(' ');"),
             'sketsa mengabaikan warna kulit': js.replace("kulit: kulit ? kulit[1] : 0, gemuk:", "kulit: 0, gemuk:"),

@@ -276,6 +276,23 @@ export function susunGabung(kini, kunciPakai, kunciLain, w) {
   kartu.ciri = kartu.cip.join(' · '); kartu.rute = kartu.arah; dokumen.push({ koleksi: 'pelangganCatatan', data: kartu }); if (kL) hapus.push({ koleksi: 'pelangganCatatan', id: kL.dok.id });
   return { dokumen, hapus, patch: { kabar: '"' + L.nama + '" disatukan ke "' + P.nama + '" — ' + dokumen.length + ' dokumen ditulis ulang namanya, rupiah tidak berubah.', kabarAwas: false } };
 }
+/** Rincian sebelum HAPUS NAMA (owner 23 Sep: nama salah ketik seperti "b" / angka): nota-notanya jadi TANPA NAMA (rupiah tidak berubah), kartu & benangnya dibuang. Nama yang punya buku bon / pesanan / THR / tagihan TIDAK dihapus — satukan ke nama yang benar. */
+export function rincianHapusNama(kini, kunci) {
+  const semua = semuaOrang(kini); const O = semua.find((b) => b.kunci === kunci); if (!O) return { tolak: 'Nama itu sudah tidak ada' };
+  const milik = (nm) => kunciPelanggan(nm) === kunci; const penjualan = ambilPenjualanSemua().filter((p) => milik(p.namaPelanggan)); const piutang = ambilPiutangMutasi().filter((m) => milik(m.namaPelanggan)); const pesanan = ambilPesanan().filter((p) => milik(p.namaPelanggan || p.nama));
+  const thr = ambilThrPelanggan().filter((t) => t.kunci === kunci || milik(t.nama)); const tagih = cacheMentah('tagih').filter((t) => t.kunci === kunci); const titip = cacheMentah('titip').filter((t) => t.dari === kunci || t.untuk === kunci); const kartu = kartuTersimpan(kunci);
+  const n = penjualan.length + titip.length + (kartu ? 1 : 0);
+  const tolak = piutang.length || O.utang > 0 ? '"' + O.nama + '" punya buku bon (' + piutang.length + ' catatan' + (O.utang > 0 ? ', sisa ' + RP(O.utang) : '') + ') — nama berbon tidak dihapus; SATUKAN ke nama yang benar lewat daftar nama kembar'
+    : pesanan.length ? '"' + O.nama + '" punya ' + pesanan.length + ' pesanan — selesaikan / batalkan pesanannya dulu' : thr.length || tagih.length ? '"' + O.nama + '" punya catatan THR / tagihan — satukan ke nama yang benar, jangan dihapus' : n > BATAS_DOKUMEN_GABUNG ? n + ' dokumen — terlalu banyak untuk sekali tulis (batas ' + BATAS_DOKUMEN_GABUNG + ')' : '';
+  return { orang: O, penjualan, titip, kartu, n, tolak, arti: penjualan.length + ' nota jadi TANPA NAMA (rupiahnya tetap, jejak nama lamanya disimpan di nota)' + (titip.length ? ', ' + titip.length + ' benang dibuang' : '') + (kartu ? ', kartunya dibuang' : '') + '. Nama "' + O.nama + '" hilang dari daftar pelanggan.' };
+}
+export function susunHapusNama(kini, kunci, w, yakin) {
+  const r = rincianHapusNama(kini, kunci); if (r.tolak) return { tolak: r.tolak };
+  if (!yakin) return { tolak: 'Ketuk sekali lagi untuk menghapus nama "' + r.orang.nama + '": ' + r.arti, perluYakin: true };
+  const dokumen = r.penjualan.map((p) => ({ koleksi: 'penjualan', data: Object.assign({}, p, { namaPelanggan: '', namaDihapus: r.orang.nama, namaDihapusPada: w.kini }) }));
+  const hapus = r.titip.map((t) => ({ koleksi: 'pelangganTitip', id: t.id })).concat(r.kartu ? [{ koleksi: 'pelangganCatatan', id: r.kartu.dok.id }] : []);
+  return { dokumen, hapus, patch: { kartu: null, yakinHapusNama: false, kabar: 'Nama "' + r.orang.nama + '" dihapus — ' + r.penjualan.length + ' nota jadi tanpa nama' + (hapus.length ? ', ' + hapus.length + ' catatan dibuang' : '') + '. Rupiah tidak berubah.', kabarAwas: false } };
+}
 export function susunBukanKembar(k, w) { const bukan = plBukanKembar(); if (bukan.indexOf(k) >= 0) return { tolak: 'Sudah dicatat' }; return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'pelangganKembar', tanggal: w.tanggal, jam: w.jam, bukan: bukan.concat([k]) } }], patch: { kabar: 'Dicatat: dua orang yang berbeda — tidak ditawarkan lagi', kabarAwas: false } }; }
 
 // ====================== PL3 · THR PELANGGAN SETIA ======================
