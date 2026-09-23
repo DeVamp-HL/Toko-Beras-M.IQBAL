@@ -61,3 +61,8 @@ kotak-pra.html
 kotak-uji2.html
 kotak-uji3.html
 kotak-uji4.html
+
+# Arsip perintah kerja & catatan desain lama (owner 24 Sep 2026): dipindah ke docs/arsip/,
+# isinya TETAP tidak masuk repo publik (angka omzet, utang, nama pemasok). Yang di-commit cuma daftar isinya.
+docs/arsip/*
+!docs/arsip/DAFTAR-ISI.md
