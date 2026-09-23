@@ -132,6 +132,22 @@ export async function hapusDokumen(daftar) {
   return { simulasi: true };
 }
 
+/**
+ * Putaran 23b (Bersihkan ciri yang dicabut): tulis KOLOM tertentu saja — update, bukan tulis ulang dokumen — jadi kolom lain & atribusinya byte-sama.
+ * potongan = [[{ koleksi, id, kolom }]] (satu potongan = satu writeBatch); ringkas = SATU baris jejak (jumlah saja) di potongan terakhir.
+ * Hasil: { potongan: [{ n, keadaan: ok | antre | gagal | simulasi, pesan? }], gagal? }.
+ */
+export async function perbaruiKolom(potongan, ringkas) {
+  if (_penulis && _penulis.perbarui) return _penulis.perbarui(potongan, ringkas);
+  if (_penulis) return { gagal: true, potongan: [], pesan: 'penulis Firestore belum mengenal tulis-kolom' };
+  const hasil = [];
+  potongan.forEach((p) => {
+    terapkanKeCache(p.map((x) => { const k = KOLEKSI.find((y) => y.nama === x.koleksi); const lama = k ? _cache[k.cache].find((d) => String(d.id) === String(x.id)) : null; return lama ? { koleksi: x.koleksi, data: Object.assign({}, lama, x.kolom) } : null; }).filter(Boolean));
+    hasil.push({ n: p.length, keadaan: 'simulasi' });
+  });
+  return { simulasi: true, potongan: hasil };
+}
+
 // ---- ARSIP TAHUN (putaran 18, Tutup buku K6): dokumen tahun yang ditutup PINDAH ke koleksi arsipTahun, bukan dihapus ----
 // arsipTahun tidak pernah dimuat ke memori (ribuan dokumen tahun lalu); dibaca hanya saat "Batalkan tutup buku".
 // Simulasi cadangan: arsipnya disimpan di memori perangkat ini saja.

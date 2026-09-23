@@ -17,7 +17,7 @@ main.layar-pelanggan { display: flex; flex-direction: column; gap: 10px; padding
 .layar-pelanggan .sk { width: 44px; height: 44px; border-radius: 8px; flex: none; display: block; } .layar-pelanggan .sk.besar { width: 76px; height: 76px; border-radius: 10px; }
 .layar-pelanggan .sk .latar { fill: #d8cfae; } .layar-pelanggan .sk.w1 .latar { fill: #c3cdd2; } .layar-pelanggan .sk.w2 .latar { fill: #dcc3b1; } .layar-pelanggan .sk.w3 .latar { fill: #cbd6b8; } .layar-pelanggan .sk.w4 .latar { fill: #d6c9da; } .layar-pelanggan .sk.w5 .latar { fill: #e4d8bb; }
 .layar-pelanggan .sk .bahu { fill: #6f6a5c; } .layar-pelanggan .sk .kepala { fill: #e7c9a5; } .layar-pelanggan .sk .rambut { fill: #2f2a24; } .layar-pelanggan .sk .uban { fill: #e9e6df; } .layar-pelanggan .sk .kerudung { fill: #8d6f9e; } .layar-pelanggan .sk.w0 .kerudung { fill: #7c8f6a; } .layar-pelanggan .sk.w1 .kerudung { fill: #a3705c; } .layar-pelanggan .sk.w3 .kerudung { fill: #5f7f96; }
-.layar-pelanggan .sk.k1 .kepala { fill: #f3dcc4; } .layar-pelanggan .sk.k2 .kepala { fill: #e9c39b; } .layar-pelanggan .sk.k3 .kepala { fill: #b97f52; } .layar-pelanggan .sk.k4 .kepala { fill: #7a4b2c; }
+/* putaran 23b: wajah satu nada netral untuk semua orang — warna kulit dicabut */
 .layar-pelanggan .sk .kumis { fill: #2f2a24; } .layar-pelanggan .sk .tahi-lalat { fill: #2b2618; } .layar-pelanggan .sk .peci.topi { fill: #5f7f96; } .layar-pelanggan .sk .kerudung.cadar { opacity: 0.9; }
 .layar-pelanggan .sk .peci { fill: #1d1b18; } .layar-pelanggan .sk .kacamata { fill: none; stroke: #2b2618; stroke-width: 1.4; } .layar-pelanggan .sk .tanya { font-family: 'Bodoni Moda', Georgia, serif; font-size: 26px; fill: #8c8674; } .layar-pelanggan .sk .lencana { fill: #fbf7ea; } .layar-pelanggan .sk .lencana-ikon { fill: none; stroke: #2b2618; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .layar-pelanggan .sk .tepi-putus { fill: none; stroke: #a9a28c; stroke-width: 1.5; stroke-dasharray: 4 3; }
@@ -83,3 +83,9 @@ main.layar-pelanggan { display: flex; flex-direction: column; gap: 10px; padding
 .layar-pelanggan .th-amplop .k2 { color: #6b6555; } .layar-pelanggan .th-amplop .besar { position: relative; font-family: 'Bodoni Moda', Georgia, serif; font-size: 28px; }
 .layar-pelanggan .step { display: inline-flex; align-items: center; gap: 4px; } .layar-pelanggan .step .kaca-btn { min-height: 32px; min-width: 32px; padding: 0; }
 @media (prefers-reduced-motion: reduce) { .layar-pelanggan .tp, .layar-pelanggan .jd-orang.harap, .layar-pelanggan .polaroid { animation: none; } }
+/* putaran 23b: lembar Bersihkan ciri yang dicabut + keterangan tetap di bawah catatan kartu */
+.layar-pelanggan .catatan-larang { font-size: 11px; margin-top: -4px; }
+.layar-pelanggan .bs-lembar { border-color: var(--awas); } .layar-pelanggan .bs-lembar.tenang { border-style: dashed; border-color: var(--rel); }
+.layar-pelanggan .bs-angka { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .layar-pelanggan .bs-angka > div { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; } .layar-pelanggan .bs-angka .besar { font-family: 'Bodoni Moda', Georgia, serif; font-size: 26px; line-height: 1.1; }   /* bukan Prata: angka 1-nya mirip huruf l */
+.layar-pelanggan .bs-baris { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px dashed var(--rel); min-height: 30px; align-items: center; }
+.layar-pelanggan .kaca-btn.mati { opacity: 0.45; pointer-events: none; }
