@@ -6,6 +6,7 @@ import { pasangLayarStok } from './layar/stok.js';
 import { pasangLayarPelanggan } from './layar/pelanggan.js';
 import { pasangLayarMenu } from './layar/menu.js';
 import { pasangLayarHarga } from './layar/harga.js';
+import { pasangLayarUang } from './layar/uang.js';
 import * as fb from './data/firebase.js';
 import { muatCadangan } from './data/cadangan.js';
 import { dengarkan, sumberData } from './data/toko.js';
@@ -25,7 +26,7 @@ function terapkanMode() {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = gelap ? '#111516' : '#eef1f4';
 }
-function gantiMode() { mode = mode === 'gelap' ? 'terang' : 'gelap'; try { localStorage.setItem(KUNCI_MODE, mode); } catch (e) { /* abaikan */ } terapkanMode(); layar.gambar(); ringkasan.gambar(); stok.gambar(); pelanggan.gambar(); menu.gambar(); harga.gambar(); }
+function gantiMode() { mode = mode === 'gelap' ? 'terang' : 'gelap'; try { localStorage.setItem(KUNCI_MODE, mode); } catch (e) { /* abaikan */ } terapkanMode(); layar.gambar(); ringkasan.gambar(); stok.gambar(); pelanggan.gambar(); menu.gambar(); harga.gambar(); uang.gambar(); }
 function statusTeks() {
   const s = sumberData();
   if (s.jenis === 'cadangan') return 'membaca cadangan (bukan data hidup)';
@@ -50,18 +51,21 @@ const stok = pasangLayarStok(document.getElementById('layarStok'), { gantiMode, 
 const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
 // Menu (putaran 14): laci N1 + pita jam + Sistem (SS1–SS5). Tujuan baris = layar lain lewat pintu yang sama dengan ketukan di layar itu.
 const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
-  bukaStok: (lembar, tab) => { pindah('stok'); stok.buka(lembar, tab); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); },
+  bukaStok: (lembar, tab) => { pindah('stok'); stok.buka(lembar, tab); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); }, bukaUang: (keluarga, t) => { pindah('uang'); uang.buka(keluarga, t); },
   lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline }),
   periksaSambungan: () => fb.periksaSambungan(4000), setelPemegang: (n) => fb.setelPemegang(n), setelLokasi: (id) => fb.setelLokasi(id), namaiPerangkat: (n) => fb.namaiPerangkat(n) });
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.
 const harga = pasangLayarHarga(document.getElementById('layarHarga'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
-const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok'), pelanggan: document.getElementById('layarPelanggan'), menu: document.getElementById('layarMenu'), harga: document.getElementById('layarHarga') };
+// Uang (putaran 18): layar ketujuh — Uang keluar · Orang & upah · Owner & toko · Pindah uang · Tutup hari · Tutup buku. Dibuka dari Menu; di Mac ada di menu samping.
+const lokalPerangkat = () => ({ antre: statusFb.antre || [], menunggu: statusFb.menunggu || 0, idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), offline: statusFb.offline });
+const uang = pasangLayarUang(document.getElementById('layarUang'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), lokal: lokalPerangkat });
+const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok'), pelanggan: document.getElementById('layarPelanggan'), menu: document.getElementById('layarMenu'), harga: document.getElementById('layarHarga'), uang: document.getElementById('layarUang') };
 function pindah(tujuan) {
   if (!LAYAR_ADA[tujuan]) return false;
   Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].hidden = k !== tujuan; });
-  document.querySelectorAll('[data-tujuan]').forEach((el) => el.classList.toggle('aktif', el.dataset.tujuan === tujuan || (tujuan === 'harga' && el.dataset.tujuan === 'menu' && el.closest('nav'))));   // Harga & Pemasok tidak punya petak di nav bawah: petak Menu yang menyala (pintunya)
+  document.querySelectorAll('[data-tujuan]').forEach((el) => el.classList.toggle('aktif', el.dataset.tujuan === tujuan || ((tujuan === 'harga' || tujuan === 'uang') && el.dataset.tujuan === 'menu' && el.closest('nav'))));   // Harga & Pemasok / Uang tidak punya petak di nav bawah: petak Menu yang menyala (pintunya)
   document.body.classList.toggle('di-jual', tujuan === 'jual');
-  ringkasan.tampilkan(tujuan === 'ringkasan'); stok.tampilkan(tujuan === 'stok'); pelanggan.tampilkan(tujuan === 'pelanggan'); menu.tampilkan(tujuan === 'menu'); harga.tampilkan(tujuan === 'harga');
+  ringkasan.tampilkan(tujuan === 'ringkasan'); stok.tampilkan(tujuan === 'stok'); pelanggan.tampilkan(tujuan === 'pelanggan'); menu.tampilkan(tujuan === 'menu'); harga.tampilkan(tujuan === 'harga'); uang.tampilkan(tujuan === 'uang');
   try { localStorage.setItem(KUNCI_TAB, tujuan); } catch (e) { /* abaikan */ }
   window.scrollTo(0, 0);
   return true;
@@ -86,11 +90,11 @@ if (q.get('cadangan')) {
   muatCadangan(q.get('cadangan')).then((r) => {
     // "hari ini" di cadangan = hari cadangan itu diunduh, bukan hari komputer ini — supaya kartu Hari ini tidak kosong menyesatkan
     sekarangCadangan = r.diunduhPada ? new Date(r.diunduhPada) : null;
-    layar.keadaan.setel({ sekarang: sekarangCadangan }); ringkasan.gambar(); stok.gambar(); pelanggan.gambar(); menu.gambar(); harga.gambar();
+    layar.keadaan.setel({ sekarang: sekarangCadangan }); ringkasan.gambar(); stok.gambar(); pelanggan.gambar(); menu.gambar(); harga.gambar(); uang.gambar();
     console.log('cadangan dimuat:', r.koleksi, 'koleksi'); })
     .catch((e) => { const p = document.createElement('div'); p.className = 'pita-info awas'; p.textContent = 'Cadangan tidak terbaca: ' + String(e.message); akar.prepend(p); });
 } else {
-  fb.dengarkanStatus((st) => { statusFb = st; if (st.masuk) modal.classList.remove('tampil'); layar.gambar(); ringkasan.gambar(); stok.gambar(); menu.gambar(); harga.gambar(); });
+  fb.dengarkanStatus((st) => { statusFb = st; if (st.masuk) modal.classList.remove('tampil'); layar.gambar(); ringkasan.gambar(); stok.gambar(); menu.gambar(); harga.gambar(); uang.gambar(); });
   fb.mulai(bukaMasuk);
 }
 

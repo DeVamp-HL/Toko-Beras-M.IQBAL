@@ -71,10 +71,19 @@ export function ambilPengaturan() { return _cache.pengaturan || []; }     // kol
 export function ambilHargaPasar() { return _cache.hargaPasar || []; }       // putaran 17: catatan harga pasar per harga (id = kunci)
 export function ambilHargaTerbit() { return _cache.hargaTerbit || []; }     // putaran 17: riwayat terbit katalog
 export function ambilPesananPemasok() { return _cache.pesananPemasok || []; } // putaran 17: pesanan belanja ke pemasok
+export function ambilPindahUang() { return _cache.pindahUang || []; }         // putaran 18: uang berpindah tempat (laci · brankas · rekening)
+export function ambilAbsenKaryawan() { return _cache.absen || []; }           // putaran 18: hari kerja per orang per bulan
+export function ambilSlipUpah() { return _cache.slipUpah || []; }             // putaran 18: tiap pembayaran upah
+export function ambilTutupBukuAcara() { return _cache.tutupBukuAcara || []; } // putaran 18: berita acara tutup buku per tahun
 // Titik kas & peta jenis beras hidup di localStorage perangkat di index.html (kunci yang sama);
 // karena sistem baru ada di asal (origin) yang sama, localStorage-nya pun sama.
+// Putaran 18: dokumen pengaturan/titikKas (ditulis Tutup hari sistem baru & lama) MENANG bila lebih baru dari salinan perangkat — persis pendengar onSnapshot titikKas
+// index.html, supaya HP kedua melihat titik yang disetel HP pertama; salinan lokal tetap dipakai saat dokumennya belum sampai.
 export function ambilTitikKas() {
-  try { return JSON.parse(localStorage.getItem('miqbal_titik_kas_v1') || 'null'); } catch (e) { return null; }
+  let lokal = null; try { lokal = JSON.parse(localStorage.getItem('miqbal_titik_kas_v1') || 'null'); } catch (e) { lokal = null; }
+  const dok = (_cache.pengaturan || []).find((d) => String(d.id) === 'titikKas') || null;
+  if (dok && dok.tanggal && (!lokal || String(dok.diubahPada || '') > String(lokal.diubahPada || ''))) return dok;
+  return lokal;
 }
 export function ambilPetaJenisBeras() {
   try { return JSON.parse(localStorage.getItem('miqbal_jenis_beras_v1') || '{}'); } catch (e) { return {}; }
@@ -120,5 +129,32 @@ export async function hapusDokumen(daftar) {
   if (_penulis) return _penulis.hapus(daftar);
   terapkanKeCache(daftar.map((x) => ({ koleksi: x.koleksi, hapus: x.id })));
   return { simulasi: true };
+}
+
+// ---- ARSIP TAHUN (putaran 18, Tutup buku K6): dokumen tahun yang ditutup PINDAH ke koleksi arsipTahun, bukan dihapus ----
+// arsipTahun tidak pernah dimuat ke memori (ribuan dokumen tahun lalu); dibaca hanya saat "Batalkan tutup buku".
+// Simulasi cadangan: arsipnya disimpan di memori perangkat ini saja.
+let _arsip = [];
+export function arsipSimulasi() { return _arsip.slice(); }
+/** daftar = [{ koleksi, id, data }] → dipindah ke arsipTahun (id = tahun|koleksi|id) lalu dihapus dari koleksinya. progres(sudah, total) dipanggil per potongan. */
+export async function arsipkanDokumen(tahun, daftar, progres) {
+  if (_penulis && _penulis.arsipkan) return _penulis.arsipkan(tahun, daftar, progres);
+  daftar.forEach((x) => { _arsip = _arsip.filter((a) => !(a.tahun === tahun && a.koleksi === x.koleksi && String(a.idAsli) === String(x.id))); _arsip.push({ id: tahun + '|' + x.koleksi + '|' + x.id, tahun, koleksi: x.koleksi, idAsli: x.id, dok: x.data }); });
+  terapkanKeCache(daftar.map((x) => ({ koleksi: x.koleksi, hapus: x.id })));
+  if (progres) progres(daftar.length, daftar.length);
+  return { simulasi: true, n: daftar.length };
+}
+/** Semua dokumen arsip satu tahun: [{ koleksi, idAsli, dok }]. */
+export async function bacaArsipTahun(tahun) {
+  if (_penulis && _penulis.bacaArsip) return _penulis.bacaArsip(tahun);
+  return _arsip.filter((a) => a.tahun === tahun).map((a) => ({ koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok }));
+}
+/** Kebalikannya: dokumen arsip dikembalikan ke koleksinya, salinan arsipnya dihapus. */
+export async function pulihkanArsip(tahun, daftar, progres) {
+  if (_penulis && _penulis.pulihkan) return _penulis.pulihkan(tahun, daftar, progres);
+  terapkanKeCache(daftar.map((x) => ({ koleksi: x.koleksi, data: x.dok })));
+  _arsip = _arsip.filter((a) => a.tahun !== tahun);
+  if (progres) progres(daftar.length, daftar.length);
+  return { simulasi: true, n: daftar.length };
 }
 
