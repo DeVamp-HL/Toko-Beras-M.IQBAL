@@ -80,6 +80,8 @@ main.layar-menu.masuk > header, main.layar-menu.masuk > .mn-gulir > .jalur, main
 .pn-hak { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 40px; padding: 3px 0; border-bottom: 1px dashed var(--garis); font-size: 12px; cursor: pointer; }
 .pn-nilai { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 8px; border-radius: 8px; border: 1px solid var(--kaca-tepi); white-space: nowrap; transition: background-color 220ms ease, color 220ms ease; }
 .pn-nilai.sendiri { border-color: #2f8f4e; color: #2f8f4e; } .pn-nilai.owner { border-color: var(--emas-garis); color: var(--aktif); } .pn-nilai.tidak { color: var(--redup); } .pn-nilai.kunci { opacity: 0.6; }
+/* putaran 23c: kisi bilang boleh, server menutup — tepi putus (bukan hijau), supaya tidak terbaca 'boleh sendiri' */
+.pn-nilai.server { border-style: dashed; border-color: var(--awas); color: var(--awas); }
 .pn-minta { border-radius: 14px; padding: 10px 12px; background: var(--kaca); border: 1px solid var(--kaca-tepi); display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
 .pn-minta.aktif { border-color: var(--emas-garis); } .pn-minta .n { font-family: "Bodoni Moda", Georgia, serif; font-size: 14px; white-space: nowrap; }
 .pn-dua { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

@@ -96,6 +96,8 @@ export function susunSimpanAdukan(draf, w, yakin) {
   if (h.bermasalah.length) { const x = h.bermasalah[0]; return { tolak: 'Baris ' + x.ke + (x.merk || x.nama || x.namaProduk ? ' (' + (x.merk || x.nama || x.namaProduk) + ')' : '') + ': ' + x.masalah + ' — lengkapi atau kosongkan barisnya' }; }
   if (!h.sahB.length && !h.sahBK.length) return { tolak: 'Isi minimal satu bahan — karung dari gudang (nama + kg) atau kemasan jadi yang dibongkar' };
   if (!h.sahH.length) return { tolak: 'Isi minimal satu baris hasil: nama, ukuran, dan jumlah unit' };
+  // putaran 23c: akun bukan-owner — batas sekali kirim ke server (draf.batasHasil dari akses.js; 0 = owner). alat-uji/peta_akses.py --kiriman
+  if (Number(draf.batasHasil) > 0 && h.sahH.length > Number(draf.batasHasil)) return { tolak: 'Satu adukan paling banyak ' + draf.batasHasil + ' baris hasil untuk akun bukan-owner — batas sekali kirim ke server. Simpan ' + draf.batasHasil + ' baris dulu, sisanya jadi adukan kedua.' };
   if (h.lingkaran.length) { const x = h.lingkaran[0]; return { tolak: 'Ditolak: ' + x.nama + ' ' + adUkuranTeks(x.ukuran) + ' kg dipakai sebagai BAHAN sekaligus jadi HASIL — itu memutar stok tanpa arti. Ukuran yang berbeda boleh' }; }
   if (h.upah < 0) return { tolak: 'Upah kemas tidak boleh minus' };
   if (!(h.kgJadi > 0)) return { tolak: 'Total kg hasil nol — biayanya tidak bisa dibagi per baris' };

@@ -8,11 +8,16 @@ atau ditolak Firestore. Dua alat, keduanya dijalankan owner di Firebase Console 
 2. **Proyek Firebase kedua** (khusus uji, gratis): tempat menguji kiriman nyata dari `/baru/`, termasuk batch terbesar. Emulator tidak dipasang
    (keputusan owner 24 Sep), jadi inilah satu-satunya uji batch di server.
 
-**Gerbang (keputusan owner 24 Sep): SEBELUM akun bukan-owner pertama disetujui di proyek toko, bagian B wajib selesai & lulus.**
+**Urutan dipecah dua (owner 24 Sep, putaran 23c):**
+
+- **SEKARANG** — belum ada akun bukan-owner, yang masuk `/baru/` cuma owner: kasus ★ di Playground dengan v3 di editor proyek toko (A),
+  tempel v3, satu nota kasir darurat masuk (C).
+- **GERBANG TABLET** — wajib lulus SEBELUM akun bukan-owner pertama disetujui: proyek Firebase kedua (A 11–24 + B), harga beli tidak
+  terkirim ke staf, cache dibersihkan saat Keluar, jaga CI ≤ 18 tetap hijau, lalu akun dibuat (email huruf kecil) & disetujui (D).
 
 ---
 
-## A · Kasus Playground (jalankan di proyek UJI dulu, lalu yang bertanda ★ juga di proyek toko sebelum menempel v3)
+## A · Kasus Playground (★ = SEKARANG di editor proyek toko sebelum menempel v3; 11–24 = gerbang tablet, di proyek uji)
 
 Cara isi: *Simulation type* = get / create / update / delete · *Location* = jalur dokumen · *Authenticated* = on, *Provider* = password,
 *Firebase UID* = uid akunnya, lalu di **Auth token payload** tambahkan `"email": "…"`. Untuk create/update isi *Build document* dengan kolom di tabel.
@@ -56,7 +61,7 @@ Tujuannya: menjalankan transaksi terbesar tiap peran lewat `/baru/` sungguhan, d
 1. **Buat proyek** (Console › Add project, paket gratis). Nyalakan *Authentication › Email/Password*; **matikan pendaftaran mandiri**
    (Settings › User actions). Buat *Firestore Database*.
 2. **Buat akun uji** di Authentication › Add user: `owner@tokoberasmiqbal.web.app` (rules mengenali owner lewat email ini — di proyek uji
-   akun ini terpisah dari proyek toko), satu akun untuk peran ben, satu untuk karyawan. Sandi bebas, cuma untuk proyek uji.
+   akun ini terpisah dari proyek toko), satu akun untuk peran ben, satu untuk karyawan — email huruf kecil semua. Sandi bebas, cuma untuk proyek uji.
 3. **Tempel rules v3** (`firestore.rules`) di proyek uji.
 4. **Ambil config web** proyek uji (Project settings › Your apps › Web › `firebaseConfig`). Di perangkat yang dipakai menguji, buka
    `/baru/?pasangProyekUji=<config JSON>` — contoh: `/baru/?pasangProyekUji={"projectId":"uji-miqbal","apiKey":"…","appId":"…","authDomain":"uji-miqbal.firebaseapp.com"}`.
@@ -68,25 +73,39 @@ Tujuannya: menjalankan transaksi terbesar tiap peran lewat `/baru/` sungguhan, d
    Ulangi untuk karyawan. Nonaktifkan lalu aktifkan lagi satu akun (dua ketukan) sambil akun itu terbuka di perangkat lain — layarnya harus
    langsung tertutup.
 7. **Kiriman terbesar tiap peran** (yang belum diuji di server; batas 20 access call):
-   - karyawan: nota tunai **9 baris literan berkantong** dari pesanan yang ada (9 × 2 + pesanan = 19 dokumen + 1 jejak = **20**) → wajib masuk;
+   - ben: nota **7 baris literan berkantong**, dibayar sebagian, dari pesanan yang ada (7 × 2 + bayar sebagian + pesanan = 16 dokumen + 1 jejak
+     = **17**, terburuk yang mungkin — `python3 alat-uji/peta_akses.py --kiriman`) → wajib masuk;
+   - karyawan: nota tunai 7 baris literan berkantong dari pesanan (15 dokumen + 1 = **16**) → wajib masuk; baris ke-8 → wajib ditolak di
+     perangkat dengan kalimat "Satu nota paling banyak 7 baris untuk akun bukan-owner — batas sekali kirim ke server…";
    - karyawan: nota Bon → wajib ditolak di perangkat ("Perlu persetujuan owner");
-   - ben: nota Bon dibayar sebagian (baris + bayar sebagian) → wajib masuk;
+   - ben/karyawan: adukan 8 hasil berkantong (**17**) → wajib masuk; hasil ke-9 → ditolak dengan kalimatnya;
    - ben & karyawan: terima bayar bon, adukan 2 hasil, pelanggan baru → wajib masuk;
    - ben: Stok › Barang masuk → wajib mati dengan kalimatnya; Menu tidak memajang angka uang;
    - owner: Menu › Sistem › Jejak menampilkan SATU baris per kiriman bukan-owner yang menyebut semua dokumennya.
 8. **Ditolak server tidak hilang**: nonaktifkan akun karyawan saat perangkatnya OFFLINE, buat satu nota di perangkat itu, sambungkan lagi →
    kiriman itu tampil di Menu › Sistem › Perangkat › Antrean sebagai **ditolak server** (owner: tulis ulang atas nama owner / buang).
-9. Semua lulus → **Kembali ke data toko**, lanjut ke C.
+9. Semua lulus → **Kembali ke data toko**, lanjut ke D.
 
 ---
 
-## C · Langkah pasang di proyek TOKO (sesudah A ★ & B lulus)
+## C · SEKARANG di proyek TOKO (sesudah kasus ★ di A sesuai semua)
 
 0. Pendaftaran mandiri MATI & daftar Users sudah diperiksa (owner, 24 Sep: sudah).
 1. Tempel `firestore.rules` v3 di Console proyek toko.
 2. **Buat SATU nota dari kasir darurat** (akun kasir@) dan pastikan nota itu masuk di layar Jual `/baru/` owner. Tidak masuk → langsung tempel
    `firestore.rules.v2` (jalan mundur) dan kabari Claude Code.
-3. Buat akun orangnya di Authentication › Add user (email + sandi — owner yang memegang sandinya).
-4. Orangnya masuk `/baru/` → "Minta didaftarkan"; owner menyetujui di Menu › Sistem › Peran.
+
+## D · GERBANG TABLET (semua lulus SEBELUM akun bukan-owner pertama disetujui)
+
+1. Proyek Firebase kedua: kasus A 11–24 + seluruh B lulus.
+2. **Harga beli / modal tidak terkirim ke Ben/karyawan.** Kisi SS2 bilang `hargaBeli` = tidak boleh, tapi tujuh koleksi yang dibaca staf
+   membawanya (`batchMasuk`, `penjualan.hppTotalSaatJual`, `produksiKemasan`, `penyesuaianStok/Kemasan`, `stokBahanKemasan/Literan` —
+   `docs/peta-hak-akses.md` §8). Layar tidak memajangnya, server tetap mengirimnya. Rancang ringkasan stok tanpa harga beli DAN siapa yang
+   mengisi HPP nota staf, lalu cabut baca itu untuk staf. (Putaran tablet — belum dikerjakan.)
+3. **Cache Firestore dibersihkan saat Keluar** di perangkat bersama. Sampai itu ada: owner tidak masuk `/baru/` di tablet bersama.
+4. Jaga CI kiriman bukan-owner ≤ 18 access call tetap hijau (`alat-uji/peta_akses.py --kiriman`, terpasang putaran 23c).
+5. Buat akun orangnya di Authentication › Add user — **email selalu huruf kecil semua** (rules permintaan akses membandingkan email di token
+   dengan yang ditulis aplikasi, yang selalu huruf kecil). Owner yang memegang sandinya.
+6. Orangnya masuk `/baru/` → "Minta didaftarkan"; owner menyetujui di Menu › Sistem › Peran.
 
 **Mundur** = tempel `firestore.rules.v2` — hanya selama pendaftaran mandiri mati (v2 membuka jalur kasir untuk siapa pun yang login).

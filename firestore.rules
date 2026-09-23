@@ -23,16 +23,25 @@
 //
 // ACCESS CALL: tiap tulisan bukan-owner memeriksa aksesAkun SEKALI (1 get()); owner() di depan = owner tidak memicu get().
 //   Batas Firebase: 10 per permintaan dokumen tunggal / tiap operasi, 20 per batch/transaksi — cache TIDAK diandalkan.
-//   Kiriman bukan-owner terbesar yang mungkin: 19 dokumen + 1 jejak = 20 (pagar di penulis pusat). Nota nyata terpanjang: 9 / 20.
-//   Kiriman terbesar BELUM DIUJI DI SERVER — lihat gerbang di bawah.
+//   Kiriman bukan-owner dijaga SISA 2 (owner 24 Sep, putaran 23c): paling banyak 17 dokumen + 1 jejak = 18 (stafJejak di bawah + pagar
+//   penulis pusat). Batas 7 baris per nota & 8 hasil per adukan membuat terburuknya 17; dihitung dari fungsi aslinya di CI
+//   (alat-uji/peta_akses.py --kiriman, gagal bila > 18). Nota nyata terpanjang di cadangan toko: 7 baris. Kiriman terbesar BELUM DIUJI DI SERVER.
 //
-// URUTAN PASANG (anti terkunci; keputusan owner 24 Sep — DIBALIK dari prompt):
-//   0. Prasyarat: pendaftaran mandiri MATI (Console > Authentication > Settings > User actions) & daftar Users diperiksa.
-//   1. GERBANG: uji v3 di PROYEK FIREBASE KEDUA (khusus uji, data toko asli tidak disentuh) — docs/uji-rules-v3.md.
-//   2. Tempel rules v3 ini ke Console proyek toko.
-//   3. Buat SATU nota dari kasir darurat (kasir@) dan pastikan nota itu masuk (jalur kasir tidak ikut tertutup).
-//   4. Buat akun orang di Console > Authentication > Add user (klien tidak pernah membuat akun).
-//   5. Orangnya masuk /baru/ → "Minta didaftarkan"; owner menyetujui di Menu > Sistem > Peran (tidak ada UID disalin tangan).
+// URUTAN PASANG (anti terkunci; keputusan owner 24 Sep — dipecah dua, putaran 23c):
+//   Prasyarat: pendaftaran mandiri MATI (Console > Authentication > Settings > User actions) & daftar Users diperiksa (owner: sudah).
+//   SEKARANG (belum ada akun bukan-owner — yang masuk /baru/ cuma owner):
+//     a. Rules Playground dengan v3 di EDITOR proyek toko (belum diterbitkan): kasus bertanda ★ di docs/uji-rules-v3.md, semuanya wajib sesuai.
+//     b. Tempel rules v3 ini ke Console proyek toko.
+//     c. Buat SATU nota dari kasir darurat (kasir@) dan pastikan nota itu masuk (jalur kasir tidak ikut tertutup). Tidak masuk → tempel v2.
+//   GERBANG TABLET (wajib lulus SEBELUM akun bukan-owner pertama disetujui):
+//     1. Uji v3 di PROYEK FIREBASE KEDUA (khusus uji; data toko tidak disentuh) — kasus Playground 11–24 + alur nyata, docs/uji-rules-v3.md.
+//     2. Harga beli / modal TIDAK terkirim ke Ben/karyawan: kisi SS2 bilang hargaBeli "tidak", tapi 7 koleksi yang dibaca staf membawanya
+//        (batchMasuk, penjualan.hppTotalSaatJual, produksiKemasan, penyesuaianStok/Kemasan, stokBahanKemasan/Literan — peta §8).
+//        Rancang ringkasan stok tanpa harga beli + siapa yang mengisi HPP nota staf, lalu cabut baca itu untuk staf (putaran tablet).
+//     3. Cache Firestore dibersihkan saat Keluar di perangkat bersama. Sampai itu ada: owner TIDAK masuk /baru/ di tablet bersama.
+//     4. Jaga CI kiriman bukan-owner ≤ 18 tetap hijau (sudah terpasang, putaran 23c).
+//     5. Buat akun orang di Console > Authentication > Add user — EMAIL SELALU HURUF KECIL SEMUA (klien tidak pernah membuat akun).
+//     6. Orangnya masuk /baru/ → "Minta didaftarkan"; owner menyetujui di Menu > Sistem > Peran (tidak ada UID disalin tangan).
 //   MUNDUR = tempel firestore.rules.v2 — HANYA selama pendaftaran mandiri mati (v2 membuka jalur kasir untuk siapa pun yang login).
 // ============================================================================
 rules_version = '2';
@@ -66,7 +75,7 @@ service cloud.firestore {
     }
     function stafJejak(peranBoleh) {
       let d = request.resource.data;
-      return stafBuat(peranBoleh) && d.dokumen is list && d.dokumen.size() >= 1 && d.dokumen.size() <= 19;
+      return stafBuat(peranBoleh) && d.dokumen is list && d.dokumen.size() >= 1 && d.dokumen.size() <= 17;   // 17 dokumen + jejak = 18 access call (batas 20, sisa 2)
     }
     // peta §5 baris 1: pesanan yang belum tuntas jadi 'dibayar' — kolom dibatasi, uang/berat tidak tersentuh
     function stafUbahPesanan(peranBoleh) {

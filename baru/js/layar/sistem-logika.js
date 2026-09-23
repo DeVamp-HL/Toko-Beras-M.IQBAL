@@ -13,6 +13,7 @@ import { ambilPenjualan, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBah
 import { tempoPemasok } from './bon-pemasok-logika.js';
 import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
 import { semuaBon, pesanTagih } from './bon-logika.js';
+import { SERVER_BUKA } from '../data/akses.js';
 
 export const ssHariKe = (iso) => Math.round(Date.UTC(+String(iso).slice(0, 4), +String(iso).slice(5, 7) - 1, +String(iso).slice(8, 10)) / 86400000);
 export const ssTambahHari = (iso, n) => new Date((ssHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
@@ -106,10 +107,22 @@ export function ssJejak(kini, antre, saring) {
 }
 
 // ---------- SS2 · Peran & persetujuan ----------
+// Putaran 23c (owner 24 Sep): kisi menampilkan KEBENARAN SERVER. Kisi `sendiri` yang tidak dibuka firestore.rules v3 (akses.js SERVER_BUKA)
+// tampil "tertutup server" beserta sebabnya (peta §6) — bukan "boleh sendiri". Nilai kisi tersimpan tetap; yang berubah cuma yang digambar.
+export const SS_TERTUTUP_SERVER = { hitungLaci: 'menutup hari menimpa titik kas (angka uang yang sudah tercatat) — owner saja sampai ada alur persetujuan',
+  kedatangan: 'kedatangan wajib harga beli, padahal harga beli tidak boleh untuk peran ini — owner saja sampai ada draf kedatangan tanpa harga' };
+export const SS_LABEL_TAMPIL = { sendiri: 'boleh sendiri', server: 'tertutup server', owner: 'minta owner', tidak: 'tidak boleh' };
+export function ssHakServer(peran, tindakan, nilai) {
+  if (peran === 'owner') return { nilai, label: SS_LABEL_TAMPIL[nilai], ket: '' };
+  if (nilai === 'sendiri' && (SERVER_BUKA[tindakan] || []).indexOf(peran) < 0) return { nilai: 'server', label: SS_LABEL_TAMPIL.server, ket: SS_TERTUTUP_SERVER[tindakan] || 'server belum membuka tindakan ini untuk peran ini' };
+  if (nilai === 'owner') return { nilai, label: SS_LABEL_TAMPIL.owner, ket: 'alur persetujuannya belum ada — sampai itu dibangun, server menutupnya' };
+  return { nilai, label: SS_LABEL_TAMPIL[nilai] || nilai, ket: '' };
+}
 export function ssPeran() {
   const A = ssAtur('peran'); const hak = (peran, t) => (peran === 'owner' ? 'sendiri' : (A.hak[peran] || {})[t] || 'tidak');
-  return { tindakan: SS_TINDAKAN, hak, batasSekaligus: A.batasSekaligus, jatahBen: A.jatahBen, jejak: (A.jejak || []).slice(0, 12),
-    peran: SS_PERAN.map((p) => ({ id: p.id, nama: p.nama, ket: p.id === 'owner' ? 'semua boleh · tidak diubah' : SS_NILAI_HAK.map((v) => SS_TINDAKAN.filter((t) => hak(p.id, t.id) === v).length + ' ' + SS_LABEL_HAK[v]).join(' · ') })) };
+  const tampil = (peran, t) => ssHakServer(peran, t, hak(peran, t));
+  return { tindakan: SS_TINDAKAN, hak, tampil, batasSekaligus: A.batasSekaligus, jatahBen: A.jatahBen, jejak: (A.jejak || []).slice(0, 12),
+    peran: SS_PERAN.map((p) => ({ id: p.id, nama: p.nama, ket: p.id === 'owner' ? 'semua boleh · tidak diubah' : ['sendiri', 'server', 'owner', 'tidak'].map((v) => [SS_TINDAKAN.filter((t) => tampil(p.id, t.id).nilai === v).length, SS_LABEL_TAMPIL[v]]).filter((x) => x[0] > 0).map((x) => x[0] + ' ' + x[1]).join(' · ') })) };
 }
 /** Ketuk satu hak = memutar sendiri → minta owner → tidak boleh; hak owner tidak diubah. */
 export function susunPutarHak(peran, tindakan, w) {
@@ -118,7 +131,8 @@ export function susunPutarHak(peran, tindakan, w) {
   const lama = P.hak(peran, tindakan); const baru = SS_NILAI_HAK[(SS_NILAI_HAK.indexOf(lama) + 1) % 3]; const hak = {}; hak[peran] = {}; hak[peran][tindakan] = baru;
   const r = susunAturSistem('peran', { hak, batasSekaligus: P.batasSekaligus, jatahBen: P.jatahBen }, w); if (r.tolak) return r;
   r.dokumen[0].data.jejak = [{ tanggal: w.tanggal, jam: w.jam, teks: R.nama + ' · ' + T.nama + ': ' + SS_LABEL_HAK[lama] + ' → ' + SS_LABEL_HAK[baru] }].concat(P.jejak).slice(0, 40);
-  r.patch = { kabar: R.nama + ' kini ' + SS_LABEL_HAK[baru] + ' untuk "' + T.nama + '" — berlaku di tablet begitu tersambung', kabarAwas: false }; return r;
+  const srv = ssHakServer(peran, tindakan, baru);
+  r.patch = { kabar: R.nama + ' kini ' + SS_LABEL_HAK[baru] + ' untuk "' + T.nama + '"' + (srv.nilai === 'server' ? ' — tapi server menutupnya untuk peran ini (' + srv.ket + '), jadi tampil "tertutup server"' : ' — berlaku di tablet begitu tersambung'), kabarAwas: srv.nilai === 'server' }; return r;
 }
 // ---------- SS2 · AKUN PER ORANG (putaran 23): permintaan akses & akun terdaftar — HANYA owner menulis (rules: aksesAkun tulis = owner, peran ∈ ben/karyawan) ----------
 export const SS_KALIMAT_SERVER = 'Server menegakkan: baca & catat baru. Koreksi, hapus, dan \'minta owner\' tertutup sampai alur persetujuan ada.';

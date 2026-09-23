@@ -93,9 +93,11 @@ var q1 = periksaKiriman(KRY, ubahPs(), [], HAK_KRY), q2 = periksaKiriman(KRY, ub
   q4 = periksaKiriman(KRY, [{ koleksi: 'pelangganCatatan', data: { id: 'x', nama: 'X', ciri: 'baru' }, ada: true, lama: { id: 'x', nama: 'X', ciri: '' } }], [], HAK_KRY);
 ok('kiriman: pesanan jadi DIBAYAR (status, riwayatStatus, trxIdJual + diubah*) → boleh (peta §5 baris 1); ikut mengubah nilai → ditolak; pesanan yang sudah dibayar → ditolak; mengubah kartu pelanggan yang sudah ada → ditolak',
   !q1.tolak && !!q2.tolak && !!q3.tolak && !!q4.tolak, JSON.stringify([q1, q2, q3, q4]));
-var besar = nota('Tunai', 19), lebih = nota('Tunai', 20);
-ok('kiriman: 19 dokumen = 20 access call → masih boleh; 20 dokumen → ditolak di perangkat "pecah jadi dua nota" (batas batch Firebase, tanpa cache)',
-  periksaKiriman(KRY, besar, [], HAK_KRY).accessCall === 20 && /pecah jadi dua nota/.test(periksaKiriman(KRY, lebih, [], HAK_KRY).tolak || ''));
+var besar = nota('Tunai', 17), lebih = nota('Tunai', 18);
+ok('kiriman: 17 dokumen = 18 access call → masih boleh; 18 dokumen (19 access call) → ditolak di perangkat "pecah jadi dua nota, batas 17" (batas batch Firebase 20, sisa 2 — owner 24 Sep, tanpa cache)',
+  BATAS_KIRIM_STAF === 18 && periksaKiriman(KRY, besar, [], HAK_KRY).accessCall === 18 && /batas 17\) — pecah jadi dua nota/.test(periksaKiriman(KRY, lebih, [], HAK_KRY).tolak || ''), JSON.stringify(periksaKiriman(KRY, lebih, [], HAK_KRY)));
+ok('batas per akun: owner tanpa batas baris/hasil (0); Ben & karyawan 7 baris per nota, 8 hasil per adukan (terburuknya 17 access call — alat-uji/peta_akses.py --kiriman)',
+  batasBarisNota(OWN) === 0 && batasHasilAdukan(OWN) === 0 && batasBarisNota(BEN) === 7 && batasBarisNota(KRY) === 7 && batasHasilAdukan(KRY) === 8);
 ok('kiriman: owner tidak diperiksa (payung owner, 0 access call); akun belum terdaftar ditolak apa pun isinya',
   periksaKiriman(OWN, lebih, [{ koleksi: 'penjualan', id: 1 }], {}).accessCall === 0 && periksaKiriman(BLM, nota('Tunai', 1), [], {}).tolak === 'Akun ini belum didaftarkan owner');
 
@@ -143,6 +145,15 @@ ok('SS2: tolak butuh alasan, dicatat di jejak; nonaktifkan = dua ketukan (ketuka
   !!T0.tolak && T1.hapus.length === 1 && T1.dokumen.length === 0 && /bukan orang toko/.test(T1.jejakHapus) && U0.perluYakin === true && U1.dokumen[0].data.aktif === false && !!U2.tolak);
 (function () { var sebelum = cacheMentah('permintaanAkses').length; tulisDokumen(D2.dokumen, D2.hapus, { jejakHapus: D2.jejakHapus });
   ok('penulis (simulasi): tulis + hapus dalam satu kiriman → aksesAkun masuk, permintaannya hilang', sebelum === 1 && cacheMentah('permintaanAkses').length === 0 && cacheMentah('aksesAkun').some(function (a) { return a.id === 'uid-baru'; })); })();
+
+// ---- 9b · kisi SS2 menampilkan KEBENARAN SERVER (owner 24 Sep, putaran 23c)
+var SP = ssPeran(); var sel = function (p, x) { return SP.tampil(p, x); };
+ok('kisi SS2: hitung laci (Ben) & kedatangan (Ben, karyawan) — kisi "sendiri" tapi server menutup → tampil "tertutup server" beserta sebabnya, BUKAN "boleh sendiri"; jual tunai Ben tetap "boleh sendiri"; owner selalu "boleh sendiri"',
+  sel('ben', 'hitungLaci').label === 'tertutup server' && /titik kas/.test(sel('ben', 'hitungLaci').ket) && sel('ben', 'kedatangan').label === 'tertutup server' && /harga beli/.test(sel('karyawan', 'kedatangan').ket)
+  && sel('karyawan', 'kedatangan').label === 'tertutup server' && sel('ben', 'jualTunai').label === 'boleh sendiri' && sel('owner', 'hitungLaci').label === 'boleh sendiri' && sel('karyawan', 'hitungLaci').label === 'tidak boleh', JSON.stringify([sel('ben', 'hitungLaci'), sel('karyawan', 'kedatangan')]));
+var semuaSendiri = SS_TINDAKAN.filter(function (x) { return ['ben', 'karyawan'].some(function (p) { return sel(p, x.id).label === 'boleh sendiri' && (SERVER_BUKA[x.id] || []).indexOf(p) < 0; }); });
+ok('kisi SS2: TIDAK ADA sel "boleh sendiri" yang ditutup server (semua 13 tindakan × 2 peran); "minta owner" menyebut alurnya belum ada; ringkasan peran menghitung "tertutup server" terpisah',
+  semuaSendiri.length === 0 && /belum ada/.test(sel('ben', 'nego').ket) && /2 tertutup server/.test(SP.peran[1].ket) && /1 tertutup server/.test(SP.peran[2].ket), JSON.stringify([semuaSendiri.map(function (x) { return x.id; }), SP.peran[1].ket, SP.peran[2].ket]));
 
 // ---- 10 · sambungan di firebase.js (sumber diperiksa — tidak bisa dijalankan di jsc)
 var F = SUMBER.firebase, A = SUMBER.app;
@@ -199,7 +210,9 @@ if __name__ == '__main__':
             'bukan-owner boleh hapus': (js.replace("if (hapus && hapus.length) return { tolak: tolakTindakan('hapus') };", ""), S),
             'update pesanan boleh mengubah kolom mana saja': (js.replace("const liar = berubah.filter((kk) => u.kolom.indexOf(kk) < 0); if (liar.length) return { tolak: tolakTindakan('koreksi') };", ""), S),
             'pesanan yang sudah dibayar bisa diubah lagi': (js.replace("if (x.koleksi === 'pesanan' && (['dibayar', 'batal'].indexOf(String(lama.status || '')) >= 0 || d.status !== 'dibayar'))", "if (x.koleksi === 'pesanan' && d.status !== 'dibayar')"), S),
-            'batas access call dilewati': (js.replace("if (accessCall > BATAS_ACCESS_CALL) return", "if (accessCall > 99) return"), S),
+            'batas access call dilewati': (js.replace("if (accessCall > BATAS_KIRIM_STAF) return", "if (accessCall > 99) return"), S),
+            'pagar perangkat tanpa sisa 2': (js.replace("const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL - CADANGAN_ACCESS_CALL;", "const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL;"), S),
+            'kisi SS2 memajang "boleh sendiri" yang ditutup server': (js.replace("if (nilai === 'sendiri' && (SERVER_BUKA[tindakan] || []).indexOf(peran) < 0) return", "if (false) return"), S),
             'jejak kiriman cuma menyebut dokumen pertama': (js.replace("const daftar = (dokumen || []).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id), ringkas: ringkasDok(x.data) }));", "const daftar = (dokumen || []).slice(0, 1).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id), ringkas: ringkasDok(x.data) }));"), S),
             'kasir@ bisa minta didaftarkan': (js.replace("if (e === EMAIL_KASIR) return { jenis: 'kasir'", "if (false) return { jenis: 'kasir'"), S),
             'antre tidak tahan dimuat ulang': (js.replace("const v = penyimpan.baca(KUNCI_ANTRE); const a = v ? JSON.parse(v) : [];", "const a = [];"), S),

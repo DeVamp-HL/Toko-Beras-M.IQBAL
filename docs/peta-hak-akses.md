@@ -111,18 +111,54 @@ Tidak ada DELETE untuk bukan-owner.
 ## 7 · Access call (dianggap TANPA cache)
 
 Tiap dokumen bukan-owner memeriksa `aksesAkun` sekali (1 `get()`); baris jejak kiriman juga 1. Jadi **access call = dokumen + 1**.
-Batas Firebase: 10 per permintaan dokumen tunggal / tiap operasi, 20 per batch/transaksi.
+Batas Firebase: 10 per permintaan dokumen tunggal / tiap operasi, 20 per batch/transaksi. **Owner 24 Sep (putaran 23c): sisa 2 → paling
+banyak 18.** Tabel ini dihasilkan `python3 alat-uji/peta_akses.py --kiriman` (CI): fungsi ASLI dijalankan dengan masukan terburuk di
+batasnya, tiap kiriman lewat `periksaKiriman` asli; gagal bila ada yang > 18.
 
-| Kiriman bukan-owner | Dokumen | Access call |
-|---|---|---|
-| Jual — nota nyata terpanjang di cadangan toko (2.434 nota, maks 7 baris) | 8 | **9 / 20** |
-| Jual — rumus: L baris × ≤ 2 dokumen + bayar sebagian + pesanan | 2L + 2 | 2L + 3 → L ≤ 8 baris muat |
-| Adukan — h hasil (produksi + kantong) | 2h | 2h + 1 |
-| Terima bon · pelanggan baru · struk | 1 | 2 |
+| Kiriman bukan-owner | Peran | Dokumen | Access call | Yang mencapainya |
+|---|---|---|---|---|
+| Nota | Ben | 16 | **17 / 20** | 7 baris literan berkantong · bayar sebagian (sisa jadi bon) · dari pesanan |
+| Nota | karyawan | 15 | **16 / 20** | 7 baris literan berkantong · tunai/QRIS · dari pesanan (karyawan tidak bisa bon) |
+| Adukan | Ben, karyawan | 16 | **17 / 20** | 8 baris hasil, semua berkantong |
+| Terima bon · pelanggan baru · struk | Ben, karyawan | 1 | 2 / 20 | satu dokumen |
+| Denyut perangkat | Ben, karyawan | 1 | 1 / 20 | satu dokumen, tanpa jejak |
 
-Pagar di penulis pusat: kiriman bukan-owner yang butuh > 20 access call **ditolak di perangkat** dengan kalimat "pecah jadi dua nota"
-(sebelum dikirim; tidak pernah ditolak server diam-diam). Kiriman terbesar yang mungkin (19 dokumen) **belum diuji di server** —
-gerbang proyek Firebase kedua di `docs/uji-rules-v3.md`.
+Dokumen per baris nota: karung utuh & kemasan 1; literan berkantong, repack dengan wadah ditanggung toko, wadah dijual 2.
+Nota nyata terpanjang di cadangan toko: 7 baris (2.434 nota).
+
+**Sebelum 23c** (batas 20 tanpa sisa, tanpa batas baris) yang tepat 20/20: nota **9 baris** berdokumen dua (mis. literan berkantong) + satu
+tambahan — karyawan tunai dari pesanan, atau Ben dengan bayar sebagian. Ben 9 baris + bayar sebagian + pesanan = 21 → ditolak di perangkat.
+
+Pagar berlapis:
+1. **Batas per akun** (`akses.js`): 7 baris per nota (`alasanBatasBaris` di tambah-baris & saat dicatat), 8 hasil per adukan — kalimatnya
+   "Satu nota paling banyak 7 baris untuk akun bukan-owner — batas sekali kirim ke server. Simpan nota ini dulu, sisanya jadi nota kedua."
+2. **Pagar umum penulis pusat**: kiriman bukan-owner apa pun yang > 18 access call ditolak di perangkat ("pecah jadi dua nota").
+3. **Rules**: baris jejak bukan-owner paling banyak 17 dokumen (`stafJejak`).
+
+Kiriman terbesar (17) **belum diuji di server** — gerbang tablet, proyek Firebase kedua di `docs/uji-rules-v3.md`.
+
+## 8 · Gerbang tablet (owner 24 Sep, putaran 23c — syarat, BELUM dikerjakan)
+
+Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `firestore.rules`, `docs/uji-rules-v3.md` bagian D).
+
+- **Harga beli / modal tidak terkirim ke staf.** Kisi SS2 bilang `hargaBeli` = tidak, jadi server juga tidak boleh mengirimnya. Sensus nama
+  kolom (cadangan toko 24 Sep, nama kolom saja) — koleksi yang dibaca staf (§3) dan membawa harga beli/modal:
+
+  | Koleksi | Kolom harga beli / modal |
+  |---|---|
+  | `batchMasuk` | `merkList[].hargaPerKg`, `merkList[].subtotalHarga`, `biayaBongkar` |
+  | `penjualan` | `hppTotalSaatJual`, `biayaKemasanLiteran` |
+  | `produksiKemasan` | `hppPerUnit`, `modalPerUnit`, `hppSumberPerKgDipakai`, `biayaKemasan`, `sumberKemasanList[].hppPerUnitSaatDipakai` |
+  | `penyesuaianStok` · `penyesuaianKemasan` | `hppPerKgSaatOpname` / `hppPerUnitSaatOpname`, `nilaiRp` |
+  | `stokBahanKemasan` · `stokBahanLiteran` | `hargaTotal` (baris beli kantong) |
+
+  Katalog harga, `hargaWadah`, `retur` = harga JUAL (boleh). **Masalah rancangannya:** `hppTotalSaatJual` di nota dihitung di perangkat
+  penjual saat itu juga, dari harga beli (mesin laba yang dibekukan membacanya). Jadi ringkasan stok tanpa harga saja belum cukup; putaran
+  tablet harus memutuskan siapa yang mengisi HPP nota staf (mis. perangkat owner melengkapinya sesudahnya) sebelum baca koleksi-koleksi
+  di atas dicabut untuk staf.
+- **Cache Firestore dibersihkan saat Keluar** di perangkat bersama. Sampai itu ada, owner tidak masuk `/baru/` di tablet bersama.
+- **Jaga CI kiriman ≤ 18** tetap hijau.
+- **Email akun selalu huruf kecil** saat dibuat di Console.
 
 ## Lampiran A · Inventaris tulis (`python3 alat-uji/peta_akses.py`)
 

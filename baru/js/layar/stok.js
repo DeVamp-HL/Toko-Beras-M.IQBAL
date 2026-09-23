@@ -13,7 +13,7 @@ import * as KT from './stok-kantong-logika.js';
 import * as TP from './stok-tempat-logika.js';
 import * as HP from './stok-hpp-logika.js';
 import { gambarWadah, gambarKarungStok } from './gambar.js';
-import { tombolAkun, tombolLuarKisi, bukanOwner } from './akses-layar.js';
+import { tombolAkun, tombolLuarKisi, bukanOwner, batasHasilAdukan } from './akses-layar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
 import { adeganIsiUlang, adeganBukaKarung, adeganAdukan } from './adegan.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
@@ -121,7 +121,7 @@ export function pasangLayarStok(akar, opsi) {
     aTambah: ({ kel }) => ubahAdukan((d) => { d[kel].push(kel === 'bahan' ? A.barisBahanKosong() : kel === 'bahanKemasan' ? A.barisBahanKemasanKosong() : A.barisHasilKosong()); }),
     aLepas: ({ kel, i }) => ubahAdukan((d) => { d[kel].splice(Number(i), 1); if (kel !== 'bahanKemasan' && !d[kel].length) d[kel].push(kel === 'bahan' ? A.barisBahanKosong() : A.barisHasilKosong()); }),
     aBaru: () => { simpanLokal(KUNCI_DRAF_ADUKAN, null); set({ adukan: A.drafAdukanKosong(waktu()), yakinA: {}, kabar: '' }); },
-    aSimpan: async () => { const d = st().adukan; if (!d) return; const r = A.susunSimpanAdukan(d, waktu(), st().yakinA);
+    aSimpan: async () => { const d = st().adukan; if (!d) return; const r = A.susunSimpanAdukan(Object.assign({}, d, { batasHasil: batasHasilAdukan(opsi.akun ? opsi.akun() : null) }), waktu(), st().yakinA);
       if (r.tolak) { const y = Object.assign({}, st().yakinA); if (r.perluYakin) y[r.perluYakin] = true; set({ kabar: r.tolak, kabarAwas: true, yakinA: y }); return; }
       if (await tulis(r)) { simpanLokal(KUNCI_DRAF_ADUKAN, null); set({ adukan: A.drafAdukanKosong(waktu()), yakinA: {}, bukaA: String(r.batchId), koreksiA: { total: '', alasan: '' } }); sekali(akar.querySelector('.stok-adukan'), 'pegas', 520);
         const hs = r.hitung; adeganAdukan({ bahanTeks: hs.teksBahan, hasilTeks: hs.teksHasil, ukuran: hs.sahH[0].ukuran, banyak: hs.sahH.reduce((a, x) => a + x.unit, 0) }); } },

@@ -11,7 +11,7 @@ import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir da
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso } from '../inti/format.js';
 import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
-import { tombolAkun } from './akses-layar.js';
+import { tombolAkun, batasBarisNota } from './akses-layar.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
 import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit } from './adegan.js';
 
@@ -29,17 +29,19 @@ export function pasangLayarJual(akar, opsi) {
   const K = buatKeadaan(L.keadaanAwal());
   const set = (patch) => K.setel(patch);
   const S = () => K.baca();
+  // putaran 23c: akun bukan-owner — batas baris per nota (batas sekali kirim ke server) ikut ke logika setiap kali keranjang bertambah / nota dicatat
+  const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null) });
 
   const aksi = {
     jalur: ({ jalur }) => set({ jalur, lembar: null, pilih: null }),
     mode: () => opsi.gantiMode(),
     chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(Object.assign({ isiW: null }, L.ketukChip(S(), c))); },
     sering: ({ id }) => { const c = rakKini().sering.find((x) => x.id === id); if (c) set(L.ketukChip(S(), c)); },
-    ulangiTerakhir: ({ g }) => { const r = L.ulangiPembelian(S(), rakKini(), g); set(r); if (r.keranjang) setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 60); },
+    ulangiTerakhir: ({ g }) => { const r = L.ulangiPembelian(SB(), rakKini(), g); set(r); if (r.keranjang) setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 60); },
     pakaiBenang: ({ nama }) => set({ pelanggan: nama, kabar: 'Nama diganti ke yang punya urusan: ' + nama + ' — nota, bon, dan pembayarannya atas nama itu', kabarAwas: false }),
     tuts: ({ t }) => set(L.tekanTuts(S(), t)),
-    preset: ({ n }, el) => masukDenganGerak(L.masukkan(S(), Number(n)), el),
-    masukkan: (arg, el) => masukDenganGerak(L.masukkan(S()), el),
+    preset: ({ n }, el) => masukDenganGerak(L.masukkan(SB(), Number(n)), el),
+    masukkan: (arg, el) => masukDenganGerak(L.masukkan(SB()), el),
     tutup: () => set({ lembar: null, pilih: null, negoId: null, ketik: '', isiW: null }),
     bukaKeranjang: () => set({ lembar: S().lembar === 'keranjang' ? null : 'keranjang' }),
     hapusBaris: ({ id }) => set(L.hapusBaris(S(), id)),
@@ -63,7 +65,7 @@ export function pasangLayarJual(akar, opsi) {
     hapusUang: () => set({ uang: 0 }),
     simpan: async () => {
       if (S().karcis) return aksi.simpanRinci();
-      const r = L.simpanNota(S());
+      const r = L.simpanNota(SB());
       if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
       const keranjangTadi = S().keranjang.slice(); const uangTadi = S().cara === 'Tunai' ? S().uang : 0;
       set({ kabar: 'Mencatat…', kabarAwas: false });
