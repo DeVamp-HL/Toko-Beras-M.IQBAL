@@ -66,16 +66,31 @@ main.layar-jual > input[type="hidden"] { display: none; }
   .lembar { position: fixed; left: auto; right: 14px; top: 14px; bottom: 100px; width: min(460px, 46vw); max-height: none; }
 }
 @media (min-width: 1100px) {
-  body { padding-left: 232px; }
-  .side { display: flex; flex-direction: column; gap: 4px; position: fixed; left: 0; top: 0; bottom: 0; width: 232px; padding: 22px 12px; box-sizing: border-box; z-index: 5;
-    background: var(--side); border-right: 1px solid var(--garis); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
-  .side .merek { padding: 0 14px 16px; }
-  .side .item { cursor: pointer; }
+  /* Menu samping SEMPIT (72px, ikon + monogram IQ) — membuka jadi 236px saat kursor menepi ke kiri / masuk ke menu, atau monogramnya diketuk
+     (owner 23 Sep: sidebar jangan memakan ruang). Isi halaman TIDAK bergeser saat menu membuka: menu melayang di atasnya. */
+  body { padding-left: 72px; }
+  .side { display: flex; flex-direction: column; gap: 4px; position: fixed; left: 0; top: 0; bottom: 0; width: 72px; padding: 18px 10px; box-sizing: border-box; z-index: 8; overflow: hidden;
+    background: var(--side); border-right: 1px solid var(--garis); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    transition: width 260ms cubic-bezier(.2,.8,.2,1), box-shadow 260ms ease, background-color 260ms ease; }
+  .side.buka, .side:hover { width: 236px; box-shadow: 18px 0 40px -28px var(--bayang); background: var(--nav); }
+  .side .merek { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 4px 12px; cursor: pointer; white-space: nowrap; }
+  .side .monogram { flex: none; width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 17px; letter-spacing: 0.02em;
+    background: linear-gradient(160deg, var(--logam1), var(--logam2) 55%, var(--logam3)); color: var(--logam-teks); border: 1px solid rgba(255,255,255,0.6); box-shadow: 0 8px 18px -10px var(--bayang), inset 0 1px 0 rgba(255,255,255,0.7); }
+  .side .merek .teks { display: flex; flex-direction: column; gap: 2px; }
+  .side .teks { opacity: 0; transform: translateX(-6px); transition: opacity 180ms ease 40ms, transform 220ms cubic-bezier(.2,.8,.2,1) 40ms; white-space: nowrap; }
+  .side.buka .teks, .side:hover .teks { opacity: 1; transform: none; }
+  .side .item { cursor: pointer; padding: 0 4px; gap: 12px; min-height: 44px; }
+  .side .item .ikon { flex: none; width: 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center; transition: background-color 220ms ease, color 220ms ease; }
+  .side .item .ikon svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .side .item.aktif { background: transparent; border: 0; } .side .item.aktif .ikon { background: var(--seg-aktif); border: 1px solid var(--kaca-tepi); color: var(--aktif); box-sizing: border-box; }
+  .side .item:hover .ikon { background: var(--seg); }
+  .side .sisa { flex: 1; }
+  .side .catatan { padding: 8px 6px 0; white-space: normal; width: 200px; }
   .nav { display: none; }
   main.layar-jual { grid-template-columns: minmax(0, 1.3fr) minmax(340px, 0.9fr) minmax(280px, 0.8fr); grid-template-areas: "kepala kepala kepala" "pita pita pita" "kabar kabar kabar" "rak keranjang samping"; padding: 22px 28px 40px; }
   .jual-keranjang { position: sticky; top: 22px; }
   .lembar { position: fixed; right: 28px; top: 22px; bottom: 28px; width: 440px; max-height: none; }
-  .kabar-nav { right: auto; left: 250px; width: 360px; bottom: 24px; }
+  .kabar-nav { right: auto; left: 90px; width: 360px; bottom: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { .jual-keranjang, .lembar { transition: none; animation: none; } }
 

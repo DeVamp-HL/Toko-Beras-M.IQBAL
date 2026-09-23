@@ -46,7 +46,7 @@ dengarkan(() => { versi += 1; });
 // ---- perpindahan layar: tiap layar punya <main> sendiri yang disembunyikan, supaya keranjang Jual tidak hilang saat pindah ----
 const KUNCI_TAB = 'miqbal_baru_tab';
 let sekarangCadangan = null;   // mode cadangan: "sekarang" = saat cadangan diunduh
-const statusRingkas = () => (statusFb.offline ? 'tanpa internet' : statusFb.menunggu > 0 ? 'menunggu server' : statusFb.koleksiSiap < statusFb.koleksiTotal ? 'memuat…' : 'data toko');
+const statusRingkas = () => (statusFb.offline ? 'tanpa internet' : statusFb.menunggu > 0 ? 'menunggu server' : statusFb.koleksiSiap < statusFb.koleksiTotal ? 'memuat…' : 'DATA TOKO');
 const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
 const stok = pasangLayarStok(document.getElementById('layarStok'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); } });
 const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
@@ -110,6 +110,17 @@ document.querySelectorAll('[data-tujuan]').forEach((el) => el.addEventListener('
   const kabar = document.getElementById('kabarNav'); kabar.textContent = 'Layar ' + el.textContent.trim() + ' belum ada di sistem baru — masih di sistem lama (index.html).'; kabar.hidden = false;
   clearTimeout(kabar._t); kabar._t = setTimeout(() => { kabar.hidden = true; }, 3200);
 }));
+
+// menu samping Mac (owner 23 Sep): sempit; membuka saat kursor menepi ke tepi kiri layar atau masuk ke menu, menutup saat kursor pergi;
+// monogram IQ diketuk = buka/tutup (untuk layar sentuh lebar yang tidak punya kursor)
+(function () {
+  const side = document.querySelector('.side'); if (!side) return;
+  let kunci = false;   // dibuka lewat ketukan → tidak ditutup oleh kursor yang pergi
+  document.addEventListener('mousemove', (ev) => { if (kunci) return; if (ev.clientX <= 10) side.classList.add('buka'); else if (ev.clientX > 250) side.classList.remove('buka'); });
+  side.addEventListener('mouseleave', () => { if (!kunci) side.classList.remove('buka'); });
+  side.querySelector('[data-side="toggle"]').addEventListener('click', () => { kunci = !side.classList.contains('buka'); side.classList.toggle('buka', kunci); });
+  side.querySelectorAll('.item').forEach((el) => el.addEventListener('click', () => { kunci = false; side.classList.remove('buka'); }));
+})();
 
 // layar pembuka: yang terakhir dipakai di perangkat ini (bawaan: Jual)
 pindah((() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })()) || pindah('jual');

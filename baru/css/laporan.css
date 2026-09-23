@@ -64,3 +64,7 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
   body.cetak-dokumen > #cetakStruk { display: none !important; }
   #cetakDokumen .dk-kertas { box-shadow: none; border-radius: 0; padding: 0; font-size: 12px; animation: none; break-inside: avoid; } #cetakDokumen .dk-tabel { font-size: 11.5px; } #cetakDokumen .dk-pisah { break-after: page; height: 0; }
 }
+
+/* Mingguan & Tahunan (owner 23 Sep) */
+.layar-laporan .lp-batang.tujuh { grid-template-columns: repeat(7, 1fr); } .layar-laporan .lp-batang.tujuh span { line-height: 1.15; text-align: center; } .layar-laporan .lp-batang > div.depan i, .layar-laporan .lp-grafik > div.depan i { opacity: 0.25; border-style: dotted; background: transparent; }
+.layar-laporan .lp-baris.depan { opacity: 0.45; }

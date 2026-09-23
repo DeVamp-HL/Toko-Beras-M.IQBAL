@@ -31,41 +31,68 @@ export function orangTerukur() {
   ambilKasbonMutasi().forEach((m) => isi(m.namaPegawai)); ambilAbsenKaryawan().forEach((a) => isi(a.nama));
   const daftar = Object.keys(peta).map((k) => peta[k]); return daftar.length ? daftar : UP_ORANG_UMUM.slice();
 }
+export const STATUS_KARYAWAN = [['aktif', 'Aktif'], ['berhenti', 'Berhenti']];
+const upIso = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '').trim()) ? String(v).trim() : '');
+/** Satu baris karyawan dibaca ke bentuk tetap: nama, peran, status aktif|berhenti, masuk, berhenti, mulaiHitung (owner: "hitung upah sejak"), catatan. */
+const upOrangBaku = (o) => ({ nama: String((o && o.nama) || '').trim(), peran: String((o && o.peran) || '').trim(), status: o && o.status === 'berhenti' ? 'berhenti' : 'aktif',
+  masuk: upIso(o && o.masuk), berhenti: o && o.status === 'berhenti' ? upIso(o.berhenti) : '', mulaiHitung: upIso(o && o.mulaiHitung), catatan: String((o && o.catatan) || '').trim() });
 export function aturUpah() {
   const a = ugAturDok('upah') || {}; const tarif = isFinite(Number(a.tarif)) && Number(a.tarif) > 0 ? Math.round(Number(a.tarif)) : ATUR_UPAH_BAWAAN.tarif;
-  const orangOwner = Array.isArray(a.orang) ? a.orang.filter((o) => o && String(o.nama || '').trim()).map((o) => ({ nama: String(o.nama).trim(), peran: String(o.peran || '').trim() })) : [];
-  return { tarif, orang: orangOwner.length ? orangOwner : orangTerukur().map((nama) => ({ nama, peran: '' })), orangTerukur: !orangOwner.length, alasan: Array.isArray(a.alasan) && a.alasan.length ? a.alasan.map(String) : ATUR_UPAH_BAWAAN.alasan.slice(), dariOwner: !!ugAturDok('upah') };
+  const orangOwner = Array.isArray(a.orang) ? a.orang.filter((o) => o && String(o.nama || '').trim()).map(upOrangBaku) : [];
+  const orang = orangOwner.length ? orangOwner : orangTerukur().map((nama) => upOrangBaku({ nama }));
+  return { tarif, orang, aktif: orang.filter((o) => o.status === 'aktif'), berhenti: orang.filter((o) => o.status !== 'aktif'), orangTerukur: !orangOwner.length, alasan: Array.isArray(a.alasan) && a.alasan.length ? a.alasan.map(String) : ATUR_UPAH_BAWAAN.alasan.slice(), dariOwner: !!ugAturDok('upah') };
 }
+/** Baris karyawan menurut nama (baku), atau baris kosong bila tidak terdaftar. */
+export function orangUpah(nama) { const k = upKunci(nama); return aturUpah().orang.find((o) => upKunci(o.nama) === k) || upOrangBaku({ nama }); }
 export function susunAturUpah(isi, w) {
   const A = aturUpah(); const tarif = ugKosong(isi.tarif) ? A.tarif : ugAngka(isi.tarif); if (!(tarif > 0) || tarif > 10000000) return { tolak: 'Upah sehari harus 1–10.000.000' };
-  const orang = (Array.isArray(isi.orang) ? isi.orang : A.orang).map((o) => ({ nama: String((o && o.nama) || '').trim().slice(0, 40), peran: String((o && o.peran) || '').trim().slice(0, 40) })).filter((o) => o.nama);
+  const orang = (Array.isArray(isi.orang) ? isi.orang : A.orang).map((o) => upOrangBaku(Object.assign({}, o, { nama: String((o && o.nama) || '').slice(0, 40), peran: String((o && o.peran) || '').slice(0, 40), catatan: String((o && o.catatan) || '').slice(0, 80) }))).filter((o) => o.nama);
   if (!orang.length) return { tolak: 'Daftar karyawan tidak boleh kosong' };
   const kembar = orang.map((o) => upKunci(o.nama)).filter((k, i, arr) => arr.indexOf(k) !== i); if (kembar.length) return { tolak: 'Nama kembar: ' + kembar[0] };
+  for (const o of orang) {
+    if (o.status === 'berhenti' && !o.berhenti) return { tolak: o.nama + ' ditandai berhenti — isi tanggal berhentinya' };
+    if (o.berhenti && o.berhenti > w.tanggal) return { tolak: 'Tanggal berhenti ' + o.nama + ' belum datang — tandai nanti saja' };
+    if (o.masuk && o.berhenti && o.masuk > o.berhenti) return { tolak: o.nama + ': tanggal masuk sesudah tanggal berhenti' };
+    if (o.mulaiHitung && o.mulaiHitung > w.tanggal) return { tolak: o.nama + ': "hitung upah sejak" tidak boleh di masa depan' };
+  }
   // yang masih punya upah belum dibayar atau kasbon belum lunas tidak boleh dihapus
   const hilang = A.orang.filter((o) => !orang.some((x) => upKunci(x.nama) === upKunci(o.nama)));
   for (const o of hilang) { const H = hitungUpah(o.nama, ugKiniDari(w), 'tidak'); if (H.upah > 0 || H.sisaKasbon > 0) return { tolak: o.nama + ' masih punya ' + (H.upah > 0 ? 'upah ' + RP(H.upah) + ' yang belum dibayar' : 'kasbon ' + RP(H.sisaKasbon)) + ' — bayar atau lunasi dulu sebelum dihapus' }; }
   const alasan = (Array.isArray(isi.alasan) ? isi.alasan : A.alasan).map((x) => String(x || '').trim()).filter(Boolean).slice(0, 8);
+  const nBerhenti = orang.filter((o) => o.status === 'berhenti').length;
   return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'upah', tanggal: w.tanggal, jam: w.jam, tarif: Math.round(tarif), orang, alasan: alasan.length ? alasan : ATUR_UPAH_BAWAAN.alasan } }],
-    patch: { aturU: null, kabar: 'Aturan upah disimpan — ' + RP(tarif) + ' sehari (' + RP(tarif / 2) + ' setengah hari) · ' + orang.length + ' karyawan · berlaku untuk hari yang BELUM dibayar; slip lama tidak berubah', kabarAwas: false } };
+    patch: { aturU: null, karyawanDraf: null, kabar: 'Aturan upah disimpan — ' + RP(tarif) + ' sehari (' + RP(tarif / 2) + ' setengah hari) · ' + (orang.length - nBerhenti) + ' karyawan aktif' + (nBerhenti ? ' · ' + nBerhenti + ' berhenti' : '') + ' · berlaku untuk hari yang BELUM dibayar; slip lama tidak berubah', kabarAwas: false } };
 }
+/** Kelola karyawan (HR): hanya daftar orangnya yang berubah — tarif & alasan kasbon tetap. */
+export function susunKaryawan(daftar, w) { const A = aturUpah(); return susunAturUpah({ tarif: String(A.tarif), orang: daftar, alasan: A.alasan }, w); }
 /** Peta hari kerja satu orang: { iso: 1 | 0.5 | 0 } dari semua dokumen absennya. */
 export function hariKerja(nama) { const k = upKunci(nama); const o = {}; ambilAbsenKaryawan().forEach((a) => { if (upKunci(a.nama) !== k) return; Object.keys(a.hari || {}).forEach((t) => { const v = Number(a.hari[t]); if (v === 1 || v === 0.5 || v === 0) o[t] = v; }); }); return o; }
-/** Tanggal bayar terakhir menurut sistem LAMA (per bulan): tanggalBayarGaji[nama] → tanggalBayarPos.gaji → tanggalBayar. */
+/** Sistem LAMA (per bulan): hari yang sudah tertutup gaji = sampai min(tanggal bayar, akhir bulan gajinya). Gaji Agu dibayar 18 Sep menutup sampai 31 Agu;
+ *  gaji Sep dibayar 18 Sep (3 hari) menutup sampai 18 Sep — hari 19 Sep dst. TERBUKA (owner 23 Sep: "tanggal 18 gajian, tanggal 19 lanjut kerja"). */
 function upBulanLamaTerakhir(nama) {
-  let bulan = ''; let belum = null;
+  let bulan = ''; let sampai = ''; let belum = null;
   ambilBiayaBulanan().forEach((b) => { const r = (b.rincianGaji || []).find((x) => String(x.nama || '').trim() === String(nama).trim()); if (!r || !(Number(r.gaji) > 0)) return;
     const tgl = (b.tanggalBayarGaji && b.tanggalBayarGaji[r.nama]) || (b.tanggalBayarPos ? b.tanggalBayarPos.gaji || '' : '') || b.tanggalBayar || '';
-    if (tgl) { if (b.bulan > bulan) bulan = b.bulan; } else if (!belum || b.bulan > belum.bulan) belum = { bulan: b.bulan, hari: Number(r.hari) || 0, gaji: Number(r.gaji) || 0 }; });
-  return { bulan, belum };
+    if (tgl) { if (b.bulan > bulan) bulan = b.bulan; const akhir = akhirBulanIso(b.bulan); const tutup = tgl < akhir ? tgl : akhir; if (tutup > sampai) sampai = tutup; }
+    else if (!belum || b.bulan > belum.bulan) belum = { bulan: b.bulan, hari: Number(r.hari) || 0, gaji: Number(r.gaji) || 0 }; });
+  return { bulan, sampai, belum };
 }
-/** Sejak kapan hari kerja belum dibayar: slip terakhir + 1 hari → bulan lama yang dibayar + 1 → hari kerja pertama yang tercatat → hari ini. */
+/** Sejak kapan hari kerja belum dibayar: slip terakhir + 1 → tanggal bayar terakhir sistem lama + 1 → hari kerja pertama yang tercatat → hari ini;
+ *  lalu dinaikkan oleh setelan owner per orang: "hitung upah sejak" / tanggal masuk (tidak pernah mundur ke hari yang sudah dibayar). */
 export function mulaiUpah(nama, iso) {
   const k = upKunci(nama); let sampai = ''; ambilSlipUpah().forEach((s) => { if (upKunci(s.nama) === k && (s.sampai || '') > sampai) sampai = s.sampai; });
-  if (sampai) return { mulai: ugTambahHari(sampai, 1), sumber: 'slip', teks: 'sejak slip terakhir (' + tanggalPendek(sampai) + ')' };
-  const L = upBulanLamaTerakhir(nama);
-  if (L.bulan) return { mulai: ugTambahHari(akhirBulanIso(L.bulan), 1), sumber: 'lama', teks: 'sejak gaji bulan ' + L.bulan + ' dibayar di sistem lama', belumLama: L.belum };
-  const h = hariKerja(nama); const t = Object.keys(h).sort()[0] || ''; if (t && t <= iso) return { mulai: t, sumber: 'absen', teks: 'sejak hari kerja pertama yang tercatat', belumLama: L.belum };
-  return { mulai: iso, sumber: 'kosong', teks: 'belum ada hari kerja yang tercatat', belumLama: L.belum };
+  let M;
+  if (sampai) M = { mulai: ugTambahHari(sampai, 1), sumber: 'slip', teks: 'sejak slip terakhir (' + tanggalPendek(sampai) + ')' };
+  else {
+    const L = upBulanLamaTerakhir(nama);
+    if (L.sampai) M = { mulai: ugTambahHari(L.sampai, 1), sumber: 'lama', teks: L.sampai === akhirBulanIso(L.bulan) ? 'sejak gaji bulan ' + L.bulan + ' dibayar di sistem lama' : 'sejak gaji terakhir dibayar ' + tanggalPendek(L.sampai) + ' di sistem lama', belumLama: L.belum };
+    else { const h = hariKerja(nama); const t = Object.keys(h).sort()[0] || ''; M = t && t <= iso ? { mulai: t, sumber: 'absen', teks: 'sejak hari kerja pertama yang tercatat', belumLama: L.belum } : { mulai: iso, sumber: 'kosong', teks: 'belum ada hari kerja yang tercatat', belumLama: L.belum }; }
+  }
+  // setelan per orang (lembar Karyawan): "hitung upah sejak" lalu tanggal masuk — tidak pernah membuka lagi hari yang sudah tertutup pembayaran (slip / gaji lama)
+  const O = orangUpah(nama); const tertutup = M.sumber === 'slip' || M.sumber === 'lama' ? ugTambahHari(M.mulai, -1) : '';
+  if (O.mulaiHitung && (!tertutup || O.mulaiHitung > tertutup)) M = Object.assign({}, M, { mulai: O.mulaiHitung, sumber: 'atur', teks: 'sejak ' + tanggalPendek(O.mulaiHitung) + ' (diatur owner di Karyawan)' });
+  else if (O.masuk && (!tertutup || O.masuk > tertutup) && O.masuk !== M.mulai) M = Object.assign({}, M, { mulai: O.masuk, sumber: 'masuk', teks: 'sejak mulai kerja ' + tanggalPendek(O.masuk) });
+  return M;
 }
 /** Potongan "Potong gaji" lama yang belum tertutup baris gaji bernama polos — mesin lama akan memotongnya ke baris gaji berikutnya bernama sama. Baris baru sistem baru kebal (kunci bertanggal). */
 export function potongLamaMenggantung(nama) {
@@ -76,19 +103,22 @@ export function potongLamaMenggantung(nama) {
 }
 /** Hitung satu orang — dibaca kartu, buku, panel bayar, dan slip (satu tempat). potongPilih = semua | separuh | tidak. */
 export function hitungUpah(nama, kini, potongPilih) {
-  const iso = hariIniIso(kini); const A = aturUpah(); const M = mulaiUpah(nama, iso); const h = hariKerja(nama);
+  const iso = hariIniIso(kini); const A = aturUpah(); const M = mulaiUpah(nama, iso); const h = hariKerja(nama); const O = orangUpah(nama);
+  // karyawan yang sudah berhenti: hari sesudah tanggal berhentinya tidak dihitung (upah yang tertinggal tetap bisa dibayar)
+  const akhir = O.berhenti && O.berhenti < iso ? O.berhenti : iso;
   let penuh = 0, setengah = 0, absen = 0, kosong = 0, kosongLama = 0; const hariList = [];
-  if (M.mulai <= iso) for (let t = M.mulai; t <= iso; t = ugTambahHari(t, 1)) { const x = h[t]; hariList.push({ iso: t, nilai: x === undefined ? null : x }); if (x === 1) penuh += 1; else if (x === 0.5) setengah += 1; else if (x === 0) absen += 1; else { kosong += 1; if (t < iso) kosongLama += 1; } }
+  if (M.mulai <= akhir) for (let t = M.mulai; t <= akhir; t = ugTambahHari(t, 1)) { const x = h[t]; hariList.push({ iso: t, nilai: x === undefined ? null : x }); if (x === 1) penuh += 1; else if (x === 0.5) setengah += 1; else if (x === 0) absen += 1; else { kosong += 1; if (t < iso) kosongLama += 1; } }
   const upah = penuh * A.tarif + setengah * (A.tarif / 2);
   const kb = hitungKasbon().find((x) => x.kunci === upKunci(nama)); const sisaKasbon = kb ? Math.max(0, kb.sisa) : 0;
   const potong = potongPilih === 'tidak' ? 0 : Math.min(upah, potongPilih === 'separuh' ? Math.round(sisaKasbon / 2 / 1000) * 1000 : sisaKasbon);
   const nHari = hariList.length;
-  return { nama, tarif: A.tarif, mulai: M.mulai, sumberMulai: M.sumber, mulaiTeks: M.teks, belumLama: M.belumLama || null, iso, nHari, hariList, penuh, setengah, absen, kosong, kosongLama, upah, sisaKasbon, potong, diterima: upah - potong, bawaPulang: upah - Math.min(upah, sisaKasbon),
-    rentang: M.mulai <= iso ? tanggalPendek(M.mulai) + ' – ' + tanggalPendek(iso) : 'tidak ada hari yang belum dibayar', hariTeks: teksHariUpah({ penuh, setengah, absen }), potongLama: potongLamaMenggantung(nama), kasbonMutasi: kb ? kb.mutasi : [] };
+  return { nama, tarif: A.tarif, mulai: M.mulai, akhir, sumberMulai: M.sumber, mulaiTeks: M.teks, belumLama: M.belumLama || null, iso, nHari, hariList, penuh, setengah, absen, kosong, kosongLama, upah, sisaKasbon, potong, diterima: upah - potong, bawaPulang: upah - Math.min(upah, sisaKasbon),
+    status: O.status, berhenti: O.berhenti, peran: O.peran, masuk: O.masuk,
+    rentang: M.mulai <= akhir ? tanggalPendek(M.mulai) + ' – ' + tanggalPendek(akhir) : 'tidak ada hari yang belum dibayar', hariTeks: teksHariUpah({ penuh, setengah, absen }), potongLama: potongLamaMenggantung(nama), kasbonMutasi: kb ? kb.mutasi : [] };
 }
 export function teksHariUpah(c) { const b = []; if (c.penuh) b.push(c.penuh + ' hari penuh'); if (c.setengah) b.push(c.setengah + ' setengah hari'); if (c.absen) b.push(c.absen + ' tidak masuk'); return b.length ? b.join(' · ') : 'belum ada hari kerja'; }
 /** Semua karyawan + hitungannya (kartu). */
-export function semuaUpah(kini) { const A = aturUpah(); return A.orang.map((o) => Object.assign({ peran: o.peran }, hitungUpah(o.nama, kini, 'semua'))); }
+export function semuaUpah(kini) { const A = aturUpah(); return A.aktif.map((o) => Object.assign({ peran: o.peran }, hitungUpah(o.nama, kini, 'semua'))); }
 /** Buku upah: hari kerja beruntun dirangkum, kasbon diselipkan menurut tanggal, saldo berjalan = kalau pulang hari ini. */
 export function bukuUpah(nama, kini) {
   const H = hitungUpah(nama, kini, 'semua'); const rows = []; let jalan = 0; let a = null, nilai = null;
@@ -106,7 +136,7 @@ export function bukuUpah(nama, kini) {
 /** Tujuh hari terakhir & satu bulan untuk diketuk: nilai per tanggal + apakah boleh diubah (belum dibayar & tidak di masa depan). */
 export function kalenderUpah(nama, kini, nHari) {
   const H = hitungUpah(nama, kini, 'semua'); const h = hariKerja(nama); const out = [];
-  for (let i = (nHari || 7) - 1; i >= 0; i--) { const t = ugTambahHari(H.iso, -i); const x = h[t]; const bisa = t >= H.mulai; out.push({ iso: t, tgl: String(parseInt(t.slice(8, 10), 10)), hari: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][new Date(t + 'T00:00:00Z').getUTCDay()], nilai: x === undefined ? null : x, bisa, kelas: !bisa ? 'lunas' : x === undefined ? 'kosong' : x === 1 ? 'penuh' : x === 0.5 ? 'setengah' : 'absen', k: !bisa ? 'lunas' : x === undefined ? 'isi' : x === 1 ? 'penuh' : x === 0.5 ? '½' : 'tdk', ini: t === H.iso }); }
+  for (let i = (nHari || 7) - 1; i >= 0; i--) { const t = ugTambahHari(H.iso, -i); const x = h[t]; const bisa = t >= H.mulai && t <= H.akhir; const lewat = t > H.akhir; out.push({ iso: t, tgl: String(parseInt(t.slice(8, 10), 10)), hari: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][new Date(t + 'T00:00:00Z').getUTCDay()], nilai: x === undefined ? null : x, bisa, kelas: !bisa ? 'lunas' : x === undefined ? 'kosong' : x === 1 ? 'penuh' : x === 0.5 ? 'setengah' : 'absen', k: lewat ? 'stop' : !bisa ? 'lunas' : x === undefined ? 'isi' : x === 1 ? 'penuh' : x === 0.5 ? '½' : 'tdk', ini: t === H.iso }); }
   return out;
 }
 export const putarHari = (x) => (x === null || x === undefined ? 1 : x === 1 ? 0.5 : x === 0.5 ? 0 : null);   // kosong → penuh → setengah → tidak masuk → kosong
@@ -114,6 +144,7 @@ export const putarHari = (x) => (x === null || x === undefined ? 1 : x === 1 ? 0
 export function susunAbsen(nama, iso, nilai, w) {
   if (!nama) return { tolak: 'Pilih orangnya dulu' }; if (iso > w.tanggal) return { tolak: 'Hari itu belum datang' };
   const M = mulaiUpah(nama, w.tanggal); if (iso < M.mulai) return { tolak: tanggalPendek(iso) + ' sudah termasuk upah yang dibayar — tidak bisa diubah lagi' };
+  const O = orangUpah(nama); if (O.berhenti && iso > O.berhenti) return { tolak: nama + ' sudah berhenti sejak ' + tanggalPendek(O.berhenti) + ' — aktifkan lagi di Karyawan kalau ia kembali bekerja' };
   if (nilai !== null && nilai !== 1 && nilai !== 0.5 && nilai !== 0) return { tolak: 'Nilai hari tidak dikenal' };
   const bulan = iso.slice(0, 7); const id = upKunci(nama) + '|' + bulan; const lama = ambilAbsenKaryawan().find((a) => String(a.id) === id) || { id, nama: String(nama).trim(), bulan, hari: {} };
   const hari = Object.assign({}, lama.hari || {}); if (nilai === null) delete hari[iso]; else hari[iso] = nilai;
@@ -173,3 +204,17 @@ export function riwayatUpah(nama, n) {
     rows.push({ id: 'lama|' + b.bulan + '|' + r.nama, nama: r.nama, tanggal: tgl || b.bulan + '-99', jam: '', ket: (tgl ? 'dibayar ' + tanggalPendek(tgl) : 'BELUM dibayar') + ' · gaji bulan ' + b.bulan + ' · ' + (Number(r.hari) || 0) + ' hari (sistem lama)', n: Number(r.gaji) || 0, teks: '', jenis: tgl ? 'lama' : 'lamaBelum' }); }));
   rows.sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)) || String(b.jam).localeCompare(String(a.jam))); return rows.slice(0, n || 20);
 }
+
+/** Lembar KARYAWAN (HR, owner 23 Sep: "Gono sepertinya sudah pensiun"): tiap orang dengan status, sejak kapan, hari kerja bulan ini, upah belum dibayar, kasbon, total yang pernah dibayar. */
+export function daftarKaryawan(kini) {
+  const A = aturUpah(); const iso = hariIniIso(kini); const bulan = iso.slice(0, 7);
+  const semuaSlip = ambilSlipUpah(); const bayarLama = {}; ambilBiayaBulanan().forEach((b) => (b.rincianGaji || []).forEach((r) => { if (r.sistemBaru || !(Number(r.gaji) > 0)) return; const k = upKunci(String(r.nama || '').replace(/ · .*$/, '')); bayarLama[k] = (bayarLama[k] || 0) + (Number(r.gaji) || 0); }));
+  const baris = A.orang.map((o) => { const H = hitungUpah(o.nama, kini, 'semua'); const h = hariKerja(o.nama); const bulanIni = Object.keys(h).filter((t) => t.slice(0, 7) === bulan).reduce((a, t) => a + (h[t] > 0 ? 1 : 0), 0);
+    const dibayar = semuaSlip.filter((x) => upKunci(x.nama) === upKunci(o.nama)).reduce((a, x) => a + (Number(x.diterima) || 0), 0) + (bayarLama[upKunci(o.nama)] || 0);
+    const tercatat = Object.keys(h).sort(); const sejak = o.masuk || (tercatat[0] || '');
+    return Object.assign({}, o, { aktif: o.status === 'aktif', upahBelum: H.upah, kasbon: H.sisaKasbon, hariBulanIni: bulanIni, dibayar, sejak, mulaiTeks: H.mulaiTeks,
+      ket: (o.status === 'aktif' ? (sejak ? 'sejak ' + tanggalPendek(sejak) : 'belum ada catatan') : 'berhenti ' + (o.berhenti ? tanggalPendek(o.berhenti) : '')) + (H.upah > 0 ? ' · upah belum dibayar ' + RP(H.upah) : '') + (H.sisaKasbon > 0 ? ' · kasbon ' + RP(H.sisaKasbon) : ''),
+      awas: o.status !== 'aktif' && (H.upah > 0 || H.sisaKasbon > 0) }); });
+  return { baris, aktif: baris.filter((b) => b.aktif), berhenti: baris.filter((b) => !b.aktif), tarif: A.tarif, dariOwner: A.dariOwner, orangTerukur: A.orangTerukur };
+}
+export const KOLOM_KARYAWAN = [['nama', 'Nama', 'text'], ['peran', 'Peran (tetap / giliran)', 'text'], ['masuk', 'Mulai kerja', 'date'], ['mulaiHitung', 'Hitung upah sejak (kosong = otomatis)', 'date'], ['catatan', 'Catatan', 'text']];

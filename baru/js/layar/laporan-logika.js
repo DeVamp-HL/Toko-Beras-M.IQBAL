@@ -19,7 +19,7 @@ import { semuaBon } from './bon-logika.js';
 import { daftarPemasok, bukuBon } from './bon-pemasok-logika.js';
 import { bukuOwner } from './owner-toko-logika.js';
 
-export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['harian', 'Harian'], ['bulanan', 'Bulanan'], ['neraca', 'Neraca'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];
+export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep
 export const JENIS_LAPORAN = [['labarugi', 'Laba-Rugi'], ['neraca', 'Neraca'], ['aruskas', 'Arus Kas']];
 export const RENTANG_LAPORAN = [[1, '1 bulan'], [3, '3 bulan'], [12, '12 bulan']];
 export const JENIS_KECIL = [['setor', 'Bukti setoran modal', 'dari catatan Owner & toko'], ['upah', 'Slip upah', 'dari buku upah'], ['piutang', 'Kartu piutang', 'per pelanggan'], ['bon', 'Rekap bon pemasok', 'per pemasok'], ['nota', 'Cetak ulang nota', 'SALINAN bercap']].map((j) => ({ id: j[0], nama: j[1], ket: j[2] }));
@@ -271,3 +271,48 @@ export function teksDokumen(D, nomor, iso) {
   if (D.identitas || D.catatan) L.push('', D.identitas || D.catatan); L.push('', (k.slogan ? k.slogan + ' · ' : '') + 'No. ' + ANGKA(nomor) + ' · kop v' + k.versi + ' · ' + tanggalPendek(iso)); return L.join('\n');
 }
 export const lpKunciOrang = kunciPelanggan;
+
+// ==================== MINGGUAN · Senin–Minggu (owner 23 Sep) ====================
+const LP_HARI = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+/** Senin dari minggu yang memuat tanggal itu (minggu toko = Senin–Minggu). */
+export const lpSenin = (iso) => ugTambahHari(iso, -((new Date(iso + 'T00:00:00Z').getUTCDay() + 6) % 7));
+const lpPersen = (a, b) => (b > 0 ? Math.round((a - b) / b * 1000) / 10 : null);
+const lpBandingTeks = (pct, apa) => (pct === null ? apa + ' belum ada pembanding' : pct === 0 ? 'sama dengan ' + apa : (pct > 0 ? 'naik ' : 'turun ') + String(Math.abs(pct)).replace('.', ',') + ' % dari ' + apa);
+/** Delapan minggu terakhir untuk pemilih: {awal (Senin), akhir (Minggu), label, berjalan, penuh}. Minggu sebelum catatan pertama tidak ditawarkan. */
+export function daftarMinggu(kini, n) {
+  const iso = hariIniIso(kini); const senin = lpSenin(iso); const p = lpPertama(); const out = [];
+  for (let i = 0; i < (n || 8); i++) { const a = ugTambahHari(senin, -7 * i); const b = ugTambahHari(a, 6); if (p && b < p) break; out.push({ awal: a, akhir: b, label: tanggalPendek(a).slice(0, 6) + ' – ' + tanggalPendek(b).slice(0, 6), pendek: tanggalPendek(a).slice(0, 6), berjalan: i === 0, penuh: b <= iso }); }
+  return out;
+}
+/** Rekap satu minggu (Senin `awal`): tujuh hari dengan omzet & nota, inti (mesin laba & arus kas yang sama), banding minggu sebelumnya. Σ hari = omzet minggu (penjaga identitas tergambar). */
+export function rekapMinggu(awal, kini, bayaran) {
+  const iso = hariIniIso(kini); const akhir = ugTambahHari(awal, 6); const B = bayaran || bayaranBiayaBulanan(); const cocok = (t) => !!t && t >= awal && t <= akhir;
+  const L = hitungLabaBersihRentang(awal, akhir, B); const K = hitungArusKasInti(cocok, B); const Lr = hitungLabaRentang(cocok);
+  const hari = []; for (let i = 0; i < 7; i++) { const t = ugTambahHari(awal, i); const Lh = hitungLabaRentang((x) => x === t); hari.push({ iso: t, nama: LP_HARI[i], tgl: String(parseInt(t.slice(8, 10), 10)), omzet: Lh.omzetPenuh, n: Lh.jumlahTrx, margin: Lh.margin, depan: t > iso, hariIni: t === iso }); }
+  const jalan = hari.filter((h) => !h.depan); const omzet = hari.reduce((a, h) => a + h.omzet, 0); const n = hari.reduce((a, h) => a + h.n, 0); const maks = Math.max(1, ...hari.map((h) => h.omzet));
+  const lalu = hitungLabaRentang((t) => !!t && t >= ugTambahHari(awal, -7) && t <= ugTambahHari(awal, -1)); const pct = lpPersen(omzet, lalu.omzetPenuh);
+  const isi = jalan.filter((h) => h.n > 0); const terbaik = isi.length ? isi.reduce((a, h) => (h.omzet > a.omzet ? h : a)) : null; const sepi = isi.length ? isi.reduce((a, h) => (h.omzet < a.omzet ? h : a)) : null;
+  return { awal, akhir, label: tanggalPendek(awal) + ' – ' + tanggalPendek(akhir), berjalan: akhir >= iso, hariJalan: jalan.length, hari, omzet, n, maks, rataHari: jalan.length ? Math.round(omzet / jalan.length) : 0, cocokJumlah: omzet === Lr.omzetPenuh,
+    hpp: L.hpp, margin: L.margin, biayaToko: L.biayaToko, labaBersih: L.labaBersih, susut: L.susutStok, omzetTanpaHpp: L.omzetTanpaHpp, jumlahTanpaHpp: L.jumlahTanpaHpp, masuk: K.totalMasuk, keluar: K.totalKeluar, bersih: K.bersih, kredit: K.kreditBulanIni,
+    lalu: lalu.omzetPenuh, pct, bandingTeks: lpBandingTeks(pct, 'minggu sebelumnya') + (lalu.omzetPenuh ? ' (' + RP(lalu.omzetPenuh) + ')' : ''), terbaik, sepi, kosong: n === 0 && K.totalMasuk === 0 && K.totalKeluar === 0 };
+}
+
+// ==================== TAHUNAN · dua belas bulan (owner 23 Sep) ====================
+/** Tahun-tahun yang punya catatan, terbaru dulu. */
+export function daftarTahun(kini) { const th = Number(hariIniIso(kini).slice(0, 4)); const p = lpPertama(); const awal = p ? Number(p.slice(0, 4)) : th; const out = []; for (let y = th; y >= awal; y--) out.push({ tahun: y, berjalan: y === th, final: lpFinal(y + '-01') }); return out; }
+/** Rekap satu tahun: 12 bulan (omzet, nota, margin, biaya, laba bersih) dari mesin yang sama; jumlah tahun = Σ bulan; banding tahun sebelumnya; bulan terbaik & tersepi. */
+export function rekapTahun(tahun, kini, bayaran) {
+  const iso = hariIniIso(kini); const B = bayaran || bayaranBiayaBulanan(); const kiniKey = iso.slice(0, 7); const bulan = [];
+  for (let m = 1; m <= 12; m++) { const key = tahun + '-' + String(m).padStart(2, '0'); const depan = key > kiniKey;
+    if (depan) { bulan.push({ key, nama: lpNamaBulan(key), pendek: lpBulanPendek(key), depan: true, berjalan: false, final: false, omzet: 0, n: 0, margin: 0, biaya: 0, labaBersih: 0, susut: 0 }); continue; }
+    const L = hitungLabaBersihRentang(key + '-01', akhirBulanIso(key), B); const Lr = hitungLabaRentang((t) => !!t && bulanDari(t) === key);
+    bulan.push({ key, nama: lpNamaBulan(key), pendek: lpBulanPendek(key), depan: false, berjalan: key === kiniKey, final: lpFinal(key), omzet: Lr.omzetPenuh, n: Lr.jumlahTrx, margin: L.margin, biaya: L.biayaToko, labaBersih: L.labaBersih, susut: L.susutStok, hpp: L.hpp }); }
+  const ada = bulan.filter((b) => !b.depan); const jml = (k) => ada.reduce((a, b) => a + (b[k] || 0), 0); const omzet = jml('omzet'); const n = jml('n');
+  const Lt = hitungLabaRentang((t) => !!t && String(t).slice(0, 4) === String(tahun)); const maks = Math.max(1, ...bulan.map((b) => b.omzet));
+  const laluL = hitungLabaRentang((t) => !!t && String(t).slice(0, 4) === String(tahun - 1)); const pct = lpPersen(omzet, laluL.omzetPenuh);
+  const isi = ada.filter((b) => b.n > 0); const terbaik = isi.length ? isi.reduce((a, b) => (b.omzet > a.omzet ? b : a)) : null; const sepi = isi.length ? isi.reduce((a, b) => (b.omzet < a.omzet ? b : a)) : null;
+  const bulanJalan = ada.filter((b) => b.n > 0 || b.berjalan).length; const final = lpFinal(tahun + '-01');
+  return { tahun, bulan, ada: ada.length, bulanJalan, omzet, n, cocokJumlah: omzet === Lt.omzetPenuh, hpp: jml('hpp'), margin: jml('margin'), biaya: jml('biaya'), labaBersih: jml('labaBersih'), susut: jml('susut'), maks,
+    rataBulan: bulanJalan ? Math.round(omzet / bulanJalan) : 0, lalu: laluL.omzetPenuh, pct, bandingTeks: lpBandingTeks(pct, 'tahun ' + (tahun - 1)) + (laluL.omzetPenuh ? ' (' + RP(laluL.omzetPenuh) + ')' : ''), terbaik, sepi, final, berjalan: String(tahun) === iso.slice(0, 4),
+    status: final ? 'FINAL — sudah tutup buku' : String(tahun) === iso.slice(0, 4) ? 'DRAF — tahun berjalan, sampai ' + tanggalPendek(iso) : 'DRAF — belum tutup buku', kosong: n === 0 };
+}

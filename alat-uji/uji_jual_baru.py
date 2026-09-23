@@ -691,6 +691,23 @@ ok('T: menandai penjualan yang bukan calon DITOLAK', /tidak ada di daftar calon/
 var PT = susunPenggantiTercatat('ry3', 's3', W); ok('T: pengganti sudah tercatat: dokumen retur ry3 ditulis ulang dengan penggantiDikonfirmasi {penjualanId s3, pada}; penjualan tidak disentuh', !PT.tolak && PT.dokumen.length === 1 && PT.dokumen[0].koleksi === 'retur' && PT.dokumen[0].data.penggantiDikonfirmasi.penjualanId === 's3' && PT.dokumen[0].data.penggantiDikonfirmasi.pada, JSON.stringify(PT));
 terapkanKeCache(PT.dokumen); ok('T: sesudah ditandai: ry3 keluar dari daftar yatim (ry2 masih)', returYatim().length === 1 && returYatim()[0].id === 'ry2', JSON.stringify(returYatim()));
 
+// ================= PUTARAN 21 (owner 23 Sep): belanja terakhir orang bernama · ulangi · saran benang (ojek) · takar dari karung yang dipilih di deretan =================
+terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00'), pelanggan: 'Bu Suti' }));
+var PB = pembelianTerakhir(s, 3);
+ok('U: belanja terakhir Bu Suti: nota-nota MILIKNYA saja, terbaru dulu, tiap nota = Σ barisnya, teks barisnya & berapa hari lalu; tanpa nama → kosong', PB.length >= 2 && PB.every(function (x) { return x.baris.every(function (p) { return kunciPelanggan(p.namaPelanggan) === 'bu suti'; }) && x.total === x.baris.reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0) && x.teks.length > 0 && x.hariLalu >= 0; })
+  && (PB[0].tanggal + PB[0].jam) >= (PB[1].tanggal + PB[1].jam) && PB.some(function (x) { return x.grup === 'g3'; }) && pembelianTerakhir(Object.assign({}, s, { pelanggan: '' }), 3).length === 0, JSON.stringify(PB.map(function (x) { return [x.grup, x.tanggal, x.jam, x.total, x.teks]; })));
+var nSblm = s.keranjang.length; var UL = ulangiPembelian(s, susunRak(s), 'g3');
+ok('U: ulangi nota g3 (Kembang 5 kg × 1): satu baris kemasan masuk keranjang dengan HARGA HARI INI (chip), kabarnya menyebutnya; nota yang tidak ada ditolak', !!UL.keranjang && UL.keranjang.length === nSblm + 1 && UL.keranjang[UL.keranjang.length - 1].trx.jenis === 'kemasan' && UL.keranjang[UL.keranjang.length - 1].trx.jumlahUnit === 1 && UL.keranjang[UL.keranjang.length - 1].trx.hargaSatuan === chip('kemasan', chip('kemasan', 'Kembang|5') ? 'Kembang|5' : susunRak(s).kemasan[0].kunci).harga && /harga hari ini/.test(UL.kabar) && /tidak ketemu/.test(ulangiPembelian(s, susunRak(s), 'g-tidak-ada').kabar), JSON.stringify([UL.kabar, UL.keranjang && UL.keranjang.slice(-1)[0].trx]));
+pasok('pelangganTitip', [{ id: 'tt1', dari: 'bang ojek contoh', untuk: 'bu suti', apa: 'disuruh belanja', kali: 2, tanggal: '2026-09-18' }]);
+var SB = saranBenang('Bang Ojek Contoh');
+ok('U: saran benang: nama yang tercatat biasa datang UNTUK orang lain → tawaran mencatat atas nama yang punya urusan (nama dari nota: Bu Suti); yang punya urusan sendiri / nama kosong → tidak ada saran', !!SB && SB.untuk === 'Bu Suti' && SB.kali === 2 && /biasanya datang untuk Bu Suti \(disuruh belanja, 2×\)/.test(SB.teks) && saranBenang('Bu Suti') === null && saranBenang('') === null, JSON.stringify(SB));
+pasok('pelangganTitip', []);
+var DK = deretanKarung(); var TD = tambahTakarDari([{ merk: 'Angsa', takar: 0 }], 'IR64 Apex', 'Angsa');
+ok('U: deretan karung terbuka terbaca (tiap karung: nama, lokasi, letak); tambah takar DARI karung tertentu: baris baru {merk, takar 1, dari}, ketuk lagi → 2; baris kosong senama diisi (bukan baris baru)', DK.every(function (k) { return k.merk && typeof k.lokasi === 'string' && k.letak; }) && TD.length === 2 && TD[1].merk === 'IR64 Apex' && TD[1].dari === 'Angsa' && TD[1].takar === 1 && tambahTakarDari(TD, 'IR64 Apex', 'Angsa')[1].takar === 2 && tambahTakarDari(TD, 'IR64 Apex', 'Angsa').length === 2
+  && (function () { var t = tambahTakarDari([{ merk: 'Angsa', takar: 0 }], 'Angsa', 'Angsa'); return t.length === 1 && t[0].takar === 1 && t[0].dari === 'Angsa'; })(), JSON.stringify([DK.length, TD]));
+var hOto = hitungTakar('Angsa', [{ merk: 'IR64 Apex', takar: 1 }], s); var hPilih = hitungTakar('Angsa', [{ merk: 'IR64 Apex', takar: 1, dari: '' }], s);
+ok('U: takar tanpa "dari" memakai karung otomatis (lokasiSumber); dengan "dari" = karung yang DIPILIH owner (karung lepas ""), walau otomatisnya menunjuk karung lain', hOto.sumber[0].dari === lokasiSumber('IR64 Apex', 'Angsa') && hPilih.sumber[0].dari === '' && hPilih.sumber[0].karung.lokasi === '', JSON.stringify([hOto.sumber[0].dari, hPilih.sumber[0].dari]));
+
 terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
 
 // kunci dokumen yang dihasilkan — dibandingkan python dengan kunci yang DITULIS index.html (cadangan toko belum punya retur bernota)
@@ -758,6 +775,11 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- PUTARAN 21: belanja terakhir · saran benang · takar dari karung yang dipilih
+            'belanja terakhir mencampur nota orang lain': js.replace("if (kunciPelanggan(p.namaPelanggan) !== k) return; const g = String(p.grupNota || p.id);", "const g = String(p.grupNota || p.id);"),
+            'belanja terakhir diurutkan terlama dulu (yang "terakhir" bukan yang terbaru)': js.replace("return Object.keys(per).map((g) => per[g]).sort((a, b) => (b.tanggal + b.jam).localeCompare(a.tanggal + a.jam)).slice(0, n || 3)", "return Object.keys(per).map((g) => per[g]).sort((a, b) => (a.tanggal + a.jam).localeCompare(b.tanggal + b.jam)).slice(0, n || 3)"),
+            'saran benang ditawarkan juga untuk yang punya urusan sendiri': js.replace("if (!namaUntuk || kunciPelanggan(namaUntuk) === k) return null;", "if (!namaUntuk) return null;").replace("const titip = cacheMentah('titip').filter((t) => t.dari === k && t.untuk)", "const titip = cacheMentah('titip').filter((t) => (t.dari === k || t.untuk === k) && t.untuk)"),
+            'takar mengabaikan karung yang dipilih owner di deretan': js.replace("const dari = x.dari !== undefined && x.dari !== null ? String(x.dari) : lokasiSumber(x.merk, merk);", "const dari = lokasiSumber(x.merk, merk);"),
             # ---- PUTARAN 20: rinci karcis · retur tanpa nota · tukar yatim
             'rinci: kelebihan barang atas uang yang masuk lolos': js.replace("const H = hitungKarcis(s); if (H.lebih) return { tolak: 'Jumlah barang '", "const H = hitungKarcis(s); if (false) return { tolak: 'Jumlah barang '"),
             'rinci: baris tanpa tanda asalDarurat/rinciDari (tarik balik & penjaga karcis buta)': js.replace("if (karcis) { d.asalDarurat = true; d.rinciDari = p.id; d.alasanKoreksi = 'Rincian dari kasir darurat ' + kcEkor(p.id); }", "if (false) { d.asalDarurat = true; d.rinciDari = p.id; }"),

@@ -14,12 +14,18 @@ import { kunciPelanggan, catatanPelangganBerisi } from '../mesin/pembantu.js';
 import { ambilPenjualanSemua, ambilPenjualan, ambilPiutangMutasi, ambilPelangganCatatan, ambilThrPelanggan, ambilPesanan, cacheMentah } from '../data/toko.js';
 import { RP, hariIniIso } from '../inti/format.js';
 
-export const TANYA_CIRI = [['siapa', 'Siapa dia'], ['tampak', 'Yang tampak'], ['naik', 'Datang naik apa'], ['beli', 'Belinya apa']];
+export const TANYA_CIRI = [['siapa', 'Siapa dia'], ['umur', 'Kira-kira umur'], ['badan', 'Perawakan'], ['kulit', 'Warna kulit'], ['wajah', 'Wajah & rambut'], ['tampak', 'Yang dipakai'], ['asal', 'Suku / logat'], ['naik', 'Datang naik apa'], ['beli', 'Belinya apa']];   // owner 23 Sep: serinci mungkin
 export const ATUR_PELANGGAN_BAWAAN = {
   kosongKali: 20, notaBesar: 500000, tagihHari: 14, macetHari: 180, anggaranThr: 500000,
-  ciriDaftar: [['ibu-ibu', 'siapa'], ['bapak-bapak', 'siapa'], ['anak muda', 'siapa'], ['nenek / kakek', 'siapa'], ['kerudung', 'tampak'], ['peci', 'tampak'], ['kacamata', 'tampak'],
-    ['naik motor', 'naik'], ['jalan kaki', 'naik'], ['mobil bak', 'naik'], ['becak', 'naik'], ['bawa gerobak', 'naik'], ['karung', 'beli'], ['kemasan', 'beli'], ['literan', 'beli'], ['warung / usaha', 'beli']].map((x) => ({ nama: x[0], grup: x[1] })),
-  arahDaftar: [], titipDaftar: ['membayarkan bon', 'mengambilkan belanjaan', 'disuruh belanja'],
+  ciriDaftar: [['ibu-ibu', 'siapa'], ['bapak-bapak', 'siapa'], ['anak muda', 'siapa'], ['nenek / kakek', 'siapa'], ['anak-anak', 'siapa'],
+    ['20-an', 'umur'], ['30-an', 'umur'], ['40-an', 'umur'], ['50-an', 'umur'], ['60 ke atas', 'umur'],
+    ['tinggi', 'badan'], ['pendek', 'badan'], ['kurus', 'badan'], ['gemuk', 'badan'], ['tegap / kekar', 'badan'], ['bungkuk', 'badan'],
+    ['kulit putih', 'kulit'], ['kuning langsat', 'kulit'], ['sawo matang', 'kulit'], ['kulit gelap', 'kulit'],
+    ['kumis', 'wajah'], ['janggut', 'wajah'], ['brewok', 'wajah'], ['botak', 'wajah'], ['uban', 'wajah'], ['rambut panjang', 'wajah'], ['rambut keriting', 'wajah'], ['tahi lalat', 'wajah'], ['bekas luka', 'wajah'], ['gigi ompong / emas', 'wajah'],
+    ['kerudung', 'tampak'], ['cadar', 'tampak'], ['peci', 'tampak'], ['topi', 'tampak'], ['kacamata', 'tampak'], ['sarung', 'tampak'], ['seragam kerja', 'tampak'], ['tato', 'tampak'],
+    ['Sunda', 'asal'], ['Jawa', 'asal'], ['Betawi', 'asal'], ['Batak', 'asal'], ['Madura', 'asal'], ['Minang / Padang', 'asal'], ['Tionghoa', 'asal'], ['Arab', 'asal'], ['logat daerah lain', 'asal'],
+    ['naik motor', 'naik'], ['jalan kaki', 'naik'], ['mobil bak', 'naik'], ['becak', 'naik'], ['bawa gerobak', 'naik'], ['ojek / kurir', 'naik'], ['sepeda', 'naik'], ['karung', 'beli'], ['kemasan', 'beli'], ['literan', 'beli'], ['warung / usaha', 'beli']].map((x) => ({ nama: x[0], grup: x[1] })),
+  arahDaftar: [], titipDaftar: ['membayarkan bon', 'mengambilkan belanjaan', 'disuruh belanja', 'ojek / kurir langganan'],
   alasanHapus: ['pindah, tidak bisa dihubungi', 'sudah meninggal', 'disepakati tidak ditagih', 'nominal kecil, tidak sepadan ditagih'],
   salamTagih: 'Mohon dicek. Pembayaran bisa tunai di toko atau QRIS. Terima kasih 🙏',
   bentukThr: [{ nama: 'Sarung', n: 75000 }, { nama: 'Mukena', n: 90000 }, { nama: 'Sirup + biskuit', n: 60000 }, { nama: 'Beras 5 kg', n: 80000 }],
@@ -113,11 +119,16 @@ export const julukan = (b) => b.cip.slice(0, 3).join(' · ') || (b.belumJadi ? '
 export const jamTeks = (b) => (b.jam === null ? '' : 'biasanya ' + b.waktu + ' (±' + String(b.jam).padStart(2, '0') + '.00)');
 const nilaiKini = (b) => (b.sekarang ? 4 : 0) + (b.diharap ? 3 : 0) + (b.jatuh !== null && b.jatuh > 0 && b.jatuh <= 1 ? 1 : 0) + (b.hariIni ? -5 : 0) + (b.kosong ? -1 : 0) + Math.min(2, b.kunjungan / 10);
 const punya = (b, c) => b.cip.indexOf(c) >= 0;
-const NAIK = [['naik motor', 'motor'], ['jalan kaki', 'kaki'], ['mobil bak', 'bak'], ['becak', 'becak'], ['bawa gerobak', 'gerobak']]; const BELI = [['karung', 'karung'], ['kemasan', 'kemasan'], ['literan', 'liter']];
-/** Bahan gambar sketsa dari cip (Sketsa dari Ciri): kerudung/peci/kacamata/uban/muda; lencana kiri = naik apa, kanan = beli apa. */
+const NAIK = [['naik motor', 'motor'], ['ojek / kurir', 'motor'], ['jalan kaki', 'kaki'], ['mobil bak', 'bak'], ['becak', 'becak'], ['bawa gerobak', 'gerobak'], ['sepeda', 'becak']]; const BELI = [['karung', 'karung'], ['kemasan', 'kemasan'], ['literan', 'liter']];
+const KULIT = [['kulit putih', 1], ['kuning langsat', 2], ['sawo matang', 3], ['kulit gelap', 4]];
+/** Bahan gambar sketsa dari cip (Sketsa dari Ciri, owner 23 Sep: serinci mungkin): kerudung/peci/topi/kacamata/uban/botak/rambut panjang/keriting, kumis/janggut/brewok/tahi lalat,
+ *  warna kulit (0 = belum disebut), perawakan (gemuk/kurus/tinggi/pendek); lencana kiri = naik apa, kanan = beli apa. */
 export function sketsa(b) {
-  const naik = NAIK.find((x) => punya(b, x[0])); const beli = BELI.find((x) => punya(b, x[0]));
-  return { kosong: !b.cip.length, kerudung: punya(b, 'kerudung'), peci: punya(b, 'peci'), kacamata: punya(b, 'kacamata'), uban: punya(b, 'nenek / kakek'), muda: punya(b, 'anak muda'), rambut: !punya(b, 'kerudung') && !punya(b, 'peci') && !punya(b, 'nenek / kakek'), naik: naik ? naik[1] : '', beli: beli ? beli[1] : '', warna: b.warna || 0 };
+  const naik = NAIK.find((x) => punya(b, x[0])); const beli = BELI.find((x) => punya(b, x[0])); const kulit = KULIT.find((x) => punya(b, x[0]));
+  const tutupKepala = punya(b, 'kerudung') || punya(b, 'peci') || punya(b, 'topi');
+  return { kosong: !b.cip.length, kerudung: punya(b, 'kerudung'), cadar: punya(b, 'cadar'), peci: punya(b, 'peci'), topi: punya(b, 'topi'), kacamata: punya(b, 'kacamata'), uban: punya(b, 'uban') || punya(b, 'nenek / kakek'), muda: punya(b, 'anak muda') || punya(b, 'anak-anak'),
+    botak: punya(b, 'botak'), panjang: punya(b, 'rambut panjang'), keriting: punya(b, 'rambut keriting'), rambut: !tutupKepala && !punya(b, 'botak'), kumis: punya(b, 'kumis') || punya(b, 'brewok'), janggut: punya(b, 'janggut') || punya(b, 'brewok'), tahiLalat: punya(b, 'tahi lalat'),
+    kulit: kulit ? kulit[1] : 0, gemuk: punya(b, 'gemuk'), kurus: punya(b, 'kurus'), tinggi: punya(b, 'tinggi'), pendek: punya(b, 'pendek'), naik: naik ? naik[1] : '', beli: beli ? beli[1] : '', warna: b.warna || 0 };
 }
 const cari = (semua, teks) => { const c = plPolos(teks) || String(teks || '').trim().toLowerCase(); return !c ? semua : semua.filter((b) => plPolos(b.nama).indexOf(c) >= 0 || b.nama.toLowerCase().indexOf(c) >= 0 || plPolos(b.asli).indexOf(c) >= 0); };
 /** Nama kembar (sesudah sapaan dibuang, satu memuat yang lain) yang belum dinyatakan "bukan" — ditawarkan, tidak digabung sendiri. */
@@ -180,6 +191,15 @@ export function susunMinggu(kini) {
   return { hariKe: H, hariNama: HARI_PANJANG[H], daftar, kuat: daftar.filter((d) => d.kuat).map((d) => d.nama), kurang: semua.filter((b) => b.kunjungan < 3).length };
 }
 // ====================== BENANG: yang datang bukan orangnya (pelangganTitip) ======================
+/** Nama untuk paku benang: utuh bila pendek; kalau panjang, dua kata pertama yang BERHURUF ("Al - Yamin" → "Al-Yamin", bukan "Al -"; owner 23 Sep: "namanya gak lengkap"). */
+export function plNamaPendek(nama) { const n = String(nama || '').replace(/\s*-\s*/g, '-').trim(); if (n.length <= 16) return n; const kata = n.split(/\s+/).filter((k) => /[a-z0-9]/i.test(k)); return kata.slice(0, 2).join(' '); }
+/** Benang milik satu orang (untuk kartu): ia biasa datang untuk siapa, dan siapa yang biasa datang untuknya. */
+export function benangOrang(kini, kunci) {
+  const semua = semuaOrang(kini); const nm = (k) => { const o = semua.find((b) => b.kunci === k); return o ? o.nama : k; };
+  const titip = cacheMentah('titip'); const untuk = titip.filter((t) => t.dari === kunci).map((t) => ({ id: t.id, kunci: t.untuk, nama: nm(t.untuk), apa: t.apa || '', kali: t.kali || 1, teks: 'datang untuk ' + nm(t.untuk) + (t.apa ? ' · ' + t.apa : '') + ' · ' + (t.kali || 1) + '×' }));
+  const dari = titip.filter((t) => t.untuk === kunci).map((t) => ({ id: t.id, kunci: t.dari, nama: nm(t.dari), apa: t.apa || '', kali: t.kali || 1, teks: nm(t.dari) + ' yang datang' + (t.apa ? ' · ' + t.apa : '') + ' · ' + (t.kali || 1) + '×' }));
+  return { untuk, dari, ada: untuk.length + dari.length > 0 };
+}
 export function susunBenang(kini, siapa) {
   const semua = semuaOrang(kini); const orang = (k) => semua.find((b) => b.kunci === k) || null; const titip = cacheMentah('titip').filter((t) => orang(t.dari) && orang(t.untuk));
   const SISI = 5; const jadiUntuk = {}; titip.forEach((t) => { jadiUntuk[t.untuk] = true; }); const kiri = [], kanan = [];
@@ -188,7 +208,7 @@ export function susunBenang(kini, siapa) {
   const taruh = (d, kn) => d.forEach((id, i) => { const langkah = Math.min(40, 160 / d.length); const geser = (i - (d.length - 1) / 2) * langkah; pos[id] = kutub(kn ? geser : 180 - geser, 34); }); taruh(kiri.slice(0, SISI), false); taruh(kanan.slice(0, SISI), true);
   const tampil = titip.filter((t) => pos[t.dari] && pos[t.untuk]); const terlibat = kiri.slice(0, SISI).concat(kanan.slice(0, SISI)).filter((id) => tampil.some((t) => t.dari === id || t.untuk === id)); const S = terlibat.indexOf(siapa) >= 0 ? siapa : null;
   const nm = (k) => (orang(k) ? orang(k).nama : k);
-  return { pin: terlibat.map((id) => Object.assign({}, orang(id), pos[id], { pendek: nm(id).split(/\s+/).slice(0, 2).join(' '), aktif: S === id })),
+  return { pin: terlibat.map((id) => Object.assign({}, orang(id), pos[id], { pendek: plNamaPendek(nm(id)), aktif: S === id })),
     tali: tampil.map((t) => { const a = pos[t.dari], b = pos[t.untuk]; const dx = b.kiri - a.kiri, dy = b.atas - a.atas; return { kiri: a.kiri, atas: a.atas, panjang: Math.round(Math.sqrt(dx * dx + dy * dy) * 10) / 10, sudut: Math.round((Math.atan2(dy, dx) * 180) / Math.PI * 10) / 10, tkiri: Math.round((a.kiri + dx * 0.4) * 10) / 10, tatas: Math.round((a.atas + dy * 0.4) * 10) / 10, kali: (t.kali || 1) + '×', redup: !!S && t.dari !== S && t.untuk !== S }; }),
     baris: titip.filter((t) => !S || t.dari === S || t.untuk === S).map((t) => ({ id: t.id, teks: nm(t.dari) + ' datang untuk ' + nm(t.untuk), ket: (t.apa || '') + ' · sudah ' + (t.kali || 1) + ' kali' + (orang(t.untuk).utang > 0 ? ' · bon ' + nm(t.untuk) + ' ' + RP(orang(t.untuk).utang) : ''), dari: t.dari, untuk: t.untuk })),
     sembunyi: titip.length - tampil.length, siapa: S, judul: S ? 'Benang milik ' + nm(S) : 'Semua benang · ' + titip.length, semua: semua.map((b) => ({ kunci: b.kunci, nama: b.nama })), jenis: aturPelanggan().titipDaftar };
@@ -218,7 +238,7 @@ export function susunHafalan(kini, kuis) {
 export function kartuOrang(kini, kunci) {
   const semua = semuaOrang(kini); const b = semua.find((x) => x.kunci === kunci); if (!b) return null;
   return Object.assign({}, b, { sk: sketsa(b), ringkas: b.kunjungan + ' kali datang · belanja ' + RP(b.total) + (b.utang > 0 ? ' · bon ' + RP(b.utang) : ''), datang: datangTeks(b) + (b.jam !== null ? ' · ' + b.waktu : ''), polaTeks: b.pola.slice(0, 3).map(plBarangNama).join(', '),
-    bonTeks: b.dikenali ? 'Dikenali → kasir BOLEH mencatat bon baru atas namanya.' : 'Belum dikenali → kasir MENOLAK bon baru (aturan KR1). Isi salah satu: ciri, catatan, atau arah datangnya.', ciriDaftar: aturPelanggan().ciriDaftar, arahDaftar: aturPelanggan().arahDaftar });
+    bonTeks: b.dikenali ? 'Dikenali → kasir BOLEH mencatat bon baru atas namanya.' : 'Belum dikenali → kasir MENOLAK bon baru (aturan KR1). Isi salah satu: ciri, catatan, atau arah datangnya.', ciriDaftar: aturPelanggan().ciriDaftar, arahDaftar: aturPelanggan().arahDaftar, benang: benangOrang(kini, kunci) });
 }
 /** Simpan kartu: isi = {nama, cip[], catatan, arah, asli, kontak, biasa}. Dokumen persis simpanCatatanPelanggan (+ kolom baru); ejaan nama boleh dirapikan selama kuncinya sama. */
 export function susunSimpanKartu(kini, kunci, isi, w) {

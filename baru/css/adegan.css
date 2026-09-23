@@ -118,7 +118,7 @@
 .adegan .lengan-orang { fill: none; stroke: var(--logam3); stroke-width: 5; stroke-linecap: round; }
 .adegan .roda { fill: var(--teks); opacity: 0.85; } .adegan .jari { fill: var(--seg-aktif); stroke: var(--emas-garis); stroke-width: 1; }
 .adegan .roda-grup { transform-box: fill-box; transform-origin: 50% 50%; }
-.adegan .rangka { fill: none; stroke: var(--platina2); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.adegan .rangka { fill: none; stroke: var(--platina2); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; } .adegan .rangka.spatbor { stroke-width: 2.2; stroke: var(--platina1); }
 .adegan .jok, .adegan .bodi { fill: var(--platina1); stroke: var(--platina2); stroke-width: 2; stroke-linejoin: round; }
 .adegan .tangki { fill: var(--logam2); stroke: var(--logam3); stroke-width: 1.4; stroke-linejoin: round; }
 .adegan .setang, .adegan .bak-garis { fill: none; stroke: var(--platina2); stroke-width: 2.4; stroke-linecap: round; }

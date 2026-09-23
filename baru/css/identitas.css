@@ -42,7 +42,7 @@
     .fab:active { transform: scale(0.94); }
     .fab svg { width: 26px; height: 26px; }
     @keyframes terbang { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.6); } }
-    .side .item { display: flex; align-items: center; gap: 11px; min-height: 42px; padding: 0 14px; font-size: 14px; font-weight: 500; border-radius: 12px; color: var(--redup); }
+    .side .item { display: flex; align-items: center; gap: 11px; min-height: 42px; padding: 0 14px; font-size: 14px; font-weight: 500; border-radius: 12px; color: var(--redup); transition: color 220ms ease; }
     .side .item.aktif { background: var(--seg-aktif); border: 1px solid var(--kaca-tepi); color: var(--aktif); }
     .ket { font-size: 12.5px; color: var(--redup); transition: color 480ms ease; }
     svg text { font-family: Jost, sans-serif; }

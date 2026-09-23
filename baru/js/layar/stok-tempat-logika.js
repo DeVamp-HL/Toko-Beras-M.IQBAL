@@ -10,8 +10,21 @@ import { cacheMentah } from '../data/toko.js';
 import { RP, ANGKA } from '../inti/format.js';
 
 export const ATUR_TEMPAT_BAWAAN = { batasTumpuk: 50 };
-export const POSISI_DENAH = [['', 'tanpa kotak'], ['atas', 'atas, lebar penuh'], ['kiri-atas', 'kiri atas'], ['kanan-atas', 'kanan atas'], ['kiri-bawah', 'kiri bawah'], ['tengah-bawah', 'tengah bawah'], ['kanan-bawah', 'kanan bawah'], ['bawah', 'bawah, lebar penuh']];
-const KOTAK_DENAH = { atas: { x: 3, y: 3, w: 94, h: 42 }, 'kiri-atas': { x: 3, y: 3, w: 46, h: 42 }, 'kanan-atas': { x: 51, y: 3, w: 46, h: 42 }, 'kiri-bawah': { x: 3, y: 50, w: 30, h: 42 }, 'tengah-bawah': { x: 35, y: 50, w: 30, h: 42 }, 'kanan-bawah': { x: 67, y: 50, w: 30, h: 42 }, bawah: { x: 3, y: 50, w: 94, h: 42 } };
+/* DENAH dari foto toko 23 Sep (ruko memanjang; pintu depan = jalan di BAWAH denah, pintu belakang/rumah di ATAS): lorong ubin di tengah, tumpukan karung di kiri & kanan
+   (kanan belakang paling tinggi), kotak wadah literan di mulut toko dengan deretan karung terbuka di belakangnya, pajangan kemasan 5–10 kg di kanan depan,
+   meja & kursi di kanan, timbangan & troli di kiri depan, bangku di kedua sisi pintu. Kotak = persen dari lebar × tinggi denah (portrait 3 : 4). */
+export const POSISI_DENAH = [['', 'tanpa kotak'], ['belakang', 'belakang · pintu rumah'], ['kiri-belakang', 'kiri belakang'], ['kanan-belakang', 'kanan belakang · tumpukan tinggi'], ['kiri-tengah', 'kiri tengah'], ['kanan-tengah', 'kanan tengah'],
+  ['kiri-depan', 'kiri depan · timbangan & troli'], ['meja', 'meja & kursi (kanan)'], ['karung-terbuka', 'karung terbuka di belakang wadah'], ['pajangan', 'pajangan kemasan (kanan depan)'], ['wadah', 'kotak wadah literan (mulut toko)'], ['bangku-kiri', 'bangku kiri pintu'], ['bangku-kanan', 'bangku kanan pintu']];
+const KOTAK_DENAH = { belakang: { x: 3, y: 2, w: 94, h: 9 }, 'kiri-belakang': { x: 3, y: 13, w: 30, h: 19 }, 'kanan-belakang': { x: 67, y: 13, w: 30, h: 19 }, 'kiri-tengah': { x: 3, y: 34, w: 30, h: 19 }, 'kanan-tengah': { x: 67, y: 34, w: 30, h: 19 },
+  'kiri-depan': { x: 3, y: 55, w: 30, h: 15 }, meja: { x: 67, y: 55, w: 30, h: 15 }, 'karung-terbuka': { x: 22, y: 72, w: 43, h: 8 }, pajangan: { x: 67, y: 72, w: 30, h: 17 }, wadah: { x: 22, y: 81.5, w: 43, h: 8 }, 'bangku-kiri': { x: 3, y: 81.5, w: 16, h: 8 }, 'bangku-kanan': { x: 82, y: 91, w: 15, h: 6 } };
+/** Kunci kotak lama (denah 7 kotak putaran 16) dipetakan ke denah baru supaya setelan yang sudah tersimpan tidak hilang. */
+const KOTAK_LAMA = { atas: 'belakang', 'kiri-atas': 'kiri-belakang', 'kanan-atas': 'kanan-belakang', 'kiri-bawah': 'kiri-depan', 'tengah-bawah': 'wadah', 'kanan-bawah': 'pajangan', bawah: 'karung-terbuka' };
+export const tpPosisi = (p) => { const k = String(p || ''); return KOTAK_DENAH[k] ? k : (KOTAK_LAMA[k] || ''); };
+/** Daftar tempat BAWAAN (dari foto toko 23 Sep) — dipakai saat owner belum pernah menyimpan daftar tempat; owner bisa memakainya sebagai awal lewat Atur. */
+export const TEMPAT_BAWAAN = [{ nama: 'Kiri belakang', posisi: 'kiri-belakang' }, { nama: 'Kanan belakang', posisi: 'kanan-belakang' }, { nama: 'Kiri tengah', posisi: 'kiri-tengah' }, { nama: 'Kanan tengah', posisi: 'kanan-tengah' },
+  { nama: 'Kiri depan', posisi: 'kiri-depan' }, { nama: 'Karung terbuka', posisi: 'karung-terbuka' }, { nama: 'Pajangan kemasan', posisi: 'pajangan' }, { nama: 'Wadah literan', posisi: 'wadah' }, { nama: 'Belakang', posisi: 'belakang' }];
+/** Perabot tetap yang digambar di denah (bukan tempat simpan): lorong, pintu depan & belakang, ubin. */
+export const PERABOT_DENAH = [{ id: 'lorong', nama: 'lorong', x: 35, y: 13, w: 30, h: 57 }, { id: 'pintu-belakang', nama: 'pintu rumah', x: 40, y: 0, w: 20, h: 1.6 }, { id: 'pintu-depan', nama: 'PINTU DEPAN · JALAN', x: 22, y: 97.5, w: 56, h: 2.5 }, { id: 'teras', nama: 'teras', x: 3, y: 91, w: 76, h: 6 }];
 export const kunciTempat = (jenis, id) => String(jenis || 'K') + ':' + String(id || '');   // = kunciTempat index.html 33118
 const tpKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 const tpKG = (n) => String(Math.round(n * 10) / 10).replace('.', ',') + ' kg';
@@ -21,7 +34,8 @@ export function petaTempat() { const d = cacheMentah('pengaturan').find((x) => S
 /** Daftar tempat = setelan owner (aturanToko/tempat) + nama yang sudah dipakai di peta (sistem lama: tempat cuma teks). */
 export function aturTempat() {
   const a = cacheMentah('aturan').find((d) => String(d.id) === 'tempat') || null;
-  const daftar = (a && Array.isArray(a.daftar) ? a.daftar : []).map((t) => ({ nama: String(t.nama || '').trim(), posisi: KOTAK_DENAH[t.posisi] ? t.posisi : '' })).filter((t) => t.nama);
+  const daftar = (a && Array.isArray(a.daftar) ? a.daftar : []).map((t) => ({ nama: String(t.nama || '').trim(), posisi: tpPosisi(t.posisi) })).filter((t) => t.nama);
+  if (!a) TEMPAT_BAWAAN.forEach((t) => { if (!daftar.some((x) => x.nama.toLowerCase() === t.nama.toLowerCase())) daftar.push({ nama: t.nama, posisi: t.posisi }); });   // belum diatur owner → denah bawaan dari foto toko
   Object.keys(petaTempat()).forEach((k) => { const nm = String(petaTempat()[k] || '').trim(); if (nm && !daftar.some((t) => t.nama === nm)) daftar.push({ nama: nm, posisi: '' }); });
   const batas = a && isFinite(Number(a.batasTumpuk)) && Number(a.batasTumpuk) > 0 && Number(a.batasTumpuk) <= 100 ? Number(a.batasTumpuk) : ATUR_TEMPAT_BAWAAN.batasTumpuk;
   return { daftar, batasTumpuk: batas, dariOwner: !!a, sejak: a ? (a.tanggal || '') : '' };
@@ -39,14 +53,16 @@ export function barangTempat() {
 export function susunTempat() {
   const atur = aturTempat(); const barang = barangTempat(); const nilaiSemua = barang.reduce((a, b) => a + b.nilai, 0);
   const tempat = atur.daftar.map((t) => { const isi = barang.filter((b) => b.tempat === t.nama); const nilai = isi.reduce((a, b) => a + b.nilai, 0); const pct = nilaiSemua > 0 ? Math.round(nilai / nilaiSemua * 100) : 0; const kg = isi.filter((b) => b.jenis === 'karung').reduce((a, b) => a + b.sisa, 0); const unit = isi.filter((b) => b.jenis === 'kemasan').reduce((a, b) => a + b.sisa, 0);
-    const kotak = KOTAK_DENAH[t.posisi] || null;
+    const kotak = KOTAK_DENAH[tpPosisi(t.posisi)] || null;
     return { nama: t.nama, posisi: t.posisi, kotak, gaya: kotak ? 'left: ' + kotak.x + '%; top: ' + kotak.y + '%; width: ' + kotak.w + '%; height: ' + kotak.h + '%;' : '', isi, n: isi.length, kg, unit, nilai, pct, tumpuk: pct > atur.batasTumpuk,
       teksIsi: isi.length ? isi.map((b) => b.nama).join(', ') : 'kosong', teksJumlah: isi.length ? [kg > 0 ? tpKG(kg) : '', unit > 0 ? ANGKA(unit) + ' unit' : ''].filter(Boolean).join(' · ') : 'kosong', teksNilai: isi.length ? RP(Math.round(nilai)) + ' · ' + pct + ' % nilai rak' : '' }; });
   const tanpa = barang.filter((b) => !b.tempat || !atur.daftar.some((t) => t.nama === b.tempat));
   const tumpuk = tempat.filter((t) => t.tumpuk);
   return { atur, barang, tempat, zona: tempat.filter((t) => t.kotak), tanpaKotak: tempat.filter((t) => !t.kotak), nilaiSemua, tanpaTempat: { n: tanpa.length, isi: tanpa, teks: tanpa.length ? tanpa.map((b) => b.nama).join(', ') : '—' },
     tumpukKet: tumpuk.length ? tumpuk.map((t) => t.nama + ' ' + t.pct + ' %').join(', ') + ' memegang nilai rak di atas ' + atur.batasTumpuk + ' % (setelan owner) — menumpuk di satu tempat' : nilaiSemua > 0 ? 'Nilai rak tersebar, tidak ada tempat di atas ' + atur.batasTumpuk + ' %' : 'Belum ada nilai rak yang bertempat',
-    kosong: !atur.daftar.length };
+    kosong: !atur.daftar.length, perabot: PERABOT_DENAH,
+    // kotak denah yang belum dipakai tempat mana pun: digambar samar sebagai petunjuk letak (bukan tempat simpan) — supaya denah tetap terbaca sebagai toko walau daftar owner baru satu-dua tempat
+    kotakKosong: POSISI_DENAH.filter((p) => p[0] && !tempat.some((t) => tpPosisi(t.posisi) === p[0])).map((p) => { const k = KOTAK_DENAH[p[0]]; return { posisi: p[0], nama: p[1].split(' · ')[0], gaya: 'left: ' + k.x + '%; top: ' + k.y + '%; width: ' + k.w + '%; height: ' + k.h + '%;' }; }) };
 }
 /** Pindah satu barang ke tempat (nama) atau '' = tanpa tempat. Menulis peta yang sama dengan sistem lama + catatan pindahan. */
 export function susunPindah(kunci, keNama, w) {
@@ -61,7 +77,7 @@ export function susunPindah(kunci, keNama, w) {
 }
 /** Simpan daftar tempat (nama + kotak di denah) & batas menumpuk. Tempat yang masih berisi tidak bisa dihapus. */
 export function susunAturTempat(isi, w) {
-  const daftar = (Array.isArray(isi.daftar) ? isi.daftar : []).map((t) => ({ nama: String(t.nama || '').trim().slice(0, 40), posisi: KOTAK_DENAH[t.posisi] ? t.posisi : '' }));
+  const daftar = (Array.isArray(isi.daftar) ? isi.daftar : []).map((t) => ({ nama: String(t.nama || '').trim().slice(0, 40), posisi: tpPosisi(t.posisi) }));
   if (daftar.some((t) => !t.nama)) return { tolak: 'Nama tempat tidak boleh kosong — isi atau lepas barisnya' };
   const kembar = daftar.find((t, i) => daftar.findIndex((x) => x.nama.toLowerCase() === t.nama.toLowerCase()) !== i); if (kembar) return { tolak: 'Tempat "' + kembar.nama + '" tertulis dua kali' };
   const dobel = daftar.find((t, i) => t.posisi && daftar.findIndex((x) => x.posisi === t.posisi) !== i); if (dobel) return { tolak: 'Kotak "' + (POSISI_DENAH.find((p) => p[0] === dobel.posisi) || [])[1] + '" dipakai dua tempat — pilih kotak lain' };
