@@ -257,12 +257,19 @@ D.merk.forEach(function (m) { var h = hariHabis((stokK[m.merk] || {}).sisaKg || 
 // kolom dokumen vs cadangan (kolom baru sistem baru disebut eksplisit)
 var kenal = function (nama) { var o = {}; (CAD[nama] || []).forEach(function (d) { Object.keys(d).forEach(function (k) { o[k] = 1; }); }); return o; };
 var WX = { tanggal: '2026-09-22', jam: '10:00', kini: '2026-09-22T03:00:00.000Z', idUnik: function () { return Math.random(); } };
-var kU = kenal('utangPemasokMutasi'); var px = B.bon[0]; if (px) { var by = susunBayar({ pemasok: px.pemasok, bonId: px.id, ketik: '1', dari: 'laci' }, WX); if (by.dokumen) Object.keys(by.dokumen[0].data).forEach(function (k) { if (!kU[k] && ['dari', 'biayaAdmin', 'adminNama'].indexOf(k) < 0) salah.push('bayar.' + k); }); else salah.push('bayar ditolak: ' + by.tolak); }
+var kU = kenal('utangPemasokMutasi'); var px = B.bon[0]; var catatan = []; var pgAsli = cacheMentah('pengaturan').slice(); var tanpaTitik = false;
+if (px) { var by = susunBayar({ pemasok: px.pemasok, bonId: px.id, ketik: '1', dari: 'laci' }, WX);
+  // Kas toko di cadangan bisa memang kurang dari Rp1 (mesin beku kasPada, sama persis dengan sistem lama): penjaga kas MENOLAK dengan benar → itu catatan,
+  // bukan kegagalan. Kolom dokumen tetap diuji: titik kas disingkirkan SEMENTARA (kasPada = null → penjaga tidak berlaku), lalu dikembalikan.
+  if (!by.dokumen && B.adaKas && B.kas < 1 && /^Uang toko cuma /.test(by.tolak || '')) { catatan.push('kas toko di cadangan ' + B.kas + ' (kasPada, titik kas ' + ((pgAsli.find(function (d) { return String(d.id) === 'titikKas'; }) || {}).tanggal || '?') + ') → bayar ditolak penjaga kas, benar; kolom diuji tanpa titik kas');
+    pasok('pengaturan', pgAsli.filter(function (d) { return String(d.id) !== 'titikKas'; })); tanpaTitik = true; by = susunBayar({ pemasok: px.pemasok, bonId: px.id, ketik: '1', dari: 'laci' }, WX); }
+  if (by.dokumen) Object.keys(by.dokumen[0].data).forEach(function (k) { if (!kU[k] && ['dari', 'biayaAdmin', 'adminNama'].indexOf(k) < 0) salah.push('bayar.' + k); }); else salah.push('bayar ditolak: ' + by.tolak); }
 var bl = susunBonLama({ pemasok: '', nama: 'X CONTOH', tgl: '2026-07-01', ketik: '1', catatan: 'x' }, WX); if (bl.dokumen) Object.keys(bl.dokumen[0].data).forEach(function (k) { if (!kU[k]) salah.push('saldoAwal.' + k); });
 var kC = kenal('pemasokCatatan'); var kr = susunKartu(px ? px.pemasok : 'X', { kontak: '0', tempo: '7' }, WX); if (kr.dokumen) Object.keys(kr.dokumen[0].data).forEach(function (k) { if (!kC[k] && ['orang', 'tempo'].indexOf(k) < 0) salah.push('kartu.' + k); });
-var kH = kenal('pengeluaranHarian'); if (px && B.adaKas === false) { var by2 = susunBayar({ pemasok: px.pemasok, bonId: px.id, ketik: '1', dari: 'rekening', adminI: 0 }, WX); if (by2.dokumen && by2.dokumen[1]) Object.keys(by2.dokumen[1].data).forEach(function (k) { if (!kH[k] && k !== 'dariBayarBon') salah.push('harian.' + k); }); }
+var kH = kenal('pengeluaranHarian'); if (px && (B.adaKas === false || tanpaTitik)) { var by2 = susunBayar({ pemasok: px.pemasok, bonId: px.id, ketik: '1', dari: 'rekening', adminI: 0 }, WX); if (by2.dokumen && by2.dokumen[1]) Object.keys(by2.dokumen[1].data).forEach(function (k) { if (!kH[k] && k !== 'dariBayarBon') salah.push('harian.' + k); }); }
+if (tanpaTitik) pasok('pengaturan', pgAsli);
 var b0 = S.baris.find(function (b) { return b.st.id === 'S' && b.modalUnit > 0 && b.lamaN > 0; }); if (b0) { terapkanKeCache(susunUbah(b0.k, String(b0.lamaN + 100), 'jual', WX).dokumen); var T = susunTerbit(WX, true); var kK = kenal('katalogHargaKarung'); if (T.dokumen) Object.keys(T.dokumen[0].data).forEach(function (k) { if (!kK[k] && k !== 'modalSaatSetel') salah.push('katalogKarung.' + k); }); else salah.push('terbit ditolak: ' + T.tolak); }
-print(JSON.stringify({ salah: salah, baris: S.baris.length, nDok: nDok, perlu: S.perlu.length, ringkas: S.ringkas.map(function (r) { return r.l + ' ' + r.a; }).join(' · '), target: S.target, targetDariRata: S.atur.targetDariRata, bongkar: S.atur.bongkarKg, bon: B.nBon, total: B.total, lewat: B.lewat.length, merk: D.merk.length, perluBeli: D.merk.filter(function (m) { return m.perlu; }).length, muatan: D.atur.muatanKg, pemasok: D.pemasok.map(function (p) { return p.nama.split(' ')[0] + ':' + p.cara; }).join(' · ') }));
+print(JSON.stringify({ salah: salah, catatan: catatan, baris: S.baris.length, nDok: nDok, perlu: S.perlu.length, ringkas: S.ringkas.map(function (r) { return r.l + ' ' + r.a; }).join(' · '), target: S.target, targetDariRata: S.atur.targetDariRata, bongkar: S.atur.bongkarKg, bon: B.nBon, total: B.total, lewat: B.lewat.length, merk: D.merk.length, perluBeli: D.merk.filter(function (m) { return m.perlu; }).length, muatan: D.atur.muatanKg, pemasok: D.pemasok.map(function (p) { return p.nama.split(' ')[0] + ':' + p.cara; }).join(' · ') }));
 """
 
 
@@ -350,7 +357,7 @@ if __name__ == '__main__':
         h, e = jalan("var __KINI = new Date('%sT20:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n" % tgl + js + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP)
         if h is None: print('ASAP DATA TOKO: JSC JATUH ' + e); g.append('asap')
         else:
-            print('ASAP DATA TOKO (%s): %d baris harga dari %d dokumen katalog · %d perlu diputuskan · %s · target %s%s · bongkar %s/kg · bon %d = %s (lewat tempo %d) · belanja %d merek, %d perlu, muatan %s kg · %s · yang tidak cocok: %s'
-                  % (os.path.basename(cad[-1]), h['baris'], h['nDok'], h['perlu'], h['ringkas'], h['target'], ' (rata-rata)' if h['targetDariRata'] else '', h['bongkar'], h['bon'], h['total'], h['lewat'], h['merk'], h['perluBeli'], h['muatan'], h['pemasok'], ', '.join(h['salah']) or 'tidak ada'))
+            print('ASAP DATA TOKO (%s): %d baris harga dari %d dokumen katalog · %d perlu diputuskan · %s · target %s%s · bongkar %s/kg · bon %d = %s (lewat tempo %d) · belanja %d merek, %d perlu, muatan %s kg · %s · yang tidak cocok: %s%s'
+                  % (os.path.basename(cad[-1]), h['baris'], h['nDok'], h['perlu'], h['ringkas'], h['target'], ' (rata-rata)' if h['targetDariRata'] else '', h['bongkar'], h['bon'], h['total'], h['lewat'], h['merk'], h['perluBeli'], h['muatan'], h['pemasok'], ', '.join(h['salah']) or 'tidak ada', (' · catatan (angka cadangan toko): ' + '; '.join(h['catatan'])) if h.get('catatan') else ''))
             if h['salah']: g.append('asap: ' + ', '.join(h['salah']))
     sys.exit(2 if g else 0)
