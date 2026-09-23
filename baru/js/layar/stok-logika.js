@@ -142,7 +142,7 @@ export function susunWadah(s) {
   // karung terbuka lain: kolam yang tidak dipegang wadah mana pun (bahan campuran, atau YATIM: wadahnya kini memegang karung lain) + nama yang disebut
   // campuran/takar tapi belum pernah ditandai (supaya owner bisa membukanya dari sini) — tidak termasuk nama yang sedang dipegang sebuah wadah
   const lain = []; const ada = {};
-  siap.kolam.forEach((k) => { if (k.wadah) return; ada[k.merk + '|' + k.lokasi] = 1; lain.push({ nama: k.merk, lokasi: k.lokasi, karung: k, tumpukan: tumpukanGudang(k.merk, siap) }); });
+  siap.kolam.forEach((k) => { if (k.wadah) return; ada[k.merk + '|' + k.lokasi] = 1; if (k.sisaMentahKg <= 0.0001) return; lain.push({ nama: k.merk, lokasi: k.lokasi, karung: k, tumpukan: tumpukanGudang(k.merk, siap) }); });   // yang sudah kosong / dikembalikan ke tumpukan tidak tampil
   const sebut = (m) => { if (!m || wadahPemegang(m).length || ada[m + '|']) return; ada[m + '|'] = 1; lain.push({ nama: m, lokasi: '', karung: karungBelakang(m, ''), tumpukan: tumpukanGudang(m, siap) }); };
   daftar.forEach((w) => w.resep.forEach((x) => sebut(x.merk)));
   ambilWadahLiteran().forEach((d) => { if (d.tipe === 'takar') (d.sumber || []).forEach((x) => sebut(x.merk)); });
@@ -165,7 +165,7 @@ export function susunKapur(kini) {
     if (w.tipe === 'takar') out.push({ k: 'w' + w.id, jam: w.jam || '', isi: 'Wadah ' + (w.wadah || '') + ' diisi ulang ' + (w.takar || 0) + ' takar dari karung ' + (w.sumber || []).map((x) => x.merk + ((w.sumber || []).length > 1 ? ' ' + x.takar : '')).join(' + ') + ' — karung terbuka turun, wadah naik', n: '+' + skKG(w.kg || 0), jenis: 'wadah' });
     else if (w.tipe === 'isi') out.push({ k: 'w' + w.id, jam: w.jam || '', isi: 'Wadah ' + (w.wadah || '') + ' disamakan dengan kenyataan', n: '±' + skKG(w.isiKg || 0), jenis: 'wadah' });
     else if (w.tipe === 'karung') out.push({ k: 'w' + w.id, jam: w.jam || '', isi: 'Karung ' + (w.merk || '') + ' diambil dari tumpukan gudang, dibuka ' + (w.wadah ? 'di belakang wadah ' + w.wadah : w.lepas ? 'sebagai bahan campuran' : 'di belakang wadah') + (w.otomatis ? ' (otomatis — karung sebelumnya habis)' : ''), n: 'gudang −' + skKG(w.kg || 0), jenis: 'wadah' });
-    else if (w.tipe === 'karungIsi') out.push({ k: 'w' + w.id, jam: w.jam || '', isi: 'Karung terbuka ' + (w.merk || '') + ' disamakan dengan kenyataan', n: '±' + skKG(w.isiKg || 0), jenis: 'wadah' }); });
+    else if (w.tipe === 'karungIsi') out.push({ k: 'w' + w.id, jam: w.jam || '', isi: w.dikembalikan ? 'Karung terbuka ' + (w.merk || '') + ' dikembalikan ke tumpukan gudang' : 'Karung terbuka ' + (w.merk || '') + ' disamakan dengan kenyataan', n: w.dikembalikan ? '+' + skKG(w.sisaSebelumKg || 0) : '±' + skKG(w.isiKg || 0), jenis: 'wadah' }); });
   const jual = {}; ambilPenjualan().forEach((p) => { if (p.tanggal !== hari) return; const nm = p.jenis === 'kemasan' ? (p.namaProduk || '') + ' ' + (p.ukuranKemasan || '') + ' kg' : (p.merkSumber || p.namaProduk || ''); const k = (p.jam || '').slice(0, 2) + '|' + nm;
     const o = jual[k] || (jual[k] = { jam: (p.jam || '').slice(0, 2) + '.00', nm, kg: 0, unit: 0, n: 0 }); o.n += 1; if (p.jenis === 'kemasan') o.unit += p.jumlahUnit || 0; else o.kg += p.totalKg || 0; if ((p.jam || '') > o.jam) o.jamAkhir = p.jam; });
   Object.keys(jual).forEach((k) => { const o = jual[k]; out.push({ k: 'j' + k, jam: o.jamAkhir || o.jam, isi: 'Terjual ' + o.nm + ' · ' + o.n + ' baris', n: '−' + (o.unit ? o.unit + ' unit' : skKG(o.kg)), jenis: 'keluar' }); });

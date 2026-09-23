@@ -104,3 +104,22 @@ main.layar-stok.masuk > header, main.layar-stok.masuk > .jalur { animation: rkNa
 .layar-stok .hp-massal .kanan .tautan { cursor: pointer; text-decoration: underline; font-size: 11px; }
 .layar-stok .utama.redup { opacity: 0.55; font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .layar-stok .kt-tumpuk .isi, .layar-stok .hp-garis .bar, .layar-stok .tp-zona, .layar-stok .hp-kartu { transition: none; animation: none; } }
+
+/* Tumpukan 3D (isometrik) — owner 23 Sep */
+.layar-stok .iso-bungkus { width: 100%; overflow: hidden; border-radius: 14px; border: 1px solid var(--kaca-tepi); background: linear-gradient(180deg, var(--seg), transparent 70%); }
+.layar-stok .iso-toko { display: block; width: 100%; height: auto; max-height: 640px; }
+.layar-stok .iso-toko .tanah { fill: var(--kaca); stroke: var(--kaca-tepi); stroke-width: 0.4; }
+.layar-stok .iso-toko .perabot-iso polygon { fill: var(--seg); stroke: var(--kaca-tepi); stroke-width: 0.3; } .layar-stok .iso-toko .perabot-iso.lorong polygon { fill: var(--kaca-sorot); opacity: 0.35; } .layar-stok .iso-toko .perabot-iso.pintu-depan polygon { fill: var(--emas-garis); } .layar-stok .iso-toko .perabot-iso.pintu-belakang polygon { fill: var(--platina2); opacity: 0.6; }
+.layar-stok .iso-toko .perabot-iso text { font-size: 2.6px; letter-spacing: 0.25px; fill: var(--redup); text-transform: uppercase; } .layar-stok .iso-toko .perabot-iso.pintu-depan text { fill: var(--logam-teks); font-weight: 700; }
+.layar-stok .iso-toko .zona-iso { cursor: pointer; } .layar-stok .iso-toko .lantai-zona { fill: var(--seg); stroke: var(--kaca-tepi); stroke-width: 0.45; transition: fill 220ms ease, stroke 220ms ease; }
+.layar-stok .iso-toko .zona-iso:hover .lantai-zona, .layar-stok .iso-toko .zona-iso.aktif .lantai-zona { fill: var(--seg-aktif); stroke: var(--emas-garis); } .layar-stok .iso-toko .zona-iso.tumpuk .lantai-zona { stroke: var(--awas); }
+.layar-stok .iso-toko .zona-iso.kosong .lantai-zona { fill: transparent; stroke-dasharray: 1.2 1; opacity: 0.7; } .layar-stok .iso-toko .zona-iso.kosong .nama-zona { opacity: 0.6; }
+.layar-stok .iso-toko .nama-zona { font-size: 2.4px; letter-spacing: 0.3px; fill: var(--redup); pointer-events: none; }
+.layar-stok .iso-toko .tumpukan { cursor: pointer; } .layar-stok .iso-toko .sisi-atas.karung { fill: #e9dcb8; } .layar-stok .iso-toko .sisi-kiri.karung { fill: #bda87a; } .layar-stok .iso-toko .sisi-kanan.karung { fill: #d2bf92; }
+.layar-stok .iso-toko .sisi-atas.kemasan { fill: #dfe6ea; } .layar-stok .iso-toko .sisi-kiri.kemasan { fill: #9fb0bb; } .layar-stok .iso-toko .sisi-kanan.kemasan { fill: #c1cfd7; }
+.layar-stok .iso-toko .tumpukan polygon { stroke: rgba(60,45,20,0.35); stroke-width: 0.18; stroke-linejoin: round; } .layar-stok .iso-toko .tumpukan .jejak { fill: none; stroke: var(--redup); stroke-dasharray: 1 0.8; stroke-width: 0.3; }
+.layar-stok .iso-toko .tumpukan.dipilih polygon { stroke: var(--awas); stroke-width: 0.45; } .layar-stok .iso-toko .tumpukan:hover .sisi-atas { fill: #f6ecc8; }
+.layar-stok .iso-toko .nama-tumpukan { font-size: 2.5px; font-weight: 700; fill: var(--teks); paint-order: stroke; stroke: var(--bg2); stroke-width: 0.9px; stroke-linejoin: round; pointer-events: none; } .layar-stok .iso-toko .angka-tumpukan { font-family: 'Bodoni Moda', Georgia, serif; font-size: 2.8px; fill: var(--aktif); paint-order: stroke; stroke: var(--bg2); stroke-width: 0.9px; pointer-events: none; }
+body.gelap .layar-stok .iso-toko .sisi-atas.karung { fill: #cdb98b; } body.gelap .layar-stok .iso-toko .sisi-kiri.karung { fill: #7d6a44; } body.gelap .layar-stok .iso-toko .sisi-kanan.karung { fill: #a48f62; }
+.layar-stok .dr-aksi { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 12px; background: var(--seg); border: 1px solid var(--emas-garis); font-size: 12px; }
+@media (prefers-reduced-motion: reduce) { .layar-stok .iso-toko .lantai-zona { transition: none; } }

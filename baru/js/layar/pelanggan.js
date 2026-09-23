@@ -43,7 +43,7 @@ export function pasangLayarPelanggan(akar, opsi) {
   const tabAwal = bacaLokal(KUNCI_TAB) || {};
   const K = buatKeadaan({ keluarga: KELUARGA.some((k) => k[0] === tabAwal.keluarga) ? tabAwal.keluarga : 'kenali', tabK: TAB_K.some((t) => t[0] === tabAwal.tabK) ? tabAwal.tabK : 'wajah', tabB: 'buku', tabT: 'daftar', kabar: '', kabarAwas: false,
     cari: '', tampi: [], notaKunci: null, keranjang: [], benangSiapa: null, titip: null, titipCari: '', kuis: kuisKosong(), hafal: bacaLokal(KUNCI_HAFAL) || null,
-    kartu: null, baru: null, gabung: null, bukuKunci: null, ember: '', orangBon: null, lembarBon: null, bayar: { nominal: '', cara: 'Tunai', catatan: '', pengantar: '' }, hapusIsi: { nominal: '', alasan: '' }, yakinHapus: false, janji: 7,
+    kartu: null, yakinHapusNama: false, baru: null, gabung: null, bukuKunci: null, ember: '', orangBon: null, lembarBon: null, bayar: { nominal: '', cara: 'Tunai', catatan: '', pengantar: '' }, hapusIsi: { nominal: '', alasan: '' }, yakinHapus: false, janji: 7,
     tahun: (opsi.sekarang() || new Date()).getFullYear(), thrOrang: null, beri: { bentuk: '', lain: '', nilai: '' }, usulBentuk: null, atur: null });
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false;
   const kini = () => opsi.sekarang() || new Date();
@@ -69,6 +69,8 @@ export function pasangLayarPelanggan(akar, opsi) {
     kCip: ({ nama }) => ubahKartu((d) => { d.cip = d.cip.indexOf(nama) >= 0 ? d.cip.filter((x) => x !== nama) : d.cip.concat([nama]); }),
     kArah: ({ nama }) => ubahKartu((d) => { d.arah = d.arah === nama ? '' : nama; }),
     kSimpan: async () => { const d = st().kartu; if (!d) return; if (await tulis(P.susunSimpanKartu(kini(), d.kunci, d, waktu()))) set({ kartu: null }); },
+    // putaran 22 (owner 23 Sep): nama salah ketik ("b", angka) dihapus — notanya jadi tanpa nama, ketukan kedua wajib
+    kHapusNama: async () => { const d = st().kartu; if (!d) return; const r = P.susunHapusNama(kini(), d.kunci, waktu(), st().yakinHapusNama); if (r.perluYakin) return set({ yakinHapusNama: true, kabar: r.tolak, kabarAwas: true }); if (await tulis(r)) set({ yakinHapusNama: false, kartu: null }); },
     kTutup: () => set({ kartu: null, baru: null, kabar: '' }),
     keBon: ({ kunci }) => { set({ keluarga: 'bon', orangBon: kunci, lembarBon: null, kartu: null, kabar: '' }); ingatTab(); },
     // ---- orang baru
@@ -256,7 +258,8 @@ export function pasangLayarPelanggan(akar, opsi) {
         <input class="ketik-nama" id="kCatatan" type="text" placeholder="Catatan bebas, mis. ojek, suka nitip uang" value="${d.catatan}" data-ketik="kKetik" data-kolom="catatan">
         <div class="ps-form dua"><input class="ketik-nama" id="kAsli" type="text" placeholder="Nama asli" value="${d.asli}" data-ketik="kKetik" data-kolom="asli"><input class="ketik-nama" id="kKontak" type="text" inputmode="tel" placeholder="Nomor WhatsApp" value="${d.kontak}" data-ketik="kKetik" data-kolom="kontak"></div>
         <div class="pita-info ${dikenali ? '' : 'awas'}">${dikenali ? 'Dikenali → kasir BOLEH mencatat bon baru atas namanya.' : 'Belum dikenali → kasir MENOLAK bon baru (aturan KR1). Isi salah satu: ciri, catatan, atau arah datangnya.'}</div>
-        <div class="tombol-baris"><div class="kaca-btn" data-aksi="keBon" data-kunci="${d.kunci}">${o.utang > 0 ? 'buku bonnya · ' + RP(o.utang) : 'buku bon'}</div><div class="kaca-btn aktif emas" data-aksi="kSimpan">SIMPAN KARTU</div></div></div>
+        <div class="tombol-baris"><div class="kaca-btn" data-aksi="keBon" data-kunci="${d.kunci}">${o.utang > 0 ? 'buku bonnya · ' + RP(o.utang) : 'buku bon'}</div><div class="kaca-btn aktif emas" data-aksi="kSimpan">SIMPAN KARTU</div></div>
+        ${(() => { const RH = P.rincianHapusNama(kini(), d.kunci); return h`<div class="ket tautan ${s.yakinHapusNama ? 'awas-teks' : ''}" data-aksi="kHapusNama" data-k="hapus-nama" style="align-self: flex-start;">${s.yakinHapusNama ? 'YAKIN — hapus nama "' + o.nama + '" (' + RH.arti + ')' : RH.tolak ? 'nama ini tidak bisa dihapus: ' + RH.tolak : 'nama salah ketik? hapus nama ini (' + o.nota + ' nota jadi tanpa nama, rupiah tetap)'}</div>`; })()}</div>
     </section>`;
   }
   function gambarBaru(s) {
