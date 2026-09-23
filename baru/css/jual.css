@@ -148,3 +148,22 @@
   #cetakStruk.k58 { width: 58mm; } #cetakStruk.k80 { width: 80mm; }
   @page { margin: 3mm; }
 }
+
+/* deretan karung terbuka di belakang deretan wadah (owner 23 Sep) — dipakai panel isi ulang (Jual & Stok) dan tab Wadah */
+.deretan-karung { display: flex; flex-direction: column; gap: 4px; padding: 6px 0 2px; border-top: 1px dashed var(--garis); }
+.deretan-isi { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 4px 2px; -webkit-overflow-scrolling: touch; } .deretan-isi::-webkit-scrollbar { display: none; }
+.karung-deret { flex: 0 0 auto; width: 74px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; border-radius: 12px; border: 1px solid var(--kaca-tepi); background: var(--kaca); cursor: pointer; text-align: center; transition: border-color 200ms ease, transform 160ms cubic-bezier(.2,.8,.2,1), background-color 200ms ease; }
+.karung-deret:active { transform: scale(0.96); } .karung-deret.dipakai { border-color: var(--emas-garis); background: var(--seg-aktif); } .karung-deret.sendiri { box-shadow: inset 0 0 0 1px var(--kaca-tepi); }
+.karung-deret .gambar-chip { width: 40px; height: 40px; } .karung-deret .gambar-chip svg { width: 40px; height: 40px; } .karung-deret .nm { font-size: 10.5px; font-weight: 600; line-height: 1.15; overflow-wrap: anywhere; } .karung-deret .ket { font-size: 9.5px; } .karung-deret .pil.kecil { padding: 1px 7px; font-size: 9.5px; margin-top: 2px; }
+.deretan-isi.besar .karung-deret { width: 92px; } .deretan-isi.besar .karung-deret .gambar-chip, .deretan-isi.besar .karung-deret .gambar-chip svg { width: 52px; height: 52px; }
+
+/* belanja terakhir orang bernama (owner 23 Sep) */
+.pt-kartu { border-color: var(--emas-garis); } .pt-baris { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px dashed var(--garis); cursor: pointer; } .pt-baris:first-of-type { border-top: 0; }
+.pt-baris .nm { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; } .pt-baris.utama .nm { font-size: 14px; } .pt-baris .kanan { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; } .pt-baris .n { font-family: 'Bodoni Moda', Georgia, serif; font-size: 15px; white-space: nowrap; }
+/* omzet hari ini naik sesudah nota tercatat (owner 23 Sep) */
+.omzet-naik { position: fixed; z-index: 12; transform: translateX(-100%); font-size: 15px; font-weight: 700; color: var(--aktif); opacity: 0; pointer-events: none; text-shadow: 0 1px 0 var(--kaca-sorot); } .omzet-naik.tampil { animation: omzetNaik 1500ms ease forwards; }
+@keyframes omzetNaik { 0% { opacity: 0; transform: translate(-100%, 8px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-100%, -22px); } }
+.omzet-toast { position: fixed; left: 50%; top: calc(16px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -20px); z-index: 12; padding: 10px 18px; border-radius: 999px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--emas-garis); box-shadow: 0 14px 34px -16px var(--bayang); font-size: 13px; color: var(--teks); opacity: 0; pointer-events: none; white-space: nowrap; }
+.omzet-toast b { color: var(--aktif); font-size: 15px; } .omzet-toast.tampil { animation: toastOmzet 2400ms cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes toastOmzet { 0% { opacity: 0; transform: translate(-50%, -20px); } 12% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -12px); } }
+@media (prefers-reduced-motion: reduce) { .omzet-naik.tampil, .omzet-toast.tampil { animation: none; opacity: 1; } }

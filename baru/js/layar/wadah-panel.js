@@ -6,7 +6,7 @@
 import { h, mentah } from '../inti/dom.js';
 import { DESIMAL, tanggalPendek } from '../inti/format.js';
 import * as L from './jual-logika.js';
-import { gambarWadah } from './gambar.js';
+import { gambarWadah, gambarKarungStok } from './gambar.js';
 
 const wpKG = (n) => DESIMAL(Math.round(n * 10) / 10) + ' kg';
 /** Draf isian satu wadah: baris campuran bawaan wadah itu, semuanya masih 0 takar. */
@@ -18,7 +18,7 @@ export function panelIsiUlang(merk, s, keranjang, opsi) {
   const d = drafUntuk(s, merk); const lipat = !!(opsi && opsi.lipat) && !d.buka; const hit = L.hitungTakar(merk, d.baris, keranjang); const atur = L.aturWadah();
   const w = L.tinggiWadah(merk, keranjang, hit.kg); const nyata = L.tinggiWadah(merk, keranjang);
   const resep = L.resepWadah(merk); const campuran = resep.length > 1;
-  const calon = d.pilihMerek ? L.calonCampur(d.baris.map((x) => x.merk)) : [];
+  const calon = d.pilihMerek ? L.calonCampur(d.baris.map((x) => x.merk)) : []; const DR = nyata.diketahui && !lipat ? L.deretanKarung() : [];
   return h`<div class="panel-wadah" data-k="panel-wadah-${merk}">
     <div class="baris-wadah"><div class="gambar-chip besar">${mentah(gambarWadah(w))}</div>
       <div><div class="ket">${!nyata.diketahui ? 'Isi wadah ini belum pernah disamakan dengan kenyataan, jadi belum bisa digambar. Tandai dulu isinya sekarang ↓'
@@ -27,9 +27,12 @@ export function panelIsiUlang(merk, s, keranjang, opsi) {
         ${nyata.diketahui ? h`<div class="ket">${nyata.perluIsi ? 'SAATNYA ISI ULANG · ' : ''}isi terakhir ${tanggalPendek(nyata.isiTerakhirTanggal)} ${nyata.isiTerakhirJam}</div>` : ''}</div></div>
     ${opsi && opsi.lipat ? h`<div class="kaca-btn ${lipat && (!nyata.diketahui || nyata.perluIsi) ? 'aktif' : ''}" data-aksi="wdBuka" data-wadah="${merk}">${lipat ? (nyata.diketahui ? (nyata.perluIsi ? 'ISI ULANG WADAH — takar demi takar' : 'Isi ulang wadah (− / + takar)') : 'Tandai isi wadah sekarang') : 'tutup isi ulang'}</div>` : ''}
     ${lipat ? '' : h`${nyata.diketahui ? h`
-      ${d.baris.map((x, i) => { const k = hit.sumber.find((y) => y.merk === x.merk); const kr = k ? k.karung : L.karungBelakang(x.merk, L.lokasiSumber(x.merk, merk)); const tg = k && k.bukaKarung ? L.tumpukanGudang(x.merk) : null;
+      <div class="deretan-karung" data-k="deretan-${merk}"><div class="label" style="font-size: 9px;">Deretan karung terbuka di belakang · ketuk = +1 takar dari karung itu</div>
+        <div class="deretan-isi">${DR.map((k) => { const dipakai = d.baris.filter((x) => x.merk === k.merk && (x.dari !== undefined ? String(x.dari) : L.lokasiSumber(x.merk, merk)) === k.lokasi).reduce((a, x) => a + x.takar, 0);
+          return h`<div class="karung-deret ${dipakai ? 'dipakai' : ''} ${k.lokasi === merk ? 'sendiri' : ''}" data-k="dk-${k.merk}|${k.lokasi}" data-aksi="wdDariKarung" data-wadah="${merk}" data-merk="${k.merk}" data-dari="${k.lokasi}" title="${k.letak}"><div class="gambar-chip">${mentah(gambarKarungStok(k))}</div><div class="nm">${k.merk}</div><div class="ket">${k.no ? k.no + ' · ' : ''}${k.diketahui ? '±' + wpKG(k.sisaKg) : 'belum ditandai'}</div>${dipakai ? h`<div class="pil kecil">${dipakai} takar</div>` : ''}</div>`; })}${DR.length ? '' : h`<div class="ket">Belum ada karung terbuka yang ditandai — buka karung di Stok → Wadah literan.</div>`}</div></div>
+      ${d.baris.map((x, i) => { const k = hit.sumber.find((y) => y.merk === x.merk && (x.dari === undefined || y.dari === String(x.dari))); const kr = k ? k.karung : L.karungBelakang(x.merk, x.dari !== undefined ? x.dari : L.lokasiSumber(x.merk, merk)); const tg = k && k.bukaKarung ? L.tumpukanGudang(x.merk) : null;
         const letak = kr.lokasi === merk ? 'karung di belakang wadah ini' : kr.lokasi ? 'karung di belakang wadah ' + kr.lokasi + (kr.yatim ? ' (dulu)' : '') : 'karung bahan campuran';
-        return h`<div class="baris-takar" data-k="takar-${x.merk}">
+        return h`<div class="baris-takar" data-k="takar-${x.merk}-${x.dari === undefined ? 'oto' : x.dari}">
           <span class="kiri"><span class="nm">${x.merk}</span></span>
           <span class="langkah"><div class="kaca-btn" data-aksi="wdKurang" data-wadah="${merk}" data-i="${i}">−</div><span class="n">${x.takar} <span class="ket">takar</span></span><div class="kaca-btn aktif" data-aksi="wdTambah" data-wadah="${merk}" data-i="${i}">+</div></span>
           <span class="n kg">${wpKG(x.takar * atur.takarKg)}</span>
@@ -54,7 +57,7 @@ export function panelIsiUlang(merk, s, keranjang, opsi) {
 
 /** Penangan ketukan panel — dipasang ke delegasi layar. set/st = keadaan layar; tulis(r) = tulis dokumen lalu kabari; keranjang() = keadaan keranjang Jual. */
 export function aksiPanelWadah({ set, st, tulis, keranjang, waktu, sesudahCatat }) {
-  const draf = (merk) => { const d = drafUntuk(st(), merk); return { wadah: d.wadah, baris: d.baris.map((x) => ({ merk: x.merk, takar: x.takar })), pilihMerek: d.pilihMerek, samakan: d.samakan, ketik: d.ketik, buka: d.buka }; };
+  const draf = (merk) => { const d = drafUntuk(st(), merk); return { wadah: d.wadah, baris: d.baris.map((x) => Object.assign({ merk: x.merk, takar: x.takar }, x.dari !== undefined ? { dari: x.dari } : {})), pilihMerek: d.pilihMerek, samakan: d.samakan, ketik: d.ketik, buka: d.buka }; };
   const ubah = (merk, f) => { const d = draf(merk); f(d); set({ isiW: d }); };
   return {
     wdBuka: ({ wadah }) => ubah(wadah, (d) => { d.buka = !d.buka; }),
@@ -69,6 +72,7 @@ export function aksiPanelWadah({ set, st, tulis, keranjang, waktu, sesudahCatat 
     wdCampur: ({ wadah }) => ubah(wadah, (d) => { d.pilihMerek = !d.pilihMerek; }),
     wdPilihMerek: ({ wadah, merk }) => ubah(wadah, (d) => { if (!d.baris.some((x) => x.merk === merk) && d.baris.length < L.WADAH_MAKS_RESEP) d.baris.push({ merk, takar: 1 }); d.pilihMerek = false; }),
     wdBuangBaris: ({ wadah, i }) => ubah(wadah, (d) => { if (d.baris.length > 1) d.baris.splice(Number(i), 1); }),
+    wdDariKarung: ({ wadah, merk, dari }) => ubah(wadah, (d) => { d.baris = L.tambahTakarDari(d.baris, merk, dari); }),
     wdSamakanBuka: ({ wadah }) => ubah(wadah, (d) => { d.samakan = !d.samakan; }),
     wdKetik: (v, el) => { const merk = el && el.dataset.wadah; if (!merk) return; const d = draf(merk); d.ketik = String(v).slice(0, 6); set({ isiW: d }); },
     wdSamakan: async ({ wadah, kg }) => { const d = draf(wadah); if (kg === 'ketik' && !String(d.ketik || '').trim()) return set({ kabar: 'Ketik dulu isi wadahnya (kg) — kotak isiannya masih kosong', kabarAwas: true });

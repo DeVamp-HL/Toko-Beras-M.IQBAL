@@ -21,7 +21,7 @@ const PAKET_AWAL = () => ({ labarugi: true, neraca: true, aruskas: true, omzet: 
 export function pasangLayarLaporan(akar, opsi) {
   const K = buatKeadaan({ keluarga: LP.KELUARGA_LAPORAN.some((k) => k[0] === bacaLokal(KUNCI_KELUARGA)) ? bacaLokal(KUNCI_KELUARGA) : 'laba', kabar: '', kabarAwas: false,
     bulanL: null, kepingL: 'kotor', bukaTT: false, bukaRugi: false, bukaSusut: false,
-    hariH: null, bukaBuku: false,
+    hariH: null, bukaBuku: false, mingguM: null, tahunT: null,
     bulanB: null, tabB: 'ringkas', aturR: null, yakinBatal: false, pilihBukti: {},
     sampaiN: '', aturN: null,
     tabD: 'laporan', jenisD: 'labarugi', keD: null, rentangD: 1, bandingD: null, paket: PAKET_AWAL(), jenisK: 'setor', pilihK: {}, cariK: '',
@@ -57,7 +57,7 @@ export function pasangLayarLaporan(akar, opsi) {
   const riwayatHtml = () => { const R = LP.riwayatCetakan(8); return R.length ? h`<div class="kartu platina" data-k="riwayat" style="gap: 2px;"><div class="label">Cetakan bernomor · ${R.length} terakhir</div>${R.map((l) => h`<div class="lp-baris dua" data-k="rc-${l.id}"><div><div>No. ${ANGKA(l.nomor)} · ${l.teks}</div><div class="k2">${tanggalPendek(l.tanggal)} ${l.jam}</div></div></div>`)}</div>` : ''; };
 
   const AKSI = {
-    keluarga: ({ nama }) => { simpanLokal(KUNCI_KELUARGA, nama); set({ keluarga: nama, kabar: '' }); }, mode: () => opsi.gantiMode(), tutupKabar: () => set({ kabar: '' }), keMenu: () => opsi.pindah && opsi.pindah('menu'),
+    keluarga: ({ nama }) => { simpanLokal(KUNCI_KELUARGA, nama); set({ keluarga: nama, kabar: '' }); }, mgMinggu: ({ a }) => set({ mingguM: a }), thTahun: ({ t }) => set({ tahunT: Number(t) }), mode: () => opsi.gantiMode(), tutupKabar: () => set({ kabar: '' }), keMenu: () => opsi.pindah && opsi.pindah('menu'),
     tujuan: ({ ke, keluarga, tab, lembar, sistem }) => keTujuan({ ke, keluarga, tab, lembar, sistem }),
     // ---- LABA
     lbBulan: ({ b }) => set({ bulanL: b, kabar: '', bukaTT: false, bukaRugi: false }), lbKeping: ({ kp }) => set({ kepingL: kp }), lbBukaTT: () => set({ bukaTT: !st().bukaTT }), lbBukaRugi: () => set({ bukaRugi: !st().bukaRugi }), lbBukaSusut: () => set({ bukaSusut: !st().bukaSusut }),
@@ -110,12 +110,12 @@ export function pasangLayarLaporan(akar, opsi) {
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">
         <div><div class="serif" style="font-size: 26px;">Laporan</div><div class="ket">${tanggalPendek(iso())} · ${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'membaca cadangan' : 'belum tersambung'}</div></div>
-        <div style="display: flex; gap: 8px; align-items: center;"><div class="pil ${sumber.jenis === 'firestore' ? '' : 'kedip'}">${sumber.jenis === 'firestore' ? 'data toko' : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
+        <div style="display: flex; gap: 8px; align-items: center;"><div class="pil ${sumber.jenis === 'firestore' ? '' : 'kedip'}">${sumber.jenis === 'firestore' ? 'DATA TOKO' : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
           <div class="kaca-btn kecil" data-aksi="keMenu">‹ Menu</div><div class="tombol-mode" data-aksi="mode">${mentah(IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap'])}</div></div>
       </header>
       <div class="jalur rapat" data-k="keluarga">${LP.KELUARGA_LAPORAN.map(([id, nm]) => h`<div class="seg ${s.keluarga === id ? 'aktif' : ''}" data-aksi="keluarga" data-nama="${id}" data-k="kg-${id}">${nm}</div>`)}</div>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
-      ${s.keluarga === 'laba' ? gambarLaba(s, L) : s.keluarga === 'harian' ? gambarHarian(s, L) : s.keluarga === 'bulanan' ? gambarBulanan(s, L) : s.keluarga === 'neraca' ? gambarNeraca(s, L) : s.keluarga === 'dokumen' ? gambarDokumen(s, L) : gambarSetelan(s, L)}
+      ${s.keluarga === 'laba' ? gambarLaba(s, L) : s.keluarga === 'harian' ? gambarHarian(s, L) : s.keluarga === 'mingguan' ? gambarMingguan(s, L) : s.keluarga === 'bulanan' ? gambarBulanan(s, L) : s.keluarga === 'tahunan' ? gambarTahunan(s, L) : s.keluarga === 'neraca' ? gambarNeraca(s, L) : s.keluarga === 'dokumen' ? gambarDokumen(s, L) : gambarSetelan(s, L)}
     `);
     gulirkan(akar, RP);
   }
@@ -158,6 +158,35 @@ export function pasangLayarLaporan(akar, opsi) {
     const kaki = h`<div class="lp-kaki">Rekap harian = mesin arus kas & laba yang sama dengan sistem lama (dataRekapHarian). Mencatat uang keluar & tutup hari ada di layar Uang.</div>`;
     if (L === 'hp') return h`<section data-k="harian">${pilih}${hero}${rekap}${arus}${buku}${kaki}</section>`;
     return h`<section data-k="harian">${grid(L, [h`${pilih}${hero}${kaki}`, h`${rekap}`, h`${arus}${buku}`])}</section>`;
+  }
+
+  // ---------- MINGGUAN · Senin–Minggu (owner 23 Sep)
+  function gambarMingguan(s, L) {
+    const D = LP.daftarMinggu(kini(), 8); const awal = s.mingguM && D.some((m) => m.awal === s.mingguM) ? s.mingguM : (D[0] ? D[0].awal : LP.lpSenin(iso())); const R = LP.rekapMinggu(awal, kini()); const arah = (n) => (n < 0 ? 'rugi' : '');
+    const pilih = h`<div class="kartu" data-k="pilih-minggu" style="gap: 6px;"><div class="label">Minggu yang dilihat · Senin–Minggu · 8 minggu terakhir</div><div class="lp-bulan">${D.map((m) => h`<div class="seg ${m.awal === awal ? 'aktif' : ''}" data-aksi="mgMinggu" data-a="${m.awal}" data-k="m-${m.awal}">${m.berjalan ? 'minggu ini' : m.label}</div>`)}</div></div>`;
+    const hero = h`<div class="kartu hero" data-k="hero" style="gap: 4px;"><div class="label">Omzet ${R.berjalan ? 'minggu ini' : 'minggu ' + R.label} · ${R.n} nota${R.berjalan ? ' · ' + R.hariJalan + ' hari jalan' : ''}</div><div class="lp-besar" data-gulir="${R.omzet}">${RP(R.omzet)}</div>
+      <div class="k2">rata ${RP(R.rataHari)} per hari · ${R.bandingTeks}${R.kredit ? ' · ' + RP(R.kredit) + ' di antaranya bon' : ''}</div>
+      <div class="lp-batang tujuh" data-k="batang">${R.hari.map((d) => h`<div class="${d.hariIni ? 'aktif' : ''} ${d.depan ? 'depan' : ''}" data-k="d-${d.iso}" title="${d.nama} ${d.tgl} · ${d.n} nota"><i style="height: ${d.depan ? 3 : Math.max(3, Math.round(d.omzet / R.maks * 64))}px;"></i><span>${d.nama}<br>${d.tgl}</span></div>`)}</div>
+      ${R.terbaik && R.terbaik !== R.sepi ? h`<div class="k2">paling ramai ${R.terbaik.nama} ${R.terbaik.tgl} (${RP(R.terbaik.omzet)}) · paling sepi ${R.sepi.nama} ${R.sepi.tgl} (${RP(R.sepi.omzet)})</div>` : ''}${R.kosong ? h`<div class="pita-info">Tidak ada satu pun catatan minggu ini.</div>` : ''}</div>`;
+    const inti = h`<div class="kartu" data-k="inti" style="gap: 2px;"><div class="label">Inti minggu ${R.label}</div>${[['Omzet', R.omzet, ''], ['HPP barang terjual', R.hpp, R.jumlahTanpaHpp ? 'di luar ' + RP(R.omzetTanpaHpp) + ' omzet tanpa modal' : ''], ['Laba kotor', R.margin, 'omzet ber-HPP − HPP-nya'], ['Biaya toko (harian + jatah bulanan)', R.biayaToko, ''], ['Susut & selisih stok', R.susut, ''], ['Laba bersih', R.labaBersih, 'mesin yang sama dengan Laba'], ['Uang masuk (arus kas)', R.masuk, ''], ['Uang keluar (arus kas)', R.keluar, ''], ['Kas bersih', R.bersih, 'masuk − keluar']].map(([nm, n, ket], i) => h`<div class="lp-terjun ${/Laba bersih|Kas bersih/.test(nm) ? 'jumlah' : ''}" data-k="im-${i}"><span>${nm}${ket ? h`<small> · ${ket}</small>` : ''}</span><b class="${arah(n)}">${RP(n)}</b></div>`)}</div>`;
+    const perHari = h`<div class="kartu" data-k="per-hari" style="gap: 2px;"><div class="label">Per hari · Σ hari = omzet minggu${R.cocokJumlah ? '' : ' · TIDAK MENUTUP — periksa'}</div>${R.hari.map((d) => h`<div class="lp-baris ${d.depan ? 'depan' : ''}" data-k="ph-${d.iso}" ${d.depan ? '' : mentah('data-aksi="tujuan" data-ke="laporan" data-keluarga="harian" style="cursor: pointer;"')}><div class="j">${d.nama} ${d.tgl}</div><div><div>${d.depan ? 'belum datang' : d.n + ' nota' + (d.hariIni ? ' · hari ini' : '')}</div><div class="k2">${d.depan ? '' : 'margin kotor ' + RP(d.margin)}</div></div><div class="n">${d.depan ? '—' : RP(d.omzet)}</div></div>`)}<div class="lp-terjun jumlah"><span>Minggu ${R.label}</span><b>${RP(R.omzet)}</b></div></div>`;
+    const kaki = h`<div class="lp-kaki">Minggu toko = Senin sampai Minggu. Omzet, laba, dan kas dari mesin yang sama dengan Harian & Bulanan; banding minggu sebelumnya memakai omzet penuh (termasuk nota tanpa modal).</div>`;
+    if (L === 'hp') return h`<section data-k="mingguan">${pilih}${hero}${inti}${perHari}${kaki}</section>`;
+    return h`<section data-k="mingguan">${grid(L, [h`${pilih}${hero}${kaki}`, h`${inti}`, h`${perHari}`])}</section>`;
+  }
+  // ---------- TAHUNAN · dua belas bulan (owner 23 Sep)
+  function gambarTahunan(s, L) {
+    const D = LP.daftarTahun(kini()); const tahun = s.tahunT && D.some((t) => t.tahun === s.tahunT) ? s.tahunT : D[0].tahun; const R = LP.rekapTahun(tahun, kini()); const arah = (n) => (n < 0 ? 'rugi' : '');
+    const pilih = D.length > 1 ? h`<div class="kartu" data-k="pilih-tahun" style="gap: 6px;"><div class="label">Tahun yang dilihat</div><div class="lp-bulan">${D.map((t) => h`<div class="seg ${t.tahun === tahun ? 'aktif' : ''}" data-aksi="thTahun" data-t="${t.tahun}" data-k="t-${t.tahun}">${t.tahun}${t.final ? '' : ' ✎'}</div>`)}</div></div>` : '';
+    const hero = h`<div class="kartu hero" data-k="hero" style="gap: 4px;"><div class="label">Omzet tahun ${R.tahun} · ${R.n} nota · ${R.status}</div><div class="lp-besar" data-gulir="${R.omzet}">${RP(R.omzet)}</div>
+      <div class="k2">${R.bulanJalan} bulan${R.berjalan ? ' jalan' : ''} · rata ${RP(R.rataBulan)} per bulan · ${R.bandingTeks}</div>
+      <div class="lp-grafik" data-k="grafik">${R.bulan.map((b) => h`<div class="${b.final ? '' : 'draf'} ${b.berjalan ? 'aktif' : ''} ${b.depan ? 'depan' : ''}" data-k="g-${b.key}" title="${b.nama} · ${b.n} nota"><i style="height: ${b.depan ? 4 : Math.max(6, Math.round(b.omzet / R.maks * 100))}px;"></i><span>${b.pendek.slice(0, 3)}</span></div>`)}</div>
+      ${R.terbaik && R.terbaik !== R.sepi ? h`<div class="k2">paling ramai ${R.terbaik.nama} (${RP(R.terbaik.omzet)}) · paling sepi ${R.sepi.nama} (${RP(R.sepi.omzet)})</div>` : ''}${R.kosong ? h`<div class="pita-info">Tidak ada satu pun catatan tahun ${R.tahun}.</div>` : ''}</div>`;
+    const inti = h`<div class="kartu" data-k="inti" style="gap: 2px;"><div class="label">Inti tahun ${R.tahun} · Σ dua belas bulan</div>${[['Omzet', R.omzet, ''], ['HPP barang terjual', R.hpp, ''], ['Laba kotor', R.margin, 'omzet ber-HPP − HPP-nya'], ['Biaya toko (harian + jatah bulanan)', R.biaya, ''], ['Susut & selisih stok', R.susut, ''], ['Laba bersih', R.labaBersih, 'Σ laba bersih tiap bulan']].map(([nm, n, ket], i) => h`<div class="lp-terjun ${/Laba bersih/.test(nm) ? 'jumlah' : ''}" data-k="it-${i}"><span>${nm}${ket ? h`<small> · ${ket}</small>` : ''}</span><b class="${arah(n)}">${RP(n)}</b></div>`)}</div>`;
+    const perBulan = h`<div class="kartu" data-k="per-bulan" style="gap: 2px;"><div class="label">Per bulan · omzet & laba bersih · Σ bulan = tahun${R.cocokJumlah ? '' : ' · TIDAK MENUTUP — periksa'}</div>${R.bulan.map((b) => h`<div class="lp-baris ${b.depan ? 'depan' : ''}" data-k="pb-${b.key}" ${b.depan ? '' : mentah('data-aksi="tujuan" data-ke="laporan" data-keluarga="bulanan" style="cursor: pointer;"')}><div class="j">${b.pendek.slice(0, 3)}</div><div><div>${b.depan ? 'belum datang' : b.n + ' nota' + (b.berjalan ? ' · berjalan' : b.final ? ' · final' : ' · draf')}</div><div class="k2">${b.depan ? '' : 'laba bersih ' + RP(b.labaBersih)}</div></div><div class="n">${b.depan ? '—' : RP(b.omzet)}</div></div>`)}<div class="lp-terjun jumlah"><span>Tahun ${R.tahun}</span><b>${RP(R.omzet)}</b></div></div>`;
+    const kaki = h`<div class="lp-kaki">Sampai tutup buku tahun itu, semua angka tahunan DRAF (✎). Laporan berkop 12 bulan untuk bank ada di Dokumen; Rekap omzet 12 bulan bergulir (bukan tahun kalender) ada di Bulanan.</div>`;
+    if (L === 'hp') return h`<section data-k="tahunan">${pilih}${hero}${inti}${perBulan}${kaki}</section>`;
+    return h`<section data-k="tahunan">${grid(L, [h`${pilih}${hero}${kaki}`, h`${inti}`, h`${perBulan}`])}</section>`;
   }
 
   // ---------- BULANAN · enam bulan + DK3
@@ -254,6 +283,6 @@ export function pasangLayarLaporan(akar, opsi) {
 
   K.dengar(gambar); dengarkan(() => gambar());
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
-  const buka = (keluarga, t) => { AKSI.keluarga({ nama: LP.KELUARGA_LAPORAN.some((k) => k[0] === keluarga) ? keluarga : 'laba' }); if (t && t.tab && keluarga === 'dokumen') set({ tabD: t.tab }); if (t && t.jenis && keluarga === 'dokumen') set({ tabD: 'kecil', jenisK: t.jenis }); if (t && t.bulan && keluarga === 'laba') set({ bulanL: t.bulan }); };
+  const buka = (keluarga, t) => { AKSI.keluarga({ nama: LP.KELUARGA_LAPORAN.some((k) => k[0] === keluarga) ? keluarga : 'laba' }); if (t && t.awal && keluarga === 'mingguan') set({ mingguM: t.awal }); if (t && t.tahun && keluarga === 'tahunan') set({ tahunT: Number(t.tahun) }); if (t && t.tab && keluarga === 'dokumen') set({ tabD: t.tab }); if (t && t.jenis && keluarga === 'dokumen') set({ tabD: 'kecil', jenisK: t.jenis }); if (t && t.bulan && keluarga === 'laba') set({ bulanL: t.bulan }); };
   return { gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
 }

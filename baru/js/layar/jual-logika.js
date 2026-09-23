@@ -23,8 +23,8 @@ import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaK
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
-  wzDiKeranjangParkir, sumberData } from '../data/toko.js';
-import { hariIniIso, RP } from '../inti/format.js';
+  wzDiKeranjangParkir, sumberData, cacheMentah } from '../data/toko.js';
+import { hariIniIso, RP, tanggalPendek } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
 import { susunRakWadah, bangunBarisWadah, biayaWadahRepack, koleksiWadah, jenisWadah, bebasWadah } from './wadah-jual-logika.js';
@@ -959,8 +959,9 @@ export function tumpukanGudang(merk, siap) {
 /** Hitung satu isian takar (belum menulis): kg tiap merek, isi wadah jadinya, karung yang perlu dibuka. */
 export function hitungTakar(merk, baris, s) {
   const atur = aturWadah(); const w = tinggiWadah(merk, s);
-  const bersih = (baris || []).filter((x) => x && x.merk && Number(x.takar) > 0).map((x) => ({ merk: String(x.merk), takar: Math.round(Number(x.takar)) }));
-  const sumber = bersih.map((x) => { const kg = wdB2(x.takar * atur.takarKg); const dari = lokasiSumber(x.merk, merk); const k = karungBelakang(x.merk, dari);
+  const bersih = (baris || []).filter((x) => x && x.merk && Number(x.takar) > 0).map((x) => Object.assign({ merk: String(x.merk), takar: Math.round(Number(x.takar)) }, x.dari !== undefined && x.dari !== null ? { dari: String(x.dari) } : {}));
+  // baris boleh menyebut karung MANA di deretan yang diambil (dari = di belakang wadah mana / '' = karung lepas) — owner 23 Sep: satu takar dari E, satu dari D
+  const sumber = bersih.map((x) => { const kg = wdB2(x.takar * atur.takarKg); const dari = x.dari !== undefined && x.dari !== null ? String(x.dari) : lokasiSumber(x.merk, merk); const k = karungBelakang(x.merk, dari);
     const kurang = k.diketahui ? kg - k.sisaKg : 0;   // karung yang belum pernah ditandai TIDAK dibuka diam-diam — sisanya memang belum diketahui
     const buka = kurang > 0.0001 ? Math.ceil((kurang - 0.0001) / beratKarungBuka(x.merk)) : 0;
     return { merk: x.merk, takar: x.takar, kg, dari, karung: k, bukaKarung: buka }; });
@@ -1020,4 +1021,61 @@ export function susunTakarWadah(merk, baris, w, s) {
       + (dibuka.length ? ' · karung di belakang habis: ' + dibuka.map((x) => x.bukaKarung + ' karung ' + x.merk).join(', ') + ' diambil dari tumpukan' + (gudang.length ? ' gudang (' + gudang.map((g) => g.merk + ' ' + wdKG(g.dariKg) + ' → ' + wdKG(g.keKg)).join(', ') + ')' : '') : '')
       + (produksi ? ' · BUKU: ' + asing.map((x) => x.merk + ' −' + wdKG(x.kg)).join(', ') + ' → ' + merk + ' +' + wdKG(produksi.kgDipakai) + ' (modal ikut)' : '')
       + (buta.length ? ' · karung terbuka ' + buta.map((x) => x.merk).join(', ') + ' belum pernah ditandai, jadi sisanya belum bisa digambar' : ''), kabarAwas: false } };
+}
+
+/**
+ * DERETAN karung terbuka di belakang deretan wadah (foto toko 23 Sep: karung 50 kg yang sudah dibuka berjajar di belakang kotak literan):
+ * urut menurut posisi wadah W1..Wn (karung yang dipegang tiap wadah), lalu karung lepas / yatim. Satu wadah boleh diisi dari karung mana pun di deretan ini.
+ */
+export function deretanKarung() {
+  const atur = aturWadah(); const out = []; const ada = {};
+  atur.daftar.forEach((w, i) => { const kn = karungUntukWadah(w); if (!kn.merk) return; const k = karungBelakang(kn.merk, w); ada[k.merk + '|' + k.lokasi] = 1;
+    out.push(Object.assign({}, k, { no: 'W' + (i + 1), letak: 'di belakang wadah ' + w, dicatat: kn.dariCatatan, label: k.merk + (k.diketahui ? ' ±' + wdKG(k.sisaKg) : ' ?') })); });
+  semuaKarungTerbuka().forEach((k) => { if (ada[k.merk + '|' + k.lokasi] || k.sisaMentahKg <= 0.0001) return; ada[k.merk + '|' + k.lokasi] = 1;
+    out.push(Object.assign({}, k, { no: '', letak: k.lokasi ? 'dulu di belakang wadah ' + k.lokasi : 'karung lepas (bahan campuran)', dicatat: true, label: k.merk + ' ±' + wdKG(k.sisaKg) })); });
+  return out;
+}
+/** Tambah satu takar dari karung tertentu di deretan ke draf isian wadah (baris = merk + dari). */
+export function tambahTakarDari(baris, merk, dari) {
+  const d = (baris || []).map((x) => Object.assign({}, x)); const L = String(dari || '');
+  const b = d.find((x) => x.merk === merk && String(x.dari === undefined || x.dari === null ? '' : x.dari) === L && x.dari !== undefined);
+  if (b) b.takar += 1; else { const kosong = d.find((x) => x.merk === merk && x.dari === undefined && !(x.takar > 0)); if (kosong) { kosong.takar = 1; kosong.dari = L; } else d.push({ merk, takar: 1, dari: L }); }
+  return d;
+}
+
+// ---------- BELANJA TERAKHIR orang bernama (owner 23 Sep): di jalur Sering, ketuk untuk mengulang dengan harga HARI INI ----------
+const jlHariKe = (iso) => Math.round(new Date(String(iso) + 'T00:00:00Z').getTime() / 86400000);
+/** Nota-nota terakhir orang yang sedang tertulis di keranjang (n terbaru), tiap nota = baris-barisnya. Tanpa nama → kosong. */
+export function pembelianTerakhir(s, n) {
+  const k = kunciPelanggan(s.pelanggan); if (!k) return [];
+  const per = {}; ambilPenjualan().forEach((p) => { if (kunciPelanggan(p.namaPelanggan) !== k) return; const g = String(p.grupNota || p.id);
+    if (!per[g]) per[g] = { grup: g, tanggal: p.tanggal || '', jam: '', cara: bakuCaraBayar(p.caraBayar), baris: [], total: 0 }; per[g].baris.push(p); per[g].total += p.hargaTotal || 0; if (String(p.jam || '') > per[g].jam) per[g].jam = String(p.jam || ''); });
+  const kini = jlHariKe(hariIniIso(s.sekarang));
+  return Object.keys(per).map((g) => per[g]).sort((a, b) => (b.tanggal + b.jam).localeCompare(a.tanggal + a.jam)).slice(0, n || 3)
+    .map((x) => Object.assign(x, { teks: x.baris.map(ringkasBaris).join(' + '), hariLalu: x.tanggal ? kini - jlHariKe(x.tanggal) : null }));
+}
+/** Ulangi satu nota lama ke keranjang: tiap barisnya dicari di rak SEKARANG (harga hari ini); yang tidak ada / melampaui stok dilewati dan DISEBUT. */
+export function ulangiPembelian(s, rak, grup) {
+  const nota = pembelianTerakhir(s, 12).find((x) => x.grup === String(grup)); if (!nota) return { kabar: 'Nota itu tidak ketemu di catatan ' + s.pelanggan, kabarAwas: true };
+  const peta = {}; [].concat(rak.karung.map((c) => Object.assign({}, c, { id: 'karung|' + c.kunci + '|' + c.berat })), rak.kemasan.map((c) => Object.assign({}, c, { id: 'kemasan|' + c.kunci })), rak.literan.map((c) => Object.assign({}, c, { id: 'literan|' + c.kunci })),
+    rak.repack.map((c) => Object.assign({}, c, { id: 'repack|' + c.kunci })), rak.wadah.map((c) => Object.assign({}, c, { id: 'wadah|' + c.kunci }))).forEach((c) => { peta[c.id] = c; });
+  let sn = Object.assign({}, s, { keranjang: s.keranjang.slice(), urutBaris: s.urutBaris, rpWadah: '', rpLembar: '', rpUpah: '', namaRepack: '' }); const masuk = [], lewat = [];
+  nota.baris.forEach((p) => { const id = kunciBaris(p); const c = id ? peta[id] : null; if (!c) { lewat.push(ringkasBaris(p) + ' (tidak ada di rak sekarang)'); return; }
+    if (p.penggantiRetur) { lewat.push(ringkasBaris(p) + ' (pengganti retur, tidak diulang)'); return; }
+    const j = p.jenis === 'kemasan' ? (p.jumlahUnit || 0) - (p.bonusUnit || 0) : p.jenis === 'karung' ? (p.jumlahKarung || 0) : p.jenis === 'literan' ? (p.jumlahLiter || 0) : p.jenis === 'repacking' ? (p.totalKg || 0) : (p.jumlahUnit || 0);
+    const r = masukkan(Object.assign(sn, { pilih: c, ketik: '', namaRepack: p.jenis === 'repacking' ? (p.namaProduk || '') : '' }), j);
+    if (r.keranjang) { sn = Object.assign(sn, { keranjang: r.keranjang, urutBaris: r.urutBaris }); masuk.push(ringkasBaris(p)); } else lewat.push(ringkasBaris(p) + ' — ' + (r.kabar || 'ditolak')); });
+  sinkronKeranjang(s);
+  if (!masuk.length) return { kabar: 'Tidak ada yang bisa diulang dari nota ' + tanggalPendek(nota.tanggal) + ': ' + lewat.join('; '), kabarAwas: true };
+  return { keranjang: sn.keranjang, urutBaris: sn.urutBaris, pilih: null, lembar: null, ketik: '', kabar: 'Belanja ' + tanggalPendek(nota.tanggal) + ' diulang: ' + masuk.join(', ') + (lewat.length ? ' · dilewati: ' + lewat.join('; ') : '') + ' — dihitung dengan harga hari ini, bukan harga waktu itu', kabarAwas: lewat.length > 0 };
+}
+// ---------- BENANG di meja (owner 23 Sep: ojek yang belanja untuk orang lain): nama yang tertulis biasanya datang untuk siapa ----------
+/** Bila nama di keranjang tercatat "biasa datang untuk" orang lain (pelangganTitip), tawarkan mencatat atas nama yang punya urusan. */
+export function saranBenang(nama) {
+  const k = kunciPelanggan(nama); if (!k) return null;
+  const titip = cacheMentah('titip').filter((t) => t.dari === k && t.untuk).sort((a, b) => (b.kali || 0) - (a.kali || 0) || String(b.tanggal || '').localeCompare(String(a.tanggal || ''))); if (!titip.length) return null;
+  const t = titip[0]; const kartu = ambilPelangganCatatan().find((c) => kunciPelanggan(c.nama || c.id) === t.untuk);
+  let namaUntuk = kartu ? String(kartu.nama || kartu.id) : ''; if (!namaUntuk) { let idT = 0; ambilPenjualan().forEach((p) => { if (kunciPelanggan(p.namaPelanggan) === t.untuk && (Number(p.id) || 0) >= idT) { idT = Number(p.id) || 0; namaUntuk = String(p.namaPelanggan).trim(); } }); }
+  if (!namaUntuk || kunciPelanggan(namaUntuk) === k) return null;
+  return { dari: String(nama).trim(), untuk: namaUntuk, apa: String(t.apa || ''), kali: Number(t.kali) || 1, teks: String(nama).trim() + ' biasanya datang untuk ' + namaUntuk + (t.apa ? ' (' + t.apa + ', ' + (Number(t.kali) || 1) + '×)' : '') };
 }

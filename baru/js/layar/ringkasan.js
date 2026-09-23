@@ -149,7 +149,7 @@ export function pasangLayarRingkasan(akar, opsi) {
     const kunciBaru = r.umpan.length ? r.umpan[0].k : ''; const mendarat = !pertama && kunciNotaLama !== null && !!kunciBaru && kunciBaru !== kunciNotaLama; kunciNotaLama = kunciBaru;
     const naik = !pertama && !gantiSk && angkaTampil !== null ? r.angka - angkaTampil : 0;
 
-    $('rkTanggal').textContent = R.tanggalPanjang(k); $('rkSalam').textContent = R.salam(k) + ', owner';
+    $('rkTanggal').textContent = R.tanggalPanjang(k); $('rkSalam').textContent = R.salam(k) + ', Owner';
     const pil = $('rkPil'); pil.textContent = sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'; pil.classList.toggle('kedip', sumber.jenis !== 'firestore');
     $('rkMode').innerHTML = IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap'];
     $('rkSumber').innerHTML = sumber.jenis === 'cadangan' ? '<div class="pita-info emas">Angka dari ' + esc(sumber.keterangan) + ' — "sekarang" dianggap saat cadangan itu diunduh.</div>' : sumber.jenis !== 'firestore' ? '<div class="pita-info awas">Belum tersambung ke data toko — masuk dulu sebagai owner (layar Jual).</div>' : '';
