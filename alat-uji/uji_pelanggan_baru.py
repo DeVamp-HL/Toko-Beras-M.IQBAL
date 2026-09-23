@@ -289,11 +289,17 @@ var calonCip = cacheMentah('pelangganCat').filter(function (c) { return Array.is
 terapkanKeCache(calonCip.map(function (c) { var cip = c.cip.concat(['sawo matang', 'Sunda']); return { koleksi: 'pelangganCatatan', data: Object.assign({}, c, { cip: cip, ciri: cip.join(' · ') }) }; }).concat(calonLama.map(function (c) { return { koleksi: 'pelangganCatatan', data: Object.assign({}, c, { ciri: c.ciri + ' · kulit gelap' }) }; })));
 var disuntik = {}; cacheMentah('pelangganCat').forEach(function (c) { disuntik[c.id] = JSON.parse(JSON.stringify(c)); });
 pasok('cadanganCatatan', [{ id: 'asap', tanggal: hariIniIso(KINI), jam: '20:00', ok: true }]); var BSx = susunBersihkanCiri(KINI, true); if (BSx.ubahKolom) perbaruiKolom(BSx.ubahKolom, BSx.ringkas);
+// data toko bisa SUDAH memuat cip dicabut (cadangan 24 Sep: ya) — yang wajib ditulis = semua kartu yang memuatnya sesudah suntikan, bukan cuma yang disuntik
 var tanpaCipCiri = function (d) { var x = JSON.parse(JSON.stringify(d)); delete x.cip; delete x.ciri; return JSON.stringify(x); }; var kena = calonCip.concat(calonLama).map(function (c) { return String(c.id); }); var identik = true, pulihCip = true;
-cacheMentah('pelangganCat').forEach(function (c) { var id = String(c.id); if (kena.indexOf(id) >= 0) { if (tanpaCipCiri(c) !== tanpaCipCiri(disuntik[id])) identik = false; if (JSON.stringify(c.cip) !== JSON.stringify(asli[id].cip)) pulihCip = false; if (Array.isArray(c.cip) ? c.ciri !== c.cip.join(' · ') : String(c.ciri).indexOf('kulit') >= 0) pulihCip = false; } else if (JSON.stringify(c) !== JSON.stringify(asli[id])) identik = false; });
+var token = function (d) { return (Array.isArray(d.cip) ? d.cip.map(String) : []).concat(String(d.ciri || '').split(/\s*[·,;]\s*/)); }; var bersihDari = function (a) { return a.filter(function (x) { return !cipTerlarang(x); }); };
+var harus = Object.keys(disuntik).filter(function (id) { return token(disuntik[id]).some(cipTerlarang); }).sort(); var ditulisId = (BSx.ubahKolom || []).reduce(function (a, p) { return a.concat(p); }, []).filter(function (u) { return u.koleksi === 'pelangganCatatan'; }).map(function (u) { return String(u.id); }).sort();
+if (JSON.stringify(harus) !== JSON.stringify(ditulisId)) identik = false;
+cacheMentah('pelangganCat').forEach(function (c) { var id = String(c.id); if (ditulisId.indexOf(id) >= 0) { if (tanpaCipCiri(c) !== tanpaCipCiri(disuntik[id])) identik = false;
+    if (Array.isArray(c.cip) ? JSON.stringify(c.cip) !== JSON.stringify(bersihDari(disuntik[id].cip)) || c.ciri !== c.cip.join(' · ') : token(c).some(cipTerlarang)) pulihCip = false;
+    if (kena.indexOf(id) >= 0 && Array.isArray(c.cip) && JSON.stringify(c.cip) !== JSON.stringify(bersihDari(asli[id].cip))) pulihCip = false; } else if (JSON.stringify(c) !== JSON.stringify(disuntik[id])) identik = false; });
 print(JSON.stringify({ orang: O.length, dikenali: O.filter(function (b) { return b.dikenali; }).length, kunjunganLayar: kunjunganLayar, kunjunganNyata: kunjunganNyata, belanjaLayar: belanjaLayar, belanjaNyata: belanjaNyata, sisaLayar: sisaLayar, sisaMesin: sisaMesin, berutang: SB.filter(function (b) { return b.sisa > 0; }).length,
   kembar: pasanganKembar(O).length, kosong: O.filter(function (b) { return b.kosong; }).length, diharap: O.filter(function (b) { return b.diharap; }).length, tampah: susunTampah(KINI, []).tanya ? susunTampah(KINI, []).tanya.c : null, wajah: susunWajah(KINI, '').daftar.length, asing: asing, waKop: pt ? pt.baris[0] : null, thr: susunThr(KINI, 2026).daftar.length,
-  bs: { kartu: RB.kartu.length, cip: RB.cip, tanpaCip: RB.tanpaCip.length, belumDikenal: RB.belumDikenal.length, atur: RB.atur, bebas: RB.bebas.length, bebasKolom: RB.bebas.map(function (x) { return x.kolom.join('+'); }), pratinjauDiam: pratinjauDiam, suntik: kena.length, suntikLama: calonLama.length, ditulis: BSx.ubahKolom ? BSx.ubahKolom[0].length : 0, identik: identik, pulih: pulihCip, tolak: BSx.tolak || '' } }));
+  bs: { kartu: RB.kartu.length, cip: RB.cip, tanpaCip: RB.tanpaCip.length, belumDikenal: RB.belumDikenal.length, atur: RB.atur, bebas: RB.bebas.length, bebasKolom: RB.bebas.map(function (x) { return x.kolom.join('+'); }), pratinjauDiam: pratinjauDiam, suntik: kena.length, suntikLama: calonLama.length, harus: harus.length + (BSx.rincian && BSx.rincian.atur ? 1 : 0), ditulis: (BSx.ubahKolom || []).reduce(function (a, p) { return a + p.length; }, 0), identik: identik, pulih: pulihCip, tolak: BSx.tolak || '' } }));
 """
 
 
@@ -402,7 +408,7 @@ if __name__ == '__main__':
             b = h['bs']
             print('ASAP DATA TOKO 23b · pratinjau Bersihkan: %d kartu memuat cip dicabut · %d cip dibuang · %d jadi tanpa cip (%d belum dikenal di KR1) · setelan ikut: %s · teks bebas berkata terlarang: %d (%s) · pratinjau menulis nol: %s'
                   % (b['kartu'], b['cip'], b['tanpaCip'], b['belumDikenal'], b['atur'], b['bebas'], ', '.join(b['bebasKolom']) or '-', b['pratinjauDiam']))
-            print('ASAP DATA TOKO 23b · suntikan %d kartu nyata (%d gaya lama tanpa larik cip) → %d ditulis · kolom selain cip/ciri byte-sama & kartu lain utuh: %s · cip kembali persis & ciri = gabungan cip: %s%s'
-                  % (b['suntik'], b['suntikLama'], b['ditulis'], b['identik'], b['pulih'], (' · DITOLAK: ' + b['tolak']) if b['tolak'] else ''))
-            if not (b['pratinjauDiam'] and b['identik'] and b['pulih'] and b['ditulis'] == b['suntik'] + b['kartu'] + (1 if b['atur'] else 0)): g.append('asap 23b: pembersihan di data toko tidak identik')
+            print('ASAP DATA TOKO 23b · suntikan %d kartu nyata (%d gaya lama tanpa larik cip) → %d ditulis dari %d yang wajib · kolom selain cip/ciri byte-sama & kartu lain utuh: %s · cip = semula tanpa cip dicabut & ciri = gabungan cip: %s%s'
+                  % (b['suntik'], b['suntikLama'], b['ditulis'], b['harus'], b['identik'], b['pulih'], (' · DITOLAK: ' + b['tolak']) if b['tolak'] else ''))
+            if not (b['pratinjauDiam'] and b['identik'] and b['pulih'] and b['ditulis'] == b['harus']): g.append('asap 23b: pembersihan di data toko tidak identik')
     sys.exit(2 if g else 0)
