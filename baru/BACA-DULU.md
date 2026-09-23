@@ -272,6 +272,29 @@ Tiap orang punya akun sendiri; hak ditegakkan di SERVER (`firestore.rules` v3), 
 - **Kisi SS2** menggambar yang ditegakkan server: kisi `sendiri` yang ditutup rules tampil **"tertutup server"** + sebabnya (hitung laci Ben,
   kedatangan Ben & karyawan); "minta owner" menyebut alurnya belum ada. Nilai kisi tersimpan tidak berubah.
 
+## Putaran 24 (24 Sep 2026) — MODUL PAJAK (cabang, belum merge)
+Sistem tahu posisi pajaknya sendiri: menghitung, mengingatkan, menyimpan bukti. Tidak membayar, tidak melapor, tidak memberi nasihat. Semua angka berlabel
+**"perkiraan — bukan nasihat pajak"**. Logika `js/layar/pajak-logika.js` (tanpa DOM, `alat-uji/uji_pajak_baru.py`); sumber aturan & tanggal lihat: `docs/sumber-aturan-pajak.md`. Khusus owner.
+- **Profil** = field tambahan di `aturanToko/rekapOmzet` (`wpAtasNama`, `jenisWp`, `statusPkp`, `tahunMulaiTarifFinal`, `omzetTahunLalu`, `batasBebas`, `sumberAturan`).
+  **Semua** penulis dokumen itu (DK3 atur & tandai lapor, profil, tombol aturan) lewat `pjGabungRekap`: dokumen lama disalin utuh, termasuk field yang tidak dikenal penulisnya.
+  Jenis WP bawaan "belum diketahui" → layar menyebut "hitungan dengan anggapan orang pribadi". Aturan tidak terisi otomatis: tombol "Pakai aturan PP 55/2022 jo. PP 20/2026".
+- **`batasOmzet` = batas atas Rp4,8 miliar.** Tidak ada field `batasAtas` terpisah: `batasOmzet` (DK3, putaran 19) sudah bermakna "batas omzet setahun" dan dibaca/ditulis
+  penulis lama. Dua field bermakna sama akan berbeda diam-diam. `batasBebas` (Rp500 juta) maknanya lain, jadi field sendiri.
+- **Omzet di luar sistem** (`pajakOmzetLuar/{YYYY-MM|sumber}`): `catatanLama` (bulan sebelum sistem; ditolak di bulan yang punya penjualan; bulan pertama sistem hanya
+  untuk tanggal sebelum nota pertama, keterangan wajib), `usahaLain` (usaha lain WP yang sama: ikut PPh & ambang), `usahaPasangan` (pisah harta / memilih sendiri:
+  **hanya ambang** — PMK 164/2023 Pasal 6 ayat 5 memberi batas Rp500 juta masing-masing, PP 20/2026 Pasal 58 menggabung untuk Rp4,8 miliar). Kosong ≠ nol: bulan tanpa
+  isian tampil "—" dan kumulatif berlabel "N bulan belum diisi — kumulatif kurang dari sebenarnya".
+- **PPh per bulan**: `kena = max(0, kum_sesudah − max(kum_sebelum, batasBebas))`, `pph = ⌊kena × tarif / 1000⌋` (pembulatan ke bawah [BELUM TERVERIFIKASI]). Badan → "tidak
+  dihitung — tanyakan konsultan". DK3 memakai hitungan yang sama (`rekapOmzet` → `pjTahun`), omzet sistem dari `pjOmzetSistem` = mesin laba.
+- **Setoran** (`pajakSetoran`): boleh untuk bulan yang belum final; memotret omzet & perkiraan saat dicatat → kalau omzet bulan itu berubah sesudahnya (koreksi, retur, rinci
+  karcis), statusnya "angka berubah sejak disetor: ±Rp…". Dicatat mundur > 7 hari atau tanpa NTPN → catatan wajib. NTPN salah bentuk → peringatan saja.
+- **Tanda lapor DK3 vs setoran**: tanda "sudah dilaporkan" (Bulanan) tetap ada dan tetap hanya untuk bulan final. Untuk bulan yang punya setoran, status di layar Pajak
+  diambil dari setoran — setoran bervalidasi NTPN dianggap SPT Masa (PMK 164/2023 Pasal 7 ayat 5), jadi setoran adalah buktinya; tanda DK3 = catatan owner untuk bulan final.
+- **Status per bulan**: nihil · terutang · disetor · kurang/lebih setor · lewat tempo (tanggal setor = `tanggalLapor`, bawaan 15) · data belum lengkap · angka berubah sejak disetor.
+  Ambang atas: 70/85/95/100 % dari kumulatif gabung + proyeksi akhir tahun [PERKIRAAN]. Beranda › Perlu perhatian: satu baris (owner). Pengingat jenis `pajak`, H-3.
+- **Tidak ada NIK, NPWP, atau nomor rekening** di dokumen modul ini: teks bebas dengan deretan ≥ 10 angka (selain rupiah bertitik ribuan) ditolak.
+  Catatan: identitas usaha DK1 (putaran 19) sudah punya kolom NPWP — belum disentuh, menunggu keputusan owner.
+
 ## Struktur
 ```
 baru/
@@ -327,6 +350,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_layar_kunci.py` (+ `--kontrol`) | Chrome headless: (1) tirai — sebelum masuk 0 angka rupiah, 0 kartu, semua `<main>` kosong walau penyimpanan lokal berisi titik kas contoh; (2) ganti orang — Firebase palsu lokal, keranjang tidak terbawa ke akun berikutnya (Keluar lewat pil ditanya, tab lain, akun nonaktif), tirai menyembunyikan pil OWNER/nama, lembar akun & status jaringan; (3) GAGAL JARINGAN ≠ GAGAL UJI; 9 kontrol |
 | `alat-uji/periksa_rules.py` (+ `--kontrol`) | `firestore.rules` v3 statis: blok per koleksi, owner & kasir via email, tanpa `masuk()` telanjang, jalur kasir@ utuh, tulis bukan-owner wajib uid, tanpa delete bukan-owner, payung owner, daftar peran = `akses.js`, jejak ≤ 17 dokumen = pagar `akses.js` + 17 kontrol |
 | `alat-uji/peta_akses.py --kiriman` (+ `--kontrol`) | access call TERBURUK per jenis kiriman bukan-owner (nota Ben/karyawan, adukan, terima bon, pelanggan baru, struk) dari fungsi asli di jsc, lewat `periksaKiriman` asli; gagal bila > 18; tiap tindakan yang dibuka server wajib terhitung; layar wajib menyerahkan batasnya + 10 kontrol |
+| `alat-uji/uji_pajak_baru.py` (+ `--kontrol`) | 37 skenario modul pajak (batas bebas di tengah bulan, omzet luar tanpa hitung ganda, kosong ≠ nol, badan tanpa angka, setoran & angka berubah, kurang/lebih, lewat tempo, ambang 70/85/95/100 + proyeksi, regresi penulis rekapOmzet, DK3 = layar Pajak, tanpa NIK/NPWP) + 21 kontrol; di cadangan toko: omzet layar Pajak = mesin laba = DK3 |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
