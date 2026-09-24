@@ -26,7 +26,11 @@ export const RENTANG_LAPORAN = [[1, '1 bulan'], [3, '3 bulan'], [12, '12 bulan']
 export const JENIS_KECIL = [['setor', 'Bukti setoran modal', 'dari catatan Owner & toko'], ['upah', 'Slip upah', 'dari buku upah'], ['piutang', 'Kartu piutang', 'per pelanggan'], ['bon', 'Rekap bon pemasok', 'per pemasok'], ['nota', 'Cetak ulang nota', 'SALINAN bercap']].map((j) => ({ id: j[0], nama: j[1], ket: j[2] }));
 export const DOKUMEN_KOP = [['nota', 'Nota pelanggan & cetak ulang', 'ringkas'], ['kartu', 'Kartu piutang', 'ringkas'], ['slip', 'Slip upah', 'ringkas'], ['harian', 'Rekap harian', 'ringkas'], ['laporan', 'Laba-rugi · neraca · arus kas', 'penuh'], ['omzet', 'Rekap omzet bulanan', 'penuh'], ['bon', 'Rekap bon pemasok', 'penuh'], ['setor', 'Bukti setoran modal', 'penuh']].map((d) => ({ id: d[0], nama: d[1], awal: d[2] }));
 export const KOLOM_IDENTITAS = [['nama', 'Nama usaha', 'wajib'], ['alamat', 'Alamat', 'wajib'], ['telepon', 'Telepon / WA', 'boleh kosong'], ['npwp', 'NPWP', '15 atau 16 angka, boleh kosong'], ['nib', 'NIB', '13 angka, boleh kosong'], ['slogan', 'Baris kaki', 'boleh kosong']].map((k) => ({ id: k[0], nama: k[1], ket: k[2] }));
-export const IDENTITAS_BAWAAN = { nama: 'Toko Beras M.IQBAL', alamat: '', telepon: '', npwp: '', nib: '', slogan: '', gaya: 'kiri' };
+export const IDENTITAS_BAWAAN = { nama: 'Toko Beras M.IQBAL', alamat: '', telepon: '', npwp: '', nib: '', slogan: '', gaya: 'kiri', npwpDiKop: false };
+// NPWP (owner 24 Sep, putaran 24): kolomnya tetap ada, tapi BAWAAN TIDAK DICETAK di kop mana pun — hanya kalau owner menyalakan npwpDiKop (kop penuh saja).
+// NPWP orang pribadi 16 angka = NIK → peringatan, kalimat owner:
+export const PERINGATAN_NPWP_NIK = 'NPWP orang pribadi = NIK; mencetaknya membuka NIK ke semua pembeli.';
+export function peringatanNpwp(npwp) { return lpDigit(npwp || '').length === 16 ? PERINGATAN_NPWP_NIK : ''; }
 /** Setelan yang tinggal di layarnya masing-masing — Setelan hanya menunjuk, tidak menggandakan. */
 export const ATUR_LAIN = [
   { nama: 'Uang keluar', ket: 'keperluan rutin, batas aman ambil pribadi, tagihan bulanan, alasan', tujuan: { ke: 'uang', keluarga: 'keluar' } }, { nama: 'Tutup hari', ket: 'sisihan laba, uang kembalian, selisih yang dimaafkan, potongan QRIS', tujuan: { ke: 'uang', keluarga: 'tutup' } },
@@ -160,7 +164,7 @@ export function bandingKekayaan(kini) { const t = ambilTitikKas(); const kiniN =
 /** Identitas usaha: aturanToko/identitas menang; belum ada → nama & alamat & telepon dari setelan struk (Jual) kalau ada; versi 0 = kop bawaan (belum pernah disimpan). */
 export function identitasUsaha() {
   const a = ugAturDok('identitas'); const st = stAtur().kop; const I = Object.assign({}, IDENTITAS_BAWAAN);
-  if (a) { KOLOM_IDENTITAS.forEach((k) => { if (a[k.id] !== undefined && a[k.id] !== null) I[k.id] = String(a[k.id]); }); if (a.gaya === 'tengah' || a.gaya === 'kiri') I.gaya = a.gaya; }
+  if (a) { KOLOM_IDENTITAS.forEach((k) => { if (a[k.id] !== undefined && a[k.id] !== null) I[k.id] = String(a[k.id]); }); if (a.gaya === 'tengah' || a.gaya === 'kiri') I.gaya = a.gaya; I.npwpDiKop = a.npwpDiKop === true; }
   else { if (st.nama) I.nama = st.nama; if (st.alamat) I.alamat = st.alamat; if (st.telp) I.telepon = st.telp; }
   return Object.assign(I, { versi: a ? Number(a.versi) || 1 : 0, riwayat: a && Array.isArray(a.riwayat) ? a.riwayat : [], dariOwner: !!a, dariStruk: !a && !!(st.alamat || st.telp), lengkap: !!(I.nama.trim() && I.alamat.trim()) });
 }
@@ -168,13 +172,14 @@ export function periksaIdentitas(d) { if (!String(d.nama || '').trim()) return '
 /** Simpan identitas = versi kop baru, berjejak; kop ringkas (nama · alamat · telepon) ikut ke setelan struk supaya nota memakai kop yang sama. */
 export function susunIdentitas(draf, w) {
   const I = identitasUsaha(); const d = {}; KOLOM_IDENTITAS.forEach((k) => { d[k.id] = String(draf[k.id] === undefined ? I[k.id] : draf[k.id] || '').trim().slice(0, 120); }); d.gaya = draf.gaya === undefined ? I.gaya : draf.gaya === 'tengah' ? 'tengah' : 'kiri';
-  const tolak = periksaIdentitas(d); if (tolak) return { tolak }; const ubah = KOLOM_IDENTITAS.filter((k) => d[k.id] !== (I[k.id] || '')).map((k) => k.nama); if (d.gaya !== I.gaya) ubah.push('gaya kop'); if (!ubah.length) return { tolak: 'Tidak ada yang berubah' };
+  d.npwpDiKop = draf.npwpDiKop === undefined ? !!I.npwpDiKop : draf.npwpDiKop === true;
+  const tolak = periksaIdentitas(d); if (tolak) return { tolak }; const ubah = KOLOM_IDENTITAS.filter((k) => d[k.id] !== (I[k.id] || '')).map((k) => k.nama); if (d.gaya !== I.gaya) ubah.push('gaya kop'); if (d.npwpDiKop !== !!I.npwpDiKop) ubah.push(d.npwpDiKop ? 'NPWP dicetak di kop penuh' : 'NPWP tidak dicetak'); if (!ubah.length) return { tolak: 'Tidak ada yang berubah' };
   const versi = I.versi + 1; const riwayat = [{ versi, tanggal: w.tanggal, jam: w.jam, ubah }].concat(I.riwayat).slice(0, 30); const S = stAtur();
   return { dokumen: [{ koleksi: 'aturanToko', data: Object.assign({ id: 'identitas', tanggal: w.tanggal, jam: w.jam, versi, riwayat }, d) }, { koleksi: 'aturanToko', data: { id: 'struk', tanggal: w.tanggal, jam: w.jam, kop: { nama: d.nama.slice(0, 40), alamat: d.alamat.slice(0, 80), telp: d.telepon.slice(0, 30) }, kaki: S.kaki, kertas: S.kertas, sertakan: S.sertakan, oto: S.oto, perOrang: S.perOrang } }],
-    versi, patch: { drafI: null, isiI: null, kabar: 'Tersimpan sebagai kop v' + versi + ' (' + ubah.join(', ') + ') — dokumen yang sudah dicetak tetap menyebut versi lamanya; kop nota di Jual ikut', kabarAwas: false } };
+    versi, patch: { drafI: null, isiI: null, kabar: 'Tersimpan sebagai kop v' + versi + ' (' + ubah.join(', ') + ') — dokumen yang sudah dicetak tetap menyebut versi lamanya; kop nota di Jual ikut' + (d.npwpDiKop && peringatanNpwp(d.npwp) ? '. ' + PERINGATAN_NPWP_NIK : ''), kabarAwas: !!(d.npwpDiKop && peringatanNpwp(d.npwp)) } };
 }
-/** Kop untuk satu ragam: penuh (NPWP/NIB kalau ada) atau ringkas. */
-export function kopUntuk(ragam, I) { const i = I || identitasUsaha(); return { nama: i.nama || '(nama usaha)', alamat: (i.alamat || '') + (i.telepon ? (i.alamat ? ' · ' : '') + i.telepon : ''), resmi: ragam === 'penuh' ? [i.npwp ? 'NPWP ' + i.npwp : '', i.nib ? 'NIB ' + i.nib : ''].filter(Boolean).join(' · ') : '', slogan: i.slogan || '', gaya: i.gaya, versi: i.versi, lengkap: i.lengkap, ragam }; }
+/** Kop untuk satu ragam: penuh (NIB kalau ada; NPWP HANYA kalau owner menyalakan npwpDiKop) atau ringkas (tanpa keduanya). */
+export function kopUntuk(ragam, I) { const i = I || identitasUsaha(); return { nama: i.nama || '(nama usaha)', alamat: (i.alamat || '') + (i.telepon ? (i.alamat ? ' · ' : '') + i.telepon : ''), resmi: ragam === 'penuh' ? [i.npwp && i.npwpDiKop === true ? 'NPWP ' + i.npwp : '', i.nib ? 'NIB ' + i.nib : ''].filter(Boolean).join(' · ') : '', slogan: i.slogan || '', gaya: i.gaya, versi: i.versi, lengkap: i.lengkap, ragam }; }
 export function pakaiKop() { const a = ugAturDok('dokumen') || {}; const pakai = {}; DOKUMEN_KOP.forEach((d) => { pakai[d.id] = a.pakai && (a.pakai[d.id] === 'penuh' || a.pakai[d.id] === 'ringkas') ? a.pakai[d.id] : d.awal; }); return { pakai, nomorAwal: isFinite(Number(a.nomorAwal)) && Number(a.nomorAwal) >= 1 ? Math.round(Number(a.nomorAwal)) : 1, dariOwner: !!ugAturDok('dokumen') }; }
 export function susunAturDokumen(isi, w) {
   const P = pakaiKop(); const pakai = Object.assign({}, P.pakai); if (isi.pakai) Object.keys(isi.pakai).forEach((k) => { if (pakai[k] !== undefined && (isi.pakai[k] === 'penuh' || isi.pakai[k] === 'ringkas')) pakai[k] = isi.pakai[k]; });

@@ -81,8 +81,20 @@ ok('bulan sesudahnya penuh: Mei 100 jt → 500.000; Jun 80 jt → 400.000; total
 tulis(susunOmzetLuar({ bulan: '2026-06', sumber: 'usahaLain', jumlah: '999', keterangan: 'jasa angkut' }, W));
 ok('pembulatan ke BAWAH ke rupiah penuh [BELUM TERVERIFIKASI]: Jun 80.000.999 → 400.004 (bukan 400.005); usaha lain WP yang sama ikut PPh', pjTahun(2026, KINI).daftar[5].pph === 400004, pjTahun(2026, KINI).daftar[5].pph);
 tulis(susunHapusOmzetLuar('2026-06|usahaLain', true));
-tulis(susunOmzetLuar({ bulan: '2026-07', sumber: 'usahaPasangan', jumlah: '300.000.000', keterangan: 'toko pasangan, pisah harta' }, W)); var T3 = pjTahun(2026, KINI);
-ok('usaha pasangan (pisah harta) TIDAK ikut PPh toko ini (batas bebas masing-masing, PMK 164/2023 Pasal 6 ayat 5) tapi IKUT ambang Rp4,8 miliar (PP 20/2026 Pasal 58)', T3.totalPph === 2000000 && T3.kum === 900 * JT && T3.kumGabung === 1200 * JT, J([T3.kum, T3.kumGabung]));
+tulis(susunOmzetLuar({ bulan: '2026-07', sumber: 'usahaPasangan', jumlah: '300.000.000', keterangan: 'toko pasangan' }, W));
+// status pasangan (owner 24 Sep): PMK 164/2023 Pasal 6 ayat (5) — masing-masing HANYA untuk PH & MT; ambang Rp4,8 miliar digabung untuk semua (PP 20/2026 Pasal 58 ayat 2–3)
+var TP0 = pjTahun(2026, KINI);
+ok('status pasangan bawaan "belum diketahui" → anggapan paling hati-hati: satu batas Rp500 juta berdua — usaha pasangan 300 jt IKUT PPh (Jul: (1.200 − 500) jt × 0,5 % total 3.500.000) & ambang; kalimat anggapan tampil',
+  pjProfil().statusPasangan === 'belumDiketahui' && TP0.pasangan.anggapan === true && /anggapan paling hati-hati: satu batas Rp500 juta berdua/.test(TP0.pasangan.teks) && TP0.totalPph === 3500000 && TP0.kum === 1200 * JT && TP0.kumGabung === 1200 * JT && bln(TP0, '2026-07').pasanganIkutPph === true, J([TP0.totalPph, TP0.kum, TP0.kumGabung]));
+tulis(susunProfilPajak({ statusPasangan: 'pisahHarta' }, W)); var T3 = pjTahun(2026, KINI);
+ok('pisah harta tertulis (PH): usaha pasangan TIDAK ikut PPh toko ini (batas Rp500 juta masing-masing, PMK 164/2023 Pasal 6 ayat 5 huruf a) tapi IKUT ambang Rp4,8 miliar (digabung, PP 20/2026 Pasal 58)', T3.totalPph === 2000000 && T3.kum === 900 * JT && T3.kumGabung === 1200 * JT && T3.pasangan.batasSendiri === true && !T3.pasangan.belumTerverifikasi, J([T3.kum, T3.kumGabung]));
+tulis(susunProfilPajak({ statusPasangan: 'memilihTerpisah' }, W)); var TP2 = pjTahun(2026, KINI);
+ok('istri memilih sendiri (MT): sama dengan PH — masing-masing (Pasal 6 ayat 5 huruf b; Lampiran contoh 4)', TP2.totalPph === 2000000 && TP2.kum === 900 * JT && TP2.kumGabung === 1200 * JT);
+tulis(susunProfilPajak({ statusPasangan: 'satuKesatuan' }, W)); var TP3 = pjTahun(2026, KINI);
+ok('satu kesatuan: Pasal 6 ayat 5 tidak berlaku → usaha pasangan ikut omzet & SATU batas Rp500 juta (3.500.000), bukan anggapan; dasar penggabungan (UU PPh Pasal 8 ayat 1) ditandai belum dibaca langsung',
+  TP3.totalPph === 3500000 && TP3.kum === 1200 * JT && TP3.kumGabung === 1200 * JT && TP3.pasangan.anggapan === false && /UU PPh Pasal 8 ayat 1/.test(TP3.pasangan.belumTerverifikasi), J([TP3.totalPph, TP3.pasangan]));
+ok('status pasangan tak dikenal ditolak; profil lain tidak tersentuh saat status diganti', !!susunProfilPajak({ statusPasangan: 'cerai' }, W).tolak && pjProfil().jenisWp === pjProfil().jenisWp);
+tulis(susunProfilPajak({ statusPasangan: 'pisahHarta' }, W));
 ok('hapus isian omzet luar butuh ketukan kedua; sesudahnya bulan itu kembali "belum diisi"', susunHapusOmzetLuar('2026-07|usahaPasangan').perluYakin === true && (function () { tulis(susunHapusOmzetLuar('2026-07|usahaPasangan', true)); return pjOmzetLuar('2026-07', 'usahaPasangan') === null; })());
 
 // ---- 5 · status & tempo
@@ -154,8 +166,25 @@ ok('NIK/NPWP/nomor rekening ditolak di teks bebas (atas nama, catatan setoran, k
 var DR = dokRekapPajak(pjTahun(2026, KINI), { nama: 'Toko Contoh', alamat: 'Jl. Contoh', versi: 1 });
 ok('cetak "Rekap pajak untuk konsultan": profil, per bulan (sistem / diketik owner + sumber / kumulatif / PPh / setoran & NTPN / status), sumber aturan dengan [BELUM TERVERIFIKASI], label perkiraan',
   DR.jenis === 'pajak' && /bukan nasihat pajak/.test(DR.sub) && DR.baris.some(function (b) { return /diketik owner: catatan lama/.test(b.nama); }) && DR.baris.some(function (b) { return /NTPN AB12CD34EF56GH78/.test(b.nama); })
-  && DR.baris.filter(function (b) { return /^\[BELUM TERVERIFIKASI\]/.test(b.nama); }).length === 2 && DR.baris.filter(function (b) { return b.nama.indexOf('PP 20/2026') >= 0 || b.nama.indexOf('PMK 164') >= 0; }).length >= 4 && /SEBELUM potongan/.test(DR.catatan), J(DR.baris.slice(0, 3)));
-ok('sumber aturan: 9 klaim, masing-masing ber-URL resmi & tanggal lihat; 2 belum terverifikasi (NTPN era Coretax, pembulatan)', PJ_SUMBER.length === 9 && PJ_SUMBER.every(function (s) { return /^https:\/\/(peraturan\.bpk\.go\.id|jdih\.kemenkeu\.go\.id|(www\.)?pajak\.go\.id)\//.test(s.url) && s.lihat === '2026-09-24'; }) && PJ_SUMBER.filter(function (s) { return !s.terverifikasi; }).length === 2);
+  && DR.baris.filter(function (b) { return /^\[BELUM TERVERIFIKASI\]/.test(b.nama); }).length === 3 && DR.baris.filter(function (b) { return b.nama.indexOf('PP 20/2026') >= 0 || b.nama.indexOf('PMK 164') >= 0; }).length >= 4
+  && DR.baris.some(function (b) { return /^Status pasangan: Pisah harta tertulis/.test(b.nama); }), J(DR.baris.slice(0, 3)));
+ok('cetakan konsultan: DUA angka per bulan (omzet mesin & sebelum potongan nota) + jumlah setahun keduanya; kalimat "diserahkan ke konsultan"; perkiraan PPh tetap dari omzet mesin',
+  DR.baris.filter(function (b) { return /^  omzet mesin Rp[\d.]+ · omzet sebelum potongan nota Rp[\d.]+/.test(b.nama); }).length === pjTahun(2026, KINI).daftar.filter(function (b) { return b.sistem !== null; }).length
+  && DR.baris.some(function (b) { return /DISERAHKAN KE KONSULTAN/.test(b.nama); }) && DR.baris.some(function (b) { return /^Jumlah omzet sebelum potongan nota 2026/.test(b.nama); }) && /diserahkan ke konsultan/.test(DR.catatan), J(DR.baris.filter(function (b) { return /omzet mesin/.test(b.nama); }).slice(0, 2)));
+ok('sumber aturan: 12 klaim, masing-masing ber-URL resmi & tanggal lihat; 3 belum terverifikasi (dasar satu kesatuan, NTPN era Coretax, pembulatan)', PJ_SUMBER.length === 12 && PJ_SUMBER.every(function (s) { return /^https:\/\/(peraturan\.bpk\.go\.id|jdih\.kemenkeu\.go\.id|(www\.)?pajak\.go\.id)\//.test(s.url) && s.lihat === '2026-09-24'; }) && PJ_SUMBER.filter(function (s) { return !s.terverifikasi; }).length === 3);
+
+// ---- 13 · omzet SEBELUM potongan nota (tampilan saja): potongan nota + tawar di bawah harga daftar (rasio, satuan bebas); tawar ke atas / batal / pengganti retur tidak ikut
+(function () {
+  function jl(id, tgl, harga, k) { return Object.assign({ id: id, tanggal: tgl, jam: '10:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: harga, hppTotalSaatJual: Math.round(harga * 0.95), trxId: 't-' + id }, k || {}); }
+  var semula = cacheMentah('penjualan'); var S0 = bln(pjTahun(2026, KINI), '2026-09').sistem;
+  pasok('penjualan', semula.concat([jl('p1', '2026-09-10', 950000, { potonganTransaksi: 50000, hargaAsliSatuan: 1000000 }), jl('p2', '2026-09-11', 1360000, { jumlahKarung: 2, totalKg: 100, hargaAsliSatuan: 700000, negoSelisih: -20000 }),
+    jl('p3', '2026-09-11', 710000, { hargaAsliSatuan: 700000, negoSelisih: 10000 }), jl('p4', '2026-09-12', 100500, { potonganTransaksi: 1000, pembulatan: 500 }), jl('p5', '2026-09-12', 500000, { potonganTransaksi: 70000, dibatalkan: true }),
+    jl('p6', '2026-09-13', 0, { potonganTransaksi: 5000, penggantiRetur: true, nilaiBarangPengganti: 690000 })]));
+  var PB = pjPotonganBulan('2026-09'); var B = bln(pjTahun(2026, KINI), '2026-09'); var mesin = hitungLabaRentang(function (t) { return !!t && bulanDari(t) === '2026-09'; }).omzetPenuh;
+  ok('sebelum potongan: nota 50.000 + 1.000, tawar turun 1.360.000 × 20.000 / 680.000 = 40.000; tawar naik, nota batal & pengganti retur tidak ikut; sebelum potongan = omzet mesin + 91.000; omzet dasar PPh = omzet mesin (tidak berubah oleh angka kedua)',
+    PB.nota === 51000 && PB.tawar === 40000 && PB.jumlah === 91000 && B.sistem === mesin && B.sebelumPotongan === mesin + 91000 && B.omzet === B.sistem && B.sistem > S0, J([PB, B.sistem, B.sebelumPotongan, mesin]));
+  pasok('penjualan', semula);
+})();
 
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
@@ -194,7 +223,15 @@ if __name__ == '__main__':
             'bulan yang melewati batas dikenai penuh (bukan kelebihannya)': js.replace("const kena = Math.max(0, kum - Math.max(kumSebelum, bebas));", "const kena = kum > bebas ? omzet : 0;"),
             'pembulatan ke atas': js.replace("const pph = hitung ? Math.floor(kena * P.tarifPerMil / 1000) : null;", "const pph = hitung ? Math.ceil(kena * P.tarifPerMil / 1000) : null;"),
             'catatan lama diterima di bulan yang punya penjualan (terhitung dua kali)': js.replace("if (kAwal && bulan > kAwal) return { tolak:", "if (false) return { tolak:"),
-            'usaha pasangan ikut PPh toko ini': js.replace("const omzet = (S.omzet || 0) + (lama || 0) + (lain || 0);", "const omzet = (S.omzet || 0) + (lama || 0) + (lain || 0) + (pasangan || 0);"),
+            'pisah harta: usaha pasangan tetap ikut PPh toko ini': js.replace("const pasanganPph = AP.batasSendiri ? 0 : (pasangan || 0);", "const pasanganPph = pasangan || 0;"),
+            'satu kesatuan: usaha pasangan tidak ikut PPh (batas dobel)': js.replace("const pasanganPph = AP.batasSendiri ? 0 : (pasangan || 0);", "const pasanganPph = 0;"),
+            'status belum diketahui dianggap pisah harta (tidak hati-hati)': js.replace("if (status === 'pisahHarta' || status === 'memilihTerpisah') return { batasSendiri: true,", "if (status !== 'satuKesatuan') return { batasSendiri: true,"),
+            'PH/MT: usaha pasangan tidak ikut ambang Rp4,8 miliar': js.replace("const gabung = omzet + (AP.batasSendiri ? (pasangan || 0) : 0);", "const gabung = omzet;"),
+            'tawar KE ATAS dihitung sebagai potongan': js.replace("asli > 0 && sel < 0 && asli + sel > 0 && dasar > 0 ? Math.round(dasar * -sel / (asli + sel))", "asli > 0 && sel !== 0 && asli + sel > 0 && dasar > 0 ? Math.round(dasar * Math.abs(sel) / (asli + sel))"),
+            'potongan nota tidak ikut angka sebelum potongan': js.replace("if (pot || tw) n += 1; nota += pot; tawar += tw;", "if (pot || tw) n += 1; tawar += tw;"),
+            'nota batal ikut angka sebelum potongan': js.replace("  ambilPenjualan().forEach((p) => {\n    if (!p.tanggal || bulanDari(p.tanggal) !== key || p.penggantiRetur) return;", "  ambilPenjualanSemua().forEach((p) => {\n    if (!p.tanggal || bulanDari(p.tanggal) !== key || p.penggantiRetur) return;"),
+            'cetakan tanpa kalimat "diserahkan ke konsultan"': js.replace("    { nama: 'Angka mana yang dipakai sebagai peredaran bruto DISERAHKAN KE KONSULTAN.', teks: '' },\n", "").replace("'Dua angka omzet per bulan (mesin & sebelum potongan nota) — pilihan angka yang dipakai diserahkan ke konsultan; ", "'"),
+            'cetakan hanya satu angka per bulan': js.replace("    if (b.sistem !== null) baris.push({ nama: '  omzet mesin ' + RP(b.sistem)", "    if (false) baris.push({ nama: '  omzet mesin ' + RP(b.sistem)"),
             'bulan kosong dianggap nol & lengkap': js.replace("const lengkap = adaSistem ? (!sebagian || lama !== null) : lama !== null;", "const lengkap = true;"),
             'isian kosong disimpan sebagai nol': js.replace("if (ugKosong(isi.jumlah)) return { tolak: 'Ketik jumlahnya", "if (false) return { tolak: 'Ketik jumlahnya"),
             'angka berubah sesudah setor tidak terdeteksi': js.replace("const berubah = adaPotret &&", "const berubah = false &&"),

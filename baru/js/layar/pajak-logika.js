@@ -8,7 +8,7 @@
 // Nama pembantu diprefiks `pj` (bundel uji jsc satu lingkup).
 import { hitungLabaRentang } from '../mesin/beku.js';
 import { bulanDari, namaBulanPanjang } from '../mesin/pembantu.js';
-import { ambilPenjualanSemua, cacheMentah } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, cacheMentah } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong } from './uang-logika.js';
 
@@ -17,9 +17,24 @@ export const PJ_ANGGAPAN_OP = 'hitungan dengan anggapan orang pribadi (jenis waj
 export const PJ_JENIS_WP = [['belumDiketahui', 'Belum diketahui (tanya pemilik lama)'], ['orangPribadi', 'Orang pribadi'], ['badan', 'Badan']].map((x) => ({ id: x[0], nama: x[1] }));
 export const PJ_STATUS_PKP = [['belumDiketahui', 'Belum diketahui'], ['bukan', 'Bukan PKP'], ['pkp', 'PKP']].map((x) => ({ id: x[0], nama: x[1] }));
 // sumber omzet ketikan: catatanLama = bulan sebelum sistem ini ada; usahaLain = usaha lain milik wajib pajak YANG SAMA (ikut PPh & ambang);
-// usahaPasangan = usaha pasangan yang pisah harta / memilih sendiri — PMK 164/2023 Pasal 6 ayat (5): batas Rp500 juta berlaku masing-masing (PPh-nya urusan
-// pasangan), tapi PP 20/2026 Pasal 58: peredaran bruto DIGABUNG untuk batas Rp4,8 miliar → hanya ikut AMBANG.
-export const PJ_SUMBER_LUAR = [['catatanLama', 'Catatan lama (sebelum sistem ini)', 'ikut PPh & ambang'], ['usahaLain', 'Usaha lain wajib pajak yang sama', 'ikut PPh & ambang'], ['usahaPasangan', 'Usaha pasangan (pisah harta / memilih sendiri)', 'ikut ambang Rp4,8 miliar saja']].map((x) => ({ id: x[0], nama: x[1], ket: x[2] }));
+// usahaPasangan = usaha pasangan — ikutnya menurut statusPasangan di profil (pjAturanPasangan): PH/MT = batas Rp500 juta masing-masing, jadi hanya ikut ambang
+// Rp4,8 miliar; satu kesatuan / belum diketahui = ikut PPh (satu batas Rp500 juta berdua) DAN ambang.
+export const PJ_SUMBER_LUAR = [['catatanLama', 'Catatan lama (sebelum sistem ini)', 'ikut PPh & ambang'], ['usahaLain', 'Usaha lain wajib pajak yang sama', 'ikut PPh & ambang'], ['usahaPasangan', 'Usaha pasangan', 'ikut menurut status pasangan di profil']].map((x) => ({ id: x[0], nama: x[1], ket: x[2] }));
+// ---- STATUS PASANGAN (owner 24 Sep). PMK 164/2023 Pasal 6 ayat (5), teks dibaca: bagian Rp500 juta yang tidak dikenai "diberlakukan untuk masing-masing suami
+// dan istri" HANYA bila (a) perjanjian pemisahan harta & penghasilan tertulis (PH) atau (b) istri memilih menjalankan hak & kewajiban pajaknya sendiri (MT);
+// Lampiran contoh 4 (MT) memberi masing-masing Rp500 juta. Satu kesatuan TIDAK disebut → usaha pasangan ikut batas Rp500 juta yang SAMA. Batas Rp4,8 miliar:
+// omzet suami-istri DIGABUNG, termasuk PH & MT (PP 20/2026 Pasal 58 ayat 2–3, artikel DJP 8 Jun 2026). Belum diketahui → anggapan paling hati-hati: satu batas berdua.
+export const PJ_STATUS_PASANGAN = [['belumDiketahui', 'Belum diketahui'], ['satuKesatuan', 'Satu kesatuan'], ['pisahHarta', 'Pisah harta tertulis (PH)'], ['memilihTerpisah', 'Istri memilih sendiri (MT)']].map((x) => ({ id: x[0], nama: x[1] }));
+export const PJ_TANDA_BELUM = '[BELUM TERVERIFIKASI]';
+/** → { batasSendiri: usaha pasangan punya batas Rp500 juta sendiri (hanya ikut ambang), teks, anggapan, belumTerverifikasi }. */
+export function pjAturanPasangan(status) {
+  if (status === 'pisahHarta' || status === 'memilihTerpisah') return { batasSendiri: true, anggapan: false, belumTerverifikasi: '',
+    teks: (status === 'pisahHarta' ? 'Pisah harta tertulis' : 'Istri memilih sendiri') + ': batas Rp500 juta berlaku masing-masing (PMK 164/2023 Pasal 6 ayat 5) — usaha pasangan tidak ikut PPh di sini, hanya ikut batas Rp4,8 miliar (digabung, PP 20/2026 Pasal 58)' };
+  if (status === 'satuKesatuan') return { batasSendiri: false, anggapan: false, belumTerverifikasi: 'dasar penggabungan satu kesatuan (UU PPh Pasal 8 ayat 1) belum dibaca langsung; Pasal 6 ayat 5 hanya memberi batas masing-masing untuk PH & MT',
+    teks: 'Satu kesatuan: Pasal 6 ayat 5 tidak berlaku — usaha pasangan ikut omzet & SATU batas Rp500 juta berdua, dan ikut batas Rp4,8 miliar' };
+  return { batasSendiri: false, anggapan: true, belumTerverifikasi: '',
+    teks: 'Status pasangan belum diketahui — hitungan memakai anggapan paling hati-hati: satu batas Rp500 juta berdua (usaha pasangan ikut PPh & batas Rp4,8 miliar)' };
+}
 export const PJ_AMBANG = [70, 85, 95, 100];
 // Aturan yang diisi tombol "Pakai aturan PP 55/2022 jo. PP 20/2026" — hanya bila owner menekannya; bawaan = belum diatur.
 export const PJ_ATURAN = { tarifPerMil: 5, batasBebas: 500000000, batasOmzet: 4800000000,
@@ -28,8 +43,11 @@ export const PJ_ATURAN = { tarifPerMil: 5, batasBebas: 500000000, batasOmzet: 48
 export const PJ_SUMBER = [
   ['PP 20/2026 ditetapkan, diundangkan & berlaku 22 April 2026', 'https://peraturan.bpk.go.id/Details/349415/pp-no-20-tahun-2026', true],
   ['Jangka waktu tertentu tarif 0,5 % untuk orang pribadi dihapus (Pasal 59 dihapus)', 'https://pajak.go.id/sites/default/files/2026-06/Peraturan%20Pemerintah%20nomor%2020%20Tahun%202026.pdf', true],
-  ['Batas omzet Rp4,8 miliar setahun; peredaran bruto digabung (usaha + pekerjaan bebas; suami-istri pisah harta digabung) — PP 20/2026 Pasal 58', 'https://pajak.go.id/en/node/119991', true],
+  ['Batas omzet Rp4,8 miliar setahun; omzet suami-istri digabung untuk batas ini, termasuk pisah harta (PH) & istri memilih sendiri (MT) — PP 20/2026 Pasal 58 ayat (2)–(3)', 'https://pajak.go.id/en/node/119991', true],
   ['Bagian peredaran bruto s.d. Rp500 juta setahun tidak dikenai, dihitung kumulatif sejak masa pajak pertama, seluruh tempat usaha — PMK 164/2023 Pasal 6 ayat (3)–(4)', 'https://jdih.kemenkeu.go.id/api/download/a99b8e80-9694-46ab-8de1-63c2484aa636/2023pmkeuangan164.pdf', true],
+  ['Batas Rp500 juta berlaku masing-masing suami & istri HANYA bila pisah harta tertulis (PH) atau istri memilih sendiri (MT) — PMK 164/2023 Pasal 6 ayat (5) huruf a–b; Lampiran contoh 4', 'https://jdih.kemenkeu.go.id/api/download/a99b8e80-9694-46ab-8de1-63c2484aa636/2023pmkeuangan164.pdf', true],
+  ['Suami-istri satu kesatuan: usaha pasangan ikut wajib pajak yang sama → satu batas Rp500 juta berdua (UU PPh Pasal 8 ayat 1 belum dibaca langsung; hitungan memakai anggapan paling hati-hati)', 'https://jdih.kemenkeu.go.id/api/download/a99b8e80-9694-46ab-8de1-63c2484aa636/2023pmkeuangan164.pdf', false],
+  ['Peredaran bruto = imbalan SEBELUM dikurangi potongan penjualan, potongan tunai, dan/atau potongan sejenis — PMK 164/2023 Pasal 6 ayat (2)', 'https://jdih.kemenkeu.go.id/api/download/a99b8e80-9694-46ab-8de1-63c2484aa636/2023pmkeuangan164.pdf', true],
   ['Setor paling lambat tanggal 15 bulan berikutnya — PMK 164/2023 Pasal 7 ayat (2)', 'https://jdih.kemenkeu.go.id/api/download/a99b8e80-9694-46ab-8de1-63c2484aa636/2023pmkeuangan164.pdf', true],
   ['Setoran bervalidasi NTPN dianggap SPT Masa PPh Unifikasi, per tanggal validasi — PMK 164/2023 Pasal 7 ayat (5)', 'https://jdih.kemenkeu.go.id/api/download/a99b8e80-9694-46ab-8de1-63c2484aa636/2023pmkeuangan164.pdf', true],
   ['Kode billing lewat Coretax: KAP-KJS 411128-420 (PPh Final UMKM bayar sendiri)', 'https://www.pajak.go.id/en/node/116821', true],
@@ -62,7 +80,8 @@ export const pjDokRekap = () => ugAturDok('rekapOmzet');
 export function pjProfil() {
   const d = pjDokRekap() || {}; const jenis = PJ_JENIS_WP.some((j) => j.id === d.jenisWp) ? d.jenisWp : 'belumDiketahui'; const pkp = PJ_STATUS_PKP.some((j) => j.id === d.statusPkp) ? d.statusPkp : 'belumDiketahui';
   const ang = (v) => { const n = pjAngkaAtauNull(v); return n !== null && n >= 0 ? n : null; };
-  return { wpAtasNama: String(d.wpAtasNama || ''), jenisWp: jenis, statusPkp: pkp, tahunMulaiTarifFinal: ang(d.tahunMulaiTarifFinal), omzetTahunLalu: ang(d.omzetTahunLalu), batasBebas: ang(d.batasBebas),
+  const pasangan = PJ_STATUS_PASANGAN.some((j) => j.id === d.statusPasangan) ? d.statusPasangan : 'belumDiketahui';
+  return { wpAtasNama: String(d.wpAtasNama || ''), jenisWp: jenis, statusPkp: pkp, statusPasangan: pasangan, tahunMulaiTarifFinal: ang(d.tahunMulaiTarifFinal), omzetTahunLalu: ang(d.omzetTahunLalu), batasBebas: ang(d.batasBebas),
     batasOmzet: ang(d.batasOmzet) || 0, tarifPerMil: ang(d.tarifPerMil) || 0, tanggalLapor: isFinite(Number(d.tanggalLapor)) && Number(d.tanggalLapor) >= 1 && Number(d.tanggalLapor) <= 28 ? Math.round(Number(d.tanggalLapor)) : 15,
     sumberAturan: d.sumberAturan && typeof d.sumberAturan === 'object' ? { teks: String(d.sumberAturan.teks || ''), tanggal: String(d.sumberAturan.tanggal || '') } : null, ada: !!pjDokRekap() };
 }
@@ -79,6 +98,7 @@ export function susunProfilPajak(isi, w) {
   if (isi.wpAtasNama !== undefined) { const n = String(isi.wpAtasNama || '').trim().slice(0, 60); if (pjAdaNomorPribadi(n)) return { tolak: PJ_TOLAK_NOMOR }; u.wpAtasNama = n; }
   if (isi.jenisWp !== undefined) { if (!PJ_JENIS_WP.some((j) => j.id === isi.jenisWp)) return { tolak: 'Jenis wajib pajak tidak dikenal' }; u.jenisWp = isi.jenisWp; }
   if (isi.statusPkp !== undefined) { if (!PJ_STATUS_PKP.some((j) => j.id === isi.statusPkp)) return { tolak: 'Status PKP tidak dikenal' }; u.statusPkp = isi.statusPkp; }
+  if (isi.statusPasangan !== undefined) { if (!PJ_STATUS_PASANGAN.some((j) => j.id === isi.statusPasangan)) return { tolak: 'Status pasangan tidak dikenal' }; u.statusPasangan = isi.statusPasangan; }
   const th = Number(String(w.tanggal).slice(0, 4));
   const angka = (k, min, maks, nama) => { if (isi[k] === undefined) return ''; if (ugKosong(isi[k])) { u[k] = null; return ''; } const n = ugAngka(isi[k]); if (!(n >= min && n <= maks)) return nama; u[k] = Math.round(n); return ''; };
   const salah = angka('tahunMulaiTarifFinal', 2000, th, 'Tahun mulai tarif final: 2000–' + th + ' (kosongkan kalau tidak tahu)') || angka('omzetTahunLalu', 0, 1e13, 'Omzet tahun lalu tidak boleh minus (kosongkan kalau tidak tahu — kosong ≠ nol)')
@@ -119,15 +139,34 @@ export function susunHapusOmzetLuar(id, yakin) {
 }
 const pjNama = (key) => namaBulanPanjang(key + '-01');
 
+// ==================== omzet SEBELUM potongan nota (tampilan saja — mesin beku tidak disentuh) ====================
+/**
+ * PMK 164/2023 Pasal 6 ayat (2): peredaran bruto = SEBELUM potongan penjualan. Omzet mesin = sesudah potongan nota & retur. Per bulan, dari baris penjualan yang
+ * masih berlaku (baris yang sama yang dihitung mesin): potongan nota (potonganTransaksi) + tawar di BAWAH harga daftar (hargaAsliSatuan + negoSelisih < 0;
+ * satuannya beda per jalur, jadi dihitung lewat RASIO harga daftar / harga jadi). Tawar ke atas bukan potongan. Retur tetap mengurangi kedua angka; unit bonus tidak dihitung.
+ */
+export function pjPotonganBulan(key) {
+  let nota = 0, tawar = 0, n = 0, tanpaDaftar = 0;
+  ambilPenjualan().forEach((p) => {
+    if (!p.tanggal || bulanDari(p.tanggal) !== key || p.penggantiRetur) return;
+    const pot = Math.max(0, Math.round(Number(p.potonganTransaksi) || 0)); const dasar = (Number(p.hargaTotal) || 0) - (Number(p.pembulatan) || 0) + pot;
+    const asli = Number(p.hargaAsliSatuan) || 0, sel = Number(p.negoSelisih) || 0; if (!(asli > 0)) tanpaDaftar += 1;
+    const tw = asli > 0 && sel < 0 && asli + sel > 0 && dasar > 0 ? Math.round(dasar * -sel / (asli + sel)) : 0;
+    if (pot || tw) n += 1; nota += pot; tawar += tw;
+  });
+  return { nota, tawar, jumlah: nota + tawar, n, tanpaDaftar };
+}
+
 // ==================== hitungan per bulan ====================
 /**
  * Satu tahun pajak, Jan → bulan berjalan (tahun lalu: 12 bulan). Per bulan: omzet sistem / luar, kumulatif, bagian yang kena, perkiraan PPh, setoran, status.
  *   kum_sebelum = kumulatif s.d. akhir bulan sebelumnya · kum_sesudah = + bulan ini · kena = max(0, kum_sesudah − max(kum_sebelum, batasBebas)) · pph = ⌊kena × tarif / 1000⌋
- * Kumulatif PPh = sistem + catatan lama + usaha lain WP yang sama; ambang Rp4,8 miliar = itu + usaha pasangan.
+ * Kumulatif PPh = sistem + catatan lama + usaha lain WP yang sama (+ usaha pasangan bila satu kesatuan / belum diketahui); ambang Rp4,8 miliar = itu + usaha pasangan.
+ * sebelumPotongan = omzet mesin + potongan nota & tawar (pjPotonganBulan) — angka kedua untuk konsultan, tidak dipakai menghitung.
  */
 export function pjTahun(tahun, kini) {
   const iso = hariIniIso(kini || new Date(Date.now())); const kiniKey = pjKey(iso); const th = Number(tahun || kiniKey.slice(0, 4)); const P = pjProfil();
-  const awal = pjAwalSistem(); const kAwal = awal ? pjKey(awal) : null; const hitung = P.jenisWp !== 'badan' && P.tarifPerMil > 0; const bebas = P.batasBebas || 0;
+  const awal = pjAwalSistem(); const kAwal = awal ? pjKey(awal) : null; const hitung = P.jenisWp !== 'badan' && P.tarifPerMil > 0; const bebas = P.batasBebas || 0; const AP = pjAturanPasangan(P.statusPasangan);
   const setoran = pjSetoranSemua(); const akhirBulan = th < Number(kiniKey.slice(0, 4)) ? 12 : th > Number(kiniKey.slice(0, 4)) ? 0 : Number(kiniKey.slice(5, 7));
   const daftar = []; let kum = 0, kumGabung = 0, lengkapSejauhIni = true, kosong = 0;
   for (let m = 1; m <= akhirBulan; m++) {
@@ -135,7 +174,8 @@ export function pjTahun(tahun, kini) {
     const sebagian = !!kAwal && key === kAwal && awal.slice(8, 10) !== '01';
     const lama = pjOmzetLuar(key, 'catatanLama'), lain = pjOmzetLuar(key, 'usahaLain'), pasangan = pjOmzetLuar(key, 'usahaPasangan');
     const lengkap = adaSistem ? (!sebagian || lama !== null) : lama !== null; if (!lengkap) { kosong += 1; lengkapSejauhIni = false; }
-    const omzet = (S.omzet || 0) + (lama || 0) + (lain || 0); const gabung = omzet + (pasangan || 0);
+    const pasanganPph = AP.batasSendiri ? 0 : (pasangan || 0); const omzet = (S.omzet || 0) + (lama || 0) + (lain || 0) + pasanganPph; const gabung = omzet + (AP.batasSendiri ? (pasangan || 0) : 0);
+    const PT = S.omzet === null ? null : pjPotonganBulan(key); const sebelumPotongan = S.omzet === null ? null : S.omzet + PT.jumlah;
     const kumSebelum = kum; kum += omzet; kumGabung += gabung; const kena = Math.max(0, kum - Math.max(kumSebelum, bebas));
     const pph = hitung ? Math.floor(kena * P.tarifPerMil / 1000) : null;
     const tempo = pjGeser(key, 1) + '-' + String(P.tanggalLapor).padStart(2, '0'); const berjalan = key === kiniKey;
@@ -143,11 +183,12 @@ export function pjTahun(tahun, kini) {
     const potret = setor.length ? setor[setor.length - 1] : null; const adaPotret = potret && potret.omzetSaatSetor !== null && potret.omzetSaatSetor !== undefined && Number.isFinite(Number(potret.omzetSaatSetor));
     const berubah = adaPotret && Math.round(Number(potret.omzetSaatSetor)) !== omzet
       ? { omzet: omzet - Math.round(Number(potret.omzetSaatSetor)), pph: pph === null || potret.pphPerkiraanSaatSetor === null || potret.pphPerkiraanSaatSetor === undefined ? null : pph - Math.round(Number(potret.pphPerkiraanSaatSetor)) } : null;
-    const B = { key, nama: pjNama(key), pendek: pjPendek(key), sistem: S.omzet, nNota: S.n, sebagian, awalSistem: sebagian ? awal : null, lama, lain, pasangan, lengkap, lengkapSejauhIni, omzet, gabung, kumSebelum, kum, kumGabung, kena, pph,
+    const B = { key, nama: pjNama(key), pendek: pjPendek(key), sistem: S.omzet, nNota: S.n, sebelumPotongan, potongan: PT, sebagian, awalSistem: sebagian ? awal : null, lama, lain, pasangan, pasanganIkutPph: pasangan !== null && !AP.batasSendiri, lengkap, lengkapSejauhIni, omzet, gabung, kumSebelum, kum, kumGabung, kena, pph,
       tempo, berjalan, setor, jumlahSetor, ntpn: setor.map((s) => s.ntpn).filter(Boolean), berubah };
     B.status = pjStatus(B, P, iso, hitung); daftar.push(B);
   }
-  return { tahun: th, daftar, P, hitung, anggapanOp: P.jenisWp === 'belumDiketahui', kum, kumGabung, kosong, lengkap: kosong === 0, awalSistem: awal, totalPph: hitung ? daftar.reduce((a, b) => a + (b.pph || 0), 0) : null,
+  return { tahun: th, daftar, P, hitung, anggapanOp: P.jenisWp === 'belumDiketahui', pasangan: AP, kum, kumGabung,
+    totalSistem: daftar.reduce((a, b) => a + (b.sistem || 0), 0), totalSebelumPotongan: daftar.reduce((a, b) => a + (b.sebelumPotongan || 0), 0), kosong, lengkap: kosong === 0, awalSistem: awal, totalPph: hitung ? daftar.reduce((a, b) => a + (b.pph || 0), 0) : null,
     totalSetor: daftar.reduce((a, b) => a + b.jumlahSetor, 0), kumTeks: pjKumTeks(kum, kosong), ambang: pjAmbang(kumGabung, P, th, iso), peringatanTahunLalu: pjPeringatanTahunLalu(P) };
 }
 function pjKumTeks(kum, kosong) { return RP(kum) + (kosong ? ' — ' + kosong + ' bulan belum diisi, kumulatif KURANG dari sebenarnya' : ''); }
@@ -224,16 +265,22 @@ export function dokRekapPajak(T, kop) {
   const P = T.P; const baris = [{ nama: 'Profil wajib pajak', kelas: 'kel' }, { nama: 'Atas nama', teks: P.wpAtasNama || '(belum diisi)' },
     { nama: 'Jenis wajib pajak: ' + (PJ_JENIS_WP.find((j) => j.id === P.jenisWp) || {}).nama + (T.anggapanOp ? ' — ' + PJ_ANGGAPAN_OP : ''), teks: '' }, { nama: 'Status PKP', teks: (PJ_STATUS_PKP.find((j) => j.id === P.statusPkp) || {}).nama },
     { nama: 'Tahun mulai tarif final', teks: P.tahunMulaiTarifFinal === null ? 'tidak diketahui' : String(P.tahunMulaiTarifFinal) }, { nama: 'Omzet tahun lalu', teks: P.omzetTahunLalu === null ? 'tidak diketahui' : RP(P.omzetTahunLalu) },
+    { nama: 'Status pasangan: ' + (PJ_STATUS_PASANGAN.find((j) => j.id === P.statusPasangan) || {}).nama, teks: '' }, { nama: '  ' + (T.pasangan.belumTerverifikasi ? PJ_TANDA_BELUM + ' ' : '') + T.pasangan.teks, teks: '' },
     { nama: 'Tarif', teks: P.tarifPerMil ? (P.tarifPerMil / 10).toFixed(1).replace('.', ',') + ' %' : 'belum diatur' }, { nama: 'Batas bebas setahun', teks: P.batasBebas === null ? 'belum diisi' : RP(P.batasBebas) }, { nama: 'Batas atas setahun', teks: P.batasOmzet ? RP(P.batasOmzet) : 'belum diatur' },
+    { nama: 'Dua angka omzet per bulan', kelas: 'kel' },
+    { nama: 'Omzet mesin = dasar perkiraan PPh di rekap ini (penjualan berlaku, sesudah potongan nota & retur). Omzet sebelum potongan nota = omzet mesin + potongan nota + tawar di bawah harga daftar (dari hargaAsliSatuan), retur tetap dikurangi. PMK 164/2023 Pasal 6 ayat (2) menyebut peredaran bruto sebelum potongan penjualan.', teks: '' },
+    { nama: 'Angka mana yang dipakai sebagai peredaran bruto DISERAHKAN KE KONSULTAN.', teks: '' },
     { nama: 'Per bulan ' + T.tahun, kelas: 'kel' }];
   T.daftar.forEach((b) => {
-    const luar = [b.lama !== null ? 'catatan lama ' + RP(b.lama) : '', b.lain !== null ? 'usaha lain ' + RP(b.lain) : '', b.pasangan !== null ? 'usaha pasangan ' + RP(b.pasangan) + ' (ambang saja)' : ''].filter(Boolean).join(' · ');
+    const luar = [b.lama !== null ? 'catatan lama ' + RP(b.lama) : '', b.lain !== null ? 'usaha lain ' + RP(b.lain) : '', b.pasangan !== null ? 'usaha pasangan ' + RP(b.pasangan) + (b.pasanganIkutPph ? ' (ikut PPh' + (T.pasangan.anggapan ? ' — anggapan' : '') + ')' : ' (batas Rp4,8 miliar saja)') : ''].filter(Boolean).join(' · ');
     baris.push({ nama: b.nama + (b.sebagian ? ' (sistem mulai ' + tanggalPendek(b.awalSistem) + ')' : ''), teks: b.lengkap ? RP(b.omzet) : '—' });
+    if (b.sistem !== null) baris.push({ nama: '  omzet mesin ' + RP(b.sistem) + ' · omzet sebelum potongan nota ' + RP(b.sebelumPotongan) + (b.potongan.jumlah ? ' (potongan nota ' + RP(b.potongan.nota) + (b.potongan.tawar ? ', tawar ' + RP(b.potongan.tawar) : '') + ' di ' + b.potongan.n + ' baris)' : ' (tidak ada potongan)'), teks: '' });
     baris.push({ nama: '  sistem ' + (b.sistem === null ? '—' : RP(b.sistem)) + (luar ? ' · diketik owner: ' + luar : '') + ' · kumulatif ' + RP(b.kum), teks: b.pph === null ? 'PPh tidak dihitung' : 'PPh ' + RP(b.pph) });
     baris.push({ nama: '  setoran ' + (b.setor.length ? RP(b.jumlahSetor) + (b.ntpn.length ? ' · NTPN ' + b.ntpn.join(', ') : ' · tanpa NTPN') : '—') + ' · ' + b.status.teks, teks: '' });
   });
+  baris.push({ nama: 'Jumlah omzet mesin ' + T.tahun, teks: RP(T.totalSistem), kelas: 'jumlah' }, { nama: 'Jumlah omzet sebelum potongan nota ' + T.tahun, teks: RP(T.totalSebelumPotongan), kelas: 'jumlah' });
   baris.push({ nama: 'Jumlah perkiraan PPh ' + T.tahun, teks: T.totalPph === null ? 'tidak dihitung' : RP(T.totalPph), kelas: 'jumlah' }, { nama: 'Jumlah setoran tercatat', teks: RP(T.totalSetor), kelas: 'jumlah' });
   baris.push({ nama: 'Sumber aturan (dilihat 24 Sep 2026)', kelas: 'kel' }); PJ_SUMBER.forEach((s) => baris.push({ nama: (s.terverifikasi ? '' : '[BELUM TERVERIFIKASI] ') + s.klaim, teks: '' }));
   return { jenis: 'pajak', kop, judul: 'Rekap Pajak untuk Konsultan', sub: 'Tahun ' + T.tahun + ' · ' + PJ_LABEL + (T.kosong ? ' · ' + T.kosong + ' bulan belum diisi' : ''), periode: String(T.tahun), baris, cap: T.kosong ? 'DATA BELUM LENGKAP' : '',
-    catatan: 'Omzet sistem = mesin laba (penjualan berlaku, sesudah potongan nota & retur); PMK 164/2023 Pasal 6 ayat (2) menghitung peredaran bruto SEBELUM potongan penjualan — tanyakan konsultan. ' + T.kumTeks + '. ' + (T.ambang.ada ? 'Ambang: ' + T.ambang.teks + '. ' : '') + (T.peringatanTahunLalu ? T.peringatanTahunLalu + ' ' : '') + (P.sumberAturan ? 'Aturan: ' + P.sumberAturan.teks + ' (diisi ' + tanggalPendek(P.sumberAturan.tanggal) + ').' : 'Aturan belum diisi dari tombol.') };
+    catatan: 'Dua angka omzet per bulan (mesin & sebelum potongan nota) — pilihan angka yang dipakai diserahkan ke konsultan; perkiraan PPh di sini memakai omzet mesin. ' + T.kumTeks + '. ' + (T.ambang.ada ? 'Ambang: ' + T.ambang.teks + '. ' : '') + (T.peringatanTahunLalu ? T.peringatanTahunLalu + ' ' : '') + (P.sumberAturan ? 'Aturan: ' + P.sumberAturan.teks + ' (diisi ' + tanggalPendek(P.sumberAturan.tanggal) + ').' : 'Aturan belum diisi dari tombol.') };
 }
