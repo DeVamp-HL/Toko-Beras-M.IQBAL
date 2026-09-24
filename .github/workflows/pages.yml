@@ -82,7 +82,7 @@ jobs:
         run: python3 alat-uji/uji_akses_baru.py && python3 alat-uji/uji_akses_baru.py --kontrol
       - name: "firestore.rules v3 — pemeriksa statis (blok per koleksi, owner via email, jalur kasir@, uid penulis, peran = akses.js) + kontrol"
         run: python3 alat-uji/periksa_rules.py && python3 alat-uji/periksa_rules.py --kontrol
-      - name: "Tirai (23c): sebelum masuk, 0 angka rupiah di DOM — Chrome headless sungguhan + kontrol"
+      - name: "Tirai & ganti orang (23c): 0 angka rupiah sebelum masuk, keranjang tidak terbawa ke akun berikutnya — Chrome headless + kontrol (keluar 4 = GAGAL JARINGAN)"
         run: python3 alat-uji/uji_layar_kunci.py && python3 alat-uji/uji_layar_kunci.py --kontrol
       - name: "Kiriman bukan-owner — access call terburuk per jenis kiriman ≤ 18 (batas Firebase 20, sisa 2) + kontrol"
         run: python3 alat-uji/peta_akses.py --kiriman && python3 alat-uji/peta_akses.py --kiriman --kontrol

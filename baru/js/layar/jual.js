@@ -718,5 +718,6 @@ export function pasangLayarJual(akar, opsi) {
   K.dengar((s) => { clearTimeout(_jamUrung); if (s.notaTerakhir) _jamUrung = setTimeout(gambar, Math.max(0, L.BATAS_URUNGKAN_DETIK * 1000 - (Date.now() - s.notaTerakhir.pada) + 50)); });
   dengarkan(() => { _rak = null; gambar(); gulirkan(akar, RP); });
   gambar(); gulirkan(akar, RP);
-  return { keadaan: K, gambar };
+  // putaran 23c: keranjang tidak terbawa ke akun berikutnya — app.js menanyakannya saat Keluar lalu melupakannya
+  return { keadaan: K, gambar, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s)) };
 }

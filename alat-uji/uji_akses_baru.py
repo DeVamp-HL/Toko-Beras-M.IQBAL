@@ -174,7 +174,12 @@ var LT = ['jual', 'ringkasan', 'stok', 'pelanggan', 'menu', 'harga', 'uang', 'la
 var tanpaGerbang = LT.filter(function (n) { var s = SUMBER['layar_' + n]; return s.indexOf("import { terkunci } from '../inti/kunci.js';") < 0 || !/if \((!tampil \|\| )?terkunci\(\)\) return;/.test(s); });
 ok('tirai: KEDELAPAN layar memeriksa terkunci() sebelum menggambar; bawaan terkunci (sebelum Firebase menjawab); app.js membuka hanya untuk owner / akun aktif (bisaBekerja) atau mode cadangan, dan saat menutup MENGOSONGKAN tiap <main>',
   tanpaGerbang.length === 0 && SUMBER.kunci.indexOf('let _kunci = true;') >= 0 && A.indexOf("const kunci = !q.get('cadangan') && !bisaBekerja(akun);") > 0 && A.indexOf("if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); return; }") > 0
-  && A.indexOf('function gambarAkun(akun) {\n  terapkanKunci(akun);') > 0 && A.indexOf('terapkanKunci(null);') > 0 && SUMBER.layar_ringkasan.indexOf("if (!tampil || terkunci() || !$('rkJam')) return;") > 0, JSON.stringify(tanpaGerbang));
+  && A.indexOf('function gambarAkun(akun) {\n  jagaKeranjang(akun);\n  terapkanKunci(akun);') > 0 && A.indexOf('terapkanKunci(null);') > 0 && SUMBER.layar_ringkasan.indexOf("if (!tampil || terkunci() || !$('rkJam')) return;") > 0, JSON.stringify(tanpaGerbang));
+// ---- 12 · GANTI ORANG (putaran 23c): keranjang Jual tidak terbawa ke akun berikutnya (uji peramban: uji_layar_kunci.py bagian 2)
+var iTanya = A.indexOf("(await tanyaKeranjang(B)) !== 'kosongkan'"), iLupa = A.indexOf("layar.lupakanOrang(); uidKeranjang = '';\n  await fb.keluar();"), iBelum = A.indexOf('catatan belum terkirim dari akun ini');
+ok('ganti orang: Keluar dengan keranjang berisi DITANYA dulu (sebelum pertanyaan catatan belum terkirim), keranjang dilupakan tepat sebelum keluar; keluar dari tempat lain / akun berbeda = dilupakan tanpa ditanya; kalimat owner persis',
+  iTanya > 0 && iBelum > iTanya && iLupa > iBelum && A.indexOf("if (!akun || akun.jenis === 'keluar') { layar.lupakanOrang(); uidKeranjang = ''; return; }") > 0 && A.indexOf('if (uidKeranjang && uidKeranjang !== akun.uid) layar.lupakanOrang();') > 0
+  && SUMBER.layar_jual.indexOf('lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))') > 0 && SUMBER.html.indexOf('id="modalKeranjang"') > 0);
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
 
@@ -244,6 +249,8 @@ if __name__ == '__main__':
             'tirai: bawaan terbuka sebelum Firebase menjawab': (js, ganti('kunci', 'let _kunci = true;', 'let _kunci = false;')),
             'tirai: menutup tanpa mengosongkan <main>': (js, ganti('app', "if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); return; }", "if (kunci) return;")),
             'tirai: akun belum disetujui ikut membuka': (js, ganti('app', "const kunci = !q.get('cadangan') && !bisaBekerja(akun);", "const kunci = !q.get('cadangan') && !akun;")),
+            'ganti orang: Keluar tanpa menanyakan keranjang': (js, ganti('app', "(await tanyaKeranjang(B)) !== 'kosongkan'", "false")),
+            'ganti orang: akun berbeda mewarisi keranjang': (js, ganti('app', 'if (uidKeranjang && uidKeranjang !== akun.uid) layar.lupakanOrang();', '')),
         }
         kode = 0
         for nama, (isi, src) in rusak.items():
