@@ -160,6 +160,17 @@ Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `
 - **Jaga CI kiriman ≤ 18** tetap hijau.
 - **Email akun selalu huruf kecil** saat dibuat di Console.
 
+Tambahan owner 24 Sep (sesudah 23d — dokumen saja, BELUM dikerjakan):
+
+- **a · Titik kas lokal.** Beranda untuk akun bukan-owner TIDAK PERNAH menggambar kas dari penyimpanan perangkat (`miqbal_titik_kas_v1`, dibaca
+  `ambilTitikKas` di `data/toko.js`). Uji: owner masuk → titik kas tersimpan di perangkat → Keluar → karyawan masuk → 0 angka kas di DOM.
+  Kontrol positif wajib berbunyi (mis. penjaganya dilepas → angka kas muncul).
+- **b · Catatan tertahan milik akun lain.** Layar owner menampilkan "N catatan milik <nama> tertahan di perangkat ini, terakhir <waktu>" (salinan
+  antre, `data/antre-lokal.js`), beserta pilihan owner: tunggu akunnya masuk lagi, atau tulis ulang atas nama owner dengan `olehUid` asli dicatat
+  di jejak.
+- **c · Uji isian lewat kolom sungguhan.** Tambahkan data contoh minimal di Firebase palsu (`alat-uji/uji_layar_kunci.py`) supaya tiap layar yang
+  punya isian punya minimal satu form yang diisi lewat kolom sungguhan (ketikan di DOM), bukan lewat keadaan layar seperti bagian ISIAN 23d.
+
 ## Lampiran A · Inventaris tulis (`python3 alat-uji/peta_akses.py`)
 
 | berkas | fungsi | koleksi · bentuk |
