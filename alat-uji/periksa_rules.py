@@ -10,7 +10,10 @@ Membuktikan bentuk rules, bukan perilaku server (itu docs/uji-rules-v3.md: Playg
   4. tiap create/update bukan-owner lewat fungsi yang memeriksa uid penulis (jujur() / diubahOlehUid / akunUid), atau ada di daftar
      pengecualian peta (permintaanAkses = uid sendiri); bukan-owner tidak pernah DELETE; arsipTahun owner saja; payung owner di paling bawah;
   5. daftar peran per koleksi di rules SAMA dengan baru/js/data/akses.js (BACA_STAF, DOK_STAF, BUAT_STAF, UBAH_STAF, KREDIT_STAF);
-  6. aksesAkun tidak pernah bisa memberi peran owner.
+  6. aksesAkun tidak pernah bisa memberi peran owner;
+  7. (putaran 23e) PAYUNG tidak mengalahkan batasan owner: Firestore memberi akses kalau SALAH SATU blok yang cocok mengizinkan, jadi tiap blok
+     yang membatasi owner (ada operasi get/list/create/update/delete yang tidak diberikan ke `owner()` tanpa syarat) WAJIB dikecualikan dari
+     payung; tiap koleksi yang dikecualikan wajib punya blok sendiri; tidak ada wildcard koleksi lain selain payung.
 
     python3 alat-uji/periksa_rules.py            → LULUS / daftar cacat (keluar 2)
     python3 alat-uji/periksa_rules.py --kontrol  → berkas rules cacat buatan WAJIB gagal (keluar 3 kalau ada yang lolos)
@@ -67,6 +70,40 @@ def allow(blok, op):
     return hasil
 
 
+OPERASI = ['get', 'list', 'create', 'update', 'delete']
+
+
+def suku_atas(kondisi):
+    """Suku-suku OR tingkat teratas dari satu kondisi allow (kurung dihormati)."""
+    k = re.sub(r'^if ', '', re.sub(r'\s+', ' ', kondisi).strip()); d = 0; bag = []; cur = ''; i = 0
+    while i < len(k):
+        c = k[i]
+        if c in '([{': d += 1
+        elif c in ')]}': d -= 1
+        if d == 0 and k[i:i + 4] == ' || ': bag.append(cur.strip()); cur = ''; i += 4; continue
+        cur += c; i += 1
+    bag.append(cur.strip()); return bag
+
+
+def batasan_owner(B):
+    """koleksi → operasi yang TIDAK diberikan ke owner() tanpa syarat oleh bloknya sendiri (= blok itu membatasi owner)."""
+    out = {}
+    for n, b in B.items():
+        kurang = [op for op in OPERASI if not any('owner()' in suku_atas(x) for x in allow(b, op))]
+        if kurang: out[n] = kurang
+    return out
+
+
+def payung(rules):
+    """→ (ada, dikecualikan[], kondisi) untuk blok wildcard paling bawah; payung lama `/{document=**}` = tanpa pengecualian."""
+    m = re.search(r'\n    match /\{document=\*\*\} \{\s*allow read, write: (if [^;]*);\s*\}\s*\}\s*\}\s*$', rules)
+    if m: return True, [], re.sub(r'\s+', ' ', m.group(1))
+    m = re.search(r'\n    match /\{(\w+)\}/\{\w+=\*\*\} \{\s*allow read, write: (if [^;]*);\s*\}\s*\}\s*\}\s*$', rules)
+    if not m: return False, [], ''
+    k = re.sub(r'\s+', ' ', m.group(2)); x = re.fullmatch(r"if owner\(\) && !\(" + m.group(1) + r" in \[([^\]]*)\]\)", k)
+    return True, (re.findall(r"'(\w+)'", x.group(1)) if x else None), k
+
+
 def periksa(rules, koleksi_js, akses_js):
     cacat = []
     rules = tanpa_komentar(rules)
@@ -110,8 +147,17 @@ def periksa(rules, koleksi_js, akses_js):
         for x in allow(b, 'delete'):
             if re.sub(r'\s+', ' ', x).strip() != 'if owner()': cacat.append(n + ': delete bukan hanya owner: ' + x)
     if [re.sub(r'\s+', ' ', x).strip() for x in allow(B.get('arsipTahun', ''), 'read')] != ['if owner()']: cacat.append('arsipTahun bukan owner saja')
-    pay = re.search(r'match /\{document=\*\*\} \{\s*allow read, write: if owner\(\);\s*\}\s*\}\s*\}\s*$', rules)
-    if not pay: cacat.append('payung owner-saja tidak lagi di paling bawah / tidak lagi owner saja')
+    ada, kecuali, kond = payung(rules)
+    if not ada: cacat.append('payung owner-saja tidak lagi di paling bawah (dihapus baru di putaran 25, sesudah semua koleksi punya blok)')
+    elif kecuali is None or not (kond == 'if owner()' or kond.startswith('if owner() && !(')): cacat.append('payung bukan owner saja / bentuk pengecualiannya tidak dikenali: ' + kond)
+    else:
+        # 7 · payung tidak boleh mengalahkan batasan owner
+        for n, ops in sorted(batasan_owner(B).items()):
+            if n not in kecuali: cacat.append('blok %s membatasi owner (%s) tapi koleksinya masih tercakup payung — payung mengalahkan batasannya' % (n, '/'.join(ops)))
+        for n in kecuali:
+            if n not in B: cacat.append('payung mengecualikan %s yang tidak punya blok sendiri — owner kehilangan akses ke koleksi itu' % n)
+    lain = [x for x in re.findall(r'\n\s*match (/[^\n{]*(?:\{[^}\n]*\}[^\n{]*)*)\{', rules) if re.search(r'=\*\*\}|^/\{\w+\}/', x.strip())]
+    if len(lain) > 1: cacat.append('wildcard koleksi selain payung: ' + ', '.join(x.strip() for x in lain[:-1]))
     # 5 · daftar peran sama dengan akses.js
     peran_txt = "['ben', 'karyawan']"
     for n in KOL:
@@ -155,7 +201,14 @@ if __name__ == '__main__':
             'bukan-owner boleh hapus': R.replace("    match /strukKeluar/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() || stafBuat(['ben', 'karyawan']);\n      allow update, delete: if owner();",
                                                   "    match /strukKeluar/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() || stafBuat(['ben', 'karyawan']);\n      allow update: if owner();\n      allow delete: if owner() || staf(['ben', 'karyawan']);"),
             'karyawan membaca koleksi uang': R.replace("    match /pengeluaranHarian/{id} {\n      allow read, write: if owner();", "    match /pengeluaranHarian/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow write: if owner();"),
-            'payung dibuka': R.replace("    match /{document=**} {\n      allow read, write: if owner();", "    match /{document=**} {\n      allow read: if masuk();\n      allow write: if owner();"),
+            'payung dibuka untuk yang login': R.replace("allow read, write: if owner() && !(koleksi in ['aksesAkun', 'permintaanAkses']);", "allow read, write: if (owner() || masuk()) && !(koleksi in ['aksesAkun', 'permintaanAkses']);"),
+            # putaran 23e: payung tidak boleh mengalahkan batasan owner
+            'payung lama dikembalikan (mengalahkan batasan owner)': R.replace("    match /{koleksi}/{sisa=**} {\n      allow read, write: if owner() && !(koleksi in ['aksesAkun', 'permintaanAkses']);", "    match /{document=**} {\n      allow read, write: if owner();"),
+            'payung lupa mengecualikan permintaanAkses': R.replace("!(koleksi in ['aksesAkun', 'permintaanAkses'])", "!(koleksi in ['aksesAkun'])"),
+            'blok lain membatasi owner tapi tidak dikecualikan': R.replace("    match /koreksiHpp/{id} {\n      allow read, write: if owner();", "    match /koreksiHpp/{id} {\n      allow read, delete: if owner();\n      allow create, update: if owner() && request.resource.data.alasan is string;"),
+            'payung mengecualikan koleksi tanpa blok': R.replace("!(koleksi in ['aksesAkun', 'permintaanAkses'])", "!(koleksi in ['aksesAkun', 'permintaanAkses', 'pengaturanLama'])"),
+            'payung dihapus sebelum putaran 25': re.sub(r"\n    // Payung: segalanya.*?\n    \}\n(?=  \}\n\}\s*$)", "\n", R, flags=re.S),
+            'wildcard koleksi tambahan di tengah': R.replace("    match /bukuHapus/{id} {", "    match /{apaSaja}/{id} {\n      allow read: if owner();\n    }\n    match /bukuHapus/{id} {"),
             'setelan upah ikut terbaca bukan-owner': R.replace("'peran', 'perangkat'] && staf(", "'peran', 'perangkat', 'upah'] && staf("),
             'aksesAkun bisa memberi owner': R.replace("request.resource.data.peran in ['ben', 'karyawan'] && request.resource.data.aktif is bool", "request.resource.data.peran in ['ben', 'karyawan', 'owner'] && request.resource.data.aktif is bool"),
             'update pesanan tanpa batas kolom': R.replace("&& request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'riwayatStatus', 'trxIdJual', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);", ";"),
@@ -175,4 +228,6 @@ if __name__ == '__main__':
     c = periksa(R, K, A)
     B = blok_rules(R)
     if c: print('RULES v3 CACAT (%d):' % len(c)); [print('   ✗ ' + x) for x in c]; sys.exit(2)
-    print('RULES v3 LULUS: %d blok koleksi · owner via email · jalur kasir@ utuh & dipersempit · tulis bukan-owner wajib uid · daftar peran = akses.js' % len(B))
+    _, kec, _ = payung(tanpa_komentar(R)); bo = batasan_owner(blok_rules(tanpa_komentar(R)))
+    print('RULES v3 LULUS: %d blok koleksi · owner via email · jalur kasir@ utuh & dipersempit · tulis bukan-owner wajib uid · daftar peran = akses.js · '
+          'payung tidak mengalahkan batasan owner (%s dikecualikan)' % (len(B), ', '.join('%s: %s' % (n, '/'.join(o)) for n, o in sorted(bo.items())) or 'tidak ada'))

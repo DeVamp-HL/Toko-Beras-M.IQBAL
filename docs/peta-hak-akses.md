@@ -68,7 +68,7 @@ tidak menyaring, jadi pendengar koleksi akan ditolak utuh.
 
 ## 4 · Peran × koleksi × operasi
 
-`O` = owner (email, payung — tidak berubah). `K` = kasir@ (jalur v2, disalin, dipersempit ke email). `B` = ben. `W` = karyawan.
+`O` = owner (email, payung — sejak 23e payung TIDAK mencakup `aksesAkun` & `permintaanAkses`, yang bloknya membatasi owner; payung dihapus di putaran 25). `K` = kasir@ (jalur v2, disalin, dipersempit ke email). `B` = ben. `W` = karyawan.
 
 | Koleksi | baca | create | update | delete |
 |---|---|---|---|---|
