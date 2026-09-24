@@ -497,6 +497,10 @@ export function barisBelumDisimpan(s) {
   return { aktif, parkir, total: aktif + parkir };
 }
 export const kalimatKeranjangKeluar = (n) => 'Keranjang berisi ' + n + ' baris belum disimpan — simpan atau kosongkan?';
+// putaran 23d: isian Jual SELAIN keranjang — pesanan yang sedang diketik, retur (tanpa/dengan nota), repack, setelan struk/wadah yang terbuka, karcis yang dirinci, tukar
+const ISIAN_JUAL_LAIN = ['psNama', 'psIsi', 'psAlamat', 'psNilai', 'aturStruk', 'aturWadah', 'karcis', 'tukar', 'namaRepack', 'rpWadah', 'rpLembar', 'rpUpah',
+  'rtNotaId', 'rtAlasan', 'rtNominal', 'rtAlasanTimpa', 'rtBarang', 'rtSelisih', 'rtPengganti'];
+export function adaIsianLain(s) { const a = keadaanAwal(); return ISIAN_JUAL_LAIN.some((k) => JSON.stringify(s[k] === undefined ? null : s[k]) !== JSON.stringify(a[k] === undefined ? null : a[k])); }
 /** Keadaan Jual untuk orang berikutnya: keranjang, parkir, nama pembeli, potongan, retur tukar, karcis, pesanan, isian — dibuang semua; yang tinggal cuma
  *  "sekarang" (mode cadangan). Kunci yang tidak ada di keadaanAwal ikut dikosongkan. Cermin keranjang di lapisan data (stok yang dipegang) ikut dilepas. */
 export function keadaanOrangBerikutnya(s) {

@@ -42,7 +42,8 @@ export function signOut() { pengguna = null; if (dengar) dengar(null); return Pr
 window.__ujiAuth = { masuk(email, uid) { pengguna = { email, uid }; if (dengar) dengar(pengguna); }, keluarDariTabLain() { pengguna = null; if (dengar) dengar(null); } };
 """,
     'firebase-firestore.js': r"""
-const akses = {}, pendengarAkses = {};
+const akses = {}, pendengarAkses = {}; const DATA = () => window.__ujiData || {}; window.__ujiTulis = window.__ujiTulis || [];
+const catatTulis = (jenis, ref) => { window.__ujiTulis.push([jenis, ref.nama, ref.id]); };
 window.__ujiAkses = { setel(uid, data) { akses[uid] = data; (pendengarAkses[uid] || []).forEach((f) => f()); } };
 const snapDok = (id, d) => ({ id, exists: () => !!d, data: () => d, metadata: { hasPendingWrites: false, fromCache: false } });
 export function initializeFirestore() { return { palsu: true }; }
@@ -53,15 +54,15 @@ export function onSnapshot(ref, a, b, c) {
   const ok = typeof a === 'function' ? a : b; let hidup = true;
   const kirim = () => {
     if (!hidup) return;
-    if (ref.id !== undefined) ok(snapDok(ref.id, ref.nama === 'aksesAkun' ? (akses[ref.id] || null) : null));
-    else ok({ docs: [], size: 0, empty: true, forEach() {}, metadata: { fromCache: false, hasPendingWrites: false } });
+    if (ref.id !== undefined) ok(snapDok(ref.id, ref.nama === 'aksesAkun' ? (akses[ref.id] || null) : ((DATA()[ref.nama] || []).find((x) => String(x.id) === ref.id) || null)));
+    else { const docs = (DATA()[ref.nama] || []).map((x) => snapDok(String(x.id), x)); ok({ docs, size: docs.length, empty: !docs.length, forEach: (f) => docs.forEach(f), metadata: { fromCache: false, hasPendingWrites: false } }); }
   };
   if (ref.nama === 'aksesAkun') (pendengarAkses[ref.id] = pendengarAkses[ref.id] || []).push(kirim);
   setTimeout(kirim, 0);
   return () => { hidup = false; };
 }
-export function writeBatch() { return { set() {}, update() {}, delete() {}, commit: () => Promise.resolve() }; }
-export const setDoc = () => Promise.resolve(), waitForPendingWrites = () => Promise.resolve();
+export function writeBatch() { return { set(r) { catatTulis('set', r); }, update(r) { catatTulis('ubah', r); }, delete(r) { catatTulis('hapus', r); }, commit: () => Promise.resolve() }; }
+export const setDoc = (r) => { catatTulis('set', r); return Promise.resolve(); }, waitForPendingWrites = () => Promise.resolve();
 export const getDocs = () => Promise.resolve({ docs: [], size: 0, empty: true, forEach() {} });
 """,
 }
@@ -121,6 +122,62 @@ SKENARIO_GANTI = r"""<script>
 })();
 </script>"""
 
+# Skenario ISIAN (putaran 23d) — owner mengisi isian di tujuh layar (Beranda tidak punya isian), lalu empat jalan keluar. ANGKA & NAMA CONTOH.
+DATA_SERVER = {'aturanToko': [{'id': 'hargaDraf', 'tanggal': '2026-09-20', 'jam': '10:00', 'draf': {'Beras Contoh|50': 700000, 'Beras Contoh|25': 355000}}]}
+LAYAR7 = ['jual', 'stok', 'pelanggan', 'harga', 'uang', 'laporan', 'menu']
+DRAF_LOKAL = ['miqbal_baru_draf_masuk', 'miqbal_baru_draf_belanja', 'miqbal_baru_draf_tutup']
+KALIMAT_ISIAN = 'Ada isian belum disimpan di: Jual (keranjang 2 baris), Stok, Pelanggan, Harga, Uang, Laporan, Menu — kembali untuk menyimpan, atau kosongkan semua?'
+SKENARIO_ISIAN = r"""<script>
+(async function () {
+  const tunggu = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sampai = async (f, ms) => { const t0 = Date.now(); while (Date.now() - t0 < (ms || 8000)) { try { if (f()) return true; } catch (e) { /* belum */ } await tunggu(40); } return false; };
+  const B = document.body, $ = (id) => document.getElementById(id), hasil = { langkah: [] }; const LX = () => window.__ujiLayar;
+  const DRAF_LOKAL = ['miqbal_baru_draf_masuk', 'miqbal_baru_draf_belanja', 'miqbal_baru_draf_tutup'];
+  const baris = (id, label, harga) => ({ id, trx: { jenis: 'karung', label, merkSumber: 'Contoh', jumlah: 1, satuan: 'karung', hargaSatuan: harga, hargaTotal: harga, totalKg: 50 } });
+  let HARI = '';
+  const isi = () => { const J = LX();
+    J.jual.keadaan.setel({ keranjang: [baris(1, 'Beras Contoh 50 kg', 690000)], pelanggan: 'Pembeli Contoh', aktifId: 1, idBerikut: 8, psNama: 'Pesanan Contoh',
+      antrean: [{ id: 7, beku: { items: [baris(2, 'Beras Contoh 25 kg', 345000)], pelanggan: 'Parkir Contoh', cara: 'Tunai', uang: 0, potongan: 0 } }] });
+    localStorage.setItem('miqbal_baru_draf_masuk', JSON.stringify({ contoh: true, pemasok: 'PEMASOK CONTOH' })); J.stok.keadaan.setel({ kt: { jenis: '', jumlah: '5', harga: '', toko: '' } });
+    J.pelanggan.keadaan.setel({ bayar: { nominal: '10000', cara: 'Tunai', catatan: 'contoh', pengantar: '' } });
+    localStorage.setItem('miqbal_baru_draf_belanja', JSON.stringify({ 'Beras Contoh': 3 })); J.harga.keadaan.setel({ pesan: { 'Beras Contoh': 3 }, ketik: '12500' });
+    J.uang.keadaan.setel({ catat: { untuk: 'toko', dari: 'laci', perlu: '', ketik: '25000', catatan: 'contoh' } }); localStorage.setItem('miqbal_baru_draf_tutup', JSON.stringify({ iso: HARI, laci: '100000' }));
+    J.laporan.keadaan.setel({ drafSetor: { masaPajak: '2026-08', tanggalSetor: '', jumlah: '1000', ntpn: '', atasNama: '', catatan: '' } });
+    J.menu.keadaan.setel({ catatanG: 'catatan contoh' }); };
+  const H = await import('./js/layar/harga-logika.js');
+  const potret = async () => { await tunggu(250); const J = LX(); const b = {}; ['stok', 'pelanggan', 'harga', 'uang', 'laporan', 'menu'].forEach((k) => { b[k] = J[k].belumDisimpan(); }); b.jual = J.jual.belumDisimpan().total > 0 || J.jual.adaIsianLain();
+    const sj = J.jual.keadaan.baca();
+    return { terkunci: B.classList.contains('terkunci'), belum: b, lokal: DRAF_LOKAL.filter((k) => localStorage.getItem(k) !== null),
+      nilai: { jualBaris: J.jual.belumDisimpan().total, psNama: sj.psNama, stokKt: J.stok.keadaan.baca().kt.jumlah, pelBayar: J.pelanggan.keadaan.baca().bayar.nominal, hargaKetik: J.harga.keadaan.baca().ketik,
+        hargaPesan: Object.keys(J.harga.keadaan.baca().pesan || {}).length, uangKetik: J.uang.keadaan.baca().catat.ketik, lapSetor: J.laporan.keadaan.baca().drafSetor, menuCat: J.menu.keadaan.baca().catatanG },
+      server: JSON.stringify(((window.__ujiData.aturanToko || []).find((d) => d.id === 'hargaDraf') || {}).draf || null), cache: JSON.stringify(H.drafHarga()), sentuhServer: (window.__ujiTulis || []).filter((t) => t[1] === 'aturanToko' && t[2] === 'hargaDraf').length,
+      tanya: $('modalKeranjang').classList.contains('tampil') ? $('judulKeranjang').textContent : '', tombol: [$('keranjangSimpan').textContent, $('keranjangKosongkan').textContent] }; };
+  const catat = async (nama) => { hasil.langkah.push(Object.assign({ nama }, await potret())); };
+  const bukaPil = async () => { const p = [...document.querySelectorAll('[data-pil-akun]')].find((e) => e.offsetParent !== null); if (p) p.click(); await tunggu(120); };
+  const keluarLewatPil = async () => { await bukaPil(); $('tombolKeluar').click(); };
+  const masuk = async (email, uid) => { window.__ujiAuth.masuk(email, uid); await sampai(() => !B.classList.contains('terkunci')); await tunggu(150); };
+  try {
+    const akses = await import('./js/data/akses.js'); HARI = (await import('./js/inti/format.js')).hariIniIso(new Date());
+    await sampai(() => window.__ujiLayar && window.__ujiAuth && window.__ujiAkses);
+    window.__ujiAkses.setel('uid-b', { aktif: true, peran: 'karyawan', nama: 'Akun Uji B' });
+    await masuk(akses.EMAIL_OWNER, 'uid-owner'); hasil.serverAwal = JSON.stringify(((window.__ujiData.aturanToko || []).find((d) => d.id === 'hargaDraf') || {}).draf || null); hasil.cacheAwal = JSON.stringify(H.drafHarga());
+    isi(); await catat('owner mengisi tujuh layar');
+    await keluarLewatPil(); await sampai(() => $('modalKeranjang').classList.contains('tampil')); await catat('Keluar ditekan');
+    $('keranjangSimpan').click(); await catat('Kembali untuk menyimpan');
+    await keluarLewatPil(); await sampai(() => $('modalKeranjang').classList.contains('tampil'));
+    $('keranjangKosongkan').click(); await sampai(() => B.classList.contains('terkunci')); await catat('Kosongkan semua lalu keluar');
+    await masuk('b@uji.contoh', 'uid-b'); await catat('akun lain masuk');
+    isi(); window.__ujiAuth.keluarDariTabLain(); await sampai(() => B.classList.contains('terkunci')); await catat('keluar dari tab lain');
+    await masuk(akses.EMAIL_OWNER, 'uid-owner'); await catat('owner masuk sesudah tab lain');
+    window.__ujiAuth.keluarDariTabLain(); await sampai(() => B.classList.contains('terkunci')); await masuk('b@uji.contoh', 'uid-b');
+    isi(); window.__ujiAkses.setel('uid-b', { aktif: false, peran: 'karyawan', nama: 'Akun Uji B' }); await sampai(() => B.classList.contains('terkunci')); await catat('akun B dinonaktifkan');
+    $('tombolKeluarAkun').click(); await sampai(() => !$('formMasuk').hidden); await masuk(akses.EMAIL_OWNER, 'uid-owner'); await catat('owner masuk lagi');
+  } catch (e) { hasil.galat = String(e && (e.stack || e.message) || e); }
+  const pre = document.createElement('pre'); pre.id = '__hasil'; pre.hidden = true; pre.textContent = JSON.stringify(hasil); B.appendChild(pre);
+  fetch('/_siap');
+})();
+</script>"""
+
 POTONG_KALIMAT = 'Keranjang berisi 2 baris belum disimpan — simpan atau kosongkan?'
 # teks yang tidak boleh TERLIHAT (innerText, huruf kecil) selama tirai menutup: nama akun, status jaringan & antrean, pil kepala
 TERLARANG_TERKUNCI = ['akun uji b', 'tanpa internet', 'menunggu server', 'belum terkirim', 'memuat…']
@@ -141,13 +198,15 @@ def siapkan(rusak=None, skenario='tirai'):
         ekor = ("<img src='/_tahan' alt='' style='display:none'><script>var __t=setInterval(function(){if(document.body.classList.contains('terkunci')||document.querySelector('main *'))"
                 "{clearInterval(__t);fetch('/_siap');}},150);</script>")
     else:
-        ekor = "<img src='/_tahan' alt='' style='display:none'>" + SKENARIO_GANTI
+        ekor = "<img src='/_tahan' alt='' style='display:none'>" + (SKENARIO_GANTI if skenario == 'ganti' else SKENARIO_ISIAN)
+        if skenario == 'isian': isi += '<script>window.__ujiData = ' + json.dumps(DATA_SERVER) + ';</script>'   # draf SERVER milik toko (aturanToko/hargaDraf)
         for nama, sumber in PALSU.items():
             os.makedirs(os.path.join(d, '_palsu'), exist_ok=True); open(os.path.join(d, '_palsu', nama), 'w', encoding='utf-8').write(sumber)
         fbp = os.path.join(d, 'baru', 'js', 'data', 'firebase.js'); s = open(fbp, encoding='utf-8').read()
         for nama in PALSU: assert SDK + nama in s, 'impor ' + nama + ' berubah — perbarui uji'; s = s.replace(SDK + nama, '/_palsu/' + nama)
         open(fbp, 'w', encoding='utf-8').write(s)
-        ap = os.path.join(d, 'baru', 'js', 'app.js'); open(ap, 'a', encoding='utf-8').write('\nwindow.__ujiJual = layar;   // uji_layar_kunci: pegangan layar Jual (salinan uji saja)\n')
+        ap = os.path.join(d, 'baru', 'js', 'app.js'); open(ap, 'a', encoding='utf-8').write('\nwindow.__ujiJual = layar;   // uji_layar_kunci: pegangan layar (salinan uji saja)\n'
+            'window.__ujiLayar = { jual: layar, stok, pelanggan, harga, uang, laporan, menu, ringkasan };\n')
     assert '<head>' in t and '</body>' in t; open(idx, 'w', encoding='utf-8').write(t.replace('<head>', '<head>' + isi, 1).replace('</body>', ekor + '</body>', 1))
     json.dump(CADANGAN, open(os.path.join(d, 'cadangan-contoh.json'), 'w'))
     for berkas, lama, baru in (rusak or []):
@@ -284,9 +343,39 @@ def periksa_ganti(h):
     harus('akun lain masuk', lambda x: not x['terkunci'] and x['baris'] == 0 and 'pembeli contoh' not in lihat(x) and 'keranjang kosong' in lihat(x), 'akun berikutnya mewarisi keranjang / nama pembeli akun sebelumnya')
     harus('keluar dari tab lain, owner masuk', lambda x: not x['terkunci'] and x['baris'] == 0 and 'pembeli contoh b' not in lihat(x), 'keluar tanpa tombol (tab lain) — keranjang terbawa ke akun berikutnya')
     harus('akun B tanpa internet', lambda x: not x['terkunci'] and 'tanpa internet' in lihat(x) and 'akun uji b' in lihat(x) and x['rpDom'] > 0 and x['pilTerlihat'] and x['lembarTerlihat'], 'kontrol positif gagal — status jaringan / nama akun / angka / pil / lembar akun tidak terlihat saat bekerja (uji tidak bisa melihat)')
-    harus('akun B dinonaktifkan', lambda x: x['terkunci'] and x['rpDom'] == 0 and x['mainKosong'] and not terlarang(x) and not x['pilTerlihat'] and not x['lembarTerlihat'],
+    harus('akun B dinonaktifkan', lambda x: x['terkunci'] and x['baris'] == 0 and x['rpDom'] == 0 and x['mainKosong'] and not terlarang(x) and not x['pilTerlihat'] and not x['lembarTerlihat'],
           'tirai menutup tapi masih terlihat: %s' % terlarang(L.get('akun B dinonaktifkan', {'terlihat': ''})) + ' · rp %s · main kosong %s · pil %s · lembar %s' % tuple(L.get('akun B dinonaktifkan', {}).get(k) for k in ('rpDom', 'mainKosong', 'pilTerlihat', 'lembarTerlihat')))
     harus('nonaktif keluar, owner masuk', lambda x: not x['terkunci'] and x['baris'] == 0 and 'pembeli contoh c' not in lihat(x), 'akun nonaktif keluar — keranjangnya terbawa ke owner')
+    return c
+
+
+def periksa_isian(h):
+    """→ daftar cacat skenario ISIAN (putaran 23d). Kontrol positif di langkah pertama: ketujuh layar MELAPORKAN isian & draf lokal ada."""
+    m = re.search(r'<pre id="__hasil"[^>]*>(.*?)</pre>', h, re.S)
+    if not m: return ['skenario isian tidak menulis hasil — uji tidak sah']
+    import html as H
+    r = json.loads(H.unescape(m.group(1)))
+    if r.get('galat'): return ['skenario isian berhenti: ' + r['galat'][:300]]
+    L = {x['nama']: x for x in r['langkah']}; c = []; awal = r.get('serverAwal')
+    def harus(langkah, syarat, kalimat):
+        x = L.get(langkah)
+        if x is None: c.append(langkah + ': langkah tidak tercapai'); return
+        if not syarat(x): c.append(langkah + ': ' + kalimat(x))
+    masih = lambda x: [k for k in LAYAR7 if x['belum'].get(k)]
+    kosong_nilai = lambda x: x['nilai']['jualBaris'] == 0 and x['nilai']['psNama'] == '' and x['nilai']['stokKt'] == '' and x['nilai']['pelBayar'] == '' and x['nilai']['hargaKetik'] == '' \
+        and x['nilai']['hargaPesan'] == 0 and x['nilai']['uangKetik'] == '' and x['nilai']['lapSetor'] is None and x['nilai']['menuCat'] == ''
+    server_utuh = lambda x: x['server'] == awal and awal not in (None, 'null') and x['sentuhServer'] == 0
+    owner_lihat = lambda x: x['cache'] == r.get('cacheAwal') and r.get('cacheAwal') not in (None, '{}')   # draf katalog tampil lagi untuk owner (dibaca ulang dari server)
+    harus('owner mengisi tujuh layar', lambda x: masih(x) == LAYAR7 and sorted(x['lokal']) == sorted(DRAF_LOKAL) and server_utuh(x) and owner_lihat(x),
+          lambda x: 'kontrol positif gagal — layar yang melapor isian: %s · draf lokal: %s · server: %s' % (masih(x), x['lokal'], x['server']))
+    harus('Keluar ditekan', lambda x: x['tanya'] == KALIMAT_ISIAN and x['tombol'] == ['Kembali untuk menyimpan', 'Kosongkan semua lalu keluar'], lambda x: 'pertanyaan %r · tombol %r' % (x['tanya'], x['tombol']))
+    harus('Kembali untuk menyimpan', lambda x: not x['terkunci'] and masih(x) == LAYAR7 and len(x['lokal']) == 3, lambda x: 'kembali ≠ utuh: %s · lokal %s' % (masih(x), x['lokal']))
+    for nama in ['Kosongkan semua lalu keluar', 'akun lain masuk', 'keluar dari tab lain', 'owner masuk sesudah tab lain', 'akun B dinonaktifkan', 'owner masuk lagi']:
+        harus(nama, lambda x: not masih(x) and not x['lokal'] and kosong_nilai(x) and server_utuh(x),
+              lambda x: 'masih ada isian di %s · draf lokal %s · nilai %s · draf server %s (sentuh %s)' % (masih(x), x['lokal'], {k: v for k, v in x['nilai'].items() if v not in ('', 0, None)}, 'UTUH' if x['server'] == awal else 'BERUBAH', x['sentuhServer']))
+    harus('akun B dinonaktifkan', lambda x: x['terkunci'], lambda x: 'tirai tidak menutup')
+    for nama in ['owner masuk sesudah tab lain', 'owner masuk lagi']:
+        harus(nama, owner_lihat, lambda x: 'draf katalog harga tidak tampil lagi untuk owner: %s' % x['cache'])
     return c
 
 
@@ -296,7 +385,7 @@ def jalankan(skenario, rusak=None, jalur='/baru/index.html'):
     try:
         h, sebab = dom(d, jalur, butuh_cdn=(skenario == 'tirai'))
         if sebab: return [], sebab
-        return (periksa_terkunci(h) if skenario == 'tirai' else periksa_ganti(h)), None
+        return {'tirai': periksa_terkunci, 'ganti': periksa_ganti, 'isian': periksa_isian}[skenario](h), None
     finally: shutil.rmtree(d, ignore_errors=True)
 
 
@@ -309,13 +398,20 @@ KONTROL = [
     ('kontrol 3 · beranda tanpa penjaga tirai', 'tirai', [('js/layar/ringkasan.js', "if (!tampil || terkunci()) return;\n    if (!$('rkHero')) bangun();", "if (!tampil) return;\n    if (!$('rkHero')) bangun();"),
                                                           ('js/app.js', "SEMUA_LAYAR().forEach((l) => l.tampilkan(false));\n  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; });", "if (kunci) {")]),
     ('kontrol 4 · keranjang tidak pernah dilupakan', 'ganti', [('js/layar/jual.js', 'lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))', 'lupakanOrang: () => {}')]),
-    ('kontrol 5 · keluar dari tab lain tidak dijaga', 'ganti', [('js/app.js', "if (!akun || akun.jenis === 'keluar') { layar.lupakanOrang(); uidKeranjang = ''; return; }", "if (!akun || akun.jenis === 'keluar') { uidKeranjang = ''; return; }")]),
-    ('kontrol 6 · Keluar tanpa bertanya', 'ganti', [('js/app.js', "(await tanyaKeranjang(B)) !== 'kosongkan'", "false")]),
+    ('kontrol 5 · keluar dari tab lain / nonaktif tidak dijaga', 'ganti', [('js/app.js', "if (!akun || akun.jenis === 'keluar' || !bisaBekerja(akun)) { lupakanSemua(); uidKeranjang = ''; return; }", "if (!akun || akun.jenis === 'keluar' || !bisaBekerja(akun)) { uidKeranjang = ''; return; }")]),
+    ('kontrol 6 · Keluar tanpa bertanya', 'ganti', [('js/app.js', "(await tanyaIsian(daftar, B, hanyaKeranjang)) !== 'kosongkan'", "false")]),
     ('kontrol 7 · pengosong lupa keranjang yang diparkir', 'ganti', [('js/layar/jual-logika.js', "const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null });", "const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null, antrean: (s && s.antrean) || [] });")]),
     # lembar akun (nama + status jaringan, di luar <main>) disembunyikan DUA penjaga (app.js menutupnya + aturan tirai di CSS) — kontrol merusak keduanya
     ('kontrol 8 · lembar akun tetap terbuka saat tirai menutup', 'ganti', [('js/app.js', "document.getElementById('lembarAkun').classList.remove('buka'); return; }", "return; }"),
                                                                         ('css/kerangka.css', 'body.terkunci main, body.terkunci .nav, body.terkunci .side, body.terkunci .lembar-akun { display: none !important; }', 'body.terkunci main, body.terkunci .nav, body.terkunci .side { display: none !important; }')]),
 ]
+# putaran 23d — SATU layar yang tidak dikosongkan wajib membuat uji isian gagal (satu kontrol per layar), deteksi yang buta satu layar, draf lokal yang tertinggal,
+# dan pengosong yang ikut menghapus draf SERVER
+KONTROL += [('kontrol 10 · Jual tidak dikosongkan (isian)', 'isian', [('js/layar/jual.js', 'lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))', 'lupakanOrang: () => {}')])]
+KONTROL += [('kontrol 1%d · %s tidak dikosongkan' % (i + 1, n.capitalize()), 'isian', [('js/layar/%s.js' % n, 'lupakanOrang: ISIAN.lupakan', 'lupakanOrang: () => {}')]) for i, n in enumerate(['stok', 'pelanggan', 'harga', 'uang', 'laporan', 'menu'])]
+KONTROL += [('kontrol 17 · deteksi buta layar Uang', 'isian', [('js/layar/uang.js', 'belumDisimpan: ISIAN.belum', 'belumDisimpan: () => false')]),
+            ('kontrol 18 · draf lokal tidak dihapus', 'isian', [('js/inti/isian.js', 'drafLokal.forEach(([k]) => hapusLokal(k));', '')]),
+            ('kontrol 19 · pengosong ikut menghapus draf server (hargaDraf)', 'isian', [('js/app.js', "function lupakanSemua() { LAYAR_ISIAN().forEach(([, , l]) => l.lupakanOrang()); }", "function lupakanSemua() { LAYAR_ISIAN().forEach(([, , l]) => l.lupakanOrang()); fb.hapusBerkas([{ koleksi: 'aturanToko', id: 'hargaDraf' }]).catch(() => {}); }")])]
 
 
 if __name__ == '__main__':
@@ -342,11 +438,13 @@ if __name__ == '__main__':
         print(('BERBUNYI ' if ok else 'DIAM!!   ') + 'kontrol 9 · Firebase tidak termuat → ' + (KALIMAT_SEBAB.get(sebab, 'sebab: ' + str(sebab) + ' · cacat: ' + str(c[:1])))[:110]); kode = kode if ok else 3
         sys.exit(kode)
     kode = 0
-    for skenario, judul in [('tirai', 'TIRAI'), ('ganti', 'GANTI ORANG')]:
+    for skenario, judul in [('tirai', 'TIRAI'), ('ganti', 'GANTI ORANG'), ('isian', 'ISIAN LOKAL')]:
         c, sebab = jalankan(skenario)
         if sebab: print(judul + ' · ' + KALIMAT_SEBAB[sebab]); kode = max(kode, 4 if sebab == JARINGAN else 2); continue
         if c: print(judul + ' GAGAL UJI:'); [print('   ✗ ' + x) for x in c]; kode = max(kode, 2); continue
         print({'tirai': 'TIRAI LULUS: sebelum masuk — formulir Masuk tampil, 0 angka rupiah, 0 kartu, semua <main> kosong (penyimpanan lokal berisi titik kas contoh)',
                'ganti': 'GANTI ORANG LULUS: Keluar (lewat pil) dengan keranjang berisi → ditanya; Simpan dulu = tetap masuk; Kosongkan → akun lain mulai dari keranjang kosong; '
-                        'keluar dari tab lain & akun nonaktif juga melupakan keranjang; dinonaktifkan saat tanpa internet dengan lembar akun terbuka → 0 rupiah, pil OWNER/nama, lembar akun & status jaringan tidak terlihat'}[skenario])
+                        'keluar dari tab lain & akun nonaktif juga melupakan keranjang; dinonaktifkan saat tanpa internet dengan lembar akun terbuka → 0 rupiah, pil OWNER/nama, lembar akun & status jaringan tidak terlihat',
+               'isian': 'ISIAN LOKAL LULUS: isian di tujuh layar (Beranda tanpa isian) → Keluar = SATU pertanyaan menyebut layarnya; Kembali = utuh; Kosongkan / akun lain / tab lain / nonaktif → '
+                        'semua isian & draf lokal kosong; draf katalog harga di SERVER utuh, tidak disentuh'}[skenario])
     sys.exit(kode)

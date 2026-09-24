@@ -715,6 +715,8 @@ terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap(tekanTuts(s, '2')); tera
 terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap(tekanTuts(s, '1')); terap(masukkan(s));
 var BD = barisBelumDisimpan(s), sisaDipegang = chip('karung', 'Angsa', 50).sisa;
 ok('23c: baris belum disimpan = keranjang aktif + yang diparkir (1 + 1); kalimat tanyanya persis kalimat owner', BD.aktif === 1 && BD.parkir === 1 && BD.total === 2 && kalimatKeranjangKeluar(2) === 'Keranjang berisi 2 baris belum disimpan — simpan atau kosongkan?', JSON.stringify(BD));
+var sPs = Object.assign(keadaanAwal(), { psNama: 'Pesanan Contoh' }), sRt = Object.assign(keadaanAwal(), { rtNominal: '5000' }), sStr = Object.assign(keadaanAwal(), { aturStruk: { kop: 'x' } });
+ok('23d: isian Jual selain keranjang terdeteksi (pesanan yang diketik, retur, setelan struk terbuka); keadaan awal = tanpa isian; sesudah orang berikutnya = tanpa isian', adaIsianLain(sPs) && adaIsianLain(sRt) && adaIsianLain(sStr) && !adaIsianLain(keadaanAwal()) && !adaIsianLain(keadaanOrangBerikutnya(sPs)));
 var sLama = s; s = keadaanOrangBerikutnya(Object.assign({}, s, { isiW: 3 }));
 ok('23c: orang berikutnya — keranjang, parkir, nama pembeli kosong; kunci di luar keadaanAwal ikut dibuang; "sekarang" tetap; stok yang dipegang keranjang (3 karung) dilepas', s.keranjang.length === 0 && s.antrean.length === 0 && s.pelanggan === '' && s.isiW === undefined && s.sekarang === sLama.sekarang && barisBelumDisimpan(s).total === 0 && sisaDipegang === sisaAwal - 3 && chip('karung', 'Angsa', 50).sisa === sisaAwal, JSON.stringify([sisaAwal, sisaDipegang, chip('karung', 'Angsa', 50).sisa, s.antrean.length]));
 
@@ -788,6 +790,7 @@ if __name__ == '__main__':
             # ---- PUTARAN 23c: ganti orang
             'orang berikutnya mewarisi keranjang yang diparkir': js.replace("const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null });", "const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null, antrean: (s && s.antrean) || [] });"),
             'orang berikutnya: stok yang dipegang keranjang lama tidak dilepas': js.replace("  sinkronKeranjang(baru);\n  return baru;", "  return baru;"),
+            'isian pesanan Jual tidak terdeteksi': js.replace("const ISIAN_JUAL_LAIN = ['psNama', ", "const ISIAN_JUAL_LAIN = ["),
             'baris belum disimpan lupa keranjang yang diparkir': js.replace("return { aktif, parkir, total: aktif + parkir };", "return { aktif, parkir, total: aktif };"),
             # ---- PUTARAN 21: belanja terakhir · saran benang · takar dari karung yang dipilih
             'belanja terakhir mencampur nota orang lain': js.replace("if (kunciPelanggan(p.namaPelanggan) !== k) return; const g = String(p.grupNota || p.id);", "const g = String(p.grupNota || p.id);"),

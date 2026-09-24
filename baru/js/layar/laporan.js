@@ -4,6 +4,7 @@
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
+import { pasangIsian } from '../inti/isian.js';
 import { RP, ANGKA, tanggalPendek } from '../inti/format.js';
 import * as LP from './laporan-logika.js';
 import * as PJ from './pajak-logika.js';
@@ -21,7 +22,8 @@ const bacaLokal = (k) => { try { return localStorage.getItem(k); } catch (e) { r
 const PAKET_AWAL = () => ({ labarugi: true, neraca: true, aruskas: true, omzet: true });
 
 export function pasangLayarLaporan(akar, opsi) {
-  const K = buatKeadaan({ keluarga: LP.KELUARGA_LAPORAN.some((k) => k[0] === bacaLokal(KUNCI_KELUARGA)) ? bacaLokal(KUNCI_KELUARGA) : 'laba', kabar: '', kabarAwas: false,
+  // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
+  const awal = () => ({ keluarga: LP.KELUARGA_LAPORAN.some((k) => k[0] === bacaLokal(KUNCI_KELUARGA)) ? bacaLokal(KUNCI_KELUARGA) : 'laba', kabar: '', kabarAwas: false,
     bulanL: null, kepingL: 'kotor', bukaTT: false, bukaRugi: false, bukaSusut: false,
     hariH: null, bukaBuku: false, mingguM: null, tahunT: null,
     bulanB: null, tabB: 'ringkas', aturR: null, yakinBatal: false, pilihBukti: {},
@@ -29,6 +31,8 @@ export function pasangLayarLaporan(akar, opsi) {
     tabD: 'laporan', jenisD: 'labarugi', keD: null, rentangD: 1, bandingD: null, paket: PAKET_AWAL(), jenisK: 'setor', pilihK: {}, cariK: '',
     drafI: null, isiI: null, aturD: null, sibuk: false,
     drafPj: null, drafSetor: null, drafLuar: null, yakinPj: null });
+  const K = buatKeadaan(awal());
+  const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD'], []);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
@@ -371,5 +375,5 @@ export function pasangLayarLaporan(akar, opsi) {
   K.dengar(gambar); dengarkan(() => gambar());
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
   const buka = (keluarga, t) => { AKSI.keluarga({ nama: LP.KELUARGA_LAPORAN.some((k) => k[0] === keluarga) ? keluarga : 'laba' }); if (t && t.awal && keluarga === 'mingguan') set({ mingguM: t.awal }); if (t && t.tahun && keluarga === 'tahunan') set({ tahunT: Number(t.tahun) }); if (t && t.tab && keluarga === 'dokumen') set({ tabD: t.tab }); if (t && t.jenis && keluarga === 'dokumen') set({ tabD: 'kecil', jenisK: t.jenis }); if (t && t.bulan && keluarga === 'laba') set({ bulanL: t.bulan }); };
-  return { gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
 }

@@ -719,5 +719,5 @@ export function pasangLayarJual(akar, opsi) {
   dengarkan(() => { _rak = null; gambar(); gulirkan(akar, RP); });
   gambar(); gulirkan(akar, RP);
   // putaran 23c: keranjang tidak terbawa ke akun berikutnya — app.js menanyakannya saat Keluar lalu melupakannya
-  return { keadaan: K, gambar, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s)) };
+  return { keadaan: K, gambar, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s)) };
 }

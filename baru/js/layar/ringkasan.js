@@ -201,7 +201,9 @@ export function pasangLayarRingkasan(akar, opsi) {
   dengarkan(() => { ix = null; perbarui('data'); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) perbarui('data'); });   // kembali ke depan → angka & cincin diselaraskan
 
+  // putaran 23d: Beranda tidak punya kolom isian — tidak ada yang ditanyakan atau dikosongkan saat ganti orang (tirai sudah mengosongkan tampilannya)
   return {
+    belumDisimpan: () => false, lupakanOrang: () => {},
     gambar: () => perbarui('data'),
     tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { angkaTampil = null; kunciNotaLama = null; akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); perbarui('tampil'); } },
   };
