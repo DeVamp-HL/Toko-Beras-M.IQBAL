@@ -5,6 +5,7 @@
 // Keputusan owner 24 Sep: akun tanpa aksesAkun aktif = nol akses (kecuali minta didaftarkan); owner dikenali lewat EMAIL, aksesAkun tak pernah
 // memberi peran owner; jalur kasir@ tetap milik kasir@ saja; satu baris jejak per kiriman bukan-owner memuat daftar dokumennya.
 import { KOLEKSI } from './koleksi.js';
+import { kpNilaiKiriman, kpNamaBulan } from './kunci-periode.js';
 
 export const EMAIL_OWNER = 'owner@tokoberasmiqbal.web.app';
 export const EMAIL_KASIR = 'kasir@tokoberasmiqbal.web.app';
@@ -129,8 +130,10 @@ const NAMA_TINDAKAN = { kedatangan: 'hitung truk & draf kedatangan', uangKeluar:
 /**
  * Penjaga penulis pusat untuk akun bukan-owner — dijalankan SEBELUM dikirim. dokumen = [{ koleksi, data, ada, lama }] (ada/lama dari cache),
  * hapus = [{ koleksi, id }]. hakPeran = kisi SS2 peran itu ({ tindakan: 'sendiri'|'owner'|'tidak' }). Kembali { tolak } atau { accessCall }.
+ * Putaran 25: bukan-owner hanya boleh menulis catatan bertanggal bulan berjalan atau bulan lalu SELAMA masa tenggang minimal — di rules tanpa get()
+ * (kunciPeriode tidak pernah dibaca untuk bukan-owner), jadi access call tetap 1 per dokumen. Di luar itu: owner yang menulis (ditolak server → daftar ditolak).
  */
-export function periksaKiriman(akun, dokumen, hapus, hakPeran) {
+export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
   if (!akun) return { tolak: 'Belum masuk' };
   if (akun.jenis === 'owner') return { accessCall: 0 };
   if (!bisaBekerja(akun)) return { tolak: akun.kalimat || 'Akun ini belum bisa mencatat' };
@@ -159,6 +162,9 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran) {
       if (x.koleksi === 'pesanan' && (['dibayar', 'batal'].indexOf(String(lama.status || '')) >= 0 || d.status !== 'dibayar')) return { tolak: tolakTindakan('koreksi') };
     }
   }
+  // putaran 25: hanya bulan berjalan / bulan lalu dalam masa tenggang minimal (rules tglStaf(), tanpa get()); dinilai SESUDAH hak, supaya kalimat hak tetap yang tampil
+  const lewat = kpNilaiKiriman(D.map((x) => ({ koleksi: x.koleksi, data: x.data, lama: x.lama })), null, kini || new Date(Date.now())).lewatTenggang;
+  if (lewat.length) return { tolak: 'Catatan bertanggal ' + kpNamaBulan(lewat[0].bulan) + ' sudah lewat masa tenggang — hanya owner yang bisa mencatatnya sekarang' };
   return { accessCall };
 }
 

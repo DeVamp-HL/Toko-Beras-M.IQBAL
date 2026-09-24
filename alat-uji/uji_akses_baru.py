@@ -76,15 +76,15 @@ ok('atribusi: bukan-owner MENGUBAH dokumen lama → TIDAK menambah oleh/olehUid/
   !('oleh' in aU) && !('olehUid' in aU) && !('perangkat' in aU) && !('lokasi' in aU) && aU.diubahOlehUid === 'uid-kry' && aUO.oleh === 'Owner' && aUO.olehUid === 'uid-owner', JSON.stringify(aU));
 
 // ---- 5 · penjaga kiriman bukan-owner (sebelum dikirim) — sama dengan rules v3
-var nota = function (cara, n) { var a = []; for (var i = 0; i < n; i++) a.push({ koleksi: 'penjualan', data: { id: 100 + i, caraBayar: cara, jenis: 'literan', hargaTotal: 13500 }, ada: false, lama: null }); return a; };
-var p1 = periksaKiriman(KRY, nota('Tunai', 3).concat([{ koleksi: 'stokBahanLiteran', data: { id: 101.5, tipe: 'pakai' }, ada: false }, { koleksi: 'strukKeluar', data: { id: 9 }, ada: false }]), [], HAK_KRY);
-var p2 = periksaKiriman(KRY, nota('Kredit', 1), [], HAK_KRY), p3 = periksaKiriman(BEN, nota('Kredit', 1).concat([{ koleksi: 'piutangMutasi', data: { id: 5, tipe: 'bayar' }, ada: false }]), [], HAK_BEN);
+var nota = function (cara, n) { var a = []; for (var i = 0; i < n; i++) a.push({ koleksi: 'penjualan', data: { id: 100 + i, tanggal: W.tanggal, caraBayar: cara, jenis: 'literan', hargaTotal: 13500 }, ada: false, lama: null }); return a; };
+var p1 = periksaKiriman(KRY, nota('Tunai', 3).concat([{ koleksi: 'stokBahanLiteran', data: { id: 101.5, tanggal: W.tanggal, tipe: 'pakai' }, ada: false }, { koleksi: 'strukKeluar', data: { id: 9 }, ada: false }]), [], HAK_KRY);
+var p2 = periksaKiriman(KRY, nota('Kredit', 1), [], HAK_KRY), p3 = periksaKiriman(BEN, nota('Kredit', 1).concat([{ koleksi: 'piutangMutasi', data: { id: 5, tanggal: W.tanggal, tipe: 'bayar' }, ada: false }]), [], HAK_BEN);
 ok('kiriman: karyawan nota tunai 3 baris + kantong pakai + struk = 5 dokumen → boleh, access call 6 (dokumen + 1 jejak); karyawan nota KREDIT ditolak ("minta owner"); Ben nota kredit + bayar sebagian → boleh',
   !p1.tolak && p1.accessCall === 6 && p2.tolak === KALIMAT_MINTA_OWNER && !p3.tolak && p3.accessCall === 3, JSON.stringify([p1, p2, p3]));
-var p4 = periksaKiriman(BEN, [{ koleksi: 'piutangMutasi', data: { id: 6, tipe: 'hapusBuku' }, ada: false }], [], HAK_BEN), p5 = periksaKiriman(BEN, [{ koleksi: 'stokBahanKemasan', data: { id: 7, tipe: 'beli', hargaTotal: 100000 }, ada: false }], [], HAK_BEN),
-  p6 = periksaKiriman(BEN, [{ koleksi: 'batchMasuk', data: { id: 8 }, ada: false }], [], HAK_BEN), p7 = periksaKiriman(KRY, [{ koleksi: 'batchMasuk', data: { id: 8 }, ada: false }], [], HAK_KRY),
-  p8 = periksaKiriman(BEN, [{ koleksi: 'pengeluaranHarian', data: { id: 9 }, ada: false }], [], HAK_BEN), p9 = periksaKiriman(KRY, [], [{ koleksi: 'penjualan', id: 1 }], HAK_KRY),
-  p10 = periksaKiriman(BEN, [{ koleksi: 'penjualan', data: { id: 10, dibatalkan: true }, ada: false }], [], HAK_BEN);
+var p4 = periksaKiriman(BEN, [{ koleksi: 'piutangMutasi', data: { id: 6, tanggal: W.tanggal, tipe: 'hapusBuku' }, ada: false }], [], HAK_BEN), p5 = periksaKiriman(BEN, [{ koleksi: 'stokBahanKemasan', data: { id: 7, tanggal: W.tanggal, tipe: 'beli', hargaTotal: 100000 }, ada: false }], [], HAK_BEN),
+  p6 = periksaKiriman(BEN, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p7 = periksaKiriman(KRY, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_KRY),
+  p8 = periksaKiriman(BEN, [{ koleksi: 'pengeluaranHarian', data: { id: 9, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p9 = periksaKiriman(KRY, [], [{ koleksi: 'penjualan', id: 1 }], HAK_KRY),
+  p10 = periksaKiriman(BEN, [{ koleksi: 'penjualan', data: { id: 10, tanggal: W.tanggal, dibatalkan: true }, ada: false }], [], HAK_BEN);
 ok('kiriman: hapus buku bon, beli kantong (bukan "pakai"), kedatangan (Ben kisi "sendiri" → minta owner, peta §6; karyawan juga), uang keluar, HAPUS apa pun, penjualan bertanda dibatalkan — semua DITOLAK di perangkat',
   !!p4.tolak && !!p5.tolak && p6.tolak === KALIMAT_MINTA_OWNER && p7.tolak === KALIMAT_MINTA_OWNER && p8.tolak === KALIMAT_MINTA_OWNER && p9.tolak === 'Peran Karyawan tidak boleh hapus catatan' && !!p10.tolak, JSON.stringify([p4, p5, p6, p8, p9, p10]));
 var PS = { id: 'ps1', status: 'dipesan', namaPelanggan: 'Pelanggan Contoh', nilai: 90000, riwayatStatus: [], oleh: 'Owner' };
@@ -246,7 +246,7 @@ if __name__ == '__main__':
             'SS2 nonaktifkan tanpa ketukan kedua': (js.replace("if (U.aktif !== undefined && !yakin) return", "if (false) return"), S),
             'SS2 daftarkan tanpa menghapus permintaan': (js.replace("return { dokumen: [{ koleksi: 'aksesAkun', data }], hapus: [{ koleksi: 'permintaanAkses', id: m.uid }],", "return { dokumen: [{ koleksi: 'aksesAkun', data }], hapus: [],"), S),
             'firebase: salinan antre dihapus sebelum server mengaku': (js, ganti('firebase', "const janji = b.commit().then(() => { antre.konfirmasi(idKiriman); return { ok: true }; })", "antre.konfirmasi(idKiriman); const janji = b.commit().then(() => { return { ok: true }; })")),
-            'firebase: penjaga bukan-owner dilewati': (js, ganti('firebase', "if (!owner) { const p = periksaKiriman(akun, isi, H, _sumberHak()); if (p.tolak) return { gagal: true, pesan: p.tolak }; }", "")),
+            'firebase: penjaga bukan-owner dilewati': (js, ganti('firebase', "if (!owner) { const p = periksaKiriman(akun, isi, H, _sumberHak(), new Date()); if (p.tolak) return { gagal: true, pesan: p.tolak }; }", "")),
             'firebase: jejak per dokumen untuk bukan-owner': (js, ganti('firebase', "if (!owner) { const log = jejakKiriman(akun, ditulis", "if (false) { const log = jejakKiriman(akun, ditulis")),
             'firebase: satu pendengar ditolak mematikan aplikasi': (js, ganti('firebase', "}, (err) => tolak(k.nama, err));", "}, (err) => { if (String(err && err.code || '').includes('permission-denied')) { status.masuk = false; } tolak(k.nama, err); });")),
             'app: sandi boleh diisi otomatis': (js, ganti('html', 'placeholder="Sandi" autocomplete="off" readonly', 'placeholder="Sandi" autocomplete="current-password"')),

@@ -79,7 +79,10 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, 
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.
 const harga = pasangLayarHarga(document.getElementById('layarHarga'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
 // Uang (putaran 18): layar ketujuh — Uang keluar · Orang & upah · Owner & toko · Pindah uang · Tutup hari · Tutup buku. Dibuka dari Menu; di Mac ada di menu samping.
-const lokalPerangkat = () => ({ antre: statusFb.antre || [], menunggu: statusFb.menunggu || 0, idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), offline: statusFb.offline });
+// putaran 25: daftar periksa Kunci bulan membaca kiriman tertahan/ditolak di perangkat ini + nota yang diparkir di Jual (keadaan lokal, bukan server)
+const parkirJual = () => { try { const k = layar.keadaan.baca(); return (k.antrean || []).filter((a) => a.id !== k.aktifId).map((a) => ({ pada: (a.beku || {}).pada || null, pelanggan: (a.beku || {}).pelanggan || '', n: (((a.beku || {}).items) || []).length })); } catch (e) { return []; } };
+const lokalPerangkat = () => ({ antre: statusFb.antre || [], menunggu: statusFb.menunggu || 0, idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), offline: statusFb.offline,
+  antreLokal: (() => { try { return fb.antreLokal(); } catch (e) { return { belum: [], ditolak: [] }; } })(), parkir: parkirJual() });
 const uang = pasangLayarUang(document.getElementById('layarUang'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), lokal: lokalPerangkat });
 // Laporan & Dokumen (putaran 19): layar kedelapan — Laba · Harian · Bulanan · Neraca · Dokumen (berkop, paket bank, dokumen kecil) · Setelan (kop & identitas). Dibuka dari Menu; di Mac ada di menu samping.
 // keTujuan = satu pintu ke layar lain dengan bentuk tujuan yang sama dengan baris Menu ({ ke, keluarga, tab, lembar, sistem }).

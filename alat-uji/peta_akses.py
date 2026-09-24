@@ -185,7 +185,7 @@ def baca_per_layar():
 # Angka di bawah BUKAN deklarasi: dihitung dari susunNotaDokumen / susunSimpanAdukan / susunBayarBon / susunOrangBaru / susunStrukKeluar
 # ASLI, dan tiap kiriman dilewatkan periksaKiriman ASLI (yang bukan-owner memang tidak boleh kirim → dilewati, bukan dihitung).
 BATAS_CI = 18   # batas Firebase 20 per batch − sisa 2 (keputusan owner). Sengaja TIDAK dibaca dari akses.js: menaikkan batas di sana tidak melonggarkan CI.
-MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js',
+MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js',
                'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js',
                'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js']
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']

@@ -865,7 +865,7 @@ if __name__ == '__main__':
             'retur tukar tidak ikut ditulis bersama notanya': js.replace("    dokumen.push({ koleksi: 'retur', data: rd });\n", ""),
             'kembalian tukar dihitung dari nilai keranjang': js.replace("d.kembalian = Math.max(0, uang - (totalBayar - kreditTukar));", "d.kembalian = Math.max(0, uang - totalBayar);"),
             'pembatalan nota tukar meninggalkan returnya': js.replace("if (notaTerakhir.retur) { hapus.push({ koleksi: 'retur', id: notaTerakhir.retur.id });", "if (false) { hapus.push({ koleksi: 'retur', id: notaTerakhir.retur.id });"),
-            'parkir melepas ikatan tukar': js.replace("pesananId: s.pesananId || null, tukar: s.tukar || null };", "pesananId: s.pesananId || null, tukar: null };"),
+            'parkir melepas ikatan tukar': js.replace("pesananId: s.pesananId || null, tukar: s.tukar || null, pada:", "pesananId: s.pesananId || null, tukar: null, pada:"),
             'draf tukar tidak dibaca ulang saat mencatat': js.replace("const cek = cekDrafTukar(s.tukar.returDraf); if (cek) return cek;", ""),
             # ---- putaran 6: tata letak & wadah ----
             'kemasan tidak diurutkan dari termurah': js.replace("rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || termurah(a, b));", "rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || b.harga - a.harga);"),
