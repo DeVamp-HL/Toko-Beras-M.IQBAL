@@ -79,8 +79,13 @@ SKENARIO_GANTI = r"""<script>
     const J = window.__ujiJual; const s = J.keadaan.baca();
     return { terkunci: B.classList.contains('terkunci'), baris: J.belumDisimpan().total, lembar: s.lembar || null, rpDom: (c.innerHTML.match(/Rp\s?\d/g) || []).length,
       mainKosong: [...document.querySelectorAll('main')].every((m) => !m.innerHTML.trim()), terlihat: B.innerText,
-      tanya: $('modalKeranjang').classList.contains('tampil') ? $('judulKeranjang').textContent : '', masuk: !$('formMasuk').hidden && $('modalMasuk').classList.contains('tampil') };
+      tanya: $('modalKeranjang').classList.contains('tampil') ? $('judulKeranjang').textContent : '', masuk: !$('formMasuk').hidden && $('modalMasuk').classList.contains('tampil'),
+      pilTerlihat: [...document.querySelectorAll('[data-pil-akun]')].some((e) => e.offsetParent !== null),
+      lembarTerlihat: (() => { const l = $('lembarAkun'); if (!l) return false; const cs = getComputedStyle(l); return l.classList.contains('buka') && cs.display !== 'none' && cs.visibility !== 'hidden'; })() };
   };
+  // pil akun di kepala layar yang tampil → lembar akun (Masuk sebagai + Keluar)
+  const bukaPil = async () => { const p = [...document.querySelectorAll('[data-pil-akun]')].find((e) => e.offsetParent !== null); if (p) p.click(); await tunggu(120); };
+  const keluarLewatPil = async () => { await bukaPil(); $('tombolKeluar').click(); };
   const catat = async (nama) => { await tunggu(250); hasil.langkah.push(Object.assign({ nama }, potret())); };
   const keJual = async () => { const n = document.querySelector('[data-tujuan="jual"]'); if (n) n.click(); await tunggu(150); };
   try {
@@ -91,10 +96,10 @@ SKENARIO_GANTI = r"""<script>
     window.__ujiAuth.masuk(akses.EMAIL_OWNER, 'uid-owner'); await sampai(() => !B.classList.contains('terkunci')); await keJual();
     isiKeranjang('Pembeli Contoh A'); await catat('owner mengisi keranjang');
     // 2 · Keluar → ditanya → Simpan dulu
-    $('tombolKeluar').click(); await sampai(() => $('modalKeranjang').classList.contains('tampil')); await catat('Keluar ditekan');
+    await keluarLewatPil(); await sampai(() => $('modalKeranjang').classList.contains('tampil')); await catat('Keluar ditekan');
     $('keranjangSimpan').click(); await catat('Simpan dulu');
     // 3 · Keluar → Kosongkan
-    $('tombolKeluar').click(); await sampai(() => $('modalKeranjang').classList.contains('tampil'));
+    await keluarLewatPil(); await sampai(() => $('modalKeranjang').classList.contains('tampil'));
     $('keranjangKosongkan').click(); await sampai(() => B.classList.contains('terkunci')); await catat('Kosongkan lalu keluar');
     // 4 · akun LAIN masuk
     window.__ujiAuth.masuk('b@uji.contoh', 'uid-b'); await sampai(() => !B.classList.contains('terkunci')); await keJual(); await catat('akun lain masuk');
@@ -105,7 +110,7 @@ SKENARIO_GANTI = r"""<script>
     // 6 · akun B bekerja TANPA INTERNET, lalu dinonaktifkan owner saat masih di layar
     window.__ujiAuth.keluarDariTabLain(); await sampai(() => B.classList.contains('terkunci'));
     window.__ujiAuth.masuk('b@uji.contoh', 'uid-b'); await sampai(() => !B.classList.contains('terkunci')); await keJual();
-    isiKeranjang('Pembeli Contoh C'); window.dispatchEvent(new Event('offline')); if (window.__ujiSebelumNonaktif) await window.__ujiSebelumNonaktif(); await catat('akun B tanpa internet');
+    isiKeranjang('Pembeli Contoh C'); window.dispatchEvent(new Event('offline')); await tunggu(150); await bukaPil(); await catat('akun B tanpa internet');   // lembar akun TERBUKA saat dinonaktifkan
     window.__ujiAkses.setel('uid-b', { aktif: false, peran: 'karyawan', nama: 'Akun Uji B' }); await sampai(() => B.classList.contains('terkunci')); await catat('akun B dinonaktifkan');
     // 7 · akun nonaktif keluar dari panel akun → owner masuk
     $('tombolKeluarAkun').click(); await sampai(() => !$('formMasuk').hidden);
@@ -118,8 +123,8 @@ SKENARIO_GANTI = r"""<script>
 
 POTONG_KALIMAT = 'Keranjang berisi 2 baris belum disimpan — simpan atau kosongkan?'
 # teks yang tidak boleh TERLIHAT (innerText, huruf kecil) selama tirai menutup: nama akun, status jaringan & antrean, pil kepala
-TERLARANG_TERKUNCI = ['akun uji b', 'tanpa internet', 'menunggu server', 'belum terkirim', 'masuk sebagai: ']
-TERLARANG_TERKUNCI_PERSIS = ['DATA TOKO']   # pil kepala (huruf besar); kalimat panel akun nonaktif memuat "data toko" huruf kecil — itu bukan pil
+TERLARANG_TERKUNCI = ['akun uji b', 'tanpa internet', 'menunggu server', 'belum terkirim', 'memuat…']
+TERLARANG_TERKUNCI_PERSIS = ['DATA TOKO', 'OWNER']   # pil kepala (huruf besar); panel akun nonaktif memuat "data toko"/"owner" huruf kecil — itu bukan pil
 
 
 def siapkan(rusak=None, skenario='tirai'):
@@ -253,6 +258,8 @@ def periksa_terkunci(h):
     m = isi_main(h)
     if re.search(r'class="[^"]*\bkartu\b', m): c.append('ada kartu di <main> sebelum masuk')
     if m.strip(): c.append('<main> tidak kosong (%d karakter)' % len(m.strip()))
+    if 'data-pil-akun' in h: c.append('pil akun ada di DOM sebelum masuk')
+    if re.search(r'class="lembar-akun[^"]*\bbuka\b', h): c.append('lembar akun terbuka sebelum masuk')
     return c
 
 
@@ -270,15 +277,15 @@ def periksa_ganti(h):
         if not syarat(x): c.append(langkah + ': ' + kalimat)
     lihat = lambda x: x['terlihat'].lower()
     terlarang = lambda x: [t for t in TERLARANG_TERKUNCI if t in lihat(x)] + [t for t in TERLARANG_TERKUNCI_PERSIS if t in x['terlihat']]
-    harus('owner mengisi keranjang', lambda x: x['baris'] == 2 and 'Pembeli Contoh A' in x['terlihat'] and x['rpDom'] > 0, 'kontrol positif gagal — keranjang contoh/nama pembeli/angka rupiah tidak terlihat (uji tidak bisa melihat)')
+    harus('owner mengisi keranjang', lambda x: x['baris'] == 2 and 'Pembeli Contoh A' in x['terlihat'] and x['rpDom'] > 0 and x['pilTerlihat'] and 'OWNER' in x['terlihat'], 'kontrol positif gagal — keranjang contoh / nama pembeli / angka rupiah / pil OWNER tidak terlihat (uji tidak bisa melihat)')
     harus('Keluar ditekan', lambda x: x['tanya'] == POTONG_KALIMAT, 'tidak ditanya "%s" (tampil: %r)' % (POTONG_KALIMAT, L.get('Keluar ditekan', {}).get('tanya')))
     harus('Simpan dulu', lambda x: not x['terkunci'] and x['baris'] == 2 and x['lembar'] == 'keranjang', 'Simpan dulu tidak membatalkan keluar / keranjang tidak utuh / keranjang tidak dibuka')
-    harus('Kosongkan lalu keluar', lambda x: x['terkunci'] and x['baris'] == 0 and x['rpDom'] == 0 and x['mainKosong'], 'sesudah keluar: keranjang tidak kosong / ada angka rupiah / <main> tidak kosong')
+    harus('Kosongkan lalu keluar', lambda x: x['terkunci'] and x['baris'] == 0 and x['rpDom'] == 0 and x['mainKosong'] and not x['pilTerlihat'] and not x['lembarTerlihat'] and not terlarang(x), 'sesudah keluar: keranjang tidak kosong / ada angka rupiah / <main> tidak kosong / pil atau lembar akun masih terlihat %s' % terlarang(L.get('Kosongkan lalu keluar', {'terlihat': ''})))
     harus('akun lain masuk', lambda x: not x['terkunci'] and x['baris'] == 0 and 'pembeli contoh' not in lihat(x) and 'keranjang kosong' in lihat(x), 'akun berikutnya mewarisi keranjang / nama pembeli akun sebelumnya')
     harus('keluar dari tab lain, owner masuk', lambda x: not x['terkunci'] and x['baris'] == 0 and 'pembeli contoh b' not in lihat(x), 'keluar tanpa tombol (tab lain) — keranjang terbawa ke akun berikutnya')
-    harus('akun B tanpa internet', lambda x: not x['terkunci'] and 'tanpa internet' in lihat(x) and 'akun uji b' in lihat(x) and x['rpDom'] > 0, 'kontrol positif gagal — status jaringan / nama akun / angka tidak terlihat saat bekerja (uji tidak bisa melihat)')
-    harus('akun B dinonaktifkan', lambda x: x['terkunci'] and x['rpDom'] == 0 and x['mainKosong'] and not terlarang(x),
-          'tirai menutup tapi masih terlihat: %s' % terlarang(L.get('akun B dinonaktifkan', {'terlihat': ''})) + ' · rp %s · main kosong %s' % (L.get('akun B dinonaktifkan', {}).get('rpDom'), L.get('akun B dinonaktifkan', {}).get('mainKosong')))
+    harus('akun B tanpa internet', lambda x: not x['terkunci'] and 'tanpa internet' in lihat(x) and 'akun uji b' in lihat(x) and x['rpDom'] > 0 and x['pilTerlihat'] and x['lembarTerlihat'], 'kontrol positif gagal — status jaringan / nama akun / angka / pil / lembar akun tidak terlihat saat bekerja (uji tidak bisa melihat)')
+    harus('akun B dinonaktifkan', lambda x: x['terkunci'] and x['rpDom'] == 0 and x['mainKosong'] and not terlarang(x) and not x['pilTerlihat'] and not x['lembarTerlihat'],
+          'tirai menutup tapi masih terlihat: %s' % terlarang(L.get('akun B dinonaktifkan', {'terlihat': ''})) + ' · rp %s · main kosong %s · pil %s · lembar %s' % tuple(L.get('akun B dinonaktifkan', {}).get(k) for k in ('rpDom', 'mainKosong', 'pilTerlihat', 'lembarTerlihat')))
     harus('nonaktif keluar, owner masuk', lambda x: not x['terkunci'] and x['baris'] == 0 and 'pembeli contoh c' not in lihat(x), 'akun nonaktif keluar — keranjangnya terbawa ke owner')
     return c
 
@@ -300,13 +307,14 @@ KALIMAT_SEBAB = {JARINGAN: 'GAGAL JARINGAN: Firebase dari CDN (gstatic) tidak te
 KONTROL = [
     ('kontrol 2 · tirai dirusak (terkunci() selalu false)', 'tirai', [('js/inti/kunci.js', 'export const terkunci = () => _kunci;', 'export const terkunci = () => false;')]),
     ('kontrol 3 · beranda tanpa penjaga tirai', 'tirai', [('js/layar/ringkasan.js', "if (!tampil || terkunci()) return;\n    if (!$('rkHero')) bangun();", "if (!tampil) return;\n    if (!$('rkHero')) bangun();"),
-                                                          ('js/app.js', "SEMUA_LAYAR().forEach((l) => l.tampilkan(false));\n  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); return; }", "if (kunci) return;")]),
+                                                          ('js/app.js', "SEMUA_LAYAR().forEach((l) => l.tampilkan(false));\n  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; });", "if (kunci) {")]),
     ('kontrol 4 · keranjang tidak pernah dilupakan', 'ganti', [('js/layar/jual.js', 'lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))', 'lupakanOrang: () => {}')]),
     ('kontrol 5 · keluar dari tab lain tidak dijaga', 'ganti', [('js/app.js', "if (!akun || akun.jenis === 'keluar') { layar.lupakanOrang(); uidKeranjang = ''; return; }", "if (!akun || akun.jenis === 'keluar') { uidKeranjang = ''; return; }")]),
     ('kontrol 6 · Keluar tanpa bertanya', 'ganti', [('js/app.js', "(await tanyaKeranjang(B)) !== 'kosongkan'", "false")]),
     ('kontrol 7 · pengosong lupa keranjang yang diparkir', 'ganti', [('js/layar/jual-logika.js', "const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null });", "const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null, antrean: (s && s.antrean) || [] });")]),
-    # nama akun disembunyikan DUA penjaga (chip.hidden di app.js + aturan tirai di CSS) — kontrol merusak keduanya
-    ('kontrol 8 · nama akun tetap terlihat saat tirai menutup', 'ganti', [('js/app.js', 'chip.hidden = !kerja;', 'chip.hidden = false;'), ('css/kerangka.css', 'body.terkunci main, body.terkunci .nav, body.terkunci .side, body.terkunci .chip-akun { display: none !important; }', 'body.terkunci main, body.terkunci .nav, body.terkunci .side { display: none !important; }')]),
+    # lembar akun (nama + status jaringan, di luar <main>) disembunyikan DUA penjaga (app.js menutupnya + aturan tirai di CSS) — kontrol merusak keduanya
+    ('kontrol 8 · lembar akun tetap terbuka saat tirai menutup', 'ganti', [('js/app.js', "document.getElementById('lembarAkun').classList.remove('buka'); return; }", "return; }"),
+                                                                        ('css/kerangka.css', 'body.terkunci main, body.terkunci .nav, body.terkunci .side, body.terkunci .lembar-akun { display: none !important; }', 'body.terkunci main, body.terkunci .nav, body.terkunci .side { display: none !important; }')]),
 ]
 
 
@@ -339,6 +347,6 @@ if __name__ == '__main__':
         if sebab: print(judul + ' · ' + KALIMAT_SEBAB[sebab]); kode = max(kode, 4 if sebab == JARINGAN else 2); continue
         if c: print(judul + ' GAGAL UJI:'); [print('   ✗ ' + x) for x in c]; kode = max(kode, 2); continue
         print({'tirai': 'TIRAI LULUS: sebelum masuk — formulir Masuk tampil, 0 angka rupiah, 0 kartu, semua <main> kosong (penyimpanan lokal berisi titik kas contoh)',
-               'ganti': 'GANTI ORANG LULUS: Keluar dengan keranjang berisi → ditanya; Simpan dulu = tetap masuk; Kosongkan → akun lain mulai dari keranjang kosong; '
-                        'keluar dari tab lain & akun nonaktif juga melupakan keranjang; dinonaktifkan saat tanpa internet → 0 rupiah, nama & status jaringan tidak terlihat'}[skenario])
+               'ganti': 'GANTI ORANG LULUS: Keluar (lewat pil) dengan keranjang berisi → ditanya; Simpan dulu = tetap masuk; Kosongkan → akun lain mulai dari keranjang kosong; '
+                        'keluar dari tab lain & akun nonaktif juga melupakan keranjang; dinonaktifkan saat tanpa internet dengan lembar akun terbuka → 0 rupiah, pil OWNER/nama, lembar akun & status jaringan tidak terlihat'}[skenario])
     sys.exit(kode)

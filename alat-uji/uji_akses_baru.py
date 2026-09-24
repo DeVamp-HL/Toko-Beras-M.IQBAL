@@ -173,13 +173,18 @@ ok('app.js: pemilih pemegang hilang; formulir = email + sandi, sandi readonly sa
 var LT = ['jual', 'ringkasan', 'stok', 'pelanggan', 'menu', 'harga', 'uang', 'laporan'];
 var tanpaGerbang = LT.filter(function (n) { var s = SUMBER['layar_' + n]; return s.indexOf("import { terkunci } from '../inti/kunci.js';") < 0 || !/if \((!tampil \|\| )?terkunci\(\)\) return;/.test(s); });
 ok('tirai: KEDELAPAN layar memeriksa terkunci() sebelum menggambar; bawaan terkunci (sebelum Firebase menjawab); app.js membuka hanya untuk owner / akun aktif (bisaBekerja) atau mode cadangan, dan saat menutup MENGOSONGKAN tiap <main>',
-  tanpaGerbang.length === 0 && SUMBER.kunci.indexOf('let _kunci = true;') >= 0 && A.indexOf("const kunci = !q.get('cadangan') && !bisaBekerja(akun);") > 0 && A.indexOf("if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); return; }") > 0
+  tanpaGerbang.length === 0 && SUMBER.kunci.indexOf('let _kunci = true;') >= 0 && A.indexOf("const kunci = !q.get('cadangan') && !bisaBekerja(akun);") > 0 && A.indexOf("if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; });") > 0
   && A.indexOf('function gambarAkun(akun) {\n  jagaKeranjang(akun);\n  terapkanKunci(akun);') > 0 && A.indexOf('terapkanKunci(null);') > 0 && SUMBER.layar_ringkasan.indexOf("if (!tampil || terkunci() || !$('rkJam')) return;") > 0, JSON.stringify(tanpaGerbang));
 // ---- 12 · GANTI ORANG (putaran 23c): keranjang Jual tidak terbawa ke akun berikutnya (uji peramban: uji_layar_kunci.py bagian 2)
 var iTanya = A.indexOf("(await tanyaKeranjang(B)) !== 'kosongkan'"), iLupa = A.indexOf("layar.lupakanOrang(); uidKeranjang = '';\n  await fb.keluar();"), iBelum = A.indexOf('catatan belum terkirim dari akun ini');
 ok('ganti orang: Keluar dengan keranjang berisi DITANYA dulu (sebelum pertanyaan catatan belum terkirim), keranjang dilupakan tepat sebelum keluar; keluar dari tempat lain / akun berbeda = dilupakan tanpa ditanya; kalimat owner persis',
   iTanya > 0 && iBelum > iTanya && iLupa > iBelum && A.indexOf("if (!akun || akun.jenis === 'keluar') { layar.lupakanOrang(); uidKeranjang = ''; return; }") > 0 && A.indexOf('if (uidKeranjang && uidKeranjang !== akun.uid) layar.lupakanOrang();') > 0
   && SUMBER.layar_jual.indexOf('lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))') > 0 && SUMBER.html.indexOf('id="modalKeranjang"') > 0);
+// ---- 13 · PIL AKUN (owner 24 Sep): nama yang masuk SELALU terlihat di pil kepala; Keluar satu ketukan lewat pil; tirai menutup lembar akun (uji peramban: uji_layar_kunci.py)
+var iRingkas = A.indexOf('function statusRingkas() {'), tubuhRingkas = iRingkas > 0 ? A.slice(iRingkas, A.indexOf('\n}', iRingkas)) : '';
+ok('pil akun: nama yang masuk selalu di depan (juga saat memuat / tanpa internet / menunggu server) — satu-satunya jalan keluar statusRingkas; tirai menutup lembar akun; kedelapan layar memasang pil data-pil-akun',
+  tubuhRingkas.indexOf('return labelAkun() + tambah;') > 0 && (tubuhRingkas.match(/return /g) || []).length === 1 && A.indexOf("document.getElementById('lembarAkun').classList.remove('buka'); return; }") > 0
+  && LT.every(function (n) { return SUMBER['layar_' + n].indexOf('data-pil-akun') > 0; }) && SUMBER.html.indexOf('id="lembarAkun"') > 0, tubuhRingkas.slice(0, 160));
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
 
@@ -247,10 +252,12 @@ if __name__ == '__main__':
             'app: keluar tanpa menanyakan yang belum terkirim': (js, ganti('app', "catatan belum terkirim dari akun ini", "catatan")),
             'tirai: layar Uang menggambar walau terkunci': (js, ganti('layar_uang', 'if (!tampil || terkunci()) return;', 'if (!tampil) return;')),
             'tirai: bawaan terbuka sebelum Firebase menjawab': (js, ganti('kunci', 'let _kunci = true;', 'let _kunci = false;')),
-            'tirai: menutup tanpa mengosongkan <main>': (js, ganti('app', "if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); return; }", "if (kunci) return;")),
+            'tirai: menutup tanpa mengosongkan <main>': (js, ganti('app', "if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; });", "if (kunci) {")),
             'tirai: akun belum disetujui ikut membuka': (js, ganti('app', "const kunci = !q.get('cadangan') && !bisaBekerja(akun);", "const kunci = !q.get('cadangan') && !akun;")),
             'ganti orang: Keluar tanpa menanyakan keranjang': (js, ganti('app', "(await tanyaKeranjang(B)) !== 'kosongkan'", "false")),
             'ganti orang: akun berbeda mewarisi keranjang': (js, ganti('app', 'if (uidKeranjang && uidKeranjang !== akun.uid) layar.lupakanOrang();', '')),
+            'pil akun: saat memuat pil tanpa nama': (js, ganti('app', "const tambah = statusFb.koleksiSiap < statusFb.koleksiTotal && !statusFb.offline ? ' · memuat…' :", "if (statusFb.koleksiSiap < statusFb.koleksiTotal && !statusFb.offline) return 'memuat…';\n  const tambah =")),
+            'pil akun: tirai tidak menutup lembar akun': (js, ganti('app', "document.getElementById('lembarAkun').classList.remove('buka'); return; }", "return; }")),
         }
         kode = 0
         for nama, (isi, src) in rusak.items():

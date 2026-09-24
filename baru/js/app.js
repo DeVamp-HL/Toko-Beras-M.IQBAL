@@ -49,10 +49,10 @@ function statusTeks() {
 // Pil di kepala tiap layar (owner 24 Sep: bilah "Masuk sebagai … · Keluar" di atas layar dicabut, pindah ke pil ini; "DATA TOKO" → nama akun).
 // Isinya: akun yang masuk (OWNER / nama orang), ditambah keadaan kiriman bila tidak normal. Ketuk = lembar akun (Masuk sebagai + Keluar).
 const labelAkun = () => { const a = akunKini(); return !a || !bisaBekerja(a) ? 'DATA TOKO' : a.jenis === 'owner' ? 'OWNER' : String(a.nama || a.email || '').toUpperCase(); };
+// Nama yang masuk SELALU di depan (owner 24 Sep) — juga saat memuat; keadaan tambahan menyusul di belakangnya (terpotong duluan kalau sempit).
 function statusRingkas() {
-  if (statusFb.koleksiSiap < statusFb.koleksiTotal && !statusFb.offline) return 'memuat…';
   const belum = (statusFb.lokal || {}).belum || 0;
-  const tambah = statusFb.offline ? ' · tanpa internet' : statusFb.menunggu > 0 ? ' · menunggu server' : belum ? ' · ' + belum + ' belum terkirim' : '';
+  const tambah = statusFb.koleksiSiap < statusFb.koleksiTotal && !statusFb.offline ? ' · memuat…' : statusFb.offline ? ' · tanpa internet' : statusFb.menunggu > 0 ? ' · menunggu server' : belum ? ' · ' + belum + ' belum terkirim' : '';
   return labelAkun() + tambah;
 }
 
@@ -116,7 +116,7 @@ function terapkanKunci(akun) {
   const kunci = !q.get('cadangan') && !bisaBekerja(akun); const tadi = terkunci();
   setelKunci(kunci); document.body.classList.toggle('terkunci', kunci);
   SEMUA_LAYAR().forEach((l) => l.tampilkan(false));
-  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); return; }
+  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); document.getElementById('lembarAkun').classList.remove('buka'); return; }
   if (tadi) { pindah((() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })()) || pindah('jual'); layar.gambar(); }
 }
 // ---- GANTI ORANG (putaran 23c, owner 24 Sep): keranjang Jual TIDAK boleh terbawa ke akun berikutnya. Keluar lewat tombol = ditanya dulu (keluarAkun);
