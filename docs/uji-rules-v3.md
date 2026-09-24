@@ -22,6 +22,8 @@ atau ditolak Firestore. Dua alat, keduanya dijalankan owner di Firebase Console 
 Cara isi: *Simulation type* = get / create / update / delete · *Location* = jalur dokumen · *Authenticated* = on, *Provider* = password,
 *Firebase UID* = uid akunnya, lalu di **Auth token payload** tambahkan `"email": "…"`. Untuk create/update isi *Build document* dengan kolom di tabel.
 Kasus peran ben/karyawan butuh dokumen `aksesAkun/{uid}` yang SUDAH ADA (Playground membaca data sungguhan lewat `get()`).
+Hasil **"Error running simulation … Null value error"** = rules berhenti karena `aksesAkun/{uid}` tidak ada = **DITOLAK** di server (bukan lolos).
+Akun "tanpa `aksesAkun`" = UID `baru1`, email bukan owner/kasir (mis. `uji.baru1@contoh.com`, huruf kecil).
 
 | # | Akun | Operasi · jalur · isi | Wajib |
 |---|---|---|---|
@@ -34,9 +36,10 @@ Kasus peran ben/karyawan butuh dokumen `aksesAkun/{uid}` yang SUDAH ADA (Playgro
 | ★7 | akun tanpa `aksesAkun` (uid `baru1`, email lain) | get `/penjualan/x` · create `/penjualan/x` `{olehUid:'baru1'}` · get `/aturanToko/struk` | DITOLAK (semua) |
 | ★8 | akun tanpa `aksesAkun` (uid `baru1`) | create `/permintaanAkses/baru1` `{uid:'baru1', email:'<email token, huruf kecil>', nama:'Uji', pada:'2026-09-24T00:00:00Z'}` | LOLOS |
 | ★9 | akun tanpa `aksesAkun` (uid `baru1`) | create `/permintaanAkses/lain` (uid orang lain) · create `/permintaanAkses/baru1` dengan kolom tambahan `peran` | DITOLAK |
-| ★10 | owner@ | create `/aksesAkun/u1` `{uid:'u1', peran:'owner', aktif:true}` | DITOLAK |
+| ★10 | owner@ | create `/aksesAkun/u1` `{uid:'u1', peran:'owner', aktif:true}` | DITOLAK (25 Sep: LOLOS di v3 58 blok — payung `/{document=**}` mengalahkan batasannya; ditambal 23e) |
+| ★11 | owner@ | get `/koleksiUji/x` (koleksi yang TIDAK punya blok) | LOLOS — payung baru (23e) tetap membuka koleksi tanpa blok untuk owner |
 | ★P1 | owner@ | create `/pajakSetoran/uji1` `{id:'uji1', masaPajak:'2026-08', jumlah:1}` · get `/pajakOmzetLuar/uji1` | LOLOS (dua-duanya) |
-| ★P2 | kasir@ | get `/pajakSetoran/x` · create `/pajakOmzetLuar/x` — lalu akun tanpa `aksesAkun` (uid `baru1`): get `/pajakSetoran/x` | DITOLAK (semua) |
+| ★P2 | kasir@ | get `/pajakSetoran/x` · create `/pajakOmzetLuar/x` — lalu akun tanpa `aksesAkun` (uid `baru1`, email `uji.baru1@contoh.com`): get `/pajakSetoran/x` | DITOLAK (semua) |
 | 11 | owner@ | create `/aksesAkun/u1` `{uid:'u1', nama:'Uji', peran:'karyawan', aktif:true}` | LOLOS |
 | 12 | ben (aktif) | get `/penjualan/x` · get `/aturanToko/struk` · get `/pengaturan/tempatSimpan` | LOLOS |
 | 13 | ben (aktif) | get `/pengeluaranHarian/x` · get `/aturanToko/upah` · get `/pengaturan/titikKas` · get `/logAktivitas/x` | DITOLAK |
@@ -94,9 +97,11 @@ Tujuannya: menjalankan transaksi terbesar tiap peran lewat `/baru/` sungguhan, d
 ## C · SEKARANG di proyek TOKO (sesudah kasus ★ di A sesuai semua)
 
 0. Pendaftaran mandiri MATI & daftar Users sudah diperiksa (owner, 24 Sep: sudah).
-1. Tempel `firestore.rules` v3 di Console proyek toko — **versi terbaru dari `main` (58 blok, sesudah putaran 24: + `pajakOmzetLuar` & `pajakSetoran`
-   khusus owner)**, bukan versi 56 blok yang dites 24 Sep malam. Isi editor Console harus persis sama dengan berkas di repo; kasus ★ (termasuk ★P1–★P2)
-   diulang dengan berkas itu di editor.
+1. Tempel `firestore.rules` v3 di Console proyek toko — **versi terbaru dari `main` (58 blok + payung yang mengecualikan `aksesAkun` &
+   `permintaanAkses`, putaran 23e)**. Isi editor Console harus persis sama dengan berkas di repo. Riwayat: 25 Sep versi 58 blok (sebelum 23e) lulus
+   ★1–★9 & ★P1–★P2 tapi ★10 LOLOS → tidak diterbitkan. Sesudah 23e yang wajib diulang: ★1, ★8, ★9, ★10, ★11, ★P2 (bagian `baru1`).
+   **25 Sep, rules 23e di editor (SHA-256 isi editor = berkas cabang, 17.811 byte; dijalankan Claude lewat Chrome owner, belum diterbitkan):**
+   ★1 allowed · ★8 allowed · ★9a denied · ★9b denied · ★10 **denied** (sebelum 23e: allowed) · ★11 allowed lewat payung baru · ★P2c denied — semuanya sesuai.
 2. **Buat SATU nota dari kasir darurat** (akun kasir@) dan pastikan nota itu masuk di layar Jual `/baru/` owner. Tidak masuk → langsung tempel
    `firestore.rules.v2` (jalan mundur) dan kabari Claude Code.
 

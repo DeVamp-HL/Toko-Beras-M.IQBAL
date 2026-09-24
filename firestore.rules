@@ -43,6 +43,13 @@
 //     5. Buat akun orang di Console > Authentication > Add user — EMAIL SELALU HURUF KECIL SEMUA (klien tidak pernah membuat akun).
 //     6. Orangnya masuk /baru/ → "Minta didaftarkan"; owner menyetujui di Menu > Sistem > Peran (tidak ada UID disalin tangan).
 //   MUNDUR = tempel firestore.rules.v2 — HANYA selama pendaftaran mandiri mati (v2 membuka jalur kasir untuk siapa pun yang login).
+//
+// PAYUNG (putaran 23e, keputusan owner 25 Sep): blok paling bawah `match /{koleksi}/{sisa=**}` memberi owner akses ke segala yang tidak disebut.
+//   Di Firestore, akses diberikan kalau SALAH SATU blok yang cocok mengizinkan — payung mengalahkan batasan owner di blok mana pun yang ia cakup.
+//   Sekarang: koleksi yang bloknya membatasi owner (aksesAkun, permintaanAkses) dikecualikan; periksa_rules.py menjaganya.
+//   PUTARAN 25 (kunci periode) — payung DIHAPUS, bukan sekadar dikecualikan: kunci periode membatasi OWNER di koleksi uang/stok (bulan yang
+//   sudah ditutup tidak boleh ditulis), jadi setiap koleksi yang masih dipakai wajib punya blok sendiri dan tidak ada lagi jalan "owner boleh
+//   apa saja". Koleksi lama sistem lama yang tak punya blok harus didaftar dulu (dibaca? ditulis? oleh siapa?) sebelum payung dicabut.
 // ============================================================================
 rules_version = '2';
 service cloud.firestore {
@@ -370,8 +377,12 @@ service cloud.firestore {
     }
 
     // Payung: segalanya yang tidak disebut di atas — termasuk pengaturan/keamanan (PIN) & koleksi lama sistem lama — owner saja.
-    match /{document=**} {
-      allow read, write: if owner();
+    // Putaran 23e: Firestore memberi akses kalau SALAH SATU blok yang cocok mengizinkan, jadi payung `/{document=**}` lama mengalahkan
+    // setiap batasan owner di blok atas (Playground ★10: owner bisa menulis aksesAkun peran 'owner'). Koleksi yang bloknya membatasi owner
+    // DIKECUALIKAN dari payung (sekarang aksesAkun: bentuk & peran; permintaanAkses: create/update bukan owner). periksa_rules.py GAGAL
+    // kalau ada blok yang membatasi owner tapi koleksinya masih tercakup payung. Payung ini DIHAPUS di putaran 25 (lihat kepala berkas).
+    match /{koleksi}/{sisa=**} {
+      allow read, write: if owner() && !(koleksi in ['aksesAkun', 'permintaanAkses']);
     }
   }
 }

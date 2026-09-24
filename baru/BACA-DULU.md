@@ -272,6 +272,20 @@ Tiap orang punya akun sendiri; hak ditegakkan di SERVER (`firestore.rules` v3), 
   bagian ISIAN (Chrome, Firebase palsu yang menyajikan `hargaDraf` & mencatat tiap tulisan; satu kontrol per layar) + `uji_isian_lokal.py` (statis: tiap kolom
   ketik & tiap kunci localStorage layar wajib dijaga atau tercatat sengaja bukan isian).
 
+### Putaran 23e (25 Sep 2026) — payung rules tidak boleh mengalahkan batasan owner
+- Playground ★10 (owner membuat `aksesAkun` berperan `owner`) **LOLOS** di v3 58 blok: Firestore memberi akses kalau SALAH SATU blok yang cocok
+  mengizinkan, dan payung `match /{document=**} { allow read, write: if owner(); }` mencakup semua dokumen — batasan owner di blok atas kalah.
+  Pemeriksa statis tidak menangkapnya (memeriksa bentuk, bukan perilaku). Rules belum diterbitkan.
+- Tambalan: payung jadi `match /{koleksi}/{sisa=**} { allow read, write: if owner() && !(koleksi in ['aksesAkun', 'permintaanAkses']); }`.
+  Hanya dua blok itu yang membatasi owner (create/update); tulisan owner dari aplikasi ke keduanya tetap memenuhi batasannya (`aksesAkun` selalu
+  uid = id dokumen, peran ben/karyawan, `aktif` boolean; `permintaanAkses` cuma dibaca & dihapus owner). Ke-32 koleksi yang dipakai `index.html`
+  punya blok sendiri — tidak ada yang bergantung pada payung.
+- `periksa_rules.py` menghitung sendiri blok yang membatasi owner (operasi get/list/create/update/delete yang tidak diberikan ke `owner()` tanpa
+  syarat) dan GAGAL kalau blok itu masih tercakup payung; juga gagal kalau payung mengecualikan koleksi tanpa blok (owner terkunci), atau ada
+  wildcard koleksi lain. Kontrol: payung lama dikembalikan → gagal.
+- **Putaran 25 (kunci periode): payung DIHAPUS**, bukan sekadar dikecualikan — kunci periode membatasi owner di koleksi uang/stok; tiap koleksi
+  wajib blok sendiri (catatan di kepala `firestore.rules`).
+
 ### Putaran 23c (24 Sep 2026) — urutan pasang dipecah, kiriman bersisa 2, kisi = kebenaran server
 - **Owner tidak masuk /baru/ di tablet bersama sampai cache dibersihkan saat Keluar.** (Keluar sekarang menutup layar & pendengar, tapi data yang
   sudah diunduh Firestore tetap di IndexedDB perangkat itu.)
@@ -369,7 +383,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_akses_baru.py` (+ `--kontrol`) | 33 skenario akses per orang (keadaan akun, owner hanya via email, pendengar/layar/tombol per peran, penjaga kiriman = peta, pagar 18, batas per akun, atribusi olehUid, satu jejak per kiriman, salinan antre, SS2 akun & kisi = kebenaran server, tirai 8 layar, ganti orang & isian tujuh layar, pil akun, sambungan firebase.js/app.js diperiksa sumbernya) + 43 kontrol |
 | `alat-uji/uji_layar_kunci.py` (+ `--kontrol`) | Chrome headless: (1) tirai — sebelum masuk 0 angka rupiah, 0 kartu, semua `<main>` kosong walau penyimpanan lokal berisi titik kas contoh; (2) ganti orang — Firebase palsu lokal, keranjang tidak terbawa ke akun berikutnya (Keluar lewat pil ditanya, tab lain, akun nonaktif), tirai menyembunyikan pil OWNER/nama, lembar akun & status jaringan; (3) isian lokal tujuh layar ikut pola keranjang, draf katalog harga di server utuh; (4) GAGAL JARINGAN ≠ GAGAL UJI; 19 kontrol (satu per layar) |
 | `alat-uji/uji_isian_lokal.py` (+ `--kontrol`) | statis: 85 kolom ketik di 8 layar menulis ke kunci yang dijaga penjaga isian atau tercatat sengaja bukan isian; tiap kunci localStorage layar = draf yang dijaga atau tercatat bukan draf; 7 kontrol |
-| `alat-uji/periksa_rules.py` (+ `--kontrol`) | `firestore.rules` v3 statis: blok per koleksi, owner & kasir via email, tanpa `masuk()` telanjang, jalur kasir@ utuh, tulis bukan-owner wajib uid, tanpa delete bukan-owner, payung owner, daftar peran = `akses.js`, jejak ≤ 17 dokumen = pagar `akses.js` + 17 kontrol |
+| `alat-uji/periksa_rules.py` (+ `--kontrol`) | `firestore.rules` v3 statis: blok per koleksi, owner & kasir via email, tanpa `masuk()` telanjang, jalur kasir@ utuh, tulis bukan-owner wajib uid, tanpa delete bukan-owner, payung owner yang TIDAK mengalahkan batasan owner (blok yang membatasi owner wajib dikecualikan; dihitung dari rules, bukan daftar tangan), daftar peran = `akses.js`, jejak ≤ 17 dokumen = pagar `akses.js` + 23 kontrol |
 | `alat-uji/peta_akses.py --kiriman` (+ `--kontrol`) | access call TERBURUK per jenis kiriman bukan-owner (nota Ben/karyawan, adukan, terima bon, pelanggan baru, struk) dari fungsi asli di jsc, lewat `periksaKiriman` asli; gagal bila > 18; tiap tindakan yang dibuka server wajib terhitung; layar wajib menyerahkan batasnya + 10 kontrol |
 | `alat-uji/uji_pajak_baru.py` (+ `--kontrol`) | 43 skenario modul pajak (batas bebas di tengah bulan, omzet luar tanpa hitung ganda, kosong ≠ nol, badan tanpa angka, setoran & angka berubah, kurang/lebih, lewat tempo, ambang 70/85/95/100 + proyeksi, regresi penulis rekapOmzet, DK3 = layar Pajak, tanpa NIK/NPWP, status pasangan PH/MT/satu kesatuan/belum diketahui, dua angka omzet) + 29 kontrol; di cadangan toko: omzet layar Pajak = mesin laba = DK3 |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
