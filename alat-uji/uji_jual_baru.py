@@ -708,6 +708,16 @@ ok('U: deretan karung terbuka terbaca (tiap karung: nama, lokasi, letak); tambah
 var hOto = hitungTakar('Angsa', [{ merk: 'IR64 Apex', takar: 1 }], s); var hPilih = hitungTakar('Angsa', [{ merk: 'IR64 Apex', takar: 1, dari: '' }], s);
 ok('U: takar tanpa "dari" memakai karung otomatis (lokasiSumber); dengan "dari" = karung yang DIPILIH owner (karung lepas ""), walau otomatisnya menunjuk karung lain', hOto.sumber[0].dari === lokasiSumber('IR64 Apex', 'Angsa') && hPilih.sumber[0].dari === '' && hPilih.sumber[0].karung.lokasi === '', JSON.stringify([hOto.sumber[0].dari, hPilih.sumber[0].dari]));
 
+// ---- GANTI ORANG (putaran 23c, owner 24 Sep): keranjang TIDAK terbawa ke akun berikutnya (alur Keluar/masuk diuji di peramban: uji_layar_kunci.py)
+terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
+var sisaAwal = chip('karung', 'Angsa', 50).sisa;
+terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap(tekanTuts(s, '2')); terap(masukkan(s)); terap({ pelanggan: 'Pembeli Contoh' }); terap(parkir(s));
+terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap(tekanTuts(s, '1')); terap(masukkan(s));
+var BD = barisBelumDisimpan(s), sisaDipegang = chip('karung', 'Angsa', 50).sisa;
+ok('23c: baris belum disimpan = keranjang aktif + yang diparkir (1 + 1); kalimat tanyanya persis kalimat owner', BD.aktif === 1 && BD.parkir === 1 && BD.total === 2 && kalimatKeranjangKeluar(2) === 'Keranjang berisi 2 baris belum disimpan — simpan atau kosongkan?', JSON.stringify(BD));
+var sLama = s; s = keadaanOrangBerikutnya(Object.assign({}, s, { isiW: 3 }));
+ok('23c: orang berikutnya — keranjang, parkir, nama pembeli kosong; kunci di luar keadaanAwal ikut dibuang; "sekarang" tetap; stok yang dipegang keranjang (3 karung) dilepas', s.keranjang.length === 0 && s.antrean.length === 0 && s.pelanggan === '' && s.isiW === undefined && s.sekarang === sLama.sekarang && barisBelumDisimpan(s).total === 0 && sisaDipegang === sisaAwal - 3 && chip('karung', 'Angsa', 50).sisa === sisaAwal, JSON.stringify([sisaAwal, sisaDipegang, chip('karung', 'Angsa', 50).sisa, s.antrean.length]));
+
 terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00') }));
 
 // kunci dokumen yang dihasilkan — dibandingkan python dengan kunci yang DITULIS index.html (cadangan toko belum punya retur bernota)
@@ -775,6 +785,10 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- PUTARAN 23c: ganti orang
+            'orang berikutnya mewarisi keranjang yang diparkir': js.replace("const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null });", "const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null, antrean: (s && s.antrean) || [] });"),
+            'orang berikutnya: stok yang dipegang keranjang lama tidak dilepas': js.replace("  sinkronKeranjang(baru);\n  return baru;", "  return baru;"),
+            'baris belum disimpan lupa keranjang yang diparkir': js.replace("return { aktif, parkir, total: aktif + parkir };", "return { aktif, parkir, total: aktif };"),
             # ---- PUTARAN 21: belanja terakhir · saran benang · takar dari karung yang dipilih
             'belanja terakhir mencampur nota orang lain': js.replace("if (kunciPelanggan(p.namaPelanggan) !== k) return; const g = String(p.grupNota || p.id);", "const g = String(p.grupNota || p.id);"),
             'belanja terakhir diurutkan terlama dulu (yang "terakhir" bukan yang terbaru)': js.replace("return Object.keys(per).map((g) => per[g]).sort((a, b) => (b.tanggal + b.jam).localeCompare(a.tanggal + a.jam)).slice(0, n || 3)", "return Object.keys(per).map((g) => per[g]).sort((a, b) => (a.tanggal + a.jam).localeCompare(b.tanggal + b.jam)).slice(0, n || 3)"),

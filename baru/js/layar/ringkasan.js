@@ -10,6 +10,7 @@
 // Aturan gerak papan R2: gerak = kejadian (tidak ada animasi berputar tanpa henti), kurva tenggelam cubic-bezier(.2,.8,.2,1),
 // tempo SENTUH 160 · DATA 480 · SKALA 560 ms; prefers-reduced-motion dihormati (CSS). BACA SAJA.
 import { esc } from '../inti/dom.js';
+import { terkunci } from '../inti/kunci.js';
 import { RP } from '../inti/format.js';
 import * as R from './ringkasan-logika.js';
 import { sumberData, dengarkan } from '../data/toko.js';
@@ -31,7 +32,9 @@ export function pasangLayarRingkasan(akar, opsi) {
   const kini = () => opsi.sekarang() || new Date();
   const $ = (id) => akar.querySelector('#' + id);
 
-  // ---------- kerangka: dibangun SEKALI ----------
+  // ---------- kerangka: dibangun saat tirai terbuka (putaran 23c: selama belum masuk, <main> ini KOSONG) ----------
+  function bangun() {
+  lingkar.clear(); angkaTampil = null; kunciNotaLama = null; sektorKini = []; pilihId = null;
   akar.innerHTML = `
     <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
     <div class="tetes-terbang" id="rkTetes"></div>
@@ -69,8 +72,6 @@ export function pasangLayarRingkasan(akar, opsi) {
     <div class="kartu" style="gap: 6px;" id="rkPerhatian"></div>`;
   $('rkSkala').innerHTML = R.SKALA.map(([id, nm]) => `<div class="seg" data-k="${id}">${esc(nm)}</div>`).join('');
 
-  // ---------- interaksi ----------
-  function gantiSkala(k) { if (k === skala || !R.SKALA.some((s) => s[0] === k)) return; skala = k; pilihId = null; try { localStorage.setItem(KUNCI_SKALA, k); } catch (e) { /* abaikan */ } perbarui('skala'); }
   $('rkSkala').addEventListener('click', (ev) => { const el = ev.target.closest('[data-k]'); if (el) gantiSkala(el.dataset.k); });
   $('rkLapis').addEventListener('click', (ev) => { const el = ev.target.closest('[data-lapis]'); if (el) gantiSkala(R.SKALA_DARI_LAPIS[el.dataset.lapis]); });
   $('rkMode').addEventListener('click', () => opsi.gantiMode());
@@ -83,13 +84,18 @@ export function pasangLayarRingkasan(akar, opsi) {
     pilihId = s && s.id !== pilihId ? s.id : null; jamPilih = Date.now(); gambarPilihan();
   });
   // geser kiri/kanan di kartu besar = skala berikut/sebelumnya
-  let sentuhX = null, sentuhY = null;
   $('rkHero').addEventListener('touchstart', (ev) => { const t = ev.touches[0]; sentuhX = t.clientX; sentuhY = t.clientY; }, { passive: true });
   $('rkHero').addEventListener('touchend', (ev) => {
     if (sentuhX === null) return; const t = ev.changedTouches[0]; const dx = t.clientX - sentuhX, dy = t.clientY - sentuhY; sentuhX = null;
     if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.5 || ev.target.closest('#rkSkala')) return;
     const i = R.SKALA.findIndex((s) => s[0] === skala); const j = Math.max(0, Math.min(R.SKALA.length - 1, i + (dx < 0 ? 1 : -1))); gantiSkala(R.SKALA[j][0]);
   }, { passive: true });
+
+  }
+  let sentuhX = null, sentuhY = null;
+  // ---------- interaksi ----------
+  function gantiSkala(k) { if (k === skala || !R.SKALA.some((s) => s[0] === k)) return; skala = k; pilihId = null; try { localStorage.setItem(KUNCI_SKALA, k); } catch (e) { /* abaikan */ } perbarui('skala'); }
+  if (!terkunci()) bangun();
 
   function gambarPilihan() {
     const s = pilihId ? sektorKini.find((x) => x.id === pilihId && x.op === 1) : null;
@@ -141,7 +147,8 @@ export function pasangLayarRingkasan(akar, opsi) {
 
   // ---------- pembaruan: mengisi elemen yang sudah hidup ----------
   function perbarui(sebab) {
-    if (!tampil) return;
+    if (!tampil || terkunci()) return;
+    if (!$('rkHero')) bangun();   // tirai baru terbuka: kerangka dibangun ulang
     if (!ix) ix = R.bangunIndeks();
     const k = kini(); const r = R.susunRingkasan(skala, ix, k); const kas = R.susunKas(k); const perhatian = R.susunPerhatian(); const sumber = sumberData();
     menitLama = k.getHours() * 60 + k.getMinutes(); sektorKini = r.sektor;
@@ -179,7 +186,7 @@ export function pasangLayarRingkasan(akar, opsi) {
 
   // detak tiap detik: jam & jarum detik BERGERAK tanpa menggambar ulang; ganti menit → jendela & sel berjalan bergeser
   function detak(paksa) {
-    if (!tampil) return;
+    if (!tampil || terkunci() || !$('rkJam')) return;
     const k = kini(); const hidup = !opsi.sekarang();
     $('rkJam').textContent = p2(k.getHours()) + '.' + p2(k.getMinutes()) + '.' + p2(k.getSeconds());
     detikTotal += ((k.getSeconds() - (detikTotal % 60)) + 60) % 60;   // sudut selalu MAJU — dari detik 59 ke 0 jarum tidak berputar balik

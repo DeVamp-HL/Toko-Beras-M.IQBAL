@@ -3,6 +3,7 @@
 // Angka & dokumen di uang-logika.js (bersama + K1 + K4), upah-logika.js, owner-toko-logika.js, tutup-hari-logika.js, tutup-buku-logika.js (tanpa DOM, dijaga uji_uang_baru.py).
 // Satu markup tiga lebar: HP = tab / tumpukan; Tablet = dua kolom; Mac = tiga kolom.
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
+import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { RP, ANGKA, KG, tanggalPendek } from '../inti/format.js';
 import * as UG from './uang-logika.js';
@@ -207,7 +208,7 @@ export function pasangLayarUang(akar, opsi) {
 
   // ================= GAMBAR =================
   function gambar() {
-    if (!tampil) return; const s = st(); const sumber = sumberData(); const L = lebar();
+    if (!tampil || terkunci()) return; const s = st(); const sumber = sumberData(); const L = lebar();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">

@@ -489,6 +489,23 @@ export function pakaiAntrean(s, id) {
 export function buangAntrean(s, id) { const a = s.antrean.find((x) => x.id === id); return { antrean: s.antrean.filter((x) => x.id !== id), kabar: 'Struk dibuang — stoknya bebas lagi' + (a && a.beku.pesananId ? '; ikatan pesanannya dilepas (pesanan tetap belum dibayar)' : '') + (a && a.beku.tukar ? '; ikatan TUKAR ikut dilepas — returnya BELUM tercatat' : '') }; }
 export function pembeliLain(s) { return s.keranjang.length ? parkir(s) : { kabar: 'Keranjang sudah kosong' }; }
 
+// ---------- GANTI ORANG (putaran 23c, owner 24 Sep): keranjang TIDAK boleh terbawa ke akun berikutnya ----------
+/** Baris yang belum disimpan = keranjang yang sedang jalan + keranjang yang diparkir. */
+export function barisBelumDisimpan(s) {
+  const aktif = (s.keranjang || []).length;
+  const parkir = (s.antrean || []).filter((a) => a.id !== s.aktifId).reduce((n, a) => n + (((a.beku || {}).items) || []).length, 0);
+  return { aktif, parkir, total: aktif + parkir };
+}
+export const kalimatKeranjangKeluar = (n) => 'Keranjang berisi ' + n + ' baris belum disimpan — simpan atau kosongkan?';
+/** Keadaan Jual untuk orang berikutnya: keranjang, parkir, nama pembeli, potongan, retur tukar, karcis, pesanan, isian — dibuang semua; yang tinggal cuma
+ *  "sekarang" (mode cadangan). Kunci yang tidak ada di keadaanAwal ikut dikosongkan. Cermin keranjang di lapisan data (stok yang dipegang) ikut dilepas. */
+export function keadaanOrangBerikutnya(s) {
+  const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null });
+  Object.keys(s || {}).forEach((k) => { if (!(k in baru)) baru[k] = undefined; });
+  sinkronKeranjang(baru);
+  return baru;
+}
+
 // ---------- pesanan: BUKAN uang sampai dicatat jual (G5, 21 Agu) ----------
 export function daftarPesanan(saring) {
   const k = kunciPelanggan(saring);

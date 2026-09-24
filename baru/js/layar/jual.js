@@ -1,6 +1,7 @@
 // LAYAR JUAL — GAMBAR & KETUKAN. Satu markup untuk tiga lebar; lebar diatur css/kerangka.css.
 // Logika (rak, tagihan, antrean, bayar) ada di jual-logika.js dan diuji tanpa peramban.
 import { h, mentah, gabung, pasang, delegasi } from '../inti/dom.js';
+import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { RP, ANGKA, DESIMAL, tanggalPendek } from '../inti/format.js';
 import * as L from './jual-logika.js';
@@ -318,6 +319,7 @@ export function pasangLayarJual(akar, opsi) {
   }
 
   function gambar() {
+    if (terkunci()) return;   // putaran 23c: belum masuk / belum disetujui → tidak ada yang digambar
     const s = S();
     const rak = rakKini();
     const t = L.hitungTagihan(s);
@@ -716,5 +718,6 @@ export function pasangLayarJual(akar, opsi) {
   K.dengar((s) => { clearTimeout(_jamUrung); if (s.notaTerakhir) _jamUrung = setTimeout(gambar, Math.max(0, L.BATAS_URUNGKAN_DETIK * 1000 - (Date.now() - s.notaTerakhir.pada) + 50)); });
   dengarkan(() => { _rak = null; gambar(); gulirkan(akar, RP); });
   gambar(); gulirkan(akar, RP);
-  return { keadaan: K, gambar };
+  // putaran 23c: keranjang tidak terbawa ke akun berikutnya — app.js menanyakannya saat Keluar lalu melupakannya
+  return { keadaan: K, gambar, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s)) };
 }

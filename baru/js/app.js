@@ -13,6 +13,8 @@ import { muatCadangan } from './data/cadangan.js';
 import { dengarkan, sumberData } from './data/toko.js';
 import { bolehLayar, bisaBekerja, teksMasukSebagai } from './data/akses.js';
 import { ssAtur } from './layar/sistem-logika.js';
+import { terkunci, setelKunci } from './inti/kunci.js';
+import { kalimatKeranjangKeluar } from './layar/jual-logika.js';
 
 const q = new URLSearchParams(location.search);
 const KUNCI_MODE = 'miqbal_baru_mode';
@@ -97,7 +99,30 @@ function kabarSebentar(t) { const k = document.getElementById('kabarNav'); k.tex
 isianSandi.addEventListener('focus', () => { isianSandi.readOnly = false; });
 document.getElementById('lupakanEmail').addEventListener('click', () => { try { localStorage.removeItem(KUNCI_EMAIL); } catch (e) { /* abaikan */ } isianEmail.value = ''; ingatEmail.hidden = true; isianEmail.focus(); });
 /** Gambar layar masuk menurut keadaan akun: keluar → formulir; belum terdaftar / dinonaktifkan / kasir@ → lembar akun; owner / aktif → aplikasi. */
+// ---- TIRAI (putaran 23c, owner 24 Sep): belum masuk / belum disetujui / nonaktif / kasir@ → layar di belakang formulir Masuk KOSONG.
+//      Setiap <main> dikosongkan dan tidak digambar (layar memeriksa terkunci()); nav & menu samping disembunyikan. Tidak ada angka, nama, atau kartu
+//      yang digambar dari cache — termasuk penyimpanan lokal peramban (titik kas, keranjang). Terbuka hanya untuk owner / akun aktif, atau mode cadangan.
+const SEMUA_LAYAR = () => [ringkasan, stok, pelanggan, menu, harga, uang, laporan];
+function terapkanKunci(akun) {
+  const kunci = !q.get('cadangan') && !bisaBekerja(akun); const tadi = terkunci();
+  setelKunci(kunci); document.body.classList.toggle('terkunci', kunci);
+  SEMUA_LAYAR().forEach((l) => l.tampilkan(false));
+  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); return; }
+  if (tadi) { pindah((() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })()) || pindah('jual'); layar.gambar(); }
+}
+// ---- GANTI ORANG (putaran 23c, owner 24 Sep): keranjang Jual TIDAK boleh terbawa ke akun berikutnya. Keluar lewat tombol = ditanya dulu (keluarAkun);
+//      keluar dari tempat lain (tab lain, sesi dicabut) atau akun berbeda yang masuk = keranjang dilupakan tanpa ditanya.
+let uidKeranjang = '';   // akun yang mengisi keranjang Jual sekarang
+function jagaKeranjang(akun) {
+  if (q.get('cadangan')) return;
+  if (!akun || akun.jenis === 'keluar') { layar.lupakanOrang(); uidKeranjang = ''; return; }
+  if (!bisaBekerja(akun)) return;   // belum disetujui / nonaktif: tirai menutup, keranjang tidak digambar; dilupakan saat Keluar
+  if (uidKeranjang && uidKeranjang !== akun.uid) layar.lupakanOrang();
+  uidKeranjang = akun.uid;
+}
 function gambarAkun(akun) {
+  jagaKeranjang(akun);
+  terapkanKunci(akun);
   const bisa = bisaBekerja(akun);
   modal.classList.toggle('tampil', !bisa);
   if (bisa) { isianSandi.value = ''; return; }
@@ -128,9 +153,25 @@ document.getElementById('tombolMinta').addEventListener('click', async () => {
   hasil.textContent = r.gagal ? r.pesan : 'Permintaan terkirim. Tunggu owner menyetujui — layar ini terbuka sendiri begitu akun lu didaftarkan.';
 });
 /** Keluar = ganti orang. Masih ada catatan belum terkirim → ditanya dulu; salinannya TIDAK dihapus (terkirim saat akun ini masuk lagi). */
+/** Keranjang Jual berisi → ditanya "simpan atau kosongkan?" (putaran 23c). Simpan = batal keluar, kembali ke keranjang. Kosongkan = dilupakan SESUDAH semua pertanyaan lolos. */
+function tanyaKeranjang(b) {
+  const bg = document.getElementById('modalKeranjang');
+  document.getElementById('judulKeranjang').textContent = kalimatKeranjangKeluar(b.total);
+  document.getElementById('ketKeranjang').textContent = (b.parkir ? b.aktif + ' di keranjang, ' + b.parkir + ' di keranjang yang diparkir. ' : '') + 'Belum ada yang tercatat. Kalau dikosongkan, orang berikutnya mulai dari keranjang kosong.';
+  bg.classList.add('tampil');
+  return new Promise((jawab) => {
+    const selesai = (v) => { bg.classList.remove('tampil'); bg.onclick = null; jawab(v); };
+    document.getElementById('keranjangSimpan').onclick = () => selesai('simpan');
+    document.getElementById('keranjangKosongkan').onclick = () => selesai('kosongkan');
+    bg.onclick = (ev) => { if (ev.target === bg) selesai('simpan'); };
+  });
+}
 async function keluarAkun() {
+  const a = akunKini(); const B = layar.belumDisimpan();
+  if (B.total > 0 && a && bisaBekerja(a) && (await tanyaKeranjang(B)) !== 'kosongkan') { pindah('jual'); if (B.aktif) layar.keadaan.setel({ lembar: 'keranjang', kabar: '' }); return; }
   const L = statusFb.lokal || { belum: 0 };
   if (L.belum > 0 && !window.confirm('Ada ' + L.belum + ' catatan belum terkirim dari akun ini. Kalau keluar sekarang, catatannya tetap tersimpan di perangkat dan terkirim saat akun ini masuk lagi. Keluar tetap?')) return;
+  layar.lupakanOrang(); uidKeranjang = '';
   await fb.keluar();
 }
 document.getElementById('tombolKeluar').addEventListener('click', keluarAkun);
@@ -188,6 +229,7 @@ document.querySelectorAll('[data-tujuan]').forEach((el) => el.addEventListener('
   side.querySelectorAll('.item').forEach((el) => el.addEventListener('click', () => { kunci = false; side.classList.remove('buka'); }));
 })();
 
-// layar pembuka: yang terakhir dipakai di perangkat ini (bawaan: Jual)
+// layar pembuka: yang terakhir dipakai di perangkat ini (bawaan: Jual) — di balik tirai sampai Firebase menjawab siapa yang masuk (mode cadangan: langsung terbuka)
 pindah((() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })()) || pindah('jual');
+terapkanKunci(null);
 try { sessionStorage.removeItem('miqbal_muat_ulang_modul'); } catch (e) { /* abaikan */ }   // aplikasi berhasil dimuat utuh → penjaga muat-ulang disiapkan lagi
