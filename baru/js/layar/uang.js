@@ -5,6 +5,7 @@
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
+import { pasangIsian } from '../inti/isian.js';
 import { RP, ANGKA, KG, tanggalPendek } from '../inti/format.js';
 import * as UG from './uang-logika.js';
 import * as UP from './upah-logika.js';
@@ -32,13 +33,16 @@ const DRAF_TUTUP_KOSONG = () => ({ lembar: {}, receh: 0, alasan: '', rekPilih: '
 const LANGKAH_KOSONG = () => ({ periksa: '', cadangan1: '', arsip: '', saldo: '', paraf: '', kunci: '', cadangan2: '' });
 
 export function pasangLayarUang(akar, opsi) {
-  const K = buatKeadaan({ keluarga: UG.KELUARGA_UANG.some((k) => k[0] === bacaLokal(KUNCI_KELUARGA)) ? bacaLokal(KUNCI_KELUARGA) : 'keluar', kabar: '', kabarAwas: false,
+  // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
+  const awal = () => ({ keluarga: UG.KELUARGA_UANG.some((k) => k[0] === bacaLokal(KUNCI_KELUARGA)) ? bacaLokal(KUNCI_KELUARGA) : 'keluar', kabar: '', kabarAwas: false,
     tabK: 'hari', catat: { untuk: 'toko', dari: 'laci', perlu: '', ketik: '', catatan: '' }, paksa: null, urung: null, bayarT: null, tolakT: null, aturK: null,
     orangU: '', lembarU: null, kasbonK: { ketik: '', alasan: '' }, potongU: 'semua', bonusU: { ketik: '', alasan: '' }, slipTeks: '', aturU: null, karyawanDraf: null, lihatBerhenti: false,
     aksiO: null, bukti: '', urungO: null,
     pindah: null, urungP: null, aturP: null,
     draf: null, koreksi: false, yakinUlang: false, aturT: null, rekapTeks: '', bukaRumus: false,
     modeB: 'latihan', langkahB: LANGKAH_KOSONG(), bukaB: 'periksa', parafB: { owner: false, saksi: false }, saksiB: '', siapKunci: false, lewatiG3: false, progres: null, aturB2: null, cad1: '', arsipNama: '', selesaiLatihan: false, sesudahLive: null, sibuk: false });
+  const K = buatKeadaan(awal());
+  const ISIAN = pasangIsian(K, awal, ['catat', 'bayarT', 'tolakT', 'aturK', 'kasbonK', 'bonusU', 'aturU', 'karyawanDraf', 'aksiO', 'bukti', 'pindah', 'aturP', 'draf', 'aturT', 'langkahB', 'parafB', 'saksiB', 'cad1', 'arsipNama'], [[KUNCI_DRAF_TUTUP, (t) => { try { return JSON.parse(t).iso === iso(); } catch (e) { return false; } }]]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
@@ -453,5 +457,5 @@ export function pasangLayarUang(akar, opsi) {
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
   // dipanggil layar Menu: buka keluarga (keluar | upah | owner | pindah | tutup | buku) lewat penangan yang sama dengan ketukan
   const buka = (keluarga, t) => { AKSI.keluarga({ nama: UG.KELUARGA_UANG.some((k) => k[0] === keluarga) ? keluarga : 'keluar' }); if (t && t.tab && keluarga === 'keluar') set({ tabK: t.tab }); if (t && t.orang && keluarga === 'upah') set({ orangU: t.orang }); };
-  return { gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
 }

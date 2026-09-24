@@ -15,6 +15,7 @@ import { bolehLayar, bisaBekerja, teksMasukSebagai } from './data/akses.js';
 import { ssAtur } from './layar/sistem-logika.js';
 import { terkunci, setelKunci } from './inti/kunci.js';
 import { kalimatKeranjangKeluar } from './layar/jual-logika.js';
+import { kalimatIsianKeluar } from './inti/isian.js';
 import { pjSumberPengingat } from './layar/pajak-logika.js';
 
 const q = new URLSearchParams(location.search);
@@ -121,18 +122,29 @@ function terapkanKunci(akun) {
   if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); document.getElementById('lembarAkun').classList.remove('buka'); return; }
   if (tadi) { pindah((() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })()) || pindah('jual'); layar.gambar(); }
 }
-// ---- GANTI ORANG (putaran 23c, owner 24 Sep): keranjang Jual TIDAK boleh terbawa ke akun berikutnya. Keluar lewat tombol = ditanya dulu (keluarAkun);
-//      keluar dari tempat lain (tab lain, sesi dicabut) atau akun berbeda yang masuk = keranjang dilupakan tanpa ditanya.
-let uidKeranjang = '';   // akun yang mengisi keranjang Jual sekarang
-function jagaKeranjang(akun) {
+// ---- GANTI ORANG (23c keranjang → 23d SEMUA isian lokal, owner 24 Sep): isian yang belum disimpan — keranjang Jual, form & lembar atur di Stok, Pelanggan,
+//      Harga, Uang, Laporan, Menu, draf lokal (belanja, barang masuk, cocok, adukan, tutup hari) — TIDAK terbawa ke akun berikutnya. Keluar lewat pil = SATU
+//      pertanyaan yang menyebut layarnya (keluarAkun); keluar dari tab lain, sesi dicabut, akun nonaktif / belum disetujui, atau akun lain masuk = dikosongkan tanpa ditanya.
+//      Draf di SERVER (aturanToko/hargaDraf = draf katalog harga) milik toko — tidak disentuh. Beranda tidak punya isian.
+const LAYAR_ISIAN = () => [['Jual', 'jual', layar], ['Stok', 'stok', stok], ['Pelanggan', 'pelanggan', pelanggan], ['Harga', 'harga', harga], ['Uang', 'uang', uang], ['Laporan', 'laporan', laporan], ['Menu', 'menu', menu]];
+function isianBelum() {
+  const B = layar.belumDisimpan(); const out = [];
+  LAYAR_ISIAN().forEach(([nama, tujuan, l]) => {
+    if (tujuan === 'jual') { if (B.total > 0) out.push({ nama: 'Jual (keranjang ' + B.total + ' baris)', tujuan }); else if (layar.adaIsianLain()) out.push({ nama, tujuan }); return; }
+    if (l.belumDisimpan()) out.push({ nama, tujuan });
+  });
+  return out;
+}
+function lupakanSemua() { LAYAR_ISIAN().forEach(([, , l]) => l.lupakanOrang()); }
+let uidKeranjang = '';   // akun pemilik isian yang sedang ada di layar
+function jagaIsian(akun) {
   if (q.get('cadangan')) return;
-  if (!akun || akun.jenis === 'keluar') { layar.lupakanOrang(); uidKeranjang = ''; return; }
-  if (!bisaBekerja(akun)) return;   // belum disetujui / nonaktif: tirai menutup, keranjang tidak digambar; dilupakan saat Keluar
-  if (uidKeranjang && uidKeranjang !== akun.uid) layar.lupakanOrang();
+  if (!akun || akun.jenis === 'keluar' || !bisaBekerja(akun)) { lupakanSemua(); uidKeranjang = ''; return; }   // keluar / nonaktif / belum disetujui / kasir@
+  if (uidKeranjang && uidKeranjang !== akun.uid) lupakanSemua();
   uidKeranjang = akun.uid;
 }
 function gambarAkun(akun) {
-  jagaKeranjang(akun);
+  jagaIsian(akun);
   terapkanKunci(akun);
   const bisa = bisaBekerja(akun);
   modal.classList.toggle('tampil', !bisa);
@@ -165,10 +177,14 @@ document.getElementById('tombolMinta').addEventListener('click', async () => {
 });
 /** Keluar = ganti orang. Masih ada catatan belum terkirim → ditanya dulu; salinannya TIDAK dihapus (terkirim saat akun ini masuk lagi). */
 /** Keranjang Jual berisi → ditanya "simpan atau kosongkan?" (putaran 23c). Simpan = batal keluar, kembali ke keranjang. Kosongkan = dilupakan SESUDAH semua pertanyaan lolos. */
-function tanyaKeranjang(b) {
+/** SATU pertanyaan saat Keluar (23d): cuma keranjang → kalimat keranjang (23c); ada isian lain → "Ada isian belum disimpan di: …". */
+function tanyaIsian(daftar, b, hanyaKeranjang) {
   const bg = document.getElementById('modalKeranjang');
-  document.getElementById('judulKeranjang').textContent = kalimatKeranjangKeluar(b.total);
-  document.getElementById('ketKeranjang').textContent = (b.parkir ? b.aktif + ' di keranjang, ' + b.parkir + ' di keranjang yang diparkir. ' : '') + 'Belum ada yang tercatat. Kalau dikosongkan, orang berikutnya mulai dari keranjang kosong.';
+  document.getElementById('judulKeranjang').textContent = hanyaKeranjang ? kalimatKeranjangKeluar(b.total) : kalimatIsianKeluar(daftar.map((x) => x.nama));
+  document.getElementById('ketKeranjang').textContent = (b.parkir ? b.aktif + ' di keranjang, ' + b.parkir + ' di keranjang yang diparkir. ' : '') + 'Belum ada yang tercatat. Kalau dikosongkan, orang berikutnya mulai dari '
+    + (hanyaKeranjang ? 'keranjang kosong.' : 'layar kosong. Draf katalog harga yang tersimpan di server tidak ikut dikosongkan.');
+  document.getElementById('keranjangSimpan').textContent = hanyaKeranjang ? 'Simpan dulu' : 'Kembali untuk menyimpan';
+  document.getElementById('keranjangKosongkan').textContent = hanyaKeranjang ? 'Kosongkan lalu keluar' : 'Kosongkan semua lalu keluar';
   bg.classList.add('tampil');
   return new Promise((jawab) => {
     const selesai = (v) => { bg.classList.remove('tampil'); bg.onclick = null; jawab(v); };
@@ -178,11 +194,12 @@ function tanyaKeranjang(b) {
   });
 }
 async function keluarAkun() {
-  const a = akunKini(); const B = layar.belumDisimpan();
-  if (B.total > 0 && a && bisaBekerja(a) && (await tanyaKeranjang(B)) !== 'kosongkan') { pindah('jual'); if (B.aktif) layar.keadaan.setel({ lembar: 'keranjang', kabar: '' }); return; }
+  const a = akunKini(); const B = layar.belumDisimpan(); const daftar = a && bisaBekerja(a) ? isianBelum() : [];
+  const hanyaKeranjang = daftar.length === 1 && daftar[0].tujuan === 'jual' && B.total > 0 && !layar.adaIsianLain();
+  if (daftar.length && (await tanyaIsian(daftar, B, hanyaKeranjang)) !== 'kosongkan') { const t = daftar[0].tujuan; pindah(t); if (t === 'jual' && B.aktif) layar.keadaan.setel({ lembar: 'keranjang', kabar: '' }); return; }
   const L = statusFb.lokal || { belum: 0 };
   if (L.belum > 0 && !window.confirm('Ada ' + L.belum + ' catatan belum terkirim dari akun ini. Kalau keluar sekarang, catatannya tetap tersimpan di perangkat dan terkirim saat akun ini masuk lagi. Keluar tetap?')) return;
-  layar.lupakanOrang(); uidKeranjang = '';
+  lupakanSemua(); uidKeranjang = '';
   await fb.keluar();
 }
 document.getElementById('tombolKeluar').addEventListener('click', () => { tutupLembarAkun(); keluarAkun(); });

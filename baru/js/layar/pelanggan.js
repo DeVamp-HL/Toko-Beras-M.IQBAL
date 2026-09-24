@@ -4,6 +4,7 @@
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
+import { pasangIsian } from '../inti/isian.js';
 import { RP, DESIMAL, tanggalPendek, hariIniIso, jamKini } from '../inti/format.js';
 import * as P from './pelanggan-logika.js';
 import * as B from './bon-logika.js';
@@ -43,10 +44,13 @@ const kuisKosong = (hanya, putaran) => ({ putaran: putaran || 1, no: 0, jawab: n
 
 export function pasangLayarPelanggan(akar, opsi) {
   const tabAwal = bacaLokal(KUNCI_TAB) || {};
-  const K = buatKeadaan({ keluarga: KELUARGA.some((k) => k[0] === tabAwal.keluarga) ? tabAwal.keluarga : 'kenali', tabK: TAB_K.some((t) => t[0] === tabAwal.tabK) ? tabAwal.tabK : 'wajah', tabB: 'buku', tabT: 'daftar', kabar: '', kabarAwas: false,
+  // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
+  const awal = () => ({ keluarga: KELUARGA.some((k) => k[0] === tabAwal.keluarga) ? tabAwal.keluarga : 'kenali', tabK: TAB_K.some((t) => t[0] === tabAwal.tabK) ? tabAwal.tabK : 'wajah', tabB: 'buku', tabT: 'daftar', kabar: '', kabarAwas: false,
     cari: '', tampi: [], notaKunci: null, keranjang: [], benangSiapa: null, titip: null, titipCari: '', kuis: kuisKosong(), hafal: bacaLokal(KUNCI_HAFAL) || null,
     kartu: null, yakinHapusNama: false, baru: null, gabung: null, bukuKunci: null, ember: '', orangBon: null, lembarBon: null, bayar: { nominal: '', cara: 'Tunai', catatan: '', pengantar: '' }, hapusIsi: { nominal: '', alasan: '' }, yakinHapus: false, janji: 7,
     tahun: (opsi.sekarang() || new Date()).getFullYear(), thrOrang: null, beri: { bentuk: '', lain: '', nilai: '' }, usulBentuk: null, atur: null, bersih: null });
+  const K = buatKeadaan(awal());
+  const ISIAN = pasangIsian(K, awal, ['kartu', 'baru', 'gabung', 'atur', 'bayar', 'hapusIsi', 'beri', 'titip'], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false;
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -398,5 +402,5 @@ export function pasangLayarPelanggan(akar, opsi) {
   dengarkan(() => gambar());
   // dipanggil layar Menu: buka keluarga (kenali | bon | thr), dan kalau ada, kartu / bon satu orang — lewat penangan yang sama dengan ketukan
   const buka = (keluarga, orang) => { AKSI.keluarga({ ke: keluarga || 'kenali' }); if (orang && keluarga === 'bon') AKSI.bukaOrangBon({ kunci: orang }); else if (orang) AKSI.bukaKartu({ kunci: orang }); };
-  return { gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
 }
