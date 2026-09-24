@@ -337,6 +337,13 @@ service cloud.firestore {
     match /dokumenCetak/{id} {
       allow read, write: if owner();
     }
+    // putaran 24: modul pajak — owner saja (omzet diketik owner & jejak setoran; tanpa NIK/NPWP/rekening)
+    match /pajakOmzetLuar/{id} {
+      allow read, write: if owner();
+    }
+    match /pajakSetoran/{id} {
+      allow read, write: if owner();
+    }
 
     match /aksesAkun/{uid} {
       allow read: if owner() || (masuk() && request.auth.uid == uid);

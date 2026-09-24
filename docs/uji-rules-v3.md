@@ -35,6 +35,8 @@ Kasus peran ben/karyawan butuh dokumen `aksesAkun/{uid}` yang SUDAH ADA (Playgro
 | ★8 | akun tanpa `aksesAkun` (uid `baru1`) | create `/permintaanAkses/baru1` `{uid:'baru1', email:'<email token, huruf kecil>', nama:'Uji', pada:'2026-09-24T00:00:00Z'}` | LOLOS |
 | ★9 | akun tanpa `aksesAkun` (uid `baru1`) | create `/permintaanAkses/lain` (uid orang lain) · create `/permintaanAkses/baru1` dengan kolom tambahan `peran` | DITOLAK |
 | ★10 | owner@ | create `/aksesAkun/u1` `{uid:'u1', peran:'owner', aktif:true}` | DITOLAK |
+| ★P1 | owner@ | create `/pajakSetoran/uji1` `{id:'uji1', masaPajak:'2026-08', jumlah:1}` · get `/pajakOmzetLuar/uji1` | LOLOS (dua-duanya) |
+| ★P2 | kasir@ | get `/pajakSetoran/x` · create `/pajakOmzetLuar/x` — lalu akun tanpa `aksesAkun` (uid `baru1`): get `/pajakSetoran/x` | DITOLAK (semua) |
 | 11 | owner@ | create `/aksesAkun/u1` `{uid:'u1', nama:'Uji', peran:'karyawan', aktif:true}` | LOLOS |
 | 12 | ben (aktif) | get `/penjualan/x` · get `/aturanToko/struk` · get `/pengaturan/tempatSimpan` | LOLOS |
 | 13 | ben (aktif) | get `/pengeluaranHarian/x` · get `/aturanToko/upah` · get `/pengaturan/titikKas` · get `/logAktivitas/x` | DITOLAK |
@@ -49,6 +51,7 @@ Kasus peran ben/karyawan butuh dokumen `aksesAkun/{uid}` yang SUDAH ADA (Playgro
 | 22 | karyawan (aktif) | create `/penjualan/j4` `{olehUid, caraBayar:'Kredit'}` → DITOLAK · `caraBayar:'Tunai'` → LOLOS | sesuai |
 | 23 | ben NONAKTIF (`aktif:false`) | get `/penjualan/x` · create `/penjualan/j5` `{olehUid}` | DITOLAK |
 | 24 | ben (aktif) | create `/perangkatStatus/p9` `{id:'p9', akunUid:'<uid ben>', pada:'…'}` → LOLOS · dengan `akunUid` orang lain → DITOLAK | sesuai |
+| 25 | ben (aktif) | get `/pajakSetoran/x` · create `/pajakOmzetLuar/x` `{olehUid:'<uid ben>'}` | DITOLAK (modul pajak khusus owner) |
 
 Satu saja yang meleset = **jangan tempel v3**; kirim nomornya ke Claude Code.
 
@@ -91,7 +94,9 @@ Tujuannya: menjalankan transaksi terbesar tiap peran lewat `/baru/` sungguhan, d
 ## C · SEKARANG di proyek TOKO (sesudah kasus ★ di A sesuai semua)
 
 0. Pendaftaran mandiri MATI & daftar Users sudah diperiksa (owner, 24 Sep: sudah).
-1. Tempel `firestore.rules` v3 di Console proyek toko.
+1. Tempel `firestore.rules` v3 di Console proyek toko — **versi terbaru dari `main` (58 blok, sesudah putaran 24: + `pajakOmzetLuar` & `pajakSetoran`
+   khusus owner)**, bukan versi 56 blok yang dites 24 Sep malam. Isi editor Console harus persis sama dengan berkas di repo; kasus ★ (termasuk ★P1–★P2)
+   diulang dengan berkas itu di editor.
 2. **Buat SATU nota dari kasir darurat** (akun kasir@) dan pastikan nota itu masuk di layar Jual `/baru/` owner. Tidak masuk → langsung tempel
    `firestore.rules.v2` (jalan mundur) dan kabari Claude Code.
 

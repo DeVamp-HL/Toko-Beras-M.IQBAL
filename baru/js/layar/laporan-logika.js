@@ -18,14 +18,19 @@ import { riwayatUpah } from './upah-logika.js';
 import { semuaBon } from './bon-logika.js';
 import { daftarPemasok, bukuBon } from './bon-pemasok-logika.js';
 import { bukuOwner } from './owner-toko-logika.js';
+import { pjOmzetSistem, pjGabungRekap, pjTahun, PJ_LABEL } from './pajak-logika.js';
 
-export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep
+export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['pajak', 'Pajak'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep
 export const JENIS_LAPORAN = [['labarugi', 'Laba-Rugi'], ['neraca', 'Neraca'], ['aruskas', 'Arus Kas']];
 export const RENTANG_LAPORAN = [[1, '1 bulan'], [3, '3 bulan'], [12, '12 bulan']];
 export const JENIS_KECIL = [['setor', 'Bukti setoran modal', 'dari catatan Owner & toko'], ['upah', 'Slip upah', 'dari buku upah'], ['piutang', 'Kartu piutang', 'per pelanggan'], ['bon', 'Rekap bon pemasok', 'per pemasok'], ['nota', 'Cetak ulang nota', 'SALINAN bercap']].map((j) => ({ id: j[0], nama: j[1], ket: j[2] }));
 export const DOKUMEN_KOP = [['nota', 'Nota pelanggan & cetak ulang', 'ringkas'], ['kartu', 'Kartu piutang', 'ringkas'], ['slip', 'Slip upah', 'ringkas'], ['harian', 'Rekap harian', 'ringkas'], ['laporan', 'Laba-rugi · neraca · arus kas', 'penuh'], ['omzet', 'Rekap omzet bulanan', 'penuh'], ['bon', 'Rekap bon pemasok', 'penuh'], ['setor', 'Bukti setoran modal', 'penuh']].map((d) => ({ id: d[0], nama: d[1], awal: d[2] }));
 export const KOLOM_IDENTITAS = [['nama', 'Nama usaha', 'wajib'], ['alamat', 'Alamat', 'wajib'], ['telepon', 'Telepon / WA', 'boleh kosong'], ['npwp', 'NPWP', '15 atau 16 angka, boleh kosong'], ['nib', 'NIB', '13 angka, boleh kosong'], ['slogan', 'Baris kaki', 'boleh kosong']].map((k) => ({ id: k[0], nama: k[1], ket: k[2] }));
-export const IDENTITAS_BAWAAN = { nama: 'Toko Beras M.IQBAL', alamat: '', telepon: '', npwp: '', nib: '', slogan: '', gaya: 'kiri' };
+export const IDENTITAS_BAWAAN = { nama: 'Toko Beras M.IQBAL', alamat: '', telepon: '', npwp: '', nib: '', slogan: '', gaya: 'kiri', npwpDiKop: false };
+// NPWP (owner 24 Sep, putaran 24): kolomnya tetap ada, tapi BAWAAN TIDAK DICETAK di kop mana pun — hanya kalau owner menyalakan npwpDiKop (kop penuh saja).
+// NPWP orang pribadi 16 angka = NIK → peringatan, kalimat owner:
+export const PERINGATAN_NPWP_NIK = 'NPWP orang pribadi = NIK; mencetaknya membuka NIK ke semua pembeli.';
+export function peringatanNpwp(npwp) { return lpDigit(npwp || '').length === 16 ? PERINGATAN_NPWP_NIK : ''; }
 /** Setelan yang tinggal di layarnya masing-masing — Setelan hanya menunjuk, tidak menggandakan. */
 export const ATUR_LAIN = [
   { nama: 'Uang keluar', ket: 'keperluan rutin, batas aman ambil pribadi, tagihan bulanan, alasan', tujuan: { ke: 'uang', keluarga: 'keluar' } }, { nama: 'Tutup hari', ket: 'sisihan laba, uang kembalian, selisih yang dimaafkan, potongan QRIS', tujuan: { ke: 'uang', keluarga: 'tutup' } },
@@ -102,18 +107,21 @@ export const tarifTeks = (n) => (n / 10).toFixed(1).replace('.', ',') + '%';
 export function susunAturRekap(isi, w) {
   const A = aturRekap(); const tarif = ugKosong(isi.tarifPerMil) ? 0 : ugAngka(isi.tarifPerMil); const batas = ugKosong(isi.batasOmzet) ? 0 : ugAngka(isi.batasOmzet); const tgl = ugKosong(isi.tanggalLapor) ? 15 : ugAngka(isi.tanggalLapor);
   if (!(tarif >= 0 && tarif <= 1000)) return { tolak: 'Tarif ditulis per seribu: 0–1000 (5 = 0,5 % dari omzet)' }; if (batas < 0) return { tolak: 'Batas omzet tidak boleh minus' }; if (!(tgl >= 1 && tgl <= 28)) return { tolak: 'Tanggal lapor 1–28' };
-  return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'rekapOmzet', tanggal: w.tanggal, jam: w.jam, tarifPerMil: Math.round(tarif), batasOmzet: Math.round(batas), tanggalLapor: Math.round(tgl), lapor: A.lapor } }], patch: { aturR: null, kabar: 'Setelan rekap omzet tersimpan — ' + (tarif ? 'tarif perkiraan ' + tarifTeks(tarif) : 'tanpa kolom perkiraan') + ' · ' + (batas ? 'batas ' + RP(batas) : 'batas belum diatur') + ' · lapor tiap tanggal ' + Math.round(tgl) + '. Ini setelan owner, bukan nasihat pajak.', kabarAwas: false } };
+  return { dokumen: [{ koleksi: 'aturanToko', data: pjGabungRekap({ tarifPerMil: Math.round(tarif), batasOmzet: Math.round(batas), tanggalLapor: Math.round(tgl), lapor: A.lapor }, w) }], patch: { aturR: null, kabar: 'Setelan rekap omzet tersimpan — ' + (tarif ? 'tarif perkiraan ' + tarifTeks(tarif) : 'tanpa kolom perkiraan') + ' · ' + (batas ? 'batas ' + RP(batas) : 'batas belum diatur') + ' · lapor tiap tanggal ' + Math.round(tgl) + '. Ini setelan owner, bukan nasihat pajak.', kabarAwas: false } };
 }
 /** DK3: 12 bulan omzet (mesin laba, satu sumber), kumulatif tahun berjalan, tanda dilaporkan, tarif & batas setelan owner, tempo lapor. */
 export function rekapOmzet(kini) {
   const iso = hariIniIso(kini); const akhir = lpKey(iso); const tahunIni = Number(akhir.slice(0, 4)); const A = aturRekap(); const daftar = []; let kum = 0; const p0 = lpPertama(); const awalBuku = p0 ? lpKey(p0) : akhir;
-  for (let i = 11; i >= 0; i--) { const k = lpGeserBulan(akhir, -i); const L = hitungLabaRentang((t) => !!t && bulanDari(t) === k); const th = Number(k.slice(0, 4)); if (th === tahunIni) kum += L.omzetPenuh; daftar.push({ key: k, nama: lpNamaBulan(k), pendek: lpBulanPendek(k, k.slice(5, 7) === '01' || i === 11), omzet: L.omzetPenuh, n: L.jumlahTrx, final: lpFinal(k), berjalan: i === 0, absen: k < awalBuku, kum: th === tahunIni ? kum : null, lapor: A.lapor[k] || null, perkiraan: A.tarifPerMil ? Math.round(L.omzetPenuh * A.tarifPerMil / 1000) : null }); }
-  const totalTahun = kum; const adaTarif = A.tarifPerMil > 0, adaBatas = A.batasOmzet > 0; const lewatBatas = adaBatas && totalTahun > A.batasOmzet; const finalTerakhir = daftar.filter((b) => b.final).pop() || null;
+  // putaran 24: omzet = pjOmzetSistem (satu sumber dengan layar Pajak); perkiraan = hitungan pajak (dengan batas bebas) — dua layar, satu angka
+  const PJ = {}; const pjBulan = (k) => { const th = Number(k.slice(0, 4)); if (!PJ[th]) PJ[th] = pjTahun(th, kini); return PJ[th].daftar.find((b) => b.key === k) || null; };
+  for (let i = 11; i >= 0; i--) { const k = lpGeserBulan(akhir, -i); const S = pjOmzetSistem(k); const th = Number(k.slice(0, 4)); if (th === tahunIni) kum += S.omzet; const pb = A.tarifPerMil ? pjBulan(k) : null;
+    daftar.push({ key: k, nama: lpNamaBulan(k), pendek: lpBulanPendek(k, k.slice(5, 7) === '01' || i === 11), omzet: S.omzet, n: S.n, final: lpFinal(k), berjalan: i === 0, absen: k < awalBuku, kum: th === tahunIni ? kum : null, lapor: A.lapor[k] || null, perkiraan: pb ? pb.pph : null, perkiraanLengkap: pb ? pb.lengkapSejauhIni : false }); }
+  const totalTahun = kum; const pjIni = A.tarifPerMil ? (PJ[tahunIni] || pjTahun(tahunIni, kini)) : null; const adaTarif = A.tarifPerMil > 0, adaBatas = A.batasOmzet > 0; const lewatBatas = adaBatas && totalTahun > A.batasOmzet; const finalTerakhir = daftar.filter((b) => b.final).pop() || null;
   const belumLapor = daftar.filter((b) => b.final && Number(b.key.slice(0, 4)) === tahunIni && !b.lapor); const hariIni = Number(iso.slice(8, 10)); const maks = Math.max(1, ...daftar.map((b) => b.omzet));
   let tempo = null; if (finalTerakhir) { const bulanBerikut = lpGeserBulan(finalTerakhir.key, 1); const lewat = akhir > bulanBerikut || (akhir === bulanBerikut && hariIni > A.tanggalLapor); tempo = { bulan: finalTerakhir, teks: 'lapor ' + lpBulanPendek(finalTerakhir.key) + ' paling lambat ' + A.tanggalLapor + ' ' + lpBulanPendek(bulanBerikut), sudah: !!finalTerakhir.lapor, lewat: !finalTerakhir.lapor && lewat, sisaHari: akhir === bulanBerikut ? A.tanggalLapor - hariIni : null }; }
-  return { daftar, maks, tahunIni, totalTahun, adaTarif, adaBatas, lewatBatas, sisaBatas: adaBatas ? A.batasOmzet - totalTahun : null, perkiraanTahun: adaTarif ? Math.round(totalTahun * A.tarifPerMil / 1000) : null, A, finalTerakhir, belumLapor, tempo, adaFinal: !!finalTerakhir,
-    totalTeks: 'Tahun ' + tahunIni + ' sampai ' + lpBulanPendek(akhir) + ': ' + RP(totalTahun) + (adaBatas ? (lewatBatas ? ' — LEWAT batas yang diatur owner (' + RP(A.batasOmzet) + ')' : ' — ' + RP(A.batasOmzet - totalTahun) + ' lagi sampai batas yang diatur owner') : ' — batas belum diatur (Atur)'),
-    tarifTeks: adaTarif ? 'Perkiraan menurut tarif ' + tarifTeks(A.tarifPerMil) + ' yang diatur owner: tahun ini ' + RP(Math.round(totalTahun * A.tarifPerMil / 1000)) + ' — bukan nasihat pajak' : 'Tarif belum diatur → kolom perkiraan tidak dicetak (Atur)' };
+  return { daftar, maks, tahunIni, totalTahun, adaTarif, adaBatas, lewatBatas, sisaBatas: adaBatas ? A.batasOmzet - totalTahun : null, perkiraanTahun: pjIni ? pjIni.totalPph : null, A, finalTerakhir, belumLapor, tempo, adaFinal: !!finalTerakhir,
+    totalTeks: 'Tahun ' + tahunIni + ' sampai ' + lpBulanPendek(akhir) + ' (omzet di sistem saja): ' + RP(totalTahun) + (adaBatas ? (lewatBatas ? ' — LEWAT batas yang diatur owner (' + RP(A.batasOmzet) + ')' : ' — ' + RP(A.batasOmzet - totalTahun) + ' lagi sampai batas yang diatur owner') : ' — batas belum diatur (Atur)') + '. Kumulatif lengkap dengan omzet di luar sistem: Laporan › Pajak',
+    tarifTeks: pjIni ? (pjIni.totalPph === null ? 'Perkiraan PPh tidak dihitung (jenis wajib pajak: badan — tanyakan konsultan)' : 'Perkiraan PPh ' + tarifTeks(A.tarifPerMil) + (pjIni.P.batasBebas ? ' sesudah batas bebas ' + RP(pjIni.P.batasBebas) : ' (batas bebas belum diisi)') + ': tahun ini ' + RP(pjIni.totalPph) + (pjIni.kosong ? ' — ' + pjIni.kosong + ' bulan belum diisi, bisa kurang' : '') + ' — ' + PJ_LABEL) : 'Tarif belum diatur → kolom perkiraan tidak dicetak (Atur)' };
 }
 /** Tandai / batalkan tanda "sudah dilaporkan" satu bulan — hanya bulan FINAL; membatalkan butuh ketukan kedua. */
 export function susunTandaLapor(key, w, yakin) {
@@ -121,7 +129,7 @@ export function susunTandaLapor(key, w, yakin) {
   const lapor = Object.assign({}, A.lapor); const sudah = !!lapor[key];
   if (sudah) { if (!yakin) return { tolak: 'Ketuk sekali lagi untuk membatalkan tanda ' + lpNamaBulan(key), perluYakin: true }; delete lapor[key]; }
   else lapor[key] = { tgl: w.tanggal, jam: w.jam };
-  return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'rekapOmzet', tanggal: w.tanggal, jam: w.jam, tarifPerMil: A.tarifPerMil, batasOmzet: A.batasOmzet, tanggalLapor: A.tanggalLapor, lapor } }], patch: { yakinBatal: false, kabar: sudah ? 'Tanda dilaporkan ' + lpNamaBulan(key) + ' dibatalkan' : lpNamaBulan(key) + ' ditandai sudah dilaporkan ' + tanggalPendek(w.tanggal), kabarAwas: false } };
+  return { dokumen: [{ koleksi: 'aturanToko', data: pjGabungRekap({ lapor }, w) }], patch: { yakinBatal: false, kabar: sudah ? 'Tanda dilaporkan ' + lpNamaBulan(key) + ' dibatalkan' : lpNamaBulan(key) + ' ditandai sudah dilaporkan ' + tanggalPendek(w.tanggal), kabarAwas: false } };
 }
 /** Bukti omzet dari bulan yang dipilih: Σ baris = jumlah (penjaga identitas tergambar); hanya bulan final. */
 export function buktiOmzet(pilih, kini) {
@@ -156,7 +164,7 @@ export function bandingKekayaan(kini) { const t = ambilTitikKas(); const kiniN =
 /** Identitas usaha: aturanToko/identitas menang; belum ada → nama & alamat & telepon dari setelan struk (Jual) kalau ada; versi 0 = kop bawaan (belum pernah disimpan). */
 export function identitasUsaha() {
   const a = ugAturDok('identitas'); const st = stAtur().kop; const I = Object.assign({}, IDENTITAS_BAWAAN);
-  if (a) { KOLOM_IDENTITAS.forEach((k) => { if (a[k.id] !== undefined && a[k.id] !== null) I[k.id] = String(a[k.id]); }); if (a.gaya === 'tengah' || a.gaya === 'kiri') I.gaya = a.gaya; }
+  if (a) { KOLOM_IDENTITAS.forEach((k) => { if (a[k.id] !== undefined && a[k.id] !== null) I[k.id] = String(a[k.id]); }); if (a.gaya === 'tengah' || a.gaya === 'kiri') I.gaya = a.gaya; I.npwpDiKop = a.npwpDiKop === true; }
   else { if (st.nama) I.nama = st.nama; if (st.alamat) I.alamat = st.alamat; if (st.telp) I.telepon = st.telp; }
   return Object.assign(I, { versi: a ? Number(a.versi) || 1 : 0, riwayat: a && Array.isArray(a.riwayat) ? a.riwayat : [], dariOwner: !!a, dariStruk: !a && !!(st.alamat || st.telp), lengkap: !!(I.nama.trim() && I.alamat.trim()) });
 }
@@ -164,13 +172,14 @@ export function periksaIdentitas(d) { if (!String(d.nama || '').trim()) return '
 /** Simpan identitas = versi kop baru, berjejak; kop ringkas (nama · alamat · telepon) ikut ke setelan struk supaya nota memakai kop yang sama. */
 export function susunIdentitas(draf, w) {
   const I = identitasUsaha(); const d = {}; KOLOM_IDENTITAS.forEach((k) => { d[k.id] = String(draf[k.id] === undefined ? I[k.id] : draf[k.id] || '').trim().slice(0, 120); }); d.gaya = draf.gaya === undefined ? I.gaya : draf.gaya === 'tengah' ? 'tengah' : 'kiri';
-  const tolak = periksaIdentitas(d); if (tolak) return { tolak }; const ubah = KOLOM_IDENTITAS.filter((k) => d[k.id] !== (I[k.id] || '')).map((k) => k.nama); if (d.gaya !== I.gaya) ubah.push('gaya kop'); if (!ubah.length) return { tolak: 'Tidak ada yang berubah' };
+  d.npwpDiKop = draf.npwpDiKop === undefined ? !!I.npwpDiKop : draf.npwpDiKop === true;
+  const tolak = periksaIdentitas(d); if (tolak) return { tolak }; const ubah = KOLOM_IDENTITAS.filter((k) => d[k.id] !== (I[k.id] || '')).map((k) => k.nama); if (d.gaya !== I.gaya) ubah.push('gaya kop'); if (d.npwpDiKop !== !!I.npwpDiKop) ubah.push(d.npwpDiKop ? 'NPWP dicetak di kop penuh' : 'NPWP tidak dicetak'); if (!ubah.length) return { tolak: 'Tidak ada yang berubah' };
   const versi = I.versi + 1; const riwayat = [{ versi, tanggal: w.tanggal, jam: w.jam, ubah }].concat(I.riwayat).slice(0, 30); const S = stAtur();
   return { dokumen: [{ koleksi: 'aturanToko', data: Object.assign({ id: 'identitas', tanggal: w.tanggal, jam: w.jam, versi, riwayat }, d) }, { koleksi: 'aturanToko', data: { id: 'struk', tanggal: w.tanggal, jam: w.jam, kop: { nama: d.nama.slice(0, 40), alamat: d.alamat.slice(0, 80), telp: d.telepon.slice(0, 30) }, kaki: S.kaki, kertas: S.kertas, sertakan: S.sertakan, oto: S.oto, perOrang: S.perOrang } }],
-    versi, patch: { drafI: null, isiI: null, kabar: 'Tersimpan sebagai kop v' + versi + ' (' + ubah.join(', ') + ') — dokumen yang sudah dicetak tetap menyebut versi lamanya; kop nota di Jual ikut', kabarAwas: false } };
+    versi, patch: { drafI: null, isiI: null, kabar: 'Tersimpan sebagai kop v' + versi + ' (' + ubah.join(', ') + ') — dokumen yang sudah dicetak tetap menyebut versi lamanya; kop nota di Jual ikut' + (d.npwpDiKop && peringatanNpwp(d.npwp) ? '. ' + PERINGATAN_NPWP_NIK : ''), kabarAwas: !!(d.npwpDiKop && peringatanNpwp(d.npwp)) } };
 }
-/** Kop untuk satu ragam: penuh (NPWP/NIB kalau ada) atau ringkas. */
-export function kopUntuk(ragam, I) { const i = I || identitasUsaha(); return { nama: i.nama || '(nama usaha)', alamat: (i.alamat || '') + (i.telepon ? (i.alamat ? ' · ' : '') + i.telepon : ''), resmi: ragam === 'penuh' ? [i.npwp ? 'NPWP ' + i.npwp : '', i.nib ? 'NIB ' + i.nib : ''].filter(Boolean).join(' · ') : '', slogan: i.slogan || '', gaya: i.gaya, versi: i.versi, lengkap: i.lengkap, ragam }; }
+/** Kop untuk satu ragam: penuh (NIB kalau ada; NPWP HANYA kalau owner menyalakan npwpDiKop) atau ringkas (tanpa keduanya). */
+export function kopUntuk(ragam, I) { const i = I || identitasUsaha(); return { nama: i.nama || '(nama usaha)', alamat: (i.alamat || '') + (i.telepon ? (i.alamat ? ' · ' : '') + i.telepon : ''), resmi: ragam === 'penuh' ? [i.npwp && i.npwpDiKop === true ? 'NPWP ' + i.npwp : '', i.nib ? 'NIB ' + i.nib : ''].filter(Boolean).join(' · ') : '', slogan: i.slogan || '', gaya: i.gaya, versi: i.versi, lengkap: i.lengkap, ragam }; }
 export function pakaiKop() { const a = ugAturDok('dokumen') || {}; const pakai = {}; DOKUMEN_KOP.forEach((d) => { pakai[d.id] = a.pakai && (a.pakai[d.id] === 'penuh' || a.pakai[d.id] === 'ringkas') ? a.pakai[d.id] : d.awal; }); return { pakai, nomorAwal: isFinite(Number(a.nomorAwal)) && Number(a.nomorAwal) >= 1 ? Math.round(Number(a.nomorAwal)) : 1, dariOwner: !!ugAturDok('dokumen') }; }
 export function susunAturDokumen(isi, w) {
   const P = pakaiKop(); const pakai = Object.assign({}, P.pakai); if (isi.pakai) Object.keys(isi.pakai).forEach((k) => { if (pakai[k] !== undefined && (isi.pakai[k] === 'penuh' || isi.pakai[k] === 'ringkas')) pakai[k] = isi.pakai[k]; });

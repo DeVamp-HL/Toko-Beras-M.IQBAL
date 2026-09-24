@@ -15,6 +15,7 @@ import { bolehLayar, bisaBekerja, teksMasukSebagai } from './data/akses.js';
 import { ssAtur } from './layar/sistem-logika.js';
 import { terkunci, setelKunci } from './inti/kunci.js';
 import { kalimatKeranjangKeluar } from './layar/jual-logika.js';
+import { pjSumberPengingat } from './layar/pajak-logika.js';
 
 const q = new URLSearchParams(location.search);
 const KUNCI_MODE = 'miqbal_baru_mode';
@@ -70,7 +71,8 @@ const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan')
 // Menu (putaran 14): laci N1 + pita jam + Sistem (SS1–SS5). Tujuan baris = layar lain lewat pintu yang sama dengan ketukan di layar itu.
 const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t),
   bukaStok: (lembar, tab) => { pindah('stok'); stok.buka(lembar, tab); }, bukaPelanggan: (keluarga, orang) => { pindah('pelanggan'); pelanggan.buka(keluarga, orang); }, bukaHarga: (keluarga, t) => { pindah('harga'); harga.buka(keluarga, t); }, bukaUang: (keluarga, t) => { pindah('uang'); uang.buka(keluarga, t); }, bukaLaporan: (keluarga, t) => { pindah('laporan'); laporan.buka(keluarga, t); }, bukaJual: (lembar) => { pindah('jual'); layar.keadaan.setel({ lembar, kabar: '' }); },
-  lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline }),
+  lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline,
+    pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })() }),   // putaran 24: pengingat pajak, owner saja
   periksaSambungan: () => fb.periksaSambungan(4000), setelLokasi: (id) => fb.setelLokasi(id), namaiPerangkat: (n) => fb.namaiPerangkat(n),
   akun: akunKini, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id) => fb.tulisUlangDitolak(id) });
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.

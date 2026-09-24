@@ -89,7 +89,7 @@ tidak menyaring, jadi pendengar koleksi akan ditolak utuh.
 | pengaturan/aksesKasir | O · K | O | O | O |
 | ringkasanKasir | O · K | O | O | O |
 | tagihPelanggan, pelangganTitip, batchMasuk, penyesuaianStok, penyesuaianKemasan, retur, karantina, wadahLiteran, pindahTempat, katalog ×3, hargaWadah | O · B W | O | O | O |
-| 26 koleksi lain di `koleksi.js` + `arsipTahun` | O | O | O | O |
+| 28 koleksi lain di `koleksi.js` (termasuk `pajakOmzetLuar`, `pajakSetoran` — putaran 24) + `arsipTahun` | O | O | O | O |
 
 Hak bawaan ben & karyawan SAMA di tingkat koleksi, kecuali penjualan Kredit (jualBon: ben `sendiri`, karyawan `owner`).
 Menambah peran nanti (mis. `kasir`) = menambah satu nama di daftar peran tiap koleksi yang boleh — tidak menulis ulang rules.
@@ -206,6 +206,12 @@ Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `
 | laporan | `susunCetakan` | dokumenCetak buat |
 | laporan | `susunIdentitas` | aturanToko buat? |
 | laporan | `susunTandaLapor` | aturanToko buat? |
+| pajak | `susunHapusOmzetLuar` | pajakOmzetLuar hapus |
+| pajak | `susunHapusSetoran` | pajakSetoran hapus |
+| pajak | `susunOmzetLuar` | pajakOmzetLuar buat? |
+| pajak | `susunPakaiAturan` | aturanToko buat? |
+| pajak | `susunProfilPajak` | aturanToko buat? |
+| pajak | `susunSetoran` | pajakSetoran buat? |
 | pelanggan | `susunAturPelanggan` | aturanToko buat? |
 | pelanggan | `susunBeriThr` | thrPelanggan buat? |
 | pelanggan | `susunBersihkanCiri` | aturanToko hapus/kolom · pelangganCatatan hapus/kolom |
@@ -226,6 +232,7 @@ Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `
 | retur | `susunReturTanpaNota` | karantina buat? · retur buat? |
 | sistem | `susunAturSistem` | aturanToko buat? |
 | sistem | `susunCatatCadangan` | cadanganCatatan buat |
+| sistem | `susunDaftarkan` | aksesAkun buat? · permintaanAkses hapus |
 | sistem | `susunJadikanUtama` | aturanToko buat? |
 | sistem | `susunKePengingat` | aturanToko buat? |
 | sistem | `susunPindahStok` | pindahStok buat? |
@@ -233,6 +240,8 @@ Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `
 | sistem | `susunPutusPersetujuan` | persetujuan ubah |
 | sistem | `susunSaklarPengingat` | aturanToko buat? |
 | sistem | `susunSetujuiKecil` | persetujuan ubah |
+| sistem | `susunTolakAkses` | permintaanAkses hapus |
+| sistem | `susunUbahAkun` | aksesAkun buat? |
 | stok-adukan | `susunHapusAdukan` | bukuHapus buat · produksiKemasan buat?/hapus · stokBahanKemasan hapus |
 | stok-adukan | `susunKoreksiAdukan` | produksiKemasan buat?/ubah |
 | stok-adukan | `susunSimpanAdukan` | produksiKemasan buat? · stokBahanKemasan buat |
@@ -275,19 +284,19 @@ Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `
 | wadah-jual | `susunAturHargaWadah` | hargaWadah buat? · stokBahanKemasan buat? · stokBahanLiteran buat? |
 | wadah-jual | `susunRakWadah` | stokBahanKemasan buat? · stokBahanLiteran buat? |
 
-110 fungsi yang menulis
+119 fungsi yang menulis
 
 ## Lampiran B · Baca per layar (`python3 alat-uji/peta_akses.py --baca`)
 
-| layar | koleksi dibaca (dari 52) |
+| layar | koleksi dibaca (dari 56) |
 |---|---|
-| ringkasan | 21: aturanToko, batchMasuk, biayaBulanan, kasbonMutasi, modalOwner, pengaturan, pengeluaranHarian, penjualan, penyesuaianKemasan, penyesuaianStok, perangkatStatus, pesanan, pindahStok, piutangMutasi, produksiKemasan, retur, setoranKas, stokBahanKemasan, stokBahanLiteran, utangOwnerMutasi, utangPemasokMutasi |
+| ringkasan | 23: aturanToko, batchMasuk, biayaBulanan, kasbonMutasi, modalOwner, pajakOmzetLuar, pajakSetoran, pengaturan, pengeluaranHarian, penjualan, penyesuaianKemasan, penyesuaianStok, perangkatStatus, pesanan, pindahStok, piutangMutasi, produksiKemasan, retur, setoranKas, stokBahanKemasan, stokBahanLiteran, utangOwnerMutasi, utangPemasokMutasi |
 | stok | 20: aturanToko, batchMasuk, bukuHapus, karantina, katalogHargaKarung, katalogHargaKemasan, katalogHargaLiteran, koreksiHpp, pengaturan, penjualan, penyesuaianKemasan, penyesuaianStok, pesanan, pindahTempat, piutangMutasi, produksiKemasan, retur, stokBahanKemasan, stokBahanLiteran, wadahLiteran |
 | jual | 19: aturanToko, batchMasuk, hargaWadah, katalogHargaKarung, katalogHargaKemasan, katalogHargaLiteran, pelangganCatatan, pelangganTitip, penjualan, penyesuaianKemasan, penyesuaianStok, pesanan, piutangMutasi, produksiKemasan, retur, stokBahanKemasan, stokBahanLiteran, strukKeluar, wadahLiteran |
 | pelanggan | 10: aturanToko, cadanganCatatan, logAktivitas, pelangganCatatan, pelangganTitip, penjualan, pesanan, piutangMutasi, tagihPelanggan, thrPelanggan |
 | harga | 28: aturanToko, batchMasuk, biayaBulanan, hargaPasar, hargaTerbit, kasbonMutasi, katalogHargaKarung, katalogHargaKemasan, katalogHargaLiteran, modalOwner, pelangganCatatan, pemasokCatatan, pengaturan, pengeluaranHarian, penjualan, penyesuaianKemasan, penyesuaianStok, pesanan, pesananPemasok, piutangMutasi, produksiKemasan, retur, setoranKas, stokBahanKemasan, stokBahanLiteran, tagihPelanggan, utangOwnerMutasi, utangPemasokMutasi |
 | uang | 32: absenKaryawan, amplopLaba, aturanToko, batchMasuk, biayaBulanan, karantina, kasbonMutasi, katalogHargaKarung, modalOwner, pengaturan, pengeluaranHarian, penjualan, penyesuaianKemasan, penyesuaianStok, perangkatStatus, persetujuan, pesanan, pindahStok, pindahUang, piutangMutasi, produksiKemasan, retur, setoranKas, slipUpah, stokBahanKemasan, stokBahanLiteran, tembusanStok, tutupBukuAcara, tutupHari, utangOwnerMutasi, utangPemasokMutasi, wadahLiteran |
-| laporan | 30: amplopLaba, aturanToko, batchMasuk, biayaBulanan, dokumenCetak, kasbonMutasi, modalOwner, pelangganCatatan, pemasokCatatan, pengaturan, pengeluaranHarian, penjualan, penyesuaianKemasan, penyesuaianStok, perangkatStatus, pesanan, pindahStok, pindahUang, piutangMutasi, produksiKemasan, retur, setoranKas, slipUpah, stokBahanKemasan, stokBahanLiteran, tagihPelanggan, tutupHari, utangOwnerMutasi, utangPemasokMutasi, wadahLiteran |
-| menu | 34: amplopLaba, aturanToko, batchMasuk, biayaBulanan, cadanganCatatan, kasbonMutasi, katalogHargaKarung, katalogHargaKemasan, katalogHargaLiteran, logAktivitas, modalOwner, pelangganCatatan, pemasokCatatan, pengaturan, pengeluaranHarian, pengingat, penjualan, penyesuaianKemasan, penyesuaianStok, perangkatStatus, persetujuan, pesanan, pindahStok, pindahUang, piutangMutasi, produksiKemasan, retur, setoranKas, stokBahanKemasan, stokBahanLiteran, tagihPelanggan, utangOwnerMutasi, utangPemasokMutasi, wadahLiteran |
+| laporan | 32: amplopLaba, aturanToko, batchMasuk, biayaBulanan, dokumenCetak, kasbonMutasi, modalOwner, pajakOmzetLuar, pajakSetoran, pelangganCatatan, pemasokCatatan, pengaturan, pengeluaranHarian, penjualan, penyesuaianKemasan, penyesuaianStok, perangkatStatus, pesanan, pindahStok, pindahUang, piutangMutasi, produksiKemasan, retur, setoranKas, slipUpah, stokBahanKemasan, stokBahanLiteran, tagihPelanggan, tutupHari, utangOwnerMutasi, utangPemasokMutasi, wadahLiteran |
+| menu | 36: aksesAkun, amplopLaba, aturanToko, batchMasuk, biayaBulanan, cadanganCatatan, kasbonMutasi, katalogHargaKarung, katalogHargaKemasan, katalogHargaLiteran, logAktivitas, modalOwner, pelangganCatatan, pemasokCatatan, pengaturan, pengeluaranHarian, pengingat, penjualan, penyesuaianKemasan, penyesuaianStok, perangkatStatus, permintaanAkses, persetujuan, pesanan, pindahStok, pindahUang, piutangMutasi, produksiKemasan, retur, setoranKas, stokBahanKemasan, stokBahanLiteran, tagihPelanggan, utangOwnerMutasi, utangPemasokMutasi, wadahLiteran |
 
 tidak dibaca layar mana pun: titipanHarian

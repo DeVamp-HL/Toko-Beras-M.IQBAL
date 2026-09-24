@@ -68,3 +68,24 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
 /* Mingguan & Tahunan (owner 23 Sep) */
 .layar-laporan .lp-batang.tujuh { grid-template-columns: repeat(7, 1fr); } .layar-laporan .lp-batang.tujuh span { line-height: 1.15; text-align: center; } .layar-laporan .lp-batang > div.depan i, .layar-laporan .lp-grafik > div.depan i { opacity: 0.25; border-style: dotted; background: transparent; }
 .layar-laporan .lp-baris.depan { opacity: 0.45; }
+/* ---- PAJAK (putaran 24): angka ketikan owner tampil BEDA dari hitungan sistem; status per bulan; ambang 70/85/95/100 % ---- */
+.layar-laporan .pj-label { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--redup); padding: 2px 2px 6px; }
+.layar-laporan .pj-dua { display: flex; gap: 6px; flex-wrap: wrap; } .layar-laporan .pj-dua > * { flex: 1 1 160px; }
+.layar-laporan .pj-form { display: flex; flex-direction: column; gap: 6px; padding: 6px 0; border-top: 1px dashed var(--garis); animation: pj-muncul 260ms ease; }
+.layar-laporan .pj-diketik { font-style: italic; border-bottom: 1px dashed var(--emas-garis); white-space: nowrap; } .layar-laporan .pj-diketik small { font-style: normal; font-size: 9.5px; color: var(--aktif); margin-left: 4px; letter-spacing: 0.03em; }
+.layar-laporan .pj-bulan { display: flex; flex-direction: column; }
+.layar-laporan .pj-b { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 8px; row-gap: 3px; align-items: start; padding: 6px 0; border-bottom: 1px dashed var(--garis); font-size: 12.5px; animation: pj-muncul 320ms ease both; }
+.layar-laporan .pj-b.jalan { background: linear-gradient(90deg, transparent, var(--seg), transparent); } .layar-laporan .pj-b .isi small { font-size: 10px; color: var(--redup); }
+.layar-laporan .pj-b .nm { display: flex; flex-direction: column; align-items: center; gap: 3px; } .layar-laporan .pj-b .nm i { width: 12px; border-radius: 3px 3px 0 0; background: var(--aktif); opacity: 0.7; transition: height 520ms cubic-bezier(.2,.8,.2,1); }
+.layar-laporan .pj-b .nm i.kosong { background: none; border: 1px dashed var(--redup); }
+.layar-laporan .pj-b .st { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; } .layar-laporan .pj-b .nm { grid-row: span 2; }
+.layar-laporan .pj-status { font-size: 10.5px; padding: 3px 8px; border-radius: 9px; border: 1px solid var(--kaca-tepi); background: var(--seg); transition: background-color 300ms ease, color 300ms ease; }
+.layar-laporan .pj-status.nihil { color: var(--redup); } .layar-laporan .pj-status.disetor { border-color: #2f8f4e; color: #2f8f4e; } .layar-laporan .pj-status.terutang, .layar-laporan .pj-status.lebih { border-color: var(--emas-garis); color: var(--aktif); }
+.layar-laporan .pj-status.lewatTempo, .layar-laporan .pj-status.kurang, .layar-laporan .pj-status.berubah, .layar-laporan .pj-status.belumLengkap { border-color: var(--awas); color: var(--awas); } .layar-laporan .pj-status.belumLengkap, .layar-laporan .pj-status.aturan { border-style: dashed; }
+.layar-laporan .pj-ambang { display: flex; flex-direction: column; gap: 4px; padding: 14px 0 2px; }
+.layar-laporan .pj-rel { position: relative; height: 10px; border-radius: 6px; background: var(--seg); border: 1px solid var(--kaca-tepi); }
+.layar-laporan .pj-rel span { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--emas-garis), var(--aktif)); transition: width 700ms cubic-bezier(.2,.8,.2,1); } .layar-laporan .pj-rel span.awas { background: linear-gradient(90deg, var(--aktif), var(--awas)); }
+.layar-laporan .pj-rel em { position: absolute; top: -14px; transform: translateX(-50%); font-size: 9px; font-style: normal; color: var(--redup); } .layar-laporan .pj-rel em::after { content: ''; position: absolute; left: 50%; top: 13px; height: 10px; border-left: 1px solid var(--redup); }
+.layar-laporan .pj-rel em.lewat { color: var(--awas); } .layar-laporan .pj-rel i.proyeksi { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--teks); opacity: 0.55; border-radius: 1px; animation: pj-kedip 2.4s ease-in-out infinite; }
+@keyframes pj-muncul { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } } @keyframes pj-kedip { 50% { opacity: 0.15; } }
+@media (prefers-reduced-motion: reduce) { .layar-laporan .pj-b, .layar-laporan .pj-form, .layar-laporan .pj-rel i.proyeksi { animation: none; } }

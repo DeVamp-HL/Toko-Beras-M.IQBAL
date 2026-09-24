@@ -83,4 +83,9 @@ export const KOLEKSI = [
   //  akun bukan-owner mendengarkan dokumen aksesAkun-nya sendiri saja (firebase.js). Lihat docs/peta-hak-akses.md.
   { nama: 'aksesAkun',           urut: 'id',    cache: 'aksesAkun' },
   { nama: 'permintaanAkses',     urut: 'pada',  cache: 'permintaanAkses' },
+  // Putaran 24 (24 Sep 2026) — MODUL PAJAK (owner saja): pajakOmzetLuar/{YYYY-MM|sumber} = omzet yang DIKETIK owner (catatan lama sebelum sistem,
+  //  usaha lain WP yang sama, usaha pasangan); pajakSetoran = tiap setoran PPh final (masa, tanggal, jumlah, NTPN) + potret omzet & perkiraan saat dicatat.
+  //  Profil wajib pajak = field tambahan di aturanToko/rekapOmzet. TIDAK ada NIK, NPWP, atau nomor rekening di dokumen mana pun.
+  { nama: 'pajakOmzetLuar',      urut: 'id',    cache: 'pajakOmzetLuar' },
+  { nama: 'pajakSetoran',        urut: 'id',    cache: 'pajakSetoran' },
 ];
