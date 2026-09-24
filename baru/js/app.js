@@ -46,15 +46,24 @@ function statusTeks() {
   return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : 'tersambung · ' + statusFb.koleksiTotal + ' koleksi';
 }
 
+// Pil di kepala tiap layar (owner 24 Sep: bilah "Masuk sebagai … · Keluar" di atas layar dicabut, pindah ke pil ini; "DATA TOKO" → nama akun).
+// Isinya: akun yang masuk (OWNER / nama orang), ditambah keadaan kiriman bila tidak normal. Ketuk = lembar akun (Masuk sebagai + Keluar).
+const labelAkun = () => { const a = akunKini(); return !a || !bisaBekerja(a) ? 'DATA TOKO' : a.jenis === 'owner' ? 'OWNER' : String(a.nama || a.email || '').toUpperCase(); };
+// Nama yang masuk SELALU di depan (owner 24 Sep) — juga saat memuat; keadaan tambahan menyusul di belakangnya (terpotong duluan kalau sempit).
+function statusRingkas() {
+  const belum = (statusFb.lokal || {}).belum || 0;
+  const tambah = statusFb.koleksiSiap < statusFb.koleksiTotal && !statusFb.offline ? ' · memuat…' : statusFb.offline ? ' · tanpa internet' : statusFb.menunggu > 0 ? ' · menunggu server' : belum ? ' · ' + belum + ' belum terkirim' : '';
+  return labelAkun() + tambah;
+}
+
 terapkanMode();
 const akar = document.getElementById('layar');
-const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, versiData: () => versi, pemegang: () => fb.pemegangPerangkat() });
+const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat() });
 dengarkan(() => { versi += 1; });
 
 // ---- perpindahan layar: tiap layar punya <main> sendiri yang disembunyikan, supaya keranjang Jual tidak hilang saat pindah ----
 const KUNCI_TAB = 'miqbal_baru_tab';
 let sekarangCadangan = null;   // mode cadangan: "sekarang" = saat cadangan diunduh
-const statusRingkas = () => (statusFb.offline ? 'tanpa internet' : statusFb.menunggu > 0 ? 'menunggu server' : statusFb.koleksiSiap < statusFb.koleksiTotal ? 'memuat…' : 'DATA TOKO');
 const ringkasan = pasangLayarRingkasan(document.getElementById('layarRingkasan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
 const stok = pasangLayarStok(document.getElementById('layarStok'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, keranjangJual: () => layar.keadaan.baca(), bukaHarga: (keluarga) => { pindah('harga'); harga.buka(keluarga); } });
 const pelanggan = pasangLayarPelanggan(document.getElementById('layarPelanggan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
@@ -107,7 +116,7 @@ function terapkanKunci(akun) {
   const kunci = !q.get('cadangan') && !bisaBekerja(akun); const tadi = terkunci();
   setelKunci(kunci); document.body.classList.toggle('terkunci', kunci);
   SEMUA_LAYAR().forEach((l) => l.tampilkan(false));
-  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); return; }
+  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); document.getElementById('lembarAkun').classList.remove('buka'); return; }
   if (tadi) { pindah((() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })()) || pindah('jual'); layar.gambar(); }
 }
 // ---- GANTI ORANG (putaran 23c, owner 24 Sep): keranjang Jual TIDAK boleh terbawa ke akun berikutnya. Keluar lewat tombol = ditanya dulu (keluarAkun);
@@ -174,13 +183,29 @@ async function keluarAkun() {
   layar.lupakanOrang(); uidKeranjang = '';
   await fb.keluar();
 }
-document.getElementById('tombolKeluar').addEventListener('click', keluarAkun);
+document.getElementById('tombolKeluar').addEventListener('click', () => { tutupLembarAkun(); keluarAkun(); });
 document.getElementById('tombolKeluarAkun').addEventListener('click', keluarAkun);
-/** Nama & peran di setiap layar + menu/nav menyembunyikan layar yang bukan hak peran itu. */
+// ---- lembar akun: dibuka dari pil di kepala layar mana pun (delegasi di dokumen, karena tiap layar menggambar ulang kepalanya sendiri) ----
+const lembarAkun = document.getElementById('lembarAkun');
+function isiLembarAkun() {
+  const a = akunKini(); const cad = sumberData().jenis === 'cadangan'; const kerja = !!a && bisaBekerja(a) && !cad;
+  document.getElementById('lembarAkunNama').textContent = cad ? 'Membaca cadangan' : kerja ? teksMasukSebagai(a) : 'Belum masuk';
+  const n = (statusFb.lokal || {}).belum || 0;
+  document.getElementById('lembarAkunKet').textContent = cad ? 'Angka dari berkas cadangan, bukan data toko hari ini. Tidak ada akun yang masuk, tulisan cuma simulasi.'
+    : (a && a.email ? a.email + ' · ' : '') + statusTeks() + (n ? ' · ' + n + ' catatan belum terkirim dari akun ini' : '');
+  document.getElementById('tombolKeluar').hidden = !kerja;
+}
+function tutupLembarAkun() { lembarAkun.classList.remove('buka'); }
+document.addEventListener('click', (ev) => {
+  const pil = ev.target.closest && ev.target.closest('[data-pil-akun]');
+  if (pil) { if (lembarAkun.classList.contains('buka')) return tutupLembarAkun(); isiLembarAkun(); const r = pil.getBoundingClientRect(); lembarAkun.style.top = Math.round(r.bottom + 8) + 'px'; const w = lembarAkun.offsetWidth || 320; lembarAkun.style.right = Math.max(12, Math.min(Math.round(innerWidth - r.right), innerWidth - w - 12)) + 'px'; lembarAkun.classList.add('buka'); return; }
+  if (!lembarAkun.contains(ev.target)) tutupLembarAkun();
+});
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') tutupLembarAkun(); });
+/** Menu/nav menyembunyikan layar yang bukan hak peran itu (nama & peran tampil di pil kepala tiap layar). */
 function gambarChipDanNav() {
-  const a = akunKini(); const chip = document.getElementById('chipAkun'); const kerja = !!a && bisaBekerja(a) && sumberData().jenis !== 'cadangan';
-  chip.hidden = !kerja; document.body.classList.toggle('ada-akun', kerja);
-  if (kerja) { document.getElementById('chipNama').textContent = 'Masuk sebagai: ' + teksMasukSebagai(a); const n = (statusFb.lokal || {}).belum || 0; const ca = document.getElementById('chipAntre'); ca.hidden = !n; ca.textContent = n ? n + ' belum terkirim' : ''; }
+  const a = akunKini();
+  if (lembarAkun.classList.contains('buka')) isiLembarAkun();
   document.querySelectorAll('[data-tujuan]').forEach((el) => { el.hidden = !!a && !bolehLayar(a, el.dataset.tujuan); });
   const tab = (() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })();
   if (a && bisaBekerja(a) && !bolehLayar(a, tab)) pindah('jual');

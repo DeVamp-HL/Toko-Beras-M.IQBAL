@@ -99,22 +99,22 @@ main.layar-jual > input[type="hidden"] { display: none; }
 /* lembar & laci Jual bersifat fixed — ikut tersembunyi bersama <main>-nya (display:none pada induk menyembunyikan anak fixed) */
 main[hidden] { display: none !important; }
 /* putaran 23: masuk per orang — bilah tipis "masuk sebagai" di ATAS setiap layar (mendorong isi ke bawah, tidak menutupi kepala layar) + Keluar selalu terlihat */
-.chip-akun { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 19; height: 34px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 0 10px 0 14px; box-sizing: border-box;
-  background: var(--nav); border-bottom: 1px solid var(--kaca-tepi); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 12px; }
-body.ada-akun { padding-top: 34px; }   /* poni sudah dihitung kepala tiap layar (baris 23); bilah duduk tepat di bawah poni */
-@media (min-width: 1100px) { .chip-akun { left: 72px; } }
-.chip-akun[hidden], .chip-akun .chip-antre[hidden] { display: none; }
+/* putaran 23 → 24 Sep: bilah "Masuk sebagai" di atas layar DICABUT (owner). Akun tampil di pil kepala tiap layar; ketuk = lembar akun. */
+.pil-akun { cursor: pointer; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
+.lembar-akun { position: fixed; z-index: 40; top: 72px; right: 16px; width: min(320px, calc(100vw - 32px)); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px;
+  opacity: 0; transform: translateY(-6px) scale(0.98); pointer-events: none; visibility: hidden; transition: opacity 180ms ease, transform 220ms ease, visibility 0s linear 220ms; }
+.lembar-akun.kartu { background: var(--nav); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.lembar-akun.buka { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition: opacity 180ms ease, transform 220ms ease, visibility 0s; }
+.lembar-akun #tombolKeluar[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .lembar-akun, .lembar-akun.buka { transition: none; } }
 [data-tujuan][hidden] { display: none !important; }   /* menu & nav menyembunyikan layar yang bukan hak peran itu */
-.chip-akun #chipNama { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.chip-akun button { flex: none; font: inherit; font-size: 12px; min-height: 26px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--kaca-tepi); background: var(--seg-aktif); color: var(--teks); cursor: pointer; }
-.chip-akun .chip-antre { color: var(--awas); font-weight: 600; white-space: nowrap; }
 #panelAkun { display: flex; flex-direction: column; } #panelAkun[hidden] { display: none; } #mintaAkun { display: flex; flex-direction: column; gap: 8px; } #mintaAkun[hidden] { display: none; }
 /* putaran 23: proyek Firebase UJI — bilah merah di ATAS setiap layar selama aktif (setelan per perangkat), juga di atas layar masuk */
 .bilah-uji { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); height: 28px; z-index: 25; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 10px; box-sizing: border-box;
   background: #a3452c; color: #fff; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; }
 .bilah-uji button { flex: none; font: inherit; font-size: 11.5px; min-height: 22px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.7); background: transparent; color: #fff; cursor: pointer; }
-body.proyek-uji { padding-top: 28px; } body.proyek-uji.ada-akun { padding-top: 62px; }
-body.proyek-uji .chip-akun { top: calc(env(safe-area-inset-top, 0px) + 28px); }
+body.proyek-uji { padding-top: 28px; }
 @media (min-width: 1100px) { .bilah-uji { left: 72px; } }
-/* putaran 23c: TIRAI — belum masuk / belum disetujui / nonaktif: di belakang formulir Masuk tidak ada apa-apa (isi <main> juga dikosongkan app.js) */
-body.terkunci main, body.terkunci .nav, body.terkunci .side, body.terkunci .chip-akun { display: none !important; }
+/* putaran 23c: TIRAI — belum masuk / belum disetujui / nonaktif: di belakang formulir Masuk tidak ada apa-apa (isi <main> juga dikosongkan app.js).
+   Pil akun ada di kepala tiap <main> (ikut kosong); lembar akun (nama + status jaringan) di luar <main> → ditutup app.js DAN disembunyikan di sini. */
+body.terkunci main, body.terkunci .nav, body.terkunci .side, body.terkunci .lembar-akun { display: none !important; }
