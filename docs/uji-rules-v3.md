@@ -100,6 +100,8 @@ Tujuannya: menjalankan transaksi terbesar tiap peran lewat `/baru/` sungguhan, d
 1. Tempel `firestore.rules` v3 di Console proyek toko — **versi terbaru dari `main` (58 blok + payung yang mengecualikan `aksesAkun` &
    `permintaanAkses`, putaran 23e)**. Isi editor Console harus persis sama dengan berkas di repo. Riwayat: 25 Sep versi 58 blok (sebelum 23e) lulus
    ★1–★9 & ★P1–★P2 tapi ★10 LOLOS → tidak diterbitkan. Sesudah 23e yang wajib diulang: ★1, ★8, ★9, ★10, ★11, ★P2 (bagian `baru1`).
+   **25 Sep, rules 23e di editor (SHA-256 isi editor = berkas cabang, 17.811 byte; dijalankan Claude lewat Chrome owner, belum diterbitkan):**
+   ★1 allowed · ★8 allowed · ★9a denied · ★9b denied · ★10 **denied** (sebelum 23e: allowed) · ★11 allowed lewat payung baru · ★P2c denied — semuanya sesuai.
 2. **Buat SATU nota dari kasir darurat** (akun kasir@) dan pastikan nota itu masuk di layar Jual `/baru/` owner. Tidak masuk → langsung tempel
    `firestore.rules.v2` (jalan mundur) dan kabari Claude Code.
 
