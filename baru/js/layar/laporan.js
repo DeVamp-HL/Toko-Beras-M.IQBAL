@@ -2,6 +2,7 @@
 // Angka & dokumen di laporan-logika.js (tanpa DOM, dijaga uji_laporan_baru.py). Satu markup tiga lebar: HP tumpukan · Tablet dua kolom · Mac tiga kolom.
 // Kertas dokumen (putih, siap cetak) satu penyusun untuk layar, dialog cetak/PDF (#cetakDokumen), dan WhatsApp (wujud teks).
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
+import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { RP, ANGKA, tanggalPendek } from '../inti/format.js';
 import * as LP from './laporan-logika.js';
@@ -105,7 +106,7 @@ export function pasangLayarLaporan(akar, opsi) {
   const grid = (L, semua) => { const kolom = semua.filter((k) => k && (k.__mentah ? k.html.trim() : String(k).trim())); return L === 'hp' || kolom.length < 2 ? h`<div class="lp-grid">${kolom.map((k) => h`<div class="lp-kolom">${k}</div>`)}</div>` : L === 'tablet' ? h`<div class="lp-grid tablet">${kolom.slice(0, 2).map((k, i) => h`<div class="lp-kolom">${k}${i === 1 ? kolom.slice(2) : ''}</div>`)}</div>` : h`<div class="lp-grid mac ${kolom.length === 2 ? 'dua' : ''}">${kolom.map((k) => h`<div class="lp-kolom">${k}</div>`)}</div>`; };
 
   function gambar() {
-    if (!tampil) return; const s = st(); const sumber = sumberData(); const L = lebar();
+    if (!tampil || terkunci()) return; const s = st(); const sumber = sumberData(); const L = lebar();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">

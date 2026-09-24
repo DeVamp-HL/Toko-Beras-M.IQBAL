@@ -4,6 +4,7 @@
 // Baris Sistem (Perangkat · Peran · Cadangan · Lokasi · Pengingat, desain SS1–SS5 dikunci 19 Sep) dibuka sebagai LEMBAR di dalam Menu.
 // Layar dimorf (elemen hidup terus): laci membuka dengan transisi, angka bergulir, baris masuk bergiliran.
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
+import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { RP, ANGKA, tanggalPendek, hariIniIso, jamKini } from '../inti/format.js';
 import * as M from './menu-logika.js';
@@ -134,7 +135,7 @@ export function pasangLayarMenu(akar, opsi) {
 
   // ---------- GAMBAR ----------
   function gambar() {
-    if (!tampil) return;
+    if (!tampil || terkunci()) return;
     const s = st(); const sumber = sumberData(); const d = kini();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>

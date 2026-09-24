@@ -2,6 +2,7 @@
 // BON PEMASOK (H2: Tusukan bon · Jatuh tempo · Buku bon), BELANJA (H3: Isi truk · Kapan habis · Daftar). Angka & dokumen di harga-logika.js,
 // bon-pemasok-logika.js, belanja-logika.js (tanpa DOM, dijaga uji_harga_baru.py). Satu markup tiga lebar: HP = tab; Tablet = benda utama menetap + tab; Mac = kolom.
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
+import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { RP, ANGKA, DESIMAL, tanggalPendek } from '../inti/format.js';
 import * as HG from './harga-logika.js';
@@ -128,7 +129,7 @@ export function pasangLayarHarga(akar, opsi) {
 
   // ====================== GAMBAR ======================
   function gambar() {
-    if (!tampil) return; const s = st(); const sumber = sumberData(); const L = lebar();
+    if (!tampil || terkunci()) return; const s = st(); const sumber = sumberData(); const L = lebar();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">

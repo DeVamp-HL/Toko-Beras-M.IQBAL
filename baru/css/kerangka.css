@@ -114,3 +114,5 @@ body.ada-akun { padding-top: 34px; }   /* poni sudah dihitung kepala tiap layar 
 body.proyek-uji { padding-top: 28px; } body.proyek-uji.ada-akun { padding-top: 62px; }
 body.proyek-uji .chip-akun { top: calc(env(safe-area-inset-top, 0px) + 28px); }
 @media (min-width: 1100px) { .bilah-uji { left: 72px; } }
+/* putaran 23c: TIRAI — belum masuk / belum disetujui / nonaktif: di belakang formulir Masuk tidak ada apa-apa (isi <main> juga dikosongkan app.js) */
+body.terkunci main, body.terkunci .nav, body.terkunci .side, body.terkunci .chip-akun { display: none !important; }

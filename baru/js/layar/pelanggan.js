@@ -2,6 +2,7 @@
 // BON (Buku · Papan · Umur, lembar orang: tagih / bayar / hapus buku), THR (Daftar · Meja · Amplop). Logika & angka di pelanggan-logika.js dan bon-logika.js.
 // Layar dimorf (elemen hidup terus): polaroid muncul bergiliran, butir tampah bergeser, jarum jam berputar, batang bon tumbuh.
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
+import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { RP, DESIMAL, tanggalPendek, hariIniIso, jamKini } from '../inti/format.js';
 import * as P from './pelanggan-logika.js';
@@ -135,7 +136,7 @@ export function pasangLayarPelanggan(akar, opsi) {
   delegasi(akar, AKSI);
 
   function gambar() {
-    if (!tampil) return;
+    if (!tampil || terkunci()) return;
     const s = st(); const sumber = sumberData(); const d = kini();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
