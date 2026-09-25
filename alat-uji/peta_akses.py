@@ -340,6 +340,7 @@ OWNER_JALUR = {
     'susunTakarWadah': 'wadahLiteran (tidak dikunci) + paling banyak 1 produksiKemasan hari ini',
     'susunAturHargaWadah': 'setelan hargaWadah — bukan koleksi bertanggal', 'susunRak': 'pembaca — tidak menulis', 'susunRakWadah': 'pembaca — tidak menulis',
     'susunAturTempat': 'pengaturan tempatSimpan / aturanToko / pindahTempat — tidak ada yang dikunci (pengaturan hanya titikKas)',
+    'susunBatalKarcis': 'batal karcis kasir darurat (25b): TETAP 1 penjualan (+ paling banyak 1 kantong literan id+1) = ≤ 2 pemeriksaan; karcis bulan terkunci → ditolak logika',
 }
 MODUL_OWNER = None   # diisi dari uji_kunci_periode.MODUL (bundel yang sudah terbukti satu lingkup)
 
