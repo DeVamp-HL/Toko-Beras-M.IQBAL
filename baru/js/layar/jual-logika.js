@@ -309,10 +309,12 @@ export function infoPelanggan(nama) {
 }
 
 // ---------- hari ini ----------
+// Kunci SATU nota — sama dengan plKunciNota (pelanggan-logika): grupNota → trxId (keranjang index.html & sistem baru, tanpa grupNota) → baris tunggal.
+const jlKunciNota = (p) => String(p.grupNota || p.trxId || p.id);
 export function hariIni(s) {
   const iso = hariIniIso(s.sekarang);
   const baris = ambilPenjualan().filter((p) => p.tanggal === iso);
-  const nota = new Set(baris.map((p) => p.grupNota || p.id)).size;
+  const nota = new Set(baris.map(jlKunciNota)).size;
   const omzet = baris.reduce((a, p) => a + (p.hargaTotal || 0), 0);
   const perCara = {}; baris.forEach((p) => { const c = bakuCaraBayar(p.caraBayar); perCara[c] = (perCara[c] || 0) + (p.hargaTotal || 0); });
   const terakhir = baris.slice(0, 6).map((p) => ({ jam: p.jam || '', nama: p.namaPelanggan || '', teks: ringkasBaris(p), n: p.hargaTotal || 0, cara: bakuCaraBayar(p.caraBayar), id: p.id, trxId: p.trxId || '', grupNota: p.grupNota || '' }));
@@ -1080,7 +1082,7 @@ const jlHariKe = (iso) => Math.round(new Date(String(iso) + 'T00:00:00Z').getTim
 /** Nota-nota terakhir orang yang sedang tertulis di keranjang (n terbaru), tiap nota = baris-barisnya. Tanpa nama → kosong. */
 export function pembelianTerakhir(s, n) {
   const k = kunciPelanggan(s.pelanggan); if (!k) return [];
-  const per = {}; ambilPenjualan().forEach((p) => { if (kunciPelanggan(p.namaPelanggan) !== k) return; const g = String(p.grupNota || p.id);
+  const per = {}; ambilPenjualan().forEach((p) => { if (kunciPelanggan(p.namaPelanggan) !== k) return; const g = jlKunciNota(p);
     if (!per[g]) per[g] = { grup: g, tanggal: p.tanggal || '', jam: '', cara: bakuCaraBayar(p.caraBayar), baris: [], total: 0 }; per[g].baris.push(p); per[g].total += p.hargaTotal || 0; if (String(p.jam || '') > per[g].jam) per[g].jam = String(p.jam || ''); });
   const kini = jlHariKe(hariIniIso(s.sekarang));
   return Object.keys(per).map((g) => per[g]).sort((a, b) => (b.tanggal + b.jam).localeCompare(a.tanggal + a.jam)).slice(0, n || 3)

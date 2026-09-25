@@ -99,6 +99,8 @@ const plBukanKembar = () => { const d = cacheMentah('aturan').find((x) => String
 
 // ====================== SATU TEMPAT MEMBACA TIAP ORANG ======================
 const plBarangKunci = (p) => (p.jenis === 'kemasan' ? 'kemasan|' + (p.namaProduk || '') + '|' + (p.ukuranKemasan || '') : p.jenis === 'karung' ? 'karung|' + (p.merkSumber || '') : p.jenis === 'literan' ? 'literan|' + (p.merkSumber || '') : p.jenis === 'repacking' ? 'repack|' + (p.namaProduk || p.merkSumber || '') : '');
+// Kunci SATU nota: grupNota (kasir tablet, kasir darurat, rincian karcis) → trxId (keranjang index.html & sistem baru menulis trxId di tiap baris, TANPA grupNota) → baris tunggal.
+const plKunciNota = (p) => String(p.grupNota || p.trxId || p.id);
 export const plBarangNama = (k) => { const b = String(k).split('|'); return b[0] === 'kemasan' ? b[1] + ' ' + String(b[2]).replace('.', ',') + ' kg' : b[0] === 'karung' ? b[1] + ' karung' : b[0] === 'literan' ? b[1] + ' literan' : b[0] === 'repack' ? 'repack ' + b[1] : k; };
 /** Kartu tersimpan (pelangganCatatan) dibaca ke bentuk baru: cip[] (atau pecahan `ciri` lama), arah (= rute), asli, kontak, biasa. */
 export function kartuTersimpan(kunci) {
@@ -178,10 +180,10 @@ export function susunTampah(kini, jawaban) {
     orang: urut.slice(0, MAKS).map((b, i) => Object.assign({}, b, letak(i), { sk: sketsa(b) })), lebih: Math.max(0, urut.length - MAKS), ketemu: sisa.length === 1 ? Object.assign({}, sisa[0], { sk: sketsa(sisa[0]), datang: datangTeks(sisa[0]) }) : null, buntu: sisa.length === 0, sama: sisa.length > 1 && !tanya,
     sisa: urut.map((b) => ({ kunci: b.kunci, nama: b.nama, sub: julukan(b), jamTeks: jamTeks(b) })), info: (tanya ? 'Tanya ke-' + (sah.length + 1) + ' · ' : sah.length + ' tanya · ') + 'tersisa ' + sisa.length + ' dari ' + bisa.length, riwayat: sah.map((q) => q.c + ': ' + (q.j === 'ya' ? 'ya' : q.j === 'bukan' ? 'bukan' : 'tidak kelihatan')), lempar, tanpaCiri: semua.length - bisa.length };
 }
-/** Tab BELANJA: nota besar hari ini yang belum bernama (satu nota = satu grupNota) + tebakan dari barangnya & jamnya. */
+/** Tab BELANJA: nota besar hari ini yang belum bernama (satu nota = satu plKunciNota: grupNota / trxId / baris tunggal) + tebakan dari barangnya & jamnya. */
 export function susunBelanja(kini, notaKunci, keranjang) {
   const semua = semuaOrang(kini); const atur = aturPelanggan(); const iso = hariIniIso(kini);
-  const grup = {}; ambilPenjualan().forEach((p) => { if (p.tanggal !== iso || String(p.namaPelanggan || '').trim()) return; const g = String(p.grupNota || p.id); if (!grup[g]) grup[g] = { kunci: g, jam: p.jam || '', barang: [], n: 0, baris: [] }; grup[g].n += p.hargaTotal || 0; grup[g].baris.push(p); const bk = plBarangKunci(p); if (bk && grup[g].barang.indexOf(bk) < 0) grup[g].barang.push(bk); });
+  const grup = {}; ambilPenjualan().forEach((p) => { if (p.tanggal !== iso || String(p.namaPelanggan || '').trim()) return; const g = plKunciNota(p); if (!grup[g]) grup[g] = { kunci: g, jam: p.jam || '', barang: [], n: 0, baris: [] }; grup[g].n += p.hargaTotal || 0; grup[g].baris.push(p); const bk = plBarangKunci(p); if (bk && grup[g].barang.indexOf(bk) < 0) grup[g].barang.push(bk); });
   const semuaNota = Object.values(grup).sort((a, b) => a.jam.localeCompare(b.jam)); const besar = semuaNota.filter((g) => g.n >= atur.notaBesar); const kecil = semuaNota.length - besar.length;
   const N = besar.find((g) => g.kunci === notaKunci) || null; const isi = N ? N.barang : (keranjang || []); const waktuD = N ? waktuKata(plJam(N.jam) === null ? kini.getHours() : plJam(N.jam)) : waktuKata(kini.getHours());
   const semuaBarang = {}; semua.forEach((b) => b.pola.forEach((k) => { semuaBarang[k] = (semuaBarang[k] || 0) + 1; })); const barang = Object.keys(semuaBarang).sort((a, b) => semuaBarang[b] - semuaBarang[a]).slice(0, 10).map((k) => ({ kunci: k, nama: plBarangNama(k), aktif: isi.indexOf(k) >= 0 }));
@@ -191,7 +193,7 @@ export function susunBelanja(kini, notaKunci, keranjang) {
 }
 /** "Ini dia": nota tanpa nama ditempelkan ke orangnya — semua baris nota itu ditulis ulang dengan namaPelanggan (rupiahnya tidak berubah). */
 export function susunIniDia(kini, notaKunci, kunciOrang) {
-  const iso = hariIniIso(kini); const baris = ambilPenjualan().filter((p) => p.tanggal === iso && String(p.grupNota || p.id) === String(notaKunci)); if (!baris.length) return { tolak: 'Nota itu sudah tidak ada' };
+  const iso = hariIniIso(kini); const baris = ambilPenjualan().filter((p) => p.tanggal === iso && plKunciNota(p) === String(notaKunci)); if (!baris.length) return { tolak: 'Nota itu sudah tidak ada' };
   if (baris.some((p) => String(p.namaPelanggan || '').trim())) return { tolak: 'Nota itu sudah bernama' };
   const o = semuaOrang(kini).find((b) => b.kunci === kunciOrang); if (!o) return { tolak: 'Orangnya tidak ditemukan' };
   return { dokumen: baris.map((p) => ({ koleksi: 'penjualan', data: Object.assign({}, p, { namaPelanggan: o.nama }) })), patch: { kabar: 'Nota ' + (baris[0].jam || '') + ' ' + RP(baris.reduce((a, p) => a + (p.hargaTotal || 0), 0)) + ' ditempelkan ke ' + o.nama + ' — kedatangannya ikut tercatat, uangnya tidak berubah.', kabarAwas: false } };

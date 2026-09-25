@@ -698,6 +698,16 @@ ok('U: belanja terakhir Bu Suti: nota-nota MILIKNYA saja, terbaru dulu, tiap not
   && (PB[0].tanggal + PB[0].jam) >= (PB[1].tanggal + PB[1].jam) && PB.some(function (x) { return x.grup === 'g3'; }) && pembelianTerakhir(Object.assign({}, s, { pelanggan: '' }), 3).length === 0, JSON.stringify(PB.map(function (x) { return [x.grup, x.tanggal, x.jam, x.total, x.teks]; })));
 var nSblm = s.keranjang.length; var UL = ulangiPembelian(s, susunRak(s), 'g3');
 ok('U: ulangi nota g3 (Kembang 5 kg × 1): satu baris kemasan masuk keranjang dengan HARGA HARI INI (chip), kabarnya menyebutnya; nota yang tidak ada ditolak', !!UL.keranjang && UL.keranjang.length === nSblm + 1 && UL.keranjang[UL.keranjang.length - 1].trx.jenis === 'kemasan' && UL.keranjang[UL.keranjang.length - 1].trx.jumlahUnit === 1 && UL.keranjang[UL.keranjang.length - 1].trx.hargaSatuan === chip('kemasan', chip('kemasan', 'Kembang|5') ? 'Kembang|5' : susunRak(s).kemasan[0].kunci).harga && /harga hari ini/.test(UL.kabar) && /tidak ketemu/.test(ulangiPembelian(s, susunRak(s), 'g-tidak-ada').kabar), JSON.stringify([UL.kabar, UL.keranjang && UL.keranjang.slice(-1)[0].trx]));
+// ---- PUTARAN 25: nota yang DITULIS sistem baru (susunNotaDokumen: trxId di tiap baris, tanpa grupNota) = SATU nota di "Hari ini" & belanja terakhir; dokumennya dibuang lagi sesudahnya
+var WU = { tanggal: '2026-09-19', jam: '10:20', idUnik: (function () { var n = 0; return function () { n += 10; return 1758251000000 + n + 0.25; }; })() };
+mulaiNota(); terap({ pelanggan: 'Bu Suti' }); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '2' }); terap(masukkan(s)); terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '1' }); terap(masukkan(s));
+var hU0 = hariIni(s); var NU = susunNotaDokumen(s, WU); var pjU = NU.dokumen.filter(function (x) { return x.koleksi === 'penjualan'; }).map(function (x) { return x.data; });
+terapkanKeCache(NU.dokumen); var hU1 = hariIni(s); var PU = pembelianTerakhir(s, 12); var XU = PU.find(function (x) { return x.grup === String(NU.trxId); }) || null;
+ok('U (putaran 25): nota sistem baru 2 baris (trxId sama, tanpa grupNota) → "Hari ini" naik 2 baris tapi SATU nota', pjU.length === 2 && pjU.every(function (p) { return p.trxId === NU.trxId && !('grupNota' in p); }) && hU1.baris - hU0.baris === 2 && hU1.nota - hU0.nota === 1, JSON.stringify([hU0.nota, hU1.nota, hU0.baris, hU1.baris]));
+var ULU = XU ? ulangiPembelian(Object.assign({}, s, { keranjang: [] }), susunRak(s), XU.grup) : {};
+ok('U (putaran 25): belanja terakhir Bu Suti membaca nota itu UTUH (grup = trxId, 2 baris, total = Σ baris, tidak terpecah per baris); ulangi → kedua barisnya masuk keranjang', !!XU && XU.baris.length === 2 && XU.total === pjU[0].hargaTotal + pjU[1].hargaTotal
+  && PU.filter(function (x) { return x.baris.some(function (p) { return p.trxId === NU.trxId; }); }).length === 1 && !!ULU.keranjang && ULU.keranjang.length === 2, JSON.stringify([PU.map(function (x) { return [x.grup, x.baris.length, x.total]; }), ULU.kabar]));
+terapkanKeCache(NU.dokumen.map(function (d) { return { koleksi: d.koleksi, hapus: d.data.id }; })); terap(Object.assign(keadaanAwal(), { sekarang: new Date('2026-09-19T10:00:00'), pelanggan: 'Bu Suti' }));
 pasok('pelangganTitip', [{ id: 'tt1', dari: 'bang ojek contoh', untuk: 'bu suti', apa: 'disuruh belanja', kali: 2, tanggal: '2026-09-18' }]);
 var SB = saranBenang('Bang Ojek Contoh');
 ok('U: saran benang: nama yang tercatat biasa datang UNTUK orang lain → tawaran mencatat atas nama yang punya urusan (nama dari nota: Bu Suti); yang punya urusan sendiri / nama kosong → tidak ada saran', !!SB && SB.untuk === 'Bu Suti' && SB.kali === 2 && /biasanya datang untuk Bu Suti \(disuruh belanja, 2×\)/.test(SB.teks) && saranBenang('Bu Suti') === null && saranBenang('') === null, JSON.stringify(SB));
@@ -787,13 +797,17 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- PUTARAN 25: nota sistem baru (trxId, tanpa grupNota)
+            'perbaikan dicabut: nota trxId dihitung per baris (Hari ini & belanja terakhir)': js.replace("const jlKunciNota = (p) => String(p.grupNota || p.trxId || p.id);", "const jlKunciNota = (p) => String(p.grupNota || p.id);"),
+            '"Hari ini" saja menghitung nota lewat grupNota': js.replace("const nota = new Set(baris.map(jlKunciNota)).size;", "const nota = new Set(baris.map((p) => p.grupNota || p.id)).size;"),
+            'belanja terakhir saja memecah nota trxId per baris': js.replace("return; const g = jlKunciNota(p);", "return; const g = String(p.grupNota || p.id);"),
             # ---- PUTARAN 23c: ganti orang
             'orang berikutnya mewarisi keranjang yang diparkir': js.replace("const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null });", "const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null, antrean: (s && s.antrean) || [] });"),
             'orang berikutnya: stok yang dipegang keranjang lama tidak dilepas': js.replace("  sinkronKeranjang(baru);\n  return baru;", "  return baru;"),
             'isian pesanan Jual tidak terdeteksi': js.replace("const ISIAN_JUAL_LAIN = ['psNama', ", "const ISIAN_JUAL_LAIN = ["),
             'baris belum disimpan lupa keranjang yang diparkir': js.replace("return { aktif, parkir, total: aktif + parkir };", "return { aktif, parkir, total: aktif };"),
             # ---- PUTARAN 21: belanja terakhir · saran benang · takar dari karung yang dipilih
-            'belanja terakhir mencampur nota orang lain': js.replace("if (kunciPelanggan(p.namaPelanggan) !== k) return; const g = String(p.grupNota || p.id);", "const g = String(p.grupNota || p.id);"),
+            'belanja terakhir mencampur nota orang lain': js.replace("if (kunciPelanggan(p.namaPelanggan) !== k) return; const g = jlKunciNota(p);", "const g = jlKunciNota(p);"),
             'belanja terakhir diurutkan terlama dulu (yang "terakhir" bukan yang terbaru)': js.replace("return Object.keys(per).map((g) => per[g]).sort((a, b) => (b.tanggal + b.jam).localeCompare(a.tanggal + a.jam)).slice(0, n || 3)", "return Object.keys(per).map((g) => per[g]).sort((a, b) => (a.tanggal + a.jam).localeCompare(b.tanggal + b.jam)).slice(0, n || 3)"),
             'saran benang ditawarkan juga untuk yang punya urusan sendiri': js.replace("if (!namaUntuk || kunciPelanggan(namaUntuk) === k) return null;", "if (!namaUntuk) return null;").replace("const titip = cacheMentah('titip').filter((t) => t.dari === k && t.untuk)", "const titip = cacheMentah('titip').filter((t) => (t.dari === k || t.untuk === k) && t.untuk)"),
             'takar mengabaikan karung yang dipilih owner di deretan': js.replace("const dari = x.dari !== undefined && x.dari !== null ? String(x.dari) : lokasiSumber(x.merk, merk);", "const dari = lokasiSumber(x.merk, merk);"),
