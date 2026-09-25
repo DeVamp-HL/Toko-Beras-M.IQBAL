@@ -1,0 +1,388 @@
+// ============================================================================
+// ATURAN FIRESTORE v3 — Toko Beras M.IQBAL (putaran 23, 24 Sep 2026): AKUN PER ORANG
+// Berkas KANONIK ber-versi. DEPLOY: salin-tempel ke Console > Firestore > Rules.
+// Dasar tiap baris: docs/peta-hak-akses.md. Rules yang tidak bisa ditelusuri ke satu baris peta = cacat.
+// Diperiksa statis oleh alat-uji/periksa_rules.py (CI). Uji server: docs/uji-rules-v3.md.
+// Jalan mundur: firestore.rules.v2 (disimpan utuh).
+//
+// AKUN & PERAN — penegakan di SERVER, bukan di layar:
+//   owner@tokoberasmiqbal.web.app  -> OWNER, dikenali lewat EMAIL (sama dengan v2). Tidak pernah lewat dokumen apa pun,
+//                                     jadi owner tidak mungkin terkunci karena aksesAkun rusak, dan tidak ada yang naik pangkat lewat satu dokumen.
+//   kasir@tokoberasmiqbal.web.app  -> KASIR DARURAT: hak v2 persis (create penjualan / piutangMutasi / stokBahanLiteran / logAktivitas,
+//                                     tulis-ulang-sama, denyut perangkatStatus, baca ringkasanKasir & pengaturan/aksesKasir).
+//                                     v2 memberi jalur itu ke SIAPA PUN yang login (masuk()); v3 MEMPERSEMPITNYA ke email kasir@ (keputusan owner 24 Sep).
+//   akun lain                      -> peran dari aksesAkun/{uid} yang ditulis OWNER: { uid, nama, email, peran: 'ben'|'karyawan', aktif: bool }.
+//                                     Tanpa aksesAkun aktif = NOL akses (kecuali create permintaanAkses miliknya) — tetap aman seandainya
+//                                     pendaftaran mandiri dibuka lagi. Tiap tulisan wajib olehUid = uid penulis (jujur()).
+//                                     Putaran ini: bukan-owner hanya CREATE (+2 update terbatas kolom, peta §5), tidak pernah DELETE.
+//   UTANG: id peran 'ben' memakai nama orang — peran harus bernama jabatan (dicatat owner 24 Sep; data SS2 bergantung padanya).
+//
+// MENAMBAH PERAN (mis. 'kasir'): tambahkan satu nama di daftar peran tiap koleksi yang boleh untuk peran itu (baris staf(...) /
+//   stafBuat(...) di bawah) DAN di baru/js/data/akses.js (BACA_STAF, BUAT_STAF, UBAH_STAF) — periksa_rules.py memastikan keduanya sama.
+//   Izinkan juga di aksesAkun (peran in [...]). Tidak perlu menulis ulang rules.
+//
+// ACCESS CALL: tiap tulisan bukan-owner memeriksa aksesAkun SEKALI (1 get()); owner() di depan = owner tidak memicu get().
+//   Batas Firebase: 10 per permintaan dokumen tunggal / tiap operasi, 20 per batch/transaksi — cache TIDAK diandalkan.
+//   Kiriman bukan-owner dijaga SISA 2 (owner 24 Sep, putaran 23c): paling banyak 17 dokumen + 1 jejak = 18 (stafJejak di bawah + pagar
+//   penulis pusat). Batas 7 baris per nota & 8 hasil per adukan membuat terburuknya 17; dihitung dari fungsi aslinya di CI
+//   (alat-uji/peta_akses.py --kiriman, gagal bila > 18). Nota nyata terpanjang di cadangan toko: 7 baris. Kiriman terbesar BELUM DIUJI DI SERVER.
+//
+// URUTAN PASANG (anti terkunci; keputusan owner 24 Sep — dipecah dua, putaran 23c):
+//   Prasyarat: pendaftaran mandiri MATI (Console > Authentication > Settings > User actions) & daftar Users diperiksa (owner: sudah).
+//   SEKARANG (belum ada akun bukan-owner — yang masuk /baru/ cuma owner):
+//     a. Rules Playground dengan v3 di EDITOR proyek toko (belum diterbitkan): kasus bertanda ★ di docs/uji-rules-v3.md, semuanya wajib sesuai.
+//     b. Tempel rules v3 ini ke Console proyek toko.
+//     c. Buat SATU nota dari kasir darurat (kasir@) dan pastikan nota itu masuk (jalur kasir tidak ikut tertutup). Tidak masuk → tempel v2.
+//   GERBANG TABLET (wajib lulus SEBELUM akun bukan-owner pertama disetujui):
+//     1. Uji v3 di PROYEK FIREBASE KEDUA (khusus uji; data toko tidak disentuh) — kasus Playground 11–24 + alur nyata, docs/uji-rules-v3.md.
+//     2. Harga beli / modal TIDAK terkirim ke Ben/karyawan: kisi SS2 bilang hargaBeli "tidak", tapi 7 koleksi yang dibaca staf membawanya
+//        (batchMasuk, penjualan.hppTotalSaatJual, produksiKemasan, penyesuaianStok/Kemasan, stokBahanKemasan/Literan — peta §8).
+//        Rancang ringkasan stok tanpa harga beli + siapa yang mengisi HPP nota staf, lalu cabut baca itu untuk staf (putaran tablet).
+//     3. Cache Firestore dibersihkan saat Keluar di perangkat bersama. Sampai itu ada: owner TIDAK masuk /baru/ di tablet bersama.
+//     4. Jaga CI kiriman bukan-owner ≤ 18 tetap hijau (sudah terpasang, putaran 23c).
+//     5. Buat akun orang di Console > Authentication > Add user — EMAIL SELALU HURUF KECIL SEMUA (klien tidak pernah membuat akun).
+//     6. Orangnya masuk /baru/ → "Minta didaftarkan"; owner menyetujui di Menu > Sistem > Peran (tidak ada UID disalin tangan).
+//   MUNDUR = tempel firestore.rules.v2 — HANYA selama pendaftaran mandiri mati (v2 membuka jalur kasir untuk siapa pun yang login).
+//
+// PAYUNG (putaran 23e, keputusan owner 25 Sep): blok paling bawah `match /{koleksi}/{sisa=**}` memberi owner akses ke segala yang tidak disebut.
+//   Di Firestore, akses diberikan kalau SALAH SATU blok yang cocok mengizinkan — payung mengalahkan batasan owner di blok mana pun yang ia cakup.
+//   Sekarang: koleksi yang bloknya membatasi owner (aksesAkun, permintaanAkses) dikecualikan; periksa_rules.py menjaganya.
+//   PUTARAN 25 (kunci periode) — payung DIHAPUS, bukan sekadar dikecualikan: kunci periode membatasi OWNER di koleksi uang/stok (bulan yang
+//   sudah ditutup tidak boleh ditulis), jadi setiap koleksi yang masih dipakai wajib punya blok sendiri dan tidak ada lagi jalan "owner boleh
+//   apa saja". Koleksi lama sistem lama yang tak punya blok harus didaftar dulu (dibaca? ditulis? oleh siapa?) sebelum payung dicabut.
+// ============================================================================
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function masuk() { return request.auth != null; }
+    function owner() {
+      return masuk() && request.auth.token.email == 'owner@tokoberasmiqbal.web.app';
+    }
+    function kasir() {
+      return masuk() && request.auth.token.email == 'kasir@tokoberasmiqbal.web.app';
+    }
+    // KIRIM-ULANG ANTREAN KASIR WAJIB IDEMPOTEN (v2, dipertahankan untuk kasir@): update hanya kalau isinya SAMA PERSIS.
+    function tulisUlangSama() {
+      return request.resource.data == resource.data;
+    }
+
+    // ---- akun bukan-owner (aksesAkun/{uid}) — SATU get() per evaluasi ----
+    function akun() { return get(/databases/$(database)/documents/aksesAkun/$(request.auth.uid)).data; }
+    function aktifDengan(a, peranBoleh) { return a.aktif == true && a.peran in peranBoleh; }
+    function jujur() { return request.resource.data.olehUid == request.auth.uid; }
+    function staf(peranBoleh) { return masuk() && aktifDengan(akun(), peranBoleh); }
+    function stafBuat(peranBoleh) { return masuk() && aktifDengan(akun(), peranBoleh) && jujur(); }
+    function stafBuatTipe(peranBoleh, tipe) { return stafBuat(peranBoleh) && request.resource.data.tipe == tipe; }
+    function stafBuatJual(peranBoleh, peranKredit) {
+      let a = akun();
+      let d = request.resource.data;
+      return masuk() && aktifDengan(a, peranBoleh) && jujur()
+        && !d.keys().hasAny(['dibatalkan', 'dikoreksiOleh', 'dikoreksiPada', 'dibatalkanPada', 'namaDihapus'])
+        && (string(d.get('caraBayar', '')).lower() != 'kredit' || a.peran in peranKredit);
+    }
+    function stafJejak(peranBoleh) {
+      let d = request.resource.data;
+      return stafBuat(peranBoleh) && d.dokumen is list && d.dokumen.size() >= 1 && d.dokumen.size() <= 17;   // 17 dokumen + jejak = 18 access call (batas 20, sisa 2)
+    }
+    // peta §5 baris 1: pesanan yang belum tuntas jadi 'dibayar' — kolom dibatasi, uang/berat tidak tersentuh
+    function stafUbahPesanan(peranBoleh) {
+      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.diubahOlehUid == request.auth.uid
+        && !(resource.data.get('status', '') in ['dibayar', 'batal']) && request.resource.data.status == 'dibayar'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'riwayatStatus', 'trxIdJual', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada']);
+    }
+    // peta §5 baris 2: denyut perangkat — dokumen perangkatnya sendiri, kolom denyut saja
+    function stafDenyut(peranBoleh) {
+      return masuk() && aktifDengan(akun(), peranBoleh) && request.resource.data.akunUid == request.auth.uid
+        && (resource == null || resource.data.get('akunUid', request.auth.uid) == request.auth.uid)
+        && request.resource.data.keys().hasOnly(['id', 'nama', 'akun', 'akunUid', 'aplikasi', 'pada', 'antrean', 'gagal', 'versi', 'pemegang', 'lokasi']);
+    }
+
+    // ---- satu blok per koleksi di baru/js/data/koleksi.js (+ arsipTahun, ringkasanKasir). Bukan-owner TIDAK bergantung pada payung. ----
+    match /batchMasuk/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /biayaBulanan/{id} {
+      allow read, write: if owner();
+    }
+
+    match /penjualan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || kasir() || stafBuatJual(['ben', 'karyawan'], ['ben']);   // Kredit (jualBon): ben saja
+      allow update: if owner() || (kasir() && tulisUlangSama());
+      allow delete: if owner();
+    }
+
+    match /produksiKemasan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuat(['ben', 'karyawan']);   // adukan
+      allow update, delete: if owner();
+    }
+
+    match /retur/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /karantina/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /pengeluaranHarian/{id} {
+      allow read, write: if owner();
+    }
+
+    match /stokBahanKemasan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuatTipe(['ben', 'karyawan'], 'pakai');   // bukan beli
+      allow update, delete: if owner();
+    }
+
+    match /stokBahanLiteran/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || kasir() || stafBuatTipe(['ben', 'karyawan'], 'pakai');   // bukan beli
+      allow update: if owner() || (kasir() && tulisUlangSama());
+      allow delete: if owner();
+    }
+
+    match /katalogHargaLiteran/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /katalogHargaKemasan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /katalogHargaKarung/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /piutangMutasi/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || kasir() || stafBuatTipe(['ben', 'karyawan'], 'bayar');   // bukan hapusBuku / saldoAwal
+      allow update: if owner() || (kasir() && tulisUlangSama());
+      allow delete: if owner();
+    }
+
+    match /kasbonMutasi/{id} {
+      allow read, write: if owner();
+    }
+
+    match /penyesuaianStok/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /tutupHari/{id} {
+      allow read, write: if owner();
+    }
+
+    match /pelangganCatatan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuat(['ben', 'karyawan']);   // pelanggan baru; kartu yang sudah ada = update = owner
+      allow update, delete: if owner();
+    }
+
+    match /pesanan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner();
+      allow update: if owner() || stafUbahPesanan(['ben', 'karyawan']);   // peta §5 baris 1: jadi dibayar
+      allow delete: if owner();
+    }
+
+    match /titipanHarian/{id} {
+      allow read, write: if owner();
+    }
+
+    match /setoranKas/{id} {
+      allow read, write: if owner();
+    }
+
+    match /penyesuaianKemasan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /amplopLaba/{id} {
+      allow read, write: if owner();
+    }
+
+    match /modalOwner/{id} {
+      allow read, write: if owner();
+    }
+
+    match /utangOwnerMutasi/{id} {
+      allow read, write: if owner();
+    }
+
+    match /tembusanStok/{id} {
+      allow read, write: if owner();
+    }
+
+    match /utangPemasokMutasi/{id} {
+      allow read, write: if owner();
+    }
+
+    match /thrPelanggan/{id} {
+      allow read, write: if owner();
+    }
+
+    match /pemasokCatatan/{id} {
+      allow read, write: if owner();
+    }
+
+    match /wadahLiteran/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /aturanToko/{id} {
+      allow read: if owner() || (id in ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat'] && staf(['ben', 'karyawan']));   // per dokumen (peta §3)
+      allow write: if owner();
+    }
+
+    match /bukuHapus/{id} {
+      allow read, write: if owner();
+    }
+
+    match /tagihPelanggan/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /pelangganTitip/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /perangkatStatus/{id} {
+      allow read: if owner();
+      allow create, update: if owner() || kasir() || stafDenyut(['ben', 'karyawan']);   // peta §5 baris 2
+      allow delete: if owner();
+    }
+
+    match /logAktivitas/{id} {
+      allow read: if owner();
+      allow create: if owner() || kasir() || stafJejak(['ben', 'karyawan']);   // bukan-owner: SATU baris per kiriman berisi daftar dokumen
+      allow update, delete: if owner();
+    }
+
+    match /cadanganCatatan/{id} {
+      allow read, write: if owner();
+    }
+
+    match /pengingat/{id} {
+      allow read, write: if owner();
+    }
+
+    match /persetujuan/{id} {
+      allow read, write: if owner();
+    }
+
+    match /pindahStok/{id} {
+      allow read, write: if owner();
+    }
+
+    match /hargaWadah/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /strukKeluar/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow create: if owner() || stafBuat(['ben', 'karyawan']);
+      allow update, delete: if owner();
+    }
+
+    match /pengaturan/{id} {
+      allow read: if owner() || (id == 'tempatSimpan' && staf(['ben', 'karyawan'])) || (id == 'aksesKasir' && kasir());   // titikKas & keamanan: owner saja
+      allow write: if owner();
+    }
+
+    match /pindahTempat/{id} {
+      allow read: if owner() || staf(['ben', 'karyawan']);
+      allow write: if owner();
+    }
+
+    match /koreksiHpp/{id} {
+      allow read, write: if owner();
+    }
+
+    match /hargaPasar/{id} {
+      allow read, write: if owner();
+    }
+
+    match /hargaTerbit/{id} {
+      allow read, write: if owner();
+    }
+
+    match /pesananPemasok/{id} {
+      allow read, write: if owner();
+    }
+
+    match /pindahUang/{id} {
+      allow read, write: if owner();
+    }
+
+    match /absenKaryawan/{id} {
+      allow read, write: if owner();
+    }
+
+    match /slipUpah/{id} {
+      allow read, write: if owner();
+    }
+
+    match /tutupBukuAcara/{id} {
+      allow read, write: if owner();
+    }
+
+    match /dokumenCetak/{id} {
+      allow read, write: if owner();
+    }
+    // putaran 24: modul pajak — owner saja (omzet diketik owner & jejak setoran; tanpa NIK/NPWP/rekening)
+    match /pajakOmzetLuar/{id} {
+      allow read, write: if owner();
+    }
+    match /pajakSetoran/{id} {
+      allow read, write: if owner();
+    }
+
+    match /aksesAkun/{uid} {
+      allow read: if owner() || (masuk() && request.auth.uid == uid);
+      allow create, update: if owner() && request.resource.data.uid == uid && request.resource.data.peran in ['ben', 'karyawan'] && request.resource.data.aktif is bool;   // tak pernah owner
+      allow delete: if owner();
+    }
+
+    match /permintaanAkses/{uid} {
+      allow create: if masuk() && request.auth.uid == uid && !owner() && !kasir()
+        && !exists(/databases/$(database)/documents/aksesAkun/$(uid))
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'nama', 'pada']) && request.resource.data.uid == uid
+        && request.resource.data.email == string(request.auth.token.email).lower()
+        && request.resource.data.nama is string && request.resource.data.nama.size() >= 2 && request.resource.data.nama.size() <= 40;
+      allow read, delete: if owner();
+    }
+
+    match /arsipTahun/{id} {
+      allow read, write: if owner();   // arsip tutup buku: owner saja
+    }
+
+    match /ringkasanKasir/{id} {
+      allow read: if owner() || kasir();
+      allow write: if owner();
+    }
+
+    // Payung: segalanya yang tidak disebut di atas — termasuk pengaturan/keamanan (PIN) & koleksi lama sistem lama — owner saja.
+    // Putaran 23e: Firestore memberi akses kalau SALAH SATU blok yang cocok mengizinkan, jadi payung `/{document=**}` lama mengalahkan
+    // setiap batasan owner di blok atas (Playground ★10: owner bisa menulis aksesAkun peran 'owner'). Koleksi yang bloknya membatasi owner
+    // DIKECUALIKAN dari payung (sekarang aksesAkun: bentuk & peran; permintaanAkses: create/update bukan owner). periksa_rules.py GAGAL
+    // kalau ada blok yang membatasi owner tapi koleksinya masih tercakup payung. Payung ini DIHAPUS di putaran 25 (lihat kepala berkas).
+    match /{koleksi}/{sisa=**} {
+      allow read, write: if owner() && !(koleksi in ['aksesAkun', 'permintaanAkses']);
+    }
+  }
+}
