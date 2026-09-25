@@ -9,7 +9,7 @@
 // Uang toko: sistem lama tidak punya saldo per kantong, yang bisa dijaga TOTAL kas (kasPada; null bila titik kas belum disetel) — "dari mana uangnya" dicatat sebagai kolom.
 import { hitungUtangPemasok, kasPada } from '../mesin/beku.js';
 import { batchDiutang, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, cacheMentah } from '../data/toko.js';
+import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, cacheMentah, kunciSampai } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
 export const ATUR_BON_BAWAAN = { dekatHari: 7, admin: [{ nama: 'BI-FAST', n: 2500 }, { nama: 'Transfer antarbank', n: 6500 }] };
@@ -134,11 +134,15 @@ export function hitungBonLama(d) {
   const D = Object.assign({ pemasok: '', nama: '', tgl: '', ketik: '', catatan: '' }, d || {}); const n = Math.round(bpAngka(D.ketik)); const namaBaru = String(D.nama || '').trim();
   const kembar = namaBaru ? daftarPemasok().find((p) => p.kunci === kunciPelanggan(namaBaru)) : null; const pemasok = D.pemasok || (kembar ? kembar.nama : namaBaru);
   let tolak = ''; if (!pemasok) tolak = 'Pilih atau ketik nama pemasoknya'; else if (!(n > 0)) tolak = 'Ketik nilai bonnya'; else if (D.tgl && !/^\d{4}-\d{2}-\d{2}$/.test(D.tgl)) tolak = 'Tanggal bon tidak terbaca';
-  return { D, n, pemasok, kembar: kembar && !D.pemasok ? kembar.nama : '', tolak, arti: n > 0 ? 'Utang ke ' + (pemasok || 'pemasok') + ' bertambah ' + RP(n) + ' · uang toko, stok, dan laba TIDAK berubah — ini utang dari masa sebelum sistem.' : '', label: tolak || 'CATAT BON LAMA ' + RP(n) };
+  // putaran 25 (K4): mesin membaca umur bon lama dari bonTanggal — bon bertanggal bulan terkunci (atau tanpa tanggal, = paling tua) akan menggeser neraca bulan
+  // yang sudah dikunci, jadi dicatat bertanggal HARI INI dan tanggal aslinya ditulis di catatan (field yang sudah ada)
+  const sampai = kunciSampai(); const keHariIni = !!sampai && (!D.tgl || D.tgl.slice(0, 7) <= sampai);
+  return { D, n, pemasok, keHariIni, kembar: kembar && !D.pemasok ? kembar.nama : '', tolak, arti: n > 0 ? 'Utang ke ' + (pemasok || 'pemasok') + ' bertambah ' + RP(n) + ' · uang toko, stok, dan laba TIDAK berubah — ini utang dari masa sebelum sistem.' + (keHariIni ? ' Tanggal bonnya ' + (D.tgl ? tanggalPendek(D.tgl) : 'tidak diketahui') + ' jatuh di bulan terkunci — dicatat bertanggal HARI INI, tanggal aslinya ditulis di catatan (umur bon di layar mulai hari ini).' : '') : '', label: tolak || 'CATAT BON LAMA ' + RP(n) };
 }
 export function susunBonLama(d, w) {
   const H = hitungBonLama(d); if (H.tolak) return { tolak: H.tolak };
-  const data = { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'saldoAwal', pemasok: H.pemasok.slice(0, 60), nominal: H.n, catatan: String(H.D.catatan || '').trim().slice(0, 120), bonTanggal: H.D.tgl || null };
+  const asli = H.keHariIni ? 'tanggal bon asli ' + (H.D.tgl || 'tidak diketahui') + ' (bulan terkunci, dicatat ' + w.tanggal + ')' : '';
+  const data = { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'saldoAwal', pemasok: H.pemasok.slice(0, 60), nominal: H.n, catatan: [String(H.D.catatan || '').trim(), asli].filter(Boolean).join(' · ').slice(0, 160), bonTanggal: H.keHariIni ? w.tanggal : (H.D.tgl || null) };
   return { dokumen: [{ koleksi: 'utangPemasokMutasi', data }], patch: { lama: null, bukuNama: H.pemasok, kabar: 'Bon lama ' + RP(H.n) + ' ' + H.pemasok + ' dicatat' + (H.D.tgl ? ' (tanggal bon ' + tanggalPendek(H.D.tgl) + ')' : ' (tanggal bon tidak diketahui — dihitung paling tua)') + ' — uang toko, stok, dan laba tidak berubah', kabarAwas: false } };
 }
 // ---- KARTU PEMASOK: orang, kontak, tempo, catatan = isian owner (dokumen pemasokCatatan sistem lama + kolom baru orang & tempo)

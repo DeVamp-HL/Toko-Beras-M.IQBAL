@@ -8,7 +8,7 @@
 // Nama pembantu diprefiks `pj` (bundel uji jsc satu lingkup).
 import { hitungLabaRentang } from '../mesin/beku.js';
 import { bulanDari, namaBulanPanjang } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, cacheMentah } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, cacheMentah, kunciSampai } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong } from './uang-logika.js';
 
@@ -184,7 +184,7 @@ export function pjTahun(tahun, kini) {
     const berubah = adaPotret && Math.round(Number(potret.omzetSaatSetor)) !== omzet
       ? { omzet: omzet - Math.round(Number(potret.omzetSaatSetor)), pph: pph === null || potret.pphPerkiraanSaatSetor === null || potret.pphPerkiraanSaatSetor === undefined ? null : pph - Math.round(Number(potret.pphPerkiraanSaatSetor)) } : null;
     const B = { key, nama: pjNama(key), pendek: pjPendek(key), sistem: S.omzet, nNota: S.n, sebelumPotongan, potongan: PT, sebagian, awalSistem: sebagian ? awal : null, lama, lain, pasangan, pasanganIkutPph: pasangan !== null && !AP.batasSendiri, lengkap, lengkapSejauhIni, omzet, gabung, kumSebelum, kum, kumGabung, kena, pph,
-      tempo, berjalan, setor, jumlahSetor, ntpn: setor.map((s) => s.ntpn).filter(Boolean), berubah };
+      tempo, berjalan, setor, jumlahSetor, ntpn: setor.map((s) => s.ntpn).filter(Boolean), berubah, terkunci: pjTerkunci(key) };   // putaran 25: keadaan kunci bulan
     B.status = pjStatus(B, P, iso, hitung); daftar.push(B);
   }
   return { tahun: th, daftar, P, hitung, anggapanOp: P.jenisWp === 'belumDiketahui', pasangan: AP, kum, kumGabung,
@@ -225,6 +225,9 @@ export function pjPerkiraanBulan(key, kini) { const T = pjTahun(Number(key.slice
 // ==================== setoran (pajakSetoran) ====================
 export const pjSetoranSemua = () => cacheMentah('pajakSetoran').slice().sort((a, b) => String(a.tanggalSetor || '').localeCompare(String(b.tanggalSetor || '')) || String(a.id).localeCompare(String(b.id)));
 /** NTPN: 16 karakter angka/huruf menurut artikel DJP 2020 [BELUM TERVERIFIKASI untuk era Coretax] → hanya peringatan, tidak memblokir. */
+/** putaran 25: bulan pajak terkunci? (sampaiBulan dokumen kunci) · peringatan untuk setoran bulan yang BELUM dikunci — angkanya masih bisa bergeser. */
+export const pjTerkunci = (key) => { const s = kunciSampai(); return !!s && String(key) <= s; };
+export function pjPeringatanKunci(key) { return pjTerkunci(key) ? '' : 'Kunci bulan ' + pjNama(key) + ' dulu supaya angkanya tidak bergeser (Uang › Tutup buku › Kunci bulan)'; }
 export function pjCekNtpn(ntpn) { const x = String(ntpn || '').replace(/\s/g, '').toUpperCase(); if (!x) return 'tanpa NTPN'; return /^[0-9A-Z]{16}$/.test(x) ? '' : 'NTPN biasanya 16 karakter angka/huruf (format belum terverifikasi untuk Coretax) — periksa lagi bukti setornya'; }
 export function susunSetoran(isi, w, kini) {
   const masa = String(isi.masaPajak || ''); const tgl = String(isi.tanggalSetor || ''); const ntpn = String(isi.ntpn || '').replace(/\s/g, '').toUpperCase().slice(0, 32);
@@ -234,7 +237,7 @@ export function susunSetoran(isi, w, kini) {
   if (ugKosong(isi.jumlah)) return { tolak: 'Ketik jumlah yang disetor' }; const n = ugAngka(isi.jumlah); if (!(n > 0)) return { tolak: 'Jumlah setor harus lebih dari nol' };
   if (pjAdaNomorPribadi(atas) || pjAdaNomorPribadi(cat)) return { tolak: PJ_TOLAK_NOMOR };
   const mundur = pjHariKe(w.tanggal) - pjHariKe(tgl) > 7; if ((mundur || !ntpn) && !cat) return { tolak: mundur ? 'Setoran ini dicatat mundur (lebih dari 7 hari lalu) — catatan wajib diisi: dari mana angkanya (mis. cerita pemilik lama, bukti kertas)' : 'Tanpa NTPN, catatan wajib diisi (mis. "bukti setor belum ketemu")' };
-  const T = pjTahun(Number(masa.slice(0, 4)), kini); const b = T.daftar.find((x) => x.key === masa); const peringatan = pjCekNtpn(ntpn);
+  const T = pjTahun(Number(masa.slice(0, 4)), kini); const b = T.daftar.find((x) => x.key === masa); const peringatan = [pjCekNtpn(ntpn), pjPeringatanKunci(masa)].filter(Boolean).join(' · ');
   const data = { id: 'ps-' + w.idUnik(), masaPajak: masa, tanggalSetor: tgl, jumlah: Math.round(n), ntpn, atasNama: atas, catatan: cat, omzetSaatSetor: b ? b.omzet : null, pphPerkiraanSaatSetor: b ? b.pph : null, dicatatPada: w.tanggal };
   return { dokumen: [{ koleksi: 'pajakSetoran', data }], peringatan, patch: { kabar: 'Setoran ' + pjNama(masa) + ' ' + RP(Math.round(n)) + ' dicatat' + (b ? ' — omzet saat ini ' + RP(b.omzet) + ' dipotret; kalau berubah nanti, bulannya ditandai' : '') + (peringatan ? '. ' + peringatan : ''), kabarAwas: !!peringatan, drafSetor: null } };
 }

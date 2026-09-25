@@ -11,7 +11,8 @@
 // hasilnya sudah terjual/terpakai sehingga stok kemasan jadi minus; jejaknya ke bukuHapus. Adukan "menunggu owner" dari tablet menyusul bersama layar tablet.
 import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, bagiBiayaAdukan } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, JENIS_BAHAN_KEMASAN, kunciKemasan } from '../mesin/pembantu.js';
-import { ambilProduksi, ambilHargaKemasan } from '../data/toko.js';
+import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet } from '../data/toko.js';
+import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP } from '../inti/format.js';
 
 export const UKURAN_BAHAN_KEMASAN = [50, 25];          // kemasan jadi yang boleh dibongkar lagi (UKURAN_KEMASAN_BOLEH_JADI_BAHAN index.html)
@@ -93,6 +94,7 @@ export function hitungAdukan(draf) {
 export function susunSimpanAdukan(draf, w, yakin) {
   const Y = yakin || {}; const h = hitungAdukan(draf);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(draf.tanggal || ''))) return { tolak: 'Tanggal adukannya belum benar' };
+  const kunciTgl = tolakKunciTanggal(draf.tanggal, 'adukan tidak bisa dicatat di bulan itu; catat bertanggal hari ini'); if (kunciTgl) return { tolak: kunciTgl };   // putaran 25
   if (h.bermasalah.length) { const x = h.bermasalah[0]; return { tolak: 'Baris ' + x.ke + (x.merk || x.nama || x.namaProduk ? ' (' + (x.merk || x.nama || x.namaProduk) + ')' : '') + ': ' + x.masalah + ' — lengkapi atau kosongkan barisnya' }; }
   if (!h.sahB.length && !h.sahBK.length) return { tolak: 'Isi minimal satu bahan — karung dari gudang (nama + kg) atau kemasan jadi yang dibongkar' };
   if (!h.sahH.length) return { tolak: 'Isi minimal satu baris hasil: nama, ukuran, dan jumlah unit' };
@@ -116,6 +118,8 @@ export function susunSimpanAdukan(draf, w, yakin) {
       batchProduksi: batchId, barisKe: i + 1, jumlahBaris: h.sahH.length, jadiKarungUtuh: false, merkTujuan: null } });
     if (x.kantongJenis && x.kantongJumlah > 0) dokumen.push({ koleksi: 'stokBahanKemasan', data: { id: id + 1, tipe: 'pakai', jenis: x.kantongJenis, jumlah: x.kantongJumlah, hargaTotal: 0, tanggal: draf.tanggal, catatan: 'Otomatis dari produksi id ' + id } });
   });
+  // putaran 25: adukan bertanggal bulan lalu (di luar masa tenggang) — tiap catatan diperiksa kunci di server; satu adukan tidak boleh butuh lebih dari 18 pemeriksaan
+  const g = butuhGet(dokumen); if (g > KP_BATAS_GET) return { tolak: 'Adukan bertanggal bulan lalu menyentuh ' + g + ' catatan (batas ' + KP_BATAS_GET + ' sekali kirim) — pecah jadi dua adukan, atau catat bertanggal hari ini' };
   const modalTeks = h.sahH.map((x) => x.nama + ' ' + adUkuranTeks(x.ukuran) + ' kg ' + RP(Math.round(x.hppPerUnit)) + '/unit').join(' · ');
   return { dokumen, hitung: h, batchId, patch: { kabar: 'Adukan tersimpan: ' + h.teksBahan + ' → ' + h.teksHasil + ' · biaya ' + RP(Math.round(h.total)) + ' (bahan ' + RP(Math.round(h.nilaiBahan)) + (h.biayaKantong ? ' + kantong ' + RP(h.biayaKantong) : '') + (h.upah ? ' + upah ' + RP(h.upah) : '') + ') → modal ' + modalTeks
     + (h.susutKg > 0 ? ' · susut ' + adKG(h.susutKg) + ' terserap ke modal hasil' : '') + '. Stok karung/kemasan asal turun, stok kemasan jadi naik' + (h.biayaKantong ? ', stok kantong turun' : '') + '. Kas tidak bergerak.', kabarAwas: false } };
@@ -123,6 +127,9 @@ export function susunSimpanAdukan(draf, w, yakin) {
 
 // ====================== BUKU ADUKAN: rincian, koreksi, hapus ======================
 const adKelompok = () => { const kel = {}; ambilProduksi().forEach((p) => { const k = String(p.batchProduksi || p.id); if (!kel[k]) kel[k] = []; kel[k].push(p); }); return kel; };
+/** putaran 25: '' atau kalimat "Bulan X terkunci — …" bila salah satu baris adukan jatuh di bulan terkunci. */
+const adBertahap = (r) => { if (r.kelompok) r.kelompok[r.kelompok.length - 1].dokumen = r.dokumen; return r; };
+const adKunci = (batch, pembalik) => (adKelompok()[String(batch)] || []).map((p) => tolakKunci('produksiKemasan', p, pembalik)).find(Boolean) || '';
 const adBerlaku = (semua) => semua.filter((p) => !p.dikoreksiOleh).sort((a, b) => (a.barisKe || 0) - (b.barisKe || 0) || (Number(a.id) || 0) - (Number(b.id) || 0));
 const adPertama = (baris) => baris.find((p) => (Array.isArray(p.sumberList) && p.sumberList.length) || (Array.isArray(p.sumberKemasanList) && p.sumberKemasanList.length) || p.kgDipakai > 0) || baris[0];
 const adTeksBahan = (p) => { if (!p) return ''; const a = (Array.isArray(p.sumberList) && p.sumberList.length ? p.sumberList.map((s) => adKG(s.kg || 0) + ' ' + s.merk) : (p.merkSumber && !/^(CAMPURAN|DARI KEMASAN JADI)/.test(p.merkSumber) && p.kgDipakai > 0 ? [adKG(p.kgDipakai) + ' ' + p.merkSumber] : []))
@@ -155,6 +162,7 @@ export function rincianAdukan(batch) {
 /** Koreksi SATU KESATUAN: total biaya yang benar → dibagi ulang ke semua baris (simpanKoreksiHpp cabang adukan); alasan wajib. */
 export function susunKoreksiAdukan(batch, totalBaru, alasan, w) {
   const r = rincianAdukan(batch); if (!r) return { tolak: 'Adukan itu sudah tidak ada' };
+  const kunci = adKunci(batch, 'biaya adukan ini tidak bisa dikoreksi; modal per unitnya tetap seperti tercatat (keputusan owner K2)'); if (kunci) return { tolak: kunci };   // putaran 25
   if (!r.bisaKoreksi) return { tolak: 'Koreksi ditolak: ' + r.takBisaKoreksi };
   const baris = adBerlaku(adKelompok()[String(batch)] || []);
   if (baris.length !== r.jumlahBaris) return { tolak: 'Koreksi ditolak: adukan ini seharusnya punya ' + r.jumlahBaris + ' baris hasil, yang masih berlaku cuma ' + baris.length + ' — sebagian sudah dikoreksi/dihapus sendiri-sendiri di sistem lama, biayanya tidak bisa dibagi ulang dengan benar. Hapus seluruh adukan lalu catat ulang' };
@@ -167,7 +175,9 @@ export function susunKoreksiAdukan(batch, totalBaru, alasan, w) {
   baris.forEach((x, i) => { const idBaru = w.idUnik(); const pengganti = Object.assign({}, x, { id: idBaru, hppPerUnit: bagi[i], koreksiDari: x.id, alasanKoreksi: String(alasan).trim(), dikoreksiPada: w.kini }); delete pengganti.dikoreksiOleh;
     dokumen.push({ koleksi: 'produksiKemasan', data: pengganti }); dokumen.push({ koleksi: 'produksiKemasan', data: Object.assign({}, x, { dikoreksiOleh: idBaru, alasanKoreksi: String(alasan).trim() }) }); });
   const pratinjau = baris.map((x, i) => ({ nama: (x.namaProduk || '') + ' ' + adUkuranTeks(x.ukuranKemasan) + ' kg × ' + (x.jumlahUnit || 0), lama: x.hppPerUnit || 0, baru: bagi[i] }));
-  return { dokumen, pratinjau, patch: { kabar: 'Adukan dikoreksi satu kesatuan: total biaya ' + RP(totalLama) + ' → ' + RP(Math.round(total)) + ' (' + String(alasan).trim() + '); modal per unit dibagi ulang: ' + pratinjau.map((p) => p.nama + ' ' + RP(Math.round(p.baru))).join(' · ') + '. Nilai stok kemasan & margin penjualan berikutnya ikut berubah; kas tidak.', kabarAwas: false } };
+  // putaran 25: adukan besar bulan lalu (> 18 pemeriksaan kunci) dikirim BERTAHAP — satu kelompok per hasil (pengganti + asal yang ditandai, tak pernah terbelah)
+  const kelompok = butuhGet(dokumen) > KP_BATAS_GET ? baris.map((x, i) => ({ dokumen: dokumen.slice(i * 2, i * 2 + 2), hapus: [] })) : null;
+  return { dokumen, kelompok, pratinjau, patch: { kabar: 'Adukan dikoreksi satu kesatuan: total biaya ' + RP(totalLama) + ' → ' + RP(Math.round(total)) + ' (' + String(alasan).trim() + '); modal per unit dibagi ulang: ' + pratinjau.map((p) => p.nama + ' ' + RP(Math.round(p.baru))).join(' · ') + '. Nilai stok kemasan & margin penjualan berikutnya ikut berubah; kas tidak.', kabarAwas: false } };
 }
 /** Pratinjau pembagian ulang untuk total yang sedang diketik (tanpa menulis). */
 export function pratinjauKoreksiAdukan(batch, totalBaru) {
@@ -178,10 +188,12 @@ export function pratinjauKoreksiAdukan(batch, totalBaru) {
 /** Hapus SELURUH adukan (semua dokumen seadukan + pasangan kantong id + 1), jejak ke bukuHapus; ditolak bila hasilnya sudah terjual/terpakai. */
 export function susunHapusAdukan(batch, alasan, w) {
   const r = rincianAdukan(batch); if (!r) return { tolak: 'Adukan itu sudah tidak ada' };
+  const kunci = adKunci(batch, 'adukan ini tidak bisa dihapus. Hasil yang tidak pernah jadi: Stok › Cocokkan HARI INI (kemasan turun, beras bahan naik)'); if (kunci) return { tolak: kunci, pembalik: 'cocok' };   // putaran 25
   if (!r.bisaHapus) return { tolak: 'Hapus ditolak: ' + r.takBisaHapus };
   if (adKosong(alasan)) return { tolak: 'Hapus adukan butuh alasan — supaya jejaknya bisa dibaca nanti' };
   const semua = adKelompok()[String(batch)] || [];
   const hapus = []; semua.forEach((p) => { hapus.push({ koleksi: 'produksiKemasan', id: p.id }); hapus.push({ koleksi: 'stokBahanKemasan', id: p.id + 1 }); });
-  return { hapus, dokumen: [{ koleksi: 'bukuHapus', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, koleksi: 'produksiKemasan', idDok: String(batch), tanggalDok: r.tanggal, pemasok: '', ringkas: 'adukan ' + r.bahanTeks + ' → ' + r.hasilTeks + ' · ' + RP(Math.round(r.biaya.total)), alasan: String(alasan).trim(), pasangan: semua.length } }],
-    patch: { kabar: 'Adukan ' + r.tanggal + ' dihapus (' + String(alasan).trim() + '): ' + r.bahanTeks + ' kembali ke stok asal, ' + r.hasilTeks + ' dicabut dari stok kemasan' + (r.biaya.kantong ? ', kantongnya kembali' : '') + ' — jejaknya tetap di buku hapus', kabarAwas: false } };
+  const kelompok = butuhGet([], hapus) > KP_BATAS_GET ? semua.map((p) => ({ dokumen: [], hapus: [{ koleksi: 'produksiKemasan', id: p.id }, { koleksi: 'stokBahanKemasan', id: p.id + 1 }] })) : null;   // putaran 25: bertahap per hasil; jejak buku hapus ikut kiriman terakhir
+  return adBertahap({ hapus, kelompok, dokumen: [{ koleksi: 'bukuHapus', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, koleksi: 'produksiKemasan', idDok: String(batch), tanggalDok: r.tanggal, pemasok: '', ringkas: 'adukan ' + r.bahanTeks + ' → ' + r.hasilTeks + ' · ' + RP(Math.round(r.biaya.total)), alasan: String(alasan).trim(), pasangan: semua.length } }],
+    patch: { kabar: 'Adukan ' + r.tanggal + ' dihapus (' + String(alasan).trim() + '): ' + r.bahanTeks + ' kembali ke stok asal, ' + r.hasilTeks + ' dicabut dari stok kemasan' + (r.biaya.kantong ? ', kantongnya kembali' : '') + ' — jejaknya tetap di buku hapus', kabarAwas: false } });
 }

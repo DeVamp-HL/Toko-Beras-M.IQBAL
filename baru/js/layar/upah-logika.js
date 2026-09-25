@@ -15,7 +15,7 @@
 //  - slip        → slipUpah (koleksi baru) = jejak tiap pembayaran: rentang hari, hitungan, potongan, teks slip. "Sejak terakhir dibayar" dibaca dari sini.
 import { hitungKasbon } from '../mesin/beku.js';
 import { kunciPelanggan, akhirBulanIso, POS_BIAYA_BULANAN } from '../mesin/pembantu.js';
-import { ambilBiayaBulanan, ambilKasbonMutasi, ambilAbsenKaryawan, ambilSlipUpah, cacheMentah } from '../data/toko.js';
+import { ambilBiayaBulanan, ambilKasbonMutasi, ambilAbsenKaryawan, ambilSlipUpah, cacheMentah, tolakKunciTanggal } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAngka, ugKosong, ugAturDok, ugTambahHari, ugHariKe, ugKiniDari, saldoKantong, ugCukup } from './uang-logika.js';
 
@@ -188,6 +188,11 @@ export function susunBayarUpah(nama, potongPilih, w, bonusIsi) {
   const kunci = String(nama).trim() + ' · ' + tanggalPendek(w.tanggal); const perBulan = {};
   H.hariList.forEach((d) => { if (d.nilai === null || d.iso > sampai) return; const b = d.iso.slice(0, 7); if (!perBulan[b]) perBulan[b] = { hari: 0, penuh: 0, setengah: 0, absen: 0 }; perBulan[b].hari += d.nilai; if (d.nilai === 1) perBulan[b].penuh += 1; else if (d.nilai === 0.5) perBulan[b].setengah += 1; else perBulan[b].absen += 1; });
   const dokumen = []; const bulanan = [];
+  // putaran 25 (K5, owner 25 Sep): hari kerja di bulan TERKUNCI dibukukan ke biaya bulan PEMBAYARAN (bulan terkunci tidak bisa ditulis lagi); rincian gajinya
+  // tetap membawa dari/sampai yang sebenarnya. Tanpa field baru.
+  const bulanBayar = String(w.tanggal).slice(0, 7); const pindahBulan = [];
+  Object.keys(perBulan).forEach((b) => { if (b === bulanBayar || !tolakKunciTanggal(b + '-01', '')) return; const t = perBulan[bulanBayar] = perBulan[bulanBayar] || { hari: 0, penuh: 0, setengah: 0, absen: 0 };
+    ['hari', 'penuh', 'setengah', 'absen'].forEach((k) => { t[k] += perBulan[b][k]; }); pindahBulan.push(b); delete perBulan[b]; });
   const bulanAkhir = Object.keys(perBulan).sort().slice(-1)[0];
   Object.keys(perBulan).sort().forEach((bulan) => { const p = perBulan[bulan]; const bonusIni = bulan === bulanAkhir ? H.bonus : 0; const gaji = Math.round(p.hari * H.tarif) + bonusIni; const lama = ambilBiayaBulanan().find((b) => b.bulan === bulan) || { id: bulan, bulan };
     const data = Object.assign({}, lama, { id: bulan, bulan }); const peta = Object.assign({}, lama.tanggalBayarPos || {}); if (!lama.tanggalBayarPos && lama.tanggalBayar) { POS_BIAYA_BULANAN.forEach((q) => { if (Number(lama[q.kunci]) > 0) peta[q.kunci] = lama.tanggalBayar; }); if (Number(lama.gaji) > 0) peta.gaji = lama.tanggalBayar; }
@@ -200,7 +205,7 @@ export function susunBayarUpah(nama, potongPilih, w, bonusIsi) {
   const HS = Object.assign({}, H, { rentang: tanggalPendek(H.mulai) + ' – ' + tanggalPendek(sampai) }); const slip = teksSlip(HS, w.tanggal);
   const dokSlip = { id: w.idUnik(), nama: String(nama).trim(), dari: H.mulai, sampai, tanggal: w.tanggal, jam: w.jam, penuh: H.penuh, setengah: H.setengah, absen: H.absen, tarif: H.tarif, upah: H.upah, bonus: H.bonus, alasanBonus: H.alasanBonus, potong: H.potong, diterima: H.diterima, sisaKasbon: H.sisaKasbon - H.potong, bulanan, kunci, teks: slip };
   dokumen.push({ koleksi: 'slipUpah', data: dokSlip });
-  return { dokumen, slip: dokSlip, patch: { bonusU: { ketik: '', alasan: '' }, kabar: 'Upah ' + String(nama).split(' ')[0] + ' ' + RP(H.diterima) + ' dibayar dari laci' + (H.bonus ? ' · bonus ' + RP(H.bonus) + ' (' + H.alasanBonus + ')' : '') + (H.potong ? ' · kasbon dipotong ' + RP(H.potong) : '') + ' · laba: gaji penuh ' + RP(H.upah) + ' dibagi rata per hari bulannya' + (c.takTerperiksa ? ' · isi laci belum bisa dihitung, tidak diperiksa' : ''), kabarAwas: false, bayarU: null, lembarU: 'slip', slipTeks: slip } };
+  return { dokumen, slip: dokSlip, patch: { bonusU: { ketik: '', alasan: '' }, kabar: 'Upah ' + String(nama).split(' ')[0] + ' ' + RP(H.diterima) + ' dibayar dari laci' + (H.bonus ? ' · bonus ' + RP(H.bonus) + ' (' + H.alasanBonus + ')' : '') + (H.potong ? ' · kasbon dipotong ' + RP(H.potong) : '') + ' · laba: gaji penuh ' + RP(H.upah) + ' dibagi rata per hari bulannya' + (c.takTerperiksa ? ' · isi laci belum bisa dihitung, tidak diperiksa' : '') + (pindahBulan.length ? ' · hari kerja ' + pindahBulan.join(', ') + ' (bulan terkunci) dibukukan ke biaya ' + bulanBayar : ''), kabarAwas: false, bayarU: null, lembarU: 'slip', slipTeks: slip } };
 }
 /** Slip yang sudah dibayar (sistem baru) + gaji bulanan sistem lama yang bertanggal, terbaru di atas. */
 export function riwayatUpah(nama, n) {

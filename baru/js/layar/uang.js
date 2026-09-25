@@ -12,10 +12,11 @@ import * as UP from './upah-logika.js';
 import * as OT from './owner-toko-logika.js';
 import * as TD from './tutup-hari-logika.js';
 import * as BK from './tutup-buku-logika.js';
+import * as KP from './kunci-periode-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { ssBerkasCadangan, susunCatatCadangan } from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, hapusDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip } from '../data/toko.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -40,9 +41,10 @@ export function pasangLayarUang(akar, opsi) {
     aksiO: null, bukti: '', urungO: null,
     pindah: null, urungP: null, aturP: null,
     draf: null, koreksi: false, yakinUlang: false, aturT: null, rekapTeks: '', bukaRumus: false,
-    modeB: 'latihan', langkahB: LANGKAH_KOSONG(), bukaB: 'periksa', parafB: { owner: false, saksi: false }, saksiB: '', siapKunci: false, lewatiG3: false, progres: null, aturB2: null, cad1: '', arsipNama: '', selesaiLatihan: false, sesudahLive: null, sibuk: false });
+    modeB: 'latihan', langkahB: LANGKAH_KOSONG(), bukaB: 'periksa', parafB: { owner: false, saksi: false }, saksiB: '', siapKunci: false, lewatiG3: false, progres: null, aturB2: null, cad1: '', arsipNama: '', selesaiLatihan: false, sesudahLive: null, sibuk: false,
+    kpCentang: {}, kpPutus: {}, kpSiap: false, kpBuka: null, kpAtur: null, kpYakinLupa: null });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['catat', 'bayarT', 'tolakT', 'aturK', 'kasbonK', 'bonusU', 'aturU', 'karyawanDraf', 'aksiO', 'bukti', 'pindah', 'aturP', 'draf', 'aturT', 'langkahB', 'parafB', 'saksiB', 'cad1', 'arsipNama'], [[KUNCI_DRAF_TUTUP, (t) => { try { return JSON.parse(t).iso === iso(); } catch (e) { return false; } }]]);
+  const ISIAN = pasangIsian(K, awal, ['catat', 'bayarT', 'tolakT', 'aturK', 'kasbonK', 'bonusU', 'aturU', 'karyawanDraf', 'aksiO', 'bukti', 'pindah', 'aturP', 'draf', 'aturT', 'langkahB', 'parafB', 'saksiB', 'cad1', 'arsipNama', 'kpCentang', 'kpPutus', 'kpBuka', 'kpAtur'], [[KUNCI_DRAF_TUTUP, (t) => { try { return JSON.parse(t).iso === iso(); } catch (e) { return false; } }]]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
@@ -51,8 +53,8 @@ export function pasangLayarUang(akar, opsi) {
   async function tulis(r, tanpaKabar) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
     try {
-      if (r.hapus && r.hapus.length) { const x0 = await hapusDokumen(r.hapus); if (x0 && x0.gagal) { set({ kabar: 'DITOLAK: ' + x0.pesan, kabarAwas: true }); return false; } }
-      let x = null; if (r.dokumen && r.dokumen.length) { x = await tulisDokumen(r.dokumen); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } }
+      // putaran 25: hapus + dokumen dalam SATU kiriman (atomik; dulu dua kiriman — hapus bisa masuk tanpa penggantinya)
+      let x = null; if ((r.dokumen && r.dokumen.length) || (r.hapus && r.hapus.length)) { x = await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus }); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } }
       if (!tanpaKabar) set(Object.assign({}, r.patch || {}, { kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + ((r.patch || {}).kabar || ''), kabarAwas: !!(r.patch || {}).kabarAwas })); else if (r.patch) { const p = Object.assign({}, r.patch); delete p.kabar; delete p.kabarAwas; set(p); }
       return true;
     } catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
@@ -205,7 +207,25 @@ export function pasangLayarUang(akar, opsi) {
     bkAturKetik: (v, el) => { const a = JSON.parse(JSON.stringify(st().aturB2)); a.saksi[Number(el.dataset.i)] = String(v).slice(0, 40); set({ aturB2: a }); },
     bkAturTambah: () => { const a = JSON.parse(JSON.stringify(st().aturB2)); a.saksi.push(''); set({ aturB2: a }); }, bkAturLepas: ({ i }) => { const a = JSON.parse(JSON.stringify(st().aturB2)); a.saksi.splice(Number(i), 1); set({ aturB2: a }); },
     simpanAturB2: async () => { const a = st().aturB2; if (a) await tulis(BK.susunAturBuku(a, waktu())); },
+    // ---- KUNCI BULAN (putaran 25)
+    kpCentang: ({ id }) => { const c = Object.assign({}, st().kpCentang); c[id] = !c[id]; set({ kpCentang: c, kpSiap: false }); },
+    kpPutus: ({ iso: t, jenis }) => { const p = Object.assign({}, st().kpPutus); if (p[t] && p[t].jenis === jenis) delete p[t]; else p[t] = { jenis, alasan: (p[t] || {}).alasan || '' }; set({ kpPutus: p, kpSiap: false }); },
+    kpAlasanHari: (v, el) => { const p = Object.assign({}, st().kpPutus); const t = el.dataset.tgl; p[t] = Object.assign({ jenis: 'diterima' }, p[t] || {}, { alasan: String(v).slice(0, 120) }); set({ kpPutus: p, kpSiap: false }); },
+    kpKunci: async () => {
+      const s = st(); const c = KP.kpCalon(kini()); if (!c) return set({ kabar: 'Semua bulan yang sudah lewat sudah terkunci', kabarAwas: false });
+      const D = KP.kpDaftarPeriksa(c, kini(), konteksKunci()); if (!D.boleh) return set({ kpSiap: false, kabar: D.belum + ' butir daftar periksa belum beres' + (D.blokir ? ' (' + D.blokir + ' memblokir ⛔)' : ''), kabarAwas: true });
+      if (!s.kpSiap) return set({ kpSiap: true, kabar: 'Yakin mengunci ' + KP.kpNama(c) + '? Sesudah ini catatan bertanggal ' + KP.kpNama(c) + ' tidak bisa ditambah, diubah, atau dihapus siapa pun — termasuk owner. Ketuk sekali lagi', kabarAwas: false });
+      const r = KP.susunKunciBulan(c, konteksKunci(), waktu(), opsi.akun ? opsi.akun() : null, kini()); set({ kpSiap: false }); if (await tulis(r)) set({ kpCentang: {}, kpPutus: {} }); },
+    kpBukaMulai: () => set({ kpBuka: st().kpBuka ? null : { alasan: '', ketik: '' }, kpSiap: false }),
+    kpBukaKetik: (v, el) => { const b = Object.assign({ alasan: '', ketik: '' }, st().kpBuka); b[el.dataset.kolom] = String(v).slice(0, 200); set({ kpBuka: b }); },
+    kpBukaSimpan: async () => { const b = st().kpBuka || {}; await tulis(KP.susunBukaBulan(b.alasan, b.ketik, waktu(), opsi.akun ? opsi.akun() : null)); },
+    kpAturBuka: () => set({ kpAtur: st().kpAtur === null ? String(KP.kpKeadaan().tenggang) : null }),
+    kpAturKetik: (v) => set({ kpAtur: String(v).replace(/\D/g, '').slice(0, 2) }),
+    kpAturSimpan: async () => { await tulis(KP.susunAturKunci(st().kpAtur, waktu())); },
+    kpLupakan: async ({ id }) => { const r = KP.susunLupakanPerangkat(id, st().kpYakinLupa === id); if (r.perluYakin) return set({ kpYakinLupa: id, kabar: r.tolak, kabarAwas: false }); await tulis(r); },
   };
+  // konteks daftar periksa kunci bulan: antrean & kiriman ditolak di perangkat ini, nota parkir di Jual, keputusan per hari & centang owner
+  const konteksKunci = () => { const L = lokal(); const s = st(); return { lokal: { antreLokal: L.antreLokal || { belum: [], ditolak: [] }, antre: L.antre || [] }, parkir: L.parkir || [], putusanHari: s.kpPutus, centang: s.kpCentang }; };
   const bkUrut = (s, k) => { const i = BK.LANGKAH_BUKU.findIndex((l) => l[0] === k); return BK.LANGKAH_BUKU.slice(0, i).every((l) => !!s.langkahB[l[0]]); };
   const bandingB = (s, T) => { const SB = BK.barisBuku(T.cutoff, T.cutoff); if (!s.langkahB.saldo) return BK.bandingBuku(SB, null); const P = BK.pembukaBuku(T.tahun, { idUnik: () => 0 }); return BK.bandingBuku(SB, BK.sesudahDariPembuka(P, SB)); };
   delegasi(akar, AKSI);
@@ -416,6 +436,33 @@ export function pasangLayarUang(akar, opsi) {
     return h`<section data-k="k5">${s.koreksi ? h`<div class="pita-info awas">Tutup ulang (koreksi) hari ini — <span data-aksi="tdKoreksi" style="text-decoration: underline; cursor: pointer;">batal</span></div>` : ''}<div class="ug-grid mac tiga"><div class="th-kertas" data-k="kertas1">${kop}${kertasIsi[0]}</div><div class="th-kertas" data-k="kertas2">${kertasIsi.slice(1, 4)}</div><div class="th-kertas" data-k="kertas3">${kertasIsi.slice(4)}</div></div><div class="ug-grid tablet"><div class="ug-kolom">${riwayat}${kaki}</div><div class="ug-kolom">${atur}</div></div></section>`;
   }
 
+  // ---------- KUNCI BULAN (putaran 25) — kartu di atas Tutup buku: bulan terkunci terakhir · daftar periksa bulan berikutnya · kunci (dua ketukan) · riwayat · buka
+  function gambarKunci(s) {
+    const Kd = KP.kpKeadaan(); const c = KP.kpCalon(kini()); const D = c ? KP.kpDaftarPeriksa(c, kini(), konteksKunci()) : null; const owner = !opsi.akun || !opsi.akun() || opsi.akun().jenis === 'owner';
+    const tanda = (b) => (b.ok ? '✓' : b.blokir ? '⛔' : '!');
+    const butir = D ? D.butir.map((b) => h`<div class="tb-cek ${b.ok ? 'ok' : 'tidak'}" data-k="kp-${b.id}"><span class="t">${tanda(b)}</span><div><div>${b.teks}</div><div class="k">${b.ket}</div>
+        ${b.rincian.length ? h`<div class="k">${b.rincian.slice(0, 8).join(' · ')}${b.rincian.length > 8 ? ' · …' : ''}</div>` : ''}
+        ${b.id === 'hari' && D.hari.length ? h`<div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">${D.hari.map((x) => { const p = s.kpPutus[x.iso] || null; return h`<div data-k="kph-${x.iso}"><div class="hg-pil"><span class="k" style="min-width: 88px;">${tanggalPendek(x.iso)}${x.adaJual ? ' · ' + x.nNota + ' nota' : ''}</span>${x.pilihan.map((j) => h`<div class="seg ${p && p.jenis === j ? 'aktif' : ''}" data-aksi="kpPutus" data-iso="${x.iso}" data-jenis="${j}">${j === 'libur' ? 'libur' : 'tidak ditutup — diterima apa adanya'}</div>`)}</div>
+          ${p && p.jenis === 'diterima' ? h`<input class="ketik-nama" type="text" placeholder="alasan (wajib, min. 5 huruf)" value="${p.alasan || ''}" data-ketik="kpAlasanHari" data-tgl="${x.iso}">` : ''}</div>`; })}</div>` : ''}
+        ${b.aksi.length ? h`<div class="hg-pil">${b.aksi.map((a) => h`<div class="seg ${s.kpYakinLupa === a.id ? 'aktif' : ''}" data-aksi="kpLupakan" data-id="${a.id}">${s.kpYakinLupa === a.id ? 'yakin: ' : ''}${a.label}</div>`)}</div>` : ''}</div>
+      <div>${b.perluCentang ? h`<div class="kaca-btn kecil ${b.ok ? 'aktif' : ''}" data-aksi="kpCentang" data-id="${b.id}">${b.ok ? 'dicentang' : 'centang'}</div>` : ''}</div></div>`) : [];
+    const kunci = !c ? h`<div class="ket">Semua bulan yang sudah lewat sudah terkunci.</div>`
+      : h`<div class="label" style="font-size: 10px;">Daftar periksa ${KP.kpNama(c)}${Kd.sampai ? '' : ' (kunci pertama: bulan-bulan sebelumnya ikut terkunci)'}</div><div data-k="kp-butir">${butir}</div>
+        <div class="utama ${!owner || !D.boleh ? 'redup' : ''}" data-aksi="kpKunci">${!owner ? 'hanya owner yang bisa mengunci' : !D.boleh ? D.belum + ' butir belum beres' + (D.blokir ? ' · ' + D.blokir + ' ⛔' : '') : s.kpSiap ? 'KETUK SEKALI LAGI · kunci ' + KP.kpNama(c) : 'KUNCI ' + KP.kpNama(c).toUpperCase()}</div>`;
+    const riwayat = Kd.riwayat.length ? h`<div class="label" style="font-size: 10px;">Riwayat</div>${Kd.riwayat.slice(0, 12).map((r, i) => h`<div class="ug-baris" data-k="kpr-${i}"><div><div>${r.aksi === 'kunci' ? 'Dikunci' : 'DIBUKA'} · ${KP.kpNama(r.bulan)}</div><div class="k2">${String(r.pada || '').slice(0, 10)}${r.alasan ? ' · ' + r.alasan : ''}${r.potret && r.potret.omzet !== null ? ' · omzet ' + RP(r.potret.omzet) + ' · laba ' + RP(r.potret.labaBersih) : ''}</div></div></div>`)}` : '';
+    const setor = Kd.sampai ? KP.kpSetoranBulan(Kd.sampai).length : 0;
+    const buka = !Kd.sampai || !owner ? '' : s.kpBuka ? h`<div class="kartu ug-lembar" data-k="kp-buka" style="gap: 6px;"><div class="ket awas-teks">Membuka ${KP.kpNama(Kd.sampai)} membuat catatannya bisa diubah lagi. Hanya bulan terakhir, satu langkah mundur; alasannya tercatat di riwayat & jejak.</div>
+        <input class="ketik-nama" type="text" placeholder="alasan membuka (wajib, min. 10 huruf)" value="${s.kpBuka.alasan}" data-ketik="kpBukaKetik" data-kolom="alasan">
+        ${setor ? h`<div class="ket awas-teks">AWAS: ${KP.kpNama(Kd.sampai)} sudah punya ${setor} setoran pajak — angka yang sudah dilaporkan bisa bergeser. Ketik ulang nama bulannya:</div><input class="ketik-nama" type="text" placeholder="${KP.kpNama(Kd.sampai)}" value="${s.kpBuka.ketik}" data-ketik="kpBukaKetik" data-kolom="ketik">` : ''}
+        <div class="tombol-baris"><div class="kaca-btn" data-aksi="kpBukaMulai">batal</div><div class="kaca-btn awas aktif" data-aksi="kpBukaSimpan">BUKA KUNCI ${KP.kpNama(Kd.sampai).toUpperCase()}</div></div></div>`
+      : h`<div class="kaca-btn kecil awas" data-aksi="kpBukaMulai" style="align-self: flex-start;">Buka kunci ${KP.kpNama(Kd.sampai)}</div>`;
+    const atur = !owner ? '' : s.kpAtur !== null ? h`<div class="ps-form dua" data-k="kp-atur"><input class="ketik-nama" type="text" inputmode="numeric" placeholder="hari" value="${s.kpAtur}" data-ketik="kpAturKetik"><div class="tombol-baris"><div class="kaca-btn" data-aksi="kpAturBuka">batal</div><div class="kaca-btn aktif emas" data-aksi="kpAturSimpan">SIMPAN TENGGANG</div></div></div>`
+      : h`<div class="kaca-btn kecil" data-aksi="kpAturBuka" style="align-self: flex-start;">Atur tenggang (${Kd.tenggang} hari)</div>`;
+    return h`<div class="kartu" data-k="kunci-bulan" style="gap: 8px;"><div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;"><span class="label">Kunci bulan</span><span class="th-cap ${Kd.sampai ? 'beres' : ''}">${Kd.sampai ? 'terkunci s.d. ' + KP.kpNama(Kd.sampai) : 'belum ada yang terkunci'}</span></div>
+      <div class="ket" style="font-size: 11.5px;">Bulan yang dikunci tidak bisa ditambah, diubah, atau dihapus siapa pun — termasuk owner, sistem lama, kasir darurat, dan tablet offline. Kesalahan yang ketahuan belakangan dibetulkan dengan catatan HARI INI (retur, cocokkan, bayar bon); catatan lama tidak disentuh.</div>
+      ${kunci}${riwayat}${buka}${atur}</div>`;
+  }
+
   // ---------- K6 · TUTUP BUKU (Berita Acara)
   function gambarBuku(s, L) {
     const T = BK.tahunBuku(kini()); const latihan = s.modeB === 'latihan'; const acara = T.acara; const terkunci = acara && acara.status === 'terkunci'; const selesai = acara && acara.status === 'selesai';
@@ -448,9 +495,10 @@ export function pasangLayarUang(akar, opsi) {
     const S1 = sobek('1', 'Periksa dulu', 'periksa', periksa), S2 = sobek('2', 'Cadangan sebelum mulai', 'cadangan1', cad1), S3 = sobek('3', 'Arsip', 'arsip', arsip), S4 = sobek('4', 'Saldo pembuka', 'saldo', saldo), SJ = h`<div class="th-sobek"></div>${jembatan}`, S5 = sobek('5', 'Paraf', 'paraf', paraf), S6 = sobek('6', 'Kunci tahun', 'kunci', kunci), S7 = sobek('7', 'Cadangan sesudahnya', 'cadangan2', cad2);
     const atur = s.aturB2 ? h`<div class="kartu" data-k="atur-b" style="gap: 8px;">${daftarAtur('Saksi (minimal satu)', s.aturB2.saksi, 'bkAturKetik', 'bkAturTambah', 'bkAturLepas', 'saksi', '', 'Nama orang yang ikut memaraf')}<div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAturB2">batal</div><div class="kaca-btn aktif emas" data-aksi="simpanAturB2">SIMPAN</div></div></div>` : h`<div class="kaca-btn kecil" data-aksi="bukaAturB2" style="align-self: flex-start;">Atur siapa saja saksinya · ${A.dariOwner ? 'diatur owner' : 'bawaan: karyawan'} ›</div>`;
     const kaki = h`<div class="ug-kaki">Ritual setahun sekali, dari SATU perangkat, dengan internet. Beda dengan sistem lama: catatan tahun lama dipindah ke arsip (bisa dikembalikan lewat "Batalkan"), bukan dihapus; saldo pembuka = dokumen yang sama persis; titik kas ditulis ulang di 31 Des dari saldo per tempat uang.</div>`;
-    if (L === 'hp') return h`<section data-k="k6">${mode}${kertas(h`${S1}${S2}${S3}${S4}${SJ}${S5}${S6}${S7}`, true)}${atur}${kaki}</section>`;
-    if (L === 'tablet') return h`<section data-k="k6">${mode}<div class="ug-grid tablet" style="grid-template-columns: 1fr 1fr;">${kertas(h`${S1}${S2}${S3}${S4}`, true)}${kertas(h`${jembatan}${S5}${S6}${S7}`)}</div>${atur}${kaki}</section>`;
-    return h`<section data-k="k6">${mode}<div class="ug-grid mac tiga">${kertas(h`${S1}${S2}${S3}`, true)}${kertas(h`${S4}${SJ}`)}${kertas(h`${S5}${S6}${S7}`)}</div><div class="ug-grid tablet"><div class="ug-kolom">${kaki}</div><div class="ug-kolom">${atur}</div></div></section>`;
+    const KB = gambarKunci(s);
+    if (L === 'hp') return h`<section data-k="k6">${KB}${mode}${kertas(h`${S1}${S2}${S3}${S4}${SJ}${S5}${S6}${S7}`, true)}${atur}${kaki}</section>`;
+    if (L === 'tablet') return h`<section data-k="k6">${KB}${mode}<div class="ug-grid tablet" style="grid-template-columns: 1fr 1fr;">${kertas(h`${S1}${S2}${S3}${S4}`, true)}${kertas(h`${jembatan}${S5}${S6}${S7}`)}</div>${atur}${kaki}</section>`;
+    return h`<section data-k="k6">${KB}${mode}<div class="ug-grid mac tiga">${kertas(h`${S1}${S2}${S3}`, true)}${kertas(h`${S4}${SJ}`)}${kertas(h`${S5}${S6}${S7}`)}</div><div class="ug-grid tablet"><div class="ug-kolom">${kaki}</div><div class="ug-kolom">${atur}</div></div></section>`;
   }
 
   K.dengar(gambar); dengarkan(() => gambar());

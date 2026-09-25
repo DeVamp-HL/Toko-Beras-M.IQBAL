@@ -82,14 +82,18 @@ jobs:
       # ---- PUTARAN 23 — akun per orang ----
       - name: "Sistem baru — akses per orang: akun, pendengar, penjaga kiriman, jejak, salinan antre (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_akses_baru.py && python3 alat-uji/uji_akses_baru.py --kontrol
-      - name: "firestore.rules v3 — pemeriksa statis (blok per koleksi, owner via email, jalur kasir@, uid penulis, peran = akses.js) + kontrol"
+      - name: "firestore.rules v4 — pemeriksa statis (tanpa payung, kunci periode di tiap koleksi bertanggal, blok per koleksi, owner via email, jalur kasir@, uid penulis, peran = akses.js) + kontrol"
         run: python3 alat-uji/periksa_rules.py && python3 alat-uji/periksa_rules.py --kontrol
       - name: "Isian lokal (23d): tiap kolom ketik & kunci localStorage layar dijaga penjaga isian — statis + kontrol"
         run: python3 alat-uji/uji_isian_lokal.py && python3 alat-uji/uji_isian_lokal.py --kontrol
       - name: "Tirai & ganti orang (23c/23d): 0 angka rupiah sebelum masuk, keranjang & isian tujuh layar tidak terbawa ke akun berikutnya — Chrome headless + kontrol (keluar 4 = GAGAL JARINGAN)"
         run: python3 alat-uji/uji_layar_kunci.py && python3 alat-uji/uji_layar_kunci.py --kontrol
-      - name: "Kiriman bukan-owner — access call terburuk per jenis kiriman ≤ 18 (batas Firebase 20, sisa 2) + kontrol"
+      - name: "Kiriman bukan-owner & owner (bulan lampau, tanpa / dengan bulan terkunci) — access call per kiriman ≤ 18 (batas Firebase 20, sisa 2) + kontrol"
         run: python3 alat-uji/peta_akses.py --kiriman && python3 alat-uji/peta_akses.py --kiriman --kontrol
+
+      # ---- PUTARAN 25 — kunci periode bulanan ----
+      - name: "Kunci periode (putaran 25): daftar periksa, kunci/buka, pembalik hari ini, final bulanan, pajak, penjaga pusat, kirim bertahap (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_kunci_periode.py && python3 alat-uji/uji_kunci_periode.py --kontrol
 
   terbitkan:
     needs: uji

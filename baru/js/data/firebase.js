@@ -9,9 +9,10 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
 import { KOLEKSI } from './koleksi.js';
-import { pasok, setelSumber, setelPenulis, dokDiCache } from './toko.js';
+import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci } from './toko.js';
 import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
 import { buatAntre, cekDariCache } from './antre-lokal.js';
+import { KP_BATAS_GET } from './kunci-periode.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA',
@@ -164,10 +165,13 @@ function cocokkanAntre() {
 export function antreLokal() { return { belum: antre.belumTerkirim(), ditolak: antre.ditolak() }; }
 export function buangDitolak(id) { const ok = antre.buang(id); segarkanLokal(); beriTahu(); return ok; }
 /** Owner menulis ulang kiriman yang ditolak ATAS NAMANYA: kolom penulis lama dibuang, atribusi owner dipasang penulis pusat, salinannya dihapus bila berhasil. */
-export async function tulisUlangDitolak(id) {
+/** ubah (opsional, putaran 25): fungsi dokumen → dokumen, mis. kpKeHariIni (catatan bulan terkunci dicatat ulang bertanggal hari ini). Lewat penjaga pusat toko.js. */
+export async function tulisUlangDitolak(id, ubah) {
   if (!status.akun || status.akun.jenis !== 'owner') return { gagal: true, pesan: 'Hanya owner yang boleh menulis ulang kiriman yang ditolak' };
   const x = antre.ditolak().find((y) => y.id === id); if (!x) return { gagal: true, pesan: 'Kiriman itu sudah tidak ada' };
-  const bersih = (x.dokumen || []).map((d) => { const data = Object.assign({}, d.data); ['oleh', 'olehUid', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'].forEach((k) => delete data[k]); return { koleksi: d.koleksi, data }; });
+  let bersih = (x.dokumen || []).map((d) => { const data = Object.assign({}, d.data); ['oleh', 'olehUid', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'].forEach((k) => delete data[k]); return { koleksi: d.koleksi, data }; });
+  if (typeof ubah === 'function') bersih = ubah(bersih);
+  const j = jagaKunci(bersih, []); if (j) return j;   // bulan terkunci / terlalu banyak pemeriksaan → tidak dikirim
   const r = await tulisBerkas(bersih); if (r && r.gagal) return r;
   antre.buang(id); segarkanLokal(); beriTahu(); return r;
 }
@@ -220,6 +224,10 @@ const idUnik = () => Date.now() + Math.random();   // bentuk id yang sama dengan
 const konteksTulis = () => ({ perangkat: perangkatRingkas(), lokasi: lokasiPerangkat(), kini: new Date().toISOString() });
 const pemilikSaja = () => (status.akun && status.akun.jenis === 'owner' ? '' : 'Hanya owner yang boleh melakukan ini');
 
+// K6 (owner 25 Sep): pajakSetoran & pajakOmzetLuar TIDAK dikunci, jadi tiap ubah/hapus di sana menulis jejak lengkap dengan NILAI LAMA-nya (jejak penuh
+// append-only = putaran 26). Dokumen kunci periode ikut: riwayatnya sudah di dokumennya, tapi jejak memegang salinan sebelum diubah.
+const JEJAK_NILAI_LAMA = { pajakSetoran: 1, pajakOmzetLuar: 1, 'aturanToko/kunciPeriode': 1 };
+const jejakKunci = (koleksi, id) => (JEJAK_NILAI_LAMA[koleksi] ? koleksi : koleksi + '/' + String(id));
 /**
  * Tulis sekumpulan dokumen SEKALIGUS: daftar = [{ koleksi, data }], data.id wajib.
  * Satu writeBatch + satu baris log per dokumen (koleksi logAktivitas, seperti catatLogAktivitas index.html).
@@ -233,7 +241,7 @@ export async function tulisBerkas(daftar, hapus, opsi) {
   // create atau update ditentukan dari cache (dokumen sudah ada?) — sama dengan cara server menilai set()
   const isi = daftar.map(({ koleksi, data }) => { const lama = dokDiCache(koleksi, data.id); return { koleksi, data, ada: !!lama, lama }; });
   const H = hapus || [];
-  if (!owner) { const p = periksaKiriman(akun, isi, H, _sumberHak()); if (p.tolak) return { gagal: true, pesan: p.tolak }; }   // pasti ditolak rules → tidak dikirim
+  if (!owner) { const p = periksaKiriman(akun, isi, H, _sumberHak(), new Date()); if (p.tolak) return { gagal: true, pesan: p.tolak }; }   // pasti ditolak rules → tidak dikirim
   const b = writeBatch(db); const ditulis = [];
   isi.forEach((x) => {
     const d = beriAtribusiAkun(x.data, akun, k, x.ada);
@@ -241,12 +249,14 @@ export async function tulisBerkas(daftar, hapus, opsi) {
     if (owner) {   // owner: satu baris jejak per dokumen, seperti catatLogAktivitas index.html (+ olehUid)
       const log = { id: idUnik(), pada: k.kini, aksi: d.dibatalkan ? 'batalkan' : (d.dikoreksiOleh ? 'tandai-koreksi' : 'tulis'),
         koleksi: x.koleksi, idDok: String(d.id), oleh: d.diubahOleh, olehUid: akun.uid, perangkat: k.perangkat, ringkas: ringkasDok(d) };
+      if (x.lama && JEJAK_NILAI_LAMA[jejakKunci(x.koleksi, d.id)]) { log.aksi = 'ubah'; log.lama = x.lama; }   // K6: ubah pajak & dokumen kunci → nilai lamanya ikut di jejak
       b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
     }
   });
   H.forEach((x) => {   // hanya owner sampai di sini (periksaKiriman menolak hapus bukan-owner)
     b.delete(doc(db, x.koleksi, String(x.id)));
     const log = { id: idUnik(), pada: k.kini, aksi: 'hapus', koleksi: x.koleksi, idDok: String(x.id), oleh: akun.nama, olehUid: akun.uid, perangkat: k.perangkat, ringkas: String((opsi && opsi.jejakHapus) || 'dihapus').slice(0, 200) };
+    const lamaH = dokDiCache(x.koleksi, x.id); if (lamaH && JEJAK_NILAI_LAMA[jejakKunci(x.koleksi, x.id)]) log.lama = lamaH;   // K6: yang dihapus tetap terbaca di jejak
     b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
   });
   if (!owner) { const log = jejakKiriman(akun, ditulis, Object.assign({ idJejak: idUnik() }, k)); b.set(doc(db, KOLEKSI_LOG, String(log.id)), log); }   // SATU baris per kiriman, memuat daftar dokumennya
@@ -289,10 +299,13 @@ export async function perbaruiBerkas(potongan, ringkas) {
   return { potongan: hasil, gagal: hasil.some((h) => h.keadaan === 'gagal') };
 }
 
-// ---- ARSIP TAHUN (putaran 18, Tutup buku): pindah ke koleksi arsipTahun per potongan 200 dokumen (400 tulisan < batas 500 writeBatch) ----
+// ---- ARSIP TAHUN (putaran 18, Tutup buku): pindah ke koleksi arsipTahun per potongan ----
 // Langsung ke server (menunggu commit, bukan 1,5 detik): ritual ini wajib internet & satu perangkat. Satu baris log per potongan, bukan per dokumen.
+// Putaran 25: rules v4 memeriksa kunci periode untuk tiap dokumen bulan lampau yang dihapus/ditulis ulang (1 get() per dokumen, cache tidak diandalkan),
+// jadi potongan dari 200 turun ke KP_BATAS_GET (18) — kalau tidak, kiriman arsip pertama ditolak sesudah saldo pembuka terlanjur tertulis (stok dobel).
+// Arsip yang MENGHAPUS ini dirancang ulang sebelum Januari 2027 (K1 owner 25 Sep: arsip = salinan + penanda, catatan dasar disimpan 10 tahun).
 const KOLEKSI_ARSIP = 'arsipTahun';
-const POTONG = 200;
+const POTONG = KP_BATAS_GET;
 export async function arsipkanBerkas(tahun, daftar, progres) {
   if (!db) throw new Error('belum tersambung');
   if (!status.masuk) throw new Error('belum masuk sebagai owner');

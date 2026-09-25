@@ -9,7 +9,7 @@ import { RP, DESIMAL, tanggalPendek, hariIniIso, jamKini } from '../inti/format.
 import * as P from './pelanggan-logika.js';
 import * as B from './bon-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, hapusDokumen, perbaruiKolom } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, tulisBertahap, perbaruiKolom } from '../data/toko.js';
 import { bukanOwner } from './akses-layar.js';
 
 const IKON = {
@@ -55,13 +55,17 @@ export function pasangLayarPelanggan(akar, opsi) {
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
   const ingatTab = () => simpanLokal(KUNCI_TAB, { keluarga: st().keluarga, tabK: st().tabK });
+  // putaran 25: hapus + dokumen dalam SATU kiriman yang hasilnya diperiksa; SATUKAN / hapus nama yang menyebar ke bulan-bulan lalu (r.kelompok) dikirim BERTAHAP
   async function tulis(r) {
     if (!r || r.tolak) { set({ kabar: (r && r.tolak) || 'Tidak ada yang ditulis', kabarAwas: true }); return false; }
-    try { if (r.hapus && r.hapus.length) { const x = await hapusDokumen(r.hapus); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } }
-      let sim = false; if (r.dokumen && r.dokumen.length) { const x = await tulisDokumen(r.dokumen); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } sim = !!(x && x.simulasi); }
-      set(Object.assign({}, r.patch || {}, { kabar: (sim ? 'SIMULASI — ' : '') + ((r.patch && r.patch.kabar) || 'Tersimpan') })); return true; }
+    try {
+      const ada = (r.dokumen && r.dokumen.length) || (r.hapus && r.hapus.length); let sim = false, tahap = 0;
+      if (ada) { const x = r.kelompok ? await tulisBertahap(r.judulBertahap || 'Pelanggan bertahap', r.kelompok) : await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus });
+        if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } sim = !!(x && x.simulasi); tahap = (x && x.potongan) || 0; }
+      set(Object.assign({}, r.patch || {}, { kabar: (sim ? 'SIMULASI — ' : '') + ((r.patch && r.patch.kabar) || 'Tersimpan') + (tahap > 1 ? ' (dikirim ' + tahap + ' tahap)' : '') })); return true; }
     catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
+
   const ubahKartu = (f) => { const d = JSON.parse(JSON.stringify(st().kartu)); if (!d) return; f(d); set({ kartu: d }); };
   const bukaKartu = (kunci) => { const o = P.kartuOrang(kini(), kunci); if (!o) return set({ kabar: 'Orangnya tidak ditemukan', kabarAwas: true }); set({ kartu: { kunci, nama: o.nama, cip: o.cip.slice(), catatan: o.catatan, arah: o.arah, asli: o.asli, kontak: o.kontak, biasa: o.biasa }, baru: null, gabung: null, kabar: '' }); };
   const AKSI = {
@@ -84,7 +88,7 @@ export function pasangLayarPelanggan(akar, opsi) {
     baruSimpan: async () => { const r = P.susunOrangBaru(kini(), (st().baru || {}).nama, waktu()); if (await tulis(r)) { set({ baru: null }); bukaKartu(r.kunci); } },
     // ---- nama kembar
     bukaGabung: ({ pasangan, a }) => set({ gabung: { k: pasangan, pakai: a }, kartu: null, baru: null, kabar: '' }), gabungPakai: ({ kunci }) => set({ gabung: Object.assign({}, st().gabung, { pakai: kunci }) }),
-    gabungkan: async () => { const g = st().gabung; if (!g) return; const [a, b] = g.k.split('+'); const lain = g.pakai === a ? b : a; if (await tulis(P.susunGabung(kini(), g.pakai, lain, waktu()))) set({ gabung: null }); },
+    gabungkan: async () => { const g = st().gabung; if (!g) return; const [a, b] = g.k.split('+'); const lain = g.pakai === a ? b : a; if (await tulis(Object.assign({ judulBertahap: 'SATUKAN nama' }, P.susunGabung(kini(), g.pakai, lain, waktu())))) set({ gabung: null }); },
     bukanKembar: async () => { const g = st().gabung; if (!g) return; if (await tulis(P.susunBukanKembar(g.k, waktu()))) set({ gabung: null }); },
     gabungTutup: () => set({ gabung: null, kabar: '' }),
     // ---- tampah

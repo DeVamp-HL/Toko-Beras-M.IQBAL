@@ -801,7 +801,7 @@ if __name__ == '__main__':
             'rinci: kelebihan barang atas uang yang masuk lolos': js.replace("const H = hitungKarcis(s); if (H.lebih) return { tolak: 'Jumlah barang '", "const H = hitungKarcis(s); if (false) return { tolak: 'Jumlah barang '"),
             'rinci: baris tanpa tanda asalDarurat/rinciDari (tarik balik & penjaga karcis buta)': js.replace("if (karcis) { d.asalDarurat = true; d.rinciDari = p.id; d.alasanKoreksi = 'Rincian dari kasir darurat ' + kcEkor(p.id); }", "if (false) { d.asalDarurat = true; d.rinciDari = p.id; }"),
             'rinci: sisa yang belum terurai hilang (uang masuk berkurang)': js.replace("if (karcis && H.sisa > 0) { const sisaDoc =", "if (false) { const sisaDoc ="),
-            'rinci: karcis asli tidak ditandai (uang dua kali)': js.replace("  dokumen.push({ koleksi: 'penjualan', data: asli });\n  const ringkas = (karcis ? 'Karcis ' : 'Nota ')", "\n  const ringkas = (karcis ? 'Karcis ' : 'Nota ')"),
+            'rinci: karcis asli tidak ditandai (uang dua kali)': js.replace("  dokumen.push({ koleksi: 'penjualan', data: asli });\n  // putaran 25: karcis bulan lalu", "\n  // putaran 25: karcis bulan lalu"),
             'rinci: tanggal baris = hari ini, bukan tanggal karcis (omzet pindah hari)': js.replace("d.id = w.idUnik(); d.tanggal = p.tanggal; d.jam = p.jam || ''; d.caraBayar = cara;", "d.id = w.idUnik(); d.tanggal = w.tanggal; d.jam = w.jam; d.caraBayar = cara;"),
             'rapikan boleh bersisa (uang nota bergeser)': js.replace("if (k.jenisAsal === 'rapikan' && H.sisa !== 0) return { tolak:", "if (false) return { tolak:"),
             'tarik balik grup yang sudah tersentuh (uang dobel)': js.replace("if (tersentuh) return { tolak: 'Tidak bisa ditarik balik:", "if (false) return { tolak: 'Tidak bisa ditarik balik:"),
@@ -865,7 +865,7 @@ if __name__ == '__main__':
             'retur tukar tidak ikut ditulis bersama notanya': js.replace("    dokumen.push({ koleksi: 'retur', data: rd });\n", ""),
             'kembalian tukar dihitung dari nilai keranjang': js.replace("d.kembalian = Math.max(0, uang - (totalBayar - kreditTukar));", "d.kembalian = Math.max(0, uang - totalBayar);"),
             'pembatalan nota tukar meninggalkan returnya': js.replace("if (notaTerakhir.retur) { hapus.push({ koleksi: 'retur', id: notaTerakhir.retur.id });", "if (false) { hapus.push({ koleksi: 'retur', id: notaTerakhir.retur.id });"),
-            'parkir melepas ikatan tukar': js.replace("pesananId: s.pesananId || null, tukar: s.tukar || null };", "pesananId: s.pesananId || null, tukar: null };"),
+            'parkir melepas ikatan tukar': js.replace("pesananId: s.pesananId || null, tukar: s.tukar || null, pada:", "pesananId: s.pesananId || null, tukar: null, pada:"),
             'draf tukar tidak dibaca ulang saat mencatat': js.replace("const cek = cekDrafTukar(s.tukar.returDraf); if (cek) return cek;", ""),
             # ---- putaran 6: tata letak & wadah ----
             'kemasan tidak diurutkan dari termurah': js.replace("rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || termurah(a, b));", "rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || b.harga - a.harga);"),

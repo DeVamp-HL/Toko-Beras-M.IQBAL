@@ -10,7 +10,8 @@
 // dan membandingkan sebelum vs sesudah dari susunan itu; sesudah kunci dibandingkan lagi dari mesin (hidup). Titik kas ditulis ulang di 31 Des dari saldo per tempat.
 import { hitungSaldoTutup, tbDaftarKoleksi, hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungPiutang, hitungKasbon, hitungUtangPemasok, hitungUtangOwner, saldoAmplop } from '../mesin/beku.js';
 import { tbCutoff, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, butuhGet } from '../data/toko.js';
+import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
 import { aturUpah } from './upah-logika.js';
@@ -32,8 +33,13 @@ export function tahunBuku(kini) {
   const iso = hariIniIso(kini); const era = bkEra(); let pertama = '';
   ambilPenjualanSemua().concat(ambilSemuaBatch().filter((b) => !b.stokAwal && !b.tutupBuku)).forEach((d) => { if (d.tanggal && (!pertama || d.tanggal < pertama)) pertama = d.tanggal; });
   const awal = era !== null ? era + 1 : (pertama ? Number(pertama.slice(0, 4)) : Number(iso.slice(0, 4))); const tahun = Math.min(awal, Number(iso.slice(0, 4)));
-  const bolehSungguhan = iso > tbCutoff(tahun); const acara = ambilTutupBukuAcara().find((a) => Number(a.tahun) === tahun) || null;
-  return { tahun, era, pertama, bolehSungguhan, cutoff: tbCutoff(tahun), tglBuka: (tahun + 1) + '-01-01', acara, teks: bolehSungguhan ? 'Tahun ' + tahun + ' sudah lewat — bisa ditutup sungguhan' : 'Tahun ' + tahun + ' belum lewat 31 Desember — sekarang cuma bisa LATIHAN' };
+  // K1 (owner 25 Sep 2026): selama ada bulan TERKUNCI di tahun itu, tutup buku sungguhan ditolak — arsipnya memindah (menghapus) catatan bulan terkunci.
+  // Dirancang ulang sebelum Januari 2027: arsip = salinan + penanda, tidak menghapus; catatan dasar disimpan 10 tahun (UU KUP Pasal 28 ayat 11).
+  const sampai = kunciSampai(); const adaKunci = !!sampai && sampai >= tahun + '-01';
+  const bolehSungguhan = iso > tbCutoff(tahun) && !adaKunci; const acara = ambilTutupBukuAcara().find((a) => Number(a.tahun) === tahun) || null;
+  return { tahun, era, pertama, bolehSungguhan, adaKunci, cutoff: tbCutoff(tahun), tglBuka: (tahun + 1) + '-01-01', acara,
+    teks: adaKunci ? 'Tahun ' + tahun + ' punya bulan terkunci (sampai ' + sampai + ') — tutup buku sungguhan ditolak sampai dirancang ulang (arsip tidak boleh menghapus catatan). Sekarang cuma bisa LATIHAN'
+      : bolehSungguhan ? 'Tahun ' + tahun + ' sudah lewat — bisa ditutup sungguhan' : 'Tahun ' + tahun + ' belum lewat 31 Desember — sekarang cuma bisa LATIHAN' };
 }
 /** Gerbang sebelum mulai. lokal = { antre, menunggu, offline, idPerangkat }; lewati = { g3: true } untuk yang owner nyatakan sudah beres. */
 export function gerbangBuku(tahun, kini, lokal, lewati) {
@@ -112,13 +118,17 @@ export function berkasArsip(tahun, kini) { const A = arsipBuku(tahun); const isi
  * Ditolak bila baris tidak sama, paraf belum lengkap, atau tahunnya belum lewat.
  */
 export function susunKunci(tahun, D, w) {
-  const T = tahunBuku(ugKiniDari(w)); if (!T.bolehSungguhan) return { tolak: 'Tahun ' + tahun + ' belum lewat 31 Desember — hanya bisa latihan' };
+  const T = tahunBuku(ugKiniDari(w)); if (!T.bolehSungguhan) return { tolak: T.adaKunci ? T.teks : 'Tahun ' + tahun + ' belum lewat 31 Desember — hanya bisa latihan' };
   if (!D.paraf || !D.paraf.owner || !D.paraf.saksi) return { tolak: 'Paraf owner dan saksi dulu' };
   const sebelum = barisBuku(T.cutoff, T.cutoff); const P = pembukaBuku(tahun, w); const B = bandingBuku(sebelum, sesudahDariPembuka(P, sebelum));
   if (!B.semuaSama) return { tolak: B.ringkas + ': ' + B.beda.map((b) => b.nama).join(', ') };
   const A = arsipBuku(tahun); const dokumen = P.dokumen.slice(); const K = sebelum.K;
   if (K.ada) dokumen.push({ koleksi: 'pengaturan', data: { id: 'titikKas', tanggal: T.cutoff, laci: Math.round(K.laci), rekening: Math.round(K.rekening), amplop: Math.round(K.amplop), brankas: Math.round(K.brankas), diubahPada: w.kini } });
   dokumen.push({ koleksi: 'pengaturan', data: { id: 'tutupBuku', tahunDitutup: tahun, padaTanggal: w.tanggal } });
+  // putaran 25 (diukur, owner 25 Sep): pembuka piutang bertanggal utang tertuanya & bon lama pemasok bertanggal bonnya → tiap satu diperiksa kunci di server.
+  // Lebih dari KP_BATAS_GET = satu kiriman pasti ditolak; ditolak di sini dengan kalimatnya, sebelum apa pun dikirim. Rancang ulang tutup buku: wajib sebelum Desember 2026.
+  const g = butuhGet(dokumen, []);
+  if (g > KP_BATAS_GET) return { tolak: 'Saldo pembuka menyentuh ' + g + ' catatan bertanggal lama (piutang mengikuti tanggal utang tertuanya, bon pemasok mengikuti tanggal bonnya) — server hanya sanggup memeriksa ' + KP_BATAS_GET + ' sekali kirim. Tidak ada yang dikirim. Tutup buku sungguhan menunggu rancangan baru (wajib selesai sebelum Desember 2026); latihan tetap bisa.' };
   const acara = Object.assign({}, T.acara || {}, { id: String(tahun), tahun, mode: 'sungguhan', status: 'terkunci', saksi: D.saksi || '', paraf: { owner: true, saksi: true, pada: w.kini }, langkah: Object.assign({}, D.langkah || {}, { kunci: w.kini }), cadangan1: D.cadangan1 || '', arsipNama: D.arsipNama || '', nArsip: A.n, arsipPerKoleksi: A.perKoleksi, nPembuka: P.dokumen.length,
     sebelum: B.baris.map((b) => ({ id: b.id, nama: b.nama, n: b.a })), modal: sebelum.modal, labaTinggal: sebelum.labaTinggal, tanggal: w.tanggal, jam: w.jam, titikDitulis: K.ada, titikSebelum: ambilTitikKas() || null });
   dokumen.push({ koleksi: 'tutupBukuAcara', data: acara });

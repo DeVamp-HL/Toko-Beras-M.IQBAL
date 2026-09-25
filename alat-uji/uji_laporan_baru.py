@@ -220,9 +220,9 @@ if __name__ == '__main__':
             'nota batal ikut jumlah nota hari itu': js.replace("const perJam = Object.keys(jam).sort().map((j) => jam[j]);", "const perJam = Object.keys(jam).sort().map((j) => jam[j]); L.jumlahTrx += ambilPenjualanSemua().filter((p) => p.tanggal === iso && p.dibatalkan).length;"),
             'teks WA lupa menyebut bon yang belum jadi uang': js.replace("if (R.kredit) b.push('Bon (belum jadi uang): '", "if (false) b.push('Bon (belum jadi uang): '"),
             # ---- bulanan / rekap omzet
-            'semua bulan dianggap final tanpa tutup buku': js.replace("function lpFinal(key) { const era = bkEra(); return era !== null && Number(key.slice(0, 4)) <= era; }", "function lpFinal(key) { return true; }"),
+            'semua bulan dianggap final tanpa tutup buku': js.replace("function lpFinal(key) { const era = bkEra(); if (era !== null && Number(key.slice(0, 4)) <= era) return true; const s = kunciSampai(); return !!s && String(key).slice(0, 7) <= s; }", "function lpFinal(key) { return true; }"),
             'kumulatif diisi juga untuk bulan tahun lalu (bukan —)': js.replace("kum: th === tahunIni ? kum : null", "kum: kum"),
-            'tanda dilaporkan diizinkan pada bulan draf': js.replace("if (!lpFinal(key)) return { tolak: lpNamaBulan(key) + ' belum tutup buku", "if (false) return { tolak: lpNamaBulan(key) + ' belum tutup buku"),
+            'tanda dilaporkan diizinkan pada bulan draf': js.replace("if (!lpFinal(key)) return { tolak: lpNamaBulan(key) + ' belum dikunci", "if (false) return { tolak: lpNamaBulan(key) + ' belum dikunci"),
             'membatalkan tanda tanpa ketukan kedua': js.replace("if (sudah) { if (!yakin) return { tolak: 'Ketuk sekali lagi", "if (sudah) { if (false) return { tolak: 'Ketuk sekali lagi"),
             'bukti omzet menerima bulan draf': js.replace("terpilih.some((b) => !b.final) ? 'Ada bulan yang belum tutup buku (DRAF)", "false ? 'Ada bulan yang belum tutup buku (DRAF)"),
             'tarif per seribu tanpa batas atas': js.replace("if (!(tarif >= 0 && tarif <= 1000)) return { tolak:", "if (false) return { tolak:"),

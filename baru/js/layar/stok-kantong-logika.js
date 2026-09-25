@@ -7,7 +7,7 @@
 // Karung bekas tidak ada di sini: hasil samping, tidak pernah dibeli (memori karung-bekas-hasil-samping). Angka kebijakan owner: aturanToko/kantong.
 import { hitungStokBahanKemasan, hitungStokBahanLiteran, hitungLajuPakai } from '../mesin/beku.js';
 import { JENDELA_LAJU_HARI } from '../mesin/pembantu.js';
-import { ambilBahanKemasan, ambilBahanLiteran, cacheMentah } from '../data/toko.js';
+import { ambilBahanKemasan, ambilBahanLiteran, cacheMentah, tolakKunci } from '../data/toko.js';
 import { RP, ANGKA } from '../inti/format.js';
 import { daftarJenisWadah, jenisWadah, koleksiWadah, WJ_LANTAI_LEMBAR } from './wadah-jual-logika.js';
 
@@ -92,6 +92,7 @@ export function bukuBeli(n) {
 export function susunHapusBeli(id, alasan, w, yakin) {
   const b = ktSemuaDoc().find((x) => String(x.id) === String(id)); if (!b) return { tolak: 'Catatan beli itu sudah tidak ada' };
   if (b.tipe !== 'beli') return { tolak: 'Yang bisa dihapus dari sini hanya catatan BELI — saldo awal / opname / pemakaian punya jalannya sendiri' };
+  const kunci = tolakKunci(b.koleksi, b, 'catatan beli ini tidak bisa dihapus. Lembar yang tidak pernah ada: Stok › Cocokkan HARI INI; uangnya tidak punya pembetul (K2)'); if (kunci) return { tolak: kunci, pembalik: 'cocok' };   // putaran 25
   const d = jenisWadah(b.jenis); const st = (d && d.koleksi === 'stokBahanLiteran' ? hitungStokBahanLiteran() : hitungStokBahanKemasan())[b.jenis] || {};
   const sisaSesudah = (st.sisaPcs || 0) - (Number(b.jumlah) || 0);
   if (sisaSesudah < 0) return { tolak: ANGKA(Math.abs(sisaSesudah)) + ' lembar dari batch ini sudah terpakai (adukan / literan / dijual) — dihapus, buku ' + (d ? d.label : b.jenis) + ' jadi minus. Koreksi lewat Cocokkan, bukan hapus.' };

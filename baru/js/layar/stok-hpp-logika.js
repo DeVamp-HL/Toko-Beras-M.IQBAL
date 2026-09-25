@@ -7,7 +7,7 @@
 // Tiap koreksi menulis perubahan nilai rak (Δ modal rata-rata × sisa kg) ke koleksi baru koreksiHpp. Massal = semua-atau-tidak-sama-sekali (satu writeBatch).
 import { hitungStokKarungPerMerk, hitungHppMerkDalamBatch } from '../mesin/beku.js';
 import { cariHargaKarungPerKg } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah } from '../data/toko.js';
+import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal } from '../data/toko.js';
 import { RP } from '../inti/format.js';
 import { drafDariKedatangan, susunSimpanMasuk } from './stok-catat-logika.js';
 
@@ -75,6 +75,7 @@ export function nilaiKoreksi(merk, hargaBaru) {
   const atur = aturHpp(); const K = kartuHpp().kartu.find((k) => k.merk === merk); if (!K) return { tolak: 'Nama beras itu tidak ada di buku' };
   const riw = riwayatModal(merk); const target = riw.filter((r) => r.jenis === 'kedatangan' && !r.fondasi).slice(-1)[0] || null;
   if (!target) return { tolak: merk + ' belum punya kedatangan yang bisa dikoreksi — modalnya dari stok awal / saldo pembuka (fondasi), tidak diubah dari sini' };
+  const kunci = tolakKunciTanggal(target.tanggal, 'harga modal kedatangan bulan terkunci tidak bisa dikoreksi; selisihnya terbawa ke HPP penjualan sisa stoknya (keputusan owner K2)'); if (kunci) return { tolak: kunci };   // putaran 25
   const n = Math.round(hpAngka(hargaBaru)); if (!(n > 0)) return { tolak: 'Ketik harga beli per kg yang benar' };
   if (n < atur.lantaiHpp) return { tolak: RP(n) + '/kg di bawah lantai ' + RP(atur.lantaiHpp) + ' — tidak masuk akal untuk beras, ditolak (bukan dipotong diam-diam)' };
   if (K.modal > 0 && n > K.modal * atur.kaliMaks) return { tolak: RP(n) + ' lebih dari ' + atur.kaliMaks + '× modal sekarang (' + RP(Math.round(K.modal)) + ') — ditolak, cek angkanya' };

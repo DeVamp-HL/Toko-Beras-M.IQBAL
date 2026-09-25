@@ -11,7 +11,8 @@
 // Benang (yang datang bukan orangnya) = koleksi baru `pelangganTitip`; angka & daftar kebijakan owner = `aturanToko/pelanggan`.
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, catatanPelangganBerisi } from '../mesin/pembantu.js';
-import { ambilPenjualanSemua, ambilPenjualan, ambilPiutangMutasi, ambilPelangganCatatan, ambilThrPelanggan, ambilPesanan, cacheMentah } from '../data/toko.js';
+import { ambilPenjualanSemua, ambilPenjualan, ambilPiutangMutasi, ambilPelangganCatatan, ambilThrPelanggan, ambilPesanan, cacheMentah, tolakKunci, butuhGet } from '../data/toko.js';
+import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, hariIniIso } from '../inti/format.js';
 
 export const TANYA_CIRI = [['siapa', 'Siapa dia'], ['umur', 'Kira-kira umur'], ['badan', 'Perawakan'], ['wajah', 'Wajah & rambut'], ['tampak', 'Yang dipakai'], ['naik', 'Datang naik apa'], ['beli', 'Belinya apa']];   // owner 23 Sep malam: warna kulit & suku/logat DICABUT (putaran 23b)
@@ -278,10 +279,14 @@ export const BATAS_DOKUMEN_GABUNG = 180;   // satu writeBatch Firestore = 500 tu
 /** Rincian sebelum SATUKAN: berapa dokumen yang akan ditulis ulang atas nama yang dipakai. */
 export function rincianGabung(kini, kunciPakai, kunciLain) {
   const semua = semuaOrang(kini); const P = semua.find((b) => b.kunci === kunciPakai), L = semua.find((b) => b.kunci === kunciLain); if (!P || !L) return { tolak: 'Salah satu nama sudah tidak ada' }; if (P.kunci === L.kunci) return { tolak: 'Itu nama yang sama' };
-  const milikL = (nm) => kunciPelanggan(nm) === L.kunci; const penjualan = ambilPenjualanSemua().filter((p) => milikL(p.namaPelanggan)); const piutang = ambilPiutangMutasi().filter((m) => milikL(m.namaPelanggan)); const pesanan = ambilPesanan().filter((p) => milikL(p.namaPelanggan || p.nama));
+  const milikL = (nm) => kunciPelanggan(nm) === L.kunci; const semuaJual = ambilPenjualanSemua().filter((p) => milikL(p.namaPelanggan)); const piutang = ambilPiutangMutasi().filter((m) => milikL(m.namaPelanggan));
+  // putaran 25 (K3): nota bulan terkunci TIDAK ditulis ulang (tetap bernama lama). Bon yang lahir di bulan terkunci tidak bisa pindah nama → SATUKAN ditolak.
+  const bonKunci = semuaJual.filter((p) => p.caraBayar === 'Kredit').map((p) => tolakKunci('penjualan', p, '')).concat(piutang.map((m) => tolakKunci('piutangMutasi', m, ''))).find(Boolean);
+  if (bonKunci) return { tolak: bonKunci.split(' — ')[0] + ' — "' + L.nama + '" punya bon yang lahir di bulan itu; bon tidak bisa pindah nama lagi, jadi kedua nama dibiarkan terpisah (ide berikutnya: alias nama di lapisan data)' };
+  const penjualan = semuaJual.filter((p) => !tolakKunci('penjualan', p, '')); const tetap = semuaJual.length - penjualan.length; const pesanan = ambilPesanan().filter((p) => milikL(p.namaPelanggan || p.nama));
   const thr = ambilThrPelanggan().filter((t) => t.kunci === L.kunci || milikL(t.nama)); const titip = cacheMentah('titip').filter((t) => t.dari === L.kunci || t.untuk === L.kunci); const tagih = cacheMentah('tagih').filter((t) => t.kunci === L.kunci); const kartuL = kartuTersimpan(L.kunci);
   const n = penjualan.length + piutang.length + pesanan.length + thr.length + titip.length + tagih.length + (kartuL ? 1 : 0) + 1;
-  return { pakai: P, lain: L, penjualan, piutang, pesanan, thr, titip, tagih, kartuL, n, bisa: n <= BATAS_DOKUMEN_GABUNG, arti: 'Semua nota, bon, dan catatan "' + L.nama + '" pindah ke "' + P.nama + '": jadi ' + (P.kunjungan + L.kunjungan) + ' kali datang, belanja ' + RP(P.total + L.total) + (P.utang + L.utang > 0 ? ', bon ' + RP(P.utang + L.utang) : '') + '. ' + n + ' dokumen ditulis ulang namanya; tidak ada rupiah yang berubah.' + (n > BATAS_DOKUMEN_GABUNG ? ' TERLALU BANYAK untuk satu kali tulis (batas ' + BATAS_DOKUMEN_GABUNG + ') — biarkan terpisah.' : '') };
+  return { pakai: P, lain: L, penjualan, piutang, pesanan, thr, titip, tagih, kartuL, n, bisa: n <= BATAS_DOKUMEN_GABUNG, arti: 'Semua nota, bon, dan catatan "' + L.nama + '" pindah ke "' + P.nama + '": jadi ' + (P.kunjungan + L.kunjungan) + ' kali datang, belanja ' + RP(P.total + L.total) + (P.utang + L.utang > 0 ? ', bon ' + RP(P.utang + L.utang) : '') + '. ' + n + ' dokumen ditulis ulang namanya; tidak ada rupiah yang berubah.' + (tetap ? ' ' + tetap + ' nota di bulan terkunci TETAP bernama "' + L.nama + '".' : '') + (n > BATAS_DOKUMEN_GABUNG ? ' TERLALU BANYAK untuk satu kali tulis (batas ' + BATAS_DOKUMEN_GABUNG + ') — biarkan terpisah.' : '') };
 }
 export function susunGabung(kini, kunciPakai, kunciLain, w) {
   const r = rincianGabung(kini, kunciPakai, kunciLain); if (r.tolak) return r; if (!r.bisa) return { tolak: r.n + ' dokumen atas nama "' + r.lain.nama + '" — terlalu banyak untuk disatukan sekali tulis (batas ' + BATAS_DOKUMEN_GABUNG + '). Biarkan terpisah.' };
@@ -293,24 +298,30 @@ export function susunGabung(kini, kunciPakai, kunciLain, w) {
   const kP = kartuTersimpan(P.kunci), kL = r.kartuL; const gab = (a, b) => (a || b || '');
   const kartu = Object.assign({}, kP ? kP.dok : {}, { id: P.kunci, nama: P.nama, cip: (kP ? kP.cip : []).concat((kL ? kL.cip : []).filter((c) => !(kP && kP.cip.indexOf(c) >= 0))), catatan: [kP ? kP.catatan : '', kL ? kL.catatan : '', 'dulu juga tercatat sebagai "' + L.nama + '"'].filter(Boolean).join(' · '), arah: gab(kP && kP.arah, kL && kL.arah), asli: gab(kP && kP.asli, kL && kL.asli), kontak: gab(kP && kP.kontak, kL && kL.kontak), biasa: gab(kP && kP.biasa, kL && kL.biasa), diubahPada: w.kini });
   kartu.ciri = kartu.cip.join(' · '); kartu.rute = kartu.arah; dokumen.push({ koleksi: 'pelangganCatatan', data: kartu }); if (kL) hapus.push({ koleksi: 'pelangganCatatan', id: kL.dok.id });
-  return { dokumen, hapus, patch: { kabar: '"' + L.nama + '" disatukan ke "' + P.nama + '" — ' + dokumen.length + ' dokumen ditulis ulang namanya, rupiah tidak berubah.', kabarAwas: false } };
+  // putaran 25: nama yang catatannya menyebar ke bulan-bulan lalu → dikirim BERTAHAP (tiap catatan kelompoknya sendiri; ≤ 18 pemeriksaan kunci per kiriman)
+  const kelompok = butuhGet(dokumen, hapus) > KP_BATAS_GET ? dokumen.map((d) => ({ dokumen: [d], hapus: [] })).concat(hapus.map((x) => ({ dokumen: [], hapus: [x] }))) : null;
+  return { dokumen, hapus, kelompok, patch: { kabar: '"' + L.nama + '" disatukan ke "' + P.nama + '" — ' + dokumen.length + ' dokumen ditulis ulang namanya, rupiah tidak berubah.' + (r.penjualan.length < ambilPenjualanSemua().filter((p) => kunciPelanggan(p.namaPelanggan) === L.kunci).length ? ' Nota di bulan terkunci tetap bernama lama.' : ''), kabarAwas: false } };
 }
 /** Rincian sebelum HAPUS NAMA (owner 23 Sep: nama salah ketik seperti "b" / angka): nota-notanya jadi TANPA NAMA (rupiah tidak berubah), kartu & benangnya dibuang. Nama yang punya buku bon / pesanan / THR / tagihan TIDAK dihapus — satukan ke nama yang benar. */
 export function rincianHapusNama(kini, kunci) {
   const semua = semuaOrang(kini); const O = semua.find((b) => b.kunci === kunci); if (!O) return { tolak: 'Nama itu sudah tidak ada' };
-  const milik = (nm) => kunciPelanggan(nm) === kunci; const penjualan = ambilPenjualanSemua().filter((p) => milik(p.namaPelanggan)); const piutang = ambilPiutangMutasi().filter((m) => milik(m.namaPelanggan)); const pesanan = ambilPesanan().filter((p) => milik(p.namaPelanggan || p.nama));
+  const milik = (nm) => kunciPelanggan(nm) === kunci; const semuaJual = ambilPenjualanSemua().filter((p) => milik(p.namaPelanggan));
+  const penjualan = semuaJual.filter((p) => !tolakKunci('penjualan', p, '')); const tetap = semuaJual.length - penjualan.length;   // putaran 25 (K3): nota bulan terkunci tetap bernama lama
+  const piutang = ambilPiutangMutasi().filter((m) => milik(m.namaPelanggan)); const pesanan = ambilPesanan().filter((p) => milik(p.namaPelanggan || p.nama));
   const thr = ambilThrPelanggan().filter((t) => t.kunci === kunci || milik(t.nama)); const tagih = cacheMentah('tagih').filter((t) => t.kunci === kunci); const titip = cacheMentah('titip').filter((t) => t.dari === kunci || t.untuk === kunci); const kartu = kartuTersimpan(kunci);
   const n = penjualan.length + titip.length + (kartu ? 1 : 0);
   const tolak = piutang.length || O.utang > 0 ? '"' + O.nama + '" punya buku bon (' + piutang.length + ' catatan' + (O.utang > 0 ? ', sisa ' + RP(O.utang) : '') + ') — nama berbon tidak dihapus; SATUKAN ke nama yang benar lewat daftar nama kembar'
     : pesanan.length ? '"' + O.nama + '" punya ' + pesanan.length + ' pesanan — selesaikan / batalkan pesanannya dulu' : thr.length || tagih.length ? '"' + O.nama + '" punya catatan THR / tagihan — satukan ke nama yang benar, jangan dihapus' : n > BATAS_DOKUMEN_GABUNG ? n + ' dokumen — terlalu banyak untuk sekali tulis (batas ' + BATAS_DOKUMEN_GABUNG + ')' : '';
-  return { orang: O, penjualan, titip, kartu, n, tolak, arti: penjualan.length + ' nota jadi TANPA NAMA (rupiahnya tetap, jejak nama lamanya disimpan di nota)' + (titip.length ? ', ' + titip.length + ' benang dibuang' : '') + (kartu ? ', kartunya dibuang' : '') + '. Nama "' + O.nama + '" hilang dari daftar pelanggan.' };
+  const tolak2 = tolak || (tetap && !penjualan.length && !titip.length && !kartu ? 'Semua ' + tetap + ' nota "' + O.nama + '" ada di bulan terkunci — namanya tidak bisa dihapus lagi' : '');
+  return { orang: O, penjualan, titip, kartu, n, tetap, tolak: tolak2, arti: penjualan.length + ' nota jadi TANPA NAMA (rupiahnya tetap, jejak nama lamanya disimpan di nota)' + (titip.length ? ', ' + titip.length + ' benang dibuang' : '') + (kartu ? ', kartunya dibuang' : '') + (tetap ? '. ' + tetap + ' nota di bulan terkunci TETAP bernama "' + O.nama + '" — namanya masih muncul dari nota-nota itu.' : '. Nama "' + O.nama + '" hilang dari daftar pelanggan.') };
 }
 export function susunHapusNama(kini, kunci, w, yakin) {
   const r = rincianHapusNama(kini, kunci); if (r.tolak) return { tolak: r.tolak };
   if (!yakin) return { tolak: 'Ketuk sekali lagi untuk menghapus nama "' + r.orang.nama + '": ' + r.arti, perluYakin: true };
   const dokumen = r.penjualan.map((p) => ({ koleksi: 'penjualan', data: Object.assign({}, p, { namaPelanggan: '', namaDihapus: r.orang.nama, namaDihapusPada: w.kini }) }));
   const hapus = r.titip.map((t) => ({ koleksi: 'pelangganTitip', id: t.id })).concat(r.kartu ? [{ koleksi: 'pelangganCatatan', id: r.kartu.dok.id }] : []);
-  return { dokumen, hapus, patch: { kartu: null, yakinHapusNama: false, kabar: 'Nama "' + r.orang.nama + '" dihapus — ' + r.penjualan.length + ' nota jadi tanpa nama' + (hapus.length ? ', ' + hapus.length + ' catatan dibuang' : '') + '. Rupiah tidak berubah.', kabarAwas: false } };
+  const kelompok = butuhGet(dokumen, hapus) > KP_BATAS_GET ? dokumen.map((d) => ({ dokumen: [d], hapus: [] })).concat(hapus.map((x) => ({ dokumen: [], hapus: [x] }))) : null;   // putaran 25: bertahap
+  return { dokumen, hapus, kelompok, patch: { kartu: null, yakinHapusNama: false, kabar: 'Nama "' + r.orang.nama + '" dihapus — ' + r.penjualan.length + ' nota jadi tanpa nama' + (hapus.length ? ', ' + hapus.length + ' catatan dibuang' : '') + (r.tetap ? '; ' + r.tetap + ' nota di bulan terkunci tetap bernama lama' : '') + '. Rupiah tidak berubah.', kabarAwas: false } };
 }
 export function susunBukanKembar(k, w) { const bukan = plBukanKembar(); if (bukan.indexOf(k) >= 0) return { tolak: 'Sudah dicatat' }; return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'pelangganKembar', tanggal: w.tanggal, jam: w.jam, bukan: bukan.concat([k]) } }], patch: { kabar: 'Dicatat: dua orang yang berbeda — tidak ditawarkan lagi', kabarAwas: false } }; }
 

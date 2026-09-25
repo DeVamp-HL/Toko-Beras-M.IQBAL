@@ -43,7 +43,7 @@ def bundel(daftar, prelude=True):
     return '\n'.join(bagian)
 
 
-MODUL_DATA = ['baru/js/data/koleksi.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/beku.js']
+MODUL_DATA = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/beku.js']
 
 if __name__ == '__main__':
     import sys
