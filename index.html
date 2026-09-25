@@ -24751,7 +24751,10 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // Nama darurat "(tidak tercatat …)" bukan barang — jangan jadi "langganan".
       const barang = p.jenis === 'kasir_darurat_nominal' ? '' : (p.namaProduk || p.merkSumber || '');
       if (barang) t.produk[barang] = (t.produk[barang] || 0) + 1;
-      t.kunjungan[String(p.grupNota || p.id)] = true;
+      // Satu nota = satu kunjungan. Keranjang (G3) & sistem baru mengikat baris lewat
+      // trxId, rincian darurat lewat grupNota — tidak ada penulis yang memasang keduanya.
+      // Tanpa trxId, nota 3 baris terhitung 3 kunjungan.
+      t.kunjungan[String(p.grupNota || p.trxId || p.id)] = true;
     });
     // Pembayar piutang juga "datang" — tanggal kunjungannya ikut dihitung. HANYA
     // tipe bayar: saldo awal & hapus buku itu catatan owner di meja, bukan kunjungan.
