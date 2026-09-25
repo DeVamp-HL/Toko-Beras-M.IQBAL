@@ -4,8 +4,8 @@ Dibuat 25 Sep 2026 di cabang `tulang-punggung/25-kunci-periode`. Commit ini **ti
 logika yang berubah. Sumbernya: kode `baru/` di main `a339f51`, `index.html` dan `kasir*.html` (hanya dibaca), dokumentasi resmi Firebase
 (URL di §1), dan cadangan toko 25 Sep 2026 (hanya untuk pratinjau di §8; berkas cadangan tidak masuk repo).
 
-> **STATUS: BERHENTI DI TAHAP 0.** Kolom "tanpa padanan" di §3 **tidak kosong**. Menurut prompt putaran 25 ("Kalau tidak kosong, berhenti dan
-> lapor"), Tahap 1–5 **belum dikerjakan**. Enam keputusan yang dibutuhkan ada di §4, masing-masing dengan pilihan dan usulan.
+> **STATUS (25 Sep, sesudah jawaban owner):** Tahap 0 berhenti karena kolom "tanpa padanan" tidak kosong. Owner menjawab K1–K6 hari yang sama
+> (§4a), lalu Tahap 1–5 dikerjakan di cabang ini. Bagian §0–§9 di bawah adalah peta asli Tahap 0; yang berubah karena keputusan owner ditulis di §4a.
 
 ## 0. Ringkas
 
@@ -39,7 +39,7 @@ Dokumentasi resmi (dibuka 25 Sep 2026):
 | String bisa dibandingkan leksikografis (`< <= > >=`); ada operator rentang `s[i:j]` (j tidak termasuk). | https://firebase.google.com/docs/reference/rules/rules.String |
 | `get(path)` mengembalikan *"the document, or null if it does not exist."* | https://firebase.google.com/docs/reference/rules/rules.firestore |
 | `let` **langsung** menjalankan pencarian (*"the isAdmin assignment enforces a lookup"*). Untuk menunda `get()`, pakai `&&` / `\|\|`. Kedalaman panggilan maksimal 20; `let` maksimal 10 per fungsi. | https://firebase.google.com/docs/rules/rules-language |
-| Batas access call: *"10 for single-document requests and query requests. 20 for multi-document reads, transactions, and batched writes. The previous limit of 10 also applies to each operation."* *"Some document access calls may be cached"* (tidak diandalkan, keputusan owner 24 Sep). Melewati batas berarti *permission denied*. | https://firebase.google.com/docs/firestore/security/rules-conditions#access_calls |
+| Batas access call: 10 untuk permintaan satu dokumen & kueri; 20 untuk batch/transaksi/baca banyak dokumen; batas 10 tetap berlaku per operasi di dalam batch. Sebagian panggilan *mungkin* di-cache (tidak diandalkan, keputusan owner 24 Sep). Melewati batas = ditolak. | https://firebase.google.com/docs/firestore/security/rules-conditions#access_calls |
 | `duration.value(magnitude, unit)` ada (w/d/h/m/s/ms/ns), tapi penjumlahannya dengan timestamp tidak didokumentasikan, jadi **tidak dipakai**. | https://firebase.google.com/docs/reference/rules/rules.duration_ |
 
 **Cara menghitung (sketsa; belum ditulis ke `firestore.rules`):**
@@ -223,6 +223,25 @@ dan tidak ada jenis "setoran negatif". Catatan salah yang tidak bisa dihapus mem
 - (a) Hapus tetap ditolak (keputusan 9 apa adanya); layar menyebut catatan itu, angkanya tetap terjumlah.
 - (b) **Usul:** `pajakSetoran` tidak dikunci. Catatan setoran tidak mengubah angka uang toko, dan jejak hapusnya tetap ada di `logAktivitas`.
   Ini mengubah keputusan 9, jadi butuh persetujuan owner.
+
+## 4a. Keputusan owner (25 Sep 2026) — dan di mana dikerjakan
+
+| | Keputusan | Dikerjakan |
+|---|---|---|
+| K1 | Kunci bulanan jalan dulu; tutup buku sungguhan ditolak selama tahunnya punya bulan terkunci. **Rancang ulang nanti:** arsip TIDAK BOLEH menghapus catatan — arsip = salinan + penanda; catatan dasar pencatatan wajib disimpan **10 tahun** (UU KUP Pasal 28 ayat 11) | `tutup-buku-logika.js tahunBuku/susunKunci`; arsip per 18 dokumen (`firebase.js`) |
+| K2 | Ditolak dengan kalimat; perbaikan sebenarnya datang dengan buku besar (putaran 27+). Butir daftar periksa (bukan ⛔): "periksa ulang kedatangan, adukan, dan utang pemasok bulan M — sesudah dikunci tidak bisa dibetulkan" | `stok-catat`, `stok-hpp`, `stok-adukan`, `stok-kantong` + tombol "cocokkan hari ini" di Stok |
+| K3 | Hanya bulan terbuka ditulis ulang; SATUKAN ditolak bila bon nama lama lahir di bulan terkunci. Butir: nama mirip berbon di bulan M — "satukan dulu sebelum dikunci". **Ide nanti:** alias nama (lama → baru) di lapisan data, bukan menulis ulang nota | `pelanggan-logika.js rincianGabung/rincianHapusNama` |
+| K4 | Dinilai dari tanggal yang dibaca mesin (`bonTanggal` / `tanggal`). Tanggal utang aslinya ditulis di `catatan` yang SUDAH ADA | rules `bulanUP`; `bon-pemasok-logika.js susunBonLama` |
+| K5 | Hari kerja bulan terkunci dibukukan ke biaya bulan pembayaran (`rincianGaji` membawa dari/sampai). Butir: "upah bulan M sudah dibayar dan dicatat" | `upah-logika.js susunBayarUpah` |
+| K6 | `pajakSetoran` & `pajakOmzetLuar` TIDAK dikunci; tiap ubah/hapus menulis `logAktivitas` dengan nilai lamanya (jejak penuh: putaran 26) | `firebase.js JEJAK_NILAI_LAMA`; hapus di Laporan kini benar-benar terkirim |
+| Antre macet | ⛔ "perangkat masih ada antrean" & "perangkat tidak berdenyut 24 jam". `index.html` & kasir TETAP tidak disentuh. **Kunci pertama baru boleh sesudah putaran 25b** (ditolak server dipisah ke daftar "ditolak", catatan sesudahnya tetap terkirim, pesan "bulan terkunci") | `KP_SIAP_25B = false` = butir ⛔ pertama |
+| Access call | Pasang v4 tanpa bulan terkunci tidak boleh mematikan fitur yang hari ini jalan. Tenggang minimal ditegakkan rules (masa tenggang tanpa get()); kiriman owner besar dipecah ≤ 18 dengan kemajuan tersimpan; cache tidak diandalkan; CI dua keadaan | rules `bebas()/bolehDikunci()`; `toko.js jagaKunci/tulisBertahap`; `peta_akses.py --kiriman` |
+| Agustus | Pilihan ketiga "tidak ditutup — diterima apa adanya" + alasan wajib; tutup hari TIDAK dibuat mundur | butir "hari" daftar periksa |
+| Tahap 4 | Tahun final = era tutup buku lewat ATAU 12 bulannya terkunci | `laporan-logika.js lpTahunFinal` |
+
+Cache `get()`: halaman penagihan resmi (https://firebase.google.com/docs/firestore/pricing) menyebut dokumen yang dirujuk berkali-kali dalam satu
+permintaan hanya ditagih sekali. Untuk BATAS access call, halaman kondisi (https://firebase.google.com/docs/firestore/security/rules-conditions#access_calls)
+hanya menyebut sebagian panggilan *mungkin* di-cache. Tidak ada jaminan, jadi rancangan TIDAK mengandalkan cache.
 
 ## 5. Sistem lama yang gagal di bulan terkunci
 

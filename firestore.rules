@@ -113,10 +113,10 @@ service cloud.firestore {
     // owner & kasir@: create = nilai BARU · update = bulan TERTUA dari lama & baru (tulis-ulang identik bebas) · delete = nilai LAMA — tiap operasi ≤ 1 get()
     function tglBaru(f) { return bolehBulan(bulanDok(request.resource.data, f)); }
     function tglUbah(f) { return tulisUlangSama() || bolehBulan(lebihTua(bulanDok(request.resource.data, f), bulanDok(resource.data, f))); }
-    function tglLama(f) { return bolehBulan(bulanDok(resource.data, f)); }
+    function tglLama(f) { return resource == null || bolehBulan(bulanDok(resource.data, f)); }   // hapus dokumen yang tidak ada = tidak mengubah apa pun (mis. kantong id+1 adukan tanpa kantong)
     function upBaru() { return bolehBulan(bulanUP(request.resource.data)); }
     function upUbah() { return tulisUlangSama() || bolehBulan(lebihTua(bulanUP(request.resource.data), bulanUP(resource.data))); }
-    function upLama() { return bolehBulan(bulanUP(resource.data)); }
+    function upLama() { return resource == null || bolehBulan(bulanUP(resource.data)); }
     // bukan-owner (tablet): dokumen kunci TIDAK PERNAH dibaca — hanya bulan berjalan / masa tenggang; sisanya ditulis owner (daftar "ditolak server")
     function tglStaf(f) { return bebas(bulanDok(request.resource.data, f)); }
     // aturanToko/kunciPeriode: naik tepat satu (pertama kali: bulan mana pun yang sudah lewat tenggang minimal), turun tepat satu dengan alasan ≥ 10 huruf

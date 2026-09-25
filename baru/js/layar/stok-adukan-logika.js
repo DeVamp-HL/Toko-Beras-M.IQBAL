@@ -11,7 +11,7 @@
 // hasilnya sudah terjual/terpakai sehingga stok kemasan jadi minus; jejaknya ke bukuHapus. Adukan "menunggu owner" dari tablet menyusul bersama layar tablet.
 import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, bagiBiayaAdukan } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, JENIS_BAHAN_KEMASAN, kunciKemasan } from '../mesin/pembantu.js';
-import { ambilProduksi, ambilHargaKemasan, tolakKunci, butuhGet } from '../data/toko.js';
+import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP } from '../inti/format.js';
 
@@ -94,6 +94,7 @@ export function hitungAdukan(draf) {
 export function susunSimpanAdukan(draf, w, yakin) {
   const Y = yakin || {}; const h = hitungAdukan(draf);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(draf.tanggal || ''))) return { tolak: 'Tanggal adukannya belum benar' };
+  const kunciTgl = tolakKunciTanggal(draf.tanggal, 'adukan tidak bisa dicatat di bulan itu; catat bertanggal hari ini'); if (kunciTgl) return { tolak: kunciTgl };   // putaran 25
   if (h.bermasalah.length) { const x = h.bermasalah[0]; return { tolak: 'Baris ' + x.ke + (x.merk || x.nama || x.namaProduk ? ' (' + (x.merk || x.nama || x.namaProduk) + ')' : '') + ': ' + x.masalah + ' — lengkapi atau kosongkan barisnya' }; }
   if (!h.sahB.length && !h.sahBK.length) return { tolak: 'Isi minimal satu bahan — karung dari gudang (nama + kg) atau kemasan jadi yang dibongkar' };
   if (!h.sahH.length) return { tolak: 'Isi minimal satu baris hasil: nama, ukuran, dan jumlah unit' };
@@ -117,6 +118,8 @@ export function susunSimpanAdukan(draf, w, yakin) {
       batchProduksi: batchId, barisKe: i + 1, jumlahBaris: h.sahH.length, jadiKarungUtuh: false, merkTujuan: null } });
     if (x.kantongJenis && x.kantongJumlah > 0) dokumen.push({ koleksi: 'stokBahanKemasan', data: { id: id + 1, tipe: 'pakai', jenis: x.kantongJenis, jumlah: x.kantongJumlah, hargaTotal: 0, tanggal: draf.tanggal, catatan: 'Otomatis dari produksi id ' + id } });
   });
+  // putaran 25: adukan bertanggal bulan lalu (di luar masa tenggang) — tiap catatan diperiksa kunci di server; satu adukan tidak boleh butuh lebih dari 18 pemeriksaan
+  const g = butuhGet(dokumen); if (g > KP_BATAS_GET) return { tolak: 'Adukan bertanggal bulan lalu menyentuh ' + g + ' catatan (batas ' + KP_BATAS_GET + ' sekali kirim) — pecah jadi dua adukan, atau catat bertanggal hari ini' };
   const modalTeks = h.sahH.map((x) => x.nama + ' ' + adUkuranTeks(x.ukuran) + ' kg ' + RP(Math.round(x.hppPerUnit)) + '/unit').join(' · ');
   return { dokumen, hitung: h, batchId, patch: { kabar: 'Adukan tersimpan: ' + h.teksBahan + ' → ' + h.teksHasil + ' · biaya ' + RP(Math.round(h.total)) + ' (bahan ' + RP(Math.round(h.nilaiBahan)) + (h.biayaKantong ? ' + kantong ' + RP(h.biayaKantong) : '') + (h.upah ? ' + upah ' + RP(h.upah) : '') + ') → modal ' + modalTeks
     + (h.susutKg > 0 ? ' · susut ' + adKG(h.susutKg) + ' terserap ke modal hasil' : '') + '. Stok karung/kemasan asal turun, stok kemasan jadi naik' + (h.biayaKantong ? ', stok kantong turun' : '') + '. Kas tidak bergerak.', kabarAwas: false } };

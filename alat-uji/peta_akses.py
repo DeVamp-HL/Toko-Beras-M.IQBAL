@@ -67,10 +67,10 @@ def jenis_data(potong):
     return 'buat?'
 
 
-def pindai():
+def pindai(sumber=None):
     fungsi = {}   # nama → {berkas, tulis: {(koleksi, bentuk)}, panggil: set()}
     for f in sorted(glob.glob(os.path.join(LAYAR, '*-logika.js'))):
-        teks = open(f, encoding='utf-8').read(); berkas = os.path.basename(f)
+        berkas = os.path.basename(f); teks = (sumber or {}).get('baru/js/layar/' + berkas) or open(f, encoding='utf-8').read()
         for m in re.finditer(r'(?:export\s+)?function\s+([A-Za-z_]\w*)\s*\(', teks):
             nama = m.group(1)
             try: b = badan(teks, m.start())
@@ -313,6 +313,126 @@ def periksa_kiriman(src):
     return H, cacat
 
 
+# ====================== KIRIMAN OWNER yang menyentuh bulan lampau (putaran 25, owner 25 Sep) ======================
+# Rules v4: owner 0 access call untuk bulan berjalan & masa tenggang, 1 get() dokumen kunci per operasi bulan lampau. Tiap kiriman ≤ 18 (batas 20, sisa 2),
+# dihitung dari fungsi ASLI dalam DUA keadaan: A tanpa bulan terkunci, B Agustus terkunci (jalur harus menolak — tidak pernah mengirim catatan bulan terkunci).
+# Tiap fungsi susun* yang menulis koleksi bertanggal (KP_KOLEKSI) wajib ada di daftar ini: 'diukur' (skenario jsc di bawah) atau alasannya.
+OWNER_JALUR = {
+    'susunRinciDokumen': 'diukur', 'susunUrungRinci': 'diukur', 'susunPerbaikanKarcis': 'diukur', 'susunGabung': 'diukur', 'susunHapusNama': 'diukur',
+    'susunKoreksiAdukan': 'diukur', 'susunHapusAdukan': 'diukur', 'susunSimpanAdukan': 'diukur', 'susunSimpanMasuk': 'diukur', 'susunHapusKedatangan': 'diukur',
+    'susunKoreksiHpp': 'diukur', 'susunKoreksiMassal': 'diukur', 'susunHapusBeli': 'diukur', 'susunBayarUpah': 'diukur', 'susunPutusKarantina': 'diukur', 'susunBonLama': 'diukur', 'susunRetur': 'diukur',
+    'simpanNota': 'nota selalu bertanggal hari ini (w.tanggal); kantong, bayar sebagian, pesanan ikut hari ini',
+    'susunNotaDokumen': 'nota selalu bertanggal hari ini (w.tanggal)',
+    'susunPembatalan': 'batal ≤ 90 detik: nota barusan (bulan berjalan)',
+    'susunReturTanpaNota': 'retur hari ini (w.tanggal)', 'susunPenggantiTercatat': 'satu dokumen retur (≤ 1 pemeriksaan); bulan terkunci → ditolak logika',
+    'susunBayar': 'bayar bon pemasok hari ini', 'susunUrungBayar': 'urung ≤ 90 detik (dokumen barusan)', 'susunBayarBon': 'terima bon hari ini', 'susunHapusBon': 'hapus buku piutang hari ini',
+    'susunBayarTagihan': 'biaya bulanan bulan INI', 'susunBonus': 'bonus: biaya bulan ini', 'susunKasbonKaryawan': 'kasbon hari ini', 'susunKeluar': 'uang keluar hari ini',
+    'susunPindah': 'pindah uang hari ini', 'susunUrungPindah': 'urung ≤ 90 detik', 'susunPutusTitipan': 'titipan disetujui hari ini',
+    'susunCocok': 'cocokkan hari ini', 'susunSimpanCocok': 'cocokkan hari ini', 'susunSimpanBeli': 'beli kantong hari ini', 'susunIniDia': 'nota HARI INI saja', 'susunTakarWadah': 'takar hari ini',
+    'susunTutup': 'tutup hari = tanggal perangkat hari ini (lewat tengah malam = hari baru)',
+    'susunKunci': 'tutup buku sungguhan: ditolak selama ada bulan terkunci (K1); arsip per 18 dokumen; dirancang ulang sebelum Jan 2027',
+    'susunBatal': 'batalkan tutup buku: pengembalian arsip per 18 dokumen; ditolak penjaga bila bulan terkunci',
+    'susunAturHargaWadah': 'graf panggilan saja — menulis setelan hargaWadah, bukan dokumen bertanggal', 'susunRak': 'graf panggilan saja — pembaca', 'susunRakWadah': 'graf panggilan saja — pembaca',
+    'susunAturTempat': 'pengaturan/tempatSimpan (bukan titikKas) — setelan',
+}
+MODUL_OWNER = None   # diisi dari uji_kunci_periode.MODUL (bundel yang sudah terbukti satu lingkup)
+
+SKENARIO_OWNER = r"""
+var H = { baris: [], salah: [], diukur: {} };
+function salah(t) { H.salah.push(t); }
+var n = 50000; var W = { tanggal: '2026-09-24', jam: '10:00', kini: '2026-09-24T03:00:00.000Z', idUnik: function () { n += 1; return n; } };
+var KINI = new Date(Date.now()); var OWN = keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null);
+// KOTAK PASIR — angka & nama contoh
+function nota(id, tgl, nama, harga, lain) { return Object.assign({ id: id, tanggal: tgl, jam: '10:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: harga, hppTotalSaatJual: Math.round(harga * 0.95), trxId: 't' + id, namaPelanggan: nama || '' }, lain || {}); }
+var jual = []; for (var i = 0; i < 60; i++) jual.push(nota(1000 + i, '2026-08-' + String(1 + (i % 28)).padStart(2, '0'), 'Pelanggan Lama Contoh', 100000));
+jual.push(nota(2000, '2026-08-20', '', 5000000, { jenis: 'kasir_darurat_nominal', merkSumber: null, totalKg: 0 }));
+var kantong = []; for (var j = 0; j < 12; j++) { var r = nota(3000 + j * 10, '2026-08-21', '', 14000, { jenis: 'literan', jumlahLiter: 1, totalKg: 0.8, kemasanLiteran: 'paperbag5l', jumlahKemasanLiteranDipakai: 1, grupNota: 'gr', koreksiDari: 2100, rinciDari: 2100, asalDarurat: true, dirinciPada: '2026-09-24T02:00:00.000Z' }); jual.push(r); kantong.push({ id: r.id + 1, tipe: 'pakai', jenis: 'paperbag5l', jumlah: 1, hargaTotal: 0, tanggal: '2026-08-21' }); }
+jual.push(nota(2100, '2026-08-21', '', 168000, { jenis: 'kasir_darurat_nominal', merkSumber: null, totalKg: 0, dikoreksiOleh: 3000 }));
+jual.push(nota(4000, '2026-09-10', 'Pelanggan Kini Contoh', 100000));
+pasok('penjualan', jual); pasok('stokBahanLiteran', kantong);
+var batch = function (id, tgl, merk) { return { id: id, tanggal: tgl, pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', biayaBongkar: 0, jam: '08:00', merkList: [{ merk: merk, satuan: 'karung', beratKarung: 50, jumlahKarung: 100, totalKg: 5000, hargaPerKg: 13000, subtotalHarga: 65000000 }] }; };
+pasok('batchMasuk', [batch(5000, '2026-08-05', 'Angsa'), batch(5001, '2026-08-06', 'Beo'), batch(5002, '2026-08-07', 'Cendana'), batch(5003, '2026-09-03', 'Angsa')]);
+var prod = [], bahanK = [{ id: 7899, tipe: 'saldoAwal', jenis: '5kg_kembangbmw', jumlah: 500, hargaTotal: 500000, tanggal: '2026-08-01', catatan: 'saldo contoh' }, { id: 7900, tipe: 'beli', jenis: '5kg_kembangbmw', jumlah: 1000, hargaTotal: 1000000, tanggal: '2026-08-02', catatan: 'beli contoh' }];
+for (var k = 0; k < 12; k++) { var pid = 6000 + k * 10; prod.push({ id: pid, tanggal: '2026-08-15', jam: '11:00', merkSumber: 'Angsa', namaProduk: 'Hasil Contoh ' + k, ukuranKemasan: 5, jumlahUnit: 2, hppPerUnit: 70000, kgDipakai: k === 0 ? 120 : 0, biayaKemasan: 0, upahRepacking: 0, hppSumberPerKgDipakai: 13000, kantongJenis: '5kg_kembangbmw', kantongJumlah: 2, batchProduksi: 'ad', jumlahBaris: 12, barisKe: k + 1, sumberList: k === 0 ? [{ merk: 'Angsa', kg: 120 }] : [] }); bahanK.push({ id: pid + 1, tipe: 'pakai', jenis: '5kg_kembangbmw', jumlah: 2, hargaTotal: 0, tanggal: '2026-08-15' }); }
+pasok('produksiKemasan', prod); pasok('stokBahanKemasan', bahanK);
+pasok('retur', [{ id: 8000, tanggal: '2026-08-21', jam: '09:00', jenisAsal: 'karung', merkSumber: 'Angsa', totalKg: 10, jumlahKarung: 0.2, beratKarungAcuan: 50, kondisi: 'tidak_utuh', penyelesaian: 'refund', nominalRefund: 140000, notaAsalId: 1000, notaAsalTanggal: '2026-08-01', catatan: 'contoh' }]);
+pasok('karantina', [{ id: 8000, tanggal: '2026-08-21', asalRetur: true, jenisAsal: 'karung', merkSumber: 'Angsa', totalKg: 10, statusTindakan: 'belum_diputuskan' }]);
+pasok('aturanToko', [{ id: 'upah', tarif: 60000, orang: [{ nama: 'Pekerja Contoh', status: 'aktif', masuk: '2026-08-25' }] }]);
+var hari = {}; for (var d = 25; d <= 31; d++) hari['2026-08-' + d] = 1; var hariS = {}; for (var e = 1; e <= 23; e++) hariS['2026-09-' + String(e).padStart(2, '0')] = 1;
+pasok('absenKaryawan', [{ id: 'pekerja contoh|2026-08', nama: 'Pekerja Contoh', bulan: '2026-08', hari: hari }, { id: 'pekerja contoh|2026-09', nama: 'Pekerja Contoh', bulan: '2026-09', hari: hariS }]);
+var aturan0 = cacheMentah('aturan').slice();
+function literan(nn) { var a = []; for (var q = 0; q < nn; q++) a.push({ id: 'b' + q, trx: { jenis: 'literan', merkSumber: 'Angsa', namaProduk: 'Angsa', jumlahLiter: 5, totalKg: 4, kemasanLiteran: 'paperbag5l', jumlahKemasanLiteranDipakai: 1, hargaTotal: 70000, hargaSatuan: 14000, hargaAsli: 14000, jumlah: 5 } }); return a; }
+function drafAduk(nn, tgl) { var hs = []; for (var q = 0; q < nn; q++) hs.push({ nama: 'Hasil Baru ' + q, ukuran: '5', unit: '2', kantongJenis: '5kg_kembangbmw', kantongJumlah: '2' }); return { tanggal: tgl, bahan: [{ merk: 'Angsa', kg: String(nn * 10) }], bahanKemasan: [], hasil: hs, upah: '0' }; }
+var YAKIN = { bahan: true, kemasan: true, kantongKosong: true, kantong: true, susut: true };
+function ukur(keadaan, jalur, fungsi, r) {
+  H.diukur[fungsi] = true;
+  if (!r || r.tolak) { H.baris.push({ keadaan: keadaan, jalur: jalur, fungsi: fungsi, ac: 0, tolak: String((r && r.tolak) || 'kosong').slice(0, 90) }); return; }
+  var ac = 0, bertahap = false;
+  if (r.kelompok) { var P = kpPotong(r.kelompok, dokDiCache, new Date(Date.now())); if (P.tolak) { salah(jalur + ': kelompok tidak bisa dipecah — ' + P.tolak); return; } ac = Math.max.apply(null, P.potongan.map(function (x) { return x.get; })); bertahap = P.potongan.length; }
+  else ac = butuhGet(r.dokumen || [], r.hapus || []);
+  var jaga = r.kelompok ? null : jagaKunci(r.dokumen || [], r.hapus || []);
+  if (keadaan === 'B' && (r.kelompok ? r.kelompok.some(function (x) { return jagaKunci(x.dokumen, x.hapus) && jagaKunci(x.dokumen, x.hapus).terkunci; }) : (jaga && jaga.terkunci))) salah(jalur + ' (B): logika MENGIRIM catatan bulan terkunci — layar menawarkan tindakan yang pasti ditolak server');
+  H.baris.push({ keadaan: keadaan, jalur: jalur, fungsi: fungsi, ac: ac, bertahap: bertahap, dijaga: !!(jaga && jaga.gagal) });
+}
+function jalankan(keadaan) {
+  pasok('aturanToko', aturan0.concat(keadaan === 'B' ? [{ id: 'kunciPeriode', sampaiBulan: '2026-08', riwayat: [] }] : []));
+  var sK = function (nn) { var ik = ikatKarcis({ keranjang: [], antrean: [], aktifId: 1, idBerikut: 2 }, '2000', KINI); return susunRinciDokumen({ karcis: ik.karcis, keranjang: literan(nn), cara: 'Tunai', pelanggan: '', potongan: 0, uang: 0 }, W); };
+  ukur(keadaan, 'rinci karcis Agustus · 8 literan berkantong', 'susunRinciDokumen', sK(8));
+  ukur(keadaan, 'rinci karcis Agustus · 9 literan berkantong', 'susunRinciDokumen', sK(9));
+  ukur(keadaan, 'tarik balik rincian Agustus · 12 baris + 12 kantong', 'susunUrungRinci', susunUrungRinci({ grupNota: 'gr', asliId: 2100 }, W));
+  ukur(keadaan, 'perbaiki cara bayar karcis Agustus', 'susunPerbaikanKarcis', susunPerbaikanKarcis({ karcis: { id: '2000' }, cara: 'Kredit', pelanggan: 'Pelanggan Kini Contoh', keranjang: [] }, W));
+  var O = semuaOrang(KINI); var lama = O.find(function (o) { return o.nama === 'Pelanggan Lama Contoh'; }), kini = O.find(function (o) { return o.nama === 'Pelanggan Kini Contoh'; });
+  ukur(keadaan, 'SATUKAN nama dengan 60 nota Agustus', 'susunGabung', susunGabung(KINI, kini.kunci, lama.kunci, W));
+  ukur(keadaan, 'hapus nama dengan 60 nota Agustus', 'susunHapusNama', susunHapusNama(KINI, lama.kunci, W, true));
+  ukur(keadaan, 'koreksi adukan Agustus · 12 hasil', 'susunKoreksiAdukan', susunKoreksiAdukan('ad', '2000000', 'lupa upah', W));
+  ukur(keadaan, 'hapus adukan Agustus · 12 hasil berkantong', 'susunHapusAdukan', susunHapusAdukan('ad', 'salah catat', W));
+  ukur(keadaan, 'adukan BARU bertanggal Agustus · 8 hasil berkantong', 'susunSimpanAdukan', susunSimpanAdukan(drafAduk(8, '2026-08-30'), W, YAKIN));
+  ukur(keadaan, 'adukan BARU bertanggal Agustus · 12 hasil berkantong', 'susunSimpanAdukan', susunSimpanAdukan(drafAduk(12, '2026-08-30'), W, YAKIN));
+  ukur(keadaan, 'koreksi kedatangan Agustus', 'susunSimpanMasuk', susunSimpanMasuk(Object.assign(drafDariKedatangan(5001), { alasan: 'salah ketik' }), W, true));
+  ukur(keadaan, 'hapus kedatangan Agustus', 'susunHapusKedatangan', susunHapusKedatangan(5002, 'salah catat', W));
+  ukur(keadaan, 'koreksi HPP satu nama (kedatangan terakhir Agustus)', 'susunKoreksiHpp', susunKoreksiHpp('Beo', '13100', 'salah ketik', W, true));
+  ukur(keadaan, 'koreksi HPP massal · 2 nama kedatangan Agustus', 'susunKoreksiMassal', susunKoreksiMassal({ Beo: '13100', Cendana: '13200' }, 'salah ketik', W));
+  ukur(keadaan, 'hapus beli kantong Agustus', 'susunHapusBeli', susunHapusBeli(7900, 'salah catat', W, true));
+  ukur(keadaan, 'bayar upah dengan hari kerja Agustus', 'susunBayarUpah', susunBayarUpah('Pekerja Contoh', 'semua', W));
+  ukur(keadaan, 'karantina layak jual (retur Agustus)', 'susunPutusKarantina', susunPutusKarantina(8000, 'layak_jual', 'ternyata kering', W, 'layak_jual'));
+  ukur(keadaan, 'bon lama pemasok bertanggal Agustus', 'susunBonLama', susunBonLama({ pemasok: 'PEMASOK CONTOH', ketik: '5.000.000', tgl: '2026-08-10' }, W));
+  ukur(keadaan, 'retur hari ini untuk nota Agustus (pembalik)', 'susunRetur', susunRetur(Object.assign(returAwal(), { rtNotaId: 1001, ketik: '5', rtAlasan: 'kualitas', rtKondisi: 'utuh', rtPenyelesaian: 'refund' }), W));
+}
+jalankan('A'); jalankan('B');
+// penjaga pusat: kiriman bulan lampau > 18 pemeriksaan tidak pernah dikirim, apa pun jalurnya
+var lebih = []; for (var z = 0; z < 19; z++) lebih.push({ koleksi: 'penjualan', data: { id: 'x' + z, tanggal: '2026-08-02' } });
+pasok('aturanToko', aturan0); var jg = jagaKunci(lebih, []); if (!jg || !jg.gagal) salah('penjaga pusat meloloskan kiriman 19 pemeriksaan kunci');
+if (jagaKunci(lebih.slice(0, 18), [])) salah('penjaga pusat menolak kiriman 18 pemeriksaan (batasnya 18)');
+print(JSON.stringify(H));
+"""
+
+
+def periksa_owner(teks_sumber=None):
+    """→ (H, cacat). teks_sumber = {jalur: teks} pengganti berkas asli (kontrol)."""
+    import subprocess, tempfile, bundel_baru, uji_kunci_periode
+    cacat = []
+    # (a) cakupan: tiap susun* yang menulis koleksi bertanggal punya baris di OWNER_JALUR
+    kp = (teks_sumber or {}).get('baru/js/data/kunci-periode.js') or open(os.path.join(AKAR, 'baru/js/data/kunci-periode.js'), encoding='utf-8').read()
+    KOL = dict(re.findall(r"(\w+): '(\w+)'", re.search(r'export const KP_KOLEKSI = \{(.*?)\};', kp, re.S).group(1)))
+    F = pindai(teks_sumber)
+    for nama, f in sorted(F.items()):
+        if any(k in KOL for k, _ in f['tulis']) and nama not in OWNER_JALUR: cacat.append('jalur baru menulis koleksi bertanggal tanpa hitungan access call owner: %s (%s)' % (nama, f['berkas']))
+    # (b) jsc: fungsi asli dua keadaan
+    teks = dict((m, (teks_sumber or {}).get(m) or open(os.path.join(AKAR, m), encoding='utf-8').read()) for m in uji_kunci_periode.MODUL)
+    js = uji_kunci_periode.satu_lingkup('\n'.join([bundel_baru.PRELUDE] + ['\n// ===== ' + m + ' =====\n' + bundel_baru.polos(teks[m]) for m in uji_kunci_periode.MODUL]))
+    with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
+        f.write("var __KINI = new Date('2026-09-24T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n" + js + SKENARIO_OWNER); jalur = f.name
+    r = subprocess.run([JSC, jalur], capture_output=True, text=True, env=dict(os.environ, TZ='Asia/Jakarta')); os.unlink(jalur)
+    keluar = r.stdout.strip().split('\n')[-1] if r.stdout.strip() else ''
+    if r.returncode != 0 or not keluar.startswith('{'): return None, cacat + ['JSC JATUH (owner): ' + (r.stderr or r.stdout)[:600]]
+    H = json.loads(keluar); cacat += H['salah']
+    for b in H['baris']:
+        if b['ac'] > BATAS_CI: cacat.append('owner %s · %s: %d pemeriksaan kunci > %d' % (b['keadaan'], b['jalur'], b['ac'], BATAS_CI))
+    for nama, isi in OWNER_JALUR.items():
+        if isi == 'diukur' and nama not in H['diukur']: cacat.append('OWNER_JALUR bilang %s diukur, skenarionya tidak ada' % nama)
+    return H, cacat
+
+
 def terburuk(H):
     out = {}
     for b in H['baris']:
@@ -340,10 +460,27 @@ if __name__ == '__main__':
                 'jual.js mencatat nota tanpa batas baris': rusak('baru/js/layar/jual.js', 'L.simpanNota(SB())', 'L.simpanNota(S())'),
                 'stok.js menyimpan adukan tanpa batas hasil': rusak('baru/js/layar/stok.js', "Object.assign({}, d, { batasHasil: batasHasilAdukan(opsi.akun ? opsi.akun() : null) })", 'd'),
             }
+            # putaran 25 — kiriman OWNER bulan lampau (sumber pengganti per berkas; berkas lain dibaca dari disk)
+            def rusakO(p, a, b):
+                t = open(os.path.join(AKAR, p), encoding='utf-8').read(); assert a in t, 'kontrol basi: ' + a[:60]; return {p: t.replace(a, b, 1)}
+            KO = {
+                'SATUKAN tanpa kirim bertahap': rusakO('baru/js/layar/pelanggan-logika.js', "  const kelompok = butuhGet(dokumen, hapus) > KP_BATAS_GET ? dokumen.map((d) => ({ dokumen: [d], hapus: [] })).concat(hapus.map((x) => ({ dokumen: [], hapus: [x] }))) : null;\n  return { dokumen, hapus, kelompok, patch: { kabar: '\"' + L.nama", "  const kelompok = null;\n  return { dokumen, hapus, kelompok, patch: { kabar: '\"' + L.nama"),
+                'rinci karcis bulan lalu tanpa batas 18': rusakO('baru/js/layar/karcis-logika.js', "const g = butuhGet(dokumen); if (g > KP_BATAS_GET) return", "const g = butuhGet(dokumen); if (false) return"),
+                'tarik balik rincian tanpa bertahap': rusakO('baru/js/layar/karcis-logika.js', "const kelompok = butuhGet(dokumen, hapus) > KP_BATAS_GET ?", "const kelompok = false ?"),
+                'koreksi adukan tanpa bertahap': rusakO('baru/js/layar/stok-adukan-logika.js', "const kelompok = butuhGet(dokumen) > KP_BATAS_GET ?", "const kelompok = false ?"),
+                'adukan mundur tanpa batas 18': rusakO('baru/js/layar/stok-adukan-logika.js', "const g = butuhGet(dokumen); if (g > KP_BATAS_GET) return", "const g = butuhGet(dokumen); if (false) return"),
+                'karantina bulan terkunci tetap mengirim retur': rusakO('baru/js/layar/stok-karantina-logika.js', "if (kunci) return kunci;\n    if (kqSudahRework(k))", "\n    if (kqSudahRework(k))"),
+                'penjaga pusat tanpa batas 18': rusakO('baru/js/data/toko.js', "if (N.perluGet > KP_BATAS_GET) return { gagal: true,", "if (false) return { gagal: true,"),
+                'jalur baru menulis koleksi bertanggal tanpa hitungan': rusakO('baru/js/layar/uang-logika.js', "// ==================== K4 · PINDAH UANG ====================", "export function susunSetoranBaru(w) { return { dokumen: [{ koleksi: 'setoranKas', data: { id: w.idUnik(), tanggal: w.tanggal, nominal: 1 } }] }; }\n// ==================== K4 · PINDAH UANG ===================="),
+            }
             kode = 0
             for nama, src in K.items():
                 _, c = periksa_kiriman(src)
                 print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:130] if c else '-'))
+                if not c: kode = 3
+            for nama, src in KO.items():
+                _, c = periksa_owner(src)
+                print(('BERBUNYI ' if c else 'DIAM!!   ') + '[owner] ' + nama + ' → ' + (c[0][:130] if c else '-'))
                 if not c: kode = 3
             sys.exit(kode)
         H, c = periksa_kiriman(S0)
@@ -354,8 +491,18 @@ if __name__ == '__main__':
                 print('| %s | %s | %d | **%d / 20** | %s |' % (j, p, b['dok'], b['ac'], b['sama'][0] + (' (+%d kombinasi lain)' % (len(b['sama']) - 1) if len(b['sama']) > 1 else '')))
             print('| denyut perangkat | ben, karyawan | 1 | 1 / 20 | satu dokumen perangkatStatus, tanpa jejak |')
             print('\ndokumen per baris nota: ' + ', '.join('%s %d' % x for x in sorted(H['perBaris'].items())) + ' · per hasil adukan: %d' % H['perHasil'])
+        HO, co = periksa_owner()
+        if HO:
+            print('\nKiriman OWNER yang menyentuh bulan lampau (putaran 25) — pemeriksaan kunci get() per kiriman, dua keadaan (A tanpa kunci · B Agustus terkunci), CI gagal bila > %d' % BATAS_CI)
+            print('| jalur | A | B |'); print('|---|---|---|')
+            per = {}
+            for b in HO['baris']: per.setdefault(b['jalur'], {})[b['keadaan']] = b
+            sel = lambda b: '—' if not b else ('ditolak: ' + b['tolak'][:60] if 'tolak' in b else '%d / 20%s' % (b['ac'], ' · %d tahap' % b['bertahap'] if b.get('bertahap') else ''))
+            for j, v in per.items(): print('| %s | %s | %s |' % (j, sel(v.get('A')), sel(v.get('B'))))
+            print('\n%d fungsi penulis koleksi bertanggal: %d diukur, %d dengan alasan (OWNER_JALUR)' % (len(OWNER_JALUR), sum(1 for x in OWNER_JALUR.values() if x == 'diukur'), sum(1 for x in OWNER_JALUR.values() if x != 'diukur')))
+        c = c + co
         if c: print('\nGAGAL:'); [print('   ✗ ' + x) for x in c]; sys.exit(2)
-        print('\nLULUS: tidak ada kiriman bukan-owner di atas %d access call' % BATAS_CI); sys.exit(0)
+        print('\nLULUS: tidak ada kiriman bukan-owner di atas %d access call; tidak ada kiriman owner bulan lampau di atas %d pemeriksaan kunci, di kedua keadaan' % (BATAS_CI, BATAS_CI)); sys.exit(0)
 
     if '--baca' in sys.argv:
         B, semua = baca_per_layar()

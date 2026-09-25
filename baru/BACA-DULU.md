@@ -329,6 +329,30 @@ Sistem tahu posisi pajaknya sendiri: menghitung, mengingatkan, menyimpan bukti. 
 - **NPWP di identitas usaha DK1** (owner 24 Sep): kolom tetap ada, **bawaan TIDAK dicetak di kop mana pun** (`npwpDiKop`, sakelar di Laporan › Setelan; kalau dinyalakan,
   hanya kop penuh). NPWP 16 angka → peringatan "NPWP orang pribadi = NIK; mencetaknya membuka NIK ke semua pembeli." 
 
+## Putaran 25 (25 Sep 2026) — TULANG PUNGGUNG 3: KUNCI PERIODE BULANAN (cabang, belum merge)
+
+Sesudah owner mengunci bulan M, tidak seorang pun (termasuk owner, sistem lama, kasir darurat, tablet offline) bisa menambah, mengubah, atau menghapus
+catatan bertanggal di bulan M. Kesalahan yang ketahuan belakangan dibetulkan dengan catatan HARI INI (retur, cocokkan, bayar bon); catatan lama tidak disentuh.
+Peta & keputusan owner K1–K6: `docs/peta-kunci-periode.md`. Uji server: `docs/uji-rules-v4.md`.
+
+- **Dokumen kunci** `aturanToko/kunciPeriode` `{ sampaiBulan, riwayat }` + setelan `aturanToko/kunciAtur` `{ tenggang }`. Inti tanpa impor: `js/data/kunci-periode.js`
+  (bulan WIB, koleksi bertanggal = rules v4, hitungan get() server, pemecah kiriman). Layar: `js/layar/kunci-periode-logika.js` + kartu **Kunci bulan** di
+  Uang › Tutup buku; satu baris di Beranda › Perlu perhatian (diam selama kunci belum bisa dipakai).
+- **Daftar periksa** (⛔ memblokir): putaran 25b · tenggang · catatan tertahan/ditolak di perangkat ini · nota parkir · perangkat antre > 0 · perangkat tanpa
+  denyut 24 jam (bisa dinyatakan "sudah tidak dipakai" kalau antre & ditolaknya 0). Dicentang owner: hari tanpa tutup hari (libur hanya hari tanpa nota;
+  "diterima apa adanya" wajib alasan — tutup hari TIDAK dibuat mundur), karcis belum dirinci, omzet luar, periksa ulang pembelian (K2), nama mirip berbon (K3),
+  upah (K5). **`KP_SIAP_25B = false`**: kunci PERTAMA menunggu putaran 25b (sistem lama & kasir memisahkan catatan yang ditolak server).
+- **Penjaga pusat** (`toko.js jagaKunci`): SEMUA tulisan layar — bulan terkunci atau > 18 pemeriksaan kunci = tidak dikirim, dengan kalimat. Jalur besar
+  bertahap (`tulisBertahap`, rencana tersimpan di perangkat, dilanjutkan dari Menu › Sistem › Perangkat): SATUKAN, hapus nama, tarik balik rincian, koreksi/hapus adukan.
+- **Pembalik**: tombol koreksi/hapus untuk catatan bulan terkunci berganti "Bulan X terkunci — cocokkan / buat retur hari ini" dan membuka alur lama dengan
+  barang asalnya. Hapus + dokumen kini SATU kiriman di semua layar (dulu dua kiriman, hasil kedua tidak diperiksa). Hapus di Laporan › Pajak dulu diabaikan — ditambal.
+- **Final bulanan**: `lpFinal` = era ATAU bulan ≤ sampaiBulan; `lpTahunFinal` = era ATAU 12 bulan terkunci. Pajak: keadaan terkunci per bulan, peringatan
+  setoran untuk bulan yang belum dikunci. `pajakSetoran` & `pajakOmzetLuar` tidak dikunci (K6); ubah/hapusnya menulis jejak dengan nilai lama.
+- **Rules v4** (`firestore.rules`; v3 utuh di `firestore.rules.v3`): payung owner dihapus; bulan WIB dari `request.time`; tenggang minimal ditegakkan server;
+  owner/kasir@ 1 get() per operasi bulan lampau (0 untuk bulan berjalan & masa tenggang); bukan-owner tanpa get() kunci (hanya bulan berjalan / tenggang).
+- **Tutup buku tahunan (K1)**: sungguhan ditolak selama tahunnya punya bulan terkunci; dirancang ulang sebelum Januari 2027 (arsip = salinan + penanda, tidak
+  menghapus; catatan dasar disimpan 10 tahun).
+
 ## Struktur
 ```
 baru/
@@ -383,9 +407,11 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_akses_baru.py` (+ `--kontrol`) | 33 skenario akses per orang (keadaan akun, owner hanya via email, pendengar/layar/tombol per peran, penjaga kiriman = peta, pagar 18, batas per akun, atribusi olehUid, satu jejak per kiriman, salinan antre, SS2 akun & kisi = kebenaran server, tirai 8 layar, ganti orang & isian tujuh layar, pil akun, sambungan firebase.js/app.js diperiksa sumbernya) + 43 kontrol |
 | `alat-uji/uji_layar_kunci.py` (+ `--kontrol`) | Chrome headless: (1) tirai — sebelum masuk 0 angka rupiah, 0 kartu, semua `<main>` kosong walau penyimpanan lokal berisi titik kas contoh; (2) ganti orang — Firebase palsu lokal, keranjang tidak terbawa ke akun berikutnya (Keluar lewat pil ditanya, tab lain, akun nonaktif), tirai menyembunyikan pil OWNER/nama, lembar akun & status jaringan; (3) isian lokal tujuh layar ikut pola keranjang, draf katalog harga di server utuh; (4) GAGAL JARINGAN ≠ GAGAL UJI; 19 kontrol (satu per layar) |
 | `alat-uji/uji_isian_lokal.py` (+ `--kontrol`) | statis: 85 kolom ketik di 8 layar menulis ke kunci yang dijaga penjaga isian atau tercatat sengaja bukan isian; tiap kunci localStorage layar = draf yang dijaga atau tercatat bukan draf; 7 kontrol |
-| `alat-uji/periksa_rules.py` (+ `--kontrol`) | `firestore.rules` v3 statis: blok per koleksi, owner & kasir via email, tanpa `masuk()` telanjang, jalur kasir@ utuh, tulis bukan-owner wajib uid, tanpa delete bukan-owner, payung owner yang TIDAK mengalahkan batasan owner (blok yang membatasi owner wajib dikecualikan; dihitung dari rules, bukan daftar tangan), daftar peran = `akses.js`, jejak ≤ 17 dokumen = pagar `akses.js` + 23 kontrol |
+| `alat-uji/periksa_rules.py` (+ `--kontrol`) | `firestore.rules` v4 statis (putaran 25: tanpa payung/match rekursif, kunci periode di tiap koleksi bertanggal = `kunci-periode.js`, satu get() kunci per operasi, tenggang minimal = klien) + v3: blok per koleksi, owner & kasir via email, tanpa `masuk()` telanjang, jalur kasir@ utuh, tulis bukan-owner wajib uid, tanpa delete bukan-owner, payung owner yang TIDAK mengalahkan batasan owner (blok yang membatasi owner wajib dikecualikan; dihitung dari rules, bukan daftar tangan), daftar peran = `akses.js`, jejak ≤ 17 dokumen = pagar `akses.js` + 23 kontrol |
 | `alat-uji/peta_akses.py --kiriman` (+ `--kontrol`) | access call TERBURUK per jenis kiriman bukan-owner (nota Ben/karyawan, adukan, terima bon, pelanggan baru, struk) dari fungsi asli di jsc, lewat `periksaKiriman` asli; gagal bila > 18; tiap tindakan yang dibuka server wajib terhitung; layar wajib menyerahkan batasnya + 10 kontrol |
 | `alat-uji/uji_pajak_baru.py` (+ `--kontrol`) | 43 skenario modul pajak (batas bebas di tengah bulan, omzet luar tanpa hitung ganda, kosong ≠ nol, badan tanpa angka, setoran & angka berubah, kurang/lebih, lewat tempo, ambang 70/85/95/100 + proyeksi, regresi penulis rekapOmzet, DK3 = layar Pajak, tanpa NIK/NPWP, status pasangan PH/MT/satu kesatuan/belum diketahui, dua angka omzet) + 29 kontrol; di cadangan toko: omzet layar Pajak = mesin laba = DK3 |
+| `alat-uji/uji_kunci_periode.py` (+ `--kontrol`) | 45 skenario kunci periode (WIB & tenggang, tiap ⛔, hari tanpa tutup, kunci/buka satu langkah, pembalik hari ini, keputusan K1–K6, penjaga pusat & kirim bertahap, final bulanan, pajak) + 37 kontrol; di cadangan toko: kunci Agustus → Juli & Agustus byte-sama, satu retur hari ini mengubah September saja |
+| `alat-uji/peta_akses.py --kiriman` bagian owner | kiriman owner yang menyentuh bulan lampau, dua keadaan (tanpa kunci / Agustus terkunci), fungsi asli ≤ 18 pemeriksaan kunci; tiap penulis koleksi bertanggal wajib terdaftar (diukur atau beralasan) |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
