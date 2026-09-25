@@ -40,6 +40,10 @@ Dokumen nyata yang dipakai (dari cadangan 25 Sep):
 Isian *Auth token payload* sama seperti v3: tambahkan `"email": "owner@tokoberasmiqbal.web.app"` atau `"email": "kasir@tokoberasmiqbal.web.app"`.
 "Error running simulation … Null value error" = DITOLAK di server, bukan lolos (sama seperti v3). Playground tidak mengubah apa pun di database.
 
+**Cara Playground menilai *update* (terbukti 25 Sep):** isian *Build document* DIGABUNG ke dokumen yang sudah ada. Mengisi field dengan nilai yang
+sama = dokumen tidak berubah = `tulisUlangSama()` benar = LOLOS dengan sengaja. Untuk menguji perubahan, isi field yang BERUBAH (mis. `nominal`).
+Pada kasus owner, rules hanya menilai field tanggal; field lain cukup yang perlu untuk membuat perubahan.
+
 ## A · Dengan dokumen kunci uji (Juli terkunci, Agustus terbuka)
 
 | # | Akun | Operasi · jalur · isi (*Build document*) | Wajib |
@@ -61,6 +65,12 @@ Isian *Auth token payload* sama seperti v3: tambahkan `"email": "owner@tokoberas
 | ★A15 | owner@ (UID `uid-uji`) | update `/aturanToko/kunciPeriode` → `{sampaiBulan:'2026-06', riwayat:[{aksi:'buka', bulan:'2026-07', olehUid:'uid-uji', alasan:'pendek'}]}` | **DITOLAK** (alasan < 10 huruf) |
 | ★A16 | owner@ (UID `uid-uji`) | update `/aturanToko/kunciPeriode` → `{sampaiBulan:'2026-09', riwayat:[{aksi:'kunci', bulan:'2026-09', olehUid:'uid-uji', alasan:''}]}` | **DITOLAK** (melompati Agustus) |
 | ★A17 | owner@ | delete `/aturanToko/kunciPeriode` | **DITOLAK** (dokumen kunci tidak pernah dihapus) |
+| ★A2b | owner@ | update `/pengeluaranHarian/1787308559387.802` (28 Jul): `tanggal` diubah ke `'<tanggal hari ini>'` | **DITOLAK** (memindah catatan KELUAR dari bulan terkunci — nilai LAMA dinilai) |
+| ★A13b | owner@ (UID `uid-uji`) | SESUDAH A1–A17: ubah dokumen uji di tab Data → `riwayat` = satu map `{aksi:'kunci', bulan:'2026-07', olehUid:'uid-uji'}` (bentuk nyata: kunci pertama selalu menulis satu entri). Lalu update → `{sampaiBulan:'2026-06', riwayat:[<entri itu persis>, {aksi:'buka', bulan:'2026-07', olehUid:'uid-uji', alasan:'uji playground satu langkah'}]}` | LOLOS (jalur nyata: irisan `riwayat[0:1]`) |
+
+Temuan Playground 25 Sep: ★A13 versi pertama (riwayat kosong) GALAT "line 136 … Index out of bound error. Index: [-1], size: [1]" — di server irisan
+`list[0:0]` galat, bukan list kosong. Ditambal di rules: `(lama.size() == 0 || d.riwayat[0:lama.size()] == lama)`; `periksa_rules.py` kini gagal bila
+penjaga itu hilang. Sesudah tambalan, ★A13–★A16 diulang dengan rules baru di editor.
 
 ## B · TANPA dokumen kunci (sesudah langkah 3–4) — keadaan server sesudah v4 terbit
 

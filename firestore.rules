@@ -133,7 +133,8 @@ service cloud.firestore {
       let d = request.resource.data;
       let lama = resource.data.get('riwayat', []);
       let s0 = resource.data.get('sampaiBulan', null);
-      return d.riwayat is list && d.riwayat.size() == lama.size() + 1 && d.riwayat[0:lama.size()] == lama && d.riwayat[lama.size()].olehUid == request.auth.uid
+      // (lama.size() == 0 || …): irisan list[0:0] GALAT di server (Playground 25 Sep: "Index out of bound. Index: [-1]"), bukan list kosong
+      return d.riwayat is list && d.riwayat.size() == lama.size() + 1 && (lama.size() == 0 || d.riwayat[0:lama.size()] == lama) && d.riwayat[lama.size()].olehUid == request.auth.uid
         && d.sampaiBulan is string && d.sampaiBulan.matches('[0-9]{4}-[0-9]{2}')
         && ((d.riwayat[lama.size()].aksi == 'kunci' && d.riwayat[lama.size()].bulan == d.sampaiBulan && bolehDikunci(bulanDari(d.sampaiBulan))
               && (!(s0 is string) || bulanDari(d.sampaiBulan) == bulanDari(s0) + 1))
