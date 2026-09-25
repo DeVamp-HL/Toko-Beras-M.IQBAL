@@ -108,6 +108,43 @@ Console bahwa `aturanToko/kunciPeriode` benar-benar tidak ada ("This document do
 
 Catatan: isian ★9b tanpa kolom `pada` (uid, email, nama + `peran`) — penolakan datang dari `peran` (`keys().hasOnly`), sama maknanya.
 
+## D · Putaran 25b — membayar bon dari bulan terkunci WAJIB lolos (dijalankan SEBELUM kunci Agustus yang sungguhan)
+
+Pemeriksaan owner (26 Sep): **data kedatangan dan utang pemasok di sistem sudah sesuai kenyataan** — tidak direkonsiliasi ulang. Yang pasti terjadi
+sesudah Agustus dikunci: bon lama U.D. Sejati Jaya (tipe `saldoAwal`, `bonTanggal` 2026-07-31) dan bon Roda Mas yang masih terbuka (salah satunya
+kedatangan 25 Agu) **dibayar** — dan dibayar = catatan BARU bertanggal hari bayar.
+
+**Dibaca dulu di rules (field yang dinilai):** `utangPemasokMutasi` create = `owner() && upBaru()`; `bulanUP(d)` menilai **`bonTanggal` hanya untuk tipe
+`saldoAwal`**, tipe lain menilai `tanggal`. Jadi `bayar` bertanggal hari ini **tidak pernah membaca `bonTanggal`**. `piutangMutasi`, `kasbonMutasi`,
+`utangOwnerMutasi`, `pengeluaranHarian` create = `tglBaru('tanggal')`. Sistem baru membayar lewat dokumen BARU saja (`bon-pemasok-logika susunBayar`,
+`bon-logika susunBayarBon`, kasbon/utang owner `dasar()` = `w.tanggal`) — dokumen bon lamanya tidak pernah ditulis ulang. Dijaga CI:
+`alat-uji/uji_bayar_bon_terkunci.py` (teks rules dicocokkan + model + jalur sistem baru di kotak pasir, dengan kontrol; asap data toko lokal: 4 bon
+pemasok terbuka, keempatnya LOLOS dengan Agustus terkunci).
+
+**Urutan (server sungguhan, v4 sudah terbit):**
+1. Cek Console › Firestore › **Usage** dulu — Playground membaca data sungguhan dan ikut kuota baca harian (Spark).
+2. Owner membuat dokumen uji **`aturanToko/kunciPeriode`** di tab Data (Console menulis sebagai admin, rules tidak menilai): `sampaiBulan` (string) =
+   `2026-08`, `riwayat` (array) = kosong. **Selama dokumen ini ada, Agustus BENAR-BENAR terkunci untuk semua perangkat** — kerjakan cepat, jangan ada
+   yang mencatat untuk Agustus selama itu.
+3. Playground ★D1–★D10 di bawah (juga saat yang tepat untuk **uji lapangan kasir darurat**, lihat laporan 25b langkah owner 3).
+4. **Owner menghapus dokumen uji** di tab Data. Claude memeriksa lewat Chrome owner (hanya membaca) bahwa `aturanToko/kunciPeriode` tidak ada.
+5. Baru sesudah itu: kunci Agustus lewat `/baru/` (Uang › Tutup buku › Kunci bulan), kalau daftar periksanya bersih.
+
+| # | Akun | Operasi · jalur · isi (*Build document*) | Wajib |
+|---|---|---|---|
+| ★D1 | owner@ | create `/utangPemasokMutasi/uji-d1` `{id:'uji-d1', tipe:'bayar', tanggal:'<hari ini>', bonTanggal:'2026-08-25', bonId:'1787649371888.5933', pemasok:'UJI', nominal:1}` | LOLOS (bon kedatangan 25 Agu dibayar hari ini) |
+| ★D2 | owner@ | create `/utangPemasokMutasi/uji-d2` `{id:'uji-d2', tipe:'bayar', tanggal:'<hari ini>', bonTanggal:'2026-07-31', bonId:'1787673756822.3254', pemasok:'UJI', nominal:1}` | LOLOS (bon lama 31 Jul dibayar hari ini) |
+| ★D3 | owner@ | create `/utangPemasokMutasi/uji-d3` `{id:'uji-d3', tipe:'saldoAwal', tanggal:'<hari ini>', bonTanggal:'2026-08-25', pemasok:'UJI', nominal:1}` | **DITOLAK** — kontrol: untuk bon lama BARU, `bonTanggal` memang dinilai (K4) |
+| ★D4 | owner@ | update `/utangPemasokMutasi/1787673756822.3254` (bon lama 31 Jul): `nominal` diubah | **DITOLAK** — kontrol: bon lamanya sendiri tidak bisa diubah; membayar tidak perlu mengubahnya |
+| ★D5 | owner@ | create `/piutangMutasi/uji-d5` `{id:'uji-d5', tipe:'bayar', tanggal:'<hari ini>', namaPelanggan:'UJI', nominal:1, caraBayar:'Tunai'}` | LOLOS (pelanggan membayar bon lama) |
+| ★D6 | kasir@ | create `/piutangMutasi/uji-d6` isi sama dengan ★D5 (id `uji-d6`) | LOLOS (kasir.html › UTANG) |
+| ★D7 | owner@ | create `/piutangMutasi/uji-d7` seperti ★D5 tetapi `tanggal:'2026-08-20'` | **DITOLAK** — kontrol: pembayaran bertanggal bulan terkunci |
+| ★D8 | owner@ | create `/kasbonMutasi/uji-d8` `{id:'uji-d8', tipe:'bayar', tanggal:'<hari ini>', namaPegawai:'UJI', nominal:1}` dan `/utangOwnerMutasi/uji-d8b` `{id:'uji-d8b', tipe:'bayar', tanggal:'<hari ini>', nominal:1}` | LOLOS keduanya |
+| ★D9 | owner@ | create `/pengeluaranHarian/uji-d9` `{id:'uji-d9', kategori:'toko', tanggal:'<hari ini>', nominal:1, keterangan:'Biaya admin UJI — bayar bon', dariBayarBon:'uji-d1'}` | LOLOS (biaya admin transfer saat bayar bon) |
+| ★D10 | kasir@ | create `/penjualan/uji-d10` `{id:'uji-d10', tanggal:'2026-08-31', hargaTotal:1000, jenis:'kasir_darurat_nominal'}` | **DITOLAK** — ini penolakan yang sejak 25b dipindah kasir ke daftar "ditolak" |
+
+Kalau ★D1, ★D2, ★D5, ★D6, ★D8, atau ★D9 **DITOLAK**: berhenti, jangan kunci Agustus — itu cacat rules yang harus diperbaiki dulu.
+
 ## Perlakuan kasir@ (kasir darurat) di v4 — persis
 
 | Operasi | Koleksi | Aturan |

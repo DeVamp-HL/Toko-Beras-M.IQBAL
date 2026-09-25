@@ -100,6 +100,8 @@ jobs:
         run: python3 alat-uji/uji_antrean_kasir.py && python3 alat-uji/uji_antrean_kasir.py --kontrol
       - name: "Batal karcis kasir darurat di /baru/ (25b): bentuk dokumen = mulaiBatalkanTrx sistem lama, alasan wajib, bulan terkunci ditolak (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_batal_karcis.py && python3 alat-uji/uji_batal_karcis.py --kontrol
+      - name: "Bayar bon dari bulan terkunci WAJIB lolos (25b C): teks rules dicocokkan + model + jalur sistem baru dengan Agustus terkunci (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_bayar_bon_terkunci.py && python3 alat-uji/uji_bayar_bon_terkunci.py --kontrol
 
   terbitkan:
     needs: uji
