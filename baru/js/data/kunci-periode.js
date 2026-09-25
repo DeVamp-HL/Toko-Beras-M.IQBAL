@@ -7,8 +7,8 @@
 // Peta lengkap & keputusan owner: docs/peta-kunci-periode.md.
 export const KP_ID = 'kunciPeriode';
 export const KP_ID_ATUR = 'kunciAtur';
-export const KP_TENGGANG_MIN = 1;       // hari — DITEGAKKAN rules (tenggangMin()): bulan M paling cepat dikunci tanggal KP_TENGGANG_MIN + 1 bulan M+1
-export const KP_TENGGANG_BAWAAN = 2;    // bawaan layar: kunci paling cepat tanggal 3 (bisa diatur owner, tidak di bawah minimal)
+export const KP_TENGGANG_MIN = 3;       // hari — DITEGAKKAN rules (tenggangMin()): bulan M paling cepat dikunci tanggal KP_TENGGANG_MIN + 1 bulan M+1 (owner 25 Sep: 3 → tanggal 4)
+export const KP_TENGGANG_BAWAAN = 3;    // bawaan layar = minimal: kunci paling cepat tanggal 4 (bisa dinaikkan owner, tidak di bawah minimal)
 export const KP_BATAS_GET = 18;         // access call per kiriman: batas Firebase 20 per batch, sisa 2 (keputusan owner 24 Sep)
 // Owner 25 Sep: kunci PERTAMA baru boleh sesudah putaran 25b — index.html & kasir*.html memperlakukan penolakan server sebagai "belum masuk" dan
 // antreannya macet di catatan yang ditolak (peta §5). Putaran 25b mengubah nilai ini sesudah kedua berkas memisahkan catatan yang ditolak.

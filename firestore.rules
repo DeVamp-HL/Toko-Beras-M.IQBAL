@@ -15,13 +15,16 @@
 //   Tulis-ulang yang isinya SAMA PERSIS tidak dinilai (tidak mengubah apa pun: kirim-ulang kasir@, muat cadangan atas dokumen yang sudah ada).
 //   aturanToko/kunciPeriode: owner saja; sampaiBulan naik TEPAT satu bulan (pertama kali: bulan mana pun yang sudah lewat tenggang) atau turun TEPAT
 //   satu bulan dengan alasan ≥ 10 huruf; riwayat hanya bertambah satu entri, entri lama tidak berubah; tidak pernah dihapus.
-//   TENGGANG MINIMAL ditegakkan di sini (tenggangMin() = 1 = KP_TENGGANG_MIN di baru/js/data/kunci-periode.js): bulan M paling cepat dikunci tanggal 2
-//   bulan M+1. Selama tenggang itu, tulisan bertanggal bulan lalu PASTI belum terkunci → tanpa get().
+//   TENGGANG MINIMAL ditegakkan di sini (tenggangMin() = 3 = KP_TENGGANG_MIN di baru/js/data/kunci-periode.js; owner 25 Sep): bulan M paling cepat
+//   dikunci tanggal 4 bulan M+1. Selama tanggal 1–3 itu, tulisan bertanggal bulan lalu PASTI belum terkunci → tanpa get().
 //
 // ACCESS CALL (batas Firebase 10 per operasi, 20 per batch/transaksi; cache TIDAK diandalkan — keputusan owner 24 & 25 Sep):
 //   owner  : 0 untuk bulan berjalan & masa tenggang; 1 get() dokumen kunci per operasi yang menyentuh bulan lampau (update: bulan TERTUA dari lama/baru).
 //            Kiriman owner > 18 pemeriksaan tidak dikirim layar; jalur besar dipecah (toko.js tulisBertahap). logAktivitas tidak dikunci (0).
-//   kasir@ : sama dengan owner (tanpa aksesAkun). Karcis = 1 dokumen (+ kantong).
+//   kasir@ : create penjualan/piutangMutasi/stokBahanLiteran dinilai kunci PERSIS seperti owner (tglBaru): bulan berjalan / tanggal 1–3 tanpa get(),
+//            selain itu 1 get() dan DITOLAK bila terkunci. Update hanya tulis-ulang identik; hapus TIDAK PERNAH. kasir*.html mengirim 1 dokumen per
+//            permintaan REST → ≤ 1 get() per permintaan (batas 10). Bukan aturan staf: nota offline > 3 hari lewat awal bulan akan ditolak walau
+//            belum ada kunci, dan antrean kasir*.html macet (25b).
 //   bukan-owner: 1 get() aksesAkun per dokumen seperti v3; dokumen kunci TIDAK PERNAH dibaca — hanya bulan berjalan / masa tenggang (tglStaf).
 //   Hitungan tiap jalur: alat-uji/peta_akses.py --kiriman (CI, dua keadaan: tanpa & dengan bulan terkunci; gagal bila > 18).
 //
@@ -29,11 +32,11 @@
 //   = DITOLAK. periksa_rules.py GAGAL bila ada match rekursif ({…=**}) yang memberi izin tulis.
 //
 // URUTAN PASANG (putaran 25):
-//   1. Rules Playground dengan v4 di EDITOR proyek toko (belum diterbitkan): semua kasus ★ di docs/uji-rules-v4.md wajib sesuai (★ v3 diulang).
-//   2. Tempel v4 ini ke Console proyek toko. Tanpa satu bulan pun terkunci, tidak ada fitur yang hari ini jalan yang berubah.
-//   3. Buat SATU nota dari kasir darurat (kasir@) dan pastikan masuk. Tidak masuk → tempel firestore.rules.v3.
-//   4. Kunci bulan PERTAMA baru sesudah putaran 25b (index.html & kasir*.html memisahkan catatan yang ditolak server — keputusan owner 25 Sep),
-//      dan hanya kalau daftar periksanya bersih (Uang › Tutup buku › Kunci bulan).
+//   Lengkap: docs/uji-rules-v4.md "Urutan". Ringkas: (1) dokumen uji aturanToko/kunciPeriode (v3 masih terbit) → (2) Playground ★A dengan v4 di
+//   EDITOR (belum Publish) → (3) HAPUS dokumen uji → (4) Claude membaca Console lewat Chrome: dokumen itu benar-benar tidak ada → (5) Playground ★B
+//   (tanpa dokumen kunci = keadaan sesudah terbit) & ★ v3 diulang → (6) merge cabang, Pages hijau → (7) Claude bilang siap → Publish v4 →
+//   (8) SATU nota kasir darurat masuk; tidak masuk → tempel firestore.rules.v3 → (9) kunci bulan PERTAMA baru sesudah putaran 25b dan hanya kalau
+//   daftar periksanya bersih (Uang › Tutup buku › Kunci bulan).
 //   MUNDUR = tempel firestore.rules.v3 (kunci periode mati; aturan akun v3 tetap).
 //
 // AKUN & PERAN (v3, tidak berubah):
@@ -96,7 +99,7 @@ service cloud.firestore {
     // Bulan = tahun × 12 + bulan. WIB = request.time + 7 jam lewat timestamp.value(toMillis()) — fungsi terdokumentasi, tanpa aritmetika timestamp.
     function wib() { return timestamp.value(request.time.toMillis() + 25200000); }
     function bulanIni() { return wib().year() * 12 + wib().month(); }
-    function tenggangMin() { return 1; }   // = KP_TENGGANG_MIN: bulan M paling cepat dikunci tanggal (1 + tenggangMin()) bulan M+1
+    function tenggangMin() { return 3; }   // = KP_TENGGANG_MIN (owner 25 Sep): bulan M paling cepat dikunci tanggal (1 + tenggangMin()) = 4 bulan M+1
     function bulanDari(s) { return int(s[0:4]) * 12 + int(s[5:7]); }
     function bulanNilai(v) { return v is string && v.matches('[0-9]{4}-[0-9]{2}(-[0-9]{2})?') ? bulanDari(v) : 0; }   // tidak ada / rusak = 0 (paling tua)
     function bulanDok(d, f) { return bulanNilai(d.get(f, null)); }
@@ -110,7 +113,7 @@ service cloud.firestore {
       return k != null && k.data.get('sampaiBulan', null) is string && b <= bulanNilai(k.data.sampaiBulan);
     }
     function bolehBulan(b) { return bebas(b) || !terkunci(b); }
-    // owner & kasir@: create = nilai BARU · update = bulan TERTUA dari lama & baru (tulis-ulang identik bebas) · delete = nilai LAMA — tiap operasi ≤ 1 get()
+    // owner: create = nilai BARU · update = bulan TERTUA dari lama & baru (tulis-ulang identik bebas) · delete = nilai LAMA — tiap operasi ≤ 1 get(). kasir@: create saja (tglBaru)
     function tglBaru(f) { return bolehBulan(bulanDok(request.resource.data, f)); }
     function tglUbah(f) { return tulisUlangSama() || bolehBulan(lebihTua(bulanDok(request.resource.data, f), bulanDok(resource.data, f))); }
     function tglLama(f) { return resource == null || bolehBulan(bulanDok(resource.data, f)); }   // hapus dokumen yang tidak ada = tidak mengubah apa pun (mis. kantong id+1 adukan tanpa kantong)

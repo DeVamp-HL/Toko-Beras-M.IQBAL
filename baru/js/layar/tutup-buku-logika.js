@@ -10,7 +10,8 @@
 // dan membandingkan sebelum vs sesudah dari susunan itu; sesudah kunci dibandingkan lagi dari mesin (hidup). Titik kas ditulis ulang di 31 Des dari saldo per tempat.
 import { hitungSaldoTutup, tbDaftarKoleksi, hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungPiutang, hitungKasbon, hitungUtangPemasok, hitungUtangOwner, saldoAmplop } from '../mesin/beku.js';
 import { tbCutoff, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, butuhGet } from '../data/toko.js';
+import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
 import { aturUpah } from './upah-logika.js';
@@ -124,6 +125,10 @@ export function susunKunci(tahun, D, w) {
   const A = arsipBuku(tahun); const dokumen = P.dokumen.slice(); const K = sebelum.K;
   if (K.ada) dokumen.push({ koleksi: 'pengaturan', data: { id: 'titikKas', tanggal: T.cutoff, laci: Math.round(K.laci), rekening: Math.round(K.rekening), amplop: Math.round(K.amplop), brankas: Math.round(K.brankas), diubahPada: w.kini } });
   dokumen.push({ koleksi: 'pengaturan', data: { id: 'tutupBuku', tahunDitutup: tahun, padaTanggal: w.tanggal } });
+  // putaran 25 (diukur, owner 25 Sep): pembuka piutang bertanggal utang tertuanya & bon lama pemasok bertanggal bonnya → tiap satu diperiksa kunci di server.
+  // Lebih dari KP_BATAS_GET = satu kiriman pasti ditolak; ditolak di sini dengan kalimatnya, sebelum apa pun dikirim. Rancang ulang tutup buku: wajib sebelum Desember 2026.
+  const g = butuhGet(dokumen, []);
+  if (g > KP_BATAS_GET) return { tolak: 'Saldo pembuka menyentuh ' + g + ' catatan bertanggal lama (piutang mengikuti tanggal utang tertuanya, bon pemasok mengikuti tanggal bonnya) — server hanya sanggup memeriksa ' + KP_BATAS_GET + ' sekali kirim. Tidak ada yang dikirim. Tutup buku sungguhan menunggu rancangan baru (wajib selesai sebelum Desember 2026); latihan tetap bisa.' };
   const acara = Object.assign({}, T.acara || {}, { id: String(tahun), tahun, mode: 'sungguhan', status: 'terkunci', saksi: D.saksi || '', paraf: { owner: true, saksi: true, pada: w.kini }, langkah: Object.assign({}, D.langkah || {}, { kunci: w.kini }), cadangan1: D.cadangan1 || '', arsipNama: D.arsipNama || '', nArsip: A.n, arsipPerKoleksi: A.perKoleksi, nPembuka: P.dokumen.length,
     sebelum: B.baris.map((b) => ({ id: b.id, nama: b.nama, n: b.a })), modal: sebelum.modal, labaTinggal: sebelum.labaTinggal, tanggal: w.tanggal, jam: w.jam, titikDitulis: K.ada, titikSebelum: ambilTitikKas() || null });
   dokumen.push({ koleksi: 'tutupBukuAcara', data: acara });

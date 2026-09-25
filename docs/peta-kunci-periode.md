@@ -6,6 +6,12 @@ logika yang berubah. Sumbernya: kode `baru/` di main `a339f51`, `index.html` dan
 
 > **STATUS (25 Sep, sesudah jawaban owner):** Tahap 0 berhenti karena kolom "tanpa padanan" tidak kosong. Owner menjawab K1–K6 hari yang sama
 > (§4a), lalu Tahap 1–5 dikerjakan di cabang ini. Bagian §0–§9 di bawah adalah peta asli Tahap 0; yang berubah karena keputusan owner ditulis di §4a.
+> Koreksi owner sebelum merge (25 Sep, putaran kedua) di §4b — termasuk **tenggang minimal 3 hari** (angka "tenggang 1" di §0–§9 sudah tidak berlaku).
+>
+> **TUGAS WAJIB — rancang ulang tutup buku tahunan, wajib selesai sebelum Desember 2026** (owner 25 Sep). Tanpa itu tutup buku 2026 TIDAK bisa
+> dijalankan di bawah rules v4: (a) ditolak selama tahun itu punya bulan terkunci (K1), dan (b) walau tanpa kunci pun, saldo pembukanya ditolak
+> karena terlalu banyak catatan bertanggal lama — diukur §4b. Syarat rancangan baru: arsip TIDAK menghapus (salinan + penanda, simpan 10 tahun,
+> UU KUP Pasal 28 ayat 11); tiap kiriman ≤ 18 pemeriksaan kunci (atau pembuka bertanggal 1 Januari); bisa dilanjutkan & dibatalkan per potongan.
 
 ## 0. Ringkas
 
@@ -242,6 +248,22 @@ dan tidak ada jenis "setoran negatif". Catatan salah yang tidak bisa dihapus mem
 Cache `get()`: halaman penagihan resmi (https://firebase.google.com/docs/firestore/pricing) menyebut dokumen yang dirujuk berkali-kali dalam satu
 permintaan hanya ditagih sekali. Untuk BATAS access call, halaman kondisi (https://firebase.google.com/docs/firestore/security/rules-conditions#access_calls)
 hanya menyebut sebagian panggilan *mungkin* di-cache. Tidak ada jaminan, jadi rancangan TIDAK mengandalkan cache.
+
+## 4b. Koreksi owner sebelum merge (25 Sep 2026, putaran kedua)
+
+| | Permintaan owner | Hasil |
+|---|---|---|
+| 1 | Perlakuan tanggal jalur kasir@ — kalau bebas dari kunci, tutup dengan aturan staf | **Tidak bebas.** create dinilai kunci persis seperti owner (`tglBaru`): ★A8 kasir@ ke bulan terkunci DITOLAK; update hanya tulis-ulang identik; hapus tidak pernah; 1 dokumen per permintaan REST. Karena tidak bebas, aturan staf TIDAK dipasang (alasannya: nota kasir darurat offline > 3 hari melewati awal bulan akan ditolak walau belum ada kunci → antrean kasir*.html macet). Penjaga baru: `periksa_rules.py` (kasir@ hapus / ubah bukan-identik = gagal) & `peta_akses.py` (kasir*.html kirim banyak dokumen = gagal) |
+| 2 | Tenggang minimal 3 hari; bulan M dikunci mulai tanggal 4 bulan M+1; bawaan aplikasi 3 | rules `tenggangMin() = 3`, `KP_TENGGANG_MIN = KP_TENGGANG_BAWAAN = 3`; `periksa_rules.py` gagal bila < 3 di rules ATAU di aplikasi; uji batas 3 Sep 23.59 / 4 Sep 00.00 WIB |
+| 3 | Kasus Playground tanpa dokumen kunci; urutan owner disusun ulang | `docs/uji-rules-v4.md` bagian B (★B0–★B6) dijalankan SESUDAH dokumen uji dihapus, sebelum Publish; ★ v3 diulang juga sesudahnya (★3/★4 kasir@ tanpa tanggal hanya LOLOS tanpa dokumen kunci) |
+| 4 | Sebelum Publish: Claude memeriksa lewat Chrome bahwa `aturanToko/kunciPeriode` benar-benar tidak ada | langkah 4 di `docs/uji-rules-v4.md`; ★B0 sebagai bukti kedua dari dalam Playground |
+| 5 | 28 jalur owner yang "dicatat alasannya": tampilkan; yang ber-perulangan diukur | 8 jalur ber-perulangan kini DIUKUR (dua keadaan): nota 40 baris, batal nota, "ini dia", cocokkan stok, tutup hari (juga 1 Sep 00.30), tutup buku 25 & 10 nama berutang, batal tutup buku, arsip & pengembalian per 18. Tinggal 20 dengan alasan (jumlah dokumen tetap 1–2, atau tidak menulis koleksi bertanggal) |
+
+**Temuan dari pengukuran (5):** saldo pembuka tutup buku tidak semuanya bertanggal 1 Januari — pembuka piutang mengikuti tanggal utang tertuanya dan
+bon lama pemasok mengikuti tanggal bonnya, jadi tiap nama berutang = 1 pemeriksaan kunci. Dengan cadangan toko 25 Sep (dihitung seolah 5 Jan 2027):
+55 catatan, 24 perlu pemeriksaan (19 pembuka piutang, 4 bon pemasok, 1 titik kas 31 Des) > 18 → server pasti menolak. Sekarang `susunKunci` menolaknya
+di layar dengan kalimat, sebelum apa pun dikirim (sebelumnya penjaga pusat yang menolak saat mengirim). Latihan tetap bisa. Arsip & pengembalian
+arsip sudah dipotong 18 (firebase.js `POTONG = KP_BATAS_GET`) — diukur 18/20 per potongan.
 
 ## 5. Sistem lama yang gagal di bulan terkunci
 

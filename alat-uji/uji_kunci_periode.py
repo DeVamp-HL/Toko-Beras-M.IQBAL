@@ -88,14 +88,15 @@ var butir = function (D, id) { return D.butir.find(function (b) { return b.id ==
 var semula = {}; ['perangkat'].forEach(function (c) { semula[c] = cacheMentah(c).slice(); });
 
 // ---- 1 · bulan WIB & tenggang minimal (sama dengan rules v4)
-ok('WIB: 1 Sep 00:30 WIB (31 Agu 17:30 UTC) = September hari 1; tanpa get() untuk Agustus HANYA di tanggal 1 (tenggang minimal 1); bulan berjalan & sesudahnya selalu tanpa get(); dua bulan lalu tidak pernah',
+ok('WIB: 1 Sep 00:30 WIB (31 Agu 17:30 UTC) = September hari 1; tanpa get() untuk Agustus HANYA tanggal 1–3 (tenggang minimal 3, owner 25 Sep) — 3 Sep 23:59 WIB masih, 4 Sep 00:00 WIB (3 Sep 17:00 UTC) tidak; bulan berjalan & sesudahnya selalu tanpa get(); dua bulan lalu tidak pernah',
   kpWib(new Date('2026-08-31T17:30:00Z')).bulan === '2026-09' && kpWib(new Date('2026-08-31T17:30:00Z')).hari === 1
-  && kpBebas(kpIdx('2026-08'), new Date('2026-09-01T10:00:00+07:00')) && !kpBebas(kpIdx('2026-08'), new Date('2026-09-02T10:00:00+07:00'))
-  && kpBebas(kpIdx('2026-09'), kini()) && kpBebas(kpIdx('2026-10'), kini()) && kpBebas(kpIdx('2026-07'), new Date('2026-08-01T10:00:00+07:00')) && !kpBebas(kpIdx('2026-06'), new Date('2026-08-01T10:00:00+07:00')) && KP_TENGGANG_MIN === 1);
-ok('bolehDikunci: Agustus TIDAK pada 1 Sep; pada 2 Sep hanya dengan tenggang 1; tenggang bawaan 2 → mulai 3 Sep; bulan berjalan tidak pernah; tenggang di bawah minimal dinaikkan ke minimal',
-  !kpBolehDikunci('2026-08', new Date('2026-09-01T10:00:00+07:00'), 1) && kpBolehDikunci('2026-08', new Date('2026-09-02T10:00:00+07:00'), 1)
-  && !kpBolehDikunci('2026-08', new Date('2026-09-02T10:00:00+07:00'), 2) && kpBolehDikunci('2026-08', new Date('2026-09-03T08:00:00+07:00'), 2)
-  && !kpBolehDikunci('2026-09', kini(), 1) && !kpBolehDikunci('2026-08', new Date('2026-09-01T10:00:00+07:00'), 0) && KP_TENGGANG_BAWAAN === 2 && kunciTenggang() === 2);
+  && kpBebas(kpIdx('2026-08'), new Date('2026-09-01T10:00:00+07:00')) && kpBebas(kpIdx('2026-08'), new Date('2026-09-03T23:59:00+07:00')) && !kpBebas(kpIdx('2026-08'), new Date('2026-09-03T17:00:00Z')) && !kpBebas(kpIdx('2026-08'), new Date('2026-09-04T10:00:00+07:00'))
+  && kpBebas(kpIdx('2026-09'), kini()) && kpBebas(kpIdx('2026-10'), kini()) && kpBebas(kpIdx('2026-07'), new Date('2026-08-01T10:00:00+07:00')) && !kpBebas(kpIdx('2026-06'), new Date('2026-08-01T10:00:00+07:00')) && KP_TENGGANG_MIN === 3);
+ok('bolehDikunci: Agustus TIDAK pada 1–3 Sep (tenggang 1 / 2 / 0 pun dinaikkan ke minimal 3); mulai 4 Sep 00:00 WIB boleh; bawaan layar 3; tenggang 5 → mulai 6 Sep; bulan berjalan tidak pernah',
+  !kpBolehDikunci('2026-08', new Date('2026-09-01T10:00:00+07:00'), 3) && !kpBolehDikunci('2026-08', new Date('2026-09-02T10:00:00+07:00'), 1) && !kpBolehDikunci('2026-08', new Date('2026-09-03T23:59:00+07:00'), 0)
+  && kpBolehDikunci('2026-08', new Date('2026-09-03T17:00:00Z'), 3) && kpBolehDikunci('2026-08', new Date('2026-09-04T08:00:00+07:00'), 2)
+  && !kpBolehDikunci('2026-08', new Date('2026-09-05T10:00:00+07:00'), 5) && kpBolehDikunci('2026-08', new Date('2026-09-06T08:00:00+07:00'), 5)
+  && !kpBolehDikunci('2026-09', kini(), 3) && KP_TENGGANG_BAWAAN === 3 && kunciTenggang() === 3);
 ok('bulan tertua yang dinilai: update = min(lama, baru); hapus = nilai lama; titik kas = nilai BARU saja; bon lama pemasok = bonTanggal (K4); pajak & jejak tidak dikunci (K6)',
   kpBulanOp({ koleksi: 'penjualan', data: { id: 1, tanggal: '2026-09-24' }, lama: { id: 1, tanggal: '2026-08-10' } }) === kpIdx('2026-08')
   && kpBulanOp({ koleksi: 'penjualan', lama: { id: 1, tanggal: '2026-08-10' }, hapus: true }) === kpIdx('2026-08')
@@ -108,8 +109,8 @@ ok('bulan tertua yang dinilai: update = min(lama, baru); hapus = nilai lama; tit
 // ---- 2 · daftar periksa Agustus (24 Sep): tiap ⛔ memblokir
 var D0 = kpDaftarPeriksa('2026-08', kini(), K({ siap25b: false }));
 ok('⛔ putaran 25b: selama sistem lama & kasir belum siap, butir pertama memblokir (keputusan owner 25 Sep) dan kunci ditolak', !butir(D0, 'siap25b').ok && butir(D0, 'siap25b').blokir && !D0.boleh && KP_SIAP_25B === false && /25b/.test(butir(D0, 'siap25b').teks));
-pada('2026-09-02T10:00:00+07:00'); var DT = kpDaftarPeriksa('2026-08', kini(), K()); pada('2026-09-24T10:00:00+07:00');
-ok('⛔ tenggang: 2 Sep (tenggang 2 hari) belum boleh, kalimatnya menyebut tanggal mulai 3 Sep', !butir(DT, 'tenggang').ok && /3 Sep/.test(butir(DT, 'tenggang').ket), butir(DT, 'tenggang').ket);
+pada('2026-09-03T10:00:00+07:00'); var DT = kpDaftarPeriksa('2026-08', kini(), K()); pada('2026-09-04T08:00:00+07:00'); var DT4 = kpDaftarPeriksa('2026-08', kini(), K()); pada('2026-09-24T10:00:00+07:00');
+ok('⛔ tenggang: 3 Sep (tenggang 3 hari) belum boleh, kalimatnya menyebut tanggal mulai 4 Sep; 4 Sep boleh', !butir(DT, 'tenggang').ok && /4 Sep/.test(butir(DT, 'tenggang').ket) && butir(DT4, 'tenggang').ok, butir(DT, 'tenggang').ket);
 var agustusBelum = { koleksi: 'penjualan', data: { id: 'x1', tanggal: '2026-08-31' } }, septBelum = { koleksi: 'penjualan', data: { id: 'x2', tanggal: '2026-09-24' } };
 var DA = kpDaftarPeriksa('2026-08', kini(), K({ lokal: { antreLokal: { belum: [{ id: 'k', akunNama: 'Owner', keadaan: 'antre', dokumen: [agustusBelum] }], ditolak: [] }, antre: [] } }));
 var DA2 = kpDaftarPeriksa('2026-08', kini(), K({ lokal: { antreLokal: { belum: [{ id: 'k', dokumen: [septBelum] }], ditolak: [{ id: 'd', keadaan: 'ditolak', dokumen: [agustusBelum] }] }, antre: [] } }));
@@ -204,8 +205,8 @@ drainMicrotasks(); var tertunda = bertahapTertunda(); lanjutkanBertahap().then(f
 ok('kirim bertahap: kemajuan tersimpan SEBELUM potongan berikutnya dikirim (tab ditutup di tengah = bisa dilanjutkan); terputus di potongan 2 → berhenti (1 dari 3); dilanjutkan → potongan 2 & 3 terkirim, TIDAK ada yang dikirim dua kali; rencana dihapus sesudah selesai',
   !!hasilBT && hasilBT.gagal && diTengah && diTengah.sudah === 1 && tertunda && tertunda.sudah === 1 && tertunda.total === 3 && !!hasilLanjut && hasilLanjut.ok && terkirim.length === 3 && new Set(terkirim).size === 3 && bertahapTertunda() === null, J([hasilBT, tertunda, hasilLanjut, terkirim.length]));
 var nStaf = [{ koleksi: 'penjualan', data: { id: 'sb1', tanggal: '2026-08-31', caraBayar: 'Tunai' }, ada: false, lama: null }];
-pada('2026-09-01T09:00:00+07:00'); var st1 = periksaKiriman(BEN, nStaf, [], {}, kini()); pada('2026-09-02T09:00:00+07:00'); var st2 = periksaKiriman(BEN, nStaf, [], {}, kini()); pada('2026-09-24T10:00:00+07:00');
-ok('bukan-owner: nota bertanggal 31 Agu yang tiba 1 Sep (masa tenggang) → boleh, 1 access call per dokumen; tiba 2 Sep → ditolak di perangkat ("lewat masa tenggang — owner yang mencatat"), rules tanpa get() kunci',
+pada('2026-09-03T21:00:00+07:00'); var st1 = periksaKiriman(BEN, nStaf, [], {}, kini()); pada('2026-09-04T09:00:00+07:00'); var st2 = periksaKiriman(BEN, nStaf, [], {}, kini()); pada('2026-09-24T10:00:00+07:00');
+ok('bukan-owner: nota bertanggal 31 Agu yang tiba 3 Sep malam (masa tenggang) → boleh, 1 access call per dokumen; tiba 4 Sep → ditolak di perangkat ("lewat masa tenggang — owner yang mencatat"), rules tanpa get() kunci',
   !st1.tolak && st1.accessCall === 2 && /lewat masa tenggang/.test(st2.tolak || ''), J([st1, st2]));
 
 // ---- 5 · pembalik bertanggal HARI INI dengan jenis lama; angka bulan terkunci tidak bergeser
@@ -252,6 +253,11 @@ Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[
 var salah = []; var J = JSON.stringify;
 var angkaBulan = function (b) { var akhir = kpAkhirBulan(b); return J([hitungLabaBersihRentang(b + '-01', akhir), hitungLabaRentang(function (t) { return !!t && t >= b + '-01' && t <= akhir; }), hitungNeraca(akhir)]); };
 var ASAP_BULAN = ['2026-07', '2026-08', '2026-09'];
+// tutup buku 2026 dengan data toko, seolah 5 Jan 2027, TANPA bulan terkunci: pembuka piutang/bon pemasok bertanggal lama → berapa pemeriksaan kunci
+var __kiniAsap = __KINI; __KINI = new Date('2027-01-05T10:00:00+07:00').getTime(); var n27 = 90000;
+var TB = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: 'uji asap', langkah: {} }, { tanggal: '2027-01-05', jam: '10:00', kini: new Date(__KINI).toISOString(), idUnik: function () { n27 += 1; return n27; } });
+var tbN = TB.tolak && /Saldo pembuka menyentuh (\d+) catatan/.exec(TB.tolak); __KINI = __kiniAsap;
+if (!TB.tolak && butuhGet(TB.dokumen, []) > KP_BATAS_GET) salah.push('tutup buku data toko > 18 pemeriksaan TIDAK ditolak di layar');
 var sebelum = ASAP_BULAN.map(angkaBulan);
 terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'kunciPeriode', sampaiBulan: '2026-08', riwayat: [{ aksi: 'kunci', bulan: '2026-08', pada: 'uji', olehUid: 'uji' }] } }]);
 var sesudahKunci = ASAP_BULAN.map(angkaBulan);
@@ -271,7 +277,8 @@ if (R.tolak) salah.push('pembalik ditolak: ' + R.tolak); else {
   var dS = hitungLabaRentang(function (t) { return !!t && t.slice(0, 7) === '2026-09'; }).omzetPenuh;
 }
 print(JSON.stringify({ salah: salah, notaAgustus: nota ? nota.id : null, refund: R && R.dokumen ? R.dokumen[0].data.nominalRefund : null, tanggalPembalik: R && R.dokumen ? R.dokumen[0].data.tanggal : null,
-  byteSama: { juli: sebelum[0] === sesudahKunci[0], agustus: sebelum[1] === sesudahKunci[1] }, bulanDiperiksa: ASAP_BULAN }));
+  byteSama: { juli: sebelum[0] === sesudahKunci[0], agustus: sebelum[1] === sesudahKunci[1] }, bulanDiperiksa: ASAP_BULAN,
+  tutupBuku2026pada5Jan: TB.tolak ? { ditolakDiLayar: true, pemeriksaanKunci: tbN ? Number(tbN[1]) : null } : { ditolakDiLayar: false, pemeriksaanKunci: butuhGet(TB.dokumen, []) } }));
 """
 
 
@@ -307,7 +314,9 @@ if __name__ == '__main__':
             # daftar periksa
             '⛔ 25b diabaikan': js.replace("const siap = KP_SIAP_25B || !!K.siap25b;", "const siap = true;"),
             'tenggang tidak dinilai': js.replace("const bolehT = kpBolehDikunci(bulan, kini, tenggang);", "const bolehT = true;"),
-            'tenggang minimal 0': js.replace("const KP_TENGGANG_MIN = 1;", "const KP_TENGGANG_MIN = 0;"),
+            'tenggang minimal 0': js.replace("const KP_TENGGANG_MIN = 3;", "const KP_TENGGANG_MIN = 0;"),
+            'tenggang minimal kembali 1 (di bawah keputusan owner 3 hari)': js.replace("const KP_TENGGANG_MIN = 3;", "const KP_TENGGANG_MIN = 1;"),
+            'tenggang bawaan layar 2 (di bawah minimal)': js.replace("const KP_TENGGANG_BAWAAN = 3;", "const KP_TENGGANG_BAWAAN = 2;"),
             'catatan ditolak di perangkat tidak memblokir': js.replace("(AL.belum || []).concat(AL.ditolak || []).forEach(", "(AL.belum || []).forEach("),
             'parkir tanpa cap waktu dianggap aman': js.replace("const parkir = (K.parkir || []).filter((p) => !p.pada || ", "const parkir = (K.parkir || []).filter((p) => !!p.pada && "),
             'perangkat antre tidak memblokir': js.replace("tambah({ id: 'perangkatAntre', blokir: true, ok: !antreLain.length,", "tambah({ id: 'perangkatAntre', blokir: true, ok: true,"),

@@ -318,22 +318,28 @@ def periksa_kiriman(src):
 # dihitung dari fungsi ASLI dalam DUA keadaan: A tanpa bulan terkunci, B Agustus terkunci (jalur harus menolak — tidak pernah mengirim catatan bulan terkunci).
 # Tiap fungsi susun* yang menulis koleksi bertanggal (KP_KOLEKSI) wajib ada di daftar ini: 'diukur' (skenario jsc di bawah) atau alasannya.
 OWNER_JALUR = {
+    # diukur langsung (jsc, dua keadaan) — termasuk SEMUA jalur yang jumlah dokumennya bisa membesar karena perulangan (owner 25 Sep)
     'susunRinciDokumen': 'diukur', 'susunUrungRinci': 'diukur', 'susunPerbaikanKarcis': 'diukur', 'susunGabung': 'diukur', 'susunHapusNama': 'diukur',
     'susunKoreksiAdukan': 'diukur', 'susunHapusAdukan': 'diukur', 'susunSimpanAdukan': 'diukur', 'susunSimpanMasuk': 'diukur', 'susunHapusKedatangan': 'diukur',
     'susunKoreksiHpp': 'diukur', 'susunKoreksiMassal': 'diukur', 'susunHapusBeli': 'diukur', 'susunBayarUpah': 'diukur', 'susunPutusKarantina': 'diukur', 'susunBonLama': 'diukur', 'susunRetur': 'diukur',
-    'simpanNota': 'nota selalu bertanggal hari ini (w.tanggal); kantong, bayar sebagian, pesanan ikut hari ini',
-    'susunNotaDokumen': 'nota selalu bertanggal hari ini (w.tanggal)',
-    'susunPembatalan': 'batal ≤ 90 detik: nota barusan (bulan berjalan)',
-    'susunReturTanpaNota': 'retur hari ini (w.tanggal)', 'susunPenggantiTercatat': 'satu dokumen retur (≤ 1 pemeriksaan); bulan terkunci → ditolak logika',
-    'susunBayar': 'bayar bon pemasok hari ini', 'susunUrungBayar': 'urung ≤ 90 detik (dokumen barusan)', 'susunBayarBon': 'terima bon hari ini', 'susunHapusBon': 'hapus buku piutang hari ini',
-    'susunBayarTagihan': 'biaya bulanan bulan INI', 'susunBonus': 'bonus: biaya bulan ini', 'susunKasbonKaryawan': 'kasbon hari ini', 'susunKeluar': 'uang keluar hari ini',
-    'susunPindah': 'pindah uang hari ini', 'susunUrungPindah': 'urung ≤ 90 detik', 'susunPutusTitipan': 'titipan disetujui hari ini',
-    'susunCocok': 'cocokkan hari ini', 'susunSimpanCocok': 'cocokkan hari ini', 'susunSimpanBeli': 'beli kantong hari ini', 'susunIniDia': 'nota HARI INI saja', 'susunTakarWadah': 'takar hari ini',
-    'susunTutup': 'tutup hari = tanggal perangkat hari ini (lewat tengah malam = hari baru)',
-    'susunKunci': 'tutup buku sungguhan: ditolak selama ada bulan terkunci (K1); arsip per 18 dokumen; dirancang ulang sebelum Jan 2027',
-    'susunBatal': 'batalkan tutup buku: pengembalian arsip per 18 dokumen; ditolak penjaga bila bulan terkunci',
-    'susunAturHargaWadah': 'graf panggilan saja — menulis setelan hargaWadah, bukan dokumen bertanggal', 'susunRak': 'graf panggilan saja — pembaca', 'susunRakWadah': 'graf panggilan saja — pembaca',
-    'susunAturTempat': 'pengaturan/tempatSimpan (bukan titikKas) — setelan',
+    'simpanNota': 'diukur', 'susunNotaDokumen': 'diukur', 'susunPembatalan': 'diukur', 'susunIniDia': 'diukur', 'susunSimpanCocok': 'diukur', 'susunTutup': 'diukur',
+    'susunKunci': 'diukur', 'susunBatal': 'diukur',
+    # dicatat alasannya — jumlah dokumen bertanggal TETAP (tanpa perulangan yang membesar) dan tanggalnya hari ini / bulan ini, atau tidak menulis koleksi bertanggal
+    'susunReturTanpaNota': '1 retur bertanggal hari ini (+ karantina, tidak dikunci)',
+    'susunPenggantiTercatat': '1 dokumen retur (≤ 1 pemeriksaan); retur di bulan terkunci → ditolak logika',
+    'susunBayar': 'bayar bon pemasok: 1 utangPemasokMutasi + paling banyak 1 biaya admin, bertanggal hari ini',
+    'susunUrungBayar': 'urung bayar bon: hapus 1 pembayaran + paling banyak 1 biaya admin (dokumen barusan)',
+    'susunBayarBon': 'terima bon: 1 piutangMutasi bertanggal hari ini', 'susunHapusBon': 'hapus buku piutang: 1 piutangMutasi bertanggal hari ini',
+    'susunBayarTagihan': '1 dokumen: biayaBulanan bulan INI atau pengeluaranHarian hari ini', 'susunBonus': '2 dokumen: biayaBulanan bulan INI + slipUpah hari ini',
+    'susunKasbonKaryawan': '1 kasbonMutasi bertanggal hari ini', 'susunKeluar': 'uang keluar: paling banyak 2 dokumen (pengeluaranHarian + kasbon) bertanggal hari ini',
+    'susunPindah': 'pindah uang: pindahUang + paling banyak 1 biaya admin hari ini · pindah tempat stok: pengaturan tempatSimpan & pindahTempat (tidak dikunci)',
+    'susunUrungPindah': 'urung pindah: hapus 1 pindahUang + paling banyak 1 biaya admin (dokumen barusan)',
+    'susunPutusTitipan': 'titipan disetujui: 1 pengeluaranHarian hari ini (+ persetujuan, tidak dikunci)',
+    'susunCocok': 'penghitung daftar cocokkan — tidak menulis; yang menulis susunSimpanCocok (diukur)',
+    'susunSimpanBeli': 'beli kantong: 1 dokumen bertanggal hari ini',
+    'susunTakarWadah': 'wadahLiteran (tidak dikunci) + paling banyak 1 produksiKemasan hari ini',
+    'susunAturHargaWadah': 'setelan hargaWadah — bukan koleksi bertanggal', 'susunRak': 'pembaca — tidak menulis', 'susunRakWadah': 'pembaca — tidak menulis',
+    'susunAturTempat': 'pengaturan tempatSimpan / aturanToko / pindahTempat — tidak ada yang dikunci (pengaturan hanya titikKas)',
 }
 MODUL_OWNER = None   # diisi dari uji_kunci_periode.MODUL (bundel yang sudah terbukti satu lingkup)
 
@@ -397,6 +403,56 @@ function jalankan(keadaan) {
   ukur(keadaan, 'karantina layak jual (retur Agustus)', 'susunPutusKarantina', susunPutusKarantina(8000, 'layak_jual', 'ternyata kering', W, 'layak_jual'));
   ukur(keadaan, 'bon lama pemasok bertanggal Agustus', 'susunBonLama', susunBonLama({ pemasok: 'PEMASOK CONTOH', ketik: '5.000.000', tgl: '2026-08-10' }, W));
   ukur(keadaan, 'retur hari ini untuk nota Agustus (pembalik)', 'susunRetur', susunRetur(Object.assign(returAwal(), { rtNotaId: 1001, ketik: '5', rtAlasan: 'kualitas', rtKondisi: 'utuh', rtPenyelesaian: 'refund' }), W));
+  ukurBerulang(keadaan);
+}
+// ---- jalur ber-PERULANGAN (owner 25 Sep: jumlah dokumen bisa membesar → diukur langsung, bukan dicatat). Cache dipotret & dipulihkan tiap keadaan.
+function foto() { var f = { ls: localStorage.getItem('miqbal_titik_kas_v1') }; KOLEKSI.forEach(function (k) { f[k.nama] = cacheMentah(k.cache).slice(); }); return f; }
+function pulih(f) { KOLEKSI.forEach(function (k) { pasok(k.nama, f[k.nama]); }); if (f.ls === null) localStorage.removeItem('miqbal_titik_kas_v1'); else localStorage.setItem('miqbal_titik_kas_v1', f.ls); __KINI = new Date('2026-09-24T10:00:00+07:00').getTime(); }
+function pada(iso) { __KINI = new Date(iso).getTime(); }
+function jam(iso) { var n0 = 80000; return { tanggal: kpWib(new Date(iso)).iso, jam: '10:00', kini: new Date(iso).toISOString(), idUnik: function () { n0 += 1; return n0; } }; }
+function masukCache(dok) { terapkanKeCache(dok.map(function (d) { return { koleksi: d.koleksi, data: d.data }; })); }
+function ukurBerulang(keadaan) {
+  var F = foto(); var kunciB = keadaan === 'B' ? [{ id: 'kunciPeriode', sampaiBulan: '2026-08', riwayat: [] }] : [];
+  // nota owner (tanpa batas baris): 40 baris literan berkantong + bayar sebagian — semua bertanggal HARI INI
+  var sN = { keranjang: literan(40), pelanggan: 'Pembeli Contoh', cara: 'Tunai', uang: 1000, potongan: 0, batasBaris: 0 };
+  var rn = simpanNota(sN, W); ukur(keadaan, 'nota hari ini · 40 baris literan berkantong + bayar sebagian (' + (rn.dokumen ? rn.dokumen.length : 0) + ' catatan)', 'simpanNota', rn); H.diukur.susunNotaDokumen = true;   // simpanNota = alasanTolak + susunNotaDokumen
+  if (rn.dokumen) { masukCache(rn.dokumen);
+    ukur(keadaan, 'batal nota barusan · 40 baris (+ 40 kantong & bayar sebagian dicabut)', 'susunPembatalan', susunPembatalan(rn.patch.notaTerakhir, 'uji ukur', W)); }
+  // "ini dia": nota tanpa nama hari ini, 40 baris satu grupNota
+  var tanpa = []; for (var q = 0; q < 40; q++) tanpa.push(nota(60000 + q, W.tanggal, '', 70000, { grupNota: 'g-ukur' })); pasok('penjualan', cacheMentah('penjualan').concat(tanpa));
+  var org = semuaOrang(KINI).find(function (x) { return x.nama === 'Pelanggan Kini Contoh'; });
+  ukur(keadaan, 'ini dia · nota tanpa nama hari ini 40 baris', 'susunIniDia', susunIniDia(KINI, 'g-ukur', org && org.kunci));
+  // cocokkan stok: SEMUA beras & SEMUA kemasan berubah
+  ['beras', 'kemasan'].forEach(function (tab) { var bc = barangCocok(tab), Hc = {}, Al = {}; bc.forEach(function (b) { Hc[b.kunci] = String(Math.max(0, b.sistem - 1)); Al[b.kunci] = 'uji ukur'; });
+    ukur(keadaan, 'cocokkan stok hari ini · semua ' + tab + ' berubah (' + bc.length + ' barang)', 'susunSimpanCocok', susunSimpanCocok(tab, Hc, Al, W, { sebagian: true, ganda: true })); });
+  // tutup hari: timbang cepat (paling banyak 3 merek terlaris hari ini) beda semua + amankan laci
+  pasok('penjualan', cacheMentah('penjualan').concat(['Angsa', 'Beo', 'Cendana'].map(function (m, i) { return nota(61000 + i, W.tanggal, '', 700000, { merkSumber: m }); })));
+  localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-09-23', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }));
+  var tb = {}; barangTimbang(W.tanggal).forEach(function (m) { tb[m.merk] = String(Math.max(0, m.sistem - 3)); });
+  var DT = { lembar: { 100000: 40 }, receh: 0, alasan: 'uji ukur', rekPilih: '', rekNyata: '', sisih: null, timbang: tb, status: { laci: 'beres', timbang: 'beres', amankan: 'beres' } };
+  ukur(keadaan, 'tutup hari · ' + Object.keys(tb).length + ' merek ditimbang beda + amankan laci', 'susunTutup', susunTutup(DT, W, true));
+  if (keadaan === 'A') { pada('2026-09-01T00:30:00+07:00'); var W1 = jam('2026-09-01T00:30:00+07:00');
+    ukur('A', 'tutup hari lewat tengah malam 1 Sep 00.30 (hari baru, bukan 31 Agu)', 'susunTutup', susunTutup(DT, W1, true)); pulih(F); }
+  pulih(F);
+  // tutup buku 2026 pada 5 Jan 2027: pembuka piutang = tanggal utang TERTUA (lama) → 1 pemeriksaan per nama berutang
+  [25, 10].forEach(function (nn) {
+    var bon = []; for (var q = 0; q < nn; q++) bon.push(nota(9000 + q, '2026-08-' + String(2 + (q % 20)).padStart(2, '0'), 'Pengutang Contoh ' + q, 200000, { caraBayar: 'Kredit' }));
+    pasok('penjualan', cacheMentah('penjualan').concat(bon)); pasok('aturanToko', aturan0.concat(kunciB));
+    pada('2027-01-05T10:00:00+07:00'); var W27 = jam('2027-01-05T10:00:00+07:00');
+    var rk = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: 'Saksi Contoh', langkah: {} }, W27);
+    ukur(keadaan, 'tutup buku 2026 pada 5 Jan 2027 · ' + nn + ' nama berutang', 'susunKunci', rk);
+    if (keadaan === 'A' && nn === 10 && rk && !rk.tolak) {
+      var gKunci = butuhGet(rk.dokumen, []); var maxA = 0; for (var i = 0; i < rk.arsip.length; i += 18) maxA = Math.max(maxA, butuhGet([], rk.arsip.slice(i, i + 18).map(function (x) { return { koleksi: x.koleksi, id: x.id }; })));
+      H.baris.push({ keadaan: 'A', jalur: 'arsip tutup buku · ' + rk.arsip.length + ' catatan, per potongan 18 (firebase POTONG)', fungsi: 'arsipkanBerkas', ac: maxA, bertahap: Math.ceil(rk.arsip.length / 18) });
+      terapkanKeCache(rk.arsip.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; }));   // sesudah arsip: aslinya sudah tidak ada → pengembalian = create
+      var maxP = 0; for (var j2 = 0; j2 < rk.arsip.length; j2 += 18) maxP = Math.max(maxP, butuhGet(rk.arsip.slice(j2, j2 + 18).map(function (x) { return { koleksi: x.koleksi, data: x.data }; }), []));
+      H.baris.push({ keadaan: 'A', jalur: 'batal tutup buku: arsip dikembalikan per potongan 18', fungsi: 'pulihkanBerkas', ac: maxP, bertahap: Math.ceil(rk.arsip.length / 18) });
+      masukCache(rk.dokumen); var bt = susunBatal(2026, [], W27); ukur('A', 'batal tutup buku · saldo pembuka ' + nn + ' nama ditarik', 'susunBatal', bt);
+      if (bt && !bt.tolak && butuhGet(bt.dokumen, bt.hapus) > gKunci) salah('batal tutup buku butuh lebih banyak pemeriksaan daripada kuncinya — tutup buku bisa terkunci tanpa bisa dibatalkan');
+    }
+    if (keadaan === 'A' && nn === 25 && !(rk && rk.tolak && /Saldo pembuka menyentuh/.test(rk.tolak))) salah('tutup buku 25 nama berutang TIDAK ditolak di logika (server pasti menolak > 18)');
+    pulih(F);
+  });
 }
 jalankan('A'); jalankan('B');
 // penjaga pusat: kiriman bulan lampau > 18 pemeriksaan tidak pernah dikirim, apa pun jalurnya
@@ -417,6 +473,14 @@ def periksa_owner(teks_sumber=None):
     F = pindai(teks_sumber)
     for nama, f in sorted(F.items()):
         if any(k in KOL for k, _ in f['tulis']) and nama not in OWNER_JALUR: cacat.append('jalur baru menulis koleksi bertanggal tanpa hitungan access call owner: %s (%s)' % (nama, f['berkas']))
+    # (a2) arsip tutup buku (firebase.js, tidak lewat susun*): dipotong per KP_BATAS_GET di KEDUA arah — arsip (hapus asli) & pengembalian (tulis ulang asli)
+    fb = (teks_sumber or {}).get('baru/js/data/firebase.js') or open(os.path.join(AKAR, 'baru/js/data/firebase.js'), encoding='utf-8').read()
+    if 'const POTONG = KP_BATAS_GET;' not in fb or fb.count('i += POTONG') < 2 or fb.count('daftar.slice(i, i + POTONG)') < 2:
+        cacat.append('arsip / pengembalian tutup buku tidak dipotong per KP_BATAS_GET (firebase.js POTONG) — satu potongan bisa > 18 pemeriksaan kunci')
+    # (a3) kasir@ (kasir*.html, tidak disentuh putaran 25): SATU dokumen per permintaan REST (PATCH) → ≤ 1 pemeriksaan kunci per permintaan (batas 10)
+    for k in ('kasir.html', 'kasir-darurat-nominal.html'):
+        t = (teks_sumber or {}).get(k) or open(os.path.join(AKAR, k), encoding='utf-8').read()
+        if re.search(r'documents:commit|:batchWrite|writeBatch|runTransaction', t): cacat.append(k + ': kasir@ mengirim banyak dokumen sekaligus — hitungan "≤ 1 pemeriksaan kunci per permintaan" tidak berlaku lagi, ukur ulang')
     # (b) jsc: fungsi asli dua keadaan
     teks = dict((m, (teks_sumber or {}).get(m) or open(os.path.join(AKAR, m), encoding='utf-8').read()) for m in uji_kunci_periode.MODUL)
     js = uji_kunci_periode.satu_lingkup('\n'.join([bundel_baru.PRELUDE] + ['\n// ===== ' + m + ' =====\n' + bundel_baru.polos(teks[m]) for m in uji_kunci_periode.MODUL]))
@@ -471,6 +535,10 @@ if __name__ == '__main__':
                 'adukan mundur tanpa batas 18': rusakO('baru/js/layar/stok-adukan-logika.js', "const g = butuhGet(dokumen); if (g > KP_BATAS_GET) return", "const g = butuhGet(dokumen); if (false) return"),
                 'karantina bulan terkunci tetap mengirim retur': rusakO('baru/js/layar/stok-karantina-logika.js', "if (kunci) return kunci;\n    if (kqSudahRework(k))", "\n    if (kqSudahRework(k))"),
                 'penjaga pusat tanpa batas 18': rusakO('baru/js/data/toko.js', "if (N.perluGet > KP_BATAS_GET) return { gagal: true,", "if (false) return { gagal: true,"),
+                'arsip tutup buku dipotong 200 lagi': rusakO('baru/js/data/firebase.js', 'const POTONG = KP_BATAS_GET;', 'const POTONG = 200;'),
+                'kasir darurat mengirim banyak dokumen sekaligus': rusakO('kasir-darurat-nominal.html', "method: 'PATCH'", "method: 'POST', jalur: 'documents:commit'"),
+                'tutup buku tanpa batas 18 (pembuka piutang bertanggal lama)': rusakO('baru/js/layar/tutup-buku-logika.js', "if (g > KP_BATAS_GET) return { tolak: 'Saldo pembuka", "if (false) return { tolak: 'Saldo pembuka"),
+                'nota owner bertanggal mundur (perulangan baris jadi pemeriksaan kunci)': rusakO('baru/js/layar/jual-logika.js', "d.id = w.idUnik(); d.trxId = trxId; d.tanggal = w.tanggal;", "d.id = w.idUnik(); d.trxId = trxId; d.tanggal = '2026-08-30';"),
                 'jalur baru menulis koleksi bertanggal tanpa hitungan': rusakO('baru/js/layar/uang-logika.js', "// ==================== K4 · PINDAH UANG ====================", "export function susunSetoranBaru(w) { return { dokumen: [{ koleksi: 'setoranKas', data: { id: w.idUnik(), tanggal: w.tanggal, nominal: 1 } }] }; }\n// ==================== K4 · PINDAH UANG ===================="),
             }
             kode = 0
