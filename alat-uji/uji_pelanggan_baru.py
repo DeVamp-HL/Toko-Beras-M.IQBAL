@@ -74,6 +74,17 @@ KOTAK = {
   'thrPelanggan': [{'id': 'th1', 'tahun': 2025, 'kunci': 'uda feri', 'nama': 'Uda Feri', 'bentuk': 'Sarung', 'nilai': 75000, 'tanggal': '2025-03-20', 'jam': '10:00', 'serah': True}],
 }
 
+# PUTARAN 25 — nota SISTEM BARU (bentuk susunNotaDokumen jual-logika.js; keranjang index.html sama): trxId di TIAP baris, TANPA grupNota; id & trxId
+# berbentuk idUnik() asli (Date.now() + Math.random()). Plus satu baris lama tanpa trxId/grupNota (satu baris = satu nota). Dipasang HANYA di kasus
+# putaran 25 lalu dipulihkan, jadi kasus lain melihat kotak yang sama.
+TRX_BARU = 1758249600000.4217
+NOTA_TRX = [
+    karung(1758249600000.6113, '2026-09-19', '09:40', '', 'IR42 Select', 1, 780000, trxId=TRX_BARU),
+    literan(1758249600000.7731, '2026-09-19', '09:40', '', 'Angsa', 3, 37500, trxId=TRX_BARU),
+    literan(1758249600000.9302, '2026-09-19', '09:40', '', 'Perahu Layar', 5, 70000, trxId=TRX_BARU),
+    karung(9701, '2026-09-19', '09:50', '', 'Angsa', 1, 690000),
+]
+
 SKENARIO = r"""
 var gagal = [], lulus = 0;
 function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + ket : '')); }
@@ -110,6 +121,20 @@ ok('belanja: pilih nota g1 (IR42 karung, jam 08.10 pagi) → tebakan Uda Feri sa
 var ID = susunIniDia(KINI, 'g1', 'uda feri');
 ok('ini dia: SEMUA baris nota g1 (2) ditulis ulang dengan namaPelanggan "Uda Feri" — kolom lain utuh; nota bernama ditolak; sesudahnya Feri sudah datang hari ini & nota besar habis', !ID.tolak && ID.dokumen.length === 2 && ID.dokumen.every(function (d) { return d.koleksi === 'penjualan' && d.data.namaPelanggan === 'Uda Feri'; }) && ID.dokumen.some(function (d) { return d.data.hargaTotal === 2340000 && d.data.jumlahKarung === 3; }) && /Rp3\.120\.000/.test(ID.patch.kabar)
   && (function () { var s = simpan(); terapkan(ID); var r = semuaOrang(KINI).find(function (b) { return b.kunci === 'uda feri'; }).hariIni && susunBelanja(KINI, null, []).nota.length === 0 && /sudah bernama/.test(susunIniDia(KINI, 'g1', 'uda feri').tolak || ''); pulih(s); return r; })(), JSON.stringify(ID));
+// ---- PUTARAN 25: nota sistem baru (trxId di tiap baris, tanpa grupNota) = SATU nota di Belanja; "ini dia" menamai SEMUA barisnya. Baris lama tanpa kunci tetap satu baris satu nota.
+var sTrx = simpan(); pasok('penjualan', cacheMentah('penjualan').concat(NOTA_TRX)); var kTrx = String(TRX_BARU);
+var BLT = susunBelanja(KINI, null, []); var nT = BLT.nota.find(function (n) { return n.jam === '09:40'; }) || {}; var gT = BLT.nota.find(function (n) { return n.kunci === 'g1'; }) || {};
+ok('belanja (putaran 25): nota sistem baru 3 baris (trxId, tanpa grupNota) = SATU nota besar (3 baris · 887.500, kunci = trxId); baris 37.500 & 70.000-nya TIDAK jadi nota kecil sendiri; nota lama g1 tetap 2 baris; baris lama tanpa kunci = nota sendiri (kunci = id)',
+  JSON.stringify(BLT.nota.map(function (n) { return n.kunci; })) === JSON.stringify(['g1', kTrx, '9701']) && nT.kunci === kTrx && nT.baris === 3 && nT.n === 887500 && /IR42 Select karung/.test(nT.teks) && /Angsa literan/.test(nT.teks) && /Perahu Layar literan/.test(nT.teks)
+  && gT.baris === 2 && gT.n === 3120000 && BLT.kecil === 1 && susunBelanja(KINI, kTrx, []).dipilih === kTrx && susunBelanja(KINI, kTrx, []).isi.length === 3, JSON.stringify([BLT.nota, BLT.kecil]));
+var IDT = susunIniDia(KINI, nT.kunci, 'uda feri'); var idTrx = NOTA_TRX.slice(0, 3).map(function (p) { return String(p.id); }).sort();
+ok('ini dia (putaran 25): nota trxId → SEMUA 3 barisnya ditulis ulang bernama "Uda Feri"; trxId tetap, TIDAK ada kolom baru (grupNota); rupiah utuh; sesudahnya nota itu hilang UTUH dari Belanja & ditolak "sudah bernama"; baris lama tanpa kunci menamai dirinya saja',
+  !IDT.tolak && IDT.dokumen.length === 3 && JSON.stringify(IDT.dokumen.map(function (d) { return String(d.data.id); }).sort()) === JSON.stringify(idTrx)
+  && IDT.dokumen.every(function (d) { var asli = NOTA_TRX.find(function (p) { return String(p.id) === String(d.data.id); }); return d.koleksi === 'penjualan' && d.data.namaPelanggan === 'Uda Feri' && d.data.trxId === TRX_BARU && !('grupNota' in d.data) && JSON.stringify(Object.keys(d.data).sort()) === JSON.stringify(Object.keys(asli).sort()) && d.data.hargaTotal === asli.hargaTotal; })
+  && /Rp887\.500/.test(IDT.patch.kabar)
+  && (function () { var s2 = simpan(); terapkan(IDT); var r = JSON.stringify(susunBelanja(KINI, null, []).nota.map(function (n) { return n.kunci; })) === JSON.stringify(['g1', '9701']) && /sudah bernama/.test(susunIniDia(KINI, kTrx, 'uda feri').tolak || ''); pulih(s2); return r; })()
+  && (function () { var L = susunIniDia(KINI, '9701', 'pak darto'); return !L.tolak && L.dokumen.length === 1 && L.dokumen[0].data.id === 9701 && L.dokumen[0].data.namaPelanggan === 'Pak Darto'; })(), JSON.stringify(IDT));
+pulih(sTrx);
 // ---- JAM & MINGGU
 var JM = susunJam(KINI);
 ok('jam dinding: yang dikenali & punya jam duduk di jamnya — Rahma 9, Darto 16, Feri 8, Yuni 13, Ibu Rahma Warung 9 (dua orang di jam 9 = lapis berbeda); 12 angka 06–17 dengan 10 = sekarang; jarum 300°; "sekitar jam 9–11" = Rahma & Ibu Rahma Warung (jam 9) + Bu Sri (jam 11, belum dikenali — tetap disebut); sisanya tanpa jam / tak dikenali', JM.orang.length === 5 && JM.orang.find(function (o) { return o.kunci === 'bu rahma'; }).jam === 9 && JM.orang.filter(function (o) { return o.jam === 9; }).map(function (o) { return o.lapis; }).sort().join() === '1,2' && JM.angka.length === 12 && JM.angka.find(function (a) { return a.kini; }).t === 10 && JM.sudut === 300 && JM.sekitar.length === 3 && JM.sekitar[0].kunci === 'bu rahma' && JM.sekitar[1].kunci === 'bu sri' && JM.tanpaJam === 6, JSON.stringify([JM.orang.map(function (o) { return o.kunci + '@' + o.jam; }), JM.sudut, JM.sekitar.map(function (o) { return o.kunci; })]));
@@ -311,7 +336,7 @@ def jalan(js):
 
 
 def utama(js):
-    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\n' + SKENARIO)
+    h, e = jalan(JAM_TETAP + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar NOTA_TRX = ' + json.dumps(NOTA_TRX) + ';\nvar TRX_BARU = ' + json.dumps(TRX_BARU) + ';\n' + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e]
     return h['lulus'], h['gagal']
 
@@ -325,6 +350,11 @@ if __name__ == '__main__':
     inti = bundel_baru.bundel(MODUL); js = dengan_layar(inti)
     if '--kontrol' in sys.argv:
         rusak = {
+            # ---- putaran 25: nota sistem baru (trxId, tanpa grupNota)
+            'perbaikan dicabut: nota trxId dipecah per baris (Belanja & ini dia)': js.replace("const plKunciNota = (p) => String(p.grupNota || p.trxId || p.id);", "const plKunciNota = (p) => String(p.grupNota || p.id);"),
+            'Belanja saja memecah nota trxId per baris': js.replace("return; const g = plKunciNota(p); if (!grup[g])", "return; const g = String(p.grupNota || p.id); if (!grup[g])"),
+            '"ini dia" saja mencari lewat grupNota (nota trxId tidak ketemu)': js.replace("p.tanggal === iso && plKunciNota(p) === String(notaKunci));", "p.tanggal === iso && String(p.grupNota || p.id) === String(notaKunci));"),
+            'baris lama tanpa trxId/grupNota tidak lagi jadi nota sendiri': js.replace("const plKunciNota = (p) => String(p.grupNota || p.trxId || p.id);", "const plKunciNota = (p) => String(p.grupNota || p.trxId || 'tanpa-kunci');"),
             # ---- putaran 23b: cip warna kulit & suku/logat dicabut
             'cip sawo matang lolos ke kartu': js.replace(".filter((x, i, a) => x && a.indexOf(x) === i).filter((x) => !cipTerlarang(x)); const lama = kartuTersimpan(kunci);", ".filter((x, i, a) => x && a.indexOf(x) === i); const lama = kartuTersimpan(kunci);"),
             'pembersihan ikut membuang cip berkacamata': js.replace("const sisa = (punyaCip ? dariCip : dariCiri).filter((x) => !cipTerlarang(x));", "const sisa = (punyaCip ? dariCip : dariCiri).filter((x) => !cipTerlarang(x) && x !== 'berkacamata');"),
