@@ -16,7 +16,7 @@ import * as KP from './kunci-periode-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { ssBerkasCadangan, susunCatatCadangan } from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, hapusDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, arsipkanDokumen, bacaArsipTahun, pulihkanArsip } from '../data/toko.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -53,8 +53,8 @@ export function pasangLayarUang(akar, opsi) {
   async function tulis(r, tanpaKabar) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
     try {
-      if (r.hapus && r.hapus.length) { const x0 = await hapusDokumen(r.hapus); if (x0 && x0.gagal) { set({ kabar: 'DITOLAK: ' + x0.pesan, kabarAwas: true }); return false; } }
-      let x = null; if (r.dokumen && r.dokumen.length) { x = await tulisDokumen(r.dokumen); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } }
+      // putaran 25: hapus + dokumen dalam SATU kiriman (atomik; dulu dua kiriman — hapus bisa masuk tanpa penggantinya)
+      let x = null; if ((r.dokumen && r.dokumen.length) || (r.hapus && r.hapus.length)) { x = await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus }); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } }
       if (!tanpaKabar) set(Object.assign({}, r.patch || {}, { kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + ((r.patch || {}).kabar || ''), kabarAwas: !!(r.patch || {}).kabarAwas })); else if (r.patch) { const p = Object.assign({}, r.patch); delete p.kabar; delete p.kabarAwas; set(p); }
       return true;
     } catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }

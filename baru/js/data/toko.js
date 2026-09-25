@@ -135,6 +135,8 @@ function opsKiriman(daftar, hapus) {
   return (daftar || []).map(({ koleksi, data }) => ({ koleksi, data, lama: dokDiCache(koleksi, data.id) }))
     .concat((hapus || []).map((x) => ({ koleksi: x.koleksi, id: x.id, lama: dokDiCache(x.koleksi, x.id), hapus: true })));
 }
+/** Jumlah pemeriksaan kunci (get()) yang dibutuhkan server untuk satu kiriman — untuk logika layar yang ingin menolak dengan kalimatnya sendiri. */
+export function butuhGet(daftar, hapus) { return kpNilaiKiriman(opsKiriman(daftar, hapus), null, new Date(Date.now())).perluGet; }
 /** → null (boleh dikirim) atau { gagal, terkunci?, pesan }. opsi.pembalik = kalimat pembalik yang ditawarkan layar. */
 export function jagaKunci(daftar, hapus, opsi) {
   const N = kpNilaiKiriman(opsKiriman(daftar, hapus), kunciSampai(), new Date(Date.now()));

@@ -12,7 +12,7 @@
 //    retur + penjualan penggantinya lahir dalam SATU tulisan saat nota dicatat (jual-logika.js susunNotaDokumen).
 import { rtDasarNota, rtKalimatLebih, rtKunciNota, kunciPelanggan, bakuCaraBayar, formatTanggal, merkPunyaKarungBerat, kunciKemasan, namaSingkatTrx, tkApakahYatim, tkSetTertaut, tkTargetPengganti, tkPenjualanHidup } from '../mesin/pembantu.js';
 import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
-import { ambilPenjualan, ambilRetur } from '../data/toko.js';
+import { ambilPenjualan, ambilRetur, tolakKunci } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
 
 export const ALASAN_RETUR = ['salah beli', 'kualitas kurang', 'kelebihan', 'kemasan rusak'];
@@ -201,6 +201,7 @@ export function calonPengganti(id, kini) {
 export function susunPenggantiTercatat(id, penjualanId, w) {
   const r = ambilRetur().find((x) => String(x.id) === String(id)); if (!r) return { tolak: 'Retur itu tidak ditemukan lagi' };
   if (!tkApakahYatim(r, tkSetTertaut())) return { tolak: 'Retur itu sudah punya pengganti tercatat' };
+  const kunci = tolakKunci('retur', r, 'tanda pengganti tidak bisa ditulis ke retur ini lagi; barang penggantinya sudah tercatat sebagai penjualan dan uangnya tidak berubah'); if (kunci) return { tolak: kunci };   // putaran 25
   const c = calonPengganti(id, new Date(String(w.tanggal) + 'T12:00:00')).find((x) => x.id === String(penjualanId)); if (!c) return { tolak: 'Penjualan itu tidak ada di daftar calon pengganti' };
   return { dokumen: [{ koleksi: 'retur', data: Object.assign({}, r, { penggantiDikonfirmasi: { penjualanId: String(penjualanId), pada: w.kini || new Date().toISOString() } }) }],
     patch: { rtPengganti: null, lembar: null, kabar: 'Penjualan ' + c.jam + ' · ' + c.teks + ' · ' + RP(c.hargaTotal) + ' ditandai sebagai pengganti tukar ' + formatTanggal(r.tanggal) + ' — penjualannya tidak diubah, tandanya di dokumen retur', kabarAwas: false } };

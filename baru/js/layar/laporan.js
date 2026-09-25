@@ -41,7 +41,8 @@ export function pasangLayarLaporan(akar, opsi) {
 
   async function tulis(r, tanpaKabar) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
-    try { let x = null; if (r.dokumen && r.dokumen.length) { x = await tulisDokumen(r.dokumen); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } }
+    // putaran 25: hapus ikut dikirim (dulu diabaikan — "isian dihapus" di Laporan › Pajak tidak menghapus apa pun di server); SATU kiriman, jejaknya memuat nilai lama (K6)
+    try { let x = null; if ((r.dokumen && r.dokumen.length) || (r.hapus && r.hapus.length)) { x = await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus || 'dihapus dari Laporan' }); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } }
       if (!tanpaKabar) set(Object.assign({}, r.patch || {}, { kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + ((r.patch || {}).kabar || ''), kabarAwas: !!(r.patch || {}).kabarAwas })); else if (r.patch) { const p = Object.assign({}, r.patch); delete p.kabar; delete p.kabarAwas; set(p); }
       return true; } catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }

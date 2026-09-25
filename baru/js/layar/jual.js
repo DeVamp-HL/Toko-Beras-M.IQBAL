@@ -11,7 +11,7 @@ import * as ST from './struk-logika.js';
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso } from '../inti/format.js';
-import { sumberData, dengarkan, tulisDokumen, hapusDokumen } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal } from '../data/toko.js';
 import { tombolAkun, batasBarisNota } from './akses-layar.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
 import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit } from './adegan.js';
@@ -84,8 +84,10 @@ export function pasangLayarJual(akar, opsi) {
     karcisPilih: ({ id }) => set(KC.ikatKarcis(S(), id, S().sekarang || new Date())),
     karcisTebak: ({ i }) => { const s = S(); if (!s.karcis) return; const T = KC.tebakanKarcis(s.karcis.nominal)[Number(i)]; if (!T) return; set(KC.pakaiTebakan(s, T)); },
     karcisLepas: () => set(KC.lepasKarcis(S())),
+    // putaran 25: pembalik untuk karcis / rincian bulan terkunci — stok dibetulkan lewat Stok › Cocokkan hari ini; barang kembali = retur hari ini
+    kpKeCocok: () => { if (opsi.bukaStok) opsi.bukaStok('cocok'); else set({ kabar: 'Buka Stok › Cocokkan untuk membetulkan stok hari ini', kabarAwas: false }); },
     karcisPerbaiki: () => tulisUmum(KC.susunPerbaikanKarcis(S(), L.waktuSekarang(S().sekarang || undefined))),
-    urungRinci: async ({ g, asli }) => { const r = KC.susunUrungRinci({ grupNota: g, asliId: asli }, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); try { await tulisDokumen(r.dokumen); if (r.hapus.length) await hapusDokumen(r.hapus); set(Object.assign({}, r.patch, { lembar: 'karcis' })); } catch (e) { set({ kabar: 'GAGAL menarik balik: ' + (e && e.message ? e.message : e), kabarAwas: true }); } },
+    urungRinci: async ({ g, asli }) => { const r = KC.susunUrungRinci({ grupNota: g, asliId: asli }, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); await kirimUrung(r, { lembar: 'karcis' }); },
     simpanRinci: async () => {
       const r = KC.susunRinciDokumen(S(), L.waktuSekarang(S().sekarang || undefined));
       if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
@@ -111,12 +113,14 @@ export function pasangLayarJual(akar, opsi) {
     tkSudahPilih: ({ id }) => tulisUmum(RT.susunPenggantiTercatat(S().rtPengganti, id, L.waktuSekarang(S().sekarang || undefined))),
     batalkanNota: async () => {
       const nt = S().notaTerakhir;
-      if (nt && nt.rinci) { const r = KC.susunUrungRinci(nt.rinci, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); try { await tulisDokumen(r.dokumen); if (r.hapus.length) await hapusDokumen(r.hapus); set(r.patch); } catch (e) { set({ kabar: 'GAGAL menarik balik: ' + (e && e.message ? e.message : e), kabarAwas: true }); } return; }
+      if (nt && nt.rinci) { const r = KC.susunUrungRinci(nt.rinci, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); await kirimUrung(r); return; }
       const p = L.susunPembatalan(S().notaTerakhir, 'Diurungkan dari sistem baru');
       if (!p) return set({ notaTerakhir: null, kabar: 'Tidak ada nota yang bisa dibatalkan', kabarAwas: true });
       try {
-        await tulisDokumen(p.dokumen);
-        if (p.hapus.length) await hapusDokumen(p.hapus);
+        // putaran 25: tandai-batal + cabut kantong/pelunasan/retur dalam SATU kiriman yang hasilnya diperiksa (dulu dua kiriman, hasil tidak diperiksa:
+        // kalau yang pertama ditolak server, yang kedua tetap jalan dan layar tetap bilang "dibatalkan")
+        const h = await tulisDokumen(p.dokumen, p.hapus, { jejakHapus: 'dicabut bersama nota yang dibatalkan' });
+        if (h && h.gagal) return set({ kabar: 'DITOLAK, nota TIDAK dibatalkan: ' + h.pesan, kabarAwas: true });
         set({ notaTerakhir: null, kabar: 'Nota dibatalkan — ' + p.jumlah + ' baris ditandai dibatalkan (tidak dihapus)' + (p.hapus.some((x) => x.koleksi === 'retur') ? '; retur tukarnya ikut dicabut (lahir bersama, pergi bersama)' : ''), kabarAwas: false });
       } catch (e) { set({ kabar: 'GAGAL membatalkan: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
     },
@@ -213,10 +217,18 @@ export function pasangLayarJual(akar, opsi) {
       return teks;
     } catch (e) { console.error('struk otomatis', e); return ''; }
   }
+  // putaran 25: tarik balik rincian — satu kiriman yang diperiksa hasilnya; rincian besar dari bulan lalu dikirim BERTAHAP (karcis asli dipulihkan paling akhir)
+  async function kirimUrung(r, tambah) {
+    try {
+      const h = r.kelompok ? await tulisBertahap('Tarik balik rincian karcis', r.kelompok) : await tulisDokumen(r.dokumen, r.hapus, { jejakHapus: 'kantong rincian yang ditarik balik' });
+      if (h && h.gagal) return set({ kabar: 'DITOLAK, rincian tidak (seluruhnya) ditarik balik: ' + h.pesan, kabarAwas: true });
+      set(Object.assign({}, r.patch, tambah || {}, h && h.potongan > 1 ? { kabar: r.patch.kabar + ' (dikirim ' + h.potongan + ' tahap)' } : {}));
+    } catch (e) { set({ kabar: 'GAGAL menarik balik: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+  }
   async function tulisUmum(r) {
     if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
     try {
-      const h = await tulisDokumen(r.dokumen);
+      const h = await tulisDokumen(r.dokumen || [], r.hapus);
       if (h && h.gagal) return set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true });
       set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar }));
     } catch (e) { set({ kabar: 'GAGAL menulis: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
@@ -571,8 +583,8 @@ export function pasangLayarJual(akar, opsi) {
           ${T.length ? h`<div class="bendera">${T.map((t, i) => h`<span class="pil ${t.tepat ? '' : 'awas'}" data-aksi="karcisTebak" data-i="${i}">${t.label}</span>`)}</div>` : h`<div class="ket">Tidak ada tebakan pas dari katalog — kemungkinan ada harga nego di dalamnya. Pilih barangnya dari rak satu per satu; barang nego ketuk harganya.</div>`}
           <div class="tombol-baris"><div class="kaca-btn" data-aksi="tutup">ke rak ›</div><div class="kaca-btn putus" data-aksi="karcisLepas">lepas karcis</div></div>` : ''}
         <div class="label">Antrean · ketuk untuk merinci</div>
-        <div class="kartu daftar-nota">${KCn.daftar.map((k) => h`<div class="baris-nota ${s.karcis && s.karcis.id === k.id ? 'dipilih' : ''}" data-aksi="karcisPilih" data-id="${k.id}" data-k="kc-${k.id}"><div class="atas"><span><b>${k.teks}</b>${k.nama ? ' · ' + k.nama : ''}</span><span class="n">${RP(k.nominal)}</span></div><div class="ket">${k.hariIni ? 'hari ini' : tanggalPendek(k.tanggal)} ${k.jam} · ${k.cara}${k.oleh ? ' · ' + k.oleh : ''}</div></div>`)}${KCn.daftar.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Semua karcis sudah dirinci.</div>`}</div>
-        ${R.length ? h`<div class="label">Rincian hari ini · tarik balik kalau keliru</div><div class="kartu daftar-nota">${R.map((r) => h`<div class="baris-nota" data-k="rr-${r.grupNota}" style="cursor: default;"><div class="atas"><span>${r.n} barang dari karcis ${KC.kcEkor(r.asliId)} · ${r.jam}</span><span class="n">${RP(r.total)}</span></div>${r.utuh ? h`<div class="kaca-btn putus" style="min-height: 32px; font-size: 11.5px; margin-top: 4px;" data-aksi="urungRinci" data-g="${r.grupNota}" data-asli="${r.asliId}">tarik balik rincian ini</div>` : h`<div class="ket">sebagian sudah dikoreksi — tidak bisa ditarik balik utuh</div>`}</div>`)}</div>` : ''}
+        <div class="kartu daftar-nota">${KCn.daftar.map((k) => tolakKunciTanggal(k.tanggal, '') ? h`<div class="baris-nota tak-bisa" data-aksi="kpKeCocok" data-k="kc-${k.id}"><div class="atas"><span><b>${k.teks}</b>${k.nama ? ' · ' + k.nama : ''}</span><span class="n">${RP(k.nominal)}</span></div><div class="ket">${tanggalPendek(k.tanggal)} ${k.jam} · ${tolakKunciTanggal(k.tanggal, '').split(' — ')[0]} — tidak bisa dirinci lagi; ketuk untuk Cocokkan stok hari ini</div></div>` : h`<div class="baris-nota ${s.karcis && s.karcis.id === k.id ? 'dipilih' : ''}" data-aksi="karcisPilih" data-id="${k.id}" data-k="kc-${k.id}"><div class="atas"><span><b>${k.teks}</b>${k.nama ? ' · ' + k.nama : ''}</span><span class="n">${RP(k.nominal)}</span></div><div class="ket">${k.hariIni ? 'hari ini' : tanggalPendek(k.tanggal)} ${k.jam} · ${k.cara}${k.oleh ? ' · ' + k.oleh : ''}</div></div>`)}${KCn.daftar.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Semua karcis sudah dirinci.</div>`}</div>
+        ${R.length ? h`<div class="label">Rincian hari ini · tarik balik kalau keliru</div><div class="kartu daftar-nota">${R.map((r) => h`<div class="baris-nota" data-k="rr-${r.grupNota}" style="cursor: default;"><div class="atas"><span>${r.n} barang dari karcis ${KC.kcEkor(r.asliId)} · ${r.jam}</span><span class="n">${RP(r.total)}</span></div>${tolakKunciTanggal(r.tanggal, '') ? h`<div class="kaca-btn putus" style="min-height: 32px; font-size: 11.5px; margin-top: 4px;" data-aksi="tunjukNota" data-id="${r.idPertama}">${tolakKunciTanggal(r.tanggal, '').split(' — ')[0]} — buat retur hari ini</div>` : r.utuh ? h`<div class="kaca-btn putus" style="min-height: 32px; font-size: 11.5px; margin-top: 4px;" data-aksi="urungRinci" data-g="${r.grupNota}" data-asli="${r.asliId}">tarik balik rincian ini</div>` : h`<div class="ket">sebagian sudah dikoreksi — tidak bisa ditarik balik utuh</div>`}</div>`)}</div>` : ''}
         <div class="ket">Rincian ditulis dengan tanggal & jam karcisnya; sisa yang belum terurai tetap jadi karcis (uang masuk tidak pernah hilang); karcis asli ditandai, tidak dihapus. Yang ditolak cuma barang melebihi uang yang masuk.</div>
       </div>`;
     }

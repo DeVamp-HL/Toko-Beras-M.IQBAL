@@ -13,7 +13,7 @@
 // SATU perangkat; penolakan "sudah dikoreksi" tetap berlaku dari salinan itu.
 import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
 import { kunciKemasan } from '../mesin/pembantu.js';
-import { ambilKarantina, ambilRetur, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan } from '../data/toko.js';
+import { ambilKarantina, ambilRetur, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, tolakKunci } from '../data/toko.js';
 import { RP } from '../inti/format.js';
 
 export const TINDAKAN_KARANTINA = [['layak_jual', 'Ternyata layak jual → kembali ke stok'], ['dirework', 'Rework → masuk stok lagi'], ['dikembalikan_pemasok', 'Balik ke pemasok'], ['dibuang', 'Buang']];
@@ -41,6 +41,8 @@ function kqPeriksa(k, tindakan, w) {
   if (tindakan === 'layak_jual') {
     if (!k.asalRetur || !r) return 'Kartu ini tidak punya retur asal — tidak ada yang bisa dikoreksi; pilih rework, balik ke pemasok, atau buang';
     if (r.kondisi === 'utuh') return '';   // retur sudah 'utuh' → yang tersisa cuma menutup kartunya
+    // putaran 25: retur di bulan terkunci tidak bisa diubah kondisinya → pembaliknya = barang kembali ke stok HARI INI lewat Rework (dokumen hari ini)
+    const kunci = tolakKunci('retur', r, 'retur ini tidak bisa diubah jadi "utuh"; pilih "Rework" — barangnya kembali ke stok HARI INI'); if (kunci) return kunci;
     if (kqSudahRework(k)) return 'Retur ini SUDAH pernah di-rework ke stok (dokumen rework-nya ada) — barangnya sudah kembali; koreksi ditolak supaya stok tidak terhitung dua kali';
     if (!kqStok(k)) return 'Stok "' + kqNama(k) + '" tidak dikenal mesin — kalau dikoreksi tidak ada stok yang bertambah';
     if (w && String(r.tanggal || '').slice(0, 4) !== String(w.tanggal || '').slice(0, 4)) return 'Retur ' + r.tanggal + ' ada di tahun lain — arsip & saldo pembukanya dihitung dari kondisi lama; koreksi ditolak';

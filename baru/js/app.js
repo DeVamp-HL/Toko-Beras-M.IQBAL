@@ -60,7 +60,8 @@ function statusRingkas() {
 
 terapkanMode();
 const akar = document.getElementById('layar');
-const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat() });
+const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat(),
+  bukaStok: (lembar) => { pindah('stok'); stok.buka(lembar); } });   // putaran 25: pembalik karcis bulan terkunci → Stok › Cocokkan
 dengarkan(() => { versi += 1; });
 
 // ---- perpindahan layar: tiap layar punya <main> sendiri yang disembunyikan, supaya keranjang Jual tidak hilang saat pindah ----
@@ -75,7 +76,7 @@ const menu = pasangLayarMenu(document.getElementById('layarMenu'), { gantiMode, 
   lokal: () => ({ antre: statusFb.antre || [], idPerangkat: fb.idPerangkat(), namaPerangkat: fb.perangkatRingkas(), pemegang: fb.pemegangPerangkat(), lokasi: fb.lokasiPerangkat(), koleksiSiap: statusFb.koleksiSiap, koleksiTotal: statusFb.koleksiTotal, offline: statusFb.offline,
     pajak: (() => { const a = akunKini(); if (!a || a.jenis !== 'owner') return []; try { return pjSumberPengingat(sekarangCadangan || new Date()); } catch (e) { console.error('pengingat pajak', e); return []; } })() }),   // putaran 24: pengingat pajak, owner saja
   periksaSambungan: () => fb.periksaSambungan(4000), setelLokasi: (id) => fb.setelLokasi(id), namaiPerangkat: (n) => fb.namaiPerangkat(n),
-  akun: akunKini, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id) => fb.tulisUlangDitolak(id) });
+  akun: akunKini, antreLokal: () => fb.antreLokal(), buangDitolak: (id) => fb.buangDitolak(id), tulisUlangDitolak: (id, ubah) => fb.tulisUlangDitolak(id, ubah) });
 // Harga & Pemasok (putaran 17): layar keenam, dibuka dari Menu (baris Pemasok & utang · Katalog harga · cari) dan Stok → Gudang → "Apa yang harus dibeli"; di Mac ada di menu samping.
 const harga = pasangLayarHarga(document.getElementById('layarHarga'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t) });
 // Uang (putaran 18): layar ketujuh — Uang keluar · Orang & upah · Owner & toko · Pindah uang · Tutup hari · Tutup buku. Dibuka dari Menu; di Mac ada di menu samping.

@@ -9,7 +9,7 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
 import { KOLEKSI } from './koleksi.js';
-import { pasok, setelSumber, setelPenulis, dokDiCache } from './toko.js';
+import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci } from './toko.js';
 import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
 import { buatAntre, cekDariCache } from './antre-lokal.js';
 import { KP_BATAS_GET } from './kunci-periode.js';
@@ -165,10 +165,13 @@ function cocokkanAntre() {
 export function antreLokal() { return { belum: antre.belumTerkirim(), ditolak: antre.ditolak() }; }
 export function buangDitolak(id) { const ok = antre.buang(id); segarkanLokal(); beriTahu(); return ok; }
 /** Owner menulis ulang kiriman yang ditolak ATAS NAMANYA: kolom penulis lama dibuang, atribusi owner dipasang penulis pusat, salinannya dihapus bila berhasil. */
-export async function tulisUlangDitolak(id) {
+/** ubah (opsional, putaran 25): fungsi dokumen → dokumen, mis. kpKeHariIni (catatan bulan terkunci dicatat ulang bertanggal hari ini). Lewat penjaga pusat toko.js. */
+export async function tulisUlangDitolak(id, ubah) {
   if (!status.akun || status.akun.jenis !== 'owner') return { gagal: true, pesan: 'Hanya owner yang boleh menulis ulang kiriman yang ditolak' };
   const x = antre.ditolak().find((y) => y.id === id); if (!x) return { gagal: true, pesan: 'Kiriman itu sudah tidak ada' };
-  const bersih = (x.dokumen || []).map((d) => { const data = Object.assign({}, d.data); ['oleh', 'olehUid', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'].forEach((k) => delete data[k]); return { koleksi: d.koleksi, data }; });
+  let bersih = (x.dokumen || []).map((d) => { const data = Object.assign({}, d.data); ['oleh', 'olehUid', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'].forEach((k) => delete data[k]); return { koleksi: d.koleksi, data }; });
+  if (typeof ubah === 'function') bersih = ubah(bersih);
+  const j = jagaKunci(bersih, []); if (j) return j;   // bulan terkunci / terlalu banyak pemeriksaan → tidak dikirim
   const r = await tulisBerkas(bersih); if (r && r.gagal) return r;
   antre.buang(id); segarkanLokal(); beriTahu(); return r;
 }
