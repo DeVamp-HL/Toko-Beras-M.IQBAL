@@ -13,6 +13,17 @@ export const KP_BATAS_GET = 18;         // access call per kiriman: batas Fireba
 // Owner 25 Sep: kunci PERTAMA baru boleh sesudah putaran 25b — index.html & kasir*.html memperlakukan penolakan server sebagai "belum masuk" dan
 // antreannya macet di catatan yang ditolak (peta §5). Putaran 25b mengubah nilai ini sesudah kedua berkas memisahkan catatan yang ditolak.
 export const KP_SIAP_25B = false;
+// Putaran 25b: kasir*.html versi ini (= VERSI sw-kasir.js) memisahkan catatan yang ditolak server — satu karcis bulan terkunci tidak lagi menahan karcis lain.
+// Perangkat kasir yang berdenyut dalam KP_VERSI_HARI hari terakhir dengan versi di bawahnya = ⛔ di daftar periksa (namanya disebut).
+// uji_antrean_kasir.py memastikan nilai ini sama dengan VERSI_APLIKASI kedua berkas kasir dan VERSI sw-kasir.js.
+export const KP_VERSI_KASIR_25B = 'kasir-v26';
+export const KP_VERSI_HARI = 7;
+/** 'kasir-v26' → 26; versi tidak dilaporkan / bentuk lain → 0 (dianggap lama). */
+export function kpNomorVersiKasir(v) { const m = /^kasir-v(\d+)$/.exec(String(v || '').trim()); return m ? Number(m[1]) : 0; }
+export const kpVersiKasirCukup = (v) => kpNomorVersiKasir(v) >= kpNomorVersiKasir(KP_VERSI_KASIR_25B);
+/** Perangkat kasir (kasir-darurat-nominal.html / kasir.html) menurut denyutnya: aplikasi, atau awalan kode perangkat d- / k- (pembagian-tiga-berkas-kasir). */
+export const kpPerangkatKasir = (p) => !!p && (p.aplikasi === 'darurat' || p.aplikasi === 'kasir' || /^[dk]-/.test(String(p.id || '')));
+export const kpNamaAplikasiKasir = (p) => (p && (p.aplikasi === 'darurat' || /^d-/.test(String(p.id || ''))) ? 'kasir darurat' : 'kasir');
 export const KP_WIB_MS = 25200000;      // UTC+7; WIB tanpa musim panas
 
 // Koleksi bertanggal (peta §2): nama field yang dinilai. utangPemasokMutasi tipe saldoAwal dinilai dari bonTanggal (K4: tanggal yang dibaca mesin);

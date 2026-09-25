@@ -95,6 +95,10 @@ jobs:
       - name: "Kunci periode (putaran 25): daftar periksa, kunci/buka, pembalik hari ini, final bulanan, pajak, penjaga pusat, kirim bertahap (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_kunci_periode.py && python3 alat-uji/uji_kunci_periode.py --kontrol
 
+      # ---- PUTARAN 25b — antrean kasir tidak boleh macet ----
+      - name: "Antrean kasir (25b): karcis ditolak server dipisah, sisanya tetap terkirim; 401 → layar masuk; sinyal/429/503 → tetap antre; denyut & versi; tahan muat ulang — Chrome headless + Firestore palsu + kontrol"
+        run: python3 alat-uji/uji_antrean_kasir.py && python3 alat-uji/uji_antrean_kasir.py --kontrol
+
   terbitkan:
     needs: uji
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

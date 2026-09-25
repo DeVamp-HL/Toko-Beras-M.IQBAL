@@ -3,7 +3,7 @@
 // terakhir, satu langkah mundur, alasan ≥ 10 huruf; bulan yang punya setoran pajak minta nama bulannya diketik ulang. Server (firestore.rules v4) menegakkan
 // hal yang sama: sampaiBulan hanya naik satu bulan (atau pertama kali dari kosong), turun tepat satu dengan alasan, dan tidak pernah bulan yang masih dalam
 // tenggang minimal. Keputusan owner K1–K6 & syarat 25b: docs/peta-kunci-periode.md.
-import { KP_ID, KP_ID_ATUR, KP_TENGGANG_MIN, KP_SIAP_25B, kpWib, kpIdx, kpBulanStr, kpGeser, kpNamaBulan, kpAkhirBulan, kpBolehDikunci, kpDok, kpBulanDok, kpKalimat } from '../data/kunci-periode.js';
+import { KP_ID, KP_ID_ATUR, KP_TENGGANG_MIN, KP_SIAP_25B, KP_VERSI_KASIR_25B, KP_VERSI_HARI, kpVersiKasirCukup, kpPerangkatKasir, kpNamaAplikasiKasir, kpWib, kpIdx, kpBulanStr, kpGeser, kpNamaBulan, kpAkhirBulan, kpBolehDikunci, kpDok, kpBulanDok, kpKalimat } from '../data/kunci-periode.js';
 import { cacheMentah, dokDiCache, ambilPenjualan, ambilPenjualanSemua, ambilTutupHari, ambilSemuaBatch, ambilProduksi, ambilUtangPemasokMutasi, ambilPiutangMutasi, kunciSampai, kunciTenggang } from '../data/toko.js';
 import { hitungLabaBersihRentang, hitungNeraca } from '../mesin/beku.js';
 import { kunciPelanggan } from '../mesin/pembantu.js';
@@ -13,6 +13,13 @@ import { aturUpah, hitungUpah } from './upah-logika.js';
 import { pjTahun } from './pajak-logika.js';
 
 export const KP_DENYUT_MS = 24 * 3600000;   // ⛔ perangkat yang tidak berdenyut 24 jam terakhir (owner 25 Sep)
+const KP_VERSI_MS = KP_VERSI_HARI * 24 * 3600000;
+/** Perangkat kasir yang berdenyut dalam 7 hari terakhir tapi masih memakai berkas kasir SEBELUM 25b (namanya disebut di daftar periksa & Beranda). */
+export function kpKasirVersiLama(kini) {
+  const t = kini.getTime();
+  return cacheMentah('perangkat').filter((p) => { const x = p.pada ? new Date(p.pada).getTime() : NaN; return kpPerangkatKasir(p) && isFinite(x) && t - x <= KP_VERSI_MS && !kpVersiKasirCukup(p.versi); });
+}
+const kpNamaPerangkat = (p) => (p.nama || p.id) + ' · ' + kpNamaAplikasiKasir(p);
 const kpKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 const kpTgl = (iso) => (iso && iso.length >= 10 ? tanggalPendek(iso) : iso || '—');
 
@@ -75,6 +82,11 @@ export function kpDaftarPeriksa(bulan, kini, K) {
   tambah({ id: 'perangkatDenyut', blokir: true, ok: !diam.length, teks: 'Semua perangkat berdenyut dalam 24 jam terakhir', ket: diam.length ? 'tulisan offline dari perangkat ini untuk ' + nama + ' akan ditolak sesudah dikunci — nyalakan & sambungkan, atau nyatakan sudah tidak dipakai' : 'semua berdenyut',
     rincian: diam.map((p) => (p.nama || p.id) + ' · ' + (p.pada ? 'terakhir ' + kpTgl(kpWib(new Date(p.pada)).iso) : 'tanpa denyut') + (p.aplikasi ? ' · ' + p.aplikasi : '')),
     aksi: diam.filter((p) => !(Number(p.antrean) > 0) && !(Number(p.gagal) > 0)).map((p) => ({ id: String(p.id), label: (p.nama || p.id) + ' sudah tidak dipakai' })) });
+  // ⛔ putaran 25b: berkas kasir SEBELUM 25b menganggap karcis yang ditolak server (bulan terkunci) sebagai "belum masuk" — antrean HP itu macet
+  const lamaV = kpKasirVersiLama(kini);
+  tambah({ id: 'versiKasir', blokir: true, ok: !lamaV.length, teks: 'Semua perangkat kasir yang berdenyut dalam ' + KP_VERSI_HARI + ' hari terakhir sudah memakai versi 25b',
+    ket: lamaV.length ? lamaV.length + ' perangkat masih versi lama — satu karcis ' + nama + ' yang tiba sesudah dikunci akan menahan semua karcis sesudahnya di HP itu. Buka kasir di HP itu (tersambung internet) sampai tulisan "versi 25b" tampil di bilah atas' : 'semua sudah ' + KP_VERSI_KASIR_25B,
+    rincian: lamaV.map((p) => kpNamaPerangkat(p) + ' · ' + (p.versi ? p.versi : 'versi tidak dilaporkan') + ' · denyut ' + kpTgl(kpWib(new Date(p.pada)).iso)) });
   // ---- centang / keputusan
   const hari = kpHariTanpaTutup(bulan, kini, K.putusanHari);
   tambah({ id: 'hari', ok: hari.every((h) => !!h.putusan), teks: hari.length ? hari.length + ' hari tanpa tutup hari' : 'Tiap hari buka punya tutup hari',
@@ -141,6 +153,21 @@ export function kpPerhatian(kini, uji) {
   const c = kpCalon(kini); if (!c || !kpBolehDikunci(c, kini, kunciTenggang())) return [];
   const W = kpWib(kini); const telat = kpIdx(c) < W.idx - 1;
   return [{ teks: 'Kunci bulan: ' + kpNamaBulan(c) + ' belum dikunci' + (telat ? ' (sudah lebih dari sebulan)' : ''), nilai: 'Uang › Tutup buku', awas: telat }];
+}
+/**
+ * Beranda › Perlu perhatian (owner): perangkat kasir menurut denyutnya — karcis masih antre, karcis DITOLAK server yang belum dicatat ulang,
+ * atau masih versi sebelum 25b (berdenyut 7 hari terakhir). Selalu tampil (tidak menunggu 25b): ini keadaan HP penjaga, bukan kunci.
+ */
+export function kpPerhatianPerangkat(kini) {
+  const t = kini.getTime(); const out = [];
+  cacheMentah('perangkat').filter(kpPerangkatKasir).forEach((p) => {
+    const x = p.pada ? new Date(p.pada).getTime() : NaN; const baru7 = isFinite(x) && t - x <= KP_VERSI_MS;
+    const antre = Number(p.antrean) || 0; const tolak = Number(p.gagal) || 0; const lama = baru7 && !kpVersiKasirCukup(p.versi);
+    if (!antre && !tolak && !lama) return;
+    const bagian = []; if (antre) bagian.push(antre + ' antre'); if (tolak) bagian.push(tolak + ' DITOLAK server — lihat HP-nya, catat ulang hari ini'); if (lama) bagian.push('masih ' + (p.versi || 'versi lama') + ', belum 25b');
+    out.push({ teks: 'HP ' + kpNamaPerangkat(p) + ': ' + bagian.join(' · ') + (isFinite(x) ? ' (denyut ' + kpTgl(kpWib(new Date(x)).iso) + ')' : ''), nilai: tolak ? tolak + ' ditolak' : lama ? 'versi lama' : antre + ' antre', awas: tolak > 0 || lama });
+  });
+  return out;
 }
 /** Status satu bulan untuk layar lain (laporan, pajak). */
 export const kpStatusBulan = (bulan) => { const s = kunciSampai(); return s && kpIdx(bulan) <= kpIdx(s) ? 'terkunci' : 'terbuka'; };

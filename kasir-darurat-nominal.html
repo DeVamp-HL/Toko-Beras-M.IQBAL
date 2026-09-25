@@ -224,11 +224,28 @@
 #barAntrean { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 60;
   background: #8d2f2f; color: #fff; font-weight: 700; font-size: .82rem; text-align: center;
   padding: 10px 12px; cursor: pointer; }
+  #versiApp { color: #7d868e; font-size: .7rem; font-weight: 600; letter-spacing: .3px; }
+  /* Pita ditolak (25b): di dalam alur halaman, bukan melayang — tidak boleh menutupi LCD. */
+  #pitaDitolak {
+    display: none; flex: 0 0 auto; margin: 0 10px 6px; padding: 8px 12px; border-radius: 8px;
+    background: #8d2f2f; color: #fff; font-weight: 700; font-size: .8rem; line-height: 1.3; cursor: pointer;
+  }
+  #layarDitolak { justify-content: flex-start; overflow-y: auto; }
+  #isiDitolak { width: 100%; max-width: 360px; max-height: 48vh; overflow-y: auto; margin-bottom: 12px; text-align: left; }
+  #isiDitolak .br-tolak { background: #2b3036; border: 1px solid #8d2f2f; border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; }
+  #isiDitolak .atas { display: flex; justify-content: space-between; font-size: .9rem; color: #e9ecf1; }
+  #isiDitolak .atas b { font-variant-numeric: tabular-nums; }
+  #isiDitolak .bawah { font-size: .75rem; color: #9aa3ab; margin-top: 2px; }
+  #isiDitolak .ringkas-tolak { color: #ff8a75; font-weight: 800; margin: 0 0 8px; max-width: none; }
+  #isiDitolak .judul-arsip { color: #9aa3ab; margin: 12px 0 6px; max-width: none; }
 </style>
 </head>
 <body>
 
-<div id="bilahAtas"><b>M.IQBAL</b><span id="chipStatus">Menyambungkan…</span></div>
+<div id="bilahAtas"><span><b>M.IQBAL</b> <small id="versiApp"></small></span><span id="chipStatus">Menyambungkan…</span></div>
+<!-- Pita DITOLAK (25b): karcis yang ditolak server tidak lagi menahan karcis lain, tapi juga
+     tidak boleh diam — penjaga harus bisa menunjukkannya ke owner untuk dicatat ulang. -->
+<div id="pitaDitolak" onclick="bukaDaftarDitolak()"></div>
 <div id="judulDarurat">Kasir Darurat — Catat Per Barang</div>
 
 <div id="lcd"><div id="lcdAngka">Rp0</div></div>
@@ -295,6 +312,16 @@
   <p style="font-size:.78rem;">Catatan tetap tersimpan di HP walau dilewati, dikirim otomatis setelah masuk.</p>
 </div>
 
+<div id="layarDitolak" class="lapisan">
+  <h2>KARCIS DITOLAK SERVER</h2>
+  <p>Karcis di bawah ini <b>tidak masuk</b> ke catatan toko — biasanya karena bulannya sudah dikunci owner. Karcisnya
+    <b>tidak hilang</b>: tetap tersimpan di HP ini. Tunjukkan ke owner supaya dicatat ulang bertanggal hari ini.
+    Karcis lain tetap terkirim seperti biasa.</p>
+  <div id="isiDitolak"></div>
+  <button type="button" onclick="tutupDaftarDitolak()">Tutup</button>
+  <button type="button" id="btnArsipDitolak" class="redup" onclick="arsipkanDitolak()">Owner sudah mencatat ulang semuanya</button>
+</div>
+
 <script>
 // Mesin = salinan pola kasir.html (REST tanpa SDK). Token login DIBAGI dengan kasir
 // lewat localStorage kasir_auth_v1 — HP yang sudah login di kasir langsung jalan di sini.
@@ -315,7 +342,13 @@ var URL_MASUK = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPa
 var URL_SEGARKAN_TOKEN = 'https://securetoken.googleapis.com/v1/token?key=' + KUNCI_API;
 var K_AUTH = 'kasir_auth_v1';           // BERSAMA dengan kasir.html — login sekali untuk keduanya
 var K_ANTREAN = 'darurat_antrean_v1';   // antrean sendiri, tidak ganggu antrean kasir
-var K_GAGAL = 'darurat_gagal_v1';
+var K_GAGAL = 'darurat_gagal_v1';       // daftar karcis DITOLAK server (lihat pindahKeDitolak)
+var K_DITOLAK_ARSIP = 'darurat_ditolak_arsip_v1';   // ditolak yang sudah dicatat ulang owner — dipindah, tidak dibuang
+// VERSI yang BENAR-BENAR berjalan: SAMA dengan VERSI di sw-kasir.js (uji_antrean_kasir.py
+// memeriksanya). Dikirim di denyut dan tampil di bilah atas. Sampai 25b denyut berkata
+// 'kasir-v24' padahal cache sudah v25 — owner membaca versi yang salah tanpa tahu.
+var VERSI_APLIKASI = 'kasir-v26';
+var LABEL_VERSI = 'versi 25b';
 var K_LOG = 'darurat_log_v1';           // catatan lokal per HP untuk daftar "hari ini"
 var K_OPERATOR = 'kasir_operator_v1';   // ikut kasir: kalau ada nama penjaga, ikut tercatat
 var K_RINGKASAN = 'kasir_ringkasan_v1';  // BERSAMA kasir.html — katalog beku untuk tuts bernama barang
@@ -475,8 +508,8 @@ function kirimDenyutD() {
     aplikasi: 'darurat',
     pada: new Date().toISOString(),
     antrean: ambilAntrean().length,
-    gagal: ambilGagal().length,
-    versi: 'kasir-v24'
+    gagal: ambilGagal().length,     // = jumlah karcis DITOLAK yang belum dicatat ulang owner
+    versi: VERSI_APLIKASI
   };
   var f = {}; for (var k in isi) f[k] = keFs(isi[k]);
   denganAuth({ method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -489,41 +522,102 @@ function kirimDenyutD() {
 
 function ambilAntrean() { try { return JSON.parse(localStorage.getItem(K_ANTREAN) || '[]'); } catch (e) { return []; } }
 function simpanAntrean(a) { localStorage.setItem(K_ANTREAN, JSON.stringify(a)); }
+// Daftar "ditolak" (K_GAGAL — nama kuncinya lama, isinya sejak 25b juga penolakan aturan).
+// Isinya karcis yang TIDAK AKAN PERNAH diterima server apa adanya. Tidak dikirim ulang,
+// tidak pernah dihapus diam-diam: tetap di HP ini sampai owner menyatakan sudah mencatat
+// ulang (dan itu pun dipindah ke arsip di HP ini, bukan dibuang).
 function ambilGagal() { try { return JSON.parse(localStorage.getItem(K_GAGAL) || '[]'); } catch (e) { return []; } }
+function ambilArsipDitolak() { try { return JSON.parse(localStorage.getItem(K_DITOLAK_ARSIP) || '[]'); } catch (e) { return []; } }
+
+// ---------- jawaban server dipilah TIGA (putaran 25b, 26 Sep 2026) ----------
+// Dulu cuma dua: berhasil, atau "belum masuk". Akibatnya satu karcis yang ditolak ATURAN
+// (mis. bulannya sudah dikunci owner) membuat layar masuk muncul terus, karcis itu tetap
+// di kepala antrean, dan SEMUA karcis sesudahnya ikut tertahan di HP ini. Sekarang:
+//   masuk          2xx
+//   masuk-ulang    401, atau 403 yang dikirim TANPA kunci masuk → layar masuk
+//   ditolak-aturan 403 dengan kunci masuk (permission-denied) → pindah ke daftar ditolak,
+//                  karcis berikutnya jalan terus
+//   ditolak-lain   4xx lain yang tidak akan berubah kalau diulang → daftar ditolak juga
+//   coba-lagi      sinyal putus, 408, 409, 429 (kuota/sibuk), 5xx → tetap antre, diulang
+// KEMBAR PERSIS dengan golonganJawaban() di kasir.html — uji_antrean_kasir.py memeriksa
+// keduanya sama huruf per huruf. Ubah keduanya bersama.
+function golonganJawaban(status, adaToken) {
+  if (status >= 200 && status < 300) return 'masuk';
+  if (status === 401) return 'masuk-ulang';
+  if (status === 403) return adaToken ? 'ditolak-aturan' : 'masuk-ulang';
+  if (status === 408 || status === 409 || status === 429 || !(status >= 400 && status < 500)) return 'coba-lagi';
+  return 'ditolak-lain';
+}
+// Karcis ditolak: DITULIS DULU ke daftar ditolak, BARU dicabut dari antrean. Kalau HP mati
+// di antara dua langkah itu, karcisnya ada di dua tempat (dobel, kelihatan) — bukan di nol
+// tempat (hilang, diam). Penyimpanan penuh = berhenti di sini, karcis tetap di antrean.
+function pindahKeDitolak(item, status, isi, golongan) {
+  var d = ambilGagal();
+  var sudah = d.some(function (x) { return x.koleksi === item.koleksi && String(x.docId) === String(item.docId); });
+  if (!sudah) {
+    var err = (isi && isi.error) || {};
+    d.push({ koleksi: item.koleksi, docId: item.docId, data: item.data,
+      ditolak: { pada: new Date().toISOString(), status: status, alasan: golongan === 'ditolak-aturan' ? 'aturan' : 'lain',
+        pesan: String((err.status || '') + (err.message ? ': ' + err.message : '')).slice(0, 200) } });
+    try { localStorage.setItem(K_GAGAL, JSON.stringify(d)); } catch (e) { return false; }
+  }
+  cabutDariAntrean(item);
+  return true;
+}
+// Baca ULANG antrean sebelum mencabut. Antrean yang dibaca SEBELUM fetch sudah basi: nota
+// yang dicatat selagi kiriman berlangsung sudah masuk localStorage, dan menulis balik salinan
+// basi akan menghapusnya tanpa jejak. Yang dicabut dicari menurut docId-nya, bukan posisinya.
+function cabutDariAntrean(item) {
+  var sisa = ambilAntrean();
+  for (var i = 0; i < sisa.length; i++) {
+    if (sisa[i].koleksi === item.koleksi && String(sisa[i].docId) === String(item.docId)) { sisa.splice(i, 1); break; }
+  }
+  simpanAntrean(sisa);
+}
 var sedangKirim = false;
 function kirimAntrean(manual) {
   if (sedangKirim) return;
   var a = ambilAntrean();
   if (a.length === 0) { if (manual) setStatus(navigator.onLine); return; }
+  // Belum masuk = JANGAN kirim. Kiriman tanpa kunci dijawab 403 oleh server, dan 403 itu
+  // bukan penolakan aturan — karcisnya tidak boleh masuk daftar ditolak gara-gara itu.
+  if (!sudahLogin()) { setStatus(navigator.onLine); return; }
   sedangKirim = true;
+  var selesai = function (online) { sedangKirim = false; setStatus(online); kirimDenyutD(); };
   var kirimSatu = function () {
     var a2 = ambilAntrean();
-    if (a2.length === 0) { sedangKirim = false; setStatus(true); return; }
+    if (a2.length === 0) { selesai(true); return; }
     var item = a2[0];
     denganAuth({
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields: (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })() })
     }).then(function (opsi) {
+      // Kunci masuk tidak bisa disegarkan (sinyal putus saat menyegarkan): tetap antre, ulang nanti.
+      if (!(opsi.headers && opsi.headers.Authorization)) {
+        selesai(false); if (!sudahLogin()) tampilkanLayarLogin(true); return;
+      }
       return fetch(DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, opsi).then(function (r) {
-        // Baca ULANG antrean sebelum membuang kepalanya. 'a2' dibaca SEBELUM fetch;
-        // nota yang dicatat kasir selagi kiriman berlangsung sudah masuk localStorage,
-        // dan menulis balik a2 yang basi akan menghapusnya tanpa jejak — chip status
-        // tetap hijau, uangnya hilang diam-diam. Pola ini disalin dari
-        // kirimAntreanTunda() di index.html yang memang sudah membaca ulang.
-        if (r.ok) { var sisa = ambilAntrean(); sisa.shift(); simpanAntrean(sisa); kirimSatu(); return; }
-        if (r.status === 401 || r.status === 403) {
-          sedangKirim = false; setStatus(false); tampilkanLayarLogin(sudahLogin()); return;
+        var g = golonganJawaban(r.status, true);
+        if (g === 'masuk') { cabutDariAntrean(item); kirimSatu(); return; }
+        if (g === 'masuk-ulang') { lupakanKunciSesi(); selesai(false); tampilkanLayarLogin(true); return; }
+        if (g === 'ditolak-aturan' || g === 'ditolak-lain') {
+          return r.json().catch(function () { return null; }).then(function (isi) {
+            if (!pindahKeDitolak(item, r.status, isi, g)) { selesai(false); return; }
+            gambarPitaDitolak();
+            kirimSatu();
+          });
         }
-        if (r.status >= 400 && r.status < 500) {
-          var g = ambilGagal(); g.push(item);
-          localStorage.setItem(K_GAGAL, JSON.stringify(g));
-          var sisa2 = ambilAntrean(); sisa2.shift(); simpanAntrean(sisa2); kirimSatu(); return;
-        }
-        throw new Error('status ' + r.status);
-      }).catch(function () { sedangKirim = false; setStatus(false); });
-    });
+        throw new Error('status ' + r.status);   // coba-lagi: sibuk / galat server
+      });
+    }).catch(function () { selesai(false); });
   };
   kirimSatu();
+}
+// 401: kunci sesi yang tersimpan sudah tidak dipercaya server. Kunci sesi dibuang supaya
+// kiriman berikutnya menyegarkannya dulu; kunci masuk (refreshToken) tetap disimpan.
+function lupakanKunciSesi() {
+  var a = authTersimpan();
+  if (a && a.idToken) { a.idToken = null; a.kedaluwarsa = 0; try { simpanAuth(a); } catch (e) {} }
 }
 function setStatus(online) {
   var el = $('chipStatus'); var n = ambilAntrean().length; var g = ambilGagal().length;
@@ -534,6 +628,72 @@ function setStatus(online) {
   if (!sudahLogin()) teks += ' · belum masuk';
   el.textContent = teks;
   perbaruiBarAntrean();
+  gambarPitaDitolak();
+}
+
+// ---------- pita & daftar karcis DITOLAK (putaran 25b) ----------
+var HARI_PENDEK = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+function tanggalRingkas(iso) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!m) return iso || 'tanpa tanggal';
+  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return HARI_PENDEK[d.getDay()] + ' ' + m[3] + '/' + m[2] + '/' + m[1];
+}
+function alasanDitolak(x) {
+  var t = (x.data && x.data.tanggal) || '';
+  if (!x.ditolak) return 'ditolak server';   // tercatat sebelum 25b: alasannya tidak disimpan
+  if (x.ditolak.alasan === 'lain') return 'ditolak server (' + (x.ditolak.status || '?') + ')';
+  // Bulan karcis lebih tua dari bulan HP ini = hampir pasti bulannya sudah dikunci owner.
+  return t && t.slice(0, 7) < tanggalLokalIso().slice(0, 7) ? 'bulan sudah dikunci' : 'ditolak aturan server';
+}
+function gambarPitaDitolak() {
+  var el = $('pitaDitolak');
+  if (!el) return;
+  var d = ambilGagal();
+  if (!d.length) { el.style.display = 'none'; el.textContent = ''; return; }
+  var dikunci = d.filter(function (x) { return alasanDitolak(x) === 'bulan sudah dikunci'; }).length;
+  el.textContent = d.length + ' karcis ditolak server' + (dikunci ? ' (bulan sudah dikunci)' : '') + ' — tunjukkan ke owner ›';
+  el.style.display = 'block';
+}
+function barisDitolakHtml(x) {
+  var t = x.data || {};
+  var barang = t.jenis === 'kasir_darurat_nominal' ? 'karcis' : (t.namaProduk || t.jenis || x.koleksi);
+  return '<div class="br-tolak"><div class="atas"><span>' + esk(tanggalRingkas(t.tanggal)) + ' · ' + esk(t.jam || '--:--') + '</span>' +
+    '<b>' + rupiah(t.hargaTotal || t.nominal || 0) + '</b></div>' +
+    '<div class="bawah">' + esk(barang) + ' · ' + esk(t.caraBayar || '') + (t.namaPelanggan ? ' · ' + esk(t.namaPelanggan) : '') +
+    ' · #' + esk(String(x.docId).split('.')[0].slice(-4)) + ' · ' + esk(alasanDitolak(x)) + '</div></div>';
+}
+function bukaDaftarDitolak() {
+  var d = ambilGagal(); var arsip = ambilArsipDitolak();
+  var total = d.reduce(function (a, x) { return a + ((x.data && (x.data.hargaTotal || x.data.nominal)) || 0); }, 0);
+  $('isiDitolak').innerHTML = (d.length
+    ? '<p class="ringkas-tolak">' + d.length + ' karcis · ' + rupiah(total) + '</p>' + d.map(barisDitolakHtml).join('')
+    : '<p>Tidak ada karcis yang ditolak.</p>') +
+    (arsip.length ? '<p class="judul-arsip">Sudah dicatat ulang owner (arsip di HP ini): ' + arsip.length + '</p>' + arsip.slice(-20).reverse().map(barisDitolakHtml).join('') : '');
+  $('btnArsipDitolak').style.display = d.length ? '' : 'none';
+  $('btnArsipDitolak').textContent = 'Owner sudah mencatat ulang semuanya';
+  $('layarDitolak').classList.add('tampil');
+}
+function tutupDaftarDitolak() { $('layarDitolak').classList.remove('tampil'); }
+// Dua ketukan, dan TIDAK menghapus: karcisnya pindah ke arsip di HP ini. Denyut sesudahnya
+// melaporkan 0 ditolak — jadi hanya ditekan owner sesudah benar-benar mencatat ulang.
+var yakinArsip = false;
+function arsipkanDitolak() {
+  var btn = $('btnArsipDitolak');
+  if (!yakinArsip) {
+    yakinArsip = true;
+    btn.textContent = 'Yakin? Ketuk lagi — hanya kalau owner SUDAH mencatat ulang di sistem baru';
+    setTimeout(function () { yakinArsip = false; if ($('layarDitolak').classList.contains('tampil')) btn.textContent = 'Owner sudah mencatat ulang semuanya'; }, 6000);
+    return;
+  }
+  yakinArsip = false;
+  var d = ambilGagal(); var arsip = ambilArsipDitolak(); var kini = new Date().toISOString();
+  d.forEach(function (x) { x.diarsipkanPada = kini; arsip.push(x); });
+  try { localStorage.setItem(K_DITOLAK_ARSIP, JSON.stringify(arsip)); } catch (e) { btn.textContent = 'Penyimpanan HP penuh — tidak dipindah'; return; }
+  localStorage.setItem(K_GAGAL, '[]');
+  denyutTerakhirD = 0; kirimDenyutD();
+  setStatus(navigator.onLine);
+  bukaDaftarDitolak();
 }
 
 // ---------- papan angka ----------
@@ -936,8 +1096,35 @@ window.pilihBayarD = pilihBayarD;
 window.tandaiNamaD = tandaiNamaD;
 window.kirimLogin = kirimLogin;
 window.lewatiLogin = lewatiLogin;
+window.bukaDaftarDitolak = bukaDaftarDitolak;
+window.tutupDaftarDitolak = tutupDaftarDitolak;
+window.arsipkanDitolak = arsipkanDitolak;
+
+// ---------- versi baru benar-benar terpasang (putaran 25b) ----------
+// Service worker menyajikan berkas dari cache dulu. HP yang layarnya dibiarkan terbuka
+// seharian tidak pernah "membuka ulang", jadi versi baru yang sudah terunduh tidak pernah
+// dipakai. Sekarang: tiap 30 menit & tiap layar dinyalakan, HP menanyakan versi baru; begitu
+// versi baru mengambil alih, halaman dimuat ulang — HANYA saat senggang (tidak ada barang
+// yang sedang diketik, sandi tidak sedang diisi). Karcis yang sudah disimpan aman di antrean.
+var adaPengendaliAwal = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+var versiBaruMenunggu = false;
+function senggang() {
+  return barisItems.length === 0 && nominalDiketik === '' &&
+    !($('inputSandiLogin').value || '') && !($('namaPembeliD').value || '') && !($('ketNegoD') && $('ketNegoD').value);
+}
+function muatUlangKalauSenggang() {
+  if (versiBaruMenunggu && senggang()) { versiBaruMenunggu = false; location.reload(); }
+}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    // Pemasangan PERTAMA juga memicu controllerchange — itu bukan versi baru.
+    if (!adaPengendaliAwal) { adaPengendaliAwal = true; return; }
+    versiBaruMenunggu = true; muatUlangKalauSenggang();
+  });
+}
 
 // ---------- mulai ----------
+$('versiApp').textContent = LABEL_VERSI;
 muatRingkasanD();
 gambarLcd();
 gambarBaris();
@@ -958,7 +1145,14 @@ kirimDenyutD();
 document.addEventListener('visibilitychange', function () { if (!document.hidden) kirimDenyutD(); });
 window.addEventListener('online', kirimDenyutD);
 setInterval(function () { if (!document.hidden) kirimDenyutD(); }, 300000);
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw-kasir.js').catch(function () {}); }
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw-kasir.js').then(function (reg) {
+    var tanya = function () { if (navigator.onLine && reg.update) reg.update().catch(function () {}); };
+    setInterval(tanya, 1800000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) tanya(); });
+  }).catch(function () {});
+}
+setInterval(muatUlangKalauSenggang, 10000);
 kirimAntrean(false);
 </script>
 
