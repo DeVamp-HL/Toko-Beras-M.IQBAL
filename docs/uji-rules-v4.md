@@ -91,6 +91,22 @@ Semua ★ di `docs/uji-rules-v3.md` §A dijalankan ulang dengan v4 di editor, ha
 - ★3 / ★4 (kasir@ create tanpa `tanggal`): LOLOS **hanya** tanpa dokumen kunci. Catatan tanpa tanggal dinilai sebagai bulan paling tua, jadi begitu
   ada satu bulan terkunci, catatan tanpa tanggal ditolak. Karena itu bagian C dijalankan SESUDAH dokumen uji dihapus.
 
+## Hasil Playground — 25 Sep 2026 (sore, v4 `bf0ade38…` di editor, BELUM terbit)
+
+Dijalankan Claude lewat Chrome owner; dokumen uji dibuat Claude, **dihapus owner** (Claude tidak boleh menghapus data), lalu Claude memeriksa lewat
+Console bahwa `aturanToko/kunciPeriode` benar-benar tidak ada ("This document does not exist") dan 8 dokumen `aturanToko` lain utuh.
+
+| Bagian | Kasus | Hasil |
+|---|---|---|
+| A (dok uji Juli terkunci) | ★A1 A2 A2b A3 A4 A8 A12 A14 A15 A16 A17 | semua **DITOLAK** ✓ |
+| A | ★A5 A6 A7 A9 A10 A11 A13 A13b | semua **LOLOS** ✓ (A13 sempat GALAT → rules ditambal `69b36dc`, diulang LOLOS) |
+| B (tanpa dok kunci) | ★B0 (galat null = tidak ada yang bisa diubah) · B4 | **DITOLAK** ✓ |
+| B | ★B1 B2 B3 B6 | **LOLOS** ✓ · ★B5 dilewati (tanggal 25, di luar tanggal 1–3) |
+| C (★ v3 diulang) | ★1 2 3 4(×3) 5(×3) 8 P1 | **LOLOS** ✓ |
+| C | ★6(×4) 7(×3) 9(×2) 10 11 P2(×3) | **DITOLAK** ✓ (★11 kini ditolak = payung dihapus) |
+
+Catatan: isian ★9b tanpa kolom `pada` (uid, email, nama + `peran`) — penolakan datang dari `peran` (`keys().hasOnly`), sama maknanya.
+
 ## Perlakuan kasir@ (kasir darurat) di v4 — persis
 
 | Operasi | Koleksi | Aturan |
