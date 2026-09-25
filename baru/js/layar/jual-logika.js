@@ -57,6 +57,7 @@ export function keadaanAwal() {
     pesananId: null, psNama: '', psIsi: '', psAlamat: '', psNilai: '', psSaring: '',
     tukar: null,   // PUTARAN 4: { returDraf, kredit, ringkas } — retur tukar yang diikat ke keranjang ini (_tukarKeJual index.html 16838); PUTARAN 20: { susulanReturId, kredit 0, … } = pengganti tukar yatim
     karcis: null,  // PUTARAN 20: karcis kasir darurat / nota perlu-dirapikan yang sedang dirinci lewat keranjang ini (karcis-logika.js)
+    kcBatal: null, // PUTARAN 25b: { id, alasan } — karcis kasir darurat yang sedang dibatalkan dari lembar Karcis (karcis-logika susunBatalKarcis)
     // PUTARAN 15: isian repack (wadah dipilih, lembar, dijual/ditanggung, upah) & struk (nota yang dibuka, timpaan kertas/sertakan, draf setelan)
     rpWadah: '', rpLembar: '', rpDijual: true, rpUpah: '',
     strukKunci: null, strukKertas: null, strukSertakan: null, aturStruk: null, aturWadah: null,
@@ -501,7 +502,7 @@ export function barisBelumDisimpan(s) {
 }
 export const kalimatKeranjangKeluar = (n) => 'Keranjang berisi ' + n + ' baris belum disimpan — simpan atau kosongkan?';
 // putaran 23d: isian Jual SELAIN keranjang — pesanan yang sedang diketik, retur (tanpa/dengan nota), repack, setelan struk/wadah yang terbuka, karcis yang dirinci, tukar
-const ISIAN_JUAL_LAIN = ['psNama', 'psIsi', 'psAlamat', 'psNilai', 'aturStruk', 'aturWadah', 'karcis', 'tukar', 'namaRepack', 'rpWadah', 'rpLembar', 'rpUpah',
+const ISIAN_JUAL_LAIN = ['psNama', 'psIsi', 'psAlamat', 'psNilai', 'aturStruk', 'aturWadah', 'karcis', 'kcBatal', 'tukar', 'namaRepack', 'rpWadah', 'rpLembar', 'rpUpah',
   'rtNotaId', 'rtAlasan', 'rtNominal', 'rtAlasanTimpa', 'rtBarang', 'rtSelisih', 'rtPengganti'];
 export function adaIsianLain(s) { const a = keadaanAwal(); return ISIAN_JUAL_LAIN.some((k) => JSON.stringify(s[k] === undefined ? null : s[k]) !== JSON.stringify(a[k] === undefined ? null : a[k])); }
 /** Keadaan Jual untuk orang berikutnya: keranjang, parkir, nama pembeli, potongan, retur tukar, karcis, pesanan, isian — dibuang semua; yang tinggal cuma

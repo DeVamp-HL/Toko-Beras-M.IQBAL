@@ -356,6 +356,19 @@ Peta & keputusan owner K1–K6: `docs/peta-kunci-periode.md`. Uji server: `docs/
   saldo pembukanya > 18 pemeriksaan kunci (pembuka piutang = tanggal utang tertua, bon pemasok = tanggal bon; cadangan toko 25 Sep: 24) → ditolak di layar
   sebelum dikirim. Rancangan baru: arsip = salinan + penanda, tidak menghapus; catatan dasar 10 tahun; tiap kiriman ≤ 18.
 
+## Putaran 25b — antrean kasir tidak macet, batal karcis darurat (26 Sep 2026)
+
+- **Kasir darurat & kasir.html (sw-kasir v26)**: jawaban server dipilah tiga — 401 = layar masuk; 403 dengan kunci masuk = DITOLAK ATURAN (mis. bulan
+  terkunci) → daftar "ditolak" di HP itu (`darurat_gagal_v1` / `kasir_gagal_v1`), tidak diulang, tidak dihapus, catatan sesudahnya tetap terkirim;
+  sinyal / 429 / 5xx = tetap antre. Pita merah + daftar tanggal/jam/nominal; "sudah dicatat ulang" = dua ketukan, pindah ke arsip HP. Denyut: antrean,
+  `gagal` (= ditolak), `versi` = VERSI sw-kasir.js. Versi tampil di bilah atas ("versi 25b").
+- **Beranda › Perlu perhatian** (owner): HP kasir yang antre / punya catatan ditolak / masih versi < `KP_VERSI_KASIR_25B` (`kpPerhatianPerangkat`).
+  **Daftar periksa kunci bulan** ⛔ baru: semua perangkat kasir yang berdenyut 7 hari terakhir sudah versi 25b (nama perangkat disebut).
+- **Batal karcis kasir darurat** (Jual › pita karcis › lembar Karcis kasir › *batalkan*, alasan wajib): bentuk = `mulaiBatalkanTrx` sistem lama
+  (`karcis-logika.js susunBatalKarcis`). Dijaga `alat-uji/uji_batal_karcis.py`.
+- **Sistem lama hanya-baca: BELUM** — Tahap 0 (`docs/peta-pensiun-sistem-lama.md`) menemukan 15 fitur tulis lain yang hanya ada di `index.html`;
+  menunggu keputusan owner. `KP_SIAP_25B` tetap `false` sampai itu selesai.
+
 ## Struktur
 ```
 baru/
@@ -415,6 +428,8 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_pajak_baru.py` (+ `--kontrol`) | 43 skenario modul pajak (batas bebas di tengah bulan, omzet luar tanpa hitung ganda, kosong ≠ nol, badan tanpa angka, setoran & angka berubah, kurang/lebih, lewat tempo, ambang 70/85/95/100 + proyeksi, regresi penulis rekapOmzet, DK3 = layar Pajak, tanpa NIK/NPWP, status pasangan PH/MT/satu kesatuan/belum diketahui, dua angka omzet) + 29 kontrol; di cadangan toko: omzet layar Pajak = mesin laba = DK3 |
 | `alat-uji/uji_kunci_periode.py` (+ `--kontrol`) | 45 skenario kunci periode (WIB & tenggang 3 hari, tiap ⛔, hari tanpa tutup, kunci/buka satu langkah, pembalik hari ini, keputusan K1–K6, penjaga pusat & kirim bertahap, final bulanan, pajak) + 39 kontrol; di cadangan toko: kunci Agustus → Juli & Agustus byte-sama, satu retur hari ini mengubah September saja |
 | `alat-uji/peta_akses.py --kiriman` bagian owner | kiriman owner yang menyentuh bulan lampau, dua keadaan (tanpa kunci / Agustus terkunci), fungsi asli ≤ 18 pemeriksaan kunci; tiap penulis koleksi bertanggal wajib terdaftar — 25 DIUKUR (semua yang ber-perulangan: nota 40 baris, batal nota, ini dia, cocokkan, tutup hari, tutup buku & batalnya, arsip per 18), 20 beralasan (jumlah dokumen tetap); arsip dipotong `KP_BATAS_GET`; kasir*.html 1 dokumen per permintaan |
+| `alat-uji/uji_antrean_kasir.py` (+ `--kontrol`, `--gambar DIR`) | 25b: kasir darurat & kasir.html di Chrome headless + Firestore palsu — karcis ke-2 dari 5 ditolak (sisanya masuk), 401, sinyal/429/503, belum masuk, denyut & versi, tahan muat ulang; statis versi kembar; /baru/ ⛔ versi & Perlu perhatian |
+| `alat-uji/uji_batal_karcis.py` (+ `--kontrol`) | 25b: batal karcis kasir darurat di /baru/ — field = `mulaiBatalkanTrx` (dibaca dari index.html) & dokumen pembatalan sungguhan di cadangan lokal |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.

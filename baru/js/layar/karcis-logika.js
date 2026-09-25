@@ -10,7 +10,7 @@ import { hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { penjualanMasihBerlaku, bakuCaraBayar, hargaKarungUtuh, namaSingkatTrx, kunciKemasan } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilHargaLiteran, ambilHargaKemasan, tolakKunci, butuhGet } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
-import { RP, hariIniIso } from '../inti/format.js';
+import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { susunRak, masukkan, terapkanNego, periksaStokKeranjang } from './jual-logika.js';
 import { koleksiWadah } from './wadah-jual-logika.js';
 
@@ -154,6 +154,36 @@ export function susunUrungRinci(rinci, w) {
   const kelompok = butuhGet(dokumen, hapus) > KP_BATAS_GET ? dokumen.filter((d) => String(d.data.id) !== String(rinci.asliId)).map((d) => ({ dokumen: [d], hapus: hapus.filter((h) => String(h.id) === String(Number(d.data.id) + 1)) }))
     .concat([{ dokumen: dokumen.filter((d) => String(d.data.id) === String(rinci.asliId)), hapus: [] }]) : null;
   return { dokumen, hapus, kelompok, jumlah: grup.length, patch: { notaTerakhir: null, kabar: 'Rincian ditarik balik — ' + grup.length + ' catatan dibatalkan, karcis ' + kcEkor(rinci.asliId) + ' kembali ke antrean', kabarAwas: false } };
+}
+
+// ---- PUTARAN 25b: BATALKAN karcis kasir darurat yang salah ketik (satu-satunya pekerjaan yang masih dilakukan owner di sistem lama, 25 Sep) ----
+// Padanan mulaiBatalkanTrx() index.html 32117, BENTUK DOKUMEN SAMA: { ...p, dibatalkan: true, alasanKoreksi, dikoreksiPada, dibatalkanPada } — baris TIDAK dihapus;
+// kantong literan pasangan (id+1) ikut dicabut seperti di sana. Atribusi (diubahOleh / diubahPerangkat / diubahPada, + uid akun) ditempel penulis pusat.
+// Hanya catatan yang LAHIR dari kasir darurat: karcis nominal (termasuk sisa yang belum diurai), barang tuts bernama (viaDarurat), atau perangkat berawalan d-.
+// Karcis yang sudah dirinci → tarik balik rinciannya dulu (karcis kembali ke antrean, lalu bisa dibatalkan).
+const KC_BATAL_TERKUNCI = 'karcis ini tidak bisa dibatalkan lagi — salah ketiknya tetap tercatat di bulan itu';
+export const kcDariDarurat = (p) => !!p && (p.jenis === 'kasir_darurat_nominal' || p.viaDarurat === true || /^d-/.test(String(p.perangkat || '')));
+/** Catatan kasir darurat bertanggal `iso` (bawaan: hari ini) yang masih berlaku — daftar "Karcis kasir darurat hari ini" di lembar Karcis. Terbaru dulu. */
+export function karcisDaruratHari(kini, iso) {
+  const hari = iso || hariIniIso(kini);
+  return ambilPenjualan().filter((p) => kcDariDarurat(p) && p.tanggal === hari)
+    .map((p) => ({ id: String(p.id), tanggal: p.tanggal, jam: p.jam || '', nominal: Math.round(p.hargaTotal || 0), cara: bakuCaraBayar(p.caraBayar), nama: String(p.namaPelanggan || '').trim(),
+      oleh: String(p.operator || p.oleh || '').trim(), teks: p.jenis === 'kasir_darurat_nominal' ? (p.asalDarurat ? 'Sisa karcis ' + kcEkor(p.rinciDari || p.id) : 'Karcis ' + kcEkor(p.id)) : namaSingkatTrx(p) + ' · tuts kasir darurat',
+      ket: String(p.keteranganDarurat || '').trim() }))
+    .sort((a, b) => (b.jam + b.id).localeCompare(a.jam + a.id));
+}
+/** {tolak} atau {dokumen, hapus, patch}. alasan wajib (≥ 3 huruf) — jejaknya dibaca lagi nanti, seperti prompt di sistem lama. */
+export function susunBatalKarcis(id, alasan, w) {
+  const p = ambilPenjualanSemua().find((x) => String(x.id) === String(id));
+  if (!p) return { tolak: 'Karcis itu tidak ditemukan lagi' };
+  if (!kcDariDarurat(p)) return { tolak: 'Ini bukan catatan kasir darurat — batalkan lewat jalurnya sendiri' };
+  if (!penjualanMasihBerlaku(p)) return { tolak: 'Karcis ' + kcEkor(p.id) + ' sudah ' + (p.dibatalkan ? 'dibatalkan' : 'dirinci/dikoreksi (tarik balik rinciannya dulu)') + ' — tidak dibatalkan dua kali' };
+  const kunci = tolakKunci('penjualan', p, KC_BATAL_TERKUNCI); if (kunci) return { tolak: kunci };
+  const a = String(alasan || '').trim(); if (a.length < 3) return { tolak: 'Tulis alasannya dulu (mis. "salah ketik, harusnya 39.000") — barisnya tetap tersimpan dan ditandai dibatalkan' };
+  const kini = (w && w.kini) || new Date().toISOString();
+  const data = Object.assign({}, p, { dibatalkan: true, alasanKoreksi: a.slice(0, 120), dikoreksiPada: kini, dibatalkanPada: kini });
+  const hapus = p.jenis === 'literan' && p.kemasanLiteran ? [{ koleksi: 'stokBahanLiteran', id: p.id + 1 }] : [];
+  return { dokumen: [{ koleksi: 'penjualan', data }], hapus, patch: { kcBatal: null, kabar: 'Karcis ' + kcEkor(p.id) + ' ' + RP(p.hargaTotal || 0) + ' (' + tanggalPendek(p.tanggal) + ' ' + (p.jam || '') + ') DIBATALKAN — ' + a + '. Barisnya tetap ada, ditandai dibatalkan; omzet & uang laci hari itu turun ' + RP(p.hargaTotal || 0) + '.', kabarAwas: false } };
 }
 
 /** Rincian yang dibuat hari `iso` dan masih utuh (bisa ditarik balik dari daftar karcis). */

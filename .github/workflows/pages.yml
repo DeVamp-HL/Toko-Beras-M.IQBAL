@@ -98,6 +98,8 @@ jobs:
       # ---- PUTARAN 25b — antrean kasir tidak boleh macet ----
       - name: "Antrean kasir (25b): karcis ditolak server dipisah, sisanya tetap terkirim; 401 → layar masuk; sinyal/429/503 → tetap antre; denyut & versi; tahan muat ulang — Chrome headless + Firestore palsu + kontrol"
         run: python3 alat-uji/uji_antrean_kasir.py && python3 alat-uji/uji_antrean_kasir.py --kontrol
+      - name: "Batal karcis kasir darurat di /baru/ (25b): bentuk dokumen = mulaiBatalkanTrx sistem lama, alasan wajib, bulan terkunci ditolak (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_batal_karcis.py && python3 alat-uji/uji_batal_karcis.py --kontrol
 
   terbitkan:
     needs: uji
