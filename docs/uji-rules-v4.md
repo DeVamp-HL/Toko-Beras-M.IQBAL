@@ -81,7 +81,7 @@ penjaga itu hilang. Sesudah tambalan, ★A13–★A16 diulang dengan rules baru 
 | ★B2 | owner@ | create `/penjualan/uji-b2` `{id:'uji-b2', tanggal:'2026-08-20', hargaTotal:1000}` | LOLOS |
 | ★B3 | owner@ (UID `uid-uji`) | create `/aturanToko/kunciPeriode` → `{sampaiBulan:'2026-08', riwayat:[{aksi:'kunci', bulan:'2026-08', olehUid:'uid-uji', alasan:''}]}` | LOLOS — kunci PERTAMA langsung ke Agustus dari dokumen yang belum ada (Playground tidak menyimpannya) |
 | ★B4 | owner@ (UID `uid-uji`) | create `/aturanToko/kunciPeriode` → `{sampaiBulan:'<bulan berjalan, mis. 2026-09>', riwayat:[{aksi:'kunci', bulan:'<bulan yang sama>', olehUid:'uid-uji', alasan:''}]}` | **DITOLAK** — bulan yang belum lewat tenggang (bulan berjalan tidak pernah) |
-| ★B5 | owner@ (UID `uid-uji`) | HANYA kalau hari ini tanggal 1, 2, atau 3: seperti ★B4 dengan `sampaiBulan` = **bulan lalu** | **DITOLAK** — bulan lalu masih dalam tenggang 3 hari. Tanggal 4 atau sesudahnya: lewati (★B3 sudah membuktikan sisi LOLOS-nya) |
+| ★B5 | owner@ (UID `uid-uji`) | HANYA kalau hari ini tanggal 1, 2, atau 3: seperti ★B4 dengan `sampaiBulan` = **bulan lalu** | **DITOLAK** — bulan lalu masih dalam tenggang 3 hari. Tanggal 4 atau sesudahnya: lewati (★B3 sudah membuktikan sisi LOLOS-nya). **Belum pernah dijalankan (25 Sep); jadwal ulang 1–3 Oktober 2026** — tanpa dokumen kunci; `sampaiBulan` = `2026-09`, riwayat `[{aksi:'kunci', bulan:'2026-09', olehUid:'uid-uji'}]`, create |
 | ★B6 | kasir@ | create `/penjualan/uji-b6` `{id:'uji-b6', tanggal:'2026-08-20', hargaTotal:1000, jenis:'kasir_darurat_nominal'}` | LOLOS — nota kasir darurat yang tertahan lama tidak macet selama tidak ada bulan terkunci |
 
 ## C · Kasus ★ v3 diulang (masih TANPA dokumen kunci)
@@ -101,7 +101,8 @@ Console bahwa `aturanToko/kunciPeriode` benar-benar tidak ada ("This document do
 | A (dok uji Juli terkunci) | ★A1 A2 A2b A3 A4 A8 A12 A14 A15 A16 A17 | semua **DITOLAK** ✓ |
 | A | ★A5 A6 A7 A9 A10 A11 A13 A13b | semua **LOLOS** ✓ (A13 sempat GALAT → rules ditambal `69b36dc`, diulang LOLOS) |
 | B (tanpa dok kunci) | ★B0 (galat null = tidak ada yang bisa diubah) · B4 | **DITOLAK** ✓ |
-| B | ★B1 B2 B3 B6 | **LOLOS** ✓ · ★B5 dilewati (tanggal 25, di luar tanggal 1–3) |
+| B | ★B1 B2 B3 B6 | **LOLOS** ✓ |
+| B | ★B5 | **BELUM DIJALANKAN** — hanya bisa diuji tanggal 1, 2, atau 3 (masa tenggang bulan lalu). **Jadwal ulang: 1–3 Oktober 2026** (bulan lalu = September; wajib DITOLAK) |
 | C (★ v3 diulang) | ★1 2 3 4(×3) 5(×3) 8 P1 | **LOLOS** ✓ |
 | C | ★6(×4) 7(×3) 9(×2) 10 11 P2(×3) | **DITOLAK** ✓ (★11 kini ditolak = payung dihapus) |
 
