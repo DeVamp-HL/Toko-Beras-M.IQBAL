@@ -142,7 +142,7 @@ class Pelayan(http.server.SimpleHTTPRequestHandler):
         if self.path.startswith('/_siap'):
             self.keadaan['siap'].set(); self.send_response(204); self.end_headers(); return
         if self.path.startswith('/_tahan'):
-            self.keadaan['siap'].wait(80); time.sleep(0.4)   # runner CI macOS jauh lebih lambat dari Mac pengembang
+            self.keadaan['siap'].wait(45); time.sleep(0.4)   # halaman sehat mengabarkan selesai dalam hitungan detik, juga di runner CI
             self.send_response(200); self.send_header('Content-Type', 'image/gif'); self.end_headers()
             self.wfile.write(b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'); return
         return super().do_GET()
@@ -170,8 +170,24 @@ def layani(d):
     return srv, port, keadaan
 
 
-def buka(port, keadaan, profil, jalur, gambar=None, tunggu=120):
-    """Satu pemuatan halaman di Chrome headless. → DOM (teks) sesudah skenario selesai; gambar = berkas PNG (tangkapan layar, bukan DOM)."""
+def buka(port, keadaan, profil, jalur, gambar=None, tunggu=60):
+    """Satu pemuatan halaman di Chrome headless. → DOM (teks) sesudah skenario selesai; gambar = berkas PNG (tangkapan layar, bukan DOM).
+    Runner CI macOS sesekali membuat satu Chrome macet total (PR #41: 2 dari ±60 pemuatan, halaman tidak pernah jalan). Halaman yang TIDAK
+    mengabarkan selesai dicoba SEKALI lagi — skenario selalu mulai dari keadaan yang ia pasang sendiri, jadi mengulang tidak meloloskan apa pun;
+    halaman yang jalan tapi hasilnya salah tetap gagal di pemeriksanya."""
+    h = ''
+    for coba in (1, 2):
+        for kunci in ('SingletonLock', 'SingletonSocket', 'SingletonCookie'):   # kunci profil sisa Chrome yang sudah dimatikan
+            try:
+                if os.path.lexists(os.path.join(profil, kunci)): os.unlink(os.path.join(profil, kunci))
+            except OSError: pass
+        h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu)
+        if gambar or keadaan['siap'].is_set(): return h
+        print('  [peramban] %s tidak mengabarkan selesai (percobaan %d)' % (jalur, coba), file=sys.stderr, flush=True)
+    return h
+
+
+def _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu):
     keadaan['siap'] = threading.Event()
     arg = [CHROME, '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--disable-component-update', '--disable-background-networking',
            '--user-data-dir=' + profil, '--window-size=500,900', '--hide-scrollbars',
