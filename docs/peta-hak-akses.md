@@ -156,6 +156,10 @@ Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `
   penjual saat itu juga, dari harga beli (mesin laba yang dibekukan membacanya). Jadi ringkasan stok tanpa harga saja belum cukup; putaran
   tablet harus memutuskan siapa yang mengisi HPP nota staf (mis. perangkat owner melengkapinya sesudahnya) sebelum baca koleksi-koleksi
   di atas dicabut untuk staf.
+  **Akun kasir@ (25c, 27 Sep):** katalog `ringkasanKasir/aktif` yang dibaca kasir@ memuat modal (`hppPerUnit`, `hppPerKg`, harga kantong) dan daftar bon
+  pelanggan — dan modal itu DIPAKAI kedua berkas kasir untuk mengisi modal nota (`docs/peta-pindahan-terakhir.md` §1). Owner memilih **bentuk tetap**
+  sampai putaran tablet (§6 A pilihan A1); pilihan dua dokumen / cabut modal ada di peta itu. PIN operator di `pengaturan/aksesKasir` (juga dibaca kasir@)
+  **dicabut** — dokumennya kini hanya nama + aktif/libur.
 - **Cache Firestore dibersihkan saat Keluar** di perangkat bersama. Sampai itu ada, owner tidak masuk `/baru/` di tablet bersama.
 - **Jaga CI kiriman ≤ 18** tetap hijau.
 - **Email akun selalu huruf kecil** saat dibuat di Console.

@@ -1,8 +1,8 @@
 # Peta pindahan terakhir — putaran 25c, Tahap 0
 
-**Status (27 Sep 2026): Tahap 0 BERHENTI di dua titik — keputusan owner (§6).** Katalog kasir memuat modal, dan modal itu **dipakai** oleh HP
-kasir untuk mencatat modal nota; PIN operator kasir tersimpan tanpa diacak di dokumen yang bisa dibaca akun kasir. Dua-duanya menyentuh bentuk
-dokumen dan aturan server, jadi tidak dipindah sebelum owner memilih.
+**Status (27 Sep 2026): Tahap 0 sempat BERHENTI di dua titik; owner memilih hari itu juga (§7), lalu Bagian A–D dibangun (§8).** Katalog kasir
+memuat modal, dan modal itu **dipakai** oleh HP kasir untuk mencatat modal nota; PIN operator kasir tersimpan tanpa diacak di dokumen yang bisa
+dibaca akun kasir. Dua-duanya menyentuh bentuk dokumen dan aturan server, jadi tidak dipindah sebelum owner memilih.
 
 Sumber: kode di `main` 60a55f0, `firestore.rules` (v4), dan cadangan toko 27 Sep 2026 05.18 WIB (di `_privat/`, tidak masuk repo).
 Angka di dokumen ini **jumlah catatan**, bukan rupiah. Nama orang tidak disebut.
@@ -192,3 +192,49 @@ PIN owner (`keamanan`) hanya dipakai sistem lama. Pilihan terpisah: pindah ke Me
 Tidak ada syarat berhenti. Letak di `/baru/` mengikuti cara owner memakainya 22 Sep: pil jenis di **Harga › Katalog** per nama beras + daftar di
 **Harga › Atur**; bentuk dokumen sama persis. Pertanyaan: jenis beras juga ditampilkan di Jual & Stok `/baru/` (desain Jual dikunci), atau cukup
 di Harga?
+
+## 7. Keputusan owner (27 Sep 2026, kotak pilihan)
+
+| | Pilihan owner | Artinya |
+|---|---|---|
+| A · bentuk katalog | **A1 — bentuk tetap dulu** | `/baru/` menulis dokumen yang sama persis; modal & daftar bon tetap terkirim ke akun kasir sampai putaran tablet |
+| B · HP penjaga | **B1 — boleh ubah** | kasir darurat mengambil katalog saat layar dinyalakan & tiap 5 menit (jadwal denyut); `sw-kasir` v27 |
+| C · PIN operator | **dicabut** | PIN dibuang dari dokumen; daftar nama + aktif/libur pindah ke Menu › Peran & persetujuan › Kasir & PIN; tanpa aturan server baru |
+| D · jenis beras | **Harga + Stok + Jual** | pil jenis & daftar di Harga, total per jenis di Stok, baris saring di Jual (owner tahu desain Jual dikunci) |
+
+PIN owner (hash, dibaca owner saja) tidak memicu syarat berhenti — dipindah sesuai prompt, bentuk sama.
+
+## 8. Yang dibangun
+
+**A · Katalog kasir.** Penyusun isi disalin apa adanya oleh `alat-uji/pindah_mesin.py` (`susunIsiKatalogKasir` → `baru/js/mesin/pembantu.js`).
+`baru/js/data/katalog-kasir.js`: dokumen `kkDokumen` (kunci & urutan = index.html), pembanding isi yang tidak tertipu urutan kunci Firestore
+(`kkKanon`), gerbang terbit `kkBolehTerbit` (owner · Firestore · tersambung · tidak ada koleksi ditolak · semua koleksi termuat dan **dijawab server**,
+bukan salinan perangkat · katalog server sudah terbaca), `kkSertakan` (katalog SESUDAH kiriman ikut di kiriman yang sama), `kkBeranda`.
+`firebase.js`: pendengar dokumen katalog (owner saja), penerbit otomatis 4 detik sesudah **setiap** perubahan data, hanya kalau isinya berbeda,
+`setDoc` apa adanya tanpa jejak; penulis pusat menulis `ringkasanKasir` apa adanya (`kkMentah`). Terbit harga (Harga › Periksa & terbitkan)
+menyertakan katalog di writeBatch yang sama. Beranda: baris "Katalog kasir: diperbarui …" + Perlu perhatian (perubahan yang belum sampai, terbit
+gagal, HP kasir masih v26, HP penjaga yang masih memegang katalog lama menurut denyutnya). `index.html`: penerbit lama ditutup TANPA modal
+(`JALUR_DIAM`), tombol "Terbitkan katalog sekarang" hanya menjelaskan. Kasir darurat (v27): ambil katalog saat layar dinyalakan & tiap 5 menit,
+denyut membawa `katalog` (cap katalog yang dipegang).
+
+**B · Jenis beras.** `jenisUntukMerk`, `tebakJenisBeras`, `semuaMerkDikenal`, `PILIHAN_JENIS_BERAS` disalin apa adanya. `ambilPetaJenisBeras()` membaca
+**dokumen** dulu (salinan perangkat hanya kalau dokumennya belum ada — temuan §3 tertutup). `baru/js/layar/jenis-beras-logika.js`: daftar, pilihan
+(7 bawaan + jenis yang pernah diketik), `susunJenisBeras` (dokumen `{ id, peta, diubahPada }` = sistem lama; "kosongkan" = nilai `''` seperti sistem
+lama), kelompok Stok, saring rak Jual. Tampil: Harga › Katalog harga (pil per nama beras di papan owner, lembar pilih/ketik/kosongkan, daftar lengkap
+"Jenis beras · N/M terisi"), Stok › Gudang (kartu "Beras di buku per jenis"), Jual (baris saring di atas rak literan/kemasan/karung/repack; urutan
+rak tidak berubah). `index.html`: ubah & simpan jenis beras ditolak penjaga SEBELUM salinan HP berubah.
+
+**C · Operator & PIN.** `baru/js/layar/akses-kasir-logika.js` + tab **Kasir & PIN** di Menu › Peran & persetujuan: daftar dari dokumen (nama = kunci
+peta, tidak ada nama di kode), aktif/libur, tambah, hapus (dua ketukan), **Cabut PIN operator** (tampil selama masih ada PIN tersimpan); setiap simpan
+menulis dokumen tanpa `pin`. PIN owner: ganti/setel dengan PIN sekarang (kalau sudah disetel), 4–8 angka, diulang; `acakPin` disalin apa adanya,
+dokumen `{ id, garam, acak, diubahPada }`. `index.html`: buka/simpan operator dan setel/simpan PIN owner ditolak penjaga SEBELUM apa pun berubah.
+**Belum dicabut di server:** PIN operator di dokumen sungguhan baru hilang sesudah owner menekan "Cabut PIN operator" di `/baru/` (langkah owner).
+
+**D · Sistem lama.** `TULIS_TERBUKA` kosong; yang tersisa di `index.html`: membaca riwayat, denyut, antrean lama sekali, dan pulihkan (mode pulih).
+Pita: "Sistem lama hanya untuk membaca riwayat dan pemulihan darurat."
+
+**Gerbang uji:** `alat-uji/uji_katalog_kasir.py`, `uji_setelan_jenis_beras.py`, `uji_operator_pin.py` (+ `--kontrol`, di CI). Uji lama yang memegang
+keputusan 25b diperbarui ke keputusan ini dengan jumlah pemeriksaan sama: `uji_sistem_lama_bacasaja.py` (setelan kini ditolak, katalog tidak terbit dari
+sistem lama, pita baru) dan `uji_antrean_kasir.py` (label "versi 25c"; lantai kunci bulan `kasir-v26` ≤ versi yang disajikan = versi terbaru `/baru/`).
+Aturan server v4 tidak berubah.
+

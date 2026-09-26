@@ -3,6 +3,11 @@
 **Kapan dipakai:** data di server hilang atau rusak, dan harus dikembalikan dari berkas cadangan (`backup-batch-miqbal-….json`). Ini jalan
 **darurat**, bukan pekerjaan rutin.
 
+> **Putaran 25c (27 Sep 2026): prosedur ini TIDAK berubah.** Jenis beras, operator kasir, PIN owner, dan katalog kasir pindah ke `/baru/` dan jalan
+> tulisnya di sistem lama ditutup — tapi pemulihan berjalan dalam mode pulih (sesudah ketik PULIHKAN), yang meloloskan semua tulisan dari berkas,
+> termasuk peta jenis beras dan tempat simpan. Syarat di bawah (unduh cadangan dulu, aturan darurat v3 sebentar, kembalikan v4, ulang ★ v4, catat
+> jendela darurat) tetap sama. Katalog kasir tidak ikut dipulihkan dari berkas; `/baru/` menerbitkannya ulang sendiri begitu data termuat.
+
 ## Kenapa perlu prosedur
 
 - Sejak 25b, sistem lama (`index.html`) hanya-baca. Satu-satunya jalan tulis catatan yang tetap terbuka di sana adalah **Setelan › Muat cadangan**,

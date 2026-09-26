@@ -1,6 +1,7 @@
 # Peta pensiun sistem lama — putaran 25b, Tahap 0
 
-**Status (26 Sep 2026): `index.html` HANYA-BACA lewat satu penjaga — keputusan owner (b) dipersempit, §5–§6.** Tahap 0 sempat berhenti karena daftar
+**Status (27 Sep 2026, putaran 25c): yang tersisa di `index.html` hanya MEMBACA riwayat dan PULIHKAN dari berkas cadangan (§7).** Sebelumnya
+(26 Sep): `index.html` hanya-baca lewat satu penjaga — keputusan owner (b) dipersempit, §5–§6. Tahap 0 sempat berhenti karena daftar
 fitur tulis yang hanya ada di `index.html` (§3) berisi lebih dari pembatalan karcis darurat; owner lalu memutuskan mana yang dikunci dan mana yang tetap
 terbuka. Pembatalan karcis darurat pindah ke `/baru/` (§4).
 
@@ -139,3 +140,20 @@ dll.) ikut dikunci — yang terbuka hanya daftar di atas.
 - **Dijaga:** `alat-uji/uji_sistem_lama_bacasaja.py` (statis: tiap `setDoc`/`deleteDoc`/`runTransaction` di fungsi berpenjaga, daftar terbuka persis
   keputusan owner; peramban: `index.html` sungguhan + Firebase palsu — antrean sekali, 35 koleksi ditolak, tombol sungguhan, yang terbuka, pulihkan,
   baca riwayat). `KP_SIAP_25B = true`.
+
+## 7. Putaran 25c (27 Sep 2026): pindahan terakhir — tinggal baca riwayat & pulihkan
+
+Yang di §5 masih "TETAP TERBUKA" dan di §6 "bukan catatan, tetap jalan" pindah ke `/baru/` (rincian: `docs/peta-pindahan-terakhir.md`):
+
+| Dulu di `index.html` | Sekarang di `/baru/` | Di `index.html` |
+|---|---|---|
+| Katalog kasir (`ringkasanKasir/aktif`) diterbitkan tiap data berubah | diterbitkan `/baru/` tiap data berubah + ikut kiriman terbit harga; bentuk sama persis | ditutup TANPA modal (`JALUR_DIAM`) |
+| Setelan jenis beras (#11) | Harga & Pemasok › Katalog harga › Jenis beras (tampil juga di Stok & Jual) | ditolak penjaga, modal menunjuk tempat barunya |
+| Daftar & PIN operator kasir (#12) | Menu › Peran & persetujuan › Kasir & PIN — **tanpa PIN** (keputusan owner: dicabut) | ditolak penjaga |
+| PIN owner (#13) | Menu › Peran & persetujuan › Kasir & PIN (bentuk sama, hanya hasil acak) | ditolak penjaga |
+
+**Yang tersisa di sistem lama:** membaca (riwayat, laporan), denyut perangkat, antrean lama yang dikirim sekali, dan **pulihkan dari berkas cadangan**
+lewat ketik PULIHKAN (mode pulih meloloskan semua tulisan, tidak bergantung pada daftar terbuka — `docs/prosedur-pulih-darurat.md` tidak berubah).
+`TULIS_TERBUKA` kosong. Pita: **"Sistem lama hanya untuk membaca riwayat dan pemulihan darurat."** Dijaga `alat-uji/uji_sistem_lama_bacasaja.py`
+(diperbarui ke keputusan ini, jumlah pemeriksaan sama) dan `alat-uji/uji_katalog_kasir.py`.
+
