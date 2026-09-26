@@ -1,0 +1,64 @@
+# UJI BEBAN PERAMBAN — HANYA di runner (CLAUDE.md, keputusan owner 27 Sep 2026). Tidak menerbitkan apa pun.
+# Skenario kasir darurat diulang N pasangan (tiap pasangan = 2 pemuatan Chrome), dengan alat uji PEMBANDING ("sebelum", bawaan: cabang dasar
+# PR / main) lalu alat uji cabang ini ("sesudah"). Hasil: tabel sebelum ↔ sesudah di halaman ringkasan run (DICOBA ULANG, pemeriksaan gagal,
+# Chrome tidak menutup sendiri). Jalan otomatis di PR yang mengubah alat uji peramban kasir, atau manual (Actions › Uji beban peramban).
+name: Uji beban peramban
+
+on:
+  workflow_dispatch:
+    inputs:
+      pasangan:
+        description: 'Jumlah pasangan skenario kasir darurat (1 pasangan = 2 pemuatan Chrome)'
+        default: '100'
+      pembanding:
+        description: 'Cabang yang alat ujinya dipakai sebagai "sebelum"'
+        default: 'main'
+  pull_request:
+    paths:
+      - 'alat-uji/uji_antrean_kasir.py'
+      - 'alat-uji/coba_ulang.py'
+      - 'alat-uji/beban_kasir_darurat.py'
+      - '.github/workflows/uji-beban-peramban.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONDONTWRITEBYTECODE: '1'   # jangan tinggalkan __pycache__ di folder repo (pemeriksaan "tidak ada berkas repo yang berubah")
+
+jobs:
+  beban:
+    runs-on: macos-latest
+    timeout-minutes: 100
+    env:
+      PASANGAN: ${{ github.event.inputs.pasangan || '100' }}
+      PEMBANDING: ${{ github.event.inputs.pembanding || github.base_ref || 'main' }}
+    steps:
+      - name: Ambil isi repo (seluruh riwayat, supaya cabang pembanding tersedia)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sidik berkas yang terbit — SEBELUM
+        run: shasum -a 256 kasir-darurat-nominal.html kasir.html sw-kasir.js index.html
+
+      - name: "SEBELUM — alat uji cabang pembanding, N pasangan kasir darurat (hanya mengukur)"
+        run: |
+          git worktree add --detach /tmp/pembanding "origin/$PEMBANDING"
+          python3 -u alat-uji/beban_kasir_darurat.py --pasangan "$PASANGAN" --alat /tmp/pembanding/alat-uji --label sebelum \
+            --keluar /tmp/beban-sebelum.json --ukur-saja
+
+      - name: "SESUDAH — alat uji cabang ini, N pasangan kasir darurat (tiap pasangan wajib lulus diperiksa)"
+        if: always()
+        run: python3 -u alat-uji/beban_kasir_darurat.py --pasangan "$PASANGAN" --label sesudah --keluar /tmp/beban-sesudah.json
+
+      - name: Ringkasan sebelum ↔ sesudah (juga di halaman ringkasan run)
+        if: always()
+        run: python3 alat-uji/beban_kasir_darurat.py --ringkas /tmp/beban-sebelum.json /tmp/beban-sesudah.json | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Sidik berkas yang terbit — SESUDAH (wajib sama dengan SEBELUM) + tidak ada berkas repo yang berubah
+        if: always()
+        run: |
+          shasum -a 256 kasir-darurat-nominal.html kasir.html sw-kasir.js index.html
+          git status --porcelain
+          test -z "$(git status --porcelain)"
