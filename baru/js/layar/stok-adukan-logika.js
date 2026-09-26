@@ -13,7 +13,7 @@ import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, bag
 import { LABEL_BAHAN_KEMASAN, JENIS_BAHAN_KEMASAN, kunciKemasan } from '../mesin/pembantu.js';
 import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
-import { RP } from '../inti/format.js';
+import { RP, waktuSetempat } from '../inti/format.js';
 
 export const UKURAN_BAHAN_KEMASAN = [50, 25];          // kemasan jadi yang boleh dibongkar lagi (UKURAN_KEMASAN_BOLEH_JADI_BAHAN index.html)
 export const UKURAN_HASIL_PILIHAN = [5, 10, 20, 25, 50];
@@ -155,7 +155,7 @@ export function rincianAdukan(batch) {
   const takBisa = jenis === 'rework' ? 'hasil rework dari karantina — keputusannya ada di tab Karantina, bukan di sini' : jenis === 'gabungKarung' ? 'catatan lama gabung-karung (Agu 2026) sengaja dibiarkan' : jenis !== 'adukan' ? 'bukan adukan' : '';
   const takBisaHapus = takBisa || (tersangkut.length ? tersangkut.map((x) => x.nama + ' ' + adUkuranTeks(x.ukuran) + ' kg: ' + x.kurangBilaDihapus + ' dari ' + x.unit + ' unit sudah terjual/terpakai').join('; ') + ' — kalau dihapus stok kemasan jadi minus; koreksi biayanya saja' : '');
   const riwayat = semua.filter((x) => x.koreksiDari || x.dikoreksiOleh).sort((a, b) => String(a.dikoreksiPada || '').localeCompare(String(b.dikoreksiPada || ''))).filter((x) => x.koreksiDari)
-    .map((x) => ({ pada: String(x.dikoreksiPada || '').slice(0, 16).replace('T', ' '), alasan: x.alasanKoreksi || '', hppPerUnit: x.hppPerUnit || 0, nama: (x.namaProduk || '') + ' ' + adUkuranTeks(x.ukuranKemasan) + ' kg' }));
+    .map((x) => ({ pada: waktuSetempat(x.dikoreksiPada), alasan: x.alasanKoreksi || '', hppPerUnit: x.hppPerUnit || 0, nama: (x.namaProduk || '') + ' ' + adUkuranTeks(x.ukuranKemasan) + ' kg' }));
   return { batch: String(batch), tanggal: p1.tanggal || '', jam: p1.jam || '', jenis, bahanTeks: jenis === 'rework' ? 'dari karantina (' + (p1.catatan || '') + ')' : adTeksBahan(p1), hasilTeks: adTeksHasil(baris), jumlahBaris: p1.jumlahBaris || baris.length, barisBerlaku: baris.length,
     biaya: { bahan: bahanRp, kantong: kantongRp, upah: upahRp, total, terhitung: bahanRp + kantongRp + upahRp }, hasil, kgMasuk, kgJadi, susutKg: adB3(kgMasuk - kgJadi), bisaKoreksi: !takBisa, bisaHapus: !takBisaHapus, takBisaHapus, takBisaKoreksi: takBisa, riwayat, dikoreksi: baris.some((x) => x.koreksiDari) };
 }
