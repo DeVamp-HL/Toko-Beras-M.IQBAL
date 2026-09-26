@@ -16,7 +16,7 @@ BAGIAN 3 · JARINGAN: Firebase (CDN) gagal dimuat → dicoba ulang SATU kali →
     python3 alat-uji/uji_layar_kunci.py            → LULUS / GAGAL UJI (keluar 2) / GAGAL JARINGAN (keluar 4)
     python3 alat-uji/uji_layar_kunci.py --kontrol  → kontrol wajib berbunyi (keluar 3 kalau ada yang diam)
 """
-import os, re, sys, json, time, shutil, socket, subprocess, tempfile, threading, http.server, functools, urllib.request
+import os, re, sys, json, time, shutil, socket, socketserver, subprocess, tempfile, threading, http.server, functools, urllib.request
 
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
@@ -242,13 +242,22 @@ class Diam(http.server.SimpleHTTPRequestHandler):
         return 'text/javascript' if str(path).endswith('.js') else super().guess_type(path)
 
 
+def _ikat_tanpa_dns(self):
+    """Pengganti HTTPServer.server_bind: bawaannya menanyakan nama host 127.0.0.1 ke DNS (socket.getfqdn) tiap server dinyalakan, dan di
+    runner macOS pertanyaan itu menggantung ±35 dtk (PR #42: tiap kasus uji_coba_ulang 35,7 dtk di CI, 0,7 dtk di Mac pengembang)."""
+    socketserver.TCPServer.server_bind(self)
+    self.server_name, self.server_port = self.server_address[:2]
+
+
 def layani(d):
+    t0 = time.time()
     s = socket.socket(); s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]; s.close()
     kelas = type('DiamRun', (Diam,), {'siap': threading.Event(), 'gagal': threading.Event(), 'diminta': [], 'sdk': []})
     # antrean sambungan LEBAR: bawaan socketserver cuma 5, Chrome membuka lebih banyak sekaligus → sambungan ditolak → modul lokal gagal dimuat secara acak
     # (dulu tampak sebagai "Chrome mencetak DOM sebelum app.js jalan")
-    Srv = type('SrvUji', (http.server.ThreadingHTTPServer,), {'request_queue_size': 128, 'daemon_threads': True})
+    Srv = type('SrvUji', (http.server.ThreadingHTTPServer,), {'request_queue_size': 128, 'daemon_threads': True, 'server_bind': _ikat_tanpa_dns})
     srv = Srv(('127.0.0.1', port), functools.partial(kelas, directory=d)); threading.Thread(target=srv.serve_forever, daemon=True).start()
+    if os.environ.get('CI'): print('  [peramban] server uji menyala %.1f dtk' % (time.time() - t0), file=sys.stderr, flush=True)
     return srv, port
 
 

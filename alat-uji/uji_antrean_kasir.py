@@ -24,7 +24,7 @@ STATIS: golonganJawaban() kembar huruf per huruf di kedua berkas; VERSI_APLIKASI
     python3 alat-uji/uji_antrean_kasir.py --gambar DIR   → juga simpan tangkapan layar kasir darurat (pita & daftar ditolak) ke DIR
 Tanpa jaringan luar, tanpa Node. Butuh Google Chrome (sama dengan uji_layar_kunci.py).
 """
-import os, re, sys, json, time, shutil, socket, tempfile, threading, subprocess, http.server, functools
+import os, re, sys, json, time, shutil, socket, tempfile, threading, subprocess, http.server, socketserver, functools
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import coba_ulang   # noqa: E402  (tiap percobaan ulang menulis baris DICOBA ULANG — keputusan owner 26 Sep)
@@ -162,12 +162,21 @@ def siapkan(berkas, ganti=None):
     return d
 
 
+def _ikat_tanpa_dns(self):
+    """Pengganti HTTPServer.server_bind: bawaannya menanyakan nama host 127.0.0.1 ke DNS (socket.getfqdn) tiap server dinyalakan, dan di
+    runner macOS pertanyaan itu menggantung ±35 dtk (PR #42: tiap kasus uji_coba_ulang 35,7 dtk di CI, 0,7 dtk di Mac pengembang)."""
+    socketserver.TCPServer.server_bind(self)
+    self.server_name, self.server_port = self.server_address[:2]
+
+
 def layani(d):
+    t0 = time.time()
     s = socket.socket(); s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]; s.close()
     keadaan = {'siap': threading.Event()}
     kelas = type('PelayanRun', (Pelayan,), {'keadaan': keadaan})
-    Srv = type('SrvAntre', (http.server.ThreadingHTTPServer,), {'request_queue_size': 64, 'daemon_threads': True})
+    Srv = type('SrvAntre', (http.server.ThreadingHTTPServer,), {'request_queue_size': 64, 'daemon_threads': True, 'server_bind': _ikat_tanpa_dns})
     srv = Srv(('127.0.0.1', port), functools.partial(kelas, directory=d)); threading.Thread(target=srv.serve_forever, daemon=True).start()
+    if os.environ.get('CI'): print('  [peramban] server uji menyala %.1f dtk' % (time.time() - t0), file=sys.stderr, flush=True)
     return srv, port, keadaan
 
 
