@@ -13,6 +13,11 @@ export function hariIniIso(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 export function jamKini(d) { d = d || new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+/** Cap waktu ISO/UTC yang DISIMPAN (dirinciPada, dikoreksiPada, pada, …) → 'HH:MM' JAM DINDING SETEMPAT (WIB di perangkat toko). JANGAN memotong
+ *  string ISO (slice(11, 16) / slice(0, 16).replace('T', ' ')) — itu memajang UTC, meleset 7 jam di WIB. Kosong / cacat → ''. */
+export function jamSetempat(iso) { if (!iso) return ''; const d = new Date(iso); return isFinite(d.getTime()) ? jamKini(d) : ''; }
+/** Cap waktu ISO/UTC → '25 Sep 2026 22:41' setempat (tanggal ikut setempat: 00.00–06.59 WIB bertanggal UTC kemarin). Kosong / cacat → ''. */
+export function waktuSetempat(iso) { if (!iso) return ''; const d = new Date(iso); return isFinite(d.getTime()) ? tanggalPendek(hariIniIso(d)) + ' ' + jamKini(d) : ''; }
 const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 export function tanggalPendek(iso) {
   if (!iso) return '';

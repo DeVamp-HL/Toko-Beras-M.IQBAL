@@ -7,7 +7,7 @@ import { h, mentah, pasang, delegasi } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { pasangIsian } from '../inti/isian.js';
-import { RP, ANGKA, tanggalPendek, hariIniIso, jamKini } from '../inti/format.js';
+import { RP, ANGKA, tanggalPendek, hariIniIso, jamKini, jamSetempat, waktuSetempat } from '../inti/format.js';
 import * as M from './menu-logika.js';
 import * as S from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
@@ -236,10 +236,10 @@ export function pasangLayarMenu(akar, opsi) {
       ${(() => { const AL = opsi.antreLokal ? opsi.antreLokal() : { belum: [], ditolak: [] }; const owner = !opsi.akun || !opsi.akun() || opsi.akun().jenis === 'owner';
         return h`<div class="kartu ${AL.ditolak.length ? 'awas' : ''}" data-k="ditolak-server" style="gap: 6px;"><div style="font-weight: 700;">${AL.ditolak.length ? AL.ditolak.length + ' kiriman DITOLAK SERVER' : 'Tidak ada kiriman yang ditolak server'}</div>
           <div class="k2">Salinan tiap kiriman disimpan di perangkat ini sampai server mengaku (${AL.belum.length} masih menunggu). Yang ditolak (mis. akunnya dinonaktifkan saat perangkat offline) tidak hilang — tampil di sini sampai owner memutuskan.</div>
-          ${AL.ditolak.map((x) => { const kp = kpAlasanDitolak(x, (k, i) => !!dokDiCache(k, i)); return h`<div class="pr-antre lama" data-k="dt-${x.id}"><span class="j">${String(x.padaTolak || x.pada || '').slice(11, 16)}</span><span>${x.akunNama} (${x.peran || '?'}) · ${(x.dokumen || []).map((d) => d.koleksi).join(', ')} <div class="k2">${(x.dokumen || []).length} dokumen · alasan: ${kp ? kp.kalimat : (x.alasan || '-')}</div>
+          ${AL.ditolak.map((x) => { const kp = kpAlasanDitolak(x, (k, i) => !!dokDiCache(k, i)); return h`<div class="pr-antre lama" data-k="dt-${x.id}"><span class="j">${jamSetempat(x.padaTolak || x.pada)}</span><span>${x.akunNama} (${x.peran || '?'}) · ${(x.dokumen || []).map((d) => d.koleksi).join(', ')} <div class="k2">${(x.dokumen || []).length} dokumen · alasan: ${kp ? kp.kalimat : (x.alasan || '-')}</div>
             ${owner && kp && kp.bisaHariIni ? h`<div class="hg-pil"><div class="seg aktif" data-aksi="tulisUlangHariIni" data-id="${x.id}">catat ulang bertanggal hari ini</div></div>` : ''}
             ${owner ? h`<div class="hg-pil">${kp ? '' : h`<div class="seg" data-aksi="tulisUlangDitolak" data-id="${x.id}">tulis ulang atas nama owner</div>`}<div class="seg ${s.yakinBuang === x.id ? 'aktif' : ''}" data-aksi="buangDitolak" data-id="${x.id}">${s.yakinBuang === x.id ? 'yakin buang' : 'buang'}</div></div>` : h`<div class="k2">Menunggu owner memutuskan.</div>`}</span></div>`; })}</div>`; })()}
-      ${(() => { const BT = bertahapTertunda(); return BT ? h`<div class="kartu awas" data-k="bertahap" style="gap: 6px;"><div style="font-weight: 700;">Kiriman bertahap belum selesai: ${BT.judul}</div><div class="k2">${BT.sudah} dari ${BT.total} kiriman sudah masuk (mulai ${String(BT.pada || '').slice(0, 16).replace('T', ' ')}). Yang sudah masuk tidak dikirim ulang.</div>
+      ${(() => { const BT = bertahapTertunda(); return BT ? h`<div class="kartu awas" data-k="bertahap" style="gap: 6px;"><div style="font-weight: 700;">Kiriman bertahap belum selesai: ${BT.judul}</div><div class="k2">${BT.sudah} dari ${BT.total} kiriman sudah masuk (mulai ${waktuSetempat(BT.pada)}). Yang sudah masuk tidak dikirim ulang.</div>
         <div class="hg-pil"><div class="seg aktif" data-aksi="lanjutBertahap">lanjutkan</div><div class="seg ${s.yakinBuang === 'bertahap' ? 'aktif' : ''}" data-aksi="buangBertahap">${s.yakinBuang === 'bertahap' ? 'yakin buang sisanya' : 'buang sisanya'}</div></div></div>` : ''; })()}
       <div class="ket" data-k="ket-antre" style="font-size: 11px;">Batas "lama" ${P.atur.batasAntre} menit (Atur).</div>${pintuAtur('Atur batas antrean, denyut & pencatat', 'antrean lama ' + P.atur.batasAntre + ' menit · denyut lama ' + P.atur.batasDenyut + ' menit · ' + P.atur.pemegang.length + ' pencatat')}`;
     if (tab === 'jejak') { const J = S.ssJejak(d, L.antre, s.saring); return h`<div class="hg-pil" data-k="saring"><div class="seg ${!s.saring ? 'aktif' : ''}" data-aksi="saring" data-nama="">Semua</div>${J.perOrang.map((o) => h`<div class="seg ${s.saring === o.nama ? 'aktif' : ''}" data-aksi="saring" data-nama="${o.nama}">${o.nama}</div>`)}</div>
@@ -270,7 +270,7 @@ export function pasangLayarMenu(akar, opsi) {
     const PR = S.SS_PERAN.find((p) => p.id === s.peran) || S.SS_PERAN[1];
     const A = S.ssAkun(); const ownerKini = !opsi.akun || !opsi.akun() || opsi.akun().jenis === 'owner';
     const kartuAkun = !ownerKini ? '' : h`<div class="kartu" data-k="minta-akses" style="gap: 6px;"><div class="label">Permintaan akses · ${A.minta.length}</div>
-        ${A.minta.length ? A.minta.map((m) => h`<div class="pn-minta" data-k="ma-${m.uid}"><b style="font-size: 12.5px;">${m.nama || '(tanpa nama)'}</b> <span class="k2">${m.email} · ${String(m.pada).slice(0, 16).replace('T', ' ')}</span>
+        ${A.minta.length ? A.minta.map((m) => h`<div class="pn-minta" data-k="ma-${m.uid}"><b style="font-size: 12.5px;">${m.nama || '(tanpa nama)'}</b> <span class="k2">${m.email} · ${waktuSetempat(m.pada)}</span>
           <div class="hg-pil">${S.SS_PERAN_AKUN.map((p) => h`<div class="seg ${s.akunPilih[m.uid] === p.id ? 'aktif' : ''}" data-aksi="akunPilihPeran" data-uid="${m.uid}" data-peran="${p.id}">${p.nama}</div>`)}</div>
           <div class="pn-dua"><div class="kaca-btn aktif emas" data-aksi="daftarkan" data-uid="${m.uid}">DAFTARKAN</div><div class="kaca-btn awas" data-aksi="tolakAkses" data-uid="${m.uid}">TOLAK</div></div></div>`) : h`<div class="k2">Tidak ada. Orang baru masuk dengan akun yang lu buat di Firebase Console, lalu menekan "Minta didaftarkan".</div>`}
         ${A.minta.length ? h`<input class="ketik-nama" type="text" placeholder="Alasan kalau menolak (wajib)" value="${s.alasanAkses}" data-ketik="alasanAkses">` : ''}</div>

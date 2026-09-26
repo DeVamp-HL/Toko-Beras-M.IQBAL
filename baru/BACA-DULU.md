@@ -439,3 +439,15 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
+
+## Perbaikan 27 Sep 2026 — JAM YANG TAMPIL (rinci karcis & cap waktu)
+- Baris rincian karcis kasir darurat membawa **jam karcis asli** (saat penjualan terjadi di kasir); jam merinci ada di `dirinciPada` (ISO/UTC).
+  Penulisnya (`susunRinciDokumen`) sudah benar — cadangan 26 Sep: semua baris rincian jamnya = jam karcis. Yang salah TAMPILAN: daftar
+  "Rincian hari ini" memajang jam MERINCI di sebelah nomor karcis. Sekarang: tanggal & jam karcis + "dirinci HH:MM" terpisah, urut menurut
+  kapan dirinci, hari = hari WIB.
+- Cap waktu ISO (`dirinciPada`, `dikoreksiPada`, `pada`, `padaTolak`, …) DIGAMBAR lewat `jamSetempat` / `waktuSetempat` (`inti/format.js`) —
+  jam dinding setempat (WIB di perangkat toko). **Jangan pernah** memotong string ISO (`slice(11, 16)`, `slice(0, 16).replace('T', ' ')`):
+  itu memajang UTC, meleset 7 jam. Empat tempat lama sudah dibetulkan (jejak koreksi HPP adukan, kiriman bertahap, permintaan akses, tulisan
+  ditolak). Penjaganya `alat-uji/uji_jam_tampil.py` (jsc di TZ Asia/Jakarta & UTC + penjaga statis + kontrol).
+- `alat-uji/periksa_jam_rinci.py CADANGAN` — laporan pola jam baris rincian vs karcis asal + usulan koreksi (tidak menulis; bulan terkunci
+  tidak diusulkan dikoreksi).

@@ -10,7 +10,7 @@ import { hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { penjualanMasihBerlaku, bakuCaraBayar, hargaKarungUtuh, namaSingkatTrx, kunciKemasan } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilHargaLiteran, ambilHargaKemasan, tolakKunci, butuhGet } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
-import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
+import { RP, hariIniIso, tanggalPendek, jamSetempat } from '../inti/format.js';
 import { susunRak, masukkan, terapkanNego, periksaStokKeranjang } from './jual-logika.js';
 import { koleksiWadah } from './wadah-jual-logika.js';
 
@@ -186,9 +186,11 @@ export function susunBatalKarcis(id, alasan, w) {
   return { dokumen: [{ koleksi: 'penjualan', data }], hapus, patch: { kcBatal: null, kabar: 'Karcis ' + kcEkor(p.id) + ' ' + RP(p.hargaTotal || 0) + ' (' + tanggalPendek(p.tanggal) + ' ' + (p.jam || '') + ') DIBATALKAN — ' + a + '. Barisnya tetap ada, ditandai dibatalkan; omzet & uang laci hari itu turun ' + RP(p.hargaTotal || 0) + '.', kabarAwas: false } };
 }
 
-/** Rincian yang dibuat hari `iso` dan masih utuh (bisa ditarik balik dari daftar karcis). */
+/** Rincian yang dibuat hari `iso` (menurut jam dinding setempat) dan masih utuh (bisa ditarik balik dari daftar karcis). Terbaru dirinci dulu.
+ *  jam & tanggal = JAM KARCIS ASLI (saat penjualan terjadi di kasir) — sama dengan jam yang ditulis di baris rinciannya. jamRinci = kapan owner
+ *  merinci (dirinciPada, disimpan UTC) digambar setempat. Dulu `jam` berisi jam merinci, padahal di layar tertulis di sebelah nomor karcis. */
 export function riwayatRinci(iso) {
-  const grup = {}; ambilPenjualanSemua().forEach((x) => { if (!x.grupNota || !x.dirinciPada || !(x.asalDarurat || x.koreksiDari)) return; const kapan = new Date(x.dirinciPada); if (isNaN(kapan.getTime()) || hariIniIso(kapan) !== iso) return; const g = grup[x.grupNota] = grup[x.grupNota] || { grupNota: x.grupNota, asliId: x.rinciDari || x.koreksiDari, idPertama: x.id, n: 0, total: 0, jam: String(kapan.getHours()).padStart(2, '0') + ':' + String(kapan.getMinutes()).padStart(2, '0'), utuh: true, tanggal: x.tanggal }; g.n += 1; g.total += x.hargaTotal || 0; if (!penjualanMasihBerlaku(x)) g.utuh = false; });
-  return Object.keys(grup).map((k) => grup[k]).sort((a, b) => b.jam.localeCompare(a.jam));
+  const grup = {}; ambilPenjualanSemua().forEach((x) => { if (!x.grupNota || !x.dirinciPada || !(x.asalDarurat || x.koreksiDari)) return; const kapan = new Date(x.dirinciPada); if (isNaN(kapan.getTime()) || hariIniIso(kapan) !== iso) return; const g = grup[x.grupNota] = grup[x.grupNota] || { grupNota: x.grupNota, asliId: x.rinciDari || x.koreksiDari, idPertama: x.id, n: 0, total: 0, jam: x.jam || '', tanggal: x.tanggal, jamRinci: jamSetempat(x.dirinciPada), dirinciPada: String(x.dirinciPada), utuh: true }; g.n += 1; g.total += x.hargaTotal || 0; if (!penjualanMasihBerlaku(x)) g.utuh = false; });
+  return Object.keys(grup).map((k) => grup[k]).sort((a, b) => b.dirinciPada.localeCompare(a.dirinciPada));   // ISO UTC: urut lintas tengah malam
 }
 export { kcEkor };
