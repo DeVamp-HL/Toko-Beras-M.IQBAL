@@ -342,3 +342,17 @@ tidak menyentuh bulan lalu (dan tidak memakai access call).
 - **R6** Tutup buku lama (`index.html`) menulis saldo pembuka **dulu** (langkah 2), lalu menghapus dokumen satu per satu (langkah 3). Hapus
   berhenti di dokumen bulan terkunci pertama, sehingga saldo pembuka dan sisa dokumen lama hidup bersamaan dan stok/piutang terhitung dua kali. Di
   sistem baru urutannya sama (pembuka dulu, arsip belakangan), tapi pembukanya ditolak lebih dulu kalau ada piutang bertanggal bulan terkunci.
+
+## 10. Cara bayar kedatangan 13 & 22 Agu diisi `tunai` (putaran 25b, C.2) — lewat Console, oleh owner
+
+Pemeriksaan owner (26 Sep 2026): data kedatangan dan utang pemasok di sistem sudah sesuai kenyataan. U.D. Sejati Jaya selalu dibayar tunai; dua
+kedatangannya di Agustus tidak punya field `caraBayar`. Diisi **sebelum** Agustus dikunci — sesudah dikunci kedatangan bulan itu tidak bisa diubah.
+
+| | |
+|---|---|
+| Dokumen | `batchMasuk/1786615121139.5242` (kedatangan 13 Agu 2026) · `batchMasuk/1787389037374.6638` (kedatangan 22 Agu 2026) |
+| Perubahan | tambah satu field `caraBayar` = `"tunai"` (string). Field lain tidak disentuh — bentuk dokumen lama, tanpa field baru, tanpa atribusi aplikasi |
+| Cara | Console › Firestore › Data (owner menulis; keputusan owner C.2 pilihan b). Tidak ada jalur aplikasi yang bisa mengisinya tanpa field baru: sistem lama tidak punya ubah kedatangan, koreksi kedatangan `/baru/` menambah `jam`, `alasanKoreksi`, `riwayat` dan menomori ulang baris merek |
+| Diubah oleh | owner — **tanggal & jam: diisi sesudah owner selesai** |
+| Akibat yang diperkirakan | tidak ada angka yang berubah: semua mesin sudah menganggap cara bayar kosong = tunai (`batchDiutang` = `caraBayar === 'utang'`), jadi uang laci sudah berkurang di hari kedatangan dan kedua kedatangan tidak pernah masuk utang pemasok. Dihitung di kotak pasir dengan cadangan 26 Sep 00.12 WIB: uang Agustus (masuk, keluar, 1.689 gerakan), utang pemasok, laba Agustus, neraca 31 Agu, stok & modal per merek — sebelum = sesudah |
+| Pemeriksaan sesudahnya | Claude membaca kedua dokumen di Console lewat Chrome owner (hanya membaca), lalu menghitung ulang uang Agustus di kotak pasir dari cadangan baru: **harus sama persis** dengan hitungan sebelumnya (angkanya di laporan sesi, tidak di repo publik). Hasil: **diisi sesudah pemeriksaan** |

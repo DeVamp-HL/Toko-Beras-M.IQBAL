@@ -11,8 +11,9 @@ export const KP_TENGGANG_MIN = 3;       // hari — DITEGAKKAN rules (tenggangMi
 export const KP_TENGGANG_BAWAAN = 3;    // bawaan layar = minimal: kunci paling cepat tanggal 4 (bisa dinaikkan owner, tidak di bawah minimal)
 export const KP_BATAS_GET = 18;         // access call per kiriman: batas Firebase 20 per batch, sisa 2 (keputusan owner 24 Sep)
 // Owner 25 Sep: kunci PERTAMA baru boleh sesudah putaran 25b — index.html & kasir*.html memperlakukan penolakan server sebagai "belum masuk" dan
-// antreannya macet di catatan yang ditolak (peta §5). Putaran 25b mengubah nilai ini sesudah kedua berkas memisahkan catatan yang ditolak.
-export const KP_SIAP_25B = false;
+// antreannya macet di catatan yang ditolak (peta §5). 25b (26 Sep): kasir*.html memisahkan catatan yang ditolak (uji_antrean_kasir.py) dan index.html
+// hanya-baca lewat satu penjaga, antrean lamanya dikirim sekali (uji_sistem_lama_bacasaja.py) → true.
+export const KP_SIAP_25B = true;
 // Putaran 25b: kasir*.html versi ini (= VERSI sw-kasir.js) memisahkan catatan yang ditolak server — satu karcis bulan terkunci tidak lagi menahan karcis lain.
 // Perangkat kasir yang berdenyut dalam KP_VERSI_HARI hari terakhir dengan versi di bawahnya = ⛔ di daftar periksa (namanya disebut).
 // uji_antrean_kasir.py memastikan nilai ini sama dengan VERSI_APLIKASI kedua berkas kasir dan VERSI sw-kasir.js.

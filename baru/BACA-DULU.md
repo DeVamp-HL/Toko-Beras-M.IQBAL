@@ -341,7 +341,7 @@ Peta & keputusan owner K1–K6: `docs/peta-kunci-periode.md`. Uji server: `docs/
 - **Daftar periksa** (⛔ memblokir): putaran 25b · tenggang · catatan tertahan/ditolak di perangkat ini · nota parkir · perangkat antre > 0 · perangkat tanpa
   denyut 24 jam (bisa dinyatakan "sudah tidak dipakai" kalau antre & ditolaknya 0). Dicentang owner: hari tanpa tutup hari (libur hanya hari tanpa nota;
   "diterima apa adanya" wajib alasan — tutup hari TIDAK dibuat mundur), karcis belum dirinci, omzet luar, periksa ulang pembelian (K2), nama mirip berbon (K3),
-  upah (K5). **`KP_SIAP_25B = false`**: kunci PERTAMA menunggu putaran 25b (sistem lama & kasir memisahkan catatan yang ditolak server).
+  upah (K5). **`KP_SIAP_25B`**: kunci PERTAMA menunggu putaran 25b — sejak 25b `true` (kasir memisahkan catatan ditolak, sistem lama hanya-baca).
 - **Penjaga pusat** (`toko.js jagaKunci`): SEMUA tulisan layar — bulan terkunci atau > 18 pemeriksaan kunci = tidak dikirim, dengan kalimat. Jalur besar
   bertahap (`tulisBertahap`, rencana tersimpan di perangkat, dilanjutkan dari Menu › Sistem › Perangkat): SATUKAN, hapus nama, tarik balik rincian, koreksi/hapus adukan.
 - **Pembalik**: tombol koreksi/hapus untuk catatan bulan terkunci berganti "Bulan X terkunci — cocokkan / buat retur hari ini" dan membuka alur lama dengan
@@ -366,8 +366,12 @@ Peta & keputusan owner K1–K6: `docs/peta-kunci-periode.md`. Uji server: `docs/
   **Daftar periksa kunci bulan** ⛔ baru: semua perangkat kasir yang berdenyut 7 hari terakhir sudah versi 25b (nama perangkat disebut).
 - **Batal karcis kasir darurat** (Jual › pita karcis › lembar Karcis kasir › *batalkan*, alasan wajib): bentuk = `mulaiBatalkanTrx` sistem lama
   (`karcis-logika.js susunBatalKarcis`). Dijaga `alat-uji/uji_batal_karcis.py`.
-- **Sistem lama hanya-baca: BELUM** — Tahap 0 (`docs/peta-pensiun-sistem-lama.md`) menemukan 15 fitur tulis lain yang hanya ada di `index.html`;
-  menunggu keputusan owner. `KP_SIAP_25B` tetap `false` sampai itu selesai.
+- **Sistem lama HANYA-BACA** (keputusan owner 26 Sep, `docs/peta-pensiun-sistem-lama.md` §5–§6): satu penjaga `penjagaTulis()` di `index.html`;
+  terbuka hanya setelan jenis beras, operator & PIN kasir, PIN owner, dan pulihkan cadangan lewat ketik PULIHKAN (`docs/prosedur-pulih-darurat.md`).
+  Katalog kasir (`ringkasanKasir`) tetap diterbitkan sistem lama — `/baru/` belum punya penerbitnya (putaran tersendiri, bersama pindahan setelan).
+  Antrean lama dikirim sekali; yang ditolak ke daftar "ditolak" di pita. **`KP_SIAP_25B = true`**.
+- **Bayar bon dari bulan terkunci LOLOS** (rules v4 menilai `bonTanggal` hanya untuk bon lama BARU): `alat-uji/uji_bayar_bon_terkunci.py` + Playground
+  ★D di `docs/uji-rules-v4.md`.
 
 ## Struktur
 ```
@@ -429,6 +433,8 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_kunci_periode.py` (+ `--kontrol`) | 45 skenario kunci periode (WIB & tenggang 3 hari, tiap ⛔, hari tanpa tutup, kunci/buka satu langkah, pembalik hari ini, keputusan K1–K6, penjaga pusat & kirim bertahap, final bulanan, pajak) + 39 kontrol; di cadangan toko: kunci Agustus → Juli & Agustus byte-sama, satu retur hari ini mengubah September saja |
 | `alat-uji/peta_akses.py --kiriman` bagian owner | kiriman owner yang menyentuh bulan lampau, dua keadaan (tanpa kunci / Agustus terkunci), fungsi asli ≤ 18 pemeriksaan kunci; tiap penulis koleksi bertanggal wajib terdaftar — 25 DIUKUR (semua yang ber-perulangan: nota 40 baris, batal nota, ini dia, cocokkan, tutup hari, tutup buku & batalnya, arsip per 18), 20 beralasan (jumlah dokumen tetap); arsip dipotong `KP_BATAS_GET`; kasir*.html 1 dokumen per permintaan |
 | `alat-uji/uji_antrean_kasir.py` (+ `--kontrol`, `--gambar DIR`) | 25b: kasir darurat & kasir.html di Chrome headless + Firestore palsu — karcis ke-2 dari 5 ditolak (sisanya masuk), 401, sinyal/429/503, belum masuk, denyut & versi, tahan muat ulang; statis versi kembar; /baru/ ⛔ versi & Perlu perhatian |
+| `alat-uji/uji_sistem_lama_bacasaja.py` (+ `--kontrol`) | 25b: index.html hanya-baca — statis (tiap setDoc/deleteDoc/runTransaction berpenjaga, yang terbuka persis keputusan owner) + Chrome headless dengan Firebase palsu (antrean lama sekali, 35 koleksi ditolak, tombol sungguhan, pulihkan, baca riwayat) |
+| `alat-uji/uji_bayar_bon_terkunci.py` (+ `--kontrol`) | 25b C: bayar bon pemasok/pelanggan dari bulan terkunci lolos — teks rules dicocokkan + model + jalur sistem baru; asap data toko lokal |
 | `alat-uji/uji_batal_karcis.py` (+ `--kontrol`) | 25b: batal karcis kasir darurat di /baru/ — field = `mulaiBatalkanTrx` (dibaca dari index.html) & dokumen pembatalan sungguhan di cadangan lokal |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
