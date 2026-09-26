@@ -196,9 +196,15 @@ def _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu):
     p = subprocess.Popen(arg + ['http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     buf = []; selesai = threading.Event()
     def baca():
-        for baris in iter(p.stdout.readline, b''):
-            buf.append(baris.decode('utf-8', 'replace'))
-            if b'</html>' in baris: break
+        # Potongan MENTAH, bukan per baris: Chrome di macOS kadang tidak keluar sesudah mencetak DOM, dan kalau </html> ada di baris terakhir
+        # tanpa ganti baris, readline() menunggu selamanya walau halamannya sudah selesai (PR #41: 60 detik terbuang, hasil dianggap tidak ada).
+        acc = b''
+        while True:
+            blok = os.read(p.stdout.fileno(), 65536)
+            if not blok: break
+            acc += blok
+            if b'</html>' in acc[-(len(blok) + 16):]: break
+        buf.append(acc.decode('utf-8', 'replace'))
         selesai.set()
     threading.Thread(target=baca, daemon=True).start()
     t0 = time.time()
