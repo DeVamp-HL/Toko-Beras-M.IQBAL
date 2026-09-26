@@ -180,7 +180,7 @@ def buka(port, keadaan, profil, jalur, gambar=None, tunggu=60):
     Tiap percobaan ulang menulis baris DICOBA ULANG (coba_ulang.py): kalau mulai sering muncul, itu masalah sungguhan, bukan Chrome yang lambat."""
     h = ''; sebab = ''; BATAS = 2
     for coba in range(1, BATAS + 1):
-        if coba > 1: coba_ulang.catat(jalur, sebab, coba, BATAS)
+        if coba > 1: coba_ulang.catat(jalur, sebab, coba, BATAS, log=coba_ulang.ekor_berkas(keadaan.get('log_chrome', '')))
         for kunci in ('SingletonLock', 'SingletonSocket', 'SingletonCookie'):   # kunci profil sisa Chrome yang sudah dimatikan
             try:
                 if os.path.lexists(os.path.join(profil, kunci)): os.unlink(os.path.join(profil, kunci))
@@ -198,7 +198,11 @@ def _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu):
            '--user-data-dir=' + profil, '--window-size=500,900', '--hide-scrollbars',
            '--use-mock-keychain', '--password-store=basic']   # macOS tanpa layar: jangan menunggu keychain sungguhan
     arg += (['--screenshot=' + gambar] if gambar else ['--dump-dom'])
-    p = subprocess.Popen(arg + ['http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    # catatan Chrome (stderr) ke berkas di profil — dibaca HANYA kalau percobaan ini macet dan halaman dicoba ulang (bukti di bawah baris DICOBA ULANG)
+    keadaan['log_chrome'] = os.path.join(profil, 'log-chrome-%d.txt' % int(time.time() * 1000))
+    log = open(keadaan['log_chrome'], 'wb')
+    p = subprocess.Popen(arg + ['--enable-logging=stderr', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=log)
+    log.close()
     buf = []; selesai = threading.Event()
     def baca():
         # Potongan MENTAH, bukan per baris: Chrome di macOS kadang tidak keluar sesudah mencetak DOM, dan kalau </html> ada di baris terakhir

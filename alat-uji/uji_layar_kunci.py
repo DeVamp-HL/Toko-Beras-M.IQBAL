@@ -267,10 +267,11 @@ def dom(d, jalur, coba=3, butuh_cdn=True):
     Aplikasi gagal dimuat (elemen skrip menerima 'error'): firebase.js sudah diminta tapi modul Firebase dari CDN tidak lengkap → JARINGAN, dicoba ulang SATU kali;
     modul LOKAL yang gagal (firebase.js belum sempat diminta / SDK lengkap) = GAGAL UJI, bukan jaringan.
     Tiap percobaan ulang menulis baris DICOBA ULANG (coba_ulang.py) — dulu pengulangan di sini diam."""
-    gagal_jaringan = 0; sebab = ''
+    gagal_jaringan = 0; sebab = ''; log = []
     for ke in range(1, coba + 1):
-        if ke > 1: coba_ulang.catat(jalur, sebab, ke, coba, disengaja=DISENGAJA)
+        if ke > 1: coba_ulang.catat(jalur, sebab, ke, coba, disengaja=DISENGAJA, log=log)
         h, siap, info = dom_sekali(d, jalur)
+        log = info.get('log', [])
         if info['gagal']:
             sdk_lengkap = all(any(x.endswith(m) for x in info['sdk']) for m in SDK_MODUL)
             if butuh_cdn and info['firebase_diminta'] and not sdk_lengkap:
@@ -293,8 +294,10 @@ def dom(d, jalur, coba=3, butuh_cdn=True):
 def dom_sekali(d, jalur, tunggu=90):
     """DOM sesudah halaman dimuat. Chrome di macOS kadang tidak keluar sesudah mencetak DOM → dibaca sampai </html>, lalu dimatikan."""
     srv, port = layani(d); profil = tempfile.mkdtemp(prefix='kunci-profil-'); K = srv.RequestHandlerClass.func
+    fd, log_chrome = tempfile.mkstemp(prefix='kunci-log-', suffix='.txt'); log = os.fdopen(fd, 'wb')   # dibaca hanya kalau halaman dicoba ulang
     p = subprocess.Popen([CHROME, '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--disable-component-update', '--disable-background-networking',
-                          '--user-data-dir=' + profil, '--dump-dom', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                          '--user-data-dir=' + profil, '--dump-dom', '--enable-logging=stderr', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=log)
+    log.close()
     buf = []; selesai = threading.Event()
     def baca():
         for baris in iter(p.stdout.readline, b''):
@@ -304,9 +307,12 @@ def dom_sekali(d, jalur, tunggu=90):
     threading.Thread(target=baca, daemon=True).start()
     try:
         selesai.wait(tunggu)
-        return ''.join(buf), K.siap.is_set() and not K.gagal.is_set(), {'gagal': K.gagal.is_set(), 'sdk': list(K.sdk), 'firebase_diminta': '/baru/js/data/firebase.js' in K.diminta}
+        return ''.join(buf), K.siap.is_set() and not K.gagal.is_set(), {'gagal': K.gagal.is_set(), 'sdk': list(K.sdk), 'firebase_diminta': '/baru/js/data/firebase.js' in K.diminta,
+                                                                         'log': coba_ulang.ekor_berkas(log_chrome)}
     finally:
         p.kill(); p.wait(); srv.shutdown(); shutil.rmtree(profil, ignore_errors=True)
+        try: os.unlink(log_chrome)
+        except OSError: pass
 
 
 def body_kelas(h):
