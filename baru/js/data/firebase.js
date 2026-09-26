@@ -9,10 +9,11 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
 import { KOLEKSI } from './koleksi.js';
-import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci } from './toko.js';
+import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData } from './toko.js';
 import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
 import { buatAntre, cekDariCache } from './antre-lokal.js';
 import { KP_BATAS_GET } from './kunci-periode.js';
+import { KK_KOLEKSI, KK_ID, KK_JEDA_MS, kkSetelServer, kkLupakanServer, kkIsi, kkDokumen, kkTertinggal, kkBolehTerbit, kkMentah, kkCatatTerbit } from './katalog-kasir.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA',
@@ -47,6 +48,7 @@ let app = null, db = null, auth = null;
 // akun = keadaanAkun() dari akses.js; ditolak = koleksi yang pendengarnya ditolak rules (disebut di SS1, aplikasi tetap jalan); lokal = salinan antre (antre-lokal.js)
 const status = { masuk: false, email: '', akun: null, koleksiSiap: 0, koleksiTotal: KOLEKSI.length, galat: '', ditolak: [], offline: false, menunggu: 0, antre: [], lokal: { belum: 0, ditolak: 0 } };
 const _antrePerKoleksi = {};
+const _dariCache = {};   // 25c: koleksi yang jawaban terakhirnya dari SALINAN PERANGKAT (belum dijawab server) — katalog kasir tidak terbit dari data itu
 const OLEH_TETAP = 'Owner';                 // sama dengan index.html (alat owner)
 const SESI = 's-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);   // salinan antre sesi ini masih ditunggu jawabannya oleh tab ini
 const _penyimpan = { baca: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, tulis: (k, v) => localStorage.setItem(k, v) };
@@ -75,7 +77,7 @@ export function mulai(saatAkun) {
     if (status.masuk) {
       if (!tadi || tadi.uid !== akun.uid || tadi.peran !== akun.peran) { cabutPendengar(); pasangPendengar(akun); }
       setelSumber('firestore', 'Firestore toko'); setelPenulis({ tulis: tulisBerkas, hapus: hapusBerkas, arsipkan: arsipkanBerkas, bacaArsip: bacaArsipBerkas, pulihkan: pulihkanBerkas, perbarui: perbaruiBerkas });
-      pasangDenyut();
+      pasangDenyut(); pasangPenerbitKatalog();
     } else { cabutPendengar(); }   // nonaktif / belum terdaftar / keluar: NOL pendengar koleksi toko, dan angka di memori dikosongkan
     saatAkun(akun); beriTahu();
   };
@@ -138,6 +140,7 @@ function pasangPendengar(akun) {
       const daftar = [], tunda = [];
       snap.forEach((d) => { const x = d.data(); daftar.push(x); if (d.metadata && d.metadata.hasPendingWrites) tunda.push({ koleksi: k.nama, id: d.id, ringkas: ringkasDok(x), pada: x.diubahPada || x.pada || '', oleh: x.oleh || x.diubahOleh || '', perangkat: x.diubahPerangkat || x.perangkat || '' }); });
       _antrePerKoleksi[k.nama] = tunda; status.antre = Object.keys(_antrePerKoleksi).reduce((a, n) => a.concat(_antrePerKoleksi[n]), []);
+      _dariCache[k.nama] = !!(snap.metadata && snap.metadata.fromCache);
       pasok(k.nama, daftar); tandaiSiap(k.nama);
       // dariCache = angka dari simpanan perangkat (belum tentu terbaru) — layar diberi tahu supaya jujur
       status.offline = !!(snap.metadata && snap.metadata.fromCache && typeof navigator !== 'undefined' && navigator.onLine === false);
@@ -146,11 +149,37 @@ function pasangPendengar(akun) {
     }, (err) => tolak(k.nama, err));
     _pendengarKoleksi.push(lepas);
   });
+  if (akun.jenis === 'owner') pasangPendengarKatalog();
 }
+// ---- KATALOG KASIR (25c): /baru/ penerbitnya. Dokumen di server didengar (owner saja — rules: owner & kasir@), isinya dibandingkan tiap data berubah,
+// ditulis hanya kalau berbeda; gerbangnya kkBolehTerbit (katalog-kasir.js). Dokumen turunan: setDoc apa adanya, tanpa jejak — sama dengan index.html.
+function pasangPendengarKatalog() {
+  const lepas = onSnapshot(doc(db, KK_KOLEKSI, KK_ID), { includeMetadataChanges: true }, (snap) => {
+    kkSetelServer(snap.exists() ? snap.data() : null, !(snap.metadata && snap.metadata.fromCache)); jadwalkanKatalog(); beriTahu();
+  }, () => { kkLupakanServer(); beriTahu(); });   // ditolak / galat: keadaan katalog tidak diketahui → tidak terbit
+  _pendengarKoleksi.push(lepas);
+}
+let _kkTimer = null, _kkJalan = false, _kkDipasang = false;
+function jadwalkanKatalog() { clearTimeout(_kkTimer); _kkTimer = setTimeout(terbitkanKatalogOtomatis, KK_JEDA_MS); }
+async function terbitkanKatalogOtomatis() {
+  if (!db || _kkJalan) return;
+  const g = kkBolehTerbit({ owner: !!status.akun && status.akun.jenis === 'owner', sumber: sumberData().jenis, koleksiSiap: status.koleksiSiap, koleksiTotal: status.koleksiTotal,
+    dariCache: Object.keys(_dariCache).filter((n) => _dariCache[n]).length, ditolak: status.ditolak.length, online: !status.offline && !(typeof navigator !== 'undefined' && navigator.onLine === false) });
+  if (!g.boleh) return;
+  const isi = kkIsi(); if (!isi || kkTertinggal(isi) !== true) return;
+  _kkJalan = true; const kini = new Date().toISOString();
+  try {
+    await Promise.race([setDoc(doc(db, KK_KOLEKSI, KK_ID), kkDokumen(isi, kini)), new Promise((_, t) => setTimeout(() => t(new Error('belum diakui server dalam 8 detik')), 8000))]);
+    kkCatatTerbit(kini, '');
+  } catch (e) { kkCatatTerbit('', String((e && (e.code || e.message)) || e)); }
+  finally { _kkJalan = false; beriTahu(); }
+}
+function pasangPenerbitKatalog() { if (_kkDipasang) return; _kkDipasang = true; dengarkan(() => jadwalkanKatalog()); window.addEventListener('online', () => jadwalkanKatalog()); }
 /** Cabut SEMUA pendengar koleksi toko & kosongkan angka di memori (keluar, belum terdaftar, dinonaktifkan). */
 function cabutPendengar() {
   _pendengarKoleksi.forEach((f) => { try { f(); } catch (e) { /* abaikan */ } }); _pendengarKoleksi = [];
   Object.keys(_antrePerKoleksi).forEach((n) => { delete _antrePerKoleksi[n]; }); status.antre = [];
+  Object.keys(_dariCache).forEach((n) => { delete _dariCache[n]; }); kkLupakanServer(); clearTimeout(_kkTimer);
   status.koleksiSiap = 0; status.ditolak = []; status.galat = '';
   KOLEKSI.forEach((k) => pasok(k.nama, []));
 }
@@ -244,6 +273,7 @@ export async function tulisBerkas(daftar, hapus, opsi) {
   if (!owner) { const p = periksaKiriman(akun, isi, H, _sumberHak(), new Date()); if (p.tolak) return { gagal: true, pesan: p.tolak }; }   // pasti ditolak rules → tidak dikirim
   const b = writeBatch(db); const ditulis = [];
   isi.forEach((x) => {
+    if (kkMentah(x.koleksi)) { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }   // 25c: katalog kasir apa adanya — tanpa atribusi & jejak
     const d = beriAtribusiAkun(x.data, akun, k, x.ada);
     b.set(doc(db, x.koleksi, String(d.id)), d); ditulis.push({ koleksi: x.koleksi, data: d });
     if (owner) {   // owner: satu baris jejak per dokumen, seperti catatLogAktivitas index.html (+ olehUid)

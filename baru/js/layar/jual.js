@@ -18,6 +18,7 @@ import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, a
 
 import { gambarChipBarang } from './gambar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
+import { jbJenisRak, jbSaringRak } from './jenis-beras-logika.js';   // 25c: saring rak per jenis beras (owner 27 Sep)
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -33,8 +34,12 @@ export function pasangLayarJual(akar, opsi) {
   // putaran 23c: akun bukan-owner — batas baris per nota (batas sekali kirim ke server) ikut ke logika setiap kali keranjang bertambah / nota dicatat
   const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null) });
 
+  // 25c (owner 27 Sep): jenis beras juga di Jual — BARIS SARING di atas rak, bukan tata letak baru: urutan rak per ukuran, termurah dulu (desain
+  // Jual yang dikunci) tetap. Pilihan saring = tampilan saja (bukan isian, bukan data), ikut ke jalur lain selama jenisnya ada di sana.
+  let jenisRak = '';
   const aksi = {
     jalur: ({ jalur }) => set({ jalur, lembar: null, pilih: null }),
+    jenisRak: ({ j }) => { jenisRak = jenisRak === j ? '' : (j || ''); gambar(); },
     mode: () => opsi.gantiMode(),
     chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(Object.assign({ isiW: null }, L.ketukChip(S(), c))); },
     sering: ({ id }) => { const c = rakKini().sering.find((x) => x.id === id); if (c) set(L.ketukChip(S(), c)); },
@@ -451,7 +456,11 @@ export function pasangLayarJual(akar, opsi) {
 
   function gambarChip(s, rak) {
     if (s.jalur === 'retur') return gambarRetur(s);
-    const daftar = s.jalur === 'sering' ? rak.sering : (rak[s.jalur] || []);
+    const daftarRak = s.jalur === 'sering' ? rak.sering : (rak[s.jalur] || []);
+    const JR = ['karung', 'kemasan', 'literan', 'repack'].indexOf(s.jalur) >= 0 ? jbJenisRak(daftarRak) : [];
+    const jenisAktif = JR.some((x) => x.jenis === jenisRak) ? jenisRak : '';
+    const daftar = jbSaringRak(daftarRak, jenisAktif);
+    const barisJenis = JR.length > 1 ? h`<div class="jalur" data-k="jenis-rak-${s.jalur}" title="saring rak per jenis beras">${[{ jenis: '', n: daftarRak.length }].concat(JR).map((x) => h`<div class="seg ${jenisAktif === x.jenis ? 'aktif' : ''}" data-aksi="jenisRak" data-j="${x.jenis}" data-k="jr-${x.jenis || 'semua'}">${x.jenis || 'Semua jenis'} · ${x.n}</div>`)}</div>` : '';
     // belanja terakhir orang bernama (owner 23 Sep): nota-nota terakhirnya, ketuk = ulangi dengan harga hari ini
     const PT = s.jalur === 'sering' && s.pelanggan ? L.pembelianTerakhir(s, 3) : [];
     const kartuPT = PT.length ? h`<div class="kartu pt-kartu" data-k="pt-${kunciPelanggan(s.pelanggan)}" style="gap: 4px;"><div class="label">Belanja terakhir ${s.pelanggan} · ketuk untuk mengulang (harga hari ini)</div>
@@ -473,10 +482,10 @@ export function pasangLayarJual(akar, opsi) {
       <div class="gambar-chip">${mentah(gambarChipBarang(c, penuh))}</div>
     </div>`;
     const maks = (d) => Math.max(1, ...d.map((c) => c.sisa || 0));
-    const kelompok = s.jalur !== 'sering' && rak.kelompok && rak.kelompok[s.jalur] ? rak.kelompok[s.jalur] : null;
-    if (kelompok) return h`${kelompok.map((g) => h`<div class="kelompok-rak" data-k="kel-${s.jalur}-${g.k}"><div class="judul-kelompok"><span>${g.judul}</span><span class="ket">${g.daftar.length} barang · termurah dulu</span></div>
+    const kelompok = s.jalur !== 'sering' && rak.kelompok && rak.kelompok[s.jalur] ? rak.kelompok[s.jalur].map((g) => Object.assign({}, g, { daftar: jbSaringRak(g.daftar, jenisAktif) })).filter((g) => g.daftar.length) : null;
+    if (kelompok) return h`${barisJenis}${kelompok.map((g) => h`<div class="kelompok-rak" data-k="kel-${s.jalur}-${g.k}"><div class="judul-kelompok"><span>${g.judul}</span><span class="ket">${g.daftar.length} barang · termurah dulu</span></div>
       <div class="rak-chip">${g.daftar.map((c, i) => satuChip(c, maks(g.daftar), i))}</div></div>`)}`;
-    return h`${kartuPT}${pitaWadah}<div class="rak-chip" data-k="rak-${s.jalur}">${daftar.map((c, i) => satuChip(c, maks(daftar), i))}</div>`;
+    return h`${kartuPT}${pitaWadah}${barisJenis}<div class="rak-chip" data-k="rak-${s.jalur}">${daftar.map((c, i) => satuChip(c, maks(daftar), i))}</div>`;
   }
 
   function gambarLembar(s, rak, t, info, muncul) {

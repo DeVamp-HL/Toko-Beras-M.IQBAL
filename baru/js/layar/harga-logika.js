@@ -281,6 +281,7 @@ export function susunBelah(S, bedah) {
 }
 
 // ---- TERBITKAN: semua atau tidak sama sekali (satu writeBatch); rugi → dua ketukan; label rak dicatat; riwayat ke hargaTerbit
+// 25c: layar (harga.js) menambahkan katalog HP kasir sesudah terbit ke kiriman yang sama lewat kkSertakan (data/katalog-kasir.js)
 export function susunTerbit(w, yakin) {
   const S = hgSemua(new Date(w.kini)); const d = S.baris.filter((b) => b.adaDraf); if (!d.length) return { tolak: 'Tidak ada draf — tidak ada yang diterbitkan' };
   const rugi = d.filter((b) => b.status === 'rugi');
@@ -292,7 +293,7 @@ export function susunTerbit(w, yakin) {
   if (sengajaBerubah) dokumen.push({ koleksi: 'aturanToko', data: { id: 'hargaSengaja', tanggal: w.tanggal, jam: w.jam, peta: sengaja } });
   const daftar = d.map((b) => ({ kunci: b.k, nama: b.judul, lama: b.lamaN, baru: b.n, koleksi: b.koleksi }));
   dokumen.push({ koleksi: 'hargaTerbit', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, n: d.length, daftar } });
-  return { dokumen, daftar, nLabel: label.length, patch: { terbit: false, yakinRugi: false, ubah: null, kabar: d.length + ' harga terbit sekaligus — katalog yang dibaca kasir berganti mulai sekarang' + (label.length ? ' · ' + label.length + ' label di toko perlu diganti' : '') + '. Ringkasan kasir HP (ringkasanKasir) diterbitkan ulang oleh sistem lama.', kabarAwas: false } };
+  return { dokumen, daftar, nLabel: label.length, patch: { terbit: false, yakinRugi: false, ubah: null, kabar: d.length + ' harga terbit sekaligus — katalog yang dibaca kasir berganti mulai sekarang' + (label.length ? ' · ' + label.length + ' label di toko perlu diganti' : '') + '. Katalog HP kasir ikut berganti di kiriman yang sama.', kabarAwas: false } };
 }
 /** Bentuk dokumen katalog persis simpanHarga* index.html; id lama dipakai lagi bila sudah ada. */
 function hgDokKatalog(b, w) {

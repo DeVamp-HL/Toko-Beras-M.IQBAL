@@ -90,7 +90,14 @@
 //      ulang dirinya saat senggang begitu versi baru mengambil alih (controllerchange).
 // WAJIB naik: daftar periksa kunci bulan di /baru/ menolak mengunci selama ada perangkat kasir
 // yang berdenyut 7 hari terakhir dengan versi di bawah kasir-v26.
-const VERSI = 'kasir-v26';
+// v27 (27 September 2026, putaran 25c): katalog kasir (ringkasanKasir) kini diterbitkan /baru/, bukan sistem lama. Kasir
+// darurat mengambil katalog juga saat layar HP dinyalakan dan tiap 5 menit selagi terlihat (jadwal yang sama dengan denyut) —
+// sampai v26 hanya saat dibuka / sinyal kembali, jadi HP yang aplikasinya terus terbuka menagih harga lama berjam-jam sesudah
+// owner mengubah harga. Denyut kasir darurat ikut membawa cap katalog yang dipegang (field `katalog`), supaya Beranda /baru/
+// bisa menyebut HP yang masih memegang katalog lama. kasir.html hanya ikut naik versi (satu konstanta). Bentuk nota TIDAK berubah.
+// WAJIB naik: dengan cache lama HP penjaga tetap menjalankan berkas yang tidak mengambil katalog sendiri, dan Beranda /baru/
+// menyebutnya "masih kasir-v26 — harga baru baru sampai saat aplikasinya dibuka ulang".
+const VERSI = 'kasir-v27';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

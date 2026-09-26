@@ -16,7 +16,8 @@ export const KP_BATAS_GET = 18;         // access call per kiriman: batas Fireba
 export const KP_SIAP_25B = true;
 // Putaran 25b: kasir*.html versi ini (= VERSI sw-kasir.js) memisahkan catatan yang ditolak server — satu karcis bulan terkunci tidak lagi menahan karcis lain.
 // Perangkat kasir yang berdenyut dalam KP_VERSI_HARI hari terakhir dengan versi di bawahnya = ⛔ di daftar periksa (namanya disebut).
-// uji_antrean_kasir.py memastikan nilai ini sama dengan VERSI_APLIKASI kedua berkas kasir dan VERSI sw-kasir.js.
+// Sampai 25b nilai ini = VERSI sw-kasir.js. Sejak 25c (kasir-v27) ia LANTAI kunci bulan saja — HP v26 sudah memisahkan karcis ditolak, jadi tidak menahan
+// kunci; versi terbaru yang disajikan = KK_VERSI_KASIR_TERBARU (katalog-kasir.js). uji_antrean_kasir.py: lantai ≤ versi sw = versi terbaru /baru/.
 export const KP_VERSI_KASIR_25B = 'kasir-v26';
 export const KP_VERSI_HARI = 7;
 /** 'kasir-v26' → 26; versi tidak dilaporkan / bentuk lain → 0 (dianggap lama). */

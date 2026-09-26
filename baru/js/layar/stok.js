@@ -21,6 +21,7 @@ import { adeganIsiUlang, adeganBukaKarung, adeganAdukan } from './adegan.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal } from '../data/toko.js';
 import { kunciKemasan } from '../mesin/pembantu.js';
+import { jbKelompokStok } from './jenis-beras-logika.js';   // 25c: total per jenis beras (owner 27 Sep: Harga + Stok + Jual)
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -241,6 +242,9 @@ export function pasangLayarStok(akar, opsi) {
         ${j.takTeks ? h`<div class="ket" style="font-size: 11.5px;">${j.takTeks}</div>` : ''}
         ${g.aktif === 'beli' ? h`<div class="kaca-btn kecil" data-aksi="keBelanja" data-k="ke-belanja" style="align-self: flex-start;">Susun belanja per pemasok & kirim pesanan WhatsApp ›</div>` : ''}
       </div>
+      ${(() => { const JB = jbKelompokStok(); return JB.length ? h`<div class="kartu" data-k="per-jenis" style="gap: 2px;"><div class="label">Beras di buku per jenis</div>
+        ${JB.map((x) => h`<div class="jawab" data-k="jn-${x.jenis}"><span class="kiri"><span class="nm">${x.jenis}</span><span class="w">${x.merk.join(' · ')}</span></span><span class="kanan"><span class="n">${DESIMAL(Math.round(x.kg * 10) / 10)} kg</span><span class="w">${x.merk.length} nama</span></span></div>`)}
+        <div class="ket" style="font-size: 11px;">Jenis diatur di Harga & Pemasok › Katalog harga › Jenis beras. Salah jenis hanya menggeser kelompok — stok & harga tidak berubah.</div></div>` : ''; })()}
       ${(() => { const ak = opsi.akun ? opsi.akun() : null; const t = (aksi, nama, tb, kelas) => (tb.boleh ? h`<div class="kaca-btn ${kelas || ''}" data-aksi="${aksi}">${nama}</div>` : h`<div class="kaca-btn mati" data-aksi="tombolMati" data-kal="${tb.kalimat}">${nama}</div>`);
         return h`<div class="tombol-baris">${t('bukaMasuk', 'Barang masuk', tombolAkun(ak, 'kedatangan'), 'aktif')}${t('bukaAdukan', 'Adukan', tombolAkun(ak, 'adukan'), 'aktif')}${t('bukaCocok', 'Cocokkan', tombolLuarKisi(ak), 'aktif')}</div>
       <div class="tombol-baris" data-k="tombol-16">${t('bukaKantong', 'Kantong', tombolLuarKisi(ak))}${t('bukaTempat', 'Tempat simpan', tombolLuarKisi(ak))}${bukanOwner(ak) ? h`<div class="kaca-btn mati" data-aksi="tombolMati" data-kal="HPP / modal tidak termasuk hak ${ak.nama}">HPP / modal</div>` : h`<div class="kaca-btn" data-aksi="bukaHpp">HPP / modal</div>`}</div>`; })()}

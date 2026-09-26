@@ -347,8 +347,8 @@ var K_DITOLAK_ARSIP = 'darurat_ditolak_arsip_v1';   // ditolak yang sudah dicata
 // VERSI yang BENAR-BENAR berjalan: SAMA dengan VERSI di sw-kasir.js (uji_antrean_kasir.py
 // memeriksanya). Dikirim di denyut dan tampil di bilah atas. Sampai 25b denyut berkata
 // 'kasir-v24' padahal cache sudah v25 — owner membaca versi yang salah tanpa tahu.
-var VERSI_APLIKASI = 'kasir-v26';
-var LABEL_VERSI = 'versi 25b';
+var VERSI_APLIKASI = 'kasir-v27';
+var LABEL_VERSI = 'versi 25c';
 var K_LOG = 'darurat_log_v1';           // catatan lokal per HP untuk daftar "hari ini"
 var K_OPERATOR = 'kasir_operator_v1';   // ikut kasir: kalau ada nama penjaga, ikut tercatat
 var K_RINGKASAN = 'kasir_ringkasan_v1';  // BERSAMA kasir.html — katalog beku untuk tuts bernama barang
@@ -509,7 +509,8 @@ function kirimDenyutD() {
     pada: new Date().toISOString(),
     antrean: ambilAntrean().length,
     gagal: ambilGagal().length,     // = jumlah karcis DITOLAK yang belum dicatat ulang owner
-    versi: VERSI_APLIKASI
+    versi: VERSI_APLIKASI,
+    katalog: katalogDipegangD()     // 25c: cap terbit katalog yang dipegang HP ini — Beranda /baru/ tahu HP penjaga sudah memegang harga terbaru
   };
   var f = {}; for (var k in isi) f[k] = keFs(isi[k]);
   denganAuth({ method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -821,12 +822,18 @@ function segarkanRingkasanD() {
       if (!r.ok) return;
       return r.json().then(function (j) {
         var o = {}; var f = j.fields || {}; for (var k in f) o[k] = dariFs(f[k]);
+        var tadi = katalogDipegangD();
         localStorage.setItem(K_RINGKASAN, JSON.stringify(o));
         localStorage.setItem(K_SEGAR, new Date().toISOString());
         muatRingkasanD(); gambarTutsCepat(); gambarUmurHargaD();
+        if (katalogDipegangD() !== tadi) { denyutTerakhirD = 0; kirimDenyutD(); }   // 25c: katalog berganti → owner langsung tahu HP ini memegang yang baru
       });
     }).catch(function () {});
   });
+}
+// 25c: cap terbit (diperbaruiPada) katalog yang sedang dipegang HP ini; '' = belum punya salinan.
+function katalogDipegangD() {
+  try { var r = JSON.parse(localStorage.getItem(K_RINGKASAN) || 'null'); return (r && r.diperbaruiPada) ? String(r.diperbaruiPada) : ''; } catch (e) { return ''; }
 }
 // Umur salinan harga — versi ringkas dari bilah umur harga di kasir (ambang sama:
 // 6 jam kuning, 24 jam merah). Selagi masih segar tidak ada tulisan apa pun.
@@ -1145,6 +1152,11 @@ kirimDenyutD();
 document.addEventListener('visibilitychange', function () { if (!document.hidden) kirimDenyutD(); });
 window.addEventListener('online', kirimDenyutD);
 setInterval(function () { if (!document.hidden) kirimDenyutD(); }, 300000);
+// 25c (owner 27 Sep): KATALOG juga diambil saat layar HP dinyalakan & tiap 5 menit selagi terlihat — jadwal yang sama dengan denyut.
+// Sampai 25b HP ini mengambil katalog hanya saat dibuka / sinyal kembali: aplikasi yang terus terbuka memegang harga lama berjam-jam.
+// Membaca SATU dokumen (ringkasanKasir/aktif) per kali; gagal = diam, salinan lama tetap dipakai. Bentuk nota tidak berubah.
+document.addEventListener('visibilitychange', function () { if (!document.hidden) segarkanRingkasanD(); });
+setInterval(function () { if (!document.hidden) segarkanRingkasanD(); }, 300000);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw-kasir.js').then(function (reg) {
     var tanya = function () { if (navigator.onLine && reg.update) reg.update().catch(function () {}); };
