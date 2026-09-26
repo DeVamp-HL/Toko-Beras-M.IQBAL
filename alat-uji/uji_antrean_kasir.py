@@ -172,9 +172,10 @@ def layani(d):
 
 def buka(port, keadaan, profil, jalur, gambar=None, tunggu=60):
     """Satu pemuatan halaman di Chrome headless. → DOM (teks) sesudah skenario selesai; gambar = berkas PNG (tangkapan layar, bukan DOM).
-    Runner CI macOS sesekali membuat satu Chrome macet total (PR #41: 2 dari ±60 pemuatan, halaman tidak pernah jalan). Halaman yang TIDAK
-    mengabarkan selesai dicoba SEKALI lagi — skenario selalu mulai dari keadaan yang ia pasang sendiri, jadi mengulang tidak meloloskan apa pun;
-    halaman yang jalan tapi hasilnya salah tetap gagal di pemeriksanya."""
+    Runner CI macOS sesekali membuat satu Chrome macet total (PR #41: 2 dari ±60 pemuatan, halaman tidak pernah jalan). Macetnya ada dua rupa:
+    halaman tidak pernah mengabarkan selesai, ATAU skenarionya selesai tapi Chrome tidak pernah menyerahkan DOM (main 8dcaae2: pemuatan pertama
+    kasir darurat, 60 dtk, hasil kosong). Keduanya dicoba SEKALI lagi — skenario selalu mulai dari keadaan yang ia pasang sendiri, jadi
+    mengulang tidak meloloskan apa pun; halaman yang jalan tapi hasilnya salah tetap gagal di pemeriksanya."""
     h = ''
     for coba in (1, 2):
         for kunci in ('SingletonLock', 'SingletonSocket', 'SingletonCookie'):   # kunci profil sisa Chrome yang sudah dimatikan
@@ -182,8 +183,9 @@ def buka(port, keadaan, profil, jalur, gambar=None, tunggu=60):
                 if os.path.lexists(os.path.join(profil, kunci)): os.unlink(os.path.join(profil, kunci))
             except OSError: pass
         h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu)
-        if gambar or keadaan['siap'].is_set(): return h
-        print('  [peramban] %s tidak mengabarkan selesai (percobaan %d)' % (jalur, coba), file=sys.stderr, flush=True)
+        if gambar or (keadaan['siap'].is_set() and '</html>' in h): return h
+        print('  [peramban] %s %s (percobaan %d)' % (jalur, 'selesai tapi DOM tidak keluar' if keadaan['siap'].is_set() else 'tidak mengabarkan selesai', coba),
+              file=sys.stderr, flush=True)
     return h
 
 
@@ -213,7 +215,13 @@ def _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu):
             t0 = time.time()
             while time.time() - t0 < tunggu and p.poll() is None and not (os.path.exists(gambar) and os.path.getsize(gambar) > 0): time.sleep(0.2)
             time.sleep(0.3); return ''
-        selesai.wait(tunggu); return ''.join(buf)
+        # DOM keluar ±1 dtk sesudah skenario mengabarkan selesai (/_tahan menahan load 0,4 dtk). Lewat 20 dtk sesudahnya = Chrome macet: cukupkan,
+        # biar buka() mencoba lagi, jangan habiskan sisa `tunggu`.
+        siap_sejak = None
+        while not selesai.wait(0.2) and time.time() - t0 < tunggu:
+            if siap_sejak is None and keadaan['siap'].is_set(): siap_sejak = time.time()
+            if siap_sejak is not None and time.time() - siap_sejak > 20: break
+        return ''.join(buf)
     finally:
         p.kill(); p.wait()
         if os.environ.get('CI'): print('  [peramban] %s %.1f dtk%s' % (jalur, time.time() - t0, '' if keadaan['siap'].is_set() else ' · halaman TIDAK mengabarkan selesai'), file=sys.stderr, flush=True)
