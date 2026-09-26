@@ -140,7 +140,7 @@ class Pelayan(http.server.SimpleHTTPRequestHandler):
         if self.path.startswith('/_siap'):
             self.keadaan['siap'].set(); self.send_response(204); self.end_headers(); return
         if self.path.startswith('/_tahan'):
-            self.keadaan['siap'].wait(40); time.sleep(0.4)
+            self.keadaan['siap'].wait(80); time.sleep(0.4)   # runner CI macOS jauh lebih lambat dari Mac pengembang
             self.send_response(200); self.send_header('Content-Type', 'image/gif'); self.end_headers()
             self.wfile.write(b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'); return
         return super().do_GET()
@@ -168,11 +168,12 @@ def layani(d):
     return srv, port, keadaan
 
 
-def buka(port, keadaan, profil, jalur, gambar=None, tunggu=60):
+def buka(port, keadaan, profil, jalur, gambar=None, tunggu=120):
     """Satu pemuatan halaman di Chrome headless. → DOM (teks) sesudah skenario selesai; gambar = berkas PNG (tangkapan layar, bukan DOM)."""
     keadaan['siap'] = threading.Event()
     arg = [CHROME, '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--disable-component-update', '--disable-background-networking',
-           '--user-data-dir=' + profil, '--window-size=500,900', '--hide-scrollbars']
+           '--user-data-dir=' + profil, '--window-size=500,900', '--hide-scrollbars',
+           '--use-mock-keychain', '--password-store=basic']   # macOS tanpa layar: jangan menunggu keychain sungguhan
     arg += (['--screenshot=' + gambar] if gambar else ['--dump-dom'])
     p = subprocess.Popen(arg + ['http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     buf = []; selesai = threading.Event()
@@ -182,6 +183,7 @@ def buka(port, keadaan, profil, jalur, gambar=None, tunggu=60):
             if b'</html>' in baris: break
         selesai.set()
     threading.Thread(target=baca, daemon=True).start()
+    t0 = time.time()
     try:
         if gambar:
             t0 = time.time()
@@ -190,6 +192,7 @@ def buka(port, keadaan, profil, jalur, gambar=None, tunggu=60):
         selesai.wait(tunggu); return ''.join(buf)
     finally:
         p.kill(); p.wait()
+        if os.environ.get('CI'): print('  [peramban] %s %.1f dtk%s' % (jalur, time.time() - t0, '' if keadaan['siap'].is_set() else ' · halaman TIDAK mengabarkan selesai'), file=sys.stderr, flush=True)
 
 
 def hasil_dari(h):

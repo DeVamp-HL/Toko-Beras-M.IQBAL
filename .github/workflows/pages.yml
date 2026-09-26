@@ -105,7 +105,7 @@ jobs:
   # sesudah uji utamanya lulus 60/60). Dipisah supaya batas waktu tiap pekerjaan tetap berarti dan Pages tetap menunggu keduanya.
   uji-peramban:
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Ambil isi repo
         uses: actions/checkout@v4
