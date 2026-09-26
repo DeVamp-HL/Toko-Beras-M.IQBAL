@@ -109,7 +109,9 @@ SKENARIO = r"""<script>
       P.mode = 'ok'; kirimAntrean(true); await kosong(); await diam(); hasil.skenario.sibukPulih = potret();
       reset(true); P.jaringan = false; A.catat(3100); A.catat(3200); P.jaringan = true; P.mode = '401'; kirimAntrean(true); await sampai(function () { return tampil('layarLogin'); }, 3000); await diam();
       hasil.skenario.tidakDikenal401 = potret();
-      reset(false); P.jaringan = false; A.catat(4100); A.catat(4200); P.jaringan = true; kirimAntrean(true); await diam(); await tunggu(300); hasil.skenario.belumMasuk = potret();
+      reset(false); P.jaringan = false; A.catat(4100); A.catat(4200); P.jaringan = true; kirimAntrean(true); await diam();
+      await tunggu(1700);   // kasir darurat membuka layar masuk 1,3 detik sesudah SIMPAN kalau belum masuk — tunggu di sini, jangan sampai jatuh ke skenario berikutnya
+      hasil.skenario.belumMasuk = potret();
       // PALING AKHIR: karcis ke-2 dari 5 bertanggal bulan terkunci — sisanya dibaca lagi sesudah muat ulang
       reset(true); P.jaringan = false; A.catat(5100); A.catatLama(5200, '2026-08-31'); A.catat(5300); A.catat(5400); A.catat(5500);
       hasil.antreanAwal = L(A.antrean).map(function (x) { return x.data.hargaTotal; });
@@ -229,8 +231,8 @@ def periksa_peramban(berkas, u, m, versi_sw):
         j = S[k]; ok(n + ': antrean utuh (2), tidak ada yang "ditolak", layar masuk tidak muncul', j['antrean'] == [2100, 2200] and not j['ditolak'] and not j['login'] and not j['masuk'], j)
     j = S['sibukPulih']; ok('server pulih → keduanya masuk', j['masuk'] == [2100, 2200] and not j['antrean'] and not j['ditolak'], j)
     j = S['tidakDikenal401']; ok('401 → layar masuk muncul, antrean utuh (2), tidak ada yang pindah ke "ditolak"', j['login'] and j['antrean'] == [3100, 3200] and not j['ditolak'] and not j['masuk'], j)
-    j = S['belumMasuk']; ok('belum masuk → nol kiriman ke server (403 tanpa kunci bukan penolakan aturan), antrean utuh, tidak ada "ditolak"',
-                            j['tanpaKunci'] == 0 and not j['permintaan'] and j['antrean'] == [4100, 4200] and not j['ditolak'], j)
+    j = S['belumMasuk']; ok('belum masuk → nol kiriman ke server (403 tanpa kunci bukan penolakan aturan), antrean utuh, tidak ada "ditolak"' + (', layar masuk muncul' if berkas == DARURAT else ''),
+                            j['tanpaKunci'] == 0 and not j['permintaan'] and j['antrean'] == [4100, 4200] and not j['ditolak'] and (j['login'] or berkas != DARURAT), j)
     j = S['keduaDitolak']
     ok('antrean awal 5 ' + kata + ', yang ke-2 bertanggal bulan terkunci', u.get('antreanAwal') == [5100, 5200, 5300, 5400, 5500], u.get('antreanAwal'))
     ok(kata + ' ke-2 dari 5 ditolak → 1, 3, 4, 5 MASUK berurutan, antrean kosong', j['masuk'] == [5100, 5300, 5400, 5500] and not j['antrean'], j)
