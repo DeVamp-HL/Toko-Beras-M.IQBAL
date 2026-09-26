@@ -98,6 +98,10 @@ jobs:
         run: python3 alat-uji/uji_batal_karcis.py && python3 alat-uji/uji_batal_karcis.py --kontrol
       - name: "Bayar bon dari bulan terkunci WAJIB lolos (25b C): teks rules dicocokkan + model + jalur sistem baru dengan Agustus terkunci (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_bayar_bon_terkunci.py && python3 alat-uji/uji_bayar_bon_terkunci.py --kontrol
+      # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
+      # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
+      - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"
+        run: python3 alat-uji/uji_coba_ulang.py && python3 alat-uji/uji_coba_ulang.py --kontrol
 
   # ---- UJI PERAMBAN (25b): semua uji yang menyalakan Chrome headless, BERBARENGAN dengan `uji` ----
   # Di runner macOS satu kali Chrome jauh lebih lambat daripada di Mac pengembang (uji layar kunci saja ±5 menit). Dengan tiga

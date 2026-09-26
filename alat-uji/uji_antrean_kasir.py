@@ -27,6 +27,7 @@ Tanpa jaringan luar, tanpa Node. Butuh Google Chrome (sama dengan uji_layar_kunc
 import os, re, sys, json, time, shutil, socket, tempfile, threading, subprocess, http.server, functools
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
+import coba_ulang   # noqa: E402  (tiap percobaan ulang menulis baris DICOBA ULANG — keputusan owner 26 Sep)
 CHROME = next((p for p in ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium'] if os.path.exists(p)), None)
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 DARURAT, KASIR = 'kasir-darurat-nominal.html', 'kasir.html'
@@ -175,17 +176,19 @@ def buka(port, keadaan, profil, jalur, gambar=None, tunggu=60):
     Runner CI macOS sesekali membuat satu Chrome macet total (PR #41: 2 dari ±60 pemuatan, halaman tidak pernah jalan). Macetnya ada dua rupa:
     halaman tidak pernah mengabarkan selesai, ATAU skenarionya selesai tapi Chrome tidak pernah menyerahkan DOM (main 8dcaae2: pemuatan pertama
     kasir darurat, 60 dtk, hasil kosong). Keduanya dicoba SEKALI lagi — skenario selalu mulai dari keadaan yang ia pasang sendiri, jadi
-    mengulang tidak meloloskan apa pun; halaman yang jalan tapi hasilnya salah tetap gagal di pemeriksanya."""
-    h = ''
-    for coba in (1, 2):
+    mengulang tidak meloloskan apa pun; halaman yang jalan tapi hasilnya salah tetap gagal di pemeriksanya.
+    Tiap percobaan ulang menulis baris DICOBA ULANG (coba_ulang.py): kalau mulai sering muncul, itu masalah sungguhan, bukan Chrome yang lambat."""
+    h = ''; sebab = ''; BATAS = 2
+    for coba in range(1, BATAS + 1):
+        if coba > 1: coba_ulang.catat(jalur, sebab, coba, BATAS)
         for kunci in ('SingletonLock', 'SingletonSocket', 'SingletonCookie'):   # kunci profil sisa Chrome yang sudah dimatikan
             try:
                 if os.path.lexists(os.path.join(profil, kunci)): os.unlink(os.path.join(profil, kunci))
             except OSError: pass
         h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu)
         if gambar or (keadaan['siap'].is_set() and '</html>' in h): return h
-        print('  [peramban] %s %s (percobaan %d)' % (jalur, 'selesai tapi DOM tidak keluar' if keadaan['siap'].is_set() else 'tidak mengabarkan selesai', coba),
-              file=sys.stderr, flush=True)
+        sebab = 'selesai tapi DOM tidak keluar' if keadaan['siap'].is_set() else 'tidak mengabarkan selesai'
+    print('  [peramban] %s %s — percobaan terakhir (%d dari %d), tidak diulang lagi' % (jalur, sebab, BATAS, BATAS), file=sys.stderr, flush=True)
     return h
 
 

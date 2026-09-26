@@ -19,6 +19,9 @@ BAGIAN 3 · JARINGAN: Firebase (CDN) gagal dimuat → dicoba ulang SATU kali →
 import os, re, sys, json, time, shutil, socket, subprocess, tempfile, threading, http.server, functools, urllib.request
 
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
+sys.path.insert(0, SINI)
+import coba_ulang   # noqa: E402  (tiap percobaan ulang menulis baris DICOBA ULANG — keputusan owner 26 Sep)
+DISENGAJA = None   # diisi kontrol yang SENGAJA membuat halaman gagal dimuat (kontrol 9) — barisnya tetap ditulis, ditandai DISENGAJA
 CHROME = next((p for p in ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium'] if os.path.exists(p)), None)
 SDK = 'https://www.gstatic.com/firebasejs/10.13.0/'
 # ANGKA CONTOH (bukan angka toko)
@@ -262,21 +265,28 @@ SDK_MODUL = ['firebase-app.js', 'firebase-firestore.js', 'firebase-auth.js']
 def dom(d, jalur, coba=3, butuh_cdn=True):
     """→ (DOM yang SAH, None) atau ('', JARINGAN | TIDAK_JALAN). Sah = dicetak sesudah halaman mengabarkan /_siap.
     Aplikasi gagal dimuat (elemen skrip menerima 'error'): firebase.js sudah diminta tapi modul Firebase dari CDN tidak lengkap → JARINGAN, dicoba ulang SATU kali;
-    modul LOKAL yang gagal (firebase.js belum sempat diminta / SDK lengkap) = GAGAL UJI, bukan jaringan."""
-    gagal_jaringan = 0
-    for _ in range(coba):
+    modul LOKAL yang gagal (firebase.js belum sempat diminta / SDK lengkap) = GAGAL UJI, bukan jaringan.
+    Tiap percobaan ulang menulis baris DICOBA ULANG (coba_ulang.py) — dulu pengulangan di sini diam."""
+    gagal_jaringan = 0; sebab = ''
+    for ke in range(1, coba + 1):
+        if ke > 1: coba_ulang.catat(jalur, sebab, ke, coba, disengaja=DISENGAJA)
         h, siap, info = dom_sekali(d, jalur)
         if info['gagal']:
             sdk_lengkap = all(any(x.endswith(m) for x in info['sdk']) for m in SDK_MODUL)
             if butuh_cdn and info['firebase_diminta'] and not sdk_lengkap:
                 gagal_jaringan += 1
                 if gagal_jaringan >= 2: return '', JARINGAN
+                sebab = 'Firebase dari CDN tidak termuat lengkap'
+            else:
+                sebab = 'aplikasi gagal dimuat (modul lokal)'
             continue
         if butuh_cdn and not siap and not cdn_terjangkau():
             gagal_jaringan += 1
             if gagal_jaringan >= 2: return '', JARINGAN
+            sebab = 'CDN Firebase tidak terjangkau'
             continue
         if siap and '</html>' in h: return h, None
+        sebab = 'selesai tapi DOM tidak keluar' if siap else 'tidak mengabarkan selesai'
     return '', TIDAK_JALAN
 
 
@@ -433,7 +443,9 @@ if __name__ == '__main__':
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:150] if c else '-'))
             if not c: kode = 3
         # kontrol 9 · jaringan: Firebase tidak termuat → keluaran WAJIB berkata GAGAL JARINGAN, bukan lulus & bukan gagal uji
+        DISENGAJA = 'kontrol 9 memutus Firebase supaya keluarannya wajib berkata GAGAL JARINGAN'
         c, sebab = jalankan('tirai', [('js/data/firebase.js', SDK + 'firebase-app.js', 'http://127.0.0.1:9/firebase-app.js')])
+        DISENGAJA = None
         ok = sebab == JARINGAN
         print(('BERBUNYI ' if ok else 'DIAM!!   ') + 'kontrol 9 · Firebase tidak termuat → ' + (KALIMAT_SEBAB.get(sebab, 'sebab: ' + str(sebab) + ' · cacat: ' + str(c[:1])))[:110]); kode = kode if ok else 3
         sys.exit(kode)
