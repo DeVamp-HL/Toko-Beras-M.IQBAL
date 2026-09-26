@@ -924,6 +924,11 @@
     z-index: 100; align-items: center; justify-content: center;
   }
   .modal-pin-bg.tampil { display: flex; }
+  /* PUTARAN 25b: sistem lama HANYA-BACA — pita permanen di atas halaman (penjaganya penjagaTulis) */
+  .pita-hanya-baca { background: #8d2f2f; color: #fff; font-weight: 700; font-size: .85rem; line-height: 1.35; text-align: center; padding: 8px 12px; }
+  .pita-hanya-baca a { color: #fff; text-decoration: underline; }
+  .pita-hanya-baca button { margin: 6px 4px 0; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.6); background: transparent; color: #fff; font: inherit; font-size: .8rem; cursor: pointer; }
+  #isiHanyaBaca .baris-44 { font-size: .85rem; }
   /* Lembar QRIS (12 Agu 2026): gambar kode QRIS toko ditunjukkan ke pembeli saat
      cara bayar QRIS dipilih. Gambarnya TIDAK ikut terbit di repo — disimpan di HP
      pemilik sendiri (localStorage), keputusan pemilik karena repo ini publik. */
@@ -6298,6 +6303,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   <br><button type="button" class="owner-kecil" onclick="gerbangJalurOwner()"> Owner</button>
 </div>
 
+<!-- PUTARAN 25b (keputusan owner 26 Sep 2026): sistem lama HANYA-BACA. Pita ini permanen; semua jalan tulis lewat penjagaTulis(). -->
+<div id="pitaHanyaBaca" class="pita-hanya-baca">Sistem lama sekarang hanya-baca. Catat dan batalkan di <a href="baru/">/baru/ ›</a><div id="pitaAntreanLama"></div></div>
 <header>
   <button type="button" class="tombol-logo-drawer" id="tombolLogoDrawer" onclick="toggleDrawerNav()" aria-label="Buka menu">IQ</button>
   <!-- Blok merek ringkas khusus HP — mengikuti mockup UI (6 Agu 2026): badge IQ + M.IQBAL /
@@ -6333,6 +6340,18 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     <div class="modal-pin-tombol">
       <button type="button" onclick="tutupModalJaga()">Batal</button>
       <button type="button" class="modal-pin-masuk" onclick="simpanModalJaga()">Simpan</button>
+    </div>
+  </div>
+</div>
+<div class="modal-pin-bg" id="modalHanyaBacaBg">
+  <div class="modal-pin-kotak" style="max-width:380px; text-align:left;">
+    <h3>Sistem lama hanya-baca</h3>
+    <p>Sistem lama sekarang hanya-baca. Catat dan batalkan di /baru/</p>
+    <p style="font-size:.8rem;">Yang masih bisa di sini: setelan jenis beras, daftar &amp; PIN operator kasir, PIN owner, dan pulihkan dari berkas cadangan (jalan darurat).</p>
+    <div id="isiHanyaBaca"></div>
+    <div class="modal-pin-tombol">
+      <button type="button" onclick="tutupModalHanyaBaca()">Tutup</button>
+      <button type="button" class="modal-pin-masuk" onclick="location.href='baru/'">Buka /baru/</button>
     </div>
   </div>
 </div>
@@ -9452,6 +9471,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       pasangDenyutPerangkat();
       pasangPendengarPerangkat();
       pasangPendengarKatalog();
+      kirimAntreanSekali(false);   // 25b: antrean lama dicoba SEKALI, tanpa perulangan
       // Jual = halaman pendarat STATIS: pindahHalaman('jual') tidak jalan saat aplikasi dibuka,
       // jadi tukar setengah jadi diperiksa juga di sini, sesudah data sempat datang.
       setTimeout(() => { tkCekSetengah(); }, 8000);
@@ -11692,6 +11712,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
 
   async function terbitkanRingkasanKasir() {
+    if (!penjagaTulis('katalog', 'ringkasanKasir', 'aktif')) return;
     try {
       const isi = susunIsiKatalogKasir();
       if (!isi) return;
@@ -11731,7 +11752,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   let _cachePerangkat = [], _denyutTerakhir = 0;
 
   function kirimDenyutPerangkat() {
-    if (!_sudahLoginToko) return;                 // belum masuk: tidak ada yang bisa ditulis
+    if (!_sudahLoginToko || !penjagaTulis('denyut')) return;   // belum masuk: tidak ada yang bisa ditulis
     const sekarang = Date.now();
     if (sekarang - _denyutTerakhir < 60000) return;   // paling cepat sekali per menit
     _denyutTerakhir = sekarang;
@@ -11743,7 +11764,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         aplikasi: 'sistem',
         pada: new Date().toISOString(),
         antrean: ambilAntreanTunda().length,
-        gagal: 0,
+        gagal: ambilAntreanDitolakLama().length,   // 25b: catatan lama yang ditolak server, menunggu dicatat ulang di /baru/
         versi: 'sistem'
       }).catch(() => {});                          // gagal = diam. Denyut bukan data uang.
     } catch (e) { /* denyut tidak boleh merusak apa pun */ }
@@ -11866,29 +11887,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   window.addEventListener('beforeunload', (e) => {
     if (_antreanTundaMemori !== null && ambilAntreanTunda().length) { e.preventDefault(); e.returnValue = ''; }
   });
-  let _sedangKirimTunda = false;
-  async function kirimAntreanTunda() {
-    if (_sedangKirimTunda) return;
-    _sedangKirimTunda = true;
-    try {
-      while (ambilAntreanTunda().length > 0) {
-        const item = ambilAntreanTunda()[0];
-        await Promise.race([
-          setDoc(doc(db, item.koleksi, String(item.data.id)), item.data),
-          new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 8000))
-        ]);
-        // Buang item YANG TADI DIKIRIM, bukan kepala antrean: urungkan bisa menyaring antrean selagi
-        // kiriman ini menunggu, dan shift() lalu membuang tulisan lain yang belum terkirim.
-        const sisa = ambilAntreanTunda();
-        const iKirim = sisa.findIndex(q => q.koleksi === item.koleksi && String(q.data && q.data.id) === String(item.data.id));
-        if (iKirim >= 0) sisa.splice(iKirim, 1);
-        setAntreanTunda(sisa);
-      }
-    } catch (e) { mintaLoginKalauDitolak(e); /* selain itu: masih offline — dicoba lagi otomatis */ }
-    _sedangKirimTunda = false;
-  }
-  window.addEventListener('online', kirimAntreanTunda);
-  setInterval(kirimAntreanTunda, 30000);
+  // PUTARAN 25b: perulangan kirim ulang (tiap 30 detik & tiap sinyal kembali) DICABUT. Nama ini tetap ada untuk
+  // tombol "kirim sekali lagi" di pita: satu percobaan per catatan, yang ditolak tidak pernah dikirim ulang.
+  async function kirimAntreanTunda() { return kirimAntreanSekali(true); }
   // ===== IDENTITAS PERANGKAT & PELAKU (Fase 1, 26 Agu 2026) =====
   // index.html adalah alat owner, jadi pelakunya selalu 'Owner'; yang membedakan
   // antar HP/iPad owner adalah id perangkat (sekali dibuat, menetap di localStorage)
@@ -12034,7 +12035,106 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         </div>`).join('');
   }
 
+  // ===== SISTEM LAMA HANYA-BACA — SATU PENJAGA (putaran 25b, keputusan owner 26 Sep 2026) =====
+  // Sesudah sebuah bulan dikunci, tulisan bertanggal dari sini DITOLAK server, dan antrean tunda lama mengirim ulang
+  // kepala yang ditolak selamanya ("Database terkunci" berulang; semua tulisan di belakangnya tertahan). Karena itu
+  // SEMUA jalan tulis — simpanKeFirestore, hapusDariFirestore, tiga runTransaction, antrean, katalog kasir, denyut —
+  // bertanya ke penjagaTulis() lebih dulu. Mencatat & membatalkan pindah ke /baru/.
+  // TETAP TERBUKA (owner 26 Sep): setelan yang tidak pernah ditolak server — jenis beras, daftar & PIN operator kasir,
+  // PIN owner — dan "pulihkan dari berkas cadangan" lewat konfirmasi ketik (docs/prosedur-pulih-darurat.md).
+  // BUKAN CATATAN, tidak pernah ditolak, jadi ikut jalan: katalog kasir (ringkasanKasir — /baru/ belum punya
+  // penerbitnya; tanpa ini harga & modal di tuts kasir membeku), denyut perangkat, dan antrean lama yang dikirim SEKALI.
+  // Dijaga alat-uji/uji_sistem_lama_bacasaja.py — jalan tulis baru yang tidak lewat sini = GAGAL.
+  const PESAN_HANYA_BACA = 'Sistem lama sekarang hanya-baca. Catat dan batalkan di /baru/';
+  const TULIS_TERBUKA = { 'pengaturan/jenisBeras': 'setelan jenis beras', 'pengaturan/aksesKasir': 'daftar & PIN operator kasir', 'pengaturan/keamanan': 'PIN owner' };
+  const JALUR_BUKAN_CATATAN = { katalog: 'katalog kasir (ringkasanKasir)', denyut: 'denyut perangkat', 'antrean-sekali': 'antrean lama, dikirim sekali' };
+  let _modePulih = false;          // hanya selama muatDariFile, sesudah konfirmasi ketik
+  let _tolakHanyaBacaPada = 0;
+  function penjagaTulis(jalur, koleksi, id) {
+    if (JALUR_BUKAN_CATATAN[jalur]) return true;
+    if (jalur === 'simpan' && (_modePulih || TULIS_TERBUKA[koleksi + '/' + id])) return true;
+    _tolakHanyaBacaPada = Date.now();
+    bukaModalHanyaBaca('');
+    return false;
+  }
+  function galatHanyaBaca() { const e = new Error(PESAN_HANYA_BACA); e.code = 'hanya-baca'; return e; }
+  // Pemanggil lama menutup kegagalan dengan alert "Gagal simpan (cek internet)". Di sini kalimat itu bohong — yang
+  // menolak penjaga, bukan sinyal — jadi alert yang datang tepat sesudah penolakan diredam; modal di atas sudah bicara.
+  const _alertAsli = (typeof window !== 'undefined' && typeof window.alert === 'function') ? window.alert.bind(window) : null;
+  if (_alertAsli) window.alert = function (pesan) { if (Date.now() - _tolakHanyaBacaPada < 3000) return undefined; return _alertAsli(pesan); };
+  function bukaModalHanyaBaca(isi) {
+    const el = document.getElementById('modalHanyaBacaBg'); if (!el) return;
+    const w = document.getElementById('isiHanyaBaca'); if (w) w.innerHTML = isi || '';
+    el.classList.add('tampil');
+  }
+  function tutupModalHanyaBaca() { const el = document.getElementById('modalHanyaBacaBg'); if (el) el.classList.remove('tampil'); }
+
+  // ===== ANTREAN LAMA: DIKIRIM SEKALI — tanpa perulangan, tanpa modal sandi (putaran 25b) =====
+  // Dulu kirimAntreanTunda() jalan tiap 30 detik & tiap sinyal kembali, dan catatan yang ditolak TETAP di kepala.
+  // Sekarang: tiap catatan lama dicoba SATU kali sesudah masuk. Berhasil = selesai. Ditolak server = pindah ke daftar
+  // "ditolak" (ditulis dulu, baru dicabut dari antrean) untuk dicatat ulang di /baru/. Sinyal putus = tetap di antrean,
+  // tidak diulang otomatis — pita menawarkan "kirim sekali lagi".
+  const KUNCI_ANTREAN_DITOLAK = 'miqbal_antrean_ditolak_v1';
+  let _kirimSekaliJalan = false, _kirimSekaliSudah = false;
+  function ambilAntreanDitolakLama() { try { return JSON.parse(localStorage.getItem(KUNCI_ANTREAN_DITOLAK) || '[]'); } catch (e) { return []; } }
+  function buangDariAntreanTunda(item) {
+    const sisa = ambilAntreanTunda();
+    const i = sisa.findIndex(q => q.koleksi === item.koleksi && String(q.data && q.data.id) === String(item.data && item.data.id));
+    if (i >= 0) { sisa.splice(i, 1); setAntreanTunda(sisa); }
+  }
+  function catatDitolakLama(item) {
+    const d = ambilAntreanDitolakLama();
+    if (!d.some(x => x.koleksi === item.koleksi && String(x.data && x.data.id) === String(item.data && item.data.id))) {
+      d.push({ koleksi: item.koleksi, data: item.data, ditolakPada: new Date().toISOString() });
+      if (!simpanLokal(KUNCI_ANTREAN_DITOLAK, JSON.stringify(d), true)) return false;   // penyimpanan penuh: biarkan di antrean
+    }
+    return true;
+  }
+  async function kirimAntreanSekali(manual) {
+    if (_kirimSekaliJalan || (_kirimSekaliSudah && !manual)) return;
+    if (!_sudahLoginToko || !navigator.onLine || !penjagaTulis('antrean-sekali')) { gambarPitaHanyaBaca(); return; }
+    const daftar = ambilAntreanTunda().slice();
+    _kirimSekaliSudah = true;
+    if (!daftar.length) { gambarPitaHanyaBaca(); return; }
+    _kirimSekaliJalan = true;
+    for (const item of daftar) {
+      try {
+        await Promise.race([
+          setDoc(doc(db, item.koleksi, String(item.data.id)), item.data),
+          new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 8000))
+        ]);
+        buangDariAntreanTunda(item);
+      } catch (e) {
+        if (String((e && e.code) || '').includes('permission-denied') && catatDitolakLama(item)) buangDariAntreanTunda(item);
+        // sinyal / timeout: tetap di antrean — TIDAK diulang otomatis
+      }
+    }
+    _kirimSekaliJalan = false;
+    gambarPitaHanyaBaca();
+    perbaruiStatusSambungan();
+  }
+  function gambarPitaHanyaBaca() {
+    const el = document.getElementById('pitaAntreanLama'); if (!el) return;
+    const tolak = ambilAntreanDitolakLama().length, tunda = ambilAntreanTunda().length;
+    el.innerHTML = (tolak ? '<button type="button" onclick="bukaDaftarAntreanLama()">' + tolak + ' catatan lama DITOLAK server — catat ulang di /baru/ ›</button>' : '')
+      + (tunda ? '<button type="button" onclick="kirimAntreanTunda()">' + tunda + ' catatan lama belum terkirim — kirim sekali lagi</button>' : '');
+  }
+  function bukaDaftarAntreanLama() {
+    const d = ambilAntreanDitolakLama();
+    bukaModalHanyaBaca('<p style="font-size:.85rem;"><b>' + d.length + ' catatan lama ditolak server</b> — biasanya karena bulannya sudah dikunci. '
+      + 'Catatannya tetap tersimpan di perangkat ini. Catat ulang bertanggal hari ini di /baru/.</p>'
+      + d.map(x => '<div class="baris-44"><span class="nama"><i class="trx-nama">' + escapeHtml(String((x.data && x.data.tanggal) || '') + ' ' + String((x.data && x.data.jam) || ''))
+        + ' · ' + escapeHtml(x.koleksi) + '</i><small>' + escapeHtml(ringkasDok(x.data)) + '</small></span></div>').join(''));
+  }
+  window.tutupModalHanyaBaca = tutupModalHanyaBaca;
+  window.bukaDaftarAntreanLama = bukaDaftarAntreanLama;
+  // Belum sempat dicoba (mis. halaman dibuka tanpa sinyal): percobaan PERTAMA menunggu sinyal. Sesudah itu tidak
+  // ada lagi yang otomatis — _kirimSekaliSudah menutupnya, jadi ini bukan perulangan.
+  window.addEventListener('online', () => { kirimAntreanSekali(false); });
+  gambarPitaHanyaBaca();
+
   async function simpanKeFirestore(nomorKoleksi, data) {
+    if (!penjagaTulis('simpan', nomorKoleksi, data && data.id)) throw galatHanyaBaca();
     // ===== ATRIBUSI — satu pintu untuk SEMUA koleksi (Fase 1) =====
     // oleh & perangkat = PENCIPTA, hanya diisi kalau belum ada (transaksi darurat yang
     // dirapikan owner tetap milik pegawai yang mencatatnya). diubah* = SIAPA TERAKHIR
@@ -12053,16 +12153,23 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         new Promise((_, tolak) => setTimeout(() => tolak(new Error('timeout')), 4000))
       ]);
     } catch (e) {
-      // Ditolak karena belum login → tetap masuk antrean tunda (data TIDAK hilang),
-      // lalu minta sandi. Begitu login, antrean dikirim otomatis.
-      mintaLoginKalauDitolak(e);
-      const antre = ambilAntreanTunda();
-      antre.push({ koleksi: nomorKoleksi, data: data });
-      setAntreanTunda(antre);
+      // 25b: sudah masuk & DITOLAK aturan (mis. pulihkan tanpa rules darurat) → daftar "ditolak", bukan antrean
+      // abadi + modal sandi. Belum masuk / sinyal putus → antrean tunda seperti dulu (data TIDAK hilang); antrean
+      // itu dikirim SEKALI sesudah masuk (kirimAntreanSekali), tidak diulang otomatis.
+      const item = { koleksi: nomorKoleksi, data: data };
+      if (_sudahLoginToko && String((e && e.code) || '').includes('permission-denied') && catatDitolakLama(item)) { gambarPitaHanyaBaca(); }
+      else {
+        mintaLoginKalauDitolak(e);
+        const antre = ambilAntreanTunda();
+        antre.push(item);
+        setAntreanTunda(antre);
+        gambarPitaHanyaBaca();
+      }
     }
     if (nomorKoleksi !== 'ringkasanKasir') jadwalkanRingkasanKasir();
   }
   async function hapusDariFirestore(nomorKoleksi, id) {
+    if (!penjagaTulis('hapus', nomorKoleksi, id)) throw galatHanyaBaca();
     // Penghapusan yang DISENGAJA: buka jendela supaya snapshot kosong sesudahnya
     // (dokumen terakhir koleksi ini) tidak ditahan penjaga cadangan. Dipasang PALING
     // DULU: kalau pencatatan log sempat gagal, penjaganya tetap tahu ini disengaja.
@@ -12223,6 +12330,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           return;
         }
 
+        // PUTARAN 25b: sistem lama hanya-baca — pulihkan TETAP bisa, lewat KONFIRMASI KETIK. Di bawah rules v4
+        // catatan bulan terkunci pasti ditolak: jalankan dulu prosedur darurat (docs/prosedur-pulih-darurat.md).
+        const ketikPulih = prompt('PULIHKAN DARI BERKAS CADANGAN — jalan DARURAT (sistem lama sekarang hanya-baca).\n\n'
+          + 'Di bawah aturan server v4, catatan bulan yang sudah dikunci PASTI ditolak. Ikuti dulu prosedur darurat: '
+          + 'owner menempel aturan darurat di Console, memulihkan, lalu menempel v4 kembali secepatnya.\n\n'
+          + 'Ketik PULIHKAN untuk lanjut:', '');
+        if (String(ketikPulih || '').trim().toUpperCase() !== 'PULIHKAN') { event.target.value = ''; return; }
+        _modePulih = true;
         // Muat dari file sekarang berarti UPLOAD ke Firestore (bukan cuma ke localStorage HP ini)
         // supaya file backup lama bisa dipakai memulihkan data di semua perangkat sekaligus.
         // Satu daftar untuk SEMUA koleksi (versi 4) — file versi 3 yang lama cuma punya
@@ -12284,6 +12399,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         console.error(err);
         alert('File tidak bisa dibaca, atau gagal mengunggah ke database (cek koneksi internet). Pastikan ini file backup .json yang benar dari sistem ini.');
       }
+      _modePulih = false;
       event.target.value = '';
     };
     reader.readAsText(file);
@@ -16146,6 +16262,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (!alasan.trim()) { alert('Alasan wajib diisi — supaya jejaknya bisa dibaca nanti.'); return false; }
     const pada = new Date().toISOString();
     const cap = d => Object.assign(d, { diubahOleh: OLEH_TETAP, diubahPerangkat: perangkatRingkas(), diubahPada: pada });
+    if (!penjagaTulis('transaksi', KOLEKSI_RETUR, r.id)) return false;
     let hasil = null;
     try {
       hasil = await Promise.race([
@@ -17111,6 +17228,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       + ' sebagai pengganti tukar ini?\n\nPenjualannya TIDAK diubah — tandanya disimpan di dokumen retur.')) return;
     // Lewat TRANSAKSI, bukan salinan cache penuh: returnya bisa sudah dikoreksi dari perangkat lain
     // ("Ternyata layak jual") — salinan basi yang ditulis penuh akan membatalkannya diam-diam.
+    if (!penjagaTulis('transaksi', KOLEKSI_RETUR, r.id)) return;
     let hasilSd = null;
     try {
       hasilSd = await Promise.race([
@@ -23539,6 +23657,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // dipakai saat konfirmasi), penulisan DITOLAK dan pemilik diberi tahu — bukan
     // ditimpa. Offline? Jatuh ke antrean tunda seperti biasa: mencatat tidak boleh
     // terhalang sinyal, dan konfliknya akan terlihat saat sinkron.
+    if (!penjagaTulis('transaksi', KOLEKSI_TUTUP, hariIni)) return;
     let lewatTx = false;
     try {
       const hasilTx = await Promise.race([

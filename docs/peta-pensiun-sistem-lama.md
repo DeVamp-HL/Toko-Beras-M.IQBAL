@@ -1,8 +1,8 @@
 # Peta pensiun sistem lama — putaran 25b, Tahap 0
 
-**Status: BERHENTI sebelum mematikan apa pun.** Daftar fitur yang menulis data dan hanya ada di `index.html` (§3) berisi **lebih dari**
-pembatalan karcis kasir darurat. Sesuai prompt 25b, `index.html` **belum** dijadikan hanya-baca (Bagian B.3–B.4 menunggu keputusan owner, §5).
-Yang tidak mematikan apa pun tetap dikerjakan: pembatalan karcis darurat di `/baru/` (§4) dan antrean kasir (Bagian A).
+**Status (26 Sep 2026): `index.html` HANYA-BACA lewat satu penjaga — keputusan owner (b) dipersempit, §5–§6.** Tahap 0 sempat berhenti karena daftar
+fitur tulis yang hanya ada di `index.html` (§3) berisi lebih dari pembatalan karcis darurat; owner lalu memutuskan mana yang dikunci dan mana yang tetap
+terbuka. Pembatalan karcis darurat pindah ke `/baru/` (§4).
 
 Sumber: kode di cabang `tulang-punggung/25b-antrean`, dan cadangan toko 26 Sep 2026 00.12 WIB (di `_privat/`, tidak masuk repo).
 Angka di dokumen ini **jumlah catatan**, bukan rupiah.
@@ -107,13 +107,35 @@ Dibandingkan dengan pembatalan sungguhan dari sistem lama, `penjualan/1790333361
 field-nya **sama**, kecuali `diubahOlehUid`. Dijaga oleh `alat-uji/uji_batal_karcis.py` (CI, dengan kontrol).
 Aturan: owner mengubah `penjualan` lewat `tglUbah` tanpa batasan field. Bulan terkunci ditolak di layar dengan kalimat, dan di server oleh rules v4.
 
-## 5. Keputusan owner yang dibutuhkan sebelum B.3–B.4
+## 5. Keputusan owner (26 Sep 2026): pilihan (b), dipersempit
 
-1. **Kunci tulis penuh**, fitur #2–#16 hilang dari sistem lama. Risiko terbesar #2 (pulihkan dari cadangan): sesudah dikunci, memulihkan data
-   dari berkas tidak bisa lagi lewat aplikasi mana pun.
-2. **Kunci dengan satu pengecualian sempit**: hanya "pulihkan dari berkas cadangan" yang tetap lewat penjaga, dengan konfirmasi ketik. Sisanya
-   hanya-baca. #11 (jenis beras) perlu tempat di `/baru/` atau diterima hanya-baca.
-3. **Bangun dulu di `/baru/`** fitur yang dianggap perlu (mis. #3 batal nota lama, #6 bon lama pelanggan, #11 jenis beras), lalu kunci.
+Alasan owner: antrean hanya macet karena **tulisan bertanggal** yang ditolak; setelan tidak pernah ditolak.
 
-Selama belum diputuskan, `KP_SIAP_25B` tetap `false`. Butir ⛔ pertama daftar periksa kunci bulan tetap memblokir, karena antrean `index.html`
-masih macet di catatan yang ditolak.
+| | Fitur (§3) |
+|---|---|
+| **DIKUNCI** | semua jalan tulis catatan bertanggal — batal/hapus/koreksi nota selain karcis (#3–#5), catat bon lama pelanggan (#6), hapus uang keluar / tagihan bulanan / retur / harga lama (#7–#10), titipan uang keluar (#14), tembusan stok (#15), alat perbaikan massal (#16). Batal karcis darurat (#1) juga dikunci di sini — jalannya sekarang di `/baru/`. |
+| **TETAP TERBUKA** | setelan jenis beras (#11), daftar & PIN operator kasir (#12), PIN owner (#13), dan "pulihkan dari berkas cadangan" (#2) lewat **konfirmasi ketik** PULIHKAN — prosedurnya `docs/prosedur-pulih-darurat.md` (di bawah v4 pemulihan pasti ditolak; butuh aturan darurat sebentar). |
+| **Putaran tersendiri** | setelan jenis beras, operator kasir, dan PIN **dipindah ke `/baru/`**; sesudah itu ketiganya ikut dikunci di sini. |
+
+Semua jalan tulis lain yang sudah punya padanan di `/baru/` (jual, kedatangan, harga, kartu pelanggan, pesanan, tutup hari, titik kas, tempat simpan,
+dll.) ikut dikunci — yang terbuka hanya daftar di atas.
+
+## 6. Yang terpasang (B.3–B.4)
+
+- **Satu penjaga:** `penjagaTulis(jalur, koleksi, id)` di `index.html`. Dipanggil di baris pertama `simpanKeFirestore` dan `hapusDariFirestore`,
+  sebelum ketiga `runTransaction` (layak jual karantina, pengganti tukar, tutup hari), di penerbit katalog kasir, di denyut, dan di antrean lama.
+  Ditolak = modal "Sistem lama sekarang hanya-baca. Catat dan batalkan di /baru/" dengan tombol ke `/baru/`; tidak ada yang ditulis dan tidak ada yang
+  masuk antrean. Alert lama "gagal simpan (cek internet)" yang datang tepat sesudahnya diredam, karena kalimat itu salah di sini.
+- **Terbuka persis** `pengaturan/jenisBeras`, `pengaturan/aksesKasir`, `pengaturan/keamanan`, plus mode pulih selama `muatDariFile` sesudah PULIHKAN.
+- **Bukan catatan, tetap jalan:** katalog kasir (`ringkasanKasir/aktif`), denyut perangkat, antrean lama sekali. **Temuan:** `/baru/` tidak punya
+  penerbit katalog kasir — `ringkasanKasir` hanya diterbitkan `index.html`, otomatis tiap data berubah selama halaman itu terbuka. Kalau jalur ini ikut
+  dikunci, harga & modal di tuts kasir membeku. Memindahkan penerbitnya ke `/baru/` = putaran tersendiri.
+- **Pita permanen** di atas halaman dengan tautan ke `/baru/`. Fitur baca (laporan, riwayat) tetap jalan.
+- **Antrean lama:** dikirim **sekali** sesudah masuk (dan sekali saat sinyal kembali kalau belum sempat). Berhasil = selesai. Ditolak server = daftar
+  "ditolak" di perangkat itu (`miqbal_antrean_ditolak_v1`, ditulis dulu baru dicabut dari antrean), tampil di pita untuk dicatat ulang di `/baru/`.
+  Sinyal putus = tetap di antrean; pita menawarkan "kirim sekali lagi". Perulangan tiap 30 detik dan modal sandi "Database terkunci" dari antrean
+  sudah dicabut. Denyut sistem lama kini melaporkan jumlah yang ditolak (`gagal`).
+- **Mesin beku tidak disentuh:** `beku2.py --sidik` 28/28.
+- **Dijaga:** `alat-uji/uji_sistem_lama_bacasaja.py` (statis: tiap `setDoc`/`deleteDoc`/`runTransaction` di fungsi berpenjaga, daftar terbuka persis
+  keputusan owner; peramban: `index.html` sungguhan + Firebase palsu — antrean sekali, 35 koleksi ditolak, tombol sungguhan, yang terbuka, pulihkan,
+  baca riwayat). `KP_SIAP_25B = true`.

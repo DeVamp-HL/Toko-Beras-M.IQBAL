@@ -102,6 +102,8 @@ jobs:
         run: python3 alat-uji/uji_batal_karcis.py && python3 alat-uji/uji_batal_karcis.py --kontrol
       - name: "Bayar bon dari bulan terkunci WAJIB lolos (25b C): teks rules dicocokkan + model + jalur sistem baru dengan Agustus terkunci (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_bayar_bon_terkunci.py && python3 alat-uji/uji_bayar_bon_terkunci.py --kontrol
+      - name: "Sistem lama hanya-baca (25b B): satu penjaga untuk semua jalan tulis index.html, antrean lama sekali, yang terbuka persis keputusan owner — statis + Chrome headless + Firebase palsu + kontrol"
+        run: python3 alat-uji/uji_sistem_lama_bacasaja.py && python3 alat-uji/uji_sistem_lama_bacasaja.py --kontrol
 
   terbitkan:
     needs: uji

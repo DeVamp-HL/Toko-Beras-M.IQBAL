@@ -143,8 +143,6 @@ class Pelayan(http.server.SimpleHTTPRequestHandler):
             self.keadaan['siap'].wait(40); time.sleep(0.4)
             self.send_response(200); self.send_header('Content-Type', 'image/gif'); self.end_headers()
             self.wfile.write(b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'); return
-        if self.path.startswith('/_palsu'):   # skrip palsu dari berkas yang sama dengan halaman (dilayani untuk jaga-jaga; halaman tidak memintanya)
-            self.send_response(404); self.end_headers(); return
         return super().do_GET()
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store'); super().end_headers()
