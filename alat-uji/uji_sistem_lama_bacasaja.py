@@ -66,7 +66,10 @@ export function onSnapshot(ref, ok) {
 """,
 }
 
-HARI = '2026-09-26'
+# Tanggal contoh = HARI INI di mesin yang menjalankan uji (Chrome memakai zona waktu yang sama). Dulu dipaku '2026-09-26': riwayat penjualan
+# sistem lama menampilkan transaksi hari ini, jadi sejak 27 Sep pemeriksaan "fitur baca" gagal (di Mac pengembang lewat tengah malam WIB,
+# di runner mulai 00.00 UTC = 07.00 WIB).
+HARI = __import__('datetime').date.today().isoformat()
 ANTREAN_LAMA = [
     {'koleksi': 'penjualan', 'data': {'id': 7001, 'tanggal': '2026-09-20', 'jam': '10:00', 'jenis': 'karung', 'namaProduk': 'Beras Contoh (karung utuh)', 'hargaTotal': 600000, 'caraBayar': 'Tunai'}},
     {'koleksi': 'penjualan', 'data': {'id': 7002, 'tanggal': '2026-08-20', 'jam': '11:00', 'jenis': 'karung', 'namaProduk': 'Beras Contoh (karung utuh)', 'hargaTotal': 610000, 'caraBayar': 'Tunai'}},
