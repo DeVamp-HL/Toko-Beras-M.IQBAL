@@ -146,7 +146,7 @@ SKENARIO = r"""<script>
     hasil.galat = window.__ujiGalat.slice(); hasil.rest = window.__ujiRest.slice();
   } catch (e) { hasil.galatSkenario = String(e && (e.stack || e.message) || e); }
   // hasil dikirim LANGSUNG ke server uji sebelum /_siap — tidak lewat DOM yang harus diserahkan Chrome (docs/catatan-uji-peramban.md)
-  try { await fetch('/_hasil', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hasil) }); } catch (e) {}
+  try { await fetch('/_hasil' + location.search, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hasil) }); } catch (e) {}
   fetch('/_siap');
 })();
 </script>"""

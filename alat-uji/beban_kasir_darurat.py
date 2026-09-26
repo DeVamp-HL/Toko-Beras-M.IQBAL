@@ -28,13 +28,13 @@ def ringkas(berkas):
         try: data.append(json.load(open(b)))
         except (OSError, ValueError): data.append({'label': os.path.basename(b), 'galat': 'tidak ada hasil'})
     out = ['## Uji beban kasir darurat — sebelum ↔ sesudah', '',
-           '| alat uji | pasangan | pemuatan Chrome | **DICOBA ULANG** | pasangan gagal diperiksa | Chrome dimatikan paksa sesudah hasil | menit |',
-           '|---|---|---|---|---|---|---|']
+           '| alat uji | pasangan | pemuatan halaman | peluncuran Chrome | **DICOBA ULANG** | pasangan gagal diperiksa | Chrome dimatikan paksa sesudah hasil | menit |',
+           '|---|---|---|---|---|---|---|---|']
     for d in data:
-        if d.get('galat'): out.append('| %s | %s | | | | | |' % (d.get('label'), d['galat'])); continue
+        if d.get('galat'): out.append('| %s | %s | | | | | | |' % (d.get('label'), d['galat'])); continue
         ctm = d.get('chrome_ditutup_paksa')
-        out.append('| %s (%s) | %d | %d | **%d** | %d | %s | %.1f |' % (
-            d['label'], d.get('alat', '?'), d['pasangan'], d['muat'], d['dicoba_ulang'], d['pasangan_gagal'],
+        out.append('| %s (%s) | %d | %d | %d | **%d** | %d | %s | %.1f |' % (
+            d['label'], d.get('alat', '?'), d['pasangan'], d['halaman'], d['muat'], d['dicoba_ulang'], d['pasangan_gagal'],
             '— (alat lama tidak menghitung)' if ctm is None else ctm, d['detik'] / 60))
     for d in data:
         if d.get('contoh_gagal'): out += ['', '**%s — contoh pemeriksaan gagal:** %s' % (d['label'], '; '.join(d['contoh_gagal'][:5]))]
@@ -63,7 +63,7 @@ def main():
     versi_sw = re.search(r"const VERSI = '([^']+)';", teks['sw-kasir.js']).group(1)
     stat = getattr(U, 'STAT', None)
     t0 = time.time(); gagal = 0; contoh = []
-    print('BEBAN %s · alat %s · %d pasangan kasir darurat (%d pemuatan) · satu Chrome sekali jalan' % (label, alat, n, 2 * n), flush=True)
+    print('BEBAN %s · alat %s · %d pasangan kasir darurat (%d pemuatan halaman) · satu Chrome sekali jalan' % (label, alat, n, 2 * n), flush=True)
     for i in range(1, n + 1):
         u, m = U.jalankan_berkas(U.DARURAT)
         g = [x for x in U.periksa_peramban(U.DARURAT, u, m, versi_sw) if not x[1]]
@@ -75,7 +75,8 @@ def main():
                 label, i, n, hitung['dicoba_ulang'], gagal,
                 '' if stat is None else ' · Chrome dimatikan paksa %d' % stat['chrome_ditutup_paksa'], (time.time() - t0) / 60), flush=True)
     hasil = {'label': label, 'alat': os.path.relpath(alat, os.getcwd()) if alat.startswith(os.getcwd()) else alat,
-             'pasangan': n, 'muat': stat['muat'] if stat else 2 * n + hitung['dicoba_ulang'], 'dicoba_ulang': hitung['dicoba_ulang'],
+             'pasangan': n, 'muat': stat['muat'] if stat else 2 * n + hitung['dicoba_ulang'],
+             'halaman': stat['halaman'] if stat else 2 * n + hitung['dicoba_ulang'], 'dicoba_ulang': hitung['dicoba_ulang'],
              'pasangan_gagal': gagal, 'chrome_ditutup_paksa': stat['chrome_ditutup_paksa'] if stat else None,
              'detik': time.time() - t0, 'contoh_gagal': contoh}
     if arg('--keluar'): json.dump(hasil, open(arg('--keluar'), 'w'), ensure_ascii=False, indent=1)

@@ -84,12 +84,17 @@ aturan di `CLAUDE.md`.
 
 - Skenario di `uji_antrean_kasir.py` dan `uji_sistem_lama_bacasaja.py` mengirim hasilnya ke `POST /_hasil` **sebelum** `/_siap`, jadi
   sebelum halaman selesai dimuat. `buka()` berhasil begitu hasil masuk; DOM dibuang.
-- Begitu hasil masuk, Chrome **langsung ditutup baik-baik** (SIGTERM) — tidak menunggu Chrome menyerahkan DOM atau keluar sendiri. Tutup
-  baik-baik = penyimpanan halaman ditulis ke disk, dan skenario muat ulang membacanya.
+- **Muat ulang di Chrome yang sama.** Sesudah mengirim hasil skenario utama, halaman memuat ulang dirinya ke skenario muat ulang
+  (`?lanjut=` → `location.replace`), seperti HP penjaga memuat ulang halaman. Penyimpanan halaman tidak perlu ditulis ke disk lalu dibaca
+  Chrome baru. Uji beban PR #43 percobaan pertama (Chrome ditutup SIGTERM sesaat sesudah hasil, muat ulang di Chrome baru): **100 dari 100
+  pasangan kehilangan seluruh penyimpanan** di runner (termasuk tanda masuk yang ditulis 5 dtk sebelumnya), padahal di Mac pengembang
+  lolos. Kasir tidak memakai `sessionStorage`, jadi muat ulang di tab yang sama setia pada perilaku HP.
+- Sesudah semua hasil masuk, Chrome ditutup baik-baik (SIGTERM) — tidak menunggu Chrome menyerahkan DOM atau keluar sendiri.
+- `--gambar` (tangkapan layar untuk pemeriksaan mata, bukan CI) masih memakai jalur lama: tiap pemuatan Chrome sendiri, bergantung pada
+  Chrome menulis penyimpanan ke disk.
 - **Mode `--dump-dom` dibuang.** Uji lokal 27 Sep: dalam mode itu Chrome headless di macOS tidak keluar sendiri (22 dari 22 pemuatan dalam
   5 dtk) dan **mengabaikan SIGTERM** (22 dari 22 harus dimatikan paksa sesudah 10 dtk). Alat lama tidak pernah tahu karena langsung
-  mematikannya sesudah membaca DOM. Tanpa mode itu Chrome jalan seperti peramban biasa tanpa layar: satu pasangan kasir darurat 5,6 dtk,
-  0 dimatikan paksa, penyimpanan terbawa ke muat ulang.
+  mematikannya sesudah membaca DOM. Tanpa mode itu Chrome jalan seperti peramban biasa tanpa layar dan mau ditutup baik-baik.
 - Chrome yang menolak ditutup baik-baik dalam 10 dtk dimatikan paksa dan **dihitung** (`STAT['chrome_ditutup_paksa']`, dicetak di CI).
   **Bukan percobaan ulang.**
 - Yang masih dicoba ulang (dan tercatat DICOBA ULANG): halaman yang tidak mengirim hasil sama sekali.
