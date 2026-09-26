@@ -16,7 +16,7 @@ BAGIAN 3 · JARINGAN: Firebase (CDN) gagal dimuat → dicoba ulang SATU kali →
     python3 alat-uji/uji_layar_kunci.py            → LULUS / GAGAL UJI (keluar 2) / GAGAL JARINGAN (keluar 4)
     python3 alat-uji/uji_layar_kunci.py --kontrol  → kontrol wajib berbunyi (keluar 3 kalau ada yang diam)
 """
-import os, re, sys, json, time, shutil, socket, socketserver, subprocess, tempfile, threading, http.server, functools, urllib.request
+import os, re, sys, json, time, shutil, signal, socket, socketserver, subprocess, tempfile, threading, http.server, functools, urllib.request
 
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
@@ -305,7 +305,8 @@ def dom_sekali(d, jalur, tunggu=90):
     srv, port = layani(d); profil = tempfile.mkdtemp(prefix='kunci-profil-'); K = srv.RequestHandlerClass.func
     fd, log_chrome = tempfile.mkstemp(prefix='kunci-log-', suffix='.txt'); log = os.fdopen(fd, 'wb')   # dibaca hanya kalau halaman dicoba ulang
     p = subprocess.Popen([CHROME, '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--disable-component-update', '--disable-background-networking',
-                          '--user-data-dir=' + profil, '--dump-dom', '--enable-logging=stderr', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=log)
+                          '--user-data-dir=' + profil, '--dump-dom', '--enable-logging=stderr', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=log,
+                         start_new_session=True)   # grup proses sendiri: dimatikan sekaligus
     log.close()
     buf = []; selesai = threading.Event()
     def baca():
@@ -319,7 +320,9 @@ def dom_sekali(d, jalur, tunggu=90):
         return ''.join(buf), K.siap.is_set() and not K.gagal.is_set(), {'gagal': K.gagal.is_set(), 'sdk': list(K.sdk), 'firebase_diminta': '/baru/js/data/firebase.js' in K.diminta,
                                                                          'log': coba_ulang.ekor_berkas(log_chrome)}
     finally:
-        p.kill(); p.wait(); srv.shutdown(); shutil.rmtree(profil, ignore_errors=True)
+        try: os.killpg(p.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError): p.kill()
+        p.wait(); srv.shutdown(); shutil.rmtree(profil, ignore_errors=True)
         try: os.unlink(log_chrome)
         except OSError: pass
 

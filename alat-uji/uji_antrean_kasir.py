@@ -24,7 +24,7 @@ STATIS: golonganJawaban() kembar huruf per huruf di kedua berkas; VERSI_APLIKASI
     python3 alat-uji/uji_antrean_kasir.py --gambar DIR   → juga simpan tangkapan layar kasir darurat (pita & daftar ditolak) ke DIR
 Tanpa jaringan luar, tanpa Node. Butuh Google Chrome (sama dengan uji_layar_kunci.py).
 """
-import os, re, sys, json, time, shutil, socket, tempfile, threading, subprocess, http.server, socketserver, functools
+import os, re, sys, json, time, shutil, signal, socket, tempfile, threading, subprocess, http.server, socketserver, functools
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import coba_ulang   # noqa: E402  (tiap percobaan ulang menulis baris DICOBA ULANG — keputusan owner 26 Sep)
@@ -180,16 +180,42 @@ def layani(d):
     return srv, port, keadaan
 
 
+# Penyimpanan yang bisa DIUBAH skenario halaman (kasir: localStorage). Difoto sebelum percobaan pertama, dipulihkan sebelum tiap percobaan ulang.
+PENYIMPANAN_HALAMAN = [os.path.join('Default', 'Local Storage'), os.path.join('Default', 'IndexedDB')]
+
+
+def _salin_penyimpanan(dari, ke):
+    """Ganti penyimpanan halaman di profil `ke` dengan milik `dari` (yang tidak ada di `dari` = dihapus dari `ke`). Chrome sudah mati."""
+    for rel in PENYIMPANAN_HALAMAN:
+        a, b = os.path.join(dari, rel), os.path.join(ke, rel)
+        shutil.rmtree(b, ignore_errors=True)
+        if os.path.isdir(a): shutil.copytree(a, b)
+
+
 def buka(port, keadaan, profil, jalur, gambar=None, tunggu=60):
     """Satu pemuatan halaman di Chrome headless. → DOM (teks) sesudah skenario selesai; gambar = berkas PNG (tangkapan layar, bukan DOM).
     Runner CI macOS sesekali membuat satu Chrome macet total (PR #41: 2 dari ±60 pemuatan, halaman tidak pernah jalan). Macetnya ada dua rupa:
     halaman tidak pernah mengabarkan selesai, ATAU skenarionya selesai tapi Chrome tidak pernah menyerahkan DOM (main 8dcaae2: pemuatan pertama
-    kasir darurat, 60 dtk, hasil kosong). Keduanya dicoba SEKALI lagi — skenario selalu mulai dari keadaan yang ia pasang sendiri, jadi
-    mengulang tidak meloloskan apa pun; halaman yang jalan tapi hasilnya salah tetap gagal di pemeriksanya.
+    kasir darurat, 60 dtk, hasil kosong). Keduanya dicoba SEKALI lagi.
+    Percobaan yang macet SESUDAH selesai sudah menjalankan skenarionya — dan skenario muat ulang MENGUBAH penyimpanan (mengarsipkan karcis
+    ditolak). Mengulang di atas penyimpanan yang sudah berubah = hasil palsu (PR #42: arsip [5200] sebelum ketukan pertama → dua pemeriksaan gagal
+    palsu; di skenario lain bisa lulus palsu). Maka penyimpanan halaman difoto SEBELUM percobaan pertama dan dipulihkan sebelum tiap percobaan
+    ulang: percobaan ulang mulai dari keadaan yang sama persis dengan percobaan pertama.
     Tiap percobaan ulang menulis baris DICOBA ULANG (coba_ulang.py): kalau mulai sering muncul, itu masalah sungguhan, bukan Chrome yang lambat."""
-    h = ''; sebab = ''; BATAS = 2
+    BATAS = 2
+    foto = tempfile.mkdtemp(prefix='antre-foto-'); _salin_penyimpanan(profil, foto)
+    try:
+        return _buka_dengan_ulang(port, keadaan, profil, jalur, gambar, tunggu, foto, BATAS)
+    finally:
+        shutil.rmtree(foto, ignore_errors=True)
+
+
+def _buka_dengan_ulang(port, keadaan, profil, jalur, gambar, tunggu, foto, BATAS):
+    h = ''; sebab = ''
     for coba in range(1, BATAS + 1):
-        if coba > 1: coba_ulang.catat(jalur, sebab, coba, BATAS, log=coba_ulang.ekor_berkas(keadaan.get('log_chrome', '')))
+        if coba > 1:
+            coba_ulang.catat(jalur, sebab, coba, BATAS, log=coba_ulang.ekor_berkas(keadaan.get('log_chrome', '')))
+            _salin_penyimpanan(foto, profil)   # mulai lagi dari keadaan SEBELUM percobaan pertama
         for kunci in ('SingletonLock', 'SingletonSocket', 'SingletonCookie'):   # kunci profil sisa Chrome yang sudah dimatikan
             try:
                 if os.path.lexists(os.path.join(profil, kunci)): os.unlink(os.path.join(profil, kunci))
@@ -210,7 +236,8 @@ def _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu):
     # catatan Chrome (stderr) ke berkas di profil — dibaca HANYA kalau percobaan ini macet dan halaman dicoba ulang (bukti di bawah baris DICOBA ULANG)
     keadaan['log_chrome'] = os.path.join(profil, 'log-chrome-%d.txt' % int(time.time() * 1000))
     log = open(keadaan['log_chrome'], 'wb')
-    p = subprocess.Popen(arg + ['--enable-logging=stderr', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=log)
+    p = subprocess.Popen(arg + ['--enable-logging=stderr', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=log,
+                         start_new_session=True)   # grup proses sendiri: dimatikan SEKALIGUS (renderer, GPU, penyimpanan), bukan cuma induknya
     log.close()
     buf = []; selesai = threading.Event()
     def baca():
@@ -239,7 +266,9 @@ def _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu):
             if siap_sejak is not None and time.time() - siap_sejak > 20: break
         return ''.join(buf)
     finally:
-        p.kill(); p.wait()
+        try: os.killpg(p.pid, signal.SIGKILL)   # sisa proses Chrome tidak boleh ikut menulis ke profil yang dipakai pemuatan berikutnya
+        except (ProcessLookupError, PermissionError): p.kill()
+        p.wait()
         if os.environ.get('CI'): print('  [peramban] %s %.1f dtk%s' % (jalur, time.time() - t0, '' if keadaan['siap'].is_set() else ' · halaman TIDAK mengabarkan selesai'), file=sys.stderr, flush=True)
 
 

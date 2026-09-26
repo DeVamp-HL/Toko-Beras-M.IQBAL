@@ -10,6 +10,8 @@ Semua dijalankan di proses anak dan keluarannya DITANGKAP, jadi peringatan uji i
 
   · uji_antrean_kasir (juga dipakai uji_sistem_lama_bacasaja): halaman tidak jalan → tepat SATU baris DICOBA ULANG dengan nama uji, halaman,
     sebab, "percobaan 2 dari 2"; selesai-tanpa-DOM → ikut dicoba ulang dan tercatat; mode --kontrol ikut tertulis di nama uji
+  · percobaan ulang mulai dari penyimpanan halaman SEBELUM percobaan pertama: percobaan yang macet sesudah selesai sudah menjalankan
+    skenarionya (PR #42: skenario muat ulang sudah mengarsipkan karcis → percobaan ulang gagal palsu)
   · uji_layar_kunci: pengulangan yang dulu DIAM sekarang tercatat — dua baris untuk tiga percobaan
   · di GitHub Actions tiap baris juga jadi peringatan "DICOBA ULANG" di halaman ringkasan run; yang DISENGAJA kontrol (kontrol 9) tetap
     ditulis barisnya tapi tanpa peringatan
@@ -31,6 +33,14 @@ CHROME_PALSU = {
     'diam': "sys.stderr.write('[palsu] renderer macet\\n')\n",   # tidak pernah memanggil /_siap, DOM kosong → "tidak mengabarkan selesai"; satu baris catatan Chrome
     'tanpa-dom': SIAP,   # skenario selesai, DOM tidak pernah keluar (kejadian CI 8dcaae2)
     'sehat': SIAP + "sys.stdout.write('<html><head></head><body>ok</body></html>\\n'); sys.stdout.flush()\n",
+    # skenario MENGUBAH penyimpanan halaman (efek.txt di Local Storage profil) lalu mengabarkan selesai; percobaan ganjil macet tanpa DOM,
+    # percobaan genap menyerahkan DOM yang menyebut isi penyimpanan yang DILIHATNYA saat mulai (kejadian PR #42: skenario muat ulang)
+    'efek': ("import os\nprof = next(a.split('=', 1)[1] for a in sys.argv if a.startswith('--user-data-dir='))\n"
+             "ls = os.path.join(prof, 'Default', 'Local Storage'); os.makedirs(ls, exist_ok=True); pe = os.path.join(ls, 'efek.txt')\n"
+             "n = int(open(pe).read()) if os.path.exists(pe) else 0\nopen(pe, 'w').write(str(n + 1))\n"
+             "pk = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), 'efek-ke.txt')\n"
+             "k = int(open(pk).read()) if os.path.exists(pk) else 0\nopen(pk, 'w').write(str(k + 1))\n" + SIAP +
+             "if k % 2 == 1: sys.stdout.write('<html><body>efek=%d</body></html>\\n' % n); sys.stdout.flush()\n"),
 }
 
 # ---------- satu kasus = satu proses anak dari SALINAN alat-uji (kontrol mengganti teks di salinan itu) ----------
@@ -44,7 +54,13 @@ if alat == 'antrean':
     import uji_antrean_kasir as U
     U.CHROME = chrome
     srv, port, keadaan = U.layani(d)
-    try: U.buka(port, keadaan, tempfile.mkdtemp(), '/x.html', tunggu=15)
+    profil = tempfile.mkdtemp()
+    try:
+        h = U.buka(port, keadaan, profil, '/x.html', tunggu=15)
+        m = __import__('re').search(r'efek=\d+', h or '')
+        if m: print('DOM:' + m.group(0))
+        pe = os.path.join(profil, 'Default', 'Local Storage', 'efek.txt')
+        if os.path.exists(pe): print('PROFIL:efek=' + open(pe).read())
     finally: srv.shutdown()
 else:
     import uji_layar_kunci as K
@@ -119,6 +135,12 @@ def semua(ganti=None, cepat=False):
            len(baris(k)) == 1 and peringatan(k) == [PERINGATAN + 'uji_antrean_kasir · /x.html — tidak mengabarkan selesai (percobaan 2 dari 2)'], k)
         ok('GitHub Actions · catatan Chrome dalam kelompok yang bisa dibuka (::group:: … ::endgroup::), tidak memenuhi log',
            any(b.startswith('::group::catatan Chrome dari percobaan 1') for b in k) and '::endgroup::' in k and '    [palsu] renderer macet' in k, k)
+        try: os.unlink(os.path.join(os.path.dirname(chromes()['efek']), 'efek-ke.txt'))
+        except OSError: pass
+        k = jalankan_('antrean', 'efek', ['alat-uji/uji_antrean_kasir.py'])
+        ok('antrean kasir · percobaan ulang mulai dari penyimpanan SEBELUM percobaan pertama (skenario yang sudah jalan tidak meninggalkan jejak)',
+           len(baris(k)) == 1 and 'DOM:efek=0' in k, k)
+        ok('antrean kasir · sesudah lulus, penyimpanan = hasil percobaan yang lulus (pemuatan berikutnya melihat keadaan yang benar)', 'PROFIL:efek=1' in k, k)
         k = jalankan_('antrean', 'sehat', ['alat-uji/uji_antrean_kasir.py'], gha=True)
         ok('halaman sehat → nol baris DICOBA ULANG, nol peringatan (tidak ada tanda palsu)', not baris(k) and not peringatan(k), k)
         k = jalankan_('kunci', 'diam', ['alat-uji/uji_layar_kunci.py'])
@@ -139,7 +161,11 @@ KONTROL = [
     ('pencatat tidak mencetak apa pun', [('coba_ulang.py', "    print('DICOBA ULANG: ' + teks, flush=True)\n", "    pass\n")]),
     ('buka() kembali ke cacat 8dcaae2 (selesai tanpa DOM tidak diulang)',
      [('uji_antrean_kasir.py', "if gambar or (keadaan['siap'].is_set() and '</html>' in h): return h", "if gambar or keadaan['siap'].is_set(): return h")]),
-    ('buka() mengulang tanpa mencatat', [('uji_antrean_kasir.py', "        if coba > 1: coba_ulang.catat(jalur, sebab, coba, BATAS, log=coba_ulang.ekor_berkas(keadaan.get('log_chrome', '')))\n", "")]),
+    ('buka() mengulang tanpa mencatat', [('uji_antrean_kasir.py', "            coba_ulang.catat(jalur, sebab, coba, BATAS, log=coba_ulang.ekor_berkas(keadaan.get('log_chrome', '')))\n", "")]),
+    ('percobaan ulang TIDAK memulihkan penyimpanan (cacat PR #42)', [('uji_antrean_kasir.py', "            _salin_penyimpanan(foto, profil)   # mulai lagi", "            pass   # mulai lagi")]),
+    ('foto penyimpanan diambil SESUDAH percobaan pertama, bukan sebelum', [('uji_antrean_kasir.py',
+        "    foto = tempfile.mkdtemp(prefix='antre-foto-'); _salin_penyimpanan(profil, foto)\n", "    foto = tempfile.mkdtemp(prefix='antre-foto-')\n"),
+        ('uji_antrean_kasir.py', "        h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu)\n", "        h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu)\n        if coba == 1: _salin_penyimpanan(profil, foto)\n")]),
     ('uji_layar_kunci mengulang diam-diam lagi', [('uji_layar_kunci.py', "        if ke > 1: coba_ulang.catat(jalur, sebab, ke, coba, disengaja=DISENGAJA, log=log)\n", "")]),
     ('peringatan GitHub Actions hilang', [('coba_ulang.py', "print('::warning title=DICOBA ULANG::'", "print('(peringatan) DICOBA ULANG::'")]),
     ('yang disengaja ikut jadi peringatan', [('coba_ulang.py', "if os.environ.get('GITHUB_ACTIONS') and not disengaja:", "if os.environ.get('GITHUB_ACTIONS'):")]),
