@@ -27,7 +27,7 @@ PERAMBAN (Chrome headless, index.html SUNGGUHAN, Firebase PALSU lokal yang menol
 import os, re, sys, json, shutil, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
-from uji_antrean_kasir import CHROME, layani, buka, hasil_dari  # noqa: E402  (Chrome headless + server /_siap /_tahan yang sama)
+from uji_antrean_kasir import CHROME, layani, buka, hasil_dari, teks_stat  # noqa: E402  (Chrome headless + server /_siap /_tahan /_hasil yang sama)
 
 PESAN = 'Sistem lama sekarang hanya-baca. Catat dan batalkan di /baru/'
 TERBUKA = {'pengaturan/jenisBeras', 'pengaturan/aksesKasir', 'pengaturan/keamanan'}
@@ -66,7 +66,10 @@ export function onSnapshot(ref, ok) {
 """,
 }
 
-HARI = '2026-09-26'
+# Tanggal contoh = HARI INI di mesin yang menjalankan uji (Chrome memakai zona waktu yang sama). Dulu dipaku '2026-09-26': riwayat penjualan
+# sistem lama menampilkan transaksi hari ini, jadi sejak 27 Sep pemeriksaan "fitur baca" gagal (di Mac pengembang lewat tengah malam WIB,
+# di runner mulai 00.00 UTC = 07.00 WIB).
+HARI = __import__('datetime').date.today().isoformat()
 ANTREAN_LAMA = [
     {'koleksi': 'penjualan', 'data': {'id': 7001, 'tanggal': '2026-09-20', 'jam': '10:00', 'jenis': 'karung', 'namaProduk': 'Beras Contoh (karung utuh)', 'hargaTotal': 600000, 'caraBayar': 'Tunai'}},
     {'koleksi': 'penjualan', 'data': {'id': 7002, 'tanggal': '2026-08-20', 'jam': '11:00', 'jenis': 'karung', 'namaProduk': 'Beras Contoh (karung utuh)', 'hargaTotal': 610000, 'caraBayar': 'Tunai'}},
@@ -142,7 +145,8 @@ SKENARIO = r"""<script>
     hasil.baca = { riwayat: ((document.getElementById('daftarRiwayatJual') || {}).innerText || '').slice(0, 2000) };
     hasil.galat = window.__ujiGalat.slice(); hasil.rest = window.__ujiRest.slice();
   } catch (e) { hasil.galatSkenario = String(e && (e.stack || e.message) || e); }
-  var pre = document.createElement('pre'); pre.id = '__hasil'; pre.hidden = true; pre.textContent = JSON.stringify(hasil); document.body.appendChild(pre);
+  // hasil dikirim LANGSUNG ke server uji sebelum /_siap — tidak lewat DOM yang harus diserahkan Chrome (docs/catatan-uji-peramban.md)
+  try { await fetch('/_hasil' + location.search, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hasil) }); } catch (e) {}
   fetch('/_siap');
 })();
 </script>"""
@@ -285,4 +289,5 @@ if __name__ == '__main__':
     h = semua(S0); g = [x for x in h if not x[1]]
     for n, _, k in g: print('   ✗ ' + n + (' → ' + json.dumps(k, ensure_ascii=False)[:400] if k not in ('', None) else ''))
     print('SISTEM LAMA HANYA-BACA (25b): %d lulus · %d gagal' % (len(h) - len(g), len(g)))
+    print(teks_stat())
     sys.exit(1 if g else 0)

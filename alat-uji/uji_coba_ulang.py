@@ -5,13 +5,17 @@ uji_coba_ulang.py — percobaan ulang halaman di uji peramban WAJIB tercatat (ke
 
 Syarat owner: setiap kali halaman dicoba ulang, log CI memuat baris "DICOBA ULANG: <nama uji>" yang jelas terlihat — kalau mulai sering
 muncul, itu tanda masalah sungguhan, bukan sekadar Chrome yang lambat. Uji ini memakai CHROME PALSU (skrip kecil, tanpa Chrome sungguhan)
-yang meniru tiga keadaan: halaman tidak pernah jalan, halaman selesai tapi DOM tidak keluar (kejadian CI main 8dcaae2), dan halaman sehat.
-Semua dijalankan di proses anak dan keluarannya DITANGKAP, jadi peringatan uji ini tidak ikut mengotori halaman ringkasan run sungguhan.
+yang meniru keadaan: halaman tidak pernah mengirim hasil, halaman mengirim hasil lalu Chrome MACET (kejadian CI 8dcaae2 & diagnosis 27 Sep —
+docs/catatan-uji-peramban.md), dan halaman sehat. Semua dijalankan di proses anak dan keluarannya DITANGKAP, jadi peringatan uji ini tidak ikut
+mengotori halaman ringkasan run sungguhan.
 
-  · uji_antrean_kasir (juga dipakai uji_sistem_lama_bacasaja): halaman tidak jalan → tepat SATU baris DICOBA ULANG dengan nama uji, halaman,
-    sebab, "percobaan 2 dari 2"; selesai-tanpa-DOM → ikut dicoba ulang dan tercatat; mode --kontrol ikut tertulis di nama uji
-  · percobaan ulang mulai dari penyimpanan halaman SEBELUM percobaan pertama: percobaan yang macet sesudah selesai sudah menjalankan
-    skenarionya (PR #42: skenario muat ulang sudah mengarsipkan karcis → percobaan ulang gagal palsu)
+  · uji_antrean_kasir (juga dipakai uji_sistem_lama_bacasaja): halaman tidak mengirim hasil → tepat SATU baris DICOBA ULANG dengan nama uji,
+    halaman, sebab, "percobaan 2 dari 2"; mode --kontrol ikut tertulis di nama uji
+  · hasil sudah masuk lalu Chrome macet → TIDAK dicoba ulang, hasilnya terpakai, Chrome ditutup BAIK-BAIK (SIGTERM, penyimpanan sempat ditulis);
+    Chrome yang menolak ditutup baik-baik → dimatikan paksa, DIHITUNG, tetap tidak dicoba ulang
+  · rangkaian utama → muat ulang di Chrome yang SAMA: kedua hasil wajib masuk; yang kurang dicoba ulang dan sebabnya menyebut skenarionya
+  · percobaan ulang mulai dari penyimpanan halaman SEBELUM percobaan pertama: percobaan yang gagal bisa sudah menjalankan sebagian skenarionya
+    (PR #42: skenario muat ulang sudah mengarsipkan karcis → percobaan ulang gagal palsu)
   · uji_layar_kunci: pengulangan yang dulu DIAM sekarang tercatat — dua baris untuk tiga percobaan
   · di GitHub Actions tiap baris juga jadi peringatan "DICOBA ULANG" di halaman ringkasan run; yang DISENGAJA kontrol (kontrol 9) tetap
     ditulis barisnya tapi tanpa peringatan
@@ -28,19 +32,30 @@ BARIS = 'DICOBA ULANG: '
 PERINGATAN = '::warning title=DICOBA ULANG::'
 
 # ---------- Chrome palsu: argumen terakhir = alamat halaman. http.client, bukan urllib: urllib di macOS menanyakan setelan proxy sistem dulu ----------
-SIAP = "c = http.client.HTTPConnection(u.hostname, u.port, timeout=10); c.request('GET', '/_siap'); c.getresponse().read()\n"
+def _minta(metode, jalur, isi=None):
+    return ("c = http.client.HTTPConnection(u.hostname, u.port, timeout=10); c.request('%s', '%s'%s); c.getresponse().read()\n"
+            % (metode, jalur, (', json.dumps(%s).encode(), {"Content-Type": "application/json"}' % isi) if isi else ''))
+SIAP = _minta('GET', '/_siap')
+PROFIL = "prof = next(a.split('=', 1)[1] for a in sys.argv if a.startswith('--user-data-dir='))\n"
 CHROME_PALSU = {
-    'diam': "sys.stderr.write('[palsu] renderer macet\\n')\n",   # tidak pernah memanggil /_siap, DOM kosong → "tidak mengabarkan selesai"; satu baris catatan Chrome
-    'tanpa-dom': SIAP,   # skenario selesai, DOM tidak pernah keluar (kejadian CI 8dcaae2)
-    'sehat': SIAP + "sys.stdout.write('<html><head></head><body>ok</body></html>\\n'); sys.stdout.flush()\n",
-    # skenario MENGUBAH penyimpanan halaman (efek.txt di Local Storage profil) lalu mengabarkan selesai; percobaan ganjil macet tanpa DOM,
-    # percobaan genap menyerahkan DOM yang menyebut isi penyimpanan yang DILIHATNYA saat mulai (kejadian PR #42: skenario muat ulang)
-    'efek': ("import os\nprof = next(a.split('=', 1)[1] for a in sys.argv if a.startswith('--user-data-dir='))\n"
-             "ls = os.path.join(prof, 'Default', 'Local Storage'); os.makedirs(ls, exist_ok=True); pe = os.path.join(ls, 'efek.txt')\n"
+    # tidak pernah mengirim hasil & tidak mengabarkan selesai; satu baris catatan Chrome
+    'diam': "sys.stderr.write('[palsu] renderer macet\\n')\n",
+    # hasil MASUK, lalu Chrome macet: tidak keluar sendiri (kejadian CI 8dcaae2 & diagnosis 27 Sep). SIGTERM → tanda 'ditutup-baik' di profil.
+    'hasil-macet': (PROFIL + "signal.signal(signal.SIGTERM, lambda *a: (open(os.path.join(prof, 'ditutup-baik'), 'w').write('1'), os._exit(0)))\n"
+                    + _minta('POST', '/_hasil', '{"ok": 1}') + SIAP + "time.sleep(60)\n"),
+    # hasil MASUK, lalu Chrome menolak ditutup baik-baik (SIGTERM diabaikan) → wajib dimatikan paksa & dihitung
+    'hasil-bandel': ("signal.signal(signal.SIGTERM, signal.SIG_IGN)\n" + _minta('POST', '/_hasil', '{"ok": 2}') + SIAP + "time.sleep(60)\n"),
+    # rangkaian utama → muat ulang di Chrome yang sama (?lanjut=): kedua hasil masuk / hanya hasil utama yang masuk
+    'rangkai': (_minta('POST', '/_hasil?s=utama', '{"s": "utama"}') + _minta('POST', '/_hasil?s=muatUlang', '{"s": "muatUlang"}') + "time.sleep(60)\n"),
+    'rangkai-putus': (_minta('POST', '/_hasil?s=utama', '{"s": "utama"}') + "sys.stderr.write('[palsu] muat ulang tidak jalan\\n')\n"),
+    'sehat': _minta('POST', '/_hasil', '{"ok": 1}') + SIAP + "sys.stdout.write('<html><head></head><body>ok</body></html>\\n'); sys.stdout.flush()\n",
+    # percobaan ganjil MENGUBAH penyimpanan halaman (efek.txt di Local Storage profil) lalu mati tanpa hasil; percobaan genap mengirim hasil
+    # yang menyebut isi penyimpanan yang DILIHATNYA saat mulai (kejadian PR #42: percobaan gagal yang sudah mengubah penyimpanan)
+    'efek': (PROFIL + "ls = os.path.join(prof, 'Default', 'Local Storage'); os.makedirs(ls, exist_ok=True); pe = os.path.join(ls, 'efek.txt')\n"
              "n = int(open(pe).read()) if os.path.exists(pe) else 0\nopen(pe, 'w').write(str(n + 1))\n"
              "pk = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), 'efek-ke.txt')\n"
-             "k = int(open(pk).read()) if os.path.exists(pk) else 0\nopen(pk, 'w').write(str(k + 1))\n" + SIAP +
-             "if k % 2 == 1: sys.stdout.write('<html><body>efek=%d</body></html>\\n' % n); sys.stdout.flush()\n"),
+             "k = int(open(pk).read()) if os.path.exists(pk) else 0\nopen(pk, 'w').write(str(k + 1))\n"
+             "if k % 2 == 0: sys.exit(0)\n" + _minta('POST', '/_hasil', '{"efek": n}') + SIAP),
 }
 
 # ---------- satu kasus = satu proses anak dari SALINAN alat-uji (kontrol mengganti teks di salinan itu) ----------
@@ -50,15 +65,25 @@ sys.path.insert(0, os.environ['UJI_DIR'])
 sys.argv = json.loads(os.environ['UJI_ARGV'])
 alat, chrome, disengaja = os.environ['UJI_ALAT'], os.environ['UJI_CHROME'], os.environ.get('UJI_DISENGAJA') or None
 d = tempfile.mkdtemp()
-if alat == 'antrean':
+if alat == 'rangkai':
+    import uji_antrean_kasir as U
+    U.CHROME = chrome
+    srv, port, keadaan = U.layani(d)
+    try:
+        h = U.buka(port, keadaan, tempfile.mkdtemp(), '/x.html?s=utama', tunggu=15, lalu='/x.html?s=muatUlang')
+        print('RANGKAI:' + json.dumps([U.hasil_dari(x) for x in h], sort_keys=True))
+        print('STAT:' + json.dumps(U.STAT, sort_keys=True))
+    finally: srv.shutdown()
+elif alat == 'antrean':
     import uji_antrean_kasir as U
     U.CHROME = chrome
     srv, port, keadaan = U.layani(d)
     profil = tempfile.mkdtemp()
     try:
         h = U.buka(port, keadaan, profil, '/x.html', tunggu=15)
-        m = __import__('re').search(r'efek=\d+', h or '')
-        if m: print('DOM:' + m.group(0))
+        print('HASIL:' + json.dumps(U.hasil_dari(h), sort_keys=True))
+        print('STAT:' + json.dumps(U.STAT, sort_keys=True))
+        if os.path.exists(os.path.join(profil, 'ditutup-baik')): print('DITUTUP-BAIK')
         pe = os.path.join(profil, 'Default', 'Local Storage', 'efek.txt')
         if os.path.exists(pe): print('PROFIL:efek=' + open(pe).read())
     finally: srv.shutdown()
@@ -78,7 +103,7 @@ def chromes():
         folder = tempfile.mkdtemp(prefix='chrome-palsu-'); atexit.register(shutil.rmtree, folder, True)
         for jenis, isi in CHROME_PALSU.items():
             p = os.path.join(folder, 'chrome-' + jenis)
-            open(p, 'w').write('#!' + sys.executable + '\nimport sys, http.client, urllib.parse\nu = urllib.parse.urlsplit(sys.argv[-1])\n' + isi)
+            open(p, 'w').write('#!' + sys.executable + '\nimport os, sys, json, time, signal, http.client, urllib.parse\nu = urllib.parse.urlsplit(sys.argv[-1])\n' + isi)
             os.chmod(p, 0o755); _CHROMES[jenis] = p
     return _CHROMES
 
@@ -119,30 +144,45 @@ def semua(ganti=None, cepat=False):
     def baris(k): return [b for b in k if b.startswith(BARIS)]
     def peringatan(k): return [b for b in k if b.startswith(PERINGATAN)]
     try:
+        TIDAK_KIRIM = ' · /x.html — halaman tidak mengirim hasil (percobaan 2 dari 2)'
         k = jalankan_('antrean', 'diam', ['alat-uji/uji_antrean_kasir.py'])
-        ok('antrean kasir · halaman tidak jalan → tepat satu baris DICOBA ULANG (nama uji, halaman, sebab, percobaan 2 dari 2)',
-           baris(k) == [BARIS + 'uji_antrean_kasir · /x.html — tidak mengabarkan selesai (percobaan 2 dari 2)'], k)
+        ok('antrean kasir · halaman tidak mengirim hasil → tepat satu baris DICOBA ULANG (nama uji, halaman, sebab, percobaan 2 dari 2)',
+           baris(k) == [BARIS + 'uji_antrean_kasir' + TIDAK_KIRIM], k)
         ok('antrean kasir · di luar GitHub Actions tidak ada baris peringatan', not peringatan(k), k)
-        ok('catatan Chrome dari percobaan yang macet ikut dicetak di bawah baris DICOBA ULANG (bukti untuk menyelidiki)',
+        ok('catatan Chrome dari percobaan yang gagal ikut dicetak di bawah baris DICOBA ULANG (bukti untuk menyelidiki)',
            '    [palsu] renderer macet' in k and k.index('    [palsu] renderer macet') > k.index(baris(k)[0]) if baris(k) else False, k)
-        k = jalankan_('antrean', 'tanpa-dom', ['alat-uji/uji_antrean_kasir.py', '--kontrol'])
-        ok('antrean kasir · selesai tapi DOM tidak keluar (kejadian CI 8dcaae2) → ikut dicoba ulang & tercatat, mode --kontrol ikut tertulis',
-           baris(k) == [BARIS + 'uji_antrean_kasir --kontrol · /x.html — selesai tapi DOM tidak keluar (percobaan 2 dari 2)'], k)
+        k = jalankan_('antrean', 'diam', ['alat-uji/uji_antrean_kasir.py', '--kontrol'])
+        ok('antrean kasir · mode --kontrol ikut tertulis di nama uji', baris(k) == [BARIS + 'uji_antrean_kasir --kontrol' + TIDAK_KIRIM], k)
+        k = jalankan_('antrean', 'hasil-macet', ['alat-uji/uji_antrean_kasir.py'])
+        ok('hasil MASUK lalu Chrome macet (kejadian CI 8dcaae2 & diagnosis 27 Sep) → TIDAK dicoba ulang, hasilnya terpakai',
+           not baris(k) and 'HASIL:{"ok": 1}' in k, k)
+        ok('sesudah hasil masuk Chrome ditutup BAIK-BAIK (SIGTERM → penyimpanan halaman sempat ditulis), bukan dimatikan paksa',
+           'DITUTUP-BAIK' in k and 'STAT:{"chrome_ditutup_paksa": 0, "halaman": 1, "muat": 1}' in k, k)
         k = jalankan_('antrean', 'diam', ['alat-uji/uji_sistem_lama_bacasaja.py'])
         ok('sistem lama hanya-baca (memakai buka() yang sama) → barisnya menyebut uji_sistem_lama_bacasaja', len(baris(k)) == 1 and baris(k)[0].startswith(BARIS + 'uji_sistem_lama_bacasaja · '), k)
         k = jalankan_('antrean', 'diam', ['alat-uji/uji_antrean_kasir.py'], gha=True)
         ok('GitHub Actions · tiap percobaan ulang juga jadi peringatan "DICOBA ULANG" di halaman ringkasan run',
-           len(baris(k)) == 1 and peringatan(k) == [PERINGATAN + 'uji_antrean_kasir · /x.html — tidak mengabarkan selesai (percobaan 2 dari 2)'], k)
+           len(baris(k)) == 1 and peringatan(k) == [PERINGATAN + 'uji_antrean_kasir' + TIDAK_KIRIM], k)
         ok('GitHub Actions · catatan Chrome dalam kelompok yang bisa dibuka (::group:: … ::endgroup::), tidak memenuhi log',
            any(b.startswith('::group::catatan Chrome dari percobaan 1') for b in k) and '::endgroup::' in k and '    [palsu] renderer macet' in k, k)
         try: os.unlink(os.path.join(os.path.dirname(chromes()['efek']), 'efek-ke.txt'))
         except OSError: pass
         k = jalankan_('antrean', 'efek', ['alat-uji/uji_antrean_kasir.py'])
-        ok('antrean kasir · percobaan ulang mulai dari penyimpanan SEBELUM percobaan pertama (skenario yang sudah jalan tidak meninggalkan jejak)',
-           len(baris(k)) == 1 and 'DOM:efek=0' in k, k)
+        ok('antrean kasir · percobaan ulang mulai dari penyimpanan SEBELUM percobaan pertama (percobaan gagal tidak meninggalkan jejak)',
+           len(baris(k)) == 1 and 'HASIL:{"efek": 0}' in k, k)
         ok('antrean kasir · sesudah lulus, penyimpanan = hasil percobaan yang lulus (pemuatan berikutnya melihat keadaan yang benar)', 'PROFIL:efek=1' in k, k)
         k = jalankan_('antrean', 'sehat', ['alat-uji/uji_antrean_kasir.py'], gha=True)
-        ok('halaman sehat → nol baris DICOBA ULANG, nol peringatan (tidak ada tanda palsu)', not baris(k) and not peringatan(k), k)
+        ok('halaman sehat → nol baris DICOBA ULANG, nol peringatan, hasil terpakai (tidak ada tanda palsu)',
+           not baris(k) and not peringatan(k) and 'HASIL:{"ok": 1}' in k, k)
+        k = jalankan_('antrean', 'hasil-bandel', ['alat-uji/uji_antrean_kasir.py'])
+        ok('Chrome yang menolak ditutup baik-baik → dimatikan paksa & DIHITUNG (STAT chrome_ditutup_paksa), tetap tidak dicoba ulang',
+           not baris(k) and 'HASIL:{"ok": 2}' in k and 'STAT:{"chrome_ditutup_paksa": 1, "halaman": 1, "muat": 1}' in k, k)
+        k = jalankan_('rangkai', 'rangkai', ['alat-uji/uji_antrean_kasir.py'])
+        ok('rangkaian utama → muat ulang di Chrome yang SAMA: kedua hasil terpakai, satu Chrome, dua halaman, tanpa percobaan ulang',
+           not baris(k) and 'RANGKAI:[{"s": "utama"}, {"s": "muatUlang"}]' in k and 'STAT:{"chrome_ditutup_paksa": 0, "halaman": 2, "muat": 1}' in k, k)
+        k = jalankan_('rangkai', 'rangkai-putus', ['alat-uji/uji_antrean_kasir.py'])
+        ok('rangkaian yang hasil muat ulangnya tidak masuk → dicoba ulang, sebabnya menyebut skenario yang kurang',
+           baris(k) == [BARIS + 'uji_antrean_kasir · /x.html?s=utama — halaman tidak mengirim hasil (muatUlang) (percobaan 2 dari 2)'], k)
         k = jalankan_('kunci', 'diam', ['alat-uji/uji_layar_kunci.py'])
         ok('layar kunci · pengulangan yang dulu diam sekarang tercatat: dua baris untuk tiga percobaan',
            baris(k) == [BARIS + 'uji_layar_kunci · /baru/index.html — tidak mengabarkan selesai (percobaan %d dari 3)' % n for n in (2, 3)], k)
@@ -159,13 +199,21 @@ def semua(ganti=None, cepat=False):
 
 KONTROL = [
     ('pencatat tidak mencetak apa pun', [('coba_ulang.py', "    print('DICOBA ULANG: ' + teks, flush=True)\n", "    pass\n")]),
-    ('buka() kembali ke cacat 8dcaae2 (selesai tanpa DOM tidak diulang)',
-     [('uji_antrean_kasir.py', "if gambar or (keadaan['siap'].is_set() and '</html>' in h): return h", "if gambar or keadaan['siap'].is_set(): return h")]),
+    ('alat uji kembali menunggu Chrome menyerahkan DOM / keluar sendiri (bergantung pada Chrome lagi)',
+     [('uji_antrean_kasir.py', "            os.kill(p.pid, signal.SIGTERM); p.wait(timeout=10)\n", "            p.wait(timeout=10)\n")]),
+    ('berhasil kembali mensyaratkan Chrome mau ditutup baik-baik',
+     [('uji_antrean_kasir.py', "if gambar or not keadaan['hasil_kurang']: return h",
+       "if gambar or (not keadaan['hasil_kurang'] and not keadaan.get('ditutup_paksa')): return h")]),
+    ('rangkaian dianggap berhasil walau hasil muat ulang belum masuk',
+     [('uji_antrean_kasir.py', "    kunci = [_kunci_skenario(j) for j in ([jalur] + ([lalu] if lalu else []))]\n", "    kunci = [_kunci_skenario(jalur)]\n")]),
+    ('server uji tidak menyimpan hasil kiriman halaman',
+     [('uji_antrean_kasir.py', "self.keadaan['hasil_per'][_kunci_skenario(self.path)] = isi", "pass")]),
+    ('Chrome yang dimatikan paksa tidak dihitung', [('uji_antrean_kasir.py', "keadaan['ditutup_paksa'] = True; STAT['chrome_ditutup_paksa'] += 1", "keadaan['ditutup_paksa'] = True")]),
     ('buka() mengulang tanpa mencatat', [('uji_antrean_kasir.py', "            coba_ulang.catat(jalur, sebab, coba, BATAS, log=coba_ulang.ekor_berkas(keadaan.get('log_chrome', '')))\n", "")]),
     ('percobaan ulang TIDAK memulihkan penyimpanan (cacat PR #42)', [('uji_antrean_kasir.py', "            _salin_penyimpanan(foto, profil)   # mulai lagi", "            pass   # mulai lagi")]),
     ('foto penyimpanan diambil SESUDAH percobaan pertama, bukan sebelum', [('uji_antrean_kasir.py',
         "    foto = tempfile.mkdtemp(prefix='antre-foto-'); _salin_penyimpanan(profil, foto)\n", "    foto = tempfile.mkdtemp(prefix='antre-foto-')\n"),
-        ('uji_antrean_kasir.py', "        h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu)\n", "        h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu)\n        if coba == 1: _salin_penyimpanan(profil, foto)\n")]),
+        ('uji_antrean_kasir.py', "        h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu, lalu)\n", "        h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu, lalu)\n        if coba == 1: _salin_penyimpanan(profil, foto)\n")]),
     ('uji_layar_kunci mengulang diam-diam lagi', [('uji_layar_kunci.py', "        if ke > 1: coba_ulang.catat(jalur, sebab, ke, coba, disengaja=DISENGAJA, log=log)\n", "")]),
     ('peringatan GitHub Actions hilang', [('coba_ulang.py', "print('::warning title=DICOBA ULANG::'", "print('(peringatan) DICOBA ULANG::'")]),
     ('yang disengaja ikut jadi peringatan', [('coba_ulang.py', "if os.environ.get('GITHUB_ACTIONS') and not disengaja:", "if os.environ.get('GITHUB_ACTIONS'):")]),
