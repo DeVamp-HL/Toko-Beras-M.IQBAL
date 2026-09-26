@@ -16,9 +16,12 @@ BAGIAN 3 · JARINGAN: Firebase (CDN) gagal dimuat → dicoba ulang SATU kali →
     python3 alat-uji/uji_layar_kunci.py            → LULUS / GAGAL UJI (keluar 2) / GAGAL JARINGAN (keluar 4)
     python3 alat-uji/uji_layar_kunci.py --kontrol  → kontrol wajib berbunyi (keluar 3 kalau ada yang diam)
 """
-import os, re, sys, json, time, shutil, socket, subprocess, tempfile, threading, http.server, functools, urllib.request
+import os, re, sys, json, time, shutil, signal, socket, socketserver, subprocess, tempfile, threading, http.server, functools, urllib.request
 
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
+sys.path.insert(0, SINI)
+import coba_ulang   # noqa: E402  (tiap percobaan ulang menulis baris DICOBA ULANG — keputusan owner 26 Sep)
+DISENGAJA = None   # diisi kontrol yang SENGAJA membuat halaman gagal dimuat (kontrol 9) — barisnya tetap ditulis, ditandai DISENGAJA
 CHROME = next((p for p in ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium'] if os.path.exists(p)), None)
 SDK = 'https://www.gstatic.com/firebasejs/10.13.0/'
 # ANGKA CONTOH (bukan angka toko)
@@ -239,13 +242,22 @@ class Diam(http.server.SimpleHTTPRequestHandler):
         return 'text/javascript' if str(path).endswith('.js') else super().guess_type(path)
 
 
+def _ikat_tanpa_dns(self):
+    """Pengganti HTTPServer.server_bind: bawaannya menanyakan nama host 127.0.0.1 ke DNS (socket.getfqdn) tiap server dinyalakan, dan di
+    runner macOS pertanyaan itu menggantung ±35 dtk (PR #42: tiap kasus uji_coba_ulang 35,7 dtk di CI, 0,7 dtk di Mac pengembang)."""
+    socketserver.TCPServer.server_bind(self)
+    self.server_name, self.server_port = self.server_address[:2]
+
+
 def layani(d):
+    t0 = time.time()
     s = socket.socket(); s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]; s.close()
     kelas = type('DiamRun', (Diam,), {'siap': threading.Event(), 'gagal': threading.Event(), 'diminta': [], 'sdk': []})
     # antrean sambungan LEBAR: bawaan socketserver cuma 5, Chrome membuka lebih banyak sekaligus → sambungan ditolak → modul lokal gagal dimuat secara acak
     # (dulu tampak sebagai "Chrome mencetak DOM sebelum app.js jalan")
-    Srv = type('SrvUji', (http.server.ThreadingHTTPServer,), {'request_queue_size': 128, 'daemon_threads': True})
+    Srv = type('SrvUji', (http.server.ThreadingHTTPServer,), {'request_queue_size': 128, 'daemon_threads': True, 'server_bind': _ikat_tanpa_dns})
     srv = Srv(('127.0.0.1', port), functools.partial(kelas, directory=d)); threading.Thread(target=srv.serve_forever, daemon=True).start()
+    if os.environ.get('CI'): print('  [peramban] server uji menyala %.1f dtk' % (time.time() - t0), file=sys.stderr, flush=True)
     return srv, port
 
 
@@ -262,29 +274,40 @@ SDK_MODUL = ['firebase-app.js', 'firebase-firestore.js', 'firebase-auth.js']
 def dom(d, jalur, coba=3, butuh_cdn=True):
     """→ (DOM yang SAH, None) atau ('', JARINGAN | TIDAK_JALAN). Sah = dicetak sesudah halaman mengabarkan /_siap.
     Aplikasi gagal dimuat (elemen skrip menerima 'error'): firebase.js sudah diminta tapi modul Firebase dari CDN tidak lengkap → JARINGAN, dicoba ulang SATU kali;
-    modul LOKAL yang gagal (firebase.js belum sempat diminta / SDK lengkap) = GAGAL UJI, bukan jaringan."""
-    gagal_jaringan = 0
-    for _ in range(coba):
+    modul LOKAL yang gagal (firebase.js belum sempat diminta / SDK lengkap) = GAGAL UJI, bukan jaringan.
+    Tiap percobaan ulang menulis baris DICOBA ULANG (coba_ulang.py) — dulu pengulangan di sini diam."""
+    gagal_jaringan = 0; sebab = ''; log = []
+    for ke in range(1, coba + 1):
+        if ke > 1: coba_ulang.catat(jalur, sebab, ke, coba, disengaja=DISENGAJA, log=log)
         h, siap, info = dom_sekali(d, jalur)
+        log = info.get('log', [])
         if info['gagal']:
             sdk_lengkap = all(any(x.endswith(m) for x in info['sdk']) for m in SDK_MODUL)
             if butuh_cdn and info['firebase_diminta'] and not sdk_lengkap:
                 gagal_jaringan += 1
                 if gagal_jaringan >= 2: return '', JARINGAN
+                sebab = 'Firebase dari CDN tidak termuat lengkap'
+            else:
+                sebab = 'aplikasi gagal dimuat (modul lokal)'
             continue
         if butuh_cdn and not siap and not cdn_terjangkau():
             gagal_jaringan += 1
             if gagal_jaringan >= 2: return '', JARINGAN
+            sebab = 'CDN Firebase tidak terjangkau'
             continue
         if siap and '</html>' in h: return h, None
+        sebab = 'selesai tapi DOM tidak keluar' if siap else 'tidak mengabarkan selesai'
     return '', TIDAK_JALAN
 
 
 def dom_sekali(d, jalur, tunggu=90):
     """DOM sesudah halaman dimuat. Chrome di macOS kadang tidak keluar sesudah mencetak DOM → dibaca sampai </html>, lalu dimatikan."""
     srv, port = layani(d); profil = tempfile.mkdtemp(prefix='kunci-profil-'); K = srv.RequestHandlerClass.func
+    fd, log_chrome = tempfile.mkstemp(prefix='kunci-log-', suffix='.txt'); log = os.fdopen(fd, 'wb')   # dibaca hanya kalau halaman dicoba ulang
     p = subprocess.Popen([CHROME, '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--disable-component-update', '--disable-background-networking',
-                          '--user-data-dir=' + profil, '--dump-dom', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                          '--user-data-dir=' + profil, '--dump-dom', '--enable-logging=stderr', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=log,
+                         start_new_session=True)   # grup proses sendiri: dimatikan sekaligus
+    log.close()
     buf = []; selesai = threading.Event()
     def baca():
         for baris in iter(p.stdout.readline, b''):
@@ -294,9 +317,14 @@ def dom_sekali(d, jalur, tunggu=90):
     threading.Thread(target=baca, daemon=True).start()
     try:
         selesai.wait(tunggu)
-        return ''.join(buf), K.siap.is_set() and not K.gagal.is_set(), {'gagal': K.gagal.is_set(), 'sdk': list(K.sdk), 'firebase_diminta': '/baru/js/data/firebase.js' in K.diminta}
+        return ''.join(buf), K.siap.is_set() and not K.gagal.is_set(), {'gagal': K.gagal.is_set(), 'sdk': list(K.sdk), 'firebase_diminta': '/baru/js/data/firebase.js' in K.diminta,
+                                                                         'log': coba_ulang.ekor_berkas(log_chrome)}
     finally:
-        p.kill(); p.wait(); srv.shutdown(); shutil.rmtree(profil, ignore_errors=True)
+        try: os.killpg(p.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError): p.kill()
+        p.wait(); srv.shutdown(); shutil.rmtree(profil, ignore_errors=True)
+        try: os.unlink(log_chrome)
+        except OSError: pass
 
 
 def body_kelas(h):
@@ -433,7 +461,9 @@ if __name__ == '__main__':
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:150] if c else '-'))
             if not c: kode = 3
         # kontrol 9 · jaringan: Firebase tidak termuat → keluaran WAJIB berkata GAGAL JARINGAN, bukan lulus & bukan gagal uji
+        DISENGAJA = 'kontrol 9 memutus Firebase supaya keluarannya wajib berkata GAGAL JARINGAN'
         c, sebab = jalankan('tirai', [('js/data/firebase.js', SDK + 'firebase-app.js', 'http://127.0.0.1:9/firebase-app.js')])
+        DISENGAJA = None
         ok = sebab == JARINGAN
         print(('BERBUNYI ' if ok else 'DIAM!!   ') + 'kontrol 9 · Firebase tidak termuat → ' + (KALIMAT_SEBAB.get(sebab, 'sebab: ' + str(sebab) + ' · cacat: ' + str(c[:1])))[:110]); kode = kode if ok else 3
         sys.exit(kode)
