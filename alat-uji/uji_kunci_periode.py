@@ -108,7 +108,7 @@ ok('bulan tertua yang dinilai: update = min(lama, baru); hapus = nilai lama; tit
 
 // ---- 2 · daftar periksa Agustus (24 Sep): tiap ⛔ memblokir
 var D0 = kpDaftarPeriksa('2026-08', kini(), K({ siap25b: false }));
-ok('⛔ putaran 25b: selama sistem lama & kasir belum siap, butir pertama memblokir (keputusan owner 25 Sep) dan kunci ditolak', !butir(D0, 'siap25b').ok && butir(D0, 'siap25b').blokir && !D0.boleh && KP_SIAP_25B === false && /25b/.test(butir(D0, 'siap25b').teks));
+ok('⛔ putaran 25b: sesudah 25b (kasir memisahkan catatan ditolak, sistem lama hanya-baca) butir pertama beres dengan sendirinya — tetap ⛔ kalau dibalik (keputusan owner 25 Sep)', butir(D0, 'siap25b').ok && butir(D0, 'siap25b').blokir && KP_SIAP_25B === true && /25b/.test(butir(D0, 'siap25b').teks));
 pada('2026-09-03T10:00:00+07:00'); var DT = kpDaftarPeriksa('2026-08', kini(), K()); pada('2026-09-04T08:00:00+07:00'); var DT4 = kpDaftarPeriksa('2026-08', kini(), K()); pada('2026-09-24T10:00:00+07:00');
 ok('⛔ tenggang: 3 Sep (tenggang 3 hari) belum boleh, kalimatnya menyebut tanggal mulai 4 Sep; 4 Sep boleh', !butir(DT, 'tenggang').ok && /4 Sep/.test(butir(DT, 'tenggang').ket) && butir(DT4, 'tenggang').ok, butir(DT, 'tenggang').ket);
 var agustusBelum = { koleksi: 'penjualan', data: { id: 'x1', tanggal: '2026-08-31' } }, septBelum = { koleksi: 'penjualan', data: { id: 'x2', tanggal: '2026-09-24' } };
@@ -242,8 +242,8 @@ var TP = pjTahun(2026, kini()); var bA = TP.daftar.find(function (b) { return b.
 var sp = susunSetoran({ masaPajak: '2026-09', tanggalSetor: '2026-09-24', jumlah: '100.000', ntpn: '0123456789ABCDEF' }, W, kini()), sa = susunSetoran({ masaPajak: '2026-08', tanggalSetor: '2026-09-24', jumlah: '100.000', ntpn: '0123456789ABCDEF' }, W, kini());
 ok('pajak: tiap bulan punya keadaan terkunci; setoran untuk bulan BELUM dikunci → peringatan "Kunci bulan … dulu supaya angkanya tidak bergeser"; bulan terkunci tanpa peringatan itu',
   bA.terkunci && !bS.terkunci && /Kunci bulan September 2026 dulu supaya angkanya tidak bergeser/.test(sp.peringatan) && !/Kunci bulan/.test(sa.peringatan || ''), J([sp.peringatan, sa.peringatan]));
-ok('Beranda: satu baris "Kunci bulan" hanya bila bulan lalu sudah lewat tenggang & belum dikunci — dan diam selama kunci belum bisa dipakai (25b)',
-  (function () { bukaSemua(); var a = kpPerhatian(kini(), { siap25b: true }), b = kpPerhatian(kini()); kunciKe('2026-08'); var c = kpPerhatian(kini(), { siap25b: true }); return a.length === 1 && /Agustus 2026/.test(a[0].teks) && b.length === 0 && c.length === 0; })());
+ok('Beranda: satu baris "Kunci bulan" hanya bila bulan lalu sudah lewat tenggang & belum dikunci — sesudah 25b tampil tanpa bendera uji',
+  (function () { bukaSemua(); var a = kpPerhatian(kini(), { siap25b: true }), b = kpPerhatian(kini()); kunciKe('2026-08'); var c = kpPerhatian(kini(), { siap25b: true }); return a.length === 1 && /Agustus 2026/.test(a[0].teks) && b.length === 1 && c.length === 0; })());
 
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
@@ -312,7 +312,7 @@ if __name__ == '__main__':
             'buka dua bulan sekaligus': js.replace("sampaiBulan: kpGeser(bulan, -1), riwayat: riwayat.concat([{ aksi: 'buka'", "sampaiBulan: kpGeser(bulan, -2), riwayat: riwayat.concat([{ aksi: 'buka'"),
             'lpFinal final tanpa kunci': js.replace("const s = kunciSampai(); return !!s && String(key).slice(0, 7) <= s; }", "return true; }"),
             # daftar periksa
-            '⛔ 25b diabaikan': js.replace("const siap = KP_SIAP_25B || !!K.siap25b;", "const siap = true;"),
+            '⛔ 25b dibalik jadi belum siap (KP_SIAP_25B false)': js.replace("const KP_SIAP_25B = true;", "const KP_SIAP_25B = false;"),
             'tenggang tidak dinilai': js.replace("const bolehT = kpBolehDikunci(bulan, kini, tenggang);", "const bolehT = true;"),
             'tenggang minimal 0': js.replace("const KP_TENGGANG_MIN = 3;", "const KP_TENGGANG_MIN = 0;"),
             'tenggang minimal kembali 1 (di bawah keputusan owner 3 hari)': js.replace("const KP_TENGGANG_MIN = 3;", "const KP_TENGGANG_MIN = 1;"),

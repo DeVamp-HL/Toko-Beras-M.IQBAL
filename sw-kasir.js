@@ -76,12 +76,26 @@
 // TANPA pembulatan sementara layar owner sudah membulatkan — Rp51.750 lawan Rp52.000
 // untuk barang yang sama, di dua pintu yang dipakai bersamaan, dan diamnya sempurna.
 // Berkas ini sudah ada di FILES, jadi satu kenaikan versi menyegarkannya.
-const VERSI = 'kasir-v25';
+// v26 (26 September 2026, putaran 25b): ANTREAN TIDAK BOLEH MACET. Kedua berkas kasir memilah
+// jawaban server jadi tiga: tidak dikenali (401) → layar masuk; DITOLAK ATURAN (403, mis.
+// bulannya sudah dikunci owner) → pindah ke daftar "ditolak" di HP itu, tidak diulang, tidak
+// dihapus, karcis sesudahnya tetap terkirim; sinyal putus / server sibuk (429, 5xx) → tetap
+// antre. Dulu 403 dianggap "belum masuk": layar masuk muncul terus dan SEMUA karcis sesudahnya
+// tertahan di HP itu. Versi yang berjalan kini tampil di bilah atas dan dikirim di denyut dari
+// SATU konstanta yang sama dengan VERSI di sini (denyut v25 masih berkata 'kasir-v24').
+// Dua perubahan cara memasang, supaya HP benar-benar memakai versi ini:
+//   1. unduhan saat install memakai cache:'reload' — tanpa itu addAll() bisa menerima salinan
+//      LAMA dari cache HTTP peramban (GitHub Pages: 10 menit) dan cache v26 berisi berkas v25;
+//   2. halaman kasir menanyakan versi baru tiap 30 menit & tiap layar dinyalakan, lalu memuat
+//      ulang dirinya saat senggang begitu versi baru mengambil alih (controllerchange).
+// WAJIB naik: daftar periksa kunci bulan di /baru/ menolak mengunci selama ada perangkat kasir
+// yang berdenyut 7 hari terakhir dengan versi di bawah kasir-v26.
+const VERSI = 'kasir-v26';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSI).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSI).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {

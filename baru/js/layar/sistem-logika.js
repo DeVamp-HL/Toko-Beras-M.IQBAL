@@ -85,8 +85,8 @@ export const ssNamaKoleksi = (n) => SS_NAMA_KOLEKSI[n] || n || 'catatan';
 export function ssPerangkat(kini, antre, idIni) {
   const A = ssAtur('perangkat'); const t = kini.getTime(); const iso = hariIniIso(kini);
   const daftar = cacheMentah('perangkat').map((d) => { const pada = d.pada ? new Date(d.pada) : null; const menit = pada && isFinite(pada.getTime()) ? Math.max(0, Math.round((t - pada.getTime()) / 60000)) : null;
-    return { id: String(d.id), nama: d.nama || '(belum dinamai)', dinamai: !!d.nama, aplikasi: d.aplikasi === 'baru' ? 'sistem baru' : d.aplikasi === 'kasir' ? 'kasir' : 'sistem lama', akun: d.akun || '', pada: d.pada || '', menitLalu: menit,
-      hidup: menit !== null && menit <= A.batasDenyut, hariIni: !!pada && hariIniIso(pada) === iso, antrean: Number(d.antrean) || 0, pemegang: d.pemegang || '', lokasi: d.lokasi || '', ini: String(d.id) === String(idIni),
+    return { id: String(d.id), nama: d.nama || '(belum dinamai)', dinamai: !!d.nama, aplikasi: d.aplikasi === 'baru' ? 'sistem baru' : d.aplikasi === 'kasir' ? 'kasir' : d.aplikasi === 'darurat' ? 'kasir darurat' : 'sistem lama', akun: d.akun || '', pada: d.pada || '', menitLalu: menit,
+      hidup: menit !== null && menit <= A.batasDenyut, hariIni: !!pada && hariIniIso(pada) === iso, antrean: Number(d.antrean) || 0, ditolak: Number(d.gagal) || 0, versi: d.versi || '', pemegang: d.pemegang || '', lokasi: d.lokasi || '', ini: String(d.id) === String(idIni),
       denyutTeks: menit === null ? 'belum pernah berdenyut' : menit === 0 ? 'berdenyut barusan' : menit < 60 ? 'denyut ' + menit + ' menit lalu' : menit < 1440 ? 'denyut ' + Math.round(menit / 60) + ' jam lalu' : 'denyut ' + Math.round(menit / 1440) + ' hari lalu' }; })
     .sort((a, b) => (b.ini ? 1 : 0) - (a.ini ? 1 : 0) || String(b.pada).localeCompare(String(a.pada)));
   const antreIni = (antre || []).map((q) => { const lama = q.pada ? Math.max(0, Math.round((t - new Date(q.pada).getTime()) / 60000)) : null; return Object.assign({}, q, { nama: ssNamaKoleksi(q.koleksi), lama, terlalu: lama !== null && lama > A.batasAntre, jam: q.pada ? jamKini(new Date(q.pada)) : '' }); });
