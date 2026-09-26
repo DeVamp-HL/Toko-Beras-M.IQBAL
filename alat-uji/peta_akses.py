@@ -341,6 +341,11 @@ OWNER_JALUR = {
     'susunAturHargaWadah': 'setelan hargaWadah — bukan koleksi bertanggal', 'susunRak': 'pembaca — tidak menulis', 'susunRakWadah': 'pembaca — tidak menulis',
     'susunAturTempat': 'pengaturan tempatSimpan / aturanToko / pindahTempat — tidak ada yang dikunci (pengaturan hanya titikKas)',
     'susunBatalKarcis': 'batal karcis kasir darurat (25b): TETAP 1 penjualan (+ paling banyak 1 kantong literan id+1) = ≤ 2 pemeriksaan; karcis bulan terkunci → ditolak logika',
+    # putaran 25c — setelan yang pindah dari sistem lama: satu dokumen pengaturan, BUKAN titikKas (satu-satunya dokumen pengaturan yang dikunci) → 0 pemeriksaan
+    'susunJenisBeras': 'setelan pengaturan/jenisBeras (25c) — bukan titikKas, tidak dikunci',
+    'susunCabutPinOperator': 'setelan pengaturan/aksesKasir (25c) — bukan titikKas, tidak dikunci', 'susunOperatorAktif': 'setelan pengaturan/aksesKasir (25c) — tidak dikunci',
+    'susunOperatorTambah': 'setelan pengaturan/aksesKasir (25c) — tidak dikunci', 'susunOperatorHapus': 'setelan pengaturan/aksesKasir (25c) — tidak dikunci',
+    'susunPinOwner': 'setelan pengaturan/keamanan (25c) — bukan titikKas, tidak dikunci',
 }
 MODUL_OWNER = None   # diisi dari uji_kunci_periode.MODUL (bundel yang sudah terbukti satu lingkup)
 

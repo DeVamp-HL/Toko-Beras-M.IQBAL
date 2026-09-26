@@ -14,7 +14,8 @@ SKENARIO (tiap berkas):
   · denyut melaporkan antrean, jumlah ditolak, dan versi (= VERSI sw-kasir.js)
   · sesudah MUAT ULANG (profil & alamat sama): karcis yang ditolak masih ada, pita masih tampil, daftarnya menyebut tanggal & nominal;
     "sudah dicatat ulang" butuh DUA ketukan dan MEMINDAH ke arsip (tidak menghapus)
-STATIS: golonganJawaban() kembar huruf per huruf di kedua berkas; VERSI_APLIKASI kedua berkas = VERSI sw-kasir.js = KP_VERSI_KASIR_25B (/baru/);
+STATIS: golonganJawaban() kembar huruf per huruf di kedua berkas; VERSI_APLIKASI kedua berkas = VERSI sw-kasir.js = KK_VERSI_KASIR_TERBARU (/baru/, 25c),
+        dan lantai kunci bulan KP_VERSI_KASIR_25B (kasir-v26) tidak di atas versi yang disajikan;
   service worker mengunduh versi baru melewati cache HTTP (cache:'reload'); kedua berkas memuat ulang diri saat versi baru mengambil alih.
 /baru/ (jsc, KOTAK PASIR — nama & angka contoh): ⛔ "semua perangkat kasir yang berdenyut 7 hari terakhir sudah versi 25b" menyebut nama perangkat
   yang tertinggal; Beranda › Perlu perhatian menyebut antrean, ditolak, dan versi lama per HP kasir.
@@ -367,7 +368,7 @@ def periksa_peramban(berkas, u, m, versi_sw):
     ok('daftar ditolak menyebut tanggal, jam & nominal supaya bisa dicatat ulang', m.get('daftarTampil') and '31/08/2026' in (m.get('daftarTeks') or '') and '20:15' in (m.get('daftarTeks') or '') and '5.200' in (m.get('daftarTeks') or ''), m.get('daftarTeks'))
     ok('"sudah dicatat ulang": satu ketukan TIDAK memindah apa pun', len(m['sesudahSatuKetuk']['ditolak']) == 1 and not m['sesudahSatuKetuk']['arsip'], m['sesudahSatuKetuk'])
     ok('ketukan kedua MEMINDAH ke arsip (tidak dihapus), pita hilang', not m['sesudahDuaKetuk']['ditolak'] and m['sesudahDuaKetuk']['arsip'] == [5200] and not m['sesudahDuaKetuk']['pita'], m['sesudahDuaKetuk'])
-    ok('versi yang berjalan tampil di layar ("versi 25b")', m.get('versiLayar') == 'versi 25b', m.get('versiLayar'))
+    ok('versi yang berjalan tampil di layar ("versi 25c")', m.get('versiLayar') == 'versi 25c', m.get('versiLayar'))
     return out
 
 
@@ -389,13 +390,16 @@ def periksa_statis(teks):
         ok(b + ': denyut mengirim VERSI_APLIKASI (bukan teks versi yang ditulis tangan)', re.search(r'versi: VERSI_APLIKASI\b', teks[b]) and not re.search(r"versi: 'kasir-v\d+'", teks[b]))
         ok(b + ': memuat ulang diri saat versi baru mengambil alih (controllerchange) & menanyakan versi baru (reg.update)', "addEventListener('controllerchange'" in teks[b] and 'reg.update()' in teks[b])
         ok(b + ': tidak mengirim antrean tanpa masuk (403 tanpa kunci ≠ ditolak aturan)', "if (!sudahLogin()) { setStatus(navigator.onLine); return; }" in teks[b])
-    ok('KP_VERSI_KASIR_25B (/baru/ daftar periksa) = VERSI sw-kasir.js', kp and vs and kp.group(1) == vs.group(1), kp.group(1) if kp else None)
+    # 25c: /baru/ memegang DUA angka versi — versi terbaru yang disajikan (KK_VERSI_KASIR_TERBARU, harus = sw) dan LANTAI kunci bulan (KP_VERSI_KASIR_25B:
+    # versi pertama yang memisahkan karcis ditolak; tetap kasir-v26 — HP v26 tidak menahan kunci bulan). Keduanya dijaga dalam satu pemeriksaan ini.
+    kk = re.search(r"export const KK_VERSI_KASIR_TERBARU = '([^']+)';", teks['baru/js/data/katalog-kasir.js']); no = lambda x: int(re.match(r'kasir-v(\d+)$', x.group(1)).group(1)) if x and re.match(r'kasir-v(\d+)$', x.group(1)) else -1
+    ok('/baru/: versi kasir terbaru (KK_VERSI_KASIR_TERBARU) = VERSI sw-kasir.js; lantai kunci bulan KP_VERSI_KASIR_25B (kasir-v26) ≤ versi itu', kk and vs and kk.group(1) == vs.group(1) and kp and kp.group(1) == 'kasir-v26' and 0 < no(kp) <= no(vs), [x.group(1) if x else None for x in (kk, kp, vs)])
     ok('sw-kasir.js mengunduh versi baru melewati cache HTTP peramban (cache: \'reload\')', "new Request(f, { cache: 'reload' })" in sw)
     return out
 
 
 def baca_semua():
-    return {b: open(os.path.join(AKAR, b), encoding='utf-8').read() for b in (DARURAT, KASIR, 'sw-kasir.js', 'baru/js/data/kunci-periode.js')}
+    return {b: open(os.path.join(AKAR, b), encoding='utf-8').read() for b in (DARURAT, KASIR, 'sw-kasir.js', 'baru/js/data/kunci-periode.js', 'baru/js/data/katalog-kasir.js')}
 
 
 # ---------- /baru/ di jsc (KOTAK PASIR) ----------
@@ -495,9 +499,10 @@ KONTROL = [
                                                                         ("      if (!(opsi.headers && opsi.headers.Authorization)) {\n        selesai(false); if (!sudahLogin()) tampilkanLayarLogin(true); return;\n      }\n", "")]}, None, ['peramban']),
     ('pita ditolak tidak digambar', {DARURAT: [("  el.style.display = 'block';\n}\nfunction barisDitolakHtml", "}\nfunction barisDitolakHtml")]}, None, ['peramban']),
     ('arsip "sudah dicatat ulang" satu ketukan', {DARURAT: [("  if (!yakinArsip) {\n    yakinArsip = true;", "  if (false) {\n    yakinArsip = true;")]}, None, ['peramban']),
-    ('denyut masih versi tulis-tangan lama', {DARURAT: [("    versi: VERSI_APLIKASI\n", "    versi: 'kasir-v24'\n")]}, None, ['statis', 'peramban']),
+    # 25c: sesudah versi, denyut kasir darurat membawa `katalog` (baris versinya berakhir koma) — kontrol mengganti nilainya saja
+    ('denyut masih versi tulis-tangan lama', {DARURAT: [("    versi: VERSI_APLIKASI,\n", "    versi: 'kasir-v24',\n")]}, None, ['statis', 'peramban']),
     ('golonganJawaban kedua berkas tidak kembar lagi', {KASIR: [("if (status === 408 || status === 409 || status === 429 ||", "if (status === 408 || status === 429 ||")]}, None, ['statis']),
-    ('sw-kasir.js naik tanpa kasir ikut (VERSI beda)', {'sw-kasir.js': [("const VERSI = 'kasir-v26';", "const VERSI = 'kasir-v27';")]}, None, ['statis']),
+    ('sw-kasir.js naik tanpa kasir ikut (VERSI beda)', {'sw-kasir.js': [("const VERSI = 'kasir-v27';", "const VERSI = 'kasir-v28';")]}, None, ['statis']),
     ('service worker memakai cache HTTP lama', {'sw-kasir.js': [("c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))", "c.addAll(FILES)")]}, None, ['statis']),
     ('/baru/: HP kasir versi lama tidak memblokir kunci', {}, [("tambah({ id: 'versiKasir', blokir: true, ok: !lamaV.length,", "tambah({ id: 'versiKasir', blokir: true, ok: true,")], ['baru']),
     ('/baru/: versi dibandingkan sebagai ada/tidak, bukan nomor', {}, [("const kpVersiKasirCukup = (v) => kpNomorVersiKasir(v) >= kpNomorVersiKasir(KP_VERSI_KASIR_25B);", "const kpVersiKasirCukup = (v) => !!v;")], ['baru']),
