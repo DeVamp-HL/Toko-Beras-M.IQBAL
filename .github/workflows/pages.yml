@@ -122,6 +122,13 @@ jobs:
         run: python3 alat-uji/uji_wadah_stok_sendiri.py && python3 alat-uji/uji_wadah_stok_sendiri.py --kontrol
       - name: "Buku per ukuran (28): karung 25 kg merek dua ukuran dibukukan ke 'Merek 25 kg', pisah stok lama dengan hitungan karung, rak/retur/katalog kasir/harga dari buku ukurannya (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_buku_ukuran.py && python3 alat-uji/uji_buku_ukuran.py --kontrol
+      # ---- PUTARAN 29 — uang: biaya karyawan, upah per orang, bayar pemasok lewat transfer (owner 27 Sep) ----
+      - name: "Tiga tujuan uang keluar & kartu Laba kotor → ke mana (29 · Bagian 1 & 3): 'untuk karyawan' tetap biaya toko di laba, catatan lama = belum dipilah, kartu menjumlah persis ke laba kotor & laba bersih mesin, ASAP GLOBAL laba tiap bulan byte-sama dengan main (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_uang_karyawan.py && python3 alat-uji/uji_uang_karyawan.py --kontrol
+      - name: "Upah per orang (29 · Bagian 2): tarif per hari menurut tanggal berlaku, harian/mingguan/bulanan dibulatkan dulu, gajian dua orang berbeda, slip merinci tiap ruas tarif, riwayat tidak ditulis ulang, entri cacat ditolak (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_upah_per_orang.py && python3 alat-uji/uji_upah_per_orang.py --kontrol
+      - name: "Bayar bon pemasok tunai/transfer (29 · Bagian 4): rekening ikut turun, biaya admin = uang keluar untuk toko dari rekening satu kiriman, utang turun sebesar nominal bayar, kantong yang dipilih dijaga, rekening belum diisi → catat isi rekening (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_bayar_pemasok_transfer.py && python3 alat-uji/uji_bayar_pemasok_transfer.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

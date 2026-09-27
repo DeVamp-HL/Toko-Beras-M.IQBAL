@@ -231,7 +231,7 @@ export async function periksaSambungan(ms) {
   const hasil = await Promise.race([tunggu, habis]);
   return { hasil, teks: hasil === 'sampai' ? 'Semua catatan perangkat ini sudah sampai server' : hasil === 'menunggu' ? 'Masih menunggu server — catatan aman di perangkat, dikirim sendiri begitu tersambung' : 'Server menolak — cek jejak' };
 }
-// ---- denyut perangkat: dokumen perangkatStatus yang sama dengan sistem lama (denyut-hp-gono), ditambah aplikasi 'baru', pemegang & lokasi ----
+// ---- denyut perangkat: dokumen perangkatStatus yang sama dengan sistem lama (denyut HP kasir), ditambah aplikasi 'baru', pemegang & lokasi ----
 const KOLEKSI_PERANGKAT = 'perangkatStatus';
 let _denyutTerakhir = 0, _denyutTerpasang = false;
 export function kirimDenyut(paksa) {

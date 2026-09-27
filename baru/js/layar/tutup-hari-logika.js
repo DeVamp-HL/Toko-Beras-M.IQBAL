@@ -127,7 +127,7 @@ export function susunTutup(D, w, yakinUlang) {
   const dokumen = [{ koleksi: 'tutupHari', data: dokTutup }, { koleksi: 'amplopLaba', data: { id: 'am-' + iso, tanggal: iso, jam: w.jam, tipe: 'setor', nominal: H.sisihJadi, catatan: 'Sisihan tutup hari' } },
     { koleksi: 'setoranKas', data: { id: 'st-' + iso, tanggal: iso, jam: w.jam, nominal: 0, catatan: 'Tutup hari' } }, { koleksi: 'modalOwner', data: { id: 'mo-st-' + iso, tanggal: iso, jam: w.jam, tipe: 'tarik', nominal: 0, catatan: 'Setoran tutup hari', dariSetoran: 'st-' + iso } }];
   const hapus = [];
-  if (H.mdrDicatat && H.mdrJadi > 0) dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: 'mdr-' + iso, kategori: 'toko', tanggal: iso, jam: w.jam, keterangan: 'Potongan QRIS (MDR) · ' + H.R.qrisNota.length + ' nota' + (H.rekNyata !== null ? ' · sebenarnya' : ' · perkiraan'), nominal: H.mdrJadi, dari: 'rekening', mdr: true } });
+  if (H.mdrDicatat && H.mdrJadi > 0) dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: 'mdr-' + iso, kategori: 'toko', untuk: 'toko', tanggal: iso, jam: w.jam, keterangan: 'Potongan QRIS (MDR) · ' + H.R.qrisNota.length + ' nota' + (H.rekNyata !== null ? ' · sebenarnya' : ' · perkiraan'), nominal: H.mdrJadi, dari: 'rekening', mdr: true } });
   else if (ambilPengeluaranHarian().some((h) => String(h.id) === 'mdr-' + iso)) hapus.push({ koleksi: 'pengeluaranHarian', id: 'mdr-' + iso });
   if (H.amankanJadi > 0) dokumen.push({ koleksi: 'pindahUang', data: { id: 'pd-' + iso, tanggal: iso, jam: w.jam, dari: 'laci', ke: 'brankas', nominal: H.amankanJadi, alasan: 'Amankan laci (tutup hari)', biayaAdmin: 0, adminNama: '' } });
   ambilPenyesuaianStok().forEach((x) => { if (x.dariTutup === iso) hapus.push({ koleksi: 'penyesuaianStok', id: x.id }); });

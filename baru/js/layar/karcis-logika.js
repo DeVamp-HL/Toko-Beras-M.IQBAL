@@ -44,7 +44,7 @@ export function tebakanKarcis(nominal) {
   kemasan.forEach((h) => { const u = Math.round(n / h.hargaPerUnit); if (u >= 1 && u <= 6 && u * h.hargaPerUnit === n) hasil.push({ tepat: true, label: h.merk + ' ' + h.ukuran + ' kg × ' + u, isi: [{ jalur: 'kemasan', kunci: kunciKemasan(h.merk, h.ukuran), jumlah: u }] }); });
   Object.keys(stokK).forEach((merk) => { [50, 25].forEach((b) => { const hu = (hargaKarungUtuh(merk, b) || {}).perUnit || 0; if (!(hu > 0)) return; const k = Math.round(n / hu); if (k >= 1 && k <= 4 && k * hu === n) hasil.push({ tepat: true, label: 'Karung ' + b + ' kg ' + merk + ' × ' + k, isi: [{ jalur: 'karung', kunci: merk, berat: b, jumlah: k }] }); }); });
   hasil.sort((a, b) => (b.tepat ? 1 : 0) - (a.tepat ? 1 : 0));
-  // kolam untuk kombinasi (Gono mencatat total per pembeli, bukan per barang — aturan lapangan 8 Agu 2026)
+  // kolam untuk kombinasi (penjaga kasir darurat mencatat total per pembeli, bukan per barang — aturan lapangan 8 Agu 2026)
   const kolam = [];
   literan.forEach((h) => { for (let L = 1; L <= 25; L++) kolam.push({ jalur: 'literan', kunci: h.merk, jumlah: L, harga: h.hargaPerLiter * L, label: h.merk + ' ' + L + ' L', jangkar: false }); });
   kemasan.forEach((h) => { for (let u = 1; u <= 3; u++) kolam.push({ jalur: 'kemasan', kunci: kunciKemasan(h.merk, h.ukuran), jumlah: u, harga: h.hargaPerUnit * u, label: h.merk + ' ' + h.ukuran + ' kg × ' + u, jangkar: true }); });

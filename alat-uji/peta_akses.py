@@ -333,6 +333,7 @@ OWNER_JALUR = {
     'susunPenggantiTercatat': '1 dokumen retur (≤ 1 pemeriksaan); retur di bulan terkunci → ditolak logika',
     'susunBayar': 'bayar bon pemasok: 1 utangPemasokMutasi + paling banyak 1 biaya admin, bertanggal hari ini',
     'susunUrungBayar': 'urung bayar bon: hapus 1 pembayaran + paling banyak 1 biaya admin (dokumen barusan)',
+    'susunTitikRekening': 'catat isi rekening (putaran 29): 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (nilai baru dinilai; tenggang 3 hari melindungi tanggal 1–3)',
     'susunBayarBon': 'terima bon: 1 piutangMutasi bertanggal hari ini', 'susunHapusBon': 'hapus buku piutang: 1 piutangMutasi bertanggal hari ini',
     'susunBayarTagihan': '1 dokumen: biayaBulanan bulan INI atau pengeluaranHarian hari ini', 'susunBonus': '2 dokumen: biayaBulanan bulan INI + slipUpah hari ini',
     'susunKasbonKaryawan': '1 kasbonMutasi bertanggal hari ini', 'susunKeluar': 'uang keluar: paling banyak 2 dokumen (pengeluaranHarian + kasbon) bertanggal hari ini',
