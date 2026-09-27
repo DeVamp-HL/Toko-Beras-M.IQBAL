@@ -6,7 +6,7 @@
 // Pesanan yang dikirim = koleksi BARU pesananPemasok (menunggu datang / batal); "sudah datang" dibaca dari kedatangan pemasok itu SESUDAH pesanan (tidak ditebak dari stok).
 import { hitungStokKarungPerMerk, hitungLajuPakai, kasPada } from '../mesin/beku.js';
 import { merkPunyaKarungBerat, JENDELA_LAJU_HARI } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilPesananPemasok, cacheMentah } from '../data/toko.js';
+import { ambilSemuaBatch, ambilPesananPemasok, cacheMentah, stokMerekSaja } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { daftarPemasok, tempoPemasok, nomorWa, bpTambahHari, pemasokSungguhan } from './bon-pemasok-logika.js';
 
@@ -50,7 +50,8 @@ export const pesananMenunggu = () => pesananSemua().filter((p) => p.status === '
 /** Tiap merek yang bisa dibeli: sisa & laju dari mesin, saran karung, harga terakhir per pemasok. */
 export function daftarBelanja(kini) {
   const atur = aturBelanja(); const stok = hitungStokKarungPerMerk(); const laju = hitungLajuPakai().kgMerk || {}; const pem = daftarPemasok(); const menunggu = pesananMenunggu();
-  const merks = new Set(Object.keys(stok)); pem.forEach((p) => Object.keys(p.hargaPerMerk).forEach((m) => merks.add(m)));
+  // putaran 28: stok wadah diisi dari karung, tidak dibeli
+  const merks = new Set(Object.keys(stokMerekSaja(stok))); pem.forEach((p) => Object.keys(p.hargaPerMerk).forEach((m) => merks.add(m)));
   const merk = Array.from(merks).map((m) => { const sisa = (stok[m] || {}).sisaKg || 0; const l = laju[m] || 0; const hari = hariHabis(sisa, l); const berat = merkPunyaKarungBerat(m, 50) ? 50 : merkPunyaKarungBerat(m, 25) ? 25 : 50;
     const butuh = l > 0 ? Math.max(0, l * atur.targetHari - sisa) : 0; const saranK = Math.ceil(butuh / berat);
     const sumber = pem.filter((p) => p.hargaPerMerk[m]).map((p) => ({ pemasok: p.nama, harga: p.hargaPerMerk[m].terakhir.hargaPerKg, tanggal: p.hargaPerMerk[m].terakhir.tanggal })).sort((a, b) => a.harga - b.harga);

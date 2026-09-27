@@ -391,7 +391,7 @@ pulihkan dari berkas cadangan.
   (acakPin verbatim).
 - Uji: `uji_katalog_kasir.py` (statis + jsc + Chrome), `uji_setelan_jenis_beras.py`, `uji_operator_pin.py` (+ kontrol, CI).
 
-## Putaran 27 — stok & merek (27 Sep 2026, cabang `tulang-punggung/27-stok-merek`, belum merge)
+## Putaran 27 — stok & merek (27 Sep 2026, PR #46)
 
 Peta Tahap 0 & keputusan owner: `docs/peta-stok-merek.md` (§13 = keputusan 27 Sep). Tanpa koleksi baru, rules v4 tidak berubah, mesin beku tidak disentuh.
 - **Bagian 1 — Cocokkan dipisah** (`stok-catat-logika.js`, `wadah-bernama-logika.js`): tab **Tumpukan gudang** (karung utuh 50/25 + lepas; selisih × modal)
@@ -414,6 +414,18 @@ Peta Tahap 0 & keputusan owner: `docs/peta-stok-merek.md` (§13 = keputusan 27 S
   harga liter. Peralihan: isi & baris lama tanpa komposisi tetap milik nama wadahnya (nama lama dijual sampai habis, lalu diarsipkan).
 - Uji: `uji_cocokkan_terpisah.py`, `uji_varian_merek.py`, `uji_arsip_produk.py`, `uji_setengah_karung.py`, `uji_wadah_bernama.py` (+ kontrol, CI).
 
+## Putaran 28 — wadah punya stok sendiri (28 Sep 2026, cabang `tulang-punggung/28-wadah-stok-sendiri`, belum merge)
+
+Keputusan owner 28 Sep & rinciannya: `docs/peta-stok-merek.md` §14. Tanpa koleksi baru, rules v4 tidak berubah, mesin beku & kasir*.html tidak disentuh.
+- Tiap wadah punya **buku sendiri** `'Wadah <nama>'` (data/toko.js `kunciStokWadah` / `petaStokWadah` / `stokMerekSaja`), lahir lewat satu baris batch
+  `stokAwal` 0 kg (`lahirBuku`) — mesin beku hanya memotong nama yang lahir lewat batch. Takar = pindah buku karung → wadah (modal ikut); literan
+  memotong buku wadah saja; cocokkan wadah = susut wadah; ganti nama membawa stok; atur susunan menolak melepas wadah berstok.
+- **Pindahan awal** (Stok › Wadah literan, dua ketukan, owner): isi tercatat → buku wadah; nilai stok, laba, tumpukan tidak berubah.
+- **Tiga pintu** karung di belakang wadah: tumpukan gudang · baru datang dari pemasok · kemasan jadi hasil adukan (`susunBukaKemasan`).
+- Katalog HP kasir: buku wadah berharga liter wadahnya (`wbSaringKatalogKasir` di `kkIsi`).
+- Buku wadah tidak tampil di daftar merek mana pun (rak karung/repack, gudang, harga karung, barang masuk, cocokkan tumpukan, adukan, tempat, belanja, HPP).
+- Uji: `uji_wadah_stok_sendiri.py` (+ kontrol, CI).
+
 ## Struktur
 ```
 baru/
@@ -433,7 +445,7 @@ baru/
   js/layar/jual-logika.js   logika Jual tanpa DOM (diuji di jsc); wadah-jual-logika.js (wadah dijual, harga jual wadah), struk-logika.js (struk kertas/WA + aturan otomatis)
   js/layar/jual.js          gambar & ketukan
   js/layar/stok-logika.js, stok-catat-logika.js (ST1/ST3), stok-adukan-logika.js (ST2), stok-karantina-logika.js, stok-kantong-logika.js (ST4), stok-tempat-logika.js (ST5), stok-hpp-logika.js (ST6)   logika Stok tanpa DOM
-  js/layar/wadah-bernama-logika.js (komposisi wadah per merek asal, literan langsung, ganti nama wadah) · varian-logika.js · arsip-logika.js · setengah-logika.js   putaran 27, tanpa DOM
+  js/layar/wadah-bernama-logika.js (komposisi wadah per merek asal, literan langsung, ganti nama wadah; putaran 28: stok wadah sendiri, pindahan awal, katalog kasir) · varian-logika.js · arsip-logika.js · setengah-logika.js   putaran 27, tanpa DOM
   js/layar/stok.js          gambar & ketukan layar Stok
   js/layar/pelanggan-logika.js (Kenali + THR), bon-logika.js (Bon)   logika Pelanggan tanpa DOM
   js/layar/pelanggan.js     gambar & ketukan layar Pelanggan
@@ -484,6 +496,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_arsip_produk.py` (+ `--kontrol`) | 27·3: 19 skenario arsip (hanya yang habis, hilang dari rak/katalog/label/katalog HP kasir = index.html minus arsip, hapus tanpa transaksi, pulihkan) + 13 kontrol |
 | `alat-uji/uji_setengah_karung.py` (+ `--kontrol`) | 27·4: 15 skenario ½ karung (harga, langit-langit 50 kg, pemecah Adukan satu kiriman, modal dipindah utuh, batal) + 11 kontrol |
 | `alat-uji/uji_wadah_bernama.py` (+ `--kontrol`) | 27·5: 28 skenario wadah bernama (NG 30 + Kumala 20 → 5 L memotong buku 3 : 2, HPP tertimbang, tanpa buku nama wadah, identitas, struk satu baris, karcis, katalog, kelas ditolak, ganti nama, hapus harga liter tidak dipakai) + 21 kontrol; asap cadangan + ASAP GLOBAL omzet/laba/neraca tiap bulan byte-sama dengan main |
+| `alat-uji/uji_wadah_stok_sendiri.py` (+ `--kontrol`) | 28: 37 skenario stok wadah sendiri (buku NG yang habis menahan literan sebelum pindahan, tidak sesudahnya; pindahan awal = batch lahir 0 kg + pindah buku per wadah, nilai/laba/tumpukan tetap; nota satu baris atas buku wadah; takar memindah buku karung → wadah; cocokkan = susut wadah; ganti nama membawa stok; atur susunan menolak wadah berstok; katalog kasir; tiga pintu karung termasuk buka kemasan hasil adukan; tidak bocor ke daftar merek; tutup buku membawa tanda) + 21 kontrol; asap cadangan: pindahan semua wadah tanpa menggeser nilai stok, laba, tumpukan; 1 L dari tiap wadah lewat bukunya sendiri |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.

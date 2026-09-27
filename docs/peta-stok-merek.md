@@ -239,3 +239,40 @@ Penyesuaian saat membangun Bagian 5:
   literan langsung tidak bisa dihapus dari sana. Katalog HP kasir sesudahnya: baris merek itu tetap ada dengan harga liter 0 — kasir.html
   menulis tuts literannya "harga?", pencocokan nominal otomatis melewatinya, dan kalau diketuk manual tanpa jumlah (×) liternya tidak bisa
   diturunkan dari nominal → nota tercatat 0 liter (stok tidak turun).
+
+## 14. Putaran 28 — wadah punya STOK SENDIRI (keputusan owner 28 Sep 2026)
+
+Perintah owner: *"semua wadah kotak literan itu punya stok tersendiri"*, sumbernya **karung 50 kg di belakang wadah**; karung itu, saat habis,
+diambil dari **tumpukan gudang, kiriman pemasok langsung, atau hasil produksi (adukan)**. Ini MEMBALIK Bagian 5 (§13): literan wadah tidak lagi
+memotong buku merek asal sebanding komposisi. Sebabnya kejadian nyata: wadah penuh, tapi buku merek asalnya kurang (tumpukan salah catat), jadi Jual
+menolak literan dari wadah yang kelihatan penuh.
+
+Rantai sekarang: tumpukan / pemasok / adukan → **karung terbuka di belakang wadah** (buku merek karung itu) → **takar** → **buku wadah** → literan.
+
+- **Kunci buku wadah** = `'Wadah <nama wadah>'` (data/toko.js `kunciStokWadah`), sengaja tidak sama dengan nama merek: kedelapan nama wadah
+  sudah punya buku kedatangan lama (nama kelas dipakai di barang masuk sebelum 18 Sep), dan tiga di antaranya juga merek karung pemasok.
+- **Jebakan mesin beku** (tidak disentuh): `hitungStokKarungPerMerk` hanya memotong penjualan, penyesuaian, dan sumber produksi dari nama yang
+  sudah **lahir lewat batchMasuk**; nama yang cuma lahir dari produksi jadi-karung-utuh tidak pernah terpotong (uji: masuk 10 kg, jual 2 kg → tetap
+  10). Karena itu tiap buku wadah (dan buku karung dari kemasan yang dibuka) lahir lewat **satu baris batch `stokAwal` 0 kg** (`lahirBuku: true`,
+  baris `satuan: 'lahir'`, `stokWadah: <nama wadah>`): tidak masuk kas, utang pemasok, belanja, maupun buku kedatangan. `petaStokWadah()` = satu
+  tempat yang mengenali buku wadah; `stokMerekSaja()` membuangnya dari daftar MEREK (rak karung/repack, gudang, harga karung, barang masuk,
+  cocokkan tumpukan, adukan, tempat simpan, belanja, HPP, pencarian, peringatan menipis). Stok › Gudang tetap menilai buku wadah (modal tidur).
+- **Pindahan awal** (owner memilih "pindah dari buku merek"; tombol dua ketukan di Stok › Wadah literan, `wbSusunPindahAwal`): isi tercatat tiap
+  wadah dipindah ke buku wadahnya — buku merek asal turun sebesar bagiannya, modal ikut (produksiKemasan jadi-karung-utuh `dariTakar`,
+  `pindahAwalWadah`). Nilai stok, laba, dan tumpukan tiap merek tidak berubah (diuji di cadangan). Wadah yang isinya belum pernah dicocokkan,
+  tercatat minus, atau bagiannya milik nama tanpa buku dilewati dan disebut. Wadah yang belum dipindah tetap berjalan dengan model §13.
+- **Takar** ke wadah berstok sendiri = satu pindah buku (sumber = karung yang dituang, tujuan = buku wadah, `takarId`); karung tanpa buku ditolak.
+- **Literan** dari wadah = satu baris, `merkSumber` = buku wadah, `dariWadah` = nama wadah; langit-langit & modal = buku wadah. Komposisi wadah
+  aktif = 100 % buku wadahnya, sehingga pemecah, rinci karcis, dan struk putaran 27 berjalan tanpa diubah. Isi wadah yang digambar = buku wadah
+  (satu kebenaran — literan dari HP kasir ikut menurunkannya).
+- **Cocokkan wadah** = `penyesuaianStok` atas buku wadah (susut wadah itu sendiri; susut wajar & alasan seperti Bagian 1). "Samakan" di panel
+  Jual ditolak untuk wadah berstok sendiri → satu pintu yang minta alasan. Titik pindahan awal bukan hitungan (tidak menyetel "terakhir dicocokkan").
+- **Ganti nama** membawa stok (buku nama baru lahir + pindah buku). **Atur susunan** menolak melepas wadah yang masih berstok.
+- **Tiga pintu karung** di belakang wadah (`calonBukaKarung`): tumpukan gudang · baru datang dari pemasok (kedatangan 14 hari; `asal: 'masuk'`,
+  `batchId` di catatan karung — bukunya tetap buku merek itu) · kemasan jadi hasil adukan 25/50 kg (`susunBukaKemasan`: stok kemasan −1 unit lewat
+  `sumberKemasanList`, berasnya masuk buku karung bernama sama dengan modal kemasan itu, `bukaKemasan: true`).
+- **Katalog HP kasir** (owner memilih "wadah ikut katalog"; `wbSaringKatalogKasir` sesudah saring arsip): baris buku wadah memakai harga liter
+  wadahnya, tanpa karung/harga karung; nama wadah berstok sendiri tidak dijual literan atas nama buku mereknya (kecuali literan langsung).
+  kasir*.html tidak disentuh. Tanpa wadah berstok sendiri = byte-sama penyusun index.html.
+- **Tutup buku**: saldo pembuka membawa tanda `stokWadah`; buku wadah yang nol ikut lahir lagi (baris 0 kg).
+- Uji: `alat-uji/uji_wadah_stok_sendiri.py` (+ kontrol, CI).

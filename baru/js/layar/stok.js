@@ -41,7 +41,7 @@ const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? J
 export function pasangLayarStok(akar, opsi) {
   const tabAwal = (() => { try { return localStorage.getItem(KUNCI_TAB) || 'gudang'; } catch (e) { return 'gudang'; } })();
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
-  const awal = () => ({ tab: S.TAB_STOK.some((t) => t[0] === tabAwal) ? tabAwal : 'gudang', tanya: 'beli', kabar: '', kabarAwas: false, wadahAktif: null, isiW: null, krKetik: '', krNama: '', krPilih: false, lainPilih: false, gnKetik: '', atur: null, drPilih: null, drYakin: false, tpTab: 'tiga',
+  const awal = () => ({ tab: S.TAB_STOK.some((t) => t[0] === tabAwal) ? tabAwal : 'gudang', tanya: 'beli', kabar: '', kabarAwas: false, wadahAktif: null, isiW: null, krKetik: '', krNama: '', krAsal: null, krPilih: false, lainPilih: false, gnKetik: '', paYakin: false, atur: null, drPilih: null, drYakin: false, tpTab: 'tiga',
     lembar: null, masuk: null, cocok: null, aturC: null, yakinM: false, yakinHapus: false, yakinC: {},
     adukan: null, yakinA: {}, yakinHapusA: false, bukaA: null, koreksiA: { total: '', alasan: '' }, qBuka: null, qAlasan: '', qYakin: '',
     // putaran 16: Kantong (ST4), Tempat simpan (ST5), HPP (ST6)
@@ -76,17 +76,21 @@ export function pasangLayarStok(akar, opsi) {
     keBelanja: () => opsi.bukaHarga && opsi.bukaHarga('belanja'),   // putaran 17: Harga & Pemasok → Belanja (saran yang sama, per pemasok, muatan truk, pesanan WA)
     mode: () => opsi.gantiMode(),
     tutupKabar: () => set({ kabar: '' }),
-    pilihWadah: ({ merk }) => set({ wadahAktif: st().wadahAktif === merk ? null : merk, isiW: null, krKetik: '', krNama: '', krPilih: false, gnKetik: '' }),
+    pilihWadah: ({ merk }) => set({ wadahAktif: st().wadahAktif === merk ? null : merk, isiW: null, krKetik: '', krNama: '', krAsal: null, krPilih: false, gnKetik: '' }),
+    // putaran 28 (owner 28 Sep): isi tiap wadah dipindah ke STOK WADAH sendiri — dua ketukan, satu kiriman (buku merek turun, buku wadah naik, modal ikut)
+    pindahAwal: async () => { if (!st().paYakin) return set({ paYakin: true, kabar: 'Ketuk sekali lagi untuk memindahkan isi wadah ke stok wadah masing-masing', kabarAwas: false });
+      const r = WB.wbSusunPindahAwal(waktu()); set({ paYakin: false }); await tulis(r); },
     // putaran 27 (Bagian 5): wadah = TEMPAT bernama; ganti nama → isi, karung di belakangnya & harga liter ikut pindah (buku stok tidak disentuh)
     gnKetik: (v) => set({ gnKetik: String(v).slice(0, 40) }),
     gantiNamaWadah: async ({ merk }) => { const baru = String(st().gnKetik || '').replace(/\s+/g, ' ').trim(); const r = WB.wbSusunGantiNama(merk, baru, waktu());
       if (await tulis(r)) set({ gnKetik: '', wadahAktif: baru }); },
     // karung di belakang wadah BERNAMA (owner 21 Sep): namanya dipilih dari karung sumber di gudang; membukanya menurunkan tumpukan gudang nama itu
     krPilihBuka: () => set({ krPilih: !st().krPilih }),
-    krNama: ({ merk }) => set({ krNama: merk, krPilih: false }),
+    // putaran 28 (tiga pintu): karung dari tumpukan gudang · baru datang dari pemasok (data-batch) · kemasan jadi hasil adukan (data-uk)
+    krNama: ({ merk, asal, batch, uk }) => set({ krNama: merk, krAsal: asal === 'masuk' ? { jenis: 'masuk', batchId: batch } : asal === 'adukan' ? { jenis: 'adukan', namaProduk: merk, ukuran: Number(uk) || 0 } : null, krPilih: false }),
     lainPilihBuka: () => set({ lainPilih: !st().lainPilih }),
-    bukaKarung: async ({ merk, wadah }, el) => { sekali(el.closest('.kartu'), 'pegas', 520); const r = L.susunBukaKarung(merk, waktu(), wadah || '');
-      if (await tulis(r)) { set({ krNama: '', krPilih: false, lainPilih: false, isiW: null }); const g = r.gudang; adeganBukaKarung({ nama: merk, wadah: wadah || '', berat: g.kgKarung, dariKarung: g.dariKarung, keKarung: g.keKarung, dariKg: DESIMAL(Math.round(g.dariKg * 10) / 10), keKg: DESIMAL(Math.round(g.keKg * 10) / 10) }); } },
+    bukaKarung: async ({ merk, wadah }, el) => { sekali(el.closest('.kartu'), 'pegas', 520); const asal = st().krNama === merk ? st().krAsal : null; const r = L.susunBukaKarung(merk, waktu(), wadah || '', asal);
+      if (await tulis(r)) { set({ krNama: '', krAsal: null, krPilih: false, lainPilih: false, isiW: null }); const g = r.gudang; adeganBukaKarung({ nama: merk, wadah: wadah || '', berat: g.kgKarung, dariKarung: g.dariKarung, keKarung: g.keKarung, dariKg: DESIMAL(Math.round(g.dariKg * 10) / 10), keKg: DESIMAL(Math.round(g.keKg * 10) / 10) }); } },
     krKetik: (v) => set({ krKetik: String(v).slice(0, 6) }),
     // ---- PUTARAN 22: deretan karung terbuka bisa dipilih, disamakan, dikembalikan ke tumpukan
     drPilih: ({ merk, lokasi }) => { const d = st().drPilih; const sama = d && d.merk === merk && d.lokasi === (lokasi || ''); set({ drPilih: sama ? null : { merk, lokasi: lokasi || '' }, drYakin: false, krKetik: '', kabar: '' }); },
@@ -95,7 +99,7 @@ export function pasangLayarStok(akar, opsi) {
     tpTab: ({ t }) => set({ tpTab: t }),
     tpGeser: async ({ kunci, arah }) => { await tulis(TP.susunGeserTumpukan(kunci, Number(arah), waktu())); },
     tpTempatBaru: async ({ posisi }) => { const r = TP.susunTempatBaru(posisi, waktu()); if (!(await tulis(r))) return; const p = st().tp.pilih; if (p) await tulis(TP.susunPindah(p, r.nama, waktu())); },
-    samakanKarung: async ({ merk, wadah }) => { if (await tulis(L.susunSamakanKarung(merk, st().krKetik, waktu(), wadah || ''))) set({ krKetik: '', krNama: '', krPilih: false, isiW: null }); },
+    samakanKarung: async ({ merk, wadah }) => { if (await tulis(L.susunSamakanKarung(merk, st().krKetik, waktu(), wadah || ''))) set({ krKetik: '', krNama: '', krAsal: null, krPilih: false, isiW: null }); },
     bukaAtur: () => set({ atur: st().atur ? null : drafAtur(), wadahAktif: null }),
     aturPenuh: (v) => ubahAtur((d) => { d.penuh = String(v).slice(0, 6); }), aturPuncak: (v) => ubahAtur((d) => { d.puncak = String(v).slice(0, 6); }),
     aturUlang: (v) => ubahAtur((d) => { d.ulang = String(v).slice(0, 6); }), aturTakar: (v) => ubahAtur((d) => { d.takar = String(v).slice(0, 6); }),
@@ -412,6 +416,10 @@ export function pasangLayarStok(akar, opsi) {
     return h`<section class="stok-wadah" data-k="wadah">
       <div class="pita-info">Tumpukan karung di gudang → karung 50 kg yang sudah dibuka BERJAJAR di belakang deretan wadah → kotak wadah → dijual per liter. Satu wadah boleh diisi dari karung mana pun di deretan itu (mis. Angsa: 1 takar dari karung E + 1 takar dari karung D — foto toko 23 Sep). Buka karung: tumpukan gudang turun satu. Takar: karung yang dipilih turun, wadah naik. Literan terjual: wadah turun.
         ${w.perluIsi ? w.perluIsi + ' wadah minta diisi ulang. ' : ''}${w.karungTipis ? w.karungTipis + ' karung di belakang hampir habis. ' : ''}${w.belumDitandai ? w.belumDitandai + ' wadah belum pernah ditandai isinya.' : ''}</div>
+      ${(() => { const belum = w.daftar.filter((x) => !x.stokSendiri); if (!belum.length) return '';
+        return h`<div class="kartu" data-k="pindah-awal" style="gap: 6px;"><div class="label">Stok wadah sendiri · ${w.daftar.length - belum.length} dari ${w.daftar.length} wadah</div>
+          <div class="ket">${belum.map((x) => x.no + ' ' + x.nama + (x.diketahui ? ' ±' + KG(x.sisaNyataKg) : ' (isi belum ditandai)')).join(' · ')} — isinya masih tercatat di buku merek karung, jadi literannya bisa tertahan buku merek yang kurang. Pindahkan isinya ke stok wadah masing-masing: buku merek turun sebesar isi itu, buku wadah naik, modal ikut — laba & neraca tidak berubah. Wadah yang isinya belum ditandai dilewati (cocokkan dulu).</div>
+          <div class="kaca-btn ${s.paYakin ? 'awas' : 'aktif'}" data-aksi="pindahAwal">${s.paYakin ? 'YAKIN — pindahkan isi ' + belum.filter((x) => x.diketahui).length + ' wadah' : 'Pindahkan isi wadah ke stok wadah'}</div></div>`; })()}
       ${(() => { const DR = L.deretanKarung(); return h`<div class="kartu" data-k="deretan" style="gap: 6px;"><div class="label">Deretan karung terbuka di belakang wadah · urut W1 → W${w.daftar.length}, lalu karung lepas</div>
         <div class="deretan-isi besar">${DR.map((k) => h`<div class="karung-deret ${s.drPilih && s.drPilih.merk === k.merk && s.drPilih.lokasi === k.lokasi ? 'dipakai' : ''}" data-k="dr-${k.merk}|${k.lokasi}" data-aksi="drPilih" data-merk="${k.merk}" data-lokasi="${k.lokasi}" title="${k.letak}"><div class="gambar-chip">${mentah(gambarKarungStok(k))}</div><div class="nm">${k.merk}</div><div class="ket">${k.no ? k.no + ' · ' : ''}${k.diketahui ? '±' + KG(k.sisaKg) : 'belum ditandai'}</div></div>`)}${DR.length ? '' : h`<div class="ket">Belum ada karung terbuka yang ditandai.</div>`}</div>
         ${(() => { const d = s.drPilih; const k = d ? DR.find((x) => x.merk === d.merk && x.lokasi === d.lokasi) : null; if (!k) return h`<div class="ket">Ketuk satu karung untuk menyamakan sisanya, mengembalikannya ke tumpukan, atau membuka wadahnya.</div>`;
@@ -430,20 +438,29 @@ export function pasangLayarStok(akar, opsi) {
       <div class="kaca-btn" data-aksi="bukaAtur">Atur susunan, isi &amp; aturan wadah</div>
       ${aktif ? h`<div class="kartu rincian-wadah" data-k="rincian-${aktif.nama}">
         <div class="label">${aktif.no} · ${aktif.nama}${aktif.resep.length > 1 ? ' · campuran ' + aktif.resep.map((r) => r.takar).join(' : ') + ' — ' + aktif.resep.map((r) => r.merk).join(' : ') : ''}</div>
-        ${(() => { const K = WB.wbKomposisi(aktif.nama, keranjangJual()); return h`<div class="ket" data-k="komposisi-${aktif.nama}">${!K.diketahui ? 'Isi per merek belum diketahui — cocokkan wadah ini dulu (Stok › Cocokkan › Wadah literan).'
+        ${(() => { const K = WB.wbKomposisi(aktif.nama, keranjangJual()); if (K.stokSendiri) return h`<div class="ket" data-k="komposisi-${aktif.nama}">Stok wadah sendiri (buku ${K.kunci}): ±${KG(K.totalKg)} · modal ${RP(Math.round(WB.wbModalPerKg(aktif.nama)))}/kg. Literan yang terjual cuma memotong stok wadah ini; takar dari karung di belakang memindah buku karungnya ke sini (modal ikut).${K.totalKg < -0.004 ? ' Stoknya MINUS — takar yang lupa dicatat? catat takarnya atau cocokkan wadah ini.' : ''}</div>`;
+          return h`<div class="ket" data-k="komposisi-${aktif.nama}">${!K.diketahui ? 'Isi per merek belum diketahui — cocokkan wadah ini dulu (Stok › Cocokkan › Wadah literan).'
           : K.positif.length ? 'Isi menurut buku: ' + K.positif.map((x) => x.merk + ' ' + KG(x.kg)).join(' + ') + '. Literan yang terjual memotong buku merek-merek itu sebanding isinya' + (K.positif.length > 1 ? ' (' + K.positif.map((x) => Math.round(x.kg * 100 / K.positif.reduce((q, y) => q + y.kg, 0)) + '%').join(' : ') + ')' : '') + '.' : 'Menurut buku wadah ini kosong.'}
           ${Object.keys(K.bagian).some((m) => K.bagian[m] < 0) ? ' Ada bagian MINUS (' + Object.keys(K.bagian).filter((m) => K.bagian[m] < 0).map((m) => m + ' ' + KG(K.bagian[m])).join(', ') + ') — isi ulang lupa dicatat? cocokkan wadah ini.' : ''}</div>`; })()}
         <div class="tombol-baris rapat" data-k="ganti-nama"><input class="ketik-nama sempit" id="gnKetik" type="text" placeholder="nama baru wadah ini" value="${s.gnKetik}" data-ketik="gnKetik"><div class="kaca-btn putus ${String(s.gnKetik || '').trim() ? '' : 'mati'}" data-aksi="gantiNamaWadah" data-merk="${aktif.nama}">ganti nama wadah</div></div>
-        ${(() => { const nk = s.krNama || aktif.karungNama; const draf = nk !== aktif.karungNama; const kr = draf ? L.karungBelakang(nk, aktif.nama) : aktif.karung; const tg = draf ? L.tumpukanGudang(nk) : aktif.tumpukan; const calon = s.krPilih ? L.calonKarung() : [];
+        ${(() => { const nk = s.krNama || aktif.karungNama; const draf = nk !== aktif.karungNama; const kr = draf ? L.karungBelakang(nk, aktif.nama) : aktif.karung; const tg = draf ? L.tumpukanGudang(nk) : aktif.tumpukan; const C = s.krPilih ? L.calonBukaKarung(14) : null; const asal = s.krNama && s.krNama === nk ? s.krAsal : null;
+          const asalTeks = !asal ? 'dari tumpukan gudang' : asal.jenis === 'masuk' ? 'yang baru datang dari pemasok' : '— kemasan ' + asal.ukuran + ' kg hasil adukan';
           return h`<div class="baris-wadah" data-k="kr-${nk}"><div class="gambar-chip besar">${mentah(gambarKarungStok(kr))}</div>
-          <div><div class="label">Karung di belakang · dari tumpukan gudang</div>
+          <div><div class="label">Karung di belakang · dari tumpukan gudang, kiriman pemasok, atau hasil adukan</div>
             <div class="serif" style="font-size: 19px;">${nk} ${kr.diketahui ? '±' + KG(kr.sisaKg) : '— belum ditandai'}</div>
-            <div class="ket">${draf ? 'BELUM dicatat: buka satu karung ' + nk + ' atau ketik sisanya — baru karung ini jadi karung di belakang ' + aktif.nama + '.'
+            <div class="ket">${draf ? 'BELUM dicatat: buka satu karung ' + nk + ' ' + asalTeks + ' atau ketik sisanya — baru karung ini jadi karung di belakang ' + aktif.nama + '.'
               : kr.diketahui ? 'dari ' + kr.penuhKg + ' kg · terakhir ' + tanggalPendek(kr.sejakTanggal) + ' ' + kr.sejakJam + (kr.lewat ? ' · takar yang tercatat ' + KG(kr.lewat) + ' LEBIH dari isi karungnya — samakan' : '') : 'Buka satu karung baru dari tumpukan gudang, atau ketik sisa karung yang sedang terbuka.'}</div>
-            <div class="ket">${tumpukanTeks(tg)}</div></div></div>
-        <div class="tombol-baris rapat"><div class="kaca-btn ${kr.diketahui && kr.sisaKg > a.takarKg * 3 ? '' : 'aktif'}" data-aksi="bukaKarung" data-merk="${nk}" data-wadah="${aktif.nama}">Buka 1 karung ${nk} dari tumpukan gudang</div>
+            <div class="ket">${asal && asal.jenis === 'adukan' ? 'stok kemasan ' + nk + ' ' + asal.ukuran + ' kg turun 1 unit; berasnya masuk buku karung ' + nk : tumpukanTeks(tg)}</div></div></div>
+        <div class="tombol-baris rapat"><div class="kaca-btn ${kr.diketahui && kr.sisaKg > a.takarKg * 3 ? '' : 'aktif'}" data-aksi="bukaKarung" data-merk="${nk}" data-wadah="${aktif.nama}">Buka 1 ${asal && asal.jenis === 'adukan' ? nk + ' ' + asal.ukuran + ' kg' : 'karung ' + nk} ${asal && asal.jenis === 'adukan' ? 'hasil adukan' : asalTeks}</div>
           <div class="kaca-btn putus" data-aksi="krPilihBuka">${s.krPilih ? 'batal' : 'karung lain…'}</div></div>
-        ${s.krPilih ? h`<div class="tombol-baris rapat" data-k="calon-karung">${calon.length ? calon.map((t) => h`<div class="kaca-btn ${t.merk === nk ? 'aktif' : ''}" data-aksi="krNama" data-merk="${t.merk}">${t.merk} · ${t.karung} karung${t.dipegang.length ? ' · sudah terbuka di belakang ' + t.dipegang.join(', ') : ''}</div>`) : h`<div class="ket">Menurut buku, tidak ada karung di tumpukan gudang.</div>`}</div>` : ''}
+        ${C ? h`<div class="pintu-karung" data-k="calon-karung">
+          <div class="label">1 · Tumpukan gudang</div>
+          <div class="tombol-baris rapat" data-k="pintu-tumpukan">${C.tumpukan.length ? C.tumpukan.map((t) => h`<div class="kaca-btn ${t.merk === nk && !asal ? 'aktif' : ''}" data-aksi="krNama" data-merk="${t.merk}" data-asal="">${t.merk} · ${t.karung} karung${t.dipegang.length ? ' · sudah terbuka di belakang ' + t.dipegang.join(', ') : ''}</div>`) : h`<div class="ket">Menurut buku, tidak ada karung di tumpukan gudang.</div>`}</div>
+          <div class="label">2 · Baru datang dari pemasok · 14 hari terakhir</div>
+          <div class="tombol-baris rapat" data-k="pintu-masuk">${C.masuk.length ? C.masuk.map((x) => h`<div class="kaca-btn ${asal && asal.jenis === 'masuk' && String(asal.batchId) === String(x.batchId) && x.merk === nk ? 'aktif' : ''}" data-aksi="krNama" data-merk="${x.merk}" data-asal="masuk" data-batch="${x.batchId}">${x.merk} · ${x.karung}×${x.berat} kg · ${tanggalPendek(x.tanggal)}${x.pemasok ? ' · ' + x.pemasok : ''}</div>`) : h`<div class="ket">Tidak ada kedatangan karung 14 hari terakhir — catat dulu di Stok › Barang masuk.</div>`}</div>
+          <div class="label">3 · Hasil adukan · kemasan jadi 25 / 50 kg</div>
+          <div class="tombol-baris rapat" data-k="pintu-adukan">${C.adukan.length ? C.adukan.map((x) => h`<div class="kaca-btn ${asal && asal.jenis === 'adukan' && x.namaProduk === nk && asal.ukuran === x.ukuran ? 'aktif' : ''}" data-aksi="krNama" data-merk="${x.namaProduk}" data-asal="adukan" data-uk="${x.ukuran}">${x.namaProduk} ${x.ukuran} kg · ${x.unit} unit</div>`) : h`<div class="ket">Tidak ada kemasan jadi 25 / 50 kg di stok.</div>`}</div>
+          <div class="ket" style="font-size: 10.5px;">Di buku ketiganya sama: karung pemasok & tumpukan = buku merek itu; kemasan hasil adukan dibuka = stok kemasannya turun 1 unit, berasnya masuk buku karung bernama sama (modal ikut).</div></div>` : ''}
         <div class="tombol-baris rapat"><input class="ketik-nama sempit" id="krKetik" type="text" inputmode="decimal" placeholder="sisa kg" value="${s.krKetik}" data-ketik="krKetik"><div class="kaca-btn ${String(s.krKetik || '').trim() ? '' : 'mati'}" data-aksi="samakanKarung" data-merk="${nk}" data-wadah="${aktif.nama}">samakan sisa karung ${nk}</div>${!draf && kr.diketahui ? h`<div class="kaca-btn ${s.drYakin && s.drPilih && s.drPilih.merk === nk && s.drPilih.lokasi === aktif.nama ? 'awas' : 'putus'}" data-aksi="drKembalikan" data-merk="${nk}" data-lokasi="${aktif.nama}">${s.drYakin && s.drPilih && s.drPilih.merk === nk ? 'YAKIN — kembalikan' : 'kembalikan ke tumpukan'}</div>` : ''}</div>`; })()}
         ${panelIsiUlang(aktif.nama, s, keranjangJual())}
       </div>` : h`<div class="ket" style="text-align: center;">Ketuk satu wadah untuk mengisi ulang atau menandai karungnya.</div>`}
@@ -454,7 +471,7 @@ export function pasangLayarStok(akar, opsi) {
         ${s.lainPilih ? h`<div class="tombol-baris rapat" data-k="calon-lain">${L.calonKarung().map((t) => h`<div class="kaca-btn" data-aksi="bukaKarung" data-merk="${t.merk}">${t.merk} · ${t.karung} karung${t.dipegang.length ? ' · sudah terbuka di belakang ' + t.dipegang.join(', ') : ''}</div>`)}</div>` : ''}</div>
       <div class="kartu" data-k="atur-wadah" style="gap: 4px;"><div class="label">Aturan wadah ${a.dariOwner ? '· diatur owner ' + tanggalPendek(a.sejak) : '· bawaan'}</div>
         <div class="ket">rata sejajar bibir kotak ${DESIMAL(a.penuhKg)} kg · menggunung sampai ${DESIMAL(a.puncakKg)} kg · minta isi ulang saat tersisa ${DESIMAL(a.isiUlangKg)} kg · 1 takar ${DESIMAL(a.takarKg)} kg · susut wajar ≤ ${DESIMAL(a.susutWajarKg)} kg/wadah/hari · ${a.daftar.length} wadah</div>
-        <div class="ket">Tiap tingkat turun lewat jalurnya sendiri: buka karung → tumpukan gudang · takar → karung di belakang (wadah naik) · literan terjual → wadah. Buku mesin lama tetap dipotong sekali saja, saat terjual — jumlah tumpukan + karung terbuka + isi wadah selalu sama dengan buku.</div></div>
+        <div class="ket">Tiap tingkat turun lewat jalurnya sendiri: buka karung → tumpukan gudang · takar → karung di belakang turun, STOK WADAH naik (buku merek karungnya pindah ke buku wadah, modal ikut) · literan terjual → stok wadah saja. Untuk tiap merek: tumpukan + karung terbuka = bukunya; untuk tiap wadah: isi wadah = buku wadahnya.</div></div>
     </section>`;
   }
 

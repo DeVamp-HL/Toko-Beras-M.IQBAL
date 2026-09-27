@@ -194,8 +194,8 @@ RUSAK = {
     'susut wajar tidak dikali hari sejak disamakan': ("const wajarKg = ckB2(b.susutWajarKg * lamaHari);", "const wajarKg = ckB2(b.susutWajarKg);"),
     'batas susut owner di Aturan wadah diabaikan': ("? Number(a.susutWajarKg) : WADAH_SUSUT_WAJAR_KG;", "? WADAH_SUSUT_WAJAR_KG : WADAH_SUSUT_WAJAR_KG;"),
     'susut tanpa batas (semua selisih wajar)': ("const besar = ada && Math.abs(selisih) > wajarKg + 0.0001;", "const besar = false;"),
-    'titik samakan cocokkan tanpa komposisi (isi jadi milik nama wadah)': ("isiKg: b.isiH, komposisi: b.komposisiBaru || {}, dariCocok: true", "isiKg: b.isiH, dariCocok: true"),
-    'cocokkan wadah tanpa titik samakan (tumpukan ikut bergeser)': ("    if (b.isiH !== null) dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: b.nama, tipe: 'isi',", "    if (false) dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: b.nama, tipe: 'isi',"),
+    'titik samakan cocokkan tanpa komposisi (isi jadi milik nama wadah)': ("b.stokSendiri ? { stokWadah: b.kunciStok } : { komposisi: b.komposisiBaru || {} }, { dariCocok: true })", "{}, { dariCocok: true })"),
+    'cocokkan wadah tanpa titik samakan (tumpukan ikut bergeser)': ("    if (b.isiH !== null) dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: b.nama, tipe: 'isi',", "    if (false) dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: b.nama, tipe: 'isi',"),
     'karung terbuka tidak disamakan saat dicocokkan': ("    if (b.krH !== null && b.karungNama) dokumen.push(", "    if (false) dokumen.push("),
     'penanda bagian tumpukan hilang': ("bagian: 'tumpukan', bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung", "bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung"),
     'kgFisik tumpukan = hitungan tumpukan, bukan buku sesudahnya': ("kgFisik: ckB2(b.buku + b.selisih), selisihKg: b.selisih,", "kgFisik: b.dihitung, selisihKg: b.selisih,"),
@@ -204,7 +204,7 @@ RUSAK = {
     'cocokkan wadah mengubah umur cocokkan nama itu': ("if (!hitunganFisik(p) || p.bagian === 'wadah') return; const k = 'karung|' + p.merk;", "if (!hitunganFisik(p)) return; const k = 'karung|' + p.merk;"),
     'papan kapur: cocokkan wadah ditulis sebagai cocokkan biasa': ("    else if (p.bagian === 'wadah') out.push(", "    else if (false) out.push("),
     'draf lama bertab beras tidak dipetakan': ("const tabCocokSah = (tab) => (TAB_COCOK.some((x) => x[0] === tab) ? tab : 'tumpukan');", "const tabCocokSah = (tab) => tab;"),
-    'wadah yang baru disamakan tidak dijaga penjaga ganda': ("  ambilWadahLiteran().forEach((d) => { if (d.tipe === 'isi' && d.wadah) catat('wadah|' + d.wadah, d); });", ""),
+    'wadah yang baru disamakan tidak dijaga penjaga ganda': ("  ambilWadahLiteran().forEach((d) => { if (d.tipe === 'isi' && d.wadah && !d.pindahAwal) catat('wadah|' + d.wadah, d); });", ""),
     'tumpukan tercatat = buku (karung terbuka & wadah tidak dikurangi)': ("out.push({ kunci: 'tumpukan|' + m, tab, nama: m, satuan: 'kg', sistem: ckB2(t.kg),", "out.push({ kunci: 'tumpukan|' + m, tab, nama: m, satuan: 'kg', sistem: ckB2(st[m].sisaKg || 0),"),
 }
 

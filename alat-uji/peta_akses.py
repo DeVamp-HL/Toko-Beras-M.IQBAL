@@ -341,7 +341,10 @@ OWNER_JALUR = {
     'susunPutusTitipan': 'titipan disetujui: 1 pengeluaranHarian hari ini (+ persetujuan, tidak dikunci)',
     'susunCocok': 'penghitung daftar cocokkan — tidak menulis; yang menulis susunSimpanCocok (diukur)',
     'susunSimpanBeli': 'beli kantong: 1 dokumen bertanggal hari ini',
-    'susunTakarWadah': 'wadahLiteran (tidak dikunci) + paling banyak 1 produksiKemasan hari ini',
+    'susunTakarWadah': 'wadahLiteran (tidak dikunci) + paling banyak 1 produksiKemasan (putaran 28: pindah buku ke stok wadah) + paling banyak 1 batch lahir 0 kg, hari ini',
+    # putaran 28 (owner 28 Sep): tiga pintu karung di belakang wadah — pintu hasil adukan membuka 1 kemasan jadi
+    'susunBukaKarung': 'wadahLiteran (tidak dikunci); pintu hasil adukan = susunBukaKemasan (1 produksiKemasan + paling banyak 1 batch lahir 0 kg, hari ini)',
+    'susunBukaKemasan': '1 produksiKemasan + paling banyak 1 batchMasuk lahir 0 kg, bertanggal hari ini (+ wadahLiteran, tidak dikunci)',
     'susunAturHargaWadah': 'setelan hargaWadah — bukan koleksi bertanggal', 'susunRak': 'pembaca — tidak menulis', 'susunRakWadah': 'pembaca — tidak menulis',
     'susunAturTempat': 'pengaturan tempatSimpan / aturanToko / pindahTempat — tidak ada yang dikunci (pengaturan hanya titikKas)',
     'susunBatalKarcis': 'batal karcis kasir darurat (25b): TETAP 1 penjualan (+ paling banyak 1 kantong literan id+1) = ≤ 2 pemeriksaan; karcis bulan terkunci → ditolak logika',

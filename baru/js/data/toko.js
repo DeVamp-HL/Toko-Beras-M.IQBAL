@@ -43,6 +43,21 @@ export function ambilPenjualanSemua() { return _cache.penjualan; }
 export function ambilPenjualan() { return ambilPenjualanSemua().filter(penjualanMasihBerlaku); }
 export function ambilProduksi() { return _cache.produksi; }
 export function ambilProduksiBerlaku() { return ambilProduksi().filter(produksiMasihBerlaku); }
+
+// ---- STOK WADAH (putaran 28, owner 28 Sep 2026: "semua wadah kotak literan itu punya stok tersendiri") ----
+// Tiap wadah literan punya buku sendiri berkunci 'Wadah <nama>' — bukan nama merek, supaya tidak bertabrakan dengan merek karung yang senama.
+// Kunci itu LAHIR lewat satu baris batch stokAwal 0 kg ber-`stokWadah` (= nama wadah saat lahir): mesin beku hitungStokKarungPerMerk hanya memotong
+// penjualan / penyesuaian / sumber produksi dari nama yang sudah lahir lewat batchMasuk. Satu tempat untuk mengenali kunci itu: petaStokWadah().
+export const kunciStokWadah = (W) => 'Wadah ' + String(W);
+/** { kunci buku stok wadah: nama wadah saat lahir } — dari baris batch ber-stokWadah (termasuk saldo pembuka tutup buku yang membawanya). */
+export function petaStokWadah() {
+  const out = {}; ambilSemuaBatch().forEach((b) => (b.merkList || []).forEach((m) => { if (m && m.stokWadah && m.merk) out[String(m.merk)] = String(m.stokWadah); }));
+  return out;
+}
+/** Salinan peta stok karung TANPA buku stok wadah — untuk daftar MEREK (rak karung, gudang, harga karung, adukan, arsip, …). */
+export function stokMerekSaja(stok) {
+  const w = petaStokWadah(); const out = {}; Object.keys(stok || {}).forEach((m) => { if (!w[m]) out[m] = stok[m]; }); return out;
+}
 export function ambilRetur() { return _cache.retur; }
 export function ambilKarantina() { return _cache.karantina; }
 export function ambilPengeluaranHarian() { return _cache.harian; }

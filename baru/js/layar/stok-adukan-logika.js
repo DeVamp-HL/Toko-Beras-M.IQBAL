@@ -11,7 +11,7 @@
 // hasilnya sudah terjual/terpakai sehingga stok kemasan jadi minus; jejaknya ke bukuHapus. Adukan "menunggu owner" dari tablet menyusul bersama layar tablet.
 import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, bagiBiayaAdukan } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, JENIS_BAHAN_KEMASAN, kunciKemasan } from '../mesin/pembantu.js';
-import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet } from '../data/toko.js';
+import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet, stokMerekSaja } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, waktuSetempat } from '../inti/format.js';
 import { arPeta, arKunciKemasan, arDokPulihBanyak } from './arsip-logika.js';
@@ -35,7 +35,7 @@ export function drafAdukanKosong(w) { return { tanggal: w.tanggal, bahan: [baris
 
 /** Nama karung yang bersisa di gudang (buku), sisa terbanyak dulu — bahan adukan. */
 export function calonBahan() {
-  const st = hitungStokKarungPerMerk();
+  const st = stokMerekSaja(hitungStokKarungPerMerk());   // putaran 28: isi wadah bukan bahan adukan
   return Object.keys(st).filter((m) => (st[m].sisaKg || 0) > 0).sort((a, b) => st[b].sisaKg - st[a].sisaKg).map((m) => ({ merk: m, sisaKg: Math.round(st[m].sisaKg * 100) / 100, hpp: st[m].hppTerakhirPerKg || 0 }));
 }
 /** Kemasan jadi 50/25 kg yang bersisa — boleh dibongkar jadi bahan. */
@@ -56,7 +56,7 @@ export function kantongUntuk(ukuran) {
   const st = hitungStokBahanKemasan(); const awalan = String(Number(ukuran)) + 'kg_';
   return JENIS_BAHAN_KEMASAN.filter((j) => j.indexOf(awalan) === 0).map((j) => ({ jenis: j, label: adLabelKantong(j), sisaPcs: (st[j] || {}).sisaPcs || 0, hppPerPcs: (st[j] || {}).hppPerPcs || 0 }));
 }
-const adJenisProduksi = (p) => (p.beliJadi || p.stokAwal || p.dariBatch ? 'beliJadi' : p.dariTakar ? 'pindahBuku' : p.jadiKarungUtuh ? 'gabungKarung' : /rework dari karantina/i.test(String(p.catatan || '')) ? 'rework' : 'adukan');
+const adJenisProduksi = (p) => (p.beliJadi || p.stokAwal || p.dariBatch ? 'beliJadi' : p.dariTakar || p.bukaKemasan ? 'pindahBuku' : p.jadiKarungUtuh ? 'gabungKarung' : /rework dari karantina/i.test(String(p.catatan || '')) ? 'rework' : 'adukan');
 
 /** Hitung draf: tiap baris + masalahnya, kg masuk/jadi, nilai bahan, kantong, upah, total, modal per unit tiap hasil (rumus sistem berjalan), susut. */
 export function hitungAdukan(draf) {

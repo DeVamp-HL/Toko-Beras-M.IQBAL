@@ -7,7 +7,7 @@
 import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
 import { kunciKemasan } from '../mesin/pembantu.js';
 import { tumpukanGudang } from './jual-logika.js';
-import { cacheMentah } from '../data/toko.js';
+import { cacheMentah, stokMerekSaja } from '../data/toko.js';
 import { RP, ANGKA } from '../inti/format.js';
 
 export const ATUR_TEMPAT_BAWAAN = { batasTumpuk: 50 };
@@ -45,7 +45,8 @@ export function aturTempat() {
 /** Barang yang punya tempat: tiap nama beras (karung) & kemasan jadi yang bersisa, atau yang sudah punya tempat di peta. */
 export function barangTempat() {
   const peta = petaTempat(); const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan(); const out = [];
-  Object.keys(stokK).sort().forEach((m) => { const k = kunciTempat('K', m); const sisa = stokK[m].sisaKg || 0; if (sisa <= 0.05 && !peta[k]) return;
+  // putaran 28: stok wadah tempatnya di wadah itu
+  Object.keys(stokMerekSaja(stokK)).sort().forEach((m) => { const k = kunciTempat('K', m); const sisa = stokK[m].sisaKg || 0; if (sisa <= 0.05 && !peta[k]) return;
     out.push({ kunci: k, jenis: 'karung', nama: m, sisa, satuan: 'kg', teksSisa: tpKG(sisa), nilai: Math.max(0, sisa) * (stokK[m].hppTerakhirPerKg || 0), tempat: String(peta[k] || '') }); });
   Object.keys(stokM).sort().forEach((kk) => { const st = stokM[kk]; const k = kunciTempat('M', kunciKemasan(st.namaProduk, st.ukuranKemasan)); const sisa = st.sisaUnit || 0; if (sisa <= 0 && !peta[k]) return;
     out.push({ kunci: k, jenis: 'kemasan', nama: st.namaProduk + ' ' + String(st.ukuranKemasan).replace('.', ',') + ' kg', sisa, satuan: 'unit', teksSisa: ANGKA(sisa) + ' unit', nilai: Math.max(0, sisa) * (st.hppRataRataPerUnit || 0), tempat: String(peta[k] || '') }); });

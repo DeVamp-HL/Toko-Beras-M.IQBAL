@@ -10,7 +10,7 @@
 //  - BACA SAJA: layar ini tidak menulis apa pun.
 import { hitungLabaRentang, hitungPiutang, hitungUtangPemasok, hitungStokKarungPerMerk, hitungStokKemasan, hitungLajuPakai, kasPada } from '../mesin/beku.js';
 import { bakuCaraBayar, daftarGerakanKas, pesananBelumTuntas, namaBulanPanjang, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPesanan, ambilTitikKas } from '../data/toko.js';
+import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
 
 export const SKALA = [['langsung', 'Langsung'], ['menit', 'Menit'], ['jam', 'Jam'], ['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan'], ['tahun', 'Tahun']];
@@ -230,7 +230,7 @@ export function susunPerhatian() {
   const bonTertua = Math.max(0, ...up.map((x) => Math.max(0, ...(x.bon || []).map((b) => b.umurHari || 0))));
   if (totalUp > 0) out.push({ teks: 'Utang ke pemasok · ' + up.filter((x) => x.totalUtang > 0).length + ' pemasok' + (bonTertua ? ' · bon tertua ' + bonTertua + ' hari' : ''), nilai: RP(totalUp), awas: false });
   const laju = hitungLajuPakai(); const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan(); const tipis = [];
-  Object.keys(stokK).forEach((m) => { const l = (laju.kgMerk || {})[m] || 0; const sisa = stokK[m].sisaKg || 0; if (l > 0 && sisa / l <= AMBANG_HARI_KRITIS) tipis.push({ nama: m, hari: Math.max(0, sisa / l) }); });
+  Object.keys(stokMerekSaja(stokK)).forEach((m) => { const l = (laju.kgMerk || {})[m] || 0; const sisa = stokK[m].sisaKg || 0; if (l > 0 && sisa / l <= AMBANG_HARI_KRITIS) tipis.push({ nama: m, hari: Math.max(0, sisa / l) }); });
   Object.keys(stokM).forEach((k) => { const l = (laju.unitKemasan || {})[k] || 0; const sisa = stokM[k].sisaUnit || 0; if (l > 0 && sisa / l <= AMBANG_HARI_KRITIS) tipis.push({ nama: stokM[k].namaProduk + ' ' + stokM[k].ukuranKemasan + ' kg', hari: Math.max(0, sisa / l) }); });
   tipis.sort((a, b) => a.hari - b.hari);
   if (tipis.length) out.push({ teks: 'Menipis (≤ ' + AMBANG_HARI_KRITIS + ' hari menurut laju jual): ' + tipis.slice(0, 3).map((x) => x.nama).join(', ') + (tipis.length > 3 ? ' …' : ''), nilai: tipis.length + ' barang', awas: true });

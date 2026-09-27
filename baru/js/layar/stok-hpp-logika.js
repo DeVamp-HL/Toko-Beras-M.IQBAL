@@ -7,7 +7,7 @@
 // Tiap koreksi menulis perubahan nilai rak (Δ modal rata-rata × sisa kg) ke koleksi baru koreksiHpp. Massal = semua-atau-tidak-sama-sekali (satu writeBatch).
 import { hitungStokKarungPerMerk, hitungHppMerkDalamBatch } from '../mesin/beku.js';
 import { cariHargaKarungPerKg } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal } from '../data/toko.js';
+import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal, stokMerekSaja } from '../data/toko.js';
 import { RP } from '../inti/format.js';
 import { drafDariKedatangan, susunSimpanMasuk } from './stok-catat-logika.js';
 
@@ -52,7 +52,8 @@ const kelasMargin = (m) => (m === null ? 'tanpa' : m < 0 ? 'rugi' : m === 0 ? 'n
 /** Kartu modal tiap nama beras yang bersisa (atau punya kedatangan): modal rata-rata (buku), harga beli terbaru (aturan owner, pembanding), harga jual, margin, nilai rak. */
 export function kartuHpp() {
   const stok = hitungStokKarungPerMerk(); const atur = aturHpp();
-  const kartu = Object.keys(stok).sort().map((merk) => { const st = stok[merk]; const riw = riwayatModal(merk); const akhir = riw.filter((r) => r.jenis === 'kedatangan').slice(-1)[0] || null; const bisa = riw.filter((r) => r.jenis === 'kedatangan' && !r.fondasi).slice(-1)[0] || null;
+  // putaran 28: buku stok wadah tidak punya kedatangan — modalnya ikut takar
+  const kartu = Object.keys(stokMerekSaja(stok)).sort().map((merk) => { const st = stok[merk]; const riw = riwayatModal(merk); const akhir = riw.filter((r) => r.jenis === 'kedatangan').slice(-1)[0] || null; const bisa = riw.filter((r) => r.jenis === 'kedatangan' && !r.fondasi).slice(-1)[0] || null;
     const sisa = st.sisaKg || 0; const modal = st.hppTerakhirPerKg || 0; const jual = cariHargaKarungPerKg(merk); const margin = jual !== null && jual > 0 ? Math.round(jual - modal) : null; const hppTerbaru = akhir ? akhir.hppPerKg : 0;
     const lonjak = riw.length > 1 && riw[riw.length - 2].hppPerKg > 0 ? Math.round((riw[riw.length - 1].hppPerKg - riw[riw.length - 2].hppPerKg) / riw[riw.length - 2].hppPerKg * 100) : 0;
     return { merk, sisa, modal, hargaTerbaru: st.hargaTerakhirPerKg || 0, hppTerbaru, jual, margin, teksMargin: teksMargin(margin), kelasMargin: kelasMargin(margin), nilaiRak: Math.max(0, sisa) * modal, nilaiTerbaru: Math.max(0, sisa) * hppTerbaru,
@@ -65,7 +66,7 @@ export function kartuHpp() {
 /** Garis waktu HPP semua nama (bar relatif ke tertinggi), lonjakan > batas ditandai, koreksi diwarnai. */
 export function garisWaktu() {
   const atur = aturHpp(); const stok = hitungStokKarungPerMerk();
-  return Object.keys(stok).sort().map((merk) => { const r = riwayatModal(merk); if (!r.length) return null; const maks = Math.max(...r.map((x) => x.hppPerKg), 1);
+  return Object.keys(stokMerekSaja(stok)).sort().map((merk) => { const r = riwayatModal(merk); if (!r.length) return null; const maks = Math.max(...r.map((x) => x.hppPerKg), 1);
     return { merk, ket: r.length + ' catatan · modal rata-rata sekarang ' + RP(Math.round(stok[merk].hppTerakhirPerKg || 0)) + '/kg · terbaru ' + RP(Math.round(r[r.length - 1].hppPerKg)) + '/kg',
       baris: r.map((x, i) => { const lalu = i > 0 ? r[i - 1].hppPerKg : 0; const p = lalu > 0 ? Math.round((x.hppPerKg - lalu) / lalu * 100) : 0;
         return { tanggal: x.tanggal, lebar: Math.round(x.hppPerKg / maks * 1000) / 10, koreksi: x.dikoreksi, hpp: Math.round(x.hppPerKg), harga: Math.round(x.hargaPerKg), kg: x.totalKg, sumber: x.sumber, lonjak: i > 0 && Math.abs(p) > atur.batasLonjak ? (p > 0 ? '▲' : '▼') + Math.abs(p) + ' %' : '' }; }) }; }).filter(Boolean);

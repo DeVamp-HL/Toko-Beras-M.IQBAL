@@ -10,7 +10,7 @@
 // dan membandingkan sebelum vs sesudah dari susunan itu; sesudah kunci dibandingkan lagi dari mesin (hidup). Titik kas ditulis ulang di 31 Des dari saldo per tempat.
 import { hitungSaldoTutup, tbDaftarKoleksi, hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungPiutang, hitungKasbon, hitungUtangPemasok, hitungUtangOwner, saldoAmplop } from '../mesin/beku.js';
 import { tbCutoff, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, butuhGet } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, butuhGet, petaStokWadah } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
@@ -80,6 +80,10 @@ export function pembukaBuku(tahun, w) {
   const saldo = hitungSaldoTutup(tahun); const tglBuka = (tahun + 1) + '-01-01'; const d = []; const tb = { tutupBuku: true, tahunDari: tahun };
   const merkList = []; saldo.karung.forEach((x) => { const beratUtama = x.punya25 && !x.punya50 ? 25 : 50; merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratUtama, jumlahKarung: Math.floor(x.sisaKg / beratUtama), totalKg: x.sisaKg, hargaPerKg: x.hppPerKg, subtotalHarga: Math.round(x.sisaKg * x.hppPerKg) });
     const beratLain = beratUtama === 50 ? 25 : 50; if ((beratLain === 25 && x.punya25) || (beratLain === 50 && x.punya50)) merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratLain, jumlahKarung: 0, totalKg: 0, hargaPerKg: x.hppPerKg, subtotalHarga: 0 }); });
+  // putaran 28: buku STOK WADAH tetap dikenali sesudah tutup buku — barisnya membawa tanda stokWadah; yang sisanya nol ikut lahir lagi (baris 0 kg), karena
+  // mesin beku hanya memotong penjualan dari nama yang lahir lewat batch (tanpa wadah berstok sendiri = dokumen persis index.html)
+  const pw = petaStokWadah(); merkList.forEach((r) => { if (pw[r.merk]) r.stokWadah = pw[r.merk]; });
+  Object.keys(pw).sort().forEach((k) => { if (!merkList.some((r) => r.merk === k)) merkList.push({ merk: k, satuan: 'lahir', beratKarung: 0, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, stokWadah: pw[k] }); });
   if (merkList.length) d.push({ koleksi: 'batchMasuk', data: Object.assign({ id: w.idUnik(), tanggal: tglBuka, pemasok: 'TUTUP BUKU ' + tahun, biayaBongkar: 0, stokAwal: true, merkList }, tb) });
   // hppPerUnit TIDAK dibulatkan (sistem lama membulatkan) supaya nilai kemasan sesudah = sebelum sampai rupiahnya; mesin menerima pecahan
   saldo.kemasan.forEach((x) => d.push({ koleksi: 'produksiKemasan', data: Object.assign({ id: w.idUnik(), tanggal: tglBuka, namaProduk: x.namaProduk, ukuranKemasan: x.ukuran, jumlahUnit: x.sisaUnit, hppPerUnit: x.hppPerUnit, merkSumber: 'BELI JADI', kgDipakai: 0, beliJadi: true, stokAwal: true }, tb) }));
