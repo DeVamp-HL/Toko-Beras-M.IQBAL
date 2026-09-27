@@ -30,6 +30,7 @@ import { tkSetTertaut } from '../mesin/pembantu.js';
 import { susunRakWadah, bangunBarisWadah, biayaWadahRepack, koleksiWadah, jenisWadah, bebasWadah } from './wadah-jual-logika.js';
 // putaran 27: wadah bernama, isi per merek asal
 import { wbDariWadah, wbPecahanBaris, wbBagianMerk } from './wadah-bernama-logika.js';
+import { arPeta, arBeras, arKemasan } from './arsip-logika.js';
 
 export const JALUR = [['sering', 'Sering'], ['literan', 'Literan'], ['kemasan', 'Kemasan'], ['karung', 'Karung'], ['wadah', 'Wadah'], ['repack', 'Repack'], ['retur', 'Retur']];
 export const JALUR_NANTI = [];   // semua jalur desain sudah hidup (wadah: putaran 15)
@@ -85,7 +86,9 @@ export function susunRak(s) {
   const hargaKemasan = ambilHargaKemasan();
   const hargaLiteran = ambilHargaLiteran();
   const rak = { karung: [], kemasan: [], literan: [], repack: [], wadah: [] };
+  const arsip = arPeta();   // putaran 27 (Bagian 3): nama yang diarsipkan owner tidak tampil di rak (baris saring jenis & Sering ikut, karena turunan rak)
   Object.keys(stokKarung).sort().forEach((merk) => {
+    if (arBeras(merk, arsip)) return;
     [50, 25].forEach((berat) => {
       if (!merkPunyaKarungBerat(merk, berat)) return;
       const hg = hargaKarungUtuh(merk, berat);
@@ -113,7 +116,7 @@ export function susunRak(s) {
     }
   });
   Object.keys(stokKemasan).sort().forEach((kunci) => {
-    const st = stokKemasan[kunci];
+    const st = stokKemasan[kunci]; if (arKemasan(st.namaProduk, st.ukuranKemasan, arsip)) return;
     const hg = hargaKemasan.find((x) => x.merk === st.namaProduk && Number(x.ukuran) === Number(st.ukuranKemasan));
     if (!hg || !hg.hargaPerUnit) return;
     const maks = stokMaksJalur('kemasan', kunci);

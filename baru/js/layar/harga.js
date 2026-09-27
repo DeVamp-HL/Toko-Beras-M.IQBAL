@@ -14,7 +14,10 @@ import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen } from '../data/toko.js';
 import { kkSertakan } from '../data/katalog-kasir.js';
 import * as JB from './jenis-beras-logika.js';
-import * as VR from './varian-logika.js';   // 25c: setelan jenis beras pindah dari sistem lama
+import * as VR from './varian-logika.js';
+import * as AR from './arsip-logika.js';
+import { hitungStokKemasan } from '../mesin/beku.js';
+import { kunciKemasan } from '../mesin/pembantu.js';   // 25c: setelan jenis beras pindah dari sistem lama
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -34,7 +37,7 @@ export function pasangLayarHarga(akar, opsi) {
   const awal = () => ({ keluarga: ['katalog', 'bon', 'belanja'].indexOf(bacaLokal(KUNCI_KELUARGA)) >= 0 ? bacaLokal(KUNCI_KELUARGA) : 'katalog', kabar: '', kabarAwas: false,
     tabH: tabLokal.h || 'papan', ubah: null, ketik: '', ketikApa: 'jual', terbit: false, yakinRugi: false, kal: { arah: 'naik', merek: 'semua', satuan: 'semua', rp: 100 }, papanSisi: 'owner', wa: false, bedah: { merek: '', satuan: '', bayar: 'tunai' }, aturH: null,
     tabB: tabLokal.b || 'tusuk', bukuNama: '', bayar: null, lama: null, kartu: null, urung: null, aturB: null,
-    tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false, vrBaru: null, vrYakin: false });
+    tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false, vrBaru: null, vrYakin: false, arYakin: '', arBuka: false });
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))]], [KUNCI_DRAF_BELANJA]);
   const set = (p) => K.setel(p); const st = () => K.baca();
@@ -94,6 +97,12 @@ export function pasangLayarHarga(akar, opsi) {
     vrKetikBaru: (v, el) => { const b = Object.assign({}, st().vrBaru || {}); b[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'mutu' ? 30 : 12); set({ vrBaru: b, vrYakin: false }); },
     vrBuat: async ({ usul }) => { const b = st().vrBaru || {}; const r = VR.vrSusunBuatDariHarga(b.induk, b.mutu, b.harga !== undefined && b.harga !== '' ? b.harga : usul, waktu(), st().vrYakin);
       if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, vrYakin: !!r.perluYakin }); if (await tulis(Object.assign({}, r, { dokumen: kkSertakan(r.dokumen, waktu().kini) }))) set({ vrBaru: null, vrYakin: false }); },
+    // ---- putaran 27 (Bagian 3): arsip produk — Isi · Arsipkan · Hapus untuk barang habis; Produk arsip memulihkan
+    arIsi: ({ kunci }) => { const u = AR.arUrai(kunci); set({ ubah: null, arYakin: '' }); if (opsi.bukaStok) opsi.bukaStok(u.jenis === 'kemasan' ? 'adukan' : 'masuk', undefined, u.jenis === 'kemasan' ? null : { merk: u.nama }); },
+    arArsip: async ({ kunci }) => { const r = AR.arSusunArsip(kunci, waktu()); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); if (await tulis(r)) set({ ubah: null, arYakin: '' }); },
+    arHapus: async ({ kunci }) => { const r = AR.arSusunHapus(kunci, waktu(), st().arYakin === kunci); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, arYakin: r.perluYakin ? kunci : '' }); if (await tulis(r)) set({ ubah: null, arYakin: '' }); },
+    arPulih: async ({ kunci }) => { await tulis(AR.arSusunPulih(kunci, waktu())); },
+    arDaftarBuka: () => set({ arBuka: !st().arBuka }),
     jbBuka: ({ merk }) => { set({ jbUbah: st().jbUbah === merk ? null : merk, jbKetik: '', kabar: '', ubah: null, terbit: false }); keAtas(); },
     jbTutup: () => set({ jbUbah: null, jbKetik: '' }),
     jbDaftarBuka: () => set({ jbDaftar: !st().jbDaftar }),
@@ -181,7 +190,7 @@ export function pasangLayarHarga(akar, opsi) {
       ${s.jbUbah ? gambarJenisUbah(s) : ''}${s.ubah ? gambarUbah(s, S) : ''}${s.terbit ? gambarTerbit(s, S) : ''}${s.wa ? gambarWaHarga(S) : ''}
       <div class="hg-grid ${L}" data-k="grid">${tetapKiri ? h`<div class="hg-kolom" data-k="hg-kiri">${gambarPapan(s, S)}</div>` : ''}${tengah}${tetapKanan ? h`<div class="hg-kolom" data-k="hg-kanan">${gambarLabel(S, lbl)}</div>` : ''}</div>
       ${S.nDraf ? h`<div class="hg-bilah" data-k="bilah"><div><div style="font-weight: 600;">${S.nDraf} harga berubah — kasir belum tahu</div><div class="ket">draf tidak sampai ke kasir sebelum diterbitkan</div></div><div class="kaca-btn aktif" data-aksi="hgBukaTerbit">Periksa & terbitkan</div></div>` : ''}
-      ${gambarRiwayat()}${gambarAturH(s, S)}${gambarJenisDaftar(s)}${gambarVarianBaru(s, S)}
+      ${gambarRiwayat()}${gambarAturH(s, S)}${gambarJenisDaftar(s)}${gambarVarianBaru(s, S)}${gambarProdukArsip(s)}
       <div class="ket" style="font-size: 11px;">Katalog ini = katalog yang dibaca kasir (harga karung per kg, kemasan per kantong, literan per liter — koleksi yang sama dengan sistem lama). Perubahan jadi DRAF dulu; terbit = semuanya berganti sekaligus. Modal = modal rata-rata di buku (sama dengan laba, neraca & layar HPP); harga beli terbaru dibawa sebagai pembanding. ${S.atur.targetDariRata ? 'Target untung ' + RP(S.target) + '/kg = rata-rata untung katalog karung yang sedang berlaku (belum diatur owner).' : 'Target untung ' + RP(S.target) + '/kg diatur owner.'}${S.tanpaModal ? ' ' + S.tanpaModal + ' harga belum bisa dinilai karena modalnya belum tercatat.' : ''}</div>
     </section>`;
   }
@@ -207,7 +216,8 @@ export function pasangLayarHarga(akar, opsi) {
       <div class="utama ${U.tolak ? 'redup' : ''}" data-aksi="hgSimpanUbah">${U.label}</div>
       <div class="tombol-baris rapat">${b.adaDraf ? h`<div class="kaca-btn putus" data-aksi="hgBuangDraf" data-kunci="${b.k}" data-k="buang">Buang draf harga ini</div>` : ''}
         ${!modeP && (b.sengaja || (!b.adaDraf && HG.HG_PERLU.indexOf(b.status) >= 0)) ? h`<div class="kaca-btn putus" data-aksi="hgSengaja" data-k="sengaja">${b.sengaja ? 'Tagih lagi harga ini' : b.status === 'lubang' ? 'Memang tidak dijual — jangan ditagih' : 'Biarkan — ini sengaja'}</div>` : ''}
-        ${modeP && b.pasar ? h`<div class="kaca-btn putus" data-aksi="hgHapusPasar" data-k="hapus-pasar">Hapus catatan pasar</div>` : ''}<div class="kaca-btn" data-aksi="hgBelahIni" data-kunci="${b.k}" data-k="belah">Belah harga ini ›</div></div></div>`;
+        ${modeP && b.pasar ? h`<div class="kaca-btn putus" data-aksi="hgHapusPasar" data-k="hapus-pasar">Hapus catatan pasar</div>` : ''}<div class="kaca-btn" data-aksi="hgBelahIni" data-kunci="${b.k}" data-k="belah">Belah harga ini ›</div></div>
+      ${gambarArsipBarang(s, b)}</div>`;
   }
   function gambarTerbit(s, S) {
     const P = HG.pratinjauTerbit(S);
@@ -276,6 +286,20 @@ export function pasangLayarHarga(akar, opsi) {
       <div class="hg-ketik-baris"><input class="ketik-nama" type="text" placeholder="jenis lain — ketik namanya" value="${s.jbKetik}" data-ketik="jbKetik"><div class="kaca-btn aktif" data-aksi="jbSimpanKetik">simpan</div></div>
       <div class="tombol-baris rapat"><div class="kaca-btn putus" data-aksi="jbKosongkan">kosongkan — tidak masuk kelompok mana pun</div></div>
       <div class="ket" style="font-size: 11px;">Jenis mengelompokkan nama beras di Harga, Stok (total per jenis), dan Jual (saring rak). Salah jenis tidak mengubah harga, stok, atau uang.</div></div>`;
+  }
+  // putaran 27 (Bagian 3): barang di balik baris harga ini — kalau habis: Isi · Arsipkan · Hapus
+  function gambarArsipBarang(s, b) {
+    const u = b.st.id === 'S' || b.st.id === 'L' ? 0 : b.st.kg; const kem = u && hitungStokKemasan()[kunciKemasan(b.merk, u)]; const kunci = kem ? AR.arKunciKemasan(b.merk, u) : AR.arKunciBeras(b.merk); const K = AR.arKeadaan(kunci);
+    if (!K.nol && K.pernah) return h`<div class="ket" data-k="ar-ket" style="font-size: 11px;">${K.judul}: sisa ${K.sisaTeks} menurut buku — arsip hanya untuk barang yang sudah habis.</div>`;
+    return h`<div class="pita-info" data-k="ar-${kunci}">${K.judul} ${K.nol ? 'habis' : 'bersisa ' + K.sisaTeks}${K.pernah ? '' : ' · belum pernah bertransaksi'} — mau diapakan?
+      <div class="tombol-baris rapat"><div class="kaca-btn aktif" data-aksi="arIsi" data-kunci="${kunci}">Isi — ${K.jenis === 'kemasan' ? 'adukan' : 'barang masuk'}</div>${K.nol ? h`<div class="kaca-btn" data-aksi="arArsip" data-kunci="${kunci}">Arsipkan</div>` : ''}${K.bisaHapus ? h`<div class="kaca-btn ${s.arYakin === kunci ? 'awas' : 'putus'}" data-aksi="arHapus" data-kunci="${kunci}">${s.arYakin === kunci ? 'YAKIN hapus' : 'Hapus'}</div>` : ''}</div>
+      <div class="ket" style="font-size: 10.5px;">Arsipkan = hilang dari Jual, katalog harga, label, dan katalog HP kasir; riwayat, laporan, buku stok tetap. ${K.bisaHapus ? 'Hapus = belum pernah ada transaksinya: harga & setelannya dibuang.' : 'Pernah bertransaksi — tidak bisa dihapus.'}</div></div>`;
+  }
+  function gambarProdukArsip(s) {
+    const D = AR.arRingkas(); if (!D.length && !s.arBuka) return '';
+    if (!s.arBuka) return h`<div class="kaca-btn kecil" data-aksi="arDaftarBuka" data-k="ar-pintu" style="align-self: flex-start;">Produk arsip · ${D.length} ›</div>`;
+    return h`<div class="kartu" data-k="ar-daftar" style="gap: 6px;"><div class="kepala-lembar"><div><div class="label">Produk arsip · ${D.length}</div><div class="ket">tidak tampil di Jual, katalog, label, dan katalog HP kasir · riwayat & laporan tetap · barang masuk atas nama ini akan menanyakan "pulihkan atau varian"</div></div><div class="kaca-btn kecil" data-aksi="arDaftarBuka">tutup</div></div>
+      ${D.length ? D.map((x) => h`<div data-k="ard-${x.kunci}" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--garis, rgba(255,255,255,.08));"><div style="display: flex; flex-direction: column; gap: 2px;"><b>${x.judul}</b><span class="ket">diarsipkan ${tanggalPendek(x.sejak)} · ${AR.arTeksSisa(x)}</span></div><div class="kaca-btn kecil" data-aksi="arPulih" data-kunci="${x.kunci}">pulihkan</div></div>`) : h`<div class="ket">Belum ada yang diarsipkan.</div>`}</div>`;
   }
   // putaran 27 (Bagian 2): varian baru sebelum barangnya datang
   function gambarVarianBaru(s, S) {

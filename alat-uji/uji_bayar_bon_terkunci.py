@@ -142,7 +142,7 @@ def jalan(js):
     return json.loads(baris[-1]), ''
 
 
-MODUL_PEMASOK = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/belanja-logika.js']   # = uji_harga_baru
+MODUL_PEMASOK = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/belanja-logika.js']   # = uji_harga_baru
 
 
 def bundel_dua():

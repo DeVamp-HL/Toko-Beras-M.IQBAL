@@ -12,6 +12,7 @@ import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
 import { RASIO_DEFAULT, RASIO_KONVERSI, kunciKemasan } from '../mesin/pembantu.js';
 import { ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilSemuaBatch, ambilPenjualan, ambilHargaPasar, ambilHargaTerbit, cacheMentah } from '../data/toko.js';
 import { RP, hariIniIso } from '../inti/format.js';
+import { arPeta, arSembunyiHarga } from './arsip-logika.js';
 
 export const ATUR_HARGA_BAWAAN = { targetPerKg: 0, bulatLiter: 500, bulatKemasan: 1000, bulatKarung: 100, langkahRp: 50, ambangDampak: 50000, bongkarKg: 0, mdrPersen: 30, mdrBatas: 500000 };
 export const TAB_HARGA = [['papan', 'Papan'], ['kalimat', 'Kalimat'], ['dampak', 'Dampak'], ['pasar', 'Pasar'], ['belah', 'Belah'], ['label', 'Label']];
@@ -106,6 +107,8 @@ export function hgSemua(kini) {
   Object.keys(stokK).forEach((m) => { tambah(m, 'L'); tambah(m, 'S'); }); kK.forEach((h) => tambah(h.merk, 'S')); kL.forEach((h) => tambah(h.merk, 'L'));
   kM.forEach((h) => { const u = Number(h.ukuran); if (isFinite(u) && u > 0) tambah(h.merk, 'K' + u); });
   Object.keys(stokM).forEach((k) => { const x = stokM[k]; const u = Number(x.ukuranKemasan); if (isFinite(u) && u > 0 && ((x.sisaUnit || 0) > 0 || (x.unitDibuat || 0) > 0)) tambah(x.namaProduk, 'K' + u); });
+  // putaran 27 (Bagian 3): nama yang DIARSIPKAN tidak tampil di katalog (juga tidak dihitung "belum ada harga"); dokumen katalognya tidak disentuh
+  const arsip = arPeta(); if (Object.keys(arsip).length) Object.keys(daftar).forEach((m) => { daftar[m] = daftar[m].filter((sid) => !arSembunyiHarga(m, sid, arsip)); if (!daftar[m].length) delete daftar[m]; });
   const baris = [];
   Object.keys(daftar).sort((a, b) => a.localeCompare(b)).forEach((m) => daftar[m].sort(hgUrutSatuan).forEach((sid) => {
     const st = satuanHarga(sid, m); const k = kunciHarga(m, sid);
@@ -237,7 +240,9 @@ export function susunPasar(S) {
 
 // ---- IDE J · LABEL RAK: harga TERBIT meninggalkan tugas ganti label; yang diingat = angka yang masih TERTULIS di label
 export function susunLabelTugas(S) {
-  const tugas = daftarLabel().map((t) => { const b = cariBaris(S, t.k); return { k: t.k, judul: b ? b.judul : t.k, lama: Number(t.lama) || 0, tanggal: t.tanggal || '', tulis: b ? b.lamaN : 0 }; });
+  // putaran 27: label nama yang diarsipkan tidak ditagih lagi (barangnya sudah tidak dijual)
+  const arsip = arPeta(); const tampil = (k) => { const i = String(k).lastIndexOf('|'); return i < 0 || !arSembunyiHarga(String(k).slice(0, i), String(k).slice(i + 1), arsip); };
+  const tugas = daftarLabel().filter((t) => tampil(t.k)).map((t) => { const b = cariBaris(S, t.k); return { k: t.k, judul: b ? b.judul : t.k, lama: Number(t.lama) || 0, tanggal: t.tanggal || '', tulis: b ? b.lamaN : 0 }; });
   return { tugas, ada: tugas.length > 0, judul: tugas.length + ' label di toko masih harga lama', arti: 'Harga yang terbit langsung dipakai kasir, tapi label di rak dan papan harga masih tulisan lama sampai ada yang menggantinya. Draf tidak membuat tugas — cuma yang sudah terbit.' };
 }
 export function susunLabelSelesai(k, w) {

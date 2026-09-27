@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/belanja-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/belanja-logika.js']
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -310,7 +310,7 @@ if __name__ == '__main__':
             'terbit dengan harga rugi tanpa ketukan kedua': js.replace("if (rugi.length && !yakin) return { tolak:", "if (false) return { tolak:"),
             'terbit lupa mengosongkan draf': js.replace("dokumen.push(hgDokDraf({}, w)); dokumen.push({ koleksi: 'aturanToko', data: { id: 'hargaLabel'", "dokumen.push({ koleksi: 'aturanToko', data: { id: 'hargaLabel'"),
             'terbit menulis dokumen katalog dengan id BARU (katalog jadi dua)': js.replace("const id = b.dok ? b.dok.id : b.st.id === 'K' + b.st.kg", "const id = b.st.id === 'K' + b.st.kg"),
-            'label rak: tugas dibuat untuk draf (belum terbit)': js.replace("  const tugas = daftarLabel().map((t) => {", "  const tugas = daftarLabel().concat(S.baris.filter((b) => b.adaDraf).map((b) => ({ k: b.k, lama: b.lamaN, tanggal: '' }))).map((t) => {"),
+            'label rak: tugas dibuat untuk draf (belum terbit)': js.replace("  const tugas = daftarLabel().filter((t) => tampil(t.k)).map((t) => {", "  const tugas = daftarLabel().filter((t) => tampil(t.k)).concat(S.baris.filter((b) => b.adaDraf).map((b) => ({ k: b.k, lama: b.lamaN, tanggal: '' }))).map((t) => {"),   # putaran 27: daftar label disaring arsip dulu
             'label rak: angka yang diingat = harga lama terakhir, bukan yang masih tertulis': js.replace("const tertulis = ada ? Number(ada.lama) || 0 : b.lamaN;", "const tertulis = b.lamaN;"),
             'atur harga: langkah nol diterima': js.replace("|| baca('langkahRp', (n) => n > 0 && n <= 10000, 'Langkah naik-turun per kg harus 1–10.000 (tidak boleh nol)')", "|| baca('langkahRp', (n) => n >= 0 && n <= 10000, 'Langkah naik-turun per kg harus 1–10.000 (tidak boleh nol)')"),
             'ongkos bongkar per kg angka mati (bukan terukur)': js.replace("bongkarKg: bk === null ? bongkarTerukur() : bk, bongkarTerukur: bk === null,", "bongkarKg: bk === null ? 40 : bk, bongkarTerukur: bk === null,"),

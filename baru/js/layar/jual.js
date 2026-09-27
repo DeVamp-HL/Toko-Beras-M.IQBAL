@@ -18,7 +18,8 @@ import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, a
 
 import { gambarChipBarang } from './gambar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
-import { jbJenisRak, jbSaringRak } from './jenis-beras-logika.js';   // 25c: saring rak per jenis beras (owner 27 Sep)
+import { jbJenisRak, jbSaringRak } from './jenis-beras-logika.js';
+import * as AR from './arsip-logika.js';   // 25c: saring rak per jenis beras (owner 27 Sep)
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -41,6 +42,10 @@ export function pasangLayarJual(akar, opsi) {
     jalur: ({ jalur }) => set({ jalur, lembar: null, pilih: null }),
     jenisRak: ({ j }) => { jenisRak = jenisRak === j ? '' : (j || ''); gambar(); },
     mode: () => opsi.gantiMode(),
+    // putaran 27 (Bagian 3): barang HABIS — Isi (barang masuk / adukan) · Arsipkan · Hapus (hanya yang tidak pernah bertransaksi)
+    arIsi: ({ kunci }) => { const u = AR.arUrai(kunci); set({ lembar: null, arYakin: '' }); if (opsi.bukaStok) opsi.bukaStok(u.jenis === 'kemasan' ? 'adukan' : 'masuk', undefined, u.jenis === 'kemasan' ? null : { merk: u.nama }); },
+    arArsip: async ({ kunci }) => { const r = AR.arSusunArsip(kunci, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); if (await tulisSetelan(r)) set({ lembar: null, pilih: null, arYakin: '' }); },
+    arHapus: async ({ kunci }) => { const y = S().arYakin === kunci; const r = AR.arSusunHapus(kunci, L.waktuSekarang(S().sekarang || undefined), y); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, arYakin: r.perluYakin ? kunci : '' }); if (await tulisSetelan(r)) set({ lembar: null, pilih: null, arYakin: '' }); },
     chip: ({ jalur, kunci, berat }) => { const rak = rakKini(); const c = (rak[jalur] || []).find((x) => x.kunci === kunci && (!berat || String(x.berat) === berat)); if (c) set(Object.assign({ isiW: null }, L.ketukChip(S(), c))); },
     sering: ({ id }) => { const c = rakKini().sering.find((x) => x.id === id); if (c) set(L.ketukChip(S(), c)); },
     ulangiTerakhir: ({ g }) => { const r = L.ulangiPembelian(SB(), rakKini(), g); set(r); if (r.keranjang) setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 60); },
@@ -242,6 +247,15 @@ export function pasangLayarJual(akar, opsi) {
       if (h && h.gagal) return set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true });
       set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar }));
     } catch (e) { set({ kabar: 'GAGAL menulis: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+  }
+  // putaran 27: setelan (arsip / hapus nama) — sama dengan tulisUmum, tapi memberi tahu berhasil-tidaknya
+  async function tulisSetelan(r) {
+    if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
+    try {
+      const h = await tulisDokumen(r.dokumen || [], r.hapus);
+      if (h && h.gagal) { set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true }); return false; }
+      set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar })); return true;
+    } catch (e) { set({ kabar: 'GAGAL menulis: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
   // barang masuk keranjang → tetes emas terbang dari tombol yang diketuk ke bilah keranjang, bilahnya memegas
   function masukDenganGerak(patch, el) {
@@ -501,6 +515,10 @@ export function pasangLayarJual(akar, opsi) {
         ${kepala(c.nama + ' ' + c.ukuran, RP(c.harga) + '/' + c.satuan + ' · bebas dijual ' + (maks === null ? (c.tanpaBatas ? 'tidak dibatasi buku (hasil samping)' : '—') : DESIMAL(maks) + ' ' + c.satuan))}
         ${c.jalur === 'literan' && c.wadah ? panelIsiUlang(c.kunci, s, s, { lipat: true }) : ''}
         ${c.jalur === 'wadah' ? h`<div class="ket ${c.modalAneh ? 'awas-teks' : ''}">${c.teksModal}</div>` : ''}
+        ${c.sisa <= 0 && !c.tanpaBatas && ['karung', 'kemasan', 'repack', 'literan'].indexOf(c.jalur) >= 0 && !c.wadah ? (() => { const kunci = c.jalur === 'kemasan' ? 'M:' + c.kunci : 'K:' + c.kunci; const K = AR.arKeadaan(kunci);
+          return h`<div class="pita-info" data-k="ar-${kunci}">${K.judul} habis${K.nol ? '' : ' (buku: sisa ' + K.sisaTeks + ' — cocokkan dulu sebelum diarsipkan)'} — mau diapakan?
+            <div class="tombol-baris rapat"><div class="kaca-btn aktif" data-aksi="arIsi" data-kunci="${kunci}">Isi — ${K.jenis === 'kemasan' ? 'adukan' : 'barang masuk'}</div>${K.nol ? h`<div class="kaca-btn" data-aksi="arArsip" data-kunci="${kunci}">Arsipkan</div>` : ''}${K.bisaHapus ? h`<div class="kaca-btn ${s.arYakin === kunci ? 'awas' : 'putus'}" data-aksi="arHapus" data-kunci="${kunci}">${s.arYakin === kunci ? 'YAKIN hapus' : 'Hapus'}</div>` : ''}</div>
+            <div class="ket" style="font-size: 10.5px;">Arsipkan = hilang dari Jual, katalog harga, label, dan katalog HP kasir; riwayat & laporan tetap. ${K.bisaHapus ? 'Hapus = belum pernah ada transaksinya, jadi cuma harga & setelannya yang dibuang.' : 'Pernah bertransaksi — tidak bisa dihapus, arsipkan saja.'}</div></div>`; })() : ''}
         ${c.jalur === 'repack' ? h`<div class="ket">Jadi produk apa (nama jual di nota) — kosong = nama mereknya</div><input class="ketik-nama" id="namaRepack" type="text" value="${s.namaRepack}" data-ketik="namaRepack" placeholder="${c.nama}">` : ''}
         <div class="tombol-baris">${preset.map((n) => h`<div class="kaca-btn" data-aksi="preset" data-n="${n}">${n} ${c.satuan}</div>`)}</div>
         <div class="label">Jumlah</div><div class="angka">${s.ketik || '0'} <span class="ket">${c.satuan}</span>${s.ketik ? h` <span class="ket">= ${RP(c.harga * L.angkaKetik(s.ketik))}</span>` : ''}</div>

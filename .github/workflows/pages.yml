@@ -112,6 +112,8 @@ jobs:
         run: python3 alat-uji/uji_cocokkan_terpisah.py && python3 alat-uji/uji_cocokkan_terpisah.py --kontrol
       - name: "Varian merek per belanja (27 · Bagian 2): harga beli beda > batas owner wajib dijawab sama/beda mutu, varian = nama sendiri, kolam lama tidak disentuh, jenis ikut induk, harga varian terbit sendiri (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_varian_merek.py && python3 alat-uji/uji_varian_merek.py --kontrol
+      - name: "Arsip produk (27 · Bagian 3): hanya yang habis, hilang dari Jual/katalog/label/katalog HP kasir (= index.html minus arsip), laporan & buku tetap, hapus hanya tanpa transaksi, barang masuk bertanya pulihkan/varian (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_arsip_produk.py && python3 alat-uji/uji_arsip_produk.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"
