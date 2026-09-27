@@ -156,6 +156,16 @@ Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `
   penjual saat itu juga, dari harga beli (mesin laba yang dibekukan membacanya). Jadi ringkasan stok tanpa harga saja belum cukup; putaran
   tablet harus memutuskan siapa yang mengisi HPP nota staf (mis. perangkat owner melengkapinya sesudahnya) sebelum baca koleksi-koleksi
   di atas dicabut untuk staf.
+- **Katalog kasir tanpa modal & tanpa daftar bon — WAJIB diputus sebelum akun staf pertama.** Sampai sekarang **modal** (`hppPerUnit`, `hppPerKg`,
+  harga kantong `bahanLiteran.hargaPerPcs`) dan **daftar bon pelanggan** (nama + sisa) masih terkirim ke akun kasir@ lewat `ringkasanKasir/aktif`
+  (keputusan owner 27 Sep: **tetap dulu**, pilihan A1 di `docs/peta-pindahan-terakhir.md` §6). Modal itu DIPAKAI kedua berkas kasir untuk mengisi modal
+  nota (§1 peta itu), jadi memutusnya = memilih salah satu jalan di §6 A (dua dokumen / cabut modal) + siapa yang mengisi modal nota staf (butir di atas).
+- **Denyut akun kasir dipersempit — WAJIB sebelum akun staf pertama.** Aturan server v4 membolehkan akun kasir@ menulis kolom denyut
+  (`perangkatStatus`) APA SAJA (`allow create, update: if owner() || kasir() || …`, tanpa daftar kolom). Staf sudah dibatasi `affectedKeys().hasOnly`
+  (§5 baris 2); kasir@ belum. Kolom yang kini dikirim kasir: `id, nama, akun, aplikasi, pada, antrean, gagal, versi` + `katalog` (kasir darurat, 25c) —
+  daftar itulah batasnya.
+- **PIN operator dicabut (25c, 27 Sep):** `pengaturan/aksesKasir` (dibaca kasir@) ditulis `/baru/` tanpa `pin` — nama + aktif/libur saja. PIN yang sudah
+  tersimpan hilang dari server sesudah owner menekan "Cabut PIN operator" di Menu › Peran & persetujuan › Kasir & PIN.
 - **Cache Firestore dibersihkan saat Keluar** di perangkat bersama. Sampai itu ada, owner tidak masuk `/baru/` di tablet bersama.
 - **Jaga CI kiriman ≤ 18** tetap hijau.
 - **Email akun selalu huruf kecil** saat dibuat di Console.

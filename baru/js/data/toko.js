@@ -89,8 +89,27 @@ export function ambilTitikKas() {
   if (dok && dok.tanggal && (!lokal || String(dok.diubahPada || '') > String(lokal.diubahPada || ''))) return dok;
   return lokal;
 }
+// Putaran 25c: jenis beras diatur di /baru/ — dokumen pengaturan/jenisBeras (bentuk sama dengan index.html) MENANG; salinan localStorage (ditulis
+// pendengar index.html / cadangan lama) hanya dipakai kalau dokumennya belum ada di cache. Dulu /baru/ HANYA membaca salinan itu, jadi sesudah sistem
+// lama tidak dibuka lagi cadangan dari /baru/ membawa peta basi (docs/peta-pindahan-terakhir.md §3).
 export function ambilPetaJenisBeras() {
+  const dok = (_cache.pengaturan || []).find((d) => String(d.id) === 'jenisBeras');
+  if (dok && dok.peta && typeof dok.peta === 'object' && !Array.isArray(dok.peta)) return Object.assign({}, dok.peta);
   try { return JSON.parse(localStorage.getItem('miqbal_jenis_beras_v1') || '{}'); } catch (e) { return {}; }
+}
+/**
+ * Putaran 25c: jalankan fn di atas cache SEANDAINYA daftar dokumen [{ koleksi, data }] sudah tertulis — tanpa memberi tahu pendengar, dan cache
+ * dikembalikan persis sesudahnya (juga kalau fn melempar). Dipakai katalog kasir: katalog SESUDAH terbit harga ikut dikirim dalam kiriman yang sama.
+ */
+export function denganCacheSementara(daftar, fn) {
+  const simpan = {};
+  (daftar || []).forEach(({ koleksi, data }) => {
+    const k = KOLEKSI.find((x) => x.nama === koleksi); if (!k || !data) return;
+    if (!(k.cache in simpan)) simpan[k.cache] = _cache[k.cache];
+    const id = String(data.id);
+    _cache[k.cache] = urutkanTerbaru(_cache[k.cache].filter((d) => String(d.id) !== id).concat([Object.assign({}, data)]), k.urut);
+  });
+  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); }
 }
 
 // ---- keranjang aktif & yang diparkir (dibaca stokMaksJalur lewat wzDiKeranjang) ----

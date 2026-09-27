@@ -100,6 +100,12 @@ jobs:
         run: python3 alat-uji/uji_bayar_bon_terkunci.py && python3 alat-uji/uji_bayar_bon_terkunci.py --kontrol
       - name: "Jam yang tampil (27 Sep): baris rincian karcis = jam karcis asli, jam merinci terpisah; cap waktu digambar WIB bukan UTC — jsc di TZ Asia/Jakarta & UTC + penjaga statis + laporan cadangan + kontrol"
         run: python3 alat-uji/uji_jam_tampil.py && python3 alat-uji/uji_jam_tampil.py --kontrol
+
+      # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
+      - name: "Setelan jenis beras di /baru/ (25c): aturan verbatim index.html, dokumen sama, dokumen menang atas salinan HP, tampil di Harga + Stok + Jual, penulis lama ditutup (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_setelan_jenis_beras.py && python3 alat-uji/uji_setelan_jenis_beras.py --kontrol
+      - name: "Operator kasir & PIN di /baru/ (25c): PIN operator DICABUT dari dokumen yang dibaca kasir@, daftar & aktif/libur pindah, PIN owner bentuk sama (SHA-256 = hashlib), penulis lama ditutup (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_operator_pin.py && python3 alat-uji/uji_operator_pin.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"
@@ -122,6 +128,8 @@ jobs:
         run: python3 -u alat-uji/uji_antrean_kasir.py && python3 -u alat-uji/uji_antrean_kasir.py --kontrol
       - name: "Sistem lama hanya-baca (25b B): satu penjaga untuk semua jalan tulis index.html, antrean lama sekali, yang terbuka persis keputusan owner — statis + Chrome headless + Firebase palsu + kontrol"
         run: python3 -u alat-uji/uji_sistem_lama_bacasaja.py && python3 -u alat-uji/uji_sistem_lama_bacasaja.py --kontrol
+      - name: "Katalog kasir dari /baru/ (25c): isi byte-sama index.html (+ cadangan lokal), ikut kiriman terbit harga, gerbang terbit, Beranda, penulis lama ditutup; HP penjaga mengambil katalog baru tanpa dibuka ulang — statis + jsc + Chrome headless + kontrol"
+        run: python3 -u alat-uji/uji_katalog_kasir.py && python3 -u alat-uji/uji_katalog_kasir.py --kontrol
 
   terbitkan:
     needs: [uji, uji-peramban]

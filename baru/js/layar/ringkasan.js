@@ -16,6 +16,7 @@ import * as R from './ringkasan-logika.js';
 import { sumberData, dengarkan } from '../data/toko.js';
 import { pjPerhatian } from './pajak-logika.js';
 import { kpPerhatian, kpPerhatianPerangkat } from './kunci-periode-logika.js';
+import { kkBeranda } from '../data/katalog-kasir.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -32,6 +33,8 @@ export function pasangLayarRingkasan(akar, opsi) {
   const perhatianKunci = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return []; try { return kpPerhatian(k); } catch (e) { console.error('perhatian kunci', e); return []; } };
   // putaran 25b: HP kasir menurut denyutnya — antrean, karcis DITOLAK server, versi sebelum 25b (owner saja)
   const perhatianKasir = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return []; try { return kpPerhatianPerangkat(k); } catch (e) { console.error('perhatian kasir', e); return []; } };
+  // putaran 25c: katalog HP kasir — kapan diperbarui, perubahan yang belum sampai, HP kasir yang masih memegang katalog lama (owner saja)
+  const katalogKasir = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return null; try { return kkBeranda(k); } catch (e) { console.error('katalog kasir', e); return null; } };
   const perhatianPajak = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return []; try { return pjPerhatian(k); } catch (e) { console.error('perhatian pajak', e); return []; } };
   let skala = (() => { try { return localStorage.getItem(KUNCI_SKALA) || 'jam'; } catch (e) { return 'jam'; } })();
   if (!R.SKALA.some((s) => s[0] === skala)) skala = 'jam';
@@ -77,7 +80,8 @@ export function pasangLayarRingkasan(akar, opsi) {
       <div class="ket" style="text-align: right; cursor: pointer; text-decoration: underline;" id="rkKeJual">catat nota →</div>
     </div>
     <div class="dua" id="rkKas"></div>
-    <div class="kartu" style="gap: 6px;" id="rkPerhatian"></div>`;
+    <div class="kartu" style="gap: 6px;" id="rkPerhatian"></div>
+    <div class="ket" style="font-size: 11.5px; padding: 0 4px;" id="rkKatalog"></div>`;
   $('rkSkala').innerHTML = R.SKALA.map(([id, nm]) => `<div class="seg" data-k="${id}">${esc(nm)}</div>`).join('');
 
   $('rkSkala').addEventListener('click', (ev) => { const el = ev.target.closest('[data-k]'); if (el) gantiSkala(el.dataset.k); });
@@ -158,7 +162,7 @@ export function pasangLayarRingkasan(akar, opsi) {
     if (!tampil || terkunci()) return;
     if (!$('rkHero')) bangun();   // tirai baru terbuka: kerangka dibangun ulang
     if (!ix) ix = R.bangunIndeks();
-    const k = kini(); const r = R.susunRingkasan(skala, ix, k); const kas = R.susunKas(k); const perhatian = R.susunPerhatian().concat(perhatianKasir(k), perhatianPajak(k), perhatianKunci(k)); const sumber = sumberData();
+    const k = kini(); const r = R.susunRingkasan(skala, ix, k); const kas = R.susunKas(k); const KK = katalogKasir(k); const perhatian = R.susunPerhatian().concat(perhatianKasir(k), KK ? KK.perhatian : [], perhatianPajak(k), perhatianKunci(k)); const sumber = sumberData();
     menitLama = k.getHours() * 60 + k.getMinutes(); sektorKini = r.sektor;
     const pertama = sebab === 'tampil'; const gantiSk = sebab === 'skala';
     const kunciBaru = r.umpan.length ? r.umpan[0].k : ''; const mendarat = !pertama && kunciNotaLama !== null && !!kunciBaru && kunciBaru !== kunciNotaLama; kunciNotaLama = kunciBaru;
@@ -189,6 +193,7 @@ export function pasangLayarRingkasan(akar, opsi) {
     $('rkPerhatian').innerHTML = '<div style="display: flex; justify-content: space-between; align-items: center;"><div class="label">Perlu perhatian</div><span class="pil" style="' + (perhatian.some((x) => x.awas) ? 'color: var(--awas);' : '') + '">' + (perhatian.length ? perhatian.length + ' hal' : 'aman') + '</span></div>'
       + (perhatian.map((x, i) => '<div class="baris ' + (i === perhatian.length - 1 ? 'akhir' : '') + '"><span>' + esc(x.teks) + '</span><span class="angka ' + (x.awas ? 'awas' : '') + '" style="font-size: 14px; white-space: nowrap;">' + esc(x.nilai) + '</span></div>').join('')
         || '<div class="menolak">Tidak ada bon, utang pemasok, stok menipis, atau pesanan yang menunggu.</div>');
+    if ($('rkKatalog')) { $('rkKatalog').textContent = KK ? KK.status : ''; $('rkKatalog').style.color = KK && KK.awas ? 'var(--awas)' : ''; }
     detak(true);
   }
 

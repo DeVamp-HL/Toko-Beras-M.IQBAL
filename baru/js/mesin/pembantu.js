@@ -1,8 +1,8 @@
 // DIBUAT OLEH alat-uji/pindah_mesin.py — JANGAN DISUNTING TANGAN.
 // Tubuh tiap fungsi disalin byte demi byte dari index.html; gerbang: `python3 alat-uji/pindah_mesin.py --periksa`.
 // Pembantu: konstanta & fungsi yang dipanggil mesin beku (bukan mesin, tapi ikut verbatim).
-import { ambilAmplopLaba, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilHargaKarung, ambilHargaKemasan, ambilKarantina, ambilKasbonMutasi, ambilModalOwner, ambilPelangganCatatan, ambilPengeluaranHarian, ambilPenjualan, ambilPenjualanSemua, ambilPenyesuaianKemasan, ambilPenyesuaianStok, ambilPesanan, ambilPiutangMutasi, ambilProduksi, ambilProduksiBerlaku, ambilRetur, ambilSemuaBatch, ambilSetoranKas, ambilTembusanStok, ambilTitikKas, ambilTutupHari, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, wzDiKeranjangAktif, wzDiKeranjangParkir } from '../data/toko.js';
-import { bayaranBiayaBulanan, hitungPiutang, hitungUtangPemasok } from './beku.js';
+import { ambilAmplopLaba, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilKarantina, ambilKasbonMutasi, ambilModalOwner, ambilPelangganCatatan, ambilPengeluaranHarian, ambilPenjualan, ambilPenjualanSemua, ambilPenyesuaianKemasan, ambilPenyesuaianStok, ambilPesanan, ambilPetaJenisBeras, ambilPiutangMutasi, ambilProduksi, ambilProduksiBerlaku, ambilRetur, ambilSemuaBatch, ambilSetoranKas, ambilTembusanStok, ambilTitikKas, ambilTutupHari, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, wzDiKeranjangAktif, wzDiKeranjangParkir } from '../data/toko.js';
+import { bayaranBiayaBulanan, hitungPiutang, hitungStokBahanLiteran, hitungStokKarungPerMerk, hitungStokKemasan, hitungUtangPemasok } from './beku.js';
 
   const AMBANG_HARI_KRITIS = 4;
   const HARGA_AWAL_BAHAN_LITERAN = { 'paperbag5l': 305, 'paperbag10l': 395, 'karungbekas': 1500 };
@@ -40,6 +40,7 @@ import { bayaranBiayaBulanan, hitungPiutang, hitungUtangPemasok } from './beku.j
   const LABEL_BAHAN_LITERAN = { 'paperbag5l': 'Paper bag 5 liter', 'paperbag10l': 'Paper bag 10 liter', 'karungbekas': 'Karung bekas' };
   const MULAI_SUSUT_LABA = '2026-09-01';
   const NEGO_LANTAI = 500;
+  const PILIHAN_JENIS_BERAS = ['IR64', 'Pandan Wangi', 'IR42', 'Rojolele', 'Ketan Putih', 'Ketan Hitam', 'Beras Merah'];
   const POS_BIAYA_BULANAN = [
     { kunci: 'listrik', label: 'Listrik', idTgl: 'tglBiayaListrik' },
     { kunci: 'akses', label: 'Akses / gapura', idTgl: 'tglBiayaAkses' },
@@ -458,5 +459,81 @@ import { bayaranBiayaBulanan, hitungPiutang, hitungUtangPemasok } from './beku.j
       + (d.sudahDiretur > 0 ? ', ' + d.sudahDiretur.toLocaleString('id-ID') + ' sudah diretur sebelumnya' : '')
       + ' — sisa ' + d.sisa.toLocaleString('id-ID') + ' ' + d.satuan + '. Retur tidak disimpan.';
   }
+  function susunIsiKatalogKasir() {
+    try {
+      const stokKemasan = hitungStokKemasan();
+      const stokKarung = hitungStokKarungPerMerk();
+      const stokBahanLiteran = hitungStokBahanLiteran();
+      const hargaKemasan = ambilHargaKemasan();
+      const hargaLiteran = ambilHargaLiteran();
+      const batch = ambilSemuaBatch();
 
-export { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_BAHAN_KEMASAN, JENIS_LITERAN_KHUSUS, KAPASITAS_KARUNG_BEKAS_LITER, KOLEKSI_AMPLOP, KOLEKSI_BAHAN_KEMASAN, KOLEKSI_BAHAN_LITERAN, KOLEKSI_BATCH, KOLEKSI_BULANAN, KOLEKSI_HARIAN, KOLEKSI_KARANTINA, KOLEKSI_KASBON, KOLEKSI_MODAL, KOLEKSI_PENJUALAN, KOLEKSI_PENYESUAIAN, KOLEKSI_PENY_KEMASAN, KOLEKSI_PESANAN, KOLEKSI_PIUTANG, KOLEKSI_PRODUKSI, KOLEKSI_RETUR, KOLEKSI_SETORAN, KOLEKSI_TEMBUSAN, KOLEKSI_TUTUP, KOLEKSI_UTANG_OWNER, KOLEKSI_UTANG_PEMASOK, LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, NEGO_LANTAI, POS_BIAYA_BULANAN, RASIO_DEFAULT, RASIO_KONVERSI, TANGGAL_STOK_AWAL, batchDiutang, caraBayarKunci, cocok, daftarModalOwner, kasbonPotongGaji, kunciKemasan, hppTaksiranRetur, hppTercatat, jumlahTrx, uangKembaliRetur, labelBahan, formatRupiah, potonganGajiPerPegawai, tanggalLokalIso, geserHari, akhirBulanIso, bulanDari, isoKeTanggal, kunciPelanggan, namaSingkatTrx, formatTanggal, namaBulanPanjang, penjualanMasihBerlaku, tkPenjualanHidup, tkTargetPengganti, tkApakahYatim, tkSetTertaut, daftarGerakanKas, totalUtangPemasokSemua, bakuCaraBayar, bulatKeAtas500, pesananBelumTuntas, tbCutoff, tbPunyaBerat, produksiMasihBerlaku, wzJumlahDiDaftar, merkPunyaKarungBerat, cariHargaKarungPerKg, hargaKarungUtuh, tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan, rtKunciNota, rtRantaiNota, twBanyak, twSatuanDibayar, rtDasarNota, rtKalimatLebih };
+      const kemasan = Object.keys(stokKemasan).map(kunci => {
+        const s = stokKemasan[kunci];
+        const [namaProduk, ukuranStr] = kunci.split('|');
+        const ukuran = parseFloat(ukuranStr);
+        const h = hargaKemasan.find(x => x.merk === namaProduk && x.ukuran === ukuran);
+        return { kunci, namaProduk, ukuran, sisaUnit: s.sisaUnit || 0,
+          hppPerUnit: s.hppRataRataPerUnit || 0, hargaPerUnit: h ? h.hargaPerUnit : 0 };
+      });
+
+      const merkKarung = Object.keys(stokKarung).map(merk => {
+        const s = stokKarung[merk];
+        const hL = hargaLiteran.find(x => x.merk === merk);
+        return { merk, sisaKg: s.sisaKg || 0, hppPerKg: s.hppTerakhirPerKg || 0,
+          beratKarung: 50, karung50: merkPunyaKarungBerat(merk, 50),
+          // Sack 25 (13 Agu 2026) — kasir & darurat butuh tahu merk mana yang punya
+          // sack 25 dan harganya, dengan aturan harga yang sama dengan 50.
+          karung25: merkPunyaKarungBerat(merk, 25),
+          hargaKarung25: (hargaKarungUtuh(merk, 25) || {}).perUnit || 0,
+          // Harga siap pakai per karung 50kg — Katalog Kemasan menang atas harga/kg (aturan 4 Agu 2026).
+          hargaKarung50: (hargaKarungUtuh(merk, 50) || {}).perUnit || 0,
+          hargaPerKg: cariHargaKarungPerKg(merk) || 0,
+          hargaPerLiter: hL ? hL.hargaPerLiter : 0,
+          rasio: RASIO_KONVERSI[merk] || RASIO_DEFAULT };
+      });
+
+      const bahanLiteran = {};
+      Object.keys(stokBahanLiteran).forEach(j => {
+        bahanLiteran[j] = { sisaPcs: stokBahanLiteran[j].sisaPcs || 0, hargaPerPcs: stokBahanLiteran[j].hargaPerPcs || 0 };
+      });
+
+      // Piutang ikut diterbitkan supaya kasir bisa menampilkan daftar pelanggan berutang
+      // dan menerima pembayaran tanpa perlu membaca seluruh riwayat penjualan (kasir
+      // sengaja cuma membaca SATU dokumen ini). Yang lunas tidak dikirim — kasir hanya
+      // perlu tahu siapa yang masih punya sisa.
+      const piutang = hitungPiutang().filter(p => p.sisa > 0)
+        .map(p => ({ nama: p.nama, sisa: p.sisa }));
+
+      return { kemasan, merkKarung, bahanLiteran, piutang };
+    } catch (e) { console.error('Gagal menyusun katalog kasir', e); return null; }
+  }
+  function tebakJenisBeras(merk) {
+    const m = String(merk || '');
+    if (/^IR64/i.test(m) || m === 'Angsa' || m === 'Perahu Layar') return 'IR64';
+    if (/^IR42/i.test(m)) return 'IR42';
+    if (/^Ketan Hitam/i.test(m)) return 'Ketan Hitam';
+    if (/^Ketan/i.test(m)) return 'Ketan Putih';
+    if (/Pandan Wangi/i.test(m)) return 'Pandan Wangi';
+    if (/Beras Merah/i.test(m)) return 'Beras Merah';
+    if (/Rojolele|Rojo Lele/i.test(m)) return 'Rojolele';
+    return '';
+  }
+  function jenisUntukMerk(merk) {
+    const peta = ambilPetaJenisBeras();
+    return peta[merk] !== undefined ? peta[merk] : tebakJenisBeras(merk);
+  }
+  function semuaMerkDikenal() {
+    const kumpul = {};
+    Object.keys(hitungStokKarungPerMerk()).forEach(m => { kumpul[m] = true; });
+    Object.keys(hitungStokKemasan()).forEach(k => { kumpul[k.split('|')[0]] = true; });
+    ambilHargaKarung().forEach(h => { kumpul[h.merk] = true; });
+    return Object.keys(kumpul).sort();
+  }
+  async function acakPin(pin, garam) {
+    const data = new TextEncoder().encode(String(garam) + '|' + String(pin));
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+export { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_BAHAN_KEMASAN, JENIS_LITERAN_KHUSUS, KAPASITAS_KARUNG_BEKAS_LITER, KOLEKSI_AMPLOP, KOLEKSI_BAHAN_KEMASAN, KOLEKSI_BAHAN_LITERAN, KOLEKSI_BATCH, KOLEKSI_BULANAN, KOLEKSI_HARIAN, KOLEKSI_KARANTINA, KOLEKSI_KASBON, KOLEKSI_MODAL, KOLEKSI_PENJUALAN, KOLEKSI_PENYESUAIAN, KOLEKSI_PENY_KEMASAN, KOLEKSI_PESANAN, KOLEKSI_PIUTANG, KOLEKSI_PRODUKSI, KOLEKSI_RETUR, KOLEKSI_SETORAN, KOLEKSI_TEMBUSAN, KOLEKSI_TUTUP, KOLEKSI_UTANG_OWNER, KOLEKSI_UTANG_PEMASOK, LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, NEGO_LANTAI, PILIHAN_JENIS_BERAS, POS_BIAYA_BULANAN, RASIO_DEFAULT, RASIO_KONVERSI, TANGGAL_STOK_AWAL, batchDiutang, caraBayarKunci, cocok, daftarModalOwner, kasbonPotongGaji, kunciKemasan, hppTaksiranRetur, hppTercatat, jumlahTrx, uangKembaliRetur, labelBahan, formatRupiah, potonganGajiPerPegawai, tanggalLokalIso, geserHari, akhirBulanIso, bulanDari, isoKeTanggal, kunciPelanggan, namaSingkatTrx, formatTanggal, namaBulanPanjang, penjualanMasihBerlaku, tkPenjualanHidup, tkTargetPengganti, tkApakahYatim, tkSetTertaut, daftarGerakanKas, totalUtangPemasokSemua, bakuCaraBayar, bulatKeAtas500, pesananBelumTuntas, tbCutoff, tbPunyaBerat, produksiMasihBerlaku, wzJumlahDiDaftar, merkPunyaKarungBerat, cariHargaKarungPerKg, hargaKarungUtuh, tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan, rtKunciNota, rtRantaiNota, twBanyak, twSatuanDibayar, rtDasarNota, rtKalimatLebih, susunIsiKatalogKasir, tebakJenisBeras, jenisUntukMerk, semuaMerkDikenal, acakPin };

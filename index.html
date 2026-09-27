@@ -6304,7 +6304,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 </div>
 
 <!-- PUTARAN 25b (keputusan owner 26 Sep 2026): sistem lama HANYA-BACA. Pita ini permanen; semua jalan tulis lewat penjagaTulis(). -->
-<div id="pitaHanyaBaca" class="pita-hanya-baca">Sistem lama sekarang hanya-baca. Catat dan batalkan di <a href="baru/">/baru/ ›</a><div id="pitaAntreanLama"></div></div>
+<div id="pitaHanyaBaca" class="pita-hanya-baca">Sistem lama hanya untuk membaca riwayat dan pemulihan darurat. Catat, batalkan, dan atur di <a href="baru/">/baru/ ›</a><div id="pitaAntreanLama"></div></div>
 <header>
   <button type="button" class="tombol-logo-drawer" id="tombolLogoDrawer" onclick="toggleDrawerNav()" aria-label="Buka menu">IQ</button>
   <!-- Blok merek ringkas khusus HP — mengikuti mockup UI (6 Agu 2026): badge IQ + M.IQBAL /
@@ -12040,21 +12040,29 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // kepala yang ditolak selamanya ("Database terkunci" berulang; semua tulisan di belakangnya tertahan). Karena itu
   // SEMUA jalan tulis — simpanKeFirestore, hapusDariFirestore, tiga runTransaction, antrean, katalog kasir, denyut —
   // bertanya ke penjagaTulis() lebih dulu. Mencatat & membatalkan pindah ke /baru/.
-  // TETAP TERBUKA (owner 26 Sep): setelan yang tidak pernah ditolak server — jenis beras, daftar & PIN operator kasir,
-  // PIN owner — dan "pulihkan dari berkas cadangan" lewat konfirmasi ketik (docs/prosedur-pulih-darurat.md).
-  // BUKAN CATATAN, tidak pernah ditolak, jadi ikut jalan: katalog kasir (ringkasanKasir — /baru/ belum punya
-  // penerbitnya; tanpa ini harga & modal di tuts kasir membeku), denyut perangkat, dan antrean lama yang dikirim SEKALI.
+  // TETAP TERBUKA: "pulihkan dari berkas cadangan" lewat konfirmasi ketik (docs/prosedur-pulih-darurat.md). Sampai 25c juga
+  // setelan jenis beras, daftar & PIN operator kasir, PIN owner (owner 26 Sep) — sekarang ditutup, diatur di /baru/.
+  // BUKAN CATATAN, tidak pernah ditolak, jadi ikut jalan: denyut perangkat, dan antrean lama yang dikirim SEKALI.
+  // Katalog kasir (ringkasanKasir) ikut jalan sampai 25c; sejak 25c ditutup TANPA modal (JALUR_DIAM) — /baru/ penerbitnya.
   // Dijaga alat-uji/uji_sistem_lama_bacasaja.py — jalan tulis baru yang tidak lewat sini = GAGAL.
+  // PUTARAN 25c (owner 27 Sep 2026): jenis beras, daftar operator kasir, dan PIN owner pindah ke /baru/, dan katalog kasir diterbitkan /baru/.
+  // Yang tersisa di sini hanya MEMBACA riwayat dan "pulihkan dari berkas cadangan" (mode pulih) — docs/peta-pindahan-terakhir.md.
   const PESAN_HANYA_BACA = 'Sistem lama sekarang hanya-baca. Catat dan batalkan di /baru/';
-  const TULIS_TERBUKA = { 'pengaturan/jenisBeras': 'setelan jenis beras', 'pengaturan/aksesKasir': 'daftar & PIN operator kasir', 'pengaturan/keamanan': 'PIN owner' };
-  const JALUR_BUKAN_CATATAN = { katalog: 'katalog kasir (ringkasanKasir)', denyut: 'denyut perangkat', 'antrean-sekali': 'antrean lama, dikirim sekali' };
+  const TULIS_TERBUKA = {};
+  const PINDAH_KE = { 'pengaturan/jenisBeras': 'Harga & Pemasok › Katalog harga › Jenis beras', 'pengaturan/aksesKasir': 'Menu › Peran & persetujuan › Kasir & PIN',
+    'pengaturan/keamanan': 'Menu › Peran & persetujuan › Kasir & PIN' };
+  const JALUR_BUKAN_CATATAN = { denyut: 'denyut perangkat', 'antrean-sekali': 'antrean lama, dikirim sekali' };
+  // DITUTUP TANPA MODAL: jalur yang berjalan sendiri tiap data berubah (bukan ketukan owner) — modal di sini cuma mengganggu layar baca.
+  const JALUR_DIAM = { katalog: 'katalog kasir (ringkasanKasir) — diterbitkan /baru/ sejak 25c' };
   let _modePulih = false;          // hanya selama muatDariFile, sesudah konfirmasi ketik
   let _tolakHanyaBacaPada = 0;
   function penjagaTulis(jalur, koleksi, id) {
     if (JALUR_BUKAN_CATATAN[jalur]) return true;
     if (jalur === 'simpan' && (_modePulih || TULIS_TERBUKA[koleksi + '/' + id])) return true;
+    if (JALUR_DIAM[jalur]) return false;
     _tolakHanyaBacaPada = Date.now();
-    bukaModalHanyaBaca('');
+    const ke = PINDAH_KE[koleksi + '/' + id];
+    bukaModalHanyaBaca(ke ? '<p style="font-size:.85rem;">Setelan ini sekarang diatur di <b>/baru/</b> › ' + escapeHtml(ke) + '.</p>' : '');
     return false;
   }
   function galatHanyaBaca() { const e = new Error(PESAN_HANYA_BACA); e.code = 'hanya-baca'; return e; }
@@ -14367,19 +14375,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
 
   async function apTerbitkanKatalog() {
-    try {
-      // Paksa terbit: penjaga isi-sama di terbitkanRingkasanKasir membandingkan dengan
-      // localStorage HP INI, jadi HP yang belum pernah menerbitkan akan tertahan justru
-      // saat katalognya tertinggal. Mengosongkan penanda lokal membuat perbandingannya
-      // jatuh ke server, tempat jawaban yang benar berada.
-      localStorage.removeItem('miqbal_ringkasan_terakhir');
-      await terbitkanRingkasanKasir();
-      alert('Katalog diterbitkan. Kasir menerimanya begitu HP-nya menyegarkan diri.');
-    } catch (e) {
-      console.error(e);
-      alert('Gagal menerbitkan katalog. Periksa sambungan lalu coba lagi.');
-    }
-    tampilkanAkun();
+    // 25c: katalog kasir diterbitkan /baru/ — otomatis tiap data berubah, dan dalam kiriman yang sama dengan terbit harga. Dari sini tidak lagi.
+    bukaModalHanyaBaca('<p style="font-size:.85rem;">Katalog kasir sekarang diterbitkan <b>/baru/</b> — otomatis tiap harga atau stok berubah, selama '
+      + '/baru/ terbuka di perangkat owner. Kapan terakhir diperbarui: /baru/ › Beranda.</p>');
   }
 
   // ============ LAYAR BELANJA (gelombang 4, 6 Sep 2026) ============
@@ -33178,6 +33176,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   setTimeout(pasangPendengarJenisBeras, 0);
   async function simpanJenisBeras(merk, jenis) {
+    if (!penjagaTulis('simpan', 'pengaturan', 'jenisBeras')) return;   // 25c: diatur di /baru/ — salinan HP ini juga tidak diubah
     const peta = ambilPetaJenisBeras();
     peta[merk] = jenis;
     simpanLokal(KUNCI_JENIS_BERAS, JSON.stringify(peta));
@@ -33188,6 +33187,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     if (document.getElementById('halamanStok').classList.contains('tampil')) tampilkanStok();
   }
   function ubahJenisBeras(merk) {
+    if (!penjagaTulis('simpan', 'pengaturan', 'jenisBeras')) return;   // 25c: diatur di /baru/
     const sekarang = jenisUntukMerk(merk);
     const daftar = PILIHAN_JENIS_BERAS.map((j, i) => (i + 1) + '. ' + j).join('\n');
     const jawab = prompt('Jenis beras untuk "' + merk + '"?\nKetik nomor, atau ketik nama jenis lain:\n\n' + daftar
@@ -33291,6 +33291,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   setTimeout(pasangPendengarPin, 0);
 
   async function simpanPinOwnerBaru(pinBaru) {
+    if (!penjagaTulis('simpan', 'pengaturan', 'keamanan')) throw galatHanyaBaca();   // 25c: diatur di /baru/ — salinan HP ini juga tidak diubah
     const garam = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
     const acak = await acakPin(pinBaru, garam);
     const data = { id: 'keamanan', garam, acak, diubahPada: new Date().toISOString() };
@@ -33408,6 +33409,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     } catch (e) { /* offline — pakai cache */ }
   }
   function bukaModalJaga() {
+    if (!penjagaTulis('simpan', 'pengaturan', 'aksesKasir')) return;   // 25c: diatur di /baru/
     const r = rosterCache();
     const op = (r && r.operator) || {};
     document.getElementById('isiModalJaga').innerHTML = NAMA_OPERATOR_JAGA.map((n, i) => {
@@ -33425,6 +33427,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
   function tutupModalJaga() { document.getElementById('modalJagaBg').classList.remove('tampil'); }
   async function simpanModalJaga() {
+    if (!penjagaTulis('simpan', 'pengaturan', 'aksesKasir')) return;   // 25c: diatur di /baru/
     const operator = {};
     NAMA_OPERATOR_JAGA.forEach((n, i) => {
       operator[n] = {
@@ -33520,6 +33523,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   }
 
   function bukaSetelPin() {
+    if (!penjagaTulis('simpan', 'pengaturan', 'keamanan')) return;   // 25c: diatur di /baru/
     const sudah = pinSudahDisetel();
     document.getElementById('setelPinJudul').textContent = sudah ? 'Ganti PIN Owner' : 'Setel PIN Owner';
     document.getElementById('setelPinKet').textContent = sudah

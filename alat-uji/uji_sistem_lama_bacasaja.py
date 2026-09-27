@@ -6,18 +6,18 @@ uji_sistem_lama_bacasaja.py — putaran 25b Bagian B: SISTEM LAMA (index.html) H
 STATIS (sumber index.html):
   · setiap panggilan setDoc / deleteDoc / runTransaction berada di fungsi yang bertanya ke penjagaTulis() SEBELUM menulis (catatLogAktivitas =
     jejak pembantu: semua pemanggilnya berpenjaga); tidak ada writeBatch / updateDoc / addDoc
-  · yang TETAP TERBUKA persis keputusan owner: pengaturan/jenisBeras, pengaturan/aksesKasir, pengaturan/keamanan (+ pulihkan lewat konfirmasi
-    ketik); yang bukan catatan persis: katalog kasir, denyut, antrean lama sekali
+  · 25c (owner 27 Sep 2026): TIDAK ADA setelan yang terbuka lagi — jenis beras, operator kasir, PIN owner pindah ke /baru/ (yang terbuka tinggal
+    pulihkan lewat konfirmasi ketik); yang bukan catatan persis: denyut, antrean lama sekali; katalog kasir DITUTUP TANPA modal (penulisnya /baru/)
   · perulangan kirim ulang antrean (setInterval / tiap sinyal kembali) tidak ada lagi; antrean-sekali tidak memanggil modal sandi
-  · pita permanen berbunyi "Sistem lama sekarang hanya-baca. Catat dan batalkan di /baru/" dengan tautan ke baru/
+  · pita permanen berbunyi "Sistem lama hanya untuk membaca riwayat dan pemulihan darurat." dengan tautan ke baru/ (25c)
 PERAMBAN (Chrome headless, index.html SUNGGUHAN, Firebase PALSU lokal yang menolak catatan bertanggal sebelum September seperti bulan terkunci):
   · antrean lama (3 catatan, 1 bertanggal Agustus) dikirim SEKALI sesudah masuk: 2 masuk, 1 ke daftar "ditolak" (isi utuh), antrean kosong,
     modal sandi TIDAK muncul, pita menyebutnya; "kirim sekali lagi" tidak mengirim ulang yang ditolak
   · setiap jalan tulis catatan ditolak penjaga: simpan & hapus untuk semua koleksi bertanggal dan koleksi lain yang sudah pindah ke /baru/
     (termasuk titik kas & tempat simpan), tombol sungguhan hapus nota & hapus uang keluar — nol tulisan ke server, tidak masuk antrean, modal
     hanya-baca tampil, alert "cek internet" yang bohong diredam
-  · yang terbuka tetap jalan: setelan jenis beras, operator kasir, PIN owner; katalog kasir & denyut terbit sendiri; pulihkan dari berkas
-    cadangan hanya sesudah mengetik PULIHKAN (batal = nol tulisan), dan sesudahnya penjaga kembali menutup
+  · 25c: setelan jenis beras, operator kasir, PIN owner DITOLAK (modal menunjuk tempat barunya di /baru/); katalog kasir TIDAK terbit dari sini, tanpa
+    modal; denyut tetap jalan; pulihkan dari berkas cadangan hanya sesudah mengetik PULIHKAN (batal = nol tulisan), dan sesudahnya penjaga menutup lagi
   · fitur baca tetap jalan: riwayat penjualan tergambar dari data server
   · tanpa ketukan apa pun: tidak ada satu pun penolakan (halaman tidak mencoba menulis catatan sendiri)
 
@@ -30,8 +30,11 @@ sys.path.insert(0, SINI)
 from uji_antrean_kasir import CHROME, layani, buka, hasil_dari, teks_stat  # noqa: E402  (Chrome headless + server /_siap /_tahan /_hasil yang sama)
 
 PESAN = 'Sistem lama sekarang hanya-baca. Catat dan batalkan di /baru/'
-TERBUKA = {'pengaturan/jenisBeras', 'pengaturan/aksesKasir', 'pengaturan/keamanan'}
-BUKAN_CATATAN = {'katalog', 'denyut', 'antrean-sekali'}
+PITA = 'Sistem lama hanya untuk membaca riwayat dan pemulihan darurat.'   # 25c
+TERBUKA = set()                                                          # 25c: tidak ada setelan yang terbuka lagi
+SETELAN = ['aksesKasir', 'jenisBeras', 'keamanan']                       # 25c: pindah ke /baru/ — di sini ditolak
+BUKAN_CATATAN = {'denyut', 'antrean-sekali'}
+DIAM = {'katalog'}                                                       # 25c: ditutup TANPA modal (jalan otomatis tiap data berubah)
 SDK = 'https://www.gstatic.com/firebasejs/10.13.0/'
 
 # ---------- Firebase PALSU (permukaan yang diimpor index.html) ----------
@@ -128,10 +131,11 @@ SKENARIO = r"""<script>
     U.tutupModalHanyaBaca(); var nC = T().length; var alC = window.__ujiAlert.length;
     await window.hapusPenjualan(8001); await window.hapusHarian(8101); await tunggu(200);
     hasil.tombol = { tulis: T().length - nC, alertBaru: window.__ujiAlert.slice(alC), modal: tampil('modalHanyaBacaBg') };
-    // ---- yang terbuka
-    var nD = T().length; var galatTerbuka = [];
-    for (var m = 0; m < TERBUKA.length; m++) { try { await U.simpanKeFirestore('pengaturan', { id: TERBUKA[m], peta: {}, diubahPada: '2026-09-26T03:00:00.000Z' }); } catch (e) { galatTerbuka.push(TERBUKA[m] + ':' + (e && e.code)); } }
-    hasil.terbuka = { tulis: T().slice(nD), galat: galatTerbuka };
+    // ---- setelan yang sampai 25b terbuka — 25c: pindah ke /baru/, di sini ditolak dan modalnya menunjuk tempat barunya
+    var nD = T().length; var galatTerbuka = []; var modalSetelan = [];
+    for (var m = 0; m < SETELAN.length; m++) { U.tutupModalHanyaBaca(); try { await U.simpanKeFirestore('pengaturan', { id: SETELAN[m], peta: {}, diubahPada: '2026-09-26T03:00:00.000Z' }); } catch (e) { galatTerbuka.push(SETELAN[m] + ':' + (e && e.code)); }
+      modalSetelan.push(tampil('modalHanyaBacaBg') ? ((document.getElementById('isiHanyaBaca') || {}).innerText || '') : '(modal tidak tampil)'); }
+    hasil.terbuka = { tulis: T().slice(nD), galat: galatTerbuka, modal: modalSetelan };
     // ---- pulihkan dari berkas cadangan: batal (ketikan salah) lalu PULIHKAN
     var berkas = function () { return new File([JSON.stringify({ versi: 5, penjualan: [{ id: 'pulih-1', tanggal: '2026-09-25', jam: '08:00', jenis: 'karung', hargaTotal: 1, caraBayar: 'Tunai' }] })], 'backup.json', { type: 'application/json' }); };
     window.__ujiPrompt = 'pulih'; var nE = T().length; window.muatDariFile({ target: { files: [berkas()], value: 'x' } }); await tunggu(700);
@@ -189,16 +193,17 @@ def periksa_statis(s):
             if 'penjagaTulis(' not in '\n'.join(baris[j:i + 1]): tanpaLog.append('%s baris %d' % (f, i + 1))
     ok('jejak (catatLogAktivitas) hanya dipanggil sesudah penjaga', not tanpaLog, tanpaLog)
     tb = re.search(r"const TULIS_TERBUKA = \{([^}]*)\};", modul); jb = re.search(r"const JALUR_BUKAN_CATATAN = \{([^}]*)\};", modul)
-    ok('yang TETAP TERBUKA persis keputusan owner: jenis beras, operator kasir, PIN owner', tb and set(re.findall(r"'(pengaturan/\w+)'", tb.group(1))) == TERBUKA and len(re.findall(r"'[^']+':", tb.group(1))) == 3, tb.group(1) if tb else '')
-    ok('jalur bukan-catatan persis: katalog kasir, denyut, antrean lama sekali', jb and set(re.findall(r"'?([\w-]+)'?:", jb.group(1))) == BUKAN_CATATAN, jb.group(1) if jb else '')
-    ok('penjaga menolak jalur di luar daftar (tidak ada "return true" tanpa syarat)', re.search(r"function penjagaTulis\(jalur, koleksi, id\) \{\n    if \(JALUR_BUKAN_CATATAN\[jalur\]\) return true;\n    if \(jalur === 'simpan' && \(_modePulih \|\| TULIS_TERBUKA\[koleksi \+ '/' \+ id\]\)\) return true;\n    _tolakHanyaBacaPada = Date.now\(\);", modul))
+    ok('25c: TIDAK ADA setelan yang terbuka lagi (jenis beras, operator kasir, PIN owner pindah ke /baru/)', tb and set(re.findall(r"'(pengaturan/\w+)'", tb.group(1))) == TERBUKA and not tb.group(1).strip(), tb.group(1) if tb else '')
+    jd = re.search(r"const JALUR_DIAM = \{([^}]*)\};", modul)
+    ok('jalur bukan-catatan persis: denyut, antrean lama sekali; katalog kasir DITUTUP tanpa modal (JALUR_DIAM)', jb and set(re.findall(r"'?([\w-]+)'?:", jb.group(1))) == BUKAN_CATATAN and jd and set(re.findall(r"'?([\w-]+)'?:", jd.group(1))) == DIAM, (jb.group(1) if jb else '') + ' | ' + (jd.group(1) if jd else ''))
+    ok('penjaga menolak jalur di luar daftar (tidak ada "return true" tanpa syarat)', re.search(r"function penjagaTulis\(jalur, koleksi, id\) \{\n    if \(JALUR_BUKAN_CATATAN\[jalur\]\) return true;\n    if \(jalur === 'simpan' && \(_modePulih \|\| TULIS_TERBUKA\[koleksi \+ '/' \+ id\]\)\) return true;\n    if \(JALUR_DIAM\[jalur\]\) return false;\n    _tolakHanyaBacaPada = Date.now\(\);", modul))
     ok('simpanKeFirestore & hapusDariFirestore bertanya ke penjaga di baris PERTAMA', re.search(r"async function simpanKeFirestore\(nomorKoleksi, data\) \{\n    if \(!penjagaTulis\('simpan', nomorKoleksi, data && data\.id\)\) throw galatHanyaBaca\(\);", modul)
        and re.search(r"async function hapusDariFirestore\(nomorKoleksi, id\) \{\n    if \(!penjagaTulis\('hapus', nomorKoleksi, id\)\) throw galatHanyaBaca\(\);", modul))
     ok('perulangan kirim ulang antrean DICABUT (tidak ada setInterval / listener sinyal ke kirimAntreanTunda)', not re.search(r'setInterval\(\s*kirimAntreanTunda|addEventListener\(\s*.online.\s*,\s*kirimAntreanTunda', modul))
     ks = re.search(r'async function kirimAntreanSekali\(manual\) \{(.*?)\n  \}\n', modul, re.S)
     ok('antrean lama sekali: tanpa modal sandi, tanpa while/perulangan ulang', ks and 'mintaLoginKalauDitolak' not in ks.group(1) and 'while' not in ks.group(1) and '_kirimSekaliSudah = true' in ks.group(1))
     pita = re.search(r'<div id="pitaHanyaBaca"[^>]*>(.*?)<div id="pitaAntreanLama">', s, re.S)
-    ok('pita permanen: "' + PESAN + '" + tautan ke baru/', pita and PESAN.replace(' /baru/', '') in re.sub(r'<[^>]+>', '', pita.group(1)).replace(' /baru/ ›', '') and 'href="baru/"' in pita.group(1), pita.group(1) if pita else '')
+    ok('pita permanen: "' + PITA + '" + tautan ke baru/', pita and PITA in re.sub(r'<[^>]+>', '', pita.group(1)) and 'href="baru/"' in pita.group(1), pita.group(1) if pita else '')
     ok('pulihkan dari berkas cadangan minta ketik PULIHKAN sebelum mode pulih', re.search(r"if \(String\(ketikPulih \|\| ''\)\.trim\(\)\.toUpperCase\(\) !== 'PULIHKAN'\) \{ event\.target\.value = ''; return; \}\n        _modePulih = true;", modul) and '_modePulih = false;' in modul)
     return out
 
@@ -213,7 +218,7 @@ def siapkan(teks):
         assert SDK + nama in teks, 'impor ' + nama + ' berubah — perbarui uji'; teks = teks.replace(SDK + nama, '/_palsu/' + nama)
     i = teks.rindex('</script>'); teks = teks[:i] + KAIT + teks[i:]
     kepala = KEPALA.replace('__DATA__', json.dumps(DATA)).replace('__ANTREAN__', json.dumps(ANTREAN_LAMA))
-    sk = SKENARIO.replace('var hasil = {};', 'var hasil = {}; var DIKUNCI = ' + json.dumps(DIKUNCI_SIMPAN) + '; var TERBUKA = ' + json.dumps(sorted(x.split('/')[1] for x in TERBUKA)) + ';')
+    sk = SKENARIO.replace('var hasil = {};', 'var hasil = {}; var DIKUNCI = ' + json.dumps(DIKUNCI_SIMPAN) + '; var SETELAN = ' + json.dumps(SETELAN) + ';')
     teks = teks.replace('<head>', '<head>' + kepala, 1).replace('</body>', sk + "<img src='/_tahan' alt='' style='display:none'></body>", 1)
     open(os.path.join(d, 'index.html'), 'w', encoding='utf-8').write(teks)
     return d
@@ -234,19 +239,20 @@ def periksa_peramban(teks):
     ok('antrean lama: yang masuk selesai, antrean kosong', A['antrean'] == [], A['antrean'])
     ok('antrean lama: yang ditolak (Agustus) pindah ke daftar "ditolak" dengan isi utuh', len(A['ditolak']) == 1 and A['ditolak'][0]['data']['id'] == 7002 and A['ditolak'][0]['data']['hargaTotal'] == 610000, A['ditolak'])
     ok('antrean lama: modal sandi ("Database terkunci") TIDAK muncul', not A['modalSandi'])
-    ok('pita permanen tampil: "' + PESAN + '"', 'Sistem lama sekarang hanya-baca' in A['pitaUtama'] and '/baru/' in A['pitaUtama'], A['pitaUtama'])
+    ok('pita permanen tampil: "' + PITA + '"', PITA in A['pitaUtama'] and '/baru/' in A['pitaUtama'], A['pitaUtama'])
     ok('pita menyebut catatan lama yang ditolak untuk dicatat ulang di /baru/', '1 catatan lama DITOLAK server' in A['pitaAntrean'], A['pitaAntrean'])
     ok('"kirim sekali lagi" tidak mengirim ulang yang ditolak (nol tulisan catatan)', not [t for t in h['kirimLagi']['tulisBaru'] if t[1] not in ('perangkatStatus', 'ringkasanKasir')], h['kirimLagi'])
     ok('tanpa ketukan apa pun: penjaga tidak pernah menolak (modal hanya-baca tidak muncul) & tidak ada alert', not A['modalHanyaBaca'] and not A['alert'], A)
-    ok('katalog kasir (ringkasanKasir) tetap terbit sendiri — jalur bukan-catatan', any(t[1] == 'ringkasanKasir' for t in tulis), [t[1] for t in tulis])
+    ok('25c: katalog kasir (ringkasanKasir) TIDAK terbit dari sistem lama (penulisnya /baru/) — dan penolakannya diam, tanpa modal', not any(t[1] == 'ringkasanKasir' for t in tulis) and not A['modalHanyaBaca'], [t[1] for t in tulis])
     ok('denyut perangkat tetap terkirim', any(t[1] == 'perangkatStatus' for t in tulis))
-    ok('tidak ada tulisan lain saat halaman dibuka (selain antrean sekali, katalog, denyut)', not [t for t in tulis if t[1] not in ('perangkatStatus', 'ringkasanKasir') and str(t[2]) not in ('7001', '7002', '7003')], tulis)
+    ok('tidak ada tulisan lain saat halaman dibuka (selain antrean sekali & denyut)', not [t for t in tulis if t[1] != 'perangkatStatus' and str(t[2]) not in ('7001', '7002', '7003')], tulis)
     bocor = [x for x in h['tolak'] if not (x['kode'] == 'hanya-baca' and x['kodeH'] == 'hanya-baca' and x['tulis'] == 0 and x['antrean'] == 0 and x['modal'])]
     ok('%d koleksi (semua bertanggal + yang sudah pindah ke /baru/ + titik kas & tempat simpan): simpan & hapus DITOLAK penjaga, nol tulisan, tidak masuk antrean, modal hanya-baca tampil' % len(h['tolak']),
        len(h['tolak']) == len(DIKUNCI_SIMPAN) + 2 and not bocor, bocor[:3])
     T = h['tombol']
     ok('tombol sungguhan hapus nota & hapus uang keluar: nol tulisan, modal hanya-baca, alert "cek internet" diredam', T['tulis'] == 0 and T['modal'] and not T['alertBaru'], T)
-    ok('terbuka: setelan jenis beras, operator kasir, PIN owner tetap tersimpan', sorted(t[2] for t in h['terbuka']['tulis'] if t[1] == 'pengaturan') == sorted(x.split('/')[1] for x in TERBUKA) and not h['terbuka']['galat'], h['terbuka'])
+    ok('25c: setelan jenis beras, operator kasir, PIN owner DITOLAK — nol tulisan, dan modalnya menunjuk tempat barunya di /baru/', not h['terbuka']['tulis'] and sorted(h['terbuka']['galat']) == sorted(x + ':hanya-baca' for x in SETELAN)
+       and len(h['terbuka']['modal']) == 3 and all('/baru/' in m for m in h['terbuka']['modal']), h['terbuka'])
     ok('pulihkan: ketikan salah = batal, nol tulisan', not h['pulihBatal']['tulis'], h['pulihBatal'])
     ok('pulihkan: sesudah mengetik PULIHKAN, catatan dari berkas terunggah', any(t[1] == 'penjualan' and t[2] == 'pulih-1' for t in h['pulih']['tulis']), h['pulih'])
     ok('sesudah pulihkan, penjaga menutup lagi', h['sesudahPulih']['kode'] == 'hanya-baca' and h['sesudahPulih']['tulis'] == 0, h['sesudahPulih'])
@@ -270,10 +276,10 @@ KONTROL = [
     ('perulangan kirim ulang antrean kembali', "  async function kirimAntreanTunda() { return kirimAntreanSekali(true); }\n", "  async function kirimAntreanTunda() { return kirimAntreanSekali(true); }\n  setInterval(kirimAntreanTunda, 30000);\n", ('statis',)),
     ('catatan lama yang ditolak DIBUANG (tidak ditulis ke daftar ditolak)', "if (String((e && e.code) || '').includes('permission-denied') && catatDitolakLama(item)) buangDariAntreanTunda(item);", "if (String((e && e.code) || '').includes('permission-denied')) buangDariAntreanTunda(item);", ('peramban',)),
     ('modal sandi muncul lagi di antrean lama', "        // sinyal / timeout: tetap di antrean — TIDAK diulang otomatis\n", "        mintaLoginKalauDitolak(e);\n", ('statis', 'peramban')),
-    ('titik kas ikut dibuka (di luar keputusan owner)', "'pengaturan/keamanan': 'PIN owner' };", "'pengaturan/keamanan': 'PIN owner', 'pengaturan/titikKas': 'titik kas' };", ('statis', 'peramban')),
+    ('titik kas ikut dibuka (di luar keputusan owner)', "  const TULIS_TERBUKA = {};", "  const TULIS_TERBUKA = { 'pengaturan/titikKas': 'titik kas' };", ('statis', 'peramban')),
     ('pulihkan tanpa konfirmasi ketik', "        if (String(ketikPulih || '').trim().toUpperCase() !== 'PULIHKAN') { event.target.value = ''; return; }\n", "", ('statis', 'peramban')),
     ('alert "cek internet" tidak diredam', "if (Date.now() - _tolakHanyaBacaPada < 3000) return undefined;", "if (false) return undefined;", ('peramban',)),
-    ('pita permanen hilang', 'Sistem lama sekarang hanya-baca. Catat dan batalkan di <a href="baru/">/baru/ ›</a>', '', ('statis', 'peramban')),
+    ('pita permanen hilang', 'Sistem lama hanya untuk membaca riwayat dan pemulihan darurat. Catat, batalkan, dan atur di <a href="baru/">/baru/ ›</a>', '', ('statis', 'peramban')),
 ]
 
 if __name__ == '__main__':

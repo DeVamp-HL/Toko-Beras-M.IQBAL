@@ -12,6 +12,8 @@ import * as BL from './belanja-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen } from '../data/toko.js';
+import { kkSertakan } from '../data/katalog-kasir.js';
+import * as JB from './jenis-beras-logika.js';   // 25c: setelan jenis beras pindah dari sistem lama
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -31,9 +33,9 @@ export function pasangLayarHarga(akar, opsi) {
   const awal = () => ({ keluarga: ['katalog', 'bon', 'belanja'].indexOf(bacaLokal(KUNCI_KELUARGA)) >= 0 ? bacaLokal(KUNCI_KELUARGA) : 'katalog', kabar: '', kabarAwas: false,
     tabH: tabLokal.h || 'papan', ubah: null, ketik: '', ketikApa: 'jual', terbit: false, yakinRugi: false, kal: { arah: 'naik', merek: 'semua', satuan: 'semua', rp: 100 }, papanSisi: 'owner', wa: false, bedah: { merek: '', satuan: '', bayar: 'tunai' }, aturH: null,
     tabB: tabLokal.b || 'tusuk', bukuNama: '', bayar: null, lama: null, kartu: null, urung: null, aturB: null,
-    tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, aturL: null });
+    tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturB', 'aturL', 'bayar', 'lama', 'kartu'], [KUNCI_DRAF_BELANJA]);
+  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'jbKetik'], [KUNCI_DRAF_BELANJA]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined);
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
@@ -70,7 +72,8 @@ export function pasangLayarHarga(akar, opsi) {
     hgUsulSemua: async () => { await tulis(HG.susunUsulSemua(waktu())); },
     hgPakaiUsul: async ({ kunci }) => { await tulis(HG.susunPakaiUsul(kunci, waktu())); },
     hgBukaTerbit: () => { set({ terbit: !st().terbit, yakinRugi: false, ubah: null, kabar: '' }); keAtas(); },
-    hgTerbitkan: async () => { const r = HG.susunTerbit(waktu(), st().yakinRugi); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, yakinRugi: !!r.perluYakin }); if (await tulis(r)) sekali(akar.querySelector('.hg-bilah'), 'pegas', 520); },
+    // 25c: katalog HP kasir (ringkasanKasir) SESUDAH terbit ikut di kiriman yang SAMA — kasir tidak pernah membaca harga lama sesudah harga baru terbit
+    hgTerbitkan: async () => { const r = HG.susunTerbit(waktu(), st().yakinRugi); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, yakinRugi: !!r.perluYakin }); if (await tulis(Object.assign({}, r, { dokumen: kkSertakan(r.dokumen, waktu().kini) }))) sekali(akar.querySelector('.hg-bilah'), 'pegas', 520); },
     kalPilih: ({ kolom, v }) => set({ kal: Object.assign({}, st().kal, { [kolom]: v }), kabar: '' }),
     kalRp: ({ arah }) => { const l = HG.aturHarga().langkahRp; set({ kal: Object.assign({}, st().kal, { rp: Math.max(l, (Number(st().kal.rp) || 0) + Number(arah) * l) }) }); },
     kalKetik: (v) => set({ kal: Object.assign({}, st().kal, { rp: String(v).slice(0, 7) }) }),
@@ -83,6 +86,14 @@ export function pasangLayarHarga(akar, opsi) {
     bukaAturH: () => { const a = HG.aturHarga(); set({ aturH: st().aturH ? null : { targetPerKg: String(a.targetPerKg), bulatLiter: String(a.bulatLiter), bulatKemasan: String(a.bulatKemasan), bulatKarung: String(a.bulatKarung), langkahRp: String(a.langkahRp), ambangDampak: String(a.ambangDampak), bongkarKg: String(a.bongkarKg), mdrPersen: String(a.mdrPersen), mdrBatas: String(a.mdrBatas) } }); },
     hgKetikAtur: (v, el) => { const a = Object.assign({}, st().aturH || {}); a[el.dataset.kolom] = String(v).slice(0, 10); set({ aturH: a }); },
     simpanAturH: async () => { const a = st().aturH; if (a) await tulis(HG.susunAturHarga(a, waktu())); },
+    // ---- JENIS BERAS (25c): satu nama beras → satu jenis; dokumen pengaturan/jenisBeras sama dengan sistem lama
+    jbBuka: ({ merk }) => { set({ jbUbah: st().jbUbah === merk ? null : merk, jbKetik: '', kabar: '', ubah: null, terbit: false }); keAtas(); },
+    jbTutup: () => set({ jbUbah: null, jbKetik: '' }),
+    jbDaftarBuka: () => set({ jbDaftar: !st().jbDaftar }),
+    jbPilih: async ({ j }) => { const m = st().jbUbah; if (m) await tulis(JB.susunJenisBeras(m, j, waktu())); },
+    jbKetik: (v) => set({ jbKetik: String(v).slice(0, JB.JB_BATAS) }),
+    jbSimpanKetik: async () => { const m = st().jbUbah; if (!m) return; if (!String(st().jbKetik || '').trim()) return set({ kabar: 'Ketik nama jenisnya dulu — untuk mengosongkan pakai tombol "kosongkan"', kabarAwas: true }); await tulis(JB.susunJenisBeras(m, st().jbKetik, waktu())); },
+    jbKosongkan: async () => { const m = st().jbUbah; if (m) await tulis(JB.susunJenisBeras(m, '', waktu())); },
     // ---- H2 BON PEMASOK
     tabB: ({ t }) => { set({ tabB: t, kabar: '' }); ingatTab(); },
     bukuNama: ({ nama }) => set({ bukuNama: nama }),
@@ -160,10 +171,10 @@ export function pasangLayarHarga(akar, opsi) {
     const tengah = h`<div class="hg-kolom" data-k="hg-tengah">${tabBaris(tabAda.map(([id]) => [id, nama(id)]), tab, 'tabH', L === 'hp' ? 'enam' : '')}${panel(tab)}</div>`;
     return h`<section class="hg-katalog" data-k="katalog">
       <div class="hg-ringkas" data-k="ringkas">${S.ringkas.map((r) => h`<div class="${r.nyala ? 'nyala' : ''}" data-k="r-${r.id}"><span class="a">${r.a}</span><span class="l">${r.l}</span></div>`)}</div>
-      ${s.ubah ? gambarUbah(s, S) : ''}${s.terbit ? gambarTerbit(s, S) : ''}${s.wa ? gambarWaHarga(S) : ''}
+      ${s.jbUbah ? gambarJenisUbah(s) : ''}${s.ubah ? gambarUbah(s, S) : ''}${s.terbit ? gambarTerbit(s, S) : ''}${s.wa ? gambarWaHarga(S) : ''}
       <div class="hg-grid ${L}" data-k="grid">${tetapKiri ? h`<div class="hg-kolom" data-k="hg-kiri">${gambarPapan(s, S)}</div>` : ''}${tengah}${tetapKanan ? h`<div class="hg-kolom" data-k="hg-kanan">${gambarLabel(S, lbl)}</div>` : ''}</div>
       ${S.nDraf ? h`<div class="hg-bilah" data-k="bilah"><div><div style="font-weight: 600;">${S.nDraf} harga berubah — kasir belum tahu</div><div class="ket">draf tidak sampai ke kasir sebelum diterbitkan</div></div><div class="kaca-btn aktif" data-aksi="hgBukaTerbit">Periksa & terbitkan</div></div>` : ''}
-      ${gambarRiwayat()}${gambarAturH(s, S)}
+      ${gambarRiwayat()}${gambarAturH(s, S)}${gambarJenisDaftar(s)}
       <div class="ket" style="font-size: 11px;">Katalog ini = katalog yang dibaca kasir (harga karung per kg, kemasan per kantong, literan per liter — koleksi yang sama dengan sistem lama). Perubahan jadi DRAF dulu; terbit = semuanya berganti sekaligus. Modal = modal rata-rata di buku (sama dengan laba, neraca & layar HPP); harga beli terbaru dibawa sebagai pembanding. ${S.atur.targetDariRata ? 'Target untung ' + RP(S.target) + '/kg = rata-rata untung katalog karung yang sedang berlaku (belum diatur owner).' : 'Target untung ' + RP(S.target) + '/kg diatur owner.'}${S.tanpaModal ? ' ' + S.tanpaModal + ' harga belum bisa dinilai karena modalnya belum tercatat.' : ''}</div>
     </section>`;
   }
@@ -171,7 +182,7 @@ export function pasangLayarHarga(akar, opsi) {
     const P = HG.susunPapan(S, s.papanSisi);
     return h`<div class="kartu kp-bingkai" data-k="papan"><div class="jalur rapat" data-k="sisi"><div class="seg ${P.owner ? 'aktif' : ''}" data-aksi="papanSisi" data-s="owner">Yang lu lihat</div><div class="seg ${!P.owner ? 'aktif' : ''}" data-aksi="papanSisi" data-s="pembeli">Yang pembeli lihat</div></div>
       <div class="kp-papan"><div class="kp-judul">Harga Beras Hari Ini</div><div class="kp-sub">${P.sub}</div>
-        ${P.baris.map((m) => h`<div class="kp-baris" data-k="kp-${m.merk}"><div class="kp-mr">${m.merk}${P.owner && m.modal ? h`<small>modal ${RP(m.modal)}/kg</small>` : ''}</div><div class="kp-sel-baris">${m.sel.map((c) => h`<div class="kp-sel ${c.kelas}" data-k="kps-${c.k}" data-aksi="hgUbah" data-kunci="${c.k}"><span class="l">${c.lama ? ANGKA(c.lama) : ''}</span><span class="h">${typeof c.harga === 'number' ? ANGKA(c.harga) : c.harga}</span><span class="u">${c.satuan}${c.untung ? ' · ' + c.untung : ''}</span></div>`)}</div></div>`)}
+        ${P.baris.map((m) => h`<div class="kp-baris" data-k="kp-${m.merk}"><div class="kp-mr">${m.merk}${P.owner && m.modal ? h`<small>modal ${RP(m.modal)}/kg</small>` : ''}${P.owner ? (() => { const j = JB.jbJenisMerk(m.merk); return h`<small class="hg-jenis ${j ? '' : 'kosong'}" data-aksi="jbBuka" data-merk="${m.merk}" data-k="jb-${m.merk}" style="cursor: pointer; text-decoration: underline dotted;">${j || 'jenis?'}</small>`; })() : ''}</div><div class="kp-sel-baris">${m.sel.map((c) => h`<div class="kp-sel ${c.kelas}" data-k="kps-${c.k}" data-aksi="hgUbah" data-kunci="${c.k}"><span class="l">${c.lama ? ANGKA(c.lama) : ''}</span><span class="h">${typeof c.harga === 'number' ? ANGKA(c.harga) : c.harga}</span><span class="u">${c.satuan}${c.untung ? ' · ' + c.untung : ''}</span></div>`)}</div></div>`)}
         <div class="kp-kapur"><i></i><i></i><i></i></div></div>
       <div class="ket" style="font-size: 11px;">Ketuk angkanya untuk menulis ulang — tulisan baru jadi draf dulu (kapur kuning); papan pembeli baru berganti sesudah diterbitkan.</div>
       <div class="tombol-baris rapat"><div class="kaca-btn ${S.perlu.some((b) => b.usul > 0) ? '' : 'mati'}" data-aksi="hgUsulSemua">Pakai usul untuk ${S.perlu.filter((b) => b.usul > 0).length} harga — jadi draf dulu</div><div class="kaca-btn" data-aksi="hgWa">Kirim daftar harga ke WhatsApp</div></div></div>`;
@@ -249,6 +260,22 @@ export function pasangLayarHarga(akar, opsi) {
         ${lbl.tugas.map((t) => h`<div class="hg-tugas" data-k="lt-${t.k}"><div><div>${t.judul} → tulis <b class="serif" style="font-size: 15px;">${RP(t.tulis)}</b></div><div class="ket">di label masih ${t.lama ? RP(t.lama) : 'kosong'} · terbit ${tanggalPendek(t.tanggal)}</div></div><div class="kaca-btn aktif kecil" data-aksi="labelSelesai" data-kunci="${t.k}">sudah diganti</div></div>`)}
         <div class="ket">${lbl.arti}</div><div class="kaca-btn putus" data-aksi="labelSelesai" data-kunci="semua">Semua sudah diganti</div></div>` : h`<div class="pita-info" data-k="label-beres">Semua label di toko sudah sama dengan katalog.</div>`}
       <div class="hg-tag2">${S.merk.map((m) => h`<div class="hg-tag" data-k="tag-${m}"><div class="nm">${m}</div>${S.baris.filter((b) => b.merk === m).map((b) => h`<div class="hg-lbl ${b.status === 'lubang' ? 'lubang' : b.adaDraf ? 'draf' : b.labelBasi ? 'basi' : ''}" data-k="lb-${b.k}" data-aksi="hgUbah" data-kunci="${b.k}"><span>${b.st.pendek}</span><span class="h">${b.status === 'lubang' ? 'isi harga' : ANGKA(b.n)}</span></div>`)}</div>`)}</div></div>`;
+  }
+  // ---- JENIS BERAS (25c) — lembar pilih jenis satu nama beras & daftar semua nama
+  function gambarJenisUbah(s) {
+    const m = s.jbUbah; const kini = JB.jbJenisMerk(m); const D = JB.jbDaftar().baris.find((b) => b.merk === m) || { asal: '' };
+    return h`<div class="kartu hg-ubah" data-k="jb-ubah"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Jenis beras · ${m}</div><div class="ket">Sekarang: ${kini || 'belum diisi'}${D.asal === 'tebakan' ? ' (tebakan dari namanya — belum pernah diisi owner)' : D.asal === 'kosong' ? ' (sengaja dikosongkan)' : ''}</div></div><div class="kaca-btn" data-aksi="jbTutup">tutup</div></div>
+      <div class="jalur bungkus" data-k="jb-pilihan">${JB.jbPilihan().map((j) => h`<div class="seg ${kini === j ? 'aktif' : ''}" data-aksi="jbPilih" data-j="${j}" data-k="jbp-${j}">${j}</div>`)}</div>
+      <div class="hg-ketik-baris"><input class="ketik-nama" type="text" placeholder="jenis lain — ketik namanya" value="${s.jbKetik}" data-ketik="jbKetik"><div class="kaca-btn aktif" data-aksi="jbSimpanKetik">simpan</div></div>
+      <div class="tombol-baris rapat"><div class="kaca-btn putus" data-aksi="jbKosongkan">kosongkan — tidak masuk kelompok mana pun</div></div>
+      <div class="ket" style="font-size: 11px;">Jenis mengelompokkan nama beras di Harga, Stok (total per jenis), dan Jual (saring rak). Salah jenis tidak mengubah harga, stok, atau uang.</div></div>`;
+  }
+  function gambarJenisDaftar(s) {
+    const D = JB.jbDaftar();
+    return s.jbDaftar ? h`<div class="kartu" data-k="jb-daftar" style="gap: 6px;"><div class="kepala-lembar"><div class="label">Jenis beras · ${D.terisi}/${D.total} terisi</div><div class="kaca-btn kecil" data-aksi="jbDaftarBuka">tutup</div></div>
+        <div class="jalur bungkus" data-k="jb-semua">${D.baris.map((b) => h`<div class="seg ${b.jenis ? '' : 'aktif'}" data-aksi="jbBuka" data-merk="${b.merk}" data-k="jbd-${b.merk}">${b.merk} · ${b.jenis || 'jenis?'}${b.asal === 'tebakan' ? ' (tebakan)' : ''}</div>`)}</div>
+        <div class="ket" style="font-size: 11px;">Ketuk nama beras untuk memilih jenisnya. Nama muncul sendiri begitu ada di stok atau katalog. "(tebakan)" = ditebak dari namanya, belum pernah diisi.</div></div>`
+      : h`<div class="kaca-btn kecil" data-aksi="jbDaftarBuka" data-k="jb-pintu" style="align-self: flex-start;">Jenis beras · ${D.terisi}/${D.total} terisi ›</div>`;
   }
   function gambarRiwayat() {
     const r = HG.riwayatTerbit(10); if (!r.length) return '';
