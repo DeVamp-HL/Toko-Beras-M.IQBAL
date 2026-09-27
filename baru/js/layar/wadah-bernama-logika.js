@@ -14,8 +14,8 @@
 // Tanpa DOM; nama berawalan wb (bundel uji satu lingkup). Dijaga alat-uji/uji_wadah_bernama.py & uji_cocokkan_terpisah.py.
 import { hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { RASIO_KONVERSI, RASIO_DEFAULT } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilWadahLiteran } from '../data/toko.js';
-import { aturWadah, karungUntukWadah, wdSesudah, wdTerbaru } from './jual-logika.js';
+import { ambilPenjualan, ambilWadahLiteran, ambilHargaLiteran, denganCacheSementara } from '../data/toko.js';
+import { aturWadah, karungUntukWadah, karungBelakang, semuaKarungTerbuka, wdSesudah, wdTerbaru, DAFTAR_WADAH } from './jual-logika.js';
 
 const wbB3 = (n) => Math.round(n * 1000) / 1000;
 const wbB2 = (n) => Math.round(n * 100) / 100;
@@ -91,6 +91,13 @@ export function wbModalPerKg(W, s) {
   if (kg > 0) return K.positif.reduce((a, x) => a + x.kg * hpp(x.merk), 0) / kg;
   return hpp(wbMerkCadangan(W)) || hpp(W);
 }
+/** Harga BELI terbaru per kg isi wadah = rata-rata tertimbang harga beli terakhir tiap merek asal (penanda "harga beli naik" di katalog). */
+export function wbBeliPerKg(W) {
+  const stok = hitungStokKarungPerMerk(); const K = wbKomposisi(W); const beli = (m) => (stok[m] || {}).hargaTerakhirPerKg || 0;
+  const kg = K.positif.reduce((a, x) => a + x.kg, 0);
+  if (kg > 0) return K.positif.reduce((a, x) => a + x.kg * beli(x.merk), 0) / kg;
+  return beli(wbMerkCadangan(W)) || beli(W);
+}
 /** Komposisi sesudah isi wadah dihitung ulang jadi `isiKg` (cocokkan): selisih dibagi sebanding bagian positif; tanpa bagian positif → merek cadangan. */
 export function wbKomposisiBaru(W, isiKg) {
   const K = wbKomposisi(W); const isi = wbB2(Number(isiKg) || 0); const dasar = {};
@@ -102,4 +109,79 @@ export function wbKomposisiBaru(W, isiKg) {
   // alokasi selisih per merek = bagian baru − bagian lama (termasuk bagian minus yang dibuang ke nol)
   Object.keys(K.bagian).concat(Object.keys(out)).forEach((m) => { if (alokasi[m] !== undefined) return; const d = wbB2((out[m] || 0) - (K.bagian[m] || 0)); if (Math.abs(d) >= 0.005) alokasi[m] = d; });
   return { komposisi: out, alokasi, dasar: K };
+}
+
+// ---------- literan LANGSUNG dari karungnya sendiri (tidak lewat wadah) ----------
+/**
+ * Merek yang dijual literan langsung dari karungnya (owner menandai di Harga › Literan; disimpan di aturan wadah — dokumen wadahLiteran tipe 'atur' kolom
+ * literanLangsung, yang juga terbaca karyawan, supaya rak Jual owner & karyawan sama). Belum pernah
+ * ditandai → bawaan TERUKUR: merek (bukan nama wadah) yang punya harga liter DAN pernah terjual literan langsung (baris literan tanpa dariWadah,
+ * merkSumber = merek itu). Merek yang cuma lewat wadah tidak butuh harga liter sendiri — harga liter melekat pada WADAH.
+ */
+export function wbLiteranLangsung() {
+  const A = aturWadah(); const wadah = A.daftar;
+  if (A.literanLangsung) return { daftar: A.literanLangsung.filter((m) => wadah.indexOf(m) < 0), dariOwner: true };
+  const berharga = {}; ambilHargaLiteran().forEach((h) => { if (Number(h.hargaPerLiter) > 0) berharga[String(h.merk)] = true; });
+  const pernah = {}; ambilPenjualan().forEach((p) => { if (p.jenis === 'literan' && !p.dariWadah && p.merkSumber) pernah[String(p.merkSumber)] = true; });
+  return { daftar: Object.keys(berharga).filter((m) => pernah[m] && wadah.indexOf(m) < 0).sort(), dariOwner: false };
+}
+/** Dokumen aturan wadah BARU (tipe 'atur') = aturan yang berlaku sekarang + perubahan `ubah` (riwayat aturan tersimpan; yang terbaru berlaku). */
+export function wbDokAtur(ubah, w) {
+  const A = aturWadah();
+  const data = { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'atur', penuhKg: A.penuhKg, puncakKg: A.puncakKg, isiUlangKg: A.isiUlangKg, takarKg: A.takarKg, susutWajarKg: A.susutWajarKg,
+    merekKarung: A.merekKarung.slice(), daftar: A.daftar.slice(), resep: Object.assign({}, A.resep) };
+  if (A.literanLangsung) data.literanLangsung = A.literanLangsung.slice();
+  return { koleksi: 'wadahLiteran', data: Object.assign(data, ubah || {}) };
+}
+/** Tandai / lepas satu merek sebagai literan-langsung: aturan wadah baru (kolom lain dibawa apa adanya). */
+export function wbSusunLiteranLangsung(merk, nyala, w) {
+  const m = String(merk || ''); if (!m) return { tolak: 'Pilih mereknya dulu' };
+  if (aturWadah().daftar.indexOf(m) >= 0) return { tolak: m + ' adalah nama WADAH — harga litrnya harga wadah itu' };
+  const L = wbLiteranLangsung(); const set = L.daftar.slice(); const ada = set.indexOf(m) >= 0;
+  if (!!nyala === ada) return { tolak: m + (ada ? ' sudah' : ' belum') + ' ditandai literan langsung' };
+  const daftar = nyala ? set.concat([m]).sort() : set.filter((x) => x !== m);
+  return { dokumen: [wbDokAtur({ literanLangsung: daftar }, w)],
+    patch: { kabar: m + (nyala ? ' ditandai: dijual literan LANGSUNG dari karungnya — butuh harga liter sendiri, tampil di rak Literan.' : ' tidak lagi dijual literan langsung — literannya lewat wadah saja (harga liter wadah).'), kabarAwas: false } };
+}
+
+// ---------- nama kelas mutu / nama wadah: TIDAK dibukukan lewat barang masuk ----------
+export const MEREK_KARUNG_BAWAAN = ['Angsa', 'Perahu Layar', 'Pandan Wangi'];   // keputusan owner 27 Sep: nama wadah yang sekaligus merek karung pemasok
+/** Nama yang ditolak barang masuk: semua nama wadah (sekarang & yang pernah dipakai di aturan wadah) kecuali yang juga merek karung (Aturan wadah). */
+export function wbNamaKelas() {
+  const A = aturWadah(); const merek = {}; A.merekKarung.forEach((m) => { merek[m] = true; }); const out = {};
+  A.daftar.concat(DAFTAR_WADAH).forEach((m) => { if (!merek[m]) out[m] = true; });
+  ambilWadahLiteran().forEach((d) => { if (d.tipe === 'atur' && Array.isArray(d.daftar)) d.daftar.forEach((m) => { if (!merek[m]) out[String(m)] = true; }); });
+  return out;
+}
+
+// ---------- GANTI NAMA WADAH (owner 27 Sep: "wadah kotak literan Angsa/Perahu Layar dll bisa diganti") ----------
+/**
+ * Wadah = tempat; namanya boleh diganti. Isi, karung di belakangnya, dan harga liternya IKUT pindah ke nama baru di kiriman yang sama: aturan wadah dengan
+ * nama baru di posisi yang sama, titik samakan isi untuk nama baru (isi & komposisi sekarang, mentah), titik samakan karung terbuka di belakangnya
+ * (sisa sekarang), dan harga liter nama baru = harga nama lama (kalau nama baru belum punya). Buku stok tidak disentuh.
+ */
+export function wbSusunGantiNama(lama, baru, w) {
+  const L = String(lama || ''); const B = String(baru || '').replace(/\s+/g, ' ').trim(); const A = aturWadah(); const i = A.daftar.indexOf(L);
+  if (i < 0) return { tolak: L + ' bukan wadah' };
+  if (!B) return { tolak: 'Tulis nama wadah yang baru' };
+  if (B.length > 40) return { tolak: 'Nama wadah paling panjang 40 huruf' };
+  if (B === L) return { tolak: 'Namanya sama' };
+  if (A.daftar.indexOf(B) >= 0) return { tolak: B + ' sudah jadi nama wadah lain' };
+  const daftar = A.daftar.slice(); daftar[i] = B; const resep = Object.assign({}, A.resep); if (resep[L]) { resep[B] = resep[L]; delete resep[L]; }
+  const dokumen = [wbDokAtur({ daftar, resep, gantiNama: { dari: L, ke: B } }, w)];
+  const K = wbKomposisi(L);
+  if (K.diketahui) dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: B, tipe: 'isi', isiKg: wbB2(K.totalKg), komposisi: Object.assign({}, K.bagian), gantiNamaDari: L } });
+  const kn = karungUntukWadah(L); const kb = kn.dariCatatan ? karungBelakang(kn.merk, L) : null;
+  const sebelum = {}; semuaKarungTerbuka().forEach((k) => { sebelum[k.merk + '|' + k.lokasi] = k.sisaMentahKg; });
+  if (kb && kb.diketahui) { dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: kn.merk, isiKg: wbB2(kb.sisaMentahKg), wadah: B, gantiNamaDari: L } });
+    sebelum[kn.merk + '|' + L] = 0; }   // kolam di belakang L PINDAH ke B
+  // Catatan karung lama tanpa kolom wadah dibaca menurut daftar wadah SEKARANG: sesudah nama berganti, kolamnya bisa tertinggal di nama lama atau terbaca
+  // jadi karung lepas → terhitung dua kali. Tiap kolam (selain B) yang berubah karena ganti nama disamakan lagi ke angkanya sebelum ganti nama (0 bila dulu
+  // tidak ada): jumlah karung terbuka sebelum = sesudah, tumpukan gudang tidak bergeser.
+  const sesudah = denganCacheSementara(dokumen, () => semuaKarungTerbuka());
+  sesudah.forEach((k) => { if (k.lokasi === B) return; const lama = sebelum[k.merk + '|' + k.lokasi] || 0; if (Math.abs(k.sisaMentahKg - lama) < 0.005) return;
+    dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: k.merk, isiKg: wbB2(lama), gantiNamaDari: L }, k.lokasi ? { wadah: k.lokasi } : { lepas: true }) }); });
+  const hL = ambilHargaLiteran().find((h) => h.merk === L); const hB = ambilHargaLiteran().find((h) => h.merk === B);
+  if (hL && Number(hL.hargaPerLiter) > 0 && !hB) dokumen.push({ koleksi: 'katalogHargaLiteran', data: { id: B, merk: B, hargaPerLiter: Number(hL.hargaPerLiter), diubahPada: w.kini, modalSaatSetel: 0 } });
+  return { dokumen, patch: { kabar: 'Wadah ' + L + ' sekarang bernama ' + B + ' — isi' + (K.diketahui ? ' ±' + String(wbB2(K.totalKg)).replace('.', ',') + ' kg' : '') + ', karung di belakangnya' + (hL ? ', dan harga liternya' : '') + ' ikut pindah. Buku stok tidak berubah.', kabarAwas: false } };
 }

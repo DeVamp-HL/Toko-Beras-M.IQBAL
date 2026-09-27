@@ -13,6 +13,7 @@ import { hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { jenisUntukMerk } from '../mesin/pembantu.js';
 import { ambilHargaKarung, ambilPetaJenisBeras, cacheMentah } from '../data/toko.js';
 import { RP } from '../inti/format.js';
+import { wbNamaKelas } from './wadah-bernama-logika.js';
 
 export const VR_PEMISAH = ' · ';
 export const VR_BATAS_BAWAAN = 5;   // % beda harga beli vs modal berjalan yang memicu pertanyaan (owner mengatur di Stok › Barang masuk › Atur)
@@ -83,6 +84,7 @@ export function vrSusunTerbitHarga(varian, hargaKetik, w, yakin) {
 export function vrSusunBuatDariHarga(induk, mutu, hargaKetik, w, yakin) {
   const ind = vrBersih(induk); const m = vrBersih(mutu);
   if (!ind || !vrAda(ind)) return { tolak: 'Pilih dulu merek induknya (nama yang sudah ada di buku atau katalog)' };
+  if (wbNamaKelas()[ind.split(VR_PEMISAH)[0]]) return { tolak: ind + ' itu nama WADAH / kelas mutu, bukan merek karung — varian dibuat dari merek yang tertera di karung' };   // putaran 27 (Bagian 5)
   if (!m) return { tolak: 'Tulis nama mutunya (mis. Premium) — varian dari layar Harga harus bernama' };
   if (m.indexOf('·') >= 0) return { tolak: 'Nama mutu tidak boleh memakai titik tengah' };
   const nama = vrNama(ind, m, w.tanggal); if (vrAda(nama)) return { tolak: nama + ' sudah ada — ubah harganya di katalog seperti biasa' };

@@ -16,6 +16,7 @@ import { kkSertakan } from '../data/katalog-kasir.js';
 import * as JB from './jenis-beras-logika.js';
 import * as VR from './varian-logika.js';
 import * as AR from './arsip-logika.js';
+import * as WB from './wadah-bernama-logika.js';
 import { hitungStokKemasan } from '../mesin/beku.js';
 import { kunciKemasan } from '../mesin/pembantu.js';   // 25c: setelan jenis beras pindah dari sistem lama
 
@@ -63,6 +64,7 @@ export function pasangLayarHarga(akar, opsi) {
     mode: () => opsi.gantiMode(), tutupKabar: () => set({ kabar: '' }), keMenu: () => opsi.pindah && opsi.pindah('menu'),
     // ---- H1 KATALOG
     tabH: ({ t }) => { set({ tabH: t, kabar: '' }); ingatTab(); },
+    ltLangsung: async ({ merk, nyala }) => { await tulis(WB.wbSusunLiteranLangsung(merk, nyala === '1', waktu())); },
     hgUbah: ({ kunci }) => { set({ ubah: st().ubah === kunci ? null : kunci, ketik: '', ketikApa: 'jual', kabar: '', terbit: false }); keAtas(); },
     hgTutupUbah: () => set({ ubah: null, ketik: '', ketikApa: 'jual' }),
     hgKetik: (v) => set({ ketik: String(v).slice(0, 12) }),
@@ -183,7 +185,7 @@ export function pasangLayarHarga(akar, opsi) {
     const S = HG.hgSemua(kini()); const semuaTab = HG.TAB_HARGA; const tetapKiri = L !== 'hp'; const tetapKanan = L === 'mac';
     const tabAda = semuaTab.filter(([id]) => !(id === 'papan' && tetapKiri) && !(id === 'label' && tetapKanan)); const tab = tabAda.some(([id]) => id === s.tabH) ? s.tabH : tabAda[0][0];
     const lbl = HG.susunLabelTugas(S); const nama = (id) => (id === 'label' && lbl.tugas.length ? 'Label · ' + lbl.tugas.length : id === 'dampak' && S.perlu.length ? 'Dampak · ' + S.perlu.length : semuaTab.find((t) => t[0] === id)[1]);
-    const panel = (id) => (id === 'papan' ? gambarPapan(s, S) : id === 'kalimat' ? gambarKalimat(s, S) : id === 'dampak' ? gambarDampak(S) : id === 'pasar' ? gambarPasar(S) : id === 'belah' ? gambarBelah(s, S) : gambarLabel(S, lbl));
+    const panel = (id) => (id === 'papan' ? gambarPapan(s, S) : id === 'literan' ? gambarLiteran(s, S) : id === 'kalimat' ? gambarKalimat(s, S) : id === 'dampak' ? gambarDampak(S) : id === 'pasar' ? gambarPasar(S) : id === 'belah' ? gambarBelah(s, S) : gambarLabel(S, lbl));
     const tengah = h`<div class="hg-kolom" data-k="hg-tengah">${tabBaris(tabAda.map(([id]) => [id, nama(id)]), tab, 'tabH', L === 'hp' ? 'enam' : '')}${panel(tab)}</div>`;
     return h`<section class="hg-katalog" data-k="katalog">
       <div class="hg-ringkas" data-k="ringkas">${S.ringkas.map((r) => h`<div class="${r.nyala ? 'nyala' : ''}" data-k="r-${r.id}"><span class="a">${r.a}</span><span class="l">${r.l}</span></div>`)}</div>
@@ -202,6 +204,21 @@ export function pasangLayarHarga(akar, opsi) {
         <div class="kp-kapur"><i></i><i></i><i></i></div></div>
       <div class="ket" style="font-size: 11px;">Ketuk angkanya untuk menulis ulang — tulisan baru jadi draf dulu (kapur kuning); papan pembeli baru berganti sesudah diterbitkan.</div>
       <div class="tombol-baris rapat"><div class="kaca-btn ${S.perlu.some((b) => b.usul > 0) ? '' : 'mati'}" data-aksi="hgUsulSemua">Pakai usul untuk ${S.perlu.filter((b) => b.usul > 0).length} harga — jadi draf dulu</div><div class="kaca-btn" data-aksi="hgWa">Kirim daftar harga ke WhatsApp</div></div></div>`;
+  }
+  // putaran 27 (Bagian 5): harga per LITER melekat pada WADAH (tempat bernama W1–W8); merek yang dijual literan langsung dari karungnya punya harga sendiri
+  function gambarLiteran(s, S) {
+    const LT = HG.hgLiteran(S); const KG = (n) => DESIMAL(Math.round(n * 10) / 10) + ' kg';
+    const baris = (k, kiri, kanan, aksi) => h`<div data-k="${k}" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--garis, rgba(255,255,255,.08));"><div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">${kiri}</div><div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">${kanan}${aksi || ''}</div></div>`;
+    const harga = (x) => h`<div class="kaca-btn kecil ${x.status === 'lubang' ? 'awas' : ''}" data-aksi="hgUbah" data-kunci="${x.k}">${x.harga ? RP(x.harga) + '/L' : 'belum ada harga'}</div>`;
+    return h`<div class="kartu" data-k="literan" style="gap: 6px;"><div class="label">Literan · ${LT.wadah.length} wadah</div>
+      <div class="ket">Harga per liter melekat pada WADAH, bukan merek. Isi wadah boleh dari beberapa merek karung; literan yang terjual memotong buku merek-merek itu sebanding isinya, modalnya = rata-rata isi wadah. Merek yang cuma masuk lewat wadah tidak butuh harga liter sendiri.</div>
+      ${LT.wadah.map((x, i) => baris('lw-' + x.nama, h`<b>W${i + 1} · ${x.nama}</b><span class="ket">${!x.diketahui ? 'isi per merek belum diketahui — cocokkan wadahnya' : x.komposisi.length ? x.komposisi.map((c) => c.merk + ' ' + KG(c.kg) + (x.komposisi.length > 1 ? ' (' + DESIMAL(c.persen) + '%)' : '')).join(' + ') : 'kosong menurut buku'}</span>
+        <span class="ket">${x.modalLiter > 0 ? 'modal ' + RP(Math.round(x.modalLiter)) + '/L (' + RP(Math.round(x.modalKg)) + '/kg × ' + DESIMAL(x.rasio) + ')' : 'modal belum bisa dihitung'}${x.untungLiter !== null ? ' · ' + (x.untungLiter < -0.5 ? 'RUGI ' + RP(Math.round(-x.untungLiter)) : 'untung ' + RP(Math.round(x.untungLiter))) + '/L' : ''}</span>`, harga(x)))}
+      <div class="label" style="margin-top: 8px;">Literan langsung dari karung · ${LT.langsung.length}${LT.dariOwner ? '' : ' · perkiraan dari penjualan lama'}</div>
+      <div class="ket">Merek yang diserok langsung dari karungnya (tidak lewat wadah) — butuh harga liter sendiri dan tampil di rak Literan dengan namanya.</div>
+      ${LT.langsung.length ? LT.langsung.map((x) => baris('ll-' + x.merk, h`<b>${x.merk}</b><span class="ket">${x.modalLiter > 0 ? 'modal ' + RP(Math.round(x.modalLiter)) + '/L' : 'modal belum tercatat'}</span>`, harga(x), h`<div class="kaca-btn kecil putus" data-aksi="ltLangsung" data-merk="${x.merk}" data-nyala="0">lepas</div>`)) : h`<div class="ket">Belum ada.</div>`}
+      ${LT.calon.length ? h`<div class="ket">Tandai merek literan langsung:</div><div class="jalur bungkus" data-k="lt-calon">${LT.calon.map((m) => h`<div class="seg" data-aksi="ltLangsung" data-merk="${m}" data-nyala="1" data-k="ltc-${m}">+ ${m}</div>`)}</div>` : ''}
+      ${LT.tidakDipakai.length ? h`<div class="label" style="margin-top: 8px;">Harga liter yang tidak dipakai · ${LT.tidakDipakai.length}</div><div class="ket">Masih tersimpan di katalog (dan katalog HP kasir lama) tapi bukan wadah dan bukan literan langsung — tidak tampil di rak Jual. ${LT.tidakDipakai.map((x) => x.merk + ' ' + RP(x.harga) + '/L' + (x.arsip ? ' (arsip)' : '')).join(' · ')}</div>` : ''}</div>`;
   }
   function gambarUbah(s, S) {
     const U = HG.hitungUbah(S, s.ubah, s.ketik, s.ketikApa); if (U.tolak && !U.b) return h`<div class="pita-info awas" data-k="ubah-tolak">${U.tolak}</div>`; const b = U.b; const modeP = s.ketikApa === 'pasar';

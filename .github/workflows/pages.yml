@@ -116,6 +116,8 @@ jobs:
         run: python3 alat-uji/uji_arsip_produk.py && python3 alat-uji/uji_arsip_produk.py --kontrol
       - name: "Setengah karung (27 · Bagian 4): kemasan 50 kg dijual ½ lewat jalur pemecah Adukan di kiriman yang sama, modal dipindah utuh, stok 50 −1 & 25 +2 −1, harga 25 kg katalog/usul, batal mencabut pemecah (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_setengah_karung.py && python3 alat-uji/uji_setengah_karung.py --kontrol
+      - name: "Wadah bernama (27 · Bagian 5): harga liter melekat pada wadah, literan wadah memotong buku merek asal sebanding komposisi (baris internal per merek, struk satu baris), HPP rata-rata isi, identitas rantai stok, katalog tidak menagih liter merek lewat-wadah, nama kelas ditolak barang masuk, ganti nama wadah (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_wadah_bernama.py && python3 alat-uji/uji_wadah_bernama.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

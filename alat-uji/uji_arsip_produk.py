@@ -51,6 +51,8 @@ KOTAK = {
   'katalogHargaLiteran': [{'id': 'Angsa', 'merk': 'Angsa', 'hargaPerLiter': 12000}, {'id': 'Lama', 'merk': 'Lama', 'hargaPerLiter': 12500}],
   'aturanToko': [{'id': 'hargaLabel', 'daftar': [{'k': 'Lama|S', 'lama': 14800, 'tanggal': '2026-09-12'}, {'k': 'Angsa|S', 'lama': 13800, 'tanggal': '2026-09-12'}]}, {'id': 'hargaDraf', 'draf': {'Lama|L': 13000, 'Coba · Super|S': 16500}}],
   'pengaturan': [{'id': 'jenisBeras', 'peta': {'Lama': 'IR64', 'Coba · Super': 'IR64'}}],
+  # putaran 27 (Bagian 5): Lama dijual literan LANGSUNG dari karungnya (ditandai owner di aturan wadah) — harga liternya dipakai rak
+  'wadahLiteran': [{'id': 1, 'tanggal': '2026-09-01', 'jam': '08:00', 'tipe': 'atur', 'literanLangsung': ['Lama']}],
 }
 
 SKENARIO = r"""

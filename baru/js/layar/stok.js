@@ -23,6 +23,7 @@ import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal }
 import { kunciKemasan } from '../mesin/pembantu.js';
 import { jbKelompokStok } from './jenis-beras-logika.js';
 import * as VR from './varian-logika.js';
+import * as WB from './wadah-bernama-logika.js';
 import { aturHarga } from './harga-logika.js';
 import { kkSertakan } from '../data/katalog-kasir.js';   // 25c: total per jenis beras (owner 27 Sep: Harga + Stok + Jual)
 
@@ -40,7 +41,7 @@ const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? J
 export function pasangLayarStok(akar, opsi) {
   const tabAwal = (() => { try { return localStorage.getItem(KUNCI_TAB) || 'gudang'; } catch (e) { return 'gudang'; } })();
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
-  const awal = () => ({ tab: S.TAB_STOK.some((t) => t[0] === tabAwal) ? tabAwal : 'gudang', tanya: 'beli', kabar: '', kabarAwas: false, wadahAktif: null, isiW: null, krKetik: '', krNama: '', krPilih: false, lainPilih: false, atur: null, drPilih: null, drYakin: false, tpTab: 'tiga',
+  const awal = () => ({ tab: S.TAB_STOK.some((t) => t[0] === tabAwal) ? tabAwal : 'gudang', tanya: 'beli', kabar: '', kabarAwas: false, wadahAktif: null, isiW: null, krKetik: '', krNama: '', krPilih: false, lainPilih: false, gnKetik: '', atur: null, drPilih: null, drYakin: false, tpTab: 'tiga',
     lembar: null, masuk: null, cocok: null, aturC: null, yakinM: false, yakinHapus: false, yakinC: {},
     adukan: null, yakinA: {}, yakinHapusA: false, bukaA: null, koreksiA: { total: '', alasan: '' }, qBuka: null, qAlasan: '', qYakin: '',
     // putaran 16: Kantong (ST4), Tempat simpan (ST5), HPP (ST6)
@@ -50,7 +51,7 @@ export function pasangLayarStok(akar, opsi) {
     // putaran 27: tawaran harga jual varian sesudah barang masuk (Bagian 2)
     varianTawar: null, vrKetik: {}, vrYakin: false });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['isiW', 'krKetik', 'krNama', 'atur', 'koreksiA', 'qAlasan', 'kt', 'ktAlasan', 'aturKt', 'aturC', ['tp', (v) => !!(v && v.pilih)], 'aturTp', ['hp', (v) => !!(v && (v.ketik || v.alasan || Object.keys(v.massal || {}).length))], 'aturHp', ['vrKetik', (v) => !!(v && Object.keys(v).some((k) => v[k]))]], [KUNCI_DRAF_MASUK, KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);
+  const ISIAN = pasangIsian(K, awal, ['isiW', 'krKetik', 'krNama', 'gnKetik', 'atur', 'koreksiA', 'qAlasan', 'kt', 'ktAlasan', 'aturKt', 'aturC', ['tp', (v) => !!(v && v.pilih)], 'aturTp', ['hp', (v) => !!(v && (v.ketik || v.alasan || Object.keys(v.massal || {}).length))], 'aturHp', ['vrKetik', (v) => !!(v && Object.keys(v).some((k) => v[k]))]], [KUNCI_DRAF_MASUK, KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; const kini = () => opsi.sekarang() || new Date();
   const waktu = () => L.waktuSekarang(opsi.sekarang() || undefined);
@@ -66,7 +67,7 @@ export function pasangLayarStok(akar, opsi) {
   }
   const keranjangJual = () => ({ keranjang: opsi.keranjangJual().keranjang, antrean: opsi.keranjangJual().antrean });
   // mode "atur susunan": draf di keadaan layar; baru ditulis saat SIMPAN (satu dokumen berisi seluruh aturan)
-  const drafAtur = () => { const a = L.aturWadah(); const t = (n) => String(n).replace('.', ','); return { penuh: t(a.penuhKg), puncak: t(a.puncakKg), ulang: t(a.isiUlangKg), takar: t(a.takarKg), susut: t(a.susutWajarKg), daftar: a.daftar.slice(), resep: JSON.parse(JSON.stringify(a.resep)), pilih: null, resepUntuk: null }; };
+  const drafAtur = () => { const a = L.aturWadah(); const t = (n) => String(n).replace('.', ','); return { penuh: t(a.penuhKg), puncak: t(a.puncakKg), ulang: t(a.isiUlangKg), takar: t(a.takarKg), susut: t(a.susutWajarKg), merekKarung: a.merekKarung.slice(), daftar: a.daftar.slice(), resep: JSON.parse(JSON.stringify(a.resep)), pilih: null, resepUntuk: null }; };
   const ubahAtur = (f) => { const d = JSON.parse(JSON.stringify(st().atur || drafAtur())); f(d); set({ atur: d }); };
   const AKSI = Object.assign({
     tombolMati: ({ kal }) => set({ kabar: kal, kabarAwas: true }),   // putaran 23: tombol peran — mati dengan kalimat sebabnya
@@ -75,7 +76,11 @@ export function pasangLayarStok(akar, opsi) {
     keBelanja: () => opsi.bukaHarga && opsi.bukaHarga('belanja'),   // putaran 17: Harga & Pemasok → Belanja (saran yang sama, per pemasok, muatan truk, pesanan WA)
     mode: () => opsi.gantiMode(),
     tutupKabar: () => set({ kabar: '' }),
-    pilihWadah: ({ merk }) => set({ wadahAktif: st().wadahAktif === merk ? null : merk, isiW: null, krKetik: '', krNama: '', krPilih: false }),
+    pilihWadah: ({ merk }) => set({ wadahAktif: st().wadahAktif === merk ? null : merk, isiW: null, krKetik: '', krNama: '', krPilih: false, gnKetik: '' }),
+    // putaran 27 (Bagian 5): wadah = TEMPAT bernama; ganti nama → isi, karung di belakangnya & harga liter ikut pindah (buku stok tidak disentuh)
+    gnKetik: (v) => set({ gnKetik: String(v).slice(0, 40) }),
+    gantiNamaWadah: async ({ merk }) => { const baru = String(st().gnKetik || '').replace(/\s+/g, ' ').trim(); const r = WB.wbSusunGantiNama(merk, baru, waktu());
+      if (await tulis(r)) set({ gnKetik: '', wadahAktif: baru }); },
     // karung di belakang wadah BERNAMA (owner 21 Sep): namanya dipilih dari karung sumber di gudang; membukanya menurunkan tumpukan gudang nama itu
     krPilihBuka: () => set({ krPilih: !st().krPilih }),
     krNama: ({ merk }) => set({ krNama: merk, krPilih: false }),
@@ -95,6 +100,7 @@ export function pasangLayarStok(akar, opsi) {
     aturPenuh: (v) => ubahAtur((d) => { d.penuh = String(v).slice(0, 6); }), aturPuncak: (v) => ubahAtur((d) => { d.puncak = String(v).slice(0, 6); }),
     aturUlang: (v) => ubahAtur((d) => { d.ulang = String(v).slice(0, 6); }), aturTakar: (v) => ubahAtur((d) => { d.takar = String(v).slice(0, 6); }),
     aturSusut: (v) => ubahAtur((d) => { d.susut = String(v).slice(0, 6); }),
+    aturMerekKarung: ({ merk }) => ubahAtur((d) => { const m = d.merekKarung || L.aturWadah().merekKarung.slice(); const i = m.indexOf(merk); if (i >= 0) m.splice(i, 1); else m.push(merk); d.merekKarung = m; }),
     aturGeser: ({ i, arah }) => ubahAtur((d) => { d.daftar = L.geserWadah(d.daftar, Number(i), Number(arah)); d.pilih = null; }),
     aturPilih: ({ i }) => ubahAtur((d) => { d.pilih = d.pilih === Number(i) ? null : Number(i); d.resepUntuk = null; }),
     aturGanti: ({ i, merk }) => ubahAtur((d) => { const lama = d.daftar[Number(i)]; d.daftar = L.gantiBerasWadah(d.daftar, Number(i), merk); if (lama && lama !== merk) delete d.resep[lama]; d.pilih = null; }),
@@ -103,7 +109,7 @@ export function pasangLayarStok(akar, opsi) {
     aturResep: ({ merk }) => ubahAtur((d) => { d.resepUntuk = d.resepUntuk === merk ? null : merk; d.pilih = null; if (!d.resep[merk]) d.resep[merk] = L.resepWadah(merk); }),
     aturResepTakar: ({ merk, j, arah }) => ubahAtur((d) => { const r = d.resep[merk]; if (!r || !r[Number(j)]) return; r[Number(j)].takar = Math.max(0, r[Number(j)].takar + Number(arah)); }),
     aturResepTambah: ({ merk, bahan }) => ubahAtur((d) => { const r = d.resep[merk] || (d.resep[merk] = L.resepWadah(merk)); if (r.length < L.WADAH_MAKS_RESEP && !r.some((x) => x.merk === bahan)) r.push({ merk: bahan, takar: 1 }); }),
-    simpanAtur: async () => { const d = st().atur; if (!d) return; const r = L.susunAturWadah({ penuhKg: d.penuh, puncakKg: d.puncak, isiUlangKg: d.ulang, takarKg: d.takar, susutWajarKg: d.susut, daftar: d.daftar, resep: d.resep }, waktu()); if (await tulis(r)) set({ atur: null }); },
+    simpanAtur: async () => { const d = st().atur; if (!d) return; const r = L.susunAturWadah({ penuhKg: d.penuh, puncakKg: d.puncak, isiUlangKg: d.ulang, takarKg: d.takar, susutWajarKg: d.susut, merekKarung: d.merekKarung || L.aturWadah().merekKarung, daftar: d.daftar, resep: d.resep }, waktu()); if (await tulis(r)) set({ atur: null }); },
     // ---- BARANG MASUK (ST1): draf di keadaan layar + localStorage; ditulis saat SIMPAN
     bukaMasuk: () => set({ lembar: 'masuk', masuk: bacaLokal(KUNCI_DRAF_MASUK) || C.drafMasukKosong(waktu()), yakinM: false, yakinHapus: false, kabar: '', aturC: null }),
     tutupLembar: () => set({ lembar: null, kabar: '', aturC: null, yakinM: false, yakinHapus: false, yakinHapusA: false, bukaA: null }),
@@ -424,6 +430,10 @@ export function pasangLayarStok(akar, opsi) {
       <div class="kaca-btn" data-aksi="bukaAtur">Atur susunan, isi &amp; aturan wadah</div>
       ${aktif ? h`<div class="kartu rincian-wadah" data-k="rincian-${aktif.nama}">
         <div class="label">${aktif.no} · ${aktif.nama}${aktif.resep.length > 1 ? ' · campuran ' + aktif.resep.map((r) => r.takar).join(' : ') + ' — ' + aktif.resep.map((r) => r.merk).join(' : ') : ''}</div>
+        ${(() => { const K = WB.wbKomposisi(aktif.nama, keranjangJual()); return h`<div class="ket" data-k="komposisi-${aktif.nama}">${!K.diketahui ? 'Isi per merek belum diketahui — cocokkan wadah ini dulu (Stok › Cocokkan › Wadah literan).'
+          : K.positif.length ? 'Isi menurut buku: ' + K.positif.map((x) => x.merk + ' ' + KG(x.kg)).join(' + ') + '. Literan yang terjual memotong buku merek-merek itu sebanding isinya' + (K.positif.length > 1 ? ' (' + K.positif.map((x) => Math.round(x.kg * 100 / K.positif.reduce((q, y) => q + y.kg, 0)) + '%').join(' : ') + ')' : '') + '.' : 'Menurut buku wadah ini kosong.'}
+          ${Object.keys(K.bagian).some((m) => K.bagian[m] < 0) ? ' Ada bagian MINUS (' + Object.keys(K.bagian).filter((m) => K.bagian[m] < 0).map((m) => m + ' ' + KG(K.bagian[m])).join(', ') + ') — isi ulang lupa dicatat? cocokkan wadah ini.' : ''}</div>`; })()}
+        <div class="tombol-baris rapat" data-k="ganti-nama"><input class="ketik-nama sempit" id="gnKetik" type="text" placeholder="nama baru wadah ini" value="${s.gnKetik}" data-ketik="gnKetik"><div class="kaca-btn putus ${String(s.gnKetik || '').trim() ? '' : 'mati'}" data-aksi="gantiNamaWadah" data-merk="${aktif.nama}">ganti nama wadah</div></div>
         ${(() => { const nk = s.krNama || aktif.karungNama; const draf = nk !== aktif.karungNama; const kr = draf ? L.karungBelakang(nk, aktif.nama) : aktif.karung; const tg = draf ? L.tumpukanGudang(nk) : aktif.tumpukan; const calon = s.krPilih ? L.calonKarung() : [];
           return h`<div class="baris-wadah" data-k="kr-${nk}"><div class="gambar-chip besar">${mentah(gambarKarungStok(kr))}</div>
           <div><div class="label">Karung di belakang · dari tumpukan gudang</div>
@@ -471,6 +481,9 @@ export function pasangLayarStok(akar, opsi) {
         <div><div class="ket">Minta isi ulang saat tersisa (kg)</div><input class="ketik-nama" id="aturUlang" type="text" inputmode="decimal" value="${d.ulang}" data-ketik="aturUlang"></div>
         <div><div class="ket">Isi satu takar / serok (kg)</div><input class="ketik-nama" id="aturTakar" type="text" inputmode="decimal" value="${d.takar}" data-ketik="aturTakar"></div>
         <div><div class="ket">Susut takar wajar per wadah per hari (kg) — dipakai saat cocokkan wadah</div><input class="ketik-nama" id="aturSusut" type="text" inputmode="decimal" value="${d.susut}" data-ketik="aturSusut"></div></div></div>
+      ${(() => { const mk = d.merekKarung || L.aturWadah().merekKarung; return h`<div class="kartu" data-k="atur-merek-karung" style="gap: 8px;"><div class="label">Nama wadah yang juga MEREK KARUNG pemasok</div>
+        <div class="ket">Nama wadah lain (mis. IR64 Apex) = kelas mutu: tidak bisa dipakai di barang masuk — beras datang dibukukan per merek di karungnya. Yang ditandai di sini (mis. Angsa) boleh datang atas nama itu.</div>
+        <div class="tombol-baris rapat">${d.daftar.map((m) => h`<div class="kaca-btn ${mk.indexOf(m) >= 0 ? 'aktif' : 'putus'}" data-aksi="aturMerekKarung" data-merk="${m}">${mk.indexOf(m) >= 0 ? '✓ ' : ''}${m}</div>`)}</div></div>`; })()}
       <div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAtur">batal</div><div class="kaca-btn aktif emas" data-aksi="simpanAtur">SIMPAN SUSUNAN &amp; ATURAN</div></div>
     </section>`;
   }
