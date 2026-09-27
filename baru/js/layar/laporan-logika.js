@@ -89,7 +89,7 @@ export function keManaLabaKotor(key, kini, bayaran) {
   const menutup = Math.abs((L.margin - biayaToko - biayaKaryawan - L.hapusBuku + L.susutStok) - L.labaBersih) < 0.5 && Math.abs(P.total - L.harianToko) < 0.5;
   const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && L.nSusut === 0 && !gajiRows.length && !L.jatahBulanan;
   const baris = [{ id: 'kotor', nama: 'Laba kotor', n: L.margin, kelas: 'jumlah', ket: 'omzet ber-HPP − HPP-nya' },
-    { id: 'toko', nama: 'Biaya toko', n: -biayaToko, ket: [P.nToko + P.nBelum ? 'harian ' + RP(P.tokoSemua) : '', posLain ? 'jatah tagihan bulanan ' + RP(posLain) : '', P.mdr ? 'potongan QRIS ' + RP(P.mdr) : '', P.bank ? 'biaya bank ' + RP(P.bank) : ''].filter(Boolean).join(' · ') || 'tidak ada', belumDipilah: P.nBelum, belumDipilahRp: P.belum },
+    { id: 'toko', nama: 'Biaya toko', n: -biayaToko, ket: [P.nToko + P.nBelum ? 'harian ' + RP(P.tokoSemua) + (P.mdr || P.bank ? ' (termasuk ' + [P.mdr ? 'potongan QRIS ' + RP(P.mdr) : '', P.bank ? 'biaya bank ' + RP(P.bank) : ''].filter(Boolean).join(' & ') + ')' : '') : '', posLain ? 'jatah tagihan bulanan ' + RP(posLain) : ''].filter(Boolean).join(' + ') || 'tidak ada', belumDipilah: P.nBelum, belumDipilahRp: P.belum },
     { id: 'upah', nama: 'Biaya karyawan · upah', n: -upah, ket: gajiRows.length ? gajiRows.length + ' baris gaji kotor, dibagi rata per hari (mesin lama)' : 'tidak ada baris gaji bulan ini' },
     { id: 'karyawan', nama: 'Biaya karyawan · di luar upah', n: -nonUpah, ket: P.nKaryawan ? P.nKaryawan + ' catatan "untuk karyawan" (kopi, rokok, makan warung)' : 'belum ada catatan "untuk karyawan"' }]
     .concat(L.hapusBuku ? [{ id: 'hapus', nama: 'Hapus buku piutang', n: -L.hapusBuku, ket: L.nHapus + ' catatan' }] : [])

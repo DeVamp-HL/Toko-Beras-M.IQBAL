@@ -90,10 +90,10 @@ pasok('utangPemasokMutasi', UPM);
 // ---- REKENING BELUM PERNAH DIISI (titik kas rekening 0) → disebut & ditawari catat isi rekening
 localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify(Object.assign({}, TITIK, { rekening: 0 })));
 S = saldoKantong(); H = hitungBayar({ pemasok: 'PEMASOK CONTOH', bonId: bon().id, ketik: '2.000.000', dari: 'rekening', adminI: -1 }, KINI, S);
-ok('titik rekening 0 tapi QRIS masuk 1.300.000: rekening cuma 1.300.000 → transfer 2 jt ditolak; rekeningKosong FALSE (sudah ada isi dari QRIS)', /Rekening cuma Rp1\.300\.000/.test(H.tolak) && !H.rekeningKosong, J([H.tolak, S.rekening]));
+ok('titik rekening 0 tapi QRIS masuk 1.300.000: rekening cuma 1.300.000 → transfer 2 jt ditolak; rekeningKosong TRUE (titik belum pernah diisi — hitungan cuma dari QRIS), teksnya menyebut 1.300.000 cuma dari gerakan rekening', /Rekening cuma Rp1\.300\.000/.test(H.tolak) && H.rekeningKosong && /hitungan Rp1\.300\.000 cuma dari gerakan rekening sejak titik kas 15 Sep 2026/.test(H.rekeningTeks), J([H.tolak, H.rekeningTeks]));
 pasok('penjualan', KOTAK.penjualan.filter(function (p) { return p.caraBayar !== 'QRIS'; }));
 S = saldoKantong(); H = hitungBayar({ pemasok: 'PEMASOK CONTOH', bonId: bon().id, ketik: '2.000.000', dari: 'rekening', adminI: -1 }, KINI, S);
-ok('titik rekening 0 & tanpa gerakan rekening: rekeningKosong TRUE, tolak menyebut "catat isi rekening dulu di Uang › Pindah uang", rekeningTeks menyebut Rp0 sejak titik kas', H.rekeningKosong && /Rekening cuma Rp0/.test(H.tolak) && /catat isi rekening dulu di Uang › Pindah uang/.test(H.tolak) && /Rp0 sejak titik kas 15 Sep 2026/.test(H.rekeningTeks), J([H.tolak, H.rekeningTeks]));
+ok('titik rekening 0 & tanpa gerakan rekening: rekeningKosong TRUE, tolak menyebut "catat isi rekening dulu di Uang › Pindah uang", rekeningTeks menyebut hitungan Rp0', H.rekeningKosong && /Rekening cuma Rp0/.test(H.tolak) && /catat isi rekening dulu di Uang › Pindah uang/.test(H.tolak) && /hitungan Rp0 cuma dari gerakan rekening sejak titik kas 15 Sep 2026/.test(H.rekeningTeks), J([H.tolak, H.rekeningTeks]));
 pasok('penjualan', KOTAK.penjualan);
 // ---- CATAT ISI REKENING (K4): titik kas baru bertanggal KEMARIN, gerakan hari ini tetap terhitung, laci/brankas/amplop tidak bergeser
 S = saldoKantong(); var HR = hitungTitikRekening('4.000.000', W);
@@ -151,7 +151,7 @@ if __name__ == '__main__':
             'biaya admin tanpa kantong (dipotong dari laci di saldo per tempat)': js.replace("nominal: H.admin, dari: H.D.dari, dariBayarBon: id }", "nominal: H.admin, dariBayarBon: id }"),
             'utang pemasok turun sebesar bayar + admin': js.replace("tipe: 'bayar', pemasok: H.bon.pemasok, nominal: H.n, catatan, bonId: H.bon.id,", "tipe: 'bayar', pemasok: H.bon.pemasok, nominal: H.n + H.admin, catatan, bonId: H.bon.id,"),
             'kantong yang dipilih tidak dijaga (hanya total kas)': js.replace("else if (kantong !== null && n + admin > kantong + 0.5) tolak =", "else if (false) tolak ="),
-            'rekening kosong tidak disebut': js.replace("const rekeningKosong = !!(S && S.ada && !(Number(S.titik.rekening) > 0) && S.rekening <= 0.5);", "const rekeningKosong = false;"),
+            'rekening kosong tidak disebut': js.replace("const rekeningKosong = !!(S && S.ada && !(Number(S.titik.rekening) > 0));", "const rekeningKosong = false;"),
             'cara bayar salah baca (rekening = tunai)': js.replace("const caraDari = (dari) => (dari === 'rekening' ? 'transfer' : dari ? 'tunai' : '');", "const caraDari = (dari) => (dari ? 'tunai' : '');"),
             'biaya admin bukan tujuan toko': js.replace("data: { id: w.idUnik(), kategori: 'toko', untuk: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: 'Biaya admin ' + H.biaya.nama + ' — bayar bon '", "data: { id: w.idUnik(), kategori: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: 'Biaya admin ' + H.biaya.nama + ' — bayar bon '"),
             'biaya admin dicatat juga untuk bayar tunai': js.replace("if (H.admin > 0) dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: w.idUnik(), kategori: 'toko', untuk: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: 'Biaya admin ' + H.biaya.nama", "if (true) dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: w.idUnik(), kategori: 'toko', untuk: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: 'Biaya admin ' + (H.biaya || {}).nama"),
