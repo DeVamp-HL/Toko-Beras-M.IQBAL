@@ -5,7 +5,8 @@ uji_setengah_karung.py — putaran 27 Bagian 4: JUAL ½ (25 kg) DARI KEMASAN 50 
   · Harga 25 kg = katalog; belum ada → usul ½ harga 50 kg dibulatkan ke atas ke Rp100 (owner boleh mengubah) dan ikut disimpan ke katalog.
   · Buku lewat JALUR PEMECAHAN YANG SUDAH ADA (penyusun Adukan: bahan 1 × 50 kg, hasil 2 × 25 kg, tanpa upah & kantong) + satu kemasan 25 kg terjual —
     SATU kiriman; modal total sebelum = sesudah; stok 50 turun 1, stok 25 naik 2 lalu turun 1 (sisanya kemasan 25 kg biasa, laku biasa).
-  · Keranjang: ½ memegang 1 unit 50 kg; satu-satu, tanpa bonus; akun bukan-owner tidak bisa menulis katalog; tidak dipakai saat merinci karcis.
+  · Keranjang: ½ memegang 1 unit 50 kg; satu-satu, tanpa bonus; akun bukan-owner tidak bisa menulis katalog.
+  · Merinci karcis kasir (putaran 28b, owner 28 Sep): ½ boleh — pemecah ditulis di kiriman yang sama, bertanggal & berjam KARCIS; tarik balik mencabutnya.
   · Batalkan nota barusan mencabut pemecahnya (bila sisa 25 kg belum terpakai).
 KOTAK PASIR (ANGKA CONTOH), jam dikunci 19 Sep 2026 10:00 WIB. Cadangan toko di _privat/: tiap kemasan 50 kg yang bersisa dijual ½ → Σ modal tetap,
 stok 50 −1, stok 25 +1, laba bulan-bulan sebelumnya byte-sama.
@@ -55,9 +56,9 @@ ok('½ masuk keranjang: kemasan Kembang 25 kg 1 unit, harga 380.000, label "(½ 
 sinkronKeranjang(s1);
 ok('½ di keranjang MEMEGANG 1 unit Kembang 50 kg (langit-langit 2 → 1); kemasan 25 kg tidak ikut terpotong', maksUntuk(chip('Kembang|50')) === 1 && susunRak(s1).kemasan.find(function (c) { return c.kunci === 'Kembang|50'; }).sisa === 1);
 ok('satu-satu: tambah jumlah ditolak, bonus ditolak; jumlah 2 lewat masukkan ditolak', /satu-satu/.test(ubahJumlahBaris(s1, s1.keranjang[0].id, 1).kabar || '') && /bonus/.test(toggleBonus(s1, s1.keranjang[0].id).kabar || '') && /satu-satu/.test(masukkan(Object.assign({}, s0(), { pilih: skChip(chip('Kembang|50'), '') }), 2).kabar || ''));
-ok('akun bukan-owner: ½ tanpa harga katalog DITOLAK (tidak boleh menulis katalog); dengan harga katalog (Perahu) boleh; merinci karcis ditolak',
+ok('akun bukan-owner: ½ tanpa harga katalog DITOLAK (tidak boleh menulis katalog); dengan harga katalog (Perahu) boleh; saat merinci karcis ½ BOLEH masuk keranjang',
   /minta owner/.test(masukkan(Object.assign({}, s0(), { batasBaris: 7, pilih: skChip(chip('Kembang|50'), '') }), 1).kabar || '') && !!masukkan(Object.assign({}, s0(), { batasBaris: 7, pilih: skChip(chip('Perahu|50'), '') }), 1).keranjang
-  && /merinci karcis/.test(masukkan(Object.assign({}, s0(), { karcis: { id: 'k1' }, pilih: skChip(chip('Kembang|50'), '') }), 1).kabar || ''));
+  && !!masukkan(Object.assign({}, s0(), { karcis: { id: 'k1' }, pilih: skChip(chip('Kembang|50'), '') }), 1).keranjang);
 // ---- 3 · nota: pemecah + penjualan satu kiriman
 var nilai0 = nilaiKemasan(); var s50 = stokK('Kembang|50'), s25 = stokK('Kembang|25');
 var N = simpanNota(Object.assign({}, s1, { cara: 'Tunai', uang: 400000 }), W); var D = N.dokumen || [];
@@ -92,6 +93,22 @@ var batal2 = susunPembatalan(NB2.patch.notaTerakhir, 'salah', W);
 ok('batal ½ SESUDAH sisa 25 kg-nya terjual → pemecah TIDAK dicabut (stok 25 tidak boleh minus); cuma barisnya yang batal', batal2 && !batal2.hapus.some(function (x) { return x.koleksi === 'produksiKemasan'; }), J(batal2 && batal2.hapus));
 
 // ---- ASAP DATA TOKO
+// ---- ½ saat MERINCI KARCIS kasir (putaran 28b, owner 28 Sep)
+terapkanKeCache([{ koleksi: 'produksiKemasan', data: { id: 'p51', tanggal: '2026-09-11', namaProduk: 'Kembang', ukuranKemasan: 50, jumlahUnit: 1, hppPerUnit: 700000, merkSumber: 'Angsa', kgDipakai: 50, sumberList: [{ merk: 'Angsa', kg: 50 }] } },
+  { koleksi: 'penjualan', data: { id: 7101, tanggal: '2026-09-18', jam: '13:15', jenis: 'kasir_darurat_nominal', hargaTotal: 400000, caraBayar: 'Tunai', asalDarurat: true } }]);
+var k50 = stokK('Kembang|50'), k25 = stokK('Kembang|25');
+var sKc = Object.assign(s0(), ikatKarcis(s0(), '7101', new Date(Date.now()))); var sKc2 = masukSetengah(sKc, 'Kembang|50', ''); var RK = susunRinciDokumen(sKc2, W);
+var rkPr = (RK.dokumen || []).filter(function (d) { return d.koleksi === 'produksiKemasan'; }).map(function (d) { return d.data; });
+var rkJl = (RK.dokumen || []).filter(function (d) { return d.koleksi === 'penjualan' && d.data.jenis === 'kemasan'; }).map(function (d) { return d.data; });
+ok('rinci karcis 18 Sep 13.15 dengan ½ Kembang: pemecah (1 × 50 → 2 × 25, dariSetengah) BERTANGGAL & BERJAM KARCIS, baris 25 kg menunjuk pemecahnya, modal = modal pecahan, sisa uang tetap jadi karcis',
+  !sKc2.tolak && !RK.tolak && rkPr.length >= 1 && rkPr.every(function (x) { return x.tanggal === '2026-09-18' && x.jam === '13:15'; }) && rkPr[0].dariSetengah === true
+  && rkJl.length === 1 && rkJl[0].ukuranKemasan === 25 && rkJl[0].tanggal === '2026-09-18' && rkJl[0].jam === '13:15' && String(rkJl[0].dariSetengah) === String(rkPr[0].batchProduksi || rkPr[0].id) && rkJl[0].hppTotalSaatJual === 350000
+  && (RK.dokumen || []).some(function (d) { return d.koleksi === 'penjualan' && d.data.jenis === 'kasir_darurat_nominal' && d.data.hargaTotal === 400000 - rkJl[0].hargaTotal; }), J([sKc2.tolak, RK.tolak, rkPr, rkJl]));
+terapkanKeCache(RK.dokumen || []);
+ok('sesudah rinci: Kembang 50 kg −1, Kembang 25 kg +1 (satu terjual di rincian, satu tersisa)', stokK('Kembang|50') === k50 - 1 && stokK('Kembang|25') === k25 + 1, J([k50, stokK('Kembang|50'), k25, stokK('Kembang|25')]));
+var UR = susunUrungRinci(RK.rinci, W);
+ok('tarik balik rincian itu mencabut pemecahnya (sisa 25 kg belum terpakai) — stok kembali seperti sebelum dirinci', !UR.tolak && (UR.hapus || []).some(function (h) { return h.koleksi === 'produksiKemasan'; })
+  && (function () { terapkanKeCache((UR.dokumen || []).concat((UR.hapus || []).map(function (h) { return { koleksi: h.koleksi, hapus: h.id }; }))); return stokK('Kembang|50') === k50 && stokK('Kembang|25') === k25; })(), J([UR.tolak, UR.hapus, stokK('Kembang|50'), stokK('Kembang|25')]));
 var asap = null;
 if (CADANGAN) {
   Object.keys(KOTAK).forEach(function (n) { pasok(n, []); }); Object.keys(CADANGAN).forEach(function (n) { pasok(n, CADANGAN[n]); });
@@ -147,6 +164,9 @@ RUSAK = {
     'pemecah dicabut walau sisa 25 kg sudah terjual (stok minus)': ("if (s && (s.sisaUnit || 0) + 1 - 2 < 0) return;", ""),
     '½ boleh dua sekaligus': ("  if (chip.setengahDari && j !== 1) return {", "  if (false) return {"),
     'akun bukan-owner menulis katalog lewat ½': ("  if (chip.setengahDari && chip.setengahHargaBaru > 0 && Number(s.batasBaris) > 0) return {", "  if (false) return {"),
+    'rinci karcis ½ tanpa pemecah': ("if (t.setengahDari) { const pc = skPecah(t, wKarcis);", "if (false) { const pc = skPecah(t, wKarcis);"),
+    'pemecah rincian bertanggal hari ini, bukan tanggal karcis': ("const wKarcis = Object.assign({}, w, { tanggal: p.tanggal, jam: p.jam || w.jam });", "const wKarcis = w;"),
+    'tarik balik rincian tidak mencabut pemecah ½': ("const hapusPecah = skHapusPemecah(grup);", "const hapusPecah = [];"),
     'pemecah memakai kantong/upah (modal total berubah)': ("upah: '' };\n  const r = susunSimpanAdukan(draf, w, {});", "upah: '1000' };\n  const r = susunSimpanAdukan(draf, w, {});"),
 }
 

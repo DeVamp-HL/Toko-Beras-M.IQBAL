@@ -14,6 +14,7 @@ import { RP, hariIniIso, tanggalPendek, jamSetempat } from '../inti/format.js';
 import { susunRak, masukkan, terapkanNego, periksaStokKeranjang, pecahItemsWadah, aturWadah } from './jual-logika.js';
 import { wbLiteranLangsung } from './wadah-bernama-logika.js';
 import { koleksiWadah } from './wadah-jual-logika.js';
+import { skPecah, skHapusPemecah } from './setengah-logika.js';
 
 const KC_TERKUNCI = 'karcis ini tidak bisa dirinci lagi; stok yang terlanjur keluar dibetulkan lewat Stok › Cocokkan hari ini';
 const KC_TOLERANSI_BULAT = 500;   // literan: pecahan di bawah Rp500 tidak terpakai di lapangan (kandidatDarurat 32170)
@@ -84,7 +85,7 @@ export function hitungKarcis(s) {
   return { k, total, sisa, lebih: sisa < 0, pas: sisa === 0 && total > 0, teks: !s.keranjang.length ? 'belum ada barang' : sisa === 0 ? 'PAS ' + RP(total) + ' — siap disimpan' : sisa > 0 ? 'Sisa ' + RP(sisa) + ' belum terurai — ' + (k.jenisAsal === 'karcis' ? 'boleh disimpan, sisanya tetap tercatat sebagai karcis' : 'rapikan harus menutup persis') : 'KELEBIHAN ' + RP(-sisa) + ' — hapus atau betulkan harga barang' };
 }
 
-const kcBersih = (t) => { const d = Object.assign({}, t); ['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'pecahan', '_takaran'].forEach((k) => { delete d[k]; }); return d; };
+const kcBersih = (t) => { const d = Object.assign({}, t); ['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'pecahan', '_takaran', 'setengahDari', 'setengahHargaBaru'].forEach((k) => { delete d[k]; }); return d; };
 const kcPasangan = (d, w, dokumen) => {
   if (d.kemasanLiteran && d.jumlahKemasanLiteranDipakai > 0) dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: d.id + 1, tipe: 'pakai', jenis: d.kemasanLiteran, jumlah: d.jumlahKemasanLiteranDipakai, hargaTotal: 0, tanggal: d.tanggal, catatan: 'Otomatis dari rincian darurat id ' + d.id } });
   if (d.jenis === 'wadah' && d.jenisWadah && d.jumlahUnit > 0) dokumen.push({ koleksi: koleksiWadah(d.jenisWadah), data: { id: d.id + 1, tipe: 'pakai', jenis: d.jenisWadah, jumlah: d.jumlahUnit, hargaTotal: 0, tanggal: d.tanggal, catatan: 'Dijual sebagai barang di rincian id ' + d.id } });
@@ -107,9 +108,13 @@ export function susunRinciDokumen(s, w) {
   const stok = periksaStokKeranjang(s); if (stok) return { tolak: stok };
   const karcis = k.jenisAsal === 'karcis'; const idGrup = w.idUnik(); const kini = w.kini || new Date().toISOString(); const dokumen = []; const ids = []; const label = [];
   // putaran 27 (Bagian 5): literan wadah dipecah per merek asal persis seperti nota Jual (satu label per takaran; baris internalnya diikat takaranId)
-  const takaranPertama = {};
+  const takaranPertama = {}; let tolakPecah = '';
+  // putaran 28b (owner 28 Sep): ½ karung juga saat merinci karcis — pemecah 1 × 50 kg → 2 × 25 kg ditulis di kiriman yang sama, BERTANGGAL & BERJAM KARCIS
+  // (barangnya dipecah saat dijual), persis nota Jual (setengah-logika.js skPecah); modal baris = modal 25 kg hasil pecahan
+  const wKarcis = Object.assign({}, w, { tanggal: p.tanggal, jam: p.jam || w.jam });
   pecahItemsWadah(s.keranjang.map((b) => Object.assign({}, b.trx)), s).forEach((t) => {
     const d = kcBersih(t); if (!t._takaran || !takaranPertama[t._takaran]) label.push(t.label || namaSingkatTrx(t));
+    if (t.setengahDari) { const pc = skPecah(t, wKarcis); if (pc.tolak) tolakPecah = tolakPecah || pc.tolak; else { d.hppTotalSaatJual = Math.round(pc.hppPerUnit); d.dariSetengah = pc.idProduksi; pc.dokumen.forEach((x) => dokumen.push(x)); } }
     d.id = w.idUnik(); d.tanggal = p.tanggal; d.jam = p.jam || ''; d.caraBayar = cara; d.namaPelanggan = nama; d.hargaAsliSatuan = t.hargaAsli; if (t.nego) d.negoSelisih = t.hargaSatuan - t.hargaAsli;
     d.grupNota = idGrup; d.koreksiDari = p.id; d.dirinciPada = kini;
     if (t._takaran) d.takaranId = takaranPertama[t._takaran] || (takaranPertama[t._takaran] = String(d.id));   // putaran 27: pengikat baris internal satu takaran
@@ -117,6 +122,7 @@ export function susunRinciDokumen(s, w) {
     if (p.operator) d.operator = p.operator;
     dokumen.push({ koleksi: 'penjualan', data: d }); ids.push(d.id); kcPasangan(d, w, dokumen);
   });
+  if (tolakPecah) return { tolak: tolakPecah };
   if (karcis && H.sisa > 0) { const sisaDoc = { id: w.idUnik(), tanggal: p.tanggal, jam: p.jam || '', caraBayar: cara, namaPelanggan: nama, jenis: 'kasir_darurat_nominal', hargaTotal: H.sisa, grupNota: idGrup, asalDarurat: true, rinciDari: p.id, koreksiDari: p.id, alasanKoreksi: 'Sisa belum diurai dari kasir darurat ' + kcEkor(p.id), dirinciPada: kini }; if (p.operator) sisaDoc.operator = p.operator; dokumen.push({ koleksi: 'penjualan', data: sisaDoc }); ids.push(sisaDoc.id); }
   const asli = Object.assign({}, p, { dikoreksiOleh: ids[0], alasanKoreksi: (karcis ? 'Dirinci jadi ' : 'Dirapikan jadi ') + s.keranjang.length + ' barang: ' + label.join(' + ') + (karcis && H.sisa > 0 ? ' + sisa ' + RP(H.sisa) + ' belum diurai' : '') });
   dokumen.push({ koleksi: 'penjualan', data: asli });
@@ -151,13 +157,15 @@ export function susunUrungRinci(rinci, w) {
   const tersentuh = grup.find((x) => !penjualanMasihBerlaku(x));
   if (tersentuh) return { tolak: 'Tidak bisa ditarik balik: catatan ' + kcEkor(tersentuh.id) + ' dari rincian ini sudah ' + (tersentuh.dikoreksiOleh ? 'dikoreksi/dirinci lagi (lihat ' + kcEkor(tersentuh.dikoreksiOleh) + ')' : 'dibatalkan') + ' — bereskan yang itu dulu supaya totalnya tidak dobel' };
   const kini = (w && w.kini) || new Date().toISOString(); const dokumen = []; const hapus = [];
+  // putaran 28b: ½ karung di rincian — pemecahnya ikut dicabut kalau sisa 25 kg-nya belum terpakai (sama dengan membatalkan nota Jual)
+  const hapusPecah = skHapusPemecah(grup); hapusPecah.forEach((x) => hapus.push(x));
   grup.forEach((g) => { dokumen.push({ koleksi: 'penjualan', data: Object.assign({}, g, { dibatalkan: true, alasanKoreksi: 'Rincian diurungkan', dikoreksiPada: kini, dibatalkanPada: kini }) });
     if (g.jenis === 'literan' && g.kemasanLiteran) hapus.push({ koleksi: 'stokBahanLiteran', id: g.id + 1 }); if (g.jenis === 'wadah' && g.jenisWadah) hapus.push({ koleksi: koleksiWadah(g.jenisWadah), id: g.id + 1 }); if (g.kemasanRepack && g.jumlahKemasanRepackDipakai > 0) hapus.push({ koleksi: koleksiWadah(g.kemasanRepack), id: g.id + 1 }); });
   const asli = ambilPenjualanSemua().find((x) => String(x.id) === String(rinci.asliId));
   if (asli) { const pulih = Object.assign({}, asli); delete pulih.dikoreksiOleh; delete pulih.alasanKoreksi; dokumen.push({ koleksi: 'penjualan', data: pulih }); }
   // putaran 25: rincian besar dari bulan lalu (> 18 pemeriksaan kunci) dikirim BERTAHAP — satu kelompok per baris (baris + kantongnya), karcis asli dipulihkan PALING AKHIR
   const kelompok = butuhGet(dokumen, hapus) > KP_BATAS_GET ? dokumen.filter((d) => String(d.data.id) !== String(rinci.asliId)).map((d) => ({ dokumen: [d], hapus: hapus.filter((h) => String(h.id) === String(Number(d.data.id) + 1)) }))
-    .concat([{ dokumen: dokumen.filter((d) => String(d.data.id) === String(rinci.asliId)), hapus: [] }]) : null;
+    .concat([{ dokumen: dokumen.filter((d) => String(d.data.id) === String(rinci.asliId)), hapus: hapusPecah }]) : null;
   return { dokumen, hapus, kelompok, jumlah: grup.length, patch: { notaTerakhir: null, kabar: 'Rincian ditarik balik — ' + grup.length + ' catatan dibatalkan, karcis ' + kcEkor(rinci.asliId) + ' kembali ke antrean', kabarAwas: false } };
 }
 

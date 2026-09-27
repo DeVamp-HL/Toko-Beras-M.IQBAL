@@ -410,7 +410,6 @@ export function masukkan(s, jumlah) {
   if (chip.jalur === 'karung' && (j * 2) % 1 !== 0) return { kabar: 'Karung dijual utuh atau setengah (0,5 · 1 · 1,5 …)', kabarAwas: true };
   if (chip.jalur === 'kemasan' && j % 1 !== 0) return { kabar: 'Kemasan dijual per unit', kabarAwas: true };
   if (chip.setengahDari && j !== 1) return { kabar: '½ karung dimasukkan satu-satu (1 × 25 kg); dua ½ = jual 50 kg-nya utuh', kabarAwas: true };
-  if (chip.setengahDari && s.karcis) return { kabar: '½ karung belum bisa dipakai saat merinci karcis kasir — catat sebagai nota biasa', kabarAwas: true };
   if (chip.setengahDari && chip.setengahHargaBaru > 0 && Number(s.batasBaris) > 0) return { kabar: 'Harga ' + chip.nama + ' 25 kg belum ada di katalog — minta owner menyetelnya dulu (akun bukan-owner tidak menulis katalog)', kabarAwas: true };
   if (chip.jalur === 'wadah' && j % 1 !== 0) return { kabar: 'Wadah dijual per lembar', kabarAwas: true };
   sinkronKeranjang(s);
