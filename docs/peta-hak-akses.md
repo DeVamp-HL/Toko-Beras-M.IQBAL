@@ -166,6 +166,10 @@ Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `
   daftar itulah batasnya.
 - **PIN operator dicabut (25c, 27 Sep):** `pengaturan/aksesKasir` (dibaca kasir@) ditulis `/baru/` tanpa `pin` — nama + aktif/libur saja. PIN yang sudah
   tersimpan hilang dari server sesudah owner menekan "Cabut PIN operator" di Menu › Peran & persetujuan › Kasir & PIN.
+- **Daftar arsip produk belum terbaca staf (putaran 27).** `aturanToko/produkArsip` tidak ada di `DOK_STAF.aturanToko` (`data/akses.js`) dan tidak
+  ada di daftar dokumen `aturanToko` yang boleh dibaca staf di rules v4. Akun staf tidak mendengarkannya sama sekali, jadi tidak ada penolakan server
+  dan Jual tidak macet: daftar arsip terbaca KOSONG (`arPeta()` = `{}`), nama yang diarsipkan owner tetap tampil di rak Jual staf (biasanya chip
+  habis, stok 0). Diperbarui di putaran tablet: `produkArsip` masuk daftar baca staf di rules + `DOK_STAF`.
 - **Cache Firestore dibersihkan saat Keluar** di perangkat bersama. Sampai itu ada, owner tidak masuk `/baru/` di tablet bersama.
 - **Jaga CI kiriman ≤ 18** tetap hijau.
 - **Email akun selalu huruf kecil** saat dibuat di Console.
