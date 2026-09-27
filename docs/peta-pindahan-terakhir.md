@@ -225,8 +225,10 @@ lama), kelompok Stok, saring rak Jual. Tampil: Harga › Katalog harga (pil per 
 rak tidak berubah). `index.html`: ubah & simpan jenis beras ditolak penjaga SEBELUM salinan HP berubah.
 
 **C · Operator & PIN.** `baru/js/layar/akses-kasir-logika.js` + tab **Kasir & PIN** di Menu › Peran & persetujuan: daftar dari dokumen (nama = kunci
-peta, tidak ada nama di kode), aktif/libur, tambah, hapus (dua ketukan), **Cabut PIN operator** (tampil selama masih ada PIN tersimpan); setiap simpan
-menulis dokumen tanpa `pin`. PIN owner: ganti/setel dengan PIN sekarang (kalau sudah disetel), 4–8 angka, diulang; `acakPin` disalin apa adanya,
+peta, tidak ada nama di kode), aktif/libur, hapus (dua ketukan), **Cabut PIN operator** (tampil selama masih ada PIN tersimpan); setiap simpan
+menulis dokumen tanpa `pin`. **Tidak ada "tambah operator"** (dibuang sesudah pemeriksaan owner 27 Sep): nama baru tidak akan muncul di
+kasir mana pun — layar pilih operator `kasir.html` memakai daftar nama tetap dari kodenya dan tidak punya pintu, kasir darurat tidak membaca dokumen
+ini. Layar Kasir & PIN menyebutnya terus terang. PIN owner: ganti/setel dengan PIN sekarang (kalau sudah disetel), 4–8 angka, diulang; `acakPin` disalin apa adanya,
 dokumen `{ id, garam, acak, diubahPada }`. `index.html`: buka/simpan operator dan setel/simpan PIN owner ditolak penjaga SEBELUM apa pun berubah.
 **Belum dicabut di server:** PIN operator di dokumen sungguhan baru hilang sesudah owner menekan "Cabut PIN operator" di `/baru/` (langkah owner).
 
@@ -237,4 +239,32 @@ Pita: "Sistem lama hanya untuk membaca riwayat dan pemulihan darurat."
 keputusan 25b diperbarui ke keputusan ini dengan jumlah pemeriksaan sama: `uji_sistem_lama_bacasaja.py` (setelan kini ditolak, katalog tidak terbit dari
 sistem lama, pita baru) dan `uji_antrean_kasir.py` (label "versi 25c"; lantai kunci bulan `kasir-v26` ≤ versi yang disajikan = versi terbaru `/baru/`).
 Aturan server v4 tidak berubah.
+
+## 9. Jalan mundur — kalau katalog pertama dari `/baru/` ternyata salah
+
+Katalog (`ringkasanKasir/aktif`) adalah dokumen TURUNAN: satu dokumen, ditimpa utuh tiap terbit, tidak ada riwayat. Yang bisa rusak kalau isinya salah:
+harga & modal di **tombol bernama barang** HP penjaga dan di **kasir kalkulator**, serta daftar bon di kasir kalkulator. **Karcis angka polos HP penjaga
+tidak memakai katalog sama sekali** — jualan tetap jalan lewat tuts angka.
+
+**Tanda salah:** harga tombol bernama di HP kasir ≠ Harga › Katalog harga `/baru/`; tombol bernama hilang / berharga nol; atau Beranda "Katalog kasir:
+diperbarui …" berganti terus tiap beberapa detik tanpa ada yang berubah (terbit berulang).
+
+1. **Menit pertama (tanpa kode):** penjaga memakai **tuts angka** saja; kasir kalkulator tidak dipakai. Catat jam mulai salah.
+2. **Owner bilang "mundur 25c".** Claude membuat commit `git revert -m 1 <merge 25c>` di cabang baru → PR → owner merge (atau langsung atas perintah
+   owner untuk revert itu saja) → CI hijau → Pages terbit. Akibatnya, semuanya kembali ke keadaan 25b:
+   - `/baru/` berhenti menerbitkan katalog; `index.html` kembali jadi penerbitnya (jalur "bukan catatan" 25b) dan setelan jenis beras, operator & PIN
+     owner kembali terbuka di sana;
+   - `sw-kasir.js` kembali `kasir-v26` — nama cache berganti, jadi HP kasir memuat berkas v26 sendiri saat senggang (seperti tiap naik versi).
+3. **Terbitkan ulang dari sistem lama:** buka `index.html` sekali di perangkat owner yang sudah masuk → katalog terbit ±4 detik kemudian. Kalau HP itu
+   menganggap isinya sama dengan terbitan terakhirnya, Akun & Perangkat › "Terbitkan katalog sekarang" memaksa terbit. Claude memeriksa lewat Console
+   (hanya baca): `ringkasanKasir/aktif` → `diperbaruiPada` = jam langkah ini, dan beberapa harga cocok dengan katalog harga.
+4. **Nota yang terlanjur memakai katalog salah** (antara jam mulai salah dan langkah 3): cari di `/baru/` nota tombol bernama HP penjaga (`viaDarurat`)
+   dan nota kasir kalkulator (perangkat `k-…`) di rentang jam itu; betulkan lewat retur / koreksi seperti nota lain. Karcis angka polos tidak terpengaruh.
+5. **Yang TIDAK perlu dimundurkan:** jenis beras dan daftar operator yang ditulis `/baru/` berbentuk sama dengan sistem lama (dibaca apa adanya sesudah
+   revert); PIN operator yang sudah dicabut tidak dikembalikan (tidak dipakai kasir mana pun). Aturan server tidak berubah di 25c, jadi tidak ada yang
+   ditempel ulang. Pulihkan dari berkas cadangan tidak terlibat — katalog tidak ada di berkas cadangan.
+6. Catat kejadiannya di dokumen ini (jam salah, jam mundur, nota yang dibetulkan) sebelum putaran berikutnya mencoba lagi.
+
+Pencegah sebelum langkah ini dibutuhkan: isi katalog dari `/baru/` terbukti sama persis dengan isi sistem lama untuk cadangan 27 Sep
+(`uji_katalog_kasir.py`), jadi terbit pertama sesudah merge seharusnya hanya terjadi kalau data memang berubah sejak sistem lama terakhir menerbitkan.
 
