@@ -20,7 +20,7 @@ import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAngka, ugKosong, ugAturDok, ugTambahHari, ugHariKe, ugKiniDari, saldoKantong, ugCukup } from './uang-logika.js';
 
 export const ATUR_UPAH_BAWAAN = { tarif: 60000, orang: [], alasan: ['Keperluan keluarga', 'Pulang kampung', 'Berobat', 'Lain-lain'] };
-const UP_ORANG_UMUM = ['Ben Mohsein', 'Hasan', 'Gono'];   // nama pegawai gaji sistem lama (NAMA_PEGAWAI_GAJI) — dipakai hanya bila datanya kosong
+const UP_ORANG_UMUM = [];   // dulu daftar nama pegawai sistem lama; dicabut 28 Sep 2026 (repo publik tanpa nama orang) — tanpa data, daftar karyawan kosong dan layar menyebutnya
 export const NILAI_HARI = [[1, 'Penuh'], [0.5, 'Setengah'], [0, 'Tidak masuk']];
 const upKunci = (nama) => kunciPelanggan(nama);
 const upBukanOwner = (nama) => upKunci(nama) !== upKunci(NAMA_KASBON_OWNER);
@@ -252,7 +252,7 @@ export function riwayatUpah(nama, n) {
   rows.sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)) || String(b.jam).localeCompare(String(a.jam))); return rows.slice(0, n || 20);
 }
 
-/** Lembar KARYAWAN (HR, owner 23 Sep: "Gono sepertinya sudah pensiun"): tiap orang dengan status, sejak kapan, hari kerja bulan ini, upah belum dibayar, kasbon, total yang pernah dibayar. */
+/** Lembar KARYAWAN (HR, owner 23 Sep: salah satu karyawan giliran sepertinya sudah pensiun): tiap orang dengan status, sejak kapan, hari kerja bulan ini, upah belum dibayar, kasbon, total yang pernah dibayar. */
 export function daftarKaryawan(kini) {
   const A = aturUpah(); const iso = hariIniIso(kini); const bulan = iso.slice(0, 7);
   const semuaSlip = ambilSlipUpah(); const bayarLama = {}; ambilBiayaBulanan().forEach((b) => (b.rincianGaji || []).forEach((r) => { if (r.sistemBaru || !(Number(r.gaji) > 0)) return; const k = upKunci(String(r.nama || '').replace(/ · .*$/, '')); bayarLama[k] = (bayarLama[k] || 0) + (Number(r.gaji) || 0); }));

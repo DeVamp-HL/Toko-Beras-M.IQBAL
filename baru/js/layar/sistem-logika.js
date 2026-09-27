@@ -26,7 +26,7 @@ const ssHariNama = (iso) => ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][ne
 export const SS_TINDAKAN = [['jualTunai', 'Jual tunai & kembalian', 'Jual'], ['jualBon', 'Jual dengan bon (pelanggan lama)', 'Jual'], ['nego', 'Nego di bawah jatah margin', 'Jual'], ['terimaBon', 'Terima pembayaran bon', 'Uang'],
   ['hitungLaci', 'Hitung & rapikan laci', 'Uang'], ['uangKeluar', 'Catat uang keluar dari laci', 'Uang'], ['adukan', 'Catat adukan (bongkar kemasan)', 'Stok'], ['kedatangan', 'Hitung truk & draf kedatangan', 'Stok'],
   ['hargaBeli', 'Isi harga beli / modal', 'Stok'], ['koreksi', 'Koreksi nota yang sudah tersimpan', 'Jual'], ['hapus', 'Hapus catatan', 'Semua'], ['pelangganBaru', 'Daftarkan pelanggan baru', 'Pelanggan'], ['atur', 'Ubah setelan (Atur)', 'Sistem']].map((t) => ({ id: t[0], nama: t[1], modul: t[2] }));
-export const SS_PERAN = [['owner', 'Owner'], ['ben', 'Ben (penjaga laci)'], ['karyawan', 'Karyawan (Hasan, Gono)']].map((p) => ({ id: p[0], nama: p[1] }));
+export const SS_PERAN = [['owner', 'Owner'], ['ben', 'Ben (penjaga laci)'], ['karyawan', 'Karyawan (giliran)']].map((p) => ({ id: p[0], nama: p[1] }));
 export const SS_NILAI_HAK = ['sendiri', 'owner', 'tidak'];
 export const SS_LABEL_HAK = { sendiri: 'boleh sendiri', owner: 'minta owner', tidak: 'tidak boleh' };
 const SS_HAK_BAWAAN = { ben: { jualTunai: 'sendiri', jualBon: 'sendiri', nego: 'owner', terimaBon: 'sendiri', hitungLaci: 'sendiri', uangKeluar: 'owner', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'owner', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak' },
@@ -39,7 +39,7 @@ export const SS_ATUR_BAWAAN = {
   perangkat: { batasAntre: 30, batasDenyut: 15, pemegang: ['Owner', 'Ben'] },
   peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: 50, jejak: [] },
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
-  lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben', 'Gono'] },
+  lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben'] },
   pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'] },
     hariBon: 3, hariJanji: 1, hariKantong: 7, hariOpname: 2, hariCadangan: 0, hariPajak: 3, tundaHari: 2, maksTunda: 2, opnameTiap: 14 },
 };
