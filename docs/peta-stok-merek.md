@@ -194,8 +194,9 @@ katalog harga, `pengaturan/jenisBeras`), jadi `firestore.rules` tidak berubah. K
 | `penjualan` (baris literan wadah) | `dariWadah` (nama wadah), `takaranId` (pengikat baris internal satu takaran) | struk menggabung; komposisi wadah berkurang dari baris ini |
 | `penyesuaianStok` | `bagian: 'tumpukan' \| 'wadah'`, `wadah` | papan kapur memisahkan dua kejadian cocokkan |
 | `penjualan` (kemasan ½) & `produksiKemasan` | `dariSetengah` (id produksi pemecah) | batalkan nota mencabut pemecahnya juga |
-| `aturanToko/harga` | `literanLangsung: [merek]` | merek yang dijual literan dari karungnya sendiri (tetap butuh harga liter) |
-| **penanda arsip** | pilihan di §12 | Bagian 3 |
+| `wadahLiteran` tipe `atur` (bukan `aturanToko/harga` — lihat §13) | `literanLangsung: [merek]`, `merekKarung: [nama wadah]` | merek yang dijual literan dari karungnya sendiri (tetap butuh harga liter); nama wadah yang juga merek karung pemasok |
+| `wadahLiteran` tipe `atur` / `isi` / `karungIsi` | `gantiNama {dari, ke}`, `gantiNamaDari` | jejak ganti nama wadah (isi & karung terbuka ikut pindah) |
+| `aturanToko/produkArsip` | `daftar [{kunci, nama, tanggal, jam}]` | penanda arsip (jawaban §12 no. 4) |
 
 ## 12. Pertanyaan untuk owner
 
@@ -205,3 +206,32 @@ katalog harga, `pengaturan/jenisBeras`), jadi `firestore.rules` tidak berubah. K
 3. **Tempat penanda arsip.** (a) satu dokumen setelan `aturanToko/produkArsip` berisi daftar nama arsip (satu tempat, ikut ke semua perangkat);
    atau (b) kolom `arsip` di tiap dokumen katalog harga nama itu (satu nama bisa punya 2–5 dokumen katalog: per kg, per liter, 50 kg, 25 kg,
    kemasan; nama tanpa katalog tidak bisa diarsipkan).
+
+## 13. Keputusan owner (27 Sep 2026) & apa yang dibangun
+
+Jawaban owner atas §12:
+
+1. **Kolom baru — boleh semua.** Tidak ada koleksi baru; `firestore.rules` v4 tidak berubah (`periksa_rules.py` LULUS apa adanya).
+2. **Nama wadah yang juga merek karung — boleh; wadah kotak literan (Angsa, Perahu Layar, dll.) bisa diganti namanya.** Bawaan merek karung:
+   Angsa, Perahu Layar, Pandan Wangi (`MEREK_KARUNG_BAWAAN`); owner mengubahnya di Stok › Wadah literan › Atur ("Nama wadah yang juga MEREK
+   KARUNG pemasok"). Ganti nama satu wadah ada di rincian wadah ("ganti nama wadah").
+3. **Nama kelas — tolak, wajib nama karung.** Barang masuk (baru) dan varian dari layar Harga menolak nama wadah/kelas (juga yang pernah jadi
+   nama wadah) dengan kalimat; koreksi kedatangan lama yang sudah memakai nama itu tetap boleh.
+4. **Arsip — satu dokumen daftar arsip** (`aturanToko/produkArsip`).
+
+Penyesuaian saat membangun Bagian 5:
+
+- `literanLangsung` pindah dari `aturanToko/harga` (rencana §11) ke dokumen aturan wadah (`wadahLiteran` tipe `atur`): `aturanToko/harga` tidak
+  terbaca akun karyawan (rules v4), sedangkan rak Jual karyawan harus sama dengan rak owner. Belum pernah ditandai → bawaan TERUKUR: merek (bukan
+  nama wadah) yang punya harga liter DAN pernah terjual literan tanpa `dariWadah`. Di cadangan 27 Sep: Bahan campuran standar, Beras Merah,
+  Ketan Hitam PK, Ketan Hitam Sosoh, Ketan Putih, Ketan Putih Paris.
+- Takar model baru ditulis dengan `bukuAsal: true` dan TIDAK lagi menulis `produksiKemasan` pindah buku (keputusan 22 Sep "pindah buku"
+  digantikan). Catatan takar lama (dengan/tanpa `produksiId`) tetap dibaca seperti dulu oleh `pindahNama` & komposisi.
+- Pemecahan satu takaran (`pecahItemsWadah`, jual-logika.js) dipakai nota Jual DAN rinci karcis kasir; baris internal membawa `dariWadah` +
+  `takaranId`; gabungan tampil (`gabungTakaran`) tinggal di struk-logika.js.
+- Kolam karung terbuka saat ganti nama: catatan karung lama tanpa kolom `wadah` dibaca menurut daftar wadah sekarang, jadi sesudah ganti nama
+  kolamnya bisa tertinggal/terbaca lepas. Ganti nama menyamakan kembali tiap kolam yang bergeser ke angkanya sebelum ganti nama (diuji di
+  cadangan: 8/8 wadah diganti nama tanpa menggeser tumpukan, karung terbuka, atau isi wadah merek mana pun).
+- Di cadangan 27 Sep "belum ada harga" katalog turun 11 → 5: enam tagihan harga liter untuk merek yang cuma lewat wadah hilang. Harga liter NG &
+  Kumala (disetel 27 Sep) tidak dipakai rak — tercatat di Katalog › Literan sebagai "tidak dipakai".
+
