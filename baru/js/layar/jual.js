@@ -19,7 +19,8 @@ import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, a
 import { gambarChipBarang } from './gambar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
 import { jbJenisRak, jbSaringRak } from './jenis-beras-logika.js';
-import * as AR from './arsip-logika.js';   // 25c: saring rak per jenis beras (owner 27 Sep)
+import * as AR from './arsip-logika.js';
+import * as SK from './setengah-logika.js';   // 25c: saring rak per jenis beras (owner 27 Sep)
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -52,6 +53,9 @@ export function pasangLayarJual(akar, opsi) {
     pakaiBenang: ({ nama }) => set({ pelanggan: nama, kabar: 'Nama diganti ke yang punya urusan: ' + nama + ' — nota, bon, dan pembayarannya atas nama itu', kabarAwas: false }),
     tuts: ({ t }) => set(L.tekanTuts(S(), t)),
     preset: ({ n }, el) => masukDenganGerak(L.masukkan(SB(), Number(n)), el),
+    // putaran 27 (Bagian 4): jual ½ (25 kg) dari kemasan 50 kg — dipecah saat nota dicatat
+    setengah: (arg, el) => { const s = SB(); const c = SK.skChip(s.pilih, s.setengahHarga); if (!c) return; masukDenganGerak(L.masukkan(Object.assign({}, s, { pilih: c }), 1), el); set({ setengahHarga: '' }); },
+    setengahKetik: (v) => set({ setengahHarga: String(v).replace(/[^\d.]/g, '').slice(0, 9) }),
     masukkan: (arg, el) => masukDenganGerak(L.masukkan(SB()), el),
     tutup: () => set({ lembar: null, pilih: null, negoId: null, ketik: '', isiW: null }),
     bukaKeranjang: () => set({ lembar: S().lembar === 'keranjang' ? null : 'keranjang' }),
@@ -414,7 +418,7 @@ export function pasangLayarJual(akar, opsi) {
               <div class="h" data-aksi="nego" data-id="${b.id}" title="ketuk untuk nego">${RP(b.trx.hargaTotal)}</div>
               <span class="hapus" data-aksi="hapusBaris" data-id="${b.id}">${mentah(IKON.hapus)}</span>
               <div class="bendera">
-                ${b.trx.jenis === 'kemasan' ? h`<span class="pil ${b.trx.bonusUnit ? 'nyala' : ''}" data-aksi="bonus" data-id="${b.id}" title="1 unit gratis: stok & modal ikut, uang tidak">${b.trx.bonusUnit ? '✓ bonus +1' : '+1 bonus'}</span>` : ''}
+                ${b.trx.jenis === 'kemasan' && !b.trx.setengahDari ? h`<span class="pil ${b.trx.bonusUnit ? 'nyala' : ''}" data-aksi="bonus" data-id="${b.id}" title="1 unit gratis: stok & modal ikut, uang tidak">${b.trx.bonusUnit ? '✓ bonus +1' : '+1 bonus'}</span>` : ''}
                 <span class="pil awas ${b.trx.penggantiRetur ? 'nyala' : ''} ${s.penggantiTanya === b.id ? 'nyala' : ''}" data-aksi="penggantiRetur" data-id="${b.id}" title="tukar tanpa nota: omzet & kas Rp0, modal tetap keluar">${b.trx.penggantiRetur ? '✓ pengganti retur' : s.penggantiTanya === b.id ? 'ketuk lagi: pengganti retur' : 'pengganti retur'}</span>
               </div>
             </div>`) : h`<div class="kosong">Ketuk barang di rak untuk mulai.</div>`}
@@ -519,6 +523,11 @@ export function pasangLayarJual(akar, opsi) {
           return h`<div class="pita-info" data-k="ar-${kunci}">${K.judul} habis${K.nol ? '' : ' (buku: sisa ' + K.sisaTeks + ' — cocokkan dulu sebelum diarsipkan)'} — mau diapakan?
             <div class="tombol-baris rapat"><div class="kaca-btn aktif" data-aksi="arIsi" data-kunci="${kunci}">Isi — ${K.jenis === 'kemasan' ? 'adukan' : 'barang masuk'}</div>${K.nol ? h`<div class="kaca-btn" data-aksi="arArsip" data-kunci="${kunci}">Arsipkan</div>` : ''}${K.bisaHapus ? h`<div class="kaca-btn ${s.arYakin === kunci ? 'awas' : 'putus'}" data-aksi="arHapus" data-kunci="${kunci}">${s.arYakin === kunci ? 'YAKIN hapus' : 'Hapus'}</div>` : ''}</div>
             <div class="ket" style="font-size: 10.5px;">Arsipkan = hilang dari Jual, katalog harga, label, dan katalog HP kasir; riwayat & laporan tetap. ${K.bisaHapus ? 'Hapus = belum pernah ada transaksinya, jadi cuma harga & setelannya yang dibuang.' : 'Pernah bertransaksi — tidak bisa dihapus, arsipkan saja.'}</div></div>`; })() : ''}
+        ${(() => { const I = SK.skInfo(c); if (!I || !(c.sisa >= 1)) return ''; const nilai = I.dariKatalog ? I.harga25 : (L.angkaRupiah(s.setengahHarga) || I.usul);
+          return h`<div class="kartu" data-k="setengah" style="gap: 6px;"><div class="label">Jual ½ karung · 25 kg</div>
+            <div class="ket">1 × ${c.nama} 50 kg dipecah jadi 2 × 25 kg saat nota dicatat (modal dibagi dua, sisa 25 kg tampil sebagai kemasan 25 kg biasa)${I.dariKatalog ? ' · harga 25 kg dari katalog' : ' · harga 25 kg belum ada di katalog: usul ' + RP(I.usul) + ' (½ harga 50 kg) — ikut disimpan ke katalog'}</div>
+            ${I.dariKatalog ? '' : h`<input class="ketik-nama" id="setengahHarga" type="text" inputmode="numeric" placeholder="${I.usul}" value="${s.setengahHarga || ''}" data-ketik="setengahKetik">`}
+            <div class="kaca-btn aktif emas" data-aksi="setengah">JUAL ½ · ${RP(nilai)}</div></div>`; })()}
         ${c.jalur === 'repack' ? h`<div class="ket">Jadi produk apa (nama jual di nota) — kosong = nama mereknya</div><input class="ketik-nama" id="namaRepack" type="text" value="${s.namaRepack}" data-ketik="namaRepack" placeholder="${c.nama}">` : ''}
         <div class="tombol-baris">${preset.map((n) => h`<div class="kaca-btn" data-aksi="preset" data-n="${n}">${n} ${c.satuan}</div>`)}</div>
         <div class="label">Jumlah</div><div class="angka">${s.ketik || '0'} <span class="ket">${c.satuan}</span>${s.ketik ? h` <span class="ket">= ${RP(c.harga * L.angkaKetik(s.ketik))}</span>` : ''}</div>

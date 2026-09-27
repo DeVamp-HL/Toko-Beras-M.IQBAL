@@ -31,6 +31,7 @@ import { susunRakWadah, bangunBarisWadah, biayaWadahRepack, koleksiWadah, jenisW
 // putaran 27: wadah bernama, isi per merek asal
 import { wbDariWadah, wbPecahanBaris, wbBagianMerk } from './wadah-bernama-logika.js';
 import { arPeta, arBeras, arKemasan } from './arsip-logika.js';
+import { skChip, skTrxPegang, skPecah, skHapusPemecah } from './setengah-logika.js';
 
 export const JALUR = [['sering', 'Sering'], ['literan', 'Literan'], ['kemasan', 'Kemasan'], ['karung', 'Karung'], ['wadah', 'Wadah'], ['repack', 'Repack'], ['retur', 'Retur']];
 export const JALUR_NANTI = [];   // semua jalur desain sudah hidup (wadah: putaran 15)
@@ -63,7 +64,7 @@ export function keadaanAwal() {
     karcis: null,  // PUTARAN 20: karcis kasir darurat / nota perlu-dirapikan yang sedang dirinci lewat keranjang ini (karcis-logika.js)
     kcBatal: null, // PUTARAN 25b: { id, alasan } — karcis kasir darurat yang sedang dibatalkan dari lembar Karcis (karcis-logika susunBatalKarcis)
     // PUTARAN 15: isian repack (wadah dipilih, lembar, dijual/ditanggung, upah) & struk (nota yang dibuka, timpaan kertas/sertakan, draf setelan)
-    rpWadah: '', rpLembar: '', rpDijual: true, rpUpah: '',
+    rpWadah: '', rpLembar: '', rpDijual: true, rpUpah: '', setengahHarga: '', arYakin: '',
     strukKunci: null, strukKertas: null, strukSertakan: null, aturStruk: null, aturWadah: null,
     ...returAwal(),
     kabar: '', kabarAwas: false, sekarang: null,
@@ -188,6 +189,8 @@ export function bangunBaris(chip, jumlah, s, ekstra) {
     t = { jenis: 'kemasan', namaProduk: chip.nama, ukuranKemasan: chip.ukuranKg, jumlahUnit: unit, totalKg: chip.ukuranKg * unit,
       hppTotalSaatJual: Math.round((chip.hppPerUnit || 0) * unit), label: chip.nama + ' ' + chip.ukuranKg + ' kg', satuan: 'kemasan' };
     if (bonus) t.bonusUnit = 1;
+    // putaran 27 (Bagian 4): ½ karung — 1 × 25 kg dipecah dari kemasan 50 kg saat nota dicatat (modal = ½ modal 50 kg, pasti dihitung penyusun adukan)
+    if (chip.setengahDari) { if (bonus || j !== 1) return null; t.setengahDari = chip.setengahDari; if (chip.setengahHargaBaru > 0) t.setengahHargaBaru = chip.setengahHargaBaru; t.label = chip.nama + ' 25 kg (½ dari 50 kg)'; }
   } else if (chip.jalur === 'literan') {
     const rasio = chip.rasio || rasioMerk(chip.kunci);
     const totalKg = Math.round(j * rasio * 1000) / 1000;
@@ -258,7 +261,8 @@ function wadahDipegang(jenis, tanpaId) { return _keranjangKini.filter((b) => b.i
 /** Sinkronkan keranjang aktif & parkir ke lapisan data (dibaca stokMaksJalur lewat wzDiKeranjang). */
 export function sinkronKeranjang(s) {
   _keranjangKini = s.keranjang; _antreanKini = s.antrean || [];
-  setelKeranjang(s.keranjang.map((b) => ({ trx: b.trx })), s.antrean.map((a) => ({ beku: { items: a.beku.items.map((b) => ({ trx: b.trx })), nama: a.beku.pelanggan } })));
+  // putaran 27: baris ½ karung memegang 1 unit kemasan 50 kg (bukan 25 kg) di langit-langit stok mesin beku
+  setelKeranjang(s.keranjang.map((b) => ({ trx: skTrxPegang(b.trx) })), s.antrean.map((a) => ({ beku: { items: a.beku.items.map((b) => ({ trx: skTrxPegang(b.trx) })), nama: a.beku.pelanggan } })));
 }
 
 // ---------- tagihan ----------
@@ -368,6 +372,9 @@ export function masukkan(s, jumlah) {
   if (j <= 0) return { kabar: 'Isi jumlahnya dulu', kabarAwas: true };
   if (chip.jalur === 'karung' && (j * 2) % 1 !== 0) return { kabar: 'Karung dijual utuh atau setengah (0,5 · 1 · 1,5 …)', kabarAwas: true };
   if (chip.jalur === 'kemasan' && j % 1 !== 0) return { kabar: 'Kemasan dijual per unit', kabarAwas: true };
+  if (chip.setengahDari && j !== 1) return { kabar: '½ karung dimasukkan satu-satu (1 × 25 kg); dua ½ = jual 50 kg-nya utuh', kabarAwas: true };
+  if (chip.setengahDari && s.karcis) return { kabar: '½ karung belum bisa dipakai saat merinci karcis kasir — catat sebagai nota biasa', kabarAwas: true };
+  if (chip.setengahDari && chip.setengahHargaBaru > 0 && Number(s.batasBaris) > 0) return { kabar: 'Harga ' + chip.nama + ' 25 kg belum ada di katalog — minta owner menyetelnya dulu (akun bukan-owner tidak menulis katalog)', kabarAwas: true };
   if (chip.jalur === 'wadah' && j % 1 !== 0) return { kabar: 'Wadah dijual per lembar', kabarAwas: true };
   sinkronKeranjang(s);
   const maks = maksUntuk(chip);
@@ -417,6 +424,7 @@ function maksTanpaBaris(s, id, chip) {
 /** Bonus kemasan +1 (NG3): stok & modal menghitung unit + bonus, uang cuma unit bayar. */
 export function toggleBonus(s, id) {
   const b = s.keranjang.find((x) => x.id === id); if (!b || b.trx.jenis !== 'kemasan') return {};
+  if (b.trx.setengahDari) return { kabar: '½ karung tidak bisa diberi bonus', kabarAwas: true };
   const chip = chipDariBaris(b.trx); if (!chip) return {};
   const bonus = b.trx.bonusUnit ? 0 : 1;
   if (bonus) { const maks = maksTanpaBaris(s, id, chip); if (maks !== null && b.trx.jumlah + 1 > maks) return { kabar: 'Bonus butuh 1 unit lagi dari stok — yang bebas dijual cuma ' + tulisJumlah(maks, chip), kabarAwas: true }; }
@@ -446,6 +454,7 @@ function siapaParkir(s, chip) {
 export function hapusBaris(s, id) { return { keranjang: s.keranjang.filter((b) => b.id !== id), negoId: null, kabar: '' }; }
 export function ubahJumlahBaris(s, id, selisih) {
   const b = s.keranjang.find((x) => x.id === id); if (!b) return {};
+  if (b.trx.setengahDari && selisih > 0) return { kabar: '½ karung satu-satu — dua ½ = jual 50 kg-nya utuh', kabarAwas: true };
   const chip = chipDariBaris(b.trx); if (!chip) return {};
   const j = Math.round((b.trx.jumlah + selisih) * 10) / 10;
   if (j <= 0) return hapusBaris(s, id);
@@ -458,6 +467,7 @@ export function ubahJumlahBaris(s, id, selisih) {
 function chipDariBaris(t) {
   const rak = susunRak({ pelanggan: '', sekarang: null });
   if (t.jenis === 'karung') return rak.karung.find((c) => c.kunci === t.merkSumber && c.berat === (t.beratKarungAcuan || 50)) || null;
+  if (t.jenis === 'kemasan' && t.setengahDari) { const c50 = rak.kemasan.find((c) => c.kunci === t.setengahDari); return c50 ? skChip(c50, t.setengahHargaBaru || t.hargaAsli) : null; }
   if (t.jenis === 'kemasan') return rak.kemasan.find((c) => c.kunci === kunciKemasan(t.namaProduk, t.ukuranKemasan)) || null;
   if (t.jenis === 'literan') return rak.literan.find((c) => c.kunci === t.merkSumber) || null;
   if (t.jenis === 'repacking') return rak.repack.find((c) => c.kunci === t.merkSumber) || null;
@@ -508,7 +518,7 @@ export function barisBelumDisimpan(s) {
 }
 export const kalimatKeranjangKeluar = (n) => 'Keranjang berisi ' + n + ' baris belum disimpan — simpan atau kosongkan?';
 // putaran 23d: isian Jual SELAIN keranjang — pesanan yang sedang diketik, retur (tanpa/dengan nota), repack, setelan struk/wadah yang terbuka, karcis yang dirinci, tukar
-const ISIAN_JUAL_LAIN = ['psNama', 'psIsi', 'psAlamat', 'psNilai', 'aturStruk', 'aturWadah', 'karcis', 'kcBatal', 'tukar', 'namaRepack', 'rpWadah', 'rpLembar', 'rpUpah',
+const ISIAN_JUAL_LAIN = ['psNama', 'psIsi', 'psAlamat', 'psNilai', 'aturStruk', 'aturWadah', 'karcis', 'kcBatal', 'tukar', 'namaRepack', 'rpWadah', 'rpLembar', 'rpUpah', 'setengahHarga',
   'rtNotaId', 'rtAlasan', 'rtNominal', 'rtAlasanTimpa', 'rtBarang', 'rtSelisih', 'rtPengganti'];
 export function adaIsianLain(s) { const a = keadaanAwal(); return ISIAN_JUAL_LAIN.some((k) => JSON.stringify(s[k] === undefined ? null : s[k]) !== JSON.stringify(a[k] === undefined ? null : a[k])); }
 /** Keadaan Jual untuk orang berikutnya: keranjang, parkir, nama pembeli, potongan, retur tukar, karcis, pesanan, isian — dibuang semua; yang tinggal cuma
@@ -644,10 +654,12 @@ export function susunNotaDokumen(s, w) {
   if (bulatNota > 0) { for (let i = items.length - 1; i >= 0; i--) { if (items[i].hargaTotal > 0) { items[i].pembulatan = bulatNota; items[i].hargaTotal += bulatNota; break; } } }
   const totalBayar = items.reduce((a, t) => a + t.hargaTotal, 0);
   const trxId = w.idUnik();
-  const dokumen = [];
+  const dokumen = []; let tolakPecah = '';
   items.forEach((t) => {
     const d = Object.assign({}, t);
-    ['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego'].forEach((k) => { delete d[k]; });
+    ['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'setengahDari', 'setengahHargaBaru'].forEach((k) => { delete d[k]; });
+    // putaran 27 (Bagian 4): ½ karung — 1 × 50 kg dipecah jadi 2 × 25 kg (penyusun Adukan) di kiriman yang sama; modal baris = modal 25 kg hasil pecahan
+    if (t.setengahDari) { const pc = skPecah(t, w); if (pc.tolak) tolakPecah = tolakPecah || pc.tolak; else { d.dariSetengah = pc.idProduksi; d.hppTotalSaatJual = Math.round(pc.hppPerUnit); pc.dokumen.forEach((x) => dokumen.push(x)); } }
     d.id = w.idUnik(); d.trxId = trxId; d.tanggal = w.tanggal; d.jam = w.jam; d.caraBayar = cara; d.namaPelanggan = nama;
     d.hargaAsliSatuan = t.hargaAsli;                                   // harga daftar sebelum tawar (kebal riwayat)
     if (t.nego) d.negoSelisih = t.hargaSatuan - t.hargaAsli;          // jejak tawar (NG1)
@@ -705,7 +717,8 @@ export function susunNotaDokumen(s, w) {
   else if (uang > totalBayar - kreditTukar) ket.push('kembalian ' + RP(uang - (totalBayar - kreditTukar)));
   if (tk && tk.susulanReturId) ket.push(tk.ringkas + ' — dicatat penuh, retur tidak ditulis lagi'); else if (tk) ket.push('TUKAR: barang kembali ' + RP(kreditTukar) + ' · pembeli bayar ' + RP(tagihan));
   if (pesanan) ket.push('pesanan ' + pesanan.nama + ' DIBAYAR');
-  return { dokumen, trxId, totalBayar, tagihan, bulatNota, potDipakai, bayarSebagian, cara, ringkas: ket.join(' · '),
+  const nSetengah = items.filter((t) => t.setengahDari).length; if (nSetengah) ket.push(nSetengah + ' × ½ karung (dipecah dari 50 kg)');
+  return { tolak: tolakPecah, dokumen, trxId, totalBayar, tagihan, bulatNota, potDipakai, bayarSebagian, cara, ringkas: ket.join(' · '),
     idPenjualan: dokumen.filter((x) => x.koleksi === 'penjualan').map((x) => x.data.id), piutangId, pesanan, retur };
 }
 
@@ -723,6 +736,7 @@ export function simpanNota(s, w) {
   const tolak = alasanTolak(s) || periksaStokKeranjang(s);
   if (tolak) return { tolak };
   const n = susunNotaDokumen(s, w || waktuSekarang(s.sekarang || undefined));
+  if (n.tolak) return { tolak: n.tolak };
   const patch = { keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, lembar: null, ketik: '', kreditDibuka: false, pesananId: null, penggantiTanya: null, tukar: null,
     notaTerakhir: { trxId: n.trxId, idPenjualan: n.idPenjualan, piutangId: n.piutangId, pesanan: n.pesanan, retur: n.retur, pada: Date.now(), ringkas: n.ringkas, nama: String(s.pelanggan || '').trim() },
     kabar: 'Tersimpan — ' + n.ringkas, kabarAwas: false };
@@ -741,6 +755,7 @@ export function susunPembatalan(notaTerakhir, alasan, w) {
   // wadah yang dijual / ditanggung toko: dokumen pakai id+1 ikut dicabut supaya buku kantongnya pulih
   baris.forEach((p) => { if (p.jenis === 'wadah' && p.jenisWadah) hapus.push({ koleksi: koleksiWadah(p.jenisWadah), id: p.id + 1 }); if (p.kemasanRepack && p.jumlahKemasanRepackDipakai > 0) hapus.push({ koleksi: koleksiWadah(p.kemasanRepack), id: p.id + 1 }); });
   if (notaTerakhir.piutangId) hapus.push({ koleksi: 'piutangMutasi', id: notaTerakhir.piutangId });
+  skHapusPemecah(baris).forEach((x) => hapus.push(x));   // putaran 27: ½ karung — pemecah 50 → 2 × 25 ikut dicabut bila sisanya belum terpakai
   // nota TUKAR: retur (+ karantina) lahir bersama nota ini, jadi ikut dicabut — kalau tidak, barang tercatat kembali tanpa penggantinya
   if (notaTerakhir.retur) { hapus.push({ koleksi: 'retur', id: notaTerakhir.retur.id }); if (notaTerakhir.retur.karantina) hapus.push({ koleksi: 'karantina', id: notaTerakhir.retur.id }); }
   if (notaTerakhir.pesanan) {
