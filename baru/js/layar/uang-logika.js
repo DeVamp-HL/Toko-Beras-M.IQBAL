@@ -77,56 +77,82 @@ export function ugCukup(S, tempat, n) {
 export function modalTertanam(sampai) { return daftarModalOwner().reduce((a, m) => { if (m.pinjaman || (sampai && (m.tanggal || '') > sampai)) return a; const n = Number(m.nominal) || 0; return a + (m.tipe === 'setor' ? n : -n); }, 0); }
 /** Kasbon owner (owner berutang ke toko) — dibaca dari mesin kasbon a.n. Owner. */
 export function kasbonOwner(sampai) { const k = hitungKasbon(sampai || null).find((x) => x.kunci === kunciPelanggan(NAMA_KASBON_OWNER)); return { sisa: k ? Math.max(0, k.sisa) : 0, ambil: k ? k.ambil : 0, bayar: k ? k.bayar : 0, mutasi: k ? k.mutasi : [] }; }
-/** Ambil pribadi bulan ini = prive dari laci (pengeluaranHarian owner) + kasbon owner yang dijadikan ambil pribadi + tarik modal bulan ini (penjaga modal sistem lama). */
-export function priveBulan(iso) {
-  const awal = ugAwalBulan(iso); const dlm = (t) => (t || '') >= awal && (t || '') <= iso;
+/** Ambil pribadi dalam rentang = prive dari laci (pengeluaranHarian owner) + kasbon owner yang dijadikan ambil pribadi + tarik modal (penjaga modal sistem lama). */
+export function priveRentang(awal, akhir) {
+  const dlm = (t) => (t || '') >= awal && (t || '') <= akhir;
   const prive = ambilPengeluaranHarian().filter((h) => h.kategori === 'owner' && dlm(h.tanggal)).reduce((a, h) => a + (Number(h.nominal) || 0), 0);
   const alih = ambilKasbonMutasi().filter((m) => m.tipe === 'bayar' && m.alih === 'prive' && ugKasbonOwner(m) && dlm(m.tanggal)).reduce((a, m) => a + (Number(m.nominal) || 0), 0);
   const tarik = daftarModalOwner().filter((m) => m.tipe !== 'setor' && !m.pinjaman && dlm(m.tanggal)).reduce((a, m) => a + (Number(m.nominal) || 0), 0);
-  return { prive, alih, tarik, total: prive + alih + tarik, awal };
+  return { prive, alih, tarik, total: prive + alih + tarik, awal, akhir };
+}
+/** Ambil pribadi bulan ini (awal bulan sampai iso). */
+export function priveBulan(iso) { return priveRentang(ugAwalBulan(iso), iso); }
+// ---------- putaran 29: tiga TUJUAN uang keluar (owner 27 Sep 2026) ----------
+// `untuk` = kolom baru di pengeluaranHarian: 'toko' (operasional: kantong, listrik, bahan masak untuk makan karyawan, perbaikan) atau 'karyawan'
+// (dinikmati karyawan di luar upah: kopi, rokok, makanan jadi dari warung). Keduanya TETAP kategori 'toko'/'tokoDompet' di mata mesin laba —
+// yang bertambah hanya pemilahannya. Catatan lama tanpa `untuk` = BELUM DIPILAH (bukan toko, bukan karyawan); di kartu ia dihitung di biaya toko
+// (arti yang selama ini ia punya) dan jumlahnya disebut. Pribadi = kategori 'owner' seperti sekarang, tidak diberi `untuk`.
+export const TUJUAN_KELUAR = [['toko', 'Untuk toko'], ['karyawan', 'Untuk karyawan'], ['pribadi', 'Untuk pribadi']];
+export const ugUntukDok = (h) => (h.kategori === 'owner' ? 'pribadi' : h.untuk === 'karyawan' ? 'karyawan' : h.untuk === 'toko' ? 'toko' : '');
+const ugBiayaBank = (h) => !!(h.dariBayarBon || h.dariPindah) || /^biaya admin/i.test(String(h.keterangan || ''));
+/** Pemilahan biaya toko harian (kategori toko + tokoDompet, = harianToko mesin laba) dalam rentang: untuk toko · untuk karyawan · belum dipilah; di dalam toko: potongan QRIS & biaya bank. */
+export function pilahHarian(awal, akhir) {
+  const P = { total: 0, n: 0, toko: 0, nToko: 0, karyawan: 0, nKaryawan: 0, belum: 0, nBelum: 0, mdr: 0, nMdr: 0, bank: 0, nBank: 0, awal, akhir };
+  ambilPengeluaranHarian().forEach((h) => { if (!(h.kategori === 'toko' || h.kategori === 'tokoDompet') || !h.tanggal || h.tanggal < awal || h.tanggal > akhir) return; const n = Number(h.nominal) || 0; P.total += n; P.n += 1;
+    const u = ugUntukDok(h); if (u === 'karyawan') { P.karyawan += n; P.nKaryawan += 1; return; }
+    if (u === 'toko') { P.toko += n; P.nToko += 1; } else { P.belum += n; P.nBelum += 1; }
+    if (h.mdr && h.kategori === 'toko') { P.mdr += n; P.nMdr += 1; } else if (ugBiayaBank(h)) { P.bank += n; P.nBank += 1; } });
+  P.tokoSemua = P.toko + P.belum;   // yang dihitung sebagai keperluan toko di kartu = dipilah toko + belum dipilah
+  return P;
 }
 
 // ==================== K1 · CATAT UANG KELUAR ====================
 export const TAB_KELUAR = [['hari', 'Hari ini'], ['catat', 'Catat'], ['tagihan', 'Tagihan']];
-export const ATUR_KELUAR_BAWAAN = { perluToko: [], perluPribadi: [], bulanan: [], aman: 0, alasan: ['Mendesak keluarga', 'Sudah diperhitungkan', 'Ditutup dari laba bulan depan'] };
-const UK_PERLU_UMUM = { toko: ['Makan & rokok karyawan', 'Bensin antar', 'Upah bongkar', 'Tali & plastik', 'Lain-lain'], pribadi: ['Belanja dapur', 'Keperluan keluarga', 'Lain-lain'] };
-/** Keperluan yang TERUKUR dari catatan: keterangan yang paling sering dipakai (dan nominal biasanya = median), bukan daftar karangan. */
+export const ATUR_KELUAR_BAWAAN = { perluToko: [], perluKaryawan: [], perluPribadi: [], bulanan: [], aman: 0, alasan: ['Mendesak keluarga', 'Sudah diperhitungkan', 'Ditutup dari laba bulan depan'] };
+// bawaan bila catatan kosong: 'karyawan' = yang dinikmati karyawan di luar upah (owner 27 Sep: kopi, rokok, makan dari warung); bahan mentah untuk memasak = toko
+const UK_PERLU_UMUM = { toko: ['Bensin antar', 'Upah bongkar', 'Kebutuhan masak', 'Tali & plastik', 'Lain-lain'], karyawan: ['Kopi', 'Rokok', 'Makan dari warung', 'Lain-lain'], pribadi: ['Belanja dapur', 'Keperluan keluarga', 'Lain-lain'] };
+/** Keperluan yang TERUKUR dari catatan: keterangan yang paling sering dipakai (dan nominal biasanya = median), bukan daftar karangan. kategori = toko | karyawan | owner. */
 export function perluTerukur(kategori) {
-  const k = {}; ambilPengeluaranHarian().forEach((h) => { if ((kategori === 'toko' ? h.kategori === 'toko' || h.kategori === 'tokoDompet' : h.kategori === 'owner') && h.keterangan) { const nm = String(h.keterangan).trim().replace(/\s*\((bulanan|dari .*)\)$/i, ''); const kk = nm.toLowerCase(); if (!kk || /^potongan qris|^biaya admin/.test(kk)) return; if (!k[kk]) k[kk] = { nama: nm, n: 0, nominal: [] }; k[kk].n += 1; k[kk].nominal.push(Number(h.nominal) || 0); } });
+  const cocokK = (h) => (kategori === 'owner' ? h.kategori === 'owner' : (h.kategori === 'toko' || h.kategori === 'tokoDompet') && (kategori === 'karyawan' ? h.untuk === 'karyawan' : h.untuk !== 'karyawan'));
+  const k = {}; ambilPengeluaranHarian().forEach((h) => { if (cocokK(h) && h.keterangan) { const nm = String(h.keterangan).trim().replace(/\s*\((bulanan|dari .*)\)$/i, ''); const kk = nm.toLowerCase(); if (!kk || /^potongan qris|^biaya admin/.test(kk)) return; if (!k[kk]) k[kk] = { nama: nm, n: 0, nominal: [] }; k[kk].n += 1; k[kk].nominal.push(Number(h.nominal) || 0); } });
   const urut = Object.keys(k).map((x) => k[x]).sort((a, b) => b.n - a.n).slice(0, 6);
-  if (!urut.length) return UK_PERLU_UMUM[kategori === 'toko' ? 'toko' : 'pribadi'].map((nama) => ({ nama, biasa: 0 }));
+  if (!urut.length) return UK_PERLU_UMUM[kategori === 'toko' ? 'toko' : kategori === 'karyawan' ? 'karyawan' : 'pribadi'].map((nama) => ({ nama, biasa: 0 }));
   return urut.map((x) => { const s = x.nominal.slice().sort((a, b) => a - b); const med = s.length ? s[Math.floor((s.length - 1) / 2)] : 0; return { nama: x.nama, biasa: x.n >= 3 ? Math.round(med / 1000) * 1000 : 0 }; });
 }
 export function aturKeluar(iso) {
   const a = ugAturDok('uangKeluar') || {}; const daftar = (arr, ganti) => (Array.isArray(arr) && arr.length ? arr.filter((x) => x && String(x.nama || '').trim()).map((x) => ({ nama: String(x.nama).trim(), biasa: Math.max(0, Math.round(Number(x.biasa) || 0)) })) : ganti);
   const amanOwner = isFinite(Number(a.aman)) && Number(a.aman) > 0 ? Math.round(Number(a.aman)) : 0;
   const laba = iso ? hitungLabaBersihRentang(ugAwalBulan(iso), iso).labaBersih : 0;
-  return { perluToko: daftar(a.perluToko, perluTerukur('toko')), perluPribadi: daftar(a.perluPribadi, perluTerukur('owner')), bulanan: daftar(a.bulanan, []), alasan: Array.isArray(a.alasan) && a.alasan.length ? a.alasan.map(String) : ATUR_KELUAR_BAWAAN.alasan,
-    aman: amanOwner || Math.max(0, laba), amanDariLaba: !amanOwner, labaBulan: laba, dariOwner: !!ugAturDok('uangKeluar'), terukurToko: !(Array.isArray(a.perluToko) && a.perluToko.length), terukurPribadi: !(Array.isArray(a.perluPribadi) && a.perluPribadi.length) };
+  return { perluToko: daftar(a.perluToko, perluTerukur('toko')), perluKaryawan: daftar(a.perluKaryawan, perluTerukur('karyawan')), perluPribadi: daftar(a.perluPribadi, perluTerukur('owner')), bulanan: daftar(a.bulanan, []), alasan: Array.isArray(a.alasan) && a.alasan.length ? a.alasan.map(String) : ATUR_KELUAR_BAWAAN.alasan,
+    aman: amanOwner || Math.max(0, laba), amanDariLaba: !amanOwner, labaBulan: laba, dariOwner: !!ugAturDok('uangKeluar'), terukurToko: !(Array.isArray(a.perluToko) && a.perluToko.length), terukurKaryawan: !(Array.isArray(a.perluKaryawan) && a.perluKaryawan.length), terukurPribadi: !(Array.isArray(a.perluPribadi) && a.perluPribadi.length) };
 }
+/** Daftar keperluan menurut tujuan (toko · karyawan · pribadi). */
+export const perluUntuk = (A, untuk) => (untuk === 'karyawan' ? A.perluKaryawan : untuk === 'pribadi' ? A.perluPribadi : A.perluToko);
 export function susunAturKeluar(isi, w) {
   const daftar = (arr, nama) => { const out = []; let salah = ''; (Array.isArray(arr) ? arr : []).forEach((x) => { const nm = String((x && x.nama) || '').trim(); const n = ugAngka(x && x.biasa); if (!nm && !(n > 0)) return; if (!nm) { salah = nama + ': ada baris bernominal ' + RP(n) + ' tanpa nama'; return; } out.push({ nama: nm.slice(0, 40), biasa: Math.max(0, Math.round(n)) }); }); return { out, salah }; };
-  const t = daftar(isi.perluToko, 'Keperluan toko'), p = daftar(isi.perluPribadi, 'Keperluan pribadi'), b = daftar(isi.bulanan, 'Tagihan bulanan');
-  const salah = t.salah || p.salah || b.salah; if (salah) return { tolak: salah };
+  const t = daftar(isi.perluToko, 'Keperluan toko'), ky = daftar(isi.perluKaryawan, 'Keperluan karyawan'), p = daftar(isi.perluPribadi, 'Keperluan pribadi'), b = daftar(isi.bulanan, 'Tagihan bulanan');
+  const salah = t.salah || ky.salah || p.salah || b.salah; if (salah) return { tolak: salah };
+  // satu nama tidak boleh hidup di dua tujuan — tombol rutinnya jadi bermakna ganda
+  const kembar = t.out.map((x) => x.nama.toLowerCase()).filter((nm) => ky.out.some((y) => y.nama.toLowerCase() === nm)); if (kembar.length) return { tolak: '"' + kembar[0] + '" ada di keperluan toko DAN karyawan — pilih salah satu tujuannya' };
   const aman = ugKosong(isi.aman) ? 0 : ugAngka(isi.aman); if (aman < 0) return { tolak: 'Batas aman tidak boleh minus' };
   const alasan = (Array.isArray(isi.alasan) ? isi.alasan : []).map((x) => String(x || '').trim()).filter(Boolean).slice(0, 8);
-  return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'uangKeluar', tanggal: w.tanggal, jam: w.jam, perluToko: t.out, perluPribadi: p.out, bulanan: b.out, aman: Math.round(aman), alasan: alasan.length ? alasan : ATUR_KELUAR_BAWAAN.alasan } }],
-    patch: { aturK: null, kabar: 'Aturan uang keluar disimpan — ' + t.out.length + ' keperluan toko · ' + p.out.length + ' pribadi · ' + b.out.length + ' tagihan tambahan · batas aman ' + (aman > 0 ? RP(aman) : 'ikut laba bulan berjalan'), kabarAwas: false } };
+  return { dokumen: [{ koleksi: 'aturanToko', data: { id: 'uangKeluar', tanggal: w.tanggal, jam: w.jam, perluToko: t.out, perluKaryawan: ky.out, perluPribadi: p.out, bulanan: b.out, aman: Math.round(aman), alasan: alasan.length ? alasan : ATUR_KELUAR_BAWAAN.alasan } }],
+    patch: { aturK: null, kabar: 'Aturan uang keluar disimpan — ' + t.out.length + ' keperluan toko · ' + ky.out.length + ' karyawan · ' + p.out.length + ' pribadi · ' + b.out.length + ' tagihan tambahan · batas aman ' + (aman > 0 ? RP(aman) : 'ikut laba bulan berjalan'), kabarAwas: false } };
 }
-/** Empat arti — satu tempat, dibaca layar dan buktinya. */
+/** Empat arti — satu tempat, dibaca layar dan buktinya. untuk = toko | karyawan | pribadi (karyawan = biaya toko yang dipilah untuk karyawan; laba turun sama besar). */
 export function artiKeluar(untuk, dari, n, sbgKasbon) {
-  const k = ugNamaTempat(dari);
+  const k = ugNamaTempat(dari); const ky = untuk === 'karyawan';
   if (sbgKasbon) return { sel: 'kasbon', cap: 'kasbon owner', judul: 'Kasbon owner', a: k + ' berkurang ' + RP(n), b: 'laba tidak berubah, ambil pribadi tidak bertambah', c: 'owner berutang ' + RP(n) + ' ke toko — wajib dikembalikan' };
-  if (untuk === 'toko' && dari !== 'dompet') return { sel: 'beban', cap: 'biaya toko', judul: 'Biaya toko', a: k + ' berkurang ' + RP(n), b: 'laba berkurang ' + RP(n), c: '' };
-  if (untuk === 'toko') return { sel: 'utang', cap: 'toko berutang', judul: 'Toko berutang ke owner', a: 'uang toko tidak berkurang', b: 'laba berkurang ' + RP(n), c: 'toko berutang ' + RP(n) + ' ke owner' };
+  if ((untuk === 'toko' || ky) && dari !== 'dompet') return { sel: 'beban', cap: ky ? 'untuk karyawan' : 'biaya toko', judul: ky ? 'Untuk karyawan (biaya toko)' : 'Biaya toko', a: k + ' berkurang ' + RP(n), b: 'laba berkurang ' + RP(n), c: ky ? 'dipilah sebagai biaya karyawan di luar upah' : '' };
+  if (untuk === 'toko' || ky) return { sel: 'utang', cap: ky ? 'untuk karyawan · berutang' : 'toko berutang', judul: ky ? 'Untuk karyawan — toko berutang ke owner' : 'Toko berutang ke owner', a: 'uang toko tidak berkurang', b: 'laba berkurang ' + RP(n), c: 'toko berutang ' + RP(n) + ' ke owner' + (ky ? ' · dipilah sebagai biaya karyawan' : '') };
   if (dari !== 'dompet') return { sel: 'prive', cap: 'ambil pribadi', judul: 'Ambil pribadi (prive)', a: k + ' berkurang ' + RP(n), b: 'laba TIDAK berubah', c: 'ini uang pribadi owner, bukan biaya toko' };
   return { sel: 'luar', cap: 'bukan urusan toko', judul: 'Tidak masuk catatan toko', a: 'uang toko tidak tersentuh', b: 'laba tidak berubah', c: 'tidak ada yang ditulis' };
 }
-/** Periksa isian K1: D = { untuk: toko|pribadi, dari: laci|brankas|rekening|dompet, perlu, ketik, catatan }. */
+/** Periksa isian K1: D = { untuk: toko|karyawan|pribadi, dari: laci|brankas|rekening|dompet, perlu, ketik, catatan }. */
 export function hitungKeluar(D, kini) {
   const iso = hariIniIso(kini); const A = aturKeluar(iso); const S = saldoKantong(); const n = Math.round(ugAngka(D.ketik)); const A4 = artiKeluar(D.untuk, D.dari, n, false);
   const P = priveBulan(iso); const sisaAman = A.aman - P.total;
-  const daftarPerlu = D.untuk === 'toko' ? A.perluToko : A.perluPribadi; const perlu = daftarPerlu.find((p) => p.nama === D.perlu) || (D.perlu && String(D.perlu).trim() ? { nama: String(D.perlu).trim(), biasa: 0 } : null);
+  const daftarPerlu = perluUntuk(A, D.untuk); const perlu = daftarPerlu.find((p) => p.nama === D.perlu) || (D.perlu && String(D.perlu).trim() ? { nama: String(D.perlu).trim(), biasa: 0 } : null);
   let tolak = ''; let cukup = { boleh: true, teks: '' };
   if (!(n > 0)) tolak = 'Isi nominalnya dulu'; else if (!perlu) tolak = 'Pilih untuk apa';
   else if (D.dari !== 'dompet') { cukup = ugCukup(S, D.dari, n); if (!cukup.boleh) tolak = cukup.teks; }
@@ -148,6 +174,7 @@ export function susunKeluar(D, w, pilihan) {
   }
   const kategori = H.arti.sel === 'beban' ? 'toko' : H.arti.sel === 'utang' ? 'tokoDompet' : 'owner';
   const data = { id: w.idUnik(), kategori, tanggal: w.tanggal, keterangan: ket, nominal: H.n, jam: w.jam };
+  if (kategori !== 'owner') data.untuk = D.untuk === 'karyawan' ? 'karyawan' : 'toko';   // putaran 29: tujuan dipilah; pribadi tetap bentuk lama
   if (D.dari !== 'dompet') data.dari = D.dari;
   if (P.alasan) { data.alasanAman = String(P.alasan).trim().slice(0, 80); }
   const A4 = H.arti;
@@ -169,17 +196,17 @@ export function susunPutusTitipan(id, setuju, alasan, w) {
   if (!setuju && ugKosong(alasan)) return { tolak: 'Menolak butuh alasan — supaya ' + (m.dari || 'peminta') + ' tahu sebabnya' };
   const dokumen = [{ koleksi: 'persetujuan', data: Object.assign({}, m, { status: setuju ? 'disetujui' : 'ditolak', alasanTolak: setuju ? '' : String(alasan).trim().slice(0, 80), diputusTanggal: w.tanggal, diputusJam: w.jam, diputusPada: w.kini }) }];
   const n = Math.round(Number(m.nominal) || 0); const dari = m.dariTempat || 'laci';
-  if (setuju) { if (!(n > 0)) return { tolak: 'Permintaan ini tidak menyebut nominal — tolak, minta dicatat ulang' }; dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: w.idUnik(), kategori: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: String(m.teks || 'Titipan tablet').slice(0, 80), nominal: n, dari, oleh: (m.dari || 'tablet') + ' (disetujui owner)', dariPersetujuan: String(m.id) } }); }
+  if (setuju) { if (!(n > 0)) return { tolak: 'Permintaan ini tidak menyebut nominal — tolak, minta dicatat ulang' }; dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: w.idUnik(), kategori: 'toko', untuk: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: String(m.teks || 'Titipan tablet').slice(0, 80), nominal: n, dari, oleh: (m.dari || 'tablet') + ' (disetujui owner)', dariPersetujuan: String(m.id) } }); }
   return { dokumen, patch: { kabar: setuju ? 'Catatan ' + (m.dari || 'tablet') + ' disetujui · ' + ugNamaTempat(dari) + ' berkurang ' + RP(n) : 'Catatan ' + (m.dari || 'tablet') + ' ditolak — uang toko tidak berubah, ' + (m.dari || 'tablet') + ' diberi tahu di perangkatnya', kabarAwas: false } };
 }
 /** Buku hari ini: semua uang keluar (harian toko/owner/tokoDompet + kasbon owner) bertanggal iso, terbaru di atas. */
 export function bukuKeluar(iso) {
   const rows = [];
-  ambilPengeluaranHarian().forEach((h) => { if (h.tanggal !== iso) return; const sel = h.kategori === 'tokoDompet' ? 'utang' : h.kategori === 'owner' ? 'prive' : 'beban'; const A = artiKeluar(h.kategori === 'owner' ? 'pribadi' : 'toko', h.kategori === 'tokoDompet' ? 'dompet' : (h.dari || 'laci'), Number(h.nominal) || 0, false);
-    rows.push({ id: String(h.id), koleksi: 'pengeluaranHarian', jam: h.jam || '', ket: h.keterangan || '', n: Number(h.nominal) || 0, sel, cap: A.cap, dari: h.kategori === 'tokoDompet' ? 'dompet owner' : ugNamaTempat(h.dari || 'laci').toLowerCase() + (h.dari ? '' : ' (dianggap)'), oleh: h.oleh || '', alasan: h.alasanAman || '', otomatis: !!(h.dariBayarBon || h.dariPindah || h.mdr || h.dariTutup) }); });
-  ambilKasbonMutasi().forEach((m) => { if (m.tanggal !== iso || m.tipe !== 'ambil' || !ugKasbonOwner(m)) return; rows.push({ id: String(m.id), koleksi: 'kasbonMutasi', jam: m.jam || '', ket: m.catatan || 'Kasbon owner', n: Number(m.nominal) || 0, sel: 'kasbon', cap: 'kasbon owner', dari: ugNamaTempat(m.dari || 'laci').toLowerCase(), oleh: m.oleh || '', alasan: '', otomatis: false }); });
+  ambilPengeluaranHarian().forEach((h) => { if (h.tanggal !== iso) return; const sel = h.kategori === 'tokoDompet' ? 'utang' : h.kategori === 'owner' ? 'prive' : 'beban'; const untuk = ugUntukDok(h); const A = artiKeluar(untuk || 'toko', h.kategori === 'tokoDompet' ? 'dompet' : (h.dari || 'laci'), Number(h.nominal) || 0, false);
+    rows.push({ id: String(h.id), koleksi: 'pengeluaranHarian', jam: h.jam || '', ket: h.keterangan || '', n: Number(h.nominal) || 0, sel, untuk, cap: untuk || sel === 'prive' ? A.cap : A.cap + ' · belum dipilah', dari: h.kategori === 'tokoDompet' ? 'dompet owner' : ugNamaTempat(h.dari || 'laci').toLowerCase() + (h.dari ? '' : ' (dianggap)'), oleh: h.oleh || '', alasan: h.alasanAman || '', otomatis: !!(h.dariBayarBon || h.dariPindah || h.mdr || h.dariTutup) }); });
+  ambilKasbonMutasi().forEach((m) => { if (m.tanggal !== iso || m.tipe !== 'ambil' || !ugKasbonOwner(m)) return; rows.push({ id: String(m.id), koleksi: 'kasbonMutasi', jam: m.jam || '', ket: m.catatan || 'Kasbon owner', n: Number(m.nominal) || 0, sel: 'kasbon', untuk: '', cap: 'kasbon owner', dari: ugNamaTempat(m.dari || 'laci').toLowerCase(), oleh: m.oleh || '', alasan: '', otomatis: false }); });
   rows.sort((a, b) => String(b.jam).localeCompare(String(a.jam)) || String(b.id).localeCompare(String(a.id)));
-  const j = { beban: 0, utang: 0, prive: 0, kasbon: 0 }; rows.forEach((r) => { j[r.sel] += r.n; });
+  const j = { beban: 0, utang: 0, prive: 0, kasbon: 0, karyawan: 0 }; rows.forEach((r) => { j[r.sel] += r.n; if (r.untuk === 'karyawan') j.karyawan += r.n; });
   const laci = rows.filter((r) => r.dari.indexOf('laci') === 0).reduce((a, r) => a + r.n, 0);
   return { rows, jumlah: j, n: rows.length, keluarLaci: laci, total: rows.reduce((a, r) => a + r.n, 0) };
 }
@@ -201,7 +228,7 @@ export function susunBayarTagihan(kunci, ketik, dari, w) {
   const n = Math.round(ugKosong(ketik) ? t.biasa : ugAngka(ketik)); if (!(n > 0)) return { tolak: 'Ketik jumlahnya — belum ada nominal biasanya untuk ' + t.nama };
   if (!TEMPAT_UANG.some((x) => x[0] === dari)) return { tolak: 'Uangnya dari mana — laci, brankas, atau rekening?' };
   const S = saldoKantong(); const c = ugCukup(S, dari, n); if (!c.boleh) return { tolak: c.teks };
-  if (t.jenis === 'tambahan') { const data = { id: w.idUnik(), kategori: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: t.nama + ' (bulanan)', nominal: n, dari };
+  if (t.jenis === 'tambahan') { const data = { id: w.idUnik(), kategori: 'toko', untuk: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: t.nama + ' (bulanan)', nominal: n, dari };
     return { dokumen: [{ koleksi: 'pengeluaranHarian', data }], urung: [{ koleksi: 'pengeluaranHarian', id: data.id }], patch: { kabar: t.nama + ' dibayar ' + RP(n) + ' dari ' + ugNamaTempat(dari) + ' — dicatat sebagai belanja harian hari ini (laba hari ini)' + (c.takTerperiksa ? ' · ' + c.teks : ''), kabarAwas: false, bayarT: null } }; }
   const lama = T.dok || { id: T.bulan, bulan: T.bulan }; const data = Object.assign({}, lama, { id: T.bulan, bulan: T.bulan });
   // dokumen lama bertanggal tunggal (tanggalBayar): saat berpindah ke peta per pos, SEMUA pos yang sudah bernilai dibawa tanggalnya — kalau tidak, pos lain mendadak "belum dibayar" dan kas bergeser
@@ -237,13 +264,31 @@ export function susunPindah(D, w) {
   const H = hitungPindah(D); if (H.tolak) return { tolak: H.tolak };
   const data = { id: D.id || w.idUnik(), tanggal: w.tanggal, jam: w.jam, dari: D.dari, ke: D.ke, nominal: H.n, alasan: String(D.alasan).slice(0, 60), biayaAdmin: H.admin, adminNama: H.biaya ? H.biaya.nama : '' };
   const dokumen = [{ koleksi: 'pindahUang', data }]; const urung = [{ koleksi: 'pindahUang', id: data.id }];
-  if (H.admin > 0) { const adm = { id: w.idUnik(), kategori: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: 'Biaya admin ' + H.biaya.nama + ' — pindah uang ' + ugNamaTempat(D.dari) + ' → ' + ugNamaTempat(D.ke), nominal: H.admin, dari: D.dari, dariPindah: data.id }; dokumen.push({ koleksi: 'pengeluaranHarian', data: adm }); urung.push({ koleksi: 'pengeluaranHarian', id: adm.id }); }
+  if (H.admin > 0) { const adm = { id: w.idUnik(), kategori: 'toko', untuk: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: 'Biaya admin ' + H.biaya.nama + ' — pindah uang ' + ugNamaTempat(D.dari) + ' → ' + ugNamaTempat(D.ke), nominal: H.admin, dari: D.dari, dariPindah: data.id }; dokumen.push({ koleksi: 'pengeluaranHarian', data: adm }); urung.push({ koleksi: 'pengeluaranHarian', id: adm.id }); }
   return { dokumen, urung, patch: { kabar: RP(H.n) + ' dipindah · ' + ugNamaTempat(D.dari) + ' → ' + ugNamaTempat(D.ke) + (H.admin ? ' · biaya admin ' + RP(H.admin) + ' jadi biaya toko' : ' · jumlah uang toko tetap') + (H.takTerperiksa ? ' · ' + H.catatanCukup : ''), kabarAwas: false, pindah: null } };
 }
 export function susunUrungPindah(id) {
   const p = ambilPindahUang().find((x) => String(x.id) === String(id)); if (!p) return { tolak: 'Catatan pindahnya tidak ditemukan' };
   const hapus = [{ koleksi: 'pindahUang', id: p.id }]; ambilPengeluaranHarian().forEach((h) => { if (String(h.dariPindah || '') === String(p.id)) hapus.push({ koleksi: 'pengeluaranHarian', id: h.id }); });
   return { hapus, patch: { kabar: 'Dibatalkan — ' + RP(Number(p.nominal) || 0) + ' kembali ke ' + ugNamaTempat(p.dari) + (hapus.length > 1 ? ', biaya adminnya ikut dicabut' : ''), kabarAwas: false, urung: null } };
+}
+/** putaran 29 (Bagian 4): CATAT ISI REKENING menurut m-banking. Tutup hari tidak pernah menghitung rekening (ia hanya memotong MDR), jadi titik kas
+ *  rekening bisa 0 = belum pernah diisi — dan transfer ke pemasok akan ditolak "rekening tidak cukup". Ditulis sebagai pengaturan/titikKas (jenis yang
+ *  sudah ada) bertanggal KEMARIN: laci/brankas/amplop = hasil hitung sampai kemarin, rekening = isi yang diketik DIKURANGI gerakan rekening hari ini,
+ *  supaya gerakan hari ini tetap terhitung. Bila titik sudah bertanggal hari ini (sesudah Tutup hari), titik hari ini ditulis ulang dengan rekening yang
+ *  diketik. Kas total bergeser sebesar selisihnya; di laporan arus kas ia muncul sebagai titik yang disetel ulang (baris bernama), tidak disembunyikan. */
+export function hitungTitikRekening(ketik, w) {
+  const S = saldoKantong(); const n = Math.round(ugAngka(ketik)); const kemarin = ugTambahHari(w.tanggal, -1);
+  if (!S.ada) return { n, tolak: 'Titik kas belum disetel — Tutup hari dulu malam ini, sesudahnya isi rekening bisa dicatat', S, belumPernah: true };
+  if (ugKosong(ketik) || n < 0) return { n, tolak: 'Ketik isi rekening menurut m-banking', S, belumPernah: !(Number(S.titik.rekening) > 0) };
+  const T = S.titik; let dasar, tanggal, rekening;
+  if (kemarin >= T.tanggal) { dasar = saldoKantong(kemarin); tanggal = kemarin; rekening = n - (S.rekening - dasar.rekening); } else { dasar = S; tanggal = T.tanggal; rekening = n; }
+  const selisih = n - S.rekening; const titik = { id: 'titikKas', tanggal, laci: Math.round(dasar.laci), brankas: Math.round(dasar.brankas), rekening: Math.round(rekening), amplop: Math.round(dasar.amplop), diubahPada: w.kini };
+  return { n, tolak: '', S, titik, selisih, belumPernah: !(Number(T.rekening) > 0), arti: 'Rekening jadi ' + RP(n) + ' (' + (selisih === 0 ? 'sama dengan hitungan' : (selisih > 0 ? 'naik ' : 'turun ') + RP(Math.abs(selisih)) + ' dari hitungan ' + RP(S.rekening)) + ') · laci, brankas, amplop tidak berubah · laba tidak berubah · patokan kas pindah ke ' + tanggalPendek(tanggal) };
+}
+export function susunTitikRekening(ketik, w) {
+  const H = hitungTitikRekening(ketik, w); if (H.tolak) return { tolak: H.tolak };
+  return { dokumen: [{ koleksi: 'pengaturan', data: H.titik }], titik: H.titik, patch: { rekIsi: null, kabar: 'Isi rekening dicatat ' + RP(H.n) + ' — ' + H.arti, kabarAwas: false } };
 }
 /** Rutin sekali ketuk: angkanya dihitung dari isi tempat uang SAAT INI (bukan angka mati). */
 export function rutinPindah() {

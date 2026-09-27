@@ -11,7 +11,7 @@ import { hitungLabaRentang, hitungLabaBersihRentang, hitungArusKasInti, barisSus
 import { akhirBulanIso, bulanDari, namaBulanPanjang, caraBayarKunci, hppTercatat, daftarGerakanKas, namaSingkatTrx, kunciPelanggan } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan } from './uang-logika.js';
+import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan, priveRentang, pilahHarian } from './uang-logika.js';
 import { bkEra } from './tutup-buku-logika.js';
 import { notaDari, notaDariBaris, susunStruk, stAtur, namaBaris } from './struk-logika.js';
 import { riwayatUpah } from './upah-logika.js';
@@ -73,6 +73,32 @@ export function labaBulan(key, kini, bayaran) {
   let aman = null; if (berjalan) { const A = aturKeluar(iso); const P = priveBulan(iso); aman = { batas: A.aman, dariLaba: A.amanDariLaba, terpakai: P.total, sisa: A.aman - P.total }; }
   return { key, nama: lpNamaBulan(key), berjalan, final: lpFinal(key), L, margin: L.margin, labaBersih: L.labaBersih, tunai, marginKredit, omzetKredit, nKredit, cakupan, omzetKotor, penyebut, mdr, biayaLain, terjun, susut, susutTotal: L.susutStok, rugi, tanpaHpp, omzetTanpaHpp: L.omzetTanpaHpp, tanpaCatatan, aman,
     pct: (a, b) => (b > 0 ? (a < 0 ? '−' : '') + Math.abs(a / b * 100).toFixed(1).replace('.', ',') + '%' : '—') };
+}
+
+// ==================== LABA KOTOR → KE MANA (putaran 29, owner 27 Sep 2026) ====================
+/** Satu kartu per bulan: ke mana laba kotor pergi — biaya toko · biaya karyawan (upah + non-upah, dipisah) · hapus buku · susut & selisih stok (mesin menaruhnya
+ *  di BAWAH laba kotor) · = laba bersih mesin · ambil pribadi owner · sisa. SEMUA angka dari hitungLabaBersihRentang + bayaranBiayaBulanan yang sama, cuma
+ *  dipilah dengan kategori (pilahHarian: kolom `untuk`); tidak ada rumus laba baru. Bulan terkunci/tutup buku = final. Bulan tanpa satu catatan pun disebut begitu. */
+export function keManaLabaKotor(key, kini, bayaran) {
+  const iso = hariIniIso(kini); const awal = key + '-01', akhir = akhirBulanIso(key); const B = bayaran || bayaranBiayaBulanan(); const L = hitungLabaBersihRentang(awal, akhir, B);
+  const P = pilahHarian(awal, akhir);   // Σ = L.harianToko
+  const gajiRows = B.filter((x) => x.bulan === key && String(x.pos || '').indexOf('gaji:') === 0); const upah = gajiRows.reduce((a, x) => a + (x.nominalKotor === undefined ? x.nominal : x.nominalKotor), 0);
+  const posLain = L.jatahBulanan - upah;   // jatah pos bulanan bukan gaji (listrik, akses, keamanan, internet) — dari jatah yang sama dengan mesin, jadi selalu menutup
+  const biayaToko = P.tokoSemua + posLain; const nonUpah = P.karyawan; const biayaKaryawan = upah + nonUpah;
+  const Pr = priveRentang(awal, akhir); const sisa = L.labaBersih - Pr.total;
+  const menutup = Math.abs((L.margin - biayaToko - biayaKaryawan - L.hapusBuku + L.susutStok) - L.labaBersih) < 0.5 && Math.abs(P.total - L.harianToko) < 0.5;
+  const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && L.nSusut === 0 && !gajiRows.length && !L.jatahBulanan;
+  const baris = [{ id: 'kotor', nama: 'Laba kotor', n: L.margin, kelas: 'jumlah', ket: 'omzet ber-HPP − HPP-nya' },
+    { id: 'toko', nama: 'Biaya toko', n: -biayaToko, ket: [P.nToko + P.nBelum ? 'harian ' + RP(P.tokoSemua) : '', posLain ? 'jatah tagihan bulanan ' + RP(posLain) : '', P.mdr ? 'potongan QRIS ' + RP(P.mdr) : '', P.bank ? 'biaya bank ' + RP(P.bank) : ''].filter(Boolean).join(' · ') || 'tidak ada', belumDipilah: P.nBelum, belumDipilahRp: P.belum },
+    { id: 'upah', nama: 'Biaya karyawan · upah', n: -upah, ket: gajiRows.length ? gajiRows.length + ' baris gaji kotor, dibagi rata per hari (mesin lama)' : 'tidak ada baris gaji bulan ini' },
+    { id: 'karyawan', nama: 'Biaya karyawan · di luar upah', n: -nonUpah, ket: P.nKaryawan ? P.nKaryawan + ' catatan "untuk karyawan" (kopi, rokok, makan warung)' : 'belum ada catatan "untuk karyawan"' }]
+    .concat(L.hapusBuku ? [{ id: 'hapus', nama: 'Hapus buku piutang', n: -L.hapusBuku, ket: L.nHapus + ' catatan' }] : [])
+    .concat([{ id: 'susut', nama: 'Susut & selisih stok', n: L.susutStok, ket: L.nSusut ? L.nSusut + ' baris · di bawah laba kotor, tidak menyentuh kas' : 'tidak ada' },
+      { id: 'bersih', nama: 'Laba bersih', n: L.labaBersih, kelas: 'jumlah', ket: 'mesin yang sama dengan Laba' },
+      { id: 'prive', nama: 'Ambil pribadi owner', n: -Pr.total, ket: [Pr.prive ? 'dari laci ' + RP(Pr.prive) : '', Pr.alih ? 'kasbon dialihkan ' + RP(Pr.alih) : '', Pr.tarik ? 'tarik modal ' + RP(Pr.tarik) : ''].filter(Boolean).join(' · ') || 'tidak ada' },
+      { id: 'sisa', nama: 'Sisa di toko', n: sisa, kelas: 'jumlah', ket: 'laba bersih − ambil pribadi' }]);
+  return { key, nama: lpNamaBulan(key), berjalan: key === lpKey(iso), final: lpFinal(key), tanpaCatatan, L, labaKotor: L.margin, biayaToko, upah, nonUpah, biayaKaryawan, hapusBuku: L.hapusBuku, susut: L.susutStok, labaBersih: L.labaBersih, prive: Pr.total, priveRinci: Pr, sisa, menutup, pilah: P, posLain, baris,
+    belumDipilah: P.nBelum, belumDipilahRp: P.belum, pct: (a) => (L.margin > 0 ? (a < 0 ? '−' : '') + Math.abs(a / L.margin * 100).toFixed(1).replace('.', ',') + '%' : '—') };
 }
 
 // ==================== HARIAN · rekap satu hari ====================

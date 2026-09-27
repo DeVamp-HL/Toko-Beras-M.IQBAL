@@ -86,3 +86,5 @@ main.layar-uang.masuk > header, main.layar-uang.masuk > .jalur { animation: rkNa
 .layar-uang .tb-ttd.sudah { border-style: solid; border-color: var(--emas-garis); background: var(--seg-aktif); } .layar-uang .tb-ttd .nm { font-family: 'Bodoni Moda', Georgia, serif; font-size: 17px; font-style: italic; }
 .layar-uang .tb-progres { height: 6px; border-radius: 6px; background: var(--seg); border: 1px solid var(--kaca-tepi); overflow: hidden; } .layar-uang .tb-progres i { display: block; height: 100%; background: linear-gradient(90deg, rgba(232,201,108,0.4), rgba(232,201,108,0.9)); transition: width 320ms ease; }
 @media (prefers-reduced-motion: reduce) { .layar-uang section, .layar-uang .kartu, .layar-uang .ug-baris.baru { animation: none; } .layar-uang .ow-batang, .layar-uang .or-kal .kl, .layar-uang .tb-progres i { transition: none; } }
+/* putaran 29: tiga tujuan uang keluar — cap 'untuk karyawan' & tombol rutin karyawan */
+.layar-uang .ug-cap.karyawan { border-color: var(--aktif); color: var(--aktif); border-style: solid; } .layar-uang .ug-cepat > div.karyawan { border-color: var(--emas-garis); }

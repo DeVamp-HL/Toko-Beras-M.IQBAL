@@ -97,31 +97,42 @@ export function bukuBon(nama) {
   ambilSemuaBatch().forEach((b) => { if (b.stokAwal || !batchDiutang(b) || kunciPelanggan(b.pemasok) !== k) return; kej.push({ t: b.tanggal || '', j: b.jam || '', u: 0, teks: 'Barang datang — bon', ket: bpIsiBatch(b.id), n: Math.round((b.merkList || []).reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0)) }); });
   ambilUtangPemasokMutasi().forEach((m) => { if (kunciPelanggan(m.pemasok) !== k) return;
     if (m.tipe === 'saldoAwal') kej.push({ t: m.bonTanggal || '', j: '', u: 0, teks: 'Bon lama (sebelum sistem)', ket: m.catatan || (m.bonTanggal ? '' : 'tanggal bon tidak diketahui'), n: Math.round(Number(m.nominal) || 0) });
-    else if (m.tipe === 'bayar') kej.push({ t: m.tanggal || '', j: m.jam || '', u: 1, teks: 'Bayar bon' + (m.bonTanggal ? ' ' + tanggalPendek(m.bonTanggal) : ''), ket: (m.dari ? 'dari ' + namaTempat(m.dari) : '') + (Number(m.biayaAdmin) > 0 ? ' · admin ' + RP(m.biayaAdmin) : '') + (m.catatan ? ' · ' + m.catatan : ''), n: -Math.round(Number(m.nominal) || 0), id: m.id }); });
+    else if (m.tipe === 'bayar') kej.push({ t: m.tanggal || '', j: m.jam || '', u: 1, teks: 'Bayar bon' + (m.bonTanggal ? ' ' + tanggalPendek(m.bonTanggal) : '') + (m.dari === 'rekening' ? ' · transfer' : m.dari ? ' · tunai' : ''), cara: caraDari(m.dari), ket: (m.dari ? 'dari ' + namaTempat(m.dari) : 'kantong tidak dicatat (sistem lama)') + (Number(m.biayaAdmin) > 0 ? ' · admin ' + RP(m.biayaAdmin) + (m.adminNama ? ' ' + m.adminNama : '') + ' (biaya toko, bukan utang)' : '') + (m.catatan ? ' · ' + m.catatan : ''), n: -Math.round(Number(m.nominal) || 0), id: m.id }); });
   kej.sort((a, b) => a.t.localeCompare(b.t) || a.u - b.u || a.j.localeCompare(b.j)); let sd = 0;
   const baris = kej.map((e) => { sd += e.n; return Object.assign({}, e, { saldo: sd }); });
   return { baris, saldo: sd };
 }
 
-// ---- LEMBAR BAYAR: satu pembayaran = satu bon; uang dari mana; biaya admin (rekening) = biaya toko
-export function hitungBayar(d, kini) {
+// ---- LEMBAR BAYAR: satu pembayaran = satu bon; TUNAI (laci/brankas) atau TRANSFER (rekening, boleh berbiaya admin = biaya toko)
+// putaran 29 (Bagian 4, owner 27 Sep): cara bayar dibaca dari `dari` (rekening = transfer) — tanpa kolom baru di utangPemasokMutasi. Kantong yang dipilih dijaga
+// isinya bila layar menyerahkan saldo per tempat (S = saldoKantong() dari uang-logika; diserahkan oleh layar supaya modul ini tidak mengimpor balik uang-logika);
+// tanpa S, yang dijaga tetap TOTAL kas seperti sebelumnya. Rekening yang belum pernah diisi (titik kas 0) DISEBUT dan ditawari "catat isi rekening".
+export const CARA_BAYAR_BON = [['tunai', 'Tunai'], ['transfer', 'Transfer']];
+export const caraDari = (dari) => (dari === 'rekening' ? 'transfer' : dari ? 'tunai' : '');
+export function hitungBayar(d, kini, S) {
   const D = Object.assign({ pemasok: '', bonId: '', ketik: '', dari: '', adminI: -1, catatan: '' }, d || {}); const B = susunBon(kini); const atur = B.atur;
   const bonP = B.bon.filter((b) => b.pemasok === D.pemasok).sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))); const bon = bonP.find((b) => b.id === String(D.bonId)) || null;
-  const n = Math.round(bpAngka(D.ketik)); const biaya = D.dari === 'rekening' && D.adminI >= 0 ? atur.admin[D.adminI] || null : null; const admin = biaya ? biaya.n : 0;
+  const n = Math.round(bpAngka(D.ketik)); const biaya = D.dari === 'rekening' && D.adminI >= 0 ? atur.admin[D.adminI] || null : null; const admin = biaya ? biaya.n : 0; const cara = caraDari(D.dari);
+  const kantong = S && S.ada && D.dari && S[D.dari] !== undefined && S[D.dari] !== null ? S[D.dari] : null;
+  const rekeningKosong = !!(S && S.ada && !(Number(S.titik.rekening) > 0) && S.rekening <= 0.5);
   let tolak = ''; if (!bon) tolak = 'Pilih bon yang dibayar'; else if (!(n > 0)) tolak = 'Ketik jumlah yang dibayar'; else if (n > bon.sisa) tolak = 'Melebihi sisa bon ini (' + RP(bon.sisa) + ') — satu pembayaran satu bon, bon lain dicatat terpisah supaya jejaknya jelas';
-  else if (!D.dari) tolak = 'Uangnya dari mana?'; else if (B.adaKas && n + admin > B.kas) tolak = 'Uang toko cuma ' + RP(B.kas) + ' — tidak cukup' + (admin ? ' (termasuk biaya admin ' + RP(admin) + ')' : '');
+  else if (!D.dari) tolak = 'Uangnya dari mana — tunai (laci/brankas) atau transfer (rekening)?';
+  else if (kantong !== null && n + admin > kantong + 0.5) tolak = namaTempat(D.dari) + ' cuma ' + RP(kantong) + ' — tidak cukup untuk ' + RP(n + admin) + (admin ? ' (termasuk biaya admin ' + RP(admin) + ')' : '') + (D.dari === 'rekening' && rekeningKosong ? '. Isi rekening di aplikasi belum pernah dicatat — catat isi rekening dulu di Uang › Pindah uang' : '');
+  else if (B.adaKas && n + admin > B.kas) tolak = 'Uang toko cuma ' + RP(B.kas) + ' — tidak cukup' + (admin ? ' (termasuk biaya admin ' + RP(admin) + ')' : '');
   const lunas = !!bon && n === bon.sisa;
-  return { D, B, bonP, bon, n, admin, biaya, tolak, lunas, arti: bon && n > 0 && n <= bon.sisa ? { a: lunas ? 'Bon ' + tanggalPendek(bon.tanggal) + ' LUNAS — keluar dari daftar' : 'Dibayar SEBAGIAN — sisa bon jadi ' + RP(bon.sisa - n) + ', bonnya TETAP di daftar', b: (D.dari ? namaTempat(D.dari) : 'uang toko') + ' berkurang ' + RP(n + admin) + (admin ? ' (termasuk admin ' + RP(admin) + ')' : ''), c: 'laba TIDAK berubah — berasnya sudah dihitung waktu datang' + (admin ? ' · biaya admin ' + RP(admin) + ' masuk biaya toko, laba berkurang segitu' : '') } : null,
-    label: tolak || (lunas ? 'BAYAR LUNAS ' + RP(n) : 'BAYAR SEBAGIAN ' + RP(n)) };
+  return { D, B, bonP, bon, n, admin, biaya, tolak, lunas, cara, kantong, rekeningKosong, rekeningTeks: rekeningKosong ? 'Isi rekening di aplikasi belum pernah dicatat (' + RP(S.rekening) + ' sejak ' + S.teksTitik + ') — catat isi rekening menurut m-banking dulu di Uang › Pindah uang, supaya transfer bisa dijaga' : '',
+    arti: bon && n > 0 && n <= bon.sisa ? { a: lunas ? 'Bon ' + tanggalPendek(bon.tanggal) + ' LUNAS — keluar dari daftar' : 'Dibayar SEBAGIAN — sisa bon jadi ' + RP(bon.sisa - n) + ', bonnya TETAP di daftar', b: (D.dari ? namaTempat(D.dari) : 'uang toko') + ' berkurang ' + RP(n + admin) + (cara === 'transfer' ? ' lewat transfer' : cara === 'tunai' ? ' tunai' : '') + (admin ? ' (termasuk admin ' + RP(admin) + ')' : ''), c: 'utang ke ' + bon.pemasok + ' berkurang ' + RP(n) + ' (bukan ' + RP(n + admin) + ') · laba TIDAK berubah — berasnya sudah dihitung waktu datang' + (admin ? ' · biaya admin ' + RP(admin) + ' masuk biaya toko, laba berkurang segitu' : '') } : null,
+    label: tolak || (lunas ? 'BAYAR LUNAS ' + RP(n) : 'BAYAR SEBAGIAN ' + RP(n)) + (cara === 'transfer' ? ' · TRANSFER' : cara === 'tunai' ? ' · TUNAI' : '') };
 }
-export function susunBayar(d, w) {
-  const H = hitungBayar(d, new Date(w.kini)); if (H.tolak) return { tolak: H.tolak };
+export function susunBayar(d, w, S) {
+  const H = hitungBayar(d, new Date(w.kini), S); if (H.tolak) return { tolak: H.tolak };
   const id = w.idUnik(); const catatan = String(H.D.catatan || '').trim().slice(0, 80);
   const bayar = { id, tanggal: w.tanggal, jam: w.jam, tipe: 'bayar', pemasok: H.bon.pemasok, nominal: H.n, catatan, bonId: H.bon.id, bonTanggal: H.bon.tanggal || null, dari: H.D.dari };
   if (H.admin > 0) { bayar.biayaAdmin = H.admin; bayar.adminNama = H.biaya.nama; }
   const dokumen = [{ koleksi: 'utangPemasokMutasi', data: bayar }];
-  if (H.admin > 0) dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: w.idUnik(), kategori: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: 'Biaya admin ' + H.biaya.nama + ' — bayar bon ' + H.bon.pemasok + (H.bon.tanggal ? ' ' + tanggalPendek(H.bon.tanggal) : ''), nominal: H.admin, dariBayarBon: id } });
-  return { dokumen, bayarId: id, patch: { bayar: null, urung: { id, sampai: Date.now() + 90000, teks: 'Batalkan pembayaran ' + RP(H.n) + ' tadi' }, kabar: 'Bon ' + tanggalPendek(H.bon.tanggal) + ' ' + H.bon.pemasok + (H.lunas ? ' LUNAS' : ' dibayar sebagian, sisa ' + RP(H.bon.sisa - H.n)) + ' · ' + namaTempat(H.D.dari) + ' berkurang ' + RP(H.n + H.admin) + (H.admin ? ' (admin ' + RP(H.admin) + ' jadi biaya toko)' : ''), kabarAwas: false } };
+  // biaya admin = uang keluar "Untuk toko" (kategori biaya bank), bertanggal sama, satu kiriman, saling merujuk (dariBayarBon ↔ biayaAdmin/adminNama); dari rekening (putaran 29: dulu tanpa `dari` → dipotong dari laci di saldo per tempat)
+  if (H.admin > 0) dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: w.idUnik(), kategori: 'toko', untuk: 'toko', tanggal: w.tanggal, jam: w.jam, keterangan: 'Biaya admin ' + H.biaya.nama + ' — bayar bon ' + H.bon.pemasok + (H.bon.tanggal ? ' ' + tanggalPendek(H.bon.tanggal) : ''), nominal: H.admin, dari: H.D.dari, dariBayarBon: id } });
+  return { dokumen, bayarId: id, patch: { bayar: null, urung: { id, sampai: Date.now() + 90000, teks: 'Batalkan pembayaran ' + RP(H.n) + ' tadi' }, kabar: 'Bon ' + tanggalPendek(H.bon.tanggal) + ' ' + H.bon.pemasok + (H.lunas ? ' LUNAS' : ' dibayar sebagian, sisa ' + RP(H.bon.sisa - H.n)) + ' · ' + (H.cara === 'transfer' ? 'transfer, ' : 'tunai, ') + namaTempat(H.D.dari) + ' berkurang ' + RP(H.n + H.admin) + (H.admin ? ' (admin ' + RP(H.admin) + ' jadi biaya toko, utang turun ' + RP(H.n) + ')' : ''), kabarAwas: false } };
 }
 /** Batalkan pembayaran barusan (≤ 90 detik): hapus dokumen bayar + dokumen biaya adminnya. */
 export function susunUrungBayar(id) {

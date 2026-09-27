@@ -19,6 +19,8 @@ import * as AR from './arsip-logika.js';
 import * as WB from './wadah-bernama-logika.js';
 import { hitungStokKemasan } from '../mesin/beku.js';
 import { kunciKemasan } from '../mesin/pembantu.js';   // 25c: setelan jenis beras pindah dari sistem lama
+// putaran 29: bayar bon menjaga isi kantong yang dipilih (tunai laci/brankas · transfer rekening) — saldo per tempat dari uang-logika
+import { saldoKantong } from './uang-logika.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -121,9 +123,12 @@ export function pasangLayarHarga(akar, opsi) {
     bpBayarBon: ({ bon }) => { const B = BP.susunBon(kini()); const b0 = B.bon.find((b) => b.id === String(bon)); set({ bayar: Object.assign({}, st().bayar, { bonId: String(bon), ketik: b0 ? String(b0.sisa) : '' }) }); },
     bpKetik: (v, el) => { const b = Object.assign({}, st().bayar || {}); b[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'catatan' ? 80 : 14); set({ bayar: b }); },
     bpDari: ({ d }) => set({ bayar: Object.assign({}, st().bayar, { dari: d, adminI: d === 'rekening' ? st().bayar.adminI : -1 }) }),
+    // putaran 29: TUNAI (laci/brankas) atau TRANSFER (rekening) — cara bayar dibaca dari `dari`, tanpa kolom baru
+    bpCara: ({ c }) => { const b = st().bayar; set({ bayar: Object.assign({}, b, c === 'transfer' ? { dari: 'rekening' } : { dari: b.dari === 'rekening' || !b.dari ? 'laci' : b.dari, adminI: -1 }) }); },
     bpAdmin: ({ i }) => set({ bayar: Object.assign({}, st().bayar, { adminI: Number(i) }) }),
-    bpLunas: () => { const H = BP.hitungBayar(st().bayar, kini()); if (H.bon) set({ bayar: Object.assign({}, st().bayar, { ketik: String(H.bon.sisa) }) }); },
-    bpSimpanBayar: async () => { const r = BP.susunBayar(st().bayar, waktu()); if (await tulis(r)) sekali(akar.querySelector('.bn-hero'), 'pegas', 520); },
+    bpLunas: () => { const H = BP.hitungBayar(st().bayar, kini(), saldoKantong()); if (H.bon) set({ bayar: Object.assign({}, st().bayar, { ketik: String(H.bon.sisa) }) }); },
+    bpSimpanBayar: async () => { const r = BP.susunBayar(st().bayar, waktu(), saldoKantong()); if (await tulis(r)) sekali(akar.querySelector('.bn-hero'), 'pegas', 520); },
+    bpKeRekening: () => { if (opsi.keTujuan) opsi.keTujuan({ ke: 'uang', keluarga: 'pindah', rek: true }); else if (opsi.pindah) opsi.pindah('uang'); },
     bpTutup: () => set({ bayar: null, lama: null, kartu: null, kabar: '' }),
     bpUrung: async () => { const u = st().urung; if (!u) return; if (Date.now() > u.sampai) return set({ urung: null, kabar: 'Sudah lewat 90 detik — pembayaran tadi tetap tercatat; kalau salah, catat pembetulannya lewat sistem lama', kabarAwas: true }); await tulis(BP.susunUrungBayar(u.id)); },
     bpLamaBuka: () => { set({ lama: st().lama ? null : { pemasok: '', nama: '', tgl: '', ketik: '', catatan: '' }, bayar: null, kartu: null, kabar: '' }); keAtas(); },
@@ -390,14 +395,16 @@ export function pasangLayarHarga(akar, opsi) {
       ${terbuka.length ? h`<div class="utama" data-aksi="bpBayarBuka" data-pemasok="${nm}">BAYAR BON ${nm}</div>` : ''}</div>`;
   }
   function gambarBayar(s, B) {
-    const H = BP.hitungBayar(s.bayar, kini()); const d = s.bayar;
-    return h`<div class="kartu hg-lembar" data-k="bayar" style="gap: 8px;"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Bayar bon ${d.pemasok}</div><div class="ket">satu pembayaran = satu bon · pilih bonnya, ketik yang dibayar, uangnya dari mana</div></div><div class="kaca-btn" data-aksi="bpTutup">tutup</div></div>
+    const S = saldoKantong(); const H = BP.hitungBayar(s.bayar, kini(), S); const d = s.bayar; const isiK = (id) => (S.ada ? RP(S[id]).replace('Rp', '') : '—');
+    return h`<div class="kartu hg-lembar" data-k="bayar" style="gap: 8px;"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Bayar bon ${d.pemasok}</div><div class="ket">satu pembayaran = satu bon · pilih bonnya, ketik yang dibayar, tunai atau transfer</div></div><div class="kaca-btn" data-aksi="bpTutup">tutup</div></div>
       <div class="jalur bungkus" data-k="pilih-bon">${H.bonP.map((b) => h`<div class="seg ${b.id === d.bonId ? 'aktif' : ''}" data-aksi="bpBayarBon" data-bon="${b.id}" data-k="pb-${b.id}">${b.tanggal ? tanggalPendek(b.tanggal) : 'tanpa tgl'} · ${RP(b.sisa).replace('Rp', '')}</div>`)}</div>
       <div class="hg-ketik-baris"><input class="ketik-nama" id="bpKetik" type="text" inputmode="numeric" placeholder="jumlah yang dibayar" value="${d.ketik}" data-ketik="bpKetik" data-kolom="ketik"><div class="kaca-btn aktif" data-aksi="bpLunas">lunas ${H.bon ? RP(H.bon.sisa).replace('Rp', '') : ''}</div></div>
       <div class="ket">${H.bon ? 'Sisa bon ini ' + RP(H.bon.sisa) + (H.bon.dibayar > 0 ? ' · sudah dibayar ' + RP(H.bon.dibayar) : '') : 'Pilih bonnya'}</div>
-      <div class="ket">Uangnya dari mana? ${B.adaKas ? '(yang dijaga total uang toko ' + RP(B.kas) + ' — sistem lama tidak memisahkan saldo per kantong)' : '(uang toko belum bisa dihitung — titik kas belum disetel)'}</div>
-      <div class="tombol-baris rapat" data-k="dari">${BP.TEMPAT_UANG.map(([id, nm]) => h`<div class="kaca-btn ${d.dari === id ? 'aktif' : ''}" data-aksi="bpDari" data-d="${id}" data-k="dr-${id}">${nm}</div>`)}</div>
-      ${d.dari === 'rekening' ? h`<div class="jalur bungkus" data-k="admin"><div class="seg ${d.adminI < 0 ? 'aktif' : ''}" data-aksi="bpAdmin" data-i="-1">tanpa biaya admin</div>${H.B.atur.admin.map((a, i) => h`<div class="seg ${d.adminI === i ? 'aktif' : ''}" data-aksi="bpAdmin" data-i="${i}" data-k="ad-${i}">${a.nama} ${RP(a.n)}</div>`)}</div>` : ''}
+      <div class="ket">Cara bayar · ${S.ada ? 'yang dijaga isi kantong yang dipilih (' + S.teksTitik + ')' : B.adaKas ? 'yang dijaga total uang toko ' + RP(B.kas) : 'uang toko belum bisa dihitung — titik kas belum disetel'}</div>
+      <div class="tombol-baris rapat" data-k="cara">${BP.CARA_BAYAR_BON.map(([id, nm]) => h`<div class="kaca-btn ${H.cara === id ? 'aktif' : ''}" data-aksi="bpCara" data-c="${id}" data-k="cr-${id}">${nm}${id === 'transfer' ? h`<small style="display: block; font-size: 9.5px; font-weight: 400; color: var(--redup);">rekening ${isiK('rekening')}</small>` : h`<small style="display: block; font-size: 9.5px; font-weight: 400; color: var(--redup);">laci / brankas</small>`}</div>`)}</div>
+      ${H.cara === 'tunai' ? h`<div class="tombol-baris rapat" data-k="dari">${BP.TEMPAT_UANG.filter(([id]) => id !== 'rekening').map(([id, nm]) => h`<div class="kaca-btn ${d.dari === id ? 'aktif' : ''}" data-aksi="bpDari" data-d="${id}" data-k="dr-${id}">${nm} <small style="font-weight: 400; color: var(--redup);">${isiK(id)}</small></div>`)}</div>` : ''}
+      ${H.cara === 'transfer' ? h`<div class="jalur bungkus" data-k="admin"><div class="seg ${d.adminI < 0 ? 'aktif' : ''}" data-aksi="bpAdmin" data-i="-1">tanpa biaya admin</div>${H.B.atur.admin.map((a, i) => h`<div class="seg ${d.adminI === i ? 'aktif' : ''}" data-aksi="bpAdmin" data-i="${i}" data-k="ad-${i}">${a.nama} ${RP(a.n)}</div>`)}</div>
+        ${H.rekeningKosong ? h`<div class="pita-info awas" data-k="rek-kosong" style="display: flex; flex-direction: column; gap: 6px;"><span>${H.rekeningTeks}</span><div class="kaca-btn kecil" data-aksi="bpKeRekening" style="align-self: flex-start;">catat isi rekening dulu ›</div></div>` : h`<div class="ket">Biaya admin dicatat terpisah sebagai uang keluar "Untuk toko" (biaya bank) bertanggal sama — utang pemasok turun sebesar yang dibayar, bukan sebesar yang keluar dari rekening.</div>`}` : ''}
       <input class="ketik-nama" id="bpCatatan" type="text" placeholder="Catatan (boleh kosong)" value="${d.catatan}" data-ketik="bpKetik" data-kolom="catatan">
       ${H.arti ? h`<div class="bn-arti" data-k="arti"><b>${H.arti.a}</b><span>${H.arti.b}</span><span>${H.arti.c}</span></div>` : ''}
       <div class="utama ${H.tolak ? 'redup' : ''}" data-aksi="bpSimpanBayar">${H.label}</div></div>`;
