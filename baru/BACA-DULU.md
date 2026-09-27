@@ -410,7 +410,7 @@ Peta Tahap 0 & keputusan owner: `docs/peta-stok-merek.md` (§13 = keputusan 27 S
   internal per merek asal menurut komposisi isi (`pecahItemsWadah`: `dariWadah`, `takaranId`; nama tampil = wadah; kantong di baris pertama); struk,
   Hari ini, Sering & Papan Kapur menggabung (`gabungTakaran`). HPP = rata-rata tertimbang isi. Takar bertanda `bukuAsal` (tidak lagi pindah buku —
   menggantikan Putaran 10). Katalog: baris liter hanya wadah + merek **literan langsung** (aturan wadah `literanLangsung`, terbaca karyawan);
-  tab **Literan**. Barang masuk & varian menolak nama wadah/kelas kecuali `merekKarung` (Aturan wadah). Ganti nama wadah membawa isi, karung terbuka &
+  tab **Literan** (harga liter yang tidak dipakai bisa DIHAPUS di sana: dokumen katalognya saja, riwayat terbit & nota tetap). Barang masuk & varian menolak nama wadah/kelas kecuali `merekKarung` (Aturan wadah). Ganti nama wadah membawa isi, karung terbuka &
   harga liter. Peralihan: isi & baris lama tanpa komposisi tetap milik nama wadahnya (nama lama dijual sampai habis, lalu diarsipkan).
 - Uji: `uji_cocokkan_terpisah.py`, `uji_varian_merek.py`, `uji_arsip_produk.py`, `uji_setengah_karung.py`, `uji_wadah_bernama.py` (+ kontrol, CI).
 
@@ -480,10 +480,10 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_bayar_bon_terkunci.py` (+ `--kontrol`) | 25b C: bayar bon pemasok/pelanggan dari bulan terkunci lolos — teks rules dicocokkan + model + jalur sistem baru; asap data toko lokal |
 | `alat-uji/uji_batal_karcis.py` (+ `--kontrol`) | 25b: batal karcis kasir darurat di /baru/ — field = `mulaiBatalkanTrx` (dibaca dari index.html) & dokumen pembatalan sungguhan di cadangan lokal |
 | `alat-uji/uji_cocokkan_terpisah.py` (+ `--kontrol`) | 27·1: 23 skenario cocokkan tumpukan vs wadah (selisih ke merek asal, susut wajar, isi ulang lupa, rantai stok tidak bergeser) + 16 kontrol; asap: 8 wadah di cadangan dicocokkan |
-| `alat-uji/uji_varian_merek.py` (+ `--kontrol`) | 27·2: 20 skenario varian (batas owner, sama/beda mutu, kolam lama byte-sama, jenis ikut induk, harga varian) + 11 kontrol; asap: tiap merek bermodal jadi varian, nama kelas ditolak |
+| `alat-uji/uji_varian_merek.py` (+ `--kontrol`) | 27·2: 21 skenario varian (batas owner, sama/beda mutu, kolam lama byte-sama, jenis ikut induk, harga varian, induk tanpa nama kelas) + 12 kontrol; asap: tiap merek bermodal jadi varian, nama kelas ditolak |
 | `alat-uji/uji_arsip_produk.py` (+ `--kontrol`) | 27·3: 19 skenario arsip (hanya yang habis, hilang dari rak/katalog/label/katalog HP kasir = index.html minus arsip, hapus tanpa transaksi, pulihkan) + 13 kontrol |
 | `alat-uji/uji_setengah_karung.py` (+ `--kontrol`) | 27·4: 15 skenario ½ karung (harga, langit-langit 50 kg, pemecah Adukan satu kiriman, modal dipindah utuh, batal) + 11 kontrol |
-| `alat-uji/uji_wadah_bernama.py` (+ `--kontrol`) | 27·5: 26 skenario wadah bernama (NG 30 + Kumala 20 → 5 L memotong buku 3 : 2, HPP tertimbang, tanpa buku nama wadah, identitas, struk satu baris, karcis, katalog, kelas ditolak, ganti nama) + 18 kontrol; asap cadangan + ASAP GLOBAL omzet/laba/neraca tiap bulan byte-sama dengan main |
+| `alat-uji/uji_wadah_bernama.py` (+ `--kontrol`) | 27·5: 28 skenario wadah bernama (NG 30 + Kumala 20 → 5 L memotong buku 3 : 2, HPP tertimbang, tanpa buku nama wadah, identitas, struk satu baris, karcis, katalog, kelas ditolak, ganti nama, hapus harga liter tidak dipakai) + 21 kontrol; asap cadangan + ASAP GLOBAL omzet/laba/neraca tiap bulan byte-sama dengan main |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.

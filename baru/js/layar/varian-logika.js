@@ -81,6 +81,8 @@ export function vrSusunTerbitHarga(varian, hargaKetik, w, yakin) {
  * VARIAN BARU dari Harga & Pemasok (sebelum barangnya datang): nama "<induk> · <mutu>" + harga jual per kg langsung terbit + jenis induk.
  * Induk wajib nama yang dikenal; nama varian yang sudah ada ditolak (pilih di katalog seperti biasa).
  */
+/** Pilihan merek induk untuk varian baru dari layar Harga: bukan nama varian, bukan nama wadah / kelas mutu (yang itu ditolak saat dibuat). */
+export function vrCalonInduk(daftar) { const kelas = wbNamaKelas(); return (daftar || []).filter((m) => String(m).indexOf(VR_PEMISAH) < 0 && !kelas[m]); }
 export function vrSusunBuatDariHarga(induk, mutu, hargaKetik, w, yakin) {
   const ind = vrBersih(induk); const m = vrBersih(mutu);
   if (!ind || !vrAda(ind)) return { tolak: 'Pilih dulu merek induknya (nama yang sudah ada di buku atau katalog)' };

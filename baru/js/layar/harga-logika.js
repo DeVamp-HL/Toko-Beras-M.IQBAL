@@ -143,6 +143,21 @@ export function hgSemua(kini) {
 }
 export const cariBaris = (S, k) => S.baris.find((b) => b.k === k) || null;
 /**
+ * putaran 27: HAPUS harga liter yang tidak dipakai rak (bukan wadah, bukan literan langsung — mis. harga liter merek yang cuma lewat wadah). Yang dihapus
+ * hanya dokumen katalogHargaLiteran nama itu (+ drafnya bila ada); riwayat terbit (hargaTerbit) dan nota lama TIDAK disentuh, harga lamanya tercatat di
+ * jejak hapus. Dua ketukan. Harga liter wadah & literan langsung tidak bisa dihapus dari sini (masih dipakai rak).
+ */
+export function susunHapusLiter(merk, w, yakin) {
+  const m = String(merk || ''); const S = hgSemua(new Date(w.kini)); const x = hgLiteran(S).tidakDipakai.find((t) => t.merk === m);
+  if (!x) return { tolak: m + ' tidak ada di daftar harga liter yang tidak dipakai — harga liter wadah & literan langsung masih dipakai rak, ubah lewat katalog seperti biasa' };
+  const dok = ambilHargaLiteran().filter((h) => h.merk === m);
+  if (!yakin) return { tolak: 'Hapus harga liter ' + m + ' ' + RP(x.harga) + '/L? Riwayat terbit & nota lama tetap. Ketuk hapus sekali lagi', perluYakin: true };
+  const dokumen = []; const draf = drafHarga(); const k = kunciHarga(m, 'L');
+  if (draf[k] !== undefined) { const d = Object.assign({}, draf); delete d[k]; dokumen.push(hgDokDraf(d, w)); }
+  return { dokumen, hapus: dok.map((h) => ({ koleksi: 'katalogHargaLiteran', id: h.id })), jejakHapus: 'harga liter ' + m + ' ' + RP(x.harga) + '/L dihapus (tidak dipakai rak)',
+    patch: { ltYakin: '', kabar: 'Harga liter ' + m + ' ' + RP(x.harga) + '/L dihapus. Riwayat terbit & nota lama tetap. Katalog HP kasir ikut berganti: tuts literan ' + m + ' tetap ada tapi bertulisan "harga?".', kabarAwas: false } };
+}
+/**
  * putaran 27 (Bagian 5): Katalog › Literan — 8 wadah (nama, harga per liter, modal isi, untung per liter, komposisi) + merek literan LANGSUNG + harga liter
  * yang masih tersimpan tapi tidak dipakai rak (bukan wadah, bukan literan langsung). Harga per liter = baris 'L' katalog yang sama (draf/terbit biasa).
  */

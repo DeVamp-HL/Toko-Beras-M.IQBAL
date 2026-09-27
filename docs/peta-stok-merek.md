@@ -234,4 +234,8 @@ Penyesuaian saat membangun Bagian 5:
   cadangan: 8/8 wadah diganti nama tanpa menggeser tumpukan, karung terbuka, atau isi wadah merek mana pun).
 - Di cadangan 27 Sep "belum ada harga" katalog turun 11 → 5: enam tagihan harga liter untuk merek yang cuma lewat wadah hilang. Harga liter NG &
   Kumala (disetel 27 Sep) tidak dipakai rak — tercatat di Katalog › Literan sebagai "tidak dipakai".
-
+- Harga › Literan › "Harga liter yang tidak dipakai" punya tombol **hapus** (dua ketukan; `susunHapusLiter`): yang dihapus hanya dokumen
+  `katalogHargaLiteran` nama itu (+ drafnya), harga lamanya tercatat di jejak hapus; `hargaTerbit` dan nota lama tidak disentuh. Harga liter wadah &
+  literan langsung tidak bisa dihapus dari sana. Katalog HP kasir sesudahnya: baris merek itu tetap ada dengan harga liter 0 — kasir.html
+  menulis tuts literannya "harga?", pencocokan nominal otomatis melewatinya, dan kalau diketuk manual tanpa jumlah (×) liternya tidak bisa
+  diturunkan dari nominal → nota tercatat 0 liter (stok tidak turun).

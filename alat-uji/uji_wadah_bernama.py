@@ -22,7 +22,7 @@ import bundel_baru  # noqa: E402
 import uji_jual_baru  # noqa: E402
 import uji_laporan_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = uji_jual_baru.MODUL + [m for m in ['baru/js/layar/stok-logika.js', 'baru/js/layar/varian-logika.js', 'baru/js/layar/stok-catat-logika.js', 'baru/js/layar/harga-logika.js'] if m not in uji_jual_baru.MODUL]
+MODUL = uji_jual_baru.MODUL + [m for m in ['baru/js/layar/stok-logika.js', 'baru/js/layar/varian-logika.js', 'baru/js/layar/stok-catat-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/data/katalog-kasir.js'] if m not in uji_jual_baru.MODUL]
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -51,6 +51,9 @@ KOTAK = {
                          {'id': 'Ketan Putih', 'merk': 'Ketan Putih', 'hargaPerKg': 22000}, {'id': 'IR64 Apex', 'merk': 'IR64 Apex', 'hargaPerKg': 15000}],
   # baris literan LAMA: Ketan Putih langsung dari karungnya (5 Sep); literan wadah Angsa sesudah titik samakan 08:00 (tanpa dariWadah — cara sistem lama)
   'penjualan': [jual(5001, '2026-09-05', '09:00', 'Ketan Putih', 2, 1.63, 42000, 32600), jual(5002, '2026-09-19', '09:00', 'Angsa', 5, 4.1, 65000, 53300)],
+  # harga liter NG pernah TERBIT (riwayat) dan masih punya draf — yang dihapus nanti cuma dokumen katalognya (+ draf nama itu)
+  'hargaTerbit': [{'id': 7, 'tanggal': '2026-09-18', 'jam': '10:00', 'n': 1, 'daftar': [{'kunci': 'NG|L', 'nama': 'NG · Literan', 'lama': 0, 'baru': 12500, 'koleksi': 'katalogHargaLiteran'}]}],
+  'aturanToko': [{'id': 'hargaDraf', 'draf': {'NG|L': 13000, 'Angsa|S': 14100}}],
 }
 
 SKENARIO = r"""
@@ -134,6 +137,16 @@ var LL = wbSusunLiteranLangsung('Kumala', true, W);
 ok('tandai Kumala literan LANGSUNG → aturan wadah baru (koleksi wadahLiteran, terbaca karyawan) membawa semua kolom lama + literanLangsung [Ketan Putih, Kumala]; nama wadah ditolak', !LL.tolak && LL.dokumen[0].koleksi === 'wadahLiteran' && LL.dokumen[0].data.tipe === 'atur' && J(LL.dokumen[0].data.literanLangsung) === J(['Ketan Putih', 'Kumala']) && J(LL.dokumen[0].data.daftar) === J(KOTAK.wadahLiteran[0].daftar) && LL.dokumen[0].data.takarKg === 1.8 && /nama WADAH/.test(wbSusunLiteranLangsung('IR64 Apex', true, W).tolak || ''), J(LL));
 terapkanKeCache(LL.dokumen);
 ok('literan langsung TANPA harga liter → katalog menagih "belum ada harga" (Kumala|L) dan rak belum menampilkan chipnya; dilepas lagi → tagihannya hilang', cariBaris(hgSemua(KINI), 'Kumala|L') && cariBaris(hgSemua(KINI), 'Kumala|L').status === 'lubang' && !chipL('Kumala') && (function () { terapkanKeCache(wbSusunLiteranLangsung('Kumala', false, W).dokumen); return !cariBaris(hgSemua(KINI), 'Kumala|L'); })());
+// ---- 9b · hapus harga liter yang TIDAK DIPAKAI (owner 27 Sep: hapus harga liter NG & Kumala)
+var terbit0 = J(ambilHargaTerbit()); var jual0 = J(ambilPenjualanSemua()); var HL0 = susunHapusLiter('NG', W, false); var HL = susunHapusLiter('NG', W, true);
+ok('hapus harga liter NG (tidak dipakai rak): ketukan pertama DITANYA; kedua = hapus dokumen katalogHargaLiteran NG + draf NG|L dibuang (draf lain tetap), harga lamanya di jejak; harga liter WADAH (IR64 Apex) & literan LANGSUNG (Ketan Putih) ditolak dihapus dari sini',
+  HL0.perluYakin === true && !HL0.hapus && !HL.tolak && J(HL.hapus) === J([{ koleksi: 'katalogHargaLiteran', id: 'NG' }]) && HL.dokumen.length === 1 && J(HL.dokumen[0].data.draf) === J({ 'Angsa|S': 14100 }) && /12\.500/.test(HL.jejakHapus)
+  && /tidak ada di daftar/.test(susunHapusLiter('IR64 Apex', W, true).tolak || '') && /tidak ada di daftar/.test(susunHapusLiter('Ketan Putih', W, true).tolak || ''), J([HL0, HL]));
+terapkanKeCache(HL.dokumen.concat(HL.hapus.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; })));
+var kkNG = kkIsi().merkKarung.find(function (m) { return m.merk === 'NG'; });
+ok('sesudah hapus: NG hilang dari "tidak dipakai", rak & katalog tetap tanpa liter NG; riwayat terbit & semua nota BYTE-SAMA; katalog HP kasir: baris NG tetap ada dengan harga liter 0 (kasir.html menulis tuts literannya "harga?")',
+  !hgLiteran(hgSemua(KINI)).tidakDipakai.some(function (x) { return x.merk === 'NG'; }) && !cariBaris(hgSemua(KINI), 'NG|L') && !chipL('NG') && J(ambilHargaTerbit()) === terbit0 && J(ambilPenjualanSemua()) === jual0 && kkNG && kkNG.hargaPerLiter === 0, J([kkNG, ambilHargaTerbit()]));
+
 // ---- 10 · barang masuk: nama wadah / kelas ditolak
 var dm = drafMasukKosong(W); dm.pemasok = 'PEMASOK CONTOH'; dm.caraBayar = 'tunai';
 var tolakMasuk = function (merk, harga) { return susunSimpanMasuk(Object.assign({}, dm, { baris: [{ merk: merk, jumlahKarung: '60', beratKarung: 50, hargaPerKg: harga || '12.000' }] }), W, true).tolak || ''; };
@@ -180,7 +193,12 @@ if (CADANGAN) {
   // ganti nama tiap wadah (sementara, tidak ditulis): tumpukan, karung terbuka & isi wadah tiap merek wajib sama persis (kolam karung lama tidak tergandakan)
   var lokC = function () { return J(susunLokasi().map(function (t) { return [t.merk, B3(t.kg), B3(t.diBelakangKg), B3(t.diWadahKg)]; })); }; var lokC0 = lokC();
   var gantiGeser = wadahC.filter(function (Wn) { var R = wbSusunGantiNama(Wn, Wn + ' (uji)', WC); return R.tolak || denganCacheSementara(R.dokumen, lokC) !== lokC0; });
-  asap = { menutupGagal: nutup, nNama: susunLokasi().length, lSalah: lSalah, barisL: barisL.length, lubang: lubang, langsung: LC, wadah: wadahC.length, jualW: jualW, gantiGeser: gantiGeser };
+  // hapus semua harga liter yang tidak dipakai (NG & Kumala di cadangan 27 Sep): riwayat terbit & nota byte-sama; katalog kasir cuma berubah di harga liter itu (jadi 0)
+  var terbitC = J(ambilHargaTerbit()), jualC = J(ambilPenjualanSemua()); var kk0 = kkIsi(); var hapusNama = hgLiteran(hgSemua(new Date(Date.now()))).tidakDipakai.map(function (x) { return x.merk; });
+  hapusNama.forEach(function (m) { var r = susunHapusLiter(m, WC, true); if (!r.tolak) terapkanKeCache((r.dokumen || []).concat(r.hapus.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; }))); });
+  var kk1 = kkIsi(); var kkBeda = kk1.merkKarung.filter(function (m) { var a = kk0.merkKarung.find(function (x) { return x.merk === m.merk; }); var b = Object.assign({}, a || {}); if (hapusNama.indexOf(m.merk) >= 0) b.hargaPerLiter = 0; return J(b) !== J(m); }).map(function (m) { return m.merk; });
+  var hapusOk = hapusNama.length > 0 && J(ambilHargaTerbit()) === terbitC && J(ambilPenjualanSemua()) === jualC && !kkBeda.length && J(kk1.kemasan) === J(kk0.kemasan) && kk1.merkKarung.length === kk0.merkKarung.length && hgLiteran(hgSemua(new Date(Date.now()))).tidakDipakai.length === 0;
+  asap = { menutupGagal: nutup, nNama: susunLokasi().length, lSalah: lSalah, barisL: barisL.length, lubang: lubang, langsung: LC, wadah: wadahC.length, jualW: jualW, gantiGeser: gantiGeser, hapusNama: hapusNama, hapusOk: hapusOk, kkBeda: kkBeda };
 }
 print(J({ lulus: lulus, gagal: gagal, asap: asap }));
 """
@@ -260,6 +278,9 @@ RUSAK = {
     'baris internal tanpa pengikat takaranId': ("    if (t._takaran) d.takaranId = takaranPertama[t._takaran] || (takaranPertama[t._takaran] = String(d.id));   // pengikat baris internal satu takaran (struk menggabung)", ""),
     'modal baris internal dibagi rata dari modal wadah (bukan merek asal)': ("r.hppTotalSaatJual = Math.round(x.kg * ((stok[x.merk] || {}).hppTerakhirPerKg || 0))", "r.hppTotalSaatJual = Math.round(t.hppTotalSaatJual * x.kg / kgTot)"),
     'ganti nama wadah meninggalkan kolam karung lama (terhitung dua kali)': ("  sesudah.forEach((k) => { if (k.lokasi === B) return;", "  [].forEach((k) => { if (k.lokasi === B) return;"),
+    'hapus harga liter tanpa ketukan kedua': ("if (!yakin) return { tolak: 'Hapus harga liter '", "if (false) return { tolak: 'Hapus harga liter '"),
+    'harga liter wadah yang masih dipakai rak ikut bisa dihapus': ("const x = hgLiteran(S).tidakDipakai.find((t) => t.merk === m);", "const x = { merk: m, harga: 0 };"),
+    'hapus harga liter membuang semua draf': ("if (draf[k] !== undefined) { const d = Object.assign({}, draf); delete d[k]; dokumen.push(hgDokDraf(d, w)); }", "if (draf[k] !== undefined) dokumen.push(hgDokDraf({}, w));"),
     'Papan Kapur menghitung baris internal sebagai barang terpisah': ("if (!p.takaranId || !takaran[p.takaranId]) o.n += 1;", "o.n += 1;"),
 }
 
@@ -279,10 +300,10 @@ if __name__ == '__main__':
     p = cadangan_toko()
     if asap:
         baik = [x for x in asap['jualW'] if x.get('ok')]
-        print('ASAP DATA TOKO (%s): identitas menutup %d/%d nama · %d baris harga liter (%d wadah + literan langsung %s) · liter di luar wadah/langsung: %s · belum ada harga %d · 1 L dari tiap wadah berharga lewat jalur baru: %d/%d (%s) · ganti nama tiap wadah tanpa menggeser tumpukan/karung/isi: %d/%d'
+        print('ASAP DATA TOKO (%s): identitas menutup %d/%d nama · %d baris harga liter (%d wadah + literan langsung %s) · liter di luar wadah/langsung: %s · belum ada harga %d · 1 L dari tiap wadah berharga lewat jalur baru: %d/%d (%s) · ganti nama tiap wadah tanpa menggeser tumpukan/karung/isi: %d/%d · hapus harga liter tidak dipakai (%s): riwayat terbit & nota byte-sama, katalog kasir cuma harga liter itu jadi 0: %s'
               % (os.path.basename(p), asap['nNama'] - len(asap['menutupGagal']), asap['nNama'], asap['barisL'], asap['wadah'], ', '.join(asap['langsung']) or '-', ', '.join(asap['lSalah']) or 'tidak ada', asap['lubang'], len(baik), len(asap['jualW']),
-                 '; '.join(x['w'] + ' → ' + ' + '.join(x.get('merk') or []) for x in asap['jualW']), asap['wadah'] - len(asap['gantiGeser']), asap['wadah']))
-        if asap['menutupGagal'] or asap['lSalah'] or len(baik) != len(asap['jualW']) or not asap['jualW'] or asap['gantiGeser']: g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:400])
+                 '; '.join(x['w'] + ' → ' + ' + '.join(x.get('merk') or []) for x in asap['jualW']), asap['wadah'] - len(asap['gantiGeser']), asap['wadah'], ', '.join(asap['hapusNama']) or '-', asap['hapusOk']))
+        if asap['menutupGagal'] or asap['lSalah'] or len(baik) != len(asap['jualW']) or not asap['jualW'] or asap['gantiGeser'] or not asap['hapusOk']: g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:400])
     if p:
         sama, ket = asap_global(p)
         print('ASAP GLOBAL (kode main vs cabang, %s): %s — %s' % (os.path.basename(p), 'BYTE-SAMA' if sama else 'BEDA / GAGAL', ket))
