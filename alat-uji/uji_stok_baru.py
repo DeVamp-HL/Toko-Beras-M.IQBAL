@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-logika.js', 'baru/js/layar/stok-catat-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/stok-karantina-logika.js', 'baru/js/layar/stok-kantong-logika.js', 'baru/js/layar/stok-tempat-logika.js', 'baru/js/layar/stok-hpp-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-logika.js', 'baru/js/layar/varian-logika.js', 'baru/js/layar/stok-catat-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/stok-karantina-logika.js', 'baru/js/layar/stok-kantong-logika.js', 'baru/js/layar/stok-tempat-logika.js', 'baru/js/layar/stok-hpp-logika.js']
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -444,10 +444,11 @@ var stokK = hitungStokKarungPerMerk(), stokM = hitungStokKemasan(); var positif 
 Object.keys(stokK).forEach(function (m) { if ((stokK[m].sisaKg || 0) > 0) positif += stokK[m].sisaKg * (stokK[m].hppTerakhirPerKg || 0); });
 Object.keys(stokM).forEach(function (k) { if ((stokM[k].sisaUnit || 0) > 0) positif += stokM[k].sisaUnit * (stokM[k].hppRataRataPerUnit || 0); });
 // bentuk dokumen catat vs baris nyata: kolom batchMasuk & penyesuaianStok yang dihasilkan wajib dikenal cadangan (kolom tambahan sistem baru disebut eksplisit)
+// putaran 27: kedatangan contoh berharga beda > batas dari modal → dijawab "sama barangnya" (varian: 'sama'; bentuk dokumen tetap)
 var kenalB = {}; (CAD.batchMasuk || []).forEach(function (b) { Object.keys(b).forEach(function (k) { kenalB[k] = 1; }); (b.merkList || []).forEach(function (m) { Object.keys(m).forEach(function (k) { kenalB['merkList.' + k] = 1; }); }); }); kenalB.jam = 1; kenalB.alasanKoreksi = 1; kenalB.riwayat = 1;
 var kenalP = {}; (CAD.penyesuaianStok || []).forEach(function (b) { Object.keys(b).forEach(function (k) { kenalP[k] = 1; }); }); ['bagian', 'bagianSistemKg', 'bagianFisikKg', 'wadah'].forEach(function (k) { kenalP[k] = 1; });   // kolom tambahan putaran 27 (izin owner 27 Sep), disebut eksplisit
 var WX = { tanggal: '2026-09-22', jam: '10:00', idUnik: function () { return Math.random(); } }; var asingC = [];
-var dX = drafMasukKosong(WX); dX.pemasok = calonPemasok()[0] || 'X'; dX.baris = [{ merk: calonMerkMasuk()[0], jumlahKarung: '70', beratKarung: 50, hargaPerKg: '13.000' }]; var SX = susunSimpanMasuk(dX, WX, true);
+var dX = drafMasukKosong(WX); dX.pemasok = calonPemasok()[0] || 'X'; dX.baris = [{ merk: calonMerkMasuk()[0], jumlahKarung: '70', beratKarung: 50, hargaPerKg: '13.000', varian: 'sama' }]; var SX = susunSimpanMasuk(dX, WX, true);
 if (SX.dokumen) { Object.keys(SX.dokumen[0].data).forEach(function (k) { if (!kenalB[k]) asingC.push('batchMasuk.' + k); }); Object.keys(SX.dokumen[0].data.merkList[0]).forEach(function (k) { if (!kenalB['merkList.' + k]) asingC.push('batchMasuk.merkList.' + k); }); } else asingC.push('masuk ditolak: ' + SX.tolak);
 var bY = barangCocok('tumpukan').filter(function (b) { return b.sistem > 0; })[0]; if (bY) { var HY = {}; HY[bY.kunci] = String(bY.sistem - 1); var SY = susunSimpanCocok('tumpukan', HY, {}, WX, { sebagian: true }); if (SY.dokumen) Object.keys(SY.dokumen[0].data).forEach(function (k) { if (!kenalP[k]) asingC.push('penyesuaianStok.' + k); }); else asingC.push('cocok ditolak: ' + SY.tolak); }
 // adukan & karantina: kolom dokumen produksi / pemakaian kantong / rework wajib dikenal cadangan (kolom tambahan sistem baru: jam)

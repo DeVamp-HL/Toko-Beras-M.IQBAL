@@ -110,6 +110,8 @@ jobs:
       # ---- PUTARAN 27 — stok & merek (owner 27 Sep) ----
       - name: "Cocokkan dipisah (27 · Bagian 1): tumpukan gudang = karung utuh, wadah = isi kotak + karung terbuka dibagi ke merek asal, susut wajar batas owner, isi ulang lupa ditawarkan, rantai stok tidak bergeser (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_cocokkan_terpisah.py && python3 alat-uji/uji_cocokkan_terpisah.py --kontrol
+      - name: "Varian merek per belanja (27 · Bagian 2): harga beli beda > batas owner wajib dijawab sama/beda mutu, varian = nama sendiri, kolam lama tidak disentuh, jenis ikut induk, harga varian terbit sendiri (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_varian_merek.py && python3 alat-uji/uji_varian_merek.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

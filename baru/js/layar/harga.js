@@ -13,7 +13,8 @@ import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen } from '../data/toko.js';
 import { kkSertakan } from '../data/katalog-kasir.js';
-import * as JB from './jenis-beras-logika.js';   // 25c: setelan jenis beras pindah dari sistem lama
+import * as JB from './jenis-beras-logika.js';
+import * as VR from './varian-logika.js';   // 25c: setelan jenis beras pindah dari sistem lama
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -33,9 +34,9 @@ export function pasangLayarHarga(akar, opsi) {
   const awal = () => ({ keluarga: ['katalog', 'bon', 'belanja'].indexOf(bacaLokal(KUNCI_KELUARGA)) >= 0 ? bacaLokal(KUNCI_KELUARGA) : 'katalog', kabar: '', kabarAwas: false,
     tabH: tabLokal.h || 'papan', ubah: null, ketik: '', ketikApa: 'jual', terbit: false, yakinRugi: false, kal: { arah: 'naik', merek: 'semua', satuan: 'semua', rp: 100 }, papanSisi: 'owner', wa: false, bedah: { merek: '', satuan: '', bayar: 'tunai' }, aturH: null,
     tabB: tabLokal.b || 'tusuk', bukuNama: '', bayar: null, lama: null, kartu: null, urung: null, aturB: null,
-    tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false });
+    tabL: tabLokal.l || 'truk', pesan: bacaLokal(KUNCI_DRAF_BELANJA, true) || {}, pemasokBelanja: '', wa2: null, waHarga: false, aturL: null, jbUbah: null, jbKetik: '', jbDaftar: false, vrBaru: null, vrYakin: false });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'jbKetik'], [KUNCI_DRAF_BELANJA]);
+  const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))]], [KUNCI_DRAF_BELANJA]);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined);
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
@@ -87,6 +88,12 @@ export function pasangLayarHarga(akar, opsi) {
     hgKetikAtur: (v, el) => { const a = Object.assign({}, st().aturH || {}); a[el.dataset.kolom] = String(v).slice(0, 10); set({ aturH: a }); },
     simpanAturH: async () => { const a = st().aturH; if (a) await tulis(HG.susunAturHarga(a, waktu())); },
     // ---- JENIS BERAS (25c): satu nama beras → satu jenis; dokumen pengaturan/jenisBeras sama dengan sistem lama
+    // ---- putaran 27 (Bagian 2): varian baru dari katalog, sebelum barangnya datang — nama "<induk> · <mutu>", harga per kg langsung terbit, jenis ikut induk
+    vrBaruBuka: () => set({ vrBaru: st().vrBaru ? null : { induk: '', mutu: '', harga: '' }, vrYakin: false, kabar: '' }),
+    vrInduk: ({ merk }) => set({ vrBaru: Object.assign({}, st().vrBaru, { induk: merk }), vrYakin: false }),
+    vrKetikBaru: (v, el) => { const b = Object.assign({}, st().vrBaru || {}); b[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'mutu' ? 30 : 12); set({ vrBaru: b, vrYakin: false }); },
+    vrBuat: async ({ usul }) => { const b = st().vrBaru || {}; const r = VR.vrSusunBuatDariHarga(b.induk, b.mutu, b.harga !== undefined && b.harga !== '' ? b.harga : usul, waktu(), st().vrYakin);
+      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, vrYakin: !!r.perluYakin }); if (await tulis(Object.assign({}, r, { dokumen: kkSertakan(r.dokumen, waktu().kini) }))) set({ vrBaru: null, vrYakin: false }); },
     jbBuka: ({ merk }) => { set({ jbUbah: st().jbUbah === merk ? null : merk, jbKetik: '', kabar: '', ubah: null, terbit: false }); keAtas(); },
     jbTutup: () => set({ jbUbah: null, jbKetik: '' }),
     jbDaftarBuka: () => set({ jbDaftar: !st().jbDaftar }),
@@ -174,7 +181,7 @@ export function pasangLayarHarga(akar, opsi) {
       ${s.jbUbah ? gambarJenisUbah(s) : ''}${s.ubah ? gambarUbah(s, S) : ''}${s.terbit ? gambarTerbit(s, S) : ''}${s.wa ? gambarWaHarga(S) : ''}
       <div class="hg-grid ${L}" data-k="grid">${tetapKiri ? h`<div class="hg-kolom" data-k="hg-kiri">${gambarPapan(s, S)}</div>` : ''}${tengah}${tetapKanan ? h`<div class="hg-kolom" data-k="hg-kanan">${gambarLabel(S, lbl)}</div>` : ''}</div>
       ${S.nDraf ? h`<div class="hg-bilah" data-k="bilah"><div><div style="font-weight: 600;">${S.nDraf} harga berubah — kasir belum tahu</div><div class="ket">draf tidak sampai ke kasir sebelum diterbitkan</div></div><div class="kaca-btn aktif" data-aksi="hgBukaTerbit">Periksa & terbitkan</div></div>` : ''}
-      ${gambarRiwayat()}${gambarAturH(s, S)}${gambarJenisDaftar(s)}
+      ${gambarRiwayat()}${gambarAturH(s, S)}${gambarJenisDaftar(s)}${gambarVarianBaru(s, S)}
       <div class="ket" style="font-size: 11px;">Katalog ini = katalog yang dibaca kasir (harga karung per kg, kemasan per kantong, literan per liter — koleksi yang sama dengan sistem lama). Perubahan jadi DRAF dulu; terbit = semuanya berganti sekaligus. Modal = modal rata-rata di buku (sama dengan laba, neraca & layar HPP); harga beli terbaru dibawa sebagai pembanding. ${S.atur.targetDariRata ? 'Target untung ' + RP(S.target) + '/kg = rata-rata untung katalog karung yang sedang berlaku (belum diatur owner).' : 'Target untung ' + RP(S.target) + '/kg diatur owner.'}${S.tanpaModal ? ' ' + S.tanpaModal + ' harga belum bisa dinilai karena modalnya belum tercatat.' : ''}</div>
     </section>`;
   }
@@ -269,6 +276,17 @@ export function pasangLayarHarga(akar, opsi) {
       <div class="hg-ketik-baris"><input class="ketik-nama" type="text" placeholder="jenis lain — ketik namanya" value="${s.jbKetik}" data-ketik="jbKetik"><div class="kaca-btn aktif" data-aksi="jbSimpanKetik">simpan</div></div>
       <div class="tombol-baris rapat"><div class="kaca-btn putus" data-aksi="jbKosongkan">kosongkan — tidak masuk kelompok mana pun</div></div>
       <div class="ket" style="font-size: 11px;">Jenis mengelompokkan nama beras di Harga, Stok (total per jenis), dan Jual (saring rak). Salah jenis tidak mengubah harga, stok, atau uang.</div></div>`;
+  }
+  // putaran 27 (Bagian 2): varian baru sebelum barangnya datang
+  function gambarVarianBaru(s, S) {
+    const b = s.vrBaru; if (!b) return h`<div class="kaca-btn kecil" data-aksi="vrBaruBuka" data-k="vr-pintu" style="align-self: flex-start;">+ Varian merek baru (mutu / harga berbeda, nama sama) ›</div>`;
+    const induk = b.induk ? S.baris.find((x) => x.merk === b.induk) : null; const modal = induk ? induk.modalKg : 0; const usul = VR.vrUsulHarga(modal, S.atur); const nama = b.induk ? VR.vrNama(b.induk, b.mutu || '…', '') : '';
+    return h`<div class="kartu" data-k="vr-baru" style="gap: 8px;"><div class="kepala-lembar"><div><div class="label">Varian merek baru</div><div class="ket">barang berbeda dengan nama pemasok yang sama → nama sendiri "&lt;merek&gt; · &lt;mutu&gt;": stok, modal, harga, label, dan tempatnya sendiri; kolam lama tidak disentuh</div></div><div class="kaca-btn kecil" data-aksi="vrBaruBuka">tutup</div></div>
+      <div class="ket">Merek induk:</div><div class="jalur bungkus" data-k="vr-induk">${S.merk.filter((m) => m.indexOf('\u00b7') < 0).map((m) => h`<div class="seg ${b.induk === m ? 'aktif' : ''}" data-aksi="vrInduk" data-merk="${m}" data-k="vri-${m}">${m}</div>`)}</div>
+      <div class="ps-form dua"><div><div class="ket">Nama mutu (wajib, mis. Premium)</div><input class="ketik-nama" id="vrMutu" type="text" value="${b.mutu || ''}" data-ketik="vrKetikBaru" data-kolom="mutu"></div>
+        <div><div class="ket">Harga jual per kg${usul ? ' · usul ' + RP(usul) : ''}</div><input class="ketik-nama" id="vrHarga" type="text" inputmode="numeric" placeholder="${usul || ''}" value="${b.harga || ''}" data-ketik="vrKetikBaru" data-kolom="harga"></div></div>
+      ${b.induk ? h`<div class="ket">jadi <b>${nama}</b> · jenis beras ikut ${b.induk}: ${JB.jbJenisMerk(b.induk) || 'belum diisi'}${modal ? ' · usul = modal ' + b.induk + ' ' + RP(Math.round(modal)) + '/kg + target ' + RP(S.target) : ''} · stoknya mulai dari barang masuk atas nama ini</div>` : ''}
+      <div class="kaca-btn aktif emas ${b.induk && b.mutu ? '' : 'mati'}" data-aksi="vrBuat" data-usul="${usul}">${s.vrYakin ? 'YAKIN — terbitkan di bawah modal' : 'BUAT VARIAN & TERBITKAN HARGA PER KG'}</div></div>`;
   }
   function gambarJenisDaftar(s) {
     const D = JB.jbDaftar();
