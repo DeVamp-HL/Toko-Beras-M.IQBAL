@@ -46,9 +46,9 @@ export function pasangLayarMenu(akar, opsi) {
   const tabAwal = bacaLokal(KUNCI_TAB) || {}; const laciAwal = bacaLokal(KUNCI_LACI) || {};
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
-    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, opNama: '', opYakin: null, pinIsi: { lama: '', baru: '', ulang: '' } });
+    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, opYakin: null, pinIsi: { lama: '', baru: '', ulang: '' } });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], ['opNama', (v) => !!String(v || '').trim()], ['pinIsi', (v) => !!(v && (v.lama || v.baru || v.ulang))]], []);
+  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], ['pinIsi', (v) => !!(v && (v.lama || v.baru || v.ulang))]], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false;
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
@@ -101,8 +101,6 @@ export function pasangLayarMenu(akar, opsi) {
     tolakAkses: ({ uid }) => tulis(S.susunTolakAkses(uid, st().alasanAkses, waktu())),
     // ---- 25c: operator kasir (tanpa PIN) & PIN owner
     opAktif: ({ nama, aktif }) => tulis(OP.susunOperatorAktif(nama, aktif === '1', waktu())),
-    opNama: (v) => set({ opNama: String(v).slice(0, OP.OP_BATAS_NAMA) }),
-    opTambah: () => tulis(OP.susunOperatorTambah(st().opNama, waktu())),
     opHapus: async ({ nama }) => { const r = OP.susunOperatorHapus(nama, waktu(), st().opYakin === nama); if (r.perluYakin) return set({ opYakin: nama, kabar: 'Ketuk sekali lagi untuk menghapus ' + nama + ' dari daftar', kabarAwas: true }); await tulis(r); },
     opCabutPin: () => tulis(OP.susunCabutPinOperator(waktu())),
     pinKetik: (v, el) => { const p = Object.assign({}, st().pinIsi); p[el.dataset.kolom] = String(v).replace(/\D/g, '').slice(0, 8); set({ pinIsi: p }); },
@@ -280,8 +278,7 @@ export function pasangLayarMenu(akar, opsi) {
         ${D.baris.length ? D.baris.map((b) => h`<div class="pn-orang ${b.aktif ? '' : 'diam'}" data-k="op-${b.nama}"><b>${b.nama}</b> <span class="k2">${b.aktif ? 'aktif' : 'LIBUR'}</span>
           <div class="hg-pil"><div class="seg ${b.aktif ? 'aktif' : ''}" data-aksi="opAktif" data-nama="${b.nama}" data-aktif="1">aktif</div><div class="seg ${b.aktif ? '' : 'aktif'}" data-aksi="opAktif" data-nama="${b.nama}" data-aktif="0">libur</div>
             <div class="seg ${s.opYakin === b.nama ? 'aktif' : ''}" data-aksi="opHapus" data-nama="${b.nama}">${s.opYakin === b.nama ? 'yakin hapus' : 'hapus'}</div></div></div>`) : h`<div class="k2">Belum ada daftar operator.</div>`}
-        <div style="display: flex; gap: 6px;"><input class="ketik-nama" type="text" placeholder="nama operator baru" value="${s.opNama}" data-ketik="opNama"><div class="kaca-btn aktif" style="min-width: 84px;" data-aksi="opTambah">tambah</div></div>
-        <div class="k2">Daftar ini dibaca kasir kalkulator; HP penjaga (kasir darurat) tidak membacanya — karcisnya tercatat "tanpa nama". Layar pilih operator di kasir kalkulator sudah mati sejak 9 Agu, jadi aktif/libur belum berpengaruh di kasir mana pun.${D.diubahPada ? ' Terakhir diubah ' + waktuSetempat(D.diubahPada) + '.' : ''}</div></div>
+        <div class="k2">Daftar ini dibaca kasir kalkulator; HP penjaga (kasir darurat) tidak membacanya — karcisnya tercatat "tanpa nama". Layar pilih operator di kasir kalkulator sudah mati sejak 9 Agu dan memakai daftar nama tetap dari kodenya — jadi aktif/libur/hapus di sini belum berpengaruh di kasir mana pun, dan menambah nama tidak disediakan (nama baru tidak akan sampai ke kasir mana pun).${D.diubahPada ? ' Terakhir diubah ' + waktuSetempat(D.diubahPada) + '.' : ''}</div></div>
       <div class="kartu" data-k="pin-owner" style="gap: 6px;"><div class="label">PIN owner · ${P.disetel ? 'terpasang' : 'belum disetel'}${P.diubahPada ? ' · ' + waktuSetempat(P.diubahPada) : ''}</div>
         ${P.disetel ? kolomPin('lama', 'PIN sekarang') : ''}${kolomPin('baru', 'PIN baru (4–8 angka)')}${kolomPin('ulang', 'ulangi PIN baru')}
         <div class="kaca-btn aktif emas" data-aksi="pinSimpan">${P.disetel ? 'GANTI PIN OWNER' : 'SETEL PIN OWNER'}</div>

@@ -13,7 +13,8 @@ STATIS:
   · menu.js: tab "Kasir & PIN" di Peran & persetujuan; kolom PIN berjenis sandi tanpa isi otomatis; isiannya dijaga penjaga isian
 JSC:
   · daftar operator dari dokumen (nama = kunci peta, tidak ada nama di kode); isi PIN tidak pernah keluar dari logika; jumlah PIN terbuka dihitung
-  · cabut PIN / aktif-libur / tambah / hapus (dua ketukan): dokumen berkunci sama dengan simpanModalJaga() index.html, TANPA satu pun field pin
+  · cabut PIN / aktif-libur / hapus (dua ketukan): dokumen berkunci sama dengan simpanModalJaga() index.html, TANPA satu pun field pin; TIDAK ada
+    "tambah operator" (nama baru tidak sampai ke kasir mana pun: kasir.html memakai daftar nama tetap, kasir darurat tidak membaca dokumen ini)
   · kasir.html SUNGGUHAN (infoOperator dari teks kasir.html) membaca dokumen /baru/: aktif/libur terbaca, PIN = tidak ada (dokumen lama: PIN terbaca)
   · PIN owner: dokumen berkunci sama dengan simpanPinOwnerBaru() index.html; acak = SHA-256(garam|PIN) (dicek hashlib); pinOwnerBenar() index.html menerima
     PIN baru dari dokumen /baru/; PIN sekarang wajib benar; 4–8 angka; ulangan sama; dokumen tanpa PIN terbuka
@@ -106,10 +107,7 @@ var DOK_LAMA = { id: 'aksesKasir', operator: { 'Penjaga Contoh A': { aktif: true
     var A = susunOperatorAktif('Penjaga Contoh B', true, W);
     ok('aktifkan yang libur: dokumen tanpa pin (PIN lama ikut tercabut), yang lain utuh', !A.tolak && !adaPin(A.dokumen) && A.dokumen[0].data.operator['Penjaga Contoh B'].aktif === true && A.dokumen[0].data.operator['Penjaga Contoh A'].aktif === true && /ikut dicabut/.test(A.patch.kabar), J(A));
     ok('aktif/libur yang sama ditolak; nama yang tidak ada ditolak', /sudah aktif/.test(susunOperatorAktif('Penjaga Contoh A', true, W).tolak || '') && /tidak ada/.test(susunOperatorAktif('Orang Lain', false, W).tolak || ''));
-    var T = susunOperatorTambah('  Penjaga   Baru ', W);
-    ok('tambah: nama dirapikan, aktif; dokumen tanpa pin', !T.tolak && T.dokumen[0].data.operator['Penjaga Baru'].aktif === true && !adaPin(T.dokumen), J(T));
-    ok('tambah: kembar (huruf besar-kecil apa saja), terlalu pendek, terlalu panjang, tanda terlarang → ditolak', /sudah ada/.test(susunOperatorTambah('penjaga contoh a', W).tolak || '') && /2 huruf/.test(susunOperatorTambah('X', W).tolak || '')
-      && /30 huruf/.test(susunOperatorTambah(new Array(33).join('a'), W).tolak || '') && /tidak boleh/.test(susunOperatorTambah('Nama.Titik', W).tolak || ''));
+    ok('tidak ada logika "tambah operator" (nama baru tidak sampai ke kasir mana pun)', typeof susunOperatorTambah === 'undefined');
     var H1 = susunOperatorHapus('Penjaga Contoh C', W, false); var H2 = susunOperatorHapus('Penjaga Contoh C', W, true);
     ok('hapus: ketukan pertama hanya minta yakin; kedua menulis dokumen tanpa nama itu & tanpa pin', H1.perluYakin && !H1.dokumen && !H2.tolak && !('Penjaga Contoh C' in H2.dokumen[0].data.operator) && !adaPin(H2.dokumen), J([H1, H2]));
     // ---- 4 · kasir.html SUNGGUHAN membaca dokumen /baru/
@@ -180,8 +178,9 @@ def periksa_statis(t):
         if i < 0 or i > b.find(sesudah): salah.append(f)
     ok('index.html: buka & simpan operator, buka setel PIN, simpan PIN owner bertanya ke penjaga SEBELUM apa pun diubah (salinan HP juga)', not salah, salah)
     mn = t['baru/js/layar/menu.js']
-    ok('menu.js: tab "Kasir & PIN" di Peran & persetujuan; aksi memakai OP.susun*', "['kasir', 'Kasir & PIN']" in mn and 'OP.susunCabutPinOperator(waktu())' in mn and 'OP.susunOperatorAktif(' in mn and 'OP.susunOperatorTambah(' in mn and 'OP.susunOperatorHapus(' in mn and 'await OP.susunPinOwner(' in mn)
-    ok('menu.js: kolom PIN berjenis sandi, angka, tanpa isi otomatis; isian operator & PIN dijaga penjaga isian (ganti orang)', 'type="password" inputmode="numeric" autocomplete="off"' in mn and "['opNama', (v) =>" in mn and "['pinIsi', (v) =>" in mn)
+    ok('menu.js: tab "Kasir & PIN" di Peran & persetujuan; aksi memakai OP.susun*', "['kasir', 'Kasir & PIN']" in mn and 'OP.susunCabutPinOperator(waktu())' in mn and 'OP.susunOperatorAktif(' in mn and 'OP.susunOperatorHapus(' in mn and 'await OP.susunPinOwner(' in mn)
+    ok('menu.js: TIDAK ada tombol/kolom tambah operator; layar menyebut terus terang daftar ini tidak sampai ke kasir mana pun', 'opTambah' not in mn and 'nama operator baru' not in mn and 'menambah nama tidak disediakan' in mn)
+    ok('menu.js: kolom PIN berjenis sandi, angka, tanpa isi otomatis; isian PIN dijaga penjaga isian (ganti orang)', 'type="password" inputmode="numeric" autocomplete="off"' in mn and "['pinIsi', (v) =>" in mn)
     return out
 
 
@@ -198,7 +197,7 @@ KONTROL = [
     ('daftar operator membawa isi PIN keluar', {'baru/js/layar/akses-kasir-logika.js': [(".map((n) => ({ nama: n, aktif: !o[n] || o[n].aktif !== false }));", ".map((n) => ({ nama: n, aktif: !o[n] || o[n].aktif !== false, pin: (o[n] || {}).pin }));")]}, ('jsc',)),
     ('dokumen operator berbentuk lain', {'baru/js/layar/akses-kasir-logika.js': [("data: { id: 'aksesKasir', operator: o, diubahPada: w.kini } }]", "data: { id: 'aksesKasir', daftar: o, diubahPada: w.kini } }]")]}, ('jsc',)),
     ('hapus operator tanpa ketukan kedua', {'baru/js/layar/akses-kasir-logika.js': [("if (!yakin) return { perluYakin: true };", "")]}, ('jsc',)),
-    ('tambah operator kembar lolos', {'baru/js/layar/akses-kasir-logika.js': [("if (D.baris.some((x) => x.nama.toLowerCase() === n.toLowerCase())) return", "if (false) return")]}, ('jsc',)),
+    ('tombol tambah operator kembali (nama yang tidak sampai ke kasir mana pun)', {'baru/js/layar/menu.js': [("    opCabutPin: () => tulis(OP.susunCabutPinOperator(waktu())),", "    opCabutPin: () => tulis(OP.susunCabutPinOperator(waktu())),\n    opTambah: () => {},")]}, ('statis',)),
     ('PIN owner tersimpan terbuka', {'baru/js/layar/akses-kasir-logika.js': [("data: { id: 'keamanan', garam, acak, diubahPada: w.kini } }]", "data: { id: 'keamanan', garam, acak, pin: baru, diubahPada: w.kini } }]")]}, ('jsc',)),
     ('PIN owner diganti tanpa PIN sekarang', {'baru/js/layar/akses-kasir-logika.js': [("if (disetel && (!lama || (await acakPin(lama, d.garam)) !== d.acak)) return", "if (false) return")]}, ('jsc',)),
     ('PIN owner tanpa ulangan', {'baru/js/layar/akses-kasir-logika.js': [("if (baru !== ulang) return { tolak: 'Ulangan PIN tidak sama.' };", "")]}, ('jsc',)),

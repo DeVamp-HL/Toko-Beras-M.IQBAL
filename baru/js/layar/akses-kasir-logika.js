@@ -13,7 +13,6 @@
 import { cacheMentah } from '../data/toko.js';
 import { acakPin } from '../mesin/pembantu.js';
 
-export const OP_BATAS_NAMA = 30;
 const opDok = (id) => cacheMentah('pengaturan').find((d) => String(d.id) === id) || null;
 const opPeta = () => { const d = opDok('aksesKasir'); return d && d.operator && typeof d.operator === 'object' && !Array.isArray(d.operator) ? d.operator : {}; };
 const opAdaPin = (x) => !!x && x.pin !== undefined && x.pin !== null && String(x.pin) !== '';
@@ -28,7 +27,7 @@ export function opDaftar() {
 // Dokumen baru — peta TANPA pin (semua operator ditulis ulang { aktif } saja, jadi PIN lama ikut tercabut di simpan mana pun)
 function opKirim(ubah, w, kabar) {
   const o = {}; opDaftar().baris.forEach((b) => { o[b.nama] = { aktif: b.aktif }; }); ubah(o);
-  return { dokumen: [{ koleksi: 'pengaturan', data: { id: 'aksesKasir', operator: o, diubahPada: w.kini } }], patch: { opNama: '', opYakin: null, kabar, kabarAwas: false } };
+  return { dokumen: [{ koleksi: 'pengaturan', data: { id: 'aksesKasir', operator: o, diubahPada: w.kini } }], patch: { opYakin: null, kabar, kabarAwas: false } };
 }
 export function susunCabutPinOperator(w) {
   const D = opDaftar(); if (!D.ada) return { tolak: 'Dokumen operator kasir belum ada — tidak ada PIN yang tersimpan' };
@@ -40,14 +39,9 @@ export function susunOperatorAktif(nama, aktif, w) {
   if (b.aktif === !!aktif) return { tolak: nama + ' sudah ' + (aktif ? 'aktif' : 'libur') };
   return opKirim((o) => { o[nama] = { aktif: !!aktif }; }, w, nama + (aktif ? ' aktif lagi' : ' libur') + (D.berPin ? ' · PIN operator yang masih tersimpan ikut dicabut' : ''));
 }
-export function susunOperatorTambah(nama, w) {
-  const n = opBersih(nama); const D = opDaftar();
-  if (n.length < 2) return { tolak: 'Ketik nama operatornya (paling sedikit 2 huruf)' };
-  if (n.length > OP_BATAS_NAMA) return { tolak: 'Nama paling panjang ' + OP_BATAS_NAMA + ' huruf' };
-  if (/[.$#[\]/]/.test(n)) return { tolak: 'Nama tidak boleh memuat . $ # [ ] /' };
-  if (D.baris.some((x) => x.nama.toLowerCase() === n.toLowerCase())) return { tolak: n + ' sudah ada di daftar' };
-  return opKirim((o) => { o[n] = { aktif: true }; }, w, n + ' masuk daftar operator' + (D.berPin ? ' · PIN operator yang masih tersimpan ikut dicabut' : ''));
-}
+// TIDAK ADA "tambah operator" (owner 27 Sep, sesudah pemeriksaan): nama baru tidak akan muncul di kasir mana pun — layar pilih operator kasir.html
+// menggambar daftar nama TETAP dari kodenya (dan tidak punya pintu sejak 9 Agu), kasir darurat tidak membaca dokumen ini. Tombol yang hasilnya tidak
+// sampai ke mana pun = layar yang berbohong.
 /** Hapus = dua ketukan (ketukan pertama → { perluYakin }). */
 export function susunOperatorHapus(nama, w, yakin) {
   const D = opDaftar(); if (!D.baris.some((x) => x.nama === nama)) return { tolak: 'Operator itu tidak ada di daftar' };
