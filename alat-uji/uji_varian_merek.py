@@ -162,7 +162,7 @@ RUSAK = {
     'varian ditanya walau di bawah batas': ("return { perlu: beda > batas + 1e-9,", "return { perlu: beda > 0,"),
     'batas owner (catatStok.batasVarian) diabaikan': ("return a && a.batasVarian !== undefined && a.batasVarian !== null && isFinite(n) && n >= 0 ? n : VR_BATAS_BAWAAN;", "return VR_BATAS_BAWAAN;"),
     'pertanyaan varian dilewati (langsung gabung)': ("  if (h.tanyaVarian.length) { const x = h.tanyaVarian[0];", "  if (false) { const x = h.tanyaVarian[0];"),
-    'beda mutu tetap dicatat atas nama lama (kolam lama berubah)': ("const merkSimpan = pilih === 'beda' ? vrNama(merk, b.namaMutu, draf.tanggal) : merk;", "const merkSimpan = merk;"),
+    'beda mutu tetap dicatat atas nama lama (kolam lama berubah)': ("const merkVarian = pilih === 'beda' ? vrNama(merk, b.namaMutu, draf.tanggal) : merk;", "const merkVarian = merk;"),
     'jenis beras varian tidak diwarisi': ("peta[x.varian] = jenisUntukMerk(x.induk); ubah = true;", "peta[x.varian] = ''; ubah = true;"),
     'nama varian tanpa pemisah titik tengah': ("if (m) return vrBersih(induk) + VR_PEMISAH + m;", "if (m) return vrBersih(induk) + ' ' + m;"),
     'terbit varian ikut membuang draf harga lain': ("const draf = Object.assign({}, (drafDok && drafDok.draf) || {}); const adaDraf = draf[nama + '|S'] !== undefined;", "const draf = {}; const adaDraf = true;"),

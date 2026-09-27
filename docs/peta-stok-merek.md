@@ -278,6 +278,13 @@ Rantai sekarang: tumpukan / pemasok / adukan → **karung terbuka di belakang wa
   ditimbang, selisih dengan buku wadah jadi `penyesuaianStok` (`bongkar: true`, alasan di atas susut wajar), seluruh isi pindah ke karung wadah, titik
   samakan 0. Karung wadah & buku adukan: tidak dijual dari HP kasir, tidak di rak karung / harga / barang masuk / cocokkan tumpukan; boleh jadi bahan
   adukan dan ditakar ke wadah mana pun dari deretan. Ganti nama wadah membawa karung wadahnya.
+- **Buku per ukuran** (owner 28 Sep: "beras hasil belanja dari pemasok itu ada 50 kg dan 25 kg … buat bukunya terpisah … semua ada bukunya
+  masing-masing"; jawaban: buku merek lama = karung 50 kg, buku baru `'Merek 25 kg'`, stok lama dipisah dengan MENGHITUNG karung 25 kg utuh, berlaku
+  semua merek dua ukuran). Barang masuk: baris 25 kg merek yang punya karung 50 kg dibukukan otomatis ke `'Merek 25 kg'` (baris bertanda
+  `indukUkuran`; nama buku ukuran tidak boleh diketik); merek yang cuma 25 kg tetap satu buku. Stok › Cocokkan › Tumpukan gudang: kartu "Pisahkan buku
+  karung 25 kg" (`ckSusunPisahUkuran`, dua ketukan; pindah buku bertanda `pisahUkuran`, modal ikut). Rak Jual, retur, katalog HP kasir: karung 25 kg
+  dari bukunya sendiri, harga = katalog merek induk ukuran itu (`hargaKarungUtuh(induk, 25)`), induknya tidak menawarkan 25 kg lagi; karung terbuka
+  dari buku 25 kg = 25 kg; jenis beras ikut induk. Di cadangan 27 Sep yang dua ukuran: Angsa, Perahu Layar, Ketan Hitam PK.
 - **Katalog HP kasir** (owner memilih "wadah ikut katalog"; `wbSaringKatalogKasir` sesudah saring arsip): baris buku wadah memakai harga liter
   wadahnya, tanpa karung/harga karung; nama wadah berstok sendiri tidak dijual literan atas nama buku mereknya (kecuali literan langsung).
   kasir*.html tidak disentuh. Tanpa wadah berstok sendiri = byte-sama penyusun index.html.

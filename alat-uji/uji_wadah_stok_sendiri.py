@@ -300,7 +300,7 @@ RUSAK = {
     'ganti nama tidak membawa stok wadah': ("    if (K.totalKg > 0.004) dokumen.push(wbDokPindah([{ merk: K.kunci", "    if (false) dokumen.push(wbDokPindah([{ merk: K.kunci"),
     'atur susunan melepas wadah berstok': ("if (yatim.length) return { tolak: 'Wadah '", "if (false) return { tolak: 'Wadah '"),
     'katalog kasir: buku wadah tanpa harga liter': ("hargaPerLiter: h ? Number(h.hargaPerLiter) || 0 : 0, rasio: wbRasio(W) });", "hargaPerLiter: 0, rasio: wbRasio(W) });"),
-    'katalog kasir: merek bernama wadah tetap menjual literan': ("if (aktifNama[m.merk] && langsung.indexOf(m.merk) < 0 && m.hargaPerLiter) return", "if (false) return"),
+    'katalog kasir: merek bernama wadah tetap menjual literan': ("if (aktifNama[m.merk] && langsung.indexOf(m.merk) < 0 && x.hargaPerLiter) return", "if (false) return"),
     'barang masuk menerima nama buku wadah': ("wadahStok[merk] ? merk + ' itu buku KHUSUS", "false ? merk + ' itu buku KHUSUS"),
     'buka kemasan tidak menurunkan stok kemasan': ("sumberKemasanList: [{ namaProduk: N, ukuranKemasan: uk, unit: 1 }]", "sumberKemasanList: []"),
     'pintu "baru datang" tanpa pemeriksaan kedatangan': ("if (!b || b.stokAwal || b.tutupBuku || !(b.merkList || []).some((m) => m.merk === merk && m.satuan === 'karung')) return", "if (false) return"),

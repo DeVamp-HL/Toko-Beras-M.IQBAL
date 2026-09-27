@@ -13,8 +13,8 @@
 // Identitas yang dijaga uji: untuk tiap merek M, tumpukan(M) + karung terbuka(M) + Σ bagian M di semua wadah = buku(M) (− pindah nama lama).
 // Tanpa DOM; nama berawalan wb (bundel uji satu lingkup). Dijaga alat-uji/uji_wadah_bernama.py & uji_cocokkan_terpisah.py.
 import { hitungStokKarungPerMerk } from '../mesin/beku.js';
-import { RASIO_KONVERSI, RASIO_DEFAULT } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilWadahLiteran, ambilHargaLiteran, ambilSemuaBatch, denganCacheSementara, kunciStokWadah, petaStokWadah, kunciKarungWadah, petaBukuWadah } from '../data/toko.js';
+import { RASIO_KONVERSI, RASIO_DEFAULT, hargaKarungUtuh, cariHargaKarungPerKg } from '../mesin/pembantu.js';
+import { ambilPenjualan, ambilWadahLiteran, ambilHargaLiteran, ambilSemuaBatch, denganCacheSementara, kunciStokWadah, petaStokWadah, kunciKarungWadah, petaBukuWadah, petaUkuran, indukTerpisah } from '../data/toko.js';
 import { aturWadah, karungUntukWadah, karungBelakang, semuaKarungTerbuka, wdSesudah, wdTerbaru, tinggiWadah, DAFTAR_WADAH } from './jual-logika.js';
 
 const wbB3 = (n) => Math.round(n * 1000) / 1000;
@@ -145,6 +145,8 @@ export function wbDokLahir(baris, w) {
   const ada = {}; ambilSemuaBatch().forEach((b) => (b.merkList || []).forEach((m) => { if (m && m.merk) ada[String(m.merk)] = true; }));
   const rows = [];
   (baris || []).forEach((x) => { if (!x || !x.merk || ada[x.merk] || rows.some((r) => r.merk === x.merk)) return;
+    // buku per ukuran (karung 25 kg): baris lahir satuan 'karung' berat itu, supaya "punya karung 25 kg" terbaca (0 karung, 0 kg — tanpa kas/utang)
+    if (x.indukUkuran) { rows.push({ id: String(rows.length + 1), merk: String(x.merk), satuan: 'karung', beratKarung: Number(x.berat) || 25, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, indukUkuran: String(x.indukUkuran) }); return; }
     rows.push(Object.assign({ id: String(rows.length + 1), merk: String(x.merk), satuan: 'lahir', beratKarung: 0, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0 },
       x.stokWadah ? { stokWadah: String(x.stokWadah) } : x.karungWadah ? { karungWadah: String(x.karungWadah) } : x.bukuAdukan ? { bukuAdukan: String(x.bukuAdukan) } : {})); });
   if (!rows.length) return null;
@@ -200,7 +202,7 @@ export function wbSusunPindahAwal(w, hanya) {
  */
 export function wbSaringKatalogKasir(isi) {
   if (!isi || !Array.isArray(isi.merkKarung)) return isi;
-  const peta = petaStokWadah(); const bw = petaBukuWadah(); if (!Object.keys(bw).length) return isi;
+  const peta = petaStokWadah(); const bw = petaBukuWadah(); const uk = petaUkuran(); const tp = indukTerpisah(); if (!Object.keys(bw).length && !Object.keys(uk).length) return isi;
   const A = aturWadah(); const langsung = wbLiteranLangsung().daftar; const harga = ambilHargaLiteran(); const awal = kunciStokWadah('').length;
   const aktifNama = {}; A.daftar.forEach((W) => { if (peta[wbKunci(W)]) aktifNama[W] = true; });
   // kunci wadah lama (sudah ganti nama) yang bukunya nol tidak ditawarkan ke HP kasir
@@ -208,8 +210,12 @@ export function wbSaringKatalogKasir(isi) {
   const merkKarung = isi.merkKarung.filter((m) => !(bw[m.merk] && bw[m.merk].jenis !== 'wadah') && !(peta[m.merk] && A.daftar.indexOf(String(m.merk).slice(awal)) < 0 && Math.abs(m.sisaKg || 0) < 0.005)).map((m) => {
     if (peta[m.merk]) { const W = String(m.merk).slice(awal); const h = A.daftar.indexOf(W) >= 0 ? harga.find((x) => x.merk === W) : null;
       return Object.assign({}, m, { karung50: false, karung25: false, hargaKarung25: 0, hargaKarung50: 0, hargaPerKg: 0, hargaPerLiter: h ? Number(h.hargaPerLiter) || 0 : 0, rasio: wbRasio(W) }); }
-    if (aktifNama[m.merk] && langsung.indexOf(m.merk) < 0 && m.hargaPerLiter) return Object.assign({}, m, { hargaPerLiter: 0 });
-    return m; });
+    // putaran 28: buku per ukuran ('Merek 25 kg') = karung ukuran itu saja, harganya harga merek induk ukuran itu; induknya tidak lagi menawarkan ukuran itu
+    if (uk[m.merk]) { const u = uk[m.merk]; const hg = (hargaKarungUtuh(u.induk, u.berat) || {}).perUnit || 0;
+      return Object.assign({}, m, { karung50: u.berat === 50, karung25: u.berat === 25, hargaKarung25: u.berat === 25 ? hg : 0, hargaKarung50: u.berat === 50 ? hg : 0, hargaPerKg: cariHargaKarungPerKg(u.induk) || 0, hargaPerLiter: 0 }); }
+    let x = m; if (tp[m.merk] && tp[m.merk][25]) x = Object.assign({}, x, { karung25: false, hargaKarung25: 0 });
+    if (aktifNama[m.merk] && langsung.indexOf(m.merk) < 0 && x.hargaPerLiter) return Object.assign({}, x, { hargaPerLiter: 0 });
+    return x; });
   return Object.assign({}, isi, { merkKarung });
 }
 

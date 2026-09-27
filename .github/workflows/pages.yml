@@ -120,6 +120,8 @@ jobs:
         run: python3 alat-uji/uji_wadah_bernama.py && python3 alat-uji/uji_wadah_bernama.py --kontrol
       - name: "Wadah punya stok sendiri (28): buku 'Wadah <nama>' lahir lewat batch stokAwal 0 kg, pindahan awal tidak menggeser nilai/laba/tumpukan, takar memindah buku karung → wadah, literan cuma memotong buku wadah, cocokkan = susut wadah, ganti nama membawa stok, katalog HP kasir, tiga pintu karung, tidak bocor ke daftar merek (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_wadah_stok_sendiri.py && python3 alat-uji/uji_wadah_stok_sendiri.py --kontrol
+      - name: "Buku per ukuran (28): karung 25 kg merek dua ukuran dibukukan ke 'Merek 25 kg', pisah stok lama dengan hitungan karung, rak/retur/katalog kasir/harga dari buku ukurannya (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_buku_ukuran.py && python3 alat-uji/uji_buku_ukuran.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

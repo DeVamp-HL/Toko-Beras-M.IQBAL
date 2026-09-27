@@ -23,7 +23,7 @@ import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaK
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
-  wzDiKeranjangParkir, sumberData, cacheMentah, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan } from '../data/toko.js';
+  wzDiKeranjangParkir, sumberData, cacheMentah, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah } from '../data/toko.js';
 import { hariIniIso, RP, tanggalPendek } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
@@ -99,15 +99,20 @@ export function susunRak(s) {
     rak.literan.push({ jalur: 'literan', kunci: W, nama: W, ukuran: 'per liter · wadah', harga: hl.hargaPerLiter, satuan: 'L', rasio, sisa: sisaL, sisaTeks: '±' + sisaL.toString().replace('.', ',') + ' L', hppPerKg: wbModalPerKg(W, s),
       wadahLiteran: true, dipegang: 0 }); });
   // putaran 28: buku stok WADAH bukan merek karung — tidak dijual per karung / repack / literan langsung (literannya lewat chip wadah di atas)
+  // putaran 28 (owner 28 Sep): karung 25 kg merek dua ukuran dijual dari bukunya sendiri 'Merek 25 kg' (harga = katalog merek induk ukuran itu);
+  // buku merek induk yang sudah dipisah tidak lagi menawarkan ukuran itu
+  const ukuran = petaUkuran(); const terpisah = indukTerpisah();
   Object.keys(stokMerekSaja(stokKarung)).sort().forEach((merk) => {
     if (arBeras(merk, arsip)) return;
+    const uk = ukuran[merk]; const hgNama = uk ? uk.induk : merk;
     [50, 25].forEach((berat) => {
+      if (uk ? berat !== uk.berat : !!(terpisah[merk] && terpisah[merk][berat])) return;
       if (!merkPunyaKarungBerat(merk, berat)) return;
-      const hg = hargaKarungUtuh(merk, berat);
+      const hg = hargaKarungUtuh(hgNama, berat);
       if (!hg || !hg.perUnit) return;
       setelBeratDom(berat);
       const maks = stokMaksJalur('karung', merk);   // sudah dikurangi keranjang aktif + yang diparkir
-      rak.karung.push({ jalur: 'karung', kunci: merk, nama: merk, ukuran: berat + ' kg', harga: hg.perUnit, satuan: 'karung',
+      rak.karung.push({ jalur: 'karung', kunci: merk, nama: hgNama, ukuran: berat + ' kg', harga: hg.perUnit, satuan: 'karung', indukUkuran: uk ? uk.induk : '',
         berat, sisa: maks === null ? 0 : maks, sisaTeks: (maks === null ? 0 : maks) + ' karung', hppPerKg: stokKarung[merk].hppTerakhirPerKg || 0,
         dipegang: wzDiKeranjangParkir('karung', merk) });
     });
@@ -1011,7 +1016,7 @@ export function lokasiSumber(merk, wadah) {
   return lain || '';
 }
 /** Isi satu karung utuh nama itu di gudang: 50 kg; nama yang HANYA pernah masuk sebagai karung 25 kg → 25. */
-export function beratKarungBuka(merk) { return !merkPunyaKarungBerat(merk, 50) && merkPunyaKarungBerat(merk, 25) ? 25 : KARUNG_BELAKANG_KG; }
+export function beratKarungBuka(merk) { const u = petaUkuran()[merk]; if (u) return u.berat; return !merkPunyaKarungBerat(merk, 50) && merkPunyaKarungBerat(merk, 25) ? 25 : KARUNG_BELAKANG_KG; }   // putaran 28: buku per ukuran = ukurannya
 /**
  * BUKA KARUNG: satu karung utuh bernama `merk` diambil dari TUMPUKAN GUDANG, dibuka di belakang `wadah` (kosong = karung bahan campuran, tanpa wadah).
  * Jalur pertama rantai stok: tumpukan gudang nama itu turun satu karung SAAT INI JUGA (lihat tumpukanGudang). Buku mesin lama tidak ditulis —

@@ -68,6 +68,16 @@ export function petaBukuWadah() {
     else if (m.bukuAdukan) out[String(m.merk)] = { jenis: 'adukan', wadah: String(m.bukuAdukan).split('|')[0] }; }));
   return out;
 }
+// Karung pemasok per UKURAN (owner 28 Sep: "beras hasil belanja dari pemasok itu ada 50 kg dan 25 kg … buat bukunya terpisah"): buku merek lama tetap buku
+// karung 50 kg; karung 25 kg merek yang datang dua ukuran punya buku 'Merek 25 kg'. Barisnya (kedatangan / lahir) bertanda `indukUkuran` = merek induk.
+export const kunciUkuran = (M, berat) => String(M) + ' ' + String(berat) + ' kg';
+/** { 'Merek 25 kg': { induk: 'Merek', berat: 25 } } — dari baris batch ber-indukUkuran. */
+export function petaUkuran() {
+  const out = {}; ambilSemuaBatch().forEach((b) => (b.merkList || []).forEach((m) => { if (m && m.merk && m.indukUkuran) out[String(m.merk)] = { induk: String(m.indukUkuran), berat: Number(m.beratKarung) || 25 }; }));
+  return out;
+}
+/** { 'Merek': { 25: 'Merek 25 kg' } } — merek induk yang karung 25 kg-nya sudah punya buku sendiri. */
+export function indukTerpisah() { const u = petaUkuran(); const out = {}; Object.keys(u).forEach((n) => { (out[u[n].induk] = out[u[n].induk] || {})[u[n].berat] = n; }); return out; }
 /** Salinan peta stok karung TANPA buku khusus (isi wadah, karung sisihan, kemasan adukan dibuka) — untuk daftar MEREK (rak karung, gudang, harga karung, …). */
 export function stokMerekSaja(stok) {
   const w = petaBukuWadah(); const out = {}; Object.keys(stok || {}).forEach((m) => { if (!w[m]) out[m] = stok[m]; }); return out;
