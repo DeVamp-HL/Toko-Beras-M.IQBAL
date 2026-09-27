@@ -252,8 +252,10 @@ Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[
 var KINI = new Date(Date.now()); var S = hgSemua(KINI); var salah = [];
 // putaran 27: harga liter yang bukan wadah & bukan literan langsung tidak punya baris katalog — tampil di tab Literan sebagai "tidak dipakai"
 var LTX = hgLiteran(S); var nLtTidak = 0;
+// putaran 27 (Bagian 3): nama yang DIARSIPKAN (aturanToko/produkArsip) hilang dari katalog tapi harganya tetap tersimpan — dihitung terpisah, bukan "tidak cocok"
+var ARS = arPeta(); var nArsip = 0; var namaArsip = [];
 // tiap dokumen katalog = satu baris dengan angka yang sama
-var nDok = 0; [['katalogHargaKarung', 'S', 'hargaPerKg'], ['katalogHargaLiteran', 'L', 'hargaPerLiter'], ['katalogHargaKemasan', 'K', 'hargaPerUnit']].forEach(function (x) { (CAD[x[0]] || []).forEach(function (d) { nDok += 1; var sid = x[1] === 'K' ? 'K' + Number(d.ukuran) : x[1]; var b = cariBaris(S, kunciHarga(d.merk, sid)); if (!b && sid === 'L' && LTX.tidakDipakai.some(function (t) { return t.merk === d.merk; })) nLtTidak += 1; else if (!b) salah.push('katalog tanpa baris: ' + d.merk + ' ' + sid); else if (b.lamaN !== Math.round(Number(d[x[2]]) || 0)) salah.push('angka beda: ' + b.k); }); });
+var nDok = 0; [['katalogHargaKarung', 'S', 'hargaPerKg'], ['katalogHargaLiteran', 'L', 'hargaPerLiter'], ['katalogHargaKemasan', 'K', 'hargaPerUnit']].forEach(function (x) { (CAD[x[0]] || []).forEach(function (d) { nDok += 1; var sid = x[1] === 'K' ? 'K' + Number(d.ukuran) : x[1]; var b = cariBaris(S, kunciHarga(d.merk, sid)); if (!b && sid === 'L' && LTX.tidakDipakai.some(function (t) { return t.merk === d.merk; })) nLtTidak += 1; else if (!b && (ARS['K:' + d.merk] || ARS['M:' + d.merk + '|' + Number(d.ukuran)])) { nArsip += 1; if (namaArsip.indexOf(d.merk) < 0) namaArsip.push(d.merk); } else if (!b) salah.push('katalog tanpa baris: ' + d.merk + ' ' + sid); else if (b.lamaN !== Math.round(Number(d[x[2]]) || 0)) salah.push('angka beda: ' + b.k); }); });
 var B = susunBon(KINI); var up = hitungUtangPemasok(); var totalMesin = up.reduce(function (a, x) { return a + x.totalUtang; }, 0), nBonMesin = up.reduce(function (a, x) { return a + x.bon.length; }, 0);
 if (B.total !== totalMesin || B.nBon !== nBonMesin) salah.push('bon ≠ mesin: ' + B.total + ' vs ' + totalMesin);
 var D = daftarBelanja(KINI); var stokK = hitungStokKarungPerMerk(); var laju = hitungLajuPakai().kgMerk || {};
@@ -263,6 +265,7 @@ var kenal = function (nama) { var o = {}; (CAD[nama] || []).forEach(function (d)
 var WX = { tanggal: '2026-09-22', jam: '10:00', kini: '2026-09-22T03:00:00.000Z', idUnik: function () { return Math.random(); } };
 var kU = kenal('utangPemasokMutasi'); var px = B.bon[0]; var catatan = []; var pgAsli = cacheMentah('pengaturan').slice(); var tanpaTitik = false;
 if (nLtTidak) catatan.push(nLtTidak + ' harga liter tidak dipakai rak (bukan wadah, bukan literan langsung — tab Literan): ' + LTX.tidakDipakai.map(function (x) { return x.merk; }).join(', '));
+if (nArsip) catatan.push(nArsip + ' harga milik nama yang diarsipkan (tanpa baris katalog, harganya tetap tersimpan): ' + namaArsip.join(', '));
 if (px) { var by = susunBayar({ pemasok: px.pemasok, bonId: px.id, ketik: '1', dari: 'laci' }, WX);
   // Kas toko di cadangan bisa memang kurang dari Rp1 (mesin beku kasPada, sama persis dengan sistem lama): penjaga kas MENOLAK dengan benar → itu catatan,
   // bukan kegagalan. Kolom dokumen tetap diuji: titik kas disingkirkan SEMENTARA (kasPada = null → penjaga tidak berlaku), lalu dikembalikan.

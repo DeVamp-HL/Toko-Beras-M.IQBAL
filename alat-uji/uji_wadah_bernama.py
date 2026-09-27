@@ -197,7 +197,8 @@ if (CADANGAN) {
   var terbitC = J(ambilHargaTerbit()), jualC = J(ambilPenjualanSemua()); var kk0 = kkIsi(); var hapusNama = hgLiteran(hgSemua(new Date(Date.now()))).tidakDipakai.map(function (x) { return x.merk; });
   hapusNama.forEach(function (m) { var r = susunHapusLiter(m, WC, true); if (!r.tolak) terapkanKeCache((r.dokumen || []).concat(r.hapus.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; }))); });
   var kk1 = kkIsi(); var kkBeda = kk1.merkKarung.filter(function (m) { var a = kk0.merkKarung.find(function (x) { return x.merk === m.merk; }); var b = Object.assign({}, a || {}); if (hapusNama.indexOf(m.merk) >= 0) b.hargaPerLiter = 0; return J(b) !== J(m); }).map(function (m) { return m.merk; });
-  var hapusOk = hapusNama.length > 0 && J(ambilHargaTerbit()) === terbitC && J(ambilPenjualanSemua()) === jualC && !kkBeda.length && J(kk1.kemasan) === J(kk0.kemasan) && kk1.merkKarung.length === kk0.merkKarung.length && hgLiteran(hgSemua(new Date(Date.now()))).tidakDipakai.length === 0;
+  // tanpa harga liter yang tidak dipakai (cadangan 28 Sep: semua terpakai) tidak ada yang bisa dihapus — lulus hampa, yang dijaga cuma daftarnya memang nol
+  var hapusOk = hapusNama.length ? (J(ambilHargaTerbit()) === terbitC && J(ambilPenjualanSemua()) === jualC && !kkBeda.length && J(kk1.kemasan) === J(kk0.kemasan) && kk1.merkKarung.length === kk0.merkKarung.length && hgLiteran(hgSemua(new Date(Date.now()))).tidakDipakai.length === 0) : hgLiteran(hgSemua(new Date(Date.now()))).tidakDipakai.length === 0;
   asap = { menutupGagal: nutup, nNama: susunLokasi().length, lSalah: lSalah, barisL: barisL.length, lubang: lubang, langsung: LC, wadah: wadahC.length, jualW: jualW, gantiGeser: gantiGeser, hapusNama: hapusNama, hapusOk: hapusOk, kkBeda: kkBeda };
 }
 print(J({ lulus: lulus, gagal: gagal, asap: asap }));
@@ -302,7 +303,7 @@ if __name__ == '__main__':
         baik = [x for x in asap['jualW'] if x.get('ok')]
         print('ASAP DATA TOKO (%s): identitas menutup %d/%d nama · %d baris harga liter (%d wadah + literan langsung %s) · liter di luar wadah/langsung: %s · belum ada harga %d · 1 L dari tiap wadah berharga lewat jalur baru: %d/%d (%s) · ganti nama tiap wadah tanpa menggeser tumpukan/karung/isi: %d/%d · hapus harga liter tidak dipakai (%s): riwayat terbit & nota byte-sama, katalog kasir cuma harga liter itu jadi 0: %s'
               % (os.path.basename(p), asap['nNama'] - len(asap['menutupGagal']), asap['nNama'], asap['barisL'], asap['wadah'], ', '.join(asap['langsung']) or '-', ', '.join(asap['lSalah']) or 'tidak ada', asap['lubang'], len(baik), len(asap['jualW']),
-                 '; '.join(x['w'] + ' → ' + ' + '.join(x.get('merk') or []) for x in asap['jualW']), asap['wadah'] - len(asap['gantiGeser']), asap['wadah'], ', '.join(asap['hapusNama']) or '-', asap['hapusOk']))
+                 '; '.join(x['w'] + ' → ' + ' + '.join(x.get('merk') or []) for x in asap['jualW']), asap['wadah'] - len(asap['gantiGeser']), asap['wadah'], ', '.join(asap['hapusNama']) or 'tidak ada yang tidak dipakai', asap['hapusOk']))
         if asap['menutupGagal'] or asap['lSalah'] or len(baik) != len(asap['jualW']) or not asap['jualW'] or asap['gantiGeser'] or not asap['hapusOk']: g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:400])
     if p:
         sama, ket = asap_global(p)

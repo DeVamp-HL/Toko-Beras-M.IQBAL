@@ -66,7 +66,8 @@ var rakNama = function () { var r = susunRak(s); return [].concat(r.karung, r.li
 var barisHarga = function () { return hgSemua(new Date(Date.now())).baris.map(function (b) { return b.k; }); };
 var terapkan = function (r) { terapkanKeCache((r && r.dokumen) || []); if (r && r.hapus) terapkanKeCache(r.hapus.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; })); return r; };
 var laporan = function () { return J({ sep: hitungLabaBersihRentang('2026-09-01', '2026-09-30'), stok: hitungStokKarungPerMerk(), kem: hitungStokKemasan(), neraca: hitungNeraca() }); };
-var kkSama = function (buangK, buangM) { var baru = kkIsi(); var lama = susunIsiKatalogKasirLama(); lama.merkKarung = lama.merkKarung.filter(function (m) { return (buangK || []).indexOf(m.merk) < 0; }); lama.kemasan = lama.kemasan.filter(function (k) { return (buangM || []).indexOf(k.kunci) < 0; }); return J(baru) === J(lama); };
+// katalog kasir baru = index.html minus arsip: yang SUDAH diarsipkan di data (arPeta) + yang diarsipkan uji (buangK/buangM)
+var kkSama = function (buangK, buangM) { var baru = kkIsi(); var lama = susunIsiKatalogKasirLama(); var ada = arPeta(); lama.merkKarung = lama.merkKarung.filter(function (m) { return (buangK || []).indexOf(m.merk) < 0 && !ada['K:' + m.merk]; }); lama.kemasan = lama.kemasan.filter(function (k) { return (buangM || []).indexOf(k.kunci) < 0 && !ada['M:' + k.kunci]; }); return J(baru) === J(lama); };
 
 // ---- 1 · keadaan & penjaga
 var KL = arKeadaan('K:Lama'), KA = arKeadaan('K:Angsa'), KC = arKeadaan('K:Coba · Super');
@@ -193,7 +194,7 @@ if __name__ == '__main__':
     print('ARSIP PRODUK (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     if asap:
-        print('ASAP DATA TOKO (%s): %d nama karung & %d kemasan bersisa nol diarsipkan · katalog kasir sebelum = index.html: %s · sesudah = index.html minus arsip: %s · laba Agu & Sep, neraca, buku stok byte-sama: %s · tidak ada di rak: %s · hapus ditolak (pernah bertransaksi): %d'
+        print('ASAP DATA TOKO (%s): %d nama karung & %d kemasan bersisa nol diarsipkan · katalog kasir sebelum = index.html minus arsip yang sudah ada: %s · sesudah = minus arsip yang sudah ada + yang baru: %s · laba Agu & Sep, neraca, buku stok byte-sama: %s · tidak ada di rak: %s · hapus ditolak (pernah bertransaksi): %d'
               % (os.path.basename(cadangan_toko()), len(asap['nolK']), len(asap['nolM']), asap['kkAwal'], asap['kkSesudah'], asap['laporanSama'], not asap['sisaDiRak'], asap['tolakHapus']))
         if not (asap['kkAwal'] and asap['kkSesudah'] and asap['laporanSama'] and not asap['sisaDiRak'] and asap['katalogBersih'] and asap['tolakHapus'] == len(asap['nolK']) + len(asap['nolM'])): g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:300])
     sys.exit(2 if g else 0)
