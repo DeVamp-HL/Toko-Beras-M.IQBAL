@@ -431,6 +431,30 @@ Keputusan owner 28 Sep & rinciannya: `docs/peta-stok-merek.md` §14. Tanpa kolek
 - Buku wadah tidak tampil di daftar merek mana pun (rak karung/repack, gudang, harga karung, barang masuk, cocokkan tumpukan, adukan, tempat, belanja, HPP).
 - Uji: `uji_wadah_stok_sendiri.py` (+ kontrol, CI).
 
+## Putaran 29 — uang: biaya karyawan, upah per orang, bayar pemasok lewat transfer (28 Sep 2026, cabang `tulang-punggung/29-uang-karyawan`, belum merge)
+
+Permintaan owner 27 Sep: tahu berapa laba kotor yang habis untuk keperluan toko dan berapa untuk para karyawan. Peta Tahap 0: `docs/peta-uang-karyawan.md`.
+Tanpa koleksi baru, tanpa dokumen per orang, rules v4 tidak berubah, 28 mesin beku & `index.html`/`kasir*.html` tidak disentuh; yang baru hanya KOLOM di dokumen yang sudah ada (§7 peta).
+- **Tiga tujuan uang keluar** (K1): Untuk toko · Untuk karyawan · Untuk pribadi. "Untuk karyawan" (kopi, rokok, makanan jadi dari warung) = kolom baru `untuk: 'karyawan'` di
+  `pengeluaranHarian`, kategorinya TETAP `toko`/`tokoDompet` → laba bersih turun sama seperti biaya toko; bahan mentah untuk memasak makan karyawan = toko. Pribadi tetap bentuk lama.
+  Semua penulis otomatis (biaya admin K4/H2, MDR Tutup hari, tagihan tambahan, titipan tablet) menulis `untuk: 'toko'`. Catatan lama tanpa `untuk` = **belum dipilah** (dihitung di
+  biaya toko, jumlahnya disebut; tidak ada pemilah ulang). Atur: `perluKaryawan` + tombol "→" memindahkan keperluan antar tujuan; satu nama tidak boleh di toko DAN karyawan.
+- **Upah per orang** (K2, lembar Karyawan): `aturanToko/upah.orang[].upah[] = [{mulai, satuan hari|minggu|bulan, tarif}]` di dokumen bersama yang sama. Tarif per hari suatu
+  tanggal = entri terbaru yang `mulai ≤ tanggal` (`tarifHariPada`); tanpa entri → `tarif` bersama (bawaan). Minggu ÷ 7, bulan ÷ jumlah hari bulan itu, dibulatkan ke rupiah dulu;
+  setengah hari = separuh dibulatkan (`upNilaiHari`). `hitungUpah` membaca tarif PER HARI → gajian yang melintasi tanggal berlaku membayar dua tarif; `rincianTarif` per ruas
+  masuk slip (teks & dokumen `slipUpah.rincianTarif`, `satuan`); baris gaji per bulan = Σ rupiah per hari. Slip lama tidak berubah. Entri tanpa tanggal / tarif 0 / satuan asing /
+  dua entri bertanggal sama DITOLAK.
+- **Laba kotor → ke mana** (Laporan › Laba & Bulanan, `keManaLabaKotor`): laba kotor → biaya toko (harian bukan-karyawan + jatah tagihan bulanan; di dalamnya potongan QRIS &
+  biaya bank disebut) → biaya karyawan · upah (jatah gaji KOTOR) → biaya karyawan · di luar upah → hapus buku → susut & selisih stok (mesin menaruhnya di BAWAH laba kotor) →
+  = laba bersih mesin → ambil pribadi owner (`priveRentang`: prive laci + kasbon dialihkan + tarik modal) → sisa. Dipilah lewat `pilahHarian` (uang-logika); wajib MENUTUP
+  (kalau tidak, kartu menulis "TIDAK MENUTUP — laporkan"). Bulan terkunci/tutup buku = FINAL; bulan tanpa catatan disebut.
+- **Bayar bon pemasok tunai / transfer** (H2): cara bayar dibaca dari `dari` (rekening = transfer; `caraDari`), tanpa kolom baru di `utangPemasokMutasi`. `hitungBayar(d, kini, S)`
+  / `susunBayar(d, w, S)` menerima `saldoKantong()` dari layar (supaya modul bon tidak mengimpor balik uang-logika) dan menjaga isi kantong yang dipilih; tanpa S = total kas
+  seperti dulu. Dokumen biaya admin kini membawa `dari` (cacat lama: tanpa `dari` → dipotong dari LACI di saldo per tempat) + `untuk: 'toko'`; utang turun sebesar nominal bayar.
+  Rekening yang belum pernah diisi (titik kas 0) disebut & ditawari **catat isi rekening** (K4 Pindah uang → `susunTitikRekening`: `pengaturan/titikKas` baru bertanggal KEMARIN,
+  laci/brankas/amplop = hasil hitung sampai kemarin, rekening = isi m-banking − gerakan rekening hari ini; bila titik sudah hari ini → ditulis ulang). Buku bon menyebut tunai/transfer + admin.
+- Uji baru (CI): `uji_uang_karyawan.py`, `uji_upah_per_orang.py`, `uji_bayar_pemasok_transfer.py` (+ kontrol; asap cadangan + ASAP GLOBAL laba tiap bulan byte-sama dengan main).
+
 ## Struktur
 ```
 baru/
@@ -502,6 +526,9 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_setengah_karung.py` (+ `--kontrol`) | 27·4: 18 skenario ½ karung (harga, langit-langit 50 kg, pemecah Adukan satu kiriman, modal dipindah utuh, batal; 28b: saat merinci karcis — pemecah bertanggal & berjam karcis, tarik balik mencabutnya) + 14 kontrol |
 | `alat-uji/uji_wadah_bernama.py` (+ `--kontrol`) | 27·5: 28 skenario wadah bernama (NG 30 + Kumala 20 → 5 L memotong buku 3 : 2, HPP tertimbang, tanpa buku nama wadah, identitas, struk satu baris, karcis, katalog, kelas ditolak, ganti nama, hapus harga liter tidak dipakai) + 21 kontrol; asap cadangan + ASAP GLOBAL omzet/laba/neraca tiap bulan byte-sama dengan main |
 | `alat-uji/uji_buku_ukuran.py` (+ `--kontrol`) | 28: 19 skenario buku per ukuran (barang masuk memisah 25 kg merek dua ukuran, nama ukuran tak boleh diketik, koreksi tetap, rak/retur/katalog kasir/harga dari buku ukuran, pisah stok lama dengan hitungan + dua ketukan, nilai & laba tetap, karung terbuka 25 kg, jenis ikut induk) + 14 kontrol; asap cadangan: merek dua ukuran dipisah tanpa menggeser nilai stok & laba |
+| `alat-uji/uji_uang_karyawan.py` (+ `--kontrol`) | 29 · Bagian 1 & 3: 28 skenario tiga tujuan uang keluar & kartu "Laba kotor → ke mana" (untuk karyawan = biaya toko di laba; pribadi bentuk lama; belum dipilah disebut; atur perluKaryawan, kembar ditolak, pindah tombol; penulis otomatis untuk toko; kartu menutup ke laba kotor & laba bersih mesin, upah dipisah non-upah, susut & hapus buku di bawah laba kotor, prive & sisa, final, tanpa catatan) + 12 kontrol; asap cadangan: kartu tiap bulan menutup; ASAP GLOBAL byte-sama dengan main |
+| `alat-uji/uji_upah_per_orang.py` (+ `--kontrol`) | 29 · Bagian 2: 20 skenario upah per orang (tarif per hari menurut tanggal berlaku & sumbernya, bulanan ÷ hari bulan itu dibulatkan dulu, Februari 28, minggu ÷ 7, dua orang tiga upah, buku upah terbelah di pergantian tarif, upah baru hanya sesudah tanggalnya, gajian = Σ rupiah per hari, slip merinci tiap ruas, riwayat tidak ditulis ulang, tarif bersama hanya untuk yang tanpa upah sendiri, entri cacat ditolak, bentuk lama tetap terbaca) + 13 kontrol |
+| `alat-uji/uji_bayar_pemasok_transfer.py` (+ `--kontrol`) | 29 · Bagian 4: 29 skenario bayar bon tunai/transfer (cara dari `dari`, kantong dijaga, transfer menurunkan REKENING & kas, admin = pengeluaranHarian untuk toko dari rekening satu kiriman, utang turun sebesar bayar, laba turun sebesar admin, buku bon menyebut cara, urung mencabut keduanya, tunai brankas, rekening belum diisi → tawaran catat isi rekening, catat isi rekening = titik kas kemarin tanpa menggeser laci/brankas/amplop, titik hari ini ditulis ulang) + 12 kontrol; asap cadangan |
 | `alat-uji/uji_wadah_stok_sendiri.py` (+ `--kontrol`) | 28: 53 skenario stok wadah sendiri (buku NG yang habis menahan literan sebelum pindahan, tidak sesudahnya; pindahan awal = batch lahir 0 kg + pindah buku per wadah, nilai/laba/tumpukan tetap; nota satu baris atas buku wadah; takar memindah buku karung → wadah; cocokkan = susut wadah; ganti nama membawa stok; atur susunan menolak wadah berstok; katalog kasir; tiga pintu karung termasuk buka kemasan hasil adukan; tidak bocor ke daftar merek; tutup buku membawa tanda; sisihkan · tuang balik · bongkar ke karung wadah; kemasan adukan dibuka = buku sendiri) + 30 kontrol; asap cadangan: pindahan semua wadah tanpa menggeser nilai stok, laba, tumpukan; 1 L dari tiap wadah lewat bukunya sendiri |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 

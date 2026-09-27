@@ -141,3 +141,18 @@ Tidak ada koleksi baru. Tidak ada kolom baru di `utangPemasokMutasi`, `biayaBula
 
 28 mesin beku (`beku.js`, `pembantu.js`) · `index.html`, `kasir*.html` · arti empat "arti uang keluar" · model stok wadah putaran 28 ·
 `firestore.rules`.
+
+## 9. Yang dibangun (28 Sep 2026, cabang `tulang-punggung/29-uang-karyawan`)
+
+Semua sesuai §1–§8; tidak ada syarat berhenti yang terpicu. Penyimpangan kecil dari rencana: tidak ada.
+
+| Bagian | Berkas | Uji |
+|---|---|---|
+| 1 · tiga tujuan | `uang-logika.js` (TUJUAN_KELUAR, `untuk`, perluKaryawan, `pilahHarian`, `priveRentang`), `uang.js` K1 & Atur (tombol "→"), `tutup-hari-logika.js` (MDR `untuk`) | `uji_uang_karyawan.py` |
+| 2 · upah per orang | `upah-logika.js` (`tarifHariPada`, `upNilaiHari`, `rincianTarif`, slip, atur), `uang.js` K2 lembar Karyawan | `uji_upah_per_orang.py` |
+| 3 · kartu ke mana | `laporan-logika.js` (`keManaLabaKotor`), `laporan.js` (Laba & Bulanan), `laporan.css` | `uji_uang_karyawan.py` |
+| 4 · tunai/transfer | `bon-pemasok-logika.js` (`hitungBayar(d, kini, S)`, `caraDari`, admin `dari`+`untuk`), `harga.js` lembar bayar, `uang-logika.js` (`susunTitikRekening`), `uang.js` K4, `app.js` (keTujuan ke Harga) | `uji_bayar_pemasok_transfer.py` |
+
+Uji lama yang disesuaikan (kontrol yang berubah teksnya, asersi kalimat, kolom `untuk` dikenal): `uji_uang_baru.py`, `uji_harga_baru.py`, `peta_akses.py` (OWNER_JALUR:
+`susunTitikRekening`, 1 dokumen). Rules v4 & `periksa_rules.py` tidak berubah. Cadangan 28 Sep: 84 catatan toko semuanya "belum dipilah" (wajar — kolomnya baru lahir),
+ASAP GLOBAL laba/inti/neraca/omzet tiap bulan byte-sama dengan `main`.
