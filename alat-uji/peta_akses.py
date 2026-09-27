@@ -185,8 +185,8 @@ def baca_per_layar():
 # Angka di bawah BUKAN deklarasi: dihitung dari susunNotaDokumen / susunSimpanAdukan / susunBayarBon / susunOrangBaru / susunStrukKeluar
 # ASLI, dan tiap kiriman dilewatkan periksaKiriman ASLI (yang bukan-owner memang tidak boleh kirim → dilewati, bukan dihitung).
 BATAS_CI = 18   # batas Firebase 20 per batch − sisa 2 (keputusan owner). Sengaja TIDAK dibaca dari akses.js: menaikkan batas di sana tidak melonggarkan CI.
-MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js',
-               'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js',
+MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/layar/arsip-logika.js',
+               'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
                'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js']
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
@@ -216,8 +216,12 @@ var BARIS = {
   'repack, wadah ditanggung toko': function () { return { jenis: 'repacking', merkSumber: 'Angsa', namaProduk: 'Angsa', totalKg: 10, kemasanRepack: '5kg_kembangbmw', jumlahKemasanRepackDipakai: 2, hargaTotal: 140000, hargaSatuan: 14000, hargaAsli: 14000, jumlah: 10 }; },
   'wadah dijual': function () { return { jenis: 'wadah', jenisWadah: '5kg_kembangbmw', jumlahUnit: 3, namaProduk: 'Kantong', hargaTotal: 6000, hargaSatuan: 2000, hargaAsli: 2000, jumlah: 3 }; },
   'karung utuh': function () { return { jenis: 'karung', merkSumber: 'Angsa', jumlahKarung: 1, totalKg: 50, hargaTotal: 690000, hargaSatuan: 690000, hargaAsli: 690000, jumlah: 1 }; },
-  'kemasan': function () { return { jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, totalKg: 5, hargaTotal: 72000, hargaSatuan: 72000, hargaAsli: 72000, jumlah: 1 }; }
+  'kemasan': function () { return { jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, totalKg: 5, hargaTotal: 72000, hargaSatuan: 72000, hargaAsli: 72000, jumlah: 1 }; },
+  // putaran 27 (Bagian 4): ½ karung — 1 × 25 kg dipecah dari kemasan 50 kg di kiriman yang sama (produksi pemecah + baris nota; harga 25 kg sudah di katalog)
+  '½ karung dari kemasan 50 kg': function () { return { jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 25, jumlahUnit: 1, totalKg: 25, setengahDari: 'Kembang|50', hargaTotal: 360000, hargaSatuan: 360000, hargaAsli: 360000, jumlah: 1 }; }
 };
+pasok('produksiKemasan', [{ id: 'pk50', tanggal: '2026-09-20', namaProduk: 'Kembang', ukuranKemasan: 50, jumlahUnit: 60, hppPerUnit: 690000, merkSumber: 'Angsa', kgDipakai: 3000, sumberList: [{ merk: 'Angsa', kg: 3000 }] }]);
+pasok('katalogHargaKemasan', [{ id: 'kembang_25kg', merk: 'Kembang', ukuran: 25, hargaPerUnit: 360000 }, { id: 'kembang_50kg', merk: 'Kembang', ukuran: 50, hargaPerUnit: 720000 }]);
 function keranjang(jenis, n) { var k = []; for (var i = 0; i < n; i++) k.push({ id: 'b' + i, trx: BARIS[jenis]() }); return k; }
 var CARA = { 'tunai': { cara: 'Tunai', uang: 1e9 }, 'QRIS': { cara: 'QRIS', uang: 0 }, 'bon': { cara: 'Kredit', uang: 0 }, 'bayar sebagian (sisa jadi bon)': { cara: 'Tunai', uang: 1000 } };
 var NB = BATAS_BARIS_NOTA_STAF;
@@ -429,8 +433,13 @@ function ukurBerulang(keadaan) {
   var org = semuaOrang(KINI).find(function (x) { return x.nama === 'Pelanggan Kini Contoh'; });
   ukur(keadaan, 'ini dia · nota tanpa nama hari ini 40 baris', 'susunIniDia', susunIniDia(KINI, 'g-ukur', org && org.kunci));
   // cocokkan stok: SEMUA beras & SEMUA kemasan berubah
-  ['beras', 'kemasan'].forEach(function (tab) { var bc = barangCocok(tab), Hc = {}, Al = {}; bc.forEach(function (b) { Hc[b.kunci] = String(Math.max(0, b.sistem - 1)); Al[b.kunci] = 'uji ukur'; });
+  ['tumpukan', 'kemasan'].forEach(function (tab) { var bc = barangCocok(tab), Hc = {}, Al = {}; bc.forEach(function (b) { Hc[b.kunci] = String(Math.max(0, b.sistem - 1)); Al[b.kunci] = 'uji ukur'; });
     ukur(keadaan, 'cocokkan stok hari ini · semua ' + tab + ' berubah (' + bc.length + ' barang)', 'susunSimpanCocok', susunSimpanCocok(tab, Hc, Al, W, { sebagian: true, ganda: true })); });
+  // putaran 27: cocokkan WADAH — delapan wadah berisi tiga merek asal, semuanya susut di atas batas: penyesuaianStok per merek × wadah (perulangan) + titik samakan
+  var wdAwal = cacheMentah('wadah'); pasok('wadahLiteran', wdAwal.concat(aturWadah().daftar.map(function (x, i) { return { id: 'wu' + i, tanggal: W.tanggal, jam: '06:00', wadah: x, tipe: 'isi', isiKg: 50, komposisi: { Angsa: 20, Beo: 20, Cendana: 10 } }; })));
+  (function () { var bw = barangCocok('wadah'), Hw = {}, Aw = {}; bw.forEach(function (b) { Hw[b.kunci] = '40'; Aw[b.kunci] = 'uji ukur'; });
+    ukur(keadaan, 'cocokkan wadah hari ini · ' + bw.length + ' wadah × 3 merek asal susut', 'susunSimpanCocok', susunSimpanCocok('wadah', Hw, Aw, W, { sebagian: true, ganda: true, aneh: true, susutPositif: true })); })();
+  pasok('wadahLiteran', wdAwal);
   // tutup hari: timbang cepat (paling banyak 3 merek terlaris hari ini) beda semua + amankan laci
   pasok('penjualan', cacheMentah('penjualan').concat(['Angsa', 'Beo', 'Cendana'].map(function (m, i) { return nota(61000 + i, W.tanggal, '', 700000, { merkSumber: m }); })));
   localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-09-23', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }));

@@ -112,7 +112,7 @@ def periksa_statis(t):
     ok('index.html: ubah & simpan jenis beras bertanya ke penjaga SEBELUM salinan HP atau server diubah', uj.find(g) >= 0 and uj.find(g) < uj.find('prompt(') and sj.find(g) >= 0 and sj.find(g) < sj.find('simpanLokal('))
     hg = t['baru/js/layar/harga.js']
     ok('Harga: pil jenis per nama beras (papan owner), lembar pilih/ketik/kosongkan, daftar lengkap — semuanya lewat susunJenisBeras',
-       'data-aksi="jbBuka"' in hg and 'JB.susunJenisBeras(m, j, waktu())' in hg and "JB.susunJenisBeras(m, '', waktu())" in hg and 'gambarJenisDaftar(s)' in hg and "'jbKetik']" in hg)
+       'data-aksi="jbBuka"' in hg and 'JB.susunJenisBeras(m, j, waktu())' in hg and "JB.susunJenisBeras(m, '', waktu())" in hg and 'gambarJenisDaftar(s)' in hg and re.search(r"pasangIsian\(K, awal, \[[^\n]*'jbKetik'", hg) is not None)   # jbKetik terdaftar di daftar isian (bukan harus paling akhir)
     ok('Stok: kartu beras per jenis dari jbKelompokStok', 'const JB = jbKelompokStok();' in t['baru/js/layar/stok.js'])
     jl = t['baru/js/layar/jual.js']
     ok('Jual: baris saring per jenis (jbJenisRak) & rak disaring (jbSaringRak) — juga rak yang dikelompokkan per ukuran', 'jbJenisRak(daftarRak)' in jl and 'jbSaringRak(daftarRak, jenisAktif)' in jl and 'jbSaringRak(g.daftar, jenisAktif)' in jl)

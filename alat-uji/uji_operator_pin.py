@@ -133,9 +133,12 @@ var DOK_LAMA = { id: 'aksesKasir', operator: { 'Penjaga Contoh A': { aktif: true
     // ---- 6 · cadangan toko (lokal): dokumen sungguhan — hanya jumlah, tanpa nama/PIN
     if (ASLI) {
       pasok('pengaturan', [ASLI]); var DA = opDaftar(); var CA = susunCabutPinOperator(W);
-      ok('DATA TOKO: PIN terbuka terhitung (' + DA.berPin + ' dari ' + DA.baris.length + ' operator); cabut → dokumen tanpa pin, jumlah operator & aktif/libur utuh',
-        DA.berPin > 0 && !CA.tolak && !adaPin(CA.dokumen) && Object.keys(CA.dokumen[0].data.operator).length === DA.baris.length
-        && DA.baris.every(function (b) { return CA.dokumen[0].data.operator[b.nama].aktif === b.aktif; }), 'jumlah saja');
+      // cadangan SEBELUM owner mencabut PIN (27 Sep pagi): PIN terbuka terhitung, cabut → dokumen tanpa pin. Cadangan SESUDAHNYA: dokumennya sudah tanpa
+      // pin → cabut ditolak "tidak ada PIN", daftar & aktif/libur tetap terbaca. Dua-duanya keadaan sah; yang salah = PIN tersisa sesudah dicabut.
+      ok('DATA TOKO: ' + (DA.berPin > 0 ? 'PIN terbuka terhitung (' + DA.berPin + ' dari ' + DA.baris.length + ' operator); cabut → dokumen tanpa pin, jumlah operator & aktif/libur utuh' : 'PIN operator sudah dicabut (0 dari ' + DA.baris.length + ' operator): cabut ditolak, dokumen tanpa pin, daftar terbaca'),
+        DA.berPin > 0 ? (!CA.tolak && !adaPin(CA.dokumen) && Object.keys(CA.dokumen[0].data.operator).length === DA.baris.length
+          && DA.baris.every(function (b) { return CA.dokumen[0].data.operator[b.nama].aktif === b.aktif; }))
+          : (!!CA.tolak && /Tidak ada PIN/.test(CA.tolak) && !adaPin(ASLI) && DA.baris.length > 0 && DA.ada), 'jumlah saja');
     }
   } catch (e) { gagal.push('JATUH: ' + (e && (e.stack || e.message) || e)); }
   print(J({ lulus: lulus, gagal: gagal }));

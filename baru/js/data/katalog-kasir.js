@@ -11,6 +11,7 @@
 // Gerbang kkBolehTerbit(): owner, Firestore (bukan cadangan), semua koleksi sudah dijawab SERVER (bukan salinan perangkat yang bisa basi), dokumen
 // katalog di server sudah terbaca, tersambung. Kalau ragu, TIDAK terbit — katalog lama di HP kasir lebih aman daripada katalog dari data basi.
 import { susunIsiKatalogKasir } from '../mesin/pembantu.js';
+import { arSaringKatalogKasir } from '../layar/arsip-logika.js';
 import { cacheMentah, denganCacheSementara } from './toko.js';
 import { kpPerangkatKasir, kpNomorVersiKasir, kpVersiKasirCukup, kpNamaAplikasiKasir, KP_VERSI_HARI } from './kunci-periode.js';
 import { waktuSetempat } from '../inti/format.js';
@@ -30,8 +31,9 @@ export function kkLupakanServer() { _kkServer = { ada: null, dok: null, dariServ
 export function kkServer() { return Object.assign({}, _kkServer); }
 export function kkCatatTerbit(pada, galat) { _kkTerbit = { pada: pada || _kkTerbit.pada, galat: galat || '' }; }
 
-/** Isi katalog dari data sekarang — penyusun VERBATIM index.html. null = gagal disusun (tidak ada yang diterbitkan). */
-export function kkIsi() { return susunIsiKatalogKasir(); }
+/** Isi katalog dari data sekarang — penyusun VERBATIM index.html. null = gagal disusun (tidak ada yang diterbitkan).
+ *  Putaran 27: baris nama yang DIARSIPKAN owner dibuang dari HASILNYA (arsip-logika.js arSaringKatalogKasir); tanpa arsip = byte-sama index.html. */
+export function kkIsi() { return arSaringKatalogKasir(susunIsiKatalogKasir()); }
 /** Dokumen yang ditulis: kunci & urutan PERSIS terbitkanRingkasanKasir() index.html. */
 export function kkDokumen(isi, kini) {
   return { id: KK_ID, diperbaruiPada: kini, kemasan: isi.kemasan, merkKarung: isi.merkKarung, bahanLiteran: isi.bahanLiteran, piutang: isi.piutang };

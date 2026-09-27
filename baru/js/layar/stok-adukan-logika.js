@@ -14,6 +14,7 @@ import { LABEL_BAHAN_KEMASAN, JENIS_BAHAN_KEMASAN, kunciKemasan } from '../mesin
 import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, waktuSetempat } from '../inti/format.js';
+import { arPeta, arKunciKemasan, arDokPulihBanyak } from './arsip-logika.js';
 
 export const UKURAN_BAHAN_KEMASAN = [50, 25];          // kemasan jadi yang boleh dibongkar lagi (UKURAN_KEMASAN_BOLEH_JADI_BAHAN index.html)
 export const UKURAN_HASIL_PILIHAN = [5, 10, 20, 25, 50];
@@ -118,11 +119,14 @@ export function susunSimpanAdukan(draf, w, yakin) {
       batchProduksi: batchId, barisKe: i + 1, jumlahBaris: h.sahH.length, jadiKarungUtuh: false, merkTujuan: null } });
     if (x.kantongJenis && x.kantongJumlah > 0) dokumen.push({ koleksi: 'stokBahanKemasan', data: { id: id + 1, tipe: 'pakai', jenis: x.kantongJenis, jumlah: x.kantongJumlah, hargaTotal: 0, tanggal: draf.tanggal, catatan: 'Otomatis dari produksi id ' + id } });
   });
+  // putaran 27 (Bagian 3): hasil kemasan yang DIARSIPKAN dipulihkan di kiriman yang sama (disebut di kabar) — barangnya ada lagi
+  const arsipAd = arPeta(); const pulihAd = h.sahH.map((x) => arKunciKemasan(x.nama, x.ukuran)).filter((k, i, a) => arsipAd[k] && a.indexOf(k) === i); const dpAd = arDokPulihBanyak(pulihAd, w); if (dpAd) dokumen.push(dpAd);
   // putaran 25: adukan bertanggal bulan lalu (di luar masa tenggang) — tiap catatan diperiksa kunci di server; satu adukan tidak boleh butuh lebih dari 18 pemeriksaan
   const g = butuhGet(dokumen); if (g > KP_BATAS_GET) return { tolak: 'Adukan bertanggal bulan lalu menyentuh ' + g + ' catatan (batas ' + KP_BATAS_GET + ' sekali kirim) — pecah jadi dua adukan, atau catat bertanggal hari ini' };
   const modalTeks = h.sahH.map((x) => x.nama + ' ' + adUkuranTeks(x.ukuran) + ' kg ' + RP(Math.round(x.hppPerUnit)) + '/unit').join(' · ');
   return { dokumen, hitung: h, batchId, patch: { kabar: 'Adukan tersimpan: ' + h.teksBahan + ' → ' + h.teksHasil + ' · biaya ' + RP(Math.round(h.total)) + ' (bahan ' + RP(Math.round(h.nilaiBahan)) + (h.biayaKantong ? ' + kantong ' + RP(h.biayaKantong) : '') + (h.upah ? ' + upah ' + RP(h.upah) : '') + ') → modal ' + modalTeks
-    + (h.susutKg > 0 ? ' · susut ' + adKG(h.susutKg) + ' terserap ke modal hasil' : '') + '. Stok karung/kemasan asal turun, stok kemasan jadi naik' + (h.biayaKantong ? ', stok kantong turun' : '') + '. Kas tidak bergerak.', kabarAwas: false } };
+    + (h.susutKg > 0 ? ' · susut ' + adKG(h.susutKg) + ' terserap ke modal hasil' : '') + '. Stok karung/kemasan asal turun, stok kemasan jadi naik' + (h.biayaKantong ? ', stok kantong turun' : '') + '. Kas tidak bergerak.'
+    + (dpAd ? ' Dipulihkan dari arsip: ' + pulihAd.map((k) => k.slice(2).replace('|', ' ') + ' kg').join(', ') + '.' : ''), kabarAwas: false } };
 }
 
 // ====================== BUKU ADUKAN: rincian, koreksi, hapus ======================

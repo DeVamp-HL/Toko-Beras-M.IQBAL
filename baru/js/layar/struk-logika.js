@@ -56,6 +56,14 @@ export function jumlahBaris(p) {
   if (p.jenis === 'wadah') return { nilai: p.jumlahUnit || 0, satuan: 'lembar' };
   return null;
 }
+/** putaran 27: baris internal satu takaran wadah (takaranId sama) digabung jadi satu baris tampil — liter, kg, dan rupiah dijumlah. */
+export function gabungTakaran(baris) {
+  const out = []; const peta = {};
+  (baris || []).forEach((p) => { if (!p.takaranId) { out.push(p); return; } const k = String(p.takaranId); const g = peta[k];
+    if (!g) { peta[k] = Object.assign({}, p); out.push(peta[k]); return; }
+    ['jumlahLiter', 'totalKg', 'hargaTotal', 'hppTotalSaatJual', 'potonganTransaksi', 'pembulatan', 'nilaiBarangPengganti'].forEach((f) => { if (p[f] !== undefined || g[f] !== undefined) g[f] = Math.round(((g[f] || 0) + (p[f] || 0)) * 1000) / 1000; }); });
+  return out;
+}
 /** Nama baris untuk struk (namaSingkatTrx sistem lama, dengan jenis baru). */
 export function namaBaris(p) {
   const nama = p.namaProduk || p.merkSumber || 'Penjualan';
@@ -111,7 +119,7 @@ export function susunStruk(nota, atur, pilih) {
   let pot = 0, bulat = 0, upah = 0;
   nota.baris.forEach((p) => { pot += p.potonganTransaksi || 0; bulat += p.pembulatan || 0; upah += p.upahRepack || 0; });
   if (S.rincian) {
-    nota.baris.forEach((p) => {
+    gabungTakaran(nota.baris).forEach((p) => {   // putaran 27: satu takaran wadah (baris internal per merek asal) = satu baris struk
       const j = jumlahBaris(p); const kotor = kotorBaris(p);
       if (p.penggantiRetur) { baris(namaBaris(p), ''); baris('  ' + (j ? String(j.nilai).replace('.', ',') + ' ' + j.satuan + ' · ' : '') + 'pengganti retur', RP(0)); return; }
       const satuan = j && j.nilai > 0 ? kotor / j.nilai : null; const bulatSatuan = satuan !== null && Math.abs(satuan - Math.round(satuan)) < 0.001;

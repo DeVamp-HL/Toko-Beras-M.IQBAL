@@ -12,9 +12,12 @@ import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
 import { RASIO_DEFAULT, RASIO_KONVERSI, kunciKemasan } from '../mesin/pembantu.js';
 import { ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilSemuaBatch, ambilPenjualan, ambilHargaPasar, ambilHargaTerbit, cacheMentah } from '../data/toko.js';
 import { RP, hariIniIso } from '../inti/format.js';
+import { arPeta, arSembunyiHarga, arBeras } from './arsip-logika.js';
+import { aturWadah } from './jual-logika.js';
+import { wbLiteranLangsung, wbModalPerKg, wbBeliPerKg, wbKomposisi, wbRasio } from './wadah-bernama-logika.js';
 
 export const ATUR_HARGA_BAWAAN = { targetPerKg: 0, bulatLiter: 500, bulatKemasan: 1000, bulatKarung: 100, langkahRp: 50, ambangDampak: 50000, bongkarKg: 0, mdrPersen: 30, mdrBatas: 500000 };
-export const TAB_HARGA = [['papan', 'Papan'], ['kalimat', 'Kalimat'], ['dampak', 'Dampak'], ['pasar', 'Pasar'], ['belah', 'Belah'], ['label', 'Label']];
+export const TAB_HARGA = [['papan', 'Papan'], ['literan', 'Literan'], ['kalimat', 'Kalimat'], ['dampak', 'Dampak'], ['pasar', 'Pasar'], ['belah', 'Belah'], ['label', 'Label']];
 export const HG_PERLU = ['lubang', 'rugi', 'dimakan', 'bawah'];
 export const HG_JUDUL = { lubang: 'Belum ada harganya', rugi: 'Dijual di bawah modal', dimakan: 'Modal naik sesudah harga disetel', bawah: 'Untungnya di bawah target', nol: 'Untung nol — harga sama dengan modal', tanpaModal: 'Modalnya belum tercatat', aman: 'Aman' };
 export const HG_CAP = { lubang: 'belum ada harga', rugi: 'rugi', dimakan: 'modal naik', bawah: 'di bawah target', nol: 'untung nol', tanpaModal: 'tanpa modal', aman: '' };
@@ -75,7 +78,7 @@ const hgDokDraf = (draf, w) => ({ koleksi: 'aturanToko', data: { id: 'hargaDraf'
 export function lakuHarga(kini) {
   const mulai = hariIniIso(new Date((kini ? kini.getTime() : Date.now()) - HG_HARI_LAKU * 86400000)); const o = {};
   ambilPenjualan().forEach((p) => { if ((p.tanggal || '') < mulai) return;
-    if (p.jenis === 'literan' && p.merkSumber) o[kunciHarga(p.merkSumber, 'L')] = (o[kunciHarga(p.merkSumber, 'L')] || 0) + (Number(p.jumlahLiter) || 0);
+    if (p.jenis === 'literan' && (p.dariWadah || p.merkSumber)) { const nm = p.dariWadah || p.merkSumber; o[kunciHarga(nm, 'L')] = (o[kunciHarga(nm, 'L')] || 0) + (Number(p.jumlahLiter) || 0); }   // putaran 27: literan wadah dihitung di wadahnya
     else if ((p.jenis === 'karung' || p.jenis === 'repacking') && p.merkSumber) o[kunciHarga(p.merkSumber, 'S')] = (o[kunciHarga(p.merkSumber, 'S')] || 0) + (Number(p.totalKg) || 0);
     else if (p.jenis === 'kemasan' && p.namaProduk) { const u = Number(p.ukuranKemasan); if (isFinite(u) && u > 0) o[kunciHarga(p.namaProduk, 'K' + u)] = (o[kunciHarga(p.namaProduk, 'K' + u)] || 0) + (Number(p.jumlahUnit) || 0); } });
   return o;
@@ -103,23 +106,33 @@ export function hgSemua(kini) {
   const modalKg = (m) => (stokK[m] || {}).hppTerakhirPerKg || 0; const beliTerbaru = (m) => (stokK[m] || {}).hargaTerakhirPerKg || 0;
   const daftar = {};   // merk -> [satuan]
   const tambah = (m, s) => { if (!m) return; (daftar[m] = daftar[m] || []).indexOf(s) < 0 && daftar[m].push(s); };
-  Object.keys(stokK).forEach((m) => { tambah(m, 'L'); tambah(m, 'S'); }); kK.forEach((h) => tambah(h.merk, 'S')); kL.forEach((h) => tambah(h.merk, 'L'));
+  // putaran 27 (Bagian 5): harga LITER melekat pada WADAH (8 wadah) + merek yang dijual literan LANGSUNG dari karungnya. Merek yang cuma lewat wadah tidak
+  // punya baris liter (jadi tidak ditagih "belum ada harga"); harga liter lain yang masih tersimpan tampil di tab Literan sebagai "tidak dipakai".
+  const wadahD = aturWadah().daftar; const langsung = wbLiteranLangsung().daftar; const bolehL = (m) => wadahD.indexOf(m) >= 0 || langsung.indexOf(m) >= 0;
+  const wadahInfo = {}; wadahD.forEach((W) => { wadahInfo[W] = { modal: wbModalPerKg(W), beli: wbBeliPerKg(W) }; });
+  Object.keys(stokK).forEach((m) => { if (bolehL(m)) tambah(m, 'L'); tambah(m, 'S'); }); kK.forEach((h) => tambah(h.merk, 'S')); kL.forEach((h) => { if (bolehL(h.merk)) tambah(h.merk, 'L'); });
+  wadahD.forEach((W) => tambah(W, 'L')); langsung.forEach((m) => tambah(m, 'L'));
   kM.forEach((h) => { const u = Number(h.ukuran); if (isFinite(u) && u > 0) tambah(h.merk, 'K' + u); });
   Object.keys(stokM).forEach((k) => { const x = stokM[k]; const u = Number(x.ukuranKemasan); if (isFinite(u) && u > 0 && ((x.sisaUnit || 0) > 0 || (x.unitDibuat || 0) > 0)) tambah(x.namaProduk, 'K' + u); });
+  // putaran 27 (Bagian 3): nama yang DIARSIPKAN tidak tampil di katalog (juga tidak dihitung "belum ada harga"); dokumen katalognya tidak disentuh
+  // (baris liter sebuah WADAH tidak ikut arsip: wadah = tempat, harga liternya tetap dipakai walau buku lama bernama sama sudah diarsipkan)
+  const arsip = arPeta(); if (Object.keys(arsip).length) Object.keys(daftar).forEach((m) => { daftar[m] = daftar[m].filter((sid) => (sid === 'L' && !!wadahInfo[m]) || !arSembunyiHarga(m, sid, arsip)); if (!daftar[m].length) delete daftar[m]; });
   const baris = [];
   Object.keys(daftar).sort((a, b) => a.localeCompare(b)).forEach((m) => daftar[m].sort(hgUrutSatuan).forEach((sid) => {
     const st = satuanHarga(sid, m); const k = kunciHarga(m, sid);
     const dok = sid === 'L' ? kL.find((h) => h.merk === m) : sid === 'S' ? kK.find((h) => h.merk === m) : kM.find((h) => h.merk === m && Number(h.ukuran) === st.kg);
     const lamaN = dok ? Math.round(Number(sid === 'L' ? dok.hargaPerLiter : sid === 'S' ? dok.hargaPerKg : dok.hargaPerUnit) || 0) : 0;
     let modalUnit = 0, modalDari = '';
-    if (sid === 'L' || sid === 'S') { modalUnit = modalKg(m) * st.kg; modalDari = modalUnit > 0 ? 'beras' : ''; }
+    // putaran 27: liter WADAH → modal = rata-rata tertimbang isi wadah (kg × modal merek asal), beli terbaru = rata-rata tertimbang harga beli terakhirnya
+    const wd = sid === 'L' ? wadahInfo[m] || null : null; const mKg = wd ? wd.modal : modalKg(m); const bT = wd ? wd.beli : beliTerbaru(m);
+    if (sid === 'L' || sid === 'S') { modalUnit = mKg * st.kg; modalDari = modalUnit > 0 ? 'beras' : ''; }
     else { const x = stokM[kunciKemasan(m, st.kg)]; if (x && x.hppRataRataPerUnit > 0) { modalUnit = x.hppRataRataPerUnit; modalDari = 'adukan'; } else if (modalKg(m) > 0) { modalUnit = modalKg(m) * st.kg; modalDari = 'beras'; } }
-    const setel = hgModalSetel(dok, m); const naik = setel > 0 && beliTerbaru(m) > setel + 0.5; const naikRp = naik ? beliTerbaru(m) - setel : 0;
+    const setel = hgModalSetel(dok, m); const naik = setel > 0 && bT > setel + 0.5; const naikRp = naik ? bT - setel : 0;
     const n = draf[k] !== undefined ? draf[k] : lamaN; const N = nilaiHarga(n, modalUnit, st.kg, target, naik);
     const usul = modalUnit > 0 ? hgBulatAtas(modalUnit + target * st.kg, atur[st.bulat]) : 0;
     const sj = sengaja[k]; const sengajaAktif = !!sj && draf[k] === undefined && Number(sj.modal) === Math.round(modalUnit) && Number(sj.n) === lamaN && HG_PERLU.indexOf(N.status) >= 0;
-    const NT = modalDari === 'beras' && beliTerbaru(m) > 0 && n > 0 ? nilaiHarga(n, beliTerbaru(m) * st.kg, st.kg, target, false) : null;
-    baris.push({ k, merk: m, st, judul: m + ' · ' + st.nama, n, lamaN, adaDraf: draf[k] !== undefined, status: N.status, perKg: N.perKg, margin: N.margin, marginTerbaru: NT ? NT.margin : null, modalUnit, modalDari, modalKg: modalKg(m), beliTerbaru: beliTerbaru(m),
+    const NT = modalDari === 'beras' && bT > 0 && n > 0 ? nilaiHarga(n, bT * st.kg, st.kg, target, false) : null;
+    baris.push({ k, merk: m, st, judul: m + ' · ' + (wd ? 'Literan wadah' : st.nama), n, lamaN, adaDraf: draf[k] !== undefined, status: N.status, perKg: N.perKg, margin: N.margin, marginTerbaru: NT ? NT.margin : null, modalUnit, modalDari, modalKg: sid === 'L' || sid === 'S' ? mKg : modalKg(m), beliTerbaru: sid === 'L' || sid === 'S' ? bT : beliTerbaru(m), wadah: !!wd,
       usul, setelTanggal: dok ? String(dok.diubahPada || '').slice(0, 10) : '', naik, naikRp, naikTeks: naik ? 'harga beli naik ' + RP(naikRp) + '/kg sejak harga ini disetel' + (dok && dok.diubahPada ? ' ' + String(dok.diubahPada).slice(0, 10) : '') : '',
       sengaja: sengajaAktif, dok: dok || null, koleksi: st.koleksi, laku: Math.round((laku[k] || 0) * 100) / 100, pasar: pasar[k] || null, labelBasi: labelBasi.find((x) => x.k === k) || null, cap: HG_CAP[N.status] });
   }));
@@ -129,6 +142,37 @@ export function hgSemua(kini) {
     merk: Object.keys(daftar).sort((a, b) => a.localeCompare(b)), tanpaModal: hit('tanpaModal') };
 }
 export const cariBaris = (S, k) => S.baris.find((b) => b.k === k) || null;
+/**
+ * putaran 27: HAPUS harga liter yang tidak dipakai rak (bukan wadah, bukan literan langsung — mis. harga liter merek yang cuma lewat wadah). Yang dihapus
+ * hanya dokumen katalogHargaLiteran nama itu (+ drafnya bila ada); riwayat terbit (hargaTerbit) dan nota lama TIDAK disentuh, harga lamanya tercatat di
+ * jejak hapus. Dua ketukan. Harga liter wadah & literan langsung tidak bisa dihapus dari sini (masih dipakai rak).
+ */
+export function susunHapusLiter(merk, w, yakin) {
+  const m = String(merk || ''); const S = hgSemua(new Date(w.kini)); const x = hgLiteran(S).tidakDipakai.find((t) => t.merk === m);
+  if (!x) return { tolak: m + ' tidak ada di daftar harga liter yang tidak dipakai — harga liter wadah & literan langsung masih dipakai rak, ubah lewat katalog seperti biasa' };
+  const dok = ambilHargaLiteran().filter((h) => h.merk === m);
+  if (!yakin) return { tolak: 'Hapus harga liter ' + m + ' ' + RP(x.harga) + '/L? Riwayat terbit & nota lama tetap. Ketuk hapus sekali lagi', perluYakin: true };
+  const dokumen = []; const draf = drafHarga(); const k = kunciHarga(m, 'L');
+  if (draf[k] !== undefined) { const d = Object.assign({}, draf); delete d[k]; dokumen.push(hgDokDraf(d, w)); }
+  return { dokumen, hapus: dok.map((h) => ({ koleksi: 'katalogHargaLiteran', id: h.id })), jejakHapus: 'harga liter ' + m + ' ' + RP(x.harga) + '/L dihapus (tidak dipakai rak)',
+    patch: { ltYakin: '', kabar: 'Harga liter ' + m + ' ' + RP(x.harga) + '/L dihapus. Riwayat terbit & nota lama tetap. Katalog HP kasir ikut berganti: tuts literan ' + m + ' tetap ada tapi bertulisan "harga?".', kabarAwas: false } };
+}
+/**
+ * putaran 27 (Bagian 5): Katalog › Literan — 8 wadah (nama, harga per liter, modal isi, untung per liter, komposisi) + merek literan LANGSUNG + harga liter
+ * yang masih tersimpan tapi tidak dipakai rak (bukan wadah, bukan literan langsung). Harga per liter = baris 'L' katalog yang sama (draf/terbit biasa).
+ */
+export function hgLiteran(S) {
+  const stokK = hitungStokKarungPerMerk(); const L = wbLiteranLangsung(); const wadahD = aturWadah().daftar; const arsip = arPeta();
+  const barisL = (m) => cariBaris(S, kunciHarga(m, 'L'));
+  const wadah = wadahD.map((W) => { const b = barisL(W); const K = wbKomposisi(W); const rasio = wbRasio(W); const modalL = b ? b.modalUnit : 0; const harga = b ? b.n : 0;
+    return { nama: W, k: kunciHarga(W, 'L'), b, harga, rasio, modalLiter: modalL, modalKg: b ? b.modalKg : 0, untungLiter: harga > 0 && modalL > 0 ? harga - modalL : null, status: b ? b.status : 'lubang',
+      diketahui: K.diketahui, isiKg: K.totalKg, komposisi: K.positif.map((x) => ({ merk: x.merk, kg: x.kg, persen: K.positif.reduce((a, y) => a + y.kg, 0) > 0 ? Math.round(x.kg * 1000 / K.positif.reduce((a, y) => a + y.kg, 0)) / 10 : 0 })), sejak: K.sejak }; });
+  const langsung = L.daftar.map((m) => { const b = barisL(m); return { merk: m, k: kunciHarga(m, 'L'), b, harga: b ? b.n : 0, status: b ? b.status : 'lubang', modalLiter: b ? b.modalUnit : 0 }; });
+  const pakai = {}; wadahD.concat(L.daftar).forEach((m) => { pakai[m] = true; });
+  const tidakDipakai = ambilHargaLiteran().filter((h) => Number(h.hargaPerLiter) > 0 && !pakai[h.merk]).map((h) => ({ merk: h.merk, harga: Number(h.hargaPerLiter), adaBuku: !!stokK[h.merk], arsip: arBeras(h.merk, arsip) })).sort((a, b) => a.merk.localeCompare(b.merk));
+  const calon = Object.keys(stokK).filter((m) => !pakai[m] && !arBeras(m, arsip)).sort((a, b) => a.localeCompare(b));
+  return { wadah, langsung, tidakDipakai, calon, dariOwner: L.dariOwner };
+}
 export const teksMargin = (b) => (b.status === 'lubang' ? 'belum ada harga' : b.status === 'tanpaModal' ? RP(b.perKg) + '/kg · modal belum tercatat' : RP(b.perKg) + '/kg · ' + (b.margin < -0.5 ? 'RUGI ' + RP(-b.margin) : 'untung ' + RP(b.margin)) + '/kg' + (b.marginTerbaru !== null && Math.round(b.marginTerbaru) !== Math.round(b.margin) ? ' (vs beli terbaru ' + (b.marginTerbaru < -0.5 ? 'rugi ' : 'untung ') + RP(Math.abs(b.marginTerbaru)) + ')' : ''));
 
 // ---- LEMBAR UBAH satu harga → DRAF (atau catatan harga pasar)
@@ -237,7 +281,9 @@ export function susunPasar(S) {
 
 // ---- IDE J · LABEL RAK: harga TERBIT meninggalkan tugas ganti label; yang diingat = angka yang masih TERTULIS di label
 export function susunLabelTugas(S) {
-  const tugas = daftarLabel().map((t) => { const b = cariBaris(S, t.k); return { k: t.k, judul: b ? b.judul : t.k, lama: Number(t.lama) || 0, tanggal: t.tanggal || '', tulis: b ? b.lamaN : 0 }; });
+  // putaran 27: label nama yang diarsipkan tidak ditagih lagi (barangnya sudah tidak dijual)
+  const arsip = arPeta(); const tampil = (k) => { const i = String(k).lastIndexOf('|'); return i < 0 || !arSembunyiHarga(String(k).slice(0, i), String(k).slice(i + 1), arsip); };
+  const tugas = daftarLabel().filter((t) => tampil(t.k)).map((t) => { const b = cariBaris(S, t.k); return { k: t.k, judul: b ? b.judul : t.k, lama: Number(t.lama) || 0, tanggal: t.tanggal || '', tulis: b ? b.lamaN : 0 }; });
   return { tugas, ada: tugas.length > 0, judul: tugas.length + ' label di toko masih harga lama', arti: 'Harga yang terbit langsung dipakai kasir, tapi label di rak dan papan harga masih tulisan lama sampai ada yang menggantinya. Draf tidak membuat tugas — cuma yang sudah terbit.' };
 }
 export function susunLabelSelesai(k, w) {

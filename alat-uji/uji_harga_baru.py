@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/belanja-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/belanja-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js']
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -55,6 +55,8 @@ KOTAK = {
                          {'id': 502, 'tipe': 'saldoAwal', 'pemasok': 'SEJATI CONTOH', 'nominal': 5000000, 'tanggal': '2026-08-25', 'jam': '23:02', 'bonTanggal': None, 'catatan': 'bon lama, dari ingatan'}],
   'pemasokCatatan': [{'id': 'roda contoh', 'nama': 'RODA CONTOH', 'kontak': '0812 3456 7890', 'catatan': 'antar tiap Jumat', 'tempo': 21}],
   'aturanToko': [{'id': 'harga', 'targetPerKg': 600}],
+  # putaran 27 (Bagian 5): harga liter melekat pada WADAH — kotak pasir ini punya tiga wadah (Apex, Angsa, Pandan Wangi), belum ada yang disamakan isinya
+  'wadahLiteran': [{'id': 1, 'tanggal': '2026-08-01', 'jam': '08:00', 'tipe': 'atur', 'penuhKg': 50, 'puncakKg': 60, 'isiUlangKg': 10, 'takarKg': 1.8, 'daftar': ['IR64 Apex', 'Angsa', 'Pandan Wangi']}],
   'pengeluaranHarian': [], 'hargaPasar': [], 'hargaTerbit': [], 'pesananPemasok': [],
 }
 
@@ -248,8 +250,10 @@ function batchBaru(id, tgl, jam, pemasok) { return { id: id, tanggal: tgl, jam: 
 ASAP = r"""
 Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[n]); });
 var KINI = new Date(Date.now()); var S = hgSemua(KINI); var salah = [];
+// putaran 27: harga liter yang bukan wadah & bukan literan langsung tidak punya baris katalog — tampil di tab Literan sebagai "tidak dipakai"
+var LTX = hgLiteran(S); var nLtTidak = 0;
 // tiap dokumen katalog = satu baris dengan angka yang sama
-var nDok = 0; [['katalogHargaKarung', 'S', 'hargaPerKg'], ['katalogHargaLiteran', 'L', 'hargaPerLiter'], ['katalogHargaKemasan', 'K', 'hargaPerUnit']].forEach(function (x) { (CAD[x[0]] || []).forEach(function (d) { nDok += 1; var sid = x[1] === 'K' ? 'K' + Number(d.ukuran) : x[1]; var b = cariBaris(S, kunciHarga(d.merk, sid)); if (!b) salah.push('katalog tanpa baris: ' + d.merk + ' ' + sid); else if (b.lamaN !== Math.round(Number(d[x[2]]) || 0)) salah.push('angka beda: ' + b.k); }); });
+var nDok = 0; [['katalogHargaKarung', 'S', 'hargaPerKg'], ['katalogHargaLiteran', 'L', 'hargaPerLiter'], ['katalogHargaKemasan', 'K', 'hargaPerUnit']].forEach(function (x) { (CAD[x[0]] || []).forEach(function (d) { nDok += 1; var sid = x[1] === 'K' ? 'K' + Number(d.ukuran) : x[1]; var b = cariBaris(S, kunciHarga(d.merk, sid)); if (!b && sid === 'L' && LTX.tidakDipakai.some(function (t) { return t.merk === d.merk; })) nLtTidak += 1; else if (!b) salah.push('katalog tanpa baris: ' + d.merk + ' ' + sid); else if (b.lamaN !== Math.round(Number(d[x[2]]) || 0)) salah.push('angka beda: ' + b.k); }); });
 var B = susunBon(KINI); var up = hitungUtangPemasok(); var totalMesin = up.reduce(function (a, x) { return a + x.totalUtang; }, 0), nBonMesin = up.reduce(function (a, x) { return a + x.bon.length; }, 0);
 if (B.total !== totalMesin || B.nBon !== nBonMesin) salah.push('bon ≠ mesin: ' + B.total + ' vs ' + totalMesin);
 var D = daftarBelanja(KINI); var stokK = hitungStokKarungPerMerk(); var laju = hitungLajuPakai().kgMerk || {};
@@ -258,6 +262,7 @@ D.merk.forEach(function (m) { var h = hariHabis((stokK[m.merk] || {}).sisaKg || 
 var kenal = function (nama) { var o = {}; (CAD[nama] || []).forEach(function (d) { Object.keys(d).forEach(function (k) { o[k] = 1; }); }); return o; };
 var WX = { tanggal: '2026-09-22', jam: '10:00', kini: '2026-09-22T03:00:00.000Z', idUnik: function () { return Math.random(); } };
 var kU = kenal('utangPemasokMutasi'); var px = B.bon[0]; var catatan = []; var pgAsli = cacheMentah('pengaturan').slice(); var tanpaTitik = false;
+if (nLtTidak) catatan.push(nLtTidak + ' harga liter tidak dipakai rak (bukan wadah, bukan literan langsung — tab Literan): ' + LTX.tidakDipakai.map(function (x) { return x.merk; }).join(', '));
 if (px) { var by = susunBayar({ pemasok: px.pemasok, bonId: px.id, ketik: '1', dari: 'laci' }, WX);
   // Kas toko di cadangan bisa memang kurang dari Rp1 (mesin beku kasPada, sama persis dengan sistem lama): penjaga kas MENOLAK dengan benar → itu catatan,
   // bukan kegagalan. Kolom dokumen tetap diuji: titik kas disingkirkan SEMENTARA (kasPada = null → penjaga tidak berlaku), lalu dikembalikan.
@@ -292,7 +297,7 @@ if __name__ == '__main__':
         rusak = {
             # ---- H1 katalog
             'rugi memakai >= (untung nol jadi RUGI)': js.replace("const status = margin < -0.5 ? 'rugi' : Math.abs(margin) <= 0.5 ? 'nol'", "const status = margin <= 0.5 ? 'rugi' : Math.abs(margin) <= 0.5 ? 'nol'"),
-            '"modal naik sesudah harga disetel" tidak terbaca (dimakan = bawah)': js.replace("const setel = hgModalSetel(dok, m); const naik = setel > 0 && beliTerbaru(m) > setel + 0.5;", "const setel = 0; const naik = false;"),
+            '"modal naik sesudah harga disetel" tidak terbaca (dimakan = bawah)': js.replace("const setel = hgModalSetel(dok, m); const naik = setel > 0 && bT > setel + 0.5;", "const setel = 0; const naik = false;"),
             'target bawaan angka karangan (bukan rata-rata yang berlaku)': js.replace("return { targetPerKg: t === null ? targetTerukur() : t, targetDariRata: t === null,", "return { targetPerKg: t === null ? 600 : t, targetDariRata: t === null,"),
             'usul tidak dibulatkan ke atas': js.replace("const usul = modalUnit > 0 ? hgBulatAtas(modalUnit + target * st.kg, atur[st.bulat]) : 0;", "const usul = modalUnit > 0 ? Math.round(modalUnit + target * st.kg) : 0;"),
             'modal kemasan tidak diambil dari adukan (beras saja)': js.replace("if (x && x.hppRataRataPerUnit > 0) { modalUnit = x.hppRataRataPerUnit; modalDari = 'adukan'; } else if", "if (false) { modalUnit = x.hppRataRataPerUnit; modalDari = 'adukan'; } else if"),
@@ -310,7 +315,7 @@ if __name__ == '__main__':
             'terbit dengan harga rugi tanpa ketukan kedua': js.replace("if (rugi.length && !yakin) return { tolak:", "if (false) return { tolak:"),
             'terbit lupa mengosongkan draf': js.replace("dokumen.push(hgDokDraf({}, w)); dokumen.push({ koleksi: 'aturanToko', data: { id: 'hargaLabel'", "dokumen.push({ koleksi: 'aturanToko', data: { id: 'hargaLabel'"),
             'terbit menulis dokumen katalog dengan id BARU (katalog jadi dua)': js.replace("const id = b.dok ? b.dok.id : b.st.id === 'K' + b.st.kg", "const id = b.st.id === 'K' + b.st.kg"),
-            'label rak: tugas dibuat untuk draf (belum terbit)': js.replace("  const tugas = daftarLabel().map((t) => {", "  const tugas = daftarLabel().concat(S.baris.filter((b) => b.adaDraf).map((b) => ({ k: b.k, lama: b.lamaN, tanggal: '' }))).map((t) => {"),
+            'label rak: tugas dibuat untuk draf (belum terbit)': js.replace("  const tugas = daftarLabel().filter((t) => tampil(t.k)).map((t) => {", "  const tugas = daftarLabel().filter((t) => tampil(t.k)).concat(S.baris.filter((b) => b.adaDraf).map((b) => ({ k: b.k, lama: b.lamaN, tanggal: '' }))).map((t) => {"),   # putaran 27: daftar label disaring arsip dulu
             'label rak: angka yang diingat = harga lama terakhir, bukan yang masih tertulis': js.replace("const tertulis = ada ? Number(ada.lama) || 0 : b.lamaN;", "const tertulis = b.lamaN;"),
             'atur harga: langkah nol diterima': js.replace("|| baca('langkahRp', (n) => n > 0 && n <= 10000, 'Langkah naik-turun per kg harus 1–10.000 (tidak boleh nol)')", "|| baca('langkahRp', (n) => n >= 0 && n <= 10000, 'Langkah naik-turun per kg harus 1–10.000 (tidak boleh nol)')"),
             'ongkos bongkar per kg angka mati (bukan terukur)': js.replace("bongkarKg: bk === null ? bongkarTerukur() : bk, bongkarTerukur: bk === null,", "bongkarKg: bk === null ? 40 : bk, bongkarTerukur: bk === null,"),
