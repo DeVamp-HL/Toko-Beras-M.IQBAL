@@ -61,7 +61,7 @@ export function pasangLayarStok(akar, opsi) {
   }
   const keranjangJual = () => ({ keranjang: opsi.keranjangJual().keranjang, antrean: opsi.keranjangJual().antrean });
   // mode "atur susunan": draf di keadaan layar; baru ditulis saat SIMPAN (satu dokumen berisi seluruh aturan)
-  const drafAtur = () => { const a = L.aturWadah(); const t = (n) => String(n).replace('.', ','); return { penuh: t(a.penuhKg), puncak: t(a.puncakKg), ulang: t(a.isiUlangKg), takar: t(a.takarKg), daftar: a.daftar.slice(), resep: JSON.parse(JSON.stringify(a.resep)), pilih: null, resepUntuk: null }; };
+  const drafAtur = () => { const a = L.aturWadah(); const t = (n) => String(n).replace('.', ','); return { penuh: t(a.penuhKg), puncak: t(a.puncakKg), ulang: t(a.isiUlangKg), takar: t(a.takarKg), susut: t(a.susutWajarKg), daftar: a.daftar.slice(), resep: JSON.parse(JSON.stringify(a.resep)), pilih: null, resepUntuk: null }; };
   const ubahAtur = (f) => { const d = JSON.parse(JSON.stringify(st().atur || drafAtur())); f(d); set({ atur: d }); };
   const AKSI = Object.assign({
     tombolMati: ({ kal }) => set({ kabar: kal, kabarAwas: true }),   // putaran 23: tombol peran — mati dengan kalimat sebabnya
@@ -89,6 +89,7 @@ export function pasangLayarStok(akar, opsi) {
     bukaAtur: () => set({ atur: st().atur ? null : drafAtur(), wadahAktif: null }),
     aturPenuh: (v) => ubahAtur((d) => { d.penuh = String(v).slice(0, 6); }), aturPuncak: (v) => ubahAtur((d) => { d.puncak = String(v).slice(0, 6); }),
     aturUlang: (v) => ubahAtur((d) => { d.ulang = String(v).slice(0, 6); }), aturTakar: (v) => ubahAtur((d) => { d.takar = String(v).slice(0, 6); }),
+    aturSusut: (v) => ubahAtur((d) => { d.susut = String(v).slice(0, 6); }),
     aturGeser: ({ i, arah }) => ubahAtur((d) => { d.daftar = L.geserWadah(d.daftar, Number(i), Number(arah)); d.pilih = null; }),
     aturPilih: ({ i }) => ubahAtur((d) => { d.pilih = d.pilih === Number(i) ? null : Number(i); d.resepUntuk = null; }),
     aturGanti: ({ i, merk }) => ubahAtur((d) => { const lama = d.daftar[Number(i)]; d.daftar = L.gantiBerasWadah(d.daftar, Number(i), merk); if (lama && lama !== merk) delete d.resep[lama]; d.pilih = null; }),
@@ -97,7 +98,7 @@ export function pasangLayarStok(akar, opsi) {
     aturResep: ({ merk }) => ubahAtur((d) => { d.resepUntuk = d.resepUntuk === merk ? null : merk; d.pilih = null; if (!d.resep[merk]) d.resep[merk] = L.resepWadah(merk); }),
     aturResepTakar: ({ merk, j, arah }) => ubahAtur((d) => { const r = d.resep[merk]; if (!r || !r[Number(j)]) return; r[Number(j)].takar = Math.max(0, r[Number(j)].takar + Number(arah)); }),
     aturResepTambah: ({ merk, bahan }) => ubahAtur((d) => { const r = d.resep[merk] || (d.resep[merk] = L.resepWadah(merk)); if (r.length < L.WADAH_MAKS_RESEP && !r.some((x) => x.merk === bahan)) r.push({ merk: bahan, takar: 1 }); }),
-    simpanAtur: async () => { const d = st().atur; if (!d) return; const r = L.susunAturWadah({ penuhKg: d.penuh, puncakKg: d.puncak, isiUlangKg: d.ulang, takarKg: d.takar, daftar: d.daftar, resep: d.resep }, waktu()); if (await tulis(r)) set({ atur: null }); },
+    simpanAtur: async () => { const d = st().atur; if (!d) return; const r = L.susunAturWadah({ penuhKg: d.penuh, puncakKg: d.puncak, isiUlangKg: d.ulang, takarKg: d.takar, susutWajarKg: d.susut, daftar: d.daftar, resep: d.resep }, waktu()); if (await tulis(r)) set({ atur: null }); },
     // ---- BARANG MASUK (ST1): draf di keadaan layar + localStorage; ditulis saat SIMPAN
     bukaMasuk: () => set({ lembar: 'masuk', masuk: bacaLokal(KUNCI_DRAF_MASUK) || C.drafMasukKosong(waktu()), yakinM: false, yakinHapus: false, kabar: '', aturC: null }),
     tutupLembar: () => set({ lembar: null, kabar: '', aturC: null, yakinM: false, yakinHapus: false, yakinHapusA: false, bukaA: null }),
@@ -145,17 +146,24 @@ export function pasangLayarStok(akar, opsi) {
       if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true, qYakin: r.perluYakin || '' }); return; }
       if (await tulis(r)) set({ qBuka: null, qAlasan: '', qYakin: '' }); },
     // ---- COCOKKAN (ST3): hitungan keliling gudang di keadaan layar + localStorage; ditulis saat SIMPAN
-    bukaCocok: () => set({ lembar: 'cocok', cocok: bacaLokal(KUNCI_DRAF_COCOK) || cocokKosong(), yakinC: {}, kabar: '', aturC: null }),
+    bukaCocok: () => set({ lembar: 'cocok', cocok: drafCocok(), yakinC: {}, kabar: '', aturC: null }),
     // putaran 25: tombol pembalik "Bulan X terkunci — cocokkan stok HARI INI": buka Cocokkan langsung di barang catatan asalnya
-    kpCocok: ({ kunci }) => { AKSI.bukaCocok({}); if (kunci) AKSI.cBuka({ kunci }); set({ kpPembalik: null, kabar: 'Cocokkan HARI INI — hitung fisiknya, selisihnya tercatat hari ini (catatan bulan terkunci tidak disentuh)', kabarAwas: false }); },
-    cTab: ({ t }) => ubahCocok((c) => { c.tab = t; c.buka = null; c.karung = ''; c.kg = ''; c.angka = ''; }),
-    cBuka: ({ kunci }) => ubahCocok((c) => { c.buka = c.buka === kunci ? null : kunci; c.karung = ''; c.kg = ''; c.angka = ''; }),
+    kpCocok: ({ kunci }) => { AKSI.bukaCocok({}); if (kunci) { const kk = String(kunci).replace(/^beras\|/, 'tumpukan|'); const tb = kk.split('|')[0]; if (C.TAB_COCOK.some((x) => x[0] === tb)) AKSI.cTab({ t: tb }); AKSI.cBuka({ kunci: kk }); } set({ kpPembalik: null, kabar: 'Cocokkan HARI INI — hitung fisiknya, selisihnya tercatat hari ini (catatan bulan terkunci tidak disentuh)', kabarAwas: false }); },
+    cTab: ({ t }) => ubahCocok((c) => { c.tab = C.tabCocokSah(t); c.buka = null; kosongkanKetik(c); }),
+    cBuka: ({ kunci }) => ubahCocok((c) => { c.buka = c.buka === kunci ? null : kunci; kosongkanKetik(c); }),
+    cSatuan: ({ s: sat }) => ubahCocok((c) => { c.satuanIsi = sat; }),
     cKetik: (v, el) => ubahCocok((c) => { c[el.dataset.kolom] = String(v).slice(0, 10); }),
     cAlasan: (v, el) => ubahCocok((c) => { c.alasan[el.dataset.kunci] = String(v).slice(0, 60); }),
-    cPas: ({ kunci, sistem }) => ubahCocok((c) => { c.hitung[kunci] = String(sistem); if (c.buka === kunci) c.buka = null; }),
-    cPakai: ({ kunci, satuan }) => ubahCocok((c) => { if (satuan === 'kg') { const kr = angka(c.karung); const kg = angka(c.kg); c.hitung[kunci] = String(Math.round((kr * (st().beratHitung || 50) + kg) * 100) / 100); } else c.hitung[kunci] = String(angka(c.angka)); c.buka = null; c.karung = ''; c.kg = ''; c.angka = ''; }),
-    cBerat: ({ n }) => set({ beratHitung: Number(n) }),
-    cHapusHitung: ({ kunci }) => ubahCocok((c) => { delete c.hitung[kunci]; }),
+    cPas: ({ kunci, sistem, karung }) => ubahCocok((c) => { if (sistem !== undefined && sistem !== '') c.hitung[kunci] = String(sistem); if (karung !== undefined && karung !== '') c.hitung[kunci.replace(/^wadah\|/, 'wadahKarung|')] = String(karung); if (c.buka === kunci) c.buka = null; }),
+    cPakai: ({ kunci, satuan }) => ubahCocok((c) => {
+      const tab = kunci.split('|')[0]; const B = C.barangCocok(tab).find((b) => b.kunci === kunci);
+      if (tab === 'tumpukan') c.hitung[kunci] = String(Math.round((angka(c.karung) * 50 + angka(c.karung25) * 25 + angka(c.kg)) * 100) / 100);
+      else if (tab === 'wadah' && B) { if (String(c.isi || '').trim()) c.hitung[kunci] = String(isiKeKg(c.isi, c.satuanIsi, B)); if (String(c.kr || '').trim()) c.hitung[B.kunciKarung] = String(angka(c.kr)); }
+      else if (satuan !== 'kg') c.hitung[kunci] = String(angka(c.angka));
+      c.buka = null; kosongkanKetik(c); }),
+    cHapusHitung: ({ kunci }) => ubahCocok((c) => { delete c.hitung[kunci]; delete c.hitung[kunci.replace(/^wadah\|/, 'wadahKarung|')]; }),
+    // putaran 27: cocokkan wadah menemukan isi ulang yang lupa dicatat → catat dulu sebagai takar dari karung di belakangnya, baru dicocokkan
+    cLupa: async ({ wadah, merk, n }) => { if (await tulis(L.susunTakarWadah(wadah, [{ merk, takar: Number(n), dari: wadah }], waktu(), keranjangJual()))) set({ kabar: st().kabar + ' — sekarang cocokkan lagi isi wadah ' + wadah + '.' }); },
     cBersih: () => { simpanLokal(KUNCI_DRAF_COCOK, null); set({ cocok: cocokKosong(), yakinC: {}, kabar: 'Hitungan dikosongkan', kabarAwas: false }); },
     cSimpan: async () => { const c = st().cocok; if (!c) return; const r = C.susunSimpanCocok(c.tab, c.hitung, c.alasan, waktu(), st().yakinC);
       if (r.tolak) { const y = Object.assign({}, st().yakinC); if (r.perluYakin) y[r.perluYakin] = true; set({ kabar: r.tolak, kabarAwas: true, yakinC: y }); return; }
@@ -204,8 +212,13 @@ export function pasangLayarStok(akar, opsi) {
   delegasi(akar, AKSI);
 
   const angka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); if (!t) return 0; const n = Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return isFinite(n) ? n : 0; };
-  const cocokKosong = () => ({ tab: 'beras', hitung: {}, alasan: {}, buka: null, karung: '', kg: '', angka: '' });
+  const cocokKosong = () => ({ tab: 'tumpukan', hitung: {}, alasan: {}, buka: null, karung: '', karung25: '', kg: '', angka: '', isi: '', satuanIsi: 'takar', kr: '' });
+  // draf hitungan lama (tab 'beras' = satu angka untuk tumpukan + karung terbuka + wadah) dibuka di tab tumpukan; angkanya tidak dipakai (putaran 27)
+  const drafCocok = () => { const c = bacaLokal(KUNCI_DRAF_COCOK); return c ? Object.assign(cocokKosong(), c, { tab: C.tabCocokSah(c.tab) }) : cocokKosong(); };
   const ubahMasuk = (f) => { const d = JSON.parse(JSON.stringify(st().masuk || C.drafMasukKosong(waktu()))); f(d); simpanLokal(KUNCI_DRAF_MASUK, d); set({ masuk: d, yakinM: false, yakinHapus: false }); };
+  // putaran 27: isi wadah boleh diketik dalam takar (× isi satu takar aturan wadah), liter (× rasio), atau kg
+  const isiKeKg = (v, sat, B) => Math.round(angka(v) * (sat === 'takar' ? B.takarKg : sat === 'liter' ? B.rasio : 1) * 100) / 100;
+  const kosongkanKetik = (c) => { c.karung = ''; c.karung25 = ''; c.kg = ''; c.angka = ''; c.isi = ''; c.kr = ''; };
   const ubahCocok = (f) => { const c = JSON.parse(JSON.stringify(st().cocok || cocokKosong())); f(c); simpanLokal(KUNCI_DRAF_COCOK, c); set({ cocok: c, yakinC: {} }); };
   const ubahAdukan = (f) => { const d = JSON.parse(JSON.stringify(st().adukan || A.drafAdukanKosong(waktu()))); f(d); simpanLokal(KUNCI_DRAF_ADUKAN, d); set({ adukan: d, yakinA: {} }); };
   const ubahAturTp = (f) => { const a = TP.aturTempat(); const d = JSON.parse(JSON.stringify(st().aturTp || { daftar: a.daftar, batasTumpuk: String(a.batasTumpuk) })); f(d); d.yakin = false; set({ aturTp: d }); };
@@ -418,7 +431,7 @@ export function pasangLayarStok(akar, opsi) {
         <div class="ket tautan" data-aksi="lainPilihBuka">${s.lainPilih ? 'batal' : '+ buka karung bahan campuran dari gudang'}</div>
         ${s.lainPilih ? h`<div class="tombol-baris rapat" data-k="calon-lain">${L.calonKarung().map((t) => h`<div class="kaca-btn" data-aksi="bukaKarung" data-merk="${t.merk}">${t.merk} · ${t.karung} karung${t.dipegang.length ? ' · sudah terbuka di belakang ' + t.dipegang.join(', ') : ''}</div>`)}</div>` : ''}</div>
       <div class="kartu" data-k="atur-wadah" style="gap: 4px;"><div class="label">Aturan wadah ${a.dariOwner ? '· diatur owner ' + tanggalPendek(a.sejak) : '· bawaan'}</div>
-        <div class="ket">rata sejajar bibir kotak ${DESIMAL(a.penuhKg)} kg · menggunung sampai ${DESIMAL(a.puncakKg)} kg · minta isi ulang saat tersisa ${DESIMAL(a.isiUlangKg)} kg · 1 takar ${DESIMAL(a.takarKg)} kg · ${a.daftar.length} wadah</div>
+        <div class="ket">rata sejajar bibir kotak ${DESIMAL(a.penuhKg)} kg · menggunung sampai ${DESIMAL(a.puncakKg)} kg · minta isi ulang saat tersisa ${DESIMAL(a.isiUlangKg)} kg · 1 takar ${DESIMAL(a.takarKg)} kg · susut wajar ≤ ${DESIMAL(a.susutWajarKg)} kg/wadah/hari · ${a.daftar.length} wadah</div>
         <div class="ket">Tiap tingkat turun lewat jalurnya sendiri: buka karung → tumpukan gudang · takar → karung di belakang (wadah naik) · literan terjual → wadah. Buku mesin lama tetap dipotong sekali saja, saat terjual — jumlah tumpukan + karung terbuka + isi wadah selalu sama dengan buku.</div></div>
     </section>`;
   }
@@ -444,7 +457,8 @@ export function pasangLayarStok(akar, opsi) {
         <div><div class="ket">Rata sejajar bibir kotak (kg)</div><input class="ketik-nama" id="aturPenuh" type="text" inputmode="decimal" value="${d.penuh}" data-ketik="aturPenuh"></div>
         <div><div class="ket">Batas menggunung (kg)</div><input class="ketik-nama" id="aturPuncak" type="text" inputmode="decimal" value="${d.puncak}" data-ketik="aturPuncak"></div>
         <div><div class="ket">Minta isi ulang saat tersisa (kg)</div><input class="ketik-nama" id="aturUlang" type="text" inputmode="decimal" value="${d.ulang}" data-ketik="aturUlang"></div>
-        <div><div class="ket">Isi satu takar / serok (kg)</div><input class="ketik-nama" id="aturTakar" type="text" inputmode="decimal" value="${d.takar}" data-ketik="aturTakar"></div></div></div>
+        <div><div class="ket">Isi satu takar / serok (kg)</div><input class="ketik-nama" id="aturTakar" type="text" inputmode="decimal" value="${d.takar}" data-ketik="aturTakar"></div>
+        <div><div class="ket">Susut takar wajar per wadah per hari (kg) — dipakai saat cocokkan wadah</div><input class="ketik-nama" id="aturSusut" type="text" inputmode="decimal" value="${d.susut}" data-ketik="aturSusut"></div></div></div>
       <div class="tombol-baris"><div class="kaca-btn" data-aksi="bukaAtur">batal</div><div class="kaca-btn aktif emas" data-aksi="simpanAtur">SIMPAN SUSUNAN &amp; ATURAN</div></div>
     </section>`;
   }
@@ -499,33 +513,51 @@ export function pasangLayarStok(akar, opsi) {
   }
   // ---------- COCOKKAN / HITUNG GUDANG (ST3): beras (karung × isi + kg lepas), kemasan jadi (unit), kantong (lembar) ----------
   function gambarCocok(s) {
-    const c = s.cocok || cocokKosong(); const r = C.susunCocok(c.tab, c.hitung, c.alasan, s.yakinC); const berat = s.beratHitung || 50;
+    const c = Object.assign(cocokKosong(), s.cocok || {}); c.tab = C.tabCocokSah(c.tab); const r = C.susunCocok(c.tab, c.hitung, c.alasan, s.yakinC);
     const aktif = r.baris.find((b) => b.kunci === c.buka) || null; const KG = (n) => DESIMAL(Math.round(n * 100) / 100);
     const nilai = (b) => (b.satuan === 'kg' ? KG(b.sistem) + ' kg' : b.sistem + ' ' + b.satuan);
+    const sel = (n) => (n > 0 ? '+' : '') + KG(n) + ' kg';
+    const judulTab = { tumpukan: 'tumpukan gudang: karung utuh 50 / 25 kg per nama · selisih = karung hilang / lebih × modal · tidak ada liter di sini', wadah: 'wadah literan: isi kotak (takar / liter / kg) + karung terbuka di belakangnya · selisih dibagi ke merek asal isinya · susut kecil = wajar', kemasan: 'kemasan jadi per unit', kantong: 'kantong kosong & paper bag per lembar' };
+    // ---- panel isian satu barang
+    const panelTumpukan = (b) => h`<div class="ps-form tiga"><div><div class="ket">Karung 50 kg utuh</div><input class="ketik-nama" id="ckKarung" type="text" inputmode="numeric" placeholder="0" value="${c.karung}" data-ketik="cKetik" data-kolom="karung"></div>
+        <div><div class="ket">Karung 25 kg utuh</div><input class="ketik-nama" id="ckKarung25" type="text" inputmode="numeric" placeholder="0" value="${c.karung25}" data-ketik="cKetik" data-kolom="karung25"></div>
+        <div><div class="ket">kg karung terbuka yang TIDAK di belakang wadah (repack / literan langsung)</div><input class="ketik-nama" id="ckKg" type="text" inputmode="decimal" placeholder="0" value="${c.kg}" data-ketik="cKetik" data-kolom="kg"></div></div>
+      <div class="ket">${angka(c.karung)} × 50 + ${angka(c.karung25)} × 25 + ${DESIMAL(angka(c.kg))} = <b>${KG(angka(c.karung) * 50 + angka(c.karung25) * 25 + angka(c.kg))} kg</b> di tumpukan · tercatat ±${b.karungSistem} karung ${b.beratKarung} kg</div>`;
+    const panelWadah = (b) => h`<div class="ket">komposisi tercatat: ${b.komposisi.length ? b.komposisi.map((x) => x.merk + ' ' + KG(x.kg) + ' kg').join(' + ') : b.isiSistem === null ? 'belum pernah disamakan' : 'kosong'} · modal isi ${RP(Math.round(b.modal))}/kg${b.sejak ? ' · disamakan terakhir ' + tanggalPendek(b.sejak) : ''}</div>
+      <div class="ps-form dua"><div><div class="ket">Isi kotak wadah</div><input class="ketik-nama" id="ckIsi" type="text" inputmode="decimal" placeholder="0" value="${c.isi}" data-ketik="cKetik" data-kolom="isi">
+          <div class="jalur rapat">${[['takar', 'takar'], ['liter', 'liter'], ['kg', 'kg']].map(([id, nm]) => h`<div class="seg ${c.satuanIsi === id ? 'aktif' : ''}" data-aksi="cSatuan" data-s="${id}">${nm}</div>`)}</div></div>
+        <div><div class="ket">Sisa karung ${b.karungNama} di belakangnya (kg)</div><input class="ketik-nama" id="ckKr" type="text" inputmode="decimal" placeholder="${b.karungSistem === null ? 'belum ditandai' : KG(b.karungSistem)}" value="${c.kr}" data-ketik="cKetik" data-kolom="kr"></div></div>
+      ${String(c.isi || '').trim() ? h`<div class="ket">${DESIMAL(angka(c.isi))} ${c.satuanIsi}${c.satuanIsi === 'kg' ? '' : ' × ' + DESIMAL(c.satuanIsi === 'takar' ? b.takarKg : b.rasio) + ' kg'} = <b>${KG(isiKeKg(c.isi, c.satuanIsi, b))} kg</b> di kotak</div>` : ''}`;
+    const hasilWadah = (b) => h`<div class="ket ${b.besar ? 'awas-teks' : ''}">${b.pertama ? 'hitungan PERTAMA (belum pernah ditandai) — jadi titik awal, tidak ada selisih · ' : ''}isi ${b.isiH === null ? '—' : KG(b.isiH) + ' kg' + (b.isiSistem === null ? '' : ' (tercatat ' + KG(b.isiSistem) + ', ' + sel(b.dIsi) + ')')} · karung ${b.krH === null ? '—' : KG(b.krH) + ' kg' + (b.karungSistem === null ? '' : ' (tercatat ' + KG(b.karungSistem) + ', ' + sel(b.dKr) + ')')}
+        → ${b.selisih === 0 ? 'cocok' : 'selisih ' + sel(b.selisih) + ' = ' + RP(b.rp) + (b.wajar ? ' · SUSUT TAKAR WAJAR (≤ ' + KG(b.wajarKg) + ' kg dalam ' + b.lamaHari + ' hari)' : b.besar ? ' · DI ATAS batas wajar ' + KG(b.wajarKg) + ' kg — alasannya wajib' : '')}
+        ${Object.keys(b.alokasi).length ? ' · buku: ' + Object.keys(b.alokasi).map((m) => m + ' ' + sel(b.alokasi[m])).join(', ') : ''}${b.aneh ? ' · ANEH: melebihi isi kotak / karung, cek lagi' : ''}</div>
+      ${b.lupaTakar ? h`<div class="pita-info emas" data-k="lupa-${b.nama}">${b.isiSistem !== null && b.isiSistem < 0 ? 'Wadah ' + b.nama + ' tercatat MINUS ' + KG(-b.isiSistem) + ' kg' : 'Wadah lebih ' + KG(b.dIsi) + ' kg, karung di belakangnya kurang ' + KG(-b.dKr) + ' kg'} — sepertinya ada isi ulang yang lupa dicatat.
+        <div class="kaca-btn aktif" data-aksi="cLupa" data-wadah="${b.nama}" data-merk="${b.karungNama}" data-n="${b.lupaTakar}">catat isi ulang ${b.lupaTakar} takar dari karung ${b.karungNama} dulu</div></div>` : ''}`;
+    const panel = (b) => h`<div class="kartu rincian-wadah" data-k="panel-${b.kunci}" style="gap: 8px;"><div class="label">${b.no ? b.no + ' · ' : ''}${b.nama}</div>
+        <div class="ket">tercatat ${b.tab === 'wadah' ? 'isi ' + (b.isiSistem === null ? '? (belum ditandai)' : KG(b.isiSistem) + ' kg') + ' + karung ' + (b.karungSistem === null ? '?' : KG(b.karungSistem) + ' kg') : nilai(b)} · modal ${RP(Math.round(b.modal))}/${b.satuan}${b.cocokAkhir ? ' · terakhir dicocokkan ' + b.cocokAkhir : ' · belum pernah dicocokkan'}</div>
+        ${b.rincian ? h`<div class="ket">${b.rincian}</div>` : ''}
+        ${b.tab === 'tumpukan' ? panelTumpukan(b) : b.tab === 'wadah' ? panelWadah(b) : h`<div><div class="ket">Dihitung (${b.satuan})</div><input class="ketik-nama" id="ckAngka" type="text" inputmode="numeric" placeholder="0" value="${c.angka}" data-ketik="cKetik" data-kolom="angka"></div>`}
+        <div class="tombol-baris rapat"><div class="kaca-btn aktif" data-aksi="cPakai" data-kunci="${b.kunci}" data-satuan="${b.satuan}">PAKAI HITUNGAN INI</div>${b.tab === 'wadah' ? (b.isiSistem !== null || b.karungSistem !== null ? h`<div class="kaca-btn" data-aksi="cPas" data-kunci="${b.kunci}" data-sistem="${b.isiSistem === null ? '' : b.isiSistem}" data-karung="${b.karungSistem === null ? '' : b.karungSistem}">✓ cocok persis</div>` : '') : h`<div class="kaca-btn" data-aksi="cPas" data-kunci="${b.kunci}" data-sistem="${b.sistem}">✓ cocok persis</div>`}</div>
+        ${b.ada ? (b.tab === 'wadah' ? hasilWadah(b) : h`<div class="ket ${b.selisih < 0 ? 'awas-teks' : ''}">dihitung ${b.satuan === 'kg' ? KG(b.dihitung) + ' kg' : b.dihitung + ' ' + b.satuan} → ${b.selisih === 0 ? 'cocok persis' : 'selisih ' + (b.selisih > 0 ? '+' : '') + (b.satuan === 'kg' ? KG(b.selisih) + ' kg' : b.selisih + ' ' + b.satuan) + (b.tab === 'tumpukan' && b.beratKarung ? ' (' + DESIMAL(Math.round(b.selisih / b.beratKarung * 100) / 100) + ' karung)' : '') + ' = ' + RP(b.rp) + (b.selisih < 0 ? ' (susut)' : ' (stok naik)')}${b.aneh ? ' · ANEH: lebih dari dua kali tercatat, cek lagi' : ''}</div>`) : ''}
+        ${b.besar ? h`<div><div class="ket">${b.tab === 'wadah' ? 'Di atas susut wajar' : 'Selisih lebih dari ' + r.batasSelisih + ' %'} — alasannya (wajib)</div><input class="ketik-nama" id="ckAlasan-${b.kunci}" type="text" placeholder="mis. tumpah waktu bongkar" value="${b.alasan}" data-ketik="cAlasan" data-kunci="${b.kunci}"></div>` : ''}
+        ${b.ada ? h`<div class="ket tautan" data-aksi="cHapusHitung" data-kunci="${b.kunci}">hapus hitungan ini</div>` : ''}</div>`;
+    const kanan = (b) => (!b.ada ? '—' : b.tab === 'wadah' && b.pertama && b.selisih === 0 ? 'titik awal' : b.selisih === 0 ? 'cocok' : (b.selisih > 0 ? '+' : '') + (b.satuan === 'kg' ? KG(b.selisih) + ' kg' : b.selisih));
+    const ketBaris = (b) => (b.tab === 'wadah' ? 'isi ' + (b.isiSistem === null ? '?' : KG(b.isiSistem) + ' kg') + ' · karung ' + b.karungNama + ' ' + (b.karungSistem === null ? '?' : KG(b.karungSistem) + ' kg') + (b.ada && b.wajar ? ' · susut wajar' : '')
+      : 'tercatat ' + nilai(b) + (b.ada ? ' · dihitung ' + (b.satuan === 'kg' ? KG(b.dihitung) : b.dihitung) : '')) + (b.cocokAkhir ? '' : ' · belum pernah dicocokkan');
     return h`<section class="stok-cocok" data-k="cocok">
-      <div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Cocokkan · hitung gudang</div><div class="ket">tercatat vs dihitung · selisih kg DAN rupiah · kurang = susut memotong laba, lebih = stok naik tanpa mengubah modal</div></div>
+      <div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">Cocokkan · hitung gudang</div><div class="ket">${judulTab[c.tab] || ''} · kurang = susut memotong laba, lebih = stok naik tanpa mengubah modal</div></div>
         <div class="kaca-btn" data-aksi="tutupLembar">tutup</div></div>
       <div class="jalur" data-k="tab-cocok">${C.TAB_COCOK.map(([id, nm]) => h`<div class="seg ${c.tab === id ? 'aktif' : ''}" data-aksi="cTab" data-t="${id}">${nm}</div>`)}</div>
       <div class="op-ringkas" data-k="ringkas-cocok"><div>dihitung<b>${r.dihitung} / ${r.semua}</b></div><div>susut (potong laba)<b>${RP(r.susutRp)}</b></div><div>lebih (stok naik)<b>${RP(r.lebihRp)}</b></div></div>
-      <div class="kaca-btn ${r.dihitung ? 'aktif emas' : 'mati'}" data-aksi="cSimpan">${r.tolak && !r.perluYakin ? r.tolak : 'SIMPAN COCOKKAN · ' + r.berubah + ' berubah'}</div>
-      ${aktif ? h`<div class="kartu rincian-wadah" data-k="panel-${aktif.kunci}" style="gap: 8px;"><div class="label">${aktif.nama}</div>
-        <div class="ket">tercatat ${nilai(aktif)} · modal ${RP(aktif.modal)}/${aktif.satuan}${aktif.cocokAkhir ? ' · terakhir dicocokkan ' + aktif.cocokAkhir : ' · belum pernah dicocokkan'}</div>
-        ${aktif.rincian ? h`<div class="ket">${aktif.rincian}</div>` : ''}
-        ${aktif.satuan === 'kg' ? h`<div class="ps-form tiga"><div><div class="ket">Karung utuh</div><input class="ketik-nama" id="ckKarung" type="text" inputmode="numeric" placeholder="0" value="${c.karung}" data-ketik="cKetik" data-kolom="karung"></div>
-            <div><div class="ket">Kg lepas (wadah, karung terbuka)</div><input class="ketik-nama" id="ckKg" type="text" inputmode="decimal" placeholder="0" value="${c.kg}" data-ketik="cKetik" data-kolom="kg"></div>
-            <div><div class="ket">Isi karung</div><div class="jalur rapat">${C.BERAT_KARUNG_PILIHAN.map((n) => h`<div class="seg ${berat === n ? 'aktif' : ''}" data-aksi="cBerat" data-n="${n}">${n} kg</div>`)}</div></div></div>
-          <div class="ket">${angka(c.karung)} × ${berat} + ${DESIMAL(angka(c.kg))} = <b>${KG(angka(c.karung) * berat + angka(c.kg))} kg</b> dihitung</div>`
-          : h`<div><div class="ket">Dihitung (${aktif.satuan})</div><input class="ketik-nama" id="ckAngka" type="text" inputmode="numeric" placeholder="0" value="${c.angka}" data-ketik="cKetik" data-kolom="angka"></div>`}
-        <div class="tombol-baris rapat"><div class="kaca-btn aktif" data-aksi="cPakai" data-kunci="${aktif.kunci}" data-satuan="${aktif.satuan}">PAKAI HITUNGAN INI</div><div class="kaca-btn" data-aksi="cPas" data-kunci="${aktif.kunci}" data-sistem="${aktif.sistem}">✓ cocok persis</div></div>
-        ${aktif.ada ? h`<div class="ket ${aktif.selisih < 0 ? 'awas-teks' : ''}">dihitung ${aktif.satuan === 'kg' ? KG(aktif.dihitung) + ' kg' : aktif.dihitung + ' ' + aktif.satuan} → ${aktif.selisih === 0 ? 'cocok persis' : 'selisih ' + (aktif.selisih > 0 ? '+' : '') + (aktif.satuan === 'kg' ? KG(aktif.selisih) + ' kg' : aktif.selisih + ' ' + aktif.satuan) + ' = ' + RP(aktif.rp) + (aktif.selisih < 0 ? ' (susut)' : ' (stok naik)')}${aktif.aneh ? ' · ANEH: lebih dari dua kali tercatat, cek lagi' : ''}</div>` : ''}
-        ${aktif.besar ? h`<div><div class="ket">Selisih lebih dari ${r.batasSelisih} % — alasannya (wajib)</div><input class="ketik-nama" id="ckAlasan-${aktif.kunci}" type="text" placeholder="mis. tumpah waktu bongkar" value="${aktif.alasan}" data-ketik="cAlasan" data-kunci="${aktif.kunci}"></div>` : ''}
-        ${aktif.ada ? h`<div class="ket tautan" data-aksi="cHapusHitung" data-kunci="${aktif.kunci}">hapus hitungan ini</div>` : ''}</div>` : h`<div class="ket" style="text-align: center;">Ketuk barangnya lalu isi hasil hitungannya, atau ✓ kalau cocok persis. Hitungan tersimpan di HP ini sampai disimpan.</div>`}
+      <div class="kaca-btn ${r.dihitung ? 'aktif emas' : 'mati'}" data-aksi="cSimpan">${r.tolak && !r.perluYakin ? r.tolak : c.tab === 'wadah' ? 'SIMPAN COCOKKAN WADAH · ' + r.dihitung + ' wadah' : 'SIMPAN COCOKKAN · ' + r.berubah + ' berubah'}</div>
+      ${aktif ? panel(aktif) : h`<div class="ket" style="text-align: center;">Ketuk barangnya lalu isi hasil hitungannya, atau ✓ kalau cocok persis. Hitungan tersimpan di HP ini sampai disimpan.</div>`}
       <div class="kartu" data-k="daftar-cocok" style="gap: 2px;">${r.baris.length ? r.baris.map((b) => h`<div class="jawab ${b.kunci === c.buka ? 'dipilih' : ''}" data-k="cb-${b.kunci}" data-aksi="cBuka" data-kunci="${b.kunci}">
-          <span class="kiri"><span class="nm">${b.nama}</span><span class="w">tercatat ${nilai(b)}${b.ada ? ' · dihitung ' + (b.satuan === 'kg' ? KG(b.dihitung) : b.dihitung) : ''}${b.cocokAkhir ? '' : ' · belum pernah dicocokkan'}</span></span>
-          <span class="kanan"><span class="n ${b.ada && b.selisih < 0 ? 'awas' : ''}">${!b.ada ? '—' : b.selisih === 0 ? 'cocok' : (b.selisih > 0 ? '+' : '') + (b.satuan === 'kg' ? KG(b.selisih) + ' kg' : b.selisih)}</span><span class="w ${b.perluAlasan ? 'awas-teks' : ''}">${b.perluAlasan ? 'butuh alasan · ' : ''}${b.ada && b.selisih ? RP(b.rp) : b.ada ? '✓' : ''}</span></span></div>`) : h`<div class="ket">Tidak ada barang di kelompok ini.</div>`}</div>
+          <span class="kiri"><span class="nm">${b.no ? b.no + ' · ' : ''}${b.nama}</span><span class="w">${ketBaris(b)}</span></span>
+          <span class="kanan"><span class="n ${b.ada && b.selisih < 0 ? 'awas' : ''}">${kanan(b)}</span><span class="w ${b.perluAlasan ? 'awas-teks' : ''}">${b.perluAlasan ? 'butuh alasan · ' : ''}${b.ada && b.selisih ? RP(b.rp) : b.ada ? '✓' : ''}</span></span></div>`) : h`<div class="ket">Tidak ada barang di kelompok ini.</div>`}</div>
       ${r.dihitung ? h`<div class="ket tautan" data-aksi="cBersih">kosongkan semua hitungan</div>` : ''}
       ${C.riwayatCocok(6).length ? h`<div class="kartu" data-k="riwayat-cocok" style="gap: 4px;"><div class="label">Hitungan sebelumnya</div>${C.riwayatCocok(6).map((g) => h`<div data-k="rc-${g.kunci}"><div class="ket"><b>${tanggalPendek(g.tanggal)} ${g.jam}</b> · ${g.baris.length} barang · ${RP(g.rp)}</div>${g.baris.map((x, i) => h`<div class="ket" style="padding-left: 10px;" data-k="rc-${g.kunci}-${i}">${x.nama} ${x.teks} · ${RP(x.rp)}${x.alasan ? ' · ' + x.alasan : ''}</div>`)}</div>`)}</div>` : ''}
       <div class="ket tautan" data-aksi="bukaAturC">${s.aturC ? 'tutup aturan' : 'Atur: selisih wajar & ambang stok bertambah'}</div>${gambarAturC(s)}
+      ${c.tab === 'wadah' ? h`<div class="ket" style="font-size: 11px;">Batas susut wajar per wadah per hari diatur di Stok › Wadah literan › Atur (sekarang ${DESIMAL(L.aturWadah().susutWajarKg)} kg).</div>` : ''}
     </section>`;
   }
 

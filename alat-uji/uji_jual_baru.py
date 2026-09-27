@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/karcis-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/karcis-logika.js']
 
 # KOTAK PASIR — angka contoh, bukan angka toko
 KOTAK = {
@@ -888,14 +888,14 @@ if __name__ == '__main__':
             'kemasan tidak diurutkan dari termurah': js.replace("rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || termurah(a, b));", "rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || b.harga - a.harga);"),
             'kemasan tidak dikelompokkan per ukuran': js.replace("kemasan: kelompokkan(rak.kemasan, (c) => c.ukuranKg,", "kemasan: kelompokkan(rak.kemasan, (c) => 0,"),
             'wadah yang belum pernah ditandai digambar PENUH (ditebak)': js.replace("if (!tanda) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH, puncakKg: WADAH_PUNCAK, takarKg: atur.takarKg };", "if (!tanda) return { wadah: true, diketahui: true, sisaKg: 50, gunung: 1, dalam: 1, perluIsi: false };"),
-            'literan SEBELUM tanda isi ulang ikut mengurangi': js.replace("p.merkSumber === merk && wdSesudah(p, tanda) ? (p.totalKg || 0) : 0), 0);", "p.merkSumber === merk ? (p.totalKg || 0) : 0), 0);"),
+            'literan SEBELUM tanda isi ulang ikut mengurangi': js.replace("a + (wbDariWadah(p, merk) && wdSesudah(p, tanda) ? (p.totalKg || 0) : 0), 0);", "a + (wbDariWadah(p, merk) ? (p.totalKg || 0) : 0), 0);"),
             'keranjang tidak menurunkan gunung': js.replace("const dipegang = literKeranjang(s && s.keranjang) +", "const dipegang = 0 * literKeranjang(s && s.keranjang) + 0 *"),
             '50 kg masih digambar menggunung (rata tidak sejajar bibir kotak)': js.replace("gunung: WADAH_PUNCAK > WADAH_PENUH ? Math.max(0, Math.min(1, (sisaKg - WADAH_PENUH) / (WADAH_PUNCAK - WADAH_PENUH))) : 0,", "gunung: Math.max(0, Math.min(1, sisaKg / WADAH_PENUH)),"),
             'tidak pernah minta isi ulang': js.replace("perluIsi: nyata <= WADAH_ULANG,", "perluIsi: false,"),
             'pratinjau takar yang belum dicatat mematikan permintaan isi ulang': js.replace("perluIsi: nyata <= WADAH_ULANG,", "perluIsi: sisaKg <= WADAH_ULANG,"),
             'kelebihan jual sesudah tanda disembunyikan': js.replace("lewat: sisaKg < 0 ? wdB2(-sisaKg) : 0,", "lewat: 0,"),
             'tanda isi ulang satu wadah mengisi semua wadah': js.replace("semua.filter((w) => w.wadah === merk && w.tipe === 'isi')", "semua.filter((w) => w.tipe === 'isi')"),
-            'karung/kemasan ikut mengurangi wadah': js.replace("a + (p.jenis === 'literan' && p.merkSumber === merk && wdSesudah(p, tanda)", "a + (p.merkSumber === merk && wdSesudah(p, tanda)"),
+            'karung/kemasan ikut mengurangi wadah': js.replace("return !!p && p.jenis === 'literan' && (p.dariWadah ?", "return !!p && (p.dariWadah ?"),   # putaran 27: aturan "baris literan dari wadah" satu tempat (wbDariWadah)
             # ---- koreksi owner 19 Sep: takar demi takar dari karung di belakang wadah ----
             'takar yang dicatat tidak menaikkan isi wadah': js.replace("const nyata = wdB2(isi + dituang - terjual - dipegang);", "const nyata = wdB2(isi - terjual - dipegang);"),
             'takar wadah lain ikut menaikkan wadah ini': js.replace("a + (t.tipe === 'takar' && t.wadah === merk && wdSesudah(t, tanda) ? (Number(t.kg) || 0) : 0), 0);", "a + (t.tipe === 'takar' && wdSesudah(t, tanda) ? (Number(t.kg) || 0) : 0), 0);"),
@@ -923,7 +923,7 @@ if __name__ == '__main__':
             'kolam karung per NAMA saja, bukan per tempat (satu karung dipakai dua wadah — temuan tinjau)': js.replace("const diSini = (k) => k.merk === merk && wdLokasiDoc(k, daftar) === L;", "const diSini = (k) => k.merk === merk;"),
             'takar dari tempat lain ikut memotong kolam ini': js.replace("b + (x.merk === merk && wdLokasiSumber(x, daftar) === L ? (Number(x.kg) || 0) : 0), 0)", "b + (x.merk === merk ? (Number(x.kg) || 0) : 0), 0)"),
             'takar tidak mencatat dari tempat mana karungnya diambil': js.replace("sumber: h.sumber.map((x) => ({ merk: x.merk, takar: x.takar, kg: x.kg, dari: x.dari })) }, produksi ?", "sumber: h.sumber.map((x) => ({ merk: x.merk, takar: x.takar, kg: x.kg })) }, produksi ?"),
-            'nota literan di menit yang sama sesudah samakan tidak dipotong (pemutus seri cuma menit)': js.replace("p.merkSumber === merk && wdSesudah(p, tanda) ?", "p.merkSumber === merk && cap(p) > cap(tanda) ?"),
+            'nota literan di menit yang sama sesudah samakan tidak dipotong (pemutus seri cuma menit)': js.replace("wbDariWadah(p, merk) && wdSesudah(p, tanda) ?", "wbDariWadah(p, merk) && cap(p) > cap(tanda) ?"),
             'rework karantina dianggap hitungan gudang (pindahan nama dibuang, beras dihitung dua kali)': js.replace("if (o.merk && hitunganFisik(o) && (!cocokAkhir[o.merk]", "if (o.merk && (!cocokAkhir[o.merk]"),
             'campuran satu baris yang menyalin karung di belakang wadah ikut disimpan (terpaku ke nama lama)': js.replace("(r[0].merk === m || r[0].merk === bawaan) && r[0].takar === 1", "r[0].merk === m && r[0].takar === 1"),
             'samakan karung dengan kotak kosong menulis 0 kg': js.replace("if (String(isiKg === undefined || isiKg === null ? '' : isiKg).trim() === '') return { tolak:", "if (false) return { tolak:"),
@@ -939,7 +939,7 @@ if __name__ == '__main__':
             'takar karung nama lain tidak pindah nama (tumpukan karung asal naik lagi saat ditakar)': js.replace("const namaKg = wdB2(buku.sisaKg - keluarKg + masukKg);", "const namaKg = wdB2(buku.sisaKg);"),
             'pindah nama cuma dicatat keluar (wadah tujuan tidak menerima)': js.replace("const namaKg = wdB2(buku.sisaKg - keluarKg + masukKg);", "const namaKg = wdB2(buku.sisaKg - keluarKg);"),
             'pindahan SEBELUM hitungan gudang terakhir ikut dihitung (dipotong dua kali)': js.replace("if (!cocokAkhir[x.merk] || wdSesudah(t, cocokAkhir[x.merk])) keluar", "if (true) keluar"),
-            'hitungan tumpukan memakai angka terjepit nol (lupa catat isi ulang menggeser tumpukan diam-diam)': js.replace("const diWadah = w && w.diketahui ? w.nyataMentahKg : 0;", "const diWadah = w && w.diketahui ? w.sisaNyataKg : 0;"),
+            'hitungan tumpukan memakai angka terjepit nol (lupa catat isi ulang menggeser tumpukan diam-diam)': js.replace("const diWadah = wdB2(bagian[merk] || 0);", "const diWadah = wdB2(Math.max(0, bagian[merk] || 0));"),   # putaran 27: bagian di wadah dari komposisi (mentah)
             'campuran bawaan tidak mengikuti karung di belakang wadah': js.replace(": [{ merk: karungUntukWadah(merk).merk, takar: 1 }]; }", ": [{ merk, takar: 1 }]; }"),
             'calon karung memuat nama yang tumpukannya sudah habis': js.replace(".filter((t) => t.adaBuku && t.kg > 0);\n}", ".filter((t) => t.adaBuku);\n}"),
             'dokumen retur membawa kunci yang tidak dikenal index.html': js.replace("kondisi: s.rtKondisi, penyelesaian:", "kunciAsingUji: 1, kondisi: s.rtKondisi, penyelesaian:"),
