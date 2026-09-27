@@ -46,8 +46,8 @@ TAMBAHAN = ['penjualanMasihBerlaku', 'produksiMasihBerlaku', 'wzJumlahDiDaftar',
             'jenisUntukMerk', 'semuaMerkDikenal', 'acakPin']
 # Konstanta aturan toko yang dibaca layar Jual (rasio liter→kg, lantai nego) — verbatim dari index.html
 KONSTANTA_TAMBAHAN = ['RASIO_KONVERSI', 'RASIO_DEFAULT', 'NEGO_LANTAI', 'JENIS_LITERAN_KHUSUS', 'KAPASITAS_KARUNG_BEKAS_LITER',
-                      'AMBANG_HARI_KRITIS',
-                      'PILIHAN_JENIS_BERAS']   # 25c: tujuh jenis beras pilihan sistem lama   # Ringkasan: ambang "menipis" menurut laju jual — sama dengan layar Stok lama
+                      'AMBANG_HARI_KRITIS',    # Ringkasan: ambang "menipis" menurut laju jual — sama dengan layar Stok lama
+                      'PILIHAN_JENIS_BERAS']   # 25c: tujuh jenis beras pilihan sistem lama
 # Batas lapisan data: tidak disalin, diimpor dari baru/js/data/toko.js
 def batas(nama):
     return nama.startswith('ambil') or nama in ('bacaCadanganLokal', 'wzDiKeranjangAktif', 'wzDiKeranjangParkir')

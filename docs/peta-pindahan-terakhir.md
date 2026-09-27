@@ -220,7 +220,8 @@ denyut membawa `katalog` (cap katalog yang dipegang).
 **B · Jenis beras.** `jenisUntukMerk`, `tebakJenisBeras`, `semuaMerkDikenal`, `PILIHAN_JENIS_BERAS` disalin apa adanya. `ambilPetaJenisBeras()` membaca
 **dokumen** dulu (salinan perangkat hanya kalau dokumennya belum ada — temuan §3 tertutup). `baru/js/layar/jenis-beras-logika.js`: daftar, pilihan
 (7 bawaan + jenis yang pernah diketik), `susunJenisBeras` (dokumen `{ id, peta, diubahPada }` = sistem lama; "kosongkan" = nilai `''` seperti sistem
-lama), kelompok Stok, saring rak Jual. Tampil: Harga › Katalog harga (pil per nama beras di papan owner, lembar pilih/ketik/kosongkan, daftar lengkap
+lama — **keputusan owner 27 Sep: "nonaktifkan jenis beras" = kosongkan jenis per merek; mereknya tetap terdaftar** di daftar nama beras, stok,
+dan katalog harga; hanya tidak masuk kelompok jenis mana pun), kelompok Stok, saring rak Jual. Tampil: Harga › Katalog harga (pil per nama beras di papan owner, lembar pilih/ketik/kosongkan, daftar lengkap
 "Jenis beras · N/M terisi"), Stok › Gudang (kartu "Beras di buku per jenis"), Jual (baris saring di atas rak literan/kemasan/karung/repack; urutan
 rak tidak berubah). `index.html`: ubah & simpan jenis beras ditolak penjaga SEBELUM salinan HP berubah.
 
