@@ -11,7 +11,7 @@
 // hasilnya sudah terjual/terpakai sehingga stok kemasan jadi minus; jejaknya ke bukuHapus. Adukan "menunggu owner" dari tablet menyusul bersama layar tablet.
 import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, bagiBiayaAdukan } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, JENIS_BAHAN_KEMASAN, kunciKemasan } from '../mesin/pembantu.js';
-import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet, stokMerekSaja } from '../data/toko.js';
+import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhGet, stokMerekSaja, petaStokWadah } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, waktuSetempat } from '../inti/format.js';
 import { arPeta, arKunciKemasan, arDokPulihBanyak } from './arsip-logika.js';
@@ -35,7 +35,8 @@ export function drafAdukanKosong(w) { return { tanggal: w.tanggal, bahan: [baris
 
 /** Nama karung yang bersisa di gudang (buku), sisa terbanyak dulu — bahan adukan. */
 export function calonBahan() {
-  const st = stokMerekSaja(hitungStokKarungPerMerk());   // putaran 28: isi wadah bukan bahan adukan
+  // putaran 28: isi KOTAK wadah bukan bahan adukan; karung sisihan / bongkaran wadah boleh (owner 28 Sep: isi wadah yang dikosongkan jadi karung terpisah)
+  const pw = petaStokWadah(); const semua = hitungStokKarungPerMerk(); const st = {}; Object.keys(semua).forEach((m) => { if (!pw[m]) st[m] = semua[m]; });
   return Object.keys(st).filter((m) => (st[m].sisaKg || 0) > 0).sort((a, b) => st[b].sisaKg - st[a].sisaKg).map((m) => ({ merk: m, sisaKg: Math.round(st[m].sisaKg * 100) / 100, hpp: st[m].hppTerakhirPerKg || 0 }));
 }
 /** Kemasan jadi 50/25 kg yang bersisa — boleh dibongkar jadi bahan. */

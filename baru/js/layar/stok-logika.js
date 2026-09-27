@@ -13,7 +13,7 @@
 // BACA SAJA kecuali tab Wadah (takar isi ulang, karung terbuka di belakang wadah, susunan & angka kebijakan → koleksi wadahLiteran, alat ukur bukan buku stok).
 import { hitungStokKarungPerMerk, hitungStokKemasan, hitungLajuPakai } from '../mesin/beku.js';
 import { merkPunyaKarungBerat, JENDELA_LAJU_HARI, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilSemuaBatch, ambilProduksiBerlaku, ambilRetur, ambilKarantina, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilWadahLiteran, petaStokWadah, stokMerekSaja } from '../data/toko.js';
+import { ambilPenjualan, ambilSemuaBatch, ambilProduksiBerlaku, ambilRetur, ambilKarantina, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilWadahLiteran, petaStokWadah, stokMerekSaja, petaBukuWadah } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
 import { tinggiWadah, aturWadah, resepWadah, karungBelakang, karungUntukWadah, wadahPemegang, semuaKarungTerbuka, tumpukanGudang, pindahNama, hitunganFisik } from './jual-logika.js';
 // putaran 27: isi wadah per merek asal
@@ -30,7 +30,7 @@ const skSelisihHari = (dariIso, keIso) => Math.round((new Date(keIso + 'T00:00:0
 
 /** Daftar barang gudang: tiap merek karung & tiap kemasan, dengan sisa, laju, hari-habis, nilai. */
 export function daftarBarang() {
-  const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan(); const laju = hitungLajuPakai(); const out = []; const wadahStok = petaStokWadah();
+  const stokK = hitungStokKarungPerMerk(); const stokM = hitungStokKemasan(); const laju = hitungLajuPakai(); const out = []; const wadahStok = petaBukuWadah();
   Object.keys(stokK).sort().forEach((m) => {
     const sisa = stokK[m].sisaKg || 0; const l = (laju.kgMerk || {})[m] || 0; const hpp = stokK[m].hppTerakhirPerKg || 0;
     const terbaru = stokK[m].hargaTerakhirPerKg || 0;
@@ -146,7 +146,8 @@ export function susunWadah(s) {
   // karung terbuka lain: kolam yang tidak dipegang wadah mana pun (bahan campuran, atau YATIM: wadahnya kini memegang karung lain) + nama yang disebut
   // campuran/takar tapi belum pernah ditandai (supaya owner bisa membukanya dari sini) — tidak termasuk nama yang sedang dipegang sebuah wadah
   const lain = []; const ada = {};
-  siap.kolam.forEach((k) => { if (k.wadah) return; ada[k.merk + '|' + k.lokasi] = 1; if (k.sisaMentahKg <= 0.0001) return; lain.push({ nama: k.merk, lokasi: k.lokasi, karung: k, tumpukan: tumpukanGudang(k.merk, siap) }); });   // yang sudah kosong / dikembalikan ke tumpukan tidak tampil
+  const bw = petaBukuWadah();   // putaran 28: karung sisihan / bongkaran wadah ikut tampil, bertanda wadahnya (tidak "dibuka dari gudang")
+  siap.kolam.forEach((k) => { if (k.wadah) return; ada[k.merk + '|' + k.lokasi] = 1; if (k.sisaMentahKg <= 0.0001) return; lain.push({ nama: k.merk, lokasi: k.lokasi, karung: k, tumpukan: tumpukanGudang(k.merk, siap), karungWadah: bw[k.merk] ? bw[k.merk].wadah : '' }); });   // yang sudah kosong / dikembalikan ke tumpukan tidak tampil
   const sebut = (m) => { if (!m || wadahPemegang(m).length || ada[m + '|']) return; ada[m + '|'] = 1; lain.push({ nama: m, lokasi: '', karung: karungBelakang(m, ''), tumpukan: tumpukanGudang(m, siap) }); };
   daftar.forEach((w) => w.resep.forEach((x) => sebut(x.merk)));
   ambilWadahLiteran().forEach((d) => { if (d.tipe === 'takar') (d.sumber || []).forEach((x) => sebut(x.merk)); });
@@ -159,10 +160,11 @@ export function susunWadah(s) {
 export function susunKapur(kini) {
   const hari = hariIniIso(kini); const out = [];
   ambilSemuaBatch().forEach((b) => { if (b.tanggal !== hari || b.lahirBuku) return; (b.merkList || []).forEach((x, i) => out.push({ k: 'b' + b.id + i, jam: b.jam || '', isi: 'Barang masuk ' + x.merk + (x.jumlahKarung ? ' ' + x.jumlahKarung + ' karung' : '') + (b.pemasok ? ' · ' + b.pemasok : ''), n: '+' + skKG(x.totalKg || 0), jenis: 'masuk' })); });
-  const petaW = petaStokWadah();
+  const petaW = petaBukuWadah();
   ambilProduksiBerlaku().forEach((p) => { if (p.tanggal !== hari) return;
     if (p.bukaKemasan) out.push({ k: 'p' + p.id, jam: p.jam || '', isi: 'Kemasan ' + (p.namaProduk || '') + ' ' + (p.ukuranKemasan || '') + ' kg hasil adukan dibuka jadi karung terbuka — buku karung ' + (p.merkTujuan || '') + ' naik, stok kemasan −1', n: '↔ ' + skKG(p.kgDipakai || 0), jenis: 'wadah' });
-    else if (p.dariTakar && petaW[p.merkTujuan]) out.push({ k: 'p' + p.id, jam: p.jam || '', isi: (p.pindahAwalWadah ? 'Pindahan awal stok wadah ' + p.pindahAwalWadah : p.gantiNamaWadah ? 'Stok wadah ikut ganti nama' : 'Takar ke stok wadah') + ': ' + (p.sumberList || []).map((x) => x.merk + ' ' + skKG(x.kg || 0)).join(' + ') + ' → ' + (p.merkTujuan || '') + ' (modal ikut)', n: '↔ ' + skKG(p.kgDipakai || 0), jenis: 'wadah' });
+    else if (p.dariTakar && petaW[p.merkTujuan]) out.push({ k: 'p' + p.id, jam: p.jam || '', isi: (p.pindahAwalWadah ? 'Pindahan awal stok wadah ' + p.pindahAwalWadah : p.gantiNamaWadah ? 'Stok wadah ikut ganti nama' : p.sisihWadah ? 'Disisihkan dari wadah ' + p.sisihWadah + ' ke karung wadahnya'
+      : p.tuangBalikWadah ? 'Karung sisihan dituang balik ke wadah ' + p.tuangBalikWadah : p.bongkarWadah ? 'Wadah ' + p.bongkarWadah + ' dibongkar ke karung wadahnya' : 'Takar ke stok wadah') + ': ' + (p.sumberList || []).map((x) => x.merk + ' ' + skKG(x.kg || 0)).join(' + ') + ' → ' + (p.merkTujuan || '') + ' (modal ikut)', n: '↔ ' + skKG(p.kgDipakai || 0), jenis: 'wadah' });
     else if (p.dariTakar) out.push({ k: 'p' + p.id, jam: p.jam || '', isi: 'Pindah nama di buku (takar wadah): ' + (p.sumberList || []).map((x) => x.merk + ' ' + skKG(x.kg || 0)).join(' + ') + ' → ' + (p.merkTujuan || ''), n: '↔ ' + skKG(p.kgDipakai || 0), jenis: 'wadah' });
     else out.push({ k: 'p' + p.id, jam: p.jam || '', isi: 'Adukan → ' + (p.namaProduk || '') + ' ' + (p.ukuranKemasan || '') + ' kg', n: '+' + (p.jumlahUnit || 0) + ' unit', jenis: 'masuk' }); });
   // putaran 27: cocokkan TUMPUKAN dan cocokkan WADAH = dua kejadian berbeda (owner 27 Sep); catatan lama satu angka per nama tetap "Cocokkan <nama>"
@@ -173,12 +175,13 @@ export function susunKapur(kini) {
   ambilPenyesuaianKemasan().forEach((p) => { if (p.tanggal !== hari) return; out.push({ k: 'ok' + p.id, jam: p.jam || '', isi: 'Cocokkan ' + (p.namaProduk || '') + ' ' + (p.ukuranKemasan || '') + ' kg', n: ((p.selisihUnit || 0) > 0 ? '+' : '') + (p.selisihUnit || 0) + ' unit', jenis: 'opname' }); });
   ambilRetur().forEach((r) => { if (r.tanggal !== hari) return; out.push({ k: 'r' + r.id, jam: r.jam || '', isi: 'Barang kembali ' + (r.merkSumber || r.namaProduk || '') + (r.kondisi === 'tidak_utuh' ? ' → Karantina' : ' → stok jual'), n: '+' + skKG(r.totalKg || 0), jenis: r.kondisi === 'tidak_utuh' ? 'opname' : 'masuk' }); });
   ambilWadahLiteran().forEach((w) => { if (w.tanggal !== hari) return;
+    if (w.tipe === 'takar' && w.tuangBalik) return;   // putaran 28: tuang balik karung sisihan (baris pindah buku di atas)
     if (w.tipe === 'takar') out.push({ k: 'w' + w.id, jam: w.jam || '', isi: 'Wadah ' + (w.wadah || '') + ' diisi ulang ' + (w.takar || 0) + ' takar dari karung ' + (w.sumber || []).map((x) => x.merk + ((w.sumber || []).length > 1 ? ' ' + x.takar : '')).join(' + ') + ' — karung terbuka turun, wadah naik' + (w.bukuAsal ? ' (buku tetap milik merek karungnya)' : w.stokWadah ? ' (buku pindah ke stok wadah)' : ''), n: '+' + skKG(w.kg || 0), jenis: 'wadah' });
     else if (w.tipe === 'atur' && w.gantiNama) out.push({ k: 'w' + w.id, jam: w.jam || '', isi: 'Wadah ' + (w.gantiNama.dari || '') + ' berganti nama jadi ' + (w.gantiNama.ke || '') + ' — isi, karung di belakangnya & harga liternya ikut', n: '', jenis: 'wadah' });
     else if ((w.tipe === 'isi' || w.tipe === 'karungIsi') && w.gantiNamaDari) return;   // bagian dari ganti nama wadah (satu baris di atas)
-    else if (w.tipe === 'isi' && w.pindahAwal) return;   // putaran 28: bagian dari pindahan awal stok wadah (baris pindah buku di atas)
+    else if ((w.tipe === 'isi' && (w.pindahAwal || w.bongkar)) || (w.tipe === 'takar' && w.tuangBalik) || (w.tipe === 'karung' && w.asal === 'wadah')) return;   // putaran 28: bagian dari pindahan awal / bongkar / sisihkan / tuang balik (baris pindah buku di atas)
     else if (w.tipe === 'isi') out.push({ k: 'w' + w.id, jam: w.jam || '', isi: w.dariCocok ? 'Cocokkan wadah ' + (w.wadah || '') + ': isinya dihitung' + (w.komposisi && Object.keys(w.komposisi).length ? ' (' + Object.keys(w.komposisi).map((m) => m + ' ' + skKG(w.komposisi[m])).join(' + ') + ')' : '') : 'Wadah ' + (w.wadah || '') + ' disamakan dengan kenyataan', n: '±' + skKG(w.isiKg || 0), jenis: 'wadah' });
-    else if (w.tipe === 'karung') out.push({ k: 'w' + w.id, jam: w.jam || '', isi: 'Karung ' + (w.merk || '') + ' diambil dari tumpukan gudang, dibuka ' + (w.wadah ? 'di belakang wadah ' + w.wadah : w.lepas ? 'sebagai bahan campuran' : 'di belakang wadah') + (w.otomatis ? ' (otomatis — karung sebelumnya habis)' : ''), n: 'gudang −' + skKG(w.kg || 0), jenis: 'wadah' });
+    else if (w.tipe === 'karung') out.push({ k: 'w' + w.id, jam: w.jam || '', isi: 'Karung ' + (w.merk || '') + (w.asal === 'masuk' ? ' yang baru datang dari pemasok' : w.asal === 'adukan' ? ' (kemasan hasil adukan)' : ' diambil dari tumpukan gudang') + ', dibuka ' + (w.wadah ? 'di belakang wadah ' + w.wadah : w.lepas ? 'sebagai bahan campuran' : 'di belakang wadah') + (w.otomatis ? ' (otomatis — karung sebelumnya habis)' : ''), n: 'gudang −' + skKG(w.kg || 0), jenis: 'wadah' });
     else if (w.tipe === 'karungIsi') out.push({ k: 'w' + w.id, jam: w.jam || '', isi: w.dikembalikan ? 'Karung terbuka ' + (w.merk || '') + ' dikembalikan ke tumpukan gudang' : 'Karung terbuka ' + (w.merk || '') + ' disamakan dengan kenyataan', n: w.dikembalikan ? '+' + skKG(w.sisaSebelumKg || 0) : '±' + skKG(w.isiKg || 0), jenis: 'wadah' }); });
   // putaran 27 (Bagian 5): literan WADAH dikelompokkan per wadah (satu takaran = satu baris) dan menyebut buku merek asal yang dipotong
   const jual = {}; const takaran = {}; ambilPenjualan().forEach((p) => { if (p.tanggal !== hari) return; const nm = p.jenis === 'kemasan' ? (p.namaProduk || '') + ' ' + (p.ukuranKemasan || '') + ' kg' : p.dariWadah ? 'literan wadah ' + p.dariWadah : (p.merkSumber || p.namaProduk || ''); const k = (p.jam || '').slice(0, 2) + '|' + nm;

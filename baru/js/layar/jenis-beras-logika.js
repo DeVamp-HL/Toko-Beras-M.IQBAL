@@ -6,7 +6,7 @@
 // Tanpa DOM; nama berawalan jb (bundel uji satu lingkup). Dijaga alat-uji/uji_setelan_jenis_beras.py.
 import { jenisUntukMerk, semuaMerkDikenal, PILIHAN_JENIS_BERAS } from '../mesin/pembantu.js';
 import { hitungStokKarungPerMerk } from '../mesin/beku.js';
-import { ambilPetaJenisBeras, petaStokWadah, kunciStokWadah } from '../data/toko.js';
+import { ambilPetaJenisBeras, petaBukuWadah } from '../data/toko.js';
 
 export const JB_BELUM = 'Belum diisi jenisnya';   // sama dengan layar Stok sistem lama
 export const jbJenisMerk = (merk) => jenisUntukMerk(merk);
@@ -42,9 +42,9 @@ export function susunJenisBeras(merk, jenis, w) {
 }
 /** Stok › Gudang: total kg karung per jenis — urutan sistem lama (IR64 dulu, yang belum diisi paling bawah). Nama bersisa 0 tidak ikut. */
 export function jbKelompokStok() {
-  const stok = hitungStokKarungPerMerk(); const per = {}; const wadahStok = petaStokWadah();
-  // putaran 28: buku stok wadah ('Wadah <nama>') ikut jenis NAMA wadahnya (isinya beras jenis itu)
-  Object.keys(stok).filter((m) => stok[m].sisaKg !== 0).forEach((m) => { const j = jenisUntukMerk(wadahStok[m] ? String(m).slice(kunciStokWadah('').length) : m) || JB_BELUM; (per[j] = per[j] || []).push(m); });
+  const stok = hitungStokKarungPerMerk(); const per = {}; const bukuWadah = petaBukuWadah();
+  // putaran 28: buku milik wadah ('Wadah <nama>' & 'Karung wadah <nama>') ikut jenis NAMA wadahnya (isinya beras jenis itu)
+  Object.keys(stok).filter((m) => stok[m].sisaKg !== 0).forEach((m) => { const j = jenisUntukMerk(bukuWadah[m] ? bukuWadah[m].wadah : m) || JB_BELUM; (per[j] = per[j] || []).push(m); });
   return Object.keys(per).sort((a, b) => (a === JB_BELUM) - (b === JB_BELUM) || (b === 'IR64') - (a === 'IR64') || a.localeCompare(b))
     .map((j) => ({ jenis: j, kg: per[j].reduce((x, m) => x + (stok[m].sisaKg || 0), 0), merk: per[j].slice().sort((a, b) => a.localeCompare(b)) }));
 }

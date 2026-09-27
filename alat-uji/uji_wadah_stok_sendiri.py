@@ -156,18 +156,19 @@ var BX = susunBukaKarung('NG', W, '', { jenis: 'masuk', batchId: 'b0' });
 ok('pintu "baru datang" dari kedatangan yang tidak memuat merek itu DITOLAK', !!BX.tolak, J(BX));
 var kmX = hitungStokKemasan()[kunciKemasan('X KI', 50)].sisaUnit; var tgAng = tump('Angsa');
 var BK = susunBukaKarung('X KI', W, 'Angsa', { jenis: 'adukan', namaProduk: 'X KI', ukuran: 50 }); var bkb = dok(BK, 'batchMasuk'), bkp = dok(BK, 'produksiKemasan'), bkw = dok(BK, 'wadahLiteran');
-ok('pintu "hasil adukan": 1 kemasan X KI 50 kg dibuka — buku X KI lahir, stok kemasan −1 unit lewat sumberKemasanList, catatan karung asal adukan di belakang Angsa',
-  !BK.tolak && bkb.length === 1 && bkb[0].merkList[0].merk === 'X KI' && !bkb[0].merkList[0].stokWadah && bkp.length === 1 && J(bkp[0].sumberKemasanList) === J([{ namaProduk: 'X KI', ukuranKemasan: 50, unit: 1 }])
-  && bkp[0].merkTujuan === 'X KI' && bkp[0].jadiKarungUtuh === true && bkp[0].bukaKemasan === true && bkw.length === 1 && bkw[0].asal === 'adukan' && bkw[0].wadah === 'Angsa', J([BK.tolak, bkb, bkp, bkw]));
+ok('pintu "hasil adukan": 1 kemasan X KI 50 kg dibuka — buku SENDIRI "Adukan X KI 50 kg" lahir (bukan buku merek pemasok), stok kemasan −1 unit lewat sumberKemasanList, catatan karung asal adukan di belakang Angsa',
+  !BK.tolak && bkb.length === 1 && bkb[0].merkList[0].merk === 'Adukan X KI 50 kg' && bkb[0].merkList[0].bukuAdukan === 'X KI|50' && !bkb[0].merkList[0].stokWadah && bkp.length === 1 && J(bkp[0].sumberKemasanList) === J([{ namaProduk: 'X KI', ukuranKemasan: 50, unit: 1 }])
+  && bkp[0].merkTujuan === 'Adukan X KI 50 kg' && bkp[0].jadiKarungUtuh === true && bkp[0].bukaKemasan === true && bkw.length === 1 && bkw[0].merk === 'Adukan X KI 50 kg' && bkw[0].asal === 'adukan' && bkw[0].wadah === 'Angsa', J([BK.tolak, bkb, bkp, bkw]));
 terapkanKeCache(BK.dokumen);
-ok('sesudah buka kemasan: stok kemasan X KI 50 kg 2 → 1, buku karung X KI 50 kg @Rp12.000, karung X KI di belakang Angsa 50 kg, tumpukan X KI 0, bukan buku wadah',
-  hitungStokKemasan()[kunciKemasan('X KI', 50)].sisaUnit === kmX - 1 && buku('X KI') === 50 && Math.round(hpp('X KI')) === 12000 && karungBelakang('X KI', 'Angsa').sisaKg === 50 && tump('X KI') === 0 && !petaStokWadah()['X KI'] && tump('Angsa') === tgAng,
-  J([hitungStokKemasan()[kunciKemasan('X KI', 50)].sisaUnit, buku('X KI'), hpp('X KI'), karungBelakang('X KI', 'Angsa').sisaKg, tump('X KI')]));
-var wAng = buku('Wadah Angsa'); var T3 = susunTakarWadah('Angsa', [{ merk: 'X KI', takar: 2, dari: 'Angsa' }], W, s0()); terapkanKeCache(T3.dokumen || []);
-ok('takar 2 × dari karung X KI ke wadah Angsa: buku X KI 46,4, buku wadah Angsa +3,6', !T3.tolak && B2(buku('X KI')) === 46.4 && B2(buku('Wadah Angsa') - wAng) === 3.6, J([T3.tolak, buku('X KI'), buku('Wadah Angsa') - wAng]));
+var AX = 'Adukan X KI 50 kg';
+ok('sesudah buka kemasan: stok kemasan X KI 50 kg 2 → 1, buku "Adukan X KI 50 kg" 50 kg @Rp12.000, karungnya di belakang Angsa 50 kg, tumpukannya 0, buku merek Angsa tidak tercampur',
+  hitungStokKemasan()[kunciKemasan('X KI', 50)].sisaUnit === kmX - 1 && buku(AX) === 50 && Math.round(hpp(AX)) === 12000 && karungBelakang(AX, 'Angsa').sisaKg === 50 && tump(AX) === 0 && !petaStokWadah()[AX] && petaBukuWadah()[AX].jenis === 'adukan' && tump('Angsa') === tgAng && buku('X KI') === 0,
+  J([hitungStokKemasan()[kunciKemasan('X KI', 50)].sisaUnit, buku(AX), hpp(AX), karungBelakang(AX, 'Angsa').sisaKg, tump(AX)]));
+var wAng = buku('Wadah Angsa'); var T3 = susunTakarWadah('Angsa', [{ merk: AX, takar: 2, dari: 'Angsa' }], W, s0()); terapkanKeCache(T3.dokumen || []);
+ok('takar 2 × dari karung "Adukan X KI 50 kg" ke wadah Angsa: bukunya 46,4, buku wadah Angsa +3,6', !T3.tolak && B2(buku(AX)) === 46.4 && B2(buku('Wadah Angsa') - wAng) === 3.6, J([T3.tolak, buku(AX), buku('Wadah Angsa') - wAng]));
 var H0 = { 'wadah|Angsa': '0' }; var C0 = susunSimpanCocok('wadah', H0, { 'wadah|Angsa': 'uji: wadah dikosongkan' }, Object.assign({}, W, { jam: '10:30' }), { sebagian: true }); terapkanKeCache(C0.dokumen || []);
 var c0 = chipL('Angsa');
-ok('wadah berstok sendiri yang KOSONG tidak menjual dari karung di belakangnya (X KI 46,4 kg): chip Angsa 0 L', !C0.tolak && B2(buku('Wadah Angsa')) === 0 && !!c0 && c0.sisa === 0, J([C0.tolak, buku('Wadah Angsa'), c0 && c0.sisa]));
+ok('wadah berstok sendiri yang KOSONG tidak menjual dari karung di belakangnya (Adukan X KI 46,4 kg): chip Angsa 0 L', !C0.tolak && B2(buku('Wadah Angsa')) === 0 && !!c0 && c0.sisa === 0, J([C0.tolak, buku('Wadah Angsa'), c0 && c0.sisa]));
 
 // ---- BUKU WADAH TIDAK BOCOR ke daftar MEREK
 var wd = function (m) { return /^Wadah /.test(String(m)); };
@@ -181,16 +182,64 @@ var bocor = { rakKarung: susunRak(s0()).karung.filter(function (c) { return wd(c
 ok('buku wadah tidak bocor ke daftar merek (rak karung/repack/literan langsung, karung gudang, campuran, harga, barang masuk, cocokkan tumpukan, kedatangan, HPP, adukan, tempat, belanja, lokasi)',
   Object.keys(bocor).every(function (k) { return bocor[k] === 0; }), J(bocor));
 var HM = hitungMasuk({ tanggal: '2026-09-20', baris: [{ merk: 'Wadah Angsa', jumlahKarung: '1', beratKarung: '50', hargaPerKg: '13000' }] });
-ok('barang masuk atas nama buku wadah DITOLAK dengan kalimat', HM.baris[0].masalah.indexOf('STOK WADAH') >= 0, J(HM.baris[0]));
+ok('barang masuk atas nama buku wadah DITOLAK dengan kalimat', HM.baris[0].masalah.indexOf('buku KHUSUS') >= 0, J(HM.baris[0]));
 var db = daftarBarang().filter(function (b) { return wd(b.nama); });
 ok('Stok › Gudang tetap MENILAI buku wadah (modal tidur) tapi tidak menaruhnya di daftar belanja', db.length >= 2 && db.every(function (b) { return b.wadahStok === true; }), J(db));
 var kap = susunKapur(new Date(Date.now())).baris.map(function (x) { return x.isi; }).join(' | ');
 ok('Papan Kapur: pindahan awal, takar ke stok wadah, buka kemasan hasil adukan tertulis; batch lahir TIDAK tampil sebagai barang masuk',
-  /Pindahan awal stok wadah IR64 Apex/.test(kap) && /Takar ke stok wadah: Kumala/.test(kap) && /Kemasan X KI 50 kg hasil adukan dibuka/.test(kap) && !/Barang masuk Wadah/.test(kap) && !/Barang masuk X KI/.test(kap), kap);
+  /Pindahan awal stok wadah IR64 Apex/.test(kap) && /Takar ke stok wadah: Kumala/.test(kap) && /Kemasan X KI 50 kg hasil adukan dibuka/.test(kap) && !/Barang masuk Wadah/.test(kap) && !/Barang masuk Adukan/.test(kap), kap);
 ok('daftar Adukan tidak memuat pindah buku / buka kemasan (cuma adukan X KI)', daftarAdukan(20).length === 1, J(daftarAdukan(20).map(function (a) { return a.hasilTeks; })));
 var TB = pembukaBuku(2026, W); var tbb = dok(TB, 'batchMasuk')[0] || { merkList: [] }; var tbw = tbb.merkList.filter(function (r) { return wd(r.merk); });
 ok('tutup buku: saldo pembuka membawa tanda stokWadah untuk tiap buku wadah (termasuk yang nol → baris lahir)',
   tbw.length === 3 && tbw.every(function (r) { return !!r.stokWadah; }) && tbw.some(function (r) { return r.merk === 'Wadah IR64 Apex' && r.totalKg === 0; }), J(tbw));
+
+// ---- SISIHKAN · TUANG BALIK · BONGKAR (owner 28 Sep): isi yang dikeluarkan dari kotak = karung wadah, buku terpisah
+var KB = 'Karung wadah Apex Baru'; var WB5 = 'Wadah Apex Baru'; var v5 = nilai(); var tK5 = MEREK.map(tump);
+var SH = wbSusunSisih('Apex Baru', '', W); var shb = dok(SH, 'batchMasuk'), shp = dok(SH, 'produksiKemasan'), shw = dok(SH, 'wadahLiteran');
+ok('sisihkan (kosong = aturan 10 kg): buku "Karung wadah Apex Baru" lahir, pindah buku 10 kg dari buku wadah, karung lepas asal wadah 10 kg',
+  !SH.tolak && shb.length === 1 && shb[0].merkList[0].merk === KB && shb[0].merkList[0].karungWadah === 'Apex Baru' && shp.length === 1 && J(shp[0].sumberList) === J([{ merk: WB5, kg: 10 }]) && shp[0].merkTujuan === KB && shp[0].sisihWadah === 'Apex Baru'
+  && shw.length === 1 && shw[0].merk === KB && shw[0].kg === 10 && shw[0].lepas === true && shw[0].asal === 'wadah', J([SH.tolak, shb, shp, shw]));
+terapkanKeCache(SH.dokumen || []);
+ok('sesudah sisihkan: wadah 40 kg (chip 48,7 L), karung wadah 10 kg (buku & kolam), nilai stok & tumpukan merek tetap',
+  buku(WB5) === 40 && buku(KB) === 10 && wbKarungWadah('Apex Baru').sisaKg === 10 && chipL('Apex Baru').sisa === 48.7 && nilai() === v5 && J(MEREK.map(tump)) === J(tK5), J([buku(WB5), buku(KB), wbKarungWadah('Apex Baru'), chipL('Apex Baru').sisa, nilai(), v5]));
+ok('sisihkan melebihi isi buku wadah DITOLAK', !!wbSusunSisih('Apex Baru', '45', W).tolak);
+var TBL = wbSusunTuangBalik('Apex Baru', '', W); var tbt = dok(TBL, 'wadahLiteran'), tbp = dok(TBL, 'produksiKemasan');
+ok('tuang balik semua: takar bertanda tuangBalik dari karung wadah + pindah buku 10 kg kembali ke buku wadah',
+  !TBL.tolak && tbt.length === 1 && tbt[0].tipe === 'takar' && tbt[0].tuangBalik === true && tbt[0].kg === 10 && J(tbp[0].sumberList) === J([{ merk: KB, kg: 10 }]) && tbp[0].merkTujuan === WB5 && String(tbp[0].takarId) === String(tbt[0].id), J([TBL.tolak, tbt, tbp]));
+terapkanKeCache(TBL.dokumen || []);
+ok('sesudah tuang balik: wadah 50, karung wadah 0 (buku & kolam)', buku(WB5) === 50 && buku(KB) === 0 && wbKarungWadah('Apex Baru').sisaKg === 0, J([buku(WB5), buku(KB), wbKarungWadah('Apex Baru')]));
+ok('tuang balik dari karung wadah kosong DITOLAK', !!wbSusunTuangBalik('Apex Baru', '', W).tolak);
+terapkanKeCache(wbSusunSisih('Apex Baru', '5', W).dokumen || []); terapkanKeCache(susunTakarWadah('Apex Baru', [{ merk: 'Kumala', takar: 8 }], W, s0()).dokumen || []);
+var TBX = wbSusunTuangBalik('Apex Baru', '', W);
+ok('tuang balik yang membuat wadah melewati batas menggunung (59,4 + 5 > 60) DITOLAK dengan kalimat', !!TBX.tolak && /melebihi/.test(TBX.tolak), J([buku(WB5), TBX]));
+var AT2 = susunAturWadah({ penuhKg: '50', isiUlangKg: '10', sisihKg: '12', daftar: ['Apex Baru', 'Angsa'] }, W); var at2 = dok(AT2, 'wadahLiteran')[0] || {};
+ok('aturan wadah menyimpan "disisihkan saat tutup" (12 kg); 0 kg ditolak', !AT2.tolak && at2.sisihKg === 12 && !!susunAturWadah({ penuhKg: '50', isiUlangKg: '10', sisihKg: '0', daftar: ['Apex Baru', 'Angsa'] }, W).tolak, J([AT2.tolak, at2.sisihKg]));
+terapkanKeCache(AT2.dokumen || []);
+ok('sisihkan kosong memakai angka owner (12 kg)', dok(wbSusunSisih('Apex Baru', '', W), 'produksiKemasan')[0].kgDipakai === 12);
+var bw5 = B2(buku(WB5)); var h5 = hpp(WB5); var laba5 = hitungLabaBersihRentang('2026-09-01', '2026-09-30').labaBersih;
+var BG0 = wbSusunBongkar('Apex Baru', '57', '', W, false);
+ok('bongkar dengan selisih di atas susut wajar tanpa alasan DITOLAK; dengan alasan → ditanya dua ketukan', !!BG0.tolak && /alasan/.test(BG0.tolak) && wbSusunBongkar('Apex Baru', '57', 'tumpah', W, false).perluYakin === 'bongkar', J(BG0));
+var BG = wbSusunBongkar('Apex Baru', '57', 'tumpah waktu bongkar', W, true); var bgs = dok(BG, 'penyesuaianStok'), bgp = dok(BG, 'produksiKemasan'), bgi = dok(BG, 'wadahLiteran').filter(function (d) { return d.tipe === 'isi'; });
+ok('bongkar: penyesuaian buku wadah (57 − ' + bw5 + ') bertanda bongkar, pindah 57 kg ke karung wadah, titik samakan isi 0',
+  !BG.tolak && bgs.length === 1 && bgs[0].merk === WB5 && bgs[0].selisihKg === B2(57 - bw5) && bgs[0].bongkar === true && bgp.length === 1 && J(bgp[0].sumberList) === J([{ merk: WB5, kg: 57 }]) && bgp[0].merkTujuan === KB
+  && bgi.length === 1 && bgi[0].isiKg === 0 && bgi[0].dariCocok === true, J([BG.tolak, bgs, bgp, bgi]));
+terapkanKeCache(BG.dokumen || []);
+ok('sesudah bongkar: wadah 0 (chip 0 L), karung wadah 5 + 57 = 62 kg, laba turun persis selisih × modal wadah',
+  buku(WB5) === 0 && chipL('Apex Baru').sisa === 0 && B2(buku(KB)) === 62 && B2(wbKarungWadah('Apex Baru').sisaKg) === 62 && hitungLabaBersihRentang('2026-09-01', '2026-09-30').labaBersih - laba5 === Math.round(B2(57 - bw5) * h5),
+  J([buku(WB5), buku(KB), wbKarungWadah('Apex Baru'), hitungLabaBersihRentang('2026-09-01', '2026-09-30').labaBersih - laba5, Math.round(B2(57 - bw5) * h5)]));
+ok('sesudah bongkar, atur susunan boleh melepas wadah yang sudah kosong', !susunAturWadah({ penuhKg: '50', isiUlangKg: '10', daftar: ['Angsa'] }, W).tolak);
+var kw5 = kkIsi().merkKarung.filter(function (m) { return /^Karung wadah |^Adukan /.test(m.merk); });
+var bocor5 = { rak: susunRak(s0()).karung.filter(function (c) { return /^Karung wadah /.test(c.kunci); }).length, harga: hgSemua(new Date(Date.now())).baris.filter(function (b) { return /^Karung wadah |^Adukan /.test(b.merk); }).length,
+  masuk: calonMerkMasuk().filter(function (m) { return /^Karung wadah |^Adukan /.test(m); }).length, tumpukan: barangCocok('tumpukan').filter(function (b) { return /^Karung wadah |^Adukan /.test(b.nama); }).length };
+var dr5 = deretanKarung().find(function (k) { return k.merk === KB; });
+ok('karung wadah & kemasan adukan dibuka tidak dijual dari HP kasir, tidak di rak karung / harga / barang masuk / cocokkan tumpukan; tampil di deretan sebagai "karung sisihan wadah"; boleh jadi bahan adukan',
+  !kw5.length && Object.keys(bocor5).every(function (k) { return bocor5[k] === 0; }) && !!dr5 && /karung sisihan wadah Apex Baru/.test(dr5.letak) && calonBahan().some(function (b) { return b.merk === KB; }) && calonBahan().some(function (b) { return b.merk === 'Adukan X KI 50 kg'; }),
+  J([kw5, bocor5, dr5 && dr5.letak]));
+var GN2 = wbSusunGantiNama('Apex Baru', 'Apex Dua', W); terapkanKeCache(GN2.dokumen || []);
+ok('ganti nama membawa karung wadah: buku & kolam "Karung wadah Apex Dua" 62 kg, yang lama 0', !GN2.tolak && B2(buku('Karung wadah Apex Dua')) === 62 && buku(KB) === 0 && B2(wbKarungWadah('Apex Dua').sisaKg) === 62 && wbKarungWadah('Apex Baru').sisaKg === 0,
+  J([GN2.tolak, buku('Karung wadah Apex Dua'), buku(KB), wbKarungWadah('Apex Dua'), wbKarungWadah('Apex Baru')]));
+var kap5 = susunKapur(new Date(Date.now())).baris.map(function (x) { return x.isi; }).join(' | ');
+ok('Papan Kapur: disisihkan, dituang balik, dibongkar tertulis sebagai pindah buku', /Disisihkan dari wadah Apex Baru ke karung wadahnya/.test(kap5) && /Karung sisihan dituang balik ke wadah Apex Baru/.test(kap5) && /Wadah Apex Baru dibongkar ke karung wadahnya/.test(kap5), kap5);
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
@@ -252,11 +301,20 @@ RUSAK = {
     'atur susunan melepas wadah berstok': ("if (yatim.length) return { tolak: 'Wadah '", "if (false) return { tolak: 'Wadah '"),
     'katalog kasir: buku wadah tanpa harga liter': ("hargaPerLiter: h ? Number(h.hargaPerLiter) || 0 : 0, rasio: wbRasio(W) });", "hargaPerLiter: 0, rasio: wbRasio(W) });"),
     'katalog kasir: merek bernama wadah tetap menjual literan': ("if (aktifNama[m.merk] && langsung.indexOf(m.merk) < 0 && m.hargaPerLiter) return", "if (false) return"),
-    'barang masuk menerima nama buku wadah': ("wadahStok[merk] ? merk + ' itu buku STOK WADAH", "false ? merk + ' itu buku STOK WADAH"),
+    'barang masuk menerima nama buku wadah': ("wadahStok[merk] ? merk + ' itu buku KHUSUS", "false ? merk + ' itu buku KHUSUS"),
     'buka kemasan tidak menurunkan stok kemasan': ("sumberKemasanList: [{ namaProduk: N, ukuranKemasan: uk, unit: 1 }]", "sumberKemasanList: []"),
     'pintu "baru datang" tanpa pemeriksaan kedatangan': ("if (!b || b.stokAwal || b.tutupBuku || !(b.merkList || []).some((m) => m.merk === merk && m.satuan === 'karung')) return", "if (false) return"),
     'batch lahir tampil di buku kedatangan': ("const semua = ambilSemuaBatch().filter((b) => !b.lahirBuku).sort(", "const semua = ambilSemuaBatch().slice().sort("),
-    'tutup buku kehilangan tanda stok wadah': ("merkList.forEach((r) => { if (pw[r.merk]) r.stokWadah = pw[r.merk]; });", "merkList.forEach((r) => { });"),
+    'tutup buku kehilangan tanda stok wadah': ("merkList.forEach((r) => { if (pw[r.merk]) r.stokWadah = pw[r.merk]; else if (bw[r.merk]) r.karungWadah = bw[r.merk].wadah; });", "merkList.forEach((r) => { });"),
+    'karung wadah tidak dikenali sebagai buku khusus': ("else if (m.karungWadah) out[String(m.merk)] = { jenis: 'karung', wadah: String(m.karungWadah) };", "else if (false) out[String(m.merk)] = { jenis: 'karung', wadah: String(m.karungWadah) };"),
+    'kemasan adukan dibuka masuk buku merek pemasok': ("const B = kunciBukuAdukan(N, uk);", "const B = N;"),
+    'sisihkan melebihi isi wadah lolos': ("if (kg > K.totalKg + 0.004) return { tolak: 'Wadah ' + W + ' menurut bukunya", "if (false) return { tolak: 'Wadah ' + W + ' menurut bukunya"),
+    'tuang balik melewati batas menggunung': ("if (isiBaru > A.puncakKg + 0.0001) return { tolak: 'Dituang '", "if (false) return { tolak: 'Dituang '"),
+    'bongkar tanpa penyesuaian selisih timbang': ("if (Math.abs(sel) >= 0.005) dokumen.push({ koleksi: 'penyesuaianStok'", "if (false) dokumen.push({ koleksi: 'penyesuaianStok'"),
+    'bongkar tanpa alasan di atas susut wajar': ("if (Math.abs(sel) > wajar + 0.0001 && !al) return", "if (false) return"),
+    'ganti nama meninggalkan karung wadah': ("if (KWL && KWL.lahir && (KWL.bukuKg > 0.004 || KWL.sisaKg > 0.004)) {", "if (false) {"),
+    'karung wadah dijual dari HP kasir': ("const merkKarung = isi.merkKarung.filter((m) => !(bw[m.merk] && bw[m.merk].jenis !== 'wadah') &&", "const merkKarung = isi.merkKarung.filter((m) =>"),
+    'angka "disisihkan saat tutup" owner diabaikan': ("const sisihKg = a && Number(a.sisihKg) > 0 ? Number(a.sisihKg) : WADAH_SISIH_KG;", "const sisihKg = WADAH_SISIH_KG;"),
 }
 
 if __name__ == '__main__':

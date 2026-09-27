@@ -16,7 +16,7 @@
 // Koleksi BARU milik sistem baru: aturanToko (angka kebijakan owner, id tetap) dan bukuHapus (jejak kedatangan yang dihapus, beralasan).
 import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungHppMerkDalamBatch } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, kunciKemasan } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilHargaKarung, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilWadahLiteran, cacheMentah, tolakKunci, tolakKunciTanggal, stokMerekSaja, petaStokWadah } from '../data/toko.js';
+import { ambilSemuaBatch, ambilHargaKarung, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilWadahLiteran, cacheMentah, tolakKunci, tolakKunciTanggal, stokMerekSaja, petaStokWadah, petaBukuWadah } from '../data/toko.js';
 import { RP, hariIniIso } from '../inti/format.js';
 import { hitunganFisik, tumpukanGudang, aturWadah, pindahNama, semuaKarungTerbuka, karungUntukWadah, karungBelakang, beratKarungBuka } from './jual-logika.js';
 import { wbKomposisi, wbBagianMerk, wbKomposisiBaru, wbModalPerKg, wbRasio, wbNamaKelas } from './wadah-bernama-logika.js';
@@ -70,7 +70,7 @@ export function calonMerkMasuk() {
   ambilHargaKarung().forEach((h) => { if (h.merk && hitung[h.merk] === undefined && String(h.merk).indexOf('\u00b7') >= 0) { hitung[h.merk] = 0; akhir[h.merk] = ''; } });
   const arsip = arPeta();   // putaran 27: nama yang diarsipkan tidak ditawarkan (tetap boleh diketik — layar lalu bertanya pulihkan / varian)
   const kelas = wbNamaKelas();   // putaran 27 (Bagian 5): nama wadah / kelas mutu tidak ditawarkan — barang masuk dibukukan per merek karung
-  const wadahStok = petaStokWadah();   // putaran 28: buku stok wadah bukan nama barang masuk
+  const wadahStok = petaBukuWadah();   // putaran 28: buku milik wadah (isi kotak & karung sisihan) bukan nama barang masuk
   return Object.keys(hitung).filter((m) => !arsip[arKunciBeras(m)] && !kelas[m] && !wadahStok[m]).sort((a, b) => akhir[b].localeCompare(akhir[a]) || hitung[b] - hitung[a] || a.localeCompare(b));
 }
 /** Harga beli per kg terakhir nama itu (dari buku) — pembanding saat mengetik harga. */
@@ -79,11 +79,11 @@ export function hargaSebelumnya(merk) { const s = hitungStokKarungPerMerk()[merk
 export function hitungMasuk(draf) {
   // putaran 27 (Bagian 5, owner 27 Sep): nama WADAH / kelas mutu (IR64 Apex dkk.) tidak pernah lagi dibukukan lewat barang masuk — kecuali nama wadah yang
   // sekaligus merek karung pemasok (Aturan wadah). Koreksi kedatangan lama boleh tetap memakai nama yang sudah tertulis di kedatangan itu.
-  const kelas = wbNamaKelas(); const wadahStok = petaStokWadah(); const lamaB = draf.id ? ambilSemuaBatch().find((x) => String(x.id) === String(draf.id)) : null;
+  const kelas = wbNamaKelas(); const wadahStok = petaBukuWadah(); const lamaB = draf.id ? ambilSemuaBatch().find((x) => String(x.id) === String(draf.id)) : null;
   const namaLama = {}; ((lamaB && lamaB.merkList) || []).forEach((m) => { if (m.merk) namaLama[m.merk] = true; });
   const bongkar = ckAngka(draf.bongkar); const baris = (draf.baris || []).map((b, i) => {
     const jumlah = ckAngka(b.jumlahKarung); const berat = ckAngka(b.beratKarung) || 50; const harga = ckAngka(b.hargaPerKg); const merk = String(b.merk || '').trim();
-    const terisi = !!merk || jumlah > 0 || harga > 0; const masalah = !terisi ? '' : !merk ? 'nama berasnya belum dipilih' : wadahStok[merk] ? merk + ' itu buku STOK WADAH — diisi lewat takar dari karung di belakangnya, bukan barang masuk' : kelas[merk.split(' \u00b7 ')[0]] && !namaLama[merk] ? merk + ' itu nama WADAH / kelas mutu, bukan merek karung — tulis merek yang tertera di karungnya'
+    const terisi = !!merk || jumlah > 0 || harga > 0; const masalah = !terisi ? '' : !merk ? 'nama berasnya belum dipilih' : wadahStok[merk] ? merk + ' itu buku KHUSUS (isi wadah / karung sisihan wadah / kemasan adukan yang dibuka), bukan merek pemasok — tulis merek yang tertera di karungnya' : kelas[merk.split(' \u00b7 ')[0]] && !namaLama[merk] ? merk + ' itu nama WADAH / kelas mutu, bukan merek karung — tulis merek yang tertera di karungnya'
       : !(jumlah > 0) ? 'jumlah karungnya belum diisi' : !(harga > 0) ? 'harga beli per kg belum diisi' : '';
     // putaran 27 (Bagian 2): nama yang sudah punya buku & harga beli beda > batas dari modal berjalan → "sama barangnya / beda mutu?" (koreksi tidak ditanya)
     const vr = !draf.id && terisi && !masalah ? vrPerluTanya(merk, harga) : { perlu: false };

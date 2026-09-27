@@ -270,7 +270,14 @@ Rantai sekarang: tumpukan / pemasok / adukan → **karung terbuka di belakang wa
 - **Ganti nama** membawa stok (buku nama baru lahir + pindah buku). **Atur susunan** menolak melepas wadah yang masih berstok.
 - **Tiga pintu karung** di belakang wadah (`calonBukaKarung`): tumpukan gudang · baru datang dari pemasok (kedatangan 14 hari; `asal: 'masuk'`,
   `batchId` di catatan karung — bukunya tetap buku merek itu) · kemasan jadi hasil adukan 25/50 kg (`susunBukaKemasan`: stok kemasan −1 unit lewat
-  `sumberKemasanList`, berasnya masuk buku karung bernama sama dengan modal kemasan itu, `bukaKemasan: true`).
+  `sumberKemasanList`, berasnya masuk BUKU SENDIRI `'Adukan <nama> <ukuran> kg'` (baris lahir `bukuAdukan`) dengan modal kemasan itu — owner 28 Sep:
+  hasil produksi tidak dicampur ke buku merek pemasok).
+- **Karung wadah** (owner 28 Sep: isi yang dikeluarkan dari kotak = stok terpisah) = buku `'Karung wadah <nama>'` (baris lahir `karungWadah`),
+  kolamnya karung lepas. **Sisihkan** (tutup toko; bawaan `aturWadah().sisihKg` = 10 kg, diatur owner) = pindah buku wadah → karung wadah;
+  **tuang balik** (buka toko; tidak boleh melewati batas menggunung) = takar `tuangBalik` + pindah buku kembali; **bongkar** (setahun sekali) = hasil
+  ditimbang, selisih dengan buku wadah jadi `penyesuaianStok` (`bongkar: true`, alasan di atas susut wajar), seluruh isi pindah ke karung wadah, titik
+  samakan 0. Karung wadah & buku adukan: tidak dijual dari HP kasir, tidak di rak karung / harga / barang masuk / cocokkan tumpukan; boleh jadi bahan
+  adukan dan ditakar ke wadah mana pun dari deretan. Ganti nama wadah membawa karung wadahnya.
 - **Katalog HP kasir** (owner memilih "wadah ikut katalog"; `wbSaringKatalogKasir` sesudah saring arsip): baris buku wadah memakai harga liter
   wadahnya, tanpa karung/harga karung; nama wadah berstok sendiri tidak dijual literan atas nama buku mereknya (kecuali literan langsung).
   kasir*.html tidak disentuh. Tanpa wadah berstok sendiri = byte-sama penyusun index.html.

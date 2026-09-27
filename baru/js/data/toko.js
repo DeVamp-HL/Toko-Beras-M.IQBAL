@@ -54,9 +54,23 @@ export function petaStokWadah() {
   const out = {}; ambilSemuaBatch().forEach((b) => (b.merkList || []).forEach((m) => { if (m && m.stokWadah && m.merk) out[String(m.merk)] = String(m.stokWadah); }));
   return out;
 }
-/** Salinan peta stok karung TANPA buku stok wadah — untuk daftar MEREK (rak karung, gudang, harga karung, adukan, arsip, …). */
+// Isi yang DIKELUARKAN dari kotak wadah (owner 28 Sep: tiap tutup toko ±10 kg dari yang menggunung disisihkan; setahun sekali wadah dibongkar penuh)
+// = stok TERPISAH per wadah, berkunci 'Karung wadah <nama>' — lahir dengan cara yang sama, barisnya bertanda `karungWadah` (= nama wadah).
+export const kunciKarungWadah = (W) => 'Karung wadah ' + String(W);
+// Kemasan jadi HASIL ADUKAN yang dibuka jadi karung terbuka (owner 28 Sep: "hasil produksi kemasan beda dari hasil beli langsung dari pemasok")
+// = buku sendiri per produk & ukuran, berkunci 'Adukan <nama> <ukuran> kg', barisnya bertanda `bukuAdukan` (= kunci kemasannya).
+export const kunciBukuAdukan = (nama, ukuran) => 'Adukan ' + String(nama) + ' ' + String(ukuran).replace('.', ',') + ' kg';
+/** { kunci: { jenis: 'wadah' | 'karung' | 'adukan', wadah } } — buku KHUSUS yang bukan merek pemasok: isi kotak wadah (stokWadah), karung
+ *  sisihan/bongkarannya (karungWadah), kemasan hasil adukan yang dibuka (bukuAdukan; `wadah` = nama produknya). */
+export function petaBukuWadah() {
+  const out = {}; ambilSemuaBatch().forEach((b) => (b.merkList || []).forEach((m) => { if (!m || !m.merk) return;
+    if (m.stokWadah) out[String(m.merk)] = { jenis: 'wadah', wadah: String(m.stokWadah) }; else if (m.karungWadah) out[String(m.merk)] = { jenis: 'karung', wadah: String(m.karungWadah) };
+    else if (m.bukuAdukan) out[String(m.merk)] = { jenis: 'adukan', wadah: String(m.bukuAdukan).split('|')[0] }; }));
+  return out;
+}
+/** Salinan peta stok karung TANPA buku khusus (isi wadah, karung sisihan, kemasan adukan dibuka) — untuk daftar MEREK (rak karung, gudang, harga karung, …). */
 export function stokMerekSaja(stok) {
-  const w = petaStokWadah(); const out = {}; Object.keys(stok || {}).forEach((m) => { if (!w[m]) out[m] = stok[m]; }); return out;
+  const w = petaBukuWadah(); const out = {}; Object.keys(stok || {}).forEach((m) => { if (!w[m]) out[m] = stok[m]; }); return out;
 }
 export function ambilRetur() { return _cache.retur; }
 export function ambilKarantina() { return _cache.karantina; }
