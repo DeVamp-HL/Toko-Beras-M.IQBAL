@@ -11,7 +11,7 @@ import { cariHargaKarungPerKg, kunciPelanggan } from '../mesin/pembantu.js';
 import { tempoPemasok } from './bon-pemasok-logika.js';
 // putaran 18: saldo per tempat uang (laci · brankas · rekening · amplop) — satu kebenaran dengan layar Uang
 import { saldoKantong } from './uang-logika.js';
-import { ambilPenjualan, ambilSemuaBatch, ambilTutupHari, ambilPengeluaranHarian, ambilPiutangMutasi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilProduksiBerlaku, ambilPemasokCatatan, ambilTitikKas, cacheMentah } from '../data/toko.js';
+import { ambilPenjualan, ambilSemuaBatch, ambilTutupHari, ambilPengeluaranHarian, ambilPiutangMutasi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilProduksiBerlaku, ambilPemasokCatatan, ambilTitikKas, cacheMentah, stokMerekSaja } from '../data/toko.js';
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { semuaBon } from './bon-logika.js';
 import { semuaOrang } from './pelanggan-logika.js';
@@ -73,7 +73,7 @@ export function susunLaci(kini, lokal) {
   const U = mnUtang(iso); const bon = semuaBon(kini).filter((b) => b.sisa > 0); const totalBon = bon.reduce((a, b) => a + b.sisa, 0); const macet = bon.filter((b) => b.status === 'macet').length; const tagih = bon.filter((b) => b.status === 'janjiLewat' || b.status === 'perluTagih').length;
   const pertama = mnCatatanPertama(); const umur = pertama ? ssHariKe(iso) - ssHariKe(pertama) + 1 : 0; const laba = hitungLabaBersihRentang(mnAwalBulan(iso), iso);
   const K = mnKatalog(); const O = mnOpname(); const opUmur = O.akhir ? ssHariKe(iso) - ssHariKe(O.akhir) : null;
-  const prod = ambilProduksiBerlaku(); const prodBulan = new Set(prod.filter((p) => (p.tanggal || '') >= mnAwalBulan(iso) && !p.dariTakar).map((p) => p.batchProduksi || p.id)).size; const prodSemua = new Set(prod.filter((p) => !p.dariTakar).map((p) => p.batchProduksi || p.id)).size;
+  const prod = ambilProduksiBerlaku(); const prodBulan = new Set(prod.filter((p) => (p.tanggal || '') >= mnAwalBulan(iso) && !p.dariTakar && !p.bukaKemasan).map((p) => p.batchProduksi || p.id)).size; const prodSemua = new Set(prod.filter((p) => !p.dariTakar).map((p) => p.batchProduksi || p.id)).size;
   const era = ssEraTutupBuku(); const tahunLalu = pertama && Number(pertama.slice(0, 4)) < kini.getFullYear();
   const P = ssPerangkat(kini, L.antre || [], L.idPerangkat || ''); const S = ssPersetujuan(kini); const C = ssCadangan(kini, L); const LK = ssLokasi(); const G = ssPengingat(kini, L);
   const baris = (id, ikon, judul, sub, angka, cap, awas, tujuan) => ({ id, ikon, judul, sub, angka, cap, awas: !!awas, tujuan });
@@ -198,7 +198,7 @@ export function susunCari(kini, q) {
   const t = mnPolos(q); if (t.length < 2) return { teks: t, hasil: [], kosong: false };
   const cocok = (s) => mnPolos(s).indexOf(t) >= 0; const hasil = [];
   MN_LAYAR.forEach((l) => { if (cocok(l.nama) || cocok(l.sub)) hasil.push({ jenis: 'layar', judul: l.nama, sub: l.sub, tujuan: l.tujuan }); });
-  const stokK = hitungStokKarungPerMerk(); Object.keys(stokK).forEach((m) => { if (cocok(m)) hasil.push({ jenis: 'merek', judul: m, sub: 'beras · buku ' + ANGKA(Math.round(stokK[m].sisaKg || 0)) + ' kg', tujuan: { ke: 'stok', tab: 'gudang', teks: 'buka Stok → Gudang' } }); });
+  const stokK = stokMerekSaja(hitungStokKarungPerMerk()); Object.keys(stokK).forEach((m) => { if (cocok(m)) hasil.push({ jenis: 'merek', judul: m, sub: 'beras · buku ' + ANGKA(Math.round(stokK[m].sisaKg || 0)) + ' kg', tujuan: { ke: 'stok', tab: 'gudang', teks: 'buka Stok → Gudang' } }); });
   const stokM = hitungStokKemasan(); Object.keys(stokM).forEach((k) => { const x = stokM[k]; const nm = x.namaProduk + ' ' + x.ukuranKemasan + ' kg'; if (cocok(nm)) hasil.push({ jenis: 'merek', judul: nm, sub: 'kemasan · ' + ANGKA(x.sisaUnit || 0) + ' unit', tujuan: { ke: 'stok', tab: 'gudang', teks: 'buka Stok → Gudang' } }); });
   semuaOrang(kini).forEach((o) => { if (cocok(o.nama) || cocok(o.asli)) hasil.push({ jenis: 'orang', judul: o.nama, sub: (o.utang > 0 ? 'bon ' + RP(o.utang) + ' · ' : '') + o.kunjungan + ' kali datang', tujuan: { ke: 'pelanggan', keluarga: 'kenali', orang: o.kunci, teks: 'buka kartunya' } }); });
   return { teks: t, hasil: hasil.slice(0, 12), kosong: !hasil.length, lebih: Math.max(0, hasil.length - 12) };

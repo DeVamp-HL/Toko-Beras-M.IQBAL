@@ -127,3 +127,5 @@ main.layar-stok.masuk > header, main.layar-stok.masuk > .jalur { animation: rkNa
 body.gelap .layar-stok .iso-toko .sisi-atas.karung { fill: #cdb98b; } body.gelap .layar-stok .iso-toko .sisi-kiri.karung { fill: #7d6a44; } body.gelap .layar-stok .iso-toko .sisi-kanan.karung { fill: #a48f62; }
 .layar-stok .dr-aksi { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 12px; background: var(--seg); border: 1px solid var(--emas-garis); font-size: 12px; }
 @media (prefers-reduced-motion: reduce) { .layar-stok .iso-toko .lantai-zona { transition: none; } }
+/* putaran 28: tiga pintu karung di belakang wadah (tumpukan · pemasok · hasil adukan) */
+.layar-stok .pintu-karung { display: flex; flex-direction: column; gap: 6px; }

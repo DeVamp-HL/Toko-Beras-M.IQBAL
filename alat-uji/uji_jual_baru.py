@@ -836,7 +836,7 @@ if __name__ == '__main__':
             'sisa bon tanpa nama lolos': js.replace("if (t.sisaJadiBon && !nama) return", "if (false) return"),
             'nego di bawah modal tidak diberi tahu': js.replace("const awas = hppSatuan > 0 && hg < hppSatuan;", "const awas = false;"),
             'penjualan batal ikut dihitung di hari ini': js.replace("const baris = ambilPenjualan().filter((p) => p.tanggal === iso);", "const baris = ambilPenjualanSemua().filter((p) => p.tanggal === iso);"),
-            'harga kemasan 25 kg diabaikan (per kg menang)': js.replace("const hg = hargaKarungUtuh(merk, berat);", "const hg = { perUnit: Math.round((cariHargaKarungPerKg(merk) || 0) * berat) };"),
+            'harga kemasan 25 kg diabaikan (per kg menang)': js.replace("const hg = hargaKarungUtuh(hgNama, berat);", "const hg = { perUnit: Math.round((cariHargaKarungPerKg(merk) || 0) * berat) };"),
             'kantong literan tidak masuk HPP': js.replace("hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * totalKg) + biayaK,", "hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * totalKg),").replace("+ (k === 0 ? (t.biayaKemasanLiteran || 0) : 0);", "+ 0;"),   # putaran 27: literan wadah dihitung ulang saat dipecah
             'membuka struk lain MEMBUANG keranjang yang sedang jalan': js.replace("const dasar = s.keranjang.length ? parkir(s) : { antrean: s.antrean };", "const dasar = { antrean: s.antrean };"),
             # ---- putaran 2 ----
@@ -887,7 +887,7 @@ if __name__ == '__main__':
             # ---- putaran 6: tata letak & wadah ----
             'kemasan tidak diurutkan dari termurah': js.replace("rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || termurah(a, b));", "rak.kemasan.sort((a, b) => a.ukuranKg - b.ukuranKg || b.harga - a.harga);"),
             'kemasan tidak dikelompokkan per ukuran': js.replace("kemasan: kelompokkan(rak.kemasan, (c) => c.ukuranKg,", "kemasan: kelompokkan(rak.kemasan, (c) => 0,"),
-            'wadah yang belum pernah ditandai digambar PENUH (ditebak)': js.replace("if (!tanda) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH, puncakKg: WADAH_PUNCAK, takarKg: atur.takarKg };", "if (!tanda) return { wadah: true, diketahui: true, sisaKg: 50, gunung: 1, dalam: 1, perluIsi: false };"),
+            'wadah yang belum pernah ditandai digambar PENUH (ditebak)': js.replace("if (!tanda && !aktif) return { wadah: true, diketahui: false, penuhKg: WADAH_PENUH, puncakKg: WADAH_PUNCAK, takarKg: atur.takarKg };", "if (!tanda && !aktif) return { wadah: true, diketahui: true, sisaKg: 50, gunung: 1, dalam: 1, perluIsi: false };"),
             'literan SEBELUM tanda isi ulang ikut mengurangi': js.replace("a + (wbDariWadah(p, merk) && wdSesudah(p, tanda) ? (p.totalKg || 0) : 0), 0);", "a + (wbDariWadah(p, merk) ? (p.totalKg || 0) : 0), 0);"),
             'keranjang tidak menurunkan gunung': js.replace("const dipegang = literKeranjang(s && s.keranjang) +", "const dipegang = 0 * literKeranjang(s && s.keranjang) + 0 *"),
             '50 kg masih digambar menggunung (rata tidak sejajar bibir kotak)': js.replace("gunung: WADAH_PUNCAK > WADAH_PENUH ? Math.max(0, Math.min(1, (sisaKg - WADAH_PENUH) / (WADAH_PUNCAK - WADAH_PENUH))) : 0,", "gunung: Math.max(0, Math.min(1, sisaKg / WADAH_PENUH)),"),
@@ -897,9 +897,9 @@ if __name__ == '__main__':
             'tanda isi ulang satu wadah mengisi semua wadah': js.replace("semua.filter((w) => w.wadah === merk && w.tipe === 'isi')", "semua.filter((w) => w.tipe === 'isi')"),
             'karung/kemasan ikut mengurangi wadah': js.replace("return !!p && p.jenis === 'literan' && (p.dariWadah ?", "return !!p && (p.dariWadah ?"),   # putaran 27: aturan "baris literan dari wadah" satu tempat (wbDariWadah)
             # ---- koreksi owner 19 Sep: takar demi takar dari karung di belakang wadah ----
-            'takar yang dicatat tidak menaikkan isi wadah': js.replace("const nyata = wdB2(isi + dituang - terjual - dipegang);", "const nyata = wdB2(isi - terjual - dipegang);"),
-            'takar wadah lain ikut menaikkan wadah ini': js.replace("a + (t.tipe === 'takar' && t.wadah === merk && wdSesudah(t, tanda) ? (Number(t.kg) || 0) : 0), 0);", "a + (t.tipe === 'takar' && wdSesudah(t, tanda) ? (Number(t.kg) || 0) : 0), 0);"),
-            'takar SEBELUM titik samakan ikut dihitung': js.replace("a + (t.tipe === 'takar' && t.wadah === merk && wdSesudah(t, tanda) ? (Number(t.kg) || 0) : 0), 0);", "a + (t.tipe === 'takar' && t.wadah === merk ? (Number(t.kg) || 0) : 0), 0);"),
+            'takar yang dicatat tidak menaikkan isi wadah': js.replace(": wdB2(isi + dituang - terjual - dipegang);", ": wdB2(isi - terjual - dipegang);"),
+            'takar wadah lain ikut menaikkan wadah ini': js.replace("a + (t.tipe === 'takar' && t.wadah === merk && sejak(t) ? (Number(t.kg) || 0) : 0), 0);", "a + (t.tipe === 'takar' && sejak(t) ? (Number(t.kg) || 0) : 0), 0);"),
+            'takar SEBELUM titik samakan ikut dihitung': js.replace("a + (t.tipe === 'takar' && t.wadah === merk && sejak(t) ? (Number(t.kg) || 0) : 0), 0);", "a + (t.tipe === 'takar' && t.wadah === merk ? (Number(t.kg) || 0) : 0), 0);"),
             'isian melebihi batas menggunung lolos (dipotong diam-diam)': js.replace("if (h.lewat) return { tolak: 'Isian ini membuat wadah jadi '", "if (false) return { tolak: 'Isian ini membuat wadah jadi '"),
             'takar tidak mengurangi karung di belakang wadah': js.replace("const sisa = wdB2(masuk - diambil); const akhir", "const sisa = wdB2(masuk); const akhir"),
             'takar campuran membebani SEMUA karung (bukan nama masing-masing)': js.replace("b + (x.merk === merk && wdLokasiSumber(x, daftar) === L ? (Number(x.kg) || 0) : 0), 0)", "b + (wdLokasiSumber(x, daftar) === L ? (Number(x.kg) || 0) : 0), 0)"),
@@ -934,7 +934,7 @@ if __name__ == '__main__':
             'rantai stok melupakan bagian merek di wadah (tumpukan tidak dikurangi isi wadah)': js.replace("const diWadah = wdB2(bagian[merk] || 0);", "const diWadah = wdB2(0);"),
             'takar bukuAsal ikut dihitung pindah nama di layar (dua kali: komposisi + pindah nama)': js.replace("    if (t.bukuAsal) return;   // putaran 27", "    if (false) return;   // putaran 27"),
             'takar senama selalu mengambil dari karung di belakang wadah lain (bukan wadahnya sendiri)': js.replace("if (karungUntukWadah(wadah).merk === merk) return wadah;", "if (false) return wadah;"),
-            'buka karung tidak mencatat di belakang wadah mana': js.replace("tipe: 'karung', merk, kg }, di ? { wadah: di } : { lepas: true }) }],", "tipe: 'karung', merk, kg }, { lepas: true }) }],"),
+            'buka karung tidak mencatat di belakang wadah mana': js.replace("tipe: 'karung', merk, kg }, di ? { wadah: di } : { lepas: true }, masuk ?", "tipe: 'karung', merk, kg }, { lepas: true }, masuk ?"),
             'karung otomatis tidak mencatat di belakang wadah mana': js.replace("kg: berat, otomatis: true }, x.dari ? { wadah: x.dari } : { lepas: true }) });", "kg: berat, otomatis: true }, { lepas: true }) });"),
             'nama yang tidak ada di buku gudang boleh dibuka': js.replace("if (!t.adaBuku) return { tolak: merk + ' tidak ada di buku gudang", "if (false) return { tolak: merk + ' tidak ada di buku gudang"),
             'takar karung nama lain tidak pindah nama (tumpukan karung asal naik lagi saat ditakar)': js.replace("const namaKg = wdB2(buku.sisaKg - keluarKg + masukKg);", "const namaKg = wdB2(buku.sisaKg);"),

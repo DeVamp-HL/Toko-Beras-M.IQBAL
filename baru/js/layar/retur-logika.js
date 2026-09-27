@@ -12,7 +12,7 @@
 //    retur + penjualan penggantinya lahir dalam SATU tulisan saat nota dicatat (jual-logika.js susunNotaDokumen).
 import { rtDasarNota, rtKalimatLebih, rtKunciNota, kunciPelanggan, bakuCaraBayar, formatTanggal, merkPunyaKarungBerat, kunciKemasan, namaSingkatTrx, tkApakahYatim, tkSetTertaut, tkTargetPengganti, tkPenjualanHidup } from '../mesin/pembantu.js';
 import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
-import { ambilPenjualan, ambilRetur, tolakKunci } from '../data/toko.js';
+import { ambilPenjualan, ambilRetur, tolakKunci, stokMerekSaja, petaUkuran, indukTerpisah } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
 
 export const ALASAN_RETUR = ['salah beli', 'kualitas kurang', 'kelebihan', 'kemasan rusak'];
@@ -132,7 +132,9 @@ export const kunciNama = kunciPelanggan;
 /** Barang yang bisa diretur tanpa nota: karung per merek & berat (yang pernah ada di buku), kemasan per produk; berikut yang pernah terjual & sudah diretur. */
 export function daftarBarangRetur() {
   const jual = ambilPenjualan(); const retur = ambilRetur(); const karung = []; const kemasan = [];
-  Object.keys(hitungStokKarungPerMerk()).sort().forEach((merk) => { [50, 25].forEach((b) => { if (!merkPunyaKarungBerat(merk, b)) return;
+  // putaran 28: buku per ukuran — 'Merek 25 kg' cuma karung 25 kg; induknya yang sudah dipisah tidak lagi menerima retur ukuran itu (masuk ke buku ukurannya)
+  const uk = petaUkuran(); const tp = indukTerpisah();
+  Object.keys(stokMerekSaja(hitungStokKarungPerMerk())).sort().forEach((merk) => { [50, 25].forEach((b) => { if (uk[merk] ? b !== uk[merk].berat : !!(tp[merk] && tp[merk][b])) return; if (!merkPunyaKarungBerat(merk, b)) return;
     const terjual = jual.filter((p) => p.jenis === 'karung' && p.merkSumber === merk && (p.beratKarungAcuan || 50) === b).reduce((a, p) => a + (p.jumlahKarung || 0), 0);
     const diretur = retur.filter((r) => r.jenisAsal === 'karung' && r.merkSumber === merk && (r.beratKarungAcuan || 50) === b).reduce((a, r) => a + (r.jumlahKarung || 0), 0);
     karung.push({ kunci: merk + '|' + b, merk, berat: b, nama: merk + ' ' + b + ' kg', terjual, diretur, satuan: 'karung' }); }); });

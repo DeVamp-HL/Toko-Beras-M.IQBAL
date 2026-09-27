@@ -10,7 +10,7 @@
 // Modal per kg = modal rata-rata di buku (mesin yang sama dengan laba & neraca; sama dengan layar HPP), harga beli terbaru dibawa sebagai pembanding.
 import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
 import { RASIO_DEFAULT, RASIO_KONVERSI, kunciKemasan } from '../mesin/pembantu.js';
-import { ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilSemuaBatch, ambilPenjualan, ambilHargaPasar, ambilHargaTerbit, cacheMentah } from '../data/toko.js';
+import { ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilSemuaBatch, ambilPenjualan, ambilHargaPasar, ambilHargaTerbit, cacheMentah, stokMerekSaja, petaUkuran } from '../data/toko.js';
 import { RP, hariIniIso } from '../inti/format.js';
 import { arPeta, arSembunyiHarga, arBeras } from './arsip-logika.js';
 import { aturWadah } from './jual-logika.js';
@@ -110,7 +110,9 @@ export function hgSemua(kini) {
   // punya baris liter (jadi tidak ditagih "belum ada harga"); harga liter lain yang masih tersimpan tampil di tab Literan sebagai "tidak dipakai".
   const wadahD = aturWadah().daftar; const langsung = wbLiteranLangsung().daftar; const bolehL = (m) => wadahD.indexOf(m) >= 0 || langsung.indexOf(m) >= 0;
   const wadahInfo = {}; wadahD.forEach((W) => { wadahInfo[W] = { modal: wbModalPerKg(W), beli: wbBeliPerKg(W) }; });
-  Object.keys(stokK).forEach((m) => { if (bolehL(m)) tambah(m, 'L'); tambah(m, 'S'); }); kK.forEach((h) => tambah(h.merk, 'S')); kL.forEach((h) => { if (bolehL(h.merk)) tambah(h.merk, 'L'); });
+  // putaran 28: buku stok wadah tidak punya harga karung sendiri; buku per ukuran ('Merek 25 kg') memakai harga merek induk ukuran itu
+  const ukuranBuku = petaUkuran();
+  Object.keys(stokMerekSaja(stokK)).filter((m) => !ukuranBuku[m]).forEach((m) => { if (bolehL(m)) tambah(m, 'L'); tambah(m, 'S'); }); kK.forEach((h) => tambah(h.merk, 'S')); kL.forEach((h) => { if (bolehL(h.merk)) tambah(h.merk, 'L'); });
   wadahD.forEach((W) => tambah(W, 'L')); langsung.forEach((m) => tambah(m, 'L'));
   kM.forEach((h) => { const u = Number(h.ukuran); if (isFinite(u) && u > 0) tambah(h.merk, 'K' + u); });
   Object.keys(stokM).forEach((k) => { const x = stokM[k]; const u = Number(x.ukuranKemasan); if (isFinite(u) && u > 0 && ((x.sisaUnit || 0) > 0 || (x.unitDibuat || 0) > 0)) tambah(x.namaProduk, 'K' + u); });
