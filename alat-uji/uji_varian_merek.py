@@ -108,6 +108,8 @@ ok('varian dari Harga: "Kumala · Super" — katalog per kg terbit + jenis ikut 
   && !!vrSusunBuatDariHarga('Tak Ada', 'X', '15.000', W).tolak && !!vrSusunBuatDariHarga('Kumala', '', '15.000', W).tolak && (terapkan(B10), !!vrSusunBuatDariHarga('Kumala', 'Super', '15.000', W).tolak), J(B10));
 ok('sesudahnya: barang masuk menawarkan "Kumala · Super", katalog punya barisnya, jenis beras terisi', calonMerkMasuk().indexOf('Kumala · Super') >= 0 && HG_baris('Kumala · Super|S').n === 15000 && jenisUntukMerk('Kumala · Super') === 'IR64');
 
+// ---- perbaikan 28 Sep: induk berstok TANPA harga jual → kartu varian memperingatkan (stok tetap di nama induk, tidak tampil di Jual); induk berharga / tanpa stok → diam
+ok('peringatan varian: Polos (stok 100 kg, tanpa katalog) → kalimat menyebut stok, "BELUM ada harga jual", "setel harga Polos di katalog", varian stok 0; LL (berharga) & nama tanpa stok → kosong', /^Polos punya stok 100 kg tapi BELUM ada harga jual — stok itu tetap atas nama Polos dan tidak tampil di Jual\. Kalau barangnya SAMA, setel harga Polos di katalog \(bukan varian\)\. Varian = nama BARU yang stoknya 0/.test(vrPeringatanInduk('Polos')) && vrPeringatanInduk('LL') === '' && vrPeringatanInduk('Tak Ada') === '' && vrPeringatanInduk('') === '', vrPeringatanInduk('Polos'));
 // ---- putaran 27 (cek 390 px): kartu "Varian merek baru" di Harga tidak menawarkan nama wadah / kelas sebagai induk
 ok('induk varian baru dari layar Harga: nama wadah / kelas mutu (IR64 Apex, IR42 Value) & nama varian TIDAK ditawarkan; Angsa (wadah yang juga merek karung) & merek biasa tetap', J(vrCalonInduk(['Angsa', 'IR42 Value', 'IR64 Apex', 'Kumala', 'LL', 'LL · Premium'])) === J(['Angsa', 'Kumala', 'LL']), J(vrCalonInduk(['Angsa', 'IR42 Value', 'IR64 Apex', 'Kumala', 'LL', 'LL · Premium'])));
 
@@ -117,7 +119,9 @@ if (CADANGAN) {
   Object.keys(CADANGAN).forEach(function (n) { pasok(n, CADANGAN[n]); });
   // putaran 27 (Bagian 5): nama wadah / kelas mutu (IR64 Apex dkk.) tidak boleh lagi datang lewat barang masuk — dipisah: merek → varian, kelas → wajib ditolak
   var kelas = wbNamaKelas(); var st0 = hitungStokKarungPerMerk(); var semuaNama = Object.keys(st0).filter(function (m) { return st0[m].hppTerakhirPerKg > 0; });
-  var nama = semuaNama.filter(function (m) { return !kelas[m]; }); var namaKelas = semuaNama.filter(function (m) { return kelas[m]; });
+  // putaran 28: buku per ukuran ('Merek 25 kg') & buku khusus wadah bukan nama barang masuk — ditolak dengan benar, jadi tidak ikut asap varian
+  var bukanMasuk = Object.assign({}, petaUkuran(), petaBukuWadah());
+  var nama = semuaNama.filter(function (m) { return !kelas[m] && !bukanMasuk[m]; }); var namaKelas = semuaNama.filter(function (m) { return kelas[m]; });
   var tanya3 = nama.filter(function (m) { return vrPerluTanya(m, Math.round(st0[m].hppTerakhirPerKg * 1.03)).perlu; });
   var tanya10 = nama.filter(function (m) { return !vrPerluTanya(m, Math.round(st0[m].hppTerakhirPerKg * 1.10)).perlu; });
   var WC = { tanggal: TGL_CAD, jam: '23:50', kini: TGL_CAD + 'T16:50:00.000Z', idUnik: function () { nId += 1; return nId; } };
@@ -170,6 +174,8 @@ RUSAK = {
     'harga varian di bawah modal tanpa ketukan kedua': ("if (modal > 0 && n < modal - 0.5 && !yakin) return { tolak:", "if (false) return { tolak:"),
     'varian dari Harga menimpa nama yang sudah ada': ("if (vrAda(nama)) return { tolak: nama + ' sudah ada", "if (false) return { tolak: nama + ' sudah ada"),
     'induk varian baru menawarkan nama wadah / kelas': ("return (daftar || []).filter((m) => String(m).indexOf(VR_PEMISAH) < 0 && !kelas[m]);", "return (daftar || []).filter((m) => String(m).indexOf(VR_PEMISAH) < 0);"),
+    'peringatan varian diam walau induk berstok tanpa harga': ("if ((perKg !== null && perKg > 0) || (utuh && utuh.perUnit > 0)) return '';", "return '';"),
+    'peringatan varian berbunyi walau induk sudah berharga': ("if ((perKg !== null && perKg > 0) || (utuh && utuh.perUnit > 0)) return '';", "if (false) return '';"),
     'usul harga tanpa target untung': ("return modalKg > 0 ? vrBulatAtas(modalKg + (Number(a.targetPerKg) || 0), Number(a.bulatKarung) || 0) : 0;", "return modalKg > 0 ? vrBulatAtas(modalKg, Number(a.bulatKarung) || 0) : 0;"),
 }
 
