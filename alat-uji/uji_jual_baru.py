@@ -749,7 +749,7 @@ var dikenal = {}; (CAD.penjualan || []).forEach(function (p) { Object.keys(p).fo
 // bendera yang ADA di kode live tapi bisa belum pernah terpakai di cadangan: bonusUnit (17633), penggantiRetur & nilaiBarangPengganti (19384)
 dikenal.bonusUnit = true; dikenal.penggantiRetur = true; dikenal.nilaiBarangPengganti = true;
 // kolom BARU milik sistem baru (putaran 15, tercatat di BACA-DULU): baris wadah & repack berwadah/berupah — sistem lama tidak menulisnya
-['jenisWadah', 'kemasanRepack', 'jumlahKemasanRepackDipakai', 'biayaKemasanRepack', 'upahRepack'].forEach(function (k) { dikenal[k] = true; });
+['jenisWadah', 'kemasanRepack', 'jumlahKemasanRepackDipakai', 'biayaKemasanRepack', 'upahRepack', 'perluCocokkan', 'selisihKg'].forEach(function (k) { dikenal[k] = true; });   // + putaran 31b: jual dulu, tandai untuk dicocokkan
 function terap(p) { s = Object.assign({}, s, p); sinkronKeranjang(s); }
 var asing = [];
 [['karung', rak.karung[0]], ['literan', rak.literan[0]], ['kemasan', rak.kemasan[0]], ['repack', rak.repack[0]]].forEach(function (x) {
@@ -846,7 +846,7 @@ if __name__ == '__main__':
             'pelunasan sebagian tidak dicatat': js.replace("if (bayarSebagian > 0) {\n    piutangId = w.idUnik();", "if (false) {\n    piutangId = w.idUnik();"),
             'kantong literan tidak dicatat terpakai': js.replace("if (d.kemasanLiteran && d.jumlahKemasanLiteranDipakai > 0) {\n      dokumen.push", "if (false) {\n      dokumen.push"),
             'KR1 dilewati untuk bon': js.replace("if (s.cara === 'Kredit') { const k = alasanKunciKredit(s, t.total); if (k) return k; }", ""),
-            'stok tidak dicek ulang saat mencatat': js.replace("const tolak = alasanTolak(s) || periksaStokKeranjang(s);", "const tolak = alasanTolak(s);"),
+            'stok tidak dicek ulang saat mencatat': js.replace("const stok = periksaStokKeranjang(s); let tembus = [];   // pemeriksaan ulang TIDAK berubah (31b)", "const stok = ''; let tembus = [];"),   # putaran 31b: simpanNota memisahkan alasanTolak & periksaStokKeranjang
             'pembatalan tidak melepas pelunasan sebagian': js.replace("if (notaTerakhir.piutangId) hapus.push({ koleksi: 'piutangMutasi', id: notaTerakhir.piutangId });", ""),
             'isian layar bocor ke dokumen (label/satuan)': js.replace("['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'setengahDari', 'setengahHargaBaru', 'pecahan', '_takaran'].forEach((k) => { delete d[k]; });", ""),   # putaran 27: + bendera ½ karung
             # ---- putaran 3 ----

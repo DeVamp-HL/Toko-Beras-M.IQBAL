@@ -1,7 +1,6 @@
 # Peta "Jual dulu, tandai untuk dicocokkan" — putaran 31.2, Tahap 0
 
-**Status (28 Sep 2026): peta selesai, owner sudah menjawab §5 (lihat §6). Dibangun di cabang sendiri `pemantapan/31b-jual-tandai-cocok` SESUDAH
-cabang 31 masuk main — belum ada perubahan perilaku di cabang 31.**
+**Status (28 Sep 2026): peta selesai, owner menjawab §5 (§6), DIBANGUN di cabang `pemantapan/31b-jual-tandai-cocok` (§7).**
 Sumber: kode di cabang `pemantapan/31-empat-kecil` (di atas putaran 30), `firestore.rules` v4, cadangan toko 28 Sep sore (`_privat/`). Angka di sini kg dan
 jumlah catatan, bukan rupiah. Nama orang tidak disebut.
 
@@ -66,4 +65,16 @@ pemeriksaan di layar + `periksaKiriman` untuk bukan-owner, bukan rules) · laba 
 5. **Pita di Jual: YA**, pola pita karcis ("N nota tembus stok belum dicocokkan"), plus item di Stok › Gudang kartu keempat.
 
 Cabang: bukan di cabang 31 — cabang sendiri `pemantapan/31b-jual-tandai-cocok` sesudah 31 masuk main.
+
+## 7. Yang dibangun (28 Sep 2026, cabang `pemantapan/31b-jual-tandai-cocok`)
+
+Sesuai §2–§4 dan §6. Penyimpangan kecil: kolom selisih memakai satu nama `selisihKg` untuk semua jalur (kemasan = unit × ukuran) sesuai §6 no. 2.
+
+| Bagian | Berkas | Uji |
+|---|---|---|
+| jalur tembus owner, tanda, tuntas | `jual-logika.js` (`barisTembus`, `simpanNota` dua ketukan + `perluCocokkan`/`selisihKg`, `notaTembusBelumCocok`; keadaan `tembusTanya`/`tembusYakin`) | `uji_jual_tandai_cocok.py`, `uji_jual_baru.py` |
+| pita & tombol di Jual | `jual.js` (`tembusBoleh` dari akun, `catatNota(tembusYakin)`, pita "belum dicocokkan", tombol "JUAL DULU, TANDAI") | statis di `uji_jual_tandai_cocok.py` |
+| kartu keempat Gudang | `stok-logika.js` (`jwbCocok` baris `tembus|<nama>`) | `uji_jual_tandai_cocok.py` |
+
+Rules v4, mesin beku, katalog kasir (`susunIsiKatalogKasir`) tidak berubah; `periksaStokKeranjang` byte-sama.
 
