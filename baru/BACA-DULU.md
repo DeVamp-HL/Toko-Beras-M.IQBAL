@@ -558,6 +558,10 @@ refresh & pertama buka"; UI lebih hidup & intuitif dari segi gerak; animasi penu
   semua layar, Jual juga, disembunyikan); merusak `terkunci()` saja tidak lagi membocorkan apa pun, jadi kontrol 2 merusak kedua lapis. (2) 3× DICOBA ULANG
   90 dtk, semuanya skenario Firebase PALSU: `modulepreload` SDK ke gstatic di index.html tidak ikut dialihkan ke `/_palsu/` → halaman uji tetap mengunduh
   SDK sungguhan dan event load menunggunya. Salinan uji kini mengalihkan preload itu juga (skenario palsu kembali tanpa jaringan).
+  CI kedua: kontrol 9 (Firebase dari CDN tidak termuat → wajib GAGAL JARINGAN) DIAM — preload membuat SDK tampak "lengkap" tergantung urutan unduhan;
+  kontrol 9 kini memutus KETIGA modul SDK di firebase.js dan preload (CDN mati sungguhan). Masih ada 1× DICOBA ULANG 90 dtk di skenario palsu (sebab belum
+  terbukti); baris DICOBA ULANG kini membawa catatan waktu (halaman melapor selesai, gambar penahan dijawab, permintaan terakhir) supaya kejadian berikutnya
+  menjelaskan dirinya — diagnosis berulang hanya di runner (CLAUDE.md).
 
 ## Struktur
 ```

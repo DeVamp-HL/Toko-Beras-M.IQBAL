@@ -224,19 +224,21 @@ GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\
 
 
 class Diam(http.server.SimpleHTTPRequestHandler):
-    siap = None; gagal = None; diminta = None; sdk = None   # per server: Event, Event, [jalur], [modul Firebase yang termuat menurut halaman]
+    siap = None; gagal = None; diminta = None; sdk = None; waktu = None; t0 = 0   # per server: Event, Event, [jalur], [modul Firebase], {peristiwa: dtk}
     def log_message(self, *a): pass
     def do_GET(self):
         self.diminta.append(self.path.split('?')[0])
         if self.path.startswith('/_siap'):
-            self.siap.set(); self.send_response(204); self.end_headers(); return
+            self.waktu.setdefault('siap', round(time.time() - self.t0, 1)); self.siap.set(); self.send_response(204); self.end_headers(); return
         if self.path.startswith('/_gagalmuat'):
             from urllib.parse import urlparse, parse_qs
             self.sdk.extend((parse_qs(urlparse(self.path).query).get('sdk') or [''])[0].split())
             self.gagal.set(); self.siap.set(); self.send_response(204); self.end_headers(); return
         if self.path.startswith('/_tahan'):
+            self.waktu.setdefault('penahan_diminta', round(time.time() - self.t0, 1))
             self.siap.wait(40); time.sleep(2.5)   # aplikasi sudah jalan → beri waktu jawaban Firebase / cadangan tergambar
-            self.send_response(200); self.send_header('Content-Type', 'image/gif'); self.end_headers(); self.wfile.write(GIF); return
+            self.send_response(200); self.send_header('Content-Type', 'image/gif'); self.end_headers(); self.wfile.write(GIF)
+            self.waktu.setdefault('penahan_dijawab', round(time.time() - self.t0, 1)); return
         return super().do_GET()
     def end_headers(self):
         if self.path.endswith('.js'): self.send_header('Cache-Control', 'no-store')
@@ -255,7 +257,7 @@ def _ikat_tanpa_dns(self):
 def layani(d):
     t0 = time.time()
     s = socket.socket(); s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]; s.close()
-    kelas = type('DiamRun', (Diam,), {'siap': threading.Event(), 'gagal': threading.Event(), 'diminta': [], 'sdk': []})
+    kelas = type('DiamRun', (Diam,), {'siap': threading.Event(), 'gagal': threading.Event(), 'diminta': [], 'sdk': [], 'waktu': {}, 't0': time.time()})
     # antrean sambungan LEBAR: bawaan socketserver cuma 5, Chrome membuka lebih banyak sekaligus → sambungan ditolak → modul lokal gagal dimuat secara acak
     # (dulu tampak sebagai "Chrome mencetak DOM sebelum app.js jalan")
     Srv = type('SrvUji', (http.server.ThreadingHTTPServer,), {'request_queue_size': 128, 'daemon_threads': True, 'server_bind': _ikat_tanpa_dns})
@@ -299,7 +301,7 @@ def dom(d, jalur, coba=3, butuh_cdn=True):
             sebab = 'CDN Firebase tidak terjangkau'
             continue
         if siap and '</html>' in h: return h, None
-        sebab = 'selesai tapi DOM tidak keluar' if siap else 'tidak mengabarkan selesai'
+        sebab = ('selesai tapi DOM tidak keluar' if siap else 'tidak mengabarkan selesai') + ' [waktu %s · permintaan terakhir %s]' % (info.get('waktu'), info.get('akhir'))
     return '', TIDAK_JALAN
 
 
@@ -321,7 +323,7 @@ def dom_sekali(d, jalur, tunggu=90):
     try:
         selesai.wait(tunggu)
         return ''.join(buf), K.siap.is_set() and not K.gagal.is_set(), {'gagal': K.gagal.is_set(), 'sdk': list(K.sdk), 'firebase_diminta': '/baru/js/data/firebase.js' in K.diminta,
-                                                                         'log': coba_ulang.ekor_berkas(log_chrome)}
+                                                                         'log': coba_ulang.ekor_berkas(log_chrome), 'waktu': dict(K.waktu), 'akhir': list(K.diminta[-4:])}
     finally:
         try: os.killpg(p.pid, signal.SIGKILL)
         except (ProcessLookupError, PermissionError): p.kill()
@@ -469,7 +471,10 @@ if __name__ == '__main__':
             if not c: kode = 3
         # kontrol 9 · jaringan: Firebase tidak termuat → keluaran WAJIB berkata GAGAL JARINGAN, bukan lulus & bukan gagal uji
         DISENGAJA = 'kontrol 9 memutus Firebase supaya keluarannya wajib berkata GAGAL JARINGAN'
-        c, sebab = jalankan('tirai', [('js/data/firebase.js', SDK + 'firebase-app.js', 'http://127.0.0.1:9/firebase-app.js')])
+        # putaran 33: index.html juga memuat SDK lebih awal (modulepreload). Memutus firebase-app.js di firebase.js saja membuat SDK tetap "lengkap"
+        # menurut halaman (tergantung urutan unduhan) → TIDAK_JALAN, bukan GAGAL JARINGAN. Kini CDN mati sungguhan: ketiga modul, di firebase.js DAN preload.
+        c, sebab = jalankan('tirai', [('js/data/firebase.js', SDK + m, 'http://127.0.0.1:9/' + m) for m in SDK_MODUL] +
+                                     [('index.html', '<link rel="modulepreload" href="' + SDK + m + '">', '<link rel="modulepreload" href="http://127.0.0.1:9/' + m + '">') for m in SDK_MODUL])
         DISENGAJA = None
         ok = sebab == JARINGAN
         print(('BERBUNYI ' if ok else 'DIAM!!   ') + 'kontrol 9 · Firebase tidak termuat → ' + (KALIMAT_SEBAB.get(sebab, 'sebab: ' + str(sebab) + ' · cacat: ' + str(c[:1])))[:110]); kode = kode if ok else 3
