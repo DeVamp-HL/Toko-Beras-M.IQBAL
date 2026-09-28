@@ -463,7 +463,7 @@ var replikaBeda = Object.keys(hitungStokKarungPerMerk()).filter(function (m) { r
 if (replikaBeda.length) asingC.push('HPP replika ≠ mesin: ' + replikaBeda.join(', '));
 var cb = calonBahan()[0]; var cn = calonNamaHasil()[0]; var ck5 = kantongUntuk(5)[0]; var banyakAdukan = daftarAdukan(1e9).length; var rincianOk = true;
 if (cb && cn && ck5) { var dZ = drafAdukanKosong(WX); dZ.bahan = [{ merk: cb.merk, kg: '50' }]; dZ.hasil = [{ nama: cn, ukuran: '5', unit: '10', kantongJenis: ck5.jenis, kantongJumlah: '10' }]; dZ.upah = '10.000';
-  var SZ = susunSimpanAdukan(dZ, WX, { bahan: true, kantong: true, susut: true, kantongKosong: true, kemasan: true });
+  var SZ = susunSimpanAdukan(dZ, WX, { bahan: true, kantong: true, susut: true, kantongKosong: true, kemasan: true, mundur: true });   // putaran 31.3: WX bertanggal sebelum cocokkan terakhir di cadangan → ketukan kedua
   if (SZ.dokumen) { Object.keys(SZ.dokumen[0].data).forEach(function (k) { if (!kenalPr[k]) asingC.push('produksiKemasan.' + k); }); var kt = SZ.dokumen.find(function (d) { return d.koleksi === 'stokBahanKemasan'; }); if (kt) Object.keys(kt.data).forEach(function (k) { if (!kenalKt[k]) asingC.push('stokBahanKemasan.' + k); });
     if (Math.abs(SZ.dokumen[0].data.hppPerUnit * 10 - SZ.hitung.total) > 1e-6) asingC.push('adukan: Σ modal × unit ≠ total biaya'); } else asingC.push('adukan ditolak: ' + SZ.tolak); }
 daftarAdukan(1e9).slice(0, 40).forEach(function (a) { var r = rincianAdukan(a.batch); if (!r || Math.abs(r.biaya.total - a.total) > 1) rincianOk = false; });
