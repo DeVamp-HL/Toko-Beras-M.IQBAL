@@ -167,11 +167,11 @@ ok('firebase.js: bukan-owner tidak pernah HAPUS / bersihkan / arsip; nonaktif = 
   F.indexOf("if (!status.akun || status.akun.jenis !== 'owner') { const p = periksaKiriman(status.akun, [], daftar") > 0 && (F.match(/if \(pemilikSaja\(\)\)/g) || []).length === 3
   && F.indexOf('} else { cabutPendengar(); }') > 0 && F.indexOf("includes('permission-denied')) { status.masuk = false; }") < 0);
 ok('app.js: pemilih pemegang hilang; formulir = email + sandi, sandi readonly sampai diketuk (tidak diisi otomatis), email terakhir bisa dilupakan satu ketukan; Keluar menanyakan catatan yang belum terkirim; menu menyembunyikan layar bukan-hak',
-  A.indexOf('setelPemegang') < 0 && SUMBER.html.indexOf('id="isianSandi" type="password" class="ketik-nama" placeholder="Sandi" autocomplete="off" readonly') > 0 && A.indexOf('lupakanEmail') > 0
+  A.indexOf('setelPemegang') < 0 && /<input id="isianSandi" type="password" class="ketik-nama" placeholder="[^"]*" autocomplete="off" readonly>/.test(SUMBER.html) && A.indexOf('lupakanEmail') > 0
   && A.indexOf("catatan belum terkirim dari akun ini") > 0 && A.indexOf("el.hidden = !!a && !bolehLayar(a, el.dataset.tujuan)") > 0 && SUMBER.html.indexOf('id="tombolKeluar"') > 0);
 // ---- 11 · TIRAI (putaran 23c): sebelum masuk / belum disetujui / nonaktif, layar di belakang formulir Masuk KOSONG (uji peramban: uji_layar_kunci.py)
 var LT = ['jual', 'ringkasan', 'stok', 'pelanggan', 'menu', 'harga', 'uang', 'laporan'];
-var tanpaGerbang = LT.filter(function (n) { var s = SUMBER['layar_' + n]; return s.indexOf("import { terkunci } from '../inti/kunci.js';") < 0 || !/if \((!tampil \|\| )?terkunci\(\)\) return;/.test(s); });
+var tanpaGerbang = LT.filter(function (n) { var s = SUMBER['layar_' + n]; return s.indexOf("import { terkunci } from '../inti/kunci.js';") < 0 || !/if \((!tampil \|\| )?terkunci\(\)\) (return;|\{ _kotor = true; return; \})/.test(s); });
 ok('tirai: KEDELAPAN layar memeriksa terkunci() sebelum menggambar; bawaan terkunci (sebelum Firebase menjawab); app.js membuka hanya untuk owner / akun aktif (bisaBekerja) atau mode cadangan, dan saat menutup MENGOSONGKAN tiap <main>',
   tanpaGerbang.length === 0 && SUMBER.kunci.indexOf('let _kunci = true;') >= 0 && A.indexOf("const kunci = !q.get('cadangan') && !bisaBekerja(akun);") > 0 && A.indexOf("if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; });") > 0
   && A.indexOf('function gambarAkun(akun) {\n  jagaIsian(akun);\n  terapkanKunci(akun);') > 0 && A.indexOf('terapkanKunci(null);') > 0 && SUMBER.layar_ringkasan.indexOf("if (!tampil || terkunci() || !$('rkJam')) return;") > 0, JSON.stringify(tanpaGerbang));
@@ -249,9 +249,9 @@ if __name__ == '__main__':
             'firebase: penjaga bukan-owner dilewati': (js, ganti('firebase', "if (!owner) { const p = periksaKiriman(akun, isi, H, _sumberHak(), new Date()); if (p.tolak) return { gagal: true, pesan: p.tolak }; }", "")),
             'firebase: jejak per dokumen untuk bukan-owner': (js, ganti('firebase', "if (!owner) { const log = jejakKiriman(akun, ditulis", "if (false) { const log = jejakKiriman(akun, ditulis")),
             'firebase: satu pendengar ditolak mematikan aplikasi': (js, ganti('firebase', "}, (err) => tolak(k.nama, err));", "}, (err) => { if (String(err && err.code || '').includes('permission-denied')) { status.masuk = false; } tolak(k.nama, err); });")),
-            'app: sandi boleh diisi otomatis': (js, ganti('html', 'placeholder="Sandi" autocomplete="off" readonly', 'placeholder="Sandi" autocomplete="current-password"')),
+            'app: sandi boleh diisi otomatis': (js, ganti('html', 'placeholder="Ketik sandi lu" autocomplete="off" readonly', 'placeholder="Ketik sandi lu" autocomplete="current-password"')),
             'app: keluar tanpa menanyakan yang belum terkirim': (js, ganti('app', "catatan belum terkirim dari akun ini", "catatan")),
-            'tirai: layar Uang menggambar walau terkunci': (js, ganti('layar_uang', 'if (!tampil || terkunci()) return;', 'if (!tampil) return;')),
+            'tirai: layar Uang menggambar walau terkunci': (js, ganti('layar_uang', 'if (!tampil || terkunci()) { _kotor = true; return; }', 'if (!tampil) { _kotor = true; return; }')),
             'tirai: bawaan terbuka sebelum Firebase menjawab': (js, ganti('kunci', 'let _kunci = true;', 'let _kunci = false;')),
             'tirai: menutup tanpa mengosongkan <main>': (js, ganti('app', "if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; });", "if (kunci) {")),
             'tirai: akun belum disetujui ikut membuka': (js, ganti('app', "const kunci = !q.get('cadangan') && !bisaBekerja(akun);", "const kunci = !q.get('cadangan') && !akun;")),

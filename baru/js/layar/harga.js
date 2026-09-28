@@ -1,6 +1,7 @@
 // LAYAR HARGA & PEMASOK — GAMBAR & KETUKAN. Tiga keluarga dalam satu layar: KATALOG (H1: Papan · Kalimat · Dampak · Pasar · Belah · Label),
 // BON PEMASOK (H2: Tusukan bon · Jatuh tempo · Buku bon), BELANJA (H3: Isi truk · Kapan habis · Daftar). Angka & dokumen di harga-logika.js,
 // bon-pemasok-logika.js, belanja-logika.js (tanpa DOM, dijaga uji_harga_baru.py). Satu markup tiga lebar: HP = tab; Tablet = benda utama menetap + tab; Mac = kolom.
+import { nanti, segera } from '../inti/jadwal.js';   // owner 29 Sep: bunyi data/status digabung sekali per bingkai (lag & freeze)
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
@@ -46,7 +47,7 @@ export function pasangLayarHarga(akar, opsi) {
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['ketik', 'aturH', 'aturB', 'aturL', 'bayar', 'lama', 'kartu', 'jbKetik', ['vrBaru', (v) => !!(v && (v.mutu || v.harga))]], [KUNCI_DRAF_BELANJA]);
   const set = (p) => K.setel(p); const st = () => K.baca();
-  let tampil = false; const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined);
+  let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined);
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
   const ingatTab = () => simpanLokal(KUNCI_TAB, { h: st().tabH, b: st().tabB, l: st().tabL });
 
@@ -176,7 +177,7 @@ export function pasangLayarHarga(akar, opsi) {
 
   // ====================== GAMBAR ======================
   function gambar() {
-    if (!tampil || terkunci()) return; const s = st(); const sumber = sumberData(); const L = lebar();
+    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false; const s = st(); const sumber = sumberData(); const L = lebar();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">
@@ -540,9 +541,9 @@ export function pasangLayarHarga(akar, opsi) {
       : h`<div class="kaca-btn kecil" data-aksi="bukaAturL" style="align-self: flex-start;">Atur kapan disarankan, target hari & muatan truk · ${H.atur.dariOwner ? 'diatur owner' : 'bawaan'} ›</div>`;
   }
 
-  K.dengar(gambar); dengarkan(() => gambar());
+  K.dengar(gambar); dengarkan(() => nanti(gambar));
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
   // dipanggil layar Menu / Stok: buka keluarga (katalog | bon | belanja) — lewat penangan yang sama dengan ketukan; pemasok = buka bukunya
   const buka = (keluarga, t) => { AKSI.keluarga({ nama: ['katalog', 'bon', 'belanja'].indexOf(keluarga) >= 0 ? keluarga : 'katalog' }); if (t && t.pemasok) set({ bukuNama: t.pemasok, tabB: 'buku' }); if (t && t.tab) set(keluarga === 'katalog' ? { tabH: t.tab } : keluarga === 'bon' ? { tabB: t.tab } : { tabL: t.tab }); };
-  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
 }

@@ -9,6 +9,7 @@
 //   · interaktif   → ketuk sel cincin untuk melihat nilainya, ketuk lapis untuk pindah skala, geser kiri/kanan ganti skala.
 // Aturan gerak papan R2: gerak = kejadian (tidak ada animasi berputar tanpa henti), kurva tenggelam cubic-bezier(.2,.8,.2,1),
 // tempo SENTUH 160 · DATA 480 · SKALA 560 ms; prefers-reduced-motion dihormati (CSS). BACA SAJA.
+import { nanti, segera } from '../inti/jadwal.js';   // owner 29 Sep: bunyi data/status digabung sekali per bingkai (lag & freeze)
 import { esc } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { RP } from '../inti/format.js';
@@ -208,13 +209,15 @@ export function pasangLayarRingkasan(akar, opsi) {
     if (!paksa && k.getHours() * 60 + k.getMinutes() !== menitLama) perbarui('menit');
   }
   setInterval(() => detak(false), 1000);
-  dengarkan(() => { ix = null; perbarui('data'); });
+  const perbaruiData = () => perbarui('data');
+  const perbaruiTampil = () => perbarui('tampil');   // owner 29 Sep: dulu digambar langsung di ketukan (±80 ms menahan pindah layar)
+  dengarkan(() => { ix = null; nanti(perbaruiData); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) perbarui('data'); });   // kembali ke depan → angka & cincin diselaraskan
 
   // putaran 23d: Beranda tidak punya kolom isian — tidak ada yang ditanyakan atau dikosongkan saat ganti orang (tirai sudah mengosongkan tampilannya)
   return {
     belumDisimpan: () => false, lupakanOrang: () => {},
-    gambar: () => perbarui('data'),
-    tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { angkaTampil = null; kunciNotaLama = null; akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); perbarui('tampil'); } },
+    gambar: perbaruiData,   // fungsi yang SAMA dengan pendengar data → penjadwal menggabungnya (tinjauan 29 Sep: dulu digambar dua kali per bingkai)
+    tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { angkaTampil = null; kunciNotaLama = null; akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); segera(perbaruiTampil); } },
   };
 }

@@ -17,6 +17,8 @@ import { terkunci, setelKunci } from './inti/kunci.js';
 import { kalimatKeranjangKeluar } from './layar/jual-logika.js';
 import { kalimatIsianKeluar } from './inti/isian.js';
 import { pjSumberPengingat } from './layar/pajak-logika.js';
+import { nanti, setelMuat } from './inti/jadwal.js';
+import { pasangGerbang } from './inti/gerbang.js';   // gerbang masuk G4 (dikunci owner 29 Sep 2026)   // owner 29 Sep: lag & freeze — gambar ulang digabung sekali per bingkai
 
 const q = new URLSearchParams(location.search);
 const KUNCI_MODE = 'miqbal_baru_mode';
@@ -92,15 +94,50 @@ const uang = pasangLayarUang(document.getElementById('layarUang'), { akun: () =>
 const keTujuan = (t) => { if (!t) return; if (t.ke === 'stok') { pindah('stok'); stok.buka(t.lembar || null, t.tab || null); } else if (t.ke === 'pelanggan') { pindah('pelanggan'); pelanggan.buka(t.keluarga || 'kenali', t.orang || null); } else if (t.ke === 'harga') { pindah('harga'); harga.buka(t.keluarga || 'katalog', t); } else if (t.ke === 'uang') { pindah('uang'); uang.buka(t.keluarga || 'keluar', t); } else if (t.ke === 'laporan') { pindah('laporan'); laporan.buka(t.keluarga || 'laba', t); } else if (t.ke === 'sistem') { pindah('menu'); menu.buka && menu.buka(t.sistem || 'perangkat', t.tab || null); } else if (t.ke === 'jual' && t.lembar) { pindah('jual'); layar.keadaan.setel({ lembar: t.lembar, kabar: '' }); } else pindah(t.ke); };
 const laporan = pasangLayarLaporan(document.getElementById('layarLaporan'), { akun: () => akunKini(), gantiMode, mode: () => mode, sekarang: () => sekarangCadangan, statusRingkas, pindah: (t) => pindah(t), keTujuan });
 const LAYAR_ADA = { jual: akar, ringkasan: document.getElementById('layarRingkasan'), stok: document.getElementById('layarStok'), pelanggan: document.getElementById('layarPelanggan'), menu: document.getElementById('layarMenu'), harga: document.getElementById('layarHarga'), uang: document.getElementById('layarUang'), laporan: document.getElementById('layarLaporan') };
+// GERAK PINDAH LAYAR (owner 29 Sep: "lebih hidup, lebih intuitif — dari segi motion terutama"): layar baru datang dari ARAH tab yang dituju
+// (kanan = tab sesudahnya, kiri = sebelumnya) dan penanda menu meluncur ke tab aktif — orang merasa di mana ia berada.
+const URUT_TAB = ['ringkasan', 'stok', 'jual', 'pelanggan', 'menu', 'harga', 'uang', 'laporan'];
+let tabKini = null;
+// Web Animations pada ANAK <main> (lihat gerak.css §1): animasi CSS dasar anak tidak disentuh, jadi tidak ada yang terputar ulang sesudahnya.
+const DATANG_KECUALI = '.latar-bola, .jual-keranjang, .lembar, .tetes-terbang, input';
+function datangkan(el, dari, ke) {
+  if (!el || dari === ke || !dari || typeof el.animate !== 'function') return;
+  if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const geser = URUT_TAB.indexOf(ke) > URUT_TAB.indexOf(dari) ? 26 : -26; let i = 0;
+  Array.from(el.children).forEach((c) => {
+    if (c.matches(DATANG_KECUALI)) return;
+    c.animate([{ opacity: 0, transform: 'translateX(' + geser + 'px)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: Math.min(120, i * 30), easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
+    i += 1;
+  });
+}
+/** Penanda (pil emas) di bawah petak aktif: menu bawah (HP/tablet) & menu samping (Mac). Diukur dari petaknya → ikut lebar layar. */
+function geserPenanda() {
+  const nav = document.querySelector('.nav'); const side = document.querySelector('.side');
+  const pasangDi = (wadah, aktif, sumbu) => {
+    if (!wadah) return; let p = wadah.querySelector(':scope > .penanda');
+    if (!p) { p = document.createElement('span'); p.className = 'penanda'; p.setAttribute('aria-hidden', 'true'); wadah.prepend(p); }
+    if (!aktif || aktif.hidden || !aktif.offsetParent) { p.classList.remove('ada'); return; }
+    const sasaran = sumbu === 'y' ? (aktif.querySelector('.ikon') || aktif) : aktif;
+    const wr = wadah.getBoundingClientRect(); const r = sasaran.getBoundingClientRect();
+    p.style.setProperty('--x', Math.round(r.left - wr.left + (wadah.scrollLeft || 0)) + 'px'); p.style.setProperty('--y', Math.round(r.top - wr.top + (wadah.scrollTop || 0)) + 'px');
+    p.style.setProperty('--w', Math.round(r.width) + 'px'); p.style.setProperty('--h', Math.round(r.height) + 'px');
+    if (!p.classList.contains('ada')) { p.classList.add('diam'); void p.offsetWidth; p.classList.add('ada'); requestAnimationFrame(() => p.classList.remove('diam')); }
+  };
+  pasangDi(nav, nav && nav.querySelector('[data-tujuan].aktif'), 'x');
+  pasangDi(side, side && side.querySelector('.item[data-tujuan].aktif'), 'y');
+}
+window.addEventListener('resize', () => nanti(geserPenanda));
 function pindah(tujuan) {
   if (!LAYAR_ADA[tujuan]) return false;
   const a = akunKini(); if (a && bisaBekerja(a) && !bolehLayar(a, tujuan)) { kabarSebentar('Layar ini tidak termasuk hak ' + teksMasukSebagai(a) + '.'); return true; }
+  const dari = tabKini; tabKini = tujuan;
   Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].hidden = k !== tujuan; });
   document.querySelectorAll('[data-tujuan]').forEach((el) => el.classList.toggle('aktif', el.dataset.tujuan === tujuan || ((tujuan === 'harga' || tujuan === 'uang' || tujuan === 'laporan') && el.dataset.tujuan === 'menu' && el.closest('nav'))));   // Harga & Pemasok / Uang tidak punya petak di nav bawah: petak Menu yang menyala (pintunya)
   document.body.classList.toggle('di-jual', tujuan === 'jual');
-  ringkasan.tampilkan(tujuan === 'ringkasan'); stok.tampilkan(tujuan === 'stok'); pelanggan.tampilkan(tujuan === 'pelanggan'); menu.tampilkan(tujuan === 'menu'); harga.tampilkan(tujuan === 'harga'); uang.tampilkan(tujuan === 'uang'); laporan.tampilkan(tujuan === 'laporan');
+  layar.tampilkan(tujuan === 'jual'); ringkasan.tampilkan(tujuan === 'ringkasan'); stok.tampilkan(tujuan === 'stok'); pelanggan.tampilkan(tujuan === 'pelanggan'); menu.tampilkan(tujuan === 'menu'); harga.tampilkan(tujuan === 'harga'); uang.tampilkan(tujuan === 'uang'); laporan.tampilkan(tujuan === 'laporan');
   try { localStorage.setItem(KUNCI_TAB, tujuan); } catch (e) { /* abaikan */ }
   window.scrollTo(0, 0);
+  datangkan(LAYAR_ADA[tujuan], dari, tujuan); requestAnimationFrame(geserPenanda);
   return true;
 }
 
@@ -108,6 +145,7 @@ function pindah(tujuan) {
 //      (readonly sampai diketuk = pengisi-otomatis peramban tidak menempelkan sandi tersimpan; sisanya setelan peramban tablet — putaran tablet). ----
 const KUNCI_EMAIL = 'miqbal_baru_email_terakhir';
 const modal = document.getElementById('modalMasuk');
+const gerbang = pasangGerbang({ gantiMode: () => gantiMode() });
 const formMasuk = document.getElementById('formMasuk'), panelAkun = document.getElementById('panelAkun');
 const pesanMasuk = document.getElementById('pesanMasuk');
 const salahMasuk = document.getElementById('salahMasuk');
@@ -124,8 +162,12 @@ const SEMUA_LAYAR = () => [ringkasan, stok, pelanggan, menu, harga, uang, lapora
 function terapkanKunci(akun) {
   const kunci = !q.get('cadangan') && !bisaBekerja(akun); const tadi = terkunci();
   setelKunci(kunci); document.body.classList.toggle('terkunci', kunci);
-  SEMUA_LAYAR().forEach((l) => l.tampilkan(false));
-  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); document.getElementById('lembarAkun').classList.remove('buka'); return; }
+  // tinjauan 29 Sep: tampilkan(false) dulu dipanggil di SETIAP perubahan akun — akun karyawan yang aksesnya diubah owner saat bekerja (masih boleh
+  // bekerja, tadi=false) membuat layar yang sedang dibuka berhenti menggambar sampai pindah tab. Kini hanya saat MENGUNCI.
+  // Lapisan uang di luar <main> (pil/koin/panggung omzet, di atas gerbang z 20) ikut dicabut: tirai 23c = nol angka rupiah sesudah Keluar.
+  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); SEMUA_LAYAR().forEach((l) => l.tampilkan(false)); layar.tampilkan(false);
+    ['omzetPil', 'omzetToast', 'omzetNaik', 'koinOmzet', 'cincinOmzet', 'kilauOmzet', 'panggung'].forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); });
+    document.getElementById('lembarAkun').classList.remove('buka'); return; }
   if (tadi) { pindah((() => { try { return localStorage.getItem(KUNCI_TAB) || 'jual'; } catch (e) { return 'jual'; } })()) || pindah('jual'); layar.gambar(); }
 }
 // ---- GANTI ORANG (23c keranjang → 23d SEMUA isian lokal, owner 24 Sep): isian yang belum disimpan — keranjang Jual, form & lembar atur di Stok, Pelanggan,
@@ -153,14 +195,14 @@ function gambarAkun(akun) {
   jagaIsian(akun);
   terapkanKunci(akun);
   const bisa = bisaBekerja(akun);
-  modal.classList.toggle('tampil', !bisa);
+  const tundaFokus = gerbang.akun(akun, bisa) || 0;   // 'tampil' = gerbang menghalangi layar (arti lama); membuka/menutup = gerak di js/inti/gerbang.js
   if (bisa) { isianSandi.value = ''; return; }
   const keluarSaja = !akun || akun.jenis === 'keluar';
   formMasuk.hidden = !keluarSaja; panelAkun.hidden = keluarSaja;
   if (keluarSaja) {
     const e = bacaEmail(); isianEmail.value = e; ingatEmail.hidden = !e; isianSandi.value = ''; isianSandi.readOnly = true; salahMasuk.hidden = true;
     pesanMasuk.textContent = 'Masuk dengan akun lu sendiri. Akun dibuat owner.';
-    setTimeout(() => (e ? isianSandi : isianEmail).focus(), 50); return;
+    setTimeout(() => (e ? isianSandi : isianEmail).focus(), tundaFokus + 50); return;   // sesudah pintu merapat: kolom baru terlihat & bisa difokus
   }
   document.getElementById('judulAkun').textContent = akun.kalimat || 'Akun ini belum bisa dipakai';
   document.getElementById('pesanAkun').textContent = akun.jenis === 'belum' ? 'Masuk sebagai ' + akun.email + '. Owner perlu mendaftarkan akun ini dulu — tulis nama lu lalu minta didaftarkan; owner menyetujuinya di Menu › Sistem › Peran.'
@@ -170,16 +212,19 @@ function gambarAkun(akun) {
 }
 formMasuk.addEventListener('submit', async (ev) => {
   ev.preventDefault();
-  const email = isianEmail.value.trim(), sandi = isianSandi.value; if (!email || !sandi) return;
-  const tombol = document.getElementById('tombolMasuk'); tombol.disabled = true; tombol.textContent = 'Memeriksa…';
+  const email = isianEmail.value.trim(), sandi = isianSandi.value;
+  if (!email) { salahMasuk.textContent = 'Ketik email akun lu.'; salahMasuk.hidden = false; gerbang.ditolak(); isianEmail.focus(); return; }
+  if (!sandi) { gerbang.mintaSandi(); return; }   // owner 29 Sep: dulu diam saja — kini kolom sandi berdenyut
+  const tombol = document.getElementById('tombolMasuk'); tombol.disabled = true; tombol.textContent = 'Memeriksa…'; salahMasuk.hidden = true; gerbang.memeriksa();
   const r = await fb.masuk(email, sandi); isianSandi.value = ''; isianSandi.readOnly = true;
   tombol.disabled = false; tombol.textContent = 'Masuk';
-  if (r.ok) { try { localStorage.setItem(KUNCI_EMAIL, email.toLowerCase()); } catch (e) { /* abaikan */ } } else { salahMasuk.textContent = r.pesan; salahMasuk.hidden = false; }
+  if (r.ok) { try { localStorage.setItem(KUNCI_EMAIL, email.toLowerCase()); } catch (e) { /* abaikan */ } } else { salahMasuk.textContent = r.pesan; salahMasuk.hidden = false; gerbang.ditolak(); }
 });
 document.getElementById('tombolMinta').addEventListener('click', async () => {
   const hasil = document.getElementById('hasilAkun'); const r = await fb.mintaDidaftarkan(document.getElementById('isianNamaAkun').value);
   hasil.hidden = false; hasil.classList.toggle('awas', !!r.gagal);
   hasil.textContent = r.gagal ? r.pesan : 'Permintaan terkirim. Tunggu owner menyetujui — layar ini terbuka sendiri begitu akun lu didaftarkan.';
+  if (!r.gagal) gerbang.terkirim();
 });
 /** Keluar = ganti orang. Masih ada catatan belum terkirim → ditanya dulu; salinannya TIDAK dihapus (terkirim saat akun ini masuk lagi). */
 /** Keranjang Jual berisi → ditanya "simpan atau kosongkan?" (putaran 23c). Simpan = batal keluar, kembali ke keranjang. Kosongkan = dilupakan SESUDAH semua pertanyaan lolos. */
@@ -257,7 +302,13 @@ if (q.get('cadangan')) {
     console.log('cadangan dimuat:', r.koleksi, 'koleksi'); })
     .catch((e) => { const p = document.createElement('div'); p.className = 'pita-info awas'; p.textContent = 'Cadangan tidak terbaca: ' + String(e.message); akar.prepend(p); });
 } else {
-  fb.dengarkanStatus((st) => { statusFb = st; gambarChipDanNav(); layar.gambar(); ringkasan.gambar(); stok.gambar(); menu.gambar(); harga.gambar(); uang.gambar(); laporan.gambar(); });
+  // owner 29 Sep (freeze saat refresh/buka): status berbunyi tiap koleksi datang (±108× saat buka) — dulu tiap bunyi = gambar ulang semua layar.
+  // Kini: selama koleksi awal belum lengkap gambar dijarangkan (±3×/detik), sesudahnya sekali per bingkai.
+  // Fungsi yang diantre = fungsi yang SAMA dengan pendengar data tiap layar (tinjauan 29 Sep: pembungkus gambarSemua lolos dari penggabung
+  // → layar yang terlihat digambar dua kali per bingkai). nanti() SEBELUM setelMuat: selesai muat = antrean digambar sekali, tanpa bingkai tambahan.
+  const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar, stok.gambar, menu.gambar, harga.gambar, uang.gambar, laporan.gambar];
+  fb.dengarkanStatus((st) => { statusFb = st; gambarChipDanNav(); GAMBAR_STATUS.forEach(nanti); setelMuat(!!st.masuk && st.koleksiTotal > 0 && st.koleksiSiap < st.koleksiTotal); });
+  gerbang.mulai();   // sebelum Firebase menjawab: gerbang tertutup tanpa formulir (dulu layar kosong); sudah masuk → pintu terbuka cepat
   fb.mulai(gambarAkun);
 }
 

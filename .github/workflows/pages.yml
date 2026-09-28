@@ -139,6 +139,8 @@ jobs:
         run: python3 alat-uji/uji_jual_tandai_cocok.py && python3 alat-uji/uji_jual_tandai_cocok.py --kontrol
       - name: "Riwayat penjualan (32): semua nota per hari dengan kunci panel Hari ini, batal/dirinci disembunyikan, total nota − uang retur = omzet mesin laporan, saringan periode/jenis/cara/cari, halaman 50, struk & retur lewat jalur yang ada (kotak pasir + statis + kontrol)"
         run: python3 alat-uji/uji_riwayat_penjualan.py && python3 alat-uji/uji_riwayat_penjualan.py --kontrol
+      - name: "Gerbang masuk G4, kinerja & gerak (33): preload = graf impor app.js, gambar ulang digabung sekali per bingkai (jsc, jam palsu), layar tersembunyi hanya ditandai kotor, gerbang tanpa rupiah & ID formulir utuh, penutup omzet ditahan sebelum menulis"
+        run: python3 alat-uji/uji_kinerja_gerak.py && python3 alat-uji/uji_kinerja_gerak.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

@@ -1,6 +1,7 @@
 // LAYAR LAPORAN & DOKUMEN — GAMBAR & KETUKAN (putaran 19). Enam keluarga: Laba · Harian · Bulanan · Neraca · Dokumen · Setelan.
 // Angka & dokumen di laporan-logika.js (tanpa DOM, dijaga uji_laporan_baru.py). Satu markup tiga lebar: HP tumpukan · Tablet dua kolom · Mac tiga kolom.
 // Kertas dokumen (putih, siap cetak) satu penyusun untuk layar, dialog cetak/PDF (#cetakDokumen), dan WhatsApp (wujud teks).
+import { nanti, segera } from '../inti/jadwal.js';   // owner 29 Sep: bunyi data/status digabung sekali per bingkai (lag & freeze)
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
@@ -34,7 +35,7 @@ export function pasangLayarLaporan(akar, opsi) {
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD'], []);
   const set = (p) => K.setel(p); const st = () => K.baca();
-  let tampil = false; const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
+  let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
   const bulanKini = () => iso().slice(0, 7);
   const keTujuan = (t) => { if (opsi.keTujuan) opsi.keTujuan(t); else if (opsi.pindah) opsi.pindah(t.ke); };
@@ -129,7 +130,7 @@ export function pasangLayarLaporan(akar, opsi) {
   const grid = (L, semua) => { const kolom = semua.filter((k) => k && (k.__mentah ? k.html.trim() : String(k).trim())); return L === 'hp' || kolom.length < 2 ? h`<div class="lp-grid">${kolom.map((k) => h`<div class="lp-kolom">${k}</div>`)}</div>` : L === 'tablet' ? h`<div class="lp-grid tablet">${kolom.slice(0, 2).map((k, i) => h`<div class="lp-kolom">${k}${i === 1 ? kolom.slice(2) : ''}</div>`)}</div>` : h`<div class="lp-grid mac ${kolom.length === 2 ? 'dua' : ''}">${kolom.map((k) => h`<div class="lp-kolom">${k}</div>`)}</div>`; };
 
   function gambar() {
-    if (!tampil || terkunci()) return; const s = st(); const sumber = sumberData(); const L = lebar();
+    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false; const s = st(); const sumber = sumberData(); const L = lebar();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
       <header class="kepala-jual">
@@ -384,8 +385,8 @@ export function pasangLayarLaporan(akar, opsi) {
     return h`<section data-k="setelan">${grid(L, [h`${kartuId}${nomor}${riwayat}${kaki}`, h`${pratinjau}${pakai}`, h`${lain}`])}</section>`;
   }
 
-  K.dengar(gambar); dengarkan(() => gambar());
+  K.dengar(gambar); dengarkan(() => nanti(gambar));
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
   const buka = (keluarga, t) => { AKSI.keluarga({ nama: LP.KELUARGA_LAPORAN.some((k) => k[0] === keluarga) ? keluarga : 'laba' }); if (t && t.awal && keluarga === 'mingguan') set({ mingguM: t.awal }); if (t && t.tahun && keluarga === 'tahunan') set({ tahunT: Number(t.tahun) }); if (t && t.tab && keluarga === 'dokumen') set({ tabD: t.tab }); if (t && t.jenis && keluarga === 'dokumen') set({ tabD: 'kecil', jenisK: t.jenis }); if (t && t.bulan && keluarga === 'laba') set({ bulanL: t.bulan }); };
-  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
 }

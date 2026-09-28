@@ -208,6 +208,9 @@ def siapkan(rusak=None, skenario='tirai'):
         fbp = os.path.join(d, 'baru', 'js', 'data', 'firebase.js'); s = open(fbp, encoding='utf-8').read()
         for nama in PALSU: assert SDK + nama in s, 'impor ' + nama + ' berubah — perbarui uji'; s = s.replace(SDK + nama, '/_palsu/' + nama)
         open(fbp, 'w', encoding='utf-8').write(s)
+        # putaran 33: index.html memuat SDK Firebase lebih awal lewat <link rel="modulepreload"> ke gstatic. Tanpa ini skenario PALSU tetap mengunduh SDK
+        # sungguhan dan event load menunggunya — CDN yang lambat di runner = DOM tidak keluar dalam 90 dtk (3 DICOBA ULANG di run #396, semuanya skenario palsu)
+        for nama in PALSU: t = t.replace(SDK + nama, '/_palsu/' + nama)
         ap = os.path.join(d, 'baru', 'js', 'app.js'); open(ap, 'a', encoding='utf-8').write('\nwindow.__ujiJual = layar;   // uji_layar_kunci: pegangan layar (salinan uji saja)\n'
             'window.__ujiLayar = { jual: layar, stok, pelanggan, harga, uang, laporan, menu, ringkasan };\n')
     assert '<head>' in t and '</body>' in t; open(idx, 'w', encoding='utf-8').write(t.replace('<head>', '<head>' + isi, 1).replace('</body>', ekor + '</body>', 1))
@@ -221,19 +224,21 @@ GIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\
 
 
 class Diam(http.server.SimpleHTTPRequestHandler):
-    siap = None; gagal = None; diminta = None; sdk = None   # per server: Event, Event, [jalur], [modul Firebase yang termuat menurut halaman]
+    siap = None; gagal = None; diminta = None; sdk = None; waktu = None; t0 = 0   # per server: Event, Event, [jalur], [modul Firebase], {peristiwa: dtk}
     def log_message(self, *a): pass
     def do_GET(self):
         self.diminta.append(self.path.split('?')[0])
         if self.path.startswith('/_siap'):
-            self.siap.set(); self.send_response(204); self.end_headers(); return
+            self.waktu.setdefault('siap', round(time.time() - self.t0, 1)); self.siap.set(); self.send_response(204); self.end_headers(); return
         if self.path.startswith('/_gagalmuat'):
             from urllib.parse import urlparse, parse_qs
             self.sdk.extend((parse_qs(urlparse(self.path).query).get('sdk') or [''])[0].split())
             self.gagal.set(); self.siap.set(); self.send_response(204); self.end_headers(); return
         if self.path.startswith('/_tahan'):
+            self.waktu.setdefault('penahan_diminta', round(time.time() - self.t0, 1))
             self.siap.wait(40); time.sleep(2.5)   # aplikasi sudah jalan → beri waktu jawaban Firebase / cadangan tergambar
-            self.send_response(200); self.send_header('Content-Type', 'image/gif'); self.end_headers(); self.wfile.write(GIF); return
+            self.send_response(200); self.send_header('Content-Type', 'image/gif'); self.end_headers(); self.wfile.write(GIF)
+            self.waktu.setdefault('penahan_dijawab', round(time.time() - self.t0, 1)); return
         return super().do_GET()
     def end_headers(self):
         if self.path.endswith('.js'): self.send_header('Cache-Control', 'no-store')
@@ -252,7 +257,7 @@ def _ikat_tanpa_dns(self):
 def layani(d):
     t0 = time.time()
     s = socket.socket(); s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]; s.close()
-    kelas = type('DiamRun', (Diam,), {'siap': threading.Event(), 'gagal': threading.Event(), 'diminta': [], 'sdk': []})
+    kelas = type('DiamRun', (Diam,), {'siap': threading.Event(), 'gagal': threading.Event(), 'diminta': [], 'sdk': [], 'waktu': {}, 't0': time.time()})
     # antrean sambungan LEBAR: bawaan socketserver cuma 5, Chrome membuka lebih banyak sekaligus → sambungan ditolak → modul lokal gagal dimuat secara acak
     # (dulu tampak sebagai "Chrome mencetak DOM sebelum app.js jalan")
     Srv = type('SrvUji', (http.server.ThreadingHTTPServer,), {'request_queue_size': 128, 'daemon_threads': True, 'server_bind': _ikat_tanpa_dns})
@@ -297,6 +302,9 @@ def dom(d, jalur, coba=3, butuh_cdn=True):
             continue
         if siap and '</html>' in h: return h, None
         sebab = 'selesai tapi DOM tidak keluar' if siap else 'tidak mengabarkan selesai'
+        # catatan waktu ikut dicetak di bawah baris DICOBA ULANG (teks sebab tetap persis — dijaga uji_coba_ulang): kapan halaman melapor selesai, kapan gambar
+        # penahan diminta & dijawab, permintaan terakhir → kejadian "DOM tidak keluar" berikutnya di runner menjelaskan dirinya sendiri
+        log = list(log) + ['[uji] waktu %s · permintaan terakhir %s' % (info.get('waktu'), info.get('akhir'))]
     return '', TIDAK_JALAN
 
 
@@ -318,7 +326,7 @@ def dom_sekali(d, jalur, tunggu=90):
     try:
         selesai.wait(tunggu)
         return ''.join(buf), K.siap.is_set() and not K.gagal.is_set(), {'gagal': K.gagal.is_set(), 'sdk': list(K.sdk), 'firebase_diminta': '/baru/js/data/firebase.js' in K.diminta,
-                                                                         'log': coba_ulang.ekor_berkas(log_chrome)}
+                                                                         'log': coba_ulang.ekor_berkas(log_chrome), 'waktu': dict(K.waktu), 'akhir': list(K.diminta[-4:])}
     finally:
         try: os.killpg(p.pid, signal.SIGKILL)
         except (ProcessLookupError, PermissionError): p.kill()
@@ -422,9 +430,13 @@ KALIMAT_SEBAB = {JARINGAN: 'GAGAL JARINGAN: Firebase dari CDN (gstatic) tidak te
 
 # kontrol: [(nama, skenario, rusak)]
 KONTROL = [
-    ('kontrol 2 · tirai dirusak (terkunci() selalu false)', 'tirai', [('js/inti/kunci.js', 'export const terkunci = () => _kunci;', 'export const terkunci = () => false;')]),
+    # putaran 33: tirai kini DUA lapis — tiap layar memeriksa terkunci(), DAN saat mengunci semua layar (Jual juga) disembunyikan sehingga tidak menggambar.
+    # Merusak terkunci() saja tidak lagi membocorkan apa pun (Jual dulu menggambar walau tersembunyi) → kontrol ini merusak KEDUA lapis.
+    ('kontrol 2 · tirai dirusak (terkunci() selalu false, layar tidak disembunyikan saat mengunci)', 'tirai',
+     [('js/inti/kunci.js', 'export const terkunci = () => _kunci;', 'export const terkunci = () => false;'),
+      ('js/app.js', "SEMUA_LAYAR().forEach((l) => l.tampilkan(false)); layar.tampilkan(false);", "")]),
     ('kontrol 3 · beranda tanpa penjaga tirai', 'tirai', [('js/layar/ringkasan.js', "if (!tampil || terkunci()) return;\n    if (!$('rkHero')) bangun();", "if (!tampil) return;\n    if (!$('rkHero')) bangun();"),
-                                                          ('js/app.js', "SEMUA_LAYAR().forEach((l) => l.tampilkan(false));\n  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; });", "if (kunci) {")]),
+                                                          ('js/app.js', "if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); SEMUA_LAYAR().forEach((l) => l.tampilkan(false)); layar.tampilkan(false);", "if (kunci) {")]),
     ('kontrol 4 · keranjang tidak pernah dilupakan', 'ganti', [('js/layar/jual.js', 'lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))', 'lupakanOrang: () => {}')]),
     ('kontrol 5 · keluar dari tab lain / nonaktif tidak dijaga', 'ganti', [('js/app.js', "if (!akun || akun.jenis === 'keluar' || !bisaBekerja(akun)) { lupakanSemua(); uidKeranjang = ''; return; }", "if (!akun || akun.jenis === 'keluar' || !bisaBekerja(akun)) { uidKeranjang = ''; return; }")]),
     ('kontrol 6 · Keluar tanpa bertanya', 'ganti', [('js/app.js', "(await tanyaIsian(daftar, B, hanyaKeranjang)) !== 'kosongkan'", "false")]),
@@ -462,7 +474,10 @@ if __name__ == '__main__':
             if not c: kode = 3
         # kontrol 9 · jaringan: Firebase tidak termuat → keluaran WAJIB berkata GAGAL JARINGAN, bukan lulus & bukan gagal uji
         DISENGAJA = 'kontrol 9 memutus Firebase supaya keluarannya wajib berkata GAGAL JARINGAN'
-        c, sebab = jalankan('tirai', [('js/data/firebase.js', SDK + 'firebase-app.js', 'http://127.0.0.1:9/firebase-app.js')])
+        # putaran 33: index.html juga memuat SDK lebih awal (modulepreload). Memutus firebase-app.js di firebase.js saja membuat SDK tetap "lengkap"
+        # menurut halaman (tergantung urutan unduhan) → TIDAK_JALAN, bukan GAGAL JARINGAN. Kini CDN mati sungguhan: ketiga modul, di firebase.js DAN preload.
+        c, sebab = jalankan('tirai', [('js/data/firebase.js', SDK + m, 'http://127.0.0.1:9/' + m) for m in SDK_MODUL] +
+                                     [('index.html', '<link rel="modulepreload" href="' + SDK + m + '">', '<link rel="modulepreload" href="http://127.0.0.1:9/' + m + '">') for m in SDK_MODUL])
         DISENGAJA = None
         ok = sebab == JARINGAN
         print(('BERBUNYI ' if ok else 'DIAM!!   ') + 'kontrol 9 · Firebase tidak termuat → ' + (KALIMAT_SEBAB.get(sebab, 'sebab: ' + str(sebab) + ' · cacat: ' + str(c[:1])))[:110]); kode = kode if ok else 3

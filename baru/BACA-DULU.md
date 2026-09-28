@@ -527,6 +527,42 @@ Permintaan owner 28 Sep: "buatkan seluruh riwayat penjualan". Keputusan: layar d
   (`rtDasarNota`) → jalur Retur dengan nota itu ditunjuk (`tunjukNota`); yang tidak boleh menyebut alasannya (mis. nota Bon).
 - Uji: `uji_riwayat_penjualan.py` (+ kontrol, CI); `uji_isian_lokal.py`: `rwCari` = pencarian, bukan isian.
 
+## Putaran 33 — gerbang masuk G4, kinerja, gerak (29 Sep 2026, cabang `pemantapan/33-gerbang-kinerja-gerak`)
+
+Permintaan owner 29 Sep: gerbang masuk desain HIFI (G4 dikunci di kanvas "Gerbang Masuk"); "perpindahan layar ada lag, suka nge-freeze apalagi waktu
+refresh & pertama buka"; UI lebih hidup & intuitif dari segi gerak; animasi penutup Jual sesudah transaksi (omzet bertambah).
+- **Kinerja** (terukur `alat-uji/ukur_kinerja_baru.py`, cadangan lokal: 54 koleksi / ±6.900 dokumen): tiap koleksi yang datang (dari cache LALU server, ±108×
+  saat buka) dulu menggambar ulang SEMUA layar, Jual menyusun ulang raknya ±50 ms tiap kali (±3–5,6 dtk hitungan beruntun di Mac). Kini `inti/jadwal.js`:
+  `nanti(f)` = digabung sekali per bingkai (masa muat: ±320 ms), `segera(f)` = jalur ketukan (selalu bingkai berikutnya). Bunyi data & status mengantre fungsi
+  YANG SAMA (tanpa gambar ganda); layar tersembunyi (termasuk Jual) hanya ditandai kotor dan digambar saat dibuka — itu pun hanya kalau kotor atau DOM-nya
+  kosong (dikosongkan tirai). Ketukan pindah layar kini tertahan 0–15 ms (Ringkasan dulu ±80 ms), layar yang tidak berubah tidak dihitung ulang (Harga dulu 182 ms
+  tiap kembali). `index.html` memuat 71 `modulepreload` (graf impor app.js, dijaga uji) + preconnect Firebase.
+- **Gerak** (`css/gerak.css`, `app.js datangkan/geserPenanda`): layar datang dari ARAH tab (Web Animations pada anak `<main>` — bukan kelas CSS: mengganti
+  animation-name memutar ulang animasi dasar section; bukan `<main>`: transform di sana membuat elemen fixed meloncat); penanda pil emas meluncur di menu bawah &
+  samping; tombol membal saat ditekan; `gulirkan` mulai dari angka lama & bertahan saat dimorf ulang di tengah gulir.
+- **Gerbang G4** (`index.html #modalMasuk`, `inti/gerbang.js`, `inti/gerbang-hiasan.js`, `css/gerbang.css`): pintu kaca bergaris, kotak logo & pil tanggal/jam
+  terbelah di SPASI antar kata ("Toko | Beras", "tanggal | jam"), cincin kunci (email mengisi cincin, tiap huruf sandi memutar satu takik), golden hour + siluet
+  sawah + burung/capung/kunang (gerak berulang berhenti saat "kurangi gerakan"). ID formulir putaran 23 tidak berubah; 'tampil' = arti lama (dicabut SEKETIKA saat
+  membuka, gerak di kelas 'membuka' tanpa menghalangi ketukan). Sebelum Firebase menjawab: gerbang tertutup tanpa formulir; sesi dipulihkan → pintu terbuka cepat
+  ±0,9 dtk; sesudah masuk ±2 dtk (cincin sejajar → lubang kunci berputar → cincin mekar → pintu bergeser); Keluar → pintu merapat. Sandi kosong → kolom berdenyut;
+  catatan sandi berbahasa toko (owner 29 Sep). Tanpa angka toko (tirai 23c).
+- **Penutup omzet Jual** (`jual.js penutupOmzet`): kartu Hari ini DITAHAN (dipasang SEBELUM menulis — snapshot lokal Firestore tidak boleh menaikkan angka lebih
+  dulu) selama terima uang & serah terima; koin emas terbang dari panggung ke angka omzet (lembar terbuka / HP → ke pil di atas layar), cincin cahaya & kilau di
+  luar `<main>`, angka bergulir, "+Rp" & baris baru disorot. Token per nota: nota berdekatan → patokan terlama, sekali perayaan gabungan; dihitung ulang saat
+  mendarat (batal selagi terbang → tanpa perayaan); terkunci → berhenti. Saat mengunci, pil/koin/panggung omzet dicabut (tirai).
+- Warisan yang ikut dibetulkan: `tampilkan(false)` untuk semua layar hanya saat MENGUNCI (dulu tiap perubahan akun — akses karyawan diubah owner saat bekerja
+  membekukan layar yang terbuka).
+- Uji: `uji_kinerja_gerak.py` (+ kontrol, CI: preload = graf impor, penjadwal di jsc dengan jam palsu, sambungan, gerbang, penutup); `uji_akses_baru.py` &
+  `uji_layar_kunci.py` mengikuti bentuk baru (penjaga tirai & kontrolnya). Tinjauan adversarial 8 agen: 18 temuan lolos bantahan, semuanya ditambal.
+- CI pertama PR #57 merah di `uji_layar_kunci --kontrol`: (1) kontrol 2 DIAM — tirai kini DUA lapis (tiap layar memeriksa `terkunci()` DAN saat mengunci
+  semua layar, Jual juga, disembunyikan); merusak `terkunci()` saja tidak lagi membocorkan apa pun, jadi kontrol 2 merusak kedua lapis. (2) 3× DICOBA ULANG
+  90 dtk, semuanya skenario Firebase PALSU: `modulepreload` SDK ke gstatic di index.html tidak ikut dialihkan ke `/_palsu/` → halaman uji tetap mengunduh
+  SDK sungguhan dan event load menunggunya. Salinan uji kini mengalihkan preload itu juga (skenario palsu kembali tanpa jaringan).
+  CI kedua: kontrol 9 (Firebase dari CDN tidak termuat → wajib GAGAL JARINGAN) DIAM — preload membuat SDK tampak "lengkap" tergantung urutan unduhan;
+  kontrol 9 kini memutus KETIGA modul SDK di firebase.js dan preload (CDN mati sungguhan). Masih ada 1× DICOBA ULANG 90 dtk di skenario palsu (sebab belum
+  terbukti); baris DICOBA ULANG kini membawa catatan waktu (halaman melapor selesai, gambar penahan dijawab, permintaan terakhir) supaya kejadian berikutnya
+  menjelaskan dirinya — diagnosis berulang hanya di runner (CLAUDE.md).
+
 ## Struktur
 ```
 baru/
