@@ -129,6 +129,9 @@ jobs:
         run: python3 alat-uji/uji_upah_per_orang.py && python3 alat-uji/uji_upah_per_orang.py --kontrol
       - name: "Bayar bon pemasok tunai/transfer (29 · Bagian 4): rekening ikut turun, biaya admin = uang keluar untuk toko dari rekening satu kiriman, utang turun sebesar nominal bayar, kantong yang dipilih dijaga, rekening belum diisi → catat isi rekening (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_bayar_pemasok_transfer.py && python3 alat-uji/uji_bayar_pemasok_transfer.py --kontrol
+      # ---- PUTARAN 30 — harga beli per kelas mutu (owner 28 Sep): peta merek → kelas = lapisan baca; kelas tanpa wadah = buku atas nama kelas + merkPemasok ----
+      - name: "Kelas mutu merek (30): peta baca/tulis, tebakan tiga sumber, riwayat kelas = riwayatModal, harga lalu kelas per pemasok & batch dikoreksi, ▲▼= & kalimat lunak tidak memblokir, simpan satu kiriman + tebakan tercatat sebagai tebakan, kelas tanpa wadah = buku kelas + merkPemasok & mesin mengabaikannya, kartu per bulan tertimbang & kalimat periode, ganti nama wadah membawa peta (kotak pasir + statis + kontrol)"
+        run: python3 alat-uji/uji_kelas_merek.py && python3 alat-uji/uji_kelas_merek.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

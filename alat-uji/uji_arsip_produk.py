@@ -19,10 +19,11 @@ import os, re, sys, json, glob, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru, beku2  # noqa: E402
+import uji_kunci_periode  # noqa: E402  (satu_lingkup)
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js',
                                   'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/data/katalog-kasir.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/stok-logika.js',
-                                  'baru/js/layar/varian-logika.js', 'baru/js/layar/stok-catat-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/jenis-beras-logika.js']
+                                  'baru/js/layar/varian-logika.js', 'baru/js/layar/stok-hpp-logika.js', 'baru/js/layar/kelas-merek-logika.js', 'baru/js/layar/stok-catat-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/jenis-beras-logika.js']   # putaran 30: stok-catat memakai kelas-merek (harga lalu kelas) yang memakai riwayatModal
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -181,7 +182,7 @@ RUSAK = {
 }
 
 if __name__ == '__main__':
-    js = bundel_baru.bundel(MODUL)
+    js = uji_kunci_periode.satu_lingkup(bundel_baru.bundel(MODUL))   # putaran 30: stok-hpp & harga-logika sama-sama punya teksMargin
     if '--kontrol' in sys.argv:
         kode = 0
         for nama, (a, b) in RUSAK.items():
