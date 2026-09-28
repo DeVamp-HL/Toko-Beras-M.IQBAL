@@ -15,7 +15,7 @@ import { hitungStokKarungPerMerk, hitungStokKemasan, hitungLajuPakai } from '../
 import { merkPunyaKarungBerat, JENDELA_LAJU_HARI, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilSemuaBatch, ambilProduksiBerlaku, ambilRetur, ambilKarantina, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilWadahLiteran, petaStokWadah, stokMerekSaja, petaBukuWadah } from '../data/toko.js';
 import { hariIniIso, RP } from '../inti/format.js';
-import { tinggiWadah, aturWadah, resepWadah, karungBelakang, karungUntukWadah, wadahPemegang, semuaKarungTerbuka, tumpukanGudang, pindahNama, hitunganFisik } from './jual-logika.js';
+import { tinggiWadah, aturWadah, resepWadah, karungBelakang, karungUntukWadah, wadahPemegang, semuaKarungTerbuka, tumpukanGudang, pindahNama, hitunganFisik, notaTembusBelumCocok } from './jual-logika.js';
 // putaran 27: isi wadah per merek asal
 import { wbBagianMerk, wbKomposisi } from './wadah-bernama-logika.js';
 
@@ -92,7 +92,9 @@ function jwbCocok(barang, hari) {
     return { kunci: b.jenis + '|' + b.kunci, nama: b.nama, n: umur === null ? 'belum pernah' : umur + ' hari', nKet: umur === null ? 'dicocokkan' : 'sejak cocok', awas: umur === null || umur >= HARI_COCOK_AWAS, umur: umur === null ? 1e6 : umur,
       ket: tgl ? 'cocok terakhir ' + tgl : 'belum ada hitungan gudang yang tercatat', isi: umur === null ? 1 : Math.min(1, umur / 30) };
   }).sort((a, b) => b.umur - a.umur);
-  return { baris: out, rumus: 'umur = hari sejak hitungan gudang terakhir dicocokkan dengan catatan (≥ ' + HARI_COCOK_AWAS + ' hari = perlu dihitung lagi)', kosong: 'Belum ada barang di gudang.', takTeks: '' };
+  // putaran 31b: nota "jual dulu, tandai untuk dicocokkan" yang belum tuntas — paling atas, per nama
+  const TB = notaTembusBelumCocok(); const tembus = TB.nama.map((x) => ({ kunci: 'tembus|' + x.nama, nama: x.nama, n: skKG(x.kg) + ' tembus', nKet: 'belum dicocokkan', awas: true, umur: 1e7, ket: x.n + ' nota dijual melampaui buku — cocokkan nama ini (tanda tuntas sendiri saat cocokkan bertanggal ≥ notanya)', isi: 1 }));
+  return { baris: tembus.concat(out), rumus: 'umur = hari sejak hitungan gudang terakhir dicocokkan dengan catatan (≥ ' + HARI_COCOK_AWAS + ' hari = perlu dihitung lagi); "tembus" = nota jual-dulu yang belum dicocokkan', kosong: 'Belum ada barang di gudang.', takTeks: '' };
 }
 
 /**
