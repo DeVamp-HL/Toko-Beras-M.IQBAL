@@ -1,4 +1,8 @@
-# Temuan 31.4 — rework 11 Sep bermodal nol (ditunjukkan, tidak ditulis)
+# Temuan 31.4 — rework 11 Sep bermodal nol (ditunjukkan, tidak ditulis) — DITUTUP
+
+**Keputusan owner (28 Sep 2026): pilihan (b).** Tidak ada tulisan data. Dokumen rework 11 Sep dibiarkan bermodal nol di dokumennya; 41,5 kg itu sudah
+bernilai modal rata-rata IR64 Elevate di buku, nilai stok, dan neraca (mesin menilai sisa dengan rata-rata tertimbang, bukan dengan angka di dokumen
+penyesuaian). Rework berikutnya tetap ditulis seperti sekarang. Temuan ditutup; tidak ada butir peta lanjutan.
 
 Sumber: cadangan toko 28 Sep sore (`_privat/`). Bukan tambalan: jalur koreksinya diputuskan owner.
 

@@ -488,13 +488,13 @@ tidak disentuh; ASAP GLOBAL omzet/laba/neraca/nilai stok byte-sama.
   pas) tapi nama beda digabung jadi satu tebakan `seharga` berisi `pilihan[]`; `pakaiTebakan` pada tebakan seharga tidak mengisi keranjang, melainkan
   menyetel `kcPilih` (Jual menggambar "Harga sama — yang mana?"); memilih namanya = tebakan biasa. Dulu IR64 Ascent/Elevate/Apex yang seharga tertukar.
 - **31.2 "Jual dulu, tandai untuk dicocokkan"**: TAHAP 0 saja — `docs/peta-jual-tandai-cocok.md` (jalur jujur: nota tercatat, baris `perluCocokkan` +
-  `kurangKg/Unit`, buku tetap minus, item di kartu "Mana yang belum dicocokkan?"). Dibangun hanya sesudah owner menjawab §5.
+  `kurangKg/Unit`, buku tetap minus, item di kartu "Mana yang belum dicocokkan?"). Owner menjawab §5 pada 28 Sep (peta §6: owner saja, kolom `perluCocokkan` + `selisihKg`, pemeriksaan ulang tidak berubah, tuntas = cocokkan bertanggal ≥ nota, pita di Jual) → dibangun di cabang sendiri `pemantapan/31b-jual-tandai-cocok` sesudah 31 masuk main.
 - **31.3 Penjaga catatan bertanggal MUNDUR** (`jual-logika.js ckCocokTerakhir / ckCocokTerakhirKemasan / ckKalimatMundur`; dipakai `susunSimpanMasuk`
   & `susunSimpanAdukan`): barang masuk / adukan yang tanggalnya sebelum cocokkan terakhir nama itu (hitungan fisik tumpukan; cocokkan wadah & rework tidak
   ikut — pola putaran 11) → dua ketukan, kalimat menyebut tanggal & jam cocokkan terakhir dan "buku terpotong dua kali". Tidak memblokir. Koreksi kedatangan
   lama tidak ditanya. Isi ulang wadah & pindah stok selalu bertanggal hari ini (tidak bisa mundur).
 - **31.4 Rework 11 Sep bermodal nol**: hanya ditunjukkan (`docs/temuan-rework-modal-nol.md`) — dokumen `penyesuaianStok dariRework` 41,5 kg atas nama kelas; mesin menilai kg itu
-  dengan modal rata-rata (dokumen saja yang Rp0); jalur koreksi yang ada tidak menjangkau dokumen rework tanpa bahan → butir peta, keputusan owner.
+  dengan modal rata-rata (dokumen saja yang Rp0); jalur koreksi yang ada tidak menjangkau dokumen rework tanpa bahan → owner memilih (b): tidak ada tulisan data, temuan DITUTUP (kg itu sudah bernilai rata-rata di buku).
 - Uji: `uji_pemantapan_31.py` (+ kontrol, CI); `uji_stok_baru.py` asap cadangan mengiyakan penjaga mundur (`mundur: true`).
 
 ## Struktur

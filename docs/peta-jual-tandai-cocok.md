@@ -1,6 +1,7 @@
 # Peta "Jual dulu, tandai untuk dicocokkan" — putaran 31.2, Tahap 0
 
-**Status (28 Sep 2026): peta saja, belum ada perubahan perilaku. Dibangun HANYA sesudah owner menjawab §5.**
+**Status (28 Sep 2026): peta selesai, owner sudah menjawab §5 (lihat §6). Dibangun di cabang sendiri `pemantapan/31b-jual-tandai-cocok` SESUDAH
+cabang 31 masuk main — belum ada perubahan perilaku di cabang 31.**
 Sumber: kode di cabang `pemantapan/31-empat-kecil` (di atas putaran 30), `firestore.rules` v4, cadangan toko 28 Sep sore (`_privat/`). Angka di sini kg dan
 jumlah catatan, bukan rupiah. Nama orang tidak disebut.
 
@@ -53,3 +54,16 @@ pemeriksaan di layar + `periksaKiriman` untuk bukan-owner, bukan rules) · laba 
    Alternatif: tidak menahan sama sekali untuk owner (tanda otomatis) — tidak diusulkan.
 4. **Kapan tanda dianggap tuntas**: cocokkan apa pun atas nama itu sesudah nota (usulan), atau hanya cocokkan yang membuat bukunya ≥ 0?
 5. **Kartu keempat**: item "belum dicocokkan: N nota tembus stok" cukup, atau perlu pita di Jual juga (seperti karcis)?
+
+## 6. Keputusan owner (28 Sep 2026) atas §5
+
+1. **Siapa boleh menembus: OWNER saja.** Akun staf tetap ditahan seperti sekarang (`periksaStokKeranjang` tidak berubah untuk mereka).
+2. **Bentuk tanda**: kolom baru di baris `penjualan` yang ada — `perluCocokkan: true` + `selisihKg` (kg yang melampaui buku). Tanpa dokumen baru. (Bentuk
+   §2 memakai `kurangKg/kurangUnit`; yang dipakai adalah `selisihKg` — untuk kemasan diisi kg = unit × ukuran, unitnya terbaca dari barisnya sendiri.)
+3. **Pemeriksaan ulang stok saat mencatat TIDAK berubah.** Kalau gagal, owner mendapat pilihan kedua "Jual dulu, tandai untuk dicocokkan": dua ketukan,
+   kalimat menyebut nama & kg yang melampaui. Buku dibiarkan minus.
+4. **Tanda tuntas**: saat Cocokkan nama itu tercatat dengan tanggal ≥ tanggal nota. Cocokkan biasa, tanpa tombol khusus.
+5. **Pita di Jual: YA**, pola pita karcis ("N nota tembus stok belum dicocokkan"), plus item di Stok › Gudang kartu keempat.
+
+Cabang: bukan di cabang 31 — cabang sendiri `pemantapan/31b-jual-tandai-cocok` sesudah 31 masuk main.
+
