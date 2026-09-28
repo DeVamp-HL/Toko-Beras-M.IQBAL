@@ -10,7 +10,7 @@
 //  · Varian juga bisa dibuat dari Harga & Pemasok sebelum barangnya datang (katalog per kg + jenis).
 // Tanpa DOM; nama berawalan vr (bundel uji satu lingkup). Dijaga alat-uji/uji_varian_merek.py.
 import { hitungStokKarungPerMerk } from '../mesin/beku.js';
-import { jenisUntukMerk } from '../mesin/pembantu.js';
+import { jenisUntukMerk, cariHargaKarungPerKg, hargaKarungUtuh } from '../mesin/pembantu.js';
 import { ambilHargaKarung, ambilPetaJenisBeras, cacheMentah } from '../data/toko.js';
 import { RP } from '../inti/format.js';
 import { wbNamaKelas } from './wadah-bernama-logika.js';
@@ -81,6 +81,16 @@ export function vrSusunTerbitHarga(varian, hargaKetik, w, yakin) {
  * VARIAN BARU dari Harga & Pemasok (sebelum barangnya datang): nama "<induk> · <mutu>" + harga jual per kg langsung terbit + jenis induk.
  * Induk wajib nama yang dikenal; nama varian yang sudah ada ditolak (pilih di katalog seperti biasa).
  */
+/**
+ * Perbaikan 28 Sep (kejadian nyata): owner memberi harga lewat "varian merek baru" untuk merek yang BARU datang dan belum berharga — varian lahir dengan buku
+ * kosong, stoknya tetap di nama induk tanpa harga, jadi tak satu pun tampil di Jual. Kalimat peringatan bila induk berstok tapi belum punya harga jual karung.
+ * '' = tidak perlu diperingatkan.
+ */
+export function vrPeringatanInduk(induk) {
+  const ind = vrBersih(induk); if (!ind) return ''; const st = hitungStokKarungPerMerk()[ind]; const sisa = st ? Number(st.sisaKg) || 0 : 0; if (!(sisa > 0.05)) return '';
+  const perKg = cariHargaKarungPerKg(ind); const utuh = hargaKarungUtuh(ind, 50) || hargaKarungUtuh(ind, 25); if ((perKg !== null && perKg > 0) || (utuh && utuh.perUnit > 0)) return '';
+  return ind + ' punya stok ' + String(Math.round(sisa * 10) / 10).replace('.', ',') + ' kg tapi BELUM ada harga jual — stok itu tetap atas nama ' + ind + ' dan tidak tampil di Jual. Kalau barangnya SAMA, setel harga ' + ind + ' di katalog (bukan varian). Varian = nama BARU yang stoknya 0 sampai ada barang masuk atas nama varian itu.';
+}
 /** Pilihan merek induk untuk varian baru dari layar Harga: bukan nama varian, bukan nama wadah / kelas mutu (yang itu ditolak saat dibuat). */
 export function vrCalonInduk(daftar) { const kelas = wbNamaKelas(); return (daftar || []).filter((m) => String(m).indexOf(VR_PEMISAH) < 0 && !kelas[m]); }
 export function vrSusunBuatDariHarga(induk, mutu, hargaKetik, w, yakin) {

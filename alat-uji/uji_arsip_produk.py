@@ -67,8 +67,8 @@ var rakNama = function () { var r = susunRak(s); return [].concat(r.karung, r.li
 var barisHarga = function () { return hgSemua(new Date(Date.now())).baris.map(function (b) { return b.k; }); };
 var terapkan = function (r) { terapkanKeCache((r && r.dokumen) || []); if (r && r.hapus) terapkanKeCache(r.hapus.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; })); return r; };
 var laporan = function () { return J({ sep: hitungLabaBersihRentang('2026-09-01', '2026-09-30'), stok: hitungStokKarungPerMerk(), kem: hitungStokKemasan(), neraca: hitungNeraca() }); };
-// katalog kasir baru = index.html minus arsip: yang SUDAH diarsipkan di data (arPeta) + yang diarsipkan uji (buangK/buangM)
-var kkSama = function (buangK, buangM) { var baru = kkIsi(); var lama = susunIsiKatalogKasirLama(); var ada = arPeta(); lama.merkKarung = lama.merkKarung.filter(function (m) { return (buangK || []).indexOf(m.merk) < 0 && !ada['K:' + m.merk]; }); lama.kemasan = lama.kemasan.filter(function (k) { return (buangM || []).indexOf(k.kunci) < 0 && !ada['M:' + k.kunci]; }); return J(baru) === J(lama); };
+// katalog kasir baru = index.html minus arsip: yang SUDAH diarsipkan di data (arPeta) + yang diarsipkan uji (buangK/buangM), lalu saringan wadah putaran 28 di kedua sisi
+var kkSama = function (buangK, buangM) { var baru = kkIsi(); var lama = susunIsiKatalogKasirLama(); var ada = arPeta(); lama.merkKarung = lama.merkKarung.filter(function (m) { return (buangK || []).indexOf(m.merk) < 0 && !ada['K:' + m.merk]; }); lama.kemasan = lama.kemasan.filter(function (k) { return (buangM || []).indexOf(k.kunci) < 0 && !ada['M:' + k.kunci]; }); lama = wbSaringKatalogKasir(lama); return J(baru) === J(lama); };   // putaran 28: saringan wadah/buku ukuran yang sama dipakai kedua sisi (toko kini punya buku wadah & buku 25 kg)
 
 // ---- 1 · keadaan & penjaga
 var KL = arKeadaan('K:Lama'), KA = arKeadaan('K:Angsa'), KC = arKeadaan('K:Coba · Super');
