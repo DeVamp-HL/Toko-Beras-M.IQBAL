@@ -20,9 +20,10 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 import uji_jual_baru  # noqa: E402
+import uji_kunci_periode  # noqa: E402  (satu_lingkup, putaran 30)
 import uji_laporan_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = uji_jual_baru.MODUL + [m for m in ['baru/js/layar/stok-logika.js', 'baru/js/layar/varian-logika.js', 'baru/js/layar/stok-catat-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/data/katalog-kasir.js'] if m not in uji_jual_baru.MODUL]
+MODUL = uji_jual_baru.MODUL + [m for m in ['baru/js/layar/stok-logika.js', 'baru/js/layar/varian-logika.js', 'baru/js/layar/stok-hpp-logika.js', 'baru/js/layar/kelas-merek-logika.js', 'baru/js/layar/stok-catat-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/data/katalog-kasir.js'] if m not in uji_jual_baru.MODUL]   # putaran 30: + stok-hpp & kelas-merek
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -286,7 +287,7 @@ RUSAK = {
 }
 
 if __name__ == '__main__':
-    js = bundel_baru.bundel(MODUL)
+    js = uji_kunci_periode.satu_lingkup(bundel_baru.bundel(MODUL))   # putaran 30: teksMargin stok-hpp vs harga-logika
     if '--kontrol' in sys.argv:
         kode = 0
         for nama, (a, b) in RUSAK.items():

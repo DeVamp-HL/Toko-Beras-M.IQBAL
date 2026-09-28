@@ -12,7 +12,7 @@ import { RP } from '../inti/format.js';
 import { drafDariKedatangan, susunSimpanMasuk } from './stok-catat-logika.js';
 
 export const ATUR_HPP_BAWAAN = { batasLonjak: 10, lantaiHpp: 5000, kaliMaks: 3 };
-export const TAB_HPP = [['kartu', 'Kartu modal'], ['garis', 'Garis waktu'], ['massal', 'Koreksi massal']];
+export const TAB_HPP = [['kartu', 'Kartu modal'], ['garis', 'Garis waktu'], ['kelas', 'Per kelas'], ['massal', 'Koreksi massal']];   // putaran 30: harga beli per kelas mutu
 const hpAngka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); if (!t) return 0;
   const n = Number(t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return isFinite(n) ? n : 0; };
 const hpKosong = (v) => v === undefined || v === null || String(v).trim() === '';
@@ -39,7 +39,8 @@ export function riwayatModal(merk) {
   ambilSemuaBatch().slice().sort(hpUrutLama).forEach((k) => {
     hitungHppMerkDalamBatch((k.merkList || []).filter((m) => m.bentuk !== 'bal'), Number(k.biayaBongkar) || 0).forEach((m) => { if (m.merk !== merk || !(m.totalKg > 0)) return;
       out.push({ jenis: 'kedatangan', batchId: k.id, tanggal: k.tanggal || '', jam: k.jam || '', pemasok: k.pemasok || (k.stokAwal ? 'stok awal' : k.tutupBuku ? 'saldo pembuka' : '—'), fondasi: hpFondasi(k), dikoreksi: !!k.alasanKoreksi,
-        hargaPerKg: Number(m.hargaPerKg) || 0, hppPerKg: m.hppPerKg, totalKg: m.totalKg, beratKarung: Number(m.beratKarung) || 50, sumber: (hpFondasi(k) ? (k.stokAwal ? 'stok awal (fondasi)' : 'saldo pembuka (fondasi)') : 'kedatangan ' + (k.pemasok || '')) + (k.alasanKoreksi ? ' · dikoreksi' : '') }); });
+        hargaPerKg: Number(m.hargaPerKg) || 0, hppPerKg: m.hppPerKg, totalKg: m.totalKg, beratKarung: Number(m.beratKarung) || 50, merkPemasok: String(m.merkPemasok || ''),   // putaran 30: merek pemasok pada kedatangan kelas tanpa wadah
+        sumber: (hpFondasi(k) ? (k.stokAwal ? 'stok awal (fondasi)' : 'saldo pembuka (fondasi)') : 'kedatangan ' + (k.pemasok || '')) + (m.merkPemasok ? ' · merek ' + m.merkPemasok : '') + (k.alasanKoreksi ? ' · dikoreksi' : '') }); });
   });
   ambilProduksiBerlaku().filter((p) => p.jadiKarungUtuh && p.merkTujuan === merk).sort(hpUrutLama).forEach((p) => { const kg = (p.ukuranKemasan || 0) * (p.jumlahUnit || 0); if (kg <= 0) return;
     out.push({ jenis: 'pindah', batchId: null, tanggal: p.tanggal || '', jam: p.jam || '', pemasok: '', fondasi: true, hargaPerKg: p.hppSumberPerKgDipakai || 0, hppPerKg: p.hppSumberPerKgDipakai || 0, totalKg: kg, sumber: p.dariTakar ? 'pindah buku dari takar wadah' : 'jadi karung utuh dari adukan' }); });

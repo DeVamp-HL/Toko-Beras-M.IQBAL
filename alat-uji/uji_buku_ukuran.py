@@ -140,7 +140,7 @@ RUSAK = {
     'retur induk tetap menerima 25 kg': ("if (uk[merk] ? b !== uk[merk].berat : !!(tp[merk] && tp[merk][b])) return;", "if (uk[merk] ? b !== uk[merk].berat : false) return;"),
     'karung terbuka buku 25 kg dihitung 50 kg': ("const u = petaUkuran()[merk]; if (u) return u.berat;", "const u = null;"),
     'katalog harga menagih harga buku ukuran': ("Object.keys(stokMerekSaja(stokK)).filter((m) => !ukuranBuku[m]).forEach((m) => {", "Object.keys(stokMerekSaja(stokK)).forEach((m) => {"),
-    'kedatangan tidak menulis tanda indukUkuran': ("b.indukUkuran ? { indukUkuran: b.indukUkuran } : {})) };", "{})) };"),
+    'kedatangan tidak menulis tanda indukUkuran': ("b.indukUkuran ? { indukUkuran: b.indukUkuran } : {}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {})) };", "{}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {})) };"),   # putaran 30: baris merkList membawa merkPemasok bila ada
 }
 
 if __name__ == '__main__':

@@ -19,7 +19,7 @@ import bundel_baru  # noqa: E402
 import uji_laporan_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 _M = uji_laporan_baru.MODUL + ['baru/js/layar/stok-logika.js', 'baru/js/layar/varian-logika.js', 'baru/js/layar/stok-catat-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/stok-karantina-logika.js',
-                                'baru/js/layar/stok-kantong-logika.js', 'baru/js/layar/stok-tempat-logika.js', 'baru/js/layar/stok-hpp-logika.js', 'baru/js/layar/karcis-logika.js',
+                                'baru/js/layar/stok-kantong-logika.js', 'baru/js/layar/stok-tempat-logika.js', 'baru/js/layar/stok-hpp-logika.js', 'baru/js/layar/kelas-merek-logika.js', 'baru/js/layar/karcis-logika.js',
                                 'baru/js/data/akses.js', 'baru/js/layar/kunci-periode-logika.js']
 MODUL = [m for i, m in enumerate(_M) if m not in _M[:i]]
 JAM_TETAP = "var __KINI = new Date('2026-09-24T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"

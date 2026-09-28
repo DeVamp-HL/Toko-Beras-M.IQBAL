@@ -455,6 +455,33 @@ Tanpa koleksi baru, tanpa dokumen per orang, rules v4 tidak berubah, 28 mesin be
   laci/brankas/amplop = hasil hitung sampai kemarin, rekening = isi m-banking − gerakan rekening hari ini; bila titik sudah hari ini → ditulis ulang). Buku bon menyebut tunai/transfer + admin.
 - Uji baru (CI): `uji_uang_karyawan.py`, `uji_upah_per_orang.py`, `uji_bayar_pemasok_transfer.py` (+ kontrol; asap cadangan + ASAP GLOBAL laba tiap bulan byte-sama dengan main).
 
+## Putaran 30 — harga beli per kelas mutu (28 Sep 2026, cabang `tulang-punggung/30-harga-kelas`)
+
+Masalah owner 28 Sep: pemasok mengganti nama merek walau barang & harganya sama, jadi "harga lalu" di Barang masuk hilang dan riwayat harga terputus.
+Peta Tahap 0 & keputusan owner: `docs/peta-harga-kelas.md` (§12–§13). Tanpa koleksi baru, rules v4 tidak berubah, 28 mesin beku & `index.html`/`kasir*.html`
+tidak disentuh; ASAP GLOBAL omzet/laba/neraca/nilai stok byte-sama.
+- **Kelas mutu** = nama wadah (aturan wadah `daftar`; `merekKarung` = kelasnya sendiri) atau merek berbuku yang dipilih owner. Dokumen
+  `aturanToko/kelasMerek {peta {merek: kelas}, asal {merek: owner|tebakan}, kelasSendiri []}` (owner saja). Logika `kelas-merek-logika.js` (`km`), tanpa DOM.
+- **Dua macam kelas**: BERWADAH → buku tetap per merek pemasok, peta hanya lapisan baca; TANPA WADAH (`kelasSendiri`, mis. ketan — sejak awal bukunya atas
+  nama kelas) → baris dibukukan ATAS NAMA KELAS + kolom baru `merkPemasok` di `batchMasuk.merkList[]` (mesin beku & cadangan mengabaikannya; tampil di Buku
+  kedatangan "Kelas (merek)", garis waktu HPP, kartu Per kelas). Pertanyaan varian (`batasVarian`) berlaku atas nama kelas.
+- **Tebakan** hanya dari nama = nama wadah · catatan karung ber-`wadah` (terbaru) · resep wadah; jenis beras cuma petunjuk. Tebakan yang dibiarkan saat Simpan
+  ditulis SEBAGAI tebakan (daftar menandai "belum dikonfirmasi owner"); keputusan owner tidak pernah ditimpa tebakan.
+- **Barang masuk** (`hitungMasuk`): merek dikenal → "lalu Rp… · tanggal · pemasok" (angka = mesin `hargaTerakhirPerKg`, tanggal & pemasok dari `riwayatModal`)
+  + ▲▼=; merek BARU → pil kelas (nama wadah, kelas sendiri, merek berbuku) + "tanpa kelas"; kelas berwadah → harga lalu kelas (`kmHargaLaluKelas` =
+  gabungan `riwayatModal` anggota, kedatangan nyata saja, pemasok yang dipilih diutamakan, pemasok lain di sebelahnya, batch yang dikoreksi dikecualikan);
+  beda > `batasVarian` dari kelas → kalimat lunak "kelasnya benar?" yang TIDAK memblokir; peta ditulis DALAM kiriman Simpan barang masuk yang sama (simpan
+  ditolak → peta tidak tertulis); draf localStorage membawa `kelas`/`kelasPilih` per baris. Koreksi kedatangan lama: kelas tidak ditanya.
+- **Daftar "Kelas mutu · N/M terisi"** di Harga › Katalog (samping Jenis beras): pil kelas, "tanpa kelas", "nama ini KELAS, bukan merek", usulan kelas tanpa
+  wadah = literan langsung.
+- **Kartu Per kelas** (Stok › HPP / modal, tab baru): tiap kedatangan anggota satu garis (nama asal · pemasok), rata-rata tertimbang kg per bulan ▲▼,
+  kalimat batas periode data WAJIB (per kuartal hanya bila ≥ 2 kuartal berisi); merek tanpa kelas & belum dikonfirmasi disebut.
+- **Ganti nama wadah** membawa nilai peta kelas di kiriman yang sama (`kmSusunGantiNamaWadah`, dipakai Stok); nama baru yang sudah jadi kelas lain ditolak.
+- Uji: `uji_kelas_merek.py` (+ kontrol, CI). Uji lama yang bundelnya bertambah modul (stok-hpp & kelas-merek): arsip produk, varian merek, wadah bernama,
+  stok, kunci periode; jangkar kontrol buku ukuran mengikuti baris merkList yang baru.
+- Tugas owner sesudah putaran ini hidup (bukan pekerjaan Claude): memetakan merek kedatangan 18–28 Sep di daftar Kelas mutu dari mutu karungnya; menandai
+  kelas tanpa wadah; mengoreksi kedatangan 28 Sep baris merek ketan menjadi nama kelas + `merkPemasok` lewat Buku kedatangan › koreksi.
+
 ## Struktur
 ```
 baru/
@@ -530,6 +557,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_upah_per_orang.py` (+ `--kontrol`) | 29 · Bagian 2: 20 skenario upah per orang (tarif per hari menurut tanggal berlaku & sumbernya, bulanan ÷ hari bulan itu dibulatkan dulu, Februari 28, minggu ÷ 7, dua orang tiga upah, buku upah terbelah di pergantian tarif, upah baru hanya sesudah tanggalnya, gajian = Σ rupiah per hari, slip merinci tiap ruas, riwayat tidak ditulis ulang, tarif bersama hanya untuk yang tanpa upah sendiri, entri cacat ditolak, bentuk lama tetap terbaca) + 13 kontrol |
 | `alat-uji/uji_bayar_pemasok_transfer.py` (+ `--kontrol`) | 29 · Bagian 4: 29 skenario bayar bon tunai/transfer (cara dari `dari`, kantong dijaga, transfer menurunkan REKENING & kas, admin = pengeluaranHarian untuk toko dari rekening satu kiriman, utang turun sebesar bayar, laba turun sebesar admin, buku bon menyebut cara, urung mencabut keduanya, tunai brankas, rekening belum diisi → tawaran catat isi rekening, catat isi rekening = titik kas kemarin tanpa menggeser laci/brankas/amplop, titik hari ini ditulis ulang) + 12 kontrol; asap cadangan |
 | `alat-uji/uji_wadah_stok_sendiri.py` (+ `--kontrol`) | 28: 53 skenario stok wadah sendiri (buku NG yang habis menahan literan sebelum pindahan, tidak sesudahnya; pindahan awal = batch lahir 0 kg + pindah buku per wadah, nilai/laba/tumpukan tetap; nota satu baris atas buku wadah; takar memindah buku karung → wadah; cocokkan = susut wadah; ganti nama membawa stok; atur susunan menolak wadah berstok; katalog kasir; tiga pintu karung termasuk buka kemasan hasil adukan; tidak bocor ke daftar merek; tutup buku membawa tanda; sisihkan · tuang balik · bongkar ke karung wadah; kemasan adukan dibuka = buku sendiri) + 30 kontrol; asap cadangan: pindahan semua wadah tanpa menggeser nilai stok, laba, tumpukan; 1 L dari tiap wadah lewat bukunya sendiri |
+| `alat-uji/uji_kelas_merek.py` (+ `--kontrol`) | 30: 45 skenario kelas mutu (peta baca/tulis & bentuk lama tanpa `asal`, tebakan tiga sumber & urutannya, riwayat kelas = `riwayatModal` tanpa fondasi, harga lalu kelas per pemasok & batch dikoreksi, ▲▼=, kalimat lunak tidak memblokir, simpan satu kiriman + tebakan tercatat sebagai tebakan + keputusan owner tidak ditimpa, kelas tanpa wadah = buku kelas + `merkPemasok`, mesin beku mengabaikan kolomnya, varian atas nama kelas, dua merek pemasok satu mobil, kartu per bulan tertimbang & kalimat periode & dua kuartal, ganti nama wadah membawa peta & menolak nama kelas) + 8 statis (layar, rules owner saja, tanpa DOM, tanpa impor balik) + 18 kontrol; asap cadangan: tebakan menunjuk wadah yang ada, riwayat kelas per nama = riwayatModal, harga lalu merek = mesin, harga lalu kelas batch terbaru = kedatangan nyata terakhir kelas itu sebelum batch (pemetaan di kotak pasir saja), buku byte-sama |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
