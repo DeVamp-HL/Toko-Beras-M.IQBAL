@@ -512,6 +512,21 @@ tidak disentuh (kasir tetap menahan).
   keempat** "Mana yang belum dicocokkan?" mendapat baris paling atas "<nama> · N kg tembus · belum dicocokkan".
 - Uji: `uji_jual_tandai_cocok.py` (+ kontrol, CI); `uji_jual_baru.py`: kolom nota baru dikenal, jangkar kontrol "stok tidak dicek ulang" mengikuti bentuk baru.
 
+## Putaran 32 — riwayat penjualan (28 Sep 2026, cabang `pemantapan/32-riwayat-penjualan`)
+
+Permintaan owner 28 Sep: "buatkan seluruh riwayat penjualan". Keputusan: layar di aplikasi, **Jual › tab Riwayat** (sesudah Retur), tindakan per nota **Struk** dan
+**Retur**. Baca saja: tanpa koleksi/kolom baru, rules v4 & mesin beku tidak berubah. Logika `riwayat-logika.js` (`rw`), tanpa DOM.
+- **Satu nota** = kunci panel "Hari ini" (`grupNota` → `trxId` → `id`); baris internal satu takaran wadah digabung (`gabungTakaran`). Nota berlaku = baris belum
+  dibatalkan / belum digantikan rincian (`penjualanMasihBerlaku`); nota batal / sudah dirinci hanya tampil lewat "tampilkan batal / dirinci" (redup, bertanda).
+- **Angka**: total nota = Σ `hargaTotal` baris berlaku (= panel "Hari ini"); **omzet = total nota − uang retur hari itu** (`uangKembaliRetur`, rumus mesin laba =
+  `rekapHari`), disebut di kepala tiap hari dan di ringkasan selama tidak ada saringan jenis/cara/cari (retur tidak bisa dipilah per jenis/cara).
+- **Saringan** menumpuk: periode (hari ini · 7 hari · 30 hari · bulan ini · semua — bawaan semua), jenis (karung · kemasan · literan · repack · wadah · karcis kasir),
+  cara (Tunai · QRIS · Bon), cari (nama pembeli, barang, nominal "739.000"/"739000"). 50 nota per halaman, "tampilkan 50 lagi"; jumlah nota & omzet per hari
+  dihitung dari SEMUA nota yang cocok hari itu.
+- **Tindakan**: ketuk nota → rincian baris; **Struk ›** = lembar struk yang ada (`bukaStruk` trx/grup/id); **retur** hanya di baris karung/kemasan yang boleh kembali
+  (`rtDasarNota`) → jalur Retur dengan nota itu ditunjuk (`tunjukNota`); yang tidak boleh menyebut alasannya (mis. nota Bon).
+- Uji: `uji_riwayat_penjualan.py` (+ kontrol, CI); `uji_isian_lokal.py`: `rwCari` = pencarian, bukan isian.
+
 ## Struktur
 ```
 baru/
@@ -590,6 +605,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_kelas_merek.py` (+ `--kontrol`) | 30: 45 skenario kelas mutu (peta baca/tulis & bentuk lama tanpa `asal`, tebakan tiga sumber & urutannya, riwayat kelas = `riwayatModal` tanpa fondasi, harga lalu kelas per pemasok & batch dikoreksi, ▲▼=, kalimat lunak tidak memblokir, simpan satu kiriman + tebakan tercatat sebagai tebakan + keputusan owner tidak ditimpa, kelas tanpa wadah = buku kelas + `merkPemasok`, mesin beku mengabaikan kolomnya, varian atas nama kelas, dua merek pemasok satu mobil, kartu per bulan tertimbang & kalimat periode & dua kuartal, ganti nama wadah membawa peta & menolak nama kelas) + 8 statis (layar, rules owner saja, tanpa DOM, tanpa impor balik) + 18 kontrol; asap cadangan: tebakan menunjuk wadah yang ada, riwayat kelas per nama = riwayatModal, harga lalu merek = mesin, harga lalu kelas batch terbaru = kedatangan nyata terakhir kelas itu sebelum batch (pemetaan di kotak pasir saja), buku byte-sama |
 | `alat-uji/uji_pemantapan_31.py` (+ `--kontrol`) | 31: 15 skenario (karcis: dua nama seharga = satu tebakan bertanya, literan seharga, pilih nama mengisi keranjang, kelompok per bentuk, lepas karcis; tanggal mundur: cocokkan terakhir per nama & kemasan, barang masuk sebelum cocokkan ditolak dua ketukan dengan tanggal & jam, sesudah/sehari tidak, wadah & rework bukan hitungan, koreksi tidak ditanya, adukan bahan & hasil, urutan penjaga) + 3 statis + 13 kontrol |
 | `alat-uji/uji_jual_tandai_cocok.py` (+ `--kontrol`) | 31b: 14 skenario (stok cukup tanpa tanda; barisTembus = kalimat periksa; staf ditahan walau yakin; owner ketukan pertama kalimat nama & kg + perluTembus; ketukan kedua = nota tercatat, baris bertanda, baris lain tanpa kolom; buku minus, modal tetap; belum dicocokkan → pita & kartu keempat; tuntas hanya cocokkan ≥ tanggal nota, rework & nama lain tidak; nota batal hilang; kemasan unit × ukuran; alasan lain menang dulu) + 4 statis + 11 kontrol |
+| `alat-uji/uji_riwayat_penjualan.py` (+ `--kontrol`) | 32: 16 skenario riwayat (kunci nota & urutan, takaran digabung, status batal/dirinci/karcis, retur per baris + alasan, total = Σ berlaku, per hari − retur = rekapHari, ringkas, tampilkan batal, periode & tepinya, jenis, cara, cari nama/barang/nominal/kata ganda, saringan menumpuk tanpa retur, halaman 50 & hitungan per hari, kosong) + 4 statis + 13 kontrol; asap cadangan: tiap hari omzet = rekapHari mesin, nota & total = panel Hari ini, Σ total nota = Σ baris berlaku |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
