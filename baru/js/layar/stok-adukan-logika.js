@@ -15,6 +15,7 @@ import { ambilProduksi, ambilHargaKemasan, tolakKunci, tolakKunciTanggal, butuhG
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
 import { RP, waktuSetempat } from '../inti/format.js';
 import { arPeta, arKunciKemasan, arDokPulihBanyak } from './arsip-logika.js';
+import { ckCocokTerakhir, ckCocokTerakhirKemasan, ckKalimatMundur } from './jual-logika.js';
 
 export const UKURAN_BAHAN_KEMASAN = [50, 25];          // kemasan jadi yang boleh dibongkar lagi (UKURAN_KEMASAN_BOLEH_JADI_BAHAN index.html)
 export const UKURAN_HASIL_PILIHAN = [5, 10, 20, 25, 50];
@@ -109,6 +110,9 @@ export function susunSimpanAdukan(draf, w, yakin) {
   if (h.kurangKemasan.length && !Y.kemasan) { const x = h.kurangKemasan[0]; return { tolak: 'Stok ' + x.nama + ' cuma sisa ' + x.sisa + ' unit, adukan ini membongkar ' + x.butuh + ' unit — ketuk sekali lagi kalau tetap disimpan (stok bisa jadi minus)', perluYakin: 'kemasan' }; }
   if (h.kantongTanpaCacah.length && !Y.kantongKosong) { const x = h.kantongTanpaCacah[0]; return { tolak: 'Baris ' + x.ke + ' (' + x.nama + ' ' + adUkuranTeks(x.ukuran) + ' kg) memilih kantong ' + x.kantongLabel + ' tapi jumlah lembarnya kosong — kalau disimpan begini kantongnya terhitung GRATIS: biayanya tidak masuk modal, stoknya tidak turun, dan margin adukan ini terbaca lebih baik dari kenyataan. Isi lembarnya, pilih "tanpa kantong", atau ketuk sekali lagi', perluYakin: 'kantongKosong' }; }
   if (h.kurangKantong.length && !Y.kantong) { const x = h.kurangKantong[0]; return { tolak: 'Stok kantong ' + x.label + ' cuma sisa ' + x.sisa + ' lembar, adukan ini butuh ' + x.butuh + ' — ketuk sekali lagi kalau tetap disimpan (stok kantong bisa minus, catat belanja kantongnya nanti)', perluYakin: 'kantong' }; }
+  // putaran 31.3: adukan bertanggal sebelum cocokkan terakhir bahan karungnya / kemasan yang dibongkar / kemasan hasilnya → dua ketukan (buku terpotong dua kali)
+  const mundur = ckKalimatMundur(draf.tanggal, h.sahB.map((b) => ({ nama: b.merk, cocok: ckCocokTerakhir(b.merk) })).concat(h.sahBK.map((b) => ({ nama: b.namaProduk + ' ' + b.ukuranKemasan + ' kg', cocok: ckCocokTerakhirKemasan(b.namaProduk, b.ukuranKemasan) }))).concat(h.sahH.map((x) => ({ nama: x.nama + ' ' + x.ukuran + ' kg', cocok: ckCocokTerakhirKemasan(x.nama, x.ukuran) }))), 'adukan');
+  if (mundur && !Y.mundur) return { tolak: mundur, perluYakin: 'mundur' };
   if (h.kgMasuk > 0 && Math.abs(h.kgJadi - h.kgMasuk) > h.kgMasuk * BATAS_SUSUT_ADUKAN && !Y.susut) return { tolak: 'Bahan ' + adKG(h.kgMasuk) + ' tapi hasil ' + adKG(h.kgJadi) + ' (selisih lebih dari ' + Math.round(BATAS_SUSUT_ADUKAN * 100) + ' % — susut besar atau salah ketik). Ketuk sekali lagi kalau memang begitu', perluYakin: 'susut' };
   const batchId = w.idUnik(); const dokumen = [];
   h.sahH.forEach((x, i) => {

@@ -23,7 +23,7 @@ import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaK
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
-  wzDiKeranjangParkir, sumberData, cacheMentah, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah } from '../data/toko.js';
+  wzDiKeranjangParkir, sumberData, cacheMentah, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan } from '../data/toko.js';
 import { hariIniIso, RP, tanggalPendek } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
@@ -66,6 +66,7 @@ export function keadaanAwal() {
     pesananId: null, psNama: '', psIsi: '', psAlamat: '', psNilai: '', psSaring: '',
     tukar: null,   // PUTARAN 4: { returDraf, kredit, ringkas } — retur tukar yang diikat ke keranjang ini (_tukarKeJual index.html 16838); PUTARAN 20: { susulanReturId, kredit 0, … } = pengganti tukar yatim
     karcis: null,  // PUTARAN 20: karcis kasir darurat / nota perlu-dirapikan yang sedang dirinci lewat keranjang ini (karcis-logika.js)
+    kcPilih: null, // PUTARAN 31.1: tebakan karcis yang namanya seharga dan sedang ditanyakan (karcis-logika kelompokkanTebakan)
     kcBatal: null, // PUTARAN 25b: { id, alasan } — karcis kasir darurat yang sedang dibatalkan dari lembar Karcis (karcis-logika susunBatalKarcis)
     // PUTARAN 15: isian repack (wadah dipilih, lembar, dijual/ditanggung, upah) & struk (nota yang dibuka, timpaan kertas/sertakan, draf setelan)
     rpWadah: '', rpLembar: '', rpDijual: true, rpUpah: '', setengahHarga: '', arYakin: '',
@@ -1103,6 +1104,25 @@ export function calonKarung() {
  */
 /** Dokumen penyesuaianStok yang benar-benar HITUNGAN FISIK: index.html juga menulis rework karantina ke koleksi ini ({dariRework, kgFisik null}) — itu cuma menambah buku, bukan menyamakan buku dengan gudang. */
 export const hitunganFisik = (o) => !!o && !o.dariRework && o.kgFisik !== null && o.kgFisik !== undefined;
+// putaran 31.3 (serah terima 28 Sep, aturan kerja): catatan BERTANGGAL MUNDUR (barang masuk / adukan) yang tanggalnya sebelum cocokkan terakhir nama itu
+// memotong buku dua kali — hitungan fisik hari itu sudah memuat karungnya, lalu kg catatan ini ditambahkan lagi. Penjaga dua ketukan, kalimat menyebut tanggal
+// cocokkan terakhir. Isi ulang wadah & pindah stok selalu bertanggal hari ini (tidak bisa mundur). Sumber tanggal = pola putaran 11 (hitunganFisik, bukan wadah).
+/** Cocokkan terakhir satu nama karung (hitungan fisik tumpukan; rework & cocokkan wadah tidak ikut) → { tanggal, jam } | null. */
+export function ckCocokTerakhir(merk) {
+  let t = null; ambilPenyesuaianStok().forEach((p) => { if (!hitunganFisik(p) || p.bagian === 'wadah' || String(p.merk) !== String(merk) || !p.tanggal) return; if (!t || String(p.tanggal) > t.tanggal || (String(p.tanggal) === t.tanggal && String(p.jam || '') > t.jam)) t = { tanggal: String(p.tanggal), jam: String(p.jam || '') }; });
+  return t;
+}
+/** Cocokkan terakhir satu kemasan jadi (nama + ukuran) → { tanggal, jam } | null. */
+export function ckCocokTerakhirKemasan(nama, ukuran) {
+  let t = null; ambilPenyesuaianKemasan().forEach((p) => { if (String(p.namaProduk) !== String(nama) || Number(p.ukuranKemasan) !== Number(ukuran) || !p.tanggal) return; if (!t || String(p.tanggal) > t.tanggal || (String(p.tanggal) === t.tanggal && String(p.jam || '') > t.jam)) t = { tanggal: String(p.tanggal), jam: String(p.jam || '') }; });
+  return t;
+}
+/** Kalimat penjaga tanggal mundur untuk daftar {nama, cocok} yang tanggal catatannya < cocok.tanggal; '' = tidak ada. */
+export function ckKalimatMundur(tanggal, daftar, apa) {
+  const m = (daftar || []).filter((x) => x.cocok && String(x.cocok.tanggal) > String(tanggal)); if (!m.length) return '';
+  return 'Tanggal ' + apa + ' ' + tanggal + ' lebih AWAL dari cocokkan terakhir ' + m.map((x) => x.nama + ' (' + x.cocok.tanggal + (x.cocok.jam ? ' ' + x.cocok.jam : '') + ')').join(', ') + ' — hitungan fisik hari itu sudah memuat barangnya, jadi buku akan terpotong dua kali. Ketuk sekali lagi kalau memang benar; biasanya catat bertanggal hari ini';
+}
+
 export function pindahNama() {
   const cocokAkhir = {}; ambilPenyesuaianStok().forEach((o) => { if (o.merk && hitunganFisik(o) && (!cocokAkhir[o.merk] || wdSesudah(o, cocokAkhir[o.merk]))) cocokAkhir[o.merk] = o; });
   const keluar = {}; const masuk = {}; const diBuku = {}; ambilProduksiBerlaku().forEach((p) => { if (p.dariTakar) diBuku[String(p.id)] = 1; });
