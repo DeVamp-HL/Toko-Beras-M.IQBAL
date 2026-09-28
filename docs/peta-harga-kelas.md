@@ -1,7 +1,7 @@
 # Peta harga beli per kelas mutu — putaran 30, Tahap 0
 
-**Status (28 Sep 2026): peta selesai, belum ada perubahan perilaku.** Tidak ada syarat berhenti yang terpicu: ketiga bagian bisa dibangun **tanpa
-koleksi baru**, **tanpa mengubah `firestore.rules` v4**, dan **tanpa menyentuh 28 mesin beku**. Yang perlu jawaban owner sebelum dibangun ada di §11.
+**Status (28 Sep 2026): peta selesai, owner menjawab (§12) dan menambah kasus kelas tanpa wadah (§13), lalu DIBANGUN (§14).** Tidak ada syarat berhenti
+yang terpicu: ketiga bagian dibangun **tanpa koleksi baru**, **tanpa mengubah `firestore.rules` v4**, dan **tanpa menyentuh 28 mesin beku**.
 
 Sumber: kode di `main` 2d6cc4e (sesudah PR #50), `firestore.rules` v4, dan cadangan toko 28 Sep 2026 sore (`_privat/`, tidak masuk repo; berisi
 kedatangan pemasok siang itu). Angka di dokumen ini kg dan jumlah catatan, **bukan rupiah**. Nama orang dan nama pemasok tidak disebut
@@ -204,3 +204,59 @@ byte-sama) · penolakan nama kelas di Barang masuk (§13.3) · pertanyaan varian
 8. **Ganti nama wadah** membawa nilai peta kelas di kiriman yang sama (§3) — setuju?
 
 Sesudah jawaban owner: bangun Bagian 1–3, uji, BACA-DULU "Putaran 30" + baris gerbang.
+
+## 12. Keputusan owner (28 Sep 2026) atas §11
+
+1. Tempat peta `aturanToko/kelasMerek` — **setuju**.
+2. Merek tak berkelas — **bawaan tanpa kelas**; pil kelas juga menampilkan **merek berbuku yang bukan wadah dan bukan varian** (ketan dsb.) supaya merek
+   baru bisa dipetakan ke sana; merek yang dipilih sebagai kelas = kelasnya sendiri, tidak perlu dipetakan; kelas tidak boleh varian, buku khusus, buku ukuran.
+3. Daftar "Kelas mutu · N/M terisi" di Harga › Katalog — **setuju**.
+4. Tebakan ikut ditulis saat Simpan barang masuk — **ya, tapi peta menyimpan asalnya** (`asal {merek: 'owner'|'tebakan'}`) supaya daftar menandai yang
+   belum dikonfirmasi dan tebakan tidak tersamar jadi keputusan.
+5. Kartu per kelas di Stok › HPP tab "Per kelas" — **setuju**; kalimat batas periode data wajib tampil.
+6. Kalimat lunak > `batasVarian`, tidak memblokir — **setuju**.
+7. Pemetaan merek yang belum berkelas — **owner sendiri** lewat daftar sesudah putaran hidup, dari mutu karungnya; contoh pemetaan dari harga tidak dipakai
+   sebagai data.
+8. Ganti nama wadah membawa peta kelas di kiriman yang sama — **ya**; nama baru yang sudah jadi kelas lain ditolak seperti aturan ganti nama yang ada.
+
+## 13. Tambahan owner: kelas TANPA WADAH (sejak awal buku dicatat atas nama kelas)
+
+Ada dua macam kelas, perlakuannya beda:
+
+| | A. Kelas BERWADAH (IR64 Ascent/Elevate/Apex, IR42 Value/Select, …) | B. Kelas TANPA WADAH (Ketan Putih, Ketan Hitam PK, Ketan Hitam Sosoh, Ketan Putih Paris, Beras Merah, …) |
+|---|---|---|
+| Buku stok | per MEREK pemasok (tidak berubah) | TETAP atas nama kelas |
+| Peta | `peta {merek: kelas}` = lapisan baca | tidak ada peta; merek pemasok = keterangan |
+| Daftar | `aturWadah().daftar` | kolom `kelasSendiri: [<nama>]` di `aturanToko/kelasMerek`, diisi owner di daftar Kelas mutu ("nama ini KELAS, bukan merek") |
+| Barang masuk merek baru → kelas ini | buku merek sendiri + peta | baris dibukukan ATAS NAMA KELAS (`merkSimpan` = kelas), merek pemasok masuk kolom baru per baris `merkPemasok`; petunjuk "dicatat sebagai <kelas> · merek pemasok <merek> · lalu … (tanggal · pemasok)"; pertanyaan varian (`batasVarian`) berlaku atas nama kelas |
+
+- **Usulan awal `kelasSendiri` dari cadangan 28 Sep** (nama berbuku, bukan wadah, bukan varian, bukan buku khusus/ukuran, literan langsung): Beras Merah,
+  Ketan Hitam PK, Ketan Hitam Sosoh, Ketan Putih, Ketan Putih Paris. Daftar Kelas mutu menawarkannya sebagai usulan; **owner yang mengiyakan** (satu ketukan
+  per nama). Nama lain yang sejak awal dicatat sebagai kelas tanpa wadah tidak bisa dibedakan dari merek pemasok oleh kode (kolom `merkPemasok` baru lahir
+  sekarang) — owner yang menandai.
+- **Kolom `merkPemasok`** di `batchMasuk.merkList[]`: hanya ditulis bila ada; `hitungHppMerkDalamBatch` menyalin baris apa adanya (`{ ...m }`) dan
+  `hitungStokKarungPerMerk` hanya membaca `merk`, `totalKg`, `hargaPerKg`, `subtotalHarga`, `bentuk` — uji: buku stok byte-sama dengan kolom itu dibuang;
+  cadangan versi 5 menyimpan dokumen utuh (kolom asing ikut, seperti `jam`/`alasanKoreksi`/`riwayat` putaran 11). Tampil di Buku kedatangan ("Ketan Putih
+  (merek)"), draf koreksi, `riwayatModal` (garis waktu HPP: "kedatangan <pemasok> · merek <merek>"), kartu Per kelas.
+- **Kedatangan 28 Sep baris merek ketan**: bukan pekerjaan Claude. Sesudah putaran hidup, owner mengoreksi kedatangan itu sendiri (Buku kedatangan › koreksi:
+  nama → nama kelas, `merkPemasok` = merek lama). Di cadangan 28 Sep sore (66 menit sesudah kedatangan) buku merek itu **belum punya gerakan** (tidak ada nota,
+  takar, cocokkan, adukan, retur, katalog, tempat simpan atas namanya) — koreksi nama saja cukup selama masih begitu. Kalau sebelum dikoreksi sudah ada
+  gerakan atas nama merek lama: koreksi kedatangan memindahkan modal ke buku kelas tetapi gerakannya tetap atas nama lama (buku lama minus, kelas lebih) →
+  jalannya: koreksi kedatangan + Cocokkan HARI INI kedua buku (bukan menyunting nota). Bulan September belum terkunci (kunci pertama sesudah 25b).
+- Uji kontrol wajib: pembukuan ke nama merek untuk kelas tanpa wadah berbunyi; buku kelas sesudah kedatangan = sisa lama + kg merek, modal rata-rata biasa.
+
+## 14. Yang dibangun (28 Sep 2026, cabang `tulang-punggung/30-harga-kelas`)
+
+Semua sesuai §1–§13. Penyimpangan dari rencana §8: tidak ada, kecuali (a) `kmHargaLaluMerk` = angka mesin + tanggal/pemasok dari `riwayatModal` (§5, satu
+angka dua sumber yang dijaga uji), (b) ganti nama wadah digabung di `kmSusunGantiNamaWadah` (kelas-merek memanggil `wbSusunGantiNama`, bukan sebaliknya —
+supaya bundel uji Jual tidak menyeret modul kelas), (c) `riwayatModal` membawa `merkPemasok`.
+
+| Bagian | Berkas | Uji |
+|---|---|---|
+| 1 · peta, tebakan, daftar, kelas sendiri, ganti nama | `kelas-merek-logika.js` (km*), `harga.js` (daftar Kelas mutu + lembar), `stok.js` (ganti nama wadah) | `uji_kelas_merek.py` |
+| 2 · Barang masuk | `stok-catat-logika.js` (`hitungMasuk` baris: baru/kelas/kelasAsal/keSendiri/merkPemasok/lalu/laluKelas/arah/kelasTanya; `susunSimpanMasuk` + `kmDokKelas`, `merkPemasok`, kembar per merek pemasok; `drafDariKedatangan`, `daftarKedatangan`), `stok.js` (pil kelas, tiga keadaan, ▲▼=) | `uji_kelas_merek.py`, `uji_stok_baru.py`, `uji_varian_merek.py`, `uji_buku_ukuran.py` |
+| 3 · kartu Per kelas | `kelas-merek-logika.js` (`kmKartuKelas`), `stok-hpp-logika.js` (`TAB_HPP`, `riwayatModal.merkPemasok`), `stok.js` (`gambarHppKelas`) | `uji_kelas_merek.py` |
+
+Rules v4 & `periksa_rules.py` tidak berubah; `pindah_mesin.py --periksa` lulus. Cadangan 28 Sep: 29 merek berbuku, 3 tertebak (karung ber-wadah), 21 belum
+dikonfirmasi (8 nama wadah terisi sendiri); harga lalu kelas untuk merek batch terbaru = kedatangan nyata terakhir kelas itu sebelum batch (pemetaan hanya di
+kotak pasir uji); buku stok byte-sama.
