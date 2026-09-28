@@ -208,6 +208,9 @@ def siapkan(rusak=None, skenario='tirai'):
         fbp = os.path.join(d, 'baru', 'js', 'data', 'firebase.js'); s = open(fbp, encoding='utf-8').read()
         for nama in PALSU: assert SDK + nama in s, 'impor ' + nama + ' berubah — perbarui uji'; s = s.replace(SDK + nama, '/_palsu/' + nama)
         open(fbp, 'w', encoding='utf-8').write(s)
+        # putaran 33: index.html memuat SDK Firebase lebih awal lewat <link rel="modulepreload"> ke gstatic. Tanpa ini skenario PALSU tetap mengunduh SDK
+        # sungguhan dan event load menunggunya — CDN yang lambat di runner = DOM tidak keluar dalam 90 dtk (3 DICOBA ULANG di run #396, semuanya skenario palsu)
+        for nama in PALSU: t = t.replace(SDK + nama, '/_palsu/' + nama)
         ap = os.path.join(d, 'baru', 'js', 'app.js'); open(ap, 'a', encoding='utf-8').write('\nwindow.__ujiJual = layar;   // uji_layar_kunci: pegangan layar (salinan uji saja)\n'
             'window.__ujiLayar = { jual: layar, stok, pelanggan, harga, uang, laporan, menu, ringkasan };\n')
     assert '<head>' in t and '</body>' in t; open(idx, 'w', encoding='utf-8').write(t.replace('<head>', '<head>' + isi, 1).replace('</body>', ekor + '</body>', 1))
@@ -422,7 +425,11 @@ KALIMAT_SEBAB = {JARINGAN: 'GAGAL JARINGAN: Firebase dari CDN (gstatic) tidak te
 
 # kontrol: [(nama, skenario, rusak)]
 KONTROL = [
-    ('kontrol 2 · tirai dirusak (terkunci() selalu false)', 'tirai', [('js/inti/kunci.js', 'export const terkunci = () => _kunci;', 'export const terkunci = () => false;')]),
+    # putaran 33: tirai kini DUA lapis — tiap layar memeriksa terkunci(), DAN saat mengunci semua layar (Jual juga) disembunyikan sehingga tidak menggambar.
+    # Merusak terkunci() saja tidak lagi membocorkan apa pun (Jual dulu menggambar walau tersembunyi) → kontrol ini merusak KEDUA lapis.
+    ('kontrol 2 · tirai dirusak (terkunci() selalu false, layar tidak disembunyikan saat mengunci)', 'tirai',
+     [('js/inti/kunci.js', 'export const terkunci = () => _kunci;', 'export const terkunci = () => false;'),
+      ('js/app.js', "SEMUA_LAYAR().forEach((l) => l.tampilkan(false)); layar.tampilkan(false);", "")]),
     ('kontrol 3 · beranda tanpa penjaga tirai', 'tirai', [('js/layar/ringkasan.js', "if (!tampil || terkunci()) return;\n    if (!$('rkHero')) bangun();", "if (!tampil) return;\n    if (!$('rkHero')) bangun();"),
                                                           ('js/app.js', "if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); SEMUA_LAYAR().forEach((l) => l.tampilkan(false)); layar.tampilkan(false);", "if (kunci) {")]),
     ('kontrol 4 · keranjang tidak pernah dilupakan', 'ganti', [('js/layar/jual.js', 'lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))', 'lupakanOrang: () => {}')]),

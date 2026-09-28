@@ -554,6 +554,10 @@ refresh & pertama buka"; UI lebih hidup & intuitif dari segi gerak; animasi penu
   membekukan layar yang terbuka).
 - Uji: `uji_kinerja_gerak.py` (+ kontrol, CI: preload = graf impor, penjadwal di jsc dengan jam palsu, sambungan, gerbang, penutup); `uji_akses_baru.py` &
   `uji_layar_kunci.py` mengikuti bentuk baru (penjaga tirai & kontrolnya). Tinjauan adversarial 8 agen: 18 temuan lolos bantahan, semuanya ditambal.
+- CI pertama PR #57 merah di `uji_layar_kunci --kontrol`: (1) kontrol 2 DIAM — tirai kini DUA lapis (tiap layar memeriksa `terkunci()` DAN saat mengunci
+  semua layar, Jual juga, disembunyikan); merusak `terkunci()` saja tidak lagi membocorkan apa pun, jadi kontrol 2 merusak kedua lapis. (2) 3× DICOBA ULANG
+  90 dtk, semuanya skenario Firebase PALSU: `modulepreload` SDK ke gstatic di index.html tidak ikut dialihkan ke `/_palsu/` → halaman uji tetap mengunduh
+  SDK sungguhan dan event load menunggunya. Salinan uji kini mengalihkan preload itu juga (skenario palsu kembali tanpa jaringan).
 
 ## Struktur
 ```
