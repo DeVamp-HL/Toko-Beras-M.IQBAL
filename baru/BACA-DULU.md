@@ -482,6 +482,21 @@ tidak disentuh; ASAP GLOBAL omzet/laba/neraca/nilai stok byte-sama.
 - Tugas owner sesudah putaran ini hidup (bukan pekerjaan Claude): memetakan merek kedatangan 18–28 Sep di daftar Kelas mutu dari mutu karungnya; menandai
   kelas tanpa wadah; mengoreksi kedatangan 28 Sep baris merek ketan menjadi nama kelas + `merkPemasok` lewat Buku kedatangan › koreksi.
 
+## Putaran 31 — pemantapan: empat perbaikan kecil serah terima 28 Sep (cabang `pemantapan/31-empat-kecil`)
+
+- **31.1 Rinci karcis bertanya NAMA kalau harganya sama** (`karcis-logika.js kelompokkanTebakan`): tebakan dengan bentuk sama (jalur, berat, jumlah, harga
+  pas) tapi nama beda digabung jadi satu tebakan `seharga` berisi `pilihan[]`; `pakaiTebakan` pada tebakan seharga tidak mengisi keranjang, melainkan
+  menyetel `kcPilih` (Jual menggambar "Harga sama — yang mana?"); memilih namanya = tebakan biasa. Dulu IR64 Ascent/Elevate/Apex yang seharga tertukar.
+- **31.2 "Jual dulu, tandai untuk dicocokkan"**: TAHAP 0 saja — `docs/peta-jual-tandai-cocok.md` (jalur jujur: nota tercatat, baris `perluCocokkan` +
+  `kurangKg/Unit`, buku tetap minus, item di kartu "Mana yang belum dicocokkan?"). Dibangun hanya sesudah owner menjawab §5.
+- **31.3 Penjaga catatan bertanggal MUNDUR** (`jual-logika.js ckCocokTerakhir / ckCocokTerakhirKemasan / ckKalimatMundur`; dipakai `susunSimpanMasuk`
+  & `susunSimpanAdukan`): barang masuk / adukan yang tanggalnya sebelum cocokkan terakhir nama itu (hitungan fisik tumpukan; cocokkan wadah & rework tidak
+  ikut — pola putaran 11) → dua ketukan, kalimat menyebut tanggal & jam cocokkan terakhir dan "buku terpotong dua kali". Tidak memblokir. Koreksi kedatangan
+  lama tidak ditanya. Isi ulang wadah & pindah stok selalu bertanggal hari ini (tidak bisa mundur).
+- **31.4 Rework 11 Sep bermodal nol**: hanya ditunjukkan (`docs/temuan-rework-modal-nol.md`) — dokumen `penyesuaianStok dariRework` 41,5 kg atas nama kelas; mesin menilai kg itu
+  dengan modal rata-rata (dokumen saja yang Rp0); jalur koreksi yang ada tidak menjangkau dokumen rework tanpa bahan → butir peta, keputusan owner.
+- Uji: `uji_pemantapan_31.py` (+ kontrol, CI); `uji_stok_baru.py` asap cadangan mengiyakan penjaga mundur (`mundur: true`).
+
 ## Struktur
 ```
 baru/
@@ -558,6 +573,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_bayar_pemasok_transfer.py` (+ `--kontrol`) | 29 · Bagian 4: 29 skenario bayar bon tunai/transfer (cara dari `dari`, kantong dijaga, transfer menurunkan REKENING & kas, admin = pengeluaranHarian untuk toko dari rekening satu kiriman, utang turun sebesar bayar, laba turun sebesar admin, buku bon menyebut cara, urung mencabut keduanya, tunai brankas, rekening belum diisi → tawaran catat isi rekening, catat isi rekening = titik kas kemarin tanpa menggeser laci/brankas/amplop, titik hari ini ditulis ulang) + 12 kontrol; asap cadangan |
 | `alat-uji/uji_wadah_stok_sendiri.py` (+ `--kontrol`) | 28: 53 skenario stok wadah sendiri (buku NG yang habis menahan literan sebelum pindahan, tidak sesudahnya; pindahan awal = batch lahir 0 kg + pindah buku per wadah, nilai/laba/tumpukan tetap; nota satu baris atas buku wadah; takar memindah buku karung → wadah; cocokkan = susut wadah; ganti nama membawa stok; atur susunan menolak wadah berstok; katalog kasir; tiga pintu karung termasuk buka kemasan hasil adukan; tidak bocor ke daftar merek; tutup buku membawa tanda; sisihkan · tuang balik · bongkar ke karung wadah; kemasan adukan dibuka = buku sendiri) + 30 kontrol; asap cadangan: pindahan semua wadah tanpa menggeser nilai stok, laba, tumpukan; 1 L dari tiap wadah lewat bukunya sendiri |
 | `alat-uji/uji_kelas_merek.py` (+ `--kontrol`) | 30: 45 skenario kelas mutu (peta baca/tulis & bentuk lama tanpa `asal`, tebakan tiga sumber & urutannya, riwayat kelas = `riwayatModal` tanpa fondasi, harga lalu kelas per pemasok & batch dikoreksi, ▲▼=, kalimat lunak tidak memblokir, simpan satu kiriman + tebakan tercatat sebagai tebakan + keputusan owner tidak ditimpa, kelas tanpa wadah = buku kelas + `merkPemasok`, mesin beku mengabaikan kolomnya, varian atas nama kelas, dua merek pemasok satu mobil, kartu per bulan tertimbang & kalimat periode & dua kuartal, ganti nama wadah membawa peta & menolak nama kelas) + 8 statis (layar, rules owner saja, tanpa DOM, tanpa impor balik) + 18 kontrol; asap cadangan: tebakan menunjuk wadah yang ada, riwayat kelas per nama = riwayatModal, harga lalu merek = mesin, harga lalu kelas batch terbaru = kedatangan nyata terakhir kelas itu sebelum batch (pemetaan di kotak pasir saja), buku byte-sama |
+| `alat-uji/uji_pemantapan_31.py` (+ `--kontrol`) | 31: 15 skenario (karcis: dua nama seharga = satu tebakan bertanya, literan seharga, pilih nama mengisi keranjang, kelompok per bentuk, lepas karcis; tanggal mundur: cocokkan terakhir per nama & kemasan, barang masuk sebelum cocokkan ditolak dua ketukan dengan tanggal & jam, sesudah/sehari tidak, wadah & rework bukan hitungan, koreksi tidak ditanya, adukan bahan & hasil, urutan penjaga) + 3 statis + 13 kontrol |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
