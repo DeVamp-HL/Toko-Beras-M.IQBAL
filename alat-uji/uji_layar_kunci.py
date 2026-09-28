@@ -301,7 +301,10 @@ def dom(d, jalur, coba=3, butuh_cdn=True):
             sebab = 'CDN Firebase tidak terjangkau'
             continue
         if siap and '</html>' in h: return h, None
-        sebab = ('selesai tapi DOM tidak keluar' if siap else 'tidak mengabarkan selesai') + ' [waktu %s · permintaan terakhir %s]' % (info.get('waktu'), info.get('akhir'))
+        sebab = 'selesai tapi DOM tidak keluar' if siap else 'tidak mengabarkan selesai'
+        # catatan waktu ikut dicetak di bawah baris DICOBA ULANG (teks sebab tetap persis — dijaga uji_coba_ulang): kapan halaman melapor selesai, kapan gambar
+        # penahan diminta & dijawab, permintaan terakhir → kejadian "DOM tidak keluar" berikutnya di runner menjelaskan dirinya sendiri
+        log = list(log) + ['[uji] waktu %s · permintaan terakhir %s' % (info.get('waktu'), info.get('akhir'))]
     return '', TIDAK_JALAN
 
 
