@@ -1,6 +1,7 @@
 // LAYAR STOK — GAMBAR & KETUKAN. Beranda Stok S9 (dikunci owner) + tab Wadah literan + lembar Barang masuk / Adukan / Cocokkan + tab Karantina yang memutuskan.
 // Logika & angka di stok-logika.js, stok-catat-logika.js (ST1/ST3), stok-adukan-logika.js (ST2), stok-karantina-logika.js.
 // Layar dimorf (elemen hidup terus) → batang isi, gunung wadah, dan angka bertransisi; baris masuk bergiliran saat lahir.
+import { nanti, segera } from '../inti/jadwal.js';   // owner 29 Sep: bunyi data/status digabung sekali per bingkai (lag & freeze)
 import { h, mentah, pasang, delegasi, esc } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
@@ -55,7 +56,7 @@ export function pasangLayarStok(akar, opsi) {
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['isiW', 'krKetik', 'krNama', 'gnKetik', 'shKetik', 'bgKetik', 'bgAlasan', ['puKetik', (v) => !!(v && Object.keys(v).length)], 'atur', 'koreksiA', 'qAlasan', 'kt', 'ktAlasan', 'aturKt', 'aturC', ['tp', (v) => !!(v && v.pilih)], 'aturTp', ['hp', (v) => !!(v && (v.ketik || v.alasan || Object.keys(v.massal || {}).length))], 'aturHp', ['vrKetik', (v) => !!(v && Object.keys(v).some((k) => v[k]))]], [KUNCI_DRAF_MASUK, KUNCI_DRAF_COCOK, KUNCI_DRAF_ADUKAN]);
   const set = (p) => K.setel(p); const st = () => K.baca();
-  let tampil = false; const kini = () => opsi.sekarang() || new Date();
+  let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date();
   const waktu = () => L.waktuSekarang(opsi.sekarang() || undefined);
 
   // putaran 25: hapus + dokumen dalam SATU kiriman yang hasilnya diperiksa (dulu dua kiriman: hapus lalu jejak/penggantinya); jalur besar dari bulan lalu
@@ -263,7 +264,7 @@ export function pasangLayarStok(akar, opsi) {
   const ubahAdukan = (f) => { const d = JSON.parse(JSON.stringify(st().adukan || A.drafAdukanKosong(waktu()))); f(d); simpanLokal(KUNCI_DRAF_ADUKAN, d); set({ adukan: d, yakinA: {} }); };
   const ubahAturTp = (f) => { const a = TP.aturTempat(); const d = JSON.parse(JSON.stringify(st().aturTp || { daftar: a.daftar, batasTumpuk: String(a.batasTumpuk) })); f(d); d.yakin = false; set({ aturTp: d }); };
   function gambar() {
-    if (!tampil || terkunci()) return;
+    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false;
     const s = st(); const sumber = sumberData(); const k = kini();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
@@ -753,8 +754,8 @@ export function pasangLayarStok(akar, opsi) {
   }
 
   K.dengar(gambar);
-  dengarkan(() => gambar());
+  dengarkan(() => nanti(gambar));
   // dipanggil layar Menu: buka lembar (masuk | cocok | adukan) atau tab (gudang | wadah | kapur | karantina) — lewat penangan yang sama dengan ketukan
   const buka = (lembar, tab, isi) => { set({ lembar: null }); if (lembar === 'masuk') { AKSI.bukaMasuk({}); if (isi && isi.merk) { ubahMasuk((d) => { const i = d.baris.findIndex((b) => !String(b.merk || '').trim()); if (i >= 0) d.baris[i].merk = isi.merk; else d.baris.push(Object.assign(C.barisMasukKosong(), { merk: isi.merk })); }); set({ kabar: 'Barang masuk untuk ' + isi.merk + ' — isi jumlah karung & harga per kg', kabarAwas: false }); } } else if (lembar === 'cocok') AKSI.bukaCocok({}); else if (lembar === 'adukan') AKSI.bukaAdukan({}); else if (lembar === 'kantong') AKSI.bukaKantong({}); else if (lembar === 'tempat') AKSI.bukaTempat({}); else if (lembar === 'hpp') AKSI.bukaHpp({}); else if (tab) AKSI.tab({ t: tab }); };
-  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil) gambar(); } };
+  return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
 }

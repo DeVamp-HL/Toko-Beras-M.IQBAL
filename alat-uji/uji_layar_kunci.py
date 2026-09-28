@@ -424,7 +424,7 @@ KALIMAT_SEBAB = {JARINGAN: 'GAGAL JARINGAN: Firebase dari CDN (gstatic) tidak te
 KONTROL = [
     ('kontrol 2 · tirai dirusak (terkunci() selalu false)', 'tirai', [('js/inti/kunci.js', 'export const terkunci = () => _kunci;', 'export const terkunci = () => false;')]),
     ('kontrol 3 · beranda tanpa penjaga tirai', 'tirai', [('js/layar/ringkasan.js', "if (!tampil || terkunci()) return;\n    if (!$('rkHero')) bangun();", "if (!tampil) return;\n    if (!$('rkHero')) bangun();"),
-                                                          ('js/app.js', "SEMUA_LAYAR().forEach((l) => l.tampilkan(false));\n  if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; });", "if (kunci) {")]),
+                                                          ('js/app.js', "if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); SEMUA_LAYAR().forEach((l) => l.tampilkan(false)); layar.tampilkan(false);", "if (kunci) {")]),
     ('kontrol 4 · keranjang tidak pernah dilupakan', 'ganti', [('js/layar/jual.js', 'lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))', 'lupakanOrang: () => {}')]),
     ('kontrol 5 · keluar dari tab lain / nonaktif tidak dijaga', 'ganti', [('js/app.js', "if (!akun || akun.jenis === 'keluar' || !bisaBekerja(akun)) { lupakanSemua(); uidKeranjang = ''; return; }", "if (!akun || akun.jenis === 'keluar' || !bisaBekerja(akun)) { uidKeranjang = ''; return; }")]),
     ('kontrol 6 · Keluar tanpa bertanya', 'ganti', [('js/app.js', "(await tanyaIsian(daftar, B, hanyaKeranjang)) !== 'kosongkan'", "false")]),

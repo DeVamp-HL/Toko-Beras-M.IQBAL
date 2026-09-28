@@ -1,0 +1,55 @@
+/* GERAK — owner 29 Sep 2026: "jauh lebih rapi, lebih interaktif, lebih hidup, lebih intuitif — dari segi motion terutama".
+   Semua gerak di sini hanya transform & opacity (dikomposit GPU) dan berhenti sendiri; "kurangi gerakan" dihormati di bawah. */
+
+/* 1. PINDAH LAYAR — layar baru datang dari ARAH tab yang dituju. Dijalankan app.js datangkan() lewat Web Animations pada ANAK <main>
+      (bukan <main>: transform di sana menjadikannya wadah elemen position:fixed → laci keranjang HP, lembar, latar bola meloncat).
+      Bukan kelas CSS (tinjauan 29 Sep): mengganti animation-name anak lalu mencabutnya memutar ulang animasi dasar mereka
+      (section Stok/Harga/Uang/Laporan: masuk 420 ms dari opacity 0) → isi berkedip 1,25 dtk sesudah pindah, dan jeda nth-child mengenai .lembar. */
+
+/* 2. PENANDA MENU — pil emas yang MELUNCUR ke petak aktif (bukan melompat): menu bawah HP/tablet & menu samping Mac. */
+.nav > .penanda, .side > .penanda { position: absolute; left: 0; top: 0; z-index: 0; width: var(--w, 0px); height: var(--h, 0px); transform: translate(var(--x, 0px), var(--y, 0px));
+  border-radius: 16px; background: var(--seg-aktif); border: 1px solid var(--kaca-tepi); box-sizing: border-box; pointer-events: none; opacity: 0;
+  box-shadow: 0 8px 18px -12px var(--logam-glow), inset 0 1px 0 var(--kaca-sorot);
+  transition: transform 480ms cubic-bezier(.34,1.32,.64,1), width 480ms cubic-bezier(.34,1.32,.64,1), height 480ms cubic-bezier(.34,1.32,.64,1), opacity 220ms ease; }
+.side > .penanda { border-radius: 13px; }
+.nav > .penanda.ada, .side > .penanda.ada { opacity: 1; }
+.penanda.diam { transition: none !important; }
+.nav > div, .side > .item, .side > .merek { position: relative; z-index: 1; }
+@media (min-width: 1100px) { .side .item.aktif .ikon { background: transparent; border-color: transparent; } }
+.nav > div { transition: color 260ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+
+/* 3. UMPAN BALIK SENTUH — tiap yang bisa diketuk MEMBAL sedikit saat ditekan (dulu sebagian diam) */
+.kaca-btn, .seg, .tab-antre, .pil { transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); }
+.kaca-btn:active, .seg:active, .tab-antre:active, .pil:active, .nav > div:active { transform: scale(0.965); }
+.side .item:active .ikon { transform: scale(0.94); transition: transform 140ms cubic-bezier(.2,.8,.2,1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .nav > .penanda, .side > .penanda { transition: opacity 1ms !important; }
+  .kaca-btn:active, .seg:active, .tab-antre:active, .pil:active, .nav > div:active, .side .item:active .ikon { transform: none; }
+}
+
+/* 4. PENUTUP OMZET (Jual, owner 29 Sep) — koin emas dari panggung ke angka omzet (jual.js penutupOmzet). Semua di LUAR <main>:
+      gambar ulang layar tidak bisa memotongnya di tengah jalan. */
+.koin-omzet { position: fixed; z-index: 75; left: 0; top: 0; width: 38px; height: 38px; border-radius: 50%; display: none; align-items: center; justify-content: center; pointer-events: none;
+  background: radial-gradient(circle at 34% 30%, rgba(255,250,232,0.95) 0 16%, transparent 17%), linear-gradient(160deg, var(--logam1), var(--logam2) 55%, var(--logam3));
+  border: 1px solid rgba(255,255,255,0.7); color: var(--logam-teks); font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+  box-shadow: 0 0 22px 4px var(--logam-glow), 0 10px 18px -8px rgba(0,0,0,0.45), inset 0 -3px 0 rgba(0,0,0,0.12); will-change: transform, opacity; }
+.koin-omzet.terbang { display: flex; }
+.cincin-omzet { position: fixed; z-index: 11; pointer-events: none; box-sizing: border-box; border-radius: 20px; border: 2px solid var(--emas-garis); box-shadow: 0 0 26px 2px var(--logam-glow); opacity: 0; }
+.kilau-omzet { position: fixed; z-index: 11; pointer-events: none; overflow: hidden; border-radius: 8px; }
+.kilau-omzet i { position: absolute; inset: 0; opacity: 0; mix-blend-mode: overlay; background: linear-gradient(100deg, transparent 20%, rgba(255,246,214,0.9) 50%, transparent 80%); }
+body.gelap .kilau-omzet i { mix-blend-mode: screen; background: linear-gradient(100deg, transparent 20%, rgba(239,228,194,0.55) 50%, transparent 80%); }
+.omzet-pil { position: fixed; z-index: 74; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -24px); display: flex; align-items: baseline; gap: 10px;
+  padding: 10px 18px; border-radius: 999px; background: var(--nav); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--kaca-tepi);
+  box-shadow: 0 16px 30px -18px var(--bayang), inset 0 1px 0 var(--kaca-sorot); opacity: 0; pointer-events: none; white-space: nowrap; transition: box-shadow 420ms ease; }
+.omzet-pil .n { font-size: 20px; font-variant-numeric: tabular-nums; }
+.omzet-pil .plus { color: var(--aktif); font-size: 13px; opacity: 0; transform: translateY(6px); transition: opacity 300ms ease, transform 460ms cubic-bezier(.34,1.56,.64,1); }
+.omzet-pil.tampil { animation: pilOmzet 3600ms cubic-bezier(.2,.8,.2,1) forwards; }
+.omzet-pil.mendarat .plus { opacity: 1; transform: none; }
+.omzet-pil.mendarat { box-shadow: 0 0 0 2px var(--emas-garis), 0 0 30px 4px var(--logam-glow), 0 16px 30px -18px var(--bayang); }
+@keyframes pilOmzet { 0% { opacity: 0; transform: translate(-50%, -24px); } 9% { opacity: 1; transform: translate(-50%, 0); } 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -14px); } }
+@media (prefers-reduced-motion: reduce) { .koin-omzet, .cincin-omzet, .kilau-omzet { display: none !important; } .omzet-pil.tampil { animation: none; opacity: 1; transform: translate(-50%, 0); } }
+
+/* 5. TIRAI 23c untuk lapisan uang di luar <main> (tinjauan 29 Sep): sesudah Keluar tidak boleh ada omzet di atas gerbang (app.js juga mencabutnya) */
+body.terkunci #panggung, body.terkunci .koin-omzet, body.terkunci .omzet-pil, body.terkunci .omzet-toast, body.terkunci .omzet-naik,
+body.terkunci .cincin-omzet, body.terkunci .kilau-omzet { display: none !important; }

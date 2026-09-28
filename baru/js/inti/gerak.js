@@ -11,16 +11,23 @@ export function sekali(el, kelas, lamaMs) { if (!el) return; el.classList.remove
  * dihitung naik/turun dari nilai lama ke nilai baru. Nilai AKHIR selalu benar (penjaga waktu + tab tersembunyi).
  */
 export function gulirkan(akar, format, lamaMs) {
+  // tinjauan 29 Sep: dipanggil dari dalam bingkai (penjadwal) → morf sudah menulis angka AKHIR, dan langkah pertama baru jalan di bingkai berikutnya
+  // → satu bingkai angka akhir lalu melompat ke angka lama. Kini teks langsung disetel ke angka awal; morf ulang di tengah gulir (dari === ke)
+  // menulis kembali angka yang sedang tampil; gulir baru di tengah gulir melanjutkan dari angka yang sedang tampil.
   akar.querySelectorAll('[data-gulir]').forEach((el) => {
     const ke = Number(el.getAttribute('data-gulir')); const dari = el.__angka;
+    if (el.__gulir && dari === ke) { el.textContent = format(el.__tampil); return; }
     el.__angka = ke;
     if (dari === undefined || dari === ke || !isFinite(ke)) return;
     cancelAnimationFrame(el.__raf || 0); clearTimeout(el.__jaga || 0);
-    if (diam()) { el.textContent = format(ke); return; }
+    const awal = el.__gulir && isFinite(el.__tampil) ? el.__tampil : dari;
+    if (diam()) { el.__gulir = false; el.textContent = format(ke); return; }
     const lama = lamaMs || 520; const mulai = performance.now();
-    const langkah = (kini) => { const t = Math.max(0, Math.min(1, (kini - mulai) / lama)); el.textContent = format(Math.round(dari + (ke - dari) * tenggelam(t))); if (t < 1) el.__raf = requestAnimationFrame(langkah); };
+    el.__gulir = true; el.__tampil = awal; el.textContent = format(awal);
+    const langkah = (kini) => { const t = Math.max(0, Math.min(1, (kini - mulai) / lama)); const n = Math.round(awal + (ke - awal) * tenggelam(t)); el.__tampil = n; el.textContent = format(n);
+      if (t < 1) el.__raf = requestAnimationFrame(langkah); else el.__gulir = false; };
     el.__raf = requestAnimationFrame(langkah);
-    el.__jaga = setTimeout(() => { cancelAnimationFrame(el.__raf || 0); el.textContent = format(ke); }, lama + 200);
+    el.__jaga = setTimeout(() => { cancelAnimationFrame(el.__raf || 0); el.__gulir = false; el.__tampil = ke; el.textContent = format(ke); }, lama + 200);
   });
 }
 

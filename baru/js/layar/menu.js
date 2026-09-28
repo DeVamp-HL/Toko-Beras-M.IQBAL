@@ -3,6 +3,7 @@
 // di bawahnya laci yang tidak pernah berpindah tempat. Dasar penyusunan lain (N2 Tanya · N5 Jam · N6 Orang · N8 Tertutup) = tab.
 // Baris Sistem (Perangkat · Peran · Cadangan · Lokasi · Pengingat, desain SS1–SS5 dikunci 19 Sep) dibuka sebagai LEMBAR di dalam Menu.
 // Layar dimorf (elemen hidup terus): laci membuka dengan transisi, angka bergulir, baris masuk bergiliran.
+import { nanti, segera } from '../inti/jadwal.js';   // owner 29 Sep: bunyi data/status digabung sekali per bingkai (lag & freeze)
 import { h, mentah, pasang, delegasi } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
@@ -49,7 +50,7 @@ export function pasangLayarMenu(akar, opsi) {
     sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, opYakin: null, pinIsi: { lama: '', baru: '', ulang: '' } });
   const K = buatKeadaan(awal());
   const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], ['pinIsi', (v) => !!(v && (v.lama || v.baru || v.ulang))]], []);
-  const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false;
+  const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
   const lokal = () => Object.assign({}, opsi.lokal ? opsi.lokal() : {}, { lsKb: st().lsKb, usageKb: st().usageKb, quotaKb: st().quotaKb, autoTanggal: st().autoTanggal });
@@ -152,7 +153,7 @@ export function pasangLayarMenu(akar, opsi) {
 
   // ---------- GAMBAR ----------
   function gambar() {
-    if (!tampil || terkunci()) return;
+    if (!tampil || terkunci()) { _kotor = true; return; } _kotor = false;
     const s = st(); const sumber = sumberData(); const d = kini();
     pasang(akar, h`
       <div class="latar-bola"><div class="bola emas"></div><div class="bola platina"></div><div class="bola sampanye"></div></div>
@@ -378,7 +379,7 @@ export function pasangLayarMenu(akar, opsi) {
   }
 
   K.dengar(gambar);
-  dengarkan(() => gambar());
+  dengarkan(() => nanti(gambar));
   return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka: (sistem, tab) => { set({ sistem: sistem || null, tabS: Object.assign({}, st().tabS, sistem && tab ? { [sistem]: tab } : {}), kabar: '' }); if (sistem) ukurSimpanan(); },
-    tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); ukurSimpanan(); } if (tampil) gambar(); } };
+    tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); ukurSimpanan(); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
 }

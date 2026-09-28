@@ -1,5 +1,6 @@
 // LAYAR JUAL — GAMBAR & KETUKAN. Satu markup untuk tiga lebar; lebar diatur css/kerangka.css.
 // Logika (rak, tagihan, antrean, bayar) ada di jual-logika.js dan diuji tanpa peramban.
+import { nanti, segera } from '../inti/jadwal.js';   // owner 29 Sep: bunyi data/status digabung sekali per bingkai (lag & freeze)
 import { h, mentah, gabung, pasang, delegasi } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
@@ -86,14 +87,24 @@ export function pasangLayarJual(akar, opsi) {
       const r = L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }));
       if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, tembusTanya: r.perluTembus || null });
       const keranjangTadi = S().keranjang.slice(); const uangTadi = S().cara === 'Tunai' ? S().uang : 0;
+      // penutup omzet (owner 29 Sep): angka Hari ini SEBELUM nota ini ditahan selama adegan berjalan. Dipasang SEBELUM menulis (tinjauan 29 Sep):
+      // Firestore memancarkan snapshot lokal sebelum server mengaku → dulu angka sempat naik, turun lagi, lalu naik saat koin mendarat.
+      // Nota kedua saat tahanan masih jalan: patokan TERLAMA dipertahankan, hanya token terakhir yang melepas & merayakan jumlah gabungannya.
+      const hariTadi = _tahanHari && Date.now() < _tahanHari.sampai ? _tahanHari.hari : L.hariIni(S());
+      const token = ++_tokenPenutup; _tahanHari = { hari: hariTadi, sampai: Date.now() + 5000, token };
+      const lepasBila = () => { if (_tahanHari && _tahanHari.token === token) _tahanHari = null; };
       set({ kabar: 'Mencatat…', kabarAwas: false });
       try {
         const h = await tulisDokumen(r.dokumen);
-        if (h && h.gagal) return set({ kabar: 'DITOLAK, nota tidak tersimpan: ' + h.pesan, kabarAwas: true });
-        adeganNota(r.nota, keranjangTadi, uangTadi);   // hanya sesudah nota SUNGGUH tercatat — adegan tidak boleh merayakan nota yang ditolak
-        const tambahOmzet = r.dokumen.filter((d) => d.koleksi === 'penjualan').reduce((a, d) => a + (Number(d.data.hargaTotal) || 0), 0); setTimeout(() => rayakanOmzet(tambahOmzet), 80);   // sesudah layar digambar ulang dengan omzet barunya
+        if (h && h.gagal) { lepasBila(); return set({ kabar: 'DITOLAK, nota tidak tersimpan: ' + h.pesan, kabarAwas: true }); }
+        const lamaAdegan = adeganNota(r.nota, keranjangTadi, uangTadi);   // hanya sesudah nota SUNGGUH tercatat — adegan tidak boleh merayakan nota yang ditolak
+        const tambahOmzet = r.dokumen.filter((d) => d.koleksi === 'penjualan').reduce((a, d) => a + (Number(d.data.hargaTotal) || 0), 0);
+        // PENUTUP (owner 29 Sep: "animasi setelah transaksi, omzet bertambah"): omzet TIDAK langsung naik — ditahan sampai barang selesai
+        // diserahkan, lalu koin emas terbang dari panggung ke angka omzet dan angkanya bergulir naik. Tanpa adegan (kurangi gerakan) → seperti dulu.
+        if (lamaAdegan && tambahOmzet > 0 && !document.hidden && _tahanHari && _tahanHari.token === token) { _tahanHari.sampai = Date.now() + lamaAdegan + 2600; setTimeout(() => penutupOmzet(token), Math.max(0, lamaAdegan - 320)); }
+        else { lepasBila(); setTimeout(() => rayakanOmzet(tambahOmzet), 80); }   // sesudah layar digambar ulang dengan omzet barunya
         set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI (cadangan, tidak ke Firestore) — ' : h && h.antre ? 'Tersimpan di perangkat, menunggu server — ' : 'Tersimpan — ') + r.ringkas + strukOtomatis(r) }));
-      } catch (e) { set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+      } catch (e) { lepasBila(); set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
     },
     bukaKredit: () => set({ kreditDibuka: true, kabar: 'Kredit dibuka sekali untuk nota ini — keputusan owner, tercatat di nota', kabarAwas: false }),
     // ---- PUTARAN 20: rinci karcis kasir darurat (karcis-logika.js) ----
@@ -299,6 +310,81 @@ export function pasangLayarJual(akar, opsi) {
     const mendarat = () => { const bilah = akar.querySelector('.ringkas-keranjang'); if (dari) terbangkan(lamaAdegan ? { x: innerWidth / 2, y: 150 } : dari, bilah); setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 420); };
     setTimeout(() => requestAnimationFrame(mendarat), lamaAdegan);
   }
+  // ---- PENUTUP OMZET (owner 29 Sep 2026: "animasi jual … bagian penutupan itu animasi setelah transaksi omzet bertambah") ----
+  // Selama adegan terima uang & serah terima berjalan, kartu Hari ini memegang angka SEBELUM nota ini (_tahanHari). Di ujung serah terima
+  // barangnya jadi KOIN emas yang meletup dari panggung dan terbang melengkung ke angka omzet; saat mendarat: angka dilepas → bergulir naik,
+  // cincin cahaya memancar dari kartu, kilau menyapu angkanya, "+Rp…" melayang, dan baris nota barunya masuk dengan sorot hangat.
+  // HP (kartu Hari ini di luar layar): koin terbang ke pil omzet di atas layar, angka di pil itu yang bergulir.
+  // Nota dibatalkan di tengah cerita → omzet tidak bertambah → tidak ada perayaan (angka dilepas apa adanya).
+  let _tahanHari = null, _tokenPenutup = 0, _barisBaru = new Set(), _jamBarisBaru = null;
+  function jalurLengkung(asal, tujuan, n) {
+    const kx = (asal.x + tujuan.x) / 2, ky = Math.min(asal.y, tujuan.y) - Math.max(80, Math.abs(tujuan.x - asal.x) * 0.28);
+    const out = []; for (let i = 0; i <= n; i++) { const t = i / n, u = 1 - t; out.push({ x: u * u * asal.x + 2 * u * t * kx + t * t * tujuan.x, y: u * u * asal.y + 2 * u * t * ky + t * t * tujuan.y }); }
+    return out;
+  }
+  function penutupOmzet(token) {
+    const tahan = _tahanHari;
+    if (!tahan || tahan.token !== token) return;   // nota lain dicatat sesudahnya: ia yang melepas & merayakan jumlah gabungannya
+    const lepas = () => {
+      _tahanHari = null;
+      const lama = new Set(((tahan && tahan.hari.terakhir) || []).map((r) => String(r.id)));
+      _barisBaru = new Set(L.hariIni(S()).terakhir.map((r) => String(r.id)).filter((id) => !lama.has(id)));
+      clearTimeout(_jamBarisBaru); _jamBarisBaru = setTimeout(() => { _barisBaru = new Set(); }, 2600);
+      gambar(); gulirkan(akar, RP);
+    };
+    const naikSungguh = L.hariIni(S()).omzet - tahan.hari.omzet;
+    if (terkunci()) { _tahanHari = null; return; }   // sudah Keluar: tidak ada yang digambar (tirai 23c)
+    if (document.hidden || !(naikSungguh > 0) || typeof Element.prototype.animate !== 'function') { lepas(); if (naikSungguh > 0) rayakanOmzet(naikSungguh); return; }
+    const angka = akar.querySelector('.jual-samping .kartu.hari .angka-omzet'); const r = angka && !akar.hidden ? angka.getBoundingClientRect() : null;
+    const adaLembar = !!(S().lembar && S().lembar !== 'keranjang');   // Mac: lembar menutupi kartu Hari ini → koin ke pil di atas layar
+    const terlihat = !!r && r.width > 0 && r.top >= 0 && r.bottom <= innerHeight - 90 && !adaLembar;
+    const pk = document.querySelector('#panggung .panggung-kartu'); const pr = pk ? pk.getBoundingClientRect() : null;
+    const asal = pr && pr.width ? { x: pr.left + pr.width / 2, y: pr.top + pr.height * 0.42 } : { x: innerWidth / 2, y: 150 };
+    let tujuan, pil = null;
+    if (terlihat) tujuan = { x: r.left + Math.min(r.width, 150) / 2, y: r.top + r.height / 2 };
+    else {
+      pil = document.getElementById('omzetPil');
+      if (!pil) { pil = document.createElement('div'); pil.id = 'omzetPil'; pil.className = 'omzet-pil'; pil.setAttribute('role', 'status'); document.body.appendChild(pil); }
+      pil.innerHTML = '<span class="label">Omzet hari ini</span><span class="serif n" data-gulir="' + tahan.hari.omzet + '">' + RP(tahan.hari.omzet) + '</span><b class="plus">+' + RP(naikSungguh) + '</b>';
+      gulirkan(pil, RP); pil.classList.remove('tampil', 'mendarat'); void pil.offsetWidth; pil.classList.add('tampil');
+      const tr = pil.getBoundingClientRect(); tujuan = { x: tr.left + tr.width / 2, y: tr.top + tr.height / 2 };
+    }
+    let koin = document.getElementById('koinOmzet');
+    if (!koin) { koin = document.createElement('div'); koin.id = 'koinOmzet'; koin.className = 'koin-omzet'; koin.setAttribute('aria-hidden', 'true'); koin.innerHTML = '<span class="serif">Rp</span>'; document.body.appendChild(koin); }
+    koin.style.left = asal.x + 'px'; koin.style.top = asal.y + 'px';
+    const jalur = jalurLengkung(asal, tujuan, 10); const dx = (p) => p.x - asal.x, dy = (p) => p.y - asal.y;
+    const bingkai = [{ transform: 'translate(-50%, -50%) scale(0.2)', opacity: 0, offset: 0 }, { transform: 'translate(-50%, -50%) translateY(-10px) scale(1.18)', opacity: 1, offset: 0.16 }]
+      .concat(jalur.slice(1).map((p, i) => ({ transform: 'translate(-50%, -50%) translate(' + dx(p).toFixed(1) + 'px, ' + dy(p).toFixed(1) + 'px) scale(' + (1 - 0.5 * (i + 1) / 10).toFixed(2) + ')', opacity: 1, offset: 0.24 + 0.72 * (i + 1) / 10 })))
+      .concat([{ transform: 'translate(-50%, -50%) translate(' + dx(tujuan).toFixed(1) + 'px, ' + dy(tujuan).toFixed(1) + 'px) scale(0.2)', opacity: 0, offset: 1 }]);
+    koin.classList.add('terbang');
+    const anim = koin.animate(bingkai, { duration: 1150, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+    let selesai = false;
+    const mendarat = () => {
+      if (selesai) return; selesai = true; koin.classList.remove('terbang'); try { anim.cancel(); } catch (e) { /* abaikan */ }
+      if (terkunci()) { _tahanHari = null; if (pil) { pil.classList.remove('tampil', 'mendarat'); pil.innerHTML = ''; } return; }
+      if (!_tahanHari || _tahanHari.token !== token) { if (pil) pil.classList.remove('tampil', 'mendarat'); return; }   // nota berikutnya mengambil alih
+      lepas();
+      // dihitung ULANG saat mendarat (tinjauan 29 Sep): nota dibatalkan selagi koin terbang → omzet tidak bertambah → tidak ada "+Rp"
+      const naik = L.hariIni(S()).omzet - tahan.hari.omzet;
+      if (pil) {
+        if (!(naik > 0)) { pil.classList.remove('tampil', 'mendarat'); pil.innerHTML = ''; return; }
+        const n = pil.querySelector('.n'); const plus = pil.querySelector('.plus'); if (plus) plus.textContent = '+' + RP(naik);
+        n.setAttribute('data-gulir', String(L.hariIni(S()).omzet)); gulirkan(pil, RP, 900); pil.classList.add('mendarat');
+        setTimeout(() => { pil.classList.remove('tampil', 'mendarat'); pil.innerHTML = ''; }, 2600); return;
+      }
+      if (!(naik > 0)) return;
+      // cincin cahaya & kilau = elemen di LUAR <main> (dianimasikan Web Animations): gambar ulang berikutnya — mis. saat server mengakui
+      // nota, biasanya < 1 dtk — tidak bisa mencabutnya di tengah jalan seperti kelas yang dipasang ke kartu
+      const kartu = akar.querySelector('.jual-samping .kartu.hari'); const kr = kartu && kartu.getBoundingClientRect(); const ar = akar.querySelector('.jual-samping .kartu.hari .angka-omzet');
+      const kotak = (id, kelas, rr) => { let e = document.getElementById(id); if (!e) { e = document.createElement('div'); e.id = id; e.className = kelas; e.setAttribute('aria-hidden', 'true'); document.body.appendChild(e); }
+        e.style.left = rr.left + 'px'; e.style.top = rr.top + 'px'; e.style.width = rr.width + 'px'; e.style.height = rr.height + 'px'; return e; };
+      if (kr && kr.width) kotak('cincinOmzet', 'cincin-omzet', kr).animate([{ opacity: 0.95, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.07)' }], { duration: 950, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      const nr = ar && ar.getBoundingClientRect(); if (nr && nr.width) { const k = kotak('kilauOmzet', 'kilau-omzet', { left: nr.left - 6, top: nr.top - 2, width: Math.min(nr.width, 220) + 12, height: nr.height + 4 });
+        k.firstChild || k.appendChild(document.createElement('i')); k.firstChild.animate([{ transform: 'translateX(-110%)', opacity: 0 }, { opacity: 1, offset: 0.3 }, { transform: 'translateX(110%)', opacity: 0 }], { duration: 1100, easing: 'cubic-bezier(.3,.6,.2,1)' }); }
+      rayakanOmzet(naik);
+    };
+    anim.onfinish = mendarat; setTimeout(mendarat, 1400);   // penjaga: tab disembunyikan di tengah terbang → angka tetap dilepas
+  }
   // Nota tercatat → "+Rp…" naik di kartu Hari ini dan angka omzetnya bergulir naik sebesar itu (owner 23 Sep). Di HP kartu Hari ini ada di bawah
   // rak (sering di luar layar) → ditambah pita kecil di atas yang menyebut omzet barunya.
   function rayakanOmzet(tambah) {
@@ -335,11 +421,14 @@ export function pasangLayarJual(akar, opsi) {
       if (kend) {
         const jenis = t.jenis === 'karung' ? 'karung' : t.jenis === 'kemasan' ? 'kemasan' : 'kantong';
         const banyak = t.jenis === 'karung' ? Math.ceil(t.jumlahKarung || 1) : t.jenis === 'kemasan' ? (t.jumlahUnit || 1) : Math.ceil((t.jenis === 'literan' ? (t.jumlahLiter || 0) / 10 : (t.totalKg || 0) / 10) || 1);
-        adeganMuat({ kendaraan: kend, jenis, ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : String(t.beratKarungAcuan || 50), banyak, banyakTeks });
-      } else adeganSerahTerima({ jenis: t.jenis === 'kemasan' ? 'kemasan' : 'kantong', ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : '', namaTeks: banyakTeks });
+        return adeganMuat({ kendaraan: kend, jenis, ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : String(t.beratKarungAcuan || 50), banyak, banyakTeks });
+      }
+      return adeganSerahTerima({ jenis: t.jenis === 'kemasan' ? 'kemasan' : 'kantong', ukuran: t.jenis === 'kemasan' ? String(t.ukuranKemasan).replace('.', ',') : '', namaTeks: banyakTeks });
     };
+    const lamaBarang = kend ? 3800 : 2300;   // = lama adeganMuat / adeganSerahTerima (adegan.js)
     const lamaUang = adeganTerimaUang(uang);
-    if (lamaUang) setTimeout(barang, lamaUang + 200); else barang();
+    if (lamaUang) { setTimeout(barang, lamaUang + 200); return lamaUang + 200 + lamaBarang; }
+    return barang() ? lamaBarang : 0;
   }
   async function tulisPesanan(r) {
     if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
@@ -370,12 +459,16 @@ export function pasangLayarJual(akar, opsi) {
     return _rak;
   }
 
+  // owner 29 Sep (lag): Jual dulu SELALU digambar ulang walau layarnya tersembunyi — tiap koleksi yang datang = rak disusun ulang ±50 ms.
+  // Kini sama dengan tujuh layar lain: tersembunyi → cukup ditandai kotor, digambar saat dibuka lagi.
+  let _tampil = true, _kotor = false;
   function gambar() {
     if (terkunci()) return;   // putaran 23c: belum masuk / belum disetujui → tidak ada yang digambar
+    if (!_tampil) { _kotor = true; return; }
     const s = S();
     const rak = rakKini();
     const t = L.hitungTagihan(s);
-    const hari = L.hariIni(s);
+    const hari = _tahanHari && Date.now() < _tahanHari.sampai ? _tahanHari.hari : L.hariIni(s);   // penutup omzet: angka lama sampai koin mendarat
     const sumber = sumberData();
     const info = L.infoPelanggan(s.pelanggan);
     const nPesanan = L.daftarPesanan('').length;
@@ -463,9 +556,9 @@ export function pasangLayarJual(akar, opsi) {
       <aside class="jual-samping">
         <div class="kartu hari">
           <div class="label">Hari ini · ${hari.baris} baris · ${hari.nota} nota</div>
-          <div class="serif" style="font-size: 24px;" data-gulir="${hari.omzet}">${RP(hari.omzet)}</div>
+          <div class="serif angka-omzet" style="font-size: 24px;" data-gulir="${hari.omzet}">${RP(hari.omzet)}</div>
           <div class="ket">${Object.keys(hari.perCara).map((c) => c + ' ' + RP(hari.perCara[c])).join(' · ') || 'belum ada penjualan'} · ${DESIMAL(hari.kg)} kg</div>
-          ${hari.terakhir.map((r) => h`<div class="r ketuk" data-aksi="bukaStruk" data-trx="${r.trxId}" data-grup="${r.grupNota}" data-id="${r.id}" title="buka struk"><span class="w">${r.jam}</span><span class="t">${r.teks}${r.nama ? ' · ' + r.nama : ''}</span><span class="n">${RP(r.n)}</span></div>`)}
+          ${hari.terakhir.map((r) => h`<div class="r ketuk${_barisBaru.has(String(r.id)) ? ' baru' : ''}" data-aksi="bukaStruk" data-trx="${r.trxId}" data-grup="${r.grupNota}" data-id="${r.id}" title="buka struk"><span class="w">${r.jam}</span><span class="t">${r.teks}${r.nama ? ' · ' + r.nama : ''}</span><span class="n">${RP(r.n)}</span></div>`)}
           ${hari.terakhir.length ? h`<div class="ket" style="padding-top: 4px;">ketuk baris → struk (WhatsApp / cetak)</div>` : ''}
         </div>
       </aside>
@@ -815,8 +908,10 @@ export function pasangLayarJual(akar, opsi) {
   K.dengar(() => { gambar(); gulirkan(akar, RP); });
   let _jamUrung = null;
   K.dengar((s) => { clearTimeout(_jamUrung); if (s.notaTerakhir) _jamUrung = setTimeout(gambar, Math.max(0, L.BATAS_URUNGKAN_DETIK * 1000 - (Date.now() - s.notaTerakhir.pada) + 50)); });
-  dengarkan(() => { _rak = null; gambar(); gulirkan(akar, RP); });
+  const gambarGulir = () => { gambar(); gulirkan(akar, RP); };
+  dengarkan(() => { _rak = null; nanti(gambarGulir); });
   gambar(); gulirkan(akar, RP);
   // putaran 23c: keranjang tidak terbawa ke akun berikutnya — app.js menanyakannya saat Keluar lalu melupakannya
-  return { keadaan: K, gambar, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s)) };
+  const tampilkan = (ya) => { const tadi = _tampil; _tampil = !!ya; if (_tampil && !tadi && (_kotor || !akar.firstElementChild)) { _kotor = false; segera(gambarGulir); } };
+  return { keadaan: K, gambar, gambarGulir, tampilkan, belumDisimpan: () => L.barisBelumDisimpan(K.baca()), adaIsianLain: () => L.adaIsianLain(K.baca()), lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s)) };
 }
