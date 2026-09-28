@@ -307,7 +307,9 @@ export function pasangLayarJual(akar, opsi) {
       if (uk >= 10) { if (adeganPanggul({ nama: baris.namaProduk, jenis: 'kemasan', ukuran: ukT, jumlahTeks: DESIMAL(baris.jumlah) + ' kemasan ' + ukT + ' kg' + (baris.bonusUnit ? ' + bonus' : '') })) lamaAdegan = 1700; }
       else if (adeganKemasanMasuk({ nama: baris.label, ukuran: ukT, jumlahTeks: DESIMAL(baris.jumlah) + ' kemasan' + (baris.bonusUnit ? ' + bonus' : '') })) lamaAdegan = 900;
     }
-    const mendarat = () => { const bilah = akar.querySelector('.ringkas-keranjang'); if (dari) terbangkan(lamaAdegan ? { x: innerWidth / 2, y: 150 } : dari, bilah); setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 420); };
+    // tetes berangkat dari panggung (kini bisa di kolom keranjang, bukan selalu tengah layar)
+    const dariPanggung = () => { const pk = document.querySelector('#panggung.main .panggung-kartu'); const pr = pk && pk.getBoundingClientRect(); return pr && pr.width ? { x: pr.left + pr.width / 2, y: pr.top + pr.height / 2 } : { x: innerWidth / 2, y: 150 }; };
+    const mendarat = () => { const bilah = akar.querySelector('.ringkas-keranjang'); if (dari) terbangkan(lamaAdegan ? dariPanggung() : dari, bilah); setTimeout(() => sekali(akar.querySelector('.jual-keranjang'), 'pegas', 520), 420); };
     setTimeout(() => requestAnimationFrame(mendarat), lamaAdegan);
   }
   // ---- PENUTUP OMZET (owner 29 Sep 2026: "animasi jual … bagian penutupan itu animasi setelah transaksi omzet bertambah") ----
@@ -491,7 +493,10 @@ export function pasangLayarJual(akar, opsi) {
           <div class="tombol-mode" data-aksi="mode" title="${opsi.mode() === 'gelap' ? 'Mode terang' : 'Mode gelap'}">${mentah(IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap'])}</div>
         </div>
       </header>
-      ${sumber.jenis === 'cadangan' ? h`<div class="pita-info emas baca-saja">SIMULASI — angka dari ${sumber.keterangan}; nota yang dicatat di sini TIDAK masuk Firestore.</div>` : sumber.jenis !== 'firestore' ? h`<div class="pita-info awas baca-saja">Belum tersambung ke data toko — masuk dulu sebagai owner.</div>` : h`<div class="pita-info emas baca-saja">Nota dicatat ke data toko yang sama dengan sistem lama · ${opsi.statusTeks()}</div>`}
+      ${sumber.jenis === 'cadangan' ? h`<div class="pita-info emas baca-saja">SIMULASI — angka dari ${sumber.keterangan}; nota yang dicatat di sini TIDAK masuk Firestore.</div>` : sumber.jenis !== 'firestore' ? h`<div class="pita-info awas baca-saja">Belum tersambung ke data toko — masuk dulu sebagai owner.</div>` : (() => {
+        // rapi-rapi 29 Sep: pita "Nota dicatat ke data toko … · tersambung" mengulang keadaan yang sudah tertulis di kepala → hanya tampil untuk keadaan
+        // yang WAJIB dilihat (tanpa internet, ditolak server); keadaan normal / memuat cukup di bawah judul
+        const aw = opsi.statusAwas ? opsi.statusAwas() : ''; return aw ? h`<div class="pita-info awas baca-saja">${aw}</div>` : ''; })()}
       ${s.kabar || adaUrung || s.karcis || ((KCn.daftar.length || KDH.length) && s.lembar !== 'karcis') ? h`<div class="kabar-kotak">
         ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : ''}" data-aksi="tutupKabar">${s.kabar}</div>` : ''}
         ${s.tembusTanya && s.tembusTanya.length && s.keranjang.length ? h`<div class="pita-info emas" data-k="pita-tembus" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>Jual dulu, tandai untuk dicocokkan: ${s.tembusTanya.map((t) => t.nama + ' kurang ' + String(Math.round(t.selisihKg * 10) / 10).replace('.', ',') + ' kg').join(', ')} — buku dibiarkan minus sampai dicocokkan</span><span class="kaca-btn awas" data-aksi="simpanTembus">JUAL DULU, TANDAI</span></div>` : ''}
