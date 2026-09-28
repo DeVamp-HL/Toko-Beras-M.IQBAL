@@ -232,14 +232,14 @@ Owner memakai `/baru/` di Mac & HP lalu memberi sepuluh catatan (+ sepuluh foto 
 4. **Bonus karyawan** (`hitungUpah(nama, kini, potong, {ketik, alasan})`, `ALASAN_BONUS`): isian Bonus + alasan di panel Bayar upah → ikut DITERIMA, masuk baris gaji bulan terakhir yang dibayar (`gaji = hari×tarif + bonus`, kolom `bonus`, `alasanBonus`) & slip ("Bonus (Rajin) +Rp…"). **Bonus tanpa hari kerja** (`susunBonus`, tombol berubah "BERI BONUS" bila tidak ada hari yang belum dibayar): baris gaji berkunci "Nama · bonus · tanggal" hari 0, `slipUpah {jenis:'bonus'}` — slip bonus TIDAK menggeser "sejak terakhir dibayar". Batas 10 jt, alasan wajib. Laba: mesin lama membaca gaji (jatah per hari), kas keluar di tanggal bayar.
 - Uji: Stok 135 (+6) / 98 kontrol (+6, 1 diganti) · Uang 129 (+4) / 45 (+2) · Pelanggan 44 (+2) / 32 (+2) · Jual 335 / 150 · Laporan 65 / 30.
 
-## Putaran 23b (23 Sep 2026 malam) — CIP WARNA KULIT & SUKU/LOGAT DICABUT
+## Putaran 23b (23 Sep 2026 malam, PR #30) — CIP WARNA KULIT & SUKU/LOGAT DICABUT
 Keputusan owner, menggantikan "serinci mungkin" putaran 21: **toko tidak mencatat suku, ras, atau warna kulit pelanggan** (usaha yang disiapkan bercabang; tidak berguna untuk usaha, berisiko hukum & nama baik). Pelanggan tetap dikenali lewat umur, perawakan, wajah & rambut, yang dipakai, naik apa, beli apa. Kelompok "Yang dipakai" TIDAK disentuh (belum diputuskan owner).
 1. **Kode**: `TANYA_CIRI` tinggal 7 kelompok; 13 cip bawaan dua kelompok itu dibuang; sketsa satu nada netral (kelas `k1–k4` & CSS-nya dibuang). `GRUP_DICABUT`, `CIP_DICABUT`, `KATA_DICABUT` (per kata: kulit, suku, logat, ras, etnis, etnik, +"-nya"; "beras" tidak kena "ras"), `cipTerlarang()` (+ cip owner yang dulu ditaruh di kelompok lama, dibaca dari setelan mentah). `aturPelanggan()` & `kartuTersimpan()` menyaring → Tampah/Hafalan/Wajah/kartu tidak pernah menanyakan/menampilkannya walau masih tersimpan; `dikenali` tetap dibaca MENTAH (= KR1 sistem lama) sampai dibersihkan.
 2. **Pintu ditutup**: Atur menolak kelompok `kulit`/`asal` & cip berkata terlarang atau bernama cip bawaan lama — *"Toko tidak mencatat suku, ras, atau warna kulit pelanggan."*; simpan kartu membuang cip terlarang (kartu yang disimpan ulang ikut bersih). Simpan Atur biasa MEMBAWA cip owner di kelompok lama yang masih menempel di kartu (tak tampil) supaya bukti terlarangnya tidak hilang sebelum dibersihkan. Kolom catatan kartu: keterangan tetap *"Jangan tulis suku, agama, warna kulit, atau kesehatan."*
 3. **Lembar "Bersihkan ciri yang dicabut"** (di atas Atur Pelanggan, tampil hanya selama ada yang perlu dibersihkan): pratinjau `rincianBersihkanCiri` TANPA menulis (kartu, cip dibuang, yang jadi tanpa cip + yang jadi "belum dikenal" di KR1, setelan ikut atau tidak, jumlah batch); tombol mati tanpa cadangan berkas HARI INI (`cadanganCatatan`); dua ketukan → `susunBersihkanCiri` → `perbaruiKolom` (toko.js) / `perbaruiBerkas` (firebase.js): **update kolom** `cip`+`ciri` (kartu gaya lama: `ciri` saja) & `ciriDaftar` setelan — tanpa atribusi, kolom lain byte-sama; potongan 200 dokumen, setelan di potongan terakhir, SATU baris `logAktivitas` berisi jumlah saja. Teks bebas (catatan/biasa/arah) yang berkata terlarang & jejak log cuma DILAPORKAN.
 - Uji: Pelanggan 57 (+13; 2 skenario P21 kulit/suku DIGANTI) / 56 kontrol (+24; "sketsa mengabaikan warna kulit" DIGANTI "sketsa membaca warna kulit lagi"); asap cadangan 23 Sep: 0 kartu terdampak, suntikan ke kartu nyata → kolom selain cip/ciri byte-sama. Layar lain tetap: Jual 335/150 · Ringkasan 35/17 · Stok 135/98 · Menu 53/32 · Harga 105/47 · Uang 129/45 · Laporan 65/30.
 
-## Putaran 23 (24 Sep 2026) — TULANG PUNGGUNG 1: AKUN PER ORANG (cabang, belum merge)
+## Putaran 23 (24 Sep 2026) — TULANG PUNGGUNG 1: AKUN PER ORANG (PR #31 di-merge ke main 24 Sep; 23d = PR #36)
 Tiap orang punya akun sendiri; hak ditegakkan di SERVER (`firestore.rules` v3), bukan di layar. Dasar semua baris: `docs/peta-hak-akses.md` (Tahap 0, dari kode). Jawaban owner 24 Sep menang atas teks prompt.
 - **Masuk** (`data/akses.js` = logika tanpa DOM, `firebase.js` = sambungan): email + sandi (sandi readonly sampai diketuk, email terakhir bisa dilupakan); owner lewat EMAIL; akun lain lewat `aksesAkun/{uid}` yang didengarkan terus (nonaktif = cabut semua pendengar & kosongkan angka); tanpa `aksesAkun` = nol pendengar + "Minta didaftarkan" (`permintaanAkses/{uid}`); kasir@ tidak bisa masuk sebagai orang. Akun yang masuk tampil di **pil kepala setiap layar** ("OWNER" / nama orang, + "tanpa internet" / "N belum terkirim"); ketuk pil = lembar "Masuk sebagai" + Keluar (owner 24 Sep: bilah di atas layar dicabut, dulu menutupi logo; Keluar lewat satu ketukan di pil DITERIMA owner, putaran tablet boleh meninjau ulang). Nama yang masuk SELALU di depan pil — juga saat memuat. Tirai menutup lembar akun (app.js + CSS) dan pil ikut kosong bersama `<main>`. Keluar menanyakan keranjang lalu catatan yang belum terkirim.
 - **Atribusi**: penulis pusat menulis `olehUid`/`diubahOlehUid` (owner tetap `oleh:'Owner'`); bukan-owner diperiksa SEBELUM dikirim (`periksaKiriman` = peta), tanpa hapus/bersihkan/arsip, pencipta tak pernah ditambah pada update; SATU baris jejak per kiriman bukan-owner berisi daftar dokumennya; kiriman > 18 access call ditolak di perangkat (batas Firebase 20, sisa 2).
@@ -272,7 +272,7 @@ Tiap orang punya akun sendiri; hak ditegakkan di SERVER (`firestore.rules` v3), 
   bagian ISIAN (Chrome, Firebase palsu yang menyajikan `hargaDraf` & mencatat tiap tulisan; satu kontrol per layar) + `uji_isian_lokal.py` (statis: tiap kolom
   ketik & tiap kunci localStorage layar wajib dijaga atau tercatat sengaja bukan isian).
 
-### Putaran 23e (25 Sep 2026) — payung rules tidak boleh mengalahkan batasan owner
+### Putaran 23e (25 Sep 2026, PR #37) — payung rules tidak boleh mengalahkan batasan owner
 - Playground ★10 (owner membuat `aksesAkun` berperan `owner`) **LOLOS** di v3 58 blok: Firestore memberi akses kalau SALAH SATU blok yang cocok
   mengizinkan, dan payung `match /{document=**} { allow read, write: if owner(); }` mencakup semua dokumen — batasan owner di blok atas kalah.
   Pemeriksa statis tidak menangkapnya (memeriksa bentuk, bukan perilaku). Rules belum diterbitkan.
@@ -286,7 +286,7 @@ Tiap orang punya akun sendiri; hak ditegakkan di SERVER (`firestore.rules` v3), 
 - **Putaran 25 (kunci periode): payung DIHAPUS**, bukan sekadar dikecualikan — kunci periode membatasi owner di koleksi uang/stok; tiap koleksi
   wajib blok sendiri (catatan di kepala `firestore.rules`).
 
-### Putaran 23c (24 Sep 2026) — urutan pasang dipecah, kiriman bersisa 2, kisi = kebenaran server
+### Putaran 23c (24 Sep 2026, PR #33) — urutan pasang dipecah, kiriman bersisa 2, kisi = kebenaran server
 - **Owner tidak masuk /baru/ di tablet bersama sampai cache dibersihkan saat Keluar.** (Keluar sekarang menutup layar & pendengar, tapi data yang
   sudah diunduh Firestore tetap di IndexedDB perangkat itu.)
 - **Urutan pasang** (kepala `firestore.rules`, `docs/uji-rules-v3.md`): SEKARANG = Playground ★ dengan v3 di editor proyek toko → tempel v3 → satu
@@ -298,7 +298,7 @@ Tiap orang punya akun sendiri; hak ditegakkan di SERVER (`firestore.rules` v3), 
 - **Kisi SS2** menggambar yang ditegakkan server: kisi `sendiri` yang ditutup rules tampil **"tertutup server"** + sebabnya (hitung laci Ben,
   kedatangan Ben & karyawan); "minta owner" menyebut alurnya belum ada. Nilai kisi tersimpan tidak berubah.
 
-## Putaran 24 (24 Sep 2026) — MODUL PAJAK
+## Putaran 24 (24 Sep 2026, PR #35) — MODUL PAJAK
 Sistem tahu posisi pajaknya sendiri: menghitung, mengingatkan, menyimpan bukti. Tidak membayar, tidak melapor, tidak memberi nasihat. Semua angka berlabel
 **"perkiraan — bukan nasihat pajak"**. Logika `js/layar/pajak-logika.js` (tanpa DOM, `alat-uji/uji_pajak_baru.py`); sumber aturan & tanggal lihat: `docs/sumber-aturan-pajak.md`. Khusus owner.
 - **Profil** = field tambahan di `aturanToko/rekapOmzet` (`wpAtasNama`, `jenisWp`, `statusPkp`, `statusPasangan`, `tahunMulaiTarifFinal`, `omzetTahunLalu`, `batasBebas`, `sumberAturan`).
@@ -329,7 +329,7 @@ Sistem tahu posisi pajaknya sendiri: menghitung, mengingatkan, menyimpan bukti. 
 - **NPWP di identitas usaha DK1** (owner 24 Sep): kolom tetap ada, **bawaan TIDAK dicetak di kop mana pun** (`npwpDiKop`, sakelar di Laporan › Setelan; kalau dinyalakan,
   hanya kop penuh). NPWP 16 angka → peringatan "NPWP orang pribadi = NIK; mencetaknya membuka NIK ke semua pembeli." 
 
-## Putaran 25 (25 Sep 2026) — TULANG PUNGGUNG 3: KUNCI PERIODE BULANAN (cabang, belum merge)
+## Putaran 25 (25 Sep 2026) — TULANG PUNGGUNG 3: KUNCI PERIODE BULANAN (PR #40 di-merge ke main 25 Sep)
 
 Sesudah owner mengunci bulan M, tidak seorang pun (termasuk owner, sistem lama, kasir darurat, tablet offline) bisa menambah, mengubah, atau menghapus
 catatan bertanggal di bulan M. Kesalahan yang ketahuan belakangan dibetulkan dengan catatan HARI INI (retur, cocokkan, bayar bon); catatan lama tidak disentuh.
@@ -356,7 +356,7 @@ Peta & keputusan owner K1–K6: `docs/peta-kunci-periode.md`. Uji server: `docs/
   saldo pembukanya > 18 pemeriksaan kunci (pembuka piutang = tanggal utang tertua, bon pemasok = tanggal bon; cadangan toko 25 Sep: 24) → ditolak di layar
   sebelum dikirim. Rancangan baru: arsip = salinan + penanda, tidak menghapus; catatan dasar 10 tahun; tiap kiriman ≤ 18.
 
-## Putaran 25b — antrean kasir tidak macet, batal karcis darurat (26 Sep 2026)
+## Putaran 25b — antrean kasir tidak macet, batal karcis darurat (26 Sep 2026, PR #41)
 
 - **Kasir darurat & kasir.html (sw-kasir v26)**: jawaban server dipilah tiga — 401 = layar masuk; 403 dengan kunci masuk = DITOLAK ATURAN (mis. bulan
   terkunci) → daftar "ditolak" di HP itu (`darurat_gagal_v1` / `kasir_gagal_v1`), tidak diulang, tidak dihapus, catatan sesudahnya tetap terkirim;
@@ -373,7 +373,7 @@ Peta & keputusan owner K1–K6: `docs/peta-kunci-periode.md`. Uji server: `docs/
 - **Bayar bon dari bulan terkunci LOLOS** (rules v4 menilai `bonTanggal` hanya untuk bon lama BARU): `alat-uji/uji_bayar_bon_terkunci.py` + Playground
   ★D di `docs/uji-rules-v4.md`.
 
-## Putaran 25c — pindahan terakhir: katalog kasir, jenis beras, operator & PIN (27 Sep 2026)
+## Putaran 25c — pindahan terakhir: katalog kasir, jenis beras, operator & PIN (27 Sep 2026, PR #45)
 
 Peta & keputusan owner: `docs/peta-pindahan-terakhir.md`. Sesudah ini tidak ada pekerjaan harian yang butuh sistem lama; di sana tinggal baca riwayat &
 pulihkan dari berkas cadangan.
@@ -534,7 +534,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
 
-## Perbaikan 27 Sep 2026 — JAM YANG TAMPIL (rinci karcis & cap waktu)
+## Perbaikan 27 Sep 2026 — JAM YANG TAMPIL (rinci karcis & cap waktu, PR #44)
 - Baris rincian karcis kasir darurat membawa **jam karcis asli** (saat penjualan terjadi di kasir); jam merinci ada di `dirinciPada` (ISO/UTC).
   Penulisnya (`susunRinciDokumen`) sudah benar — cadangan 26 Sep: semua baris rincian jamnya = jam karcis. Yang salah TAMPILAN: daftar
   "Rincian hari ini" memajang jam MERINCI di sebelah nomor karcis. Sekarang: tanggal & jam karcis + "dirinci HH:MM" terpisah, urut menurut
