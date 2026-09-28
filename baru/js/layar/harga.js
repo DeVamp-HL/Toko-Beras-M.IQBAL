@@ -341,6 +341,7 @@ export function pasangLayarHarga(akar, opsi) {
       <div class="ket">Merek induk:</div><div class="jalur bungkus" data-k="vr-induk">${VR.vrCalonInduk(S.merk).map((m) => h`<div class="seg ${b.induk === m ? 'aktif' : ''}" data-aksi="vrInduk" data-merk="${m}" data-k="vri-${m}">${m}</div>`)}</div>
       <div class="ps-form dua"><div><div class="ket">Nama mutu (wajib, mis. Premium)</div><input class="ketik-nama" id="vrMutu" type="text" value="${b.mutu || ''}" data-ketik="vrKetikBaru" data-kolom="mutu"></div>
         <div><div class="ket">Harga jual per kg${usul ? ' · usul ' + RP(usul) : ''}</div><input class="ketik-nama" id="vrHarga" type="text" inputmode="numeric" placeholder="${usul || ''}" value="${b.harga || ''}" data-ketik="vrKetikBaru" data-kolom="harga"></div></div>
+      ${b.induk && VR.vrPeringatanInduk(b.induk) ? h`<div class="pita-info awas" data-k="vr-peringatan">${VR.vrPeringatanInduk(b.induk)}</div>` : ''}
       ${b.induk ? h`<div class="ket">jadi <b>${nama}</b> · jenis beras ikut ${b.induk}: ${JB.jbJenisMerk(b.induk) || 'belum diisi'}${modal ? ' · usul = modal ' + b.induk + ' ' + RP(Math.round(modal)) + '/kg + target ' + RP(S.target) : ''} · stoknya mulai dari barang masuk atas nama ini</div>` : ''}
       <div class="kaca-btn aktif emas ${b.induk && b.mutu ? '' : 'mati'}" data-aksi="vrBuat" data-usul="${usul}">${s.vrYakin ? 'YAKIN — terbitkan di bawah modal' : 'BUAT VARIAN & TERBITKAN HARGA PER KG'}</div></div>`;
   }
