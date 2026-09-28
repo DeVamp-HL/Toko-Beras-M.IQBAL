@@ -10,6 +10,8 @@
 .panggung-ket { text-align: center; font-size: 12.5px; color: var(--teks); padding-top: 2px; }
 .panggung-ket b { font-weight: 700; }
 @media (min-width: 1100px) { .panggung { left: 232px; top: 40px; } .panggung-kartu { width: 420px; } .panggung-ket { font-size: 14px; } }
+/* rapi-rapi 29 Sep: sejajar kolom keranjang Jual (adegan.js sejajarkan) */
+@media (min-width: 720px) { .panggung.sejajar { left: var(--p-kiri); right: auto; top: var(--p-atas); width: var(--p-lebar); } .panggung.sejajar .panggung-kartu { width: 100%; box-sizing: border-box; } }
 
 .adegan { width: 100%; height: auto; display: block; overflow: visible; }
 /* transform-box TIDAK dipasang menyeluruh: elemen ber-atribut transform (tangan yang dicerminkan) harus tetap berporos di titik asal gambar.

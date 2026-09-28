@@ -563,6 +563,32 @@ refresh & pertama buka"; UI lebih hidup & intuitif dari segi gerak; animasi penu
   terbukti); baris DICOBA ULANG kini membawa catatan waktu (halaman melapor selesai, gambar penahan dijawab, permintaan terakhir) supaya kejadian berikutnya
   menjelaskan dirinya — diagnosis berulang hanya di runner (CLAUDE.md).
 
+## Putaran 34 — rapi-rapi tata letak: Jual (29 Sep 2026, cabang `rapi/34-jual-tata-letak`)
+
+Owner 29 Sep: rapi-rapi = STRUKTUR & TATA LETAK (bukan desain baru, tanpa mockup); boleh pindah blok; Mac paling teliti; penjelas panjang boleh diringkas;
+terbit per kelompok (Jual → Ringkasan & Stok → sisanya), Claude merge sendiri sesudah CI hijau. Isi, fitur, angka & alur uang TIDAK berubah.
+- **Mac ≥1280** (`kerangka.css`): isi sampai 1720 px; rak = kolom lentur, keranjang (`--lebar-keranjang`) & Hari ini (`--lebar-samping`) selebar tetap dan
+  sama-sama menempel saat rak digulir. Kartu rak `auto-fill` menurut lebar RAK (4 sebaris di ±1860 px, 3 di 1440). **1100–1279** (laptop kecil / iPad
+  mendatar): dua kolom seperti tablet — tiga kolom menyisakan dua kartu sempit. **Tablet**: kolom keranjang selebar tetap, rak sisanya (2 kartu di 820).
+- Kabar (barang masuk, nota barusan, karcis) di tablet & Mac hanya di kolom rak — keranjang & Hari ini tidak meloncat tiap ada kabar. Jarak antarbaris lewat
+  margin (baris pita/kabar yang kosong tidak menyisakan dua celah).
+- Deret tab rak & saringan jenis: di Mac dibungkus (dulu menjulur tanpa batang gulir, tab terakhir terpotong); HP & tablet digeser, ujungnya memudar.
+- Lembar (jumlah, bayar, nama, …) duduk TEPAT di atas kolom Hari ini (Mac) / kolom keranjang (tablet, 1100–1279), tingginya mengikuti isi. Cacat lama:
+  tirai di belakang lembar mewarisi `width: 440px` / `46vw` dari aturan lembar → hanya menutup sebagian kiri layar; kini `.lembar:not(.tirai)`, tirai penuh.
+- Panggung adegan (`adegan.js sejajarkan`) di tablet & Mac duduk di kolom keranjang, tepat di bawah bilah jumlahnya (dulu di tengah layar menutupi separuh
+  rak & kepala keranjang); tetes barang berangkat dari panggung.
+- Pita "Nota dicatat ke data toko … · tersambung" (mengulang teks kepala) dicabut; pita hanya untuk keadaan yang wajib terlihat: TANPA INTERNET atau koleksi
+  ditolak server (`app.js statusAwas`). Mode cadangan & "belum tersambung" tetap.
+- Keranjang: empat tombol 2 × 2. Hari ini: satu garis per baris (dulu dua) dan baris rapat.
+- Cacat lama yang ketahuan tinjauan: `body { overflow-x: hidden; overflow-y: auto }` (19 Sep, iPhone ditarik ke samping) membuat body jadi WADAH GULIR
+  yang tidak pernah bergulir → `position: sticky` keranjang tidak pernah menempel. Kini `overflow-x: clip; overflow-y: visible` (pasangan lama tetap di depannya
+  untuk peramban tanpa clip); halaman tetap tidak bisa digeser ke samping (lebar dokumen = lebar layar di lima layar HP). Lembar di tablet & 1100–1279
+  menutupi kolom keranjang → adegan isi ulang wadah dari lembar itu kini diputar di kolom rak. Tepi & tinggi lembar memakai % (bukan vw/vh: batang gulir &
+  bilah alamat HP); kolom Hari ini paling sempit 360 px = lebar lembar.
+- Uji: `alat-uji/uji_tata_letak_jual.py` (+ kontrol, CI) — statis + jsc: tirai tidak mewarisi lebar, kabar hanya di kolom rak, kartu rak auto-fill, tab Mac
+  dibungkus, lembar di atas kolomnya, panggung sejajar keranjang, pita status hanya tanpa internet / ditolak. Dilihat di peramban (cadangan): 1864, 1440, 1280, 1120,
+  820 & 390 px — rak, lembar jumlah & bayar, adegan barang masuk & nota, koin omzet.
+
 ## Struktur
 ```
 baru/

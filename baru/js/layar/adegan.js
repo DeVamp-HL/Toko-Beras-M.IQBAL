@@ -25,9 +25,28 @@ function panggung() {
   if (!p) { p = document.createElement('div'); p.id = 'panggung'; p.className = 'panggung'; p.setAttribute('aria-hidden', 'true'); document.body.appendChild(p); }
   return p;
 }
+// rapi-rapi 29 Sep: di tablet & Mac panggung duduk di kolom keranjang Jual, TEPAT di bawah bilah jumlahnya (dulu di tengah layar, menutupi separuh rak &
+// kepala keranjang). Bilahnya tetap terlihat: tetes emas barang yang masuk mendarat di sana. Keranjang tidak terlihat (layar lain, HP) → tempat lama.
+function sejajarkan(p) {
+  const m = typeof innerWidth === 'number' && innerWidth >= 720 ? document.querySelector('main.layar-jual:not([hidden])') : null;
+  const k = m ? m.querySelector('.jual-keranjang') : null; const r = k ? k.getBoundingClientRect() : null;
+  if (!r || !r.width) { p.classList.remove('sejajar'); return; }
+  const bilah = k.querySelector('.ringkas-keranjang'); let kiri = r.left, lebar = r.width, atas = bilah ? bilah.getBoundingClientRect().bottom + 6 : r.top;
+  // lembar terbuka di atas kolom keranjang (tablet & 1100–1279, mis. isi ulang wadah dari lembar jumlah) → panggung pindah ke kolom rak, lembarnya tetap terbaca
+  const lb = m.querySelector('.lembar:not(.tirai)'); const q = lb ? lb.getBoundingClientRect() : null;
+  if (q && q.width && q.left < r.right && q.right > r.left) {
+    const rak = m.querySelector(':scope > .jual-rak'); const rr = rak ? rak.getBoundingClientRect() : null;
+    if (!rr || !rr.width) { p.classList.remove('sejajar'); return; }
+    lebar = Math.min(rr.width, 420); kiri = rr.left + (rr.width - lebar) / 2; atas = 40;
+  }
+  const tinggi = Math.round(lebar * 170 / 320) + 64;   // kartu = gambar 320×170 selebar kolom + keterangan
+  p.style.setProperty('--p-kiri', Math.round(kiri) + 'px'); p.style.setProperty('--p-lebar', Math.round(lebar) + 'px');
+  p.style.setProperty('--p-atas', Math.round(Math.max(16, Math.min(atas, innerHeight - tinggi - 8))) + 'px'); p.classList.add('sejajar');
+}
 function mainkan(svg, keterangan, lamaMs) {
   if (adeganDiam()) return false;
   const p = panggung(); clearTimeout(jamTutup);
+  sejajarkan(p); requestAnimationFrame(() => sejajarkan(p));   // ukur lagi sesudah layar digambar (penjadwal segera jalan lebih dulu di bingkai yang sama)
   p.classList.remove('main', 'tutup'); p.innerHTML = '<div class="panggung-kartu">' + svg + '<div class="panggung-ket">' + keterangan + '</div></div>';
   void p.offsetWidth; p.style.setProperty('--lama', lamaMs + 'ms'); p.classList.add('main');
   jamTutup = setTimeout(() => { p.classList.add('tutup'); jamTutup = setTimeout(() => { p.classList.remove('main', 'tutup'); p.innerHTML = ''; }, 420); }, lamaMs + 500);

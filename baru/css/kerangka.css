@@ -1,7 +1,7 @@
 /* KERANGKA — satu markup, tiga lebar (keputusan owner 13 Sep: HP + Tablet + Mac).
    HP  (< 720px)      : satu kolom, nav bawah, keranjang jadi laci di bawah, lembar melayang.
    Tablet (720–1099)  : dua kolom (rak | keranjang), nav bawah, lembar duduk di kolom kanan.
-   Mac (≥ 1100px)     : menu samping + tiga kolom (rak | keranjang | hari ini). */
+   Mac (≥ 1100px)     : menu samping + tiga kolom (rak | keranjang | hari ini); 1100–1279 dua kolom seperti tablet (rapi-rapi 29 Sep). */
 /* Halaman tidak boleh bisa digeser ke samping / memantul (iPhone): lebar dikunci ke layar, gerakan tarik di tepi dimatikan */
 html { height: 100%; overflow-x: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
 /* Warna dasar elemen akar = ujung atas gradien halaman (--bg1). Safari iOS 26/27 mengecat daerah poni/jam dari
@@ -11,17 +11,22 @@ html { background-color: #eef1f4; color-scheme: light; }
 html.gelap { background-color: #111516; color-scheme: dark; }
 /* Tudung tetap setinggi poni, warna sama dengan ujung atas gradien: isi yang digulir lewat di bawah jam tidak bocor */
 body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg1); pointer-events: none; }
-body { min-height: 100%; overflow-x: hidden; overflow-y: auto; position: relative; margin: 0; overscroll-behavior: none;
+/* rapi-rapi 29 Sep: overflow-x hidden + overflow-y auto membuat body jadi WADAH GULIR yang tidak pernah bergulir (yang bergulir viewport) → position: sticky
+   keranjang & Hari ini tidak pernah menempel. clip + visible tidak membuat wadah gulir; peramban tanpa clip (Safari < 16) jatuh ke pasangan lama. */
+body { min-height: 100%; overflow-x: hidden; overflow-y: auto; overflow-x: clip; overflow-y: visible; position: relative; margin: 0; overscroll-behavior: none;
   background: linear-gradient(160deg, var(--bg1), var(--bg2) 48%, var(--bg3)) fixed; color: var(--teks); }
 /* Bola cahaya latar dikurung dalam kotak seukuran layar: Safari iPhone menghitung elemen fixed yang menjulur ke luar
    layar (bola kanan −150px, kiri −170px) sebagai lebar halaman, sehingga halaman bisa ditarik ke samping (19 Sep). */
 .latar-bola { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
 .latar-bola > .bola { position: absolute; }
 .side { display: none; }
-main.layar-jual { position: relative; z-index: 1; display: grid; gap: 12px; padding: 14px 14px 110px; box-sizing: border-box;
+main.layar-jual { position: relative; z-index: 1; display: grid; row-gap: 0; column-gap: 12px; padding: 14px 14px 110px; box-sizing: border-box;
   grid-template-columns: minmax(0, 1fr); grid-template-areas: "kepala" "pita" "kabar" "rak" "samping"; max-width: 1480px; margin: 0 auto; padding-bottom: 190px;
   padding-top: calc(14px + env(safe-area-inset-top, 0px)); }   /* judul tidak masuk ke bawah jam saat halaman menjulur ke poni */
 main.layar-jual > .kepala-jual { grid-area: kepala; }
+/* rapi-rapi 29 Sep: jarak antarbaris lewat margin, bukan row-gap — pita & kabar sering tidak ada, baris kosongnya tidak boleh menyisakan dua celah */
+main.layar-jual > .kepala-jual, main.layar-jual > .pita-info.baca-saja, main.layar-jual > .kabar-kotak { margin-bottom: 12px; }
+main.layar-jual > .jual-samping { margin-top: 12px; }
 main.layar-jual > .pita-info.baca-saja { grid-area: pita; }
 main.layar-jual > .kabar-kotak { grid-area: kabar; display: flex; flex-direction: column; gap: 8px; }
 main.layar-jual > .kabar-kotak:empty { display: none; }
@@ -61,11 +66,17 @@ main.layar-jual > input[type="hidden"] { display: none; }
 #modalKeranjang .modal { background: var(--bg1); }
 
 @media (min-width: 720px) {
-  main.layar-jual { grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.95fr); grid-template-areas: "kepala kepala" "pita pita" "kabar kabar" "rak keranjang" "samping keranjang"; align-items: start; padding-bottom: 110px; }
+  /* rapi-rapi 29 Sep: kolom kanan selebar tetap (keranjang), rak mengambil sisanya — lembar duduk TEPAT di atas kolom keranjang */
+  main.layar-jual { --lebar-keranjang: clamp(320px, 40vw, 380px); grid-template-columns: minmax(0, 1fr) var(--lebar-keranjang); column-gap: 16px;
+    grid-template-areas: "kepala kepala" "pita pita" "kabar keranjang" "rak keranjang" "samping keranjang"; grid-template-rows: auto auto auto auto 1fr;
+    align-items: start; padding-bottom: 110px; }
+  /* kabar (barang masuk, nota barusan, karcis) hanya mendorong kolom rak — keranjang tidak ikut meloncat tiap ada kabar */
   .jual-keranjang { grid-area: keranjang; position: sticky; top: 14px; left: auto; right: auto; bottom: auto; max-height: none; overflow: visible; }
   .jual-keranjang .ringkas-keranjang { cursor: default; }
   .jual-keranjang .isi-keranjang { display: flex; }
-  .lembar { position: fixed; left: auto; right: 14px; top: 14px; bottom: 100px; width: min(460px, 46vw); max-height: none; }
+  .lembar:not(.tirai) { position: fixed; left: auto; right: 14px; top: 14px; bottom: 100px; width: min(460px, 46vw); max-height: none; }
+  /* tinggi mengikuti isinya (dulu selalu setinggi layar — lembar jumlah berisi separuh, sisanya kaca kosong); isi panjang tetap bergulir */
+  main.layar-jual .lembar:not(.tirai) { width: var(--lebar-keranjang); bottom: auto; max-height: calc(100% - 114px); }   /* % = tinggi viewport sungguhan (bilah alamat HP yang menyusut) */
 }
 @media (min-width: 1100px) {
   /* Menu samping SEMPIT (72px, ikon + monogram IQ) — membuka jadi 236px saat kursor menepi ke kiri / masuk ke menu, atau monogramnya diketuk
@@ -89,10 +100,25 @@ main.layar-jual > input[type="hidden"] { display: none; }
   .side .sisa { flex: 1; }
   .side .catatan { padding: 8px 6px 0; white-space: normal; width: 200px; }
   .nav { display: none; }
-  main.layar-jual { grid-template-columns: minmax(0, 1.3fr) minmax(340px, 0.9fr) minmax(280px, 0.8fr); grid-template-areas: "kepala kepala kepala" "pita pita pita" "kabar kabar kabar" "rak keranjang samping"; padding: 22px 28px 40px; }
+  /* rapi-rapi 29 Sep (Mac): rak = kolom lentur (4 kartu sebaris di layar ±1860 px, 3 di 1440), keranjang & Hari ini selebar tetap dan sama-sama menempel
+     saat rak digulir. Lembar duduk TEPAT di atas kolom Hari ini (keranjang tetap terlihat di sebelahnya). */
+  main.layar-jual { --lebar-keranjang: clamp(340px, 23vw, 420px); --lebar-samping: clamp(360px, 20vw, 380px); max-width: 1720px;
+    grid-template-columns: minmax(0, 1fr) var(--lebar-keranjang) var(--lebar-samping); column-gap: 18px;
+    grid-template-areas: "kepala kepala kepala" "pita pita pita" "kabar keranjang samping" "rak keranjang samping"; grid-template-rows: auto auto auto 1fr;
+    padding: 22px 28px 40px; }
+  main.layar-jual > .jual-samping { margin-top: 0; position: sticky; top: 22px; }
   .jual-keranjang { position: sticky; top: 22px; }
-  .lembar { position: fixed; right: 28px; top: 22px; bottom: 28px; width: 440px; max-height: none; }
+  .lembar:not(.tirai) { position: fixed; right: 28px; top: 22px; bottom: 28px; width: 440px; max-height: none; }
+  /* 100% (bukan 100vw): lebar viewport tanpa batang gulir — sama dengan yang dipakai margin auto <main> */
+  main.layar-jual .lembar:not(.tirai) { right: max(28px, calc((100% - 72px - 1720px) / 2 + 28px)); width: var(--lebar-samping); bottom: auto; max-height: calc(100% - 50px); }
   .kabar-nav { right: auto; left: 90px; width: 360px; bottom: 24px; }
+}
+/* laptop kecil / iPad mendatar (1100–1279): tiga kolom menyisakan rak dua kartu sempit → susunan tablet (Hari ini di bawah rak), lembar di atas keranjang */
+@media (min-width: 1100px) and (max-width: 1279px) {
+  main.layar-jual { --lebar-keranjang: 360px; grid-template-columns: minmax(0, 1fr) var(--lebar-keranjang);
+    grid-template-areas: "kepala kepala" "pita pita" "kabar keranjang" "rak keranjang" "samping keranjang"; grid-template-rows: auto auto auto auto 1fr; }
+  main.layar-jual > .jual-samping { margin-top: 12px; position: static; }
+  main.layar-jual .lembar:not(.tirai) { right: 28px; width: var(--lebar-keranjang); }
 }
 @media (prefers-reduced-motion: reduce) { .jual-keranjang, .lembar { transition: none; animation: none; } }
 

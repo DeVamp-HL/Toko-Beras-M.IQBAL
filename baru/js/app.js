@@ -50,6 +50,13 @@ function statusTeks() {
   return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : 'tersambung · ' + statusFb.koleksiTotal + ' koleksi';
 }
 
+// Jual (rapi-rapi 29 Sep): pita peringatan di bawah judul hanya untuk keadaan yang harus terlihat — tanpa internet atau koleksi ditolak server.
+// Normal, memuat, dan menunggu server mengaku (sekejap tiap mencatat) cukup di teks kepala: pita yang muncul-hilang menggeser seluruh layar.
+function statusAwas() {
+  if (sumberData().jenis !== 'firestore' || !statusFb.masuk) return '';
+  if ((statusFb.ditolak && statusFb.ditolak.length) || statusFb.galat) return statusTeks();
+  return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : '';
+}
 // Pil di kepala tiap layar (owner 24 Sep: bilah "Masuk sebagai … · Keluar" di atas layar dicabut, pindah ke pil ini; "DATA TOKO" → nama akun).
 // Isinya: akun yang masuk (OWNER / nama orang), ditambah keadaan kiriman bila tidak normal. Ketuk = lembar akun (Masuk sebagai + Keluar).
 const labelAkun = () => { const a = akunKini(); return !a || !bisaBekerja(a) ? 'DATA TOKO' : a.jenis === 'owner' ? 'OWNER' : String(a.nama || a.email || '').toUpperCase(); };
@@ -62,7 +69,7 @@ function statusRingkas() {
 
 terapkanMode();
 const akar = document.getElementById('layar');
-const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat(),
+const layar = pasangLayarJual(akar, { akun: () => akunKini(), gantiMode, mode: () => mode, statusTeks, statusAwas, statusRingkas, versiData: () => versi, pemegang: () => fb.pemegangPerangkat(),
   bukaStok: (lembar, tab, isi) => { pindah('stok'); stok.buka(lembar, tab, isi); } });   // putaran 25: pembalik karcis bulan terkunci → Stok › Cocokkan · 27: Isi barang habis
 dengarkan(() => { versi += 1; });
 
