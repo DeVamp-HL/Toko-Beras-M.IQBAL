@@ -295,8 +295,8 @@ def periksa_kiriman(src):
     push_hasil = ad[ad.index('h.sahH.forEach((x, i) => {'):].split('\n  });')[0].count('dokumen.push(')
     # (b) statis: layar menyerahkan batasnya ke logika (kalau tidak, batasnya mati dan yang tersisa cuma pagar umum "pecah jadi dua nota")
     J = src['baru/js/layar/jual.js']; S = src['baru/js/layar/stok.js']
-    if "const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null) });" not in J: cacat.append('jual.js tidak menyerahkan batas baris akun ke logika')
-    for pang in ['L.simpanNota(SB())', 'L.masukkan(SB(), Number(n))', 'L.masukkan(SB())', 'L.ulangiPembelian(SB(), rakKini(), g)']:
+    if "const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null), tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null) });" not in J: cacat.append('jual.js tidak menyerahkan batas baris akun ke logika')   # putaran 31b: + tembusBoleh
+    for pang in ['L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }))', 'L.masukkan(SB(), Number(n))', 'L.masukkan(SB())', 'L.ulangiPembelian(SB(), rakKini(), g)']:
         if pang not in J: cacat.append('jual.js: ' + pang + ' tidak ada — jalur itu melewati batas baris')
     if 'L.simpanNota(S())' in J or re.search(r'L\.masukkan\(S\(\)', J): cacat.append('jual.js masih memanggil logika nota tanpa batas baris (S() bukan SB())')
     if "A.susunSimpanAdukan(Object.assign({}, d, { batasHasil: batasHasilAdukan(opsi.akun ? opsi.akun() : null) })" not in S: cacat.append('stok.js tidak menyerahkan batas hasil adukan ke logika')
@@ -540,7 +540,7 @@ if __name__ == '__main__':
                 'baris literan menulis dokumen ketiga': rusak(JL, "    // PUTARAN 15: wadah yang DIJUAL", "    if (d.kemasanLiteran) dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: d.id + 2, tipe: 'pakai' } });\n    // PUTARAN 15: wadah yang DIJUAL"),
                 'adukan tanpa penjaga hasil': rusak(SA, "if (Number(draf.batasHasil) > 0 && h.sahH.length > Number(draf.batasHasil)) return", "if (false) return"),
                 'tindakan baru dibuka server tanpa hitungan': rusak(AK, "pelangganBaru: ['ben', 'karyawan'] };", "pelangganBaru: ['ben', 'karyawan'], isiUlang: ['ben'] };"),
-                'jual.js mencatat nota tanpa batas baris': rusak('baru/js/layar/jual.js', 'L.simpanNota(SB())', 'L.simpanNota(S())'),
+                'jual.js mencatat nota tanpa batas baris': rusak('baru/js/layar/jual.js', 'L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }))', 'L.simpanNota(Object.assign(S(), { tembusYakin: tembusYakin === true }))'),
                 'stok.js menyimpan adukan tanpa batas hasil': rusak('baru/js/layar/stok.js', "Object.assign({}, d, { batasHasil: batasHasilAdukan(opsi.akun ? opsi.akun() : null) })", 'd'),
             }
             # putaran 25 — kiriman OWNER bulan lampau (sumber pengganti per berkas; berkas lain dibaca dari disk)

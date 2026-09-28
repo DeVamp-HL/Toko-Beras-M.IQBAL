@@ -135,6 +135,8 @@ jobs:
       # ---- PUTARAN 31 — pemantapan serah terima 28 Sep: karcis bertanya nama seharga (31.1), penjaga catatan bertanggal mundur (31.3) ----
       - name: "Pemantapan 31: rinci karcis bertanya nama kalau harganya sama (tidak memilih diam-diam); barang masuk & adukan bertanggal sebelum cocokkan terakhir ditanya dua ketukan dengan tanggalnya (kotak pasir + statis + kontrol)"
         run: python3 alat-uji/uji_pemantapan_31.py && python3 alat-uji/uji_pemantapan_31.py --kontrol
+      - name: "Jual dulu, tandai untuk dicocokkan (31b): pemeriksaan ulang stok tidak berubah, staf ditahan, owner dua ketukan dengan nama & kg, baris bertanda perluCocokkan + selisihKg, buku minus, tuntas = cocokkan bertanggal ≥ nota, pita Jual & kartu keempat Gudang (kotak pasir + statis + kontrol)"
+        run: python3 alat-uji/uji_jual_tandai_cocok.py && python3 alat-uji/uji_jual_tandai_cocok.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

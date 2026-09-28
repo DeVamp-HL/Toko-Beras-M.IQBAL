@@ -66,6 +66,7 @@ export function keadaanAwal() {
     pesananId: null, psNama: '', psIsi: '', psAlamat: '', psNilai: '', psSaring: '',
     tukar: null,   // PUTARAN 4: { returDraf, kredit, ringkas } — retur tukar yang diikat ke keranjang ini (_tukarKeJual index.html 16838); PUTARAN 20: { susulanReturId, kredit 0, … } = pengganti tukar yatim
     karcis: null,  // PUTARAN 20: karcis kasir darurat / nota perlu-dirapikan yang sedang dirinci lewat keranjang ini (karcis-logika.js)
+    tembusTanya: null, tembusYakin: false,   // PUTARAN 31b: jual dulu, tandai untuk dicocokkan (owner, ketukan kedua)
     kcPilih: null, // PUTARAN 31.1: tebakan karcis yang namanya seharga dan sedang ditanyakan (karcis-logika kelompokkanTebakan)
     kcBatal: null, // PUTARAN 25b: { id, alasan } — karcis kasir darurat yang sedang dibatalkan dari lembar Karcis (karcis-logika susunBatalKarcis)
     // PUTARAN 15: isian repack (wadah dipilih, lembar, dijual/ditanggung, upah) & struk (nota yang dibuka, timpaan kertas/sertakan, draf setelan)
@@ -636,6 +637,34 @@ export function periksaStokKeranjang(s) {
   }
   return '';
 }
+// PUTARAN 31b (keputusan owner 28 Sep, docs/peta-jual-tandai-cocok.md §6): "jual dulu, tandai untuk dicocokkan". Pemeriksaan ulang stok TIDAK berubah;
+// kalau gagal dan yang masuk OWNER, ketukan kedua mencatat nota apa adanya: baris yang melampaui buku diberi kolom `perluCocokkan: true` + `selisihKg`,
+// buku dibiarkan minus. Tanda tuntas = Cocokkan nama itu bertanggal ≥ tanggal nota. Akun staf tetap ditahan.
+const kgTembus = (t, chip, sel) => (chip.jalur === 'karung' ? sel * (chip.berat || Number(t.beratKarungAcuan) || 50) : chip.jalur === 'kemasan' ? sel * (Number(t.ukuranKemasan) || 0) : chip.jalur === 'literan' ? sel * rasioMerk(t.merkSumber || chip.kunci) : sel);
+/** Baris keranjang yang melampaui langit-langit buku (bukan kantong repack), dengan selisih dalam satuan chip dan kg. */
+export function barisTembus(s) {
+  const out = [];
+  for (const b of s.keranjang) {
+    const chip = chipDariBaris(b.trx); if (!chip) continue; const maks = maksTanpaBaris(s, b.id, chip); const butuh = butuhStok(b.trx);
+    if (maks === null || butuh <= maks) continue; const sel = Math.round((butuh - maks) * 100) / 100;
+    out.push({ id: b.id, label: b.trx.label, kunci: chip.kunci, nama: b.trx.jenis === 'kemasan' ? String(b.trx.namaProduk) + ' ' + String(b.trx.ukuranKemasan).replace('.', ',') + ' kg' : String(b.trx.merkSumber || chip.kunci), jalur: chip.jalur, maks, butuh, selisih: sel, selisihKg: Math.round(kgTembus(b.trx, chip, sel) * 100) / 100,
+      teks: b.trx.label + ': yang bebas dijual tinggal ' + tulisJumlah(maks, chip) + ', di keranjang ' + tulisJumlah(butuh, chip) + (b.trx.bonusUnit ? ' (termasuk bonus)' : '') });
+  }
+  return out;
+}
+const kgTeks = (n) => String(Math.round(n * 10) / 10).replace('.', ',') + ' kg';
+/** Nota bertanda `perluCocokkan` yang belum tuntas: belum ada cocokkan nama itu bertanggal ≥ tanggal nota (karung/literan/repack: penyesuaianStok bukan rework; kemasan: penyesuaianKemasan). */
+export function notaTembusBelumCocok() {
+  const PS = ambilPenyesuaianStok().filter((q) => !q.dariRework); const PK = ambilPenyesuaianKemasan(); const out = [];
+  ambilPenjualan().forEach((p) => { if (!p.perluCocokkan) return; const tgl = String(p.tanggal || '');
+    const nama = p.jenis === 'kemasan' ? String(p.namaProduk) + ' ' + String(p.ukuranKemasan).replace('.', ',') + ' kg' : String(p.merkSumber || '');
+    const tuntas = p.jenis === 'kemasan' ? PK.some((q) => String(q.namaProduk) === String(p.namaProduk) && Number(q.ukuranKemasan) === Number(p.ukuranKemasan) && String(q.tanggal || '') >= tgl) : PS.some((q) => String(q.merk) === String(p.merkSumber) && String(q.tanggal || '') >= tgl);
+    if (!tuntas) out.push({ id: p.id, trxId: p.trxId, tanggal: tgl, jam: String(p.jam || ''), nama, jenis: p.jenis, selisihKg: Number(p.selisihKg) || 0, namaPelanggan: String(p.namaPelanggan || '') }); });
+  const per = {}; out.forEach((x) => { per[x.nama] = per[x.nama] || { nama: x.nama, kg: 0, n: 0 }; per[x.nama].kg = Math.round((per[x.nama].kg + x.selisihKg) * 100) / 100; per[x.nama].n += 1; });
+  const nama = Object.keys(per).sort((a, b) => a.localeCompare(b)).map((k) => per[k]);
+  const trx = {}; out.forEach((x) => { trx[String(x.trxId)] = 1; });
+  return { baris: out.sort((a, b) => String(a.tanggal + a.jam).localeCompare(String(b.tanggal + b.jam))), nama, n: Object.keys(trx).length, ringkas: nama.map((x) => x.nama + ' ' + kgTeks(x.kg)).join(', ') };
+}
 /** Alasan nota belum bisa dicatat — '' kalau sah. */
 export function alasanTolak(s) {
   if (s.karcis) return 'Keranjang ini sedang merinci karcis — pakai SIMPAN RINCIAN (atau lepas karcisnya)';
@@ -797,14 +826,21 @@ export function waktuSekarang(d) {
 
 /** Siapkan pencatatan: {tolak} atau {dokumen, patch, ringkas}. Menulisnya urusan layar (lewat toko.tulisDokumen). */
 export function simpanNota(s, w) {
-  const tolak = alasanTolak(s) || periksaStokKeranjang(s);
-  if (tolak) return { tolak };
-  const n = susunNotaDokumen(s, w || waktuSekarang(s.sekarang || undefined));
+  const tolak0 = alasanTolak(s); if (tolak0) return { tolak: tolak0 };
+  const stok = periksaStokKeranjang(s); let tembus = [];   // pemeriksaan ulang TIDAK berubah (31b)
+  if (stok) {
+    tembus = s.tembusBoleh ? barisTembus(s) : [];
+    if (!tembus.length || tembus[0].teks !== stok) return { tolak: stok };   // staf, atau masalahnya bukan langit-langit buku (kantong repack)
+    if (!s.tembusYakin) return { tolak: stok + '. Buku ' + tembus.map((t) => t.nama + ' kurang ' + kgTeks(t.selisihKg)).join(', ') + ' — jual dulu, tandai untuk dicocokkan? Buku dibiarkan minus sampai dicocokkan', perluTembus: tembus };
+  }
+  const ids = {}; tembus.forEach((t) => { ids[t.id] = t; });
+  const s2 = tembus.length ? Object.assign({}, s, { keranjang: s.keranjang.map((b) => (ids[b.id] ? Object.assign({}, b, { trx: Object.assign({}, b.trx, { perluCocokkan: true, selisihKg: ids[b.id].selisihKg }) }) : b)) }) : s;
+  const n = susunNotaDokumen(s2, w || waktuSekarang(s.sekarang || undefined));
   if (n.tolak) return { tolak: n.tolak };
-  const patch = { keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, lembar: null, ketik: '', kreditDibuka: false, pesananId: null, penggantiTanya: null, tukar: null,
+  const patch = { keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, lembar: null, ketik: '', kreditDibuka: false, pesananId: null, penggantiTanya: null, tukar: null, tembusTanya: null, tembusYakin: false,
     notaTerakhir: { trxId: n.trxId, idPenjualan: n.idPenjualan, piutangId: n.piutangId, pesanan: n.pesanan, retur: n.retur, pada: Date.now(), ringkas: n.ringkas, nama: String(s.pelanggan || '').trim() },
-    kabar: 'Tersimpan — ' + n.ringkas, kabarAwas: false };
-  return { dokumen: n.dokumen, patch, ringkas: n.ringkas, nota: n };
+    kabar: 'Tersimpan — ' + n.ringkas + (tembus.length ? ' · TEMBUS STOK, tandai dicocokkan: ' + tembus.map((t) => t.nama + ' ' + kgTeks(t.selisihKg)).join(', ') : ''), kabarAwas: false };
+  return { dokumen: n.dokumen, patch, ringkas: n.ringkas, nota: n, tembus };
 }
 
 /** Batalkan nota barusan: tiap baris ditandai dibatalkan (tidak dihapus, seperti mulaiBatalkanTrx live); kantong literan, pelunasan sebagian, dan status pesanan dipulihkan. */

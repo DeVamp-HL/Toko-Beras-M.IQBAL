@@ -12,7 +12,7 @@ import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir da
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso } from '../inti/format.js';
 import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal } from '../data/toko.js';
-import { tombolAkun, batasBarisNota } from './akses-layar.js';
+import { tombolAkun, batasBarisNota, bukanOwner } from './akses-layar.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
 import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit } from './adegan.js';
 
@@ -34,7 +34,7 @@ export function pasangLayarJual(akar, opsi) {
   const set = (patch) => K.setel(patch);
   const S = () => K.baca();
   // putaran 23c: akun bukan-owner — batas baris per nota (batas sekali kirim ke server) ikut ke logika setiap kali keranjang bertambah / nota dicatat
-  const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null) });
+  const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null), tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null) });   // putaran 31b: hanya owner boleh jual dulu tandai dicocokkan
 
   // 25c (owner 27 Sep): jenis beras juga di Jual — BARIS SARING di atas rak, bukan tata letak baru: urutan rak per ukuran, termurah dulu (desain
   // Jual yang dikunci) tetap. Pilihan saring = tampilan saja (bukan isian, bukan data), ikut ke jalur lain selama jenisnya ada di sana.
@@ -78,10 +78,12 @@ export function pasangLayarJual(akar, opsi) {
     uangPas: () => set(L.uangPas(S())),
     uangKetik: () => set(L.uangKetik(S())),
     hapusUang: () => set({ uang: 0 }),
-    simpan: async () => {
+    simpan: async () => aksi.catatNota(false),
+    simpanTembus: async () => aksi.catatNota(true),   // putaran 31b: ketukan kedua owner — jual dulu, tandai untuk dicocokkan
+    catatNota: async (tembusYakin) => {
       if (S().karcis) return aksi.simpanRinci();
-      const r = L.simpanNota(SB());
-      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true });
+      const r = L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }));
+      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, tembusTanya: r.perluTembus || null });
       const keranjangTadi = S().keranjang.slice(); const uangTadi = S().cara === 'Tunai' ? S().uang : 0;
       set({ kabar: 'Mencatat…', kabarAwas: false });
       try {
@@ -372,6 +374,7 @@ export function pasangLayarJual(akar, opsi) {
     const muncul = s.lembar !== _lembarSebelum ? 'muncul' : ''; _lembarSebelum = s.lembar;
     const adaUrung = !!(s.notaTerakhir && Date.now() - s.notaTerakhir.pada < L.BATAS_URUNGKAN_DETIK * 1000);
     const KCn = KC.daftarKarcis(s.sekarang || new Date()); const KH = KC.hitungKarcis(s);   // PUTARAN 20
+    const TB = L.notaTembusBelumCocok();   // putaran 31b
     const KDH = KC.karcisDaruratHari(s.sekarang || new Date());   // PUTARAN 25b: catatan kasir darurat hari ini (batalkan yang salah ketik)
     document.body.classList.toggle('ada-lembar', !!s.lembar && s.lembar !== 'keranjang');
     document.body.classList.toggle('keranjang-terbuka', s.lembar === 'keranjang');
@@ -388,6 +391,8 @@ export function pasangLayarJual(akar, opsi) {
       ${sumber.jenis === 'cadangan' ? h`<div class="pita-info emas baca-saja">SIMULASI — angka dari ${sumber.keterangan}; nota yang dicatat di sini TIDAK masuk Firestore.</div>` : sumber.jenis !== 'firestore' ? h`<div class="pita-info awas baca-saja">Belum tersambung ke data toko — masuk dulu sebagai owner.</div>` : h`<div class="pita-info emas baca-saja">Nota dicatat ke data toko yang sama dengan sistem lama · ${opsi.statusTeks()}</div>`}
       ${s.kabar || adaUrung || s.karcis || ((KCn.daftar.length || KDH.length) && s.lembar !== 'karcis') ? h`<div class="kabar-kotak">
         ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : ''}" data-aksi="tutupKabar">${s.kabar}</div>` : ''}
+        ${s.tembusTanya && s.tembusTanya.length && s.keranjang.length ? h`<div class="pita-info emas" data-k="pita-tembus" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>Jual dulu, tandai untuk dicocokkan: ${s.tembusTanya.map((t) => t.nama + ' kurang ' + String(Math.round(t.selisihKg * 10) / 10).replace('.', ',') + ' kg').join(', ')} — buku dibiarkan minus sampai dicocokkan</span><span class="kaca-btn awas" data-aksi="simpanTembus">JUAL DULU, TANDAI</span></div>` : ''}
+        ${TB.n && s.lembar !== 'karcis' ? h`<div class="pita-info awas" data-k="pita-tembus-belum">${TB.n} nota tembus stok belum dicocokkan: ${TB.ringkas} — cocokkan di Stok › Cocokkan (tanda tuntas sendiri)</div>` : ''}
         ${s.karcis ? h`<div class="pita-info emas" data-k="pita-karcis" style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;"><span>${s.karcis.jenisAsal === 'karcis' ? 'RINCI KARCIS' : 'RAPIKAN NOTA'} ${KC.kcEkor(s.karcis.id)} · ${RP(s.karcis.nominal)} · ${KH ? KH.teks : ''}</span><span style="display: flex; gap: 6px;"><span class="kaca-btn" data-aksi="bukaKarcis">tebakan ›</span><span class="kaca-btn putus" data-aksi="karcisLepas">lepas</span></span></div>` : ''}
         ${!s.karcis && KCn.daftar.length && s.lembar !== 'karcis' ? h`<div class="pita-info awas" data-k="pita-antrean-karcis" data-aksi="bukaKarcis" style="cursor: pointer;">${KCn.nKarcis ? KCn.nKarcis + ' karcis kasir belum dirinci (' + RP(KCn.total) + ')' : ''}${KCn.nKarcis && KCn.nRapikan ? ' · ' : ''}${KCn.nRapikan ? KCn.nRapikan + ' nota kasir perlu dirapikan' : ''} — ketuk untuk merinci atau membatalkan yang salah ketik</div>` : ''}
         ${!s.karcis && !KCn.daftar.length && KDH.length && s.lembar !== 'karcis' ? h`<div class="pita-info" data-k="pita-karcis-hari-ini" data-aksi="bukaKarcis" style="cursor: pointer;">${KDH.length} catatan kasir darurat hari ini — ketuk untuk melihat / membatalkan yang salah ketik</div>` : ''}
