@@ -22,7 +22,7 @@ BUKAN_ISIAN = {
     'pelanggan': {'cari': 'pencarian', 'titipCari': 'pencarian'},
     'menu': {'cari': 'pencarian'},
     'laporan': {'cariK': 'pencarian dokumen kecil', 'sampaiN': 'tanggal lihat neraca (saringan tampilan)'},
-    'jual': {'cariPelanggan': 'pencarian nama', 'psSaring': 'saringan daftar pesanan', 'rtCari': 'pencarian nota retur'},
+    'jual': {'cariPelanggan': 'pencarian nama', 'psSaring': 'saringan daftar pesanan', 'rtCari': 'pencarian nota retur', 'rwCari': 'pencarian riwayat penjualan'},
 }
 
 

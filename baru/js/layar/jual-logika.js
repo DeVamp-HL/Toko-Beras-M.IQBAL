@@ -36,7 +36,7 @@ import { arPeta, arBeras, arKemasan } from './arsip-logika.js';
 import { skChip, skTrxPegang, skPecah, skHapusPemecah } from './setengah-logika.js';
 import { gabungTakaran } from './struk-logika.js';
 
-export const JALUR = [['sering', 'Sering'], ['literan', 'Literan'], ['kemasan', 'Kemasan'], ['karung', 'Karung'], ['wadah', 'Wadah'], ['repack', 'Repack'], ['retur', 'Retur']];
+export const JALUR = [['sering', 'Sering'], ['literan', 'Literan'], ['kemasan', 'Kemasan'], ['karung', 'Karung'], ['wadah', 'Wadah'], ['repack', 'Repack'], ['retur', 'Retur'], ['riwayat', 'Riwayat']];   // riwayat: owner 28 Sep
 export const JALUR_NANTI = [];   // semua jalur desain sudah hidup (wadah: putaran 15)
 export const PECAHAN = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500];
 // ---------- WADAH LITERAN (kotak kayu) — praktik lapangan, keterangan owner 13–14 Sep & koreksi 19 Sep 2026 ----------
@@ -59,6 +59,7 @@ export const STATUS_PESANAN = { dipesan: 'DIPESAN', diantar: 'DIANTAR', dibayar:
 export function keadaanAwal() {
   return {
     jalur: 'sering', lembar: null, pilih: null, ketik: '', satuanKarung: 50, namaRepack: '',
+    rwCari: '', rwPeriode: 'semua', rwJenis: '', rwCara: '', rwBatal: false, rwN: 50, rwBuka: null,   // RIWAYAT PENJUALAN (owner 28 Sep): saringan tab Riwayat (riwayat-logika.js)
     keranjang: [], negoId: null, potongan: 0, penggantiTanya: null,
     pelanggan: '', cariPelanggan: '', cara: 'Tunai', uang: 0,
     antrean: [], aktifId: 1, idBerikut: 2, urutBaris: 0,

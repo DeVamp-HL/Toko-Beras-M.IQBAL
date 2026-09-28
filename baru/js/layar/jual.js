@@ -20,7 +20,8 @@ import { gambarChipBarang } from './gambar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
 import { jbJenisRak, jbSaringRak } from './jenis-beras-logika.js';
 import * as AR from './arsip-logika.js';
-import * as SK from './setengah-logika.js';   // 25c: saring rak per jenis beras (owner 27 Sep)
+import * as SK from './setengah-logika.js';
+import * as RW from './riwayat-logika.js';   // riwayat penjualan (owner 28 Sep): Jual › tab Riwayat   // 25c: saring rak per jenis beras (owner 27 Sep)
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -168,6 +169,15 @@ export function pasangLayarJual(akar, opsi) {
     lepasPesanan: () => set(L.lepasPesanan(S())),
     // ---- putaran 4: retur menunjuk nota ----
     rtCari: (v) => set({ rtCari: String(v || '').slice(0, 40) }),
+    // ---- RIWAYAT PENJUALAN (owner 28 Sep): baca saja; struk & retur lewat jalur yang sudah ada (bukaStruk, tunjukNota)
+    rwCari: (v) => set({ rwCari: String(v || '').slice(0, 40), rwN: RW.RW_LANGKAH, rwBuka: null }),
+    rwPeriode: ({ p }) => set({ rwPeriode: p, rwN: RW.RW_LANGKAH, rwBuka: null }),
+    rwJenis: ({ j }) => set({ rwJenis: j || '', rwN: RW.RW_LANGKAH, rwBuka: null }),
+    rwCara: ({ c }) => set({ rwCara: c || '', rwN: RW.RW_LANGKAH, rwBuka: null }),
+    rwBatal: () => set({ rwBatal: !S().rwBatal, rwN: RW.RW_LANGKAH, rwBuka: null }),
+    rwLagi: () => set({ rwN: (S().rwN || RW.RW_LANGKAH) + RW.RW_LANGKAH }),
+    rwBuka: ({ k }) => set({ rwBuka: S().rwBuka === k ? null : k }),
+    rwBersih: () => set({ rwCari: '', rwPeriode: 'semua', rwJenis: '', rwCara: '', rwBatal: false, rwN: RW.RW_LANGKAH, rwBuka: null }),
     tunjukNota: ({ id }) => set(Object.assign(RT.returAwal(), { rtCari: S().rtCari, rtNotaId: id, lembar: 'retur', ketik: '' })),
     rtKondisi: ({ v }) => set({ rtKondisi: v }),
     rtPenyelesaian: ({ v }) => set({ rtPenyelesaian: v, rtTimpa: false }),
@@ -477,8 +487,29 @@ export function pasangLayarJual(akar, opsi) {
       </div>`)}${daftar.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Tidak ada nota karung/kemasan yang cocok.</div>`}</div>`;
   }
 
+  // ---- RIWAYAT PENJUALAN (owner 28 Sep): semua nota sejak awal, per hari; ketuk nota = rincian + Struk / Retur baris yang boleh kembali
+  function gambarRiwayat(s) {
+    const R = RW.rwSusun(s, s.sekarang || new Date()); const seg = (aksi, kunci, nilai, aktif, nama) => h`<div class="seg ${aktif ? 'aktif' : ''}" data-aksi="${aksi}" data-${kunci}="${nilai}">${nama}</div>`;
+    const status = { batal: 'DIBATALKAN', dirinci: 'sudah dirinci jadi nota lain', sebagian: 'sebagian baris dibatalkan' };
+    return h`<div class="pita-info" data-k="rw-ringkas"><b>Riwayat penjualan</b> · ${R.ringkas}<br><span class="ket">${R.saringTeks}${R.saringTeks.indexOf('Saringan') === 0 ? h` · <span class="tautan" data-aksi="rwBersih">hapus saringan</span>` : ''}</span></div>
+      <input class="ketik-nama" id="rwCari" type="text" value="${s.rwCari}" data-ketik="rwCari" placeholder="cari nama pembeli / barang / nominal">
+      <div class="jalur bungkus rapat" data-k="rw-periode" style="flex-wrap: wrap; overflow: visible;">${RW.RW_PERIODE.map(([id, nm]) => seg('rwPeriode', 'p', id, (s.rwPeriode || 'semua') === id, nm))}</div>
+      <div class="jalur bungkus rapat" data-k="rw-jenis" style="flex-wrap: wrap; overflow: visible;">${RW.RW_JENIS.map(([id, nm]) => seg('rwJenis', 'j', id, (s.rwJenis || '') === id, nm))}</div>
+      <div class="jalur bungkus rapat" data-k="rw-cara" style="flex-wrap: wrap; overflow: visible;">${RW.RW_CARA.map(([id, nm]) => seg('rwCara', 'c', id, (s.rwCara || '') === id, nm))}${seg('rwBatal', 'x', '1', !!s.rwBatal, 'tampilkan batal / dirinci')}</div>
+      ${R.kosong ? h`<div class="pita-info" data-k="rw-kosong">${R.kosong}</div>` : ''}
+      ${R.hari.map((g) => h`<div class="label" data-k="rwh-${g.tanggal}" style="padding: 10px 4px 2px;">${g.judul} · ${g.nNota} nota · ${RP(g.omzet)}${g.retur ? ' − retur ' + RP(g.retur) + ' = omzet ' + RP(g.bersih) : ''}</div>
+        <div class="kartu daftar-nota" data-k="rwd-${g.tanggal}" style="max-height: none;">${g.nota.map((o) => h`<div class="baris-nota ${o.status === 'batal' || o.status === 'dirinci' ? 'tak-bisa' : ''}" data-aksi="rwBuka" data-k="${o.kunci}">
+          <div class="atas"><span><b>${o.baris.length ? o.baris[0].teks : '—'}</b>${o.nBaris > 1 ? ' + ' + (o.nBaris - 1) + ' barang' : ''}${o.nama ? ' · ' + o.nama : ''}</span><span class="n">${RP(o.status === 'batal' || o.status === 'dirinci' ? o.totalAsli : o.total)}</span></div>
+          <div class="ket">${o.jam} · ${o.cara === 'Kredit' ? 'Bon' : o.cara}${o.oleh ? ' · ' + o.oleh : ''}${status[o.status] ? ' · ' + status[o.status] : ''}${o.tandai ? ' · jual dulu, tandai dicocokkan' : ''}</div>
+          ${s.rwBuka === o.kunci ? h`<div class="rw-rinci" data-k="rwr-${o.kunci}" style="display: flex; flex-direction: column; gap: 4px; padding-top: 6px;">${o.baris.map((b) => h`<div class="atas" data-k="rwb-${b.id}" style="font-size: 13px;"><span>${b.teks}${b.pengganti ? ' · pengganti retur' : ''}${b.tandai ? ' · tembus stok' : ''}</span><span style="display: flex; gap: 6px; align-items: center;"><span class="n">${RP(b.n)}</span>${b.bisaRetur ? h`<span class="kaca-btn kecil" data-aksi="tunjukNota" data-id="${b.id}">retur</span>` : ''}</span></div>${b.sebabRetur ? h`<div class="ket" style="font-size: 11px;">retur: ${b.sebabRetur}</div>` : ''}`)}
+            <div class="tombol-baris rapat"><div class="kaca-btn" data-aksi="bukaStruk" data-trx="${o.trxId || ''}" data-grup="${o.grupNota || ''}" data-id="${o.id}">Struk ›</div>${o.bisaRetur ? '' : h`<span class="ket" style="align-self: center;">${o.status === 'batal' || o.status === 'dirinci' ? 'nota ini tidak berlaku lagi' : 'tidak ada baris karung/kemasan yang bisa diretur dari sini'}</span>`}</div></div>` : ''}
+        </div>`)}</div>`)}
+      ${R.lebih ? h`<div class="kaca-btn putus" data-aksi="rwLagi" data-k="rw-lagi" style="margin-top: 8px;">tampilkan ${RW.RW_LANGKAH} nota lagi · ${R.nTampil} dari ${R.n}</div>` : R.n ? h`<div class="ket" data-k="rw-habis" style="padding: 8px 4px;">${R.n} nota tampil semua</div>` : ''}`;
+  }
+
   function gambarChip(s, rak) {
     if (s.jalur === 'retur') return gambarRetur(s);
+    if (s.jalur === 'riwayat') return gambarRiwayat(s);
     const daftarRak = s.jalur === 'sering' ? rak.sering : (rak[s.jalur] || []);
     const JR = ['karung', 'kemasan', 'literan', 'repack'].indexOf(s.jalur) >= 0 ? jbJenisRak(daftarRak) : [];
     const jenisAktif = JR.some((x) => x.jenis === jenisRak) ? jenisRak : '';
