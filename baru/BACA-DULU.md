@@ -589,6 +589,22 @@ terbit per kelompok (Jual → Ringkasan & Stok → sisanya), Claude merge sendir
   dibungkus, lembar di atas kolomnya, panggung sejajar keranjang, pita status hanya tanpa internet / ditolak. Dilihat di peramban (cadangan): 1864, 1440, 1280, 1120,
   820 & 390 px — rak, lembar jumlah & bayar, adegan barang masuk & nota, koin omzet.
 
+## Putaran 35 — rapi-rapi tata letak: Ringkasan & Stok (29 Sep 2026, cabang `rapi/35-ringkasan-stok`)
+
+Kelompok 2 rapi-rapi (aturan sama dengan Putaran 34). Di Mac ketiga layar kini selebar 1720 px (dulu Jual 1480, Ringkasan 1480, Stok 1180).
+- **Stok › Gudang**: tombol kerja (Barang masuk, Adukan, Cocokkan, Kantong, Tempat simpan, HPP) dulu di dasar halaman ±2.600 px di Mac. Kini di
+  `<aside class="stok-samping">` tepat sesudah kartu pertanyaan: HP & tablet urutan tanya · tombol · jawaban · per jenis (aside `display: contents` +
+  `order`); Mac jawaban di kiri, tombol + "Beras di buku per jenis" di kolom kanan yang menempel; ≥1280 daftar jawaban dua kolom yang urut ke BAWAH
+  (`columns`, daftar peringkat tetap terbaca 1, 2, 3 di kolom kiri). Tinggi halaman di 1864 px: ±2.600 → ±1.270. Lembar (Barang masuk, Cocokkan, …),
+  Papan Kapur & Karantina tetap paling lebar 1180 px, rata kiri di bawah judul — formulir tidak melar. Wadah literan selebar halaman: 8 wadah sebaris di ±1860 px.
+- **Ringkasan**: kas, uang hari ini, perlu perhatian & catatan katalog satu `<aside class="rk-samping">` (dulu sel lepas: pita sumber cuma separuh lebar,
+  catatan katalog melayang di sel sendiri). HP tetap hero · nota · samping; tablet nota | samping; Mac hero & nota di kiri, samping kanan menempel. Pita
+  sumber yang kosong tidak menyisakan baris.
+- Tinjauan adversarial (7 lolos → 4 cacat, semua ditambal): samping Ringkasan yang lebih tinggi dari hero + nota dulu membuka lubang di bawah hero (baris
+  terakhir kini 1fr, seperti Jual); Atur wadah (formulir) ikut melar (kini hanya kotak wadah yang lebar); pita kabar Stok selebar 1720 di atas formulir 1180
+  (kini selebar formulirnya); animasi masuk Ringkasan naik dari bawah (aturan `.kartu:last-child` yang dulu tak pernah kena kini menangkap nota — dicabut).
+- Uji: `alat-uji/uji_tata_letak_ringkasan_stok.py` (+ kontrol, CI). Dilihat di peramban (cadangan): 1864, 1440, 1120, 820 & 390 px.
+
 ## Struktur
 ```
 baru/

@@ -77,11 +77,10 @@ main[hidden] { display: none !important; }
 .layar-ringkasan .tetes-terbang { position: fixed; z-index: 40; }
 .layar-ringkasan .angka-besar { font-variant-numeric: tabular-nums; }
 /* masuk layar: kartu naik bergiliran */
-main.layar-ringkasan.masuk > header, main.layar-ringkasan.masuk > .kartu, main.layar-ringkasan.masuk > .dua { animation: rkNaik 620ms cubic-bezier(.2,.8,.2,1) both; }
+main.layar-ringkasan.masuk > header, main.layar-ringkasan.masuk > .kartu, main.layar-ringkasan.masuk > .rk-samping { animation: rkNaik 620ms cubic-bezier(.2,.8,.2,1) both; }
 main.layar-ringkasan.masuk > .kartu.hero { animation-delay: 70ms; }
 main.layar-ringkasan.masuk > .kartu:not(.hero) { animation-delay: 160ms; }
-main.layar-ringkasan.masuk > .dua { animation-delay: 230ms; }
-main.layar-ringkasan.masuk > .kartu:last-child { animation-delay: 300ms; }
+main.layar-ringkasan.masuk > .rk-samping { animation-delay: 230ms; }   /* hero 70 → nota 160 → samping 230: atas/kiri naik lebih dulu (dulu .kartu:last-child 300 ms tak pernah kena) */
 @keyframes rkNaik { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .layar-ringkasan .sektor, .layar-ringkasan .jarum-detik, .layar-ringkasan .kartu.hero, .layar-ringkasan .lapis > div, .layar-ringkasan .pita .seg { transition: none; }
@@ -89,3 +88,20 @@ main.layar-ringkasan.masuk > .kartu:last-child { animation-delay: 300ms; }
 }
 
 .layar-ringkasan .sektor.diam { transition: none; }
+
+/* ---------- RAPI-RAPI 29 Sep (kelompok 2) ----------
+   Kas, perhatian & catatan katalog satu kolom <aside class="rk-samping"> (dulu tiga sel lepas: pita sumber cuma separuh lebar, katalog melayang di sel sendiri).
+   HP: hero · nota · samping. Tablet: hero penuh, nota | samping. Mac: halaman selebar Jual (1720); hero & nota di kiri, samping di kanan dan menempel. */
+.layar-ringkasan #rkSumber:empty { display: none; }   /* tanpa pita sumber → tidak ada baris kosong berjarak ganda */
+.layar-ringkasan .rk-samping { display: flex; flex-direction: column; gap: 10px; min-width: 0; order: 2; }
+.layar-ringkasan .rk-nota { order: 1; }
+@media (min-width: 720px) { .layar-ringkasan #rkSumber { grid-column: 1 / -1; } }
+@media (min-width: 1100px) {
+  /* baris terakhir 1fr: samping yang lebih tinggi dari hero + nota menambah ruang DI BAWAH nota, bukan membuka lubang di antara hero dan nota */
+  main.layar-ringkasan { max-width: 1720px; grid-template-columns: minmax(0, 1fr) clamp(340px, 26vw, 440px); column-gap: 18px; grid-template-rows: auto auto auto 1fr; }
+  main.layar-ringkasan:has(> #rkSumber:empty) { grid-template-rows: auto auto 1fr; }   /* tanpa pita sumber: kepala · hero · nota */
+  .layar-ringkasan .kartu.hero { grid-column: 1; }
+  .layar-ringkasan .rk-nota, .layar-ringkasan .rk-samping { order: 0; }
+  .layar-ringkasan .rk-nota { grid-column: 1; }
+  .layar-ringkasan .rk-samping { grid-column: 2; grid-row: span 2; align-self: start; position: sticky; top: 22px; }
+}

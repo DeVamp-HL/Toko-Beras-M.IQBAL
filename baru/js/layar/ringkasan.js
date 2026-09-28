@@ -45,6 +45,8 @@ export function pasangLayarRingkasan(akar, opsi) {
   const $ = (id) => akar.querySelector('#' + id);
 
   // ---------- kerangka: dibangun saat tirai terbuka (putaran 23c: selama belum masuk, <main> ini KOSONG) ----------
+  // rapi-rapi 29 Sep (kelompok 2): kas, perhatian & catatan katalog dikumpulkan di <aside class="rk-samping"> (dulu tiga sel lepas yang menyisakan lubang
+  // di kolom kanan). Urutan tampil diatur ringkasan.css: HP = hero · nota · samping; tablet = nota | samping; Mac = hero & nota kiri, samping kanan menempel.
   function bangun() {
   lingkar.clear(); angkaTampil = null; kunciNotaLama = null; sektorKini = []; pilihId = null;
   akar.innerHTML = `
@@ -75,14 +77,16 @@ export function pasangLayarRingkasan(akar, opsi) {
       <div class="rk-detail" id="rkDetail"></div>
       <div class="pita" id="rkSkala"></div>
     </div>
-    <div class="kartu" style="gap: 4px; padding: 10px 16px;">
+    <aside class="rk-samping">
+      <div class="dua" id="rkKas"></div>
+      <div class="kartu" style="gap: 6px;" id="rkPerhatian"></div>
+      <div class="ket" style="font-size: 11.5px; padding: 0 4px;" id="rkKatalog"></div>
+    </aside>
+    <div class="kartu rk-nota" style="gap: 4px; padding: 10px 16px;">
       <div style="display: flex; justify-content: space-between; align-items: center;"><div class="label">Nota hari ini</div><div class="ket" style="font-size: 11.5px;" id="rkSejak"></div></div>
       <div class="umpan" id="rkUmpan"></div>
       <div class="ket" style="text-align: right; cursor: pointer; text-decoration: underline;" id="rkKeJual">catat nota →</div>
-    </div>
-    <div class="dua" id="rkKas"></div>
-    <div class="kartu" style="gap: 6px;" id="rkPerhatian"></div>
-    <div class="ket" style="font-size: 11.5px; padding: 0 4px;" id="rkKatalog"></div>`;
+    </div>`;
   $('rkSkala').innerHTML = R.SKALA.map(([id, nm]) => `<div class="seg" data-k="${id}">${esc(nm)}</div>`).join('');
 
   $('rkSkala').addEventListener('click', (ev) => { const el = ev.target.closest('[data-k]'); if (el) gantiSkala(el.dataset.k); });
