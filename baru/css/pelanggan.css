@@ -89,3 +89,7 @@ main.layar-pelanggan { display: flex; flex-direction: column; gap: 10px; padding
 .layar-pelanggan .bs-angka { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .layar-pelanggan .bs-angka > div { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; } .layar-pelanggan .bs-angka .besar { font-family: 'Bodoni Moda', Georgia, serif; font-size: 26px; line-height: 1.1; }   /* bukan Prata: angka 1-nya mirip huruf l */
 .layar-pelanggan .bs-baris { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px dashed var(--rel); min-height: 30px; align-items: center; }
 .layar-pelanggan .kaca-btn.mati { opacity: 0.45; pointer-events: none; }
+
+/* ---------- RAPI-RAPI 29 Sep (kelompok 3): di Mac selebar layar kerja lain (1720 px, lebar TERMASUK padding seperti layar lain —
+   dulu 1480 + padding = 1536, pinggir kirinya tidak sejajar layar lain) ---------- */
+@media (min-width: 1100px) { main.layar-pelanggan { max-width: 1720px; box-sizing: border-box; } }

@@ -605,6 +605,21 @@ Kelompok 2 rapi-rapi (aturan sama dengan Putaran 34). Di Mac ketiga layar kini s
   (kini selebar formulirnya); animasi masuk Ringkasan naik dari bawah (aturan `.kartu:last-child` yang dulu tak pernah kena kini menangkap nota — dicabut).
 - Uji: `alat-uji/uji_tata_letak_ringkasan_stok.py` (+ kontrol, CI). Dilihat di peramban (cadangan): 1864, 1440, 1120, 820 & 390 px.
 
+## Putaran 36 — rapi-rapi tata letak: Pelanggan, Harga, Uang, Laporan, Menu (29 Sep 2026, cabang `rapi/36-layar-lain`)
+
+Kelompok 3 rapi-rapi. Harga, Uang & Laporan sudah tiga kolom di Mac (desain kanvas yang dikunci) — yang dirapikan STRUKTUR bersama, bukan isi:
+- Di Mac ketujuh layar kerja (Jual, Ringkasan, Stok, Pelanggan, Harga, Uang, Laporan) selebar 1720 px dengan pinggir 22/28/40 px: judul & pil di tempat yang
+  sama tiap pindah layar (dulu 1180/1240/1480 px dan pinggir 14 atau 28 — judul meloncat ke kiri-kanan). Pelanggan kini menghitung lebar termasuk pinggir
+  (border-box) seperti layar lain.
+- Tiga kolom Harga/Uang/Laporan: kolom samping melebar mengikuti layar (`minmax(…, clamp(…vw…))`) — di 1280 px selebar dulu (kolom tengah tidak menyempit),
+  di ±1860 px +40–50 px; kolom tengah mengambil sisanya (±810–870 px).
+- Menu TIDAK diubah: kolom 860 px di tengah = desain N1 ("Pertahankan desain UI di layar N1", owner 16 Sep).
+- Tinjauan adversarial (4 lolos → 3 cacat, semua ditambal): pinggir 28 px dulu dibayar kolom tengah (1100–1339 px menyempit 28 px; di 1100 label UNTUK KARYAWAN
+  menabrak nominal) → batas bawah kolom samping 14 px di bawah lebar lama, kolom tengah di 1100 kembali 238 px; lembar/formulir di luar grid (Uang `.ug-lembar`,
+  Harga `section > .kartu`, Laporan `.lp-lembar`) ikut melar ke 1664 → 1180 seperti Stok; gambar truk Harga › Belanja (preserveAspectRatio none) melar 1,42×
+  di kolom 510 px → paling lebar 360 px.
+- Uji: `alat-uji/uji_tata_letak_layar_lain.py` (+ kontrol, CI). Dilihat di peramban (cadangan): 1864, 1280 & 1100 px.
+
 ## Struktur
 ```
 baru/
