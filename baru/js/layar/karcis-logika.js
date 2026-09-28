@@ -54,7 +54,15 @@ export function tebakanKarcis(nominal) {
   for (let i = 0; i < kecil.length && kombo.length < 6; i++) for (let j = i + 1; j < kecil.length && kombo.length < 6; j++) { if (kecil[i].harga + kecil[j].harga === n && (kecil[i].jalur + kecil[i].kunci + (kecil[i].berat || '')) !== (kecil[j].jalur + kecil[j].kunci + (kecil[j].berat || ''))) kombo.push({ tepat: true, label: kecil[i].label + ' + ' + kecil[j].label, isi: [isiDari(kecil[i]), isiDari(kecil[j])] }); }
   const jangkar = kecil.filter((x) => x.jangkar); const lit = kecil.filter((x) => x.jalur === 'literan' && x.jumlah <= 10);
   for (let a = 0; a < jangkar.length && kombo.length < 6; a++) for (let i = 0; i < lit.length && kombo.length < 6; i++) for (let j = i + 1; j < lit.length && kombo.length < 6; j++) { if (jangkar[a].harga + lit[i].harga + lit[j].harga === n && lit[i].kunci !== lit[j].kunci) kombo.push({ tepat: true, label: jangkar[a].label + ' + ' + lit[i].label + ' + ' + lit[j].label, isi: [isiDari(jangkar[a]), isiDari(lit[i]), isiDari(lit[j])] }); }
-  return hasil.slice(0, 6).concat(kombo);
+  return kelompokkanTebakan(hasil).slice(0, 6).concat(kelompokkanTebakan(kombo));
+}
+// putaran 31.1 (serah terima 28 Sep): tebakan memilih NAMA dari harga, jadi IR64 Ascent/Elevate/Apex yang seharga tertukar dan hanya jumlah IR64 yang berarti
+// (susut September). Dua nama atau lebih dengan bentuk yang sama (jalur, berat, jumlah, harga pas) untuk nominal itu = SATU tebakan yang BERTANYA namanya.
+const kcBentuk = (t) => t.isi.map((x) => x.jalur + '|' + (x.berat || '') + '|' + x.jumlah + '|' + (x.hargaPas || '')).join('+') + '|' + (t.tepat ? 1 : 0);
+/** Tebakan yang bentuknya sama tapi namanya beda (harga sama) digabung: { seharga: true, pilihan: [tebakan…] } — tidak memilih diam-diam. */
+export function kelompokkanTebakan(daftar) {
+  const out = []; (daftar || []).forEach((t) => { const b = kcBentuk(t); let g = out.find((x) => x.bentuk === b); if (!g) { g = { bentuk: b, tepat: t.tepat, pilihan: [] }; out.push(g); } g.pilihan.push(t); });
+  return out.map((g) => (g.pilihan.length === 1 ? g.pilihan[0] : { tepat: g.tepat, seharga: true, pilihan: g.pilihan, label: g.pilihan.map((p) => p.label).join(' / ') + ' — harga sama, pilih namanya' }));
 }
 
 /** Ikat satu karcis ke keranjang (seperti tukar): satu karcis per keranjang, tidak bersama tukar/pesanan; cara bayar & nama pembeli diprakarsai dari karcisnya. */
@@ -65,10 +73,12 @@ export function ikatKarcis(s, id, kini) {
   return { karcis: k, cara: k.cara === 'QRIS' || k.cara === 'Kredit' ? k.cara : 'Tunai', pelanggan: k.nama, uang: 0, potongan: 0, pesananId: null, lembar: null, jalur: s.jalur === 'retur' ? 'sering' : s.jalur, negoId: null,
     kabar: (k.jenisAsal === 'karcis' ? 'Merinci karcis ' : 'Merapikan nota ') + kcEkor(k.id) + ' ' + RP(k.nominal) + ' (' + k.tanggal.slice(8) + '/' + k.tanggal.slice(5, 7) + ' ' + k.jam + ') — pilih barangnya dari rak seperti menjual biasa' + (s.keranjang.length ? '; ' + s.keranjang.length + ' barang yang sudah di keranjang ikut dihitung' : ''), kabarAwas: false };
 }
-export function lepasKarcis(s) { return s.karcis ? { karcis: null, kabar: 'Karcis dilepas — tidak ada yang ditulis; barang di keranjang tetap', kabarAwas: false } : {}; }
+export function lepasKarcis(s) { return s.karcis ? { karcis: null, kcPilih: null, kabar: 'Karcis dilepas — tidak ada yang ditulis; barang di keranjang tetap', kabarAwas: false } : {}; }
 
 /** Isi keranjang dari satu tebakan: tiap barang lewat masukkan() (langit-langit stok tetap dijaga); harga PAS literan dipasang sebagai nego. */
 export function pakaiTebakan(s, t) {
+  // putaran 31.1: dua nama seharga → tawarkan pilihan, jangan ambil yang pertama
+  if (t && t.seharga) return { kcPilih: t, kabar: t.pilihan.length + ' nama seharga untuk nominal ini (' + t.pilihan.map((p) => p.label).join(', ') + ') — ketuk namanya; tebakan tidak memilih sendiri', kabarAwas: false };
   let st = Object.assign({}, s); const rak = susunRak(st);
   for (const x of t.isi) {
     const chip = (rak[x.jalur] || []).find((c) => c.kunci === x.kunci && (!x.berat || c.berat === x.berat)); if (!chip) return { kabar: x.kunci + ' tidak ada di rak (harga/stoknya tidak terbaca) — pilih barangnya sendiri', kabarAwas: true };
@@ -76,7 +86,7 @@ export function pakaiTebakan(s, t) {
     st = Object.assign(st, p);
     if (x.hargaPas) { const b = st.keranjang[st.keranjang.length - 1]; const q = terapkanNego(st, b.id, Math.round(x.hargaPas / x.jumlah)); if (q.keranjang) { st = Object.assign(st, q); const bb = st.keranjang[st.keranjang.length - 1]; if (bb.trx.hargaTotal !== x.hargaPas) bb.trx.hargaTotal = x.hargaPas; } }
   }
-  return { keranjang: st.keranjang, urutBaris: st.urutBaris, pilih: null, lembar: null, ketik: '', kabar: 'Tebakan dipakai: ' + t.label + ' — periksa lalu SIMPAN RINCIAN', kabarAwas: false };
+  return { keranjang: st.keranjang, urutBaris: st.urutBaris, pilih: null, lembar: null, ketik: '', kcPilih: null, kabar: 'Tebakan dipakai: ' + t.label + ' — periksa lalu SIMPAN RINCIAN', kabarAwas: false };
 }
 
 /** Uang vs barang di keranjang saat merinci. Potongan nota TIDAK dipakai (harga barangnya yang dinego). */
