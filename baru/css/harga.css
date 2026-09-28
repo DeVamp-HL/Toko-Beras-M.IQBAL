@@ -111,3 +111,15 @@ main.layar-harga.masuk > header, main.layar-harga.masuk > .jalur { animation: rk
 .layar-harga .bl-centang { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #6b6555; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #2b2618; transition: background-color 200ms ease; } .layar-harga .bl-centang.ya { background: #2b2618; color: #f6efd9; border-color: #2b2618; }
 .layar-harga .bl-kaki { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 56px; margin-bottom: 28px; }
 @media (prefers-reduced-motion: reduce) { .layar-harga section, .layar-harga .hg-bilah, .layar-harga .kartu { animation: none; } .layar-harga .kr-isi > div, .layar-harga .bl-bak > div, .layar-harga .bl-rel i, .layar-harga .bl-rel u, .layar-harga .hg-rel2 i, .layar-harga .hg-dampak .bt i { transition: none; } }
+
+/* ---------- RAPI-RAPI 29 Sep (kelompok 3) ----------
+   Di Mac semua layar kerja selebar 1720 px (Jual, Ringkasan, Stok, Pelanggan, Harga, Uang, Laporan): judul & pil di tempat yang sama tiap pindah layar,
+   dan tidak ada pinggir kosong ±300 px di layar lebar. Kolom kiri & kanan tiga-kolom melebar mengikuti layar (clamp vw); batas bawahnya 14 px di bawah lebar lama supaya pinggir 28 px dibayar kolom samping,
+   kolom tengah di 1100–1312 selebar dulu; di ±1860 samping +40–50 px, tengah ±810–870 px. */
+@media (min-width: 1100px) {
+  main.layar-harga { max-width: 1720px; padding: 22px 28px 40px; }   /* pinggir sama dengan Jual/Ringkasan/Stok/Pelanggan (dulu 14 px di Mac) */
+  /* lembar & formulir di luar grid (anak langsung section) selebar formulir Stok: 1180, rata kiri di bawah judul — tidak melar ke 1664 */
+  .layar-harga section > .kartu { width: 100%; max-width: 1180px; box-sizing: border-box; }
+  .layar-harga .bl-truk { width: 100%; max-width: 360px; margin-inline: auto; }   /* gambar truk preserveAspectRatio none: di kolom 510 px roda jadi lonjong 1,42× */
+  .layar-harga .hg-grid.mac { grid-template-columns: minmax(320px, clamp(376px, 23vw, 440px)) minmax(0, 1fr) minmax(280px, clamp(316px, 20vw, 380px)); }
+}

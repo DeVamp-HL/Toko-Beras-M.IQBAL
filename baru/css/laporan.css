@@ -94,3 +94,14 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
 /* putaran 29: kartu Laba kotor → ke mana — pita pemilahan (toko · upah · karyawan lain · laba bersih) */
 .layar-laporan .lp-pilah { display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--seg); border: 1px solid var(--kaca-tepi); margin: 6px 0 4px; } .layar-laporan .lp-pilah i { display: block; height: 100%; transition: width 640ms cubic-bezier(.2,.8,.2,1); } .layar-laporan .lp-pilah i.toko { background: var(--platina2); } .layar-laporan .lp-pilah i.upah { background: var(--emas-garis); } .layar-laporan .lp-pilah i.nonUpah { background: var(--aktif); opacity: 0.7; } .layar-laporan .lp-pilah i.sisa { background: linear-gradient(90deg, var(--emas-garis), var(--aktif)); }
 .layar-laporan .lp-terjun.sisa b { color: var(--aktif); } .layar-laporan .awas-teks { color: var(--awas); }
+
+/* ---------- RAPI-RAPI 29 Sep (kelompok 3) ----------
+   Di Mac semua layar kerja selebar 1720 px (Jual, Ringkasan, Stok, Pelanggan, Harga, Uang, Laporan): judul & pil di tempat yang sama tiap pindah layar,
+   dan tidak ada pinggir kosong ±300 px di layar lebar. Kolom kiri & kanan tiga-kolom melebar mengikuti layar (clamp vw); batas bawahnya 14 px di bawah lebar lama supaya pinggir 28 px dibayar kolom samping,
+   kolom tengah di 1100–1312 selebar dulu; di ±1860 samping +40–50 px, tengah ±810–870 px. */
+@media (min-width: 1100px) {
+  main.layar-laporan { max-width: 1720px; padding: 22px 28px 40px; }   /* pinggir sama dengan Jual/Ringkasan/Stok/Pelanggan (dulu 14 px di Mac) */
+  /* lembar & formulir di luar grid (anak langsung section) selebar formulir Stok: 1180, rata kiri di bawah judul — tidak melar ke 1664 */
+  .layar-laporan section > .lp-lembar { width: 100%; max-width: 1180px; box-sizing: border-box; }
+  .layar-laporan .lp-grid.mac { grid-template-columns: minmax(280px, clamp(326px, 21vw, 400px)) minmax(0, 1fr) minmax(220px, clamp(286px, 20vw, 380px)); }
+}
