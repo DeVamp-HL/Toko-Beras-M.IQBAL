@@ -446,19 +446,21 @@ export function wbSusunIsiUlangTiga(W, M, takaran, w, s, opsi) {
   const merk = String(M || '').trim(); if (!merk) return { tolak: 'Pilih dulu beras apa yang dituang' };
   const bw = petaBukuWadah(); if (bw[merk] && bw[merk].jenis === 'wadah') return { tolak: merk + ' adalah buku wadah — pilih merek karungnya' };
   const t = takaran || {}; const berat = beratKarungBuka(merk);
-  const kg = t.jenis === 'karung' ? berat : t.jenis === 'setengah' ? wbB2(berat / 2) : wbB2(wbAngkaKg(t.kg));
+  let kg = t.jenis === 'karung' ? berat : t.jenis === 'setengah' ? wbB2(berat / 2) : wbB2(wbAngkaKg(t.kg));
   if (!(kg > 0)) return { tolak: t.jenis === 'kg' ? 'Ketik berapa kg yang dituang (tuts angka)' : 'Pilih takarannya: 1 karung, ½ karung, atau kg' };
-  const tw = tinggiWadah(W, s || null); const isiBaru = wbB2(tw.sisaNyataKg + kg);
+  const tw = tinggiWadah(W, s || null); let isiBaru = wbB2(tw.sisaNyataKg + kg);
   if (isiBaru > A.puncakKg + 0.0001) return { tolak: 'Kalau dituang ' + wbKG(kg) + ', wadah ' + W + ' jadi ±' + wbKG(isiBaru) + ' — melebihi ' + wbKG(A.puncakKg) + ' yang muat. Paling banyak ±' + wbKG(Math.max(0, A.puncakKg - tw.sisaNyataKg)) + ' (pilih takaran kg) — layar tidak memotong diam-diam' };
   const stok0 = hitungStokKarungPerMerk(); const bukuM0 = stok0[merk] ? wbB2(stok0[merk].sisaKg || 0) : null;
   const KB = wbKarungBelakang(W, merk); const dokumen = []; let dibuka = 0, kurang = 0, tandai = false;
+  // 39c (owner 30 Sep): karung di belakang dihabiskan dulu sampai bersih 0 — bukunya masih bersisa tapi kurang dari yang diminta → tuang SEADANYA sebesar sisanya, tanpa membuka karung baru
+  const seadanya = KB.bukuKg > 0.004 && KB.bukuKg + 0.004 < kg; const kgMinta = kg; if (seadanya) { kg = wbB2(KB.bukuKg); isiBaru = wbB2(tw.sisaNyataKg + kg); }
   const butuhBuka = wbB2(kg - Math.max(0, KB.bukuKg));
   if (butuhBuka > 0.004) { const n = Math.ceil((butuhBuka - 0.0001) / berat); const b = wbDokBukaKB(W, merk, n, w, opsi, dokumen); if (b.tolak) return b; b.dokumen.forEach((d) => dokumen.push(d)); dibuka = n; kurang = b.kurang; tandai = b.tandai; }
-  const tg = wbDokTuangKB(W, merk, kg, w, t.jenis || 'kg', dokumen); tg.dokumen.forEach((d) => dokumen.push(d));
+  const tg = wbDokTuangKB(W, merk, kg, w, t.jenis || 'kg', dokumen); if (seadanya) tg.dokumen[0].data.seadanya = true, tg.dokumen[0].data.kgMinta = kgMinta; tg.dokumen.forEach((d) => dokumen.push(d));
   const sisaKB = wbB2(Math.max(0, KB.bukuKg) + dibuka * berat - kg); const bukuM1 = bukuM0 === null ? null : wbB2(bukuM0 - dibuka * berat);
-  const takaranTeks = t.jenis === 'karung' ? '1 karung' : t.jenis === 'setengah' ? '½ karung' : wbKG(kg);
-  return { dokumen, hitung: { wadah: tw, kg, isiBaru, takar: Math.round(kg / A.takarKg), banding: '', merk, dibuka, sisaKB, takaran: t.jenis || 'kg' }, pindahBuku: tg.pindah, tandai, kurang,
-    patch: { kabar: 'Wadah ' + W + ' diisi ' + takaranTeks + ' ' + merk + (t.jenis === 'kg' ? '' : ' (' + wbKG(kg) + ')') + ' → isinya ±' + wbKG(isiBaru) + ' (buku wadah)'
+  const takaranTeks = t.jenis === 'karung' ? '1 karung' : t.jenis === 'setengah' ? '½ karung' : wbKG(kgMinta);   // yang DIMINTA (seadanya: kg sudah dikurangi)
+  return { dokumen, hitung: { wadah: tw, kg, kgMinta, seadanya, isiBaru, takar: Math.round(kg / A.takarKg), banding: '', merk, dibuka, sisaKB, takaran: t.jenis || 'kg' }, pindahBuku: tg.pindah, tandai, kurang,
+    patch: { kabar: 'Wadah ' + W + (seadanya ? ' diisi SEADANYA ' + wbKG(kg) + ' ' + merk + ' (minta ' + takaranTeks + (t.jenis === 'kg' ? '' : ' = ' + wbKG(kgMinta)) + '; karung di belakang bersih 0 — ketuk lagi untuk karung baru dari tumpukan)' : ' diisi ' + takaranTeks + ' ' + merk + (t.jenis === 'kg' ? '' : ' (' + wbKG(kg) + ')')) + ' → isinya ±' + wbKG(isiBaru) + ' (buku wadah)'
       + (dibuka ? ' · ' + dibuka + ' karung ' + merk + ' dibuka dari tumpukan gudang: buku ' + merk + ' ' + wbKG(bukuM0 || 0) + ' → ' + wbKG(bukuM1 || 0) : ' · dari karung yang sudah terbuka di belakangnya')
       + ' · sisa di karung belakang ±' + wbKG(sisaKB)
       + (tandai ? ' · buku ' + merk + ' KURANG ' + wbKG(kurang) + ' — DITANDAI untuk dicocokkan (buku dibiarkan minus sampai dihitung)' : ''), kabarAwas: tandai } };

@@ -762,8 +762,14 @@ peringatan kalau karung di belakangnya habis ("ambil dari tumpukan gudang?").
 - **Peringatan buka dari tumpukan** (`wadah-panel.js`, Jual & Stok): tiga ketukan / − + takar yang perlu membuka karung baru dari tumpukan (karung di belakang habis,
   kosong, kurang, atau merek lain) tidak menulis di ketukan pertama — pita menyebut berapa karung dibuka, tumpukan sebelum → sesudah, dan "beras di belakang
   berganti: <lama> → <baru>"; tombol jadi "YAKIN — buka n karung dari tumpukan & ISI ULANG" (draf berubah → yakin dicabut).
-- Uji: `uji_wadah_satu_buku.py` bagian 15 (9 pemeriksaan) + 4 kontrol + 3 pemeriksaan statis layar/CSS; `uji_stok_baru`, `uji_jual_baru`, `uji_wadah_stok_sendiri` tidak
-  berubah (deretanKarung lama tetap dipakai panel − / + di Jual).
+- **Karung di belakang dihabiskan dulu** (owner 30 Sep, screenshot panel − / +): sisa karung yang tidak cukup untuk yang diminta (1 kg lawan 1 takar 1,8 kg; buku karung
+  belakang 25 kg lawan 36 kg) dituang SEADANYA sebesar sisanya — dokumen takar `kg` = sisanya, bertanda `seadanya` + `kgMinta`; kekurangannya TIDAK ditambal dari karung baru.
+  Karung baru dari tumpukan baru ditanya (ketukan kedua) sesudah karungnya bersih 0. Berlaku di `hitungTakar` / `susunTakarWadah` (− / +, termasuk karung lama bernama
+  merek yang masih bersisa) dan `wbSusunIsiUlangTiga` (tiga ketukan: pilihan merek & takaran dipertahankan sesudah tuang seadanya supaya ketukan berikutnya langsung
+  bertanya karung baru; takaran kg dikurangi yang sudah dituang).
+- Uji: `uji_wadah_satu_buku.py` bagian 15–16 (12 pemeriksaan) + 6 kontrol + 3 pemeriksaan statis layar/CSS; skenario lama `uji_jual_baru` (P, O, R) & `uji_wadah_satu_buku` (§9)
+  yang dulu mengunci "karung baru dibuka otomatis untuk menambal" ditulis ulang mengikuti aturan habiskan-dulu; `uji_stok_baru`, `uji_wadah_stok_sendiri` tidak berubah
+  (deretanKarung lama tetap dipakai panel − / + di Jual).
 
 ## Struktur
 ```
