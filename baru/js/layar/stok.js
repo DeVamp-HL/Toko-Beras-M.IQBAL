@@ -555,7 +555,7 @@ export function pasangLayarStok(akar, opsi) {
           <div class="tombol-baris rapat"><input class="ketik-nama sempit" id="bgKetik" type="text" inputmode="decimal" placeholder="hasil timbang kg" value="${s.bgKetik}" data-ketik="bgKetik">
             <input class="ketik-nama sempit" id="bgAlasan" type="text" placeholder="alasan kalau selisih besar" value="${s.bgAlasan}" data-ketik="bgAlasan">
             <div class="kaca-btn ${s.bgYakin ? 'awas' : 'putus'} ${String(s.bgKetik || '').trim() ? '' : 'mati'}" data-aksi="bongkar" data-merk="${aktif.nama}">${s.bgYakin ? 'YAKIN — bongkar ' + aktif.nama : 'bongkar (kosongkan penuh)'}</div></div></div>`; })() : ''}
-        ${panelIsiUlang(aktif.nama, s, keranjangJual())}
+        ${panelIsiUlang(aktif.nama, s, keranjangJual(), { akun: opsi.akun ? opsi.akun() : null })}
       </div>` : h`<div class="ket" style="text-align: center;">Ketuk satu wadah untuk mengisi ulang atau menandai karungnya.</div>`}
       <div class="kartu" data-k="karung-lain" style="gap: 6px;"><div class="label">Karung terbuka lain · bahan campuran, tidak di belakang wadah</div>
         ${w.lain.length ? w.lain.map((x) => h`<div class="jawab" data-k="kl-${x.nama}|${x.lokasi}"><span class="kiri"><span class="nm">${x.nama}${x.lokasi ? ' · dulu di belakang wadah ' + x.lokasi : ''}</span><span class="w">${x.karungWadah ? 'karung sisihan / bongkaran wadah ' + x.karungWadah + ' — dituang balik lewat rincian wadahnya, atau ditakar ke wadah lain dari deretan' : tumpukanTeks(x.tumpukan)}</span></span>

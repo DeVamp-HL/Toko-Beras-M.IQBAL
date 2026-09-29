@@ -1125,8 +1125,9 @@ export function susunSamakanKarung(merk, isiKg, w, wadah) {
   const kg = Math.round(wdAngka(isiKg) * 10) / 10;
   if (!merk) return { tolak: 'Pilih dulu karung apa yang terbuka' };
   if (String(isiKg === undefined || isiKg === null ? '' : isiKg).trim() === '') return { tolak: 'Ketik dulu sisa karungnya (kg) — kotak isiannya masih kosong' };
-  const penuh = beratKarungBuka(merk);
-  if (!(kg >= 0) || kg > penuh) return { tolak: 'Sisa karung harus di antara 0 dan ' + penuh + ' kg' };
+  // putaran 39: buku karung belakang boleh memuat lebih dari satu karung (dua karung dibuka menumpuk) — batasnya = yang lebih besar antara satu karung dan bukunya
+  const bwS = petaBukuWadah()[merk]; const penuh = bwS && bwS.jenis === 'belakang' ? Math.max(beratKarungBuka(merk), wdB2((hitungStokKarungPerMerk()[merk] || {}).sisaKg || 0)) : beratKarungBuka(merk);
+  if (!(kg >= 0) || kg > penuh) return { tolak: 'Sisa karung harus di antara 0 dan ' + String(penuh).replace('.', ',') + ' kg' };
   const di = wadah && aturWadah().daftar.indexOf(wadah) >= 0 ? wadah : '';
   return { dokumen: [{ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk, isiKg: kg }, di ? { wadah: di } : (wadah === '' ? { lepas: true } : {})) }],
     patch: { kabar: 'Karung terbuka ' + merk + (di ? ' di belakang wadah ' + di : '') + ' disamakan: sisanya ±' + wdKG(kg), kabarAwas: false } };
