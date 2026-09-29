@@ -727,6 +727,20 @@ jalan mundur `firestore.rules.v4`.
 - Uji: `uji_wadah_satu_buku.py` (+ kontrol, CI); jangkar `uji_jual_baru`, `uji_stok_baru`, `uji_buku_ukuran`, `uji_wadah_stok_sendiri`,
   `uji_menu_baru` (14 tindakan), `uji_akses_baru` mengikuti teks baru.
 
+## Putaran 39b — audit hulu → hilir, temuan pertama (30 Sep 2026, cabang `audit/39b-katalog-kasir`)
+
+Dua "temuan lama" yang dicatat saat gerbang 39, ditelusuri dulu sebelum diubah (FAKTA dari cadangan 29 Sep & peramban, bukan dugaan):
+- **BUG alat uji** — `uji_katalog_kasir.py` di cadangan toko: pemeriksaan "isi /baru/ = isi index.html" GAGAL sejak putaran 27/28 dan lolos di CI hanya karena
+  runner tidak punya cadangan. Bedanya memang keputusan desain: 4 nama beras yang diarsipkan (27) hilang dari katalog HP kasir, dan 3 merek yang punya buku
+  `<Merek> 25 kg` (28) bertukar kolom `karung25` / `karung50` / harga 25 kg antara induk & buku ukurannya. Kini dua pemeriksaan: (1) `susunIsiKatalogKasir()`
+  /baru/ SEBELUM saringan = index.html persis; (2) `kkIsi()` = index.html MINUS nama arsip (jumlahnya = daftar arsip beras) MINUS kolom 25 kg merek yang
+  punya buku ukuran (kolom yang boleh beda disebut per buku / induk) — kemasan, bahan literan, piutang sama, beda lain nol. Hasil: 41 lulus, 15 kontrol tanpa
+  peramban berbunyi (3 kontrol peramban tetap di runner).
+- **BUKAN BUG** — "halaman `?cadangan=` masih membuka pendengar Firestore": di tab peramban yang bersih, `/baru/?cadangan=…` hanya mencetak `cadangan dimuat`
+  dan **nol** permintaan ke `googleapis` / `gstatic`; `app.js` memang tidak memanggil `fb.mulai` di mode itu. Galat "Missing or insufficient permissions" yang
+  dulu terlihat berasal dari `index.html` sistem lama yang dimuat lebih dulu di tab yang sama (server pratinjau membuka akar repo), bukan dari /baru/.
+  Pelajaran alat: bukti peramban diambil di tab baru, bukan tab yang riwayat konsolnya sudah terisi halaman lain.
+
 ## Struktur
 ```
 baru/
