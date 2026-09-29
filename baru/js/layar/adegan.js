@@ -43,6 +43,9 @@ function sejajarkan(p) {
   p.style.setProperty('--p-kiri', Math.round(kiri) + 'px'); p.style.setProperty('--p-lebar', Math.round(lebar) + 'px');
   p.style.setProperty('--p-atas', Math.round(Math.max(16, Math.min(atas, innerHeight - tinggi - 8))) + 'px'); p.classList.add('sejajar');
 }
+// lembar dibuka / ditutup selagi adegan masih berjalan (tinjauan gabungan 29 Sep): panggung yang tadi di kolom keranjang menutupi lembar baru di tablet &
+// 1100–1279 → jual.js memanggil ini tiap lembar berganti; sejajarkan() memindahnya ke kolom rak (atau kembali) menurut lembar yang terbuka sekarang
+export function sejajarkanLagi() { const p = document.getElementById('panggung'); if (p && p.classList.contains('main')) sejajarkan(p); }
 function mainkan(svg, keterangan, lamaMs) {
   if (adeganDiam()) return false;
   const p = panggung(); clearTimeout(jamTutup);
