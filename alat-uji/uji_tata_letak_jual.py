@@ -137,6 +137,12 @@ def periksa(t):
     c.append(('keranjang: Mac — setinggi layar paling banyak', any(re.search(r'max-height:\s*calc\(100d?vh', x) for x in km), km))
     dg = [isi for m, s, isi in K if m.strip() == '@media (min-width: 720px)' and s.strip() == '.jual-keranjang .isi-keranjang > .keranjang']
     c.append(('keranjang: daftar barang yang bergulir di dalam, total & BAYAR tetap terlihat', any('overflow-y: auto' in x and 'flex: 1 1 auto' in x for x in dg), dg))
+    J2 = t['baru/js/layar/jual.js']
+    c.append(('keranjang: baris baru digulirkan ke pandangan di daftar yang bergulir sendiri', 'daftarBrg.scrollTop = daftarBrg.scrollHeight' in J2 and 's.keranjang.length > _nBarisKeranjang' in J2, ''))
+    c.append(('keranjang: daftar punya identitas per struk (pindah struk = mulai dari atas)', 'class="keranjang" data-k="keranjang-${s.aktifId}"' in J2, ''))
+    c.append(('keranjang: daftar paling pendek satu baris utuh (bukan lubang kunci)', any(re.search(r'min-height:\s*1[01]\dpx', x) for x in dg), dg))
+    pendek = [isi for m, s, isi in K if 'max-height: 560px' in m and '.jual-keranjang .isi-keranjang > .keranjang' in s]
+    c.append(('keranjang: layar pendek — daftar tanpa penggulir sendiri (satu penggulir)', any('overflow: visible' in x for x in pendek), pendek))
     c.append(('panggung: disejajarkan ulang tiap lembar berganti selagi adegan berjalan', 'export function sejajarkanLagi()' in ad and 'if (muncul) sejajarkanLagi();' in t['baru/js/layar/jual.js'], ''))
     tg = [isi for m, s, isi in A['jual'] if s.strip() == '.tetes-gerak']
     zt = [int(z) for x in tg for z in re.findall(r'z-index:\s*(\d+)', x)]
@@ -172,7 +178,11 @@ KONTROL = [
     ('panggung tidak disejajarkan', {'baru/js/layar/adegan.js': [('  sejajarkan(p); requestAnimationFrame(() => sejajarkan(p));', '')]}),
     ('keranjang tablet tanpa batas tinggi lagi', {'baru/css/kerangka.css': [('max-height: calc(100vh - 112px); max-height: calc(100dvh - 112px);', 'max-height: none;')]}),
     ('keranjang Mac tanpa batas tinggi', {'baru/css/kerangka.css': [('  .jual-keranjang { position: sticky; top: 22px; max-height: calc(100vh - 44px); max-height: calc(100dvh - 44px); }', '  .jual-keranjang { position: sticky; top: 22px; }')]}),
-    ('daftar barang tidak bergulir sendiri', {'baru/css/kerangka.css': [('  .jual-keranjang .isi-keranjang > .keranjang { flex: 1 1 auto; min-height: 56px; overflow-y: auto; overscroll-behavior: contain; }', '')]}),
+    ('daftar barang tidak bergulir sendiri', {'baru/css/kerangka.css': [('  .jual-keranjang .isi-keranjang > .keranjang { flex: 1 1 auto; min-height: 112px; overflow-y: auto; overscroll-behavior: contain; }', '')]}),
+    ('baris baru tersembunyi di bawah daftar', {'baru/js/layar/jual.js': [('daftarBrg.scrollTop = daftarBrg.scrollHeight;', 'void 0;')]}),
+    ('gulir daftar terbawa ke struk lain', {'baru/js/layar/jual.js': [('<div class="keranjang" data-k="keranjang-${s.aktifId}">', '<div class="keranjang">')]}),
+    ('daftar lubang kunci 56 px', {'baru/css/kerangka.css': [('min-height: 112px; overflow-y: auto; overscroll-behavior: contain; }', 'min-height: 56px; overflow-y: auto; overscroll-behavior: contain; }')]}),
+    ('gulir bersarang di layar pendek', {'baru/css/kerangka.css': [('@media (min-width: 720px) and (max-height: 560px) {', '@media (min-width: 720px) and (max-height: 1px) {')]}),
     ('panggung tidak disejajarkan ulang saat lembar berganti', {'baru/js/layar/jual.js': [('    if (muncul) sejajarkanLagi();', '')]}),
     ('tetes emas di bawah panggung lagi', {'baru/css/jual.css': [('.tetes-gerak { position: fixed; z-index: 71;', '.tetes-gerak { position: fixed; z-index: 60;')]}),
     ('pita status selalu tampil', {'baru/js/app.js': [("  return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : '';", '  return statusTeks();')]}),

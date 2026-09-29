@@ -630,7 +630,11 @@ Sesudah #58–#60 masuk, gabungannya ditinjau sekali lagi (8 agen, 4 lolos banta
 - **Lembar dibuka selagi adegan berjalan** tertutup panggung di tablet & 1100–1279 → `jual.js` memanggil `sejajarkanLagi()` (adegan.js) tiap lembar berganti:
   panggung pindah ke kolom rak (terukur 820 px: keranjang x 478 → rak x 28, tidak lagi menumpuk lembar).
 - **Tetes emas barang masuk** terbang di bawah kartu panggung (z 60 < 70) → z 71 (di bawah pil & koin omzet 74/75).
-- Uji: `uji_tata_letak_jual.py` +5 pemeriksaan & 5 kontrol.
+- Tinjauan tambalan ini (9 agen, 3 lolos): baris baru jatuh di bawah jendela daftar yang kini bergulir sendiri → sesudah digambar, daftar digulir ke baris baru
+  (terukur iPad 1024×768: baris ke-4…7 melewati jendela 307 px, baris terbaru tetap terlihat); daftar paling pendek satu baris utuh (112 px, bukan 56) dan di
+  layar pendek (tinggi ≤560, HP miring) daftar TANPA penggulir sendiri — satu penggulir, seluruh keranjang; daftar ber-data-k per struk → pindah / parkir
+  struk mulai dari atas (dulu posisi gulir terbawa).
+- Uji: `uji_tata_letak_jual.py` +9 pemeriksaan & 9 kontrol (30 lulus · kontrol 23/23).
 
 ## Struktur
 ```

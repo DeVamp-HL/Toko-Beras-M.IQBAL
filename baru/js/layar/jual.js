@@ -319,6 +319,7 @@ export function pasangLayarJual(akar, opsi) {
   // HP (kartu Hari ini di luar layar): koin terbang ke pil omzet di atas layar, angka di pil itu yang bergulir.
   // Nota dibatalkan di tengah cerita → omzet tidak bertambah → tidak ada perayaan (angka dilepas apa adanya).
   let _tahanHari = null, _tokenPenutup = 0, _barisBaru = new Set(), _jamBarisBaru = null;
+  let _aktifKeranjang = null, _nBarisKeranjang = 0;   // gulir daftar keranjang ke baris baru (putaran 37)
   function jalurLengkung(asal, tujuan, n) {
     const kx = (asal.x + tujuan.x) / 2, ky = Math.min(asal.y, tujuan.y) - Math.max(80, Math.abs(tujuan.x - asal.x) * 0.28);
     const out = []; for (let i = 0; i <= n; i++) { const t = i / n, u = 1 - t; out.push({ x: u * u * asal.x + 2 * u * t * kx + t * t * tujuan.x, y: u * u * asal.y + 2 * u * t * ky + t * t * tujuan.y }); }
@@ -524,7 +525,7 @@ export function pasangLayarJual(akar, opsi) {
           <span class="serif" style="font-size: 20px;" data-gulir="${Math.max(0, t.total)}">${RP(Math.max(0, t.total))}</span>
         </div>
         <div class="isi-keranjang">
-          <div class="keranjang">
+          <div class="keranjang" data-k="keranjang-${s.aktifId}">
             ${s.keranjang.length ? s.keranjang.map((b) => h`<div class="b ${b.trx.penggantiRetur ? 'pengganti' : ''}" data-k="baris-${b.id}">
               <div class="t"><div style="font-weight: 600;">${b.trx.label}</div><div class="ket">${DESIMAL(b.trx.jumlah)} ${b.trx.satuan} × ${RP(b.trx.hargaSatuan)}${b.trx.nego ? ' · nego' : ''}${b.trx.kemasanLiteran ? ' · ' + (b.trx.jumlahKemasanLiteranDipakai || 1) + ' kantong' : ''}${b.trx.bonusUnit ? ' · +1 bonus (stok ' + b.trx.jumlahUnit + ')' : ''}${b.trx.penggantiRetur ? ' · PENGGANTI RETUR, nilai ' + RP(b.trx.nilaiBarangPengganti) : ''}${b.trx.kemasanRepack ? ' · ' + b.trx.jumlahKemasanRepackDipakai + ' lembar ' + ((WJ.jenisWadah(b.trx.kemasanRepack) || {}).label || b.trx.kemasanRepack) + ' ditanggung toko' + (b.trx.biayaKemasanRepack ? ' (HPP +' + RP(b.trx.biayaKemasanRepack) + ')' : ' (modal belum ada)') : ''}${b.trx.upahRepack ? ' · upah repack ' + RP(b.trx.upahRepack) : ''}${b.trx.jenis === 'wadah' && b.trx.hppTotalSaatJual === undefined ? ' · tanpa modal: belum masuk hitungan laba' : ''}</div></div>
               <span class="step"><span data-aksi="kurangBaris" data-id="${b.id}" data-langkah="${b.trx.satuan === 'karung' ? 0.5 : 1}">−</span><span class="n">${DESIMAL(b.trx.jumlah)}</span><span data-aksi="tambahBaris" data-id="${b.id}" data-langkah="${b.trx.satuan === 'karung' ? 0.5 : 1}">+</span></span>
@@ -571,6 +572,11 @@ export function pasangLayarJual(akar, opsi) {
       ${gambarLembar(s, rak, t, info, muncul)}
     `);
     if (muncul) sejajarkanLagi();   // lembar berganti selagi adegan berjalan → panggung pindah kolom, tidak menutupi lembar
+    // tablet & Mac (putaran 37): daftar barang kini bergulir sendiri → baris yang baru masuk (tambah / ulangi / repack) digulirkan ke pandangan, supaya kasir
+    // langsung bisa ubah jumlah / nego. Pindah struk = elemen daftar baru (data-k per struk, mulai dari atas). HP: daftar bukan penggulir, tidak berpengaruh.
+    const daftarBrg = akar.querySelector('.jual-keranjang .isi-keranjang > .keranjang');
+    if (daftarBrg && s.aktifId === _aktifKeranjang && s.keranjang.length > _nBarisKeranjang) daftarBrg.scrollTop = daftarBrg.scrollHeight;
+    _aktifKeranjang = s.aktifId; _nBarisKeranjang = s.keranjang.length;
   }
 
   function gambarRetur(s) {

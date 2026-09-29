@@ -79,10 +79,15 @@ main.layar-jual > input[type="hidden"] { display: none; }
   .jual-keranjang .ringkas-keranjang { cursor: default; }
   .jual-keranjang .isi-keranjang { display: flex; flex: 1 1 auto; min-height: 0; }
   .jual-keranjang .isi-keranjang > * { flex: none; }
-  .jual-keranjang .isi-keranjang > .keranjang { flex: 1 1 auto; min-height: 56px; overflow-y: auto; overscroll-behavior: contain; }
+  .jual-keranjang .isi-keranjang > .keranjang { flex: 1 1 auto; min-height: 112px; overflow-y: auto; overscroll-behavior: contain; }   /* paling pendek satu baris utuh (±105 px) */
   .lembar:not(.tirai) { position: fixed; left: auto; right: 14px; top: 14px; bottom: 100px; width: min(460px, 46vw); max-height: none; }
   /* tinggi mengikuti isinya (dulu selalu setinggi layar — lembar jumlah berisi separuh, sisanya kaca kosong); isi panjang tetap bergulir */
   main.layar-jual .lembar:not(.tirai) { width: var(--lebar-keranjang); bottom: auto; max-height: calc(100% - 114px); }   /* % = tinggi viewport sungguhan (bilah alamat HP yang menyusut) */
+}
+/* layar pendek (HP miring, jendela rendah): bagian tetap keranjang saja sudah ±345 px → daftar tanpa penggulir sendiri, SATU penggulir (seluruh keranjang),
+   bukan lubang kunci bergulir di dalam penggulir */
+@media (min-width: 720px) and (max-height: 560px) {
+  .jual-keranjang .isi-keranjang, .jual-keranjang .isi-keranjang > .keranjang { flex: none; min-height: auto; overflow: visible; }
 }
 @media (min-width: 1100px) {
   /* Menu samping SEMPIT (72px, ikon + monogram IQ) — membuka jadi 236px saat kursor menepi ke kiri / masuk ke menu, atau monogramnya diketuk
