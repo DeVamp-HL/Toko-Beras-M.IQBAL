@@ -119,7 +119,8 @@ aturan di `CLAUDE.md`.
 keluar` (run 395–413, ±1 dari 10 pemuatan). Sebelum putaran 33: nol. Halaman mengabarkan `/_siap`, gambar penahan dijawab, favicon diminta,
 tapi `--dump-dom` tidak mencetak `</html>` dalam 90 dtk.
 
-**Cara.** Cabang diagnosis `diagnosis/dom-tidak-keluar` (tidak di-merge; alat `alat-uji/diagnosis_dom_keluar.py`, workflow sendiri)
+**Cara.** Cabang diagnosis `diagnosis/dom-tidak-keluar` (tidak di-merge, sudah dihapus; alat `alat-uji/diagnosis_dom_keluar.py`, workflow
+sendiri, dan hasil mentah `diagnosis-hasil/` ada di commit `c96b347`)
 mengulang skenario ASLI `uji_layar_kunci` di runner, satu Chrome sekali jalan per runner, beberapa lengan paralel. Tiap pemuatan: waktu CPU &
 prioritas tiap proses Chrome, peristiwa halaman (`load`, `pagehide`, `visibilitychange`, `freeze`) + denyut sesudah `load`. Saat macet:
 `sample` tiap proses, dan lewat port DevTools keadaan halaman sasaran DAN halaman perintah `--dump-dom` (perintah terakhir, peristiwa yang
@@ -156,7 +157,7 @@ masih ditunggu).
 - Bendera `O_NONBLOCK` pada pipa tidak pernah terpasang. Kenapa Chrome kadang berhenti menulis sesudah pipa penuh sekali (dan tidak pernah di
   Mac pengembang) ada di dalam Chrome — tidak diketahui, dan tidak perlu diketahui untuk memperbaikinya.
 
-**Verifikasi alat yang asli** (workflow "Verifikasi uji layar kunci" di cabang diagnosis): `uji_layar_kunci.py` + `--kontrol`, persis langkah
+**Verifikasi alat yang asli** (workflow "Verifikasi uji layar kunci" di cabang diagnosis, commit `c96b347`): `uji_layar_kunci.py` + `--kontrol`, persis langkah
 CI, diulang ±35 menit per versi di runner sendiri.
 
 | versi | putaran (utama + kontrol) | DICOBA ULANG tidak disengaja |
