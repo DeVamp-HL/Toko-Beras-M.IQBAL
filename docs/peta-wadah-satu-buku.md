@@ -125,8 +125,9 @@ Asap cadangan seperti §4 no. 7. Uji baru `uji_wadah_satu_buku.py` untuk yang ti
 ## 8. Keputusan owner (29 Sep) & yang dibangun — cabang `wadah/39-satu-buku`
 
 Enam pertanyaan §5 dijawab owner 29 Sep 2026. Inti logika ada di dua commit cabang ini: `de65807` (peta §1–§7) dan `c079fa8` (rules v5 + akses +
-`toko.js` + `wadah-bernama-logika.js` + `jual-logika.js`). Layar (Jual, Stok › Wadah literan, Uang › Tutup hari) dan uji `uji_wadah_satu_buku.py` disusun
-di cabang-cabang turunan putaran 39. Angka di §8 **kg**; tanpa rupiah; tanpa nama orang.
+`toko.js` + `wadah-bernama-logika.js` + `jual-logika.js`). Layar sudah digabung ke cabang ini: `5971250` (Stok › Wadah literan), `b5d4dc0` (Jual + panel wadah),
+`e215c1c` (Uang › Tutup hari K5), `041b9c2` (tambalan silang layar) — rinciannya di §8.2 baris "Layar". Uji `uji_wadah_satu_buku.py` disusun di cabang uji
+putaran 39 (step CI-nya sudah ada di `pages.yml`; sampai berkasnya digabung, step itu merah). Angka di §8 **kg**; tanpa rupiah; tanpa nama orang.
 
 ### 8.1 Enam jawaban owner → nomor pertanyaan §5
 
@@ -157,7 +158,11 @@ di cabang-cabang turunan putaran 39. Angka di §8 **kg**; tanpa rupiah; tanpa na
 | Tebakan kelas mutu | `kelas-merek-logika.js` | `kmTebak` (mengenal `merkAsal`) | `uji_kelas_merek.py` |
 | Tutup buku | `tutup-buku-logika.js` | `pembukaBuku` (baris membawa `karungBelakang` + `merkAsal`) | `uji_wadah_stok_sendiri.py` (kontrol "tutup buku kehilangan tanda stok wadah") |
 | Akses & rules v5 | `baru/js/data/akses.js`, `sistem-logika.js`, `firestore.rules`, `firestore.rules.v4` | `BUAT_STAF` (+ `wadahLiteran`, `batchMasuk`), `TIPE_WADAH_STAF`, `batchLahir`, `SERVER_BUKA.isiUlang`, `TINDAKAN_DARI`; `SS_TINDAKAN` ke-14; `stafBuatWadah`, `stafBuatLahir` | `periksa_rules.py`, `uji_akses_baru.py`, `uji_menu_baru.py`, `peta_akses.py --kiriman`; server: `docs/uji-rules-v5.md` |
-| Layar Jual · Stok · K5 | `jual.js`, `stok.js`, `uang.js` | pita dua tombol (Catat barang masuk dulu / TANDAI UNTUK DICOCOKKAN), daftar aktivasi, tiga ketukan, kartu cek per wadah | cabang layar putaran 39 (`uji_kinerja_gerak.py`, `uji_isian_lokal.py`) |
+| Layar Stok › Wadah literan | `stok.js`, `stok.css` | kartu "Aktivasi buku wadah — per wadah, owner memutuskan" (`wbDaftarAktivasi`: satu baris per wadah · status · isi tercatat · tabel sumber merek asal di wadah / di karung / buku / kurang · AKTIFKAN dua ketukan · TANDAI UNTUK DICOCOKKAN lewat pita `pita-tandai` (`tandaiMasuk` / `tandaiTulis` / `tandaiBatal`) · "Hitung fisik <merek> dulu" ke Cocokkan › Tumpukan gudang · "Catat barang masuk"; tombol lama "semua sekaligus" dicabut); kartu "Karung di belakang wadah … · buku sendiri per merek" (`wbKarungBelakangWadah`: buku · catatan · selisih → `samakanKarung` dengan merk = kunci buku); komposisi turunan, selisih, status cek hari ini; bukan-owner: tombol MATI dengan kalimat | `uji_stok_baru.py`, `uji_wadah_stok_sendiri.py`, `uji_isian_lokal.py`, `uji_kinerja_gerak.py`, `uji_onclick_aman.py`, `uji_akses_baru.py` |
+| Panel wadah (Jual & Stok) | `wadah-panel.js`, `jual.css` | tiga ketukan `wdMerkTiga` (rak: karung terbuka di belakang wadah dulu, lalu tumpukan gudang; karung wadah diarahkan ke Stok) → `wdTakaranTiga` / `wdTutsTiga` (1 karung · ½ karung · kg lewat tuts angka ke draf panel) → `wdIsiTiga` (`wbSusunIsiUlangTiga`, satu kiriman); kepala "Isi wadah = buku ±X kg" + komposisi turunan + selisih karung belakang; pita dua pintu `wdKeStok` / `wdTandaiBatal`; panel − / + tetap sebagai "Takaran lain" (`wdCatat` meneruskan opsi); wadah belum aktif = panel lama + "aktifkan di Stok › Wadah literan" | `uji_jual_baru.py`, `uji_isian_lokal.py`, `uji_kinerja_gerak.py` |
+| Layar Jual › Literan | `jual.js` | chip wadah: baris komposisi (merek asal · jam · siapa) + awas selisih dua angka; tombol "Cek wadah · N/M hari ini" → lembar `cekWadah` (per wadah aktif: buku · status cek · sesuai / lupa isi ulang / dikosongkan dua ketukan menyebut kg; "lupa" membuka chip wadah dengan panel isi ulang terbuka; wadah belum aktif redup); kepala lembar jumlah menyebut "(buku merek asal)" bila belum aktif | `uji_jual_baru.py` |
+| Uang › Tutup hari (K5) | `uang.js`, `uang.css`, `app.js` | kartu "Cek wadah" di antara Timbang cepat & Amankan laci — kartu, bukan langkah `LANGKAH_TUTUP` (rekap & indeks tidak bergeser; belum semua dicek tidak menahan tutup hari, hanya disebut N dari M); per wadah aktif tiga tombol → `wbSusunCek` lewat pintu tulis `uang.js`; "lupa" sukses → tombol ke Stok › Wadah literan (`bukaStok` dari `app.js`); Timbang cepat menyaring kunci `petaBukuWadah` | `uji_uang_baru.py` |
+| Tambalan silang layar (`041b9c2`) | `app.js`, `jual-logika.js`, `stok.js` | panel Stok meneruskan akun (`opsi.akun`) → tombol mati untuk peran tanpa hak; `susunSamakanKarung` untuk buku karung belakang: batas sisa = yang lebih besar antara berat satu karung merek asal dan bukunya (dua karung dibuka menumpuk); K5 → `bukaStok` | `uji_jual_baru.py`, `uji_stok_baru.py` |
 
 ### 8.3 Dokumen yang ditulis tiap jalur (bentuk persis)
 
@@ -178,6 +183,7 @@ Semua dokumen: `id: w.idUnik()`, `tanggal`, `jam` dari `L.waktuSekarang(...)`. `
    - `karung` berbuku (satu catatan per karung): `{ tipe: 'karung', merk: 'Karung belakang W · M', merkAsal: M, kg: <berat karung M>, wadah: W, bukuBelakang: true, produksiId }` (+ `otomatis: true` bila dibuka karena karung habis saat takar; + `asal: 'masuk', batchId` dari pintu "baru datang").
    - `takar` tiga ketukan: `{ tipe: 'takar', wadah: W, takar, kgPerTakar, kg, takaran: 'karung' | 'setengah' | 'kg', sumber: [{ merk: 'Karung belakang W · M', merkAsal: M, takar, kg, dari: W }], stokWadah: 'Wadah W', produksiId }`; panel − / +: `takaran: 'takar'`, `sumber[].merkAsal` hanya bila beda dari `merk`.
    - `karungIsi` aktivasi (dua per karung terbuka lama): `{ tipe: 'karungIsi', merk: M, isiKg: 0, wadah: W, pindahAwal: true }` (kolam lama bernama merek ditutup) dan `{ tipe: 'karungIsi', merk: 'Karung belakang W · M', merkAsal: M, isiKg: kg, wadah: W, bukuBelakang: true, pindahAwal: true }`.
+   - `karungIsi` samakan karung belakang berbuku (`susunSamakanKarung` — tombol "samakan karungnya" di Stok, `wdSamakan` di panel): `{ tipe: 'karungIsi', merk: 'Karung belakang W · M', isiKg, wadah: W }` — tanpa `merkAsal` (merek asal dibaca dari kuncinya, `merkAsalKunci`); batas `isiKg` = yang lebih besar antara berat satu karung merek asal dan buku karung belakang itu (dua karung dibuka menumpuk, `041b9c2`).
    - `isi` aktivasi: `{ tipe: 'isi', wadah: W, isiKg, stokWadah: 'Wadah W', pindahAwal: true, komposisi: { M: kg, … } }` — komposisi awal = bahan komposisi turunan.
    - `cek`: `{ tipe: 'cek', wadah: W, hasil: 'sesuai' | 'lupa' | 'kosong', bukuKg }` (+ `stokWadah` bila wadah aktif).
    - sisihan di cek "dikosongkan": `{ tipe: 'karung', merk: 'Karung wadah W', kg, lepas: true, asal: 'wadah', dariWadah: W, sisih: true }` (28).
@@ -212,7 +218,8 @@ Semua dokumen: `id: w.idUnik()`, `tanggal`, `jam` dari `L.waktuSekarang(...)`. `
 3. **W5 IR64 Elevate & W7 Pandan Wangi: hitung fisik / catat barang masuk DULU** (jawaban no. 6): W5 kurang Kumala 45,02 (60,92 bersama W1), W7 kurang
    Pandan Wangi 5,31; tumpukan yang sudah minus di layar: Kumala −97,52 · IR42 Select −32,04 · Pandan Wangi −28,31 (§6). Hitung tumpukan + karung
    terbuka di Stok › Cocokkan › Tumpukan gudang, atau catat kedatangan yang belum tercatat di Stok › Barang masuk — baru pindahkan dari daftar (tanpa "tandai").
-4. Sesudah wadah aktif: isi ulang lewat **tiga ketukan** (Jual / Stok) — merek asal dari rak × 1 karung / ½ karung / kg; **cek tiap wadah aktif** di
-   Uang › Tutup hari (K5): sesuai / lupa isi ulang / dikosongkan.
+4. Sesudah wadah aktif: isi ulang lewat **tiga ketukan** (panel wadah di Jual › Literan & Stok › Wadah literan) — merek asal dari rak × 1 karung / ½ karung /
+   kg; **cek tiap wadah aktif** saat tutup toko di Uang › Tutup hari (K5) atau lembar "Cek wadah" di Jual › Literan: sesuai / lupa isi ulang / dikosongkan.
+   "Lupa isi ulang" langsung menawarkan pintu ke wadahnya (K5 → Stok › Wadah literan; Jual → chip wadah dengan panel isi ulang terbuka).
 5. Karung lama bernama merek di belakang wadah aktif dipakai sampai habis; karung berikutnya lahir sebagai buku karung belakang. Selisih kolam vs buku
    yang disebut kartu → samakan karungnya.
