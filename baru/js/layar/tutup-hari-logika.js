@@ -15,7 +15,7 @@
 //  - pengaturan/titikKas = isi tempat uang SESUDAH tutup (laci akhir, rekening, amplop + sisihan, brankas + amankan) — patokan kas maju, inti ritualnya.
 import { kasPada, hitungLabaBersihRentang, hitungStokKarungPerMerk, thDorongRiwayat } from '../mesin/beku.js';
 import { daftarGerakanKas, caraBayarKunci } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPiutangMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas } from '../data/toko.js';
+import { ambilPenjualan, ambilPiutangMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { aturHarga, hgPct } from './harga-logika.js';
 import { ugAngka, ugKosong, ugAturDok, ugTambahHari, ugKiniDari, saldoKantong, ugNamaTempat } from './uang-logika.js';
@@ -46,9 +46,12 @@ export function ringkasHari(iso) {
   const semua = ambilPenjualan(); const rapikan = semua.filter((p) => p.perluKoreksi).length; const darurat = semua.filter((p) => p.jenis === 'kasir_darurat_nominal').length;
   return { iso, nota: jual.length, tunai, qris, qrisNota, kredit, omzet: tunai + qris + kredit, bonDibayar, mdrKira: qrisNota.reduce((a, q) => a + q.mdr, 0), mdrTercatat, labaSebelumMdr, laba: L, rapikan, darurat, sudah: ambilTutupHari().find((t) => t.tanggal === iso) || null, atur: A };
 }
-/** Tiga merek yang paling banyak keluar hari ini (kg) untuk ditimbang cepat, dengan angka catatan (kg di buku). */
+/** Tiga merek yang paling banyak keluar hari ini (kg) untuk ditimbang cepat, dengan angka catatan (kg di buku).
+ *  Putaran 39 (owner 29 Sep e): buku KHUSUS (petaBukuWadah — 'Wadah X', 'Karung belakang …', 'Karung wadah …', 'Adukan …') tidak ditawarkan di sini:
+ *  kotak wadah dicek lewat kartu 'Cek wadah' (sesuai · lupa isi ulang · dikosongkan), karung di belakang wadah disamakan lewat Stok › Wadah literan.
+ *  Literan dari wadah aktif memang tercatat merkSumber = kunci bukunya, jadi tanpa saringan ini ia ikut masuk tiga terbanyak. */
 export function barangTimbang(iso) {
-  const kg = {}; ambilPenjualan().forEach((p) => { if (p.tanggal !== iso || !p.merkSumber) return; kg[p.merkSumber] = (kg[p.merkSumber] || 0) + (Number(p.totalKg) || 0); });
+  const bw = petaBukuWadah(); const kg = {}; ambilPenjualan().forEach((p) => { if (p.tanggal !== iso || !p.merkSumber || bw[String(p.merkSumber)]) return; kg[p.merkSumber] = (kg[p.merkSumber] || 0) + (Number(p.totalKg) || 0); });
   const stok = hitungStokKarungPerMerk(iso); return Object.keys(kg).sort((a, b) => kg[b] - kg[a]).slice(0, 3).map((m) => ({ merk: m, keluar: tdB1(kg[m]), sistem: tdB1((stok[m] || {}).sisaKg || 0), hpp: (stok[m] || {}).hppTerakhirPerKg || 0 }));
 }
 const TD_KELOMPOK = [[/^Pelunasan piutang/, 'Bon dibayar tunai', 1], [/^Kasbon kembali/, 'Kasbon dikembalikan', 1], [/^Modal owner disetor|^Pinjaman/, 'Uang owner masuk', 1], [/nambah\)/, 'Tukar — pelanggan menambah', 1],
