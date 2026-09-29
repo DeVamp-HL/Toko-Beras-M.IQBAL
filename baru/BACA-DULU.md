@@ -671,6 +671,47 @@ logika tanpa DOM di `js/layar/kendali-biaya-logika.js`. Lima bagian dalam satu l
 - Uji: `alat-uji/uji_kendali_biaya.py` (+ `--kontrol`, CI) — 45 skenario kotak pasir (angka contoh, jam 19 Sep 2026) + 23 kontrol; asap cadangan: tiap bulan
   menutup ke mesin laba, rasio impas = margin ÷ omzet ber-HPP, pareto total = biaya; ASAP GLOBAL byte-sama dengan main. Pengantar: `docs/peta-kendali-biaya.md`.
 
+## Putaran 39 — wadah literan satu buku per kotak (29 Sep 2026, cabang `wadah/39-satu-buku`)
+
+Peta Tahap 0 & keputusan owner: `docs/peta-wadah-satu-buku.md` (§1–§7 akar & pertanyaan; **§8 = enam jawaban owner, bentuk dokumen tiap jalur, tugas
+owner sesudah merge**). Tanpa koleksi baru; mesin beku & `index.html`/`kasir*.html` tidak disentuh. **Rules v5** (karyawan menuang & mengecek wadah),
+jalan mundur `firestore.rules.v4`.
+- **Karung di belakang wadah = buku sendiri** (`data/toko.js` `kunciKarungBelakang` / `petaBukuWadah()` jenis `'belakang'` / `merkAsalKunci`): buku
+  `'Karung belakang <wadah> · <merek>'` per wadah × merek asal. Buka karung = pindah buku merek → karung belakang (tumpukan gudang turun di buku), tuang =
+  pindah buku karung belakang → wadah (`wbDokBukaKB`, `wbKarungBelakang`, `wbKarungBelakangWadah`). Catatan kolam `karung`/`takar` tetap ditulis bernama
+  kunci bukunya + `merkAsal`; `deretanKarung` & layar Stok memajang merek asalnya; `beratKarungBuka` lewat merek asal; tutup buku membawa tanda
+  `karungBelakang` + `merkAsal`. Karung lama bernama merek di belakang wadah aktif dipakai sampai habis (jalur lama).
+- **Isi ulang tiga ketukan** (`wbSusunIsiUlangTiga(W, M, { jenis: 'karung' | 'setengah' | 'kg', kg? }, w, s, opsi)`, `WB_TAKARAN`): wadah AKTIF ← merek
+  asal dari rak × takaran; karung belakang dipakai dulu, kurang → karung baru dibuka dari tumpukan; satu kiriman [lahir?, pindah merek → karung belakang,
+  `karung`…, `takar` ber-`takaran`, pindah karung belakang → wadah]; melebihi batas menggunung ditolak dengan kalimat. Panel − / + takar tetap sebagai
+  takaran lain (`susunTakarWadah(…, opsi)`, `takaran: 'takar'`).
+- **Buku merek asal kurang → tidak diam, tidak menulis hantu**: `{ tolak, perluTandai: [{ merk, buku, butuh, kurang }] }` dari `wbDokBukaKB` /
+  `wbSusunIsiUlangTiga` / `susunTakarWadah` / `susunBukaKarung` / `wbSusunAktifkan`; layar menggambar pita dua tombol — "Catat barang masuk dulu"
+  (Stok › Barang masuk) atau "TANDAI UNTUK DICOCOKKAN" (panggil ulang `opsi { tandai: true }` → pindah buku bertanda `perluCocokkan` + `selisihKg` +
+  `selisihPerMerk`, buku dibiarkan minus; boleh karyawan, namanya tercatat lewat atribusi pusat). Tuntas = cocokkan merek itu bertanggal ≥ dokumen
+  (`wbPindahTembusBelumCocok`, digabung `notaTembusBelumCocok()` → pita Jual & kartu keempat Gudang otomatis).
+- **Aktivasi per wadah** (`wbDaftarAktivasi()` → `wbSusunAktifkan(W, w, opsi)`): tiap wadah menyebut isi tercatat, merek asal & bukunya, karung terbuka
+  lama di belakangnya, kekurangan & alasannya; satu wadah = batch lahir (wadah + karung belakang) + pindah isi (`pindahAwalWadah`) + `isi` `pindahAwal` +
+  `komposisi` + per karung terbuka lama: pindah + 2 `karungIsi`. Nilai stok, laba, neraca tidak berubah. `wbSusunPindahAwal` (28, semua sekaligus)
+  tidak dipakai layar lagi.
+- **Komposisi turunan & banding** (`wbKomposisiTurunan(W, s)` → `{ daftar, banding, terakhir: { jam, oleh, kg, takaran }, teks }`): takar per merek asal
+  sejak titik samakan terakhir (komposisi awal di titik itu + tiap takar), disebar sebanding ke buku wadah — bukan angka kedua; tampil di Jual · Stok ·
+  dashboard.
+- **Cek wadah tutup toko** (`WB_CEK`, `wbCekHari(iso)`, `wbSusunCek(W, hasil, w)`): `wadahLiteran` tipe `'cek'` `{ hasil: 'sesuai' | 'lupa' | 'kosong',
+  bukuKg }`; kosong = `wbSusunSisih` seluruh buku ke karung wadah tanpa timbang + cek (butuh wadah aktif). Kartu per wadah aktif di K5; `tutupHari`
+  tetap owner.
+- **Dua angka satu kotak → selisih disebut** (`wbSelisihWadah(W, s, bebasLiter)`): belum aktif = bebas dijual (buku merek asal) vs isi kotak tercatat →
+  "aktifkan"; aktif = tiap karung belakang catatan vs buku → "samakan karungnya".
+- **Rules v5 & akses**: `firestore.rules` `stafBuatWadah` (tipe takar/karung/karungIsi/cek) · `stafBuatLahir` (batch LAHIR BUKU 0 kg) untuk
+  `ben`/`karyawan`; `akses.js` `BUAT_STAF` + `wadahLiteran` & `batchMasuk`, `TIPE_WADAH_STAF`, `batchLahir`, `SERVER_BUKA.isiUlang`; `sistem-logika`
+  tindakan ke-14 `isiUlang` "Isi ulang & cek wadah literan" (bawaan `sendiri` keduanya). Penjaga perangkat berkata sama dengan rules; aturan wadah,
+  titik samakan isi, kedatangan sungguhan, `tutupHari` tetap owner. `periksa_rules.py` mengenal dua fungsi jujur baru; `peta_akses.py --kiriman`
+  mengukur isi ulang ½ karung = 5 dokumen + jejak = **6 / 20** dan menuntut tiga kiriman terlarang ditolak di perangkat. Rincian: `docs/peta-hak-akses.md`
+  §9; uji server `docs/uji-rules-v5.md`; salinan v4 = `firestore.rules.v4`.
+- Papan Kapur (`susunKapur`): baris buka karung berbuku, cek wadah, tanda KURANG; `kmTebak` mengenal `merkAsal`.
+- Uji: `uji_wadah_satu_buku.py` (+ kontrol, CI); jangkar `uji_jual_baru`, `uji_stok_baru`, `uji_buku_ukuran`, `uji_wadah_stok_sendiri`,
+  `uji_menu_baru` (14 tindakan), `uji_akses_baru` mengikuti teks baru.
+
 ## Struktur
 ```
 baru/
@@ -690,7 +731,7 @@ baru/
   js/layar/jual-logika.js   logika Jual tanpa DOM (diuji di jsc); wadah-jual-logika.js (wadah dijual, harga jual wadah), struk-logika.js (struk kertas/WA + aturan otomatis)
   js/layar/jual.js          gambar & ketukan
   js/layar/stok-logika.js, stok-catat-logika.js (ST1/ST3), stok-adukan-logika.js (ST2), stok-karantina-logika.js, stok-kantong-logika.js (ST4), stok-tempat-logika.js (ST5), stok-hpp-logika.js (ST6)   logika Stok tanpa DOM
-  js/layar/wadah-bernama-logika.js (komposisi wadah per merek asal, literan langsung, ganti nama wadah; putaran 28: stok wadah sendiri, pindahan awal, katalog kasir) · varian-logika.js · arsip-logika.js · setengah-logika.js   putaran 27, tanpa DOM
+  js/layar/wadah-bernama-logika.js (komposisi wadah per merek asal, literan langsung, ganti nama wadah; putaran 28: stok wadah sendiri, pindahan awal, katalog kasir; putaran 39: karung belakang = buku sendiri, isi ulang tiga ketukan, aktivasi per wadah, komposisi turunan, cek wadah, selisih dua angka) · varian-logika.js · arsip-logika.js · setengah-logika.js   putaran 27, tanpa DOM
   js/layar/stok.js          gambar & ketukan layar Stok
   js/layar/pelanggan-logika.js (Kenali + THR), bon-logika.js (Bon)   logika Pelanggan tanpa DOM
   js/layar/pelanggan.js     gambar & ketukan layar Pelanggan
@@ -729,8 +770,8 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_akses_baru.py` (+ `--kontrol`) | 33 skenario akses per orang (keadaan akun, owner hanya via email, pendengar/layar/tombol per peran, penjaga kiriman = peta, pagar 18, batas per akun, atribusi olehUid, satu jejak per kiriman, salinan antre, SS2 akun & kisi = kebenaran server, tirai 8 layar, ganti orang & isian tujuh layar, pil akun, sambungan firebase.js/app.js diperiksa sumbernya) + 43 kontrol |
 | `alat-uji/uji_layar_kunci.py` (+ `--kontrol`) | Chrome headless: (1) tirai — sebelum masuk 0 angka rupiah, 0 kartu, semua `<main>` kosong walau penyimpanan lokal berisi titik kas contoh; (2) ganti orang — Firebase palsu lokal, keranjang tidak terbawa ke akun berikutnya (Keluar lewat pil ditanya, tab lain, akun nonaktif), tirai menyembunyikan pil OWNER/nama, lembar akun & status jaringan; (3) isian lokal tujuh layar ikut pola keranjang, draf katalog harga di server utuh; (4) GAGAL JARINGAN ≠ GAGAL UJI; 19 kontrol (satu per layar) |
 | `alat-uji/uji_isian_lokal.py` (+ `--kontrol`) | statis: 85 kolom ketik di 8 layar menulis ke kunci yang dijaga penjaga isian atau tercatat sengaja bukan isian; tiap kunci localStorage layar = draf yang dijaga atau tercatat bukan draf; 7 kontrol |
-| `alat-uji/periksa_rules.py` (+ `--kontrol`) | `firestore.rules` v4 statis (putaran 25: tanpa payung/match rekursif, kunci periode di tiap koleksi bertanggal = `kunci-periode.js`, satu get() kunci per operasi, tenggang minimal = klien) + v3: blok per koleksi, owner & kasir via email, tanpa `masuk()` telanjang, jalur kasir@ utuh, tulis bukan-owner wajib uid, tanpa delete bukan-owner, payung owner yang TIDAK mengalahkan batasan owner (blok yang membatasi owner wajib dikecualikan; dihitung dari rules, bukan daftar tangan), daftar peran = `akses.js`, jejak ≤ 17 dokumen = pagar `akses.js` + 23 kontrol |
-| `alat-uji/peta_akses.py --kiriman` (+ `--kontrol`) | access call TERBURUK per jenis kiriman bukan-owner (nota Ben/karyawan, adukan, terima bon, pelanggan baru, struk) dari fungsi asli di jsc, lewat `periksaKiriman` asli; gagal bila > 18; tiap tindakan yang dibuka server wajib terhitung; layar wajib menyerahkan batasnya + 10 kontrol |
+| `alat-uji/periksa_rules.py` (+ `--kontrol`) | `firestore.rules` v5 statis (putaran 39: `stafBuatWadah` & `stafBuatLahir` masuk daftar fungsi jujur, daftar peran `wadahLiteran`/`batchMasuk` = `BUAT_STAF`; putaran 25: tanpa payung/match rekursif, kunci periode di tiap koleksi bertanggal = `kunci-periode.js`, satu get() kunci per operasi, tenggang minimal = klien) + v3: blok per koleksi, owner & kasir via email, tanpa `masuk()` telanjang, jalur kasir@ utuh, tulis bukan-owner wajib uid, tanpa delete bukan-owner, payung owner yang TIDAK mengalahkan batasan owner (blok yang membatasi owner wajib dikecualikan; dihitung dari rules, bukan daftar tangan), daftar peran = `akses.js`, jejak ≤ 17 dokumen = pagar `akses.js` + 23 kontrol |
+| `alat-uji/peta_akses.py --kiriman` (+ `--kontrol`) | access call TERBURUK per jenis kiriman bukan-owner (nota ben/karyawan, adukan, terima bon, pelanggan baru, struk; 39: isi ulang wadah ½ karung 6 / 20 & cek tutup toko, tiga kiriman terlarang wajib ditolak di perangkat) dari fungsi asli di jsc, lewat `periksaKiriman` asli; gagal bila > 18; tiap tindakan yang dibuka server wajib terhitung; layar wajib menyerahkan batasnya + 12 kontrol |
 | `alat-uji/uji_pajak_baru.py` (+ `--kontrol`) | 43 skenario modul pajak (batas bebas di tengah bulan, omzet luar tanpa hitung ganda, kosong ≠ nol, badan tanpa angka, setoran & angka berubah, kurang/lebih, lewat tempo, ambang 70/85/95/100 + proyeksi, regresi penulis rekapOmzet, DK3 = layar Pajak, tanpa NIK/NPWP, status pasangan PH/MT/satu kesatuan/belum diketahui, dua angka omzet) + 29 kontrol; di cadangan toko: omzet layar Pajak = mesin laba = DK3 |
 | `alat-uji/uji_kunci_periode.py` (+ `--kontrol`) | 45 skenario kunci periode (WIB & tenggang 3 hari, tiap ⛔, hari tanpa tutup, kunci/buka satu langkah, pembalik hari ini, keputusan K1–K6, penjaga pusat & kirim bertahap, final bulanan, pajak) + 39 kontrol; di cadangan toko: kunci Agustus → Juli & Agustus byte-sama, satu retur hari ini mengubah September saja |
 | `alat-uji/peta_akses.py --kiriman` bagian owner | kiriman owner yang menyentuh bulan lampau, dua keadaan (tanpa kunci / Agustus terkunci), fungsi asli ≤ 18 pemeriksaan kunci; tiap penulis koleksi bertanggal wajib terdaftar — 25 DIUKUR (semua yang ber-perulangan: nota 40 baris, batal nota, ini dia, cocokkan, tutup hari, tutup buku & batalnya, arsip per 18), 20 beralasan (jumlah dokumen tetap); arsip dipotong `KP_BATAS_GET`; kasir*.html 1 dokumen per permintaan |
@@ -753,6 +794,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_jual_tandai_cocok.py` (+ `--kontrol`) | 31b: 14 skenario (stok cukup tanpa tanda; barisTembus = kalimat periksa; staf ditahan walau yakin; owner ketukan pertama kalimat nama & kg + perluTembus; ketukan kedua = nota tercatat, baris bertanda, baris lain tanpa kolom; buku minus, modal tetap; belum dicocokkan → pita & kartu keempat; tuntas hanya cocokkan ≥ tanggal nota, rework & nama lain tidak; nota batal hilang; kemasan unit × ukuran; alasan lain menang dulu) + 4 statis + 11 kontrol |
 | `alat-uji/uji_riwayat_penjualan.py` (+ `--kontrol`) | 32: 16 skenario riwayat (kunci nota & urutan, takaran digabung, status batal/dirinci/karcis, retur per baris + alasan, total = Σ berlaku, per hari − retur = rekapHari, ringkas, tampilkan batal, periode & tepinya, jenis, cara, cari nama/barang/nominal/kata ganda, saringan menumpuk tanpa retur, halaman 50 & hitungan per hari, kosong) + 4 statis + 13 kontrol; asap cadangan: tiap hari omzet = rekapHari mesin, nota & total = panel Hari ini, Σ total nota = Σ baris berlaku |
 | `alat-uji/uji_kendali_biaya.py` (+ `--kontrol`) | 38: 45 skenario kendali biaya (tiap catatan tepat satu jenis & urutan pemilahannya, menutup ke mesin laba, kata owner menang, belum dipilah disebut, anggaran & lampu jatah hari ke-N, upah belum dibayar ikut, acuan median terukur, perkiraan hanya variabel, titik impas dari omzet ber-HPP & mesin sampai hari ini, pemicu per satuan & arah dibalik, pareto 80 % per kata, peringatan berurutan menunjuk pintu, tren, atur ditolak/tersimpan, tambah kata satu-kata-satu-jenis) + 23 kontrol; asap cadangan tiap bulan menutup; ASAP GLOBAL byte-sama main |
+| `alat-uji/uji_wadah_satu_buku.py` (+ `--kontrol`) | 39: satu buku per kotak — karung belakang = buku sendiri (buka = pindah merek → karung belakang, tuang = pindah karung belakang → wadah, kolam vs buku disebut), isi ulang tiga ketukan (1 karung / ½ / kg satu kiriman, batas menggunung), buku merek kurang → tolak + `perluTandai` → tandai (`perluCocokkan` + `selisihPerMerk`, tuntas = cocokkan bertanggal ≥ dokumen), aktivasi per wadah dari daftar (kekurangan disebut; nilai / laba / tumpukan tetap), komposisi turunan & banding, cek tutup toko (dikosongkan = sisihkan tanpa timbang), selisih dua angka; asap cadangan §8.4 & ASAP GLOBAL byte-sama dengan main |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
