@@ -84,8 +84,22 @@ ok('isi memuat keempat bagian index.html: kemasan, merkKarung (+ modal & harga),
   && I.bahanLiteran.paperbag5l.sisaPcs === 100 && I.bahanLiteran.paperbag5l.hargaPerPcs === 305 && I.piutang.length === 1 && I.piutang[0].nama === 'Pelanggan Contoh' && I.piutang[0].sisa === 150000, J(I));
 if (CADANGAN) {
   Object.keys(CADANGAN).forEach(function (n) { pasok(n, CADANGAN[n]); });
-  var IC = kkIsi(); var LC = susunIsiKatalogKasirLama();
-  ok('DATA TOKO (cadangan ' + NAMA_CADANGAN + '): isi /baru/ = isi index.html', !!IC && J(IC) === J(LC) && IC.merkKarung.length > 0, IC ? IC.merkKarung.length + ' merek' : 'null');
+  var IC = kkIsi(); var LC = susunIsiKatalogKasirLama(); var IM = susunIsiKatalogKasir();
+  // 39b (30 Sep): sejak putaran 27 (arsip) & 28 (buku ukuran / stok wadah) katalog HP kasir SENGAJA bukan salinan index.html — yang byte-sama adalah penyusunnya
+  // SEBELUM saringan; sesudah saringan, tiap beda wajib punya alasan yang sudah dikunci kotak pasir uji_arsip_produk / uji_buku_ukuran / uji_wadah_stok_sendiri
+  ok('DATA TOKO (cadangan ' + NAMA_CADANGAN + '): penyusun /baru/ SEBELUM saringan = isi index.html (JSON persis)', !!IM && J(IM) === J(LC) && IM.merkKarung.length > 0,
+    IM ? IM.merkKarung.length + ' merek; ' + J(IM).slice(0, 200) + ' ≠ ' + J(LC).slice(0, 200) : 'null');
+  var arP = arPeta(); var ukB = petaUkuran(); var ukI = indukTerpisah();
+  var namaC = IC.merkKarung.map(function (m) { return m.merk; }); var namaL = LC.merkKarung.map(function (m) { return m.merk; });
+  var hilang = namaL.filter(function (m) { return namaC.indexOf(m) < 0; }); var tambah = namaC.filter(function (m) { return namaL.indexOf(m) < 0; });
+  var BOLEH_BUKU = ['karung50', 'hargaKarung25', 'hargaPerKg'], BOLEH_INDUK = ['karung25', 'hargaKarung25'];
+  var bedaLain = []; IC.merkKarung.forEach(function (x) { var y = LC.merkKarung.filter(function (z) { return z.merk === x.merk; })[0]; if (!y || J(x) === J(y)) return;
+    var kol = Object.keys(x).concat(Object.keys(y)).filter(function (k, i, a) { return a.indexOf(k) === i && J(x[k]) !== J(y[k]); });
+    var boleh = ukB[x.merk] ? BOLEH_BUKU : ukI[x.merk] ? BOLEH_INDUK : [];
+    if (!kol.every(function (k) { return boleh.indexOf(k) >= 0; })) bedaLain.push([x.merk, kol]); });
+  ok('DATA TOKO: katalog HP kasir = index.html MINUS nama beras yang diarsipkan (' + hilang.length + ' nama) dan MINUS kolom karung 25 kg yang pindah ke buku ukurannya (' + Object.keys(ukB).length + ' buku); kemasan, bahan literan, piutang sama; tidak ada beda lain',
+    hilang.length === Object.keys(arP).filter(function (k) { return k.slice(0, 2) === 'K:'; }).length && hilang.every(function (m) { return arBeras(m, arP); }) && !tambah.length && !bedaLain.length
+    && J(IC.kemasan) === J(LC.kemasan) && J(IC.bahanLiteran) === J(LC.bahanLiteran) && J(IC.piutang) === J(LC.piutang), J({ hilang: hilang, tambah: tambah, bedaLain: bedaLain }));
   Object.keys(KOTAK).forEach(function (n) { pasok(n, KOTAK[n]); }); Object.keys(CADANGAN).forEach(function (n) { if (!(n in KOTAK)) pasok(n, []); });
 }
 // ---- 2 · bentuk dokumen & pembanding
