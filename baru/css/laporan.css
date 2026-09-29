@@ -117,3 +117,10 @@ main.layar-laporan.masuk > header, main.layar-laporan.masuk > .jalur { animation
 .layar-laporan .lp-kb-jenis { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 4px; }
 .layar-laporan .lp-kb-form { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 6px 8px; align-items: center; font-size: 12px; } .layar-laporan .lp-kb-form label { cursor: pointer; } .layar-laporan .lp-kb-form input { min-height: 36px; }
 @media (max-width: 420px) { .layar-laporan .lp-kb-form { grid-template-columns: minmax(0, 1fr) 118px; } }
+/* putaran 38 · tiga angka titik impas: angka yang tergambar harus utuh — tidak pernah dipotong "…"; di HP & Tablet (kolom sempit) tiap angka jadi satu baris label ⇄ angka */
+.layar-laporan .lp-status[data-k="tiga-impas"] b { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+@media (max-width: 1099px) {
+  .layar-laporan .lp-status[data-k="tiga-impas"] { grid-template-columns: 1fr; }
+  .layar-laporan .lp-status[data-k="tiga-impas"] > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .layar-laporan .lp-status[data-k="tiga-impas"] b { display: inline; text-align: right; }
+}
