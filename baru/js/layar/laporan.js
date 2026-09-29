@@ -1,14 +1,16 @@
 // LAYAR LAPORAN & DOKUMEN — GAMBAR & KETUKAN (putaran 19). Enam keluarga: Laba · Harian · Bulanan · Neraca · Dokumen · Setelan.
+// Putaran 38 (29 Sep 2026): keluarga BIAYA = kendali biaya (jenis · anggaran · aktual vs anggaran · pemicu · titik impas · pareto · tren), logika di kendali-biaya-logika.js (dijaga uji_kendali_biaya.py).
 // Angka & dokumen di laporan-logika.js (tanpa DOM, dijaga uji_laporan_baru.py). Satu markup tiga lebar: HP tumpukan · Tablet dua kolom · Mac tiga kolom.
 // Kertas dokumen (putih, siap cetak) satu penyusun untuk layar, dialog cetak/PDF (#cetakDokumen), dan WhatsApp (wujud teks).
 import { nanti, segera } from '../inti/jadwal.js';   // owner 29 Sep: bunyi data/status digabung sekali per bingkai (lag & freeze)
-import { h, mentah, pasang, delegasi } from '../inti/dom.js';
+import { h, mentah, esc, pasang, delegasi } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { pasangIsian } from '../inti/isian.js';
 import { RP, ANGKA, tanggalPendek } from '../inti/format.js';
 import * as LP from './laporan-logika.js';
 import * as PJ from './pajak-logika.js';
+import * as KB from './kendali-biaya-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen } from '../data/toko.js';
@@ -31,9 +33,10 @@ export function pasangLayarLaporan(akar, opsi) {
     sampaiN: '', aturN: null,
     tabD: 'laporan', jenisD: 'labarugi', keD: null, rentangD: 1, bandingD: null, paket: PAKET_AWAL(), jenisK: 'setor', pilihK: {}, cariK: '',
     drafI: null, isiI: null, aturD: null, sibuk: false,
-    drafPj: null, drafSetor: null, drafLuar: null, yakinPj: null });
+    drafPj: null, drafSetor: null, drafLuar: null, yakinPj: null,
+    bulanK: null, bukaKb: {}, aturB: null, pilahK: null });   // putaran 38: Biaya — bulan yang dilihat, baris yang dibuka, draf atur, keterangan yang sedang dipilah
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD'], []);
+  const ISIAN = pasangIsian(K, awal, ['drafI', 'drafPj', 'drafSetor', 'drafLuar', 'aturR', 'aturN', 'aturD', 'aturB'], []);
   const set = (p) => K.setel(p); const st = () => K.baca();
   let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */ const kini = () => opsi.sekarang() || new Date(); const waktu = () => waktuSekarang(opsi.sekarang() || undefined); const iso = () => waktu().tanggal;
   const lebar = () => (window.matchMedia('(min-width: 1100px)').matches ? 'mac' : window.matchMedia('(min-width: 720px)').matches ? 'tablet' : 'hp');
@@ -70,6 +73,14 @@ export function pasangLayarLaporan(akar, opsi) {
     tujuan: ({ ke, keluarga, tab, lembar, sistem }) => keTujuan({ ke, keluarga, tab, lembar, sistem }),
     // ---- LABA
     lbBulan: ({ b }) => set({ bulanL: b, kabar: '', bukaTT: false, bukaRugi: false }), lbKeping: ({ kp }) => set({ kepingL: kp }), lbBukaTT: () => set({ bukaTT: !st().bukaTT }), lbBukaRugi: () => set({ bukaRugi: !st().bukaRugi }), lbBukaSusut: () => set({ bukaSusut: !st().bukaSusut }),
+    // ---- BIAYA (putaran 38)
+    kbBulan: ({ b }) => set({ bulanK: b, kabar: '', pilahK: null }), kbBuka: ({ kId }) => { const o = Object.assign({}, st().bukaKb); o[kId] = !o[kId]; set({ bukaKb: o }); },
+    kbPilah: ({ kata }) => set({ pilahK: st().pilahK === kata ? null : kata, kabar: '' }), kbPilahBatal: () => set({ pilahK: null }),
+    kbPilahKe: ({ jenis }) => { const kata = st().pilahK; if (!kata) return; tulis(KB.susunTambahKata(jenis, kata, waktu())); },
+    kbAturBuka: () => set({ aturB: KB.drafAtur(), kabar: '' }), kbAturTutup: () => set({ aturB: null }),
+    kbAturKetik: (v, el) => { const a = Object.assign({}, st().aturB || KB.drafAtur()); const kunci = String(el.dataset.kunci || '').split(':'); if (kunci[1]) { a[kunci[0]] = Object.assign({}, a[kunci[0]]); a[kunci[0]][kunci[1]] = v; } else a[kunci[0]] = v; set({ aturB: a }); },
+    kbAturAcuan: () => { const s = st(); const daftar = LP.daftarBulan(kini(), 24); const key = s.bulanK && daftar.some((b) => b.key === s.bulanK) ? s.bulanK : bulanKini(); const D = KB.drafDariAcuan(KB.kendaliBulan(key, kini()), s.aturB || KB.drafAtur()); set({ aturB: D.draf, kabar: D.n ? D.n + ' anggaran diisi dari acuan terukur (median bulan-bulan lalu, dibulatkan ke ribuan) — belum tersimpan, periksa lalu SIMPAN' : 'Belum ada acuan terukur — bulan-bulan sebelumnya tidak punya catatan jenis itu', kabarAwas: !D.n }); },
+    kbAturSimpan: () => tulis(KB.susunAturKendali(st().aturB || {}, waktu())),
     // ---- HARIAN
     hrHari: ({ t }) => set({ hariH: t, kabar: '' }), hrBuku: () => set({ bukaBuku: !st().bukaBuku }),
     hrKeluar: async ({ cara }) => { const t = st().hariH || iso(); const R = LP.rekapHari(t); const I = LP.identitasUsaha(); const D = { kop: LP.kopUntuk(LP.pakaiKop().pakai.harian, I), judul: 'Rekap Harian', sub: tanggalPendek(t) + ' · ' + R.n + ' nota' + (R.tutup ? ' · sudah tutup hari' : ''), baris: barisRekap(R), catatan: 'Kas bersih = masuk − keluar hari itu; bon belum jadi uang.', tolak: I.lengkap ? '' : 'Kop belum lengkap: nama & alamat wajib (Setelan)' };
@@ -140,7 +151,7 @@ export function pasangLayarLaporan(akar, opsi) {
       </header>
       <div class="jalur rapat" data-k="keluarga">${LP.KELUARGA_LAPORAN.map(([id, nm]) => h`<div class="seg ${s.keluarga === id ? 'aktif' : ''}" data-aksi="keluarga" data-nama="${id}" data-k="kg-${id}">${nm}</div>`)}</div>
       ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
-      ${s.keluarga === 'laba' ? gambarLaba(s, L) : s.keluarga === 'harian' ? gambarHarian(s, L) : s.keluarga === 'mingguan' ? gambarMingguan(s, L) : s.keluarga === 'bulanan' ? gambarBulanan(s, L) : s.keluarga === 'pajak' ? gambarPajak(s, L) : s.keluarga === 'tahunan' ? gambarTahunan(s, L) : s.keluarga === 'neraca' ? gambarNeraca(s, L) : s.keluarga === 'dokumen' ? gambarDokumen(s, L) : gambarSetelan(s, L)}
+      ${s.keluarga === 'laba' ? gambarLaba(s, L) : s.keluarga === 'biaya' ? gambarBiaya(s, L) : s.keluarga === 'harian' ? gambarHarian(s, L) : s.keluarga === 'mingguan' ? gambarMingguan(s, L) : s.keluarga === 'bulanan' ? gambarBulanan(s, L) : s.keluarga === 'pajak' ? gambarPajak(s, L) : s.keluarga === 'tahunan' ? gambarTahunan(s, L) : s.keluarga === 'neraca' ? gambarNeraca(s, L) : s.keluarga === 'dokumen' ? gambarDokumen(s, L) : gambarSetelan(s, L)}
     `);
     gulirkan(akar, RP);
   }
@@ -176,6 +187,51 @@ export function pasangLayarLaporan(akar, opsi) {
       ${M.baris.map((r) => h`<div class="lp-terjun ${r.kelas || ''} ${r.id === 'sisa' ? 'sisa' : ''}" data-k="km-${r.id}"><span>${r.nama}${r.ket ? h`<small> · ${r.ket}</small>` : ''}${r.belumDipilah ? h`<small class="awas-teks"> · ${r.belumDipilah} catatan lama belum dipilah (${RP(r.belumDipilahRp)}) dihitung di sini</small>` : ''}</span><b class="${arah(r.n)}">${RP(r.n)}</b></div>`)}
       <div class="lp-pilah" data-k="km-pita">${[['toko', M.biayaToko, 'toko'], ['upah', M.upah, 'upah'], ['nonUpah', M.nonUpah, 'karyawan lain'], ['sisa', Math.max(0, M.labaBersih), 'laba bersih']].map(([id, n, nm]) => h`<i class="${id}" style="width: ${M.labaKotor > 0 ? Math.max(0, Math.min(100, n / M.labaKotor * 100)).toFixed(1) : 0}%;" title="${nm} ${M.pct(n)}"></i>`)}</div>
       <div class="k2">${M.menutup ? 'Semua baris dari mesin laba yang sama, dipilah dengan tujuan uang keluar — menjumlah persis ke laba kotor.' : 'TIDAK MENUTUP — angka pemilahan tidak sama dengan mesin laba; laporkan.'} ${M.labaKotor > 0 ? 'Biaya karyawan ' + M.pct(M.biayaKaryawan) + ' dari laba kotor, biaya toko ' + M.pct(M.biayaToko) + '.' : ''}</div></div>`;
+  }
+
+  // ---------- BIAYA · kendali biaya (putaran 38) — semua angka dari KB.kendaliBulan (mesin beku yang sama); layar cuma menyusun & menggambar
+  function gambarBiaya(s, L) {
+    const daftar = LP.daftarBulan(kini(), 24); const key = s.bulanK && daftar.some((b) => b.key === s.bulanK) ? s.bulanK : bulanKini();
+    const K = KB.kendaliBulan(key, kini()); const T = KB.titikImpas(K, kini()); const P = KB.pemicuBiaya(K); const Pa = KB.paretoBiaya(K); const W = KB.peringatanBiaya(K, P, T); const BD = KB.belumDipilah(K, 12); const Tr = KB.trenBiaya(kini(), 6);
+    const tujuanAttr = (t) => (t ? mentah(' data-aksi="tujuan" data-ke="' + esc(t.ke) + '" data-keluarga="' + esc(t.keluarga || '') + '" data-tab="' + esc(t.tab || '') + '" data-lembar="' + esc(t.lembar || '') + '" data-sistem="' + esc(t.sistem || '') + '" style="cursor: pointer;"') : '');
+    const lampu = (r) => h`<span class="lp-kb-lampu ${r.lampu}" title="${r.lampuTeks}"></span>`;
+    const pilih = h`<div class="kartu" data-k="pilih-kb" style="gap: 6px;"><div class="label">Bulan yang dikendalikan · ${K.berjalan ? 'berjalan — hari ke-' + K.hariJalan + ' dari ' + K.nHari : K.final ? 'final' : 'belum tutup buku'}</div>${bulanCip('kbBulan', key, daftar)}</div>`;
+    const kepala = h`<div class="kartu platina" data-k="kepala-kb" style="gap: 6px;"><div class="label">Biaya di bawah margin kotor · ${K.nama}</div>
+      <div class="lp-besar ${K.tanpaCatatan ? 'kosong' : ''}">${K.tanpaCatatan ? 'belum ada catatan' : RP(K.semuaBiaya)}</div>
+      <div class="lp-status" data-k="tiga-kb"><div>dari omzet<b>${K.pct(K.semuaBiaya)}</b></div><div>per kg terjual<b>${K.biayaPerKg === null ? '—' : RP(K.biayaPerKg)}</b></div><div>lampu anggaran<b>${K.nLampu ? K.merah + ' merah · ' + K.amber + ' amber · ' + K.hijau + ' hijau' : 'belum diatur'}</b></div></div>
+      <div class="k2">${K.menutup ? 'Σ jenis = biaya toko mesin · margin − biaya − hapus buku − susut = laba bersih mesin (' + RP(K.labaBersih) + ') — menutup' : K.tanpaCatatan ? 'Bulan tanpa catatan.' : 'TIDAK MENUTUP ke mesin laba — jangan dipakai memutuskan'}${K.cakupan !== null && K.cakupan < 0.999 ? ' · ' + K.L.jumlahTanpaHpp + ' nota tanpa modal (' + KB.kbPctTeks((1 - K.cakupan) * 100) + ' omzet) belum ikut margin' : ''}</div></div>`;
+    const peringatan = W.length ? h`<div class="kartu" data-k="awas-kb" style="gap: 6px;"><div class="label">Yang perlu dilihat · ${W.length}</div>${W.map((w) => h`<div class="pita-info ${w.tingkat === 'awas' ? 'awas' : ''}" data-k="w-${w.id}"${tujuanAttr(w.tujuan)}>${w.teks}${w.tujuan ? ' ›' : ''}</div>`)}</div>`
+      : h`<div class="kartu" data-k="awas-kb" style="gap: 4px;"><div class="label">Yang perlu dilihat</div><div class="k2">${K.tanpaCatatan ? 'Belum ada catatan bulan ini.' : K.nLampu ? 'Tidak ada yang lewat anggaran, tidak ada pemicu yang naik di atas ambang.' : 'Belum ada anggaran — lampu baru menyala sesudah anggaran diatur (kartu Atur).'}</div></div>`;
+    const barisKb = (r) => { const buka = !!s.bukaKb[r.id]; const rinci = r.catatan.slice().sort((a, b) => b.n - a.n).slice(0, 8);
+      return h`<div class="lp-kb-baris" data-aksi="kbBuka" data-k-id="${r.id}" data-k="b-${r.id}">${lampu(r)}<div><div>${r.nama}${r.id === 'lain' && K.nBelum ? h` <span class="lp-cip">${K.nBelum} belum dipilah</span>` : ''}${r.menggantung ? h` <span class="lp-cip emas">+ ${RP(r.menggantung)} belum dibayar</span>` : ''}</div>
+        <div class="k2">${r.jumlah ? r.jumlah + (r.id === 'susut' ? ' baris' : ' catatan') + ' · ' : ''}${K.omzet > 0 ? KB.kbPctTeks(r.pctOmzet) + ' omzet · ' : ''}${r.perKg !== null ? RP(r.perKg) + '/kg · ' : ''}${r.delta === null ? (r.nLalu ? 'bulan lalu ' + RP(r.nLalu) : 'bulan lalu —') : (r.delta >= 0 ? '▲ ' : '▼ ') + KB.kbPctTeks(Math.abs(r.delta)) + ' vs ' + K.KL.pendek + (r.deltaDari === 'perkiraan' ? ' (perkiraan ' + RP(r.proyeksi) + ')' : '')}</div>
+        <div class="k2 ${r.lampu === 'merah' ? 'awas-teks' : ''}">${r.lampu === 'tanpa' ? (r.acuan !== null ? 'acuan ' + RP(r.acuan) + ' · ' + r.acuanTeks : r.lampuTeks) : r.lampuTeks}</div></div><div class="n ${r.n < 0 ? 'rugi' : ''}">${RP(r.n)}</div></div>${buka ? h`<div class="lp-kb-rinci" data-k="rinci-${r.id}">${rinci.map((c, i) => h`<div data-k="c-${i}"><span>${tanggalPendek(c.tanggal)} · ${c.nama}${c.dompet ? ' (dompet owner)' : ''}${c.dari === 'belum' ? ' · belum dipilah' : c.dari === 'kataOwner' ? ' · kata owner' : ''}</span><span>${RP(c.n)}</span></div>`)}${r.catatan.length > 8 ? h`<div class="k2">… ${r.catatan.length - 8} catatan lagi</div>` : ''}<div class="k2">${r.ket}</div></div>` : ''}`; };
+    const peta = h`<div class="kartu" data-k="peta-kb" style="gap: 2px;"><div class="label">Peta biaya per jenis · ketuk baris untuk rinciannya · lampu = anggaran owner</div>${K.baris.map(barisKb)}
+      <div class="lp-terjun jumlah" data-k="jml-toko"><span>Biaya toko (mesin: harian + jatah bulanan)</span><b>${RP(K.biayaToko)}</b></div>
+      <div class="k2" style="padding-top: 4px;">Upah & tagihan tetap dari Tagihan bulanan; sisanya dari uang keluar harian, dipilah menurut tanda MDR/bank, kolom "untuk karyawan", lalu kata kunci. Bongkar mobil pemasok & kantong produk tidak di sini — keduanya sudah tertanam di HPP.</div></div>`;
+    const impas = h`<div class="kartu" data-k="impas-kb" style="gap: 4px;"><div class="label">Titik impas · rasio margin ${T.rasioTeks}</div>
+      <div class="lp-status" data-k="tiga-impas"><div>omzet impas / bulan<b>${T.omzetImpas === null ? '—' : RP(T.omzetImpas)}</b></div><div>impas / hari<b>${T.omzetImpasHari === null ? '—' : RP(T.omzetImpasHari)}</b></div><div>omzet nyata / hari<b>${RP(T.omzetHari)}</b></div></div>
+      <div class="k2">${T.teks}</div><div class="pita-info ${T.menutupKini ? 'emas' : 'awas'}" data-k="impas-kini">${T.kiniTeks}</div>${T.catatan.map((c, i) => h`<div class="k2" data-k="ic-${i}">${c}</div>`)}</div>`;
+    const pemicu = h`<div class="kartu" data-k="pemicu-kb" style="gap: 2px;"><div class="label">Pemicu biaya · per satuan, ${K.pendek} vs ${P.pendekLalu} · naik di atas ${KB.kbPctTeks(P.ambang)} disebut</div>${P.baris.map((r) => h`<div class="lp-baris dua" data-k="p-${r.id}"><div><div class="${r.naik ? 'awas-teks' : ''}">${r.nama}${r.naik ? ' ▲' : ''}</div><div class="k2">${r.deltaTeks}${r.nLalu !== null ? ' · dulu ' + r.teksLalu : ''} · ${r.sumber}</div></div><div class="n">${r.teks}</div></div>`)}
+      <div class="k2" style="padding-top: 4px;">Kedatangan ${K.pendek}: ${P.ini.kedatangan.n} mobil · ${ANGKA(P.ini.kedatangan.kg)} kg · bongkar ${RP(P.ini.kedatangan.bongkar)}. Omzet QRIS ${RP(P.ini.qris)}. Hari kerja terhitung ${ANGKA(P.ini.hariKerja)}.</div></div>`;
+    const pareto = h`<div class="kartu" data-k="pareto-kb" style="gap: 4px;"><div class="label">Pareto · ${Pa.teks}</div>${Pa.inti.map((x, i) => h`<div data-k="pa-${i}" style="display: flex; flex-direction: column; gap: 2px;"><div class="lp-terjun" style="border-bottom: none; min-height: 22px;"><span>${x.nama}<small> · ${x.jenisNama}${x.jumlah > 1 ? ' · ' + x.jumlah + ' catatan' : ''}</small></span><b>${RP(x.n)}</b></div><div class="lp-pita"><span style="width: ${Math.max(2, Math.min(100, x.pct || 0))}%;"></span></div><div class="k2">${KB.kbPctTeks(x.pct)} · kumulatif ${KB.kbPctTeks(x.kumPct)}</div></div>`)}${Pa.daftar.length > Pa.inti.length ? h`<div class="k2">${Pa.daftar.length - Pa.inti.length} pos lain membentuk sisanya</div>` : ''}</div>`;
+    const tren = Tr.ada ? h`<div class="kartu" data-k="tren-kb" style="gap: 6px;"><div class="label">Enam bulan · margin kotor (emas) vs biaya di bawahnya (platina; merah bila lebih besar)</div><div class="lp-kb-tren">${Tr.daftar.map((b) => h`<div class="${b.key === key ? 'aktif' : ''}" data-aksi="kbBulan" data-b="${b.key}" data-k="t-${b.key}"><div class="dua"><i class="margin" style="height: ${Math.round(Math.max(0, b.margin) / Tr.maks * 100)}%;"></i><i class="biaya ${b.semuaBiaya > b.margin && !b.tanpaCatatan ? 'lewat' : ''}" style="height: ${Math.round(Math.max(0, b.semuaBiaya) / Tr.maks * 100)}%;"></i></div><span>${b.pendek}${b.tanpaCatatan ? ' ·' : b.pctBiaya === null ? '' : ' ' + KB.kbPctTeks(b.pctBiaya)}</span></div>`)}</div><div class="k2">Angka kecil = biaya dari omzet bulan itu. Bulan tanpa catatan bertanda titik.</div></div>` : '';
+    const belum = BD.length ? h`<div class="kartu" data-k="belum-kb" style="gap: 4px;"><div class="label">Belum dipilah · ${K.nBelum} catatan ${RP(K.belumDipilah)} · ketuk keterangan, lalu pilih jenisnya</div>${BD.map((b, i) => h`<div class="lp-pilih ${s.pilahK === b.kata ? 'aktif' : ''}" data-aksi="kbPilah" data-kata="${b.kata}" data-k="bd-${i}"><span><div>${b.nama}</div><div class="k2">${b.jumlah} catatan</div></span><span class="n">${RP(b.n)}</span></div>`)}
+      ${s.pilahK ? h`<div class="lp-kb-jenis" data-k="pilah-jenis">${KB.JENIS_BIAYA.filter((j) => j.id !== 'upah' && j.id !== 'tetap' && j.id !== 'lain').map((j) => h`<div class="kaca-btn aktif" data-aksi="kbPilahKe" data-jenis="${j.id}" data-k="pj-${j.id}" style="min-height: 36px; font-size: 12px;">→ ${j.nama}</div>`)}<div class="kaca-btn" data-aksi="kbPilahBatal" style="min-height: 36px; font-size: 12px;">batal</div></div><div class="k2">"${s.pilahK}" akan jadi kata kunci owner jenis itu — semua catatan yang keterangannya diawali kata itu ikut berpindah, sekarang dan seterusnya. Yang tidak ingin dipilah boleh dibiarkan: tetap dihitung di Lain-lain.</div>` : ''}</div>` : '';
+    const A = K.A; const d = s.aturB; const nKataOwner = Object.keys(A.kata).reduce((a, k) => a + A.kata[k].length, 0);
+    const atur = d ? h`<div class="kartu lp-lembar" data-k="aturB" style="gap: 8px;"><div class="kepala-lembar"><div class="serif" style="font-size: 18px;">Atur kendali biaya</div><div class="kaca-btn" data-aksi="kbAturTutup">tutup</div></div>
+      <div class="label">Anggaran per bulan (rupiah) · 0 / kosong = belum diatur, lampunya mati · anggaran bukan larangan: lewat tetap tersimpan, bedanya ketahuan hari itu</div>
+      <div class="lp-kb-form" data-k="form-anggaran">${KB.ID_ANGGARAN.map((id) => { const r = K.baris.find((x) => x.id === id); return h`<label for="kbA-${id}" data-k="la-${id}"><div>${r.nama}</div><div class="k2">${r.acuan !== null ? 'acuan ' + RP(r.acuan) + ' · ' + r.acuanTeks : 'belum ada acuan'}${r.sifat === 'tetap' ? ' · dibanding anggaran sebulan' : id === 'susut' ? ' · toleransi susut sebulan' : ' · bulan berjalan dibanding jatah sampai hari ke-N'}</div></label><input id="kbA-${id}" class="ketik-nama" type="text" inputmode="numeric" value="${d.anggaran[id] || ''}" data-ketik="kbAturKetik" data-kunci="anggaran:${id}" placeholder="0">`; })}</div>
+      <div class="kaca-btn" data-aksi="kbAturAcuan" data-k="aturB-acuan" style="min-height: 36px; font-size: 12px;">Isi anggaran dari acuan terukur (median bulan-bulan lalu)</div>
+      <div class="lp-kb-form" data-k="form-ambang"><label for="kbAmbang"><div>Ambang lampu (%)</div><div class="k2">hijau ≤ anggaran · amber sampai anggaran + ambang · merah di atasnya</div></label><input id="kbAmbang" class="ketik-nama" type="text" inputmode="decimal" value="${d.ambang}" data-ketik="kbAturKetik" data-kunci="ambang">
+        <label for="kbAmbangP"><div>Ambang pemicu (%)</div><div class="k2">kenaikan biaya per satuan vs bulan lalu yang disebut</div></label><input id="kbAmbangP" class="ketik-nama" type="text" inputmode="decimal" value="${d.ambangPemicu}" data-ketik="kbAturKetik" data-kunci="ambangPemicu"></div>
+      <div class="label">Kata kunci tambahan per jenis · dipisah koma · kata owner didahulukan dari kata bawaan · dicocokkan sebagai awalan kata ("roko" kena "rokok")</div>
+      <div class="lp-kb-form" data-k="form-kata">${KB.JENIS_BIAYA.filter((j) => j.id !== 'upah' && j.id !== 'tetap' && j.id !== 'lain').map((j) => h`<label for="kbK-${j.id}" data-k="lk-${j.id}"><div>${j.nama}</div><div class="k2">bawaan: ${j.kata.join(', ')}</div></label><input id="kbK-${j.id}" class="ketik-nama" type="text" value="${d.kata[j.id] || ''}" data-ketik="kbAturKetik" data-kunci="kata:${j.id}" placeholder="mis. kebutuhan masak, telur">`)}</div>
+      <div class="utama" data-aksi="kbAturSimpan">SIMPAN</div><div class="k2">Satu dokumen aturanToko/kendaliBiaya, milik toko (ikut ke semua perangkat). Tidak menyentuh catatan uang mana pun.</div></div>`
+      : h`<div class="kaca-btn" data-aksi="kbAturBuka" data-k="aturB-buka" style="min-height: 38px; font-size: 12px;">Atur anggaran, ambang & kata kunci · ${A.dariOwner ? A.nAnggaran + ' anggaran diisi · ambang ' + KB.kbPctTeks(A.ambang) + (nKataOwner ? ' · ' + nKataOwner + ' kata kunci owner' : '') : 'belum pernah diatur'}</div>`;
+    const kaki = h`<div class="lp-kaki">Kendali biaya = memilah lalu membandingkan; angkanya mesin laba yang sama dengan Laba & Neraca. Anggaran & kata kunci = setelan owner, bukan data toko. Perkiraan sebulan = linear dari hari yang sudah jalan — perkiraan, bukan ramalan.</div>`;
+    if (L === 'hp') return h`<section data-k="biaya">${pilih}${kepala}${peringatan}${peta}${impas}${pemicu}${pareto}${tren}${belum}${atur}${kaki}</section>`;
+    return h`<section data-k="biaya">${grid(L, [h`${pilih}${kepala}${peta}${kaki}`, h`${peringatan}${impas}${pemicu}${belum}`, h`${pareto}${tren}${atur}`])}</section>`;
   }
 
   // ---------- HARIAN · rekap satu hari
@@ -387,6 +443,6 @@ export function pasangLayarLaporan(akar, opsi) {
 
   K.dengar(gambar); dengarkan(() => nanti(gambar));
   let tundaUkur = null; window.addEventListener('resize', () => { clearTimeout(tundaUkur); tundaUkur = setTimeout(gambar, 160); });
-  const buka = (keluarga, t) => { AKSI.keluarga({ nama: LP.KELUARGA_LAPORAN.some((k) => k[0] === keluarga) ? keluarga : 'laba' }); if (t && t.awal && keluarga === 'mingguan') set({ mingguM: t.awal }); if (t && t.tahun && keluarga === 'tahunan') set({ tahunT: Number(t.tahun) }); if (t && t.tab && keluarga === 'dokumen') set({ tabD: t.tab }); if (t && t.jenis && keluarga === 'dokumen') set({ tabD: 'kecil', jenisK: t.jenis }); if (t && t.bulan && keluarga === 'laba') set({ bulanL: t.bulan }); };
+  const buka = (keluarga, t) => { AKSI.keluarga({ nama: LP.KELUARGA_LAPORAN.some((k) => k[0] === keluarga) ? keluarga : 'laba' }); if (t && t.awal && keluarga === 'mingguan') set({ mingguM: t.awal }); if (t && t.tahun && keluarga === 'tahunan') set({ tahunT: Number(t.tahun) }); if (t && t.tab && keluarga === 'dokumen') set({ tabD: t.tab }); if (t && t.jenis && keluarga === 'dokumen') set({ tabD: 'kecil', jenisK: t.jenis }); if (t && t.bulan && keluarga === 'laba') set({ bulanL: t.bulan }); if (t && t.bulan && keluarga === 'biaya') set({ bulanK: t.bulan }); };
   return { keadaan: K, belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan, gambar, buka, tampilkan: (ya) => { const tadi = tampil; tampil = !!ya; if (tampil && !tadi) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1200); } if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } };
 }
