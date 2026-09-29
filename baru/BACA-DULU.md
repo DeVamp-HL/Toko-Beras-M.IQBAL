@@ -636,6 +636,41 @@ Sesudah #58–#60 masuk, gabungannya ditinjau sekali lagi (8 agen, 4 lolos banta
   struk mulai dari atas (dulu posisi gulir terbawa).
 - Uji: `uji_tata_letak_jual.py` +9 pemeriksaan & 9 kontrol (30 lulus · kontrol 23/23).
 
+## Putaran 38 — kendali biaya / cost controlling (29 Sep 2026, cabang `kendali/38-kendali-biaya`)
+
+Permintaan owner: "cari tahu tentang cost controlling dan terapkan ke sistem ini". Kendali biaya = MEMILAH lalu MEMBANDINGKAN; mesin uangnya tidak berubah
+(28 mesin beku utuh, ASAP GLOBAL laba tiap bulan byte-sama dengan main). Satu keluarga baru di Laporan: **Biaya** (owner saja, seperti Laporan lainnya),
+logika tanpa DOM di `js/layar/kendali-biaya-logika.js`. Lima bagian dalam satu layar:
+1. **Jenis biaya** — tiap rupiah di bawah margin kotor jatuh ke TEPAT SATU jenis: upah & gaji · tagihan tetap (listrik/internet/akses/keamanan) · potongan QRIS &
+   biaya bank · karyawan di luar upah · bahan pakai & kresek · bensin & angkut · dapur toko · lain-lain; di bawahnya hapus buku piutang & susut/selisih stok
+   (mesin menaruh keduanya di bawah laba kotor). Urutan pemilahan uang keluar harian: tanda MDR / biaya bank → kolom `untuk` = karyawan (putaran 29) → kata
+   kunci owner → kata kunci bawaan → lain-lain. Kata dicocokkan sebagai AWALAN KATA di batas kata ("roko" kena "rokok"; "donasi" TIDAK kena "nasi"). Yang tidak
+   cocok TETAP dihitung (baris Lain-lain) dan disebut "belum dipilah" — tidak ada catatan yang hilang, tidak ada tebakan yang disembunyikan. Wajib MENUTUP:
+   Σ jenis harian = harianToko mesin; upah + tetap = jatah bulanan mesin; margin − Σ − hapus buku − susut = laba bersih mesin (kalau tidak, layar bilang begitu).
+2. **Anggaran** = setelan owner per jenis per bulan (`aturanToko/kendaliBiaya`: anggaran, ambang lampu, ambang pemicu, kata kunci tambahan). Tanpa anggaran
+   lampu mati — yang tampil hanya *acuan terukur* (median ≤ 3 bulan sebelumnya yang punya catatan; bulan sebelum awal buku tidak ikut). Tombol "isi dari acuan"
+   mengisi FORMULIR, bukan menyimpan. Anggaran bukan larangan (aturan jatah 22 Agu): lewat tetap tersimpan, bedanya kelihatan hari itu.
+3. **Aktual vs anggaran** — lampu hijau (≤ anggaran) · amber (≤ anggaran + ambang %) · merah. Bulan berjalan: jenis variabel dibanding JATAH SAMPAI HARI KE-N
+   (anggaran × hari jalan ÷ hari bulan) + perkiraan sebulan (linear, ditandai perkiraan); jenis tetap dibanding anggaran sebulan; upah ditambah upah yang
+   BELUM DIBAYAR (dari absen, `upah-logika`) supaya "upah baru sedikit" tidak terbaca hemat padahal belum gajian. Bulan lampau yang upahnya belum dibayar
+   juga terlihat. Pos tetap yang belum dicatat bulan ini (ada bulan lalu) disebut.
+4. **Pemicu biaya** per satuan, bulan ini vs bulan lalu: biaya toko/kg terjual · HPP/kg · harga jual/kg · margin/kg (arah dibalik: turun = buruk) · harga beli/kg
+   kedatangan · bongkar/kg kedatangan (tertanam di HPP, disebut supaya kelihatan) · potongan QRIS % omzet QRIS · biaya karyawan/hari kerja (dibayar + belum
+   dibayar + di luar upah, ÷ hari gaji + hari menggantung) · harga kantong/lembar · susut/kg. Naik di atas ambang pemicu → disebut.
+5. **Titik impas & peringatan** — omzet impas = biaya di bawah margin ÷ rasio margin (margin ÷ omzet ber-HPP, nota tanpa modal disebut tidak ikut); per bulan &
+   per hari vs omzet nyata per hari; "sampai hari ini" dari mesin (awal bulan → hari ini): menutup atau kurang berapa & omzet tambahan yang dibutuhkan.
+   Peringatan berurutan (awas dulu): lampu, pos tetap belum dicatat, upah belum dibayar, susut ≥ 20 % margin (tanpa toleransi), > 25 % harian belum dipilah,
+   cakupan HPP < 95 %, pemicu naik, belum impas, TIDAK MENUTUP — tiap baris menunjuk layar tempat membereskannya. Pareto = pos terbesar (per kata yang cocok /
+   per pos gaji & tagihan) yang membentuk 80 % biaya. Tren 6 bulan: margin (emas) vs biaya (platina, merah bila lebih besar), ketuk = pindah bulan.
+- Layar: `laporan.js` `gambarBiaya` (kartu: bulan · kepala · yang perlu dilihat · peta biaya (ketuk baris = rincian ≤ 8 catatan) · titik impas · pemicu ·
+  pareto · tren · belum dipilah (ketuk keterangan → pilih jenis = keterangannya jadi kata kunci owner) · atur). Tiga lebar: HP satu kolom; Mac
+  [bulan+kepala+peta] · [peringatan+impas+pemicu+belum dipilah] · [pareto+tren+atur]. Menu › cari "biaya". Sepuluh pertanyaan Menu tidak ditambah (terkunci owner).
+- Koleksi: hanya `aturanToko/kendaliBiaya` yang baru ditulis (owner; rules v4 sudah mengizinkan owner untuk id apa pun di aturanToko, tanpa perubahan rules).
+- Batas yang jujur: perkiraan sebulan = linear dari hari yang sudah jalan; kata kunci bawaan = tebakan awal yang owner boleh timpa; upah belum dibayar =
+  [PERKIRAAN] dari absen & tarif, bukan angka mesin laba; kedatangan tanpa kg → pemicu per kg "belum bisa dihitung".
+- Uji: `alat-uji/uji_kendali_biaya.py` (+ `--kontrol`, CI) — 45 skenario kotak pasir (angka contoh, jam 19 Sep 2026) + 23 kontrol; asap cadangan: tiap bulan
+  menutup ke mesin laba, rasio impas = margin ÷ omzet ber-HPP, pareto total = biaya; ASAP GLOBAL byte-sama dengan main. Pengantar: `docs/peta-kendali-biaya.md`.
+
 ## Struktur
 ```
 baru/
@@ -666,6 +701,8 @@ baru/
   js/layar/uang-logika.js   UANG bersama (saldo per tempat uang) + K1 Uang keluar + K4 Pindah uang (tanpa DOM)
   js/layar/upah-logika.js   K2 Orang & upah · owner-toko-logika.js K3 · tutup-hari-logika.js K5 · tutup-buku-logika.js K6 (tanpa DOM)
   js/layar/uang.js          gambar & ketukan layar Uang (enam keluarga, tiga lebar)
+  js/layar/laporan-logika.js, pajak-logika.js, kendali-biaya-logika.js (38: jenis · anggaran · lampu · pemicu · impas · pareto)   logika Laporan tanpa DOM
+  js/layar/laporan.js       gambar & ketukan layar Laporan (Laba · Biaya · Harian · Mingguan · Bulanan · Pajak · Tahunan · Neraca · Dokumen · Setelan)
 ```
 Belum dipindah (terikat layar lama): `tulisSaldoPembuka` (ritual Tutup Buku), `thPagar` (Tutup Hari).
 Jangkar warisan: `stokMaksJalur()` membaca `#jualKarungBerat` dari DOM — layar menyediakan `<input type="hidden" id="jualKarungBerat">`.
@@ -715,6 +752,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_pemantapan_31.py` (+ `--kontrol`) | 31: 15 skenario (karcis: dua nama seharga = satu tebakan bertanya, literan seharga, pilih nama mengisi keranjang, kelompok per bentuk, lepas karcis; tanggal mundur: cocokkan terakhir per nama & kemasan, barang masuk sebelum cocokkan ditolak dua ketukan dengan tanggal & jam, sesudah/sehari tidak, wadah & rework bukan hitungan, koreksi tidak ditanya, adukan bahan & hasil, urutan penjaga) + 3 statis + 13 kontrol |
 | `alat-uji/uji_jual_tandai_cocok.py` (+ `--kontrol`) | 31b: 14 skenario (stok cukup tanpa tanda; barisTembus = kalimat periksa; staf ditahan walau yakin; owner ketukan pertama kalimat nama & kg + perluTembus; ketukan kedua = nota tercatat, baris bertanda, baris lain tanpa kolom; buku minus, modal tetap; belum dicocokkan → pita & kartu keempat; tuntas hanya cocokkan ≥ tanggal nota, rework & nama lain tidak; nota batal hilang; kemasan unit × ukuran; alasan lain menang dulu) + 4 statis + 11 kontrol |
 | `alat-uji/uji_riwayat_penjualan.py` (+ `--kontrol`) | 32: 16 skenario riwayat (kunci nota & urutan, takaran digabung, status batal/dirinci/karcis, retur per baris + alasan, total = Σ berlaku, per hari − retur = rekapHari, ringkas, tampilkan batal, periode & tepinya, jenis, cara, cari nama/barang/nominal/kata ganda, saringan menumpuk tanpa retur, halaman 50 & hitungan per hari, kosong) + 4 statis + 13 kontrol; asap cadangan: tiap hari omzet = rekapHari mesin, nota & total = panel Hari ini, Σ total nota = Σ baris berlaku |
+| `alat-uji/uji_kendali_biaya.py` (+ `--kontrol`) | 38: 45 skenario kendali biaya (tiap catatan tepat satu jenis & urutan pemilahannya, menutup ke mesin laba, kata owner menang, belum dipilah disebut, anggaran & lampu jatah hari ke-N, upah belum dibayar ikut, acuan median terukur, perkiraan hanya variabel, titik impas dari omzet ber-HPP & mesin sampai hari ini, pemicu per satuan & arah dibalik, pareto 80 % per kata, peringatan berurutan menunjuk pintu, tren, atur ditolak/tersimpan, tambah kata satu-kata-satu-jenis) + 23 kontrol; asap cadangan tiap bulan menutup; ASAP GLOBAL byte-sama main |
 | `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
 
 Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
