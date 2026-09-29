@@ -156,6 +156,18 @@ masih ditunggu).
 - Bendera `O_NONBLOCK` pada pipa tidak pernah terpasang. Kenapa Chrome kadang berhenti menulis sesudah pipa penuh sekali (dan tidak pernah di
   Mac pengembang) ada di dalam Chrome — tidak diketahui, dan tidak perlu diketahui untuk memperbaikinya.
 
+**Verifikasi alat yang asli** (workflow "Verifikasi uji layar kunci" di cabang diagnosis): `uji_layar_kunci.py` + `--kontrol`, persis langkah
+CI, diulang ±35 menit per versi di runner sendiri.
+
+| versi | putaran (utama + kontrol) | DICOBA ULANG tidak disengaja |
+|---|---|---|
+| `main` (pipa) | 6 | **12** — semuanya `--kontrol`, "selesai tapi DOM tidak keluar" |
+| cabang perbaikan (berkas) | 11 | **0** |
+
+Runnya: https://github.com/DeVamp-HL/Toko-Beras-M.IQBAL/actions/runs/36505499245 (sesudah) dan
+https://github.com/DeVamp-HL/Toko-Beras-M.IQBAL/actions/runs/36508492608 (sebelum — di run pertama versi `main` terputus oleh `bash -e` di
+skrip verifikasi, bukan oleh uji).
+
 **Perbaikan.** `uji_layar_kunci.dom_sekali()` menyuruh Chrome menulis stdout ke berkas sementara dan membacanya berkala sampai `</html>` (atau
 Chrome keluar / 90 dtk). Selebihnya sama: `--dump-dom`, gambar penahan, percobaan ulang dan baris DICOBA ULANG-nya (teks sebab tetap).
 Baris catatan di bawah DICOBA ULANG kini juga menyebut jumlah byte keluaran Chrome. `uji_coba_ulang.py` punya Chrome palsu yang meniru yang
