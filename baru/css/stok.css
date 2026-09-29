@@ -129,6 +129,25 @@ body.gelap .layar-stok .iso-toko .sisi-atas.karung { fill: #cdb98b; } body.gelap
 @media (prefers-reduced-motion: reduce) { .layar-stok .iso-toko .lantai-zona { transition: none; } }
 /* putaran 28: tiga pintu karung di belakang wadah (tumpukan · pemasok · hasil adukan) */
 .layar-stok .pintu-karung { display: flex; flex-direction: column; gap: 6px; }
+/* putaran 39 (owner 29 Sep): aktivasi buku wadah PER WADAH (kartu daftar keputusan) · karung belakang berbuku sendiri (buku vs catatan) · pita "tandai untuk dicocokkan".
+   HP: tabel sumber lima kolom rapat (angka serif kecil), tombol menyusun sendiri lewat auto-fit; tablet/Mac: huruf sedikit lebih besar. */
+.layar-stok .ak-baris { display: flex; flex-direction: column; gap: 5px; padding: 8px 0; border-bottom: 1px dashed var(--garis); animation: masukChip 420ms cubic-bezier(.2,.8,.2,1) backwards; animation-delay: calc(var(--urut, 0) * 30ms); }
+.layar-stok .ak-baris:last-of-type { border-bottom: 0; }
+.layar-stok .ak-kepala { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; } .layar-stok .ak-kepala b { font-size: 13.5px; } .layar-stok .ak-kepala .ket { flex: 1 1 160px; min-width: 0; }
+.layar-stok .ak-kepala .pil.nyala { background: var(--seg-aktif); border-color: var(--emas-garis); color: var(--emas1); } .layar-stok .ak-kepala .pil.awas { border-color: var(--awas); color: var(--awas); }
+.layar-stok .ak-sumber { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)); gap: 2px 6px; align-items: baseline; font-size: 11px; }
+.layar-stok .ak-sumber .k, .layar-stok .kb-baris .k { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--redup); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.layar-stok .ak-sumber .nm { font-weight: 600; font-size: 12px; overflow-wrap: anywhere; }
+.layar-stok .ak-sumber .n, .layar-stok .kb-baris .n { font-family: 'Bodoni Moda', Georgia, serif; font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.layar-stok .ak-sumber .n.awas, .layar-stok .kb-baris .n.awas { color: var(--awas); font-weight: 600; }
+.layar-stok .kb-baris { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); gap: 2px 6px; align-items: center; padding: 5px 0; border-bottom: 1px dashed var(--garis); font-size: 12px; }
+.layar-stok .kb-baris.kepala { padding: 0; border-bottom: 0; } .layar-stok .kb-baris:last-of-type { border-bottom: 0; } .layar-stok .kb-baris .nm { font-weight: 600; overflow-wrap: anywhere; }
+.layar-stok .kb-baris.awas { border-bottom-color: var(--awas); }
+.layar-stok .kb-aksi { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 2px; } .layar-stok .kb-aksi .ket { flex: 1 1 180px; min-width: 0; }
+.layar-stok .pita-tandai { display: flex; flex-direction: column; gap: 8px; cursor: default; animation: masuk 380ms cubic-bezier(.2,.8,.2,1); }
+.layar-stok .pita-tandai .tombol-baris { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+@media (min-width: 720px) { .layar-stok .ak-sumber { font-size: 12px; } .layar-stok .ak-sumber .n, .layar-stok .kb-baris .n { font-size: 13.5px; } .layar-stok .ak-sumber .k, .layar-stok .kb-baris .k { font-size: 10px; } }
+@media (prefers-reduced-motion: reduce) { .layar-stok .ak-baris, .layar-stok .pita-tandai { animation: none; } }
 
 /* ---------- RAPI-RAPI 29 Sep (kelompok 2): Gudang dua kolom di Mac, tombol kerja naik ke atas ----------
    HP & tablet: <aside class="stok-samping"> larut (display: contents) → urutan tanya · tombol kerja · jawaban · per jenis.
