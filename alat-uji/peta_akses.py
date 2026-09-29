@@ -370,6 +370,9 @@ OWNER_JALUR = {
     'wbSusunCek': 'cek wadah tutup toko: 1 catatan cek (tidak dikunci) + bila dikosongkan = wbSusunSisih (1 lahir + 1 pindah + 1 karung), hari ini — kiriman karyawan diukur di --kiriman',
     # putaran 28 (owner 28 Sep): tiga pintu karung di belakang wadah — pintu hasil adukan membuka 1 kemasan jadi
     'susunBukaKarung': 'wadahLiteran (tidak dikunci); pintu hasil adukan = susunBukaKemasan (1 produksiKemasan + paling banyak 1 batch lahir 0 kg, hari ini)',
+    # putaran 39c (owner 30 Sep): karung habis dihapus dari deretan; kembalikan karung berbuku memindah bukunya balik — semua bertanggal hari ini, dokumen tetap
+    'susunHapusKarungHabis': '1 karungIsi selesai (wadahLiteran, tidak dikunci) + paling banyak 1 penyesuaianStok susut buku karung belakang (hari ini, ketukan kedua)',
+    'susunKembalikanKarung': '1 karungIsi dikembalikan (wadahLiteran, tidak dikunci) + paling banyak 1 produksiKemasan pindah buku karung belakang → merek asal (hari ini); karung tanpa buku yang belum ditakar: catatan bukanya dihapus (owner)',
     'susunBukaKemasan': '1 produksiKemasan + paling banyak 1 batchMasuk lahir 0 kg, bertanggal hari ini (+ wadahLiteran, tidak dikunci)',
     'susunAturHargaWadah': 'setelan hargaWadah — bukan koleksi bertanggal', 'susunRak': 'pembaca — tidak menulis', 'susunRakWadah': 'pembaca — tidak menulis',
     'susunAturTempat': 'pengaturan tempatSimpan / aturanToko / pindahTempat — tidak ada yang dikunci (pengaturan hanya titikKas)',

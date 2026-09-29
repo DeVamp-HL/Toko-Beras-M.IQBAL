@@ -292,10 +292,10 @@ ok('Papan Kapur: tiga baris cek (dikosongkan · lupa isi ulang · sesuai), buka 
 
 // ---- 9 · karung otomatis lewat panel, buka karung dari layar Stok, dua karung dibuka sekaligus
 var P3 = susunTakarWadah('Angsa', [{ merk: 'Kumala', takar: 20 }], W, s0()); var p3p = dok(P3, 'produksiKemasan'), p3w = dok(P3, 'wadahLiteran');
-ok('panel takar 20 × Kumala (36 kg) > karung belakang Kumala 25 → karung baru dibuka OTOMATIS = pindah buku Kumala 50 → karung belakang (catatan karung otomatis, bukuBelakang), lalu pindah 36 kg karung belakang → wadah; gudang Kumala 80 → 30',
-  !P3.tolak && P3.dokumen.length === 4 && p3p.length === 2 && J(p3p[0].sumberList) === J([{ merk: 'Kumala', kg: 50 }]) && p3p[0].merkTujuan === KB('Angsa', 'Kumala') && p3p[0].bukaKarung === 'Angsa' && J(p3p[1].sumberList) === J([{ merk: KB('Angsa', 'Kumala'), kg: 36 }]) && p3p[1].merkTujuan === 'Wadah Angsa'
-  && p3w.length === 2 && p3w[0].tipe === 'karung' && p3w[0].otomatis === true && p3w[0].bukuBelakang === true && p3w[0].merkAsal === 'Kumala' && p3w[0].merk === KB('Angsa', 'Kumala') && p3w[1].tipe === 'takar' && J(P3.gudang) === J([{ merk: 'Kumala', kgKarung: 50, dariKg: 80, keKg: 30 }]) && P3.hitung.sumber[0].bukaKarung === 1 && !P3.tandai
-  && /karung di belakang habis: 1 karung Kumala diambil dari tumpukan gudang \(Kumala 80 kg → 30 kg\)/.test(P3.patch.kabar), J(P3));
+ok('panel takar 20 × Kumala (36 kg) > karung belakang Kumala 25 → 39c (owner 30 Sep): karung di belakang DIHABISKAN dulu — dituang SEADANYA 25 kg (takar bertanda seadanya + kgMinta 36, pindah 25 kg karung belakang → wadah), TIDAK membuka karung baru (gudang Kumala tetap 80, tanpa catatan karung / batch); kabarnya menyebut SEADANYA & karung bersih 0; karung baru baru ditanya sesudahnya (bukaKarung 1)',
+  !P3.tolak && P3.dokumen.length === 2 && p3p.length === 1 && J(p3p[0].sumberList) === J([{ merk: KB('Angsa', 'Kumala'), kg: 25 }]) && p3p[0].merkTujuan === 'Wadah Angsa' && p3w.length === 1 && p3w[0].tipe === 'takar' && p3w[0].kg === 25 && p3w[0].sumber[0].seadanya === true && p3w[0].sumber[0].kgMinta === 36
+  && J(P3.gudang) === J([]) && P3.hitung.sumber[0].seadanya === true && P3.hitung.sumber[0].bukaKarung === 0 && P3.hitung.sumber[0].kurangKg === 11 && !P3.tandai && /SEADANYA: karung Kumala tinggal 25 kg dari 36 kg yang diminta/.test(P3.patch.kabar) && /bersih 0/.test(P3.patch.kabar)
+  && denganCacheSementara(P3.dokumen, function () { var h = hitungTakar('Angsa', [{ merk: 'Kumala', takar: 20 }], s0()); return h.sumber[0].bukaKarung === 1 && !h.sumber[0].seadanya && h.sumber[0].kg === 36; }), J(P3));
 var P4 = susunTakarWadah('Angsa', [{ merk: 'Tawon', takar: 2 }], W, s0()); var P4t = susunTakarWadah('Angsa', [{ merk: 'Tawon', takar: 2 }], W, s0(), { tandai: true });
 ok('panel takar dari merek yang bukunya minus (Tawon −35): karung baru perlu dibuka → tolak + perluTandai [{Tawon, buku −35, butuh 50, kurang 85}]; dengan tandai → lahir + pindah bertanda, tandai:true, kurang 85', !!P4.tolak && !P4.dokumen && J(P4.perluTandai) === J([{ merk: 'Tawon', buku: -35, butuh: 50, kurang: 85 }]) && !P4t.tolak && P4t.tandai === true && P4t.kurang === 85 && dok(P4t, 'produksiKemasan')[0].perluCocokkan === true && dok(P4t, 'produksiKemasan')[0].selisihKg === 85 && dok(P4t, 'batchMasuk').length === 1 && /DITANDAI untuk dicocokkan/.test(P4t.patch.kabar) && P4t.patch.kabarAwas === true, J([P4, P4t]));
 var BK1 = susunBukaKarung('NG', W, 'Angsa'); var BK2 = susunBukaKarung('Beo', W, 'Angsa'); var BK2t = susunBukaKarung('Beo', W, 'Angsa', null, { tandai: true }); var BK3 = susunBukaKarung('NG', W, 'Angsa', { jenis: 'masuk', batchId: 'b1' }); var BK4 = susunBukaKarung('NG', W, 'Kosong Satu');
@@ -357,6 +357,53 @@ ok('karyawan DITOLAK: aturan wadah (tipe atur) & titik samakan isi (tipe isi) �
 // ---- 14 · identitas tiap wadah aktif (dari dokumen) — pola asap (i)
 var idW = ['IR64 Apex', 'Angsa', 'Tawon Super'].map(identitasWadah);
 ok('identitas tiap wadah aktif: isi titik samakan + Σ takar − Σ literan − Σ pindah keluar (sisihan) ± penyesuaian = buku wadah = tinggi wadah; Σ komposisi turunan = buku (IR64 Apex 60 · Angsa 55 · Tawon Super 55)', idW.every(function (x) { return x.ok; }) && J(idW.map(function (x) { return x.buku; })) === J([60, 55, 55]), J(idW));
+
+// ---- 15 · putaran 39c (owner 30 Sep): deretan = SATU SLOT PER WADAH, karung habis dihapus, dikembalikan → slot "?", karung berbuku kembali ke bukunya
+var SL0 = slotKarungWadah();
+ok('39c slot: tepat satu slot per wadah (5) urut W1..W5; tiap slot kosong ("?") atau menyebut merek asalnya; karung lepas/yatim tidak di slot (karungLepasDeretan tanpa no)',
+  SL0.length === 5 && J(SL0.map(function (x) { return x.no; })) === J(['W1', 'W2', 'W3', 'W4', 'W5']) && SL0.every(function (x) { return x.W && (x.kosong ? !x.karung.diketahui && x.label === 'belum ada karung' : !!x.merkAsal); }) && karungLepasDeretan().every(function (k) { return !k.no; }), J(SL0.map(function (x) { return [x.no, x.kosong, x.merkAsal, x.habis, x.alasan]; })));
+var tNG0 = tump('NG'); var bNG0 = buku('NG'); var BKn = susunBukaKarung('NG', W, 'Angsa'); terapkanKeCache(BKn.dokumen || []); var BKk = susunBukaKarung('Kumala', W, 'Angsa'); terapkanKeCache(BKk.dokumen || []);
+var slAn = function () { return slotKarungWadah().find(function (x) { return x.W === 'Angsa'; }); };
+ok('39c slot W2 Angsa: dua karung berbuku dibuka berturut (NG lalu Kumala) → slotnya = yang TERBARU (Kumala, buku sendiri, tidak habis); karungUntukWadah per merek', !BKn.tolak && !BKk.tolak && slAn().merkAsal === 'Kumala' && slAn().bukuSendiri && !slAn().habis && !slAn().kosong && karungUntukWadah('Angsa').merk === KB('Angsa', 'Kumala'), J(slAn()));
+var kNG = karungBelakang(KB('Angsa', 'NG'), 'Angsa'); var sisaNG = B2(kNG.sisaMentahKg); var bNG1 = buku('NG'); var tNG1 = tump('NG');
+var RK = susunKembalikanKarung(KB('Angsa', 'NG'), 'Angsa', W, true); terapkanKeCache(RK.dokumen || []);
+ok('39c kembalikan karung BERBUKU yang lebih lama (kolam NG di belakang Angsa: sisa lama 37,5 + karung baru 50 = 87,5): bukan menghapus catatan — karungIsi 0 dikembalikan + pindah buku KB → NG sebesar seluruh sisa kolam; buku NG & tumpukan NG naik persis sebesar itu, buku karung belakang NG 0; slot W2 TETAP Kumala (per merek, bukan jatuh ke karung lama)',
+  !RK.tolak && sisaNG === 87.5 && dok(RK, 'wadahLiteran').length === 1 && dok(RK, 'wadahLiteran')[0].dikembalikan === true && dok(RK, 'produksiKemasan').length === 1 && dok(RK, 'produksiKemasan')[0].namaProduk === 'NG' && dok(RK, 'produksiKemasan')[0].ukuranKemasan === sisaNG && dok(RK, 'produksiKemasan')[0].kembaliTumpukan === 'Angsa'
+  && B2(buku('NG')) === B2(bNG1 + sisaNG) && B2(buku(KB('Angsa', 'NG'))) === 0 && B2(tump('NG')) === B2(tNG1 + sisaNG) && slAn().merkAsal === 'Kumala', J([RK.tolak, sisaNG, buku('NG'), bNG1, buku(KB('Angsa', 'NG')), tump('NG'), tNG1, slAn()]));
+var SK0 = susunSamakanKarung(KB('Angsa', 'Kumala'), '0', W, 'Angsa'); terapkanKeCache(SK0.dokumen || []);
+var bK = B2(buku(KB('Angsa', 'Kumala')));
+ok('39c karung habis di kolam (sisa disamakan 0) tapi bukunya masih 75 (25 sisa lama + 50) → slot menyebut HABIS; hapus ketukan pertama DITANYA (perluYakin) menyebut susut 75 kg; tidak ada dokumen', bK === 75 && slAn().habis && /habis/.test(slAn().label) && (function () { var H = susunHapusKarungHabis(KB('Angsa', 'Kumala'), 'Angsa', W, false); return !!H.tolak && H.perluYakin === true && /susut 75 kg/.test(H.tolak) && !H.dokumen; })(), J([bK, slAn(), susunHapusKarungHabis(KB('Angsa', 'Kumala'), 'Angsa', W, false)]));
+var hppK = hpp(KB('Angsa', 'Kumala')); var v0h = nilai(); var lb0h = laba();
+var H1 = susunHapusKarungHabis(KB('Angsa', 'Kumala'), 'Angsa', W, true); terapkanKeCache(H1.dokumen || []);
+ok('39c hapus ketukan kedua: karungIsi 0 bertanda selesai + penyesuaianStok kunci buku (kgSistem 75 → kgFisik 0, selisih −75, bagian karung, alasan "karung habis"); buku karung belakang jadi 0, nilai stok turun 75 × modal, laba turun (susut, tidak diam); slot W2 tidak lagi Kumala (jatuh ke kolam lain yang masih hidup di belakang Angsa, atau kosong); Papan Kapur menyebutnya',
+  !H1.tolak && dok(H1, 'wadahLiteran').length === 1 && dok(H1, 'wadahLiteran')[0].selesai === true && dok(H1, 'wadahLiteran')[0].isiKg === 0 && dok(H1, 'penyesuaianStok').length === 1 && dok(H1, 'penyesuaianStok')[0].kgSistem === 75 && dok(H1, 'penyesuaianStok')[0].kgFisik === 0 && dok(H1, 'penyesuaianStok')[0].selisihKg === -75 && dok(H1, 'penyesuaianStok')[0].bagian === 'karung' && /karung habis/.test(dok(H1, 'penyesuaianStok')[0].alasan)
+  && B2(buku(KB('Angsa', 'Kumala'))) === 0 && Math.abs((v0h - nilai()) - 75 * hppK) < 1.5 && laba() < lb0h && slAn().merkAsal !== 'Kumala' && karungUntukWadah('Angsa').merk !== KB('Angsa', 'Kumala') && susunKapur(KINI).baris.some(function (x) { return /Karung Kumala di belakang wadah Angsa habis — dihapus dari deretan/.test(x.isi); }), J([H1.tolak, H1.dokumen, buku(KB('Angsa', 'Kumala')), v0h, nilai(), hppK, slAn()]));
+// kolam lain yang masih hidup di belakang Angsa (karung Angsa dari aktivasi) dikembalikan → slot W2 KOSONG "?" beralasan dikembalikan
+var sisaLain = []; for (var g39 = 0; g39 < 8 && !slAn().kosong; g39++) { var sl39 = slAn(); sisaLain.push(sl39.merkAsal); var RL = susunKembalikanKarung(sl39.merk, 'Angsa', W, true); if (RL.tolak) break; terapkanKeCache(RL.dokumen || []); }
+ok('39c sesudah semua karung di belakang Angsa dihapus / dikembalikan: slot W2 KOSONG "?" (karungUntukWadah: merk = nama wadahnya, dariCatatan false, kosong true, alasan disebut, merek terakhir disebut); tumpukan Kumala tidak berubah oleh hapus (susut di buku karung belakang, bukan tumpukan)',
+  (function () { var k = karungUntukWadah('Angsa'); var sl = slAn(); return k.merk === 'Angsa' && k.dariCatatan === false && k.kosong === true && /dikembalikan ke tumpukan gudang|habis, dihapus dari deretan/.test(k.alasanKosong) && !!k.terakhirMerk && sl.kosong && !sl.karung.diketahui && sl.label === 'belum ada karung'; })(), J([karungUntukWadah('Angsa'), slAn(), sisaLain]));
+var BKn2 = susunBukaKarung('NG', W, 'Angsa'); terapkanKeCache(BKn2.dokumen || []);
+ok('39c hapus karung yang masih berisi DITOLAK ("belum habis"); karung baru NG di belakang Angsa mengisi slot lagi (merek berganti: terakhir Kumala → NG)', /belum habis/.test(susunHapusKarungHabis(KB('Angsa', 'NG'), 'Angsa', W, true).tolak || '') && slAn().merkAsal === 'NG' && !slAn().kosong, J([susunHapusKarungHabis(KB('Angsa', 'NG'), 'Angsa', W, true), slAn()]));
+var SKb = susunSamakanKarung('Beo', '0', W, 'Kosong Satu'); terapkanKeCache(SKb.dokumen || []); var slKs = function () { return slotKarungWadah().find(function (x) { return x.W === 'Kosong Satu'; }); };
+var Hb = susunHapusKarungHabis('Beo', 'Kosong Satu', W, false); terapkanKeCache(Hb.dokumen || []);
+ok('39c karung biasa (bukan berbuku) yang habis di belakang wadah belum aktif: slot W4 Beo habis → hapus tanpa ketukan kedua (tidak ada buku karung belakang), satu dokumen selesai → slot W4 kosong', !SKb.tolak && !Hb.tolak && (Hb.dokumen || []).length === 1 && Hb.dokumen[0].data.selesai === true && Hb.dokumen[0].data.wadah === 'Kosong Satu' && slKs().kosong && slKs().alasan === 'habis, dihapus dari deretan' && slKs().terakhirMerk === 'Beo', J([SKb.tolak, Hb, slKs()]));
+ok('39c isi ulang tiga ketukan dengan merek yang tidak punya karung di belakang wadah (NG ke Tawon Super): hitung.dibuka = 1 (karung baru dari tumpukan) — bahan peringatan dua ketukan di layar (yakinBuka)', (function () { var r = U('Tawon Super', 'NG', { jenis: 'kg', kg: '1' }); return !r.tolak && r.hitung.dibuka === 1; })(), J([U('Tawon Super', 'NG', { jenis: 'kg', kg: '1' }).tolak, U('Tawon Super', 'NG', { jenis: 'kg', kg: '1' }).hitung]));
+
+// ---- 16 · 39c (owner 30 Sep): karung di belakang DIHABISKAN dulu — sisa yang kurang dari yang diminta dituang SEADANYA, karung baru dari tumpukan ditanya sesudah bersih 0
+var SKn = susunSamakanKarung('NG', '1', W, 'Tawon Super'); terapkanKeCache(SKn.dokumen || []);
+var HT1 = hitungTakar('Tawon Super', [{ merk: 'NG', takar: 1 }], s0());
+ok('39c − / + takar: karung NG tinggal 1 kg di belakang wadah aktif, minta 1 takar (1,8 kg) → dituang SEADANYA 1 kg (kurang 0,8 kg TIDAK ditambal dari karung baru, bukaKarung 0); karung lama bernama merek tetap dipakai walau tidak cukup satu takar', !SKn.tolak && HT1.sumber[0].merk === 'NG' && HT1.sumber[0].seadanya === true && HT1.sumber[0].kg === 1 && HT1.sumber[0].kgMinta === 1.8 && HT1.sumber[0].kurangKg === 0.8 && HT1.sumber[0].bukaKarung === 0 && HT1.kg === 1, J([SKn.tolak, HT1.sumber]));
+var TK1 = susunTakarWadah('Tawon Super', [{ merk: 'NG', takar: 1 }], W, s0()); terapkanKeCache(TK1.dokumen || []);
+var HT2 = hitungTakar('Tawon Super', [{ merk: 'NG', takar: 1 }], s0());
+ok('39c − / + takar dicatat: dokumen takar kg 1 bertanda seadanya (kgMinta 1,8), kabar menyebut SEADANYA & bersih 0; sesudahnya karung NG itu 0 → takar berikutnya barulah minta karung baru dari tumpukan (bukaKarung 1, tanpa seadanya, kunci karung belakang)', !TK1.tolak && dok(TK1, 'wadahLiteran').filter(function (d) { return d.tipe === 'takar'; })[0].kg === 1 && dok(TK1, 'wadahLiteran').filter(function (d) { return d.tipe === 'takar'; })[0].sumber[0].seadanya === true && /SEADANYA/.test(TK1.patch.kabar) && /bersih 0/.test(TK1.patch.kabar)
+  && karungBelakang('NG', 'Tawon Super').sisaKg === 0 && HT2.sumber[0].bukaKarung === 1 && !HT2.sumber[0].seadanya && HT2.sumber[0].kg === 1.8, J([TK1.tolak, TK1.patch && TK1.patch.kabar, HT2.sumber]));
+// tiga ketukan: W4 Kosong Satu diberi titik samakan 0 kg → diaktifkan (buku wadah 0, tanpa karung) → karung NG dibuka di belakangnya (buku karung belakang 50) → minta 55 kg
+terapkanKeCache([{ koleksi: 'wadahLiteran', data: { id: W.idUnik(), tanggal: W.tanggal, jam: W.jam, tipe: 'isi', wadah: 'Kosong Satu', isiKg: 0 } }]);
+var AK16 = wbSusunAktifkan('Kosong Satu', W); terapkanKeCache(AK16.dokumen || []); var BK16 = susunBukaKarung('NG', W, 'Kosong Satu'); terapkanKeCache(BK16.dokumen || []);
+var kb16 = wbKarungBelakang('Kosong Satu', 'NG').bukuKg; var U16 = U('Kosong Satu', 'NG', { jenis: 'kg', kg: '55' });
+ok('39c tiga ketukan: karung belakang NG 50 kg di W4 (baru aktif, kosong), minta 55 kg → hitung.seadanya, kg = 50 (sisa buku), dibuka 0, takar bertanda seadanya + kgMinta 55, kabar SEADANYA; sesudahnya permintaan yang sama → karung baru dibuka (dibuka 1, tanpa seadanya)',
+  !AK16.tolak && !BK16.tolak && kb16 === 50 && !U16.tolak && U16.hitung.seadanya === true && U16.hitung.kg === 50 && U16.hitung.kgMinta === 55 && U16.hitung.dibuka === 0 && dok(U16, 'wadahLiteran')[0].seadanya === true && dok(U16, 'wadahLiteran')[0].kgMinta === 55 && /SEADANYA 50 kg NG \(minta 55 kg; karung di belakang bersih 0/.test(U16.patch.kabar)
+  && denganCacheSementara(U16.dokumen, function () { var r2 = U('Kosong Satu', 'NG', { jenis: 'kg', kg: '5' }); return !r2.tolak && r2.hitung.dibuka === 1 && !r2.hitung.seadanya && r2.hitung.kg === 5 && wbKarungBelakang('Kosong Satu', 'NG').bukuKg === 0; }), J([AK16.tolak, BK16.tolak, kb16, U16.tolak, U16.hitung, U16.patch && U16.patch.kabar]));
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
@@ -486,6 +533,13 @@ RUSAK = {
     'buka karung di belakang wadah aktif memakai jalur lama (buku tidak pindah)': ("if (di && wbAktif(di) && !wbBukuKhusus(merk)) {", "if (false) {"),
     'berat karung kunci belakang bukan berat merek asalnya': ("function beratKarungBuka(merk) { const asal = wbMerkAsal(merk);", "function beratKarungBuka(merk) { const asal = merk;"),
     'samakan karung belakang dibatasi satu karung (buku 100 ditolak)': ("const penuh = bwS && bwS.jenis === 'belakang' ? Math.max(beratKarungBuka(merk), wdB2((hitungStokKarungPerMerk()[merk] || {}).sisaKg || 0)) : beratKarungBuka(merk);", "const penuh = beratKarungBuka(merk);"),
+    # putaran 39c: slot per wadah, hapus karung habis, kembalikan karung berbuku
+    'kolam yang ditutup masih dianggap karung di belakang wadah': ("const hidup = Object.keys(perMerk).map((m) => perMerk[m]).filter((k) => !tutup(k));", "const hidup = Object.keys(perMerk).map((m) => perMerk[m]);"),
+    'hapus karung yang masih berisi lolos': ("if (k.sisaMentahKg > 0.5) return { tolak: 'Karung ' + nama + ' ' + letak + ' belum habis", "if (false) return { tolak: 'Karung ' + nama + ' ' + letak + ' belum habis"),
+    'hapus tidak mencatat susut buku karung belakang (buku 50 kg hilang diam-diam)': ("  if (buku > 0.5) {\n    if (!yakin) return", "  if (false) {\n    if (!yakin) return"),
+    'kembalikan karung berbuku tidak memindah bukunya balik ke merek asal': ("if (berbuku && k.sisaMentahKg > 0.004) dokumen.push(wbDokPindah(", "if (false) dokumen.push(wbDokPindah("),
+    'sisa karung yang kurang satu takar ditambal dari karung baru (tidak dihabiskan dulu) — panel − / +': ("const seadanya = k.diketahui && k.sisaKg > 0.004 && k.sisaKg + 0.004 < kgMinta; const kg = seadanya ? wdB2(k.sisaKg) : kgMinta;", "const seadanya = false; const kg = kgMinta;"),
+    'sisa karung belakang yang kurang dari yang diminta ditambal dari karung baru — tiga ketukan': ("const seadanya = KB.bukuKg > 0.004 && KB.bukuKg + 0.004 < kg; const kgMinta = kg; if (seadanya) { kg = wbB2(KB.bukuKg); isiBaru = wbB2(tw.sisaNyataKg + kg); }", "const seadanya = false; const kgMinta = kg;"),
     # akses.js (rules v5 di perangkat)
     'karyawan boleh menulis aturan wadah / titik samakan isi': ("if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };", ""),
     'batch berisi kg lolos sebagai batch lahir': ("if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };", ""),
@@ -506,6 +560,13 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g, asap = utama(js, True)
+    # putaran 39c — statis layar: deretan 8 slot & hapus di stok.js, peringatan dua ketukan di wadah-panel.js, 4 kolom di Mac (stok.css)
+    for nama, berkas, wajib in [('stok.js: deretan satu slot per wadah + slot kosong + hapus karung habis', 'baru/js/layar/stok.js', ['L.slotKarungWadah()', 'data-aksi="drKosong"', 'data-aksi="drHapus"', 'petak-wadah deretan-slot', 'L.karungLepasDeretan()']),
+                                ('wadah-panel.js: karung baru dari tumpukan minta ketukan kedua (tiga ketukan & catat); sisa karung dituang seadanya dulu', 'baru/js/layar/wadah-panel.js', ['yakinBuka', "karung dari tumpukan?'", 'r.hitung.dibuka > 0 && !d.yakinBuka', 'x.bukaKarung || 0), 0) : 0;', "'ISI ULANG · seadanya '", 'dituang SEADANYA']),
+                                ('stok.css: Mac 4 kotak sebaris seperti HP + gaya slot kosong garis putus', 'baru/css/stok.css', ['.layar-stok .stok-wadah .petak-wadah { grid-template-columns: repeat(4, minmax(0, 1fr)); }', '.layar-stok .petak.slot.kosong { border-style: dashed;'])]:
+        t = open(os.path.join(AKAR, berkas), encoding='utf-8').read(); kurang = [x for x in wajib if x not in t]
+        if kurang: g.append('statis 39c · ' + nama + ' → tidak ada: ' + ' | '.join(kurang))
+        else: l += 1
     print('WADAH SATU BUKU PER KOTAK (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     p = uji_wadah_bernama.cadangan_toko()

@@ -51,7 +51,8 @@ def periksa(t):
     c.append(('stok: ≥1280 daftar jawaban dua kolom urut ke bawah (columns, bukan grid)', any('columns: 2' in x for x in kolom), kolom))
     form = cari(S, 'min-width: 1100px', 'main.layar-stok > section:not(.stok-gudang):not([data-k="wadah"])')
     c.append(('stok: lembar & tab lain tetap paling lebar 1180 px', any('max-width: 1180px' in x for x in form), form))
-    c.append(('stok: Wadah literan selebar halaman, kotak sebaris sebanyak yang muat', any('auto-fill' in x for x in cari(S, 'min-width: 1100px', '.layar-stok .stok-wadah .petak-wadah')), ''))
+    # putaran 39c (owner 30 Sep): tata letak Mac = HP — 4 kotak sebaris (dua baris), deretan karung 4 slot sebaris di atasnya
+    c.append(('stok: Wadah literan selebar halaman, 4 kotak sebaris seperti HP (bukan auto-fill)', any('repeat(4, minmax(0, 1fr))' in x for x in cari(S, 'min-width: 1100px', '.layar-stok .stok-wadah .petak-wadah')) and not any('auto-fill' in x for x in cari(S, 'min-width: 1100px', '.layar-stok .stok-wadah .petak-wadah')), ''))
 
     rk = RJ[RJ.index('function bangun'):RJ.index("$('rkSkala').innerHTML")]
     p = {k: rk.find(v) for k, v in [('hero', 'id="rkHero"'), ('aside', 'class="rk-samping"'), ('kas', 'id="rkKas"'), ('perhatian', 'id="rkPerhatian"'), ('katalog', 'id="rkKatalog"'), ('tutup', '</aside>'), ('nota', 'rk-nota')]}
