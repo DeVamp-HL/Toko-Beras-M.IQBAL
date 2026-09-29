@@ -303,36 +303,40 @@ def dom(d, jalur, coba=3, butuh_cdn=True):
         if siap and '</html>' in h: return h, None
         sebab = 'selesai tapi DOM tidak keluar' if siap else 'tidak mengabarkan selesai'
         # catatan waktu ikut dicetak di bawah baris DICOBA ULANG (teks sebab tetap persis — dijaga uji_coba_ulang): kapan halaman melapor selesai, kapan gambar
-        # penahan diminta & dijawab, permintaan terakhir → kejadian "DOM tidak keluar" berikutnya di runner menjelaskan dirinya sendiri
-        log = list(log) + ['[uji] waktu %s · permintaan terakhir %s' % (info.get('waktu'), info.get('akhir'))]
+        # penahan diminta & dijawab, permintaan terakhir → kejadian "DOM tidak keluar" berikutnya di runner menjelaskan dirinya sendiri. Byte keluaran: tepat
+        # 65536 = keluaran terpotong di kapasitas pipa (penyebab 29 Sep — mestinya tidak mungkin lagi sejak keluaran ke berkas)
+        log = list(log) + ['[uji] waktu %s · permintaan terakhir %s · keluaran Chrome %s byte' % (info.get('waktu'), info.get('akhir'), info.get('byte'))]
     return '', TIDAK_JALAN
 
 
 def dom_sekali(d, jalur, tunggu=90):
-    """DOM sesudah halaman dimuat. Chrome di macOS kadang tidak keluar sesudah mencetak DOM → dibaca sampai </html>, lalu dimatikan."""
+    """DOM sesudah halaman dimuat. Chrome di macOS tidak keluar sendiri sesudah mencetak DOM → dibaca sampai </html>, lalu dimatikan.
+    Keluaran Chrome ditulis ke BERKAS biasa, bukan pipa (diagnosis 29 Sep 2026 di runner, docs/catatan-uji-peramban.md): DOM skenario ganti/isian sejak
+    putaran 33 ±65–69 KB, sedikit di atas kapasitas pipa macOS (64 KiB). Lewat pipa, Chrome di runner ±1 dari 10 pemuatan menulis TEPAT 65.536 byte lalu
+    berhenti — </html> tidak pernah datang ("selesai tapi DOM tidak keluar", 27 dari 269 pemuatan). Lewat berkas: 0 dari 169."""
     srv, port = layani(d); profil = tempfile.mkdtemp(prefix='kunci-profil-'); K = srv.RequestHandlerClass.func
     fd, log_chrome = tempfile.mkstemp(prefix='kunci-log-', suffix='.txt'); log = os.fdopen(fd, 'wb')   # dibaca hanya kalau halaman dicoba ulang
+    fd, keluaran = tempfile.mkstemp(prefix='kunci-dom-', suffix='.html'); out = os.fdopen(fd, 'wb')
     p = subprocess.Popen([CHROME, '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--disable-component-update', '--disable-background-networking',
-                          '--user-data-dir=' + profil, '--dump-dom', '--enable-logging=stderr', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=log,
+                          '--user-data-dir=' + profil, '--dump-dom', '--enable-logging=stderr', 'http://127.0.0.1:%d%s' % (port, jalur)], stdout=out, stderr=log,
                          start_new_session=True)   # grup proses sendiri: dimatikan sekaligus
-    log.close()
-    buf = []; selesai = threading.Event()
-    def baca():
-        for baris in iter(p.stdout.readline, b''):
-            buf.append(baris.decode('utf-8', 'replace'))
-            if b'</html>' in baris: break
-        selesai.set()
-    threading.Thread(target=baca, daemon=True).start()
+    log.close(); out.close()
+    isi = b''; batas = time.time() + tunggu
     try:
-        selesai.wait(tunggu)
-        return ''.join(buf), K.siap.is_set() and not K.gagal.is_set(), {'gagal': K.gagal.is_set(), 'sdk': list(K.sdk), 'firebase_diminta': '/baru/js/data/firebase.js' in K.diminta,
-                                                                         'log': coba_ulang.ekor_berkas(log_chrome), 'waktu': dict(K.waktu), 'akhir': list(K.diminta[-4:])}
+        while time.time() < batas:   # berkas tidak punya "akhir" selama Chrome hidup → dibaca berkala sampai </html> atau Chrome keluar
+            keluar = p.poll() is not None
+            with open(keluaran, 'rb') as f: isi = f.read()
+            if b'</html>' in isi or keluar: break
+            time.sleep(0.1)
+        return isi.decode('utf-8', 'replace'), K.siap.is_set() and not K.gagal.is_set(), {'gagal': K.gagal.is_set(), 'sdk': list(K.sdk), 'firebase_diminta': '/baru/js/data/firebase.js' in K.diminta,
+                                                                                         'log': coba_ulang.ekor_berkas(log_chrome), 'waktu': dict(K.waktu), 'akhir': list(K.diminta[-4:]), 'byte': len(isi)}
     finally:
         try: os.killpg(p.pid, signal.SIGKILL)
         except (ProcessLookupError, PermissionError): p.kill()
         p.wait(); srv.shutdown(); shutil.rmtree(profil, ignore_errors=True)
-        try: os.unlink(log_chrome)
-        except OSError: pass
+        for berkas in (log_chrome, keluaran):
+            try: os.unlink(berkas)
+            except OSError: pass
 
 
 def body_kelas(h):

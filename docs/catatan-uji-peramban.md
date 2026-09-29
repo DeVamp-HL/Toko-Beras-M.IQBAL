@@ -5,6 +5,10 @@ Temuan tentang alat uji yang menyalakan Chrome headless (`alat-uji/uji_antrean_k
 
 ## Ringkas
 
+- **29 Sep 2026 — penyebab "selesai tapi DOM tidak keluar" ditemukan** (`uji_layar_kunci.py`, ±1 dari 10 pemuatan sejak putaran 33).
+  Halamannya tidak beku dan Chrome tidak lupa mengambil DOM: DOM sudah dicetak, tapi **lewat pipa stdout keluarannya berhenti tepat di
+  65.536 byte** (kapasitas pipa macOS) kalau DOM lebih besar dari itu, jadi `</html>` tidak pernah datang. Keluaran ke **berkas biasa**:
+  0 macet dari 169 pemuatan. `uji_layar_kunci.py` kini membaca DOM dari berkas. Rincian di bagian paling bawah.
 - Kasir darurat (`kasir-darurat-nominal.html`) kadang **tidak diserahkan Chrome headless** sesudah skenario uji selesai. Itu memicu
   percobaan ulang: 14 kali dalam 6 run CI (26–27 Sep 2026). Semuanya di halaman ini; `kasir.html`, sistem lama, dan `/baru/` nol.
 - Diagnosis 27 Sep di runner: dari 38 pemuatan, **6 macet, dan keenamnya "BEKU"**. Halaman berhenti dijalankan **tepat sesudah selesai
@@ -70,6 +74,13 @@ belum ditemukan.
 
 **Yang belum diketahui:** apakah hal serupa bisa terjadi di HP penjaga. Di HP tidak ada langkah "ambil DOM".
 
+**Dikoreksi 29 Sep 2026.** "BEKU" di atas bukan halaman yang berhenti dijalankan. Di Chrome headless baru, `--dump-dom` dikerjakan halaman
+perintah tersembunyi yang menunggu `load`, mengambil `outerHTML`, lalu **menutup tab sasaran** — baru kemudian Chrome mencetak DOM. Tab yang
+sudah ditutup memang tidak berdenyut lagi. Di 95 dari 95 kejadian 29 Sep urutannya selalu `load → pageshow → pagehide → visibilitychange
+(hidden)` dalam 9–69 ms (median ±21 ms): DOM sudah diambil, yang hilang adalah keluarannya (lihat bagian paling bawah). Sumber `kasir-darurat-nominal.html`
+±63 KB, jadi DOM-nya kemungkinan besar juga di atas 64 KiB — cocok dengan penyebab yang sama, tapi tidak dibuktikan ulang (uji kasir tidak
+memakai `--dump-dom` lagi sejak PR #43).
+
 ## Diagnosis lokal & Mac owner mati (27 Sep ±01.18 WIB)
 
 Percobaan pertama dijalankan di Mac owner: 3 pekerja paralel, ±300 pemuatan dalam 19 menit, 0 macet. Lalu Mac mati mendadak:
@@ -99,5 +110,67 @@ aturan di `CLAUDE.md`.
   **Bukan percobaan ulang.**
 - Yang masih dicoba ulang (dan tercatat DICOBA ULANG): halaman yang tidak mengirim hasil sama sekali.
 - `uji_layar_kunci.py` **belum** diubah. Uji tirainya memeriksa isi seluruh halaman ("0 angka rupiah di DOM"), dan belum pernah macet
-  (0 DICOBA ULANG yang tidak disengaja).
+  (0 DICOBA ULANG yang tidak disengaja). *(Sejak putaran 33 ia macet juga — lihat bagian berikut.)*
 - Bukti: workflow **Uji beban peramban** — ≥200 pemuatan kasir darurat dengan alat uji lama ("sebelum") dan baru ("sesudah") di runner.
+
+## Penyebab sebenarnya: keluaran lewat pipa berhenti di 64 KiB (29 Sep 2026)
+
+**Gejala.** Sejak putaran 33 (PR #57) `uji_layar_kunci.py --kontrol` menulis 1–5 kali per run CI `DICOBA ULANG … selesai tapi DOM tidak
+keluar` (run 395–413, ±1 dari 10 pemuatan). Sebelum putaran 33: nol. Halaman mengabarkan `/_siap`, gambar penahan dijawab, favicon diminta,
+tapi `--dump-dom` tidak mencetak `</html>` dalam 90 dtk.
+
+**Cara.** Cabang diagnosis `diagnosis/dom-tidak-keluar` (tidak di-merge, sudah dihapus; alat `alat-uji/diagnosis_dom_keluar.py`, workflow
+sendiri, dan hasil mentah `diagnosis-hasil/` ada di commit `c96b347`)
+mengulang skenario ASLI `uji_layar_kunci` di runner, satu Chrome sekali jalan per runner, beberapa lengan paralel. Tiap pemuatan: waktu CPU &
+prioritas tiap proses Chrome, peristiwa halaman (`load`, `pagehide`, `visibilitychange`, `freeze`) + denyut sesudah `load`. Saat macet:
+`sample` tiap proses, dan lewat port DevTools keadaan halaman sasaran DAN halaman perintah `--dump-dom` (perintah terakhir, peristiwa yang
+masih ditunggu).
+
+**Putaran 1** (https://github.com/DeVamp-HL/Toko-Beras-M.IQBAL/actions/runs/36497784054) — semua skenario (utama + kontrol):
+
+| lengan | pemuatan | macet |
+|---|---|---|
+| bendera CI persis | 199 | 23 (11,6%) |
+| + port DevTools | 198 | 23 (11,6%) |
+| + gerak dikurangi (`--force-prefers-reduced-motion`) | 191 | 23 (12,0%) |
+| + tanpa penurunan prioritas latar (`--disable-renderer-backgrounding` dkk) | 177 | 26 (14,7%) |
+
+- Animasi gerbang dan prioritas proses latar **bukan** penyebab (angkanya sama). CPU renderer + GPU di jendela siap → penahan ±0,02 dtk CPU
+  per detik: runner tidak sibuk.
+- **Semua 95** macet di skenario Firebase palsu (ganti orang / isian: utama + kontrol 4–8, 10–19). Skenario tirai (utama + kontrol 1–3,
+  ±160 pemuatan): **nol**.
+- Di semua 95: `load → pageshow → pagehide → visibilitychange(hidden)` dalam 9–69 ms, dan saat diperiksa tab sasaran maupun halaman perintah
+  sudah tidak ada. `--dump-dom` sudah menyelesaikan kerjanya.
+- Yang terbaca dari stdout selalu berhenti di tempat yang SAMA: sesudah `</script>` skenario, tepat sebelum baris terakhir yang panjang
+  (`<pre id="__hasil">{…}</pre></body></html>`). Alat lama membaca per baris, jadi baris terakhir yang tidak pernah utuh tidak terlihat.
+
+**Putaran 2** (https://github.com/DeVamp-HL/Toko-Beras-M.IQBAL/actions/runs/36501548897) — hanya skenario Firebase palsu:
+
+| lengan | pemuatan | macet | keluaran saat macet |
+|---|---|---|---|
+| stdout pipa, dibaca per baris (persis CI) | 131 | 15 (11,5%) | baris utuh terakhir sebelum `<pre id="__hasil">` |
+| stdout pipa sendiri, dibaca byte mentah | 138 | 12 (8,7%) | **tepat 65.536 byte** di 12 dari 12, tanpa `</html>` |
+| stdout ke **berkas biasa** | 169 | **0** | — |
+
+- DOM normal skenario ini 65.368–68.603 byte — sedikit di atas 64 KiB. Putaran 33 menambah ±40 KB ke DOM (`baru/index.html` 8,9 → 23,3 KB,
+  hiasan kaca gerbang 13 KB disalin ke kedua daun pintu). Sebelumnya DOM muat di satu pipa, jadi tidak pernah macet.
+- Bendera `O_NONBLOCK` pada pipa tidak pernah terpasang. Kenapa Chrome kadang berhenti menulis sesudah pipa penuh sekali (dan tidak pernah di
+  Mac pengembang) ada di dalam Chrome — tidak diketahui, dan tidak perlu diketahui untuk memperbaikinya.
+
+**Verifikasi alat yang asli** (workflow "Verifikasi uji layar kunci" di cabang diagnosis, commit `c96b347`): `uji_layar_kunci.py` + `--kontrol`, persis langkah
+CI, diulang ±35 menit per versi di runner sendiri.
+
+| versi | putaran (utama + kontrol) | DICOBA ULANG tidak disengaja |
+|---|---|---|
+| `main` (pipa) | 6 | **12** — semuanya `--kontrol`, "selesai tapi DOM tidak keluar" |
+| cabang perbaikan (berkas) | 11 | **0** |
+
+Runnya: https://github.com/DeVamp-HL/Toko-Beras-M.IQBAL/actions/runs/36505499245 (sesudah) dan
+https://github.com/DeVamp-HL/Toko-Beras-M.IQBAL/actions/runs/36508492608 (sebelum — di run pertama versi `main` terputus oleh `bash -e` di
+skrip verifikasi, bukan oleh uji).
+
+**Perbaikan.** `uji_layar_kunci.dom_sekali()` menyuruh Chrome menulis stdout ke berkas sementara dan membacanya berkala sampai `</html>` (atau
+Chrome keluar / 90 dtk). Selebihnya sama: `--dump-dom`, gambar penahan, percobaan ulang dan baris DICOBA ULANG-nya (teks sebab tetap).
+Baris catatan di bawah DICOBA ULANG kini juga menyebut jumlah byte keluaran Chrome. `uji_coba_ulang.py` punya Chrome palsu yang meniru yang
+terukur (lewat pipa: tepat 65.536 byte lalu diam; lewat berkas: utuh) + kontrol "kembali lewat pipa" yang wajib berbunyi.
+

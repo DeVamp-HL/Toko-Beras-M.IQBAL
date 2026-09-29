@@ -49,6 +49,11 @@ CHROME_PALSU = {
     'rangkai': (_minta('POST', '/_hasil?s=utama', '{"s": "utama"}') + _minta('POST', '/_hasil?s=muatUlang', '{"s": "muatUlang"}') + "time.sleep(60)\n"),
     'rangkai-putus': (_minta('POST', '/_hasil?s=utama', '{"s": "utama"}') + "sys.stderr.write('[palsu] muat ulang tidak jalan\\n')\n"),
     'sehat': _minta('POST', '/_hasil', '{"ok": 1}') + SIAP + "sys.stdout.write('<html><head></head><body>ok</body></html>\\n'); sys.stdout.flush()\n",
+    # uji_layar_kunci: DOM > 64 KiB (skenario ganti/isian sejak putaran 33). Meniru yang TERUKUR di runner (diagnosis 29 Sep): stdout PIPA → Chrome
+    # menulis tepat 65.536 byte lalu berhenti (tidak keluar sendiri); stdout BERKAS → DOM utuh, lalu tetap tidak keluar sendiri
+    'dom-besar': (SIAP + "import stat\ndom = ('<!DOCTYPE html>\\n<html><head></head><body>\\n' + '<p>isi contoh</p>\\n' * 6000 + '<pre id=\"__hasil\">{}</pre></body></html>\\n').encode()\n"
+                  "if stat.S_ISFIFO(os.fstat(1).st_mode): dom = dom[:65536]\n"
+                  "n = 0\nwhile n < len(dom): n += os.write(1, dom[n:])\ntime.sleep(60)\n"),
     # percobaan ganjil MENGUBAH penyimpanan halaman (efek.txt di Local Storage profil) lalu mati tanpa hasil; percobaan genap mengirim hasil
     # yang menyebut isi penyimpanan yang DILIHATNYA saat mulai (kejadian PR #42: percobaan gagal yang sudah mengubah penyimpanan)
     'efek': (PROFIL + "ls = os.path.join(prof, 'Default', 'Local Storage'); os.makedirs(ls, exist_ok=True); pe = os.path.join(ls, 'efek.txt')\n"
@@ -90,7 +95,9 @@ elif alat == 'antrean':
 else:
     import uji_layar_kunci as K
     K.CHROME = chrome; K.DISENGAJA = disengaja
-    K.dom(d, '/baru/index.html', coba=3, butuh_cdn=False)
+    if os.environ.get('UJI_TUNGGU'): K.dom_sekali.__defaults__ = (float(os.environ['UJI_TUNGGU']),)
+    h, sebab = K.dom(d, '/baru/index.html', coba=3, butuh_cdn=False)
+    print('KUNCI:' + json.dumps({'utuh': h.rstrip().endswith('</html>'), 'byte': len(h.encode()), 'sebab': sebab}))
 '''
 
 
@@ -108,10 +115,10 @@ def chromes():
     return _CHROMES
 
 
-def jalankan(salinan, alat, jenis, argv, gha=False, disengaja=None):
+def jalankan(salinan, alat, jenis, argv, gha=False, disengaja=None, tunggu=None):
     """→ baris keluaran (stdout) proses anak. Proses anak yang melewati 60 dtk = gagal (dicatat), bukan membuat seluruh pekerjaan CI menggantung."""
     env = {k: v for k, v in os.environ.items() if k not in ('GITHUB_ACTIONS', 'CI')}
-    env.update(UJI_DIR=salinan, UJI_ALAT=alat, UJI_CHROME=chromes()[jenis], UJI_ARGV=json.dumps(argv), UJI_DISENGAJA=disengaja or '')
+    env.update(UJI_DIR=salinan, UJI_ALAT=alat, UJI_CHROME=chromes()[jenis], UJI_ARGV=json.dumps(argv), UJI_DISENGAJA=disengaja or '', UJI_TUNGGU=str(tunggu or ''))
     if gha: env['GITHUB_ACTIONS'] = 'true'
     t0 = time.time()
     try:
@@ -187,6 +194,10 @@ def semua(ganti=None, cepat=False):
         ok('layar kunci · pengulangan yang dulu diam sekarang tercatat: dua baris untuk tiga percobaan',
            baris(k) == [BARIS + 'uji_layar_kunci · /baru/index.html — tidak mengabarkan selesai (percobaan %d dari 3)' % n for n in (2, 3)], k)
         ok('layar kunci · catatan Chrome ikut dicetak', k.count('    [palsu] renderer macet') == 2, k)
+        k = jalankan_('kunci', 'dom-besar', ['alat-uji/uji_layar_kunci.py'], tunggu=8)
+        kunci = [json.loads(b[6:]) for b in k if b.startswith('KUNCI:')]
+        ok('layar kunci · DOM lebih dari 64 KiB (diagnosis 29 Sep: lewat pipa Chrome di runner berhenti tepat di 65.536 byte) → terbaca utuh sekali jalan, nol DICOBA ULANG',
+           not baris(k) and len(kunci) == 1 and kunci[0]['utuh'] and kunci[0]['sebab'] is None and kunci[0]['byte'] > 65536, k)
         k = jalankan_('kunci', 'diam', ['alat-uji/uji_layar_kunci.py', '--kontrol'], gha=True, disengaja='kontrol 9 memutus Firebase')
         ok('yang DISENGAJA kontrol tetap ditulis barisnya (ditandai DISENGAJA) tapi tanpa peringatan di ringkasan',
            len(baris(k)) == 2 and all(b.endswith(' · DISENGAJA: kontrol 9 memutus Firebase') for b in baris(k)) and not peringatan(k), k)
@@ -215,6 +226,8 @@ KONTROL = [
         "    foto = tempfile.mkdtemp(prefix='antre-foto-'); _salin_penyimpanan(profil, foto)\n", "    foto = tempfile.mkdtemp(prefix='antre-foto-')\n"),
         ('uji_antrean_kasir.py', "        h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu, lalu)\n", "        h = _buka_sekali(port, keadaan, profil, jalur, gambar, tunggu, lalu)\n        if coba == 1: _salin_penyimpanan(profil, foto)\n")]),
     ('uji_layar_kunci mengulang diam-diam lagi', [('uji_layar_kunci.py', "        if ke > 1: coba_ulang.catat(jalur, sebab, ke, coba, disengaja=DISENGAJA, log=log)\n", "")]),
+    ('uji_layar_kunci kembali membaca DOM lewat pipa (terpotong di kapasitas pipa 64 KiB — penyebab "DOM tidak keluar" 29 Sep)',
+     [('uji_layar_kunci.py', "'http://127.0.0.1:%d%s' % (port, jalur)], stdout=out, stderr=log,", "'http://127.0.0.1:%d%s' % (port, jalur)], stdout=subprocess.PIPE, stderr=log,")]),
     ('peringatan GitHub Actions hilang', [('coba_ulang.py', "print('::warning title=DICOBA ULANG::'", "print('(peringatan) DICOBA ULANG::'")]),
     ('yang disengaja ikut jadi peringatan', [('coba_ulang.py', "if os.environ.get('GITHUB_ACTIONS') and not disengaja:", "if os.environ.get('GITHUB_ACTIONS'):")]),
     ('catatan Chrome tidak ikut dicetak (uji antrean kasir)', [('uji_antrean_kasir.py', "BATAS, log=coba_ulang.ekor_berkas(keadaan.get('log_chrome', '')))", "BATAS)")]),
