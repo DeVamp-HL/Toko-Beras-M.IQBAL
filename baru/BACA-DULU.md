@@ -741,6 +741,30 @@ Dua "temuan lama" yang dicatat saat gerbang 39, ditelusuri dulu sebelum diubah (
   dulu terlihat berasal dari `index.html` sistem lama yang dimuat lebih dulu di tab yang sama (server pratinjau membuka akar repo), bukan dari /baru/.
   Pelajaran alat: bukti peramban diambil di tab baru, bukan tab yang riwayat konsolnya sudah terisi halaman lain.
 
+## Putaran 39c — deretan karung = satu slot per wadah, karung habis dihapus, peringatan buka dari tumpukan (30 Sep 2026, cabang `wadah/39c-deretan-delapan`)
+
+Permintaan owner 30 Sep (screenshot Stok › Wadah literan Mac & HP): deretan karung "cuma 8" (merek dari pemasok berganti-ganti — karung yang habis harus bisa
+dihapus, yang dikembalikan ke tumpukan jadi gambar karung garis putus "?"), tata letak Mac disamakan dengan HP, dan isi ulang dari layar Jual memberi
+peringatan kalau karung di belakangnya habis ("ambil dari tumpukan gudang?").
+- **Satu slot per wadah** (`slotKarungWadah()`, `karungLepasDeretan()` di `jual-logika.js`; kartu "Deretan karung terbuka" di `stok.js`): W1..Wn masing-masing satu
+  kartu — karung yang berdiri di belakangnya (merek asal, sisa, buku sendiri, HABIS bila kolam ≤ 0,5 kg) atau KOSONG: karung garis putus "?" beralasan
+  (dikembalikan ke tumpukan / habis, dihapus / belum ada) + merek terakhir yang pernah berdiri di situ. Karung lepas · yatim · sisihan tampil di baris kecil
+  sendiri, bukan di slot. `karungUntukWadah` kini PER MEREK: kolam yang sudah ditutup (karungIsi 0 bertanda `dikembalikan` / `selesai` / `pindahAwal`) tidak
+  dihitung; yang terbaru di antara yang hidup = karungnya; tidak ada → slot kosong (bukan jatuh ke karung lama yang sudah dikembalikan).
+- **Hapus karung habis** (`susunHapusKarungHabis`, aksi `drHapus`): kolam ≤ 0,5 kg → karungIsi 0 bertanda `selesai` (slot kosong, karung berikutnya dibuka dari
+  tumpukan saat isi ulang — merek apa pun). Karung berbuku yang bukunya masih > 0,5 kg padahal kolamnya habis → ketukan kedua mencatat SUSUT sebesar bukunya
+  (`penyesuaianStok` kunci buku itu, bagian `karung`, alasan "karung habis") — tidak diam. Masih berisi → ditolak (samakan / kembalikan). Papan Kapur menyebutnya.
+- **Kembalikan karung BERBUKU** (celah 39 yang ketemu saat menulis uji): dulu `susunKembalikanKarung` menghapus catatan bukanya / menulis karungIsi 0 saja, jadi
+  bukunya (kunci karung belakang) tetap terisi dan tumpukan merek asal tidak pulih. Kini: karungIsi 0 `dikembalikan` + pindah buku KB → merek asal sebesar sisa
+  kolam (`kembaliTumpukan`), tumpukan merek asal naik persis sebesar itu.
+- **Tata letak = HP**: `stok.css` ≥ 1100 px kotak wadah 4 sebaris (dua baris W1–W4 / W5–W8), deretan 4 slot sebaris di atasnya (slot Wn tepat di atas kotak Wn);
+  jangkar `uji_tata_letak_ringkasan_stok.py` mengikuti.
+- **Peringatan buka dari tumpukan** (`wadah-panel.js`, Jual & Stok): tiga ketukan / − + takar yang perlu membuka karung baru dari tumpukan (karung di belakang habis,
+  kosong, kurang, atau merek lain) tidak menulis di ketukan pertama — pita menyebut berapa karung dibuka, tumpukan sebelum → sesudah, dan "beras di belakang
+  berganti: <lama> → <baru>"; tombol jadi "YAKIN — buka n karung dari tumpukan & ISI ULANG" (draf berubah → yakin dicabut).
+- Uji: `uji_wadah_satu_buku.py` bagian 15 (9 pemeriksaan) + 4 kontrol + 3 pemeriksaan statis layar/CSS; `uji_stok_baru`, `uji_jual_baru`, `uji_wadah_stok_sendiri` tidak
+  berubah (deretanKarung lama tetap dipakai panel − / + di Jual).
+
 ## Struktur
 ```
 baru/

@@ -46,7 +46,10 @@ main.layar-stok { position: relative; z-index: 1; display: flex; flex-direction:
 .layar-stok .kapur:last-child { border-bottom: 0; } .layar-stok .kapur .isi-kapur { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .layar-stok .kapur.masuk .n { color: var(--emas1); } .layar-stok .kapur.keluar .n { color: var(--teks); } .layar-stok .kapur.opname .n { color: var(--awas); } .layar-stok .kapur.wadah .n { color: var(--platina1); }
 main.layar-stok.masuk > header, main.layar-stok.masuk > .jalur { animation: rkNaik 520ms cubic-bezier(.2,.8,.2,1) both; }
-@media (min-width: 720px) { .layar-stok .tanya { grid-template-columns: repeat(5, minmax(0, 1fr)); } .layar-stok .tanya .kartu-t:last-child:nth-child(odd) { grid-column: auto; min-height: 74px; } .layar-stok .petak-wadah { gap: 12px; } .layar-stok .petak { padding: 12px 8px 14px; } .layar-stok .petak .nm { font-size: 14px; } .layar-stok .petak .ket { font-size: 12px; } .layar-stok .tumpuk-gambar { max-width: 128px; } }
+/* putaran 39c: slot deretan karung (satu per wadah): kartu petak yang lebih rendah; kosong = garis putus ("?"); habis = tepi awas */
+.layar-stok .petak.slot { padding: 8px 4px 9px; gap: 1px; } .layar-stok .petak.slot .gambar-chip { width: 44px; height: 44px; } .layar-stok .petak.slot .gambar-chip svg { width: 44px; height: 44px; }
+.layar-stok .petak.slot.kosong { border-style: dashed; opacity: 0.82; } .layar-stok .petak.slot.kosong .nm { color: var(--redup); font-weight: 500; } .layar-stok .petak.slot.habis { border-color: var(--awas); }
+@media (min-width: 720px) { .layar-stok .tanya { grid-template-columns: repeat(5, minmax(0, 1fr)); } .layar-stok .tanya .kartu-t:last-child:nth-child(odd) { grid-column: auto; min-height: 74px; } .layar-stok .petak-wadah { gap: 12px; } .layar-stok .petak { padding: 12px 8px 14px; } .layar-stok .petak .nm { font-size: 14px; } .layar-stok .petak .ket { font-size: 12px; } .layar-stok .tumpuk-gambar { max-width: 128px; } .layar-stok .petak.slot .gambar-chip, .layar-stok .petak.slot .gambar-chip svg { width: 58px; height: 58px; } }
 @media (min-width: 1100px) { main.layar-stok { padding: 22px 28px 40px; } }
 /* ---- Barang masuk & Cocokkan (23 Sep) ---- */
 .layar-stok .kepala-lembar { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; } .layar-stok .kepala-lembar .kaca-btn { flex: none; min-height: 36px; padding: 0 14px; }
@@ -162,8 +165,9 @@ body.gelap .layar-stok .iso-toko .sisi-atas.karung { fill: #cdb98b; } body.gelap
   main.layar-stok { max-width: 1720px; }
   main.layar-stok > section:not(.stok-gudang):not([data-k="wadah"]) { width: 100%; max-width: 1180px; box-sizing: border-box; }   /* Atur wadah (data-k wadah-atur) = formulir → ikut 1180 */
   main.layar-stok > .pita-info:has(~ section:not(.stok-gudang):not([data-k="wadah"])) { width: 100%; max-width: 1180px; box-sizing: border-box; }   /* kabar selebar formulirnya */
-  /* Wadah literan = deretan kotak di mulut toko: selebar halaman, kotak sebaris sebanyak yang muat (8 wadah = satu baris di ±1860 px) */
-  .layar-stok .stok-wadah .petak-wadah { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  /* Wadah literan = deretan kotak di mulut toko: selebar halaman. Putaran 39c (owner 30 Sep): tata letak SAMA seperti HP — 4 kotak sebaris, dua baris (W1–W4 / W5–W8),
+     deretan karung di atasnya juga 4 slot sebaris supaya slot Wn berdiri tepat di atas kotak Wn */
+  .layar-stok .stok-wadah .petak-wadah { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .layar-stok .stok-gudang { display: grid; grid-template-columns: minmax(0, 1fr) clamp(320px, 24vw, 400px); column-gap: 18px; row-gap: 12px; align-items: start; }
   .layar-stok .stok-gudang > .tanya { grid-column: 1 / -1; }
   .layar-stok .stok-gudang > .jawaban { grid-column: 1; grid-row: 2; }
