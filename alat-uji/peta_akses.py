@@ -260,8 +260,28 @@ if (!susunSimpanAdukan(drafAduk(NH + 1, 0), W, YAKIN).dokumen) salah('owner (bat
   catat('struk', p, 'satu struk cetak/WA', kirim(p, [susunStrukKeluar({ trxId: 11, nama: 'Pembeli Contoh', total: 70000 }, 'cetak', W, '')]));
 });
 
+// ---- 5 · ISI ULANG & CEK WADAH (putaran 39, rules v5): wadah aktif contoh — ½ karung dari tumpukan (buku karung belakang lahir + 2 pindah buku + karung + takar),
+//        takaran kg dari karung yang sudah terbuka (takar + 1 pindah), cek tutup toko "dikosongkan" (sisihkan semua + cek) dan "lupa isi ulang" (1 cek)
+pasok('wadahLiteran', [{ id: 9001, tanggal: '2026-09-01', jam: '07:00', tipe: 'atur', penuhKg: 50, puncakKg: 60, isiUlangKg: 10, takarKg: 1.8, daftar: ['Angsa'] },
+  { id: 9002, tanggal: '2026-09-20', jam: '08:00', tipe: 'isi', wadah: 'Angsa', isiKg: 0, stokWadah: 'Wadah Angsa', pindahAwal: true }]);
+pasok('batchMasuk', [{ id: 'b1', tanggal: '2026-09-01', merkList: [{ merk: 'Angsa', satuan: 'karung', beratKarung: 50, totalKg: 5000, subtotalHarga: 65000000, hargaPerKg: 13000 }] },
+  { id: 'b2', tanggal: '2026-09-20', jam: '08:00', pemasok: 'LAHIR BUKU', caraBayar: 'tunai', biayaBongkar: 0, stokAwal: true, lahirBuku: true, merkList: [{ id: '1', merk: 'Wadah Angsa', satuan: 'lahir', beratKarung: 0, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, stokWadah: 'Angsa' }] }]);
+['ben', 'karyawan'].forEach(function (p) {
+  var iu = wbSusunIsiUlangTiga('Angsa', 'Angsa', { jenis: 'setengah' }, W, null, {});
+  if (iu.tolak) salah('isi ulang ½ karung ditolak: ' + iu.tolak); else catat('isi ulang wadah', p, '½ karung dari tumpukan: karung belakang lahir + 2 pindah buku + karung + takar', kirim(p, iu.dokumen));
+  var iu2 = denganCacheSementara(iu.dokumen || [], function () { return wbSusunIsiUlangTiga('Angsa', 'Angsa', { jenis: 'kg', kg: '3,5' }, W, null, {}); });
+  if (iu2.tolak) salah('isi ulang kg ditolak: ' + iu2.tolak); else catat('isi ulang wadah', p, '3,5 kg dari karung yang sudah terbuka: takar + 1 pindah buku', kirim(p, iu2.dokumen));
+  var ck = denganCacheSementara(iu.dokumen || [], function () { return wbSusunCek('Angsa', 'kosong', W); });
+  if (ck.tolak) salah('cek dikosongkan ditolak: ' + ck.tolak); else catat('isi ulang wadah', p, 'cek tutup toko: dikosongkan = sisihkan semua ke karung wadah + cek', kirim(p, ck.dokumen));
+  var ck2 = wbSusunCek('Angsa', 'lupa', W); if (ck2.tolak) salah('cek lupa ditolak: ' + ck2.tolak); else catat('isi ulang wadah', p, 'cek tutup toko: lupa isi ulang (satu catatan)', kirim(p, ck2.dokumen));
+  // rules v5 hanya membuka tipe takar / karung / karungIsi / cek dan batch LAHIR BUKU 0 kg — aturan wadah, titik samakan isi, dan kedatangan sungguhan tetap ditolak di perangkat
+  if (!kirim(p, [{ koleksi: 'wadahLiteran', data: { id: 9101, tanggal: W.tanggal, jam: W.jam, tipe: 'atur', daftar: ['Angsa'] } }]).dilewati) salah('aturan wadah oleh ' + p + ' lolos penjaga perangkat');
+  if (!kirim(p, [{ koleksi: 'wadahLiteran', data: { id: 9102, tanggal: W.tanggal, jam: W.jam, tipe: 'isi', wadah: 'Angsa', isiKg: 50 } }]).dilewati) salah('titik samakan isi oleh ' + p + ' lolos penjaga perangkat');
+  if (!kirim(p, [{ koleksi: 'batchMasuk', data: { id: 9103, tanggal: W.tanggal, jam: W.jam, pemasok: 'LAHIR BUKU', stokAwal: true, lahirBuku: true, biayaBongkar: 0, merkList: [{ merk: 'Angsa', satuan: 'karung', totalKg: 50, subtotalHarga: 650000 }] } }]).dilewati) salah('batch lahir berisi kg oleh ' + p + ' lolos penjaga perangkat');
+});
+
 // ---- 4 · tiap tindakan yang DIBUKA server untuk bukan-owner wajib punya hitungan di atas
-var DIHITUNG = { jualTunai: 'nota', jualBon: 'nota', terimaBon: 'terima bon', adukan: 'adukan', pelangganBaru: 'pelanggan baru' };
+var DIHITUNG = { jualTunai: 'nota', jualBon: 'nota', terimaBon: 'terima bon', adukan: 'adukan', pelangganBaru: 'pelanggan baru', isiUlang: 'isi ulang wadah' };
 Object.keys(SERVER_BUKA).forEach(function (t) { if (!DIHITUNG[t] || !hasil.baris.some(function (b) { return b.jenis === DIHITUNG[t]; })) salah('tindakan "' + t + '" dibuka server untuk bukan-owner, tapi kirimannya tidak dihitung di sini'); });
 hasil.batas = { kirim: BATAS_KIRIM_STAF, firebase: BATAS_ACCESS_CALL, baris: NB, hasil: NH };
 print(JSON.stringify(hasil));
@@ -342,7 +362,12 @@ OWNER_JALUR = {
     'susunPutusTitipan': 'titipan disetujui: 1 pengeluaranHarian hari ini (+ persetujuan, tidak dikunci)',
     'susunCocok': 'penghitung daftar cocokkan — tidak menulis; yang menulis susunSimpanCocok (diukur)',
     'susunSimpanBeli': 'beli kantong: 1 dokumen bertanggal hari ini',
-    'susunTakarWadah': 'wadahLiteran (tidak dikunci) + paling banyak 1 produksiKemasan (putaran 28: pindah buku ke stok wadah) + paling banyak 1 batch lahir 0 kg, hari ini',
+    'susunTakarWadah': 'wadahLiteran (tidak dikunci) + produksiKemasan pindah buku (28: karung → stok wadah; 39: + 1 pindah merek → karung belakang per karung otomatis yang dibuka) + paling banyak 1 batch lahir 0 kg per buku baru, hari ini — kiriman karyawan diukur di --kiriman (isi ulang wadah)',
+    # putaran 39 (owner 29 Sep): karung belakang = buku sendiri; isi ulang tiga ketukan; aktivasi per wadah; cek wadah — semua bertanggal hari ini, dokumen tetap per tindakan (tanpa perulangan yang membesar)
+    'wbDokBukaKB': 'buka karung berbuku: paling banyak 1 batch lahir 0 kg + 1 produksiKemasan pindah buku (merek → karung belakang) + n catatan karung (wadahLiteran, tidak dikunci), hari ini',
+    'wbSusunIsiUlangTiga': 'isi ulang tiga ketukan: wbDokBukaKB (bila perlu) + 1 takar (tidak dikunci) + 1 produksiKemasan pindah buku karung belakang → wadah, hari ini — kiriman karyawan diukur di --kiriman',
+    'wbSusunAktifkan': 'aktivasi satu wadah (owner, Stok): 1 batch lahir + 1 pindah buku isi + per karung terbuka 1 pindah buku + 2 karungIsi, semuanya hari ini (≤ 8 kolam)',
+    'wbSusunCek': 'cek wadah tutup toko: 1 catatan cek (tidak dikunci) + bila dikosongkan = wbSusunSisih (1 lahir + 1 pindah + 1 karung), hari ini — kiriman karyawan diukur di --kiriman',
     # putaran 28 (owner 28 Sep): tiga pintu karung di belakang wadah — pintu hasil adukan membuka 1 kemasan jadi
     'susunBukaKarung': 'wadahLiteran (tidak dikunci); pintu hasil adukan = susunBukaKemasan (1 produksiKemasan + paling banyak 1 batch lahir 0 kg, hari ini)',
     'susunBukaKemasan': '1 produksiKemasan + paling banyak 1 batchMasuk lahir 0 kg, bertanggal hari ini (+ wadahLiteran, tidak dikunci)',
@@ -539,7 +564,9 @@ if __name__ == '__main__':
                 'alasanTolak tanpa penjaga baris': rusak(JL, "const lewat = alasanBatasBaris(s, s.keranjang.length); if (lewat) return lewat;", ""),
                 'baris literan menulis dokumen ketiga': rusak(JL, "    // PUTARAN 15: wadah yang DIJUAL", "    if (d.kemasanLiteran) dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: d.id + 2, tipe: 'pakai' } });\n    // PUTARAN 15: wadah yang DIJUAL"),
                 'adukan tanpa penjaga hasil': rusak(SA, "if (Number(draf.batasHasil) > 0 && h.sahH.length > Number(draf.batasHasil)) return", "if (false) return"),
-                'tindakan baru dibuka server tanpa hitungan': rusak(AK, "pelangganBaru: ['ben', 'karyawan'] };", "pelangganBaru: ['ben', 'karyawan'], isiUlang: ['ben'] };"),
+                'tindakan baru dibuka server tanpa hitungan': rusak(AK, "isiUlang: ['ben', 'karyawan'] };", "isiUlang: ['ben', 'karyawan'], cekBaru: ['ben'] };"),
+                'karyawan boleh menulis aturan wadah': rusak(AK, "if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };", ""),
+                'karyawan boleh menulis kedatangan sungguhan sebagai batch lahir': rusak(AK, "if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };", ""),
                 'jual.js mencatat nota tanpa batas baris': rusak('baru/js/layar/jual.js', 'L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }))', 'L.simpanNota(Object.assign(S(), { tembusYakin: tembusYakin === true }))'),
                 'stok.js menyimpan adukan tanpa batas hasil': rusak('baru/js/layar/stok.js', "Object.assign({}, d, { batasHasil: batasHasilAdukan(opsi.akun ? opsi.akun() : null) })", 'd'),
             }

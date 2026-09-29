@@ -152,7 +152,7 @@ ok('kisi SS2: hitung laci (Ben) & kedatangan (Ben, karyawan) — kisi "sendiri" 
   sel('ben', 'hitungLaci').label === 'tertutup server' && /titik kas/.test(sel('ben', 'hitungLaci').ket) && sel('ben', 'kedatangan').label === 'tertutup server' && /harga beli/.test(sel('karyawan', 'kedatangan').ket)
   && sel('karyawan', 'kedatangan').label === 'tertutup server' && sel('ben', 'jualTunai').label === 'boleh sendiri' && sel('owner', 'hitungLaci').label === 'boleh sendiri' && sel('karyawan', 'hitungLaci').label === 'tidak boleh', JSON.stringify([sel('ben', 'hitungLaci'), sel('karyawan', 'kedatangan')]));
 var semuaSendiri = SS_TINDAKAN.filter(function (x) { return ['ben', 'karyawan'].some(function (p) { return sel(p, x.id).label === 'boleh sendiri' && (SERVER_BUKA[x.id] || []).indexOf(p) < 0; }); });
-ok('kisi SS2: TIDAK ADA sel "boleh sendiri" yang ditutup server (semua 13 tindakan × 2 peran); "minta owner" menyebut alurnya belum ada; ringkasan peran menghitung "tertutup server" terpisah',
+ok('kisi SS2: TIDAK ADA sel "boleh sendiri" yang ditutup server (semua ' + SS_TINDAKAN.length + ' tindakan × 2 peran); "minta owner" menyebut alurnya belum ada; ringkasan peran menghitung "tertutup server" terpisah',
   semuaSendiri.length === 0 && /belum ada/.test(sel('ben', 'nego').ket) && /2 tertutup server/.test(SP.peran[1].ket) && /1 tertutup server/.test(SP.peran[2].ket), JSON.stringify([semuaSendiri.map(function (x) { return x.id; }), SP.peran[1].ket, SP.peran[2].ket]));
 
 // ---- 10 · sambungan di firebase.js (sumber diperiksa — tidak bisa dijalankan di jsc)

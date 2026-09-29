@@ -60,14 +60,22 @@ export const kunciKarungWadah = (W) => 'Karung wadah ' + String(W);
 // Kemasan jadi HASIL ADUKAN yang dibuka jadi karung terbuka (owner 28 Sep: "hasil produksi kemasan beda dari hasil beli langsung dari pemasok")
 // = buku sendiri per produk & ukuran, berkunci 'Adukan <nama> <ukuran> kg', barisnya bertanda `bukuAdukan` (= kunci kemasannya).
 export const kunciBukuAdukan = (nama, ukuran) => 'Adukan ' + String(nama) + ' ' + String(ukuran).replace('.', ',') + ' kg';
-/** { kunci: { jenis: 'wadah' | 'karung' | 'adukan', wadah } } — buku KHUSUS yang bukan merek pemasok: isi kotak wadah (stokWadah), karung
- *  sisihan/bongkarannya (karungWadah), kemasan hasil adukan yang dibuka (bukuAdukan; `wadah` = nama produknya). */
+// Putaran 39 (owner 29 Sep: "karung di belakang wadah jadikan buku mesin tersendiri; diambil dari tumpukan gudang, tumpukannya berkurang"):
+// karung 50/25 kg yang berdiri di belakang satu wadah = buku sendiri per WADAH × MEREK ASAL, berkunci 'Karung belakang <wadah> · <merek>'.
+// Buka karung = pindah buku merek → karung belakang (tumpukan gudang turun sungguhan di buku); takar = pindah buku karung belakang → wadah.
+// Barisnya lahir bertanda `karungBelakang` (= nama wadah) + `merkAsal` (= merek pemasok / buku sumbernya).
+export const kunciKarungBelakang = (W, merk) => 'Karung belakang ' + String(W) + ' · ' + String(merk);
+/** { kunci: { jenis: 'wadah' | 'karung' | 'adukan' | 'belakang', wadah, merk? } } — buku KHUSUS yang bukan merek pemasok: isi kotak wadah (stokWadah), karung
+ *  sisihan/bongkarannya (karungWadah), kemasan hasil adukan yang dibuka (bukuAdukan; `wadah` = nama produknya), karung di belakang wadah (karungBelakang + merkAsal). */
 export function petaBukuWadah() {
   const out = {}; ambilSemuaBatch().forEach((b) => (b.merkList || []).forEach((m) => { if (!m || !m.merk) return;
     if (m.stokWadah) out[String(m.merk)] = { jenis: 'wadah', wadah: String(m.stokWadah) }; else if (m.karungWadah) out[String(m.merk)] = { jenis: 'karung', wadah: String(m.karungWadah) };
-    else if (m.bukuAdukan) out[String(m.merk)] = { jenis: 'adukan', wadah: String(m.bukuAdukan).split('|')[0] }; }));
+    else if (m.bukuAdukan) out[String(m.merk)] = { jenis: 'adukan', wadah: String(m.bukuAdukan).split('|')[0] };
+    else if (m.karungBelakang) out[String(m.merk)] = { jenis: 'belakang', wadah: String(m.karungBelakang), merk: String(m.merkAsal || '') }; }));
   return out;
 }
+/** Merek asal di balik satu kunci buku: kunci karung belakang → merek pemasoknya; selain itu kuncinya sendiri (merek biasa / buku khusus lain). */
+export function merkAsalKunci(kunci, peta) { const b = (peta || petaBukuWadah())[String(kunci)]; return b && b.jenis === 'belakang' && b.merk ? b.merk : String(kunci); }
 // Karung pemasok per UKURAN (owner 28 Sep: "beras hasil belanja dari pemasok itu ada 50 kg dan 25 kg … buat bukunya terpisah"): buku merek lama tetap buku
 // karung 50 kg; karung 25 kg merek yang datang dua ukuran punya buku 'Merek 25 kg'. Barisnya (kedatangan / lahir) bertanda `indukUkuran` = merek induk.
 export const kunciUkuran = (M, berat) => String(M) + ' ' + String(berat) + ' kg';

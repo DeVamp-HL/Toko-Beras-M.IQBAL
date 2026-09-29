@@ -82,7 +82,8 @@ export function pembukaBuku(tahun, w) {
     const beratLain = beratUtama === 50 ? 25 : 50; if ((beratLain === 25 && x.punya25) || (beratLain === 50 && x.punya50)) merkList.push({ merk: x.merk, satuan: 'karung', beratKarung: beratLain, jumlahKarung: 0, totalKg: 0, hargaPerKg: x.hppPerKg, subtotalHarga: 0 }); });
   // putaran 28: buku STOK WADAH tetap dikenali sesudah tutup buku — barisnya membawa tanda stokWadah; yang sisanya nol ikut lahir lagi (baris 0 kg), karena
   // mesin beku hanya memotong penjualan dari nama yang lahir lewat batch (tanpa wadah berstok sendiri = dokumen persis index.html)
-  const pw = petaStokWadah(); const bw = petaBukuWadah(); merkList.forEach((r) => { if (pw[r.merk]) r.stokWadah = pw[r.merk]; else if (bw[r.merk]) r.karungWadah = bw[r.merk].wadah; });
+  // putaran 39: karung belakang membawa tandanya sendiri (karungBelakang + merkAsal) supaya sesudah tutup buku tetap dikenali buku karung belakang, bukan karung wadah
+  const pw = petaStokWadah(); const bw = petaBukuWadah(); merkList.forEach((r) => { if (pw[r.merk]) r.stokWadah = pw[r.merk]; else if (bw[r.merk] && bw[r.merk].jenis === 'belakang') { r.karungBelakang = bw[r.merk].wadah; r.merkAsal = bw[r.merk].merk; } else if (bw[r.merk]) r.karungWadah = bw[r.merk].wadah; });
   Object.keys(pw).sort().forEach((k) => { if (!merkList.some((r) => r.merk === k)) merkList.push({ merk: k, satuan: 'lahir', beratKarung: 0, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, stokWadah: pw[k] }); });
   if (merkList.length) d.push({ koleksi: 'batchMasuk', data: Object.assign({ id: w.idUnik(), tanggal: tglBuka, pemasok: 'TUTUP BUKU ' + tahun, biayaBongkar: 0, stokAwal: true, merkList }, tb) });
   // hppPerUnit TIDAK dibulatkan (sistem lama membulatkan) supaya nilai kemasan sesudah = sebelum sampai rupiahnya; mesin menerima pecahan

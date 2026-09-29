@@ -25,12 +25,13 @@ const ssHariNama = (iso) => ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][ne
 // ---------- tindakan berpintu izin & peran (SS2) — dari kanvas-kanvas yang sudah dikunci ----------
 export const SS_TINDAKAN = [['jualTunai', 'Jual tunai & kembalian', 'Jual'], ['jualBon', 'Jual dengan bon (pelanggan lama)', 'Jual'], ['nego', 'Nego di bawah jatah margin', 'Jual'], ['terimaBon', 'Terima pembayaran bon', 'Uang'],
   ['hitungLaci', 'Hitung & rapikan laci', 'Uang'], ['uangKeluar', 'Catat uang keluar dari laci', 'Uang'], ['adukan', 'Catat adukan (bongkar kemasan)', 'Stok'], ['kedatangan', 'Hitung truk & draf kedatangan', 'Stok'],
-  ['hargaBeli', 'Isi harga beli / modal', 'Stok'], ['koreksi', 'Koreksi nota yang sudah tersimpan', 'Jual'], ['hapus', 'Hapus catatan', 'Semua'], ['pelangganBaru', 'Daftarkan pelanggan baru', 'Pelanggan'], ['atur', 'Ubah setelan (Atur)', 'Sistem']].map((t) => ({ id: t[0], nama: t[1], modul: t[2] }));
+  ['hargaBeli', 'Isi harga beli / modal', 'Stok'], ['koreksi', 'Koreksi nota yang sudah tersimpan', 'Jual'], ['hapus', 'Hapus catatan', 'Semua'], ['pelangganBaru', 'Daftarkan pelanggan baru', 'Pelanggan'], ['atur', 'Ubah setelan (Atur)', 'Sistem'],
+  ['isiUlang', 'Isi ulang & cek wadah literan', 'Stok']].map((t) => ({ id: t[0], nama: t[1], modul: t[2] }));   // putaran 39 (owner 29 Sep): karyawan menuang & mengecek wadah — rules v5
 export const SS_PERAN = [['owner', 'Owner'], ['ben', 'Ben (penjaga laci)'], ['karyawan', 'Karyawan (giliran)']].map((p) => ({ id: p[0], nama: p[1] }));
 export const SS_NILAI_HAK = ['sendiri', 'owner', 'tidak'];
 export const SS_LABEL_HAK = { sendiri: 'boleh sendiri', owner: 'minta owner', tidak: 'tidak boleh' };
-const SS_HAK_BAWAAN = { ben: { jualTunai: 'sendiri', jualBon: 'sendiri', nego: 'owner', terimaBon: 'sendiri', hitungLaci: 'sendiri', uangKeluar: 'owner', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'owner', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak' },
-  karyawan: { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak' } };
+const SS_HAK_BAWAAN = { ben: { jualTunai: 'sendiri', jualBon: 'sendiri', nego: 'owner', terimaBon: 'sendiri', hitungLaci: 'sendiri', uangKeluar: 'owner', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'owner', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' },
+  karyawan: { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'sendiri', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' } };
 export const SS_JENIS_PENGINGAT = [['bon', 'Bon pemasok jatuh tempo', 'hariBon'], ['janji', 'Janji bayar pelanggan', 'hariJanji'], ['kantong', 'Kantong menipis', 'hariKantong'], ['opname', 'Opname rutin', 'hariOpname'], ['cadangan', 'Cadangan berkas', 'hariCadangan'], ['pajak', 'Setoran PPh final bulan lalu', 'hariPajak']].map((j) => ({ id: j[0], nama: j[1], kunci: j[2] }));
 export const SS_PENERIMA = ['Owner', 'Ben'];
 

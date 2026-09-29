@@ -61,7 +61,8 @@ export function kmCalonKelas() {
 export function kmTebak(merk) {
   const m = kmBersih(merk); const A = aturWadah(); if (!m) return '';
   if (A.daftar.indexOf(m) >= 0) return m;
-  const k = wdTerbaru(ambilWadahLiteran().filter((d) => (d.tipe === 'karung' || d.tipe === 'karungIsi') && !d.dikembalikan && String(d.merk || '') === m && d.wadah && A.daftar.indexOf(String(d.wadah)) >= 0));
+  // putaran 39: catatan karung di belakang wadah aktif bernama kunci bukunya, merek pemasoknya di merkAsal
+  const k = wdTerbaru(ambilWadahLiteran().filter((d) => (d.tipe === 'karung' || d.tipe === 'karungIsi') && !d.dikembalikan && (String(d.merk || '') === m || String(d.merkAsal || '') === m) && d.wadah && A.daftar.indexOf(String(d.wadah)) >= 0));
   if (k) return String(k.wadah);
   const r = A.daftar.find((W) => (A.resep[W] || []).some((x) => String(x.merk) === m)); return r || '';
 }

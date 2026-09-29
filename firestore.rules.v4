@@ -1,12 +1,9 @@
 // ============================================================================
-// ATURAN FIRESTORE v5 — Toko Beras M.IQBAL (putaran 39, 29 Sep 2026): v4 (kunci periode bulanan + akun per orang) + karyawan menuang & mengecek wadah literan
-// Berkas KANONIK ber-versi. DEPLOY: salin-tempel ke Console > Firestore > Rules (owner; pola putaran 25).
-// Dasar: docs/peta-hak-akses.md (akun & peran, v3) + docs/peta-kunci-periode.md (kunci periode, keputusan owner K1–K6 25 Sep) + docs/peta-wadah-satu-buku.md §8 (v5).
-// Diperiksa statis oleh alat-uji/periksa_rules.py (CI). Uji server: docs/uji-rules-v5.md (Playground ★).
-// Jalan mundur: firestore.rules.v4 (disimpan utuh) — tempel v4 = karyawan tidak bisa menuang/mengecek wadah dari akunnya (kirimannya ditolak, masuk daftar ditolak);
-// firestore.rules.v3 = kunci periode MATI, semua bulan bisa ditulis lagi.
-// v5 yang berubah dari v4 (keputusan owner 29 Sep, "lewat Console"): wadahLiteran create oleh ben/karyawan hanya tipe takar / karung / karungIsi / cek (stafBuatWadah);
-//   batchMasuk create oleh ben/karyawan hanya batch LAHIR BUKU 0 kg (stafBuatLahir); produksiKemasan create karyawan sudah terbuka sejak v3 (pindah buku isi ulang memakainya).
+// ATURAN FIRESTORE v4 — Toko Beras M.IQBAL (putaran 25, 25 Sep 2026): KUNCI PERIODE BULANAN + akun per orang (v3)
+// Berkas KANONIK ber-versi. DEPLOY: salin-tempel ke Console > Firestore > Rules.
+// Dasar: docs/peta-hak-akses.md (akun & peran, v3) + docs/peta-kunci-periode.md (kunci periode, keputusan owner K1–K6 25 Sep).
+// Diperiksa statis oleh alat-uji/periksa_rules.py (CI). Uji server: docs/uji-rules-v4.md (Playground ★).
+// Jalan mundur: firestore.rules.v3 (disimpan utuh; sha256 32c55d58…) — tempel v3 = kunci periode MATI, semua bulan bisa ditulis lagi.
 //
 // KUNCI PERIODE — penegakan di SERVER, untuk SEMUA penulis (owner, kasir@, peran lain, sistem lama, tablet offline):
 //   aturanToko/kunciPeriode = { sampaiBulan: 'YYYY-MM' | null, riwayat: [{ aksi: 'kunci'|'buka', bulan, pada, olehUid, alasan, … }] }.
@@ -74,13 +71,6 @@ service cloud.firestore {
     function staf(peranBoleh) { return masuk() && aktifDengan(akun(), peranBoleh); }
     function stafBuat(peranBoleh) { return masuk() && aktifDengan(akun(), peranBoleh) && jujur(); }
     function stafBuatTipe(peranBoleh, tipe) { return stafBuat(peranBoleh) && request.resource.data.tipe == tipe; }
-    // v5 (putaran 39, owner 29 Sep 2026): karyawan menuang & mengecek wadah literan — hanya catatan takar / karung / karungIsi / cek (aturan wadah & titik samakan isi tetap owner)
-    function stafBuatWadah(peranBoleh) { return stafBuat(peranBoleh) && request.resource.data.tipe in ['takar', 'karung', 'karungIsi', 'cek']; }
-    // v5: buku baru (karung belakang / stok wadah) lahir lewat batch stokAwal 0 kg — bukan kedatangan: tanpa kg, tanpa rupiah, tanpa pemasok sungguhan
-    function stafBuatLahir(peranBoleh) {
-      let d = request.resource.data;
-      return stafBuat(peranBoleh) && d.get('lahirBuku', false) == true && d.get('stokAwal', false) == true && d.get('biayaBongkar', 0) == 0 && d.get('pemasok', '') == 'LAHIR BUKU';
-    }
     function stafBuatJual(peranBoleh, peranKredit) {
       let a = akun();
       let d = request.resource.data;
@@ -155,7 +145,7 @@ service cloud.firestore {
     // ---- satu blok per koleksi di baru/js/data/koleksi.js (+ arsipTahun, ringkasanKasir, aksesAkun, permintaanAkses). Tanpa payung: yang tidak disebut = ditolak. ----
     match /batchMasuk/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if (owner() && tglBaru('tanggal')) || (stafBuatLahir(['ben', 'karyawan']) && tglStaf('tanggal'));   // v5: batch LAHIR BUKU 0 kg saja
+      allow create: if owner() && tglBaru('tanggal');
       allow update: if owner() && tglUbah('tanggal');
       allow delete: if owner() && tglLama('tanggal');
     }
@@ -330,9 +320,7 @@ service cloud.firestore {
 
     match /wadahLiteran/{id} {
       allow read: if owner() || staf(['ben', 'karyawan']);
-      allow create: if owner() || stafBuatWadah(['ben', 'karyawan']);   // v5: karyawan menuang & mengecek wadah (takar / karung / karungIsi / cek); atur & isi tetap owner
-      allow update: if owner();
-      allow delete: if owner();
+      allow write: if owner();
     }
 
     match /aturanToko/{id} {

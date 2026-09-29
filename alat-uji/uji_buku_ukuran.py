@@ -138,7 +138,7 @@ RUSAK = {
     'katalog kasir: karung 25 kg tanpa harga': ("hargaKarung25: u.berat === 25 ? hg : 0,", "hargaKarung25: 0,"),
     'katalog kasir: induk tetap menjual 25 kg': ("if (tp[m.merk] && tp[m.merk][25]) x = Object.assign({}, x, { karung25: false, hargaKarung25: 0 });", ""),
     'retur induk tetap menerima 25 kg': ("if (uk[merk] ? b !== uk[merk].berat : !!(tp[merk] && tp[merk][b])) return;", "if (uk[merk] ? b !== uk[merk].berat : false) return;"),
-    'karung terbuka buku 25 kg dihitung 50 kg': ("const u = petaUkuran()[merk]; if (u) return u.berat;", "const u = null;"),
+    'karung terbuka buku 25 kg dihitung 50 kg': ("const u = petaUkuran()[asal]; if (u) return u.berat;", "const u = null;"),
     'katalog harga menagih harga buku ukuran': ("Object.keys(stokMerekSaja(stokK)).filter((m) => !ukuranBuku[m]).forEach((m) => {", "Object.keys(stokMerekSaja(stokK)).forEach((m) => {"),
     'kedatangan tidak menulis tanda indukUkuran': ("b.indukUkuran ? { indukUkuran: b.indukUkuran } : {}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {})) };", "{}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {})) };"),   # putaran 30: baris merkList membawa merkPemasok bila ada
 }

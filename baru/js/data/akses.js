@@ -27,7 +27,9 @@ export const BACA_STAF = ['penjualan', 'piutangMutasi', 'pelangganCatatan', 'pel
 export const DOK_STAF = { aturanToko: ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat'], pengaturan: ['tempatSimpan'] };
 // §4 — CREATE bukan-owner: koleksi → peran yang boleh. Menambah peran nanti = menambah satu nama di sini DAN di daftar yang sama di firestore.rules.
 export const BUAT_STAF = { penjualan: ['ben', 'karyawan'], piutangMutasi: ['ben', 'karyawan'], stokBahanLiteran: ['ben', 'karyawan'], stokBahanKemasan: ['ben', 'karyawan'],
-  produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'] };
+  produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'],
+  wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'] };   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
+export const TIPE_WADAH_STAF = ['takar', 'karung', 'karungIsi', 'cek'];   // = stafBuatWadah di rules v5
 export const KREDIT_STAF = ['ben'];   // penjualan caraBayar Kredit (jualBon): ben `sendiri`, karyawan `owner`
 // §5 — dua pengecualian UPDATE. Kolom atribusi ubah ikut (penulis pusat menulisnya); kolom pencipta (oleh, perangkat, lokasi) TIDAK pernah ditambah bukan-owner.
 export const KOLOM_ATRIBUSI_UBAH = ['diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'];
@@ -37,7 +39,7 @@ export const UBAH_STAF = {
 };
 export const LAYAR_STAF = ['jual', 'pelanggan', 'stok', 'menu'];
 // §1 — tindakan SS2 yang DIBUKA server putaran ini, per peran. Selebihnya tertutup (hitung laci & kedatangan: §6).
-export const SERVER_BUKA = { jualTunai: ['ben', 'karyawan'], jualBon: ['ben'], terimaBon: ['ben', 'karyawan'], adukan: ['ben', 'karyawan'], pelangganBaru: ['ben', 'karyawan'] };
+export const SERVER_BUKA = { jualTunai: ['ben', 'karyawan'], jualBon: ['ben'], terimaBon: ['ben', 'karyawan'], adukan: ['ben', 'karyawan'], pelangganBaru: ['ben', 'karyawan'], isiUlang: ['ben', 'karyawan'] };   // isiUlang: rules v5 (putaran 39)
 export const KALIMAT_MINTA_OWNER = 'Perlu persetujuan owner — alurnya menyusul';
 
 const aKosong = (v) => v === undefined || v === null || String(v).trim() === '';
@@ -123,9 +125,11 @@ export function beriAtribusiAkun(data, akun, konteks, ada) {
 
 // koleksi/operasi → tindakan SS2 yang biasanya menulisnya (hanya untuk kalimat penolakan yang bisa dipahami)
 const TINDAKAN_DARI = { batchMasuk: 'kedatangan', pengeluaranHarian: 'uangKeluar', kasbonMutasi: 'uangKeluar', tutupHari: 'hitungLaci', aturanToko: 'atur', koreksiHpp: 'hargaBeli',
-  katalogHargaKarung: 'hargaBeli', katalogHargaKemasan: 'hargaBeli', katalogHargaLiteran: 'hargaBeli' };
+  katalogHargaKarung: 'hargaBeli', katalogHargaKemasan: 'hargaBeli', katalogHargaLiteran: 'hargaBeli', wadahLiteran: 'isiUlang' };
 const NAMA_TINDAKAN = { kedatangan: 'hitung truk & draf kedatangan', uangKeluar: 'catat uang keluar dari laci', hitungLaci: 'hitung & rapikan laci', atur: 'ubah setelan (Atur)',
-  hargaBeli: 'isi harga beli / modal', hapus: 'hapus catatan', koreksi: 'koreksi nota yang sudah tersimpan', jualBon: 'jual dengan bon' };
+  hargaBeli: 'isi harga beli / modal', hapus: 'hapus catatan', koreksi: 'koreksi nota yang sudah tersimpan', jualBon: 'jual dengan bon', isiUlang: 'isi ulang & cek wadah literan' };
+/** rules v5 stafBuatLahir: batch LAHIR BUKU 0 kg (buku baru wadah / karung belakang) — bukan kedatangan. */
+const batchLahir = (d) => !!d && d.lahirBuku === true && d.stokAwal === true && !(Number(d.biayaBongkar) || 0) && String(d.pemasok || '') === 'LAHIR BUKU' && (d.merkList || []).every((r) => !(Number(r.totalKg) || 0) && !(Number(r.subtotalHarga) || 0));
 
 /**
  * Penjaga penulis pusat untuk akun bukan-owner — dijalankan SEBELUM dikirim. dokumen = [{ koleksi, data, ada, lama }] (ada/lama dari cache),
@@ -154,6 +158,9 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       }
       if (x.koleksi === 'piutangMutasi' && d.tipe !== 'bayar') return { tolak: tolakTindakan('koreksi') };
       if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return { tolak: tolakTindakan('hargaBeli') };
+      // rules v5 (putaran 39): karyawan menulis wadahLiteran hanya takar / karung / karungIsi / cek (aturan wadah & titik samakan isi = owner), batchMasuk hanya batch LAHIR BUKU 0 kg
+      if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };
+      if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };
     } else {
       const u = UBAH_STAF[x.koleksi]; if (!u || u.peran.indexOf(P) < 0) return { tolak: tolakTindakan(TINDAKAN_DARI[x.koleksi] || 'koreksi') };
       const lama = x.lama || {}; const kunci = {}; Object.keys(lama).concat(Object.keys(d)).forEach((kk) => { kunci[kk] = true; });
