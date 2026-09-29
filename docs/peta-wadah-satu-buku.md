@@ -114,7 +114,8 @@ Rules v4 hari ini: `wadahLiteran` **dan** `tutupHari` hanya boleh ditulis owner.
 | W8 IR42 Value | 18,84 | IR42 Value 18,84 | 233,42 | — |
 
 Tumpukan yang sudah minus di layar hari ini (belum dipindahkan apa pun): Kumala −97,52 · IR42 Select −32,04 · Pandan Wangi −28,31 — ketiganya perlu
-hitung fisik (tumpukan + karung terbuka) atau kedatangan yang belum dicatat.
+hitung fisik (tumpukan + karung terbuka) atau kedatangan yang belum dicatat. Tabel ini hanya menghitung isi kotak; sesudah jawaban no. 1 (§8) daftar
+aktivasi juga memindahkan karung terbuka di belakang wadah, jadi kekurangan yang tampil di layar lebih besar — angkanya di §8.4 no. 4.
 
 ## 7. Uji yang direncanakan
 
@@ -197,7 +198,9 @@ Semua dokumen: `id: w.idUnik()`, `tanggal`, `jam` dari `L.waktuSekarang(...)`. `
 1. Tiap wadah aktif: Σ takar masuk − Σ literan keluar ± penyesuaian bertanda wadah = buku `'Wadah W'` (`hitungStokKarungPerMerk`); Σ komposisi turunan = buku itu (bukan angka kedua).
 2. Tiap pindah buku: Σ kg sumber = kg tujuan dan modal ikut → Σ nilai stok seluruh buku tetap. Per merek asal: buku merek + Σ buku karung belakang merek itu + Σ bagian merek itu di wadah (turunan) = buku merek sebelum pindah (kg).
 3. Tiap karung belakang: kolam (catatan `karung` − takar) vs buku — selisih disebut lewat `wbSelisihWadah`, tidak dijumlah dua kali di rantai stok.
-4. Daftar aktivasi di cadangan 29 Sep: kekurangan per wadah = §6 (W5 Kumala 45,02; W7 Pandan Wangi 5,31; W1 Kumala 2,05 bersama W5) dan tidak ada dokumen yang ditulis tanpa `opsi.tandai`.
+4. Daftar aktivasi di cadangan 29 Sep menghitung isi kotak **+ karung terbuka di belakangnya** (jawaban no. 1), jadi kekurangannya lebih besar dari §6 yang
+   hanya menghitung isi kotak: W1 Kumala kurang 2,05 · W4 IR42 Select kurang 32,04 (50,72 + karung 47,8 lawan buku 66,48) · W5 Kumala kurang 81,62 (58,87 +
+   karung 36,6 lawan buku 13,85) · W7 Pandan Wangi kurang 28,31 (15,5 + karung 23 lawan buku 10,19); W2 W3 W6 W8 cukup. Tidak ada dokumen yang ditulis tanpa `opsi.tandai`.
 5. ASAP GLOBAL: laba / neraca / nilai stok tiap bulan byte-sama dengan `main` selama tidak ada dokumen baru ditulis (semua bentuk dokumen sudah dibaca mesin sejak 28).
 
 ### 8.5 Yang TIDAK berubah
@@ -215,9 +218,10 @@ Semua dokumen: `id: w.idUnik()`, `tanggal`, `jam` dari `L.waktuSekarang(...)`. `
    ditolak server (masuk daftar ditolak); akun karyawan belum ada (gerbang tablet), jadi tidak ada antrean yang macet.
 2. **Aktivasi per wadah dari daftar** (Stok › Wadah literan). Menurut §6: W2 Angsa · W3 Perahu Layar · W4 IR42 Select · W6 IR64 Ascent · W8 IR42 Value
    bukunya cukup → pindahkan. W1 IR64 Apex kurang Kumala 2,05 bersama W5 → sesudah W5 beres.
-3. **W5 IR64 Elevate & W7 Pandan Wangi: hitung fisik / catat barang masuk DULU** (jawaban no. 6): W5 kurang Kumala 45,02 (60,92 bersama W1), W7 kurang
-   Pandan Wangi 5,31; tumpukan yang sudah minus di layar: Kumala −97,52 · IR42 Select −32,04 · Pandan Wangi −28,31 (§6). Hitung tumpukan + karung
-   terbuka di Stok › Cocokkan › Tumpukan gudang, atau catat kedatangan yang belum tercatat di Stok › Barang masuk — baru pindahkan dari daftar (tanpa "tandai").
+3. **W1, W4, W5, W7: hitung fisik / catat barang masuk DULU** (jawaban no. 6): daftar aktivasi memindahkan isi kotak + karung terbuka di belakangnya
+   (§8.4 no. 4), jadi yang kurang: W1 Kumala 2,05 · W4 IR42 Select 32,04 · W5 Kumala 81,62 · W7 Pandan Wangi 28,31 (angka §6 hanya isi kotaknya);
+   tumpukan yang sudah minus di layar: Kumala −97,52 · IR42 Select −32,04 · Pandan Wangi −28,31. Hitung tumpukan + karung terbuka di Stok › Cocokkan ›
+   Tumpukan gudang, atau catat kedatangan yang belum tercatat di Stok › Barang masuk — baru pindahkan dari daftar (tanpa "tandai"). W2, W3, W6, W8 cukup.
 4. Sesudah wadah aktif: isi ulang lewat **tiga ketukan** (panel wadah di Jual › Literan & Stok › Wadah literan) — merek asal dari rak × 1 karung / ½ karung /
    kg; **cek tiap wadah aktif** saat tutup toko di Uang › Tutup hari (K5) atau lembar "Cek wadah" di Jual › Literan: sesuai / lupa isi ulang / dikosongkan.
    "Lupa isi ulang" langsung menawarkan pintu ke wadahnya (K5 → Stok › Wadah literan; Jual → chip wadah dengan panel isi ulang terbuka).

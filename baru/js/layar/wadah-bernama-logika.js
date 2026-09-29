@@ -529,8 +529,9 @@ export function wbKomposisiTurunan(W, s) {
   }
   const tot = Object.keys(T).reduce((a, m) => a + T[m], 0); const isi = Math.max(0, K.totalKg);
   const daftar = Object.keys(T).filter((m) => T[m] > 0).sort((a, b) => T[b] - T[a] || a.localeCompare(b)).map((m) => ({ merk: m, kg: tot > 0 ? wbB2(isi * T[m] / tot) : 0, porsi: tot > 0 ? T[m] / tot : 0 }));
-  let banding = ''; if (daftar.length > 1) { const min = Math.min(...daftar.map((x) => x.porsi)); const r = daftar.map((x) => x.porsi / min); const bulat = r.map((v) => Math.round(v));
-    banding = r.every((v, i) => Math.abs(v - bulat[i]) < 0.15 && bulat[i] <= 9) ? daftar.map((x, i) => x.merk + ' ' + bulat[i]).join(' : ') : daftar.map((x) => x.merk + ' ' + Math.round(x.porsi * 100) + ' %').join(' : '); }
+  let banding = ''; if (daftar.length > 1) { const min = Math.min(...daftar.map((x) => x.porsi)); const r = daftar.map((x) => x.porsi / min);
+    let k = 0; for (let c = 1; c <= 9 && !k; c++) { const v = r.map((x) => x * c); if (v.every((x) => Math.abs(x - Math.round(x)) < 0.15 && Math.round(x) <= 9)) k = c; }   // pengali terkecil yang membulatkan semua (1,5 : 1 → 3 : 2)
+    banding = k ? daftar.map((x, i) => x.merk + ' ' + Math.round(r[i] * k)).join(' : ') : daftar.map((x) => x.merk + ' ' + Math.round(x.porsi * 100) + ' %').join(' : '); }
   const tk = terakhir ? { tanggal: String(terakhir.tanggal || ''), jam: String(terakhir.jam || ''), oleh: String(terakhir.oleh || terakhir.diubahOleh || ''), kg: wbB2(Number(terakhir.kg) || 0), takaran: String(terakhir.takaran || '') } : null;
   const nama = daftar.length ? (banding || daftar[0].merk) : (K.diketahui ? 'belum ada isi ulang tercatat' : 'isi belum ditandai');
   return { wadah: W, stokSendiri: !!K.stokSendiri, diketahui: K.diketahui, totalKg: wbB2(K.totalKg), liter: Math.round(Math.max(0, K.totalKg) / wbRasio(W) * 10) / 10, daftar, banding, terakhir: tk, nama,

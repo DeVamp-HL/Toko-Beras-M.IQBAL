@@ -663,7 +663,7 @@ export function notaTembusBelumCocok() {
     const tuntas = p.jenis === 'kemasan' ? PK.some((q) => String(q.namaProduk) === String(p.namaProduk) && Number(q.ukuranKemasan) === Number(p.ukuranKemasan) && String(q.tanggal || '') >= tgl) : PS.some((q) => String(q.merk) === String(p.merkSumber) && String(q.tanggal || '') >= tgl);
     if (!tuntas) out.push({ id: p.id, trxId: p.trxId, tanggal: tgl, jam: String(p.jam || ''), nama, jenis: p.jenis, selisihKg: Number(p.selisihKg) || 0, namaPelanggan: String(p.namaPelanggan || '') }); });
   // putaran 39 (owner d): pindah buku isi ulang / aktivasi wadah yang ditandai "untuk dicocokkan" (buku merek asal minus) ikut di daftar yang sama — satu pita, satu kartu
-  wbPindahTembusBelumCocok().forEach((x) => out.push(Object.assign({ trxId: 'takar' + x.id }, x)));
+  wbPindahTembusBelumCocok().forEach((x) => out.push(Object.assign({}, x, { trxId: 'takar' + x.id })));   // trxId di belakang: yang dari wadah kosong, jangan menimpa
   const per = {}; out.forEach((x) => { per[x.nama] = per[x.nama] || { nama: x.nama, kg: 0, n: 0 }; per[x.nama].kg = Math.round((per[x.nama].kg + x.selisihKg) * 100) / 100; per[x.nama].n += 1; });
   const nama = Object.keys(per).sort((a, b) => a.localeCompare(b)).map((k) => per[k]);
   const trx = {}; out.forEach((x) => { trx[String(x.trxId)] = 1; });

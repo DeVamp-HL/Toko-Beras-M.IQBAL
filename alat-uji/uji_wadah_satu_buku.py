@@ -127,11 +127,11 @@ ok('aktifkan wadah yang tidak bisa DITOLAK tanpa perluTandai & tanpa dokumen: be
 
 // ---- 2 · dua angka satu kotak: wadah BELUM aktif (7a)
 var cTs = chipL('Tawon Super'); var bebasTs = B2(cTs.sisa * 0.82); var SW = wbSelisihWadah('Tawon Super', s0(), cTs.sisa);
-ok('selisih wadah belum aktif: bebas dijual = langit-langit buku Tawon 50 kg (' + cTs.sisa + ' L = ' + bebasTs + ' kg) vs isi kotak 55 kg → "lebih banyak di kotak daripada di buku merek asalnya" ' + B2(55 - bebasTs) + ' kg, mengajak mengaktifkan',
+ok('selisih wadah belum aktif: bebas dijual = langit-langit buku Tawon 50 kg (' + cTs.sisa + ' L = ' + bebasTs + ' kg) vs isi kotak 55 kg → "lebih di kotak" ' + B2(55 - bebasTs) + ' kg, mengajak mengaktifkan (kalimat pendek a9a1499)',
   cTs.sisa === Math.floor(50 / cTs.rasio * 10) / 10 && SW.ada && SW.baris.length === 1 && SW.baris[0].jenis === 'buku-merek' && SW.baris[0].selisihKg === B2(55 - bebasTs) && SW.baris[0].selisihKg > 0
-  && SW.teks === 'bebas dijual ' + String(cTs.sisa).replace('.', ',') + ' L = ' + kgT(bebasTs) + ' dibatasi buku Tawon 50 kg · isi kotak tercatat ±55 kg — selisih ' + kgT(55 - bebasTs) + ' lebih banyak di kotak daripada di buku merek asalnya → aktifkan buku wadah ini di Stok › Wadah literan', J([cTs.sisa, SW]));
+  && SW.teks === 'bebas dijual ' + String(cTs.sisa).replace('.', ',') + ' L (buku Tawon 50 kg) ≠ isi kotak ±55 kg — selisih ' + kgT(55 - bebasTs) + ' lebih di kotak → aktifkan buku wadah (Stok › Wadah literan)', J([cTs.sisa, SW]));
 var SWc = wbSelisihWadah('Campur Dua', s0(), chipL('Campur Dua').sisa);
-ok('arah sebaliknya (Campur Dua: kotak 1,8 kg, buku Kumala 200) → "lebih banyak di buku daripada di kotak"; wadah belum dicocokkan / bukan wadah → ada:false', SWc.ada && SWc.baris[0].selisihKg < 0 && /lebih banyak di buku daripada di kotak/.test(SWc.teks) && !wbSelisihWadah('Kosong Satu', s0(), 0).ada && !wbSelisihWadah('Bukan', s0(), 0).ada, J(SWc));
+ok('arah sebaliknya (Campur Dua: kotak 1,8 kg, buku Kumala 200) → "lebih di buku"; wadah belum dicocokkan / bukan wadah → ada:false', SWc.ada && SWc.baris[0].selisihKg < 0 && / lebih di buku → /.test(SWc.teks) && !wbSelisihWadah('Kosong Satu', s0(), 0).ada && !wbSelisihWadah('Bukan', s0(), 0).ada, J(SWc));
 
 // ---- 3 · aktivasi W5 dengan TANDAI (buku kurang → dua ketukan)
 var T0 = wbSusunAktifkan('Tawon Super', W);
@@ -171,8 +171,8 @@ var twAp = tinggiWadah('IR64 Apex', null); var cAp = chipL('IR64 Apex'); var dAp
 ok('sesudah aktif: tinggi wadah = buku (50 kg, stokSendiri), chip literan IR64 Apex = buku ÷ rasio = 60,9 L (Rp12.000/L), daftar aktivasi menyebut "sudah punya buku sendiri" (bisa:false), aktivasi kedua ditolak',
   twAp.stokSendiri === true && twAp.sisaNyataKg === 50 && !!cAp && cAp.sisa === Math.floor(50 / cAp.rasio * 10) / 10 && cAp.sisa === 60.9 && cAp.harga === 12000 && dAp2.aktif && !dAp2.bisa && dAp2.alasan === 'sudah punya buku sendiri' && !!wbSusunAktifkan('IR64 Apex', W).tolak, J([twAp, cAp && [cAp.sisa, cAp.rasio, cAp.harga], dAp2]));
 var KTa = wbKomposisiTurunan('IR64 Apex');
-ok('komposisi turunan W1 sesudah aktivasi = komposisi awal titik samakan: NG 30 kg (60 %) + Kumala 20 kg (40 %), Σ = buku 50 (bukan angka kedua), 61 L, belum ada isi ulang → terakhir null; banding 3 : 2 menyebut kedua merek (catatan: jatuh ke persen, pecahan 3 : 2 tidak disederhanakan)',
-  KTa.stokSendiri && KTa.diketahui && KTa.totalKg === 50 && J(KTa.daftar.map(function (x) { return [x.merk, x.kg, B3(x.porsi)]; })) === J([['NG', 30, 0.6], ['Kumala', 20, 0.4]]) && KTa.terakhir === null && /^NG .* : Kumala .*$/.test(KTa.banding) && KTa.nama === KTa.banding && KTa.liter === 61, J(KTa));
+ok('komposisi turunan W1 sesudah aktivasi = komposisi awal titik samakan: NG 30 kg (60 %) + Kumala 20 kg (40 %), Σ = buku 50 (bukan angka kedua), 61 L, belum ada isi ulang → terakhir null; banding 0,6 : 0,4 disederhanakan jadi "NG 3 : Kumala 2" (pengali terkecil yang membulatkan)',
+  KTa.stokSendiri && KTa.diketahui && KTa.totalKg === 50 && J(KTa.daftar.map(function (x) { return [x.merk, x.kg, B3(x.porsi)]; })) === J([['NG', 30, 0.6], ['Kumala', 20, 0.4]]) && KTa.terakhir === null && KTa.banding === 'NG 3 : Kumala 2' && KTa.nama === KTa.banding && KTa.liter === 61, J(KTa));
 var A2 = wbSusunAktifkan('Angsa', W);
 ok('aktifkan W2 Angsa (isi 0): cuma batch lahir + titik samakan 0 kg — tidak ada pindah buku, modal 0', !A2.tolak && dok(A2, 'batchMasuk').length === 1 && dok(A2, 'batchMasuk')[0].merkList.length === 1 && !dok(A2, 'produksiKemasan').length && dok(A2, 'wadahLiteran').length === 1 && dok(A2, 'wadahLiteran')[0].isiKg === 0 && A2.rp === 0 && A2.tandai === false, J(A2));
 terapkanKeCache(A2.dokumen || []);
@@ -332,8 +332,8 @@ ok('barang masuk atas nama kunci karung belakang DITOLAK dengan kalimat (buku kh
 
 // ---- 12 · tanda "untuk dicocokkan": pita Jual & kartu keempat Gudang (5)
 var TBn = notaTembusBelumCocok(); var G = susunGudang('cocok', KINI);
-ok('L.notaTembusBelumCocok memuat pindah bertanda: nama = merek asal (Beo 25, Tawon 35), dua baris jenis takar bernama wadah, ringkas; kartu keempat Gudang (jwbCocok lewat susunGudang) punya baris tembus|Beo & tembus|Tawon "… kg tembus · belum dicocokkan" (awas). CATATAN cacat inti (dilaporkan, tidak diuji): trxId kosong dari wbPindahTembusBelumCocok menimpa "takar<id>" → n menghitung semua pindah bertanda sebagai satu',
-  J(TBn.nama) === J([{ nama: 'Beo', kg: 25, n: 1 }, { nama: 'Tawon', kg: 35, n: 1 }]) && TBn.baris.length === 2 && TBn.baris.every(function (b) { return b.jenis === 'takar' && b.wadah && b.selisihKg > 0; }) && TBn.ringkas === 'Beo 25 kg, Tawon 35 kg'
+ok('L.notaTembusBelumCocok memuat pindah bertanda: nama = merek asal (Beo 25, Tawon 35), dua baris jenis takar bernama wadah, ringkas; kartu keempat Gudang (jwbCocok lewat susunGudang) punya baris tembus|Beo & tembus|Tawon "… kg tembus · belum dicocokkan" (awas); n = 2 (tiap pindah bertanda dihitung lewat trxId "takar<id>", tidak tertimpa trxId kosong dari wbPindahTembusBelumCocok)',
+  J(TBn.nama) === J([{ nama: 'Beo', kg: 25, n: 1 }, { nama: 'Tawon', kg: 35, n: 1 }]) && TBn.baris.length === 2 && TBn.n === 2 && TBn.baris.every(function (b) { return b.jenis === 'takar' && b.wadah && b.selisihKg > 0 && /^takar/.test(b.trxId); }) && TBn.ringkas === 'Beo 25 kg, Tawon 35 kg'
   && G.jawab.baris.some(function (b) { return b.kunci === 'tembus|Beo' && b.n === '25 kg tembus' && b.nKet === 'belum dicocokkan' && b.awas === true; }) && G.jawab.baris.some(function (b) { return b.kunci === 'tembus|Tawon' && b.n === '35 kg tembus'; }) && G.kartu.find(function (k) { return k.id === 'cocok'; }).awas === true, J([TBn, G.jawab.baris.slice(0, 3)]));
 var cocok = function (m, tgl, ekstra) { return { koleksi: 'penyesuaianStok', data: Object.assign({ id: 'ps-' + m + '-' + tgl + (ekstra ? '-r' : ''), tanggal: tgl, jam: '18:00', merk: m, kgSistem: 0, kgFisik: 0, selisihKg: 0, alasan: 'hitung', nilaiRp: 0, hppPerKgSaatOpname: 0 }, ekstra || {}) }; };
 ok('tuntas = cocokkan merek asal bertanggal ≥ dokumen: Tawon 21 Sep → tinggal Beo (kartu keempat ikut); Tawon 20 Sep / rework / merek lain → tanda tetap; Beo & Tawon 22 Sep → kosong',
@@ -469,10 +469,11 @@ RUSAK = {
     'aktivasi tidak menutup kolam lama (karung terhitung dua kali)': ("    dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: k.merk, isiKg: 0, wadah: W, pindahAwal: true } });\n", "\n"),
     # komposisi turunan
     'komposisi turunan mengabaikan isi ulang': ("tambah(x.merkAsal ? String(x.merkAsal) : asal(String(x.merk || '')), Number(x.kg) || 0)", "0"),
-    'banding tidak disederhanakan': ("banding = r.every((v, i) => Math.abs(v - bulat[i]) < 0.15 && bulat[i] <= 9) ?", "banding = false ?"),
+    'banding tidak disederhanakan': ("banding = k ? daftar.map(", "banding = false ? daftar.map("),
     # tanda untuk dicocokkan
     'cocokkan bertanggal SEBELUM dokumen dianggap tuntas': ("if (PS.some((q) => String(q.merk) === x.merk && String(q.tanggal || '') >= tgl)) return;", "if (PS.some((q) => String(q.merk) === x.merk)) return;"),
-    'pindah bertanda tidak masuk pita Jual / kartu keempat': ("wbPindahTembusBelumCocok().forEach((x) => out.push(Object.assign({ trxId: 'takar' + x.id }, x)));", ""),
+    'pindah bertanda tidak masuk pita Jual / kartu keempat': ("wbPindahTembusBelumCocok().forEach((x) => out.push(Object.assign({}, x, { trxId: 'takar' + x.id })));", ""),
+    'trxId pindah bertanda tertimpa (semua dihitung satu nota)': ("out.push(Object.assign({}, x, { trxId: 'takar' + x.id }))", "out.push(Object.assign({ trxId: 'takar' + x.id }, x))"),
     # cek
     'cek dikosongkan tidak menyisihkan isi': ("if (K.totalKg > 0.004) { const r = wbSusunSisih(W, String(wbB2(K.totalKg)), w);", "if (false) { const r = wbSusunSisih(W, String(wbB2(K.totalKg)), w);"),
     'cek dikosongkan di wadah belum aktif lolos': ("if (h === 'kosong') { if (!aktif) return { tolak:", "if (h === 'kosong') { if (false) return { tolak:"),
