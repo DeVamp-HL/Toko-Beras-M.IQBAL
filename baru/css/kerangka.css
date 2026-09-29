@@ -71,9 +71,15 @@ main.layar-jual > input[type="hidden"] { display: none; }
     grid-template-areas: "kepala kepala" "pita pita" "kabar keranjang" "rak keranjang" "samping keranjang"; grid-template-rows: auto auto auto auto 1fr;
     align-items: start; padding-bottom: 110px; }
   /* kabar (barang masuk, nota barusan, karcis) hanya mendorong kolom rak — keranjang tidak ikut meloncat tiap ada kabar */
-  .jual-keranjang { grid-area: keranjang; position: sticky; top: 14px; left: auto; right: auto; bottom: auto; max-height: none; overflow: visible; }
+  /* tinjauan gabungan 29 Sep: sejak sticky benar-benar menempel, keranjang yang lebih tinggi dari layar menahan Ditagih & BAYAR di luar layar / di bawah nav
+     sampai halaman digulir ke ujung. Kini setinggi layar paling banyak (14 atas + nav 84 + 14); DAFTAR BARANG yang bergulir di dalam, total & BAYAR tetap
+     terlihat. Layar sangat pendek (HP miring): bagian tetapnya pun tak muat → seluruh keranjang bergulir (overflow-y auto) sebagai cadangan. */
+  .jual-keranjang { grid-area: keranjang; position: sticky; top: 14px; left: auto; right: auto; bottom: auto; max-height: calc(100vh - 112px); max-height: calc(100dvh - 112px);
+    overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; }   /* batas tinggi TERMASUK padding & tepi */
   .jual-keranjang .ringkas-keranjang { cursor: default; }
-  .jual-keranjang .isi-keranjang { display: flex; }
+  .jual-keranjang .isi-keranjang { display: flex; flex: 1 1 auto; min-height: 0; }
+  .jual-keranjang .isi-keranjang > * { flex: none; }
+  .jual-keranjang .isi-keranjang > .keranjang { flex: 1 1 auto; min-height: 56px; overflow-y: auto; overscroll-behavior: contain; }
   .lembar:not(.tirai) { position: fixed; left: auto; right: 14px; top: 14px; bottom: 100px; width: min(460px, 46vw); max-height: none; }
   /* tinggi mengikuti isinya (dulu selalu setinggi layar — lembar jumlah berisi separuh, sisanya kaca kosong); isi panjang tetap bergulir */
   main.layar-jual .lembar:not(.tirai) { width: var(--lebar-keranjang); bottom: auto; max-height: calc(100% - 114px); }   /* % = tinggi viewport sungguhan (bilah alamat HP yang menyusut) */
@@ -107,7 +113,7 @@ main.layar-jual > input[type="hidden"] { display: none; }
     grid-template-areas: "kepala kepala kepala" "pita pita pita" "kabar keranjang samping" "rak keranjang samping"; grid-template-rows: auto auto auto 1fr;
     padding: 22px 28px 40px; }
   main.layar-jual > .jual-samping { margin-top: 0; position: sticky; top: 22px; }
-  .jual-keranjang { position: sticky; top: 22px; }
+  .jual-keranjang { position: sticky; top: 22px; max-height: calc(100vh - 44px); max-height: calc(100dvh - 44px); }   /* Mac tanpa nav bawah: 22 atas + 22 bawah */
   .lembar:not(.tirai) { position: fixed; right: 28px; top: 22px; bottom: 28px; width: 440px; max-height: none; }
   /* 100% (bukan 100vw): lebar viewport tanpa batang gulir — sama dengan yang dipakai margin auto <main> */
   main.layar-jual .lembar:not(.tirai) { right: max(28px, calc((100% - 72px - 1720px) / 2 + 28px)); width: var(--lebar-samping); bottom: auto; max-height: calc(100% - 50px); }

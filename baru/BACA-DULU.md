@@ -620,6 +620,18 @@ Kelompok 3 rapi-rapi. Harga, Uang & Laporan sudah tiga kolom di Mac (desain kanv
   di kolom 510 px → paling lebar 360 px.
 - Uji: `alat-uji/uji_tata_letak_layar_lain.py` (+ kontrol, CI). Dilihat di peramban (cadangan): 1864, 1280 & 1100 px.
 
+## Putaran 37 — tambalan tinjauan gabungan rapi-rapi (29 Sep 2026, cabang `rapi/37-jual-tambalan`)
+
+Sesudah #58–#60 masuk, gabungannya ditinjau sekali lagi (8 agen, 4 lolos bantahan → 3 cacat, semuanya di Jual, lahir karena sticky kini benar-benar hidup):
+- **Keranjang menempel lebih tinggi dari layar** → Ditagih & BAYAR tertahan di luar layar / di bawah nav sampai halaman digulir ke ujung (iPad 1024×768 dengan 3–4
+  barang, Mac 1280×800 dengan 4+, HP miring bahkan kosong). Kini setinggi layar paling banyak (tablet 100dvh − 112: 14 atas + nav 84 + 14; Mac 100dvh − 44,
+  border-box); DAFTAR BARANG yang bergulir di dalam, total & BAYAR tetap terlihat; layar yang terlalu pendek untuk bagian tetapnya (HP miring) → seluruh
+  keranjang bergulir. Diukur (cadangan, 9 barang): Mac 1280×800 BAYAR 687–741, iPad 1024×768 579–633 (nav 682), HP 844×390 terjangkau dengan menggulir keranjang.
+- **Lembar dibuka selagi adegan berjalan** tertutup panggung di tablet & 1100–1279 → `jual.js` memanggil `sejajarkanLagi()` (adegan.js) tiap lembar berganti:
+  panggung pindah ke kolom rak (terukur 820 px: keranjang x 478 → rak x 28, tidak lagi menumpuk lembar).
+- **Tetes emas barang masuk** terbang di bawah kartu panggung (z 60 < 70) → z 71 (di bawah pil & koin omzet 74/75).
+- Uji: `uji_tata_letak_jual.py` +5 pemeriksaan & 5 kontrol.
+
 ## Struktur
 ```
 baru/

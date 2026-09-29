@@ -15,7 +15,7 @@ import { hariIniIso } from '../inti/format.js';
 import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal } from '../data/toko.js';
 import { tombolAkun, batasBarisNota, bukanOwner } from './akses-layar.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
-import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit } from './adegan.js';
+import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit, sejajarkanLagi } from './adegan.js';
 
 import { gambarChipBarang } from './gambar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
@@ -570,6 +570,7 @@ export function pasangLayarJual(akar, opsi) {
 
       ${gambarLembar(s, rak, t, info, muncul)}
     `);
+    if (muncul) sejajarkanLagi();   // lembar berganti selagi adegan berjalan → panggung pindah kolom, tidak menutupi lembar
   }
 
   function gambarRetur(s) {

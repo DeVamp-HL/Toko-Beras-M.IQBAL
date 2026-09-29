@@ -130,6 +130,18 @@ def periksa(t):
     sej = [isi for n in ['adegan'] for m, s, isi in A[n] if 'min-width: 720px' in m and s.strip() == '.panggung.sejajar']
     c.append(('panggung: .panggung.sejajar hanya ≥720 px (HP tetap di tengah)', any('var(--p-kiri)' in x and 'var(--p-lebar)' in x for x in sej), sej))
 
+    # tinjauan gabungan 29 Sep: keranjang yang menempel wajib dibatasi setinggi layar, daftar barangnya bergulir di dalam (BAYAR tidak tertahan di luar layar)
+    kt = [isi for m, s, isi in K if m.strip() == '@media (min-width: 720px)' and s.strip() == '.jual-keranjang']
+    c.append(('keranjang: tablet — menempel tapi setinggi layar paling banyak (bukan max-height none)', any('position: sticky' in x and re.search(r'max-height:\s*calc\(100d?vh', x) and 'max-height: none' not in x and 'border-box' in x for x in kt), kt))
+    km = [isi for m, s, isi in K if m.strip() == '@media (min-width: 1100px)' and s.strip() == '.jual-keranjang']
+    c.append(('keranjang: Mac — setinggi layar paling banyak', any(re.search(r'max-height:\s*calc\(100d?vh', x) for x in km), km))
+    dg = [isi for m, s, isi in K if m.strip() == '@media (min-width: 720px)' and s.strip() == '.jual-keranjang .isi-keranjang > .keranjang']
+    c.append(('keranjang: daftar barang yang bergulir di dalam, total & BAYAR tetap terlihat', any('overflow-y: auto' in x and 'flex: 1 1 auto' in x for x in dg), dg))
+    c.append(('panggung: disejajarkan ulang tiap lembar berganti selagi adegan berjalan', 'export function sejajarkanLagi()' in ad and 'if (muncul) sejajarkanLagi();' in t['baru/js/layar/jual.js'], ''))
+    tg = [isi for m, s, isi in A['jual'] if s.strip() == '.tetes-gerak']
+    zt = [int(z) for x in tg for z in re.findall(r'z-index:\s*(\d+)', x)]
+    zp = [int(z) for m, s, isi in A['adegan'] if s.strip() == '.panggung' for z in re.findall(r'z-index:\s*(\d+)', isi)]
+    c.append(('tetes emas digambar di atas panggung (terbang dari kartu panggung)', bool(zt) and bool(zp) and zt[-1] > zp[-1], (zt, zp)))
     app, jual = t['baru/js/app.js'], t['baru/js/layar/jual.js']
     c.append(('pita: app.js memberi statusAwas ke Jual', re.search(r'pasangLayarJual\(akar, \{[^\n]*\bstatusAwas\b', app) is not None, ''))
     c.append(('pita: Jual mode Firestore memakai statusAwas (bukan pita tetap)', 'opsi.statusAwas' in jual and 'Nota dicatat ke data toko yang sama dengan sistem lama' not in jual, ''))
@@ -158,6 +170,11 @@ KONTROL = [
     ('body wadah gulir lagi (sticky mati)', {'baru/css/kerangka.css': [('overflow-x: hidden; overflow-y: auto; overflow-x: clip; overflow-y: visible;', 'overflow-x: hidden; overflow-y: auto;')]}),
     ('panggung menutupi lembar terbuka', {'baru/js/layar/adegan.js': [("  const lb = m.querySelector('.lembar:not(.tirai)'); const q = lb ? lb.getBoundingClientRect() : null;\n", "  const q = null;\n")]}),
     ('panggung tidak disejajarkan', {'baru/js/layar/adegan.js': [('  sejajarkan(p); requestAnimationFrame(() => sejajarkan(p));', '')]}),
+    ('keranjang tablet tanpa batas tinggi lagi', {'baru/css/kerangka.css': [('max-height: calc(100vh - 112px); max-height: calc(100dvh - 112px);', 'max-height: none;')]}),
+    ('keranjang Mac tanpa batas tinggi', {'baru/css/kerangka.css': [('  .jual-keranjang { position: sticky; top: 22px; max-height: calc(100vh - 44px); max-height: calc(100dvh - 44px); }', '  .jual-keranjang { position: sticky; top: 22px; }')]}),
+    ('daftar barang tidak bergulir sendiri', {'baru/css/kerangka.css': [('  .jual-keranjang .isi-keranjang > .keranjang { flex: 1 1 auto; min-height: 56px; overflow-y: auto; overscroll-behavior: contain; }', '')]}),
+    ('panggung tidak disejajarkan ulang saat lembar berganti', {'baru/js/layar/jual.js': [('    if (muncul) sejajarkanLagi();', '')]}),
+    ('tetes emas di bawah panggung lagi', {'baru/css/jual.css': [('.tetes-gerak { position: fixed; z-index: 71;', '.tetes-gerak { position: fixed; z-index: 60;')]}),
     ('pita status selalu tampil', {'baru/js/app.js': [("  return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : '';", '  return statusTeks();')]}),
     ('pita tanpa internet hilang', {'baru/js/app.js': [("  return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : '';", "  return '';")]}),
 ]

@@ -133,8 +133,8 @@
 .kaca-btn:active, .utama:active, .tuts .k:active, .pecahan .kaca-btn:active { transform: scale(0.96); } .kaca-btn, .tuts .k { transition: transform 140ms cubic-bezier(.2,.8,.2,1), background-color 220ms ease; }
 .kabar-kotak > .pita-info { animation: masuk 380ms cubic-bezier(.2,.8,.2,1); }
 [data-gulir] { font-variant-numeric: tabular-nums; }
-/* tetes emas terbang (barang masuk keranjang) */
-.tetes-gerak { position: fixed; z-index: 60; width: 12px; height: 12px; border-radius: 50%; pointer-events: none; opacity: 0; background: linear-gradient(160deg, var(--logam1), var(--logam2)); box-shadow: 0 0 12px var(--logam-glow); }
+/* tetes emas terbang (barang masuk keranjang) — z 71: di atas panggung (70) yang kini duduk di kolom keranjang, di bawah pil & koin omzet (74/75) */
+.tetes-gerak { position: fixed; z-index: 71; width: 12px; height: 12px; border-radius: 50%; pointer-events: none; opacity: 0; background: linear-gradient(160deg, var(--logam1), var(--logam2)); box-shadow: 0 0 12px var(--logam-glow); }
 .tetes-gerak.terbang { animation: terbang 600ms cubic-bezier(.2,.8,.2,1) forwards; }
 @media (prefers-reduced-motion: reduce) { .chip, .kelompok-rak, .keranjang .b, .kabar-kotak > .pita-info, .jual-keranjang.pegas, .tetes-gerak.terbang { animation: none; } .gb .isi-dalam, .gb .gunung, .seg, .kaca-btn, .tuts .k { transition: none; } }
 
