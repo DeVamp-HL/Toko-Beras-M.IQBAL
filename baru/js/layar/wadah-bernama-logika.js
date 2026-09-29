@@ -579,7 +579,7 @@ export function wbSelisihWadah(W, s, bebasLiter) {
   if (!K.stokSendiri) {
     if (tw.diketahui && bebasLiter !== undefined && bebasLiter !== null) { const bebasKg = wbB2(Number(bebasLiter) * wbRasio(W)); const sel = wbB2(tw.sisaNyataKg - bebasKg);
       if (Math.abs(sel) > 0.05) { const stok = hitungStokKarungPerMerk(); const pembatas = K.positif.map((x) => 'buku ' + x.merk + ' ' + wbKG((stok[x.merk] || {}).sisaKg || 0)).join(', ') || 'buku ' + wbMerkCadangan(W);
-        out.push({ jenis: 'buku-merek', selisihKg: sel, teks: 'bebas dijual ' + String(Number(bebasLiter)).replace('.', ',') + ' L = ' + wbKG(bebasKg) + ' dibatasi ' + pembatas + ' · isi kotak tercatat ±' + wbKG(tw.sisaNyataKg) + ' — selisih ' + wbKG(Math.abs(sel)) + (sel > 0 ? ' lebih banyak di kotak daripada di buku merek asalnya' : ' lebih banyak di buku daripada di kotak') + ' → aktifkan buku wadah ini di Stok › Wadah literan' }); } }
+        out.push({ jenis: 'buku-merek', selisihKg: sel, teks: 'bebas dijual ' + String(Number(bebasLiter)).replace('.', ',') + ' L (' + pembatas + ') ≠ isi kotak ±' + wbKG(tw.sisaNyataKg) + ' — selisih ' + wbKG(Math.abs(sel)) + (sel > 0 ? ' lebih di kotak' : ' lebih di buku') + ' → aktifkan buku wadah (Stok › Wadah literan)' }); } }
   } else {
     wbKarungBelakangWadah(W).forEach((KB) => { if (KB.diketahui && Math.abs(KB.selisihKg) > 0.05) out.push({ jenis: 'karung-belakang', merk: KB.merk, selisihKg: KB.selisihKg, teks: 'karung ' + KB.merk + ' di belakang: catatan ±' + wbKG(KB.kolamKg) + ' vs buku ' + wbKG(KB.bukuKg) + ' — selisih ' + wbKG(Math.abs(KB.selisihKg)) + ', samakan karungnya' }); });
   }
