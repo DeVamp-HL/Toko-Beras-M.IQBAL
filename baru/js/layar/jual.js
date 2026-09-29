@@ -18,7 +18,8 @@ import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
 import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit, sejajarkanLagi } from './adegan.js';
 
 import { gambarChipBarang } from './gambar.js';
-import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
+import { panelIsiUlang, aksiPanelWadah, drafIsi } from './wadah-panel.js';
+import * as WB from './wadah-bernama-logika.js';   // putaran 39: komposisi turunan & selisih di chip wadah, cek wadah tutup toko, buku wadah aktif
 import { jbJenisRak, jbSaringRak } from './jenis-beras-logika.js';
 import * as AR from './arsip-logika.js';
 import * as SK from './setengah-logika.js';
@@ -30,6 +31,8 @@ const IKON = {
   hapus: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>',
 };
 const TUTS = ['1', '2', '3', '⌫', '4', '5', '6', ',', '7', '8', '9', '0'];
+/** Nama pengisi di baris chip (ruangnya sempit): kata pertama, paling panjang 12 huruf. */
+const olehSingkat = (o) => { const t = String(o || '').trim().split(/\s+/)[0] || ''; return t.length > 12 ? t.slice(0, 11) + '…' : t; };
 
 export function pasangLayarJual(akar, opsi) {
   const K = buatKeadaan(L.keadaanAwal());
@@ -59,7 +62,21 @@ export function pasangLayarJual(akar, opsi) {
     setengah: (arg, el) => { const s = SB(); const c = SK.skChip(s.pilih, s.setengahHarga); if (!c) return; masukDenganGerak(L.masukkan(Object.assign({}, s, { pilih: c }), 1), el); set({ setengahHarga: '' }); },
     setengahKetik: (v) => set({ setengahHarga: String(v).replace(/[^\d.]/g, '').slice(0, 9) }),
     masukkan: (arg, el) => masukDenganGerak(L.masukkan(SB()), el),
-    tutup: () => set({ lembar: null, pilih: null, negoId: null, ketik: '', isiW: null }),
+    tutup: () => set({ lembar: null, pilih: null, negoId: null, ketik: '', isiW: null, cwYakin: null }),
+    tombolMati: ({ kal }) => set({ kabar: kal, kabarAwas: true }),   // putaran 39: tombol yang tidak boleh untuk akun ini MATI dengan kalimat sebabnya, bukan hilang
+    // ---- putaran 39 (owner e): CEK WADAH tutup toko — sesuai · lupa isi ulang · dikosongkan, per wadah aktif; jam & siapa dari atribusi pusat
+    bukaCekWadah: () => set({ lembar: 'cekWadah', cwYakin: null, kabar: '' }),
+    cwCatat: async ({ wadah, hasil }) => {
+      const s = S();
+      // "dikosongkan" = seluruh isi disisihkan ke karung wadah tanpa timbang → dua ketukan, kalimatnya menyebut kg yang disisihkan
+      if (hasil === 'kosong' && s.cwYakin !== wadah) { const K = WB.wbKomposisi(wadah); return set({ cwYakin: wadah, kabar: 'Dikosongkan = seluruh isi wadah ' + wadah + ' (buku ±' + DESIMAL(Math.max(0, K.totalKg)) + ' kg) disisihkan ke karung wadahnya tanpa ditimbang, kotak jadi 0 — ketuk "YAKIN" untuk mencatat', kabarAwas: false }); }
+      const r = WB.wbSusunCek(wadah, hasil, L.waktuSekarang(s.sekarang || undefined));
+      const jadi = await tulisWadah(r); if (!jadi || hasil !== 'lupa') return set({ cwYakin: null });
+      // lupa isi ulang → langsung ke chip wadah itu (lembar jumlah, panel isi ulang terbuka) supaya isi ulangnya dicatat sekarang
+      const c = (rakKini().literan || []).find((x) => x.kunci === wadah && x.wadah);
+      if (!c) return set({ cwYakin: null, kabar: S().kabar + ' — wadah ' + wadah + ' tidak ada di rak literan (belum punya harga liter); catat isi ulangnya di Stok › Wadah literan', kabarAwas: true });
+      set(Object.assign(L.ketukChip(S(), c), { kabar: S().kabar, kabarAwas: S().kabarAwas, cwYakin: null, isiW: Object.assign(drafIsi(wadah), { buka: true }) }));
+    },
     bukaKeranjang: () => set({ lembar: S().lembar === 'keranjang' ? null : 'keranjang' }),
     hapusBaris: ({ id }) => set(L.hapusBaris(S(), id)),
     kurangBaris: ({ id, langkah }) => set(L.ubahJumlahBaris(S(), id, -Number(langkah || 1))),
@@ -449,8 +466,12 @@ export function pasangLayarJual(akar, opsi) {
     catch (e) { set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
   Object.assign(aksi, aksiPanelWadah({ set, st: S, tulis: tulisWadah, keranjang: S, waktu: () => L.waktuSekarang(S().sekarang || undefined),
+    // putaran 39: "Catat barang masuk dulu" / karung wadah → ke layar Stok; lembar Jual ditutup dulu supaya tidak menutupi layar saat kembali
+    bukaStok: opsi.bukaStok ? (lembar, tab, isi) => { set({ lembar: null, pilih: null, isiW: null }); opsi.bukaStok(lembar, tab, isi); } : null,
     sesudahCatat: (wadah, r) => { const hsl = r.hitung; const dulu = hsl.wadah; const kini = L.tinggiWadah(wadah, S());
-      adeganIsiUlang({ nama: wadah, keterangan: hsl.takar + ' takar · ' + DESIMAL(hsl.kg) + ' kg' + (hsl.banding ? ' · campur ' + hsl.banding : ''), serokan: Math.ceil(hsl.takar / 8), dari: dulu, ke: kini || dulu }); } }));
+      // tiga ketukan (39): keterangannya takaran & mereknya ("1 karung Kumala · 50 kg"), bukan hitungan takar 1,8 kg
+      const takaran = hsl.takaran && hsl.takaran !== 'takar' ? (hsl.takaran === 'karung' ? '1 karung ' : hsl.takaran === 'setengah' ? '½ karung ' : '') + (hsl.merk || '') + ' · ' : hsl.takar + ' takar · ';
+      adeganIsiUlang({ nama: wadah, keterangan: takaran + DESIMAL(hsl.kg) + ' kg' + (hsl.banding ? ' · campur ' + hsl.banding : ''), serokan: Math.ceil(hsl.takar / 8), dari: dulu, ke: kini || dulu }); } }));
   delegasi(akar, aksi);
 
   let _rak = null, _rakUntuk = '', _lembarSebelum = null;
@@ -625,7 +646,10 @@ export function pasangLayarJual(akar, opsi) {
     const kartuPT = PT.length ? h`<div class="kartu pt-kartu" data-k="pt-${kunciPelanggan(s.pelanggan)}" style="gap: 4px;"><div class="label">Belanja terakhir ${s.pelanggan} · ketuk untuk mengulang (harga hari ini)</div>
       ${PT.map((x, i) => h`<div class="pt-baris ${i ? '' : 'utama'}" data-k="ptb-${x.grup}" data-aksi="ulangiTerakhir" data-g="${x.grup}"><div style="min-width: 0;"><div class="nm">${x.teks}</div><div class="ket">${tanggalPendek(x.tanggal)} ${x.jam} · ${x.cara} · ${x.hariLalu === 0 ? 'hari ini' : x.hariLalu === null ? '' : x.hariLalu + ' hari lalu'}${x.baris.length > 1 ? ' · ' + x.baris.length + ' baris' : ''}</div></div><div class="kanan"><span class="n">${RP(x.total)}</span><span class="kaca-btn kecil ${i ? '' : 'aktif'}">ulangi</span></div></div>`)}</div>` : '';
     const pitaWadah = s.jalur === 'wadah' ? h`<div class="pita-info" data-k="pita-wadah">Wadah = <b>barang dagangan</b> (keputusan owner 17 Sep): tiap lembar jadi baris nota & menambah omzet, buku kantong/karung bekas turun. Yang belum punya harga jual tidak tampil. <span class="tautan" data-aksi="bukaAturWadah">Atur harga jual wadah ›</span></div>` : '';
-    if (!daftar.length) return h`${kartuPT}${pitaWadah}<div class="pita-info">${s.jalur === 'sering' ? (s.pelanggan ? s.pelanggan + ' belum punya kebiasaan belanja 90 hari terakhir' : 'Belum ada yang laku 28 hari terakhir') : s.jalur === 'wadah' ? 'Belum ada wadah yang diberi harga jual — ketuk "Atur harga jual wadah" di atas.' : 'Belum ada barang berharga di jalur ini — isi harganya di Katalog'}</div>`;
+    // putaran 39 (owner e): CEK WADAH tutup toko — tombol kecil di rak Literan: N dari M wadah aktif sudah dicek hari ini
+    const tombolCek = s.jalur === 'literan' && L.aturWadah().daftar.length ? (() => { const CW = WB.wbCekHari(hariIniIso(s.sekarang || new Date())); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;
+      return h`<div class="baris-cek-wadah" data-k="cek-wadah-baris"><div class="kaca-btn kecil ${CW.nAktif && nA >= CW.nAktif ? 'aktif' : ''}" data-aksi="bukaCekWadah" data-k="cek-wadah-btn">Cek wadah · ${nA}/${CW.nAktif} hari ini</div><span class="ket">tutup toko: sesuai · lupa isi ulang · dikosongkan</span></div>`; })() : '';
+    if (!daftar.length) return h`${kartuPT}${pitaWadah}${tombolCek}<div class="pita-info">${s.jalur === 'sering' ? (s.pelanggan ? s.pelanggan + ' belum punya kebiasaan belanja 90 hari terakhir' : 'Belum ada yang laku 28 hari terakhir') : s.jalur === 'wadah' ? 'Belum ada wadah yang diberi harga jual — ketuk "Atur harga jual wadah" di atas.' : 'Belum ada barang berharga di jalur ini — isi harganya di Katalog'}</div>`;
     // isi gambar = sisa relatif terhadap yang paling banyak DI KELOMPOKNYA (wadah literan memakai isinya sendiri, bukan perbandingan)
     const satuChip = (c, penuh, i) => h`<div class="chip ${s.pilih && s.pilih.kunci === c.kunci && s.pilih.jalur === c.jalur && (s.pilih.berat || 0) === (c.berat || 0) ? 'dipilih' : ''} ${c.sisa <= 0 && !c.tanpaBatas ? 'habis' : c.sisa <= 2 && !c.tanpaBatas ? 'kurang' : ''} ${c.wadah && c.wadah.diketahui && c.wadah.perluIsi ? 'isi-ulang' : ''}"
         data-k="chip-${s.jalur}-${c.jalur}-${c.kunci}-${c.berat || ''}" style="--urut: ${Math.min(i, 14)};"
@@ -636,6 +660,8 @@ export function pasangLayarJual(akar, opsi) {
         <div class="harga">${RP(c.harga)}<span class="satuan">/${c.satuan}</span></div>
         <div class="stok">${c.sisa <= 0 && !c.tanpaBatas ? 'habis' : c.sisaTeks}${c.dipegang > 0 ? ' · ' + (c.jalur === 'kemasan' ? c.dipegang + ' unit' : c.jalur === 'wadah' ? c.dipegang + ' lembar' : DESIMAL(c.dipegang) + ' kg') + ' dipegang struk lain' : ''}</div>
         ${c.wadah ? h`<div class="stok wadah-ket">${!c.wadah.diketahui ? 'wadah belum ditandai isi ulang' : c.wadah.perluIsi ? 'WADAH ±' + DESIMAL(c.wadah.sisaKg) + ' kg — ISI ULANG' : 'wadah ±' + DESIMAL(c.wadah.sisaKg) + ' kg'}</div>` : ''}
+        ${c.wadah ? (() => { const KT = WB.wbKomposisiTurunan(c.kunci, s); const SL = WB.wbSelisihWadah(c.kunci, s, c.sisa);   // putaran 39 (owner c & f): komposisi turunan isi ulang + selisih dua angka disebut
+          return h`<div class="stok wadah-komposisi">${KT.nama}${KT.terakhir && KT.terakhir.jam ? ' · ' + KT.terakhir.jam + (KT.terakhir.oleh ? ' ' + olehSingkat(KT.terakhir.oleh) : '') : ''}</div>${SL.ada ? h`<div class="stok awas-teks wadah-selisih">${SL.teks}</div>` : ''}`; })() : ''}
         ${c.jalur === 'wadah' ? h`<div class="stok ${c.modalAneh ? 'awas-teks' : ''}">${c.adaModal ? 'modal ' + RP(c.modal) + ' · margin ' + RP(c.harga - c.modal) + (c.modalAneh ? ' · PERIKSA' : '') : 'modal belum ada'}</div>` : ''}
       </div>
       <div class="gambar-chip">${mentah(gambarChipBarang(c, penuh))}</div>
@@ -644,7 +670,7 @@ export function pasangLayarJual(akar, opsi) {
     const kelompok = s.jalur !== 'sering' && rak.kelompok && rak.kelompok[s.jalur] ? rak.kelompok[s.jalur].map((g) => Object.assign({}, g, { daftar: jbSaringRak(g.daftar, jenisAktif) })).filter((g) => g.daftar.length) : null;
     if (kelompok) return h`${barisJenis}${kelompok.map((g) => h`<div class="kelompok-rak" data-k="kel-${s.jalur}-${g.k}"><div class="judul-kelompok"><span>${g.judul}</span><span class="ket">${g.daftar.length} barang · termurah dulu</span></div>
       <div class="rak-chip">${g.daftar.map((c, i) => satuChip(c, maks(g.daftar), i))}</div></div>`)}`;
-    return h`${kartuPT}${pitaWadah}${barisJenis}<div class="rak-chip" data-k="rak-${s.jalur}">${daftar.map((c, i) => satuChip(c, maks(daftar), i))}</div>`;
+    return h`${kartuPT}${pitaWadah}${tombolCek}${barisJenis}<div class="rak-chip" data-k="rak-${s.jalur}">${daftar.map((c, i) => satuChip(c, maks(daftar), i))}</div>`;
   }
 
   function gambarLembar(s, rak, t, info, muncul) {
@@ -657,8 +683,8 @@ export function pasangLayarJual(akar, opsi) {
       const c = s.pilih; const maks = L.maksUntuk(c);
       const preset = c.jalur === 'karung' ? [1, 2, 5, 10] : c.jalur === 'kemasan' ? [1, 2, 3, 5] : c.jalur === 'repack' ? [5, 10, 20, 25] : c.jalur === 'wadah' ? [1, 2, 5, 10] : [1, 2, 5, 10];
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
-        ${kepala(c.nama + ' ' + c.ukuran, RP(c.harga) + '/' + c.satuan + ' · bebas dijual ' + (maks === null ? (c.tanpaBatas ? 'tidak dibatasi buku (hasil samping)' : '—') : DESIMAL(maks) + ' ' + c.satuan))}
-        ${c.jalur === 'literan' && c.wadah ? panelIsiUlang(c.kunci, s, s, { lipat: true }) : ''}
+        ${kepala(c.nama + ' ' + c.ukuran, RP(c.harga) + '/' + c.satuan + ' · bebas dijual ' + (c.jalur === 'literan' && c.wadah && !WB.wbAktif(c.kunci) ? '(buku merek asal) ' : '') + (maks === null ? (c.tanpaBatas ? 'tidak dibatasi buku (hasil samping)' : '—') : DESIMAL(maks) + ' ' + c.satuan))}
+        ${c.jalur === 'literan' && c.wadah ? panelIsiUlang(c.kunci, s, s, { lipat: true, akun: opsi.akun ? opsi.akun() : null }) : ''}
         ${c.jalur === 'wadah' ? h`<div class="ket ${c.modalAneh ? 'awas-teks' : ''}">${c.teksModal}</div>` : ''}
         ${c.sisa <= 0 && !c.tanpaBatas && ['karung', 'kemasan', 'repack', 'literan'].indexOf(c.jalur) >= 0 && !c.wadah ? (() => { const kunci = c.jalur === 'kemasan' ? 'M:' + c.kunci : 'K:' + c.kunci; const K = AR.arKeadaan(kunci);
           return h`<div class="pita-info" data-k="ar-${kunci}">${K.judul} habis${K.nol ? '' : ' (buku: sisa ' + K.sisaTeks + ' — cocokkan dulu sebelum diarsipkan)'} — mau diapakan?
@@ -819,6 +845,20 @@ export function pasangLayarJual(akar, opsi) {
           <input class="ketik-nama" id="psNilai" type="text" inputmode="numeric" value="${s.psNilai}" data-ketik="psNilai" placeholder="Perkiraan nilai Rp (boleh kosong)">
           <div class="kaca-btn aktif" data-aksi="simpanPesanan">CATAT PESANAN</div>
         </div>
+      </div>`;
+    }
+    if (s.lembar === 'cekWadah') {
+      // putaran 39 (owner e): satu baris per wadah — aktif: buku ±kg, status cek hari ini (hasil · jam · siapa), tiga tombol; belum aktif: redup, "aktifkan dulu"
+      const CW = WB.wbCekHari(hariIniIso(s.sekarang || new Date())); const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'isiUlang'); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;
+      return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
+        ${kepala('Cek wadah · tutup toko', CW.nAktif ? nA + ' dari ' + CW.nAktif + ' wadah aktif sudah dicek hari ini' : 'belum ada wadah yang punya buku sendiri')}
+        <div class="ket">Sebelum toko tutup tiap kotak dicek: isinya <b>sesuai</b> bukunya, <b>lupa isi ulang</b> (isi ulangnya dicatat sesudah ini), atau <b>dikosongkan</b> (seluruh isi disisihkan ke karung wadah tanpa timbang). Jam & siapa yang mengecek ikut tercatat.</div>
+        <div class="daftar-cek" data-k="daftar-cek">${CW.daftar.map((x) => h`<div class="baris-cek ${x.aktif ? '' : 'redup'} ${x.dicek ? 'dicek' : ''}" data-k="cw-${x.W}">
+          <div class="atas"><span><b>${x.no} ${x.W}</b>${x.aktif ? ' · buku ±' + DESIMAL(x.bukuKg) + ' kg' : ''}</span><span class="ket ${x.dicek && x.hasil !== 'sesuai' ? 'awas-teks' : ''}">${x.dicek ? x.hasilTeks + ' · ' + x.jam + (x.oleh ? ' oleh ' + x.oleh : '') : x.aktif ? 'belum dicek' : 'belum aktif'}</span></div>
+          ${x.aktif ? h`<div class="tombol-baris rapat">${WB.WB_CEK.map(([id, nm]) => { const yakin = id === 'kosong' && s.cwYakin === x.W; const teks = yakin ? 'YAKIN — kosongkan ±' + DESIMAL(Math.max(0, x.bukuKg)) + ' kg' : nm;
+            return tb.boleh ? h`<div class="kaca-btn ${x.hasil === id ? 'aktif' : ''} ${yakin ? 'awas' : ''}" data-aksi="cwCatat" data-wadah="${x.W}" data-hasil="${id}">${teks}</div>` : h`<div class="kaca-btn mati" data-aksi="tombolMati" data-kal="${tb.kalimat}">${nm}</div>`; })}</div>`
+            : h`<div class="ket">aktifkan dulu — wadah ini belum punya buku sendiri (Stok › Wadah literan)</div>`}
+        </div>`)}${CW.daftar.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Belum ada wadah literan yang diatur.</div>`}</div>
       </div>`;
     }
     if (s.lembar === 'struk') return gambarStruk(s, L1, muncul, kepala);

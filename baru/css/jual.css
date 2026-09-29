@@ -179,3 +179,31 @@
 .omzet-toast b { color: var(--aktif); font-size: 15px; } .omzet-toast.tampil { animation: toastOmzet 2400ms cubic-bezier(.2,.8,.2,1) forwards; }
 @keyframes toastOmzet { 0% { opacity: 0; transform: translate(-50%, -20px); } 12% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -12px); } }
 @media (prefers-reduced-motion: reduce) { .omzet-naik.tampil, .omzet-toast.tampil { animation: none; opacity: 1; } }
+
+/* ---------- PUTARAN 39 (owner 29 Sep): isi ulang tiga ketukan, komposisi & selisih di chip wadah, cek wadah tutup toko ---------- */
+/* blok tiga ketukan di panel wadah (Jual & Stok): rak merek asal → takaran → ISI ULANG; tuts angka menulis ke draf panel, bukan kolom ketik */
+.isi-tiga { display: flex; flex-direction: column; gap: 8px; padding: 6px 0 10px; border-bottom: 1px dashed var(--garis); }
+.isi-tiga .rak-merek { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.isi-tiga .kaca-btn.merek { flex-direction: column; gap: 1px; min-height: 48px; padding: 5px 8px; font-size: 12.5px; }
+.isi-tiga .kaca-btn.merek .ket { font-size: 10.5px; font-weight: 500; line-height: 1.2; }
+.isi-tiga .kaca-btn.merek.aktif { border-color: var(--emas-garis); }
+.isi-tiga .angka { font-size: 26px; }
+.isi-tiga .tuts .k { min-height: 38px; }
+.pita-tandai { display: flex; flex-direction: column; gap: 6px; }
+.pita-tandai .tombol-baris .kaca-btn { min-height: 40px; }
+main.layar-jual .kaca-btn.kecil { min-height: 30px; font-size: 11.5px; padding: 0 10px; }
+/* tombol cek wadah di rak Literan */
+.baris-cek-wadah { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 0 6px; }
+/* lembar cek wadah: satu baris per wadah */
+.daftar-cek { display: flex; flex-direction: column; max-height: 56vh; overflow-y: auto; }
+.baris-cek { display: flex; flex-direction: column; gap: 6px; padding: 10px 2px; border-bottom: 1px solid var(--garis); }
+.baris-cek:last-child { border-bottom: 0; }
+.baris-cek .atas { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 13.5px; }
+.baris-cek.redup { opacity: 0.55; }
+.baris-cek.dicek .atas > span:first-child { color: var(--aktif); }
+/* chip wadah: baris komposisi (merek asal, jam, siapa) & baris selisih dua angka */
+.chip .wadah-komposisi { font-size: 10px; } .chip .wadah-selisih { font-size: 9.5px; line-height: 1.25; white-space: normal; font-weight: 500; }
+/* hidup: blok tiga ketukan, pita tandai, dan tiap baris cek masuk sekali (data-k unik → morf tidak mengulang animasinya) */
+.isi-tiga, .pita-tandai, .baris-cek, .baris-cek-wadah { animation: masuk 420ms cubic-bezier(.2,.8,.2,1); }
+@media (min-width: 720px) { .isi-tiga .rak-merek { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .isi-tiga, .pita-tandai, .baris-cek, .baris-cek-wadah { animation: none; } }
