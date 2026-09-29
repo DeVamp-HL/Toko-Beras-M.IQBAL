@@ -708,6 +708,21 @@ jalan mundur `firestore.rules.v4`.
   titik samakan isi, kedatangan sungguhan, `tutupHari` tetap owner. `periksa_rules.py` mengenal dua fungsi jujur baru; `peta_akses.py --kiriman`
   mengukur isi ulang ½ karung = 5 dokumen + jejak = **6 / 20** dan menuntut tiga kiriman terlarang ditolak di perangkat. Rincian: `docs/peta-hak-akses.md`
   §9; uji server `docs/uji-rules-v5.md`; salinan v4 = `firestore.rules.v4`.
+- Layar (digabung ke cabang ini: `5971250` Stok · `b5d4dc0` Jual & panel · `e215c1c` K5 · `041b9c2` tambalan silang layar). **Stok › Wadah literan**
+  `stok.js`: kartu "Aktivasi buku wadah — per wadah, owner memutuskan" (`wbDaftarAktivasi`; satu baris per wadah: status · isi tercatat · tabel sumber
+  merek asal di wadah / di karung / buku / kurang · AKTIFKAN dua ketukan · TANDAI UNTUK DICOCOKKAN lewat pita `pita-tandai` (`tandaiMasuk` /
+  `tandaiTulis` / `tandaiBatal`) · "Hitung fisik <merek> dulu" ke Cocokkan › Tumpukan gudang · "Catat barang masuk"; tombol lama "semua sekaligus"
+  dicabut), kartu "Karung di belakang wadah … · buku sendiri per merek" (`wbKarungBelakangWadah`: buku · catatan · selisih → `samakanKarung` dengan
+  merk = kunci buku), komposisi turunan, selisih, status cek hari ini. **Panel wadah** `wadah-panel.js` (Jual & Stok): tiga ketukan `wdMerkTiga` →
+  `wdTakaranTiga` / `wdTutsTiga` → `wdIsiTiga`; kepala "Isi wadah = buku ±X kg" + komposisi + selisih; pita dua pintu `wdKeStok` / `wdTandaiBatal`;
+  panel − / + tetap sebagai "Takaran lain" (`wdCatat` meneruskan opsi); wadah belum aktif = panel lama + "aktifkan di Stok › Wadah literan".
+  **Jual › Literan** `jual.js`: chip wadah memuat baris komposisi (merek asal · jam · siapa) & awas selisih; tombol "Cek wadah · N/M hari ini" → lembar
+  `cekWadah` (per wadah aktif: sesuai / lupa isi ulang / dikosongkan dua ketukan; "lupa" membuka chip dengan panel isi ulang). **Uang › Tutup hari**
+  `uang.js`: kartu "Cek wadah" di antara Timbang cepat & Amankan laci — kartu, bukan langkah `LANGKAH_TUTUP` (belum semua dicek tidak menahan tutup
+  hari); "lupa" sukses → tombol ke Stok › Wadah literan (`bukaStok` dari `app.js`); Timbang cepat menyaring kunci `petaBukuWadah`. Tambalan silang
+  layar: panel Stok meneruskan akun; `susunSamakanKarung` untuk buku karung belakang membatasi sisa = yang lebih besar antara satu karung dan bukunya.
+  Tombol yang tidak boleh untuk akun ini MATI dengan kalimat (`tombolMati` / `data-kal`), tiap blok bertransisi ber-`data-k`, tiga lebar lewat
+  `stok.css` / `jual.css` / `uang.css`.
 - Papan Kapur (`susunKapur`): baris buka karung berbuku, cek wadah, tanda KURANG; `kmTebak` mengenal `merkAsal`.
 - Uji: `uji_wadah_satu_buku.py` (+ kontrol, CI); jangkar `uji_jual_baru`, `uji_stok_baru`, `uji_buku_ukuran`, `uji_wadah_stok_sendiri`,
   `uji_menu_baru` (14 tindakan), `uji_akses_baru` mengikuti teks baru.
@@ -730,6 +745,7 @@ baru/
   js/mesin/pembantu.js  fungsi & konstanta pembantu mesin — DIBUAT ALAT juga
   js/layar/jual-logika.js   logika Jual tanpa DOM (diuji di jsc); wadah-jual-logika.js (wadah dijual, harga jual wadah), struk-logika.js (struk kertas/WA + aturan otomatis)
   js/layar/jual.js          gambar & ketukan
+  js/layar/wadah-panel.js   panel isi ulang wadah bersama Jual & Stok (takar demi takar sejak putaran 8; 39: tiga ketukan, kepala buku, pita tandai)
   js/layar/stok-logika.js, stok-catat-logika.js (ST1/ST3), stok-adukan-logika.js (ST2), stok-karantina-logika.js, stok-kantong-logika.js (ST4), stok-tempat-logika.js (ST5), stok-hpp-logika.js (ST6)   logika Stok tanpa DOM
   js/layar/wadah-bernama-logika.js (komposisi wadah per merek asal, literan langsung, ganti nama wadah; putaran 28: stok wadah sendiri, pindahan awal, katalog kasir; putaran 39: karung belakang = buku sendiri, isi ulang tiga ketukan, aktivasi per wadah, komposisi turunan, cek wadah, selisih dua angka) · varian-logika.js · arsip-logika.js · setengah-logika.js   putaran 27, tanpa DOM
   js/layar/stok.js          gambar & ketukan layar Stok

@@ -226,6 +226,9 @@ ditulis owner saat menutup hari. Peran ketiga nanti = tambah satu nama di kedua 
   titik samakan isi (`isi`), batch lahir berisi kg; dua kontrol baru ("karyawan boleh menulis aturan wadah", "karyawan boleh menulis kedatangan
   sungguhan sebagai batch lahir").
 - `uji_akses_baru.py` / `uji_menu_baru.py`: 14 tindakan; sel `sendiri` yang ditutup server tetap nol (isiUlang dibuka, jadi tidak ada "tertutup server" baru).
+- Layar (putaran 39): tombol yang tidak boleh untuk akun ini MATI dengan kalimat (`tombolMati` / `data-kal`), bukan hilang — kartu Aktivasi & panel
+  wadah di Stok menerima akun dari layar (`opsi.akun`, `041b9c2`), panel wadah di Jual, lembar Cek wadah di Jual, kartu Cek wadah K5. Aktivasi per
+  wadah = owner (`tombolLuarKisi`); isi ulang & cek = kisi `isiUlang`.
 
 ### 9.4 Access call terukur (CI `peta_akses.py --kiriman`; batas 18 = 20 − sisa 2)
 
@@ -236,7 +239,8 @@ ditulis owner saat menutup hari. Peran ketiga nanti = tambah satu nama di kedua 
 | Cek tutup toko **dikosongkan** | ben, karyawan | ≤ 4 | ≤ 5 / 20 | lahir karung wadah (bila belum) + pindah + `karung` sisihan + `cek` + jejak |
 | Cek **sesuai** / **lupa isi ulang** | ben, karyawan | 1 | 2 / 20 | `cek` + jejak |
 
-Terburuk per jenis di tabel §7 CI = baris "isi ulang wadah" **6 / 20**. Jumlah dokumen tetap per tindakan (tidak ada perulangan yang membesar): takaran
+Keempat baris diukur `peta_akses.py --kiriman` di bawah satu jenis "isi ulang wadah"; tabel CI memajang yang terburuk = ½ karung **6 / 20** (keluaran
+29 Sep: `isi ulang wadah | ben · karyawan | 5 | 6 / 20`). Jumlah dokumen tetap per tindakan (tidak ada perulangan yang membesar): takaran
 "1 karung" paling banyak membuka 1 karung (`n = ceil((kg − buku karung belakang) ÷ berat)`). Panel − / + takar dengan **beberapa merek sumber** menulis
 [lahir?, pindah, `karung`…] per merek — belum diukur untuk akun staf di `--kiriman` (hari ini panel itu dipakai owner; tiga ketukan satu merek).
 
