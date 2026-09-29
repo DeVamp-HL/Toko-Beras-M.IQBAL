@@ -1,6 +1,7 @@
 # Peta hak akses — putaran 23, Tahap 0
 
-Dasar `firestore.rules` v3. **Rules yang tidak bisa ditelusuri ke satu baris peta ini = cacat.**
+Dasar `firestore.rules` v3. **Rules yang tidak bisa ditelusuri ke satu baris peta ini = cacat.** Lapisan berikutnya: v4 = kunci periode
+(`docs/peta-kunci-periode.md`), **v5 = §9 (putaran 39, karyawan menuang & mengecek wadah literan)**.
 Disusun dari KODE di `main` ad8baea (24 Sep 2026), bukan dari ingatan:
 
 - inventaris tulis & baca: `python3 alat-uji/peta_akses.py` (tulis) dan `--baca` (baca per layar, graf panggilan fungsi);
@@ -184,6 +185,66 @@ Tambahan owner 24 Sep (sesudah 23d — dokumen saja, BELUM dikerjakan):
   di jejak.
 - **c · Uji isian lewat kolom sungguhan.** Tambahkan data contoh minimal di Firebase palsu (`alat-uji/uji_layar_kunci.py`) supaya tiap layar yang
   punya isian punya minimal satu form yang diisi lewat kolom sungguhan (ketikan di DOM), bukan lewat keadaan layar seperti bagian ISIAN 23d.
+
+## 9 · v5 (putaran 39, 29 Sep 2026) — karyawan menuang & mengecek wadah literan
+
+Keputusan owner 29 Sep (`docs/peta-wadah-satu-buku.md` §8.1 no. 2–3): karyawan boleh mengisi ulang wadah dari akunnya sendiri, boleh menandai "untuk
+dicocokkan" dengan namanya tercatat, dan mengecek tiap kotak saat tutup toko. Rules v5 diterbitkan owner lewat Console (pola putaran 25; kasus Playground
+`docs/uji-rules-v5.md`). Jalan mundur = tempel `firestore.rules.v4`. Selain dua blok di bawah, v5 byte-sama dengan v4 (kunci periode, akun, kasir@).
+
+### 9.1 Koleksi & tipe yang dibuka untuk `ben` dan `karyawan` (create saja; update & delete tetap owner)
+
+| Koleksi | v4 | v5 | Fungsi rules | Penyusun yang menulisnya |
+|---|---|---|---|---|
+| `wadahLiteran` | owner saja | create tipe `takar` · `karung` · `karungIsi` · `cek` (`olehUid` = uid penulis; tanpa penilaian kunci periode — koleksi ini tidak bertanggal di `kunci-periode.js`) | `stafBuatWadah(['ben', 'karyawan'])` = `stafBuat()` + `tipe in [...]` | tiga ketukan `wbSusunIsiUlangTiga` (`karung`, `takar`) · panel − / + `susunTakarWadah` (`takar`, `karung` otomatis) · buka karung `susunBukaKarung` / `wbDokBukaKB` (`karung`) · samakan karung terbuka (`karungIsi`) · cek tutup toko `wbSusunCek` (`cek`; "dikosongkan" + `karung` sisihan lewat `wbSusunSisih`) |
+| `batchMasuk` | owner saja | create **batch LAHIR BUKU 0 kg** saja: `lahirBuku == true`, `stokAwal == true`, `biayaBongkar == 0`, `pemasok == 'LAHIR BUKU'` (+ `olehUid`, `tglStaf('tanggal')`) | `stafBuatLahir(['ben', 'karyawan'])` | `wbDokLahir` — buku karung belakang / karung wadah yang lahir di kiriman isi ulang & cek |
+| `produksiKemasan` | create (adukan, sejak v3) | **tidak berubah** — pindah buku (`wbDokPindah`: `dariTakar`, `jadiKarungUtuh`) menumpang jalur yang sudah ada | `stafBuat` + `tglStaf` | `wbDokBukaKB`, tuang, sisihkan, aktivasi (owner) |
+| tetap owner | | `wadahLiteran` tipe `atur` (aturan wadah) & `isi` (titik samakan isi) · `batchMasuk` kedatangan sungguhan · `tutupHari` · `penyesuaianStok` (cocokkan) · `kembalikan karung` (menghapus catatan) | | |
+
+Cek wadah disimpan sebagai `wadahLiteran` tipe `'cek'` (bukan di `tutupHari`) supaya karyawan mencatatnya sendiri saat tutup toko; `tutupHari` tetap
+ditulis owner saat menutup hari. Peran ketiga nanti = tambah satu nama di kedua daftar (`stafBuatWadah` / `stafBuatLahir` di rules dan `BUAT_STAF` di
+`akses.js`) — `periksa_rules.py` memastikan keduanya sama.
+
+### 9.2 Tindakan SS2 ke-14: `isiUlang`
+
+| Tindakan | ben | karyawan | Fungsi | Koleksi · operasi (per kiriman) | Server v5 |
+|---|---|---|---|---|---|
+| isiUlang · "Isi ulang & cek wadah literan" (modul Stok) | sendiri | sendiri | `wbSusunIsiUlangTiga`, `susunTakarWadah`, `susunBukaKarung`, `wbSusunCek` | `batchMasuk` create lahir 0 kg (≤ 1) · `produksiKemasan` create pindah buku (≤ 2) · `wadahLiteran` create (`karung` × n, `takar`, `cek`) | **BUKA** (`SERVER_BUKA.isiUlang = ['ben', 'karyawan']`) |
+
+`SS_TINDAKAN` jadi 14 baris, `SS_HAK_BAWAAN` `sendiri` untuk keduanya (owner boleh memutarnya di SS2). Kalimat penolakan: `TINDAKAN_DARI.wadahLiteran =
+'isiUlang'` → "isi ulang & cek wadah literan"; tipe `atur` / `isi` yang salah kirim jatuh ke kalimat tindakan `atur`, batch berisi kg ke kalimat
+`kedatangan`. Tabel §1 (13 tindakan, v3) tidak ditulis ulang; baris ini pelengkapnya.
+
+### 9.3 Penjaga perangkat = rules (kiriman yang pasti ditolak server tidak pernah dikirim)
+
+- `akses.js`: `BUAT_STAF.wadahLiteran` & `BUAT_STAF.batchMasuk` = `['ben', 'karyawan']`; `TIPE_WADAH_STAF` = daftar `stafBuatWadah`; `batchLahir(d)` =
+  syarat `stafBuatLahir` **ditambah** `merkList` tanpa `totalKg` / `subtotalHarga`. Yang terakhir hanya dijaga perangkat: rules v5 tidak membaca isi
+  `merkList` (batas yang diketahui — kasus Playground V16 di `docs/uji-rules-v5.md`; batch bertanda LAHIR BUKU tetap 0 kg karena penyusunnya
+  `wbDokLahir` dan penjaga perangkat, bukan karena server).
+- `periksa_rules.py`: `FUNGSI_JUJUR` + `stafBuatWadah`, `stafBuatLahir` (keduanya lewat `stafBuat()` → `jujur()`); daftar peran di kedua blok = `BUAT_STAF`.
+- `peta_akses.py --kiriman`: mengukur kiriman isi ulang & cek (9.4) dan menuntut tiga kiriman terlarang **dilewati di perangkat**: aturan wadah (`atur`),
+  titik samakan isi (`isi`), batch lahir berisi kg; dua kontrol baru ("karyawan boleh menulis aturan wadah", "karyawan boleh menulis kedatangan
+  sungguhan sebagai batch lahir").
+- `uji_akses_baru.py` / `uji_menu_baru.py`: 14 tindakan; sel `sendiri` yang ditutup server tetap nol (isiUlang dibuka, jadi tidak ada "tertutup server" baru).
+
+### 9.4 Access call terukur (CI `peta_akses.py --kiriman`; batas 18 = 20 − sisa 2)
+
+| Kiriman bukan-owner | Peran | Dokumen | Access call | Isinya |
+|---|---|---|---|---|
+| Isi ulang **½ karung** dari tumpukan (karung belakang belum berbuku) | ben, karyawan | 5 | **6 / 20** | batch lahir + pindah merek → karung belakang + 1 `karung` + `takar` + pindah karung belakang → wadah + jejak |
+| Isi ulang **kg** dari karung yang sudah terbuka | ben, karyawan | 2 | 3 / 20 | `takar` + pindah + jejak |
+| Cek tutup toko **dikosongkan** | ben, karyawan | ≤ 4 | ≤ 5 / 20 | lahir karung wadah (bila belum) + pindah + `karung` sisihan + `cek` + jejak |
+| Cek **sesuai** / **lupa isi ulang** | ben, karyawan | 1 | 2 / 20 | `cek` + jejak |
+
+Terburuk per jenis di tabel §7 CI = baris "isi ulang wadah" **6 / 20**. Jumlah dokumen tetap per tindakan (tidak ada perulangan yang membesar): takaran
+"1 karung" paling banyak membuka 1 karung (`n = ceil((kg − buku karung belakang) ÷ berat)`). Panel − / + takar dengan **beberapa merek sumber** menulis
+[lahir?, pindah, `karung`…] per merek — belum diukur untuk akun staf di `--kiriman` (hari ini panel itu dipakai owner; tiga ketukan satu merek).
+
+### 9.5 Gerbang tablet (§8) tidak berubah
+
+Rules v5 tidak membuka akun staf pertama: semua butir §8 tetap wajib sebelum akun bukan-owner disetujui. Sampai ada akun staf, dokumen isi ulang &
+cek ditulis akun owner (seperti 27 catatan takar di cadangan 29 Sep). Bila v4 ditempel kembali, kiriman isi ulang / cek dari akun karyawan ditolak
+server dan masuk daftar ditolak (`antre-lokal.js`), tidak hilang diam.
 
 ## Lampiran A · Inventaris tulis (`python3 alat-uji/peta_akses.py`)
 
