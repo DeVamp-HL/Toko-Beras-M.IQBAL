@@ -97,12 +97,29 @@ export function kkBolehTerbit(k) {
  * Terbit harga (dan kiriman owner lain yang mengubah harga): katalog SESUDAH kiriman ini ikut di kiriman yang SAMA — HP kasir tidak pernah membaca harga
  * lama sesudah harga barunya terbit. Tidak berubah dari server → tidak ikut. Server belum terbaca → tetap ikut (isi sesudah kiriman = kebenaran).
  */
+let _kkGerbang = null;
+/** firebase.js memasang penilai gerbang terbit (kkBolehTerbit atas keadaan pendengar) — dipakai juga oleh kkSertakan. Tanpa penilai (kotak pasir, cadangan) = tertutup. */
+export function kkPasangGerbang(f) { _kkGerbang = typeof f === 'function' ? f : null; }
 export function kkSertakan(dokumen, kini) {
   const daftar = dokumen || [];
   if (daftar.some((d) => d.koleksi === KK_KOLEKSI)) return daftar;
+  // audit 39b no. 17: gerbang yang SAMA dengan terbit otomatis — data belum termuat semua / masih salinan perangkat / katalog server belum terbaca / bukan owner
+  // → katalog TIDAK ikut kiriman ini; terbit otomatis menyusul begitu gerbangnya terbuka (jadwalkanKatalog dipanggil tiap data berubah)
+  const g = _kkGerbang ? _kkGerbang() : null; if (!g || !g.boleh) return daftar;
   const isi = denganCacheSementara(daftar, kkIsi); if (!isi) return daftar;
   if (_kkServer.ada === true && kkKanon(isi) === kkKanon(_kkServer.dok)) return daftar;
   return daftar.concat([{ koleksi: KK_KOLEKSI, data: kkDokumen(isi, kini) }]);
+}
+/**
+ * Kiriman terbit harga + katalog kasir, dengan kabar yang JUJUR (tinjauan no. 17): kalau gerbang tertutup, katalog tidak ikut — kalimat "katalog HP kasir ikut"
+ * diganti "BELUM ikut … terbit otomatis menyusul". Kalau gerbang terbuka tapi isinya sama dengan server, tidak ada yang perlu dikirim (kabar apa adanya).
+ */
+export function kkSertakanKiriman(r, kini) {
+  const dokumen = kkSertakan(r.dokumen, kini); const g = _kkGerbang ? _kkGerbang() : null;
+  if ((g && g.boleh) || dokumen.some((d) => d.koleksi === KK_KOLEKSI) || !r.patch || !r.patch.kabar) return Object.assign({}, r, { dokumen });
+  const kabar = String(r.patch.kabar).replace(/\s*Katalog HP kasir ikut berganti di kiriman yang sama\./, '').replace(' — rak Jual & katalog HP kasir ikut.', ' — rak Jual ikut.')
+    + ' Katalog HP kasir BELUM ikut kiriman ini' + (g && g.sebab ? ' (' + g.sebab + ')' : '') + ' — terbit otomatis menyusul begitu data termuat penuh & tersambung.';
+  return Object.assign({}, r, { dokumen, patch: Object.assign({}, r.patch, { kabar }) });
 }
 /** Dokumen katalog ditulis APA ADANYA (bentuk index.html): penulis pusat tidak memasang atribusi & tidak menulis baris jejak untuknya. */
 export const kkMentah = (koleksi) => koleksi === KK_KOLEKSI;

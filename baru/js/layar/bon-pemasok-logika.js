@@ -87,7 +87,7 @@ export function susunBon(kini) {
   if (tanpaTempo.length) { tanda('tempo belum disepakati — tidak diramal. Isi di kartu pemasoknya.', ''); tanpaTempo.forEach((b) => garis.push(Object.assign({ tanda: false }, b))); }
   const lewat = berTempo.filter((b) => b.status === 'lewat'), dekat = berTempo.filter((b) => b.status === 'dekat'); const jml = (d) => d.reduce((a, b) => a + b.sisa, 0);
   return { bon, total, nBon: bon.length, nPemasok: tusukan.filter((t) => t.bon.length).length, kas, adaKas: kas !== null, tekor, tusukan, garis, lewat, dekat, tanpaTempo, atur, iso,
-    kasTeks: kas === null ? 'uang toko belum bisa dihitung — titik kas belum disetel di perangkat ini (Tutup Hari sistem lama)' : 'uang toko sekarang ' + RP(kas) + ' (semua kantong, dari titik kas + gerakan sesudahnya)',
+    kasTeks: kas === null ? 'uang toko belum bisa dihitung — titik kas belum ada; Tutup hari malam ini (Uang › Tutup hari) menyetelnya' : 'uang toko sekarang ' + RP(kas) + ' (semua kantong, dari titik kas + gerakan sesudahnya)',
     ringkas: [{ a: String(lewat.length), l: 'lewat tempo', nyala: lewat.length > 0 }, { a: RP(jml(lewat) + jml(dekat)), l: 'jatuh ≤ ' + atur.dekatHari + ' hari', nyala: false }, { a: String(tanpaTempo.length), l: 'tanpa tempo', nyala: false }],
     cukupTeks: !berTempo.length ? 'Belum ada bon yang bisa diramal jatuh temponya.' : kas === null ? 'Uang toko belum bisa dihitung, jadi belum bisa dibandingkan dengan bon yang jatuh tempo.' : habisSudah ? 'Uang toko TIDAK cukup untuk semua bon yang sudah punya tempo.' : 'Uang toko cukup untuk semua bon yang sudah punya tempo.', kurang: habisSudah };
 }

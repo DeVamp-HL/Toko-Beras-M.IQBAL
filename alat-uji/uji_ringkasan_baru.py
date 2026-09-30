@@ -8,7 +8,7 @@ angka Ringkasan harus SAMA dengan jumlah langsung dari baris penjualan cadangan 
     python3 alat-uji/uji_ringkasan_baru.py            → N lulus · 0 gagal
     python3 alat-uji/uji_ringkasan_baru.py --kontrol  → logika yang dirusak wajib ketahuan
 """
-import os, sys, json, glob, subprocess, tempfile
+import os, re, sys, json, glob, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
@@ -132,6 +132,19 @@ def utama(js):
     return h['lulus'], h['gagal']
 
 
+def teks_titik_basi(berkas):
+    """audit 39b no. 31: arahan titik kas menyuruh ke SISTEM LAMA (hanya-baca; titiknya jadi milik satu perangkat) — kini Tutup hari sistem baru."""
+    out = []
+    for f, t in berkas.items():
+        if re.search(r'titik kas[^\n]{0,80}(sistem lama|Tutup Hari sistem lama)|setel di sistem lama', t, re.I): out.append(f + ' masih menyuruh setel titik kas di sistem lama')
+        if 'belum disetel di perangkat ini' in t: out.append(f + ' menyebut titik kas milik "perangkat ini" (titikKas = satu dokumen untuk semua perangkat)')
+    return out
+
+
+def berkas_titik():
+    return dict((f, open(os.path.join(AKAR, f), encoding='utf-8').read()) for f in ['baru/js/layar/ringkasan.js', 'baru/js/layar/bon-pemasok-logika.js'])
+
+
 if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
@@ -157,6 +170,10 @@ if __name__ == '__main__':
             'pesanan yang sudah dibayar ikut "belum dibayar"': js.replace("const ps = ambilPesanan().filter(pesananBelumTuntas);", "const ps = ambilPesanan();"),
         }
         kode = 0
+        B31 = berkas_titik(); B31r = dict(B31); B31r['baru/js/layar/ringkasan.js'] = B31r['baru/js/layar/ringkasan.js'].replace('Titik kas belum ada — Tutup hari malam ini', 'Titik kas belum disetel di perangkat ini — setel di sistem lama (Uang). Tutup hari malam ini', 1)
+        g31 = teks_titik_basi(B31r) if B31r != B31 else []
+        print(('BERBUNYI ' if g31 else 'DIAM!!   ') + '39b-31: Beranda kembali menyuruh setel titik kas di sistem lama → ' + (g31[0] if g31 else '-'))
+        if not g31: kode = 3
         for nama, isi in rusak.items():
             if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue
             l, g = utama(isi)
@@ -164,6 +181,7 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g = utama(js)
+    t31 = teks_titik_basi(berkas_titik()); g = g + ['39b-31: ' + x for x in t31]; l = l + (0 if t31 else 1)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')), key=os.path.basename)   # cadangan toko boleh di akar, _privat/ atau _arsip-mockup/ (semua di-gitignore); yang terbaru menurut tanggal di namanya
     if cad:

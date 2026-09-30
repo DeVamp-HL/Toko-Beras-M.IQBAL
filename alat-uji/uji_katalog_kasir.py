@@ -92,13 +92,22 @@ if (CADANGAN) {
     IM ? IM.merkKarung.length + ' merek; ' + J(IM).slice(0, 200) + ' ≠ ' + J(LC).slice(0, 200) : 'null');
   var arP = arPeta(); var ukB = petaUkuran(); var ukI = indukTerpisah();
   var namaC = IC.merkKarung.map(function (m) { return m.merk; }); var namaL = LC.merkKarung.map(function (m) { return m.merk; });
-  var hilang = namaL.filter(function (m) { return namaC.indexOf(m) < 0; }); var tambah = namaC.filter(function (m) { return namaL.indexOf(m) < 0; });
+  var hilang0 = namaL.filter(function (m) { return namaC.indexOf(m) < 0; }); var tambah = namaC.filter(function (m) { return namaL.indexOf(m) < 0; });
+  // cadangan 1 Okt (semua wadah aktif): buku KHUSUS (karung belakang / sisihan / adukan dibuka) & kunci wadah lama bersisa nol juga SENGAJA tidak dijual dari HP kasir
+  // (wbSaringKatalogKasir) — bukan nama yang diarsipkan
+  var bwK = petaBukuWadah(); var pwK = petaStokWadah(); var skK = hitungStokKarungPerMerk();
+  var khusus = function (m) { return (bwK[m] && bwK[m].jenis !== 'wadah') || (pwK[m] && Math.abs(((skK[m] || {}).sisaKg) || 0) < 0.005); };
+  var hilangKhusus = hilang0.filter(khusus); var hilang = hilang0.filter(function (m) { return !khusus(m); });
+  var wadahAktif = {}; aturWadah().daftar.forEach(function (W) { if (pwK[wbKunci(W)]) wadahAktif[W] = true; });
   var BOLEH_BUKU = ['karung50', 'hargaKarung25', 'hargaPerKg'], BOLEH_INDUK = ['karung25', 'hargaKarung25'];
   var bedaLain = []; IC.merkKarung.forEach(function (x) { var y = LC.merkKarung.filter(function (z) { return z.merk === x.merk; })[0]; if (!y || J(x) === J(y)) return;
     var kol = Object.keys(x).concat(Object.keys(y)).filter(function (k, i, a) { return a.indexOf(k) === i && J(x[k]) !== J(y[k]); });
-    var boleh = ukB[x.merk] ? BOLEH_BUKU : ukI[x.merk] ? BOLEH_INDUK : [];
+    // saringan wadah (putaran 28/39, wbSaringKatalogKasir): buku 'Wadah X' dijual per liter dengan harga liter wadahnya (kolom karung & per kg nol);
+    // merek bernama wadah AKTIF tidak menjual literan atas namanya sendiri (harga liter 0); induk 25 kg terpisah tidak menawarkan 25 kg lagi
+    var boleh = pwK[x.merk] ? ['karung50', 'karung25', 'hargaKarung25', 'hargaKarung50', 'hargaPerKg', 'hargaPerLiter', 'rasio']
+      : (ukB[x.merk] ? BOLEH_BUKU : ukI[x.merk] ? BOLEH_INDUK : []).concat(wadahAktif[x.merk] ? ['hargaPerLiter'] : []);
     if (!kol.every(function (k) { return boleh.indexOf(k) >= 0; })) bedaLain.push([x.merk, kol]); });
-  ok('DATA TOKO: katalog HP kasir = index.html MINUS nama beras yang diarsipkan (' + hilang.length + ' nama) dan MINUS kolom karung 25 kg yang pindah ke buku ukurannya (' + Object.keys(ukB).length + ' buku); kemasan, bahan literan, piutang sama; tidak ada beda lain',
+  ok('DATA TOKO: katalog HP kasir = index.html MINUS nama beras yang diarsipkan (' + hilang.length + ' nama), MINUS buku khusus wadah (' + hilangKhusus.length + ') dan MINUS kolom karung 25 kg yang pindah ke buku ukurannya (' + Object.keys(ukB).length + ' buku); kemasan, bahan literan, piutang sama; tidak ada beda lain',
     hilang.length === Object.keys(arP).filter(function (k) { return k.slice(0, 2) === 'K:'; }).length && hilang.every(function (m) { return arBeras(m, arP); }) && !tambah.length && !bedaLain.length
     && J(IC.kemasan) === J(LC.kemasan) && J(IC.bahanLiteran) === J(LC.bahanLiteran) && J(IC.piutang) === J(LC.piutang), J({ hilang: hilang, tambah: tambah, bedaLain: bedaLain }));
   Object.keys(KOTAK).forEach(function (n) { pasok(n, KOTAK[n]); }); Object.keys(CADANGAN).forEach(function (n) { if (!(n in KOTAK)) pasok(n, []); });
@@ -135,7 +144,18 @@ ok('tanpa pembayaran terhitung, katalog lama tanpa daftar = sama (tidak terbit u
 // ---- 3 · terbit harga: katalog SESUDAH terbit ikut di kiriman yang sama
 kkSetelServer(D, true);
 terapkanKeCache(susunUbah('Angsa|S', '14.000', 'jual', W).dokumen);
-var T = susunTerbit(W, true); var sebelum = J(kkIsi()); var DK = kkSertakan(T.dokumen, W.kini); var kk = DK.filter(function (d) { return d.koleksi === 'ringkasanKasir'; });
+var T = susunTerbit(W, true);
+// audit 39b no. 17: kkSertakan memakai gerbang terbit yang SAMA (firebase.js kkPasangGerbang) — tertutup (tanpa penilai / data belum termuat) → katalog tidak ikut
+var tanpaPenilai = kkSertakan(T.dokumen, W.kini).length; kkPasangGerbang(function () { return { boleh: false, sebab: 'data belum termuat semua' }; }); var tertutup = kkSertakan(T.dokumen, W.kini).length;
+kkPasangGerbang(function () { return kkBolehTerbit({ owner: true, sumber: 'firestore', koleksiSiap: 20, koleksiTotal: 21, dariCache: 0, ditolak: 0, online: true }); }); var belumSemua = kkSertakan(T.dokumen, W.kini).length;
+ok('39b-17 terbit harga saat gerbang katalog TERTUTUP (tanpa penilai · data belum termuat semua 20/21) → katalog kasir TIDAK ikut kiriman (terbit otomatis menyusul)', tanpaPenilai === T.dokumen.length && tertutup === T.dokumen.length && belumSemua === T.dokumen.length, J([tanpaPenilai, tertutup, belumSemua, T.dokumen.length]));
+// tinjauan no. 17: kabar kiriman JUJUR — gerbang tertutup → "BELUM ikut … menyusul", bukan "ikut berganti di kiriman yang sama"
+kkPasangGerbang(function () { return { boleh: false, sebab: 'tidak tersambung' }; }); var KT17 = kkSertakanKiriman(T, W.kini);
+kkPasangGerbang(function () { return { boleh: true, sebab: '' }; }); var KB17 = kkSertakanKiriman(T, W.kini);
+ok('39b-17 kabar terbit harga: gerbang tertutup → katalog tidak ikut dan kabar menyebut "BELUM ikut … (tidak tersambung) … menyusul" (kalimat "ikut berganti di kiriman yang sama" dibuang); gerbang terbuka → katalog ikut, kabar apa adanya',
+  !KT17.dokumen.some(function (d) { return d.koleksi === 'ringkasanKasir'; }) && /BELUM ikut kiriman ini \(tidak tersambung\)/.test(KT17.patch.kabar) && !/ikut berganti di kiriman yang sama/.test(KT17.patch.kabar)
+  && KB17.dokumen.some(function (d) { return d.koleksi === 'ringkasanKasir'; }) && KB17.patch.kabar === T.patch.kabar, J([KT17.patch.kabar, KB17.patch.kabar]));
+var sebelum = J(kkIsi()); var DK = kkSertakan(T.dokumen, W.kini); var kk = DK.filter(function (d) { return d.koleksi === 'ringkasanKasir'; });
 ok('terbit harga: SATU dokumen ringkasanKasir ditambahkan ke daftar dokumen kiriman yang sama (paling akhir); dokumen terbit lain utuh', !T.tolak && kk.length === 1 && DK[DK.length - 1].koleksi === 'ringkasanKasir' && DK.length === T.dokumen.length + 1 && J(DK.slice(0, -1)) === J(T.dokumen), J(DK.map(function (d) { return d.koleksi; })));
 ok('isinya katalog SESUDAH terbit (Angsa per kg 14.000), bukan sebelumnya (13.800)', kk.length && kk[0].data.merkKarung.some(function (m) { return m.merk === 'Angsa' && m.hargaPerKg === 14000; }), kk.length ? J(kk[0].data.merkKarung) : '-');
 ok('menyusun katalog "seandainya" tidak mengubah cache (katalog dari cache masih 13.800 sebelum kiriman ditulis)', J(kkIsi()) === sebelum && kkIsi().merkKarung.some(function (m) { return m.merk === 'Angsa' && m.hargaPerKg === 13800; }));
@@ -399,11 +419,13 @@ def periksa_statis(t):
     ok('penulis pusat: dokumen katalog ditulis APA ADANYA sebelum atribusi & baris jejak', i_mentah >= 0 and i_mentah < tb.find('beriAtribusiAkun(x.data'))
     pn = fungsi(fb, 'terbitkanKatalogOtomatis')
     ok('penerbit otomatis: lewat gerbang kkBolehTerbit, hanya kalau isi BERBEDA (kkTertinggal(isi) === true), setDoc bentuk kkDokumen, tanpa jejak',
-       'const g = kkBolehTerbit(' in pn and 'if (!g.boleh) return;' in pn and "kkTertinggal(isi) !== true) return;" in pn and 'setDoc(doc(db, KK_KOLEKSI, KK_ID), kkDokumen(isi, kini))' in pn and 'KOLEKSI_LOG' not in pn, pn[:200])
+       'const g = gerbangKatalog();' in pn and 'return kkBolehTerbit(' in fungsi(fb, 'gerbangKatalog') and 'if (!g.boleh) return;' in pn and "kkTertinggal(isi) !== true) return;" in pn and 'setDoc(doc(db, KK_KOLEKSI, KK_ID), kkDokumen(isi, kini))' in pn and 'KOLEKSI_LOG' not in pn, pn[:200])
+    ok('39b-17: terbit harga (kkSertakan) memakai gerbang yang SAMA dengan terbit otomatis — firebase.js memasang gerbangKatalog lewat kkPasangGerbang; kkSertakan berhenti bila gerbang tertutup / tanpa penilai',
+       'kkPasangGerbang(gerbangKatalog);' in fb and "const g = _kkGerbang ? _kkGerbang() : null; if (!g || !g.boleh) return daftar;" in t['baru/js/data/katalog-kasir.js'] if 'baru/js/data/katalog-kasir.js' in t else False)
     ok('pendengar dokumen katalog hanya dipasang untuk owner; penerbit dijadwalkan tiap data berubah (dengarkan) dan saat sinyal kembali',
        "if (akun.jenis === 'owner') pasangPendengarKatalog();" in fb and 'dengarkan(() => jadwalkanKatalog())' in fb and 'pasangDenyut(); pasangPenerbitKatalog();' in fb)
     ok('pendengar koleksi mencatat mana yang masih salinan perangkat (fromCache) — gerbang terbit membacanya', '_dariCache[k.nama] = !!(snap.metadata && snap.metadata.fromCache);' in fb)
-    ok('harga.js: terbit harga menyertakan katalog kasir di kiriman yang SAMA (kkSertakan)', re.search(r"hgTerbitkan: async \(\) => \{[^\n]*tulis\(Object\.assign\(\{\}, r, \{ dokumen: kkSertakan\(r\.dokumen, ", t['baru/js/layar/harga.js']))
+    ok('harga.js: terbit harga menyertakan katalog kasir di kiriman yang SAMA (kkSertakanKiriman → kkSertakan)', re.search(r"hgTerbitkan: async \(\) => \{[^\n]*tulis\(kkSertakanKiriman\(r, waktu\(\)\.kini\)\)", t['baru/js/layar/harga.js']) and 'const dokumen = kkSertakan(r.dokumen, kini);' in t['baru/js/data/katalog-kasir.js'])
     ok('Beranda: baris katalog kasir (kkBeranda → #rkKatalog) & perhatiannya ikut di Perlu perhatian', 'kkBeranda(k)' in t['baru/js/layar/ringkasan.js'] and "$('rkKatalog').textContent = KK ? KK.status : ''" in t['baru/js/layar/ringkasan.js'] and 'KK ? KK.perhatian : []' in t['baru/js/layar/ringkasan.js'])
     jb = re.search(r"const JALUR_BUKAN_CATATAN = \{([^}]*)\};", mi); jd = re.search(r"const JALUR_DIAM = \{([^}]*)\};", mi)
     ok('index.html: katalog kasir bukan lagi jalur yang selalu lolos; ditutup TANPA modal (JALUR_DIAM)', jb and 'katalog' not in jb.group(1) and jd and re.search(r'\bkatalog:', jd.group(1)))
@@ -531,7 +553,8 @@ KONTROL = [
     ('pembanding tertipu urutan kunci Firestore', {'baru/js/data/katalog-kasir.js': [("return JSON.stringify(kkUrut({ kemasan:", "return JSON.stringify(({ kemasan:")]}, ('jsc',)),
     ('katalog "seandainya" dari cache SEBELUM kiriman', {'baru/js/data/katalog-kasir.js': [("const isi = denganCacheSementara(daftar, kkIsi); if (!isi) return daftar;", "const isi = kkIsi(); if (!isi) return daftar;")]}, ('jsc',)),
     ('cache tidak dikembalikan sesudah "seandainya"', {'baru/js/data/toko.js': [("try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); }", "return fn();")]}, ('jsc',)),
-    ('terbit harga tidak menyertakan katalog kasir', {'baru/js/layar/harga.js': [("tulis(Object.assign({}, r, { dokumen: kkSertakan(r.dokumen, waktu().kini) }))", "tulis(r)")]}, ('statis',)),
+    ('39b-17: kabar tetap bilang katalog ikut walau gerbang tertutup', {'baru/js/data/katalog-kasir.js': [("if ((g && g.boleh) || dokumen.some((d) => d.koleksi === KK_KOLEKSI)", "if (true || dokumen.some((d) => d.koleksi === KK_KOLEKSI)")]}, ('jsc',)),
+    ('terbit harga tidak menyertakan katalog kasir', {'baru/js/layar/harga.js': [("hgTerbitkan: async () => { const r = HG.susunTerbit(waktu(), st().yakinRugi); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, yakinRugi: !!r.perluYakin }); if (await tulis(kkSertakanKiriman(r, waktu().kini)))", "hgTerbitkan: async () => { const r = HG.susunTerbit(waktu(), st().yakinRugi); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, yakinRugi: !!r.perluYakin }); if (await tulis(r))")]}, ('statis',)),
     ('gerbang terbit dari salinan perangkat', {'baru/js/data/katalog-kasir.js': [("if (k.dariCache > 0) return", "if (false) return")]}, ('jsc',)),
     ('gerbang terbit tanpa katalog server terbaca', {'baru/js/data/katalog-kasir.js': [("if (_kkServer.ada === null || !_kkServer.dariServer) return", "if (false) return")]}, ('jsc',)),
     ('katalog ditulis dengan atribusi & jejak', {'baru/js/data/firebase.js': [("    if (kkMentah(x.koleksi)) { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }", "")]}, ('statis',)),

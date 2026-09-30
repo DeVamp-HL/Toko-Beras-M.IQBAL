@@ -26,7 +26,7 @@ import { jbKelompokStok } from './jenis-beras-logika.js';
 import * as VR from './varian-logika.js';
 import * as WB from './wadah-bernama-logika.js';
 import { aturHarga } from './harga-logika.js';
-import { kkSertakan } from '../data/katalog-kasir.js';   // 25c: total per jenis beras (owner 27 Sep: Harga + Stok + Jual)
+import { kkSertakanKiriman } from '../data/katalog-kasir.js';   // 25c: total per jenis beras (owner 27 Sep: Harga + Stok + Jual)
 // putaran 30: kelas mutu merek
 import * as KM from './kelas-merek-logika.js';
 
@@ -175,7 +175,7 @@ export function pasangLayarStok(akar, opsi) {
     vrKetik: (v, el) => { const k = Object.assign({}, st().vrKetik || {}); k[el.dataset.merk] = String(v).slice(0, 12); set({ vrKetik: k, vrYakin: false }); },
     vrTerbit: async ({ merk, usul }) => { const ketik = (st().vrKetik || {})[merk]; const r = VR.vrSusunTerbitHarga(merk, ketik !== undefined && ketik !== '' ? ketik : usul, waktu(), st().vrYakin);
       if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, vrYakin: !!r.perluYakin });
-      const sisa = (st().varianTawar || []).filter((x) => x.merk !== merk); if (await tulis(Object.assign({}, r, { dokumen: kkSertakan(r.dokumen, waktu().kini), patch: Object.assign({}, r.patch, { varianTawar: sisa.length ? sisa : null }) }))) sekali(akar.querySelector('.stok-masuk'), 'pegas', 520); },
+      const sisa = (st().varianTawar || []).filter((x) => x.merk !== merk); const k = kkSertakanKiriman(r, waktu().kini); if (await tulis(Object.assign({}, k, { patch: Object.assign({}, k.patch, { varianTawar: sisa.length ? sisa : null }) }))) sekali(akar.querySelector('.stok-masuk'), 'pegas', 520); },
     vrNanti: ({ merk }) => { const sisa = (st().varianTawar || []).filter((x) => x.merk !== merk); set({ varianTawar: sisa.length ? sisa : null, kabar: 'Harga ' + merk + ' belum disetel — rak Jual belum menampilkannya sampai harganya terbit (Harga & Pemasok › Katalog).', kabarAwas: false }); },
     mLepasBaris: ({ i }) => ubahMasuk((d) => { if (d.baris.length > 1) d.baris.splice(Number(i), 1); else d.baris[0] = C.barisMasukKosong(); }),
     mBaru: () => { simpanLokal(KUNCI_DRAF_MASUK, null); set({ masuk: C.drafMasukKosong(waktu()), yakinM: false, yakinHapus: false, kabar: '' }); },

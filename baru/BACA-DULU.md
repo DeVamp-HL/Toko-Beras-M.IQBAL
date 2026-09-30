@@ -1182,6 +1182,23 @@ Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah
 - `alat-uji/periksa_jam_rinci.py CADANGAN` — laporan pola jam baris rincian vs karcis asal + usulan koreksi (tidak menulis; bulan terkunci
   tidak diusulkan dikoreksi).
 
+## Audit 39b no. 17 — katalog HP kasir yang ikut terbit harga lewat gerbang yang sama (1 Okt 2026, cabang `audit/39b-kksertakan-gerbang`)
+
+Temuan: terbit harga (Harga › Terbitkan, varian baru, harga dari Stok) menambahkan katalog HP kasir ke kiriman yang sama lewat `kkSertakan` TANPA
+gerbang `kkBolehTerbit` yang dipakai terbit otomatis. Kalau data di perangkat owner belum termuat penuh / masih salinan perangkat / katalog server belum
+terbaca, katalog HP kasir bisa ditulis dari data yang bolong (sisa stok, bon, tuts merek salah) dan baru betul kalau perangkat owner tetap terbuka.
+Tambalan: `firebase.js` `gerbangKatalog()` = SATU penilai (dipakai terbit otomatis), dipasang ke `katalog-kasir.js` lewat `kkPasangGerbang`;
+`kkSertakan` berhenti bila gerbang tertutup atau tanpa penilai (kotak pasir, cadangan) — terbit otomatis menyusul begitu gerbang terbuka.
+Tinjauan: kabar terbit harga dulu tetap berbunyi "katalog HP kasir ikut" walau katalog dibuang gerbang → `kkSertakanKiriman` (dipakai Harga › Terbitkan,
+varian baru, harga dari Stok) mengganti kalimat itu dengan "BELUM ikut … (sebabnya) … menyusul".
+Uji `uji_katalog_kasir.py` +2 (jsc: gerbang tertutup → katalog tidak ikut; statis: penilai terpasang & dipakai). Uji data toko katalog disesuaikan
+cadangan 1 Okt (semua wadah aktif): buku khusus wadah tidak dijual dari HP kasir, harga liter pindah ke buku wadah — aturan wbSaringKatalogKasir.
+
+## Audit 39b no. 31 — arahan titik kas menunjuk Tutup hari sistem baru (1 Okt 2026, cabang `audit/39b-teks-titik-kas-basi`)
+
+Beranda dan Bon pemasok masih menulis "titik kas belum disetel di perangkat ini — setel di sistem lama". Sistem lama hanya-baca, dan titik yang disetel
+di sana cuma tersimpan di satu perangkat. Kini: "titik kas belum ada — Tutup hari malam ini (Uang › Tutup hari) menyetelnya" (dokumen titikKas satu
+untuk semua perangkat). Uji `uji_ringkasan_baru.py` +1 (pemeriksa kata di dua berkas), kontrol +1.
 ## Audit 39b no. 20 — Laporan menghitung NOTA, bukan baris (1 Okt 2026, cabang `audit/39b-nota-bukan-baris`)
 
 Temuan: Harian, teks WA, 14 hari, per jam, minggu, enam bulan, tahun, dan rekap omzet Pajak menyebut `jumlahTrx` mesin (jumlah BARIS penjualan)

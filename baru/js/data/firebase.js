@@ -13,7 +13,7 @@ import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sum
 import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
 import { buatAntre, cekDariCache } from './antre-lokal.js';
 import { KP_BATAS_GET } from './kunci-periode.js';
-import { KK_KOLEKSI, KK_ID, KK_JEDA_MS, kkSetelServer, kkLupakanServer, kkIsi, kkDokumen, kkTertinggal, kkBolehTerbit, kkMentah, kkCatatTerbit } from './katalog-kasir.js';
+import { KK_KOLEKSI, KK_ID, KK_JEDA_MS, kkSetelServer, kkLupakanServer, kkIsi, kkDokumen, kkTertinggal, kkBolehTerbit, kkMentah, kkCatatTerbit, kkPasangGerbang } from './katalog-kasir.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAQ0DL-RnOa4gwSpvaNf1FMVlSNWla3RzA',
@@ -161,10 +161,16 @@ function pasangPendengarKatalog() {
 }
 let _kkTimer = null, _kkJalan = false, _kkDipasang = false;
 function jadwalkanKatalog() { clearTimeout(_kkTimer); _kkTimer = setTimeout(terbitkanKatalogOtomatis, KK_JEDA_MS); }
+// gerbang terbit katalog kasir — SATU penilai untuk terbit otomatis DAN katalog yang ikut kiriman terbit harga (kkSertakan; audit 39b no. 17: dulu jalur itu
+// melewati gerbang → katalog HP kasir bisa disusun dari data yang belum termuat penuh / masih salinan perangkat)
+function gerbangKatalog() {
+  return kkBolehTerbit({ owner: !!status.akun && status.akun.jenis === 'owner', sumber: sumberData().jenis, koleksiSiap: status.koleksiSiap, koleksiTotal: status.koleksiTotal,
+    dariCache: Object.keys(_dariCache).filter((n) => _dariCache[n]).length, ditolak: status.ditolak.length, online: !status.offline && !(typeof navigator !== 'undefined' && navigator.onLine === false) });
+}
+kkPasangGerbang(gerbangKatalog);
 async function terbitkanKatalogOtomatis() {
   if (!db || _kkJalan) return;
-  const g = kkBolehTerbit({ owner: !!status.akun && status.akun.jenis === 'owner', sumber: sumberData().jenis, koleksiSiap: status.koleksiSiap, koleksiTotal: status.koleksiTotal,
-    dariCache: Object.keys(_dariCache).filter((n) => _dariCache[n]).length, ditolak: status.ditolak.length, online: !status.offline && !(typeof navigator !== 'undefined' && navigator.onLine === false) });
+  const g = gerbangKatalog();
   if (!g.boleh) return;
   const isi = kkIsi(); if (!isi || kkTertinggal(isi) !== true) return;
   _kkJalan = true; const kini = new Date().toISOString();
