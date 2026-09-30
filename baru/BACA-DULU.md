@@ -740,6 +740,9 @@ Dua "temuan lama" yang dicatat saat gerbang 39, ditelusuri dulu sebelum diubah (
   dan **nol** permintaan ke `googleapis` / `gstatic`; `app.js` memang tidak memanggil `fb.mulai` di mode itu. Galat "Missing or insufficient permissions" yang
   dulu terlihat berasal dari `index.html` sistem lama yang dimuat lebih dulu di tab yang sama (server pratinjau membuka akar repo), bukan dari /baru/.
   Pelajaran alat: bukti peramban diambil di tab baru, bukan tab yang riwayat konsolnya sudah terisi halaman lain.
+- **Audit hulu → hilir (30 Sep 2026):** 8 pemeriksa (satu per ruas) + penyanggah per temuan + penyusun, baca saja di worktree; 56 temuan mentah → 53 lolos
+  sanggahan → 47 sesudah kembar digabung: 31 BUG · 3 DATA · 11 KEPUTUSAN OWNER · 2 ALAT UJI. Daftar, bukti (berkas:baris), dampak (kg/bentuk), dan
+  usulan cabang per temuan: `docs/audit-39b-temuan.md`. Pola tetap: laporan dulu, satu cabang per temuan, owner memilih urutannya.
 
 ## Putaran 39c — deretan karung = satu slot per wadah, karung habis dihapus, peringatan buka dari tumpukan (30 Sep 2026, cabang `wadah/39c-deretan-delapan`)
 
