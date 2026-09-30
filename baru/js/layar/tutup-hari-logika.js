@@ -16,9 +16,9 @@
 import { kasPada, hitungLabaBersihRentang, hitungStokKarungPerMerk, thDorongRiwayat } from '../mesin/beku.js';
 import { daftarGerakanKas, caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPiutangMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah } from '../data/toko.js';
-import { RP, ANGKA, KG, hariIniIso, tanggalPendek } from '../inti/format.js';
+import { RP, ANGKA, KG, hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import { aturHarga, hgPct } from './harga-logika.js';
-import { ugAngka, ugKosong, ugAturDok, ugTambahHari, ugKiniDari, saldoKantong, ugNamaTempat } from './uang-logika.js';
+import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat } from './uang-logika.js';
 
 export const ATUR_TUTUP_BAWAAN = { persenSisih: 10, kembalian: 500000, maafSelisih: 2000, alasan: ['Salah kasih kembalian', 'Ada pengeluaran belum dicatat', 'Ada penjualan belum dicatat', 'Belum tahu — dicari besok'], pecahan: [100000, 50000, 20000, 10000, 5000, 2000, 1000] };
 export const LANGKAH_TUTUP = [['laci', 'Uang di laci'], ['rekening', 'Uang QRIS'], ['sisih', 'Sisihkan laba'], ['timbang', 'Timbang cepat'], ['amankan', 'Amankan laci'], ['rekap', 'Rekap & tutup']];
@@ -74,8 +74,10 @@ export function rumusLaci(iso) {
  * Hitung seluruh lembar dari draf D = { lembar: {pecahan: lembar}, receh, alasan, rekPilih (sudah|belum|beda|''), rekNyata, sisih (null = saran), timbang: {merk: kg},
  * status: {laci|rekening|sisih|timbang|amankan: belum|beres|lewat} }. Satu tempat — dibaca kertas, rekap, dan penulis dokumennya.
  */
+/** Jam sungguhan dari objek waktu tulis (w.kini = saat menulis) — bukan tengah hari tanggalnya: tanggal tutup bergantung pada JAM (tanggalTutupAktif). */
+export function tdKiniDari(w) { return new Date(String(w.tanggal) + 'T' + (/^\d\d:\d\d$/.test(String(w.jam || '')) ? w.jam : '12:00') + ':00'); }   // tanggal + jam tulis (w.kini = jam perangkat, bukan jam cadangan)
 export function hitungTutup(D, kini) {
-  const iso = hariIniIso(kini); const A = aturTutup(); const R = ringkasHari(iso); const RL = rumusLaci(iso); const st = D.status || {}; const beres = (k) => st[k] === 'beres'; const lewat = (k) => st[k] === 'lewat';
+  const iso = tanggalTutupAktif(kini); const lewatMalam = iso !== hariIniIso(kini || new Date()); const A = aturTutup(); const R = ringkasHari(iso); const RL = rumusLaci(iso); const st = D.status || {}; const beres = (k) => st[k] === 'beres'; const lewat = (k) => st[k] === 'lewat';
   const lembar = D.lembar || {}; const hitung = A.pecahan.reduce((a, p) => a + p * (Number(lembar[p]) || 0), 0) + (Number(D.receh) || 0);
   const seharusnya = RL.seharusnya; const selisih = seharusnya === null ? null : hitung - seharusnya; const dimaafkan = selisih !== null && Math.abs(selisih) <= A.maafSelisih;
   const rekNyata = D.rekPilih === 'beda' && D.rekNyata !== null && D.rekNyata !== undefined && D.rekNyata !== '' ? Math.round(ugAngka(D.rekNyata)) : null;
@@ -98,6 +100,7 @@ export function hitungTutup(D, kini) {
   return { iso, A, R, RL, S, hitung, seharusnya, selisih, dimaafkan, perluAlasan: hitung > 0 && selisih !== null && !dimaafkan, tolakLaci, rekNyata, mdrJadi, mdrLama, mdrDicatat: D.rekPilih === 'sudah' || (D.rekPilih === 'beda' && rekNyata !== null), labaHari, saranSisih, sisihN, sisihLama, sisihBaru, sisihJadi, amankanN, amankanLama, amankanBaru, amankanJadi, laciAkhir, timbang, belumTimbang, bedaTimbang, tolakRek, tolakSisih, tolakAman, dilewati, tolakTutup, koreksi: !!R.sudah,
     selisihTeks: !(hitung > 0) ? 'belum dihitung' : seharusnya === null ? 'seharusnya tidak bisa dihitung (titik kas belum disetel) — selisih TIDAK BISA DITANYA, bukan berarti cocok' : selisih === 0 ? 'PAS — tidak ada selisih' : (selisih > 0 ? 'LEBIH ' : 'KURANG ') + RP(Math.abs(selisih)) + (dimaafkan ? ' · masih dimaafkan (sampai ' + RP(A.maafSelisih) + ')' : ''),
     rekCatatan: D.rekPilih === 'sudah' ? 'sudah masuk ' + RP(R.qris - R.mdrKira) + ' (potongan perkiraan ' + RP(R.mdrKira) + ')' : D.rekPilih === 'belum' ? 'BELUM masuk semua — dicek lagi besok, potongan belum dicatat' : D.rekPilih === 'beda' && rekNyata !== null ? 'masuk ' + RP(rekNyata) + ' · potongan sebenarnya ' + RP(R.qris - rekNyata) : 'QRIS ' + RP(R.qris) + ' · potongan kira-kira ' + RP(R.mdrKira),
+    lewatMalam, kalimatTanggal: lewatMalam ? 'Lewat tengah malam: yang ditutup hari ' + tanggalPendek(iso) + ' (hari dagang kemarin). Tutup sebelum jam ' + '12 siang = menutup hari kemarin.' : '',
     status: LANGKAH_TUTUP.map((l) => ({ id: l[0], judul: l[1], st: l[0] === 'rekap' ? (R.sudah ? 'beres' : 'belum') : beres(l[0]) ? 'beres' : lewat(l[0]) ? 'dilewati' : l[0] === 'laci' ? 'wajib' : 'belum' })) };
 }
 /** Baris rekap (dibaca kertas, teks WA, dan dokumen). */
@@ -117,7 +120,7 @@ export function teksRekap(H, iso, jam) {
 }
 /** Susun SEMUA dokumen malam ini sekaligus. D seperti hitungTutup + alasan; yakinUlang wajib bila hari ini sudah pernah ditutup. */
 export function susunTutup(D, w, yakinUlang) {
-  const H = hitungTutup(D, ugKiniDari(w)); if (H.tolakTutup) return { tolak: H.tolakTutup }; if (H.tolakLaci) return { tolak: H.tolakLaci };
+  const H = hitungTutup(D, tdKiniDari(w)); if (H.tolakTutup) return { tolak: H.tolakTutup }; if (H.tolakLaci) return { tolak: H.tolakLaci };
   if (D.rekPilih === 'beda' && H.tolakRek) return { tolak: H.tolakRek };
   if (H.R.sudah && !yakinUlang) return { tolak: 'Hari ini sudah pernah ditutup jam ' + (H.R.sudah.jam || '') + '. Menutup lagi menulis catatan baru; yang lama turun ke riwayat bertanggal, tidak hilang. Ketuk sekali lagi', perluYakin: 'ulang' };
   // kasFisik* = isi SAAT DIHITUNG (sebelum sisihan/amankan malam ini), supaya Σ fisik − seharusnya = selisih laci persis seperti dokumen lama; isi SESUDAH tutup ada di titik kas

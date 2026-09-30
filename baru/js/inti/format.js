@@ -12,6 +12,13 @@ export function hariIniIso(d) {
   d = d || new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+/**
+ * TANGGAL YANG DITUTUP (audit 39b no. 1 — aturan sistem lama `tanggalTutupAktif`, perbaikan 21 Agu 2026 sesudah 16–20 Agu omzet Rp0 & selisih palsu):
+ * toko tutup malam dan ritual tutup sering lewat tengah malam; tutup SEBELUM jam 12 siang = menutup hari KEMARIN. Tidak ada yang menutup hari yang belum
+ * selesai, jadi arah salahnya cuma satu. Dipakai tutup hari (K5), cek wadah tutup toko, dan kertas tutup — bukan untuk tanggal dokumen lain.
+ */
+export const JAM_BATAS_TUTUP = 12;
+export function tanggalTutupAktif(d) { const n = d || new Date(); return n.getHours() < JAM_BATAS_TUTUP ? hariIniIso(new Date(n.getTime() - 86400000)) : hariIniIso(n); }
 export function jamKini(d) { d = d || new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
 /** Cap waktu ISO/UTC yang DISIMPAN (dirinciPada, dikoreksiPada, pada, …) → 'HH:MM' JAM DINDING SETEMPAT (WIB di perangkat toko). JANGAN memotong
  *  string ISO (slice(11, 16) / slice(0, 16).replace('T', ' ')) — itu memajang UTC, meleset 7 jam di WIB. Kosong / cacat → ''. */
