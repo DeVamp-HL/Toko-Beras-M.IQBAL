@@ -159,6 +159,9 @@ var DB = dokumenKecil('bon', null, '', KINI); ok('rekap bon RODA CONTOH: bon 20.
 var DN = daftarNota('', KINI, 40); ok('nota 60 hari terakhir: 8 nota (Agu ikut, j6 batal ikut bertanda), terbaru dulu; cari "contoh" → 1 (Bu Contoh)', DN.daftar.length === 8 && DN.daftar[0].id === 'j7' && DN.daftar.some(function (x) { return x.id === 'j6' && x.batal; }) && daftarNota('contoh', KINI).cocok === 1, J(DN.daftar.map(function (x) { return x.id; })));
 var DNK = dokumenKecil('nota', null, '', KINI); ok('nota belum dipilih → tolak "Pilih notanya"; sub menyebut 8 nota cocok', /Pilih notanya/.test(DNK.tolak) && DNK.cocokN === 8);
 DNK = dokumenKecil('nota', 't:t4', '', KINI); ok('nota j4 (Tunai 250.000): cap SALINAN ke-1, baris dari penyusun struk (TOTAL 250.000), kop nota kini penuh (diputar), teks struk ada', DNK.cap === 'SALINAN ke-1' && DNK.salinanKe === 1 && DNK.baris.some(function (b) { return /TOTAL/i.test(b.nama) && b.n === 250000; }) && DNK.ragam === 'penuh' && /250\.000/.test(DNK.teksTambahan) && !DNK.tolak, J(DNK));
+// audit 39b no. 8 (tinjauan 30 Sep): Pusat Dokumen hanya memakai baris struk yang berangka — tanggal saldo bon ikut di label barisnya
+var DN5 = dokumenKecil('nota', 't:t5', '', KINI); var bSisa5 = DN5.baris.filter(function (b) { return /^Sisa bon Bu Contoh/.test(b.nama); });
+ok('39b-8 nota BON j5 di Pusat Dokumen: baris "Sisa bon Bu Contoh · per <tanggal dokumen disusun>" (saldo dihitung saat disusun, bukan saat nota ditulis)', bSisa5.length === 1 && bSisa5[0].nama === 'Sisa bon Bu Contoh \u00b7 per ' + formatTanggal(hariIniIso(KINI)) && bSisa5[0].n !== null, JSON.stringify(DN5.baris));
 tulis(susunCetakan({ jenis: 'nota', judul: 'Nota', periode: '19 Sep', trxId: DNK.trxId, salinanKe: DNK.salinanKe }, 'wa', W));
 ok('sesudah dikirim: salinan berikutnya ke-2; nota lain tetap ke-1; nota batal j6 DITOLAK dicetak ulang, cap DIBATALKAN', dokumenKecil('nota', 't:t4', '', KINI).cap === 'SALINAN ke-2' && dokumenKecil('nota', 't:t3', '', KINI).cap === 'SALINAN ke-1' && /dibatalkan/.test(dokumenKecil('nota', 't:t6', '', KINI).tolak) && dokumenKecil('nota', 't:t6', '', KINI).cap === 'DIBATALKAN');
 var TD = teksDokumen(DP, 101, '2026-09-19'); ok('teks dokumen: kop (nama huruf besar, alamat), judul, baris + saldo, identitas, No. 101 · kop v1', /^TOKO BERAS M\.IQBAL\nJl\. Contoh Raya/.test(TD) && /KARTU PIUTANG/.test(TD) && /\(saldo Rp300\.000\)/.test(TD) && /Sisa Rp200\.000 = bon/.test(TD) && /No\. 101 · kop v1 · 19 Sep/.test(TD), TD);
@@ -212,6 +215,7 @@ if __name__ == '__main__':
     if '--kontrol' in sys.argv:
         rusak = {
             # ---- laba
+            'nota di Pusat Dokumen tanpa tanggal saldo bon (39b no. 8)': js.replace("g.sisaBonPer ? g.kiri + ' \u00b7 per ' + formatTanggal(g.sisaBonPer) : g.kiri", "g.kiri"),
             'diterima tunai = laba bersih (margin nota bon tidak dikurangkan)': js.replace("const tunai = L.labaBersih - marginKredit;", "const tunai = L.labaBersih;"),
             'potongan QRIS tidak dipisah dari biaya toko': js.replace("const mdr = lpMdrRentang(awal, akhir); const biayaLain = L.biayaToko - mdr;", "const mdr = 0; const biayaLain = L.biayaToko;"),
             'susut hilang dari tangga kotor → bersih (jumlahnya tidak menutup)': js.replace("['Susut & selisih stok', L.susutStok], ['Laba bersih', L.labaBersih, 'jumlah']", "['Laba bersih', L.labaBersih, 'jumlah']"),
