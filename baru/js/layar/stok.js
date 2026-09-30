@@ -248,7 +248,8 @@ export function pasangLayarStok(akar, opsi) {
     cBersih: () => { simpanLokal(KUNCI_DRAF_COCOK, null); set({ cocok: cocokKosong(), yakinC: {}, kabar: 'Hitungan dikosongkan', kabarAwas: false }); },
     cSimpan: async () => { const c = st().cocok; if (!c) return; const r = C.susunSimpanCocok(c.tab, c.hitung, c.alasan, waktu(), st().yakinC);
       if (r.tolak) { const y = Object.assign({}, st().yakinC); if (r.perluYakin) y[r.perluYakin] = true; set({ kabar: r.tolak, kabarAwas: true, yakinC: y }); return; }
-      if (await tulis(r)) { const sisa = Object.assign({}, c.hitung); r.hitung.baris.forEach((b) => { delete sisa[b.kunci]; if (b.kunciKarung) delete sisa[b.kunciKarung]; });   // 39b no. 5: hitungan karung wadah ikut dibersihkan (dulu tertinggal di draf) const al = Object.assign({}, c.alasan); r.hitung.baris.forEach((b) => { delete al[b.kunci]; });
+      // 39b no. 5: hitungan karung wadah (kunciKarung) ikut dibersihkan dari draf sesudah simpan (dulu tertinggal dan tampil "cocok ✓")
+      if (await tulis(r)) { const sisa = Object.assign({}, c.hitung); r.hitung.baris.forEach((b) => { delete sisa[b.kunci]; if (b.kunciKarung) delete sisa[b.kunciKarung]; }); const al = Object.assign({}, c.alasan); r.hitung.baris.forEach((b) => { delete al[b.kunci]; });
         const c2 = Object.assign({}, c, { hitung: sisa, alasan: al, buka: null }); simpanLokal(KUNCI_DRAF_COCOK, Object.keys(sisa).length ? c2 : null); set({ cocok: c2, yakinC: {} }); } },
     // ---- KANTONG (ST4-B+C): rak, nota beli per batch (harga per LEMBAR), buku beli (hapus beralasan), riwayat harga
     bukaKantong: () => set({ lembar: 'kantong', kabar: '', ktYakin: {}, ktHapus: null, ktAlasan: '', ktYakinHapus: false, aturKt: null, kt: Object.assign({ jenis: '', jumlah: '', harga: '', toko: '' }, st().kt, { jenis: st().kt.jenis || ((KT.rakKantong().daftar[0] || {}).jenis || '') }) }),
