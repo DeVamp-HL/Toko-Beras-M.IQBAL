@@ -7,7 +7,7 @@
 // Tiap koreksi menulis perubahan nilai rak (Δ modal rata-rata × sisa kg) ke koleksi baru koreksiHpp. Massal = semua-atau-tidak-sama-sekali (satu writeBatch).
 import { hitungStokKarungPerMerk, hitungHppMerkDalamBatch } from '../mesin/beku.js';
 import { cariHargaKarungPerKg } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal, stokMerekSaja } from '../data/toko.js';
+import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal, stokMerekSaja, petaUkuran } from '../data/toko.js';
 import { RP } from '../inti/format.js';
 import { drafDariKedatangan, susunSimpanMasuk, ckBayarBonId } from './stok-catat-logika.js';
 
@@ -52,13 +52,16 @@ const teksMargin = (m) => (m === null ? 'harga jual per kg belum ada di katalog'
 const kelasMargin = (m) => (m === null ? 'tanpa' : m < 0 ? 'rugi' : m === 0 ? 'nol' : 'untung');
 /** Kartu modal tiap nama beras yang bersisa (atau punya kedatangan): modal rata-rata (buku), harga beli terbaru (aturan owner, pembanding), harga jual, margin, nilai rak. */
 export function kartuHpp() {
-  const stok = hitungStokKarungPerMerk(); const atur = aturHpp();
+  const stok = hitungStokKarungPerMerk(); const atur = aturHpp(); const uk = petaUkuran();
+  // 39b no. 10: buku per ukuran ('Merek 25 kg') yang lahir dari PISAH stok tidak punya kedatangan sendiri — harga beli terbarunya = kedatangan terakhir
+  // induknya (merek yang sama); tanpa pembanding sama sekali → dibanding modalnya sendiri (bukan 0: dulu kartu memajang penurunan modal palsu)
+  const induk = (merk) => { const i = uk[merk] ? uk[merk].induk : ''; return i ? riwayatModal(i).filter((r) => r.jenis === 'kedatangan').slice(-1)[0] || null : null; };
   // putaran 28: buku stok wadah tidak punya kedatangan — modalnya ikut takar
   const kartu = Object.keys(stokMerekSaja(stok)).sort().map((merk) => { const st = stok[merk]; const riw = riwayatModal(merk); const akhir = riw.filter((r) => r.jenis === 'kedatangan').slice(-1)[0] || null; const bisa = riw.filter((r) => r.jenis === 'kedatangan' && !r.fondasi).slice(-1)[0] || null;
-    const sisa = st.sisaKg || 0; const modal = st.hppTerakhirPerKg || 0; const jual = cariHargaKarungPerKg(merk); const margin = jual !== null && jual > 0 ? Math.round(jual - modal) : null; const hppTerbaru = akhir ? akhir.hppPerKg : 0;
+    const sisa = st.sisaKg || 0; const modal = st.hppTerakhirPerKg || 0; const jual = cariHargaKarungPerKg(merk); const margin = jual !== null && jual > 0 ? Math.round(jual - modal) : null; const ai = akhir ? null : induk(merk); const hppTerbaru = akhir ? akhir.hppPerKg : ai ? ai.hppPerKg : modal;
     const lonjak = riw.length > 1 && riw[riw.length - 2].hppPerKg > 0 ? Math.round((riw[riw.length - 1].hppPerKg - riw[riw.length - 2].hppPerKg) / riw[riw.length - 2].hppPerKg * 100) : 0;
-    return { merk, sisa, modal, hargaTerbaru: st.hargaTerakhirPerKg || 0, hppTerbaru, jual, margin, teksMargin: teksMargin(margin), kelasMargin: kelasMargin(margin), nilaiRak: Math.max(0, sisa) * modal, nilaiTerbaru: Math.max(0, sisa) * hppTerbaru,
-      sumber: akhir ? akhir.sumber + ' · ' + akhir.tanggal : 'belum ada kedatangan', nRiwayat: riw.length, bisaKoreksi: !!bisa, targetId: bisa ? bisa.batchId : null, bedaTerbaru: hppTerbaru - modal, lonjakTerakhir: Math.abs(lonjak) > atur.batasLonjak ? lonjak : 0, adaStok: sisa > 0.05 }; })
+    return { merk, sisa, modal, hargaTerbaru: akhir ? st.hargaTerakhirPerKg || 0 : ai ? ai.hargaPerKg : null, hppTerbaru, jual, margin, teksMargin: teksMargin(margin), kelasMargin: kelasMargin(margin), nilaiRak: Math.max(0, sisa) * modal, nilaiTerbaru: Math.max(0, sisa) * hppTerbaru,
+      sumber: akhir ? akhir.sumber + ' · ' + akhir.tanggal : ai ? 'dipisah dari ' + uk[merk].induk + ' · harga beli terbaru induknya (' + ai.tanggal + ')' : 'belum ada kedatangan', nRiwayat: riw.length, bisaKoreksi: !!bisa, targetId: bisa ? bisa.batchId : null, bedaTerbaru: hppTerbaru - modal, lonjakTerakhir: Math.abs(lonjak) > atur.batasLonjak ? lonjak : 0, adaStok: sisa > 0.05 }; })
     .filter((k) => k.adaStok || k.nRiwayat);
   const berisi = kartu.filter((k) => k.adaStok);
   return { kartu, atur, ringkas: { nilai: berisi.reduce((a, k) => a + k.nilaiRak, 0), nilaiTerbaru: berisi.reduce((a, k) => a + k.nilaiTerbaru, 0), rugi: berisi.filter((k) => k.margin !== null && k.margin < 0).length, nol: berisi.filter((k) => k.margin === 0).length, tanpaJual: berisi.filter((k) => k.margin === null).length, n: berisi.length },
