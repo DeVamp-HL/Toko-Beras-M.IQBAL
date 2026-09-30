@@ -395,7 +395,7 @@ def periksa_peramban(berkas, u, m, versi_sw):
     ok('daftar ditolak menyebut tanggal, jam & nominal supaya bisa dicatat ulang', m.get('daftarTampil') and '31/08/2026' in (m.get('daftarTeks') or '') and '20:15' in (m.get('daftarTeks') or '') and '5.200' in (m.get('daftarTeks') or ''), m.get('daftarTeks'))
     ok('"sudah dicatat ulang": satu ketukan TIDAK memindah apa pun', len(m['sesudahSatuKetuk']['ditolak']) == 1 and not m['sesudahSatuKetuk']['arsip'], m['sesudahSatuKetuk'])
     ok('ketukan kedua MEMINDAH ke arsip (tidak dihapus), pita hilang', not m['sesudahDuaKetuk']['ditolak'] and m['sesudahDuaKetuk']['arsip'] == [5200] and not m['sesudahDuaKetuk']['pita'], m['sesudahDuaKetuk'])
-    ok('versi yang berjalan tampil di layar ("versi 25c")', m.get('versiLayar') == 'versi 25c', m.get('versiLayar'))
+    ok('versi yang berjalan tampil di layar ("versi 39b" — naik bersama kasir-v28)', m.get('versiLayar') == 'versi 39b', m.get('versiLayar'))
     if berkas == KASIR:   # 39b no. 4: buku kecil bayar bon — layar & jaringan sungguhan (palsu Firestore), muat ulang di Chrome yang sama
         b = u.get('bon') or {}; bk = b.get('buku') or []; ms = b.get('masuk') or []
         ok('bayar bon (39b no. 4): klik nama pertama (Bu Uji) → SIMPAN 40.000 → satu piutangMutasi masuk server; buku kecil 1 catatan bertanda waktu SERVER dari jawaban PATCH',

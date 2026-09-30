@@ -89,6 +89,9 @@ ok('perhatian 39b-4: tanpa sisa negatif tidak ada baris kelebihan bayar', !P.som
 var piu0 = cacheMentah('piutang').slice(); pasok('piutangMutasi', piu0.concat([{ id: 'm9', tanggal: '2026-09-19', namaPelanggan: 'Wati', tipe: 'saldoAwal', nominal: 50000 }, { id: 'm10', tanggal: '2026-09-19', namaPelanggan: 'Wati', tipe: 'bayar', nominal: 80000, dicatatDi: 'kasir' }]));
 var P4 = susunPerhatian(); var b4 = P4.find(function (x) { return /Kelebihan bayar pelanggan/.test(x.teks); });
 ok('perhatian 39b-4: sisa Wati −30.000 → "Kelebihan bayar pelanggan · 1 nama (Wati) — uang pelanggan dipegang toko", Rp30.000, AWAS; baris bon tetap 1 nama Rp200.000', b4 && b4.teks === 'Kelebihan bayar pelanggan · 1 nama (Wati) — uang pelanggan dipegang toko' && b4.nilai === 'Rp30.000' && b4.awas && P4.some(function (x) { return /Bon belum lunas · 1 nama/.test(x.teks) && x.nilai === 'Rp200.000'; }), JSON.stringify(P4));
+pasok('piutangMutasi', piu0.concat([{ id: 'm11', tanggal: '2026-09-10', namaPelanggan: 'Yoga', tipe: 'saldoAwal', nominal: 100000 }, { id: 'm12', tanggal: '2026-09-18', namaPelanggan: 'Yoga', tipe: 'hapusBuku', nominal: 100000, alasan: 'pindah' }, { id: 'm13', tanggal: '2026-09-19', namaPelanggan: 'Yoga', tipe: 'bayar', nominal: 100000, dicatatDi: 'kasir' }]));
+var P5 = susunPerhatian(); var h5 = P5.find(function (x) { return /Hapus buku yang ternyata dibayar/.test(x.teks); });
+ok('perhatian 39b-4 B1: bon 100.000 dihapus buku lalu dibayar 100.000 (katalog kasir basi) → "Hapus buku yang ternyata dibayar · 1 nama (Yoga)" Rp100.000, AWAS — BUKAN "Kelebihan bayar pelanggan"', h5 && h5.teks === 'Hapus buku yang ternyata dibayar · 1 nama (Yoga) — hapus bukunya perlu dibalik, bukan uang pelanggan' && h5.nilai === 'Rp100.000' && h5.awas && !P5.some(function (x) { return /Kelebihan bayar pelanggan/.test(x.teks); }), JSON.stringify(P5));
 pasok('piutangMutasi', piu0);
 var K = susunKas(KINI);
 ok('kas: tanpa titik kas di perangkat → MENOLAK menyebut saldo; arus hari ini tetap dari buku kas: laci 1.274.000 · rekening 200.000', K.adaTitik === false && K.total === null && K.masukLaci === 1274000 && K.masukRek === 200000 && K.keluar === 0, JSON.stringify(K));
@@ -133,7 +136,8 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
-            'no.4: kelebihan bayar pelanggan tidak disebut di Perlu perhatian': js.replace("if (lebih.n) out.push({ teks: 'Kelebihan bayar pelanggan · '", "if (false) out.push({ teks: 'Kelebihan bayar pelanggan · '"),
+            'no.4: kelebihan bayar pelanggan tidak disebut di Perlu perhatian': js.replace("if (lebih.uang.n) out.push({ teks: 'Kelebihan bayar pelanggan · '", "if (false) out.push({ teks: 'Kelebihan bayar pelanggan · '"),
+            'no.4 B1: hapus buku yang ternyata dibayar tidak disebut / disebut uang pelanggan': js.replace("if (lebih.hapus.n) out.push({ teks: 'Hapus buku yang ternyata dibayar · '", "if (false) out.push({ teks: 'Hapus buku yang ternyata dibayar · '"),
             'baris yang dibatalkan ikut dihitung': js.replace("ambilPenjualan().forEach((p) => {\n    const t = p.tanggal || ''; if (!t) return;", "ambilPenjualanSemua().forEach((p) => {\n    const t = p.tanggal || ''; if (!t) return;"),
             'nota dua baris dihitung dua nota': js.replace("const rkKunciNota = (p) => String(p.trxId || p.grupNota || p.id);", "const rkKunciNota = (p) => String(p.id);"),
             'pembanding kemarin memakai SEHARI PENUH (bukan jam segini)': js.replace("const kmrSegini = adaSejak(kemarin) ? rkJumlahRentang(ix, kemarin, kemarin, menitKini) : null;", "const kmrSegini = adaSejak(kemarin) ? rkJumlahRentang(ix, kemarin, kemarin) : null;"),

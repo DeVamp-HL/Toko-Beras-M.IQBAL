@@ -7,7 +7,7 @@
 import { ambilPenjualanSemua, ambilRetur, ambilStrukKeluar, ambilPiutangMutasi, cacheMentah } from '../data/toko.js';
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, bakuCaraBayar, formatTanggal, isoKeTanggal, penjualanMasihBerlaku } from '../mesin/pembantu.js';
-import { RP, hariIniIso, LEBIH_AMBANG } from '../inti/format.js';
+import { RP, hariIniIso, LEBIH_AMBANG, pecahLebih } from '../inti/format.js';
 
 export const ST_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 export const ST_KOLOM = { 58: 30, 80: 42 };
@@ -100,6 +100,18 @@ export function notaDari(kunci) {
 // "Dibayar langsung saat beli — sisa RpX jadi piutang" DAN angka yang menutup (dibayar + sisa di catatan = TOTAL nota) — nota bon lain
 // orang yang sama di menit yang sama tidak ikut. Calon ≠ 1 → tidak ditebak (struk tetap "belum dibayar").
 export const ST_CATATAN_BAYAR_BELI = 'Dibayar langsung saat beli';
+/** no. 4 B5: bagian nota Kredit ini yang dipadamkan sisa bon DI BAWAH NOL sebelum nota ditulis (mutasi mesin r: jual/saldoAwal/bayar/hapusBuku
+ *  bertanggal+jam ≤ nota, tanpa baris nota ini sendiri & tanpa pembayaran saat belinya). */
+export function stPakaiLebih(r, nota, bb) {
+  const idNota = new Set((nota.baris || []).map((x) => String(x.id))); const idBeli = new Set([].concat(bb && bb.id !== undefined && bb.id !== null ? bb.id : []).map(String));
+  const t = String(nota.tanggal || '') + ' ' + String(nota.jam || '');
+  const sebelum = (r.mutasi || []).reduce((a, m) => {
+    if (m.jenis === 'jual' && idNota.has(String(m.idTrx))) return a; if (m.jenis === 'bayar' && idBeli.has(String(m.idMutasi))) return a;
+    if (String(m.tanggal || '') + ' ' + String(m.jam || '') > t) return a;
+    return a + (m.jenis === 'jual' || m.jenis === 'saldoAwal' ? 1 : -1) * (Number(m.nominal) || 0);
+  }, 0);
+  return sebelum < LEBIH_AMBANG ? Math.min(-sebelum, Math.max(0, (nota.total || 0) - ((bb && bb.nominal) || 0))) : 0;
+}
 export function bayarSaatBeli(nota) {
   if (!nota || nota.cara !== 'Kredit') return null;
   const semua = (ambilPiutangMutasi() || []).filter((m) => m && m.tipe === 'bayar');
@@ -167,15 +179,23 @@ export function susunStruk(nota, atur, pilih) {
   if (nota.cara === 'Kredit') {
     // audit 39b no. 8: uang yang diterima di meja ikut tercetak; TOTAL = dibayar saat beli + sisa nota ini (menutup)
     const bb = bayarSaatBeli(nota); if (bb && bb.nominal > 0) { dibayarBeli = bb.nominal; sisaNota = nota.total - bb.nominal; }
-    baris(dibayarBeli ? 'BON — sebagian dibayar' : 'BON — belum dibayar', '', { tebal: true }); if (nota.nama) baris('a.n. ' + nota.nama, '');
-    if (dibayarBeli) { baris('Dibayar saat beli' + (bb.cara && bb.cara !== 'Tunai' ? ' · ' + bb.cara : ''), RP(dibayarBeli)); baris('Sisa nota ini', RP(sisaNota)); }
+    // no. 4 B5: nota Kredit yang lahir saat sisa bon orang ini DI BAWAH NOL dipadamkan mesin (FIFO) lebih dulu dari sisa itu — kepala & baris
+    // menyebutnya supaya TOTAL menutup (dibayar saat beli + dipakai dari kelebihan + sisa nota ini). Nota yang lahir SEBELUM kelebihan itu tetap "belum dibayar".
+    const rB = nota.nama ? hitungPiutang().find((x) => x.kunci === kunciPelanggan(nota.nama)) : null; const pakaiLebih = rB ? stPakaiLebih(rB, nota, bb) : 0;
+    const asalLebih = rB && pecahLebih(rB).hapus > 0.5 ? 'sisa di bawah nol' : 'kelebihan bayar';   // pendek: 58 mm = 30 kolom
+    if (pakaiLebih) sisaNota = nota.total - (dibayarBeli || 0) - pakaiLebih;
+    baris(pakaiLebih && sisaNota <= 0.5 ? 'BON — dibayar dari ' + asalLebih : dibayarBeli || pakaiLebih ? 'BON — sebagian dibayar' : 'BON — belum dibayar', '', { tebal: true }); if (nota.nama) baris('a.n. ' + nota.nama, '');
+    if (dibayarBeli) baris('Dibayar saat beli' + (bb.cara && bb.cara !== 'Tunai' ? ' · ' + bb.cara : ''), RP(dibayarBeli));
+    if (pakaiLebih) baris('Dari ' + asalLebih, RP(pakaiLebih));
+    if (dibayarBeli || pakaiLebih) baris('Sisa nota ini', RP(sisaNota));
     // "Sisa bon" = saldo SEMUA bon orang ini saat struk DISUSUN (bukan saat nota ditulis) — tanggalnya ikut tercetak supaya struk yang dicetak
     // ulang kemudian tidak berbunyi "belum dibayar" + "Sisa bon Rp0" tanpa keterangan
     // sisaBonPer menempel di baris angkanya: Pusat Dokumen (laporan-logika dokumenKecil 'nota') hanya memakai baris yang berangka, jadi tanggal
     // saldo ikut ke label barisnya di sana (tinjauan 30 Sep: tanpa ini cetak ulang lewat Dokumen kehilangan tanggalnya)
     if (S.bon && nota.nama) { const r = hitungPiutang().find((x) => x.kunci === kunciPelanggan(nota.nama)); sisaBon = r ? Math.max(0, r.sisa) : 0; sisaBonPer = (pilih && pilih.kini) || hariIniIso();
       // no. 4: saldo NEGATIF (pembayaran melebihi bon) dulu tercetak "Sisa bon Rp0" — kini disebut kelebihan bayar; sisaBon tetap 0 (tidak ada bon).
-      lebihBayar = r && r.sisa < LEBIH_AMBANG ? -r.sisa : 0; baris((lebihBayar ? 'Kelebihan bayar ' : 'Sisa bon ') + nota.nama, RP(lebihBayar || sisaBon), { sisaBonPer }); baris('  per ' + formatTanggal(sisaBonPer), ''); }
+      // B1: yang dicetak untuk pembeli hanya bagian UANG (bayar melebihi semua bon); hapus buku yang ternyata dibayar bukan uangnya → "Sisa bon Rp0".
+      lebihBayar = pecahLebih(r).uang > 0.5 ? pecahLebih(r).uang : 0; baris((lebihBayar ? 'Kelebihan bayar ' : 'Sisa bon ') + nota.nama, RP(lebihBayar || sisaBon), { sisaBonPer }); baris('  per ' + formatTanggal(sisaBonPer), ''); }
   } else {
     baris('Bayar: ' + nota.cara, '');
     if (nota.uangDiterima > 0) { baris('Uang diterima', RP(nota.uangDiterima)); if (nota.kembalian > 0) baris('Kembali', RP(nota.kembalian)); }

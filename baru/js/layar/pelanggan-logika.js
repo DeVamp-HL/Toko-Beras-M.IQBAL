@@ -13,7 +13,7 @@ import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, catatanPelangganBerisi } from '../mesin/pembantu.js';
 import { ambilPenjualanSemua, ambilPenjualan, ambilPiutangMutasi, ambilPelangganCatatan, ambilThrPelanggan, ambilPesanan, cacheMentah, tolakKunci, butuhGet } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
-import { RP, hariIniIso, LEBIH_AMBANG } from '../inti/format.js';
+import { RP, hariIniIso, LEBIH_AMBANG, pecahLebih, ringkasLebih } from '../inti/format.js';
 
 export const TANYA_CIRI = [['siapa', 'Siapa dia'], ['umur', 'Kira-kira umur'], ['badan', 'Perawakan'], ['wajah', 'Wajah & rambut'], ['tampak', 'Yang dipakai'], ['naik', 'Datang naik apa'], ['beli', 'Belinya apa']];   // owner 23 Sep malam: warna kulit & suku/logat DICABUT (putaran 23b)
 // ---- PUTARAN 23b (keputusan owner 23 Sep 2026 malam, menggantikan "serinci mungkin" putaran 21): toko TIDAK mencatat suku, ras, atau warna kulit pelanggan.
@@ -124,11 +124,11 @@ export function semuaOrang(kini) {
   const bukan = plBukanKembar();
   const daftar = Object.keys(peta).map((k) => { const o = peta[k]; const tgl = Object.keys(o.hari).sort(); const kunjungan = tgl.length; const terakhir = tgl.length ? tgl[tgl.length - 1] : '';
     const selang = kunjungan >= 3 ? Math.round(plMedian(tgl.slice(1).map((t, i) => hariKe(t) - hariKe(tgl[i]))) * 10) / 10 : null; const jamMed = plMedian(o.jamList); const jam = jamMed === null ? null : Math.round(jamMed);
-    const hari = [0, 0, 0, 0, 0, 0, 0]; tgl.forEach((t) => { hari[hariMingguKe(t)] += 1; }); const kartu = kartuTersimpan(k); const r = piutang[k] || null; const utang = r ? Math.max(0, r.sisa || 0) : 0; const lebih = r && r.sisa < LEBIH_AMBANG ? -r.sisa : 0;
+    const hari = [0, 0, 0, 0, 0, 0, 0]; tgl.forEach((t) => { hari[hariMingguKe(t)] += 1; }); const kartu = kartuTersimpan(k); const r = piutang[k] || null; const utang = r ? Math.max(0, r.sisa || 0) : 0; const PL = pecahLebih(r); const lebih = PL.lebih;
     const sejak = terakhir ? hariKe(iso) - hariKe(terakhir) : null; const adaSelang = selang !== null && selang > 0; const hariIni = sejak === 0; const jatuh = adaSelang ? Math.round((selang - sejak) * 10) / 10 : null;
     const kosong = adaSelang && sejak * 10 >= selang * atur.kosongKali; const belumJadi = plPolos(o.nama).length < 2 && o.nama.trim().length < 3;
     const pola = Object.keys(o.barang).sort((a, b) => o.barang[b] - o.barang[a]).slice(0, 4);
-    return { kunci: k, nama: o.nama, kunjungan, terakhir, selang, jam, hari, total: o.total, tahun: o.tahun, nota: o.nota, pola, utang, lebih, umurBon: r ? r.umurHari : null, kartu, cip: kartu ? kartu.cip : [], catatan: kartu ? kartu.catatan : '', arah: kartu ? kartu.arah : '', asli: kartu ? kartu.asli : '', kontak: kartu ? kartu.kontak : '', biasa: kartu ? kartu.biasa : '',
+    return { kunci: k, nama: o.nama, kunjungan, terakhir, selang, jam, hari, total: o.total, tahun: o.tahun, nota: o.nota, pola, utang, lebih, lebihUang: PL.uang, lebihHapus: PL.hapus, umurBon: r ? r.umurHari : null, kartu, cip: kartu ? kartu.cip : [], catatan: kartu ? kartu.catatan : '', arah: kartu ? kartu.arah : '', asli: kartu ? kartu.asli : '', kontak: kartu ? kartu.kontak : '', biasa: kartu ? kartu.biasa : '',
       dikenali: !!(kartu && kartu.dikenali), sejak, adaSelang, hariIni, jatuh, kosong, belumJadi, waktu: jam === null ? '' : waktuKata(jam), diharap: adaSelang && !kosong && jatuh !== null && jatuh <= 0 && !hariIni, sekarang: jam !== null && waktuKata(jam) === waktuKata(jamKini) }; });
   daftar.sort((a, b) => b.kunjungan - a.kunjungan || a.nama.localeCompare(b.nama)); daftar.forEach((o, i) => { o.no = i; o.warna = i % 6; });
   daftar.__bukan = bukan; return daftar;
@@ -259,7 +259,7 @@ export function susunHafalan(kini, kuis) {
 // ====================== KARTU, ORANG BARU, GABUNG ======================
 export function kartuOrang(kini, kunci) {
   const semua = semuaOrang(kini); const b = semua.find((x) => x.kunci === kunci); if (!b) return null;
-  return Object.assign({}, b, { sk: sketsa(b), ringkas: b.kunjungan + ' kali datang · belanja ' + RP(b.total) + (b.utang > 0 ? ' · bon ' + RP(b.utang) : b.lebih > 0 ? ' · kelebihan bayar ' + RP(b.lebih) : ''), datang: datangTeks(b) + (b.jam !== null ? ' · ' + b.waktu : ''), polaTeks: b.pola.slice(0, 3).map(plBarangNama).join(', '),
+  return Object.assign({}, b, { sk: sketsa(b), ringkas: b.kunjungan + ' kali datang · belanja ' + RP(b.total) + (b.utang > 0 ? ' · bon ' + RP(b.utang) : b.lebih > 0 ? ' · ' + ringkasLebih({ uang: b.lebihUang, hapus: b.lebihHapus }) : ''), datang: datangTeks(b) + (b.jam !== null ? ' · ' + b.waktu : ''), polaTeks: b.pola.slice(0, 3).map(plBarangNama).join(', '),
     bonTeks: b.dikenali ? 'Dikenali → kasir BOLEH mencatat bon baru atas namanya.' : 'Belum dikenali → kasir MENOLAK bon baru (aturan KR1). Isi salah satu: ciri, catatan, atau arah datangnya.', ciriDaftar: aturPelanggan().ciriDaftar, arahDaftar: aturPelanggan().arahDaftar, benang: benangOrang(kini, kunci) });
 }
 /** Simpan kartu: isi = {nama, cip[], catatan, arah, asli, kontak, biasa}. Dokumen persis simpanCatatanPelanggan (+ kolom baru); ejaan nama boleh dirapikan selama kuncinya sama. */
@@ -288,7 +288,7 @@ export function rincianGabung(kini, kunciPakai, kunciLain) {
   const penjualan = semuaJual.filter((p) => !tolakKunci('penjualan', p, '')); const tetap = semuaJual.length - penjualan.length; const pesanan = ambilPesanan().filter((p) => milikL(p.namaPelanggan || p.nama));
   const thr = ambilThrPelanggan().filter((t) => t.kunci === L.kunci || milikL(t.nama)); const titip = cacheMentah('titip').filter((t) => t.dari === L.kunci || t.untuk === L.kunci); const tagih = cacheMentah('tagih').filter((t) => t.kunci === L.kunci); const kartuL = kartuTersimpan(L.kunci);
   const n = penjualan.length + piutang.length + pesanan.length + thr.length + titip.length + tagih.length + (kartuL ? 1 : 0) + 1;
-  return { pakai: P, lain: L, penjualan, piutang, pesanan, thr, titip, tagih, kartuL, n, bisa: n <= BATAS_DOKUMEN_GABUNG, arti: 'Semua nota, bon, dan catatan "' + L.nama + '" pindah ke "' + P.nama + '": jadi ' + (P.kunjungan + L.kunjungan) + ' kali datang, belanja ' + RP(P.total + L.total) + (P.utang - P.lebih + L.utang - L.lebih > 0 ? ', bon ' + RP(P.utang - P.lebih + L.utang - L.lebih) : P.utang - P.lebih + L.utang - L.lebih < LEBIH_AMBANG ? ', kelebihan bayar ' + RP(-(P.utang - P.lebih + L.utang - L.lebih)) : '') + '. ' + n + ' dokumen ditulis ulang namanya; tidak ada rupiah yang berubah.' + (tetap ? ' ' + tetap + ' nota di bulan terkunci TETAP bernama "' + L.nama + '".' : '') + (n > BATAS_DOKUMEN_GABUNG ? ' TERLALU BANYAK untuk satu kali tulis (batas ' + BATAS_DOKUMEN_GABUNG + ') — biarkan terpisah.' : '') };
+  return { pakai: P, lain: L, penjualan, piutang, pesanan, thr, titip, tagih, kartuL, n, bisa: n <= BATAS_DOKUMEN_GABUNG, arti: 'Semua nota, bon, dan catatan "' + L.nama + '" pindah ke "' + P.nama + '": jadi ' + (P.kunjungan + L.kunjungan) + ' kali datang, belanja ' + RP(P.total + L.total) + (P.utang - P.lebih + L.utang - L.lebih > 0 ? ', bon ' + RP(P.utang - P.lebih + L.utang - L.lebih) : P.utang - P.lebih + L.utang - L.lebih < LEBIH_AMBANG ? ', sisa bon di bawah nol ' + RP(-(P.utang - P.lebih + L.utang - L.lebih)) : '') + '. ' + n + ' dokumen ditulis ulang namanya; tidak ada rupiah yang berubah.' + (tetap ? ' ' + tetap + ' nota di bulan terkunci TETAP bernama "' + L.nama + '".' : '') + (n > BATAS_DOKUMEN_GABUNG ? ' TERLALU BANYAK untuk satu kali tulis (batas ' + BATAS_DOKUMEN_GABUNG + ') — biarkan terpisah.' : '') };
 }
 export function susunGabung(kini, kunciPakai, kunciLain, w) {
   const r = rincianGabung(kini, kunciPakai, kunciLain); if (r.tolak) return r; if (!r.bisa) return { tolak: r.n + ' dokumen atas nama "' + r.lain.nama + '" — terlalu banyak untuk disatukan sekali tulis (batas ' + BATAS_DOKUMEN_GABUNG + '). Biarkan terpisah.' };

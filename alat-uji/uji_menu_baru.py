@@ -117,6 +117,14 @@ ok('tanya rak & saksi: merek dengan nilai rak terbesar disebut dengan persennya 
   var LC4 = susunLaci(KINI, LOKAL); var pl = null; LC4.forEach(function (g) { g.isi.forEach(function (b) { if (b.id === 'pelanggan') pl = b; }); }); var TQ4 = susunTanya(KINI); var tp = TQ4.find(function (t) { return t.id === 'piutang'; }), tk = TQ4.find(function (t) { return t.id === 'kaya'; });
   ok('39b-4 laci Pelanggan & piutang: sub menyebut " · kelebihan bayar Rp30.000", AWAS; angkanya TETAP piutang mesin (sisa > 0)', pl && / · kelebihan bayar Rp30\.000/.test(pl.sub) && pl.awas && pl.angka === RP(totalPI), J(pl));
   ok('39b-4 tanya piutang: "Kelebihan bayar pelanggan Rp30.000 (Bu Wati) — uang pelanggan dipegang toko.", AWAS; tanya kaya ikut AWAS', tp && / Kelebihan bayar pelanggan Rp30\.000 \(Bu Wati\) — uang pelanggan dipegang toko\.$/.test(tp.sub) && tp.awas && tp.angka === RP(totalPI) && tk && tk.awas, J([tp, tk]));
+  var OR4 = susunMenurutOrang(KINI); var pb4 = (OR4.find(function (g) { return g.id === 'pembeli'; }) || { isi: [] }); var rw = pb4.isi.find(function (b) { return b.id === 'pl-bu wati'; });
+  ok('39b-4 B3 menu Orang › Pembeli: baris "Bu Wati · kelebihan bayar Rp30.000 — uang pelanggan dipegang toko" AWAS menuju bukunya; ket menyebut "1 nama sisa bonnya di bawah nol"', rw && rw.sub === 'kelebihan bayar Rp30.000 — uang pelanggan dipegang toko' && rw.awas && rw.tujuan.keluarga === 'bon' && rw.tujuan.orang === 'bu wati' && / · 1 nama sisa bonnya di bawah nol$/.test(pb4.ket), J(pb4));
+  var CR4 = susunCari(KINI, 'wati'); var cw = CR4.hasil.find(function (h) { return h.jenis === 'orang' && h.judul === 'Bu Wati'; });
+  ok('39b-4 B3 cari "wati": sub "kelebihan bayar Rp30.000 · … kali datang"', cw && /^kelebihan bayar Rp30\.000 · \d+ kali datang$/.test(cw.sub), J(CR4.hasil));
+  ok('39b-4 B4 tanya kaya: kalimat kelebihan bayar ADA juga saat kas belum terhitung ("begitu kas bisa dihitung …") atau saat terhitung ("kekayaan ini lebih besar …")', tk && (tk.angka === 'belum bisa dihitung' ? /Kelebihan bayar pelanggan Rp30\.000 belum dihitung sebagai kewajiban — begitu kas bisa dihitung, kekayaan akan terbaca lebih besar sebesar itu\.$/.test(tk.sub) : /Kelebihan bayar pelanggan Rp30\.000 belum dihitung sebagai kewajiban — kekayaan ini lebih besar sebesar itu\./.test(tk.sub)), J(tk));
+  pasok('piutangMutasi', piu0.concat([{ id: 693, tipe: 'saldoAwal', namaPelanggan: 'Pak Yoga', nominal: 100000, tanggal: '2026-09-10', catatan: '', dicatatDi: 'sistem' }, { id: 694, tipe: 'hapusBuku', namaPelanggan: 'Pak Yoga', nominal: 100000, alasan: 'pindah', tanggal: '2026-09-18', dicatatDi: 'sistem' }, { id: 695, tipe: 'bayar', namaPelanggan: 'Pak Yoga', nominal: 100000, tanggal: '2026-09-19', jam: '09:10', caraBayar: 'Tunai', catatan: '', dicatatDi: 'kasir' }]));
+  var tp5 = susunTanya(KINI).find(function (t) { return t.id === 'piutang'; }), tk5 = susunTanya(KINI).find(function (t) { return t.id === 'kaya'; });
+  ok('39b-4 B1 hapus buku 100.000 lalu dibayar 100.000: jawaban piutang "Hapus buku yang ternyata dibayar Rp100.000 (Pak Yoga) — hapus bukunya perlu dibalik, bukan uang pelanggan." — BUKAN kelebihan bayar; kaya TIDAK menyebut kekayaan lebih besar', tp5 && / Hapus buku yang ternyata dibayar Rp100\.000 \(Pak Yoga\) — hapus bukunya perlu dibalik, bukan uang pelanggan\.$/.test(tp5.sub) && !/Kelebihan bayar/.test(tp5.sub) && !/Kelebihan bayar/.test(tk5.sub), J([tp5, tk5]));
   pasok('piutangMutasi', piu0);
 })();
 // ---- JAM (N5) · ORANG (N6) · TERTUTUP (N8)
@@ -219,8 +227,12 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
-            'no.4: laci Pelanggan diam soal kelebihan bayar': js.replace("(macet ? ' · ' + macet + ' macet' : '') + (LB.n ? ' · kelebihan bayar ' + RP(LB.jumlah) : '')", "(macet ? ' · ' + macet + ' macet' : '')"),
-            'no.4: jawaban piutang diam soal kelebihan bayar': js.replace("const kataLB = LB.n ?", "const kataLB = false ?"),
+            'no.4: laci Pelanggan diam soal kelebihan bayar': js.replace("(macet ? ' · ' + macet + ' macet' : '') + (LB.n ? ' · ' + ringkasLebih({ uang: LB.uang.jumlah, hapus: LB.hapus.jumlah }) : '')", "(macet ? ' · ' + macet + ' macet' : '')"),
+            'no.4: jawaban piutang diam soal kelebihan bayar': js.replace("const kataLB = (LB.uang.n ?", "const kataLB = (false ?"),
+            'no.4 B1: hapus buku terbayar tidak disebut di jawaban piutang': js.replace("+ (LB.hapus.n ? ' Hapus buku yang ternyata dibayar '", "+ (false ? ' Hapus buku yang ternyata dibayar '"),
+            'no.4 B3: kelompok Pembeli diam soal sisa di bawah nol': js.replace("isi: LBo.orang.map((x) => baris('pl-' + x.kunci,", "isi: [].map((x) => baris('pl-' + x.kunci,"),
+            'no.4 B3: cari nama tanpa kelebihan bayar': js.replace(": o.lebih > 0 ? ringkasLebih({ uang: o.lebihUang, hapus: o.lebihHapus }) + ' · ' : '') + o.kunjungan", ": '') + o.kunjungan"),
+            'no.4 B4: kaya diam soal kelebihan bayar saat kas belum terhitung': js.replace("jadi kekayaannya pun belum.' + (LB.uang.n ?", "jadi kekayaannya pun belum.' + (false ?"),
             'pengingat pajak dari modul pajak diabaikan': js.replace("(lokal && Array.isArray(lokal.pajak) ? lokal.pajak : []).forEach(", "([]).forEach("),
             'pengingat pajak tanpa tenggang H-3 (bawaan 0)': js.replace("hariCadangan: 0, hariPajak: 3,", "hariCadangan: 0, hariPajak: 0,"),
             'tempo bon pemasok tidak dipakai (jatuh = tanggal bon)': js.replace("jatuh: b.tanggal && T.hari > 0 ? ssTambahHari(b.tanggal, T.hari) : ''", "jatuh: b.tanggal ? b.tanggal : ''"),

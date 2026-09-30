@@ -476,7 +476,7 @@ var K_OPERATOR = 'kasir_operator_v1';
 // VERSI yang BENAR-BENAR berjalan: SAMA dengan VERSI di sw-kasir.js (uji_antrean_kasir.py memeriksanya).
 // Dikirim di denyut & tampil di bilah atas. Sampai 25b tertulis 'kasir-v24' padahal cache sudah v25.
 var VERSI_APLIKASI = 'kasir-v28';
-var LABEL_VERSI = 'versi 25c';
+var LABEL_VERSI = 'versi 39b';
 var K_ROSTER = 'kasir_roster_v1';
 var K_AUTH = 'kasir_auth_v1';
 var K_BAYAR_BON = 'kasir_bayar_bon_v1';   // pembayaran bon dari HP ini yang belum tampak di katalog (audit 39b no. 4) — lihat bayarBonTertunda
@@ -880,6 +880,7 @@ function pindahKeDitolak(item, status, isi, golongan) {
         pesan: String((err.status || '') + (err.message ? ': ' + err.message : '')).slice(0, 200) } });
     try { localStorage.setItem(K_GAGAL, JSON.stringify(d)); } catch (e) { return false; }
   }
+  if (item.koleksi === 'piutangMutasi') buangBayarBon(item.docId);   // ditolak = tidak masuk buku → tidak dikurangkan lagi (tinjauan no. 4 K3)
   cabutDariAntrean(item);
   return true;
 }
@@ -905,6 +906,7 @@ function kirimAntrean(manual) {
     var a2 = ambilAntrean();
     if (a2.length === 0) { selesai(true); return; }
     var item = a2[0];
+    if (item.koleksi === 'piutangMutasi') tandaiBayarBonDikirim(item.docId);
     denganAuth({
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields: (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })() })
@@ -916,7 +918,7 @@ function kirimAntrean(manual) {
       return fetch(DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, opsi).then(function (r) {
         var g = golonganJawaban(r.status, true);
         if (g === 'masuk') {
-          if (item.koleksi === 'piutangMutasi') { tandaiBayarBonTerkirim(item.docId, ''); r.json().then(function (isi) { tandaiBayarBonTerkirim(item.docId, isi && isi.updateTime); }).catch(function () {}); }
+          if (item.koleksi === 'piutangMutasi') { tandaiBayarBonTerkirim(item.docId, ''); r.json().then(function (isi) { tandaiBayarBonTerkirim(item.docId, isi && (isi.createTime || isi.updateTime)); }).catch(function () {}); }
           cabutDariAntrean(item); kirimSatu(); return;
         }
         // 401: transaksi DITAHAN di antrean, jangan dibuang — layar masuk.
@@ -1561,33 +1563,53 @@ function catatBayarBon(docId, nama, nominal) {
   a.push({ docId: String(docId), kunci: k, nominal: nominal, dibuat: new Date().toISOString(), sisaKatalog: sisaKatalogNama(k), waktuServer: '' });
   simpanBayarBon(a);
 }
-// Dipanggil kirimAntrean saat PATCH piutangMutasi masuk: dulu tanpa waktu (jam HP), lalu waktu SERVER dari jawaban PATCH (updateTime) kalau ada.
+// Kiriman PERTAMA dimulai (kirimAntrean): sejak itu pembayaran BISA sudah tersimpan di server walau jawabannya hilang (putus / 5xx → tetap di antrean)
+// — katalog yang terlihat sesudahnya tidak boleh lagi dijadikan pembanding (tinjauan no. 4 K1).
+function tandaiBayarBonDikirim(docId) {
+  var a = ambilBayarBon(); var ubah = false;
+  a.forEach(function (c) { if (c && String(c.docId) === String(docId) && !c.dikirimSejak) { c.dikirimSejak = new Date().toISOString().slice(0, 19) + 'Z'; ubah = true; } });
+  if (ubah) simpanBayarBon(a);
+}
+// Dipanggil kirimAntrean saat PATCH piutangMutasi masuk: dulu tanpa waktu, lalu waktu SERVER dari jawaban PATCH — createTime (saat dokumen PERTAMA
+// tersimpan; tetap sama walau dikirim ulang), kalau tidak ada updateTime. Tanpa keduanya: jam HP saat kiriman pertama dimulai.
 function tandaiBayarBonTerkirim(docId, waktuServer) {
   var a = ambilBayarBon(); var ubah = false;
   a.forEach(function (c) {
     if (!c || String(c.docId) !== String(docId)) return;
     if (waktuServer && !isNaN(msServer(waktuServer))) { c.waktuServer = waktuServer; c.dariServer = true; ubah = true; }
-    else if (!c.waktuServer) { c.waktuServer = new Date().toISOString().slice(0, 19) + 'Z'; ubah = true; }
+    else if (!c.waktuServer) { c.waktuServer = c.dikirimSejak || new Date().toISOString().slice(0, 19) + 'Z'; ubah = true; }
   });
   if (ubah) simpanBayarBon(a);
+}
+// Ditolak server (pindahKeDitolak) = tidak masuk buku → catatannya dibuang saat itu juga (tinjauan no. 4 K3).
+function buangBayarBon(docId) {
+  var a = ambilBayarBon(); var sisa = a.filter(function (c) { return !c || String(c.docId) !== String(docId); });
+  if (sisa.length !== a.length) simpanBayarBon(sisa);
 }
 // { kunciNama: jumlah pembayaran yang belum tampak di katalog } — sekaligus merapikan buku kecilnya.
 function bayarBonTertunda() {
   var catatan = ambilBayarBon(); if (!catatan.length) return {};
   var diAntre = {}; ambilAntrean().forEach(function (x) { if (x && x.koleksi === 'piutangMutasi') diAntre[String(x.docId)] = true; });
-  var ditolak = {}; ambilGagal().forEach(function (x) { if (x && x.koleksi === 'piutangMutasi') ditolak[String(x.docId)] = true; });
+  var ditolak = {}; ambilGagal().concat(ambilArsipDitolak()).forEach(function (x) { if (x && x.koleksi === 'piutangMutasi') ditolak[String(x.docId)] = true; });
   var K = msServer(ringkasan && ringkasan._waktuServer); var kini = Date.now(); var hasil = {}; var tetap = []; var ubah = false;
   catatan.forEach(function (c) {
     if (!c || ditolak[String(c.docId)]) { ubah = true; return; }
     if (kini - (Date.parse(c.dibuat) || kini) > BAYAR_BON_UMUR_MAKS_MS) { ubah = true; return; }
     var raw = sisaKatalogNama(c.kunci);
-    if (!diAntre[String(c.docId)] && !c.waktuServer) { c.waktuServer = new Date().toISOString().slice(0, 19) + 'Z'; ubah = true; }   // terkirim, belum sempat ditandai
+    var antre = !!diAntre[String(c.docId)];
+    /* terkirim tapi belum sempat ditandai (aplikasi mati di antaranya) */
+    if (!antre && !c.waktuServer) { c.waktuServer = c.dikirimSejak || new Date().toISOString().slice(0, 19) + 'Z'; ubah = true; }
     var P = msServer(c.waktuServer);
-    var katalogSebelumBayar = diAntre[String(c.docId)] || isNaN(K) || (!isNaN(P) && K <= P);
-    if (katalogSebelumBayar) {
-      // Katalog ini belum mungkin memuat pembayarannya: sisanya jadi pembanding baru (perubahan sampai saat ini milik catatan lain).
+    /* Pembanding baru HANYA dari katalog yang pasti belum memuat pembayarannya: masih di antrean dan BELUM PERNAH dikirim, atau katalog bertanda
+       waktu server yang ditulis sebelum pembayaran diterima server. Katalog tanpa waktu server (salinan lama / penulis lain): tetap dikurangkan,
+       pembanding tidak diganti (tinjauan no. 4 K1, K2). */
+    var pastiSebelum = (antre && !c.dikirimSejak) || (!antre && !isNaN(K) && !isNaN(P) && K <= P);
+    if (pastiSebelum) {
       if (c.sisaKatalog !== raw) { c.sisaKatalog = raw; ubah = true; }
-    } else if (raw === null || c.sisaKatalog === null || Math.abs(raw - c.sisaKatalog) > 0.005) { ubah = true; return; }   // sudah dihitung sistem
+    } else if (!antre && !isNaN(K)) {
+      /* katalog ditulis SESUDAH pembayaran diterima server: sisa nama itu berubah / namanya hilang = sudah dihitung sistem */
+      if (raw === null || c.sisaKatalog === null || Math.abs(raw - c.sisaKatalog) > 0.005) { ubah = true; return; }
+    }
     tetap.push(c); hasil[c.kunci] = (hasil[c.kunci] || 0) + (Number(c.nominal) || 0);
   });
   if (ubah) simpanBayarBon(tetap);

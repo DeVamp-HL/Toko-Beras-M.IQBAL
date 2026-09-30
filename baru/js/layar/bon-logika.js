@@ -10,7 +10,7 @@
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
 import { cacheMentah } from '../data/toko.js';
-import { RP, hariIniIso, LEBIH_AMBANG, kalimatLebih } from '../inti/format.js';
+import { RP, hariIniIso, LEBIH_AMBANG, kalimatLebih, pecahLebih } from '../inti/format.js';
 import { aturPelanggan, kartuTersimpan, hariKe } from './pelanggan-logika.js';
 
 const bnAngka = (v) => { const t = String(v === undefined || v === null ? '' : v).trim(); if (!t) return 0;
@@ -27,6 +27,7 @@ export function rincianBelumLunas(d) {
 }
 export const KATA_STATUS = { macet: 'macet — usul hapus', janjiLewat: 'janjinya lewat', menunggu: 'menunggu janji', perluTagih: 'waktunya ditagih', baru: 'masih baru', lunas: 'lunas', lebih: 'kelebihan bayar' };
 export const JANJI_PILIHAN = [[0, 'tanpa janji'], [3, '3 hari lagi'], [7, 'seminggu lagi'], [14, 'dua minggu lagi']];
+const capLebih = (p) => (p.uang > 0.5 && p.hapus > 0.5 ? 'kelebihan bayar & hapus buku terbayar' : p.uang > 0.5 ? KATA_STATUS.lebih : 'hapus buku terbayar');
 const tambahHari = (iso, n) => new Date((hariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
 /** Semua orang di buku bon (mesin beku) + status menurut aturan owner + tagihan terakhir. */
 export function semuaBon(kini) {
@@ -38,14 +39,14 @@ export function semuaBon(kini) {
     const diamSejak = bayarAkhir ? hariKe(iso) - hariKe(bayarAkhir.tanggal) : umur; const macet = sisa > 0 && umur !== null && umur > atur.macetHari && (diamSejak === null || diamSejak > atur.macetHari);
     const status = sisa < LEBIH_AMBANG ? 'lebih' : sisa <= 0 ? 'lunas' : macet ? 'macet' : janjiLewat ? 'janjiLewat' : menunggu ? 'menunggu' : umur !== null && umur >= atur.tagihHari ? 'perluTagih' : 'baru'; const kartu = kartuTersimpan(d.kunci);
     const ket = status === 'janjiLewat' ? 'janji bayar ' + formatTanggal(tagih.janji) + ' — lewat ' + (hariKe(iso) - hariKe(tagih.janji)) + ' hari' : status === 'menunggu' ? 'janji bayar ' + formatTanggal(tagih.janji) : status === 'macet' ? 'bon tertua ' + umurKata(umur) + ', tidak ada pembayaran selama itu'
-      : status === 'perluTagih' ? 'bon tertua ' + umurKata(umur) + (tagih ? ' · terakhir ditagih ' + formatTanggal(tagih.tanggal) : ' · belum pernah ditagih') : status === 'lebih' ? kalimatLebih(-sisa) : status === 'lunas' ? 'tidak ada bon yang terbuka' :'bon tertua ' + umurKata(umur);
-    return { kunci: d.kunci, nama: d.nama, no, sisa, umur, buka, bayar: d.bayar, dihapus: d.dihapus, total: d.total, mutasi: d.mutasi, bayarAkhir, tagih, diamSejak, status, ket, cap: KATA_STATUS[status], kontak: kartu ? kartu.kontak : '', dikenali: !!(kartu && kartu.dikenali), tanggalJanggal: !!d.tanggalJanggal }; });
+      : status === 'perluTagih' ? 'bon tertua ' + umurKata(umur) + (tagih ? ' · terakhir ditagih ' + formatTanggal(tagih.tanggal) : ' · belum pernah ditagih') : status === 'lebih' ? kalimatLebih(pecahLebih(d)) : status === 'lunas' ? 'tidak ada bon yang terbuka' :'bon tertua ' + umurKata(umur);
+    return { kunci: d.kunci, nama: d.nama, no, sisa, umur, buka, bayar: d.bayar, dihapus: d.dihapus, total: d.total, mutasi: d.mutasi, bayarAkhir, tagih, diamSejak, status, ket, cap: status === 'lebih' ? capLebih(pecahLebih(d)) : KATA_STATUS[status], lebihUang: pecahLebih(d).uang, lebihHapus: pecahLebih(d).hapus, kontak: kartu ? kartu.kontak : '', dikenali: !!(kartu && kartu.dikenali), tanggalJanggal: !!d.tanggalJanggal }; });
 }
 const EMBER = [['e1', '≤ 7 hari', 0, 7], ['e2', '8–30 hari', 8, 30], ['e3', '1–3 bulan', 31, 90], ['e4', '> 3 bulan', 91, 99999]];
 /** Susun ketiga tab: buku (satu orang satu halaman), papan (tiga lajur menurut yang harus dilakukan), umur (ember). */
 export function susunBon(kini, bukuKunci, ember) {
   const semua = semuaBon(kini); const berutang = semua.filter((b) => b.sisa > 0); const total = berutang.reduce((a, b) => a + b.sisa, 0);
-  const lebih = semua.filter((b) => b.status === 'lebih').sort((a, b) => a.sisa - b.sisa).map((b) => ({ kunci: b.kunci, nama: b.nama, lebih: -b.sisa })); const maks = Math.max(1, ...berutang.map((b) => b.sisa)); // no. 4: total bon TIDAK dikurangi — kelebihan bayar dipajang terpisah
+  const lebih = semua.filter((b) => b.status === 'lebih').sort((a, b) => a.sisa - b.sisa).map((b) => ({ kunci: b.kunci, nama: b.nama, lebih: -b.sisa, uang: b.lebihUang, hapus: b.lebihHapus })); const maks = Math.max(1, ...berutang.map((b) => b.sisa)); // no. 4: total bon TIDAK dikurangi — kelebihan bayar dipajang terpisah
   const gambar = (b) => Object.assign({}, b, { nBon: b.buka.length + ' bon' + (b.bayar > 0 ? ' · sudah membayar ' + RP(b.bayar) : ''), lebar: Math.max(3, Math.round(b.sisa / maks * 100)) });
   const Pa = berutang.find((b) => b.kunci === bukuKunci) || berutang.slice().sort((a, b) => b.sisa - a.sisa)[0] || null;
   const halaman = []; if (Pa) { const utang = Pa.mutasi.filter((m) => m.jenis === 'jual' || m.jenis === 'saldoAwal').slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || ''))); let tertutup = Pa.bayar + Pa.dihapus;
@@ -54,7 +55,7 @@ export function susunBon(kini, bukuKunci, ember) {
   const papan = []; const lajur = (judul, awas, d) => { papan.push({ lajur: true, judul, awas, jumlah: d.reduce((a, b) => a + b.sisa, 0), n: d.length }); d.slice().sort((a, b) => b.sisa - a.sisa).forEach((b) => papan.push(gambar(b))); };
   lajur('Tagih hari ini', true, berutang.filter((b) => b.status === 'janjiLewat' || b.status === 'perluTagih')); lajur('Tunggu dulu', false, berutang.filter((b) => b.status === 'menunggu' || b.status === 'baru')); lajur('Macet — usul hapus bon', false, berutang.filter((b) => b.status === 'macet'));
   const diEmber = (e) => berutang.filter((b) => b.umur !== null && b.umur >= e[2] && b.umur <= e[3]); const eP = EMBER.find((e) => e[0] === ember) || null;
-  return { total, berutang: berutang.length, lebih, jumlahLebih: lebih.reduce((a, x) => a + x.lebih, 0), buku: Pa ? { kunci: Pa.kunci, nama: Pa.nama, sisa: Pa.sisa, ket: Pa.ket, status: Pa.status, halaman } : null, namaBuku: berutang.slice().sort((a, b) => b.sisa - a.sisa).map((b) => ({ kunci: b.kunci, nama: b.nama, aktif: !!Pa && Pa.kunci === b.kunci })), papan,
+  return { total, berutang: berutang.length, lebih, jumlahLebih: lebih.reduce((a, x) => a + x.lebih, 0), jumlahLebihUang: lebih.reduce((a, x) => a + x.uang, 0), jumlahLebihHapus: lebih.reduce((a, x) => a + x.hapus, 0), buku: Pa ? { kunci: Pa.kunci, nama: Pa.nama, sisa: Pa.sisa, ket: Pa.ket, status: Pa.status, halaman } : null, namaBuku: berutang.slice().sort((a, b) => b.sisa - a.sisa).map((b) => ({ kunci: b.kunci, nama: b.nama, aktif: !!Pa && Pa.kunci === b.kunci })), papan,
     ember: EMBER.map((e) => ({ id: e[0], label: e[1], n: diEmber(e).length, jumlah: diEmber(e).reduce((a, b) => a + b.sisa, 0), aktif: !!eP && eP[0] === e[0], tua: e[0] === 'e4' })), perUmur: (eP ? diEmber(eP) : berutang.slice()).sort((a, b) => (b.umur || 0) - (a.umur || 0)).map(gambar), umurTeks: eP ? 'Hanya bon yang tertuanya ' + eP[1] + ' — ketuk lagi kotaknya untuk melihat semua' : 'Yang paling lama tidur ada di atas', atur: aturPelanggan() };
 }
 /** Lembar satu orang: rincian bon terbuka + riwayat (pembayaran, hapus buku, tagihan). */
@@ -80,7 +81,7 @@ export function susunTagih(kini, kunci, janjiHari, w) {
 /** Pembayaran bon — dokumen persis simpanBayarPiutang; tidak boleh melebihi sisa; LUNAS hanya bila nol. */
 export function susunBayarBon(kini, kunci, nominal, cara, catatan, pengantar, w) {
   const b = semuaBon(kini).find((x) => x.kunci === kunci); if (!b) return { tolak: 'Nama itu tidak ada di buku bon' };
-  if (b.status === 'lebih') return { tolak: b.nama + ' sudah ' + kalimatLebih(-b.sisa) + '. Tidak ada bon untuk dibayar.' }; const n = Math.round(bnAngka(nominal));
+  if (b.status === 'lebih') return { tolak: b.nama + ': ' + kalimatLebih(pecahLebih(b)) + '. Tidak ada bon untuk dibayar.' }; const n = Math.round(bnAngka(nominal));
   if (!(n > 0)) return { tolak: 'Ketik jumlah yang dibayar' }; if (n > b.sisa) return { tolak: 'Pembayaran ' + RP(n) + ' melebihi sisa bonnya (' + RP(b.sisa) + ') — kalau memang lebih, catat sisanya sebagai penjualan biasa, bukan pembayaran bon' };
   const c = cara === 'QRIS' ? 'QRIS' : 'Tunai'; const data = { id: w.idUnik(), tipe: 'bayar', namaPelanggan: b.nama, nominal: n, tanggal: w.tanggal, jam: w.jam, caraBayar: c, catatan: String(catatan || '').trim(), dicatatDi: 'sistem' };
   if (!bnKosong(pengantar) && kunciPelanggan(pengantar) !== kunci) data.dibawaOleh = String(pengantar).trim();
@@ -89,7 +90,7 @@ export function susunBayarBon(kini, kunci, nominal, cara, catatan, pengantar, w)
 /** Hapus buku — bukan uang masuk, kerugian bulan ini, permanen: alasan wajib + dua ketukan. */
 export function susunHapusBon(kini, kunci, nominal, alasan, w, yakin) {
   const b = semuaBon(kini).find((x) => x.kunci === kunci); if (!b) return { tolak: 'Nama itu tidak ada di buku bon' };
-  if (b.status === 'lebih') return { tolak: b.nama + ' sudah ' + kalimatLebih(-b.sisa) + '. Tidak ada bon untuk dihapus dari buku.' }; const n = Math.round(bnAngka(nominal));
+  if (b.status === 'lebih') return { tolak: b.nama + ': ' + kalimatLebih(pecahLebih(b)) + '. Tidak ada bon untuk dihapus dari buku.' }; const n = Math.round(bnAngka(nominal));
   if (!(n > 0)) return { tolak: 'Ketik jumlah yang dihapus dari buku' }; if (n > b.sisa) return { tolak: 'Hapus buku ' + RP(n) + ' melebihi sisa bonnya (' + RP(b.sisa) + ') — maksimal sebesar sisanya' }; if (bnKosong(alasan)) return { tolak: 'Alasannya wajib — jejak ini permanen dan dibaca lagi bertahun-tahun ke depan' };
   if (!yakin) return { tolak: 'Hapus ' + RP(n) + ' dari buku a.n. ' + b.nama + '? BUKAN uang masuk — kas tidak berubah; dicatat sebagai KERUGIAN bulan ini dan tidak bisa dibatalkan. Ketuk sekali lagi', perluYakin: true };
   const data = { id: w.idUnik(), tipe: 'hapusBuku', namaPelanggan: b.nama, nominal: n, alasan: String(alasan).trim(), tanggal: w.tanggal, jam: w.jam, dicatatDi: 'sistem' };

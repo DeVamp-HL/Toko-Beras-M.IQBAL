@@ -6,7 +6,7 @@ import { h, mentah, pasang, delegasi } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { pasangIsian } from '../inti/isian.js';
-import { RP, DESIMAL, tanggalPendek, hariIniIso, jamKini } from '../inti/format.js';
+import { RP, DESIMAL, tanggalPendek, hariIniIso, jamKini, kalimatLebih, ringkasLebih } from '../inti/format.js';
 import * as P from './pelanggan-logika.js';
 import * as B from './bon-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
@@ -279,7 +279,7 @@ export function pasangLayarPelanggan(akar, opsi) {
         <div class="ket catatan-larang" data-k="catatan-larang">Jangan tulis suku, agama, warna kulit, atau kesehatan.</div>
         <div class="ps-form dua"><input class="ketik-nama" id="kAsli" type="text" placeholder="Nama asli" value="${d.asli}" data-ketik="kKetik" data-kolom="asli"><input class="ketik-nama" id="kKontak" type="text" inputmode="tel" placeholder="Nomor WhatsApp" value="${d.kontak}" data-ketik="kKetik" data-kolom="kontak"></div>
         <div class="pita-info ${dikenali ? '' : 'awas'}">${dikenali ? 'Dikenali → kasir BOLEH mencatat bon baru atas namanya.' : 'Belum dikenali → kasir MENOLAK bon baru (aturan KR1). Isi salah satu: ciri, catatan, atau arah datangnya.'}</div>
-        <div class="tombol-baris"><div class="kaca-btn" data-aksi="keBon" data-kunci="${d.kunci}">${o.utang > 0 ? 'buku bonnya · ' + RP(o.utang) : o.lebih > 0 ? 'buku bonnya · kelebihan bayar ' + RP(o.lebih) : 'buku bon'}</div><div class="kaca-btn aktif emas" data-aksi="kSimpan">SIMPAN KARTU</div></div>
+        <div class="tombol-baris"><div class="kaca-btn" data-aksi="keBon" data-kunci="${d.kunci}">${o.utang > 0 ? 'buku bonnya · ' + RP(o.utang) : o.lebih > 0 ? 'buku bonnya · ' + ringkasLebih({ uang: o.lebihUang, hapus: o.lebihHapus }) : 'buku bon'}</div><div class="kaca-btn aktif emas" data-aksi="kSimpan">SIMPAN KARTU</div></div>
         ${(() => { const RH = P.rincianHapusNama(kini(), d.kunci); return h`<div class="ket tautan ${s.yakinHapusNama ? 'awas-teks' : ''}" data-aksi="kHapusNama" data-k="hapus-nama" style="align-self: flex-start;">${s.yakinHapusNama ? 'YAKIN — hapus nama "' + o.nama + '" (' + RH.arti + ')' : RH.tolak ? 'nama ini tidak bisa dihapus: ' + RH.tolak : 'nama salah ketik? hapus nama ini (' + o.nota + ' nota jadi tanpa nama, rupiah tetap)'}</div>`; })()}</div>
     </section>`;
   }
@@ -305,7 +305,7 @@ export function pasangLayarPelanggan(akar, opsi) {
     const kartuBon = (b) => h`<div class="bp-kartu ${b.status === 'janjiLewat' ? 'lewat' : b.status === 'macet' ? 'macet' : ''}" data-k="bk-${b.kunci}" data-aksi="bukaOrangBon" data-kunci="${b.kunci}"><div><div class="nm" style="font-weight: 600;">${b.nama}</div><div class="ket ${b.status === 'janjiLewat' ? 'awas-teks' : ''}">${b.ket}</div><div class="ket">${b.nBon} · ${b.cap}</div></div><div class="n" ${mentah('data-gulir="' + Math.round(b.sisa) + '"')}>${RP(b.sisa)}</div><div class="batang"><i class="${b.status === 'macet' ? 'tua' : ''}" style="width: ${b.lebar}%;"></i></div></div>`;
     return h`<section class="pl-bon" data-k="bon">
       <div class="hero" data-k="hero"><div><div class="ket">Bon pelanggan · sisa semuanya</div><div class="besar" ${mentah('data-gulir="' + Math.round(Bn.total) + '"')}>${RP(Bn.total)}</div></div><div class="ket" style="text-align: right;">${Bn.berutang} orang masih punya bon<br>tagih sesudah ${Bn.atur.tagihHari} hari · macet sesudah ${Bn.atur.macetHari} hari</div></div>
-      ${Bn.lebih.length ? h`<div class="pita-info awas" data-k="lebih-bayar">Kelebihan bayar ${RP(Bn.jumlahLebih)} dari ${Bn.lebih.length} nama — uang pelanggan dipegang toko, tidak ikut "sisa semuanya" di atas. Ketuk namanya untuk melihat bukunya.</div>
+      ${Bn.lebih.length ? h`<div class="pita-info awas" data-k="lebih-bayar">Sisa bon di bawah nol dari ${Bn.lebih.length} nama: ${kalimatLebih({ uang: Bn.jumlahLebihUang, hapus: Bn.jumlahLebihHapus })}. Tidak ikut "sisa semuanya" di atas — ketuk namanya untuk melihat bukunya.</div>
         <div class="tombol-baris" data-k="lebih-nama">${Bn.lebih.map((o) => h`<div class="kaca-btn" data-k="lb-${o.kunci}" data-aksi="bukaOrangBon" data-kunci="${o.kunci}">${o.nama} · ${RP(o.lebih)}</div>`)}</div>` : ''}
       <div class="jalur" data-k="tabB">${TAB_B.map(([id, nm]) => h`<div class="seg ${s.tabB === id ? 'aktif' : ''}" data-aksi="tabB" data-t="${id}">${nm}</div>`)}</div>
       ${O ? gambarLembarBon(s, d, O) : ''}
@@ -321,7 +321,7 @@ export function pasangLayarPelanggan(akar, opsi) {
   function gambarLembarBon(s, d, O) {
     const p = s.lembarBon === 'tagih' ? B.pesanTagih(d, O.kunci) : null; const by = s.bayar; const hp = s.hapusIsi;
     return h`<div class="kartu rincian-wadah" data-k="lembar-bon-${O.kunci}" style="gap: 8px;"><div class="kepala-lembar"><div><div class="serif" style="font-size: 20px;">${O.nama}</div><div class="ket">${O.sisa > 0 ? RP(O.sisa) + ' · ' + O.ket : O.status === 'lebih' ? h`<span class="awas-teks">${O.ket}</span>` : 'tidak ada bon yang terbuka'}${O.dikenali ? '' : ' · belum dikenali (kasir menolak bon baru)'}</div></div><div class="kaca-btn" data-aksi="bonTutup">tutup</div></div>
-      ${O.status === 'lebih' ? h`<div class="pita-info awas" data-k="lebih-lembar">Uang yang masuk ${RP(-O.sisa)} lebih banyak dari semua bonnya. Bukunya tidak bisa dibayar atau dihapus lagi; nota Kredit berikutnya atas nama ini memakai kelebihan ini lebih dulu. Uang yang dikembalikan tunai belum punya catatan di sistem baru.</div>` : ''}
+      ${O.status === 'lebih' ? h`<div class="pita-info awas" data-k="lebih-lembar">${O.lebihUang > 0.5 ? 'Uang yang masuk ' + RP(O.lebihUang) + ' lebih banyak dari semua bonnya. ' : ''}${O.lebihHapus > 0.5 ? RP(O.lebihHapus) + ' dibayar padahal sudah dihapus dari buku — hapus bukunya yang perlu dibalik (bukan uang pelanggan, jangan dikembalikan); tombol membalik hapus buku belum ada di sistem baru. ' : ''}Bukunya tidak bisa dibayar atau dihapus lagi; nota Kredit berikutnya atas nama ini memakai sisa di bawah nol ini lebih dulu.${O.lebihUang > 0.5 ? ' Uang yang dikembalikan tunai belum punya catatan di sistem baru.' : ''}</div>` : ''}
       ${O.rinci.map((r, i) => h`<div class="jawab" data-k="rb-${i}" style="cursor: default;"><span class="kiri"><div><span class="nm">${r.teks}</span><span class="w">${r.tgl}</span></div></span><span class="n">${RP(r.n)}</span></div>`)}
       ${O.sisa > 0 ? h`<div class="tombol-baris"><div class="kaca-btn ${s.lembarBon === 'tagih' ? 'aktif' : ''}" data-aksi="lembarBon" data-l="tagih">Tagih lewat WhatsApp</div><div class="kaca-btn ${s.lembarBon === 'bayar' ? 'aktif emas' : 'aktif'}" data-aksi="lembarBon" data-l="bayar">Catat pembayaran</div><div class="kaca-btn ${s.lembarBon === 'hapus' ? 'awas' : 'putus'}" data-aksi="lembarBon" data-l="hapus">Hapus dari buku</div></div>` : ''}
       ${p ? h`<div data-k="tagih" style="display: flex; flex-direction: column; gap: 8px;"><div class="wa-pesan">${p.teks}</div><div class="ket">${p.tujuan} Janji bayar dicatat supaya besok layar tahu janji siapa yang lewat.</div>

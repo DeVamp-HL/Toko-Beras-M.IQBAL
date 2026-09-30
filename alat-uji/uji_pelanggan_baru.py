@@ -301,13 +301,18 @@ ok('lembar orang: rincian 2 bon terbuka (yang pertama "dari Rp780.000"), riwayat
   var LB = lembarBon(KINI, 'pak hartawan');
   ok('39b-4 lembar bon Hartawan tetap bisa dibuka: status "lebih", tanpa rincian bon terbuka, riwayat memuat pembayaran 280.000', LB && LB.status === 'lebih' && LB.rinci.length === 0 && LB.riwayat.some(function (r) { return r.n === -280000; }), LB && JSON.stringify([LB.status, LB.rinci, LB.riwayat.length]));
   var BYL = susunBayarBon(KINI, 'pak hartawan', '10.000', 'Tunai', '', '', W), HBL = susunHapusBon(KINI, 'pak hartawan', '10.000', 'salah catat', W, true);
-  ok('39b-4 bayar & hapus bon untuk nama yang kelebihan bayar ditolak DULUAN dengan kalimat benar (bukan "melebihi sisa bonnya (−Rp30.000)")', BYL.tolak === 'Pak Hartawan sudah kelebihan bayar Rp30.000 — uang pelanggan dipegang toko. Tidak ada bon untuk dibayar.' && HBL.tolak === 'Pak Hartawan sudah kelebihan bayar Rp30.000 — uang pelanggan dipegang toko. Tidak ada bon untuk dihapus dari buku.' && !BYL.dokumen && !HBL.dokumen, JSON.stringify([BYL.tolak, HBL.tolak]));
+  ok('39b-4 bayar & hapus bon untuk nama yang kelebihan bayar ditolak DULUAN dengan kalimat benar (bukan "melebihi sisa bonnya (−Rp30.000)")', BYL.tolak === 'Pak Hartawan: kelebihan bayar Rp30.000 — uang pelanggan dipegang toko. Tidak ada bon untuk dibayar.' && HBL.tolak === 'Pak Hartawan: kelebihan bayar Rp30.000 — uang pelanggan dipegang toko. Tidak ada bon untuk dihapus dari buku.' && !BYL.dokumen && !HBL.dokumen, JSON.stringify([BYL.tolak, HBL.tolak]));
   var KO = kartuOrang(KINI, 'pak hartawan');
   ok('39b-4 kartu orang: utang 0, lebih 30.000, ringkasan menyebut "kelebihan bayar Rp30.000"', KO && KO.utang === 0 && KO.lebih === 30000 && / · kelebihan bayar Rp30\.000/.test(KO.ringkas), KO && JSON.stringify([KO.utang, KO.lebih, KO.ringkas]));
   var RG = rincianGabung(KINI, 'pak darto', 'pak hartawan');
   ok('39b-4 gabung nama: pratinjau memakai sisa BERTANDA — Darto 1.080.000 + Hartawan −30.000 = bon Rp1.050.000 (dulu 1.080.000: kelebihan dijepit 0)', RG && !RG.tolak && /, bon Rp1\.050\.000\./.test(RG.arti), RG && (RG.tolak || RG.arti));
   var LX = lebihBayarDari(hitungPiutang());
   ok('39b-4 satu aturan (format.js lebihBayarDari): 1 nama, jumlah 30.000 = daftar tab Bon', LX.n === 1 && LX.jumlah === 30000 && LX.orang[0].kunci === 'pak hartawan' && LX.orang[0].nama === (B1.lebih[0] || {}).nama, JSON.stringify(LX));
+  pulih(s0);
+  // B1: bon Hartawan 250.000 dihapus buku 250.000 lalu dibayar 250.000 (HP kasir katalog basi) → sisa −250.000 BUKAN uang pelanggan
+  pasok('piutangMutasi', cacheMentah('piutang').concat([{ id: 9953, tipe: 'hapusBuku', namaPelanggan: 'Pak Hartawan', nominal: 250000, alasan: 'pindah', tanggal: '2026-09-18', jam: '10:00', dicatatDi: 'sistem' }, { id: 9954, tipe: 'bayar', namaPelanggan: 'Pak Hartawan', nominal: 250000, tanggal: '2026-09-19', jam: '09:40', caraBayar: 'Tunai', catatan: '', dicatatDi: 'kasir' }]));
+  var bh = semuaBon(KINI).find(function (x) { return x.kunci === 'pak hartawan'; }); var BH = susunBon(KINI, null, ''); var LH = lebihBayarDari(hitungPiutang());
+  ok('39b-4 B1 hapus buku terbayar: cap "hapus buku terbayar", ket "Rp250.000 dibayar padahal sudah dihapus dari buku — hapus bukunya yang perlu dibalik, bukan uang pelanggan"; pecahan uang 0 · hapus 250.000; tab Bon: jumlah uang 0', bh && bh.status === 'lebih' && bh.cap === 'hapus buku terbayar' && bh.ket === 'Rp250.000 dibayar padahal sudah dihapus dari buku — hapus bukunya yang perlu dibalik, bukan uang pelanggan' && bh.lebihUang === 0 && bh.lebihHapus === 250000 && LH.uang.n === 0 && LH.hapus.n === 1 && LH.hapus.jumlah === 250000 && BH.jumlahLebihUang === 0 && BH.jumlahLebihHapus === 250000, bh && JSON.stringify([bh.cap, bh.ket, bh.lebihUang, bh.lebihHapus, LH.uang, LH.hapus]));
   pulih(s0);
   pasok('piutangMutasi', cacheMentah('piutang').concat([{ id: 9952, tipe: 'bayar', namaPelanggan: 'Pak Hartawan', nominal: 250000.3, tanggal: '2026-09-19', jam: '09:31', caraBayar: 'Tunai', catatan: '', dicatatDi: 'kasir' }]));
   var b2 = semuaBon(KINI).find(function (x) { return x.kunci === 'pak hartawan'; });
@@ -432,9 +437,10 @@ if __name__ == '__main__':
             # ---- 39b no. 4: sisa negatif berbunyi
             'no.4: kelebihan bayar dicap "lunas" lagi': js.replace("const status = sisa < LEBIH_AMBANG ? 'lebih' : sisa <= 0 ? 'lunas'", "const status = sisa <= 0 ? 'lunas'"),
             'no.4: tab Bon tanpa daftar kelebihan bayar': js.replace("const lebih = semua.filter((b) => b.status === 'lebih')", "const lebih = semua.filter((b) => false)"),
-            'no.4: bayar bon untuk nama kelebihan bayar tidak ditolak duluan': js.replace("  if (b.status === 'lebih') return { tolak: b.nama + ' sudah ' + kalimatLebih(-b.sisa) + '. Tidak ada bon untuk dibayar.' };", ""),
-            'no.4: hapus bon untuk nama kelebihan bayar tidak ditolak duluan': js.replace("  if (b.status === 'lebih') return { tolak: b.nama + ' sudah ' + kalimatLebih(-b.sisa) + '. Tidak ada bon untuk dihapus dari buku.' };", ""),
-            'no.4: kartu orang tanpa kelebihan bayar': js.replace("const lebih = r && r.sisa < LEBIH_AMBANG ? -r.sisa : 0;", "const lebih = 0;"),
+            'no.4: bayar bon untuk nama kelebihan bayar tidak ditolak duluan': js.replace("  if (b.status === 'lebih') return { tolak: b.nama + ': ' + kalimatLebih(pecahLebih(b)) + '. Tidak ada bon untuk dibayar.' };", ""),
+            'no.4: hapus bon untuk nama kelebihan bayar tidak ditolak duluan': js.replace("  if (b.status === 'lebih') return { tolak: b.nama + ': ' + kalimatLebih(pecahLebih(b)) + '. Tidak ada bon untuk dihapus dari buku.' };", ""),
+            'no.4: kartu orang tanpa kelebihan bayar': js.replace("const PL = pecahLebih(r); const lebih = PL.lebih;", "const PL = pecahLebih(null); const lebih = 0;"),
+            'no.4 B1: hapus buku terbayar disebut uang pelanggan (pecahan dicabut)': js.replace("const uang = Math.min(lebih, Math.max(0, (Number(d.bayar) || 0) - (Number(d.total) || 0))); return { lebih, uang, hapus: lebih - uang };", "return { lebih, uang: lebih, hapus: 0 };"),
             'no.4: gabung nama menjumlah utang yang dijepit 0': js.replace("(P.utang - P.lebih + L.utang - L.lebih > 0 ? ', bon ' + RP(P.utang - P.lebih + L.utang - L.lebih)", "(P.utang + L.utang > 0 ? ', bon ' + RP(P.utang + L.utang)"),
             'no.4: ambang kelebihan bayar di nol (sisa pembulatan jadi kelebihan)': js.replace("const LEBIH_AMBANG = -0.5;", "const LEBIH_AMBANG = 0;"),
             'bon: pembayaran melebihi sisa diterima': js.replace("if (n > b.sisa) return { tolak: 'Pembayaran ' + RP(n) + ' melebihi sisa bonnya", "if (false) return { tolak: 'Pembayaran ' + RP(n) + ' melebihi sisa bonnya"),

@@ -227,7 +227,10 @@ export function susunPerhatian() {
   const semuaPiutang = hitungPiutang(); const piutang = semuaPiutang.filter((x) => (x.sisa || 0) > 0);
   if (piutang.length) { const tertua = Math.max(...piutang.map((x) => x.umurHari || 0)); out.push({ teks: 'Bon belum lunas · ' + piutang.length + ' nama' + (tertua ? ' · tertua ' + tertua + ' hari' : ''), nilai: RP(piutang.reduce((a, x) => a + x.sisa, 0)), awas: tertua >= 30 }); }
   // no. 4: sisa negatif dulu disaring diam-diam — kini berbunyi (satu aturan: lebihBayarDari di format.js). Angka bon di atas tidak berubah.
-  const lebih = lebihBayarDari(semuaPiutang); if (lebih.n) out.push({ teks: 'Kelebihan bayar pelanggan · ' + lebih.n + ' nama (' + lebih.orang.map((x) => x.nama).join(', ') + ') — uang pelanggan dipegang toko', nilai: RP(lebih.jumlah), awas: true });
+  // B1: bagian UANG (bayar melebihi semua bon) dan bagian HAPUS BUKU yang ternyata dibayar disebut terpisah — artinya beda (lihat pecahLebih).
+  const lebih = lebihBayarDari(semuaPiutang);
+  if (lebih.uang.n) out.push({ teks: 'Kelebihan bayar pelanggan · ' + lebih.uang.n + ' nama (' + lebih.uang.nama.join(', ') + ') — uang pelanggan dipegang toko', nilai: RP(lebih.uang.jumlah), awas: true });
+  if (lebih.hapus.n) out.push({ teks: 'Hapus buku yang ternyata dibayar · ' + lebih.hapus.n + ' nama (' + lebih.hapus.nama.join(', ') + ') — hapus bukunya perlu dibalik, bukan uang pelanggan', nilai: RP(lebih.hapus.jumlah), awas: true });
   const up = hitungUtangPemasok(); const totalUp = up.reduce((a, x) => a + (x.totalUtang || 0), 0);
   const bonTertua = Math.max(0, ...up.map((x) => Math.max(0, ...(x.bon || []).map((b) => b.umurHari || 0))));
   if (totalUp > 0) out.push({ teks: 'Utang ke pemasok · ' + up.filter((x) => x.totalUtang > 0).length + ' pemasok' + (bonTertua ? ' · bon tertua ' + bonTertua + ' hari' : ''), nilai: RP(totalUp), awas: false });
