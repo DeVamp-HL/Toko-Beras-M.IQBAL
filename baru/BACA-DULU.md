@@ -1182,6 +1182,75 @@ Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah
 - `alat-uji/periksa_jam_rinci.py CADANGAN` — laporan pola jam baris rincian vs karcis asal + usulan koreksi (tidak menulis; bulan terkunci
   tidak diusulkan dikoreksi).
 
+## Audit 39b no. 20 — Laporan menghitung NOTA, bukan baris (1 Okt 2026, cabang `audit/39b-nota-bukan-baris`)
+
+Temuan: Harian, teks WA, 14 hari, per jam, minggu, enam bulan, tahun, dan rekap omzet Pajak menyebut `jumlahTrx` mesin (jumlah BARIS penjualan)
+sebagai "nota" — satu nota berisi beberapa barang terhitung beberapa kali (20–47 % lebih besar dari nota sungguhan di data toko). Mesin beku tidak
+diubah. Tambalan: `data/toko.js` `kunciNota` (grupNota / trxId / id — sama dengan pil Jual) + `jumlahNota(cocok)` atas penjualan yang masih berlaku;
+semua "n nota" di `laporan-logika.js` & `pajak-logika.js` memakainya. Kartu "Nota yang rugi" & "Nota tanpa modal" menyebut "N baris (M nota)".
+Uji `uji_laporan_baru.py` +1 (satu nota dua baris = satu nota di tujuh tempat), kontrol +2, kontrol lama "nota batal ikut" dipindah ke jumlahNota.
+
+## Audit 39b no. 11 — "LAHIR BUKU" bukan pemasok (1 Okt 2026, cabang `audit/39b-lahir-buku-bukan-pemasok`)
+
+Temuan: batch lahir buku khusus (buku wadah, karung belakang, karung sisihan, adukan — `wbDokLahir`, pemasok "LAHIR BUKU") tampil sebagai pemasok di
+daftar pemasok, Buku bon, pil Bon lama, Rekap Bon; bon lama / kartu atas nama itu bisa dicatat → utang toko ke pemasok yang tidak ada. Tambalan:
+`bon-pemasok-logika.js` `namaSistemPemasok` (STOK AWAL, TUTUP BUKU…, LAHIR BUKU; huruf besar/kecil sama) — `pemasokSungguhan` memakainya, bon lama
+& kartu atas nama sistem ditolak dengan kalimat. Uji `uji_harga_baru.py` +1, kontrol +1.
+
+## Audit 39b no. 10 — kartu HPP buku per ukuran hasil pisah (1 Okt 2026, cabang `audit/39b-hpp-buku-ukuran`)
+
+Temuan: buku "Merek 25 kg" yang lahir dari PISAH stok (Stok › Cocokkan › pisahkan buku 25 kg) tidak punya kedatangan sendiri — kartu HPP memakai harga beli
+terbaru 0: pembanding "bila dinilai harga beli terbaru" kurang senilai seluruh buku itu dan kartunya memajang penurunan modal palsu. Tambalan:
+`stok-hpp-logika.js` `kartuHpp` — tanpa kedatangan sendiri → kedatangan terakhir INDUKNYA (`petaUkuran`, merek yang sama); tanpa pembanding sama sekali →
+modalnya sendiri (beda 0), harga beli "belum ada" di layar Stok. Uji `uji_buku_ukuran.py` +1, kontrol +1.
+
+## Audit 39b no. 13 — kertas "lihat hitungannya" tutup hari hanya menyebut uang laci (1 Okt 2026, cabang `audit/39b-rumus-laci-kantong`)
+
+Temuan: `rumusLaci` menganggap SEMUA uang keluar hari itu keluar dari laci, sedangkan "seharusnya" (saldoKantong) memakai tempat yang disebut dokumennya
+(brankas / rekening). Tiap ada uang keluar dari brankas atau rekening, Σ baris kertas ≠ seharusnya; angka seharusnya sendiri tetap benar. Tambalan:
+`uang-logika.js` `kantongGerakan()` (aturan tempat yang sama dengan saldoKantong) dipakai `tutup-hari-logika.js` untuk masuk DAN keluar. Uji
+`uji_uang_baru.py` +1, kontrol +1.
+
+## Audit 39b no. 24 — potongan QRIS dikenali dengan SATU aturan (1 Okt 2026, cabang `audit/39b-mdr-satu-pengenal`)
+
+Temuan: catatan potongan QRIS yang diketik tangan (tanpa tanda `mdr`, keterangannya "Potongan QRIS …") dikenali Kendali Biaya lewat kata, tetapi laporan
+laba-rugi berkop hanya membaca tanda `mdr` — dokumen berkop menulis baris potongan QRIS lebih kecil dari yang sebenarnya (laba bersihnya tetap sama,
+cuma salah baris). Tambalan: `uang-logika.js` `adalahMdr(h)` (tanda `mdr` ATAU keterangan berawal "mdr / potongan qris / potongan mdr") dipakai
+`pilahHarian`, `laporan-logika.js` `lpMdrRentang` (kategori toko atau tokoDompet) dan `kendali-biaya-logika.js`. Uji `uji_laporan_baru.py` +1, kontrol +1.
+
+## Audit 39b no. 25 — "belum dipilah" tidak lagi berarti dua hal (1 Okt 2026, cabang `audit/39b-belum-dipilah-dua-nama`)
+
+Temuan: di layar Laporan kata "belum dipilah" dipakai untuk DUA hal — catatan uang keluar tanpa tujuan toko/karyawan (kartu "Laba kotor → ke mana",
+dari catatan lama sebelum ada pilihan tujuan; tidak bisa dipilah ulang) dan catatan yang jenis biayanya tidak cocok kata kunci (Kendali Biaya; dibereskan
+dengan memberi kata kunci). Owner yang membereskan satu tidak melihat yang lain berkurang (jalan buntu). Tambalan (kata saja; hitungan tidak berubah):
+kartu laba kotor & buku hari ini Uang → "tanpa tujuan"; Kendali Biaya (cip, kartu, peringatan, baris catatan) → "jenisnya belum dikenali".
+Uji `uji_kendali_biaya.py` +2 (peringatan + pemeriksa kata di `laporan.js`), kontrol +1; `uji_uang_karyawan.py` cap disesuaikan.
+
+## Audit 39b no. 12 — tutup buku: uang yang tidak bisa dihitung bukan nol dan bukan "sama" (1 Okt 2026, cabang `audit/39b-tutup-buku-titik-kas`)
+
+Temuan: kalau titik kas terakhir LEBIH MUDA dari 31 Des (mis. tutup hari 1–2 Jan sudah menyetelnya), uang per tempat pada 31 Des tidak bisa dihitung
+(mesin tidak menghitung mundur dari titik). Empat baris uang lolos "sama" (tidak diketahui = tidak diketahui) dan jumlah harta & laba yang tinggal di
+berita acara menjumlahnya sebagai nol — harta tertulis kurang seukuran kas (uangnya tidak hilang). Tambalan: `tutup-buku-logika.js` `barisBuku` —
+jumlah harta & laba tinggal "belum bisa dihitung" (null) dengan kalimat tanggal titik kasnya; `bandingBuku` — baris tak terhitung bertanda "?" dan
+KUNCI ditolak; teks berita acara menulis "tidak bisa dihitung", bukan Rp0. Cara mengunci tahun dalam keadaan itu = rancangan K6 (hitungan uang tutup
+hari 31 Des) — belum dibangun, menunggu rancang ulang tutup buku sebelum Desember. Uji `uji_uang_baru.py` +1, kontrol +2.
+
+## Tinjauan rantai laporan (no. 20 11 10 13 24) — tambalan (1 Okt 2026, cabang `audit/39b-rantai-laporan`)
+
+Dua peninjau independen (uang; layar & uji). Yang ditambal:
+- Tutup hari menghitung NOTA seperti Laporan & Jual (`ringkasHari.nota` = kunciNota; dokumen tutupHari tetap menyimpan `jumlahTransaksi` = baris,
+  arti sistem lama, ditambah `jumlahNota`).
+- "Nota bon" di kartu Laba & rekap WA = nota (`jumlahNota(cocok, saring)`), bukan baris. Hitungan tanpa modal dari mesin (baris) kini ditulis "baris
+  tanpa modal" di Laporan & Kendali Biaya.
+- (DITARIK sesudah tinjauan kedua) tutup hari yang mengurangi potongan QRIS yang diketik tangan: catatan ketikan lama tidak bertempat (dianggap laci),
+  jadi tambalan itu membetulkan laba tapi menyalahkan saldo rekening. Kembali ke perilaku lama: potongan QRIS dicatat TUTUP HARI — jangan diketik
+  di Uang keluar (catatan ketikan membuat laba hari itu terpotong dua kali).
+- `adalahMdr`: kalimat biaya admin otomatis (bayar bon / pindah uang, "Biaya admin …") bukan potongan QRIS; kata harus utuh.
+- Barang masuk menolak nama pemasok milik sistem (stok awal / tutup buku / lahir buku); `namaSistemPemasok` pindah ke `data/toko.js`.
+- Daftar kartu HPP menulis "harga beli terbaru belum ada" (dulu Rp0/kg; panelnya sudah "belum ada").
+- Uji: nota HP kasir (grupNota saja) & nota bon; sisi MASUK kertas laci; asap Laporan kini mencari cadangan di `_privat/` (audit 39b no. 46 untuk
+  uji ini); syarat SENGAJA asap global diperketat (selisih potongan QRIS = catatan yang diketik, dihitung ulang dari cadangan; hitungan nota > 0 dan ≤
+  baris) — sabotase "semua catatan = potongan QRIS" dan "jumlah nota 0" kini GAGAL.
 ## Pindah balik buku karung yang tertinggal (keputusan owner 1 Okt 2026, cabang `perbaikan/karung-tertinggal`)
 
 Temuan di cadangan 1 Okt: 30 Sep beberapa karung di belakang wadah aktif "dikembalikan ke tumpukan" dengan kode LAMA (sebelum no. 5) yang tidak memindah

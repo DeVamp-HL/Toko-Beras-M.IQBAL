@@ -200,6 +200,11 @@ ok('bon lama pemasok baru: dokumen {tipe saldoAwal, pemasok, nominal, catatan, b
 terapkanKeCache(LM.dokumen); ok('bon lama masuk daftar: 4 bon, 3 pemasok; PEMASOK BARU ada di daftarPemasok walau belum pernah kirim barang', susunBon(KINI).nBon === 4 && susunBon(KINI).nPemasok === 3 && !!cariPemasok('PEMASOK BARU') && cariPemasok('PEMASOK BARU').kedatangan === 0);
 ok('bon lama tanpa nilai / tanpa nama ditolak', /Ketik nilai/.test(hitungBonLama({ pemasok: 'RODA CONTOH', ketik: '' }).tolak) && /nama pemasok/.test(hitungBonLama({ ketik: '5' }).tolak));
 // ---- kartu pemasok
+var LB11 = { koleksi: 'batchMasuk', data: { id: 9911, tanggal: '2026-09-19', jam: '07:00', pemasok: 'LAHIR BUKU', caraBayar: 'tunai', biayaBongkar: 0, stokAwal: true, lahirBuku: true, merkList: [{ id: '1', merk: 'Wadah Contoh', satuan: 'lahir', beratKarung: 0, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, stokWadah: 'Contoh' }] } };
+ok('39b-11 batch "LAHIR BUKU" (buku wadah / karung belakang) BUKAN pemasok: tidak di daftarPemasok; bon lama & kartu atas nama itu DITOLAK dengan kalimat (utang ke pemasok yang tidak ada)',
+  denganCacheSementara([LB11], function () { return !daftarPemasok().some(function (p) { return /LAHIR BUKU/i.test(p.nama); }) && /nama yang dipakai sistem/.test(hitungBonLama({ pemasok: '', nama: 'lahir buku', ketik: '1.000.000' }).tolak || '')
+    && /nama yang dipakai sistem/.test(hitungBonLama({ pemasok: 'LAHIR BUKU', ketik: '5' }).tolak || '') && /nama yang dipakai sistem/.test(susunKartu('LAHIR BUKU', { tempo: '7' }, W).tolak || '') && !pemasokSungguhan('Lahir Buku') && pemasokSungguhan('RODA CONTOH'); }),
+  J(denganCacheSementara([LB11], function () { return [daftarPemasok().map(function (p) { return p.nama; }), hitungBonLama({ pemasok: 'LAHIR BUKU', ketik: '5' }).tolak]; })));
 var KP = susunKartu('SEJATI CONTOH', { orang: 'Pak S', kontak: '0813-1111-2222', tempo: '14', catatan: 'transfer' }, W);
 ok('kartu: dokumen pemasokCatatan {id kunci, nama, kontak, catatan} sistem lama + orang & tempo; tempo 14 → bon SEJATI kini diramal (sumber kartu)', KP.dokumen[0].koleksi === 'pemasokCatatan' && KP.dokumen[0].data.id === 'sejati contoh' && KP.dokumen[0].data.nama === 'SEJATI CONTOH' && KP.dokumen[0].data.tempo === 14 && KP.dokumen[0].data.orang === 'Pak S' && (function () { terapkanKeCache(KP.dokumen); return tempoPemasok('SEJATI CONTOH').sumber === 'kartu' && nomorWa(cariPemasok('SEJATI CONTOH').kontak) === '6281311112222'; })(), J(KP));
 ok('kartu: tempo 200 ditolak; nama kosong ditolak', /0–120/.test(susunKartu('SEJATI CONTOH', { tempo: '200' }, W).tolak) && !!susunKartu('', {}, W).tolak);
@@ -299,6 +304,7 @@ if __name__ == '__main__':
     if '--kontrol' in sys.argv:
         rusak = {
             # ---- H1 katalog
+            '39b-11: LAHIR BUKU dianggap pemasok lagi': js.replace(" || n === 'LAHIR BUKU'; };", "; };"),
             'rugi memakai >= (untung nol jadi RUGI)': js.replace("const status = margin < -0.5 ? 'rugi' : Math.abs(margin) <= 0.5 ? 'nol'", "const status = margin <= 0.5 ? 'rugi' : Math.abs(margin) <= 0.5 ? 'nol'"),
             '"modal naik sesudah harga disetel" tidak terbaca (dimakan = bawah)': js.replace("const setel = hgModalSetel(dok, m); const naik = setel > 0 && bT > setel + 0.5;", "const setel = 0; const naik = false;"),
             'target bawaan angka karangan (bukan rata-rata yang berlaku)': js.replace("return { targetPerKg: t === null ? targetTerukur() : t, targetDariRata: t === null,", "return { targetPerKg: t === null ? 600 : t, targetDariRata: t === null,"),
