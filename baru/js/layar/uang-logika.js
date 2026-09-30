@@ -41,6 +41,8 @@ function ugPetaKantong() {
   const bl = {}; ambilBiayaBulanan().forEach((b) => { const d = b.dariPos || {}; Object.keys(d).forEach((k) => { if (!d[k]) return; const label = k.indexOf('gaji:') === 0 ? 'Gaji ' + k.slice(5) : ((POS_BIAYA_BULANAN.find((x) => x.kunci === k) || {}).label || k); bl[b.bulan + '|' + label] = d[k]; }); });
   return { id: p, bulanan: bl };
 }
+/** Penentu tempat uang satu baris gerakan kas — aturan yang SAMA dengan saldoKantong (dokumen yang menyebut tempatnya menang). 39b no. 13: dipakai kertas laci tutup hari. */
+export function kantongGerakan() { const peta = ugPetaKantong(); return (r) => ugKantongBaris(r, peta); }
 function ugKantongBaris(r, peta) {
   if (r.id && peta.id[String(r.id)]) return peta.id[String(r.id)];
   if (!r.id) { const m = String(r.label || '').match(/^(.*?)(?: \(kotor.*)? — biaya (.+)$/); if (m) { const bulan = ugBulanDariNama(m[2]); const t = peta.bulanan[bulan + '|' + m[1]]; if (t) return t; } }

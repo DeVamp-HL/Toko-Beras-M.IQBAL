@@ -18,7 +18,7 @@ import { daftarGerakanKas, caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import { aturHarga, hgPct } from './harga-logika.js';
-import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat } from './uang-logika.js';
+import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan } from './uang-logika.js';
 
 export const ATUR_TUTUP_BAWAAN = { persenSisih: 10, kembalian: 500000, maafSelisih: 2000, alasan: ['Salah kasih kembalian', 'Ada pengeluaran belum dicatat', 'Ada penjualan belum dicatat', 'Belum tahu — dicari besok'], pecahan: [100000, 50000, 20000, 10000, 5000, 2000, 1000] };
 export const LANGKAH_TUTUP = [['laci', 'Uang di laci'], ['rekening', 'Uang QRIS'], ['sisih', 'Sisihkan laba'], ['timbang', 'Timbang cepat'], ['amankan', 'Amankan laci'], ['rekap', 'Rekap & tutup']];
@@ -77,8 +77,10 @@ export function rumusLaci(iso) {
   const kemarin = ugTambahHari(iso, -1); const S0 = t.tanggal < iso ? saldoKantong(kemarin) : null;
   const grup = {}; const dorong = (nama, arah, n) => { if (!(n > 0)) return; const k = nama; if (!grup[k]) grup[k] = { nama, arah, n: 0 }; grup[k].n += n; };
   // gerakan laci hari ini = selisih saldoKantong(iso) − saldoKantong(kemarin) dijelaskan per kelompok (kelompoknya dari label mesin)
-  daftarGerakanKas().forEach((r) => { if (r.t !== iso || !(r.t > t.tanggal)) return; const k = TD_KELOMPOK.find((x) => x[0].test(r.label)); const kantong = r.keluar > 0 ? 'laci' : (r.kantong || 'laci');
-    if (r.masuk > 0 && kantong === 'laci') dorong(k ? k[1] : 'Jual tunai', 1, r.masuk); if (r.keluar > 0) dorong(k ? k[1] : 'Keluar lain', -1, r.keluar); });
+  // 39b no. 13: tempat tiap baris = aturan saldoKantong (uang keluar dari brankas / rekening bukan keluar laci) — Σ baris kertas = seharusnya
+  const tempatnya = kantongGerakan();
+  daftarGerakanKas().forEach((r) => { if (r.t !== iso || !(r.t > t.tanggal)) return; const k = TD_KELOMPOK.find((x) => x[0].test(r.label)); const kantong = tempatnya(r);
+    if (r.masuk > 0 && kantong === 'laci') dorong(k ? k[1] : 'Jual tunai', 1, r.masuk); if (r.keluar > 0 && kantong === 'laci') dorong(k ? k[1] : 'Keluar lain', -1, r.keluar); });
   ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || a.tanggal !== iso || !(iso > t.tanggal)) return; dorong(a.tipe === 'ambil' ? 'Diambil dari amplop laba' : 'Disisihkan ke amplop laba', a.tipe === 'ambil' ? 1 : -1, Number(a.nominal) || 0); });
   ambilPindahUang().forEach((p) => { if (p.tanggal !== iso || !(iso > t.tanggal)) return; if (p.dari === 'laci') dorong('Dipindah ke ' + ugNamaTempat(p.ke).toLowerCase(), -1, Number(p.nominal) || 0); if (p.ke === 'laci') dorong('Diisi dari ' + ugNamaTempat(p.dari).toLowerCase(), 1, Number(p.nominal) || 0); });
   const baris = [{ nama: S0 ? 'Laci semalam (' + tanggalPendek(kemarin) + ')' : 'Patokan kas hari ini (' + tanggalPendek(t.tanggal) + ')', arah: 0, n: S0 ? S0.laci : Number(t.laci) || 0 }].concat(Object.keys(grup).map((k) => grup[k]).sort((a, b) => b.arah - a.arah || b.n - a.n));

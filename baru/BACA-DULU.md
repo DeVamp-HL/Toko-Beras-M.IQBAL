@@ -1103,3 +1103,10 @@ Temuan: buku "Merek 25 kg" yang lahir dari PISAH stok (Stok › Cocokkan › pis
 terbaru 0: pembanding "bila dinilai harga beli terbaru" kurang senilai seluruh buku itu dan kartunya memajang penurunan modal palsu. Tambalan:
 `stok-hpp-logika.js` `kartuHpp` — tanpa kedatangan sendiri → kedatangan terakhir INDUKNYA (`petaUkuran`, merek yang sama); tanpa pembanding sama sekali →
 modalnya sendiri (beda 0), harga beli "belum ada" di layar Stok. Uji `uji_buku_ukuran.py` +1, kontrol +1.
+
+## Audit 39b no. 13 — kertas "lihat hitungannya" tutup hari hanya menyebut uang laci (1 Okt 2026, cabang `audit/39b-rumus-laci-kantong`)
+
+Temuan: `rumusLaci` menganggap SEMUA uang keluar hari itu keluar dari laci, sedangkan "seharusnya" (saldoKantong) memakai tempat yang disebut dokumennya
+(brankas / rekening). Tiap ada uang keluar dari brankas atau rekening, Σ baris kertas ≠ seharusnya; angka seharusnya sendiri tetap benar. Tambalan:
+`uang-logika.js` `kantongGerakan()` (aturan tempat yang sama dengan saldoKantong) dipakai `tutup-hari-logika.js` untuk masuk DAN keluar. Uji
+`uji_uang_baru.py` +1, kontrol +1.
