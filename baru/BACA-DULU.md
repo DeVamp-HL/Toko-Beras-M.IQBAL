@@ -798,6 +798,11 @@ disusun tanpa tanggal — struk yang dicetak ulang bisa memuat "belum dibayar" d
   "Sisa bon" (`pilih.kini`, bawaan hari ini).
 - Uji: `uji_jual_baru.py` +7 pemeriksaan (S8: tautan, bunyi struk, hitungan menutup, WA, pelunasan lama, nota bon murni di menit yang sama, nota tunai),
   asap data toko (tiap pelunasan saat beli di cadangan terbaru: uang tercetak, menutup ke TOTAL, tidak ada yang masih "belum dibayar"), +7 kontrol.
+- Tinjauan independen 30 Sep (peninjau + penyanggah): (1) Pusat Dokumen › Nota (`laporan-logika.js` `dokumenKecil`) hanya memakai baris struk
+  yang berangka, jadi baris "per <tanggal>" terbuang di jalur cetak ulang/PDF. Kini baris "Sisa bon" membawa `sisaBonPer` dan labelnya di Dokumen
+  berbunyi "Sisa bon X · per <tanggal dokumen disusun>" (`susunStruk(..., { kini: iso })`). (2) Uji S8 dulu hanya menjaga 2 dari 5 syarat pencocokan data
+  lama dan "menutup" dihitung dari rumusnya sendiri: kini 4 umpan (beda tanggal / jam / catatan / bertautan) + 4 kontrol, dan "menutup" dibaca dari
+  angka yang TERCETAK (juga di asap). `uji_laporan_baru.py` +1 pemeriksaan + 1 kontrol.
 
 ## Audit 39b no. 35 — merek per liter / kelas sendiri tanpa buku per ukuran (30 Sep 2026, cabang `audit/39b-ketan-buku-ukuran`)
 

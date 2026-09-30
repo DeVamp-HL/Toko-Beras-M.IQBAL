@@ -743,9 +743,11 @@ terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '1' }); terap(
 var N8 = susunNotaDokumen(s, W8); var pm8 = N8.dokumen.filter(function (d) { return d.koleksi === 'piutangMutasi'; });
 terapkanKeCache(N8.dokumen); var n8 = notaDari({ trxId: N8.trxId }); var st8 = susunStruk(n8, A0, { kini: '2026-09-30' });
 var ada8 = function (st, re) { return st.kertas.some(function (t) { return re.test(t); }); };
+var angka8 = function (st, awal) { var g = st.garis.filter(function (x) { return x.kanan && x.kiri.indexOf(awal) === 0; })[0]; return g ? Number(g.kanan.replace(/[^\d]/g, '')) : null; };
+var tutup8 = function (st) { var d = angka8(st, 'Dibayar saat beli'), n = angka8(st, 'Sisa nota ini'), t = angka8(st, 'TOTAL'); return d !== null && n !== null && t !== null && d + n === t; };
 ok('S8: uang kurang (50.000 dari 72.000) → nota BON + SATU pelunasan saat beli yang menaut notanya (notaTrxId = trxId)', s.keranjang.length === 1 && N8.bayarSebagian === 50000 && n8 && n8.cara === 'Kredit' && pm8.length === 1 && pm8[0].data.notaTrxId === String(N8.trxId) && pm8[0].data.nominal === 50000, JSON.stringify(pm8));
 ok('S8: struk nota bayar sebagian: "BON — sebagian dibayar", "Dibayar saat beli Rp50.000", "Sisa nota ini Rp22.000" — tidak lagi "BON — belum dibayar"', ada8(st8, /^BON — sebagian dibayar$/) && !ada8(st8, /^BON — belum dibayar$/) && ada8(st8, /^Dibayar saat beli\s+Rp50\.000$/) && ada8(st8, /^Sisa nota ini\s+Rp22\.000$/), st8.teks);
-ok('S8: HITUNGAN MENUTUP: dibayar saat beli + sisa nota ini = TOTAL; sisa bon = saldo sebelumnya + sisa nota ini, bertanggal saat struk disusun', st8.total === 72000 && st8.dibayarBeli + st8.sisaNota === st8.total && st8.sisaBon === saldoDeka0 + 22000 && ada8(st8, new RegExp('^  per ' + formatTanggal('2026-09-30') + '$')), JSON.stringify([st8.dibayarBeli, st8.sisaNota, st8.total, st8.sisaBon, saldoDeka0]));
+ok('S8: HITUNGAN MENUTUP dari yang TERCETAK: Dibayar saat beli + Sisa nota ini = TOTAL; sisa bon = saldo sebelumnya + sisa nota ini, bertanggal saat struk disusun', st8.total === 72000 && tutup8(st8) && angka8(st8, 'Dibayar saat beli') === 50000 && st8.sisaBon === saldoDeka0 + 22000 && ada8(st8, new RegExp('^  per ' + formatTanggal('2026-09-30') + '$')), JSON.stringify([st8.dibayarBeli, st8.sisaNota, st8.total, st8.sisaBon, saldoDeka0]));
 ok('S8: wujud WhatsApp memuat baris yang sama', /\nDibayar saat beli   Rp50\.000\n/.test(st8.wa) && /\nSisa nota ini   Rp22\.000\n/.test(st8.wa), st8.wa);
 // data LAMA (index.html & /baru/ sebelum 30 Sep): pelunasan tanpa notaTrxId. Di menit yang sama: nota BON murni Deka (2 kemasan) + pelunasan
 // saat beli milik Bu Suti yang angkanya kebetulan menutup ke nota Deka — keduanya tidak boleh tertukar.
@@ -756,9 +758,13 @@ var N8b = susunNotaDokumen(s, W8b); N8b.dokumen.forEach(function (d) { if (d.kol
 terap({ keranjang: [], pelanggan: 'Deka', cara: 'Kredit', uang: 0 }); terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '2' }); terap(masukkan(s));
 var N8c = susunNotaDokumen(s, W8b);
 terapkanKeCache(N8b.dokumen.concat(N8c.dokumen, [{ koleksi: 'piutangMutasi', data: { id: 'pm8asing', tipe: 'bayar', namaPelanggan: 'Bu Suti', nominal: 30000, tanggal: '2026-09-19', jam: '11:45', caraBayar: 'Tunai', dicatatDi: 'sistem', catatan: 'Dibayar langsung saat beli — sisa Rp42.000 jadi piutang' } }]));
+// tinjauan 30 Sep: umpan untuk tiap syarat pencocokan data lama. Tiap umpan hanya lolos kalau SATU syaratnya dicabut → calon jadi 2 → tidak
+// ditebak → pemeriksaan di bawah berbunyi. Angka semuanya menutup ke TOTAL nota N8b (30.000 + sisa 42.000 = 72.000).
+var umpan8 = function (id, ubah) { return { koleksi: 'piutangMutasi', data: Object.assign({ id: id, tipe: 'bayar', namaPelanggan: 'Deka', nominal: 30000, tanggal: '2026-09-19', jam: '11:45', caraBayar: 'Tunai', dicatatDi: 'sistem', catatan: 'Dibayar langsung saat beli — sisa Rp42.000 jadi piutang' }, ubah) }; };
+terapkanKeCache([umpan8('pm8tgl', { tanggal: '2026-09-18' }), umpan8('pm8jam', { jam: '11:46' }), umpan8('pm8cat', { catatan: 'Bayar bon — sisa Rp42.000' }), umpan8('pm8taut', { notaTrxId: 'nota-lain' })]);
 var n8b = notaDari({ trxId: N8b.trxId }), n8c = notaDari({ trxId: N8c.trxId }); var bb8 = bayarSaatBeli(n8b);
 var st8b = susunStruk(n8b, A0, { kini: '2026-09-30' }), st8c = susunStruk(n8c, A0, { kini: '2026-09-30' });
-ok('S8: pelunasan LAMA tanpa tautan tetap ditemukan (tanggal + jam + nama + catatan + angka yang menutup) → "Dibayar saat beli Rp30.000", "Sisa nota ini Rp42.000"', bb8 && bb8.lewat === 'catatan' && bb8.nominal === 30000 && ada8(st8b, /^BON — sebagian dibayar$/) && ada8(st8b, /^Dibayar saat beli\s+Rp30\.000$/) && ada8(st8b, /^Sisa nota ini\s+Rp42\.000$/), JSON.stringify(bb8) + ' · ' + st8b.teks);
+ok('S8: pelunasan LAMA tanpa tautan tetap ditemukan (tanggal + jam + nama + catatan + angka yang menutup) di antara 4 umpan beda tanggal / jam / catatan / bertautan → "Dibayar saat beli Rp30.000", "Sisa nota ini Rp42.000", tercetak menutup', bb8 && bb8.lewat === 'catatan' && bb8.nominal === 30000 && bb8.id.length === 1 && String(bb8.id[0]).indexOf('pm8') !== 0 && tutup8(st8b) && ada8(st8b, /^BON — sebagian dibayar$/) && ada8(st8b, /^Dibayar saat beli\s+Rp30\.000$/) && ada8(st8b, /^Sisa nota ini\s+Rp42\.000$/), JSON.stringify(bb8) + ' · ' + st8b.teks);
 ok('S8: nota BON murni Deka di menit yang sama tetap "BON — belum dibayar" (pelunasan tidak menutup ke TOTAL-nya; milik Bu Suti tidak ikut)', n8c && n8c.cara === 'Kredit' && n8c.total === 144000 && st8c.dibayarBeli === null && ada8(st8c, /^BON — belum dibayar$/) && !ada8(st8c, /^Dibayar saat beli/), st8c.teks);
 ok('S8: nota TUNAI tidak pernah mencari pelunasan (bayarSaatBeli hanya untuk nota bon)', bayarSaatBeli(notaDari({ grupNota: 'g1' })) === null);
 
@@ -794,7 +800,8 @@ var sb = { bayarBeli: 0, ditemukan: 0, menutup: 0, belumDibayar: 0, lewat: {} };
   var n = notaDari(p.trxId ? { trxId: p.trxId } : p.grupNota ? { grupNota: p.grupNota } : { id: p.id }); var st = susunStruk(n, stAtur(), { kini: '2026-09-30' });
   var bb = bayarSaatBeli(n); if (bb) sb.lewat[bb.lewat] = (sb.lewat[bb.lewat] || 0) + 1;
   if (st.dibayarBeli === m.nominal) sb.ditemukan++;
-  if (st.dibayarBeli !== null && st.dibayarBeli + st.sisaNota === st.total) sb.menutup++;
+  var gs = function (awal) { var g = st.garis.filter(function (x) { return x.kanan && x.kiri.indexOf(awal) === 0; })[0]; return g ? Number(g.kanan.replace(/[^\d]/g, '')) : null; };
+  if (gs('Dibayar saat beli') !== null && gs('Dibayar saat beli') + gs('Sisa nota ini') === gs('TOTAL')) sb.menutup++;   // dari yang TERCETAK, bukan dari rumus
   if (st.kertas.some(function (t) { return t === 'BON — belum dibayar'; })) sb.belumDibayar++;
 });
 print(JSON.stringify({ karung: rak.karung.length, kemasan: rak.kemasan.length, literan: rak.literan.length, repack: rak.repack.length, pesanan: daftarPesanan('').length, sering: rak.sering.length, pelanggan: d.length, tanpaHarga: rak.karung.concat(rak.kemasan, rak.literan, rak.repack).filter(function (c) { return !(c.harga > 0); }).length, kunciAsing: asing, sebagian: sb }));
@@ -893,9 +900,13 @@ if __name__ == '__main__':
             'pelunasan saat beli tanpa tautan nota': js.replace("notaTrxId: String(trxId), ", ""),
             'tautan pelunasan dicocokkan ke nota lain': js.replace("String(m.notaTrxId) === String(nota.trxId)", "true"),
             'pencocokan pelunasan lama mengabaikan nama': js.replace("&& kunciPelanggan(m.namaPelanggan) === k\n", "\n"),
+            'pencocokan pelunasan lama tanpa syarat tanggal': js.replace(" && m.tanggal === nota.tanggal && String(m.jam", " && String(m.jam"),
+            'pencocokan pelunasan lama tanpa syarat jam': js.replace(" && String(m.jam || '') === String(nota.jam || '') && kunciPelanggan(m.namaPelanggan) === k", " && kunciPelanggan(m.namaPelanggan) === k"),
+            'pencocokan pelunasan lama tanpa syarat catatan': js.replace("&& String(m.catatan || '').indexOf(ST_CATATAN_BAYAR_BELI) === 0 && sisaCatatan(m)", "&& sisaCatatan(m)"),
+            'pencocokan pelunasan lama ikut memakai pelunasan bertautan': js.replace("const calon = semua.filter((m) => !ada(m.notaTrxId) && ", "const calon = semua.filter((m) => "),
             'pencocokan pelunasan lama tanpa angka yang menutup': js.replace(" && sisaCatatan(m) !== null && Math.abs((Number(m.nominal) || 0) + sisaCatatan(m) - nota.total) < 1);", ");"),
             'sisa nota ini = TOTAL (uang yang diterima tidak dikurangkan)': js.replace("sisaNota = nota.total - bb.nominal;", "sisaNota = nota.total;"),
-            'saldo bon tanpa tanggal saat struk disusun': js.replace(" baris('  per ' + formatTanggal((pilih && pilih.kini) || hariIniIso()), '');", ""),
+            'saldo bon tanpa tanggal saat struk disusun': js.replace(" baris('  per ' + formatTanggal(sisaBonPer), '');", ""),
             'pembatalan tidak melepas pelunasan sebagian': js.replace("if (notaTerakhir.piutangId) hapus.push({ koleksi: 'piutangMutasi', id: notaTerakhir.piutangId });", ""),
             'isian layar bocor ke dokumen (label/satuan)': js.replace("['label', 'satuan', 'jumlah', 'hargaSatuan', 'hargaAsli', 'nego', 'setengahDari', 'setengahHargaBaru', 'pecahan', '_takaran'].forEach((k) => { delete d[k]; });", ""),   # putaran 27: + bendera ½ karung
             # ---- putaran 3 ----
