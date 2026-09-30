@@ -194,7 +194,7 @@ RUSAK = {
     'susut wajar tidak dikali hari sejak disamakan': (": ckB2(b.susutWajarKg * lamaHari);", ": ckB2(b.susutWajarKg);"),
     'batas susut owner di Aturan wadah diabaikan': ("? Number(a.susutWajarKg) : WADAH_SUSUT_WAJAR_KG;", "? WADAH_SUSUT_WAJAR_KG : WADAH_SUSUT_WAJAR_KG;"),
     'susut tanpa batas (semua selisih wajar)': ("const besar = ada && Math.abs(selisih) > wajarKg + 0.0001;", "const besar = false;"),
-    'titik samakan cocokkan tanpa komposisi (isi jadi milik nama wadah)': ("b.stokSendiri ? { stokWadah: b.kunciStok } : { komposisi: b.komposisiBaru || {} }, { dariCocok: true })", "{}, { dariCocok: true })"),
+    'titik samakan cocokkan tanpa komposisi (isi jadi milik nama wadah)': (" : { komposisi: b.komposisiBaru || {} }, { dariCocok: true }) });", " : {}, { dariCocok: true }) });"),
     'cocokkan wadah tanpa titik samakan (tumpukan ikut bergeser)': ("    if (b.isiH !== null) dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: b.nama, tipe: 'isi',", "    if (false) dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: b.nama, tipe: 'isi',"),
     'karung terbuka tidak disamakan saat dicocokkan': ("    if (b.krH !== null && b.karungNama) dokumen.push(", "    if (false) dokumen.push("),
     'penanda bagian tumpukan hilang': ("bagian: 'tumpukan', bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung", "bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung"),
