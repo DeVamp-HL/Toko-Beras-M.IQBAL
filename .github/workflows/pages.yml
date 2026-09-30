@@ -60,6 +60,9 @@ jobs:
       - name: "Sistem baru — fungsi modul lain dipanggil tanpa impor (uji jsc membuang impor) + kontrol positif"
         run: python3 alat-uji/periksa_impor.py && python3 alat-uji/periksa_impor.py --kontrol
 
+      - name: "Sistem baru — komentar // di tengah baris tidak menelan kode (1 Okt, simpan Cocokkan jatuh ReferenceError) + kontrol positif"
+        run: python3 alat-uji/periksa_komentar.py && python3 alat-uji/periksa_komentar.py --kontrol
+
       - name: "Sistem baru — logika layar Jual (kotak pasir) + kontrol positif"
         run: python3 alat-uji/uji_jual_baru.py && python3 alat-uji/uji_jual_baru.py --kontrol
       - name: "Sistem baru — logika layar Ringkasan + kontrol positif"

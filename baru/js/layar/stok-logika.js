@@ -17,7 +17,7 @@ import { ambilPenjualan, ambilSemuaBatch, ambilProduksiBerlaku, ambilRetur, ambi
 import { hariIniIso, RP } from '../inti/format.js';
 import { tinggiWadah, aturWadah, resepWadah, karungBelakang, karungUntukWadah, wadahPemegang, semuaKarungTerbuka, tumpukanGudang, pindahNama, hitunganFisik, notaTembusBelumCocok, beratKarungBuka } from './jual-logika.js';
 // putaran 27: isi wadah per merek asal
-import { wbBagianMerk, wbKomposisi, wbMerkAsal, WB_CEK } from './wadah-bernama-logika.js';
+import { wbBagianMerk, wbKomposisi, wbMerkAsal, wbWadahBerisi, WB_CEK } from './wadah-bernama-logika.js';
 
 export const HARI_TARGET = 7;      // "isi untuk tujuh hari" — angka papan S9; kebijakan owner
 export const HARI_MANDEK = 30;     // sisa cukup untuk lebih dari ini = modal diam
@@ -83,9 +83,18 @@ function jwbMandek(barang) {
   return { baris: out, rumus: 'mandek = tak ada gerak keluar ' + JENDELA_LAJU_HARI + ' hari, atau sisa cukup untuk lebih dari ' + HARI_MANDEK + ' hari', kosong: 'Semua barang bergerak dalam ' + JENDELA_LAJU_HARI + ' hari terakhir.', takTeks: '' };
 }
 function jwbCocok(barang, hari) {
-  const terakhir = {};
-  // putaran 27: cocokkan WADAH cuma menghitung bagian nama itu di wadah — tumpukannya belum dihitung, jadi tidak mengubah umur cocokkan nama itu
-  ambilPenyesuaianStok().forEach((p) => { if (!hitunganFisik(p) || p.bagian === 'wadah') return; const k = 'karung|' + p.merk; if (p.tanggal && (!terakhir[k] || p.tanggal > terakhir[k])) terakhir[k] = p.tanggal; });   // rework karantina bukan hitungan gudang
+  const terakhir = {}; const catat = (k, t) => { if (t && (!terakhir[k] || t > terakhir[k])) terakhir[k] = t; }; const bw = petaBukuWadah();
+  // putaran 27: cocokkan WADAH cuma menghitung bagian nama itu di wadah — tumpukannya belum dihitung, jadi tidak mengubah umur cocokkan nama itu.
+  // 39b no. 15: buku KHUSUS (buku wadah, karung di belakang, karung sisihan — petaBukuWadah) justru dihitung UTUH oleh cocokkan wadah → umurnya ikut
+  // 39b no. 5 tinjauan S6: buku ADUKAN tidak disegarkan penyesuaian bagian wadah (itu selisih ISI wadah yang kebagian adukan, karungnya belum tentu ditimbang)
+  ambilPenyesuaianStok().forEach((p) => { if (!hitunganFisik(p) || (p.bagian === 'wadah' && (!bw[p.merk] || bw[p.merk].jenis === 'adukan'))) return; catat('karung|' + p.merk, p.tanggal); });   // rework karantina bukan hitungan gudang
+  // cocokkan wadah yang PAS (tanpa selisih) tidak menulis penyesuaian — titik samakan isi (stokWadah) & isi karung terbuka bertanda dariCocok juga hitungan buku khusus itu
+  ambilWadahLiteran().forEach((x) => { if (!x || !x.dariCocok) return; if (x.tipe === 'isi' && x.stokWadah && bw[x.stokWadah]) catat('karung|' + x.stokWadah, x.tanggal); if (x.tipe === 'karungIsi' && x.merk && bw[x.merk]) catat('karung|' + x.merk, x.tanggal); });
+  // 39b no. 5 (tinjauan G5): buku ADUKAN yang sebagian isinya di wadah BELUM aktif baru dihitung utuh bila tiap wadah pemegangnya juga sudah dihitung —
+  // umurnya = yang paling lama di antara karungnya & wadah-wadah itu (satu belum pernah → belum pernah)
+  const isiW = {}; ambilWadahLiteran().forEach((x) => { if (x && x.tipe === 'isi' && x.wadah && !x.pindahAwal && !x.gantiNamaDari && x.tanggal && (!isiW[x.wadah] || x.tanggal > isiW[x.wadah])) isiW[x.wadah] = x.tanggal; });
+  Object.keys(bw).forEach((k) => { if (bw[k].jenis !== 'adukan' || !terakhir['karung|' + k]) return; const pegang = wbWadahBerisi(k); if (!pegang.length) return;
+    pegang.forEach((W) => { if (!terakhir['karung|' + k]) return; if (!isiW[W]) delete terakhir['karung|' + k]; else if (isiW[W] < terakhir['karung|' + k]) terakhir['karung|' + k] = isiW[W]; }); });
   ambilPenyesuaianKemasan().forEach((p) => { const k = 'kemasan|' + p.namaProduk + '|' + p.ukuranKemasan; if (p.tanggal && (!terakhir[k] || p.tanggal > terakhir[k])) terakhir[k] = p.tanggal; });
   const out = barang.filter((b) => b.sisa > 0 || b.laju > 0).map((b) => {
     const tgl = terakhir[b.jenis + '|' + b.kunci] || null; const umur = tgl ? Math.max(0, skSelisihHari(tgl, hari)) : null;

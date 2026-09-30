@@ -911,6 +911,53 @@ memuat satu pun bayar bon QRIS. Mesin TIDAK diubah.
   dari bank (usul: kasir.html membagi potongan ke baris barang seperti Jual `/baru/`); (F, T6) catatan uang yang dicatat SESUDAH tutup hari di tanggal
   yang sama baru ikut kas bila tutup hari diulang sebelum jam 12 esoknya — sesudah itu tidak pernah (tertelan jadi selisih laci esok hari).
 
+## Audit 39b no. 15 — Kartu Gudang: buku wadah & karung belakang ikut umur cocokkan (1 Okt 2026, cabang `audit/39b-kartu-gudang-buku-khusus`)
+
+Temuan G: kartu keempat Gudang ("kapan terakhir dicocokkan") hanya membaca penyesuaian stok dan MELEWATI semua yang bagiannya 'wadah' (putaran 27:
+cocokkan wadah cuma menghitung bagian merek itu di kotak, tumpukannya belum). Akibatnya buku KHUSUS — buku wadah, karung di belakang, karung sisihan —
+yang justru dihitung UTUH oleh cocokkan wadah tidak pernah "dicocokkan": sesudah aktivasi 8 wadah ada 16 baris awas permanen. Cocokkan yang PAS juga
+tidak menulis penyesuaian sama sekali. `stok-logika.js` `jwbCocok` (sisi baca saja):
+- penyesuaian bagian 'wadah' atas buku khusus (`petaBukuWadah`) menyegarkan umurnya; atas merek biasa tetap tidak (aturan putaran 27);
+- titik samakan isi (`wadahLiteran` tipe isi + `stokWadah`) & isi karung terbuka (tipe karungIsi atas buku khusus) bertanda `dariCocok` = hitungan fisik.
+- Uji: `uji_wadah_satu_buku.py` +4 (sebelum, pas, bagian wadah buku khusus vs merek biasa, isi ulang biasa tidak dihitung). Kontrol baru 3.
+- Tinjauan no. 15 menemukan kartu bisa padam padahal bukunya belum benar (cocokkan membanding catatan, bukan buku; karung kedua & karung
+  sisihan tidak punya pintu hitung; buku wadah 0 membuang hitungan). Akarnya di cocokkan wadah = no. 5, ditambal di cabang yang sama (bagian berikut).
+
+## Audit 39b no. 5 — Cocokkan › Wadah literan menghitung BUKU, semua karung berbuku punya baris (1 Okt 2026, cabang `audit/39b-kartu-gudang-buku-khusus`)
+
+Temuan: karung di belakang wadah aktif punya buku sendiri (putaran 39), tetapi cocokkan wadah membandingnya dengan CATATAN kolam. Sesudah karung
+"disamakan" (catatan diset, buku tidak), hitungan yang pas tidak pernah membetulkan bukunya — berputar. Satu wadah cuma satu karung yang bisa dihitung;
+karung kedua dst., karung sisihan, dan kemasan adukan yang dibuka lepas tidak punya pintu hitung sama sekali. Buku wadah 0 / minus membuang hitungan isi.
+- `stok-catat-logika.js` `barangCocok('wadah')`: karung terdepan yang berbuku sendiri → tercatat = buku di tempat itu (`ckBukuKarungDi`: buku − catatan
+  kunci yang sama di tempat lain), catatannya disebut bila beda. Baris baru `karungKhusus|<kunci>|#|<tempat>` (`ckKarungKhusus`) untuk tiap karung berbuku
+  di luar slot wadah (karung belakang kedua dst., karung sisihan, adukan lepas) bila buku ≠ 0 atau catatannya masih berisi — satu isian kg.
+  Simpan: penyesuaian atas buku itu (bagian 'wadah', `wadah` = tempatnya) + catatan `karungIsi` bertanda `dariCocok` di tempat yang sama.
+- Karung kedua dst. yang ditimbang / disamakan bertanda `diamSlot`: `karungUntukWadah` memakai catatan sebelumnya untuk urutan, jadi karung terdepan
+  wadah itu tidak pindah (dulu menimbang karung kedua menjadikannya karung terdepan).
+- `wbKomposisiBaru`: wadah berbuku sendiri dengan buku ≤ 0 → selisih tetap jatuh ke buku wadah (dulu alokasi kosong: "tidak ada buku yang berubah").
+- Kembalikan karung berbuku memindah balik BUKU-nya (dulu sisa catatan — selisihnya tertinggal di buku karung yang sudah tidak ada); buku minus dipindah
+  dari merek asal supaya 0. Hapus karung habis: buku minus dicatat LEBIH (ketukan kedua), sisa kecil ≤ 0,5 kg ikut dicatat tanpa ketukan kedua.
+- Layar: baris karung menyebut merek asal (bukan kunci buku), "tercatat = bukunya", tombol simpan menyebut wadah + karung; hitungan karung wadah ikut
+  dibersihkan dari draf sesudah simpan (dulu tertinggal dan tampil "cocok ✓").
+- Kemasan adukan yang dibuka di belakang wadah BELUM aktif (tinjauan G5): tercatat karungnya = buku − bagiannya yang sudah dituang ke wadah itu; umurnya
+  di kartu Gudang = yang paling lama di antara karungnya dan wadah-wadah pemegangnya (`stok-logika.js` `jwbCocok`).
+- Uji: `uji_wadah_satu_buku.py` +8 (terdepan = buku, karung kedua + diamSlot + kartu Gudang, samakan kedua diamSlot, karung sisihan lepas, buku wadah 0,
+  kembalikan = buku, hapus buku minus / sisa kecil, adukan di wadah belum aktif) + 1 statis layar; kontrol baru 10. Tinjauan independen no. 15
+  (12 diajukan, 8 lolos) — semua yang lolos ditambal di sini. Di Browser pane atas salinan cadangan (8 wadah aktif) muncul dua
+  karung kedua yang dulu tidak bisa dihitung, ditambah karung sisihan sesudah sisihkan 10 kg (SIMULASI).
+- Tinjauan independen no. 5 (6 diajukan): H1 TINGGI — komentar `//` di tengah baris menelan `const al` di tombol simpan Cocokkan (ReferenceError sesudah
+  dokumen tertulis); ditambal + pemeriksa CI baru `alat-uji/periksa_komentar.py` (komentar di tengah baris yang diikuti kode). H2 satu buku terbuka di dua
+  tempat yang dihitung sekaligus: selisih buku−catatan dipotong sekali. H3 kolam yang sudah ditutup (dikembalikan / dihapus) tidak dapat baris; sisa
+  bukunya di baris lepas (`kolamDitutup`). H5 baris karung memakai batas selisih % (bukan jatah susut wajar wadah per hari). H6 kalimat konfirmasi
+  kembalikan menyebut buku yang dipindah. H4 (adukan di wadah BELUM aktif yang isinya tidak mengenal adukan → tercatat karung kelebihan) dicatat saja:
+  hanya terjadi di wadah belum aktif. Uji +5, kontrol +4.
+  Peninjau kedua (S1–S8): S1/S3/S4 = H1/H3/H2. S5 samakan karung kedua berbuku APA PUN (juga adukan) bertanda diamSlot. S6 umur buku adukan hanya dari
+  timbang karungnya (bukan penyesuaian isi wadah yang kebagian adukan); titik ganti nama bukan hitungan. S7 hitungan minus ditolak, "cocok persis" tidak
+  ditawarkan untuk buku minus. S8 (lama, akan kena saat owner mengaktifkan wadah): aktivasi menulis karung yang TADINYA terdepan paling akhir — dulu
+  terdepan berganti menurut abjad. S2 (uji tak menjalankan tombol layar) dijawab `periksa_komentar.py` + bukti Browser pane. Uji +4, kontrol +4.
+- Belum: karung bertanda `diamSlot` cuma dari cocokkan & samakan; jalur lain yang menulis `karungIsi` bertempat (isi ulang, cek) tetap memakai urutan
+  lama. Susut wajar karung kedua memakai batas wadah yang sama (per hari sejak catatannya).
+
 ## Audit 39b · cara persis — katalog menyebut pembayaran bon yang sudah dihitung (30 Sep 2026, cabang `audit/39b-katalog-bayar-bon-persis`)
 
 Keputusan owner 30 Sep ("cara persis") atas celah sisa no. 4: buku kecil `kasir_bayar_bon_v1` di HP kasir menebak kapan katalog sudah menghitung

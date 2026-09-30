@@ -126,6 +126,8 @@ export function wbKomposisiBaru(W, isiKg) {
   // putaran 28: wadah berstok sendiri — komposisinya 100 % kuncinya sendiri, jadi selisih jatuh ke buku wadah itu (susut wadah) lewat jalan yang sama
   Object.keys(K.bagian).forEach((m) => { if (K.bagian[m] > 0) dasar[m] = K.bagian[m]; });
   const ada = Object.keys(dasar).reduce((a, m) => a + dasar[m], 0); const out = {}; const alokasi = {};
+  // audit 39b no. 5 (G2): buku wadah 0 / minus — selisihnya tetap jatuh ke buku wadah itu (dulu alokasi kosong: hitungan hilang, buku tetap 0)
+  if (K.stokSendiri && !(ada > 0)) { if (isi > 0) out[K.kunci] = isi; const d = wbB2(isi - (K.totalKg || 0)); if (Math.abs(d) >= 0.005) alokasi[K.kunci] = d; return { komposisi: out, alokasi, dasar: K }; }
   if (!K.diketahui || !(ada > 0)) { const m = K.diketahui ? wbMerkCadangan(W) : (hitungStokKarungPerMerk()[W] ? String(W) : wbMerkCadangan(W)); if (isi > 0) out[m] = isi; return { komposisi: out, alokasi, dasar: K }; }
   const urut = Object.keys(dasar).sort((a, b) => dasar[b] - dasar[a] || a.localeCompare(b)); let jalan = 0;
   urut.forEach((m, i) => { const k = i === urut.length - 1 ? wbB2(isi - jalan) : wbB2(isi * dasar[m] / ada); jalan = wbB2(jalan + k); if (k > 0) out[m] = k; });
@@ -502,7 +504,9 @@ export function wbSusunAktifkan(W, w, opsi) {
   const sumberW = Object.keys(K.bagian).filter((m) => K.bagian[m] > 0.004).sort().map((m) => ({ merk: m, kg: wbB2(K.bagian[m]) })); const komposisi = {}; sumberW.forEach((x) => { komposisi[x.merk] = x.kg; });
   if (sumberW.length) dokumen.push(wbDokPindah(sumberW, kunci, w, Object.assign({ pindahAwalWadah: W, keterangan: 'Aktivasi buku wadah ' + W + ': ' + sumberW.map((y) => y.merk + ' ' + wbKG(y.kg)).join(' + ') + ' → ' + kunci }, tanda(sumberW))));
   dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: W, tipe: 'isi', isiKg: d.isiKg, stokWadah: kunci, pindahAwal: true, komposisi } });
-  d.kolam.forEach((k) => { const kb = wbKunciKB(W, k.merk);
+  // 39b no. 5 tinjauan S8: karung yang TADINYA terdepan di belakang W ditulis TERAKHIR supaya tetap terdepan (dulu urut abjad: terdepan berganti diam-diam)
+  const depan0 = karungUntukWadah(W).merk;
+  d.kolam.slice().sort((a, b) => (a.merk === depan0 ? 1 : 0) - (b.merk === depan0 ? 1 : 0)).forEach((k) => { const kb = wbKunciKB(W, k.merk);
     dokumen.push(wbDokPindah([{ merk: k.merk, kg: k.kg }], kb, w, Object.assign({ bukaKarung: W, merkAsal: k.merk, pindahAwalWadah: W, keterangan: 'Aktivasi buku wadah ' + W + ': karung terbuka ' + k.merk + ' ' + wbKG(k.kg) + ' di belakangnya → ' + kb }, tanda([k]))));
     dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: k.merk, isiKg: 0, wadah: W, pindahAwal: true } });
     dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: kb, merkAsal: k.merk, isiKg: k.kg, wadah: W, bukuBelakang: true, pindahAwal: true } }); });
