@@ -13,7 +13,7 @@ import * as BL from './belanja-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen } from '../data/toko.js';
-import { kkSertakan } from '../data/katalog-kasir.js';
+import { kkSertakanKiriman } from '../data/katalog-kasir.js';
 import * as JB from './jenis-beras-logika.js';
 import * as VR from './varian-logika.js';
 import * as AR from './arsip-logika.js';
@@ -85,7 +85,7 @@ export function pasangLayarHarga(akar, opsi) {
     hgPakaiUsul: async ({ kunci }) => { await tulis(HG.susunPakaiUsul(kunci, waktu())); },
     hgBukaTerbit: () => { set({ terbit: !st().terbit, yakinRugi: false, ubah: null, kabar: '' }); keAtas(); },
     // 25c: katalog HP kasir (ringkasanKasir) SESUDAH terbit ikut di kiriman yang SAMA — kasir tidak pernah membaca harga lama sesudah harga baru terbit
-    hgTerbitkan: async () => { const r = HG.susunTerbit(waktu(), st().yakinRugi); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, yakinRugi: !!r.perluYakin }); if (await tulis(Object.assign({}, r, { dokumen: kkSertakan(r.dokumen, waktu().kini) }))) sekali(akar.querySelector('.hg-bilah'), 'pegas', 520); },
+    hgTerbitkan: async () => { const r = HG.susunTerbit(waktu(), st().yakinRugi); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, yakinRugi: !!r.perluYakin }); if (await tulis(kkSertakanKiriman(r, waktu().kini))) sekali(akar.querySelector('.hg-bilah'), 'pegas', 520); },
     kalPilih: ({ kolom, v }) => set({ kal: Object.assign({}, st().kal, { [kolom]: v }), kabar: '' }),
     kalRp: ({ arah }) => { const l = HG.aturHarga().langkahRp; set({ kal: Object.assign({}, st().kal, { rp: Math.max(l, (Number(st().kal.rp) || 0) + Number(arah) * l) }) }); },
     kalKetik: (v) => set({ kal: Object.assign({}, st().kal, { rp: String(v).slice(0, 7) }) }),
@@ -104,7 +104,7 @@ export function pasangLayarHarga(akar, opsi) {
     vrInduk: ({ merk }) => set({ vrBaru: Object.assign({}, st().vrBaru, { induk: merk }), vrYakin: false }),
     vrKetikBaru: (v, el) => { const b = Object.assign({}, st().vrBaru || {}); b[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'mutu' ? 30 : 12); set({ vrBaru: b, vrYakin: false }); },
     vrBuat: async ({ usul }) => { const b = st().vrBaru || {}; const r = VR.vrSusunBuatDariHarga(b.induk, b.mutu, b.harga !== undefined && b.harga !== '' ? b.harga : usul, waktu(), st().vrYakin);
-      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, vrYakin: !!r.perluYakin }); if (await tulis(Object.assign({}, r, { dokumen: kkSertakan(r.dokumen, waktu().kini) }))) set({ vrBaru: null, vrYakin: false }); },
+      if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, vrYakin: !!r.perluYakin }); if (await tulis(kkSertakanKiriman(r, waktu().kini))) set({ vrBaru: null, vrYakin: false }); },
     // ---- putaran 27 (Bagian 3): arsip produk — Isi · Arsipkan · Hapus untuk barang habis; Produk arsip memulihkan
     arIsi: ({ kunci }) => { const u = AR.arUrai(kunci); set({ ubah: null, arYakin: '' }); if (opsi.bukaStok) opsi.bukaStok(u.jenis === 'kemasan' ? 'adukan' : 'masuk', undefined, u.jenis === 'kemasan' ? null : { merk: u.nama }); },
     arArsip: async ({ kunci }) => { const r = AR.arSusunArsip(kunci, waktu()); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); if (await tulis(r)) set({ ubah: null, arYakin: '' }); },

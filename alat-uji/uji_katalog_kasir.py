@@ -149,7 +149,12 @@ var T = susunTerbit(W, true);
 var tanpaPenilai = kkSertakan(T.dokumen, W.kini).length; kkPasangGerbang(function () { return { boleh: false, sebab: 'data belum termuat semua' }; }); var tertutup = kkSertakan(T.dokumen, W.kini).length;
 kkPasangGerbang(function () { return kkBolehTerbit({ owner: true, sumber: 'firestore', koleksiSiap: 20, koleksiTotal: 21, dariCache: 0, ditolak: 0, online: true }); }); var belumSemua = kkSertakan(T.dokumen, W.kini).length;
 ok('39b-17 terbit harga saat gerbang katalog TERTUTUP (tanpa penilai · data belum termuat semua 20/21) → katalog kasir TIDAK ikut kiriman (terbit otomatis menyusul)', tanpaPenilai === T.dokumen.length && tertutup === T.dokumen.length && belumSemua === T.dokumen.length, J([tanpaPenilai, tertutup, belumSemua, T.dokumen.length]));
-kkPasangGerbang(function () { return { boleh: true, sebab: '' }; });
+// tinjauan no. 17: kabar kiriman JUJUR — gerbang tertutup → "BELUM ikut … menyusul", bukan "ikut berganti di kiriman yang sama"
+kkPasangGerbang(function () { return { boleh: false, sebab: 'tidak tersambung' }; }); var KT17 = kkSertakanKiriman(T, W.kini);
+kkPasangGerbang(function () { return { boleh: true, sebab: '' }; }); var KB17 = kkSertakanKiriman(T, W.kini);
+ok('39b-17 kabar terbit harga: gerbang tertutup → katalog tidak ikut dan kabar menyebut "BELUM ikut … (tidak tersambung) … menyusul" (kalimat "ikut berganti di kiriman yang sama" dibuang); gerbang terbuka → katalog ikut, kabar apa adanya',
+  !KT17.dokumen.some(function (d) { return d.koleksi === 'ringkasanKasir'; }) && /BELUM ikut kiriman ini \(tidak tersambung\)/.test(KT17.patch.kabar) && !/ikut berganti di kiriman yang sama/.test(KT17.patch.kabar)
+  && KB17.dokumen.some(function (d) { return d.koleksi === 'ringkasanKasir'; }) && KB17.patch.kabar === T.patch.kabar, J([KT17.patch.kabar, KB17.patch.kabar]));
 var sebelum = J(kkIsi()); var DK = kkSertakan(T.dokumen, W.kini); var kk = DK.filter(function (d) { return d.koleksi === 'ringkasanKasir'; });
 ok('terbit harga: SATU dokumen ringkasanKasir ditambahkan ke daftar dokumen kiriman yang sama (paling akhir); dokumen terbit lain utuh', !T.tolak && kk.length === 1 && DK[DK.length - 1].koleksi === 'ringkasanKasir' && DK.length === T.dokumen.length + 1 && J(DK.slice(0, -1)) === J(T.dokumen), J(DK.map(function (d) { return d.koleksi; })));
 ok('isinya katalog SESUDAH terbit (Angsa per kg 14.000), bukan sebelumnya (13.800)', kk.length && kk[0].data.merkKarung.some(function (m) { return m.merk === 'Angsa' && m.hargaPerKg === 14000; }), kk.length ? J(kk[0].data.merkKarung) : '-');
@@ -420,7 +425,7 @@ def periksa_statis(t):
     ok('pendengar dokumen katalog hanya dipasang untuk owner; penerbit dijadwalkan tiap data berubah (dengarkan) dan saat sinyal kembali',
        "if (akun.jenis === 'owner') pasangPendengarKatalog();" in fb and 'dengarkan(() => jadwalkanKatalog())' in fb and 'pasangDenyut(); pasangPenerbitKatalog();' in fb)
     ok('pendengar koleksi mencatat mana yang masih salinan perangkat (fromCache) — gerbang terbit membacanya', '_dariCache[k.nama] = !!(snap.metadata && snap.metadata.fromCache);' in fb)
-    ok('harga.js: terbit harga menyertakan katalog kasir di kiriman yang SAMA (kkSertakan)', re.search(r"hgTerbitkan: async \(\) => \{[^\n]*tulis\(Object\.assign\(\{\}, r, \{ dokumen: kkSertakan\(r\.dokumen, ", t['baru/js/layar/harga.js']))
+    ok('harga.js: terbit harga menyertakan katalog kasir di kiriman yang SAMA (kkSertakanKiriman → kkSertakan)', re.search(r"hgTerbitkan: async \(\) => \{[^\n]*tulis\(kkSertakanKiriman\(r, waktu\(\)\.kini\)\)", t['baru/js/layar/harga.js']) and 'const dokumen = kkSertakan(r.dokumen, kini);' in t['baru/js/data/katalog-kasir.js'])
     ok('Beranda: baris katalog kasir (kkBeranda → #rkKatalog) & perhatiannya ikut di Perlu perhatian', 'kkBeranda(k)' in t['baru/js/layar/ringkasan.js'] and "$('rkKatalog').textContent = KK ? KK.status : ''" in t['baru/js/layar/ringkasan.js'] and 'KK ? KK.perhatian : []' in t['baru/js/layar/ringkasan.js'])
     jb = re.search(r"const JALUR_BUKAN_CATATAN = \{([^}]*)\};", mi); jd = re.search(r"const JALUR_DIAM = \{([^}]*)\};", mi)
     ok('index.html: katalog kasir bukan lagi jalur yang selalu lolos; ditutup TANPA modal (JALUR_DIAM)', jb and 'katalog' not in jb.group(1) and jd and re.search(r'\bkatalog:', jd.group(1)))
@@ -548,7 +553,8 @@ KONTROL = [
     ('pembanding tertipu urutan kunci Firestore', {'baru/js/data/katalog-kasir.js': [("return JSON.stringify(kkUrut({ kemasan:", "return JSON.stringify(({ kemasan:")]}, ('jsc',)),
     ('katalog "seandainya" dari cache SEBELUM kiriman', {'baru/js/data/katalog-kasir.js': [("const isi = denganCacheSementara(daftar, kkIsi); if (!isi) return daftar;", "const isi = kkIsi(); if (!isi) return daftar;")]}, ('jsc',)),
     ('cache tidak dikembalikan sesudah "seandainya"', {'baru/js/data/toko.js': [("try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); }", "return fn();")]}, ('jsc',)),
-    ('terbit harga tidak menyertakan katalog kasir', {'baru/js/layar/harga.js': [("tulis(Object.assign({}, r, { dokumen: kkSertakan(r.dokumen, waktu().kini) }))", "tulis(r)")]}, ('statis',)),
+    ('39b-17: kabar tetap bilang katalog ikut walau gerbang tertutup', {'baru/js/data/katalog-kasir.js': [("if ((g && g.boleh) || dokumen.some((d) => d.koleksi === KK_KOLEKSI)", "if (true || dokumen.some((d) => d.koleksi === KK_KOLEKSI)")]}, ('jsc',)),
+    ('terbit harga tidak menyertakan katalog kasir', {'baru/js/layar/harga.js': [("hgTerbitkan: async () => { const r = HG.susunTerbit(waktu(), st().yakinRugi); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, yakinRugi: !!r.perluYakin }); if (await tulis(kkSertakanKiriman(r, waktu().kini)))", "hgTerbitkan: async () => { const r = HG.susunTerbit(waktu(), st().yakinRugi); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, yakinRugi: !!r.perluYakin }); if (await tulis(r))")]}, ('statis',)),
     ('gerbang terbit dari salinan perangkat', {'baru/js/data/katalog-kasir.js': [("if (k.dariCache > 0) return", "if (false) return")]}, ('jsc',)),
     ('gerbang terbit tanpa katalog server terbaca', {'baru/js/data/katalog-kasir.js': [("if (_kkServer.ada === null || !_kkServer.dariServer) return", "if (false) return")]}, ('jsc',)),
     ('katalog ditulis dengan atribusi & jejak', {'baru/js/data/firebase.js': [("    if (kkMentah(x.koleksi)) { b.set(doc(db, x.koleksi, String(x.data.id)), x.data); ditulis.push({ koleksi: x.koleksi, data: x.data }); return; }", "")]}, ('statis',)),

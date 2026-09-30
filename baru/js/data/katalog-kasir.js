@@ -110,6 +110,17 @@ export function kkSertakan(dokumen, kini) {
   if (_kkServer.ada === true && kkKanon(isi) === kkKanon(_kkServer.dok)) return daftar;
   return daftar.concat([{ koleksi: KK_KOLEKSI, data: kkDokumen(isi, kini) }]);
 }
+/**
+ * Kiriman terbit harga + katalog kasir, dengan kabar yang JUJUR (tinjauan no. 17): kalau gerbang tertutup, katalog tidak ikut — kalimat "katalog HP kasir ikut"
+ * diganti "BELUM ikut … terbit otomatis menyusul". Kalau gerbang terbuka tapi isinya sama dengan server, tidak ada yang perlu dikirim (kabar apa adanya).
+ */
+export function kkSertakanKiriman(r, kini) {
+  const dokumen = kkSertakan(r.dokumen, kini); const g = _kkGerbang ? _kkGerbang() : null;
+  if ((g && g.boleh) || dokumen.some((d) => d.koleksi === KK_KOLEKSI) || !r.patch || !r.patch.kabar) return Object.assign({}, r, { dokumen });
+  const kabar = String(r.patch.kabar).replace(/\s*Katalog HP kasir ikut berganti di kiriman yang sama\./, '').replace(' — rak Jual & katalog HP kasir ikut.', ' — rak Jual ikut.')
+    + ' Katalog HP kasir BELUM ikut kiriman ini' + (g && g.sebab ? ' (' + g.sebab + ')' : '') + ' — terbit otomatis menyusul begitu data termuat penuh & tersambung.';
+  return Object.assign({}, r, { dokumen, patch: Object.assign({}, r.patch, { kabar }) });
+}
 /** Dokumen katalog ditulis APA ADANYA (bentuk index.html): penulis pusat tidak memasang atribusi & tidak menulis baris jejak untuknya. */
 export const kkMentah = (koleksi) => koleksi === KK_KOLEKSI;
 

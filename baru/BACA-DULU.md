@@ -1136,6 +1136,8 @@ gerbang `kkBolehTerbit` yang dipakai terbit otomatis. Kalau data di perangkat ow
 terbaca, katalog HP kasir bisa ditulis dari data yang bolong (sisa stok, bon, tuts merek salah) dan baru betul kalau perangkat owner tetap terbuka.
 Tambalan: `firebase.js` `gerbangKatalog()` = SATU penilai (dipakai terbit otomatis), dipasang ke `katalog-kasir.js` lewat `kkPasangGerbang`;
 `kkSertakan` berhenti bila gerbang tertutup atau tanpa penilai (kotak pasir, cadangan) — terbit otomatis menyusul begitu gerbang terbuka.
+Tinjauan: kabar terbit harga dulu tetap berbunyi "katalog HP kasir ikut" walau katalog dibuang gerbang → `kkSertakanKiriman` (dipakai Harga › Terbitkan,
+varian baru, harga dari Stok) mengganti kalimat itu dengan "BELUM ikut … (sebabnya) … menyusul".
 Uji `uji_katalog_kasir.py` +2 (jsc: gerbang tertutup → katalog tidak ikut; statis: penilai terpasang & dipakai). Uji data toko katalog disesuaikan
 cadangan 1 Okt (semua wadah aktif): buku khusus wadah tidak dijual dari HP kasir, harga liter pindah ke buku wadah — aturan wbSaringKatalogKasir.
 
