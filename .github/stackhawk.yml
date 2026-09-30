@@ -1,0 +1,38 @@
+# HawkScan (DAST) untuk situs statis Toko Beras M.IQBAL — HANYA dipakai .github/workflows/hawkscan.yml di runner GitHub.
+# Target: alat-uji/server_hawk.py di 127.0.0.1:8765, isinya `git archive` commit yang diuji (= yang diterbitkan Pages, tanpa .github).
+# Backend = Firestore (Google, pihak ketiga) di LUAR cakupan: workflow memblokir domain Firebase di /etc/hosts runner, jadi pemindai
+# (termasuk ajax spider) tidak pernah membaca/menulis Firestore sungguhan (kuota baca Spark 50 rb/hari).
+# Ajax spider hanya di runner (CLAUDE.md: beban peramban tidak boleh di Mac owner). Tanpa authentication: login PIN & Firebase Auth hidup di JS.
+app:
+  applicationId: ${APP_ID:8da8ba9a-eee5-49c9-9ab8-a170ef5beb47}
+  env: ${APP_ENV:CI}
+  host: ${APP_HOST:http://127.0.0.1:8765}
+hawk:
+  spider:
+    base: true
+    ajax: true
+    maxDurationMinutes: 8
+    seedPaths:
+      - /baru/
+      - /kasir.html
+      - /kasir-darurat-nominal.html
+      - /sw-kasir.js
+      - /lib/kemas-worker.js
+      - /icon-kasir-192.png
+      - /icon-kasir-512.png
+      - /icon-sistem-192.png
+      - /icon-sistem-512.png
+      - /icon-sistem.svg
+  scan:
+    concurrentRequests: 10
+    maxDurationMinutes: 45
+  failureThreshold: high
+tags:
+  - name: _STACKHAWK_AGENT
+    value: ${HAWK_AGENT:github-actions}
+  - name: _STACKHAWK_GIT_COMMIT_SHA
+    value: ${COMMIT_SHA:none}
+  - name: _STACKHAWK_GIT_BRANCH
+    value: ${BRANCH_NAME:none}
+  - name: git_origin
+    value: devamp-hl/toko-beras-m.iqbal
