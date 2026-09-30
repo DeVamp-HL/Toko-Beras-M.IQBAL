@@ -1081,3 +1081,11 @@ Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah
   ditolak). Penjaganya `alat-uji/uji_jam_tampil.py` (jsc di TZ Asia/Jakarta & UTC + penjaga statis + kontrol).
 - `alat-uji/periksa_jam_rinci.py CADANGAN` — laporan pola jam baris rincian vs karcis asal + usulan koreksi (tidak menulis; bulan terkunci
   tidak diusulkan dikoreksi).
+
+## Audit 39b no. 20 — Laporan menghitung NOTA, bukan baris (1 Okt 2026, cabang `audit/39b-nota-bukan-baris`)
+
+Temuan: Harian, teks WA, 14 hari, per jam, minggu, enam bulan, tahun, dan rekap omzet Pajak menyebut `jumlahTrx` mesin (jumlah BARIS penjualan)
+sebagai "nota" — satu nota berisi beberapa barang terhitung beberapa kali (20–47 % lebih besar dari nota sungguhan di data toko). Mesin beku tidak
+diubah. Tambalan: `data/toko.js` `kunciNota` (grupNota / trxId / id — sama dengan pil Jual) + `jumlahNota(cocok)` atas penjualan yang masih berlaku;
+semua "n nota" di `laporan-logika.js` & `pajak-logika.js` memakainya. Kartu "Nota yang rugi" & "Nota tanpa modal" menyebut "N baris (M nota)".
+Uji `uji_laporan_baru.py` +1 (satu nota dua baris = satu nota di tujuh tempat), kontrol +2, kontrol lama "nota batal ikut" dipindah ke jumlahNota.

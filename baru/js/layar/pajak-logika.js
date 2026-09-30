@@ -8,7 +8,7 @@
 // Nama pembantu diprefiks `pj` (bundel uji jsc satu lingkup).
 import { hitungLabaRentang } from '../mesin/beku.js';
 import { bulanDari, namaBulanPanjang } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, cacheMentah, kunciSampai } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, cacheMentah, kunciSampai, jumlahNota } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong } from './uang-logika.js';
 
@@ -70,7 +70,7 @@ const PJ_TOLAK_NOMOR = 'Jangan menyimpan NIK, NPWP, atau nomor rekening di sini 
 
 // ==================== omzet sistem: SATU sumber ====================
 /** Omzet satu bulan dari mesin laba (penjualan yang masih berlaku, dikurangi retur). Dipakai layar Pajak DAN DK3. */
-export function pjOmzetSistem(key) { const L = hitungLabaRentang((t) => !!t && bulanDari(t) === key); return { omzet: L.omzetPenuh, n: L.jumlahTrx }; }
+export function pjOmzetSistem(key) { const L = hitungLabaRentang((t) => !!t && bulanDari(t) === key); return { omzet: L.omzetPenuh, n: jumlahNota((t) => !!t && bulanDari(t) === key) }; }   // n = nota, bukan baris (39b no. 20)
 /** Tanggal nota pertama di sistem (penjualan apa pun) — bulan sebelumnya TIDAK ada di sistem; bulan pertama bisa terisi sebagian. */
 export function pjAwalSistem() { let p = ''; ambilPenjualanSemua().forEach((d) => { if (d.tanggal && (!p || d.tanggal < p)) p = d.tanggal; }); return p; }
 

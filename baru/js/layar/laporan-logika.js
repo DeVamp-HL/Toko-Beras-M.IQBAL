@@ -9,7 +9,7 @@
 // tarif/batas rekap omzet bukan nasihat pajak. Nama pembantu diprefiks `lp` (bundel uji jsc satu lingkup).
 import { hitungLabaRentang, hitungLabaBersihRentang, hitungArusKasInti, barisSusutStok, bayaranBiayaBulanan, hitungNeraca, kasPada, hitungPiutang, hitungUtangPemasok } from '../mesin/beku.js';
 import { akhirBulanIso, bulanDari, namaBulanPanjang, caraBayarKunci, hppTercatat, daftarGerakanKas, namaSingkatTrx, kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai, kunciNota, jumlahNota } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek, lebihBayarDari, LEBIH_AMBANG, pecahLebih, ringkasLebih } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan, priveRentang, pilahHarian } from './uang-logika.js';
 import { bkEra } from './tutup-buku-logika.js';
@@ -67,8 +67,8 @@ export function labaBulan(key, kini, bayaran) {
   const terjun = [['Omzet terhitung', omzetKotor]].concat(L.returJumlah ? [['Retur & refund (' + L.returJumlah + ')', -L.returUang]] : []).concat([['HPP barang', -(L.hpp + L.returHpp)]]).concat(L.returHpp > 0 ? [['HPP barang yang kembali ke stok', L.returHpp]] : [])
     .concat([['Margin kotor', L.margin, 'jumlah'], ['Biaya toko (harian + jatah bulanan)', -biayaLain]]).concat(mdr ? [['Potongan QRIS (MDR)', -mdr]] : []).concat(L.hapusBuku ? [['Hapus buku piutang', -L.hapusBuku]] : []).concat([['Susut & selisih stok', L.susutStok], ['Laba bersih', L.labaBersih, 'jumlah']]).map((r) => ({ nama: r[0], n: r[1], kelas: r[2] || '' }));
   const cocok = (t) => !!t && t >= awal && t <= akhir; const susut = barisSusutStok(cocok);
-  const bulan = ambilPenjualan().filter((p) => cocok(p.tanggal)); const rugi = bulan.filter((p) => hppTercatat(p) && (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0) < 0).map((p) => ({ id: p.id, nama: namaSingkatTrx(p), tanggal: p.tanggal, jam: p.jam || '', omzet: p.hargaTotal || 0, margin: (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0) })).sort((a, b) => a.margin - b.margin);
-  const tanpaHpp = bulan.filter((p) => !hppTercatat(p)).map((p) => ({ id: p.id, nama: namaSingkatTrx(p), tanggal: p.tanggal, jam: p.jam || '', omzet: p.hargaTotal || 0 })).sort((a, b) => String(b.tanggal + b.jam).localeCompare(String(a.tanggal + a.jam)));
+  const bulan = ambilPenjualan().filter((p) => cocok(p.tanggal)); const rugi = bulan.filter((p) => hppTercatat(p) && (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0) < 0).map((p) => ({ id: p.id, nota: kunciNota(p), nama: namaSingkatTrx(p), tanggal: p.tanggal, jam: p.jam || '', omzet: p.hargaTotal || 0, margin: (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0) })).sort((a, b) => a.margin - b.margin);
+  const tanpaHpp = bulan.filter((p) => !hppTercatat(p)).map((p) => ({ id: p.id, nota: kunciNota(p), nama: namaSingkatTrx(p), tanggal: p.tanggal, jam: p.jam || '', omzet: p.hargaTotal || 0 })).sort((a, b) => String(b.tanggal + b.jam).localeCompare(String(a.tanggal + a.jam)));
   const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && !susut.length; const berjalan = key === lpKey(iso);
   let aman = null; if (berjalan) { const A = aturKeluar(iso); const P = priveBulan(iso); aman = { batas: A.aman, dariLaba: A.amanDariLaba, terpakai: P.total, sisa: A.aman - P.total }; }
   return { key, nama: lpNamaBulan(key), berjalan, final: lpFinal(key), L, margin: L.margin, labaBersih: L.labaBersih, tunai, marginKredit, omzetKredit, nKredit, cakupan, omzetKotor, penyebut, mdr, biayaLain, terjun, susut, susutTotal: L.susutStok, rugi, tanpaHpp, omzetTanpaHpp: L.omzetTanpaHpp, tanpaCatatan, aman,
@@ -105,14 +105,14 @@ export function keManaLabaKotor(key, kini, bayaran) {
 /** Rekap satu hari — arus kas & laba dari mesin yang sama (dataRekapHarian sistem lama) + per jam + tutup hari + buku kas hari itu. */
 export function rekapHari(iso, bayaran) {
   const B = bayaran || bayaranBiayaBulanan(); const K = hitungArusKasInti((t) => t === iso, B); const L = hitungLabaRentang((t) => t === iso);
-  const jam = {}; ambilPenjualan().forEach((p) => { if (p.tanggal !== iso) return; const j = String(p.jam || '').slice(0, 2) || '??'; if (!jam[j]) jam[j] = { jam: j, n: 0, omzet: 0 }; jam[j].n += 1; jam[j].omzet += p.hargaTotal || 0; });
+  const jam = {}; const notaJam = {}; ambilPenjualan().forEach((p) => { if (p.tanggal !== iso) return; const j = String(p.jam || '').slice(0, 2) || '??'; if (!jam[j]) { jam[j] = { jam: j, n: 0, omzet: 0 }; notaJam[j] = new Set(); } notaJam[j].add(kunciNota(p)); jam[j].n = notaJam[j].size; jam[j].omzet += p.hargaTotal || 0; });   // n = nota, bukan baris (39b no. 20)
   const perJam = Object.keys(jam).sort().map((j) => jam[j]); const maksJam = Math.max(1, ...perJam.map((x) => x.omzet));
   const tutup = ambilTutupHari().find((t) => t.tanggal === iso) || null; const buku = daftarGerakanKas().filter((r) => r.t === iso).sort((a, b) => String(a.jam).localeCompare(String(b.jam)));
-  return { iso, omzet: L.omzetPenuh, n: L.jumlahTrx, margin: L.margin, jumlahTanpaHpp: L.jumlahTanpaHpp, tunai: K.pos.tunai, qris: K.pos.qris, kredit: K.kreditBulanIni, nKredit: K.jumlahKredit, pelunasan: K.pos.pelunasan, refund: K.pos.refund, keluarHarian: K.pos.harian, prive: K.pos.prive, setoran: K.pos.setoran, belanja: K.pos.belanja, bayarBon: K.pos.bayarBon, biayaBulanan: K.pos.biayaBulanan,
+  return { iso, omzet: L.omzetPenuh, n: jumlahNota((t) => t === iso), margin: L.margin, jumlahTanpaHpp: L.jumlahTanpaHpp, tunai: K.pos.tunai, qris: K.pos.qris, kredit: K.kreditBulanIni, nKredit: K.jumlahKredit, pelunasan: K.pos.pelunasan, refund: K.pos.refund, keluarHarian: K.pos.harian, prive: K.pos.prive, setoran: K.pos.setoran, belanja: K.pos.belanja, bayarBon: K.pos.bayarBon, biayaBulanan: K.pos.biayaBulanan,
     totalMasuk: K.totalMasuk, totalKeluar: K.totalKeluar, bersih: K.bersih, masuk: K.masuk.filter((x) => x.nominal > 0), keluar: K.keluar.filter((x) => x.nominal > 0), perJam, maksJam, tutup: tutup ? { jam: tutup.jam || '', selisih: Number(tutup.selisihLaci || tutup.selisih || 0), sistemBaru: !!tutup.sistemBaru } : null, buku, kosong: L.jumlahTrx === 0 && K.totalMasuk === 0 && K.totalKeluar === 0 };
 }
 /** Empat belas hari terakhir untuk pemilih tanggal: omzet & jumlah nota per hari (yang kosong tetap ada, ditandai). */
-export function hariTerakhir(kini, n) { const iso = hariIniIso(kini); const per = {}; ambilPenjualan().forEach((p) => { if (!p.tanggal) return; if (!per[p.tanggal]) per[p.tanggal] = { n: 0, omzet: 0 }; per[p.tanggal].n += 1; per[p.tanggal].omzet += p.hargaTotal || 0; }); const out = []; for (let i = 0; i < (n || 14); i++) { const t = ugTambahHari(iso, -i); out.push({ iso: t, n: per[t] ? per[t].n : 0, omzet: per[t] ? per[t].omzet : 0, hariIni: i === 0 }); } return out; }
+export function hariTerakhir(kini, n) { const iso = hariIniIso(kini); const per = {}; const notaHari = {}; ambilPenjualan().forEach((p) => { if (!p.tanggal) return; if (!per[p.tanggal]) { per[p.tanggal] = { n: 0, omzet: 0 }; notaHari[p.tanggal] = new Set(); } notaHari[p.tanggal].add(kunciNota(p)); per[p.tanggal].n = notaHari[p.tanggal].size; per[p.tanggal].omzet += p.hargaTotal || 0; }); const out = []; for (let i = 0; i < (n || 14); i++) { const t = ugTambahHari(iso, -i); out.push({ iso: t, n: per[t] ? per[t].n : 0, omzet: per[t] ? per[t].omzet : 0, hariIni: i === 0 }); } return out; }
 /** Teks rekap untuk WhatsApp — kalimat kirimRekapHarianWa sistem lama, ditambah yang dulu tidak disebut (pelunasan bon, prive, margin). */
 export function teksRekapHari(R, kop) {
   const b = ['*Rekap ' + ((kop && kop.nama) || IDENTITAS_BAWAAN.nama) + ' — ' + tanggalPendek(R.iso) + '*', 'Omzet: ' + RP(R.omzet) + ' (' + R.n + ' nota)', 'Tunai: ' + RP(R.tunai), 'QRIS: ' + RP(R.qris)];
@@ -123,7 +123,7 @@ export function teksRekapHari(R, kop) {
 }
 
 // ==================== BULANAN · enam bulan, inti bulan, DK3 rekap omzet ====================
-export function enamBulan(kini) { const akhir = lpKey(hariIniIso(kini)); const out = []; for (let i = 5; i >= 0; i--) { const k = lpGeserBulan(akhir, -i); const L = hitungLabaRentang((t) => !!t && bulanDari(t) === k); out.push({ key: k, pendek: lpBulanPendek(k, k.slice(5, 7) === '01' || i === 5), omzet: L.omzetPenuh, n: L.jumlahTrx, berjalan: k === akhir }); } const maks = Math.max(1, ...out.map((x) => x.omzet)); return { daftar: out, maks }; }
+export function enamBulan(kini) { const akhir = lpKey(hariIniIso(kini)); const out = []; for (let i = 5; i >= 0; i--) { const k = lpGeserBulan(akhir, -i); const L = hitungLabaRentang((t) => !!t && bulanDari(t) === k); out.push({ key: k, pendek: lpBulanPendek(k, k.slice(5, 7) === '01' || i === 5), omzet: L.omzetPenuh, n: jumlahNota((t) => !!t && bulanDari(t) === k), berjalan: k === akhir }); } const maks = Math.max(1, ...out.map((x) => x.omzet)); return { daftar: out, maks }; }
 export function intiBulan(key, kini, bayaran) {
   const iso = hariIniIso(kini); const B = bayaran || bayaranBiayaBulanan(); const awal = key + '-01', akhir = akhirBulanIso(key); const L = hitungLabaBersihRentang(awal, akhir, B); const K = hitungArusKasInti((t) => !!t && t >= awal && t <= akhir, B);
   const berjalan = key === lpKey(iso); const hariJalan = berjalan ? Number(iso.slice(8, 10)) : Number(akhir.slice(8, 10)); const belum = B.filter((x) => !x.tanggal && x.bulan === key && x.nominal > 0);
@@ -339,7 +339,7 @@ export function daftarMinggu(kini, n) {
 export function rekapMinggu(awal, kini, bayaran) {
   const iso = hariIniIso(kini); const akhir = ugTambahHari(awal, 6); const B = bayaran || bayaranBiayaBulanan(); const cocok = (t) => !!t && t >= awal && t <= akhir;
   const L = hitungLabaBersihRentang(awal, akhir, B); const K = hitungArusKasInti(cocok, B); const Lr = hitungLabaRentang(cocok);
-  const hari = []; for (let i = 0; i < 7; i++) { const t = ugTambahHari(awal, i); const Lh = hitungLabaRentang((x) => x === t); hari.push({ iso: t, nama: LP_HARI[i], tgl: String(parseInt(t.slice(8, 10), 10)), omzet: Lh.omzetPenuh, n: Lh.jumlahTrx, margin: Lh.margin, depan: t > iso, hariIni: t === iso }); }
+  const hari = []; for (let i = 0; i < 7; i++) { const t = ugTambahHari(awal, i); const Lh = hitungLabaRentang((x) => x === t); hari.push({ iso: t, nama: LP_HARI[i], tgl: String(parseInt(t.slice(8, 10), 10)), omzet: Lh.omzetPenuh, n: jumlahNota((x) => x === t), margin: Lh.margin, depan: t > iso, hariIni: t === iso }); }
   const jalan = hari.filter((h) => !h.depan); const omzet = hari.reduce((a, h) => a + h.omzet, 0); const n = hari.reduce((a, h) => a + h.n, 0); const maks = Math.max(1, ...hari.map((h) => h.omzet));
   const lalu = hitungLabaRentang((t) => !!t && t >= ugTambahHari(awal, -7) && t <= ugTambahHari(awal, -1)); const pct = lpPersen(omzet, lalu.omzetPenuh);
   const isi = jalan.filter((h) => h.n > 0); const terbaik = isi.length ? isi.reduce((a, h) => (h.omzet > a.omzet ? h : a)) : null; const sepi = isi.length ? isi.reduce((a, h) => (h.omzet < a.omzet ? h : a)) : null;
@@ -357,7 +357,7 @@ export function rekapTahun(tahun, kini, bayaran) {
   for (let m = 1; m <= 12; m++) { const key = tahun + '-' + String(m).padStart(2, '0'); const depan = key > kiniKey;
     if (depan) { bulan.push({ key, nama: lpNamaBulan(key), pendek: lpBulanPendek(key), depan: true, berjalan: false, final: false, omzet: 0, n: 0, margin: 0, biaya: 0, labaBersih: 0, susut: 0 }); continue; }
     const L = hitungLabaBersihRentang(key + '-01', akhirBulanIso(key), B); const Lr = hitungLabaRentang((t) => !!t && bulanDari(t) === key);
-    bulan.push({ key, nama: lpNamaBulan(key), pendek: lpBulanPendek(key), depan: false, berjalan: key === kiniKey, final: lpFinal(key), omzet: Lr.omzetPenuh, n: Lr.jumlahTrx, margin: L.margin, biaya: L.biayaToko, labaBersih: L.labaBersih, susut: L.susutStok, hpp: L.hpp }); }
+    bulan.push({ key, nama: lpNamaBulan(key), pendek: lpBulanPendek(key), depan: false, berjalan: key === kiniKey, final: lpFinal(key), omzet: Lr.omzetPenuh, n: jumlahNota((t) => !!t && bulanDari(t) === key), margin: L.margin, biaya: L.biayaToko, labaBersih: L.labaBersih, susut: L.susutStok, hpp: L.hpp }); }
   const ada = bulan.filter((b) => !b.depan); const jml = (k) => ada.reduce((a, b) => a + (b[k] || 0), 0); const omzet = jml('omzet'); const n = jml('n');
   const Lt = hitungLabaRentang((t) => !!t && String(t).slice(0, 4) === String(tahun)); const maks = Math.max(1, ...bulan.map((b) => b.omzet));
   const laluL = hitungLabaRentang((t) => !!t && String(t).slice(0, 4) === String(tahun - 1)); const pct = lpPersen(omzet, laluL.omzetPenuh);

@@ -41,6 +41,10 @@ export function ambilSemuaBatch() { return _cache.batch; }
 export function ambilBiayaBulanan() { return _cache.bulanan; }
 export function ambilPenjualanSemua() { return _cache.penjualan; }
 export function ambilPenjualan() { return ambilPenjualanSemua().filter(penjualanMasihBerlaku); }
+/** Satu NOTA = satu grupNota / trxId (satu nota bisa berisi banyak baris penjualan). 39b no. 20: laporan dulu menyebut jumlah BARIS sebagai "nota". */
+export const kunciNota = (p) => String(p.grupNota || p.trxId || p.id);
+/** Jumlah nota (bukan baris) penjualan yang masih berlaku dengan tanggal yang cocok. */
+export function jumlahNota(cocok) { const s = new Set(); ambilPenjualan().forEach((p) => { if (cocok(p.tanggal)) s.add(kunciNota(p)); }); return s.size; }
 export function ambilProduksi() { return _cache.produksi; }
 export function ambilProduksiBerlaku() { return ambilProduksi().filter(produksiMasihBerlaku); }
 
