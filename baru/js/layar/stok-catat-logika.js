@@ -332,10 +332,35 @@ function cocokAkhirPeta() {
   // putaran 27: hitungan tumpukan (dan hitungan lama satu angka per nama) per nama; hitungan wadah = titik samakan wadah itu (dokumen 'isi')
   ambilPenyesuaianStok().forEach((d) => { if (hitunganFisik(d) && d.merk && d.bagian !== 'wadah') catat('tumpukan|' + d.merk, d); });
   // putaran 28: titik pindahan awal stok wadah BUKAN hitungan (isinya angka tercatat, bukan kotak yang dihitung) — tidak menyetel "terakhir dicocokkan"
-  ambilWadahLiteran().forEach((d) => { if (d.tipe === 'isi' && d.wadah && !d.pindahAwal) catat('wadah|' + d.wadah, d); });
+  ambilWadahLiteran().forEach((d) => { if (d.tipe === 'isi' && d.wadah && !d.pindahAwal) catat('wadah|' + d.wadah, d);
+    if (d.tipe === 'karungIsi' && d.dariCocok && d.merk) catat('karungKhusus|' + d.merk + '|#|' + (d.wadah || ''), d); });   // audit 39b no. 5: karung berbuku sendiri
   ambilPenyesuaianKemasan().forEach((d) => { if (d.namaProduk) catat('kemasan|' + kunciKemasan(d.namaProduk, d.ukuranKemasan), d); });
   ambilBahanKemasan().concat(ambilBahanLiteran()).forEach((d) => { if (d.tipe === 'opname' && d.jenis) catat('kantong|' + d.jenis, d); });
   return peta;
+}
+/**
+ * Buku KHUSUS karung (karung belakang / karung sisihan / kemasan adukan — petaBukuWadah, selain buku wadah) di SATU tempat = buku − catatan kolam kunci yang
+ * sama di tempat lain (satu buku adukan bisa terbuka di dua tempat). Bukan buku khusus / bukunya belum lahir → null (pakai catatan kolam seperti dulu).
+ */
+function ckBukuKarungDi(kunci, lokasi, bw, stok, kolam, bagianW) {
+  const b = bw[kunci]; const st = stok[kunci]; if (!b || b.jenis === 'wadah' || !st) return null;
+  const lain = kolam.reduce((a, k) => a + (k.merk === kunci && k.lokasi !== lokasi ? (k.sisaMentahKg || 0) : 0), 0);
+  return ckB2((st.sisaKg || 0) - lain - ((bagianW || {})[kunci] || 0));   // tinjauan G5: bagian buku adukan yang sudah dituang ke wadah BELUM aktif bukan isi karungnya
+}
+/** Baris cocokkan untuk karung berbuku sendiri di luar slot wadah (tempatnya = catatan kolamnya; belum pernah dicatat → tempat asal bukunya). */
+function ckKarungKhusus(atur, bw, stok, kolam, slot, bagianW) {
+  const out = []; const letak = {};
+  kolam.forEach((k) => { const b = bw[k.merk]; if (!b || b.jenis === 'wadah') return; (letak[k.merk] = letak[k.merk] || {})[k.lokasi] = k; });
+  Object.keys(bw).sort().forEach((kunci) => { const b = bw[kunci]; if (b.jenis === 'wadah' || !stok[kunci]) return;
+    const L = letak[kunci] || {}; const tempat = Object.keys(L).sort(); if (!tempat.length) tempat.push(b.jenis === 'belakang' ? b.wadah : '');
+    tempat.forEach((lok) => { if (slot[kunci + '|#|' + lok]) return; const kr = L[lok] || null; const sistem = ckBukuKarungDi(kunci, lok, bw, stok, kolam, bagianW);
+      const karungCatatan = kr ? ckB2(kr.sisaMentahKg) : null; if (Math.abs(sistem) <= 0.004 && !(karungCatatan > 0.004)) return;
+      const nama = b.jenis === 'belakang' ? 'karung ' + b.merk + ' di belakang ' + b.wadah : b.jenis === 'karung' ? 'karung sisihan wadah ' + b.wadah : kunci + (lok ? ' di belakang ' + lok : ' (lepas)');
+      const k = 'karungKhusus|' + kunci + '|#|' + lok;
+      out.push({ kunci: k, kunciKarung: k, tab: 'wadah', jenis: 'karung', nama, no: '', satuan: 'kg', isiSistem: null, karungNama: kunci, lokasi: lok, karungDicatat: !!kr, karungSistem: sistem, karungBuku: true, karungCatatan,
+        karungPenuh: Math.max(beratKarungBuka(b.merk || kunci), sistem), komposisi: [], sejak: kr ? kr.sejakTanggal || '' : '', stokSendiri: false, kunciStok: '', sistem, modal: stok[kunci].hppTerakhirPerKg || 0,
+        takarKg: atur.takarKg, rasio: 0, puncakKg: atur.puncakKg, susutWajarKg: atur.susutWajarKg }); }); });
+  return out;
 }
 /** Semua barang yang bisa dicocokkan, per tab: {kunci, nama, satuan, sistem, modal, …}. */
 export function barangCocok(tab) {
@@ -348,13 +373,19 @@ export function barangCocok(tab) {
         + (t.lengkap ? '' : ' · perkiraan: ada wadah / karung terbuka yang belum ditandai');
       out.push({ kunci: 'tumpukan|' + m, tab, nama: m, satuan: 'kg', sistem: ckB2(t.kg), buku: ckB2(st[m].sisaKg || 0), modal: st[m].hppTerakhirPerKg || 0, rincian, lengkap: t.lengkap,
         beratKarung: t.beratKarung, karungSistem: t.karung }); }); }
-  else if (tab === 'wadah') { const atur = aturWadah();
+  else if (tab === 'wadah') { const atur = aturWadah(); const bw = petaBukuWadah(); const stok = hitungStokKarungPerMerk(); const kolam = semuaKarungTerbuka(); const bagianW = wbBagianMerk(); const slot = {};
     // WADAH LITERAN: per petak W1–W8 — isi kotak + karung terbuka di belakangnya. Tercatat isi = Σ komposisi (merek asal); belum pernah disamakan = null (tidak ditebak).
+    // audit 39b no. 5 (G1): karung yang punya BUKU SENDIRI (karung belakang, kemasan adukan) — tercatat = BUKUNYA di tempat itu, bukan catatan kolam
+    // (dulu dibanding catatan: buku yang sudah selisih tetap selisih sesudah dicocokkan). Catatannya tetap disebut bila berbeda.
     atur.daftar.forEach((W, i) => { const K = wbKomposisi(W); const kn = karungUntukWadah(W); const kb = karungBelakang(kn.merk, W);
-      const isiSistem = K.diketahui ? ckB2(K.totalKg) : null; const karungSistem = kb.diketahui ? ckB2(kb.sisaMentahKg) : null;
-      out.push({ kunci: 'wadah|' + W, kunciKarung: 'wadahKarung|' + W, tab, nama: W, no: 'W' + (i + 1), satuan: 'kg', isiSistem, karungNama: kn.merk, karungDicatat: kn.dariCatatan, karungSistem,
-        karungPenuh: kb.penuhKg || beratKarungBuka(kn.merk), komposisi: K.positif, sejak: K.sejak, stokSendiri: !!K.stokSendiri, kunciStok: K.kunci || '', sistem: ckB2((isiSistem || 0) + (karungSistem || 0)), modal: wbModalPerKg(W),
-        takarKg: atur.takarKg, rasio: wbRasio(W), puncakKg: atur.puncakKg, susutWajarKg: atur.susutWajarKg }); }); }
+      const bkr = kn.dariCatatan ? ckBukuKarungDi(kn.merk, W, bw, stok, kolam, bagianW) : null; if (kn.dariCatatan) slot[kn.merk + '|#|' + W] = 1;
+      const isiSistem = K.diketahui ? ckB2(K.totalKg) : null; const karungCatatan = kb.diketahui ? ckB2(kb.sisaMentahKg) : null; const karungSistem = bkr !== null ? bkr : karungCatatan;
+      out.push({ kunci: 'wadah|' + W, kunciKarung: 'wadahKarung|' + W, tab, nama: W, no: 'W' + (i + 1), satuan: 'kg', isiSistem, karungNama: kn.merk, karungDicatat: kn.dariCatatan, karungSistem, karungBuku: bkr !== null, karungCatatan,
+        karungLabel: bw[kn.merk] && bw[kn.merk].jenis === 'belakang' && bw[kn.merk].merk ? bw[kn.merk].merk : kn.merk,
+        karungPenuh: Math.max(kb.penuhKg || beratKarungBuka(kn.merk), bkr || 0), komposisi: K.positif, sejak: K.sejak, stokSendiri: !!K.stokSendiri, kunciStok: K.kunci || '', sistem: ckB2((isiSistem || 0) + (karungSistem || 0)), modal: wbModalPerKg(W),
+        takarKg: atur.takarKg, rasio: wbRasio(W), puncakKg: atur.puncakKg, susutWajarKg: atur.susutWajarKg }); });
+    // audit 39b no. 5 (G3 G4): karung berbuku sendiri yang BUKAN karung slot wadah — karung belakang kedua dst., karung sisihan wadah, kemasan adukan lepas
+    ckKarungKhusus(atur, bw, stok, kolam, slot, bagianW).forEach((x) => out.push(x)); }
   else if (tab === 'kemasan') { const st = hitungStokKemasan(); Object.keys(st).sort().forEach((k) => { const s = st[k]; out.push({ kunci: 'kemasan|' + k, tab, nama: s.namaProduk + ' ' + String(s.ukuranKemasan).replace('.', ',') + ' kg', satuan: 'unit', sistem: s.sisaUnit || 0, modal: s.hppRataRataPerUnit || 0, namaProduk: s.namaProduk, ukuranKemasan: s.ukuranKemasan }); }); }
   else { const k = hitungStokBahanKemasan(); const l = hitungStokBahanLiteran();
     Object.keys(k).sort().forEach((j) => out.push({ kunci: 'kantong|' + j, tab, nama: ccLabelBahan(j), satuan: 'lembar', sistem: k[j].sisaPcs || 0, modal: k[j].hppPerPcs || 0, jenis: j, koleksi: 'stokBahanKemasan' }));
@@ -401,7 +432,7 @@ function ccSusunWadah(hitung, alasan, yakin) {
   const atur = aturCatat(); const peta = cocokAkhirPeta(); const H = hitung || {}; const A = alasan || {}; const Y = yakin || {}; const stok = hitungStokKarungPerMerk(); const hari = hariIniIso(new Date(Date.now()));
   const modal = (m) => (stok[m] || {}).hppTerakhirPerKg || 0;
   const baris = barangCocok('wadah').map((b) => {
-    const adaIsi = ccAda(H[b.kunci]); const adaKr = ccAda(H[b.kunciKarung]); const ada = adaIsi || adaKr;
+    const adaIsi = b.jenis !== 'karung' && ccAda(H[b.kunci]); const adaKr = ccAda(H[b.kunciKarung]); const ada = adaIsi || adaKr;
     const isiH = adaIsi ? ckB2(ckAngka(H[b.kunci])) : null; const krH = adaKr ? ckB2(ckAngka(H[b.kunciKarung])) : null;
     const alokasi = {}; const tambah = (m, kg) => { if (!m || !kg) return; alokasi[m] = ckB2((alokasi[m] || 0) + kg); };
     let komposisiBaru = null;
@@ -456,17 +487,19 @@ function ccSimpanWadah(c, berubah, w) {
     Object.keys(b.alokasi).sort().forEach((m) => { const sel = b.alokasi[m]; const st = stok[m]; if (!st || Math.abs(sel) < 0.005) return;
       const kgS = jalan[m] !== undefined ? jalan[m] : ckB2(st.sisaKg || 0); jalan[m] = ckB2(kgS + sel); nMerk += 1;
       dokumen.push({ koleksi: 'penyesuaianStok', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk: m, kgSistem: kgS, kgFisik: jalan[m], selisihKg: sel, alasan: al, nilaiRp: Math.round(sel * (st.hppTerakhirPerKg || 0)),
-        hppPerKgSaatOpname: Math.round(st.hppTerakhirPerKg || 0), bagian: 'wadah', wadah: b.nama, bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung } }); });
+        hppPerKgSaatOpname: Math.round(st.hppTerakhirPerKg || 0), bagian: 'wadah', wadah: b.jenis === 'karung' ? b.lokasi : b.nama, bagianSistemKg: b.sistem, bagianFisikKg: b.dihitung } }); });
     // putaran 28: wadah berstok sendiri — titik samakan tanpa komposisi (isinya = buku wadah itu, selisihnya sudah jadi penyesuaian di atas)
     if (b.isiH !== null) dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: b.nama, tipe: 'isi', isiKg: b.isiH }, b.stokSendiri ? { stokWadah: b.kunciStok } : { komposisi: b.komposisiBaru || {} }, { dariCocok: true }) });
-    if (b.krH !== null && b.karungNama) dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: b.karungNama, isiKg: b.krH, wadah: b.nama, dariCocok: true } }); });
+    const di = b.jenis === 'karung' ? (b.lokasi ? { wadah: b.lokasi, diamSlot: true } : { lepas: true }) : { wadah: b.nama };   // karung kedua dst. tidak memindah karung terdepan
+    if (b.krH !== null && b.karungNama) dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: b.karungNama, isiKg: b.krH }, di, { dariCocok: true }) }); });
+  const nW = berubah.filter((b) => b.jenis !== 'karung').length; const nK = berubah.length - nW;
   const dampak = w.tanggal < MULAI_SUSUT_LABA ? 'Kas, laba, dan omzet tidak berubah.' : (c.susutRp ? 'Laba bulan ini turun ' + RP(-c.susutRp) + ' lewat baris "Susut & selisih stok". ' : '') + (c.lebihRp ? 'Stok naik ' + RP(c.lebihRp) + ' tanpa mengubah modal per kg. ' : '') + 'Kas dan omzet tidak bergerak.';
-  return { dokumen, hitung: c, patch: { kabar: 'Cocokkan wadah tersimpan: ' + berubah.length + ' wadah dihitung' + (c.belum ? ', ' + c.belum + ' belum' : '') + ' — ' + (nMerk ? nMerk + ' buku merek asal disesuaikan. ' + dampak : 'tidak ada buku yang berubah (cocok, susut nol, atau hitungan pertama).') + ' Isi wadah & karung terbuka kini = hitungan.', kabarAwas: false } };
+  return { dokumen, hitung: c, patch: { kabar: 'Cocokkan wadah tersimpan: ' + (nW ? nW + ' wadah' : '') + (nK ? (nW ? ' + ' : '') + nK + ' karung' : '') + ' dihitung' + (c.belum ? ', ' + c.belum + ' belum' : '') + ' — ' + (nMerk ? nMerk + ' buku disesuaikan. ' + dampak : 'tidak ada buku yang berubah (cocok, susut nol, atau hitungan pertama).') + ' Isi wadah & karung terbuka kini = hitungan.', kabarAwas: false } };
 }
 /** Hitungan fisik sebelumnya (semua jenis), dikelompokkan per tanggal+jam, terbaru dulu. */
 export function riwayatCocok(n) {
   const semua = [];
-  ambilPenyesuaianStok().forEach((d) => { if (hitunganFisik(d)) semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: d.merk + (d.bagian === 'wadah' ? ' (wadah ' + (d.wadah || '') + ')' : d.bagian === 'tumpukan' ? ' (tumpukan)' : ''), teks: (d.selisihKg > 0 ? '+' : '') + String(Math.round((d.selisihKg || 0) * 100) / 100).replace('.', ',') + ' kg', rp: d.nilaiRp || 0, alasan: d.alasan || '' }); });
+  ambilPenyesuaianStok().forEach((d) => { if (hitunganFisik(d)) semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: d.merk + (d.bagian === 'wadah' ? (d.wadah ? ' (wadah ' + d.wadah + ')' : ' (karung lepas)') : d.bagian === 'tumpukan' ? ' (tumpukan)' : ''), teks: (d.selisihKg > 0 ? '+' : '') + String(Math.round((d.selisihKg || 0) * 100) / 100).replace('.', ',') + ' kg', rp: d.nilaiRp || 0, alasan: d.alasan || '' }); });
   ambilPenyesuaianKemasan().forEach((d) => semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: d.namaProduk + ' ' + String(d.ukuranKemasan).replace('.', ',') + ' kg', teks: (d.selisihUnit > 0 ? '+' : '') + (d.selisihUnit || 0) + ' unit', rp: d.nilaiRp || 0, alasan: d.alasan || '' }));
   ambilBahanKemasan().concat(ambilBahanLiteran()).forEach((d) => { if (d.tipe === 'opname') semua.push({ tanggal: d.tanggal || '', jam: d.jam || '', nama: ccLabelBahan(d.jenis), teks: (d.jumlah > 0 ? '+' : '') + (d.jumlah || 0) + ' lembar', rp: d.nilaiRp || 0, alasan: d.catatan || '' }); });
   const kel = {}; semua.forEach((x) => { const k = x.tanggal + ' ' + x.jam; if (!kel[k]) kel[k] = { kunci: k, tanggal: x.tanggal, jam: x.jam, baris: [], rp: 0 }; kel[k].baris.push(x); kel[k].rp += x.rp; });
