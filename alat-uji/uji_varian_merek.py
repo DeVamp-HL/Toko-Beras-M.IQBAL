@@ -115,8 +115,23 @@ ok('induk varian baru dari layar Harga: nama wadah / kelas mutu (IR64 Apex, IR42
 
 // ---- ASAP DATA TOKO
 var asap = null;
+
+// ---- audit 39b no. 43 (owner 30 Sep: petunjuk satu ketukan): "TH" diketik padahal barangnya sudah berbuku sebagai varian "TH · House"
+terapkanKeCache([{ koleksi: 'batchMasuk', data: { id: 'b43', tanggal: '2026-09-18', jam: '08:00', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [{ id: '1', merk: 'TH · House', satuan: 'karung', beratKarung: 50, jumlahKarung: 3, totalKg: 150, hargaPerKg: 12000, subtotalHarga: 1800000 }] } },
+  { koleksi: 'katalogHargaKarung', data: { id: 'TH · Gold', merk: 'TH · Gold', hargaPerKg: 14000 } },
+  // buku per ukuran "TH · House 25 kg" (buku khusus, bukan nama barang masuk) — TIDAK boleh ditawarkan sebagai saran
+  { koleksi: 'batchMasuk', data: { id: 'b43u', tanggal: '2026-09-18', jam: '08:05', pemasok: 'LAHIR BUKU', caraBayar: 'tunai', biayaBongkar: 0, stokAwal: true, lahirBuku: true, merkList: [{ id: '1', merk: 'TH · House 25 kg', satuan: 'lahir', beratKarung: 25, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, indukUkuran: 'TH · House' }] } }]);
+var H43 = hitungMasuk(draf([brs('TH', 2, 12000), brs('  th ', 1, 12000), brs('TH · House', 1, 12000), brs('Polos', 1, 13000)]));
+ok('39b-43 "TH" (tanpa buku) → baris baru dengan saran varian: TH · House (buku 150 kg) dulu, lalu TH · Gold (katalog saja, 0 kg); buku per ukuran TH · House 25 kg tidak ditawarkan; huruf kecil & spasi tidak dibedakan',
+  H43.baris[0].baru === true && J(H43.baris[0].saranVarian) === J([{ nama: 'TH · House', bukuKg: 150 }, { nama: 'TH · Gold', bukuKg: 0 }]) && J(H43.baris[1].saranVarian) === J(H43.baris[0].saranVarian), J(H43.baris.slice(0, 2).map(function (b) { return [b.merkKetik, b.baru, b.saranVarian]; })));
+ok('39b-43 nama varian yang diketik lengkap, dan nama yang sudah berbuku sendiri (Polos), TIDAK diberi saran; koreksi kedatangan juga tidak', !H43.baris[2].baru && !H43.baris[2].saranVarian.length && !H43.baris[3].saranVarian.length
+  && !hitungMasuk(draf([brs('TH', 1, 12000)], { id: 'b1' })).baris[0].saranVarian.length && ckSaranVarian('TH · House').length === 0 && ckSaranVarian('').length === 0, J([H43.baris[2].saranVarian, H43.baris[3].saranVarian]));
+var R43 = susunSimpanMasuk(draf([brs('TH · House', 2, 12000)]), W, true); var b43 = (R43.dokumen || []).find(function (d) { return d.koleksi === 'batchMasuk'; });
+ok('39b-43 sesudah "pakai TH · House" (baris diganti ke nama varian): kedatangan tercatat atas TH · House, buku varian naik 150 → 250 kg, tidak ada buku "TH" baru', !R43.tolak && b43 && b43.data.merkList[0].merk === 'TH · House' && (function () { terapkanKeCache(R43.dokumen || []); return stok('TH · House').sisaKg === 250 && !hitungStokKarungPerMerk()['TH']; })(), J([R43.tolak, b43 && b43.data.merkList]));
 if (CADANGAN) {
   Object.keys(CADANGAN).forEach(function (n) { pasok(n, CADANGAN[n]); });
+  // audit 39b no. 43: diukur di data toko APA ADANYA (sebelum varian contoh "· Uji" dibuat di bawah)
+  var saranToko = ['TH', 'SR', 'HSj', 'SB', 'II', 'MTJ'].map(function (n) { return [n, ckSaranVarian(n).map(function (v) { return v.nama; })]; });
   // putaran 27 (Bagian 5): nama wadah / kelas mutu (IR64 Apex dkk.) tidak boleh lagi datang lewat barang masuk — dipisah: merek → varian, kelas → wajib ditolak
   var kelas = wbNamaKelas(); var st0 = hitungStokKarungPerMerk(); var semuaNama = Object.keys(st0).filter(function (m) { return st0[m].hppTerakhirPerKg > 0; });
   // putaran 28: buku per ukuran ('Merek 25 kg') & buku khusus wadah bukan nama barang masuk — ditolak dengan benar, jadi tidak ikut asap varian
@@ -130,7 +145,7 @@ if (CADANGAN) {
   var petaR = ((R.dokumen || []).find(function (d) { return d.koleksi === 'pengaturan'; }) || { data: { peta: {} } }).data.peta;
   var jenisIkut = nama.every(function (m) { return petaR[m + ' · Uji'] === jenisUntukMerk(m); });
   var kelasLolos = namaKelas.filter(function (m) { return !/nama WADAH/.test(susunSimpanMasuk(draf([brs(m, 1, Math.round(st0[m].hppTerakhirPerKg * 1.10), { varian: 'beda', namaMutu: 'Uji' })], { tanggal: TGL_CAD }), WC, true).tolak || ''); });
-  asap = { nama: nama.length, tanya3: tanya3, tanya10: tanya10, tolak: R.tolak || '', lamaSama: lamaSama, jenisIkut: jenisIkut, varian: Object.keys(st1).filter(function (m) { return / · Uji$/.test(m); }).length, kelas: namaKelas.length, kelasLolos: kelasLolos };
+  asap = { saranToko: saranToko, nama: nama.length, tanya3: tanya3, tanya10: tanya10, tolak: R.tolak || '', lamaSama: lamaSama, jenisIkut: jenisIkut, varian: Object.keys(st1).filter(function (m) { return / · Uji$/.test(m); }).length, kelas: namaKelas.length, kelasLolos: kelasLolos };
 }
 print(J({ lulus: lulus, gagal: gagal, asap: asap }));
 """
@@ -176,6 +191,10 @@ RUSAK = {
     'induk varian baru menawarkan nama wadah / kelas': ("return (daftar || []).filter((m) => String(m).indexOf(VR_PEMISAH) < 0 && !kelas[m]);", "return (daftar || []).filter((m) => String(m).indexOf(VR_PEMISAH) < 0);"),
     'peringatan varian diam walau induk berstok tanpa harga': ("if ((perKg !== null && perKg > 0) || (utuh && utuh.perUnit > 0)) return '';", "return '';"),
     'peringatan varian berbunyi walau induk sudah berharga': ("if ((perKg !== null && perKg > 0) || (utuh && utuh.perUnit > 0)) return '';", "if (false) return '';"),
+    # audit 39b no. 43
+    'petunjuk varian tidak muncul (TH lahir jadi buku terpisah tanpa ditanya)': ("const saranVarian = baru ? ckSaranVarian(merkKetik) : [];", "const saranVarian = [];"),
+    'saran varian peka huruf besar/kecil & spasi': ("const kunci = (x) => String(x).trim().replace(/\\s+/g, ' ').toLowerCase();", "const kunci = (x) => String(x);"),
+    'saran varian menawarkan nama yang diarsipkan / buku khusus': ("&& !arsip[arKunciBeras(m)] && !bw[m] && !uk[m])", ")"),
     'usul harga tanpa target untung': ("return modalKg > 0 ? vrBulatAtas(modalKg + (Number(a.targetPerKg) || 0), Number(a.bulatKarung) || 0) : 0;", "return modalKg > 0 ? vrBulatAtas(modalKg, Number(a.bulatKarung) || 0) : 0;"),
 }
 
@@ -190,10 +209,19 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g, asap = utama(js, True)
+    # audit 39b no. 43 — statis: pita "pakai itu?" & aksinya ada di layar Barang masuk (stok.js)
+    t43 = open(os.path.join(AKAR, 'baru/js/layar/stok.js'), encoding='utf-8').read()
+    kurang43 = [x for x in ['data-aksi="mPakaiVarian"', 'mPakaiVarian: ({ i, merk }) => ubahMasuk(', 'data-k="msv-${i}"', 'sudah dicatat sebagai <b>${b.saranVarian.map((v) => v.nama)'] if x not in t43]
+    if kurang43: g.append('statis 39b no. 43 · stok.js tidak memuat: ' + ' | '.join(kurang43))
+    else: l += 1
     print('VARIAN MEREK (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     if asap:
         print('ASAP DATA TOKO (%s): %d nama bermodal · beli ±3 %% ditanya: %s · beli +10 %% TIDAK ditanya: %s · %d varian dibuat · buku nama lama byte-sama: %s · jenis ikut induk: %s · %d nama kelas/wadah ditolak barang masuk (lolos: %s)'
               % (os.path.basename(cadangan_toko()), asap['nama'], ', '.join(asap['tanya3']) or 'tidak ada', ', '.join(asap['tanya10']) or 'tidak ada', asap['varian'], asap['lamaSama'], asap['jenisIkut'], asap['kelas'], ', '.join(asap['kelasLolos']) or 'tidak ada'))
         if asap['tanya3'] or asap['tanya10'] or asap['tolak'] or not asap['lamaSama'] or not asap['jenisIkut'] or asap['varian'] != asap['nama'] or asap['kelasLolos']: g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:300])
+        # audit 39b no. 43: TH, SR, HSj, SB, II, MTJ (dikoreksi 28 Sep jadi nama varian) — diketik lagi di Barang masuk wajib ditawari variannya
+        st43 = asap.get('saranToko') or []
+        print('   39b no. 43 — saran satu ketukan untuk nama karung yang sudah jadi varian: ' + ' · '.join('%s → %s' % (n, ' / '.join(v) or 'TIDAK ADA') for n, v in st43))
+        if not st43 or any(not v or not all(x.split(' \u00b7 ')[0].lower() == n.lower() for x in v) for n, v in st43): g.append('asap data toko (39b no. 43): ' + json.dumps(st43, ensure_ascii=False)[:300])
     sys.exit(2 if g else 0)
