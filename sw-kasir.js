@@ -102,7 +102,9 @@
 // penuh lagi dan sisa bon di sistem jadi minus. Pilih nama dari daftar yang terlihat (bukan nomor urut), lembar bayar menyebut umur daftar sisa.
 // Kasir darurat ikut menyimpan waktu server katalog di kunci bersama (satu baris). LABEL_VERSI kedua berkas → 'versi 39b' (label bilah atas WAJIB ikut
 // naik bersama VERSI — owner membedakan versi dari situ). Bentuk nota & katalog TIDAK berubah.
-const VERSI = 'kasir-v28';
+// v29 (30 September 2026, audit 39b no. 3): layar utang kasir.html punya pilihan cara bayar sendiri (Tunai/QRIS, bawaan Tunai tiap nama dipilih) —
+// dulu pembayaran bon mewarisi tombol cara bayar nota diam-diam (bon tunai tercatat QRIS, atau QRIS tidak bisa dipilih). LABEL 'versi 39b-3'.
+const VERSI = 'kasir-v29';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

@@ -15,7 +15,7 @@
 //  - pengaturan/titikKas = isi tempat uang SESUDAH tutup (laci akhir, rekening, amplop + sisihan, brankas + amankan) — patokan kas maju, inti ritualnya.
 import { kasPada, hitungLabaBersihRentang, hitungStokKarungPerMerk, thDorongRiwayat } from '../mesin/beku.js';
 import { daftarGerakanKas, caraBayarKunci } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPiutangMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import { aturHarga, hgPct } from './harga-logika.js';
 import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat } from './uang-logika.js';
@@ -38,13 +38,28 @@ export function susunAturTutup(isi, w) {
 export const mdrSatu = (n, A) => (n > A.mdrBatas ? Math.round(n * A.mdrPersen / 10000) : 0);
 /** Ringkasan hari `iso`: omzet per cara bayar, nota QRIS + potongannya, bon dibayar, laba, yang menggantung, penutupan yang sudah ada. */
 export function ringkasHari(iso) {
-  const A = aturTutup(); const jual = ambilPenjualan().filter((p) => p.tanggal === iso); const qrisNota = jual.filter((p) => caraBayarKunci(p) === 'qris').map((p) => ({ id: String(p.id), jam: p.jam || '', n: Number(p.hargaTotal) || 0, mdr: mdrSatu(Number(p.hargaTotal) || 0, A) }));
-  const tunai = jual.filter((p) => caraBayarKunci(p) !== 'qris' && caraBayarKunci(p) !== 'kredit').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0); const qris = qrisNota.reduce((a, q) => a + q.n, 0); const kredit = jual.filter((p) => caraBayarKunci(p) === 'kredit').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0);
+  const A = aturTutup(); const jual = ambilPenjualan().filter((p) => p.tanggal === iso);
+  /* audit 39b no. 3: "QRIS" = SEMUA uang yang masuk lewat QRIS hari ini — sumbernya sama dengan gerakan rekening mesin (pembantu daftarGerakanKas kantongBayar):
+     penjualan (dikelompokkan PER TRANSAKSI — satu pindai QRIS satu potongan; dulu per baris barang), pembayaran bon, kasbon kembali. Dulu bayar bon QRIS
+     dibuang → rekening naik penuh tapi tidak ada di rekap, angka bank jujur ditolak, MDR-nya tidak pernah jadi biaya. Omzet tetap penjualan saja (qrisJual).
+     Beda yang diketahui: baris penjualan MINUS (potongan harga HP kasir) ikut dijumlah di sini (= uang yang dipindai), mesin membuangnya dari kas
+     (rekening mesin = harga kotor) — tinjauan no. 3 T4, dilaporkan terpisah. Baris hasil rapikan/rincian ikut transaksi nota ASALNYA (rantai koreksiDari). */
+  let petaP = null; const kunciTrx = (p) => { let x = p;
+    for (let i = 0; x && x.koreksiDari != null && i < 50; i++) { if (!petaP) { petaP = {}; ambilPenjualanSemua().forEach((z) => { petaP[String(z.id)] = z; }); } const y = petaP[String(x.koreksiDari)]; if (!y || y === x) break; x = y; }
+    return String(x.trxId || x.grupNota || x.id); };
+  const grupQ = {}; jual.filter((p) => caraBayarKunci(p) === 'qris').forEach((p) => { const k = kunciTrx(p); if (!grupQ[k]) grupQ[k] = { id: k, jam: p.jam || '', n: 0, jenis: 'jual', ket: '' }; grupQ[k].n += Number(p.hargaTotal) || 0; });
+  const masukQris = (xs) => (xs || []).filter((m) => m && m.tipe === 'bayar' && m.tanggal === iso && Number(m.nominal) > 0 && caraBayarKunci(m) === 'qris');
+  const qrisNota = Object.keys(grupQ).map((k) => grupQ[k])
+    .concat(masukQris(ambilPiutangMutasi()).map((m) => ({ id: String(m.id), jam: m.jam || '', n: Number(m.nominal) || 0, jenis: 'bon', ket: 'bayar bon ' + String(m.namaPelanggan || '').trim() })))
+    .concat(masukQris(ambilKasbonMutasi()).map((m) => ({ id: String(m.id), jam: m.jam || '', n: Number(m.nominal) || 0, jenis: 'kasbon', ket: 'kasbon kembali ' + String(m.namaPegawai || '').trim() })))
+    .map((q) => Object.assign(q, { mdr: mdrSatu(q.n, A) })).sort((a, b) => String(a.jam).localeCompare(String(b.jam)));
+  const jmlQ = (j) => qrisNota.filter((q) => q.jenis === j).reduce((a, q) => a + q.n, 0); const qrisJual = jmlQ('jual'), qrisBon = jmlQ('bon'), qrisKasbon = jmlQ('kasbon');
+  const tunai = jual.filter((p) => caraBayarKunci(p) !== 'qris' && caraBayarKunci(p) !== 'kredit').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0); const qris = qrisJual + qrisBon + qrisKasbon; const kredit = jual.filter((p) => caraBayarKunci(p) === 'kredit').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0);
   const bonDibayar = ambilPiutangMutasi().filter((m) => m.tipe === 'bayar' && m.tanggal === iso && caraBayarKunci(m) !== 'qris').reduce((a, m) => a + (Number(m.nominal) || 0), 0);
   const mdrDok = ambilPengeluaranHarian().find((h) => String(h.id) === 'mdr-' + iso) || null; const mdrTercatat = mdrDok ? Number(mdrDok.nominal) || 0 : 0;
   const L = hitungLabaBersihRentang(iso, iso); const labaSebelumMdr = L.labaBersih + mdrTercatat;
   const semua = ambilPenjualan(); const rapikan = semua.filter((p) => p.perluKoreksi).length; const darurat = semua.filter((p) => p.jenis === 'kasir_darurat_nominal').length;
-  return { iso, nota: jual.length, tunai, qris, qrisNota, kredit, omzet: tunai + qris + kredit, bonDibayar, mdrKira: qrisNota.reduce((a, q) => a + q.mdr, 0), mdrTercatat, labaSebelumMdr, laba: L, rapikan, darurat, sudah: ambilTutupHari().find((t) => t.tanggal === iso) || null, atur: A };
+  return { iso, nota: jual.length, tunai, qris, qrisJual, qrisBon, qrisKasbon, qrisNota, kredit, omzet: tunai + qrisJual + kredit, bonDibayar, mdrKira: qrisNota.reduce((a, q) => a + q.mdr, 0), mdrTercatat, labaSebelumMdr, laba: L, rapikan, darurat, sudah: ambilTutupHari().find((t) => t.tanggal === iso) || null, atur: A };
 }
 /** Tiga merek yang paling banyak keluar hari ini (kg) untuk ditimbang cepat, dengan angka catatan (kg di buku).
  *  Putaran 39 (owner 29 Sep e): buku KHUSUS (petaBukuWadah — 'Wadah X', 'Karung belakang …', 'Karung wadah …', 'Adukan …') tidak ditawarkan di sini:
@@ -91,7 +106,7 @@ export function hitungTutup(D, kini) {
   const timbang = barangTimbang(iso).map((m) => { const x = (D.timbang || {})[m.merk]; const nyata = x === undefined || x === null || x === '' ? null : tdB1(ugAngka(x)); const beda = nyata === null ? 0 : tdB1(nyata - m.sistem); return Object.assign({}, m, { nyata, beda, rp: Math.round(beda * m.hpp), teks: nyata === null ? 'belum' : beda === 0 ? 'cocok' : (beda > 0 ? 'lebih ' : 'kurang ') + KG(Math.abs(beda)) }); });
   const belumTimbang = timbang.filter((m) => m.nyata === null).length; const bedaTimbang = tdB1(timbang.reduce((a, m) => a + m.beda, 0));
   const tolakLaci = !(hitung > 0) ? 'Hitung dulu uangnya' : seharusnya === null ? '' : (!dimaafkan && !D.alasan ? 'Selisihnya di luar yang dimaafkan — pilih alasannya' : '');
-  const tolakRek = D.rekPilih === 'beda' ? (!(rekNyata > 0) ? 'Ketik jumlah yang benar-benar masuk' : rekNyata > R.qris ? 'Lebih besar dari penjualan QRIS hari ini (' + RP(R.qris) + ') — uang lain yang ikut masuk dicatat di Pindah uang atau Owner & toko' : '') : '';
+  const tolakRek = D.rekPilih === 'beda' ? (!(rekNyata > 0) ? 'Ketik jumlah yang benar-benar masuk' : rekNyata > R.qris ? (R.qrisBon || R.qrisKasbon ? 'Lebih besar dari uang QRIS hari ini (' + RP(R.qris) + ' = penjualan ' + RP(R.qrisJual) + (R.qrisBon ? ' + bayar bon ' + RP(R.qrisBon) : '') + (R.qrisKasbon ? ' + kasbon kembali ' + RP(R.qrisKasbon) : '') + ')' : 'Lebih besar dari penjualan QRIS hari ini (' + RP(R.qris) + ')') + ' — uang lain yang ikut masuk dicatat di Pindah uang atau Owner & toko' : '') : '';
   const tolakSisih = !beres('laci') ? 'Hitung laci dulu' : sisihN > hitung ? 'Laci cuma ' + RP(hitung) : !(sisihN > 0) ? 'Nominalnya nol — lewati saja' : '';
   const tolakAman = !beres('laci') ? 'Hitung laci dulu' : !(amankanN > 0) ? 'Isi laci tidak lebih dari uang kembalian ' + RP(A.kembalian) : '';
   const dilewati = LANGKAH_TUTUP.filter((l) => l[0] !== 'rekap' && !beres(l[0])).map((l) => l[1]);
@@ -105,12 +120,12 @@ export function hitungTutup(D, kini) {
 }
 /** Baris rekap (dibaca kertas, teks WA, dan dokumen). */
 export function rekapTutup(H) {
-  const R = H.R; const rows = [['Omzet · ' + R.nota + ' nota', RP(R.omzet), ''], ['  tunai', RP(R.tunai), ''], ['  QRIS', RP(R.qris), ''], ['  bon baru', RP(R.kredit), ''], ['Bon dibayar tunai', RP(R.bonDibayar), ''],
+  const R = H.R; const rows = [['Omzet · ' + R.nota + ' nota', RP(R.omzet), ''], ['  tunai', RP(R.tunai), ''], ['  QRIS', RP(R.qrisJual), ''], ['  bon baru', RP(R.kredit), ''], ['Bon dibayar tunai', RP(R.bonDibayar), '']].concat(R.qrisBon > 0 ? [['Bon dibayar QRIS', RP(R.qrisBon), '']] : [], R.qrisKasbon > 0 ? [['Kasbon kembali QRIS', RP(R.qrisKasbon), '']] : [], [
     ['Potongan QRIS (MDR) · ' + (H.mdrDicatat ? (H.rekNyata !== null ? 'sebenarnya' : 'perkiraan') : 'perkiraan, belum dicatat'), '−' + RP(H.mdrDicatat ? H.mdrJadi : R.mdrKira), ''], ['Laba hari ini · sudah dipotong MDR', RP(H.labaHari), ''],
     ['Laci dihitung', H.hitung > 0 ? RP(H.hitung) : 'belum', H.hitung > 0 ? '' : 'awas'], ['Selisih laci', H.hitung > 0 ? (H.selisih === null ? 'tidak bisa dihitung' : H.selisih === 0 ? 'pas' : RP(H.selisih) + (H.perluAlasan && H.alasanJadi ? ' · ' + H.alasanJadi : '')) : '—', H.hitung > 0 && H.selisih !== 0 ? 'awas' : ''],
     ['Disisihkan ke amplop laba', H.sisihJadi > 0 ? RP(H.sisihJadi) : (H.status.find((s) => s.id === 'sisih').st === 'dilewati' ? 'dilewati' : 'belum'), ''], ['Diamankan ke brankas', H.amankanJadi > 0 ? RP(H.amankanJadi) : (H.status.find((s) => s.id === 'amankan').st === 'dilewati' ? 'dilewati' : 'belum'), ''],
     ['Timbang cepat', H.belumTimbang === 0 && H.timbang.length ? (H.bedaTimbang === 0 ? 'semua cocok' : (H.bedaTimbang < 0 ? 'kurang ' : 'lebih ') + KG(Math.abs(H.bedaTimbang)) + ' (masuk susut)') : (H.status.find((s) => s.id === 'timbang').st === 'dilewati' ? 'dilewati' : H.timbang.length ? 'belum' : 'tidak ada beras karung/literan keluar'), ''],
-    ['Tinggal di laci', H.hitung > 0 ? RP(H.laciAkhir) : '—', 'jumlah']];
+    ['Tinggal di laci', H.hitung > 0 ? RP(H.laciAkhir) : '—', 'jumlah']]);
   return rows.map((r) => ({ a: r[0], b: r[1], kelas: r[2] }));
 }
 export function teksRekap(H, iso, jam) {
@@ -133,7 +148,7 @@ export function susunTutup(D, w, yakinUlang) {
   const dokumen = [{ koleksi: 'tutupHari', data: dokTutup }, { koleksi: 'amplopLaba', data: { id: 'am-' + iso, tanggal: iso, jam: w.jam, tipe: 'setor', nominal: H.sisihJadi, catatan: 'Sisihan tutup hari' } },
     { koleksi: 'setoranKas', data: { id: 'st-' + iso, tanggal: iso, jam: w.jam, nominal: 0, catatan: 'Tutup hari' } }, { koleksi: 'modalOwner', data: { id: 'mo-st-' + iso, tanggal: iso, jam: w.jam, tipe: 'tarik', nominal: 0, catatan: 'Setoran tutup hari', dariSetoran: 'st-' + iso } }];
   const hapus = [];
-  if (H.mdrDicatat && H.mdrJadi > 0) dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: 'mdr-' + iso, kategori: 'toko', untuk: 'toko', tanggal: iso, jam: w.jam, keterangan: 'Potongan QRIS (MDR) · ' + H.R.qrisNota.length + ' nota' + (H.rekNyata !== null ? ' · sebenarnya' : ' · perkiraan'), nominal: H.mdrJadi, dari: 'rekening', mdr: true } });
+  if (H.mdrDicatat && H.mdrJadi > 0) dokumen.push({ koleksi: 'pengeluaranHarian', data: { id: 'mdr-' + iso, kategori: 'toko', untuk: 'toko', tanggal: iso, jam: w.jam, keterangan: 'Potongan QRIS (MDR) · ' + H.R.qrisNota.filter((q) => q.jenis === 'jual').length + ' nota' + (H.R.qrisBon ? ' + ' + H.R.qrisNota.filter((q) => q.jenis === 'bon').length + ' bayar bon' : '') + (H.R.qrisKasbon ? ' + ' + H.R.qrisNota.filter((q) => q.jenis === 'kasbon').length + ' kasbon kembali' : '') + (H.rekNyata !== null ? ' · sebenarnya' : ' · perkiraan'), nominal: H.mdrJadi, dari: 'rekening', mdr: true } });
   else if (ambilPengeluaranHarian().some((h) => String(h.id) === 'mdr-' + iso)) hapus.push({ koleksi: 'pengeluaranHarian', id: 'mdr-' + iso });
   if (H.amankanJadi > 0) dokumen.push({ koleksi: 'pindahUang', data: { id: 'pd-' + iso, tanggal: iso, jam: w.jam, dari: 'laci', ke: 'brankas', nominal: H.amankanJadi, alasan: 'Amankan laci (tutup hari)', biayaAdmin: 0, adminNama: '' } });
   ambilPenyesuaianStok().forEach((x) => { if (x.dariTutup === iso) hapus.push({ koleksi: 'penyesuaianStok', id: x.id }); });
