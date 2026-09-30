@@ -15,7 +15,7 @@
 import { hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { RASIO_KONVERSI, RASIO_DEFAULT, hargaKarungUtuh, cariHargaKarungPerKg } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilWadahLiteran, ambilHargaLiteran, ambilSemuaBatch, ambilProduksiBerlaku, ambilPenyesuaianStok, denganCacheSementara, kunciStokWadah, petaStokWadah, kunciKarungWadah, kunciKarungBelakang, merkAsalKunci, petaBukuWadah, petaUkuran, indukTerpisah } from '../data/toko.js';
-import { aturWadah, karungUntukWadah, karungBelakang, semuaKarungTerbuka, wdSesudah, wdTerbaru, tinggiWadah, beratKarungBuka, DAFTAR_WADAH } from './jual-logika.js';
+import { aturWadah, karungUntukWadah, karungBelakang, semuaKarungTerbuka, wdSesudah, wdTerbaru, tinggiWadah, beratKarungBuka, DAFTAR_WADAH, kolamDitutup } from './jual-logika.js';
 
 const wbB3 = (n) => Math.round(n * 1000) / 1000;
 const wbB2 = (n) => Math.round(n * 100) / 100;
@@ -377,7 +377,12 @@ export function wbSusunGantiNama(lama, baru, w) {
   }
   // 39b no. 6 (sesudah penyamaan kolam di atas, seperti karung sisihan): tiap buku karung belakang → 'Karung belakang <baru> · M' (lahir + pindah buku, modal ikut);
   // kolam catatannya pindah bernama kunci baru di belakang B, kolam lama dinolkan. Karung yang BERDIRI di belakang (karungUntukWadah) ditulis terakhir supaya tetap berdiri.
-  KBL.slice().sort((a, b) => (a.kunci === kn.merk ? 1 : 0) - (b.kunci === kn.merk ? 1 : 0)).forEach((k) => {
+  // tinjauan W1: kolam yang sudah DITUTUP (dikembalikan / dihapus habis) tidak dihidupkan lagi di nama baru — buku sisanya (bila ada) tinggal di kunci lama
+  // (Stok › Wadah literan › buku karung yang tertinggal). W2: urutan tulis = urutan karung itu dibuka / disamakan di nama lama (lama → baru), terdepan paling akhir
+  // (catatan bertanda diamSlot tidak dihitung — sama dengan cara karungUntukWadah memilih karung terdepan)
+  const saat = (k) => wdTerbaru(ambilWadahLiteran().filter((x) => (x.tipe === 'karung' || x.tipe === 'karungIsi') && x.merk === k.kunci && x.wadah === L && !x.diamSlot));
+  const urutSaat = (a, b) => { const x = saat(a), y = saat(b); return !x || !y ? (x ? 1 : 0) - (y ? 1 : 0) : wdSesudah(x, y) ? 1 : wdSesudah(y, x) ? -1 : 0; };
+  KBL.filter((k) => !(k.diketahui && kolamDitutup(k.kunci, L))).sort((a, b) => (a.kunci === kn.merk ? 1 : 0) - (b.kunci === kn.merk ? 1 : 0) || urutSaat(a, b)).forEach((k) => {
     const kB = wbKunciKB(B, k.merk); const lahirB = wbDokLahir([{ merk: kB, karungBelakang: B, merkAsal: k.merk }], w); if (lahirB) dokumen.push(lahirB);
     if (k.bukuKg > 0.004) dokumen.push(wbDokPindah([{ merk: k.kunci, kg: k.bukuKg }], kB, w, { gantiNamaWadah: { dari: L, ke: B }, merkAsal: k.merk, keterangan: 'Ganti nama wadah ' + L + ' → ' + B + ': karung di belakang ' + k.merk + ' ' + wbKG(k.bukuKg) + ' ikut pindah (' + k.kunci + ' → ' + kB + ')' }));
     // kolam lama dinolkan DI TEMPATNYA (di belakang L) — dulu ditulis lepas, catatan di belakang L tetap berisi → karung hantu "dulu di belakang wadah L"
