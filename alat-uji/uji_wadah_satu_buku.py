@@ -348,6 +348,9 @@ ok('39b-6 ganti nama Angsa → Angsa Enam: tiap buku karung belakang pindah ke "
     return kb6.every(function (k) { var b = baru.filter(function (x) { return x.merk === k.merk; })[0]; return !!b && B2(b.bukuKg) === B2(k.bukuKg) && (!k.diketahui || B2(b.kolamKg) === B2(k.kolamKg)) && B2(buku(k.kunci)) === 0; })
       && Math.abs(tumpukanGudang('NG').kg - t6) < 0.011 && nilai() === v6 && wbMerkAsal(karungUntukWadah('Angsa Enam').merk) === berdiri6; }),
   J([GN6.tolak, kb6.map(function (k) { return k.merk + ' ' + k.bukuKg + '/' + k.kolamKg; })]));
+ok('39b-6 sesudah ganti nama tidak ada catatan karung yang tertinggal di nama lama "Angsa" (dulu kolam lama dinolkan di tempat lepas, catatan di belakang Angsa tetap berisi → karung hantu di deretan)',
+  !GN6.tolak && denganCacheSementara(GN6.dokumen, function () { return !semuaKarungTerbuka().some(function (k) { return k.lokasi === 'Angsa' && Math.abs(k.sisaMentahKg) > 0.004; }) && !deretanKarung().some(function (k) { return k.lokasi === 'Angsa' && k.sisaMentahKg > 0.004; }); }),
+  J(denganCacheSementara(GN6.dokumen || [], function () { return semuaKarungTerbuka().filter(function (k) { return k.lokasi === 'Angsa'; }).map(function (k) { return k.merk + ' ' + k.sisaMentahKg; }); })));
 var kbNG6 = kb6.filter(function (k) { return k.merk === 'NG'; })[0];
 ok('39b-6 sesudah ganti nama, isi ulang 1 kg NG dari Angsa Enam memakai karung di belakangnya (tidak membuka karung baru dari tumpukan)',
   !kbNG6 || kbNG6.bukuKg < 1 || denganCacheSementara(GN6.dokumen, function () { var r = wbSusunIsiUlangTiga('Angsa Enam', 'NG', { jenis: 'kg', kg: '1' }, W, s0()); return !r.tolak && r.hitung.dibuka === 0; }),
@@ -508,6 +511,7 @@ def cetak_asap(nama, asap):
 
 RUSAK = {
     '39b-6: ganti nama tidak memindah buku karung belakang': ("  KBL.slice().sort((a, b) =>", "  [].slice().sort((a, b) =>"),
+    '39b-6: kolam karung belakang lama dinolkan di tempat lepas (karung hantu di nama lama)': ("isiKg: 0, wadah: L, selesai: true, gantiNamaDari: L } });", "isiKg: 0, lepas: true, gantiNamaDari: L } });"),
     '39b-6: karung belakang minus dipindah diam-diam': ("  if (kbMinus.length) return { tolak:", "  if (false) return { tolak:"),
     # toko.js
     'kunci karung belakang tidak dikenali buku khusus': ("else if (m.karungBelakang) out[String(m.merk)] = { jenis: 'belakang', wadah: String(m.karungBelakang), merk: String(m.merkAsal || '') };", ""),

@@ -376,7 +376,8 @@ export function wbSusunGantiNama(lama, baru, w) {
   KBL.slice().sort((a, b) => (a.kunci === kn.merk ? 1 : 0) - (b.kunci === kn.merk ? 1 : 0)).forEach((k) => {
     const kB = wbKunciKB(B, k.merk); const lahirB = wbDokLahir([{ merk: kB, karungBelakang: B, merkAsal: k.merk }], w); if (lahirB) dokumen.push(lahirB);
     if (k.bukuKg > 0.004) dokumen.push(wbDokPindah([{ merk: k.kunci, kg: k.bukuKg }], kB, w, { gantiNamaWadah: { dari: L, ke: B }, merkAsal: k.merk, keterangan: 'Ganti nama wadah ' + L + ' → ' + B + ': karung di belakang ' + k.merk + ' ' + wbKG(k.bukuKg) + ' ikut pindah (' + k.kunci + ' → ' + kB + ')' }));
-    if (k.diketahui) { dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: k.kunci, merkAsal: k.merk, isiKg: 0, lepas: true, gantiNamaDari: L } });
+    // kolam lama dinolkan DI TEMPATNYA (di belakang L) — dulu ditulis lepas, catatan di belakang L tetap berisi → karung hantu "dulu di belakang wadah L"
+    if (k.diketahui) { dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: k.kunci, merkAsal: k.merk, isiKg: 0, wadah: L, selesai: true, gantiNamaDari: L } });
       dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: kB, merkAsal: k.merk, isiKg: wbB2(k.kolamKg), wadah: B, bukuBelakang: true, gantiNamaDari: L } }); } });
   const hL = ambilHargaLiteran().find((h) => h.merk === L); const hB = ambilHargaLiteran().find((h) => h.merk === B);
   if (hL && Number(hL.hargaPerLiter) > 0 && !hB) dokumen.push({ koleksi: 'katalogHargaLiteran', data: { id: B, merk: B, hargaPerLiter: Number(hL.hargaPerLiter), diubahPada: w.kini, modalSaatSetel: 0 } });
