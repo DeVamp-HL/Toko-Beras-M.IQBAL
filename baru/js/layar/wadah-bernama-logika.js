@@ -556,8 +556,10 @@ export function wbPindahTembusBelumCocok() {
 
 /** CEK WADAH tutup toko hari `iso` (owner 29 Sep e): per wadah — sudah dicek atau belum, hasilnya, jam, siapa. */
 export function wbCekHari(iso) {
+  // audit 39b no. 1: cek tutup toko milik HARI DAGANG yang sedang ditutup — ditulis sebelum jam 12 siang = cek hari kemarin (aturan tanggalTutupAktif), satu hari saja
   const A = aturWadah(); const peta = petaStokWadah(); const semua = ambilWadahLiteran();
-  const daftar = A.daftar.map((W, i) => { const aktif = wbAktif(W, peta); const c = wdTerbaru(semua.filter((d) => d.tipe === 'cek' && d.wadah === W && d.tanggal === iso)); const K = wbKomposisi(W);
+  const hariCek = (d) => { if (String(d.jam || '') >= '12:00' || !d.jam) return String(d.tanggal || ''); const t = new Date(String(d.tanggal) + 'T12:00:00'); t.setDate(t.getDate() - 1); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
+  const daftar = A.daftar.map((W, i) => { const aktif = wbAktif(W, peta); const c = wdTerbaru(semua.filter((d) => d.tipe === 'cek' && d.wadah === W && hariCek(d) === iso)); const K = wbKomposisi(W);
     return { no: 'W' + (i + 1), W, aktif, diketahui: K.diketahui, bukuKg: wbB2(K.totalKg), dicek: !!c, hasil: c ? String(c.hasil || '') : '', hasilTeks: c ? (WB_CEK.find((x) => x[0] === c.hasil) || ['', ''])[1] : '', jam: c ? String(c.jam || '') : '', oleh: c ? String(c.oleh || c.diubahOleh || '') : '', bukuSaatCek: c ? wbB2(Number(c.bukuKg) || 0) : null }; });
   return { iso, daftar, nAktif: daftar.filter((x) => x.aktif).length, nDicek: daftar.filter((x) => x.dicek).length, belum: daftar.filter((x) => x.aktif && !x.dicek).map((x) => x.W) };
 }

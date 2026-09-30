@@ -11,7 +11,7 @@ import * as WJ from './wadah-jual-logika.js';
 import * as ST from './struk-logika.js';
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
 import { kunciPelanggan } from '../mesin/pembantu.js';
-import { hariIniIso } from '../inti/format.js';
+import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
 import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal } from '../data/toko.js';
 import { tombolAkun, batasBarisNota, bukanOwner } from './akses-layar.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
@@ -647,7 +647,7 @@ export function pasangLayarJual(akar, opsi) {
       ${PT.map((x, i) => h`<div class="pt-baris ${i ? '' : 'utama'}" data-k="ptb-${x.grup}" data-aksi="ulangiTerakhir" data-g="${x.grup}"><div style="min-width: 0;"><div class="nm">${x.teks}</div><div class="ket">${tanggalPendek(x.tanggal)} ${x.jam} · ${x.cara} · ${x.hariLalu === 0 ? 'hari ini' : x.hariLalu === null ? '' : x.hariLalu + ' hari lalu'}${x.baris.length > 1 ? ' · ' + x.baris.length + ' baris' : ''}</div></div><div class="kanan"><span class="n">${RP(x.total)}</span><span class="kaca-btn kecil ${i ? '' : 'aktif'}">ulangi</span></div></div>`)}</div>` : '';
     const pitaWadah = s.jalur === 'wadah' ? h`<div class="pita-info" data-k="pita-wadah">Wadah = <b>barang dagangan</b> (keputusan owner 17 Sep): tiap lembar jadi baris nota & menambah omzet, buku kantong/karung bekas turun. Yang belum punya harga jual tidak tampil. <span class="tautan" data-aksi="bukaAturWadah">Atur harga jual wadah ›</span></div>` : '';
     // putaran 39 (owner e): CEK WADAH tutup toko — tombol kecil di rak Literan: N dari M wadah aktif sudah dicek hari ini
-    const tombolCek = s.jalur === 'literan' && L.aturWadah().daftar.length ? (() => { const CW = WB.wbCekHari(hariIniIso(s.sekarang || new Date())); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;
+    const tombolCek = s.jalur === 'literan' && L.aturWadah().daftar.length ? (() => { const CW = WB.wbCekHari(tanggalTutupAktif(s.sekarang || new Date())); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;
       return h`<div class="baris-cek-wadah" data-k="cek-wadah-baris"><div class="kaca-btn kecil ${CW.nAktif && nA >= CW.nAktif ? 'aktif' : ''}" data-aksi="bukaCekWadah" data-k="cek-wadah-btn">Cek wadah · ${nA}/${CW.nAktif} hari ini</div><span class="ket">tutup toko: sesuai · lupa isi ulang · dikosongkan</span></div>`; })() : '';
     if (!daftar.length) return h`${kartuPT}${pitaWadah}${tombolCek}<div class="pita-info">${s.jalur === 'sering' ? (s.pelanggan ? s.pelanggan + ' belum punya kebiasaan belanja 90 hari terakhir' : 'Belum ada yang laku 28 hari terakhir') : s.jalur === 'wadah' ? 'Belum ada wadah yang diberi harga jual — ketuk "Atur harga jual wadah" di atas.' : 'Belum ada barang berharga di jalur ini — isi harganya di Katalog'}</div>`;
     // isi gambar = sisa relatif terhadap yang paling banyak DI KELOMPOKNYA (wadah literan memakai isinya sendiri, bukan perbandingan)
@@ -849,7 +849,7 @@ export function pasangLayarJual(akar, opsi) {
     }
     if (s.lembar === 'cekWadah') {
       // putaran 39 (owner e): satu baris per wadah — aktif: buku ±kg, status cek hari ini (hasil · jam · siapa), tiga tombol; belum aktif: redup, "aktifkan dulu"
-      const CW = WB.wbCekHari(hariIniIso(s.sekarang || new Date())); const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'isiUlang'); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;
+      const CW = WB.wbCekHari(tanggalTutupAktif(s.sekarang || new Date())); const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'isiUlang'); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala('Cek wadah · tutup toko', CW.nAktif ? nA + ' dari ' + CW.nAktif + ' wadah aktif sudah dicek hari ini' : 'belum ada wadah yang punya buku sendiri')}
         <div class="ket">Sebelum toko tutup tiap kotak dicek: isinya <b>sesuai</b> bukunya, <b>lupa isi ulang</b> (isi ulangnya dicatat sesudah ini), atau <b>dikosongkan</b> (seluruh isi disisihkan ke karung wadah tanpa timbang). Jam & siapa yang mengecek ikut tercatat.</div>

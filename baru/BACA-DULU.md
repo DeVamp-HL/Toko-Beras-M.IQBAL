@@ -771,6 +771,21 @@ peringatan kalau karung di belakangnya habis ("ambil dari tumpukan gudang?").
   yang dulu mengunci "karung baru dibuka otomatis untuk menambal" ditulis ulang mengikuti aturan habiskan-dulu; `uji_stok_baru`, `uji_wadah_stok_sendiri` tidak berubah
   (deretanKarung lama tetap dipakai panel − / + di Jual).
 
+## Audit 39b no. 1 — tutup hari lewat tengah malam menutup hari kemarin (30 Sep 2026, cabang `audit/39b-tutup-hari-tengah-malam`)
+
+Temuan uang U-1 (`docs/audit-39b-temuan.md` no. 1): K5 menutup tanggal KALENDER, jadi tutup pukul 00.05 menutup hari baru (0 nota) — hari dagang
+kemarin tetap "belum tutup", titik kas bertanggal hari baru, dan malam berikutnya selisih LEBIH palsu seukuran tunai sehari. 19 dari 31 malam sistem lama
+ditutup lewat tengah malam; pagar sistem lama `tanggalTutupAktif` (perbaikan 21 Agu 2026, batas jam 12) tidak ikut ke /baru/.
+- `inti/format.js` `tanggalTutupAktif(d)` + `JAM_BATAS_TUTUP = 12`: tutup SEBELUM jam 12 siang = menutup hari kemarin (satu aturan untuk semua).
+- `tutup-hari-logika.js`: `hitungTutup` memakai `tanggalTutupAktif(kini)` (+ `lewatMalam`, `kalimatTanggal`); `susunTutup` membaca jam dari tanggal + jam
+  tulis (`tdKiniDari(w)`, dulu `ugKiniDari` = tengah hari tanggalnya sehingga jam hilang). Dokumen tutupHari, amplop, MDR, pindah, dan titik kas bertanggal
+  hari dagang yang ditutup.
+- `uang.js`: K5 (draf, kertas, riwayat, cek wadah, teks WA) memakai `isoTutup()`; pita emas "Lewat tengah malam: yang ditutup hari …" di tiga lebar.
+- `wadah-bernama-logika.js` `wbCekHari`: satu cek = satu hari dagang (cek yang ditulis sebelum jam 12 milik hari kemarin); `jual.js` tombol & lembar Cek wadah
+  memakai `tanggalTutupAktif`.
+- Uji: `uji_uang_baru.py` K5 kini berjam 20.00 (jam kotak pasir 10.00 = sebelum jam 12) + 4 pemeriksaan (00.05 & 11.59 → kemarin, 12.00/12.01 → hari ini,
+  dokumen & titik kas bertanggal kemarin) + 2 kontrol; `uji_wadah_satu_buku.py` cek 21 Sep 10.00 = hari dagang 20 Sep, +1 kontrol, +2 pemeriksaan statis.
+
 ## Struktur
 ```
 baru/
