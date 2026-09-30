@@ -197,7 +197,7 @@ di Harga?
 
 | | Pilihan owner | Artinya |
 |---|---|---|
-| A · bentuk katalog | **A1 — bentuk tetap dulu** | `/baru/` menulis dokumen yang sama persis; modal & daftar bon tetap terkirim ke akun kasir sampai putaran tablet |
+| A · bentuk katalog | **A1 — bentuk tetap dulu** | `/baru/` menulis dokumen yang sama persis; modal & daftar bon tetap terkirim ke akun kasir sampai putaran tablet. Satu tambahan (owner 30 Sep, audit 39b "cara persis"): kunci terakhir `bayarBonTerhitung` = id pembayaran bon yang sudah dihitung (kasir v30) |
 | B · HP penjaga | **B1 — boleh ubah** | kasir darurat mengambil katalog saat layar dinyalakan & tiap 5 menit (jadwal denyut); `sw-kasir` v27 |
 | C · PIN operator | **dicabut** | PIN dibuang dari dokumen; daftar nama + aktif/libur pindah ke Menu › Peran & persetujuan › Kasir & PIN; tanpa aturan server baru |
 | D · jenis beras | **Harga + Stok + Jual** | pil jenis & daftar di Harga, total per jenis di Stok, baris saring di Jual (owner tahu desain Jual dikunci) |

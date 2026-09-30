@@ -4,16 +4,21 @@
 // BENTUK TETAP (keputusan owner 27 Sep, pilihan "tetap dulu"): isinya disusun penyusun VERBATIM index.html (susunIsiKatalogKasir, disalin
 // alat-uji/pindah_mesin.py) dan dokumennya berkunci & berurutan persis terbitkanRingkasanKasir() — byte-sama untuk data yang sama. Modal & daftar
 // bon ikut terkirim ke akun kasir seperti sejak Agustus; dicabut di putaran tablet (docs/peta-pindahan-terakhir.md §6 A, peta-hak-akses.md §8).
+// SATU TAMBAHAN (owner 30 Sep, audit 39b "cara persis"): dua kunci terakhir — `bayarBonTerhitung` = id SEMUA pembayaran bon yang dihitung di
+// `piutang` dokumen ini (kkBayarTerhitung) dan `bayarBonSejak` = awal buku berjalan (sesudah tutup buku terakhir; '' bila belum pernah). Empat
+// bagian lainnya tetap byte-sama index.html. HP kasir v30: id tercantum = sudah dihitung; bertanggal sebelum `bayarBonSejak` = sudah terserap saldo
+// pembuka tutup buku; selain itu tetap dikurangkan. HP versi lama & katalog tanpa kunci ini tetap memakai tebakan waktu server (39b no. 4).
+// Isinya murni dari DATA (tanpa jam perangkat penerbit): dua perangkat owner menyusun katalog yang sama (tinjauan persis P2/P3).
 // Dokumen turunan, BUKAN catatan: ditulis apa adanya (tanpa atribusi, tanpa baris jejak), sama dengan index.html.
 //
 // KAPAN TERBIT: sesudah SETIAP perubahan data (bukan daftar kejadian yang dipilih tangan — pasti ada yang tertinggal), jeda KK_JEDA_MS seperti
 // index.html, hanya kalau isinya BERBEDA dengan dokumen di server; dan terbit harga menyertakannya dalam kiriman yang SAMA (kkSertakan).
 // Gerbang kkBolehTerbit(): owner, Firestore (bukan cadangan), semua koleksi sudah dijawab SERVER (bukan salinan perangkat yang bisa basi), dokumen
 // katalog di server sudah terbaca, tersambung. Kalau ragu, TIDAK terbit — katalog lama di HP kasir lebih aman daripada katalog dari data basi.
-import { susunIsiKatalogKasir } from '../mesin/pembantu.js';
+import { susunIsiKatalogKasir, kunciPelanggan } from '../mesin/pembantu.js';
 import { arSaringKatalogKasir } from '../layar/arsip-logika.js';
 import { wbSaringKatalogKasir } from '../layar/wadah-bernama-logika.js';
-import { cacheMentah, denganCacheSementara } from './toko.js';
+import { cacheMentah, denganCacheSementara, ambilPiutangMutasi } from './toko.js';
 import { kpPerangkatKasir, kpNomorVersiKasir, kpVersiKasirCukup, kpNamaAplikasiKasir, KP_VERSI_HARI } from './kunci-periode.js';
 import { waktuSetempat } from '../inti/format.js';
 
@@ -21,7 +26,7 @@ export const KK_KOLEKSI = 'ringkasanKasir';
 export const KK_ID = 'aktif';
 export const KK_JEDA_MS = 4000;
 // Versi kasir TERBARU yang disajikan = VERSI sw-kasir.js (uji_katalog_kasir.py & uji_antrean_kasir.py membandingkannya; naik bersama).
-export const KK_VERSI_KASIR_TERBARU = 'kasir-v29';
+export const KK_VERSI_KASIR_TERBARU = 'kasir-v30';
 // Versi PERTAMA yang mengambil katalog sendiri tiap layar HP dinyalakan & tiap 5 menit (25c). Di bawahnya = harga baru baru sampai saat dibuka ulang;
 // di antara ini dan versi terbaru (39b no. 4: v27 belum punya buku kecil bayar bon) = cukup diberi tahu, pemeriksaan katalog lamanya tetap jalan.
 export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v27';
@@ -39,10 +44,22 @@ export function kkCatatTerbit(pada, galat) { _kkTerbit = { pada: pada || _kkTerb
  *  Putaran 27: baris nama yang DIARSIPKAN owner dibuang dari HASILNYA (arsip-logika.js arSaringKatalogKasir); tanpa arsip = byte-sama index.html.
  *  Putaran 28: buku STOK WADAH memakai harga liter wadahnya & nama wadah berstok sendiri tidak menjual literan atas nama mereknya (wbSaringKatalogKasir);
  *  tanpa wadah berstok sendiri = byte-sama index.html. */
-export function kkIsi() { return wbSaringKatalogKasir(arSaringKatalogKasir(susunIsiKatalogKasir())); }
+export function kkIsi() { const isi = wbSaringKatalogKasir(arSaringKatalogKasir(susunIsiKatalogKasir())); return isi ? Object.assign(isi, { bayarBonTerhitung: kkBayarTerhitung(), bayarBonSejak: kkBayarSejak() }) : isi; }
+/** Cara persis (owner 30 Sep): id SEMUA pembayaran bon yang dihitung hitungPiutang() — penyusun `piutang` di atas — persis saringannya (tipe bayar,
+ *  nama yang punya kunci pelanggan), TANPA jendela hari (tinjauan P2: jendela memakai tanggal dari jam HP & jam penerbit). Tutup buku mengarsipkan
+ *  pembayaran tahun lama (tahunnya selesai, daftarnya mulai lagi dari kecil); diurutkan supaya pembanding isi tidak bergantung urutan cache. */
+export function kkBayarTerhitung() {
+  return ambilPiutangMutasi().filter((m) => m && m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan)).map((m) => String(m.id)).sort();
+}
+/** Awal buku berjalan = 1 Januari sesudah tahun terakhir yang ditutup (saldo pembuka piutang bertanda tutupBuku + tahunDari); '' = belum pernah tutup
+ *  buku. Pembayaran bertanggal sebelum ini sudah TERSERAP saldo pembuka (dokumennya pindah ke arsip, id-nya tidak tercantum lagi — tinjauan P1). */
+export function kkBayarSejak() {
+  let t = null; ambilPiutangMutasi().forEach((m) => { if (m && m.tutupBuku) { const n = Number(m.tahunDari); if (isFinite(n) && n > 0 && (t === null || n > t)) t = n; } });
+  return t === null ? '' : (t + 1) + '-01-01';
+}
 /** Dokumen yang ditulis: kunci & urutan PERSIS terbitkanRingkasanKasir() index.html. */
 export function kkDokumen(isi, kini) {
-  return { id: KK_ID, diperbaruiPada: kini, kemasan: isi.kemasan, merkKarung: isi.merkKarung, bahanLiteran: isi.bahanLiteran, piutang: isi.piutang };
+  return { id: KK_ID, diperbaruiPada: kini, kemasan: isi.kemasan, merkKarung: isi.merkKarung, bahanLiteran: isi.bahanLiteran, piutang: isi.piutang, bayarBonTerhitung: isi.bayarBonTerhitung || [], bayarBonSejak: isi.bayarBonSejak || '' };
 }
 // Pembanding ISI (bukan umur, sama dengan index.html): kunci objek diurutkan dulu — Firestore mengembalikan peta dengan urutan kuncinya sendiri,
 // jadi JSON.stringify apa adanya bisa berbeda walau isinya sama, dan katalog akan diterbitkan ulang tanpa henti.
@@ -53,7 +70,7 @@ function kkUrut(x) {
 }
 export function kkKanon(x) {
   const d = x || {};
-  return JSON.stringify(kkUrut({ kemasan: d.kemasan || [], merkKarung: d.merkKarung || [], bahanLiteran: d.bahanLiteran || {}, piutang: d.piutang || [] }));
+  return JSON.stringify(kkUrut({ kemasan: d.kemasan || [], merkKarung: d.merkKarung || [], bahanLiteran: d.bahanLiteran || {}, piutang: d.piutang || [], bayarBonTerhitung: d.bayarBonTerhitung || [], bayarBonSejak: d.bayarBonSejak || '' }));
 }
 /** true = isi sekarang belum sampai ke katalog di server · false = sama · null = belum bisa tahu (dokumen server belum terbaca / isi gagal disusun). */
 export function kkTertinggal(isi) {
