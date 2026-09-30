@@ -1128,3 +1128,29 @@ Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah
   ditolak). Penjaganya `alat-uji/uji_jam_tampil.py` (jsc di TZ Asia/Jakarta & UTC + penjaga statis + kontrol).
 - `alat-uji/periksa_jam_rinci.py CADANGAN` — laporan pola jam baris rincian vs karcis asal + usulan koreksi (tidak menulis; bulan terkunci
   tidak diusulkan dikoreksi).
+
+## Pindah balik buku karung yang tertinggal (keputusan owner 1 Okt 2026, cabang `perbaikan/karung-tertinggal`)
+
+Temuan di cadangan 1 Okt: 30 Sep beberapa karung di belakang wadah aktif "dikembalikan ke tumpukan" dengan kode LAMA (sebelum no. 5) yang tidak memindah
+buku karung belakang balik ke buku mereknya. 6 buku karung yang karungnya sudah tidak ada masih berisi (total 167,8 kg); 2 karung yang lalu dibuka lagi
+di tempat yang sama bukunya ikut memuat sisa itu (49,2 kg dan 14 kg; FAKTA dokumen: persis sisa pengembalian 02.11 yang tanpa pindah). Keputusan owner
+(dua kali, 1 Okt): pertama "tertutup pindah otomatis, yang berdiri timbang dulu"; sesudah tinjauan putaran 2 (alur timbang melahirkan cacat TINGGI —
+sisa lama tercatat lebih/susut lewat jalur isi ulang, hapus karung habis, kembalikan) → "PINDAH BALIK SEMUA", alur timbang khusus DIBUANG.
+- `wadah-bernama-logika.js` `wbSisaKembaliLama` = sisa pengembalian lama sebagai FAKTA dokumen: pengembalian sebelum 1 Okt (karungIsi `dikembalikan`,
+  `sisaSebelumKg` > 0) yang di kiriman yang sama (tanggal + jam + tempat) tidak disertai pindah buku balik, dikurangi pembetulan `betulkanTertinggal`.
+- `wbKarungTertinggal` (pemeriksa d2f3a29): tertutup — karungnya sudah tidak ada, buku ≤ sisa lama → SELURUH buku pindah (juga sesudah diambil isi
+  ulang); berdiri — catatan tidak minus → pindah min(sisa lama, buku − catatan), buku tidak pernah di bawah catatan; karung yang sudah ditutup lagi
+  dengan kode baru (dikembalikan / dihapus habis sejak 1 Okt) → sisa lama dianggap habis (tidak dipindah dua kali).
+  `wbSusunPindahTertinggal`: SATU kiriman untuk semua (modal ikut; laba tidak berubah). Timbang karung sesudahnya lewat Cocokkan biasa.
+- Cocokkan › Wadah literan: karung tertutup bersisa lama tidak dapat baris (diisi 0 = susut padahal berasnya di tumpukan); timbangan karung berdiri
+  bersisa lama DITOLAK: "pindah balik dulu". Kalimat selisih wadah (layar Jual): tertutup/berdiri → pindah balik, lainnya → Cocokkan.
+  Papan Kapur menulis pengembalian & pembetulan sebagai itu sendiri (dulu "takar wadah").
+- `stok.js` Stok › Wadah literan: kartu "Buku karung yang tertinggal" — satu tombol dua ketukan, owner saja (`tombolLuarKisi`). Nama keadaan `ttg*`
+  (`kt*` sudah dipakai layar Kantong — bentrok itu melahirkan pemeriksa CI `alat-uji/periksa_penangan_ganda.py`, yang juga membaca peta kedua
+  `Object.assign(…, aksiPanelWadah(…))` dan keadaan awal; dua `tombolMati` kembar identik dibuang, versi panel yang selama ini menang).
+- Yang BELUM dijaga (catat): menghitung tumpukan (Cocokkan › Tumpukan) SEBELUM tombol ditekan akan mencatat beras itu "lebih", lalu tombol memindahnya
+  lagi → tekan tombolnya dulu. Ketuk dari SATU perangkat (dua perangkat bersamaan = dua kali pindah; id dokumen acak).
+- Σ nilai stok bisa bergeser sedikit saat pindah balik ke merek yang sudah terjual (rata-rata modal mesin) — keputusan owner no. 42; laba tetap.
+  Data toko 1 Okt: 8 karung, 231 kg; geser nilai kecil (di bawah batas asap), laba tetap (asap uji_wadah_satu_buku).
+- Uji `uji_wadah_satu_buku.py` blok 12t (tertutup, hanya sisa lama, berdiri, keadaan sebelum tombol ditekan, Cocokkan & kalimat, Papan Kapur) + asap data toko; kontrol +11;
+  `uji_cocokkan_terpisah.py` asap membereskan kartu dulu sebelum mencocokkan semua wadah.

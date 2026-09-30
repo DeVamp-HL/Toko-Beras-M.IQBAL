@@ -19,7 +19,7 @@ import { LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, kunciKemasa
 import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilHargaKarung, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilWadahLiteran, cacheMentah, tolakKunci, tolakKunciTanggal, stokMerekSaja, petaStokWadah, petaBukuWadah, ambilProduksiBerlaku, kunciUkuran, petaUkuran, indukTerpisah , ukuranDigabung } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { hitunganFisik, tumpukanGudang, aturWadah, pindahNama, semuaKarungTerbuka, karungUntukWadah, karungBelakang, beratKarungBuka, ckCocokTerakhir, ckKalimatMundur, kolamDitutup } from './jual-logika.js';
-import { wbKomposisi, wbBagianMerk, wbKomposisiBaru, wbModalPerKg, wbRasio, wbNamaKelas, wbDokLahir, wbDokPindah, wbLiteranLangsung } from './wadah-bernama-logika.js';
+import { wbKomposisi, wbBagianMerk, wbKomposisiBaru, wbModalPerKg, wbRasio, wbNamaKelas, wbDokLahir, wbDokPindah, wbLiteranLangsung, wbKarungTertinggal } from './wadah-bernama-logika.js';
 import { vrPerluTanya, vrNama, vrDokJenis, vrAda, VR_BATAS_BAWAAN } from './varian-logika.js';
 import { arBeras, arKunciBeras, arDokPulihBanyak, arPeta } from './arsip-logika.js';
 // putaran 30: kelas mutu merek (harga lalu per kelas, merek baru → kelas, kelas tanpa wadah)
@@ -349,12 +349,16 @@ function ckBukuKarungDi(kunci, lokasi, bw, stok, kolam, bagianW) {
 }
 /** Baris cocokkan untuk karung berbuku sendiri di luar slot wadah (tempatnya = catatan kolamnya; belum pernah dicatat → tempat asal bukunya). */
 function ckKarungKhusus(atur, bw, stok, kolam, slot, bagianW) {
-  const out = []; const letak = {};
+  const out = []; const letak = {}; const tertinggal = {}; wbKarungTertinggal().tertutup.forEach((x) => { tertinggal[x.kunci] = 1; });
   kolam.forEach((k) => { const b = bw[k.merk]; if (!b || b.jenis === 'wadah') return; (letak[k.merk] = letak[k.merk] || {})[k.lokasi] = k; });
   Object.keys(bw).sort().forEach((kunci) => { const b = bw[kunci]; if (b.jenis === 'wadah' || !stok[kunci]) return;
     // tinjauan H3: tempat yang kolamnya sudah DITUTUP (dikembalikan / dihapus habis) bukan tempat karung itu lagi — tidak dapat baris (menyimpannya menghidupkan
     // lagi karung itu di slot). Sisa bukunya (bila ada) dihitung di baris LEPAS; tanpa tempat hidup sama sekali → baris lepas juga.
-    const L = letak[kunci] || {}; const tempat = Object.keys(L).filter((lok) => !kolamDitutup(kunci, lok)).sort(); if (!tempat.length) tempat.push(b.jenis === 'belakang' && !Object.keys(L).length ? b.wadah : '');
+    const L = letak[kunci] || {}; const tempat = Object.keys(L).filter((lok) => !kolamDitutup(kunci, lok)).sort();
+    // tinjauan K2: buku karung yang sudah dikembalikan tapi masih memuat sisa pengembalian lama — beresnya lewat "Pindah balik" (Stok › Wadah literan), bukan
+    // dihitung 0 di sini (itu membukukan berasnya yang ada di tumpukan sebagai susut)
+    if (!tempat.length && tertinggal[kunci]) return;
+    if (!tempat.length) tempat.push(b.jenis === 'belakang' && !Object.keys(L).length ? b.wadah : '');
     tempat.forEach((lok) => { if (slot[kunci + '|#|' + lok]) return; const kr = L[lok] || null; const sistem = ckBukuKarungDi(kunci, lok, bw, stok, kolam, bagianW);
       const karungCatatan = kr ? ckB2(kr.sisaMentahKg) : null; if (Math.abs(sistem) <= 0.004 && !(karungCatatan > 0.004)) return;
       const nama = b.jenis === 'belakang' ? 'karung ' + b.merk + ' di belakang ' + b.wadah : b.jenis === 'karung' ? 'karung sisihan wadah ' + b.wadah : kunci + (lok ? ' di belakang ' + lok : ' (lepas)');
@@ -464,7 +468,10 @@ function ccSusunWadah(hitung, alasan, yakin) {
   const kurangAlasan = dihit.filter((b) => b.perluAlasan); const anehDaftar = dihit.filter((b) => b.aneh);
   // 39b no. 5 tinjauan S7: isi kotak / sisa karung yang ditimbang tidak mungkin minus (mis. "cocok persis" atas buku minus)
   const minusH = dihit.filter((b) => (b.isiH !== null && b.isiH < 0) || (b.krH !== null && b.krH < 0));
-  const p = minusH.length ? { tolak: minusH.map((b) => b.nama).join(', ') + ': hitungan tidak boleh minus — timbangan paling kecil 0 kg', perluYakin: '' } : ccPenjaga(atur, dihit, kurangAlasan, anehDaftar, lebihRp, belum, Y, kurangAlasan.map((b) => 'wadah ' + b.nama + ' selisih ' + ckKG(b.selisih) + ', di atas susut wajar ' + ckKG(b.wajarKg)).join('; ') + ' — isi alasannya dulu', '(melebihi isi kotak / isi karung)');
+  // tinjauan L1: karung yang bukunya masih memuat sisa pengembalian lama — di sini sisa itu akan jadi susut; pindah balik lewat kartu "Buku karung yang tertinggal" dulu
+  const TT = {}; wbKarungTertinggal().berdiri.forEach((x) => { TT[x.kunci] = x; }); const lamaH = dihit.filter((b) => b.krH !== null && TT[b.karungNama]);
+  const p = minusH.length ? { tolak: minusH.map((b) => b.nama).join(', ') + ': hitungan tidak boleh minus — timbangan paling kecil 0 kg', perluYakin: '' }
+    : lamaH.length ? { tolak: lamaH.map((b) => 'karung ' + TT[b.karungNama].merk + ' bukunya masih memuat sisa pengembalian lama ' + ckKG(TT[b.karungNama].lamaKg)).join('; ') + ' — pindah balik dulu (Stok › Wadah literan › Buku karung yang tertinggal), baru timbang di sini; kalau tidak, sisa itu jadi susut padahal berasnya di tumpukan', perluYakin: '' } : ccPenjaga(atur, dihit, kurangAlasan, anehDaftar, lebihRp, belum, Y, kurangAlasan.map((b) => 'wadah ' + b.nama + ' selisih ' + ckKG(b.selisih) + ', di atas susut wajar ' + ckKG(b.wajarKg)).join('; ') + ' — isi alasannya dulu', '(melebihi isi kotak / isi karung)');
   return { tab: 'wadah', baris, dihitung: dihit.length, semua: baris.length, belum: belum.length, berubah: dihit.length, susutRp, lebihRp, totalRp: susutRp + lebihRp,
     tolak: p.tolak, perluYakin: p.perluYakin, batasSelisih: atur.batasSelisih };
 }
