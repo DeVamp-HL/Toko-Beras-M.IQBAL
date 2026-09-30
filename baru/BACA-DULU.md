@@ -1138,8 +1138,9 @@ di tempat yang sama bukunya ikut memuat sisa itu (49,2 kg dan 14 kg; FAKTA dokum
 sisa lama tercatat lebih/susut lewat jalur isi ulang, hapus karung habis, kembalikan) → "PINDAH BALIK SEMUA", alur timbang khusus DIBUANG.
 - `wadah-bernama-logika.js` `wbSisaKembaliLama` = sisa pengembalian lama sebagai FAKTA dokumen: pengembalian sebelum 1 Okt (karungIsi `dikembalikan`,
   `sisaSebelumKg` > 0) yang di kiriman yang sama (tanggal + jam + tempat) tidak disertai pindah buku balik, dikurangi pembetulan `betulkanTertinggal`.
-- `wbKarungTertinggal`: hanya sisa yang MASIH UTUH — tertutup: buku karung persis sisa lama (±0,05 kg) → seluruh buku pindah; berdiri: catatan tidak
-  minus DAN buku − catatan ≥ sisa lama (belum termakan isi ulang) → sisa lama pindah, buku karung jadi = catatannya. Yang tidak utuh lagi tidak disentuh.
+- `wbKarungTertinggal` (pemeriksa d2f3a29): tertutup — karungnya sudah tidak ada, buku ≤ sisa lama → SELURUH buku pindah (juga sesudah diambil isi
+  ulang); berdiri — catatan tidak minus → pindah min(sisa lama, buku − catatan), buku tidak pernah di bawah catatan; karung yang sudah ditutup lagi
+  dengan kode baru (dikembalikan / dihapus habis sejak 1 Okt) → sisa lama dianggap habis (tidak dipindah dua kali).
   `wbSusunPindahTertinggal`: SATU kiriman untuk semua (modal ikut; laba tidak berubah). Timbang karung sesudahnya lewat Cocokkan biasa.
 - Cocokkan › Wadah literan: karung tertutup bersisa lama tidak dapat baris (diisi 0 = susut padahal berasnya di tumpukan); timbangan karung berdiri
   bersisa lama DITOLAK: "pindah balik dulu". Kalimat selisih wadah (layar Jual): tertutup/berdiri → pindah balik, lainnya → Cocokkan.
@@ -1151,5 +1152,5 @@ sisa lama tercatat lebih/susut lewat jalur isi ulang, hapus karung habis, kembal
   lagi → tekan tombolnya dulu. Ketuk dari SATU perangkat (dua perangkat bersamaan = dua kali pindah; id dokumen acak).
 - Σ nilai stok bisa bergeser sedikit saat pindah balik ke merek yang sudah terjual (rata-rata modal mesin) — keputusan owner no. 42; laba tetap.
   Data toko 1 Okt: 8 karung, 231 kg; geser nilai kecil (di bawah batas asap), laba tetap (asap uji_wadah_satu_buku).
-- Uji `uji_wadah_satu_buku.py` blok 12t (tertutup, hanya sisa lama, berdiri, Cocokkan & kalimat, Papan Kapur) + asap data toko; kontrol +9;
+- Uji `uji_wadah_satu_buku.py` blok 12t (tertutup, hanya sisa lama, berdiri, keadaan sebelum tombol ditekan, Cocokkan & kalimat, Papan Kapur) + asap data toko; kontrol +11;
   `uji_cocokkan_terpisah.py` asap membereskan kartu dulu sebelum mencocokkan semua wadah.
