@@ -1016,6 +1016,17 @@ masih memakai `deretanKarung()` mentah: slot KOSONG tampil sebagai karung "±0 k
 atas nama itu (dijaga ketukan kedua). Tambalan: `wadah-panel.js` menyaring slot yang tidak tercatat (`!k.no || k.dicatat`) — deretan panel = slot berisi
 + karung lepas, sama dengan Stok. Uji `uji_wadah_satu_buku.py` +1 (+1 statis layar).
 
+## Audit 39b no. 14 — tanda "jual dulu, tandai untuk dicocokkan" tidak dihitung ganda (1 Okt 2026, cabang `audit/39b-selisih-tembus-ganda`)
+
+Temuan (J3 + J4): (J3) dua baris keranjang dari satu buku sama-sama melampaui — tiap baris dibanding buku dikurangi baris LAIN, jadi kekurangan
+50 kg ditagih 50 + 50. (J4) literan dari wadah BELUM aktif yang campuran dipecah ke merek asal; tanda & `selisihKg` penuh disalin ke tiap merek asal —
+pita Jual & kartu Gudang menagih merek yang bukunya tidak kurang. Buku & uang tidak terpengaruh (tanda saja).
+- `jual-logika.js` `barisTembus`: kekurangan dibagi SEKALI — baris sebelumnya memakai buku lebih dulu (`maksSebelum`), baris tanpa sisa kekurangan tidak
+  ditandai; kalimat pemeriksaan ulang tetap sama (dari langit-langit tanpa baris itu). Pita "jual dulu" & kabar hanya menyebut yang kurang.
+- `pecahItemsWadah`: kekurangan literan campuran jatuh ke merek asal yang bagiannya melebihi buku yang tersisa (Σ = kekurangan baris); tidak ada
+  yang kurang di buku → merek yang bukunya paling tipis. Merek lain tanpa tanda.
+- Uji: `uji_jual_tandai_cocok.py` +2 (kontrol +2), `uji_wadah_satu_buku.py` +1 (kontrol +1).
+
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
 Temuan J1: uang kurang saat bayar → semua baris nota jadi Kredit (`uangDiterima` tidak ditulis) + satu pelunasan piutang sebesar uang yang diterima

@@ -513,6 +513,15 @@ ok('39b-26 wadah "Kosong Satu" tanpa karung: slotnya kosong di Stok; deretan men
     return !!sl && sl.kosong && mentah.some(function (k) { return k.merk === 'Kosong Satu'; }) && !saring.some(function (k) { return k.merk === 'Kosong Satu' && k.no; }) && saring.filter(function (k) { return k.no; }).length === isi; })(),
   J(deretanKarung().map(function (k) { return [k.no, k.merk, k.dicatat]; })));
 
+// ---- 12h · 39b no. 14 (J4): literan wadah BELUM aktif campuran yang ditandai tembus — kekurangan jatuh ke merek asal yang bukunya memang kurang, bukan disalin ke tiap merek
+var J4dok = [{ koleksi: 'wadahLiteran', data: { id: 'wl-j4a', tanggal: HARI15, jam: '21:00', wadah: 'Campur Dua', tipe: 'isi', isiKg: 10, komposisi: { NG: 6, Kumala: 4 } } },
+  cocok('Kumala', '2026-09-21', { kgSistem: buku('Kumala'), kgFisik: 1, selisihKg: B2(1 - buku('Kumala')), bagian: 'tumpukan' })];
+ok('39b-14 J4 literan 8 kg dari Campur Dua (NG 6 : Kumala 4), buku Kumala tinggal 1 kg, ditandai kurang 2,2 kg: baris NG TANPA tanda, baris Kumala kurang 2,2 kg (dulu dua-duanya 2,2 → pita menagih NG yang tidak kurang)',
+  denganCacheSementara(J4dok, function () { var out = pecahItemsWadah([{ jenis: 'literan', dariWadah: 'Campur Dua', merkSumber: 'NG', namaProduk: 'Campur Dua', totalKg: 8, jumlahLiter: 10, hargaTotal: 125000, perluCocokkan: true, selisihKg: 2.2 }], null);
+    var ng = out.filter(function (r) { return r.merkSumber === 'NG'; })[0], ku = out.filter(function (r) { return r.merkSumber === 'Kumala'; })[0];
+    return out.length === 2 && !!ng && !!ku && !ng.perluCocokkan && !('selisihKg' in ng) && ku.perluCocokkan === true && ku.selisihKg === 2.2; }),
+  J(denganCacheSementara(J4dok, function () { return pecahItemsWadah([{ jenis: 'literan', dariWadah: 'Campur Dua', merkSumber: 'NG', namaProduk: 'Campur Dua', totalKg: 8, jumlahLiter: 10, hargaTotal: 125000, perluCocokkan: true, selisihKg: 2.2 }], null).map(function (r) { return [r.merkSumber, r.totalKg, r.perluCocokkan, r.selisihKg]; }); })));
+
 // ---- 13 · penjaga perangkat = rules v5 (10)
 var KRY = keadaanAkun('kry.contoh@tokoberasmiqbal.web.app', 'uid-kry', { uid: 'uid-kry', nama: 'Karyawan Contoh', peran: 'karyawan', aktif: true }); var OWN = keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null);
 var HAK = { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'tidak', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' };
@@ -691,6 +700,7 @@ RUSAK = {
     '39b-6: titik samakan nama baru tanpa komposisi turunan': ("Object.keys(kmp).length ? { komposisi: kmp } : {}) }); }", "{}) }); }"),
     '39b-16: cocokkan wadah aktif memutus komposisi turunan lagi': ("Object.assign({ stokWadah: b.kunciStok }, ((k) => (Object.keys(k).length ? { komposisi: k } : {}))(wbKomposisiTurunanKg(b.nama, b.isiH)))", "{ stokWadah: b.kunciStok }"),
     '39b-7: takar dari karung khusus kosong tidak ditolak': ("  if (hk.length) { const bwH", "  if (false) { const bwH"),
+    '39b-14 J4: tanda tembus literan campuran disalin ke tiap merek asal lagi': ("      if (t.perluCocokkan && n > 1) { if (kurangM[x.merk] > 0.004) r.selisihKg = kurangM[x.merk]; else { delete r.perluCocokkan; delete r.selisihKg; } }\n", ""),
     '39b-6: karung belakang minus dipindah diam-diam': ("  if (kbMinus.length) return { tolak:", "  if (false) return { tolak:"),
     # toko.js
     'kunci karung belakang tidak dikenali buku khusus': ("else if (m.karungBelakang) out[String(m.merk)] = { jenis: 'belakang', wadah: String(m.karungBelakang), merk: String(m.merkAsal || '') };", ""),

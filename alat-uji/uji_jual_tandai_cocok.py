@@ -72,6 +72,17 @@ var rework = { koleksi: 'penyesuaianStok', data: { id: 7003, tanggal: '2026-09-2
 var beoCocok = { koleksi: 'penyesuaianStok', data: { id: 7004, tanggal: '2026-09-20', jam: '15:00', merk: 'Beo', kgSistem: 200, kgFisik: 200, selisihKg: 0, alasan: '', nilaiRp: 0, hppPerKgSaatOpname: 13000, bagian: 'tumpukan' } };
 ok('cocokkan SEBELUM tanggal nota (18 Sep), rework, atau nama lain → tanda tetap; cocokkan Angsa bertanggal ≥ nota (19 Sep, tanpa tombol khusus) → tuntas: pita & kartu kosong', denganCacheSementara([cocokSebelum, rework, beoCocok], function () { return notaTembusBelumCocok().n === 1; }) && denganCacheSementara([cocokSesudah], function () { return notaTembusBelumCocok().n === 0 && !susunGudang('cocok', new Date('2026-09-19T10:00:00')).jawab.baris.some(function (b) { return /^tembus\|/.test(b.kunci); }); }));
 ok('nota bertanda yang dibatalkan hilang dari daftar (tanda ikut notanya)', (function () { var id = R2b.dokumen.find(function (d) { return d.koleksi === 'penjualan'; }).data.id; return denganCacheSementara([{ koleksi: 'penjualan', data: Object.assign({}, R2b.dokumen.find(function (d) { return d.koleksi === 'penjualan'; }).data, { dibatalkan: true }) }], function () { return notaTembusBelumCocok().n === 0; }); })());
+// ---- 2b · 39b no. 14 (J3): dua baris satu buku — kekurangan dibagi sekali, bukan ditagih penuh di tiap baris
+pulih(); mulai(); terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap({ ketik: '1' }); terap(masukkan(s)); terap(ketukChip(s, chip('karung', 'Angsa', 50))); terap({ ketik: '1' }); terap(masukkan(s)); terap(uangPas(s));
+terapkanKeCache([jualLain('sJ3', 'Angsa', 50)]);
+var R14 = simpanNota(Object.assign({}, s, { tembusBoleh: true, tembusYakin: true }), W); var pj14 = R14.dokumen ? R14.dokumen.filter(function (d) { return d.koleksi === 'penjualan' && d.data.merkSumber === 'Angsa'; }) : [];
+ok('39b-14 J3 dua baris Angsa 1 karung (buku sisa 50 kg, keranjang 100 kg): tanda kekurangan total 50 kg SEKALI — baris pertama tanpa tanda, baris kedua 50 kg (dulu 50 + 50 = 100); kabar menyebut 50 kg',
+  s.keranjang.length === 2 && !R14.tolak && pj14.length === 2 && pj14.reduce(function (a, d) { return a + (d.data.selisihKg || 0); }, 0) === 50 && pj14.filter(function (d) { return d.data.perluCocokkan; }).length === 1 && /Angsa 50 kg/.test(R14.patch.kabar) && !/Angsa 50 kg, Angsa/.test(R14.patch.kabar),
+  J([s.keranjang.length, R14.tolak, pj14.map(function (d) { return [d.data.perluCocokkan, d.data.selisihKg]; }), R14.patch && R14.patch.kabar]));
+ok('39b-14 J3 ketukan pertama tetap memakai kalimat pemeriksaan ulang yang sama (baris pertama), dan menyebut kekurangan 50 kg sekali',
+  (function () { var r = simpanNota(Object.assign({}, s, { tembusBoleh: true }), W); return !!r.tolak && r.tolak.indexOf(periksaStokKeranjang(s)) === 0 && /Buku Angsa kurang 50 kg — jual dulu/.test(r.tolak) && !/Angsa kurang 50 kg, Angsa/.test(r.tolak)
+    && r.perluTembus.length === 1 && r.perluTembus[0].selisihKg === 50; })(),
+  J(simpanNota(Object.assign({}, s, { tembusBoleh: true }), W).tolak));
 // ---- 3 · kemasan: unit × ukuran = kg
 pulih(); mulai(); terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '2' }); terap(masukkan(s)); terap(uangPas(s));
 terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'sK', tanggal: '2026-09-19', jam: '09:30', caraBayar: 'Tunai', namaPelanggan: '', jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, totalKg: 5, hargaTotal: 70000, hppTotalSaatJual: 65000 } }]);
@@ -124,12 +135,14 @@ def semua(ganti=None, bagian=('statis', 'jsc')):
 
 JL_ = 'baru/js/layar/jual-logika.js'; SL_ = 'baru/js/layar/stok-logika.js'; JU_ = 'baru/js/layar/jual.js'
 KONTROL = [
+    ('39b-14 J3: kekurangan satu buku ditagih di tiap baris lagi', {JL_: [("const sel = Math.max(0, Math.round((butuh - (maksUrut === null ? maks : maksUrut)) * 100) / 100);", "const sel = Math.max(0, Math.round((butuh - maks) * 100) / 100);")]}, ('jsc',)),
+    ('39b-14 J3: baris tanpa kekurangan tetap ditandai', {JL_: [("tembus.forEach((t) => { if (t.selisihKg > 0.004) ids[t.id] = t; });", "tembus.forEach((t) => { ids[t.id] = t; });")]}, ('jsc',)),
     ('staf ikut boleh menembus', {JL_: [("    tembus = s.tembusBoleh ? barisTembus(s) : [];", "    tembus = barisTembus(s);")]}, ('jsc',)),
     ('tanpa ketukan kedua (owner langsung tembus)', {JL_: [("    if (!s.tembusYakin) return { tolak: stok +", "    if (false) return { tolak: stok +")]}, ('jsc',)),
     ('pemeriksaan ulang dilemahkan (nota lolos tanpa tanda)', {JL_: [("  const stok = periksaStokKeranjang(s); let tembus = [];   // pemeriksaan ulang TIDAK berubah (31b)", "  const stok = ''; let tembus = [];")]}, ('jsc',)),
     ('baris tidak ditandai perluCocokkan', {JL_: [("Object.assign({}, b.trx, { perluCocokkan: true, selisihKg: ids[b.id].selisihKg })", "Object.assign({}, b.trx)")]}, ('jsc',)),
     ('selisihKg = satuan chip, bukan kg', {JL_: [("selisihKg: Math.round(kgTembus(b.trx, chip, sel) * 100) / 100,", "selisihKg: sel,")]}, ('jsc',)),
-    ('kalimat tanpa nama & kg', {JL_: [("'. Buku ' + tembus.map((t) => t.nama + ' kurang ' + kgTeks(t.selisihKg)).join(', ') + ' — jual dulu", "'. Buku kurang — jual dulu")]}, ('jsc',)),
+    ('kalimat tanpa nama & kg', {JL_: [("'. Buku ' + tembus.filter((t) => t.selisihKg > 0.004).map((t) => t.nama + ' kurang ' + kgTeks(t.selisihKg)).join(', ') + ' — jual dulu", "'. Buku kurang — jual dulu")]}, ('jsc',)),
     ('tanda tuntas oleh cocokkan SEBELUM tanggal nota', {JL_: [("&& String(q.tanggal || '') >= tgl);\n    if (!tuntas)", "&& true);\n    if (!tuntas)")]}, ('jsc',)),
     ('rework dianggap cocokkan', {JL_: [("const PS = ambilPenyesuaianStok().filter((q) => !q.dariRework);", "const PS = ambilPenyesuaianStok();")]}, ('jsc',)),
     ('kartu keempat tanpa baris tembus', {SL_: [("  return { baris: tembus.concat(out),", "  return { baris: out,")]}, ('jsc',)),
