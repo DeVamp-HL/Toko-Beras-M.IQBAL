@@ -1026,6 +1026,12 @@ pita Jual & kartu Gudang menagih merek yang bukunya tidak kurang. Buku & uang ti
 - `pecahItemsWadah`: kekurangan literan campuran jatuh ke merek asal yang bagiannya melebihi buku yang tersisa (Σ = kekurangan baris); tidak ada
   yang kurang di buku → merek yang bukunya paling tipis. Merek lain tanpa tanda.
 - Uji: `uji_jual_tandai_cocok.py` +2 (kontrol +2), `uji_wadah_satu_buku.py` +1 (kontrol +1).
+- Tinjauan independen (10 diajukan, 9 lolos): T1 kekurangan literan campuran = kekurangan BUKU merek (tidak dibesarkan ke selisih liter wadah); T2 pita &
+  kalimat "jual dulu" menyebut merek yang bukunya kurang (`kurangPecahan`), bukan pecahan pertama; T3 riwayat / struk yang menggabung satu takaran membawa
+  tanda dari pecahan mana pun (`gabungTakaran`); T5 kabar sesudah simpan menyebut tanda tembus (dulu ditimpa); T6 uji lewat jalur nyata (keranjang →
+  simpanNota). T4 (tanda karung dibulatkan ke ½ karung — sejak 31b, tanda saja) dicatat, belum dibetulkan. Uji +1, kontrol +2.
+- No. 6/7 dari tinjauan yang sama: W1 ganti nama tidak menghidupkan kolam karung yang sudah ditutup; W2 urutan karung di nama baru = urutan buka (catatan
+  diamSlot tidak dihitung); W4 panel kemasan adukan kosong menyarankan buka kemasan lagi, tombol CATAT redup.
 
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 

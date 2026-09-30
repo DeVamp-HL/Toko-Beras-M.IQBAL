@@ -653,10 +653,19 @@ export function barisTembus(s) {
     // 39b no. 14 (J3): dua baris satu buku sama-sama "melampaui" (tiap baris dibanding buku dikurangi baris lain) — kekurangannya dibagi SEKALI: baris
     // sebelumnya memakai buku lebih dulu, baris ini menanggung sisanya (0 = tidak diberi tanda). Kalimat pemeriksaan ulang tetap dari `maks`.
     const maksUrut = maksSebelum(s, i, chip); const sel = Math.max(0, Math.round((butuh - (maksUrut === null ? maks : maksUrut)) * 100) / 100);
-    out.push({ id: b.id, label: b.trx.label, kunci: chip.kunci, nama: b.trx.jenis === 'kemasan' ? String(b.trx.namaProduk) + ' ' + String(b.trx.ukuranKemasan).replace('.', ',') + ' kg' : String(b.trx.merkSumber || chip.kunci), jalur: chip.jalur, maks, butuh, selisih: sel, selisihKg: Math.round(kgTembus(b.trx, chip, sel) * 100) / 100,
+    // tinjauan T2: literan dari wadah campuran — yang kurang adalah BUKU merek asal tertentu (bukan pecahan pertama); nama & kg dari situ (sama dengan pecahItemsWadah)
+    const kp = b.trx.dariWadah && Array.isArray(b.trx.pecahan) && b.trx.pecahan.length > 1 ? kurangPecahan(b.trx.pecahan, s.keranjang.slice(0, i)) : null;
+    out.push({ id: b.id, label: b.trx.label, kunci: chip.kunci, nama: kp && kp.length ? kp.map((x) => x.merk).join(' + ') : b.trx.jenis === 'kemasan' ? String(b.trx.namaProduk) + ' ' + String(b.trx.ukuranKemasan).replace('.', ',') + ' kg' : String(b.trx.merkSumber || chip.kunci), jalur: chip.jalur, maks, butuh, selisih: sel,
+      selisihKg: kp && kp.length ? Math.round(kp.reduce((a, x) => a + x.kg, 0) * 100) / 100 : Math.round(kgTembus(b.trx, chip, sel) * 100) / 100,
       teks: b.trx.label + ': yang bebas dijual tinggal ' + tulisJumlah(maks, chip) + ', di keranjang ' + tulisJumlah(butuh, chip) + (b.trx.bonusUnit ? ' (termasuk bonus)' : '') });
   });
   return out;
+}
+/** Kekurangan BUKU per merek asal satu literan wadah campuran: bagian − buku yang tersisa sesudah baris-baris sebelumnya (karung / literan / pecahan) — 39b no. 14. */
+function kurangPecahan(pecahan, sebelum) {
+  const stok = hitungStokKarungPerMerk(); const pakai = {};
+  (sebelum || []).forEach((b) => { const t = b.trx || {}; if (t.dariWadah && Array.isArray(t.pecahan)) t.pecahan.forEach((x) => { pakai[x.merk] = (pakai[x.merk] || 0) + (Number(x.kg) || 0); }); else if (t.merkSumber) pakai[t.merkSumber] = (pakai[t.merkSumber] || 0) + (Number(t.totalKg) || 0); });
+  return pecahan.map((x) => ({ merk: x.merk, kg: Math.round(Math.max(0, Math.min(x.kg, x.kg - Math.max(0, ((stok[x.merk] || {}).sisaKg || 0) - (pakai[x.merk] || 0)))) * 100) / 100 })).filter((x) => x.kg > 0.004);
 }
 /** Langit-langit chip bila hanya baris-baris SEBELUM baris ke-i yang ada di keranjang (untuk membagi kekurangan satu buku sekali — 39b no. 14). */
 function maksSebelum(s, i, chip) {
@@ -823,7 +832,7 @@ export function pecahItemsWadah(items, s) {
       bag.forEach((x) => { kurangM[x.merk] = Math.max(0, Math.min(x.kg, x.kg - Math.max(0, sisa(x.merk)))); });
       const tot = Object.keys(kurangM).reduce((a, m) => a + kurangM[m], 0);
       if (tot < 0.005) { const tipis = bag.slice().sort((a, b) => (sisa(a.merk) - a.kg) - (sisa(b.merk) - b.kg))[0]; Object.keys(kurangM).forEach((m) => { kurangM[m] = 0; }); kurangM[tipis.merk] = sel; }
-      else { let jalan = 0; const ada = bag.filter((x) => kurangM[x.merk] > 0.004); ada.forEach((x, k) => { const v = k === ada.length - 1 ? Math.round((sel - jalan) * 100) / 100 : Math.round(sel * kurangM[x.merk] / tot * 100) / 100; jalan = Math.round((jalan + v) * 100) / 100; kurangM[x.merk] = v; }); bag.forEach((x) => { if (!ada.includes(x)) kurangM[x.merk] = 0; }); } }
+      else bag.forEach((x) => { kurangM[x.merk] = Math.round(kurangM[x.merk] * 100) / 100; }); }   // tinjauan T1: kekurangan BUKU sebenarnya, tidak dibesarkan ke selisih liter wadah
     bag.forEach((x, k) => { const akhir = k === n - 1; const r = Object.assign({}, t);
       r.merkSumber = x.merk; r.totalKg = x.kg;
       r.hargaTotal = akhir ? t.hargaTotal - rp : Math.round(t.hargaTotal * x.kg / kgTot); rp += r.hargaTotal;

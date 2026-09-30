@@ -525,7 +525,7 @@ ok('39b-26 wadah "Kosong Satu" tanpa karung: slotnya kosong di Stok; deretan men
   J(deretanKarung().map(function (k) { return [k.no, k.merk, k.dicatat]; })));
 
 // ---- 12h · 39b no. 14 (J4): literan wadah BELUM aktif campuran yang ditandai tembus — kekurangan jatuh ke merek asal yang bukunya memang kurang, bukan disalin ke tiap merek
-var J4dok = [{ koleksi: 'wadahLiteran', data: { id: 'wl-j4a', tanggal: HARI15, jam: '21:00', wadah: 'Campur Dua', tipe: 'isi', isiKg: 10, komposisi: { NG: 6, Kumala: 4 } } },
+var __j4; var J4dok = [{ koleksi: 'wadahLiteran', data: { id: 'wl-j4a', tanggal: HARI15, jam: '21:00', wadah: 'Campur Dua', tipe: 'isi', isiKg: 10, komposisi: { NG: 6, Kumala: 4 } } },
   cocok('Kumala', '2026-09-21', { kgSistem: buku('Kumala'), kgFisik: 1, selisihKg: B2(1 - buku('Kumala')), bagian: 'tumpukan' })];
 ok('39b-14 J4 literan 8 kg dari Campur Dua (NG 6 : Kumala 4), buku Kumala tinggal 1 kg, ditandai kurang 2,2 kg: baris NG TANPA tanda, baris Kumala kurang 2,2 kg (dulu dua-duanya 2,2 → pita menagih NG yang tidak kurang)',
   denganCacheSementara(J4dok, function () { var out = pecahItemsWadah([{ jenis: 'literan', dariWadah: 'Campur Dua', merkSumber: 'NG', namaProduk: 'Campur Dua', totalKg: 8, jumlahLiter: 10, hargaTotal: 125000, perluCocokkan: true, selisihKg: 2.2 }], null);
@@ -533,6 +533,16 @@ ok('39b-14 J4 literan 8 kg dari Campur Dua (NG 6 : Kumala 4), buku Kumala tingga
     return out.length === 2 && !!ng && !!ku && !ng.perluCocokkan && !('selisihKg' in ng) && ku.perluCocokkan === true && ku.selisihKg === 2.2; }),
   J(denganCacheSementara(J4dok, function () { return pecahItemsWadah([{ jenis: 'literan', dariWadah: 'Campur Dua', merkSumber: 'NG', namaProduk: 'Campur Dua', totalKg: 8, jumlahLiter: 10, hargaTotal: 125000, perluCocokkan: true, selisihKg: 2.2 }], null).map(function (r) { return [r.merkSumber, r.totalKg, r.perluCocokkan, r.selisihKg]; }); })));
 
+ok('39b-14 J4 lewat JALUR NYATA (tinjauan T1 T2 T6): 10 L Campur Dua (NG 6 : Kumala 4) di keranjang, lalu buku Kumala tinggal 1 kg → "jual dulu, tandai": pita menyebut KUMALA kurang (bagian Kumala − buku Kumala), bukan NG; nota: baris Kumala bertanda sebesar itu, NG tanpa tanda; riwayat gabungan tetap bertanda',
+  (function () { var r = denganCacheSementara(J4dok.slice(0, 1), function () { var c = chipL('Campur Dua'); if (!c) return { gagal: 'chip tidak ada' }; var s = masuk(s0(), c, 10); if (!s.keranjang || !s.keranjang.length) return { gagal: s.tolak }; s = Object.assign({}, s, uangPas(s));
+      return denganCacheSementara(J4dok.slice(1), function () { var ku = (s.keranjang[0].trx.pecahan || []).filter(function (x) { return x.merk === 'Kumala'; })[0]; var harap = ku ? B2(ku.kg - buku('Kumala')) : -1;
+        var R1 = simpanNota(Object.assign({}, s, { tembusBoleh: true }), W5c); var R2 = simpanNota(Object.assign({}, s, { tembusBoleh: true, tembusYakin: true }), W5c); var pj = dok(R2, 'penjualan');
+        var rk = pj.filter(function (d) { return d.merkSumber === 'Kumala'; })[0], rn = pj.filter(function (d) { return d.merkSumber === 'NG'; })[0]; var gab = gabungTakaran(pj.map(function (d) { return Object.assign({ takaranId: 'T' }, d); }));
+        return { harap: harap, pita: R1.perluTembus, tolak: R1.tolak, baris: pj.map(function (d) { return [d.merkSumber, d.totalKg, d.perluCocokkan, d.selisihKg]; }),
+          ok: harap > 0 && !!R1.tolak && !!R1.perluTembus && R1.perluTembus.length === 1 && R1.perluTembus[0].nama === 'Kumala' && B2(R1.perluTembus[0].selisihKg) === harap && /Buku Kumala kurang/.test(R1.tolak)
+            && !R2.tolak && !!rk && rk.perluCocokkan === true && B2(rk.selisihKg) === harap && !!rn && !rn.perluCocokkan && gab.length === 1 && gab[0].perluCocokkan === true && B2(gab[0].selisihKg) === harap }; }); });
+    __j4 = r; return !!r.ok; })(),
+  J(typeof __j4 !== 'undefined' ? __j4 : null));
 // ---- 13 · penjaga perangkat = rules v5 (10)
 var KRY = keadaanAkun('kry.contoh@tokoberasmiqbal.web.app', 'uid-kry', { uid: 'uid-kry', nama: 'Karyawan Contoh', peran: 'karyawan', aktif: true }); var OWN = keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null);
 var HAK = { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'tidak', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' };
@@ -711,6 +721,8 @@ RUSAK = {
     '39b-6: titik samakan nama baru tanpa komposisi turunan': ("Object.keys(kmp).length ? { komposisi: kmp } : {}) }); }", "{}) }); }"),
     '39b-16: cocokkan wadah aktif memutus komposisi turunan lagi': ("Object.assign({ stokWadah: b.kunciStok }, ((k) => (Object.keys(k).length ? { komposisi: k } : {}))(wbKomposisiTurunanKg(b.nama, b.isiH)))", "{ stokWadah: b.kunciStok }"),
     '39b-7: takar dari karung khusus kosong tidak ditolak': ("  if (hk.length) { const bwH", "  if (false) { const bwH"),
+    '39b-14 T2: pita menyebut pecahan pertama, bukan merek yang kurang': ("const kp = b.trx.dariWadah && Array.isArray(b.trx.pecahan) && b.trx.pecahan.length > 1 ?", "const kp = false ?"),
+    '39b-14 T3: gabungan takaran kehilangan tanda tembus': ("    if (p.perluCocokkan) { g.perluCocokkan = true;", "    if (false) { g.perluCocokkan = true;"),
     '39b-14 J4: tanda tembus literan campuran disalin ke tiap merek asal lagi': ("      if (t.perluCocokkan && n > 1) { if (kurangM[x.merk] > 0.004) r.selisihKg = kurangM[x.merk]; else { delete r.perluCocokkan; delete r.selisihKg; } }\n", ""),
     '39b-6 W1: kolam tertutup dihidupkan lagi di nama baru': (".filter((k) => !(k.diketahui && kolamDitutup(k.kunci, L))).sort(", ".sort("),
     '39b-6 W2: urutan tulis karung di nama baru menurut buku, bukan urutan buka': (" || urutSaat(a, b)).forEach(", ").forEach("),
