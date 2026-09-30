@@ -182,7 +182,7 @@ if (CADANGAN) {
   var terbaru = nyata[0]; var K0 = kelasMurni[0]; var merekBaru = terbaru ? (terbaru.merkList || []).filter(function (m) { return m.merk && m.bentuk !== 'bal' && A.daftar.indexOf(m.merk) < 0 && !kmKelasSendiri()[m.merk]; }).map(function (m) { return m.merk; }) : [];
   // kedatangan nyata terakhir kelas itu SEBELUM batch terbaru; satu kedatangan bisa membawa dua anggota kelas yang sama (mis. dua merek dipetakan owner ke
   // satu kelas) → harga lalu kelas boleh salah satunya, tanggalnya harus tanggal kedatangan itu
-  var harap = null; nyata.slice(1).some(function (b) { var hs = (b.merkList || []).filter(function (m) { return m.bentuk !== 'bal' && (m.merk === K0 || kmKelasMerk(m.merk).kelas === K0); }).map(function (m) { return Math.round(Number(m.hargaPerKg)); }); if (hs.length) { harap = { harga: hs, tanggal: b.tanggal }; return true; } return false; });
+  var harap = null; nyata.slice(1).some(function (b) { var hs = (b.merkList || []).filter(function (m) { return m.bentuk !== 'bal' && (m.merk === K0 || kmKelasMerk(m.merk).kelas === K0 || merekBaru.indexOf(m.merk) >= 0); }).map(function (m) { return Math.round(Number(m.hargaPerKg)); }); if (hs.length) { harap = { harga: hs, tanggal: b.tanggal }; return true; } return false; });
   var WC = { tanggal: TGL_CAD, jam: '23:50', kini: TGL_CAD + 'T16:50:00.000Z', idUnik: function () { nId += 1; return nId; } };
   var dokPeta = kmDokKelas(merekBaru.map(function (m) { return { merk: m, kelas: K0, asal: 'owner' }; }), WC);
   var laluKelas = dokPeta ? denganCacheSementara([dokPeta], function () { return kmHargaLaluKelas(K0, '', terbaru.id); }) : null;
