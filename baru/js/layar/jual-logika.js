@@ -24,7 +24,7 @@ import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaK
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
   wzDiKeranjangParkir, sumberData, cacheMentah, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan } from '../data/toko.js';
-import { hariIniIso, RP, tanggalPendek } from '../inti/format.js';
+import { hariIniIso, RP, tanggalPendek, pecahLebih } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
 import { susunRakWadah, bangunBarisWadah, biayaWadahRepack, koleksiWadah, jenisWadah, bebasWadah } from './wadah-jual-logika.js';
@@ -349,13 +349,14 @@ export function daftarPelanggan(cari) {
   });
   return Object.values(peta).map((o) => {
     const r = piutang.find((x) => x.kunci === o.kunci);
-    return Object.assign(o, { sisaBon: r ? Math.max(0, r.sisa) : 0, umurHari: r ? r.umurHari : null, terdaftar: !!o.terdaftar });
+    return Object.assign(o, { sisaBon: r ? Math.max(0, r.sisa) : 0, lebih: pecahLebih(r).lebih, lebihUang: pecahLebih(r).uang, lebihHapus: pecahLebih(r).hapus, umurHari: r ? r.umurHari : null, terdaftar: !!o.terdaftar });
   }).filter((o) => !c || o.kunci.indexOf(c) >= 0)
     .sort((a, b) => (b.terakhir > a.terakhir ? 1 : b.terakhir < a.terakhir ? -1 : a.nama.localeCompare(b.nama))).slice(0, 40);
 }
 export function infoPelanggan(nama) {
   if (!kunciPelanggan(nama)) return null;
-  const i = infoKreditPelanggan(nama);
+  const i = infoKreditPelanggan(nama);   // mesin beku: sisa dijepit 0 — kelebihan bayar dibaca sendiri (audit 39b no. 4)
+  const r = hitungPiutang().find((x) => x.kunci === kunciPelanggan(nama)); const PL = pecahLebih(r); i.lebih = PL.lebih; i.lebihUang = PL.uang; i.lebihHapus = PL.hapus;
   const pesanan = ambilPesanan().filter((p) => pesananBelumTuntas(p) && kunciPelanggan(p.namaPelanggan || p.nama) === kunciPelanggan(nama));
   return Object.assign(i, { pesanan });
 }

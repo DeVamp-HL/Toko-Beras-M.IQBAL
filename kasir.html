@@ -475,10 +475,11 @@ var K_DITOLAK_ARSIP = 'kasir_ditolak_arsip_v1';   // ditolak yang sudah dicatat 
 var K_OPERATOR = 'kasir_operator_v1';
 // VERSI yang BENAR-BENAR berjalan: SAMA dengan VERSI di sw-kasir.js (uji_antrean_kasir.py memeriksanya).
 // Dikirim di denyut & tampil di bilah atas. Sampai 25b tertulis 'kasir-v24' padahal cache sudah v25.
-var VERSI_APLIKASI = 'kasir-v27';
-var LABEL_VERSI = 'versi 25c';
+var VERSI_APLIKASI = 'kasir-v28';
+var LABEL_VERSI = 'versi 39b';
 var K_ROSTER = 'kasir_roster_v1';
 var K_AUTH = 'kasir_auth_v1';
+var K_BAYAR_BON = 'kasir_bayar_bon_v1';   // pembayaran bon dari HP ini yang belum tampak di katalog (audit 39b no. 4) — lihat bayarBonTertunda
 var EMAIL_TOKO = 'kasir@tokoberasmiqbal.web.app';
 var URL_MASUK = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + KUNCI_API;
 var URL_SEGARKAN_TOKEN = 'https://securetoken.googleapis.com/v1/token?key=' + KUNCI_API;
@@ -723,6 +724,7 @@ function segarkanRingkasan() {
       })
       .then(function (j) {
         var o = {}; var f = j.fields || {}; for (var k in f) o[k] = dariFs(f[k]);
+        o._waktuServer = j.updateTime || '';   // kapan katalog ini ditulis, menurut SERVER (bayarBonTertunda)
         ringkasan = o;
         localStorage.setItem(K_RINGKASAN, JSON.stringify(o));
         localStorage.setItem(K_SEGAR, new Date().toISOString());
@@ -878,6 +880,7 @@ function pindahKeDitolak(item, status, isi, golongan) {
         pesan: String((err.status || '') + (err.message ? ': ' + err.message : '')).slice(0, 200) } });
     try { localStorage.setItem(K_GAGAL, JSON.stringify(d)); } catch (e) { return false; }
   }
+  if (item.koleksi === 'piutangMutasi') buangBayarBon(item.docId);   // ditolak = tidak masuk buku → tidak dikurangkan lagi (tinjauan no. 4 K3)
   cabutDariAntrean(item);
   return true;
 }
@@ -903,6 +906,7 @@ function kirimAntrean(manual) {
     var a2 = ambilAntrean();
     if (a2.length === 0) { selesai(true); return; }
     var item = a2[0];
+    if (item.koleksi === 'piutangMutasi') tandaiBayarBonDikirim(item.docId);
     denganAuth({
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields: (function () { var f = {}; for (var k in item.data) f[k] = keFs(item.data[k]); return f; })() })
@@ -913,7 +917,10 @@ function kirimAntrean(manual) {
       }
       return fetch(DASAR + item.koleksi + '/' + encodeURIComponent(item.docId) + '?key=' + KUNCI_API, opsi).then(function (r) {
         var g = golonganJawaban(r.status, true);
-        if (g === 'masuk') { cabutDariAntrean(item); kirimSatu(); return; }
+        if (g === 'masuk') {
+          if (item.koleksi === 'piutangMutasi') { tandaiBayarBonTerkirim(item.docId, ''); r.json().then(function (isi) { tandaiBayarBonTerkirim(item.docId, isi && (isi.createTime || isi.updateTime)); }).catch(function () {}); }
+          cabutDariAntrean(item); kirimSatu(); return;
+        }
         // 401: transaksi DITAHAN di antrean, jangan dibuang — layar masuk.
         if (g === 'masuk-ulang') { lupakanKunciSesi(); selesai(false); tampilkanLayarLogin(true); return; }
         if (g === 'ditolak-aturan' || g === 'ditolak-lain') {
@@ -1529,8 +1536,103 @@ function konfirmasiSudahDiserahkan() {
 // menghitung penjualan kredit + saldo awal − pembayaran). Kasir tidak menghitung
 // sendiri — supaya angka di kasir dan di sistem tidak pernah beda versi.
 var utangTerpilih = null;
+// BUKU KECIL PEMBAYARAN BON (audit 39b no. 4, 30 Sep 2026). Dulu pembayaran yang baru dicatat hanya mengurangi sisa DI MEMORI: sesudah HP dimuat
+// ulang, atau katalog disegarkan (tiap 2 menit) sebelum sistem admin menerbitkan ulang, sisa LAMA kembali dan bon yang sama bisa dibayar penuh lagi
+// (sisa bon di sistem jadi minus, uang lebihnya tidak terlihat di mana pun). Kini tiap pembayaran dicatat di localStorage dan TETAP dikurangkan:
+//   - selama masih di antrean HP (belum sampai server) — katalog pasti belum menghitungnya;
+//   - sesudah sampai: selama katalog yang dipegang ditulis SEBELUM pembayaran itu diterima server (dua-duanya waktu server: tanpa urusan jam HP);
+//   - katalog yang ditulis SESUDAHNYA: berhenti dikurangkan begitu sisa nama itu di katalog berubah atau namanya hilang (sudah dihitung sistem).
+// Ditolak server = tidak masuk buku, tidak dikurangkan. Bentuk katalog TIDAK diubah (keputusan owner 27 Sep "bentuk tetap"). Sisa celah (jarang):
+// katalog yang ditulis beberapa detik sesudahnya dari data yang belum memuat pembayaran ini DAN sisa nama itu berubah karena catatan lain.
+var BAYAR_BON_UMUR_MAKS_MS = 30 * 86400000;   // pembersih saja: catatan yang 30 hari tak pernah tampak di katalog dibuang
+function kunciNamaKasir(n) { return String(n || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+function ambilBayarBon() { try { var a = JSON.parse(localStorage.getItem(K_BAYAR_BON) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function simpanBayarBon(a) { try { localStorage.setItem(K_BAYAR_BON, JSON.stringify(a)); } catch (e) {} }
+// Waktu server Firestore ("2026-09-30T12:34:56.789012Z") → milidetik; pecahan detik dipotong ke milidetik. NaN = tidak ada / tidak terbaca.
+function msServer(t) {
+  var m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d+)?Z$/.exec(String(t || ''));
+  return m ? Date.parse(m[1] + 'Z') + (m[2] ? Math.floor(Number('0' + m[2]) * 1000) : 0) : NaN;
+}
+function sisaKatalogNama(kunci) {
+  var d = (ringkasan && ringkasan.piutang) || [];
+  for (var i = 0; i < d.length; i++) { if (d[i] && kunciNamaKasir(d[i].nama) === kunci) return Number(d[i].sisa) || 0; }
+  return null;
+}
+function catatBayarBon(docId, nama, nominal) {
+  var a = ambilBayarBon(); var k = kunciNamaKasir(nama);
+  a.push({ docId: String(docId), kunci: k, nominal: nominal, dibuat: new Date().toISOString(), sisaKatalog: sisaKatalogNama(k), waktuServer: '' });
+  simpanBayarBon(a);
+}
+// Kiriman PERTAMA dimulai (kirimAntrean): sejak itu pembayaran BISA sudah tersimpan di server walau jawabannya hilang (putus / 5xx → tetap di antrean)
+// — katalog yang terlihat sesudahnya tidak boleh lagi dijadikan pembanding (tinjauan no. 4 K1).
+function tandaiBayarBonDikirim(docId) {
+  var a = ambilBayarBon(); var ubah = false;
+  a.forEach(function (c) { if (c && String(c.docId) === String(docId) && !c.dikirimSejak) { c.dikirimSejak = new Date().toISOString().slice(0, 19) + 'Z'; ubah = true; } });
+  if (ubah) simpanBayarBon(a);
+}
+// Dipanggil kirimAntrean saat PATCH piutangMutasi masuk: dulu tanpa waktu, lalu waktu SERVER dari jawaban PATCH — createTime (saat dokumen PERTAMA
+// tersimpan; tetap sama walau dikirim ulang), kalau tidak ada updateTime. Tanpa keduanya: jam HP saat kiriman pertama dimulai.
+function tandaiBayarBonTerkirim(docId, waktuServer) {
+  var a = ambilBayarBon(); var ubah = false;
+  a.forEach(function (c) {
+    if (!c || String(c.docId) !== String(docId)) return;
+    if (waktuServer && !isNaN(msServer(waktuServer))) { c.waktuServer = waktuServer; c.dariServer = true; ubah = true; }
+    else if (!c.waktuServer) { c.waktuServer = c.dikirimSejak || new Date().toISOString().slice(0, 19) + 'Z'; ubah = true; }
+  });
+  if (ubah) simpanBayarBon(a);
+}
+// Ditolak server (pindahKeDitolak) = tidak masuk buku → catatannya dibuang saat itu juga (tinjauan no. 4 K3).
+function buangBayarBon(docId) {
+  var a = ambilBayarBon(); var sisa = a.filter(function (c) { return !c || String(c.docId) !== String(docId); });
+  if (sisa.length !== a.length) simpanBayarBon(sisa);
+}
+// { kunciNama: jumlah pembayaran yang belum tampak di katalog } — sekaligus merapikan buku kecilnya.
+function bayarBonTertunda() {
+  var catatan = ambilBayarBon(); if (!catatan.length) return {};
+  var diAntre = {}; ambilAntrean().forEach(function (x) { if (x && x.koleksi === 'piutangMutasi') diAntre[String(x.docId)] = true; });
+  var ditolak = {}; ambilGagal().concat(ambilArsipDitolak()).forEach(function (x) { if (x && x.koleksi === 'piutangMutasi') ditolak[String(x.docId)] = true; });
+  var K = msServer(ringkasan && ringkasan._waktuServer); var kini = Date.now(); var hasil = {}; var tetap = []; var ubah = false;
+  catatan.forEach(function (c) {
+    if (!c || ditolak[String(c.docId)]) { ubah = true; return; }
+    if (kini - (Date.parse(c.dibuat) || kini) > BAYAR_BON_UMUR_MAKS_MS) { ubah = true; return; }
+    var raw = sisaKatalogNama(c.kunci);
+    var antre = !!diAntre[String(c.docId)];
+    /* terkirim tapi belum sempat ditandai (aplikasi mati di antaranya) */
+    if (!antre && !c.waktuServer) { c.waktuServer = c.dikirimSejak || new Date().toISOString().slice(0, 19) + 'Z'; ubah = true; }
+    var P = msServer(c.waktuServer);
+    /* Pembanding baru HANYA dari katalog yang pasti belum memuat pembayarannya: masih di antrean dan BELUM PERNAH dikirim, atau katalog bertanda
+       waktu server yang ditulis sebelum pembayaran diterima server. Katalog tanpa waktu server (salinan lama / penulis lain): tetap dikurangkan,
+       pembanding tidak diganti (tinjauan no. 4 K1, K2). */
+    var pastiSebelum = (antre && !c.dikirimSejak) || (!antre && !isNaN(K) && !isNaN(P) && K <= P);
+    if (pastiSebelum) {
+      if (c.sisaKatalog !== raw) { c.sisaKatalog = raw; ubah = true; }
+    } else if (!antre && !isNaN(K)) {
+      /* katalog ditulis SESUDAH pembayaran diterima server: sisa nama itu berubah / namanya hilang = sudah dihitung sistem */
+      if (raw === null || c.sisaKatalog === null || Math.abs(raw - c.sisaKatalog) > 0.005) { ubah = true; return; }
+    }
+    tetap.push(c); hasil[c.kunci] = (hasil[c.kunci] || 0) + (Number(c.nominal) || 0);
+  });
+  if (ubah) simpanBayarBon(tetap);
+  return hasil;
+}
+// Sisa bon per nama = katalog − pembayaran dari HP ini yang belum tampak di katalog. SALINAN, bukan objek katalog.
 function daftarUtang() {
-  return ((ringkasan && ringkasan.piutang) || []).filter(function (p) { return p && p.sisa > 0; });
+  var kurang = bayarBonTertunda();
+  return ((ringkasan && ringkasan.piutang) || []).map(function (p) {
+    if (!p) return null;
+    return { nama: p.nama, sisa: Math.round(((Number(p.sisa) || 0) - (kurang[kunciNamaKasir(p.nama)] || 0)) * 100) / 100, tertunda: kurang[kunciNamaKasir(p.nama)] || 0 };
+  }).filter(function (p) { return p && p.sisa > 0; });
+}
+function cariUtang(nama) {
+  var k = kunciNamaKasir(nama); var d = daftarUtang();
+  for (var i = 0; i < d.length; i++) { if (kunciNamaKasir(d[i].nama) === k) return d[i]; }
+  return null;
+}
+// "per jam berapa" daftar sisa ini — jam setempat dari diperbaruiPada katalog (jam perangkat owner yang menerbitkannya); tanpa ambang.
+function umurDaftarSisa() {
+  var t = ringkasan && ringkasan.diperbaruiPada; var d = t ? new Date(t) : null;
+  if (!d || isNaN(d.getTime())) return 'waktu terbit daftar tidak tercatat';
+  return 'daftar sisa dari sistem per ' + String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0') + ', ' + tanggalRingkas(tanggalLokalIso(d));
 }
 // Nama pelanggan yang pernah berutang dipakai sebagai saran ketik — mengurangi salah
 // ketik yang bikin satu orang tercatat sebagai dua pelanggan berbeda.
@@ -1547,15 +1649,19 @@ function isiSaranNamaPelanggan() {
     tb.textContent = n > 0 ? 'UTANG ' + n : 'UTANG';
   }
 }
+var daftarTampilUtang = [];   // daftar yang SEDANG TERLIHAT — pilihUtang memilih dari sini menurut nama (katalog bisa berganti tiap 2 menit)
 function bukaLayarUtang() {
   utangTerpilih = null;
   $('utangFormBayar').style.display = 'none';
   $('utangJudul').textContent = 'PELANGGAN BERUTANG';
-  var d = daftarUtang();
+  var d = daftarUtang(); daftarTampilUtang = d;
   var total = d.reduce(function (a, p) { return a + (p.sisa || 0); }, 0);
-  $('utangSub').textContent = d.length === 0
+  var nTunda = ambilBayarBon().length;
+  $('utangSub').textContent = (d.length === 0
     ? 'Tidak ada yang berutang sekarang.'
-    : d.length + ' pelanggan · total ' + rupiah(total) + '. Ketuk nama untuk mencatat pembayaran.';
+    : d.length + ' pelanggan · total ' + rupiah(total) + '. Ketuk nama untuk mencatat pembayaran.')
+    + ' ' + umurDaftarSisa().charAt(0).toUpperCase() + umurDaftarSisa().slice(1) + '.'
+    + (nTunda ? ' ' + nTunda + ' pembayaran dari HP ini belum masuk daftar — sudah dikurangkan.' : '');
   $('daftarUtang').innerHTML = d.length === 0
     ? ''
     : d.map(function (p, i) {
@@ -1569,39 +1675,45 @@ function tutupLayarUtang() {
   $('layarUtang').classList.remove('tampil');
 }
 function pilihUtang(i) {
-  var p = daftarUtang()[i];
-  if (!p) return;
-  utangTerpilih = p;
+  var t = daftarTampilUtang[i];
+  if (!t) return;
+  var p = cariUtang(t.nama);
+  if (!p) { alert(t.nama + ' sudah tidak punya sisa bon di daftar terbaru.'); bukaLayarUtang(); return; }
+  utangTerpilih = { nama: p.nama };
   $('utangJudul').textContent = p.nama;
-  $('utangSub').textContent = 'Sisa utang ' + rupiah(p.sisa) + '. Isi berapa yang dibayar sekarang.';
+  $('utangSub').textContent = 'Sisa utang ' + rupiah(p.sisa) + (p.tertunda ? ' (sudah dikurangi ' + rupiah(p.tertunda) + ' yang dibayar lewat HP ini)' : '') + '. Isi berapa yang dibayar sekarang.';
   $('daftarUtang').innerHTML = '';
   $('utangNominal').value = '';
   $('utangFormBayar').style.display = 'block';
   $('utangNominal').focus();
 }
 function isiLunasUtang() {
-  if (!utangTerpilih) return;
-  $('utangNominal').value = utangTerpilih.sisa;
+  var p = utangTerpilih ? cariUtang(utangTerpilih.nama) : null;
+  if (!p) return;
+  $('utangNominal').value = p.sisa;
 }
 function simpanBayarUtang() {
   if (!utangTerpilih) return;
   var n = parseFloat($('utangNominal').value) || 0;
   if (n <= 0) { alert('Isi dulu berapa yang dibayar.'); return; }
-  // Melebihi sisa = data cacat. Ditolak, pola sama dengan sisi sistem admin.
-  if (n > utangTerpilih.sisa) {
-    alert('Bayar ' + rupiah(n) + ' melebihi sisa utang ' + rupiah(utangTerpilih.sisa) + '. Kalau lebih, sisanya dicatat sebagai penjualan biasa.');
+  // Melebihi sisa = data cacat. Ditolak, pola sama dengan sisi sistem admin. Sisa DIBACA ULANG saat menyimpan (katalog bisa berganti selagi
+  // lembar terbuka) dan sudah dikurangi pembayaran dari HP ini yang belum tampak di katalog (bayarBonTertunda).
+  var p = cariUtang(utangTerpilih.nama);
+  if (!p) { alert(utangTerpilih.nama + ' sudah tidak punya sisa bon di daftar terbaru.'); tutupLayarUtang(); return; }
+  if (n > p.sisa) {
+    alert('Bayar ' + rupiah(n) + ' melebihi sisa utang ' + rupiah(p.sisa) + (p.tertunda ? ' (sudah dikurangi ' + rupiah(p.tertunda) + ' yang dibayar lewat HP ini)' : '') + '. Kalau lebih, sisanya dicatat sebagai penjualan biasa.');
     return;
   }
+  var idBayar = idUnik();
   tambahAntrean('piutangMutasi', {
-    id: idUnik(), tipe: 'bayar', namaPelanggan: utangTerpilih.nama, nominal: n,
+    id: idBayar, tipe: 'bayar', namaPelanggan: p.nama, nominal: n,
     tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5),
     caraBayar: bayarAktif === 'Kredit' ? 'Tunai' : bayarAktif,
     catatan: '', operator: operatorAktif(), dicatatDi: 'kasir'
   });
+  // Catatan uangnya lebih dulu (antrean), baru buku kecilnya — sisa di layar ikut turun dan TETAP turun sesudah muat ulang (bayarBonTertunda).
+  catatBayarBon(idBayar, p.nama, n);
   kirimAntrean(false);
-  // Sisa di layar dikurangi supaya angka yang terlihat langsung masuk akal; angka
-  // sebenarnya menyusul dari ringkasanKasir begitu sistem admin menerbitkan ulang.
-  utangTerpilih.sisa = Math.round((utangTerpilih.sisa - n) * 100) / 100;
   isiSaranNamaPelanggan();
   tutupLayarUtang();
   $('teksSukses').textContent = rupiah(n);

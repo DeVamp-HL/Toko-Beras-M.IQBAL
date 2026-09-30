@@ -12,7 +12,7 @@ import { hitungSaldoTutup, tbDaftarKoleksi, hitungStokKarungPerMerk, hitungStokK
 import { tbCutoff, kunciPelanggan } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, butuhGet, petaStokWadah, petaBukuWadah } from '../data/toko.js';
 import { KP_BATAS_GET } from '../data/kunci-periode.js';
-import { RP, ANGKA, KG, hariIniIso, tanggalPendek } from '../inti/format.js';
+import { RP, ANGKA, KG, hariIniIso, tanggalPendek, lebihBayarDari } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
 import { aturUpah } from './upah-logika.js';
 
@@ -63,7 +63,13 @@ export function barisBuku(sampai, sampaiKas) {
   const stokK = hitungStokKarungPerMerk(sampai); let kg = 0, rpK = 0, nK = 0; Object.keys(stokK).forEach((m) => { const s = stokK[m]; if (Math.abs(s.sisaKg) < 0.01) return; nK += 1; kg += s.sisaKg; rpK += Math.round(s.sisaKg * (s.hppTerakhirPerKg || 0)); });
   const stokM = hitungStokKemasan(sampai); let unit = 0, rpM = 0; Object.keys(stokM).forEach((k) => { const s = stokM[k]; if (!(s.sisaUnit > 0)) return; unit += s.sisaUnit; rpM += s.sisaUnit * (s.hppRataRataPerUnit || 0); });
   const bk = hitungStokBahanKemasan(sampai), bl = hitungStokBahanLiteran(sampai); let pcs = 0, rpB = 0; Object.keys(bk).forEach((j) => { if (bk[j].sisaPcs > 0) { pcs += bk[j].sisaPcs; rpB += Math.round(bk[j].sisaPcs * (bk[j].hppPerPcs || 0)); } }); Object.keys(bl).forEach((j) => { if (bl[j].sisaPcs > 0) { pcs += bl[j].sisaPcs; rpB += Math.round(bl[j].sisaPcs * (bl[j].hargaPerPcs || 0)); } });
-  const piutang = hitungPiutang(sampai).filter((x) => x.sisa > 0); const kasbon = hitungKasbon(sampai).filter((x) => x.sisa > 0); const kO = kunciPelanggan(NAMA_KASBON_OWNER);
+  const semuaPiutang = hitungPiutang(sampai); const piutang = semuaPiutang.filter((x) => x.sisa > 0); const kasbon = hitungKasbon(sampai).filter((x) => x.sisa > 0); const kO = kunciPelanggan(NAMA_KASBON_OWNER);
+  // no. 4: saldo pembuka mesin (hitungSaldoTutup) hanya membawa piutang sisa > 0 dan dokumen pembayarannya diarsipkan → kelebihan bayar pelanggan lenyap dari buku
+  // saat tahun dikunci (uangnya tetap di kas). Mesin tidak diubah; di sini hanya BERBUNYI. Menahan tutup buku karenanya = keputusan owner.
+  const lebih = lebihBayarDari(semuaPiutang); const kataLebih = !lebih.n ? '' : (lebih.hapus.n ? 'Sisa bon di bawah nol ' : 'Kelebihan bayar pelanggan ') + RP(lebih.jumlah) + ' ('
+    + lebih.orang.map((x) => x.nama + ' ' + RP(x.lebih) + (x.hapus > 0.5 ? (x.uang > 0.5 ? ', sebagian hapus buku yang ternyata dibayar' : ', hapus buku yang ternyata dibayar') : '')).join('; ')
+    + ') TIDAK ikut menyeberang: saldo pembuka hanya membawa bon yang bersisa dan catatan pembayarannya diarsipkan, jadi sesudah tahun dikunci jejaknya hilang dari buku'
+    + (lebih.uang.n ? ' — uangnya tetap di kas.' : '.') + (lebih.hapus.n ? ' Hapus buku yang ternyata dibayar perlu dibalik sebelum tahun dikunci.' : '');
   const kasbonK = kasbon.filter((x) => x.kunci !== kO).reduce((a, x) => a + x.sisa, 0); const kasbonO = kasbon.filter((x) => x.kunci === kO).reduce((a, x) => a + x.sisa, 0);
   const K = saldoKantong(sampaiKas || sampai); const amplop = saldoAmplop(sampai); const up = hitungUtangPemasok(sampai); const utangP = up.reduce((a, x) => a + x.totalUtang, 0), nBon = up.reduce((a, x) => a + x.bon.length, 0); const uo = hitungUtangOwner(sampai);
   const kas = (k) => (K.ada ? Math.round(K[k]) : null);
@@ -73,7 +79,7 @@ export function barisBuku(sampai, sampaiKas) {
     { id: 'laci', nama: 'Uang di laci', n: kas('laci') }, { id: 'brankas', nama: 'Uang di brankas', n: kas('brankas') }, { id: 'rekening', nama: 'Uang di rekening', n: kas('rekening') }, { id: 'amplop', nama: 'Amplop laba (uang)', n: kas('amplop') }];
   const utang = [{ id: 'utangP', nama: 'Utang ke pemasok · ' + nBon + ' bon', n: Math.round(utangP) }, { id: 'utangO', nama: 'Toko berutang ke owner', n: Math.round(uo.sisa) }];
   const hartaJml = harta.reduce((a, h) => a + (h.n || 0), 0), utangJml = utang.reduce((a, u) => a + (u.n || 0), 0); const modal = modalTertanam(sampai);
-  return { harta, utang, hartaJml, utangJml, modal, labaTinggal: hartaJml - utangJml - modal, kasAda: K.ada, K, amplopDok: Math.round(amplop), n: harta.length + utang.length, neracaTeks: 'Harta ' + RP(hartaJml) + ' = utang ' + RP(utangJml) + ' + modal owner ' + RP(modal) + ' + laba yang tinggal di toko ' + RP(hartaJml - utangJml - modal) + (K.ada ? '' : ' · uang per tempat belum bisa dihitung (titik kas)') };
+  return { harta, utang, hartaJml, utangJml, modal, labaTinggal: hartaJml - utangJml - modal, kasAda: K.ada, K, amplopDok: Math.round(amplop), n: harta.length + utang.length, lebih, kataLebih, neracaTeks: 'Harta ' + RP(hartaJml) + ' = utang ' + RP(utangJml) + ' + modal owner ' + RP(modal) + ' + laba yang tinggal di toko ' + RP(hartaJml - utangJml - modal) + (K.ada ? '' : ' · uang per tempat belum bisa dihitung (titik kas)') };
 }
 /** Dokumen saldo pembuka = persis tulisSaldoPembuka index.html (id dari w.idUnik). */
 export function pembukaBuku(tahun, w) {
@@ -160,7 +166,9 @@ export function susunSelesai(tahun, namaCadangan2, w) {
 export function teksAcara(tahun, D, B, sebelum, saksi, w) {
   const L = ['TOKO BERAS M.IQBAL', 'BERITA ACARA TUTUP BUKU ' + tahun, tanggalPendek(w.tanggal) + ' · ' + w.jam + (D.latihan ? ' · LATIHAN' : ''), '', 'Harta toko akhir ' + tahun + ':'];
   B.baris.forEach((b) => L.push('  ' + (b.nama + '                                    ').slice(0, 38) + (b.a === null ? 'tidak bisa dihitung' : RP(b.a)) + (b.ada ? (b.sama ? '  ✓' : '  ≠ ' + RP(b.b)) : '')));
-  L.push('', 'Jumlah harta   ' + RP(sebelum.hartaJml), 'Jumlah utang   ' + RP(sebelum.utangJml), 'Modal owner    ' + RP(sebelum.modal), 'Laba tinggal   ' + RP(sebelum.labaTinggal), '', 'Paraf: owner ' + (D.paraf && D.paraf.owner ? '✓' : '—') + ' · ' + (saksi || 'saksi') + ' ' + (D.paraf && D.paraf.saksi ? '✓' : '—'));
+  L.push('', 'Jumlah harta   ' + RP(sebelum.hartaJml), 'Jumlah utang   ' + RP(sebelum.utangJml), 'Modal owner    ' + RP(sebelum.modal), 'Laba tinggal   ' + RP(sebelum.labaTinggal), '');
+  if (sebelum.kataLebih) L.push(sebelum.kataLebih, '');   // no. 4 B6
+  L.push('Paraf: owner ' + (D.paraf && D.paraf.owner ? '✓' : '—') + ' · ' + (saksi || 'saksi') + ' ' + (D.paraf && D.paraf.saksi ? '✓' : '—'));
   return L.join('\n');
 }
 export { RP as bkRP };

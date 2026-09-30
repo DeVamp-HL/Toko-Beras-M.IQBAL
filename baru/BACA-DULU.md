@@ -816,6 +816,49 @@ dan Neraca berselisih, kas keluar terhitung dua kali. Ejaan beda ("roda mas") me
   buku & batal tutup buku, dan baris bal yang ikut terbuang saat kedatangan berbaris bal dikoreksi (temuan no. 30: pratinjau, pita, kartu Jumlah,
   dan pembagian bongkar di riwayatModal harus berubah BERSAMA penahanan baris bal).
 
+## Audit 39b no. 4 — sisa piutang negatif berbunyi; pembayaran bon di HP kasir tahan muat ulang (30 Sep 2026, cabang `audit/39b-piutang-negatif-berbunyi`)
+
+Temuan PP-3: mesin beku `hitungPiutang` menghitung sisa = kredit + saldoAwal − bayar − dihapus dan BOLEH negatif (pembayaran melebihi sisa).
+Semua pembaca menyaring sisa > 0 atau menjepit 0: nama bercap "lunas", hilang dari papan/katalog/Perlu perhatian, neraca turun hanya sebesar
+sisa (kekayaan naik palsu), tutup buku melenyapkannya (saldo pembuka hanya sisa > 0). Sumber utamanya `kasir.html`: sisa sesudah membayar hanya
+dikurangi di memori — muat ulang / katalog disegarkan = sisa lama kembali, bon yang sama bisa dibayar penuh lagi. Mesin TIDAK diubah.
+- `inti/format.js`: SATU aturan untuk semua pembaca (berkas ini ikut di semua bundel uji) — `LEBIH_AMBANG` (−0,5 = tekor pemasok),
+  `kalimatLebih` ("kelebihan bayar Rp X — uang pelanggan dipegang toko"), `lebihBayarDari(hitungPiutang(…))`. Kata sama dengan sisi
+  pemasok/owner; "titipan" sudah berarti lain (titipan tablet, urusan titipan) — jangan dipakai.
+- Pelanggan: status `lebih` (cap "kelebihan bayar" / "hapus buku terbayar") di `semuaBon`; tab Bon memajang pita + nama yang bisa diketuk (angka "sisa semuanya" TIDAK
+  berubah); kepala lembar jujur + penjelasan (tidak bisa dibayar/dihapus lagi; nota Kredit berikutnya memakai kelebihannya lebih dulu; uang
+  yang dikembalikan tunai belum punya catatan); bayar/hapus bon ditolak lebih dulu dengan kalimat benar; kartu orang (`lebih`), ringkasan
+  kartu, pratinjau gabung nama memakai sisa BERTANDA (dulu kelebihan dijepit 0 → bon gabungan terlalu besar).
+- Beranda Perlu perhatian, Menu (laci Pelanggan, jawaban piutang & kaya), Neraca (kalimat ikut `catatan` → semua kertas; layar: pita tersendiri,
+  tetap tampil walau neraca ditolak karena stok minus; BUKAN `tolak`; objek `neracaPada` TETAP berbentuk sama dengan main — ASAP GLOBAL
+  membandingkannya byte-sama; kalimat & daftarnya dari `lebihNeraca`, catatan layar dari `catatanLayarNeraca`), Kartu Piutang ("Kelebihan bayar" bukan "Sisa bon"), struk nota BON
+  ("Kelebihan bayar <nama>" bukan "Sisa bon Rp0"), Jual (daftar nama, info Kredit), Tutup Buku (peringatan: kelebihan bayar TIDAK menyeberang
+  tahun). Uji laporan menutup: kekayaan naik tepat sebesar kelebihan bayar yang disebut.
+- `kasir.html` (v28): buku kecil `kasir_bayar_bon_v1` — tiap pembayaran bon tetap dikurangkan selama masih di antrean; sesudah sampai server
+  selama katalog yang dipegang ditulis SEBELUM pembayaran diterima server (dua-duanya waktu server: `updateTime` GET katalog & jawaban PATCH);
+  katalog yang ditulis sesudahnya → berhenti begitu sisa nama itu berubah / namanya hilang. Ditolak server = tidak dikurangkan. Pembersih 30 hari.
+  Pilih nama dari daftar yang TERLIHAT (dulu nomor urut: katalog berganti tiap 2 menit → bisa jatuh ke orang lain); sisa dibaca ulang saat
+  SIMPAN; lembar menyebut "daftar sisa dari sistem per jam" (tanpa ambang). Bentuk katalog TIDAK diubah (keputusan owner 27 Sep "bentuk tetap").
+  Sisa celah (jarang): katalog yang ditulis beberapa detik sesudah pembayaran dari data yang belum memuatnya DAN sisa nama itu berubah karena
+  catatan lain → pengurangan berhenti terlalu cepat. Jalan persisnya (katalog menyebut id pembayaran yang sudah dihitung) menunggu owner.
+- Versi kasir naik ke `kasir-v28` (sw-kasir.js, kedua berkas kasir, `KK_VERSI_KASIR_TERBARU`). `KK_VERSI_AMBIL_SENDIRI = 'kasir-v27'`: HP v27
+  sudah mengambil katalog sendiri → Beranda cukup menyebut "versi kasir-v28 terpasang saat dibuka ulang" dan pemeriksaan katalog lamanya TETAP jalan.
+- Uji: `uji_pelanggan_baru.py` +9 (dokumen bayar melebihi sisa DISUNTIK langsung, ambang −0,3 = lunas) + asap data toko (jumlah nama kelebihan
+  bayar = sisa negatif mesin = tab Bon), `uji_ringkasan_baru.py` +2, `uji_menu_baru.py` +3, `uji_laporan_baru.py` +6, `uji_jual_baru.py` +3,
+  `uji_katalog_kasir.py` +24 jsc (fungsi asli dipotong dari kasir.html: muat ulang, lunas lalu bayar lagi, waktu server, katalog berubah karena
+  catatan lain, ditolak, pilih menurut nama, pagar, pembersih) + 2 statis + Beranda v27, `uji_antrean_kasir.py` +4 peramban (layar & klik
+  sungguhan, muat ulang di Chrome yang sama). Kontrol baru: pelanggan 7, ringkasan 1, menu 2, laporan 4, jual 3, katalog kasir 13.
+- Tinjauan independen 30 Sep (2 peninjau + penyanggah per temuan): 11 diajukan, 10 lolos, semua ditambal di cabang ini —
+  B1 sisa di bawah nol DIPECAH (`pecahLebih`): `uang` = bayar melebihi semua bon (uang pelanggan; hanya ini yang menaikkan kekayaan & dicetak di
+  struk) vs `hapus` = hapus buku yang ternyata dibayar juga (hapus bukunya yang perlu dibalik; jangan dikembalikan) — kalimat, cap, baris Perlu
+  perhatian, Menu, Neraca, Kartu Piutang, Jual, Tutup Buku mengikuti; B2 Kartu Piutang: sisa di bawah nol di ATAS pilihan; B3 Menu Orang › Pembeli
+  & cari nama menyebutnya; B4 tanpa titik kas kalimat neraca/"kaya" menyebut akibatnya nanti; B5 struk nota Kredit yang lahir sesudah kelebihan
+  bayar: "BON — dibayar dari kelebihan bayar" + "Dari kelebihan bayar" (TOTAL menutup), nota lama tetap "belum dibayar"; B6 berita acara tutup
+  buku memuat peringatannya; K1 pembayaran yang SUDAH pernah dikirim tidak lagi dijadikan pembanding selagi di antrean (jawaban PATCH bisa
+  hilang padahal tersimpan) + waktu server = `createTime`; K2 katalog tanpa waktu server (kasir darurat menulis kunci bersama — kini ikut
+  menyimpannya) tetap dikurangkan tapi bukan pembanding; K3 ditolak dibuang di `pindahKeDitolak`, arsip ditolak ikut dibaca; K5 LABEL_VERSI
+  'versi 39b'. Gugur: K4 (penyimpanan penuh — `catatBayarBon` gagal diam; uangnya tetap tercatat, dampaknya kembali ke perilaku lama).
+
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
 Temuan J1: uang kurang saat bayar → semua baris nota jadi Kredit (`uangDiterima` tidak ditulis) + satu pelunasan piutang sebesar uang yang diterima

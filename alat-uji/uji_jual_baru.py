@@ -772,6 +772,29 @@ ok('S8: nota TUNAI tidak pernah mencari pelunasan (bayarSaatBeli hanya untuk not
 var KUNCI = { retur: {}, karantina: {} };
 [rd, r0].forEach(function (d) { Object.keys(d || {}).forEach(function (k) { KUNCI.retur[k] = 1; }); });
 Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
+// ---- 39b no. 4: kelebihan bayar pelanggan terlihat di Jual (daftar nama, info Kredit) & struk — dulu dijepit 0 ("Sisa bon Rp0")
+(function () {
+  var piu0 = cacheMentah('piutang').slice(); var sD = hitungPiutang().find(function (x) { return x.kunci === 'deka'; }).sisa;   // sisa Deka SAAT INI (skenario di atas menambah notanya)
+  pasok('piutangMutasi', piu0.concat([{ id: 'm94', tanggal: '2026-09-19', jam: '11:00', namaPelanggan: 'Deka', tipe: 'bayar', nominal: sD + 30000, caraBayar: 'Tunai', dicatatDi: 'kasir' }]));
+  var dk = daftarPelanggan('dek')[0]; var ik = infoPelanggan('Deka');
+  ok('39b-4 Jual: Deka bayar (sisa + 30.000) → daftar nama sisaBon 0, lebih 30.000; info Kredit (mesin beku dijepit 0) diberi lebih 30.000', dk && dk.sisaBon === 0 && dk.lebih === 30000 && ik && ik.sisa === 0 && ik.lebih === 30000, JSON.stringify([dk, ik && ik.lebih]));
+  var st4 = susunStruk(notaDari({ id: 's2' }), stAtur(), null);
+  ok('39b-4 struk nota BON Deka: baris "Kelebihan bayar Deka … Rp30.000" menggantikan "Sisa bon Deka Rp0"; sisaBon 0, lebihBayar 30.000', st4.kertas.some(function (t) { return /^Kelebihan bayar Deka +Rp30\.000$/.test(t); }) && !st4.kertas.some(function (t) { return /^Sisa bon/.test(t); }) && st4.sisaBon === 0 && st4.lebihBayar === 30000, JSON.stringify(st4.kertas));
+  // B5: nota Kredit BARU (12:00) sesudah kelebihan bayar (11:00) → dipadamkan kelebihan itu lebih dulu; nota lama s2 (09:00) tetap "belum dibayar"
+  var pj0 = cacheMentah('penjualan').slice(); var s2r = pj0.find(function (x) { return x.id === 's2'; });
+  pasok('penjualan', pj0.concat([Object.assign({}, s2r, { id: 's94', grupNota: 'g94', jam: '12:00', totalKg: 1, jumlahKarung: 1, hargaTotal: 20000, hppTotalSaatJual: 15000 })]));
+  var st5 = susunStruk(notaDari({ grupNota: 'g94' }), stAtur(), null); var k5 = st5.kertas.map(function (t) { return t.replace(/ +/g, ' '); });
+  ok('39b-4 B5 nota Kredit 20.000 sesudah kelebihan bayar 30.000: "BON — dibayar dari kelebihan bayar", "Dari kelebihan bayar Rp20.000", "Sisa nota ini Rp0" (TOTAL menutup), saldo "Kelebihan bayar Deka Rp10.000"', k5.indexOf('BON — dibayar dari kelebihan bayar') >= 0 && /Dari kelebihan bayar\s+Rp20\.000/.test(k5.join('\n')) && k5.indexOf('Sisa nota ini Rp0') >= 0 && k5.indexOf('Kelebihan bayar Deka Rp10.000') >= 0 && st5.lebihBayar === 10000 && st5.sisaNota === 0, JSON.stringify(k5));
+  var st6 = susunStruk(notaDari({ id: 's2' }), stAtur(), null);
+  ok('39b-4 B5 cetak ulang nota LAMA s2 (ditulis sebelum kelebihan bayar) tetap "BON — belum dibayar" tanpa baris "Dari kelebihan bayar"', st6.kertas.some(function (t) { return t === 'BON — belum dibayar'; }) && !st6.kertas.some(function (t) { return /^Dari (kelebihan|sisa)/.test(t); }), JSON.stringify(st6.kertas));
+  pasok('penjualan', pj0); pasok('piutangMutasi', piu0);
+  // B1: hapus buku sebesar sisa lalu dibayar sebesar sisa (katalog kasir basi) → bukan uang pembeli: struk "Sisa bon Deka Rp0", bukan "Kelebihan bayar"
+  pasok('piutangMutasi', piu0.concat([{ id: 'm95', tanggal: '2026-09-19', jam: '11:00', namaPelanggan: 'Deka', tipe: 'hapusBuku', nominal: sD, alasan: 'uji' }, { id: 'm96', tanggal: '2026-09-19', jam: '11:05', namaPelanggan: 'Deka', tipe: 'bayar', nominal: sD, caraBayar: 'Tunai', dicatatDi: 'kasir' }]));
+  var st7 = susunStruk(notaDari({ id: 's2' }), stAtur(), null); var ik7 = infoPelanggan('Deka');
+  ok('39b-4 B1 hapus buku terbayar: struk "Sisa bon Deka Rp0" (bukan kelebihan bayar pembeli); info Jual memecahnya: lebihUang 0, lebihHapus = sisa', st7.kertas.some(function (t) { return /^Sisa bon Deka +Rp0$/.test(t); }) && !st7.kertas.some(function (t) { return /^Kelebihan bayar/.test(t); }) && st7.lebihBayar === 0 && ik7.lebihUang === 0 && ik7.lebihHapus === sD, JSON.stringify([st7.kertas.slice(-4), ik7.lebihUang, ik7.lebihHapus]));
+  pasok('piutangMutasi', piu0);
+  ok('39b-4 tanpa sisa negatif struk Deka tetap "Sisa bon" = sisa mesin (lebihBayar 0)', sD > 0 && susunStruk(notaDari({ id: 's2' }), stAtur(), null).lebihBayar === 0 && susunStruk(notaDari({ id: 's2' }), stAtur(), null).sisaBon === sD, sD);
+})();
 print(JSON.stringify({ lulus: lulus, gagal: gagal, kunci: { retur: Object.keys(KUNCI.retur), karantina: Object.keys(KUNCI.karantina) } }));
 """
 
@@ -846,6 +869,12 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            'no.4: struk mencetak "Sisa bon Rp0" untuk kelebihan bayar': js.replace("lebihBayar = pecahLebih(r).uang > 0.5 ? pecahLebih(r).uang : 0;", "lebihBayar = 0;"),
+            'no.4 B1: struk menyebut hapus buku terbayar sebagai kelebihan bayar pembeli': js.replace("lebihBayar = pecahLebih(r).uang > 0.5 ? pecahLebih(r).uang : 0;", "lebihBayar = r && r.sisa < LEBIH_AMBANG ? -r.sisa : 0;"),
+            'no.4 B5: nota Kredit yang tertutup kelebihan bayar tetap "belum dibayar"': js.replace("const pakaiLebih = rB ? stPakaiLebih(rB, nota, bb) : 0;", "const pakaiLebih = 0;"),
+            'no.4 B5: pembayaran sesudah nota ikut dianggap sebelum nota': js.replace("    if (String(m.tanggal || '') + ' ' + String(m.jam || '') > t) return a;\n", ""),
+            'no.4: daftar nama Jual tanpa kelebihan bayar': js.replace("lebih: pecahLebih(r).lebih, lebihUang: pecahLebih(r).uang, lebihHapus: pecahLebih(r).hapus, umurHari", "lebih: 0, lebihUang: 0, lebihHapus: 0, umurHari"),
+            'no.4: info Kredit tanpa kelebihan bayar': js.replace("i.lebih = PL.lebih; i.lebihUang = PL.uang; i.lebihHapus = PL.hapus;", "i.lebih = 0; i.lebihUang = 0; i.lebihHapus = 0;"),
             # ---- PUTARAN 25: nota sistem baru (trxId, tanpa grupNota)
             'perbaikan dicabut: nota trxId dihitung per baris (Hari ini & belanja terakhir)': js.replace("const jlKunciNota = (p) => String(p.grupNota || p.trxId || p.id);", "const jlKunciNota = (p) => String(p.grupNota || p.id);"),
             '"Hari ini" saja menghitung nota lewat grupNota': js.replace("const nota = new Set(baris.map(jlKunciNota)).size;", "const nota = new Set(baris.map((p) => p.grupNota || p.id)).size;"),
