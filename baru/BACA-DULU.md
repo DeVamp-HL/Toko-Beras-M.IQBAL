@@ -801,6 +801,23 @@ Keputusan owner 30 Sep ("kecualikan merek literan/kelas sendiri dari buku per uk
 - Uji: `uji_buku_ukuran.py` +11 pemeriksaan, asap data toko (gabung balik Ketan Hitam PK 25 kg 25 kg → induk: nilai stok & laba byte-sama, tidak ada induk yang
   masih terpisah), +5 kontrol. Tugas owner sesudah merge: tekan "gabungkan" untuk Ketan Hitam PK 25 kg.
 
+## Audit 39b no. 43 — petunjuk satu ketukan di Barang masuk (30 Sep 2026, cabang `audit/39b-induk-varian-petunjuk`)
+
+Keputusan owner 30 Sep ("petunjuk satu ketukan"). Temuan hulu H8: koreksi kedatangan 28 Sep mengganti nama baris TH, SR, HSj, SB, II, MTJ menjadi nama
+variannya ("TH · House" dst.); kedatangan berikutnya yang diketik sesuai tulisan karung ("TH") lahir sebagai buku BARU terpisah tanpa petunjuk.
+- `stok-catat-logika.js` `ckSaranVarian(nama)`: nama tanpa " · " yang belum berbuku padahal ada varian berbuku / berkatalog berinduk nama itu → daftar varian
+  (yang bukunya paling berisi dulu; huruf besar/kecil & spasi tidak dibedakan; arsip, buku khusus wadah, dan buku per ukuran tidak ditawarkan).
+  `hitungMasuk` membawa `saranVarian` per baris (baris baru saja, bukan koreksi).
+- `stok.js` Barang masuk: pita emas "TH sudah dicatat sebagai TH · House — pakai itu?" dengan tombol "pakai TH · House · buku … kg" (`mPakaiVarian`: baris
+  diganti ke nama varian, jawaban kelas/varian lama dibuang). Bukan penolakan — kalau memang barang lain, baris tetap jadi nama baru.
+- Uji: `uji_varian_merek.py` +3 pemeriksaan, asap data toko (keenam nama mendapat saran variannya), +3 kontrol, +1 pemeriksaan statis `periksa43`
+  (pita & aksi ada; `KG` di `gambarMasuk` sudah membawa " kg", jadi tombol tidak boleh menambah " kg" lagi — screenshot 30 Sep menangkap "buku 750 kg kg")
+  dengan 2 kontrol statis. Tampilan: `stok.css` `[data-k^="msv-pil-"]` flex — grid tiga kolom Stok memecah tombol jadi empat baris di HP 375.
+- Tinjauan independen 30 Sep (peninjau + penyanggah): nama yang SAMA kecuali huruf/spasi ("kumala" padahal bukunya "Kumala") dulu hanya ditawari
+  VARIANNYA — satu ketukan memasukkan karung biasa ke buku varian. Kini buku aslinya ikut ditawarkan dan selalu paling depan (juga "th · house" → "TH · House").
+  Kontrol penyaring dipecah tiga (arsip / buku khusus wadah / buku per ukuran, masing-masing punya contoh di kotak pasir) + kontrol spasi ganda,
+  "beda huruf tidak ditawarkan", "tidak paling depan"; asap data toko: tiap nama berbuku yang diketik huruf kecil → buku aslinya paling depan.
+
 ## Struktur
 ```
 baru/

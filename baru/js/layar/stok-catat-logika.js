@@ -75,6 +75,25 @@ export function calonMerkMasuk() {
   const wadahStok = petaBukuWadah(); const ukuran = petaUkuran();   // putaran 28: buku khusus & buku per ukuran ('Merek 25 kg' dipilih otomatis) bukan nama barang masuk
   return Object.keys(hitung).filter((m) => !arsip[arKunciBeras(m)] && !kelas[m] && !wadahStok[m] && !ukuran[m]).sort((a, b) => akhir[b].localeCompare(akhir[a]) || hitung[b] - hitung[a] || a.localeCompare(b));
 }
+/**
+ * PETUNJUK SATU KETUKAN (audit 39b no. 43, keputusan owner 30 Sep): nama yang diketik tanpa " · " padahal barang itu sudah dicatat sebagai VARIAN
+ * ("TH" diketik, bukunya "TH · House") → daftar varian itu (yang bukunya paling berisi dulu), supaya Barang masuk bertanya "pakai itu?" — satu ketukan
+ * mengganti baris ke nama varian, jadi stok tidak terbelah ke buku baru. Bukan penolakan: kalau memang barang lain, baris tetap jadi nama baru.
+ * Huruf besar/kecil & spasi ganda tidak dibedakan; nama arsip, buku khusus wadah, dan buku per ukuran tidak ditawarkan.
+ * Tinjauan 30 Sep: nama yang SAMA kecuali huruf/spasi ("kumala" padahal bukunya "Kumala", "th · house" padahal "TH · House") juga ditawarkan
+ * dan SELALU paling depan — tanpa itu pita hanya menawarkan varian dan satu ketukan memasukkan karung biasa ke buku varian.
+ */
+export function ckSaranVarian(merkKetik) {
+  const t = String(merkKetik || '').trim(); if (!t) return []; const berVarian = t.indexOf('\u00b7') >= 0;
+  const kunci = (x) => String(x).trim().replace(/\s+/g, ' ').toLowerCase(); const k = kunci(t);
+  const st = hitungStokKarungPerMerk(); const nama = {}; Object.keys(st).forEach((m) => { nama[m] = true; }); ambilHargaKarung().forEach((h) => { if (h && h.merk) nama[String(h.merk)] = true; });
+  const arsip = arPeta(); const bw = petaBukuWadah(); const uk = petaUkuran();
+  const sama = (m) => m !== t && kunci(m) === k;                                                     // nama yang sama, beda huruf/spasi
+  const variannya = (m) => !berVarian && m.indexOf(' \u00b7 ') > 0 && kunci(m.split(' \u00b7 ')[0]) === k;   // varian berinduk nama itu
+  return Object.keys(nama).filter((m) => (sama(m) || variannya(m)) && !arsip[arKunciBeras(m)] && !bw[m] && !uk[m])
+    .map((m) => ({ nama: m, bukuKg: ckB2(((st[m] || {}).sisaKg) || 0), s: sama(m) ? 1 : 0 })).sort((a, b) => b.s - a.s || b.bukuKg - a.bukuKg || a.nama.localeCompare(b.nama))
+    .map((x) => ({ nama: x.nama, bukuKg: x.bukuKg }));
+}
 /** Harga beli per kg terakhir nama itu (dari buku) — pembanding saat mengetik harga. */
 export function hargaSebelumnya(merk) { const s = hitungStokKarungPerMerk()[merk]; return s ? (s.hargaTerakhirPerKg || 0) : 0; }
 /** Hitung draf: tiap baris kg, subtotal, alokasi bongkar & HPP per kg (rumus hitungHppMerkDalamBatch sistem berjalan) + masalah per baris. */
@@ -97,6 +116,7 @@ export function hitungMasuk(draf) {
     const jumlah = ckAngka(b.jumlahKarung); const berat = ckAngka(b.beratKarung) || 50; const harga = ckAngka(b.hargaPerKg); const merkKetik = String(b.merk || '').trim();
     const baru = !draf.id && !!merkKetik && !vrAda(merkKetik) && !kelas[merkKetik.split(' \u00b7 ')[0]] && !wadahStok[merkKetik] && !ukuran[merkKetik] && !sendiri[merkKetik];
     const tebak = baru ? kmKelasMerk(merkKetik) : { kelas: '', asal: '' };
+    const saranVarian = baru ? ckSaranVarian(merkKetik) : [];   // audit 39b no. 43: "TH" padahal bukunya "TH · House" → layar bertanya "pakai itu?"
     const kelasPilih = !!b.kelasPilih; const kelasKetik = String(b.kelas || '').trim();
     const kelasBaris = !baru ? '' : kelasPilih ? (bolehKelas[kelasKetik] ? kelasKetik : '') : (tebak.asal === 'tebakan' && bolehKelas[tebak.kelas] ? tebak.kelas : '');
     const kelasAsal = !baru || !kelasBaris ? (baru && kelasPilih ? 'owner' : '') : kelasPilih ? 'owner' : 'tebakan';
@@ -120,7 +140,7 @@ export function hitungMasuk(draf) {
     const arah = kmArah(harga, lalu ? lalu.harga : laluKelas ? laluKelas.harga : 0); const kelasTanya = baru && !keSendiri && laluKelas ? kmKalimatKelas(harga, laluKelas) : '';
     return { ke: i + 1, merk, merkSimpan, indukUkuran, varian: pilih, namaMutu: String(b.namaMutu || ''), vr, jumlahKarung: jumlah, beratKarung: berat, hargaPerKg: harga, totalKg: ckB2(jumlah * berat), subtotalHarga: Math.round(jumlah * berat * harga), terisi, masalah, sah: terisi && !masalah,
       hargaLalu: merk ? hargaSebelumnya(merk) : 0,
-      merkKetik, baru, kelas: kelasBaris, kelasAsal, kelasPilih, keSendiri, merkPemasok, lalu, laluKelas, arah, kelasTanya, calonKelas: baru ? calonKelas : [] }; });
+      merkKetik, baru, saranVarian, kelas: kelasBaris, kelasAsal, kelasPilih, keSendiri, merkPemasok, lalu, laluKelas, arah, kelasTanya, calonKelas: baru ? calonKelas : [] }; });
   const sah = baris.filter((b) => b.sah);
   const hpp = hitungHppMerkDalamBatch(sah.map((b) => ({ merk: b.merkSimpan, totalKg: b.totalKg, subtotalHarga: b.subtotalHarga })), bongkar);
   sah.forEach((b, i) => { b.alokasiBongkar = Math.round(hpp[i].alokasiBongkar); b.hppPerKg = hpp[i].hppPerKg; });

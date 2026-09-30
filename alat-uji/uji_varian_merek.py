@@ -115,8 +115,34 @@ ok('induk varian baru dari layar Harga: nama wadah / kelas mutu (IR64 Apex, IR42
 
 // ---- ASAP DATA TOKO
 var asap = null;
+
+// ---- audit 39b no. 43 (owner 30 Sep: petunjuk satu ketukan): "TH" diketik padahal barangnya sudah berbuku sebagai varian "TH · House"
+terapkanKeCache([{ koleksi: 'batchMasuk', data: { id: 'b43', tanggal: '2026-09-18', jam: '08:00', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [{ id: '1', merk: 'TH · House', satuan: 'karung', beratKarung: 50, jumlahKarung: 3, totalKg: 150, hargaPerKg: 12000, subtotalHarga: 1800000 }] } },
+  { koleksi: 'katalogHargaKarung', data: { id: 'TH · Gold', merk: 'TH · Gold', hargaPerKg: 14000 } },
+  // buku per ukuran "TH · House 25 kg" (buku khusus, bukan nama barang masuk) — TIDAK boleh ditawarkan sebagai saran
+  { koleksi: 'batchMasuk', data: { id: 'b43u', tanggal: '2026-09-18', jam: '08:05', pemasok: 'LAHIR BUKU', caraBayar: 'tunai', biayaBongkar: 0, stokAwal: true, lahirBuku: true, merkList: [{ id: '1', merk: 'TH · House 25 kg', satuan: 'lahir', beratKarung: 25, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, indukUkuran: 'TH · House' }] } }]);
+// tinjauan 30 Sep: arsip & buku khusus wadah yang berinduk TH juga TIDAK boleh ditawarkan — dulu hanya buku per ukuran yang benar-benar diuji
+terapkanKeCache([{ koleksi: 'katalogHargaKarung', data: { id: 'TH · Lama', merk: 'TH · Lama', hargaPerKg: 13000 } },
+  { koleksi: 'aturanToko', data: { id: 'produkArsip', daftar: [{ kunci: 'K:TH · Lama', nama: 'TH · Lama', pada: '2026-09-18' }] } },
+  // varian yang bukunya LEBIH BESAR dari induknya (Polos · Besar 600 kg vs Polos) — urutan 'induk paling depan' harus tetap berlaku
+  { koleksi: 'batchMasuk', data: { id: 'b43p', tanggal: '2026-09-18', jam: '08:07', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [{ id: '1', merk: 'Polos \u00b7 Besar', satuan: 'karung', beratKarung: 50, jumlahKarung: 12, totalKg: 600, hargaPerKg: 13000, subtotalHarga: 7800000 }] } },
+  { koleksi: 'batchMasuk', data: { id: 'b43w', tanggal: '2026-09-18', jam: '08:06', pemasok: 'LAHIR BUKU', caraBayar: 'tunai', biayaBongkar: 0, stokAwal: true, lahirBuku: true, merkList: [{ id: '1', merk: 'TH · Karung W9', satuan: 'lahir', beratKarung: 50, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, karungWadah: 'W9' }] } }]);
+var H43 = hitungMasuk(draf([brs('TH', 2, 12000), brs('  th ', 1, 12000), brs('TH · House', 1, 12000), brs('Polos', 1, 13000)]));
+ok('39b-43 "TH" (tanpa buku) → baris baru dengan saran varian: TH · House (buku 150 kg) dulu, lalu TH · Gold (katalog saja, 0 kg); buku per ukuran TH · House 25 kg tidak ditawarkan; huruf kecil & spasi tidak dibedakan',
+  H43.baris[0].baru === true && J(H43.baris[0].saranVarian) === J([{ nama: 'TH · House', bukuKg: 150 }, { nama: 'TH · Gold', bukuKg: 0 }]) && J(H43.baris[1].saranVarian) === J(H43.baris[0].saranVarian), J(H43.baris.slice(0, 2).map(function (b) { return [b.merkKetik, b.baru, b.saranVarian]; })));
+ok('39b-43 nama varian yang diketik lengkap, dan nama yang sudah berbuku sendiri (Polos), TIDAK diberi saran; koreksi kedatangan juga tidak', !H43.baris[2].baru && !H43.baris[2].saranVarian.length && !H43.baris[3].saranVarian.length
+  && !hitungMasuk(draf([brs('TH', 1, 12000)], { id: 'b1' })).baris[0].saranVarian.length && ckSaranVarian('TH · House').length === 0 && ckSaranVarian('').length === 0, J([H43.baris[2].saranVarian, H43.baris[3].saranVarian]));
+var H43c = hitungMasuk(draf([brs('kumala', 1, 14000), brs('th · house', 1, 12000), brs('ll', 1, 14000), brs('polos', 1, 13000), brs('ir64  ll', 1, 14000)])); var kgKumala = stok('Kumala').sisaKg;
+ok('39b-43 tinjauan: nama yang SAMA kecuali huruf ("kumala", "th · house", "ll", "polos", "ir64  ll" berspasi ganda) → buku aslinya ditawarkan PALING DEPAN, juga saat variannya lebih berisi (bukan cuma variannya); arsip TH · Lama & buku wadah TH · Karung W9 tidak ditawarkan',
+  H43c.baris[0].baru === true && H43c.baris[0].saranVarian.length >= 2 && J(H43c.baris[0].saranVarian[0]) === J({ nama: 'Kumala', bukuKg: kgKumala }) && H43c.baris[0].saranVarian.some(function (v) { return v.nama === 'Kumala \u00b7 Super'; })
+  && J(H43c.baris[1].saranVarian) === J([{ nama: 'TH \u00b7 House', bukuKg: 150 }]) && H43c.baris[2].saranVarian.length && H43c.baris[2].saranVarian[0].nama === 'LL' && J(H43c.baris[3].saranVarian.map(function (v) { return v.nama; })) === J(['Polos', 'Polos \u00b7 Besar']) && stok('Polos \u00b7 Besar').sisaKg > stok('Polos').sisaKg && H43c.baris[4].saranVarian.length && H43c.baris[4].saranVarian[0].nama === 'IR64 LL'
+  && !ckSaranVarian('TH').some(function (v) { return v.nama === 'TH \u00b7 Lama' || v.nama === 'TH \u00b7 Karung W9'; }), J(H43c.baris.map(function (b) { return [b.merkKetik, b.baru, b.saranVarian]; })));
+var R43 = susunSimpanMasuk(draf([brs('TH · House', 2, 12000)]), W, true); var b43 = (R43.dokumen || []).find(function (d) { return d.koleksi === 'batchMasuk'; });
+ok('39b-43 sesudah "pakai TH · House" (baris diganti ke nama varian): kedatangan tercatat atas TH · House, buku varian naik 150 → 250 kg, tidak ada buku "TH" baru', !R43.tolak && b43 && b43.data.merkList[0].merk === 'TH · House' && (function () { terapkanKeCache(R43.dokumen || []); return stok('TH · House').sisaKg === 250 && !hitungStokKarungPerMerk()['TH']; })(), J([R43.tolak, b43 && b43.data.merkList]));
 if (CADANGAN) {
   Object.keys(CADANGAN).forEach(function (n) { pasok(n, CADANGAN[n]); });
+  // audit 39b no. 43: diukur di data toko APA ADANYA (sebelum varian contoh "· Uji" dibuat di bawah)
+  var saranToko = ['TH', 'SR', 'HSj', 'SB', 'II', 'MTJ'].map(function (n) { return [n, ckSaranVarian(n).map(function (v) { return v.nama; })]; });
   // putaran 27 (Bagian 5): nama wadah / kelas mutu (IR64 Apex dkk.) tidak boleh lagi datang lewat barang masuk — dipisah: merek → varian, kelas → wajib ditolak
   var kelas = wbNamaKelas(); var st0 = hitungStokKarungPerMerk(); var semuaNama = Object.keys(st0).filter(function (m) { return st0[m].hppTerakhirPerKg > 0; });
   // putaran 28: buku per ukuran ('Merek 25 kg') & buku khusus wadah bukan nama barang masuk — ditolak dengan benar, jadi tidak ikut asap varian
@@ -130,7 +156,10 @@ if (CADANGAN) {
   var petaR = ((R.dokumen || []).find(function (d) { return d.koleksi === 'pengaturan'; }) || { data: { peta: {} } }).data.peta;
   var jenisIkut = nama.every(function (m) { return petaR[m + ' · Uji'] === jenisUntukMerk(m); });
   var kelasLolos = namaKelas.filter(function (m) { return !/nama WADAH/.test(susunSimpanMasuk(draf([brs(m, 1, Math.round(st0[m].hppTerakhirPerKg * 1.10), { varian: 'beda', namaMutu: 'Uji' })], { tanggal: TGL_CAD }), WC, true).tolak || ''); });
-  asap = { nama: nama.length, tanya3: tanya3, tanya10: tanya10, tolak: R.tolak || '', lamaSama: lamaSama, jenisIkut: jenisIkut, varian: Object.keys(st1).filter(function (m) { return / · Uji$/.test(m); }).length, kelas: namaKelas.length, kelasLolos: kelasLolos };
+  // tinjauan 30 Sep: tiap nama berbuku (bukan varian, bukan buku khusus) yang diketik huruf kecil → buku aslinya paling depan di saran
+  var hurufKecil = Object.keys(st0).filter(function (m) { return st0[m].sisaKg > 0.004 && m.indexOf('\u00b7') < 0 && !bukanMasuk[m] && !arBeras(m) && m.toLowerCase() !== m; });
+  var hurufSalah = hurufKecil.filter(function (m) { var v = ckSaranVarian(m.toLowerCase()); return !v.length || v[0].nama !== m; });
+  asap = { hurufKecil: hurufKecil.length, hurufSalah: hurufSalah, saranToko: saranToko, nama: nama.length, tanya3: tanya3, tanya10: tanya10, tolak: R.tolak || '', lamaSama: lamaSama, jenisIkut: jenisIkut, varian: Object.keys(st1).filter(function (m) { return / · Uji$/.test(m); }).length, kelas: namaKelas.length, kelasLolos: kelasLolos };
 }
 print(J({ lulus: lulus, gagal: gagal, asap: asap }));
 """
@@ -176,7 +205,33 @@ RUSAK = {
     'induk varian baru menawarkan nama wadah / kelas': ("return (daftar || []).filter((m) => String(m).indexOf(VR_PEMISAH) < 0 && !kelas[m]);", "return (daftar || []).filter((m) => String(m).indexOf(VR_PEMISAH) < 0);"),
     'peringatan varian diam walau induk berstok tanpa harga': ("if ((perKg !== null && perKg > 0) || (utuh && utuh.perUnit > 0)) return '';", "return '';"),
     'peringatan varian berbunyi walau induk sudah berharga': ("if ((perKg !== null && perKg > 0) || (utuh && utuh.perUnit > 0)) return '';", "if (false) return '';"),
+    # audit 39b no. 43
+    'petunjuk varian tidak muncul (TH lahir jadi buku terpisah tanpa ditanya)': ("const saranVarian = baru ? ckSaranVarian(merkKetik) : [];", "const saranVarian = [];"),
+    'saran varian peka huruf besar/kecil & spasi': ("const kunci = (x) => String(x).trim().replace(/\\s+/g, ' ').toLowerCase();", "const kunci = (x) => String(x);"),
+    'saran varian menawarkan nama yang diarsipkan': ("&& !arsip[arKunciBeras(m)] && !bw[m] && !uk[m])", "&& !bw[m] && !uk[m])"),
+    'saran varian menawarkan buku khusus wadah': ("&& !arsip[arKunciBeras(m)] && !bw[m] && !uk[m])", "&& !arsip[arKunciBeras(m)] && !uk[m])"),
+    'saran varian menawarkan buku per ukuran': ("&& !arsip[arKunciBeras(m)] && !bw[m] && !uk[m])", "&& !arsip[arKunciBeras(m)] && !bw[m])"),
+    'saran varian peka spasi ganda di tengah nama': ("const kunci = (x) => String(x).trim().replace(/\\s+/g, ' ').toLowerCase();", "const kunci = (x) => String(x).trim().toLowerCase();"),
+    'nama sama beda huruf tidak ditawarkan (pita menunjuk varian saja)': ("const sama = (m) => m !== t && kunci(m) === k;", "const sama = (m) => false;"),
+    'nama sama beda huruf tidak paling depan': ("sort((a, b) => b.s - a.s || b.bukuKg", "sort((a, b) => b.bukuKg"),
     'usul harga tanpa target untung': ("return modalKg > 0 ? vrBulatAtas(modalKg + (Number(a.targetPerKg) || 0), Number(a.bulatKarung) || 0) : 0;", "return modalKg > 0 ? vrBulatAtas(modalKg, Number(a.bulatKarung) || 0) : 0;"),
+}
+
+
+# audit 39b no. 43 — pemeriksaan statis stok.js (layar DOM tidak ikut kotak pasir). KG di gambarMasuk SUDAH membawa " kg":
+# tombol "pakai <varian> · buku … kg" yang menambah " kg" lagi tercetak "buku 750 kg kg" (tertangkap screenshot 30 Sep).
+def periksa43(t):
+    kurang = ['stok.js tidak memuat ' + x for x in ['data-aksi="mPakaiVarian"', 'mPakaiVarian: ({ i, merk }) => ubahMasuk(', 'data-k="msv-${i}"', 'sudah dicatat sebagai <b>${b.saranVarian.map((v) => v.nama)'] if x not in t]
+    i = t.find('function gambarMasuk('); j = t.find('\n  function ', i + 1) if i >= 0 else -1
+    badan = t[i:j] if i >= 0 and j > i else ''
+    if "const KG = (n) => DESIMAL(Math.round(n * 10) / 10) + ' kg';" not in badan: kurang.append('KG di gambarMasuk tidak lagi membawa satuan kg (periksa ulang tombol pakai varian)')
+    elif "KG(v.bukuKg) + ' kg'" in badan or 'KG(v.bukuKg)}' + ' kg' in badan: kurang.append('tombol pakai varian mencetak satuan kg dua kali ("buku … kg kg")')
+    if "' · buku ' + KG(v.bukuKg)" not in badan: kurang.append('tombol pakai varian tidak menyebut isi bukunya')
+    return kurang
+
+RUSAK_STATIS = {
+    'satuan kg dobel di tombol pakai varian': ("' · buku ' + KG(v.bukuKg) : ''", "' · buku ' + KG(v.bukuKg) + ' kg' : ''"),
+    'tombol pakai varian tanpa isi buku': ("' · buku ' + KG(v.bukuKg) : ''", "'' : ''"),
 }
 
 if __name__ == '__main__':
@@ -188,12 +243,30 @@ if __name__ == '__main__':
             l, g, _ = utama(js.replace(a, b), False)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:140] if g else '-'))
             if not g: kode = 3
+        t43 = open(os.path.join(AKAR, 'baru/js/layar/stok.js'), encoding='utf-8').read()
+        if periksa43(t43): print('KONTROL BASI  statis 39b no. 43 (stok.js asli sudah gagal: ' + ' | '.join(periksa43(t43)) + ')'); kode = 3
+        for nama, (a, b) in RUSAK_STATIS.items():
+            if t43.count(a) != 1: print('KONTROL BASI  ' + nama + ' (jangkar ' + str(t43.count(a)) + '×)'); kode = 3; continue
+            k = periksa43(t43.replace(a, b))
+            print(('BERBUNYI ' if k else 'DIAM!!   ') + nama + ' → ' + (k[0][:140] if k else '-'))
+            if not k: kode = 3
         sys.exit(kode)
     l, g, asap = utama(js, True)
+    # audit 39b no. 43 — statis: pita "pakai itu?" & aksinya ada di layar Barang masuk (stok.js), satuan kg di tombolnya sekali saja
+    t43 = open(os.path.join(AKAR, 'baru/js/layar/stok.js'), encoding='utf-8').read()
+    kurang43 = periksa43(t43)
+    if kurang43: g.append('statis 39b no. 43 · ' + ' | '.join(kurang43))
+    else: l += 1
     print('VARIAN MEREK (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     if asap:
         print('ASAP DATA TOKO (%s): %d nama bermodal · beli ±3 %% ditanya: %s · beli +10 %% TIDAK ditanya: %s · %d varian dibuat · buku nama lama byte-sama: %s · jenis ikut induk: %s · %d nama kelas/wadah ditolak barang masuk (lolos: %s)'
               % (os.path.basename(cadangan_toko()), asap['nama'], ', '.join(asap['tanya3']) or 'tidak ada', ', '.join(asap['tanya10']) or 'tidak ada', asap['varian'], asap['lamaSama'], asap['jenisIkut'], asap['kelas'], ', '.join(asap['kelasLolos']) or 'tidak ada'))
         if asap['tanya3'] or asap['tanya10'] or asap['tolak'] or not asap['lamaSama'] or not asap['jenisIkut'] or asap['varian'] != asap['nama'] or asap['kelasLolos']: g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:300])
+        # audit 39b no. 43: TH, SR, HSj, SB, II, MTJ (dikoreksi 28 Sep jadi nama varian) — diketik lagi di Barang masuk wajib ditawari variannya
+        st43 = asap.get('saranToko') or []
+        print('   39b no. 43 — saran satu ketukan untuk nama karung yang sudah jadi varian: ' + ' · '.join('%s → %s' % (n, ' / '.join(v) or 'TIDAK ADA') for n, v in st43))
+        if not st43 or any(not v or not all(x.split(' \u00b7 ')[0].lower() == n.lower() for x in v) for n, v in st43): g.append('asap data toko (39b no. 43): ' + json.dumps(st43, ensure_ascii=False)[:300])
+        print('   39b no. 43 tinjauan — nama berbuku diketik huruf kecil: %d diuji, buku aslinya paling depan di saran: %d%s' % (asap.get('hurufKecil', 0), asap.get('hurufKecil', 0) - len(asap.get('hurufSalah') or []), (' · SALAH: ' + ', '.join(asap['hurufSalah'])) if asap.get('hurufSalah') else ''))
+        if not asap.get('hurufKecil') or asap.get('hurufSalah'): g.append('asap data toko (39b no. 43 huruf): ' + json.dumps(asap.get('hurufSalah'), ensure_ascii=False)[:300])
     sys.exit(2 if g else 0)
