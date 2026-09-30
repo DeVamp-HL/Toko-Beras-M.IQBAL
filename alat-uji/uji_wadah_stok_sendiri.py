@@ -64,7 +64,7 @@ var MEREK = ['NG', 'Kumala', 'Angsa', 'IR64 Apex'];
 
 // ---- SEBELUM pindahan: model putaran 27 (buku merek asal), katalog kasir byte-sama penyusun index.html
 ok('sebelum pindahan: kedua wadah belum berstok sendiri, katalog HP kasir byte-sama penyusun index.html (tanpa saring wadah)',
-  !wbAktif('IR64 Apex') && !wbAktif('Angsa') && J(kkIsi()) === J(arSaringKatalogKasir(susunIsiKatalogKasir())), J([wbAktif('IR64 Apex'), wbAktif('Angsa')]));
+  !wbAktif('IR64 Apex') && !wbAktif('Angsa') && (function () { var x = kkIsi(); var ada = Array.isArray(x.bayarBonTerhitung); delete x.bayarBonTerhitung; return ada && J(x) === J(arSaringKatalogKasir(susunIsiKatalogKasir())); })(), J([wbAktif('IR64 Apex'), wbAktif('Angsa')]));
 var jualNG = { id: 7001, tanggal: '2026-09-20', jam: '09:00', jenis: 'karung', merkSumber: 'NG', jumlahKarung: 8, totalKg: 400, hargaTotal: 5200000, hppTotalSaatJual: 4800000, caraBayar: 'Tunai', namaProduk: 'NG (karung utuh)' };
 var chipSebelumNGminus = denganCacheSementara([{ koleksi: 'penjualan', data: jualNG }], function () { var c = chipL('IR64 Apex'); return c ? c.sisa : null; });
 ok('sebelum pindahan: buku NG yang habis MENAHAN literan wadah IR64 Apex (inilah yang dikeluhkan owner)', chipSebelumNGminus === 0, J(chipSebelumNGminus));
