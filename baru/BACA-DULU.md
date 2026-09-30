@@ -1138,3 +1138,9 @@ Tambalan: `firebase.js` `gerbangKatalog()` = SATU penilai (dipakai terbit otomat
 `kkSertakan` berhenti bila gerbang tertutup atau tanpa penilai (kotak pasir, cadangan) — terbit otomatis menyusul begitu gerbang terbuka.
 Uji `uji_katalog_kasir.py` +2 (jsc: gerbang tertutup → katalog tidak ikut; statis: penilai terpasang & dipakai). Uji data toko katalog disesuaikan
 cadangan 1 Okt (semua wadah aktif): buku khusus wadah tidak dijual dari HP kasir, harga liter pindah ke buku wadah — aturan wbSaringKatalogKasir.
+
+## Audit 39b no. 31 — arahan titik kas menunjuk Tutup hari sistem baru (1 Okt 2026, cabang `audit/39b-teks-titik-kas-basi`)
+
+Beranda dan Bon pemasok masih menulis "titik kas belum disetel di perangkat ini — setel di sistem lama". Sistem lama hanya-baca, dan titik yang disetel
+di sana cuma tersimpan di satu perangkat. Kini: "titik kas belum ada — Tutup hari malam ini (Uang › Tutup hari) menyetelnya" (dokumen titikKas satu
+untuk semua perangkat). Uji `uji_ringkasan_baru.py` +1 (pemeriksa kata di dua berkas), kontrol +1.
