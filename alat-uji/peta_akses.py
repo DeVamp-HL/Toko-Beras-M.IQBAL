@@ -486,6 +486,8 @@ function ukurBerulang(keadaan) {
     var bon = []; for (var q = 0; q < nn; q++) bon.push(nota(9000 + q, '2026-08-' + String(2 + (q % 20)).padStart(2, '0'), 'Pengutang Contoh ' + q, 200000, { caraBayar: 'Kredit' }));
     pasok('penjualan', cacheMentah('penjualan').concat(bon)); pasok('aturanToko', aturan0.concat(kunciB));
     pada('2027-01-05T10:00:00+07:00'); var W27 = jam('2027-01-05T10:00:00+07:00');
+    // 39b no. 12: tutup buku menolak bila uang per tempat 31 Des tidak bisa dihitung — keadaan wajar = tutup hari 31 Des sudah menyetel titik kas
+    localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-12-31', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }));
     var rk = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: 'Saksi Contoh', langkah: {} }, W27);
     ukur(keadaan, 'tutup buku 2026 pada 5 Jan 2027 · ' + nn + ' nama berutang', 'susunKunci', rk);
     if (keadaan === 'A' && nn === 10 && rk && !rk.tolak) {
