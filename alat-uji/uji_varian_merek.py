@@ -198,6 +198,23 @@ RUSAK = {
     'usul harga tanpa target untung': ("return modalKg > 0 ? vrBulatAtas(modalKg + (Number(a.targetPerKg) || 0), Number(a.bulatKarung) || 0) : 0;", "return modalKg > 0 ? vrBulatAtas(modalKg, Number(a.bulatKarung) || 0) : 0;"),
 }
 
+
+# audit 39b no. 43 — pemeriksaan statis stok.js (layar DOM tidak ikut kotak pasir). KG di gambarMasuk SUDAH membawa " kg":
+# tombol "pakai <varian> · buku … kg" yang menambah " kg" lagi tercetak "buku 750 kg kg" (tertangkap screenshot 30 Sep).
+def periksa43(t):
+    kurang = ['stok.js tidak memuat ' + x for x in ['data-aksi="mPakaiVarian"', 'mPakaiVarian: ({ i, merk }) => ubahMasuk(', 'data-k="msv-${i}"', 'sudah dicatat sebagai <b>${b.saranVarian.map((v) => v.nama)'] if x not in t]
+    i = t.find('function gambarMasuk('); j = t.find('\n  function ', i + 1) if i >= 0 else -1
+    badan = t[i:j] if i >= 0 and j > i else ''
+    if "const KG = (n) => DESIMAL(Math.round(n * 10) / 10) + ' kg';" not in badan: kurang.append('KG di gambarMasuk tidak lagi membawa satuan kg (periksa ulang tombol pakai varian)')
+    elif "KG(v.bukuKg) + ' kg'" in badan or 'KG(v.bukuKg)}' + ' kg' in badan: kurang.append('tombol pakai varian mencetak satuan kg dua kali ("buku … kg kg")')
+    if "' · buku ' + KG(v.bukuKg)" not in badan: kurang.append('tombol pakai varian tidak menyebut isi bukunya')
+    return kurang
+
+RUSAK_STATIS = {
+    'satuan kg dobel di tombol pakai varian': ("' · buku ' + KG(v.bukuKg) : ''", "' · buku ' + KG(v.bukuKg) + ' kg' : ''"),
+    'tombol pakai varian tanpa isi buku': ("' · buku ' + KG(v.bukuKg) : ''", "'' : ''"),
+}
+
 if __name__ == '__main__':
     js = uji_kunci_periode.satu_lingkup(bundel_baru.bundel(MODUL))   # putaran 30: teksMargin stok-hpp vs harga-logika
     if '--kontrol' in sys.argv:
@@ -207,12 +224,19 @@ if __name__ == '__main__':
             l, g, _ = utama(js.replace(a, b), False)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:140] if g else '-'))
             if not g: kode = 3
+        t43 = open(os.path.join(AKAR, 'baru/js/layar/stok.js'), encoding='utf-8').read()
+        if periksa43(t43): print('KONTROL BASI  statis 39b no. 43 (stok.js asli sudah gagal: ' + ' | '.join(periksa43(t43)) + ')'); kode = 3
+        for nama, (a, b) in RUSAK_STATIS.items():
+            if t43.count(a) != 1: print('KONTROL BASI  ' + nama + ' (jangkar ' + str(t43.count(a)) + '×)'); kode = 3; continue
+            k = periksa43(t43.replace(a, b))
+            print(('BERBUNYI ' if k else 'DIAM!!   ') + nama + ' → ' + (k[0][:140] if k else '-'))
+            if not k: kode = 3
         sys.exit(kode)
     l, g, asap = utama(js, True)
-    # audit 39b no. 43 — statis: pita "pakai itu?" & aksinya ada di layar Barang masuk (stok.js)
+    # audit 39b no. 43 — statis: pita "pakai itu?" & aksinya ada di layar Barang masuk (stok.js), satuan kg di tombolnya sekali saja
     t43 = open(os.path.join(AKAR, 'baru/js/layar/stok.js'), encoding='utf-8').read()
-    kurang43 = [x for x in ['data-aksi="mPakaiVarian"', 'mPakaiVarian: ({ i, merk }) => ubahMasuk(', 'data-k="msv-${i}"', 'sudah dicatat sebagai <b>${b.saranVarian.map((v) => v.nama)'] if x not in t43]
-    if kurang43: g.append('statis 39b no. 43 · stok.js tidak memuat: ' + ' | '.join(kurang43))
+    kurang43 = periksa43(t43)
+    if kurang43: g.append('statis 39b no. 43 · ' + ' | '.join(kurang43))
     else: l += 1
     print('VARIAN MEREK (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)

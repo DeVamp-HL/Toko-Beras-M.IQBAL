@@ -807,7 +807,9 @@ variannya ("TH · House" dst.); kedatangan berikutnya yang diketik sesuai tulisa
   `hitungMasuk` membawa `saranVarian` per baris (baris baru saja, bukan koreksi).
 - `stok.js` Barang masuk: pita emas "TH sudah dicatat sebagai TH · House — pakai itu?" dengan tombol "pakai TH · House · buku … kg" (`mPakaiVarian`: baris
   diganti ke nama varian, jawaban kelas/varian lama dibuang). Bukan penolakan — kalau memang barang lain, baris tetap jadi nama baru.
-- Uji: `uji_varian_merek.py` +3 pemeriksaan, asap data toko (keenam nama mendapat saran variannya), +3 kontrol, +1 pemeriksaan statis.
+- Uji: `uji_varian_merek.py` +3 pemeriksaan, asap data toko (keenam nama mendapat saran variannya), +3 kontrol, +1 pemeriksaan statis `periksa43`
+  (pita & aksi ada; `KG` di `gambarMasuk` sudah membawa " kg", jadi tombol tidak boleh menambah " kg" lagi — screenshot 30 Sep menangkap "buku 750 kg kg")
+  dengan 2 kontrol statis. Tampilan: `stok.css` `[data-k^="msv-pil-"]` flex — grid tiga kolom Stok memecah tombol jadi empat baris di HP 375.
 
 ## Struktur
 ```
