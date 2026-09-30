@@ -1164,3 +1164,11 @@ Temuan: catatan potongan QRIS yang diketik tangan (tanpa tanda `mdr`, keterangan
 laba-rugi berkop hanya membaca tanda `mdr` — dokumen berkop menulis baris potongan QRIS lebih kecil dari yang sebenarnya (laba bersihnya tetap sama,
 cuma salah baris). Tambalan: `uang-logika.js` `adalahMdr(h)` (tanda `mdr` ATAU keterangan berawal "mdr / potongan qris / potongan mdr") dipakai
 `pilahHarian`, `laporan-logika.js` `lpMdrRentang` (kategori toko atau tokoDompet) dan `kendali-biaya-logika.js`. Uji `uji_laporan_baru.py` +1, kontrol +1.
+
+## Audit 39b no. 25 — "belum dipilah" tidak lagi berarti dua hal (1 Okt 2026, cabang `audit/39b-belum-dipilah-dua-nama`)
+
+Temuan: di layar Laporan kata "belum dipilah" dipakai untuk DUA hal — catatan uang keluar tanpa tujuan toko/karyawan (kartu "Laba kotor → ke mana",
+dari catatan lama sebelum ada pilihan tujuan; tidak bisa dipilah ulang) dan catatan yang jenis biayanya tidak cocok kata kunci (Kendali Biaya; dibereskan
+dengan memberi kata kunci). Owner yang membereskan satu tidak melihat yang lain berkurang (jalan buntu). Tambalan (kata saja; hitungan tidak berubah):
+kartu laba kotor & buku hari ini Uang → "tanpa tujuan"; Kendali Biaya (cip, kartu, peringatan, baris catatan) → "jenisnya belum dikenali".
+Uji `uji_kendali_biaya.py` +2 (peringatan + pemeriksa kata di `laporan.js`), kontrol +1; `uji_uang_karyawan.py` cap disesuaikan.

@@ -15,7 +15,7 @@ ASAP GLOBAL: omzet/laba/inti/neraca tiap bulan BYTE-SAMA dengan kode main (modul
     python3 alat-uji/uji_kendali_biaya.py            → N lulus · 0 gagal
     python3 alat-uji/uji_kendali_biaya.py --kontrol  → logika yang dirusak wajib ketahuan (keluar 3 kalau ada yang diam)
 """
-import os, sys, json, subprocess, tempfile
+import os, re, sys, json, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
@@ -151,6 +151,7 @@ ok('pareto Agu: dua catatan "Kebutuhan masak" & "masak" seketerangan menyatu lew
 
 // ==================== 7 · PERINGATAN ====================
 var Wn = peringatanBiaya(Ka, P, T); var idW = Wn.map(function (w) { return w.id; });
+ok('39b no. 25: peringatan jenis biaya yang tidak cocok kata kunci berbunyi "jenisnya belum dikenali" (bukan "belum dipilah" — itu tujuan toko/karyawan di Uang)', /jenisnya belum dikenali/.test((fW(Wn, 'belum-dipilah') || {}).teks || '') && !/dipilah/.test((fW(Wn, 'belum-dipilah') || {}).teks || ''), J(fW(Wn, 'belum-dipilah')));
 ok('peringatan Sep (dengan anggaran): lampu merah karyawan & susut, amber dapur; internet belum dicatat (Agu 242.000); upah menggantung; belum dipilah (510.000 = 67,6 % harian); cakupan 93,5 % < 95 %; pemicu bongkar & beli (ambang 3); titik impas belum menutup', idW.indexOf('lampu-karyawan') >= 0 && idW.indexOf('lampu-susut') >= 0 && idW.indexOf('lampu-dapur') >= 0 && idW.indexOf('pos-internet') >= 0 && idW.indexOf('upah-gantung') >= 0 && idW.indexOf('belum-dipilah') >= 0 && idW.indexOf('cakupan') >= 0 && idW.indexOf('pemicu-bongkarKg') >= 0 && idW.indexOf('pemicu-beliKg') >= 0 && idW.indexOf('pemicu-marginKg') < 0 && idW.indexOf('impas') >= 0 && idW.indexOf('susut') < 0 && idW.indexOf('tidak-menutup') < 0, J(Wn.map(function (w) { return [w.tingkat, w.id]; })));
 ok('urutan: awas dulu (merah, impas) baru info; tiap baris menunjuk pintu (lampu → Uang, susut → Stok › Cocokkan, pos → Uang › tagihan, pemicu beli → Stok › HPP, cakupan → Jual)', Wn.every(function (w, i) { return i === 0 || Wn[i - 1].tingkat !== 'info' || w.tingkat === 'info'; }) && fW(Wn, 'lampu-karyawan').tujuan.ke === 'uang' && fW(Wn, 'pos-internet').tujuan.tab === 'tagihan' && fW(Wn, 'pemicu-beliKg').tujuan.lembar === 'hpp' && fW(Wn, 'cakupan').tujuan.ke === 'jual' && fW(Wn, 'lampu-dapur').tingkat === 'info', J(Wn));
 pasok('aturanToko', []);
@@ -203,8 +204,20 @@ def utama(js, pakai_cadangan):
     return h['lulus'], h['gagal'], h.get('asap')
 
 
+def dua_nama(t):
+    """39b no. 25 — layar Laporan: "belum dipilah" dulu berarti DUA hal (tujuan toko/karyawan kosong · jenis biaya tidak cocok kata kunci). Yang tampil kini
+    "tanpa tujuan" (kartu laba kotor → ke mana) dan "jenisnya belum dikenali" (Kendali Biaya). Kembalikan daftar masalah."""
+    out = []
+    tampil = re.findall(r"'[^'\n]*'|`[^`]*`|>[^<>]*<", t)
+    if any('belum dipilah' in x for x in tampil): out.append('laporan.js masih menampilkan "belum dipilah"')
+    if 'jenisnya belum dikenali' not in t: out.append('Kendali Biaya tidak menyebut "jenisnya belum dikenali"')
+    if 'tanpa tujuan toko / karyawan' not in t: out.append('kartu laba kotor → ke mana tidak menyebut "tanpa tujuan"')
+    return out
+
+
 if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
+    lap = open(os.path.join(AKAR, 'baru', 'js', 'layar', 'laporan.js'), encoding='utf-8').read()
     if '--kontrol' in sys.argv:
         rusak = {
             'catatan lain-lain dibuang dari jumlah (tidak menutup)': js.replace("per[J.id].n += n; per[J.id].jumlah += 1;", "if (J.id !== 'lain') { per[J.id].n += n; per[J.id].jumlah += 1; }"),
@@ -233,6 +246,10 @@ if __name__ == '__main__':
             'tren: bulan tanpa catatan digambar sebagai nol': js.replace("tanpaCatatan: X.tanpaCatatan, omzet: X.omzet", "tanpaCatatan: false, omzet: X.omzet"),
         }
         kode = 0
+        for nama, isi in [('39b-25 laporan.js kembali memakai "belum dipilah" untuk jenis yang belum dikenali', lap.replace('jenisnya belum dikenali</span>', 'belum dipilah</span>', 1))]:
+            g = dua_nama(isi) if isi != lap else []
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
+            if not g: kode = 3
         for nama, isi in rusak.items():
             if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue
             l, g, _ = utama(isi, False)
@@ -240,6 +257,7 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g, asap = utama(js, True)
+    g = g + ['39b-25: ' + x for x in dua_nama(lap)]; l = l + (0 if dua_nama(lap) else 1)
     print('KENDALI BIAYA (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     p = uji_wadah_bernama.cadangan_toko()
