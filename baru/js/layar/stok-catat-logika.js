@@ -18,7 +18,7 @@ import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hit
 import { LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, kunciKemasan, merkPunyaKarungBerat, batchDiutang, kunciPelanggan } from '../mesin/pembantu.js';
 import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilHargaKarung, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilWadahLiteran, cacheMentah, tolakKunci, tolakKunciTanggal, stokMerekSaja, petaStokWadah, petaBukuWadah, ambilProduksiBerlaku, kunciUkuran, petaUkuran, indukTerpisah , ukuranDigabung } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { hitunganFisik, tumpukanGudang, aturWadah, pindahNama, semuaKarungTerbuka, karungUntukWadah, karungBelakang, beratKarungBuka, ckCocokTerakhir, ckKalimatMundur } from './jual-logika.js';
+import { hitunganFisik, tumpukanGudang, aturWadah, pindahNama, semuaKarungTerbuka, karungUntukWadah, karungBelakang, beratKarungBuka, ckCocokTerakhir, ckKalimatMundur, kolamDitutup } from './jual-logika.js';
 import { wbKomposisi, wbBagianMerk, wbKomposisiBaru, wbModalPerKg, wbRasio, wbNamaKelas, wbDokLahir, wbDokPindah, wbLiteranLangsung } from './wadah-bernama-logika.js';
 import { vrPerluTanya, vrNama, vrDokJenis, vrAda, VR_BATAS_BAWAAN } from './varian-logika.js';
 import { arBeras, arKunciBeras, arDokPulihBanyak, arPeta } from './arsip-logika.js';
@@ -352,7 +352,9 @@ function ckKarungKhusus(atur, bw, stok, kolam, slot, bagianW) {
   const out = []; const letak = {};
   kolam.forEach((k) => { const b = bw[k.merk]; if (!b || b.jenis === 'wadah') return; (letak[k.merk] = letak[k.merk] || {})[k.lokasi] = k; });
   Object.keys(bw).sort().forEach((kunci) => { const b = bw[kunci]; if (b.jenis === 'wadah' || !stok[kunci]) return;
-    const L = letak[kunci] || {}; const tempat = Object.keys(L).sort(); if (!tempat.length) tempat.push(b.jenis === 'belakang' ? b.wadah : '');
+    // tinjauan H3: tempat yang kolamnya sudah DITUTUP (dikembalikan / dihapus habis) bukan tempat karung itu lagi — tidak dapat baris (menyimpannya menghidupkan
+    // lagi karung itu di slot). Sisa bukunya (bila ada) dihitung di baris LEPAS; tanpa tempat hidup sama sekali → baris lepas juga.
+    const L = letak[kunci] || {}; const tempat = Object.keys(L).filter((lok) => !kolamDitutup(kunci, lok)).sort(); if (!tempat.length) tempat.push(b.jenis === 'belakang' && !Object.keys(L).length ? b.wadah : '');
     tempat.forEach((lok) => { if (slot[kunci + '|#|' + lok]) return; const kr = L[lok] || null; const sistem = ckBukuKarungDi(kunci, lok, bw, stok, kolam, bagianW);
       const karungCatatan = kr ? ckB2(kr.sisaMentahKg) : null; if (Math.abs(sistem) <= 0.004 && !(karungCatatan > 0.004)) return;
       const nama = b.jenis === 'belakang' ? 'karung ' + b.merk + ' di belakang ' + b.wadah : b.jenis === 'karung' ? 'karung sisihan wadah ' + b.wadah : kunci + (lok ? ' di belakang ' + lok : ' (lepas)');
@@ -431,17 +433,23 @@ const ccHariAntara = (dari, ke) => (dari && ke ? Math.round((new Date(ke + 'T00:
 function ccSusunWadah(hitung, alasan, yakin) {
   const atur = aturCatat(); const peta = cocokAkhirPeta(); const H = hitung || {}; const A = alasan || {}; const Y = yakin || {}; const stok = hitungStokKarungPerMerk(); const hari = hariIniIso(new Date(Date.now()));
   const modal = (m) => (stok[m] || {}).hppTerakhirPerKg || 0;
+  // tinjauan H2: satu buku karung yang terbuka di beberapa tempat — tercatat tiap tempat = catatannya + selisih buku−catatan (e). Bila dua tempat dihitung
+  // dalam satu simpan, e dipotong SEKALI (tempat pertama); tempat berikutnya dibanding catatannya sendiri.
+  const kenaE = {};
   const baris = barangCocok('wadah').map((b) => {
     const adaIsi = b.jenis !== 'karung' && ccAda(H[b.kunci]); const adaKr = ccAda(H[b.kunciKarung]); const ada = adaIsi || adaKr;
     const isiH = adaIsi ? ckB2(ckAngka(H[b.kunci])) : null; const krH = adaKr ? ckB2(ckAngka(H[b.kunciKarung])) : null;
     const alokasi = {}; const tambah = (m, kg) => { if (!m || !kg) return; alokasi[m] = ckB2((alokasi[m] || 0) + kg); };
     let komposisiBaru = null;
     if (adaIsi) { const kb = wbKomposisiBaru(b.nama, isiH); komposisiBaru = kb.komposisi; if (b.isiSistem !== null) Object.keys(kb.alokasi).forEach((m) => tambah(m, kb.alokasi[m])); }
-    const dIsi = adaIsi && b.isiSistem !== null ? ckB2(isiH - b.isiSistem) : 0; const dKr = adaKr && b.karungSistem !== null ? ckB2(krH - b.karungSistem) : 0;
+    const keduaE = adaKr && b.karungBuku && b.karungCatatan !== null && kenaE[b.karungNama]; if (adaKr && b.karungBuku) kenaE[b.karungNama] = true;
+    const dIsi = adaIsi && b.isiSistem !== null ? ckB2(isiH - b.isiSistem) : 0; const dKr = adaKr && b.karungSistem !== null ? ckB2(krH - (keduaE ? b.karungCatatan : b.karungSistem)) : 0;
     if (dKr) tambah(b.karungNama, dKr);
     Object.keys(alokasi).forEach((m) => { if (Math.abs(alokasi[m]) < 0.005) delete alokasi[m]; });
     const selisih = ckB2(Object.keys(alokasi).reduce((a, m) => a + alokasi[m], 0)); const rp = Math.round(Object.keys(alokasi).reduce((a, m) => a + alokasi[m] * modal(m), 0));
-    const lamaHari = Math.max(1, ccHariAntara(b.sejak, hari)); const wajarKg = ckB2(b.susutWajarKg * lamaHari);
+    // tinjauan H5: jatah susut wajar per hari milik WADAH (tumpah waktu menakar), tidak diberikan lagi ke tiap karung kedua / sisihan — baris karung memakai
+    // batas selisih % owner (sama dengan tumpukan)
+    const lamaHari = Math.max(1, ccHariAntara(b.sejak, hari)); const wajarKg = b.jenis === 'karung' ? ckB2(Math.abs(b.karungSistem || 0) * atur.batasSelisih / 100) : ckB2(b.susutWajarKg * lamaHari);
     const besar = ada && Math.abs(selisih) > wajarKg + 0.0001; const wajar = ada && selisih < 0 && !besar;
     const aneh = ada && ((isiH !== null && isiH > b.puncakKg + 5) || (krH !== null && krH > b.karungPenuh + 1));
     let lupaKg = 0;
@@ -483,7 +491,7 @@ export function susunSimpanCocok(tab, hitung, alasan, w, yakin) {
 /** Simpan cocokkan wadah: penyesuaianStok per merek asal (bagian 'wadah') + titik samakan isi (komposisi baru) & karung terbuka, satu kiriman. */
 function ccSimpanWadah(c, berubah, w) {
   const stok = hitungStokKarungPerMerk(); const jalan = {}; const dokumen = []; let nMerk = 0;
-  berubah.forEach((b) => { const al = String(b.alasan || '').trim() || (b.wajar ? 'Susut takar wajar' : 'Cocokkan wadah');
+  berubah.forEach((b) => { const al = String(b.alasan || '').trim() || (b.wajar ? (b.jenis === 'karung' ? 'Selisih timbang karung (dalam batas)' : 'Susut takar wajar') : 'Cocokkan wadah');
     Object.keys(b.alokasi).sort().forEach((m) => { const sel = b.alokasi[m]; const st = stok[m]; if (!st || Math.abs(sel) < 0.005) return;
       const kgS = jalan[m] !== undefined ? jalan[m] : ckB2(st.sisaKg || 0); jalan[m] = ckB2(kgS + sel); nMerk += 1;
       dokumen.push({ koleksi: 'penyesuaianStok', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk: m, kgSistem: kgS, kgFisik: jalan[m], selisihKg: sel, alasan: al, nilaiRp: Math.round(sel * (st.hppTerakhirPerKg || 0)),
