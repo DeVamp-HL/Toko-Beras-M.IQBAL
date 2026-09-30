@@ -592,7 +592,7 @@ if __name__ == '__main__':
             'takar bukuAsal di papan kapur tidak menyebut buku tetap milik merek karungnya': js.replace("(w.bukuAsal ? ' (buku tetap milik merek karungnya)' : w.stokWadah", "(false ? '' : w.stokWadah"),
             'karung 25 kg dibuka sebagai 50 kg': js.replace("return !merkPunyaKarungBerat(asal, 50) && merkPunyaKarungBerat(asal, 25) ? 25 : KARUNG_BELAKANG_KG;", "return KARUNG_BELAKANG_KG;"),
             'yang belum ditandai ditulis 0 kg (bukan "?")': js.replace("(t.karungDiketahui ? skKG(t.diBelakangKg) : t.karungDiWadah ? '? (belum ditandai)' : '—')", "skKG(t.diBelakangKg)"),
-            'rework karantina dianggap hitungan gudang di kartu cocokkan': js.replace("ambilPenyesuaianStok().forEach((p) => { if (!hitunganFisik(p) || (p.bagian === 'wadah' && !bw[p.merk])) return;", "ambilPenyesuaianStok().forEach((p) => { if ((p.bagian === 'wadah' && !bw[p.merk])) return;"),
+            'rework karantina dianggap hitungan gudang di kartu cocokkan': js.replace("ambilPenyesuaianStok().forEach((p) => { if (!hitunganFisik(p) || (p.bagian === 'wadah' && (!bw[p.merk] || bw[p.merk].jenis === 'adukan'))) return;", "ambilPenyesuaianStok().forEach((p) => { if ((p.bagian === 'wadah' && (!bw[p.merk] || bw[p.merk].jenis === 'adukan'))) return;"),
             'papan kapur tidak menyebut di belakang wadah mana karung dibuka': js.replace("(w.wadah ? 'di belakang wadah ' + w.wadah : w.lepas ? 'sebagai bahan campuran' : 'di belakang wadah')", "'di belakang wadah'"),
             'bahan campuran yang bukan wadah tidak tampil': js.replace("daftar.forEach((w) => w.resep.forEach((x) => sebut(x.merk)));", ""),
             'papan kapur tidak mencatat takar isi ulang': js.replace("if (w.tipe === 'takar') out.push(", "if (false) out.push("),
