@@ -323,6 +323,16 @@ var BD = bandingBuku(SB, sesudahDariPembuka(P6, SB)); ok('sebelum vs sesudah (da
 ok('kunci ditolak: tahun belum lewat 31 Des (hanya latihan)', /belum lewat 31 Desember/.test(susunKunci(2026, { paraf: { owner: true, saksi: true } }, W).tolak));
 var W27 = { tanggal: '2027-01-01', jam: '08:10', kini: '2027-01-01T01:10:00.000Z', idUnik: W.idUnik };
 ok('1 Jan 2027: boleh sungguhan; paraf belum lengkap ditolak', tahunBuku(new Date('2027-01-01T08:10:00+07:00')).bolehSungguhan && /Paraf/.test(susunKunci(2026, { paraf: { owner: true, saksi: false } }, W27).tolak));
+// 39b no. 12: titik kas LEBIH MUDA dari 31 Des (tutup hari 2 Jan sudah menyetelnya) → uang per tempat 31 Des tidak bisa dihitung: bukan nol, bukan "sama"
+var TK0 = localStorage.getItem('miqbal_titik_kas_v1'); localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2027-01-02', laci: 2500000, brankas: 10000000, rekening: 4300000, amplop: 1050000 }));
+var SBx = barisBuku('2026-12-31', '2026-12-31'); var BDx = bandingBuku(SBx, sesudahDariPembuka(pembukaBuku(2026, W27), SBx)); var KX = susunKunci(2026, { paraf: { owner: true, saksi: true } }, W27);
+var TAx = teksAcara(2026, { paraf: { owner: true, saksi: true } }, BDx, SBx, 'saksi', W27);
+ok('39b-12 titik kas 2 Jan 2027 (lebih muda dari 31 Des): 4 baris uang "tidak bisa dihitung" → jumlah harta & laba tinggal TIDAK dijumlah nol (null + kalimat titik kas 2 Jan), banding bertanda "?" bukan ✓, kunci DITOLAK, berita acara menulis "tidak bisa dihitung"',
+  !SBx.kasAda && SBx.hartaJml === null && SBx.labaTinggal === null && /belum bisa dijumlah/.test(SBx.neracaTeks) && /2 Jan 2027/.test(SBx.neracaTeks)
+  && !BDx.semuaSama && BDx.tidakTahu.length === 4 && BDx.baris.filter(function (b) { return b.tanda === '?'; }).length === 4 && /BELUM BISA DIHITUNG/.test(BDx.ringkas)
+  && !!KX.tolak && /BELUM BISA DIHITUNG/.test(KX.tolak) && /Jumlah harta   tidak bisa dihitung/.test(TAx) && /Laba tinggal   tidak bisa dihitung/.test(TAx) && !/Jumlah harta   Rp/.test(TAx),
+  J([SBx.hartaJml, SBx.labaTinggal, SBx.neracaTeks, BDx.ringkas, KX.tolak]));
+if (TK0 === null) localStorage.removeItem('miqbal_titik_kas_v1'); else localStorage.setItem('miqbal_titik_kas_v1', TK0);
 var AR = arsipBuku(2026); ok('arsip tahun 2026 = tbDaftarKoleksi mesin: 18 dokumen (penjualan 6 · kedatangan 1 · harian 5 · kasbon 3 · amplop 1 · modal 1 · biaya bulanan 1); berkas arsip bernama arsip-tahun-2026', AR.n === 18 && AR.perKoleksi.find(function (k) { return k.koleksi === 'penjualan'; }).n === 6 && AR.perKoleksi.find(function (k) { return k.koleksi === 'kasbonMutasi'; }).n === 3 && berkasArsip(2026, KINI).nama === 'arsip-tahun-2026-miqbal.json' && berkasArsip(2026, KINI).isi.penjualan.length === 6, J(AR.perKoleksi));
 var KU = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: 'Alfa Contoh', langkah: {}, cadangan1: 'cadangan-sebelum.json', arsipNama: 'arsip-tahun-2026-miqbal.json' }, W27);
 ok('KUNCI: dokumen = 8 pembuka + titikKas 31 Des {laci 2.400.000, brankas 10.000.000, rekening 4.300.000, amplop 1.050.000} + pengaturan/tutupBuku 2026 + berita acara terkunci (12 baris sebelum, saksi, paraf, 18 arsip); arsip 18', !KU.tolak && KU.dokumen.length === 11 && KU.dokumen.find(function (x) { return x.data.id === 'titikKas'; }).data.tanggal === '2026-12-31' && KU.dokumen.find(function (x) { return x.data.id === 'titikKas'; }).data.laci === 2400000 && KU.dokumen.find(function (x) { return x.data.id === 'tutupBuku'; }).data.tahunDitutup === 2026 && KU.acara.status === 'terkunci' && KU.acara.sebelum.length === 12 && KU.acara.nArsip === 18 && KU.acara.saksi === 'Alfa Contoh' && KU.arsip.length === 18, J(KU.tolak || KU.acara));
@@ -374,6 +384,8 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            '39b-12: kas tak terhitung dijumlah nol di harta': js.replace("const hartaJml = K.ada ? harta.reduce((a, h) => a + (h.n || 0), 0) : null,", "const hartaJml = harta.reduce((a, h) => a + (h.n || 0), 0),"),
+            '39b-12: null = null lolos sebagai sama': js.replace("const sama = !ada || (tahu && s !== null && Math.abs(b.n - s) < 0.5);", "const sama = !ada || (b.n === null && s === null) || (tahu && s !== null && Math.abs(b.n - s) < 0.5);").replace("semuaSama: !beda.length && !tidakTahu.length,", "semuaSama: !beda.length,"),
             # ---- bersama · saldo per tempat
             '39b-13: kertas laci menghitung uang keluar brankas/rekening sebagai keluar laci': js.replace("if (r.keluar > 0 && kantong === 'laci') dorong(k ? k[1] : 'Keluar lain', -1, r.keluar); });", "if (r.keluar > 0) dorong(k ? k[1] : 'Keluar lain', -1, r.keluar); });"),
             'tempat uang menurut dokumen (dari/tempat) diabaikan — semua ikut aturan lama': js.replace("if (r.id && peta.id[String(r.id)]) return peta.id[String(r.id)];", "if (false) return '';"),

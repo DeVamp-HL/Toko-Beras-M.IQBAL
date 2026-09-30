@@ -1183,3 +1183,12 @@ dikurangi retur"), `jual-logika.js` `hariIni` (omzet bersih + `retur`; per cara 
 `laporan-logika.js` `hariTerakhir` (pemilih 14 hari = rekap harinya). Jendela 15/60 menit & per jam tetap PENJUALAN (keramaian), bukan omzet.
 Kunci nota Ringkasan disamakan dengan `kunciNota` (grupNota dulu). Asap Ringkasan yang dulu mengunci arti kotor kini dibanding dengan mesin laba.
 Uji `uji_ringkasan_baru.py` +1, `uji_jual_baru.py` +1, `uji_laporan_baru.py` +1, asap Ringkasan & Riwayat disesuaikan; kontrol +4.
+
+## Audit 39b no. 12 — tutup buku: uang yang tidak bisa dihitung bukan nol dan bukan "sama" (1 Okt 2026, cabang `audit/39b-tutup-buku-titik-kas`)
+
+Temuan: kalau titik kas terakhir LEBIH MUDA dari 31 Des (mis. tutup hari 1–2 Jan sudah menyetelnya), uang per tempat pada 31 Des tidak bisa dihitung
+(mesin tidak menghitung mundur dari titik). Empat baris uang lolos "sama" (tidak diketahui = tidak diketahui) dan jumlah harta & laba yang tinggal di
+berita acara menjumlahnya sebagai nol — harta tertulis kurang seukuran kas (uangnya tidak hilang). Tambalan: `tutup-buku-logika.js` `barisBuku` —
+jumlah harta & laba tinggal "belum bisa dihitung" (null) dengan kalimat tanggal titik kasnya; `bandingBuku` — baris tak terhitung bertanda "?" dan
+KUNCI ditolak; teks berita acara menulis "tidak bisa dihitung", bukan Rp0. Cara mengunci tahun dalam keadaan itu = rancangan K6 (hitungan uang tutup
+hari 31 Des) — belum dibangun, menunggu rancang ulang tutup buku sebelum Desember. Uji `uji_uang_baru.py` +1, kontrol +2.
