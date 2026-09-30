@@ -191,7 +191,7 @@ def utama(js, pakai_cadangan):
 
 RUSAK = {
     'selisih wadah tidak dibagi ke merek asal (semua ke karung di belakang)': ("if (b.isiSistem !== null) Object.keys(kb.alokasi).forEach((m) => tambah(m, kb.alokasi[m]));", "if (b.isiSistem !== null) tambah(b.karungNama, ckB2(isiH - b.isiSistem));"),
-    'susut wajar tidak dikali hari sejak disamakan': ("const wajarKg = ckB2(b.susutWajarKg * lamaHari);", "const wajarKg = ckB2(b.susutWajarKg);"),
+    'susut wajar tidak dikali hari sejak disamakan': (": ckB2(b.susutWajarKg * lamaHari);", ": ckB2(b.susutWajarKg);"),
     'batas susut owner di Aturan wadah diabaikan': ("? Number(a.susutWajarKg) : WADAH_SUSUT_WAJAR_KG;", "? WADAH_SUSUT_WAJAR_KG : WADAH_SUSUT_WAJAR_KG;"),
     'susut tanpa batas (semua selisih wajar)': ("const besar = ada && Math.abs(selisih) > wajarKg + 0.0001;", "const besar = false;"),
     'titik samakan cocokkan tanpa komposisi (isi jadi milik nama wadah)': ("b.stokSendiri ? { stokWadah: b.kunciStok } : { komposisi: b.komposisiBaru || {} }, { dariCocok: true })", "{}, { dariCocok: true })"),
@@ -201,7 +201,7 @@ RUSAK = {
     'kgFisik tumpukan = hitungan tumpukan, bukan buku sesudahnya': ("kgFisik: ckB2(b.buku + b.selisih), selisihKg: b.selisih,", "kgFisik: b.dihitung, selisihKg: b.selisih,"),
     'isi ulang lupa dicatat tidak ditawarkan': ("const lupaTakar = lupaKg > 0 ? Math.max(1, Math.round(lupaKg / b.takarKg)) : 0;", "const lupaTakar = 0;"),
     'hitungan pertama dianggap selisih dari nol': ("const isiSistem = K.diketahui ? ckB2(K.totalKg) : null;", "const isiSistem = K.diketahui ? ckB2(K.totalKg) : 0;"),
-    'cocokkan wadah mengubah umur cocokkan nama itu': ("if (!hitunganFisik(p) || (p.bagian === 'wadah' && !bw[p.merk])) return;", "if (!hitunganFisik(p)) return;"),
+    'cocokkan wadah mengubah umur cocokkan nama itu': ("if (!hitunganFisik(p) || (p.bagian === 'wadah' && (!bw[p.merk] || bw[p.merk].jenis === 'adukan'))) return;", "if (!hitunganFisik(p)) return;"),
     'papan kapur: cocokkan wadah ditulis sebagai cocokkan biasa': ("    else if (p.bagian === 'wadah') out.push(", "    else if (false) out.push("),
     'draf lama bertab beras tidak dipetakan': ("const tabCocokSah = (tab) => (TAB_COCOK.some((x) => x[0] === tab) ? tab : 'tumpukan');", "const tabCocokSah = (tab) => tab;"),
     'wadah yang baru disamakan tidak dijaga penjaga ganda': ("  ambilWadahLiteran().forEach((d) => { if (d.tipe === 'isi' && d.wadah && !d.pindahAwal) catat('wadah|' + d.wadah, d);", "  ambilWadahLiteran().forEach((d) => {"),
