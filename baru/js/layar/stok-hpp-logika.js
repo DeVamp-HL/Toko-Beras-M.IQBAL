@@ -84,7 +84,7 @@ export function nilaiKoreksi(merk, hargaBaru) {
   // audit 39b no. 2 (tinjauan 30 Sep): kedatangan sasaran bon yang sudah dibayar — nilai bon sesudah harga baru tidak boleh di bawah yang dibayar.
   // Diperiksa DI SINI supaya kartu, pratinjau, dan koreksi massal menolak lebih dulu dengan nama berasnya (susunSimpanMasuk tetap pagar terakhir).
   const bt = ambilSemuaBatch().find((b) => String(b.id) === String(target.batchId)); const bb = bt ? ckBayarBonId(bt.id) : null;
-  if (bb && bb.dibayar > 0) { const nilaiBon = (bt.merkList || []).reduce((a, m) => a + (m.merk === merk && m.bentuk !== 'bal' ? (Number(m.totalKg) || 0) * n : (Number(m.subtotalHarga) || 0)), 0);
+  if (bb && bb.dibayar > 0) { const nilaiBon = (bt.merkList || []).reduce((a, m) => a + (m.bentuk === 'bal' ? 0 : m.merk === merk ? (Number(m.totalKg) || 0) * n : (Number(m.subtotalHarga) || 0)), 0);   // baris bal ikut terbuang saat ditulis (temuan no. 30)
     if (nilaiBon + 0.5 < bb.dibayar) return { tolak: merk + ': kedatangan terakhirnya (' + target.pemasok + ' ' + target.tanggal + ') bon yang sudah dibayar ' + RP(bb.dibayar) + ' — harga ' + RP(n) + '/kg membuat nilai bonnya ' + RP(nilaiBon) + ', di bawah yang dibayar; kelebihannya akan pindah ke bon lain tanpa uang' }; }
   const bongkarPerKg = target.hppPerKg - target.hargaPerKg; const hppBaru = n + bongkarPerKg;
   const T = totalMasuk(merk); const nilaiBaru = T.nilai - target.hppPerKg * target.totalKg + hppBaru * target.totalKg; const modalBaru = T.kg > 0 ? nilaiBaru / T.kg : 0;
@@ -122,7 +122,7 @@ function hpKunciBonGabung(nilai) {
   const per = {}; Object.keys(nilai).forEach((m) => { const id = String(nilai[m].target.batchId); (per[id] = per[id] || []).push(m); });
   const salah = {};
   Object.keys(per).forEach((id) => { const ms = per[id]; if (ms.length < 2) return; const bt = ambilSemuaBatch().find((b) => String(b.id) === id); const bb = bt ? ckBayarBonId(id) : null; if (!bb || !bb.dibayar) return;
-    const nilaiBon = (bt.merkList || []).reduce((a, x) => a + (ms.indexOf(x.merk) >= 0 && x.bentuk !== 'bal' ? (Number(x.totalKg) || 0) * nilai[x.merk].n : (Number(x.subtotalHarga) || 0)), 0);
+    const nilaiBon = (bt.merkList || []).reduce((a, x) => a + (x.bentuk === 'bal' ? 0 : ms.indexOf(x.merk) >= 0 ? (Number(x.totalKg) || 0) * nilai[x.merk].n : (Number(x.subtotalHarga) || 0)), 0);   // baris bal ikut terbuang saat ditulis (temuan no. 30)
     if (nilaiBon + 0.5 >= bb.dibayar) return; const tg = nilai[ms[0]].target;
     const t = ms.join(' + ') + ': kedatangan terakhirnya sama (' + tg.pemasok + ' ' + tg.tanggal + '), bon yang sudah dibayar ' + RP(bb.dibayar) + ' — harga baru BERSAMA membuat nilai bonnya ' + RP(nilaiBon) + ', di bawah yang dibayar; kelebihannya akan pindah ke bon lain tanpa uang';
     ms.forEach((m) => { salah[m] = t; }); });
@@ -145,7 +145,8 @@ export function susunKoreksiMassal(petaHarga, alasan, w) {
 }
 /** Pratinjau massal untuk layar: tiap nama yang disiapkan dinilai; label tombol & Δ total. */
 export function pratinjauMassal(petaHarga) {
-  const merk = Object.keys(petaHarga || {}).filter((m) => !hpKosong(petaHarga[m])); const baris = merk.map((m) => { const v = nilaiKoreksi(m, petaHarga[m]); return { merk: m, harga: Math.round(hpAngka(petaHarga[m])), tolak: v.tolak || (v.sama ? 'sama dengan yang tercatat' : ''), ket: v.tolak || (v.sama ? 'sama dengan yang tercatat' : v.rugi || v.lonjak || 'wajar'), delta: v.tolak ? 0 : v.delta, v: v.tolak || v.sama ? null : v }; });
+  const merk = Object.keys(petaHarga || {}).filter((m) => !hpKosong(petaHarga[m])); const baris = merk.map((m) => { const v = nilaiKoreksi(m, petaHarga[m]); const tk = v.tolak && v.tolak.indexOf(m + ': ') === 0 ? v.tolak.slice(m.length + 2) : v.tolak;   // baris pratinjau sudah berlabel nama berasnya
+    return { merk: m, harga: Math.round(hpAngka(petaHarga[m])), tolak: tk || (v.sama ? 'sama dengan yang tercatat' : ''), ket: tk || (v.sama ? 'sama dengan yang tercatat' : v.rugi || v.lonjak || 'wajar'), delta: v.tolak ? 0 : v.delta, v: v.tolak || v.sama ? null : v }; });
   const lolos = {}; baris.forEach((b) => { if (!b.tolak && b.v) lolos[b.merk] = b.v; }); const gb = hpKunciBonGabung(lolos); baris.forEach((b) => { if (gb[b.merk]) { b.tolak = gb[b.merk]; b.ket = gb[b.merk]; b.delta = 0; } });   // audit 39b no. 2: nama sekedatangan dinilai bersama
   const bermasalah = baris.filter((b) => b.tolak); const delta = baris.reduce((a, b) => a + b.delta, 0);
   return { baris, n: merk.length, bermasalah, delta, siap: merk.length > 0 && !bermasalah.length,

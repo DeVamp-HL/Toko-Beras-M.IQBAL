@@ -803,16 +803,18 @@ dan Neraca berselisih, kas keluar terhitung dua kali. Ejaan beda ("roda mas") me
   dibayar; `susunHapusKedatangan` menolak hapusnya. Harga/jumlah dengan nilai ≥ yang dibayar tetap boleh. `stok-hpp-logika.js` `nilaiKoreksi`
   menolak LEBIH DULU (kartu, pratinjau, koreksi massal) dengan nama berasnya; beberapa nama yang kedatangan sasarannya sama dinilai BERSAMA.
   Bon yang terbayar lewat aliran saja (dibayarMesin > 0, tanpa pembayaran bertunjuk) tetap bisa dihapus, tetapi tanggalnya terkunci.
-  Baris BAL kedatangan kini DIPERTAHANKAN saat dikoreksi (dulu ikut terbuang, padahal layar berjanji tidak mengubahnya) dan ikut nilai bon.
+  Nilai pembanding = bon yang AKAN TERTULIS (baris karung saja; baris bal lama ikut terbuang saat dikoreksi = temuan no. 30, cabangnya sendiri) —
+  bon berbayar berbaris bal karena itu ditolak koreksinya sampai no. 30 dibangun (uangnya terlindung).
 - `ckEjaanPemasok`: nama yang sama kecuali huruf/spasi ditulis dengan ejaan yang sudah dipakai (kedatangan terbaru, lalu pembayaran/bon lama);
   kedatangan yang sedang dikoreksi tidak memaksa ejaan lamanya sendiri. Kabar menyebut ejaan yang dipakai.
 - `stok.js` lembar koreksi: pita "Bon ini sudah dibayar …" menyebut apa saja yang terkunci.
-- Uji: `uji_stok_baru.py` +14 pemeriksaan (pemasok uji tersendiri, pembayaran bertunjuk, umpan pemasok lain, FIFO, bon lunas penuh, kelebihan
-  bayar yang terserap, koreksi HPP dini & massal dua nama, baris bal), asap data toko (tiap bon kedatangan: yang dibayar terkunci — bon di bulan terkunci periode dihitung
-  terpisah —, yang belum tetap bebas, Σ sisa = mesin, bertunjuk = mesin, ejaan tidak tergeser), +15 kontrol. Tinjauan independen 30 Sep
+- Uji: `uji_stok_baru.py` +13 pemeriksaan (pemasok uji tersendiri, pembayaran bertunjuk, umpan pemasok lain, FIFO, bon lunas penuh, kelebihan
+  bayar yang terserap, koreksi HPP dini & massal dua nama, kedatangan berbaris bal), asap data toko (tiap bon kedatangan: yang dibayar terkunci — bon di bulan terkunci periode dihitung
+  terpisah —, yang belum tetap bebas, Σ sisa = mesin, bertunjuk = mesin, ejaan tidak tergeser), +13 kontrol. Tinjauan independen 30 Sep
   (peninjau + penyanggah): 6 temuan lolos lalu 3 lagi dari verifikasi tambalannya — semuanya ditambal di cabang ini.
 - Belum dibangun (catatan pemetaan 30 Sep): pembetulan / pemindahan pembayaran bon di sistem baru (urung hanya 90 detik), jejak bonId saat tutup
-  buku & batal tutup buku, dan baris bal yang ikut terbuang saat kedatangan berbaris bal dikoreksi.
+  buku & batal tutup buku, dan baris bal yang ikut terbuang saat kedatangan berbaris bal dikoreksi (temuan no. 30: pratinjau, pita, kartu Jumlah,
+  dan pembagian bongkar di riwayatModal harus berubah BERSAMA penahanan baris bal).
 
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
