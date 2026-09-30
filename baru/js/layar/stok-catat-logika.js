@@ -342,18 +342,18 @@ function cocokAkhirPeta() {
  * Buku KHUSUS karung (karung belakang / karung sisihan / kemasan adukan — petaBukuWadah, selain buku wadah) di SATU tempat = buku − catatan kolam kunci yang
  * sama di tempat lain (satu buku adukan bisa terbuka di dua tempat). Bukan buku khusus / bukunya belum lahir → null (pakai catatan kolam seperti dulu).
  */
-function ckBukuKarungDi(kunci, lokasi, bw, stok, kolam) {
+function ckBukuKarungDi(kunci, lokasi, bw, stok, kolam, bagianW) {
   const b = bw[kunci]; const st = stok[kunci]; if (!b || b.jenis === 'wadah' || !st) return null;
   const lain = kolam.reduce((a, k) => a + (k.merk === kunci && k.lokasi !== lokasi ? (k.sisaMentahKg || 0) : 0), 0);
-  return ckB2((st.sisaKg || 0) - lain);
+  return ckB2((st.sisaKg || 0) - lain - ((bagianW || {})[kunci] || 0));   // tinjauan G5: bagian buku adukan yang sudah dituang ke wadah BELUM aktif bukan isi karungnya
 }
 /** Baris cocokkan untuk karung berbuku sendiri di luar slot wadah (tempatnya = catatan kolamnya; belum pernah dicatat → tempat asal bukunya). */
-function ckKarungKhusus(atur, bw, stok, kolam, slot) {
+function ckKarungKhusus(atur, bw, stok, kolam, slot, bagianW) {
   const out = []; const letak = {};
   kolam.forEach((k) => { const b = bw[k.merk]; if (!b || b.jenis === 'wadah') return; (letak[k.merk] = letak[k.merk] || {})[k.lokasi] = k; });
   Object.keys(bw).sort().forEach((kunci) => { const b = bw[kunci]; if (b.jenis === 'wadah' || !stok[kunci]) return;
     const L = letak[kunci] || {}; const tempat = Object.keys(L).sort(); if (!tempat.length) tempat.push(b.jenis === 'belakang' ? b.wadah : '');
-    tempat.forEach((lok) => { if (slot[kunci + '|#|' + lok]) return; const kr = L[lok] || null; const sistem = ckBukuKarungDi(kunci, lok, bw, stok, kolam);
+    tempat.forEach((lok) => { if (slot[kunci + '|#|' + lok]) return; const kr = L[lok] || null; const sistem = ckBukuKarungDi(kunci, lok, bw, stok, kolam, bagianW);
       const karungCatatan = kr ? ckB2(kr.sisaMentahKg) : null; if (Math.abs(sistem) <= 0.004 && !(karungCatatan > 0.004)) return;
       const nama = b.jenis === 'belakang' ? 'karung ' + b.merk + ' di belakang ' + b.wadah : b.jenis === 'karung' ? 'karung sisihan wadah ' + b.wadah : kunci + (lok ? ' di belakang ' + lok : ' (lepas)');
       const k = 'karungKhusus|' + kunci + '|#|' + lok;
@@ -373,19 +373,19 @@ export function barangCocok(tab) {
         + (t.lengkap ? '' : ' · perkiraan: ada wadah / karung terbuka yang belum ditandai');
       out.push({ kunci: 'tumpukan|' + m, tab, nama: m, satuan: 'kg', sistem: ckB2(t.kg), buku: ckB2(st[m].sisaKg || 0), modal: st[m].hppTerakhirPerKg || 0, rincian, lengkap: t.lengkap,
         beratKarung: t.beratKarung, karungSistem: t.karung }); }); }
-  else if (tab === 'wadah') { const atur = aturWadah(); const bw = petaBukuWadah(); const stok = hitungStokKarungPerMerk(); const kolam = semuaKarungTerbuka(); const slot = {};
+  else if (tab === 'wadah') { const atur = aturWadah(); const bw = petaBukuWadah(); const stok = hitungStokKarungPerMerk(); const kolam = semuaKarungTerbuka(); const bagianW = wbBagianMerk(); const slot = {};
     // WADAH LITERAN: per petak W1–W8 — isi kotak + karung terbuka di belakangnya. Tercatat isi = Σ komposisi (merek asal); belum pernah disamakan = null (tidak ditebak).
     // audit 39b no. 5 (G1): karung yang punya BUKU SENDIRI (karung belakang, kemasan adukan) — tercatat = BUKUNYA di tempat itu, bukan catatan kolam
     // (dulu dibanding catatan: buku yang sudah selisih tetap selisih sesudah dicocokkan). Catatannya tetap disebut bila berbeda.
     atur.daftar.forEach((W, i) => { const K = wbKomposisi(W); const kn = karungUntukWadah(W); const kb = karungBelakang(kn.merk, W);
-      const bkr = kn.dariCatatan ? ckBukuKarungDi(kn.merk, W, bw, stok, kolam) : null; if (kn.dariCatatan) slot[kn.merk + '|#|' + W] = 1;
+      const bkr = kn.dariCatatan ? ckBukuKarungDi(kn.merk, W, bw, stok, kolam, bagianW) : null; if (kn.dariCatatan) slot[kn.merk + '|#|' + W] = 1;
       const isiSistem = K.diketahui ? ckB2(K.totalKg) : null; const karungCatatan = kb.diketahui ? ckB2(kb.sisaMentahKg) : null; const karungSistem = bkr !== null ? bkr : karungCatatan;
       out.push({ kunci: 'wadah|' + W, kunciKarung: 'wadahKarung|' + W, tab, nama: W, no: 'W' + (i + 1), satuan: 'kg', isiSistem, karungNama: kn.merk, karungDicatat: kn.dariCatatan, karungSistem, karungBuku: bkr !== null, karungCatatan,
         karungLabel: bw[kn.merk] && bw[kn.merk].jenis === 'belakang' && bw[kn.merk].merk ? bw[kn.merk].merk : kn.merk,
         karungPenuh: Math.max(kb.penuhKg || beratKarungBuka(kn.merk), bkr || 0), komposisi: K.positif, sejak: K.sejak, stokSendiri: !!K.stokSendiri, kunciStok: K.kunci || '', sistem: ckB2((isiSistem || 0) + (karungSistem || 0)), modal: wbModalPerKg(W),
         takarKg: atur.takarKg, rasio: wbRasio(W), puncakKg: atur.puncakKg, susutWajarKg: atur.susutWajarKg }); });
     // audit 39b no. 5 (G3 G4): karung berbuku sendiri yang BUKAN karung slot wadah — karung belakang kedua dst., karung sisihan wadah, kemasan adukan lepas
-    ckKarungKhusus(atur, bw, stok, kolam, slot).forEach((x) => out.push(x)); }
+    ckKarungKhusus(atur, bw, stok, kolam, slot, bagianW).forEach((x) => out.push(x)); }
   else if (tab === 'kemasan') { const st = hitungStokKemasan(); Object.keys(st).sort().forEach((k) => { const s = st[k]; out.push({ kunci: 'kemasan|' + k, tab, nama: s.namaProduk + ' ' + String(s.ukuranKemasan).replace('.', ',') + ' kg', satuan: 'unit', sistem: s.sisaUnit || 0, modal: s.hppRataRataPerUnit || 0, namaProduk: s.namaProduk, ukuranKemasan: s.ukuranKemasan }); }); }
   else { const k = hitungStokBahanKemasan(); const l = hitungStokBahanLiteran();
     Object.keys(k).sort().forEach((j) => out.push({ kunci: 'kantong|' + j, tab, nama: ccLabelBahan(j), satuan: 'lembar', sistem: k[j].sisaPcs || 0, modal: k[j].hppPerPcs || 0, jenis: j, koleksi: 'stokBahanKemasan' }));

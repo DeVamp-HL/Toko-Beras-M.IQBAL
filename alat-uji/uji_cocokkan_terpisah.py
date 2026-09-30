@@ -204,7 +204,7 @@ RUSAK = {
     'cocokkan wadah mengubah umur cocokkan nama itu': ("if (!hitunganFisik(p) || (p.bagian === 'wadah' && !bw[p.merk])) return;", "if (!hitunganFisik(p)) return;"),
     'papan kapur: cocokkan wadah ditulis sebagai cocokkan biasa': ("    else if (p.bagian === 'wadah') out.push(", "    else if (false) out.push("),
     'draf lama bertab beras tidak dipetakan': ("const tabCocokSah = (tab) => (TAB_COCOK.some((x) => x[0] === tab) ? tab : 'tumpukan');", "const tabCocokSah = (tab) => tab;"),
-    'wadah yang baru disamakan tidak dijaga penjaga ganda': ("  ambilWadahLiteran().forEach((d) => { if (d.tipe === 'isi' && d.wadah && !d.pindahAwal) catat('wadah|' + d.wadah, d); });", ""),
+    'wadah yang baru disamakan tidak dijaga penjaga ganda': ("  ambilWadahLiteran().forEach((d) => { if (d.tipe === 'isi' && d.wadah && !d.pindahAwal) catat('wadah|' + d.wadah, d);", "  ambilWadahLiteran().forEach((d) => {"),
     'tumpukan tercatat = buku (karung terbuka & wadah tidak dikurangi)': ("out.push({ kunci: 'tumpukan|' + m, tab, nama: m, satuan: 'kg', sistem: ckB2(t.kg),", "out.push({ kunci: 'tumpukan|' + m, tab, nama: m, satuan: 'kg', sistem: ckB2(st[m].sisaKg || 0),"),
 }
 

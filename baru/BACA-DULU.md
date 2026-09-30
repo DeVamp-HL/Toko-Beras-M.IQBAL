@@ -926,8 +926,11 @@ karung kedua dst., karung sisihan, dan kemasan adukan yang dibuka lepas tidak pu
   dari merek asal supaya 0. Hapus karung habis: buku minus dicatat LEBIH (ketukan kedua), sisa kecil ≤ 0,5 kg ikut dicatat tanpa ketukan kedua.
 - Layar: baris karung menyebut merek asal (bukan kunci buku), "tercatat = bukunya", tombol simpan menyebut wadah + karung; hitungan karung wadah ikut
   dibersihkan dari draf sesudah simpan (dulu tertinggal dan tampil "cocok ✓").
-- Uji: `uji_wadah_satu_buku.py` +7 (terdepan = buku, karung kedua + diamSlot + kartu Gudang, samakan kedua diamSlot, karung sisihan lepas, buku wadah 0,
-  kembalikan = buku, hapus buku minus / sisa kecil) + 1 statis layar; kontrol baru 8. Di Browser pane atas salinan cadangan (8 wadah aktif) muncul dua
+- Kemasan adukan yang dibuka di belakang wadah BELUM aktif (tinjauan G5): tercatat karungnya = buku − bagiannya yang sudah dituang ke wadah itu; umurnya
+  di kartu Gudang = yang paling lama di antara karungnya dan wadah-wadah pemegangnya (`stok-logika.js` `jwbCocok`).
+- Uji: `uji_wadah_satu_buku.py` +8 (terdepan = buku, karung kedua + diamSlot + kartu Gudang, samakan kedua diamSlot, karung sisihan lepas, buku wadah 0,
+  kembalikan = buku, hapus buku minus / sisa kecil, adukan di wadah belum aktif) + 1 statis layar; kontrol baru 10. Tinjauan independen no. 15
+  (12 diajukan, 8 lolos) — semua yang lolos ditambal di sini. Di Browser pane atas salinan cadangan (8 wadah aktif) muncul dua
   karung kedua yang dulu tidak bisa dihitung, ditambah karung sisihan sesudah sisihkan 10 kg (SIMULASI).
 - Belum: karung bertanda `diamSlot` cuma dari cocokkan & samakan; jalur lain yang menulis `karungIsi` bertempat (isi ulang, cek) tetap memakai urutan
   lama. Susut wajar karung kedua memakai batas wadah yang sama (per hari sejak catatannya).

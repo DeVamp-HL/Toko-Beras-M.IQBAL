@@ -408,6 +408,14 @@ ok('39b-5 hapus karung habis yang bukunya MINUS 3 kg: ketukan pertama menyebut M
     return !c.tolak && ps.length === 1 && ps[0].selisihKg === -0.3 && /susut 0,3 kg dicatat/.test(c.patch.kabar) && denganCacheSementara(c.dokumen, function () { return B2(buku(kbAK)) === 0; }); }),
   J([denganCacheSementara(MIN5, function () { return [buku(kbAK), susunHapusKarungHabis(kbAK, 'Angsa', W5c, false)]; }), denganCacheSementara(KCL5, function () { return susunHapusKarungHabis(kbAK, 'Angsa', W5c, false); })]));
 
+var AD5 = 'Adukan Contoh 50 kg'; var AD5dok = [wbDokLahir([{ merk: AD5, bukuAdukan: 'Adukan Contoh|50' }], W5c), wbDokPindah([{ merk: 'NG', kg: 50 }], AD5, W5c),
+  { koleksi: 'wadahLiteran', data: { id: 'wl-ad5a', tanggal: HARI15, jam: '18:10', tipe: 'karung', merk: AD5, kg: 50, wadah: 'Campur Dua' } },
+  { koleksi: 'wadahLiteran', data: { id: 'wl-ad5b', tanggal: HARI15, jam: '18:20', tipe: 'takar', wadah: 'Campur Dua', bukuAsal: true, sumber: [{ merk: AD5, kg: 10, dari: 'Campur Dua' }] } }].filter(Boolean);
+ok('39b-5 (tinjauan G5) kemasan adukan dibuka di belakang wadah BELUM aktif & 10 kg sudah dituang: tercatat karungnya = buku 50 − bagian di wadah 10 = 40 (bukan 50); karungnya dihitung hari ini tapi wadah Campur Dua terakhir dihitung 19 Sep → kartu Gudang adukan "2 hari" (bukan "0 hari")',
+  denganCacheSementara(AD5dok, function () { var b = baris5('wadah|Campur Dua'); var wl = { koleksi: 'wadahLiteran', data: { id: 'wl-ad5c', tanggal: HARI15, jam: '18:30', tipe: 'karungIsi', merk: AD5, isiKg: 40, wadah: 'Campur Dua', dariCocok: true } };
+    return buku(AD5) === 50 && !!b && b.karungNama === AD5 && b.karungBuku === true && b.karungSistem === 40 && b.karungCatatan === 40 && denganCacheSementara([wl], function () { var g = rowG(AD5); return !!g && g.n === '2 hari'; }); }),
+  J(denganCacheSementara(AD5dok, function () { return [buku(AD5), baris5('wadah|Campur Dua'), wbBagianMerk()[AD5]]; })));
+
 // ---- 13 · penjaga perangkat = rules v5 (10)
 var KRY = keadaanAkun('kry.contoh@tokoberasmiqbal.web.app', 'uid-kry', { uid: 'uid-kry', nama: 'Karyawan Contoh', peran: 'karyawan', aktif: true }); var OWN = keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null);
 var HAK = { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'tidak', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' };
@@ -564,11 +572,13 @@ RUSAK = {
     '39b-15: penyesuaian bagian wadah atas buku khusus diabaikan lagi': ("(p.bagian === 'wadah' && !bw[p.merk])", "(p.bagian === 'wadah')"),
     '39b-15: penyesuaian bagian wadah atas merek biasa ikut menyegarkan merek': ("(p.bagian === 'wadah' && !bw[p.merk])", "(false)"),
     '39b-5: karung terdepan berbuku dibanding catatan kolam lagi': ("const karungSistem = bkr !== null ? bkr : karungCatatan;", "const karungSistem = karungCatatan;"),
-    '39b-5: karung kedua / sisihan tidak punya baris cocokkan': ("    ckKarungKhusus(atur, bw, stok, kolam, slot).forEach((x) => out.push(x)); }", "    }"),
+    '39b-5: karung kedua / sisihan tidak punya baris cocokkan': ("    ckKarungKhusus(atur, bw, stok, kolam, slot, bagianW).forEach((x) => out.push(x)); }", "    }"),
     '39b-5: buku wadah 0 membuang hitungan lagi': ("if (K.stokSendiri && !(ada > 0)) {", "if (false) {"),
     '39b-5: timbang karung kedua memindah karung terdepan (tanpa diamSlot)': ("{ wadah: b.lokasi, diamSlot: true }", "{ wadah: b.lokasi }"),
     '39b-5: karung terdepan mengabaikan tanda diamSlot': ("if (!k.diamSlot && (!urut[m] || wdSesudah(k, urut[m]))) urut[m] = k;", "if (!urut[m] || wdSesudah(k, urut[m])) urut[m] = k;"),
     '39b-5: samakan karung kedua tanpa diamSlot': ("karungUntukWadah(di).merk !== merk ? { diamSlot: true } : {};", "false ? { diamSlot: true } : {};"),
+    '39b-5: tercatat karung adukan ikut menghitung bagiannya di wadah belum aktif': (" - ((bagianW || {})[kunci] || 0));", ");"),
+    '39b-5: umur adukan di wadah belum aktif tidak menunggu wadahnya dihitung': ("if (!isiW[W]) delete terakhir['karung|' + k]; else if (isiW[W] < terakhir['karung|' + k]) terakhir['karung|' + k] = isiW[W];", "return;"),
     '39b-5: kembalikan memindah sisa catatan, bukan buku': ("if (berbuku && bukuKB > 0.004) dokumen.push(wbDokPindah([{ merk, kg: bukuKB }]", "if (berbuku && bukuKB > 0.004) dokumen.push(wbDokPindah([{ merk, kg: wdB2(k.sisaMentahKg) }]"),
     '39b-5: hapus karung habis mengabaikan buku minus': ("  if (Math.abs(buku) > 0.004) {\n    if (Math.abs(buku) > 0.5 && !yakin) return", "  if (buku > 0.5) {\n    if (Math.abs(buku) > 0.5 && !yakin) return"),
     # toko.js
