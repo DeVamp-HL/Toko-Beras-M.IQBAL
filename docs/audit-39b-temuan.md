@@ -74,3 +74,26 @@ Catatan gabungan: no. 5 memuat sisa G1 (inti G1 sudah ditambal 39c, PR #66); no.
 | Tumpukan satu merek menurut buku kurang dari satu karung — isi ulang pertama sesudah aktivasi akan DITOLAK | gudang | Angkanya benar, tetapi kalimat penjaga yang menolak dan menyuruh menandai/menghitung dulu adalah perilaku yang benar dan sudah diputuskan: buku tumpukan memang kurang dari satu karung, jadi penolakan = penjaga yang berbunyi, bukan cacat. |
 | Agustus boleh dikunci sejak 4 Sep tapi belum dikunci; hari-hari tanpa tutup hari menunggu keputusan | uang | Tereproduksi, tetapi bukan temuan baru (tugas owner yang sudah tercatat: kunci pertama sesudah 25b) dan judulnya salah di dua titik; tidak ada cacat kode. |
 | Batas kredit KR1 ditopang oleh bon itu sendiri; sebagian besar nama berutang "belum terdaftar" | pelanggan | Angka tereproduksi, tetapi perilakunya adalah KEPUTUSAN OWNER yang sudah terdokumentasi (KR1 dan cara batas terbentuk), jadi bukan cacat dan tidak perlu diputuskan ulang. |
+
+## Keputusan owner (30 September 2026)
+
+Jawaban untuk KEPUTUSAN OWNER no. 35–45; urutan BUG diserahkan ke Claude.
+
+| No. | Keputusan | Cabang |
+|---|---|---|
+| 35 | Kecualikan merek literan langsung / kelas sendiri dari buku per ukuran; buku yang terlanjur lahir digabung balik ke induk (satu pindah buku) | `audit/39b-ketan-buku-ukuran` (dibangun) |
+| 36 | Paket bank: neraca & arus kas bulan final memakai hitungan fisik tutup hari akhir bulan | `audit/39b-paket-bank-titik-kas` |
+| 37 | Retur nota BON = mutasi piutang retur yang memotong bon (bukan uang laci) | `audit/39b-retur-nota-bon` |
+| 38 | Selisih laci lebih/kurang = baris "lebih/kurang kas" di laba | `audit/39b-selisih-laci-laba` |
+| 39 | Margin bon lama dikembalikan ke "diterima tunai" saat bon dibayar | `audit/39b-diterima-tunai-margin-bon` |
+| 40 | Juli (sebelum awal buku) tetap tampil, dengan keterangan | `audit/39b-juli-sebelum-buku` |
+| 41 | Penilaian modal = harga beli terbaru (sesudah no. 10) | `audit/39b-penilaian-modal-terbaru` |
+| 42 | Diterima; peta wadah §8 dibetulkan (pindah buku ke wadah yang sudah terjual menggeser Σ nilai sedikit) | `audit/39b-nilai-pindah-buku` |
+| 43 | Ditanyakan balik: arti "petunjuk satu ketukan" — menunggu pilihan | `audit/39b-induk-varian-petunjuk` |
+| 44 | Samakan pembulatan BON kasir HP dengan /baru/ | `audit/39b-pembulatan-bon-kasir` |
+| 45 | Jejak pencatat asli wajib ikut saat kiriman ditolak ditulis ulang owner | `audit/39b-jejak-tulis-ulang` |
+
+Urutan pembangunan (pilihan Claude): 35 → 1 → 8 → 2 → 4 → 3 → wadah (5, 6, 7, 26, 14, 15, 16) → laporan & angka (19, 20, 24, 25, 10, 11, 12, 13) →
+akses laten (9, 21, 22, 23) → layar (17, 18, 27–31) → keputusan 36–45 menyusul bug yang jadi syaratnya (41 sesudah 10). Alasannya: yang mengenai uang atau
+kg setiap malam dulu (no. 35 induk ketan habis dalam hitungan hari; no. 1 kena tiap tutup lewat tengah malam), lalu yang sudah tercetak ke pelanggan (no. 8),
+lalu yang terpapar tapi belum terjadi.
