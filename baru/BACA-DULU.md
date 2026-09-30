@@ -1089,3 +1089,10 @@ sebagai "nota" — satu nota berisi beberapa barang terhitung beberapa kali (20�
 diubah. Tambalan: `data/toko.js` `kunciNota` (grupNota / trxId / id — sama dengan pil Jual) + `jumlahNota(cocok)` atas penjualan yang masih berlaku;
 semua "n nota" di `laporan-logika.js` & `pajak-logika.js` memakainya. Kartu "Nota yang rugi" & "Nota tanpa modal" menyebut "N baris (M nota)".
 Uji `uji_laporan_baru.py` +1 (satu nota dua baris = satu nota di tujuh tempat), kontrol +2, kontrol lama "nota batal ikut" dipindah ke jumlahNota.
+
+## Audit 39b no. 11 — "LAHIR BUKU" bukan pemasok (1 Okt 2026, cabang `audit/39b-lahir-buku-bukan-pemasok`)
+
+Temuan: batch lahir buku khusus (buku wadah, karung belakang, karung sisihan, adukan — `wbDokLahir`, pemasok "LAHIR BUKU") tampil sebagai pemasok di
+daftar pemasok, Buku bon, pil Bon lama, Rekap Bon; bon lama / kartu atas nama itu bisa dicatat → utang toko ke pemasok yang tidak ada. Tambalan:
+`bon-pemasok-logika.js` `namaSistemPemasok` (STOK AWAL, TUTUP BUKU…, LAHIR BUKU; huruf besar/kecil sama) — `pemasokSungguhan` memakainya, bon lama
+& kartu atas nama sistem ditolak dengan kalimat. Uji `uji_harga_baru.py` +1, kontrol +1.
