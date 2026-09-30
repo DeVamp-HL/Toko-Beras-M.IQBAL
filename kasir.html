@@ -164,11 +164,12 @@
   }
   #bilahCatat.tampil { display: flex; }
   #pilihBayar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
-  #pilihBayar button {
+  #pilihBayar button, #utangCara button {
     border: 1px solid var(--garis); background: #2b3036; color: #cfd6dc; border-radius: 9px;
     min-height: 44px; font-size: .95rem; font-weight: 700; letter-spacing: .5px;
   }
-  #pilihBayar button.pilih { background: var(--tombol); color: var(--tombol-teks); border-color: var(--tombol); }
+  #pilihBayar button.pilih, #utangCara button.pilih { background: var(--tombol); color: var(--tombol-teks); border-color: var(--tombol); }
+  #utangCara { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
   #btnCatat {
     border: 0; border-radius: 12px; background: var(--catat); color: #fff;
     min-height: 68px; font-size: 1.5rem; font-weight: 800; letter-spacing: 1px;
@@ -406,6 +407,10 @@
 
   <div id="utangFormBayar" style="display:none; width:100%; max-width:340px;">
     <input type="number" id="utangNominal" placeholder="0" inputmode="numeric">
+    <div id="utangCara">
+      <button type="button" id="utangCara-Tunai" class="pilih" onclick="pilihCaraUtang('Tunai')">TUNAI</button>
+      <button type="button" id="utangCara-Qris" onclick="pilihCaraUtang('Qris')">QRIS</button>
+    </div>
     <div class="grid1">
       <button type="button" class="redup" onclick="isiLunasUtang()">Isi penuh (lunasi)</button>
       <button type="button" onclick="simpanBayarUtang()">Catat pembayaran</button>
@@ -475,8 +480,8 @@ var K_DITOLAK_ARSIP = 'kasir_ditolak_arsip_v1';   // ditolak yang sudah dicatat 
 var K_OPERATOR = 'kasir_operator_v1';
 // VERSI yang BENAR-BENAR berjalan: SAMA dengan VERSI di sw-kasir.js (uji_antrean_kasir.py memeriksanya).
 // Dikirim di denyut & tampil di bilah atas. Sampai 25b tertulis 'kasir-v24' padahal cache sudah v25.
-var VERSI_APLIKASI = 'kasir-v28';
-var LABEL_VERSI = 'versi 39b';
+var VERSI_APLIKASI = 'kasir-v29';
+var LABEL_VERSI = 'versi 39b-3';
 var K_ROSTER = 'kasir_roster_v1';
 var K_AUTH = 'kasir_auth_v1';
 var K_BAYAR_BON = 'kasir_bayar_bon_v1';   // pembayaran bon dari HP ini yang belum tampak di katalog (audit 39b no. 4) — lihat bayarBonTertunda
@@ -1649,6 +1654,11 @@ function isiSaranNamaPelanggan() {
     tb.textContent = n > 0 ? 'UTANG ' + n : 'UTANG';
   }
 }
+var caraUtangAktif = 'Tunai';   // cara bayar BON milik layar utang sendiri — dulu mewarisi tombol nota (bayarAktif) diam-diam (audit 39b no. 3)
+function pilihCaraUtang(c) {
+  caraUtangAktif = bakuCaraBayar(c) === 'QRIS' ? 'QRIS' : 'Tunai';
+  ['Tunai', 'Qris'].forEach(function (x) { var b = $('utangCara-' + x); if (b) b.classList.toggle('pilih', (x === 'Qris' ? 'QRIS' : 'Tunai') === caraUtangAktif); });
+}
 var daftarTampilUtang = [];   // daftar yang SEDANG TERLIHAT — pilihUtang memilih dari sini menurut nama (katalog bisa berganti tiap 2 menit)
 function bukaLayarUtang() {
   utangTerpilih = null;
@@ -1684,6 +1694,7 @@ function pilihUtang(i) {
   $('utangSub').textContent = 'Sisa utang ' + rupiah(p.sisa) + (p.tertunda ? ' (sudah dikurangi ' + rupiah(p.tertunda) + ' yang dibayar lewat HP ini)' : '') + '. Isi berapa yang dibayar sekarang.';
   $('daftarUtang').innerHTML = '';
   $('utangNominal').value = '';
+  pilihCaraUtang('Tunai');
   $('utangFormBayar').style.display = 'block';
   $('utangNominal').focus();
 }
@@ -1708,7 +1719,7 @@ function simpanBayarUtang() {
   tambahAntrean('piutangMutasi', {
     id: idBayar, tipe: 'bayar', namaPelanggan: p.nama, nominal: n,
     tanggal: tanggalLokalIso(), jam: new Date().toTimeString().slice(0, 5),
-    caraBayar: bayarAktif === 'Kredit' ? 'Tunai' : bayarAktif,
+    caraBayar: caraUtangAktif,
     catatan: '', operator: operatorAktif(), dicatatDi: 'kasir'
   });
   // Catatan uangnya lebih dulu (antrean), baru buku kecilnya — sisa di layar ikut turun dan TETAP turun sesudah muat ulang (bayarBonTertunda).
@@ -1940,7 +1951,7 @@ window.segarkanRingkasan = segarkanRingkasan;
 window.kirimStrukWa = kirimStrukWa;
 window.tandaiNamaTerisi = tandaiNamaTerisi;
 window.bukaLayarUtang = bukaLayarUtang; window.tutupLayarUtang = tutupLayarUtang;
-window.pilihUtang = pilihUtang; window.isiLunasUtang = isiLunasUtang;
+window.pilihUtang = pilihUtang; window.isiLunasUtang = isiLunasUtang; window.pilihCaraUtang = pilihCaraUtang;
 window.simpanBayarUtang = simpanBayarUtang;
 window.bukaLayarKembalian = bukaLayarKembalian; window.tutupLayarKembalian = tutupLayarKembalian;
 window.hitungKembalian = hitungKembalian; window.isiUangCepat = isiUangCepat;
