@@ -860,6 +860,19 @@ dikurangi di memori — muat ulang / katalog disegarkan = sisa lama kembali, bon
   menyimpannya) tetap dikurangkan tapi bukan pembanding; K3 ditolak dibuang di `pindahKeDitolak`, arsip ditolak ikut dibaca; K5 LABEL_VERSI
   'versi 39b'. Gugur: K4 (penyimpanan penuh — `catatBayarBon` gagal diam; uangnya tetap tercatat, dampaknya kembali ke perilaku lama).
 
+## Rapi isi ulang wadah (30 Sep 2026 malam, cabang `rapi/isi-ulang-sederhana`, di atas perbaikan `perbaikan/impor-takar-wadah`)
+
+Owner 30 Sep: "tidak bisa klik ISI ULANG · CATAT 3 TAKAR … terlalu banyak tombol & tampilan … buat simple, jangan nambah pekerjaan". Penyebab tombol
+diam: `jual-logika.js` memanggil `denganCacheSementara` tanpa impor (ditambal di `perbaikan/impor-takar-wadah` + `alat-uji/periksa_impor.py` di CI).
+Rapi di sini TIDAK mengubah hitungan apa pun — hanya tampilan:
+- `inti/dom.js` `delegasi`: penangan yang jatuh (galat / janji ditolak) mengirim peristiwa `galat-aksi`; `app.js` menampilkan pita merah di `#kabarNav`
+  yang bertahan sampai diketuk ("Tombol tadi GAGAL dijalankan … periksa dulu apakah catatannya sudah masuk"). Tidak ada lagi tombol yang diam.
+- `wadah-panel.js`: wadah aktif menampilkan SATU cara isi ulang sekaligus — "Karung / ½ / kg" (tiga ketukan, bawaan) atau "Serok takar · bisa campur"
+  (− / + takar); pilihan terakhir diingat per perangkat (`miqbal_isi_ulang_cara_v1`). "Beras apa yang dituang" menampilkan karung di belakang dulu,
+  tumpukan gudang terlipat di satu tombol "karung lain dari gudang". Kabar ketukan panel tampil tepat di bawah tombolnya (`kabarW`), kabar layar di
+  atas tetap.
+- `stok.js` rincian wadah: panel isi ulang paling atas; ganti nama, karung di belakang, buku per merek, karung sisihan terlipat di satu tombol
+  (diingat per perangkat, `miqbal_rincian_wadah_lain_v1`); selisih catatan karung belakang tetap disebut satu baris di luar lipatan.
 ## Audit 39b no. 3 — uang QRIS selain penjualan ikut tutup hari; bayar bon di HP kasir memilih caranya sendiri (30 Sep 2026, cabang `audit/39b-bon-qris-tutup-hari`)
 
 Temuan PP-2: mesin (pembantu `daftarGerakanKas`, `kantongBayar`) memasukkan pembayaran bon dan kasbon kembali lewat QRIS ke REKENING, tetapi tutup
