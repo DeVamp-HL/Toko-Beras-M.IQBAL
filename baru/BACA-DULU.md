@@ -951,6 +951,10 @@ karung kedua dst., karung sisihan, dan kemasan adukan yang dibuka lepas tidak pu
   bukunya di baris lepas (`kolamDitutup`). H5 baris karung memakai batas selisih % (bukan jatah susut wajar wadah per hari). H6 kalimat konfirmasi
   kembalikan menyebut buku yang dipindah. H4 (adukan di wadah BELUM aktif yang isinya tidak mengenal adukan → tercatat karung kelebihan) dicatat saja:
   hanya terjadi di wadah belum aktif. Uji +5, kontrol +4.
+  Peninjau kedua (S1–S8): S1/S3/S4 = H1/H3/H2. S5 samakan karung kedua berbuku APA PUN (juga adukan) bertanda diamSlot. S6 umur buku adukan hanya dari
+  timbang karungnya (bukan penyesuaian isi wadah yang kebagian adukan); titik ganti nama bukan hitungan. S7 hitungan minus ditolak, "cocok persis" tidak
+  ditawarkan untuk buku minus. S8 (lama, akan kena saat owner mengaktifkan wadah): aktivasi menulis karung yang TADINYA terdepan paling akhir — dulu
+  terdepan berganti menurut abjad. S2 (uji tak menjalankan tombol layar) dijawab `periksa_komentar.py` + bukti Browser pane. Uji +4, kontrol +4.
 - Belum: karung bertanda `diamSlot` cuma dari cocokkan & samakan; jalur lain yang menulis `karungIsi` bertempat (isi ulang, cek) tetap memakai urutan
   lama. Susut wajar karung kedua memakai batas wadah yang sama (per hari sejak catatannya).
 

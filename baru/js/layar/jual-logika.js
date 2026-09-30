@@ -1182,7 +1182,7 @@ export function susunSamakanKarung(merk, isiKg, w, wadah) {
   const bwS = petaBukuWadah()[merk]; const penuh = bwS && bwS.jenis === 'belakang' ? Math.max(beratKarungBuka(merk), wdB2((hitungStokKarungPerMerk()[merk] || {}).sisaKg || 0)) : beratKarungBuka(merk);
   if (!(kg >= 0) || kg > penuh) return { tolak: 'Sisa karung harus di antara 0 dan ' + String(penuh).replace('.', ',') + ' kg' };
   const di = wadah && aturWadah().daftar.indexOf(wadah) >= 0 ? wadah : '';
-  const diam = di && bwS && bwS.jenis === 'belakang' && karungUntukWadah(di).merk !== merk ? { diamSlot: true } : {};   // audit 39b no. 5: karung kedua tidak jadi karung terdepan
+  const diam = di && bwS && bwS.jenis !== 'wadah' && karungUntukWadah(di).merk !== merk ? { diamSlot: true } : {};   // audit 39b no. 5: karung kedua tidak jadi karung terdepan
   return { dokumen: [{ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk, isiKg: kg }, di ? { wadah: di } : (wadah === '' ? { lepas: true } : {}), diam) }],
     patch: { kabar: 'Karung terbuka ' + (bwS && bwS.jenis === 'belakang' && bwS.merk ? bwS.merk : merk) + (di ? ' di belakang wadah ' + di : '') + ' disamakan: sisanya ±' + wdKG(kg), kabarAwas: false } };
 }
