@@ -10,7 +10,7 @@
 //  - BACA SAJA: layar ini tidak menulis apa pun.
 import { hitungLabaRentang, hitungPiutang, hitungUtangPemasok, hitungStokKarungPerMerk, hitungStokKemasan, hitungLajuPakai, kasPada } from '../mesin/beku.js';
 import { bakuCaraBayar, daftarGerakanKas, pesananBelumTuntas, namaBulanPanjang, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja } from '../data/toko.js';
+import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja, kunciNota, returUangPerHari } from '../data/toko.js';
 import { hariIniIso, RP, lebihBayarDari } from '../inti/format.js';
 
 export const SKALA = [['langsung', 'Langsung'], ['menit', 'Menit'], ['jam', 'Jam'], ['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan'], ['tahun', 'Tahun']];
@@ -24,7 +24,7 @@ const rkIso = (d) => hariIniIso(d);
 const rkGeser = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const rkAwalMinggu = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };   // Senin
 const rkPersen = (a, b) => (b > 0 ? (a >= b ? '+' : '−') + String(Math.abs(Math.round((a / b - 1) * 1000) / 10)).replace('.', ',') + '%' : '');
-const rkKunciNota = (p) => String(p.trxId || p.grupNota || p.id);
+const rkKunciNota = kunciNota;   // 39b no. 19/20: satu kunci nota di semua layar (dulu trxId didahulukan → nota bergrup terhitung dua)
 function rkTeksBaris(p) {
   if (p.jenis === 'kemasan') return (p.namaProduk || '') + ' ' + (p.ukuranKemasan || '') + ' kg × ' + (p.jumlahUnit || '');
   if (p.jenis === 'karung') return (p.merkSumber || '') + ' ' + (p.beratKarungAcuan || 50) + ' kg × ' + (p.jumlahKarung || '');
@@ -33,20 +33,25 @@ function rkTeksBaris(p) {
   return p.namaProduk || p.jenis || '';
 }
 
-/** Indeks penjualan berlaku: per hari, dan baris hari ini & kemarin dengan menit-ke-berapa. Dibangun sekali per perubahan data. */
+/** Indeks penjualan berlaku: per hari, dan baris hari ini & kemarin dengan menit-ke-berapa. Dibangun sekali per perubahan data.
+ *  39b no. 19: omzet = penjualan − uang retur hari itu (sama dengan Laporan & Pajak); retur disimpan terpisah supaya hari tanpa penjualan tidak jadi hari buka. */
 export function bangunIndeks() {
-  const perHari = {}; let mulai = '';
+  const perHari = {}; let mulai = ''; const retur = returUangPerHari();
   ambilPenjualan().forEach((p) => {
     const t = p.tanggal || ''; if (!t) return;
     if (!mulai || t < mulai) mulai = t;
     const h = perHari[t] || (perHari[t] = { omzet: 0, nota: new Set(), baris: [] });
     h.omzet += p.hargaTotal || 0; h.nota.add(rkKunciNota(p)); h.baris.push(p);
   });
-  return { perHari, mulai };
+  return { perHari, mulai, retur };
 }
+const rkReturHari = (ix, t, sampaiMenit) => { const r = (ix.retur || {})[t]; if (!r) return 0; if (sampaiMenit == null) return r.uang;
+  return r.baris.reduce((a, x) => { const m = rkMenitKe(x); return a + (m === null || m <= sampaiMenit ? x.uang : 0); }, 0); };
+const rkOmzetHari = (ix, t) => ((ix.perHari[t] || {}).omzet || 0) - rkReturHari(ix, t);
 const rkMenitKe = (p) => { const m = /^(\d{1,2})[:.](\d{2})/.exec(p.jam || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
 function rkJumlahRentang(ix, dariIso, sampaiIso, sampaiMenitHariAkhir) {
-  let omzet = 0; const nota = new Set(); let hariBuka = 0;
+  let omzet = 0; const nota = new Set(); let hariBuka = 0; let retur = 0;
+  Object.keys(ix.retur || {}).forEach((t) => { if (t >= dariIso && t <= sampaiIso) retur += rkReturHari(ix, t, t === sampaiIso ? sampaiMenitHariAkhir : null); });
   Object.keys(ix.perHari).forEach((t) => {
     if (t < dariIso || t > sampaiIso) return;
     const h = ix.perHari[t];
@@ -56,7 +61,7 @@ function rkJumlahRentang(ix, dariIso, sampaiIso, sampaiMenitHariAkhir) {
       if (ada) hariBuka += 1;
     } else { omzet += h.omzet; h.nota.forEach((k) => nota.add(k)); hariBuka += 1; }
   });
-  return { omzet, nota: nota.size, hariBuka };
+  return { omzet: omzet - retur, penjualan: omzet, retur, nota: nota.size, hariBuka };
 }
 
 /** Sel-sel satu lapis cincin: {sel:[{v, kelas}], jalan, vmax}. v null = sebelum ada catatan, 'rel' = belum terjadi. */
@@ -75,7 +80,7 @@ function rkDataLapis(nama, ix, kini) {
     for (let j = JAM_BUKA; j <= JAM_TUTUP; j++) sel.push(j === jamKini ? { v: isi[j] || 0, kelas: 'berjalan' } : j > jamKini ? { v: 'rel', kelas: 'rel' } : { v: isi[j] || 0, kelas: 'emas' });
     jalan = jamKini - JAM_BUKA;
   } else if (nama === 'hari') {
-    for (let i = 29; i >= 0; i--) { const t = rkIso(rkGeser(kini, -i)); sel.push(t < ix.mulai || !ix.mulai ? { v: null, kelas: 'absen' } : i === 0 ? { v: (ix.perHari[t] || {}).omzet || 0, kelas: 'berjalan' } : { v: (ix.perHari[t] || {}).omzet || 0, kelas: 'emas' }); }
+    for (let i = 29; i >= 0; i--) { const t = rkIso(rkGeser(kini, -i)); sel.push(t < ix.mulai || !ix.mulai ? { v: null, kelas: 'absen' } : i === 0 ? { v: rkOmzetHari(ix, t), kelas: 'berjalan' } : { v: rkOmzetHari(ix, t), kelas: 'emas' }); }
     jalan = 29;
   } else if (nama === 'minggu') {
     const awal = rkAwalMinggu(kini);
@@ -177,7 +182,7 @@ export function susunRingkasan(skala, ix, kini) {
   const mgHari = rkMarginTeks((t) => t === hari);
 
   const kepala = {
-    langsung: { angka: H.omzet, judul: 'Omzet hari ini · hidup', sub: [mgHari.teks, H.nota + ' nota'].filter(Boolean).join(' · '),
+    langsung: { angka: H.omzet, judul: 'Omzet hari ini · hidup', sub: [mgHari.teks, H.nota + ' nota', H.retur ? 'sudah dikurangi retur ' + RP(H.retur) : ''].filter(Boolean).join(' · '),
       banding: 'Nota ke-' + H.nota + ' hari ini' + (kmrSegini ? ' · kemarin jam segini nota ke-' + kmrSegini.nota : ' · kemarin belum ada catatan') },
     menit: { angka: M60.omzet, judul: '60 menit terakhir · ' + rkP2(kini.getHours()) + '.' + rkP2(kini.getMinutes()), sub: M60.nota ? RP(Math.round(M60.omzet / M60.nota)) + '/nota · ' + M60.nota + ' nota' : 'belum ada nota dalam 60 menit ini',
       banding: (() => { if (!adaSejak(kemarin)) return 'kemarin belum ada catatan · belum bisa dibandingkan'; let o = 0; const n = new Set(); (ix.perHari[kemarin] || { baris: [] }).baris.forEach((p) => { const m = rkMenitKe(p); if (m !== null && menitKini - m >= 0 && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); return 'kemarin jendela ini ' + n.size + ' nota · ' + RP(o) + (o > 0 ? ' (' + rkPersen(M60.omzet, o) + ')' : ''); })() },

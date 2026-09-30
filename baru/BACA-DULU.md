@@ -1172,3 +1172,14 @@ dari catatan lama sebelum ada pilihan tujuan; tidak bisa dipilah ulang) dan cata
 dengan memberi kata kunci). Owner yang membereskan satu tidak melihat yang lain berkurang (jalan buntu). Tambalan (kata saja; hitungan tidak berubah):
 kartu laba kotor & buku hari ini Uang → "tanpa tujuan"; Kendali Biaya (cip, kartu, peringatan, baris catatan) → "jenisnya belum dikenali".
 Uji `uji_kendali_biaya.py` +2 (peringatan + pemeriksa kata di `laporan.js`), kontrol +1; `uji_uang_karyawan.py` cap disesuaikan.
+
+## Audit 39b no. 19 — "omzet" satu arti: penjualan − uang retur (1 Okt 2026, cabang `audit/39b-omzet-satu-arti`)
+
+Temuan: Ringkasan dan kartu "Hari ini" di Jual menulis omzet KOTOR (jumlah penjualan), sedangkan Laporan, rekap omzet, dan Pajak menulis omzet sesudah
+uang retur (mesin laba). Untuk periode yang sama dua angka, selisihnya seluruh uang retur. Keputusan owner 9 Sep (tambalan retur): uang kembali SELALU
+mengurangi omzet → arti yang dipakai di semua layar = penjualan − uang retur. Tambalan: `data/toko.js` `returUangPerHari()` (rumus mesin
+`uangKembaliRetur`, per tanggal + jam) dipakai `ringkasan-logika.js` (hari/minggu/bulan/tahun, sel hari, pembanding jam segini; sub menyebut "sudah
+dikurangi retur"), `jual-logika.js` `hariIni` (omzet bersih + `retur`; per cara bayar tetap penjualan, kartu menulis "retur −Rp…" supaya Σ menutup),
+`laporan-logika.js` `hariTerakhir` (pemilih 14 hari = rekap harinya). Jendela 15/60 menit & per jam tetap PENJUALAN (keramaian), bukan omzet.
+Kunci nota Ringkasan disamakan dengan `kunciNota` (grupNota dulu). Asap Ringkasan yang dulu mengunci arti kotor kini dibanding dengan mesin laba.
+Uji `uji_ringkasan_baru.py` +1, `uji_jual_baru.py` +1, `uji_laporan_baru.py` +1, asap Ringkasan & Riwayat disesuaikan; kontrol +4.

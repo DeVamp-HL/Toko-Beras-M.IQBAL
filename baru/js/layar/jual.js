@@ -584,7 +584,7 @@ export function pasangLayarJual(akar, opsi) {
         <div class="kartu hari">
           <div class="label">Hari ini · ${hari.baris} baris · ${hari.nota} nota</div>
           <div class="serif angka-omzet" style="font-size: 24px;" data-gulir="${hari.omzet}">${RP(hari.omzet)}</div>
-          <div class="ket">${Object.keys(hari.perCara).map((c) => c + ' ' + RP(hari.perCara[c])).join(' · ') || 'belum ada penjualan'} · ${DESIMAL(hari.kg)} kg</div>
+          <div class="ket">${Object.keys(hari.perCara).map((c) => c + ' ' + RP(hari.perCara[c])).join(' · ') || 'belum ada penjualan'}${hari.retur ? ' · retur −' + RP(hari.retur) : ''} · ${DESIMAL(hari.kg)} kg</div>
           ${hari.terakhir.map((r) => h`<div class="r ketuk${_barisBaru.has(String(r.id)) ? ' baru' : ''}" data-aksi="bukaStruk" data-trx="${r.trxId}" data-grup="${r.grupNota}" data-id="${r.id}" title="buka struk"><span class="w">${r.jam}</span><span class="t">${r.teks}${r.nama ? ' · ' + r.nama : ''}</span><span class="n">${RP(r.n)}</span></div>`)}
           ${hari.terakhir.length ? h`<div class="ket" style="padding-top: 4px;">ketuk baris → struk (WhatsApp / cetak)</div>` : ''}
         </div>

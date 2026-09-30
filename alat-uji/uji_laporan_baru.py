@@ -87,6 +87,9 @@ ok('kas bersih = Σ masuk − Σ keluar (baris arus kas yang sama); per jam: jam
 ok('buku kas 19 Sep = baris daftarGerakanKas hari itu (5: 3 nota uang + pelunasan + MDR); 16 Sep sudah tutup hari 21:05, 19 Sep belum', RH.buku.length === daftarGerakanKas().filter(function (r) { return r.t === '2026-09-19'; }).length && RH.buku.length === 5 && !RH.tutup && rekapHari('2026-09-16').tutup.jam === '21:05', J(RH.buku.map(function (r) { return r.label; })));
 var TR = teksRekapHari(RH, { nama: 'Toko Contoh' }); ok('teks WA: judul toko, omzet (4 nota), tunai, QRIS, bon, pembayaran bon, kas bersih, margin', /Rekap Toko Contoh — 19 Sep/.test(TR) && /Omzet: Rp1\.270\.000 \(4 nota\)/.test(TR) && /Bon \(belum jadi uang\): Rp300\.000/.test(TR) && /Pembayaran bon pelanggan: Rp100\.000/.test(TR) && /Kas bersih hari ini: Rp1\.068\.200/.test(TR) && /Margin kotor/.test(TR), TR);
 var HT = hariTerakhir(KINI, 14); ok('14 hari terakhir, hari ini dulu; 19 Sep 4 nota, 18 Sep 1, 15 Sep 0 (sepi tetap ada)', HT.length === 14 && HT[0].iso === '2026-09-19' && HT[0].hariIni && HT[0].n === 4 && HT[1].n === 1 && HT[4].n === 0);
+ok('39b-19 pemilih 14 hari: omzet tiap hari = omzet rekap harinya (penjualan − uang retur), bukan penjualan kotor', hariTerakhir(KINI, 14).every(function (x) { return x.omzet === rekapHari(x.iso).omzet; })
+  && denganCacheSementara([{ koleksi: 'retur', data: { id: 'rtL19', tanggal: '2026-09-18', jam: '09:00', nominalRefund: 12000, kondisi: 'utuh' } }], function () { var h = hariTerakhir(KINI, 14)[1]; return h.iso === '2026-09-18' && h.omzet === rekapHari('2026-09-18').omzet && h.omzet === HT[1].omzet - 12000; }),
+  J(hariTerakhir(KINI, 3).map(function (x) { return [x.iso, x.omzet, rekapHari(x.iso).omzet]; })));
 var N20 = function (id, merk) { return { koleksi: 'penjualan', data: { id: id, trxId: 'T20', tanggal: '2026-09-19', jam: '11:00', caraBayar: 'Tunai', namaPelanggan: '', jenis: 'karung', merkSumber: merk, totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 700000, hppTotalSaatJual: 650000 } }; };
 var n20 = { h: rekapHari('2026-09-19').n, m: rekapMinggu('2026-09-14', KINI).n, b: enamBulan(KINI).daftar.slice(-1)[0].n, p: pjOmzetSistem('2026-09').n };
 ok('39b-20 satu nota DUA baris (trxId sama) dihitung SATU nota: Harian 4 → 5 (bukan 6), jam 11 satu nota, 14 hari, teks WA "(5 nota)", minggu, bulan & Pajak ikut +1 (dulu +2: baris disebut nota)',
@@ -255,6 +258,7 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            '39b-19: pemilih 14 hari Laporan bruto': js.replace("omzet: (per[t] ? per[t].omzet : 0) - ((retur[t] || {}).uang || 0),", "omzet: per[t] ? per[t].omzet : 0,"),
             'no.4: neraca diam soal kelebihan bayar pelanggan': js.replace("const kataU = U.n ? 'Kelebihan bayar pelanggan '", "const kataU = false ? 'Kelebihan bayar pelanggan '"),
             'no.4 B1: hapus buku terbayar disebut menaikkan kekayaan / tidak disebut': js.replace("const kataH = H.n ?", "const kataH = false ?"),
             'no.4 B4: tanpa titik kas neraca tetap bilang "kekayaan di atas lebih besar"': js.replace("(asetAda === false ? 'begitu kas bisa dihitung, kekayaan akan terbaca lebih besar sebesar itu.' : 'kekayaan di atas lebih besar sebesar itu.')", "'kekayaan di atas lebih besar sebesar itu.'"),

@@ -7,7 +7,7 @@
 //    internet diserahkan ke cache tetap Firestore (IndexedDB) di js/data/firebase.js;
 //  - keranjang aktif & yang diparkir disetel oleh layar lewat setelKeranjang(), bukan variabel global.
 import { KOLEKSI } from './koleksi.js';
-import { penjualanMasihBerlaku, produksiMasihBerlaku, wzJumlahDiDaftar } from '../mesin/pembantu.js';
+import { penjualanMasihBerlaku, produksiMasihBerlaku, wzJumlahDiDaftar, uangKembaliRetur } from '../mesin/pembantu.js';
 import { kpSampai, kpTenggang, kpNilaiKiriman, kpKalimat, kpPotong, kpBulanDok, kpIdx, kpBulanStr, KP_BATAS_GET } from './kunci-periode.js';
 
 const _cache = {};
@@ -45,6 +45,16 @@ export function ambilPenjualan() { return ambilPenjualanSemua().filter(penjualan
 export const kunciNota = (p) => String(p.grupNota || p.trxId || p.id);
 /** Jumlah nota (bukan baris) penjualan yang masih berlaku dengan tanggal yang cocok. */
 export function jumlahNota(cocok) { const s = new Set(); ambilPenjualan().forEach((p) => { if (cocok(p.tanggal)) s.add(kunciNota(p)); }); return s.size; }
+/**
+ * Uang yang kembali ke pembeli lewat retur per tanggal — rumus & saringan yang SAMA dengan mesin laba (uangKembaliRetur atas semua retur bertanggal):
+ * { 'YYYY-MM-DD': { uang, baris: [{ jam, uang }] } }. OMZET = penjualan − uang ini di SEMUA layar (keputusan owner 9 Sep: uang kembali selalu mengurangi
+ * omzet; 39b no. 19: Ringkasan & Jual dulu bruto, Laporan/Pajak bersih).
+ */
+export function returUangPerHari() {
+  const out = {}; ambilRetur().forEach((r) => { const t = String(r.tanggal || ''); if (!t) return; const u = uangKembaliRetur(r); if (!u) return;
+    const h = out[t] || (out[t] = { uang: 0, baris: [] }); h.uang += u; h.baris.push({ jam: String(r.jam || ''), uang: u }); });
+  return out;
+}
 export function ambilProduksi() { return _cache.produksi; }
 export function ambilProduksiBerlaku() { return ambilProduksi().filter(produksiMasihBerlaku); }
 
