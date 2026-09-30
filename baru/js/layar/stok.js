@@ -83,7 +83,9 @@ export function pasangLayarStok(akar, opsi) {
   const ubahAtur = (f) => { const d = JSON.parse(JSON.stringify(st().atur || drafAtur())); f(d); set({ atur: d }); };
   const AKSI = Object.assign({
     tombolMati: ({ kal }) => set({ kabar: kal, kabarAwas: true }),   // putaran 23: tombol peran — mati dengan kalimat sebabnya
-    rincianLain: () => { const v = !st().rincianLain; try { localStorage.setItem(KUNCI_RINCIAN_LAIN, v ? '1' : '0'); } catch (e) { /* abaikan */ } set({ rincianLain: v }); },
+    // menutup lipatan membatalkan konfirmasi dua ketukan & pilihan yang menunggu di dalamnya (tidak ada yang hidup tersembunyi — tinjauan #76 S2)
+    rincianLain: () => { const v = !st().rincianLain; try { localStorage.setItem(KUNCI_RINCIAN_LAIN, v ? '1' : '0'); } catch (e) { /* abaikan */ }
+      set(Object.assign({ rincianLain: v }, v ? {} : { bgYakin: false, krPilih: false, krNama: '', krAsal: null, tandai: st().tandai && st().tandai.jenis === 'bukaKarung' ? null : st().tandai })); },
     tab: ({ t }) => { try { localStorage.setItem(KUNCI_TAB, t); } catch (e) { /* abaikan */ } set({ tab: t, kabar: '', tandai: null, akYakin: '' }); },
     tanya: ({ id }) => set({ tanya: id }),
     keBelanja: () => opsi.bukaHarga && opsi.bukaHarga('belanja'),   // putaran 17: Harga & Pemasok → Belanja (saran yang sama, per pemasok, muatan truk, pesanan WA)
@@ -536,8 +538,12 @@ export function pasangLayarStok(akar, opsi) {
           ${Object.keys(K.bagian).some((m) => K.bagian[m] < 0) ? ' Ada bagian MINUS (' + Object.keys(K.bagian).filter((m) => K.bagian[m] < 0).map((m) => m + ' ' + KG(K.bagian[m])).join(', ') + ') — isi ulang lupa dicatat? cocokkan wadah ini.' : ''}</div>`; })()}
         ${panelIsiUlang(aktif.nama, s, keranjangJual(), { akun: opsi.akun ? opsi.akun() : null })}
         ${(() => { const KB0 = aktif.stokSendiri ? WB.wbKarungBelakangWadah(aktif.nama).filter((k) => k.diketahui && Math.abs(k.selisihKg) > 0.05) : [];
+          // peringatan yang dulu hanya ada di dalam lipatan tetap disebut di luarnya (tinjauan #76 S1): catatan ≠ buku, takar melebihi isi karung, tumpukan minus
+          const awas = [].concat(KB0.length ? ['catatan karung di belakang beda dengan bukunya: ' + KB0.map((k) => k.merk + ' ' + (k.selisihKg > 0 ? '+' : '−') + KG(Math.abs(k.selisihKg))).join(', ')] : [],
+            aktif.karung && aktif.karung.diketahui && aktif.karung.lewat ? ['takar yang tercatat ' + KG(aktif.karung.lewat) + ' LEBIH dari isi karung di belakang'] : [],
+            aktif.tumpukan && aktif.tumpukan.adaBuku && aktif.tumpukan.minus ? ['tumpukan ' + aktif.tumpukan.merk + ' di gudang: buku KURANG ' + KG(-aktif.tumpukan.kg)] : []);
           return h`<div class="kaca-btn putus" data-k="rincian-lain-${aktif.nama}" data-aksi="rincianLain">${s.rincianLain ? 'tutup pengaturan karung & wadah' : 'Karung di belakang, ganti nama & karung sisihan ▾'}</div>
-          ${!s.rincianLain && KB0.length ? h`<div class="ket awas-teks" data-k="rincian-awas-${aktif.nama}">Catatan karung di belakang beda dengan bukunya: ${KB0.map((k) => k.merk + ' ' + (k.selisihKg > 0 ? '+' : '−') + KG(Math.abs(k.selisihKg))).join(', ')} — buka pengaturan di atas untuk menyamakan.</div>` : ''}`; })()}
+          ${!s.rincianLain && awas.length ? h`<div class="ket awas-teks" data-k="rincian-awas-${aktif.nama}">${awas.join(' · ')} — buka "Karung di belakang" di atas untuk menyamakan.</div>` : ''}`; })()}
         ${s.rincianLain ? h`
         <div class="tombol-baris rapat" data-k="ganti-nama"><input class="ketik-nama sempit" id="gnKetik" type="text" placeholder="nama baru wadah ini" value="${s.gnKetik}" data-ketik="gnKetik"><div class="kaca-btn putus ${String(s.gnKetik || '').trim() ? '' : 'mati'}" data-aksi="gantiNamaWadah" data-merk="${aktif.nama}">ganti nama wadah</div></div>
         ${(() => { const nk = s.krNama || aktif.karungNama; const draf = nk !== aktif.karungNama; const kr = draf ? L.karungBelakang(nk, aktif.nama) : aktif.karung; const tg = draf ? L.tumpukanGudang(nk) : aktif.tumpukan; const C = s.krPilih ? L.calonBukaKarung(14) : null; const asal = s.krNama && s.krNama === nk ? s.krAsal : null;

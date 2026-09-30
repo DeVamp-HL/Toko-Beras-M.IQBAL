@@ -27,7 +27,7 @@ BUKAN_ISIAN = {
 
 
 # kunci localStorage di layar yang SENGAJA bukan draf isian (tidak ikut dihapus saat ganti orang)
-BUKAN_DRAF = {'KUNCI_TAB': 'tab/layar terakhir perangkat (navigasi)', 'KUNCI_RINCIAN_LAIN': 'lipatan pengaturan rincian wadah terbuka/tertutup (tampilan)', 'KUNCI_CARA': 'cara isi ulang wadah terakhir (tampilan)', 'KUNCI_KELUARGA': 'keluarga layar terakhir (navigasi)', 'KUNCI_LACI': 'laci Menu terbuka/tertutup (navigasi)',
+BUKAN_DRAF = {'KUNCI_TAB': 'tab/layar terakhir perangkat (navigasi)', 'KUNCI_RINCIAN_LAIN': 'lipatan pengaturan rincian wadah terbuka/tertutup (tampilan)', 'KUNCI_KELUARGA': 'keluarga layar terakhir (navigasi)', 'KUNCI_LACI': 'laci Menu terbuka/tertutup (navigasi)',
               'KUNCI_SKALA': 'skala Beranda (tampilan)', 'KUNCI_HAFAL': 'skor kuis hafalan terakhir di perangkat (sudah tersimpan, bukan isian)',
               'KUNCI_TITIK': 'titik kas = salinan catatan toko, bukan isian (juga dibaca mesin; tirai 23c menahan tampilnya)'}
 
