@@ -341,6 +341,20 @@ ok('tuntas = cocokkan merek asal bertanggal ≥ dokumen: Tawon 21 Sep → tingga
   && denganCacheSementara([cocok('Tawon', '2026-09-20'), cocok('Tawon', '2026-09-21', { dariRework: true }), cocok('NG', '2026-09-22')], function () { return notaTembusBelumCocok().nama.length === 2 && notaTembusBelumCocok().baris.length === 2; })
   && denganCacheSementara([cocok('Beo', '2026-09-22'), cocok('Tawon', '2026-09-22')], function () { return notaTembusBelumCocok().nama.length === 0 && notaTembusBelumCocok().n === 0 && !wbPindahTembusBelumCocok().length && !susunGudang('cocok', KINI).jawab.baris.some(function (b) { return /^tembus\|/.test(b.kunci); }); }));
 
+// ---- 12c · 39b no. 6: ganti nama wadah AKTIF memindah buku karung di belakang (dulu tertinggal yatim → isi ulang membuka karung baru dari tumpukan)
+var kb6 = wbKarungBelakangWadah('Angsa'); var t6 = tumpukanGudang('NG').kg; var v6 = nilai(); var berdiri6 = wbMerkAsal(karungUntukWadah('Angsa').merk); var GN6 = wbSusunGantiNama('Angsa', 'Angsa Enam', W);
+ok('39b-6 ganti nama Angsa → Angsa Enam: tiap buku karung belakang pindah ke "Karung belakang Angsa Enam · M" (buku & catatan sama, yang lama 0), karung yang berdiri tetap berdiri, tumpukan gudang NG & nilai stok tidak bergeser',
+  !GN6.tolak && kb6.length > 0 && denganCacheSementara(GN6.dokumen, function () { var baru = wbKarungBelakangWadah('Angsa Enam');
+    return kb6.every(function (k) { var b = baru.filter(function (x) { return x.merk === k.merk; })[0]; return !!b && B2(b.bukuKg) === B2(k.bukuKg) && (!k.diketahui || B2(b.kolamKg) === B2(k.kolamKg)) && B2(buku(k.kunci)) === 0; })
+      && Math.abs(tumpukanGudang('NG').kg - t6) < 0.011 && nilai() === v6 && wbMerkAsal(karungUntukWadah('Angsa Enam').merk) === berdiri6; }),
+  J([GN6.tolak, kb6.map(function (k) { return k.merk + ' ' + k.bukuKg + '/' + k.kolamKg; })]));
+var kbNG6 = kb6.filter(function (k) { return k.merk === 'NG'; })[0];
+ok('39b-6 sesudah ganti nama, isi ulang 1 kg NG dari Angsa Enam memakai karung di belakangnya (tidak membuka karung baru dari tumpukan)',
+  !kbNG6 || kbNG6.bukuKg < 1 || denganCacheSementara(GN6.dokumen, function () { var r = wbSusunIsiUlangTiga('Angsa Enam', 'NG', { jenis: 'kg', kg: '1' }, W, s0()); return !r.tolak && r.hitung.dibuka === 0; }),
+  J(kbNG6));
+ok('39b-6 buku karung belakang MINUS → ganti nama ditolak (samakan dulu), tidak dipindah diam-diam',
+  denganCacheSementara([{ koleksi: 'penyesuaianStok', data: { id: 'ps-min6', tanggal: hariIniIso(KINI), jam: '09:00', merk: KB('Angsa', 'NG'), kgSistem: 0, kgFisik: 0, selisihKg: -999, alasan: 'uji', nilaiRp: 0, hppPerKgSaatOpname: 0 } }], function () { return /Karung di belakang Angsa tercatat minus/.test(wbSusunGantiNama('Angsa', 'Angsa Enam', W).tolak || ''); }));
+
 // ---- 13 · penjaga perangkat = rules v5 (10)
 var KRY = keadaanAkun('kry.contoh@tokoberasmiqbal.web.app', 'uid-kry', { uid: 'uid-kry', nama: 'Karyawan Contoh', peran: 'karyawan', aktif: true }); var OWN = keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null);
 var HAK = { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'tidak', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' };
@@ -493,6 +507,8 @@ def cetak_asap(nama, asap):
 
 
 RUSAK = {
+    '39b-6: ganti nama tidak memindah buku karung belakang': ("  KBL.slice().sort((a, b) =>", "  [].slice().sort((a, b) =>"),
+    '39b-6: karung belakang minus dipindah diam-diam': ("  if (kbMinus.length) return { tolak:", "  if (false) return { tolak:"),
     # toko.js
     'kunci karung belakang tidak dikenali buku khusus': ("else if (m.karungBelakang) out[String(m.merk)] = { jenis: 'belakang', wadah: String(m.karungBelakang), merk: String(m.merkAsal || '') };", ""),
     'merkAsalKunci mengembalikan kuncinya (berat karung & label salah)': ("return b && b.jenis === 'belakang' && b.merk ? b.merk : String(kunci);", "return String(kunci);"),

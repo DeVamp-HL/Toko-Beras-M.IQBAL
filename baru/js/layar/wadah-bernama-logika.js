@@ -343,12 +343,17 @@ export function wbSusunGantiNama(lama, baru, w) {
   const K = wbKomposisi(L);
   // putaran 28: wadah berstok sendiri — stoknya ikut pindah ke buku nama baru (lahir + pindah buku); stok minus harus dicocokkan dulu (tidak dipindah diam-diam)
   if (K.stokSendiri && K.totalKg < -0.004) return { tolak: 'Stok wadah ' + L + ' tercatat minus ' + wbKG(-K.totalKg) + ' — cocokkan wadahnya dulu, baru ganti nama' };
+  // 39b no. 6: buku KARUNG DI BELAKANG (putaran 39, per merek asal) ikut nama baru — dulu tertinggal sebagai buku yatim 'Karung belakang <lama> · M'
+  // dan isi ulang sesudahnya membuka karung BARU dari tumpukan gudang (tumpukan turun tanpa karung diambil). Buku minus dicocokkan dulu, tidak dipindah diam-diam.
+  const KBL = K.stokSendiri ? wbKarungBelakangWadah(L) : [];
+  const kbMinus = KBL.filter((k) => k.bukuKg < -0.004);
+  if (kbMinus.length) return { tolak: 'Karung di belakang ' + L + ' tercatat minus (' + kbMinus.map((k) => k.merk + ' ' + wbKG(k.bukuKg)).join(', ') + ') — samakan karungnya dulu, baru ganti nama' };
   const dokumen = [wbDokAtur({ daftar, resep, gantiNama: { dari: L, ke: B } }, w)];
   if (K.stokSendiri) { const lahir = wbDokLahir([{ merk: wbKunci(B), stokWadah: B }], w); if (lahir) dokumen.push(lahir);
     if (K.totalKg > 0.004) dokumen.push(wbDokPindah([{ merk: K.kunci, kg: K.totalKg }], wbKunci(B), w, { gantiNamaWadah: { dari: L, ke: B }, keterangan: 'Ganti nama wadah ' + L + ' → ' + B + ': stok wadah ' + wbKG(K.totalKg) + ' ikut pindah' }));
     dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: B, tipe: 'isi', isiKg: wbB2(K.totalKg), stokWadah: wbKunci(B), gantiNamaDari: L } }); }
   else if (K.diketahui) dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: B, tipe: 'isi', isiKg: wbB2(K.totalKg), komposisi: Object.assign({}, K.bagian), gantiNamaDari: L } });
-  const kn = karungUntukWadah(L); const kb = kn.dariCatatan ? karungBelakang(kn.merk, L) : null;
+  const kn = karungUntukWadah(L); const kbBuku = K.stokSendiri && KBL.some((k) => k.kunci === kn.merk); const kb = kn.dariCatatan && !kbBuku ? karungBelakang(kn.merk, L) : null;   // karung berbuku: dipindah di bawah (nama kunci baru)
   const sebelum = {}; semuaKarungTerbuka().forEach((k) => { sebelum[k.merk + '|' + k.lokasi] = k.sisaMentahKg; });
   if (kb && kb.diketahui) { dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: kn.merk, isiKg: wbB2(kb.sisaMentahKg), wadah: B, gantiNamaDari: L } });
     sebelum[kn.merk + '|' + L] = 0; }   // kolam di belakang L PINDAH ke B
@@ -366,6 +371,13 @@ export function wbSusunGantiNama(lama, baru, w) {
     if (KWL.sisaKg > 0.004) { dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: KWL.kunci, isiKg: 0, lepas: true, gantiNamaDari: L } });
       dokumen.push(wbDokKarungWadah(B, KWL.sisaKg, w, { gantiNamaDari: L })); }
   }
+  // 39b no. 6 (sesudah penyamaan kolam di atas, seperti karung sisihan): tiap buku karung belakang → 'Karung belakang <baru> · M' (lahir + pindah buku, modal ikut);
+  // kolam catatannya pindah bernama kunci baru di belakang B, kolam lama dinolkan. Karung yang BERDIRI di belakang (karungUntukWadah) ditulis terakhir supaya tetap berdiri.
+  KBL.slice().sort((a, b) => (a.kunci === kn.merk ? 1 : 0) - (b.kunci === kn.merk ? 1 : 0)).forEach((k) => {
+    const kB = wbKunciKB(B, k.merk); const lahirB = wbDokLahir([{ merk: kB, karungBelakang: B, merkAsal: k.merk }], w); if (lahirB) dokumen.push(lahirB);
+    if (k.bukuKg > 0.004) dokumen.push(wbDokPindah([{ merk: k.kunci, kg: k.bukuKg }], kB, w, { gantiNamaWadah: { dari: L, ke: B }, merkAsal: k.merk, keterangan: 'Ganti nama wadah ' + L + ' → ' + B + ': karung di belakang ' + k.merk + ' ' + wbKG(k.bukuKg) + ' ikut pindah (' + k.kunci + ' → ' + kB + ')' }));
+    if (k.diketahui) { dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: k.kunci, merkAsal: k.merk, isiKg: 0, lepas: true, gantiNamaDari: L } });
+      dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, tipe: 'karungIsi', merk: kB, merkAsal: k.merk, isiKg: wbB2(k.kolamKg), wadah: B, bukuBelakang: true, gantiNamaDari: L } }); } });
   const hL = ambilHargaLiteran().find((h) => h.merk === L); const hB = ambilHargaLiteran().find((h) => h.merk === B);
   if (hL && Number(hL.hargaPerLiter) > 0 && !hB) dokumen.push({ koleksi: 'katalogHargaLiteran', data: { id: B, merk: B, hargaPerLiter: Number(hL.hargaPerLiter), diubahPada: w.kini, modalSaatSetel: 0 } });
   return { dokumen, patch: { kabar: 'Wadah ' + L + ' sekarang bernama ' + B + ' — isi' + (K.diketahui ? ' ±' + String(wbB2(K.totalKg)).replace('.', ',') + ' kg' : '') + ', karung di belakangnya' + (hL ? ', dan harga liternya' : '') + ' ikut pindah. ' + (K.stokSendiri ? 'Stok wadahnya pindah dari buku ' + K.kunci + ' ke ' + wbKunci(B) + (kwPindah ? ', karung wadahnya ' + wbKG(kwPindah) + ' ikut' : '') + ' (modal ikut).' : 'Buku stok tidak berubah.'), kabarAwas: false } };

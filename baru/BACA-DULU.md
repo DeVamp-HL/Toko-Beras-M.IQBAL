@@ -920,6 +920,15 @@ kebetulan kembali sama (dikurangi dua kali). Mesin TIDAK diubah.
   & sesudah sampai server, catatan lama tanpa tanggal), `uji_antrean_kasir.py` +2 peramban (layar & klik sungguhan); `uji_arsip_produk.py` &
   `uji_wadah_stok_sendiri.py` membandingkan katalog tanpa dua kunci baru. Kontrol baru: katalog kasir 11, antrean kasir 1.
 
+## Audit 39b no. 6 — ganti nama wadah aktif memindah buku karung di belakang (1 Okt 2026, cabang `audit/39b-ganti-nama-karung-belakang`)
+
+Temuan G: `wbSusunGantiNama` memindah buku wadah & karung sisihan ke nama baru, tetapi buku "Karung belakang <lama> · merek" (putaran 39) tertinggal
+yatim → karung di belakang nama baru terbaca kosong dan isi ulang berikutnya membuka karung BARU dari tumpukan gudang (tumpukan turun tanpa karung
+diambil, dua buku untuk satu karung fisik). Tambalan: tiap buku karung belakang → lahir "Karung belakang <baru> · merek" + pindah buku (modal ikut);
+kolam catatannya pindah bernama kunci baru di belakang wadah baru, kolam lama dinolkan; karung yang berdiri ditulis terakhir supaya tetap berdiri;
+buku karung belakang MINUS → ganti nama ditolak (samakan dulu). Uji `uji_wadah_satu_buku.py` +3 (pindah & tumpukan/nilai tetap, isi ulang tidak
+membuka karung baru, minus ditolak). Kontrol baru 2.
+
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
 Temuan J1: uang kurang saat bayar → semua baris nota jadi Kredit (`uangDiterima` tidak ditulis) + satu pelunasan piutang sebesar uang yang diterima
