@@ -126,6 +126,8 @@ export function wbKomposisiBaru(W, isiKg) {
   // putaran 28: wadah berstok sendiri — komposisinya 100 % kuncinya sendiri, jadi selisih jatuh ke buku wadah itu (susut wadah) lewat jalan yang sama
   Object.keys(K.bagian).forEach((m) => { if (K.bagian[m] > 0) dasar[m] = K.bagian[m]; });
   const ada = Object.keys(dasar).reduce((a, m) => a + dasar[m], 0); const out = {}; const alokasi = {};
+  // audit 39b no. 5 (G2): buku wadah 0 / minus — selisihnya tetap jatuh ke buku wadah itu (dulu alokasi kosong: hitungan hilang, buku tetap 0)
+  if (K.stokSendiri && !(ada > 0)) { if (isi > 0) out[K.kunci] = isi; const d = wbB2(isi - (K.totalKg || 0)); if (Math.abs(d) >= 0.005) alokasi[K.kunci] = d; return { komposisi: out, alokasi, dasar: K }; }
   if (!K.diketahui || !(ada > 0)) { const m = K.diketahui ? wbMerkCadangan(W) : (hitungStokKarungPerMerk()[W] ? String(W) : wbMerkCadangan(W)); if (isi > 0) out[m] = isi; return { komposisi: out, alokasi, dasar: K }; }
   const urut = Object.keys(dasar).sort((a, b) => dasar[b] - dasar[a] || a.localeCompare(b)); let jalan = 0;
   urut.forEach((m, i) => { const k = i === urut.length - 1 ? wbB2(isi - jalan) : wbB2(isi * dasar[m] / ada); jalan = wbB2(jalan + k); if (k > 0) out[m] = k; });
