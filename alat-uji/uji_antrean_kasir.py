@@ -74,7 +74,7 @@ KEPALA = r"""<script>
     if (P.mode === '429') return jawab(429, { error: { code: 429, message: 'Quota exceeded.', status: 'RESOURCE_EXHAUSTED' } });
     if (P.mode === '503') return jawab(503, { error: { code: 503, message: 'The service is currently unavailable.', status: 'UNAVAILABLE' } });
     if (P.sampaiBulan && String(data.tanggal || '').slice(0, 7) <= P.sampaiBulan) return jawab(403, TOLAK);   // rules v4 kasir@: tglBaru di bulan terkunci
-    P.masuk.push({ koleksi: koleksi, id: id, hargaTotal: data.hargaTotal, tanggal: data.tanggal, nominal: data.nominal, nama: data.namaPelanggan });
+    P.masuk.push({ koleksi: koleksi, id: id, hargaTotal: data.hargaTotal, tanggal: data.tanggal, nominal: data.nominal, nama: data.namaPelanggan, cara: data.caraBayar });
     return jawab(200, koleksi === 'piutangMutasi' ? { name: 'dok', fields: {}, updateTime: '2026-09-30T03:00:00.000000Z' } : { name: 'dok', fields: {} });
   };
 })();
@@ -139,10 +139,12 @@ SKENARIO = r"""<script>
         localStorage.removeItem('kasir_bayar_bon_v1'); P.jaringan = true; P.mode = 'ok'; P.masuk = [];
         localStorage.setItem('__uji_katalog', JSON.stringify(KATALOG_UJI(100000, '2026-09-30T02:00:00.000000Z')));
         segarkanRingkasan(); await sampai(function () { return ringkasan && ringkasan.piutang && ringkasan.piutang.length === 2 && ringkasan._waktuServer; }, 6000);
+        pilihBayar('Qris');   // 39b no. 3: tombol NOTA sedang QRIS — bayar bon di lembar utang tetap bawaan Tunai (dulu mewarisi QRIS diam-diam)
         bukaLayarUtang(); var bt = document.querySelector('#daftarUtang .baris-utang'); var namaKlik = bt ? bt.textContent : ''; if (bt) bt.click();
-        document.getElementById('utangNominal').value = '40000'; simpanBayarUtang(); await kosong(); await diam();
+        var tbT = document.getElementById('utangCara-Tunai'), tbQ = document.getElementById('utangCara-Qris'); var caraTampak = { tunaiNyala: !!(tbT && tbT.classList.contains('pilih')), qrisNyala: !!(tbQ && tbQ.classList.contains('pilih')), terlihat: !!(tbT && tbT.offsetParent && tbQ && tbQ.offsetParent) };
+        document.getElementById('utangNominal').value = '40000'; simpanBayarUtang(); pilihBayar('Tunai'); await kosong(); await diam();
         await sampai(function () { var b = L('kasir_bayar_bon_v1'); return b && b[0] && b[0].dariServer; }, 3000); bukaLayarUtang();
-        hasil.bon = { namaKlik: namaKlik, masuk: P.masuk.filter(function (x) { return x.koleksi === 'piutangMutasi'; }), buku: L('kasir_bayar_bon_v1'), waktuKatalog: ringkasan._waktuServer,
+        hasil.bon = { namaKlik: namaKlik, caraTampak: caraTampak, masuk: P.masuk.filter(function (x) { return x.koleksi === 'piutangMutasi'; }), buku: L('kasir_bayar_bon_v1'), waktuKatalog: ringkasan._waktuServer,
           daftar: document.getElementById('daftarUtang').innerText, sub: document.getElementById('utangSub').textContent }; tutupLayarUtang();
       }
     } else if (s === 'gambarDaftar') {
@@ -395,12 +397,14 @@ def periksa_peramban(berkas, u, m, versi_sw):
     ok('daftar ditolak menyebut tanggal, jam & nominal supaya bisa dicatat ulang', m.get('daftarTampil') and '31/08/2026' in (m.get('daftarTeks') or '') and '20:15' in (m.get('daftarTeks') or '') and '5.200' in (m.get('daftarTeks') or ''), m.get('daftarTeks'))
     ok('"sudah dicatat ulang": satu ketukan TIDAK memindah apa pun', len(m['sesudahSatuKetuk']['ditolak']) == 1 and not m['sesudahSatuKetuk']['arsip'], m['sesudahSatuKetuk'])
     ok('ketukan kedua MEMINDAH ke arsip (tidak dihapus), pita hilang', not m['sesudahDuaKetuk']['ditolak'] and m['sesudahDuaKetuk']['arsip'] == [5200] and not m['sesudahDuaKetuk']['pita'], m['sesudahDuaKetuk'])
-    ok('versi yang berjalan tampil di layar ("versi 39b" — naik bersama kasir-v28)', m.get('versiLayar') == 'versi 39b', m.get('versiLayar'))
+    ok('versi yang berjalan tampil di layar ("versi 39b-3" — naik bersama kasir-v29)', m.get('versiLayar') == 'versi 39b-3', m.get('versiLayar'))
     if berkas == KASIR:   # 39b no. 4: buku kecil bayar bon — layar & jaringan sungguhan (palsu Firestore), muat ulang di Chrome yang sama
         b = u.get('bon') or {}; bk = b.get('buku') or []; ms = b.get('masuk') or []
         ok('bayar bon (39b no. 4): klik nama pertama (Bu Uji) → SIMPAN 40.000 → satu piutangMutasi masuk server; buku kecil 1 catatan bertanda waktu SERVER dari jawaban PATCH',
            'Bu Uji' in (b.get('namaKlik') or '') and len(ms) == 1 and ms[0].get('nominal') == 40000 and ms[0].get('nama') == 'Bu Uji' and len(bk) == 1 and bk[0].get('dariServer') and bk[0].get('waktuServer') == '2026-09-30T03:00:00.000000Z'
            and b.get('waktuKatalog') == '2026-09-30T02:00:00.000000Z', b)
+        ok('bayar bon (39b no. 3): tombol NOTA sedang QRIS → lembar utang menampilkan TUNAI/QRIS sendiri dengan TUNAI menyala, dan pembayaran masuk server sebagai Tunai (bukan warisan QRIS nota)',
+           (b.get('caraTampak') or {}).get('terlihat') and (b.get('caraTampak') or {}).get('tunaiNyala') and not (b.get('caraTampak') or {}).get('qrisNyala') and len(ms) == 1 and ms[0].get('cara') == 'Tunai', [b.get('caraTampak'), [m.get('cara') for m in ms]])
         ok('bayar bon: sesudah SIMPAN daftar menyebut Bu Uji Rp60.000 & umur daftar sisa ("Daftar sisa dari sistem per …")', 'Bu Uji' in (b.get('daftar') or '') and 'Rp60.000' in (b.get('daftar') or '') and re.search(r'Daftar sisa dari sistem per \d\d\.\d\d', b.get('sub') or ''), b)
         bm = m.get('bonMuatUlang') or {}
         ok('bayar bon: sesudah MUAT ULANG (katalog server masih 100.000, ditulis sebelum pembayaran) Bu Uji TETAP Rp60.000 — dulu kembali Rp100.000 dan bisa dibayar penuh lagi',
@@ -541,7 +545,8 @@ KONTROL = [
     # 25c: sesudah versi, denyut kasir darurat membawa `katalog` (baris versinya berakhir koma) — kontrol mengganti nilainya saja
     ('denyut masih versi tulis-tangan lama', {DARURAT: [("    versi: VERSI_APLIKASI,\n", "    versi: 'kasir-v24',\n")]}, None, ['statis', 'peramban']),
     ('golonganJawaban kedua berkas tidak kembar lagi', {KASIR: [("if (status === 408 || status === 409 || status === 429 ||", "if (status === 408 || status === 429 ||")]}, None, ['statis']),
-    ('sw-kasir.js naik tanpa kasir ikut (VERSI beda)', {'sw-kasir.js': [("const VERSI = 'kasir-v28';", "const VERSI = 'kasir-v29';")]}, None, ['statis']),
+    ('39b-3: bayar bon kasir mewarisi tombol nota lagi (QRIS diam-diam)', {KASIR: [('    caraBayar: caraUtangAktif,\n', "    caraBayar: bayarAktif === 'Kredit' ? 'Tunai' : bayarAktif,\n")]}, None, ['peramban']),
+    ('sw-kasir.js naik tanpa kasir ikut (VERSI beda)', {'sw-kasir.js': [("const VERSI = 'kasir-v29';", "const VERSI = 'kasir-v30';")]}, None, ['statis']),
     ('service worker memakai cache HTTP lama', {'sw-kasir.js': [("c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))", "c.addAll(FILES)")]}, None, ['statis']),
     ('/baru/: HP kasir versi lama tidak memblokir kunci', {}, [("tambah({ id: 'versiKasir', blokir: true, ok: !lamaV.length,", "tambah({ id: 'versiKasir', blokir: true, ok: true,")], ['baru']),
     ('/baru/: versi dibandingkan sebagai ada/tidak, bukan nomor', {}, [("const kpVersiKasirCukup = (v) => kpNomorVersiKasir(v) >= kpNomorVersiKasir(KP_VERSI_KASIR_25B);", "const kpVersiKasirCukup = (v) => !!v;")], ['baru']),

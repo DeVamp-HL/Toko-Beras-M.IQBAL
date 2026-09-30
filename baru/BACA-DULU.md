@@ -859,6 +859,31 @@ dikurangi di memori — muat ulang / katalog disegarkan = sisa lama kembali, bon
   menyimpannya) tetap dikurangkan tapi bukan pembanding; K3 ditolak dibuang di `pindahKeDitolak`, arsip ditolak ikut dibaca; K5 LABEL_VERSI
   'versi 39b'. Gugur: K4 (penyimpanan penuh — `catatBayarBon` gagal diam; uangnya tetap tercatat, dampaknya kembali ke perilaku lama).
 
+## Audit 39b no. 3 — uang QRIS selain penjualan ikut tutup hari; bayar bon di HP kasir memilih caranya sendiri (30 Sep 2026, cabang `audit/39b-bon-qris-tutup-hari`)
+
+Temuan PP-2: mesin (pembantu `daftarGerakanKas`, `kantongBayar`) memasukkan pembayaran bon dan kasbon kembali lewat QRIS ke REKENING, tetapi tutup
+hari (K5) hanya menghitung penjualan QRIS: rekap tidak memuatnya, langkah rekening menolak angka bank yang jujur ("lebih besar dari penjualan QRIS"),
+potongan QRIS (MDR)-nya tidak pernah jadi biaya → titik kas rekening & laba lebih besar sebesar potongan itu. Di `kasir.html` cara bayar bon
+MEWARISI tombol nota (`bayarAktif`) diam-diam: nota terakhir QRIS → uang bon yang diterima tunai tercatat QRIS. Laten: cadangan 29 Sep belum
+memuat satu pun bayar bon QRIS. Mesin TIDAK diubah.
+- `tutup-hari-logika.js` `ringkasHari`: "uang QRIS hari ini" = penjualan + bayar bon + kasbon kembali lewat QRIS (persis gerakan rekening mesin);
+  kolom baru `qrisJual`, `qrisBon`, `qrisKasbon`; OMZET tetap penjualan saja (`tunai + qrisJual + kredit`); "bon dibayar tunai" tetap tanpa QRIS.
+  Potongan dihitung PER TRANSAKSI (`trxId`/`grupNota` — satu pindai satu potongan; dulu per baris barang, nota banyak barang di atas batas bisa
+  lolos tanpa potongan). Tiap baris QRIS membawa `jenis` & `ket` ("bayar bon <nama>", "kasbon kembali <nama>").
+- Langkah rekening menerima angka bank sampai seluruh uang QRIS; penolakan menyebut rinciannya (penjualan + bayar bon + kasbon kembali).
+  Rekap: baris "QRIS" = penjualan (bagian omzet), baris "Bon dibayar QRIS" / "Kasbon kembali QRIS" muncul hanya bila ada. Dokumen potongan tetap
+  SATU (`mdr-<tanggal>`), keterangannya menyebut jumlah nota + bayar bon + kasbon kembali. Layar: baris QRIS menyebut asalnya.
+- Pelanggan: kalimat pratinjau & sesudah bayar bon QRIS menyebut potongannya dicatat saat tutup hari.
+- `kasir.html` (v29, 'versi 39b-3'): lembar utang punya tombol TUNAI/QRIS sendiri (`caraUtangAktif`, `pilihCaraUtang`), kembali ke TUNAI tiap kali
+  nama dipilih; selain QRIS dibakukan Tunai (bayar bon tidak pernah Kredit). Versi kasir serentak v29; `KK_VERSI_AMBIL_SENDIRI` tetap v27.
+- Uji: `uji_uang_baru.py` +10 (K5b: dua baris satu transaksi, bayar bon QRIS di atas batas + tunai, kasbon kembali QRIS; identitas "uang QRIS =
+  gerakan rekening mesin"; angka bank diterima; rekap; satu dokumen potongan; titik kas) + asap data toko (per tanggal: uang QRIS tutup hari =
+  gerakan rekening mesin; asap kini juga membaca `_privat/`), `uji_katalog_kasir.py` +4 jsc (fungsi asli: nota QRIS → bon Tunai, ketuk QRIS,
+  reset tiap nama, Kredit dibakukan) + 1 statis, `uji_antrean_kasir.py` +1 peramban (nota QRIS → tombol TUNAI menyala, masuk server Tunai),
+  `uji_pelanggan_baru.py` +1. Kontrol baru: uang 8, katalog kasir 5, antrean kasir 1, pelanggan 1.
+- Temuan samping (BELUM dibetulkan, dilaporkan ke owner): (A) baris rincian `rumusLaci` memakai aturan tempat uang yang beda dengan
+  `saldoKantong`; (C) tukar barang yang dibayar QRIS bisa melahirkan potongan palsu (baris minus ikut dijumlah per transaksi).
+
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
 Temuan J1: uang kurang saat bayar → semua baris nota jadi Kredit (`uangDiterima` tidak ditulis) + satu pelunasan piutang sebesar uang yang diterima
