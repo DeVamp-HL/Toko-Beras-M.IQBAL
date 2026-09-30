@@ -789,6 +789,33 @@ ditutup lewat tengah malam; pagar sistem lama `tanggalTutupAktif` (perbaikan 21 
 - Uji: `uji_uang_baru.py` K5 kini berjam 20.00 (jam kotak pasir 10.00 = sebelum jam 12) + 4 pemeriksaan (00.05 & 11.59 → kemarin, 12.00/12.01 → hari ini,
   dokumen & titik kas bertanggal kemarin) + 2 kontrol; `uji_wadah_satu_buku.py` cek 21 Sep 10.00 = hari dagang 20 Sep, +1 kontrol, +2 pemeriksaan statis.
 
+## Audit 39b no. 2 — kedatangan bon yang sudah dibayar dikunci; satu ejaan per pemasok (30 Sep 2026, cabang `audit/39b-koreksi-kedatangan-berbayar`)
+
+Temuan hulu H2+H3: pembayaran bon pemasok menempel ke bonnya lewat `bonId` (= id kedatangan) + nama pemasok PERSIS. Mesin utang pemasok (beku)
+mengalirkan pembayaran yang bonnya hilang/berganti ke bon tertua (live) dan membuangnya (per tanggal). Koreksi cara bayar ke tunai, ganti nama
+pemasok, tanggal datang sesudah tanggal bayar, nilai di bawah yang dibayar, atau hapus kedatangan → bon LAIN tampak lunas tanpa uang, layar Bon
+dan Neraca berselisih, kas keluar terhitung dua kali. Ejaan beda ("roda mas") memecah pemasok di mesin.
+- `stok-catat-logika.js` `ckBayarBon(batch)`: uang yang DITUJUKAN ke bon ini = Σ pembayaran bertunjuk (bonId + nama pemasok persis), paling banyak
+  nilai bon. Aliran tanpa tujuan (pembayaran lama tanpa bonId, kelebihan bayar yang terserap) TIDAK mengunci — aturan FIFO mesin memang
+  memindahkannya, dan kedatangan salah catat yang menyerap kelebihan bayar tetap bisa dihapus (`dibayarMesin` = pembanding dari
+  `hitungUtangPemasok`). `susunSimpanMasuk` (juga jalur koreksi HPP) menolak koreksi bon yang sudah dibayar bila jadi tunai / pemasok lain /
+  tanggal datang diubah (maju maupun mundur — bonTanggal di dokumen bayar & neraca per tanggal ikut bergeser) / nilai beras di bawah yang
+  dibayar; `susunHapusKedatangan` menolak hapusnya. Harga/jumlah dengan nilai ≥ yang dibayar tetap boleh. `stok-hpp-logika.js` `nilaiKoreksi`
+  menolak LEBIH DULU (kartu, pratinjau, koreksi massal) dengan nama berasnya; beberapa nama yang kedatangan sasarannya sama dinilai BERSAMA.
+  Bon yang terbayar lewat aliran saja (dibayarMesin > 0, tanpa pembayaran bertunjuk) tetap bisa dihapus, tetapi tanggalnya terkunci.
+  Nilai pembanding = bon yang AKAN TERTULIS (baris karung saja; baris bal lama ikut terbuang saat dikoreksi = temuan no. 30, cabangnya sendiri) —
+  bon berbayar berbaris bal karena itu ditolak koreksinya sampai no. 30 dibangun (uangnya terlindung).
+- `ckEjaanPemasok`: nama yang sama kecuali huruf/spasi ditulis dengan ejaan yang sudah dipakai (kedatangan terbaru, lalu pembayaran/bon lama);
+  kedatangan yang sedang dikoreksi tidak memaksa ejaan lamanya sendiri. Kabar menyebut ejaan yang dipakai.
+- `stok.js` lembar koreksi: pita "Bon ini sudah dibayar …" menyebut apa saja yang terkunci.
+- Uji: `uji_stok_baru.py` +13 pemeriksaan (pemasok uji tersendiri, pembayaran bertunjuk, umpan pemasok lain, FIFO, bon lunas penuh, kelebihan
+  bayar yang terserap, koreksi HPP dini & massal dua nama, kedatangan berbaris bal), asap data toko (tiap bon kedatangan: yang dibayar terkunci — bon di bulan terkunci periode dihitung
+  terpisah —, yang belum tetap bebas, Σ sisa = mesin, bertunjuk = mesin, ejaan tidak tergeser), +13 kontrol. Tinjauan independen 30 Sep
+  (peninjau + penyanggah): 6 temuan lolos lalu 3 lagi dari verifikasi tambalannya — semuanya ditambal di cabang ini.
+- Belum dibangun (catatan pemetaan 30 Sep): pembetulan / pemindahan pembayaran bon di sistem baru (urung hanya 90 detik), jejak bonId saat tutup
+  buku & batal tutup buku, dan baris bal yang ikut terbuang saat kedatangan berbaris bal dikoreksi (temuan no. 30: pratinjau, pita, kartu Jumlah,
+  dan pembagian bongkar di riwayatModal harus berubah BERSAMA penahanan baris bal).
+
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
 Temuan J1: uang kurang saat bayar → semua baris nota jadi Kredit (`uangDiterima` tidak ditulis) + satu pelunasan piutang sebesar uang yang diterima

@@ -177,7 +177,7 @@ RUSAK = {
     'buku yang sudah digabung masih memisah induknya': ("Object.keys(u).forEach((n) => { if (g[n]) return; (out[u[n].induk]", "Object.keys(u).forEach((n) => { (out[u[n].induk]"),
     'gabung tanpa tanda gabungUkuran (induk tetap terpisah)': ("{ gabungUkuran: { dari: K, induk: c.induk, berat: c.berat }, keterangan:", "{ keterangan:"),
     'gabung tanpa ketukan kedua': ("if (!yakin) return { tolak: 'Gabungkan buku: '", "if (false) return { tolak: 'Gabungkan buku: '"),
-    'kedatangan tidak menulis tanda indukUkuran': ("b.indukUkuran ? { indukUkuran: b.indukUkuran } : {}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {})) };", "{}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {})) };"),   # putaran 30: baris merkList membawa merkPemasok bila ada
+    'kedatangan tidak menulis tanda indukUkuran': ("b.indukUkuran ? { indukUkuran: b.indukUkuran } : {}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {}))", "{}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {}))"),   # putaran 30: baris merkList membawa merkPemasok bila ada
 }
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ import { hitungStokKarungPerMerk, hitungHppMerkDalamBatch } from '../mesin/beku.
 import { cariHargaKarungPerKg } from '../mesin/pembantu.js';
 import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal, stokMerekSaja } from '../data/toko.js';
 import { RP } from '../inti/format.js';
-import { drafDariKedatangan, susunSimpanMasuk } from './stok-catat-logika.js';
+import { drafDariKedatangan, susunSimpanMasuk, ckBayarBonId } from './stok-catat-logika.js';
 
 export const ATUR_HPP_BAWAAN = { batasLonjak: 10, lantaiHpp: 5000, kaliMaks: 3 };
 export const TAB_HPP = [['kartu', 'Kartu modal'], ['garis', 'Garis waktu'], ['kelas', 'Per kelas'], ['massal', 'Koreksi massal']];   // putaran 30: harga beli per kelas mutu
@@ -81,6 +81,11 @@ export function nilaiKoreksi(merk, hargaBaru) {
   const n = Math.round(hpAngka(hargaBaru)); if (!(n > 0)) return { tolak: 'Ketik harga beli per kg yang benar' };
   if (n < atur.lantaiHpp) return { tolak: RP(n) + '/kg di bawah lantai ' + RP(atur.lantaiHpp) + ' — tidak masuk akal untuk beras, ditolak (bukan dipotong diam-diam)' };
   if (K.modal > 0 && n > K.modal * atur.kaliMaks) return { tolak: RP(n) + ' lebih dari ' + atur.kaliMaks + '× modal sekarang (' + RP(Math.round(K.modal)) + ') — ditolak, cek angkanya' };
+  // audit 39b no. 2 (tinjauan 30 Sep): kedatangan sasaran bon yang sudah dibayar — nilai bon sesudah harga baru tidak boleh di bawah yang dibayar.
+  // Diperiksa DI SINI supaya kartu, pratinjau, dan koreksi massal menolak lebih dulu dengan nama berasnya (susunSimpanMasuk tetap pagar terakhir).
+  const bt = ambilSemuaBatch().find((b) => String(b.id) === String(target.batchId)); const bb = bt ? ckBayarBonId(bt.id) : null;
+  if (bb && bb.dibayar > 0) { const nilaiBon = (bt.merkList || []).reduce((a, m) => a + (m.bentuk === 'bal' ? 0 : m.merk === merk ? (Number(m.totalKg) || 0) * n : (Number(m.subtotalHarga) || 0)), 0);   // baris bal ikut terbuang saat ditulis (temuan no. 30)
+    if (nilaiBon + 0.5 < bb.dibayar) return { tolak: merk + ': kedatangan terakhirnya (' + target.pemasok + ' ' + target.tanggal + ') bon yang sudah dibayar ' + RP(bb.dibayar) + ' — harga ' + RP(n) + '/kg membuat nilai bonnya ' + RP(nilaiBon) + ', di bawah yang dibayar; kelebihannya akan pindah ke bon lain tanpa uang' }; }
   const bongkarPerKg = target.hppPerKg - target.hargaPerKg; const hppBaru = n + bongkarPerKg;
   const T = totalMasuk(merk); const nilaiBaru = T.nilai - target.hppPerKg * target.totalKg + hppBaru * target.totalKg; const modalBaru = T.kg > 0 ? nilaiBaru / T.kg : 0;
   const pct = K.modal > 0 ? Math.round((modalBaru - K.modal) / K.modal * 100) : 0; const delta = (modalBaru - K.modal) * Math.max(0, K.sisa);
@@ -109,12 +114,27 @@ export function susunKoreksiHpp(merk, hargaBaru, alasan, w, yakin) {
   const log = { koleksi: 'koreksiHpp', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk, batchId: String(v.target.batchId), hargaDari: v.target.hargaPerKg, hargaKe: v.n, modalDari: Math.round(v.modalLama * 100) / 100, modalKe: Math.round(v.modalBaru * 100) / 100, sisaKg: Math.round(v.sisa * 100) / 100, deltaNilai: Math.round(v.delta), alasan: String(alasan).trim() } };
   return { dokumen: r.dokumen.concat([log]), nilai: v, patch: { hp: { merk, ketik: '', alasan: '', yakin: false, massal: {}, tab: 'kartu' }, kabar: merk + ': harga kedatangan ' + v.target.tanggal + ' ' + RP(v.target.hargaPerKg) + ' → ' + RP(v.n) + '/kg (' + String(alasan).trim() + '). Modal rata-rata ' + RP(Math.round(v.modalLama)) + ' → ' + RP(Math.round(v.modalBaru)) + '/kg; nilai rak ' + (v.delta >= 0 ? 'naik ' : 'turun ') + RP(Math.round(Math.abs(v.delta))) + '.', kabarAwas: false } };
 }
+/**
+ * audit 39b no. 2 (tinjauan 30 Sep): beberapa nama yang kedatangan sasarannya SAMA dinilai BERSAMA — satu kedatangan = satu bon; lolos per nama belum
+ * tentu lolos bersama. nilai = {merk: hasil nilaiKoreksi yang lolos}. Hasil {merk: kalimat tolak} untuk nama yang bonnya jatuh di bawah yang dibayar.
+ */
+function hpKunciBonGabung(nilai) {
+  const per = {}; Object.keys(nilai).forEach((m) => { const id = String(nilai[m].target.batchId); (per[id] = per[id] || []).push(m); });
+  const salah = {};
+  Object.keys(per).forEach((id) => { const ms = per[id]; if (ms.length < 2) return; const bt = ambilSemuaBatch().find((b) => String(b.id) === id); const bb = bt ? ckBayarBonId(id) : null; if (!bb || !bb.dibayar) return;
+    const nilaiBon = (bt.merkList || []).reduce((a, x) => a + (x.bentuk === 'bal' ? 0 : ms.indexOf(x.merk) >= 0 ? (Number(x.totalKg) || 0) * nilai[x.merk].n : (Number(x.subtotalHarga) || 0)), 0);   // baris bal ikut terbuang saat ditulis (temuan no. 30)
+    if (nilaiBon + 0.5 >= bb.dibayar) return; const tg = nilai[ms[0]].target;
+    const t = ms.join(' + ') + ': kedatangan terakhirnya sama (' + tg.pemasok + ' ' + tg.tanggal + '), bon yang sudah dibayar ' + RP(bb.dibayar) + ' — harga baru BERSAMA membuat nilai bonnya ' + RP(nilaiBon) + ', di bawah yang dibayar; kelebihannya akan pindah ke bon lain tanpa uang';
+    ms.forEach((m) => { salah[m] = t; }); });
+  return salah;
+}
 /** Koreksi massal: peta {merk: harga}; SEMUA-ATAU-TIDAK — satu angka ditolak = tidak ada yang ditulis. Satu alasan. */
 export function susunKoreksiMassal(petaHarga, alasan, w) {
   const merk = Object.keys(petaHarga || {}).filter((m) => !hpKosong(petaHarga[m]));
   if (!merk.length) return { tolak: 'Belum ada nama yang disiapkan' };
   const nilai = {}; const salah = [];
-  merk.forEach((m) => { const v = nilaiKoreksi(m, petaHarga[m]); if (v.tolak) salah.push(m + ': ' + v.tolak); else if (v.sama) salah.push(m + ': sama dengan yang tercatat'); else nilai[m] = v; });
+  merk.forEach((m) => { const v = nilaiKoreksi(m, petaHarga[m]); if (v.tolak) salah.push(v.tolak.indexOf(m + ':') === 0 ? v.tolak : m + ': ' + v.tolak); else if (v.sama) salah.push(m + ': sama dengan yang tercatat'); else nilai[m] = v; });
+  if (!salah.length) { const gb = hpKunciBonGabung(nilai); const kal = []; Object.keys(gb).forEach((m) => { if (kal.indexOf(gb[m]) < 0) kal.push(gb[m]); }); kal.forEach((k) => salah.push(k)); }
   if (salah.length) return { tolak: salah.join(' · ') + ' — TIDAK ADA yang disimpan sampai semuanya beres', salah };
   if (hpKosong(alasan)) return { tolak: 'Koreksi massal butuh satu alasan untuk semua' };
   const hasil = hpDrafUntuk(nilai, { tanggal: w.tanggal, jam: w.jam, idUnik: w.idUnik, alasan: String(alasan).trim() }); const gagal = hasil.find((r) => r.tolak); if (gagal) return { tolak: gagal.tolak };
@@ -125,7 +145,9 @@ export function susunKoreksiMassal(petaHarga, alasan, w) {
 }
 /** Pratinjau massal untuk layar: tiap nama yang disiapkan dinilai; label tombol & Δ total. */
 export function pratinjauMassal(petaHarga) {
-  const merk = Object.keys(petaHarga || {}).filter((m) => !hpKosong(petaHarga[m])); const baris = merk.map((m) => { const v = nilaiKoreksi(m, petaHarga[m]); return { merk: m, harga: Math.round(hpAngka(petaHarga[m])), tolak: v.tolak || (v.sama ? 'sama dengan yang tercatat' : ''), ket: v.tolak || (v.sama ? 'sama dengan yang tercatat' : v.rugi || v.lonjak || 'wajar'), delta: v.tolak ? 0 : v.delta }; });
+  const merk = Object.keys(petaHarga || {}).filter((m) => !hpKosong(petaHarga[m])); const baris = merk.map((m) => { const v = nilaiKoreksi(m, petaHarga[m]); const tk = v.tolak && v.tolak.indexOf(m + ': ') === 0 ? v.tolak.slice(m.length + 2) : v.tolak;   // baris pratinjau sudah berlabel nama berasnya
+    return { merk: m, harga: Math.round(hpAngka(petaHarga[m])), tolak: tk || (v.sama ? 'sama dengan yang tercatat' : ''), ket: tk || (v.sama ? 'sama dengan yang tercatat' : v.rugi || v.lonjak || 'wajar'), delta: v.tolak ? 0 : v.delta, v: v.tolak || v.sama ? null : v }; });
+  const lolos = {}; baris.forEach((b) => { if (!b.tolak && b.v) lolos[b.merk] = b.v; }); const gb = hpKunciBonGabung(lolos); baris.forEach((b) => { if (gb[b.merk]) { b.tolak = gb[b.merk]; b.ket = gb[b.merk]; b.delta = 0; } });   // audit 39b no. 2: nama sekedatangan dinilai bersama
   const bermasalah = baris.filter((b) => b.tolak); const delta = baris.reduce((a, b) => a + b.delta, 0);
   return { baris, n: merk.length, bermasalah, delta, siap: merk.length > 0 && !bermasalah.length,
     teks: !merk.length ? 'Ketuk nama, ketik harga beli/kg baru, "siapkan" — lalu terapkan sekaligus' : bermasalah.length ? bermasalah.map((b) => b.merk).join(', ') + ' angkanya ditolak — TIDAK ADA yang disimpan sampai semuanya beres' : 'Disiapkan ' + merk.length + ' nama · nilai rak berubah ' + (delta >= 0 ? '+' : '−') + RP(Math.round(Math.abs(delta))) };
