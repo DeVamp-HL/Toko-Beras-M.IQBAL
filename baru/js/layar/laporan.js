@@ -373,7 +373,7 @@ export function pasangLayarLaporan(akar, opsi) {
 
   // ---------- NERACA
   function gambarNeraca(s, L) {
-    const sampai = s.sampaiN || null; const NP = LP.neracaPada(sampai, kini()); const NL = LP.lebihNeraca(sampai);   // sama dengan neracaPada: sampai mentah (null = hari ini) const BD = LP.bandingKekayaan(kini()); const arah = (n) => (n < 0 ? 'rugi' : '');
+    const sampai = s.sampaiN || null; const NP = LP.neracaPada(sampai, kini()); const NL = LP.lebihNeraca(sampai); const BD = LP.bandingKekayaan(kini()); const arah = (n) => (n < 0 ? 'rugi' : '');
     const hero = h`<div class="kartu hero" data-k="hero" style="gap: 4px;"><div class="label">Kekayaan toko ${sampai ? 'per ' + tanggalPendek(sampai) : 'hari ini'} · kalau semuanya dihitung</div><div class="lp-besar ${NP.total === null ? 'kosong' : arah(NP.total)}" ${NP.total === null ? '' : mentah('data-gulir="' + Math.round(NP.total) + '"')}>${NP.total === null ? 'belum bisa dihitung' : RP(NP.total)}</div>
       <div class="k2">${NP.total === null ? 'Kas belum bisa dihitung (titik kas belum disetel) — Tutup hari malam ini menyetelnya.' : 'Harta ' + RP(NP.aset) + ' − kewajiban ' + RP(NP.kewajiban) + '. ' + BD.teks}</div>
       <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;"><input class="ketik-nama" type="date" value="${s.sampaiN}" max="${iso()}" data-ketik="nrSampai" style="max-width: 170px; min-height: 36px;">${s.sampaiN ? h`<div class="kaca-btn kecil" data-aksi="nrHariIni">hari ini</div>` : h`<span class="k2">pilih tanggal untuk melihat neraca hari lain</span>`}</div></div>`;
