@@ -1096,3 +1096,10 @@ Temuan: batch lahir buku khusus (buku wadah, karung belakang, karung sisihan, ad
 daftar pemasok, Buku bon, pil Bon lama, Rekap Bon; bon lama / kartu atas nama itu bisa dicatat → utang toko ke pemasok yang tidak ada. Tambalan:
 `bon-pemasok-logika.js` `namaSistemPemasok` (STOK AWAL, TUTUP BUKU…, LAHIR BUKU; huruf besar/kecil sama) — `pemasokSungguhan` memakainya, bon lama
 & kartu atas nama sistem ditolak dengan kalimat. Uji `uji_harga_baru.py` +1, kontrol +1.
+
+## Audit 39b no. 10 — kartu HPP buku per ukuran hasil pisah (1 Okt 2026, cabang `audit/39b-hpp-buku-ukuran`)
+
+Temuan: buku "Merek 25 kg" yang lahir dari PISAH stok (Stok › Cocokkan › pisahkan buku 25 kg) tidak punya kedatangan sendiri — kartu HPP memakai harga beli
+terbaru 0: pembanding "bila dinilai harga beli terbaru" kurang senilai seluruh buku itu dan kartunya memajang penurunan modal palsu. Tambalan:
+`stok-hpp-logika.js` `kartuHpp` — tanpa kedatangan sendiri → kedatangan terakhir INDUKNYA (`petaUkuran`, merek yang sama); tanpa pembanding sama sekali →
+modalnya sendiri (beda 0), harga beli "belum ada" di layar Stok. Uji `uji_buku_ukuran.py` +1, kontrol +1.
