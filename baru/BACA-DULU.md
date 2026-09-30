@@ -785,6 +785,20 @@ ditutup lewat tengah malam; pagar sistem lama `tanggalTutupAktif` (perbaikan 21 
   memakai `tanggalTutupAktif`.
 - Uji: `uji_uang_baru.py` K5 kini berjam 20.00 (jam kotak pasir 10.00 = sebelum jam 12) + 4 pemeriksaan (00.05 & 11.59 → kemarin, 12.00/12.01 → hari ini,
   dokumen & titik kas bertanggal kemarin) + 2 kontrol; `uji_wadah_satu_buku.py` cek 21 Sep 10.00 = hari dagang 20 Sep, +1 kontrol, +2 pemeriksaan statis.
+
+## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
+
+Temuan J1: uang kurang saat bayar → semua baris nota jadi Kredit (`uangDiterima` tidak ditulis) + satu pelunasan piutang sebesar uang yang diterima
+(index.html menulis bentuk yang sama). Struknya berbunyi "BON — belum dibayar", uang yang diterima tidak tercetak, dan "Sisa bon" = saldo saat struk
+disusun tanpa tanggal — struk yang dicetak ulang bisa memuat "belum dibayar" dan "Sisa bon Rp0" sekaligus.
+- `jual-logika.js` `susunNotaDokumen`: pelunasan saat beli membawa `notaTrxId` (= trxId nota). Kolom baru; mesin piutang (beku) tidak membacanya.
+- `struk-logika.js` `bayarSaatBeli(nota)`: tautan `notaTrxId`; pelunasan lama (index.html & /baru/ sebelum 30 Sep) dicocokkan dari tanggal + jam + nama +
+  catatan "Dibayar langsung saat beli — sisa … jadi piutang" DAN angka yang menutup (dibayar + sisa di catatan = TOTAL nota); calon ≠ 1 → tidak ditebak.
+  `susunStruk`: "BON — sebagian dibayar", "Dibayar saat beli", "Sisa nota ini" (TOTAL = dibayar + sisa), dan baris "per <tanggal struk disusun>" di bawah
+  "Sisa bon" (`pilih.kini`, bawaan hari ini).
+- Uji: `uji_jual_baru.py` +7 pemeriksaan (S8: tautan, bunyi struk, hitungan menutup, WA, pelunasan lama, nota bon murni di menit yang sama, nota tunai),
+  asap data toko (tiap pelunasan saat beli di cadangan terbaru: uang tercetak, menutup ke TOTAL, tidak ada yang masih "belum dibayar"), +7 kontrol.
+
 ## Audit 39b no. 35 — merek per liter / kelas sendiri tanpa buku per ukuran (30 Sep 2026, cabang `audit/39b-ketan-buku-ukuran`)
 
 Keputusan owner 30 Sep ("kecualikan merek literan/kelas sendiri dari buku per ukuran"). Dasar: temuan hulu H1 (`docs/audit-39b-temuan.md` no. 35) — karung

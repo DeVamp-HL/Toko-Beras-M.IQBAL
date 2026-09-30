@@ -757,7 +757,7 @@ export function susunNotaDokumen(s, w) {
   if (bayarSebagian > 0) {
     piutangId = w.idUnik();
     dokumen.push({ koleksi: 'piutangMutasi', data: { id: piutangId, tipe: 'bayar', namaPelanggan: nama, nominal: bayarSebagian, tanggal: w.tanggal, jam: w.jam,
-      caraBayar: caraAsli, dicatatDi: 'sistem', catatan: 'Dibayar langsung saat beli — sisa ' + RP(totalBayar - bayarSebagian) + ' jadi piutang' } });
+      caraBayar: caraAsli, dicatatDi: 'sistem', notaTrxId: String(trxId), catatan: 'Dibayar langsung saat beli — sisa ' + RP(totalBayar - bayarSebagian) + ' jadi piutang' } });   // audit 39b no. 8: struk menemukan uang yang diterima lewat notaTrxId
   }
   // RETUR TUKAR lahir BERSAMA penjualan penggantinya — satu batch (index.html menulis penjualan dulu lalu retur, dijaga jurnal
   // localStorage kalau halaman mati di antaranya; di sini keduanya masuk atau tidak sama sekali). Bentuk: 19165.
