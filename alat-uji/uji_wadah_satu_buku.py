@@ -458,6 +458,13 @@ ok('39b-7 karung sisihan / kemasan adukan yang catatannya sudah 0: takar dari si
   && denganCacheSementara(SS7.dokumen || [], function () { var R = susunTakarWadah('Angsa', [{ merk: KW7, takar: 2, dari: '' }], W7c, s0()); return !R.tolak && otom7(R) === 0; }),
   J([denganCacheSementara(KOSONG7, function () { var R = susunTakarWadah('Angsa', [{ merk: KW7, takar: 2, dari: '' }], W7c, s0()); return [R.tolak, otom7(R)]; }), denganCacheSementara(AD7dok, function () { var R = susunTakarWadah('Angsa', [{ merk: AD7, takar: 2, dari: '' }], W7c, s0()); return [R.tolak, otom7(R)]; })]));
 
+// ---- 12g · 39b no. 26: slot wadah KOSONG ("?" di Stok) tidak ikut deretan panel − / + sebagai karung ±0 kg bernama wadahnya
+ok('39b-26 wadah "Kosong Satu" tanpa karung: slotnya kosong di Stok; deretan mentah memuat entrinya (no W4, tidak tercatat, bernama wadahnya) dan saringan panel membuangnya — sisa deretan = slot berisi + karung lepas',
+  (function () { var sl = slotKarungWadah().filter(function (x) { return x.W === 'Kosong Satu'; })[0]; var dr = deretanKarung(); var mentah = dr.filter(function (k) { return k.no && !k.dicatat; });
+    var saring = dr.filter(function (k) { return !k.no || k.dicatat; }); var isi = slotKarungWadah().filter(function (x) { return !x.kosong; }).length;
+    return !!sl && sl.kosong && mentah.some(function (k) { return k.merk === 'Kosong Satu'; }) && !saring.some(function (k) { return k.merk === 'Kosong Satu' && k.no; }) && saring.filter(function (k) { return k.no; }).length === isi; })(),
+  J(deretanKarung().map(function (k) { return [k.no, k.merk, k.dicatat]; })));
+
 // ---- 13 · penjaga perangkat = rules v5 (10)
 var KRY = keadaanAkun('kry.contoh@tokoberasmiqbal.web.app', 'uid-kry', { uid: 'uid-kry', nama: 'Karyawan Contoh', peran: 'karyawan', aktif: true }); var OWN = keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null);
 var HAK = { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'tidak', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' };
@@ -704,6 +711,7 @@ if __name__ == '__main__':
                                 ('audit 39b no. 1: K5 (uang.js) & lembar Cek wadah (jual.js) memakai tanggal tutup (lewat tengah malam = hari kemarin)', 'baru/js/layar/uang.js', ['const isoTutup = () => tanggalTutupAktif(kini());', 'WB.wbCekHari(isoTutup())', 'LEMBAR TUTUP HARI<br>${tanggalPendek(isoTutup())}', 'data-k="k5-lewat-malam"']),
                                 ('audit 39b no. 5: Cocokkan › Wadah literan — baris karung berbuku sendiri (satu isian kg), tercatat = buku, catatan disebut; hitungan karung wadah ikut dibersihkan sesudah simpan', 'baru/js/layar/stok.js', ["kunci.indexOf('karungKhusus|') === 0 ? 'wadah'", 'const panelKarung = (b) =>', "(b.jenis === 'karung' ? panelKarung(b) : panelWadah(b))", 'if (b.kunciKarung) delete sisa[b.kunciKarung];', ' · tercatat = bukunya']),
                                 ('audit 39b no. 7: panel − / + menyebut karung sisihan / kemasan adukan yang KOSONG (tidak ada karung baru untuknya)', 'baru/js/layar/wadah-panel.js', ["k && (k.bukaKarung || k.habisKhusus) ? 'awas-teks'", "(k && k.habisKhusus ? ' — KOSONG: '"]),
+                                ('audit 39b no. 26: deretan panel − / + (Jual & Stok) sepakat dengan 8 slot — slot kosong tidak tampil sebagai karung ±0 kg', 'baru/js/layar/wadah-panel.js', ["L.deretanKarung().filter((k) => !k.no || k.dicatat)"]),
                                 ('audit 39b no. 1: lembar & tombol Cek wadah di Jual memakai tanggal tutup', 'baru/js/layar/jual.js', ['WB.wbCekHari(tanggalTutupAktif(s.sekarang || new Date()))']),
                                 ('stok.css: Mac 4 kotak sebaris seperti HP + gaya slot kosong garis putus', 'baru/css/stok.css', ['.layar-stok .stok-wadah .petak-wadah { grid-template-columns: repeat(4, minmax(0, 1fr)); }', '.layar-stok .petak.slot.kosong { border-style: dashed;'])]:
         t = open(os.path.join(AKAR, berkas), encoding='utf-8').read(); kurang = [x for x in wajib if x not in t]

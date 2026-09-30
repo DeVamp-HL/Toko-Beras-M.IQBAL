@@ -999,6 +999,13 @@ Tambalan: sumber berjenis karung sisihan / adukan tidak pernah dibuka otomatis; 
 kalimat (adukan: buka satu kemasan lagi dulu). Masih berisi tapi kurang → seadanya (39c) seperti biasa. Panel menyebut "KOSONG". Uji
 `uji_wadah_satu_buku.py` +1 (+1 statis layar), kontrol +1.
 
+## Audit 39b no. 26 — deretan panel − / + sepakat dengan 8 slot Stok (1 Okt 2026, cabang `audit/39b-deretan-jual-sepakat`)
+
+Temuan: sesudah 39c, layar Stok menggambar deretan sebagai satu slot per wadah (kosong = "?"), tetapi panel isi ulang − / + (Jual & rincian wadah)
+masih memakai `deretanKarung()` mentah: slot KOSONG tampil sebagai karung "±0 kg" bernama wadahnya (nama kelas), dan ketukannya menyiapkan buka karung
+atas nama itu (dijaga ketukan kedua). Tambalan: `wadah-panel.js` menyaring slot yang tidak tercatat (`!k.no || k.dicatat`) — deretan panel = slot berisi
++ karung lepas, sama dengan Stok. Uji `uji_wadah_satu_buku.py` +1 (+1 statis layar).
+
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
 Temuan J1: uang kurang saat bayar → semua baris nota jadi Kredit (`uangDiterima` tidak ditulis) + satu pelunasan piutang sebesar uang yang diterima

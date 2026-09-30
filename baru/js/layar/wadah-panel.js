@@ -82,7 +82,7 @@ export function panelIsiUlang(merk, s, keranjang, opsi) {
   const d = drafUntuk(s, merk); const lipat = !!(opsi && opsi.lipat) && !d.buka; const hit = L.hitungTakar(merk, d.baris, keranjang); const atur = L.aturWadah();
   const nyata = L.tinggiWadah(merk, keranjang);
   const resep = L.resepWadah(merk); const campuran = resep.length > 1;
-  const calon = d.pilihMerek ? L.calonCampur(d.baris.map((x) => x.merk)) : []; const DR = nyata.diketahui && !lipat ? L.deretanKarung() : [];
+  const calon = d.pilihMerek ? L.calonCampur(d.baris.map((x) => x.merk)) : []; const DR = nyata.diketahui && !lipat ? L.deretanKarung().filter((k) => !k.no || k.dicatat) : [];   // 39b no. 26: slot KOSONG ("?" di Stok) tidak tampil sebagai karung ±0 kg bernama wadahnya
   // putaran 39: wadah AKTIF = satu buku — isi wadah = buku (satu angka), komposisi & jam/siapa turunan isi ulang, selisih catatan karung belakang vs buku disebut
   const aktif = WB.wbAktif(merk); const cara = aktif ? caraIsiUlang() : 'takar';
   // draf takar yang TERSEMBUNYI (cara tiga ketukan) tidak ikut menggambar isi rencana
