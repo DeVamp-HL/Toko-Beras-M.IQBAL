@@ -122,7 +122,7 @@ var CC = susunSimpanCocok('wadah', H, { 'wadah|IR64 Apex': 'tumpah waktu takar' 
 var cps = dok(CC, 'penyesuaianStok'), cis = dok(CC, 'wadahLiteran').filter(function (d) { return d.tipe === 'isi'; });
 ok('cocokkan wadah IR64 Apex (hitung 50 kg) sesaat sesudah pindahan: tidak ditanya "baru saja dicocokkan"; penyesuaian atas BUKU WADAH, rupiah = selisih × modal wadah',
   !CC.tolak && cps.length === 1 && cps[0].merk === 'Wadah IR64 Apex' && cps[0].selisihKg === B2(50 - sebelumC) && cps[0].nilaiRp === Math.round(B2(50 - sebelumC) * hW) && cps[0].bagian === 'wadah', J([CC.tolak, cps, sebelumC]));
-ok('titik samakan cocokkan wadah berstok sendiri: tanpa komposisi, bertanda stokWadah', cis.length === 1 && !cis[0].komposisi && cis[0].stokWadah === 'Wadah IR64 Apex' && cis[0].isiKg === 50, J(cis));
+ok('titik samakan cocokkan wadah berstok sendiri: bertanda stokWadah; 39b no. 16: membawa komposisi turunan merek asal (Kumala 50 = hitungan), bukan buku', cis.length === 1 && J(cis[0].komposisi) === J({ Kumala: 50 }) && cis[0].stokWadah === 'Wadah IR64 Apex' && cis[0].isiKg === 50, J(cis));
 terapkanKeCache(CC.dokumen || []);
 ok('sesudah cocokkan: buku wadah = hitungan (50 kg)', B2(buku('Wadah IR64 Apex')) === 50, J(buku('Wadah IR64 Apex')));
 var SJ = susunIsiUlangWadah('IR64 Apex', W, 48);
@@ -132,7 +132,7 @@ ok('samakan isi dari panel Jual untuk wadah berstok sendiri DITOLAK → lewat St
 var GN = wbSusunGantiNama('IR64 Apex', 'Apex Baru', W); var gb = dok(GN, 'batchMasuk'), gp = dok(GN, 'produksiKemasan'), gi = dok(GN, 'wadahLiteran').filter(function (d) { return d.tipe === 'isi'; });
 ok('ganti nama IR64 Apex → Apex Baru: buku Wadah Apex Baru lahir, stok 50 kg dipindah dari buku lama, titik samakan bertanda stokWadah nama baru',
   !GN.tolak && gb.length === 1 && gb[0].merkList[0].merk === 'Wadah Apex Baru' && gb[0].merkList[0].stokWadah === 'Apex Baru' && gp.length === 1 && J(gp[0].sumberList) === J([{ merk: 'Wadah IR64 Apex', kg: 50 }]) && gp[0].merkTujuan === 'Wadah Apex Baru'
-  && gi.length === 1 && gi[0].stokWadah === 'Wadah Apex Baru' && !gi[0].komposisi, J([GN.tolak, gb, gp, gi]));
+  && gi.length === 1 && gi[0].stokWadah === 'Wadah Apex Baru' && J(gi[0].komposisi) === J({ Kumala: 50 }), J([GN.tolak, gi]));   // 39b no. 6: komposisi turunan ikut nama baru
 terapkanKeCache(GN.dokumen);
 var cN = chipL('Apex Baru');
 ok('sesudah ganti nama: buku lama 0, buku baru 50 kg, wadah baru berstok sendiri, chip Apex Baru 60,9 L Rp12.000', buku('Wadah IR64 Apex') === 0 && buku('Wadah Apex Baru') === 50 && wbAktif('Apex Baru') && !!cN && cN.sisa === 60.9 && cN.harga === 12000, J([buku('Wadah IR64 Apex'), buku('Wadah Apex Baru'), cN && [cN.sisa, cN.harga]]));
