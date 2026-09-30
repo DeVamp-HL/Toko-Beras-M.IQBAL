@@ -181,14 +181,20 @@ export function neracaPada(sampai, kini) {
   const menurutMesin = labaKum === null ? null : labaKum - prive; const selisihBuku = labaDitahan === null || menurutMesin === null ? null : labaDitahan - menurutMesin;
   const harta = [['Kas (laci · brankas · rekening · amplop)', N.kas, kasAda ? '' : 'titik kas belum disetel'], ['Stok beras — karung', N.nilaiSack], ['Stok kemasan jadi', N.nilaiBags], ['Kantong & bahan', N.nilaiBahan], ['Piutang pelanggan (' + N.nPiutang + ' nama)', N.piutang], ['Kasbon pegawai & owner (' + N.nKasbon + ' nama)', N.kasbon]].concat(AT.asetTetap ? [['Aset tetap (isian owner' + (AT.asetKet ? ': ' + AT.asetKet : '') + ')', AT.asetTetap]] : []).map((r) => ({ nama: r[0], n: r[1], ket: r[2] || '' }));
   const pasiva = [['Utang ke pemasok (' + N.nBonPemasok + ' bon)', N.utangPemasok], ['Utang toko ke owner', N.utangOwner], ['Modal owner tertanam', modal], ['Laba ditahan (dihitung: aset − kewajiban − modal)', labaDitahan]].map((r) => ({ nama: r[0], n: r[1], ket: '' }));
-  // no. 4: kelebihan bayar pelanggan (sisa negatif) tidak masuk piutang mesin (sisa > 0) dan belum punya baris kewajiban → kekayaan lebih besar sebesarnya.
-  // Angka mesin TIDAK diubah; kalimatnya ikut catatan (semua kertas) dan pita layar. Bukan tolak: menahan cetak = keputusan owner.
-  const lebihBayar = lebihBayarDari(hitungPiutang(s)); const kataLebih = lebihBayar.n ? 'Kelebihan bayar pelanggan ' + RP(lebihBayar.jumlah) + ' (' + lebihBayar.n + ' nama) belum dihitung sebagai kewajiban — kekayaan di atas lebih besar sebesar itu.' : '';
+  const kataLebih = lebihNeraca(s).kata;   // no. 4 (lihat lebihNeraca): ikut catatan → semua kertas; bentuk objek ini TETAP (ASAP GLOBAL membandingkannya byte-sama)
   const tolak = !kasAda ? 'Kas belum bisa dihitung — titik kas belum disetel; Tutup hari malam ini menyetelnya' : N.adaStokMinus ? 'Buku menyebut stok MINUS (' + N.sackMinus.concat(N.bagsMinus).slice(0, 3).join(', ') + ') — cocokkan dulu di Stok, neraca tidak dicetak' : '';
   const catatanInti = aset === null ? 'Tanpa titik kas, sisi harta tidak utuh.' : 'Aset ' + RP(aset) + ' = kewajiban ' + RP(kewajiban) + ' + modal ' + RP(modal) + ' + laba ditahan ' + RP(labaDitahan) + '. ' + (menurutMesin === null ? '' : 'Laba bersih kumulatif mesin − ambil pribadi = ' + RP(menurutMesin) + (Math.abs(selisihBuku) > 0.5 ? '; beda ' + RP(selisihBuku) + ' belum terjelaskan buku (titik kas yang pernah disetel ulang, stok awal sebelum sistem).' : '; cocok dengan laba ditahan.'));
   return { sampai: s || iso, N, modal, asetTetap: AT.asetTetap, aset, kewajiban, labaDitahan, labaKum, prive, menurutMesin, selisihBuku, harta, pasiva, total: N.total, tolak, seimbang: aset !== null && Math.round(aset) === Math.round(kewajiban + modal + (labaDitahan || 0)),
-    lebihBayar, kataLebih, catatanInti, catatan: catatanInti + (kataLebih ? ' ' + kataLebih : '') };
+    catatan: catatanInti + (kataLebih ? ' ' + kataLebih : '') };
 }
+/** 39b no. 4: kelebihan bayar pelanggan (sisa negatif) tidak masuk piutang mesin (sisa > 0) dan belum punya baris kewajiban → kekayaan neraca lebih
+ * besar sebesarnya. Angka mesin TIDAK diubah; kalimatnya ikut catatan neraca (semua kertas) dan pita layar. BUKAN tolak: menahan cetak = keputusan owner. */
+export function lebihNeraca(sampai) {
+  const lebihBayar = lebihBayarDari(hitungPiutang(sampai || null));
+  return { lebihBayar, kata: lebihBayar.n ? 'Kelebihan bayar pelanggan ' + RP(lebihBayar.jumlah) + ' (' + lebihBayar.n + ' nama) belum dihitung sebagai kewajiban — kekayaan di atas lebih besar sebesar itu.' : '' };
+}
+/** Catatan neraca untuk LAYAR: tanpa kalimat kelebihan bayar (layar memajangnya sebagai pita tersendiri, tetap tampil walau neraca ditolak). */
+export const catatanLayarNeraca = (NP, NL) => (NL && NL.kata && NP.catatan.endsWith(' ' + NL.kata) ? NP.catatan.slice(0, NP.catatan.length - NL.kata.length - 1) : NP.catatan);
 /** Banding kekayaan sekarang vs saat titik kas disetel (kalimat tampilkanNeraca sistem lama). */
 export function bandingKekayaan(kini) { const t = ambilTitikKas(); const kiniN = hitungNeraca(); if (!t || kiniN.total === null) return { ada: false, titik: t, teks: 'Stok dinilai dengan HPP (harga modal), bukan harga jual — sengaja konservatif.' }; const awal = hitungNeraca(t.tanggal); if (awal.total === null) return { ada: false, titik: t, teks: '' }; const d = kiniN.total - awal.total; return { ada: true, titik: t, awal: awal.total, kini: kiniN.total, selisih: d, teks: 'Saat titik kas ' + tanggalPendek(t.tanggal) + ' kekayaan ' + RP(awal.total) + ' — ' + (d === 0 ? 'belum bergeser.' : 'sejak itu ' + (d > 0 ? 'naik ' : 'turun ') + RP(Math.abs(d)) + '.') + ' Belanja stok tidak menggerakkan angka ini — uangnya cuma berubah wujud; yang menggerakkannya untung dan biaya.' }; }
 

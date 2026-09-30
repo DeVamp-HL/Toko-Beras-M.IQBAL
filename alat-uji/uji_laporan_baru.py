@@ -178,13 +178,13 @@ ok('tahunan: hanya 2026 (catatan pertama 20 Agu 2026), berjalan, belum final; 12
 
 // ---- 39b no. 4: kelebihan bayar pelanggan BERBUNYI di neraca (catatan & kertas), Kartu Piutang, dan tutup buku — angka mesin TIDAK diubah
 (function () {
-  var NPa = neracaPada(null, KINI);
-  ok('39b-4 tanpa sisa negatif: neraca tanpa kalimat kelebihan bayar, catatan = catatan inti', !NPa.kataLebih && NPa.catatan === NPa.catatanInti && NPa.lebihBayar.n === 0, J([NPa.kataLebih, NPa.lebihBayar]));
+  var NPa = neracaPada(null, KINI); var NLa = lebihNeraca(null);
+  ok('39b-4 tanpa sisa negatif: tanpa kalimat kelebihan bayar; catatan layar = catatan kertas; objek neracaPada TANPA kunci baru (bentuk tetap = main)', !NLa.kata && NLa.lebihBayar.n === 0 && catatanLayarNeraca(NPa, NLa) === NPa.catatan && !('lebihBayar' in NPa) && !('kataLebih' in NPa) && !('catatanInti' in NPa), J([NLa, Object.keys(NPa)]));
   var piu0 = cacheMentah('piutang').slice();
   pasok('piutangMutasi', piu0.concat([{ id: 891, tipe: 'bayar', namaPelanggan: 'Bu Contoh', nominal: 230000, tanggal: '2026-09-19', jam: '10:30', caraBayar: 'Tunai', dicatatDi: 'kasir' }]));
-  var NPb = neracaPada(null, KINI); var kata = 'Kelebihan bayar pelanggan Rp30.000 (1 nama) belum dihitung sebagai kewajiban — kekayaan di atas lebih besar sebesar itu.';
-  ok('39b-4 neraca: piutang mesin jadi 0 (Bu Contoh sisa −30.000 disaring mesin); kalimat kelebihan bayar ikut CATATAN (kertas) tapi tidak di catatan inti (layar menaruhnya di pita); total = mesin', NPb.N.piutang === 0 && NPb.kataLebih === kata && NPb.catatan === NPb.catatanInti + ' ' + kata && NPb.catatanInti.indexOf('Kelebihan bayar') < 0 && NPb.total === hitungNeraca().total, J([NPb.N.piutang, NPb.kataLebih, NPb.total]));
-  ok('39b-4 HITUNGAN MENUTUP: kekayaan naik tepat sebesar kelebihan bayar yang disebut (kas +230.000, piutang −200.000 = +30.000)', NPa.total !== null && NPb.total - NPa.total === NPb.lebihBayar.jumlah && NPb.lebihBayar.jumlah === 30000, J([NPa.total, NPb.total, NPb.lebihBayar]));
+  var NPb = neracaPada(null, KINI); var NLb = lebihNeraca(null); var kata = 'Kelebihan bayar pelanggan Rp30.000 (1 nama) belum dihitung sebagai kewajiban — kekayaan di atas lebih besar sebesar itu.';
+  ok('39b-4 neraca: piutang mesin jadi 0 (Bu Contoh sisa −30.000 disaring mesin); kalimat kelebihan bayar ikut CATATAN (kertas); catatan layar tanpa kalimat itu (layar memajangnya di pita); total = mesin', NPb.N.piutang === 0 && NLb.kata === kata && NPb.catatan === catatanLayarNeraca(NPb, NLb) + ' ' + kata && catatanLayarNeraca(NPb, NLb).indexOf('Kelebihan bayar') < 0 && NPb.total === hitungNeraca().total, J([NPb.N.piutang, NLb.kata, NPb.total]));
+  ok('39b-4 HITUNGAN MENUTUP: kekayaan naik tepat sebesar kelebihan bayar yang disebut (kas +230.000, piutang −200.000 = +30.000)', NPa.total !== null && NPb.total - NPa.total === NLb.lebihBayar.jumlah && NLb.lebihBayar.jumlah === 30000, J([NPa.total, NPb.total, NLb.lebihBayar]));
   ok('39b-4 kertas neraca (laporanBerkop) membawa kalimat kelebihan bayar', laporanBerkop('neraca', '2026-09', 1, KINI).catatan.indexOf(kata) >= 0, laporanBerkop('neraca', '2026-09', 1, KINI).catatan);
   var DK = dokumenKecil('piutang', 'bu contoh', '', KINI); var akhir = DK.baris[DK.baris.length - 1];
   ok('39b-4 Kartu Piutang: baris akhir "Kelebihan bayar (uang pelanggan dipegang toko)" −30.000 (bukan "Sisa bon"); pilihan berket "kelebihan bayar"; identitas & sisa mesin tetap cocok (tidak ditolak)', akhir && akhir.nama === 'Kelebihan bayar (uang pelanggan dipegang toko)' && akhir.n === -30000 && DK.pilihan.some(function (x) { return x.id === 'bu contoh' && x.ket === 'kelebihan bayar'; }) && !DK.tolak, J([akhir, DK.pilihan, DK.tolak]));
@@ -230,7 +230,8 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
-            'no.4: neraca diam soal kelebihan bayar pelanggan': js.replace("const kataLebih = lebihBayar.n ? 'Kelebihan bayar pelanggan '", "const kataLebih = false ? 'Kelebihan bayar pelanggan '"),
+            'no.4: neraca diam soal kelebihan bayar pelanggan': js.replace("  return { lebihBayar, kata: lebihBayar.n ? 'Kelebihan bayar pelanggan '", "  return { lebihBayar, kata: false ? 'Kelebihan bayar pelanggan '"),
+            'no.4: catatan layar neraca mengulang kalimat yang sudah jadi pita': js.replace("NL && NL.kata && NP.catatan.endsWith(' ' + NL.kata) ?", "false ?"),
             'no.4: kalimat kelebihan bayar tidak ikut kertas neraca': js.replace("catatan: catatanInti + (kataLebih ? ' ' + kataLebih : '') };", "catatan: catatanInti };"),
             'no.4: Kartu Piutang menyebut saldo negatif "Sisa bon"': js.replace("baris.push(brs(sd < LEBIH_AMBANG ? 'Kelebihan bayar (uang pelanggan dipegang toko)' : 'Sisa bon',", "baris.push(brs('Sisa bon',"),
             'no.4: tutup buku diam soal kelebihan bayar yang tidak menyeberang': js.replace("const kataLebih = lebih.n ? 'Kelebihan bayar pelanggan '", "const kataLebih = false ? 'Kelebihan bayar pelanggan '"),

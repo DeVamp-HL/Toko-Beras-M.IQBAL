@@ -830,7 +830,8 @@ dikurangi di memori — muat ulang / katalog disegarkan = sisa lama kembali, bon
   yang dikembalikan tunai belum punya catatan); bayar/hapus bon ditolak lebih dulu dengan kalimat benar; kartu orang (`lebih`), ringkasan
   kartu, pratinjau gabung nama memakai sisa BERTANDA (dulu kelebihan dijepit 0 → bon gabungan terlalu besar).
 - Beranda Perlu perhatian, Menu (laci Pelanggan, jawaban piutang & kaya), Neraca (kalimat ikut `catatan` → semua kertas; layar: pita tersendiri,
-  tetap tampil walau neraca ditolak karena stok minus; BUKAN `tolak`), Kartu Piutang ("Kelebihan bayar" bukan "Sisa bon"), struk nota BON
+  tetap tampil walau neraca ditolak karena stok minus; BUKAN `tolak`; objek `neracaPada` TETAP berbentuk sama dengan main — ASAP GLOBAL
+  membandingkannya byte-sama; kalimat & daftarnya dari `lebihNeraca`, catatan layar dari `catatanLayarNeraca`), Kartu Piutang ("Kelebihan bayar" bukan "Sisa bon"), struk nota BON
   ("Kelebihan bayar <nama>" bukan "Sisa bon Rp0"), Jual (daftar nama, info Kredit), Tutup Buku (peringatan: kelebihan bayar TIDAK menyeberang
   tahun). Uji laporan menutup: kekayaan naik tepat sebesar kelebihan bayar yang disebut.
 - `kasir.html` (v28): buku kecil `kasir_bayar_bon_v1` — tiap pembayaran bon tetap dikurangkan selama masih di antrean; sesudah sampai server
