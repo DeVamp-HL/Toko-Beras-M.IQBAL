@@ -480,8 +480,8 @@ var K_DITOLAK_ARSIP = 'kasir_ditolak_arsip_v1';   // ditolak yang sudah dicatat 
 var K_OPERATOR = 'kasir_operator_v1';
 // VERSI yang BENAR-BENAR berjalan: SAMA dengan VERSI di sw-kasir.js (uji_antrean_kasir.py memeriksanya).
 // Dikirim di denyut & tampil di bilah atas. Sampai 25b tertulis 'kasir-v24' padahal cache sudah v25.
-var VERSI_APLIKASI = 'kasir-v29';
-var LABEL_VERSI = 'versi 39b-3';
+var VERSI_APLIKASI = 'kasir-v30';
+var LABEL_VERSI = 'versi 39b-4p';
 var K_ROSTER = 'kasir_roster_v1';
 var K_AUTH = 'kasir_auth_v1';
 var K_BAYAR_BON = 'kasir_bayar_bon_v1';   // pembayaran bon dari HP ini yang belum tampak di katalog (audit 39b no. 4) — lihat bayarBonTertunda
@@ -1565,7 +1565,7 @@ function sisaKatalogNama(kunci) {
 }
 function catatBayarBon(docId, nama, nominal) {
   var a = ambilBayarBon(); var k = kunciNamaKasir(nama);
-  a.push({ docId: String(docId), kunci: k, nominal: nominal, dibuat: new Date().toISOString(), sisaKatalog: sisaKatalogNama(k), waktuServer: '' });
+  a.push({ docId: String(docId), kunci: k, nominal: nominal, tanggal: tanggalLokalIso(), dibuat: new Date().toISOString(), sisaKatalog: sisaKatalogNama(k), waktuServer: '' });
   simpanBayarBon(a);
 }
 // Kiriman PERTAMA dimulai (kirimAntrean): sejak itu pembayaran BISA sudah tersimpan di server walau jawabannya hilang (putus / 5xx → tetap di antrean)
@@ -1597,11 +1597,24 @@ function bayarBonTertunda() {
   var diAntre = {}; ambilAntrean().forEach(function (x) { if (x && x.koleksi === 'piutangMutasi') diAntre[String(x.docId)] = true; });
   var ditolak = {}; ambilGagal().concat(ambilArsipDitolak()).forEach(function (x) { if (x && x.koleksi === 'piutangMutasi') ditolak[String(x.docId)] = true; });
   var K = msServer(ringkasan && ringkasan._waktuServer); var kini = Date.now(); var hasil = {}; var tetap = []; var ubah = false;
+  /* Cara persis (owner 30 Sep, audit 39b): katalog /baru/ menyebut id pembayaran bon yang SUDAH dihitung di daftar sisanya. Tercantum = sudah
+     dihitung → berhenti mengurangkan; sudah sampai server & bertanggal sebelum awal buku berjalan (bayarBonSejak) = terserap saldo pembuka tutup
+     buku (dokumennya pindah ke arsip); selain itu tetap dikurangkan. Katalog tanpa daftar ini (penerbit lama / salinan kasir darurat lama) →
+     tebakan waktu server di bawah (39b no. 4). */
+  var persis = ringkasan && Array.isArray(ringkasan.bayarBonTerhitung) ? {} : null;
+  var sejak = persis && typeof ringkasan.bayarBonSejak === 'string' ? ringkasan.bayarBonSejak : '';
+  if (persis) ringkasan.bayarBonTerhitung.forEach(function (id) { persis[String(id)] = true; });
   catatan.forEach(function (c) {
     if (!c || ditolak[String(c.docId)]) { ubah = true; return; }
     if (kini - (Date.parse(c.dibuat) || kini) > BAYAR_BON_UMUR_MAKS_MS) { ubah = true; return; }
-    var raw = sisaKatalogNama(c.kunci);
     var antre = !!diAntre[String(c.docId)];
+    if (persis) {
+      if (persis[String(c.docId)]) { ubah = true; return; }
+      var tgl = c.tanggal || (Date.parse(c.dibuat) ? tanggalLokalIso(new Date(Date.parse(c.dibuat))) : '');
+      if (sejak && !antre && tgl && tgl < sejak) { ubah = true; return; }
+      tetap.push(c); hasil[c.kunci] = (hasil[c.kunci] || 0) + (Number(c.nominal) || 0); return;
+    }
+    var raw = sisaKatalogNama(c.kunci);
     /* terkirim tapi belum sempat ditandai (aplikasi mati di antaranya) */
     if (!antre && !c.waktuServer) { c.waktuServer = c.dikirimSejak || new Date().toISOString().slice(0, 19) + 'Z'; ubah = true; }
     var P = msServer(c.waktuServer);

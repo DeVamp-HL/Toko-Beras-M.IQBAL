@@ -78,7 +78,8 @@ var W = { tanggal: '2026-09-19', jam: '10:00', kini: '2026-09-19T03:00:00.000Z',
 var kanonUrut = function (x) { return kkKanon(x); };
 // ---- 1 · isi byte-sama dengan penyusun index.html (fungsi LAMA dijalankan dari teks index.html)
 var I = kkIsi(); var LAMA = susunIsiKatalogKasirLama();
-ok('isi katalog /baru/ = isi susunIsiKatalogKasir() index.html untuk data yang sama (JSON persis, urutan ikut)', !!I && J(I) === J(LAMA), J(I).slice(0, 300) + ' ≠ ' + J(LAMA).slice(0, 300));
+var I0 = I ? JSON.parse(J(I)) : null; if (I0) { delete I0.bayarBonTerhitung; delete I0.bayarBonSejak; }
+ok('isi katalog /baru/ = isi susunIsiKatalogKasir() index.html untuk data yang sama (JSON persis, urutan ikut) + DUA kunci paling akhir bayarBonTerhitung & bayarBonSejak (cara persis, owner 30 Sep)', !!I && J(I0) === J(LAMA) && J(Object.keys(I).slice(-2)) === J(['bayarBonTerhitung', 'bayarBonSejak']) && Array.isArray(I.bayarBonTerhitung) && I.bayarBonSejak === '', J(I0).slice(0, 300) + ' ≠ ' + J(LAMA).slice(0, 300));
 ok('isi memuat keempat bagian index.html: kemasan, merkKarung (+ modal & harga), bahanLiteran, piutang (yang masih bersisa)', !!I && I.kemasan.length === 1 && I.kemasan[0].namaProduk === 'Kembang' && I.kemasan[0].hargaPerUnit === 75000
   && I.merkKarung.some(function (m) { return m.merk === 'Angsa' && m.hargaPerKg === 13800 && m.hargaPerLiter === 12500 && m.hargaKarung50 === 700000 && m.hppPerKg > 0; })
   && I.bahanLiteran.paperbag5l.sisaPcs === 100 && I.bahanLiteran.paperbag5l.hargaPerPcs === 305 && I.piutang.length === 1 && I.piutang[0].nama === 'Pelanggan Contoh' && I.piutang[0].sisa === 150000, J(I));
@@ -104,7 +105,7 @@ if (CADANGAN) {
 }
 // ---- 2 · bentuk dokumen & pembanding
 var D = kkDokumen(I, '2026-09-19T03:00:00.000Z');
-ok('dokumen: kunci & urutannya = setDoc terbitkanRingkasanKasir() index.html (' + KUNCI_LAMA.join(', ') + '), id "aktif"', J(Object.keys(D)) === J(KUNCI_LAMA) && D.id === 'aktif' && D.diperbaruiPada === '2026-09-19T03:00:00.000Z', J(Object.keys(D)));
+ok('dokumen: kunci & urutannya = setDoc terbitkanRingkasanKasir() index.html (' + KUNCI_LAMA.join(', ') + ') + bayarBonTerhitung & bayarBonSejak paling akhir, id "aktif"', J(Object.keys(D)) === J(KUNCI_LAMA.concat(['bayarBonTerhitung', 'bayarBonSejak'])) && D.id === 'aktif' && D.diperbaruiPada === '2026-09-19T03:00:00.000Z', J(Object.keys(D)));
 ok('dokumen katalog = dokumen turunan, ditulis APA ADANYA oleh penulis pusat (kkMentah): hanya ringkasanKasir', kkMentah('ringkasanKasir') && !kkMentah('penjualan') && !kkMentah('pengaturan'));
 var acak = function (x) { if (Array.isArray(x)) return x.map(acak); if (x && typeof x === 'object') { var o = {}; Object.keys(x).reverse().forEach(function (k) { o[k] = acak(x[k]); }); return o; } return x; };
 kkLupakanServer(); ok('server belum terbaca → tertinggal = null (belum bisa tahu; tidak terbit, Beranda tidak menebak)', kkTertinggal(I) === null);
@@ -112,6 +113,25 @@ kkSetelServer(null, true); ok('server terbaca & dokumen belum pernah ada → ter
 kkSetelServer(acak(D), true); ok('server = isi yang sama dengan URUTAN KUNCI LAIN (seperti peta Firestore) → tidak tertinggal (tidak terbit ulang tanpa henti)', kkTertinggal(I) === false, kkKanon(acak(D)).slice(0, 200));
 var D2 = JSON.parse(J(D)); D2.merkKarung[0].hargaPerKg += 100; kkSetelServer(D2, true);
 ok('satu harga beda → tertinggal = true', kkTertinggal(I) === true);
+// ---- 2b · cara persis (owner 30 Sep): id pembayaran bon yang SUDAH dihitung di `piutang` dokumen yang sama
+var pmLama = JSON.parse(J(ambilPiutangMutasi()));
+pasok('piutangMutasi', pmLama.concat([{ id: 611, tipe: 'bayar', namaPelanggan: 'Pelanggan Contoh', nominal: 20000, tanggal: '2026-09-18', jam: '10:00' },
+  { id: 612, tipe: 'bayar', namaPelanggan: 'Pelanggan Contoh', nominal: 10000, tanggal: '2026-08-01', jam: '10:00' }, { id: 613, tipe: 'bayar', namaPelanggan: '  ', nominal: 5000, tanggal: '2026-09-18', jam: '10:00' },
+  { id: 614, tipe: 'hapusBuku', namaPelanggan: 'Pelanggan Contoh', nominal: 1000, tanggal: '2026-09-18', jam: '10:00' },
+  { id: 1759249200123 + 0.4567, tipe: 'bayar', namaPelanggan: 'Pelanggan Contoh', nominal: 1000, tanggal: '2026-09-19', jam: '10:00' }]));
+var BT = kkBayarTerhitung(), Dp = kkDokumen(kkIsi(), W.kini);
+ok('cara persis: daftar = id SEMUA pembayaran yang dihitung hitungPiutang (tipe bayar, bernama), TANPA jendela hari (tidak bergantung jam HP / jam penerbit): 1759249200123.4567 (id pecahan idUnik HP), 611, 612 (1 Agu) — bukan 613 (tanpa nama), 614 (hapus buku), 601 (saldo awal); ikut di isi & dokumen', J(BT) === J([String(1759249200123 + 0.4567), '611', '612']) && J(kkIsi().bayarBonTerhitung) === J(BT) && J(Dp.bayarBonTerhitung) === J(BT) && Dp.bayarBonSejak === '', J([BT, Dp.bayarBonTerhitung, Dp.bayarBonSejak]));
+var Dj = (function () { var t = Date.now; Date.now = function () { return t() + 400 * 86400000; }; var x = kkDokumen(kkIsi(), W.kini); Date.now = t; return x; })();
+ok('cara persis: isi katalog tidak bergantung jam perangkat penerbit (jam dimajukan 400 hari → daftar & tanda awal buku sama; dua perangkat owner tidak saling timpa)', J(Dj.bayarBonTerhitung) === J(Dp.bayarBonTerhitung) && Dj.bayarBonSejak === Dp.bayarBonSejak && kkKanon(Dj) === kkKanon(Dp), J([Dj.bayarBonTerhitung, Dj.bayarBonSejak]));
+pasok('piutangMutasi', ambilPiutangMutasi().concat([{ id: 615, tipe: 'saldoAwal', namaPelanggan: 'Pelanggan Contoh', nominal: 5000, tanggal: '2025-11-02', jam: '', tutupBuku: true, tahunDari: 2025 }]));
+ok('cara persis: sesudah tutup buku 2025 (saldo pembuka piutang bertanda tutupBuku + tahunDari 2025) → bayarBonSejak "2026-01-01": pembayaran HP bertanggal sebelumnya sudah terserap saldo pembuka', kkBayarSejak() === '2026-01-01' && kkDokumen(kkIsi(), W.kini).bayarBonSejak === '2026-01-01' && kkKanon(kkDokumen(kkIsi(), W.kini)) !== kkKanon(Dp), kkBayarSejak());
+pasok('piutangMutasi', ambilPiutangMutasi().filter(function (m) { return m.id !== 615; }));
+var Dlama = JSON.parse(J(Dp)); delete Dlama.bayarBonTerhitung; kkSetelServer(Dlama, true);
+ok('katalog server dari penerbit lama (tanpa daftar) sementara ada pembayaran terhitung → tertinggal (terbit ulang sekali)', kkTertinggal() === true);
+kkSetelServer(Dp, true); var sama = kkTertinggal(); var Dp2 = JSON.parse(J(Dp)); Dp2.bayarBonTerhitung = ['611', '999']; kkSetelServer(Dp2, true);
+ok('daftar sama → tidak tertinggal; daftar id beda → tertinggal', sama === false && kkTertinggal() === true);
+pasok('piutangMutasi', pmLama); var Dl2 = JSON.parse(J(kkDokumen(kkIsi(), W.kini))); delete Dl2.bayarBonTerhitung; delete Dl2.bayarBonSejak; kkSetelServer(Dl2, true);
+ok('tanpa pembayaran terhitung, katalog lama tanpa daftar = sama (tidak terbit ulang tanpa perlu)', kkTertinggal() === false && J(kkIsi().bayarBonTerhitung) === '[]');
 // ---- 3 · terbit harga: katalog SESUDAH terbit ikut di kiriman yang sama
 kkSetelServer(D, true);
 terapkanKeCache(susunUbah('Angsa|S', '14.000', 'jual', W).dokumen);
@@ -144,15 +164,15 @@ kkLupakanServer(); ok('gerbang: katalog server belum terbaca → TIDAK terbit', 
 // ---- 6 · Beranda
 var T0 = '2026-09-19T02:00:00.000Z'; kkSetelServer(kkDokumen(kkIsi(), T0), true);
 var hp = function (id, apl, v, pada, kat) { var x = { id: id, nama: id, aplikasi: apl, versi: v, pada: pada, antrean: 0, gagal: 0 }; if (kat !== undefined) x.katalog = kat; return x; };
-pasok('perangkatStatus', [hp('d-v26', 'darurat', 'kasir-v26', '2026-09-19T02:50:00.000Z', undefined), hp('d-segar', 'darurat', 'kasir-v29', '2026-09-19T02:50:00.000Z', T0),
-  hp('d-basi', 'darurat', 'kasir-v29', '2026-09-19T02:50:00.000Z', '2026-09-18T01:00:00.000Z'), hp('d-baru-saja', 'darurat', 'kasir-v29', '2026-09-19T02:03:00.000Z', '2026-09-18T01:00:00.000Z'),
-  hp('k-kalk', 'kasir', 'kasir-v29', '2026-09-19T02:50:00.000Z', undefined), hp('d-v27', 'darurat', 'kasir-v27', '2026-09-19T02:50:00.000Z', T0), hp('d-v27-basi', 'darurat', 'kasir-v27', '2026-09-19T02:50:00.000Z', '2026-09-18T01:00:00.000Z'), hp('d-v24', 'darurat', 'kasir-v24', '2026-09-19T02:50:00.000Z', undefined), hp('d-jauh', 'darurat', 'kasir-v26', '2026-09-01T02:50:00.000Z', undefined)]);
+pasok('perangkatStatus', [hp('d-v26', 'darurat', 'kasir-v26', '2026-09-19T02:50:00.000Z', undefined), hp('d-segar', 'darurat', 'kasir-v30', '2026-09-19T02:50:00.000Z', T0),
+  hp('d-basi', 'darurat', 'kasir-v30', '2026-09-19T02:50:00.000Z', '2026-09-18T01:00:00.000Z'), hp('d-baru-saja', 'darurat', 'kasir-v30', '2026-09-19T02:03:00.000Z', '2026-09-18T01:00:00.000Z'),
+  hp('k-kalk', 'kasir', 'kasir-v30', '2026-09-19T02:50:00.000Z', undefined), hp('d-v27', 'darurat', 'kasir-v27', '2026-09-19T02:50:00.000Z', T0), hp('d-v27-basi', 'darurat', 'kasir-v27', '2026-09-19T02:50:00.000Z', '2026-09-18T01:00:00.000Z'), hp('d-v24', 'darurat', 'kasir-v24', '2026-09-19T02:50:00.000Z', undefined), hp('d-jauh', 'darurat', 'kasir-v26', '2026-09-01T02:50:00.000Z', undefined)]);
 var B = kkBeranda(new Date(__KINI)); var tk = B.perhatian.map(function (x) { return x.teks; }).join(' | ');
 ok('Beranda: "Katalog kasir: diperbarui <tanggal jam WIB> · sama dengan data sekarang"', /^Katalog kasir: diperbarui .*09\.00 · sama dengan data sekarang$/.test(B.status) || /^Katalog kasir: diperbarui .* · sama dengan data sekarang$/.test(B.status), B.status);
 ok('Beranda: HP kasir versi 26 disebut (harga baru baru sampai saat dibuka ulang); HP v24 & yang tidak berdenyut 7 hari TIDAK disebut di sini', /HP d-v26 · kasir darurat: masih kasir-v26 — harga baru baru sampai saat aplikasinya dibuka ulang/.test(tk) && !/d-v24|d-jauh/.test(tk), tk);
 ok('Beranda: HP penjaga yang berdenyut > 6 menit sesudah katalog terbit tapi memegang katalog lama → disebut, awas', B.perhatian.some(function (x) { return /HP d-basi · kasir darurat: masih memegang katalog/.test(x.teks) && x.awas; }), tk);
 ok('Beranda: HP yang memegang katalog terbaru, yang baru saja berdenyut, dan kasir kalkulator (tanpa cap katalog) TIDAK disebut', !/d-segar|d-baru-saja|k-kalk/.test(tk), tk);
-ok('Beranda 39b no. 4: HP v27 (sudah ambil katalog sendiri, belum versi terbaru) disebut "versi kasir-v29 terpasang saat dibuka ulang" tanpa awas — BUKAN "harga baru baru sampai"', B.perhatian.some(function (x) { return /^HP d-v27 · kasir darurat: masih kasir-v27 — versi kasir-v29 terpasang saat aplikasinya dibuka ulang$/.test(x.teks) && !x.awas; }) && !/d-v27[^|]*harga baru baru sampai/.test(tk), tk);
+ok('Beranda 39b no. 4: HP v27 (sudah ambil katalog sendiri, belum versi terbaru) disebut "versi kasir-v30 terpasang saat dibuka ulang" tanpa awas — BUKAN "harga baru baru sampai"', B.perhatian.some(function (x) { return /^HP d-v27 · kasir darurat: masih kasir-v27 — versi kasir-v30 terpasang saat aplikasinya dibuka ulang$/.test(x.teks) && !x.awas; }) && !/d-v27[^|]*harga baru baru sampai/.test(tk), tk);
 ok('Beranda 39b no. 4: HP v27 yang memegang katalog lama TETAP disebut memegang katalog lama (awas) — pemeriksaannya tidak berhenti di versi', B.perhatian.some(function (x) { return /HP d-v27-basi · kasir darurat: masih memegang katalog/.test(x.teks) && x.awas; }) && !B.perhatian.some(function (x) { return /HP d-v27 · kasir darurat: masih memegang katalog/.test(x.teks); }), tk);
 terapkanKeCache([{ koleksi: 'katalogHargaLiteran', data: { id: 'Angsa', merk: 'Angsa', hargaPerLiter: 13500, diubahPada: '2026-09-19T03:00:00.000Z' } }]);
 B = kkBeranda(new Date(__KINI));
@@ -327,6 +347,27 @@ ok('S17 diketuk QRIS di lembar utang (tombol nota Tunai) → tercatat QRIS; tomb
 bukaLayarUtang(); pilihUtang(daftarTampilUtang.map(function (p) { return p.nama; }).indexOf('Bu Ika'));
 ok('S17 memilih nama berikutnya → cara kembali TUNAI (QRIS tadi tidak menempel ke orang lain)', caraUtangAktif === 'Tunai' && $('utangCara-Tunai').classList.pilih === true && $('utangCara-Qris').classList.pilih === false, caraUtangAktif);
 pilihCaraUtang('Kredit'); ok('S17 cara selain QRIS (mis. "Kredit") dibakukan jadi Tunai — bayar bon tidak pernah tercatat Kredit', caraUtangAktif === 'Tunai', caraUtangAktif);
+// S18 (cara persis, owner 30 Sep): katalog menyebut id pembayaran bon yang SUDAH dihitung (bayarBonTerhitung) → berhenti mengurangkan tepat saat tercantum
+simpanAntrean([]); simpanBayarBon([]); localStorage.setItem(K_GAGAL, '[]'); localStorage.setItem(K_DITOLAK_ARSIP, '[]');
+ringkasan = { diperbaruiPada: '2026-09-30T08:00:00.000Z', _waktuServer: '2026-09-30T08:00:00Z', piutang: [{ nama: 'Bu Lina', sisa: 100000 }], bayarBonTerhitung: [] };
+bayar('Bu Lina', 40000); var id18 = antre()[0] ? antre()[0].docId : 'x18'; terkirim(id18, '2026-09-30T08:01:00Z');
+ringkasan = { diperbaruiPada: '2026-09-30T08:02:00.000Z', _waktuServer: '2026-09-30T08:02:00Z', piutang: [{ nama: 'Bu Lina', sisa: 120000 }], bayarBonTerhitung: ['lain-1'] };
+ok('S18 persis: katalog SESUDAH bayar, sisa berubah karena bon lain (120.000), id pembayaran BELUM tercantum → tetap dikurangkan: Rp80.000 (tebakan waktu dulu membuangnya → Rp120.000)', sisa('Bu Lina') === 80000 && ambilBayarBon().length === 1, [sisa('Bu Lina'), ambilBayarBon()]);
+ringkasan = { diperbaruiPada: '2026-09-30T08:03:00.000Z', _waktuServer: '2026-09-30T08:03:00Z', piutang: [{ nama: 'Bu Lina', sisa: 120000 }], bayarBonTerhitung: ['lain-1', String(id18)] };
+ok('S18 persis: id tercantum, sisa KEBETULAN sama (bon baru 40.000 di perangkat lain) → catatan dibuang, sisa = katalog Rp120.000 (tebakan waktu dulu tetap mengurangi → Rp80.000)', sisa('Bu Lina') === 120000 && ambilBayarBon().length === 0, [sisa('Bu Lina'), ambilBayarBon()]);
+bayar('Bu Lina', 20000); ok('S18 persis: pembayaran baru masih di antrean, id belum tercantum → dikurangkan (Rp100.000)', sisa('Bu Lina') === 100000 && ambilBayarBon().length === 1, sisa('Bu Lina'));
+delete ringkasan.bayarBonTerhitung; ok('S18 katalog TANPA daftar (penerbit lama) → kembali ke tebakan waktu server 39b no. 4 (masih di antrean → dikurangkan)', sisa('Bu Lina') === 100000, sisa('Bu Lina'));
+// S19 (tinjauan persis P1): tutup buku mengarsipkan dokumen bayar — id-nya tidak tercantum lagi, tetapi pembayarannya sudah terserap saldo pembuka
+simpanAntrean([]); simpanBayarBon([]); ringkasan = { diperbaruiPada: '2026-09-30T09:00:00.000Z', _waktuServer: '2026-09-30T09:00:00Z', piutang: [{ nama: 'Bu Mira', sisa: 100000 }], bayarBonTerhitung: [], bayarBonSejak: '' };
+bayar('Bu Mira', 30000); var id19 = antre()[0] ? antre()[0].docId : 'x19';
+ok('S19 buku kecil menyimpan TANGGAL pembayaran (jam HP) untuk aturan awal buku', ambilBayarBon()[0] && ambilBayarBon()[0].tanggal === tanggalLokalIso(), ambilBayarBon());
+var tg19 = ambilBayarBon()[0] ? ambilBayarBon()[0].tanggal : '2026-09-19'; var besok19 = tanggalLokalIso(new Date(new Date(tg19 + 'T12:00:00').getTime() + 86400000));
+ringkasan = { diperbaruiPada: '2026-09-30T09:01:00.000Z', _waktuServer: '2026-09-30T09:01:00Z', piutang: [{ nama: 'Bu Mira', sisa: 70000 }], bayarBonTerhitung: [], bayarBonSejak: besok19 };
+ok('S19 pembayaran MASIH di antrean & bertanggal sebelum awal buku → belum sampai server → tetap dikurangkan (Rp40.000)', sisa('Bu Mira') === 40000, sisa('Bu Mira'));
+terkirim(id19, '2026-09-30T09:00:30Z');
+ok('S19 sudah sampai server, bertanggal sebelum awal buku (sehari sesudahnya), id tidak tercantum (dokumennya diarsipkan tutup buku) → terserap saldo pembuka → dibuang, Rp70.000 (bukan dikurangi dua kali → Rp40.000)', sisa('Bu Mira') === 70000 && ambilBayarBon().length === 0, [sisa('Bu Mira'), ambilBayarBon()]);
+simpanBayarBon([{ docId: 'lama-1', kunci: 'bu mira', nominal: 10000, dibuat: new Date(new Date(tg19 + 'T12:00:00').getTime() - 86400000).toISOString(), sisaKatalog: 70000, waktuServer: '2026-09-18T03:00:05Z', dariServer: true }]);
+ok('S19 catatan buku kecil lama TANPA tanggal → tanggalnya dari waktu dibuat (dua hari sebelum awal buku) → dibuang', sisa('Bu Mira') === 70000 && ambilBayarBon().length === 0, ambilBayarBon());
 print(JSON.stringify({ lulus: L, gagal: G }));
 """
 def jalan_bayar_bon(t):
@@ -376,7 +417,7 @@ def periksa_statis(t):
     va = [re.search(r"var VERSI_APLIKASI = '([^']+)';", t[b]) for b in (DARURAT, 'kasir.html')]
     kp = re.search(r"export const KP_VERSI_KASIR_25B = '([^']+)';", t['baru/js/data/kunci-periode.js'])
     nomor = lambda m: int(re.match(r'kasir-v(\d+)$', m.group(1)).group(1)) if m else -1
-    ok('versi: kedua berkas kasir = VERSI sw-kasir.js = KK_VERSI_KASIR_TERBARU (/baru/) = kasir-v29', vs and kk and all(v and v.group(1) == vs.group(1) for v in va) and kk.group(1) == vs.group(1) == 'kasir-v29', [x.group(1) if x else None for x in [vs, kk] + va])
+    ok('versi: kedua berkas kasir = VERSI sw-kasir.js = KK_VERSI_KASIR_TERBARU (/baru/) = kasir-v30', vs and kk and all(v and v.group(1) == vs.group(1) for v in va) and kk.group(1) == vs.group(1) == 'kasir-v30', [x.group(1) if x else None for x in [vs, kk] + va])
     ok('versi: lantai kunci bulan (KP_VERSI_KASIR_25B) tidak di atas versi yang disajikan sw-kasir.js', kp and vs and 0 < nomor(kp) <= nomor(vs), kp.group(1) if kp else None)
     k = t['kasir.html']
     ok('kasir.html (39b no. 4): katalog yang diambil menyimpan waktu SERVER dokumennya (updateTime) — pembanding buku kecil bayar bon', "o._waktuServer = j.updateTime || '';" in k)
@@ -467,7 +508,7 @@ def periksa_peramban(t):
     ok('katalog berganti di server: tanpa pemicu harga tuts TETAP yang lama (bukti pemicunya layar dinyalakan, bukan kebetulan)', N['tanpaPemicu'] == [70000], N)
     ok('layar HP dinyalakan → harga baru 72.000 TANPA membuka ulang aplikasi', N['sesudahNyala'] == [72000] and N['getAkhir'] > N['getAwal'], N)
     ok('denyut HP penjaga membawa cap katalog yang baru dipegangnya', '2026-09-27T02:00:00.000Z' in N['denyutKatalog'], N['denyutKatalog'])
-    ok('bilah atas: "versi 39b-3"', N.get('label') == 'versi 39b-3', N.get('label'))
+    ok('bilah atas: "versi 39b-4p"', N.get('label') == 'versi 39b-4p', N.get('label'))
     if not B or B.get('galat'): return out + [('peramban · skenario berkala jalan', False, (B or {}).get('galat', 'tidak ada hasil'))]
     ok('tanpa ketukan apa pun: katalog baru (74.000) diambil sendiri di jadwal berkala', B['awal'] == [73000] and B['sesudahJadwal'] == [74000], B)
     return out
@@ -502,7 +543,7 @@ KONTROL = [
     ('kasir darurat tidak mengambil katalog saat layar dinyalakan', {DARURAT: [("document.addEventListener('visibilitychange', function () { if (!document.hidden) segarkanRingkasanD(); });\n", "")]}, ('statis', 'peramban')),
     ('kasir darurat tidak mengambil katalog berkala', {DARURAT: [("setInterval(function () { if (!document.hidden) segarkanRingkasanD(); }, 300000);\n", "")]}, ('statis', 'peramban')),
     ('denyut tanpa cap katalog', {DARURAT: [("    versi: VERSI_APLIKASI,\n    katalog: katalogDipegangD()", "    versi: VERSI_APLIKASI")]}, ('statis', 'peramban')),
-    ('sw-kasir.js naik tanpa /baru/ ikut', {'sw-kasir.js': [("const VERSI = 'kasir-v29';", "const VERSI = 'kasir-v30';")]}, ('statis',)),
+    ('sw-kasir.js naik tanpa /baru/ ikut', {'sw-kasir.js': [("const VERSI = 'kasir-v30';", "const VERSI = 'kasir-v31';")]}, ('statis',)),
     ('bayar bon kasir hanya di memori lagi (buku kecil tidak dicatat)', {'kasir.html': [('  catatBayarBon(idBayar, p.nama, n);\n', '')]}, ('jsc',)),
     ('buku kecil tidak dikurangkan dari daftar sisa', {'kasir.html': [('sisa: Math.round(((Number(p.sisa) || 0) - (kurang[kunciNamaKasir(p.nama)] || 0)) * 100) / 100', 'sisa: Math.round((Number(p.sisa) || 0) * 100) / 100')]}, ('jsc',)),
     ('pembayaran ditolak server tetap dikurangkan', {'kasir.html': [('if (!c || ditolak[String(c.docId)]) { ubah = true; return; }', 'if (!c) { ubah = true; return; }')]}, ('jsc',)),
@@ -527,7 +568,17 @@ KONTROL = [
     ('39b-3: tombol QRIS lembar utang tidak mengubah cara', {'kasir.html': [("  caraUtangAktif = bakuCaraBayar(c) === 'QRIS' ? 'QRIS' : 'Tunai';\n", '')]}, ('jsc',)),
     ('39b-3: cara bayar bon boleh Kredit', {'kasir.html': [("  caraUtangAktif = bakuCaraBayar(c) === 'QRIS' ? 'QRIS' : 'Tunai';\n", '  caraUtangAktif = bakuCaraBayar(c);\n')]}, ('jsc',)),
     ('39b-3: tombol cara bayar bon hilang dari lembar utang', {'kasir.html': [('      <button type="button" id="utangCara-Qris" onclick="pilihCaraUtang(\'Qris\')">QRIS</button>\n', '')]}, ('statis',)),
-    ('HP v27 disebut "harga baru baru sampai" lagi (lantai ambil-sendiri disamakan dengan versi terbaru)', {'baru/js/data/katalog-kasir.js': [("export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v27';", "export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v29';")]}, ('jsc',)),
+    ('persis: kasir mengabaikan daftar id katalog (kembali ke tebakan waktu server)', {'kasir.html': [('  var persis = ringkasan && Array.isArray(ringkasan.bayarBonTerhitung) ? {} : null;\n', '  var persis = null;\n')]}, ('jsc',)),
+    ('persis: id tercantum tidak membuang catatan (dikurangi dua kali)', {'kasir.html': [('      if (persis[String(c.docId)]) { ubah = true; return; }\n', '')]}, ('jsc',)),
+    ('persis: dokumen katalog tanpa daftar id', {'baru/js/data/katalog-kasir.js': [(", bayarBonTerhitung: isi.bayarBonTerhitung || [], bayarBonSejak:", ", bayarBonSejak:")]}, ('jsc',)),
+    ('persis: daftar id tidak ikut pembanding katalog (tidak terbit ulang)', {'baru/js/data/katalog-kasir.js': [(", bayarBonTerhitung: d.bayarBonTerhitung || [], bayarBonSejak:", ", bayarBonSejak:")]}, ('jsc',)),
+    ('persis: daftar id kembali berjendela jam perangkat', {'baru/js/data/katalog-kasir.js': [("m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan)).map(", "m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan) && (m.tanggal || '') >= new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10)).map(")]}, ('jsc',)),
+    ('persis: tanda awal buku tidak ikut dokumen', {'baru/js/data/katalog-kasir.js': [(", bayarBonSejak: isi.bayarBonSejak || '' };", " };")]}, ('jsc',)),
+    ('persis: HP mengabaikan tanda awal buku (dikurangi dua kali sesudah tutup buku)', {'kasir.html': [("      if (sejak && !antre && tgl && tgl < sejak) { ubah = true; return; }\n", '')]}, ('jsc',)),
+    ('persis: awal buku dianggap juga untuk pembayaran yang belum sampai server', {'kasir.html': [("if (sejak && !antre && tgl && tgl < sejak)", "if (sejak && tgl && tgl < sejak)")]}, ('jsc',)),
+    ('persis: buku kecil tidak menyimpan tanggal', {'kasir.html': [("nominal: nominal, tanggal: tanggalLokalIso(), dibuat:", "nominal: nominal, dibuat:")]}, ('jsc',)),
+    ('persis: pembayaran tanpa nama ikut daftar (tidak dihitung hitungPiutang)', {'baru/js/data/katalog-kasir.js': [("m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan)).map(", "m.tipe === 'bayar').map(")]}, ('jsc',)),
+    ('HP v27 disebut "harga baru baru sampai" lagi (lantai ambil-sendiri disamakan dengan versi terbaru)', {'baru/js/data/katalog-kasir.js': [("export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v27';", "export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v30';")]}, ('jsc',)),
 ]
 
 if __name__ == '__main__':
