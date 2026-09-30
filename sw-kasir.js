@@ -97,7 +97,11 @@
 // bisa menyebut HP yang masih memegang katalog lama. kasir.html hanya ikut naik versi (satu konstanta). Bentuk nota TIDAK berubah.
 // WAJIB naik: dengan cache lama HP penjaga tetap menjalankan berkas yang tidak mengambil katalog sendiri, dan Beranda /baru/
 // menyebutnya "masih kasir-v26 — harga baru baru sampai saat aplikasinya dibuka ulang".
-const VERSI = 'kasir-v27';
+// v28 (30 September 2026, audit 39b no. 4): kasir.html mencatat pembayaran bon di buku kecil localStorage (kasir_bayar_bon_v1) — sisa bon di HP
+// TETAP turun sesudah dimuat ulang / katalog disegarkan sampai katalog menghitungnya; dulu cuma di memori, sehingga bon yang sama bisa dibayar
+// penuh lagi dan sisa bon di sistem jadi minus. Pilih nama dari daftar yang terlihat (bukan nomor urut), lembar bayar menyebut umur daftar sisa.
+// Kasir darurat hanya ikut naik versi (satu konstanta). Bentuk nota & katalog TIDAK berubah.
+const VERSI = 'kasir-v28';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
 

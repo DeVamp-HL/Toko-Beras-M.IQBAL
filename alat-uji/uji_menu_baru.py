@@ -109,6 +109,16 @@ ok('tanya laba: angka = laba bersih bulan ini dari mesin; jawaban menyebut margi
 ok('tanya piutang: angka = mesin; menyebut jumlah nama & macet; tanya lantai: merek paling tipis IR42 Select −Rp200/kg, 1 merek di bawah modal, AWAS', tq('piutang').angka === RP(totalPI) && /nama\./.test(tq('piutang').sub) && /macet/.test(tq('piutang').sub) && tq('lantai').angka === '−Rp200/kg' && /IR42 Select/.test(tq('lantai').sub) && /1 merek sudah berdiri di bawah modalnya/.test(tq('lantai').sub) && tq('lantai').awas, J([tq('piutang'), tq('lantai')]));
 ok('tanya jam: margin 30 hari terbesar jam 16 (160.000 + 90.000 + 80.000 + 130.000 = 460.000 dari 4 baris), kedua jam 09 (90.000)', tq('jam').angka === '16:00' && /Rp460.000 dari 4 baris/.test(tq('jam').sub) && /Kedua: 09:00 \(Rp90.000\)/.test(tq('jam').sub), J(tq('jam')));
 ok('tanya rak & saksi: merek dengan nilai rak terbesar disebut dengan persennya (desimal KOMA); QRIS 130.000 dari omzet semua nota 5.475.000 = 2,4% → AWAS (< 10%)', /\d,\d% nilai rak beras di Angsa/.test(tq('rak').sub) && tq('saksi').angka === '2,4%' && tq('saksi').awas && /Rp130.000 dari Rp5.475.000/.test(tq('saksi').sub), J([tq('rak'), tq('saksi')]));
+// ---- 39b no. 4: kelebihan bayar pelanggan disebut di laci & jawaban (dulu disaring sisa > 0 dengan diam); angka bon tetap mesin
+(function () {
+  ok('39b-4 tanpa sisa negatif: laci & jawaban piutang tidak menyebut kelebihan bayar', !/kelebihan bayar/i.test(br('pelanggan').sub) && !/Kelebihan bayar/.test(tq('piutang').sub), J([br('pelanggan').sub, tq('piutang').sub]));
+  var piu0 = cacheMentah('piutang').slice();
+  pasok('piutangMutasi', piu0.concat([{ id: 691, tipe: 'saldoAwal', namaPelanggan: 'Bu Wati', nominal: 50000, tanggal: '2026-09-18', catatan: '', dicatatDi: 'sistem' }, { id: 692, tipe: 'bayar', namaPelanggan: 'Bu Wati', nominal: 80000, tanggal: '2026-09-19', jam: '09:00', caraBayar: 'Tunai', catatan: '', dicatatDi: 'kasir' }]));
+  var LC4 = susunLaci(KINI, LOKAL); var pl = null; LC4.forEach(function (g) { g.isi.forEach(function (b) { if (b.id === 'pelanggan') pl = b; }); }); var TQ4 = susunTanya(KINI); var tp = TQ4.find(function (t) { return t.id === 'piutang'; }), tk = TQ4.find(function (t) { return t.id === 'kaya'; });
+  ok('39b-4 laci Pelanggan & piutang: sub menyebut " · kelebihan bayar Rp30.000", AWAS; angkanya TETAP piutang mesin (sisa > 0)', pl && / · kelebihan bayar Rp30\.000/.test(pl.sub) && pl.awas && pl.angka === RP(totalPI), J(pl));
+  ok('39b-4 tanya piutang: "Kelebihan bayar pelanggan Rp30.000 (Bu Wati) — uang pelanggan dipegang toko.", AWAS; tanya kaya ikut AWAS', tp && / Kelebihan bayar pelanggan Rp30\.000 \(Bu Wati\) — uang pelanggan dipegang toko\.$/.test(tp.sub) && tp.awas && tp.angka === RP(totalPI) && tk && tk.awas, J([tp, tk]));
+  pasok('piutangMutasi', piu0);
+})();
 // ---- JAM (N5) · ORANG (N6) · TERTUTUP (N8)
 var MJ = susunMenurutJam(KINI);
 ok('menurut jam: lima laci, Pagi bertanda sekarang, isi diurut dari yang terbanyak (Pagi: jual 3 di atas)', MJ.length === 5 && MJ[1].sekarang && MJ[1].isi[0].id === 'jual-1' && MJ[1].isi[0].angka === '3' && MJ[1].isi.length === 7, J(MJ.map(function (g) { return g.nama + ':' + g.isi[0].id; })));
@@ -209,6 +219,8 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            'no.4: laci Pelanggan diam soal kelebihan bayar': js.replace("(macet ? ' · ' + macet + ' macet' : '') + (LB.n ? ' · kelebihan bayar ' + RP(LB.jumlah) : '')", "(macet ? ' · ' + macet + ' macet' : '')"),
+            'no.4: jawaban piutang diam soal kelebihan bayar': js.replace("const kataLB = LB.n ?", "const kataLB = false ?"),
             'pengingat pajak dari modul pajak diabaikan': js.replace("(lokal && Array.isArray(lokal.pajak) ? lokal.pajak : []).forEach(", "([]).forEach("),
             'pengingat pajak tanpa tenggang H-3 (bawaan 0)': js.replace("hariCadangan: 0, hariPajak: 3,", "hariCadangan: 0, hariPajak: 0,"),
             'tempo bon pemasok tidak dipakai (jatuh = tanggal bon)': js.replace("jatuh: b.tanggal && T.hari > 0 ? ssTambahHari(b.tanggal, T.hari) : ''", "jatuh: b.tanggal ? b.tanggal : ''"),

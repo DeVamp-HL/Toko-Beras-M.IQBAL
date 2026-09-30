@@ -11,7 +11,7 @@
 import { hitungLabaRentang, hitungPiutang, hitungUtangPemasok, hitungStokKarungPerMerk, hitungStokKemasan, hitungLajuPakai, kasPada } from '../mesin/beku.js';
 import { bakuCaraBayar, daftarGerakanKas, pesananBelumTuntas, namaBulanPanjang, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja } from '../data/toko.js';
-import { hariIniIso, RP } from '../inti/format.js';
+import { hariIniIso, RP, lebihBayarDari } from '../inti/format.js';
 
 export const SKALA = [['langsung', 'Langsung'], ['menit', 'Menit'], ['jam', 'Jam'], ['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan'], ['tahun', 'Tahun']];
 const LAPISAN = { langsung: ['m15', 'menit', 'jam'], menit: ['menit', 'jam', 'hari'], jam: ['jam', 'hari', 'bulan'], hari: ['hari', 'minggu', 'bulan'], minggu: ['minggu', 'bulan', 'tahun'], bulan: ['bulan', 'tahun', null], tahun: ['tahun', null, null] };
@@ -224,8 +224,10 @@ export function susunKas(kini) {
 /** Perlu perhatian: bon, utang pemasok, stok menipis (aturan laju live: hari tersisa ≤ AMBANG_HARI_KRITIS), pesanan aktif. */
 export function susunPerhatian() {
   const out = [];
-  const piutang = hitungPiutang().filter((x) => (x.sisa || 0) > 0);
+  const semuaPiutang = hitungPiutang(); const piutang = semuaPiutang.filter((x) => (x.sisa || 0) > 0);
   if (piutang.length) { const tertua = Math.max(...piutang.map((x) => x.umurHari || 0)); out.push({ teks: 'Bon belum lunas · ' + piutang.length + ' nama' + (tertua ? ' · tertua ' + tertua + ' hari' : ''), nilai: RP(piutang.reduce((a, x) => a + x.sisa, 0)), awas: tertua >= 30 }); }
+  // no. 4: sisa negatif dulu disaring diam-diam — kini berbunyi (satu aturan: lebihBayarDari di format.js). Angka bon di atas tidak berubah.
+  const lebih = lebihBayarDari(semuaPiutang); if (lebih.n) out.push({ teks: 'Kelebihan bayar pelanggan · ' + lebih.n + ' nama (' + lebih.orang.map((x) => x.nama).join(', ') + ') — uang pelanggan dipegang toko', nilai: RP(lebih.jumlah), awas: true });
   const up = hitungUtangPemasok(); const totalUp = up.reduce((a, x) => a + (x.totalUtang || 0), 0);
   const bonTertua = Math.max(0, ...up.map((x) => Math.max(0, ...(x.bon || []).map((b) => b.umurHari || 0))));
   if (totalUp > 0) out.push({ teks: 'Utang ke pemasok · ' + up.filter((x) => x.totalUtang > 0).length + ' pemasok' + (bonTertua ? ' · bon tertua ' + bonTertua + ' hari' : ''), nilai: RP(totalUp), awas: false });

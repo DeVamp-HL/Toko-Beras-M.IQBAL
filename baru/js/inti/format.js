@@ -7,6 +7,18 @@ export const RIBU = (n) => (Math.abs(n) < 1000 ? String(Math.round(n)) : Math.ab
 export const KG = (n) => (Math.round((n || 0) * 100) / 100).toString().replace('.', ',') + ' kg';
 export const LITER = (n) => (Math.round((n || 0) * 10) / 10).toString().replace('.', ',') + ' L';
 export const DESIMAL = (n) => (Math.round((n || 0) * 100) / 100).toString().replace('.', ',');
+/** KELEBIHAN BAYAR PELANGGAN (audit 39b no. 4) — sisa mesin beku hitungPiutang boleh NEGATIF (pembayaran melebihi sisa, mis. HP kasir yang katalognya
+ * basi). Dulu semua pembaca menyaring sisa > 0 / menjepit 0: nama bercap "lunas", hilang dari papan/katalog/Perlu perhatian, neraca turun hanya sebesar
+ * sisa (kekayaan naik palsu) — penjaga yang diam. Aturannya SATU di sini (berkas ini ikut di semua bundel uji): ambang −0,5 = tekor pemasok (beku.js);
+ * kata sama dengan sisi pemasok/owner. "titipan" sudah berarti lain (titipan tablet, urusan titipan) — jangan dipakai. Fungsi murni: pemanggil memberi
+ * hasil hitungPiutang(sampai). Mesin & total uang TIDAK diubah. */
+export const LEBIH_AMBANG = -0.5;
+export const kalimatLebih = (lebih) => 'kelebihan bayar ' + RP(lebih) + ' — uang pelanggan dipegang toko';
+export function lebihBayarDari(piutang) {
+  const orang = (piutang || []).filter((d) => d && d.sisa < LEBIH_AMBANG).map((d) => ({ kunci: d.kunci, nama: d.nama, lebih: -d.sisa }))
+    .sort((a, b) => b.lebih - a.lebih || String(a.nama).localeCompare(String(b.nama)));
+  return { orang, n: orang.length, jumlah: orang.reduce((a, x) => a + x.lebih, 0) };
+}
 
 export function hariIniIso(d) {
   d = d || new Date();

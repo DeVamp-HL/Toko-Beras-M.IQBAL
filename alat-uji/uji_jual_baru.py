@@ -772,6 +772,17 @@ ok('S8: nota TUNAI tidak pernah mencari pelunasan (bayarSaatBeli hanya untuk not
 var KUNCI = { retur: {}, karantina: {} };
 [rd, r0].forEach(function (d) { Object.keys(d || {}).forEach(function (k) { KUNCI.retur[k] = 1; }); });
 Object.keys(k0.data || {}).forEach(function (k) { KUNCI.karantina[k] = 1; });
+// ---- 39b no. 4: kelebihan bayar pelanggan terlihat di Jual (daftar nama, info Kredit) & struk — dulu dijepit 0 ("Sisa bon Rp0")
+(function () {
+  var piu0 = cacheMentah('piutang').slice(); var sD = hitungPiutang().find(function (x) { return x.kunci === 'deka'; }).sisa;   // sisa Deka SAAT INI (skenario di atas menambah notanya)
+  pasok('piutangMutasi', piu0.concat([{ id: 'm94', tanggal: '2026-09-19', jam: '11:00', namaPelanggan: 'Deka', tipe: 'bayar', nominal: sD + 30000, caraBayar: 'Tunai', dicatatDi: 'kasir' }]));
+  var dk = daftarPelanggan('dek')[0]; var ik = infoPelanggan('Deka');
+  ok('39b-4 Jual: Deka bayar (sisa + 30.000) → daftar nama sisaBon 0, lebih 30.000; info Kredit (mesin beku dijepit 0) diberi lebih 30.000', dk && dk.sisaBon === 0 && dk.lebih === 30000 && ik && ik.sisa === 0 && ik.lebih === 30000, JSON.stringify([dk, ik && ik.lebih]));
+  var st4 = susunStruk(notaDari({ id: 's2' }), stAtur(), null);
+  ok('39b-4 struk nota BON Deka: baris "Kelebihan bayar Deka … Rp30.000" menggantikan "Sisa bon Deka Rp0"; sisaBon 0, lebihBayar 30.000', st4.kertas.some(function (t) { return /^Kelebihan bayar Deka +Rp30\.000$/.test(t); }) && !st4.kertas.some(function (t) { return /^Sisa bon/.test(t); }) && st4.sisaBon === 0 && st4.lebihBayar === 30000, JSON.stringify(st4.kertas));
+  pasok('piutangMutasi', piu0);
+  ok('39b-4 tanpa sisa negatif struk Deka tetap "Sisa bon" = sisa mesin (lebihBayar 0)', sD > 0 && susunStruk(notaDari({ id: 's2' }), stAtur(), null).lebihBayar === 0 && susunStruk(notaDari({ id: 's2' }), stAtur(), null).sisaBon === sD, sD);
+})();
 print(JSON.stringify({ lulus: lulus, gagal: gagal, kunci: { retur: Object.keys(KUNCI.retur), karantina: Object.keys(KUNCI.karantina) } }));
 """
 
@@ -846,6 +857,9 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            'no.4: struk mencetak "Sisa bon Rp0" untuk kelebihan bayar': js.replace("lebihBayar = r && r.sisa < LEBIH_AMBANG ? -r.sisa : 0;", "lebihBayar = 0;"),
+            'no.4: daftar nama Jual tanpa kelebihan bayar': js.replace("lebih: r && r.sisa < LEBIH_AMBANG ? -r.sisa : 0, umurHari", "lebih: 0, umurHari"),
+            'no.4: info Kredit tanpa kelebihan bayar': js.replace("i.lebih = r && r.sisa < LEBIH_AMBANG ? -r.sisa : 0;", "i.lebih = 0;"),
             # ---- PUTARAN 25: nota sistem baru (trxId, tanpa grupNota)
             'perbaikan dicabut: nota trxId dihitung per baris (Hari ini & belanja terakhir)': js.replace("const jlKunciNota = (p) => String(p.grupNota || p.trxId || p.id);", "const jlKunciNota = (p) => String(p.grupNota || p.id);"),
             '"Hari ini" saja menghitung nota lewat grupNota': js.replace("const nota = new Set(baris.map(jlKunciNota)).size;", "const nota = new Set(baris.map((p) => p.grupNota || p.id)).size;"),

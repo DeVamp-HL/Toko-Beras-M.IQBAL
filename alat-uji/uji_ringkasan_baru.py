@@ -84,6 +84,12 @@ ok('tahun: 2026 · sejak 25 Agustus; 9 hari buka; pembanding tahun lalu DITOLAK 
 ok('tahun: angka = semua baris berlaku 2026 = 5.804.000', R.angka === 5804000, String(R.angka));
 var P = susunPerhatian();
 ok('perhatian: bon belum lunas 1 nama Rp200.000 (tertua ≥ 30 hari → awas); pesanan belum dibayar 1 (1 sudah diantar)', P.some(function (x) { return /Bon belum lunas · 1 nama/.test(x.teks) && x.nilai === 'Rp200.000' && x.awas; }) && P.some(function (x) { return /Pesanan belum dibayar · 1 sudah diantar/.test(x.teks) && x.nilai === '1 pesanan'; }), JSON.stringify(P));
+// 39b no. 4: kelebihan bayar pelanggan BERBUNYI di Perlu perhatian (dulu disaring sisa > 0 dengan diam). Baris bon di atas tidak berubah.
+ok('perhatian 39b-4: tanpa sisa negatif tidak ada baris kelebihan bayar', !P.some(function (x) { return /Kelebihan bayar pelanggan/.test(x.teks); }), JSON.stringify(P));
+var piu0 = cacheMentah('piutang').slice(); pasok('piutangMutasi', piu0.concat([{ id: 'm9', tanggal: '2026-09-19', namaPelanggan: 'Wati', tipe: 'saldoAwal', nominal: 50000 }, { id: 'm10', tanggal: '2026-09-19', namaPelanggan: 'Wati', tipe: 'bayar', nominal: 80000, dicatatDi: 'kasir' }]));
+var P4 = susunPerhatian(); var b4 = P4.find(function (x) { return /Kelebihan bayar pelanggan/.test(x.teks); });
+ok('perhatian 39b-4: sisa Wati −30.000 → "Kelebihan bayar pelanggan · 1 nama (Wati) — uang pelanggan dipegang toko", Rp30.000, AWAS; baris bon tetap 1 nama Rp200.000', b4 && b4.teks === 'Kelebihan bayar pelanggan · 1 nama (Wati) — uang pelanggan dipegang toko' && b4.nilai === 'Rp30.000' && b4.awas && P4.some(function (x) { return /Bon belum lunas · 1 nama/.test(x.teks) && x.nilai === 'Rp200.000'; }), JSON.stringify(P4));
+pasok('piutangMutasi', piu0);
 var K = susunKas(KINI);
 ok('kas: tanpa titik kas di perangkat → MENOLAK menyebut saldo; arus hari ini tetap dari buku kas: laci 1.274.000 · rekening 200.000', K.adaTitik === false && K.total === null && K.masukLaci === 1274000 && K.masukRek === 200000 && K.keluar === 0, JSON.stringify(K));
 localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-09-18', laci: 1000000, rekening: 500000, amplop: 0, brankas: 0 }));
@@ -127,6 +133,7 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            'no.4: kelebihan bayar pelanggan tidak disebut di Perlu perhatian': js.replace("if (lebih.n) out.push({ teks: 'Kelebihan bayar pelanggan · '", "if (false) out.push({ teks: 'Kelebihan bayar pelanggan · '"),
             'baris yang dibatalkan ikut dihitung': js.replace("ambilPenjualan().forEach((p) => {\n    const t = p.tanggal || ''; if (!t) return;", "ambilPenjualanSemua().forEach((p) => {\n    const t = p.tanggal || ''; if (!t) return;"),
             'nota dua baris dihitung dua nota': js.replace("const rkKunciNota = (p) => String(p.trxId || p.grupNota || p.id);", "const rkKunciNota = (p) => String(p.id);"),
             'pembanding kemarin memakai SEHARI PENUH (bukan jam segini)': js.replace("const kmrSegini = adaSejak(kemarin) ? rkJumlahRentang(ix, kemarin, kemarin, menitKini) : null;", "const kmrSegini = adaSejak(kemarin) ? rkJumlahRentang(ix, kemarin, kemarin) : null;"),

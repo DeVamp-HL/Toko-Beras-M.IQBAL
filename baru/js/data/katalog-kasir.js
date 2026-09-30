@@ -20,8 +20,11 @@ import { waktuSetempat } from '../inti/format.js';
 export const KK_KOLEKSI = 'ringkasanKasir';
 export const KK_ID = 'aktif';
 export const KK_JEDA_MS = 4000;
-// Versi kasir yang mengambil katalog sendiri tiap layar HP dinyalakan & tiap 5 menit (25c). = VERSI sw-kasir.js — uji_katalog_kasir.py membandingkannya.
-export const KK_VERSI_KASIR_TERBARU = 'kasir-v27';
+// Versi kasir TERBARU yang disajikan = VERSI sw-kasir.js (uji_katalog_kasir.py & uji_antrean_kasir.py membandingkannya; naik bersama).
+export const KK_VERSI_KASIR_TERBARU = 'kasir-v28';
+// Versi PERTAMA yang mengambil katalog sendiri tiap layar HP dinyalakan & tiap 5 menit (25c). Di bawahnya = harga baru baru sampai saat dibuka ulang;
+// di antara ini dan versi terbaru (39b no. 4: v27 belum punya buku kecil bayar bon) = cukup diberi tahu, pemeriksaan katalog lamanya tetap jalan.
+export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v27';
 const KK_BASI_MS = 6 * 60000;   // HP yang berdenyut lebih dari 6 menit sesudah katalog terbit tapi masih memegang yang lama = belum mengambil
 
 // ---- keadaan dokumen di server (diisi pendengar firebase.js; owner saja) ----
@@ -89,7 +92,8 @@ export const kkMentah = (koleksi) => koleksi === KK_KOLEKSI;
 
 /**
  * Beranda (owner): { status: kalimat "katalog kasir: diperbarui …", awas, perhatian: [{ teks, nilai, awas }] } — perhatian = katalog tertinggal,
- * HP kasir yang belum bisa mengambil katalog sendiri (versi < KK_VERSI_KASIR_TERBARU), HP penjaga yang masih memegang katalog lama.
+ * HP kasir yang belum bisa mengambil katalog sendiri (versi < KK_VERSI_AMBIL_SENDIRI), HP yang belum memakai versi terbaru, HP penjaga yang masih memegang
+ * katalog lama.
  */
 export function kkBeranda(kini) {
   const s = _kkServer; const t = (kini instanceof Date ? kini : new Date()).getTime(); const out = [];
@@ -105,10 +109,12 @@ export function kkBeranda(kini) {
     const nama = (p.nama || p.id) + ' · ' + kpNamaAplikasiKasir(p);
     // di bawah versi terbaru: HP itu belum mengambil katalog sendiri & belum melaporkan katalog yang dipegangnya. Di bawah lantai 25b sudah disebut
     // kpPerhatianPerangkat (kunci-periode-logika.js) — tidak diulang di sini.
-    if (kpNomorVersiKasir(p.versi) < kpNomorVersiKasir(KK_VERSI_KASIR_TERBARU)) {
+    if (kpNomorVersiKasir(p.versi) < kpNomorVersiKasir(KK_VERSI_AMBIL_SENDIRI)) {
       if (kpVersiKasirCukup(p.versi)) out.push({ teks: 'HP ' + nama + ': masih ' + p.versi + ' — harga baru baru sampai saat aplikasinya dibuka ulang', nilai: 'buka ulang', awas: false });
       return;
     }
+    // sudah mengambil katalog sendiri tapi belum versi terbaru: disebut (tanpa awas) — pemeriksaan katalog lama di bawah TETAP jalan untuknya.
+    if (kpNomorVersiKasir(p.versi) < kpNomorVersiKasir(KK_VERSI_KASIR_TERBARU)) out.push({ teks: 'HP ' + nama + ': masih ' + p.versi + ' — versi ' + KK_VERSI_KASIR_TERBARU + ' terpasang saat aplikasinya dibuka ulang', nilai: 'buka ulang', awas: false });
     const pegang = p.katalog ? new Date(p.katalog).getTime() : NaN;
     if (p.aplikasi === 'darurat' && isFinite(terbitMs) && x - terbitMs > KK_BASI_MS && (!isFinite(pegang) || pegang < terbitMs)) {
       out.push({ teks: 'HP ' + nama + ': masih memegang katalog ' + (isFinite(pegang) ? waktuSetempat(p.katalog) : 'lama') + ' (denyut ' + waktuSetempat(p.pada) + ')', nilai: 'katalog lama', awas: true });
