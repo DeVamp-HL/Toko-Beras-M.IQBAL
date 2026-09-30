@@ -980,6 +980,59 @@ kebetulan kembali sama (dikurangi dua kali). Mesin TIDAK diubah.
   & sesudah sampai server, catatan lama tanpa tanggal), `uji_antrean_kasir.py` +2 peramban (layar & klik sungguhan); `uji_arsip_produk.py` &
   `uji_wadah_stok_sendiri.py` membandingkan katalog tanpa dua kunci baru. Kontrol baru: katalog kasir 11, antrean kasir 1.
 
+## Audit 39b no. 6 — ganti nama wadah aktif memindah buku karung di belakang (1 Okt 2026, cabang `audit/39b-ganti-nama-karung-belakang`)
+
+Temuan G: `wbSusunGantiNama` memindah buku wadah & karung sisihan ke nama baru, tetapi buku "Karung belakang <lama> · merek" (putaran 39) tertinggal
+yatim → karung di belakang nama baru terbaca kosong dan isi ulang berikutnya membuka karung BARU dari tumpukan gudang (tumpukan turun tanpa karung
+diambil, dua buku untuk satu karung fisik). Tambalan: tiap buku karung belakang → lahir "Karung belakang <baru> · merek" + pindah buku (modal ikut);
+kolam catatannya pindah bernama kunci baru di belakang wadah baru, kolam lama dinolkan; karung yang berdiri ditulis terakhir supaya tetap berdiri;
+buku karung belakang MINUS → ganti nama ditolak (samakan dulu). Uji `uji_wadah_satu_buku.py` +3 (pindah & tumpukan/nilai tetap, isi ulang tidak
+membuka karung baru, minus ditolak). Kontrol baru 2.
+- Tambahan 1 Okt: kolam lama dinolkan DI TEMPATNYA (di belakang nama lama; dulu ditulis lepas → 4 karung hantu "dulu di belakang wadah <lama>" di
+  deretan & cocokkan). Titik samakan nama baru membawa komposisi turunan (`wbKomposisiTurunanKg`) — dulu nama baru "belum ada isi ulang tercatat".
+  Uji +2, kontrol +2.
+
+## Audit 39b no. 16 — cocokkan wadah aktif tidak memutus komposisi turunan (1 Okt 2026, cabang `audit/39b-ganti-nama-karung-belakang`)
+
+Temuan: komposisi isi wadah aktif (merek asal, "Kumala 3 : NG 2") diturunkan dari riwayat isi ulang sejak titik samakan terakhir. Cocokkan wadah
+menulis titik samakan baru TANPA komposisi → chip Jual, kartu Stok, panel wadah tampil "belum ada isi ulang tercatat", lalu 100 % merek isi ulang
+berikutnya. Buku tidak tersentuh. Tambalan: `ccSimpanWadah` (wadah berbuku sendiri) membawa `komposisi` = komposisi turunan sekarang disebar ke
+hitungan (Σ persis). Uji `uji_wadah_satu_buku.py` +1 (banding sama sesudah cocokkan; isi ulang NG sesudahnya menambah bagian NG, tidak jadi 100 %),
+kontrol +1.
+
+## Audit 39b no. 7 — takar dari karung sisihan / kemasan adukan yang kosong tidak membuka "karung otomatis" (1 Okt 2026, cabang `audit/39b-takar-buku-khusus`)
+
+Temuan: panel − / + takar (`jual-logika.js` `hitungTakar` → `susunTakarWadah`) membuka karung baru "otomatis" bila karung sumbernya kurang. Untuk karung
+berbuku sendiri yang BUKAN karung belakang — karung sisihan wadah, kemasan adukan yang dibuka — tidak ada tumpukan di belakangnya: karung hantu itu
+ditulis tanpa buku, takarnya lalu memindah buku khusus jadi minus (adukan: stok kemasan tetap, jadi lebih 1 unit). Belum pernah terjadi di data.
+Tambalan: sumber berjenis karung sisihan / adukan tidak pernah dibuka otomatis; kosong / belum ditandai → `habisKhusus` dan catat DITOLAK dengan
+kalimat (adukan: buka satu kemasan lagi dulu). Masih berisi tapi kurang → seadanya (39c) seperti biasa. Panel menyebut "KOSONG". Uji
+`uji_wadah_satu_buku.py` +1 (+1 statis layar), kontrol +1.
+
+## Audit 39b no. 26 — deretan panel − / + sepakat dengan 8 slot Stok (1 Okt 2026, cabang `audit/39b-deretan-jual-sepakat`)
+
+Temuan: sesudah 39c, layar Stok menggambar deretan sebagai satu slot per wadah (kosong = "?"), tetapi panel isi ulang − / + (Jual & rincian wadah)
+masih memakai `deretanKarung()` mentah: slot KOSONG tampil sebagai karung "±0 kg" bernama wadahnya (nama kelas), dan ketukannya menyiapkan buka karung
+atas nama itu (dijaga ketukan kedua). Tambalan: `wadah-panel.js` menyaring slot yang tidak tercatat (`!k.no || k.dicatat`) — deretan panel = slot berisi
++ karung lepas, sama dengan Stok. Uji `uji_wadah_satu_buku.py` +1 (+1 statis layar).
+
+## Audit 39b no. 14 — tanda "jual dulu, tandai untuk dicocokkan" tidak dihitung ganda (1 Okt 2026, cabang `audit/39b-selisih-tembus-ganda`)
+
+Temuan (J3 + J4): (J3) dua baris keranjang dari satu buku sama-sama melampaui — tiap baris dibanding buku dikurangi baris LAIN, jadi kekurangan
+50 kg ditagih 50 + 50. (J4) literan dari wadah BELUM aktif yang campuran dipecah ke merek asal; tanda & `selisihKg` penuh disalin ke tiap merek asal —
+pita Jual & kartu Gudang menagih merek yang bukunya tidak kurang. Buku & uang tidak terpengaruh (tanda saja).
+- `jual-logika.js` `barisTembus`: kekurangan dibagi SEKALI — baris sebelumnya memakai buku lebih dulu (`maksSebelum`), baris tanpa sisa kekurangan tidak
+  ditandai; kalimat pemeriksaan ulang tetap sama (dari langit-langit tanpa baris itu). Pita "jual dulu" & kabar hanya menyebut yang kurang.
+- `pecahItemsWadah`: kekurangan literan campuran jatuh ke merek asal yang bagiannya melebihi buku yang tersisa (Σ = kekurangan baris); tidak ada
+  yang kurang di buku → merek yang bukunya paling tipis. Merek lain tanpa tanda.
+- Uji: `uji_jual_tandai_cocok.py` +2 (kontrol +2), `uji_wadah_satu_buku.py` +1 (kontrol +1).
+- Tinjauan independen (10 diajukan, 9 lolos): T1 kekurangan literan campuran = kekurangan BUKU merek (tidak dibesarkan ke selisih liter wadah); T2 pita &
+  kalimat "jual dulu" menyebut merek yang bukunya kurang (`kurangPecahan`), bukan pecahan pertama; T3 riwayat / struk yang menggabung satu takaran membawa
+  tanda dari pecahan mana pun (`gabungTakaran`); T5 kabar sesudah simpan menyebut tanda tembus (dulu ditimpa); T6 uji lewat jalur nyata (keranjang →
+  simpanNota). T4 (tanda karung dibulatkan ke ½ karung — sejak 31b, tanda saja) dicatat, belum dibetulkan. Uji +1, kontrol +2.
+- No. 6/7 dari tinjauan yang sama: W1 ganti nama tidak menghidupkan kolam karung yang sudah ditutup; W2 urutan karung di nama baru = urutan buka (catatan
+  diamSlot tidak dihitung); W4 panel kemasan adukan kosong menyarankan buka kemasan lagi, tombol CATAT redup.
+
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
 Temuan J1: uang kurang saat bayar → semua baris nota jadi Kredit (`uangDiterima` tidak ditulis) + satu pelunasan piutang sebesar uang yang diterima

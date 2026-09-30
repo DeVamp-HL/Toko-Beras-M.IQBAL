@@ -993,7 +993,7 @@ if __name__ == '__main__':
             'takar tidak mengurangi karung di belakang wadah': js.replace("const sisa = wdB2(masuk - diambil); const akhir", "const sisa = wdB2(masuk); const akhir"),
             'takar campuran membebani SEMUA karung (bukan nama masing-masing)': js.replace("b + (x.merk === merk && wdLokasiSumber(x, daftar) === L ? (Number(x.kg) || 0) : 0), 0)", "b + (wdLokasiSumber(x, daftar) === L ? (Number(x.kg) || 0) : 0), 0)"),
             'takar sebelum karung dibuka ikut mengurangi karung itu': js.replace("(t.tipe === 'takar' && wdSesudah(t, mulai) ?", "(t.tipe === 'takar' && true ?"),
-            'karung habis tidak diganti (karung di belakang jadi minus diam-diam)': js.replace("const buka = kurang > 0.0001 ? Math.ceil(", "const buka = false ? Math.ceil("),
+            'karung habis tidak diganti (karung di belakang jadi minus diam-diam)': js.replace("const buka = !jenisK && kurang > 0.0001 ? Math.ceil(", "const buka = false ? Math.ceil("),
             'karung yang belum pernah ditandai dibuka diam-diam': js.replace("const kurang = seadanya ? 0 : k.diketahui ? kg - k.sisaKg : (bukuBelakang ? kg : 0);", "const kurang = seadanya ? 0 : kg - (k.sisaKg || 0);"),
             'samakan karung bukan titik hitung baru (karung lama ikut dijumlah)': js.replace("k.tipe === 'karung' && diSini(k) && (!dasar || wdSesudah(k, dasar)));", "k.tipe === 'karung' && diSini(k));"),
             'sampai rata dibulatkan ke ATAS (melewati target)': js.replace("const putaran = Math.max(0, Math.floor((targetKg - w.sisaNyataKg + 0.0001) /", "const putaran = Math.max(0, Math.ceil((targetKg - w.sisaNyataKg + 0.0001) /"),
