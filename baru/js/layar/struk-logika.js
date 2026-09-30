@@ -61,7 +61,9 @@ export function gabungTakaran(baris) {
   const out = []; const peta = {};
   (baris || []).forEach((p) => { if (!p.takaranId) { out.push(p); return; } const k = String(p.takaranId); const g = peta[k];
     if (!g) { peta[k] = Object.assign({}, p); out.push(peta[k]); return; }
-    ['jumlahLiter', 'totalKg', 'hargaTotal', 'hppTotalSaatJual', 'potonganTransaksi', 'pembulatan', 'nilaiBarangPengganti'].forEach((f) => { if (p[f] !== undefined || g[f] !== undefined) g[f] = Math.round(((g[f] || 0) + (p[f] || 0)) * 1000) / 1000; }); });
+    ['jumlahLiter', 'totalKg', 'hargaTotal', 'hppTotalSaatJual', 'potonganTransaksi', 'pembulatan', 'nilaiBarangPengganti'].forEach((f) => { if (p[f] !== undefined || g[f] !== undefined) g[f] = Math.round(((g[f] || 0) + (p[f] || 0)) * 1000) / 1000; });
+    // 39b no. 14 tinjauan T3: tanda "jual dulu, tandai" kini hanya di pecahan merek yang kurang — yang digabung ikut membawanya (dulu cuma atribut baris pertama)
+    if (p.perluCocokkan) { g.perluCocokkan = true; g.selisihKg = Math.round(((Number(g.selisihKg) || 0) + (Number(p.selisihKg) || 0)) * 100) / 100; } });
   return out;
 }
 /** Nama baris untuk struk (namaSingkatTrx sistem lama, dengan jenis baru). */
