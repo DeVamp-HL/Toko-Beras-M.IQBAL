@@ -20,8 +20,8 @@
 // Wajib MENUTUP: Σ jenis harian = harianToko mesin; upah + tagihan tetap = jatahBulanan mesin; margin − Σ jenis − hapus buku + susut = laba bersih mesin.
 // Tidak ada perilaku uang yang berubah; yang BARU ditulis hanya aturanToko/kendaliBiaya. Nama pembantu diprefiks `kb` (bundel uji jsc satu lingkup).
 import { hitungLabaBersihRentang, hitungArusKasInti, bayaranBiayaBulanan } from '../mesin/beku.js';
-import { akhirBulanIso, bulanDari, POS_BIAYA_BULANAN, hppTercatat } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPengeluaranHarian, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan } from '../data/toko.js';
+import { akhirBulanIso, bulanDari, POS_BIAYA_BULANAN, hppTercatat, caraBayarKunci } from '../mesin/pembantu.js';
+import { ambilPenjualan, ambilPengeluaranHarian, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilPiutangMutasi, ambilKasbonMutasi } from '../data/toko.js';
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong, ugUntukDok } from './uang-logika.js';
 import { lpFinal, lpNamaBulan, lpBulanPendek, daftarBulan } from './laporan-logika.js';
@@ -158,15 +158,18 @@ export function titikImpas(K, kini, bayaran) {
 // ---------- pemicu biaya: biaya per satuan, bulan ini vs bulan lalu ----------
 function kbKedatangan(key) { let kg = 0, rp = 0, bongkar = 0, n = 0; ambilSemuaBatch().forEach((b) => { if (b.stokAwal || b.tutupBuku || !b.tanggal || bulanDari(b.tanggal) !== key) return; n += 1; bongkar += Number(b.biayaBongkar) || 0; (b.merkList || []).forEach((m) => { kg += Number(m.totalKg) || 0; rp += Number(m.subtotalHarga) || 0; }); }); return { kg, rp, bongkar, n }; }
 function kbKantong(key) { let lembar = 0, rp = 0; ambilBahanKemasan().concat(ambilBahanLiteran()).forEach((x) => { if (x.tipe !== 'beli' || !x.tanggal || bulanDari(x.tanggal) !== key) return; const j = Number(x.jumlah) || 0; if (j > 0) { lembar += j; rp += Number(x.hargaTotal) || 0; } }); return { lembar, rp }; }
+/* audit 39b no. 3: dokumen potongan tutup hari (mdr-<tanggal>) memuat potongan SEMUA uang QRIS — penjualan + bayar bon + kasbon kembali — maka
+   penyebut rasionya juga semua uang QRIS itu (Ka.pos.qris mesin = penjualan saja). */
+const kbQrisLain = (X) => ambilPiutangMutasi().concat(ambilKasbonMutasi()).filter((m) => m && m.tipe === 'bayar' && (m.tanggal || '') >= X.awal && (m.tanggal || '') <= X.akhir && Number(m.nominal) > 0 && caraBayarKunci(m) === 'qris').reduce((a, m) => a + (Number(m.nominal) || 0), 0);
 function kbHariKerja(key) { let h = 0; ambilBiayaBulanan().forEach((b) => { if (b.bulan !== key) return; (b.rincianGaji || []).forEach((r) => { h += Number(r.hari) || 0; }); }); return h; }
 export function pemicuBiaya(K, bayaran) {
   const B = bayaran || bayaranBiayaBulanan(); const KL = K.KL; const A = K.A;
   const satu = (X, U) => { const D = kbKedatangan(X.key); const T = kbKantong(X.key); const hk = kbHariKerja(X.key) + (U ? U.nHari : 0); const upahSemua = X.per.upah.n + (U ? U.total : 0); const Ka = hitungArusKasInti((t) => !!t && t >= X.awal && t <= X.akhir, B); const mdr = X.per.keuangan.catatan.filter((c) => c.mdr).reduce((a, c) => a + c.n, 0);
     return { biayaKg: X.kgTerjual > 0 ? X.biayaToko / X.kgTerjual : null, hppKg: X.kgHitung > 0 ? X.L.hpp / X.kgHitung : null, jualKg: X.kgHitung > 0 ? X.omzetHitung / X.kgHitung : null, marginKg: X.kgHitung > 0 ? X.margin / X.kgHitung : null,
-      bongkarKg: D.kg > 0 ? D.bongkar / D.kg : null, beliKg: D.kg > 0 ? D.rp / D.kg : null, mdrQris: Ka.pos.qris > 0 ? mdr / Ka.pos.qris * 100 : null, karyawanHari: hk > 0 ? (upahSemua + X.per.karyawan.n) / hk : null, kantongLembar: T.lembar > 0 ? T.rp / T.lembar : null, susutKg: X.kgTerjual > 0 ? X.susut / X.kgTerjual : null, D, T, hk, qris: Ka.pos.qris }; };
+      bongkarKg: D.kg > 0 ? D.bongkar / D.kg : null, beliKg: D.kg > 0 ? D.rp / D.kg : null, mdrQris: Ka.pos.qris + kbQrisLain(X) > 0 ? mdr / (Ka.pos.qris + kbQrisLain(X)) * 100 : null, karyawanHari: hk > 0 ? (upahSemua + X.per.karyawan.n) / hk : null, kantongLembar: T.lembar > 0 ? T.rp / T.lembar : null, susutKg: X.kgTerjual > 0 ? X.susut / X.kgTerjual : null, D, T, hk, qris: Ka.pos.qris }; };
   const N = satu(K, K.U), NL = satu(KL, K.UL);
   const DAFTAR = [['biayaKg', 'Biaya toko per kg terjual', 'Rp/kg', 'biaya toko mesin ÷ kg semua nota ber-kg'], ['hppKg', 'HPP per kg terjual', 'Rp/kg', 'HPP mesin ÷ kg nota ber-HPP'], ['jualKg', 'Harga jual per kg', 'Rp/kg', 'omzet ber-HPP ÷ kg nota ber-HPP'], ['marginKg', 'Margin kotor per kg', 'Rp/kg', 'harga jual − HPP per kg'],
-    ['beliKg', 'Harga beli per kg (kedatangan)', 'Rp/kg', 'Σ harga beras ÷ Σ kg kedatangan bulan itu'], ['bongkarKg', 'Bongkar per kg kedatangan', 'Rp/kg', 'Σ bongkar ÷ Σ kg kedatangan (tertanam di HPP)'], ['mdrQris', 'Potongan QRIS dari omzet QRIS', '%', 'catatan bertanda MDR ÷ omzet QRIS'],
+    ['beliKg', 'Harga beli per kg (kedatangan)', 'Rp/kg', 'Σ harga beras ÷ Σ kg kedatangan bulan itu'], ['bongkarKg', 'Bongkar per kg kedatangan', 'Rp/kg', 'Σ bongkar ÷ Σ kg kedatangan (tertanam di HPP)'], ['mdrQris', 'Potongan QRIS dari uang QRIS', '%', 'catatan bertanda MDR ÷ semua uang QRIS (penjualan + bayar bon + kasbon kembali)'],
     ['karyawanHari', 'Biaya karyawan per hari kerja', 'Rp/hari', '(upah kotor dibayar + belum dibayar + di luar upah) ÷ (hari kerja rincian gaji + hari belum dibayar)'], ['kantongLembar', 'Harga kantong per lembar', 'Rp/lembar', 'Σ harga ÷ Σ lembar beli kantong bulan itu'], ['susutKg', 'Susut per kg terjual', 'Rp/kg', 'susut & selisih ÷ kg terjual']];
   const baris = DAFTAR.map(([id, nama, satuan, sumber]) => { const n = N[id], l = NL[id]; const delta = n !== null && l !== null && l > 0 ? kbPct(n - l, l) : null; const naikBiaya = id !== 'jualKg' && id !== 'marginKg'; const turunBuruk = id === 'jualKg' || id === 'marginKg';
     return { id, nama, satuan, sumber, n: n === null ? null : Math.round(n * 10) / 10, nLalu: l === null ? null : Math.round(l * 10) / 10, delta, naik: delta !== null && ((naikBiaya && delta > A.ambangPemicu) || (turunBuruk && delta < -A.ambangPemicu)), teks: n === null ? 'belum bisa dihitung' : (satuan === '%' ? kbPctTeks(n) : RP(Math.round(n)) + (satuan === 'Rp/kg' ? '/kg' : satuan === 'Rp/hari' ? '/hari' : '/lembar')),

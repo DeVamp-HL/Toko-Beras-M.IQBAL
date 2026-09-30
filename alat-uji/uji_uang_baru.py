@@ -9,7 +9,7 @@ Kalau ada backup-batch-*.json lokal (asap): identitas kantong pada cadangan toko
     python3 alat-uji/uji_uang_baru.py            → N lulus · 0 gagal
     python3 alat-uji/uji_uang_baru.py --kontrol  → logika yang dirusak wajib ketahuan
 """
-import os, sys, json, glob, subprocess, tempfile
+import os, re, sys, json, glob, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
@@ -291,6 +291,17 @@ ok('39b-3 dokumen: tutupHari omzet 1.850.000 · mdr {kira 6.000, jadi 6.000, nya
 if (!Rb.tolak) { tulis(Rb); localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify(Rb.titik)); } identitas('39b-3 sesudah tutup hari dengan bayar bon QRIS');
 ok('39b-3 sesudah tutup: potongan 6.000 tercatat sebagai biaya hari itu; rekening 5.754.000', ringkasHari('2026-09-19').mdrTercatat === 6000 && saldoKantong().rekening === 5754000, J([ringkasHari('2026-09-19').mdrTercatat, saldoKantong().rekening]));
 
+// ---- K5c · tinjauan no. 3 T5 & T8: nota HP kasir (grupNota tanpa trxId) + baris Potongan harga MINUS; satu baris nota yang DIRAPIKAN ikut nota asalnya
+Object.keys(KOTAK).forEach(function (n) { pasok(n, KOTAK[n]); }); localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-09-15', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }));
+var jq = function (id, n, g, x) { return { koleksi: 'penjualan', data: Object.assign({ id: id, grupNota: g, tanggal: '2026-09-19', jam: '15:00', caraBayar: 'QRIS', jenis: 'kemasan', namaProduk: 'Barang Contoh', totalKg: 0, hargaTotal: n, hppTotalSaatJual: 0 }, x || {}) }; };
+terapkanKeCache([jq('g21', 400000, 'G-QR2'), jq('g22', 300000, 'G-QR2'), jq('g23', -50000, 'G-QR2', { jenis: 'potongan', namaProduk: 'Potongan harga' }),
+  jq('g31', 400000, 'G-QR3'), jq('g32', 300000, 'G-QR3', { dikoreksiOleh: 'g32b' }), jq('g32b', 300000, 'G-RAPI', { koreksiDari: 'g32', alasanKoreksi: 'Dirapikan dari kasir' })]);
+var RHc = ringkasHari('2026-09-19'); var gq = function (k) { return RHc.qrisNota.find(function (q) { return q.id === k; }) || {}; };
+ok('39b-3 T8 nota HP kasir: grupNota G-QR2 = 400.000 + 300.000 − potongan 50.000 = SATU transaksi 650.000 → potongan 1.950 (per baris dulu 0 + 0 + 0)', gq('G-QR2').n === 650000 && gq('G-QR2').mdr === 1950, J(RHc.qrisNota));
+ok('39b-3 T5 satu baris nota G-QR3 dirapikan (grupNota baru G-RAPI, koreksiDari baris asal) → tetap SATU transaksi 700.000 → potongan 2.100 (bukan 400.000 + 300.000 → 0)', gq('G-QR3').n === 700000 && gq('G-QR3').mdr === 2100 && !RHc.qrisNota.some(function (q) { return q.id === 'G-RAPI'; }) && RHc.qrisNota.length === 3 && RHc.mdrKira === 1800 + 1950 + 2100, J(RHc.qrisNota));
+var gerakRek = daftarGerakanKas().filter(function (g) { return g.t === '2026-09-19' && g.kantong === 'rekening'; }).reduce(function (a, g) { return a + g.masuk; }, 0);
+ok('39b-3 T4 (beda yang diketahui, mesin beku): uang QRIS tutup hari 1.950.000 = yang dipindai; rekening mesin 2.000.000 = harga kotor (baris minus dibuang mesin) → selisihnya persis Σ baris QRIS minus −50.000', RHc.qris === 1950000 && gerakRek === 2000000 && RHc.qris - gerakRek === -50000, J([RHc.qris, gerakRek]));
+
 // ==================== K6 · TUTUP BUKU (kotak pasir direset) ====================
 Object.keys(KOTAK).forEach(function (n) { pasok(n, KOTAK[n]); }); localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-09-15', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }));
 tulis(susunOwner({ jenis: 'kasbon', ketik: '80.000', tempat: 'laci', ket: 'Keperluan keluarga' }, W));   // kasbon owner 80.000 supaya barisnya berisi
@@ -333,10 +344,11 @@ var KINI = new Date(Date.now()); var salah = []; var S = saldoKantong();
 if (S.ada && !S.cocok) salah.push('kantong ≠ kasPada: ' + S.total + ' vs ' + S.mesin);
 // audit 39b no. 3: uang QRIS tutup hari per tanggal = gerakan rekening mesin (penjualan + bayar bon + kasbon kembali lewat QRIS)
 var hariQ = {}; daftarGerakanKas().forEach(function (g) { if (g.kantong === 'rekening' && g.masuk > 0) hariQ[g.t] = (hariQ[g.t] || 0) + g.masuk; });
-ambilPenjualan().forEach(function (p) { if (caraBayarKunci(p) === 'qris' && hariQ[p.tanggal] === undefined) hariQ[p.tanggal] = 0; });
-var nHariQ = 0, bonQ = 0; Object.keys(hariQ).forEach(function (t) { var R = ringkasHari(t); nHariQ++; bonQ += R.qrisBon; if (Math.abs(R.qris - hariQ[t]) > 0.5) salah.push('QRIS tutup hari ' + t + ' ' + R.qris + ' ≠ gerakan rekening mesin ' + hariQ[t]); });
+// (tinjauan no. 3 T4: mesin membuang baris penjualan minus dari kas, tutup hari menjumlahnya → selisih yang sah = Σ baris QRIS minus hari itu)
+var minusQ = {}; ambilPenjualan().forEach(function (p) { if (caraBayarKunci(p) === 'qris' && hariQ[p.tanggal] === undefined) hariQ[p.tanggal] = 0; if (caraBayarKunci(p) === 'qris' && Number(p.hargaTotal) < 0) minusQ[p.tanggal] = (minusQ[p.tanggal] || 0) + Number(p.hargaTotal); });
+var nHariQ = 0, bonQ = 0; Object.keys(hariQ).forEach(function (t) { var R = ringkasHari(t); nHariQ++; bonQ += R.qrisBon; if (Math.abs(R.qris - hariQ[t] - (minusQ[t] || 0)) > 0.5) salah.push('QRIS tutup hari ' + t + ' ' + R.qris + ' ≠ gerakan rekening mesin ' + hariQ[t] + ' + baris minus ' + (minusQ[t] || 0)); });
 var PO = posisiOwner(KINI); var U = semuaUpah(KINI); var TG = tagihanBulan(hariIniIso(KINI));
-print(JSON.stringify({ salah: salah, qrisHari: nHariQ + ' hari QRIS diperiksa, ' + (bonQ > 0 ? 'ada' : 'tidak ada') + ' bayar bon QRIS', kantong: S.ada ? { laci: S.laci, brankas: S.brankas, rekening: S.rekening, amplop: S.amplop, total: S.total, minus: S.minus } : 'titik kas tidak ada di cadangan', modal: PO.modal, utangToko: PO.utangToko, kasbonOwner: PO.kasbonOwner, prive: PO.prive,
+print(JSON.stringify({ salah: salah, qrisHari: nHariQ + ' hari QRIS diperiksa, ' + (bonQ > 0 ? 'ada' : 'tidak ada') + ' bayar bon QRIS, ' + Object.keys(minusQ).length + ' hari ber-baris QRIS minus', kantong: S.ada ? { laci: S.laci, brankas: S.brankas, rekening: S.rekening, amplop: S.amplop, total: S.total, minus: S.minus } : 'titik kas tidak ada di cadangan', modal: PO.modal, utangToko: PO.utangToko, kasbonOwner: PO.kasbonOwner, prive: PO.prive,
   karyawan: U.map(function (u) { return u.nama + ' ' + u.nHari + ' hari sejak ' + u.mulai + ' (' + u.sumberMulai + ') kosong ' + u.kosongLama + ' upah ' + u.upah; }), tagihanBelum: TG.nBelum, perluToko: aturKeluar(hariIniIso(KINI)).perluToko.map(function (p) { return p.nama + ' ' + p.biasa; }) }));
 """
 
@@ -410,10 +422,12 @@ if __name__ == '__main__':
             'bayar bon QRIS dibuang dari uang QRIS tutup hari (perilaku lama)': js.replace(".concat(masukQris(ambilPiutangMutasi()).map((m) =>", ".concat([].map((m) =>"),
             'kasbon kembali QRIS dibuang dari uang QRIS tutup hari': js.replace("masukQris(ambilKasbonMutasi())", "masukQris([])"),
             'omzet ikut menghitung bayar bon/kasbon QRIS': js.replace("omzet: tunai + qrisJual + kredit,", "omzet: tunai + qris + kredit,"),
-            'potongan QRIS per baris barang (bukan per transaksi)': js.replace("const k = String(p.trxId || p.grupNota || p.id);", "const k = String(p.id);"),
+            'potongan QRIS per baris barang (bukan per transaksi)': js.replace("const k = kunciTrx(p);", "const k = String(p.id);"),
             'rekap tanpa baris "Bon dibayar QRIS"': js.replace("R.qrisBon > 0 ? [['Bon dibayar QRIS'", "false ? [['Bon dibayar QRIS'"),
             'rekap QRIS (omzet) memakai seluruh uang QRIS': js.replace("['  QRIS', RP(R.qrisJual), '']", "['  QRIS', RP(R.qris), '']"),
             'bayar bon QRIS juga dihitung "bon dibayar tunai"': js.replace("m.tanggal === iso && caraBayarKunci(m) !== 'qris').reduce(", "m.tanggal === iso).reduce("),
+            'potongan QRIS nota HP kasir (grupNota) per baris': js.replace("return String(x.trxId || x.grupNota || x.id); };", "return String(x.trxId || x.id); };"),
+            'baris hasil rapikan tidak ikut transaksi nota asalnya': js.replace("x && x.koreksiDari != null && i < 50;", "x && false && i < 50;"),
             'keterangan potongan tidak menyebut bayar bon': js.replace("(H.R.qrisBon ? ' + ' + H.R.qrisNota.filter((q) => q.jenis === 'bon').length + ' bayar bon' : '')", "''"),
             # ---- K6
             'sesudah (dari susunan pembuka) lupa utang pemasok': js.replace("else if (koleksi === 'utangPemasokMutasi') j.utangP += Number(data.nominal) || 0;", ""),
@@ -432,7 +446,9 @@ if __name__ == '__main__':
         sys.exit(kode)
     l, g = utama(js)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
-    cad = sorted(glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')), key=os.path.basename)
+    def urut_cadangan(p):   # tinjauan no. 3 K1: unduhan kedua di hari yang sama = "…-2026-09-29-2.json" → sesudah "…-2026-09-29.json"
+        m = re.search(r'(\d{4}-\d{2}-\d{2})(?:-(\d+))?\.json$', os.path.basename(p)); return (m.group(1), int(m.group(2) or 1)) if m else ('', 0)
+    cad = sorted(glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')), key=urut_cadangan)
     if cad and not g:
         h, e = jalan(JAM_TETAP.replace("'2026-09-19T10:00:00+07:00'", "'2026-09-22T10:00:00+07:00'") + js + '\nvar CAD = ' + open(cad[-1], encoding='utf-8').read() + ';\n' + ASAP)
         if h is None: print('ASAP JATUH: ' + e); sys.exit(2)

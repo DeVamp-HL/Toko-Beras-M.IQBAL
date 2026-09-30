@@ -876,13 +876,26 @@ memuat satu pun bayar bon QRIS. Mesin TIDAK diubah.
 - Pelanggan: kalimat pratinjau & sesudah bayar bon QRIS menyebut potongannya dicatat saat tutup hari.
 - `kasir.html` (v29, 'versi 39b-3'): lembar utang punya tombol TUNAI/QRIS sendiri (`caraUtangAktif`, `pilihCaraUtang`), kembali ke TUNAI tiap kali
   nama dipilih; selain QRIS dibakukan Tunai (bayar bon tidak pernah Kredit). Versi kasir serentak v29; `KK_VERSI_AMBIL_SENDIRI` tetap v27.
-- Uji: `uji_uang_baru.py` +10 (K5b: dua baris satu transaksi, bayar bon QRIS di atas batas + tunai, kasbon kembali QRIS; identitas "uang QRIS =
-  gerakan rekening mesin"; angka bank diterima; rekap; satu dokumen potongan; titik kas) + asap data toko (per tanggal: uang QRIS tutup hari =
-  gerakan rekening mesin; asap kini juga membaca `_privat/`), `uji_katalog_kasir.py` +4 jsc (fungsi asli: nota QRIS → bon Tunai, ketuk QRIS,
-  reset tiap nama, Kredit dibakukan) + 1 statis, `uji_antrean_kasir.py` +1 peramban (nota QRIS → tombol TUNAI menyala, masuk server Tunai),
-  `uji_pelanggan_baru.py` +1. Kontrol baru: uang 8, katalog kasir 5, antrean kasir 1, pelanggan 1.
+- Uji: `uji_uang_baru.py` +13 (K5b: dua baris satu transaksi, bayar bon QRIS di atas batas + tunai, kasbon kembali QRIS; identitas "uang QRIS =
+  gerakan rekening mesin"; angka bank diterima; rekap; satu dokumen potongan; titik kas · K5c: nota HP kasir ber-`grupNota` dengan baris Potongan
+  harga minus, satu baris nota yang dirapikan) + asap data toko (per tanggal: uang QRIS tutup hari = gerakan rekening mesin + baris QRIS minus;
+  asap kini juga membaca `_privat/`, cadangan terbaru menurut tanggal + akhiran unduhan), `uji_kendali_biaya.py` +1, `uji_katalog_kasir.py` +4 jsc
+  (fungsi asli: nota QRIS → bon Tunai, ketuk QRIS, reset tiap nama, Kredit dibakukan) + 1 statis, `uji_antrean_kasir.py` +1 peramban (nota QRIS →
+  tombol TUNAI menyala, masuk server Tunai), `uji_pelanggan_baru.py` +2. Kontrol baru: uang 10, kendali biaya 1, katalog kasir 5, antrean kasir 1, pelanggan 2.
+- Tinjauan independen 30 Sep (2 peninjau + penyanggah per temuan): 11 diajukan, 10 lolos. Ditambal di cabang ini: T1 Kendali biaya "Potongan QRIS
+  dari uang QRIS" — penyebut ikut bayar bon + kasbon kembali QRIS (dokumen potongan kini memuat potongannya; dulu rasio menggelembung); T5 baris hasil
+  rapikan/rincian ikut transaksi nota ASALNYA (rantai `koreksiDari`, seperti `rtRantaiNota` mesin) — dulu satu pindai terpecah dua kelompok; T6 kalimat
+  bayar bon (Pelanggan) bersyarat: hari yang SUDAH ditutup → "uang ini (dan potongan QRIS-nya) baru ikut hitungan kas kalau tutup hari diulang"
+  (`kalimatBayarTutup`); T4/K2 komentar & asap jujur soal baris minus; T8 uji jalur `grupNota`; K1 pilihan cadangan asap; K3 DOM palsu = markup.
+  Gugur: T7 (label "Dibayar pembeli lewat QRIS").
 - Temuan samping (BELUM dibetulkan, dilaporkan ke owner): (A) baris rincian `rumusLaci` memakai aturan tempat uang yang beda dengan
-  `saldoKantong`; (C) tukar barang yang dibayar QRIS bisa melahirkan potongan palsu (baris minus ikut dijumlah per transaksi).
+  `saldoKantong`; (C, dibetulkan penjelasannya oleh tinjauan T2) tukar yang dibayar QRIS: baris pengganti ditulis HARGA PENUH ber-QRIS, kredit barang
+  kembali jadi uang keluar LACI (retur `nominalRefund`) → uang QRIS tutup hari kebesaran sebesar kreditnya → potongan palsu sebesar itu bila angka bank
+  dicocokkan; (D, T3) "Kirim WA"/"Cetak" untuk hari yang SUDAH ditutup sesudah layar dibuka ulang menyusun rekap dari draf kosong ("Laci dihitung:
+  belum", langkah "tidak dikerjakan") — sudah ada sebelum cabang ini; (E, T4) baris Potongan harga HP kasir (`hargaTotal` minus) dibuang mesin beku dari
+  kas → laci/rekening mesin = harga KOTOR: nota tunai berpotongan tampil "kurang" di laci, nota QRIS berpotongan membuat rekening sistem lebih besar
+  dari bank (usul: kasir.html membagi potongan ke baris barang seperti Jual `/baru/`); (F, T6) catatan uang yang dicatat SESUDAH tutup hari di tanggal
+  yang sama baru ikut kas bila tutup hari diulang sebelum jam 12 esoknya — sesudah itu tidak pernah (tertelan jadi selisih laci esok hari).
 
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 

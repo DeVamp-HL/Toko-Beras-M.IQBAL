@@ -15,7 +15,7 @@
 //  - pengaturan/titikKas = isi tempat uang SESUDAH tutup (laci akhir, rekening, amplop + sisihan, brankas + amankan) — patokan kas maju, inti ritualnya.
 import { kasPada, hitungLabaBersihRentang, hitungStokKarungPerMerk, thDorongRiwayat } from '../mesin/beku.js';
 import { daftarGerakanKas, caraBayarKunci } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import { aturHarga, hgPct } from './harga-logika.js';
 import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat } from './uang-logika.js';
@@ -39,10 +39,15 @@ export const mdrSatu = (n, A) => (n > A.mdrBatas ? Math.round(n * A.mdrPersen / 
 /** Ringkasan hari `iso`: omzet per cara bayar, nota QRIS + potongannya, bon dibayar, laba, yang menggantung, penutupan yang sudah ada. */
 export function ringkasHari(iso) {
   const A = aturTutup(); const jual = ambilPenjualan().filter((p) => p.tanggal === iso);
-  /* audit 39b no. 3: "QRIS" = SEMUA uang yang masuk lewat QRIS hari ini, persis gerakan rekening mesin (pembantu daftarGerakanKas kantongBayar):
+  /* audit 39b no. 3: "QRIS" = SEMUA uang yang masuk lewat QRIS hari ini — sumbernya sama dengan gerakan rekening mesin (pembantu daftarGerakanKas kantongBayar):
      penjualan (dikelompokkan PER TRANSAKSI — satu pindai QRIS satu potongan; dulu per baris barang), pembayaran bon, kasbon kembali. Dulu bayar bon QRIS
-     dibuang → rekening naik penuh tapi tidak ada di rekap, angka bank jujur ditolak, MDR-nya tidak pernah jadi biaya. Omzet tetap penjualan saja (qrisJual). */
-  const grupQ = {}; jual.filter((p) => caraBayarKunci(p) === 'qris').forEach((p) => { const k = String(p.trxId || p.grupNota || p.id); if (!grupQ[k]) grupQ[k] = { id: k, jam: p.jam || '', n: 0, jenis: 'jual', ket: '' }; grupQ[k].n += Number(p.hargaTotal) || 0; });
+     dibuang → rekening naik penuh tapi tidak ada di rekap, angka bank jujur ditolak, MDR-nya tidak pernah jadi biaya. Omzet tetap penjualan saja (qrisJual).
+     Beda yang diketahui: baris penjualan MINUS (potongan harga HP kasir) ikut dijumlah di sini (= uang yang dipindai), mesin membuangnya dari kas
+     (rekening mesin = harga kotor) — tinjauan no. 3 T4, dilaporkan terpisah. Baris hasil rapikan/rincian ikut transaksi nota ASALNYA (rantai koreksiDari). */
+  let petaP = null; const kunciTrx = (p) => { let x = p;
+    for (let i = 0; x && x.koreksiDari != null && i < 50; i++) { if (!petaP) { petaP = {}; ambilPenjualanSemua().forEach((z) => { petaP[String(z.id)] = z; }); } const y = petaP[String(x.koreksiDari)]; if (!y || y === x) break; x = y; }
+    return String(x.trxId || x.grupNota || x.id); };
+  const grupQ = {}; jual.filter((p) => caraBayarKunci(p) === 'qris').forEach((p) => { const k = kunciTrx(p); if (!grupQ[k]) grupQ[k] = { id: k, jam: p.jam || '', n: 0, jenis: 'jual', ket: '' }; grupQ[k].n += Number(p.hargaTotal) || 0; });
   const masukQris = (xs) => (xs || []).filter((m) => m && m.tipe === 'bayar' && m.tanggal === iso && Number(m.nominal) > 0 && caraBayarKunci(m) === 'qris');
   const qrisNota = Object.keys(grupQ).map((k) => grupQ[k])
     .concat(masukQris(ambilPiutangMutasi()).map((m) => ({ id: String(m.id), jam: m.jam || '', n: Number(m.nominal) || 0, jenis: 'bon', ket: 'bayar bon ' + String(m.namaPelanggan || '').trim() })))

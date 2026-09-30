@@ -230,6 +230,7 @@ function sisa(nama) { var p = cariUtang(nama); return p ? p.sisa : null; }
 function muatUlang() { utangTerpilih = null; daftarTampilUtang = []; ringkasan = JSON.parse(JSON.stringify(ringkasan)); }   // HP dimuat ulang: memori hilang, localStorage tetap
 function bayar(nama, n) { bukaLayarUtang(); var i = daftarTampilUtang.map(function (p) { return p.nama; }).indexOf(nama); if (i < 0) return 'tidak ada di daftar'; pilihUtang(i); $('utangNominal').value = String(n); var a = __alert.length; simpanBayarUtang(); return __alert.length > a ? __alert[__alert.length - 1] : 'ok'; }
 function terkirim(id, waktu) { simpanAntrean(ambilAntrean().filter(function (x) { return String(x.docId) !== String(id); })); tandaiBayarBonTerkirim(id, waktu); }
+$('utangCara-Tunai').classList.pilih = true; $('utangCara-Qris').classList.pilih = false;   // = markup kasir.html (TUNAI class="pilih"); tinjauan no. 3 K3
 var KAT = { diperbaruiPada: '2026-09-30T02:00:00.000Z', _waktuServer: '2026-09-30T02:00:01.123456Z', piutang: [{ nama: 'Bu Ani', sisa: 100000 }, { nama: 'Pak Budi', sisa: 50000 }] };
 ringkasan = JSON.parse(JSON.stringify(KAT));
 // S1 bayar sebagian → antrean + buku kecil; sisa di layar turun

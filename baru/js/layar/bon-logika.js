@@ -9,7 +9,7 @@
 // `tagihPelanggan` supaya besok layar tahu janji siapa yang lewat. Macet = bon tertua lebih tua dari N hari DAN tidak ada pembayaran selama itu (usul saja).
 import { hitungPiutang } from '../mesin/beku.js';
 import { kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
-import { cacheMentah } from '../data/toko.js';
+import { cacheMentah, ambilTutupHari } from '../data/toko.js';
 import { RP, hariIniIso, LEBIH_AMBANG, kalimatLebih, pecahLebih } from '../inti/format.js';
 import { aturPelanggan, kartuTersimpan, hariKe } from './pelanggan-logika.js';
 
@@ -79,13 +79,21 @@ export function susunTagih(kini, kunci, janjiHari, w) {
   return { dokumen: [{ koleksi: 'tagihPelanggan', data: { id: w.idUnik(), kunci, nama: b.nama, tanggal: w.tanggal, jam: w.jam, janji, sisa: b.sisa, lewat: 'whatsapp' } }], patch: { kabar: 'Tagihan ' + b.nama + ' ' + RP(b.sisa) + ' dicatat' + (janji ? ' · janji bayar ' + formatTanggal(janji) : ' · tanpa janji') + '. WhatsApp dibuka — pesannya masih bisa diubah sebelum dikirim.', kabarAwas: false } };
 }
 /** Pembayaran bon — dokumen persis simpanBayarPiutang; tidak boleh melebihi sisa; LUNAS hanya bila nol. */
+/** audit 39b no. 3 (tinjauan T6): kalimat pembayaran bon yang jujur soal tutup hari. Titik kas tutup hari bertanggal hari itu, dan tempat uang hanya
+ *  menghitung gerakan SESUDAH tanggal titik (uang-logika saldoKantong) — pembayaran yang dicatat sesudah hari itu ditutup baru ikut kas (dan potongan
+ *  QRIS-nya baru dicatat) kalau tutup hari diulang. '' = tidak ada yang perlu dikatakan (tunai, hari belum ditutup). */
+export function kalimatBayarTutup(cara, tanggal) {
+  const t = (ambilTutupHari() || []).find((x) => x && x.tanggal === tanggal);
+  if (t) return 'hari ini SUDAH ditutup' + (t.jam ? ' jam ' + t.jam : '') + ' — uang ini' + (cara === 'QRIS' ? ' dan potongan QRIS (MDR)-nya' : '') + ' baru ikut hitungan kas kalau tutup hari diulang';
+  return cara === 'QRIS' ? 'potongan QRIS (MDR)-nya, kalau ada, dicatat saat tutup hari' : '';
+}
 export function susunBayarBon(kini, kunci, nominal, cara, catatan, pengantar, w) {
   const b = semuaBon(kini).find((x) => x.kunci === kunci); if (!b) return { tolak: 'Nama itu tidak ada di buku bon' };
   if (b.status === 'lebih') return { tolak: b.nama + ': ' + kalimatLebih(pecahLebih(b)) + '. Tidak ada bon untuk dibayar.' }; const n = Math.round(bnAngka(nominal));
   if (!(n > 0)) return { tolak: 'Ketik jumlah yang dibayar' }; if (n > b.sisa) return { tolak: 'Pembayaran ' + RP(n) + ' melebihi sisa bonnya (' + RP(b.sisa) + ') — kalau memang lebih, catat sisanya sebagai penjualan biasa, bukan pembayaran bon' };
   const c = cara === 'QRIS' ? 'QRIS' : 'Tunai'; const data = { id: w.idUnik(), tipe: 'bayar', namaPelanggan: b.nama, nominal: n, tanggal: w.tanggal, jam: w.jam, caraBayar: c, catatan: String(catatan || '').trim(), dicatatDi: 'sistem' };
   if (!bnKosong(pengantar) && kunciPelanggan(pengantar) !== kunci) data.dibawaOleh = String(pengantar).trim();
-  const sisaBaru = b.sisa - n; return { dokumen: [{ koleksi: 'piutangMutasi', data }], sisaBaru, patch: { kabar: (sisaBaru <= 0 ? b.nama + ' LUNAS. Pembayaran ' + RP(n) + ' dicatat' : 'Pembayaran ' + RP(n) + ' dicatat — sisa bon ' + b.nama + ' sekarang ' + RP(sisaBaru) + ', belum lunas') + ' · ' + (c === 'QRIS' ? 'rekening' : 'laci') + ' bertambah, laba tidak berubah (sudah dihitung waktu berasnya dijual)' + (c === 'QRIS' ? '; potongan QRIS (MDR)-nya, kalau ada, dicatat saat tutup hari' : '') + (data.dibawaOleh ? ' · dibawa ' + data.dibawaOleh : '') + '.', kabarAwas: false } };
+  const sisaBaru = b.sisa - n; return { dokumen: [{ koleksi: 'piutangMutasi', data }], sisaBaru, patch: { kabar: (sisaBaru <= 0 ? b.nama + ' LUNAS. Pembayaran ' + RP(n) + ' dicatat' : 'Pembayaran ' + RP(n) + ' dicatat — sisa bon ' + b.nama + ' sekarang ' + RP(sisaBaru) + ', belum lunas') + ' · ' + (c === 'QRIS' ? 'rekening' : 'laci') + ' bertambah, laba tidak berubah (sudah dihitung waktu berasnya dijual)' + (kalimatBayarTutup(c, data.tanggal) ? '; ' + kalimatBayarTutup(c, data.tanggal) : '') + (data.dibawaOleh ? ' · dibawa ' + data.dibawaOleh : '') + '.', kabarAwas: false } };
 }
 /** Hapus buku — bukan uang masuk, kerugian bulan ini, permanen: alasan wajib + dua ketukan. */
 export function susunHapusBon(kini, kunci, nominal, alasan, w, yakin) {

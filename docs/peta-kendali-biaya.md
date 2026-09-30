@@ -69,7 +69,7 @@ Pemilahan **wajib menutup** ke mesin laba, dan layar berkata terus terang kalau 
 | Biaya toko per kg terjual | biaya toko mesin ÷ kg semua nota ber-kg | naik |
 | HPP per kg · harga jual per kg · margin per kg | dari nota ber-HPP (kg & rupiahnya) | HPP naik · jual **turun** · margin **turun** |
 | Harga beli per kg kedatangan · bongkar per kg | Σ rupiah ÷ Σ kg batch bulan itu (bongkar tertanam di HPP — disebut supaya kelihatan) | naik |
-| Potongan QRIS dari omzet QRIS | catatan bertanda MDR ÷ omzet QRIS (arus kas mesin) | naik |
+| Potongan QRIS dari uang QRIS | catatan bertanda MDR ÷ semua uang QRIS (penjualan arus kas mesin + bayar bon + kasbon kembali lewat QRIS; audit 39b no. 3) | naik |
 | Biaya karyawan per hari kerja | (upah dibayar + belum dibayar + di luar upah) ÷ (hari rincian gaji + hari belum dibayar) | naik |
 | Harga kantong per lembar | Σ harga ÷ Σ lembar pembelian kantong bulan itu | naik |
 | Susut per kg terjual | susut & selisih ÷ kg terjual | naik |
