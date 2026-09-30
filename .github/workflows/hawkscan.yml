@@ -1,0 +1,46 @@
+name: HawkScan (keamanan situs)
+# DAST mingguan + manual atas situs yang diterbitkan (berkas yang dilacak git), di runner GitHub — tidak pernah di Mac owner.
+# Kunci API = rahasia repo HAWK_API_KEY (dipasang owner 30 Sep 2026). Tidak menyentuh Firestore: domain Firebase diblokir di /etc/hosts.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 19 * * 0'   # Senin 02.00 WIB
+  pull_request:            # hanya bila alat HawkScan sendiri berubah (supaya teruji sebelum digabung)
+    paths:
+      - '.github/workflows/hawkscan.yml'
+      - '.github/stackhawk.yml'
+      - 'alat-uji/server_hawk.py'
+permissions:
+  contents: read
+concurrency:
+  group: hawkscan
+  cancel-in-progress: false
+jobs:
+  pindai:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Ambil isi repo
+        uses: actions/checkout@v4
+      - name: Isolasi Firebase (pemindai tidak boleh membaca / menulis Firestore sungguhan)
+        run: |
+          for d in firestore.googleapis.com firebase.googleapis.com identitytoolkit.googleapis.com securetoken.googleapis.com firebaseinstallations.googleapis.com www.gstatic.com; do
+            echo "0.0.0.0 $d" | sudo tee -a /etc/hosts > /dev/null
+          done
+          if curl -s --max-time 5 -o /dev/null https://firestore.googleapis.com/; then echo "Firestore MASIH terjangkau — berhenti"; exit 1; fi
+          echo "Firebase terblokir"
+      - name: Situs statis = berkas yang dilacak git (tanpa .github), header meniru GitHub Pages
+        run: |
+          mkdir -p /tmp/situs && git archive HEAD | tar -x -C /tmp/situs && rm -rf /tmp/situs/.github
+          nohup python3 alat-uji/server_hawk.py 8765 /tmp/situs > /tmp/server_hawk.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:8765/baru/ && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8765/baru/ && echo "server siap"
+      - name: HawkScan
+        uses: stackhawk/hawkscan-action@v2
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          HAWK_AGENT: github-actions
+        with:
+          apiKey: ${{ secrets.HAWK_API_KEY }}
+          configurationFiles: .github/stackhawk.yml
