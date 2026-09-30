@@ -106,7 +106,7 @@ var Rk2 = tulis(susunKeluar({ untuk: 'karyawan', dari: 'laci', perlu: 'Kopi', ke
 var BK = bukuKeluar('2026-09-19');
 ok('buku hari ini: baris karyawan bercap "untuk karyawan" & untuk = karyawan; jumlah.karyawan 12.000; prive 20.000; baris pribadi tidak bercap "belum dipilah"', BK.rows.some(function (r) { return r.untuk === 'karyawan' && r.cap === 'untuk karyawan' && r.ket === 'Kopi — dua gelas'; }) && BK.jumlah.karyawan === 12000 && BK.jumlah.prive === 20000 && BK.rows.filter(function (r) { return r.sel === 'prive'; }).every(function (r) { return r.cap === 'ambil pribadi'; }), J(BK.rows));
 pasok('pengeluaranHarian', ambilPengeluaranHarian().concat([{ id: 'h9', kategori: 'toko', tanggal: '2026-09-19', jam: '08:00', keterangan: 'Lakban', nominal: 3000 }]));
-ok('catatan hari ini tanpa `untuk` (sistem lama) bercap "biaya toko · belum dipilah"', bukuKeluar('2026-09-19').rows.find(function (r) { return r.id === 'h9'; }).cap === 'biaya toko · belum dipilah');
+ok('catatan hari ini tanpa `untuk` (sistem lama) bercap "biaya toko · tanpa tujuan" (39b no. 25: bukan "belum dipilah" — kata itu dulu juga dipakai Kendali Biaya untuk jenis yang belum dikenali)', bukuKeluar('2026-09-19').rows.find(function (r) { return r.id === 'h9'; }).cap === 'biaya toko · tanpa tujuan');
 pasok('pengeluaranHarian', ambilPengeluaranHarian().filter(function (h) { return h.id !== 'h9'; }));
 // Atur: daftar karyawan, kembar ditolak, pindah tombol antar tujuan
 ok('atur: nama yang ada di toko DAN karyawan ditolak', /ada di keperluan toko DAN karyawan/.test(susunAturKeluar({ perluToko: [{ nama: 'Kopi', biasa: '10.000' }], perluKaryawan: [{ nama: 'kopi', biasa: '' }], perluPribadi: [], bulanan: [] }, W).tolak));
@@ -173,7 +173,7 @@ if __name__ == '__main__':
             'bulan tanpa catatan digambar sebagai nol': js.replace("const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && L.nSusut === 0 && !gajiRows.length && !L.jatahBulanan;", "const tanpaCatatan = false;"),
             'bulan terkunci tidak ditandai final': js.replace("final: lpFinal(key), tanpaCatatan, L,", "final: false, tanpaCatatan, L,"),
             'susut dianggap di atas laba kotor (dimasukkan ke biaya toko)': js.replace("const biayaToko = P.tokoSemua + posLain; const nonUpah = P.karyawan;", "const biayaToko = P.tokoSemua + posLain - L.susutStok; const nonUpah = P.karyawan;"),
-            'buku hari ini tidak menyebut belum dipilah': js.replace("cap: untuk || sel === 'prive' ? A.cap : A.cap + ' · belum dipilah',", "cap: A.cap,"),
+            'buku hari ini tidak menyebut catatan tanpa tujuan': js.replace("cap: untuk || sel === 'prive' ? A.cap : A.cap + ' · tanpa tujuan',", "cap: A.cap,"),
         }
         kode = 0
         for nama, isi in rusak.items():

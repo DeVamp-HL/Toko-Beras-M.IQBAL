@@ -9,7 +9,7 @@
 // Uang toko: sistem lama tidak punya saldo per kantong, yang bisa dijaga TOTAL kas (kasPada; null bila titik kas belum disetel) — "dari mana uangnya" dicatat sebagai kolom.
 import { hitungUtangPemasok, kasPada } from '../mesin/beku.js';
 import { batchDiutang, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, cacheMentah, kunciSampai } from '../data/toko.js';
+import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, cacheMentah, kunciSampai, namaSistemPemasok } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
 export const ATUR_BON_BAWAAN = { dekatHari: 7, admin: [{ nama: 'BI-FAST', n: 2500 }, { nama: 'Transfer antarbank', n: 6500 }] };
@@ -21,7 +21,9 @@ const bpAngka = (v) => { const t = String(v === undefined || v === null ? '' : v
 const bpKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 export const bpHariKe = (iso) => Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 86400000);
 export const bpTambahHari = (iso, n) => new Date((bpHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
-export const pemasokSungguhan = (nama) => { const n = String(nama || '').trim(); return n !== '' && n !== 'STOK AWAL' && !n.startsWith('TUTUP BUKU'); };
+// 39b no. 11: nama yang DIPAKAI SISTEM (saldo awal, tutup buku, batch lahir buku khusus) bukan pemasok — tidak masuk daftar, Buku bon, pil Bon lama, Rekap Bon
+// namaSistemPemasok tinggal di data/toko.js (satu aturan untuk Buku bon & Barang masuk; tinjauan rantai laporan)
+export const pemasokSungguhan = (nama) => { const n = String(nama || '').trim(); return n !== '' && !namaSistemPemasok(n); };
 const namaTempat = (id) => (TEMPAT_UANG.find((t) => t[0] === id) || [id, id])[1];
 
 export function aturBon() {
@@ -144,7 +146,7 @@ export function susunUrungBayar(id) {
 export function hitungBonLama(d) {
   const D = Object.assign({ pemasok: '', nama: '', tgl: '', ketik: '', catatan: '' }, d || {}); const n = Math.round(bpAngka(D.ketik)); const namaBaru = String(D.nama || '').trim();
   const kembar = namaBaru ? daftarPemasok().find((p) => p.kunci === kunciPelanggan(namaBaru)) : null; const pemasok = D.pemasok || (kembar ? kembar.nama : namaBaru);
-  let tolak = ''; if (!pemasok) tolak = 'Pilih atau ketik nama pemasoknya'; else if (!(n > 0)) tolak = 'Ketik nilai bonnya'; else if (D.tgl && !/^\d{4}-\d{2}-\d{2}$/.test(D.tgl)) tolak = 'Tanggal bon tidak terbaca';
+  let tolak = ''; if (!pemasok) tolak = 'Pilih atau ketik nama pemasoknya'; else if (namaSistemPemasok(pemasok)) tolak = '"' + pemasok + '" nama yang dipakai sistem, bukan pemasok — utang tidak bisa dicatat atas nama itu'; else if (!(n > 0)) tolak = 'Ketik nilai bonnya'; else if (D.tgl && !/^\d{4}-\d{2}-\d{2}$/.test(D.tgl)) tolak = 'Tanggal bon tidak terbaca';
   // putaran 25 (K4): mesin membaca umur bon lama dari bonTanggal — bon bertanggal bulan terkunci (atau tanpa tanggal, = paling tua) akan menggeser neraca bulan
   // yang sudah dikunci, jadi dicatat bertanggal HARI INI dan tanggal aslinya ditulis di catatan (field yang sudah ada)
   const sampai = kunciSampai(); const keHariIni = !!sampai && (!D.tgl || D.tgl.slice(0, 7) <= sampai);
@@ -158,7 +160,7 @@ export function susunBonLama(d, w) {
 }
 // ---- KARTU PEMASOK: orang, kontak, tempo, catatan = isian owner (dokumen pemasokCatatan sistem lama + kolom baru orang & tempo)
 export function susunKartu(nama, isi, w) {
-  const nm = String(nama || '').trim(); if (!pemasokSungguhan(nm)) return { tolak: 'Nama pemasok kosong' }; const p = cariPemasok(nm);
+  const nm = String(nama || '').trim(); if (!pemasokSungguhan(nm)) return { tolak: nm ? '"' + nm + '" nama yang dipakai sistem (saldo awal / tutup buku / buku khusus), bukan pemasok' : 'Nama pemasok kosong' }; const p = cariPemasok(nm);
   const tempo = bpKosong(isi.tempo) ? 0 : Math.round(bpAngka(isi.tempo)); if (!(tempo >= 0 && tempo <= 120)) return { tolak: 'Tempo bon: 0–120 hari (0 = belum disepakati)' };
   const data = { id: kunciPelanggan(nm), nama: p ? p.nama : nm, kontak: String(isi.kontak || '').trim().slice(0, 30), catatan: String(isi.catatan || '').trim().slice(0, 160), orang: String(isi.orang || '').trim().slice(0, 40), tempo, diubahPada: w.kini };
   return { dokumen: [{ koleksi: 'pemasokCatatan', data }], patch: { kartu: null, kabar: 'Kartu ' + data.nama + ' tersimpan — ' + (tempo > 0 ? 'tiap bonnya diramal jatuh tempo ' + tempo + ' hari sesudah barang datang' : 'tempo kartu kosong, dipakai tempo umum ' + tempoUmum().hari + ' hari'), kabarAwas: false } };

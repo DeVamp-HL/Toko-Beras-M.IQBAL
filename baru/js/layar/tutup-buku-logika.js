@@ -78,8 +78,13 @@ export function barisBuku(sampai, sampaiKas) {
     // amplop = UANG di amplop (titik kas + sisihan), bukan Σ dokumen amplopLaba (saldoAmplop): kasPada menghitung titik.amplop, dan dokumen pembuka amplop (sistem lama) tetap ditulis dari saldoAmplop
     { id: 'laci', nama: 'Uang di laci', n: kas('laci') }, { id: 'brankas', nama: 'Uang di brankas', n: kas('brankas') }, { id: 'rekening', nama: 'Uang di rekening', n: kas('rekening') }, { id: 'amplop', nama: 'Amplop laba (uang)', n: kas('amplop') }];
   const utang = [{ id: 'utangP', nama: 'Utang ke pemasok · ' + nBon + ' bon', n: Math.round(utangP) }, { id: 'utangO', nama: 'Toko berutang ke owner', n: Math.round(uo.sisa) }];
-  const hartaJml = harta.reduce((a, h) => a + (h.n || 0), 0), utangJml = utang.reduce((a, u) => a + (u.n || 0), 0); const modal = modalTertanam(sampai);
-  return { harta, utang, hartaJml, utangJml, modal, labaTinggal: hartaJml - utangJml - modal, kasAda: K.ada, K, amplopDok: Math.round(amplop), n: harta.length + utang.length, lebih, kataLebih, neracaTeks: 'Harta ' + RP(hartaJml) + ' = utang ' + RP(utangJml) + ' + modal owner ' + RP(modal) + ' + laba yang tinggal di toko ' + RP(hartaJml - utangJml - modal) + (K.ada ? '' : ' · uang per tempat belum bisa dihitung (titik kas)') };
+  // 39b no. 12: uang per tempat yang TIDAK BISA dihitung (titik kas terakhir lebih muda dari tanggal ini — mesin tidak menghitung mundur) bukan nol: jumlah harta
+  // & laba yang tinggal ikut "belum bisa dihitung" (dulu dijumlah nol → berita acara menulis harta kurang seukuran kas)
+  const hartaJml = K.ada ? harta.reduce((a, h) => a + (h.n || 0), 0) : null, utangJml = utang.reduce((a, u) => a + (u.n || 0), 0); const modal = modalTertanam(sampai);
+  const labaTinggal = hartaJml === null ? null : hartaJml - utangJml - modal; const tk = ambilTitikKas();
+  return { harta, utang, hartaJml, utangJml, modal, labaTinggal, kasAda: K.ada, K, amplopDok: Math.round(amplop), n: harta.length + utang.length, lebih, kataLebih,
+    neracaTeks: K.ada ? 'Harta ' + RP(hartaJml) + ' = utang ' + RP(utangJml) + ' + modal owner ' + RP(modal) + ' + laba yang tinggal di toko ' + RP(labaTinggal)
+      : 'Harta belum bisa dijumlah: uang di laci, brankas, rekening, dan amplop pada ' + tanggalPendek(sampaiKas || sampai) + ' tidak bisa dihitung' + (tk && tk.tanggal ? ' — titik kas terakhir ' + tanggalPendek(tk.tanggal) + ' lebih muda dari tanggal itu (mesin tidak menghitung mundur)' : ' — titik kas belum disetel') + '. Stok, piutang, dan utang sudah terhitung.' };
 }
 /** Dokumen saldo pembuka = persis tulisSaldoPembuka index.html (id dari w.idUnik). */
 export function pembukaBuku(tahun, w) {
@@ -114,9 +119,13 @@ export function sesudahDariPembuka(P, sebelum) {
 }
 /** Bandingkan sebelum vs sesudah baris demi baris; sama = tidak ada beda satu rupiah pun (kas yang tidak bisa dihitung dibandingkan null = null). */
 export function bandingBuku(sebelum, sesudah) {
-  const baris = sebelum.harta.concat(sebelum.utang).map((b) => { const s = sesudah ? (sesudah[b.id] === undefined ? null : sesudah[b.id]) : null; const ada = !!sesudah; const sama = !ada || (b.n === null && s === null) || (b.n !== null && s !== null && Math.abs(b.n - s) < 0.5);
-    return { id: b.id, nama: b.nama, a: b.n, b: ada ? s : null, ada, sama, tanda: !ada ? '' : sama ? '✓' : '≠' }; });
-  const beda = baris.filter((b) => !b.sama); return { baris, semuaSama: !beda.length, beda, ringkas: !sesudah ? baris.length + ' baris akan menyeberang — harta DAN utang' : beda.length ? 'ADA ' + beda.length + ' BARIS YANG TIDAK SAMA — tahun tidak boleh dikunci' : 'Semua ' + baris.length + ' baris sama persis di kedua sisi' };
+  // 39b no. 12: baris yang tidak bisa dihitung (uang per tempat, titik kas lebih muda dari 31 Des) BUKAN "sama" — dulu null = null lolos sebagai ✓
+  const baris = sebelum.harta.concat(sebelum.utang).map((b) => { const s = sesudah ? (sesudah[b.id] === undefined ? null : sesudah[b.id]) : null; const ada = !!sesudah; const tahu = b.n !== null;
+    const sama = !ada || (tahu && s !== null && Math.abs(b.n - s) < 0.5);
+    return { id: b.id, nama: b.nama, a: b.n, b: ada ? s : null, ada, sama, tahu, tanda: !ada ? '' : !tahu ? '?' : sama ? '✓' : '≠' }; });
+  const beda = baris.filter((b) => !b.sama); const tidakTahu = baris.filter((b) => !b.tahu);
+  return { baris, semuaSama: !beda.length && !tidakTahu.length, beda: beda.concat(tidakTahu.filter((b) => b.sama)), tidakTahu, ringkas: tidakTahu.length ? tidakTahu.length + ' baris uang BELUM BISA DIHITUNG pada 31 Des (' + tidakTahu.map((b) => b.nama).join(', ') + ') — tahun tidak boleh dikunci; titik kas terakhir lebih muda dari 31 Des'
+    : !sesudah ? baris.length + ' baris akan menyeberang — harta DAN utang' : beda.length ? 'ADA ' + beda.length + ' BARIS YANG TIDAK SAMA — tahun tidak boleh dikunci' : 'Semua ' + baris.length + ' baris sama persis di kedua sisi' };
 }
 /** Sesudah HIDUP (dari mesin) sesudah tahun dikunci: dievaluasi pada 1 Jan tahun+1. */
 export function sesudahHidup(tahun) { const B = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o = {}; B.harta.concat(B.utang).forEach((b) => { o[b.id] = b.n; }); return o; }
@@ -165,8 +174,9 @@ export function susunSelesai(tahun, namaCadangan2, w) {
 /** Teks berita acara (cetak/WA). */
 export function teksAcara(tahun, D, B, sebelum, saksi, w) {
   const L = ['TOKO BERAS M.IQBAL', 'BERITA ACARA TUTUP BUKU ' + tahun, tanggalPendek(w.tanggal) + ' · ' + w.jam + (D.latihan ? ' · LATIHAN' : ''), '', 'Harta toko akhir ' + tahun + ':'];
-  B.baris.forEach((b) => L.push('  ' + (b.nama + '                                    ').slice(0, 38) + (b.a === null ? 'tidak bisa dihitung' : RP(b.a)) + (b.ada ? (b.sama ? '  ✓' : '  ≠ ' + RP(b.b)) : '')));
-  L.push('', 'Jumlah harta   ' + RP(sebelum.hartaJml), 'Jumlah utang   ' + RP(sebelum.utangJml), 'Modal owner    ' + RP(sebelum.modal), 'Laba tinggal   ' + RP(sebelum.labaTinggal), '');
+  B.baris.forEach((b) => L.push('  ' + (b.nama + '                                    ').slice(0, 38) + (b.a === null ? 'tidak bisa dihitung' : RP(b.a)) + (b.ada ? (b.a === null ? '  ?' : b.sama ? '  ✓' : '  ≠ ' + RP(b.b)) : '')));
+  const rpA = (n) => (n === null ? 'tidak bisa dihitung' : RP(n));   // 39b no. 12: bukan Rp0
+  L.push('', 'Jumlah harta   ' + rpA(sebelum.hartaJml), 'Jumlah utang   ' + RP(sebelum.utangJml), 'Modal owner    ' + RP(sebelum.modal), 'Laba tinggal   ' + rpA(sebelum.labaTinggal), '');
   if (sebelum.kataLebih) L.push(sebelum.kataLebih, '');   // no. 4 B6
   L.push('Paraf: owner ' + (D.paraf && D.paraf.owner ? '✓' : '—') + ' · ' + (saksi || 'saksi') + ' ' + (D.paraf && D.paraf.saksi ? '✓' : '—'));
   return L.join('\n');

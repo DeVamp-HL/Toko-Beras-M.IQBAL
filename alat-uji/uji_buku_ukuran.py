@@ -82,6 +82,15 @@ ok('sesudah pisah: Angsa −125, Angsa 25 kg +125 (7 karung), nilai stok & laba 
   B2(buku('Angsa') - a0) === -125 && B2(buku('Angsa 25 kg') - a25) === 125 && (susunRak(s0()).karung.find(function (c) { return c.kunci === 'Angsa 25 kg'; }) || {}).sisa === 7 && Math.abs(nilai() - v0) <= 1
   && hitungLabaBersihRentang('2026-09-01', '2026-09-30').labaBersih === laba0 && !ckCalonPisahUkuran().length, J([buku('Angsa') - a0, buku('Angsa 25 kg') - a25, nilai(), v0]));
 
+// 39b no. 10: buku per ukuran yang lahir dari PISAH stok tanpa kedatangan sendiri — kartu HPP membandingnya dengan harga beli terbaru INDUKNYA (dulu 0 → "penurunan modal" palsu)
+var LB10 = [{ koleksi: 'batchMasuk', data: { id: 'b10', tanggal: '2026-09-18', jam: '08:00', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', biayaBongkar: 0,
+  merkList: [{ id: '1', merk: 'Merpati', satuan: 'karung', beratKarung: 50, jumlahKarung: 2, totalKg: 100, hargaPerKg: 12000, subtotalHarga: 1200000 }] } }, { koleksi: 'batchMasuk', data: { id: 'lb10', tanggal: '2026-09-19', jam: '07:00', pemasok: 'LAHIR BUKU', caraBayar: 'tunai', biayaBongkar: 0, stokAwal: true, lahirBuku: true,
+  merkList: [{ id: '1', merk: 'Merpati 25 kg', satuan: 'lahir', beratKarung: 25, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, indukUkuran: 'Merpati' }] } }];
+ok('39b-10 kartu HPP buku "Merpati 25 kg" hasil pisah (tanpa kedatangan sendiri): harga beli terbaru & HPP terbaru = kedatangan terakhir induknya Merpati (12.000/kg), sumber menyebut induknya; nilai "bila dinilai harga beli terbaru" tidak jatuh ke 0',
+  denganCacheSementara(LB10, function () { var P = wbDokPindah([{ merk: 'Merpati', kg: 25 }], 'Merpati 25 kg', W); return denganCacheSementara([P], function () { var k = kartuHpp().kartu.filter(function (x) { return x.merk === 'Merpati 25 kg'; })[0];
+    return !!k && k.sisa === 25 && k.hppTerbaru === 12000 && k.hargaTerbaru === 12000 && /dipisah dari Merpati/.test(k.sumber) && k.nilaiTerbaru === 25 * 12000; }); }),
+  J(denganCacheSementara(LB10, function () { var P = wbDokPindah([{ merk: 'Merpati', kg: 25 }], 'Merpati 25 kg', W); return denganCacheSementara([P], function () { return kartuHpp().kartu.filter(function (x) { return x.merk === 'Merpati 25 kg'; })[0]; }); })));
+
 // ---- JUAL, RETUR, KATALOG, HARGA, BUKA KARUNG
 var s = s0(); var c25j = susunRak(s0()).karung.find(function (c) { return c.kunci === 'Angsa 25 kg'; }); var rk = c25j ? masukkan(Object.assign({}, s, { pilih: c25j }), 1) : {}; s = Object.assign({}, s, { keranjang: rk.keranjang || [], urutBaris: rk.urutBaris });
 var N = simpanNota(Object.assign({}, s, { cara: 'QRIS' }), W); var nj = dok(N, 'penjualan');
@@ -158,6 +167,7 @@ def utama(js, pakai_cadangan):
 
 
 RUSAK = {
+    '39b-10: kartu HPP buku ukuran hasil pisah dibanding harga beli 0 lagi': ("const hppTerbaru = akhir ? akhir.hppPerKg : ai ? ai.hppPerKg : modal;", "const hppTerbaru = akhir ? akhir.hppPerKg : 0;"),
     'barang masuk tidak memisah karung 25 kg': ("const keUkuran = berat === 25 && duaUkuran(merkVarian);", "const keUkuran = false;"),
     'nama buku ukuran boleh diketik di barang masuk': ("ukuran[merk] && !namaLama[merk] ? merk + ' itu buku karung '", "false ? merk + ' itu buku karung '"),
     'rak induk tetap menawarkan 25 kg sesudah dipisah': ("if (uk ? berat !== uk.berat : !!(terpisah[merk] && terpisah[merk][berat])) return;", "if (uk ? berat !== uk.berat : false) return;"),

@@ -3,7 +3,7 @@
 //      luar upah · dapur toko (bahan masak) · bahan pakai & kresek · bensin & angkut · potongan QRIS & biaya bank · lain-lain. Di bawahnya hapus buku piutang
 //      dan susut & selisih stok (mesin menaruh keduanya di BAWAH laba kotor). Uang keluar dipilah dari kolom `untuk` (putaran 29), tanda `mdr`/biaya bank,
 //      lalu KATA KUNCI (bawaan + tambahan owner di aturanToko/kendaliBiaya.kata). Yang tidak cocok kata mana pun TETAP dihitung — di baris "Lain-lain" dan
-//      DISEBUT jumlahnya sebagai "belum dipilah"; tidak ada catatan yang hilang dari jumlah, dan tidak ada tebakan yang disembunyikan.
+//      DISEBUT jumlahnya sebagai "jenisnya belum dikenali" (39b no. 25: bukan "belum dipilah" — itu tujuan toko/karyawan di Uang); tidak ada catatan yang hilang dari jumlah, dan tidak ada tebakan yang disembunyikan.
 //   2. ANGGARAN — angka per jenis per bulan MILIK OWNER (aturanToko/kendaliBiaya.anggaran; 0 = belum diatur). Tanpa anggaran tidak ada lampu — hanya
 //      "acuan terukur" = median bulan-bulan sebelumnya yang punya catatan, disebut begitu. Tombol "isi dari acuan" mengisi FORMULIR; yang menjadi anggaran
 //      tetap yang owner simpan. Anggaran bukan larangan (aturan jatah 22 Agu 2026): lewat tetap tersimpan, bedanya ketahuan malam itu.
@@ -23,7 +23,7 @@ import { hitungLabaBersihRentang, hitungArusKasInti, bayaranBiayaBulanan } from 
 import { akhirBulanIso, bulanDari, POS_BIAYA_BULANAN, hppTercatat, caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPengeluaranHarian, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilPiutangMutasi, ambilKasbonMutasi } from '../data/toko.js';
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { ugAturDok, ugAngka, ugKosong, ugUntukDok } from './uang-logika.js';
+import { ugAturDok, ugAngka, ugKosong, ugUntukDok, adalahMdr } from './uang-logika.js';
 import { lpFinal, lpNamaBulan, lpBulanPendek, daftarBulan } from './laporan-logika.js';
 import { semuaUpah } from './upah-logika.js';
 
@@ -36,7 +36,7 @@ export const JENIS_BIAYA = [
   { id: 'bahan', nama: 'Bahan pakai & kresek', sifat: 'variabel', ket: 'kresek belanja, lakban, benang, rafia, staples — operasional, bukan HPP (keputusan 2 Agu 2026)', kata: ['plastik', 'kantong', 'kresek', 'lakban', 'benang', 'rafia', 'staples', 'tali', 'wipol', 'sabun', 'pulpen', 'kertas', 'tinta', 'baterai'] },
   { id: 'angkut', nama: 'Bensin & angkut', sifat: 'variabel', ket: 'bensin antar, ongkos, kuli, parkir — bongkar mobil pemasok TIDAK di sini (sudah di dalam HPP)', kata: ['bensin', 'ongkos', 'angkut', 'kuli', 'bongkar', 'parkir', 'tol', 'antar'] },
   { id: 'dapur', nama: 'Dapur toko (bahan masak)', sifat: 'variabel', ket: 'bahan mentah untuk memasak di toko = biaya toko (owner 27 Sep 2026)', kata: ['kebutuhan masak', 'kebutuhan dapur', 'bahan masak', 'masak', 'telur', 'gas', 'gula', 'minyak', 'bawang', 'tahu', 'tempe', 'sayur', 'roti', 'ikan', 'ayam', 'garam', 'kecap', 'cabai', 'cabe', 'galon', 'air minum'] },
-  { id: 'lain', nama: 'Lain-lain', sifat: 'variabel', ket: 'tidak cocok kata kunci mana pun — tetap dihitung, disebut "belum dipilah"', kata: [] },
+  { id: 'lain', nama: 'Lain-lain', sifat: 'variabel', ket: 'tidak cocok kata kunci mana pun — tetap dihitung, disebut "jenisnya belum dikenali"', kata: [] },
 ];
 /** Dua baris yang mesin taruh di BAWAH laba kotor tapi bukan biaya toko: hapus buku piutang & susut. Susut boleh diberi anggaran (= toleransi). */
 export const JENIS_BAWAH = [{ id: 'hapus', nama: 'Hapus buku piutang', sifat: 'lain', ket: 'piutangMutasi tipe hapusBuku (mesin laba)' }, { id: 'susut', nama: 'Susut & selisih stok', sifat: 'lain', ket: 'penyesuaian stok/kemasan & opname kantong (mesin laba) — positif = stok berkurang = biaya' }];
@@ -64,7 +64,7 @@ export function aturKendali() {
 export const kataJenis = (A, id) => (A.kata[id] || []).concat((JENIS_BIAYA.find((j) => j.id === id) || { kata: [] }).kata);
 /** Kata pertama dari `kata` yang cocok sebagai AWALAN KATA di batas kata ('roko' kena 'rokok', 'biaya admin' kena 'biaya admin bi-fast'); '' bila tidak ada. */
 const kbCocokKata = (polos, kata) => { const t = ' ' + polos; for (const k of kata) { if (k && t.indexOf(' ' + k) >= 0) return k; } return ''; };
-const kbAdaMdr = (h, polos) => !!h.mdr || /(^| )(mdr|potongan qris|potongan mdr)/.test(polos);
+const kbAdaMdr = (h) => adalahMdr(h);   // 39b no. 24: satu pengenal dengan laporan & pilah harian (uang-logika.js)
 /** Jenis satu catatan uang keluar (kategori toko/tokoDompet). Urutan: tanda MDR/bank → kolom `untuk` karyawan → kata owner tiap jenis → kata bawaan tiap jenis → lain.
  *  Mengembalikan { id, dari: tanda|untuk|kataOwner|kataBawaan|belum, kata (yang cocok), kunci (untuk pengelompokan pareto), mdr }. */
 export function jenisCatatan(h, A) {
@@ -152,7 +152,7 @@ export function titikImpas(K, kini, bayaran) {
     sampai, menutupKini, kurang, omzetKurang, hariSisa, labaSampai: Lj.labaBersih, marginSampai: Lj.margin, biayaSampai: Lj.biayaToko + (Lj.hapusBuku || 0) - (Lj.susutStok || 0), teks,
     kiniTeks: K.berjalan ? (menutupKini ? 'Sampai ' + tanggalPendek(sampai) + ' margin kotor ' + RP(Lj.margin) + ' sudah menutup biaya sampai hari itu — laba bersih ' + RP(Lj.labaBersih) + '.' : 'Sampai ' + tanggalPendek(sampai) + ' biaya masih lebih besar ' + RP(kurang) + ' dari margin kotor' + (omzetKurang ? ' — kira-kira butuh omzet tambahan ' + RP(omzetKurang) + (hariSisa ? ' dalam ' + hariSisa + ' hari tersisa' : '') : '') + '.')
       : (menutupKini ? 'Bulan ini menutup: laba bersih ' + RP(Lj.labaBersih) + '.' : 'Bulan ini TIDAK menutup: biaya lebih besar ' + RP(kurang) + ' dari margin kotor.'),
-    catatan: [K.cakupan !== null && K.cakupan < 0.999 ? 'Rasio margin dari omzet ber-HPP saja (' + kbPctTeks(K.cakupan * 100) + ' omzet) — ' + K.L.jumlahTanpaHpp + ' nota tanpa modal belum ikut.' : '', K.U && K.U.total > 0 ? 'Belum termasuk ' + K.U.teks + ' (' + RP(K.U.total) + ').' : ''].filter(Boolean) };
+    catatan: [K.cakupan !== null && K.cakupan < 0.999 ? 'Rasio margin dari omzet ber-HPP saja (' + kbPctTeks(K.cakupan * 100) + ' omzet) — ' + K.L.jumlahTanpaHpp + ' baris tanpa modal belum ikut.' : '', K.U && K.U.total > 0 ? 'Belum termasuk ' + K.U.teks + ' (' + RP(K.U.total) + ').' : ''].filter(Boolean) };
 }
 
 // ---------- pemicu biaya: biaya per satuan, bulan ini vs bulan lalu ----------
@@ -195,8 +195,8 @@ export function peringatanBiaya(K, P, T) {
   if (K.berjalan) K.posSemua.forEach((p) => { const lalu = KL.posSemua.find((x) => x.id === p.id); if (!(p.n > 0) && lalu && lalu.n > 0) awas('pos-' + p.id, p.nama + ' belum dicatat bulan ini (bulan lalu ' + RP(lalu.n) + ') — biaya bulan ini masih terlihat terlalu ringan', { ke: 'uang', keluarga: 'keluar', tab: 'tagihan' }, 'info'); });
   if (K.U && K.U.total > 0) awas('upah-gantung', 'Upah ' + RP(K.U.total) + ' (' + K.U.teks + ')', { ke: 'uang', keluarga: 'upah' }, 'info');
   if (K.susut > 0 && (K.margin > 0 ? K.susut / K.margin >= 0.2 : true) && !(K.baris.find((r) => r.id === 'susut').anggaran > 0)) awas('susut', 'Susut & selisih stok ' + RP(K.susut) + (K.margin > 0 ? ' = ' + kbPctTeks(kbPct(K.susut, K.margin)) + ' margin kotor bulan ini' : '') + ' — biaya terbesar yang tidak keluar dari laci; cari sebabnya di Cocokkan', { ke: 'stok', lembar: 'cocok' });
-  if (K.nBelum > 0 && K.L.harianToko > 0 && K.belumDipilah / K.L.harianToko > 0.25) awas('belum-dipilah', K.nBelum + ' catatan uang keluar (' + RP(K.belumDipilah) + ', ' + kbPctTeks(kbPct(K.belumDipilah, K.L.harianToko)) + ' biaya harian) belum bisa dipilah — beri kata kunci di Atur supaya jenisnya kelihatan', null, 'info');
-  if (K.cakupan !== null && K.cakupan < 0.95) awas('cakupan', kbPctTeks((1 - K.cakupan) * 100) + ' omzet (' + K.L.jumlahTanpaHpp + ' nota) tanpa modal — margin & titik impas bulan ini belum utuh; rinci karcis kasir dulu', { ke: 'jual' }, 'info');
+  if (K.nBelum > 0 && K.L.harianToko > 0 && K.belumDipilah / K.L.harianToko > 0.25) awas('belum-dipilah', K.nBelum + ' catatan uang keluar (' + RP(K.belumDipilah) + ', ' + kbPctTeks(kbPct(K.belumDipilah, K.L.harianToko)) + ' biaya harian) jenisnya belum dikenali — beri kata kunci di Atur supaya jenisnya kelihatan', null, 'info');
+  if (K.cakupan !== null && K.cakupan < 0.95) awas('cakupan', kbPctTeks((1 - K.cakupan) * 100) + ' omzet (' + K.L.jumlahTanpaHpp + ' baris) tanpa modal — margin & titik impas bulan ini belum utuh; rinci karcis kasir dulu', { ke: 'jual' }, 'info');
   if (P) P.naik.forEach((r) => awas('pemicu-' + r.id, r.nama + ' ' + r.deltaTeks + ' (' + r.teksLalu + ' → ' + r.teks + ')', r.id === 'bongkarKg' || r.id === 'beliKg' ? { ke: 'stok', lembar: 'hpp' } : r.id === 'kantongLembar' ? { ke: 'stok', lembar: 'kantong' } : r.id === 'jualKg' || r.id === 'marginKg' || r.id === 'hppKg' ? { ke: 'harga', keluarga: 'katalog' } : { ke: 'uang', keluarga: 'keluar' }, 'info'));
   if (T && !T.menutupKini && T.rasio !== null) awas('impas', T.kiniTeks, { ke: 'laporan', keluarga: 'laba' });
   if (!K.menutup && !K.tanpaCatatan) awas('tidak-menutup', 'Pemilahan TIDAK MENUTUP ke mesin laba — jangan dipakai memutuskan; laporkan', null);

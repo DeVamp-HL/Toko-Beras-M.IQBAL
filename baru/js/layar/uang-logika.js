@@ -41,6 +41,8 @@ function ugPetaKantong() {
   const bl = {}; ambilBiayaBulanan().forEach((b) => { const d = b.dariPos || {}; Object.keys(d).forEach((k) => { if (!d[k]) return; const label = k.indexOf('gaji:') === 0 ? 'Gaji ' + k.slice(5) : ((POS_BIAYA_BULANAN.find((x) => x.kunci === k) || {}).label || k); bl[b.bulan + '|' + label] = d[k]; }); });
   return { id: p, bulanan: bl };
 }
+/** Penentu tempat uang satu baris gerakan kas — aturan yang SAMA dengan saldoKantong (dokumen yang menyebut tempatnya menang). 39b no. 13: dipakai kertas laci tutup hari. */
+export function kantongGerakan() { const peta = ugPetaKantong(); return (r) => ugKantongBaris(r, peta); }
 function ugKantongBaris(r, peta) {
   if (r.id && peta.id[String(r.id)]) return peta.id[String(r.id)];
   if (!r.id) { const m = String(r.label || '').match(/^(.*?)(?: \(kotor.*)? — biaya (.+)$/); if (m) { const bulan = ugBulanDariNama(m[2]); const t = peta.bulanan[bulan + '|' + m[1]]; if (t) return t; } }
@@ -94,14 +96,20 @@ export function priveBulan(iso) { return priveRentang(ugAwalBulan(iso), iso); }
 // (arti yang selama ini ia punya) dan jumlahnya disebut. Pribadi = kategori 'owner' seperti sekarang, tidak diberi `untuk`.
 export const TUJUAN_KELUAR = [['toko', 'Untuk toko'], ['karyawan', 'Untuk karyawan'], ['pribadi', 'Untuk pribadi']];
 export const ugUntukDok = (h) => (h.kategori === 'owner' ? 'pribadi' : h.untuk === 'karyawan' ? 'karyawan' : h.untuk === 'toko' ? 'toko' : '');
+/** 39b no. 24: SATU pengenal potongan QRIS (MDR) untuk semua layar — tanda `mdr` (tutup hari) ATAU keterangan yang diketik tangan menyebut mdr / potongan qris.
+ *  Dulu Kendali Biaya mengenali keduanya, laporan laba-rugi berkop & pilah harian cuma tandanya ("potongan QRIS nol" padahal ada). */
+export const ugPolos = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+// tinjauan rantai laporan: kalimat biaya admin OTOMATIS (bayar bon / pindah uang) bukan potongan QRIS walau nama pemasok / biayanya berawalan "mdr";
+// kata harus utuh ("mdr", bukan "mdrx")
+export const adalahMdr = (h) => !!h && (!!h.mdr || (!h.dariBayarBon && !h.dariPindah && !/^biaya admin/i.test(String(h.keterangan || '')) && /(^| )(mdr|potongan qris|potongan mdr)( |$)/.test(ugPolos(h.keterangan))));
 const ugBiayaBank = (h) => !!(h.dariBayarBon || h.dariPindah) || /^biaya admin/i.test(String(h.keterangan || ''));
-/** Pemilahan biaya toko harian (kategori toko + tokoDompet, = harianToko mesin laba) dalam rentang: untuk toko · untuk karyawan · belum dipilah; di dalam toko: potongan QRIS & biaya bank. */
+/** Pemilahan biaya toko harian (kategori toko + tokoDompet, = harianToko mesin laba) dalam rentang: untuk toko · untuk karyawan · belum dipilah (tanpa tujuan — catatan lama; 39b no. 25: di layar ditulis "tanpa tujuan", beda dari "jenisnya belum dikenali" Kendali Biaya); di dalam toko: potongan QRIS & biaya bank. */
 export function pilahHarian(awal, akhir) {
   const P = { total: 0, n: 0, toko: 0, nToko: 0, karyawan: 0, nKaryawan: 0, belum: 0, nBelum: 0, mdr: 0, nMdr: 0, bank: 0, nBank: 0, awal, akhir };
   ambilPengeluaranHarian().forEach((h) => { if (!(h.kategori === 'toko' || h.kategori === 'tokoDompet') || !h.tanggal || h.tanggal < awal || h.tanggal > akhir) return; const n = Number(h.nominal) || 0; P.total += n; P.n += 1;
     const u = ugUntukDok(h); if (u === 'karyawan') { P.karyawan += n; P.nKaryawan += 1; return; }
     if (u === 'toko') { P.toko += n; P.nToko += 1; } else { P.belum += n; P.nBelum += 1; }
-    if (h.mdr && h.kategori === 'toko') { P.mdr += n; P.nMdr += 1; } else if (ugBiayaBank(h)) { P.bank += n; P.nBank += 1; } });
+    if (adalahMdr(h)) { P.mdr += n; P.nMdr += 1; } else if (ugBiayaBank(h)) { P.bank += n; P.nBank += 1; } });
   P.tokoSemua = P.toko + P.belum;   // yang dihitung sebagai keperluan toko di kartu = dipilah toko + belum dipilah
   return P;
 }
@@ -203,7 +211,7 @@ export function susunPutusTitipan(id, setuju, alasan, w) {
 export function bukuKeluar(iso) {
   const rows = [];
   ambilPengeluaranHarian().forEach((h) => { if (h.tanggal !== iso) return; const sel = h.kategori === 'tokoDompet' ? 'utang' : h.kategori === 'owner' ? 'prive' : 'beban'; const untuk = ugUntukDok(h); const A = artiKeluar(untuk || 'toko', h.kategori === 'tokoDompet' ? 'dompet' : (h.dari || 'laci'), Number(h.nominal) || 0, false);
-    rows.push({ id: String(h.id), koleksi: 'pengeluaranHarian', jam: h.jam || '', ket: h.keterangan || '', n: Number(h.nominal) || 0, sel, untuk, cap: untuk || sel === 'prive' ? A.cap : A.cap + ' · belum dipilah', dari: h.kategori === 'tokoDompet' ? 'dompet owner' : ugNamaTempat(h.dari || 'laci').toLowerCase() + (h.dari ? '' : ' (dianggap)'), oleh: h.oleh || '', alasan: h.alasanAman || '', otomatis: !!(h.dariBayarBon || h.dariPindah || h.mdr || h.dariTutup) }); });
+    rows.push({ id: String(h.id), koleksi: 'pengeluaranHarian', jam: h.jam || '', ket: h.keterangan || '', n: Number(h.nominal) || 0, sel, untuk, cap: untuk || sel === 'prive' ? A.cap : A.cap + ' · tanpa tujuan', dari: h.kategori === 'tokoDompet' ? 'dompet owner' : ugNamaTempat(h.dari || 'laci').toLowerCase() + (h.dari ? '' : ' (dianggap)'), oleh: h.oleh || '', alasan: h.alasanAman || '', otomatis: !!(h.dariBayarBon || h.dariPindah || h.mdr || h.dariTutup) }); });
   ambilKasbonMutasi().forEach((m) => { if (m.tanggal !== iso || m.tipe !== 'ambil' || !ugKasbonOwner(m)) return; rows.push({ id: String(m.id), koleksi: 'kasbonMutasi', jam: m.jam || '', ket: m.catatan || 'Kasbon owner', n: Number(m.nominal) || 0, sel: 'kasbon', untuk: '', cap: 'kasbon owner', dari: ugNamaTempat(m.dari || 'laci').toLowerCase(), oleh: m.oleh || '', alasan: '', otomatis: false }); });
   rows.sort((a, b) => String(b.jam).localeCompare(String(a.jam)) || String(b.id).localeCompare(String(a.id)));
   const j = { beban: 0, utang: 0, prive: 0, kasbon: 0, karyawan: 0 }; rows.forEach((r) => { j[r.sel] += r.n; if (r.untuk === 'karyawan') j.karyawan += r.n; });
