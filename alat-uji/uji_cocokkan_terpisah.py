@@ -145,9 +145,8 @@ var asap = null;
 if (CADANGAN) {
   Object.keys(CADANGAN).forEach(function (n) { pasok(n, CADANGAN[n]); });
   var WC = { tanggal: TGL_CAD, jam: '23:50', kini: TGL_CAD + 'T16:50:00.000Z', idUnik: function () { nId += 1; return nId; } };
-  // keputusan owner 1 Okt: buku karung yang tertinggal dibereskan DULU (pindah balik + timbang = catatan) — Cocokkan menolak karung yang masih memuat sisa lama
+  // keputusan owner 1 Okt ("pindah balik semua"): buku karung yang tertinggal dibereskan DULU — Cocokkan menolak karung yang masih memuat sisa lama
   var PT = wbSusunPindahTertinggal(WC); if (!PT.tolak) terapkanKeCache(PT.dokumen); var nTtg = PT.tolak ? 0 : PT.dokumen.length;
-  wbKarungTertinggal().berdiri.forEach(function (x) { var R = wbSusunTimbangTertinggal(x.kunci, String(x.catatanKg), WC); if (!R.tolak) { terapkanKeCache(R.dokumen); nTtg += 1; } });
   var semua = Object.keys(hitungStokKarungPerMerk()); var tSebelum = {}, bSebelum = {}; semua.forEach(function (m) { tSebelum[m] = tumpuk(m); bSebelum[m] = buku(m); });
   var kbBeda = []; aturWadah().daftar.forEach(function (w) { wbKarungBelakangWadah(w).forEach(function (k) { if (k.diketahui && Math.abs(k.selisihKg) > 0.05) kbBeda.push(k.merk + ' di belakang ' + w + ': catatan ' + k.kolamKg + ' vs buku ' + k.bukuKg); }); });
   var HW = {}, AW = {}; var dihitungW = {}; barangCocok('wadah').forEach(function (b) { if (b.isiSistem === null) return; var isi = Math.max(0, Math.round((b.isiSistem - 0.5) * 100) / 100); HW[b.kunci] = String(isi); dihitungW[b.nama] = isi; if (b.karungSistem !== null) HW[b.kunciKarung] = String(b.karungSistem); AW[b.kunci] = 'uji asap'; });
