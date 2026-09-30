@@ -84,8 +84,10 @@ export function petaUkuran() {
   const out = {}; ambilSemuaBatch().forEach((b) => (b.merkList || []).forEach((m) => { if (m && m.merk && m.indukUkuran) out[String(m.merk)] = { induk: String(m.indukUkuran), berat: Number(m.beratKarung) || 25 }; }));
   return out;
 }
-/** { 'Merek': { 25: 'Merek 25 kg' } } — merek induk yang karung 25 kg-nya sudah punya buku sendiri. */
-export function indukTerpisah() { const u = petaUkuran(); const out = {}; Object.keys(u).forEach((n) => { (out[u[n].induk] = out[u[n].induk] || {})[u[n].berat] = n; }); return out; }
+/** Audit 39b no. 35 (owner 30 Sep): buku per ukuran yang isinya sudah DIGABUNG balik ke induk (pindah buku bertanda gabungUkuran) — tidak lagi memisah induknya. */
+export function ukuranDigabung() { const out = {}; ambilProduksiBerlaku().forEach((p) => { if (p && p.gabungUkuran && p.gabungUkuran.dari) out[String(p.gabungUkuran.dari)] = String(p.gabungUkuran.induk || ''); }); return out; }
+/** { 'Merek': { 25: 'Merek 25 kg' } } — merek induk yang karung 25 kg-nya sudah punya buku sendiri (buku yang sudah digabung balik ke induk tidak dihitung). */
+export function indukTerpisah() { const u = petaUkuran(); const g = ukuranDigabung(); const out = {}; Object.keys(u).forEach((n) => { if (g[n]) return; (out[u[n].induk] = out[u[n].induk] || {})[u[n].berat] = n; }); return out; }
 /** Salinan peta stok karung TANPA buku khusus (isi wadah, karung sisihan, kemasan adukan dibuka) — untuk daftar MEREK (rak karung, gudang, harga karung, …). */
 export function stokMerekSaja(stok) {
   const w = petaBukuWadah(); const out = {}; Object.keys(stok || {}).forEach((m) => { if (!w[m]) out[m] = stok[m]; }); return out;

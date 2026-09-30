@@ -16,10 +16,10 @@
 // Koleksi BARU milik sistem baru: aturanToko (angka kebijakan owner, id tetap) dan bukuHapus (jejak kedatangan yang dihapus, beralasan).
 import { hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungHppMerkDalamBatch } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, LABEL_BAHAN_LITERAN, MULAI_SUSUT_LABA, kunciKemasan, merkPunyaKarungBerat } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilHargaKarung, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilWadahLiteran, cacheMentah, tolakKunci, tolakKunciTanggal, stokMerekSaja, petaStokWadah, petaBukuWadah, ambilProduksiBerlaku, kunciUkuran, petaUkuran, indukTerpisah } from '../data/toko.js';
+import { ambilSemuaBatch, ambilHargaKarung, ambilProduksi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilWadahLiteran, cacheMentah, tolakKunci, tolakKunciTanggal, stokMerekSaja, petaStokWadah, petaBukuWadah, ambilProduksiBerlaku, kunciUkuran, petaUkuran, indukTerpisah , ukuranDigabung } from '../data/toko.js';
 import { RP, hariIniIso } from '../inti/format.js';
 import { hitunganFisik, tumpukanGudang, aturWadah, pindahNama, semuaKarungTerbuka, karungUntukWadah, karungBelakang, beratKarungBuka, ckCocokTerakhir, ckKalimatMundur } from './jual-logika.js';
-import { wbKomposisi, wbBagianMerk, wbKomposisiBaru, wbModalPerKg, wbRasio, wbNamaKelas, wbDokLahir, wbDokPindah } from './wadah-bernama-logika.js';
+import { wbKomposisi, wbBagianMerk, wbKomposisiBaru, wbModalPerKg, wbRasio, wbNamaKelas, wbDokLahir, wbDokPindah, wbLiteranLangsung } from './wadah-bernama-logika.js';
 import { vrPerluTanya, vrNama, vrDokJenis, vrAda, VR_BATAS_BAWAAN } from './varian-logika.js';
 import { arBeras, arKunciBeras, arDokPulihBanyak, arPeta } from './arsip-logika.js';
 // putaran 30: kelas mutu merek (harga lalu per kelas, merek baru → kelas, kelas tanpa wadah)
@@ -86,7 +86,9 @@ export function hitungMasuk(draf) {
   // putaran 28 (owner 28 Sep): karung 25 kg merek yang datang DUA ukuran dibukukan ke buku sendiri 'Merek 25 kg' (buku merek = karung 50 kg)
   const ukuran = petaUkuran(); const terpisah = indukTerpisah();
   const ada50 = {}; (draf.baris || []).forEach((b) => { if ((ckAngka(b.beratKarung) || 50) === 50) ada50[String(b.merk || '').trim()] = true; });
-  const duaUkuran = (m) => !!m && !ukuran[m] && !namaLama[m] && (!!(terpisah[m] && terpisah[m][25]) || merkPunyaKarungBerat(m, 50) || !!ada50[m]);
+  // audit 39b no. 35 (owner 30 Sep): merek yang dijual per liter langsung / kelas sendiri TIDAK punya buku per ukuran — karung 25 kg-nya masuk buku induk seperti dulu
+  const tanpaUkuran = ckTanpaBukuUkuran();
+  const duaUkuran = (m) => !!m && !ukuran[m] && !namaLama[m] && !tanpaUkuran[m] && (!!(terpisah[m] && terpisah[m][25]) || merkPunyaKarungBerat(m, 50) || !!ada50[m]);
   // putaran 30 (owner 28 Sep): merek BARU (belum punya buku / katalog) → kelas mutu. Kelas BERWADAH: buku tetap atas nama merek + peta merek → kelas (lapisan baca).
   // Kelas TANPA WADAH (kelasSendiri): baris dibukukan ATAS NAMA KELAS, merek pemasok jadi keterangan `merkPemasok`. Koreksi kedatangan lama: kelas tidak ditanya.
   const sendiri = kmKelasSendiri(); const calonKelas = kmCalonKelas(); const bolehKelas = {}; calonKelas.forEach((c) => { bolehKelas[c.nama] = true; });
@@ -175,11 +177,30 @@ export function susunSimpanMasuk(draf, w, yakin) {
       + (dp ? ' Dipulihkan dari arsip: ' + pulih.map((k) => k.slice(2)).join(', ') + '.' : '') + (ketKelas.length ? ' Kelas: ' + ketKelas.join('; ') + '.' : ''), kabarAwas: false } };
 }
 // ---------- BUKU PER UKURAN (owner 28 Sep: karung 50 kg & 25 kg merek yang sama = buku masing-masing) ----------
-/** Merek yang datang DUA ukuran (karung 50 & 25 kg tercatat atas namanya) dan stok lamanya belum dipisah. */
+/** Merek yang TIDAK memakai buku per ukuran (audit 39b no. 35, owner 30 Sep): dijual per liter langsung dari karungnya, atau kelas mutu tanpa wadah (kelas sendiri). */
+export function ckTanpaBukuUkuran() { const out = {}; wbLiteranLangsung().daftar.forEach((m) => { out[m] = true; }); Object.keys(kmKelasSendiri()).forEach((m) => { out[m] = true; }); return out; }
+/**
+ * Buku per ukuran milik merek yang kini TIDAK memakai buku per ukuran (ckTanpaBukuUkuran) dan masih berisi → tawarkan GABUNG BALIK ke buku induk
+ * (satu pindah buku, modal ikut, laba & neraca tidak berubah — bukan cocokkan). Sesudahnya induk kembali satu buku untuk semua ukuran.
+ */
+export function ckCalonGabungUkuran() {
+  const st = hitungStokKarungPerMerk(); const u = petaUkuran(); const g = ukuranDigabung(); const tanpa = ckTanpaBukuUkuran();
+  return Object.keys(u).filter((k) => tanpa[u[k].induk] && !g[k] && st[k] && (st[k].sisaKg || 0) > 0.004).sort()
+    .map((k) => ({ kunci: k, induk: u[k].induk, berat: u[k].berat, kg: ckB2(st[k].sisaKg || 0), indukKg: ckB2((st[u[k].induk] || {}).sisaKg || 0) }));
+}
+/** GABUNG BALIK satu buku per ukuran ke induknya (dua ketukan): seluruh isinya pindah buku → induk, modal ikut; bertanda gabungUkuran supaya induk tidak lagi terpisah. */
+export function ckSusunGabungUkuran(kunci, w, yakin) {
+  const K = String(kunci || ''); const c = ckCalonGabungUkuran().find((x) => x.kunci === K);
+  if (!c) return { tolak: K + ' tidak perlu digabung (bukan buku per ukuran merek per liter / kelas sendiri, sudah digabung, atau kosong)' };
+  if (!yakin) return { tolak: 'Gabungkan buku: ' + ckKG(c.kg) + ' di buku ' + K + ' pindah ke buku ' + c.induk + ' (' + ckKG(c.indukKg) + ' → ' + ckKG(ckB2(c.indukKg + c.kg)) + '), modal ikut, laba tidak berubah. Sesudah ini karung ' + c.berat + ' kg ' + c.induk + ' dibukukan & dijual dari buku ' + c.induk + ' lagi. Ketuk sekali lagi', perluYakin: 'gabung' };
+  return { dokumen: [wbDokPindah([{ merk: K, kg: c.kg }], c.induk, w, { gabungUkuran: { dari: K, induk: c.induk, berat: c.berat }, keterangan: 'Gabung balik buku per ukuran: ' + ckKG(c.kg) + ' ' + K + ' → ' + c.induk + ' (merek per liter / kelas sendiri tidak memakai buku per ukuran)' })],
+    patch: { kabar: 'Buku ' + K + ' digabung balik: ' + ckKG(c.kg) + ' sekarang di buku ' + c.induk + ' (' + ckKG(ckB2(c.indukKg + c.kg)) + '). Modal ikut, laba tidak berubah.', kabarAwas: false } };
+}
+/** Merek yang datang DUA ukuran (karung 50 & 25 kg tercatat atas namanya) dan stok lamanya belum dipisah. Merek per liter / kelas sendiri tidak ditawarkan (39b no. 35). */
 export function ckCalonPisahUkuran() {
-  const st = hitungStokKarungPerMerk(); const u = petaUkuran(); const bw = petaBukuWadah(); const sudah = {};
+  const st = hitungStokKarungPerMerk(); const u = petaUkuran(); const bw = petaBukuWadah(); const sudah = {}; const tanpa = ckTanpaBukuUkuran();
   ambilProduksiBerlaku().forEach((p) => { if (p.pisahUkuran && p.pisahUkuran.induk) sudah[p.pisahUkuran.induk] = true; });
-  return Object.keys(st).filter((m) => !u[m] && !bw[m] && !sudah[m] && merkPunyaKarungBerat(m, 50) && merkPunyaKarungBerat(m, 25)).sort()
+  return Object.keys(st).filter((m) => !u[m] && !bw[m] && !sudah[m] && !tanpa[m] && merkPunyaKarungBerat(m, 50) && merkPunyaKarungBerat(m, 25)).sort()
     .map((m) => ({ merk: m, bukuKg: ckB2(st[m].sisaKg || 0), baru: kunciUkuran(m, 25) }));
 }
 /**

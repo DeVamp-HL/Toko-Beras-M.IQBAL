@@ -27,6 +27,9 @@ KOTAK = {
   'katalogHargaKarung': [{'id': 'Angsa', 'merk': 'Angsa', 'hargaPerKg': 15200}, {'id': 'Perahu', 'merk': 'Perahu', 'hargaPerKg': 15600}, {'id': 'Ketan Paris', 'merk': 'Ketan Paris', 'hargaPerKg': 22000}],
 }
 
+# audit 39b no. 35: kedatangan Ketan Putih 25 kg (dipasok di tengah skenario, sesudah Ketan Putih 50 kg) — merek per liter yang datang dua ukuran
+B8 = {'id': 'b8', 'tanggal': '2026-09-19', 'jam': '08:00', 'pemasok': 'PEMASOK CONTOH', 'caraBayar': 'tunai', 'biayaBongkar': 0, 'merkList': [brs(1, 'Ketan Putih', 2, 18500, 25)]}
+
 SKENARIO = r"""
 var gagal = [], lulus = 0; var J = JSON.stringify;
 function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + String(ket).slice(0, 600) : '')); }
@@ -97,6 +100,31 @@ var kap = susunKapur(new Date(Date.now())).baris.map(function (x) { return x.isi
 ok('Papan Kapur menulis pemisahan buku', /Buku Angsa dipisah per ukuran: 5 karung 25 kg → Angsa 25 kg/.test(kap), kap);
 var jb = jbKelompokStok(); var jAngsa = (jb.find(function (g) { return g.merk.indexOf('Angsa') >= 0; }) || {}).merk || [];
 ok('jenis beras: buku "Angsa 25 kg" dikelompokkan bersama induknya, dan tidak diatur sendiri di setelan jenis', jAngsa.indexOf('Angsa 25 kg') >= 0 && !jbDaftar().baris.some(function (b) { return b.merk === 'Angsa 25 kg'; }), J([jb, jbDaftar().baris.map(function (b) { return b.merk; })]));
+
+// ---- AUDIT 39b no. 35 (owner 30 Sep): merek per liter / kelas sendiri TIDAK memakai buku per ukuran; buku yang terlanjur lahir digabung balik ke induk
+// Ketan Hitam datang 50 + 25 kg SEBELUM ditandai per liter → buku "Ketan Hitam 25 kg" lahir (keadaan toko 29 Sep); Ketan Putih datang dua ukuran, belum dipisah
+var KD = susunSimpanMasuk({ id: null, tanggal: '2026-09-20', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', bongkar: '', alasan: '', baris: [
+  { merk: 'Ketan Hitam', jumlahKarung: '1', beratKarung: 50, hargaPerKg: '20000' }, { merk: 'Ketan Hitam', jumlahKarung: '1', beratKarung: 25, hargaPerKg: '21000' },
+  { merk: 'Ketan Putih', jumlahKarung: '1', beratKarung: 50, hargaPerKg: '18000' }] }, W, true); terapkanKeCache(KD.dokumen || []);
+terapkanKeCache([{ koleksi: 'batchMasuk', data: B8 }]);
+ok('39b-35 sebelum ditandai: Ketan Hitam 25 kg lahir sebagai buku sendiri (25 kg), induk terpisah; Ketan Putih calon pisah', !KD.tolak && buku('Ketan Hitam 25 kg') === 25 && !!(indukTerpisah()['Ketan Hitam'] || {})[25] && ckCalonPisahUkuran().some(function (x) { return x.merk === 'Ketan Putih'; }), J([KD.tolak, buku('Ketan Hitam 25 kg'), indukTerpisah(), ckCalonPisahUkuran()]));
+var LL = wbSusunLiteranLangsung('Ketan Hitam', true, W); terapkanKeCache(LL.dokumen || []); var LL2 = wbSusunLiteranLangsung('Ketan Putih', true, W); terapkanKeCache(LL2.dokumen || []);
+ok('39b-35 ditandai per liter: ckTanpaBukuUkuran memuat Ketan Hitam & Ketan Putih, bukan Angsa', !LL.tolak && !LL2.tolak && ckTanpaBukuUkuran()['Ketan Hitam'] === true && ckTanpaBukuUkuran()['Ketan Putih'] === true && !ckTanpaBukuUkuran()['Angsa'], J(ckTanpaBukuUkuran()));
+var HK35 = hitungMasuk({ id: null, tanggal: '2026-09-20', pemasok: 'X', caraBayar: 'tunai', bongkar: '', baris: [{ merk: 'Ketan Hitam', jumlahKarung: '1', beratKarung: 25, hargaPerKg: '21000' }, { merk: 'Ketan Putih', jumlahKarung: '1', beratKarung: 25, hargaPerKg: '18500' }, { merk: 'Angsa', jumlahKarung: '1', beratKarung: 25, hargaPerKg: '13500' }] });
+ok('39b-35 barang masuk: karung 25 kg Ketan Hitam & Ketan Putih (per liter) masuk buku INDUK tanpa indukUkuran; Angsa 25 kg tetap ke "Angsa 25 kg"', J(HK35.baris.map(function (b) { return [b.merkSimpan, b.indukUkuran]; })) === J([['Ketan Hitam', ''], ['Ketan Putih', ''], ['Angsa 25 kg', 'Angsa']]) && !HK35.bermasalah.length, J(HK35.baris.map(function (b) { return [b.merkSimpan, b.indukUkuran, b.masalah]; })));
+ok('39b-35 Ketan Putih (per liter) tidak lagi ditawarkan pisah buku', !ckCalonPisahUkuran().some(function (x) { return x.merk === 'Ketan Putih'; }), J(ckCalonPisahUkuran()));
+var G0 = ckCalonGabungUkuran();
+ok('39b-35 calon gabung: "Ketan Hitam 25 kg" 25 kg → induk Ketan Hitam; Angsa 25 kg (bukan per liter) tidak', J(G0.map(function (x) { return [x.kunci, x.induk, x.kg]; })) === J([['Ketan Hitam 25 kg', 'Ketan Hitam', 25]]), J(G0));
+var GY = ckSusunGabungUkuran('Ketan Hitam 25 kg', W, false);
+ok('39b-35 gabung minta ketukan kedua dengan angka buku induk sebelum → sesudah', GY.perluYakin === 'gabung' && /25 kg di buku Ketan Hitam 25 kg pindah ke buku Ketan Hitam \(50 kg → 75 kg\)/.test(GY.tolak) && !GY.dokumen, J(GY));
+ok('39b-35 gabung buku yang bukan calon DITOLAK (Angsa 25 kg)', !!ckSusunGabungUkuran('Angsa 25 kg', W, true).tolak && !ckSusunGabungUkuran('Angsa 25 kg', W, true).dokumen);
+var vG = nilai(), lG = hitungLabaBersihRentang('2026-09-01', '2026-09-30').labaBersih, hInduk = buku('Ketan Hitam');
+var GB = ckSusunGabungUkuran('Ketan Hitam 25 kg', W, true); var gp = dok(GB, 'produksiKemasan');
+ok('39b-35 gabung: SATU pindah buku 25 kg "Ketan Hitam 25 kg" → "Ketan Hitam" bertanda gabungUkuran {dari, induk, berat 25} — bukan cocokkan (tanpa penyesuaianStok)', !GB.tolak && GB.dokumen.length === 1 && gp.length === 1 && J(gp[0].sumberList) === J([{ merk: 'Ketan Hitam 25 kg', kg: 25 }]) && gp[0].merkTujuan === 'Ketan Hitam' && J(gp[0].gabungUkuran) === J({ dari: 'Ketan Hitam 25 kg', induk: 'Ketan Hitam', berat: 25 }) && !dok(GB, 'penyesuaianStok').length, J([GB.tolak, gp]));
+terapkanKeCache(GB.dokumen || []);
+ok('39b-35 sesudah gabung: induk 50 → 75 kg, buku 25 kg nol, nilai stok & laba tetap, induk TIDAK lagi terpisah, tidak ada calon gabung lagi', B2(buku('Ketan Hitam') - hInduk) === 25 && B2(buku('Ketan Hitam 25 kg')) === 0 && Math.abs(nilai() - vG) <= 1 && hitungLabaBersihRentang('2026-09-01', '2026-09-30').labaBersih === lG && !indukTerpisah()['Ketan Hitam'] && !ckCalonGabungUkuran().length && ukuranDigabung()['Ketan Hitam 25 kg'] === 'Ketan Hitam', J([buku('Ketan Hitam'), buku('Ketan Hitam 25 kg'), nilai(), vG, indukTerpisah()]));
+var KD2 = susunSimpanMasuk({ id: null, tanggal: '2026-09-20', pemasok: 'PEMASOK CONTOH', caraBayar: 'tunai', bongkar: '', alasan: '', baris: [{ merk: 'Ketan Hitam', jumlahKarung: '1', beratKarung: 25, hargaPerKg: '21000' }] }, W, true); terapkanKeCache(KD2.dokumen || []);
+ok('39b-35 kedatangan berikutnya: karung 25 kg Ketan Hitam tercatat & bertambah di buku induk (75 → 100), buku 25 kg tetap nol; rak & retur induk menerima 25 kg lagi', !KD2.tolak && B2(buku('Ketan Hitam')) === B2(hInduk + 50) && B2(buku('Ketan Hitam 25 kg')) === 0 && daftarBarangRetur().karung.some(function (x) { return x.kunci === 'Ketan Hitam|25'; }), J([KD2.tolak, buku('Ketan Hitam'), buku('Ketan Hitam 25 kg'), daftarBarangRetur().karung.map(function (x) { return x.kunci; })]));
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
@@ -106,16 +134,19 @@ Object.keys(CADANGAN).forEach(function (n) { pasok(n, CADANGAN[n]); });
 var nId = 900000; var W = { tanggal: TGL_CAD, jam: '23:50', kini: TGL_CAD + 'T16:50:00.000Z', idUnik: function () { nId += 1; return nId; } };
 var nilai = function () { var st = hitungStokKarungPerMerk(); var v = 0; Object.keys(st).forEach(function (m) { v += st[m].sisaKg * st[m].hppTerakhirPerKg; }); return Math.round(v); };
 var bulan = TGL_CAD.slice(0, 7); var akhir = bulan + '-' + String(new Date(Number(bulan.slice(0, 4)), Number(bulan.slice(5, 7)), 0).getDate()).padStart(2, '0');
+var gabung = ckCalonGabungUkuran(); var vg0 = nilai(), lg0 = hitungLabaBersihRentang(bulan + '-01', akhir).labaBersih; var hasilG = [];
+gabung.forEach(function (x) { var r = ckSusunGabungUkuran(x.kunci, W, true); if (!r.tolak) terapkanKeCache(r.dokumen); hasilG.push(x.kunci + ' ' + x.kg + ' → ' + x.induk + (r.tolak ? ' DITOLAK' : '')); });
+var gabungSisa = ckCalonGabungUkuran().length; var terpisahSisa = gabung.filter(function (x) { return !!indukTerpisah()[x.induk]; }).map(function (x) { return x.induk; }); var vg1 = nilai(), lg1 = hitungLabaBersihRentang(bulan + '-01', akhir).labaBersih;
 var calon = ckCalonPisahUkuran(); var v0 = nilai(), laba0 = hitungLabaBersihRentang(bulan + '-01', akhir).labaBersih; var hasil = [];
 calon.forEach(function (x) { var n = Math.min(4, Math.floor(x.bukuKg / 25)); var r = ckSusunPisahUkuran(x.merk, String(n), W, true); if (!r.tolak) terapkanKeCache(r.dokumen); hasil.push(x.merk + ' ' + n + (r.tolak ? ' DITOLAK' : '')); });
 var rak = (function () { var s = keadaanAwal(); s.sekarang = new Date(Date.now()); return susunRak(s).karung; })();
 var ganda = calon.filter(function (x) { return rak.some(function (c) { return c.kunci === x.merk && c.berat === 25; }); }).map(function (x) { return x.merk; });
-print(J({ calon: calon.map(function (x) { return x.merk + ' ' + x.bukuKg; }), hasil: hasil, nilai: [v0, nilai()], laba: [laba0, hitungLabaBersihRentang(bulan + '-01', akhir).labaBersih], ganda: ganda, sisaCalon: ckCalonPisahUkuran().length }));
+print(J({ calon: calon.map(function (x) { return x.merk + ' ' + x.bukuKg; }), hasil: hasil, nilai: [v0, nilai()], laba: [laba0, hitungLabaBersihRentang(bulan + '-01', akhir).labaBersih], ganda: ganda, sisaCalon: ckCalonPisahUkuran().length, gabung: hasilG, gabungNilai: [vg0, vg1], gabungLaba: [lg0, lg1], gabungSisa: gabungSisa, terpisahSisa: terpisahSisa }));
 """
 
 
 def utama(js, pakai_cadangan):
-    h, e = uji_wadah_bernama.jalan(UW.JAM_TETAP + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\n' + SKENARIO)
+    h, e = uji_wadah_bernama.jalan(UW.JAM_TETAP + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar B8 = ' + json.dumps(B8) + ';\n' + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e], None
     asap = None
     p = uji_wadah_bernama.cadangan_toko() if pakai_cadangan else None
@@ -140,6 +171,12 @@ RUSAK = {
     'retur induk tetap menerima 25 kg': ("if (uk[merk] ? b !== uk[merk].berat : !!(tp[merk] && tp[merk][b])) return;", "if (uk[merk] ? b !== uk[merk].berat : false) return;"),
     'karung terbuka buku 25 kg dihitung 50 kg': ("const u = petaUkuran()[asal]; if (u) return u.berat;", "const u = null;"),
     'katalog harga menagih harga buku ukuran': ("Object.keys(stokMerekSaja(stokK)).filter((m) => !ukuranBuku[m]).forEach((m) => {", "Object.keys(stokMerekSaja(stokK)).forEach((m) => {"),
+    # audit 39b no. 35
+    'merek per liter / kelas sendiri masih dibukukan ke buku per ukuran': ("&& !namaLama[m] && !tanpaUkuran[m] && (", "&& !namaLama[m] && ("),
+    'merek per liter masih ditawarkan pisah buku': ("&& !sudah[m] && !tanpa[m] && merkPunyaKarungBerat(m, 50)", "&& !sudah[m] && merkPunyaKarungBerat(m, 50)"),
+    'buku yang sudah digabung masih memisah induknya': ("Object.keys(u).forEach((n) => { if (g[n]) return; (out[u[n].induk]", "Object.keys(u).forEach((n) => { (out[u[n].induk]"),
+    'gabung tanpa tanda gabungUkuran (induk tetap terpisah)': ("{ gabungUkuran: { dari: K, induk: c.induk, berat: c.berat }, keterangan:", "{ keterangan:"),
+    'gabung tanpa ketukan kedua': ("if (!yakin) return { tolak: 'Gabungkan buku: '", "if (false) return { tolak: 'Gabungkan buku: '"),
     'kedatangan tidak menulis tanda indukUkuran': ("b.indukUkuran ? { indukUkuran: b.indukUkuran } : {}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {})) };", "{}, b.merkPemasok ? { merkPemasok: b.merkPemasok } : {})) };"),   # putaran 30: baris merkList membawa merkPemasok bila ada
 }
 
@@ -162,6 +199,10 @@ if __name__ == '__main__':
         else:
             print('ASAP DATA TOKO (%s): merek dua ukuran: %s · dipisah dengan hitungan contoh: %s · nilai stok %s → %s · laba bulan itu %s → %s · induk masih menawarkan 25 kg: %s · calon tersisa %d'
                   % (os.path.basename(p), ', '.join(asap['calon']) or '-', ', '.join(asap['hasil']) or '-', asap['nilai'][0], asap['nilai'][1], asap['laba'][0], asap['laba'][1], ', '.join(asap['ganda']) or 'tidak ada', asap['sisaCalon']))
+            print('   39b no. 35 — gabung balik buku per ukuran merek per liter: %s · nilai stok %s → %s · laba %s → %s · calon tersisa %d · induk masih terpisah: %s'
+                  % (', '.join(asap['gabung']) or '-', asap['gabungNilai'][0], asap['gabungNilai'][1], asap['gabungLaba'][0], asap['gabungLaba'][1], asap['gabungSisa'], ', '.join(asap['terpisahSisa']) or 'tidak ada'))
+            if abs(asap['gabungNilai'][0] - asap['gabungNilai'][1]) > 5 or asap['gabungLaba'][0] != asap['gabungLaba'][1] or asap['gabungSisa'] or asap['terpisahSisa'] or any('DITOLAK' in x for x in asap['gabung']):
+                g.append('asap data toko (39b no. 35): ' + json.dumps({k: asap[k] for k in ('gabung', 'gabungNilai', 'gabungLaba', 'gabungSisa', 'terpisahSisa')}, ensure_ascii=False)[:500])
             if abs(asap['nilai'][0] - asap['nilai'][1]) > 5 or asap['laba'][0] != asap['laba'][1] or asap['ganda'] or asap['sisaCalon'] or any('DITOLAK' in x for x in asap['hasil']):
                 g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:500])
     sys.exit(2 if g else 0)

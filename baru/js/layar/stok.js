@@ -45,7 +45,7 @@ export function pasangLayarStok(akar, opsi) {
   const tabAwal = (() => { try { return localStorage.getItem(KUNCI_TAB) || 'gudang'; } catch (e) { return 'gudang'; } })();
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ tab: S.TAB_STOK.some((t) => t[0] === tabAwal) ? tabAwal : 'gudang', tanya: 'beli', kabar: '', kabarAwas: false, wadahAktif: null, isiW: null, krKetik: '', krNama: '', krAsal: null, krPilih: false, lainPilih: false, gnKetik: '', akYakin: '', tandai: null, shKetik: '', bgKetik: '', bgAlasan: '', bgYakin: false, atur: null, drPilih: null, drYakin: false, tpTab: 'tiga',
-    lembar: null, masuk: null, cocok: null, aturC: null, yakinM: false, yakinHapus: false, yakinC: {}, puKetik: {}, puYakin: '',
+    lembar: null, masuk: null, cocok: null, aturC: null, yakinM: false, yakinHapus: false, yakinC: {}, puKetik: {}, puYakin: '', guYakin: '',
     adukan: null, yakinA: {}, yakinHapusA: false, bukaA: null, koreksiA: { total: '', alasan: '' }, qBuka: null, qAlasan: '', qYakin: '',
     // putaran 16: Kantong (ST4), Tempat simpan (ST5), HPP (ST6)
     kt: { jenis: '', jumlah: '', harga: '', toko: '' }, ktTab: 'rak', ktYakin: {}, ktHapus: null, ktAlasan: '', ktYakinHapus: false, aturKt: null,
@@ -183,6 +183,10 @@ export function pasangLayarStok(akar, opsi) {
     bukaAturC: () => { const a = C.aturCatat(); const t = (n) => String(n).replace('.', ','); set({ aturC: st().aturC ? null : { minKarung: t(a.minKarung), tempoHari: t(a.tempoHari), batasSelisih: t(a.batasSelisih), ambangSusutPositif: String(a.ambangSusutPositif), batasVarian: t(a.batasVarian) } }); },
     // putaran 28 (owner 28 Sep): pisahkan buku karung 25 kg merek dua ukuran — hasil hitung karung 25 kg utuh, dua ketukan
     puKetik: (v, el) => { const m = el && el.dataset.merk; if (!m) return; const d = Object.assign({}, st().puKetik || {}); d[m] = String(v).slice(0, 4); set({ puKetik: d, puYakin: '' }); },
+    // audit 39b no. 35 (owner 30 Sep): buku per ukuran merek per liter / kelas sendiri digabung balik ke induk — dua ketukan, satu pindah buku
+    gabungUkuran: async ({ merk }) => { const r = C.ckSusunGabungUkuran(merk, waktu(), st().guYakin === merk);
+      if (r.perluYakin) return set({ guYakin: merk, kabar: r.tolak, kabarAwas: false });
+      if (await tulis(r)) set({ guYakin: '' }); },
     pisahUkuran: async ({ merk }) => { const r = C.ckSusunPisahUkuran(merk, (st().puKetik || {})[merk], waktu(), st().puYakin === merk);
       if (r.perluYakin) return set({ puYakin: merk, kabar: r.tolak, kabarAwas: false });
       if (await tulis(r)) { const d = Object.assign({}, st().puKetik || {}); delete d[merk]; set({ puKetik: d, puYakin: '' }); } },
@@ -722,6 +726,11 @@ export function pasangLayarStok(akar, opsi) {
       <div class="jalur kisi4" data-k="tab-cocok">${C.TAB_COCOK.map(([id, nm]) => h`<div class="seg ${c.tab === id ? 'aktif' : ''}" data-aksi="cTab" data-t="${id}">${nm}</div>`)}</div>
       <div class="op-ringkas" data-k="ringkas-cocok"><div>dihitung<b>${r.dihitung} / ${r.semua}</b></div><div>susut (potong laba)<b>${RP(r.susutRp)}</b></div><div>lebih (stok naik)<b>${RP(r.lebihRp)}</b></div></div>
       <div class="kaca-btn ${r.dihitung ? 'aktif emas' : 'mati'}" data-aksi="cSimpan">${r.tolak && !r.perluYakin ? r.tolak : c.tab === 'wadah' ? 'SIMPAN COCOKKAN WADAH · ' + r.dihitung + ' wadah' : 'SIMPAN COCOKKAN · ' + r.berubah + ' berubah'}</div>
+      ${c.tab === 'tumpukan' ? (() => { const G = C.ckCalonGabungUkuran(); if (!G.length) return ''; return h`<div class="kartu" data-k="gabung-ukuran" style="gap: 6px;">
+        <div class="label">Gabungkan buku karung 25 kg ke induknya · ${G.length} buku</div>
+        <div class="ket">Merek yang dijual per liter / kelas sendiri tidak memakai buku per ukuran (keputusan owner 30 Sep): karung 25 kg-nya dijual & ditakar dari buku induk. Isi buku di bawah pindah seluruhnya ke induknya, modal ikut, laba tidak berubah — bukan cocokkan.</div>
+        ${G.map((x) => h`<div class="tombol-baris rapat" data-k="gu-${x.kunci}"><div class="ket" style="min-width: 150px;"><b>${x.kunci}</b> · ${KG(x.kg)} kg → ${x.induk} (${KG(x.indukKg)} → ${KG(Math.round((x.indukKg + x.kg) * 100) / 100)} kg)</div>
+          <div class="kaca-btn ${s.guYakin === x.kunci ? 'awas' : 'aktif emas'}" data-aksi="gabungUkuran" data-merk="${x.kunci}">${s.guYakin === x.kunci ? 'YAKIN — gabungkan' : 'gabungkan ke ' + x.induk}</div></div>`)}</div>`; })() : ''}
       ${c.tab === 'tumpukan' ? (() => { const P = C.ckCalonPisahUkuran(); if (!P.length) return ''; return h`<div class="kartu" data-k="pisah-ukuran" style="gap: 6px;">
         <div class="label">Pisahkan buku karung 25 kg · ${P.length} merek datang dua ukuran</div>
         <div class="ket">Karung 50 kg dan 25 kg merek yang sama sekarang masih satu buku. Hitung karung 25 kg yang masih UTUH di gudang, tulis jumlahnya (0 kalau tidak ada): sejumlah itu pindah ke buku "Merek 25 kg", modal ikut, laba tidak berubah. Sesudahnya karung 25 kg merek itu dijual, diretur, dan dicatat masuk dari bukunya sendiri.</div>
