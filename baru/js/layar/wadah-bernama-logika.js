@@ -353,7 +353,9 @@ export function wbSusunGantiNama(lama, baru, w) {
   const dokumen = [wbDokAtur({ daftar, resep, gantiNama: { dari: L, ke: B } }, w)];
   if (K.stokSendiri) { const lahir = wbDokLahir([{ merk: wbKunci(B), stokWadah: B }], w); if (lahir) dokumen.push(lahir);
     if (K.totalKg > 0.004) dokumen.push(wbDokPindah([{ merk: K.kunci, kg: K.totalKg }], wbKunci(B), w, { gantiNamaWadah: { dari: L, ke: B }, keterangan: 'Ganti nama wadah ' + L + ' → ' + B + ': stok wadah ' + wbKG(K.totalKg) + ' ikut pindah' }));
-    dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: B, tipe: 'isi', isiKg: wbB2(K.totalKg), stokWadah: wbKunci(B), gantiNamaDari: L } }); }
+    // 39b no. 6: komposisi turunan (merek asal) ikut dibawa titik samakan nama baru — riwayat isi ulangnya bernama L, jadi tanpa ini B "belum ada isi ulang"
+    const kmp = wbKomposisiTurunanKg(L, K.totalKg);
+    dokumen.push({ koleksi: 'wadahLiteran', data: Object.assign({ id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: B, tipe: 'isi', isiKg: wbB2(K.totalKg), stokWadah: wbKunci(B), gantiNamaDari: L }, Object.keys(kmp).length ? { komposisi: kmp } : {}) }); }
   else if (K.diketahui) dokumen.push({ koleksi: 'wadahLiteran', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, wadah: B, tipe: 'isi', isiKg: wbB2(K.totalKg), komposisi: Object.assign({}, K.bagian), gantiNamaDari: L } });
   const kn = karungUntukWadah(L); const kbBuku = K.stokSendiri && KBL.some((k) => k.kunci === kn.merk); const kb = kn.dariCatatan && !kbBuku ? karungBelakang(kn.merk, L) : null;   // karung berbuku: dipindah di bawah (nama kunci baru)
   const sebelum = {}; semuaKarungTerbuka().forEach((k) => { sebelum[k.merk + '|' + k.lokasi] = k.sisaMentahKg; });
@@ -553,6 +555,16 @@ export function wbKomposisiTurunan(W, s) {
   const nama = daftar.length ? (banding || daftar[0].merk) : (K.diketahui ? 'belum ada isi ulang tercatat' : 'isi belum ditandai');
   return { wadah: W, stokSendiri: !!K.stokSendiri, diketahui: K.diketahui, totalKg: wbB2(K.totalKg), liter: Math.round(Math.max(0, K.totalKg) / wbRasio(W) * 10) / 10, daftar, banding, terakhir: tk, nama,
     teks: nama + (K.diketahui ? ' · ±' + wbKG(Math.max(0, K.totalKg)) + ' ≈ ' + String(Math.round(Math.max(0, K.totalKg) / wbRasio(W) * 10) / 10).replace('.', ',') + ' L' : '') + (tk ? ' · diisi ' + tk.jam + (tk.oleh ? ' oleh ' + tk.oleh : '') : '') };
+}
+
+/**
+ * Komposisi turunan W SEKARANG sebagai { merek asal: kg } untuk isi `isiKg` (bawaan: isi wadah sekarang), Σ persis — dibawa titik samakan baru (ganti nama,
+ * cocokkan wadah) supaya riwayat isi ulang tidak terputus (39b no. 6 / 16: dulu titik baru tanpa komposisi → "belum ada isi ulang", lalu 100 % merek terakhir).
+ */
+export function wbKomposisiTurunanKg(W, isiKg, s) {
+  const T = wbKomposisiTurunan(W, s); const isi = wbB2(Math.max(0, isiKg === undefined || isiKg === null ? T.totalKg : Number(isiKg) || 0)); const out = {}; let jalan = 0;
+  T.daftar.forEach((x, i) => { const k = i === T.daftar.length - 1 ? wbB2(isi - jalan) : wbB2(isi * x.porsi); jalan = wbB2(jalan + k); if (k > 0) out[x.merk] = k; });
+  return out;
 }
 
 /**

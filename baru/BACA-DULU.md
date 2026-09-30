@@ -978,6 +978,17 @@ diambil, dua buku untuk satu karung fisik). Tambalan: tiap buku karung belakang 
 kolam catatannya pindah bernama kunci baru di belakang wadah baru, kolam lama dinolkan; karung yang berdiri ditulis terakhir supaya tetap berdiri;
 buku karung belakang MINUS → ganti nama ditolak (samakan dulu). Uji `uji_wadah_satu_buku.py` +3 (pindah & tumpukan/nilai tetap, isi ulang tidak
 membuka karung baru, minus ditolak). Kontrol baru 2.
+- Tambahan 1 Okt: kolam lama dinolkan DI TEMPATNYA (di belakang nama lama; dulu ditulis lepas → 4 karung hantu "dulu di belakang wadah <lama>" di
+  deretan & cocokkan). Titik samakan nama baru membawa komposisi turunan (`wbKomposisiTurunanKg`) — dulu nama baru "belum ada isi ulang tercatat".
+  Uji +2, kontrol +2.
+
+## Audit 39b no. 16 — cocokkan wadah aktif tidak memutus komposisi turunan (1 Okt 2026, cabang `audit/39b-ganti-nama-karung-belakang`)
+
+Temuan: komposisi isi wadah aktif (merek asal, "Kumala 3 : NG 2") diturunkan dari riwayat isi ulang sejak titik samakan terakhir. Cocokkan wadah
+menulis titik samakan baru TANPA komposisi → chip Jual, kartu Stok, panel wadah tampil "belum ada isi ulang tercatat", lalu 100 % merek isi ulang
+berikutnya. Buku tidak tersentuh. Tambalan: `ccSimpanWadah` (wadah berbuku sendiri) membawa `komposisi` = komposisi turunan sekarang disebar ke
+hitungan (Σ persis). Uji `uji_wadah_satu_buku.py` +1 (banding sama sesudah cocokkan; isi ulang NG sesudahnya menambah bagian NG, tidak jadi 100 %),
+kontrol +1.
 
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
