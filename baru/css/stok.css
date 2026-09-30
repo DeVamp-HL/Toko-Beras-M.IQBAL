@@ -46,6 +46,9 @@ main.layar-stok { position: relative; z-index: 1; display: flex; flex-direction:
 .layar-stok .kapur:last-child { border-bottom: 0; } .layar-stok .kapur .isi-kapur { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .layar-stok .kapur.masuk .n { color: var(--emas1); } .layar-stok .kapur.keluar .n { color: var(--teks); } .layar-stok .kapur.opname .n { color: var(--awas); } .layar-stok .kapur.wadah .n { color: var(--platina1); }
 main.layar-stok.masuk > header, main.layar-stok.masuk > .jalur { animation: rkNaik 520ms cubic-bezier(.2,.8,.2,1) both; }
+/* audit 39b no. 35: kartu gabung balik buku per ukuran — tulisan & tombol bertumpuk di layar sempit (tidak saling menimpa) */
+.layar-stok [data-k="gabung-ukuran"] .tombol-baris { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); align-items: center; } .layar-stok [data-k="gabung-ukuran"] .tombol-baris > .ket { min-width: 0 !important; }
+@media (min-width: 720px) { .layar-stok [data-k="gabung-ukuran"] .tombol-baris { grid-template-columns: minmax(0, 1fr) minmax(200px, auto); } }
 /* putaran 39c: slot deretan karung (satu per wadah): kartu petak yang lebih rendah; kosong = garis putus ("?"); habis = tepi awas */
 .layar-stok .petak.slot { padding: 8px 4px 9px; gap: 1px; } .layar-stok .petak.slot .gambar-chip { width: 44px; height: 44px; } .layar-stok .petak.slot .gambar-chip svg { width: 44px; height: 44px; }
 .layar-stok .petak.slot.kosong { border-style: dashed; opacity: 0.82; } .layar-stok .petak.slot.kosong .nm { color: var(--redup); font-weight: 500; } .layar-stok .petak.slot.habis { border-color: var(--awas); }
