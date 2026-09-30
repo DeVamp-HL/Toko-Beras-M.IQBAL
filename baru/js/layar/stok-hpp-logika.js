@@ -114,12 +114,27 @@ export function susunKoreksiHpp(merk, hargaBaru, alasan, w, yakin) {
   const log = { koleksi: 'koreksiHpp', data: { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, merk, batchId: String(v.target.batchId), hargaDari: v.target.hargaPerKg, hargaKe: v.n, modalDari: Math.round(v.modalLama * 100) / 100, modalKe: Math.round(v.modalBaru * 100) / 100, sisaKg: Math.round(v.sisa * 100) / 100, deltaNilai: Math.round(v.delta), alasan: String(alasan).trim() } };
   return { dokumen: r.dokumen.concat([log]), nilai: v, patch: { hp: { merk, ketik: '', alasan: '', yakin: false, massal: {}, tab: 'kartu' }, kabar: merk + ': harga kedatangan ' + v.target.tanggal + ' ' + RP(v.target.hargaPerKg) + ' → ' + RP(v.n) + '/kg (' + String(alasan).trim() + '). Modal rata-rata ' + RP(Math.round(v.modalLama)) + ' → ' + RP(Math.round(v.modalBaru)) + '/kg; nilai rak ' + (v.delta >= 0 ? 'naik ' : 'turun ') + RP(Math.round(Math.abs(v.delta))) + '.', kabarAwas: false } };
 }
+/**
+ * audit 39b no. 2 (tinjauan 30 Sep): beberapa nama yang kedatangan sasarannya SAMA dinilai BERSAMA — satu kedatangan = satu bon; lolos per nama belum
+ * tentu lolos bersama. nilai = {merk: hasil nilaiKoreksi yang lolos}. Hasil {merk: kalimat tolak} untuk nama yang bonnya jatuh di bawah yang dibayar.
+ */
+function hpKunciBonGabung(nilai) {
+  const per = {}; Object.keys(nilai).forEach((m) => { const id = String(nilai[m].target.batchId); (per[id] = per[id] || []).push(m); });
+  const salah = {};
+  Object.keys(per).forEach((id) => { const ms = per[id]; if (ms.length < 2) return; const bt = ambilSemuaBatch().find((b) => String(b.id) === id); const bb = bt ? ckBayarBonId(id) : null; if (!bb || !bb.dibayar) return;
+    const nilaiBon = (bt.merkList || []).reduce((a, x) => a + (ms.indexOf(x.merk) >= 0 && x.bentuk !== 'bal' ? (Number(x.totalKg) || 0) * nilai[x.merk].n : (Number(x.subtotalHarga) || 0)), 0);
+    if (nilaiBon + 0.5 >= bb.dibayar) return; const tg = nilai[ms[0]].target;
+    const t = ms.join(' + ') + ': kedatangan terakhirnya sama (' + tg.pemasok + ' ' + tg.tanggal + '), bon yang sudah dibayar ' + RP(bb.dibayar) + ' — harga baru BERSAMA membuat nilai bonnya ' + RP(nilaiBon) + ', di bawah yang dibayar; kelebihannya akan pindah ke bon lain tanpa uang';
+    ms.forEach((m) => { salah[m] = t; }); });
+  return salah;
+}
 /** Koreksi massal: peta {merk: harga}; SEMUA-ATAU-TIDAK — satu angka ditolak = tidak ada yang ditulis. Satu alasan. */
 export function susunKoreksiMassal(petaHarga, alasan, w) {
   const merk = Object.keys(petaHarga || {}).filter((m) => !hpKosong(petaHarga[m]));
   if (!merk.length) return { tolak: 'Belum ada nama yang disiapkan' };
   const nilai = {}; const salah = [];
-  merk.forEach((m) => { const v = nilaiKoreksi(m, petaHarga[m]); if (v.tolak) salah.push(m + ': ' + v.tolak); else if (v.sama) salah.push(m + ': sama dengan yang tercatat'); else nilai[m] = v; });
+  merk.forEach((m) => { const v = nilaiKoreksi(m, petaHarga[m]); if (v.tolak) salah.push(v.tolak.indexOf(m + ':') === 0 ? v.tolak : m + ': ' + v.tolak); else if (v.sama) salah.push(m + ': sama dengan yang tercatat'); else nilai[m] = v; });
+  if (!salah.length) { const gb = hpKunciBonGabung(nilai); const kal = []; Object.keys(gb).forEach((m) => { if (kal.indexOf(gb[m]) < 0) kal.push(gb[m]); }); kal.forEach((k) => salah.push(k)); }
   if (salah.length) return { tolak: salah.join(' · ') + ' — TIDAK ADA yang disimpan sampai semuanya beres', salah };
   if (hpKosong(alasan)) return { tolak: 'Koreksi massal butuh satu alasan untuk semua' };
   const hasil = hpDrafUntuk(nilai, { tanggal: w.tanggal, jam: w.jam, idUnik: w.idUnik, alasan: String(alasan).trim() }); const gagal = hasil.find((r) => r.tolak); if (gagal) return { tolak: gagal.tolak };
@@ -130,7 +145,8 @@ export function susunKoreksiMassal(petaHarga, alasan, w) {
 }
 /** Pratinjau massal untuk layar: tiap nama yang disiapkan dinilai; label tombol & Δ total. */
 export function pratinjauMassal(petaHarga) {
-  const merk = Object.keys(petaHarga || {}).filter((m) => !hpKosong(petaHarga[m])); const baris = merk.map((m) => { const v = nilaiKoreksi(m, petaHarga[m]); return { merk: m, harga: Math.round(hpAngka(petaHarga[m])), tolak: v.tolak || (v.sama ? 'sama dengan yang tercatat' : ''), ket: v.tolak || (v.sama ? 'sama dengan yang tercatat' : v.rugi || v.lonjak || 'wajar'), delta: v.tolak ? 0 : v.delta }; });
+  const merk = Object.keys(petaHarga || {}).filter((m) => !hpKosong(petaHarga[m])); const baris = merk.map((m) => { const v = nilaiKoreksi(m, petaHarga[m]); return { merk: m, harga: Math.round(hpAngka(petaHarga[m])), tolak: v.tolak || (v.sama ? 'sama dengan yang tercatat' : ''), ket: v.tolak || (v.sama ? 'sama dengan yang tercatat' : v.rugi || v.lonjak || 'wajar'), delta: v.tolak ? 0 : v.delta, v: v.tolak || v.sama ? null : v }; });
+  const lolos = {}; baris.forEach((b) => { if (!b.tolak && b.v) lolos[b.merk] = b.v; }); const gb = hpKunciBonGabung(lolos); baris.forEach((b) => { if (gb[b.merk]) { b.tolak = gb[b.merk]; b.ket = gb[b.merk]; b.delta = 0; } });   // audit 39b no. 2: nama sekedatangan dinilai bersama
   const bermasalah = baris.filter((b) => b.tolak); const delta = baris.reduce((a, b) => a + b.delta, 0);
   return { baris, n: merk.length, bermasalah, delta, siap: merk.length > 0 && !bermasalah.length,
     teks: !merk.length ? 'Ketuk nama, ketik harga beli/kg baru, "siapkan" — lalu terapkan sekaligus' : bermasalah.length ? bermasalah.map((b) => b.merk).join(', ') + ' angkanya ditolak — TIDAK ADA yang disimpan sampai semuanya beres' : 'Disiapkan ' + merk.length + ' nama · nilai rak berubah ' + (delta >= 0 ? '+' : '−') + RP(Math.round(Math.abs(delta))) };
