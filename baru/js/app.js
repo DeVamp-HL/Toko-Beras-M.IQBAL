@@ -159,7 +159,18 @@ const pesanMasuk = document.getElementById('pesanMasuk');
 const salahMasuk = document.getElementById('salahMasuk');
 const isianEmail = document.getElementById('isianEmail'), isianSandi = document.getElementById('isianSandi'), ingatEmail = document.getElementById('ingatEmail');
 const bacaEmail = () => { try { return localStorage.getItem(KUNCI_EMAIL) || ''; } catch (e) { return ''; } };
-function kabarSebentar(t) { const k = document.getElementById('kabarNav'); k.textContent = t; k.hidden = false; clearTimeout(k._t); k._t = setTimeout(() => { k.hidden = true; }, 3600); }
+function kabarSebentar(t) { const k = document.getElementById('kabarNav'); if (k.classList.contains('awas') && !k.hidden) return; k.textContent = t; k.hidden = false; clearTimeout(k._t); k._t = setTimeout(() => { k.hidden = true; }, 3600); }
+// 30 Sep: tombol yang jatuh (dom.js delegasi → 'galat-aksi') tidak lagi diam — pita merah bertahan sampai diketuk
+// Pita bertahan 20 detik (atau sampai diketuk) — tidak menutupi bilah keranjang selamanya; kabar sebentar lain tidak menimpanya selama tampil.
+const pitaGalat = (pesan) => { const k = document.getElementById('kabarNav'); if (!k) return;
+  k.textContent = 'Tadi ada yang GAGAL dijalankan (' + (pesan || 'galat') + '). Periksa dulu apakah catatannya sudah masuk sebelum mengulang — ketuk pesan ini untuk menutup.';
+  const tutup = () => { k.hidden = true; k.classList.remove('awas'); k.onclick = null; };
+  k.classList.add('awas'); k.hidden = false; clearTimeout(k._t); k._t = setTimeout(tutup, 20000); k.onclick = tutup; };
+document.addEventListener('galat-aksi', (e) => { const d = (e && e.detail) || {}; pitaGalat(d.pesan); });
+// galat yang lahir SESUDAH ketukan (menggambar terjadwal, janji tanpa penangkap) dari modul /baru/ sendiri juga tidak boleh diam
+const dariModulKita = (x) => /\/baru\/js\//.test(String((x && (x.stack || x.fileName)) || ''));
+window.addEventListener('unhandledrejection', (e) => { if (dariModulKita(e && e.reason)) pitaGalat(String((e.reason && e.reason.message) || e.reason)); });
+window.addEventListener('error', (e) => { if (e && (dariModulKita(e.error) || /\/baru\/js\//.test(String(e.filename || '')))) pitaGalat(String(e.message || 'galat')); });
 isianSandi.addEventListener('focus', () => { isianSandi.readOnly = false; });
 document.getElementById('lupakanEmail').addEventListener('click', () => { try { localStorage.removeItem(KUNCI_EMAIL); } catch (e) { /* abaikan */ } isianEmail.value = ''; ingatEmail.hidden = true; isianEmail.focus(); });
 /** Gambar layar masuk menurut keadaan akun: keluar → formulir; belum terdaftar / dinonaktifkan / kasir@ → lembar akun; owner / aktif → aplikasi. */

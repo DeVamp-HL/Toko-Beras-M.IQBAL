@@ -48,6 +48,7 @@ main.layar-jual > input[type="hidden"] { display: none; }
 .nav { position: fixed; left: 14px; right: 14px; bottom: 16px; }
 .nav > div { cursor: pointer; }
 .kabar-nav { position: fixed; left: 14px; right: 14px; bottom: 96px; z-index: 6; padding: 10px 14px; border-radius: 14px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--kaca-tepi); font-size: 13px; }
+.kabar-nav.awas { border-color: var(--awas); color: var(--awas); cursor: pointer; }
 
 /* lembar melayang (HP). Sejak layar dimorf (elemen hidup terus), animasi naik cukup di elemennya: ia hanya berjalan saat
    lembar itu LAHIR (data-k berbeda per jenis lembar), tidak terulang tiap ketukan. */
