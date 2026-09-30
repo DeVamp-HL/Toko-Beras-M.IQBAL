@@ -141,7 +141,7 @@ KONTROL = [
     ('tanpa ketukan kedua (owner langsung tembus)', {JL_: [("    if (!s.tembusYakin) return { tolak: stok +", "    if (false) return { tolak: stok +")]}, ('jsc',)),
     ('pemeriksaan ulang dilemahkan (nota lolos tanpa tanda)', {JL_: [("  const stok = periksaStokKeranjang(s); let tembus = [];   // pemeriksaan ulang TIDAK berubah (31b)", "  const stok = ''; let tembus = [];")]}, ('jsc',)),
     ('baris tidak ditandai perluCocokkan', {JL_: [("Object.assign({}, b.trx, { perluCocokkan: true, selisihKg: ids[b.id].selisihKg })", "Object.assign({}, b.trx)")]}, ('jsc',)),
-    ('selisihKg = satuan chip, bukan kg', {JL_: [("selisihKg: Math.round(kgTembus(b.trx, chip, sel) * 100) / 100,", "selisihKg: sel,")]}, ('jsc',)),
+    ('selisihKg = satuan chip, bukan kg', {JL_: [(": Math.round(kgTembus(b.trx, chip, sel) * 100) / 100,", ": sel,")]}, ('jsc',)),
     ('kalimat tanpa nama & kg', {JL_: [("'. Buku ' + tembus.filter((t) => t.selisihKg > 0.004).map((t) => t.nama + ' kurang ' + kgTeks(t.selisihKg)).join(', ') + ' — jual dulu", "'. Buku kurang — jual dulu")]}, ('jsc',)),
     ('tanda tuntas oleh cocokkan SEBELUM tanggal nota', {JL_: [("&& String(q.tanggal || '') >= tgl);\n    if (!tuntas)", "&& true);\n    if (!tuntas)")]}, ('jsc',)),
     ('rework dianggap cocokkan', {JL_: [("const PS = ambilPenyesuaianStok().filter((q) => !q.dariRework);", "const PS = ambilPenyesuaianStok();")]}, ('jsc',)),
