@@ -180,34 +180,44 @@ ok('masuk: aturan owner disimpan ke aturanToko/catatStok (id tetap) dan BERLAKU:
 terapkanKeCache([{ koleksi: 'aturanToko', hapus: 'catatStok' }]);
 
 // ==================== audit 39b no. 2: KEDATANGAN BON YANG SUDAH DIBAYAR ====================
-// pembayaran bon menempel lewat bonId + nama pemasok persis; mesin beku mengalirkan yang yatim ke bon tertua → dijaga di susunSimpanMasuk & susunHapusKedatangan
+// pembayaran bon menempel lewat bonId + nama pemasok persis; mesin beku mengalirkan yang yatim ke bon tertua → dijaga di susunSimpanMasuk & susunHapusKedatangan.
+// Yang MENGUNCI = uang yang ditujukan ke bon (pembayaran bertunjuk); aliran tanpa tujuan (FIFO lama, kelebihan bayar) tidak mengunci (tinjauan 30 Sep).
 var W2 = { tanggal: '2026-09-19', jam: '16:00', idUnik: WW.idUnik }; var W2b = { tanggal: '2026-09-22', jam: '09:00', idUnik: WW.idUnik };
-var d2 = drafMasukKosong(W2); d2.pemasok = 'PEMASOK BON UJI'; d2.caraBayar = 'utang'; d2.baris = [{ merk: 'Angsa', jumlahKarung: '60', beratKarung: 50, hargaPerKg: '13.000' }];
-var S2 = susunSimpanMasuk(d2, W2, true); var id2 = S2.dokumen[0].data.id; terapkanKeCache(S2.dokumen || []);
-terapkanKeCache([{ koleksi: 'utangPemasokMutasi', data: { id: 'bb2', tipe: 'bayar', pemasok: 'PEMASOK BON UJI', nominal: 38000000, tanggal: '2026-09-21', jam: '10:00', bonId: String(id2), bonTanggal: '2026-09-19' } }]);
+var masuk2 = function (pem, cara) { var d = drafMasukKosong(W2); d.pemasok = pem; d.caraBayar = cara; d.baris = [{ merk: 'Angsa', jumlahKarung: '60', beratKarung: 50, hargaPerKg: '13.000' }]; var r = susunSimpanMasuk(d, W2, true); terapkanKeCache(r.dokumen || []); return r; };
+var bayar2 = function (id, pem, n, bonId, tgl) { var d = { id: id, tipe: 'bayar', pemasok: pem, nominal: n, tanggal: tgl || '2026-09-21', jam: '10:00' }; if (bonId) { d.bonId = String(bonId); d.bonTanggal = '2026-09-19'; } terapkanKeCache([{ koleksi: 'utangPemasokMutasi', data: d }]); };
+var S2 = masuk2('PEMASOK BON UJI', 'utang'); var id2 = S2.dokumen[0].data.id;
+bayar2('bb2', 'PEMASOK BON UJI', 38000000, id2); bayar2('bb2x', 'PEMASOK LAIN', 1000000, id2);   // umpan: pemasok lain yang menunjuk bon ini TIDAK dipasang mesin ke bon ini
 var BB2 = ckBayarBonId(id2);
-ok('39b-2: ckBayarBon membaca mesin utang pemasok: bon 39.000.000 (60 × 50 × 13.000), dibayar 38.000.000 lewat pembayaran bertunjuk 21 Sep', !S2.tolak && BB2.nilai === 39000000 && BB2.dibayar === 38000000 && BB2.bayar.length === 1 && BB2.bayarPertama === '2026-09-21', JSON.stringify(BB2));
-var kor2 = function (ubah) { var x = drafDariKedatangan(id2); x.alasan = 'uji'; ubah(x); return susunSimpanMasuk(x, W2b, true); };
-var T2 = { tunai: kor2(function (x) { x.caraBayar = 'tunai'; }).tolak || '', pem: kor2(function (x) { x.pemasok = 'PEMASOK LAIN'; }).tolak || '', tgl: kor2(function (x) { x.tanggal = '2026-09-22'; }).tolak || '', nilai: kor2(function (x) { x.baris[0].jumlahKarung = '58'; }).tolak || '' };
-ok('39b-2: koreksi bon yang sudah dibayar DITOLAK bila jadi tunai / pemasok lain / tanggal datang sesudah bayar pertama / nilai beras di bawah yang dibayar — kalimatnya menyebut 38.000.000 & tanggal bayar', /jadi tunai/.test(T2.tunai) && /nama pemasoknya tidak bisa diganti/.test(T2.pem) && /sesudah tanggal bayar pertamanya \(21 Sep/.test(T2.tgl) && /lebih kecil; kelebihan Rp300\.000/.test(T2.nilai) && [T2.tunai, T2.pem, T2.tgl, T2.nilai].every(function (t) { return /sudah dibayar Rp38\.000\.000 \(21 Sep/.test(t); }), JSON.stringify(T2));
-ok('39b-2: koreksi yang aman TETAP boleh: harga turun tapi nilai ≥ dibayar (12.700 → 38.100.000), tanggal tetap sebelum bayar (18 Sep), ejaan "pemasok bon uji" dibaca PEMASOK BON UJI (ejaan pembayarannya)', !kor2(function (x) { x.baris[0].hargaPerKg = '12.700'; }).tolak && !kor2(function (x) { x.tanggal = '2026-09-18'; }).tolak && (function () { var r = kor2(function (x) { x.pemasok = 'pemasok bon uji'; }); return !r.tolak && r.dokumen[0].data.pemasok === 'PEMASOK BON UJI'; })());
+ok('39b-2: ckBayarBon: bon 39.000.000 (60 × 50 × 13.000), dibayar 38.000.000 lewat pembayaran bertunjuk 21 Sep; pembayaran pemasok lain yang menunjuk bon ini tidak dihitung; mesin setuju', !S2.tolak && BB2.nilai === 39000000 && BB2.dibayar === 38000000 && BB2.dibayarMesin === 38000000 && BB2.bayar.length === 1 && BB2.bayarPertama === '2026-09-21', JSON.stringify(BB2));
+var kor2 = function (ubah, id) { var x = drafDariKedatangan(id || id2); x.alasan = 'uji'; ubah(x); return susunSimpanMasuk(x, W2b, true); };
+var T2 = { tunai: kor2(function (x) { x.caraBayar = 'tunai'; }).tolak || '', pem: kor2(function (x) { x.pemasok = 'PEMASOK LAIN'; }).tolak || '', tgl: kor2(function (x) { x.tanggal = '2026-09-22'; }).tolak || '', tglMaju: kor2(function (x) { x.tanggal = '2026-09-18'; }).tolak || '', nilai: kor2(function (x) { x.baris[0].jumlahKarung = '58'; }).tolak || '' };
+ok('39b-2: koreksi bon yang sudah dibayar DITOLAK bila jadi tunai / pemasok lain / tanggal datang diubah (mundur MAUPUN maju) / nilai beras di bawah yang dibayar — kalimatnya menyebut 38.000.000 & tanggal bayar', /jadi tunai/.test(T2.tunai) && /dua kali/.test(T2.tunai) && /nama pemasoknya tidak bisa diganti/.test(T2.pem) && /tanggal datangnya \(19 Sep/.test(T2.tgl) && /tanggal datangnya \(19 Sep/.test(T2.tglMaju) && /lebih kecil; kelebihan Rp300\.000/.test(T2.nilai) && [T2.tunai, T2.pem, T2.tgl, T2.tglMaju, T2.nilai].every(function (t) { return /sudah dibayar Rp38\.000\.000 \(21 Sep/.test(t); }), JSON.stringify(T2));
+ok('39b-2: koreksi yang aman TETAP boleh: harga turun tapi nilai ≥ dibayar (12.700 → 38.100.000), ejaan "pemasok bon uji" dibaca PEMASOK BON UJI (ejaan pembayarannya)', !kor2(function (x) { x.baris[0].hargaPerKg = '12.700'; }).tolak && (function () { var r = kor2(function (x) { x.pemasok = 'pemasok bon uji'; }); return !r.tolak && r.dokumen[0].data.pemasok === 'PEMASOK BON UJI'; })());
 var H2 = susunHapusKedatangan(id2, 'uji', W2b);
 ok('39b-2: HAPUS kedatangan yang sudah dibayar DITOLAK (menyebut 38.000.000)', /tidak bisa dihapus/.test(H2.tolak || '') && /Rp38\.000\.000/.test(H2.tolak || '') && !H2.hapus, JSON.stringify(H2));
-var HP2 = susunKoreksiHpp('Angsa', '12.500', 'uji HPP', W2b, true);
-ok('39b-2: jalur KOREKSI HPP (memakai susunSimpanMasuk) ikut dijaga: harga kedatangan terakhir Angsa turun ke 12.500 (37.500.000) → di bawah yang dibayar → DITOLAK', /sudah dibayar/.test(HP2.tolak || ''), JSON.stringify(HP2).slice(0, 300));
+var HP2 = susunKoreksiHpp('Angsa', '12.500', 'uji HPP', W2b, true); var NK2 = nilaiKoreksi('Angsa', '12.500');
+ok('39b-2: koreksi HPP menolak LEBIH DULU (kartu, pratinjau, massal) dengan nama berasnya: kedatangan terakhir Angsa = bon yang sudah dibayar, 12.500 → 37.500.000 di bawah yang dibayar; harga naik tetap boleh', /^Angsa: kedatangan terakhirnya .*sudah dibayar Rp38\.000\.000/.test(HP2.tolak || '') && /^Angsa: kedatangan terakhirnya/.test(NK2.tolak || '') && !nilaiKoreksi('Angsa', '13.300').tolak && /Angsa: kedatangan terakhirnya/.test(susunKoreksiMassal({ Angsa: '12.500' }, 'uji', W2b).tolak || ''), JSON.stringify([HP2.tolak, NK2.tolak]).slice(0, 300));
 var K2 = kor2(function (x) { x.baris[0].hargaPerKg = '12.700'; }); terapkanKeCache(K2.dokumen || []);
-var bonPC = function () { var px = hitungUtangPemasok().find(function (p) { return p.pemasok === 'PEMASOK BON UJI'; }); return { px: px, bon: px ? px.bon.find(function (b) { return b.id === String(id2); }) : null }; };
-ok('39b-2: sesudah koreksi aman diterapkan, pembayaran tetap di bonnya: dibayar 38.000.000, sisa bon 100.000, tanpa kelebihan bayar', !K2.tolak && (function () { var q = bonPC(); return q.bon && q.bon.sisa === 100000 && !(q.px.tekor > 0) && ckBayarBonId(id2).dibayar === 38000000; })(), JSON.stringify(bonPC()));
-// pembayaran LAMA tanpa bonId mengalir ke bon tertua pemasok itu (di sini satu-satunya: bon uji) → ikut terhitung dibayar (mesin satu sumber)
-terapkanKeCache([{ koleksi: 'utangPemasokMutasi', data: { id: 'bb2f', tipe: 'bayar', pemasok: 'PEMASOK BON UJI', nominal: 50000, tanggal: '2026-09-21', jam: '11:00' } }]);
-ok('39b-2: pembayaran tanpa bonId yang mengalir ke bon ini (FIFO mesin) ikut dihitung: dibayar 38.050.000, sisa 50.000', ckBayarBonId(id2).dibayar === 38050000 && bonPC().bon.sisa === 50000, JSON.stringify(ckBayarBonId(id2)));
+var bonPC = function (pem, id) { var px = hitungUtangPemasok().find(function (p) { return p.pemasok === pem; }); return { px: px, bon: px ? px.bon.find(function (b) { return b.id === String(id); }) : null }; };
+ok('39b-2: sesudah koreksi aman diterapkan, pembayaran tetap di bonnya: dibayar 38.000.000, sisa bon 100.000, tanpa kelebihan bayar', !K2.tolak && (function () { var q = bonPC('PEMASOK BON UJI', id2); return q.bon && q.bon.sisa === 100000 && !(q.px.tekor > 0) && ckBayarBonId(id2).dibayar === 38000000; })(), JSON.stringify(bonPC('PEMASOK BON UJI', id2)));
+// aliran TANPA tujuan (pembayaran lama tanpa bonId) → dibayarMesin naik, tetapi TIDAK menambah kunci
+bayar2('bb2f', 'PEMASOK BON UJI', 50000, null);
+ok('39b-2: pembayaran tanpa bonId yang mengalir ke bon ini (FIFO mesin): dibayarMesin 38.050.000, kunci tetap 38.000.000 (uang tanpa tujuan tidak mengunci)', ckBayarBonId(id2).dibayarMesin === 38050000 && ckBayarBonId(id2).dibayar === 38000000 && bonPC('PEMASOK BON UJI', id2).bon.sisa === 50000, JSON.stringify(ckBayarBonId(id2)));
+// bon LUNAS PENUH (tidak lagi tampil di mesin) tetap terkunci
+bayar2('bb2g', 'PEMASOK BON UJI', 50000, id2);
+ok('39b-2: bon LUNAS PENUH (hilang dari hitungUtangPemasok): dibayar 38.050.000 bertunjuk, dibayarMesin = nilai 38.100.000; hapus & jadi tunai tetap DITOLAK', !bonPC('PEMASOK BON UJI', id2).bon && ckBayarBonId(id2).dibayar === 38050000 && ckBayarBonId(id2).dibayarMesin === 38100000 && /tidak bisa dihapus/.test(susunHapusKedatangan(id2, 'uji', W2b).tolak || '') && /jadi tunai/.test(kor2(function (x) { x.caraBayar = 'tunai'; }).tolak || ''), JSON.stringify(ckBayarBonId(id2)));
+// KELEBIHAN BAYAR yang terserap kedatangan salah catat: tidak mengunci — kedatangan itu tetap bisa dihapus (kelebihan bayar kembali seperti semula)
+var ST1 = masuk2('PEMASOK TEKOR', 'utang'); var idT1 = ST1.dokumen[0].data.id; bayar2('bt1', 'PEMASOK TEKOR', 39000000, idT1); bayar2('bt2', 'PEMASOK TEKOR', 5000000, null);
+var tekorAwal = (bonPC('PEMASOK TEKOR', idT1).px || {}).tekor || 0;
+var ST2 = masuk2('PEMASOK TEKOR', 'utang'); var idT2 = ST2.dokumen[0].data.id;
+ok('39b-2: kedatangan salah catat yang MENYERAP kelebihan bayar 5.000.000 (dibayarMesin 5.000.000, tanpa pembayaran bertunjuk) tetap bisa DIHAPUS; bon yang dibayar bertunjuk tetap terkunci', tekorAwal === 5000000 && ckBayarBonId(idT2).dibayarMesin === 5000000 && ckBayarBonId(idT2).dibayar === 0 && !susunHapusKedatangan(idT2, 'salah catat', W2b).tolak && /tidak bisa dihapus/.test(susunHapusKedatangan(idT1, 'uji', W2b).tolak || ''), JSON.stringify([tekorAwal, ckBayarBonId(idT2)]));
 // ejaan pemasok: kedatangan BARU → ejaan yang sudah dipakai; pemasok baru apa adanya; koreksi ejaan kedatangan tunggal (tanpa dokumen lain) boleh
 var d3 = drafMasukKosong(W2); d3.pemasok = '  pemasok   contoh '; d3.caraBayar = 'tunai'; d3.baris = [{ merk: 'Angsa', jumlahKarung: '60', beratKarung: 50, hargaPerKg: '13.000' }]; var S3 = susunSimpanMasuk(d3, W2, true);
-var d4 = drafMasukKosong(W2); d4.pemasok = 'Pemasok Tunggal'; d4.caraBayar = 'tunai'; d4.baris = [{ merk: 'Angsa', jumlahKarung: '60', beratKarung: 50, hargaPerKg: '13.000' }]; var S4 = susunSimpanMasuk(d4, W2, true); terapkanKeCache(S4.dokumen || []);
+var S4 = masuk2('Pemasok Tunggal', 'tunai');
 var k4 = drafDariKedatangan(S4.dokumen[0].data.id); k4.pemasok = 'PEMASOK TUNGGAL'; k4.alasan = 'ejaan'; var S4k = susunSimpanMasuk(k4, W2b, true);
 ok('39b-2: kedatangan BARU "  pemasok   contoh " ditulis sebagai PEMASOK CONTOH (satu ejaan di mesin) & kabarnya menyebut; pemasok baru apa adanya; koreksi ejaan kedatangan yang satu-satunya boleh (Pemasok Tunggal → PEMASOK TUNGGAL)', !S3.tolak && S3.dokumen[0].data.pemasok === 'PEMASOK CONTOH' && /ejaan yang sudah dipakai/.test(S3.patch.kabar) && ckEjaanPemasok('PEMASOK BARU SEKALI') === 'PEMASOK BARU SEKALI' && ckEjaanPemasok('PEMASOK CONTOH') === 'PEMASOK CONTOH' && !S4k.tolak && S4k.dokumen[0].data.pemasok === 'PEMASOK TUNGGAL', JSON.stringify([S3.dokumen && S3.dokumen[0].data.pemasok, S4k.tolak, S4k.dokumen && S4k.dokumen[0].data.pemasok]));
 ok('39b-2: kedatangan TUNAI dan bon yang belum dibayar: dibayar 0 dan hapusnya tetap boleh', ckBayarBon(S4.dokumen[0].data).dibayar === 0 && !susunHapusKedatangan(S4.dokumen[0].data.id, 'uji', W2b).tolak);
-terapkanKeCache([{ koleksi: 'utangPemasokMutasi', hapus: 'bb2' }, { koleksi: 'utangPemasokMutasi', hapus: 'bb2f' }, { koleksi: 'batchMasuk', hapus: id2 }, { koleksi: 'batchMasuk', hapus: S4.dokumen[0].data.id }]);
+terapkanKeCache(['bb2', 'bb2x', 'bb2f', 'bb2g', 'bt1', 'bt2'].map(function (x) { return { koleksi: 'utangPemasokMutasi', hapus: x }; }).concat([id2, idT1, idT2, S4.dokumen[0].data.id].map(function (x) { return { koleksi: 'batchMasuk', hapus: x }; })));
 
 // ==================== COCOKKAN / HITUNG GUDANG (ST3) — bentuk dokumen simpanPenyesuaianStok / Kemasan / OpnameBahan ====================
 var WC = { tanggal: '2026-09-19', jam: '16:00', idUnik: WW.idUnik };
@@ -500,12 +510,13 @@ daftarAdukan(1e9).slice(0, 40).forEach(function (a) { var r = rincianAdukan(a.ba
 if (!rincianOk) asingC.push('adukan: rincian tidak sama dengan buku');
 // audit 39b no. 2: tiap kedatangan bon di data toko — yang sudah dibayar terkunci (jadi tunai / pemasok lain / hapus DITOLAK), yang belum dibayar tetap
 // bisa dihapus; Σ (nilai − dibayar) bon kedatangan = Σ sisa bon kedatangan di mesin (satu sumber); ejaan pemasok nyata tidak ada yang digeser
-var bon2 = { bon: 0, dibayar: 0, rpDibayar: 0, kunci: 0, lolos: [], bebasSalah: [], selisihMesin: 0, ejaanGeser: [] };
+var bon2 = { bon: 0, dibayar: 0, rpDibayar: 0, kunci: 0, kunciPeriode: 0, lolos: [], bebasSalah: [], selisihMesin: 0, bedaMesin: [], ejaanGeser: [] };
 var WB2 = { tanggal: '2026-09-29', jam: '20:00', idUnik: function () { return Math.random(); } };
 var sisaMesin = 0; hitungUtangPemasok().forEach(function (px) { px.bon.forEach(function (b) { if (b.jenis === 'batch') sisaMesin += b.sisa; }); });
 var sisaHitung = 0;
 ambilSemuaBatch().filter(function (b) { return !b.stokAwal && b.caraBayar === 'utang'; }).forEach(function (b) {
-  bon2.bon++; var bb = ckBayarBon(b); sisaHitung += bb.nilai - bb.dibayar;
+  bon2.bon++; var bb = ckBayarBon(b); sisaHitung += bb.nilai - bb.dibayarMesin; if (bb.dibayar !== bb.dibayarMesin) bon2.bedaMesin.push(String(b.id) + ' ' + bb.dibayar + '/' + bb.dibayarMesin);
+  if (tolakKunci('batchMasuk', b, '')) { bon2.kunciPeriode++; return; }   // bulan terkunci: penolakan kunci periode datang lebih dulu (tinjauan 30 Sep)
   if (bb.dibayar > 0) {
     bon2.dibayar++; bon2.rpDibayar += bb.dibayar;
     var dx = drafDariKedatangan(b.id); dx.alasan = 'asap'; dx.caraBayar = 'tunai'; var t1 = susunSimpanMasuk(dx, WB2, true).tolak || '';
@@ -640,12 +651,14 @@ if __name__ == '__main__':
             'hpp: koreksi menulis batch BARU (kedatangan jadi dua)': js.replace("d.baris.forEach((b) => { if (perBatch[id][b.merk] !== undefined) b.hargaPerKg = String(perBatch[id][b.merk]); }); d.alasan = 'koreksi HPP: ' + w.alasan;", "d.id = null; d.baris.forEach((b) => { if (perBatch[id][b.merk] !== undefined) b.hargaPerKg = String(perBatch[id][b.merk]); }); d.alasan = 'koreksi HPP: ' + w.alasan;"),
             'hpp: kedatangan fondasi ikut dikoreksi': js.replace("const target = riw.filter((r) => r.jenis === 'kedatangan' && !r.fondasi).slice(-1)[0] || null;", "const target = riw.filter((r) => r.jenis === 'kedatangan').slice(-1)[0] || null;"),
             # ---- audit 39b no. 2: kedatangan bon yang sudah dibayar
-            'bon dibayar boleh diubah jadi tunai': js.replace("    if (cara !== 'utang') return { tolak: ckKalimatBayar(bb) + ' — tidak bisa diubah jadi tunai' + CK_AKIBAT_BAYAR };\n", ""),
+            'bon dibayar boleh diubah jadi tunai': js.replace("    if (cara !== 'utang') return { tolak: ckKalimatBayar(bb) + ' — tidak bisa diubah jadi tunai. '", "    if (false) return { tolak: ckKalimatBayar(bb) + ' — tidak bisa diubah jadi tunai. '"),
             'bon dibayar boleh ganti pemasok': js.replace("    if (pemasok !== String(lama.pemasok || '').trim()) return { tolak: ckKalimatBayar(bb) + ' atas nama '", "    if (false) return { tolak: ckKalimatBayar(bb) + ' atas nama '"),
-            'bon dibayar boleh bertanggal sesudah bayarnya': js.replace("    if (bb.bayarPertama && String(draf.tanggal) > bb.bayarPertama) return", "    if (false) return"),
+            'tanggal datang bon dibayar boleh diubah': js.replace("    if (String(draf.tanggal) !== String(lama.tanggal || '')) return", "    if (false) return"),
             'nilai bon boleh di bawah yang dibayar': js.replace("    if (h.nilaiBeras + 0.5 < bb.dibayar) return", "    if (false) return"),
-            'hapus kedatangan bon dibayar lolos': js.replace("  const bb = ckBayarBon(b); if (bb.dibayar > 0) return { tolak: ckKalimatBayar(bb) + ' — kedatangan ini tidak bisa dihapus' + CK_AKIBAT_BAYAR };", ""),
-            'dibayar hanya dari pembayaran bertunjuk (aliran FIFO mesin terlewat)': js.replace("const dibayar = Math.round(nilai - (bon ? bon.sisa : 0));", "const dibayar = ambilUtangPemasokMutasi().filter((m) => m && m.tipe === 'bayar' && String(m.bonId || '') === id).reduce((a, m) => a + (Number(m.nominal) || 0), 0) + 0 * (bon ? 1 : 0);"),
+            'hapus kedatangan bon dibayar lolos': js.replace("  const bb = ckBayarBon(b); if (bb.dibayar > 0) return { tolak: ckKalimatBayar(bb) + ' — kedatangan ini tidak bisa dihapus. '", "  const bb = ckBayarBon(b); if (false) return { tolak: ckKalimatBayar(bb) + ' — kedatangan ini tidak bisa dihapus. '"),
+            'kunci ikut aliran tanpa tujuan / kelebihan bayar (kedatangan salah catat tak bisa dihapus)': js.replace("const dibayar = Math.round(Math.min(nilai, tunjuk));", "const dibayar = Math.round(nilai - ((hitungUtangPemasok().find((p) => p.pemasok === pem) || { bon: [] }).bon.filter((x) => String(x.id) === id).reduce((a, x) => a + x.sisa, 0)));"),
+            'pembayaran pemasok lain yang menunjuk bon ikut dihitung': js.replace("&& String(m.bonId || '') === id && String(m.pemasok || '').trim() === pem)", "&& String(m.bonId || '') === id)"),
+            'koreksi HPP tidak menolak lebih dulu (pratinjau & massal buta kunci bon)': js.replace("    if (nilaiBon + 0.5 < bb.dibayar) return { tolak: merk + ': kedatangan terakhirnya", "    if (false) return { tolak: merk + ': kedatangan terakhirnya"),
             'ejaan pemasok tidak disamakan': js.replace("const pemasok = ckEjaanPemasok(pemasokKetik, lama ? lama.id : null);", "const pemasok = pemasokKetik;"),
             'ejaan lama kedatangan yang dikoreksi memaksa (koreksi ejaan tunggal tidak bisa)': js.replace("(kecualiId !== undefined && kecualiId !== null && String(b.id) === String(kecualiId))", "false"),
             'hpp: batas lonjakan setelan diabaikan': js.replace("lonjak: Math.abs(pct) > atur.batasLonjak ? 'modal rata-rata '", "lonjak: Math.abs(pct) > 10 ? 'modal rata-rata '"),
@@ -672,7 +685,7 @@ if __name__ == '__main__':
             print('ASAP DATA TOKO: kolom dokumen catat (barang masuk, cocokkan, adukan, kantong) vs cadangan: %s · %d adukan di buku · %d menunggu di karantina' % (', '.join(h['kunciAsingCatat']) or 'semua dikenal', h['adukan'], h['karantinaAntre']))
             if h['kunciAsingCatat']: g.append('asap: dokumen catat punya kolom yang tidak dikenal cadangan')
             b2 = h.get('bon2') or {}
-            print('   39b no. 2 — kedatangan bon di data toko: %d bon · %d sudah dibayar (Rp%s) · terkunci %d · lolos %s · bon belum dibayar yang salah dikunci %s · selisih Σ sisa vs mesin %s · ejaan pemasok yang digeser %s'
-                  % (b2.get('bon', 0), b2.get('dibayar', 0), format(b2.get('rpDibayar', 0), ',').replace(',', '.'), b2.get('kunci', 0), b2.get('lolos') or 'nihil', b2.get('bebasSalah') or 'nihil', b2.get('selisihMesin'), b2.get('ejaanGeser') or 'nihil'))
-            if not b2.get('dibayar') or b2.get('kunci') != b2.get('dibayar') or b2.get('lolos') or b2.get('bebasSalah') or b2.get('selisihMesin') or b2.get('ejaanGeser'): g.append('asap 39b no. 2: ' + json.dumps(b2, ensure_ascii=False)[:400])
+            print('   39b no. 2 — kedatangan bon di data toko: %d bon · %d sudah dibayar bertunjuk (Rp%s) · terkunci %d · di bulan terkunci %d · lolos %s · bon belum dibayar yang salah dikunci %s · Σ sisa vs mesin selisih %s · bertunjuk ≠ mesin %s · ejaan pemasok yang digeser %s'
+                  % (b2.get('bon', 0), b2.get('dibayar', 0), format(b2.get('rpDibayar', 0), ',').replace(',', '.'), b2.get('kunci', 0), b2.get('kunciPeriode', 0), b2.get('lolos') or 'nihil', b2.get('bebasSalah') or 'nihil', b2.get('selisihMesin'), b2.get('bedaMesin') or 'nihil', b2.get('ejaanGeser') or 'nihil'))
+            if not b2.get('bon') or b2.get('kunci') + b2.get('kunciPeriode', 0) < b2.get('dibayar') or b2.get('lolos') or b2.get('bebasSalah') or b2.get('selisihMesin') or b2.get('ejaanGeser'): g.append('asap 39b no. 2: ' + json.dumps(b2, ensure_ascii=False)[:400])
     sys.exit(2 if g else 0)

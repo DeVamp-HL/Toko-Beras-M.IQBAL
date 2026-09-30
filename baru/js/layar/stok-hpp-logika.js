@@ -9,7 +9,7 @@ import { hitungStokKarungPerMerk, hitungHppMerkDalamBatch } from '../mesin/beku.
 import { cariHargaKarungPerKg } from '../mesin/pembantu.js';
 import { ambilSemuaBatch, ambilProduksiBerlaku, cacheMentah, tolakKunciTanggal, stokMerekSaja } from '../data/toko.js';
 import { RP } from '../inti/format.js';
-import { drafDariKedatangan, susunSimpanMasuk } from './stok-catat-logika.js';
+import { drafDariKedatangan, susunSimpanMasuk, ckBayarBonId } from './stok-catat-logika.js';
 
 export const ATUR_HPP_BAWAAN = { batasLonjak: 10, lantaiHpp: 5000, kaliMaks: 3 };
 export const TAB_HPP = [['kartu', 'Kartu modal'], ['garis', 'Garis waktu'], ['kelas', 'Per kelas'], ['massal', 'Koreksi massal']];   // putaran 30: harga beli per kelas mutu
@@ -81,6 +81,11 @@ export function nilaiKoreksi(merk, hargaBaru) {
   const n = Math.round(hpAngka(hargaBaru)); if (!(n > 0)) return { tolak: 'Ketik harga beli per kg yang benar' };
   if (n < atur.lantaiHpp) return { tolak: RP(n) + '/kg di bawah lantai ' + RP(atur.lantaiHpp) + ' — tidak masuk akal untuk beras, ditolak (bukan dipotong diam-diam)' };
   if (K.modal > 0 && n > K.modal * atur.kaliMaks) return { tolak: RP(n) + ' lebih dari ' + atur.kaliMaks + '× modal sekarang (' + RP(Math.round(K.modal)) + ') — ditolak, cek angkanya' };
+  // audit 39b no. 2 (tinjauan 30 Sep): kedatangan sasaran bon yang sudah dibayar — nilai bon sesudah harga baru tidak boleh di bawah yang dibayar.
+  // Diperiksa DI SINI supaya kartu, pratinjau, dan koreksi massal menolak lebih dulu dengan nama berasnya (susunSimpanMasuk tetap pagar terakhir).
+  const bt = ambilSemuaBatch().find((b) => String(b.id) === String(target.batchId)); const bb = bt ? ckBayarBonId(bt.id) : null;
+  if (bb && bb.dibayar > 0) { const nilaiBon = (bt.merkList || []).reduce((a, m) => a + (m.merk === merk && m.bentuk !== 'bal' ? (Number(m.totalKg) || 0) * n : (Number(m.subtotalHarga) || 0)), 0);
+    if (nilaiBon + 0.5 < bb.dibayar) return { tolak: merk + ': kedatangan terakhirnya (' + target.pemasok + ' ' + target.tanggal + ') bon yang sudah dibayar ' + RP(bb.dibayar) + ' — harga ' + RP(n) + '/kg membuat nilai bonnya ' + RP(nilaiBon) + ', di bawah yang dibayar; kelebihannya akan pindah ke bon lain tanpa uang' }; }
   const bongkarPerKg = target.hppPerKg - target.hargaPerKg; const hppBaru = n + bongkarPerKg;
   const T = totalMasuk(merk); const nilaiBaru = T.nilai - target.hppPerKg * target.totalKg + hppBaru * target.totalKg; const modalBaru = T.kg > 0 ? nilaiBaru / T.kg : 0;
   const pct = K.modal > 0 ? Math.round((modalBaru - K.modal) / K.modal * 100) : 0; const delta = (modalBaru - K.modal) * Math.max(0, K.sisa);

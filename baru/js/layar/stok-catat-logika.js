@@ -154,23 +154,27 @@ export function hitungMasuk(draf) {
 // pemasok, tanggal sesudah bayar, nilai di bawah yang dibayar, atau hapus kedatangan membuat bon LAIN tampak lunas tanpa uang dan kas keluar
 // terhitung dua kali. Dijaga di SATU pintu: susunSimpanMasuk (juga dipakai koreksi HPP) & susunHapusKedatangan.
 /**
- * Uang yang sudah dibayar ke bon kedatangan ini. Satu sumber: hitungUtangPemasok (beku) — dibayar = nilai bon (Σ subtotalHarga) − sisanya; bon yang
- * tidak lagi tampil = lunas. bayar = pembayaran yang MENUNJUK bon ini (bonId), tanggal tertua dulu. Kedatangan tunai / stok awal / tanpa pemasok → 0.
+ * Uang yang DITUJUKAN ke bon kedatangan ini: pembayaran yang menunjuknya (bonId = id kedatangan, nama pemasok persis sama), tanggal tertua dulu.
+ * dibayar = Σ nominalnya, paling banyak nilai bon (Σ subtotalHarga) — kelebihannya sudah mengalir ke bon lain dan bukan milik bon ini. Uang yang
+ * mengalir TANPA tujuan (pembayaran lama tanpa bonId, kelebihan bayar yang terserap) tidak mengunci: aturan mesin (FIFO) memang memindahkannya,
+ * dan kedatangan salah catat yang menyerap kelebihan bayar tetap bisa dihapus (tinjauan 30 Sep). dibayarMesin = nilai − sisa di hitungUtangPemasok
+ * (pembanding). Kedatangan tunai / stok awal / tanpa pemasok → 0.
  */
 export function ckBayarBon(batch) {
-  const kosong = { dibayar: 0, nilai: 0, bayar: [], bayarPertama: '' };
+  const kosong = { dibayar: 0, dibayarMesin: 0, nilai: 0, bayar: [], bayarPertama: '' };
   const pem = String((batch && batch.pemasok) || '').trim();
   if (!batch || batch.stokAwal || !batchDiutang(batch) || !pem) return kosong;
   const id = String(batch.id); const nilai = (batch.merkList || []).reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0);
-  const px = hitungUtangPemasok().find((p) => p.pemasok === pem); const bon = px ? px.bon.find((x) => String(x.id) === id) : null;
-  const dibayar = Math.round(nilai - (bon ? bon.sisa : 0));
-  const bayar = ambilUtangPemasokMutasi().filter((m) => m && m.tipe === 'bayar' && String(m.bonId || '') === id)
+  const bayar = ambilUtangPemasokMutasi().filter((m) => m && m.tipe === 'bayar' && String(m.bonId || '') === id && String(m.pemasok || '').trim() === pem)
     .map((m) => ({ id: m.id, tanggal: String(m.tanggal || ''), nominal: Number(m.nominal) || 0 })).sort((x, y) => x.tanggal.localeCompare(y.tanggal));
-  return { dibayar: dibayar > 0.5 ? dibayar : 0, nilai, bayar, bayarPertama: bayar.length ? bayar[0].tanggal : '' };
+  const tunjuk = bayar.reduce((a, x) => a + x.nominal, 0); const dibayar = Math.round(Math.min(nilai, tunjuk));   // batas atas = nilai bon (bukan penjepit diam: kelebihannya bukan milik bon ini)
+  const px = hitungUtangPemasok().find((p) => p.pemasok === pem); const bon = px ? px.bon.find((x) => String(x.id) === id) : null;
+  return { dibayar: dibayar > 0.5 ? dibayar : 0, dibayarMesin: Math.round(nilai - (bon ? bon.sisa : 0)), nilai, bayar, bayarPertama: bayar.length ? bayar[0].tanggal : '' };
 }
 export const ckBayarBonId = (id) => ckBayarBon(ambilSemuaBatch().find((b) => String(b.id) === String(id)) || null);
-const ckKalimatBayar = (bb) => 'Bon kedatangan ini sudah dibayar ' + RP(bb.dibayar) + (bb.bayar.length ? ' (' + bb.bayar.map((x) => tanggalPendek(x.tanggal)).join(', ') + ')' : '');
-const CK_AKIBAT_BAYAR = '. Pembayarannya akan melunasi bon LAIN tanpa uang dan kas keluarnya terhitung dua kali. Pembetulan pembayaran bon belum ada di sistem baru.';
+const ckKalimatBayar = (bb) => 'Bon kedatangan ini sudah dibayar ' + RP(bb.dibayar) + (bb.bayar.length ? ' (' + bb.bayar.map((x) => x.tanggal ? tanggalPendek(x.tanggal) : 'tanpa tanggal').join(', ') + ')' : '');
+const CK_BETUL_BAYAR = ' Pembetulan pembayaran bon belum ada di sistem baru.';
+const CK_PINDAH = 'Pembayaran yang ditujukan ke bon ini akan pindah ke bon lain (atau jadi kelebihan bayar) tanpa uang baru';
 /**
  * Ejaan pemasok: mesin utang mengelompokkan per nama PERSIS, layar per huruf kecil — "roda mas" yang diketik jadi pemasok terpisah di mesin.
  * Nama yang sama kecuali huruf/spasi → ejaan yang sudah dipakai (kedatangan terbaru dulu, lalu pembayaran/bon lama). Nama persis yang sudah
@@ -213,12 +217,12 @@ export function susunSimpanMasuk(draf, w, yakin) {
   const kunci = (lama && tolakKunci('batchMasuk', lama, 'kedatangan ini tidak bisa dikoreksi. Jumlah kg yang salah: Stok › Cocokkan HARI INI. harga modal kedatangan bulan terkunci tidak bisa dikoreksi; selisihnya terbawa ke HPP penjualan sisa stoknya (keputusan owner K2)')) || tolakKunciTanggal(draf.tanggal, 'kedatangan tidak bisa dicatat di bulan itu; catat dengan tanggal hari ini dan sebut tanggal aslinya di alasan');
   if (kunci) return { tolak: kunci, pembalik: lama ? 'cocok' : '' };
   const cara = draf.caraBayar === 'utang' ? 'utang' : 'tunai';
-  const bb = lama ? ckBayarBon(lama) : null;   // audit 39b no. 2: bon yang sudah dibayar — cara bayar, pemasok, tanggal & nilai minimal dikunci
+  const bb = lama ? ckBayarBon(lama) : null;   // audit 39b no. 2: bon yang sudah dibayar (pembayaran bertunjuk) — cara bayar, pemasok, tanggal & nilai minimal dikunci
   if (bb && bb.dibayar > 0) {
-    if (cara !== 'utang') return { tolak: ckKalimatBayar(bb) + ' — tidak bisa diubah jadi tunai' + CK_AKIBAT_BAYAR };
-    if (pemasok !== String(lama.pemasok || '').trim()) return { tolak: ckKalimatBayar(bb) + ' atas nama ' + String(lama.pemasok || '').trim() + ' — nama pemasoknya tidak bisa diganti' + CK_AKIBAT_BAYAR };
-    if (bb.bayarPertama && String(draf.tanggal) > bb.bayarPertama) return { tolak: ckKalimatBayar(bb) + ' — tanggal datang tidak boleh sesudah tanggal bayar pertamanya (' + tanggalPendek(bb.bayarPertama) + '): per tanggal itu bonnya belum ada, jadi pembayarannya terbuang dari neraca' };
-    if (h.nilaiBeras + 0.5 < bb.dibayar) return { tolak: ckKalimatBayar(bb) + ' — nilai beras sesudah koreksi ' + RP(h.nilaiBeras) + ' lebih kecil; kelebihan ' + RP(bb.dibayar - h.nilaiBeras) + ' akan melunasi bon lain tanpa uang. Periksa harga & jumlahnya (nilai bon boleh naik, tidak boleh di bawah yang sudah dibayar)' };
+    if (cara !== 'utang') return { tolak: ckKalimatBayar(bb) + ' — tidak bisa diubah jadi tunai. ' + CK_PINDAH + ', dan kas keluarnya terhitung dua kali (belanja tunai + bayar bon).' + CK_BETUL_BAYAR };
+    if (pemasok !== String(lama.pemasok || '').trim()) return { tolak: ckKalimatBayar(bb) + ' atas nama ' + String(lama.pemasok || '').trim() + ' — nama pemasoknya tidak bisa diganti. Pembayarannya tetap atas nama ' + String(lama.pemasok || '').trim() + ' dan akan pindah ke bon ' + String(lama.pemasok || '').trim() + ' yang lain.' + CK_BETUL_BAYAR };
+    if (String(draf.tanggal) !== String(lama.tanggal || '')) return { tolak: ckKalimatBayar(bb) + ' — tanggal datangnya (' + tanggalPendek(lama.tanggal) + ') tidak bisa diubah: pembayarannya menunjuk bon bertanggal itu (buku bon & neraca per tanggal ikut bergeser).' + CK_BETUL_BAYAR };
+    if (h.nilaiBeras + 0.5 < bb.dibayar) return { tolak: ckKalimatBayar(bb) + ' — nilai beras sesudah koreksi ' + RP(h.nilaiBeras) + ' lebih kecil; kelebihan ' + RP(bb.dibayar - h.nilaiBeras) + ' akan pindah ke bon lain tanpa uang. Periksa harga & jumlahnya (nilai bon boleh naik, tidak boleh di bawah yang sudah dibayar).' };
   }
   const data = { id: lama ? lama.id : w.idUnik(), tanggal: draf.tanggal, pemasok, biayaBongkar: h.bongkar, caraBayar: cara,
     merkList: h.sah.map((b, i) => Object.assign({ id: String(i + 1), merk: b.merkSimpan, satuan: 'karung', jumlahKarung: b.jumlahKarung, beratKarung: b.beratKarung, totalKg: b.totalKg, hargaPerKg: b.hargaPerKg, subtotalHarga: b.subtotalHarga },
@@ -305,7 +309,7 @@ export function susunHapusKedatangan(id, alasan, w) {
   const b = ambilSemuaBatch().find((x) => String(x.id) === String(id)); if (!b) return { tolak: 'Kedatangan itu sudah tidak ada' };
   if (ccFondasi(b)) return { tolak: 'Batch fondasi (' + (b.tutupBuku ? 'saldo pembuka tutup buku' : 'stok awal') + ') menopang seluruh stok & modal — tidak bisa dihapus dari sini' };
   const kunci = tolakKunci('batchMasuk', b, 'kedatangan ini tidak bisa dihapus. Barang yang tidak pernah ada: Stok › Cocokkan HARI INI (kg turun). Utang/uang yang terlanjur tercatat tidak punya pembetul (K2)'); if (kunci) return { tolak: kunci, pembalik: 'cocok' };   // putaran 25
-  const bb = ckBayarBon(b); if (bb.dibayar > 0) return { tolak: ckKalimatBayar(bb) + ' — kedatangan ini tidak bisa dihapus' + CK_AKIBAT_BAYAR };   // audit 39b no. 2
+  const bb = ckBayarBon(b); if (bb.dibayar > 0) return { tolak: ckKalimatBayar(bb) + ' — kedatangan ini tidak bisa dihapus. ' + CK_PINDAH + ': uangnya sudah keluar, barangnya hilang dari buku.' + CK_BETUL_BAYAR };   // audit 39b no. 2
   if (ckKosong(alasan)) return { tolak: 'Hapus kedatangan butuh alasan — supaya jejaknya bisa dibaca nanti' };
   const pasangan = ambilProduksi().filter((p) => String(p.dariBatch || '') === String(id));
   const k = daftarKedatangan(1e9).find((x) => String(x.id) === String(id));
