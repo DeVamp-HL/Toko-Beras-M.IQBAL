@@ -120,13 +120,14 @@ export function panelIsiUlang(merk, s, keranjang, opsi) {
       ${hit.takar ? h`<div class="ket ${hit.lewat ? 'awas-teks' : ''}">${hit.takar} takar × ${DESIMAL(atur.takarKg)} kg = ${wpKG(hit.kg)}${hit.banding ? ' · perbandingan ' + hit.banding : ''}${hit.lewat ? ' — MELEBIHI ' + wpKG(atur.puncakKg) + ' yang muat, kurangi takarnya' : ''}</div>` : ''}
       ${(() => { const nb = hit.sumber.reduce((a, x) => a + (x.bukaKarung || 0), 0); return tb.boleh ? h`${hit.takar && !hit.lewat && nb ? h`<div class="pita-info ${d.yakinBuka ? 'awas' : 'emas'}" data-k="awas-buka-catat-${merk}">Karung di belakang habis / kurang — ${nb} karung baru diambil dari tumpukan gudang (${hit.sumber.filter((x) => x.bukaKarung).map((x) => x.bukaKarung + ' ' + (x.merkAsal || x.merk)).join(', ')}). Ketuk CATAT sekali lagi untuk membuka & mencatat.</div>` : ''}<div class="kaca-btn ${hit.takar && !hit.lewat ? (nb && d.yakinBuka ? 'awas' : 'aktif emas') : 'mati'}" data-aksi="wdCatat" data-wadah="${merk}">${hit.takar ? (nb ? (d.yakinBuka ? 'YAKIN — buka ' + nb + ' karung dari tumpukan & CATAT ' + hit.takar + ' TAKAR' : 'ISI ULANG · CATAT ' + hit.takar + ' TAKAR — buka ' + nb + ' karung dari tumpukan?') : hit.sumber.some((x) => x.seadanya) ? 'ISI ULANG · CATAT ' + hit.takar + ' TAKAR (seadanya ' + wpKG(hit.kg) + ', karung bersih)' : 'ISI ULANG · CATAT ' + hit.takar + ' TAKAR') : 'ISI ULANG — ketuk + tiap takar yang dituang'}</div>`
         : h`<div class="kaca-btn mati" data-aksi="tombolMati" data-wadah="${merk}" data-kal="${tb.kalimat}">${hit.takar ? 'ISI ULANG · CATAT ' + hit.takar + ' TAKAR' : 'ISI ULANG — ketuk + tiap takar yang dituang'}</div>`; })()}
-` : ''}${pitaKabar(s, merk)}`}
+` : ''}`}
     <div class="ket tautan" data-aksi="wdSamakanBuka" data-wadah="${merk}">${d.samakan ? 'tutup' : nyata.diketahui ? 'angkanya tidak cocok dengan kotaknya? samakan' : 'tandai isi wadah sekarang'}</div>
     ${d.samakan || !nyata.diketahui ? h`<div class="tombol-baris rapat" data-k="samakan-wadah">
       <div class="kaca-btn" data-aksi="wdSamakan" data-wadah="${merk}" data-kg="${atur.penuhKg}">rata (${DESIMAL(atur.penuhKg)} kg)</div>
       <div class="kaca-btn" data-aksi="wdSamakan" data-wadah="${merk}" data-kg="${atur.puncakKg}">menggunung (${DESIMAL(atur.puncakKg)} kg)</div>
       <input class="ketik-nama sempit" id="wdKetik-${merk}" type="text" inputmode="decimal" placeholder="kg" value="${d.ketik}" data-ketik="wdKetik" data-wadah="${merk}">
       <div class="kaca-btn" data-aksi="wdSamakan" data-wadah="${merk}" data-kg="ketik">pakai angka ini</div></div>` : ''}
+    ${pitaKabar(s, merk)}
   </div>`;
 }
 
@@ -178,7 +179,7 @@ export function aksiPanelWadah({ set, st, tulis, keranjang, waktu, sesudahCatat,
     wdTandaiBatal: ({ wadah }) => { ubah(wadah, (d) => { d.tandai = null; }); set({ kabar: '' }); },
     wdKeStok: ({ wadah, merk }) => { if (bukaStok) return bukaStok('masuk', undefined, merk ? { merk } : undefined);
       set({ kabar: 'Catat barang masuknya di Stok › Barang masuk' + (merk ? ' untuk ' + merk : '') + ', lalu ulangi isi ulang wadah ' + wadah, kabarAwas: false }); },
-    wdKeKarungWadah: ({ wadah }) => { set({ kabar: 'Karung wadah ' + wadah + ' dituang balik lewat Stok › Wadah literan › rincian wadah ' + wadah + ' (tombol "tuang balik")', kabarAwas: false }); if (bukaStok) bukaStok(null, 'wadah'); },
+    wdKeKarungWadah: ({ wadah }) => { set({ kabar: 'Karung wadah ' + wadah + ' dituang balik lewat Stok › Wadah literan › rincian wadah ' + wadah + ' › "Karung di belakang, ganti nama & karung sisihan" (tombol "tuang balik")', kabarAwas: false }); if (bukaStok) bukaStok(null, 'wadah'); },
     wdCatat: async ({ wadah, tandai }, el) => { const d = draf(wadah); const r = L.susunTakarWadah(wadah, d.baris, waktu(), keranjang(), tandai === '1' ? { tandai: true } : {});
       if (r.perluTandai) return tandaiDulu(wadah, r, 'catat');
       const nb = !r.tolak && r.hitung ? r.hitung.sumber.reduce((a, x) => a + (x.bukaKarung || 0), 0) : 0;   // putaran 39c: sama seperti tiga ketukan — karung baru dari tumpukan minta ketukan kedua
