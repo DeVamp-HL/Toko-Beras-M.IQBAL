@@ -78,8 +78,8 @@ var W = { tanggal: '2026-09-19', jam: '10:00', kini: '2026-09-19T03:00:00.000Z',
 var kanonUrut = function (x) { return kkKanon(x); };
 // ---- 1 · isi byte-sama dengan penyusun index.html (fungsi LAMA dijalankan dari teks index.html)
 var I = kkIsi(); var LAMA = susunIsiKatalogKasirLama();
-var I0 = I ? JSON.parse(J(I)) : null; if (I0) delete I0.bayarBonTerhitung;
-ok('isi katalog /baru/ = isi susunIsiKatalogKasir() index.html untuk data yang sama (JSON persis, urutan ikut) + SATU kunci bayarBonTerhitung paling akhir (cara persis, owner 30 Sep)', !!I && J(I0) === J(LAMA) && Object.keys(I).pop() === 'bayarBonTerhitung' && Array.isArray(I.bayarBonTerhitung), J(I0).slice(0, 300) + ' ≠ ' + J(LAMA).slice(0, 300));
+var I0 = I ? JSON.parse(J(I)) : null; if (I0) { delete I0.bayarBonTerhitung; delete I0.bayarBonSejak; }
+ok('isi katalog /baru/ = isi susunIsiKatalogKasir() index.html untuk data yang sama (JSON persis, urutan ikut) + DUA kunci paling akhir bayarBonTerhitung & bayarBonSejak (cara persis, owner 30 Sep)', !!I && J(I0) === J(LAMA) && J(Object.keys(I).slice(-2)) === J(['bayarBonTerhitung', 'bayarBonSejak']) && Array.isArray(I.bayarBonTerhitung) && I.bayarBonSejak === '', J(I0).slice(0, 300) + ' ≠ ' + J(LAMA).slice(0, 300));
 ok('isi memuat keempat bagian index.html: kemasan, merkKarung (+ modal & harga), bahanLiteran, piutang (yang masih bersisa)', !!I && I.kemasan.length === 1 && I.kemasan[0].namaProduk === 'Kembang' && I.kemasan[0].hargaPerUnit === 75000
   && I.merkKarung.some(function (m) { return m.merk === 'Angsa' && m.hargaPerKg === 13800 && m.hargaPerLiter === 12500 && m.hargaKarung50 === 700000 && m.hppPerKg > 0; })
   && I.bahanLiteran.paperbag5l.sisaPcs === 100 && I.bahanLiteran.paperbag5l.hargaPerPcs === 305 && I.piutang.length === 1 && I.piutang[0].nama === 'Pelanggan Contoh' && I.piutang[0].sisa === 150000, J(I));
@@ -105,7 +105,7 @@ if (CADANGAN) {
 }
 // ---- 2 · bentuk dokumen & pembanding
 var D = kkDokumen(I, '2026-09-19T03:00:00.000Z');
-ok('dokumen: kunci & urutannya = setDoc terbitkanRingkasanKasir() index.html (' + KUNCI_LAMA.join(', ') + ') + bayarBonTerhitung paling akhir, id "aktif"', J(Object.keys(D)) === J(KUNCI_LAMA.concat(['bayarBonTerhitung'])) && D.id === 'aktif' && D.diperbaruiPada === '2026-09-19T03:00:00.000Z', J(Object.keys(D)));
+ok('dokumen: kunci & urutannya = setDoc terbitkanRingkasanKasir() index.html (' + KUNCI_LAMA.join(', ') + ') + bayarBonTerhitung & bayarBonSejak paling akhir, id "aktif"', J(Object.keys(D)) === J(KUNCI_LAMA.concat(['bayarBonTerhitung', 'bayarBonSejak'])) && D.id === 'aktif' && D.diperbaruiPada === '2026-09-19T03:00:00.000Z', J(Object.keys(D)));
 ok('dokumen katalog = dokumen turunan, ditulis APA ADANYA oleh penulis pusat (kkMentah): hanya ringkasanKasir', kkMentah('ringkasanKasir') && !kkMentah('penjualan') && !kkMentah('pengaturan'));
 var acak = function (x) { if (Array.isArray(x)) return x.map(acak); if (x && typeof x === 'object') { var o = {}; Object.keys(x).reverse().forEach(function (k) { o[k] = acak(x[k]); }); return o; } return x; };
 kkLupakanServer(); ok('server belum terbaca → tertinggal = null (belum bisa tahu; tidak terbit, Beranda tidak menebak)', kkTertinggal(I) === null);
@@ -117,14 +117,20 @@ ok('satu harga beda → tertinggal = true', kkTertinggal(I) === true);
 var pmLama = JSON.parse(J(ambilPiutangMutasi()));
 pasok('piutangMutasi', pmLama.concat([{ id: 611, tipe: 'bayar', namaPelanggan: 'Pelanggan Contoh', nominal: 20000, tanggal: '2026-09-18', jam: '10:00' },
   { id: 612, tipe: 'bayar', namaPelanggan: 'Pelanggan Contoh', nominal: 10000, tanggal: '2026-08-01', jam: '10:00' }, { id: 613, tipe: 'bayar', namaPelanggan: '  ', nominal: 5000, tanggal: '2026-09-18', jam: '10:00' },
-  { id: 614, tipe: 'hapusBuku', namaPelanggan: 'Pelanggan Contoh', nominal: 1000, tanggal: '2026-09-18', jam: '10:00' }]));
+  { id: 614, tipe: 'hapusBuku', namaPelanggan: 'Pelanggan Contoh', nominal: 1000, tanggal: '2026-09-18', jam: '10:00' },
+  { id: 1759249200123 + 0.4567, tipe: 'bayar', namaPelanggan: 'Pelanggan Contoh', nominal: 1000, tanggal: '2026-09-19', jam: '10:00' }]));
 var BT = kkBayarTerhitung(), Dp = kkDokumen(kkIsi(), W.kini);
-ok('cara persis: daftar = id pembayaran yang dihitung hitungPiutang (tipe bayar, bernama) bertanggal ≥ 45 hari lalu (5 Agu): ["611"] — bukan 612 (1 Agu, di luar jendela; buku kecil HP ≤ 30 hari), 613 (tanpa nama), 614 (hapus buku), 601 (saldo awal); ikut di isi & dokumen', J(BT) === J(['611']) && J(kkIsi().bayarBonTerhitung) === J(['611']) && J(Dp.bayarBonTerhitung) === J(['611']), J([BT, Dp.bayarBonTerhitung]));
+ok('cara persis: daftar = id SEMUA pembayaran yang dihitung hitungPiutang (tipe bayar, bernama), TANPA jendela hari (tidak bergantung jam HP / jam penerbit): 1759249200123.4567 (id pecahan idUnik HP), 611, 612 (1 Agu) — bukan 613 (tanpa nama), 614 (hapus buku), 601 (saldo awal); ikut di isi & dokumen', J(BT) === J([String(1759249200123 + 0.4567), '611', '612']) && J(kkIsi().bayarBonTerhitung) === J(BT) && J(Dp.bayarBonTerhitung) === J(BT) && Dp.bayarBonSejak === '', J([BT, Dp.bayarBonTerhitung, Dp.bayarBonSejak]));
+var Dj = (function () { var t = Date.now; Date.now = function () { return t() + 400 * 86400000; }; var x = kkDokumen(kkIsi(), W.kini); Date.now = t; return x; })();
+ok('cara persis: isi katalog tidak bergantung jam perangkat penerbit (jam dimajukan 400 hari → daftar & tanda awal buku sama; dua perangkat owner tidak saling timpa)', J(Dj.bayarBonTerhitung) === J(Dp.bayarBonTerhitung) && Dj.bayarBonSejak === Dp.bayarBonSejak && kkKanon(Dj) === kkKanon(Dp), J([Dj.bayarBonTerhitung, Dj.bayarBonSejak]));
+pasok('piutangMutasi', ambilPiutangMutasi().concat([{ id: 615, tipe: 'saldoAwal', namaPelanggan: 'Pelanggan Contoh', nominal: 5000, tanggal: '2025-11-02', jam: '', tutupBuku: true, tahunDari: 2025 }]));
+ok('cara persis: sesudah tutup buku 2025 (saldo pembuka piutang bertanda tutupBuku + tahunDari 2025) → bayarBonSejak "2026-01-01": pembayaran HP bertanggal sebelumnya sudah terserap saldo pembuka', kkBayarSejak() === '2026-01-01' && kkDokumen(kkIsi(), W.kini).bayarBonSejak === '2026-01-01' && kkKanon(kkDokumen(kkIsi(), W.kini)) !== kkKanon(Dp), kkBayarSejak());
+pasok('piutangMutasi', ambilPiutangMutasi().filter(function (m) { return m.id !== 615; }));
 var Dlama = JSON.parse(J(Dp)); delete Dlama.bayarBonTerhitung; kkSetelServer(Dlama, true);
 ok('katalog server dari penerbit lama (tanpa daftar) sementara ada pembayaran terhitung → tertinggal (terbit ulang sekali)', kkTertinggal() === true);
 kkSetelServer(Dp, true); var sama = kkTertinggal(); var Dp2 = JSON.parse(J(Dp)); Dp2.bayarBonTerhitung = ['611', '999']; kkSetelServer(Dp2, true);
 ok('daftar sama → tidak tertinggal; daftar id beda → tertinggal', sama === false && kkTertinggal() === true);
-pasok('piutangMutasi', pmLama); var Dl2 = JSON.parse(J(kkDokumen(kkIsi(), W.kini))); delete Dl2.bayarBonTerhitung; kkSetelServer(Dl2, true);
+pasok('piutangMutasi', pmLama); var Dl2 = JSON.parse(J(kkDokumen(kkIsi(), W.kini))); delete Dl2.bayarBonTerhitung; delete Dl2.bayarBonSejak; kkSetelServer(Dl2, true);
 ok('tanpa pembayaran terhitung, katalog lama tanpa daftar = sama (tidak terbit ulang tanpa perlu)', kkTertinggal() === false && J(kkIsi().bayarBonTerhitung) === '[]');
 // ---- 3 · terbit harga: katalog SESUDAH terbit ikut di kiriman yang sama
 kkSetelServer(D, true);
@@ -351,6 +357,17 @@ ringkasan = { diperbaruiPada: '2026-09-30T08:03:00.000Z', _waktuServer: '2026-09
 ok('S18 persis: id tercantum, sisa KEBETULAN sama (bon baru 40.000 di perangkat lain) → catatan dibuang, sisa = katalog Rp120.000 (tebakan waktu dulu tetap mengurangi → Rp80.000)', sisa('Bu Lina') === 120000 && ambilBayarBon().length === 0, [sisa('Bu Lina'), ambilBayarBon()]);
 bayar('Bu Lina', 20000); ok('S18 persis: pembayaran baru masih di antrean, id belum tercantum → dikurangkan (Rp100.000)', sisa('Bu Lina') === 100000 && ambilBayarBon().length === 1, sisa('Bu Lina'));
 delete ringkasan.bayarBonTerhitung; ok('S18 katalog TANPA daftar (penerbit lama) → kembali ke tebakan waktu server 39b no. 4 (masih di antrean → dikurangkan)', sisa('Bu Lina') === 100000, sisa('Bu Lina'));
+// S19 (tinjauan persis P1): tutup buku mengarsipkan dokumen bayar — id-nya tidak tercantum lagi, tetapi pembayarannya sudah terserap saldo pembuka
+simpanAntrean([]); simpanBayarBon([]); ringkasan = { diperbaruiPada: '2026-09-30T09:00:00.000Z', _waktuServer: '2026-09-30T09:00:00Z', piutang: [{ nama: 'Bu Mira', sisa: 100000 }], bayarBonTerhitung: [], bayarBonSejak: '' };
+bayar('Bu Mira', 30000); var id19 = antre()[0] ? antre()[0].docId : 'x19';
+ok('S19 buku kecil menyimpan TANGGAL pembayaran (jam HP) untuk aturan awal buku', ambilBayarBon()[0] && ambilBayarBon()[0].tanggal === tanggalLokalIso(), ambilBayarBon());
+var tg19 = ambilBayarBon()[0] ? ambilBayarBon()[0].tanggal : '2026-09-19'; var besok19 = tanggalLokalIso(new Date(new Date(tg19 + 'T12:00:00').getTime() + 86400000));
+ringkasan = { diperbaruiPada: '2026-09-30T09:01:00.000Z', _waktuServer: '2026-09-30T09:01:00Z', piutang: [{ nama: 'Bu Mira', sisa: 70000 }], bayarBonTerhitung: [], bayarBonSejak: besok19 };
+ok('S19 pembayaran MASIH di antrean & bertanggal sebelum awal buku → belum sampai server → tetap dikurangkan (Rp40.000)', sisa('Bu Mira') === 40000, sisa('Bu Mira'));
+terkirim(id19, '2026-09-30T09:00:30Z');
+ok('S19 sudah sampai server, bertanggal sebelum awal buku (sehari sesudahnya), id tidak tercantum (dokumennya diarsipkan tutup buku) → terserap saldo pembuka → dibuang, Rp70.000 (bukan dikurangi dua kali → Rp40.000)', sisa('Bu Mira') === 70000 && ambilBayarBon().length === 0, [sisa('Bu Mira'), ambilBayarBon()]);
+simpanBayarBon([{ docId: 'lama-1', kunci: 'bu mira', nominal: 10000, dibuat: new Date(new Date(tg19 + 'T12:00:00').getTime() - 86400000).toISOString(), sisaKatalog: 70000, waktuServer: '2026-09-18T03:00:05Z', dariServer: true }]);
+ok('S19 catatan buku kecil lama TANPA tanggal → tanggalnya dari waktu dibuat (dua hari sebelum awal buku) → dibuang', sisa('Bu Mira') === 70000 && ambilBayarBon().length === 0, ambilBayarBon());
 print(JSON.stringify({ lulus: L, gagal: G }));
 """
 def jalan_bayar_bon(t):
@@ -553,10 +570,14 @@ KONTROL = [
     ('39b-3: tombol cara bayar bon hilang dari lembar utang', {'kasir.html': [('      <button type="button" id="utangCara-Qris" onclick="pilihCaraUtang(\'Qris\')">QRIS</button>\n', '')]}, ('statis',)),
     ('persis: kasir mengabaikan daftar id katalog (kembali ke tebakan waktu server)', {'kasir.html': [('  var persis = ringkasan && Array.isArray(ringkasan.bayarBonTerhitung) ? {} : null;\n', '  var persis = null;\n')]}, ('jsc',)),
     ('persis: id tercantum tidak membuang catatan (dikurangi dua kali)', {'kasir.html': [('      if (persis[String(c.docId)]) { ubah = true; return; }\n', '')]}, ('jsc',)),
-    ('persis: dokumen katalog tanpa daftar id', {'baru/js/data/katalog-kasir.js': [(", bayarBonTerhitung: isi.bayarBonTerhitung || [] };", " };")]}, ('jsc',)),
-    ('persis: daftar id tidak ikut pembanding katalog (tidak terbit ulang)', {'baru/js/data/katalog-kasir.js': [(", piutang: d.piutang || [], bayarBonTerhitung: d.bayarBonTerhitung || [] }));", ", piutang: d.piutang || [] }));")]}, ('jsc',)),
-    ('persis: jendela hari tidak dipakai (id lama ikut)', {'baru/js/data/katalog-kasir.js': [(" && (m.tanggal || '') >= batas).map(", ").map(")]}, ('jsc',)),
-    ('persis: pembayaran tanpa nama ikut daftar (tidak dihitung hitungPiutang)', {'baru/js/data/katalog-kasir.js': [("m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan) && ", "m.tipe === 'bayar' && ")]}, ('jsc',)),
+    ('persis: dokumen katalog tanpa daftar id', {'baru/js/data/katalog-kasir.js': [(", bayarBonTerhitung: isi.bayarBonTerhitung || [], bayarBonSejak:", ", bayarBonSejak:")]}, ('jsc',)),
+    ('persis: daftar id tidak ikut pembanding katalog (tidak terbit ulang)', {'baru/js/data/katalog-kasir.js': [(", bayarBonTerhitung: d.bayarBonTerhitung || [], bayarBonSejak:", ", bayarBonSejak:")]}, ('jsc',)),
+    ('persis: daftar id kembali berjendela jam perangkat', {'baru/js/data/katalog-kasir.js': [("m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan)).map(", "m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan) && (m.tanggal || '') >= new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10)).map(")]}, ('jsc',)),
+    ('persis: tanda awal buku tidak ikut dokumen', {'baru/js/data/katalog-kasir.js': [(", bayarBonSejak: isi.bayarBonSejak || '' };", " };")]}, ('jsc',)),
+    ('persis: HP mengabaikan tanda awal buku (dikurangi dua kali sesudah tutup buku)', {'kasir.html': [("      if (sejak && !antre && tgl && tgl < sejak) { ubah = true; return; }\n", '')]}, ('jsc',)),
+    ('persis: awal buku dianggap juga untuk pembayaran yang belum sampai server', {'kasir.html': [("if (sejak && !antre && tgl && tgl < sejak)", "if (sejak && tgl && tgl < sejak)")]}, ('jsc',)),
+    ('persis: buku kecil tidak menyimpan tanggal', {'kasir.html': [("nominal: nominal, tanggal: tanggalLokalIso(), dibuat:", "nominal: nominal, dibuat:")]}, ('jsc',)),
+    ('persis: pembayaran tanpa nama ikut daftar (tidak dihitung hitungPiutang)', {'baru/js/data/katalog-kasir.js': [("m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan)).map(", "m.tipe === 'bayar').map(")]}, ('jsc',)),
     ('HP v27 disebut "harga baru baru sampai" lagi (lantai ambil-sendiri disamakan dengan versi terbaru)', {'baru/js/data/katalog-kasir.js': [("export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v27';", "export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v30';")]}, ('jsc',)),
 ]
 

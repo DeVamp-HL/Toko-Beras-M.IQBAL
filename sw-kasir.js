@@ -105,7 +105,8 @@
 // v29 (30 September 2026, audit 39b no. 3): layar utang kasir.html punya pilihan cara bayar sendiri (Tunai/QRIS, bawaan Tunai tiap nama dipilih) —
 // dulu pembayaran bon mewarisi tombol cara bayar nota diam-diam (bon tunai tercatat QRIS, atau QRIS tidak bisa dipilih). LABEL 'versi 39b-3'.
 // v30 (30 September 2026, audit 39b "cara persis", keputusan owner): katalog /baru/ menyebut id pembayaran bon yang sudah dihitung
-// (bayarBonTerhitung); buku kecil kasir.html berhenti mengurangkan TEPAT saat id-nya tercantum — tanpa daftar itu tetap tebakan waktu server v28.
+// (bayarBonTerhitung) dan awal buku berjalan (bayarBonSejak); buku kecil kasir.html (kini menyimpan tanggal) berhenti mengurangkan TEPAT saat id-nya
+// tercantum atau pembayarannya sudah terserap saldo pembuka tutup buku — tanpa daftar itu tetap tebakan waktu server v28.
 // LABEL 'versi 39b-4p'.
 const VERSI = 'kasir-v30';
 const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];

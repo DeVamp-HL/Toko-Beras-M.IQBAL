@@ -903,15 +903,22 @@ memuat satu pun bayar bon QRIS. Mesin TIDAK diubah.
 Keputusan owner 30 Sep ("cara persis") atas celah sisa no. 4: buku kecil `kasir_bayar_bon_v1` di HP kasir menebak kapan katalog sudah menghitung
 pembayarannya (waktu server + sisa nama berubah) — tebakan meleset bila sisa nama itu berubah karena catatan lain (berhenti terlalu cepat) atau
 kebetulan kembali sama (dikurangi dua kali). Mesin TIDAK diubah.
-- `data/katalog-kasir.js`: kunci terakhir dokumen `bayarBonTerhitung` (`kkBayarTerhitung`) = id SEMUA piutangMutasi tipe bayar yang dihitung
-  `hitungPiutang()` (bernama, persis saringannya) bertanggal ≥ 45 hari lalu (`KK_BAYAR_BON_HARI`; buku kecil HP ≤ 30 hari), diurutkan. Ikut di
-  `kkIsi`, `kkDokumen`, `kkKanon` (daftar berubah = katalog tertinggal → terbit ulang; katalog lama tanpa daftar + tidak ada pembayaran terhitung = sama).
-  Empat bagian lain tetap byte-sama index.html. Rules `ringkasanKasir` tidak membatasi kolom (tanpa ubah rules).
-- `kasir.html` (v30, 'versi 39b-4p'): katalog BERDAFTAR → id tercantum = sudah dihitung → catatan dibuang; belum tercantum = tetap dikurangkan.
-  Katalog tanpa daftar (penerbit lama / salinan kasir darurat lama) → tebakan waktu server no. 4 tetap. Versi kasir serentak v30.
-- Uji: `uji_katalog_kasir.py` +4 /baru/ (jendela, tanpa nama, hapus buku, saldo awal, pembanding) + 5 jsc kasir (S18: sisa berubah karena bon lain,
-  sisa kebetulan sama, masih di antrean, tanpa daftar), `uji_antrean_kasir.py` +2 peramban (layar & klik sungguhan). Kontrol baru: katalog kasir 6,
-  antrean kasir 1.
+- `data/katalog-kasir.js`: dua kunci terakhir dokumen — `bayarBonTerhitung` (`kkBayarTerhitung`) = id SEMUA piutangMutasi tipe bayar yang dihitung
+  `hitungPiutang()` (bernama, persis saringannya), TANPA jendela hari, diurutkan; `bayarBonSejak` (`kkBayarSejak`) = 1 Januari sesudah tahun terakhir
+  yang ditutup (saldo pembuka piutang bertanda tutupBuku + tahunDari; '' bila belum pernah). Isinya murni dari DATA — tidak bergantung jam perangkat
+  penerbit (dua perangkat owner menyusun katalog yang sama). Ikut di `kkIsi`, `kkDokumen`, `kkKanon`. Empat bagian lain tetap byte-sama index.html.
+  Rules `ringkasanKasir` tidak membatasi kolom (tanpa ubah rules). Ukuran: ±600 id/tahun (±12 KB), tutup buku mengosongkannya lagi.
+- `kasir.html` (v30, 'versi 39b-4p'): katalog BERDAFTAR → id tercantum = sudah dihitung → catatan dibuang; sudah sampai server & bertanggal (buku
+  kecil kini menyimpan `tanggal`, catatan lama: dari `dibuat`) sebelum `bayarBonSejak` = terserap saldo pembuka tutup buku → dibuang; selain itu tetap
+  dikurangkan. Katalog tanpa daftar (penerbit lama / salinan kasir darurat lama) → tebakan waktu server no. 4 tetap. Versi kasir serentak v30.
+- Tinjauan independen 30 Sep (2 peninjau + penyanggah): 7 diajukan, 6 lolos, semua ditambal di cabang ini — P1/K1 tutup buku mengarsipkan dokumen
+  bayar (id hilang dari daftar, pembayaran sudah terserap saldo pembuka → HP mengurangi dua kali) → `bayarBonSejak`; P2/K2 jendela 45 hari memakai
+  tanggal dari jam HP & jam penerbit → jendela dicabut; P3/K3 isi katalog bergantung tanggal perangkat penerbit → isi murni dari data (uji: jam
+  penerbit dimajukan 400 hari → katalog sama). Gugur: K4 (bentuk id pecahan — kini tetap diuji).
+- Uji: `uji_katalog_kasir.py` +6 /baru/ (tanpa jendela, id pecahan, tanpa nama, hapus buku, saldo awal, jam penerbit, tanda awal buku, pembanding) +
+  9 jsc kasir (S18: sisa berubah karena bon lain, sisa kebetulan sama, masih di antrean, tanpa daftar · S19: tanggal di buku kecil, awal buku sebelum
+  & sesudah sampai server, catatan lama tanpa tanggal), `uji_antrean_kasir.py` +2 peramban (layar & klik sungguhan); `uji_arsip_produk.py` &
+  `uji_wadah_stok_sendiri.py` membandingkan katalog tanpa dua kunci baru. Kontrol baru: katalog kasir 11, antrean kasir 1.
 
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
