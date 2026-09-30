@@ -357,7 +357,9 @@ if __name__ == '__main__':
             print('ASAP DATA TOKO (%s): pindahan awal %d wadah (%s) · modal ikut Rp%s · dilewati: %s · nilai stok %s → %s · laba bulan itu %s → %s · tumpukan bergeser: %s · 1 L dari buku wadah sendiri: %d/%d · katalog kasir berharga wadah: %s · buku wadah bocor ke daftar merek: %d'
                   % (os.path.basename(p), len(asap['jadi']), ', '.join(asap['jadi']), format(asap['rp'], ',').replace(',', '.'), '; '.join(asap['lewati']) or 'tidak ada', asap['nilai'][0], asap['nilai'][1], asap['laba'][0], asap['laba'][1],
                      ', '.join(asap['geser']) or 'tidak ada', len(baik), len(asap['jual']), asap['katalog'], asap['bocor']))
-            if asap['tolak'] or asap['nilai'][0] != asap['nilai'][1] or asap['laba'][0] != asap['laba'][1] or asap['geser'] or len(baik) != len(asap['jual']) or not asap['jual'] or not asap['katalog'] or asap['bocor']:
+            # cadangan 1 Okt: owner sudah mengaktifkan kedelapan wadah — pindahan awal memang tidak ada lagi yang dipindah (bukan gagal)
+            tolakSah = asap['tolak'] == 'Semua wadah sudah punya stok sendiri'
+            if (asap['tolak'] and not tolakSah) or asap['nilai'][0] != asap['nilai'][1] or asap['laba'][0] != asap['laba'][1] or asap['geser'] or len(baik) != len(asap['jual']) or not asap['jual'] or not asap['katalog'] or asap['bocor']:
                 g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:500])
             # putaran 39: buku karung belakang (simulasi buka satu karung di belakang wadah aktif) tidak bocor ke daftar merek / katalog kasir
             kb = asap.get('bocorKB') or {'simulasi': 'tidak dihitung', 'bocor': 0}

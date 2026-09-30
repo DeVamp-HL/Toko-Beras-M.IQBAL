@@ -63,7 +63,7 @@ export function pasangLayarJual(akar, opsi) {
     setengahKetik: (v) => set({ setengahHarga: String(v).replace(/[^\d.]/g, '').slice(0, 9) }),
     masukkan: (arg, el) => masukDenganGerak(L.masukkan(SB()), el),
     tutup: () => set({ lembar: null, pilih: null, negoId: null, ketik: '', isiW: null, cwYakin: null }),
-    tombolMati: ({ kal }) => set({ kabar: kal, kabarAwas: true }),   // putaran 39: tombol yang tidak boleh untuk akun ini MATI dengan kalimat sebabnya, bukan hilang
+    // tombolMati (tombol peran mati dengan kalimat sebabnya) datang dari aksiPanelWadah (wadah-panel.js) — dulu ditulis dua kali, yang panel menang diam-diam
     // ---- putaran 39 (owner e): CEK WADAH tutup toko — sesuai · lupa isi ulang · dikosongkan, per wadah aktif; jam & siapa dari atribusi pusat
     bukaCekWadah: () => set({ lembar: 'cekWadah', cwYakin: null, kabar: '' }),
     cwCatat: async ({ wadah, hasil }) => {
