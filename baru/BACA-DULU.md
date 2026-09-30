@@ -1128,3 +1128,16 @@ Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah
   ditolak). Penjaganya `alat-uji/uji_jam_tampil.py` (jsc di TZ Asia/Jakarta & UTC + penjaga statis + kontrol).
 - `alat-uji/periksa_jam_rinci.py CADANGAN` — laporan pola jam baris rincian vs karcis asal + usulan koreksi (tidak menulis; bulan terkunci
   tidak diusulkan dikoreksi).
+
+## Pindah balik buku karung yang tertinggal (keputusan owner 1 Okt 2026, cabang `perbaikan/karung-tertinggal`)
+
+Temuan di cadangan 1 Okt: 30 Sep beberapa karung di belakang wadah aktif "dikembalikan ke tumpukan" dengan kode LAMA (sebelum no. 5) yang tidak memindah
+buku karung belakang balik ke buku mereknya (atau cuma sebesar catatannya) — 6 buku karung tertutup masih berisi (total 167,8 kg), berasnya sudah di
+tumpukan gudang; 2 karung yang masih berdiri bukunya lebih besar dari catatannya (DUGAAN sisa yang sama). Keputusan owner: tertutup → pindah balik
+otomatis; yang berdiri → timbang dulu.
+- `wadah-bernama-logika.js` `wbKarungTertinggal` (tertutup = semua kolam kunci itu ditutup, buku ≠ 0; berdiri = satu kolam hidup, buku > catatan),
+  `wbSusunPindahTertinggal` (pindah buku karung → merek asal, bertanda `betulkanTertinggal`, modal ikut), `wbSusunTimbangTertinggal` (≈ catatan ±1 kg →
+  sisa buku dipindah balik + catatan = timbangan; ≈ buku → catatan saja; selain itu DITOLAK: susut/lebih sungguhan lewat Cocokkan).
+- `stok.js` Stok › Wadah literan: kartu "Buku karung yang tertinggal" (tombol dua ketukan, isian timbang per karung; owner). Nama keadaan `ttg*` —
+  `kt*` sudah dipakai layar Kantong (bentrok itu tertangkap di Browser pane → pemeriksa CI baru `alat-uji/periksa_penangan_ganda.py`).
+- Uji `uji_wadah_satu_buku.py` +2 + asap data toko (6 karung 167,8 kg: nilai stok & laba tetap sesudah simulasi), kontrol +3.
