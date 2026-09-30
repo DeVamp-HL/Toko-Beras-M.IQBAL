@@ -23,7 +23,7 @@ import { hitungLabaBersihRentang, hitungArusKasInti, bayaranBiayaBulanan } from 
 import { akhirBulanIso, bulanDari, POS_BIAYA_BULANAN, hppTercatat, caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPengeluaranHarian, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilPiutangMutasi, ambilKasbonMutasi } from '../data/toko.js';
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { ugAturDok, ugAngka, ugKosong, ugUntukDok } from './uang-logika.js';
+import { ugAturDok, ugAngka, ugKosong, ugUntukDok, adalahMdr } from './uang-logika.js';
 import { lpFinal, lpNamaBulan, lpBulanPendek, daftarBulan } from './laporan-logika.js';
 import { semuaUpah } from './upah-logika.js';
 
@@ -64,7 +64,7 @@ export function aturKendali() {
 export const kataJenis = (A, id) => (A.kata[id] || []).concat((JENIS_BIAYA.find((j) => j.id === id) || { kata: [] }).kata);
 /** Kata pertama dari `kata` yang cocok sebagai AWALAN KATA di batas kata ('roko' kena 'rokok', 'biaya admin' kena 'biaya admin bi-fast'); '' bila tidak ada. */
 const kbCocokKata = (polos, kata) => { const t = ' ' + polos; for (const k of kata) { if (k && t.indexOf(' ' + k) >= 0) return k; } return ''; };
-const kbAdaMdr = (h, polos) => !!h.mdr || /(^| )(mdr|potongan qris|potongan mdr)/.test(polos);
+const kbAdaMdr = (h) => adalahMdr(h);   // 39b no. 24: satu pengenal dengan laporan & pilah harian (uang-logika.js)
 /** Jenis satu catatan uang keluar (kategori toko/tokoDompet). Urutan: tanda MDR/bank → kolom `untuk` karyawan → kata owner tiap jenis → kata bawaan tiap jenis → lain.
  *  Mengembalikan { id, dari: tanda|untuk|kataOwner|kataBawaan|belum, kata (yang cocok), kunci (untuk pengelompokan pareto), mdr }. */
 export function jenisCatatan(h, A) {

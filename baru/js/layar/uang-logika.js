@@ -96,6 +96,10 @@ export function priveBulan(iso) { return priveRentang(ugAwalBulan(iso), iso); }
 // (arti yang selama ini ia punya) dan jumlahnya disebut. Pribadi = kategori 'owner' seperti sekarang, tidak diberi `untuk`.
 export const TUJUAN_KELUAR = [['toko', 'Untuk toko'], ['karyawan', 'Untuk karyawan'], ['pribadi', 'Untuk pribadi']];
 export const ugUntukDok = (h) => (h.kategori === 'owner' ? 'pribadi' : h.untuk === 'karyawan' ? 'karyawan' : h.untuk === 'toko' ? 'toko' : '');
+/** 39b no. 24: SATU pengenal potongan QRIS (MDR) untuk semua layar — tanda `mdr` (tutup hari) ATAU keterangan yang diketik tangan menyebut mdr / potongan qris.
+ *  Dulu Kendali Biaya mengenali keduanya, laporan laba-rugi berkop & pilah harian cuma tandanya ("potongan QRIS nol" padahal ada). */
+export const ugPolos = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+export const adalahMdr = (h) => !!h && (!!h.mdr || /(^| )(mdr|potongan qris|potongan mdr)/.test(ugPolos(h.keterangan)));
 const ugBiayaBank = (h) => !!(h.dariBayarBon || h.dariPindah) || /^biaya admin/i.test(String(h.keterangan || ''));
 /** Pemilahan biaya toko harian (kategori toko + tokoDompet, = harianToko mesin laba) dalam rentang: untuk toko · untuk karyawan · belum dipilah; di dalam toko: potongan QRIS & biaya bank. */
 export function pilahHarian(awal, akhir) {
@@ -103,7 +107,7 @@ export function pilahHarian(awal, akhir) {
   ambilPengeluaranHarian().forEach((h) => { if (!(h.kategori === 'toko' || h.kategori === 'tokoDompet') || !h.tanggal || h.tanggal < awal || h.tanggal > akhir) return; const n = Number(h.nominal) || 0; P.total += n; P.n += 1;
     const u = ugUntukDok(h); if (u === 'karyawan') { P.karyawan += n; P.nKaryawan += 1; return; }
     if (u === 'toko') { P.toko += n; P.nToko += 1; } else { P.belum += n; P.nBelum += 1; }
-    if (h.mdr && h.kategori === 'toko') { P.mdr += n; P.nMdr += 1; } else if (ugBiayaBank(h)) { P.bank += n; P.nBank += 1; } });
+    if (adalahMdr(h)) { P.mdr += n; P.nMdr += 1; } else if (ugBiayaBank(h)) { P.bank += n; P.nBank += 1; } });
   P.tokoSemua = P.toko + P.belum;   // yang dihitung sebagai keperluan toko di kartu = dipilah toko + belum dipilah
   return P;
 }

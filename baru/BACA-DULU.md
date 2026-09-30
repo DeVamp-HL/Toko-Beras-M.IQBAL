@@ -1110,3 +1110,10 @@ Temuan: `rumusLaci` menganggap SEMUA uang keluar hari itu keluar dari laci, seda
 (brankas / rekening). Tiap ada uang keluar dari brankas atau rekening, Σ baris kertas ≠ seharusnya; angka seharusnya sendiri tetap benar. Tambalan:
 `uang-logika.js` `kantongGerakan()` (aturan tempat yang sama dengan saldoKantong) dipakai `tutup-hari-logika.js` untuk masuk DAN keluar. Uji
 `uji_uang_baru.py` +1, kontrol +1.
+
+## Audit 39b no. 24 — potongan QRIS dikenali dengan SATU aturan (1 Okt 2026, cabang `audit/39b-mdr-satu-pengenal`)
+
+Temuan: catatan potongan QRIS yang diketik tangan (tanpa tanda `mdr`, keterangannya "Potongan QRIS …") dikenali Kendali Biaya lewat kata, tetapi laporan
+laba-rugi berkop hanya membaca tanda `mdr` — dokumen berkop menulis baris potongan QRIS lebih kecil dari yang sebenarnya (laba bersihnya tetap sama,
+cuma salah baris). Tambalan: `uang-logika.js` `adalahMdr(h)` (tanda `mdr` ATAU keterangan berawal "mdr / potongan qris / potongan mdr") dipakai
+`pilahHarian`, `laporan-logika.js` `lpMdrRentang` (kategori toko atau tokoDompet) dan `kendali-biaya-logika.js`. Uji `uji_laporan_baru.py` +1, kontrol +1.

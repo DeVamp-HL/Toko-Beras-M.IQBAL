@@ -11,7 +11,7 @@ import { hitungLabaRentang, hitungLabaBersihRentang, hitungArusKasInti, barisSus
 import { akhirBulanIso, bulanDari, namaBulanPanjang, caraBayarKunci, hppTercatat, daftarGerakanKas, namaSingkatTrx, kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai, kunciNota, jumlahNota } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek, lebihBayarDari, LEBIH_AMBANG, pecahLebih, ringkasLebih } from '../inti/format.js';
-import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan, priveRentang, pilahHarian } from './uang-logika.js';
+import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan, priveRentang, pilahHarian, adalahMdr } from './uang-logika.js';
 import { bkEra } from './tutup-buku-logika.js';
 import { notaDari, notaDariBaris, susunStruk, stAtur, namaBaris } from './struk-logika.js';
 import { riwayatUpah } from './upah-logika.js';
@@ -55,7 +55,7 @@ export function lpFinal(key) { const era = bkEra(); if (era !== null && Number(k
 export function lpTahunFinal(tahun) { const era = bkEra(); if (era !== null && Number(tahun) <= era) return true; const s = kunciSampai(); return !!s && s >= tahun + '-12'; }
 /** Daftar bulan dari catatan pertama sampai bulan berjalan, TERBARU dulu (paling banyak `maks`). */
 export function daftarBulan(kini, maks) { const akhir = lpKey(hariIniIso(kini)); const p = lpPertama(); const awal = p ? lpKey(p) : akhir; const out = []; let k = akhir; while (k >= awal && out.length < (maks || 24)) { out.push({ key: k, nama: lpNamaBulan(k), pendek: lpBulanPendek(k, k.slice(5, 7) === '01' || out.length === 0), final: lpFinal(k), berjalan: k === akhir }); k = lpGeserBulan(k, -1); } return out; }
-const lpMdrRentang = (dari, sampai) => ambilPengeluaranHarian().reduce((a, h) => a + (h.mdr && h.kategori === 'toko' && h.tanggal >= dari && h.tanggal <= sampai ? (Number(h.nominal) || 0) : 0), 0);
+const lpMdrRentang = (dari, sampai) => ambilPengeluaranHarian().reduce((a, h) => a + ((h.kategori === 'toko' || h.kategori === 'tokoDompet') && adalahMdr(h) && h.tanggal >= dari && h.tanggal <= sampai ? (Number(h.nominal) || 0) : 0), 0);   // 39b no. 24: satu pengenal
 
 // ==================== LABA · tiga angka per bulan ====================
 /** Laba satu bulan lewat mesin yang sama dengan kaca Laba sistem lama: margin kotor · laba bersih · diterima tunai (= bersih − margin nota kredit). */
