@@ -308,13 +308,6 @@ terapkanKeCache([jq('g21', 400000, 'G-QR2'), jq('g22', 300000, 'G-QR2'), jq('g23
 var RHc = ringkasHari('2026-09-19'); var gq = function (k) { return RHc.qrisNota.find(function (q) { return q.id === k; }) || {}; };
 ok('tinjauan rantai laporan T1: tutup hari menghitung NOTA seperti Laporan & Jual (nota dua baris = satu); dokumen tutupHari menyimpan baris (jumlahTransaksi, arti sistem lama) DAN nota (jumlahNota)',
   RHc.nota === jumlahNota(function (t) { return t === '2026-09-19'; }) && RHc.nota < RHc.baris, J([RHc.nota, RHc.baris, jumlahNota(function (t) { return t === '2026-09-19'; })]));
-// tinjauan rantai laporan (no. 24): potongan QRIS yang DIKETIK tangan hari itu tidak ditulis dua kali oleh tutup hari
-var MT = [{ koleksi: 'pengeluaranHarian', data: { id: 'hMT', kategori: 'toko', untuk: 'toko', tanggal: '2026-09-19', jam: '18:00', keterangan: 'Potongan MDR QRIS', nominal: 1000, dari: 'rekening' } }];
-var DM = { lembar: { 100000: 5 }, receh: 0, alasan: 'uji', rekPilih: 'sudah', rekNyata: '', sisih: '0', timbang: {}, status: { laci: 'beres', rekening: 'beres', sisih: 'beres' } };
-ok('tutup hari + potongan QRIS diketik 1.000: yang DITULIS tutup hari = perkiraan − 1.000; laba hari ini sama dengan tanpa ketikan (potongan total tetap = perkiraan); kertas menyebut yang sudah diketik',
-  (function () { var H0 = hitungTutup(DM, KINI5); return denganCacheSementara(MT, function () { var Ht = hitungTutup(DM, KINI5); var S = susunTutup(DM, W5, true); var dm = (S.dokumen || []).filter(function (d) { return String(d.data.id) === 'mdr-2026-09-19'; })[0];
-    return H0.R.mdrKira > 1000 && Ht.R.mdrTangan === 1000 && Ht.mdrJadi === H0.mdrJadi - 1000 && Ht.labaHari === H0.labaHari && !S.tolak && !!dm && dm.data.nominal === H0.mdrJadi - 1000 && /1\.000 sudah diketik/.test(J(rekapTutup(Ht))); }); })(),
-  J([hitungTutup(DM, KINI5).labaHari, hitungTutup(DM, KINI5).mdrJadi, denganCacheSementara(MT, function () { var Ht = hitungTutup(DM, KINI5); var S = susunTutup(DM, W5, true); return [Ht.R.mdrKira, Ht.R.mdrTangan, Ht.mdrJadi, Ht.labaHari, Object.keys(Ht).join(','), S.tolak || '', (S.dokumen || []).filter(function (d) { return String(d.data.id) === 'mdr-2026-09-19'; }).map(function (d) { return d.data.nominal; })]; })]));
 ok('39b-3 T8 nota HP kasir: grupNota G-QR2 = 400.000 + 300.000 − potongan 50.000 = SATU transaksi 650.000 → potongan 1.950 (per baris dulu 0 + 0 + 0)', gq('G-QR2').n === 650000 && gq('G-QR2').mdr === 1950, J(RHc.qrisNota));
 ok('39b-3 T5 satu baris nota G-QR3 dirapikan (grupNota baru G-RAPI, koreksiDari baris asal) → tetap SATU transaksi 700.000 → potongan 2.100 (bukan 400.000 + 300.000 → 0)', gq('G-QR3').n === 700000 && gq('G-QR3').mdr === 2100 && !RHc.qrisNota.some(function (q) { return q.id === 'G-RAPI'; }) && RHc.qrisNota.length === 3 && RHc.mdrKira === 1800 + 1950 + 2100, J(RHc.qrisNota));
 var gerakRek = daftarGerakanKas().filter(function (g) { return g.t === '2026-09-19' && g.kantong === 'rekening'; }).reduce(function (a, g) { return a + g.masuk; }, 0);
@@ -399,7 +392,6 @@ if __name__ == '__main__':
     if '--kontrol' in sys.argv:
         rusak = {
             'tinjauan T1: tutup hari menghitung baris sebagai nota': js.replace("nota: new Set(jual.map(kunciNota)).size, baris: jual.length,", "nota: jual.length, baris: jual.length,"),
-            'tinjauan: tutup hari menulis potongan QRIS penuh walau sudah diketik tangan': js.replace("const mdrJadi = Math.max(0, mdrTotal - R.mdrTangan);", "const mdrJadi = mdrTotal;"),
             'tinjauan T4: kertas laci menghitung uang masuk brankas sebagai masuk laci': js.replace("const k = TD_KELOMPOK.find((x) => x[0].test(r.label)); const kantong = tempatnya(r);", "const k = TD_KELOMPOK.find((x) => x[0].test(r.label)); const kantong = r.keluar > 0 ? tempatnya(r) : (r.kantong || 'laci');"),
             '39b-12: kas tak terhitung dijumlah nol di harta': js.replace("const hartaJml = K.ada ? harta.reduce((a, h) => a + (h.n || 0), 0) : null,", "const hartaJml = harta.reduce((a, h) => a + (h.n || 0), 0),"),
             '39b-12: null = null lolos sebagai sama': js.replace("const sama = !ada || (tahu && s !== null && Math.abs(b.n - s) < 0.5);", "const sama = !ada || (b.n === null && s === null) || (tahu && s !== null && Math.abs(b.n - s) < 0.5);").replace("semuaSama: !beda.length && !tidakTahu.length,", "semuaSama: !beda.length,"),

@@ -1189,8 +1189,9 @@ Dua peninjau independen (uang; layar & uji). Yang ditambal:
   arti sistem lama, ditambah `jumlahNota`).
 - "Nota bon" di kartu Laba & rekap WA = nota (`jumlahNota(cocok, saring)`), bukan baris. Hitungan tanpa modal dari mesin (baris) kini ditulis "baris
   tanpa modal" di Laporan & Kendali Biaya.
-- Tutup hari mengenali potongan QRIS yang DIKETIK tangan hari itu (`adalahMdr`): yang ditulis tutup hari = potongan − yang sudah diketik (dulu
-  terpotong dua kali — laba & rekening); kertas menyebutnya.
+- (DITARIK sesudah tinjauan kedua) tutup hari yang mengurangi potongan QRIS yang diketik tangan: catatan ketikan lama tidak bertempat (dianggap laci),
+  jadi tambalan itu membetulkan laba tapi menyalahkan saldo rekening. Kembali ke perilaku lama: potongan QRIS dicatat TUTUP HARI — jangan diketik
+  di Uang keluar (catatan ketikan membuat laba hari itu terpotong dua kali).
 - `adalahMdr`: kalimat biaya admin otomatis (bayar bon / pindah uang, "Biaya admin …") bukan potongan QRIS; kata harus utuh.
 - Barang masuk menolak nama pemasok milik sistem (stok awal / tutup buku / lahir buku); `namaSistemPemasok` pindah ke `data/toko.js`.
 - Daftar kartu HPP menulis "harga beli terbaru belum ada" (dulu Rp0/kg; panelnya sudah "belum ada").
