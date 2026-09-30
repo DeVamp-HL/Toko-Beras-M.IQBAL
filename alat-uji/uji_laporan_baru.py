@@ -92,6 +92,11 @@ ok('39b-19 pemilih 14 hari: omzet tiap hari = omzet rekap harinya (penjualan −
   J(hariTerakhir(KINI, 3).map(function (x) { return [x.iso, x.omzet, rekapHari(x.iso).omzet]; })));
 var N20 = function (id, merk) { return { koleksi: 'penjualan', data: { id: id, trxId: 'T20', tanggal: '2026-09-19', jam: '11:00', caraBayar: 'Tunai', namaPelanggan: '', jenis: 'karung', merkSumber: merk, totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 700000, hppTotalSaatJual: 650000 } }; };
 var n20 = { h: rekapHari('2026-09-19').n, m: rekapMinggu('2026-09-14', KINI).n, b: enamBulan(KINI).daftar.slice(-1)[0].n, p: pjOmzetSistem('2026-09').n };
+var N20g = function (id, grup) { return { koleksi: 'penjualan', data: { id: id, grupNota: grup, tanggal: '2026-09-19', jam: '12:00', caraBayar: 'Kredit', namaPelanggan: 'Uji Bon', jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 700000, hppTotalSaatJual: 650000 } }; };
+ok('tinjauan rantai laporan T2/T3: nota HP kasir (grupNota saja, tanpa trxId) dua baris BON = satu nota: Harian +1, "Bon … · N nota" WA +1 nota, kartu Laba "nota bon" +1, Tahun +1 (bukan +2)',
+  (function () { var h0 = rekapHari('2026-09-19'), b0 = labaBulan('2026-09', KINI), t0 = rekapTahun ? rekapTahun('2026', KINI) : null; return denganCacheSementara([N20g('g20a', 'G20'), N20g('g20b', 'G20')], function () { var R = rekapHari('2026-09-19'); var B = labaBulan('2026-09', KINI); var T = rekapTahun ? rekapTahun('2026', KINI) : null;
+    return R.n === h0.n + 1 && R.nKredit === h0.nKredit + 1 && new RegExp('· ' + R.nKredit + ' nota').test(teksRekapHari(R, { nama: 'Toko Contoh' })) && B.nKredit === b0.nKredit + 1 && (!T || T.n === t0.n + 1); }); })(),
+  J(denganCacheSementara([N20g('g20a', 'G20'), N20g('g20b', 'G20')], function () { return [rekapHari('2026-09-19').n, rekapHari('2026-09-19').nKredit, labaBulan('2026-09', KINI).nKredit]; })));
 ok('39b-20 satu nota DUA baris (trxId sama) dihitung SATU nota: Harian 4 → 5 (bukan 6), jam 11 satu nota, 14 hari, teks WA "(5 nota)", minggu, bulan & Pajak ikut +1 (dulu +2: baris disebut nota)',
   denganCacheSementara([N20('n20a', 'Angsa'), N20('n20b', 'Beo')], function () { var R = rekapHari('2026-09-19'); var j11 = R.perJam.filter(function (x) { return x.jam === '11'; })[0];
     return R.n === n20.h + 1 && !!j11 && j11.n === 1 && hariTerakhir(KINI, 14)[0].n === n20.h + 1 && /\(5 nota\)/.test(teksRekapHari(R, { nama: 'Toko Contoh' })) && rekapMinggu('2026-09-14', KINI).n === n20.m + 1
@@ -154,7 +159,8 @@ ok('laba-rugi Sep: DRAF (belum tutup buku), baris Laba kotor 146.300 & Laba bers
 var M24 = [{ koleksi: 'pengeluaranHarian', data: { id: 'h24', kategori: 'toko', tanggal: '2026-09-19', jam: '21:00', keterangan: 'Potongan QRIS GoPay', nominal: 700 } }];
 ok('39b-24 catatan potongan QRIS yang DIKETIK tangan (tanpa tanda mdr): laba-rugi berkop memisahnya (1.800 + 700 = 2.500), pilah harian ikut, Laba bersih tetap = mesin — satu pengenal dengan Kendali Biaya',
   denganCacheSementara(M24, function () { var R = laporanBerkop('labarugi', '2026-09', 1, KINI); var q = R.baris.find(function (r) { return /Potongan QRIS/.test(r.nama); }); var P = pilahHarian('2026-09-01', '2026-09-30');
-    return !!q && q.n === -2500 && P.mdr === 2500 && R.baris.find(function (r) { return r.nama === 'Laba bersih'; }).n === hitungLabaBersihRentang('2026-09-01', '2026-09-30').labaBersih && adalahMdr(M24[0].data) && !adalahMdr({ keterangan: 'isi saldo qris' }); }),
+    return !!q && q.n === -2500 && P.mdr === 2500 && R.baris.find(function (r) { return r.nama === 'Laba bersih'; }).n === hitungLabaBersihRentang('2026-09-01', '2026-09-30').labaBersih && adalahMdr(M24[0].data) && !adalahMdr({ keterangan: 'isi saldo qris' })
+      && !adalahMdr({ keterangan: 'Biaya admin Admin Mdr — bayar bon MDR Jaya', dariBayarBon: true }) && !adalahMdr({ keterangan: 'Biaya admin Mdr — pindah uang ke rekening', dariPindah: true }) && !adalahMdr({ keterangan: 'mdrx kantong' }) && adalahMdr({ keterangan: 'Potongan MDR Qris Gopay E-Wallet' }); }),
   J(denganCacheSementara(M24, function () { return [laporanBerkop('labarugi', '2026-09', 1, KINI).baris.filter(function (r) { return /Potongan|Laba bersih|Belanja/.test(r.nama); }), pilahHarian('2026-09-01', '2026-09-30').mdr]; })));
 ok('laba-rugi menutup: Σ baris berangka (tanpa dua baris jumlah) = laba bersih', dekat(LR.baris.filter(function (r) { return r.n !== null && r.kelas !== 'jumlah'; }).reduce(function (a, r) { return a + r.n; }, 0), LM.labaBersih));
 var LR3 = laporanBerkop('labarugi', '2026-09', 3, KINI); ok('3 bulan Jul–Sep: periode "Jul 26 – Sep 26", laba kotor = Agu 50.000 + Sep 146.300', LR3.periode === 'Jul 26 – Sep 26' && LR3.bulan.length === 3 && LR3.baris.find(function (r) { return r.nama === 'Laba kotor'; }).n === 196300);
@@ -258,6 +264,10 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            'tinjauan T2: nota bon dihitung per baris (kartu Laba)': js.replace("notaKredit.add(kunciNota(p));", "notaKredit.add(String(p.id));"),
+            'tinjauan T2: nota bon dihitung per baris (rekap WA)': js.replace("nKredit: jumlahNota((t) => t === iso, (p) => caraBayarKunci(p) === 'kredit'),", "nKredit: K.jumlahKredit,"),
+            'tinjauan T3: kunci nota mengabaikan grupNota (nota HP kasir)': js.replace("const kunciNota = (p) => String(p.grupNota || p.trxId || p.id);", "const kunciNota = (p) => String(p.trxId || p.id);"),
+            'tinjauan: potongan QRIS menangkap kalimat biaya admin otomatis': js.replace("(!h.dariBayarBon && !h.dariPindah && !/^biaya admin/i.test(String(h.keterangan || '')) && /(^| )(mdr|potongan qris|potongan mdr)( |$)/", "(/(^| )(mdr|potongan qris|potongan mdr)/"),
             '39b-19: pemilih 14 hari Laporan bruto': js.replace("omzet: (per[t] ? per[t].omzet : 0) - ((retur[t] || {}).uang || 0),", "omzet: per[t] ? per[t].omzet : 0,"),
             'no.4: neraca diam soal kelebihan bayar pelanggan': js.replace("const kataU = U.n ? 'Kelebihan bayar pelanggan '", "const kataU = false ? 'Kelebihan bayar pelanggan '"),
             'no.4 B1: hapus buku terbayar disebut menaikkan kekayaan / tidak disebut': js.replace("const kataH = H.n ?", "const kataH = false ?"),
@@ -275,7 +285,7 @@ if __name__ == '__main__':
             'susut hilang dari tangga kotor → bersih (jumlahnya tidak menutup)': js.replace("['Susut & selisih stok', L.susutStok], ['Laba bersih', L.labaBersih, 'jumlah']", "['Laba bersih', L.labaBersih, 'jumlah']"),
             'bulan tanpa catatan digambar sama dengan bulan nol': js.replace("const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && !susut.length;", "const tanpaCatatan = false;"),
             # ---- harian
-            'nota batal ikut jumlah nota hari itu': js.replace("const s = new Set(); ambilPenjualan().forEach((p) => { if (cocok(p.tanggal)) s.add(kunciNota(p)); });", "const s = new Set(); ambilPenjualanSemua().forEach((p) => { if (cocok(p.tanggal)) s.add(kunciNota(p)); });"),   # 39b no. 20: jumlah nota kini dari jumlahNota (toko.js)
+            'nota batal ikut jumlah nota hari itu': js.replace("const s = new Set(); ambilPenjualan().forEach((p) => { if (cocok(p.tanggal) && (!saring || saring(p))) s.add(kunciNota(p)); });", "const s = new Set(); ambilPenjualanSemua().forEach((p) => { if (cocok(p.tanggal) && (!saring || saring(p))) s.add(kunciNota(p)); });"),   # 39b no. 20: jumlah nota kini dari jumlahNota (toko.js)
             'teks WA lupa menyebut bon yang belum jadi uang': js.replace("if (R.kredit) b.push('Bon (belum jadi uang): '", "if (false) b.push('Bon (belum jadi uang): '"),
             # ---- bulanan / rekap omzet
             'semua bulan dianggap final tanpa tutup buku': js.replace("function lpFinal(key) { const era = bkEra(); if (era !== null && Number(key.slice(0, 4)) <= era) return true; const s = kunciSampai(); return !!s && String(key).slice(0, 7) <= s; }", "function lpFinal(key) { return true; }"),
@@ -293,7 +303,7 @@ if __name__ == '__main__':
             'modal owner tidak dipisah dari laba ditahan': js.replace("const labaDitahan = aset === null ? null : aset - kewajiban - modal;", "const labaDitahan = aset === null ? null : aset - kewajiban;"),
             'neraca tanpa titik kas tetap dicetak': js.replace("const tolak = !kasAda ? 'Kas belum bisa dihitung — titik kas belum disetel; Tutup hari malam ini menyetelnya' :", "const tolak = false ? '' :"),
             'aset tetap isian owner tidak ikut aset': js.replace("const aset = kasAda ? N.kas + N.stok + N.piutang + N.kasbon + AT.asetTetap : null;", "const aset = kasAda ? N.kas + N.stok + N.piutang + N.kasbon : null;"),
-            '39b-20: jumlah nota menghitung BARIS lagi': js.replace("if (cocok(p.tanggal)) s.add(kunciNota(p)); }); return s.size; }", "if (cocok(p.tanggal)) s.add(p.id); }); return s.size; }"),
+            '39b-20: jumlah nota menghitung BARIS lagi': js.replace("if (cocok(p.tanggal) && (!saring || saring(p))) s.add(kunciNota(p)); }); return s.size; }", "if (cocok(p.tanggal) && (!saring || saring(p))) s.add(p.id); }); return s.size; }"),
             '39b-20: per jam menghitung baris': js.replace("notaJam[j].add(kunciNota(p)); jam[j].n = notaJam[j].size;", "notaJam[j].add(p.id); jam[j].n = notaJam[j].size;"),
             '39b-24: laporan berkop hanya membaca tanda mdr (bukan catatan yang diketik)': js.replace("(h.kategori === 'toko' || h.kategori === 'tokoDompet') && adalahMdr(h) && h.tanggal >= dari", "h.mdr && h.kategori === 'toko' && h.tanggal >= dari"),
             # ---- kop & cetakan
@@ -322,7 +332,7 @@ if __name__ == '__main__':
         sys.exit(kode)
     l, g = utama(js)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
-    cad = sorted(glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')))
+    cad = sorted(glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')), key=os.path.basename)   # audit 39b no. 46 / tinjauan T6: cadangan toko ada di _privat/
     if cad and not g:
         h, e = jalan(JAM_TETAP.replace("'2026-09-19T10:00:00+07:00'", "'2026-09-22T10:00:00+07:00'") + js + '\nvar CAD = ' + open(cad[-1], encoding='utf-8').read() + ';\n' + ASAP)
         if h is None: print('ASAP JATUH: ' + e); sys.exit(2)

@@ -99,7 +99,9 @@ export const ugUntukDok = (h) => (h.kategori === 'owner' ? 'pribadi' : h.untuk =
 /** 39b no. 24: SATU pengenal potongan QRIS (MDR) untuk semua layar — tanda `mdr` (tutup hari) ATAU keterangan yang diketik tangan menyebut mdr / potongan qris.
  *  Dulu Kendali Biaya mengenali keduanya, laporan laba-rugi berkop & pilah harian cuma tandanya ("potongan QRIS nol" padahal ada). */
 export const ugPolos = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-export const adalahMdr = (h) => !!h && (!!h.mdr || /(^| )(mdr|potongan qris|potongan mdr)/.test(ugPolos(h.keterangan)));
+// tinjauan rantai laporan: kalimat biaya admin OTOMATIS (bayar bon / pindah uang) bukan potongan QRIS walau nama pemasok / biayanya berawalan "mdr";
+// kata harus utuh ("mdr", bukan "mdrx")
+export const adalahMdr = (h) => !!h && (!!h.mdr || (!h.dariBayarBon && !h.dariPindah && !/^biaya admin/i.test(String(h.keterangan || '')) && /(^| )(mdr|potongan qris|potongan mdr)( |$)/.test(ugPolos(h.keterangan))));
 const ugBiayaBank = (h) => !!(h.dariBayarBon || h.dariPindah) || /^biaya admin/i.test(String(h.keterangan || ''));
 /** Pemilahan biaya toko harian (kategori toko + tokoDompet, = harianToko mesin laba) dalam rentang: untuk toko · untuk karyawan · belum dipilah (tanpa tujuan — catatan lama; 39b no. 25: di layar ditulis "tanpa tujuan", beda dari "jenisnya belum dikenali" Kendali Biaya); di dalam toko: potongan QRIS & biaya bank. */
 export function pilahHarian(awal, akhir) {

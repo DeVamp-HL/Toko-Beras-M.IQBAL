@@ -1192,3 +1192,19 @@ berita acara menjumlahnya sebagai nol — harta tertulis kurang seukuran kas (ua
 jumlah harta & laba tinggal "belum bisa dihitung" (null) dengan kalimat tanggal titik kasnya; `bandingBuku` — baris tak terhitung bertanda "?" dan
 KUNCI ditolak; teks berita acara menulis "tidak bisa dihitung", bukan Rp0. Cara mengunci tahun dalam keadaan itu = rancangan K6 (hitungan uang tutup
 hari 31 Des) — belum dibangun, menunggu rancang ulang tutup buku sebelum Desember. Uji `uji_uang_baru.py` +1, kontrol +2.
+
+## Tinjauan rantai laporan (no. 20 11 10 13 24) — tambalan (1 Okt 2026, cabang `audit/39b-rantai-laporan`)
+
+Dua peninjau independen (uang; layar & uji). Yang ditambal:
+- Tutup hari menghitung NOTA seperti Laporan & Jual (`ringkasHari.nota` = kunciNota; dokumen tutupHari tetap menyimpan `jumlahTransaksi` = baris,
+  arti sistem lama, ditambah `jumlahNota`).
+- "Nota bon" di kartu Laba & rekap WA = nota (`jumlahNota(cocok, saring)`), bukan baris. Hitungan tanpa modal dari mesin (baris) kini ditulis "baris
+  tanpa modal" di Laporan & Kendali Biaya.
+- Tutup hari mengenali potongan QRIS yang DIKETIK tangan hari itu (`adalahMdr`): yang ditulis tutup hari = potongan − yang sudah diketik (dulu
+  terpotong dua kali — laba & rekening); kertas menyebutnya.
+- `adalahMdr`: kalimat biaya admin otomatis (bayar bon / pindah uang, "Biaya admin …") bukan potongan QRIS; kata harus utuh.
+- Barang masuk menolak nama pemasok milik sistem (stok awal / tutup buku / lahir buku); `namaSistemPemasok` pindah ke `data/toko.js`.
+- Daftar kartu HPP menulis "harga beli terbaru belum ada" (dulu Rp0/kg; panelnya sudah "belum ada").
+- Uji: nota HP kasir (grupNota saja) & nota bon; sisi MASUK kertas laci; asap Laporan kini mencari cadangan di `_privat/` (audit 39b no. 46 untuk
+  uji ini); syarat SENGAJA asap global diperketat (selisih potongan QRIS = catatan yang diketik, dihitung ulang dari cadangan; hitungan nota > 0 dan ≤
+  baris) — sabotase "semua catatan = potongan QRIS" dan "jumlah nota 0" kini GAGAL.

@@ -156,6 +156,8 @@ dm.baris = [{ merk: 'Angsa', jumlahKarung: '40', beratKarung: 50, hargaPerKg: '1
 var hm = hitungMasuk(dm);
 ok('masuk: 40×50 @13.200 + 20×50 @14.100 + bongkar 100.000 → 60 karung, 3.000 kg, beras 40.500.000; HPP Angsa 13.233,33 & Apex 14.133,33 (bongkar dibagi menurut kg — hitungHppMerkDalamBatch); baris kosong diabaikan; harga sebelumnya disebut', hm.karung === 60 && hm.kg === 3000 && hm.nilaiBeras === 40500000 && hm.total === 40600000 && Math.abs(hm.sah[0].hppPerKg - 13233.3333) < 0.01 && Math.abs(hm.sah[1].hppPerKg - 14133.3333) < 0.01 && hm.sah[0].alokasiBongkar === 66667 && hm.baris.length === 3 && !hm.bermasalah.length && hm.sah[0].hargaLalu === 13500, JSON.stringify(hm.sah));
 ok('masuk: pemasok kosong DITOLAK; baris terisi tanpa harga DITOLAK dan menyebut barisnya; nama dua kali DITOLAK', /pemasok/.test(susunSimpanMasuk(Object.assign({}, dm, { pemasok: '' }), WM).tolak || '') && /Baris 2 \(IR64 Apex\): harga beli/.test(susunSimpanMasuk(Object.assign({}, dm, { baris: [dm.baris[0], { merk: 'IR64 Apex', jumlahKarung: '20', beratKarung: 50, hargaPerKg: '' }] }), WM).tolak || '') && /dua kali/.test(susunSimpanMasuk(Object.assign({}, dm, { baris: [dm.baris[0], dm.baris[0]] }), WM).tolak || ''), JSON.stringify(susunSimpanMasuk(Object.assign({}, dm, { baris: [dm.baris[0], { merk: 'IR64 Apex', jumlahKarung: '20', beratKarung: 50, hargaPerKg: '' }] }), WM)));
+ok('tinjauan rantai laporan (no. 11): pemasok bernama sistem ("Lahir Buku", "Stok awal", "Tutup buku 2026") DITOLAK di Barang masuk — bonnya akan menggantung tanpa kartu pemasok; nama biasa tetap boleh',
+  ['Lahir Buku', 'stok awal', 'TUTUP BUKU 2026'].every(function (n) { return /nama yang dipakai sistem/.test(susunSimpanMasuk(Object.assign({}, dm, { pemasok: n }), WM).tolak || ''); }) && !/nama yang dipakai sistem/.test(susunSimpanMasuk(dm, WM).tolak || ''));
 var dmKecil = Object.assign({}, dm, { baris: [{ merk: 'Angsa', jumlahKarung: '5', beratKarung: 50, hargaPerKg: '13.200' }] });
 ok('masuk: 5 karung (< 60) DITANYA dulu (perluYakin), ketukan kedua boleh', susunSimpanMasuk(dmKecil, WM).perluYakin === true && /Cuma 5 karung/.test(susunSimpanMasuk(dmKecil, WM).tolak) && !susunSimpanMasuk(dmKecil, WM, true).tolak);
 var SM = susunSimpanMasuk(dm, WM); var dokM = SM.dokumen[0].data;
@@ -559,6 +561,7 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            'tinjauan (no. 11): nama sistem diterima sebagai pemasok di Barang masuk': js.replace("if (namaSistemPemasok(pemasok)) return { tolak:", "if (false) return { tolak:"),
             # ---- putaran 21
             'kembalikan karung tanpa ketukan kedua': js.replace("if (!yakin) return { tolak: 'Ketuk sekali lagi untuk mengembalikan karung '", "if (false) return { tolak: 'Ketuk sekali lagi untuk mengembalikan karung '"),
             'kembalikan karung yang belum ditakar ditulis 0 (catatan buka tidak dihapus, papan kapur tetap menyebutnya)': js.replace("const bersih = !berbuku && !dasar && buka.length && !adaTakar;", "const bersih = false;"),

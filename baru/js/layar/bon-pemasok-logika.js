@@ -9,7 +9,7 @@
 // Uang toko: sistem lama tidak punya saldo per kantong, yang bisa dijaga TOTAL kas (kasPada; null bila titik kas belum disetel) — "dari mana uangnya" dicatat sebagai kolom.
 import { hitungUtangPemasok, kasPada } from '../mesin/beku.js';
 import { batchDiutang, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, cacheMentah, kunciSampai } from '../data/toko.js';
+import { ambilSemuaBatch, ambilUtangPemasokMutasi, ambilPemasokCatatan, ambilPengeluaranHarian, cacheMentah, kunciSampai, namaSistemPemasok } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 
 export const ATUR_BON_BAWAAN = { dekatHari: 7, admin: [{ nama: 'BI-FAST', n: 2500 }, { nama: 'Transfer antarbank', n: 6500 }] };
@@ -22,7 +22,7 @@ const bpKosong = (v) => v === undefined || v === null || String(v).trim() === ''
 export const bpHariKe = (iso) => Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 86400000);
 export const bpTambahHari = (iso, n) => new Date((bpHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
 // 39b no. 11: nama yang DIPAKAI SISTEM (saldo awal, tutup buku, batch lahir buku khusus) bukan pemasok — tidak masuk daftar, Buku bon, pil Bon lama, Rekap Bon
-export const namaSistemPemasok = (nama) => { const n = String(nama || '').trim().toUpperCase(); return n === 'STOK AWAL' || n.startsWith('TUTUP BUKU') || n === 'LAHIR BUKU'; };
+// namaSistemPemasok tinggal di data/toko.js (satu aturan untuk Buku bon & Barang masuk; tinjauan rantai laporan)
 export const pemasokSungguhan = (nama) => { const n = String(nama || '').trim(); return n !== '' && !namaSistemPemasok(n); };
 const namaTempat = (id) => (TEMPAT_UANG.find((t) => t[0] === id) || [id, id])[1];
 

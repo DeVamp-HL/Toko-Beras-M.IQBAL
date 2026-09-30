@@ -41,10 +41,12 @@ export function ambilSemuaBatch() { return _cache.batch; }
 export function ambilBiayaBulanan() { return _cache.bulanan; }
 export function ambilPenjualanSemua() { return _cache.penjualan; }
 export function ambilPenjualan() { return ambilPenjualanSemua().filter(penjualanMasihBerlaku); }
+/** Nama yang dipakai SISTEM di kolom pemasok batch (stok awal, saldo pembuka tutup buku, lahir buku) — bukan pemasok: tidak punya kartu, bon, atau utang. */
+export const namaSistemPemasok = (nama) => { const n = String(nama || '').trim().toUpperCase(); return n === 'STOK AWAL' || n.startsWith('TUTUP BUKU') || n === 'LAHIR BUKU'; };
 /** Satu NOTA = satu grupNota / trxId (satu nota bisa berisi banyak baris penjualan). 39b no. 20: laporan dulu menyebut jumlah BARIS sebagai "nota". */
 export const kunciNota = (p) => String(p.grupNota || p.trxId || p.id);
 /** Jumlah nota (bukan baris) penjualan yang masih berlaku dengan tanggal yang cocok. */
-export function jumlahNota(cocok) { const s = new Set(); ambilPenjualan().forEach((p) => { if (cocok(p.tanggal)) s.add(kunciNota(p)); }); return s.size; }
+export function jumlahNota(cocok, saring) { const s = new Set(); ambilPenjualan().forEach((p) => { if (cocok(p.tanggal) && (!saring || saring(p))) s.add(kunciNota(p)); }); return s.size; }   // saring: mis. hanya nota bon
 /**
  * Uang yang kembali ke pembeli lewat retur per tanggal — rumus & saringan yang SAMA dengan mesin laba (uangKembaliRetur atas semua retur bertanggal):
  * { 'YYYY-MM-DD': { uang, baris: [{ jam, uang }] } }. OMZET = penjualan − uang ini di SEMUA layar (keputusan owner 9 Sep: uang kembali selalu mengurangi

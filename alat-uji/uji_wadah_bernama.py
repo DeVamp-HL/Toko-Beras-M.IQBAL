@@ -245,10 +245,12 @@ def utama(js, pakai_cadangan):
 
 # Perubahan yang DISENGAJA dan belum ada di main: dikenali lewat penanda di kode main (hilang sendiri sesudah merge → pembanding kembali byte-sama
 # penuh). Tiap perubahan membawa syarat uang: yang boleh berubah hanya cara menghitung/memilah, bukan rupiahnya.
-def _no20(h):   # audit 39b no. 20: jumlah nota = nota (trxId/grupNota), bukan baris; daftar rugi/tanpa HPP membawa kunci nota
+def _no20(h):   # audit 39b no. 20: jumlah nota = nota (trxId/grupNota), bukan baris; daftar rugi/tanpa HPP membawa kunci nota; nota bon dihitung per nota
     for L in h.get('laba') or []:
+        if not L: continue
         for k in ('rugi', 'tanpaHpp'):
-            for r in (L or {}).get(k) or []: r.pop('nota', None)
+            for r in L.get(k) or []: r.pop('nota', None)
+        L['nKredit'] = None
     for r in (h.get('omzet') or {}).get('daftar') or []: r['n'] = None
     return h
 
@@ -262,11 +264,41 @@ def _no24(h):   # audit 39b no. 24: potongan QRIS yang diketik tangan dipisah da
     return h
 
 
+def _hitung_turun(c, m):
+    """hitungan baru (nota) wajib > 0 bila yang lama > 0, dan tidak lebih besar dari hitungan baris lama (tinjauan: dulu 0 pun diterima)."""
+    return (m or 0) == 0 and (c or 0) == 0 or 0 < (c or 0) <= (m or 0)
+
+
+def _syarat20(c, m, cad):
+    return all(x.get('omzet') == y.get('omzet') and _hitung_turun(x.get('n'), y.get('n')) for x, y in zip(c['omzet']['daftar'], m['omzet']['daftar'])) \
+        and all(_hitung_turun((x or {}).get('nKredit'), (y or {}).get('nKredit')) for x, y in zip(c['laba'], m['laba']))
+
+
+def _mdr_ketik_per_bulan(cad):
+    """Σ catatan uang keluar toko TANPA tanda mdr yang keterangannya potongan QRIS (aturan adalahMdr, dihitung ulang di sini dari cadangan) per bulan."""
+    out = {}
+    for h in cad.get('pengeluaranHarian') or []:
+        if h.get('mdr') or h.get('kategori') not in ('toko', 'tokoDompet') or h.get('dariBayarBon') or h.get('dariPindah'): continue
+        k = str(h.get('keterangan') or ''); pol = re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]', ' ', k.lower())).strip()
+        if re.match(r'(?i)^biaya admin', k) or not re.search(r'(^| )(mdr|potongan qris|potongan mdr)( |$)', pol): continue
+        b = str(h.get('tanggal') or '')[:7]; out[b] = out.get(b, 0) + (float(h.get('nominal') or 0))
+    return out
+
+
+def _syarat24(c, m, cad):
+    """laba bersih sama; potongan QRIS cabang − main = PERSIS catatan potongan QRIS yang diketik tangan bulan itu (dihitung ulang dari cadangan); biaya toko turun sebesar itu."""
+    ketik = _mdr_ketik_per_bulan(cad)
+    for k, x, y in zip(c['bulan'], c['laba'], m['laba']):
+        x = x or {}; y = y or {}
+        if x.get('labaBersih') != y.get('labaBersih'): return False
+        d = (x.get('mdr') or 0) - (y.get('mdr') or 0)
+        if abs(d - ketik.get(k, 0)) > 0.5 or abs(((x.get('biayaLain') or 0) + (x.get('mdr') or 0)) - ((y.get('biayaLain') or 0) + (y.get('mdr') or 0))) > 0.5: return False
+    return True
+
+
 SENGAJA = [
-    ('no. 20 hitung nota', 'baru/js/data/toko.js', 'export function jumlahNota', _no20,
-     lambda c, m: all((x.get('omzet') == y.get('omzet') and (x.get('n') or 0) <= (y.get('n') or 0)) for x, y in zip(c['omzet']['daftar'], m['omzet']['daftar']))),
-    ('no. 24 potongan QRIS satu aturan', 'baru/js/layar/uang-logika.js', 'export const adalahMdr', _no24,
-     lambda c, m: all((x or {}).get('labaBersih') == (y or {}).get('labaBersih') for x, y in zip(c['laba'], m['laba']))),
+    ('no. 20 hitung nota', 'baru/js/data/toko.js', 'export function jumlahNota', _no20, _syarat20),
+    ('no. 24 potongan QRIS satu aturan', 'baru/js/layar/uang-logika.js', 'export const adalahMdr', _no24, _syarat24),
 ]
 
 
@@ -288,7 +320,7 @@ def asap_global(p):
         for nama, berkas, penanda, samakan, syarat in SENGAJA:
             pm = os.path.join(tmp, berkas); pc = os.path.join(AKAR, berkas)
             if os.path.exists(pm) and penanda not in open(pm, encoding='utf-8').read() and penanda in open(pc, encoding='utf-8').read():
-                if not syarat(cabang, main): return False, 'perubahan sengaja "%s" menggeser uang' % nama
+                if not syarat(cabang, main, json.loads(cad)): return False, 'perubahan sengaja "%s" menggeser uang' % nama
                 cabang, main = samakan(cabang), samakan(main); dipakai.append(nama)
         beda = [k for k in cabang if json.dumps(cabang[k], sort_keys=True) != json.dumps(main.get(k), sort_keys=True)]
         return not beda, '%d bulan (%s … %s), laba/inti/neraca/omzet%s%s' % (len(cabang['bulan']), cabang['bulan'][0] if cabang['bulan'] else '-', cabang['bulan'][-1] if cabang['bulan'] else '-', (' · disengaja (belum di main): ' + '; '.join(dipakai)) if dipakai else '', (' · BEDA: ' + ', '.join(beda)) if beda else '')
