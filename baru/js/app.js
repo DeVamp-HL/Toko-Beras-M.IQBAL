@@ -159,7 +159,11 @@ const pesanMasuk = document.getElementById('pesanMasuk');
 const salahMasuk = document.getElementById('salahMasuk');
 const isianEmail = document.getElementById('isianEmail'), isianSandi = document.getElementById('isianSandi'), ingatEmail = document.getElementById('ingatEmail');
 const bacaEmail = () => { try { return localStorage.getItem(KUNCI_EMAIL) || ''; } catch (e) { return ''; } };
-function kabarSebentar(t) { const k = document.getElementById('kabarNav'); k.textContent = t; k.hidden = false; clearTimeout(k._t); k._t = setTimeout(() => { k.hidden = true; }, 3600); }
+function kabarSebentar(t) { const k = document.getElementById('kabarNav'); if (k.classList.contains('awas') && !k.hidden) return; k.textContent = t; k.hidden = false; clearTimeout(k._t); k._t = setTimeout(() => { k.hidden = true; }, 3600); }
+// 30 Sep: tombol yang jatuh (dom.js delegasi → 'galat-aksi') tidak lagi diam — pita merah bertahan sampai diketuk
+document.addEventListener('galat-aksi', (e) => { const k = document.getElementById('kabarNav'); if (!k) return; const d = (e && e.detail) || {};
+  k.textContent = 'Tombol tadi GAGAL dijalankan (' + (d.pesan || 'galat') + '). Periksa dulu apakah catatannya sudah masuk sebelum mengulang — ketuk pesan ini untuk menutup.';
+  k.classList.add('awas'); k.hidden = false; clearTimeout(k._t); k.onclick = () => { k.hidden = true; k.classList.remove('awas'); k.onclick = null; }; });
 isianSandi.addEventListener('focus', () => { isianSandi.readOnly = false; });
 document.getElementById('lupakanEmail').addEventListener('click', () => { try { localStorage.removeItem(KUNCI_EMAIL); } catch (e) { /* abaikan */ } isianEmail.value = ''; ingatEmail.hidden = true; isianEmail.focus(); });
 /** Gambar layar masuk menurut keadaan akun: keluar → formulir; belum terdaftar / dinonaktifkan / kasir@ → lembar akun; owner / aktif → aplikasi. */

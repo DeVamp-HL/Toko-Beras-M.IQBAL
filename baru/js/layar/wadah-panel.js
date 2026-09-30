@@ -5,7 +5,7 @@
 // dan karung yang habis mengambil satu karung baru dari TUMPUKAN GUDANG nama itu (tumpukannya disebut turun dari berapa ke berapa).
 // Putaran 39 (owner 29 Sep b · d · f): wadah yang sudah punya BUKU SENDIRI diisi lewat TIGA KETUKAN — (1) beras apa dari rak (karung yang sudah
 // terbuka di belakang wadah, lalu tumpukan gudang), (2) takarannya (1 karung / ½ karung / kg lewat tuts angka), (3) ISI ULANG. Satu kiriman = buka
-// karung bila perlu + takar + pindah buku (wbSusunIsiUlangTiga). Panel − / + takar lama tetap ada di bawahnya sebagai "Takaran lain". Buku merek asal
+// karung bila perlu + takar + pindah buku (wbSusunIsiUlangTiga). Panel − / + takar tetap ada sebagai cara kedua ("Serok takar", 30 Sep: satu cara tampil sekaligus). Buku merek asal
 // kurang → tidak menulis diam-diam: pita dengan dua pintu — catat barang masuk dulu, atau TANDAI UNTUK DICOCOKKAN (ketukan kedua).
 import { h, mentah } from '../inti/dom.js';
 import { DESIMAL, tanggalPendek, hariIniIso } from '../inti/format.js';
@@ -21,13 +21,21 @@ const tekanTutsKg = (ketik, t) => { const k = String(ketik || ''); if (t === '�
   if (!/^\d$/.test(t) || (k === '' && t === '0')) return k; if ((k + t).replace(',', '').length > 5) return k;
   const belakang = k.indexOf(',') >= 0 ? k.length - k.indexOf(',') - 1 : 0; return belakang >= 2 ? k : k + t; };
 /** Draf isian satu wadah: baris campuran bawaan wadah itu, semuanya masih 0 takar; + tiga ketukan (merek asal, takaran, kg tuts) & pita tandai. */
-export function drafIsi(merk) { return { wadah: merk, baris: L.resepWadah(merk).map((x) => ({ merk: x.merk, takar: 0 })), pilihMerek: false, samakan: false, ketik: '', buka: false, merkTiga: '', takaranTiga: '', kgTiga: '', tandai: null, yakinBuka: false }; }
+export function drafIsi(merk) { return { wadah: merk, baris: L.resepWadah(merk).map((x) => ({ merk: x.merk, takar: 0 })), pilihMerek: false, samakan: false, ketik: '', buka: false, merkTiga: '', takaranTiga: '', kgTiga: '', tandai: null, yakinBuka: false, gudangBuka: false }; }
 const drafUntuk = (st, merk) => (st.isiW && st.isiW.wadah === merk ? Object.assign(drafIsi(merk), st.isiW) : drafIsi(merk));
+// 30 Sep (owner: "terlalu banyak tombol & tampilan"): wadah aktif menampilkan SATU cara isi ulang sekaligus — "Karung / ½ / kg" (tiga ketukan)
+// atau "Serok takar" (− / + takar, bisa campur karung) — pilihan terakhir diingat per perangkat; kabar tombol panel tampil tepat di bawah tombolnya.
+const KUNCI_CARA = 'miqbal_isi_ulang_cara_v1';
+export const caraIsiUlang = () => { try { return localStorage.getItem(KUNCI_CARA) === 'takar' ? 'takar' : 'tiga'; } catch (e) { return 'tiga'; } };
+const setelCara = (c) => { try { localStorage.setItem(KUNCI_CARA, c === 'takar' ? 'takar' : 'tiga'); } catch (e) { /* abaikan: bawaan tiga ketukan */ } };
+/** Kabar tombol panel yang masih berlaku (s.kabar belum diganti kabar lain) untuk wadah ini & jalur ini → pita di bawah tombolnya. */
+const pitaKabar = (s, merk, jalur) => { const k = s && s.kabarW; if (!k || k.wadah !== merk || k.jalur !== jalur || !k.teks || k.teks !== s.kabar) return '';
+  return h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar-panel-${merk}-${jalur}">${k.teks}</div>`; };
 /** Takaran tiga ketukan dari draf → { jenis, kg? } untuk wbSusunIsiUlangTiga. */
 const takaranDraf = (d) => (d.takaranTiga === 'karung' ? { jenis: 'karung' } : d.takaranTiga === 'setengah' ? { jenis: 'setengah' } : { jenis: 'kg', kg: d.kgTiga });
 
 /** Blok ISI ULANG TIGA KETUKAN (wadah aktif). */
-function blokTiga(merk, d, nyata, atur, tb) {
+function blokTiga(merk, d, nyata, atur, tb, s) {
   const KB = WB.wbKarungBelakangWadah(merk).filter((k) => k.bukuKg > 0.004); const ada = {}; KB.forEach((k) => { ada[k.merk] = 1; });
   const gudang = L.calonKarung().filter((t) => !ada[t.merk]); const KW = WB.wbKarungWadah(merk);
   const M = d.merkTiga; const berat = M ? L.beratKarungBuka(M) : 0;
@@ -53,7 +61,7 @@ function blokTiga(merk, d, nyata, atur, tb) {
     <div class="label">1 · Beras apa yang dituang</div>
     <div class="rak-merek" data-k="rak-merek-${merk}">
       ${KB.map((k) => h`<div class="kaca-btn merek ${M === k.merk ? 'aktif' : ''}" data-k="mt-kb-${k.merk}" data-aksi="wdMerkTiga" data-wadah="${merk}" data-merk="${k.merk}"><span>${k.merk}</span><span class="ket">karung di belakang · sisa ±${wpKG(k.bukuKg)}</span></div>`)}
-      ${gudang.map((t) => h`<div class="kaca-btn merek ${M === t.merk ? 'aktif' : ''}" data-k="mt-gd-${t.merk}" data-aksi="wdMerkTiga" data-wadah="${merk}" data-merk="${t.merk}"><span>${t.merk}</span><span class="ket">tumpukan gudang ${wpKG(t.kg)}${t.karung ? ' · ' + t.karung + ' karung' : ''}</span></div>`)}
+      ${KB.length && !d.gudangBuka && !gudang.some((t) => t.merk === M) ? (gudang.length ? h`<div class="kaca-btn merek putus" data-k="gd-buka-${merk}" data-aksi="wdGudangBuka" data-wadah="${merk}"><span>karung lain dari gudang</span><span class="ket">${gudang.length} merek · ketuk untuk memilih</span></div>` : '') : gudang.map((t) => h`<div class="kaca-btn merek ${M === t.merk ? 'aktif' : ''}" data-k="mt-gd-${t.merk}" data-aksi="wdMerkTiga" data-wadah="${merk}" data-merk="${t.merk}"><span>${t.merk}</span><span class="ket">tumpukan gudang ${wpKG(t.kg)}${t.karung ? ' · ' + t.karung + ' karung' : ''}</span></div>`)}
       ${KW.bukuKg > 0.004 ? h`<div class="kaca-btn merek putus" data-k="mt-kw-${merk}" data-aksi="wdKeKarungWadah" data-wadah="${merk}"><span>Karung wadah ${merk}</span><span class="ket">sisihan ±${wpKG(KW.bukuKg)} · tuang balik lewat Stok › Wadah literan</span></div>` : ''}
       ${!KB.length && !gudang.length ? h`<div class="ket">Tidak ada karung yang bisa dituang — tumpukan gudang kosong di buku. Catat barang masuknya dulu.</div>` : ''}
     </div>
@@ -64,7 +72,8 @@ function blokTiga(merk, d, nyata, atur, tb) {
       ${pratinjau ? h`<div class="ket ${lewat ? 'awas-teks' : ''}" data-k="pratinjau-tiga-${merk}">${pratinjau}</div>` : ''}
       ${siap && nBuka ? h`<div class="pita-info ${d.yakinBuka ? 'awas' : 'emas'}" data-k="awas-buka-${merk}">${awasBuka}</div>` : ''}` : ''}
     ${M && d.takaranTiga ? (tb.boleh ? h`<div class="kaca-btn ${siap ? (nBuka && d.yakinBuka ? 'awas' : 'aktif emas') : 'mati'}" data-k="tombol-tiga-${merk}" data-aksi="wdIsiTiga" data-wadah="${merk}">${siap ? (seadanya ? 'ISI ULANG · seadanya ' + wpKG(kgTuang) + ' ' + M + ' (karung bersih 0)' : nBuka ? (d.yakinBuka ? 'YAKIN — buka ' + nBuka + ' karung ' + M + ' dari tumpukan & ISI ULANG' : 'ISI ULANG · ' + takaranTeks + ' ' + M + ' — buka ' + nBuka + ' karung dari tumpukan?') : 'ISI ULANG · ' + takaranTeks + ' ' + M) : d.takaranTiga === 'kg' && !(kg > 0) ? 'ISI ULANG — ketik dulu berapa kg' : 'ISI ULANG — kurangi takarannya'}</div>`
-      : h`<div class="kaca-btn mati" data-k="tombol-tiga-${merk}" data-aksi="tombolMati" data-kal="${tb.kalimat}">ISI ULANG · ${takaranTeks} ${M}</div>`) : ''}
+      : h`<div class="kaca-btn mati" data-k="tombol-tiga-${merk}" data-aksi="tombolMati" data-wadah="${merk}" data-kal="${tb.kalimat}">ISI ULANG · ${takaranTeks} ${M}</div>`) : ''}
+    ${pitaKabar(s, merk, 'tiga')}
   </div>`;
 }
 
@@ -75,7 +84,7 @@ export function panelIsiUlang(merk, s, keranjang, opsi) {
   const resep = L.resepWadah(merk); const campuran = resep.length > 1;
   const calon = d.pilihMerek ? L.calonCampur(d.baris.map((x) => x.merk)) : []; const DR = nyata.diketahui && !lipat ? L.deretanKarung() : [];
   // putaran 39: wadah AKTIF = satu buku — isi wadah = buku (satu angka), komposisi & jam/siapa turunan isi ulang, selisih catatan karung belakang vs buku disebut
-  const aktif = WB.wbAktif(merk); const KT = aktif ? WB.wbKomposisiTurunan(merk, keranjang) : null; const SEL = aktif ? WB.wbSelisihWadah(merk, keranjang) : null;
+  const aktif = WB.wbAktif(merk); const cara = aktif ? caraIsiUlang() : 'takar'; const KT = aktif ? WB.wbKomposisiTurunan(merk, keranjang) : null; const SEL = aktif ? WB.wbSelisihWadah(merk, keranjang) : null;
   const hari = hariIniIso((keranjang && keranjang.sekarang) || new Date()); const tb = tombolAkun(opsi && opsi.akun ? opsi.akun : null, 'isiUlang');
   const pitaTandai = d.tandai ? h`<div class="pita-info emas pita-tandai" data-k="pita-tandai-${merk}"><div>${d.tandai.kalimat}</div>
       <div class="tombol-baris rapat"><div class="kaca-btn" data-aksi="wdKeStok" data-wadah="${merk}" data-merk="${d.tandai.merk}">Catat barang masuk dulu</div><div class="kaca-btn awas" data-aksi="${d.tandai.jalur === 'tiga' ? 'wdIsiTiga' : 'wdCatat'}" data-wadah="${merk}" data-tandai="1">TANDAI UNTUK DICOCOKKAN</div></div>
@@ -88,8 +97,7 @@ export function panelIsiUlang(merk, s, keranjang, opsi) {
         ${aktif ? h`<div class="ket" data-k="komposisi-${merk}">${nyata.perluIsi ? 'SAATNYA ISI ULANG · ' : ''}${KT.teks}${KT.terakhir && KT.terakhir.tanggal && KT.terakhir.tanggal !== hari ? ' (' + tanggalPendek(KT.terakhir.tanggal) + ')' : ''}</div>${SEL.ada ? h`<div class="ket awas-teks" data-k="selisih-${merk}">${SEL.teks}</div>` : ''}`
           : h`${nyata.diketahui ? h`<div class="ket">${nyata.perluIsi ? 'SAATNYA ISI ULANG · ' : ''}isi terakhir ${tanggalPendek(nyata.isiTerakhirTanggal)} ${nyata.isiTerakhirJam}</div>` : ''}<div class="ket" data-k="belum-aktif-${merk}">Buku wadah belum aktif — aktifkan di Stok › Wadah literan</div>`}</div></div>
     ${opsi && opsi.lipat ? h`<div class="kaca-btn ${lipat && (!nyata.diketahui || nyata.perluIsi) ? 'aktif' : ''}" data-aksi="wdBuka" data-wadah="${merk}">${lipat ? (nyata.diketahui ? (aktif ? (nyata.perluIsi ? 'ISI ULANG WADAH — pilih beras & takarannya' : 'Isi ulang wadah (tiga ketukan)') : (nyata.perluIsi ? 'ISI ULANG WADAH — takar demi takar' : 'Isi ulang wadah (− / + takar)')) : 'Tandai isi wadah sekarang') : 'tutup isi ulang'}</div>` : ''}
-    ${lipat ? '' : h`${pitaTandai}${aktif ? blokTiga(merk, d, nyata, atur, tb) : ''}${nyata.diketahui ? h`
-      ${aktif ? h`<div class="label" data-k="takaran-lain-${merk}">Takaran lain (− / + takar)</div>` : ''}
+    ${lipat ? '' : h`${pitaTandai}${aktif && nyata.diketahui ? h`<div class="jalur rapat" data-k="cara-isi-${merk}"><div class="seg ${cara === 'tiga' ? 'aktif' : ''}" data-aksi="wdCara" data-wadah="${merk}" data-cara="tiga">Karung / ½ / kg</div><div class="seg ${cara === 'takar' ? 'aktif' : ''}" data-aksi="wdCara" data-wadah="${merk}" data-cara="takar">Serok takar · bisa campur</div></div>` : ''}${aktif && (cara === 'tiga' || !nyata.diketahui) ? blokTiga(merk, d, nyata, atur, tb, s) : ''}${nyata.diketahui && (!aktif || cara === 'takar') ? h`
       <div class="deretan-karung" data-k="deretan-${merk}"><div class="label" style="font-size: 9px;">Deretan karung terbuka di belakang · ketuk = +1 takar dari karung itu</div>
         <div class="deretan-isi">${DR.map((k) => { const dipakai = d.baris.filter((x) => x.merk === k.merk && (x.dari !== undefined ? String(x.dari) : L.lokasiSumber(x.merk, merk)) === k.lokasi).reduce((a, x) => a + x.takar, 0);
           return h`<div class="karung-deret ${dipakai ? 'dipakai' : ''} ${k.lokasi === merk ? 'sendiri' : ''}" data-k="dk-${k.merk}|${k.lokasi}" data-aksi="wdDariKarung" data-wadah="${merk}" data-merk="${k.merk}" data-dari="${k.lokasi}" title="${k.letak}"><div class="gambar-chip">${mentah(gambarKarungStok(k))}</div><div class="nm">${k.merkAsal || k.merk}</div><div class="ket">${k.no ? k.no + ' · ' : ''}${k.diketahui ? '±' + wpKG(k.sisaKg) : 'belum ditandai'}</div>${dipakai ? h`<div class="pil kecil">${dipakai} takar</div>` : ''}</div>`; })}${DR.length ? '' : h`<div class="ket">Belum ada karung terbuka yang ditandai — buka karung di Stok → Wadah literan.</div>`}</div></div>
@@ -109,7 +117,8 @@ export function panelIsiUlang(merk, s, keranjang, opsi) {
       ${d.pilihMerek ? h`<div class="tombol-baris rapat" data-k="calon-campur">${calon.length ? calon.map((m) => h`<div class="kaca-btn" data-aksi="wdPilihMerek" data-wadah="${merk}" data-merk="${m}">${m}</div>`) : h`<div class="ket">Tidak ada karung lain yang masih punya stok di gudang.</div>`}</div>` : ''}
       ${hit.takar ? h`<div class="ket ${hit.lewat ? 'awas-teks' : ''}">${hit.takar} takar × ${DESIMAL(atur.takarKg)} kg = ${wpKG(hit.kg)}${hit.banding ? ' · perbandingan ' + hit.banding : ''}${hit.lewat ? ' — MELEBIHI ' + wpKG(atur.puncakKg) + ' yang muat, kurangi takarnya' : ''}</div>` : ''}
       ${(() => { const nb = hit.sumber.reduce((a, x) => a + (x.bukaKarung || 0), 0); return tb.boleh ? h`${hit.takar && !hit.lewat && nb ? h`<div class="pita-info ${d.yakinBuka ? 'awas' : 'emas'}" data-k="awas-buka-catat-${merk}">Karung di belakang habis / kurang — ${nb} karung baru diambil dari tumpukan gudang (${hit.sumber.filter((x) => x.bukaKarung).map((x) => x.bukaKarung + ' ' + (x.merkAsal || x.merk)).join(', ')}). Ketuk CATAT sekali lagi untuk membuka & mencatat.</div>` : ''}<div class="kaca-btn ${hit.takar && !hit.lewat ? (nb && d.yakinBuka ? 'awas' : 'aktif emas') : 'mati'}" data-aksi="wdCatat" data-wadah="${merk}">${hit.takar ? (nb ? (d.yakinBuka ? 'YAKIN — buka ' + nb + ' karung dari tumpukan & CATAT ' + hit.takar + ' TAKAR' : 'ISI ULANG · CATAT ' + hit.takar + ' TAKAR — buka ' + nb + ' karung dari tumpukan?') : hit.sumber.some((x) => x.seadanya) ? 'ISI ULANG · CATAT ' + hit.takar + ' TAKAR (seadanya ' + wpKG(hit.kg) + ', karung bersih)' : 'ISI ULANG · CATAT ' + hit.takar + ' TAKAR') : 'ISI ULANG — ketuk + tiap takar yang dituang'}</div>`
-        : h`<div class="kaca-btn mati" data-aksi="tombolMati" data-kal="${tb.kalimat}">${hit.takar ? 'ISI ULANG · CATAT ' + hit.takar + ' TAKAR' : 'ISI ULANG — ketuk + tiap takar yang dituang'}</div>`; })()}` : ''}`}
+        : h`<div class="kaca-btn mati" data-aksi="tombolMati" data-wadah="${merk}" data-kal="${tb.kalimat}">${hit.takar ? 'ISI ULANG · CATAT ' + hit.takar + ' TAKAR' : 'ISI ULANG — ketuk + tiap takar yang dituang'}</div>`; })()}
+      ${pitaKabar(s, merk, 'takar')}` : ''}`}
     <div class="ket tautan" data-aksi="wdSamakanBuka" data-wadah="${merk}">${d.samakan ? 'tutup' : nyata.diketahui ? 'angkanya tidak cocok dengan kotaknya? samakan' : 'tandai isi wadah sekarang'}</div>
     ${d.samakan || !nyata.diketahui ? h`<div class="tombol-baris rapat" data-k="samakan-wadah">
       <div class="kaca-btn" data-aksi="wdSamakan" data-wadah="${merk}" data-kg="${atur.penuhKg}">rata (${DESIMAL(atur.penuhKg)} kg)</div>
@@ -129,8 +138,10 @@ export function aksiPanelWadah({ set, st, tulis, keranjang, waktu, sesudahCatat,
   // putaran 39 (owner d): buku merek asal kurang → ketukan pertama menyimpan daftarnya ke draf & menggambar pita (kalimat r.tolak + dua tombol); ketukan kedua menulis
   const tandaiDulu = (merk, r, jalur) => { const d = draf(merk); d.tandai = { jalur, kalimat: r.tolak, merk: String(((r.perluTandai || [])[0] || {}).merk || ''), daftar: r.perluTandai }; set({ isiW: d, kabar: r.tolak, kabarAwas: true }); };
   const selesai = (merk, d, r, el) => { set({ isiW: Object.assign(drafIsi(merk), { buka: d.buka }) }); if (sesudahCatat) sesudahCatat(merk, r, el); };
-  return {
+  const H = {
     tombolMati: ({ kal }) => set({ kabar: kal, kabarAwas: true }),   // tombol yang tidak boleh untuk akun ini MATI dengan kalimat sebabnya
+    wdCara: ({ wadah, cara }) => { setelCara(cara); ubah(wadah, (d) => { d.yakinBuka = false; d.tandai = null; }); },
+    wdGudangBuka: ({ wadah }) => ubah(wadah, (d) => { d.gudangBuka = true; }),
     wdBuka: ({ wadah }) => ubah(wadah, (d) => { d.buka = !d.buka; }),
     wdTambah: ({ wadah, i }) => ubah(wadah, (d) => { d.yakinBuka = false; d.baris[Number(i)].takar += 1; }),
     wdKurang: ({ wadah, i }) => ubah(wadah, (d) => { d.yakinBuka = false; d.baris[Number(i)].takar = Math.max(0, d.baris[Number(i)].takar - 1); }),
@@ -171,4 +182,11 @@ export function aksiPanelWadah({ set, st, tulis, keranjang, waktu, sesudahCatat,
       if (nb && !d.yakinBuka) { ubah(wadah, (x) => { x.yakinBuka = true; }); return set({ kabar: 'Karung di belakang wadah ' + wadah + ' habis / kurang — ' + nb + ' karung baru akan dibuka dari tumpukan gudang. Ketuk CATAT sekali lagi kalau memang begitu.', kabarAwas: true }); }
       const berhasil = await tulis(r); if (!r.tolak && berhasil !== false) selesai(wadah, d, r, el); },
   };
+  // kabar yang lahir dari ketukan panel dicatat bersama wadah & jalurnya → panelIsiUlang menggambarnya tepat di bawah tombol (kabar layar di atas tetap)
+  const JALUR_TIGA = { wdMerkTiga: 1, wdTakaranTiga: 1, wdTutsTiga: 1, wdIsiTiga: 1, wdGudangBuka: 1 };
+  Object.keys(H).forEach((n) => { const f = H[n];
+    H[n] = (arg, el, ev) => { const wadah = arg && typeof arg === 'object' && arg.wadah !== undefined ? arg.wadah : el && el.dataset ? el.dataset.wadah : undefined; const sebelum = st().kabar;
+      const catat = () => { const k = st().kabar; if (wadah && k && k !== sebelum) set({ kabarW: { wadah, teks: k, jalur: JALUR_TIGA[n] || (n === 'tombolMati' && el && el.dataset && el.dataset.k && /^tombol-tiga-/.test(el.dataset.k)) ? 'tiga' : 'takar' } }); };
+      const r = f(arg, el, ev); if (r && typeof r.then === 'function') return r.then((x) => { catat(); return x; }); catat(); return r; }; });
+  return H;
 }

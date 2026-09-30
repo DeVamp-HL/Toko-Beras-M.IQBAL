@@ -68,25 +68,32 @@ function morfSimpul(lama, baru) {
  * penangan = { nama: (arg, el, ev) => … }. Dipasang SEKALI di akar; isi boleh diganti kapan saja.
  */
 export function delegasi(akar, penangan) {
+  // 30 Sep (isi ulang takar diam): penangan yang jatuh (galat / janji ditolak) TIDAK boleh diam — kabarkan lewat peristiwa 'galat-aksi'
+  // (app.js menampilkan pita yang bertahan sampai diketuk); galat tetap ke konsol.
+  const jalankan = (nama, f, args) => {
+    const lapor = (e) => { try { console.error(e); } catch (x) { /* abaikan */ }
+      try { akar.dispatchEvent(new CustomEvent('galat-aksi', { bubbles: true, detail: { aksi: nama, pesan: String((e && e.message) || e) } })); } catch (x) { /* abaikan */ } };
+    try { const r = f.apply(null, args); if (r && typeof r.then === 'function') r.then(null, lapor); } catch (e) { lapor(e); }
+  };
   akar.addEventListener('click', (ev) => {
     const el = ev.target.closest('[data-aksi]');
     if (!el || !akar.contains(el)) return;
     const f = penangan[el.dataset.aksi];
     if (!f) return;
     ev.preventDefault();
-    f(Object.assign({}, el.dataset), el, ev);
+    jalankan(el.dataset.aksi, f, [Object.assign({}, el.dataset), el, ev]);
   });
   akar.addEventListener('input', (ev) => {
     const el = ev.target.closest('[data-ketik]');
     if (!el) return;
     const f = penangan[el.dataset.ketik];
-    if (f) f(el.value, el, ev);
+    if (f) jalankan(el.dataset.ketik, f, [el.value, el, ev]);
   });
   akar.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Enter') return;
     const el = ev.target.closest('[data-enter]');
     if (!el) return;
     const f = penangan[el.dataset.enter];
-    if (f) { ev.preventDefault(); f(el.value, el, ev); }
+    if (f) { ev.preventDefault(); jalankan(el.dataset.enter, f, [el.value, el, ev]); }
   });
 }
