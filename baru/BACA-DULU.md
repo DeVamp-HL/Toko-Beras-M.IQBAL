@@ -785,6 +785,18 @@ ditutup lewat tengah malam; pagar sistem lama `tanggalTutupAktif` (perbaikan 21 
   memakai `tanggalTutupAktif`.
 - Uji: `uji_uang_baru.py` K5 kini berjam 20.00 (jam kotak pasir 10.00 = sebelum jam 12) + 4 pemeriksaan (00.05 & 11.59 → kemarin, 12.00/12.01 → hari ini,
   dokumen & titik kas bertanggal kemarin) + 2 kontrol; `uji_wadah_satu_buku.py` cek 21 Sep 10.00 = hari dagang 20 Sep, +1 kontrol, +2 pemeriksaan statis.
+## Audit 39b no. 35 — merek per liter / kelas sendiri tanpa buku per ukuran (30 Sep 2026, cabang `audit/39b-ketan-buku-ukuran`)
+
+Keputusan owner 30 Sep ("kecualikan merek literan/kelas sendiri dari buku per ukuran"). Dasar: temuan hulu H1 (`docs/audit-39b-temuan.md` no. 35) — karung
+25 kg Ketan Hitam PK terjebak di buku "Ketan Hitam PK 25 kg" (tanpa jalur jual liter & HP kasir), induknya tinggal beberapa kg.
+- `stok-catat-logika.js` `ckTanpaBukuUkuran()` = merek literan langsung (`wbLiteranLangsung`) + kelas sendiri (`kmKelasSendiri`). `hitungMasuk` tidak lagi
+  mengarahkan karung 25 kg merek itu ke buku per ukuran (masuk buku induk seperti dulu); `ckCalonPisahUkuran` tidak menawarkannya.
+- Buku per ukuran yang terlanjur lahir untuk merek itu → kartu "Gabungkan buku karung 25 kg ke induknya" di Stok › Cocokkan › Tumpukan gudang
+  (`ckCalonGabungUkuran` / `ckSusunGabungUkuran`, owner, dua ketukan): SATU pindah buku seluruh isinya → induk, modal ikut, laba & neraca tetap, bertanda
+  `gabungUkuran` — bukan cocokkan. `toko.js` `ukuranDigabung()`; `indukTerpisah()` tidak menghitung buku yang sudah digabung, jadi rak, retur, dan katalog
+  HP kasir memperlakukan induknya satu buku lagi. Buku per ukuran yang kosong tetap buku khusus (tidak muncul sebagai merek).
+- Uji: `uji_buku_ukuran.py` +11 pemeriksaan, asap data toko (gabung balik Ketan Hitam PK 25 kg 25 kg → induk: nilai stok & laba byte-sama, tidak ada induk yang
+  masih terpisah), +5 kontrol. Tugas owner sesudah merge: tekan "gabungkan" untuk Ketan Hitam PK 25 kg.
 
 ## Struktur
 ```
