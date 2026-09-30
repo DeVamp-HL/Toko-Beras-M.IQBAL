@@ -803,6 +803,7 @@ disusun tanpa tanggal — struk yang dicetak ulang bisa memuat "belum dibayar" d
   berbunyi "Sisa bon X · per <tanggal dokumen disusun>" (`susunStruk(..., { kini: iso })`). (2) Uji S8 dulu hanya menjaga 2 dari 5 syarat pencocokan data
   lama dan "menutup" dihitung dari rumusnya sendiri: kini 4 umpan (beda tanggal / jam / catatan / bertautan) + 4 kontrol, dan "menutup" dibaca dari
   angka yang TERCETAK (juga di asap). `uji_laporan_baru.py` +1 pemeriksaan + 1 kontrol.
+  Lembar struk Jual & WA otomatis memberi `kini` = jam layar, jadi di mode cadangan "per" = tanggal cadangan, sama dengan Pusat Dokumen.
 
 ## Audit 39b no. 35 — merek per liter / kelas sendiri tanpa buku per ukuran (30 Sep 2026, cabang `audit/39b-ketan-buku-ukuran`)
 

@@ -255,7 +255,7 @@ export function pasangLayarJual(akar, opsi) {
   /** Nota yang sedang dibuka di lembar struk + setelan + timpaan untuk struk ini saja. */
   function notaStruk() {
     const s = S(); if (!s.strukKunci) return null; const nota = ST.notaDari(s.strukKunci); if (!nota) return null;
-    const atur = ST.stAtur(); return { nota, atur, pilih: { kertas: s.strukKertas || atur.kertas, sertakan: Object.assign({}, atur.sertakan, s.strukSertakan || {}) } };
+    const atur = ST.stAtur(); return { nota, atur, pilih: { kertas: s.strukKertas || atur.kertas, sertakan: Object.assign({}, atur.sertakan, s.strukSertakan || {}), kini: hariIniIso(s.sekarang) } };   // kini: tanggal "per" di bawah Sisa bon = jam layar (cadangan: tanggal cadangannya)
   }
   function bukaWa(teks) { try { return window.open(ST.tautanWa(teks), '_blank', 'noopener'); } catch (e) { return null; } }
   /** Cetak = teks struk yang sama lewat dialog cetak perangkat ini (#cetakStruk, satu-satunya yang tampil saat print). */
@@ -272,7 +272,7 @@ export function pasangLayarJual(akar, opsi) {
       const baris = r.dokumen.filter((x) => x.koleksi === 'penjualan').map((x) => Object.assign({ oleh: opsi.pemegang ? opsi.pemegang() : '' }, x.data));
       const nota = ST.notaDariBaris(baris); const atur = ST.stAtur(); const o = ST.putusOto(atur, nota); let teks = '';
       if (o.cetak) { setTimeout(() => cetak(nota, atur, null, 'otomatis: ' + o.teks), 900); teks += ' · struk dicetak otomatis'; }
-      if (o.wa) { const st = ST.susunStruk(nota, atur, null); const w = bukaWa(st.wa); if (w) { catatStruk(nota, 'wa', 'otomatis: ' + o.teks); teks += ' · WhatsApp dibuka otomatis'; } else teks += ' · WhatsApp otomatis DITAHAN peramban — ketuk Struk › Kirim WhatsApp'; }
+      if (o.wa) { const st = ST.susunStruk(nota, atur, { kini: hariIniIso(S().sekarang) }); const w = bukaWa(st.wa); if (w) { catatStruk(nota, 'wa', 'otomatis: ' + o.teks); teks += ' · WhatsApp dibuka otomatis'; } else teks += ' · WhatsApp otomatis DITAHAN peramban — ketuk Struk › Kirim WhatsApp'; }
       return teks;
     } catch (e) { console.error('struk otomatis', e); return ''; }
   }
