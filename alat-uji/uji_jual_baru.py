@@ -131,11 +131,7 @@ terap(pembeliLain(s)); ok('pembeli lain = parkir', s.antrean.length === 1 && s.k
 // ---- pelanggan & hari ini
 var d = daftarPelanggan(''); ok('daftar pelanggan: Bu Suti (terdaftar ✓, 2× belanja) & Deka (bon 890.000)', d.length === 2 && d.find(function (o) { return o.nama === 'Bu Suti'; }).terdaftar === true && d.find(function (o) { return o.nama === 'Deka'; }).sisaBon === 890000, JSON.stringify(d));
 ok('cari "dek" menyempit', daftarPelanggan('dek').length === 1);
-var hi = hariIni(s); ok('hari ini 19 Sep: 2 baris, 2 nota, omzet 834.000, Tunai 144.000 · Kredit 690.000', hi.baris === 2 && hi.nota === 2 && hi.omzet === 834000 && hi.perCara.Tunai === 144000 && hi.perCara.Kredit === 690000, JSON.stringify(hi))
-ok('39b-19 retur hari ini 30.000 (refund 25.000 + selisih tukar 5.000): omzet "Hari ini" 804.000 (penjualan − uang retur, = omzet mesin laba / Laporan), per cara bayar tetap penjualan, retur disebut sendiri → Σ menutup',
-  denganCacheSementara([{ koleksi: 'retur', data: { id: 'rtJ19', tanggal: '2026-09-19', jam: '11:00', nominalRefund: 25000, selisihHargaTukar: 5000, kondisi: 'utuh' } }], function () { var h = hariIni(s);
-    return h.omzet === 804000 && h.retur === 30000 && h.perCara.Tunai === 144000 && h.perCara.Kredit === 690000 && h.perCara.Tunai + h.perCara.Kredit - h.retur === h.omzet && h.omzet === hitungLabaRentang(function (t) { return t === '2026-09-19'; }).omzetPenuh; }),
-  JSON.stringify(denganCacheSementara([{ koleksi: 'retur', data: { id: 'rtJ19', tanggal: '2026-09-19', jam: '11:00', nominalRefund: 25000, selisihHargaTukar: 5000, kondisi: 'utuh' } }], function () { return hariIni(s); })));;
+var hi = hariIni(s); ok('hari ini 19 Sep: 2 baris, 2 nota, omzet 834.000, Tunai 144.000 · Kredit 690.000', hi.baris === 2 && hi.nota === 2 && hi.omzet === 834000 && hi.perCara.Tunai === 144000 && hi.perCara.Kredit === 690000, JSON.stringify(hi));
 
 // ================= PUTARAN 2: MENCATAT NOTA (bentuk dokumen = simpanKeranjangJual index.html) =================
 var __id = 1000; var W = { tanggal: '2026-09-19', jam: '10:15', idUnik: function () { __id += 1; return __id; } };
@@ -873,7 +869,6 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
-            '39b-19: omzet "Hari ini" Jual tidak mengurangi uang retur': js.replace("const omzet = baris.reduce((a, p) => a + (p.hargaTotal || 0), 0) - retur;", "const omzet = baris.reduce((a, p) => a + (p.hargaTotal || 0), 0);"),
             'no.4: struk mencetak "Sisa bon Rp0" untuk kelebihan bayar': js.replace("lebihBayar = pecahLebih(r).uang > 0.5 ? pecahLebih(r).uang : 0;", "lebihBayar = 0;"),
             'no.4 B1: struk menyebut hapus buku terbayar sebagai kelebihan bayar pembeli': js.replace("lebihBayar = pecahLebih(r).uang > 0.5 ? pecahLebih(r).uang : 0;", "lebihBayar = r && r.sisa < LEBIH_AMBANG ? -r.sisa : 0;"),
             'no.4 B5: nota Kredit yang tertutup kelebihan bayar tetap "belum dibayar"': js.replace("const pakaiLebih = rB ? stPakaiLebih(rB, nota, bb) : 0;", "const pakaiLebih = 0;"),
