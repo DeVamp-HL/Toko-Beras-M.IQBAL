@@ -990,6 +990,15 @@ berikutnya. Buku tidak tersentuh. Tambalan: `ccSimpanWadah` (wadah berbuku sendi
 hitungan (Σ persis). Uji `uji_wadah_satu_buku.py` +1 (banding sama sesudah cocokkan; isi ulang NG sesudahnya menambah bagian NG, tidak jadi 100 %),
 kontrol +1.
 
+## Audit 39b no. 7 — takar dari karung sisihan / kemasan adukan yang kosong tidak membuka "karung otomatis" (1 Okt 2026, cabang `audit/39b-takar-buku-khusus`)
+
+Temuan: panel − / + takar (`jual-logika.js` `hitungTakar` → `susunTakarWadah`) membuka karung baru "otomatis" bila karung sumbernya kurang. Untuk karung
+berbuku sendiri yang BUKAN karung belakang — karung sisihan wadah, kemasan adukan yang dibuka — tidak ada tumpukan di belakangnya: karung hantu itu
+ditulis tanpa buku, takarnya lalu memindah buku khusus jadi minus (adukan: stok kemasan tetap, jadi lebih 1 unit). Belum pernah terjadi di data.
+Tambalan: sumber berjenis karung sisihan / adukan tidak pernah dibuka otomatis; kosong / belum ditandai → `habisKhusus` dan catat DITOLAK dengan
+kalimat (adukan: buka satu kemasan lagi dulu). Masih berisi tapi kurang → seadanya (39c) seperti biasa. Panel menyebut "KOSONG". Uji
+`uji_wadah_satu_buku.py` +1 (+1 statis layar), kontrol +1.
+
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
 Temuan J1: uang kurang saat bayar → semua baris nota jadi Kredit (`uangDiterima` tidak ditulis) + satu pelunasan piutang sebesar uang yang diterima

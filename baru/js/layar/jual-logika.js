@@ -1270,8 +1270,12 @@ export function hitungTakar(merk, baris, s) {
     const seadanya = k.diketahui && k.sisaKg > 0.004 && k.sisaKg + 0.004 < kgMinta; const kg = seadanya ? wdB2(k.sisaKg) : kgMinta;
     // karung yang belum pernah ditandai TIDAK dibuka diam-diam — sisanya memang belum diketahui; kecuali karung belakang berbuku (39): belum ada = bukunya 0, karung baru dibuka dari tumpukan
     const kurang = seadanya ? 0 : k.diketahui ? kg - k.sisaKg : (bukuBelakang ? kg : 0);
-    const buka = kurang > 0.0001 ? Math.ceil((kurang - 0.0001) / beratKarungBuka(x.merk)) : 0;
-    return { merk: x.merk, merkAsal: x.merkAsal || wbMerkAsal(x.merk, bw), takar: x.takar, kg, kgMinta, seadanya, kurangKg: seadanya ? wdB2(kgMinta - kg) : 0, dari, karung: k, bukaKarung: buka, bukuBelakang }; });
+    // 39b no. 7: karung sisihan / kemasan adukan dibuka punya buku sendiri tanpa tumpukan di belakangnya — karung "otomatis" tidak pernah dibuka untuknya
+    // (dulu: karung hantu tanpa buku → buku khusus minus, stok kemasan lebih 1 unit). Sudah kosong → habisKhusus, susunTakarWadah menolak dengan kalimat.
+    const jenisK = bw[x.merk] && bw[x.merk].jenis !== 'belakang' && bw[x.merk].jenis !== 'wadah' ? bw[x.merk].jenis : '';
+    const buka = !jenisK && kurang > 0.0001 ? Math.ceil((kurang - 0.0001) / beratKarungBuka(x.merk)) : 0;
+    return { merk: x.merk, merkAsal: x.merkAsal || wbMerkAsal(x.merk, bw), takar: x.takar, kg, kgMinta, seadanya, kurangKg: seadanya ? wdB2(kgMinta - kg) : 0, dari, karung: k, bukaKarung: buka, bukuBelakang,
+      habisKhusus: jenisK && kurang > 0.0001 ? jenisK : '' }; });
   const takar = sumber.reduce((a, x) => a + x.takar, 0); const kg = wdB2(sumber.reduce((a, x) => a + x.kg, 0));
   const isiBaru = w && w.diketahui ? wdB2(w.sisaNyataKg + kg) : null;
   return { wadah: w, sumber, takar, kg, isiBaru, lewat: isiBaru !== null && isiBaru > atur.puncakKg + 0.0001, takarKg: atur.takarKg, puncakKg: atur.puncakKg, penuhKg: atur.penuhKg,
@@ -1304,6 +1308,9 @@ export function susunTakarWadah(merk, baris, w, s, opsi) {
   if (!h.wadah.diketahui) return { tolak: 'Wadah ' + merk + ' belum pernah disamakan dengan kenyataan — tandai dulu isinya sekarang (rata / menggunung / angka), baru takarnya bisa dihitung' };
   if (h.lewat) return { tolak: 'Isian ini membuat wadah jadi ' + wdKG(h.isiBaru) + ', melebihi ' + wdKG(atur.puncakKg) + ' yang muat. Kurangi takarnya — layar tidak memotong diam-diam.' };
   if (h.sumber.length > WADAH_MAKS_RESEP) return { tolak: 'Campuran paling banyak ' + WADAH_MAKS_RESEP + ' karung berbeda' };
+  const hk = h.sumber.filter((x) => x.habisKhusus);
+  if (hk.length) { const bwH = petaBukuWadah(); return { tolak: hk.map((x) => (x.habisKhusus === 'karung' ? 'Karung sisihan wadah ' + ((bwH[x.merk] || {}).wadah || '') : 'Karung kemasan adukan ' + x.merk) + ' sudah kosong' + (x.karung.diketahui ? '' : ' / belum pernah ditandai')).join('; ')
+    + ' — tidak ada karung baru yang bisa dibuka otomatis untuknya. ' + (hk.some((x) => x.habisKhusus === 'adukan') ? 'Buka satu kemasan adukan lagi dulu (Stok › karung di belakang › Hasil adukan), atau pilih karung lain.' : 'Pilih karung lain; kalau karungnya masih berisi, samakan dulu sisanya.') }; }
   const dokumen = [];
   const gudang = []; const aktifW = wbAktif(merk); let kurangTandai = 0;
   for (const x of h.sumber) { if (!x.bukaKarung) continue;

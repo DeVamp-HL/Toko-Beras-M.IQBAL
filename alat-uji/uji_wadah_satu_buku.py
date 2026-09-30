@@ -446,6 +446,18 @@ ok('39b-16 cocokkan wadah Angsa yang pas: titik samakan membawa komposisi turuna
         return sama && !U.tolak && denganCacheSementara(U.dokumen, function () { var c = wbKomposisiTurunan('Angsa'); return c.daftar.length === kt16.daftar.length && c.daftar.some(function (x) { return x.merk === 'NG'; }); }); }); })(),
   J([kt16.daftar, C16.tolak, denganCacheSementara(C16.dokumen || [], function () { return wbKomposisiTurunan('Angsa').daftar; })]));
 
+// ---- 12f · 39b no. 7: panel − / + takar dari karung berbuku sendiri yang BUKAN karung belakang (sisihan, kemasan adukan) tidak membuka "karung otomatis" tanpa buku
+var W7c = Object.assign({}, W, { tanggal: hariIniIso(KINI), jam: '20:00' }); var KW7 = 'Karung wadah Angsa'; var AD7 = 'Adukan Tujuh 50 kg';
+var SS7 = wbSusunSisih('Angsa', '10', W7c); var KOSONG7 = (SS7.dokumen || []).concat(denganCacheSementara(SS7.dokumen || [], function () { return susunSamakanKarung(KW7, '0', W7c, '').dokumen; }));
+var AD7dok = [wbDokLahir([{ merk: AD7, bukuAdukan: 'Adukan Tujuh|50' }], W7c), wbDokPindah([{ merk: 'NG', kg: 50 }], AD7, W7c), { koleksi: 'wadahLiteran', data: { id: 'wl-ad7a', tanggal: HARI15, jam: '20:01', tipe: 'karung', merk: AD7, kg: 50, lepas: true } },
+  { koleksi: 'wadahLiteran', data: { id: 'wl-ad7b', tanggal: HARI15, jam: '20:02', tipe: 'karungIsi', merk: AD7, isiKg: 0, lepas: true } }].filter(Boolean);
+var otom7 = function (R) { return dok(R, 'wadahLiteran').filter(function (d) { return d.tipe === 'karung' && d.otomatis; }).length; };
+ok('39b-7 karung sisihan / kemasan adukan yang catatannya sudah 0: takar dari situ DITOLAK dengan kalimat (tidak ada karung otomatis tanpa buku, buku tidak dibuat minus); karung yang masih berisi tetap bisa (seadanya)',
+  !SS7.tolak && denganCacheSementara(KOSONG7, function () { var R = susunTakarWadah('Angsa', [{ merk: KW7, takar: 2, dari: '' }], W7c, s0()); return !!R.tolak && /karung sisihan wadah Angsa sudah kosong/i.test(R.tolak) && !R.dokumen; })
+  && denganCacheSementara(AD7dok, function () { var R = susunTakarWadah('Angsa', [{ merk: AD7, takar: 2, dari: '' }], W7c, s0()); return !!R.tolak && /kemasan adukan/.test(R.tolak) && !R.dokumen; })
+  && denganCacheSementara(SS7.dokumen || [], function () { var R = susunTakarWadah('Angsa', [{ merk: KW7, takar: 2, dari: '' }], W7c, s0()); return !R.tolak && otom7(R) === 0; }),
+  J([denganCacheSementara(KOSONG7, function () { var R = susunTakarWadah('Angsa', [{ merk: KW7, takar: 2, dari: '' }], W7c, s0()); return [R.tolak, otom7(R)]; }), denganCacheSementara(AD7dok, function () { var R = susunTakarWadah('Angsa', [{ merk: AD7, takar: 2, dari: '' }], W7c, s0()); return [R.tolak, otom7(R)]; })]));
+
 // ---- 13 · penjaga perangkat = rules v5 (10)
 var KRY = keadaanAkun('kry.contoh@tokoberasmiqbal.web.app', 'uid-kry', { uid: 'uid-kry', nama: 'Karyawan Contoh', peran: 'karyawan', aktif: true }); var OWN = keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null);
 var HAK = { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'tidak', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' };
@@ -615,6 +627,7 @@ RUSAK = {
     '39b-6: kolam karung belakang lama dinolkan di tempat lepas (karung hantu di nama lama)': ("isiKg: 0, wadah: L, selesai: true, gantiNamaDari: L } });", "isiKg: 0, lepas: true, gantiNamaDari: L } });"),
     '39b-6: titik samakan nama baru tanpa komposisi turunan': ("Object.keys(kmp).length ? { komposisi: kmp } : {}) }); }", "{}) }); }"),
     '39b-16: cocokkan wadah aktif memutus komposisi turunan lagi': ("Object.assign({ stokWadah: b.kunciStok }, ((k) => (Object.keys(k).length ? { komposisi: k } : {}))(wbKomposisiTurunanKg(b.nama, b.isiH)))", "{ stokWadah: b.kunciStok }"),
+    '39b-7: takar dari karung khusus kosong tidak ditolak': ("  if (hk.length) { const bwH", "  if (false) { const bwH"),
     '39b-6: karung belakang minus dipindah diam-diam': ("  if (kbMinus.length) return { tolak:", "  if (false) return { tolak:"),
     # toko.js
     'kunci karung belakang tidak dikenali buku khusus': ("else if (m.karungBelakang) out[String(m.merk)] = { jenis: 'belakang', wadah: String(m.karungBelakang), merk: String(m.merkAsal || '') };", ""),
@@ -690,6 +703,7 @@ if __name__ == '__main__':
                                 ('wadah-panel.js: karung baru dari tumpukan minta ketukan kedua (tiga ketukan & catat); sisa karung dituang seadanya dulu', 'baru/js/layar/wadah-panel.js', ['yakinBuka', "karung dari tumpukan?'", 'r.hitung.dibuka > 0 && !d.yakinBuka', 'x.bukaKarung || 0), 0) : 0;', "'ISI ULANG · seadanya '", 'dituang SEADANYA']),
                                 ('audit 39b no. 1: K5 (uang.js) & lembar Cek wadah (jual.js) memakai tanggal tutup (lewat tengah malam = hari kemarin)', 'baru/js/layar/uang.js', ['const isoTutup = () => tanggalTutupAktif(kini());', 'WB.wbCekHari(isoTutup())', 'LEMBAR TUTUP HARI<br>${tanggalPendek(isoTutup())}', 'data-k="k5-lewat-malam"']),
                                 ('audit 39b no. 5: Cocokkan › Wadah literan — baris karung berbuku sendiri (satu isian kg), tercatat = buku, catatan disebut; hitungan karung wadah ikut dibersihkan sesudah simpan', 'baru/js/layar/stok.js', ["kunci.indexOf('karungKhusus|') === 0 ? 'wadah'", 'const panelKarung = (b) =>', "(b.jenis === 'karung' ? panelKarung(b) : panelWadah(b))", 'if (b.kunciKarung) delete sisa[b.kunciKarung];', ' · tercatat = bukunya']),
+                                ('audit 39b no. 7: panel − / + menyebut karung sisihan / kemasan adukan yang KOSONG (tidak ada karung baru untuknya)', 'baru/js/layar/wadah-panel.js', ["k && (k.bukaKarung || k.habisKhusus) ? 'awas-teks'", "(k && k.habisKhusus ? ' — KOSONG: '"]),
                                 ('audit 39b no. 1: lembar & tombol Cek wadah di Jual memakai tanggal tutup', 'baru/js/layar/jual.js', ['WB.wbCekHari(tanggalTutupAktif(s.sekarang || new Date()))']),
                                 ('stok.css: Mac 4 kotak sebaris seperti HP + gaya slot kosong garis putus', 'baru/css/stok.css', ['.layar-stok .stok-wadah .petak-wadah { grid-template-columns: repeat(4, minmax(0, 1fr)); }', '.layar-stok .petak.slot.kosong { border-style: dashed;'])]:
         t = open(os.path.join(AKAR, berkas), encoding='utf-8').read(); kurang = [x for x in wajib if x not in t]
