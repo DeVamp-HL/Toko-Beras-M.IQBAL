@@ -810,6 +810,10 @@ variannya ("TH · House" dst.); kedatangan berikutnya yang diketik sesuai tulisa
 - Uji: `uji_varian_merek.py` +3 pemeriksaan, asap data toko (keenam nama mendapat saran variannya), +3 kontrol, +1 pemeriksaan statis `periksa43`
   (pita & aksi ada; `KG` di `gambarMasuk` sudah membawa " kg", jadi tombol tidak boleh menambah " kg" lagi — screenshot 30 Sep menangkap "buku 750 kg kg")
   dengan 2 kontrol statis. Tampilan: `stok.css` `[data-k^="msv-pil-"]` flex — grid tiga kolom Stok memecah tombol jadi empat baris di HP 375.
+- Tinjauan independen 30 Sep (peninjau + penyanggah): nama yang SAMA kecuali huruf/spasi ("kumala" padahal bukunya "Kumala") dulu hanya ditawari
+  VARIANNYA — satu ketukan memasukkan karung biasa ke buku varian. Kini buku aslinya ikut ditawarkan dan selalu paling depan (juga "th · house" → "TH · House").
+  Kontrol penyaring dipecah tiga (arsip / buku khusus wadah / buku per ukuran, masing-masing punya contoh di kotak pasir) + kontrol spasi ganda,
+  "beda huruf tidak ditawarkan", "tidak paling depan"; asap data toko: tiap nama berbuku yang diketik huruf kecil → buku aslinya paling depan.
 
 ## Struktur
 ```

@@ -80,14 +80,19 @@ export function calonMerkMasuk() {
  * ("TH" diketik, bukunya "TH · House") → daftar varian itu (yang bukunya paling berisi dulu), supaya Barang masuk bertanya "pakai itu?" — satu ketukan
  * mengganti baris ke nama varian, jadi stok tidak terbelah ke buku baru. Bukan penolakan: kalau memang barang lain, baris tetap jadi nama baru.
  * Huruf besar/kecil & spasi ganda tidak dibedakan; nama arsip, buku khusus wadah, dan buku per ukuran tidak ditawarkan.
+ * Tinjauan 30 Sep: nama yang SAMA kecuali huruf/spasi ("kumala" padahal bukunya "Kumala", "th · house" padahal "TH · House") juga ditawarkan
+ * dan SELALU paling depan — tanpa itu pita hanya menawarkan varian dan satu ketukan memasukkan karung biasa ke buku varian.
  */
 export function ckSaranVarian(merkKetik) {
-  const t = String(merkKetik || '').trim(); if (!t || t.indexOf('\u00b7') >= 0) return [];
+  const t = String(merkKetik || '').trim(); if (!t) return []; const berVarian = t.indexOf('\u00b7') >= 0;
   const kunci = (x) => String(x).trim().replace(/\s+/g, ' ').toLowerCase(); const k = kunci(t);
   const st = hitungStokKarungPerMerk(); const nama = {}; Object.keys(st).forEach((m) => { nama[m] = true; }); ambilHargaKarung().forEach((h) => { if (h && h.merk) nama[String(h.merk)] = true; });
   const arsip = arPeta(); const bw = petaBukuWadah(); const uk = petaUkuran();
-  return Object.keys(nama).filter((m) => m.indexOf(' \u00b7 ') > 0 && kunci(m.split(' \u00b7 ')[0]) === k && !arsip[arKunciBeras(m)] && !bw[m] && !uk[m])
-    .map((m) => ({ nama: m, bukuKg: ckB2(((st[m] || {}).sisaKg) || 0) })).sort((a, b) => b.bukuKg - a.bukuKg || a.nama.localeCompare(b.nama));
+  const sama = (m) => m !== t && kunci(m) === k;                                                     // nama yang sama, beda huruf/spasi
+  const variannya = (m) => !berVarian && m.indexOf(' \u00b7 ') > 0 && kunci(m.split(' \u00b7 ')[0]) === k;   // varian berinduk nama itu
+  return Object.keys(nama).filter((m) => (sama(m) || variannya(m)) && !arsip[arKunciBeras(m)] && !bw[m] && !uk[m])
+    .map((m) => ({ nama: m, bukuKg: ckB2(((st[m] || {}).sisaKg) || 0), s: sama(m) ? 1 : 0 })).sort((a, b) => b.s - a.s || b.bukuKg - a.bukuKg || a.nama.localeCompare(b.nama))
+    .map((x) => ({ nama: x.nama, bukuKg: x.bukuKg }));
 }
 /** Harga beli per kg terakhir nama itu (dari buku) — pembanding saat mengetik harga. */
 export function hargaSebelumnya(merk) { const s = hitungStokKarungPerMerk()[merk]; return s ? (s.hargaTerakhirPerKg || 0) : 0; }
