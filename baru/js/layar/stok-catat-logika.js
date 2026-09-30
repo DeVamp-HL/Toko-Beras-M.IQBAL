@@ -170,7 +170,7 @@ export function ckBayarBon(batch) {
 }
 export const ckBayarBonId = (id) => ckBayarBon(ambilSemuaBatch().find((b) => String(b.id) === String(id)) || null);
 const ckKalimatBayar = (bb) => 'Bon kedatangan ini sudah dibayar ' + RP(bb.dibayar) + (bb.bayar.length ? ' (' + bb.bayar.map((x) => tanggalPendek(x.tanggal)).join(', ') + ')' : '');
-const CK_AKIBAT_BAYAR = ' — pembayarannya akan melunasi bon LAIN tanpa uang dan kas keluarnya terhitung dua kali. Pembetulan pembayaran bon belum ada di sistem baru.';
+const CK_AKIBAT_BAYAR = '. Pembayarannya akan melunasi bon LAIN tanpa uang dan kas keluarnya terhitung dua kali. Pembetulan pembayaran bon belum ada di sistem baru.';
 /**
  * Ejaan pemasok: mesin utang mengelompokkan per nama PERSIS, layar per huruf kecil — "roda mas" yang diketik jadi pemasok terpisah di mesin.
  * Nama yang sama kecuali huruf/spasi → ejaan yang sudah dipakai (kedatangan terbaru dulu, lalu pembayaran/bon lama). Nama persis yang sudah
