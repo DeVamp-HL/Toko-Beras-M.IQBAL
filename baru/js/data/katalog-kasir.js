@@ -97,9 +97,15 @@ export function kkBolehTerbit(k) {
  * Terbit harga (dan kiriman owner lain yang mengubah harga): katalog SESUDAH kiriman ini ikut di kiriman yang SAMA — HP kasir tidak pernah membaca harga
  * lama sesudah harga barunya terbit. Tidak berubah dari server → tidak ikut. Server belum terbaca → tetap ikut (isi sesudah kiriman = kebenaran).
  */
+let _kkGerbang = null;
+/** firebase.js memasang penilai gerbang terbit (kkBolehTerbit atas keadaan pendengar) — dipakai juga oleh kkSertakan. Tanpa penilai (kotak pasir, cadangan) = tertutup. */
+export function kkPasangGerbang(f) { _kkGerbang = typeof f === 'function' ? f : null; }
 export function kkSertakan(dokumen, kini) {
   const daftar = dokumen || [];
   if (daftar.some((d) => d.koleksi === KK_KOLEKSI)) return daftar;
+  // audit 39b no. 17: gerbang yang SAMA dengan terbit otomatis — data belum termuat semua / masih salinan perangkat / katalog server belum terbaca / bukan owner
+  // → katalog TIDAK ikut kiriman ini; terbit otomatis menyusul begitu gerbangnya terbuka (jadwalkanKatalog dipanggil tiap data berubah)
+  const g = _kkGerbang ? _kkGerbang() : null; if (!g || !g.boleh) return daftar;
   const isi = denganCacheSementara(daftar, kkIsi); if (!isi) return daftar;
   if (_kkServer.ada === true && kkKanon(isi) === kkKanon(_kkServer.dok)) return daftar;
   return daftar.concat([{ koleksi: KK_KOLEKSI, data: kkDokumen(isi, kini) }]);

@@ -1128,3 +1128,13 @@ Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah
   ditolak). Penjaganya `alat-uji/uji_jam_tampil.py` (jsc di TZ Asia/Jakarta & UTC + penjaga statis + kontrol).
 - `alat-uji/periksa_jam_rinci.py CADANGAN` — laporan pola jam baris rincian vs karcis asal + usulan koreksi (tidak menulis; bulan terkunci
   tidak diusulkan dikoreksi).
+
+## Audit 39b no. 17 — katalog HP kasir yang ikut terbit harga lewat gerbang yang sama (1 Okt 2026, cabang `audit/39b-kksertakan-gerbang`)
+
+Temuan: terbit harga (Harga › Terbitkan, varian baru, harga dari Stok) menambahkan katalog HP kasir ke kiriman yang sama lewat `kkSertakan` TANPA
+gerbang `kkBolehTerbit` yang dipakai terbit otomatis. Kalau data di perangkat owner belum termuat penuh / masih salinan perangkat / katalog server belum
+terbaca, katalog HP kasir bisa ditulis dari data yang bolong (sisa stok, bon, tuts merek salah) dan baru betul kalau perangkat owner tetap terbuka.
+Tambalan: `firebase.js` `gerbangKatalog()` = SATU penilai (dipakai terbit otomatis), dipasang ke `katalog-kasir.js` lewat `kkPasangGerbang`;
+`kkSertakan` berhenti bila gerbang tertutup atau tanpa penilai (kotak pasir, cadangan) — terbit otomatis menyusul begitu gerbang terbuka.
+Uji `uji_katalog_kasir.py` +2 (jsc: gerbang tertutup → katalog tidak ikut; statis: penilai terpasang & dipakai). Uji data toko katalog disesuaikan
+cadangan 1 Okt (semua wadah aktif): buku khusus wadah tidak dijual dari HP kasir, harga liter pindah ke buku wadah — aturan wbSaringKatalogKasir.
