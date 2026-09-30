@@ -840,7 +840,8 @@ dikurangi di memori — muat ulang / katalog disegarkan = sisa lama kembali, bon
   Pilih nama dari daftar yang TERLIHAT (dulu nomor urut: katalog berganti tiap 2 menit → bisa jatuh ke orang lain); sisa dibaca ulang saat
   SIMPAN; lembar menyebut "daftar sisa dari sistem per jam" (tanpa ambang). Bentuk katalog TIDAK diubah (keputusan owner 27 Sep "bentuk tetap").
   Sisa celah (jarang): katalog yang ditulis beberapa detik sesudah pembayaran dari data yang belum memuatnya DAN sisa nama itu berubah karena
-  catatan lain → pengurangan berhenti terlalu cepat. Jalan persisnya (katalog menyebut id pembayaran yang sudah dihitung) menunggu owner.
+  catatan lain → pengurangan berhenti terlalu cepat. Jalan persisnya (katalog menyebut id pembayaran yang sudah dihitung) — DISETUJUI owner 30 Sep,
+  dibangun di "Audit 39b · cara persis" (kasir v30).
 - Versi kasir naik ke `kasir-v28` (sw-kasir.js, kedua berkas kasir, `KK_VERSI_KASIR_TERBARU`). `KK_VERSI_AMBIL_SENDIRI = 'kasir-v27'`: HP v27
   sudah mengambil katalog sendiri → Beranda cukup menyebut "versi kasir-v28 terpasang saat dibuka ulang" dan pemeriksaan katalog lamanya TETAP jalan.
 - Uji: `uji_pelanggan_baru.py` +9 (dokumen bayar melebihi sisa DISUNTIK langsung, ambang −0,3 = lunas) + asap data toko (jumlah nama kelebihan
@@ -896,6 +897,21 @@ memuat satu pun bayar bon QRIS. Mesin TIDAK diubah.
   kas → laci/rekening mesin = harga KOTOR: nota tunai berpotongan tampil "kurang" di laci, nota QRIS berpotongan membuat rekening sistem lebih besar
   dari bank (usul: kasir.html membagi potongan ke baris barang seperti Jual `/baru/`); (F, T6) catatan uang yang dicatat SESUDAH tutup hari di tanggal
   yang sama baru ikut kas bila tutup hari diulang sebelum jam 12 esoknya — sesudah itu tidak pernah (tertelan jadi selisih laci esok hari).
+
+## Audit 39b · cara persis — katalog menyebut pembayaran bon yang sudah dihitung (30 Sep 2026, cabang `audit/39b-katalog-bayar-bon-persis`)
+
+Keputusan owner 30 Sep ("cara persis") atas celah sisa no. 4: buku kecil `kasir_bayar_bon_v1` di HP kasir menebak kapan katalog sudah menghitung
+pembayarannya (waktu server + sisa nama berubah) — tebakan meleset bila sisa nama itu berubah karena catatan lain (berhenti terlalu cepat) atau
+kebetulan kembali sama (dikurangi dua kali). Mesin TIDAK diubah.
+- `data/katalog-kasir.js`: kunci terakhir dokumen `bayarBonTerhitung` (`kkBayarTerhitung`) = id SEMUA piutangMutasi tipe bayar yang dihitung
+  `hitungPiutang()` (bernama, persis saringannya) bertanggal ≥ 45 hari lalu (`KK_BAYAR_BON_HARI`; buku kecil HP ≤ 30 hari), diurutkan. Ikut di
+  `kkIsi`, `kkDokumen`, `kkKanon` (daftar berubah = katalog tertinggal → terbit ulang; katalog lama tanpa daftar + tidak ada pembayaran terhitung = sama).
+  Empat bagian lain tetap byte-sama index.html. Rules `ringkasanKasir` tidak membatasi kolom (tanpa ubah rules).
+- `kasir.html` (v30, 'versi 39b-4p'): katalog BERDAFTAR → id tercantum = sudah dihitung → catatan dibuang; belum tercantum = tetap dikurangkan.
+  Katalog tanpa daftar (penerbit lama / salinan kasir darurat lama) → tebakan waktu server no. 4 tetap. Versi kasir serentak v30.
+- Uji: `uji_katalog_kasir.py` +4 /baru/ (jendela, tanpa nama, hapus buku, saldo awal, pembanding) + 5 jsc kasir (S18: sisa berubah karena bon lain,
+  sisa kebetulan sama, masih di antrean, tanpa daftar), `uji_antrean_kasir.py` +2 peramban (layar & klik sungguhan). Kontrol baru: katalog kasir 6,
+  antrean kasir 1.
 
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
