@@ -243,8 +243,36 @@ def utama(js, pakai_cadangan):
     return h['lulus'], h['gagal'], h.get('asap')
 
 
+# Perubahan yang DISENGAJA dan belum ada di main: dikenali lewat penanda di kode main (hilang sendiri sesudah merge → pembanding kembali byte-sama
+# penuh). Tiap perubahan membawa syarat uang: yang boleh berubah hanya cara menghitung/memilah, bukan rupiahnya.
+def _no20(h):   # audit 39b no. 20: jumlah nota = nota (trxId/grupNota), bukan baris; daftar rugi/tanpa HPP membawa kunci nota
+    for L in h.get('laba') or []:
+        for k in ('rugi', 'tanpaHpp'):
+            for r in (L or {}).get(k) or []: r.pop('nota', None)
+    for r in (h.get('omzet') or {}).get('daftar') or []: r['n'] = None
+    return h
+
+
+def _no24(h):   # audit 39b no. 24: potongan QRIS yang diketik tangan dipisah dari biaya toko (jumlahnya sama)
+    for L in h.get('laba') or []:
+        if not L: continue
+        L['biayaLain'] = (L.get('biayaLain') or 0) + (L.get('mdr') or 0); L['mdr'] = None
+        t = L.get('terjun') or []; q = sum(r['n'] for r in t if r.get('nama') == 'Potongan QRIS (MDR)')
+        L['terjun'] = [dict(r, n=r['n'] + q) if r.get('nama', '').startswith('Biaya toko') else r for r in t if r.get('nama') != 'Potongan QRIS (MDR)']
+    return h
+
+
+SENGAJA = [
+    ('no. 20 hitung nota', 'baru/js/data/toko.js', 'export function jumlahNota', _no20,
+     lambda c, m: all((x.get('omzet') == y.get('omzet') and (x.get('n') or 0) <= (y.get('n') or 0)) for x, y in zip(c['omzet']['daftar'], m['omzet']['daftar']))),
+    ('no. 24 potongan QRIS satu aturan', 'baru/js/layar/uang-logika.js', 'export const adalahMdr', _no24,
+     lambda c, m: all((x or {}).get('labaBersih') == (y or {}).get('labaBersih') for x, y in zip(c['laba'], m['laba']))),
+]
+
+
 def asap_global(p):
-    """Laporan semua bulan dengan kode CABANG vs kode MAIN (git archive) — harus byte-sama. → (sama, keterangan)."""
+    """Laporan semua bulan dengan kode CABANG vs kode MAIN (git archive) — harus byte-sama (kecuali perubahan SENGAJA yang belum ada di main,
+    masing-masing dengan syarat uangnya). → (sama, keterangan)."""
     cad, tgl = cad_js(p); jam = "var __KINI = new Date('%sT20:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n" % tgl
     tmp = tempfile.mkdtemp(prefix='main-')
     try:
@@ -256,8 +284,14 @@ def asap_global(p):
         utama_ = [os.path.join(tmp, m) for m in modul if os.path.exists(os.path.join(tmp, m))]
         main, e2 = jalan(jam + bundel_baru.bundel(utama_) + '\nvar CAD = ' + cad + ';\n' + GLOBAL)
         if cabang is None or main is None: return None, 'JSC JATUH: ' + (e1 or e2)[-300:]
+        dipakai = []
+        for nama, berkas, penanda, samakan, syarat in SENGAJA:
+            pm = os.path.join(tmp, berkas); pc = os.path.join(AKAR, berkas)
+            if os.path.exists(pm) and penanda not in open(pm, encoding='utf-8').read() and penanda in open(pc, encoding='utf-8').read():
+                if not syarat(cabang, main): return False, 'perubahan sengaja "%s" menggeser uang' % nama
+                cabang, main = samakan(cabang), samakan(main); dipakai.append(nama)
         beda = [k for k in cabang if json.dumps(cabang[k], sort_keys=True) != json.dumps(main.get(k), sort_keys=True)]
-        return not beda, '%d bulan (%s … %s), laba/inti/neraca/omzet%s' % (len(cabang['bulan']), cabang['bulan'][0] if cabang['bulan'] else '-', cabang['bulan'][-1] if cabang['bulan'] else '-', (' · BEDA: ' + ', '.join(beda)) if beda else '')
+        return not beda, '%d bulan (%s … %s), laba/inti/neraca/omzet%s%s' % (len(cabang['bulan']), cabang['bulan'][0] if cabang['bulan'] else '-', cabang['bulan'][-1] if cabang['bulan'] else '-', (' · disengaja (belum di main): ' + '; '.join(dipakai)) if dipakai else '', (' · BEDA: ' + ', '.join(beda)) if beda else '')
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
