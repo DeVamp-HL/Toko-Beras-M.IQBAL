@@ -897,6 +897,16 @@ memuat satu pun bayar bon QRIS. Mesin TIDAK diubah.
   dari bank (usul: kasir.html membagi potongan ke baris barang seperti Jual `/baru/`); (F, T6) catatan uang yang dicatat SESUDAH tutup hari di tanggal
   yang sama baru ikut kas bila tutup hari diulang sebelum jam 12 esoknya — sesudah itu tidak pernah (tertelan jadi selisih laci esok hari).
 
+## Audit 39b no. 15 — Kartu Gudang: buku wadah & karung belakang ikut umur cocokkan (1 Okt 2026, cabang `audit/39b-kartu-gudang-buku-khusus`)
+
+Temuan G: kartu keempat Gudang ("kapan terakhir dicocokkan") hanya membaca penyesuaian stok dan MELEWATI semua yang bagiannya 'wadah' (putaran 27:
+cocokkan wadah cuma menghitung bagian merek itu di kotak, tumpukannya belum). Akibatnya buku KHUSUS — buku wadah, karung di belakang, karung sisihan —
+yang justru dihitung UTUH oleh cocokkan wadah tidak pernah "dicocokkan": sesudah aktivasi 8 wadah ada 16 baris awas permanen. Cocokkan yang PAS juga
+tidak menulis penyesuaian sama sekali. `stok-logika.js` `jwbCocok` (sisi baca saja):
+- penyesuaian bagian 'wadah' atas buku khusus (`petaBukuWadah`) menyegarkan umurnya; atas merek biasa tetap tidak (aturan putaran 27);
+- titik samakan isi (`wadahLiteran` tipe isi + `stokWadah`) & isi karung terbuka (tipe karungIsi atas buku khusus) bertanda `dariCocok` = hitungan fisik.
+- Uji: `uji_wadah_satu_buku.py` +4 (sebelum, pas, bagian wadah buku khusus vs merek biasa, isi ulang biasa tidak dihitung). Kontrol baru 3.
+
 ## Audit 39b no. 8 — struk nota bayar sebagian menyebut uang yang diterima (30 Sep 2026, cabang `audit/39b-struk-bayar-sebagian`)
 
 Temuan J1: uang kurang saat bayar → semua baris nota jadi Kredit (`uangDiterima` tidak ditulis) + satu pelunasan piutang sebesar uang yang diterima

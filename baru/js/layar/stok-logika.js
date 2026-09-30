@@ -83,9 +83,12 @@ function jwbMandek(barang) {
   return { baris: out, rumus: 'mandek = tak ada gerak keluar ' + JENDELA_LAJU_HARI + ' hari, atau sisa cukup untuk lebih dari ' + HARI_MANDEK + ' hari', kosong: 'Semua barang bergerak dalam ' + JENDELA_LAJU_HARI + ' hari terakhir.', takTeks: '' };
 }
 function jwbCocok(barang, hari) {
-  const terakhir = {};
-  // putaran 27: cocokkan WADAH cuma menghitung bagian nama itu di wadah — tumpukannya belum dihitung, jadi tidak mengubah umur cocokkan nama itu
-  ambilPenyesuaianStok().forEach((p) => { if (!hitunganFisik(p) || p.bagian === 'wadah') return; const k = 'karung|' + p.merk; if (p.tanggal && (!terakhir[k] || p.tanggal > terakhir[k])) terakhir[k] = p.tanggal; });   // rework karantina bukan hitungan gudang
+  const terakhir = {}; const catat = (k, t) => { if (t && (!terakhir[k] || t > terakhir[k])) terakhir[k] = t; }; const bw = petaBukuWadah();
+  // putaran 27: cocokkan WADAH cuma menghitung bagian nama itu di wadah — tumpukannya belum dihitung, jadi tidak mengubah umur cocokkan nama itu.
+  // 39b no. 15: buku KHUSUS (buku wadah, karung di belakang, karung sisihan — petaBukuWadah) justru dihitung UTUH oleh cocokkan wadah → umurnya ikut
+  ambilPenyesuaianStok().forEach((p) => { if (!hitunganFisik(p) || (p.bagian === 'wadah' && !bw[p.merk])) return; catat('karung|' + p.merk, p.tanggal); });   // rework karantina bukan hitungan gudang
+  // cocokkan wadah yang PAS (tanpa selisih) tidak menulis penyesuaian — titik samakan isi (stokWadah) & isi karung terbuka bertanda dariCocok juga hitungan buku khusus itu
+  ambilWadahLiteran().forEach((x) => { if (!x || !x.dariCocok) return; if (x.tipe === 'isi' && x.stokWadah && bw[x.stokWadah]) catat('karung|' + x.stokWadah, x.tanggal); if (x.tipe === 'karungIsi' && x.merk && bw[x.merk]) catat('karung|' + x.merk, x.tanggal); });
   ambilPenyesuaianKemasan().forEach((p) => { const k = 'kemasan|' + p.namaProduk + '|' + p.ukuranKemasan; if (p.tanggal && (!terakhir[k] || p.tanggal > terakhir[k])) terakhir[k] = p.tanggal; });
   const out = barang.filter((b) => b.sisa > 0 || b.laju > 0).map((b) => {
     const tgl = terakhir[b.jenis + '|' + b.kunci] || null; const umur = tgl ? Math.max(0, skSelisihHari(tgl, hari)) : null;

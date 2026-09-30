@@ -341,6 +341,20 @@ ok('tuntas = cocokkan merek asal bertanggal ≥ dokumen: Tawon 21 Sep → tingga
   && denganCacheSementara([cocok('Tawon', '2026-09-20'), cocok('Tawon', '2026-09-21', { dariRework: true }), cocok('NG', '2026-09-22')], function () { return notaTembusBelumCocok().nama.length === 2 && notaTembusBelumCocok().baris.length === 2; })
   && denganCacheSementara([cocok('Beo', '2026-09-22'), cocok('Tawon', '2026-09-22')], function () { return notaTembusBelumCocok().nama.length === 0 && notaTembusBelumCocok().n === 0 && !wbPindahTembusBelumCocok().length && !susunGudang('cocok', KINI).jawab.baris.some(function (b) { return /^tembus\|/.test(b.kunci); }); }));
 
+// ---- 12b · 39b no. 15: kartu keempat Gudang — buku KHUSUS (buku wadah, karung belakang) ikut umur cocokkan wadah (dulu "belum pernah" selamanya)
+var HARI15 = hariIniIso(KINI); var rowG = function (m) { return susunGudang('cocok', KINI).jawab.baris.filter(function (b) { return b.kunci === 'karung|' + m; })[0] || null; };
+var wA15 = wbKunci('Angsa'), kbA15 = KB('Angsa', 'NG'); var r0w = rowG(wA15), r0k = rowG(kbA15);
+ok('39b-15 sebelum: buku wadah & karung belakang Angsa di kartu Gudang "belum pernah" dicocokkan (awas)', !!r0w && r0w.n === 'belum pernah' && r0w.awas && !!r0k && r0k.n === 'belum pernah' && r0k.awas, J([r0w, r0k]));
+ok('39b-15 cocokkan wadah yang PAS (tanpa selisih → cuma titik samakan isi & isi karung bertanda dariCocok) → kedua buku khusus "0 hari", tidak awas',
+  denganCacheSementara([{ koleksi: 'wadahLiteran', data: { id: 'wl-c15a', tanggal: HARI15, jam: '18:00', wadah: 'Angsa', tipe: 'isi', isiKg: 40, stokWadah: wA15, dariCocok: true } },
+    { koleksi: 'wadahLiteran', data: { id: 'wl-c15b', tanggal: HARI15, jam: '18:00', tipe: 'karungIsi', merk: kbA15, isiKg: 30, wadah: 'Angsa', dariCocok: true } }], function () { var a = rowG(wA15), b = rowG(kbA15); return !!a && a.n === '0 hari' && !a.awas && !!b && b.n === '0 hari' && !b.awas; }),
+  J([rowG(wA15), rowG(kbA15)]));
+ok('39b-15 penyesuaian cocokkan wadah (bagian wadah) atas buku khusus → umurnya ikut; atas MEREK biasa (bagian wadah) → umur merek TIDAK ikut (putaran 27: tumpukannya belum dihitung)',
+  denganCacheSementara([cocok(kbA15, HARI15, { bagian: 'wadah', wadah: 'Angsa' }), cocok('NG', HARI15, { bagian: 'wadah', wadah: 'Angsa' })], function () { var b = rowG(kbA15), g = rowG('NG'); return !!b && b.n === '0 hari' && !(g && g.n === '0 hari'); }),
+  J([rowG(kbA15), rowG('NG')]));
+ok('39b-15 titik samakan / isi karung TANPA dariCocok (isi ulang biasa) tidak dihitung sebagai cocokkan',
+  denganCacheSementara([{ koleksi: 'wadahLiteran', data: { id: 'wl-c15c', tanggal: HARI15, jam: '18:00', wadah: 'Angsa', tipe: 'isi', isiKg: 40, stokWadah: wA15 } }], function () { var a = rowG(wA15); return !!a && a.n === 'belum pernah'; }));
+
 // ---- 13 · penjaga perangkat = rules v5 (10)
 var KRY = keadaanAkun('kry.contoh@tokoberasmiqbal.web.app', 'uid-kry', { uid: 'uid-kry', nama: 'Karyawan Contoh', peran: 'karyawan', aktif: true }); var OWN = keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null);
 var HAK = { jualTunai: 'sendiri', jualBon: 'owner', nego: 'tidak', terimaBon: 'sendiri', hitungLaci: 'tidak', uangKeluar: 'tidak', adukan: 'sendiri', kedatangan: 'tidak', hargaBeli: 'tidak', koreksi: 'tidak', hapus: 'tidak', pelangganBaru: 'sendiri', atur: 'tidak', isiUlang: 'sendiri' };
@@ -493,6 +507,9 @@ def cetak_asap(nama, asap):
 
 
 RUSAK = {
+    '39b-15: cocokkan wadah pas (dariCocok) tidak menyegarkan umur buku khusus': ("  ambilWadahLiteran().forEach((x) => { if (!x || !x.dariCocok) return;", "  [].forEach((x) => { if (!x || !x.dariCocok) return;"),
+    '39b-15: penyesuaian bagian wadah atas buku khusus diabaikan lagi': ("(p.bagian === 'wadah' && !bw[p.merk])", "(p.bagian === 'wadah')"),
+    '39b-15: penyesuaian bagian wadah atas merek biasa ikut menyegarkan merek': ("(p.bagian === 'wadah' && !bw[p.merk])", "(false)"),
     # toko.js
     'kunci karung belakang tidak dikenali buku khusus': ("else if (m.karungBelakang) out[String(m.merk)] = { jenis: 'belakang', wadah: String(m.karungBelakang), merk: String(m.merkAsal || '') };", ""),
     'merkAsalKunci mengembalikan kuncinya (berat karung & label salah)': ("return b && b.jenis === 'belakang' && b.merk ? b.merk : String(kunci);", "return String(kunci);"),
