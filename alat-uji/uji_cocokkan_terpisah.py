@@ -145,6 +145,9 @@ var asap = null;
 if (CADANGAN) {
   Object.keys(CADANGAN).forEach(function (n) { pasok(n, CADANGAN[n]); });
   var WC = { tanggal: TGL_CAD, jam: '23:50', kini: TGL_CAD + 'T16:50:00.000Z', idUnik: function () { nId += 1; return nId; } };
+  // keputusan owner 1 Okt: buku karung yang tertinggal dibereskan DULU (pindah balik + timbang = catatan) — Cocokkan menolak karung yang masih memuat sisa lama
+  var PT = wbSusunPindahTertinggal(WC); if (!PT.tolak) terapkanKeCache(PT.dokumen); var nTtg = PT.tolak ? 0 : PT.dokumen.length;
+  wbKarungTertinggal().berdiri.forEach(function (x) { var R = wbSusunTimbangTertinggal(x.kunci, String(x.catatanKg), WC); if (!R.tolak) { terapkanKeCache(R.dokumen); nTtg += 1; } });
   var semua = Object.keys(hitungStokKarungPerMerk()); var tSebelum = {}, bSebelum = {}; semua.forEach(function (m) { tSebelum[m] = tumpuk(m); bSebelum[m] = buku(m); });
   var kbBeda = []; aturWadah().daftar.forEach(function (w) { wbKarungBelakangWadah(w).forEach(function (k) { if (k.diketahui && Math.abs(k.selisihKg) > 0.05) kbBeda.push(k.merk + ' di belakang ' + w + ': catatan ' + k.kolamKg + ' vs buku ' + k.bukuKg); }); });
   var HW = {}, AW = {}; var dihitungW = {}; barangCocok('wadah').forEach(function (b) { if (b.isiSistem === null) return; var isi = Math.max(0, Math.round((b.isiSistem - 0.5) * 100) / 100); HW[b.kunci] = String(isi); dihitungW[b.nama] = isi; if (b.karungSistem !== null) HW[b.kunciKarung] = String(b.karungSistem); AW[b.kunci] = 'uji asap'; });
@@ -159,7 +162,7 @@ if (CADANGAN) {
   var ST2 = susunSimpanCocok('tumpukan', HT, AT2, WC, { sebagian: true, ganda: true, aneh: true, susutPositif: true }); terapkanKeCache(ST2.dokumen || []);
   var tumpukSalah = Object.keys(dihitungT).filter(function (m) { return !hampir(tumpuk(m), dihitungT[m]); }); var wadahGeser = Object.keys(isiW2).filter(function (w) { return !hampir(wbKomposisi(w).totalKg, isiW2[w]); });
   var kap = susunKapur(new Date(WC.tanggal + 'T20:00:00+07:00')).baris;
-  asap = { kbBeda: kbBeda, wadah: Object.keys(dihitungW).length, dokWadah: (SW.dokumen || []).length, tolakW: SW.tolak || '', geserW: geserW, bukuSalah: bukuSalah, isiSalah: isiSalah, tumpukan: Object.keys(dihitungT).length, tolakT: ST2.tolak || '', tumpukSalah: tumpukSalah, wadahGeser: wadahGeser,
+  asap = { betulkanTertinggal: nTtg, sisaTertinggal: wbKarungTertinggal().berdiri.length + wbKarungTertinggal().tertutup.length, kbBeda: kbBeda, wadah: Object.keys(dihitungW).length, dokWadah: (SW.dokumen || []).length, tolakW: SW.tolak || '', geserW: geserW, bukuSalah: bukuSalah, isiSalah: isiSalah, tumpukan: Object.keys(dihitungT).length, tolakT: ST2.tolak || '', tumpukSalah: tumpukSalah, wadahGeser: wadahGeser,
     kapurWadah: kap.filter(function (x) { return /^Cocokkan wadah /.test(x.isi); }).length, kapurTumpukan: kap.filter(function (x) { return /^Cocokkan tumpukan gudang /.test(x.isi); }).length };
 }
 print(J({ lulus: lulus, gagal: gagal, asap: asap }));
@@ -227,6 +230,8 @@ if __name__ == '__main__':
         salah = asap['geserW'] + asap['bukuSalah'] + asap['isiSalah'] + asap['tumpukSalah'] + asap['wadahGeser']
         print('ASAP DATA TOKO (%s): %d wadah dicocokkan (%d dokumen) · tumpukan tidak bergeser: %s · buku = Σ selisih: %s · isi wadah = hitungan: %s · %d tumpukan dicocokkan · tumpukan = hitungan: %s · wadah tidak bergeser: %s · papan kapur wadah %d / tumpukan %d'
               % (os.path.basename(cadangan_toko()), asap['wadah'], asap['dokWadah'], not asap['geserW'], not asap['bukuSalah'], not asap['isiSalah'], asap['tumpukan'], not asap['tumpukSalah'], not asap['wadahGeser'], asap['kapurWadah'], asap['kapurTumpukan']))
+        print('   buku karung tertinggal dibereskan dulu (kartu Stok › Wadah literan): %d dokumen, sisa %d' % (asap.get('betulkanTertinggal', 0), asap.get('sisaTertinggal', 0)))
+        if asap.get('sisaTertinggal'): g.append('asap: buku karung tertinggal tidak habis dibereskan (%d)' % asap['sisaTertinggal'])
         if asap.get('kbBeda'): print('   karung belakang catatan ≠ buku SEBELUM dicocokkan (data toko, bukan cacat uji): ' + '; '.join(asap['kbBeda']))
         if asap['tolakW'] or asap['tolakT']: g.append('asap ditolak: ' + asap['tolakW'] + ' ' + asap['tolakT'])
         if salah: g.append('asap: rantai stok bergeser ' + json.dumps(salah, ensure_ascii=False)); print('   ✗ ' + g[-1][:600])

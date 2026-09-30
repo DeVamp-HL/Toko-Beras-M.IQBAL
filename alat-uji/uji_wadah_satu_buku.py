@@ -312,7 +312,7 @@ ok('sesudahnya: buku Angsa −100, tumpukan Angsa −100, karung belakang Angsa 
 // ---- 10 · dua angka satu kotak: wadah AKTIF (7b)
 ok('selisih wadah aktif: semua karung belakang Angsa & IR64 Apex kolam = buku → ada:false', !wbSelisihWadah('Angsa', s0()).ada && !wbSelisihWadah('IR64 Apex', s0()).ada && wbKarungBelakangWadah('Angsa').length === 4 && wbKarungBelakangWadah('Angsa').every(function (k) { return k.selisihKg === 0; }), J(wbKarungBelakangWadah('Angsa')));
 var SWa = denganCacheSementara(susunSamakanKarung(KB('Angsa', 'NG'), '30', W, 'Angsa').dokumen, function () { return wbSelisihWadah('Angsa', s0()); });
-ok('karung belakang NG disamakan jadi 30 kg (buku 37,5) → selisih 7,5 kg DISEBUT: "catatan ±30 kg vs buku 37,5 kg — timbang karungnya"; karung lain diam', SWa.ada && SWa.baris.length === 1 && SWa.baris[0].jenis === 'karung-belakang' && SWa.baris[0].merk === 'NG' && SWa.baris[0].selisihKg === -7.5 && SWa.teks === 'karung NG di belakang: catatan ±30 kg vs buku 37,5 kg — selisih 7,5 kg, timbang karungnya (Stok › Wadah literan)', J(SWa));
+ok('karung belakang NG disamakan jadi 30 kg (buku 37,5) → selisih 7,5 kg DISEBUT: "catatan ±30 kg vs buku 37,5 kg — timbang karungnya (Cocokkan)"; karung lain diam', SWa.ada && SWa.baris.length === 1 && SWa.baris[0].jenis === 'karung-belakang' && SWa.baris[0].merk === 'NG' && SWa.baris[0].selisihKg === -7.5 && SWa.teks === 'karung NG di belakang: catatan ±30 kg vs buku 37,5 kg — selisih 7,5 kg, timbang karungnya (Stok › Cocokkan › Wadah literan)', J(SWa));
 ok('karung belakang berurutan buku terbesar dulu: Beo 50, Angsa 45, NG 37,5, Kumala 25', J(wbKarungBelakangWadah('Angsa').map(function (k) { return k.merk + ' ' + k.bukuKg; })) === J(['Beo 50', 'Angsa 45', 'NG 37.5', 'Kumala 25']));
 
 // ---- 11 · tutup buku, katalog kasir, daftar merek, deretan (9)
@@ -473,12 +473,36 @@ ok('39b-5 tertinggal: karung NG di belakang Angsa dikembalikan TANPA pindah buku
     return !!t && t.bukuKg === 37.5 && !P.tolak && pk.length === T.tertutup.length && denganCacheSementara(P.dokumen, function () { return B2(buku(kbAN)) === 0 && B2(buku('NG') - bNG) === 37.5 && Math.abs(nilai() - v) <= 1
       && hitungLabaBersihRentang('2026-09-01', '2026-09-30').labaBersih === lb && !wbKarungTertinggal().tertutup.some(function (x) { return x.kunci === kbAN; }); }); }),
   J(denganCacheSementara(KEMB, function () { return wbKarungTertinggal(); })));
-ok('39b-5 tertinggal (berdiri): karung Angsa buku 45, catatan 40 → daftar berdiri selisih 5; timbang 40 (= catatan) → sisa 5 dipindah balik ke Angsa + catatan 40, buku karung 40; timbang 45 (= buku) → catatan saja; timbang 42 → DITOLAK (susut sungguhan: lewat Cocokkan)',
-  denganCacheSementara(SA5.dokumen, function () { var b = wbKarungTertinggal().berdiri.filter(function (x) { return x.kunci === kbAA; })[0]; var bA = buku('Angsa');
-    var R1 = wbSusunTimbangTertinggal(kbAA, '40', W5c), R2 = wbSusunTimbangTertinggal(kbAA, '45', W5c), R3 = wbSusunTimbangTertinggal(kbAA, '42', W5c);
-    return !!b && b.selisihKg === 5 && !R1.tolak && dok(R1, 'produksiKemasan').length === 1 && denganCacheSementara(R1.dokumen, function () { return B2(buku(kbAA)) === 40 && B2(buku('Angsa') - bA) === 5 && wbKarungBelakang('Angsa', 'Angsa').kolamKg === 40 && slotA() === kbAA; })
-      && !R2.tolak && !dok(R2, 'produksiKemasan').length && dok(R2, 'wadahLiteran')[0].isiKg === 45 && !!R3.tolak && /susut \/ lebih sungguhan/.test(R3.tolak); }),
-  J(denganCacheSementara(SA5.dokumen, function () { return [wbKarungTertinggal().berdiri, wbSusunTimbangTertinggal(kbAA, '42', W5c).tolak]; })));
+// tinjauan L2: hanya SISA PENGEMBALIAN LAMA (dokumen) yang masuk kartu — pengembalian sesudah tambalan, atau yang bukunya ikut dipindah di kiriman yang sama, bukan
+var KEMB_BARU = [{ koleksi: 'wadahLiteran', data: Object.assign({}, KEMB[0].data, { id: 'wl-kt1b', tanggal: '2026-10-01' }) }];
+var KEMB_IKUT = KEMB.concat([{ koleksi: 'produksiKemasan', data: { id: 'pk-kt1', tanggal: HARI15, jam: '21:30', merkSumber: kbAN, namaProduk: 'NG', merkTujuan: 'NG', ukuranKemasan: 30, jumlahUnit: 1, sumberList: [{ merk: kbAN, kg: 30 }], kgDipakai: 30,
+  hppSumberPerKgDipakai: 12000, hppPerUnit: 360000, biayaKemasan: 0, upahRepacking: 0, kantongJenis: null, kantongJumlah: 0, sumberKemasanList: [], kgKemasanDipakai: 0, batchProduksi: 'pk-kt1', barisKe: 1, jumlahBaris: 1, jadiKarungUtuh: true, dariTakar: true, kembaliTumpukan: 'Angsa' } }]);
+ok('39b-5 tertinggal hanya sisa pengembalian LAMA: dikembalikan sesudah tambalan (1 Okt) tanpa pindah → tidak masuk kartu; dikembalikan lama 37,5 dengan pindah 30 di kiriman yang sama → sisa lama 7,5 (bukan 37,5); samakan sisa biasa (buku 45, catatan 40) → bukan "berdiri"',
+  denganCacheSementara(KEMB_BARU, function () { return !wbKarungTertinggal().tertutup.some(function (x) { return x.kunci === kbAN; }); })
+  && denganCacheSementara(KEMB_IKUT, function () { var t = wbKarungTertinggal().tertutup.filter(function (x) { return x.kunci === kbAN; })[0]; return !!t && B2(t.lamaKg) === 7.5 && B2(t.bukuKg) === 7.5; })
+  && denganCacheSementara(SA5.dokumen, function () { return !wbKarungTertinggal().berdiri.some(function (x) { return x.kunci === kbAA; }); }),
+  J([denganCacheSementara(KEMB_BARU, function () { return wbKarungTertinggal(); }), denganCacheSementara(KEMB_IKUT, function () { return wbKarungTertinggal(); }), denganCacheSementara(SA5.dokumen, function () { return wbKarungTertinggal().berdiri; })]));
+// berdiri: pengembalian lama 5 kg (tanpa pindah) dari karung Angsa yang lalu dibuka lagi di tempat yang sama; buku 45, catatan disamakan 40
+var LAMA5 = [{ koleksi: 'wadahLiteran', data: { id: 'wl-kt2', tanggal: '2026-09-01', jam: '08:00', tipe: 'karungIsi', merk: kbAA, isiKg: 0, wadah: 'Angsa', dikembalikan: true, sisaSebelumKg: 5 } }].concat(SA5.dokumen);
+ok('39b-5 tertinggal (berdiri): buku 45, catatan 40, sisa pengembalian lama 5 → timbang 40 = pindah balik 5 ke Angsa tanpa susut; 39,5 = pindah 5 + susut 0,5 (bukan 5,5 ke tumpukan); 37 = minta YAKIN lalu pindah 5 + susut 3 (sisa lama TIDAK jadi susut); "4O" ditolak bukan angka',
+  denganCacheSementara(LAMA5, function () { var b = wbKarungTertinggal().berdiri.filter(function (x) { return x.kunci === kbAA; })[0]; var bA = buku('Angsa'); var lb = laba(); var hpp = (hitungStokKarungPerMerk()[kbAA] || {}).hppTerakhirPerKg || 0;
+    var R1 = wbSusunTimbangTertinggal(kbAA, '40', W5c), R2 = wbSusunTimbangTertinggal(kbAA, '39,5', W5c), R3 = wbSusunTimbangTertinggal(kbAA, '37', W5c), R3y = wbSusunTimbangTertinggal(kbAA, '37', W5c, true), R4 = wbSusunTimbangTertinggal(kbAA, '4O', W5c);
+    var ps = function (R) { return dok(R, 'penyesuaianStok'); }; var pk = function (R) { return dok(R, 'produksiKemasan'); };
+    var hasil = function (R, kgKarung, naikA) { return denganCacheSementara(R.dokumen, function () { return B2(buku(kbAA)) === kgKarung && B2(buku('Angsa') - bA) === naikA && wbKarungBelakang('Angsa', 'Angsa').kolamKg === kgKarung && slotA() === kbAA && !wbKarungTertinggal().berdiri.some(function (x) { return x.kunci === kbAA; }); }); };
+    return !!b && b.lamaKg === 5 && b.catatanKg === 40 && b.bukuKg === 45
+      && !R1.tolak && pk(R1).length === 1 && pk(R1)[0].ukuranKemasan === 5 && pk(R1)[0].betulkanTertinggal === true && !ps(R1).length && hasil(R1, 40, 5)
+      && !R2.tolak && pk(R2)[0].ukuranKemasan === 5 && ps(R2).length === 1 && B2(ps(R2)[0].selisihKg) === -0.5 && ps(R2)[0].kgSistem === 40 && ps(R2)[0].bagian === 'wadah' && ps(R2)[0].wadah === 'Angsa' && hasil(R2, 39.5, 5)
+      && !!R3.tolak && R3.perluYakin === kbAA && /sisa lama 5 kg tetap dipindah balik/.test(R3.tolak) && !R3y.tolak && pk(R3y)[0].ukuranKemasan === 5 && B2(ps(R3y)[0].selisihKg) === -3 && hasil(R3y, 37, 5)
+      && denganCacheSementara(R3y.dokumen, function () { return Math.abs((lb - laba()) - 3 * hpp) <= 2; })
+      && !!R4.tolak && /bukan angka/.test(R4.tolak); }),
+  J(denganCacheSementara(LAMA5, function () { return [wbKarungTertinggal().berdiri, wbSusunTimbangTertinggal(kbAA, '39,5', W5c), wbSusunTimbangTertinggal(kbAA, '37', W5c).tolak]; })));
+ok('39b-5 tertinggal di Cocokkan & kalimat Jual: karung tertutup yang masih memuat sisa lama TIDAK dapat baris Cocokkan (diisi 0 = susut); timbangan karung "berdiri" di Cocokkan DITOLAK dengan arah ke kartu; kalimat selisih wadah: tertutup → "pindah balik", berdiri → kartu, bukan "timbang" karung yang sudah dikembalikan',
+  denganCacheSementara(KEMB, function () { var sw = wbSelisihWadah('Angsa', s0()); var t = (sw.baris || []).filter(function (x) { return x.merk === 'NG'; })[0];
+    return !barangCocok('wadah').some(function (b) { return b.karungNama === kbAN; }) && !!t && /sudah dikembalikan/.test(t.teks) && /pindah balik/.test(t.teks) && !/timbang/.test(t.teks); })
+  && denganCacheSementara(LAMA5, function () { var H = {}; H['wadahKarung|Angsa'] = '40'; var P = susunSimpanCocok('wadah', H, {}, W5c, Y5); var sw = wbSelisihWadah('Angsa', s0()); var t = (sw.baris || []).filter(function (x) { return x.merk === 'Angsa'; })[0];
+    return !!P.tolak && /Buku karung yang tertinggal/.test(P.tolak) && /sisa pengembalian 30 Sep 5 kg/.test(P.tolak) && !!t && /Buku karung yang tertinggal/.test(t.teks); }),
+  J([denganCacheSementara(KEMB, function () { return [wbSelisihWadah('Angsa', s0()), barangCocok('wadah').filter(function (b) { return b.karungNama === kbAN; })]; }),
+     denganCacheSementara(LAMA5, function () { var H = {}; H['wadahKarung|Angsa'] = '40'; return [susunSimpanCocok('wadah', H, {}, W5c, Y5).tolak, wbSelisihWadah('Angsa', s0()).teks]; })]));
 
 // ---- 13 · penjaga perangkat = rules v5 (10)
 var KRY = keadaanAkun('kry.contoh@tokoberasmiqbal.web.app', 'uid-kry', { uid: 'uid-kry', nama: 'Karyawan Contoh', peran: 'karyawan', aktif: true }); var OWN = keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null);
@@ -587,7 +611,13 @@ var idW = jadi.map(identitasWadah); var cek = wbCekHari(TGL_CAD);
 var KT0 = denganCacheSementara([], function () { return wbKarungTertinggal(); });
 var ktSim = denganCacheSementara([], function () { if (!KT0.tertutup.length) return { ok: true, n: 0 }; var v = nilai(), lb = laba(); var P = wbSusunPindahTertinggal(W); if (P.tolak) return { ok: false, tolak: P.tolak };
   return denganCacheSementara(P.dokumen, function () { var nol = KT0.tertutup.every(function (x) { return Math.abs(buku(x.kunci)) < 0.005; }); return { ok: nol && Math.abs(nilai() - v) <= 1 && laba() === lb, n: KT0.tertutup.length, kg: KT0.kgTertutup, nilai: [v, nilai()], laba: [lb, laba()] }; }); });
-print(J({ tertinggal: { tertutup: KT0.tertutup.map(function (x) { return x.merk + ' (' + x.wadah + ') ' + x.bukuKg; }), berdiri: KT0.berdiri.map(function (x) { return x.merk + ' (' + x.lokasi + ') buku ' + x.bukuKg + ' catatan ' + x.catatanKg; }), sim: ktSim }, daftar: daftar, tanpaTandai: tanpaTandai, jadi: jadi, tandai: tandai, lewati: lewati, gagalAktif: gagalAktif, nilai: [v0, v1], laba: [laba0, laba1, laba2], geserAkt: geserAkt, identitasMerk: identitasMerk, isiUlang: isiUlang, geserIsi: geserIsi, jual: jual, identitasWadah: idW, nAktif: cek.nAktif, bocor: bocorKB() }));
+// berdiri: timbang PAS catatan → sisa lama dipindah balik ke tumpukan, tanpa susut; nilai stok & laba tetap; kartu hilang untuk karung itu
+var ktTimbang = KT0.berdiri.map(function (x) { return denganCacheSementara([], function () { var v = nilai(), lb = laba(); var R = wbSusunTimbangTertinggal(x.kunci, String(x.catatanKg), W); if (R.tolak) return { merk: x.merk, ok: false, tolak: R.tolak };
+  var pk = R.dokumen.filter(function (d) { return d.koleksi === 'produksiKemasan'; }), ps = R.dokumen.filter(function (d) { return d.koleksi === 'penyesuaianStok'; });
+  // Σ nilai stok boleh bergeser SEDIKIT: pindah buku ke merek yang sudah terjual (rata-rata modal mesin) — keputusan owner no. 42 (30 Sep); geserannya dilaporkan
+  return denganCacheSementara(R.dokumen, function () { return { merk: x.merk, lama: x.lamaKg, geserNilai: Math.round(nilai() - v), ok: pk.length === 1 && Math.abs(pk[0].data.kgDipakai - x.lamaKg) < 0.005 && !ps.length && Math.abs(nilai() - v) <= 1000 && laba() === lb && Math.abs(buku(x.kunci) - x.catatanKg) < 0.005
+    && !wbKarungTertinggal().berdiri.some(function (y) { return y.kunci === x.kunci; }) }; }); }); });
+print(J({ tertinggal: { tertutup: KT0.tertutup.map(function (x) { return x.merk + ' (' + x.wadah + ') ' + x.bukuKg; }), berdiri: KT0.berdiri.map(function (x) { return x.merk + ' (' + x.lokasi + ') buku ' + x.bukuKg + ' catatan ' + x.catatanKg + ' sisa lama ' + x.lamaKg; }), sim: ktSim, timbang: ktTimbang }, daftar: daftar, tanpaTandai: tanpaTandai, jadi: jadi, tandai: tandai, lewati: lewati, gagalAktif: gagalAktif, nilai: [v0, v1], laba: [laba0, laba1, laba2], geserAkt: geserAkt, identitasMerk: identitasMerk, isiUlang: isiUlang, geserIsi: geserIsi, jual: jual, identitasWadah: idW, nAktif: cek.nAktif, bocor: bocorKB() }));
 """
 
 
@@ -613,6 +643,7 @@ def nilai_asap(asap):
     m = []
     kt = asap.get('tertinggal') or {}
     if kt and not (kt.get('sim') or {}).get('ok', True): m.append('pindah balik karung tertinggal di data toko: ' + json.dumps(kt.get('sim'), ensure_ascii=False))
+    if kt and any(not x.get('ok') for x in kt.get('timbang') or []): m.append('timbang karung tertinggal (= catatan) di data toko: ' + json.dumps(kt.get('timbang'), ensure_ascii=False))
     if asap.get('gagalAktif'): m.append('aktivasi gagal: ' + '; '.join(asap['gagalAktif']))
     if any(not x['ok'] for x in asap['tanpaTandai']): m.append('wadah kurang diaktifkan TANPA tandai: ' + ', '.join(x['W'] for x in asap['tanpaTandai'] if not x['ok']))
     if asap['nilai'][0] != asap['nilai'][1]: m.append('nilai stok bergeser sesudah aktivasi: %s → %s' % tuple(asap['nilai']))
@@ -630,7 +661,7 @@ def nilai_asap(asap):
 
 def cetak_asap(nama, asap):
     kt = asap.get('tertinggal') or {}
-    if kt: print('   buku karung tertinggal (keputusan owner 1 Okt): tertutup %s · berdiri %s · simulasi pindah balik: %s' % ('; '.join(kt.get('tertutup') or []) or 'tidak ada', '; '.join(kt.get('berdiri') or []) or 'tidak ada', json.dumps(kt.get('sim'), ensure_ascii=False)))
+    if kt: print('   buku karung tertinggal (keputusan owner 1 Okt): tertutup %s · berdiri %s · simulasi pindah balik: %s' % ('; '.join(kt.get('tertutup') or []) or 'tidak ada', '; '.join(kt.get('berdiri') or []) or 'tidak ada', json.dumps(kt.get('sim'), ensure_ascii=False)) + ' · simulasi timbang = catatan: ' + json.dumps(kt.get('timbang'), ensure_ascii=False))
     print('ASAP DATA TOKO (%s): %d wadah; daftar: %s' % (nama, len(asap['daftar']), ' · '.join('%s %s%s' % (x['no'], x['W'], ' AKTIF' if x['aktif'] else (' bisa' + ('' if x['cukup'] else ' KURANG ' + ', '.join(x['kurang']))) if x['bisa'] else ' TIDAK: ' + x['alasan']) for x in asap['daftar'])))
     print('   aktivasi disimulasikan: %s · dengan tandai: %s · dilewati: %s · nilai stok %s → %s · laba %s → %s → %s · tumpukan bergeser saat aktivasi: %s · identitas per merek asal tidak menutup: %d'
           % (', '.join(asap['jadi']) or 'tidak ada', '; '.join(asap['tandai']) or 'tidak ada', '; '.join(asap['lewati']) or 'tidak ada', asap['nilai'][0], asap['nilai'][1], asap['laba'][0], asap['laba'][1], asap['laba'][2], ', '.join(asap['geserAkt']) or 'tidak ada', len(asap['identitasMerk'])))
@@ -660,8 +691,17 @@ RUSAK = {
     '39b-5 S7: hitungan minus lolos': ("const p = minusH.length ? {", "const p = false ? {"),
     '39b-5 S8: aktivasi memilih karung terdepan menurut abjad': ("d.kolam.slice().sort((a, b) => (a.merk === depan0 ? 1 : 0) - (b.merk === depan0 ? 1 : 0)).forEach(", "d.kolam.forEach("),
     'tertinggal: kolam tertutup tidak dikenali': ("if (!hidup.length) { if (di.length) tertutup.push(", "if (false) { if (di.length) tertutup.push("),
-    'tertinggal: timbang = catatan tidak memindah sisa buku': ("const d = pindah > 0.004 ? wbDokPindah([{ merk: kunci, kg: pindah }]", "const d = false ? wbDokPindah([{ merk: kunci, kg: pindah }]"),
-    'tertinggal: timbangan yang tidak cocok dengan catatan maupun buku lolos': ("  return { tolak: 'Berat ' + wbKG(t) + ' tidak sama dengan catatan (' + wbKG(x.catatanKg) + ') maupun buku", "  return { dokumen: [isi], patch: {} }; return { tolak: 'Berat ' + wbKG(t) + ' tidak sama dengan catatan (' + wbKG(x.catatanKg) + ') maupun buku"),
+    'tertinggal: timbang tidak memindah sisa lama (dokumen pindah balik hilang)': ("  const dokumen = [pindah];\n  if (sel !== 0) dokumen.push(", "  const dokumen = [];\n  if (sel !== 0) dokumen.push("),
+    'tertinggal: timbangan meleset jauh tanpa ketukan kedua': ("if (Math.abs(sel) > TOL && !yakin) return { tolak: 'Berat '", "if (false) return { tolak: 'Berat '"),
+    'tertinggal: selisih timbangan ikut ke tumpukan (pindah = buku − timbangan)': ("wbDokPindah([{ merk: kunci, kg: x.lamaKg }], x.merk, w,", "wbDokPindah([{ merk: kunci, kg: wbB2(x.bukuKg - t) }], x.merk, w,"),
+    'tertinggal: samakan sisa biasa ikut dianggap sisa lama': ("const lama = wbSisaKembaliLama(k, prod); if (lama <= 0.004) return;", "const lama = 999999;"),
+    'tertinggal: pengembalian yang bukunya ikut dipindah tetap dihitung sisa lama': ("lama += Math.max(0, Number(r.sisaSebelumKg) - ikut); });", "lama += Number(r.sisaSebelumKg); });"),
+    'tertinggal: pengembalian sesudah tambalan ikut dihitung': ("|| !(String(r.tanggal || '') < WB_TAMBALAN_KEMBALI)) return;", ") return;"),
+    'tertinggal: ketikan bukan angka dibaca 0 kg': ("return /^-?\\d+(\\.\\d+)?$/.test(t) ? Number(t) : null; };", "return Number(t) || 0; };"),
+    'Cocokkan: karung tertutup bersisa lama dapat baris (diisi 0 = susut)': ("    if (!tempat.length && tertinggal[kunci]) return;\n", ""),
+    'Cocokkan: timbangan karung bersisa lama diterima (sisa lama jadi susut)': (": lamaH.length ? { tolak:", ": false ? { tolak:"),
+    'kalimat selisih: karung yang sudah dikembalikan disuruh ditimbang': ("const teks = tutup[KB.kunci] ?", "const teks = false ?"),
+
     '39b-5: kembalikan memindah sisa catatan, bukan buku': ("if (berbuku && bukuKB > 0.004) dokumen.push(wbDokPindah([{ merk, kg: bukuKB }]", "if (berbuku && bukuKB > 0.004) dokumen.push(wbDokPindah([{ merk, kg: wdB2(k.sisaMentahKg) }]"),
     '39b-5: hapus karung habis mengabaikan buku minus': ("  if (Math.abs(buku) > 0.004) {\n    if (Math.abs(buku) > 0.5 && !yakin) return", "  if (buku > 0.5) {\n    if (Math.abs(buku) > 0.5 && !yakin) return"),
     # toko.js
@@ -697,7 +737,7 @@ RUSAK = {
     'cek dikosongkan di wadah belum aktif lolos': ("if (h === 'kosong') { if (!aktif) return { tolak:", "if (h === 'kosong') { if (false) return { tolak:"),
     'Papan Kapur tidak menulis cek wadah': ("else if (w.tipe === 'cek') out.push(", "else if (false) out.push("),
     # selisih
-    'selisih karung belakang (kolam vs buku) tidak disebut': ("wbKarungBelakangWadah(W).forEach((KB) => { if (KB.diketahui && Math.abs(KB.selisihKg) > 0.05) out.push(", "wbKarungBelakangWadah(W).forEach((KB) => { if (false) out.push("),
+    'selisih karung belakang (kolam vs buku) tidak disebut': ("wbKarungBelakangWadah(W).forEach((KB) => { if (!KB.diketahui || Math.abs(KB.selisihKg) <= 0.05) return;", "wbKarungBelakangWadah(W).forEach((KB) => { if (true) return;"),
     'selisih wadah belum aktif tidak disebut': ("if (Math.abs(sel) > 0.05) { const stok = hitungStokKarungPerMerk();", "if (false) { const stok = hitungStokKarungPerMerk();"),
     # jual-logika.js
     'panel takar tidak menormalkan merek ke kunci karung belakang': ("return Object.assign({}, x, { merk: wbKunciKB(di, x.merk), merkAsal: x.merk, dari: di }); });", "return x; });"),
