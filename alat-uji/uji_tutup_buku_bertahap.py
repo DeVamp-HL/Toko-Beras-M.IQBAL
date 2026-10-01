@@ -49,6 +49,7 @@ Yang dijaga:
         (simulasi memakai bentuk uang.js yang sebenarnya: UANG_CEK_TIAP_POTONGAN dibaca dari berkasnya)
   P4-4  hasil beku periksa ulang = dokumen TERSENDIRI tanpa kolom status (pengaturan/periksaArsip<tahun>) bertanda percobaan: yang mendarat telat sesudah
         dibatalkan / selesai tidak mengubah status berita acara; hasil beku percobaan lama tidak dipakai percobaan berikut
+  P4-5  lembar K6 sesudah kunci: baris yang sisi mesinnya tidak bisa dihitung bertanda "?" (bukan "≠"); kalimat lembar = kalimat pita (bkKalimatPeriksa)
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -532,6 +533,18 @@ coba('P4-4 Z1', function () { kotak(40); var W1 = jam('2027-01-05T07:00:00+07:00
   ok('P4-4 Z1 hasil beku percobaan 2 menggantikannya dan bertanda percobaan 2 (dipakai "selesai")', !!PA2.dokumen && !!dok.percobaan && dok.percobaan === String(acara(2026).paraf.pada) && dok.percobaan !== String(R1.acara.paraf.pada),
     J([!!PA2.dokumen, dok.percobaan])); });
 
+// ---- putaran 4 P4-5 (TP3-T4/LP3-C2): arsip putus 5 Jan, tutup hari 5 & 6 Jan memajukan titik kas, Lanjutkan 7 Jan. Lembar K6 sesudah kunci memakai hasil periksa
+//      ulang (sesudahLive): baris uang yang sisi MESIN-nya tidak bisa dihitung = '?' (belum bisa dihitung), bukan '≠'; kalimatnya = kalimat pita. Dulu lembar berkata
+//      "ADA 4 BARIS YANG TIDAK SAMA" + '≠' sementara kabar & pita berkata "4 baris belum bisa dihitung".
+coba('P4-5', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W, HPA); R.kiriman.forEach(kirim); arsipkanDokumen(2026, arsipBuku(2026).daftar.slice(0, 18));
+  ['2027-01-05', '2027-01-06'].forEach(function (t) { var tk = { id: 'titikKas', tanggal: t, laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000, diubahPada: t + 'T14:00:00.000Z' };
+    terapkanKeCache([{ koleksi: 'pengaturan', data: tk }]); localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify(tk)); });
+  var W7 = jam('2027-01-07T09:00:00+07:00'); arsipkanDokumen(2026, arsipBuku(2026).daftar); var PU = susunPeriksaArsip(2026, W7, HPA).PU || { baris: [] };
+  var kas = PU.baris.filter(function (b) { return ['laci', 'brankas', 'rekening', 'amplop'].indexOf(b.id) >= 0; }), lain = PU.baris.filter(function (b) { return kas.indexOf(b) < 0; }); var kal = bkKalimatPeriksa(PU);
+  ok('P4-5 4 baris uang yang sisi mesinnya tidak bisa dihitung bertanda "?" (bukan "≠"), baris lain "✓"; kalimat yang sama dengan pita: "4 baris belum bisa dihitung", tanpa TIDAK SAMA',
+    kas.length === 4 && kas.every(function (b) { return b.b === null && b.tanda === '?'; }) && lain.length === 8 && lain.every(function (b) { return b.tanda === '✓'; }) && /4 baris belum bisa dihitung/.test(kal) && !/TIDAK SAMA/.test(kal),
+    J([PU.baris.map(function (b) { return b.id + ' ' + b.tanda; }), kal])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -597,6 +610,7 @@ STATIS = [
     ('putaran 3 AAL4 · firebase.js menyetor tanda salinan perangkat (fromCache) per koleksi ke toko.js', ["setelDariCache(k.nama, _dariCache[k.nama]);"], 'baru/js/data/firebase.js'),
     ('putaran 3 AAL5 · firebase.js mencatat HAPUS yang menunggu server per kiriman sampai commit selesai', ["setelHapusTertunda(idKiriman, H);", ".finally(() => { setelHapusTertunda(idKiriman, null);"], 'baru/js/data/firebase.js'),
     ('putaran 4 P4-3 · callback progres arsip membaca status sesudah SETIAP potongan, termasuk yang terakhir (bentuk yang disuntik ke kotak pasir)', [UANG_TIAP_POTONGAN]),
+    ('putaran 4 P4-5 · lembar K6 sesudah kunci memakai kalimat pita (bkKalimatPeriksa), bukan ringkasan banding "TIDAK SAMA"', ["${s.sesudahLive ? (BK.bkKalimatPeriksa(s.sesudahLive.baris ? s.sesudahLive : null) || B.ringkas) + ' (diperiksa ulang dari mesin sesudah kunci)' : B.ringkas}"]),
     ('putaran 4 P4-1 · Kunci mencatat perangkat ini sebagai pemegang (lokal() ke susunKunci)', ["arsipNama: s.arsipNama }, waktu(), lokal()); if (r.tolak) return set({ siapKunci: false,"]),
     ('putaran 4 P4-1 · Lanjutkan & Batalkan hanya dari pemegang — dicek sebelum arsip dibaca; susun* menerima lokal()', ["const bp = BK.bkBukanPemegang(KM.tahun, lokal()); if (bp) return set({ kabar: bp, kabarAwas: true });", "const bp = BK.bkBukanPemegang(tahun, lokal()); if (bp) return set({ yakinBatalB: null, kabar: bp, kabarAwas: true });", "const Lj = BK.lanjutBuku(KM.tahun, lokal());", "const r = BK.susunBatal(tahun, arsip, waktu(), lokal());"]),
     ('putaran 4 P4-1 · kiriman berikutnya (tutup buku & pembatalan) berhenti bila perangkat ini bukan lagi pemegangnya', ["const bpK = BK.bkBukanPemegang(tahun, lokal()); if (bpK) { set({ sibuk: false, progres: null, kabar: bpK, kabarAwas: true }); return false; }\n      let h = null; try { h = await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true });"]),
@@ -665,6 +679,7 @@ RUSAK = [
     ('putaran 4 P4-2 · ambil alih tanpa internet / dari salinan perangkat', 'baru/js/layar/tutup-buku-logika.js', "  const sb = bkSambungan(L); if (sb) return { tolak: sb };\n  if (koleksiDariCache('perangkatStatus'))", "  if (false)"),
     ('putaran 4 P4-2 · ambil alih sekali ketuk (tanpa kalimat peringatan)', 'baru/js/layar/tutup-buku-logika.js', "  if (!yakin) return { perluYakin: true,", "  if (false) return { perluYakin: true,"),
     ('putaran 4 P4-2 · percobaan berikut membawa jejak ambil alih lama', 'baru/js/layar/tutup-buku-logika.js', "  delete acara.pemegangLama; delete acara.diambilAlihPada;", "  delete acara.diambilAlihPada;"),
+    ('putaran 4 P4-5 · sisi mesin yang tidak bisa dihitung ditandai "≠"', 'baru/js/layar/tutup-buku-logika.js', "tanda: !ada ? '' : !tahu || s === null ? '?' :", "tanda: !ada ? '' : !tahu ? '?' :"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]

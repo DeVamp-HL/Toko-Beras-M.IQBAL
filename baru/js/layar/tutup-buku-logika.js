@@ -134,7 +134,8 @@ export function bandingBuku(sebelum, sesudah) {
   // 39b no. 12: baris yang tidak bisa dihitung (uang per tempat, titik kas lebih muda dari 31 Des) BUKAN "sama" — dulu null = null lolos sebagai ✓
   const baris = sebelum.harta.concat(sebelum.utang).map((b) => { const s = sesudah ? (sesudah[b.id] === undefined ? null : sesudah[b.id]) : null; const ada = !!sesudah; const tahu = b.n !== null;
     const sama = !ada || (tahu && s !== null && Math.abs(b.n - s) < 0.5);
-    return { id: b.id, nama: b.nama, a: b.n, b: ada ? s : null, ada, sama, tahu, tanda: !ada ? '' : !tahu ? '?' : sama ? '✓' : '≠' }; });
+    // putaran 4 P4-5: sisi MESIN yang tidak bisa dihitung (periksa ulang sesudah kunci, titik kas sudah maju) juga '?' — belum bisa dihitung, bukan '≠'
+    return { id: b.id, nama: b.nama, a: b.n, b: ada ? s : null, ada, sama, tahu, tanda: !ada ? '' : !tahu || s === null ? '?' : sama ? '✓' : '≠' }; });
   const beda = baris.filter((b) => !b.sama); const tidakTahu = baris.filter((b) => !b.tahu);
   return { baris, semuaSama: !beda.length && !tidakTahu.length, beda: beda.concat(tidakTahu.filter((b) => b.sama)), tidakTahu, ringkas: tidakTahu.length ? tidakTahu.length + ' baris uang BELUM BISA DIHITUNG pada 31 Des (' + tidakTahu.map((b) => b.nama).join(', ') + ') — tahun tidak boleh dikunci; titik kas terakhir lebih muda dari 31 Des'
     : !sesudah ? baris.length + ' baris akan menyeberang — harta DAN utang' : beda.length ? 'ADA ' + beda.length + ' BARIS YANG TIDAK SAMA — tahun tidak boleh dikunci' : 'Semua ' + baris.length + ' baris sama persis di kedua sisi' };
