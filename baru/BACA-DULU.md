@@ -1390,3 +1390,12 @@ penjaga pusat). Cadangan toko 1 Okt dihitung seolah 5 Jan 2027: 57 dokumen pembu
   Pembatalan lanjutan dari `dibatalkan` dipegang perangkat yang memulainya. Kiriman yang tertahan di perangkat lain tetap bisa mendarat belakangan (sekarang
   lewat jalan MULAI — kiriman pertama yang tertahan sebelum server mengenal pemegangnya — atau ambil alih) — penangkal sungguhan = rules, TUGAS OWNER.
   Uji P4-… di `uji_tutup_buku_bertahap.py` (110 lulus, 85 kontrol berbunyi).
+
+## CSP /baru/ (keputusan owner 1 Okt 2026: "Pasang"; temuan HawkScan)
+
+`<meta http-equiv="Content-Security-Policy">` di `baru/index.html`, sebelum script & stylesheet pertama: `default-src 'self'`; script dari sendiri +
+`www.gstatic.com` (SDK Firebase) + HASH script sebaris (tanpa `'unsafe-inline'`); gaya sendiri + `'unsafe-inline'` (atribut style di templat) + Google Fonts;
+koneksi HANYA Firestore & Auth Firebase; `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`. Ubah script sebaris → `python3 alat-uji/uji_csp.py --pasang`.
+Templat layar TIDAK boleh memakai `on…="…"` / `javascript:` (diblokir) — tetap `data-aksi`. Kasir darurat menyusul sesudah pensiun `kasir.html` mendarat
+(nomor versi `kasir-v*` dipegang bersama `kasir.html` & `sw-kasir.js`).
+

@@ -2,6 +2,9 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
+<!-- Keamanan (keputusan owner 1 Okt: "Pasang"): CSP — hanya sumber yang dipakai sistem ini. Script sebaris dikunci HASH (alat-uji/uji_csp.py menjaga
+     hash = isinya; ubah script sebaris → jalankan uji itu dengan --pasang). Koneksi hanya ke Firestore & Auth Firebase. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com 'sha256-z9nI+aAMRiS8cckOBlg8YszB+h5pVRYlLay+WNBKRQk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com; frame-src https://toko-beras-m-iqbal.firebaseapp.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#e2e7ec">
 <title>Toko Beras M.IQBAL · Sistem baru</title>

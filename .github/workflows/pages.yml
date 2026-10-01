@@ -162,6 +162,8 @@ jobs:
         run: python3 alat-uji/uji_tata_letak_ringkasan_stok.py && python3 alat-uji/uji_tata_letak_ringkasan_stok.py --kontrol
       - name: "Rapi-rapi tata letak layar lain (36): tujuh layar kerja di Mac selebar 1720 & berpinggir sama, kolom samping tiga-kolom clamp(vw) (1280 tidak menyempit), Menu tetap kolom N1 860"
         run: python3 alat-uji/uji_tata_letak_layar_lain.py && python3 alat-uji/uji_tata_letak_layar_lain.py --kontrol
+      - name: "CSP /baru/ (keputusan owner 1 Okt: Pasang): meta sebelum script, hash script sebaris = isinya, sumber luar & koneksi Firebase diizinkan, tanpa onclick sebaris"
+        run: python3 alat-uji/uji_csp.py && python3 alat-uji/uji_csp.py --kontrol
       - name: "Audit 39b no. 28: kabar sesudah kiriman jujur — antre = \"Tersimpan di perangkat, menunggu server\" di enam layar + Jual (panel wadah, umum, setelan, pesanan, tarik balik, batal nota) + kiriman bertahap; pil kepala menyebut yang DITOLAK server (jsc)"
         run: python3 alat-uji/uji_kabar_antre.py && python3 alat-uji/uji_kabar_antre.py --kontrol
       # ---- PUTARAN 38 — kendali biaya (cost controlling) di Laporan › Biaya ----
