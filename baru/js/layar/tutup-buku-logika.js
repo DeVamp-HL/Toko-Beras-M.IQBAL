@@ -253,6 +253,15 @@ export function lanjutBuku(tahun) {
   const titik = akhir.dokumen.find((x) => x.koleksi === 'pengaturan' && String(x.data.id) === 'titikKas');
   return { kiriman: belum, sudah, total: sudah + belum.length, titik: titik ? titik.data : null };
 }
+/**
+ * Putaran 3 AAL1: arsip yang sedang berjalan (daftarnya dihitung sekali) berhenti di antara potongan bila berita acara tahun itu di cache bukan lagi 'terkunci'
+ * — mis. dibatalkan dari perangkat lain; dulu sisa catatan tahun itu tetap tersapu ke arsip SESUDAH "dibatalkan", tanpa pita. '' = boleh lanjut.
+ */
+export function arsipBerhentiBuku(tahun) {
+  const a = bkAcara(tahun); if (a && a.status === 'terkunci') return '';
+  const kata = { membatalkan: 'sedang dibatalkan', dibatalkan: 'sudah dibatalkan', selesai: 'sudah selesai' }[a && a.status] || 'tidak terkunci lagi';
+  return 'Arsip ' + tahun + ' dihentikan: tutup buku ' + tahun + ' ' + kata + ' (dari perangkat lain) — catatan ' + tahun + ' yang tersisa tidak dipindah ke arsip. Ikuti pita tutup buku.';
+}
 /** Saldo pembuka tahun itu yang ada di cache (termasuk yang tersembunyi dari mesin). */
 function bkPembukaTahun(tahun) { const out = []; Object.keys(KOLEKSI_CACHE).forEach((c) => cacheMentah(c).forEach((x) => { if (bkTutupBuku(x) && Number(x.tahunDari) === tahun) out.push({ koleksi: KOLEKSI_CACHE[c], id: x.id }); })); return out; }
 /** Mulai baru ditolak selama tutup buku / pembatalan tahun itu belum tuntas (pembuka percobaan lama yang tersisa akan ikut terlihat bersama yang baru). */

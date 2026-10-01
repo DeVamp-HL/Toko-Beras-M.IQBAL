@@ -28,6 +28,9 @@ Yang dijaga:
   N7  kalimat berhenti: kiriman 1 tutup buku → "Kunci tahun" lagi; kiriman 1 pembatalan → "Batalkan" lagi (Lanjutkan = meneruskan tutup buku); sesudahnya "Lanjutkan"
   N8  dibatalkan, dikunci lagi, dibatalkan lagi → berita acara mencatat tanggal pembatalan KEDUA
   N9  tutup buku setengah jalan → daftar periksa Kunci bulan punya butir ⛔ (kunci bulan ditolak); sesudah selesai butirnya beres
+  Putaran 3 (tinjauan + sanggah sesudah §8):
+  P3-AAL1  HP A sedang lanjut arsip, HP B membatalkan sampai tuntas → arsip HP A berhenti di antara potongan (catatan 2026 tidak tersapu sesudah "dibatalkan");
+           tombol pita yang mati sungguh mati (CSS + penjaga sibuk)
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -267,6 +270,25 @@ coba('N9', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = su
   jam('2027-02-05T10:00:00+07:00'); DP = kpDaftarPeriksa('2027-01', new Date(__KINI), KK); tb = butirTB(DP);
   ok('N9 sesudah tutup buku selesai: butir itu beres', kemajuanBuku() === null && tb.length === 1 && tb[0].ok, J([SL.tolak, tb])); });
 
+// ---- putaran 3 AAL1 · HP A sedang "lanjutkan arsip" (daftar dihitung SEKALI, dikirim per 18); sesudah potongan 1 HP B membatalkan sampai tuntas → arsip HP A
+//      BERHENTI sebelum potongan berikutnya (status berita acara di cache dibaca ulang), sisa catatan 2026 tidak tersapu ke arsip sesudah "dibatalkan"
+var penjagaArsip = function (tahun) { return typeof arsipBerhentiBuku === 'function' ? arsipBerhentiBuku(tahun) : ''; };
+// = firebase.js arsipkanBerkas (potongan 18, progres sesudah tiap potongan) + panggilan progres jalankanBuku di uang.js (berhenti bila penjaga berbunyi)
+function arsipLayar(tahun, daftar, sela) {
+  var h = penjagaArsip(tahun); if (h) return h;
+  for (var i = 0; i < daftar.length; i += 18) { arsipkanDokumen(tahun, daftar.slice(i, i + 18)); var sudah = Math.min(i + 18, daftar.length); if (sela) sela(sudah);
+    h = sudah < daftar.length ? penjagaArsip(tahun) : ''; if (h) return h; }
+  return '';
+}
+coba('P3-AAL1', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W); var nJual = ambilPenjualanSemua().length; R.kiriman.forEach(kirim);
+  var daftarA = arsipBuku(2026).daftar; var awal = typeof arsipBerhentiBuku === 'function' ? arsipBerhentiBuku(2026) : '(penjaga arsip tidak ada)';
+  var henti = arsipLayar(2026, daftarA, function (sudah) { if (sudah !== 18) return;
+    var B2 = susunBatal(2026, arsipSimulasi().filter(function (a) { return a.tahun === 2026; }), W); B2.kiriman.forEach(kirim); pulihkanArsip(2026, B2.pulih); kirim({ dokumen: [B2.akhir] }); });
+  var diArsip = arsipSimulasi().filter(function (a) { return a.tahun === 2026; }).length;
+  ok('P3-AAL1 arsip HP A (' + daftarA.length + ' catatan, per 18) berhenti sesudah HP B membatalkan tuntas: kalimat menyebut dibatalkan; penjualan 2026 utuh, arsip 2026 kosong, tidak ada yang setengah',
+    awal === '' && /dibatalkan/.test(henti) && acara(2026).status === 'dibatalkan' && ambilPenjualanSemua().length === nJual && diArsip === 0 && kemajuanBuku() === null,
+    J([awal, henti, acara(2026).status, ambilPenjualanSemua().length + '/' + nJual, diArsip, kemajuanBuku()])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -311,6 +333,9 @@ STATIS = [
     ('§8 no. 4 · Lanjutkan & Batalkan menunggu antrean perangkat (fase tunggu) — tidak mengirim apa pun', ["if (KM.fase === 'tunggu') return set({ kabar: KM.teks, kabarAwas: true });", "if (KM && KM.fase === 'tunggu') return set({ yakinBatalB: null, kabar: KM.teks, kabarAwas: true });"]),
     ('§8 no. 6 · selesai di layar: periksa ulang & arsip SEBELUM berkas diunduh, ketukan kedua bila beda', ["if (k === 'cadangan2') { const r0 = BK.susunSelesai(tahun, '', waktu(), s.yakinSelesai === tahun);", "const r = BK.susunSelesai(tahun, nama, waktu(), s.yakinSelesai === tahun);"]),
     ('§8 no. 4 · firebase.js menyetor dokumen yang menunggu server (hasPendingWrites) ke toko.js', ["setelTertunda(k.nama, tunda.map((t) => t.id));", "KOLEKSI.forEach((k) => { pasok(k.nama, []); setelTertunda(k.nama, []); });"], 'baru/js/data/firebase.js'),
+    ('putaran 3 AAL1 · Lanjutkan & Batalkan tidak jalan selagi tutup buku / arsip sibuk di perangkat ini', ["bkLanjut: async () => { if (st().sibuk) return;", "bkBatal: async () => { if (st().sibuk) return;"]),
+    ('putaran 3 AAL1 · arsip berhenti di antara potongan bila berita acara tahun itu bukan lagi terkunci', ["henti = sudah < total ? BK.arsipBerhentiBuku(tahun) : ''; if (henti) throw new Error(henti);", "let henti = BK.arsipBerhentiBuku(tahun);", "if (henti) { set({ sibuk: false, progres: null, kabar: henti, kabarAwas: true }); return false; }"]),
+    ('putaran 3 AAL1 · tombol pita .seg.mati di layar Uang sungguh tidak bisa diketuk', [".layar-uang .seg.mati { opacity: 0.45; pointer-events: none; }"], 'baru/css/uang.css'),
 ]
 RUSAK = [
     ('saldo pembuka tidak dipecah (sekali kirim)', 'baru/js/layar/tutup-buku-logika.js', "const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] }))",
@@ -346,7 +371,8 @@ RUSAK = [
     ('§8 no. 7 · tutup buku yang berhenti di kiriman 1 menyuruh "Lanjutkan"', 'baru/js/layar/tutup-buku-logika.js', "return awal + (ke === 1 ? ' Tidak ada yang masuk", "return awal + (false ? ' Tidak ada yang masuk"),
     ('§8 no. 8 · mulai baru membawa tanggal pembatalan lama', 'baru/js/layar/tutup-buku-logika.js', "delete acara.dariStatus; delete acara.dibatalkanPada; delete acara.dibatalkanTanggal;", "delete acara.dariStatus;"),
     ('§8 no. 9 · daftar periksa Kunci bulan tidak melihat tutup buku setengah jalan', 'baru/js/layar/kunci-periode-logika.js', "tambah({ id: 'tutupBukuTuntas', blokir: true, ok: !KMb,", "tambah({ id: 'tutupBukuTuntas', blokir: true, ok: true || !KMb,"),
-    ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
+    ('putaran 3 AAL1 · arsip tidak berhenti walau tutup buku dibatalkan dari perangkat lain', 'baru/js/layar/tutup-buku-logika.js', "const a = bkAcara(tahun); if (a && a.status === 'terkunci') return '';", "const a = bkAcara(tahun); if (true) return '';"),
+    ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des','baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]
 
