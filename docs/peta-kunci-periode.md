@@ -337,7 +337,9 @@ tidak menyentuh bulan lalu (dan tidak memakai access call).
 - **R2 [ASUMSI]** WIB tanpa musim panas = UTC+7 tetap (25200000 ms).
 - **R3** Kas bulan terkunci sudah tidak terbaca sekarang: mesin beku hanya punya **satu** titik kas yang maju tiap tutup hari. Laporan bank
   "final" untuk bulan lampau memuat kas *tidak bisa dihitung*, kecuali angkanya dipotret saat mengunci (misalnya di `riwayat` dokumen kunci;
-  bukan dokumen yang dibaca mesin). Belum diputuskan.
+  bukan dokumen yang dibaca mesin). **Terputus oleh keputusan owner 30 Sep 2026 (audit 39b no. 36):** neraca & arus kas bulan final memakai hitungan
+  fisik tutup hari akhir bulan — kolom `titik` dokumen tutupHari (`laporan-logika.js` `lpKasAkhirBulan`), bukan potret saat mengunci dan bukan `kasPada`
+  mundur. Bulan yang tutup harinya tidak menyimpan kolom itu (tutup hari lama, sebelum tutup buku bertahap) ditolak dengan kalimatnya sendiri.
 - **R4** Pratinjau §8 dihitung dengan rumus sederhana di luar mesin (penjualan berlaku = tidak dikoreksi & tidak dibatalkan). Angka di layar
   nanti dihitung ulang oleh mesin.
 - **R5 [BELUM TERVERIFIKASI]** Apakah layar `index.html` tetap menggambar perubahan yang tertahan di antrean tunda (memori: "polaritas

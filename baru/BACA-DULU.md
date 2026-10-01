@@ -1442,3 +1442,12 @@ bukunya (laba bersih sudah memotong seluruh nilai bon; disebut terpisah di panel
 margin, omzet, neraca & mesin beku tidak berubah. Uji `uji_laporan_baru.py` +3 (lintas bulan Agu → Sep, uang lebih, hapus buku; 2 angka lama diubah
 SENGAJA: Sep kotak pasir kini + 7.267) + pemeriksa kata panel, kontrol +8; ASAP GLOBAL `uji_wadah_bernama.py`: perubahan SENGAJA "no. 39" (margin yang
 lepas per bulan dihitung ulang dari cadangan; didaftarkan sebelum no. 38).
+
+## Audit 39b no. 36 — paket bank: kas bulan final dari hitungan tutup hari akhir bulan (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
+
+Keputusan owner 30 Sep. Dulu neraca & arus kas bulan FINAL memakai `kasPada` dari titik kas sekarang — selalu lebih muda, jadi kasnya "—" dengan
+kalimat salah "titik kas belum disetel", dan paket bank tetap mencetaknya. Sekarang `laporan-logika.js` `lpKasAkhirBulan(key)`: kas akhir bulan final =
+kolom `titik` tutup hari TERAKHIR di bulan itu (+ catatan uang sesudahnya sampai akhir bulan, `saldoKantong`); neraca & arus kas berkop bulan final
+(Dokumen → laporan berkop, paket bank) memakainya, kas awal arus kas = hitungan akhir bulan sebelumnya. Tanpa hitungan itu: "Kas akhir <bulan> belum bisa
+dihitung — tidak ada tutup hari di <bulan>". Paket bank ditahan bila salah satu dokumennya menolak. Bulan DRAF, layar Neraca per tanggal & mesin beku
+tidak diubah. Uji `uji_laporan_baru.py` +4 (1 lama dipindah ke kotak bertutup hari), kontrol +9 (1 lama disesuaikan).

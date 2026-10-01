@@ -11,7 +11,7 @@ import { hitungLabaRentang, hitungArusKasInti, barisSusutStok, bayaranBiayaBulan
 import { akhirBulanIso, bulanDari, namaBulanPanjang, caraBayarKunci, hppTercatat, daftarGerakanKas, namaSingkatTrx, kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai, kunciNota, jumlahNota, returUangPerHari } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek, lebihBayarDari, LEBIH_AMBANG, pecahLebih, ringkasLebih } from '../inti/format.js';
-import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan, priveRentang, pilahHarian, adalahMdr, ugLabaBersih } from './uang-logika.js';
+import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan, priveRentang, pilahHarian, adalahMdr, ugLabaBersih, saldoKantong } from './uang-logika.js';
 import { bkEra } from './tutup-buku-logika.js';
 import { notaDari, notaDariBaris, susunStruk, stAtur, namaBaris } from './struk-logika.js';
 import { riwayatUpah } from './upah-logika.js';
@@ -208,18 +208,20 @@ export function susunAturLaporan(isi, w) { const n = ugKosong(isi.asetTetap) ? 0
  * Neraca per tanggal `sampai` (bawaan: sekarang) — hitungNeraca mesin lama (kas · stok · piutang · kasbon · utang pemasok · utang ke owner) + modal owner tertanam
  * (Owner & toko) + aset tetap (isian owner). Laba ditahan = sisa aset sesudah kewajiban & modal (DIHITUNG, disebut begitu); pembandingnya laba bersih kumulatif mesin
  * sejak catatan pertama − ambil pribadi; selisihnya DITULIS sebagai "belum terjelaskan buku" (titik kas, stok awal sebelum sistem), tidak disembunyikan.
+ * kasBulan (39b no. 36, dari lpKasAkhirBulan) = kas akhir bulan FINAL dari hitungan fisik tutup hari; tanpa itu kas = kasPada mesin (bentuk & angka tetap).
  */
-export function neracaPada(sampai, kini) {
-  const iso = hariIniIso(kini); const s = sampai || null; const N = hitungNeraca(s); const modal = modalTertanam(s); const AT = aturLaporan(); const pertama = lpPertama();
+export function neracaPada(sampai, kini, kasBulan) {
+  const iso = hariIniIso(kini); const s = sampai || null; const N0 = hitungNeraca(s); const KB = kasBulan || null;
+  const N = KB ? Object.assign({}, N0, { kas: KB.kas, total: KB.kas === null ? null : Math.round(KB.kas + N0.stok + N0.piutang + N0.kasbon - N0.utangOwner - N0.utangPemasok) }) : N0; const modal = modalTertanam(s); const AT = aturLaporan(); const pertama = lpPertama();
   const kasAda = N.kas !== null; const aset = kasAda ? N.kas + N.stok + N.piutang + N.kasbon + AT.asetTetap : null; const kewajiban = N.utangPemasok + N.utangOwner; const labaDitahan = aset === null ? null : aset - kewajiban - modal;
   let labaKum = null, prive = 0; if (pertama) { labaKum = ugLabaBersih(pertama, s || iso).labaBersih; ambilPengeluaranHarian().forEach((h) => { if (h.kategori === 'owner' && h.tanggal && (!s || h.tanggal <= s)) prive += Number(h.nominal) || 0; }); }
   const menurutMesin = labaKum === null ? null : labaKum - prive; const selisihBuku = labaDitahan === null || menurutMesin === null ? null : labaDitahan - menurutMesin;
-  const harta = [['Kas (laci · brankas · rekening · amplop)', N.kas, kasAda ? '' : 'titik kas belum disetel'], ['Stok beras — karung', N.nilaiSack], ['Stok kemasan jadi', N.nilaiBags], ['Kantong & bahan', N.nilaiBahan], ['Piutang pelanggan (' + N.nPiutang + ' nama)', N.piutang], ['Kasbon pegawai & owner (' + N.nKasbon + ' nama)', N.kasbon]].concat(AT.asetTetap ? [['Aset tetap (isian owner' + (AT.asetKet ? ': ' + AT.asetKet : '') + ')', AT.asetTetap]] : []).map((r) => ({ nama: r[0], n: r[1], ket: r[2] || '' }));
+  const harta = [['Kas (laci · brankas · rekening · amplop)', N.kas, kasAda ? '' : KB ? KB.kenapa : 'titik kas belum disetel'], ['Stok beras — karung', N.nilaiSack], ['Stok kemasan jadi', N.nilaiBags], ['Kantong & bahan', N.nilaiBahan], ['Piutang pelanggan (' + N.nPiutang + ' nama)', N.piutang], ['Kasbon pegawai & owner (' + N.nKasbon + ' nama)', N.kasbon]].concat(AT.asetTetap ? [['Aset tetap (isian owner' + (AT.asetKet ? ': ' + AT.asetKet : '') + ')', AT.asetTetap]] : []).map((r) => ({ nama: r[0], n: r[1], ket: r[2] || '' }));
   const pasiva = [['Utang ke pemasok (' + N.nBonPemasok + ' bon)', N.utangPemasok], ['Utang toko ke owner', N.utangOwner], ['Modal owner tertanam', modal], ['Laba ditahan (dihitung: aset − kewajiban − modal)', labaDitahan]].map((r) => ({ nama: r[0], n: r[1], ket: '' }));
   const kataLebih = lebihNeraca(s, kasAda).kata;   // no. 4 (lihat lebihNeraca): ikut catatan → semua kertas; bentuk objek ini TETAP (ASAP GLOBAL membandingkannya byte-sama)
   const tolak = !kasAda ? 'Kas belum bisa dihitung — titik kas belum disetel; Tutup hari malam ini menyetelnya' : N.adaStokMinus ? 'Buku menyebut stok MINUS (' + N.sackMinus.concat(N.bagsMinus).slice(0, 3).join(', ') + ') — cocokkan dulu di Stok, neraca tidak dicetak' : '';
-  const catatanInti = aset === null ? 'Tanpa titik kas, sisi harta tidak utuh.' : 'Aset ' + RP(aset) + ' = kewajiban ' + RP(kewajiban) + ' + modal ' + RP(modal) + ' + laba ditahan ' + RP(labaDitahan) + '. ' + (menurutMesin === null ? '' : 'Laba bersih kumulatif mesin − ambil pribadi = ' + RP(menurutMesin) + (Math.abs(selisihBuku) > 0.5 ? '; beda ' + RP(selisihBuku) + ' belum terjelaskan buku (titik kas yang pernah disetel ulang, stok awal sebelum sistem).' : '; cocok dengan laba ditahan.'));
-  return { sampai: s || iso, N, modal, asetTetap: AT.asetTetap, aset, kewajiban, labaDitahan, labaKum, prive, menurutMesin, selisihBuku, harta, pasiva, total: N.total, tolak, seimbang: aset !== null && Math.round(aset) === Math.round(kewajiban + modal + (labaDitahan || 0)),
+  const catatanInti = aset === null ? (KB ? 'Tanpa hitungan tutup hari akhir bulan, sisi harta tidak utuh.' : 'Tanpa titik kas, sisi harta tidak utuh.') : (KB ? 'Kas ' + RP(N.kas) + ' = ' + KB.sumber + '. ' : '') + 'Aset ' + RP(aset) + ' = kewajiban ' + RP(kewajiban) + ' + modal ' + RP(modal) + ' + laba ditahan ' + RP(labaDitahan) + '. ' + (menurutMesin === null ? '' : 'Laba bersih kumulatif mesin − ambil pribadi = ' + RP(menurutMesin) + (Math.abs(selisihBuku) > 0.5 ? '; beda ' + RP(selisihBuku) + ' belum terjelaskan buku (titik kas yang pernah disetel ulang, stok awal sebelum sistem).' : '; cocok dengan laba ditahan.'));
+  return { sampai: s || iso, N, modal, asetTetap: AT.asetTetap, aset, kewajiban, labaDitahan, labaKum, prive, menurutMesin, selisihBuku, harta, pasiva, total: N.total, tolak: KB && !kasAda ? KB.tolak : tolak, seimbang: aset !== null && Math.round(aset) === Math.round(kewajiban + modal + (labaDitahan || 0)),
     catatan: catatanInti + (kataLebih ? ' ' + kataLebih : '') };
 }
 /** 39b no. 4: kelebihan bayar pelanggan (sisa negatif) tidak masuk piutang mesin (sisa > 0) dan belum punya baris kewajiban → kekayaan neraca lebih
@@ -231,6 +233,18 @@ export function lebihNeraca(sampai, asetAda) {
   const kataU = U.n ? 'Kelebihan bayar pelanggan ' + RP(U.jumlah) + ' (' + U.n + ' nama) belum dihitung sebagai kewajiban — ' + (asetAda === false ? 'begitu kas bisa dihitung, kekayaan akan terbaca lebih besar sebesar itu.' : 'kekayaan di atas lebih besar sebesar itu.') : '';
   const kataH = H.n ? RP(H.jumlah) + ' (' + H.n + ' nama) dibayar padahal sudah dihapus dari buku — kerugian hapus bukunya sebenarnya sudah dibayar; hapus bukunya perlu dibalik, bukan uang pelanggan.' : '';
   return { lebihBayar, kata: [kataU, kataH].filter(Boolean).join(' ') };
+}
+/**
+ * 39b no. 36 (owner 30 Sep 2026): kas akhir bulan FINAL (neraca & arus kas berkop, paket bank) = hitungan fisik tutup hari TERAKHIR di bulan itu — kolom `titik`
+ * dokumen tutupHari (isi tempat uang sesudah tutup malam itu; pola titikTahun tutup buku); catatan uang sesudahnya sampai akhir bulan ikut (saldoKantong). Bukan
+ * kasPada: titik kas sekarang selalu lebih muda dari bulan final dan mesin tidak menghitung mundur. Bulan tanpa hitungan itu → kas null + kalimat tolak yang benar.
+ */
+export function lpKasAkhirBulan(key) {
+  const awal = key + '-01', akhir = akhirBulanIso(key); const nama = lpNamaBulan(key); const th = ambilTutupHari().filter((d) => d && d.tanggal && d.tanggal >= awal && d.tanggal <= akhir);
+  const d = th.filter((x) => x.titik).sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)))[0];
+  if (!d) { const kenapa = th.length ? 'tutup hari ' + nama + ' belum menyimpan isi tempat uang sesudah tutup (tutup hari lama)' : 'tidak ada tutup hari di ' + nama; return { kas: null, kenapa, sumber: '', tolak: 'Kas akhir ' + nama + ' belum bisa dihitung — ' + kenapa + '. Bulan final memakai hitungan fisik tutup hari akhir bulan, bukan titik kas sekarang' }; }
+  const t = { tanggal: d.tanggal, laci: Number(d.titik.laci) || 0, rekening: Number(d.titik.rekening) || 0, amplop: Number(d.titik.amplop) || 0, brankas: Number(d.titik.brankas) || 0 };
+  return { kas: saldoKantong(akhir, t).total, kenapa: '', sumber: 'hitungan fisik tutup hari ' + tanggalPendek(t.tanggal) + (t.tanggal < akhir ? ' + catatan uang sesudahnya sampai ' + tanggalPendek(akhir) : ''), tolak: '' };
 }
 /** Catatan neraca untuk LAYAR: tanpa kalimat kelebihan bayar (layar memajangnya sebagai pita tersendiri, tetap tampil walau neraca ditolak). */
 export const catatanLayarNeraca = (NP, NL) => (NL && NL.kata && NP.catatan.endsWith(' ' + NL.kata) ? NP.catatan.slice(0, NP.catatan.length - NL.kata.length - 1) : NP.catatan);
@@ -292,14 +306,16 @@ export function laporanBerkop(jenis, keKey, rentang, kini, bayaran) {
     catatan = 'Laba bersih ' + RP(L.labaBersih) + ' = laba kotor − biaya (upah kotor, termasuk potongan QRIS ' + RP(mdr) + ') − hapus buku ± susut' + (L.lebihKurangKas ? ' ± lebih/kurang kas (selisih laci tutup hari)' : '') + '.' + (L.jumlahTanpaHpp ? ' ' + L.jumlahTanpaHpp + ' baris tanpa modal (' + RP(L.omzetTanpaHpp) + ') tidak ikut.' : '');
     if (pra.length) { const lbl = lpBulanPendek(pra[0], true) + (pra.length > 1 ? ' – ' + lpBulanPendek(pra[pra.length - 1], true) : ''); baris.unshift({ nama: lbl + ' · sebelum awal buku — tidak dijumlah', n: null }); catatan += ' ' + lpKetSebelumBuku(lbl, ugLabaBersih(dari, akhirBulanIso(pra[pra.length - 1]), B).labaBersih); }
   } else if (J[0] === 'neraca') {
-    const NP = neracaPada(sampai > iso ? iso : sampai, kini); sub = 'per ' + tanggalPendek(NP.sampai) + (bulan.length > 1 ? ' (akhir ' + periode + ')' : '');
+    const NP = neracaPada(sampai > iso ? iso : sampai, kini, final ? lpKasAkhirBulan(keKey) : null); sub = 'per ' + tanggalPendek(NP.sampai) + (bulan.length > 1 ? ' (akhir ' + periode + ')' : '');
     baris = [{ nama: 'Harta', kelas: 'kel' }].concat(NP.harta.map((r) => ({ nama: r.nama, n: r.n }))).concat([{ nama: 'Jumlah harta', n: NP.aset, kelas: 'jumlah' }, { nama: 'Kewajiban & modal', kelas: 'kel' }]).concat(NP.pasiva.map((r) => ({ nama: r.nama, n: r.n }))).concat([{ nama: 'Jumlah kewajiban & modal', n: NP.aset === null ? null : NP.kewajiban + NP.modal + NP.labaDitahan, kelas: 'jumlah' }]);
     catatan = NP.catatan; tolak = NP.tolak;
   } else {
-    const K = hitungArusKasInti((t) => !!t && t >= dari && t <= sampai, B); const kasAwal = kasPada(ugTambahHari(dari, -1)); const kasAkhir = kasPada(sampai > iso ? null : sampai); const selisih = kasAwal === null || kasAkhir === null ? null : kasAkhir - (kasAwal + K.bersih);
-    baris = [{ nama: 'Kas awal periode' + (kasAwal === null ? ' — sebelum titik kas, belum bisa dihitung' : ''), n: kasAwal }, { nama: 'Masuk', kelas: 'kel' }].concat(lpBarisAK(K, 'masuk')).concat([{ nama: 'Keluar', kelas: 'kel' }]).concat(lpBarisAK(K, 'keluar')).concat([{ nama: 'Kas bersih periode', n: K.bersih, kelas: 'jumlah' }]).concat(selisih !== null && Math.abs(selisih) > 0.5 ? [{ nama: 'Penyesuaian titik kas (disetel ulang dalam periode)', n: selisih }] : []).concat([{ nama: 'Kas akhir periode', n: kasAkhir, kelas: 'jumlah' }]);
-    catatan = kasAkhir === null ? 'Kas akhir belum bisa dihitung — titik kas belum disetel.' : 'Kas akhir ' + RP(kasAkhir) + ' = kas di neraca (satu mesin).' + (selisih !== null && Math.abs(selisih) > 0.5 ? ' Penyesuaian ' + RP(selisih) + ' = titik kas yang disetel ulang di dalam periode, bukan uang yang bergerak.' : '');
-    if (kasAkhir === null) tolak = 'Kas belum bisa dihitung — titik kas belum disetel';
+    // 39b no. 36: bulan FINAL — kas awal & akhir dari hitungan fisik tutup hari akhir bulan (lpKasAkhirBulan), sama dengan kas neraca bulan itu
+    const KA = final ? lpKasAkhirBulan(keKey) : null, KW = final ? lpKasAkhirBulan(lpGeserBulan(bulan[0], -1)) : null;
+    const K = hitungArusKasInti((t) => !!t && t >= dari && t <= sampai, B); const kasAwal = KW ? KW.kas : kasPada(ugTambahHari(dari, -1)); const kasAkhir = KA ? KA.kas : kasPada(sampai > iso ? null : sampai); const selisih = kasAwal === null || kasAkhir === null ? null : kasAkhir - (kasAwal + K.bersih);
+    baris = [{ nama: 'Kas awal periode' + (kasAwal === null ? (KW ? ' — ' + KW.kenapa + ', belum bisa dihitung' : ' — sebelum titik kas, belum bisa dihitung') : ''), n: kasAwal }, { nama: 'Masuk', kelas: 'kel' }].concat(lpBarisAK(K, 'masuk')).concat([{ nama: 'Keluar', kelas: 'kel' }]).concat(lpBarisAK(K, 'keluar')).concat([{ nama: 'Kas bersih periode', n: K.bersih, kelas: 'jumlah' }]).concat(selisih !== null && Math.abs(selisih) > 0.5 ? [{ nama: 'Penyesuaian titik kas (disetel ulang dalam periode)', n: selisih }] : []).concat([{ nama: 'Kas akhir periode', n: kasAkhir, kelas: 'jumlah' }]);
+    catatan = kasAkhir === null ? (KA ? KA.tolak + '.' : 'Kas akhir belum bisa dihitung — titik kas belum disetel.') : 'Kas akhir ' + RP(kasAkhir) + ' = kas di neraca (' + (KA ? KA.sumber : 'satu mesin') + ').' + (selisih !== null && Math.abs(selisih) > 0.5 ? ' Penyesuaian ' + RP(selisih) + ' = titik kas yang disetel ulang di dalam periode, bukan uang yang bergerak.' : '');
+    if (kasAkhir === null) tolak = KA ? KA.tolak : 'Kas belum bisa dihitung — titik kas belum disetel';
   }
   if (!tolak && !I.lengkap) tolak = 'Kop belum lengkap: nama & alamat wajib (Setelan → Kop & identitas)';
   return { jenis: J[0], namaJenis: J[1], judul, sub: sub + ' · ' + (final ? 'FINAL (tutup buku)' : 'DRAF — belum tutup buku'), periode, bulan, dari, sampai, final, cap: final ? '' : 'DRAF', baris: baris.map((r) => ({ nama: r.nama, n: r.n === undefined ? null : r.n, kelas: r.kelas || '', teks: r.n === undefined ? '' : r.n === null ? '—' : RP(r.n) })), catatan, tolak, kop: kopUntuk(pakaiKop().pakai.laporan, I) };
@@ -310,7 +326,9 @@ export function paketBank(pilih, kini) {
   const nPilih = isi.filter((x) => x.dipilih).length; const I = identitasUsaha();
   const tolak = !F ? 'Belum ada bulan yang tutup buku — bank butuh angka FINAL; sampai tutup buku pertama, cetak laporan biasa bercap DRAF' : !nPilih ? 'Pilih isi paketnya' : !I.lengkap ? 'Kop belum lengkap: nama & alamat wajib' : '';
   const daftar = !tolak ? isi.filter((x) => x.dipilih).map((x) => (x.id === 'omzet' ? { jenis: 'omzet', judul: 'Rekap Omzet Bulanan', periode: '12 bulan', R } : laporanBerkop(x.id, F.key, x.id === 'neraca' ? 1 : 3, kini))) : [];
-  return { isi, nPilih, F, tolak, daftar, ket: F ? 'Semua dari bulan FINAL (sampai ' + F.nama + '). Bulan berjalan tidak ikut — bank butuh angka yang sudah tutup buku.' + (!I.npwp ? ' NPWP belum ada: paket tetap bisa disusun, barisnya kosong.' : '') : 'Belum pernah tutup buku — belum ada bulan final.' };
+  // 39b no. 36: dokumen yang menolak dirinya (kas akhir bulan final tanpa tutup hari, stok minus) menahan paket — dulu ikut dicetak dengan kas "—"
+  const tolakDok = daftar.filter((d) => d.tolak).map((d) => d.judul + ': ' + d.tolak)[0] || '';
+  return { isi, nPilih, F, tolak: tolak || tolakDok, daftar, ket: F ? 'Semua dari bulan FINAL (sampai ' + F.nama + '). Bulan berjalan tidak ikut — bank butuh angka yang sudah tutup buku.' + (!I.npwp ? ' NPWP belum ada: paket tetap bisa disusun, barisnya kosong.' : '') : 'Belum pernah tutup buku — belum ada bulan final.' };
 }
 /** Banding laba-rugi dua bulan. */
 export function bandingLabaRugi(a, b, kini, bayaran) {
