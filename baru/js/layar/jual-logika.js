@@ -687,6 +687,12 @@ function maksSebelum(s, i, chip) {
   return maks;
 }
 const kgTeks = (n) => String(Math.round(n * 10) / 10).replace('.', ',') + ' kg';
+// 39b no. 27: pertanyaan "jual dulu, tandai" milik keranjang & buku SAAT ditanya. Ketukan kedua hanya sah untuk daftar yang sama (baris · nama · kg);
+// patch yang mengganti keranjang (tambah, hapus, ubah, nego, bonus, parkir, buka struk lain, karcis) membuang pertanyaannya.
+const sidikTembus = (d) => (d || []).filter((t) => t.selisihKg > 0.004).map((t) => t.id + '|' + t.nama + '|' + t.selisihKg).join(';');
+export function lepasTembusBasi(s, patch) {
+  return patch && typeof patch === 'object' && patch.keranjang && patch.keranjang !== s.keranjang && !('tembusTanya' in patch) ? Object.assign({}, patch, { tembusTanya: null }) : patch;
+}
 /** Nota bertanda `perluCocokkan` yang belum tuntas: belum ada cocokkan nama itu bertanggal ≥ tanggal nota (karung/literan/repack: penyesuaianStok bukan rework; kemasan: penyesuaianKemasan). */
 export function notaTembusBelumCocok() {
   const PS = ambilPenyesuaianStok().filter((q) => !q.dariRework); const PK = ambilPenyesuaianKemasan(); const out = [];
@@ -877,7 +883,8 @@ export function simpanNota(s, w) {
   if (stok) {
     tembus = s.tembusBoleh ? barisTembus(s) : [];
     if (!tembus.length || tembus[0].teks !== stok) return { tolak: stok };   // staf, atau masalahnya bukan langit-langit buku (kantong repack)
-    if (!s.tembusYakin) return { tolak: stok + '. Buku ' + tembus.filter((t) => t.selisihKg > 0.004).map((t) => t.nama + ' kurang ' + kgTeks(t.selisihKg)).join(', ') + ' — jual dulu, tandai untuk dicocokkan? Buku dibiarkan minus sampai dicocokkan', perluTembus: tembus.filter((t) => t.selisihKg > 0.004) };
+    const basi = s.tembusYakin && sidikTembus(tembus) !== sidikTembus(s.tembusTanya);   // 39b no. 27: keranjang / buku berubah sejak ditanya → tanya ulang
+    if (!s.tembusYakin || basi) return { tolak: (basi ? 'Berubah sejak ditanyakan — ' : '') + stok + '. Buku ' + tembus.filter((t) => t.selisihKg > 0.004).map((t) => t.nama + ' kurang ' + kgTeks(t.selisihKg)).join(', ') + ' — jual dulu, tandai untuk dicocokkan? Buku dibiarkan minus sampai dicocokkan', perluTembus: tembus.filter((t) => t.selisihKg > 0.004) };
   }
   const ids = {}; tembus.forEach((t) => { if (t.selisihKg > 0.004) ids[t.id] = t; });   // baris yang kekurangannya sudah ditanggung baris lain tidak ditandai
   const s2 = tembus.length ? Object.assign({}, s, { keranjang: s.keranjang.map((b) => (ids[b.id] ? Object.assign({}, b, { trx: Object.assign({}, b.trx, { perluCocokkan: true, selisihKg: ids[b.id].selisihKg }) }) : b)) }) : s;

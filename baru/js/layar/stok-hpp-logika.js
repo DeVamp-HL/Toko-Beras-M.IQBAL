@@ -37,7 +37,8 @@ export function susunAturHpp(isi, w) {
 export function riwayatModal(merk) {
   const out = [];
   ambilSemuaBatch().slice().sort(hpUrutLama).forEach((k) => {
-    hitungHppMerkDalamBatch((k.merkList || []).filter((m) => m.bentuk !== 'bal'), Number(k.biayaBongkar) || 0).forEach((m) => { if (m.merk !== merk || !(m.totalKg > 0)) return;
+    // audit 39b no. 30: bongkar dibagi ke SEMUA baris seperti mesin (hitungStokKarungPerMerk) — porsi baris bal milik modal per bag beli-jadi; baris bal sendiri dilewati
+    hitungHppMerkDalamBatch(k.merkList || [], Number(k.biayaBongkar) || 0).forEach((m) => { if (m.bentuk === 'bal' || m.merk !== merk || !(m.totalKg > 0)) return;
       out.push({ jenis: 'kedatangan', batchId: k.id, tanggal: k.tanggal || '', jam: k.jam || '', pemasok: k.pemasok || (k.stokAwal ? 'stok awal' : k.tutupBuku ? 'saldo pembuka' : '—'), fondasi: hpFondasi(k), dikoreksi: !!k.alasanKoreksi,
         hargaPerKg: Number(m.hargaPerKg) || 0, hppPerKg: m.hppPerKg, totalKg: m.totalKg, beratKarung: Number(m.beratKarung) || 50, merkPemasok: String(m.merkPemasok || ''),   // putaran 30: merek pemasok pada kedatangan kelas tanpa wadah
         sumber: (hpFondasi(k) ? (k.stokAwal ? 'stok awal (fondasi)' : 'saldo pembuka (fondasi)') : 'kedatangan ' + (k.pemasok || '')) + (m.merkPemasok ? ' · merek ' + m.merkPemasok : '') + (k.alasanKoreksi ? ' · dikoreksi' : '') }); });
@@ -87,7 +88,7 @@ export function nilaiKoreksi(merk, hargaBaru) {
   // audit 39b no. 2 (tinjauan 30 Sep): kedatangan sasaran bon yang sudah dibayar — nilai bon sesudah harga baru tidak boleh di bawah yang dibayar.
   // Diperiksa DI SINI supaya kartu, pratinjau, dan koreksi massal menolak lebih dulu dengan nama berasnya (susunSimpanMasuk tetap pagar terakhir).
   const bt = ambilSemuaBatch().find((b) => String(b.id) === String(target.batchId)); const bb = bt ? ckBayarBonId(bt.id) : null;
-  if (bb && bb.dibayar > 0) { const nilaiBon = (bt.merkList || []).reduce((a, m) => a + (m.bentuk === 'bal' ? 0 : m.merk === merk ? (Number(m.totalKg) || 0) * n : (Number(m.subtotalHarga) || 0)), 0);   // baris bal ikut terbuang saat ditulis (temuan no. 30)
+  if (bb && bb.dibayar > 0) { const nilaiBon = (bt.merkList || []).reduce((a, m) => a + (m.bentuk === 'bal' ? (Number(m.subtotalHarga) || 0) : m.merk === merk ? (Number(m.totalKg) || 0) * n : (Number(m.subtotalHarga) || 0)), 0);   // baris bal ikut tertulis apa adanya, harganya tidak dikoreksi (audit 39b no. 30)
     if (nilaiBon + 0.5 < bb.dibayar) return { tolak: merk + ': kedatangan terakhirnya (' + target.pemasok + ' ' + target.tanggal + ') bon yang sudah dibayar ' + RP(bb.dibayar) + ' — harga ' + RP(n) + '/kg membuat nilai bonnya ' + RP(nilaiBon) + ', di bawah yang dibayar; kelebihannya akan pindah ke bon lain tanpa uang' }; }
   const bongkarPerKg = target.hppPerKg - target.hargaPerKg; const hppBaru = n + bongkarPerKg;
   const T = totalMasuk(merk); const nilaiBaru = T.nilai - target.hppPerKg * target.totalKg + hppBaru * target.totalKg; const modalBaru = T.kg > 0 ? nilaiBaru / T.kg : 0;
@@ -125,7 +126,7 @@ function hpKunciBonGabung(nilai) {
   const per = {}; Object.keys(nilai).forEach((m) => { const id = String(nilai[m].target.batchId); (per[id] = per[id] || []).push(m); });
   const salah = {};
   Object.keys(per).forEach((id) => { const ms = per[id]; if (ms.length < 2) return; const bt = ambilSemuaBatch().find((b) => String(b.id) === id); const bb = bt ? ckBayarBonId(id) : null; if (!bb || !bb.dibayar) return;
-    const nilaiBon = (bt.merkList || []).reduce((a, x) => a + (x.bentuk === 'bal' ? 0 : ms.indexOf(x.merk) >= 0 ? (Number(x.totalKg) || 0) * nilai[x.merk].n : (Number(x.subtotalHarga) || 0)), 0);   // baris bal ikut terbuang saat ditulis (temuan no. 30)
+    const nilaiBon = (bt.merkList || []).reduce((a, x) => a + (x.bentuk === 'bal' ? (Number(x.subtotalHarga) || 0) : ms.indexOf(x.merk) >= 0 ? (Number(x.totalKg) || 0) * nilai[x.merk].n : (Number(x.subtotalHarga) || 0)), 0);   // baris bal ikut tertulis apa adanya, harganya tidak dikoreksi (audit 39b no. 30)
     if (nilaiBon + 0.5 >= bb.dibayar) return; const tg = nilai[ms[0]].target;
     const t = ms.join(' + ') + ': kedatangan terakhirnya sama (' + tg.pemasok + ' ' + tg.tanggal + '), bon yang sudah dibayar ' + RP(bb.dibayar) + ' — harga baru BERSAMA membuat nilai bonnya ' + RP(nilaiBon) + ', di bawah yang dibayar; kelebihannya akan pindah ke bon lain tanpa uang';
     ms.forEach((m) => { salah[m] = t; }); });

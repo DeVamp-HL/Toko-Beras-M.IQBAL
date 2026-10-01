@@ -105,7 +105,7 @@ def periksa(t, teks):
     ok('jual: tersembunyi → cukup ditandai kotor, digambar saat dibuka', "if (!_tampil) { _kotor = true; return; }" in jl and 'tampilkan, belumDisimpan' in jl)
     ok('jual: ketukan pemakai tetap seketika (K.dengar menggambar langsung)', "K.dengar(() => { gambar(); gulirkan(akar, RP); });" in jl)
     ok('app: pindah() memberi tahu Jual kapan terlihat', "layar.tampilkan(tujuan === 'jual');" in app)
-    ok('app: status sambungan mengantre fungsi gambar YANG SAMA dengan pendengar data (tanpa gambar ganda) lalu setelMuat', 'const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar, stok.gambar, menu.gambar, harga.gambar, uang.gambar, laporan.gambar];' in app
+    ok('app: status sambungan mengantre fungsi gambar YANG SAMA dengan pendengar data (tanpa gambar ganda) lalu setelMuat', 'const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar, stok.gambar, pelanggan.gambar, menu.gambar, harga.gambar, uang.gambar, laporan.gambar];' in app
        and re.search(r"fb\.dengarkanStatus\(\(st\) => \{ statusFb = st; gambarChipDanNav\(\); GAMBAR_STATUS\.forEach\(nanti\); setelMuat\([^;]*\); \}\)", app) is not None and 'gambar: perbaruiData,' in t['baru/js/layar/ringkasan.js'])
     ok('app: tidak ada lagi gambar ulang SEMUA layar langsung di bunyi status', 'fb.dengarkanStatus((st) => { statusFb = st; gambarChipDanNav(); layar.gambar();' not in app)
     # --- gerak
