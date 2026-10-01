@@ -23,7 +23,7 @@ import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaK
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
-  wzDiKeranjangParkir, sumberData, cacheMentah, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan, denganCacheSementara } from '../data/toko.js';
+  wzDiKeranjangParkir, sumberData, cacheMentah, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan, returUangPerHari, denganCacheSementara } from '../data/toko.js';
 import { hariIniIso, RP, tanggalPendek, pecahLebih } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
@@ -368,10 +368,12 @@ export function hariIni(s) {
   const iso = hariIniIso(s.sekarang);
   const baris = ambilPenjualan().filter((p) => p.tanggal === iso);
   const nota = new Set(baris.map(jlKunciNota)).size;
-  const omzet = baris.reduce((a, p) => a + (p.hargaTotal || 0), 0);
+  // 39b no. 19: omzet = penjualan − uang retur hari itu (satu arti dengan Laporan & Pajak); per cara bayar tetap penjualan, retur disebut sendiri (Σ menutup)
+  const retur = Math.round(((returUangPerHari()[iso] || {}).uang) || 0);
+  const omzet = baris.reduce((a, p) => a + (p.hargaTotal || 0), 0) - retur;
   const perCara = {}; baris.forEach((p) => { const c = bakuCaraBayar(p.caraBayar); perCara[c] = (perCara[c] || 0) + (p.hargaTotal || 0); });
   const terakhir = gabungTakaran(baris).slice(0, 6).map((p) => ({ jam: p.jam || '', nama: p.namaPelanggan || '', teks: ringkasBaris(p), n: p.hargaTotal || 0, cara: bakuCaraBayar(p.caraBayar), id: p.id, trxId: p.trxId || '', grupNota: p.grupNota || '' }));
-  return { iso, nota, baris: baris.length, omzet, perCara, terakhir, kg: baris.reduce((a, p) => a + (p.totalKg || 0), 0) };
+  return { iso, nota, baris: baris.length, omzet, retur, perCara, terakhir, kg: baris.reduce((a, p) => a + (p.totalKg || 0), 0) };
 }
 function ringkasBaris(p) {
   if (p.jenis === 'kemasan') return (p.namaProduk || '') + ' ' + (p.ukuranKemasan || '') + ' kg × ' + (p.jumlahUnit || '');

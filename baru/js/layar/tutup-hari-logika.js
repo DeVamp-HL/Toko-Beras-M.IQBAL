@@ -15,7 +15,7 @@
 //  - pengaturan/titikKas = isi tempat uang SESUDAH tutup (laci akhir, rekening, amplop + sisihan, brankas + amankan) — patokan kas maju, inti ritualnya.
 import { kasPada, hitungLabaBersihRentang, hitungStokKarungPerMerk, thDorongRiwayat } from '../mesin/beku.js';
 import { daftarGerakanKas, caraBayarKunci } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah, kunciNota } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah, kunciNota, returUangPerHari } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import { aturHarga, hgPct } from './harga-logika.js';
 import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan } from './uang-logika.js';
@@ -59,7 +59,9 @@ export function ringkasHari(iso) {
   const mdrDok = ambilPengeluaranHarian().find((h) => String(h.id) === 'mdr-' + iso) || null; const mdrTercatat = mdrDok ? Number(mdrDok.nominal) || 0 : 0;
   const L = hitungLabaBersihRentang(iso, iso); const labaSebelumMdr = L.labaBersih + mdrTercatat;
   const semua = ambilPenjualan(); const rapikan = semua.filter((p) => p.perluKoreksi).length; const darurat = semua.filter((p) => p.jenis === 'kasir_darurat_nominal').length;
-  return { iso, nota: new Set(jual.map(kunciNota)).size, baris: jual.length, tunai, qris, qrisJual, qrisBon, qrisKasbon, qrisNota, kredit, omzet: tunai + qrisJual + kredit, bonDibayar, mdrKira: qrisNota.reduce((a, q) => a + q.mdr, 0), mdrTercatat, labaSebelumMdr, laba: L, rapikan, darurat, sudah: ambilTutupHari().find((t) => t.tanggal === iso) || null, atur: A };
+  // no. 19: omzet di layar = penjualan − uang retur (satu arti dengan Laporan & Jual); R.omzet tetap PENJUALAN (dokumen tutupHari.omzet dibaca sistem lama)
+  const retur = Math.round(((returUangPerHari()[iso] || {}).uang) || 0);
+  return { iso, nota: new Set(jual.map(kunciNota)).size, baris: jual.length, retur, tunai, qris, qrisJual, qrisBon, qrisKasbon, qrisNota, kredit, omzet: tunai + qrisJual + kredit, bonDibayar, mdrKira: qrisNota.reduce((a, q) => a + q.mdr, 0), mdrTercatat, labaSebelumMdr, laba: L, rapikan, darurat, sudah: ambilTutupHari().find((t) => t.tanggal === iso) || null, atur: A };
 }
 /** Tiga merek yang paling banyak keluar hari ini (kg) untuk ditimbang cepat, dengan angka catatan (kg di buku).
  *  Putaran 39 (owner 29 Sep e): buku KHUSUS (petaBukuWadah — 'Wadah X', 'Karung belakang …', 'Karung wadah …', 'Adukan …') tidak ditawarkan di sini:
@@ -122,7 +124,7 @@ export function hitungTutup(D, kini) {
 }
 /** Baris rekap (dibaca kertas, teks WA, dan dokumen). */
 export function rekapTutup(H) {
-  const R = H.R; const rows = [['Omzet · ' + R.nota + ' nota', RP(R.omzet), ''], ['  tunai', RP(R.tunai), ''], ['  QRIS', RP(R.qrisJual), ''], ['  bon baru', RP(R.kredit), ''], ['Bon dibayar tunai', RP(R.bonDibayar), '']].concat(R.qrisBon > 0 ? [['Bon dibayar QRIS', RP(R.qrisBon), '']] : [], R.qrisKasbon > 0 ? [['Kasbon kembali QRIS', RP(R.qrisKasbon), '']] : [], [
+  const R = H.R; const rows = [[(R.retur ? 'Penjualan · ' : 'Omzet · ') + R.nota + ' nota', RP(R.omzet), ''], ['  tunai', RP(R.tunai), ''], ['  QRIS', RP(R.qrisJual), ''], ['  bon baru', RP(R.kredit), '']].concat(R.retur ? [['Retur & refund', '−' + RP(R.retur), ''], ['Omzet (sudah dikurangi retur)', RP(R.omzet - R.retur), '']] : [], [['Bon dibayar tunai', RP(R.bonDibayar), '']]).concat(R.qrisBon > 0 ? [['Bon dibayar QRIS', RP(R.qrisBon), '']] : [], R.qrisKasbon > 0 ? [['Kasbon kembali QRIS', RP(R.qrisKasbon), '']] : [], [
     ['Potongan QRIS (MDR) · ' + (H.mdrDicatat ? (H.rekNyata !== null ? 'sebenarnya' : 'perkiraan') : 'perkiraan, belum dicatat'), '−' + RP(H.mdrDicatat ? H.mdrJadi : R.mdrKira), ''], ['Laba hari ini · sudah dipotong MDR', RP(H.labaHari), ''],
     ['Laci dihitung', H.hitung > 0 ? RP(H.hitung) : 'belum', H.hitung > 0 ? '' : 'awas'], ['Selisih laci', H.hitung > 0 ? (H.selisih === null ? 'tidak bisa dihitung' : H.selisih === 0 ? 'pas' : RP(H.selisih) + (H.perluAlasan && H.alasanJadi ? ' · ' + H.alasanJadi : '')) : '—', H.hitung > 0 && H.selisih !== 0 ? 'awas' : ''],
     ['Disisihkan ke amplop laba', H.sisihJadi > 0 ? RP(H.sisihJadi) : (H.status.find((s) => s.id === 'sisih').st === 'dilewati' ? 'dilewati' : 'belum'), ''], ['Diamankan ke brankas', H.amankanJadi > 0 ? RP(H.amankanJadi) : (H.status.find((s) => s.id === 'amankan').st === 'dilewati' ? 'dilewati' : 'belum'), ''],

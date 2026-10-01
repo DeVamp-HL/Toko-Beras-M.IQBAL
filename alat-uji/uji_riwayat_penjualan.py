@@ -95,7 +95,7 @@ if (CADANGAN) {
   Object.keys(CADANGAN).forEach(function (n) { pasok(n, CADANGAN[n]); });
   var K2 = new Date(TGL_CAD + 'T23:00:00'); var RA = rwSusun({ rwPeriode: 'semua', rwN: 1e9 }, K2);
   var hariBeda = RA.hari.filter(function (h) { return h.bersih !== Math.round(rekapHari(h.tanggal).omzet); }).map(function (h) { return h.tanggal; });
-  var notaBeda = RA.hari.filter(function (h) { var st = keadaanAwal(); st.sekarang = new Date(h.tanggal + 'T12:00:00'); return hariIni(st).nota !== h.nNota || Math.round(hariIni(st).omzet) !== h.omzet; }).map(function (h) { return h.tanggal; });
+  var notaBeda = RA.hari.filter(function (h) { var st = keadaanAwal(); st.sekarang = new Date(h.tanggal + 'T12:00:00'); return hariIni(st).nota !== h.nNota || Math.round(hariIni(st).omzet) !== (h.bersih === null ? h.omzet : h.bersih); }).map(function (h) { return h.tanggal; });   // 39b no. 19: omzet "Hari ini" = bersih retur (= "… = omzet" riwayat)
   var sumBerlaku = Math.round(ambilPenjualan().reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0));
   var hariJual = {}; ambilPenjualan().forEach(function (p) { hariJual[p.tanggal] = 1; });
   asap = { nota: RA.n, hari: RA.hari.length, hariJual: Object.keys(hariJual).length, total: RA.omzet, sumBerlaku: sumBerlaku, retur: RA.retur, bersih: RA.bersih, hariBeda: hariBeda, notaBeda: notaBeda, semua: rwSemuaNota().length };

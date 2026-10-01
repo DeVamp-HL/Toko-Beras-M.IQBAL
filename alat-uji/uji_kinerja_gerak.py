@@ -144,6 +144,7 @@ def periksa(t, teks):
     ok('penutup: nota berdekatan → patokan terlama, hanya token terakhir yang melepas', "const hariTadi = _tahanHari && Date.now() < _tahanHari.sampai ? _tahanHari.hari : L.hariIni(S());" in jl and "if (!tahan || tahan.token !== token) return;" in jl and "if (!_tahanHari || _tahanHari.token !== token) {" in jl)
     ok('penutup: dihitung ULANG saat mendarat (batal selagi koin terbang → tanpa +Rp)', "const naik = L.hariIni(S()).omzet - tahan.hari.omzet;" in jl and "if (!(naik > 0)) return;" in jl)
     ok('penutup: terkunci (sudah Keluar) → berhenti, tidak menggambar apa pun', jl.count("if (terkunci()) { _tahanHari = null;") == 2)
+    ok('penutup 39b-19: tanpa adegan (kurangi gerakan) yang dirayakan = kenaikan SUNGGUHAN Hari ini (nota tukar membawa retur), bukan Σ hargaTotal nota', "setTimeout(() => rayakanOmzet(L.hariIni(S()).omzet - hariTadi.omzet), 80);" in jl and 'rayakanOmzet(tambahOmzet)' not in jl)
     ok('penutup: lembar terbuka (Mac) → koin ke pil, bukan ke kartu yang tertutup', "const terlihat = !!r && r.width > 0 && r.top >= 0 && r.bottom <= innerHeight - 90 && !adaLembar;" in jl)
     return out
 
@@ -166,6 +167,7 @@ KONTROL = [
     ('getar menempel', {'baru/js/inti/gerbang.js': [("|| (t !== 'salah' && /^goyang[12]$/.test(c))", "")]}),
     ('formulir sekilas di jalur cepat', {'baru/css/gerbang.css': [('.gerbang-masuk.t-membuka.cepat .gm-pelat { visibility: hidden; animation: none; }\n', '')]}),
     ('harga digambar ulang tiap dibuka', {'baru/js/layar/harga.js': [('if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } }', 'if (tampil) segera(gambar); } }')]}),
+    ('39b-19: tanpa adegan merayakan Σ hargaTotal (tukar dirayakan penuh)', {'baru/js/layar/jual.js': [('setTimeout(() => rayakanOmzet(L.hariIni(S()).omzet - hariTadi.omzet), 80);', 'setTimeout(() => rayakanOmzet(tambahOmzet), 80);')]}),
     ('gambar ganda status', {'baru/js/app.js': [('const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar,', 'const GAMBAR_STATUS = [() => layar.gambar(), ringkasan.gambar,')]}),
 ]
 

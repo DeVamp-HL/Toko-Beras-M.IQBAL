@@ -296,9 +296,23 @@ def _syarat24(c, m, cad):
     return True
 
 
+def _no19label(h):
+    """39b no. 19 (tinjauan v2): angka SEBELUM retur di Laba berganti nama "Omzet terhitung" → "Penjualan terhitung" — samakan namanya saja."""
+    h = json.loads(json.dumps(h))
+    for L in h.get('laba') or []:
+        if L: L['terjun'] = [dict(r, nama='Omzet terhitung') if r.get('nama') == 'Penjualan terhitung' else r for r in (L.get('terjun') or [])]
+    return h
+
+
+def _syarat19label(c, m, cad):
+    """hanya NAMA baris yang berubah: sesudah nama disamakan, laporan cabang byte-sama dengan main (tidak ada angka yang bergeser)."""
+    return json.dumps(_no19label(c), sort_keys=True) == json.dumps(_no19label(m), sort_keys=True)
+
+
 SENGAJA = [
     ('no. 20 hitung nota', 'baru/js/data/toko.js', 'export function jumlahNota', _no20, _syarat20),
     ('no. 24 potongan QRIS satu aturan', 'baru/js/layar/uang-logika.js', 'export const adalahMdr', _no24, _syarat24),
+    ('no. 19 nama angka sebelum retur', 'baru/js/layar/laporan-logika.js', "[['Penjualan terhitung', omzetKotor]]", _no19label, _syarat19label),
 ]
 
 
