@@ -25,6 +25,7 @@ Yang dijaga:
   N4  kiriman yang belum diakui server (masih di antrean perangkat) bukan "masuk": pita fase tunggu, Lanjutkan & Batalkan menolak sampai antrean kosong
   N5  penjualan di antara kiriman 1 dan Lanjutkan (hari yang sama) → periksa ulang tidak berbunyi palsu (patokan diambil tepat sebelum kiriman pertama sesi itu)
   N6  "selesaikan" ditolak selama arsip belum habis; periksa ulang beda = ditolak menyebut barisnya, baru diterima pada ketukan kedua (dicatat di berita acara)
+  N7  kalimat berhenti: kiriman 1 tutup buku → "Kunci tahun" lagi; kiriman 1 pembatalan → "Batalkan" lagi (Lanjutkan = meneruskan tutup buku); sesudahnya "Lanjutkan"
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -233,6 +234,18 @@ coba('N6', function () { kotak(5); W = jam('2027-01-05T10:00:00+07:00'); R = sus
   var S2 = susunSelesai(2026, 'cadangan-sesudah.json', W, true); if (!S2.tolak) kirim(S2);
   ok('N6 ketukan kedua: selesai; berita acara mencatat periksa ulang yang beda', !S2.tolak && acara(2026).status === 'selesai' && !!acara(2026).periksaUlang && acara(2026).periksaUlang.sama === false && /Piutang/.test(acara(2026).periksaUlang.beda.join()), J(S2.tolak || acara(2026).periksaUlang)); });
 
+// ---- §8 no. 7 · kalimat bila berhenti menyebut tombol yang BENAR-BENAR meneruskan hal itu
+function kabarBerhenti() { return typeof kabarBerhentiBuku === 'function' ? kabarBerhentiBuku.apply(null, arguments) : '(kalimat ada di uang.js, tidak bisa diuji)'; }
+coba('N7', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W);
+  var ka = kabarBerhenti('kunci', 2026, 1, R.kiriman.length, { gagal: true, pesan: 'ditolak server' });
+  ok('N7 tutup buku berhenti di kiriman 1 (tidak ada yang masuk, pita lanjut tidak ada): kalimat menyuruh "Kunci tahun" lagi, bukan "Lanjutkan"', kemajuanBuku() === null && /"Kunci tahun/.test(ka) && !/Lanjutkan/.test(ka), ka);
+  kirim(R.kiriman[0]); kirim(R.kiriman[1]); B = susunBatal(2026, [], W); var KM = kemajuanBuku(); var kb = kabarBerhenti('batal', 2026, 1, B.kiriman.length, { gagal: true, pesan: 'ditolak server' });
+  ok('N7 pembatalan berhenti di kiriman 1 (pita masih fase pembuka — "Lanjutkan" = meneruskan TUTUP BUKU): kalimat menyuruh "Batalkan" lagi', !!KM && KM.fase === 'pembuka' && /"Batalkan" lagi/.test(kb) && !/ketuk "Lanjutkan"/.test(kb), J([KM && KM.fase, kb]));
+  var kd = kabarBerhenti('batal', 2026, 1, B.kiriman.length, { antre: true });
+  ok('N7 kiriman 1 pembatalan belum diakui server: tunggu antrean dulu, lalu "Lanjutkan" HANYA bila pita menyebut pembatalan, selain itu "Batalkan" lagi', /menunggu server/.test(kd) && /"Batalkan" lagi/.test(kd), kd);
+  kirim(B.kiriman[0]); var kc = kabarBerhenti('batal', 2026, 2, B.kiriman.length, { gagal: true, pesan: 'ditolak server' });
+  ok('N7 pembatalan berhenti sesudah kiriman 1 masuk (pita fase batal): kalimat menyuruh "Lanjutkan" untuk meneruskan pembatalan', B.kiriman.length >= 2 && (kemajuanBuku() || {}).fase === 'batal' && /ketuk "Lanjutkan" untuk meneruskan pembatalan/i.test(kc), J([B.kiriman.length, kc])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -268,7 +281,8 @@ def utama(js):
 
 
 STATIS = [
-    ('kiriman bertahap menunggu pengakuan server & berhenti dengan kalimat kiriman ke-n', ["await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true })", "'Berhenti di kiriman ' + k.ke + ' dari ' + k.total"]),
+    ('kiriman bertahap menunggu pengakuan server & berhenti dengan kalimat kiriman ke-n', ["await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true })", "kabar: BK.kabarBerhentiBuku('kunci', tahun, k.ke, k.total, h)"]),
+    ('§8 no. 7 · pembatalan yang berhenti memakai kalimat yang menyebut tombol yang benar', ["kabar: BK.kabarBerhentiBuku('batal', tahun, i + 1, r.kiriman.length, h)"]),
     ('pita kemajuan K6: lanjutkan / batalkan / selesaikan', ["BK.kemajuanBuku()", 'data-aksi="bkLanjut"', 'data-k="tb-selesaikan"']),
     ('langkah 7 memakai tahun yang terkunci', ["const tahun = KM7 && KM7.fase === 'selesaikan' ? KM7.tahun :"]),
     ('patokan kas tahun di layar (bukan titik kas sekarang)', ["const SB = BK.barisTahun(T.tahun); const B = s.sesudahLive || bandingB(s, T);", "const bandingB = (s, T) => { const SB = BK.barisTahun(T.tahun);"]),
@@ -307,6 +321,8 @@ RUSAK = [
     ('§8 no. 5 · Lanjutkan memakai patokan periksa ulang dari saat MULAI', 'baru/js/layar/tutup-buku-logika.js', "const kunci = Object.assign({}, a, { status: 'terkunci', hariIni: { tanggal: hari, baris:", "const kunci = Object.assign({}, a, { status: 'terkunci', hariIniBaru: { tanggal: hari, baris:"),
     ('§8 no. 6 · selesai tanpa memeriksa arsip & periksa ulang', 'baru/js/layar/tutup-buku-logika.js', "  const sisa = arsipBuku(tahun).n; if (sisa) return { tolak: ANGKA(sisa) + ' catatan '", "  const sisa = 0; if (sisa) return { tolak: ANGKA(sisa) + ' catatan '"),
     ('§8 no. 6 · selesai menerima periksa ulang yang beda tanpa ketukan kedua', 'baru/js/layar/tutup-buku-logika.js', "  if (kal && !yakin) return {", "  if (kal && !yakin && false) return {"),
+    ('§8 no. 7 · pembatalan yang berhenti di kiriman 1 menyuruh "Lanjutkan"', 'baru/js/layar/tutup-buku-logika.js', "return awal + (ke === 1 ? ' Belum ada yang ditarik", "return awal + (false ? ' Belum ada yang ditarik"),
+    ('§8 no. 7 · tutup buku yang berhenti di kiriman 1 menyuruh "Lanjutkan"', 'baru/js/layar/tutup-buku-logika.js', "return awal + (ke === 1 ? ' Tidak ada yang masuk", "return awal + (false ? ' Tidak ada yang masuk"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]

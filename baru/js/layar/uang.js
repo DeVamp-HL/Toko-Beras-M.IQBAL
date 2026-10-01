@@ -261,7 +261,7 @@ export function pasangLayarUang(akar, opsi) {
     for (let i = 0; i < kiriman.length; i += 1) {
       const k = kiriman[i]; set({ progres: { sudah: k.ke - 1, total: k.total, satuan: 'kiriman saldo pembuka' } });
       let h = null; try { h = await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true }); } catch (e) { h = { gagal: true, pesan: e && e.message ? e.message : String(e) }; }
-      if (!h || h.gagal || h.antre) { set({ sibuk: false, progres: null, kabar: 'Berhenti di kiriman ' + k.ke + ' dari ' + k.total + (h && h.pesan ? ' — ' + h.pesan : ' — server belum mengaku') + '. Tahun ' + tahun + ' BELUM tertutup (yang sudah masuk belum dihitung). Ketuk "Lanjutkan" — yang sudah masuk tidak dikirim ulang — atau "Batalkan".', kabarAwas: true }); return false; }
+      if (!h || h.gagal || h.antre) { set({ sibuk: false, progres: null, kabar: BK.kabarBerhentiBuku('kunci', tahun, k.ke, k.total, h), kabarAwas: true }); return false; }
     }
     if (titik) setelTitik(titik);
     const A = BK.arsipBuku(tahun); set({ progres: { sudah: 0, total: A.n, satuan: 'dokumen dipindah ke arsip' } });
@@ -277,7 +277,7 @@ export function pasangLayarUang(akar, opsi) {
     for (let i = 0; i < r.kiriman.length; i += 1) {
       const k = r.kiriman[i]; set({ progres: { sudah: i, total: r.kiriman.length, satuan: 'kiriman tarik saldo pembuka' } });
       let h = null; try { h = await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true }); } catch (e) { h = { gagal: true, pesan: e && e.message ? e.message : String(e) }; }
-      if (!h || h.gagal || h.antre) { set({ sibuk: false, progres: null, kabar: 'Pembatalan berhenti di kiriman ' + (i + 1) + ' dari ' + r.kiriman.length + (h && h.pesan ? ' — ' + h.pesan : '') + ' — ketuk "Lanjutkan" untuk meneruskan pembatalan.', kabarAwas: true }); return false; }
+      if (!h || h.gagal || h.antre) { set({ sibuk: false, progres: null, kabar: BK.kabarBerhentiBuku('batal', tahun, i + 1, r.kiriman.length, h), kabarAwas: true }); return false; }
     }
     try { await pulihkanArsip(tahun, r.pulih, (sudah, total) => set({ progres: { sudah, total, satuan: 'dokumen dikembalikan dari arsip' } })); } catch (e) { set({ sibuk: false, progres: null, kabar: 'Pengembalian terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan" untuk meneruskan pembatalan', kabarAwas: true }); return false; }
     let h2 = null; try { h2 = await tulisDokumen([r.akhir], [], { tunggu: true }); } catch (e) { h2 = { gagal: true }; } if (!h2 || h2.gagal || h2.antre) { set({ sibuk: false, progres: null, kabar: 'Berita acara belum tercatat dibatalkan — ketuk "Lanjutkan"', kabarAwas: true }); return false; }

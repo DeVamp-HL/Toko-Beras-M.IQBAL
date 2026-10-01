@@ -327,6 +327,24 @@ export function susunSelesai(tahun, namaCadangan2, w, yakin) {
   const periksaUlang = { sama: !kal, beda: PU ? PU.beda.map((b) => b.nama) : ['tidak bisa diperiksa'], pada: w.kini };
   return { dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, acara, { status: 'selesai', cadangan2: namaCadangan2 || '', selesaiPada: w.kini, selesaiTanggal: w.tanggal, periksaUlang, langkah: Object.assign({}, acara.langkah || {}, { cadangan2: w.kini }) }) }], patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup. Simpan kedua berkas cadangan di luar HP.', kabarAwas: false } };
 }
+/**
+ * §8 no. 7: kalimat bila tutup buku / pembatalan BERHENTI di kiriman ke-`ke` — tombol yang disebut harus tombol yang benar-benar meneruskan hal itu.
+ * Kiriman 1 tutup buku tidak masuk → belum ada berita acara 'berjalan', pita Lanjutkan tidak ada → "Kunci tahun" lagi. Kiriman 1 pembatalan tidak masuk → berita
+ * acara masih 'berjalan' / 'terkunci', "Lanjutkan" justru meneruskan TUTUP BUKU / arsip → "Batalkan" lagi. Sesudahnya pita ada → "Lanjutkan".
+ * h = hasil tulisDokumen ({ gagal, pesan } | { antre } | null). Belum diakui server (antre) → tunggu antrean kosong dulu, lalu langkah menurut pita.
+ */
+export function kabarBerhentiBuku(jenis, tahun, ke, total, h) {
+  const sebab = h && h.pesan ? ' — ' + h.pesan : ' — server belum mengaku'; const antre = !!(h && h.antre && !h.gagal);
+  const tunggu = ' Kiriman itu masih di perangkat ini, menunggu server — jangan tutup aplikasi; tunggu sampai antrean kosong. ';
+  if (jenis === 'batal') {
+    const awal = 'Pembatalan tutup buku ' + tahun + ' berhenti di kiriman ' + ke + ' dari ' + total + sebab + '.';
+    if (antre) return awal + tunggu + (ke === 1 ? 'Sesudah itu: kalau pita menyebut "Pembatalan tutup buku ' + tahun + ' belum selesai", ketuk "Lanjutkan"; kalau tidak, ketuk "Batalkan" lagi.' : 'Sesudah itu ketuk "Lanjutkan" untuk meneruskan pembatalan.');
+    return awal + (ke === 1 ? ' Belum ada yang ditarik — ketuk "Batalkan" lagi (tombol "Lanjutkan" di pita meneruskan TUTUP BUKU, bukan pembatalan).' : ' Ketuk "Lanjutkan" untuk meneruskan pembatalan — yang sudah ditarik tidak diulang.');
+  }
+  const awal = 'Berhenti di kiriman ' + ke + ' dari ' + total + sebab + '. Tahun ' + tahun + ' BELUM tertutup (yang sudah masuk belum dihitung).';
+  if (antre) return awal + tunggu + (ke === 1 ? 'Sesudah itu: kalau pita "Tutup buku ' + tahun + ': … sudah masuk" muncul, ketuk "Lanjutkan"; kalau tidak, ketuk "Kunci tahun ' + tahun + '" lagi.' : 'Sesudah itu ketuk "Lanjutkan" — yang sudah masuk tidak dikirim ulang — atau "Batalkan".');
+  return awal + (ke === 1 ? ' Tidak ada yang masuk — ketuk "Kunci tahun ' + tahun + '" lagi sesudah sebabnya dibereskan.' : ' Ketuk "Lanjutkan" — yang sudah masuk tidak dikirim ulang — atau "Batalkan".');
+}
 /** Teks berita acara (cetak/WA). */
 export function teksAcara(tahun, D, B, sebelum, saksi, w) {
   const L = ['TOKO BERAS M.IQBAL', 'BERITA ACARA TUTUP BUKU ' + tahun, tanggalPendek(w.tanggal) + ' · ' + w.jam + (D.latihan ? ' · LATIHAN' : ''), '', 'Harta toko akhir ' + tahun + ':'];
