@@ -560,7 +560,8 @@ export function pakaiAntrean(s, id) {
     pesananId: a.beku.pesananId || null, tukar: a.beku.tukar || null, kreditDibuka: !!a.beku.kreditDibuka, aktifId: id, lembar: null, kabar: (a.beku.pelanggan || 'Struk') + ' dibuka lagi', kabarAwas: false });
 }
 export function buangAntrean(s, id) { const a = s.antrean.find((x) => x.id === id); return { antrean: s.antrean.filter((x) => x.id !== id), kabar: 'Struk dibuang — stoknya bebas lagi' + (a && a.beku.pesananId ? '; ikatan pesanannya dilepas (pesanan tetap belum dibayar)' : '') + (a && a.beku.tukar ? '; ikatan TUKAR ikut dilepas — returnya BELUM tercatat' : '') }; }
-export function pembeliLain(s) { return s.keranjang.length ? parkir(s) : { kabar: 'Keranjang sudah kosong' }; }
+// tinjauan no. 9: keranjang kosong + Pembeli lain = pembeli baru — buka kredit SEKALI milik pembeli tadi tidak ikut
+export function pembeliLain(s) { return s.keranjang.length ? parkir(s) : { kabar: 'Keranjang sudah kosong', kreditDibuka: false }; }
 
 // ---------- GANTI ORANG (putaran 23c, owner 24 Sep): keranjang TIDAK boleh terbawa ke akun berikutnya ----------
 /** Baris yang belum disimpan = keranjang yang sedang jalan + keranjang yang diparkir. */

@@ -186,7 +186,8 @@ export function pasangLayarJual(akar, opsi) {
     // ---- putaran 3 ----
     namaRepack: (v) => set({ namaRepack: String(v || '').slice(0, 60) }),
     bonus: ({ id }) => set(L.toggleBonus(S(), id)),
-    penggantiRetur: ({ id }) => set(L.togglePenggantiRetur(S(), id)),
+    // tinjauan no. 22: pengganti retur (nota Rp0) = retur & tukar → owner saja; bukan-owner: tombol menyebut sebabnya (penjaga kiriman juga menolak)
+    penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(S(), id)); },
     bukaPesanan: ({ saring }) => set({ lembar: 'pesanan', psSaring: saring || '' }),
     psSaring: (v) => set({ psSaring: String(v || '').slice(0, 40) }),
     psNama: (v) => set({ psNama: String(v || '').slice(0, 40) }),

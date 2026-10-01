@@ -70,7 +70,8 @@ export function ikatKarcis(s, id, kini) {
   const k = daftarKarcis(kini).daftar.find((x) => x.id === String(id)); if (!k) return { kabar: 'Karcis itu tidak ada lagi di antrean — sudah dirinci atau dibatalkan di perangkat lain', kabarAwas: true };
   if (s.karcis) return { kabar: 'Keranjang ini sedang merinci karcis ' + kcEkor(s.karcis.id) + ' — simpan atau lepas dulu', kabarAwas: true };
   if (s.tukar) return { kabar: 'Keranjang ini terikat tukar — catat notanya atau batal tukar dulu', kabarAwas: true };
-  return { karcis: k, cara: k.cara === 'QRIS' || k.cara === 'Kredit' ? k.cara : 'Tunai', pelanggan: k.nama, uang: 0, potongan: 0, pesananId: null, lembar: null, jalur: s.jalur === 'retur' ? 'sering' : s.jalur, negoId: null,
+  // tinjauan no. 9: karcis membawa nama & cara bayarnya sendiri — buka kredit SEKALI untuk nota sebelumnya tidak ikut
+  return { karcis: k, cara: k.cara === 'QRIS' || k.cara === 'Kredit' ? k.cara : 'Tunai', pelanggan: k.nama, uang: 0, potongan: 0, pesananId: null, lembar: null, kreditDibuka: false, jalur: s.jalur === 'retur' ? 'sering' : s.jalur, negoId: null,
     kabar: (k.jenisAsal === 'karcis' ? 'Merinci karcis ' : 'Merapikan nota ') + kcEkor(k.id) + ' ' + RP(k.nominal) + ' (' + k.tanggal.slice(8) + '/' + k.tanggal.slice(5, 7) + ' ' + k.jam + ') — pilih barangnya dari rak seperti menjual biasa' + (s.keranjang.length ? '; ' + s.keranjang.length + ' barang yang sudah di keranjang ikut dihitung' : ''), kabarAwas: false };
 }
 export function lepasKarcis(s) { return s.karcis ? { karcis: null, kcPilih: null, kabar: 'Karcis dilepas — tidak ada yang ditulis; barang di keranjang tetap', kabarAwas: false } : {}; }
@@ -139,7 +140,7 @@ export function susunRinciDokumen(s, w) {
   // putaran 25: karcis bulan lalu (di luar masa tenggang) — tiap catatan diperiksa kunci di server; satu rincian tidak boleh butuh lebih dari 18 pemeriksaan
   const g = butuhGet(dokumen); if (g > KP_BATAS_GET) return { tolak: 'Karcis bulan lalu: rincian ini menyentuh ' + g + ' catatan (batas ' + KP_BATAS_GET + ' sekali kirim) — rinci sebagian barangnya dulu (sisanya tetap jadi karcis), lalu rinci lagi' };
   const ringkas = (karcis ? 'Karcis ' : 'Nota ') + kcEkor(p.id) + ' ' + RP(k.nominal) + ' → ' + s.keranjang.length + ' barang ' + RP(H.total) + (H.sisa > 0 ? ' + sisa ' + RP(H.sisa) + ' tetap jadi karcis' : '') + ' · ' + cara + (nama ? ' · ' + nama : '') + ' · tanggal & jam mengikuti karcisnya';
-  return { dokumen, ringkas, rinci: { grupNota: idGrup, asliId: p.id, ids }, patch: { keranjang: [], karcis: null, pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, lembar: null, ketik: '', penggantiTanya: null,
+  return { dokumen, ringkas, rinci: { grupNota: idGrup, asliId: p.id, ids }, patch: { keranjang: [], karcis: null, pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, lembar: null, ketik: '', penggantiTanya: null, kreditDibuka: false,
     notaTerakhir: { trxId: idGrup, idPenjualan: ids, piutangId: null, pesanan: null, retur: null, rinci: { grupNota: idGrup, asliId: p.id }, pada: Date.now(), ringkas, nama }, kabar: 'Tersimpan — ' + ringkas, kabarAwas: false } };
 }
 
@@ -154,7 +155,7 @@ export function susunPerbaikanKarcis(s, w) {
   const idBaru = w.idUnik(); const kini = w.kini || new Date().toISOString();
   const pengganti = Object.assign({}, p, { id: idBaru, caraBayar: cara, namaPelanggan: nama, koreksiDari: p.id, alasanKoreksi: 'Perbaikan cara bayar / nama pembeli', dikoreksiPada: kini }); delete pengganti.dikoreksiOleh; delete pengganti.dibatalkan;
   const asli = Object.assign({}, p, { dikoreksiOleh: idBaru, alasanKoreksi: 'Diperbaiki: ' + lama + ' → ' + cara + (nama ? ', pembeli ' + nama : '') });
-  return { dokumen: [{ koleksi: 'penjualan', data: pengganti }, { koleksi: 'penjualan', data: asli }], patch: { karcis: null, keranjang: s.keranjang, pelanggan: '', cara: 'Tunai', lembar: null, kabar: 'Karcis ' + kcEkor(p.id) + ' diperbaiki: ' + lama + ' → ' + cara + (nama ? ', pembeli ' + nama : '') + ' — barangnya masih menunggu dirinci (karcis pengganti ' + kcEkor(idBaru) + ')', kabarAwas: false } };
+  return { dokumen: [{ koleksi: 'penjualan', data: pengganti }, { koleksi: 'penjualan', data: asli }], patch: { karcis: null, keranjang: s.keranjang, pelanggan: '', cara: 'Tunai', lembar: null, kreditDibuka: false, kabar: 'Karcis ' + kcEkor(p.id) + ' diperbaiki: ' + lama + ' → ' + cara + (nama ? ', pembeli ' + nama : '') + ' — barangnya masih menunggu dirinci (karcis pengganti ' + kcEkor(idBaru) + ')', kabarAwas: false } };
 }
 
 /** Tarik balik satu rincian (urungkanRinciTrx 32665): grup harus UTUH; semua baris dibatalkan, kantong id+1 dihapus, karcis asli dipulihkan ke antrean. */

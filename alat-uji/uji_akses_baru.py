@@ -84,6 +84,11 @@ ok('kiriman: karyawan nota tunai 3 baris + kantong pakai + struk = 5 dokumen →
 var kr9 = nota('Kredit', 1); kr9[0].data.kreditDibukaOwner = true; var p9a = periksaKiriman(BEN, kr9, [], HAK_BEN), p9b = periksaKiriman(OWN, kr9, [], HAK_BEN);
 ok('39b-9: nota Kredit bertanda kreditDibukaOwner (KR1 dilewati) dari Ben → DITOLAK "minta owner" (Ben boleh bon biasa, tapi tidak membuka KR1); owner tetap boleh',
   p9a.tolak === KALIMAT_MINTA_OWNER && !p9b.tolak, JSON.stringify([p9a, p9b]));
+var pg22 = nota('Tunai', 1); pg22[0].data.penggantiRetur = true; pg22[0].data.hargaTotal = 0; var pgB = periksaKiriman(BEN, pg22, [], HAK_BEN), pgK = periksaKiriman(KRY, pg22, [], HAK_KRY), pgO = periksaKiriman(OWN, pg22, [], HAK_BEN);
+ok('tinjauan no. 22: nota PENGGANTI RETUR (Rp0, barang keluar tanpa uang) dari Ben & karyawan → DITOLAK "minta owner" (retur & tukar = owner saja); owner tetap boleh',
+  pgB.tolak === KALIMAT_MINTA_OWNER && pgK.tolak === KALIMAT_MINTA_OWNER && !pgO.tolak, JSON.stringify([pgB, pgK, pgO]));
+ok('tinjauan no. 22: jual.js — tombol pengganti retur bukan-owner MATI dengan kalimat (tombolLuarKisi) sebelum menandai',
+  SUMBER.layar_jual.indexOf("penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(S(), id)); },") > 0);
 var JL9 = SUMBER.layar_jual, iBK = JL9.indexOf('bukaKredit: () => {'), tubuhBK = iBK > 0 ? JL9.slice(iBK, JL9.indexOf('\n', iBK)) : '';
 ok('39b-9: jual.js — tombol "Buka kredit SEKALI" lewat tombolLuarKisi (bukan-owner: MATI dengan kalimatnya), dan aksinya menolak bukan-owner sebelum membuka',
   tubuhBK.indexOf('const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set(') > 0 && tubuhBK.indexOf('kreditDibuka: true') > tubuhBK.indexOf('if (!tb.boleh)')
@@ -239,6 +244,8 @@ if __name__ == '__main__':
             'update bukan-owner menambah kolom pencipta': (js.replace("const isiPencipta = akun.jenis === 'owner' || !ada;", "const isiPencipta = true;"), S),
             'tombol ikut kisi saja, server diabaikan': (js.replace("const buka = SERVER_BUKA[tindakan] || []; if (buka.indexOf(akun.peran) < 0) return { boleh: false, kalimat: KALIMAT_MINTA_OWNER };", ""), S),
             'karyawan boleh jual bon': (js.replace("const KREDIT_STAF = ['ben'];", "const KREDIT_STAF = ['ben', 'karyawan'];").replace("jualBon: ['ben'], terimaBon:", "jualBon: ['ben', 'karyawan'], terimaBon:"), S),
+            'tinjauan no. 22: staf boleh menulis nota pengganti retur': (js.replace("        if (d.penggantiRetur) return { tolak: KALIMAT_MINTA_OWNER };\n", ""), S),
+            'tinjauan no. 22: tombol pengganti retur tanpa memeriksa akun': (js, ganti('layar_jual', "penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(S(), id)); },", "penggantiRetur: ({ id }) => { set(L.togglePenggantiRetur(S(), id)); },")),
             '39b-9: Ben boleh menulis tanda kreditDibukaOwner': (js.replace("        if (d.kreditDibukaOwner) return { tolak: KALIMAT_MINTA_OWNER };\n", ""), S),
             '39b-9: tombol buka kredit tampil untuk bukan-owner': (js, ganti('layar_jual', '${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">', '${true ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">')),
             '39b-9: aksi buka kredit tanpa memeriksa akun': (js, ganti('layar_jual', 'const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ kreditDibuka: true,', 'set({ kreditDibuka: true,')),
