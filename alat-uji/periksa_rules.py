@@ -17,6 +17,9 @@ Membuktikan bentuk rules, bukan perilaku server (itu docs/uji-rules-v4.md: Playg
      untuk owner, kasir@, dan bukan-owner (tglStaf, tanpa get()); field = KP_KOLEKSI; pajak TIDAK dikunci (K6); tenggangMin() = KP_TENGGANG_MIN;
      get() dokumen kunci hanya di terkunci(), dan terkunci() hanya dipanggil bolehBulan() di belakang bebas() (≤ 1 access call per operasi);
      aturanToko/kunciPeriode: naik satu / turun satu dengan alasan ≥ 10, riwayat lama utuh, tidak pernah dihapus.
+  9. (v6, draf 1 Okt 2026) BERITA ACARA TUTUP BUKU HANYA MAJU: blok tutupBukuAcara = baca/create/delete owner, update owner && ubahBukuSah(…), fungsinya
+     tanpa get(). MODEL: fungsi rules itu APA ADANYA diterjemahkan ke Python lalu dinilai pada tulisan SAH dari kode (wajib boleh) dan tulisan TELAT
+     (wajib ditolak). Model bukan server — bukti server = docs/uji-rules-v6.md (Playground ★).
 
     python3 alat-uji/periksa_rules.py            → LULUS / daftar cacat (keluar 2)
     python3 alat-uji/periksa_rules.py --kontrol  → berkas rules cacat buatan WAJIB gagal (keluar 3 kalau ada yang lolos)
@@ -157,6 +160,136 @@ def periksa_kunci(rules, B, F):
     return cacat
 
 
+FUNGSI_BUKU = ('percobaanBuku', 'pemegangBuku', 'majuBuku', 'pemegangBukuSah', 'mulaiLagiBuku', 'ubahBukuSah')
+UPDATE_BUKU = 'if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data))'
+
+
+class _Teks(str):
+    """string rules: matches() = pola RE2 atas SELURUH teks (pola tutup buku tidak memakai fitur khusus RE2)."""
+    def matches(self, pola): return re.fullmatch(pola, self) is not None
+
+
+def _bungkus(x):
+    if isinstance(x, dict): return dict((k, _bungkus(v)) for k, v in x.items())
+    if isinstance(x, list): return [_bungkus(v) for v in x]
+    return _Teks(x) if isinstance(x, str) else x
+
+
+def model_buku(rules):
+    """9 · fungsi tutupBukuAcara dari rules (APA ADANYA) → nilai(baru, lama) Python. Hanya bentuk sederhana yang diterjemahkan (satu return; && || == != >
+    in [..] .get() .matches() '…' {}); bentuk lain = (None, alasan). Galat saat dinilai = DITOLAK (seperti server)."""
+    R = tanpa_komentar(rules); F = fungsi_rules(R); py = []
+    for n in FUNGSI_BUKU:
+        sig = re.search(r'function ' + n + r'\(([^)]*)\) \{', R)
+        if n not in F or not sig: return None, 'fungsi %s tidak ada' % n
+        m = re.fullmatch(r'\s*return (.*);\s*', F[n], re.S)
+        if not m: return None, 'fungsi %s bukan satu return' % n
+        bag = re.split(r"('[^'\\]*')", m.group(1)); kode = ''.join(bag[0::2])
+        if re.search(r"get\(/|exists\(|request\.|resource\.|\bis\b|!(?!=)|\?|\"|\b(let|true|false|null)\b", kode): return None, 'fungsi %s memakai bentuk yang tidak diterjemahkan model' % n
+        py.append('def %s(%s):\n    return (%s)\n' % (n, sig.group(1), ''.join(('_Teks(%s)' % b) if i % 2 else b.replace('&&', ' and ').replace('||', ' or ') for i, b in enumerate(bag))))
+    ruang = {'_Teks': _Teks}
+    try: exec('\n'.join(py), ruang)
+    except SyntaxError as e: return None, 'terjemahan model gagal: %s' % e
+
+    def nilai(baru, lama):
+        try: return bool(ruang['ubahBukuSah'](_bungkus(baru), _bungkus(lama)))
+        except Exception: return False
+    return nilai, ''
+
+
+# Dokumen contoh = bentuk yang ditulis tutup-buku-logika.js (paraf.pada / diambilAlihPada / dibatalkanPada = w.kini = toISOString()). SAMA dengan
+# docs/uji-rules-v6.md: tujuh dokumen uji (resource) dan kasus ★A (wajib BOLEH) / ★B (wajib DITOLAK); M = kasus model saja, V = batas yang diakui.
+P0, P1, P2 = '2027-01-04T03:00:00.000Z', '2027-01-05T03:00:00.000Z', '2027-01-06T03:00:00.000Z'   # percobaan lebih LAMA / percobaan ini / lebih BARU
+T1, T2 = '2027-01-05T05:00:00.000Z', '2027-01-05T07:00:00.000Z'   # jam batal
+X0, X1, X2 = '2027-01-05T05:30:00.000Z', '2027-01-05T06:00:00.000Z', '2027-01-05T08:00:00.000Z'   # jam ambil alih
+HA, MB = {'id': 'hp-a', 'nama': 'HP A'}, {'id': 'mac-b', 'nama': 'Mac B'}
+
+
+def acara(status, pada, pemegang=None, **lain):
+    d = {'tahun': 1990, 'status': status, 'paraf': {'pada': pada}}
+    if pemegang: d['pemegang'] = pemegang
+    d.update(lain); return d
+
+
+def alih(status, pada, baru, lama, jam, **lain): return acara(status, pada, baru, pemegangLama=lama, diambilAlihPada=jam, **lain)
+
+
+DOK_BUKU = {
+    'uji-v6-berjalan': acara('berjalan', P1, HA), 'uji-v6-terkunci': acara('terkunci', P1, HA), 'uji-v6-membatalkan': acara('membatalkan', P1, HA, dibatalkanPada=T1),
+    'uji-v6-dibatalkan': acara('dibatalkan', P1, HA, dibatalkanPada=T1), 'uji-v6-selesai': acara('selesai', P1, MB), 'uji-v6-alih': alih('berjalan', P1, MB, HA, X1),
+    'uji-v6-alih-batal': alih('dibatalkan', P1, MB, HA, X1, dibatalkanPada=T2),
+}
+# (no, nama, lama = dokumen uji / isi lama, baru = request.resource.data, wajib boleh?)
+KASUS_BUKU = [
+    ('★A1', 'berjalan → terkunci (kiriman penanda: susunKunci / lanjutBuku)', 'uji-v6-berjalan', acara('terkunci', P1, HA), True),
+    ('★A2', 'berjalan → membatalkan (susunBatal)', 'uji-v6-berjalan', acara('membatalkan', P1, HA, dibatalkanPada=T1), True),
+    ('★A3', 'terkunci → membatalkan (susunBatal)', 'uji-v6-terkunci', acara('membatalkan', P1, HA, dibatalkanPada=T1), True),
+    ('★A4', 'terkunci → selesai (susunSelesai)', 'uji-v6-terkunci', acara('selesai', P1, HA), True),
+    ('★A5', 'membatalkan → membatalkan (lanjut pembatalan)', 'uji-v6-membatalkan', acara('membatalkan', P1, HA, dibatalkanPada=T1), True),
+    ('★A6', 'membatalkan → dibatalkan (akhir pembatalan)', 'uji-v6-membatalkan', acara('dibatalkan', P1, HA, dibatalkanPada=T1), True),
+    ('★A7', 'dibatalkan → membatalkan dari perangkat lain (P4-7: sisa saldo pembuka mendarat belakangan)', 'uji-v6-dibatalkan', acara('membatalkan', P1, MB, dibatalkanPada=T1), True),
+    ('★A8', 'mulai lagi sesudah dibatalkan: berjalan, jam mulai lebih baru, pemegang baru', 'uji-v6-dibatalkan', acara('berjalan', P2, MB), True),
+    ('★A9', 'mulai lagi satu kiriman: langsung terkunci', 'uji-v6-dibatalkan', acara('terkunci', P2, MB), True),
+    ('★A10', 'ambil alih berjalan', 'uji-v6-berjalan', alih('berjalan', P1, MB, HA, X1), True),
+    ('★A11', 'ambil alih terkunci', 'uji-v6-terkunci', alih('terkunci', P1, MB, HA, X1), True),
+    ('★A12', 'ambil alih membatalkan', 'uji-v6-membatalkan', alih('membatalkan', P1, MB, HA, X1, dibatalkanPada=T1), True),
+    ('★A13', 'sesudah ambil alih, pemegang baru melanjutkan', 'uji-v6-alih', alih('terkunci', P1, MB, HA, X1), True),
+    ('★A14', 'ambil alih kedua (jam ambil alih lebih baru)', 'uji-v6-alih', alih('berjalan', P1, HA, MB, X2), True),
+    ('M1', 'mulai lagi tanpa pemegang (perangkat tanpa id)', 'uji-v6-dibatalkan', acara('berjalan', P2), True),
+    ('M2', 'berita acara tanpa pemegang: berjalan → terkunci', acara('berjalan', P1), acara('terkunci', P1), True),
+    ('★B1', 'jalan MULAI: berjalan percobaan lama di atas selesai', 'uji-v6-selesai', acara('berjalan', P0, HA), False),
+    ('★B2', 'jalan MULAI satu kiriman: terkunci percobaan lama di atas selesai', 'uji-v6-selesai', acara('terkunci', P0, HA), False),
+    ('★B3', 'percobaan lama mulai di atas percobaan yang lebih baru (dibatalkan)', 'uji-v6-dibatalkan', acara('berjalan', P0, MB), False),
+    ('★B4', 'percobaan lama satu kiriman di atas percobaan yang lebih baru (dibatalkan)', 'uji-v6-dibatalkan', acara('terkunci', P0, MB), False),
+    ('★B5', 'percobaan lama mulai di atas percobaan yang berjalan', 'uji-v6-berjalan', acara('berjalan', P0, MB), False),
+    ('★B6', 'percobaan lama mulai di atas percobaan yang terkunci', 'uji-v6-terkunci', acara('berjalan', P0, MB), False),
+    ('★B7', 'percobaan lama mulai di atas pembatalan', 'uji-v6-membatalkan', acara('berjalan', P0, MB), False),
+    ('★B8', 'ekor pembatalan HP beku: dibatalkan percobaan lama di atas selesai', 'uji-v6-selesai', acara('dibatalkan', P0, HA, dibatalkanPada=T1), False),
+    ('★B9', 'ekor pembatalan: dibatalkan percobaan lama di atas terkunci', 'uji-v6-terkunci', acara('dibatalkan', P0, MB, dibatalkanPada=T1), False),
+    ('★B10', 'ambil alih: penanda HP lama (terkunci) di atas berjalan pemegang baru', 'uji-v6-alih', acara('terkunci', P1, HA), False),
+    ('★B11', 'ambil alih: penanda HP lama di atas dibatalkan pemegang baru (repro §11 E1)', 'uji-v6-alih-batal', acara('terkunci', P1, HA), False),
+    ('★B12', 'ambil alih: pembatalan HP lama (jam batal sendiri) di atas dibatalkan pemegang baru', 'uji-v6-alih-batal', acara('membatalkan', P1, HA, dibatalkanPada=T1), False),
+    ('★B13', 'ambil alih: pembatalan HP lama di atas berjalan pemegang baru', 'uji-v6-alih', acara('membatalkan', P1, HA, dibatalkanPada=T1), False),
+    ('★B14', 'ambil alih lama di atas ambil alih yang lebih baru', 'uji-v6-alih', alih('berjalan', P1, HA, MB, X0), False),
+    ('★B15', 'ganti pemegang tanpa ambil alih', 'uji-v6-berjalan', acara('berjalan', P1, MB), False),
+    ('★B16', 'mundur: selesai → terkunci', 'uji-v6-selesai', acara('terkunci', P1, MB), False),
+    ('★B17', 'mundur: selesai → membatalkan', 'uji-v6-selesai', acara('membatalkan', P1, MB, dibatalkanPada=T1), False),
+    ('★B18', 'mundur: dibatalkan → terkunci', 'uji-v6-dibatalkan', acara('terkunci', P1, HA, dibatalkanPada=T1), False),
+    ('★B19', 'mundur: dibatalkan → berjalan', 'uji-v6-dibatalkan', acara('berjalan', P1, HA, dibatalkanPada=T1), False),
+    ('★B20', 'mundur: terkunci → berjalan', 'uji-v6-terkunci', acara('berjalan', P1, HA), False),
+    ('★B21', 'mundur: membatalkan → terkunci', 'uji-v6-membatalkan', acara('terkunci', P1, HA, dibatalkanPada=T1), False),
+    ('★B22', 'mundur: membatalkan → berjalan', 'uji-v6-membatalkan', acara('berjalan', P1, HA, dibatalkanPada=T1), False),
+    ('★B23', 'tahun yang selesai dibuka lagi dengan percobaan baru', 'uji-v6-selesai', acara('berjalan', P2, MB), False),
+    ('★B24', 'mulai di atas percobaan yang masih terkunci', 'uji-v6-terkunci', acara('berjalan', P2, MB), False),
+    ('★B25', 'jam mulai bukan bentuk toISOString', 'uji-v6-dibatalkan', acara('berjalan', '2027-01-06', MB), False),
+    ('★B26', 'status asing', 'uji-v6-berjalan', acara('ditutup', P1, HA), False),
+    ('★A16', 'kirim ulang IDENTIK di atas selesai (SDK mengulang mutasi yang jawabannya hilang)', 'uji-v6-selesai', acara('selesai', P1, MB), True),
+    ('★A17', 'kirim ulang IDENTIK di atas dibatalkan', 'uji-v6-dibatalkan', acara('dibatalkan', P1, HA, dibatalkanPada=T1), True),
+    ('V1', 'BATAS: pembatalan HP lama dengan jam batal SAMA di atas dibatalkan pemegang baru — lolos, status kembali membatalkan',
+     alih('dibatalkan', P1, MB, HA, X1, dibatalkanPada=T1), acara('membatalkan', P1, HA, dibatalkanPada=T1), True),
+]
+
+
+def periksa_buku(rules, B):
+    """9 · berita acara tutup buku hanya maju (v6)."""
+    cacat = []; b = B.get('tutupBukuAcara', '')
+    rata = lambda t: re.sub(r'\s+', ' ', t).strip()
+    for op, wajib in (('read', 'if owner()'), ('create', 'if owner()'), ('update', UPDATE_BUKU), ('delete', 'if owner()')):
+        if [rata(x) for x in allow(b, op)] != [wajib]: cacat.append('tutupBukuAcara: allow %s bukan "%s" (v6: berita acara hanya maju): %s' % (op, wajib, [rata(x) for x in allow(b, op)]))
+    F = fungsi_rules(tanpa_komentar(rules))
+    for n in FUNGSI_BUKU:
+        if re.search(r'get\(|exists\(', re.sub(r"\.get\('", '', F.get(n, ''))): cacat.append('tutupBukuAcara: fungsi %s membaca dokumen lain (access call) — v6 tanpa get()' % n)
+    nilai0, alasan = model_buku(rules)
+    if not nilai0: return cacat + ['tutupBukuAcara: model tidak bisa dibuat — ' + alasan]
+    # update = tulisUlangSama() (isi baru == isi lama) || ubahBukuSah — tulis-ulang identik dinilai hanya kalau ada di allow update
+    ulang = any('tulisUlangSama()' in rata(x) for x in allow(b, 'update'))
+    nilai = lambda baru, lama: (ulang and baru == lama) or nilai0(baru, lama)
+    for no, nama, lama, baru, boleh in KASUS_BUKU:
+        if nilai(baru, DOK_BUKU[lama] if isinstance(lama, str) else lama) != boleh:
+            cacat.append('tutupBukuAcara (model) %s %s → %s, wajib %s' % (no, nama, 'BOLEH' if not boleh else 'DITOLAK', 'BOLEH' if boleh else 'DITOLAK'))
+    return cacat
+
+
 def periksa(rules, koleksi_js, akses_js):
     cacat = []
     rules = tanpa_komentar(rules)
@@ -212,6 +345,7 @@ def periksa(rules, koleksi_js, akses_js):
             else: cacat.append('match rekursif (bentuk payung) di rules: ' + jalur)
         elif re.match(r'^/\{\w+\}/', jalur): cacat.append('wildcard koleksi: ' + jalur)
     cacat += periksa_kunci(rules, B, F)
+    cacat += periksa_buku(rules, B)
     # 5 · daftar peran sama dengan akses.js
     peran_txt = "['ben', 'karyawan']"
     for n in KOL:
@@ -293,6 +427,24 @@ if __name__ == '__main__':
             'permintaanAkses boleh walau sudah terdaftar': R.replace("  && !exists(/databases/$(database)/documents/aksesAkun/$(uid))\n", ""),
             'jejak bukan-owner boleh 19 dokumen (batas lama, tanpa sisa)': R.replace("d.dokumen.size() <= 17;", "d.dokumen.size() <= 19;"),
             'create lewat staf() tanpa uid': R.replace("(stafBuat(['ben', 'karyawan']) && tglStaf('tanggal'));   // adukan", "(staf(['ben', 'karyawan']) && tglStaf('tanggal'));   // adukan"),
+            # 9 · v6 berita acara tutup buku hanya maju — penjaga dicabut (kiriman telat lolos) ATAU terlalu ketat (tulisan sah dari kode ditolak)
+            'v6 dicabut: berita acara kembali owner saja tanpa urutan (v5)': R.replace("      allow read: if owner();\n      allow create: if owner();\n      // kirim ulang identik (SDK mengulang mutasi yang jawabannya hilang) tidak mengubah apa pun → boleh juga di atas 'selesai' / 'dibatalkan'\n      allow update: if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data));\n      allow delete: if owner();",
+                                                                                      "      allow read, write: if owner();"),
+            'v6: kirim ulang identik di atas selesai / dibatalkan ditolak': R.replace("allow update: if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data));", "allow update: if owner() && ubahBukuSah(request.resource.data, resource.data);"),
+            'v6: update tutupBukuAcara owner saja': R.replace("allow update: if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data));", "allow update: if owner();"),
+            'v6: status boleh mundur (selesai → terkunci)': R.replace("'terkunci>selesai', ", "'terkunci>selesai', 'selesai>terkunci', "),
+            'v6: dibatalkan → terkunci diterima (penanda telat sesudah pembatalan tuntas)': R.replace("'dibatalkan>membatalkan']", "'dibatalkan>membatalkan', 'dibatalkan>terkunci']"),
+            'v6: pemegang tidak dijaga (kiriman HP lama sesudah ambil alih lolos)': R.replace("      return pemegangBuku(b) == pemegangBuku(l)\n", "      return pemegangBuku(b) == pemegangBuku(b)\n"),
+            'v6: ambil alih tanpa urutan jam (ambil alih lama menimpa yang baru)': R.replace("\n          && b.get('diambilAlihPada', '') > l.get('diambilAlihPada', ''))", ")"),
+            'v6: jam batal tidak dijaga (pembatalan HP lama di atas dibatalkan)': R.replace("\n        && (l.get('status', '') != 'dibatalkan' || b.get('dibatalkanPada', '') == l.get('dibatalkanPada', ''));", ";"),
+            'v6: percobaan baru di atas status apa pun (tahun selesai dibuka lagi)': R.replace("      return l.get('status', '') == 'dibatalkan' && b.get('status', '') in ['berjalan', 'terkunci']", "      return b.get('status', '') in ['berjalan', 'terkunci']"),
+            'v6: percobaan lama boleh menimpa yang baru (tanpa urutan jam mulai)': R.replace(" && percobaanBuku(b) > percobaanBuku(l);", " && percobaanBuku(b) != percobaanBuku(l);"),
+            'v6: jam mulai bukan bentuk toISOString diterima': R.replace("\n        && percobaanBuku(b).matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z') && ", "\n        && "),
+            'v6 terlalu ketat: pembatalan lanjutan dari dibatalkan ditolak (P4-7 macet)': R.replace(", 'dibatalkan>membatalkan']", "]"),
+            'v6 terlalu ketat: tutup buku satu kiriman (langsung terkunci) sesudah dibatalkan ditolak': R.replace("b.get('status', '') in ['berjalan', 'terkunci']", "b.get('status', '') in ['berjalan']"),
+            'v6 terlalu ketat: ambil alih ditolak': R.replace("&& pemegangBuku(l) != '' && b.get('pemegangLama', {})", "&& pemegangBuku(l) == '' && b.get('pemegangLama', {})"),
+            'v6: fungsi tutup buku membaca dokumen lain (access call)': R.replace("    function pemegangBuku(d) { return d.get('pemegang', {}).get('id', ''); }",
+                                                                                "    function pemegangBuku(d) { return get(/databases/$(database)/documents/aturanToko/tutupBuku).data.get('x', d.get('pemegang', {}).get('id', '')); }"),
         }
         kode = 0
         KPJ = baca('baru/js/data/kunci-periode.js')
@@ -310,8 +462,10 @@ if __name__ == '__main__':
         sys.exit(kode)
     c = periksa(R, K, A)
     B = blok_rules(R)
-    if c: print('RULES v4 CACAT (%d):' % len(c)); [print('   ✗ ' + x) for x in c]; sys.exit(2)
+    if c: print('RULES CACAT (%d):' % len(c)); [print('   ✗ ' + x) for x in c]; sys.exit(2)
     KOL, TMIN = kp_js()
-    print('RULES v4 LULUS: %d blok koleksi · TANPA payung (tidak ada match rekursif / wildcard koleksi) · owner via email · jalur kasir@ utuh & dipersempit · '
+    nS = sum(1 for k in KASUS_BUKU if k[4]); nT = len(KASUS_BUKU) - nS
+    print('RULES v6 LULUS: %d blok koleksi · TANPA payung (tidak ada match rekursif / wildcard koleksi) · owner via email · jalur kasir@ utuh & dipersempit · '
           'tulis bukan-owner wajib uid · daftar peran = akses.js · kunci periode di %d koleksi bertanggal (= kunci-periode.js), tenggang minimal %d hari, '
-          'satu get() dokumen kunci per operasi, bukan-owner tanpa get() kunci, pajak tidak dikunci (K6)' % (len(B), len(KOL), TMIN))
+          'satu get() dokumen kunci per operasi, bukan-owner tanpa get() kunci, pajak tidak dikunci (K6) · berita acara tutup buku hanya maju (model: %d tulisan '
+          'boleh, %d tulisan telat/mundur ditolak; tanpa get())' % (len(B), len(KOL), TMIN, nS, nT))
