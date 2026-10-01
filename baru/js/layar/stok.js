@@ -16,7 +16,7 @@ import * as KT from './stok-kantong-logika.js';
 import * as TP from './stok-tempat-logika.js';
 import * as HP from './stok-hpp-logika.js';
 import { gambarWadah, gambarKarungStok } from './gambar.js';
-import { tombolAkun, tombolLuarKisi, bukanOwner, batasHasilAdukan } from './akses-layar.js';
+import { tombolAkun, tombolLuarKisi, bukanOwner, batasHasilAdukan, batasDokumenKirim } from './akses-layar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
 import { adeganIsiUlang, adeganBukaKarung, adeganAdukan } from './adegan.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
@@ -77,7 +77,7 @@ export function pasangLayarStok(akar, opsi) {
       set(Object.assign({}, r.patch, { kpPembalik: null, kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar + (x && x.potongan > 1 ? ' (dikirim ' + x.potongan + ' tahap)' : '') })); return true; }
     catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
-  const keranjangJual = () => ({ keranjang: opsi.keranjangJual().keranjang, antrean: opsi.keranjangJual().antrean });
+  const keranjangJual = () => ({ keranjang: opsi.keranjangJual().keranjang, antrean: opsi.keranjangJual().antrean, batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null) });   // 39b no. 21: isian takar akun bukan-owner
   // mode "atur susunan": draf di keadaan layar; baru ditulis saat SIMPAN (satu dokumen berisi seluruh aturan)
   const drafAtur = () => { const a = L.aturWadah(); const t = (n) => String(n).replace('.', ','); return { penuh: t(a.penuhKg), puncak: t(a.puncakKg), ulang: t(a.isiUlangKg), takar: t(a.takarKg), susut: t(a.susutWajarKg), sisih: t(a.sisihKg), merekKarung: a.merekKarung.slice(), daftar: a.daftar.slice(), resep: JSON.parse(JSON.stringify(a.resep)), pilih: null, resepUntuk: null }; };
   const ubahAtur = (f) => { const d = JSON.parse(JSON.stringify(st().atur || drafAtur())); f(d); set({ atur: d }); };

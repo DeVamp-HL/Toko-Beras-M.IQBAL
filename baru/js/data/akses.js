@@ -17,7 +17,7 @@ export const BATAS_ACCESS_CALL = 20;   // per batch/transaksi (dokumentasi Fireb
 // aslinya oleh alat-uji/peta_akses.py --kiriman (CI, gagal bila > 18). Batas baris/hasil di bawah membuat terburuknya 17.
 export const CADANGAN_ACCESS_CALL = 2;
 export const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL - CADANGAN_ACCESS_CALL;   // 18 = paling banyak 17 dokumen + 1 baris jejak
-export const BATAS_BARIS_NOTA_STAF = 7;     // nota: 7 baris × ≤ 2 dokumen + bayar sebagian + pesanan + jejak = 17 (nota nyata terpanjang di cadangan toko: 7 baris)
+export const BATAS_BARIS_NOTA_STAF = 7;     // nota: 7 baris (nota nyata terpanjang di cadangan toko: 7 baris) — DOKUMENNYA dijaga batasDokumenKirim (39b no. 21: literan wadah campuran = satu baris per merek asal)
 export const BATAS_HASIL_ADUKAN_STAF = 8;   // adukan: 8 hasil × (produksi + kantong) + jejak = 17
 
 // §3 — yang DIBACA bukan-owner. Koleksi utuh + setelan PER DOKUMEN (aturanToko & pengaturan bercampur tarif upah, NPWP, titik kas, PIN).
@@ -78,6 +78,8 @@ export function pendengarPeran(akun) {
 /** Batas baris per nota / hasil per adukan untuk akun ini (0 = tanpa batas: owner). Layar menyerahkannya ke logika (s.batasBaris, draf.batasHasil). */
 export const batasBarisNota = (akun) => (akun && akun.jenis !== 'owner' ? BATAS_BARIS_NOTA_STAF : 0);
 export const batasHasilAdukan = (akun) => (akun && akun.jenis !== 'owner' ? BATAS_HASIL_ADUKAN_STAF : 0);
+/** 39b no. 21: dokumen paling banyak per kiriman akun ini (0 = owner) = pagar periksaKiriman tanpa baris jejak. Layar menyerahkannya ke logika (s.batasDok): nota & isian takar. */
+export const batasDokumenKirim = (akun) => (akun && akun.jenis !== 'owner' ? BATAS_KIRIM_STAF - 1 : 0);
 export const bolehLayar = (akun, layar) => bisaBekerja(akun) && (akun.jenis === 'owner' || LAYAR_STAF.indexOf(layar) >= 0);
 /** Angka yang dihitung dari koleksi yang tidak didengarkan TIDAK digambar (bukan Rp0). Kembali: '' = boleh; selain itu kalimatnya. */
 export function angkaBoleh(akun, koleksiDibutuhkan) {
@@ -146,7 +148,7 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
   if (hapus && hapus.length) return { tolak: tolakTindakan('hapus') };
   const D = dokumen || []; if (!D.length) return { tolak: 'Tidak ada yang dikirim' };
   const accessCall = D.length + 1;   // tiap dokumen memeriksa aksesAkun sekali + satu baris jejak kiriman (peta §7)
-  if (accessCall > BATAS_KIRIM_STAF) return { tolak: 'Kiriman ini terlalu besar untuk satu kali kirim (' + D.length + ' catatan, batas ' + (BATAS_KIRIM_STAF - 1) + ') — pecah jadi dua nota' };
+  if (accessCall > BATAS_KIRIM_STAF) return { tolak: 'Kiriman ini terlalu besar untuk satu kali kirim (' + D.length + ' catatan, batas ' + (BATAS_KIRIM_STAF - 1) + ') — ' + (D.some((x) => x.koleksi === 'penjualan') ? 'pecah jadi dua nota' : 'catat dalam dua kali') };
   for (const x of D) {
     const d = x.data || {};
     if (!x.ada) {

@@ -13,7 +13,7 @@ import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir da
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
 import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal } from '../data/toko.js';
-import { tombolAkun, tombolLuarKisi, batasBarisNota, bukanOwner } from './akses-layar.js';
+import { tombolAkun, tombolLuarKisi, batasBarisNota, batasDokumenKirim, bukanOwner } from './akses-layar.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
 import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit, sejajarkanLagi } from './adegan.js';
 
@@ -39,7 +39,7 @@ export function pasangLayarJual(akar, opsi) {
   const set = (patch) => K.setel(patch);
   const S = () => K.baca();
   // putaran 23c: akun bukan-owner — batas baris per nota (batas sekali kirim ke server) ikut ke logika setiap kali keranjang bertambah / nota dicatat
-  const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null), tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null) });   // putaran 31b: hanya owner boleh jual dulu tandai dicocokkan
+  const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null), batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null), tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null) });   // putaran 31b: hanya owner boleh jual dulu tandai dicocokkan
 
   // 25c (owner 27 Sep): jenis beras juga di Jual — BARIS SARING di atas rak, bukan tata letak baru: urutan rak per ukuran, termurah dulu (desain
   // Jual yang dikunci) tetap. Pilihan saring = tampilan saja (bukan isian, bukan data), ikut ke jalur lain selama jenisnya ada di sana.
@@ -469,7 +469,7 @@ export function pasangLayarJual(akar, opsi) {
       set(Object.assign({}, r.patch, { kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar })); return true; }
     catch (e) { set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
-  Object.assign(aksi, aksiPanelWadah({ set, st: S, tulis: tulisWadah, keranjang: S, waktu: () => L.waktuSekarang(S().sekarang || undefined),
+  Object.assign(aksi, aksiPanelWadah({ set, st: S, tulis: tulisWadah, keranjang: SB, waktu: () => L.waktuSekarang(S().sekarang || undefined),
     // putaran 39: "Catat barang masuk dulu" / karung wadah → ke layar Stok; lembar Jual ditutup dulu supaya tidak menutupi layar saat kembali
     bukaStok: opsi.bukaStok ? (lembar, tab, isi) => { set({ lembar: null, pilih: null, isiW: null }); opsi.bukaStok(lembar, tab, isi); } : null,
     sesudahCatat: (wadah, r) => { const hsl = r.hitung; const dulu = hsl.wadah; const kini = L.tinggiWadah(wadah, S());

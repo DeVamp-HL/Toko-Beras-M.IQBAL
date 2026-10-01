@@ -1314,3 +1314,19 @@ Tutup hari). Versi 2 sekaligus:
   karena retur tetap ditulis); kertas Tutup hari: "Retur & refund" sejajar "Penjualan" & "Omzet" (bukan anak Penjualan); angka SEBELUM retur
   di Laba & laba-rugi berkop bernama "Penjualan terhitung" — "Omzet terhitung" hanya angka sesudah retur (Banding). Uji +8, kontrol +14.
   Tidak diubah: Kendali biaya "omzet nyata / hari" = ber-HPP (dasar yang sama dengan impas/hari, sengaja).
+
+## Audit 39b no. 21 — batas sekali kirim akun bukan-owner dihitung per DOKUMEN, bukan per baris (cabang `audit/39b-pagar-dokumen-staf`)
+
+Laten: 0 akun staf; data toko 1 Okt — 8 wadah sudah aktif, resep 1 merek (literan = 1 baris, isi ulang resep 2–4 catatan). Dulu: batas 7 baris nota
+mengira ≤ 2 dokumen per baris, padahal literan dari wadah campuran yang BELUM aktif = satu baris penjualan per merek asal (6 merek × 3 baris = 18 →
+ditolak pagar umum saat SIMPAN, sesudah berasnya diberikan); panel − / + takar di wadah aktif 6 merek dengan karung belakang baru = 20 catatan →
+ditolak dengan kalimat "pecah jadi dua nota" di panel takar.
+- `akses.js` `batasDokumenKirim(akun)` = 17 (pagar 18 − baris jejak), owner 0. Layar menyerahkannya ke logika sebagai `s.batasDok`: `jual.js` `SB()`
+  (nota) & panel isi ulang (`keranjang: SB`), `stok.js` `keranjangJual()` (panel di Stok).
+- `jual-logika.js` `alasanBatasDokumen(s, keranjang)` = jumlah dokumen `susunNotaDokumen` yang sama — dipanggil di `masukkan` (baris yang membuat
+  nota kelewat ditolak saat DITAMBAH) dan `alasanTolak` (keranjang dari antrean / bayar sebagian / pesanan). `susunTakarWadah`: isian > batas
+  ditolak dengan kalimat takar ("catat dua kali …"), dua cabang (wadah aktif & belum).
+- Pagar umum `periksaKiriman`: kiriman tanpa penjualan berakhir "catat dalam dua kali" (bukan "nota").
+- Uji: `peta_akses.py --kiriman` bagian 6 (nota wadah campuran 6 merek di tiap cara bayar × pesanan, alasanTolak keranjang membesar, takar 6 merek
+  ditolak / 5 merek diukur 18/20, owner tanpa batas, kalimat pagar umum) + statis SB / panel / keranjangJual; `kirim()` menghitung SEMUA penolakan
+  pagar umum (dulu hanya kalimat "nota"); kontrol +9. `uji_akses_baru.py` +1 (batas dokumen & kalimat), kontrol +2.

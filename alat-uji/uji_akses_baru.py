@@ -105,6 +105,11 @@ ok('kiriman: 17 dokumen = 18 access call → masih boleh; 18 dokumen (19 access 
   BATAS_KIRIM_STAF === 18 && periksaKiriman(KRY, besar, [], HAK_KRY).accessCall === 18 && /batas 17\) — pecah jadi dua nota/.test(periksaKiriman(KRY, lebih, [], HAK_KRY).tolak || ''), JSON.stringify(periksaKiriman(KRY, lebih, [], HAK_KRY)));
 ok('batas per akun: owner tanpa batas baris/hasil (0); Ben & karyawan 7 baris per nota, 8 hasil per adukan (terburuknya 17 access call — alat-uji/peta_akses.py --kiriman)',
   batasBarisNota(OWN) === 0 && batasHasilAdukan(OWN) === 0 && batasBarisNota(BEN) === 7 && batasBarisNota(KRY) === 7 && batasHasilAdukan(KRY) === 8);
+// 39b no. 21: batas DOKUMEN per kiriman (nota & isian takar) = pagar perangkat tanpa baris jejak; kalimat pagar umum mengikuti isi kiriman
+var takar18 = []; for (var it = 0; it < 18; it++) takar18.push({ koleksi: 'wadahLiteran', data: { id: 300 + it, tanggal: W.tanggal, tipe: 'karung' }, ada: false });
+var pT = periksaKiriman(KRY, takar18, [], HAK_KRY);
+ok('39b no. 21: batas dokumen per kiriman owner 0 (tanpa batas), Ben & karyawan 17 (= pagar 18 − 1 baris jejak); kiriman BUKAN nota yang terlalu besar ditolak "catat dalam dua kali" (tanpa kata nota), nota tetap "pecah jadi dua nota"',
+  batasDokumenKirim(OWN) === 0 && batasDokumenKirim(BEN) === BATAS_KIRIM_STAF - 1 && batasDokumenKirim(KRY) === 17 && /batas 17\) — catat dalam dua kali$/.test(pT.tolak || '') && !/nota/.test(pT.tolak || ''), JSON.stringify(pT));
 ok('kiriman: owner tidak diperiksa (payung owner, 0 access call); akun belum terdaftar ditolak apa pun isinya',
   periksaKiriman(OWN, lebih, [{ koleksi: 'penjualan', id: 1 }], {}).accessCall === 0 && periksaKiriman(BLM, nota('Tunai', 1), [], {}).tolak === 'Akun ini belum didaftarkan owner');
 
@@ -244,6 +249,8 @@ if __name__ == '__main__':
             'pesanan yang sudah dibayar bisa diubah lagi': (js.replace("if (x.koleksi === 'pesanan' && (['dibayar', 'batal'].indexOf(String(lama.status || '')) >= 0 || d.status !== 'dibayar'))", "if (x.koleksi === 'pesanan' && d.status !== 'dibayar')"), S),
             'batas access call dilewati': (js.replace("if (accessCall > BATAS_KIRIM_STAF) return", "if (accessCall > 99) return"), S),
             'pagar perangkat tanpa sisa 2': (js.replace("const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL - CADANGAN_ACCESS_CALL;", "const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL;"), S),
+            '39b no. 21: batas dokumen akun = pagar penuh (tanpa baris jejak)': (js.replace("BATAS_KIRIM_STAF - 1 : 0);", "BATAS_KIRIM_STAF : 0);"), S),
+            '39b no. 21: pagar umum berkata "nota" untuk isian takar': (js.replace("(D.some((x) => x.koleksi === 'penjualan') ? 'pecah jadi dua nota' : 'catat dalam dua kali')", "'pecah jadi dua nota'"), S),
             'kisi SS2 memajang "boleh sendiri" yang ditutup server': (js.replace("if (nilai === 'sendiri' && (SERVER_BUKA[tindakan] || []).indexOf(peran) < 0) return", "if (false) return"), S),
             'jejak kiriman cuma menyebut dokumen pertama': (js.replace("const daftar = (dokumen || []).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id), ringkas: ringkasDok(x.data) }));", "const daftar = (dokumen || []).slice(0, 1).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id), ringkas: ringkasDok(x.data) }));"), S),
             'kasir@ bisa minta didaftarkan': (js.replace("if (e === EMAIL_KASIR) return { jenis: 'kasir'", "if (false) return { jenis: 'kasir'"), S),
