@@ -7,9 +7,9 @@
 // Tidak ada kolom PIN/sandi di mana pun — kunci perangkat diatur di perangkatnya (aturan tetap).
 // Nama pembantu diprefiks `ss` karena bundel uji jsc satu lingkup.
 import { hitungUtangPemasok, hitungStokBahanKemasan, hitungStokKarungPerMerk } from '../mesin/beku.js';
-import { LABEL_BAHAN_KEMASAN, kunciPelanggan } from '../mesin/pembantu.js';
+import { LABEL_BAHAN_KEMASAN, kunciPelanggan, uangKembaliRetur } from '../mesin/pembantu.js';
 import { KOLEKSI } from '../data/koleksi.js';
-import { ambilPenjualan, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilPetaJenisBeras, cacheMentah } from '../data/toko.js';
+import { ambilPenjualan, ambilRetur, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilPetaJenisBeras, cacheMentah } from '../data/toko.js';
 import { tempoPemasok } from './bon-pemasok-logika.js';
 import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
 import { semuaBon, pesanTagih } from './bon-logika.js';
@@ -248,7 +248,9 @@ export function ssLaporLokasi(kini) {
   const lapor = daftar.map((l) => { const merek = Object.keys(stok).filter((m) => Math.abs(stok[m][l.id] || 0) > 0.05).map((m) => ({ nama: m, kg: stok[m][l.id] })).sort((a, b) => b.kg - a.kg);
     const kg = merek.reduce((a, m) => a + m.kg, 0); const nilai = merek.reduce((a, m) => a + m.kg * ((stokK[m.nama] || {}).hppTerakhirPerKg || 0), 0);
     const nota = ambilPenjualan().filter((p) => (p.lokasi || utama.id) === l.id); const hariIni = nota.filter((p) => p.tanggal === iso); const bulanIni = nota.filter((p) => (p.tanggal || '').slice(0, 7) === bulan);
-    return { id: l.id, nama: l.nama, utama: l.utama, alamat: l.alamat, kg, nilai, merek, omzetHari: hariIni.reduce((a, p) => a + (p.hargaTotal || 0), 0), notaHari: new Set(hariIni.map((p) => p.grupNota || p.trxId || p.id)).size, omzetBulan: bulanIni.reduce((a, p) => a + (p.hargaTotal || 0), 0),
+    // no. 19: omzet per lokasi = penjualan − uang retur lokasi itu (retur membawa lokasi perangkat; tanpa lokasi → lokasi utama)
+    const rt = ambilRetur().filter((r) => (r.lokasi || utama.id) === l.id); const uangR = (f) => rt.filter((r) => f(String(r.tanggal || ''))).reduce((a, r) => a + uangKembaliRetur(r), 0);
+    return { id: l.id, nama: l.nama, utama: l.utama, alamat: l.alamat, kg, nilai, merek, omzetHari: hariIni.reduce((a, p) => a + (p.hargaTotal || 0), 0) - uangR((t) => t === iso), notaHari: new Set(hariIni.map((p) => p.grupNota || p.trxId || p.id)).size, omzetBulan: bulanIni.reduce((a, p) => a + (p.hargaTotal || 0), 0) - uangR((t) => t.slice(0, 7) === bulan), notaBulan: new Set(bulanIni.map((p) => p.grupNota || p.trxId || p.id)).size,
       perangkat: perangkat.filter((p) => (p.lokasi || (l.utama ? '' : null)) === l.id || (l.utama && !p.lokasi)).map((p) => p.nama || p.id), kosong: !merek.length && !nota.length }; });
   return { lapor, utama, ket: daftar.length > 1 ? 'Nota & catatan membawa lokasi perangkat yang mencatatnya; catatan lama tanpa lokasi dihitung di lokasi utama (' + utama.nama + ').' : 'Baru satu lokasi — pindah stok & saringan lokasi hidup begitu ada lokasi kedua (tambahkan di Atur).' };
 }
