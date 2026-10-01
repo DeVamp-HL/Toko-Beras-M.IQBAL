@@ -36,7 +36,7 @@ const olehSingkat = (o) => { const t = String(o || '').trim().split(/\s+/)[0] ||
 
 export function pasangLayarJual(akar, opsi) {
   const K = buatKeadaan(L.keadaanAwal());
-  const set = (patch) => K.setel(patch);
+  const set = (patch) => K.setel(L.lepasTembusBasi(K.baca(), patch));   // 39b no. 27: keranjang berubah → pita "JUAL DULU, TANDAI" ikut dibuang
   const S = () => K.baca();
   // putaran 23c: akun bukan-owner — batas baris per nota (batas sekali kirim ke server) ikut ke logika setiap kali keranjang bertambah / nota dicatat
   const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null), tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null) });   // putaran 31b: hanya owner boleh jual dulu tandai dicocokkan
