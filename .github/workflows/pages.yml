@@ -103,6 +103,8 @@ jobs:
       # ---- PUTARAN 25 — kunci periode bulanan ----
       - name: "Kunci periode (putaran 25): daftar periksa, kunci/buka, pembalik hari ini, final bulanan, pajak, penjaga pusat, kirim bertahap (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_kunci_periode.py && python3 alat-uji/uji_kunci_periode.py --kontrol
+      - name: "Denyut per akun (audit 39b no. 23): tablet bergiliran tidak terkunci ke akun pertama, rules perangkatStatus apa adanya, \"sudah tidak dipakai\" menyebut pemegangnya (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_denyut_per_akun.py && python3 alat-uji/uji_denyut_per_akun.py --kontrol
 
       # ---- PUTARAN 25b — antrean kasir tidak boleh macet ----
       - name: "Batal karcis kasir darurat di /baru/ (25b): bentuk dokumen = mulaiBatalkanTrx sistem lama, alasan wajib, bulan terkunci ditolak (kotak pasir + kontrol)"

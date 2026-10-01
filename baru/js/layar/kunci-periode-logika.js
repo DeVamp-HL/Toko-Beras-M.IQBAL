@@ -20,6 +20,8 @@ export function kpKasirVersiLama(kini) {
   return cacheMentah('perangkat').filter((p) => { const x = p.pada ? new Date(p.pada).getTime() : NaN; return kpPerangkatKasir(p) && isFinite(x) && t - x <= KP_VERSI_MS && !kpVersiKasirCukup(p.versi); });
 }
 const kpNamaPerangkat = (p) => (p.nama || p.id) + ' · ' + kpNamaAplikasiKasir(p);
+// audit 39b no. 23: satu perangkat bisa punya baris denyut per akun (tablet bergiliran) — nama perangkat + yang memegangnya
+const kpNamaDenyut = (p) => (p.nama || p.id) + (p.pemegang ? ' (' + p.pemegang + ')' : '');
 const kpKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 const kpTgl = (iso) => (iso && iso.length >= 10 ? tanggalPendek(iso) : iso || '—');
 
@@ -77,11 +79,11 @@ export function kpDaftarPeriksa(bulan, kini, K) {
   const perangkat = cacheMentah('perangkat'); const t = kini.getTime();
   const antreLain = perangkat.filter((p) => (Number(p.antrean) || 0) > 0);
   tambah({ id: 'perangkatAntre', blokir: true, ok: !antreLain.length, teks: 'Tidak ada perangkat yang masih menyimpan antrean', ket: antreLain.length ? 'tulisan offline dari perangkat ini untuk ' + nama + ' akan ditolak sesudah dikunci' : 'semua perangkat melaporkan antrean kosong',
-    rincian: antreLain.map((p) => (p.nama || p.id) + ' · ' + p.antrean + ' antre' + (p.aplikasi ? ' · ' + p.aplikasi : '') + (p.pada ? ' · denyut ' + kpTgl(kpWib(new Date(p.pada)).iso) : '')) });
+    rincian: antreLain.map((p) => kpNamaDenyut(p) + ' · ' + p.antrean + ' antre' + (p.aplikasi ? ' · ' + p.aplikasi : '') + (p.pada ? ' · denyut ' + kpTgl(kpWib(new Date(p.pada)).iso) : '')) });
   const diam = perangkat.filter((p) => { const x = p.pada ? new Date(p.pada).getTime() : NaN; return !isFinite(x) || t - x > KP_DENYUT_MS; });
   tambah({ id: 'perangkatDenyut', blokir: true, ok: !diam.length, teks: 'Semua perangkat berdenyut dalam 24 jam terakhir', ket: diam.length ? 'tulisan offline dari perangkat ini untuk ' + nama + ' akan ditolak sesudah dikunci — nyalakan & sambungkan, atau nyatakan sudah tidak dipakai' : 'semua berdenyut',
-    rincian: diam.map((p) => (p.nama || p.id) + ' · ' + (p.pada ? 'terakhir ' + kpTgl(kpWib(new Date(p.pada)).iso) : 'tanpa denyut') + (p.aplikasi ? ' · ' + p.aplikasi : '')),
-    aksi: diam.filter((p) => !(Number(p.antrean) > 0) && !(Number(p.gagal) > 0)).map((p) => ({ id: String(p.id), label: (p.nama || p.id) + ' sudah tidak dipakai' })) });
+    rincian: diam.map((p) => kpNamaDenyut(p) + ' · ' + (p.pada ? 'terakhir ' + kpTgl(kpWib(new Date(p.pada)).iso) : 'tanpa denyut') + (p.aplikasi ? ' · ' + p.aplikasi : '')),
+    aksi: diam.filter((p) => !(Number(p.antrean) > 0) && !(Number(p.gagal) > 0)).map((p) => ({ id: String(p.id), label: kpNamaDenyut(p) + ' sudah tidak dipakai' })) });
   // ⛔ putaran 25b: berkas kasir SEBELUM 25b menganggap karcis yang ditolak server (bulan terkunci) sebagai "belum masuk" — antrean HP itu macet
   const lamaV = kpKasirVersiLama(kini);
   tambah({ id: 'versiKasir', blokir: true, ok: !lamaV.length, teks: 'Semua perangkat kasir yang berdenyut dalam ' + KP_VERSI_HARI + ' hari terakhir sudah memakai versi 25b',
@@ -143,9 +145,9 @@ export function susunAturKunci(tenggang, w) {
 /** Perangkat lama yang sudah tidak dipakai: catatan denyutnya dihapus (kalau perangkatnya hidup lagi, denyutnya tercatat ulang sendiri). */
 export function susunLupakanPerangkat(id, yakin) {
   const p = cacheMentah('perangkat').find((x) => String(x.id) === String(id)); if (!p) return { tolak: 'Perangkat itu sudah tidak ada di daftar' };
-  if (Number(p.antrean) > 0 || Number(p.gagal) > 0) return { tolak: (p.nama || p.id) + ' terakhir melaporkan ' + (Number(p.antrean) || 0) + ' antrean / ' + (Number(p.gagal) || 0) + ' ditolak — nyalakan & kirim dulu, tidak bisa dilupakan' };
-  if (!yakin) return { tolak: 'Nyatakan ' + (p.nama || p.id) + ' sudah tidak dipakai? Kalau ternyata masih dipakai dan menyimpan nota offline, nota bulan terkunci darinya akan ditolak. Ketuk sekali lagi', perluYakin: true };
-  return { hapus: [{ koleksi: 'perangkatStatus', id: p.id }], patch: { kabar: (p.nama || p.id) + ' dikeluarkan dari daftar denyut', kabarAwas: false, kpYakinLupa: null } };
+  if (Number(p.antrean) > 0 || Number(p.gagal) > 0) return { tolak: kpNamaDenyut(p) + ' terakhir melaporkan ' + (Number(p.antrean) || 0) + ' antrean / ' + (Number(p.gagal) || 0) + ' ditolak — nyalakan & kirim dulu, tidak bisa dilupakan' };
+  if (!yakin) return { tolak: 'Nyatakan ' + kpNamaDenyut(p) + ' sudah tidak dipakai? Kalau ternyata masih dipakai dan menyimpan nota offline, nota bulan terkunci darinya akan ditolak. Ketuk sekali lagi', perluYakin: true };
+  return { hapus: [{ koleksi: 'perangkatStatus', id: p.id }], patch: { kabar: kpNamaDenyut(p) + ' dikeluarkan dari daftar denyut', kabarAwas: false, kpYakinLupa: null } };
 }
 /** Beranda › Perlu perhatian (owner): satu baris kalau bulan lalu sudah lewat tenggang dan belum dikunci. Diam selama kunci belum bisa dipakai (25b). */
 export function kpPerhatian(kini, uji) {
