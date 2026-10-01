@@ -12,7 +12,7 @@ import * as ST from './struk-logika.js';
 import * as KC from './karcis-logika.js';   // PUTARAN 20: rinci karcis kasir darurat lewat keranjang
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
-import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal, kabarKiriman } from '../data/toko.js';
 import { tombolAkun, batasBarisNota, bukanOwner } from './akses-layar.js';
 import { gulirkan, terbangkan, tengah, sekali } from '../inti/gerak.js';
 import { adeganSerok, adeganKemasanMasuk, adeganSerahTerima, adeganTerimaUang, adeganIsiUlang, adeganPanggul, adeganMuat, adeganTuangJahit, sejajarkanLagi } from './adegan.js';
@@ -156,7 +156,7 @@ export function pasangLayarJual(akar, opsi) {
       const r = RT.susunReturTanpaNota(S(), L.waktuSekarang(S().sekarang || undefined));
       if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, rtYakin: !!r.perluYakin });
       try { const h = await tulisDokumen(r.dokumen); if (h && h.gagal) return set({ kabar: 'DITOLAK, retur tidak tersimpan: ' + h.pesan, kabarAwas: true });
-        set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar })); } catch (e) { set({ kabar: 'GAGAL mencatat retur: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+        set(Object.assign({}, r.patch, { kabar: kabarKiriman(h, r.patch.kabar) })); } catch (e) { set({ kabar: 'GAGAL mencatat retur: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
     },
     tkSusul: ({ id }) => { const r = RT.ikatSusulan(id); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); const p = L.ikatTukar(S(), r.ikat); if (p.kabar) return set(p); set(Object.assign({}, p, { jalur: 'sering', lembar: null, kabar: r.kabar, kabarAwas: false })); },
     tkYakinLebih: () => set(L.yakinLebihSusulan(S())),
@@ -172,7 +172,7 @@ export function pasangLayarJual(akar, opsi) {
         // kalau yang pertama ditolak server, yang kedua tetap jalan dan layar tetap bilang "dibatalkan")
         const h = await tulisDokumen(p.dokumen, p.hapus, { jejakHapus: 'dicabut bersama nota yang dibatalkan' });
         if (h && h.gagal) return set({ kabar: 'DITOLAK, nota TIDAK dibatalkan: ' + h.pesan, kabarAwas: true });
-        set({ notaTerakhir: null, kabar: 'Nota dibatalkan — ' + p.jumlah + ' baris ditandai dibatalkan (tidak dihapus)' + (p.hapus.some((x) => x.koleksi === 'retur') ? '; retur tukarnya ikut dicabut (lahir bersama, pergi bersama)' : ''), kabarAwas: false });
+        set({ notaTerakhir: null, kabar: kabarKiriman(h, 'Nota dibatalkan — ' + p.jumlah + ' baris ditandai dibatalkan (tidak dihapus)' + (p.hapus.some((x) => x.koleksi === 'retur') ? '; retur tukarnya ikut dicabut (lahir bersama, pergi bersama)' : '')), kabarAwas: false });
       } catch (e) { set({ kabar: 'GAGAL membatalkan: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
     },
     bukaPelanggan: () => set({ lembar: 'pelanggan', cariPelanggan: '' }),
@@ -284,7 +284,7 @@ export function pasangLayarJual(akar, opsi) {
     try {
       const h = r.kelompok ? await tulisBertahap('Tarik balik rincian karcis', r.kelompok) : await tulisDokumen(r.dokumen, r.hapus, { jejakHapus: 'kantong rincian yang ditarik balik' });
       if (h && h.gagal) return set({ kabar: 'DITOLAK, rincian tidak (seluruhnya) ditarik balik: ' + h.pesan, kabarAwas: true });
-      set(Object.assign({}, r.patch, tambah || {}, h && h.potongan > 1 ? { kabar: r.patch.kabar + ' (dikirim ' + h.potongan + ' tahap)' } : {}));
+      set(Object.assign({}, r.patch, tambah || {}, { kabar: kabarKiriman(h, r.patch.kabar + (h && h.potongan > 1 ? ' (dikirim ' + h.potongan + ' tahap)' : '')) }));
     } catch (e) { set({ kabar: 'GAGAL menarik balik: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
   }
   async function tulisUmum(r) {
@@ -292,7 +292,7 @@ export function pasangLayarJual(akar, opsi) {
     try {
       const h = await tulisDokumen(r.dokumen || [], r.hapus);
       if (h && h.gagal) return set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true });
-      set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar }));
+      set(Object.assign({}, r.patch, { kabar: kabarKiriman(h, r.patch.kabar) }));
     } catch (e) { set({ kabar: 'GAGAL menulis: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
   }
   // putaran 27: setelan (arsip / hapus nama) — sama dengan tulisUmum, tapi memberi tahu berhasil-tidaknya
@@ -301,7 +301,7 @@ export function pasangLayarJual(akar, opsi) {
     try {
       const h = await tulisDokumen(r.dokumen || [], r.hapus);
       if (h && h.gagal) { set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true }); return false; }
-      set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar })); return true;
+      set(Object.assign({}, r.patch, { kabar: kabarKiriman(h, r.patch.kabar) })); return true;
     } catch (e) { set({ kabar: 'GAGAL menulis: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
   // barang masuk keranjang → tetes emas terbang dari tombol yang diketuk ke bilah keranjang, bilahnya memegas
@@ -458,14 +458,14 @@ export function pasangLayarJual(akar, opsi) {
     try {
       const h = await tulisDokumen(r.dokumen);
       if (h && h.gagal) return set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true });
-      set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar }));
+      set(Object.assign({}, r.patch, { kabar: kabarKiriman(h, r.patch.kabar) }));
     } catch (e) { set({ kabar: 'GAGAL menulis pesanan: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
   }
   // panel isi ulang wadah (takar demi takar) — penangan bersama dengan layar Stok
   async function tulisWadah(r) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
     try { const x = await tulisDokumen(r.dokumen); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; }
-      set(Object.assign({}, r.patch, { kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar })); return true; }
+      set(Object.assign({}, r.patch, { kabar: kabarKiriman(x, r.patch.kabar) })); return true; }
     catch (e) { set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
   Object.assign(aksi, aksiPanelWadah({ set, st: S, tulis: tulisWadah, keranjang: S, waktu: () => L.waktuSekarang(S().sekarang || undefined),

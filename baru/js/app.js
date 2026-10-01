@@ -62,8 +62,9 @@ function statusAwas() {
 const labelAkun = () => { const a = akunKini(); return !a || !bisaBekerja(a) ? 'DATA TOKO' : a.jenis === 'owner' ? 'OWNER' : String(a.nama || a.email || '').toUpperCase(); };
 // Nama yang masuk SELALU di depan (owner 24 Sep) — juga saat memuat; keadaan tambahan menyusul di belakangnya (terpotong duluan kalau sempit).
 function statusRingkas() {
-  const belum = (statusFb.lokal || {}).belum || 0;
-  const tambah = statusFb.koleksiSiap < statusFb.koleksiTotal && !statusFb.offline ? ' · memuat…' : statusFb.offline ? ' · tanpa internet' : statusFb.menunggu > 0 ? ' · menunggu server' : belum ? ' · ' + belum + ' belum terkirim' : '';
+  const belum = (statusFb.lokal || {}).belum || 0; const tolak = (statusFb.lokal || {}).ditolak || 0;   // 39b no. 28: kiriman yang ditolak server tampil di pil SETIAP layar
+  const kirim = statusFb.offline ? ' · tanpa internet' : statusFb.menunggu > 0 ? ' · menunggu server' : belum ? ' · ' + belum + ' belum terkirim' : '';
+  const tambah = statusFb.koleksiSiap < statusFb.koleksiTotal && !statusFb.offline ? ' · memuat…' : (tolak ? ' · ' + tolak + ' DITOLAK server' : '') + kirim;
   return labelAkun() + tambah;
 }
 
@@ -325,7 +326,7 @@ if (q.get('cadangan')) {
   // Kini: selama koleksi awal belum lengkap gambar dijarangkan (±3×/detik), sesudahnya sekali per bingkai.
   // Fungsi yang diantre = fungsi yang SAMA dengan pendengar data tiap layar (tinjauan 29 Sep: pembungkus gambarSemua lolos dari penggabung
   // → layar yang terlihat digambar dua kali per bingkai). nanti() SEBELUM setelMuat: selesai muat = antrean digambar sekali, tanpa bingkai tambahan.
-  const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar, stok.gambar, menu.gambar, harga.gambar, uang.gambar, laporan.gambar];
+  const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar, stok.gambar, pelanggan.gambar, menu.gambar, harga.gambar, uang.gambar, laporan.gambar];
   fb.dengarkanStatus((st) => { statusFb = st; gambarChipDanNav(); GAMBAR_STATUS.forEach(nanti); setelMuat(!!st.masuk && st.koleksiTotal > 0 && st.koleksiSiap < st.koleksiTotal); });
   gerbang.mulai();   // sebelum Firebase menjawab: gerbang tertutup tanpa formulir (dulu layar kosong); sudah masuk → pintu terbuka cepat
   fb.mulai(gambarAkun);

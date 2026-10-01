@@ -12,7 +12,7 @@ import { RP, ANGKA, tanggalPendek, hariIniIso, jamKini, jamSetempat, waktuSetemp
 import * as M from './menu-logika.js';
 import * as S from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman } from '../data/toko.js';
 import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';
 import * as OP from './akses-kasir-logika.js';   // 25c: operator kasir & PIN owner pindah dari sistem lama
 
@@ -58,7 +58,7 @@ export function pasangLayarMenu(akar, opsi) {
   async function tulis(r) {
     if (!r || r.tolak) { set({ kabar: (r && r.tolak) || 'Tidak ada yang ditulis', kabarAwas: true }); return false; }
     try { const x = await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus }); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; }
-      set(Object.assign({}, r.patch || {}, { kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + ((r.patch && r.patch.kabar) || 'Tersimpan') })); return true; }
+      set(Object.assign({}, r.patch || {}, { kabar: kabarKiriman(x, (r.patch && r.patch.kabar) || 'Tersimpan') })); return true; }
     catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
   // ukuran simpanan lokal dibaca dari peramban (bukan ditebak); tidak terbaca → null → layar bilang tidak bisa dibaca
@@ -113,7 +113,7 @@ export function pasangLayarMenu(akar, opsi) {
     // putaran 25: kiriman yang ditolak karena BULAN TERKUNCI → dicatat ulang bertanggal HARI INI (tanggal aslinya ditulis di catatannya)
     tulisUlangHariIni: async ({ id }) => { if (!opsi.tulisUlangDitolak) return; const r = await opsi.tulisUlangDitolak(id, (dok) => kpKeHariIni(dok, waktu())); set({ kabar: r && r.gagal ? 'DITOLAK: ' + r.pesan : 'Dicatat ulang bertanggal hari ini atas nama owner' + (r && r.antre ? ' (masuk antrean)' : ''), kabarAwas: !!(r && r.gagal) }); },
     // putaran 25: kiriman BERTAHAP yang terputus (SATUKAN, hapus nama, tarik balik rincian, adukan) — lanjutkan dari potongan yang belum, atau buang sisanya
-    lanjutBertahap: async () => { const r = await lanjutkanBertahap(); set({ kabar: r && r.gagal ? 'BERHENTI: ' + r.pesan : 'Kiriman bertahap selesai (' + (r.total || 0) + ' tahap)', kabarAwas: !!(r && r.gagal) }); },
+    lanjutBertahap: async () => { const r = await lanjutkanBertahap(); set({ kabar: r && r.gagal ? 'BERHENTI: ' + r.pesan : kabarKiriman(r, 'Kiriman bertahap selesai (' + (r.total || 0) + ' tahap)'), kabarAwas: !!(r && r.gagal) }); },
     buangBertahap: () => { if (st().yakinBuang !== 'bertahap') return set({ yakinBuang: 'bertahap', kabar: 'Ketuk sekali lagi: sisa kiriman bertahap TIDAK dikirim (yang sudah masuk tetap masuk)', kabarAwas: true }); buangBertahap(); set({ yakinBuang: null, kabar: 'Sisa kiriman bertahap dibuang', kabarAwas: false }); },
     buangDitolak: ({ id }) => { if (!opsi.buangDitolak) return; if (st().yakinBuang !== id) return set({ yakinBuang: id, kabar: 'Ketuk sekali lagi untuk membuang kiriman itu — isinya tidak akan pernah masuk data toko', kabarAwas: true }); opsi.buangDitolak(id); set({ yakinBuang: null, kabar: 'Kiriman yang ditolak dibuang', kabarAwas: false }); },
     namaiPerangkat: (v) => set({ namaBaru: String(v).slice(0, 30) }), namaiSimpan: () => { if (!opsi.namaiPerangkat) return; opsi.namaiPerangkat(st().namaBaru || ''); set({ kabar: 'Perangkat ini kini bernama ' + (st().namaBaru || '(tanpa nama)') + ' — jejak & denyut memakai nama itu', kabarAwas: false, namaBaru: '' }); },

@@ -156,6 +156,8 @@ jobs:
         run: python3 alat-uji/uji_tata_letak_ringkasan_stok.py && python3 alat-uji/uji_tata_letak_ringkasan_stok.py --kontrol
       - name: "Rapi-rapi tata letak layar lain (36): tujuh layar kerja di Mac selebar 1720 & berpinggir sama, kolom samping tiga-kolom clamp(vw) (1280 tidak menyempit), Menu tetap kolom N1 860"
         run: python3 alat-uji/uji_tata_letak_layar_lain.py && python3 alat-uji/uji_tata_letak_layar_lain.py --kontrol
+      - name: "Audit 39b no. 28: kabar sesudah kiriman jujur — antre = \"Tersimpan di perangkat, menunggu server\" di enam layar + Jual (panel wadah, umum, setelan, pesanan, tarik balik, batal nota) + kiriman bertahap; pil kepala menyebut yang DITOLAK server (jsc)"
+        run: python3 alat-uji/uji_kabar_antre.py && python3 alat-uji/uji_kabar_antre.py --kontrol
       # ---- PUTARAN 38 — kendali biaya (cost controlling) di Laporan › Biaya ----
       - name: "Kendali biaya (38): tiap catatan uang keluar jatuh ke tepat satu jenis (tanda → untuk → kata owner → kata bawaan → lain), Σ jenis menutup ke mesin laba, anggaran owner + lampu (jatah hari ke-N, upah belum dibayar ikut), acuan median terukur, titik impas dari omzet ber-HPP & mesin sampai hari ini, pemicu per satuan (arah dibalik untuk jual/margin), pareto 80 %, peringatan menunjuk pintu, tren, atur & tambah kata satu-kata-satu-jenis; ASAP GLOBAL laba tiap bulan byte-sama dengan main (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_kendali_biaya.py && python3 alat-uji/uji_kendali_biaya.py --kontrol

@@ -20,7 +20,7 @@ import { tombolAkun, tombolLuarKisi, bukanOwner, batasHasilAdukan } from './akse
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
 import { adeganIsiUlang, adeganBukaKarung, adeganAdukan } from './adegan.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, tulisBertahap, tolakKunciTanggal, kabarKiriman } from '../data/toko.js';
 import { kunciKemasan } from '../mesin/pembantu.js';
 import { jbKelompokStok } from './jenis-beras-logika.js';
 import * as VR from './varian-logika.js';
@@ -74,7 +74,7 @@ export function pasangLayarStok(akar, opsi) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true, kpPembalik: r.pembalik || null }); return false; }
     try { const x = r.kelompok ? await tulisBertahap(r.judulBertahap || 'Koreksi stok bertahap', r.kelompok) : await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus });
       if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; }
-      set(Object.assign({}, r.patch, { kpPembalik: null, kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar + (x && x.potongan > 1 ? ' (dikirim ' + x.potongan + ' tahap)' : '') })); return true; }
+      set(Object.assign({}, r.patch, { kpPembalik: null, kabar: kabarKiriman(x, r.patch.kabar) + (x && x.potongan > 1 ? ' (dikirim ' + x.potongan + ' tahap)' : '') })); return true; }
     catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
   const keranjangJual = () => ({ keranjang: opsi.keranjangJual().keranjang, antrean: opsi.keranjangJual().antrean });
