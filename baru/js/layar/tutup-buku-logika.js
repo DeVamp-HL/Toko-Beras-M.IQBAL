@@ -211,12 +211,22 @@ function bkBerubah(a) {
   const beda = S.harta.concat(S.utang).filter((b) => (lama[b.id] === null || lama[b.id] === undefined) !== (b.n === null) || (b.n !== null && Math.abs(b.n - lama[b.id]) >= 0.5));
   return beda.length ? 'Catatan tahun ' + a.tahun + ' berubah sejak tutup buku dimulai (' + beda.map((b) => b.nama.split(' · ')[0]).join(', ') + ') — tidak dilanjutkan. Batalkan, lalu mulai lagi.' : '';
 }
-/** (b) Lanjutkan tutup buku yang berhenti di tengah: kiriman yang BELUM masuk saja, dengan dokumen & id yang sama. */
+/**
+ * §8 no. 2: aturan titik kas (d) dinilai saat KIRIM, bukan saat mulai — kalau titik kas sekarang sudah lewat 31 Des (tutup hari Januari sesudah tutup buku
+ * dimulai), titik 31 Des yang disusun saat mulai TIDAK ditulis (hitungan fisik Januari dipertahankan) dan berita acara terkunci mencatat titikDitulis false.
+ */
+function bkTitikKini(k, tahun) {
+  const tk = ambilTitikKas(); if (!(tk && tk.tanggal && tk.tanggal > tbCutoff(tahun))) return k;
+  return Object.assign({}, k, { dokumen: k.dokumen.filter((x) => !(x.koleksi === 'pengaturan' && String(x.data.id) === 'titikKas'))
+    .map((x) => (x.koleksi === 'tutupBukuAcara' && x.data.status === 'terkunci' ? { koleksi: x.koleksi, data: Object.assign({}, x.data, { titikDitulis: false }) } : x)) });
+}
+/** (b) Lanjutkan tutup buku yang berhenti di tengah: kiriman yang BELUM masuk saja, dengan dokumen & id yang sama. titik = titik kas 31 Des yang ikut (atau null). */
 export function lanjutBuku(tahun) {
   const a = bkAcara(tahun); if (!a || a.status !== 'berjalan' || !a.rencana || !Array.isArray(a.pembuka)) return { tolak: 'Tidak ada tutup buku ' + tahun + ' yang sedang berjalan' };
   const ub = bkBerubah(a); if (ub) return { tolak: ub };
-  const K = bkKirimanDari(a); const belum = K.filter((k) => !bkMasuk(k, a));
-  return belum.length ? { kiriman: belum, sudah: K.length - belum.length, total: K.length } : { selesai: true, sudah: K.length, total: K.length };
+  const K = bkKirimanDari(a); const belum = K.filter((k) => !bkMasuk(k, a)).map((k) => bkTitikKini(k, tahun));
+  const titik = [].concat.apply([], belum.map((k) => k.dokumen)).find((x) => x.koleksi === 'pengaturan' && String(x.data.id) === 'titikKas');
+  return belum.length ? { kiriman: belum, sudah: K.length - belum.length, total: K.length, titik: titik ? titik.data : null } : { selesai: true, sudah: K.length, total: K.length };
 }
 /** Saldo pembuka tahun itu yang ada di cache (termasuk yang tersembunyi dari mesin). */
 function bkPembukaTahun(tahun) { const out = []; Object.keys(KOLEKSI_CACHE).forEach((c) => cacheMentah(c).forEach((x) => { if (bkTutupBuku(x) && Number(x.tahunDari) === tahun) out.push({ koleksi: KOLEKSI_CACHE[c], id: x.id }); })); return out; }

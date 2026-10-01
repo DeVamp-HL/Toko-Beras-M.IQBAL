@@ -20,6 +20,7 @@ Yang dijaga:
   T10 (asap, bila ada cadangan lokal di _privat/) data toko pada 5 Jan 2027: dipecah, tiap kiriman ≤ 18; batal juga ≤ 18
   §8 (syarat wajib hasil tinjauan 1 Okt, docs/rancangan-tutup-buku-bertahap.md):
   N1  HP STAF (tanpa tutupBukuAcara) melihat angka yang SAMA dengan HP owner di tiap titik putus — penanda = batch pembuka ber-penandaBuku (koleksi yang staf baca)
+  N2  Lanjutkan sesudah tutup hari Januari: titik 31 Des yang disusun saat mulai TIDAK dikirim (aturan titik dinilai saat kirim), titikDitulis false
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -171,6 +172,19 @@ coba('N1', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = su
   ok('N1 HP staf = HP owner di SETIAP titik putus (kiriman pembuka, arsip, batal dari terkunci & dari berjalan) — ' + titikPutus.length + ' titik', titikPutus.length >= 9 && !stafBeda().length, J(stafBeda()));
   ok('N1 selama berjalan HP staf melihat tahun 2026 utuh (stok & piutang tidak dobel)', staf2.length === 2 && staf2.every(function (t) { return t.staf === awal; }), J(staf2)); });
 
+// ---- §8 no. 2 · Lanjutkan sesudah tutup hari Januari: titik kas Januari (hitungan fisik) TIDAK ditimpa titik 31 Des yang disusun saat mulai
+function dokDi(K, koleksi, id) { var out = []; (K || []).forEach(function (k) { k.dokumen.forEach(function (x) { if (x.koleksi === koleksi && (id === undefined || String(x.data.id) === id)) out.push(x.data); }); }); return out; }
+coba('N2', function () { kotak(40); W = jam('2027-01-02T07:00:00+07:00'); R = susunKunci(2026, D, W); var titikRencana = dokDi(R.kiriman, 'pengaturan', 'titikKas').map(function (t) { return t.tanggal; });
+  kirim(R.kiriman[0]);
+  var T2 = { id: 'titikKas', tanggal: '2027-01-02', laci: 2450000, brankas: 10000000, rekening: 3000000, amplop: 1000000, diubahPada: '2027-01-02T13:00:00.000Z' };
+  terapkanKeCache([{ koleksi: 'pengaturan', data: T2 }]); localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify(T2));
+  jam('2027-01-03T08:00:00+07:00'); L = lanjutBuku(2026); var bawa = dokDi(L.kiriman, 'pengaturan', 'titikKas'); var ak = dokDi(L.kiriman, 'tutupBukuAcara').filter(function (a) { return a.status === 'terkunci'; })[0];
+  (L.kiriman || []).forEach(kirim); var dok = dokDiCache('pengaturan', 'titikKas');
+  ok('N2 mulai 2 Jan pagi (rencana membawa titik 31 Des), tutup hari 2 Jan memajukan titik, Lanjutkan 3 Jan: titik 31 Des TIDAK dikirim, berita acara titikDitulis false, titik kas tetap 2 Jan (laci 2.450.000)',
+    titikRencana.join() === '2026-12-31' && !L.tolak && !bawa.length && !!ak && ak.titikDitulis === false && !L.titik && dok.tanggal === '2027-01-02' && dok.laci === 2450000 && acara(2026).status === 'terkunci',
+    J([titikRencana, L.tolak, bawa, ak && ak.titikDitulis, dok]));
+  B = susunBatal(2026, [], W); ok('N2 batal sesudahnya tidak mengembalikan titik kas (titik 2 Jan dipertahankan)', !B.tolak && !B.titik && !dokDi(B.kiriman, 'pengaturan', 'titikKas').length, J(B.tolak || B.titik)); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -210,6 +224,7 @@ STATIS = [
     ('pita kemajuan K6: lanjutkan / batalkan / selesaikan', ["BK.kemajuanBuku()", 'data-aksi="bkLanjut"', 'data-k="tb-selesaikan"']),
     ('langkah 7 memakai tahun yang terkunci', ["const tahun = KM7 && KM7.fase === 'selesaikan' ? KM7.tahun :"]),
     ('patokan kas tahun di layar (bukan titik kas sekarang)', ["const SB = BK.barisTahun(T.tahun); const B = s.sesudahLive || bandingB(s, T);", "const bandingB = (s, T) => { const SB = BK.barisTahun(T.tahun);"]),
+    ('§8 no. 2 · Lanjutkan menyetel titik kas perangkat HANYA dari titik yang ikut kiriman lanjut (lanjutBuku.titik)', ["jalankanBuku(KM.tahun, Lj.kiriman || [], Lj.titik || null,"]),
 ]
 RUSAK = [
     ('saldo pembuka tidak dipecah (sekali kirim)', 'baru/js/layar/tutup-buku-logika.js', "const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] }))",
@@ -223,9 +238,10 @@ RUSAK = [
     ('era menghitung pembuka yang belum selesai', 'baru/js/layar/tutup-buku-logika.js', "if (bkTutupBuku(x) && pembukaBerlaku(x)) { const n = Number(x.tahunDari); if (isFinite(n) && (t === null || n > t)) t = n; } })); return t; }\nexport function aturBuku",
      "if (bkTutupBuku(x)) { const n = Number(x.tahunDari); if (isFinite(n) && (t === null || n > t)) t = n; } })); return t; }\nexport function aturBuku"),
     ('rencana tidak disimpan di server (berita acara berjalan tidak ikut kiriman 1)', 'baru/js/layar/tutup-buku-logika.js', "if (i === 0 && n > 1) dokumen.unshift(", "if (false) dokumen.unshift("),
-    ('lanjut mengirim ulang kiriman yang sudah masuk', 'baru/js/layar/tutup-buku-logika.js', "const belum = K.filter((k) => !bkMasuk(k, a));", "const belum = K;"),
+    ('lanjut mengirim ulang kiriman yang sudah masuk', 'baru/js/layar/tutup-buku-logika.js', "const belum = K.filter((k) => !bkMasuk(k, a)).map(", "const belum = K.map("),
     ('lanjut tanpa memeriksa perubahan tahun lama', 'baru/js/layar/tutup-buku-logika.js', "const ub = bkBerubah(a); if (ub) return { tolak: ub };", "const ub = '';"),
     ('mulai baru saat pembatalan belum tuntas', 'baru/js/layar/tutup-buku-logika.js', "const tg = bkTertunda(tahun); if (tg) return { tolak: tg };", "const tg = '';"),
+    ('§8 no. 2 · Lanjutkan menulis titik 31 Des walau titik kas sudah di Januari', 'baru/js/layar/tutup-buku-logika.js', "const belum = K.filter((k) => !bkMasuk(k, a)).map((k) => bkTitikKini(k, tahun));", "const belum = K.filter((k) => !bkMasuk(k, a));"),
     ('batal tidak dipecah', 'baru/js/layar/tutup-buku-logika.js', "const P = kpPotong([{ dokumen: awal, hapus: tanda }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] }))), dokDiCache, ugKiniDari(w));",
      "const P = { potongan: [{ dokumen: awal, hapus, get: 0 }] };"),
     ('titik kas tahun hanya dari titik kas sekarang', 'baru/js/layar/tutup-buku-logika.js', "const th = ambilTutupHari().filter((d) => d && d.tanggal && d.tanggal <= c && d.titik)", "const th = ambilTutupHari().filter((d) => false)"),

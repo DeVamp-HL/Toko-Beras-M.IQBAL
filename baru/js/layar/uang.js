@@ -218,7 +218,7 @@ export function pasangLayarUang(akar, opsi) {
     // tutup buku / pembatalan yang berhenti di tengah: lanjut dari kiriman / arsip yang belum masuk (rencana ada di berita acara di server — perangkat mana pun)
     bkLanjut: async () => { const KM = BK.kemajuanBuku(); if (!KM) return set({ kabar: 'Tidak ada tutup buku yang tertunda', kabarAwas: false });
       if (KM.fase === 'batal') return jalankanBatal(KM.tahun);
-      if (KM.fase === 'pembuka') { const Lj = BK.lanjutBuku(KM.tahun); if (Lj.tolak) return set({ kabar: Lj.tolak, kabarAwas: true }); return jalankanBuku(KM.tahun, Lj.kiriman || [], null, 'Tutup buku ' + KM.tahun + ' dilanjutkan.'); }
+      if (KM.fase === 'pembuka') { const Lj = BK.lanjutBuku(KM.tahun); if (Lj.tolak) return set({ kabar: Lj.tolak, kabarAwas: true }); return jalankanBuku(KM.tahun, Lj.kiriman || [], Lj.titik || null, 'Tutup buku ' + KM.tahun + ' dilanjutkan.'); }
       return jalankanBuku(KM.tahun, [], null, 'Arsip ' + KM.tahun + ' dilanjutkan.'); },
     bkBatal: async () => { const KM = BK.kemajuanBuku(); const T = BK.tahunBuku(kini()); const tahun = KM ? KM.tahun : T.acara && T.acara.status === 'terkunci' ? T.acara.tahun : (T.era !== null ? T.era : T.tahun); const acara = KM || BK.tahunBuku(kini()).acara; if (!acara && !(BK.bkEra() !== null)) return set({ kabar: 'Tidak ada tutup buku yang terkunci', kabarAwas: true });
       if (st().yakinBatalB !== tahun) return set({ yakinBatalB: tahun, kabar: 'Ketuk "batalkan" sekali lagi: saldo pembuka ' + tahun + ' ditarik dan arsipnya dikembalikan, bertahap', kabarAwas: true });
