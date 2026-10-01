@@ -198,8 +198,9 @@ export function susunKunci(tahun, D, w, L) {
     titikTahun: T0, hariIni: { tanggal: hariIni, baris: HI.harta.concat(HI.utang).map((b) => ({ id: b.id, nama: b.nama, n: b.n })) } });
   // §8 no. 8: berita acara percobaan yang dibatalkan dipakai ulang — tanggal pembatalan lamanya dibuang, supaya pembatalan berikutnya mencatat tanggalnya sendiri
   delete acara.pembuka; delete acara.penanda; delete acara.dariStatus; delete acara.dibatalkanPada; delete acara.dibatalkanTanggal;
-  // putaran 4 P4-1: PEMEGANG = perangkat yang memulai percobaan ini (juga percobaan ulang sesudah dibatalkan) — pemegang percobaan lama tidak terbawa
+  // putaran 4 P4-1: PEMEGANG = perangkat yang memulai percobaan ini (juga percobaan ulang sesudah dibatalkan) — pemegang & ambil alih (P4-2) percobaan lama tidak terbawa
   delete acara.pemegang;
+  delete acara.pemegangLama; delete acara.diambilAlihPada; delete acara.diambilAlihTanggal; delete acara.diambilAlihJam;
   const pg = bkPerangkatIni(L); if (pg) acara.pemegang = pg;
   const penanda = (titik ? [{ koleksi: 'pengaturan', data: titik }] : []).concat([{ koleksi: 'pengaturan', data: { id: 'tutupBuku', tahunDitutup: tahun, padaTanggal: w.tanggal } }]);
   // §8 no. 1: semua pembuka ber-`bertahap`; PENANDA yang terbaca HP staf = batch pembuka ber-`penandaBuku` (toko.js pembukaBerlaku). Tanpa stok beras → batch
@@ -258,6 +259,30 @@ export function bkBukanPemegang(tahun, L) {
   return 'Tutup buku ' + tahun + ' sedang dikerjakan di ' + (p.nama || p.id) + '. Lanjutkan atau batalkan dari perangkat itu.';
 }
 const bkPerangkatIni = (L) => (L && L.idPerangkat ? { id: String(L.idPerangkat), nama: String(L.namaPerangkat || L.idPerangkat) } : null);
+/**
+ * Putaran 4 P4-2: AMBIL ALIH — jalan keluar bila perangkat pemegang rusak / hilang / datanya terhapus (idPerangkat disimpan di localStorage: hapus data peramban =
+ * id baru). Hanya bila SEMUA: perangkat ini tersambung & data tutup buku (juga denyut perangkat) dari server, antrean perangkat ini kosong, berita acara tidak
+ * berubah ≥ 60 menit, dan pemegang tidak berdenyut 15 menit terakhir. Dua ketukan: yang pertama = kalimat peringatan (yakin = ketukan kedua).
+ * Hasil: berita acara yang sama dengan pemegang baru + pemegangLama & jam ambil alih — perangkat lama sesudahnya ditolak seperti perangkat lain.
+ */
+export function susunAmbilAlih(tahun, L, w, yakin) {
+  const a = bkAcara(tahun); const p = a && a.pemegang; const ini = bkPerangkatIni(L); const nm = p ? String(p.nama || p.id) : '';
+  if (!p || !p.id || ['berjalan', 'terkunci', 'membatalkan'].indexOf(a.status) < 0) return { tolak: 'Tidak ada tutup buku ' + tahun + ' yang dipegang perangkat lain' };
+  if (!ini) return { tolak: 'Perangkat ini belum dikenali — muat ulang aplikasi, lalu coba lagi' };
+  if (ini.id === String(p.id)) return { tolak: 'Tutup buku ' + tahun + ' memang dipegang perangkat ini — tidak ada yang diambil alih' };
+  const sb = bkSambungan(L); if (sb) return { tolak: sb };
+  if (koleksiDariCache('perangkatStatus')) return { tolak: 'Ambil alih: denyut perangkat di perangkat ini belum dijawab server (bisa basi) — tunggu data terbaru dulu.' };
+  const nA = ((L && L.antre) || []).length + (Number(L && L.menunggu) || 0);
+  if (nA) return { tolak: 'Ambil alih ditolak: ' + nA + ' catatan perangkat ini belum diakui server — tunggu antrean kosong dulu (Menu › Sistem › Perangkat).' };
+  const t = Date.parse(w.kini); const ubah = Date.parse(a.diubahPada || ''); const menit = isFinite(ubah) ? Math.floor((t - ubah) / 60000) : null;
+  if (menit === null || menit < 60) return { tolak: 'Ambil alih ditolak: berita acara tutup buku ' + tahun + (menit === null ? ' tidak mencatat kapan terakhir berubah' : ' baru berubah ' + Math.max(0, menit) + ' menit lalu') + ' — ' + nm + ' mungkin masih bekerja. Tunggu sampai 60 menit tanpa perubahan.' };
+  const dy = cacheMentah('perangkat').filter((d) => d && (String(d.id) === String(p.id) || String(d.id).indexOf(String(p.id) + '~') === 0)).map((d) => Date.parse(d.pada || '')).filter((x) => isFinite(x));
+  const terakhir = dy.length ? Math.max.apply(null, dy) : null;
+  if (terakhir !== null && t - terakhir < 15 * 60000) return { tolak: 'Ambil alih ditolak: ' + nm + ' masih berdenyut ' + Math.max(0, Math.round((t - terakhir) / 60000)) + ' menit lalu — lanjutkan atau batalkan dari perangkat itu.' };
+  if (!yakin) return { perluYakin: true, tolak: 'Ambil alih tutup buku ' + tahun + ' dari ' + nm + '? Kalau HP lama masih menyimpan kiriman yang belum terkirim, kiriman itu bisa masuk belakangan — pastikan HP lama mati / datanya dihapus. Ketuk "ambil alih" sekali lagi.' };
+  const baru = Object.assign({}, a, { pemegang: ini, pemegangLama: { id: String(p.id), nama: nm }, diambilAlihPada: w.kini, diambilAlihTanggal: w.tanggal, diambilAlihJam: w.jam });
+  return { dokumen: [{ koleksi: 'tutupBukuAcara', data: baru }], patch: { kabar: 'Tutup buku ' + tahun + ' sekarang dipegang perangkat ini (' + ini.nama + '). ' + nm + ' tidak bisa melanjutkan atau membatalkan lagi.', kabarAwas: false } };
+}
 const bkKalimatTunda = (tahun, n) => 'Tutup buku ' + tahun + ': ' + n + ' catatan di perangkat ini masih menunggu server (belum diakui, belum dihitung masuk). Jangan tutup aplikasi; tunggu sinyal sampai antrean kosong (Menu › Sistem › Perangkat), baru Lanjutkan atau Batalkan.';
 /** Tahun lama berubah sejak rencana dibuat? (pembuka yang sudah masuk tidak terlihat mesin → 31 Des dihitung ulang dari catatan asli dengan patokan kas yang sama) */
 function bkBerubah(a) {
