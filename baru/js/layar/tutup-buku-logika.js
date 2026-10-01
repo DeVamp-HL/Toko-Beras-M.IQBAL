@@ -351,6 +351,28 @@ export function arsipBerhentiBuku(tahun, L) {
  */
 export function arsipBalikBuku(tahun, daftar) { const a = bkAcara(tahun); if (!a || (a.status !== 'membatalkan' && a.status !== 'dibatalkan')) return [];
   return (daftar || []).map((x) => ({ koleksi: x.koleksi, idAsli: x.id, dok: x.data })); }
+/**
+ * TRV6-EKOR-1 (tinjauan rules v6): EKOR pembatalan — kembalikan arsip, baca arsip ulang, kembalikan sisanya, tulis 'dibatalkan' — hanya selama berita acara
+ * tahun itu di cache masih 'membatalkan' PERCOBAAN INI (paraf.pada = percobaan, dari susunBatal) dan perangkat ini pemegangnya. Dulu penjaga pemegang hanya
+ * per kiriman tarik: HP yang beku di tengah pengembalian lalu hidup lagi sesudah diambil alih (perangkat lain menuntaskan pembatalan, menutup buku lagi sampai
+ * selesai) mengembalikan SELURUH arsip tahun itu ke buku hidup → angka DOBEL tanpa pita (v6 hanya menolak 'dibatalkan'-nya). L = lokal() layar. '' = boleh lanjut.
+ */
+export function pulihBerhentiBuku(tahun, L, percobaan) {
+  const a = bkAcara(tahun); if (a && a.status === 'membatalkan' && bkPercobaan(a) === String(percobaan || '') && !bkBukanPemegang(tahun, L)) return '';
+  const p = (a && a.pemegang) || {};
+  const kata = { berjalan: 'sedang ditutup lagi', terkunci: 'sudah dikunci lagi', selesai: 'sudah ditutup lagi sampai selesai', dibatalkan: 'sudah dibatalkan tuntas', membatalkan: 'sedang dibatalkan' + (p.nama ? ' di ' + p.nama : '') }[a && a.status] || 'berubah';
+  // tab / jendela lain di perangkat yang SAMA (pemegang = perangkat ini) bukan "perangkat lain" — jangan membuat owner mengira ada HP lain ikut campur
+  const asal = p.id && L && String(L.idPerangkat || '') === String(p.id) ? 'jendela lain di perangkat ini' : 'perangkat lain';
+  return 'Pembatalan tutup buku ' + tahun + ' dihentikan: tutup bukunya sudah diubah dari ' + asal + ' (' + kata + ') — sisa arsip ' + tahun + ' tidak dikembalikan dari perangkat ini. Ikuti pita tutup buku.';
+}
+/**
+ * TRV6-EKOR-1: potongan pengembalian yang terlanjur mendarat saat ekor pembatalan berhenti diarsipkan LAGI hanya bila berita acara sekarang percobaan LAIN yang
+ * terkunci / selesai (tahun itu sedang / sudah diarsip percobaan baru — catatan itu tempatnya di arsip). Percobaan yang sama, atau berjalan / membatalkan /
+ * dibatalkan = tidak (catatan itu memang tempatnya di buku hidup). daftar = potongan bentuk pulihkanArsip ({ koleksi, idAsli, dok }) → bentuk arsipkanDokumen.
+ */
+export function pulihBalikBuku(tahun, daftar, percobaan) { const a = bkAcara(tahun);
+  if (!a || (a.status !== 'terkunci' && a.status !== 'selesai') || bkPercobaan(a) === String(percobaan || '')) return [];
+  return (daftar || []).map((x) => ({ koleksi: x.koleksi, id: x.idAsli, data: x.dok })); }
 /** Saldo pembuka tahun itu yang ada di cache (termasuk yang tersembunyi dari mesin). */
 function bkPembukaTahun(tahun) { const out = []; Object.keys(KOLEKSI_CACHE).forEach((c) => cacheMentah(c).forEach((x) => { if (bkTutupBuku(x) && Number(x.tahunDari) === tahun) out.push({ koleksi: KOLEKSI_CACHE[c], id: x.id }); })); return out; }
 /** Mulai baru ditolak selama tutup buku / pembatalan tahun itu belum tuntas (pembuka percobaan lama yang tersisa akan ikut terlihat bersama yang baru). */
@@ -410,7 +432,7 @@ export function susunBatal(tahun, arsipDok, w, L) {
   const P = kpPotong([{ dokumen: awal, hapus: tanda }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] }))), dokDiCache, ugKiniDari(w)); if (P.tolak) return { tolak: P.tolak };
   const kiriman = P.potongan.map((p, i) => ({ ke: i + 1, total: P.potongan.length, get: p.get, dokumen: p.dokumen, hapus: p.hapus }));
   const akhir = { koleksi: 'tutupBukuAcara', data: Object.assign({}, batal, { status: 'dibatalkan' }) };
-  return { kiriman, akhir, dokumen: [].concat.apply([], kiriman.map((k) => k.dokumen)), hapus, titik, pulih: (arsipDok || []).map((a) => ({ koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok })),
+  return { kiriman, akhir, percobaan: bkPercobaan(batal), dokumen: [].concat.apply([], kiriman.map((k) => k.dokumen)), hapus, titik, pulih: (arsipDok || []).map((a) => ({ koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok })),
     patch: { kabar: 'Tutup buku ' + tahun + ' dibatalkan — ' + ANGKA((arsipDok || []).length) + ' dokumen dikembalikan dari arsip, ' + hapus.length + ' saldo pembuka ditarik dalam ' + kiriman.length + ' kiriman. Tahun ' + tahun + ' terbuka lagi.', kabarAwas: false } };
 }
 const KOLEKSI_CACHE = { batch: 'batchMasuk', piutang: 'piutangMutasi', kasbon: 'kasbonMutasi', produksi: 'produksiKemasan', bahanKemasan: 'stokBahanKemasan', bahanLiteran: 'stokBahanLiteran', utangPemasok: 'utangPemasokMutasi', utangOwner: 'utangOwnerMutasi', amplop: 'amplopLaba' };

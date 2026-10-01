@@ -405,10 +405,10 @@ Yang tetap diakui (menambah daftar §10; butir §10 tentang dua perangkat sekali
   tertahan mendarat sesudahnya → berita acara `terkunci` lagi DENGAN PEMEGANG HP A dan SEBAGIAN saldo pembuka ikut masuk (kotak pasir: 11 dari 47 = isi
   kiriman penanda) = fase `rusak` — selama itu piutang, stok & utang SALAH sampai "batalkan"; Mac B ditolak lagi; "batalkan"
   dari HP A (atau ambil alih lagi sesudah 60 menit) membereskannya — angka kembali seperti sebelum tutup buku.
-- **Pembatalan yang sedang berjalan di HP lama yang BEKU (bukan mati)** tetap meneruskan ekornya sesudah diambil alih: pengembalian arsip lalu `dibatalkan`
-  (`uang.js` jalankanBatal sesudah loop kiriman; penjaga pemegang hanya per kiriman tarik). Kalau perangkat baru sudah menutup buku lagi sampai `selesai`,
-  ekor itu memundurkannya (tinjauan BP4R-1, sudah ada sebelum putaran 4). Pelindungnya kalimat peringatan ambil alih ("pastikan HP lama mati / datanya
-  dihapus") — dan rules yang sama dengan butir di atas.
+- **Pembatalan yang sedang berjalan di HP lama yang BEKU (bukan mati)** — DITAMBAL 2 Okt (TRV6-EKOR-1, akhir §11). Dulu ekornya (pengembalian arsip lalu
+  `dibatalkan`; penjaga pemegang hanya per kiriman tarik) diteruskan sesudah diambil alih dan memundurkan percobaan baru yang sudah `selesai` (tinjauan BP4R-1).
+  Sekarang ekor itu berhenti begitu berita acara bukan lagi `membatalkan` percobaan itu dari perangkat itu. Sisa: penjaganya membaca berita acara di
+  perangkat (cache), seperti P4-3.
 - Dua tab di perangkat yang SAMA = satu pemegang (id perangkat sama); keduanya dijaga dua lapis §10 + P4-3.
 - Id perangkat disimpan di localStorage peramban: hapus data peramban / ganti peramban = perangkat baru → lewat ambil alih. Peramban yang menolak localStorage
   sama sekali membuat id baru tiap kali dibaca → perangkat itu tidak dikenali sebagai pemegang (pakai peramban biasa).
@@ -422,10 +422,33 @@ Yang tetap diakui (menambah daftar §10; butir §10 tentang dua perangkat sekali
 (`berjalan → terkunci → selesai`, `berjalan / terkunci → membatalkan → dibatalkan`, dan `dibatalkan → membatalkan` dengan jam batal yang sama); percobaan
 baru hanya di atas `dibatalkan` dengan jam mulai lebih baru; pemegang hanya berganti lewat ambil alih (jam ambil alih lebih baru) atau pembatalan lanjutan
 dari `dibatalkan`. Tanpa `get()`. Ketiga jalan di atas — jalan MULAI, kiriman HP lama sesudah ambil alih (termasuk repro E1: kini DITOLAK satu kiriman
-utuh, saldo pembuka di dalamnya ikut tidak masuk), ekor pembatalan HP beku di atas percobaan baru — berita acaranya DITOLAK server sesudah v6 terbit (ekor pembatalan: pengembalian arsipnya tetap
-mendarat → `selesai` + DOBEL tanpa pita; lihat `docs/uji-rules-v6.md` "Batas yang diketahui"). Kirim ulang identik selalu boleh. Bukti di repo: `periksa_rules.py`
+utuh, saldo pembuka di dalamnya ikut tidak masuk), ekor pembatalan HP beku di atas percobaan baru — berita acaranya DITOLAK server sesudah v6 terbit (ekor pembatalan: pengembalian arsipnya dulu tetap
+mendarat → `selesai` + DOBEL tanpa pita; sejak TRV6-EKOR-1 kodenya berhenti sendiri — di bawah, dan `docs/uji-rules-v6.md` "Batas yang diketahui"). Kirim ulang identik selalu boleh. Bukti di repo: `periksa_rules.py`
 menilai fungsi rules itu apa adanya (model) pada 45 kasus + 15 kontrol v6 (CI). Sekali jalan saat menyusun (skrip di luar repo): semua tulisan berita acara
 yang dibuat kode di kotak pasir `uji_tutup_buku_bertahap` (112) dinilai model v6: semua sah LOLOS kecuali yang memang telat (P3-AAL3: penanda sesudah pembatalan tuntas) dan dua
 tulisan perancah uji. Bukti server = Rules Playground owner, `docs/uji-rules-v6.md` (langkah terbit pola v5, mundur = `firestore.rules.v5`). Tetap TIDAK
 dijaga rules: arsip (`arsipTahun`, `pulihkanArsip`), kiriman saldo pembuka di tengah tanpa berita acara, `pengaturan/*`, dan `membatalkan` telat
 dengan jam batal yang sama (rinci di `docs/uji-rules-v6.md` "Batas yang diketahui").
+
+**TRV6-EKOR-1 (2 Okt 2026, keputusan owner "Tambal sekarang"; cabang `perbaikan/tutup-buku-ekor-batal`).** Tinjauan rules v6: `uang.js` jalankanBatal,
+sesudah loop kiriman tarik, mengembalikan arsip (`pulihkanArsip` sisa `r.pulih`, lalu `bacaArsipTahun` = SELURUH arsip tahun itu, lalu kembalikan sisanya)
+dan menulis `dibatalkan` TANPA memeriksa ulang pemegang / status / percobaan. HP A yang beku di tengah pengembalian lalu hidup lagi sesudah Mac B mengambil
+alih, menuntaskan pembatalan, memulai percobaan baru dan menyelesaikannya mengembalikan arsip percobaan baru ke buku hidup; v6 hanya menolak `dibatalkan`-nya
+→ `selesai` + angka DOBEL tanpa pita. Satu commit; uji GAGAL di kode sebelumnya dan LULUS sesudahnya, + kontrol yang berbunyi. Rules (v6 hidup), mesin beku,
+`kasir*.html` tidak disentuh; tanpa peramban.
+
+| Butir | Perbaikan | Uji |
+|---|---|---|
+| TRV6-EKOR-1 | `pulihBerhentiBuku(tahun, L, percobaan)` (satu tempat, logika): ekor boleh lanjut hanya bila berita acara di cache masih `membatalkan` PERCOBAAN INI (`paraf.pada`, dicatat `susunBatal` → `r.percobaan`) dan perangkat ini pemegangnya; selain itu kalimat "Pembatalan tutup buku 2026 dihentikan: tutup bukunya sudah diubah dari perangkat lain (…) — sisa arsip 2026 tidak dikembalikan dari perangkat ini. Ikuti pita tutup buku." di layar. `jalankanBatal` memanggilnya sebelum pengembalian pertama, sebelum baca arsip ulang, sebelum pengembalian kedua, sebelum `dibatalkan`, dan sesudah SETIAP potongan pengembalian (termasuk yang terakhir). Potongan yang mendarat lalu membuatnya berhenti diarsipkan lagi (`pulihBalikBuku` → `arsipkanDokumen`, dokumen yang sama, bentuk `arsipBuku`) HANYA bila berita acara sekarang percobaan LAIN yang `terkunci` / `selesai`; berjalan / membatalkan / dibatalkan / percobaan yang sama = tidak (catatan itu tempatnya di buku hidup). Potongan yang lolos pemeriksaannya sah kembali — tidak diarsipkan lagi | TRV6-EKOR a, titik 1–4, b (dari terkunci & berjalan), c, pemegang, dua tab, berjalan, balik + 1 statis. `jalankanBatal` dijalankan APA ADANYA dari berkas `uang.js` di jsc (pengganti: server, model kecil v6 untuk berita acara, `pulihkanBerkas` per 18, titik beku di antara langkah) |
+
+Hasil: `uji_tutup_buku_bertahap` 123 lulus · 0 gagal (13 butir baru; di kode sebelumnya semua gagal kecuali dua butir (b) — pembatalan biasa, lulus di
+keduanya), `--kontrol` 102 berbunyi (termasuk `uang.js` bentuk lama, tiap titik pemeriksaan dibuang satu per satu, dan tiap syarat kedua fungsi logika);
+semua perintah job `uji` di `pages.yml` keluar 0; ASAP GLOBAL `uji_wadah_bernama` BYTE-SAMA dengan main; `peta_akses` sama dengan main.
+
+Yang tetap diakui:
+- Penjaga membaca berita acara yang ada DI PERANGKAT (cache), sama dengan arsip P4-3: potongan pengembalian yang diakui server SEBELUM berita acara
+  terbaru sampai di HP yang baru hidup lagi lolos pemeriksaannya (≤ 18 catatan tahun lama per potongan hidup lagi → dobel sebanyak itu, tanpa pita); begitu
+  berita acara itu sampai, potongan berikutnya berhenti. Pelindungnya tetap kalimat peringatan ambil alih ("pastikan HP lama mati / datanya dihapus").
+- Potongan yang diarsipkan lagi memakai isi yang dibaca HP lama saat pembatalannya dimulai; koreksi atas catatan yang sama di antara pembatalan dan
+  percobaan baru tidak ikut (potongan yang mendarat sudah menimpanya).
+- Arsip ulang yang gagal (sinyal putus, bulan terkunci K1) hanya dicatat di konsol; kalimat berhenti tetap tampil.
