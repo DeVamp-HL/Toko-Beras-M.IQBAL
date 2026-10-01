@@ -3,7 +3,7 @@
 """
 uji_ringkasan_baru.py — uji logika layar RINGKASAN sistem baru (baru/js/layar/ringkasan-logika.js) di jsc.
 KOTAK PASIR (ANGKA CONTOH, bukan angka toko) dengan jam tetap; kalau ada backup-batch-*.json lokal ditambah uji asap:
-angka Ringkasan harus SAMA dengan jumlah langsung dari baris penjualan cadangan itu.
+angka Ringkasan harus SAMA dengan jumlah langsung dari cadangan itu (penjualan − uang retur) DAN dengan omzet mesin laba (Laporan) — 39b no. 19.
 
     python3 alat-uji/uji_ringkasan_baru.py            → N lulus · 0 gagal
     python3 alat-uji/uji_ringkasan_baru.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -99,6 +99,13 @@ localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-09-1
 K = susunKas(KINI); ok('kas: dengan titik kas 18 Sep (1.500.000) → saldo = titik + gerakan SESUDAH titik = 1.500.000 + 1.474.000', K.adaTitik === true && K.total === 2974000, JSON.stringify(K));
 ok('kelompok angka untuk animasi: "Rp 5.804.000" → [Rp, 5, .804, .000]', JSON.stringify(kelompokAngka(5804000)) === JSON.stringify(['Rp', '5', '.804', '.000']), JSON.stringify(kelompokAngka(5804000)));
 ok('salam & tanggal: 14:07 → Selamat siang · Sabtu, 19 September 2026', salam(KINI) === 'Selamat siang' && tanggalPanjang(KINI) === 'Sabtu, 19 September 2026', salam(KINI) + ' ' + tanggalPanjang(KINI));
+// 39b no. 19: uang retur mengurangi omzet (keputusan owner 9 Sep) — Ringkasan dulu bruto sementara Laporan/Pajak bersih
+var RT19 = [{ koleksi: 'retur', data: { id: 'rt19', tanggal: '2026-09-19', jam: '10:00', nominalRefund: 20000, selisihHargaTukar: 0, kondisi: 'utuh' } }, { koleksi: 'retur', data: { id: 'rt19b', tanggal: '2026-09-19', jam: '15:00', nominalRefund: 5000, kondisi: 'utuh' } }];
+ok('39b-19 retur hari ini 20.000 (10.00) mengurangi omzet hari/minggu/bulan & sel hari; retur 5.000 berjam 15.00 ikut hari ini (hari = seluruh hari); sub menyebut "sudah dikurangi retur"; = omzet mesin laba',
+  denganCacheSementara(RT19, function () { var ix2 = bangunIndeks(); var a = susunRingkasan('langsung', ix2, KINI), b = susunRingkasan('langsung', ix, KINI); var bl2 = susunRingkasan('bulan', ix2, KINI), bl = susunRingkasan('bulan', ix, KINI);
+    var sel2 = rkDataLapis('hari', ix2, KINI).sel, sel = rkDataLapis('hari', ix, KINI).sel;
+    return b.angka - a.angka === 25000 && bl.angka - bl2.angka === 25000 && sel[29].v - sel2[29].v === 25000 && sel2[29].v === a.angka && /sudah dikurangi retur Rp25\.000/.test(a.sub) && a.angka === hitungLabaRentang(function (t) { return t === '2026-09-19'; }).omzetPenuh; }),
+  JSON.stringify(denganCacheSementara(RT19, function () { var ix2 = bangunIndeks(); return [susunRingkasan('langsung', ix2, KINI).angka, susunRingkasan('langsung', ix, KINI).angka, susunRingkasan('langsung', ix2, KINI).sub]; })));
 // toko kosong: tidak melempar, semuanya nol/ditolak
 pasok('penjualan', []); var ix0 = bangunIndeks(); var R0 = susunRingkasan('hari', ix0, KINI);
 ok('toko tanpa penjualan: angka 0, semua sel hari ABSEN, pembanding ditolak — tidak melempar', R0.angka === 0 && R0.sektor.filter(function (x) { return x.lapis === 'hari'; }).every(function (x) { return x.kelas === 'absen'; }) && /belum bisa dibandingkan/.test(R0.banding), JSON.stringify([R0.angka, R0.banding]));
@@ -114,8 +121,14 @@ var R = susunRingkasan('jam', ix, KINI); var B = susunRingkasan('bulan', ix, KIN
 var langsungHari = hidup.filter(function (p) { return p.tanggal === akhir; }).reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0);
 var langsungBulan = hidup.filter(function (p) { return (p.tanggal || '').slice(0, 7) === akhir.slice(0, 7) && p.tanggal <= akhir; }).reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0);
 var langsungTahun = hidup.filter(function (p) { return (p.tanggal || '').slice(0, 4) === akhir.slice(0, 4); }).reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0);
+// 39b no. 19: omzet = penjualan − uang retur (keputusan owner 9 Sep) — dulu asap ini MENGUNCI arti bruto; kini dibandingkan juga dengan mesin laba (omzet Laporan)
+var uangR = function (r) { return (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0); };
+var rJumlah = function (f) { return (CAD.retur || []).filter(function (r) { return f(String(r.tanggal || '')); }).reduce(function (a, r) { return a + uangR(r); }, 0); };
+var fHari = function (t) { return t === akhir; }, fBulan = function (t) { return t.slice(0, 7) === akhir.slice(0, 7) && t <= akhir; }, fTahun = function (t) { return t.slice(0, 4) === akhir.slice(0, 4) && t <= akhir; };
+langsungHari -= rJumlah(fHari); langsungBulan -= rJumlah(fBulan); langsungTahun -= rJumlah(fTahun);
+var mesin = function (f) { return hitungLabaRentang(function (t) { return !!t && f(t); }).omzetPenuh; };
 var semuaSkala = SKALA.map(function (s) { var r = susunRingkasan(s[0], ix, KINI); return r.sektor.length > 0 && typeof r.angka === 'number' && !!r.judul; });
-print(JSON.stringify({ akhir: akhir, hariCocok: R.angka === langsungHari, bulanCocok: B.angka === langsungBulan, tahunCocok: T.angka === langsungTahun, skala: semuaSkala.filter(Boolean).length, perhatian: susunPerhatian().length, mulai: ix.mulai }));
+print(JSON.stringify({ akhir: akhir, hariCocok: R.angka === langsungHari && R.angka === mesin(fHari), bulanCocok: B.angka === langsungBulan && B.angka === mesin(fBulan), tahunCocok: T.angka === langsungTahun && T.angka === mesin(fTahun), retur: [rJumlah(fHari), rJumlah(fBulan), rJumlah(fTahun)], skala: semuaSkala.filter(Boolean).length, perhatian: susunPerhatian().length, mulai: ix.mulai }));
 """
 
 
@@ -149,10 +162,12 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            '39b-19: Ringkasan tidak mengurangi uang retur (omzet bruto)': js.replace("return { omzet: omzet - retur, penjualan: omzet,", "return { omzet: omzet, penjualan: omzet,"),
+            '39b-19: sel hari Ringkasan bruto': js.replace("const rkOmzetHari = (ix, t) => ((ix.perHari[t] || {}).omzet || 0) - rkReturHari(ix, t);", "const rkOmzetHari = (ix, t) => ((ix.perHari[t] || {}).omzet || 0);"),
             'no.4: kelebihan bayar pelanggan tidak disebut di Perlu perhatian': js.replace("if (lebih.uang.n) out.push({ teks: 'Kelebihan bayar pelanggan · '", "if (false) out.push({ teks: 'Kelebihan bayar pelanggan · '"),
             'no.4 B1: hapus buku yang ternyata dibayar tidak disebut / disebut uang pelanggan': js.replace("if (lebih.hapus.n) out.push({ teks: 'Hapus buku yang ternyata dibayar · '", "if (false) out.push({ teks: 'Hapus buku yang ternyata dibayar · '"),
             'baris yang dibatalkan ikut dihitung': js.replace("ambilPenjualan().forEach((p) => {\n    const t = p.tanggal || ''; if (!t) return;", "ambilPenjualanSemua().forEach((p) => {\n    const t = p.tanggal || ''; if (!t) return;"),
-            'nota dua baris dihitung dua nota': js.replace("const rkKunciNota = (p) => String(p.trxId || p.grupNota || p.id);", "const rkKunciNota = (p) => String(p.id);"),
+            'nota dua baris dihitung dua nota': js.replace("const rkKunciNota = kunciNota;", "const rkKunciNota = (p) => String(p.id);"),
             'pembanding kemarin memakai SEHARI PENUH (bukan jam segini)': js.replace("const kmrSegini = adaSejak(kemarin) ? rkJumlahRentang(ix, kemarin, kemarin, menitKini) : null;", "const kmrSegini = adaSejak(kemarin) ? rkJumlahRentang(ix, kemarin, kemarin) : null;"),
             'pembanding minggu lalu memakai seminggu penuh': js.replace("rkJumlahRentang(ix, rkIso(aMgLalu), rkIso(rkGeser(kini, -7)), menitKini)", "rkJumlahRentang(ix, rkIso(aMgLalu), rkIso(rkGeser(aMgLalu, 6)))"),
             'bulan lalu yang tidak lengkap tetap dibandingkan': js.replace("const blLalu = adaSejak(rkIso(blLaluAwal)) ?", "const blLalu = true ?"),
@@ -189,7 +204,7 @@ if __name__ == '__main__':
         h, e = jalan(js + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP)
         if h is None: print('ASAP DATA TOKO: JSC JATUH ' + e); g.append('asap')
         else:
-            print('ASAP DATA TOKO (%s, hari terakhir %s, catatan mulai %s): omzet hari/bulan/tahun = jumlah langsung baris cadangan: %s/%s/%s · %d skala tergambar · %d hal perlu perhatian'
+            print('ASAP DATA TOKO (%s, hari terakhir %s, catatan mulai %s): omzet hari/bulan/tahun = penjualan − uang retur cadangan = omzet Laporan: %s/%s/%s · %d skala tergambar · %d hal perlu perhatian'
                   % (os.path.basename(cad[-1]), h['akhir'], h['mulai'], h['hariCocok'], h['bulanCocok'], h['tahunCocok'], h['skala'], h['perhatian']))
             if not (h['hariCocok'] and h['bulanCocok'] and h['tahunCocok'] and h['skala'] == 7): g.append('asap: angka Ringkasan tidak sama dengan jumlah langsung baris cadangan')
     sys.exit(2 if g else 0)

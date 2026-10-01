@@ -9,7 +9,7 @@
 // tarif/batas rekap omzet bukan nasihat pajak. Nama pembantu diprefiks `lp` (bundel uji jsc satu lingkup).
 import { hitungLabaRentang, hitungLabaBersihRentang, hitungArusKasInti, barisSusutStok, bayaranBiayaBulanan, hitungNeraca, kasPada, hitungPiutang, hitungUtangPemasok } from '../mesin/beku.js';
 import { akhirBulanIso, bulanDari, namaBulanPanjang, caraBayarKunci, hppTercatat, daftarGerakanKas, namaSingkatTrx, kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai, kunciNota, jumlahNota } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai, kunciNota, jumlahNota, returUangPerHari } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek, lebihBayarDari, LEBIH_AMBANG, pecahLebih, ringkasLebih } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan, priveRentang, pilahHarian, adalahMdr } from './uang-logika.js';
 import { bkEra } from './tutup-buku-logika.js';
@@ -113,7 +113,8 @@ export function rekapHari(iso, bayaran) {
     totalMasuk: K.totalMasuk, totalKeluar: K.totalKeluar, bersih: K.bersih, masuk: K.masuk.filter((x) => x.nominal > 0), keluar: K.keluar.filter((x) => x.nominal > 0), perJam, maksJam, tutup: tutup ? { jam: tutup.jam || '', selisih: Number(tutup.selisihLaci || tutup.selisih || 0), sistemBaru: !!tutup.sistemBaru } : null, buku, kosong: L.jumlahTrx === 0 && K.totalMasuk === 0 && K.totalKeluar === 0 };
 }
 /** Empat belas hari terakhir untuk pemilih tanggal: omzet & jumlah nota per hari (yang kosong tetap ada, ditandai). */
-export function hariTerakhir(kini, n) { const iso = hariIniIso(kini); const per = {}; const notaHari = {}; ambilPenjualan().forEach((p) => { if (!p.tanggal) return; if (!per[p.tanggal]) { per[p.tanggal] = { n: 0, omzet: 0 }; notaHari[p.tanggal] = new Set(); } notaHari[p.tanggal].add(kunciNota(p)); per[p.tanggal].n = notaHari[p.tanggal].size; per[p.tanggal].omzet += p.hargaTotal || 0; }); const out = []; for (let i = 0; i < (n || 14); i++) { const t = ugTambahHari(iso, -i); out.push({ iso: t, n: per[t] ? per[t].n : 0, omzet: per[t] ? per[t].omzet : 0, hariIni: i === 0 }); } return out; }
+export function hariTerakhir(kini, n) { const iso = hariIniIso(kini); const per = {}; const notaHari = {}; const retur = returUangPerHari();   // 39b no. 19: omzet = penjualan − uang retur (sama dengan rekap harinya)
+  ambilPenjualan().forEach((p) => { if (!p.tanggal) return; if (!per[p.tanggal]) { per[p.tanggal] = { n: 0, omzet: 0 }; notaHari[p.tanggal] = new Set(); } notaHari[p.tanggal].add(kunciNota(p)); per[p.tanggal].n = notaHari[p.tanggal].size; per[p.tanggal].omzet += p.hargaTotal || 0; }); const out = []; for (let i = 0; i < (n || 14); i++) { const t = ugTambahHari(iso, -i); out.push({ iso: t, n: per[t] ? per[t].n : 0, omzet: (per[t] ? per[t].omzet : 0) - ((retur[t] || {}).uang || 0), hariIni: i === 0 }); } return out; }
 /** Teks rekap untuk WhatsApp — kalimat kirimRekapHarianWa sistem lama, ditambah yang dulu tidak disebut (pelunasan bon, prive, margin). */
 export function teksRekapHari(R, kop) {
   const b = ['*Rekap ' + ((kop && kop.nama) || IDENTITAS_BAWAAN.nama) + ' — ' + tanggalPendek(R.iso) + '*', 'Omzet: ' + RP(R.omzet) + ' (' + R.n + ' nota)', 'Tunai: ' + RP(R.tunai), 'QRIS: ' + RP(R.qris)];
