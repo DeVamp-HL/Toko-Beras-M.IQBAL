@@ -195,6 +195,10 @@ def siapkan(rusak=None, skenario='tirai'):
     isi = "<script>try{localStorage.setItem('miqbal_titik_kas_v1'," + json.dumps(json.dumps(TITIK_KAS)) + ");localStorage.setItem('miqbal_baru_tab','ringkasan');}catch(e){}</script>"
     # app.js gagal dimuat (mis. Firebase dari CDN tidak terjangkau) → elemen skrip modul menerima 'error' → server diberi tahu /_gagalmuat
     tag = '<script type="module" src="js/app.js"></script>'; assert tag in t, 'tag app.js berubah — perbarui uji'
+    # CSP (keamanan, 1 Okt 2026): salinan uji menyuntik script sebaris & onerror= → script-src SALINAN diberi 'unsafe-inline' (hash dibuang, kalau tidak
+    # 'unsafe-inline' diabaikan peramban). Direktif lain (koneksi, objek, dasar) tetap berlaku — uji ini sekaligus bukti aplikasi jalan di bawah CSP.
+    csp = re.search(r'(<meta http-equiv="Content-Security-Policy" content="[^"]*?)script-src [^;]*;', t); assert csp, 'meta CSP berubah — perbarui uji'
+    t = t.replace(csp.group(0), csp.group(1) + "script-src 'self' https://www.gstatic.com 'unsafe-inline';", 1)
     t = t.replace(tag, '<script type="module" src="js/app.js" onerror="fetch(\'/_gagalmuat?sdk=\'+encodeURIComponent(performance.getEntriesByType(\'resource\').map(function(e){return e.name;}).filter(function(n){return n.indexOf(\'firebasejs\')>=0;}).join(\' \')))"></script>', 1)
     if skenario == 'tirai':
         # penahan waktu: event load menunggu gambar /_tahan, yang baru dijawab server sesudah halaman mengabarkan /_siap (tirai tertutup ATAU ada isi di <main>) + jeda

@@ -1340,3 +1340,12 @@ terkunci dan pasti ditolak server, jadi tutup buku 2026 mustahil begitu satu bul
   sebelumnya tidak bisa dikunci (kalimat sebabnya di layar). `K.kunciMulai` / `uji.kunciMulai` = jalan pintas uji saja.
 - Beranda tidak lagi menyuruh mengunci bulan 2026; peringatan pajak bulan 2026 menyebut "masih bisa bergeser sampai tutup buku 2026".
 - Untuk 2027: pembuka bertanggal 1 Jan + arsip tanpa hapus (pilihan C) dirancang di putaran sendiri.
+
+## CSP /baru/ (keputusan owner 1 Okt 2026: "Pasang"; temuan HawkScan)
+
+`<meta http-equiv="Content-Security-Policy">` di `baru/index.html`, sebelum script & stylesheet pertama: `default-src 'self'`; script dari sendiri +
+`www.gstatic.com` (SDK Firebase) + HASH script sebaris (tanpa `'unsafe-inline'`); gaya sendiri + `'unsafe-inline'` (atribut style di templat) + Google Fonts;
+koneksi HANYA Firestore & Auth Firebase; `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`. Ubah script sebaris → `python3 alat-uji/uji_csp.py --pasang`.
+Templat layar TIDAK boleh memakai `on…="…"` / `javascript:` (diblokir) — tetap `data-aksi`. Kasir darurat menyusul sesudah pensiun `kasir.html` mendarat
+(nomor versi `kasir-v*` dipegang bersama `kasir.html` & `sw-kasir.js`).
+
