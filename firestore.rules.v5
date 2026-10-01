@@ -1,13 +1,10 @@
 // ============================================================================
-// ATURAN FIRESTORE v6 — Toko Beras M.IQBAL (DRAF 1 Okt 2026, BELUM TERBIT): v5 + berita acara tutup buku hanya maju
+// ATURAN FIRESTORE v5 — Toko Beras M.IQBAL (putaran 39, 29 Sep 2026): v4 (kunci periode bulanan + akun per orang) + karyawan menuang & mengecek wadah literan
 // Berkas KANONIK ber-versi. DEPLOY: salin-tempel ke Console > Firestore > Rules (owner; pola putaran 25).
-// Dasar: docs/peta-hak-akses.md (akun & peran, v3) + docs/peta-kunci-periode.md (kunci periode, keputusan owner K1–K6 25 Sep) + docs/peta-wadah-satu-buku.md §8 (v5)
-// + docs/rancangan-tutup-buku-bertahap.md §11 (v6).
-// Diperiksa statis oleh alat-uji/periksa_rules.py (CI). Uji server: docs/uji-rules-v6.md (Playground ★; v5: docs/uji-rules-v5.md).
-// Jalan mundur: firestore.rules.v5 (disimpan utuh) — tempel v5 = berita acara tutup buku kembali owner-saja tanpa urutan (kiriman telat bisa menimpanya);
-// firestore.rules.v4 = karyawan tidak bisa menuang/mengecek wadah dari akunnya; firestore.rules.v3 = kunci periode MATI, semua bulan bisa ditulis lagi.
-// v6 yang berubah dari v5: HANYA update tutupBukuAcara (+ 6 fungsi kecil di atas bloknya, tanpa get()). Dalam satu percobaan (paraf.pada) status hanya
-//   maju; percobaan baru hanya di atas 'dibatalkan' dan jam mulainya lebih baru; pemegang hanya berganti lewat ambil alih. Baca, create, delete = owner, sama.
+// Dasar: docs/peta-hak-akses.md (akun & peran, v3) + docs/peta-kunci-periode.md (kunci periode, keputusan owner K1–K6 25 Sep) + docs/peta-wadah-satu-buku.md §8 (v5).
+// Diperiksa statis oleh alat-uji/periksa_rules.py (CI). Uji server: docs/uji-rules-v5.md (Playground ★).
+// Jalan mundur: firestore.rules.v4 (disimpan utuh) — tempel v4 = karyawan tidak bisa menuang/mengecek wadah dari akunnya (kirimannya ditolak, masuk daftar ditolak);
+// firestore.rules.v3 = kunci periode MATI, semua bulan bisa ditulis lagi.
 // v5 yang berubah dari v4 (keputusan owner 29 Sep, "lewat Console"): wadahLiteran create oleh ben/karyawan hanya tipe takar / karung / karungIsi / cek (stafBuatWadah);
 //   batchMasuk create oleh ben/karyawan hanya batch LAHIR BUKU 0 kg (stafBuatLahir); produksiKemasan create karyawan sudah terbuka sejak v3 (pindah buku isi ulang memakainya).
 //
@@ -443,37 +440,8 @@ service cloud.firestore {
       allow delete: if owner() && tglLama('tanggal');
     }
 
-    // ---- v6 (draf): berita acara tutup buku HANYA MAJU — tulisan yang tertahan di antrean perangkat lain lalu mendarat belakangan tidak boleh memundurkan
-    // atau menimpanya (rancangan §11: jalan MULAI, ambil alih, ekor pembatalan HP beku). b = isi baru, l = isi lama. Tanpa get(): 0 access call.
-    // Percobaan = paraf.pada: jam mulai dari toISOString() (UTC 'Z', selalu 24 huruf) → urutan huruf = urutan waktu. Sama di semua tulisan satu percobaan.
-    function percobaanBuku(d) { return d.get('paraf', {}).get('pada', ''); }
-    function pemegangBuku(d) { return d.get('pemegang', {}).get('id', ''); }
-    // percobaan yang SAMA: status hanya maju. 'dibatalkan' → 'membatalkan' = sisa saldo pembuka yang mendarat belakangan ditarik lagi (jam batalnya tetap)
-    function majuBuku(b, l) {
-      return (l.get('status', '') + '>' + b.get('status', '')) in ['berjalan>berjalan', 'berjalan>terkunci', 'berjalan>membatalkan', 'terkunci>terkunci',
-          'terkunci>membatalkan', 'terkunci>selesai', 'membatalkan>membatalkan', 'membatalkan>dibatalkan', 'dibatalkan>membatalkan']
-        && (l.get('status', '') != 'dibatalkan' || b.get('dibatalkanPada', '') == l.get('dibatalkanPada', ''));
-    }
-    // pemegang tetap — kecuali AMBIL ALIH (status sama, pemegangLama = pemegang sekarang, jam ambil alih lebih baru) atau pembatalan lanjutan dari 'dibatalkan'
-    function pemegangBukuSah(b, l) {
-      return pemegangBuku(b) == pemegangBuku(l)
-        || (b.get('status', '') == l.get('status', '') && pemegangBuku(l) != '' && b.get('pemegangLama', {}).get('id', '') == pemegangBuku(l)
-          && b.get('diambilAlihPada', '') > l.get('diambilAlihPada', ''))
-        || (l.get('status', '') == 'dibatalkan' && b.get('status', '') == 'membatalkan');
-    }
-    // percobaan BARU: hanya di atas 'dibatalkan'; mulai 'berjalan' (banyak kiriman) atau langsung 'terkunci' (satu kiriman); jam mulainya lebih baru
-    function mulaiLagiBuku(b, l) {
-      return l.get('status', '') == 'dibatalkan' && b.get('status', '') in ['berjalan', 'terkunci']
-        && percobaanBuku(b).matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z') && percobaanBuku(b) > percobaanBuku(l);
-    }
-    function ubahBukuSah(b, l) {
-      return (percobaanBuku(b) == percobaanBuku(l) && majuBuku(b, l) && pemegangBukuSah(b, l)) || mulaiLagiBuku(b, l);
-    }
     match /tutupBukuAcara/{id} {
-      allow read: if owner();
-      allow create: if owner();
-      allow update: if owner() && ubahBukuSah(request.resource.data, resource.data);
-      allow delete: if owner();
+      allow read, write: if owner();
     }
 
     match /dokumenCetak/{id} {

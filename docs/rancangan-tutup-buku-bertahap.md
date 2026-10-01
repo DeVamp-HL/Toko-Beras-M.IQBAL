@@ -401,7 +401,7 @@ Yang tetap diakui (menambah daftar §10; butir §10 tentang dua perangkat sekali
   tanpa denyut, atau owner mengetuk "sudah dimatikan") bisa memulai dan menyelesaikan; begitu kiriman lama mendarat, `selesai` mundur (kotak pasir: jadi
   `berjalan` dengan pemegang perangkat pemulai). Jalan pulih: Batalkan dari perangkat pemulai itu. (2) **ambil alih** bila HP lama ternyata masih menyimpan
   kiriman — itulah kalimat peringatannya. Penangkal sungguhan (berita acara `selesai` tidak boleh ditimpa / status hanya boleh maju) = **rules — TUGAS OWNER** (Console);
-  belum dirancang di putaran ini. Repro ulang (kotak pasir, E1 jalan ambil alih): Mac B mengambil alih lalu membatalkan tuntas; kiriman penanda HP A yang
+  sekarang ada sebagai **draf rules v6** (lihat akhir §11), belum terbit. Repro ulang (kotak pasir, E1 jalan ambil alih): Mac B mengambil alih lalu membatalkan tuntas; kiriman penanda HP A yang
   tertahan mendarat sesudahnya → berita acara `terkunci` lagi DENGAN PEMEGANG HP A dan SEBAGIAN saldo pembuka ikut masuk (kotak pasir: 11 dari 47 = isi
   kiriman penanda) = fase `rusak` — selama itu piutang, stok & utang SALAH sampai "batalkan"; Mac B ditolak lagi; "batalkan"
   dari HP A (atau ambil alih lagi sesudah 60 menit) membereskannya — angka kembali seperti sebelum tutup buku.
@@ -416,3 +416,15 @@ Yang tetap diakui (menambah daftar §10; butir §10 tentang dua perangkat sekali
   hitungan 60 / 15 menit. HP pemegang yang aplikasinya di latar belakang tidak berdenyut; selama ARSIP berjalan berita acara memang tidak berubah, jadi
   pemegang yang mengarsip di latar belakang lebih dari 60 menit bisa diambil alih — arsip HP lama berhenti di potongan berikutnya begitu ia melihat pemegang
   baru (P4-1), potongan yang sudah terkirim tetap pindah (catatan tahun itu memang sedang diarsipkan; tidak dobel).
+
+**Penangkal rules — draf v6 (1 Okt 2026, cabang `keamanan/rules-v6-tutup-buku`, MENUNGGU OWNER).** `firestore.rules` v6 mengubah HANYA update
+`tutupBukuAcara`: dalam satu percobaan (`paraf.pada`, jam mulai dari `toISOString()` — urutan huruf = urutan waktu) status hanya maju
+(`berjalan → terkunci → selesai`, `berjalan / terkunci → membatalkan → dibatalkan`, dan `dibatalkan → membatalkan` dengan jam batal yang sama); percobaan
+baru hanya di atas `dibatalkan` dengan jam mulai lebih baru; pemegang hanya berganti lewat ambil alih (jam ambil alih lebih baru) atau pembatalan lanjutan
+dari `dibatalkan`. Tanpa `get()`. Ketiga jalan di atas — jalan MULAI, kiriman HP lama sesudah ambil alih (termasuk repro E1: kini DITOLAK satu kiriman
+utuh, saldo pembuka di dalamnya ikut tidak masuk), ekor pembatalan HP beku di atas percobaan baru — DITOLAK server sesudah v6 terbit. Bukti di repo: `periksa_rules.py`
+menilai fungsi rules itu apa adanya (model) pada 43 kasus + 14 kontrol v6 (CI). Sekali jalan saat menyusun (skrip di luar repo): semua tulisan berita acara
+yang dibuat kode di kotak pasir `uji_tutup_buku_bertahap` (112) dinilai model v6: semua sah LOLOS kecuali yang memang telat (P3-AAL3: penanda sesudah pembatalan tuntas) dan dua
+tulisan perancah uji. Bukti server = Rules Playground owner, `docs/uji-rules-v6.md` (langkah terbit pola v5, mundur = `firestore.rules.v5`). Tetap TIDAK
+dijaga rules: arsip (`arsipTahun`, `pulihkanArsip`), kiriman saldo pembuka di tengah tanpa berita acara, `pengaturan/*`, dan `membatalkan` telat
+dengan jam batal yang sama (rinci di `docs/uji-rules-v6.md` "Batas yang diketahui").
