@@ -165,6 +165,11 @@ pasok('penyesuaianStok', JSON.parse(J(KOTAK.penyesuaianStok)));
 // ==================== 8 · TREN & pembantu ====================
 var Tr = trenBiaya(KINI, 6);
 ok('tren 6 bulan: Apr–Sep; Sep = kendaliBulan (semuaBiaya, margin); Jul: biaya 100.000, margin 50.000; Jun 50.000 & 40.000; Apr–Mei tanpaCatatan; maks ≥ semua; perJenis Sep dapur 45.000', Tr.daftar.map(function (b) { return b.key; }).join() === '2026-04,2026-05,2026-06,2026-07,2026-08,2026-09' && Tr.daftar[5].semuaBiaya === K0.semuaBiaya && Tr.daftar[5].margin === K0.margin && Tr.daftar[3].semuaBiaya === 100000 && Tr.daftar[3].margin === 50000 && Tr.daftar[2].semuaBiaya === 50000 && Tr.daftar[2].margin === 40000 && Tr.daftar[0].tanpaCatatan && Tr.daftar[1].tanpaCatatan && !Tr.daftar[2].tanpaCatatan && Tr.maks >= Tr.daftar[5].semuaBiaya && Tr.daftar[5].perJenis.find(function (x) { return x.id === 'dapur'; }).n === 45000 && Tr.ada, J(Tr.daftar.map(function (b) { return [b.key, b.tanpaCatatan, b.semuaBiaya, b.margin]; })));
+// 39b no. 40 (owner 30 Sep): bulan sebelum awal buku (catatan pertama 25 Jun) yang punya biaya tetap digambar, dengan keterangan — bukan bulan rugi
+var Tr40 = denganCacheSementara([{ koleksi: 'pengeluaranHarian', data: { id: 'h40', kategori: 'toko', tanggal: '2026-05-20', jam: '09:00', keterangan: 'Kebutuhan masak', nominal: 40000 } }], function () { return trenBiaya(KINI, 6); });
+ok('39b-40 tren: Mei (sebelum awal buku 25 Jun) dengan biaya 40.000 tetap digambar, bertanda sebelumBuku & berketerangan "Mei 26 sebelum awal buku … biaya Rp40.000"; Juni bukan; tanpa biaya Mei → tanpa keterangan',
+  Tr40.daftar[1].key === '2026-05' && Tr40.daftar[1].sebelumBuku === true && !Tr40.daftar[1].tanpaCatatan && Tr40.daftar[1].semuaBiaya === 40000 && Tr40.daftar[2].sebelumBuku === false
+    && /^Mei 26 sebelum awal buku \(catatan pertama 25 Jun 2026\) — tampil, tidak dijumlah: .*biaya Rp40\.000/.test(Tr40.sebelumBuku) && Tr.sebelumBuku === '', J([Tr40.sebelumBuku, Tr40.daftar.map(function (b) { return [b.key, b.sebelumBuku, b.tanpaCatatan, b.semuaBiaya]; })]));
 ok('kbPctTeks: 12,3% · −5% · null → —; K.pct(a) dari omzet penuh', kbPctTeks(12.345) === '12,3%' && kbPctTeks(-5) === '−5%' && kbPctTeks(null) === '—' && K0.pct(155000) === '10%');
 ok('drafAtur dari setelan: kosong = "" & ambang bawaan; sesudah atur berisi string anggaran & kata bergabung koma', drafAtur().anggaran.dapur === '' && drafAtur().ambang === '10' && (function () { pasok('aturanToko', [RA.dokumen[0].data]); var d = drafAtur(); pasok('aturanToko', []); return d.anggaran.dapur === '70000' && d.kata.dapur === 'telur, gula merah' && d.ambangPemicu === '3'; })());
 
@@ -215,6 +220,16 @@ def dua_nama(t):
     return out
 
 
+def sebelum_buku(t):
+    """39b no. 40 — layar Laporan: bulan sebelum awal buku TAMPIL dengan keterangan (Biaya › tren tidak merah + kalimat; Tahunan: baris "sebelum awal buku",
+    Σ "bulan sejak awal buku", pita keterangan). Kembalikan daftar masalah."""
+    out = []
+    if "!b.tanpaCatatan && !b.sebelumBuku ? 'lewat'" not in t: out.append('tren Biaya menggambar bulan sebelum awal buku sebagai rugi (merah)')
+    if "${Tr.sebelumBuku ? ' ' + Tr.sebelumBuku : ''}" not in t: out.append('tren Biaya tanpa keterangan bulan sebelum awal buku')
+    if "b.sebelumBuku ? 'sebelum awal buku'" not in t or "R.sebelumBuku ? 'bulan sejak awal buku'" not in t or '${R.sebelumBuku}</div>' not in t: out.append('Tahunan tanpa keterangan bulan sebelum awal buku')
+    return out
+
+
 if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     lap = open(os.path.join(AKAR, 'baru', 'js', 'layar', 'laporan.js'), encoding='utf-8').read()
@@ -244,10 +259,13 @@ if __name__ == '__main__':
             'tambah kata menghapus anggaran yang sudah diatur': js.replace("data: { id: 'kendaliBiaya', tanggal: w.tanggal, jam: w.jam, anggaran: A.anggaran, ambang: A.ambang, ambangPemicu: A.ambangPemicu, kata }", "data: { id: 'kendaliBiaya', tanggal: w.tanggal, jam: w.jam, anggaran: {}, ambang: 10, ambangPemicu: 10, kata }"),
             'tambah kata ke jenis lain diterima': js.replace("const j = JENIS_BIAYA.find((x) => x.id === jenis && x.id !== 'upah' && x.id !== 'tetap' && x.id !== 'lain');", "const j = JENIS_BIAYA.find((x) => x.id === jenis);"),
             'tren: bulan tanpa catatan digambar sebagai nol': js.replace("tanpaCatatan: X.tanpaCatatan, omzet: X.omzet", "tanpaCatatan: false, omzet: X.omzet"),
+            '39b-40 tren: bulan sebelum awal buku tidak ditandai': js.replace("perJenis: JENIS_BIAYA.map((j) => ({ id: j.id, n: X.per[j.id].n })), sebelumBuku: k < ab });", "perJenis: JENIS_BIAYA.map((j) => ({ id: j.id, n: X.per[j.id].n })), sebelumBuku: false });"),
         }
         kode = 0
-        for nama, isi in [('39b-25 laporan.js kembali memakai "belum dipilah" untuk jenis yang belum dikenali', lap.replace('jenisnya belum dikenali</span>', 'belum dipilah</span>', 1))]:
-            g = dua_nama(isi) if isi != lap else []
+        for nama, isi in [('39b-25 laporan.js kembali memakai "belum dipilah" untuk jenis yang belum dikenali', lap.replace('jenisnya belum dikenali</span>', 'belum dipilah</span>', 1)),
+                          ('39b-40 laporan.js: tren menggambar bulan sebelum awal buku merah lagi', lap.replace(" && !b.sebelumBuku ? 'lewat'", " ? 'lewat'", 1)),
+                          ('39b-40 laporan.js: Tahunan tanpa pita keterangan sebelum awal buku', lap.replace('${R.sebelumBuku}</div>', '</div>', 1))]:
+            g = (dua_nama(isi) + sebelum_buku(isi)) if isi != lap else []
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
         for nama, isi in rusak.items():
@@ -258,6 +276,7 @@ if __name__ == '__main__':
         sys.exit(kode)
     l, g, asap = utama(js, True)
     g = g + ['39b-25: ' + x for x in dua_nama(lap)]; l = l + (0 if dua_nama(lap) else 1)
+    g = g + ['39b-40: ' + x for x in sebelum_buku(lap)]; l = l + (0 if sebelum_buku(lap) else 1)
     print('KENDALI BIAYA (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     p = uji_wadah_bernama.cadangan_toko()

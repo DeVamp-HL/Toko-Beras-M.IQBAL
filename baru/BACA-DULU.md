@@ -1399,3 +1399,11 @@ koneksi HANYA Firestore & Auth Firebase; `object-src 'none'`, `base-uri 'self'`,
 Templat layar TIDAK boleh memakai `on…="…"` / `javascript:` (diblokir) — tetap `data-aksi`. Kasir darurat menyusul sesudah pensiun `kasir.html` mendarat
 (nomor versi `kasir-v*` dipegang bersama `kasir.html` & `sw-kasir.js`).
 
+## Audit 39b no. 40 — bulan sebelum awal buku tampil, tidak dijumlah sebagai rugi (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
+
+Keputusan owner 30 Sep: Juli (sebelum awal buku) tetap tampil, dengan keterangan. Dulu laba-rugi berkop 3/12 bulan, Σ Tahunan dan tren Biaya menghitung
+biaya Juli (tagihan bulanan + uang keluar, tanpa satu nota pun) sebagai bulan rugi. Sekarang: `laporan-logika.js` `lpAwalBuku()` (bulan catatan pertama) +
+`lpKetSebelumBuku()`; laba-rugi berkop dijumlah sejak bulan awal buku dengan baris "Jul 26 · sebelum awal buku — tidak dijumlah" (tanpa angka) dan
+catatan yang menyebut biayanya; `rekapTahun` menandai `sebelumBuku` (baris Tahunan "sebelum awal buku · biaya … · tidak dijumlah", Σ "bulan sejak awal
+buku", pita keterangan); `trenBiaya` menandai `sebelumBuku` (batang tidak merah, kalimat di kaki). Arus kas, neraca, rekap omzet (sudah "absen") dan mesin
+beku tidak diubah. Uji `uji_laporan_baru.py` +2, `uji_kendali_biaya.py` +2 (satu pemeriksa kata di `laporan.js`), kontrol +7.

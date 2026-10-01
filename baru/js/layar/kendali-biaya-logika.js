@@ -24,7 +24,7 @@ import { akhirBulanIso, bulanDari, POS_BIAYA_BULANAN, hppTercatat, caraBayarKunc
 import { ambilPenjualan, ambilPengeluaranHarian, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilPiutangMutasi, ambilKasbonMutasi } from '../data/toko.js';
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong, ugUntukDok, adalahMdr } from './uang-logika.js';
-import { lpFinal, lpNamaBulan, lpBulanPendek, daftarBulan } from './laporan-logika.js';
+import { lpFinal, lpNamaBulan, lpBulanPendek, daftarBulan, lpAwalBuku, lpKetSebelumBuku } from './laporan-logika.js';
 import { semuaUpah } from './upah-logika.js';
 
 // ---------- jenis biaya: urutan = urutan pemilahan (yang di atas menang) & urutan baris di layar ----------
@@ -205,10 +205,12 @@ export function peringatanBiaya(K, P, T) {
 
 // ---------- tren beberapa bulan ----------
 export function trenBiaya(kini, n, bayaran) {
-  const B = bayaran || bayaranBiayaBulanan(); const A = aturKendali(); const akhir = kbKey(hariIniIso(kini)); const out = [];
-  for (let i = (n || 6) - 1; i >= 0; i--) { const k = kbGeser(akhir, -i); const X = kbInti(k, kini, B, A); out.push({ key: k, pendek: lpBulanPendek(k, k.slice(5, 7) === '01' || i === (n || 6) - 1), berjalan: X.berjalan, final: X.final, tanpaCatatan: X.tanpaCatatan, omzet: X.omzet, margin: X.margin, biayaToko: X.biayaToko, susut: X.susut, hapus: X.hapus, semuaBiaya: X.semuaBiaya, labaBersih: X.labaBersih, pctBiaya: kbPct(X.semuaBiaya, X.omzet), perJenis: JENIS_BIAYA.map((j) => ({ id: j.id, n: X.per[j.id].n })) }); }
+  const B = bayaran || bayaranBiayaBulanan(); const A = aturKendali(); const akhir = kbKey(hariIniIso(kini)); const out = []; const ab = lpAwalBuku();
+  for (let i = (n || 6) - 1; i >= 0; i--) { const k = kbGeser(akhir, -i); const X = kbInti(k, kini, B, A); out.push({ key: k, pendek: lpBulanPendek(k, k.slice(5, 7) === '01' || i === (n || 6) - 1), berjalan: X.berjalan, final: X.final, tanpaCatatan: X.tanpaCatatan, omzet: X.omzet, margin: X.margin, biayaToko: X.biayaToko, susut: X.susut, hapus: X.hapus, semuaBiaya: X.semuaBiaya, labaBersih: X.labaBersih, pctBiaya: kbPct(X.semuaBiaya, X.omzet), perJenis: JENIS_BIAYA.map((j) => ({ id: j.id, n: X.per[j.id].n })), sebelumBuku: k < ab }); }
   const maks = Math.max(1, ...out.map((b) => Math.max(b.semuaBiaya, b.margin)));
-  return { daftar: out, maks, ada: out.some((b) => !b.tanpaCatatan) };
+  // 39b no. 40: bulan sebelum awal buku tetap digambar (biayanya kelihatan), dengan keterangan — bukan bulan rugi
+  const pra = out.filter((b) => b.sebelumBuku && !b.tanpaCatatan); const sebelumBuku = pra.length ? lpKetSebelumBuku(lpBulanPendek(pra[0].key, true) + (pra.length > 1 ? ' – ' + lpBulanPendek(pra[pra.length - 1].key, true) : ''), pra.reduce((a, b) => a + b.labaBersih, 0)) : '';
+  return { daftar: out, maks, ada: out.some((b) => !b.tanpaCatatan), sebelumBuku };
 }
 
 // ---------- belum dipilah: daftar keterangan yang bisa diberi kata kunci ----------
