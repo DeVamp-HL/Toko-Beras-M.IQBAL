@@ -41,9 +41,10 @@ export function setelTertunda(koleksi, ids) { _tertunda[koleksi] = (ids || []).m
 export function dokTertunda(koleksi, id) { const s = _tertunda[koleksi]; return !!s && s.indexOf(String(id)) >= 0; }
 // Putaran 3 AAL4: koleksi yang jawaban terakhirnya dari SALINAN PERANGKAT (Firestore fromCache, belum dijawab server) — tutup buku tidak dilanjutkan / dibatalkan
 // dari data yang bisa basi. Diisi pendengar firebase.js per koleksi (nama Firestore); simulasi cadangan = selalu kosong.
-const _dariCache = {};
-export function setelDariCache(koleksi, ya) { _dariCache[koleksi] = !!ya; }
-export function koleksiDariCache(koleksi) { return !!_dariCache[koleksi]; }
+// (nama sengaja beda dari _dariCache firebase.js — uji jsc membundel keduanya dalam satu lingkup)
+const _salinanPerangkat = {};
+export function setelDariCache(koleksi, ya) { _salinanPerangkat[koleksi] = !!ya; }
+export function koleksiDariCache(koleksi) { return !!_salinanPerangkat[koleksi]; }
 // Putaran 3 AAL5: HAPUS yang masih menunggu server di perangkat ini. Firestore langsung membuang dokumennya dari cache, jadi tanda per dokumen (hasPendingWrites,
 // setelTertunda) tidak pernah melihatnya. Diisi tulisBerkas firebase.js per kiriman sampai server mengaku / menolak; simulasi cadangan = selalu kosong.
 const _hapusTertunda = {};
