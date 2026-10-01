@@ -119,7 +119,8 @@ export function pasangLayarJual(akar, opsi) {
         // PENUTUP (owner 29 Sep: "animasi setelah transaksi, omzet bertambah"): omzet TIDAK langsung naik — ditahan sampai barang selesai
         // diserahkan, lalu koin emas terbang dari panggung ke angka omzet dan angkanya bergulir naik. Tanpa adegan (kurangi gerakan) → seperti dulu.
         if (lamaAdegan && tambahOmzet > 0 && !document.hidden && _tahanHari && _tahanHari.token === token) { _tahanHari.sampai = Date.now() + lamaAdegan + 2600; setTimeout(() => penutupOmzet(token), Math.max(0, lamaAdegan - 320)); }
-        else { lepasBila(); setTimeout(() => rayakanOmzet(tambahOmzet), 80); }   // sesudah layar digambar ulang dengan omzet barunya
+        // tanpa adegan: rayakan KENAIKAN SUNGGUHAN angka Hari ini (39b no. 19: nota tukar membawa retur, omzet cuma naik sebesar selisihnya) — sesudah layar digambar ulang
+        else { lepasBila(); setTimeout(() => rayakanOmzet(L.hariIni(S()).omzet - hariTadi.omzet), 80); }
         set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI (cadangan, tidak ke Firestore) — ' : h && h.antre ? 'Tersimpan di perangkat, menunggu server — ' : 'Tersimpan — ') + r.ringkas + (r.tembus && r.tembus.some((t) => t.selisihKg > 0.004) ? ' · TEMBUS STOK, tandai dicocokkan: ' + r.tembus.filter((t) => t.selisihKg > 0.004).map((t) => t.nama + ' ' + String(Math.round(t.selisihKg * 10) / 10).replace('.', ',') + ' kg').join(', ') : '') + strukOtomatis(r) }));   // 39b no. 14 tinjauan T5
       } catch (e) { lepasBila(); set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
     },

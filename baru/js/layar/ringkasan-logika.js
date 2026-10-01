@@ -72,10 +72,11 @@ function rkDataLapis(nama, ix, kini) {
   const barisHari = (ix.perHari[hari] || { baris: [] }).baris;
   const sel = []; let jalan = 0;
   if (nama === 'm15' || nama === 'menit') {
-    const n = nama === 'm15' ? 15 : 60; const isi = new Array(n).fill(0);
-    barisHari.forEach((p) => { const m = rkMenitKe(p); if (m === null) return; const lalu = menitKini - m; if (lalu >= 0 && lalu < n) isi[n - 1 - lalu] += p.hargaTotal || 0; });
+    const n = nama === 'm15' ? 15 : 60; const isi = new Array(n).fill(0); const adaNota = new Array(n).fill(false);
+    barisHari.forEach((p) => { const m = rkMenitKe(p); if (m === null) return; const lalu = menitKini - m; if (lalu >= 0 && lalu < n) { isi[n - 1 - lalu] += p.hargaTotal || 0; adaNota[n - 1 - lalu] = true; } });
     rkReturMenit(ix, hari).forEach((x) => { if (x.m === null) return; const lalu = menitKini - x.m; if (lalu >= 0 && lalu < n) isi[n - 1 - lalu] -= x.uang; });
-    isi.forEach((v, i) => sel.push(i === n - 1 ? { v: v, kelas: 'berjalan' } : v > 0 ? { v: nama === 'm15' ? 1 : v, kelas: nama === 'm15' ? 'titik' : 'emas' } : { v: 'rel', kelas: 'rel' }));
+    // titik 15 menit = menit yang punya nota (walau returnya lebih besar); sel 60 menit menyimpan nilai bersihnya, minus pun, supaya Σ sel = angka 60 menit
+    isi.forEach((v, i) => sel.push(i === n - 1 ? { v: v, kelas: 'berjalan' } : nama === 'm15' ? (adaNota[i] ? { v: 1, kelas: 'titik' } : { v: 'rel', kelas: 'rel' }) : adaNota[i] || v !== 0 ? { v: v, kelas: 'emas' } : { v: 'rel', kelas: 'rel' }));
     jalan = n - 1;
   } else if (nama === 'jam') {
     const isi = {}; barisHari.forEach((p) => { const m = rkMenitKe(p); if (m === null) return; const j = Math.floor(m / 60); isi[j] = (isi[j] || 0) + (p.hargaTotal || 0); });
@@ -190,7 +191,7 @@ export function susunRingkasan(skala, ix, kini) {
     langsung: { angka: H.omzet, judul: 'Omzet hari ini · hidup', sub: [mgHari.teks, H.nota + ' nota', H.retur ? 'sudah dikurangi retur ' + RP(H.retur) : ''].filter(Boolean).join(' · '),
       banding: 'Nota ke-' + H.nota + ' hari ini' + (kmrSegini ? ' · kemarin jam segini nota ke-' + kmrSegini.nota : ' · kemarin belum ada catatan') },
     menit: { angka: M60.omzet, judul: '60 menit terakhir · ' + rkP2(kini.getHours()) + '.' + rkP2(kini.getMinutes()), sub: M60.nota ? RP(Math.round(M60.omzet / M60.nota)) + '/nota · ' + M60.nota + ' nota' : 'belum ada nota dalam 60 menit ini',
-      banding: (() => { if (!adaSejak(kemarin)) return 'kemarin belum ada catatan · belum bisa dibandingkan'; let o = 0; const n = new Set(); (ix.perHari[kemarin] || { baris: [] }).baris.forEach((p) => { const m = rkMenitKe(p); if (m !== null && menitKini - m >= 0 && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); return 'kemarin jendela ini ' + n.size + ' nota · ' + RP(o) + (o > 0 ? ' (' + rkPersen(M60.omzet, o) + ')' : ''); })() },
+      banding: (() => { if (!adaSejak(kemarin)) return 'kemarin belum ada catatan · belum bisa dibandingkan'; let o = 0; const n = new Set(); (ix.perHari[kemarin] || { baris: [] }).baris.forEach((p) => { const m = rkMenitKe(p); if (m !== null && menitKini - m >= 0 && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); rkReturMenit(ix, kemarin).forEach((x) => { if (x.m !== null && menitKini - x.m >= 0 && menitKini - x.m < 60) o -= x.uang; }); return 'kemarin jendela ini ' + n.size + ' nota · ' + RP(o) + (o > 0 ? ' (' + rkPersen(M60.omzet, o) + ')' : ''); })() },
     jam: { angka: H.omzet, judul: 'Hari ini · per jam', sub: [mgHari.teks, H.nota + ' nota', H.nota ? RP(Math.round(H.omzet / H.nota)) + '/nota' : ''].filter(Boolean).join(' · '),
       banding: 'Jam ' + rkP2(jamKini) + ' berjalan ' + RP((jamIsi[jamKini] || { omzet: 0 }).omzet) + ' · ' + ((jamIsi[jamKini] || { nota: new Set() }).nota.size) + ' nota' + (jamSibuk != null ? ' · tersibuk ' + rkP2(jamSibuk) + ' · ' + RP(jamIsi[jamSibuk].omzet) : '') },
     hari: { angka: MG.omzet, judul: 'Minggu ini · per hari · berjalan', sub: [rkMarginTeks((t) => t >= rkIso(aMg) && t <= hari).teks, MG.nota + ' nota', MG.nota ? RP(Math.round(MG.omzet / MG.nota)) + '/nota' : ''].filter(Boolean).join(' · '),

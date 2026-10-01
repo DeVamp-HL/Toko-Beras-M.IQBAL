@@ -172,6 +172,9 @@ ok('39b-19 omzet per lokasi = penjualan − uang retur lokasi itu: retur 50.000 
   denganCacheSementara([{ koleksi: 'retur', data: { id: 'rtLk1', tanggal: '2026-09-18', jam: '17:00', nominalRefund: 50000, kondisi: 'utuh', lokasi: 'gudang' } }, { koleksi: 'retur', data: { id: 'rtLk2', tanggal: '2026-09-18', jam: '17:05', nominalRefund: 20000, kondisi: 'utuh' } }],
     function () { var L2 = ssLaporLokasi(KINI); return L2.lapor[1].omzetBulan === LP.lapor[1].omzetBulan - 50000 && L2.lapor[0].omzetBulan === LP.lapor[0].omzetBulan - 20000; }),
   J(denganCacheSementara([{ koleksi: 'retur', data: { id: 'rtLk1', tanggal: '2026-09-18', jam: '17:00', nominalRefund: 50000, kondisi: 'utuh', lokasi: 'gudang' } }], function () { return ssLaporLokasi(KINI).lapor.map(function (l) { return l.id + ':' + l.omzetBulan; }); })));
+ok('39b-19 tinjauan v2: retur hari ini di toko senilai penjualannya → omzet hari Rp0 tapi nota hari ini tetap 1; notaBulan dihitung (dasar "belum ada" = ada-tidaknya nota, bukan nilai omzet)',
+  denganCacheSementara([{ koleksi: 'retur', data: { id: 'rtLk3', tanggal: '2026-09-19', jam: '09:30', nominalRefund: LP.lapor[0].omzetHari, kondisi: 'utuh' } }], function () { var L3 = ssLaporLokasi(KINI).lapor[0]; return LP.lapor[0].omzetHari > 0 && L3.omzetHari === 0 && L3.notaHari === LP.lapor[0].notaHari && L3.notaHari > 0 && L3.notaBulan > 0; }),
+  J(denganCacheSementara([{ koleksi: 'retur', data: { id: 'rtLk3', tanggal: '2026-09-19', jam: '09:30', nominalRefund: LP.lapor[0].omzetHari, kondisi: 'utuh' } }], function () { var L3 = ssLaporLokasi(KINI).lapor[0]; return [L3.omzetHari, L3.notaHari, L3.notaBulan]; })));
 ok('pindah stok: tanpa merek / kg / pengantar / melebihi stok DITOLAK menyebut sebabnya; sah → DUA dokumen (keluar di asal, masuk di tujuan) satu pasangan, buku tidak disentuh', /Pilih mereknya/.test(susunPindahStok('', 'toko', 'gudang', 10, 'Ben', W).tolak) && /Ketik berapa kg/.test(susunPindahStok('Angsa', 'toko', 'gudang', '', 'Ben', W).tolak) && /Siapa yang mengantar/.test(susunPindahStok('Angsa', 'toko', 'gudang', 10, 'Udin', W).tolak) && /Cuma ada/.test(susunPindahStok('Angsa', 'toko', 'gudang', 999999, 'Ben', W).tolak)
   && (function () { var r = susunPindahStok('Angsa', 'toko', 'gudang', 50, 'Ben', W); return r.dokumen && r.dokumen.length === 2 && r.dokumen[0].data.tipe === 'keluar' && r.dokumen[0].data.lokasi === 'toko' && r.dokumen[1].data.tipe === 'masuk' && r.dokumen[1].data.lokasi === 'gudang' && r.dokumen[1].data.pasangan === r.dokumen[0].data.id && r.dokumen.every(function (d) { return d.koleksi === 'pindahStok'; }); })(), J(susunPindahStok('Angsa', 'toko', 'gudang', 50, 'Ben', W)));
 ok('jadikan utama: gudang → dokumen lokasi dengan tepat satu utama; utama sekarang ditolak', susunJadikanUtama('gudang', W).dokumen[0].data.daftar.filter(function (l) { return l.utama; }).length === 1 && susunJadikanUtama('gudang', W).dokumen[0].data.daftar[1].utama && !!susunJadikanUtama('toko', W).tolak);
@@ -227,6 +230,14 @@ def utama(js):
     return h['lulus'], h['gagal']
 
 
+def lokasi_belum_ada(teks=None):
+    """39b-19 tinjauan v2: Menu › Lokasi — omzet Rp0 / minus karena retur tidak boleh ditulis "belum ada" kalau notanya ada (tiga keadaan kosong)."""
+    t = teks if teks is not None else open(os.path.join(AKAR, 'baru/js/layar/menu.js'), encoding='utf-8').read(); g = []
+    if "${l.notaHari || l.omzetHari ? RP(l.omzetHari) : 'belum ada'}" not in t: g.append('Lokasi: omzet hari ini Rp0 karena retur ditulis "belum ada" padahal ada nota')
+    if "${l.notaBulan || l.omzetBulan ? RP(l.omzetBulan) : 'belum ada'}" not in t: g.append('Lokasi: omzet bulan ini Rp0 karena retur ditulis "belum ada" padahal ada nota')
+    return g
+
+
 if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
@@ -260,6 +271,8 @@ if __name__ == '__main__':
             'setujui sekaligus melampaui batas': js.replace("const kecil = P.menunggu.filter((m) => m.n <= P.batas); if (!kecil.length)", "const kecil = P.menunggu; if (!kecil.length)"),
             'jejak & denyut ikut ke berkas cadangan': js.replace("if (SS_TAK_DICADANGKAN[k.nama]) return; isi[k.nama]", "isi[k.nama]"),
             'kuota tidak memperingatkan di atas ambang': js.replace("awas: pct !== null && pct >= A.ambangKuota, sisaHari", "awas: false, sisaHari"),
+            '39b-19: nota hari ini dihitung dari omzet (retur penuh → nota 0)': js.replace("notaHari: new Set(hariIni.map((p) => p.grupNota || p.trxId || p.id)).size,", "notaHari: hariIni.reduce((a, p) => a + (p.hargaTotal || 0), 0) - uangR((t) => t === iso) > 0 ? 1 : 0,"),
+            '39b-19: notaBulan hilang': js.replace(" notaBulan: new Set(bulanIni.map((p) => p.grupNota || p.trxId || p.id)).size,", ""),
             'pindah stok melebihi stok asal diterima': js.replace("if (n > ada + 0.005) return { tolak: 'Cuma ada '", "if (false) return { tolak: 'Cuma ada '"),
             'pindah stok cuma satu catatan (sisi masuk hilang)': js.replace(", { koleksi: 'pindahStok', data: Object.assign({ id: id + 1, tipe: 'masuk', lokasi: ke }, dasar) }", ""),
             'lokasi yang masih berisi stok bisa dihapus': js.replace("if (kg > 0.05) tolak = 'Masih ada '", "if (false) tolak = 'Masih ada '"),
@@ -274,6 +287,10 @@ if __name__ == '__main__':
             'Owner bisa dihapus dari daftar pencatat': js.replace("if (!tolak && !o.pemegang.some((x) => x.toLowerCase() === 'owner'))", "if (false)"),
         }
         kode = 0
+        T = open(os.path.join(AKAR, 'baru/js/layar/menu.js'), encoding='utf-8').read(); Tr = T.replace("${l.notaHari || l.omzetHari ? RP(l.omzetHari) : 'belum ada'}", "${l.omzetHari ? RP(l.omzetHari) : 'belum ada'}", 1)
+        gL = lokasi_belum_ada(Tr) if Tr != T else ['BASI']
+        print(('BERBUNYI ' if gL and gL != ['BASI'] else 'DIAM!!   ') + '39b-19: Lokasi menulis "belum ada" untuk omzet Rp0 bernota → ' + (gL[0] if gL else '-'))
+        if not gL or gL == ['BASI']: kode = 3
         for nama, isi in rusak.items():
             if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue
             l, g = utama(isi)
@@ -281,6 +298,7 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g = utama(js)
+    tL = lokasi_belum_ada(); g = g + ['39b-19: ' + x for x in tL]; l = l + (0 if tL else 1)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')), key=os.path.basename)
     if cad:

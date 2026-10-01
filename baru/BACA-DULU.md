@@ -1308,3 +1308,9 @@ Tutup hari). Versi 2 sekaligus:
 - Menu › Lokasi: omzet hari & bulan per lokasi dikurangi retur lokasi itu (retur tanpa lokasi = lokasi utama).
 - Label: "Penjualan QRIS" (Kendali Biaya), rasio bukti QRIS "dari Rp … penjualan" (Menu › Tanya).
 - Uji: Ringkasan +3, Jual +1, Laporan +1, Tutup hari +1, Lokasi +1; asap Ringkasan & Riwayat dibanding mesin laba; kontrol +9.
+- Tinjauan independen (3 agen, tanpa Chrome) → dibetulkan: pembanding "kemarin jendela ini" (skala Menit) ikut dikurangi retur kemarin;
+  menit yang punya nota tetap titik/sel walau returnya lebih besar (Σ sel 60 menit = angka 60 menit); tanpa adegan (kurangi gerakan) yang
+  dirayakan = kenaikan SUNGGUHAN Hari ini (nota tukar membawa retur); Menu › Lokasi "belum ada" menurut ada-tidaknya nota (omzet Rp0/minus
+  karena retur tetap ditulis); kertas Tutup hari: "Retur & refund" sejajar "Penjualan" & "Omzet" (bukan anak Penjualan); angka SEBELUM retur
+  di Laba & laba-rugi berkop bernama "Penjualan terhitung" — "Omzet terhitung" hanya angka sesudah retur (Banding). Uji +8, kontrol +14.
+  Tidak diubah: Kendali biaya "omzet nyata / hari" = ber-HPP (dasar yang sama dengan impas/hari, sengaja).
