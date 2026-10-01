@@ -31,12 +31,13 @@ export function buatAntre(penyimpan, sesi) {
     /**
      * Sesudah tersambung & semua tulisan tertunda diselesaikan server: entri 'antre' dari SESI LAIN (tab yang menulisnya sudah mati, jadi tidak ada
      * yang menunggu jawabannya) dicocokkan ke dokumen di server. cekServer(koleksi, id, data) → true (ada & sama/lebih baru), false (tidak ada / kalah),
-     * null (belum bisa dipastikan). Semua true → dikonfirmasi; ada yang false → ditolak; ada null → dibiarkan.
+     * null (belum bisa dipastikan), undefined (dokumen TURUNAN — tidak ikut menilai; satu kiriman = satu writeBatch, jadi dokumen catatan di kiriman yang
+     * sama sudah membuktikan nasibnya, audit 39b no. 18). Semua true → dikonfirmasi; ada yang false → ditolak; ada null → dibiarkan.
      */
     cocokkanSesudahSinkron(cekServer, padaIso) {
       const hasil = { dikonfirmasi: 0, ditolak: 0, ditunda: 0 };
       baca().filter((x) => x.keadaan === 'antre' && x.sesi !== (sesi || '')).forEach((x) => {
-        const cek = (x.dokumen || []).map((d) => cekServer(d.koleksi, String(d.data && d.data.id), d.data));
+        const cek = (x.dokumen || []).map((d) => cekServer(d.koleksi, String(d.data && d.data.id), d.data)).filter((c) => c !== undefined);
         if (cek.some((c) => c === null)) { hasil.ditunda += 1; return; }
         if (cek.every((c) => c === true)) { api.konfirmasi(x.id); hasil.dikonfirmasi += 1; } else { api.tandaiDitolak(x.id, 'ditolak server saat sinkron (server tidak mengirim alasannya; perangkat sempat dimuat ulang)', padaIso); hasil.ditolak += 1; }
       });
@@ -45,7 +46,8 @@ export function buatAntre(penyimpan, sesi) {
   };
   return api;
 }
-/** Cek bawaan untuk cocokkanSesudahSinkron: dokumen di cache (yang SUDAH bebas tulisan tertunda) ada, dan diubahPada-nya sama atau lebih baru. */
-export function cekDariCache(ambilDok) {
-  return (koleksi, id, data) => { const d = ambilDok(koleksi, id); if (!d) return false; const a = String(d.diubahPada || ''), b = String((data && data.diubahPada) || ''); return a && b ? a >= b : null; };
+/** Cek bawaan untuk cocokkanSesudahSinkron: dokumen di cache (yang SUDAH bebas tulisan tertunda) ada, dan diubahPada-nya sama atau lebih baru.
+ *  turunan(koleksi) → true = dokumen turunan yang tidak dipegang cache & tanpa diubahPada (katalog kasir ringkasanKasir/aktif) → undefined (tidak menilai). */
+export function cekDariCache(ambilDok, turunan) {
+  return (koleksi, id, data) => { if (turunan && turunan(koleksi)) return undefined; const d = ambilDok(koleksi, id); if (!d) return false; const a = String(d.diubahPada || ''), b = String((data && data.diubahPada) || ''); return a && b ? a >= b : null; };
 }

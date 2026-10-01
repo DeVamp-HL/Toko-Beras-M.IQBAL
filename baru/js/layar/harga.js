@@ -12,7 +12,7 @@ import * as BP from './bon-pemasok-logika.js';
 import * as BL from './belanja-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, kabarKiriman } from '../data/toko.js';
 import { kkSertakanKiriman } from '../data/katalog-kasir.js';
 import * as JB from './jenis-beras-logika.js';
 import * as VR from './varian-logika.js';
@@ -56,7 +56,7 @@ export function pasangLayarHarga(akar, opsi) {
     try {
       // putaran 25: hapus + dokumen dalam SATU kiriman (atomik; dulu dua kiriman — hapus bisa masuk tanpa penggantinya)
       let x = null; if ((r.dokumen && r.dokumen.length) || (r.hapus && r.hapus.length)) { x = await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus }); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } }
-      set(Object.assign({}, r.patch || {}, { kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + ((r.patch || {}).kabar || ''), kabarAwas: !!(r.patch || {}).kabarAwas })); return true;
+      set(Object.assign({}, r.patch || {}, { kabar: kabarKiriman(x, (r.patch || {}).kabar || ''), kabarAwas: !!(r.patch || {}).kabarAwas })); return true;
     } catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
   const bukaWa = (tautan) => { try { return window.open(tautan, '_blank', 'noopener'); } catch (e) { return null; } };

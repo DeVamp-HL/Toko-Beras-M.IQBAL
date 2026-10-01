@@ -10,7 +10,7 @@ import { RP, DESIMAL, tanggalPendek, hariIniIso, jamKini, kalimatLebih, ringkasL
 import * as P from './pelanggan-logika.js';
 import * as B from './bon-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen, tulisBertahap, perbaruiKolom } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, tulisBertahap, perbaruiKolom, kabarKiriman } from '../data/toko.js';
 import { bukanOwner } from './akses-layar.js';
 
 const IKON = {
@@ -60,10 +60,10 @@ export function pasangLayarPelanggan(akar, opsi) {
   async function tulis(r) {
     if (!r || r.tolak) { set({ kabar: (r && r.tolak) || 'Tidak ada yang ditulis', kabarAwas: true }); return false; }
     try {
-      const ada = (r.dokumen && r.dokumen.length) || (r.hapus && r.hapus.length); let sim = false, tahap = 0;
-      if (ada) { const x = r.kelompok ? await tulisBertahap(r.judulBertahap || 'Pelanggan bertahap', r.kelompok) : await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus });
-        if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } sim = !!(x && x.simulasi); tahap = (x && x.potongan) || 0; }
-      set(Object.assign({}, r.patch || {}, { kabar: (sim ? 'SIMULASI — ' : '') + ((r.patch && r.patch.kabar) || 'Tersimpan') + (tahap > 1 ? ' (dikirim ' + tahap + ' tahap)' : '') })); return true; }
+      const ada = (r.dokumen && r.dokumen.length) || (r.hapus && r.hapus.length); let x = null, tahap = 0;
+      if (ada) { x = r.kelompok ? await tulisBertahap(r.judulBertahap || 'Pelanggan bertahap', r.kelompok) : await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus });
+        if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } tahap = (x && x.potongan) || 0; }
+      set(Object.assign({}, r.patch || {}, { kabar: kabarKiriman(x, (r.patch && r.patch.kabar) || 'Tersimpan') + (tahap > 1 ? ' (dikirim ' + tahap + ' tahap)' : '') })); return true; }
     catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
 
