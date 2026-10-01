@@ -19,12 +19,14 @@ blok lain byte-sama dengan v5 (`git diff firestore.rules.v5 firestore.rules` = k
   lebih baru dari percobaan yang dibatalkan.
 - **Pemegang** (perangkat yang memulai) tidak berganti, kecuali lewat ambil alih (status sama, `pemegangLama` = pemegang sekarang, jam ambil alih lebih
   baru) atau pembatalan lanjutan dari `dibatalkan`.
+- **Kirim ulang identik** (isi baru = isi lama, `tulisUlangSama()`) selalu boleh — SDK bisa mengulang mutasi yang jawabannya hilang (mis. `selesai` /
+  `dibatalkan` sudah masuk server tapi sinyal putus); tidak mengubah apa pun.
 - Tanpa `get()`: 0 access call tambahan; kiriman tutup buku tetap ≤ 18 pemeriksaan.
 
 Kenapa (`docs/rancangan-tutup-buku-bertahap.md` §11): kiriman yang tertahan di antrean Firestore perangkat lain bisa mendarat belakangan dan menimpa
 berita acara — (1) jalan MULAI: kiriman pertama tertahan di HP A, owner menuntaskan di Mac B sampai `selesai`, HP A hidup lagi → `selesai` mundur;
 (2) ambil alih: HP lama masih menyimpan kiriman; (3) ekor pembatalan HP beku menulis `dibatalkan` di atas percobaan baru yang `selesai`. Di v6 tulisan
-itu DITOLAK server; karena kiriman tutup buku satu writeBatch, saldo pembuka yang ikut di kiriman itu juga tidak masuk (tidak ada "setengah").
+berita acara itu DITOLAK server (untuk (3) hanya berita acaranya — pengembalian arsip tetap mendarat, lihat "Batas yang diketahui"); karena kiriman tutup buku satu writeBatch, saldo pembuka yang ikut di kiriman itu juga tidak masuk (tidak ada "setengah").
 
 **Mundur** = tempel `firestore.rules.v5` (berita acara kembali owner-saja tanpa urutan; kiriman telat bisa menimpa lagi).
 
@@ -105,6 +107,8 @@ Semua dokumen: `tahun: 1990` (number). `hp-a` / `mac-b` = id perangkat contoh.
 | ★A13 | `uji-v6-alih` | `status:'terkunci'`, `paraf:{pada:P1}`, `pemegang:{id:'mac-b'}`, `pemegangLama:{id:'hp-a'}`, `diambilAlihPada:X1` | pemegang baru melanjutkan (`lanjutBuku`) |
 | ★A14 | `uji-v6-alih` | `status:'berjalan'`, `paraf:{pada:P1}`, `pemegang:{id:'hp-a'}`, `pemegangLama:{id:'mac-b'}`, `diambilAlihPada:X2` | ambil alih kedua |
 | ★A15 | *create* `/tutupBukuAcara/uji-v6-baru` (dokumen TIDAK ada) | `status:'berjalan'`, `tahun:1990`, `paraf:{pada:P1}`, `pemegang:{id:'hp-a'}` | `susunKunci` pertama kali (create tetap owner) |
+| ★A16 | `uji-v6-selesai` | isi PERSIS sama dengan dokumen `uji-v6-selesai` (salin semua kolomnya) | kirim ulang identik di atas `selesai` |
+| ★A17 | `uji-v6-dibatalkan` | isi PERSIS sama dengan dokumen `uji-v6-dibatalkan` | kirim ulang identik di atas `dibatalkan` |
 
 ## B · tulisan TELAT / MUNDUR — wajib DITOLAK (owner@, v6 di editor)
 
@@ -163,6 +167,13 @@ Satu saja ★ yang meleset = **jangan Publish**; kirim nomornya ke Claude Code. 
   tahun itu `berjalan` / `membatalkan` / `dibatalkan` saldo pembuka itu tersembunyi (toko.js `pembukaBerlaku`) dan pita "batal" menyebutnya untuk
   ditarik; tetapi kalau percobaan yang lebih baru sudah `terkunci` / `selesai`, saldo pembuka telat itu IKUT TERHITUNG (dobel) dan tidak ada pita yang
   menyebutnya. Pelindungnya tetap kalimat peringatan ambil alih ("pastikan HP lama mati / datanya dihapus").
+- **Ekor pembatalan HP beku — v6 hanya menolak berita acaranya** (tinjauan rules v6, TRV6-EKOR-1). `uang.js` jalankanBatal mengembalikan arsip
+  (`pulihkanArsip`, lalu `bacaArsipTahun` = SELURUH arsip tahun itu, lalu kembalikan sisanya) SEBELUM menulis `dibatalkan`, dan langkah itu tidak
+  memeriksa pemegang/status lagi. HP A yang beku di tengah pengembalian lalu hidup lagi sesudah Mac B mengambil alih, memulai percobaan baru dan
+  menuntaskannya sampai `selesai`: HP A mengembalikan seluruh arsip tahun itu (termasuk arsip percobaan baru) ke buku hidup; baru `dibatalkan`-nya
+  ditolak v6. Hasil: berita acara tetap `selesai`, catatan tahun lama hidup lagi DI SAMPING saldo pembuka → angka DOBEL tanpa pita. (Di v5 hasilnya
+  `dibatalkan` + dobel.) Pelindungnya kalimat peringatan ambil alih ("pastikan HP lama mati / datanya dihapus"). Perbaikan kode (penjaga pemegang &
+  status sebelum / di antara potongan pengembalian arsip) = putaran terpisah, bukan rules.
 - **Hapus lalu tulis baru**: delete berita acara tetap boleh owner (aplikasi tidak pernah menghapusnya). Kalau dokumen dihapus, tulisan telat yang
   mendarat sesudahnya = create = LOLOS.
 - **Jam perangkat yang salah besar.** Percobaan yang dimulai dari perangkat berjam jauh di depan lalu dibatalkan membuat percobaan berikut dari perangkat

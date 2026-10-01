@@ -472,7 +472,8 @@ service cloud.firestore {
     match /tutupBukuAcara/{id} {
       allow read: if owner();
       allow create: if owner();
-      allow update: if owner() && ubahBukuSah(request.resource.data, resource.data);
+      // kirim ulang identik (SDK mengulang mutasi yang jawabannya hilang) tidak mengubah apa pun → boleh juga di atas 'selesai' / 'dibatalkan'
+      allow update: if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data));
       allow delete: if owner();
     }
 

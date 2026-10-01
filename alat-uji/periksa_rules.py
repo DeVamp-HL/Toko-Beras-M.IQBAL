@@ -161,7 +161,7 @@ def periksa_kunci(rules, B, F):
 
 
 FUNGSI_BUKU = ('percobaanBuku', 'pemegangBuku', 'majuBuku', 'pemegangBukuSah', 'mulaiLagiBuku', 'ubahBukuSah')
-UPDATE_BUKU = 'if owner() && ubahBukuSah(request.resource.data, resource.data)'
+UPDATE_BUKU = 'if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data))'
 
 
 class _Teks(str):
@@ -263,6 +263,8 @@ KASUS_BUKU = [
     ('★B24', 'mulai di atas percobaan yang masih terkunci', 'uji-v6-terkunci', acara('berjalan', P2, MB), False),
     ('★B25', 'jam mulai bukan bentuk toISOString', 'uji-v6-dibatalkan', acara('berjalan', '2027-01-06', MB), False),
     ('★B26', 'status asing', 'uji-v6-berjalan', acara('ditutup', P1, HA), False),
+    ('★A16', 'kirim ulang IDENTIK di atas selesai (SDK mengulang mutasi yang jawabannya hilang)', 'uji-v6-selesai', acara('selesai', P1, MB), True),
+    ('★A17', 'kirim ulang IDENTIK di atas dibatalkan', 'uji-v6-dibatalkan', acara('dibatalkan', P1, HA, dibatalkanPada=T1), True),
     ('V1', 'BATAS: pembatalan HP lama dengan jam batal SAMA di atas dibatalkan pemegang baru — lolos, status kembali membatalkan',
      alih('dibatalkan', P1, MB, HA, X1, dibatalkanPada=T1), acara('membatalkan', P1, HA, dibatalkanPada=T1), True),
 ]
@@ -277,8 +279,11 @@ def periksa_buku(rules, B):
     F = fungsi_rules(tanpa_komentar(rules))
     for n in FUNGSI_BUKU:
         if re.search(r'get\(|exists\(', re.sub(r"\.get\('", '', F.get(n, ''))): cacat.append('tutupBukuAcara: fungsi %s membaca dokumen lain (access call) — v6 tanpa get()' % n)
-    nilai, alasan = model_buku(rules)
-    if not nilai: return cacat + ['tutupBukuAcara: model tidak bisa dibuat — ' + alasan]
+    nilai0, alasan = model_buku(rules)
+    if not nilai0: return cacat + ['tutupBukuAcara: model tidak bisa dibuat — ' + alasan]
+    # update = tulisUlangSama() (isi baru == isi lama) || ubahBukuSah — tulis-ulang identik dinilai hanya kalau ada di allow update
+    ulang = any('tulisUlangSama()' in rata(x) for x in allow(b, 'update'))
+    nilai = lambda baru, lama: (ulang and baru == lama) or nilai0(baru, lama)
     for no, nama, lama, baru, boleh in KASUS_BUKU:
         if nilai(baru, DOK_BUKU[lama] if isinstance(lama, str) else lama) != boleh:
             cacat.append('tutupBukuAcara (model) %s %s → %s, wajib %s' % (no, nama, 'BOLEH' if not boleh else 'DITOLAK', 'BOLEH' if boleh else 'DITOLAK'))
@@ -423,9 +428,10 @@ if __name__ == '__main__':
             'jejak bukan-owner boleh 19 dokumen (batas lama, tanpa sisa)': R.replace("d.dokumen.size() <= 17;", "d.dokumen.size() <= 19;"),
             'create lewat staf() tanpa uid': R.replace("(stafBuat(['ben', 'karyawan']) && tglStaf('tanggal'));   // adukan", "(staf(['ben', 'karyawan']) && tglStaf('tanggal'));   // adukan"),
             # 9 · v6 berita acara tutup buku hanya maju — penjaga dicabut (kiriman telat lolos) ATAU terlalu ketat (tulisan sah dari kode ditolak)
-            'v6 dicabut: berita acara kembali owner saja tanpa urutan (v5)': R.replace("      allow read: if owner();\n      allow create: if owner();\n      allow update: if owner() && ubahBukuSah(request.resource.data, resource.data);\n      allow delete: if owner();",
+            'v6 dicabut: berita acara kembali owner saja tanpa urutan (v5)': R.replace("      allow read: if owner();\n      allow create: if owner();\n      // kirim ulang identik (SDK mengulang mutasi yang jawabannya hilang) tidak mengubah apa pun → boleh juga di atas 'selesai' / 'dibatalkan'\n      allow update: if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data));\n      allow delete: if owner();",
                                                                                       "      allow read, write: if owner();"),
-            'v6: update tutupBukuAcara owner saja': R.replace("allow update: if owner() && ubahBukuSah(request.resource.data, resource.data);", "allow update: if owner();"),
+            'v6: kirim ulang identik di atas selesai / dibatalkan ditolak': R.replace("allow update: if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data));", "allow update: if owner() && ubahBukuSah(request.resource.data, resource.data);"),
+            'v6: update tutupBukuAcara owner saja': R.replace("allow update: if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data));", "allow update: if owner();"),
             'v6: status boleh mundur (selesai → terkunci)': R.replace("'terkunci>selesai', ", "'terkunci>selesai', 'selesai>terkunci', "),
             'v6: dibatalkan → terkunci diterima (penanda telat sesudah pembatalan tuntas)': R.replace("'dibatalkan>membatalkan']", "'dibatalkan>membatalkan', 'dibatalkan>terkunci']"),
             'v6: pemegang tidak dijaga (kiriman HP lama sesudah ambil alih lolos)': R.replace("      return pemegangBuku(b) == pemegangBuku(l)\n", "      return pemegangBuku(b) == pemegangBuku(b)\n"),

@@ -422,8 +422,9 @@ Yang tetap diakui (menambah daftar §10; butir §10 tentang dua perangkat sekali
 (`berjalan → terkunci → selesai`, `berjalan / terkunci → membatalkan → dibatalkan`, dan `dibatalkan → membatalkan` dengan jam batal yang sama); percobaan
 baru hanya di atas `dibatalkan` dengan jam mulai lebih baru; pemegang hanya berganti lewat ambil alih (jam ambil alih lebih baru) atau pembatalan lanjutan
 dari `dibatalkan`. Tanpa `get()`. Ketiga jalan di atas — jalan MULAI, kiriman HP lama sesudah ambil alih (termasuk repro E1: kini DITOLAK satu kiriman
-utuh, saldo pembuka di dalamnya ikut tidak masuk), ekor pembatalan HP beku di atas percobaan baru — DITOLAK server sesudah v6 terbit. Bukti di repo: `periksa_rules.py`
-menilai fungsi rules itu apa adanya (model) pada 43 kasus + 14 kontrol v6 (CI). Sekali jalan saat menyusun (skrip di luar repo): semua tulisan berita acara
+utuh, saldo pembuka di dalamnya ikut tidak masuk), ekor pembatalan HP beku di atas percobaan baru — berita acaranya DITOLAK server sesudah v6 terbit (ekor pembatalan: pengembalian arsipnya tetap
+mendarat → `selesai` + DOBEL tanpa pita; lihat `docs/uji-rules-v6.md` "Batas yang diketahui"). Kirim ulang identik selalu boleh. Bukti di repo: `periksa_rules.py`
+menilai fungsi rules itu apa adanya (model) pada 45 kasus + 15 kontrol v6 (CI). Sekali jalan saat menyusun (skrip di luar repo): semua tulisan berita acara
 yang dibuat kode di kotak pasir `uji_tutup_buku_bertahap` (112) dinilai model v6: semua sah LOLOS kecuali yang memang telat (P3-AAL3: penanda sesudah pembatalan tuntas) dan dua
 tulisan perancah uji. Bukti server = Rules Playground owner, `docs/uji-rules-v6.md` (langkah terbit pola v5, mundur = `firestore.rules.v5`). Tetap TIDAK
 dijaga rules: arsip (`arsipTahun`, `pulihkanArsip`), kiriman saldo pembuka di tengah tanpa berita acara, `pengaturan/*`, dan `membatalkan` telat
