@@ -1293,3 +1293,18 @@ sisa lama tercatat lebih/susut lewat jalur isi ulang, hapus karung habis, kembal
   Data toko 1 Okt: 8 karung, 231 kg; geser nilai kecil (di bawah batas asap), laba tetap (asap uji_wadah_satu_buku).
 - Uji `uji_wadah_satu_buku.py` blok 12t (tertutup, hanya sisa lama, berdiri, keadaan sebelum tombol ditekan, Cocokkan & kalimat, Papan Kapur) + asap data toko; kontrol +11;
   `uji_cocokkan_terpisah.py` asap membereskan kartu dulu sebelum mencocokkan semua wadah.
+
+## Audit 39b no. 19 (versi 2) — "omzet" satu arti di SEMUA layar: penjualan − uang retur (1 Okt 2026, cabang `audit/39b-omzet-satu-arti-v2`)
+
+Keputusan owner 9 Sep: uang kembali SELALU mengurangi omzet. Versi 1 ditarik karena baru separuh layar yang pindah (Jual tidak sepakat lagi dengan
+Tutup hari). Versi 2 sekaligus:
+- `data/toko.js` `returUangPerHari()` — rumus mesin laba (`uangKembaliRetur`), per tanggal + jam.
+- Ringkasan: angka besar, hari/minggu/bulan/tahun, sel hari, sel per JAM dan jendela 15/60 menit (retur dikurangkan di jamnya), pembanding jam segini;
+  hari/jam yang minus digambar tipis (bukan NaN) dan angkanya "−Rp 125.000". Kunci nota = `kunciNota`.
+- Jual "Hari ini": omzet bersih; per cara bayar tetap PENJUALAN dan kartu menulis "retur −Rp…" (dokumen retur tidak punya cara bayar) → Σ menutup.
+- Laporan Harian: pemilih 14 hari = rekap harinya; di bawah petak Tunai/QRIS/Bon tertulis "penjualan − uang retur = omzet" bila ada retur.
+- Tutup hari (kertas & WA): hari dengan retur → "Penjualan · N nota", tunai/QRIS/bon baru, "retur & refund −Rp…", "Omzet (sudah dikurangi retur)";
+  hari tanpa retur tetap "Omzet · N nota". Dokumen `tutupHari.omzet` TETAP penjualan (dibaca sistem lama: "lawan kemarin" & WA lama).
+- Menu › Lokasi: omzet hari & bulan per lokasi dikurangi retur lokasi itu (retur tanpa lokasi = lokasi utama).
+- Label: "Penjualan QRIS" (Kendali Biaya), rasio bukti QRIS "dari Rp … penjualan" (Menu › Tanya).
+- Uji: Ringkasan +3, Jual +1, Laporan +1, Tutup hari +1, Lokasi +1; asap Ringkasan & Riwayat dibanding mesin laba; kontrol +9.

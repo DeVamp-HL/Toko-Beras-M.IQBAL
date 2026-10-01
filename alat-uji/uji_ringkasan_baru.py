@@ -106,6 +106,12 @@ ok('39b-19 retur hari ini 20.000 (10.00) mengurangi omzet hari/minggu/bulan & se
     var sel2 = rkDataLapis('hari', ix2, KINI).sel, sel = rkDataLapis('hari', ix, KINI).sel;
     return b.angka - a.angka === 25000 && bl.angka - bl2.angka === 25000 && sel[29].v - sel2[29].v === 25000 && sel2[29].v === a.angka && /sudah dikurangi retur Rp25\.000/.test(a.sub) && a.angka === hitungLabaRentang(function (t) { return t === '2026-09-19'; }).omzetPenuh; }),
   JSON.stringify(denganCacheSementara(RT19, function () { var ix2 = bangunIndeks(); return [susunRingkasan('langsung', ix2, KINI).angka, susunRingkasan('langsung', ix, KINI).angka, susunRingkasan('langsung', ix2, KINI).sub]; })));
+ok('39b-19 skala Jam: retur 20.000 jam 10.00 mengurangi sel jam 10 sebesar itu (sel lain tetap; sel minus tidak NaN); angka minus ditulis "−Rp 125.000" (bukan "−Rp125000"); hari tanpa penjualan dengan retur → sel minus digambar tipis, lebar bukan NaN',
+  (function () { var tanpa = rkDataLapis('jam', ix, KINI).sel; return denganCacheSementara(RT19, function () { var ix2 = bangunIndeks(); var dg = rkDataLapis('jam', ix2, KINI).sel; var j10 = 10 - 5;
+    return dg[j10].v === tanpa[j10].v - 20000 && dg.every(function (c, i) { return i === j10 || JSON.stringify(c.v) === JSON.stringify(tanpa[i].v); }) && susunSektor('jam', ix2, KINI).every(function (x) { return isFinite(x.w); }); }); })()
+  && JSON.stringify(kelompokAngka(-125000)) === JSON.stringify(['−Rp', '125', '.000'])
+  && denganCacheSementara([{ koleksi: 'retur', data: { id: 'rtNaN', tanggal: '2026-09-15', jam: '09:00', nominalRefund: 100000, kondisi: 'utuh' } }], function () { var S2 = susunSektor('hari', bangunIndeks(), KINI); return S2.every(function (x) { return isFinite(x.w); }); }),
+  JSON.stringify([kelompokAngka(-125000), denganCacheSementara(RT19, function () { var ix2 = bangunIndeks(); return [rkDataLapis('jam', ix2, KINI).sel.map(function (c) { return c.v; }), susunRingkasan('jam', ix2, KINI).angka]; })]));
 // toko kosong: tidak melempar, semuanya nol/ditolak
 pasok('penjualan', []); var ix0 = bangunIndeks(); var R0 = susunRingkasan('hari', ix0, KINI);
 ok('toko tanpa penjualan: angka 0, semua sel hari ABSEN, pembanding ditolak — tidak melempar', R0.angka === 0 && R0.sektor.filter(function (x) { return x.lapis === 'hari'; }).every(function (x) { return x.kelas === 'absen'; }) && /belum bisa dibandingkan/.test(R0.banding), JSON.stringify([R0.angka, R0.banding]));
@@ -162,6 +168,9 @@ if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
         rusak = {
+            '39b-19: sel per jam tidak mengurangi retur': js.replace("rkReturMenit(ix, hari).forEach((x) => { if (x.m === null) return; const j = Math.floor(x.m / 60); isi[j] = (isi[j] || 0) - x.uang; });", ""),
+            '39b-19: angka minus tanpa titik ribuan': js.replace("if (n < 0) g[0] = '−' + g[0]; return g; };", "return RP(n).replace(/^Rp\\s?/, 'Rp ').split(/[ .]/).map((t, i) => (i >= 2 ? '.' + t : t)); };"),
+            '39b-19: sel minus lebar NaN': js.replace("const v = typeof c.v === 'number' ? Math.max(0, c.v) : 0;", "const v = typeof c.v === 'number' ? c.v : 0;"),
             '39b-19: Ringkasan tidak mengurangi uang retur (omzet bruto)': js.replace("return { omzet: omzet - retur, penjualan: omzet,", "return { omzet: omzet, penjualan: omzet,"),
             '39b-19: sel hari Ringkasan bruto': js.replace("const rkOmzetHari = (ix, t) => ((ix.perHari[t] || {}).omzet || 0) - rkReturHari(ix, t);", "const rkOmzetHari = (ix, t) => ((ix.perHari[t] || {}).omzet || 0);"),
             'no.4: kelebihan bayar pelanggan tidak disebut di Perlu perhatian': js.replace("if (lebih.uang.n) out.push({ teks: 'Kelebihan bayar pelanggan · '", "if (false) out.push({ teks: 'Kelebihan bayar pelanggan · '"),
@@ -174,7 +183,7 @@ if __name__ == '__main__':
             'hari sebelum ada catatan digambar NOL (bukan absen)': js.replace("sel.push(t < ix.mulai || !ix.mulai ? { v: null, kelas: 'absen' } :", "sel.push(false ? { v: null, kelas: 'absen' } :"),
             'jam yang belum terjadi digambar sebagai nol-emas': js.replace(": j > jamKini ? { v: 'rel', kelas: 'rel' } :", ": false ? { v: 'rel', kelas: 'rel' } :"),
             'minggu dimulai hari Minggu (bukan Senin)': js.replace("x.setDate(x.getDate() - ((x.getDay() + 6) % 7));", "x.setDate(x.getDate() - x.getDay());"),
-            '60 menit terakhir memuat nota berjam sesudah sekarang': js.replace("if (m !== null && menitKini - m >= 0 && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); return { omzet: o, nota: n.size }; })();\n  const M15", "if (m !== null && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); return { omzet: o, nota: n.size }; })();\n  const M15"),
+            '60 menit terakhir memuat nota berjam sesudah sekarang': js.replace("if (m !== null && menitKini - m >= 0 && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } });", "if (m !== null && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } });"),
             'saldo kas ditebak walau titik kas belum disetel': js.replace("return { adaTitik: !!titik && total !== null, total,", "return { adaTitik: true, total: total === null ? 0 : total,"),
             'margin tidak menyebut persennya': js.replace("' · ' + pct + '%'", "''"),
             'tebal cincin linear melebihi batas lapis': js.replace("w = Math.max(1.5, wmax * Math.sqrt(Math.min(1, v / d.vmax)));", "w = Math.max(1.5, wmax * 2 * (v / d.vmax));"),

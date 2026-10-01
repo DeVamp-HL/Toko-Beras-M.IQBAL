@@ -48,6 +48,8 @@ export function bangunIndeks() {
 const rkReturHari = (ix, t, sampaiMenit) => { const r = (ix.retur || {})[t]; if (!r) return 0; if (sampaiMenit == null) return r.uang;
   return r.baris.reduce((a, x) => { const m = rkMenitKe(x); return a + (m === null || m <= sampaiMenit ? x.uang : 0); }, 0); };
 const rkOmzetHari = (ix, t) => ((ix.perHari[t] || {}).omzet || 0) - rkReturHari(ix, t);
+// uang retur hari itu per menit-ke (jam dokumen retur) — dipakai jendela 15/60 menit & per jam supaya bagian-bagian menutup ke angka besar (no. 19)
+const rkReturMenit = (ix, t) => (((ix.retur || {})[t] || {}).baris || []).map((x) => ({ m: rkMenitKe(x), uang: x.uang }));
 const rkMenitKe = (p) => { const m = /^(\d{1,2})[:.](\d{2})/.exec(p.jam || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
 function rkJumlahRentang(ix, dariIso, sampaiIso, sampaiMenitHariAkhir) {
   let omzet = 0; const nota = new Set(); let hariBuka = 0; let retur = 0;
@@ -72,10 +74,12 @@ function rkDataLapis(nama, ix, kini) {
   if (nama === 'm15' || nama === 'menit') {
     const n = nama === 'm15' ? 15 : 60; const isi = new Array(n).fill(0);
     barisHari.forEach((p) => { const m = rkMenitKe(p); if (m === null) return; const lalu = menitKini - m; if (lalu >= 0 && lalu < n) isi[n - 1 - lalu] += p.hargaTotal || 0; });
+    rkReturMenit(ix, hari).forEach((x) => { if (x.m === null) return; const lalu = menitKini - x.m; if (lalu >= 0 && lalu < n) isi[n - 1 - lalu] -= x.uang; });
     isi.forEach((v, i) => sel.push(i === n - 1 ? { v: v, kelas: 'berjalan' } : v > 0 ? { v: nama === 'm15' ? 1 : v, kelas: nama === 'm15' ? 'titik' : 'emas' } : { v: 'rel', kelas: 'rel' }));
     jalan = n - 1;
   } else if (nama === 'jam') {
     const isi = {}; barisHari.forEach((p) => { const m = rkMenitKe(p); if (m === null) return; const j = Math.floor(m / 60); isi[j] = (isi[j] || 0) + (p.hargaTotal || 0); });
+    rkReturMenit(ix, hari).forEach((x) => { if (x.m === null) return; const j = Math.floor(x.m / 60); isi[j] = (isi[j] || 0) - x.uang; });
     const jamKini = Math.min(JAM_TUTUP, Math.max(JAM_BUKA, kini.getHours()));
     for (let j = JAM_BUKA; j <= JAM_TUTUP; j++) sel.push(j === jamKini ? { v: isi[j] || 0, kelas: 'berjalan' } : j > jamKini ? { v: 'rel', kelas: 'rel' } : { v: isi[j] || 0, kelas: 'emas' });
     jalan = jamKini - JAM_BUKA;
@@ -129,7 +133,8 @@ export function susunSektor(skala, ix, kini) {
       if (c.v === null) { w = 1; kelas = 'absen'; len = span * 0.5; }
       else if (c.v === 'rel') { w = 1; kelas = 'rel'; }
       else if (c.kelas === 'titik') { w = 5; len = 2; }
-      else { const v = typeof c.v === 'number' ? c.v : 0; w = Math.max(1.5, wmax * Math.sqrt(Math.min(1, v / d.vmax))); if (v === 0 && c.kelas !== 'berjalan') { w = 1; kelas = 'rel'; } }
+      // no. 19: hari/jam yang minus (retur > penjualan) digambar tipis, bukan NaN
+      else { const v = typeof c.v === 'number' ? Math.max(0, c.v) : 0; w = Math.max(1.5, wmax * Math.sqrt(Math.min(1, v / d.vmax))); if (v === 0 && c.kelas !== 'berjalan') { w = 1; kelas = 'rel'; } }
       let start = i * span - geser; while (start < 0) start += C;
       out.push({ id: nama + ':' + i, lapis: nama, i, n, jalan: d.jalan, r, w: Math.round(w * 100) / 100, da: len.toFixed(2) + ' ' + (C - len).toFixed(2), do: (-start).toFixed(2), op, kelas,
         label: rkLabelSel(nama, i, n, kini, ix), nilai: c.v === null ? null : c.v === 'rel' ? (c.kelas === 'rel' && nama !== 'm15' && nama !== 'menit' ? 'rel' : 0) : (nama === 'm15' ? null : c.v), keadaan: c.v === null ? 'absen' : c.v === 'rel' ? 'rel' : c.kelas });
@@ -162,8 +167,8 @@ export function susunRingkasan(skala, ix, kini) {
   const kemarin = rkIso(rkGeser(kini, -1));
   const H = rkJumlahRentang(ix, hari, hari);
   const barisHari = (ix.perHari[hari] || { baris: [] }).baris;
-  const M60 = (() => { let o = 0; const n = new Set(); barisHari.forEach((p) => { const m = rkMenitKe(p); if (m !== null && menitKini - m >= 0 && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); return { omzet: o, nota: n.size }; })();
-  const M15 = (() => { let o = 0; const n = new Set(); barisHari.forEach((p) => { const m = rkMenitKe(p); if (m !== null && menitKini - m >= 0 && menitKini - m < 15) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); return { omzet: o, nota: n.size }; })();
+  const M60 = (() => { let o = 0; const n = new Set(); barisHari.forEach((p) => { const m = rkMenitKe(p); if (m !== null && menitKini - m >= 0 && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); rkReturMenit(ix, hari).forEach((x) => { if (x.m !== null && menitKini - x.m >= 0 && menitKini - x.m < 60) o -= x.uang; }); return { omzet: o, nota: n.size }; })();
+  const M15 = (() => { let o = 0; const n = new Set(); barisHari.forEach((p) => { const m = rkMenitKe(p); if (m !== null && menitKini - m >= 0 && menitKini - m < 15) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); rkReturMenit(ix, hari).forEach((x) => { if (x.m !== null && menitKini - x.m >= 0 && menitKini - x.m < 15) o -= x.uang; }); return { omzet: o, nota: n.size }; })();
   const aMg = rkAwalMinggu(kini); const MG = rkJumlahRentang(ix, rkIso(aMg), hari);
   const aBl = hari.slice(0, 8) + '01'; const BL = rkJumlahRentang(ix, aBl, hari);
   const aTh = hari.slice(0, 4) + '-01-01'; const TH = rkJumlahRentang(ix, aTh, hari);
@@ -177,7 +182,7 @@ export function susunRingkasan(skala, ix, kini) {
   const blLalu = adaSejak(rkIso(blLaluAwal)) ? rkJumlahRentang(ix, rkIso(blLaluAwal), rkIso(blLaluAkhir)) : null;
   const namaBlLalu = namaBulanPanjang(rkIso(blLaluAwal).slice(0, 7));
 
-  const jamIsi = {}; barisHari.forEach((p) => { const m = rkMenitKe(p); if (m === null) return; const j = Math.floor(m / 60); const o = jamIsi[j] || (jamIsi[j] = { omzet: 0, nota: new Set() }); o.omzet += p.hargaTotal || 0; o.nota.add(rkKunciNota(p)); });
+  const jamIsi = {}; barisHari.forEach((p) => { const m = rkMenitKe(p); if (m === null) return; const j = Math.floor(m / 60); const o = jamIsi[j] || (jamIsi[j] = { omzet: 0, nota: new Set() }); o.omzet += p.hargaTotal || 0; o.nota.add(rkKunciNota(p)); }); rkReturMenit(ix, hari).forEach((x) => { if (x.m === null) return; const j = Math.floor(x.m / 60); const o = jamIsi[j] || (jamIsi[j] = { omzet: 0, nota: new Set() }); o.omzet -= x.uang; });
   const jamKini = kini.getHours(); const jamSibuk = Object.keys(jamIsi).sort((a, b) => jamIsi[b].omzet - jamIsi[a].omzet)[0];
   const mgHari = rkMarginTeks((t) => t === hari);
 
@@ -251,4 +256,4 @@ export function susunPerhatian() {
 
 export function salam(kini) { const j = kini.getHours(); return j < 11 ? 'Selamat pagi' : j < 15 ? 'Selamat siang' : j < 19 ? 'Selamat sore' : 'Selamat malam'; }
 export function tanggalPanjang(kini) { return RK_NAMA_HARI[kini.getDay()] + ', ' + kini.getDate() + ' ' + namaBulanPanjang(rkIso(kini).slice(0, 7)); }
-export const kelompokAngka = (n) => RP(n).replace(/^Rp\s?/, 'Rp ').split(/[ .]/).map((t, i) => (i >= 2 ? '.' + t : t));
+export const kelompokAngka = (n) => { const g = RP(Math.abs(n || 0)).replace(/^Rp\s?/, 'Rp ').split(/[ .]/).map((t, i) => (i >= 2 ? '.' + t : t)); if (n < 0) g[0] = '−' + g[0]; return g; };   // no. 19: omzet bersih bisa minus
