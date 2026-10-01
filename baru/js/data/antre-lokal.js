@@ -3,7 +3,7 @@
 // Maka tiap kiriman disalin di perangkat SEBELUM dikirim:
 //   · tahan dimuat ulang (localStorage), berbatas ukuran — penuh = kiriman baru DITOLAK di perangkat, tidak ada salinan lama yang dibuang;
 //   · dihapus HANYA setelah server mengonfirmasi (commit berhasil, atau dokumennya terbukti ada di server sesudah sinkron);
-//   · ditolak server → ditandai 'ditolak' + alasannya, tampil di Sistem › Perangkat; owner memutuskan: tulis ulang atas namanya, atau buang.
+//   · ditolak server → ditandai 'ditolak' + alasannya, tampil di Sistem › Perangkat; owner memutuskan: tulis ulang atas namanya (pencatat asli ikut — susunTulisUlang), atau buang.
 // Logika tanpa DOM; penyimpan disuntikkan ({ baca(k), tulis(k, v) }) supaya bisa diuji di jsc (alat-uji/uji_akses_baru.py).
 export const KUNCI_ANTRE = 'miqbal_baru_antre_v1';
 export const BATAS_ENTRI = 300;
@@ -45,6 +45,29 @@ export function buatAntre(penyimpan, sesi) {
     },
   };
   return api;
+}
+/**
+ * Audit 39b no. 45 (owner 30 Sep): kiriman ditolak yang ditulis ulang owner MEMBAWA pencatat aslinya. Kolom pencipta (oleh, olehUid, perangkat, lokasi) dibiarkan —
+ * riwayat, struk, daftar Jual tetap menyebut yang mencatat; atribusi ubah (diubah*) dibuang supaya penulis pusat menulis OWNER sebagai penulis ulang.
+ * pencatatAsli = akun kiriman itu (nama, uid, peran, perangkat, jam kirim), hanya di dokumen beratribusi (katalog kasir tetap apa adanya); yang sudah punya
+ * pencatatAsli (ditulis ulang kedua kalinya) tidak ditimpa. Rules v6 tidak membatasi kolom tulisan owner (owner()). Kembali { dokumen, asli }.
+ */
+export function susunTulisUlang(entri) {
+  const x = entri || {}; const dok = x.dokumen || [];
+  const perangkat = dok.map((d) => d.data && (d.data.diubahPerangkat || d.data.perangkat)).find(Boolean) || '';
+  const asli = { nama: String(x.akunNama || ''), uid: String(x.akunUid || ''), peran: String(x.peran || ''), perangkat: String(perangkat), pada: String(x.pada || '') };
+  const dokumen = dok.map((d) => {
+    const data = Object.assign({}, d.data);
+    if ((data.oleh !== undefined || data.diubahOleh !== undefined) && !data.pencatatAsli) data.pencatatAsli = Object.assign({}, asli);
+    ['diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'].forEach((k) => delete data[k]);
+    return { koleksi: d.koleksi, data };
+  });
+  return { dokumen, asli };
+}
+/** Baris jejak owner untuk dokumen yang ditulis ulang (no. 45): nama pencatat asli di teksnya (Sistem › Jejak), identitasnya di kolom pencatatAsli. */
+export function jejakTulisUlang(log, asli) {
+  const a = asli || {};
+  return Object.assign({}, log, { ringkas: (log.ringkas ? log.ringkas + ' · ' : '') + 'ditulis ulang owner, pencatat asli ' + (a.nama || '?') + (a.peran ? ' (' + a.peran + ')' : ''), pencatatAsli: a });
 }
 /** Cek bawaan untuk cocokkanSesudahSinkron: dokumen di cache (yang SUDAH bebas tulisan tertunda) ada, dan diubahPada-nya sama atau lebih baru.
  *  turunan(koleksi) → true = dokumen turunan yang tidak dipegang cache & tanpa diubahPada (katalog kasir ringkasanKasir/aktif) → undefined (tidak menilai). */

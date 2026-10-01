@@ -129,6 +129,13 @@ ok('titik impas: rasio = margin ÷ omzet ber-HPP (104.500 ÷ 1.450.000 = 7,2 %);
 ok('sampai hari ini dari MESIN (1–19 Sep): laba bersih minus → belum menutup, kurang = −laba, omzet tambahan = kurang ÷ rasio, 11 hari tersisa; catatan menyebut baris tanpa modal & upah belum dibayar', !T.menutupKini && T.kurang === -Lj.labaBersih && T.omzetKurang === Math.round(T.kurang / T.rasio) && T.hariSisa === 11 && /omzet tambahan/.test(T.kiniTeks) && T.catatan.length === 2 && /1 baris tanpa modal/.test(T.catatan[0]) && /belum dibayar/.test(T.catatan[1]), J([T.kurang, Lj.labaBersih, T.kiniTeks, T.catatan]));
 ok('bulan lampau dari bulan PENUH: Agu margin 50.000 < biaya → "TIDAK menutup", kurang = −laba bersih Agu, tanpa hari tersisa; rasio Agu = 50.000 ÷ 700.000', (function () { var T8 = titikImpas(kendaliBulan('2026-08', KINI), KINI); return !T8.menutupKini && /TIDAK menutup/.test(T8.kiniTeks) && Math.abs(T8.rasio - 50000 / 700000) < 1e-12 && T8.kurang === -LM('2026-08').labaBersih && T8.hariSisa === 0; })());
 ok('tanpa omzet ber-HPP (Mei): rasio null, omzet impas null, kalimatnya jujur', titikImpas(kendaliBulan('2026-05', KINI), KINI).rasio === null && titikImpas(kendaliBulan('2026-05', KINI), KINI).omzetImpas === null && /tidak bisa dihitung/.test(titikImpas(kendaliBulan('2026-05', KINI), KINI).teks));
+// 39b no. 38 (owner 30 Sep): selisih laci tutup hari = baris "Lebih/kurang kas" di laba — Biaya memakai laba yang sama, tetapi impas tetap margin lawan biaya
+var TH38 = [{ koleksi: 'tutupHari', data: { id: '2026-09-12', tanggal: '2026-09-12', jam: '21:00', sistemBaru: true, selisih: -30000, selisihLaci: -30000, alasanSelisih: 'Salah kasih kembalian' } }];
+ok('39b-38 kurang kas 30.000 (12 Sep): laba bersih Biaya = mesin − 30.000 = Laba; tangga Biaya punya baris "Lebih/kurang kas" tepat di atas Laba bersih dan tetap menutup; impas TIDAK bergeser (kurang = biaya − margin, lebih/kurang kas bukan biaya), laba sampai hari ini yang disebut ikut −30.000',
+  denganCacheSementara(TH38, function () { var Kx = kendaliBulan('2026-09', KINI); var Tx = titikImpas(Kx, KINI); var r = Kx.terjun.filter(function (t) { return t.nama === 'Lebih/kurang kas'; }); var i = Kx.terjun.indexOf(r[0]);
+    return Kx.labaBersih === L9.labaBersih - 30000 && Kx.labaBersih === labaBulan('2026-09', KINI).labaBersih && Kx.menutup && r.length === 1 && r[0].n === -30000 && Kx.terjun[i + 1].nama === 'Laba bersih'
+      && dekat(Kx.terjun.reduce(function (a, t) { return t.kelas === 'jumlah' && t.nama === 'Laba bersih' ? a : t.n + a; }, 0), Kx.labaBersih) && Tx.kurang === T.kurang && Tx.omzetKurang === T.omzetKurang && Tx.menutupKini === T.menutupKini && Tx.labaSampai === Lj.labaBersih - 30000; }),
+  J(denganCacheSementara(TH38, function () { var Kx = kendaliBulan('2026-09', KINI); var Tx = titikImpas(Kx, KINI); return [Kx.labaBersih, L9.labaBersih, Kx.menutup, Kx.terjun.slice(-3), Tx.kurang, T.kurang, Tx.labaSampai]; })));
 
 // ==================== 5 · PEMICU per satuan ====================
 var P = pemicuBiaya(Ka);
@@ -165,6 +172,11 @@ pasok('penyesuaianStok', JSON.parse(J(KOTAK.penyesuaianStok)));
 // ==================== 8 · TREN & pembantu ====================
 var Tr = trenBiaya(KINI, 6);
 ok('tren 6 bulan: Apr–Sep; Sep = kendaliBulan (semuaBiaya, margin); Jul: biaya 100.000, margin 50.000; Jun 50.000 & 40.000; Apr–Mei tanpaCatatan; maks ≥ semua; perJenis Sep dapur 45.000', Tr.daftar.map(function (b) { return b.key; }).join() === '2026-04,2026-05,2026-06,2026-07,2026-08,2026-09' && Tr.daftar[5].semuaBiaya === K0.semuaBiaya && Tr.daftar[5].margin === K0.margin && Tr.daftar[3].semuaBiaya === 100000 && Tr.daftar[3].margin === 50000 && Tr.daftar[2].semuaBiaya === 50000 && Tr.daftar[2].margin === 40000 && Tr.daftar[0].tanpaCatatan && Tr.daftar[1].tanpaCatatan && !Tr.daftar[2].tanpaCatatan && Tr.maks >= Tr.daftar[5].semuaBiaya && Tr.daftar[5].perJenis.find(function (x) { return x.id === 'dapur'; }).n === 45000 && Tr.ada, J(Tr.daftar.map(function (b) { return [b.key, b.tanpaCatatan, b.semuaBiaya, b.margin]; })));
+// 39b no. 40 (owner 30 Sep): bulan sebelum awal buku (catatan pertama 25 Jun) yang punya biaya tetap digambar, dengan keterangan — bukan bulan rugi
+var Tr40 = denganCacheSementara([{ koleksi: 'pengeluaranHarian', data: { id: 'h40', kategori: 'toko', tanggal: '2026-05-20', jam: '09:00', keterangan: 'Kebutuhan masak', nominal: 40000 } }], function () { return trenBiaya(KINI, 6); });
+ok('39b-40 tren: Mei (sebelum awal buku 25 Jun) dengan biaya 40.000 tetap digambar, bertanda sebelumBuku & berketerangan "Mei 26 sebelum awal buku … biaya Rp40.000"; Juni bukan; tanpa biaya Mei → tanpa keterangan',
+  Tr40.daftar[1].key === '2026-05' && Tr40.daftar[1].sebelumBuku === true && !Tr40.daftar[1].tanpaCatatan && Tr40.daftar[1].semuaBiaya === 40000 && Tr40.daftar[2].sebelumBuku === false
+    && /^Mei 26 sebelum awal buku \(catatan pertama 25 Jun 2026\) — tampil, tidak dijumlah: .*biaya Rp40\.000/.test(Tr40.sebelumBuku) && Tr.sebelumBuku === '', J([Tr40.sebelumBuku, Tr40.daftar.map(function (b) { return [b.key, b.sebelumBuku, b.tanpaCatatan, b.semuaBiaya]; })]));
 ok('kbPctTeks: 12,3% · −5% · null → —; K.pct(a) dari omzet penuh', kbPctTeks(12.345) === '12,3%' && kbPctTeks(-5) === '−5%' && kbPctTeks(null) === '—' && K0.pct(155000) === '10%');
 ok('drafAtur dari setelan: kosong = "" & ambang bawaan; sesudah atur berisi string anggaran & kata bergabung koma', drafAtur().anggaran.dapur === '' && drafAtur().ambang === '10' && (function () { pasok('aturanToko', [RA.dokumen[0].data]); var d = drafAtur(); pasok('aturanToko', []); return d.anggaran.dapur === '70000' && d.kata.dapur === 'telur, gula merah' && d.ambangPemicu === '3'; })());
 
@@ -173,11 +185,13 @@ var asap = null;
 if (CADANGAN) {
   Object.keys(CADANGAN).forEach(function (n) { if (Array.isArray(CADANGAN[n])) pasok(n, CADANGAN[n]); });
   localStorage.removeItem('miqbal_titik_kas_v1'); var kini2 = new Date(Date.now()); var bulan = daftarBulan(kini2, 36); var salah = []; var tiap = [];
+  // 39b no. 38: laba bersih = mesin + selisih laci tutup hari bulan itu (dihitung ulang di sini dari tutupHari, termasuk riwayat tutup ulang)
+  var kas38 = function (k) { var n = 0; ambilTutupHari().forEach(function (t) { if (!t || String(t.tanggal || '').slice(0, 7) !== k) return; [t].concat(t.riwayat || []).forEach(function (x) { n += Number((x && (x.selisihLaci || x.selisih)) || 0); }); }); return n; };
   bulan.forEach(function (b) { var Kb = kendaliBulan(b.key, kini2); var Lb = LM(b.key); var Tb = titikImpas(Kb, kini2); var Pb = pemicuBiaya(Kb); var Pab = paretoBiaya(Kb); var Wb = peringatanBiaya(Kb, Pb, Tb);
     var jenisHarian = JENIS_BIAYA.filter(function (j) { return j.sifat === 'variabel'; }).reduce(function (a, j) { return a + Kb.per[j.id].n; }, 0);
     var rasioOk = Tb.rasio === null ? Kb.omzetHitung === 0 : Math.abs(Tb.rasio - Lb.margin / Lb.omzetHitung) < 1e-12;
     var paretoOk = Pab.daftar.length === 0 || (Math.abs(Pab.total - (Kb.semuaBiaya - Kb.baris.filter(function (r) { return r.n < 0; }).reduce(function (a, r) { return a + r.n; }, 0))) < 1 && Pab.inti.length >= 1);
-    if (!Kb.tanpaCatatan && (!Kb.menutup || !dekat(jenisHarian, Lb.harianToko) || Kb.labaBersih !== Lb.labaBersih || !rasioOk || !paretoOk)) salah.push(b.key + ':' + J([Kb.menutup, Kb.cocokHarian, Kb.cocokTetap, rasioOk, paretoOk]));
+    if (!Kb.tanpaCatatan && (!Kb.menutup || !dekat(jenisHarian, Lb.harianToko) || Kb.labaBersih !== Lb.labaBersih + kas38(b.key) || !rasioOk || !paretoOk)) salah.push(b.key + ':' + J([Kb.menutup, Kb.cocokHarian, Kb.cocokTetap, rasioOk, paretoOk]));
     tiap.push(b.key + ': ' + (Kb.tanpaCatatan ? 'tanpa catatan' : 'menutup · ' + Kb.baris.filter(function (r) { return r.n !== 0; }).length + ' jenis berisi · belum dipilah ' + Kb.nBelum + ' · lampu ' + Kb.nLampu + ' · peringatan ' + Wb.length + ' · pareto inti ' + Pab.nInti + '/' + Pab.nSemua + ' · ' + (Kb.final ? 'final' : 'draf'))); });
   var Trc = trenBiaya(kini2, 6);
   asap = { salah: salah, tiap: tiap, tren: Trc.daftar.map(function (b) { return b.key + (b.tanpaCatatan ? ' ·' : ' ✓'); }), aturOwner: aturKendali().dariOwner };
@@ -215,6 +229,28 @@ def dua_nama(t):
     return out
 
 
+def lebih_kurang_layar(t):
+    """39b no. 38 — layar Laporan: Mingguan & Tahunan menggambar baris "Lebih/kurang kas" (bila ada) di antara susut dan laba bersih; kalimat Biaya yang
+    menyebut rumus laba menyebut lebih/kurang kas bila ada. Kembalikan daftar masalah."""
+    out = []
+    if t.count("R.lebihKurangKas ? [['Lebih/kurang kas', R.lebihKurangKas, 'selisih laci tutup hari']] : []") != 2: out.append('Mingguan/Tahunan tanpa baris lebih/kurang kas')
+    if "(K.L.lebihKurangKas ? ' ± lebih/kurang kas' : '')" not in t: out.append('kalimat menutup Biaya tidak menyebut lebih/kurang kas')
+    # tinjauan 39b UU38-2: layar Laba — keterangan keping "Laba bersih" dan kalimat rumus di bawah tangga menyebut lebih/kurang kas bila tangganya punya baris itu
+    if "'sudah − biaya, hapus buku & susut' + (Lb.lebihKurangKas ? ' ± lebih/kurang kas' : '')" not in t: out.append('keterangan keping Laba bersih tidak menyebut lebih/kurang kas')
+    if "hapus buku ± susut${Lb.lebihKurangKas ? ' ± lebih/kurang kas' : ''} · ${B.nama}" not in t: out.append('kalimat rumus di bawah tangga Laba tidak menyebut lebih/kurang kas')
+    return out
+
+
+def sebelum_buku(t):
+    """39b no. 40 — layar Laporan: bulan sebelum awal buku TAMPIL dengan keterangan (Biaya › tren tidak merah + kalimat; Tahunan: baris "sebelum awal buku",
+    Σ "bulan sejak awal buku", pita keterangan). Kembalikan daftar masalah."""
+    out = []
+    if "!b.tanpaCatatan && !b.sebelumBuku ? 'lewat'" not in t: out.append('tren Biaya menggambar bulan sebelum awal buku sebagai rugi (merah)')
+    if "${Tr.sebelumBuku ? ' ' + Tr.sebelumBuku : ''}" not in t: out.append('tren Biaya tanpa keterangan bulan sebelum awal buku')
+    if "b.sebelumBuku ? 'sebelum awal buku'" not in t or "R.sebelumBuku ? 'bulan sejak awal buku'" not in t or '${R.sebelumBuku}</div>' not in t: out.append('Tahunan tanpa keterangan bulan sebelum awal buku')
+    return out
+
+
 if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     lap = open(os.path.join(AKAR, 'baru', 'js', 'layar', 'laporan.js'), encoding='utf-8').read()
@@ -244,10 +280,22 @@ if __name__ == '__main__':
             'tambah kata menghapus anggaran yang sudah diatur': js.replace("data: { id: 'kendaliBiaya', tanggal: w.tanggal, jam: w.jam, anggaran: A.anggaran, ambang: A.ambang, ambangPemicu: A.ambangPemicu, kata }", "data: { id: 'kendaliBiaya', tanggal: w.tanggal, jam: w.jam, anggaran: {}, ambang: 10, ambangPemicu: 10, kata }"),
             'tambah kata ke jenis lain diterima': js.replace("const j = JENIS_BIAYA.find((x) => x.id === jenis && x.id !== 'upah' && x.id !== 'tetap' && x.id !== 'lain');", "const j = JENIS_BIAYA.find((x) => x.id === jenis);"),
             'tren: bulan tanpa catatan digambar sebagai nol': js.replace("tanpaCatatan: X.tanpaCatatan, omzet: X.omzet", "tanpaCatatan: false, omzet: X.omzet"),
+            '39b-40 tren: bulan sebelum awal buku tidak ditandai': js.replace("perJenis: JENIS_BIAYA.map((j) => ({ id: j.id, n: X.per[j.id].n })), sebelumBuku: k < ab });", "perJenis: JENIS_BIAYA.map((j) => ({ id: j.id, n: X.per[j.id].n })), sebelumBuku: false });"),
+            # ---- 39b no. 38 (owner 30 Sep): selisih laci = baris lebih/kurang kas di laba
+            '39b-38: Biaya memakai laba mesin (laba bersih ≠ Laba)': js.replace("const L = ugLabaBersih(awal, akhir, B);\n  const berjalan = key === kbKey(iso);", "const L = Object.assign(ugLabaBersih(awal, akhir, B), {}); L.labaBersih = L.labaMesin; L.lebihKurangKas = 0;\n  const berjalan = key === kbKey(iso);"),
+            '39b-38: tangga Biaya tanpa baris lebih/kurang kas': js.replace(".concat(K.L.lebihKurangKas ? [{ nama: 'Lebih/kurang kas', n: K.L.lebihKurangKas,", ".concat(false ? [{ nama: 'Lebih/kurang kas', n: K.L.lebihKurangKas,"),
+            '39b-38: menutup Biaya tidak menghitung lebih/kurang kas': js.replace("+ (L.susutStok || 0) + L.lebihKurangKas - L.labaBersih) < 0.5", "+ (L.susutStok || 0) - L.labaBersih) < 0.5"),
+            '39b-38: titik impas ikut lebih/kurang kas (kurang kas dianggap biaya)': js.replace("const menutupKini = Lj.labaMesin >= 0; const kurang = menutupKini ? 0 : -Lj.labaMesin;", "const menutupKini = Lj.labaBersih >= 0; const kurang = menutupKini ? 0 : -Lj.labaBersih;"),
         }
         kode = 0
-        for nama, isi in [('39b-25 laporan.js kembali memakai "belum dipilah" untuk jenis yang belum dikenali', lap.replace('jenisnya belum dikenali</span>', 'belum dipilah</span>', 1))]:
-            g = dua_nama(isi) if isi != lap else []
+        for nama, isi in [('39b-25 laporan.js kembali memakai "belum dipilah" untuk jenis yang belum dikenali', lap.replace('jenisnya belum dikenali</span>', 'belum dipilah</span>', 1)),
+                          ('39b-40 laporan.js: tren menggambar bulan sebelum awal buku merah lagi', lap.replace(" && !b.sebelumBuku ? 'lewat'", " ? 'lewat'", 1)),
+                          ('39b-40 laporan.js: Tahunan tanpa pita keterangan sebelum awal buku', lap.replace('${R.sebelumBuku}</div>', '</div>', 1)),
+                          ('39b-38 laporan.js: Tahunan tanpa baris lebih/kurang kas', lap.replace("['Susut & selisih stok', R.susut, '']].concat(R.lebihKurangKas ? [['Lebih/kurang kas', R.lebihKurangKas, 'selisih laci tutup hari']] : []).concat([['Laba bersih', R.labaBersih, 'Σ laba bersih tiap bulan']])", "['Susut & selisih stok', R.susut, '']].concat([['Laba bersih', R.labaBersih, 'Σ laba bersih tiap bulan']])", 1)),
+                          ('39b-38 laporan.js: kalimat menutup Biaya diam soal lebih/kurang kas', lap.replace("(K.L.lebihKurangKas ? ' ± lebih/kurang kas' : '')", "''", 1)),
+                          ('UU38-2 laporan.js: keping Laba bersih diam soal lebih/kurang kas', lap.replace("'sudah − biaya, hapus buku & susut' + (Lb.lebihKurangKas ? ' ± lebih/kurang kas' : '')", "'sudah − biaya, hapus buku & susut'", 1)),
+                          ('UU38-2 laporan.js: kalimat rumus tangga Laba diam soal lebih/kurang kas', lap.replace("${Lb.lebihKurangKas ? ' ± lebih/kurang kas' : ''} · ${B.nama}", " · ${B.nama}", 1))]:
+            g = (dua_nama(isi) + sebelum_buku(isi) + lebih_kurang_layar(isi)) if isi != lap else []
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
         for nama, isi in rusak.items():
@@ -258,6 +306,8 @@ if __name__ == '__main__':
         sys.exit(kode)
     l, g, asap = utama(js, True)
     g = g + ['39b-25: ' + x for x in dua_nama(lap)]; l = l + (0 if dua_nama(lap) else 1)
+    g = g + ['39b-40: ' + x for x in sebelum_buku(lap)]; l = l + (0 if sebelum_buku(lap) else 1)
+    g = g + ['39b-38: ' + x for x in lebih_kurang_layar(lap)]; l = l + (0 if lebih_kurang_layar(lap) else 1)
     print('KENDALI BIAYA (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     p = uji_wadah_bernama.cadangan_toko()

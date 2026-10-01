@@ -197,7 +197,7 @@ Bentuk dari kanvas Layar Kerja Uang yang dikunci owner 17–18 Sep: K1 Pita Laci
 
 ## Putaran 19 (23 Sep 2026) — layar LAPORAN & DOKUMEN: Laba · Harian · Bulanan · Neraca · Dokumen · Setelan
 Layar kedelapan (`layar/laporan.js` + `laporan-logika.js` + `css/laporan.css`), dibuka dari Menu (baris Laporan, pertanyaan "untung berapa" / "kaya atau tidak", cari) dan menu samping Mac. Tidak ada lagi baris Menu yang menunjuk sistem lama (tinggal rinci karcis di Jual). **Semua angka dari mesin beku yang sama** (`hitungLabaBersihRentang`, `hitungArusKasInti`, `hitungNeraca`, `kasPada`) — layar ini cuma menyusun, memberi kop, menomori, lalu mengeluarkan (dialog cetak / PDF / WhatsApp).
-- **Laba** (kaca Laba sistem lama, per bulan yang dipilih): tiga keping yang tidak boleh tertukar — margin kotor · laba bersih · **diterima tunai** (= laba bersih − margin nota bon); panel syarat per keping (cakupan omzet ber-HPP; tangga kotor → bersih dengan potongan QRIS dipisah dari biaya toko; bon yang belum jadi uang); aman diambil bulan ini = batas aman K1 − ambil pribadi; susut & selisih stok, nota rugi, nota tanpa modal (dilipat). Bulan tanpa satu catatan pun DISEBUT begitu, bukan nol.
+- **Laba** (kaca Laba sistem lama, per bulan yang dipilih): tiga keping yang tidak boleh tertukar — margin kotor · laba bersih · **diterima tunai** (= laba bersih − margin nota bon bulan itu + margin bon yang dibayar bulan itu, 39b no. 39); panel syarat per keping (cakupan omzet ber-HPP; tangga kotor → bersih dengan potongan QRIS dipisah dari biaya toko; bon yang belum jadi uang); aman diambil bulan ini = batas aman K1 − ambil pribadi; susut & selisih stok, nota rugi, nota tanpa modal (dilipat). Bulan tanpa satu catatan pun DISEBUT begitu, bukan nol.
 - **Harian**: 14 hari terakhir (yang sepi tetap ada), omzet per cara bayar, batang per jam, rekap = teks yang sama dengan yang dikirim WA (kalimat `kirimRekapHarianWa` + pembayaran bon, prive, kas bersih, margin), arus kas hari itu, buku kas satu per satu (`daftarGerakanKas`), tanda sudah/belum tutup hari.
 - **Bulanan**: enam batang bulan, inti bulan (omzet, HPP, laba kotor, biaya, laba bersih, uang keluar, kas bersih, tagihan bulan itu yang belum dibayar) + **DK3 rekap omzet 12 bulan**: kumulatif tahun berjalan, batang putus = belum tutup buku, bulan sebelum ada catatan = "—"; tanda **sudah dilaporkan** hanya bulan FINAL (tahun ≤ era tutup buku), membatalkan = dua ketukan; tarif perkiraan (per seribu), batas omzet, tanggal lapor = **setelan owner** (`aturanToko/rekapOmzet`, bawaan belum diatur → kolom tidak dicetak; selalu disebut "bukan nasihat pajak"); bukti omzet dari bulan pilihan (Σ = jumlah), hanya bulan final.
 - **Neraca**: `hitungNeraca(sampai)` dua sisi (harta: kas · stok karung · kemasan · kantong & bahan · piutang · kasbon · aset tetap isian owner; kewajiban & modal: utang pemasok · utang ke owner · modal tertanam · **laba ditahan = aset − kewajiban − modal, DIHITUNG dan disebut begitu**); pembandingnya laba bersih kumulatif mesin − ambil pribadi, selisihnya ditulis "belum terjelaskan buku" (titik kas yang disetel ulang, stok awal sebelum sistem) — tidak disembunyikan. Pilih tanggal (mundur dari titik kas → kas tidak ditebak). Tidak dicetak bila kas belum bisa dihitung atau ada stok minus.
@@ -1403,3 +1403,55 @@ koneksi HANYA Firestore & Auth Firebase; `object-src 'none'`, `base-uri 'self'`,
 Templat layar TIDAK boleh memakai `on…="…"` / `javascript:` (diblokir) — tetap `data-aksi`. Kasir darurat menyusul sesudah pensiun `kasir.html` mendarat
 (nomor versi `kasir-v*` dipegang bersama `kasir.html` & `sw-kasir.js`).
 
+## Audit 39b no. 40 — bulan sebelum awal buku tampil, tidak dijumlah sebagai rugi (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
+
+Keputusan owner 30 Sep: Juli (sebelum awal buku) tetap tampil, dengan keterangan. Dulu laba-rugi berkop 3/12 bulan, Σ Tahunan dan tren Biaya menghitung
+biaya Juli (tagihan bulanan + uang keluar, tanpa satu nota pun) sebagai bulan rugi. Sekarang: `laporan-logika.js` `lpAwalBuku()` (bulan catatan pertama) +
+`lpKetSebelumBuku()`; laba-rugi berkop dijumlah sejak bulan awal buku dengan baris "Jul 26 · sebelum awal buku — tidak dijumlah" (tanpa angka) dan
+catatan yang menyebut biayanya; `rekapTahun` menandai `sebelumBuku` (baris Tahunan "sebelum awal buku · biaya … · tidak dijumlah", Σ "bulan sejak awal
+buku", pita keterangan); `trenBiaya` menandai `sebelumBuku` (batang tidak merah, kalimat di kaki). Arus kas, neraca, rekap omzet (sudah "absen") dan mesin
+beku tidak diubah. Uji `uji_laporan_baru.py` +2, `uji_kendali_biaya.py` +2 (satu pemeriksa kata di `laporan.js`), kontrol +7.
+
+## Audit 39b no. 45 — tulis ulang kiriman ditolak membawa pencatat asli (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
+
+Keputusan owner 30 Sep: jejak pencatat asli wajib ikut saat kiriman ditolak ditulis ulang owner. Dulu Menu › Sistem › Perangkat › "tulis ulang atas
+nama owner" membuang `oleh`/`olehUid`, jadi riwayat, struk ("Dilayani …") dan jejak menyebut owner. Sekarang `antre-lokal.js` `susunTulisUlang()`
+membiarkan kolom pencipta (`oleh`, `olehUid`, `perangkat`, `lokasi`) dan menambah `pencatatAsli` {nama, uid, peran, perangkat, jam kirim} di tiap
+dokumen beratribusi (katalog kasir apa adanya; yang sudah punya tidak ditimpa); owner tercatat sebagai penulis ulang di `diubahOleh*`, dan baris jejaknya
+(`jejakTulisUlang`) berbunyi "… · ditulis ulang owner, pencatat asli <nama> (<peran>)". Juga berlaku untuk "catat ulang bertanggal hari ini". Rules v6
+tidak diubah (tulisan owner tidak dibatasi kolomnya). Uji `uji_akses_baru.py` +4, kontrol +7.
+
+## Audit 39b no. 38 — selisih laci = baris "Lebih/kurang kas" di laba (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
+
+Keputusan owner 30 Sep: selisih laci tutup hari (lebih +, kurang −) masuk LABA sebagai baris sendiri. Dulu selisih hanya menggeser kas (titik kas dipasang
+dari hitungan fisik) tanpa jejak di laba/neraca. Mesin beku tidak diubah: `uang-logika.js` `ugLebihKurangKas(dari, sampai)` (Σ `selisihLaci`/`selisih`
+tutupHari + riwayat tutup ulangnya; tidak bisa dihitung = 0) dan `ugLabaBersih()` = `hitungLabaBersihRentang` + baris itu (`labaMesin` = tanpa selisih).
+SEMUA pemakai laba bersih membacanya dari sana: Laba (tangga + diterima tunai), Ke mana laba kotor, laba-rugi berkop (+ kalimatnya), Banding, Mingguan,
+Tahunan, inti Bulanan, neraca (laba kumulatif ikut → beda "belum terjelaskan" bergeser sebesar itu), Biaya (tangga & "menutup"), Menu (laci Laporan,
+"Bulan ini toko untung berapa?"), batas aman ambil pribadi, potret kunci bulan. Baris "Lebih/kurang kas" hanya digambar bila bukan nol. Tetap: titik
+impas Biaya = margin lawan biaya (`labaMesin`; lebih/kurang kas bukan biaya); lembar tutup hari ("Laba hari ini", dasar sisihan) = laba SEBELUM selisih
+laci — selisih malam itu sudah punya barisnya sendiri di rekap. Sistem lama (hanya-baca) tetap laba mesin. Uji: `uji_laporan_baru.py` +4,
+`uji_uang_baru.py` +2 (+1 SENGAJA: laba hari ini sesudah tutup KURANG 30.000 = 44.600, dulu 74.600), `uji_kendali_biaya.py` +2, `uji_menu_baru.py` +1,
+`uji_kunci_periode.py` +1, asap toko `uji_uang_karyawan`/`uji_kendali_biaya`/`uji_laporan_baru` = mesin + selisih (dihitung ulang dari tutupHari);
+ASAP GLOBAL `uji_wadah_bernama.py`: perubahan SENGAJA "no. 38" (geser = selisih laci per bulan, dihitung ulang dari cadangan); kontrol +20.
+
+## Audit 39b no. 39 — margin bon kembali ke "diterima tunai" saat bonnya dibayar (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
+
+Keputusan owner 30 Sep: margin bon lama dikembalikan ke "diterima tunai" saat bon dibayar. Dulu Laporan → Laba memotong margin nota bon bulan itu
+dan tidak pernah mengembalikannya, jadi angka itu selalu di bawah laba yang sudah jadi uang. Sekarang `laporan-logika.js` `lpMarginBonLepas(dari, sampai)`:
+margin bon DITAHAN sampai bonnya tertutup, dengan urutan potong yang sama dengan buku bon (`hitungPiutang` / `rincianBelumLunas`: bon TERTUA dulu, uang
+lebih menunggu bon berikutnya, bon & pembayaran di hari yang sama = bon dulu); bon yang baru dibayar sebagian melepas marginnya sebanding. Diterima tunai
+= laba bersih − margin nota bon bulan itu + margin bon yang dibayar bulan itu (bon bulan itu sendiri yang sudah dibayar ikut) + margin bon yang dihapus
+bukunya (laba bersih sudah memotong seluruh nilai bon; disebut terpisah di panel). Panel "Syarat diterima tunai" menyebut semua komponennya. Laba bersih,
+margin, omzet, neraca & mesin beku tidak berubah. Uji `uji_laporan_baru.py` +3 (lintas bulan Agu → Sep, uang lebih, hapus buku; 2 angka lama diubah
+SENGAJA: Sep kotak pasir kini + 7.267) + pemeriksa kata panel, kontrol +8; ASAP GLOBAL `uji_wadah_bernama.py`: perubahan SENGAJA "no. 39" (margin yang
+lepas per bulan dihitung ulang dari cadangan; didaftarkan sebelum no. 38).
+
+## Audit 39b no. 36 — paket bank: kas bulan final dari hitungan tutup hari akhir bulan (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
+
+Keputusan owner 30 Sep. Dulu neraca & arus kas bulan FINAL memakai `kasPada` dari titik kas sekarang — selalu lebih muda, jadi kasnya "—" dengan
+kalimat salah "titik kas belum disetel", dan paket bank tetap mencetaknya. Sekarang `laporan-logika.js` `lpKasAkhirBulan(key)`: kas akhir bulan final =
+kolom `titik` tutup hari TERAKHIR di bulan itu (+ catatan uang sesudahnya sampai akhir bulan, `saldoKantong`); neraca & arus kas berkop bulan final
+(Dokumen → laporan berkop, paket bank) memakainya, kas awal arus kas = hitungan akhir bulan sebelumnya. Tanpa hitungan itu: "Kas akhir <bulan> belum bisa
+dihitung — tidak ada tutup hari di <bulan>". Paket bank ditahan bila salah satu dokumennya menolak. Bulan DRAF, layar Neraca per tanggal & mesin beku
+tidak diubah. Uji `uji_laporan_baru.py` +4 (1 lama dipindah ke kotak bertutup hari), kontrol +9 (1 lama disesuaikan).

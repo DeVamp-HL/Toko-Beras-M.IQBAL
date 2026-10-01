@@ -5,7 +5,8 @@
 // tenggang minimal. Keputusan owner K1–K6 & syarat 25b: docs/peta-kunci-periode.md.
 import { KP_ID, KP_ID_ATUR, KP_TENGGANG_MIN, KP_KUNCI_MULAI, KP_SIAP_25B, KP_VERSI_KASIR_25B, KP_VERSI_HARI, kpVersiKasirCukup, kpPerangkatKasir, kpNamaAplikasiKasir, kpWib, kpIdx, kpBulanStr, kpGeser, kpNamaBulan, kpAkhirBulan, kpBolehDikunci, kpDok, kpBulanDok, kpKalimat } from '../data/kunci-periode.js';
 import { cacheMentah, dokDiCache, ambilPenjualan, ambilPenjualanSemua, ambilTutupHari, ambilSemuaBatch, ambilProduksi, ambilUtangPemasokMutasi, ambilPiutangMutasi, kunciSampai, kunciTenggang } from '../data/toko.js';
-import { hitungLabaBersihRentang, hitungNeraca } from '../mesin/beku.js';
+import { hitungNeraca } from '../mesin/beku.js';
+import { ugLabaBersih } from './uang-logika.js';
 import { kunciPelanggan } from '../mesin/pembantu.js';
 import { RP, tanggalPendek } from '../inti/format.js';
 import { semuaOrang, pasanganKembar } from './pelanggan-logika.js';
@@ -120,7 +121,7 @@ export function kpDaftarPeriksa(bulan, kini, K) {
 }
 /** Potret angka bulan M saat dikunci (disimpan di riwayat; mesin tidak membacanya): kas akhir bulan hilang begitu titik kas maju (peta R3). */
 export function kpPotret(bulan) {
-  const r = (n) => (n === null || n === undefined || !isFinite(n) ? null : Math.round(n)); const L = hitungLabaBersihRentang(bulan + '-01', kpAkhirBulan(bulan)); const N = hitungNeraca(kpAkhirBulan(bulan));
+  const r = (n) => (n === null || n === undefined || !isFinite(n) ? null : Math.round(n)); const L = ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)); const N = hitungNeraca(kpAkhirBulan(bulan));
   return { omzet: r(L.omzetPenuh), marginKotor: r(L.margin), labaBersih: r(L.labaBersih), kas: r(N.kas), stok: r(N.stok), piutang: r(N.piutang), kasbon: r(N.kasbon), utangPemasok: r(N.utangPemasok), utangOwner: r(N.utangOwner), kekayaan: r(N.total) };
 }
 /** Kunci bulan M (dua ketukan di layar). akun = akun yang masuk (owner). */

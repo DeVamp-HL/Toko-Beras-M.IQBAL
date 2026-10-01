@@ -73,12 +73,61 @@ ok('tanpa tutup buku: tidak ada bulan final', !lpFinal('2026-08') && !lpFinal('2
 // ==================== LABA · tiga angka ====================
 var LB = labaBulan('2026-09', KINI); var LM = hitungLabaBersihRentang('2026-09-01', '2026-09-30');
 ok('Sep: omzet terhitung 2.470.000 · HPP 2.323.700 · margin kotor 146.300 = mesin; laba bersih = hitungLabaBersihRentang (satu mesin)', LB.L.omzetHitung === 2470000 && LB.L.hpp === 2323700 && LB.margin === 146300 && LB.labaBersih === LM.labaBersih, J([LB.margin, LB.labaBersih, LM.labaBersih]));
-ok('diterima tunai = laba bersih − margin nota bon 21.800 (1 nota bon, pokok 300.000)', LB.marginKredit === 21800 && LB.nKredit === 1 && LB.omzetKredit === 300000 && LB.tunai === LB.labaBersih - 21800);
+ok('diterima tunai = laba bersih − margin nota bon 21.800 (1 nota bon, pokok 300.000) + margin bon yang dibayar bulan ini 7.267 (39b no. 39: bayar 100.000 dari bon 300.000)', LB.marginKredit === 21800 && LB.nKredit === 1 && LB.omzetKredit === 300000 && LB.marginDibayar === 7267 && LB.tunai === LB.labaBersih - 21800 + 7267);
 ok('cakupan = omzet ber-HPP ÷ (ber-HPP + tanpa HPP 80.000) = 2.470.000/2.550.000; 1 nota tanpa modal disebut', LB.penyebut === 2550000 && dekat(LB.cakupan * 1000, 968.6) && LB.tanpaHpp.length === 1 && LB.tanpaHpp[0].id === 'j8' && LB.omzetTanpaHpp === 80000, J([LB.cakupan, LB.tanpaHpp]));
 ok('potongan QRIS 1.800 dipisah dari biaya toko; biaya lain = biayaToko − 1.800; terjun menutup: Σ baris (tanpa baris jumlah) = laba bersih', LB.mdr === 1800 && LB.biayaLain === LB.L.biayaToko - 1800 && dekat(LB.terjun.filter(function (r) { return r.kelas !== 'jumlah'; }).reduce(function (a, r) { return a + r.n; }, 0), LB.labaBersih), J(LB.terjun));
 ok('nota rugi: j7 dijual 120.000 modal 140.000 → −20.000; susut Sep 1 baris −26.000 = L.susutStok', LB.rugi.length === 1 && LB.rugi[0].id === 'j7' && LB.rugi[0].margin === -20000 && LB.susut.length === 1 && LB.susutTotal === -26000 && LB.L.susutStok === -26000);
 ok('bulan berjalan: aman diambil = batas aman (laba bulan berjalan, owner belum menyetel) − prive 100.000', LB.berjalan && LB.aman && LB.aman.dariLaba && LB.aman.terpakai === 100000 && LB.aman.sisa === LB.aman.batas - 100000, J(LB.aman));
 var LB7 = labaBulan('2026-07', KINI); ok('Juli tanpa satu catatan pun → tanpaCatatan (beda dari bulan yang untungnya nol); Agu: margin 50.000, bukan tanpaCatatan', LB7.tanpaCatatan && LB7.margin === 0 && !labaBulan('2026-08', KINI).tanpaCatatan && labaBulan('2026-08', KINI).margin === 50000);
+
+// ---- 39b no. 38 (owner 30 Sep 2026): selisih laci tutup hari (lebih +, kurang −) = baris "Lebih/kurang kas" di LABA — satu aturan (ugLabaBersih), semua layar laba
+// 17 Sep LEBIH 50.000 · 18 Sep tutup pertama KURANG 20.000 lalu tutup ulang PAS (riwayat) · 25 Agu sistem lama LEBIH 15.000 (kolom selisih saja) · 19 Sep tidak bisa dihitung (null)
+var TH38 = [{ koleksi: 'tutupHari', data: { id: '2026-09-17', tanggal: '2026-09-17', jam: '21:00', sistemBaru: true, selisih: 50000, selisihLaci: 50000, alasanSelisih: 'Ada penjualan belum dicatat' } },
+  { koleksi: 'tutupHari', data: { id: '2026-09-18', tanggal: '2026-09-18', jam: '21:30', sistemBaru: true, selisih: 0, selisihLaci: 0, riwayat: [{ id: '2026-09-18', tanggal: '2026-09-18', jam: '21:00', sistemBaru: true, selisih: -20000, selisihLaci: -20000, digantiPada: '2026-09-18T14:30:00.000Z' }] } },
+  { koleksi: 'tutupHari', data: { id: '2026-08-25', tanggal: '2026-08-25', jam: '21:00', selisih: 15000, alasanSelisih: 'Keuntungan' } },
+  { koleksi: 'tutupHari', data: { id: '2026-09-19', tanggal: '2026-09-19', jam: '21:00', selisih: null, alasanSelisih: 'patokan kas belum bisa dihitung' } }];
+var lk38 = function (xs) { return (xs || []).filter(function (r) { return /^Lebih\/kurang kas/.test(r.nama || ''); }); };
+var NP38 = neracaPada(null, KINI), T38 = rekapTahun('2026', KINI), A38 = aturKeluar('2026-09-19').labaBulan;
+ok('39b-38 tanpa selisih laci: lebih/kurang kas 0 dan TIDAK digambar (Laba, laba-rugi berkop, Ke mana laba kotor, Banding, Tahunan) — laba = mesin persis seperti sebelum keputusan',
+  LB.L.lebihKurangKas === 0 && LB.labaBersih === LM.labaBersih && !lk38(LB.terjun).length && !lk38(laporanBerkop('labarugi', '2026-09', 1, KINI).baris).length && !keManaLabaKotor('2026-09', KINI).baris.some(function (r) { return r.id === 'lebihKurang'; })
+  && !lk38(bandingLabaRugi('2026-09', '2026-08', KINI).baris).length && T38.lebihKurangKas === 0, J([LB.L.lebihKurangKas, LB.labaBersih, LM.labaBersih, T38.lebihKurangKas]));
+ok('39b-38 Laba Sep: lebih 50.000 (17 Sep) + kurang 20.000 (18 Sep, tutup pertama di riwayat; tutup ulang PAS) = baris "Lebih/kurang kas" +30.000 · 2 malam tepat di atas Laba bersih; laba bersih = mesin + 30.000; tangga menutup; diterima tunai ikut; selisih yang tidak bisa dihitung (19 Sep) = 0',
+  denganCacheSementara(TH38, function () { var B = labaBulan('2026-09', KINI); var M = hitungLabaBersihRentang('2026-09-01', '2026-09-30'); var r = lk38(B.terjun); var i = B.terjun.indexOf(r[0]);
+    return B.L.lebihKurangKas === 30000 && B.L.nLebihKurang === 2 && B.L.labaMesin === M.labaBersih && B.labaBersih === M.labaBersih + 30000 && r.length === 1 && r[0].n === 30000 && /2 malam/.test(r[0].nama) && B.terjun[i + 1].nama === 'Laba bersih' && B.terjun[i + 1].n === B.labaBersih
+      && dekat(B.terjun.filter(function (x) { return x.kelas !== 'jumlah'; }).reduce(function (a, x) { return a + x.n; }, 0), B.labaBersih) && B.tunai === B.labaBersih - 21800 + 7267 && intiBulan('2026-09', KINI).labaBersih === B.labaBersih; }),
+  J(denganCacheSementara(TH38, function () { var B = labaBulan('2026-09', KINI); return [B.L.lebihKurangKas, B.L.nLebihKurang, B.labaBersih, B.L.labaMesin, B.terjun.slice(-3)]; })));
+ok('39b-38 sistem lama (kolom selisih tanpa selisihLaci) ikut dibaca: Agu lebih 15.000; laba-rugi berkop Sep & 3 bulan (Agu–Sep, Jul sebelum awal buku) punya baris lebih/kurang kas 30.000 / 45.000, Laba bersih = Laba, kalimatnya menyebut lebih/kurang kas',
+  denganCacheSementara(TH38, function () { var A = labaBulan('2026-08', KINI); var R = laporanBerkop('labarugi', '2026-09', 1, KINI); var R3 = laporanBerkop('labarugi', '2026-09', 3, KINI); var lb = function (X) { return X.baris.filter(function (r) { return r.nama === 'Laba bersih'; })[0].n; };
+    return A.L.lebihKurangKas === 15000 && A.labaBersih === A.L.labaMesin + 15000 && lk38(R.baris).length === 1 && lk38(R.baris)[0].n === 30000 && lb(R) === labaBulan('2026-09', KINI).labaBersih && /lebih\/kurang kas/.test(R.catatan)
+      && lk38(R3.baris)[0].n === 45000 && lb(R3) === hitungLabaBersihRentang('2026-08-01', '2026-09-30').labaBersih + 45000; }),
+  J(denganCacheSementara(TH38, function () { var R3 = laporanBerkop('labarugi', '2026-09', 3, KINI); return [labaBulan('2026-08', KINI).L.lebihKurangKas, R3.baris.slice(-3), R3.catatan]; })));
+ok('39b-38 laba yang sama di Ke mana laba kotor (baris "Lebih/kurang kas", tetap menutup), neraca (laba kumulatif +45.000 → beda belum terjelaskan −45.000, harta tidak bergeser: kas sudah memuatnya lewat titik kas), Mingguan, Tahunan (Σ +45.000), Banding (baris 30.000 vs 15.000) & batas aman ambil pribadi (laba bulan berjalan +30.000)',
+  denganCacheSementara(TH38, function () { var K = keManaLabaKotor('2026-09', KINI); var kb = K.baris.filter(function (r) { return r.id === 'lebihKurang'; }); var NP = neracaPada(null, KINI); var RM = rekapMinggu('2026-09-14', KINI); var T = rekapTahun('2026', KINI); var BD = bandingLabaRugi('2026-09', '2026-08', KINI); var bk = lk38(BD.baris);
+    return K.menutup && kb.length === 1 && kb[0].n === 30000 && K.labaBersih === labaBulan('2026-09', KINI).labaBersih && NP.labaKum === NP38.labaKum + 45000 && NP.selisihBuku === NP38.selisihBuku - 45000 && NP.labaDitahan === NP38.labaDitahan
+      && RM.lebihKurangKas === 30000 && RM.labaBersih === hitungLabaBersihRentang('2026-09-14', '2026-09-20').labaBersih + 30000 && T.lebihKurangKas === 45000 && T.labaBersih === T38.labaBersih + 45000
+      && bk.length === 1 && bk[0].a === 30000 && bk[0].b === 15000 && BD.baris[BD.baris.length - 1].a === labaBulan('2026-09', KINI).labaBersih && aturKeluar('2026-09-19').labaBulan === A38 + 30000; }),
+  J(denganCacheSementara(TH38, function () { var NP = neracaPada(null, KINI); return [keManaLabaKotor('2026-09', KINI).menutup, NP.labaKum - NP38.labaKum, NP.selisihBuku - NP38.selisihBuku, rekapMinggu('2026-09-14', KINI).lebihKurangKas, rekapTahun('2026', KINI).lebihKurangKas, aturKeluar('2026-09-19').labaBulan - A38]; })));
+
+// ---- 39b no. 39 (owner 30 Sep 2026): margin bon ditahan dari "diterima tunai" sampai bonnya tertutup — urutan potong = buku bon (bon TERTUA dulu; bon yang
+// tertutup sebagian melepas marginnya sebanding; uang lebih menunggu bon berikutnya). Uji Lintas: bon 10 Agu 600.000 (margin 60.000) & 20 Agu 400.000
+// (margin 20.000), bayar 25 Agu 100.000 & 5 Sep 700.000, hapus buku 18 Sep 200.000. Uji Lebih: bayar 28 Agu 50.000 sebelum punya bon, bon 3 Sep 100.000 (margin 10.000).
+var BON39 = [['k39a', '2026-08-10', 'Uji Lintas', 600000, 540000], ['k39b', '2026-08-20', 'Uji Lintas', 400000, 380000], ['k39c', '2026-09-03', 'Uji Lebih', 100000, 90000]].map(function (x) {
+    return { koleksi: 'penjualan', data: { id: x[0], trxId: 'T' + x[0], tanggal: x[1], jam: '09:00', caraBayar: 'Kredit', namaPelanggan: x[2], jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: x[3], hppTotalSaatJual: x[4] } }; })
+  .concat([[3901, 'bayar', 'Uji Lintas', 100000, '2026-08-25'], [3902, 'bayar', 'Uji Lintas', 700000, '2026-09-05'], [3903, 'hapusBuku', 'Uji Lintas', 200000, '2026-09-18'], [3904, 'bayar', 'Uji Lebih', 50000, '2026-08-28']].map(function (x) {
+    return { koleksi: 'piutangMutasi', data: { id: x[0], tipe: x[1], namaPelanggan: x[2], nominal: x[3], tanggal: x[4], jam: '10:00', caraBayar: 'Tunai', alasan: 'uji' } }; }));
+var A39 = labaBulan('2026-08', KINI), S39 = labaBulan('2026-09', KINI);
+ok('39b-39 bon yang dibayar di bulan yang sama ikut: 19 Sep bayar 100.000 menutup sepertiga bon 300.000 (margin 21.800) → 7.267 kembali; diterima tunai = laba bersih − 21.800 + 7.267; Agu tanpa bon = laba bersih',
+  S39.marginDibayar === 7267 && S39.marginDihapus === 0 && S39.tunai === S39.labaBersih - 21800 + 7267 && A39.marginKredit === 0 && A39.marginDibayar === 0 && A39.tunai === A39.labaBersih, J([S39.marginDibayar, S39.marginDihapus, S39.tunai, S39.labaBersih, A39.tunai, A39.labaBersih]));
+ok('39b-39 lintas bulan: Agu bayar 100.000 → bon TERTUA (10 Agu) sebanding 10.000; Sep bayar 700.000 → sisa bon 10 Agu 50.000 + 200.000 bon 20 Agu 10.000, uang lebih 28 Agu menutup separuh bon 3 Sep 5.000 (dibayar 65.000); hapus buku 200.000 melepas 10.000 (laba bersih sudah memotong 200.000 penuh) — geser tunai Agu +10.000, Sep −125.000',
+  denganCacheSementara(BON39, function () { var A = labaBulan('2026-08', KINI), S = labaBulan('2026-09', KINI);
+    return A.marginKredit === 80000 && A.marginDibayar === 10000 && A.marginDihapus === 0 && A.tunai === A.labaBersih - 80000 + 10000 && A.tunai - A39.tunai === 10000
+      && S.marginKredit === S39.marginKredit + 10000 && S.marginDibayar === S39.marginDibayar + 65000 && S.marginDihapus === 10000 && S.tunai === S.labaBersih - S.marginKredit + S.marginDibayar + 10000 && S.tunai - S39.tunai === -125000; }),
+  J(denganCacheSementara(BON39, function () { var A = labaBulan('2026-08', KINI), S = labaBulan('2026-09', KINI); return [A.marginKredit, A.marginDibayar, A.tunai - A39.tunai, S.marginKredit, S.marginDibayar, S.marginDihapus, S.tunai - S39.tunai]; })));
+ok('39b-39 tidak ada margin yang hilang atau terhitung dua kali: Σ (Agu + Sep) diterima tunai = Σ laba bersih − margin yang masih tertahan, dan yang tertahan = margin bagian bon yang masih terbuka di Pelanggan → Bon (rincianBelumLunas, sebanding)',
+  denganCacheSementara(BON39, function () { var A = labaBulan('2026-08', KINI), S = labaBulan('2026-09', KINI); var tahan = (A.marginKredit - A.marginDibayar - A.marginDihapus) + (S.marginKredit - S.marginDibayar - S.marginDihapus);
+    var mg = {}; ambilPenjualan().forEach(function (p) { mg[p.id] = p.hargaTotal - p.hppTotalSaatJual; }); var buka = 0; semuaBon(KINI).forEach(function (b) { b.buka.forEach(function (u) { if (u.idTrx && u.nominal > 0) buka += (mg[u.idTrx] || 0) * u.sisa / u.nominal; }); });
+    return Math.abs(tahan - buka) < 1 && Math.abs(buka - (5000 + 21800 * 2 / 3)) < 0.01 && A.tunai + S.tunai === A.labaBersih + S.labaBersih - tahan; }),
+  J(denganCacheSementara(BON39, function () { var A = labaBulan('2026-08', KINI), S = labaBulan('2026-09', KINI); return [A.tunai + S.tunai, A.labaBersih + S.labaBersih, A.marginKredit - A.marginDibayar - A.marginDihapus + S.marginKredit - S.marginDibayar - S.marginDihapus]; })));
 
 // ==================== HARIAN ====================
 var RH = rekapHari('2026-09-19');
@@ -172,12 +221,64 @@ ok('39b-24 catatan potongan QRIS yang DIKETIK tangan (tanpa tanda mdr): laba-rug
   J(denganCacheSementara(M24, function () { return [laporanBerkop('labarugi', '2026-09', 1, KINI).baris.filter(function (r) { return /Potongan|Laba bersih|Belanja/.test(r.nama); }), pilahHarian('2026-09-01', '2026-09-30').mdr]; })));
 ok('laba-rugi menutup: Σ baris berangka (tanpa dua baris jumlah) = laba bersih', dekat(LR.baris.filter(function (r) { return r.n !== null && r.kelas !== 'jumlah'; }).reduce(function (a, r) { return a + r.n; }, 0), LM.labaBersih));
 var LR3 = laporanBerkop('labarugi', '2026-09', 3, KINI); ok('3 bulan Jul–Sep: periode "Jul 26 – Sep 26", laba kotor = Agu 50.000 + Sep 146.300', LR3.periode === 'Jul 26 – Sep 26' && LR3.bulan.length === 3 && LR3.baris.find(function (r) { return r.nama === 'Laba kotor'; }).n === 196300);
+// ---- 39b no. 40 (owner 30 Sep): Juli SEBELUM awal buku (catatan pertama 20 Agu) tetap tampil dengan keterangan, tidak dijumlah sebagai bulan rugi
+var M40 = [{ koleksi: 'biayaBulanan', data: { id: '2026-07', bulan: '2026-07', listrik: 300000, internet: 0, akses: 0, keamanan: 0, tanggalBayarPos: { listrik: '2026-07-10' }, rincianGaji: [], gaji: 0, gajiHariOrang: 0 } },
+  { koleksi: 'pengeluaranHarian', data: { id: 'h40', kategori: 'toko', tanggal: '2026-07-28', jam: '10:00', keterangan: 'Bensin antar', nominal: 20000 } }];
+var C40 = denganCacheSementara(M40, function () { return { R: laporanBerkop('labarugi', '2026-09', 3, KINI), T: rekapTahun(2026, KINI), jul: hitungLabaBersihRentang('2026-07-01', '2026-07-31').labaBersih, agsep: hitungLabaBersihRentang('2026-08-01', '2026-09-30').labaBersih }; });
+var lb40 = C40.R.baris.find(function (r) { return r.nama === 'Laba bersih'; });
+ok('39b-40 laba-rugi berkop 3 bulan: periode tetap "Jul 26 – Sep 26" (Juli tampil), baris pertama "Jul 26 · sebelum awal buku — tidak dijumlah" tanpa angka; Laba bersih = mesin Agu–Sep (biaya Juli 320.000 bukan rugi); catatan menyebut biaya Juli; baris berangka menutup',
+  C40.jul === -320000 && C40.R.periode === 'Jul 26 – Sep 26' && C40.R.baris[0].nama === 'Jul 26 · sebelum awal buku — tidak dijumlah' && C40.R.baris[0].n === null && lb40.n === C40.agsep && lb40.n !== C40.agsep + C40.jul
+    && /Jul 26 sebelum awal buku \(catatan pertama 20 Agu 2026\) — tampil, tidak dijumlah: .*biaya Rp320\.000/.test(C40.R.catatan) && dekat(C40.R.baris.filter(function (r) { return r.n !== null && r.kelas !== 'jumlah'; }).reduce(function (a, r) { return a + r.n; }, 0), C40.agsep), J([C40.jul, C40.agsep, C40.R.baris[0], lb40, C40.R.catatan]));
+ok('39b-40 Tahunan: Juli tetap di daftar (sebelumBuku, laba bersih −320.000 tetap terbaca) tetapi Σ laba bersih & biaya tahun = bulan sejak awal buku (Agu & Sep); Agustus bukan sebelum buku; keterangan "Jan – Jul sebelum awal buku … biaya Rp320.000"',
+  C40.T.bulan[6].sebelumBuku === true && C40.T.bulan[6].labaBersih === -320000 && C40.T.bulan[7].sebelumBuku === false && C40.T.labaBersih === C40.agsep && C40.T.labaBersih === C40.T.bulan.filter(function (b) { return !b.sebelumBuku; }).reduce(function (a, b) { return a + b.labaBersih; }, 0)
+    && C40.T.biaya === C40.T.bulan[7].biaya + C40.T.bulan[8].biaya && /^Jan – Jul sebelum awal buku .*biaya Rp320\.000/.test(C40.T.sebelumBuku) && rekapTahun(2026, KINI).sebelumBuku.indexOf('biaya') < 0, J([C40.T.labaBersih, C40.agsep, C40.T.sebelumBuku, C40.T.bulan[6]]));
 var LN = laporanBerkop('neraca', '2026-09', 1, KINI); ok('neraca berkop: per 19 Sep (bulan berjalan dipotong hari ini), Jumlah harta = Jumlah kewajiban & modal, catatan menyebut aset = kewajiban + modal + laba ditahan', /per 19 Sep/.test(LN.sub) && LN.baris.find(function (r) { return r.nama === 'Jumlah harta'; }).n === LN.baris.find(function (r) { return r.nama === 'Jumlah kewajiban & modal'; }).n && /Aset Rp/.test(LN.catatan) && !LN.tolak, J(LN.baris));
 var LA = laporanBerkop('aruskas', '2026-09', 1, KINI); var kasAkhir = LA.baris[LA.baris.length - 1];
 ok('arus kas Sep: kas awal 31 Agu SEBELUM titik kas → belum bisa dihitung (null, disebut); kas akhir = kasPada() (= kas neraca); kas bersih = Σ masuk − Σ keluar', LA.baris[0].n === null && /belum bisa dihitung/.test(LA.baris[0].nama) && kasAkhir.n === kasPada() && /kas di neraca/.test(LA.catatan) && dekat(LA.baris.find(function (r) { return r.nama === 'Kas bersih periode'; }).n, LA.baris.filter(function (r) { return r.n !== null && r.kelas !== 'jumlah' && r.nama !== LA.baris[0].nama && !/Penyesuaian/.test(r.nama); }).reduce(function (a, r) { return a + r.n; }, 0)), J(LA.baris));
 var BD = bandingLabaRugi('2026-09', '2026-08', KINI); ok('banding Sep vs Agu: laba kotor 146.300 vs 50.000, selisih +96.300 (+193%), arah naik', BD.baris[2].a === 146300 && BD.baris[2].b === 50000 && BD.baris[2].d === 96300 && BD.baris[2].pct === 193 && BD.baris[2].arah === 'naik' && /\+96\.300/.test(BD.baris[2].teksD), J(BD.baris[2]));
-var PB = paketBank({ labarugi: true, neraca: true, aruskas: true, omzet: true }, KINI);
-ok('paket bank: bulan final terakhir Des 2025 → 4 dokumen semua final; laba-rugi 3 bulan Okt–Des 2025; neraca per akhir Des 2025', !PB.tolak && PB.daftar.length === 4 && PB.daftar[0].periode === 'Okt 25 – Des 25' && PB.daftar[0].final && PB.daftar[1].jenis === 'neraca' && /31 Des/.test(PB.daftar[1].sub) && PB.daftar[3].jenis === 'omzet', J(PB.daftar.map(function (d) { return [d.jenis, d.periode, d.final]; })));
+// ---- 39b no. 36 (owner 30 Sep): neraca & arus kas bulan FINAL memakai hitungan fisik tutup hari akhir bulan (kolom `titik` dokumen tutupHari), bukan kasPada
+//      yang mundur dari titik kas sekarang (15 Sep 2026 — selalu lebih muda dari bulan final). ANGKA CONTOH: tutup hari 30 Sep 2025 Σ 7.000.000 · 30 Des Σ 7.300.000 · 31 Des Σ 7.500.000.
+var PALL = { labarugi: true, neraca: true, aruskas: true, omzet: true }; var PB0 = paketBank(PALL, KINI); var LN0 = laporanBerkop('neraca', '2025-12', 1, KINI); var LA0 = laporanBerkop('aruskas', '2025-12', 3, KINI);
+ok('39b-36 bulan final Des 2025 TANPA tutup hari: paket bank DITOLAK menyebut neraca & sebab yang benar; neraca & arus kas berkop ditolak dengan kalimat yang sama — bukan "titik kas belum disetel" (titik kas ada, cuma lebih muda)',
+  PB0.tolak.indexOf('Laporan Neraca: Kas akhir Desember 2025 belum bisa dihitung — tidak ada tutup hari di Desember 2025') === 0 && LN0.final && LN0.tolak === LA0.tolak && /^Kas akhir Desember 2025 belum bisa dihitung — tidak ada tutup hari di Desember 2025\. Bulan final memakai hitungan fisik tutup hari akhir bulan/.test(LN0.tolak)
+    && !/belum disetel/.test(PB0.tolak + LN0.tolak + LN0.catatan + LA0.tolak + LA0.catatan + LA0.baris[0].nama) && /tidak ada tutup hari di September 2025/.test(LA0.baris[0].nama) && LA0.baris[0].n === null, J([PB0.tolak, LN0.tolak, LN0.catatan, LA0.tolak, LA0.catatan, LA0.baris[0]]));
+var tt36 = function (id, tgl, laci, amplop, brankas) { return { koleksi: 'tutupHari', data: { id: id, tanggal: tgl, jam: '21:00', selisihLaci: 0, titik: { laci: laci, rekening: 2000000, amplop: amplop, brankas: brankas } } }; };
+var TH36 = [tt36('th-250930', '2025-09-30', 1500000, 500000, 3000000), tt36('th-251230', '2025-12-30', 1000000, 300000, 4000000), tt36('th-251231', '2025-12-31', 1200000, 300000, 4000000)];
+var kas36 = function (D) { return D.baris.find(function (r) { return /^Kas \(laci/.test(r.nama); }).n; };
+var C36 = denganCacheSementara(TH36, function () { return { P: paketBank(PALL, KINI), N: laporanBerkop('neraca', '2025-12', 1, KINI), A: laporanBerkop('aruskas', '2025-12', 3, KINI), kp: kasPada('2025-12-31'), ND: neracaPada('2025-12-31', KINI), NK: neracaPada('2025-12-31', KINI, lpKasAkhirBulan('2025-12')) }; });
+var PB = C36.P; var akA36 = C36.A.baris[C36.A.baris.length - 1], pyA36 = C36.A.baris.find(function (r) { return /Penyesuaian/.test(r.nama); });
+ok('paket bank (tutup hari akhir bulan ada): bulan final terakhir Des 2025 → 4 dokumen semua final, tidak ditolak; laba-rugi 3 bulan Okt–Des 2025; neraca per akhir Des 2025', !PB.tolak && PB.daftar.length === 4 && PB.daftar[0].periode === 'Okt 25 – Des 25' && PB.daftar[0].final && PB.daftar[1].jenis === 'neraca' && /31 Des/.test(PB.daftar[1].sub) && PB.daftar[3].jenis === 'omzet' && PB.daftar.every(function (d) { return !d.tolak; }), J(PB.daftar.map(function (d) { return [d.jenis, d.periode, d.final, d.tolak]; })));
+ok('39b-36 neraca Des 2025 (final): kas = hitungan tutup hari TERAKHIR bulan itu (31 Des, 7.500.000 — bukan 30 Des 7.300.000), jumlah harta = kewajiban & modal, catatan menyebut sumbernya (aset = kas + aset tetap 5.000.000 isian owner di atas); kekayaan (total) dari kas yang sama, bentuk objek neraca tetap; mesin tidak diubah (kasPada 31 Des tetap null, neraca per tanggal bawaan tetap memakai mesin)',
+  kas36(C36.N) === 7500000 && !C36.N.tolak && C36.N.baris.find(function (r) { return r.nama === 'Jumlah harta'; }).n === C36.N.baris.find(function (r) { return r.nama === 'Jumlah kewajiban & modal'; }).n && /^Kas Rp7\.500\.000 = hitungan fisik tutup hari 31 Des 2025\. Aset Rp12\.500\.000 = /.test(C36.N.catatan)
+    && C36.kp === null && C36.ND.N.kas === null && /titik kas belum disetel/.test(C36.ND.tolak)
+    && C36.NK.N.kas === 7500000 && C36.NK.total === Math.round(7500000 + C36.NK.N.stok + C36.NK.N.piutang + C36.NK.N.kasbon - C36.NK.N.utangOwner - C36.NK.N.utangPemasok) && Object.keys(C36.NK).join() === Object.keys(C36.ND).join(), J([kas36(C36.N), C36.N.catatan, C36.kp, C36.ND.tolak, C36.NK.total]));
+ok('39b-36 arus kas Okt–Des 2025 (final): kas awal = tutup hari 30 Sep 7.000.000, kas akhir = kas neraca 7.500.000 (satu sumber), kas bersih 0 → penyesuaian 500.000 disebut, catatan menyebut hitungan fisik tutup hari 31 Des',
+  C36.A.baris[0].n === 7000000 && C36.A.baris[0].nama === 'Kas awal periode' && akA36.n === 7500000 && akA36.n === kas36(C36.N) && !!pyA36 && pyA36.n === 500000 && !C36.A.tolak && /kas di neraca \(hitungan fisik tutup hari 31 Des 2025\)/.test(C36.A.catatan), J([C36.A.baris, C36.A.catatan]));
+// tinjauan 39b UU36-1: penyesuaian yang = selisih laci tutup hari di dalam periode bernama "Lebih/kurang kas" (= laba-rugi, no. 38), bukan "bukan uang yang bergerak";
+//      sisanya tetap penyesuaian titik kas. ANGKA CONTOH: tutup 30 Des LEBIH 300.000 + 31 Des LEBIH 200.000 (= seluruh penyesuaian 500.000); campuran: hanya 31 Des 200.000.
+var s36 = function (x, n) { return { koleksi: x.koleksi, data: Object.assign({}, x.data, { selisihLaci: n }) }; };
+var A36s = denganCacheSementara([TH36[0], s36(TH36[1], 300000), s36(TH36[2], 200000)], function () { return laporanBerkop('aruskas', '2025-12', 3, KINI); });
+var A36m = denganCacheSementara([TH36[0], TH36[1], s36(TH36[2], 200000)], function () { return laporanBerkop('aruskas', '2025-12', 3, KINI); });
+var cari36 = function (A, re) { return A.baris.filter(function (r) { return re.test(r.nama); }); };
+ok('UU36-1 arus kas berkop Okt–Des 2025 (final): penyesuaian 500.000 yang seluruhnya selisih laci tutup hari (30 Des +300.000, 31 Des +200.000) = baris "Lebih/kurang kas · selisih laci tutup hari (2 malam)" (nama laba-rugi), tanpa baris "Penyesuaian titik kas"; catatan "dibukukan di laba-rugi sebagai Lebih/kurang kas", bukan "bukan uang yang bergerak"; kas akhir tetap 7.500.000; campuran (31 Des 200.000 saja): Lebih/kurang kas 200.000 + Penyesuaian titik kas 300.000, catatan menyebut keduanya',
+  cari36(A36s, /^Lebih\/kurang kas/).length === 1 && cari36(A36s, /^Lebih\/kurang kas/)[0].nama === 'Lebih/kurang kas · selisih laci tutup hari (2 malam)' && cari36(A36s, /^Lebih\/kurang kas/)[0].n === 500000 && cari36(A36s, /Penyesuaian/).length === 0
+    && /Lebih\/kurang kas Rp500\.000 = selisih hitungan uang tutup hari di dalam periode, dibukukan di laba-rugi sebagai Lebih\/kurang kas\./.test(A36s.catatan) && !/bukan uang yang bergerak/.test(A36s.catatan) && A36s.baris[A36s.baris.length - 1].n === 7500000 && !A36s.tolak
+    && cari36(A36m, /^Lebih\/kurang kas/).length === 1 && cari36(A36m, /^Lebih\/kurang kas/)[0].n === 200000 && cari36(A36m, /Penyesuaian/).length === 1 && cari36(A36m, /Penyesuaian/)[0].n === 300000
+    && /Lebih\/kurang kas Rp200\.000 = /.test(A36m.catatan) && /Penyesuaian Rp300\.000 = titik kas yang disetel ulang/.test(A36m.catatan) && A36m.baris[A36m.baris.length - 1].n === 7500000,
+  J([A36s.baris, A36s.catatan, A36m.baris, A36m.catatan]));
+// tinjauan 39b UU36-2: Laporan → Neraca dengan tanggal di bulan FINAL (layar & kertas yang dikeluarkan) — akhir bulan = hitungan tutup hari akhir bulan (sama dengan
+//      Dokumen → Neraca); tanggal lain yang kasnya tidak terhitung mesin ditolak dengan sebab yang benar, bukan "titik kas belum disetel"; bulan draf tidak berubah.
+var NT = typeof neracaTanggal === 'function' ? neracaTanggal : null;
+var C36t = denganCacheSementara(TH36, function () { return { akhir: NT && NT('2025-12-31', KINI, true), tengah: NT && NT('2025-12-15', KINI, true), dok: laporanBerkop('neraca', '2025-12', 1, KINI) }; });
+ok('UU36-2 layar Neraca 31 Des 2025 (bulan final): kas 7.500.000 dari hitungan tutup hari 31 Des, jumlah harta = Dokumen → Neraca, tidak ditolak; 15 Des 2025 (final, titik kas sekarang lebih muda): kas tidak dihitung, tolak "Kas per 15 Des 2025 belum bisa dihitung — bulan Desember 2025 sudah final … ada di Dokumen", tanpa "titik kas belum disetel" (tolak, keterangan baris kas, catatan); hari bulan draf = neracaPada apa adanya',
+  !!NT && C36t.akhir.N.kas === 7500000 && !C36t.akhir.tolak && C36t.akhir.aset === C36t.dok.baris.find(function (r) { return r.nama === 'Jumlah harta'; }).n
+    && C36t.tengah.N.kas === null && C36t.tengah.total === null && /^Kas per 15 Des 2025 belum bisa dihitung — bulan Desember 2025 sudah final dan titik kas sekarang lebih muda\. Neraca akhir Desember 2025 \(hitungan fisik tutup hari akhir bulan\) ada di Dokumen/.test(C36t.tengah.tolak)
+    && !/belum disetel/.test(C36t.tengah.tolak + ' ' + C36t.tengah.harta[0].ket + ' ' + C36t.tengah.catatan) && J(NT('2026-09-19', KINI, false)) === J(neracaPada('2026-09-19', KINI)),
+  J(NT ? [C36t.akhir.N.kas, C36t.akhir.tolak, C36t.tengah.tolak, C36t.tengah.harta[0], C36t.tengah.catatan] : 'neracaTanggal tidak ada'));
+var G36 = [TH36[0], TH36[1], { koleksi: 'pengeluaranHarian', data: { id: 'h36', kategori: 'toko', tanggal: '2025-12-31', jam: '10:00', keterangan: 'Bensin antar', nominal: 50000 } }, { koleksi: 'tutupHari', data: { id: 'th-251215', tanggal: '2025-12-15', jam: '21:00', selisihLaci: 0 } }];
+var N36g = denganCacheSementara(G36, function () { return laporanBerkop('neraca', '2025-12', 1, KINI); }); var N36l = denganCacheSementara([{ koleksi: 'tutupHari', data: { id: 'th-251215', tanggal: '2025-12-15', jam: '21:00', selisihLaci: 0 } }], function () { return laporanBerkop('neraca', '2025-12', 1, KINI); });
+ok('39b-36 tutup hari terakhir 30 Des + uang keluar 31 Des 50.000: kas akhir = 7.300.000 − 50.000 (catatan sesudahnya ikut, disebut); bulan yang tutup harinya belum menyimpan isi tempat uang (tutup hari lama) ditolak dengan kalimatnya sendiri',
+  kas36(N36g) === 7250000 && /hitungan fisik tutup hari 30 Des 2025 \+ catatan uang sesudahnya sampai 31 Des 2025/.test(N36g.catatan) && /^Kas akhir Desember 2025 belum bisa dihitung — tutup hari Desember 2025 belum menyimpan isi tempat uang sesudah tutup/.test(N36l.tolak), J([kas36(N36g), N36g.catatan, N36l.tolak]));
 ok('paket tanpa pilihan ditolak', /Pilih isi/.test(paketBank({}, KINI).tolak));
 
 // ==================== DK4 · DOKUMEN KECIL ====================
@@ -245,11 +346,13 @@ ASAP = r"""
 Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[n]); });
 if (CAD.titikKas) localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify(CAD.titikKas));
 var KINI = new Date(Date.now()); var salah = []; var bl = hariIniIso(KINI).slice(0, 7);
-var LB = labaBulan(bl, KINI); var LM = hitungLabaBersihRentang(bl + '-01', akhirBulanIso(bl)); if (LB.labaBersih !== LM.labaBersih) salah.push('laba bulan ≠ mesin');
-var LR = laporanBerkop('labarugi', bl, 1, KINI); var lb = LR.baris.find(function (r) { return r.nama === 'Laba bersih'; }); if (lb.n !== LM.labaBersih) salah.push('laba-rugi berkop ≠ mesin');
+// 39b no. 38: laba bersih = mesin + selisih laci tutup hari bulan itu (dihitung ulang di sini dari dokumen tutupHari, termasuk riwayat tutup ulang)
+var kas38 = 0; ambilTutupHari().forEach(function (t) { if (!t || String(t.tanggal || '').slice(0, 7) !== bl) return; [t].concat(t.riwayat || []).forEach(function (x) { kas38 += Number((x && (x.selisihLaci || x.selisih)) || 0); }); });
+var LB = labaBulan(bl, KINI); var LM = hitungLabaBersihRentang(bl + '-01', akhirBulanIso(bl)); if (LB.labaBersih !== LM.labaBersih + kas38) salah.push('laba bulan ≠ mesin + lebih/kurang kas');
+var LR = laporanBerkop('labarugi', bl, 1, KINI); var lb = LR.baris.find(function (r) { return r.nama === 'Laba bersih'; }); if (lb.n !== LM.labaBersih + kas38) salah.push('laba-rugi berkop ≠ mesin + lebih/kurang kas');
 var NP = neracaPada(null, KINI); if (NP.aset !== null && !NP.seimbang) salah.push('neraca tidak seimbang');
 var RO = rekapOmzet(KINI); var RH = rekapHari(hariIniIso(KINI)); var DN = daftarNota('', KINI, 40); var DP = dokumenKecil('piutang', null, '', KINI); var DB = dokumenKecil('bon', null, '', KINI);
-print(JSON.stringify({ salah: salah, bulan: bl, margin: LB.margin, labaBersih: LB.labaBersih, tunai: LB.tunai, cakupan: LB.cakupan, mdr: LB.mdr, rugi: LB.rugi.length, tanpaHpp: LB.tanpaHpp.length, susut: LB.susut.length, hariIni: { n: RH.n, omzet: RH.omzet, bersih: RH.bersih, buku: RH.buku.length },
+print(JSON.stringify({ salah: salah, bulan: bl, margin: LB.margin, labaBersih: LB.labaBersih, lebihKurangKas: LB.L.lebihKurangKas, tunai: LB.tunai, cakupan: LB.cakupan, mdr: LB.mdr, rugi: LB.rugi.length, tanpaHpp: LB.tanpaHpp.length, susut: LB.susut.length, hariIni: { n: RH.n, omzet: RH.omzet, bersih: RH.bersih, buku: RH.buku.length },
   omzet12: RO.daftar.map(function (b) { return b.omzet; }), totalTahun: RO.totalTahun, final: RO.adaFinal, neraca: NP.aset === null ? 'kas tidak ada di cadangan' : { aset: NP.aset, kewajiban: NP.kewajiban, modal: NP.modal, labaDitahan: NP.labaDitahan, selisihBuku: NP.selisihBuku, tolak: NP.tolak },
   nota60hari: DN.cocok, piutang: { n: DP.pilihan.length, tolak: DP.tolak, baris: DP.baris.length }, bon: { n: DB.pilihan.length, tolak: DB.tolak }, kop: identitasUsaha().lengkap }));
 """
@@ -268,9 +371,36 @@ def utama(js):
     return h['lulus'], h['gagal']
 
 
+def neraca_layar(t):
+    """tinjauan 39b UU36-2 — layar Laporan → Neraca (gambar & kertas yang dikeluarkan) memakai LP.neracaTanggal untuk tanggal yang dipilih (kas bulan final dari
+    hitungan tutup hari akhir bulan / kalimat tolak yang benar), bukan neracaPada tanpa kas bulan final; hero bulan final memakai kalimat tolak itu."""
+    out = []
+    if t.count('LP.neracaTanggal(') != 2 or 'LP.neracaPada(' in t: out.append('layar Neraca masih memakai neracaPada tanpa kas bulan final (gambar / keluarkan)')
+    if "(sampai && D.final ? NP.tolak + '.' :" not in t: out.append('hero Neraca bulan final masih menyebut "titik kas belum disetel"')
+    return out
+
+
+def tunai_layar(t):
+    """39b no. 39 — layar Laba: panel "Syarat diterima tunai" menyebut SEMUA komponennya (laba bersih − margin nota bon bulan ini + margin bon yang dibayar
+    bulan ini [+ margin bon yang dihapus bukunya]) supaya hitungan yang tergambar menutup. Kembalikan daftar masalah."""
+    out = []
+    if '+ margin bon yang dibayar bulan ini ${RP(B.marginDibayar)}' not in t: out.append('panel diterima tunai tidak menyebut margin bon yang dibayar bulan ini')
+    if "${B.marginDihapus ? ' + margin bon yang dihapus bukunya ' + RP(B.marginDihapus) : ''}" not in t: out.append('panel diterima tunai diam soal margin bon yang dihapus bukunya')
+    return out
+
+
 if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
+    lap = open(os.path.join(AKAR, 'baru', 'js', 'layar', 'laporan.js'), encoding='utf-8').read()
     if '--kontrol' in sys.argv:
+        kode = 0
+        for nama, isi in [('39b-39 laporan.js: panel diterima tunai tanpa margin bon yang dibayar', lap.replace(' + margin bon yang dibayar bulan ini ${RP(B.marginDibayar)}', '', 1)),
+                          ('39b-39 laporan.js: panel diterima tunai tanpa margin bon yang dihapus bukunya', lap.replace("${B.marginDihapus ? ' + margin bon yang dihapus bukunya ' + RP(B.marginDihapus) : ''}", '', 1)),
+                          ('UU36-2 laporan.js: kertas Neraca yang dikeluarkan memakai neracaPada lagi', lap.replace('const NP = LP.neracaTanggal(st().sampaiN, kini(), D.final);', 'const NP = LP.neracaPada(st().sampaiN, kini());', 1)),
+                          ('UU36-2 laporan.js: hero Neraca bulan final kembali "titik kas belum disetel"', lap.replace("(sampai && D.final ? NP.tolak + '.' :", "(false ? NP.tolak + '.' :", 1))]:
+            g = (tunai_layar(isi) + neraca_layar(isi)) if isi != lap else []
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
+            if not g: kode = 3
         rusak = {
             'tinjauan T2: nota bon dihitung per baris (kartu Laba)': js.replace("notaKredit.add(kunciNota(p));", "notaKredit.add(String(p.id));"),
             'tinjauan T2: nota bon dihitung per baris (rekap WA)': js.replace("nKredit: jumlahNota((t) => t === iso, (p) => caraBayarKunci(p) === 'kredit'),", "nKredit: K.jumlahKredit,"),
@@ -290,9 +420,9 @@ if __name__ == '__main__':
             'no.4: tutup buku diam soal kelebihan bayar yang tidak menyeberang': js.replace("const kataLebih = !lebih.n ? '' :", "const kataLebih = true ? '' :"),
             # ---- laba
             'nota di Pusat Dokumen tanpa tanggal saldo bon (39b no. 8)': js.replace("g.sisaBonPer ? g.kiri + ' \u00b7 per ' + formatTanggal(g.sisaBonPer) : g.kiri", "g.kiri"),
-            'diterima tunai = laba bersih (margin nota bon tidak dikurangkan)': js.replace("const tunai = L.labaBersih - marginKredit;", "const tunai = L.labaBersih;"),
+            'diterima tunai = laba bersih (margin nota bon tidak dikurangkan)': js.replace("const tunai = L.labaBersih - marginKredit + marginDibayar + marginDihapus;", "const tunai = L.labaBersih + marginDibayar + marginDihapus;"),
             'potongan QRIS tidak dipisah dari biaya toko': js.replace("const mdr = lpMdrRentang(awal, akhir); const biayaLain = L.biayaToko - mdr;", "const mdr = 0; const biayaLain = L.biayaToko;"),
-            'susut hilang dari tangga kotor → bersih (jumlahnya tidak menutup)': js.replace("['Susut & selisih stok', L.susutStok], ['Laba bersih', L.labaBersih, 'jumlah']", "['Laba bersih', L.labaBersih, 'jumlah']"),
+            'susut hilang dari tangga kotor → bersih (jumlahnya tidak menutup)': js.replace(".concat([['Susut & selisih stok', L.susutStok]]).concat(L.lebihKurangKas ?", ".concat(L.lebihKurangKas ?"),
             'bulan tanpa catatan digambar sama dengan bulan nol': js.replace("const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && !susut.length;", "const tanpaCatatan = false;"),
             # ---- harian
             'nota batal ikut jumlah nota hari itu': js.replace("const s = new Set(); ambilPenjualan().forEach((p) => { if (cocok(p.tanggal) && (!saring || saring(p))) s.add(kunciNota(p)); });", "const s = new Set(); ambilPenjualanSemua().forEach((p) => { if (cocok(p.tanggal) && (!saring || saring(p))) s.add(kunciNota(p)); });"),   # 39b no. 20: jumlah nota kini dari jumlahNota (toko.js)
@@ -308,6 +438,10 @@ if __name__ == '__main__':
             # ---- mingguan / tahunan (putaran 21)
             'minggu dimulai Minggu, bukan Senin': js.replace("ugTambahHari(iso, -((new Date(iso + 'T00:00:00Z').getUTCDay() + 6) % 7))", "ugTambahHari(iso, -(new Date(iso + 'T00:00:00Z').getUTCDay()))"),
             'banding minggu tanpa pembanding ditulis naik (bukan belum ada)': js.replace("const lpPersen = (a, b) => (b > 0 ? Math.round((a - b) / b * 1000) / 10 : null);", "const lpPersen = (a, b) => (b > 0 ? Math.round((a - b) / b * 1000) / 10 : 100);"),
+            '39b-40: laba-rugi berkop menjumlah bulan sebelum awal buku': js.replace("const dariL = pra.length ? ab + '-01' : dari;", "const dariL = dari;"),
+            '39b-40: kertas laba-rugi tanpa baris keterangan bulan sebelum awal buku': js.replace("baris.unshift({ nama: lbl + ' · sebelum awal buku — tidak dijumlah', n: null }); ", ""),
+            '39b-40: Tahunan menjumlah bulan sebelum awal buku': js.replace("a + (b.sebelumBuku ? 0 : b[k] || 0)", "a + (b[k] || 0)"),
+            '39b-40: Tahunan tanpa keterangan bulan sebelum awal buku': js.replace("kosong: n === 0, sebelumBuku };", "kosong: n === 0, sebelumBuku: '' };"),
             'tahunan: bulan berjalan dianggap final': js.replace("berjalan: key === kiniKey, final: lpFinal(key), omzet: Lr.omzetPenuh", "berjalan: key === kiniKey, final: true, omzet: Lr.omzetPenuh"),
             # ---- neraca
             'modal owner tidak dipisah dari laba ditahan': js.replace("const labaDitahan = aset === null ? null : aset - kewajiban - modal;", "const labaDitahan = aset === null ? null : aset - kewajiban;"),
@@ -327,13 +461,42 @@ if __name__ == '__main__':
             'salinan nota selalu ke-1 (cetak ulang tidak berjejak)': js.replace("function salinanKe(trxId) { return ambilDokumenCetak().filter((d) => d.jenis === 'nota' && String(d.trxId) === String(trxId)).length + 1; }", "function salinanKe(trxId) { return 1; }"),
             'dokumen dicetak dengan kop belum lengkap': js.replace("if (!tolak && !I.lengkap) tolak = 'Kop belum lengkap: nama & alamat wajib (Setelan → Kop & identitas)';\n  return { jenis: J[0], namaJenis: J[1]", "\n  return { jenis: J[0], namaJenis: J[1]"),
             # ---- laporan berkop / dokumen kecil
-            'kas akhir arus kas dihitung dari kas awal + bersih (bukan mesin kas)': js.replace("const kasAkhir = kasPada(sampai > iso ? null : sampai);", "const kasAkhir = (kasPada(ugTambahHari(dari, -1)) || 0) + K.bersih;"),
+            'kas akhir arus kas dihitung dari kas awal + bersih (bukan mesin kas)': js.replace("const kasAkhir = KA ? KA.kas : kasPada(sampai > iso ? null : sampai);", "const kasAkhir = (kasPada(ugTambahHari(dari, -1)) || 0) + K.bersih;"),
+            # ---- 39b no. 36 (owner 30 Sep): kas akhir bulan final = hitungan fisik tutup hari akhir bulan
+            '39b-36: neraca bulan final memakai kasPada (titik kas sekarang) lagi': js.replace("neracaPada(sampai > iso ? iso : sampai, kini, final ? lpKasAkhirBulan(keKey) : null)", "neracaPada(sampai > iso ? iso : sampai, kini, null)"),
+            '39b-36: arus kas bulan final memakai kasPada lagi': js.replace("const KA = final ? lpKasAkhirBulan(keKey) : null, KW = final ? lpKasAkhirBulan(lpGeserBulan(bulan[0], -1)) : null;", "const KA = null, KW = null;"),
+            'UU36-2: akhir bulan final di layar Neraca tanpa kas tutup hari akhir bulan': js.replace("if (sampai === akhirBulanIso(key)) return neracaPada(sampai, kini, lpKasAkhirBulan(key));", ""),
+            'UU36-2: tanggal lain di bulan final ditolak "titik kas belum disetel"': js.replace("const NP = neracaPada(sampai, kini); if (NP.N.kas !== null) return NP;", "return neracaPada(sampai, kini);"),
+            'UU36-1: selisih laci tutup hari di arus kas berkop kembali disebut "penyesuaian titik kas … bukan uang yang bergerak"': js.replace("const lk = selisih === null ? 0 : LKK.n;", "const lk = 0;"),
+            'UU36-1: baris lebih/kurang kas arus kas bernama lain dari laba-rugi': js.replace("[{ nama: lpNamaLebihKurang({ nLebihKurang: LKK.malam }), n: lk }]", "[{ nama: 'Penyesuaian titik kas (disetel ulang dalam periode)', n: lk }]"),
+            '39b-36: kas awal arus kas bulan final tetap kasPada': js.replace("KW = final ? lpKasAkhirBulan(lpGeserBulan(bulan[0], -1)) : null;", "KW = null;"),
+            '39b-36: tutup hari PERTAMA di bulan itu, bukan terakhir': js.replace("const d = th.filter((x) => x.titik).sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)))[0];", "const d = th.filter((x) => x.titik).sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)))[0];"),
+            '39b-36: catatan uang sesudah tutup hari terakhir sampai akhir bulan diabaikan': js.replace("kas: saldoKantong(akhir, t).total,", "kas: saldoKantong(t.tanggal, t).total,"),
+            '39b-36: paket bank tidak meneruskan tolak dokumennya': js.replace("tolak: tolak || tolakDok, daftar,", "tolak, daftar,"),
+            '39b-36: kalimat tolak bulan final kembali "titik kas belum disetel"': js.replace("tolak: KB && !kasAda ? KB.tolak : tolak, seimbang:", "tolak, seimbang:"),
+            '39b-36: tutup hari lama (tanpa isi tempat uang) disebut "tidak ada tutup hari"': js.replace("const kenapa = th.length ?", "const kenapa = false ?"),
+            '39b-36: kekayaan (total) neraca bulan final tetap dari mesin': js.replace("const N = KB ? Object.assign({}, N0, { kas: KB.kas, total:", "const N = KB ? Object.assign({}, N0, { kas: KB.kas, totalX:"),
             'paket bank disusun tanpa bulan final': js.replace("const tolak = !F ? 'Belum ada bulan yang tutup buku — bank butuh angka FINAL; sampai tutup buku pertama, cetak laporan biasa bercap DRAF' :", "const tolak = false ? '' :"),
             'kartu piutang menganggap pembayaran sebagai tambahan bon': js.replace("const masuk = m.jenis === 'jual' || m.jenis === 'saldoAwal';", "const masuk = m.jenis !== 'hapusBuku';"),
             'nota yang dibatalkan boleh dicetak ulang': js.replace("if (X.batal) tolak = 'Nota dibatalkan tidak dicetak ulang';", ""),
             'nota batal tidak ditandai di daftar cetak ulang': js.replace("batal: !N.berlaku || N.dibatalkan, salinan:", "batal: false, salinan:"),
+            # ---- 39b no. 38 (owner 30 Sep): selisih laci = baris lebih/kurang kas di laba
+            '39b-38: Laba tanpa baris lebih/kurang kas (tangga tidak menutup)': js.replace(".concat(L.lebihKurangKas ? [[lpNamaLebihKurang(L), L.lebihKurangKas]] : []).concat([['Laba bersih', L.labaBersih, 'jumlah']])", ".concat([['Laba bersih', L.labaBersih, 'jumlah']])"),
+            '39b-38: laba-rugi berkop tanpa baris lebih/kurang kas': js.replace(".concat(L.lebihKurangKas ? [{ nama: lpNamaLebihKurang(L), n: L.lebihKurangKas }] : [])", ""),
+            '39b-38: Ke mana laba kotor diam soal lebih/kurang kas (tidak menutup)': js.replace("+ L.susutStok + L.lebihKurangKas) - L.labaBersih) < 0.5", "+ L.susutStok) - L.labaBersih) < 0.5"),
+            '39b-38: selisih tutup hari sistem lama (tanpa selisihLaci) tidak dibaca': js.replace("const sel = (x) => Number((x && (x.selisihLaci || x.selisih)) || 0);", "const sel = (x) => Number((x && x.selisihLaci) || 0);"),
+            '39b-38: neraca memakai laba mesin (laba berjalan tanpa lebih/kurang kas)': js.replace("labaKum = ugLabaBersih(pertama, s || iso).labaBersih;", "labaKum = ugLabaBersih(pertama, s || iso).labaMesin;"),
+            '39b-38: Banding tanpa baris lebih/kurang kas': js.replace(".concat(A1.kas || A2.kas ? [['Lebih/kurang kas', 'kas']] : [])", ""),
+            '39b-38: Tahunan tanpa jumlah lebih/kurang kas': js.replace("lebihKurangKas: jml('kas'), maks,", "lebihKurangKas: 0, maks,"),
+            # ---- 39b no. 39 (owner 30 Sep): margin bon kembali ke diterima tunai saat bonnya dibayar
+            '39b-39: margin bon lama tidak pernah kembali (rumus lama)': js.replace("const tunai = L.labaBersih - marginKredit + marginDibayar + marginDihapus;", "const tunai = L.labaBersih - marginKredit;"),
+            '39b-39: pembayaran menutup bon TERBARU dulu (beda dengan buku bon)': js.replace("const utang = d.mutasi.filter((m) => m.jenis === 'jual' || m.jenis === 'saldoAwal').slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));\n    const tutup", "const utang = d.mutasi.filter((m) => m.jenis === 'jual' || m.jenis === 'saldoAwal').slice().sort((x, y) => String(y.tanggal || '').localeCompare(String(x.tanggal || '')));\n    const tutup"),
+            '39b-39: bon dibayar sebagian melepas SELURUH marginnya': js.replace("out[jenis === 'bayar' ? 'dibayar' : 'dihapus'] += mg(b.u) * x / b.u.nominal;", "out[jenis === 'bayar' ? 'dibayar' : 'dihapus'] += b.sisa <= 0 ? mg(b.u) : 0;"),
+            '39b-39: uang lebih bayar hangus (tidak menunggu bon berikutnya)': js.replace("if (n > 0) lebih.push({ n, jenis: c.jenis }); });", "});"),
+            '39b-39: hapus buku menahan marginnya selamanya (terpotong dua kali)': js.replace("const marginDihapus = Math.round(lepas.dihapus);", "const marginDihapus = 0;"),
+            '39b-39: margin bon yang dibayar di bulan yang sama tidak kembali': js.replace("if (b.u.nominal > 0 && t >= dari && t <= sampai)", "if (b.u.nominal > 0 && t >= dari && t <= sampai && String(b.u.tanggal || '') < dari)"),
+            '39b-38: batas aman ambil pribadi dari laba mesin': js.replace("const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;", "const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaMesin : 0;"),
         }
-        kode = 0
         for nama, isi in rusak.items():
             if isi == js: print('KONTROL BASI  ' + nama); kode = 3; continue
             l, g = utama(isi)
@@ -341,6 +504,7 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g = utama(js)
+    g = g + tunai_layar(lap) + neraca_layar(lap)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')), key=os.path.basename)   # audit 39b no. 46 / tinjauan T6: cadangan toko ada di _privat/
     if cad and not g:

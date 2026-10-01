@@ -11,7 +11,7 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence
 import { KOLEKSI } from './koleksi.js';
 import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda, setelDariCache, setelHapusTertunda } from './toko.js';
 import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
-import { buatAntre, cekDariCache } from './antre-lokal.js';
+import { buatAntre, cekDariCache, susunTulisUlang, jejakTulisUlang } from './antre-lokal.js';
 import { KP_BATAS_GET } from './kunci-periode.js';
 import { KK_KOLEKSI, KK_ID, KK_JEDA_MS, kkSetelServer, kkLupakanServer, kkIsi, kkDokumen, kkTertinggal, kkBolehTerbit, kkMentah, kkCatatTerbit, kkPasangGerbang } from './katalog-kasir.js';
 
@@ -203,15 +203,16 @@ function cocokkanAntre() {
 }
 export function antreLokal() { return { belum: antre.belumTerkirim(), ditolak: antre.ditolak() }; }
 export function buangDitolak(id) { const ok = antre.buang(id); segarkanLokal(); beriTahu(); return ok; }
-/** Owner menulis ulang kiriman yang ditolak ATAS NAMANYA: kolom penulis lama dibuang, atribusi owner dipasang penulis pusat, salinannya dihapus bila berhasil. */
+/** Owner menulis ulang kiriman yang ditolak ATAS NAMANYA (audit 39b no. 45): pencatat asli IKUT — kolom pencipta dibiarkan + pencatatAsli (susunTulisUlang);
+ *  owner = penulis ulang (diubah* dari penulis pusat + baris jejak yang menyebut pencatat aslinya); salinannya dihapus bila berhasil. */
 /** ubah (opsional, putaran 25): fungsi dokumen → dokumen, mis. kpKeHariIni (catatan bulan terkunci dicatat ulang bertanggal hari ini). Lewat penjaga pusat toko.js. */
 export async function tulisUlangDitolak(id, ubah) {
   if (!status.akun || status.akun.jenis !== 'owner') return { gagal: true, pesan: 'Hanya owner yang boleh menulis ulang kiriman yang ditolak' };
   const x = antre.ditolak().find((y) => y.id === id); if (!x) return { gagal: true, pesan: 'Kiriman itu sudah tidak ada' };
-  let bersih = (x.dokumen || []).map((d) => { const data = Object.assign({}, d.data); ['oleh', 'olehUid', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'].forEach((k) => delete data[k]); return { koleksi: d.koleksi, data }; });
+  const T = susunTulisUlang(x); let bersih = T.dokumen;
   if (typeof ubah === 'function') bersih = ubah(bersih);
   const j = jagaKunci(bersih, []); if (j) return j;   // bulan terkunci / terlalu banyak pemeriksaan → tidak dikirim
-  const r = await tulisBerkas(bersih); if (r && r.gagal) return r;
+  const r = await tulisBerkas(bersih, [], { pencatatAsli: T.asli }); if (r && r.gagal) return r;
   antre.buang(id); segarkanLokal(); beriTahu(); return r;
 }
 
@@ -295,7 +296,10 @@ export async function tulisBerkas(daftar, hapus, opsi) {
       const log = { id: idUnik(), pada: k.kini, aksi: d.dibatalkan ? 'batalkan' : (d.dikoreksiOleh ? 'tandai-koreksi' : 'tulis'),
         koleksi: x.koleksi, idDok: String(d.id), oleh: d.diubahOleh, olehUid: akun.uid, perangkat: k.perangkat, ringkas: ringkasDok(d) };
       if (x.lama && JEJAK_NILAI_LAMA[jejakKunci(x.koleksi, d.id)]) { log.aksi = 'ubah'; log.lama = x.lama; }   // K6: ubah pajak & dokumen kunci → nilai lamanya ikut di jejak
-      b.set(doc(db, KOLEKSI_LOG, String(log.id)), log);
+      // audit 39b no. 45: kiriman ditolak yang ditulis ulang owner — baris jejaknya menyebut pencatat asli
+      // tinjauan P45-a: pencatat asli DOKUMENNYA bila sudah ada (tulis ulang kedua kali: kiriman yang ditolak itu milik owner, dokumennya tetap menyebut karyawan)
+      const logT = opsi && opsi.pencatatAsli ? jejakTulisUlang(log, d.pencatatAsli || opsi.pencatatAsli) : log;
+      b.set(doc(db, KOLEKSI_LOG, String(logT.id)), logT);
     }
   });
   H.forEach((x) => {   // hanya owner sampai di sini (periksaKiriman menolak hapus bukan-owner)
