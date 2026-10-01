@@ -340,7 +340,7 @@ export function kabarBerhentiBuku(jenis, tahun, ke, total, h) {
   if (jenis === 'batal') {
     const awal = 'Pembatalan tutup buku ' + tahun + ' berhenti di kiriman ' + ke + ' dari ' + total + sebab + '.';
     if (antre) return awal + tunggu + (ke === 1 ? 'Sesudah itu: kalau pita menyebut "Pembatalan tutup buku ' + tahun + ' belum selesai", ketuk "Lanjutkan"; kalau tidak, ketuk "Batalkan" lagi.' : 'Sesudah itu ketuk "Lanjutkan" untuk meneruskan pembatalan.');
-    return awal + (ke === 1 ? ' Belum ada yang ditarik — ketuk "Batalkan" lagi (tombol "Lanjutkan" di pita meneruskan TUTUP BUKU, bukan pembatalan).' : ' Ketuk "Lanjutkan" untuk meneruskan pembatalan — yang sudah ditarik tidak diulang.');
+    return awal + (ke === 1 ? ' Kiriman ini tidak masuk — ketuk "Batalkan" lagi (selama pita belum menyebut pembatalan, "Lanjutkan" meneruskan tutup buku, bukan pembatalan).' : ' Ketuk "Lanjutkan" untuk meneruskan pembatalan — yang sudah ditarik tidak diulang.');
   }
   const awal = 'Berhenti di kiriman ' + ke + ' dari ' + total + sebab + '. Tahun ' + tahun + ' BELUM tertutup (yang sudah masuk belum dihitung).';
   if (antre) return awal + tunggu + (ke === 1 ? 'Sesudah itu: kalau pita "Tutup buku ' + tahun + ': … sudah masuk" muncul, ketuk "Lanjutkan"; kalau tidak, ketuk "Kunci tahun ' + tahun + '" lagi.' : 'Sesudah itu ketuk "Lanjutkan" — yang sudah masuk tidak dikirim ulang — atau "Batalkan".');
