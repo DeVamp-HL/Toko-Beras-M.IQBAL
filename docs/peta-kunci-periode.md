@@ -356,3 +356,10 @@ kedatangannya di Agustus tidak punya field `caraBayar`. Diisi **sebelum** Agustu
 | Diubah oleh | owner — **tanggal & jam: diisi sesudah owner selesai** |
 | Akibat yang diperkirakan | tidak ada angka yang berubah: semua mesin sudah menganggap cara bayar kosong = tunai (`batchDiutang` = `caraBayar === 'utang'`), jadi uang laci sudah berkurang di hari kedatangan dan kedua kedatangan tidak pernah masuk utang pemasok. Dihitung di kotak pasir dengan cadangan 26 Sep 00.12 WIB: uang Agustus (masuk, keluar, 1.689 gerakan), utang pemasok, laba Agustus, neraca 31 Agu, stok & modal per merek — sebelum = sesudah |
 | Pemeriksaan sesudahnya | Claude membaca kedua dokumen di Console lewat Chrome owner (hanya membaca), lalu menghitung ulang uang Agustus di kotak pasir dari cadangan baru: **harus sama persis** dengan hitungan sebelumnya (angkanya di laporan sesi, tidak di repo publik). Hasil: **diisi sesudah pemeriksaan** |
+
+## Keputusan owner 1 Okt 2026 — kunci bulan 2026 ditunda (K1)
+
+Kunci berbentuk awalan, sedangkan tutup buku menulis saldo pembuka bertanggal lama & menghapus catatan tahun lama ke arsip. Mengunci satu bulan
+2026 membuat tutup buku 2026 mustahil (ditolak server). Pilihan owner: **A** — `KP_KUNCI_MULAI = '2027-01'`; bulan sebelumnya ditolak daftar periksa,
+Beranda tidak menyuruh mengunci. Pilihan lain yang ditimbang: B (buka kunci turun satu bulan per langkah — praktis tidak bisa), C (pembuka 1 Jan +
+arsip tanpa hapus — dirancang untuk 2027), D (rules v6 pengecualian sempit).
