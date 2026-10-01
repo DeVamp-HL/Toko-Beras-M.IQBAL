@@ -150,6 +150,7 @@ print(JSON.stringify(o));
 def jalan(ganti=None, cadangan=None):
     js, lay, app = bundel(ganti)
     statis = re.search(r'pasangLayarStok\([^;]*versiData: \(\) => versi', app) is not None
+    # tinjauan 1 Okt: kartu Cek tutup toko di Stok & kunci ingatannya memakai TANGGAL TUTUP (lewat tengah malam = hari dagang kemarin), sama dengan Jual & Uang
     if cadangan:
         cad, tgl = uji_wadah_bernama.cad_js(cadangan)
         h, e = uji_wadah_bernama.jalan(js + PROKSI + lay + '\nvar CAD = ' + cad + ';\nvar TGL = ' + json.dumps(tgl) + ';\n' + ONGKOS)
@@ -159,6 +160,9 @@ def jalan(ganti=None, cadangan=None):
     g = list(h['gagal']); l = h['lulus']
     if statis: l += 1
     else: g.append('app.js: layar Stok diberi versiData: () => versi (tanpa itu tab Wadah literan kembali menghitung ulang tiap huruf)')
+    tutup = 'CK: WB.wbCekHari(tanggalTutupAktif(kini()))' in lay and "const k = opsi.versiData() + '|' + tanggalTutupAktif(kini())" in lay
+    if tutup: l += 1
+    else: g.append('stok.js: Cek tutup toko & kunci ingatan Wadah literan memakai tanggalTutupAktif (bukan tanggal kalender) — lewat tengah malam sama dengan Jual')
     return l, g
 
 
@@ -168,10 +172,11 @@ RUSAK = [
                                                           "const KT = WB.wbKomposisiTurunan(c.kunci, s); const SL = WB.wbSelisihWadah(c.kunci, s, c.sisa);")]),
     ('Jual: tombol Cek wadah kembali menghitung tiap ketukan', [("const CW = cekWadahRak(s); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;\n      return h`<div class=\"baris-cek-wadah\"",
                                                                  "const CW = WB.wbCekHari(tanggalTutupAktif(s.sekarang || new Date())); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;\n      return h`<div class=\"baris-cek-wadah\"")]),
-    ('Stok: kunci ingatan tanpa versi data (data baru → basi)', [("const k = opsi.versiData() + '|' + L.waktuSekarang(kini()).tanggal", "const k = '|' + L.waktuSekarang(kini()).tanggal")]),
+    ('Stok: kunci ingatan tanpa versi data (data baru → basi)', [("const k = opsi.versiData() + '|' + tanggalTutupAktif(kini())", "const k = '|' + tanggalTutupAktif(kini())")]),
     ('Stok: kunci ingatan tanpa isi keranjang Jual (keranjang berubah → basi)', [("'|' + JSON.stringify(keranjangJual()); if (_ingatW.k !== k)", "''; if (_ingatW.k !== k)")]),
     ('Stok: buku semua wadah kembali dihitung tiap huruf', [("const w = M('susun', () => S.susunWadah(keranjangJual()));", "const w = S.susunWadah(keranjangJual());")]),
     ('Stok: wadah yang dibuka kembali dihitung tiap huruf', [("const { KB, KT, SW, CK } = M('aktif|' + aktif.nama, () => ({ KB:", "const { KB, KT, SW, CK } = ((f) => f())(() => ({ KB:")]),
+    ('Stok: Cek tutup toko kembali memakai tanggal kalender', [("CK: WB.wbCekHari(tanggalTutupAktif(kini()))", "CK: WB.wbCekHari(L.waktuSekarang(kini()).tanggal)")]),
     ('app.js: Stok tidak diberi versiData', [("statusRingkas, versiData: () => versi, keranjangJual: () => layar.keadaan.baca(),", "statusRingkas, keranjangJual: () => layar.keadaan.baca(),")]),
 ]
 

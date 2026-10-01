@@ -261,15 +261,17 @@ const bacaBertahap = () => { try { const v = localStorage.getItem(KUNCI_BERTAHAP
 const simpanBertahap = (r) => { try { if (r) localStorage.setItem(KUNCI_BERTAHAP, JSON.stringify(r)); else localStorage.removeItem(KUNCI_BERTAHAP); return true; } catch (e) { return false; } };
 export function bertahapTertunda() { const r = bacaBertahap(); return r && Array.isArray(r.potongan) && r.sudah < r.potongan.length ? { judul: r.judul, sudah: r.sudah, total: r.potongan.length, pada: r.pada } : null; }
 async function jalankanBertahap(r, progres) {
-  let antre = 0;   // 39b no. 28: potongan yang belum diakui server (masih di antrean perangkat) dihitung — layar tidak boleh berkata "selesai" polos
+  let antre = 0, simulasi = false;   // 39b no. 28: potongan yang belum diakui server (masih di antrean perangkat) dihitung — layar tidak boleh berkata "selesai" polos
   while (r.sudah < r.potongan.length) {
     const p = r.potongan[r.sudah];
     const h = await tulisDokumen(p.dokumen, p.hapus, { jejakHapus: r.judul + ' (' + (r.sudah + 1) + '/' + r.potongan.length + ')' });
     if (h && h.gagal) { simpanBertahap(r); return { gagal: true, sudah: r.sudah, total: r.potongan.length, pesan: h.pesan + ' — berhenti di kiriman ' + (r.sudah + 1) + ' dari ' + r.potongan.length + '; yang sebelumnya sudah masuk. Lanjutkan nanti dari Menu › Sistem › Perangkat.' }; }
     if (h && h.antre) antre += 1;
+    if (h && h.simulasi) simulasi = true;
     r.sudah += 1; simpanBertahap(r); if (progres) progres(r.sudah, r.potongan.length);
   }
-  simpanBertahap(null); return { ok: true, total: r.potongan.length, antre };
+  // mode cadangan: tanda simulasi ikut ke hasil supaya kabarKiriman menyebut "SIMULASI —" (dulu jalur bertahap berbunyi seperti kejadian sungguhan)
+  simpanBertahap(null); return { ok: true, total: r.potongan.length, antre, simulasi: simulasi || undefined };
 }
 export async function tulisBertahap(judul, kelompok, progres) {
   if (bertahapTertunda()) return { gagal: true, pesan: 'Masih ada kiriman bertahap yang belum selesai (' + bacaBertahap().judul + ') — lanjutkan atau buang dulu di Menu › Sistem › Perangkat' };

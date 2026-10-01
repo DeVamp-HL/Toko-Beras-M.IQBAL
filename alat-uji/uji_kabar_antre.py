@@ -77,6 +77,9 @@ if (adaKK) {
 var BT = {};
 setelPenulis(PENULIS.antre); tulisBertahap('uji antre', R_KELOMPOK().kelompok).then(function (r) { BT.antre = r; });
 drainMicrotasks(); setelPenulis(PENULIS.ok); tulisBertahap('uji ok', R_KELOMPOK().kelompok).then(function (r) { BT.ok = r; }); drainMicrotasks(); setelPenulis(null);
+setelPenulis(null); tulisBertahap('uji simulasi', R_KELOMPOK().kelompok).then(function (r) { BT.sim = r; }); drainMicrotasks();
+ok('bertahap di mode cadangan (tanpa penulis Firestore): hasil membawa simulasi → kabar "SIMULASI — …" sama dengan kiriman tunggal (dulu jalur bertahap berbunyi seperti kejadian sungguhan)',
+  !!BT.sim && BT.sim.ok === true && BT.sim.simulasi === true && kabarKiriman(BT.sim, 'Tercatat · contoh bertahap') === 'SIMULASI — Tercatat · contoh bertahap', J(BT.sim));
 ok('bertahap: potongan yang masih antre → hasil membawa antre (dulu "ok" polos = layar berkata selesai); server mengaku → tanpa antre',
   !!BT.antre && BT.antre.ok === true && BT.antre.antre > 0 && !!BT.ok && BT.ok.ok === true && !BT.ok.antre, J(BT));
 
@@ -182,6 +185,7 @@ KONTROL = [
     ('Jual tulisUmum kembali ke kabar lama', {'baru/js/layar/jual.js': [("      if (h && h.gagal) return set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true });\n      set(Object.assign({}, r.patch, { kabar: kabarKiriman(h, r.patch.kabar) }));\n    } catch (e) { set({ kabar: 'GAGAL menulis: '", "      if (h && h.gagal) return set({ kabar: 'DITOLAK: ' + h.pesan, kabarAwas: true });\n      set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI — ' : '') + r.patch.kabar }));\n    } catch (e) { set({ kabar: 'GAGAL menulis: '")]}),
     ('Jual tarik balik rincian kembali ke kabar lama', {'baru/js/layar/jual.js': [("{ kabar: kabarKiriman(h, r.patch.kabar + (h && h.potongan > 1 ? ' (dikirim ' + h.potongan + ' tahap)' : '')) }", "{ kabar: r.patch.kabar }")]}),
     ('Jual batalkan nota kembali ke kabar lama', {'baru/js/layar/jual.js': [("kabar: kabarKiriman(h, 'Nota dibatalkan — '", "kabar: ('Nota dibatalkan — '")]}),
+    ('bertahap di mode cadangan kehilangan tanda simulasi', {'baru/js/data/toko.js': [("    if (h && h.simulasi) simulasi = true;\n", '')]}),
     ('pil tidak menyebut yang ditolak', {'baru/js/app.js': [("(tolak ? ' · ' + tolak + ' DITOLAK server' : '') + kirim", 'kirim')]}),
     ('pil: ditolak menelan "tanpa internet"', {'baru/js/app.js': [("(tolak ? ' · ' + tolak + ' DITOLAK server' : '') + kirim", "(tolak ? ' · ' + tolak + ' DITOLAK server' : kirim)")]}),
     ('Pelanggan tidak digambar ulang saat status berubah', {'baru/js/app.js': [('stok.gambar, pelanggan.gambar, menu.gambar', 'stok.gambar, menu.gambar')]}),

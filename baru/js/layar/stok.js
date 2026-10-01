@@ -6,7 +6,7 @@ import { h, mentah, pasang, delegasi, esc } from '../inti/dom.js';
 import { terkunci } from '../inti/kunci.js';
 import { buatKeadaan } from '../inti/keadaan.js';
 import { pasangIsian } from '../inti/isian.js';
-import { RP, DESIMAL, tanggalPendek } from '../inti/format.js';
+import { RP, DESIMAL, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import * as S from './stok-logika.js';
 import * as L from './jual-logika.js';
 import * as C from './stok-catat-logika.js';
@@ -82,7 +82,7 @@ export function pasangLayarStok(akar, opsi) {
   // diulang tiap ketukan & tiap huruf yang diketik (±50 ms di data toko 1 Okt). Kini sekali per (versi data · tanggal · isi keranjang Jual) — pola rak Jual.
   let _ingatW = { k: null, isi: {} };
   const ingatanWadah = () => { if (!opsi.versiData) return (nama, f) => f();   // tanpa versi data = tanpa ingatan (tidak pernah basi)
-    const k = opsi.versiData() + '|' + L.waktuSekarang(kini()).tanggal + '|' + JSON.stringify(keranjangJual()); if (_ingatW.k !== k) _ingatW = { k, isi: {} };
+    const k = opsi.versiData() + '|' + tanggalTutupAktif(kini()) + '|' + JSON.stringify(keranjangJual()); if (_ingatW.k !== k) _ingatW = { k, isi: {} };
     const isi = _ingatW.isi; return (nama, f) => (nama in isi ? isi[nama] : (isi[nama] = f())); };
   // mode "atur susunan": draf di keadaan layar; baru ditulis saat SIMPAN (satu dokumen berisi seluruh aturan)
   const drafAtur = () => { const a = L.aturWadah(); const t = (n) => String(n).replace('.', ','); return { penuh: t(a.penuhKg), puncak: t(a.puncakKg), ulang: t(a.isiUlangKg), takar: t(a.takarKg), susut: t(a.susutWajarKg), sisih: t(a.sisihKg), merekKarung: a.merekKarung.slice(), daftar: a.daftar.slice(), resep: JSON.parse(JSON.stringify(a.resep)), pilih: null, resepUntuk: null }; };
@@ -583,7 +583,7 @@ export function pasangLayarStok(akar, opsi) {
           <div class="tombol-baris rapat" data-k="pintu-adukan">${C.adukan.length ? C.adukan.map((x) => h`<div class="kaca-btn ${asal && asal.jenis === 'adukan' && x.namaProduk === nk && asal.ukuran === x.ukuran ? 'aktif' : ''}" data-aksi="krNama" data-merk="${x.namaProduk}" data-asal="adukan" data-uk="${x.ukuran}">${x.namaProduk} ${x.ukuran} kg · ${x.unit} unit</div>`) : h`<div class="ket">Tidak ada kemasan jadi 25 / 50 kg di stok.</div>`}</div>
           <div class="ket" style="font-size: 10.5px;">Di buku ketiganya sama: karung pemasok & tumpukan = buku merek itu; kemasan hasil adukan dibuka = stok kemasannya turun 1 unit, berasnya masuk buku sendiri "Adukan <nama> <ukuran> kg" (modal ikut, tidak dicampur ke buku merek pemasok).</div></div>` : ''}
         <div class="tombol-baris rapat"><input class="ketik-nama sempit" id="krKetik" type="text" inputmode="decimal" placeholder="sisa kg" value="${s.krKetik}" data-ketik="krKetik"><div class="kaca-btn ${String(s.krKetik || '').trim() ? '' : 'mati'}" data-aksi="samakanKarung" data-merk="${nk}" data-wadah="${aktif.nama}">samakan sisa karung ${nkAsal}</div>${!draf && kr.diketahui ? h`<div class="kaca-btn ${s.drYakin && s.drPilih && s.drPilih.merk === nk && s.drPilih.lokasi === aktif.nama ? 'awas' : 'putus'}" data-aksi="drKembalikan" data-merk="${nk}" data-lokasi="${aktif.nama}">${s.drYakin && s.drPilih && s.drPilih.merk === nk ? 'YAKIN — kembalikan' : 'kembalikan ke tumpukan'}</div>` : ''}</div>`; })()}
-        ${aktif.stokSendiri ? (() => { const { KB, KT, SW, CK } = M('aktif|' + aktif.nama, () => ({ KB: WB.wbKarungBelakangWadah(aktif.nama), KT: WB.wbKomposisiTurunan(aktif.nama, keranjangJual()), SW: WB.wbSelisihWadah(aktif.nama, keranjangJual()), CK: WB.wbCekHari(L.waktuSekarang(kini()).tanggal).daftar.find((x) => x.W === aktif.nama) || null }));
+        ${aktif.stokSendiri ? (() => { const { KB, KT, SW, CK } = M('aktif|' + aktif.nama, () => ({ KB: WB.wbKarungBelakangWadah(aktif.nama), KT: WB.wbKomposisiTurunan(aktif.nama, keranjangJual()), SW: WB.wbSelisihWadah(aktif.nama, keranjangJual()), CK: WB.wbCekHari(tanggalTutupAktif(kini())).daftar.find((x) => x.W === aktif.nama) || null }));
           const beda = (k) => k.diketahui && Math.abs(k.selisihKg) > 0.05; const adaBeda = KB.some(beda);
           // putaran 39 (owner 29 Sep 1 · c · e · f): karung belakang = BUKU MESIN per merek; catatan (kolam) vs buku disebut selisihnya; komposisi = turunan isi ulang; cek tutup toko hari ini
           return h`<div class="kartu" data-k="belakang-${aktif.nama}" style="gap: 6px;"><div class="label">Karung di belakang wadah ${aktif.no} ${aktif.nama} · buku sendiri per merek</div>
