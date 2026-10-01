@@ -221,6 +221,7 @@ export function pasangLayarUang(akar, opsi) {
     // tutup buku / pembatalan yang berhenti di tengah: lanjut dari kiriman / arsip yang belum masuk (rencana ada di berita acara di server — perangkat mana pun)
     bkLanjut: async () => { if (st().sibuk) return; const KM = BK.kemajuanBuku(); if (!KM) return set({ kabar: 'Tidak ada tutup buku yang tertunda', kabarAwas: false });
       if (KM.fase === 'tunggu') return set({ kabar: KM.teks, kabarAwas: true });
+      if (KM.fase === 'rusak') return set({ kabar: KM.teks, kabarAwas: true });
       if (KM.fase === 'batal') return jalankanBatal(KM.tahun);
       if (KM.fase === 'pembuka') { const Lj = BK.lanjutBuku(KM.tahun); if (Lj.tolak) return set({ kabar: Lj.tolak, kabarAwas: true }); return jalankanBuku(KM.tahun, Lj.kiriman || [], Lj.titik || null, 'Tutup buku ' + KM.tahun + ' dilanjutkan.'); }
       return jalankanBuku(KM.tahun, [], null, 'Arsip ' + KM.tahun + ' dilanjutkan.'); },
