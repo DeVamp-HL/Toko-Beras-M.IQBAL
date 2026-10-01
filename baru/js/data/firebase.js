@@ -194,7 +194,7 @@ let _cocokJalan = false;
 function cocokkanAntre() {
   if (_cocokJalan || !antre.belumTerkirim().some((x) => x.sesi !== SESI)) return;
   _cocokJalan = true;
-  waitForPendingWrites(db).then(() => { antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache), new Date().toISOString()); segarkanLokal(); beriTahu(); })
+  waitForPendingWrites(db).then(() => { antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache, kkMentah), new Date().toISOString()); segarkanLokal(); beriTahu(); })
     .catch(() => {}).finally(() => { _cocokJalan = false; });
 }
 export function antreLokal() { return { belum: antre.belumTerkirim(), ditolak: antre.ditolak() }; }

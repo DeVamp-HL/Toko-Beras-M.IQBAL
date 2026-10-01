@@ -6,6 +6,7 @@ KOTAK PASIR (akun, uid, nama CONTOH — bukan orang toko). Menguji:
   · baru/js/data/akses.js      — keadaan akun (owner lewat EMAIL saja), pendengar/layar/tombol per peran, penjaga kiriman bukan-owner,
                                  atribusi (olehUid), SATU baris jejak per kiriman yang memuat daftar dokumennya;
   · baru/js/data/antre-lokal.js — salinan antre: tahan muat ulang, berbatas, dihapus hanya sesudah server mengaku, yang ditolak ditandai;
+                                 katalog kasir (dokumen turunan) tidak ikut menilai kiriman sesudah sinkron (audit 39b no. 18);
   · sistem-logika.js SS2       — daftarkan / tolak / ubah akun (tak pernah owner, dua ketukan);
   · sambungan di firebase.js   — tidak bisa dijalankan di jsc (impor URL Firebase), jadi SUMBERNYA diperiksa: penjaga sebelum kirim,
                                  salinan antre sebelum commit, dihapus hanya di .then, jejak per kiriman bukan-owner, owner via email.
@@ -20,7 +21,8 @@ sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/data/antre-lokal.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',
-                                  'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js']
+                                  'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js',
+                                  'baru/js/layar/arsip-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/data/katalog-kasir.js']
 JAM = ("var __RealDate = Date; var __KINI = new __RealDate('2026-09-24T10:00:00+07:00').getTime();\n"
        "Date = function (a, b, c, d, e, f, g) { if (!(this instanceof Date)) return new __RealDate(__KINI).toString(); if (arguments.length === 0) return new __RealDate(__KINI); if (arguments.length === 1) return new __RealDate(a); return new __RealDate(a, b, c === undefined ? 1 : c, d || 0, e || 0, f || 0, g || 0); };\n"
        "Date.prototype = __RealDate.prototype; Date.now = function () { return __KINI; }; Date.UTC = __RealDate.UTC; Date.parse = __RealDate.parse;\n")
@@ -131,6 +133,19 @@ var server = { '11': { id: 11, diubahPada: '2026-09-24T03:00:00.000Z' } };
 var H = A5.cocokkanSesudahSinkron(cekDariCache(function (kol, id) { return server[id] || null; }), W.kini);
 ok('antre: sesudah sinkron, kiriman SESI LAIN yang dokumennya ada di server → dikonfirmasi; yang TIDAK ada → "ditolak server saat sinkron"; kiriman sesi ini (tab-nya masih menunggu jawaban) tidak disentuh',
   H.dikonfirmasi === 1 && H.ditolak === 1 && A5.ditolak().length === 1 && A5.ditolak()[0].id === 'hilang' && /saat sinkron/.test(A5.ditolak()[0].alasan) && A5.belumTerkirim().length === 1 && A5.belumTerkirim()[0].id === 'sesiini', JSON.stringify(H));
+// audit 39b no. 18: kiriman terbit harga = dokumen catatan (ber-diubahPada) + katalog kasir ringkasanKasir/aktif yang ditulis APA ADANYA (kkMentah: tanpa diubahPada,
+// tidak didengar koleksi.js → dokDiCache selalu null). Tab mati sebelum commit dijawab, server MENERIMA batch-nya → dulu katalog = false → seluruh kiriman "ditolak server".
+simpanan = {}; var A6 = buatAntre(PENY, 'tab-mati'); var P6 = '2026-09-24T03:00:00.000Z';
+var KAT6 = { koleksi: KK_KOLEKSI, data: { id: KK_ID, diperbaruiPada: P6, kemasan: [], merkKarung: [], bahanLiteran: {}, piutang: [], bayarBonTerhitung: [], bayarBonSejak: '' } };
+A6.tambah({ id: 'terbit', dokumen: [{ koleksi: 'katalogHargaKarung', data: { id: 'Contoh', hargaPerKg: 14500, diubahPada: P6 } }, { koleksi: 'hargaTerbit', data: { id: 21, diubahPada: P6 } }, KAT6] });
+A6.tambah({ id: 'terbitTolak', dokumen: [{ koleksi: 'katalogHargaKarung', data: { id: 'Hilang', hargaPerKg: 15000, diubahPada: P6 } }, KAT6] });
+A6.tambah({ id: 'terbitTunda', dokumen: [{ koleksi: 'katalogHargaKarung', data: { id: 'Lama', hargaPerKg: 15000, diubahPada: P6 } }, KAT6] });
+var server6 = { katalogHargaKarung: { Contoh: { id: 'Contoh', hargaPerKg: 14500, diubahPada: P6 }, Lama: { id: 'Lama', hargaPerKg: 14000 } }, hargaTerbit: { '21': { id: 21, diubahPada: P6 } } };
+var ambil6 = function (kol, id) { return KOLEKSI.some(function (k) { return k.nama === kol; }) ? (server6[kol] || {})[id] || null : null; };   // = dokDiCache: koleksi di luar koleksi.js → null
+var H6 = buatAntre(PENY, 'tab-baru').cocokkanSesudahSinkron(cekDariCache(ambil6, kkMentah), W.kini); var A7 = buatAntre(PENY, 'lihat');
+ok('antre (39b no. 18): kiriman terbit harga dari tab mati yang DITERIMA server (katalog kasir ikut, tanpa diubahPada, tidak di cache) → dikonfirmasi, bukan "ditolak server"; katalog tidak menyelamatkan kiriman yang dokumen catatannya tidak ada di server (tetap ditolak) dan tidak memaksa yang belum bisa dipastikan (tetap menunggu)',
+  !KOLEKSI.some(function (k) { return k.nama === KK_KOLEKSI; }) && H6.dikonfirmasi === 1 && H6.ditolak === 1 && H6.ditunda === 1 && A7.ditolak().length === 1 && A7.ditolak()[0].id === 'terbitTolak'
+  && A7.belumTerkirim().length === 1 && A7.belumTerkirim()[0].id === 'terbitTunda', JSON.stringify(H6));
 
 // ---- 9 · SS2 akun per orang (owner)
 pasok('permintaanAkses', [{ id: 'uid-baru', uid: 'uid-baru', email: 'baru.contoh@tokoberasmiqbal.web.app', nama: 'Baru Contoh', pada: '2026-09-24T02:00:00.000Z' }]);
@@ -160,6 +175,8 @@ var F = SUMBER.firebase, A = SUMBER.app;
 var iPeriksa = F.indexOf('periksaKiriman(akun, isi, H'), iBatch = F.indexOf('const b = writeBatch(db); const ditulis = [];'), iAntre = F.indexOf('antre.tambah({ id: idKiriman'), iCommit = F.indexOf('const janji = b.commit().then(() => { antre.konfirmasi(idKiriman)');
 ok('firebase.js: penjaga bukan-owner jalan SEBELUM batch dibangun; salinan antre dibuat SEBELUM commit; salinan dihapus HANYA di .then (server mengaku); ditolak → tandaiDitolak',
   iPeriksa > 0 && iBatch > iPeriksa && iAntre > iBatch && iCommit > iAntre && F.indexOf("antre.tandaiDitolak(idKiriman, kode") > iCommit && F.indexOf('antre.konfirmasi(') === iCommit + 'const janji = b.commit().then(() => { '.length);
+ok('firebase.js (39b no. 18): pencocokan sesudah sinkron memakai cekDariCache(dokDiCache, kkMentah) — katalog kasir tidak ikut menilai kiriman tab mati',
+  F.indexOf('antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache, kkMentah), ') > 0);
 ok('firebase.js: bukan-owner = SATU jejakKiriman per kiriman; owner = satu jejak per dokumen dengan olehUid; atribusi lewat beriAtribusiAkun; owner dikenali lewat EMAIL_OWNER, peran lain lewat aksesAkun/{uid} yang didengarkan terus',
   F.indexOf('if (!owner) { const log = jejakKiriman(akun, ditulis') > 0 && F.indexOf('olehUid: akun.uid, perangkat: k.perangkat, ringkas: ringkasDok(d)') > 0 && F.indexOf('beriAtribusiAkun(x.data, akun, k, x.ada)') > 0
   && F.indexOf("if (email === EMAIL_OWNER) return terapkan(keadaanAkun(email, u.uid, null));") > 0 && F.indexOf("onSnapshot(doc(db, 'aksesAkun', u.uid)") > 0 && F.indexOf('EMAIL_TOKO') < 0);
@@ -242,6 +259,9 @@ if __name__ == '__main__':
             'antre penuh membuang salinan lama': (js.replace("if (a.length >= BATAS_ENTRI) return { tolak:", "if (a.length >= BATAS_ENTRI) a.shift(); if (false) return { tolak:"), S),
             'sinkron menyentuh kiriman sesi ini': (js.replace("baca().filter((x) => x.keadaan === 'antre' && x.sesi !== (sesi || ''))", "baca().filter((x) => x.keadaan === 'antre')"), S),
             'dokumen hilang dianggap terkirim': (js.replace("const d = ambilDok(koleksi, id); if (!d) return false;", "const d = ambilDok(koleksi, id); if (!d) return true;"), S),
+            'sinkron: katalog kasir ikut menilai kiriman (39b no. 18)': (js.replace("if (turunan && turunan(koleksi)) return undefined; ", ""), S),
+            'sinkron: dokumen turunan menutupi dokumen catatan': (js.replace("if (turunan && turunan(koleksi)) return undefined; ", "if (turunan) return undefined; "), S),
+            'firebase: pencocokan sinkron tanpa kkMentah': (js, ganti('firebase', 'antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache, kkMentah), ', 'antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache), ')),
             'SS2 akun bisa didaftarkan sebagai owner': (js.replace("const SS_PERAN_AKUN = SS_PERAN.filter((p) => p.id !== 'owner');", "const SS_PERAN_AKUN = SS_PERAN;"), S),
             'SS2 nonaktifkan tanpa ketukan kedua': (js.replace("if (U.aktif !== undefined && !yakin) return", "if (false) return"), S),
             'SS2 daftarkan tanpa menghapus permintaan': (js.replace("return { dokumen: [{ koleksi: 'aksesAkun', data }], hapus: [{ koleksi: 'permintaanAkses', id: m.uid }],", "return { dokumen: [{ koleksi: 'aksesAkun', data }], hapus: [],"), S),
