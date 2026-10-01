@@ -149,6 +149,12 @@ def periksa(t):
     zp = [int(z) for m, s, isi in A['adegan'] if s.strip() == '.panggung' for z in re.findall(r'z-index:\s*(\d+)', isi)]
     c.append(('tetes emas digambar di atas panggung (terbang dari kartu panggung)', bool(zt) and bool(zp) and zt[-1] > zp[-1], (zt, zp)))
     app, jual = t['baru/js/app.js'], t['baru/js/layar/jual.js']
+    # 1 Okt: takaran / MASUKKAN yang ditolak dulu cuma tergambar di kabar atas layar — di HP tertutup lembar jumlah, ketukannya terasa mati
+    a, b = jual.find("if (s.lembar === 'jumlah' && s.pilih) {"), jual.find("if (s.lembar === 'nego')")
+    LJ = jual[a:b] if 0 <= a < b else ''
+    ip, ik, it = LJ.find('data-aksi="preset"'), LJ.find('data-k="kabar-jumlah"'), LJ.find("${tuts('masukkan'")
+    c.append(('lembar jumlah: kalimat tolak takaran digambar DI DALAM lembar, di bawah tombol takaran', bool(LJ) and 0 <= ip < ik < it, (ip, ik, it)))
+    c.append(('lembar jumlah: kalimat panel isi ulang (kabarW) tidak digambar dua kali', re.search(r's\.kabar && s\.kabarAwas && !\(s\.kabarW && s\.kabarW\.teks === s\.kabar\)', LJ) is not None, ''))
     c.append(('pita: app.js memberi statusAwas ke Jual', re.search(r'pasangLayarJual\(akar, \{[^\n]*\bstatusAwas\b', app) is not None, ''))
     c.append(('pita: Jual mode Firestore memakai statusAwas (bukan pita tetap)', 'opsi.statusAwas' in jual and 'Nota dicatat ke data toko yang sama dengan sistem lama' not in jual, ''))
     ft, fa = fungsi(app, 'statusTeks'), fungsi(app, 'statusAwas')
@@ -185,6 +191,8 @@ KONTROL = [
     ('gulir bersarang di layar pendek', {'baru/css/kerangka.css': [('@media (min-width: 720px) and (max-height: 560px) {', '@media (min-width: 720px) and (max-height: 1px) {')]}),
     ('panggung tidak disejajarkan ulang saat lembar berganti', {'baru/js/layar/jual.js': [('    if (muncul) sejajarkanLagi();', '')]}),
     ('tetes emas di bawah panggung lagi', {'baru/css/jual.css': [('.tetes-gerak { position: fixed; z-index: 71;', '.tetes-gerak { position: fixed; z-index: 60;')]}),
+    ('kalimat tolak takaran hanya di kabar atas layar lagi', {'baru/js/layar/jual.js': [('        ${kabarDiLembar ? h`<div class="pita-info awas" data-k="kabar-jumlah">${kabarDiLembar}</div>` : \'\'}\n', '')]}),
+    ('kalimat panel isi ulang tergambar dua kali', {'baru/js/layar/jual.js': [('s.kabar && s.kabarAwas && !(s.kabarW && s.kabarW.teks === s.kabar) ? s.kabar', 's.kabar && s.kabarAwas ? s.kabar')]}),
     ('pita status selalu tampil', {'baru/js/app.js': [("  return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : '';", '  return statusTeks();')]}),
     ('pita tanpa internet hilang', {'baru/js/app.js': [("  return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : '';", "  return '';")]}),
 ]
