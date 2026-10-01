@@ -409,6 +409,15 @@ export function alasanBatasBaris(s, nBaris) {
   const b = Number(s.batasBaris) || 0;
   return b > 0 && nBaris > b ? 'Satu nota paling banyak ' + b + ' baris untuk akun bukan-owner — batas sekali kirim ke server. Simpan nota ini dulu, sisanya jadi nota kedua.' : '';
 }
+/**
+ * 39b no. 21: batas sekali kirim dihitung dari DOKUMEN yang akan ditulis (susunNotaDokumen yang sama: literan wadah campuran = satu baris penjualan
+ * per merek asal, kantong, ½ karung, bayar sebagian, pesanan), bukan dari baris keranjang. s.batasDok dari akses.js (0 = owner). '' = masih muat.
+ */
+export function alasanBatasDokumen(s, keranjang) {
+  const b = Number(s.batasDok) || 0; if (!(b > 0)) return '';
+  let n = 0; const d = susunNotaDokumen(Object.assign({}, s, { keranjang }), { tanggal: hariIniIso(s.sekarang || new Date()), jam: '00:00', idUnik: () => ++n }).dokumen.length;
+  return d > b ? 'Nota ini jadi ' + d + ' catatan sekali kirim (literan dari wadah campuran dicatat satu baris per merek asal) — akun bukan-owner paling banyak ' + b + '. Simpan nota ini dulu, sisanya jadi nota kedua.' : '';
+}
 /** Masukkan chip terpilih ke keranjang sejumlah ketikan/preset; ditolak kalau melampaui langit-langit. */
 export function masukkan(s, jumlah) {
   const chip = s.pilih; if (!chip) return { kabar: 'Pilih barangnya dulu', kabarAwas: true };
@@ -448,7 +457,7 @@ export function masukkan(s, jumlah) {
   let urut = s.urutBaris; const tambah = [{ id: 'b' + (++urut), trx: baris }];
   if (barisWadah) tambah.push({ id: 'b' + (++urut), trx: barisWadah });
   const keranjang = s.keranjang.concat(tambah);
-  const lewat = alasanBatasBaris(s, keranjang.length); if (lewat) return { kabar: lewat, kabarAwas: true };
+  const lewat = alasanBatasBaris(s, keranjang.length) || alasanBatasDokumen(s, keranjang); if (lewat) return { kabar: lewat, kabarAwas: true };
   return { keranjang, urutBaris: urut, pilih: null, lembar: null, ketik: '', namaRepack: '', rpWadah: '', rpLembar: '', rpDijual: true, rpUpah: '',
     kabar: baris.label + ' × ' + tulisJumlah(j, chip) + ketWadah + ' masuk', kabarAwas: false };
 }
@@ -536,9 +545,10 @@ export function parkir(s) {
   if (!s.keranjang.length) return { kabar: 'Keranjang kosong — tidak ada yang diparkir', kabarAwas: true };
   // ikatan pesanan ikut diparkir (wzBekuKeranjang 17453) — kalau tidak, ia pindah ke pembeli berikutnya
   // pada = saat diparkir (putaran 25: daftar periksa kunci bulan menolak mengunci bulan yang masih punya nota parkir)
-  const beku = { items: s.keranjang, pelanggan: s.pelanggan, cara: s.cara, uang: s.uang, potongan: s.potongan, pesananId: s.pesananId || null, tukar: s.tukar || null, pada: new Date(Date.now()).toISOString() };
+  // 39b no. 9: "buka kredit SEKALI" milik struk ini — ikut diparkir; keranjang berikutnya mulai tertutup KR1 lagi
+  const beku = { items: s.keranjang, pelanggan: s.pelanggan, cara: s.cara, uang: s.uang, potongan: s.potongan, pesananId: s.pesananId || null, tukar: s.tukar || null, pada: new Date(Date.now()).toISOString(), kreditDibuka: !!s.kreditDibuka };
   const antrean = s.antrean.filter((a) => a.id !== s.aktifId).concat([{ id: s.aktifId, beku }]);
-  return { antrean, keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, lembar: null, pesananId: null, tukar: null, penggantiTanya: null,
+  return { antrean, keranjang: [], pelanggan: '', cara: 'Tunai', uang: 0, potongan: 0, negoId: null, lembar: null, pesananId: null, tukar: null, penggantiTanya: null, kreditDibuka: false,
     aktifId: s.idBerikut, idBerikut: s.idBerikut + 1, kabar: (s.pelanggan || 'Struk') + ' diparkir — stoknya tetap dipegang', kabarAwas: false };
 }
 export function pakaiAntrean(s, id) {
@@ -547,10 +557,11 @@ export function pakaiAntrean(s, id) {
   const dasar = s.keranjang.length ? parkir(s) : { antrean: s.antrean };
   const antrean = dasar.antrean.filter((x) => x.id !== id);
   return Object.assign({}, dasar, { antrean, keranjang: a.beku.items, pelanggan: a.beku.pelanggan, cara: a.beku.cara, uang: a.beku.uang, potongan: a.beku.potongan,
-    pesananId: a.beku.pesananId || null, tukar: a.beku.tukar || null, aktifId: id, lembar: null, kabar: (a.beku.pelanggan || 'Struk') + ' dibuka lagi', kabarAwas: false });
+    pesananId: a.beku.pesananId || null, tukar: a.beku.tukar || null, kreditDibuka: !!a.beku.kreditDibuka, aktifId: id, lembar: null, kabar: (a.beku.pelanggan || 'Struk') + ' dibuka lagi', kabarAwas: false });
 }
 export function buangAntrean(s, id) { const a = s.antrean.find((x) => x.id === id); return { antrean: s.antrean.filter((x) => x.id !== id), kabar: 'Struk dibuang — stoknya bebas lagi' + (a && a.beku.pesananId ? '; ikatan pesanannya dilepas (pesanan tetap belum dibayar)' : '') + (a && a.beku.tukar ? '; ikatan TUKAR ikut dilepas — returnya BELUM tercatat' : '') }; }
-export function pembeliLain(s) { return s.keranjang.length ? parkir(s) : { kabar: 'Keranjang sudah kosong' }; }
+// tinjauan no. 9: keranjang kosong + Pembeli lain = pembeli baru — buka kredit SEKALI milik pembeli tadi tidak ikut
+export function pembeliLain(s) { return s.keranjang.length ? parkir(s) : { kabar: 'Keranjang sudah kosong', kreditDibuka: false }; }
 
 // ---------- GANTI ORANG (putaran 23c, owner 24 Sep): keranjang TIDAK boleh terbawa ke akun berikutnya ----------
 /** Baris yang belum disimpan = keranjang yang sedang jalan + keranjang yang diparkir. */
@@ -700,7 +711,7 @@ export function notaTembusBelumCocok() {
 export function alasanTolak(s) {
   if (s.karcis) return 'Keranjang ini sedang merinci karcis — pakai SIMPAN RINCIAN (atau lepas karcisnya)';
   if (!s.keranjang.length) return 'Keranjang kosong';
-  const lewat = alasanBatasBaris(s, s.keranjang.length); if (lewat) return lewat;   // keranjang dari antrean / ulangi nota juga tertangkap di sini
+  const lewat = alasanBatasBaris(s, s.keranjang.length) || alasanBatasDokumen(s, s.keranjang); if (lewat) return lewat;   // keranjang dari antrean / ulangi nota juga tertangkap di sini
   const t = hitungTagihan(s);
   const nama = kunciPelanggan(s.pelanggan);
   if (s.tukar && s.tukar.susulanReturId) {   // PUTARAN 20: susulan pengganti tukar yatim (tkCekSusulan, tkLebihSusulanBoleh)
@@ -1335,6 +1346,13 @@ export function takarSampai(merk, baris, targetKg, s) {
   const putaran = Math.max(0, Math.floor((targetKg - w.sisaNyataKg + 0.0001) / (polaTakar * atur.takarKg)));
   return pola.map((x) => ({ merk: x.merk, takar: x.takar * putaran }));
 }
+/** 39b no. 21: satu isian takar = satu kiriman — akun bukan-owner (s.batasDok dari akses.js, 0 = owner) paling banyak sekian dokumen. '' = muat. */
+function alasanBatasTakar(s, dokumen, h) {
+  const b = Number(s && s.batasDok) || 0; if (!(b > 0) || dokumen.length <= b) return '';
+  const nb = h.sumber.reduce((a, x) => a + (x.bukaKarung || 0), 0);
+  return 'Isian ini jadi ' + dokumen.length + ' catatan sekali kirim (' + h.sumber.length + ' karung' + (nb ? ', ' + nb + ' karung baru dibuka dari tumpukan' : '') + ') — akun bukan-owner paling banyak ' + b
+    + '. Catat dua kali: turunkan sebagian karung ke 0 takar lalu CATAT, sesudah itu isi takar karung sisanya dan CATAT lagi.';
+}
 /**
  * CATAT ISI ULANG: takar-takar ini dituang ke wadah. Satu dokumen 'takar' (sumber[].dari = tempat karung asalnya) + dokumen 'karung' lebih dulu bila karung di tempat itu tidak cukup.
  * Takar dari karung SENAMA: alat ukur saja — buku tidak disentuh (literan tetap memotong buku saat TERJUAL; memotongnya lagi = dipotong dua kali).
@@ -1376,6 +1394,7 @@ export function susunTakarWadah(merk, baris, w, s, opsi) {
     dokumen.push({ koleksi: 'wadahLiteran', data: { id: idT, tanggal: w.tanggal, jam: w.jam, tipe: 'takar', wadah: merk, takar: h.takar, kgPerTakar: atur.takarKg, kg: h.kg, takaran: 'takar',
       sumber: h.sumber.map((x) => Object.assign({ merk: x.merk, takar: x.takar, kg: x.kg, dari: x.dari }, x.merkAsal && x.merkAsal !== x.merk ? { merkAsal: x.merkAsal } : {}, x.seadanya ? { seadanya: true, kgMinta: x.kgMinta } : {})), stokWadah: kunci, produksiId: pindah.data.id } });
     dokumen.push(pindah);
+    const lewatA = alasanBatasTakar(s, dokumen, h); if (lewatA) return { tolak: lewatA };
     const dibukaA = h.sumber.filter((x) => x.bukaKarung); const butaA = h.sumber.filter((x) => !x.karung.diketahui && !x.bukuBelakang);
     const stokS = denganCacheSementara(dokumen.filter((d) => d.koleksi !== 'wadahLiteran' || d.data.id !== idT), () => hitungStokKarungPerMerk());
     const minusA = h.sumber.filter((x) => !x.bukuBelakang && ((stokS[x.merk] || {}).sisaKg || 0) - x.kg < -0.004);
@@ -1393,6 +1412,7 @@ export function susunTakarWadah(merk, baris, w, s, opsi) {
   const idTakar = w.idUnik();
   dokumen.push({ koleksi: 'wadahLiteran', data: { id: idTakar, tanggal: w.tanggal, jam: w.jam, tipe: 'takar', wadah: merk, takar: h.takar, kgPerTakar: atur.takarKg, kg: h.kg,
     sumber: h.sumber.map((x) => Object.assign({ merk: x.merk, takar: x.takar, kg: x.kg, dari: x.dari }, x.seadanya ? { seadanya: true, kgMinta: x.kgMinta } : {})), bukuAsal: true } });
+  const lewatL = alasanBatasTakar(s, dokumen, h); if (lewatL) return { tolak: lewatL };
   const dibuka = h.sumber.filter((x) => x.bukaKarung); const buta = h.sumber.filter((x) => !x.karung.diketahui);
   const lintas = h.sumber.some((x) => x.merk !== merk);
   return { dokumen, hitung: h, gudang, pindahBuku: null,

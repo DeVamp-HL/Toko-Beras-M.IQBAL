@@ -16,7 +16,7 @@ import * as KT from './stok-kantong-logika.js';
 import * as TP from './stok-tempat-logika.js';
 import * as HP from './stok-hpp-logika.js';
 import { gambarWadah, gambarKarungStok } from './gambar.js';
-import { tombolAkun, tombolLuarKisi, bukanOwner, batasHasilAdukan } from './akses-layar.js';
+import { tombolAkun, tombolLuarKisi, bukanOwner, batasHasilAdukan, batasDokumenKirim } from './akses-layar.js';
 import { panelIsiUlang, aksiPanelWadah } from './wadah-panel.js';
 import { adeganIsiUlang, adeganBukaKarung, adeganAdukan } from './adegan.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
@@ -77,7 +77,7 @@ export function pasangLayarStok(akar, opsi) {
       set(Object.assign({}, r.patch, { kpPembalik: null, kabar: kabarKiriman(x, r.patch.kabar) + (x && x.potongan > 1 ? ' (dikirim ' + x.potongan + ' tahap)' : '') })); return true; }
     catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
-  const keranjangJual = () => ({ keranjang: opsi.keranjangJual().keranjang, antrean: opsi.keranjangJual().antrean });
+  const keranjangJual = () => ({ keranjang: opsi.keranjangJual().keranjang, antrean: opsi.keranjangJual().antrean, batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null) });   // 39b no. 21: isian takar akun bukan-owner
   // audit 39b no. 29: hitungan berat tab Wadah literan (buku semua wadah, daftar aktivasi, karung tertinggal, komposisi/selisih/cek wadah yang dibuka) dulu
   // diulang tiap ketukan & tiap huruf yang diketik (±50 ms di data toko 1 Okt). Kini sekali per (versi data · tanggal · isi keranjang Jual) — pola rak Jual.
   let _ingatW = { k: null, isi: {} };

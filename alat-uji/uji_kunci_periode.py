@@ -206,7 +206,8 @@ drainMicrotasks(); var tertunda = bertahapTertunda(); lanjutkanBertahap().then(f
 ok('kirim bertahap: kemajuan tersimpan SEBELUM potongan berikutnya dikirim (tab ditutup di tengah = bisa dilanjutkan); terputus di potongan 2 → berhenti (1 dari 3); dilanjutkan → potongan 2 & 3 terkirim, TIDAK ada yang dikirim dua kali; rencana dihapus sesudah selesai',
   !!hasilBT && hasilBT.gagal && diTengah && diTengah.sudah === 1 && tertunda && tertunda.sudah === 1 && tertunda.total === 3 && !!hasilLanjut && hasilLanjut.ok && terkirim.length === 3 && new Set(terkirim).size === 3 && bertahapTertunda() === null, J([hasilBT, tertunda, hasilLanjut, terkirim.length]));
 var nStaf = [{ koleksi: 'penjualan', data: { id: 'sb1', tanggal: '2026-08-31', caraBayar: 'Tunai' }, ada: false, lama: null }];
-pada('2026-09-03T21:00:00+07:00'); var st1 = periksaKiriman(BEN, nStaf, [], {}, kini()); pada('2026-09-04T09:00:00+07:00'); var st2 = periksaKiriman(BEN, nStaf, [], {}, kini()); pada('2026-09-24T10:00:00+07:00');
+var hakBen = { jualTunai: 'sendiri' };   // audit 39b no. 22: penjaga menegakkan kisi — {} = tidak boleh apa pun
+pada('2026-09-03T21:00:00+07:00'); var st1 = periksaKiriman(BEN, nStaf, [], hakBen, kini()); pada('2026-09-04T09:00:00+07:00'); var st2 = periksaKiriman(BEN, nStaf, [], hakBen, kini()); pada('2026-09-24T10:00:00+07:00');
 ok('bukan-owner: nota bertanggal 31 Agu yang tiba 3 Sep malam (masa tenggang) → boleh, 1 access call per dokumen; tiba 4 Sep → ditolak di perangkat ("lewat masa tenggang — owner yang mencatat"), rules tanpa get() kunci',
   !st1.tolak && st1.accessCall === 2 && /lewat masa tenggang/.test(st2.tolak || ''), J([st1, st2]));
 

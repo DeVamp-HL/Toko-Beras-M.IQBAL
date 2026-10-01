@@ -80,9 +80,21 @@ ok('atribusi: bukan-owner MENGUBAH dokumen lama → TIDAK menambah oleh/olehUid/
 // ---- 5 · penjaga kiriman bukan-owner (sebelum dikirim) — sama dengan rules v3
 var nota = function (cara, n) { var a = []; for (var i = 0; i < n; i++) a.push({ koleksi: 'penjualan', data: { id: 100 + i, tanggal: W.tanggal, caraBayar: cara, jenis: 'literan', hargaTotal: 13500 }, ada: false, lama: null }); return a; };
 var p1 = periksaKiriman(KRY, nota('Tunai', 3).concat([{ koleksi: 'stokBahanLiteran', data: { id: 101.5, tanggal: W.tanggal, tipe: 'pakai' }, ada: false }, { koleksi: 'strukKeluar', data: { id: 9 }, ada: false }]), [], HAK_KRY);
-var p2 = periksaKiriman(KRY, nota('Kredit', 1), [], HAK_KRY), p3 = periksaKiriman(BEN, nota('Kredit', 1).concat([{ koleksi: 'piutangMutasi', data: { id: 5, tanggal: W.tanggal, tipe: 'bayar' }, ada: false }]), [], HAK_BEN);
+var p2 = periksaKiriman(KRY, nota('Kredit', 1), [], HAK_KRY), p2b = periksaKiriman(KRY, nota('Kredit', 1), [], Object.assign({}, HAK_KRY, { jualBon: 'sendiri' })), p3 = periksaKiriman(BEN, nota('Kredit', 1).concat([{ koleksi: 'piutangMutasi', data: { id: 5, tanggal: W.tanggal, tipe: 'bayar' }, ada: false }]), [], HAK_BEN);
 ok('kiriman: karyawan nota tunai 3 baris + kantong pakai + struk = 5 dokumen → boleh, access call 6 (dokumen + 1 jejak); karyawan nota KREDIT ditolak ("minta owner"); Ben nota kredit + bayar sebagian → boleh',
-  !p1.tolak && p1.accessCall === 6 && p2.tolak === KALIMAT_MINTA_OWNER && !p3.tolak && p3.accessCall === 3, JSON.stringify([p1, p2, p3]));
+  !p1.tolak && p1.accessCall === 6 && p2.tolak === KALIMAT_MINTA_OWNER && p2b.tolak === KALIMAT_MINTA_OWNER && !p3.tolak && p3.accessCall === 3, JSON.stringify([p1, p2, p2b, p3]));
+var kr9 = nota('Kredit', 1); kr9[0].data.kreditDibukaOwner = true; var p9a = periksaKiriman(BEN, kr9, [], HAK_BEN), p9b = periksaKiriman(OWN, kr9, [], HAK_BEN);
+ok('39b-9: nota Kredit bertanda kreditDibukaOwner (KR1 dilewati) dari Ben → DITOLAK "minta owner" (Ben boleh bon biasa, tapi tidak membuka KR1); owner tetap boleh',
+  p9a.tolak === KALIMAT_MINTA_OWNER && !p9b.tolak, JSON.stringify([p9a, p9b]));
+var pg22 = nota('Tunai', 1); pg22[0].data.penggantiRetur = true; pg22[0].data.hargaTotal = 0; var pgB = periksaKiriman(BEN, pg22, [], HAK_BEN), pgK = periksaKiriman(KRY, pg22, [], HAK_KRY), pgO = periksaKiriman(OWN, pg22, [], HAK_BEN);
+ok('tinjauan no. 22: nota PENGGANTI RETUR (Rp0, barang keluar tanpa uang) dari Ben & karyawan → DITOLAK "minta owner" (retur & tukar = owner saja); owner tetap boleh',
+  pgB.tolak === KALIMAT_MINTA_OWNER && pgK.tolak === KALIMAT_MINTA_OWNER && !pgO.tolak, JSON.stringify([pgB, pgK, pgO]));
+ok('tinjauan no. 22: jual.js — tombol pengganti retur bukan-owner MATI dengan kalimat (tombolLuarKisi) sebelum menandai',
+  SUMBER.layar_jual.indexOf("penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(S(), id)); },") > 0);
+var JL9 = SUMBER.layar_jual, iBK = JL9.indexOf('bukaKredit: () => {'), tubuhBK = iBK > 0 ? JL9.slice(iBK, JL9.indexOf('\n', iBK)) : '';
+ok('39b-9: jual.js — tombol "Buka kredit SEKALI" lewat tombolLuarKisi (bukan-owner: MATI dengan kalimatnya), dan aksinya menolak bukan-owner sebelum membuka',
+  tubuhBK.indexOf('const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set(') > 0 && tubuhBK.indexOf('kreditDibuka: true') > tubuhBK.indexOf('if (!tb.boleh)')
+  && JL9.indexOf('${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">') > 0 && (JL9.match(/data-aksi="bukaKredit"/g) || []).length === 1, tubuhBK.slice(0, 200));
 var p4 = periksaKiriman(BEN, [{ koleksi: 'piutangMutasi', data: { id: 6, tanggal: W.tanggal, tipe: 'hapusBuku' }, ada: false }], [], HAK_BEN), p5 = periksaKiriman(BEN, [{ koleksi: 'stokBahanKemasan', data: { id: 7, tanggal: W.tanggal, tipe: 'beli', hargaTotal: 100000 }, ada: false }], [], HAK_BEN),
   p6 = periksaKiriman(BEN, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p7 = periksaKiriman(KRY, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_KRY),
   p8 = periksaKiriman(BEN, [{ koleksi: 'pengeluaranHarian', data: { id: 9, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p9 = periksaKiriman(KRY, [], [{ koleksi: 'penjualan', id: 1 }], HAK_KRY),
@@ -100,6 +112,11 @@ ok('kiriman: 17 dokumen = 18 access call → masih boleh; 18 dokumen (19 access 
   BATAS_KIRIM_STAF === 18 && periksaKiriman(KRY, besar, [], HAK_KRY).accessCall === 18 && /batas 17\) — pecah jadi dua nota/.test(periksaKiriman(KRY, lebih, [], HAK_KRY).tolak || ''), JSON.stringify(periksaKiriman(KRY, lebih, [], HAK_KRY)));
 ok('batas per akun: owner tanpa batas baris/hasil (0); Ben & karyawan 7 baris per nota, 8 hasil per adukan (terburuknya 17 access call — alat-uji/peta_akses.py --kiriman)',
   batasBarisNota(OWN) === 0 && batasHasilAdukan(OWN) === 0 && batasBarisNota(BEN) === 7 && batasBarisNota(KRY) === 7 && batasHasilAdukan(KRY) === 8);
+// 39b no. 21: batas DOKUMEN per kiriman (nota & isian takar) = pagar perangkat tanpa baris jejak; kalimat pagar umum mengikuti isi kiriman
+var takar18 = []; for (var it = 0; it < 18; it++) takar18.push({ koleksi: 'wadahLiteran', data: { id: 300 + it, tanggal: W.tanggal, tipe: 'karung' }, ada: false });
+var pT = periksaKiriman(KRY, takar18, [], HAK_KRY);
+ok('39b no. 21: batas dokumen per kiriman owner 0 (tanpa batas), Ben & karyawan 17 (= pagar 18 − 1 baris jejak); kiriman BUKAN nota yang terlalu besar ditolak "catat dalam dua kali" (tanpa kata nota), nota tetap "pecah jadi dua nota"',
+  batasDokumenKirim(OWN) === 0 && batasDokumenKirim(BEN) === BATAS_KIRIM_STAF - 1 && batasDokumenKirim(KRY) === 17 && /batas 17\) — catat dalam dua kali$/.test(pT.tolak || '') && !/nota/.test(pT.tolak || ''), JSON.stringify(pT));
 ok('kiriman: owner tidak diperiksa (payung owner, 0 access call); akun belum terdaftar ditolak apa pun isinya',
   periksaKiriman(OWN, lebih, [{ koleksi: 'penjualan', id: 1 }], {}).accessCall === 0 && periksaKiriman(BLM, nota('Tunai', 1), [], {}).tolak === 'Akun ini belum didaftarkan owner');
 
@@ -243,7 +260,12 @@ if __name__ == '__main__':
             'tulisan tanpa olehUid lolos': (js.replace("if (!d.oleh) { d.oleh = akun.nama; d.olehUid = akun.uid; }", "if (!d.oleh) { d.oleh = akun.nama; }"), S),
             'update bukan-owner menambah kolom pencipta': (js.replace("const isiPencipta = akun.jenis === 'owner' || !ada;", "const isiPencipta = true;"), S),
             'tombol ikut kisi saja, server diabaikan': (js.replace("const buka = SERVER_BUKA[tindakan] || []; if (buka.indexOf(akun.peran) < 0) return { boleh: false, kalimat: KALIMAT_MINTA_OWNER };", ""), S),
-            'karyawan boleh jual bon': (js.replace("const KREDIT_STAF = ['ben'];", "const KREDIT_STAF = ['ben', 'karyawan'];"), S),
+            'karyawan boleh jual bon': (js.replace("const KREDIT_STAF = ['ben'];", "const KREDIT_STAF = ['ben', 'karyawan'];").replace("jualBon: ['ben'], terimaBon:", "jualBon: ['ben', 'karyawan'], terimaBon:"), S),
+            'tinjauan no. 22: staf boleh menulis nota pengganti retur': (js.replace("        if (d.penggantiRetur) return { tolak: KALIMAT_MINTA_OWNER };\n", ""), S),
+            'tinjauan no. 22: tombol pengganti retur tanpa memeriksa akun': (js, ganti('layar_jual', "penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(S(), id)); },", "penggantiRetur: ({ id }) => { set(L.togglePenggantiRetur(S(), id)); },")),
+            '39b-9: Ben boleh menulis tanda kreditDibukaOwner': (js.replace("        if (d.kreditDibukaOwner) return { tolak: KALIMAT_MINTA_OWNER };\n", ""), S),
+            '39b-9: tombol buka kredit tampil untuk bukan-owner': (js, ganti('layar_jual', '${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">', '${true ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">')),
+            '39b-9: aksi buka kredit tanpa memeriksa akun': (js, ganti('layar_jual', 'const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ kreditDibuka: true,', 'set({ kreditDibuka: true,')),
             'bukan-owner boleh hapus buku bon': (js.replace("if (x.koleksi === 'piutangMutasi' && d.tipe !== 'bayar') return", "if (false) return"), S),
             'bukan-owner boleh beli kantong': (js.replace("if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return", "if (false) return"), S),
             'bukan-owner boleh hapus': (js.replace("if (hapus && hapus.length) return { tolak: tolakTindakan('hapus') };", ""), S),
@@ -251,6 +273,8 @@ if __name__ == '__main__':
             'pesanan yang sudah dibayar bisa diubah lagi': (js.replace("if (x.koleksi === 'pesanan' && (['dibayar', 'batal'].indexOf(String(lama.status || '')) >= 0 || d.status !== 'dibayar'))", "if (x.koleksi === 'pesanan' && d.status !== 'dibayar')"), S),
             'batas access call dilewati': (js.replace("if (accessCall > BATAS_KIRIM_STAF) return", "if (accessCall > 99) return"), S),
             'pagar perangkat tanpa sisa 2': (js.replace("const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL - CADANGAN_ACCESS_CALL;", "const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL;"), S),
+            '39b no. 21: batas dokumen akun = pagar penuh (tanpa baris jejak)': (js.replace("BATAS_KIRIM_STAF - 1 : 0);", "BATAS_KIRIM_STAF : 0);"), S),
+            '39b no. 21: pagar umum berkata "nota" untuk isian takar': (js.replace("(D.some((x) => x.koleksi === 'penjualan') ? 'pecah jadi dua nota' : 'catat dalam dua kali')", "'pecah jadi dua nota'"), S),
             'kisi SS2 memajang "boleh sendiri" yang ditutup server': (js.replace("if (nilai === 'sendiri' && (SERVER_BUKA[tindakan] || []).indexOf(peran) < 0) return", "if (false) return"), S),
             'jejak kiriman cuma menyebut dokumen pertama': (js.replace("const daftar = (dokumen || []).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id), ringkas: ringkasDok(x.data) }));", "const daftar = (dokumen || []).slice(0, 1).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id), ringkas: ringkasDok(x.data) }));"), S),
             'kasir@ bisa minta didaftarkan': (js.replace("if (e === EMAIL_KASIR) return { jenis: 'kasir'", "if (false) return { jenis: 'kasir'"), S),
