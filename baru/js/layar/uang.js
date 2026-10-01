@@ -276,9 +276,10 @@ export function pasangLayarUang(akar, opsi) {
     if (titik) setelTitik(titik);
     const A = BK.arsipBuku(tahun); set({ progres: { sudah: 0, total: A.n, satuan: 'dokumen dipindah ke arsip' } });
     // putaran 3 AAL1: daftar arsip dihitung SEKALI — sebelum tiap potongan berikutnya status berita acara di cache dibaca ulang; dibatalkan (perangkat lain) = berhenti
+    // putaran 4 P4-3: juga sesudah potongan TERAKHIR (dulu `sudah < total` — potongan terakhir yang mendarat sesudah pembatalan tertinggal di arsip)
     // susulan: potongan yang terkirim sebelum pembatalan terlihat dikembalikan sendiri (BK.arsipBalikBuku — hanya bila tahun itu dibatalkan)
     let henti = BK.arsipBerhentiBuku(tahun, lokal()); let tadi = 0, potongTadi = [];
-    try { if (!henti) await arsipkanDokumen(tahun, A.daftar, (sudah, total) => { set({ progres: { sudah, total, satuan: 'dokumen dipindah ke arsip' } }); potongTadi = A.daftar.slice(tadi, sudah); tadi = sudah; henti = sudah < total ? BK.arsipBerhentiBuku(tahun, lokal()) : ''; if (henti) throw new Error(henti); }); } catch (e) {
+    try { if (!henti) await arsipkanDokumen(tahun, A.daftar, (sudah, total) => { set({ progres: { sudah, total, satuan: 'dokumen dipindah ke arsip' } }); potongTadi = A.daftar.slice(tadi, sudah); tadi = sudah; henti = BK.arsipBerhentiBuku(tahun, lokal()); if (henti) throw new Error(henti); }); } catch (e) {
       const balik = henti ? BK.arsipBalikBuku(tahun, potongTadi) : []; if (balik.length) { try { await pulihkanArsip(tahun, balik); } catch (e2) { console.error(e2); } }
       set({ sibuk: false, progres: null, kabar: henti || 'Arsip terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan"; yang sudah pindah tidak diulang. Sampai habis, angka toko DOBEL.', kabarAwas: true }); return false; }
     if (henti) { set({ sibuk: false, progres: null, kabar: henti, kabarAwas: true }); return false; }

@@ -45,6 +45,8 @@ Yang dijaga:
         & selesai dari perangkat lain DITOLAK dengan kalimat yang menyebut nama pemegang; mulai lagi sesudah dibatalkan = pemegang baru; tanpa pemegang = bebas
   P4-2  AMBIL ALIH dari pemegang yang rusak / hilang: hanya bila tersambung & data dari server, antrean kosong, berita acara diam ≥ 60 menit, pemegang tidak
         berdenyut 15 menit; dua ketukan dengan kalimat peringatan; sesudahnya pemegang lama ditolak; percobaan berikut tidak membawa jejak ambil alih lama
+  P4-3  arsip: status dibaca ulang sesudah SETIAP potongan, termasuk yang TERAKHIR — potongan terakhir yang mendarat sesudah pembatalan tuntas dikembalikan
+        (simulasi memakai bentuk uang.js yang sebenarnya: UANG_CEK_TIAP_POTONGAN dibaca dari berkasnya)
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -292,7 +294,7 @@ var penjagaArsip = function (tahun) { return typeof arsipBerhentiBuku === 'funct
 function arsipLayar(tahun, daftar, sela) {
   var h = penjagaArsip(tahun); if (h) return h;
   for (var i = 0; i < daftar.length; i += 18) { arsipkanDokumen(tahun, daftar.slice(i, i + 18)); var sudah = Math.min(i + 18, daftar.length); if (sela) sela(sudah);
-    h = sudah < daftar.length ? penjagaArsip(tahun) : ''; if (h) return h; }
+    h = (UANG_CEK_TIAP_POTONGAN || sudah < daftar.length) ? penjagaArsip(tahun) : ''; if (h) return h; }
   return '';
 }
 coba('P3-AAL1', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W); var nJual = ambilPenjualanSemua().length; R.kiriman.forEach(kirim);
@@ -479,6 +481,27 @@ coba('P4-2', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = 
   ok('P4-2 dibatalkan Mac B, dimulai lagi di HP A: pemegang HP A, tanpa pemegangLama / jam ambil alih percobaan lama', !B.tolak && !R3.tolak && !!a3.pemegang && a3.pemegang.id === 'p-hpa' && !a3.pemegangLama && !a3.diambilAlihPada,
     J([B.tolak, R3.tolak, a3.pemegang, a3.pemegangLama, a3.diambilAlihPada])); });
 
+// ---- putaran 4 P4-3 · arsip HP A: potongan TERAKHIR sudah terkirim; sebelum ia mendarat, tutup buku dibatalkan tuntas dari tab lain di HP A (pemegang yang sama).
+//      Potongan itu lalu mendarat. Callback progres uang.js harus membaca status sesudah potongan terakhir juga → potongan itu dikembalikan HP A sendiri.
+//      Dulu `sudah < total ? … : ''` → tidak diperiksa → catatan 2026 potongan terakhir tertinggal di arsip sesudah "dibatalkan", tanpa pita.
+// = firebase.js arsipkanBerkas (potongan 18, progres sesudah commit) + callback progres jalankanBuku di uang.js (bentuknya dibaca dari berkas: UANG_CEK_TIAP_POTONGAN)
+function arsipLayarP4(tahun, daftar, L, sebelumPotong) {
+  var henti = arsipBerhentiBuku(tahun, L), tadi = 0, potongTadi = [], balik = [];
+  try { if (!henti) for (var i = 0; i < daftar.length; i += 18) { if (sebelumPotong) sebelumPotong(i / 18 + 1); arsipkanDokumen(tahun, daftar.slice(i, i + 18)); var sudah = Math.min(i + 18, daftar.length);
+      potongTadi = daftar.slice(tadi, sudah); tadi = sudah; henti = (UANG_CEK_TIAP_POTONGAN || sudah < daftar.length) ? arsipBerhentiBuku(tahun, L) : ''; if (henti) throw new Error(henti); } }
+  catch (e) { balik = henti ? arsipBalikBuku(tahun, potongTadi) : []; if (balik.length) pulihkanArsip(tahun, balik); }
+  return { henti: henti || '', dikembalikan: balik.length };
+}
+coba('P4-3', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W, HPA); var nJual = ambilPenjualanSemua().length; R.kiriman.forEach(kirim);
+  var daftarA = arsipBuku(2026).daftar; var nPotong = Math.ceil(daftarA.length / 18); var nAkhir = daftarA.length - (nPotong - 1) * 18;
+  var H = arsipLayarP4(2026, daftarA, HPA, function (ke) { if (ke !== nPotong) return;
+    var B2 = susunBatal(2026, arsipSimulasi().filter(function (a) { return a.tahun === 2026; }).map(function (a) { return { koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok }; }), W, HPA);
+    (B2.kiriman || []).forEach(kirim); if (B2.akhir) { pulihkanArsip(2026, B2.pulih); kirim({ dokumen: [B2.akhir] }); } });
+  var diArsip = arsipSimulasi().filter(function (a) { return a.tahun === 2026; }).length;
+  ok('P4-3 potongan terakhir (' + nAkhir + ' dari ' + daftarA.length + ' catatan) mendarat sesudah pembatalan tuntas: HP A membaca status sesudahnya, berhenti, mengembalikannya — penjualan 2026 utuh, arsip 2026 kosong',
+    nPotong >= 2 && /dibatalkan/.test(H.henti) && H.dikembalikan === nAkhir && acara(2026).status === 'dibatalkan' && ambilPenjualanSemua().length === nJual && diArsip === 0 && kemajuanBuku() === null,
+    J([nPotong, H, acara(2026).status, ambilPenjualanSemua().length + '/' + nJual, diArsip, kemajuanBuku()])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -507,8 +530,17 @@ def bundelan():
     return uji_kunci_periode.satu_lingkup(bundel_baru.bundel(MODUL))
 
 
-def utama(js):
-    h, e = jalan(JAM + js + '\nvar KOTAK = ' + json.dumps(uji_uang_baru.KOTAK) + ';\n' + SKENARIO)
+UANG_TIAP_POTONGAN = "henti = BK.arsipBerhentiBuku(tahun, lokal()); if (henti) throw new Error(henti);"
+
+
+def cek_tiap_potongan():
+    """putaran 4 P4-3: callback progres arsip di uang.js membaca status sesudah SETIAP potongan (termasuk yang terakhir)?"""
+    return UANG_TIAP_POTONGAN in open(os.path.join(bundel_baru.AKAR, 'baru/js/layar/uang.js'), encoding='utf-8').read()
+
+
+def utama(js, cek=None):
+    cek = cek_tiap_potongan() if cek is None else cek
+    h, e = jalan(JAM + js + '\nvar UANG_CEK_TIAP_POTONGAN = ' + ('true' if cek else 'false') + ';\nvar KOTAK = ' + json.dumps(uji_uang_baru.KOTAK) + ';\n' + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e]
     return h['lulus'], h['gagal']
 
@@ -524,7 +556,7 @@ STATIS = [
     ('§8 no. 6 · selesai di layar: periksa ulang & arsip SEBELUM berkas diunduh, ketukan kedua bila beda', ["if (k === 'cadangan2') { const r0 = BK.susunSelesai(tahun, '', waktu(), s.yakinSelesai === tahun, lokal());", "const r = BK.susunSelesai(tahun, nama, waktu(), s.yakinSelesai === tahun, lokal());"]),
     ('§8 no. 4 · firebase.js menyetor dokumen yang menunggu server (hasPendingWrites) ke toko.js', ["setelTertunda(k.nama, tunda.map((t) => t.id));", "KOLEKSI.forEach((k) => { pasok(k.nama, []); setelTertunda(k.nama, []); });"], 'baru/js/data/firebase.js'),
     ('putaran 3 AAL1 · Lanjutkan & Batalkan tidak jalan selagi tutup buku / arsip sibuk di perangkat ini', ["bkLanjut: async () => { if (st().sibuk) return;", "bkBatal: async () => { if (st().sibuk) return;"]),
-    ('putaran 3 AAL1 · arsip berhenti di antara potongan bila berita acara tahun itu bukan lagi terkunci', ["henti = sudah < total ? BK.arsipBerhentiBuku(tahun, lokal()) : ''; if (henti) throw new Error(henti);", "let henti = BK.arsipBerhentiBuku(tahun, lokal());", "if (henti) { set({ sibuk: false, progres: null, kabar: henti, kabarAwas: true }); return false; }"]),
+    ('putaran 3 AAL1 · arsip berhenti di antara potongan bila berita acara tahun itu bukan lagi terkunci', ["potongTadi = A.daftar.slice(tadi, sudah); tadi = sudah; henti = BK.arsipBerhentiBuku(tahun, lokal()); if (henti) throw new Error(henti);", "let henti = BK.arsipBerhentiBuku(tahun, lokal());", "if (henti) { set({ sibuk: false, progres: null, kabar: henti, kabarAwas: true }); return false; }"]),
     ('putaran 3 AAL1 · tombol pita .seg.mati di layar Uang sungguh tidak bisa diketuk', [".layar-uang .seg.mati { opacity: 0.45; pointer-events: none; }"], 'baru/css/uang.css'),
     ('putaran 3 AAL1 (susulan) · arsip yang berhenti karena pembatalan mengembalikan potongan terakhirnya sendiri', ["const balik = henti ? BK.arsipBalikBuku(tahun, potongTadi) : []; if (balik.length) { try { await pulihkanArsip(tahun, balik); }", "potongTadi = A.daftar.slice(tadi, sudah); tadi = sudah;"]),
     ('putaran 3 AAL1 (susulan) · pembatalan membaca arsip ulang sekali sebelum berita acara dibatalkan', ["const sisaA = await bacaArsipTahun(tahun); if (sisaA.length) await pulihkanArsip(tahun, sisaA, balik);"]),
@@ -534,6 +566,7 @@ STATIS = [
     ('putaran 3 AAL4 · Lanjutkan & Batalkan hanya dari data server (tanpa internet / salinan perangkat = ditolak)', ["bkLanjut: async () => { if (st().sibuk) return; const sb = BK.bkSambungan(lokal()); if (sb) return set({ kabar: sb, kabarAwas: true });", "bkBatal: async () => { if (st().sibuk) return; const sb = BK.bkSambungan(lokal()); if (sb) return set({ yakinBatalB: null, kabar: sb, kabarAwas: true });"]),
     ('putaran 3 AAL4 · firebase.js menyetor tanda salinan perangkat (fromCache) per koleksi ke toko.js', ["setelDariCache(k.nama, _dariCache[k.nama]);"], 'baru/js/data/firebase.js'),
     ('putaran 3 AAL5 · firebase.js mencatat HAPUS yang menunggu server per kiriman sampai commit selesai', ["setelHapusTertunda(idKiriman, H);", ".finally(() => { setelHapusTertunda(idKiriman, null);"], 'baru/js/data/firebase.js'),
+    ('putaran 4 P4-3 · callback progres arsip membaca status sesudah SETIAP potongan, termasuk yang terakhir (bentuk yang disuntik ke kotak pasir)', [UANG_TIAP_POTONGAN]),
     ('putaran 4 P4-1 · Kunci mencatat perangkat ini sebagai pemegang (lokal() ke susunKunci)', ["arsipNama: s.arsipNama }, waktu(), lokal()); if (r.tolak) return set({ siapKunci: false,"]),
     ('putaran 4 P4-1 · Lanjutkan & Batalkan hanya dari pemegang — dicek sebelum arsip dibaca; susun* menerima lokal()', ["const bp = BK.bkBukanPemegang(KM.tahun, lokal()); if (bp) return set({ kabar: bp, kabarAwas: true });", "const bp = BK.bkBukanPemegang(tahun, lokal()); if (bp) return set({ yakinBatalB: null, kabar: bp, kabarAwas: true });", "const Lj = BK.lanjutBuku(KM.tahun, lokal());", "const r = BK.susunBatal(tahun, arsip, waktu(), lokal());"]),
     ('putaran 4 P4-1 · kiriman berikutnya (tutup buku & pembatalan) berhenti bila perangkat ini bukan lagi pemegangnya', ["const bpK = BK.bkBukanPemegang(tahun, lokal()); if (bpK) { set({ sibuk: false, progres: null, kabar: bpK, kabarAwas: true }); return false; }\n      let h = null; try { h = await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true });"]),
@@ -613,6 +646,9 @@ if __name__ == '__main__':
             u1 = u0.replace(wajib[0], ''); kurang = [x for x in wajib if x not in u1]
             print(('BERBUNYI ' if kurang else 'DIAM!!   ') + 'statis uang.js · ' + nama + ' dibuang → tidak ada: ' + ' | '.join(kurang)[:100])
             if not kurang: kode = 3
+        l, g = utama(bundelan(), cek=False)
+        print(('BERBUNYI ' if g else 'DIAM!!   ') + 'putaran 4 P4-3 · uang.js memeriksa status hanya bila masih ada potongan berikutnya (bentuk lama) → ' + (g[0][:140] if g else '-'))
+        if not g: kode = 3
         for nama, berkas, lama, baru in RUSAK:
             asli = open(os.path.join(bundel_baru.AKAR, berkas), encoding='utf-8').read()
             if asli.count(lama) != 1: print('KONTROL BASI  ' + nama); kode = 3; continue
