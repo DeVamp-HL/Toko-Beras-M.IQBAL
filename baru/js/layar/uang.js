@@ -219,13 +219,13 @@ export function pasangLayarUang(akar, opsi) {
       const r = BK.susunKunci(T.tahun, { paraf: s.parafB, saksi: s.saksiB, langkah: s.langkahB, cadangan1: s.cad1, arsipNama: s.arsipNama }, waktu()); if (r.tolak) return set({ siapKunci: false, kabar: r.tolak, kabarAwas: true });
       set({ siapKunci: false }); await jalankanBuku(T.tahun, r.kiriman, r.titik, r.patch.kabar); },
     // tutup buku / pembatalan yang berhenti di tengah: lanjut dari kiriman / arsip yang belum masuk (rencana ada di berita acara di server — perangkat mana pun)
-    bkLanjut: async () => { if (st().sibuk) return; const KM = BK.kemajuanBuku(); if (!KM) return set({ kabar: 'Tidak ada tutup buku yang tertunda', kabarAwas: false });
+    bkLanjut: async () => { if (st().sibuk) return; const sb = BK.bkSambungan(lokal()); if (sb) return set({ kabar: sb, kabarAwas: true }); const KM = BK.kemajuanBuku(); if (!KM) return set({ kabar: 'Tidak ada tutup buku yang tertunda', kabarAwas: false });
       if (KM.fase === 'tunggu') return set({ kabar: KM.teks, kabarAwas: true });
       if (KM.fase === 'rusak') return set({ kabar: KM.teks, kabarAwas: true });
       if (KM.fase === 'batal') return jalankanBatal(KM.tahun);
       if (KM.fase === 'pembuka') { const Lj = BK.lanjutBuku(KM.tahun); if (Lj.tolak) return set({ kabar: Lj.tolak, kabarAwas: true }); return jalankanBuku(KM.tahun, Lj.kiriman || [], Lj.titik || null, 'Tutup buku ' + KM.tahun + ' dilanjutkan.'); }
       return jalankanBuku(KM.tahun, [], null, 'Arsip ' + KM.tahun + ' dilanjutkan.'); },
-    bkBatal: async () => { if (st().sibuk) return; const KM = BK.kemajuanBuku(); if (KM && KM.fase === 'tunggu') return set({ yakinBatalB: null, kabar: KM.teks, kabarAwas: true }); const T = BK.tahunBuku(kini()); const tahun = KM ? KM.tahun : T.acara && T.acara.status === 'terkunci' ? T.acara.tahun : (T.era !== null ? T.era : T.tahun); const acara = KM || BK.tahunBuku(kini()).acara; if (!acara && !(BK.bkEra() !== null)) return set({ kabar: 'Tidak ada tutup buku yang terkunci', kabarAwas: true });
+    bkBatal: async () => { if (st().sibuk) return; const sb = BK.bkSambungan(lokal()); if (sb) return set({ yakinBatalB: null, kabar: sb, kabarAwas: true }); const KM = BK.kemajuanBuku(); if (KM && KM.fase === 'tunggu') return set({ yakinBatalB: null, kabar: KM.teks, kabarAwas: true }); const T = BK.tahunBuku(kini()); const tahun = KM ? KM.tahun : T.acara && T.acara.status === 'terkunci' ? T.acara.tahun : (T.era !== null ? T.era : T.tahun); const acara = KM || BK.tahunBuku(kini()).acara; if (!acara && !(BK.bkEra() !== null)) return set({ kabar: 'Tidak ada tutup buku yang terkunci', kabarAwas: true });
       if (st().yakinBatalB !== tahun) return set({ yakinBatalB: tahun, kabar: 'Ketuk "batalkan" sekali lagi: saldo pembuka ' + tahun + ' ditarik dan arsipnya dikembalikan, bertahap', kabarAwas: true });
       set({ yakinBatalB: null }); return jalankanBatal(tahun); },
     bkUlangi: () => set({ langkahB: LANGKAH_KOSONG(), parafB: { owner: false, saksi: false }, siapKunci: false, bukaB: 'periksa', selesaiLatihan: false, kabar: 'Latihan diulang dari awal' }),

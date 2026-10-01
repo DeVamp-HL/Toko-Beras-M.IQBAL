@@ -9,7 +9,7 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
 import { KOLEKSI } from './koleksi.js';
-import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda } from './toko.js';
+import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda, setelDariCache } from './toko.js';
 import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
 import { buatAntre, cekDariCache } from './antre-lokal.js';
 import { KP_BATAS_GET } from './kunci-periode.js';
@@ -143,6 +143,8 @@ function pasangPendengar(akun) {
       // §8 no. 4: tutup buku bertahap tidak menghitung dokumen yang masih menunggu server sebagai "masuk" (toko.js dokTertunda)
       setelTertunda(k.nama, tunda.map((t) => t.id));
       _dariCache[k.nama] = !!(snap.metadata && snap.metadata.fromCache);
+      // putaran 3 AAL4: tutup buku membaca tanda ini (toko.js koleksiDariCache) — Lanjutkan & Batalkan tidak jalan dari salinan perangkat
+      setelDariCache(k.nama, _dariCache[k.nama]);
       pasok(k.nama, daftar); tandaiSiap(k.nama);
       // dariCache = angka dari simpanan perangkat (belum tentu terbaru) — layar diberi tahu supaya jujur
       status.offline = !!(snap.metadata && snap.metadata.fromCache && typeof navigator !== 'undefined' && navigator.onLine === false);

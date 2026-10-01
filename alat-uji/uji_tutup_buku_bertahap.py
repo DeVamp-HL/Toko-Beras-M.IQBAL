@@ -35,6 +35,7 @@ Yang dijaga:
   P3-UTBU2 baris yang tidak bisa dihitung mesin (titik kas sudah maju) = "belum bisa dihitung" di pita, "selesai", kabar & berita acara — bukan "TIDAK SAMA"
   P3-AAL2  arsip tahun berikutnya putus lalu dilanjutkan: batch penanda tahun lalu diarsipkan paling akhir → tidak ada pembuka tahun lalu tertinggal di koleksi hidup
   P3-AAL3  penanda yang tertahan di HP lain mendarat sesudah pembatalan tuntas → fase RUSAK (batalkan), bukan "lanjutkan arsip"; pembatalan membereskannya
+  P3-AAL4  Lanjutkan & Batalkan ditolak tanpa internet atau selama berita acara / pengaturan masih salinan perangkat (Firestore fromCache)
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -343,6 +344,19 @@ coba('P3-AAL3', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R
     !B.tolak && nPembukaMentah(2026) === 0 && acara(2026).status === 'dibatalkan' && bkEra() === null && hitungPiutang('2027-01-05').reduce(function (a, x) { return a + x.sisa; }, 0) === piutang0 && samaBaris(s0, baris(barisTahun(2026))) && kemajuanBuku() === null,
     J([B.tolak, nPembukaMentah(2026), acara(2026).status, bkEra(), kemajuanBuku()])); });
 
+// ---- putaran 3 AAL4 · Mac B terakhir tersambung sesudah kiriman 1 (cache: 'berjalan'); HP A menuntaskan semuanya. Mac B dibuka TANPA internet / data masih
+//      salinan perangkat (Firestore fromCache) → Lanjutkan & Batalkan DITOLAK sampai data server tiba (dulu kirimannya mendarat belakangan: 'selesai' mundur
+//      jadi 'terkunci', titik kas Januari ditimpa). firebase.js menyetor tanda fromCache per koleksi ke toko.js (setelDariCache)
+var sambungan = function (L) { return typeof bkSambungan === 'function' ? bkSambungan(L) : ''; };
+var dariCache = function (k, ya) { if (typeof setelDariCache === 'function') setelDariCache(k, ya); };
+coba('P3-AAL4', function () { kotak(40); W = jam('2027-01-05T08:00:00+07:00'); R = susunKunci(2026, D, W); kirim(R.kiriman[0]);
+  var KM = kemajuanBuku(); var tanpaInternet = sambungan({ offline: true });
+  dariCache('tutupBukuAcara', true); var basiAcara = sambungan({ offline: false }); dariCache('tutupBukuAcara', false);
+  dariCache('pengaturan', true); var basiAtur = sambungan({ offline: false }); dariCache('pengaturan', false);
+  var segar = typeof bkSambungan === 'function' ? bkSambungan({ offline: false }) : '(penjaga sambungan tidak ada)';
+  ok('P3-AAL4 Lanjutkan / Batalkan (pita ' + (KM && KM.fase) + '): tanpa internet DITOLAK; berita acara atau pengaturan masih salinan perangkat DITOLAK; data server segar = boleh',
+    !!KM && /internet/.test(tanpaInternet) && /data terbaru/.test(tanpaInternet) && /data terbaru/.test(basiAcara) && /data terbaru/.test(basiAtur) && segar === '', J([tanpaInternet, basiAcara, basiAtur, segar])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -393,6 +407,8 @@ STATIS = [
     ('putaran 3 UTBU-1 · hasil periksa ulang dibekukan saat arsip habis (ditulis ke berita acara)', ["const PA = BK.susunPeriksaArsip(tahun, waktu()); if (PA.dokumen) { try { await tulisDokumen(PA.dokumen, [], { tunggu: true }); }", "const PU = PA.PU || {"]),
     ('putaran 3 UTBU-2 · kabar sesudah arsip memakai kalimat periksa ulang yang sama (belum bisa dihitung ≠ TIDAK SAMA)', ["' AWAS: ' + BK.bkKalimatPeriksa(PA.PU) + ' — periksa dulu, jangan diselesaikan.'"]),
     ('putaran 3 AAL3 · Lanjutkan menolak tutup buku yang tidak utuh (fase rusak) — tidak meneruskan arsip', ["if (KM.fase === 'rusak') return set({ kabar: KM.teks, kabarAwas: true });"]),
+    ('putaran 3 AAL4 · Lanjutkan & Batalkan hanya dari data server (tanpa internet / salinan perangkat = ditolak)', ["bkLanjut: async () => { if (st().sibuk) return; const sb = BK.bkSambungan(lokal()); if (sb) return set({ kabar: sb, kabarAwas: true });", "bkBatal: async () => { if (st().sibuk) return; const sb = BK.bkSambungan(lokal()); if (sb) return set({ yakinBatalB: null, kabar: sb, kabarAwas: true });"]),
+    ('putaran 3 AAL4 · firebase.js menyetor tanda salinan perangkat (fromCache) per koleksi ke toko.js', ["setelDariCache(k.nama, _dariCache[k.nama]);"], 'baru/js/data/firebase.js'),
 ]
 RUSAK = [
     ('saldo pembuka tidak dipecah (sekali kirim)', 'baru/js/layar/tutup-buku-logika.js', "const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] }))",
@@ -434,6 +450,7 @@ RUSAK = [
     ('putaran 3 UTBU-2 · baris yang tidak bisa dihitung mesin disebut TIDAK SAMA', 'baru/js/layar/tutup-buku-logika.js', "beda: PU.baris.filter((b) => b.tahu && b.b !== null && !b.sama)", "beda: PU.baris.filter((b) => b.tahu && !b.sama)"),
     ('putaran 3 AAL2 · batch penanda tahun lalu diarsipkan dalam urutan biasa (bisa lebih dulu dari pembukanya)', 'baru/js/layar/tutup-buku-logika.js', "const daftar = semua.filter((x) => !tanda(x)).concat(semua.filter(tanda));", "const daftar = semua;"),
     ('putaran 3 AAL3 · terkunci dengan saldo pembuka tidak lengkap tetap disebut fase arsip', 'baru/js/layar/tutup-buku-logika.js', "if (adaP < Number(a.nPembuka) && bkEra() === tahun) return {", "if (false) return {"),
+    ('putaran 3 AAL4 · Lanjutkan & Batalkan jalan dari salinan perangkat / tanpa internet', 'baru/js/layar/tutup-buku-logika.js', "if (!(L && L.offline) && !basi) return '';", "if (true) return '';"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]

@@ -39,6 +39,11 @@ export function dokDiCache(koleksi, id) { const k = KOLEKSI.find((x) => x.nama =
 const _tertunda = {};
 export function setelTertunda(koleksi, ids) { _tertunda[koleksi] = (ids || []).map(String); }
 export function dokTertunda(koleksi, id) { const s = _tertunda[koleksi]; return !!s && s.indexOf(String(id)) >= 0; }
+// Putaran 3 AAL4: koleksi yang jawaban terakhirnya dari SALINAN PERANGKAT (Firestore fromCache, belum dijawab server) — tutup buku tidak dilanjutkan / dibatalkan
+// dari data yang bisa basi. Diisi pendengar firebase.js per koleksi (nama Firestore); simulasi cadangan = selalu kosong.
+const _dariCache = {};
+export function setelDariCache(koleksi, ya) { _dariCache[koleksi] = !!ya; }
+export function koleksiDariCache(koleksi) { return !!_dariCache[koleksi]; }
 
 // ---- batas data untuk mesin beku (nama & bentuk = index.html) ----
 // TUTUP BUKU BERTAHAP (rancangan Okt 2026): saldo pembuka tahun yang berita acaranya BELUM terkunci ('berjalan' = kiriman pembuka belum semua masuk;
