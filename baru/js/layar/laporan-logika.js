@@ -64,12 +64,38 @@ export const lpNamaLebihKurang = (L) => 'Lebih/kurang kas · selisih laci tutup 
 const lpMdrRentang = (dari, sampai) => ambilPengeluaranHarian().reduce((a, h) => a + ((h.kategori === 'toko' || h.kategori === 'tokoDompet') && adalahMdr(h) && h.tanggal >= dari && h.tanggal <= sampai ? (Number(h.nominal) || 0) : 0), 0);   // 39b no. 24: satu pengenal
 
 // ==================== LABA · tiga angka per bulan ====================
-/** Laba satu bulan lewat mesin yang sama dengan kaca Laba sistem lama: margin kotor · laba bersih · diterima tunai (= bersih − margin nota kredit). */
+/** 39b no. 39 (owner 30 Sep): margin bon DITAHAN dari "diterima tunai" sampai bonnya tertutup, dengan urutan potong yang SAMA dengan buku bon (mesin
+ *  hitungPiutang / rincianBelumLunas): pembayaran & hapus buku memadamkan bon TERTUA dulu, uang lebih menunggu bon berikutnya, bon yang baru tertutup
+ *  sebagian melepas marginnya SEBANDING (bagian tertutup ÷ nilai bon). Saldo awal & baris tanpa modal = margin 0 (memang tidak pernah ditahan). Bon & penutup
+ *  di hari yang sama: bon dulu (sama dengan buku bon per akhir hari). → margin yang lepas di [dari, sampai], dipisah `dibayar` (jadi uang) dan `dihapus`
+ *  (hapus buku: laba bersih bulan itu sudah memotong SELURUH nilai bon, termasuk marginnya — kalau tetap ditahan, margin itu terpotong dua kali). */
+export function lpMarginBonLepas(dari, sampai) {
+  const baris = {}; ambilPenjualan().forEach((p) => { baris[p.id] = p; });
+  const mg = (u) => { const p = u.jenis === 'jual' ? baris[u.idTrx] : null; return p && hppTercatat(p) ? (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0) : 0; };
+  const out = { dibayar: 0, dihapus: 0 };
+  hitungPiutang().forEach((d) => {
+    const utang = d.mutasi.filter((m) => m.jenis === 'jual' || m.jenis === 'saldoAwal').slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));
+    const tutup = d.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku').slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')) || String(x.jam || '').localeCompare(String(y.jam || '')));
+    const buka = []; const lebih = []; let j = 0;
+    const pakai = (b, x, jenis, t) => { b.sisa -= x; if (b.u.nominal > 0 && t >= dari && t <= sampai) out[jenis === 'bayar' ? 'dibayar' : 'dihapus'] += mg(b.u) * x / b.u.nominal; };
+    const lahir = (t) => { while (j < utang.length && String(utang[j].tanggal || '') <= t) { const b = { u: utang[j], sisa: Math.max(0, utang[j].nominal || 0) }; j++;
+      while (b.sisa > 0 && lebih.length) { const k = lebih[0]; const x = Math.min(k.n, b.sisa); pakai(b, x, k.jenis, String(b.u.tanggal || '')); k.n -= x; if (k.n <= 0) lebih.shift(); }
+      if (b.sisa > 0) buka.push(b); } };
+    tutup.forEach((c) => { const t = String(c.tanggal || ''); lahir(t); let n = c.nominal || 0;
+      while (n > 0 && buka.length) { const b = buka[0]; const x = Math.min(n, b.sisa); pakai(b, x, c.jenis, t); n -= x; if (b.sisa <= 0) buka.shift(); }
+      if (n > 0) lebih.push({ n, jenis: c.jenis }); });
+    lahir('\uffff');
+  });
+  return out;
+}
+/** Laba satu bulan lewat mesin yang sama dengan kaca Laba sistem lama: margin kotor · laba bersih · diterima tunai (= bersih − margin nota bon bulan itu +
+ *  margin bon yang tertutup bulan itu, lpMarginBonLepas — 39b no. 39). */
 export function labaBulan(key, kini, bayaran) {
   const iso = hariIniIso(kini); const awal = key + '-01', akhir = akhirBulanIso(key); const B = bayaran || bayaranBiayaBulanan(); const L = ugLabaBersih(awal, akhir, B);
   let marginKredit = 0, omzetKredit = 0; const notaKredit = new Set(); ambilPenjualan().forEach((p) => { if (!p.tanggal || p.tanggal < awal || p.tanggal > akhir || caraBayarKunci(p) !== 'kredit') return; notaKredit.add(kunciNota(p)); omzetKredit += p.hargaTotal || 0; if (hppTercatat(p)) marginKredit += (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0); });
   const nKredit = notaKredit.size;   // tinjauan rantai laporan T2: NOTA bon, bukan baris
-  const tunai = L.labaBersih - marginKredit; const omzetKotor = L.omzetHitung + L.returUang; const penyebut = omzetKotor + L.omzetTanpaHpp; const cakupan = penyebut > 0 ? omzetKotor / penyebut : null;
+  const lepas = lpMarginBonLepas(awal, akhir); const marginDibayar = Math.round(lepas.dibayar); const marginDihapus = Math.round(lepas.dihapus);
+  const tunai = L.labaBersih - marginKredit + marginDibayar + marginDihapus; const omzetKotor = L.omzetHitung + L.returUang; const penyebut = omzetKotor + L.omzetTanpaHpp; const cakupan = penyebut > 0 ? omzetKotor / penyebut : null;
   const mdr = lpMdrRentang(awal, akhir); const biayaLain = L.biayaToko - mdr;
   const terjun = [['Penjualan terhitung', omzetKotor]].concat(L.returJumlah ? [['Retur & refund (' + L.returJumlah + ')', -L.returUang]] : []).concat([['HPP barang', -(L.hpp + L.returHpp)]]).concat(L.returHpp > 0 ? [['HPP barang yang kembali ke stok', L.returHpp]] : [])
     .concat([['Margin kotor', L.margin, 'jumlah'], ['Biaya toko (harian + jatah bulanan)', -biayaLain]]).concat(mdr ? [['Potongan QRIS (MDR)', -mdr]] : []).concat(L.hapusBuku ? [['Hapus buku piutang', -L.hapusBuku]] : []).concat([['Susut & selisih stok', L.susutStok]]).concat(L.lebihKurangKas ? [[lpNamaLebihKurang(L), L.lebihKurangKas]] : []).concat([['Laba bersih', L.labaBersih, 'jumlah']]).map((r) => ({ nama: r[0], n: r[1], kelas: r[2] || '' }));
@@ -78,7 +104,7 @@ export function labaBulan(key, kini, bayaran) {
   const tanpaHpp = bulan.filter((p) => !hppTercatat(p)).map((p) => ({ id: p.id, nota: kunciNota(p), nama: namaSingkatTrx(p), tanggal: p.tanggal, jam: p.jam || '', omzet: p.hargaTotal || 0 })).sort((a, b) => String(b.tanggal + b.jam).localeCompare(String(a.tanggal + a.jam)));
   const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && !susut.length; const berjalan = key === lpKey(iso);
   let aman = null; if (berjalan) { const A = aturKeluar(iso); const P = priveBulan(iso); aman = { batas: A.aman, dariLaba: A.amanDariLaba, terpakai: P.total, sisa: A.aman - P.total }; }
-  return { key, nama: lpNamaBulan(key), berjalan, final: lpFinal(key), L, margin: L.margin, labaBersih: L.labaBersih, tunai, marginKredit, omzetKredit, nKredit, cakupan, omzetKotor, penyebut, mdr, biayaLain, terjun, susut, susutTotal: L.susutStok, rugi, tanpaHpp, omzetTanpaHpp: L.omzetTanpaHpp, tanpaCatatan, aman,
+  return { key, nama: lpNamaBulan(key), berjalan, final: lpFinal(key), L, margin: L.margin, labaBersih: L.labaBersih, tunai, marginKredit, marginDibayar, marginDihapus, omzetKredit, nKredit, cakupan, omzetKotor, penyebut, mdr, biayaLain, terjun, susut, susutTotal: L.susutStok, rugi, tanpaHpp, omzetTanpaHpp: L.omzetTanpaHpp, tanpaCatatan, aman,
     pct: (a, b) => (b > 0 ? (a < 0 ? '−' : '') + Math.abs(a / b * 100).toFixed(1).replace('.', ',') + '%' : '—') };
 }
 

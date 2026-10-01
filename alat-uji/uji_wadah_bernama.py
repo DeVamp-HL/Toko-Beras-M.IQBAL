@@ -375,10 +375,78 @@ def _syarat38(c, m, cad):
             if ganti != ny.get('catatan'): return False
     return True
 
+
+def _lepas39_bulan(cad):
+    """39b no. 39: margin bon yang lepas per bulan [dibayar, dihapus], dihitung ulang dari cadangan dengan urutan buku bon: baris bon yang masih berlaku
+    (caraBayar Kredit, nama pelanggan tidak kosong) + saldo awal, bon TERTUA dulu (seri sama: urutan id terbaru dulu seperti cache), pembayaran & hapus buku
+    urut tanggal+jam, bon di hari yang sama lebih dulu; bon tertutup sebagian = margin sebanding; uang lebih menunggu bon berikutnya."""
+    kunci = lambda n: re.sub(r'\s+', ' ', str(n or '').strip().lower())
+    hpp_ok = lambda p: p.get('hppTotalSaatJual') is not None and (p['hppTotalSaatJual'] > 0 or (p.get('hargaTotal') or 0) == 0)
+    jual = sorted([p for p in cad.get('penjualan') or [] if not p.get('dibatalkan') and not p.get('dikoreksiOleh')], key=lambda p: -(p.get('id') or 0))
+    mut = sorted(cad.get('piutangMutasi') or [], key=lambda m: -(m.get('id') or 0))
+    per = {}
+    for p in jual:
+        if p.get('caraBayar') == 'Kredit' and kunci(p.get('namaPelanggan')):
+            per.setdefault(kunci(p.get('namaPelanggan')), ([], []))[0].append((str(p.get('tanggal') or ''), p.get('hargaTotal') or 0, ((p.get('hargaTotal') or 0) - p['hppTotalSaatJual']) if hpp_ok(p) else 0))
+    for m in mut:
+        if not kunci(m.get('namaPelanggan')): continue
+        s = per.setdefault(kunci(m.get('namaPelanggan')), ([], []))
+        if m.get('tipe') == 'saldoAwal': s[0].append((str(m.get('tanggal') or ''), m.get('nominal') or 0, 0))
+        elif m.get('tipe') in ('bayar', 'hapusBuku'): s[1].append((str(m.get('tanggal') or ''), str(m.get('jam') or ''), m.get('nominal') or 0, m['tipe']))
+    out = {}
+
+    def pakai(b, x, jenis, t):
+        b[0] -= x
+        if b[1][1] > 0: r = out.setdefault(t[:7], [0.0, 0.0]); r[0 if jenis == 'bayar' else 1] += b[1][2] * x / b[1][1]
+    for utang, tutup in per.values():
+        utang = sorted(utang, key=lambda u: u[0]); tutup = sorted(tutup, key=lambda c: (c[0], c[1])); buka = []; lebih = []; j = [0]
+
+        def lahir(t):
+            while j[0] < len(utang) and utang[j[0]][0] <= t:
+                b = [max(0, utang[j[0]][1]), utang[j[0]]]; j[0] += 1
+                while b[0] > 0 and lebih:
+                    x = min(lebih[0][0], b[0]); pakai(b, x, lebih[0][1], b[1][0]); lebih[0][0] -= x
+                    if lebih[0][0] <= 0: lebih.pop(0)
+                if b[0] > 0: buka.append(b)
+        for t, _, n, jenis in tutup:
+            lahir(t)
+            while n > 0 and buka:
+                x = min(n, buka[0][0]); pakai(buka[0], x, jenis, t); n -= x
+                if buka[0][0] <= 0: buka.pop(0)
+            if n > 0: lebih.append([n, jenis])
+        lahir('￿')
+    return out
+
+
+def _no39(h):
+    """39b no. 39 (owner 30 Sep): margin bon kembali ke "diterima tunai" saat bonnya dibayar. Diterima tunai dikembalikan ke rumus lama (laba bersih − margin
+    nota bon) di KEDUA sisi dan kolom barunya dibuang — geser & kolomnya diperiksa _syarat39. Didaftarkan SEBELUM no. 38 supaya syarat no. 38 tetap memeriksa
+    geser selisih laci saja."""
+    h = json.loads(json.dumps(h))
+    for L in h.get('laba') or []:
+        if not L: continue
+        for k in ('marginDibayar', 'marginDihapus'): L.pop(k, None)
+        if L.get('labaBersih') is not None and L.get('marginKredit') is not None: L['tunai'] = L['labaBersih'] - L['marginKredit']
+    return h
+
+
+def _syarat39(c, m, cad):
+    """tiap bulan: margin bon yang dibayar / dihapus di cabang = hitung ulang dari cadangan (_lepas39_bulan); diterima tunai cabang = laba bersih − margin nota
+    bon + keduanya (menutup); margin & pokok nota bon bulan itu sama dengan main; main = rumus lama."""
+    lepas = _lepas39_bulan(cad)
+    for k, x, y in zip(c['bulan'], c['laba'], m['laba']):
+        x = x or {}; y = y or {}; r = lepas.get(k, [0, 0])
+        if not isinstance(x.get('marginDibayar'), (int, float)) or not isinstance(x.get('marginDihapus'), (int, float)): return False
+        if abs(x['marginDibayar'] - r[0]) >= 1 or abs(x['marginDihapus'] - r[1]) >= 1: return False
+        if abs(x['tunai'] - (x['labaBersih'] - x['marginKredit'] + x['marginDibayar'] + x['marginDihapus'])) > 0.5: return False
+        if x.get('marginKredit') != y.get('marginKredit') or x.get('omzetKredit') != y.get('omzetKredit') or abs(y['tunai'] - (y['labaBersih'] - y['marginKredit'])) > 0.5: return False
+    return True
+
 SENGAJA = [
     ('no. 20 hitung nota', 'baru/js/data/toko.js', 'export function jumlahNota', _no20, _syarat20),
     ('no. 24 potongan QRIS satu aturan', 'baru/js/layar/uang-logika.js', 'export const adalahMdr', _no24, _syarat24),
     ('no. 19 nama angka sebelum retur', 'baru/js/layar/laporan-logika.js', "[['Penjualan terhitung', omzetKotor]]", _no19label, _syarat19label),
+    ('no. 39 margin bon kembali ke diterima tunai', 'baru/js/layar/laporan-logika.js', 'export function lpMarginBonLepas', _no39, _syarat39),
     ('no. 38 lebih/kurang kas di laba', 'baru/js/layar/uang-logika.js', 'export function ugLebihKurangKas', _no38, _syarat38),
 ]
 
