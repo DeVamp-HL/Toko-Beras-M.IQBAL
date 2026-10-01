@@ -303,6 +303,9 @@ export async function tulisBerkas(daftar, hapus, opsi) {
   const janji = b.commit().then(() => { antre.konfirmasi(idKiriman); return { ok: true }; })
     .catch((e) => { const kode = String((e && e.code) || e); antre.tandaiDitolak(idKiriman, kode, new Date().toISOString()); status.galat = 'tulis ditolak: ' + kode; beriTahu(); return { gagal: true, pesan: status.galat + ' — salinannya ada di Sistem › Perangkat (ditolak server)' }; })
     .finally(() => { segarkanLokal(); status.menunggu = Math.max(0, status.menunggu - 1); beriTahu(); });
+  // tutup buku bertahap (opsi.tunggu): kiriman berikutnya hanya sesudah server MENGAKU yang ini — 30 detik tanpa jawaban = berhenti (kirimannya tetap di antrean
+  // perangkat; kalau belakangan masuk, "Lanjutkan" melihatnya dari id-nya dan tidak mengirim ulang)
+  if (opsi && opsi.tunggu) return Promise.race([janji, new Promise((r) => setTimeout(() => r({ antre: true, pesan: 'server belum mengaku dalam 30 detik' }), 30000))]);
   // tunggu sebentar: kalau server mengaku dalam 1,5 detik → ok; kalau tidak → antre (offline / lambat), bukan gagal
   return Promise.race([janji, new Promise((r) => setTimeout(() => r({ antre: true }), 1500))]);
 }

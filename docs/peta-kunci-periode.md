@@ -12,6 +12,9 @@ logika yang berubah. Sumbernya: kode `baru/` di main `a339f51`, `index.html` dan
 > dijalankan di bawah rules v4: (a) ditolak selama tahun itu punya bulan terkunci (K1), dan (b) walau tanpa kunci pun, saldo pembukanya ditolak
 > karena terlalu banyak catatan bertanggal lama — diukur §4b. Syarat rancangan baru: arsip TIDAK menghapus (salinan + penanda, simpan 10 tahun,
 > UU KUP Pasal 28 ayat 11); tiap kiriman ≤ 18 pemeriksaan kunci (atau pembuka bertanggal 1 Januari); bisa dilanjutkan & dibatalkan per potongan.
+> **Status Okt 2026:** "tiap kiriman ≤ 18" + "dilanjutkan & dibatalkan per potongan" = tutup buku bertahap (`baru/BACA-DULU.md`, `uji_tutup_buku_bertahap.py`;
+> cadangan 1 Okt seolah 5 Jan 2027: 24 pemeriksaan → 2 kiriman 18 + 6). Yang TETAP menunggu owner: bulan terkunci di tahun yang ditutup (pembuka bertanggal
+> lama & arsip yang menghapus ditolak server) — tutup buku sungguhan masih ditolak selama ada bulan terkunci di tahun itu.
 
 ## 0. Ringkas
 

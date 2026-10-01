@@ -36,8 +36,15 @@ export function cacheMentah(nama) { return _cache[nama] || []; }
 export function dokDiCache(koleksi, id) { const k = KOLEKSI.find((x) => x.nama === koleksi); return k ? (_cache[k.cache] || []).find((d) => String(d.id) === String(id)) || null : null; }
 
 // ---- batas data untuk mesin beku (nama & bentuk = index.html) ----
+// TUTUP BUKU BERTAHAP (rancangan Okt 2026): saldo pembuka tahun yang berita acaranya BELUM terkunci ('berjalan' = kiriman pembuka belum semua masuk;
+// 'membatalkan' / 'dibatalkan' = sedang / sudah ditarik) TIDAK terlihat oleh mesin & era. Tahun lama tetap utuh sampai kiriman TERAKHIR (penanda) masuk;
+// sesudah itu tahun baru utuh sekaligus. Saldo pembuka sistem lama (tanpa berita acara) dan yang terkunci/selesai tetap terlihat. Satu tempat: pembukaBerlaku.
+const BK_TERSEMBUNYI = { berjalan: 1, membatalkan: 1, dibatalkan: 1 };
+function bkTahunTersembunyi() { const s = {}; let ada = false; (_cache.tutupBukuAcara || []).forEach((a) => { if (a && BK_TERSEMBUNYI[a.status]) { s[Number(a.tahun)] = true; ada = true; } }); return ada ? s : null; }
+export function pembukaBerlaku(x) { if (!x || !x.tutupBuku) return true; const s = bkTahunTersembunyi(); return !s || !s[Number(x.tahunDari)]; }
+const bkSaring = (arr) => { const s = bkTahunTersembunyi(); return s ? arr.filter((x) => !x || !x.tutupBuku || !s[Number(x.tahunDari)]) : arr; };
 function bacaCadanganLokal() { return []; }   // cadangan lokal buatan sendiri tidak ada di sistem baru
-export function ambilSemuaBatch() { return _cache.batch; }
+export function ambilSemuaBatch() { return bkSaring(_cache.batch); }
 export function ambilBiayaBulanan() { return _cache.bulanan; }
 export function ambilPenjualanSemua() { return _cache.penjualan; }
 export function ambilPenjualan() { return ambilPenjualanSemua().filter(penjualanMasihBerlaku); }
@@ -57,7 +64,7 @@ export function returUangPerHari() {
     const h = out[t] || (out[t] = { uang: 0, baris: [] }); h.uang += u; h.baris.push({ jam: String(r.jam || ''), uang: u }); });
   return out;
 }
-export function ambilProduksi() { return _cache.produksi; }
+export function ambilProduksi() { return bkSaring(_cache.produksi); }
 export function ambilProduksiBerlaku() { return ambilProduksi().filter(produksiMasihBerlaku); }
 
 // ---- STOK WADAH (putaran 28, owner 28 Sep 2026: "semua wadah kotak literan itu punya stok tersendiri") ----
@@ -111,13 +118,13 @@ export function stokMerekSaja(stok) {
 export function ambilRetur() { return _cache.retur; }
 export function ambilKarantina() { return _cache.karantina; }
 export function ambilPengeluaranHarian() { return _cache.harian; }
-export function ambilBahanKemasan() { return _cache.bahanKemasan; }
-export function ambilBahanLiteran() { return _cache.bahanLiteran; }
+export function ambilBahanKemasan() { return bkSaring(_cache.bahanKemasan); }
+export function ambilBahanLiteran() { return bkSaring(_cache.bahanLiteran); }
 export function ambilHargaLiteran() { return _cache.hargaLiteran; }
 export function ambilHargaKemasan() { return _cache.hargaKemasan; }
 export function ambilHargaKarung() { return _cache.hargaKarung; }
-export function ambilPiutangMutasi() { return _cache.piutang; }
-export function ambilKasbonMutasi() { return _cache.kasbon; }
+export function ambilPiutangMutasi() { return bkSaring(_cache.piutang); }
+export function ambilKasbonMutasi() { return bkSaring(_cache.kasbon); }
 export function ambilPenyesuaianStok() { return _cache.penyesuaian; }
 export function ambilPenyesuaianKemasan() { return _cache.penyKemasan; }
 export function ambilTutupHari() { return _cache.tutup; }
@@ -126,11 +133,11 @@ export function ambilPesanan() { return _cache.pesanan; }
 export function ambilWadahLiteran() { return _cache.wadah || []; }
 export function ambilTitipanHarian() { return _cache.titipan; }
 export function ambilSetoranKas() { return _cache.setoran; }
-export function ambilAmplopLaba() { return _cache.amplop; }
+export function ambilAmplopLaba() { return bkSaring(_cache.amplop); }
 export function ambilModalOwner() { return _cache.modal; }
-export function ambilUtangOwnerMutasi() { return _cache.utangOwner; }
+export function ambilUtangOwnerMutasi() { return bkSaring(_cache.utangOwner); }
 export function ambilTembusanStok() { return _cache.tembusan; }
-export function ambilUtangPemasokMutasi() { return _cache.utangPemasok; }
+export function ambilUtangPemasokMutasi() { return bkSaring(_cache.utangPemasok); }
 export function ambilThrPelanggan() { return _cache.thr; }
 export function ambilPemasokCatatan() { return _cache.pemasokCat; }
 export function ambilHargaWadah() { return _cache.hargaWadah || []; }     // putaran 15: harga jual wadah per lembar (id = jenis)

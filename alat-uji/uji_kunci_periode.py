@@ -256,8 +256,9 @@ var ASAP_BULAN = ['2026-07', '2026-08', '2026-09'];
 // tutup buku 2026 dengan data toko, seolah 5 Jan 2027, TANPA bulan terkunci: pembuka piutang/bon pemasok bertanggal lama → berapa pemeriksaan kunci
 var __kiniAsap = __KINI; __KINI = new Date('2027-01-05T10:00:00+07:00').getTime(); var n27 = 90000;
 var TB = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: 'uji asap', langkah: {} }, { tanggal: '2027-01-05', jam: '10:00', kini: new Date(__KINI).toISOString(), idUnik: function () { n27 += 1; return n27; } });
-var tbN = TB.tolak && /Saldo pembuka menyentuh (\d+) catatan/.exec(TB.tolak); __KINI = __kiniAsap;
-if (!TB.tolak && butuhGet(TB.dokumen, []) > KP_BATAS_GET) salah.push('tutup buku data toko > 18 pemeriksaan TIDAK ditolak di layar');
+// rancangan bertahap: tidak ditolak lagi — dipecah; tiap kiriman diukur PADA 5 Jan (jam asap dipulihkan sesudahnya)
+var tbK = TB.tolak ? null : TB.kiriman.map(function (k) { return k.get; }); __KINI = __kiniAsap;
+if (TB.tolak) salah.push('tutup buku data toko ditolak: ' + TB.tolak); else if (tbK.some(function (g) { return g > KP_BATAS_GET; })) salah.push('tutup buku data toko: ada kiriman > 18 pemeriksaan kunci (' + tbK.join(' + ') + ')');
 var sebelum = ASAP_BULAN.map(angkaBulan);
 terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'kunciPeriode', sampaiBulan: '2026-08', riwayat: [{ aksi: 'kunci', bulan: '2026-08', pada: 'uji', olehUid: 'uji' }] } }]);
 var sesudahKunci = ASAP_BULAN.map(angkaBulan);
@@ -278,7 +279,7 @@ if (R.tolak) salah.push('pembalik ditolak: ' + R.tolak); else {
 }
 print(JSON.stringify({ salah: salah, notaAgustus: nota ? nota.id : null, refund: R && R.dokumen ? R.dokumen[0].data.nominalRefund : null, tanggalPembalik: R && R.dokumen ? R.dokumen[0].data.tanggal : null,
   byteSama: { juli: sebelum[0] === sesudahKunci[0], agustus: sebelum[1] === sesudahKunci[1] }, bulanDiperiksa: ASAP_BULAN,
-  tutupBuku2026pada5Jan: TB.tolak ? { ditolakDiLayar: true, pemeriksaanKunci: tbN ? Number(tbN[1]) : null } : { ditolakDiLayar: false, pemeriksaanKunci: butuhGet(TB.dokumen, []) } }));
+  tutupBuku2026pada5Jan: TB.tolak ? { ditolakDiLayar: true, tolak: TB.tolak.slice(0, 120) } : { ditolakDiLayar: false, kiriman: tbK.length, pemeriksaanPerKiriman: tbK, dokumen: TB.dokumen.length } }));
 """
 
 
