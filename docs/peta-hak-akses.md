@@ -16,12 +16,14 @@ access call dianggap TANPA cache; satu baris jejak per kiriman bukan-owner yang 
 
 Kisi `SS_TINDAKAN` (13) × hak bawaan `SS_HAK_BAWAAN`. `sendiri` = boleh sendiri, `owner` = minta owner, `tidak` = tidak boleh.
 Server putaran ini menegakkan **baca & catat baru**. `owner`/`tidak` tertutup bagi bukan-owner (tombol mati + kalimat sebabnya).
+Audit 39b no. 22: penjaga penulis pusat (`periksaKiriman` → `tindakanKiriman`) menegakkan kisi untuk TIAP kiriman, bukan cuma tombol — hak yang diputar owner
+langsung berlaku di perangkat. Rules tidak membaca kisi (tanpa `get()` ke `aturanToko/peran`); yang ditegakkan server tetap kolom kanan.
 
 | Tindakan | ben | karyawan | Fungsi | Koleksi · operasi (per kiriman) | Server putaran ini |
 |---|---|---|---|---|---|
 | jualTunai | sendiri | sendiri | `simpanNota` → `susunNotaDokumen`; lalu `susunStrukKeluar` | `penjualan` create (1 per baris) · `stokBahanLiteran` create `tipe:'pakai'` (literan berkantong, id = baris+1) · `stokBahanKemasan`/`stokBahanLiteran` create `tipe:'pakai'` (baris wadah & repack, id+1) · `pesanan` **update** (kalau keranjang dari pesanan) · `strukKeluar` create (kiriman terpisah) | BUKA untuk ben & karyawan |
 | jualBon | sendiri | owner | sama + `piutangMutasi` create `tipe:'bayar'` (bayar sebagian di tempat) | seperti jualTunai + 1 | BUKA untuk ben; karyawan tertutup |
-| nego | owner | tidak | harga di bawah jatah (persetujuan) | — | tertutup |
+| nego | owner | tidak | harga di bawah jatah (persetujuan) — nego baris (`negoSelisih` ≠ 0) & potongan nota (`potonganTransaksi`) | `penjualan` create (kolom itu) | tertutup di perangkat (penjaga `periksaKiriman` + tombol, audit 39b no. 22); rules belum menolak kolomnya |
 | terimaBon | sendiri | sendiri | `susunBayarBon` (bon-logika) | `piutangMutasi` create `tipe:'bayar'` | BUKA |
 | hitungLaci | sendiri | tidak | `susunTutup` (tutup-hari-logika) | `pengaturan/titikKas` **timpa** (laci, rekening, amplop, brankas) · `amplopLaba`/`setoranKas`/`modalOwner`/`pindahUang`/`pengeluaranHarian` ber-id per tanggal (tutup ulang = **timpa**) · `penyesuaianStok`, `pengeluaranHarian` **hapus** | **TERTUTUP** — lihat §6 |
 | uangKeluar | owner | tidak | `susunKeluar` | `pengeluaranHarian`, `kasbonMutasi` | tertutup |

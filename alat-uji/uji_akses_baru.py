@@ -78,9 +78,9 @@ ok('atribusi: bukan-owner MENGUBAH dokumen lama → TIDAK menambah oleh/olehUid/
 // ---- 5 · penjaga kiriman bukan-owner (sebelum dikirim) — sama dengan rules v3
 var nota = function (cara, n) { var a = []; for (var i = 0; i < n; i++) a.push({ koleksi: 'penjualan', data: { id: 100 + i, tanggal: W.tanggal, caraBayar: cara, jenis: 'literan', hargaTotal: 13500 }, ada: false, lama: null }); return a; };
 var p1 = periksaKiriman(KRY, nota('Tunai', 3).concat([{ koleksi: 'stokBahanLiteran', data: { id: 101.5, tanggal: W.tanggal, tipe: 'pakai' }, ada: false }, { koleksi: 'strukKeluar', data: { id: 9 }, ada: false }]), [], HAK_KRY);
-var p2 = periksaKiriman(KRY, nota('Kredit', 1), [], HAK_KRY), p3 = periksaKiriman(BEN, nota('Kredit', 1).concat([{ koleksi: 'piutangMutasi', data: { id: 5, tanggal: W.tanggal, tipe: 'bayar' }, ada: false }]), [], HAK_BEN);
+var p2 = periksaKiriman(KRY, nota('Kredit', 1), [], HAK_KRY), p2b = periksaKiriman(KRY, nota('Kredit', 1), [], Object.assign({}, HAK_KRY, { jualBon: 'sendiri' })), p3 = periksaKiriman(BEN, nota('Kredit', 1).concat([{ koleksi: 'piutangMutasi', data: { id: 5, tanggal: W.tanggal, tipe: 'bayar' }, ada: false }]), [], HAK_BEN);
 ok('kiriman: karyawan nota tunai 3 baris + kantong pakai + struk = 5 dokumen → boleh, access call 6 (dokumen + 1 jejak); karyawan nota KREDIT ditolak ("minta owner"); Ben nota kredit + bayar sebagian → boleh',
-  !p1.tolak && p1.accessCall === 6 && p2.tolak === KALIMAT_MINTA_OWNER && !p3.tolak && p3.accessCall === 3, JSON.stringify([p1, p2, p3]));
+  !p1.tolak && p1.accessCall === 6 && p2.tolak === KALIMAT_MINTA_OWNER && p2b.tolak === KALIMAT_MINTA_OWNER && !p3.tolak && p3.accessCall === 3, JSON.stringify([p1, p2, p2b, p3]));
 var kr9 = nota('Kredit', 1); kr9[0].data.kreditDibukaOwner = true; var p9a = periksaKiriman(BEN, kr9, [], HAK_BEN), p9b = periksaKiriman(OWN, kr9, [], HAK_BEN);
 ok('39b-9: nota Kredit bertanda kreditDibukaOwner (KR1 dilewati) dari Ben → DITOLAK "minta owner" (Ben boleh bon biasa, tapi tidak membuka KR1); owner tetap boleh',
   p9a.tolak === KALIMAT_MINTA_OWNER && !p9b.tolak, JSON.stringify([p9a, p9b]));
@@ -238,7 +238,7 @@ if __name__ == '__main__':
             'tulisan tanpa olehUid lolos': (js.replace("if (!d.oleh) { d.oleh = akun.nama; d.olehUid = akun.uid; }", "if (!d.oleh) { d.oleh = akun.nama; }"), S),
             'update bukan-owner menambah kolom pencipta': (js.replace("const isiPencipta = akun.jenis === 'owner' || !ada;", "const isiPencipta = true;"), S),
             'tombol ikut kisi saja, server diabaikan': (js.replace("const buka = SERVER_BUKA[tindakan] || []; if (buka.indexOf(akun.peran) < 0) return { boleh: false, kalimat: KALIMAT_MINTA_OWNER };", ""), S),
-            'karyawan boleh jual bon': (js.replace("const KREDIT_STAF = ['ben'];", "const KREDIT_STAF = ['ben', 'karyawan'];"), S),
+            'karyawan boleh jual bon': (js.replace("const KREDIT_STAF = ['ben'];", "const KREDIT_STAF = ['ben', 'karyawan'];").replace("jualBon: ['ben'], terimaBon:", "jualBon: ['ben', 'karyawan'], terimaBon:"), S),
             '39b-9: Ben boleh menulis tanda kreditDibukaOwner': (js.replace("        if (d.kreditDibukaOwner) return { tolak: KALIMAT_MINTA_OWNER };\n", ""), S),
             '39b-9: tombol buka kredit tampil untuk bukan-owner': (js, ganti('layar_jual', '${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">', '${true ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">')),
             '39b-9: aksi buka kredit tanpa memeriksa akun': (js, ganti('layar_jual', 'const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ kreditDibuka: true,', 'set({ kreditDibuka: true,')),

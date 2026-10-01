@@ -81,9 +81,10 @@ export function pasangLayarJual(akar, opsi) {
     hapusBaris: ({ id }) => set(L.hapusBaris(S(), id)),
     kurangBaris: ({ id, langkah }) => set(L.ubahJumlahBaris(S(), id, -Number(langkah || 1))),
     tambahBaris: ({ id, langkah }) => set(L.ubahJumlahBaris(S(), id, Number(langkah || 1))),
-    nego: ({ id }) => set({ negoId: id, lembar: 'nego', ketik: '' }),
+    // audit 39b no. 22: nego & potongan nota = tindakan SS2 'nego' (kisi × server) — tombol mati berkata sebabnya, seperti jual bon
+    nego: ({ id }) => { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'nego'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ negoId: id, lembar: 'nego', ketik: '' }); },
     terapkanNego: () => set(L.terapkanNego(S(), S().negoId, L.angkaKetik(S().ketik))),
-    bukaPotongan: () => set({ lembar: 'potongan', ketik: '' }),
+    bukaPotongan: () => { const tb = tombolAkun(opsi.akun ? opsi.akun() : null, 'nego'); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ lembar: 'potongan', ketik: '' }); },
     terapkanPotongan: () => set(L.setelPotongan(S(), L.angkaKetik(S().ketik))),
     hapusPotongan: () => set(L.setelPotongan(S(), 0)),
     parkir: () => set(L.parkir(S())),

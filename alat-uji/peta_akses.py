@@ -202,9 +202,12 @@ var AKUN = { ben: keadaanAkun('ben.contoh@tokoberasmiqbal.web.app', 'uid-ben', {
 pasok('pesanan', [{ id: 'ps1', namaPelanggan: 'Pembeli Contoh', status: 'dipesan', isi: 'contoh', nilai: 100000, tanggal: '2026-09-23' }]);
 pasok('penjualan', [{ id: 11, trxId: 11, tanggal: '2026-09-20', jam: '09:00', caraBayar: 'Kredit', namaPelanggan: 'Pembeli Contoh', hargaTotal: 500000, jenis: 'karung', merkSumber: 'Angsa', totalKg: 50 }]);
 pasok('batchMasuk', [{ id: 'b1', tanggal: '2026-09-01', merkList: [{ merk: 'Angsa', satuan: 'karung', beratKarung: 50, totalKg: 5000, subtotalHarga: 65000000, hargaPerKg: 13000 }] }]);
+// audit 39b no. 22: penjaga menegakkan kisi SS2 — ukur dengan kisi PALING LONGGAR yang bisa disetel owner (semua tindakan yang dibuka server "boleh sendiri");
+// yang membatasi = server (SERVER_BUKA) & bentuk dokumen. Kisi kosong {} sekarang berarti "tidak boleh apa pun" → semua kiriman dilewati.
+var HAK_LONGGAR = {}; Object.keys(SERVER_BUKA).forEach(function (t) { HAK_LONGGAR[t] = 'sendiri'; });
 function kirim(peran, dok) {   // → { ac } dihitung, atau { dilewati: alasan } kalau peran ini memang tidak boleh mengirimnya
   var D = dok.map(function (x) { var ada = x.koleksi === 'pesanan'; return { koleksi: x.koleksi, data: x.data, ada: ada, lama: ada ? ambilPesananDoc(String(x.data.id)) : null }; });
-  var r = periksaKiriman(AKUN[peran], D, [], {});
+  var r = periksaKiriman(AKUN[peran], D, [], HAK_LONGGAR);
   if (r.tolak && !/terlalu besar untuk satu kali kirim/.test(r.tolak)) return { dilewati: r.tolak };   // 39b no. 21: pagar umum apa pun kalimat ujungnya = DIHITUNG
   return { ac: D.length + 1, dok: D.length, ditolakPerangkat: !!r.tolak };
 }

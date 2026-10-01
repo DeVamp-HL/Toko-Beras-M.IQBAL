@@ -91,6 +91,8 @@ jobs:
       # ---- PUTARAN 23 — akun per orang ----
       - name: "Sistem baru — akses per orang: akun, pendengar, penjaga kiriman, jejak, salinan antre (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_akses_baru.py && python3 alat-uji/uji_akses_baru.py --kontrol
+      - name: "Kisi SS2 ditegakkan penjaga (audit 39b no. 22): nego & potongan, hak yang diputar owner, kisi bawaan tanpa tolak palsu — fungsi susun asli (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_kisi_ss2.py && python3 alat-uji/uji_kisi_ss2.py --kontrol
       - name: "firestore.rules v5 — pemeriksa statis (tanpa payung, kunci periode di tiap koleksi bertanggal, blok per koleksi, owner via email, jalur kasir@, uid penulis termasuk stafBuatWadah/stafBuatLahir (39), peran = akses.js) + kontrol"
         run: python3 alat-uji/periksa_rules.py && python3 alat-uji/periksa_rules.py --kontrol
       - name: "Isian lokal (23d): tiap kolom ketik & kunci localStorage layar dijaga penjaga isian — statis + kontrol"

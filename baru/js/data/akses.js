@@ -129,9 +129,28 @@ export function beriAtribusiAkun(data, akun, konteks, ada) {
 const TINDAKAN_DARI = { batchMasuk: 'kedatangan', pengeluaranHarian: 'uangKeluar', kasbonMutasi: 'uangKeluar', tutupHari: 'hitungLaci', aturanToko: 'atur', koreksiHpp: 'hargaBeli',
   katalogHargaKarung: 'hargaBeli', katalogHargaKemasan: 'hargaBeli', katalogHargaLiteran: 'hargaBeli', wadahLiteran: 'isiUlang' };
 const NAMA_TINDAKAN = { kedatangan: 'hitung truk & draf kedatangan', uangKeluar: 'catat uang keluar dari laci', hitungLaci: 'hitung & rapikan laci', atur: 'ubah setelan (Atur)',
-  hargaBeli: 'isi harga beli / modal', hapus: 'hapus catatan', koreksi: 'koreksi nota yang sudah tersimpan', jualBon: 'jual dengan bon', isiUlang: 'isi ulang & cek wadah literan' };
+  hargaBeli: 'isi harga beli / modal', hapus: 'hapus catatan', koreksi: 'koreksi nota yang sudah tersimpan', jualBon: 'jual dengan bon', isiUlang: 'isi ulang & cek wadah literan',
+  jualTunai: 'jual tunai & kembalian', nego: 'nego di bawah jatah margin', terimaBon: 'terima pembayaran bon', adukan: 'catat adukan (bongkar kemasan)', pelangganBaru: 'daftarkan pelanggan baru' };
 /** rules v5 stafBuatLahir: batch LAHIR BUKU 0 kg (buku baru wadah / karung belakang) — bukan kedatangan. */
 const batchLahir = (d) => !!d && d.lahirBuku === true && d.stokAwal === true && !(Number(d.biayaBongkar) || 0) && String(d.pemasok || '') === 'LAHIR BUKU' && (d.merkList || []).every((r) => !(Number(r.totalKg) || 0) && !(Number(r.subtotalHarga) || 0));
+
+/**
+ * audit 39b no. 22: tindakan kisi SS2 yang dijalankan SATU kiriman bukan-owner (dokumen baru saja; update pesanan menumpang notanya).
+ * Ada penjualan = nota: jual bon (Kredit, termasuk bayar sebagian) atau jual tunai, + nego bila ada harga ditawar (negoSelisih) atau potongan nota.
+ * Tanpa nota: pelunasan = terima bon · kartu baru = pelanggan baru · wadah literan / buku lahir = isi ulang · produksi & kantong pakai = adukan.
+ * Struk & jejak tidak menjalankan tindakan apa pun. Bentuk dokumennya tetap dijaga BUAT_STAF / UBAH_STAF di periksaKiriman.
+ */
+export function tindakanKiriman(D) {
+  const baru = (D || []).filter((x) => !x.ada); const t = {}; const ada = (k) => baru.some((x) => x.koleksi === k);
+  const jual = baru.filter((x) => x.koleksi === 'penjualan');
+  jual.forEach((x) => { const d = x.data || {}; t[String(d.caraBayar || '').toLowerCase() === 'kredit' ? 'jualBon' : 'jualTunai'] = 1;
+    if ((Number(d.negoSelisih) || 0) !== 0 || (Number(d.potonganTransaksi) || 0) > 0) t.nego = 1; });
+  if (!jual.length && baru.some((x) => x.koleksi === 'piutangMutasi')) t.terimaBon = 1;
+  if (ada('pelangganCatatan')) t.pelangganBaru = 1;
+  const adaWadah = ada('wadahLiteran') || ada('batchMasuk');
+  if (!jual.length) { if (adaWadah) t.isiUlang = 1; else if (ada('produksiKemasan') || ada('stokBahanKemasan') || ada('stokBahanLiteran')) t.adukan = 1; }
+  return Object.keys(t);
+}
 
 /**
  * Penjaga penulis pusat untuk akun bukan-owner — dijalankan SEBELUM dikirim. dokumen = [{ koleksi, data, ada, lama }] (ada/lama dari cache),
@@ -173,6 +192,9 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'pesanan' && (['dibayar', 'batal'].indexOf(String(lama.status || '')) >= 0 || d.status !== 'dibayar')) return { tolak: tolakTindakan('koreksi') };
     }
   }
+  // audit 39b no. 22: kisi SS2 DITEGAKKAN di sini (dulu hak hanya memilih kalimat; yang menahan cuma 4 tombol). Tiap tindakan kiriman ini wajib "boleh sendiri"
+  // di kisi peran DAN dibuka server (SERVER_BUKA); nego tidak pernah dibuka untuk bukan-owner. Kisi yang diputar owner belum ditegakkan rules (tanpa get()).
+  for (const t of tindakanKiriman(D)) { if (hak[t] !== 'sendiri' || (SERVER_BUKA[t] || []).indexOf(P) < 0) return { tolak: tolakTindakan(t) }; }
   // putaran 25: hanya bulan berjalan / bulan lalu dalam masa tenggang minimal (rules tglStaf(), tanpa get()); dinilai SESUDAH hak, supaya kalimat hak tetap yang tampil
   const lewat = kpNilaiKiriman(D.map((x) => ({ koleksi: x.koleksi, data: x.data, lama: x.lama })), null, kini || new Date(Date.now())).lewatTenggang;
   if (lewat.length) return { tolak: 'Catatan bertanggal ' + kpNamaBulan(lewat[0].bulan) + ' sudah lewat masa tenggang — hanya owner yang bisa mencatatnya sekarang' };
