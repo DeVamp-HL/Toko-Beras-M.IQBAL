@@ -189,5 +189,25 @@ kiriman yang memang telat (perangkat lain / percobaan lama) — itu yang dijaga 
 
 ## Hasil Playground
 
-Belum dijalankan (dokumen ini dibuat 1 Okt 2026 di cabang `keamanan/rules-v6-tutup-buku`). Isi di sini sesudah owner menjalankannya: bagian · kasus ·
-hasil, plus tanggal & sidik commit `firestore.rules` yang ada di editor.
+2 Okt 2026 dini hari, Claude lewat Chrome owner (atas permintaan owner "lu aja yang kerjain"; owner menempel v6 ke editor, belum Publish). Isi editor
+dicocokkan 3× dengan `firestore.rules` cabang ini (sidik `shasum` a083e3fa13bc = commit d97f03e; kepala berkas lalu diganti dari "DRAF … BELUM TERBIT",
+komentar saja). Akun simulasi: owner@ (B27: kasir@). Dokumen uji di `tutupBukuAcara`: `uji-v6-berjalan`, `-terkunci`, `-dibatalkan`, `-selesai`,
+`-alih` (tahun 1990; tanpa `uji-v6-membatalkan` & `uji-v6-alih-batal`).
+
+| Bagian | Kasus | Hasil |
+|---|---|---|
+| A (wajib LOLOS) | ★A1 berjalan→terkunci · ★A2 berjalan→membatalkan · ★A4 terkunci→selesai · ★A7 dibatalkan→membatalkan pemegang lain · ★A10 ambil alih · ★A13 pemegang baru lanjut · ★A14 ambil alih kedua · ★A16 kirim ulang identik `selesai` · ★A17 kirim ulang identik `dibatalkan` | 9/9 LOLOS |
+| B (wajib DITOLAK) | ★B1 percobaan lama di atas `selesai` · ★B10 penanda HP lama sesudah ambil alih · B12′ jam batal lain di atas `dibatalkan` · ★B14 ambil alih lama · ★B15 ganti pemegang tanpa ambil alih · ★B16 selesai→terkunci · ★B17 selesai→membatalkan · ★B19 dibatalkan→berjalan · ★B20 terkunci→berjalan · ★B26 status asing · ★B27 kasir@ | 11/11 DITOLAK |
+| C | ★C1 owner@ baca berita acara | LOLOS |
+
+**Sifat Playground yang ditemukan (bukan sifat server):**
+- *update* = dokumen lama DIGABUNG dengan isian *Build document* (kolom yang tidak diisi diambil dari dokumen lama). Kasus diisi kolom yang berubah saja.
+- Teks berbentuk jam ISO (`…T03:00:00.000Z`) diubah Playground menjadi *timestamp* — di isian MAUPUN di dokumen lama yang dibaca dari Data (panel
+  *resource* menampilkan `2027-01-05T03:00:00Z`). Perbandingan jam ISO lalu galat (`timestamp > string`). Di server, kolom itu teks (ditulis
+  `toISOString()` oleh aplikasi), jadi uji urutan jam memakai teks jam BUKAN ISO (`2027-01-05 06:00`) dengan perbandingan teks yang sama.
+- Akibatnya jalur **mulai lagi sesudah `dibatalkan`** (★A8/★A9/★B3/★B25: `paraf.pada` wajib bentuk ISO 'Z' + lebih baru) TIDAK bisa diuji jujur di
+  Playground; buktinya hanya model `periksa_rules.py` (CI). Jalur ini hanya dipakai sesudah satu percobaan tutup buku dibatalkan.
+- Tidak diuji di Playground: ★A3, ★A5, ★A6, ★A11, ★A12, ★A15, ★B2–B9 (selain B10), ★B11, ★B12, ★B13, ★B18, ★B21–B24, ★C2–C4 — dinilai model CI;
+  blok koleksi lain byte-sama v5 (jalur kasir@ tidak berubah).
+- Tab Console yang tersembunyi (jendela tertutup) membuat dialog *Build document* tertahan; hasil dihitung hanya bila isian terbaca benar di pratinjau
+  data DAN banner hasilnya baru (bukan "viewing outdated simulation").

@@ -1,5 +1,5 @@
 // ============================================================================
-// ATURAN FIRESTORE v6 — Toko Beras M.IQBAL (DRAF 1 Okt 2026, BELUM TERBIT): v5 + berita acara tutup buku hanya maju
+// ATURAN FIRESTORE v6 — Toko Beras M.IQBAL (2 Okt 2026, Playground lulus; terbit lewat Console oleh owner): v5 + berita acara tutup buku hanya maju
 // Berkas KANONIK ber-versi. DEPLOY: salin-tempel ke Console > Firestore > Rules (owner; pola putaran 25).
 // Dasar: docs/peta-hak-akses.md (akun & peran, v3) + docs/peta-kunci-periode.md (kunci periode, keputusan owner K1–K6 25 Sep) + docs/peta-wadah-satu-buku.md §8 (v5)
 // + docs/rancangan-tutup-buku-bertahap.md §11 (v6).
