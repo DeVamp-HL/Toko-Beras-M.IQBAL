@@ -7,6 +7,7 @@ KOTAK PASIR (akun, uid, nama CONTOH — bukan orang toko). Menguji:
                                  atribusi (olehUid), SATU baris jejak per kiriman yang memuat daftar dokumennya;
   · baru/js/data/antre-lokal.js — salinan antre: tahan muat ulang, berbatas, dihapus hanya sesudah server mengaku, yang ditolak ditandai;
                                  katalog kasir (dokumen turunan) tidak ikut menilai kiriman sesudah sinkron (audit 39b no. 18);
+                                 tulis ulang kiriman ditolak atas nama owner MEMBAWA pencatat asli (audit 39b no. 45): riwayat, struk, jejak Sistem;
   · sistem-logika.js SS2       — daftarkan / tolak / ubah akun (tak pernah owner, dua ketukan);
   · sambungan di firebase.js   — tidak bisa dijalankan di jsc (impor URL Firebase), jadi SUMBERNYA diperiksa: penjaga sebelum kirim,
                                  salinan antre sebelum commit, dihapus hanya di .then, jejak per kiriman bukan-owner, owner via email.
@@ -22,7 +23,8 @@ import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/data/antre-lokal.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',
                                   'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js',
-                                  'baru/js/layar/arsip-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/data/katalog-kasir.js']
+                                  'baru/js/layar/arsip-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/data/katalog-kasir.js',
+                                  'baru/js/layar/struk-logika.js', 'baru/js/layar/riwayat-logika.js']
 JAM = ("var __RealDate = Date; var __KINI = new __RealDate('2026-09-24T10:00:00+07:00').getTime();\n"
        "Date = function (a, b, c, d, e, f, g) { if (!(this instanceof Date)) return new __RealDate(__KINI).toString(); if (arguments.length === 0) return new __RealDate(__KINI); if (arguments.length === 1) return new __RealDate(a); return new __RealDate(a, b, c === undefined ? 1 : c, d || 0, e || 0, f || 0, g || 0); };\n"
        "Date.prototype = __RealDate.prototype; Date.now = function () { return __KINI; }; Date.UTC = __RealDate.UTC; Date.parse = __RealDate.parse;\n")
@@ -164,6 +166,37 @@ ok('antre (39b no. 18): kiriman terbit harga dari tab mati yang DITERIMA server 
   !KOLEKSI.some(function (k) { return k.nama === KK_KOLEKSI; }) && H6.dikonfirmasi === 1 && H6.ditolak === 1 && H6.ditunda === 1 && A7.ditolak().length === 1 && A7.ditolak()[0].id === 'terbitTolak'
   && A7.belumTerkirim().length === 1 && A7.belumTerkirim()[0].id === 'terbitTunda', JSON.stringify(H6));
 
+// ---- 8b · audit 39b no. 45 (owner 30 Sep): kiriman ditolak yang ditulis ulang owner MEMBAWA pencatat asli — owner tercatat sebagai penulis ulang
+(function () {
+  var kK = { perangkat: 'Tablet Contoh', lokasi: 'toko', kini: '2026-09-24T02:00:00.000Z' }, kO = { perangkat: 'HP Owner Contoh', lokasi: 'toko', kini: W.kini };
+  var nota = beriAtribusiAkun({ id: 9031, trxId: 'T9031', tanggal: '2026-09-24', jam: '09:00', jenis: 'karung', namaProduk: 'Beras Contoh', totalKg: 5, hargaTotal: 60000, caraBayar: 'Tunai', namaPelanggan: '' }, KRY, kK, false);
+  var pes = beriAtribusiAkun({ id: 9032, status: 'dibayar', oleh: 'Owner', olehUid: 'uid-owner', perangkat: 'HP Owner Contoh' }, KRY, kK, true);
+  var dua = beriAtribusiAkun({ id: 9033, oleh: 'Ben Contoh', olehUid: 'uid-ben', pencatatAsli: { nama: 'Ben Contoh', uid: 'uid-ben', peran: 'ben', perangkat: 'Tablet Contoh', pada: '' } }, KRY, kK, true);
+  var kat = { id: KK_ID, diperbaruiPada: kK.kini, kemasan: [], merkKarung: [], bahanLiteran: {}, piutang: [], bayarBonTerhitung: [], bayarBonSejak: '' };
+  var E = { id: 'k45', pada: kK.kini, akunUid: 'uid-kry', akunNama: 'Karyawan Contoh', peran: 'karyawan', keadaan: 'ditolak', alasan: 'permission-denied',
+    dokumen: [{ koleksi: 'penjualan', data: nota }, { koleksi: 'pesanan', data: pes }, { koleksi: KK_KOLEKSI, data: kat }, { koleksi: 'penjualan', data: dua }] };
+  var T = susunTulisUlang(E);
+  // = penulis pusat tulisBerkas untuk akun owner: katalog kasir apa adanya (kkMentah), selebihnya beriAtribusiAkun + baris jejak per dokumen (jejakTulisUlang)
+  var D = T.dokumen.map(function (x) { return kkMentah(x.koleksi) ? x.data : beriAtribusiAkun(x.data, OWN, kO, x.data.id !== 9031); });
+  var n = D[0], p = D[1], k = D[2], d2 = D[3], a = n.pencatatAsli || {};
+  ok('tulis ulang (39b no. 45): nota karyawan yang ditolak lalu ditulis ulang owner — pencatat (oleh, olehUid, perangkat) TETAP karyawan; owner tercatat sebagai penulis ulang (diubahOleh/Uid/Perangkat); pencatatAsli = akun kiriman (nama, uid, peran, perangkat, jam kirim)',
+    n.oleh === 'Karyawan Contoh' && n.olehUid === 'uid-kry' && n.perangkat === 'Tablet Contoh' && n.diubahOleh === 'Owner' && n.diubahOlehUid === 'uid-owner' && n.diubahPerangkat === 'HP Owner Contoh' && n.diubahPada === W.kini
+    && a.nama === 'Karyawan Contoh' && a.uid === 'uid-kry' && a.peran === 'karyawan' && a.perangkat === 'Tablet Contoh' && a.pada === kK.kini && JSON.stringify(T.asli) === JSON.stringify(a), JSON.stringify(n));
+  ok('tulis ulang (39b no. 45): ubahan pesanan — pencipta pesanan tetap (owner), yang mengubah lewat kiriman ditolak tercatat di pencatatAsli; katalog kasir ditulis APA ADANYA (tanpa pencatatAsli); pencatatAsli yang sudah ada tidak ditimpa',
+    p.oleh === 'Owner' && p.olehUid === 'uid-owner' && p.pencatatAsli && p.pencatatAsli.uid === 'uid-kry' && p.diubahOlehUid === 'uid-owner'
+    && JSON.stringify(k) === JSON.stringify(kat) && d2.pencatatAsli.uid === 'uid-ben' && d2.diubahOlehUid === 'uid-owner', JSON.stringify([p, k, d2.pencatatAsli]));
+  // riwayat (rwSemuaNota) & struk (notaDariBaris → susunStruk, "Dilayani …") membaca kolom oleh
+  pasok('penjualan', [n]); var R = rwSemuaNota().find(function (r) { return r.id === '9031'; }) || {};
+  var St = susunStruk(notaDariBaris([n]), null, { sertakan: { pelayan: true } }); var teksSt = St ? St.baris ? JSON.stringify(St.baris) : JSON.stringify(St) : '';
+  // jejak Sistem (ssJejak): baris jejak owner dari penulis pusat untuk nota itu
+  var log = jejakTulisUlang({ id: 9900, pada: W.kini, aksi: 'tulis', koleksi: 'penjualan', idDok: '9031', oleh: n.diubahOleh, olehUid: 'uid-owner', perangkat: kO.perangkat, ringkas: ringkasDok(n) }, T.asli);
+  pasok('logAktivitas', [log]); var J = ssJejak(new Date(), [], '').tampil[0] || {};
+  ok('tulis ulang (39b no. 45): riwayat penjualan & struk menyebut pencatat asli; jejak Sistem menulis "ditulis ulang owner, pencatat asli …" dengan owner sebagai penulisnya, uid asli di kolom pencatatAsli',
+    R.oleh === 'Karyawan Contoh' && teksSt.indexOf('Dilayani Karyawan Contoh') >= 0 && J.oleh === 'Owner' && /ditulis ulang owner, pencatat asli Karyawan Contoh \(karyawan\)/.test(J.teks)
+    && log.pencatatAsli.uid === 'uid-kry' && log.olehUid === 'uid-owner', JSON.stringify([R.oleh, J, teksSt.slice(0, 200)]));
+  pasok('penjualan', []); pasok('logAktivitas', []);
+})();
+
 // ---- 9 · SS2 akun per orang (owner)
 pasok('permintaanAkses', [{ id: 'uid-baru', uid: 'uid-baru', email: 'baru.contoh@tokoberasmiqbal.web.app', nama: 'Baru Contoh', pada: '2026-09-24T02:00:00.000Z' }]);
 pasok('aksesAkun', [{ id: 'uid-ben', uid: 'uid-ben', nama: 'Ben Contoh', email: 'ben.contoh@tokoberasmiqbal.web.app', peran: 'ben', aktif: true }]);
@@ -197,6 +230,9 @@ ok('firebase.js (39b no. 18): pencocokan sesudah sinkron memakai cekDariCache(do
 ok('firebase.js: bukan-owner = SATU jejakKiriman per kiriman; owner = satu jejak per dokumen dengan olehUid; atribusi lewat beriAtribusiAkun; owner dikenali lewat EMAIL_OWNER, peran lain lewat aksesAkun/{uid} yang didengarkan terus',
   F.indexOf('if (!owner) { const log = jejakKiriman(akun, ditulis') > 0 && F.indexOf('olehUid: akun.uid, perangkat: k.perangkat, ringkas: ringkasDok(d)') > 0 && F.indexOf('beriAtribusiAkun(x.data, akun, k, x.ada)') > 0
   && F.indexOf("if (email === EMAIL_OWNER) return terapkan(keadaanAkun(email, u.uid, null));") > 0 && F.indexOf("onSnapshot(doc(db, 'aksesAkun', u.uid)") > 0 && F.indexOf('EMAIL_TOKO') < 0);
+ok('firebase.js (39b no. 45): tulis ulang kiriman ditolak memakai susunTulisUlang (kolom pencipta TIDAK dibuang) dan memberi tahu penulis pusat pencatat aslinya; baris jejak owner lewat jejakTulisUlang',
+  F.indexOf('const T = susunTulisUlang(x); let bersih = T.dokumen;') > 0 && F.indexOf('const r = await tulisBerkas(bersih, [], { pencatatAsli: T.asli });') > 0 && F.indexOf("'oleh', 'olehUid', 'diubahOleh'") < 0
+  && F.indexOf('const logT = opsi && opsi.pencatatAsli ? jejakTulisUlang(log, opsi.pencatatAsli) : log;\n      b.set(doc(db, KOLEKSI_LOG, String(logT.id)), logT);') > 0);
 ok('firebase.js: bukan-owner tidak pernah HAPUS / bersihkan / arsip; nonaktif = cabut SEMUA pendengar; satu pendengar ditolak tidak mematikan aplikasi (status.masuk tidak dimatikan)',
   F.indexOf("if (!status.akun || status.akun.jenis !== 'owner') { const p = periksaKiriman(status.akun, [], daftar") > 0 && (F.match(/if \(pemilikSaja\(\)\)/g) || []).length === 3
   && F.indexOf('} else { cabutPendengar(); }') > 0 && F.indexOf("includes('permission-denied')) { status.masuk = false; }") < 0);
@@ -285,6 +321,13 @@ if __name__ == '__main__':
             'dokumen hilang dianggap terkirim': (js.replace("const d = ambilDok(koleksi, id); if (!d) return false;", "const d = ambilDok(koleksi, id); if (!d) return true;"), S),
             'sinkron: katalog kasir ikut menilai kiriman (39b no. 18)': (js.replace("if (turunan && turunan(koleksi)) return undefined; ", ""), S),
             'sinkron: dokumen turunan menutupi dokumen catatan': (js.replace("if (turunan && turunan(koleksi)) return undefined; ", "if (turunan) return undefined; "), S),
+            '39b-45: tulis ulang membuang pencatat asli (cara lama)': (js.replace("['diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'].forEach((k) => delete data[k]);", "['oleh', 'olehUid', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'].forEach((k) => delete data[k]);"), S),
+            '39b-45: tulis ulang tanpa kolom pencatatAsli': (js.replace("&& !data.pencatatAsli) data.pencatatAsli = Object.assign({}, asli);", "&& false) data.pencatatAsli = Object.assign({}, asli);"), S),
+            '39b-45: pencatatAsli yang sudah ada ditimpa': (js.replace("&& !data.pencatatAsli) data.pencatatAsli = Object.assign({}, asli);", ") data.pencatatAsli = Object.assign({}, asli);"), S),
+            '39b-45: katalog kasir ikut diberi pencatatAsli': (js.replace("if ((data.oleh !== undefined || data.diubahOleh !== undefined) && !data.pencatatAsli)", "if (!data.pencatatAsli)"), S),
+            '39b-45: jejak tulis ulang tanpa nama asli': (js.replace("'ditulis ulang owner, pencatat asli ' + (a.nama || '?')", "'ditulis ulang owner'"), S),
+            '39b-45 firebase: tulis ulang cara lama (kolom pencipta dibuang)': (js, ganti('firebase', 'const T = susunTulisUlang(x); let bersih = T.dokumen;', "const T = { asli: null }; let bersih = (x.dokumen || []).map((d) => { const data = Object.assign({}, d.data); ['oleh', 'olehUid', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'].forEach((k) => delete data[k]); return { koleksi: d.koleksi, data }; });")),
+            '39b-45 firebase: jejak owner tanpa pencatat asli': (js, ganti('firebase', 'const r = await tulisBerkas(bersih, [], { pencatatAsli: T.asli });', 'const r = await tulisBerkas(bersih);')),
             'firebase: pencocokan sinkron tanpa kkMentah': (js, ganti('firebase', 'antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache, kkMentah), ', 'antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache), ')),
             'SS2 akun bisa didaftarkan sebagai owner': (js.replace("const SS_PERAN_AKUN = SS_PERAN.filter((p) => p.id !== 'owner');", "const SS_PERAN_AKUN = SS_PERAN;"), S),
             'SS2 nonaktifkan tanpa ketukan kedua': (js.replace("if (U.aktif !== undefined && !yakin) return", "if (false) return"), S),

@@ -1407,3 +1407,12 @@ biaya Juli (tagihan bulanan + uang keluar, tanpa satu nota pun) sebagai bulan ru
 catatan yang menyebut biayanya; `rekapTahun` menandai `sebelumBuku` (baris Tahunan "sebelum awal buku · biaya … · tidak dijumlah", Σ "bulan sejak awal
 buku", pita keterangan); `trenBiaya` menandai `sebelumBuku` (batang tidak merah, kalimat di kaki). Arus kas, neraca, rekap omzet (sudah "absen") dan mesin
 beku tidak diubah. Uji `uji_laporan_baru.py` +2, `uji_kendali_biaya.py` +2 (satu pemeriksa kata di `laporan.js`), kontrol +7.
+
+## Audit 39b no. 45 — tulis ulang kiriman ditolak membawa pencatat asli (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
+
+Keputusan owner 30 Sep: jejak pencatat asli wajib ikut saat kiriman ditolak ditulis ulang owner. Dulu Menu › Sistem › Perangkat › "tulis ulang atas
+nama owner" membuang `oleh`/`olehUid`, jadi riwayat, struk ("Dilayani …") dan jejak menyebut owner. Sekarang `antre-lokal.js` `susunTulisUlang()`
+membiarkan kolom pencipta (`oleh`, `olehUid`, `perangkat`, `lokasi`) dan menambah `pencatatAsli` {nama, uid, peran, perangkat, jam kirim} di tiap
+dokumen beratribusi (katalog kasir apa adanya; yang sudah punya tidak ditimpa); owner tercatat sebagai penulis ulang di `diubahOleh*`, dan baris jejaknya
+(`jejakTulisUlang`) berbunyi "… · ditulis ulang owner, pencatat asli <nama> (<peran>)". Juga berlaku untuk "catat ulang bertanggal hari ini". Rules v6
+tidak diubah (tulisan owner tidak dibatasi kolomnya). Uji `uji_akses_baru.py` +4, kontrol +7.
