@@ -10,7 +10,7 @@
 // dan membandingkan sebelum vs sesudah dari susunan itu; sesudah kunci dibandingkan lagi dari mesin (hidup). Titik kas ditulis ulang di 31 Des dari saldo per tempat.
 import { hitungSaldoTutup, tbDaftarKoleksi, hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungPiutang, hitungKasbon, hitungUtangPemasok, hitungUtangOwner, saldoAmplop } from '../mesin/beku.js';
 import { tbCutoff, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, petaStokWadah, petaBukuWadah, dokDiCache, pembukaBerlaku } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, petaStokWadah, petaBukuWadah, dokDiCache, dokTertunda, pembukaBerlaku } from '../data/toko.js';
 import { KP_BATAS_GET, kpPotong } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, lebihBayarDari } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
@@ -205,6 +205,16 @@ function bkKirimanDari(a) {
 }
 /** Satu kiriman sudah masuk? Batch atomik: dokumen pembukanya ada (cache mentah — tersembunyi dari mesin tapi ada); kiriman penanda = berita acara sudah 'terkunci'. */
 function bkMasuk(k, a) { if (k.pembuka.length) return k.pembuka.every((x) => !!dokDiCache(x.koleksi, x.id)); return !!a && (a.status === 'terkunci' || a.status === 'selesai'); }
+/**
+ * §8 no. 4: catatan tutup buku tahun itu yang masih MENUNGGU SERVER di perangkat ini (toko.js dokTertunda) — berita acara, saldo pembuka, penanda (titik kas,
+ * pengaturan/tutupBuku). Selama ada, kemajuan = fase 'tunggu' (bukan "n dari N masuk" / "terkunci"), Lanjutkan & Batalkan menolak: server bisa menolaknya nanti.
+ */
+function bkTunda(tahun) {
+  const a = bkAcara(tahun); let n = a && dokTertunda('tutupBukuAcara', String(a.id || tahun)) ? 1 : 0;
+  bkPembukaTahun(tahun).forEach((x) => { if (dokTertunda(x.koleksi, x.id)) n += 1; }); ['titikKas', 'tutupBuku'].forEach((id) => { if (dokTertunda('pengaturan', id)) n += 1; });
+  return n;
+}
+const bkKalimatTunda = (tahun, n) => 'Tutup buku ' + tahun + ': ' + n + ' catatan di perangkat ini masih menunggu server (belum diakui, belum dihitung masuk). Jangan tutup aplikasi; tunggu sinyal sampai antrean kosong (Menu › Sistem › Perangkat), baru Lanjutkan atau Batalkan.';
 /** Tahun lama berubah sejak rencana dibuat? (pembuka yang sudah masuk tidak terlihat mesin → 31 Des dihitung ulang dari catatan asli dengan patokan kas yang sama) */
 function bkBerubah(a) {
   const c = tbCutoff(Number(a.tahun)); const S = barisBuku(c, c, a.titikTahun || null); const lama = {}; (a.sebelum || []).forEach((b) => { lama[b.id] = b.n; });
@@ -227,6 +237,7 @@ function bkTitikKini(k, tahun) {
  */
 export function lanjutBuku(tahun) {
   const a = bkAcara(tahun); if (!a || a.status !== 'berjalan' || !a.rencana || !Array.isArray(a.pembuka)) return { tolak: 'Tidak ada tutup buku ' + tahun + ' yang sedang berjalan' };
+  const nT = bkTunda(tahun); if (nT) return { tolak: bkKalimatTunda(tahun, nT) };
   const ub = bkBerubah(a); if (ub) return { tolak: ub };
   const K = bkKirimanDari(a); const sudah = K.filter((k) => bkMasuk(k, a)).length;
   const kunci = Object.assign({}, a, { status: 'terkunci' }); delete kunci.pembuka; delete kunci.penanda;
@@ -252,6 +263,8 @@ function bkTertunda(tahun) {
 export function kemajuanBuku() {
   const a = ambilTutupBukuAcara().filter((x) => x && (x.status === 'berjalan' || x.status === 'membatalkan' || x.status === 'terkunci' || (x.status === 'dibatalkan' && bkPembukaTahun(Number(x.tahun)).length))).sort((p, q) => Number(q.tahun) - Number(p.tahun))[0];
   if (!a) return null; const tahun = Number(a.tahun);
+  // §8 no. 4: ada kiriman yang belum diakui server di perangkat ini → bukan "n dari N masuk" / "terkunci" (berita acara di cache bisa versi yang belum diterima)
+  const nT = bkTunda(tahun); if (nT) return { tahun, fase: 'tunggu', tunda: nT, teks: bkKalimatTunda(tahun, nT) };
   if (a.status === 'berjalan') { const K = bkKirimanDari(a); const sudah = K.filter((k) => bkMasuk(k, a)).length;
     return { tahun, fase: 'pembuka', sudah, total: K.length, teks: 'Tutup buku ' + tahun + ': ' + sudah + ' dari ' + K.length + ' kiriman saldo pembuka sudah masuk. Tahun ' + tahun + ' MASIH TERBUKA (saldo pembuka yang sudah masuk belum dihitung) sampai kiriman terakhir masuk — lanjutkan atau batalkan.' }; }
   if (a.status === 'terkunci') { const sisa = arsipBuku(tahun).n; const total = Number(a.nArsip) || sisa;
@@ -267,7 +280,7 @@ export function kemajuanBuku() {
  * arsipDok = hasil bacaArsipTahun (sisa yang belum dikembalikan).
  */
 export function susunBatal(tahun, arsipDok, w) {
-  const acara = bkAcara(tahun); const hapus = bkPembukaTahun(tahun);
+  const acara = bkAcara(tahun); const hapus = bkPembukaTahun(tahun); const nT = bkTunda(tahun); if (nT) return { tolak: bkKalimatTunda(tahun, nT) };
   if (!acara || (['terkunci', 'berjalan', 'membatalkan'].indexOf(acara.status) < 0 && !(acara.status === 'dibatalkan' && hapus.length))) return { tolak: 'Tahun ' + tahun + ' tidak sedang terkunci — tidak ada yang dibatalkan' };
   const dari = acara.status === 'membatalkan' || acara.status === 'dibatalkan' ? (acara.dariStatus || 'terkunci') : acara.status;
   const batal = Object.assign({}, acara, { status: 'membatalkan', dariStatus: dari, dibatalkanPada: acara.dibatalkanPada || w.kini, dibatalkanTanggal: acara.dibatalkanTanggal || w.tanggal }); delete batal.pembuka; delete batal.penanda;

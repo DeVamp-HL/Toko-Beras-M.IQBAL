@@ -34,6 +34,11 @@ export function dengarkan(f) { _pendengar.add(f); return () => _pendengar.delete
 export function cacheMentah(nama) { return _cache[nama] || []; }
 /** Dokumen satu koleksi (nama koleksi Firestore) menurut cache — dipakai penulis pusat untuk membedakan create dari update (putaran 23). */
 export function dokDiCache(koleksi, id) { const k = KOLEKSI.find((x) => x.nama === koleksi); return k ? (_cache[k.cache] || []).find((d) => String(d.id) === String(id)) || null : null; }
+// §8 no. 4 (tutup buku bertahap): dokumen yang masih MENUNGGU SERVER di perangkat ini — Firestore sudah menaruh tulisannya di cache (hasPendingWrites), server
+// belum mengaku (bisa saja nanti ditolak lalu dibuang). Diisi pendengar firebase.js per koleksi (nama Firestore); simulasi cadangan = selalu kosong.
+const _tertunda = {};
+export function setelTertunda(koleksi, ids) { _tertunda[koleksi] = (ids || []).map(String); }
+export function dokTertunda(koleksi, id) { const s = _tertunda[koleksi]; return !!s && s.indexOf(String(id)) >= 0; }
 
 // ---- batas data untuk mesin beku (nama & bentuk = index.html) ----
 // TUTUP BUKU BERTAHAP (rancangan Okt 2026): saldo pembuka tahun yang berita acaranya BELUM terkunci ('berjalan' = kiriman pembuka belum semua masuk;

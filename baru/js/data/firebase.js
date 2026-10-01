@@ -9,7 +9,7 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
 import { KOLEKSI } from './koleksi.js';
-import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData } from './toko.js';
+import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda } from './toko.js';
 import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
 import { buatAntre, cekDariCache } from './antre-lokal.js';
 import { KP_BATAS_GET } from './kunci-periode.js';
@@ -140,6 +140,8 @@ function pasangPendengar(akun) {
       const daftar = [], tunda = [];
       snap.forEach((d) => { const x = d.data(); daftar.push(x); if (d.metadata && d.metadata.hasPendingWrites) tunda.push({ koleksi: k.nama, id: d.id, ringkas: ringkasDok(x), pada: x.diubahPada || x.pada || '', oleh: x.oleh || x.diubahOleh || '', perangkat: x.diubahPerangkat || x.perangkat || '' }); });
       _antrePerKoleksi[k.nama] = tunda; status.antre = Object.keys(_antrePerKoleksi).reduce((a, n) => a.concat(_antrePerKoleksi[n]), []);
+      // §8 no. 4: tutup buku bertahap tidak menghitung dokumen yang masih menunggu server sebagai "masuk" (toko.js dokTertunda)
+      setelTertunda(k.nama, tunda.map((t) => t.id));
       _dariCache[k.nama] = !!(snap.metadata && snap.metadata.fromCache);
       pasok(k.nama, daftar); tandaiSiap(k.nama);
       // dariCache = angka dari simpanan perangkat (belum tentu terbaru) — layar diberi tahu supaya jujur
@@ -187,7 +189,7 @@ function cabutPendengar() {
   Object.keys(_antrePerKoleksi).forEach((n) => { delete _antrePerKoleksi[n]; }); status.antre = [];
   Object.keys(_dariCache).forEach((n) => { delete _dariCache[n]; }); kkLupakanServer(); clearTimeout(_kkTimer);
   status.koleksiSiap = 0; status.ditolak = []; status.galat = '';
-  KOLEKSI.forEach((k) => pasok(k.nama, []));
+  KOLEKSI.forEach((k) => { pasok(k.nama, []); setelTertunda(k.nama, []); });
 }
 // ---- salinan antre: sesudah semua pendengar siap, online, dan tidak ada tulisan tertunda — kiriman sesi lain dicocokkan ke server ----
 let _cocokJalan = false;

@@ -22,6 +22,7 @@ Yang dijaga:
   N1  HP STAF (tanpa tutupBukuAcara) melihat angka yang SAMA dengan HP owner di tiap titik putus — penanda = batch pembuka ber-penandaBuku (koleksi yang staf baca)
   N2  Lanjutkan sesudah tutup hari Januari: titik 31 Des yang disusun saat mulai TIDAK dikirim (aturan titik dinilai saat kirim), titikDitulis false
   N3  mulai di masa tenggang (2 Jan), lanjut 5 Jan: sisa dipecah ulang dengan jam sekarang — tiap kiriman ≤ 18, penanda tetap terakhir, pembuka tepat sekali
+  N4  kiriman yang belum diakui server (masih di antrean perangkat) bukan "masuk": pita fase tunggu, Lanjutkan & Batalkan menolak sampai antrean kosong
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -196,6 +197,20 @@ coba('N3', function () { var tambah = []; for (var q = 0; q < 20; q++) tambah.pu
     !L.tolak && L.kiriman.length >= 2 && g.every(function (x) { return x <= 18; }) && masuk.every(Boolean) && L.kiriman[0].ke === 2 && L.kiriman.every(function (k, i) { return k.penanda === (i === L.kiriman.length - 1); })
     && acara(2026).status === 'terkunci' && nPembukaMentah(2026) === R.acara.nPembuka && !lanjutBuku(2026).kiriman, J([rencana, g, L.tolak, masuk, tolakPenjaga.slice(-1)])); });
 
+// ---- §8 no. 4 · kiriman yang BELUM diakui server (opsi tunggu 30 detik habis): Firestore sudah menaruhnya di cache (hasPendingWrites) — bukan "masuk"
+function tundakan(k) { var per = {}; k.dokumen.forEach(function (x) { (per[x.koleksi] = per[x.koleksi] || []).push(String(x.data.id)); }); if (typeof setelTertunda === 'function') Object.keys(per).forEach(function (c) { setelTertunda(c, per[c]); }); }
+function lepasTunda() { if (typeof setelTertunda === 'function') KOLEKSI.forEach(function (k) { setelTertunda(k.nama, []); }); }
+coba('N4', function () { kotak(40); W = jam('2027-01-05T08:00:00+07:00'); R = susunKunci(2026, D, W);
+  terapkanKeCache(R.kiriman[0].dokumen); tundakan(R.kiriman[0]);
+  var KM = kemajuanBuku(); L = lanjutBuku(2026); var Bt = susunBatal(2026, [], W);
+  ok('N4 kiriman 1 masih antre di perangkat: pita TIDAK menghitungnya masuk (fase tunggu); Lanjutkan & Batalkan menolak dengan kalimat menunggu server',
+    !!KM && KM.fase === 'tunggu' && !KM.sudah && /menunggu server/.test(KM.teks) && !!L.tolak && /menunggu server/.test(L.tolak) && !!Bt.tolak && /menunggu server/.test(Bt.tolak), J([KM, L.tolak || L.kiriman.length, Bt.tolak || Bt.kiriman.length]));
+  lepasTunda(); L = lanjutBuku(2026); ok('N4 server mengaku kiriman 1 → Lanjutkan mengirim sisanya (mulai kiriman 2)', !L.tolak && L.kiriman.length === 2 && L.kiriman[0].ke === 2, J(L.tolak || L.kiriman.length));
+  kirim(L.kiriman[0]); terapkanKeCache(L.kiriman[1].dokumen); tundakan(L.kiriman[1]); KM = kemajuanBuku();
+  ok('N4 kiriman PENANDA masih antre: pita fase tunggu (bukan "terkunci" / arsip), Lanjutkan menolak', !!KM && KM.fase === 'tunggu' && !!lanjutBuku(2026).tolak, J(KM));
+  lepasTunda(); KM = kemajuanBuku(); ok('N4 penanda diakui server → fase arsip', !!KM && KM.fase === 'arsip', J(KM)); });
+lepasTunda();
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -236,6 +251,8 @@ STATIS = [
     ('langkah 7 memakai tahun yang terkunci', ["const tahun = KM7 && KM7.fase === 'selesaikan' ? KM7.tahun :"]),
     ('patokan kas tahun di layar (bukan titik kas sekarang)', ["const SB = BK.barisTahun(T.tahun); const B = s.sesudahLive || bandingB(s, T);", "const bandingB = (s, T) => { const SB = BK.barisTahun(T.tahun);"]),
     ('§8 no. 2 · Lanjutkan menyetel titik kas perangkat HANYA dari titik yang ikut kiriman lanjut (lanjutBuku.titik)', ["jalankanBuku(KM.tahun, Lj.kiriman || [], Lj.titik || null,"]),
+    ('§8 no. 4 · Lanjutkan & Batalkan menunggu antrean perangkat (fase tunggu) — tidak mengirim apa pun', ["if (KM.fase === 'tunggu') return set({ kabar: KM.teks, kabarAwas: true });", "if (KM && KM.fase === 'tunggu') return set({ yakinBatalB: null, kabar: KM.teks, kabarAwas: true });"]),
+    ('§8 no. 4 · firebase.js menyetor dokumen yang menunggu server (hasPendingWrites) ke toko.js', ["setelTertunda(k.nama, tunda.map((t) => t.id));", "KOLEKSI.forEach((k) => { pasok(k.nama, []); setelTertunda(k.nama, []); });"], 'baru/js/data/firebase.js'),
 ]
 RUSAK = [
     ('saldo pembuka tidak dipecah (sekali kirim)', 'baru/js/layar/tutup-buku-logika.js', "const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] }))",
@@ -262,6 +279,8 @@ RUSAK = [
     ('titik 2 Jan ditimpa titik 31 Des', 'baru/js/layar/tutup-buku-logika.js', "const titik = K.ada && T0 && T0.dari === 'titikKas' ? {", "const titik = K.ada && T0 ? {"),
     ('tutup hari tidak menyimpan titik di dokumennya', 'baru/js/layar/tutup-hari-logika.js', "dokTutup.titik = { laci: titik.laci,", "dokTutup.titikLain = { laci: titik.laci,"),
     ('kemajuan menyebut tahun berjalan, bukan tahun yang terkunci', 'baru/js/layar/tutup-buku-logika.js', "  if (!a) return null; const tahun = Number(a.tahun);", "  if (!a) return null; const tahun = Number(a.tahun) + (a.status === 'terkunci' ? 1 : 0);"),
+    ('§8 no. 4 · Lanjutkan & Batalkan tidak memeriksa antrean perangkat', 'baru/js/layar/tutup-buku-logika.js', "  const nT = bkTunda(tahun); if (nT) return { tolak: bkKalimatTunda(tahun, nT) };\n  const ub = bkBerubah(a);", "  const ub = bkBerubah(a);"),
+    ('§8 no. 4 · pita tidak memeriksa antrean perangkat', 'baru/js/layar/tutup-buku-logika.js', "  const nT = bkTunda(tahun); if (nT) return { tahun, fase: 'tunggu', tunda: nT, teks: bkKalimatTunda(tahun, nT) };", "  const nT = 0;"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]
@@ -269,8 +288,8 @@ RUSAK = [
 if __name__ == '__main__':
     if '--kontrol' in sys.argv:
         kode = 0
-        u0 = open(os.path.join(bundel_baru.AKAR, 'baru/js/layar/uang.js'), encoding='utf-8').read()
-        for nama, wajib in STATIS:   # statis: jangkar pertama dibuang dari uang.js → pemeriksa statis wajib melihatnya
+        for st in STATIS:   # statis: jangkar pertama dibuang dari berkasnya → pemeriksa statis wajib melihatnya
+            nama, wajib = st[0], st[1]; u0 = open(os.path.join(bundel_baru.AKAR, st[2] if len(st) > 2 else 'baru/js/layar/uang.js'), encoding='utf-8').read()
             if not all(x in u0 for x in wajib): print('KONTROL BASI  statis uang.js · ' + nama); kode = 3; continue
             u1 = u0.replace(wajib[0], ''); kurang = [x for x in wajib if x not in u1]
             print(('BERBUNYI ' if kurang else 'DIAM!!   ') + 'statis uang.js · ' + nama + ' dibuang → tidak ada: ' + ' | '.join(kurang)[:100])
@@ -285,8 +304,8 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     js = bundelan(); l, g = utama(js)
-    u = open(os.path.join(bundel_baru.AKAR, 'baru/js/layar/uang.js'), encoding='utf-8').read()
-    for nama, wajib in STATIS:
+    for st in STATIS:
+        nama, wajib = st[0], st[1]; u = open(os.path.join(bundel_baru.AKAR, st[2] if len(st) > 2 else 'baru/js/layar/uang.js'), encoding='utf-8').read()
         kurang = [x for x in wajib if x not in u]
         if kurang: g.append('statis uang.js · ' + nama + ' → tidak ada: ' + ' | '.join(kurang))
         else: l += 1
