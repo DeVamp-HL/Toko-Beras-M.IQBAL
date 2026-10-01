@@ -302,8 +302,14 @@ export function pasangLayarUang(akar, opsi) {
     }
     // putaran 3 AAL1 (susulan): arsip yang berjalan di perangkat lain bisa memindah satu–dua potongan lagi sebelum melihat pembatalan — arsip dibaca ulang
     // sekali sebelum berita acara 'dibatalkan', sisanya ikut dikembalikan
-    const balik = (sudah, total) => set({ progres: { sudah, total, satuan: 'dokumen dikembalikan dari arsip' } });
-    try { await pulihkanArsip(tahun, r.pulih, balik); const sisaA = await bacaArsipTahun(tahun); if (sisaA.length) await pulihkanArsip(tahun, sisaA, balik); } catch (e) { set({ sibuk: false, progres: null, kabar: 'Pengembalian terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan" untuk meneruskan pembatalan', kabarAwas: true }); return false; }
+    // TRV6-EKOR-1: ekor ini berhenti bila tutup buku tahun itu diubah perangkat lain (BK.pulihBerhentiBuku: bukan lagi 'membatalkan' percobaan ini, atau bukan
+    // pemegang) — dibaca sebelum tiap langkah dan sesudah SETIAP potongan, termasuk yang terakhir. Potongan yang mendarat lalu membuatnya berhenti diarsipkan
+    // lagi HANYA bila percobaan lain sudah terkunci / selesai (BK.pulihBalikBuku); potongan yang lolos pemeriksaannya sah kembali (tidak diarsipkan lagi)
+    let henti = '', potongTadi = []; const cekEkor = () => { henti = BK.pulihBerhentiBuku(tahun, lokal(), r.percobaan); if (henti) throw new Error(henti); };
+    const kembalikan = (daftar) => { let tadi = 0; return pulihkanArsip(tahun, daftar, (sudah, total) => { set({ progres: { sudah, total, satuan: 'dokumen dikembalikan dari arsip' } }); potongTadi = daftar.slice(tadi, sudah); tadi = sudah; cekEkor(); potongTadi = []; }); };
+    try { cekEkor(); await kembalikan(r.pulih); cekEkor(); const sisaA = await bacaArsipTahun(tahun); cekEkor(); if (sisaA.length) await kembalikan(sisaA); cekEkor(); } catch (e) {
+      const ulang = henti ? BK.pulihBalikBuku(tahun, potongTadi, r.percobaan) : []; if (ulang.length) { try { await arsipkanDokumen(tahun, ulang); } catch (e2) { console.error(e2); } }
+      set({ sibuk: false, progres: null, kabar: henti || 'Pengembalian terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan" untuk meneruskan pembatalan', kabarAwas: true }); return false; }
     let h2 = null; try { h2 = await tulisDokumen([r.akhir], [], { tunggu: true }); } catch (e) { h2 = { gagal: true }; } if (!h2 || h2.gagal || h2.antre) { set({ sibuk: false, progres: null, kabar: 'Berita acara belum tercatat dibatalkan — ketuk "Lanjutkan"', kabarAwas: true }); return false; }
     setelTitik(r.titik); set({ sibuk: false, progres: null, langkahB: LANGKAH_KOSONG(), parafB: { owner: false, saksi: false }, sesudahLive: null, bukaB: 'periksa', kabar: r.patch.kabar, kabarAwas: false }); return true;
   }

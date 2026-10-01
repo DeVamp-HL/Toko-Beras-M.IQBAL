@@ -50,6 +50,14 @@ Yang dijaga:
   P4-4  hasil beku periksa ulang = dokumen TERSENDIRI tanpa kolom status (pengaturan/periksaArsip<tahun>) bertanda percobaan: yang mendarat telat sesudah
         dibatalkan / selesai tidak mengubah status berita acara; hasil beku percobaan lama tidak dipakai percobaan berikut
   P4-5  lembar K6 sesudah kunci: baris yang sisi mesinnya tidak bisa dihitung bertanda "?" (bukan "≠"); kalimat lembar = kalimat pita (bkKalimatPeriksa)
+  TRV6-EKOR-1 (tinjauan rules v6) — ekor pembatalan (kembalikan arsip → baca ulang → kembalikan sisa → 'dibatalkan'); yang dijalankan = jalankanBatal
+        APA ADANYA dari uang.js (batal_uang membaca berkasnya), HP A beku di satu titik, perangkat lain bekerja, HP A hidup lagi:
+        a          Mac B ambil alih → batal tuntas → mulai lagi → arsip → selesai; potongan 2 mendarat sesudahnya → HP A berhenti, potongan itu diarsipkan lagi,
+                   arsip percobaan baru tidak dikembalikan, tidak ada berita acara; angka = sebelum HP A hidup lagi; tetap 'selesai'
+        titik 1–4  sama, beku sebelum pengembalian pertama / sebelum baca ulang / saat baca ulang / sebelum 'dibatalkan' → berhenti di titik itu
+        b          pembatalan biasa satu perangkat (dari terkunci & berjalan): tuntas seperti sebelum, penjaga tidak pernah berbunyi
+        c          Mac B batal tuntas, belum mulai lagi → HP A berhenti, TIDAK mengarsipkan (catatan itu tempatnya di buku hidup)
+        pemegang · dua tab (percobaan lain, pemegang sama) · berjalan (percobaan baru baru kiriman 1) · balik (pulihBalikBuku: percobaan sama = tidak)
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -556,6 +564,111 @@ coba('P4-5', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = 
     kas.length === 4 && kas.every(function (b) { return b.b === null && b.tanda === '?'; }) && lain.length === 8 && lain.every(function (b) { return b.tanda === '✓'; }) && /4 baris belum bisa dihitung/.test(kal) && !/TIDAK SAMA/.test(kal),
     J([PU.baris.map(function (b) { return b.id + ' ' + b.tanda; }), kal])); });
 
+// ---- TRV6-EKOR-1 (tinjauan rules v6) · EKOR PEMBATALAN. HP A (pemegang) membatalkan dari 'terkunci'; semua kiriman tarik masuk; HP A BEKU di tengah ekor
+//      (pengembalian arsip → baca arsip ulang → kembalikan sisanya → 'dibatalkan'); perangkat lain bekerja; HP A hidup lagi. Dulu penjaga pemegang hanya per
+//      kiriman tarik → HP A mengembalikan sisa arsip + SELURUH arsip tahun itu (termasuk arsip percobaan baru) ke buku hidup: 'selesai' + angka DOBEL tanpa pita.
+//      Yang dijalankan = fungsi jalankanBatal APA ADANYA dari uang.js (buatBatalUang, dibaca dari berkasnya oleh Python) dengan pengganti: tulisDokumen = server
+//      yang mencap jam ubah + model kecil v6 untuk berita acara; pulihkanArsip = firebase.js pulihkanBerkas (potongan 18, progres sesudah tiap potongan mendarat);
+//      titik "beku" = kait di antara langkah. Perangkat lain memakai lapisan logika di "server" yang sama (cache kotak pasir).
+var EK = null;
+// model kecil rules v6 (bukan model lengkap — itu periksa_rules.py): percobaan LAIN hanya di atas 'dibatalkan' dengan jam mulai lebih baru; 'selesai' tidak mundur
+function v6Tolak(baru) { var lama = acara(Number(baru.tahun)); if (!lama) return false; var pl = String((lama.paraf || {}).pada || ''), pb = String((baru.paraf || {}).pada || '');
+  if (pl === pb) return lama.status === 'selesai' && baru.status !== 'selesai'; return !(lama.status === 'dibatalkan' && pb > pl); }
+function kaitEk(nama) { var f = EK.kait[nama]; if (!f) return; delete EK.kait[nama]; f(); if (nama === EK.beku) { EK.jepret = jepretEk(); EK.bangun = true; } }
+function jepretEk() { var B = barisBuku('2027-01-05', '2027-01-05');
+  return J({ jual: ambilPenjualanSemua().length, arsip: arsipSimulasi().filter(function (a) { return a.tahun === 2026; }).length, pembuka: nPembukaMentah(2026), baris: baris(B) }); }
+function pulihPotongEk(tahun, potong) { terapkanKeCache(potong.map(function (x) { return { koleksi: x.koleksi, data: x.dok }; }));
+  _arsip = _arsip.filter(function (a) { return !(a.tahun === tahun && potong.some(function (x) { return x.koleksi === a.koleksi && String(x.idAsli) === String(a.idAsli); })); }); }
+// BK = namespace tutup-buku-logika.js: BK.<nama> dicari di lingkup bundel jsc (eval NAMA fungsi yang dipakai uang.js — kode uji, tidak ada masukan luar)
+var ALAT_EK = { set: function (p) { Object.assign(EK.S, p); }, lokal: function () { return EK.L; }, waktu: function () { return EK.W; }, setelTitik: function () {}, LANGKAH_KOSONG: function () { return {}; },
+  BK: new Proxy({}, { get: function (t, k) { return typeof k === 'string' && /^[A-Za-z_]\w*$/.test(k) ? eval(k) : undefined; } }),
+  tulisDokumen: async function (daftar, hapus) { var ba = (daftar || []).filter(function (x) { return x.koleksi === 'tutupBukuAcara'; }); if (EK.bangun) EK.acaraSesudah += ba.length;
+    if (ba.some(function (x) { return v6Tolak(x.data); })) return { gagal: true, pesan: 'permission-denied (model v6)' };
+    kirimJam({ dokumen: daftar || [], hapus: hapus || [] }); if (!ba.some(function (x) { return x.data.status === 'dibatalkan'; }) && nPembukaMentah(2026) === 0) kaitEk('kirimanAkhir'); return { ok: true }; },
+  pulihkanArsip: async function (tahun, daftar, progres) { EK.fase += 1; var fase = EK.fase;
+    for (var i = 0; i < daftar.length; i += 18) { kaitEk('pulih:' + fase + ':' + (i / 18 + 1)); var potong = daftar.slice(i, i + 18); pulihPotongEk(tahun, potong);
+      EK.potong.push((EK.bangun ? 'sesudah ' : '') + fase + ':' + (i / 18 + 1) + ':' + potong.length); if (progres) progres(Math.min(i + 18, daftar.length), daftar.length); }
+    kaitEk('sesudahPulih:' + fase); return { ok: true, n: daftar.length }; },
+  bacaArsipTahun: async function (tahun) { EK.baca += 1; kaitEk('baca:' + EK.baca); if (EK.bangun) EK.bacaSesudah += 1; return bacaArsipTahun(tahun); },
+  arsipkanDokumen: async function (tahun, daftar, progres) { EK.arsipUlang.push(daftar.length); return arsipkanDokumen(tahun, daftar, progres); } };
+function batalHPA(kait, beku) {
+  EK = { S: {}, L: HPA, W: jam('2027-01-05T10:00:00+07:00'), kait: kait || {}, beku: beku || '', bangun: false, jepret: '', fase: 0, baca: 0, bacaSesudah: 0, acaraSesudah: 0, potong: [], arsipUlang: [], hasil: undefined };
+  buatBatalUang(ALAT_EK)(2026).then(function (x) { EK.hasil = x; }, function (e) { EK.hasil = 'JATUH: ' + (e && e.message ? e.message : e); }); drainMicrotasks(); return EK;
+}
+// HP A mengunci 2026 (pemegang), arsip habis, lalu mengetuk "batalkan" → jalankanBatal (dijalankan batalHPA)
+function siapEk() { kotak(40); var W0 = jam('2027-01-05T10:00:00+07:00'); var s0 = baris(barisTahun(2026)), n0 = ambilPenjualanSemua().length; var R0 = susunKunci(2026, D, W0, HPA); (R0.kiriman || []).forEach(kirimJam);
+  arsipkanDokumen(2026, arsipBuku(2026).daftar); return { s0: s0, nJual: n0, P0: R0.acara ? String(R0.acara.paraf.pada) : '', tolak: R0.tolak || '', status: (acara(2026) || {}).status, arsip: arsipSimulasi().filter(function (a) { return a.tahun === 2026; }).length }; }
+// Mac B (≥ 60 menit kemudian): ambil alih → tuntaskan pembatalan → mulai lagi (percobaan baru) → arsip → selesai
+function macAlih() { var y = susunAmbilAlih(2026, MACB, jam('2027-01-05T12:00:00+07:00'), true); if (y.dokumen) kirimJam(y); EK.alih = y.tolak || 'ok'; }
+function macBatal() { macAlih(); var B2 = susunBatal(2026, bacaArsip26(), jam('2027-01-05T12:05:00+07:00'), MACB); (B2.kiriman || []).forEach(kirimJam); if (B2.akhir) { pulihkanArsip(2026, B2.pulih); kirimJam({ dokumen: [B2.akhir] }); } EK.batalB = B2.tolak || 'ok'; }
+function macMulai() { macBatal(); var W3 = jam('2027-01-05T12:10:00+07:00'); var R2 = susunKunci(2026, D, W3, MACB); EK.R2 = R2; EK.P1 = R2.acara ? String(R2.acara.paraf.pada) : ''; return W3; }
+function macSelesai() { var W3 = macMulai(); (EK.R2.kiriman || []).forEach(kirimJam); arsipkanDokumen(2026, arsipBuku(2026).daftar); var PA = susunPeriksaArsip(2026, W3, MACB); if (PA.dokumen) kirimJam({ dokumen: PA.dokumen });
+  var SL = susunSelesai(2026, 'cad2.json', W3, true, MACB); if (!SL.tolak) kirimJam(SL); EK.selesaiB = (EK.R2.tolak || '') + (SL.tolak || ''); }
+var KAL_EKOR = /^Pembatalan tutup buku 2026 dihentikan: tutup bukunya sudah diubah dari perangkat lain \(/;
+// (a) + tiap titik pemeriksaan: HP A beku di titik itu; Mac B ambil alih, batal tuntas, mulai lagi, arsip, selesai; HP A hidup lagi → berhenti, tidak mengembalikan
+//     arsip percobaan baru, tidak menulis berita acara; angka = sebelum HP A hidup lagi; berita acara tetap 'selesai' percobaan baru
+function cekSelesaiEk(nama, ket, x, syarat) { var a = acara(2026) || {};
+  ok('TRV6-EKOR ' + nama + ' · ' + ket, x.alih === 'ok' && x.batalB === 'ok' && x.selesaiB === '' && x.bangun && x.hasil === false && KAL_EKOR.test(x.S.kabar || '') && /sudah ditutup lagi sampai selesai/.test(x.S.kabar || '') && !!x.S.kabarAwas
+    && x.acaraSesudah === 0 && jepretEk() === x.jepret && a.status === 'selesai' && String(a.paraf.pada) === x.P1 && x.P1 !== String((x.siap || {}).P0) && kemajuanBuku() === null && syarat,
+    J([x.alih, x.batalB, x.selesaiB, x.hasil, x.S.kabar, x.acaraSesudah, x.potong.filter(function (p) { return /^sesudah/.test(p); }), x.bacaSesudah, x.arsipUlang, jepretEk() === x.jepret ? 'angka sama' : 'ANGKA BEDA: ' + jepretEk() + ' vs ' + x.jepret, a.status])); }
+var sesudahEk = function (x) { return x.potong.filter(function (p) { return /^sesudah/.test(p); }); };
+coba('TRV6-EKOR a', function () { var S0 = siapEk(); var x = batalHPA({ 'pulih:1:2': macSelesai }, 'pulih:1:2'); x.siap = S0;
+  cekSelesaiEk('a', 'HP A beku sesudah potongan pengembalian 1 (' + S0.arsip + ' catatan arsip); potongan 2 mendarat sesudah Mac B menyelesaikan percobaan baru → HP A berhenti di potongan itu, mengarsipkannya lagi (18), tidak membaca / mengembalikan arsip percobaan baru',
+    x, S0.tolak === '' && S0.arsip > 36 && J(sesudahEk(x)) === J(['sesudah 1:2:18']) && J(x.arsipUlang) === J([18]) && x.bacaSesudah === 0); });
+coba('TRV6-EKOR titik 1', function () { var S0 = siapEk(); var x = batalHPA({ kirimanAkhir: macSelesai }, 'kirimanAkhir'); x.siap = S0;
+  cekSelesaiEk('titik 1', 'beku sesudah kiriman tarik terakhir, SEBELUM pengembalian pertama → tidak satu potongan pun dikembalikan', x, sesudahEk(x).length === 0 && x.arsipUlang.length === 0); });
+coba('TRV6-EKOR titik 2', function () { var S0 = siapEk(); var x = batalHPA({ 'sesudahPulih:1': macSelesai }, 'sesudahPulih:1'); x.siap = S0;
+  cekSelesaiEk('titik 2', 'beku sesudah pengembalian pertama tuntas, SEBELUM arsip dibaca ulang → arsip percobaan baru tidak dibaca; potongan yang sah kembali tidak diarsipkan lagi', x, x.bacaSesudah === 0 && sesudahEk(x).length === 0 && x.arsipUlang.length === 0); });
+coba('TRV6-EKOR titik 3', function () { var S0 = siapEk(); var x = batalHPA({ 'baca:2': macSelesai }, 'baca:2'); x.siap = S0;
+  cekSelesaiEk('titik 3', 'beku saat arsip dibaca ulang (yang terbaca = SELURUH arsip percobaan baru), SEBELUM pengembalian kedua → tidak ada yang dikembalikan', x, sesudahEk(x).length === 0 && x.fase === 1 && x.arsipUlang.length === 0); });
+coba('TRV6-EKOR titik 4', function () { var S0 = siapEk(); var telat = null;
+  // satu potongan arsip yang mendarat telat (P3-AAL1 susulan) → arsip yang dibaca ulang berisi satu catatan → pengembalian kedua jalan; beku sesudahnya, SEBELUM 'dibatalkan'
+  var x = batalHPA({ 'baca:2': function () { var d = arsipBuku(2026).daftar; telat = d.length; if (d.length) arsipkanDokumen(2026, d.slice(0, 1)); }, 'sesudahPulih:2': macSelesai }, 'sesudahPulih:2'); x.siap = S0;
+  cekSelesaiEk('titik 4', 'beku sesudah pengembalian kedua, SEBELUM berita acara dibatalkan → tidak menulis berita acara', x, telat > 0 && x.fase === 2 && x.arsipUlang.length === 0); });
+// (c) Mac B membatalkan tuntas lalu BELUM mulai lagi → HP A berhenti; potongan yang mendarat TIDAK diarsipkan lagi (tempatnya di buku hidup)
+coba('TRV6-EKOR c', function () { var S0 = siapEk(); var x = batalHPA({ 'pulih:1:2': macBatal }, 'pulih:1:2'); var a = acara(2026) || {};
+  ok('TRV6-EKOR c · Mac B ambil alih & batal tuntas (belum mulai lagi); HP A hidup lagi → berhenti ("sudah dibatalkan tuntas"), tidak menulis berita acara, tidak mengarsipkan apa pun; penjualan 2026 utuh, arsip 2026 kosong, saldo pembuka 0',
+    x.alih === 'ok' && x.batalB === 'ok' && x.hasil === false && KAL_EKOR.test(x.S.kabar || '') && /sudah dibatalkan tuntas/.test(x.S.kabar || '') && x.acaraSesudah === 0 && x.arsipUlang.length === 0 && J(sesudahEk(x)) === J(['sesudah 1:2:18'])
+    && a.status === 'dibatalkan' && ambilPenjualanSemua().length === S0.nJual && arsipSimulasi().filter(function (q) { return q.tahun === 2026; }).length === 0 && nPembukaMentah(2026) === 0 && jepretEk() === x.jepret && samaBaris(S0.s0, baris(barisTahun(2026))) && kemajuanBuku() === null,
+    J([x.alih, x.batalB, x.hasil, x.S.kabar, x.acaraSesudah, x.arsipUlang, sesudahEk(x), a.status, ambilPenjualanSemua().length + '/' + S0.nJual, nPembukaMentah(2026)])); });
+// pemegang: Mac B baru mengambil alih (masih 'membatalkan' percobaan yang sama) → HP A berhenti, tidak mengarsipkan apa pun; Mac B menuntaskan → angka seperti semula
+coba('TRV6-EKOR pemegang', function () { var S0 = siapEk(); var x = batalHPA({ 'pulih:1:2': macAlih }, 'pulih:1:2'); var a1 = acara(2026) || {};
+  var B2 = susunBatal(2026, bacaArsip26(), jam('2027-01-05T12:30:00+07:00'), MACB); (B2.kiriman || []).forEach(kirimJam); if (B2.akhir) { pulihkanArsip(2026, B2.pulih); kirimJam({ dokumen: [B2.akhir] }); }
+  ok('TRV6-EKOR pemegang · sesudah diambil alih Mac B HP A berhenti ("sedang dibatalkan di Mac toko contoh"), tidak menulis berita acara / mengarsipkan; Mac B menuntaskan → dibatalkan, penjualan 2026 utuh, arsip kosong',
+    x.alih === 'ok' && x.hasil === false && KAL_EKOR.test(x.S.kabar || '') && /sedang dibatalkan di Mac toko contoh/.test(x.S.kabar || '') && x.acaraSesudah === 0 && x.arsipUlang.length === 0 && a1.status === 'membatalkan' && a1.pemegang.id === 'p-macb'
+    && !B2.tolak && acara(2026).status === 'dibatalkan' && ambilPenjualanSemua().length === S0.nJual && arsipSimulasi().filter(function (q) { return q.tahun === 2026; }).length === 0 && nPembukaMentah(2026) === 0 && kemajuanBuku() === null,
+    J([x.alih, x.hasil, x.S.kabar, x.acaraSesudah, x.arsipUlang, a1.status, B2.tolak, acara(2026).status, ambilPenjualanSemua().length + '/' + S0.nJual])); });
+// percobaan: DUA TAB di HP A (pemegang sama). Tab 1 beku di ekor; tab 2 menuntaskan pembatalan itu, mulai lagi (percobaan baru, HP A), mengunci, mengarsip, lalu
+//      mulai MEMBATALKAN percobaan baru (kiriman masuk, ekornya belum) → tab 1 hidup lagi: 'membatalkan' + pemegang sama, tapi percobaan lain → berhenti
+coba('TRV6-EKOR dua tab', function () { var S0 = siapEk(); var B3 = null;
+  var x = batalHPA({ 'pulih:1:2': function () { var B1 = susunBatal(2026, bacaArsip26(), jam('2027-01-05T10:20:00+07:00'), HPA); (B1.kiriman || []).forEach(kirimJam); if (B1.akhir) { pulihkanArsip(2026, B1.pulih); kirimJam({ dokumen: [B1.akhir] }); }
+    var R2 = susunKunci(2026, D, jam('2027-01-05T10:30:00+07:00'), HPA); (R2.kiriman || []).forEach(kirimJam); arsipkanDokumen(2026, arsipBuku(2026).daftar); EK.P1 = R2.acara ? String(R2.acara.paraf.pada) : '';
+    B3 = susunBatal(2026, bacaArsip26(), jam('2027-01-05T10:40:00+07:00'), HPA); (B3.kiriman || []).forEach(kirimJam); } }, 'pulih:1:2');
+  var a1 = acara(2026) || {}; if (B3 && B3.akhir) { pulihkanArsip(2026, B3.pulih); kirimJam({ dokumen: [B3.akhir] }); }
+  ok('TRV6-EKOR dua tab · tab 1 berhenti (percobaan lain sedang dibatalkan di perangkat yang sama), tidak menulis berita acara, tidak mengarsipkan; tab 2 menuntaskan → dibatalkan, penjualan 2026 utuh, arsip kosong',
+    !!B3 && !B3.tolak && x.hasil === false && KAL_EKOR.test(x.S.kabar || '') && /sedang dibatalkan di HP owner contoh/.test(x.S.kabar || '') && x.acaraSesudah === 0 && x.arsipUlang.length === 0 && a1.status === 'membatalkan' && String(a1.paraf.pada) === EK.P1 && EK.P1 !== S0.P0
+    && acara(2026).status === 'dibatalkan' && ambilPenjualanSemua().length === S0.nJual && arsipSimulasi().filter(function (q) { return q.tahun === 2026; }).length === 0 && nPembukaMentah(2026) === 0 && kemajuanBuku() === null,
+    J([B3 && B3.tolak, x.hasil, x.S.kabar, x.acaraSesudah, x.arsipUlang, a1.status, acara(2026).status, ambilPenjualanSemua().length + '/' + S0.nJual])); });
+// berjalan: Mac B batal tuntas lalu mulai lagi, baru kiriman 1 masuk (percobaan baru 'berjalan' — tahun 2026 masih terbuka) → HP A berhenti, TIDAK mengarsipkan
+coba('TRV6-EKOR berjalan', function () { var S0 = siapEk(); var x = batalHPA({ 'pulih:1:2': function () { macMulai(); if (EK.R2.kiriman) kirimJam(EK.R2.kiriman[0]); } }, 'pulih:1:2'); var a = acara(2026) || {};
+  ok('TRV6-EKOR berjalan · percobaan baru baru berjalan (' + ((EK.R2 || {}).kiriman || []).length + ' kiriman, 1 masuk) → HP A berhenti ("sedang ditutup lagi"), tidak mengarsipkan; penjualan 2026 tetap di buku hidup, angka = sebelum HP A hidup lagi',
+    x.hasil === false && KAL_EKOR.test(x.S.kabar || '') && /sedang ditutup lagi/.test(x.S.kabar || '') && x.acaraSesudah === 0 && x.arsipUlang.length === 0 && a.status === 'berjalan' && ((EK.R2 || {}).kiriman || []).length > 1
+    && ambilPenjualanSemua().length === S0.nJual && jepretEk() === x.jepret, J([x.hasil, x.S.kabar, x.acaraSesudah, x.arsipUlang, a.status, ambilPenjualanSemua().length + '/' + S0.nJual])); });
+// (b) pembatalan biasa satu perangkat tanpa gangguan: tuntas persis seperti sebelum (penjaga tidak pernah berbunyi) — dari 'terkunci' (arsip > 2 potongan) & 'berjalan'
+coba('TRV6-EKOR b', function () { var S0 = siapEk(); var x = batalHPA(); var a = acara(2026) || {}; var nP = Math.ceil(S0.arsip / 18);
+  ok('TRV6-EKOR b · dari terkunci (' + S0.arsip + ' catatan arsip, ' + nP + ' potongan): tuntas — dibatalkan, kabar biasa, tanpa arsip ulang; penjualan 2026 utuh, arsip kosong, saldo pembuka 0, 12 baris 2026 = sebelum tutup buku',
+    x.hasil === true && /^Tutup buku 2026 dibatalkan — /.test(x.S.kabar || '') && !x.S.kabarAwas && x.arsipUlang.length === 0 && x.potong.length === nP && nP > 2 && a.status === 'dibatalkan' && String(a.paraf.pada) === S0.P0
+    && ambilPenjualanSemua().length === S0.nJual && arsipSimulasi().filter(function (q) { return q.tahun === 2026; }).length === 0 && nPembukaMentah(2026) === 0 && samaBaris(S0.s0, baris(barisTahun(2026))) && kemajuanBuku() === null,
+    J([x.hasil, x.S.kabar, x.arsipUlang, x.potong.length + '/' + nP, a.status, ambilPenjualanSemua().length + '/' + S0.nJual, nPembukaMentah(2026)]));
+  kotak(40); var R0 = susunKunci(2026, D, jam('2027-01-05T10:00:00+07:00'), HPA); kirimJam(R0.kiriman[0]); var y = batalHPA();
+  ok('TRV6-EKOR b · dari berjalan (tanpa arsip): tuntas — dibatalkan, saldo pembuka 0', y.hasil === true && !y.S.kabarAwas && acara(2026).status === 'dibatalkan' && nPembukaMentah(2026) === 0 && kemajuanBuku() === null, J([y.hasil, y.S.kabar, acara(2026).status])); });
+// pulihBalikBuku: percobaan yang SAMA (mis. terkunci telat dari zaman v5) tidak diarsipkan lagi; percobaan lain terkunci → bentuk arsipkanDokumen ({ koleksi, id, data })
+coba('TRV6-EKOR balik', function () { kotak(5); var d = arsipBuku(2026).daftar.slice(0, 2).map(function (x) { return { koleksi: x.koleksi, idAsli: x.id, dok: x.data }; });
+  pasok('tutupBukuAcara', [{ id: '2026', tahun: 2026, status: 'terkunci', paraf: { owner: true, saksi: true, pada: 'P0' } }]);
+  var sama = typeof pulihBalikBuku === 'function' ? pulihBalikBuku(2026, d, 'P0') : null, lain = typeof pulihBalikBuku === 'function' ? pulihBalikBuku(2026, d, 'P-lama') : null;
+  ok('TRV6-EKOR balik · percobaan sama = tidak diarsipkan lagi; percobaan lain terkunci = { koleksi, id: idAsli, data: dok } (bentuk arsipBuku/arsipkanDokumen)',
+    !!sama && sama.length === 0 && !!lain && lain.length === 2 && lain.every(function (x, i) { return x.koleksi === d[i].koleksi && x.id === d[i].idAsli && x.data === d[i].dok; }), J([sama, lain && lain.map(function (x) { return [x.koleksi, x.id]; })])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -592,12 +705,32 @@ def cek_tiap_potongan():
     return UANG_TIAP_POTONGAN in open(os.path.join(bundel_baru.AKAR, 'baru/js/layar/uang.js'), encoding='utf-8').read()
 
 
-def utama(js, cek=None):
+def batal_uang(teks=None):
+    """TRV6-EKOR-1: fungsi jalankanBatal APA ADANYA dari uang.js (teks = isi uang.js; bawaan dibaca dari berkasnya), dibungkus buatBatalUang(A) supaya
+    set / lokal / waktu / BK / tulisDokumen / pulihkanArsip / bacaArsipTahun / arsipkanDokumen-nya diganti kotak pasir (ALAT_EK di SKENARIO)."""
+    u = teks if teks is not None else open(os.path.join(bundel_baru.AKAR, 'baru/js/layar/uang.js'), encoding='utf-8').read()
+    a = u.index('  async function jalankanBatal(tahun, arsipAda) {'); b = u.index('\n  const bandingB = ', a)
+    return ('function buatBatalUang(A) { var set = A.set, lokal = A.lokal, waktu = A.waktu, BK = A.BK, bacaArsipTahun = A.bacaArsipTahun, pulihkanArsip = A.pulihkanArsip,'
+            ' tulisDokumen = A.tulisDokumen, arsipkanDokumen = A.arsipkanDokumen, setelTitik = A.setelTitik, LANGKAH_KOSONG = A.LANGKAH_KOSONG;\n' + u[a:b] + '\n  return jalankanBatal; }\n')
+
+
+def utama(js, cek=None, uang=None):
     cek = cek_tiap_potongan() if cek is None else cek
-    h, e = jalan(JAM + js + '\nvar UANG_CEK_TIAP_POTONGAN = ' + ('true' if cek else 'false') + ';\nvar KOTAK = ' + json.dumps(uji_uang_baru.KOTAK) + ';\n' + SKENARIO)
+    h, e = jalan(JAM + js + '\n' + batal_uang(uang) + '\nvar UANG_CEK_TIAP_POTONGAN = ' + ('true' if cek else 'false') + ';\nvar KOTAK = ' + json.dumps(uji_uang_baru.KOTAK) + ';\n' + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e]
     return h['lulus'], h['gagal']
 
+
+# TRV6-EKOR-1: ekor pembatalan uang.js sesudah tambalan (BARU) dan sebelumnya (LAMA) — kontrol "bentuk lama" memasang LAMA di tempat BARU
+EKOR_BARU = '\n'.join([
+    "    let henti = '', potongTadi = []; const cekEkor = () => { henti = BK.pulihBerhentiBuku(tahun, lokal(), r.percobaan); if (henti) throw new Error(henti); };",
+    "    const kembalikan = (daftar) => { let tadi = 0; return pulihkanArsip(tahun, daftar, (sudah, total) => { set({ progres: { sudah, total, satuan: 'dokumen dikembalikan dari arsip' } }); potongTadi = daftar.slice(tadi, sudah); tadi = sudah; cekEkor(); potongTadi = []; }); };",
+    "    try { cekEkor(); await kembalikan(r.pulih); cekEkor(); const sisaA = await bacaArsipTahun(tahun); cekEkor(); if (sisaA.length) await kembalikan(sisaA); cekEkor(); } catch (e) {",
+    "      const ulang = henti ? BK.pulihBalikBuku(tahun, potongTadi, r.percobaan) : []; if (ulang.length) { try { await arsipkanDokumen(tahun, ulang); } catch (e2) { console.error(e2); } }",
+    "      set({ sibuk: false, progres: null, kabar: henti || 'Pengembalian terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk \"Lanjutkan\" untuk meneruskan pembatalan', kabarAwas: true }); return false; }"])
+EKOR_LAMA = '\n'.join([
+    "    const balik = (sudah, total) => set({ progres: { sudah, total, satuan: 'dokumen dikembalikan dari arsip' } });",
+    "    try { await pulihkanArsip(tahun, r.pulih, balik); const sisaA = await bacaArsipTahun(tahun); if (sisaA.length) await pulihkanArsip(tahun, sisaA, balik); } catch (e) { set({ sibuk: false, progres: null, kabar: 'Pengembalian terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk \"Lanjutkan\" untuk meneruskan pembatalan', kabarAwas: true }); return false; }"])
 
 STATIS = [
     ('kiriman bertahap menunggu pengakuan server & berhenti dengan kalimat kiriman ke-n', ["await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true })", "kabar: BK.kabarBerhentiBuku(k.lanjutan ? 'lanjut' : 'kunci', tahun, k.ke, k.total, h, k)"]),
@@ -613,7 +746,11 @@ STATIS = [
     ('putaran 3 AAL1 · arsip berhenti di antara potongan bila berita acara tahun itu bukan lagi terkunci', ["potongTadi = A.daftar.slice(tadi, sudah); tadi = sudah; henti = BK.arsipBerhentiBuku(tahun, lokal()); if (henti) throw new Error(henti);", "let henti = BK.arsipBerhentiBuku(tahun, lokal());", "if (henti) { set({ sibuk: false, progres: null, kabar: henti, kabarAwas: true }); return false; }"]),
     ('putaran 3 AAL1 · tombol pita .seg.mati di layar Uang sungguh tidak bisa diketuk', [".layar-uang .seg.mati { opacity: 0.45; pointer-events: none; }"], 'baru/css/uang.css'),
     ('putaran 3 AAL1 (susulan) · arsip yang berhenti karena pembatalan mengembalikan potongan terakhirnya sendiri', ["const balik = henti ? BK.arsipBalikBuku(tahun, potongTadi) : []; if (balik.length) { try { await pulihkanArsip(tahun, balik); }", "potongTadi = A.daftar.slice(tadi, sudah); tadi = sudah;"]),
-    ('putaran 3 AAL1 (susulan) · pembatalan membaca arsip ulang sekali sebelum berita acara dibatalkan', ["const sisaA = await bacaArsipTahun(tahun); if (sisaA.length) await pulihkanArsip(tahun, sisaA, balik);"]),
+    ('putaran 3 AAL1 (susulan) · pembatalan membaca arsip ulang sekali sebelum berita acara dibatalkan', ["const sisaA = await bacaArsipTahun(tahun); cekEkor(); if (sisaA.length) await kembalikan(sisaA);", "const kembalikan = (daftar) => { let tadi = 0; return pulihkanArsip(tahun, daftar, (sudah, total) =>"]),
+    ('TRV6-EKOR-1 · ekor pembatalan: BK.pulihBerhentiBuku sebelum tiap langkah & sesudah SETIAP potongan; potongan yang membuatnya berhenti → BK.pulihBalikBuku → arsipkanDokumen',
+     ["const cekEkor = () => { henti = BK.pulihBerhentiBuku(tahun, lokal(), r.percobaan); if (henti) throw new Error(henti); };", "potongTadi = daftar.slice(tadi, sudah); tadi = sudah; cekEkor(); potongTadi = []; });",
+      "try { cekEkor(); await kembalikan(r.pulih); cekEkor(); const sisaA = await bacaArsipTahun(tahun); cekEkor(); if (sisaA.length) await kembalikan(sisaA); cekEkor(); } catch (e) {",
+      "const ulang = henti ? BK.pulihBalikBuku(tahun, potongTadi, r.percobaan) : []; if (ulang.length) { try { await arsipkanDokumen(tahun, ulang); }", "kabar: henti || 'Pengembalian terhenti: '"]),
     ('putaran 3 UTBU-1 · hasil periksa ulang dibekukan saat arsip habis (ditulis ke berita acara)', ["const PA = BK.susunPeriksaArsip(tahun, waktu(), lokal()); if (PA.dokumen) { try { await tulisDokumen(PA.dokumen, [], { tunggu: true }); }", "const PU = PA.PU || {"]),
     ('putaran 3 UTBU-2 · kabar sesudah arsip memakai kalimat periksa ulang yang sama (belum bisa dihitung ≠ TIDAK SAMA)', ["' AWAS: ' + BK.bkKalimatPeriksa(PA.PU) + ' — periksa dulu, jangan diselesaikan.'"]),
     ('putaran 3 AAL3 · Lanjutkan menolak tutup buku yang tidak utuh (fase rusak) — tidak meneruskan arsip', ["if (KM.fase === 'rusak') return set({ kabar: KM.teks, kabarAwas: true });"]),
@@ -694,6 +831,27 @@ RUSAK = [
     ('putaran 4 P4-5 · sisi mesin yang tidak bisa dihitung ditandai "≠"', 'baru/js/layar/tutup-buku-logika.js', "tanda: !ada ? '' : !tahu || s === null ? '?' :", "tanda: !ada ? '' : !tahu ? '?' :"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
+    # ---- TRV6-EKOR-1: ekor pembatalan (jalankanBatal uang.js dijalankan apa adanya — berkas yang dirusak ikut dibaca)
+    ('TRV6-EKOR-1 · uang.js bentuk lama (ekor tanpa penjaga, sebelum tambalan)', 'baru/js/layar/uang.js', EKOR_BARU, EKOR_LAMA),
+    ('TRV6-EKOR-1 · uang.js tidak memeriksa SEBELUM pengembalian pertama', 'baru/js/layar/uang.js', "try { cekEkor(); await kembalikan(r.pulih);", "try { await kembalikan(r.pulih);"),
+    ('TRV6-EKOR-1 · uang.js tidak memeriksa SEBELUM arsip dibaca ulang', 'baru/js/layar/uang.js', "await kembalikan(r.pulih); cekEkor(); const sisaA", "await kembalikan(r.pulih); const sisaA"),
+    ('TRV6-EKOR-1 · uang.js tidak memeriksa SEBELUM pengembalian kedua', 'baru/js/layar/uang.js', "const sisaA = await bacaArsipTahun(tahun); cekEkor(); if (sisaA.length)", "const sisaA = await bacaArsipTahun(tahun); if (sisaA.length)"),
+    ('TRV6-EKOR-1 · uang.js tidak memeriksa SEBELUM berita acara dibatalkan', 'baru/js/layar/uang.js', "if (sisaA.length) await kembalikan(sisaA); cekEkor(); } catch (e) {", "if (sisaA.length) await kembalikan(sisaA); } catch (e) {"),
+    ('TRV6-EKOR-1 · uang.js tidak memeriksa sesudah tiap potongan pengembalian', 'baru/js/layar/uang.js', "tadi = sudah; cekEkor(); potongTadi = []; });", "tadi = sudah; potongTadi = []; });"),
+    ('TRV6-EKOR-1 · uang.js tidak mengarsipkan lagi potongan yang membuatnya berhenti', 'baru/js/layar/uang.js', "if (ulang.length) { try { await arsipkanDokumen(tahun, ulang); }", "if (false) { try { await arsipkanDokumen(tahun, ulang); }"),
+    ('TRV6-EKOR-1 · uang.js mengarsipkan lagi potongan yang SAH kembali (lolos pemeriksaannya)', 'baru/js/layar/uang.js', "tadi = sudah; cekEkor(); potongTadi = []; });", "tadi = sudah; cekEkor(); });"),
+    ('TRV6-EKOR-1 · penjaga ekor tidak membaca status (selain membatalkan boleh lanjut)', 'baru/js/layar/tutup-buku-logika.js', "if (a && a.status === 'membatalkan' && bkPercobaan(a) === String(percobaan || '') && !bkBukanPemegang(tahun, L)) return '';",
+     "if (a && bkPercobaan(a) === String(percobaan || '') && !bkBukanPemegang(tahun, L)) return '';"),
+    ('TRV6-EKOR-1 · penjaga ekor tidak membaca percobaan', 'baru/js/layar/tutup-buku-logika.js', "if (a && a.status === 'membatalkan' && bkPercobaan(a) === String(percobaan || '') && !bkBukanPemegang(tahun, L)) return '';",
+     "if (a && a.status === 'membatalkan' && !bkBukanPemegang(tahun, L)) return '';"),
+    ('TRV6-EKOR-1 · penjaga ekor tidak membaca pemegang', 'baru/js/layar/tutup-buku-logika.js', "if (a && a.status === 'membatalkan' && bkPercobaan(a) === String(percobaan || '') && !bkBukanPemegang(tahun, L)) return '';",
+     "if (a && a.status === 'membatalkan' && bkPercobaan(a) === String(percobaan || '')) return '';"),
+    ('TRV6-EKOR-1 · susunBatal tidak mencatat percobaan (penjaga ekor berbunyi palsu)', 'baru/js/layar/tutup-buku-logika.js', "percobaan: bkPercobaan(batal), ", ""),
+    ('TRV6-EKOR-1 · arsip ulang di status mana pun (berjalan / membatalkan / dibatalkan ikut)', 'baru/js/layar/tutup-buku-logika.js', "if (!a || (a.status !== 'terkunci' && a.status !== 'selesai') || bkPercobaan(a) === String(percobaan || '')) return [];",
+     "if (!a || bkPercobaan(a) === String(percobaan || '')) return [];"),
+    ('TRV6-EKOR-1 · arsip ulang juga pada percobaan yang SAMA', 'baru/js/layar/tutup-buku-logika.js', "if (!a || (a.status !== 'terkunci' && a.status !== 'selesai') || bkPercobaan(a) === String(percobaan || '')) return [];",
+     "if (!a || (a.status !== 'terkunci' && a.status !== 'selesai')) return [];"),
+    ('TRV6-EKOR-1 · arsip ulang tidak pernah', 'baru/js/layar/tutup-buku-logika.js', "  return (daftar || []).map((x) => ({ koleksi: x.koleksi, id: x.idAsli, data: x.dok })); }", "  return []; }"),
 ]
 
 if __name__ == '__main__':
@@ -711,9 +869,11 @@ if __name__ == '__main__':
         for nama, berkas, lama, baru in RUSAK:
             asli = open(os.path.join(bundel_baru.AKAR, berkas), encoding='utf-8').read()
             if asli.count(lama) != 1: print('KONTROL BASI  ' + nama); kode = 3; continue
-            js = uji_kunci_periode.satu_lingkup('\n'.join([bundel_baru.PRELUDE] + ['\n// ===== ' + m + ' =====\n' + bundel_baru.polos(
-                (asli.replace(lama, baru) if m == berkas else open(os.path.join(bundel_baru.AKAR, m), encoding='utf-8').read())) for m in MODUL]))
-            l, g = utama(js)
+            if berkas == 'baru/js/layar/uang.js': l, g = utama(bundelan(), uang=asli.replace(lama, baru))   # TRV6-EKOR-1: jalankanBatal dari berkas yang dirusak
+            else:
+                js = uji_kunci_periode.satu_lingkup('\n'.join([bundel_baru.PRELUDE] + ['\n// ===== ' + m + ' =====\n' + bundel_baru.polos(
+                    (asli.replace(lama, baru) if m == berkas else open(os.path.join(bundel_baru.AKAR, m), encoding='utf-8').read())) for m in MODUL]))
+                l, g = utama(js)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:140] if g else '-'))
             if not g: kode = 3
         sys.exit(kode)
