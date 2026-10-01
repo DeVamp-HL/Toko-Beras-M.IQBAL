@@ -224,8 +224,6 @@ function bkKirimanDari(a) {
     return { ke: i + 1, total: n, get: k.get, dokumen, pembuka: dokumen.filter((x) => x.data && x.data.tutupBuku).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id) })), penanda: k.dok.some((d) => d.koleksi === 'tutupBukuAcara') };
   });
 }
-/** Satu kiriman sudah masuk? Batch atomik: dokumen pembukanya ada (cache mentah — tersembunyi dari mesin tapi ada); kiriman penanda = berita acara sudah 'terkunci'. */
-function bkMasuk(k, a) { if (k.pembuka.length) return k.pembuka.every((x) => !!dokDiCache(x.koleksi, x.id)); return !!a && (a.status === 'terkunci' || a.status === 'selesai'); }
 /**
  * §8 no. 4: catatan tutup buku tahun itu yang masih MENUNGGU SERVER di perangkat ini (toko.js dokTertunda) — berita acara, saldo pembuka, penanda (titik kas,
  * pengaturan/tutupBuku). Selama ada, kemajuan = fase 'tunggu' (bukan "n dari N masuk" / "terkunci"), Lanjutkan & Batalkan menolak: server bisa menolaknya nanti.
@@ -270,7 +268,7 @@ export function lanjutBuku(tahun) {
   const a = bkAcara(tahun); if (!a || a.status !== 'berjalan' || !a.rencana || !Array.isArray(a.pembuka)) return { tolak: 'Tidak ada tutup buku ' + tahun + ' yang sedang berjalan' };
   const nT = bkTunda(tahun); if (nT) return { tolak: bkKalimatTunda(tahun, nT) };
   const ub = bkBerubah(a); if (ub) return { tolak: ub };
-  const K = bkKirimanDari(a); const sudah = K.filter((k) => bkMasuk(k, a)).length;
+  const masuk = a.pembuka.filter((x) => !!dokDiCache(x.koleksi, x.data.id)).length;
   // §8 no. 5: patokan pemeriksaan ulang (12 baris HARI INI, pembuka masih tersembunyi) diambil tepat sebelum kiriman pertama sesi ini — dulu saat mulai, jadi
   // penjualan di antara kiriman 1 dan Lanjutkan (hari yang sama) membuat periksa ulang berbunyi palsu
   const hari = hariIniIso(new Date(Date.now())); const HI = barisBuku(hari, hari);
@@ -278,10 +276,12 @@ export function lanjutBuku(tahun) {
   const tanda = a.pembuka.filter((x) => x.data && x.data.penandaBuku); const belumAda = a.pembuka.filter((x) => tanda.indexOf(x) < 0 && !dokDiCache(x.koleksi, x.data.id));
   const akhir = bkTitikKini({ dokumen: tanda.concat(a.penanda || [], [{ koleksi: 'tutupBukuAcara', data: kunci }]) }, tahun);
   const Pt = kpPotong(belumAda.map((x) => ({ dokumen: [x] })).concat([akhir]), dokDiCache, new Date(Date.now())); if (Pt.tolak) return { tolak: Pt.tolak };
-  const belum = Pt.potongan.map((p, i) => ({ ke: sudah + i + 1, total: sudah + Pt.potongan.length, get: p.get, dokumen: p.dokumen,
-    pembuka: p.dokumen.filter((x) => x.data && x.data.tutupBuku).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id) })), penanda: i === Pt.potongan.length - 1 }));
+  // putaran 3 AAL7: satu satuan — kiriman LANJUTAN dinomori 1..n menurut pecahan SEKARANG (nomor rencana saat mulai tidak cocok lagi sesudah pecah ulang);
+  // tiap kiriman membawa jumlah saldo pembuka yang sudah masuk sebelum ia (pita juga menghitung saldo pembuka, bukan kiriman)
+  let m = masuk; const belum = Pt.potongan.map((p, i) => { const pembuka = p.dokumen.filter((x) => x.data && x.data.tutupBuku).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id) }));
+    const k = { ke: i + 1, total: Pt.potongan.length, lanjutan: true, masuk: m, dari: a.pembuka.length, get: p.get, dokumen: p.dokumen, pembuka, penanda: i === Pt.potongan.length - 1 }; m += pembuka.length; return k; });
   const titik = akhir.dokumen.find((x) => x.koleksi === 'pengaturan' && String(x.data.id) === 'titikKas');
-  return { kiriman: belum, sudah, total: sudah + belum.length, titik: titik ? titik.data : null };
+  return { kiriman: belum, sudah: masuk, total: a.pembuka.length, titik: titik ? titik.data : null };
 }
 /**
  * Putaran 3 AAL1: arsip yang sedang berjalan (daftarnya dihitung sekali) berhenti di antara potongan bila berita acara tahun itu di cache bukan lagi 'terkunci'
@@ -313,8 +313,9 @@ export function kemajuanBuku() {
   if (!a) return null; const tahun = Number(a.tahun);
   // §8 no. 4: ada kiriman yang belum diakui server di perangkat ini → bukan "n dari N masuk" / "terkunci" (berita acara di cache bisa versi yang belum diterima)
   const nT = bkTunda(tahun); if (nT) return { tahun, fase: 'tunggu', tunda: nT, teks: bkKalimatTunda(tahun, nT) };
-  if (a.status === 'berjalan') { const K = bkKirimanDari(a); const sudah = K.filter((k) => bkMasuk(k, a)).length;
-    return { tahun, fase: 'pembuka', sudah, total: K.length, teks: 'Tutup buku ' + tahun + ': ' + sudah + ' dari ' + K.length + ' kiriman saldo pembuka sudah masuk. Tahun ' + tahun + ' MASIH TERBUKA (saldo pembuka yang sudah masuk belum dihitung) sampai kiriman terakhir masuk — lanjutkan atau batalkan.' }; }
+  // putaran 3 AAL7: pita menghitung SALDO PEMBUKA yang sudah masuk (dokumen), bukan kiriman rencana — sesudah pecah ulang nomornya tidak cocok lagi
+  if (a.status === 'berjalan') { const P = a.pembuka || []; const sudah = P.filter((x) => !!dokDiCache(x.koleksi, x.data.id)).length;
+    return { tahun, fase: 'pembuka', sudah, total: P.length, teks: 'Tutup buku ' + tahun + ': ' + sudah + ' dari ' + P.length + ' saldo pembuka sudah masuk. Tahun ' + tahun + ' MASIH TERBUKA (saldo pembuka yang sudah masuk belum dihitung) sampai kiriman terakhir masuk — lanjutkan atau batalkan.' }; }
   // putaran 3 AAL3: kiriman penanda yang tertahan di antrean perangkat lain bisa mendarat SESUDAH pembatalan tuntas → 'terkunci' lagi dengan saldo pembuka tidak
   // lengkap. Itu bukan "lanjutkan arsip" (catatan tahun itu akan dipindah, angka salah) — batalkan (susunBatal menarik sisanya), lalu mulai lagi.
   if (a.status === 'terkunci') { const adaP = bkPembukaTahun(tahun).length; if (adaP < Number(a.nPembuka) && bkEra() === tahun) return { tahun, fase: 'rusak', sisaPembuka: adaP, teks: 'Tutup buku ' + tahun + ' tidak utuh: berita acaranya terkunci, tapi saldo pembukanya cuma ' + adaP + ' dari ' + a.nPembuka + ' (kiriman yang tertahan di perangkat lain masuk sesudah pembatalan?). Angka toko SALAH sampai dibereskan — arsip JANGAN diteruskan; ketuk "batalkan", lalu mulai lagi.' }; }
@@ -378,7 +379,7 @@ export function susunSelesai(tahun, namaCadangan2, w, yakin) {
  * acara masih 'berjalan' / 'terkunci', "Lanjutkan" justru meneruskan TUTUP BUKU / arsip → "Batalkan" lagi. Sesudahnya pita ada → "Lanjutkan".
  * h = hasil tulisDokumen ({ gagal, pesan } | { antre } | null). Belum diakui server (antre) → tunggu antrean kosong dulu, lalu langkah menurut pita.
  */
-export function kabarBerhentiBuku(jenis, tahun, ke, total, h) {
+export function kabarBerhentiBuku(jenis, tahun, ke, total, h, info) {
   const sebab = h && h.pesan ? ' — ' + h.pesan : ' — server belum mengaku'; const antre = !!(h && h.antre && !h.gagal);
   const tunggu = ' Kiriman itu masih di perangkat ini, menunggu server — jangan tutup aplikasi; tunggu sampai antrean kosong. ';
   if (jenis === 'batal') {
@@ -386,6 +387,10 @@ export function kabarBerhentiBuku(jenis, tahun, ke, total, h) {
     if (antre) return awal + tunggu + (ke === 1 ? 'Sesudah itu: kalau pita menyebut "Pembatalan tutup buku ' + tahun + ' belum selesai", ketuk "Lanjutkan"; kalau tidak, ketuk "Batalkan" lagi.' : 'Sesudah itu ketuk "Lanjutkan" untuk meneruskan pembatalan.');
     return awal + (ke === 1 ? ' Kiriman ini tidak masuk — ketuk "Batalkan" lagi (selama pita belum menyebut pembatalan, "Lanjutkan" meneruskan tutup buku, bukan pembatalan).' : ' Ketuk "Lanjutkan" untuk meneruskan pembatalan — yang sudah ditarik tidak diulang.');
   }
+  // putaran 3 AAL7: kiriman LANJUTAN (lanjutBuku; info = kirimannya) — berita acara 'berjalan' sudah ada, jadi selalu "Lanjutkan"; nomor = pecahan sekarang,
+  // ditambah saldo pembuka yang sudah masuk (satuan pita)
+  if (jenis === 'lanjut') { const I = info || {}; return 'Berhenti di kiriman lanjutan ' + ke + ' dari ' + total + sebab + '. Tahun ' + tahun + ' BELUM tertutup (' + (Number(I.masuk) || 0) + ' dari ' + (Number(I.dari) || 0) + ' saldo pembuka sudah masuk, belum dihitung).'
+    + (antre ? tunggu + 'Sesudah itu ketuk "Lanjutkan"' : ' Ketuk "Lanjutkan"') + ' — yang sudah masuk tidak dikirim ulang — atau "Batalkan".'; }
   const awal = 'Berhenti di kiriman ' + ke + ' dari ' + total + sebab + '. Tahun ' + tahun + ' BELUM tertutup (yang sudah masuk belum dihitung).';
   // putaran 3 AAL6: SATU kiriman saja = kiriman itu sudah membawa penanda → begitu server mengaku, pitanya "Tahun … terkunci" (bukan "… sudah masuk")
   // dan tombol K6 sudah tahun berikutnya

@@ -8,8 +8,8 @@ Yang dijaga:
   T0  saldo pembuka ≤ 18 pemeriksaan = SATU kiriman seperti dulu (tanpa berita acara 'berjalan')
   T1  40 nama berutang (+ 1 bon pemasok + titik kas 31 Des) → 3 kiriman, tiap kiriman ≤ 18 pemeriksaan (penjaga pusat meloloskan), berita acara
       'berjalan' di kiriman PERTAMA, penanda (titik kas · pengaturan/tutupBuku · berita acara 'terkunci') di kiriman TERAKHIR, tanpa id ganda
-  T2  sesudah kiriman 1 saja: tahun 2026 masih utuh — era tidak pindah, Agustus tidak FINAL, 12 baris 31 Des sama (piutang tidak dobel), kemajuan 1 dari 3
-  T3  putus di kiriman 2 → lanjutkan: hanya kiriman 2 & 3 (id & isi sama), lalu hanya 3; sesudahnya terkunci, era 2026, pembuka tidak dobel
+  T2  sesudah kiriman 1 saja: tahun 2026 masih utuh — era tidak pindah, Agustus tidak FINAL, 12 baris 31 Des sama (piutang tidak dobel), kemajuan = saldo pembuka kiriman 1
+  T3  putus di kiriman 2 → lanjutkan: hanya kiriman 2 & 3 (id & isi sama; lanjutan 1 & 2), lalu hanya 3; sesudahnya terkunci, era 2026, pembuka tidak dobel
   T4  arsip terputus → dilanjutkan dari sisa; kemajuan arsip; pemeriksaan ulang dari mesin (hari tutup buku) sama; langkah 7 memakai tahun yang terkunci
       (dulu layar memakai tahun berjalan 2027 → "Kunci tahunnya dulu", berita acara tak pernah selesai) + STATIS uang.js
   T5  batalkan dari 'berjalan' (dan pembatalan yang terputus) → semua pembuka ditarik, era tetap, mulai lagi bisa
@@ -38,6 +38,7 @@ Yang dijaga:
   P3-AAL4  Lanjutkan & Batalkan ditolak tanpa internet atau selama berita acara / pengaturan masih salinan perangkat (Firestore fromCache)
   P3-AAL5  hapus pembatalan yang menunggu server = fase tunggu (Lanjutkan pembatalan ditolak), bukan "sudah ditarik"
   P3-AAL6  tutup buku satu kiriman yang antre: kalimat menyebut pita "Tahun … terkunci" → "Lanjutkan" (arsip), bukan "… sudah masuk"
+  P3-AAL7  satu satuan sesudah pecah ulang: pita = saldo pembuka yang sudah masuk; kalimat & progres Lanjutkan = "kiriman lanjutan i dari n" + jumlah itu
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -100,14 +101,14 @@ coba('T2', function () { var sebelumMesin = baris(barisTahun(2026)); var piutang
   ok('T2 kiriman 1 masuk (penjaga pusat meloloskan)', kirim(R.kiriman[0]), tolakPenjaga.slice(-1)[0]);
   ok('T2 era TIDAK pindah (bkEra null, ssEraTutupBuku null), layar K6 tetap tahun 2026, Agustus 2026 tidak FINAL', bkEra() === null && ssEraTutupBuku() === null && tahunBuku(new Date(__KINI)).tahun === 2026 && lpFinal('2026-08') === false, J([bkEra(), ssEraTutupBuku(), tahunBuku(new Date(__KINI)).tahun, lpFinal('2026-08')]));
   ok('T2 mesin tidak melihat pembuka yang baru sebagian: 12 baris 31 Des sama, piutang tidak dobel', samaBaris(sebelumMesin, baris(barisTahun(2026))) && hitungPiutang('2026-12-31').reduce(function (a, x) { return a + x.sisa; }, 0) === piutang0, J([piutang0, hitungPiutang('2026-12-31').reduce(function (a, x) { return a + x.sisa; }, 0)]));
-  var KM = kemajuanBuku(); ok('T2 kemajuan: pembuka 1 dari 3, kalimat menyebut tahun masih terbuka', KM && KM.fase === 'pembuka' && KM.sudah === 1 && KM.total === 3 && /MASIH TERBUKA/.test(KM.teks), J(KM));
+  var KM = kemajuanBuku(); ok('T2 kemajuan: saldo pembuka kiriman 1 dari semua (satuan saldo pembuka, putaran 3 AAL7), kalimat menyebut tahun masih terbuka', KM && KM.fase === 'pembuka' && KM.sudah === R.kiriman[0].pembuka.length && KM.total === R.acara.nPembuka && /MASIH TERBUKA/.test(KM.teks), J(KM));
   ok('T2 mulai baru ditolak selama berjalan', /sedang berjalan/.test(susunKunci(2026, D, W).tolak || ''), susunKunci(2026, D, W).tolak); });
 
 // ---- T3 · putus di kiriman 2 → lanjut
 coba('T3', function () { L = lanjutBuku(2026);
-  ok('T3 lanjut sesudah putus di kiriman 2: tinggal kiriman 2 & 3, isi & id SAMA dengan rencana', !L.tolak && L.sudah === 1 && L.kiriman.length === 2 && L.kiriman[0].ke === 2 && idKiriman(L.kiriman[0]) === idKiriman(R.kiriman[1]) && idKiriman(L.kiriman[1]) === idKiriman(R.kiriman[2]), J(L.tolak || [L.sudah, L.kiriman.map(function (k) { return k.ke; })]));
+  ok('T3 lanjut sesudah putus di kiriman 2: tinggal kiriman 2 & 3 (lanjutan 1 & 2), isi & id SAMA dengan rencana', !L.tolak && L.sudah === R.kiriman[0].pembuka.length && L.kiriman.length === 2 && L.kiriman[0].ke === 1 && L.kiriman[0].lanjutan && idKiriman(L.kiriman[0]) === idKiriman(R.kiriman[1]) && idKiriman(L.kiriman[1]) === idKiriman(R.kiriman[2]), J(L.tolak || [L.sudah, L.kiriman.map(function (k) { return k.ke; })]));
   ok('T3 kiriman 2 masuk', kirim(L.kiriman[0]), tolakPenjaga.slice(-1)[0]);
-  L = lanjutBuku(2026); ok('T3 lanjut lagi: hanya kiriman 3 (kiriman 2 tidak dikirim ulang)', !L.tolak && L.kiriman.length === 1 && L.kiriman[0].ke === 3, J(L.tolak || L.kiriman.map(function (k) { return k.ke; })));
+  L = lanjutBuku(2026); ok('T3 lanjut lagi: hanya kiriman 3 = lanjutan 1 dari 1 (kiriman 2 tidak dikirim ulang)', !L.tolak && L.kiriman.length === 1 && L.kiriman[0].ke === 1 && L.kiriman[0].total === 1 && idKiriman(L.kiriman[0]) === idKiriman(R.kiriman[2]), J(L.tolak || L.kiriman.map(function (k) { return k.ke; })));
   ok('T3 kiriman 3 (penanda) masuk', kirim(L.kiriman[0]), tolakPenjaga.slice(-1)[0]);
   ok('T3 sesudah penanda: berita acara terkunci, era 2026, K6 pindah ke 2027; pembuka tepat ' + R.acara.nPembuka + ' (tidak dobel); lanjut tidak ada lagi',
     acara(2026).status === 'terkunci' && bkEra() === 2026 && tahunBuku(new Date(__KINI)).tahun === 2027 && nPembukaMentah(2026) === R.acara.nPembuka && !!lanjutBuku(2026).tolak, J([acara(2026).status, bkEra(), nPembukaMentah(2026)])); });
@@ -208,8 +209,8 @@ coba('N3', function () { var tambah = []; for (var q = 0; q < 20; q++) tambah.pu
   kirim(R.kiriman[0]); jam('2027-01-05T10:00:00+07:00'); var lama = R.kiriman.slice(1).map(function (k) { return butuhGet(k.dokumen, k.hapus || []); });
   L = lanjutBuku(2026); var g = L.tolak ? [] : L.kiriman.map(function (k) { return butuhGet(k.dokumen, k.hapus || []); }); var masuk = L.tolak ? [] : L.kiriman.map(kirim);
   ok('N3 kiriman rencana 2 Jan dihitung pada 5 Jan > 18 (keadaan yang dulu ditolak selamanya)', lama.some(function (x) { return x > 18; }), J([rencana, lama]));
-  ok('N3 lanjut 5 Jan: sisa dipecah ulang — tiap kiriman ≤ 18 & lolos penjaga pusat, nomor kiriman melanjutkan (mulai 2), penanda hanya di kiriman terakhir; sesudahnya terkunci, tiap pembuka tepat sekali',
-    !L.tolak && L.kiriman.length >= 2 && g.every(function (x) { return x <= 18; }) && masuk.every(Boolean) && L.kiriman[0].ke === 2 && L.kiriman.every(function (k, i) { return k.penanda === (i === L.kiriman.length - 1); })
+  ok('N3 lanjut 5 Jan: sisa dipecah ulang — tiap kiriman ≤ 18 & lolos penjaga pusat, nomor kiriman lanjutan mulai 1 (putaran 3 AAL7), penanda hanya di kiriman terakhir; sesudahnya terkunci, tiap pembuka tepat sekali',
+    !L.tolak && L.kiriman.length >= 2 && g.every(function (x) { return x <= 18; }) && masuk.every(Boolean) && L.kiriman[0].ke === 1 && L.kiriman[0].lanjutan && L.kiriman.every(function (k, i) { return k.penanda === (i === L.kiriman.length - 1); })
     && acara(2026).status === 'terkunci' && nPembukaMentah(2026) === R.acara.nPembuka && !lanjutBuku(2026).kiriman, J([rencana, g, L.tolak, masuk, tolakPenjaga.slice(-1)])); });
 
 // ---- §8 no. 4 · kiriman yang BELUM diakui server (opsi tunggu 30 detik habis): Firestore sudah menaruhnya di cache (hasPendingWrites) — bukan "masuk"
@@ -220,7 +221,7 @@ coba('N4', function () { kotak(40); W = jam('2027-01-05T08:00:00+07:00'); R = su
   var KM = kemajuanBuku(); L = lanjutBuku(2026); var Bt = susunBatal(2026, [], W);
   ok('N4 kiriman 1 masih antre di perangkat: pita TIDAK menghitungnya masuk (fase tunggu); Lanjutkan & Batalkan menolak dengan kalimat menunggu server',
     !!KM && KM.fase === 'tunggu' && !KM.sudah && /menunggu server/.test(KM.teks) && !!L.tolak && /menunggu server/.test(L.tolak) && !!Bt.tolak && /menunggu server/.test(Bt.tolak), J([KM, L.tolak || L.kiriman.length, Bt.tolak || Bt.kiriman.length]));
-  lepasTunda(); L = lanjutBuku(2026); ok('N4 server mengaku kiriman 1 → Lanjutkan mengirim sisanya (mulai kiriman 2)', !L.tolak && L.kiriman.length === 2 && L.kiriman[0].ke === 2, J(L.tolak || L.kiriman.length));
+  lepasTunda(); L = lanjutBuku(2026); ok('N4 server mengaku kiriman 1 → Lanjutkan mengirim sisanya (2 kiriman lanjutan)', !L.tolak && L.kiriman.length === 2 && L.kiriman[0].ke === 1 && L.kiriman[0].lanjutan, J(L.tolak || L.kiriman.length));
   kirim(L.kiriman[0]); terapkanKeCache(L.kiriman[1].dokumen); tundakan(L.kiriman[1]); KM = kemajuanBuku();
   ok('N4 kiriman PENANDA masih antre: pita fase tunggu (bukan "terkunci" / arsip), Lanjutkan menolak', !!KM && KM.fase === 'tunggu' && !!lanjutBuku(2026).tolak, J(KM));
   lepasTunda(); KM = kemajuanBuku(); ok('N4 penanda diakui server → fase arsip', !!KM && KM.fase === 'arsip', J(KM)); });
@@ -380,6 +381,18 @@ coba('P3-AAL6', function () { kotak(5); W = jam('2027-01-05T10:00:00+07:00'); R 
   ok('P3-AAL6 satu kiriman antre: kalimat menyebut pita "Tahun 2026 terkunci" → "Lanjutkan"; pita sesudah server mengaku memang berbunyi begitu',
     R.kiriman.length === 1 && /pita "Tahun 2026 terkunci/.test(kab) && /ketuk "Lanjutkan"/.test(kab) && !/sudah masuk" muncul/.test(kab) && !!KM && /^Tahun 2026 terkunci/.test(KM.teks) && tahunBuku(new Date(__KINI)).tahun === 2027, J([kab, KM && KM.teks])); });
 
+// ---- putaran 3 AAL7 · mulai 2 Jan (masa tenggang), putus sesudah kiriman 1; Lanjutkan 5 Jan (sisa dipecah ulang); putus lagi sesudah kiriman lanjutan pertama.
+//      Satu satuan: pita menghitung SALDO PEMBUKA yang sudah masuk; kalimat & progres Lanjutkan menyebut "kiriman lanjutan i dari n" + jumlah pembuka yang masuk
+coba('P3-AAL7', function () { var tambah = []; for (var q = 0; q < 20; q++) tambah.push({ id: 'd' + q, tanggal: '2026-12-' + String(10 + (q % 15)).padStart(2, '0'), jam: '10:00', caraBayar: 'Kredit', jenis: 'karung', merkSumber: 'Angsa', totalKg: 10, beratKarungAcuan: 50, jumlahKarung: 0.2, hargaTotal: 200000, hppTotalSaatJual: 130000, namaPelanggan: 'Pengutang Desember ' + q });
+  kotak(25, tambah); W = jam('2027-01-02T10:00:00+07:00'); R = susunKunci(2026, D, W); kirim(R.kiriman[0]); jam('2027-01-05T10:00:00+07:00');
+  L = lanjutBuku(2026); var L1 = (L.kiriman || []).map(function (k) { return k.ke + '/' + k.total + (k.lanjutan ? ' lanjutan' : ''); }); kirim(L.kiriman[0]);
+  var kab = kabarBerhenti(L.kiriman[1].lanjutan ? 'lanjut' : 'kunci', 2026, L.kiriman[1].ke, L.kiriman[1].total, { gagal: true, pesan: 'ditolak server' }, L.kiriman[1]);
+  var KM = kemajuanBuku(); var ada = nPembukaMentah(2026); var L2 = lanjutBuku(2026); var k2 = (L2.kiriman || [])[0] || {};
+  ok('P3-AAL7 sesudah pecah ulang: pita = ' + ada + ' dari ' + R.acara.nPembuka + ' saldo pembuka; kalimat "kiriman lanjutan 2 dari 2" + jumlah yang sama; Lanjutkan berikutnya = lanjutan 1 dari 1',
+    L1.join() === '1/2 lanjutan,2/2 lanjutan' && !!KM && KM.fase === 'pembuka' && KM.sudah === ada && KM.total === R.acara.nPembuka && KM.teks.indexOf(ada + ' dari ' + R.acara.nPembuka + ' saldo pembuka sudah masuk') >= 0
+    && /kiriman lanjutan 2 dari 2/.test(kab) && kab.indexOf(ada + ' dari ' + R.acara.nPembuka + ' saldo pembuka') >= 0 && /[Kk]etuk "Lanjutkan"/.test(kab) && k2.ke === 1 && k2.total === 1 && !!k2.lanjutan,
+    J([L1, KM, kab, [k2.ke, k2.total, k2.lanjutan]])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -415,7 +428,7 @@ def utama(js):
 
 
 STATIS = [
-    ('kiriman bertahap menunggu pengakuan server & berhenti dengan kalimat kiriman ke-n', ["await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true })", "kabar: BK.kabarBerhentiBuku('kunci', tahun, k.ke, k.total, h)"]),
+    ('kiriman bertahap menunggu pengakuan server & berhenti dengan kalimat kiriman ke-n', ["await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true })", "kabar: BK.kabarBerhentiBuku(k.lanjutan ? 'lanjut' : 'kunci', tahun, k.ke, k.total, h, k)"]),
     ('§8 no. 7 · pembatalan yang berhenti memakai kalimat yang menyebut tombol yang benar', ["kabar: BK.kabarBerhentiBuku('batal', tahun, i + 1, r.kiriman.length, h)"]),
     ('pita kemajuan K6: lanjutkan / batalkan / selesaikan', ["BK.kemajuanBuku()", 'data-aksi="bkLanjut"', 'data-k="tb-selesaikan"']),
     ('langkah 7 memakai tahun yang terkunci', ["const tahun = KM7 && KM7.fase === 'selesaikan' ? KM7.tahun :"]),
@@ -477,6 +490,8 @@ RUSAK = [
     ('putaran 3 AAL4 · Lanjutkan & Batalkan jalan dari salinan perangkat / tanpa internet', 'baru/js/layar/tutup-buku-logika.js', "if (!(L && L.offline) && !basi) return '';", "if (true) return '';"),
     ('putaran 3 AAL5 · hapus yang menunggu server tidak dihitung tunggu', 'baru/js/layar/tutup-buku-logika.js', "  Object.keys(KOLEKSI_CACHE).forEach((c) => { n += hapusTertunda(KOLEKSI_CACHE[c]); });\n", ""),
     ('putaran 3 AAL6 · satu kiriman antre menyebut pita "… sudah masuk" (yang tidak akan muncul)', 'baru/js/layar/tutup-buku-logika.js', "'Sesudah itu: kalau pita ' + (total === 1 ?", "'Sesudah itu: kalau pita ' + (false ?"),
+    ('putaran 3 AAL7 · pita menghitung kiriman rencana (bukan saldo pembuka yang sudah masuk)', 'baru/js/layar/tutup-buku-logika.js', "const P = a.pembuka || []; const sudah = P.filter((x) => !!dokDiCache(x.koleksi, x.data.id)).length;", "const P = (a.rencana || {}).kiriman || []; const sudah = 1;"),
+    ('putaran 3 AAL7 · kiriman lanjutan dinomori menurut rencana saat mulai', 'baru/js/layar/tutup-buku-logika.js', "const k = { ke: i + 1, total: Pt.potongan.length, lanjutan: true,", "const k = { ke: i + 2, total: Pt.potongan.length + 1, lanjutan: true,"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]
