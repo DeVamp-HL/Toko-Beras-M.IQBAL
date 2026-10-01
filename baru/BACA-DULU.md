@@ -1330,3 +1330,13 @@ ditolak dengan kalimat "pecah jadi dua nota" di panel takar.
 - Uji: `peta_akses.py --kiriman` bagian 6 (nota wadah campuran 6 merek di tiap cara bayar × pesanan, alasanTolak keranjang membesar, takar 6 merek
   ditolak / 5 merek diukur 18/20, owner tanpa batas, kalimat pagar umum) + statis SB / panel / keranjangJual; `kirim()` menghitung SEMUA penolakan
   pagar umum (dulu hanya kalimat "nota"); kontrol +9. `uji_akses_baru.py` +1 (batas dokumen & kalimat), kontrol +2.
+
+## K1 · Kunci bulan 2026 ditunda sampai tutup buku 2026 (keputusan owner 1 Okt 2026, cabang `audit/k1-tunda-kunci-2026`)
+
+Kunci bulan berbentuk awalan: mengunci September 2026 ikut mengunci semua bulan sebelumnya (sampai 2022). Tutup buku menulis saldo pembuka
+bertanggal lama (piutang ikut tanggal utang tertua, bon pemasok ikut tanggal bon) dan menghapus catatan tahun lama ke arsip — semuanya jatuh di bulan
+terkunci dan pasti ditolak server, jadi tutup buku 2026 mustahil begitu satu bulan 2026 dikunci. Owner memilih **A**: kunci bulanan mulai Januari 2027.
+- `data/kunci-periode.js` `KP_KUNCI_MULAI = '2027-01'`; daftar periksa Kunci bulan punya butir ⛔ pertama "Kunci bulan dimulai Januari 2027" — bulan
+  sebelumnya tidak bisa dikunci (kalimat sebabnya di layar). `K.kunciMulai` / `uji.kunciMulai` = jalan pintas uji saja.
+- Beranda tidak lagi menyuruh mengunci bulan 2026; peringatan pajak bulan 2026 menyebut "masih bisa bergeser sampai tutup buku 2026".
+- Untuk 2027: pembuka bertanggal 1 Jan + arsip tanpa hapus (pilihan C) dirancang di putaran sendiri.
