@@ -18,7 +18,7 @@ import { daftarGerakanKas, caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah, kunciNota, returUangPerHari } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import { aturHarga, hgPct } from './harga-logika.js';
-import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan, ugLabaBersih } from './uang-logika.js';
+import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan, ugLabaBersih, ugSesudahTitik } from './uang-logika.js';
 
 export const ATUR_TUTUP_BAWAAN = { persenSisih: 10, kembalian: 500000, maafSelisih: 2000, alasan: ['Salah kasih kembalian', 'Ada pengeluaran belum dicatat', 'Ada penjualan belum dicatat', 'Belum tahu — dicari besok'], pecahan: [100000, 50000, 20000, 10000, 5000, 2000, 1000] };
 export const LANGKAH_TUTUP = [['laci', 'Uang di laci'], ['rekening', 'Uang QRIS'], ['sisih', 'Sisihkan laba'], ['timbang', 'Timbang cepat'], ['amankan', 'Amankan laci'], ['rekap', 'Rekap & tutup']];
@@ -85,11 +85,16 @@ export function rumusLaci(iso) {
   const tempatnya = kantongGerakan();
   daftarGerakanKas().forEach((r) => { if (r.t !== iso || !(r.t > t.tanggal)) return; const k = TD_KELOMPOK.find((x) => x[0].test(r.label)); const kantong = tempatnya(r);
     if (r.masuk > 0 && kantong === 'laci') dorong(k ? k[1] : 'Jual tunai', 1, r.masuk); if (r.keluar > 0 && kantong === 'laci') dorong(k ? k[1] : 'Keluar lain', -1, r.keluar); });
+  // tinjauan 39b UU38-1: catatan bertanggal hari titik kas yang dicatat SESUDAH titik dipasang (mis. nota 21.30 sesudah tutup 21.00) belum ada di hitungan
+  // fisik malam itu — masuk "seharusnya" laci tutup berikutnya (atau tutup ulang), bukan jadi lebih/kurang kas yang dihitung lagi di laba (no. 38)
+  const susul = ugSesudahTitik(t); const kataSusul = ' · dicatat sesudah tutup ' + tanggalPendek(t.tanggal); let nSusul = 0;
+  daftarGerakanKas().forEach((r) => { if (!susul(r) || tempatnya(r) !== 'laci') return; const k = TD_KELOMPOK.find((x) => x[0].test(r.label));
+    if (r.masuk > 0) { dorong((k ? k[1] : 'Jual tunai') + kataSusul, 1, r.masuk); nSusul += r.masuk; } if (r.keluar > 0) { dorong((k ? k[1] : 'Keluar lain') + kataSusul, -1, r.keluar); nSusul -= r.keluar; } });
   ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || a.tanggal !== iso || !(iso > t.tanggal)) return; dorong(a.tipe === 'ambil' ? 'Diambil dari amplop laba' : 'Disisihkan ke amplop laba', a.tipe === 'ambil' ? 1 : -1, Number(a.nominal) || 0); });
   ambilPindahUang().forEach((p) => { if (p.tanggal !== iso || !(iso > t.tanggal)) return; if (p.dari === 'laci') dorong('Dipindah ke ' + ugNamaTempat(p.ke).toLowerCase(), -1, Number(p.nominal) || 0); if (p.ke === 'laci') dorong('Diisi dari ' + ugNamaTempat(p.dari).toLowerCase(), 1, Number(p.nominal) || 0); });
   const baris = [{ nama: S0 ? 'Laci semalam (' + tanggalPendek(kemarin) + ')' : 'Patokan kas hari ini (' + tanggalPendek(t.tanggal) + ')', arah: 0, n: S0 ? S0.laci : Number(t.laci) || 0 }].concat(Object.keys(grup).map((k) => grup[k]).sort((a, b) => b.arah - a.arah || b.n - a.n));
   // dokumen yang tempatnya disebut bukan laci (mis. bayar bon dari rekening) tidak muncul di sini — persis: hanya yang menyentuh laci
-  return { ada: true, seharusnya: S1.laci, baris, teks: 'seharusnya ' + RP(S1.laci), kasTotal: S1.total, S1, awal: baris[0].n, masuk: baris.filter((b) => b.arah === 1).reduce((a, b) => a + b.n, 0), keluar: baris.filter((b) => b.arah === -1).reduce((a, b) => a + b.n, 0) };
+  return { ada: true, seharusnya: S1.laci + nSusul, baris, teks: 'seharusnya ' + RP(S1.laci + nSusul), kasTotal: S1.total + nSusul, S1, awal: baris[0].n, masuk: baris.filter((b) => b.arah === 1).reduce((a, b) => a + b.n, 0), keluar: baris.filter((b) => b.arah === -1).reduce((a, b) => a + b.n, 0) };
 }
 /**
  * Hitung seluruh lembar dari draf D = { lembar: {pecahan: lembar}, receh, alasan, rekPilih (sudah|belum|beda|''), rekNyata, sisih (null = saran), timbang: {merk: kg},

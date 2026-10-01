@@ -282,6 +282,47 @@ ok('39b-1 susunTutup ditulis 20 Sep 00.05: menutup 19 Sep (hari itu sudah ditutu
 ok('39b-1 jam tulis dibaca dari tanggal + jam (bukan jam perangkat w.kini, bukan tengah hari tanggalnya): tdKiniDari 20 Sep 00.05 = jam 0', tdKiniDari(W0005).getHours() === 0 && tdKiniDari(W0005).getMinutes() === 5 && tdKiniDari({ tanggal: '2026-09-20' }).getHours() === 12);
 tulis(susunAturTutup({ persenSisih: '20', kembalian: '300.000', maafSelisih: '5.000', alasan: ['Salah hitung'] }, W)); ok('atur tutup owner: sisih 20 % · kembalian 300.000 · dimaafkan 5.000; persen 120 ditolak', aturTutup().persenSisih === 20 && aturTutup().kembalian === 300000 && aturTutup().maafSelisih === 5000 && aturTutup().dariOwner && /0–100/.test(susunAturTutup({ persenSisih: '120' }, W).tolak));
 
+// ==================== tinjauan 39b UU38-1: catatan bertanggal hari yang SUDAH ditutup, dicatat SESUDAH tutup (kotak pasir direset) ====================
+// ANGKA CONTOH: tutup 19 Sep 21.00, lalu catatan bertanggal 19 Sep jam 21.30/21.40. Hitungan fisik malam itu belum memuatnya → ikut "seharusnya" laci tutup
+// berikutnya (atau tutup ulang), tidak boleh jadi lebih/kurang kas yang dihitung lagi di laba (no. 38). (c): tutup LEBIH karena nota terlupa, notanya dicatat
+// sesudahnya → tutup berikutnya KURANG yang mengimbangi. Dulu: (a) laba +110.000, (b) bayar bon jadi laba, (c) laba +110.000.
+var u38W = function (t, j, z) { return { tanggal: t, jam: j, kini: z, idUnik: W.idUnik }; };
+var u38Mulai = function () { Object.keys(KOTAK).forEach(function (n) { pasok(n, KOTAK[n]); }); localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-09-15', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 })); };
+var u38Laba = function () { var L = ugLabaBersih('2026-09-01', '2026-09-30'); return { laba: L.labaBersih, mesin: L.labaMesin, lk: L.lebihKurangKas }; };
+var u38Tutup = function (tgl, jam, z, laci, alasan, yakin) { var R = tulis(susunTutup({ lembar: {}, receh: laci, alasan: alasan, rekPilih: '', sisih: '', timbang: {}, status: { laci: 'beres' } }, u38W(tgl, jam, z), !!yakin)); localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify(R.titik)); return R; };
+var u38K20 = new Date('2026-09-20T21:00:00+07:00'); var u38Nota = { koleksi: 'penjualan', data: { id: 'u38j', trxId: 'T-U38', tanggal: '2026-09-19', jam: '21:30', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', totalKg: 0, beratKarungAcuan: 50, jumlahKarung: 0, hargaTotal: 100000, hppTotalSaatJual: 90000 } };
+var u38F = typeof ugSesudahTitik === 'function' ? ugSesudahTitik({ tanggal: '2026-09-19', diubahPada: '2026-09-19T14:00:00.000Z' }) : null, u38G = typeof ugSesudahTitik === 'function' ? ugSesudahTitik({ tanggal: '2026-09-19', diubahPada: '2026-09-19T17:30:00.000Z' }) : null;
+ok('UU38-1 penentu "dicatat sesudah titik": titik 19 Sep dipasang 21.00 → catatan 19 Sep 21.30 ya, 21.00 & 20.59 tidak, 20 Sep tidak; titik 19 Sep dipasang lewat tengah malam (20 Sep 00.30) → tidak ada (semua catatan 19 Sep sudah ada sebelum hitungan); titik tanpa jam pasang → tidak ada',
+  !!u38F && u38F({ t: '2026-09-19', jam: '21:30' }) && !u38F({ t: '2026-09-19', jam: '21:00' }) && !u38F({ t: '2026-09-19', jam: '20:59' }) && !u38F({ t: '2026-09-20', jam: '21:30' }) && !u38G({ t: '2026-09-19', jam: '23:00' }) && !ugSesudahTitik({ tanggal: '2026-09-19' })({ t: '2026-09-19', jam: '23:00' }));
+// (a) tutup 19 Sep PAS, nota tunai 21.30 (modal 90.000) bertanggal 19 Sep; 20 Sep laci dihitung apa adanya (= seharusnya tanpa nota + 100.000)
+u38Mulai(); var u38a0 = u38Laba(); u38Tutup('2026-09-19', '21:00', '2026-09-19T14:00:00.000Z', rumusLaci('2026-09-19').seharusnya, '');
+var u38s20 = rumusLaci('2026-09-20').seharusnya; terapkanKeCache([u38Nota]);
+var u38RLa = rumusLaci('2026-09-20'); var u38Ha = hitungTutup({ lembar: {}, receh: u38s20 + 100000, status: { laci: 'beres' } }, u38K20);
+var u38Ra = u38Tutup('2026-09-20', '21:00', '2026-09-20T14:00:00.000Z', u38s20 + 100000, 'Belum tahu — dicari besok'); var u38a1 = u38Laba(); var u38da = u38Ra.dokumen[0].data;
+ok('UU38-1 (a) tutup 19 Sep 21.00 PAS, nota tunai 21.30 bertanggal 19 Sep: tutup 20 Sep seharusnya +100.000 (baris "Jual tunai · dicatat sesudah tutup 19 Sep 2026", Σ baris kertas = seharusnya), laci apa adanya → PAS; Σ fisik − kasSeharusnya = selisih; laba Sep +10.000 (margin), lebih/kurang kas 0 (dulu LEBIH 100.000 → laba +110.000)',
+  u38RLa.seharusnya === u38s20 + 100000 && u38Ha.selisih === 0 && u38RLa.baris.some(function (b) { return b.nama === 'Jual tunai · dicatat sesudah tutup 19 Sep 2026' && b.n === 100000 && b.arah === 1; }) && u38RLa.awal + u38RLa.masuk - u38RLa.keluar === u38RLa.seharusnya
+  && u38da.kasFisikLaci + u38da.kasFisikRekening + u38da.kasFisikAmplop + u38da.kasFisikBrankas - u38da.kasSeharusnya === u38da.selisih && u38a1.laba - u38a0.laba === 10000 && u38a1.mesin - u38a0.mesin === 10000 && u38a1.lk === 0,
+  J([u38s20, u38RLa.seharusnya, u38Ha.selisih, u38da.kasSeharusnya, u38a0, u38a1, u38RLa.baris]));
+// (b) sesudah tutup: bayar bon tunai 100.000 (21.30) + uang keluar toko 30.000 (21.40 — baris mesin uang keluar tidak berjam, jamnya dari dokumen)
+u38Mulai(); var u38b0 = u38Laba(); u38Tutup('2026-09-19', '21:00', '2026-09-19T14:00:00.000Z', rumusLaci('2026-09-19').seharusnya, '');
+u38s20 = rumusLaci('2026-09-20').seharusnya; terapkanKeCache([{ koleksi: 'piutangMutasi', data: { id: 'u38b', tipe: 'bayar', namaPelanggan: 'Bu Contoh', nominal: 100000, tanggal: '2026-09-19', jam: '21:30', caraBayar: 'Tunai' } },
+  { koleksi: 'pengeluaranHarian', data: { id: 'u38h', kategori: 'toko', untuk: 'toko', tanggal: '2026-09-19', jam: '21:40', keterangan: 'Bensin antar', nominal: 30000 } }]);
+var u38Hb = hitungTutup({ lembar: {}, receh: u38s20 + 70000, status: { laci: 'beres' } }, u38K20); u38Tutup('2026-09-20', '21:00', '2026-09-20T14:00:00.000Z', u38s20 + 70000, 'Belum tahu — dicari besok'); var u38b1 = u38Laba();
+ok('UU38-1 (b) sesudah tutup 19 Sep: bayar bon tunai 100.000 (21.30) + uang keluar toko 30.000 (21.40): tutup 20 Sep seharusnya +70.000 → PAS; laba Sep −30.000 (biaya saja — bayar bon bukan laba), lebih/kurang kas 0 (dulu LEBIH 70.000 → laba +40.000)',
+  u38Hb.seharusnya === u38s20 + 70000 && u38Hb.selisih === 0 && u38b1.laba - u38b0.laba === -30000 && u38b1.mesin - u38b0.mesin === -30000 && u38b1.lk === 0, J([u38s20, u38Hb.seharusnya, u38Hb.selisih, u38b0, u38b1]));
+// (c) tutup 19 Sep LEBIH 100.000 alasan "Ada penjualan belum dicatat", lalu nota yang terlupa dicatat 21.30; 20 Sep laci apa adanya (uangnya sudah terhitung 19 Sep)
+u38Mulai(); var u38c0 = u38Laba(); u38Tutup('2026-09-19', '21:00', '2026-09-19T14:00:00.000Z', rumusLaci('2026-09-19').seharusnya + 100000, 'Ada penjualan belum dicatat');
+u38s20 = rumusLaci('2026-09-20').seharusnya; terapkanKeCache([u38Nota]);
+var u38Hc = hitungTutup({ lembar: {}, receh: u38s20, status: { laci: 'beres' } }, u38K20); u38Tutup('2026-09-20', '21:00', '2026-09-20T14:00:00.000Z', u38s20, 'Ada penjualan belum dicatat'); var u38c1 = u38Laba();
+ok('UU38-1 (c) tutup 19 Sep LEBIH 100.000 ("Ada penjualan belum dicatat"), notanya dicatat 21.30: tutup 20 Sep KURANG 100.000 yang mengimbangi → lebih/kurang kas Sep 0 dari 2 malam, laba Sep +10.000 = margin (dulu +110.000)',
+  u38Hc.selisih === -100000 && u38c1.lk === 0 && ugLebihKurangKas('2026-09-01', '2026-09-30').malam === 2 && u38c1.laba - u38c0.laba === 10000, J([u38s20, u38Hc.seharusnya, u38Hc.selisih, u38c0, u38c1]));
+// (c) tutup ULANG malam itu juga 21.40 (laci tidak berubah): seharusnya = titik + nota 21.30 → KURANG 100.000; tutup pertama turun ke riwayat → Σ malam itu 0
+u38Mulai(); u38c0 = u38Laba(); u38Tutup('2026-09-19', '21:00', '2026-09-19T14:00:00.000Z', rumusLaci('2026-09-19').seharusnya + 100000, 'Ada penjualan belum dicatat');
+var u38t = ambilTitikKas().laci; terapkanKeCache([u38Nota]); var u38Hc2 = hitungTutup({ lembar: {}, receh: u38t, status: { laci: 'beres' } }, new Date('2026-09-19T21:40:00+07:00'));
+u38Tutup('2026-09-19', '21:40', '2026-09-19T14:40:00.000Z', u38t, 'Ada penjualan belum dicatat', true); var u38c2 = u38Laba();
+ok('UU38-1 (c) tutup ULANG malam itu juga (21.40, laci tidak berubah): seharusnya = titik + nota 21.30 → KURANG 100.000; tutup pertama (LEBIH 100.000) di riwayat → lebih/kurang kas Sep 0, laba Sep +10.000 = margin',
+  u38Hc2.koreksi && u38Hc2.seharusnya === u38t + 100000 && u38Hc2.selisih === -100000 && u38c2.lk === 0 && u38c2.laba - u38c0.laba === 10000, J([u38t, u38Hc2.seharusnya, u38Hc2.selisih, u38c0, u38c2]));
+
 // ==================== K5b · audit 39b no. 3: uang QRIS SELAIN penjualan (bayar bon, kasbon kembali) + potongan PER TRANSAKSI ====================
 // ANGKA CONTOH 19 Sep di atas kotak pasir awal: 2 baris barang satu transaksi QRIS (350.000 + 350.000 = 700.000 > batas → satu potongan 2.100; per baris dulu 0 + 0),
 // Pak Bon (saldoAwal 1.000.000) bayar QRIS 700.000 (> batas → 2.100) + bayar tunai 100.000, Gama kasbon kembali QRIS 60.000 (≤ batas → 0).
@@ -475,6 +516,11 @@ if __name__ == '__main__':
             '39b-38: lebih/kurang kas tidak masuk laba bersih (desain lama)': js.replace("labaBersih: L.labaBersih + K.n });", "labaBersih: L.labaBersih });"),
             '39b-38: tutup ulang menghapus selisih tutup pertama (riwayat tidak dihitung)': js.replace(".reduce((a, x) => a + sel(x), sel(t));", ".reduce((a, x) => a, sel(t));"),
             '39b-38: lembar tutup memakai laba yang sudah memuat selisih laci (dasar sisihan bergeser)': js.replace("const labaSebelumMdr = L.labaMesin + mdrTercatat;", "const labaSebelumMdr = L.labaBersih + mdrTercatat;"),
+            # ---- tinjauan 39b UU38-1: catatan bertanggal hari yang sudah ditutup, dicatat sesudah tutup
+            'UU38-1: catatan sesudah tutup tidak ikut "seharusnya" laci (lebih/kurang palsu dihitung lagi di laba)': js.replace("const susul = ugSesudahTitik(t);", "const susul = () => false;"),
+            'UU38-1: jam uang keluar tidak dibaca dari dokumennya (baris mesin tanpa jam)': js.replace("const j = String(r.jam || jamDok[String(r.id)] || '').slice(0, 5);", "const j = String(r.jam || '').slice(0, 5);"),
+            'UU38-1: titik yang dipasang lewat tengah malam dianggap punya catatan susulan': js.replace("|| hariIniIso(d) !== t.tanggal) return () => false;", ") return () => false;"),
+            'UU38-1: kasSeharusnya dokumen tutup tidak ikut catatan susulan (Σ fisik − seharusnya ≠ selisih)': js.replace("kasTotal: S1.total + nSusul,", "kasTotal: S1.total,"),
         }
         kode = 0
         for nama, isi in rusak.items():

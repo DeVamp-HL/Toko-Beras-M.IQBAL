@@ -13,7 +13,7 @@
 import { kasPada, hitungKasbon, hitungLabaBersihRentang, hitungUtangOwner } from '../mesin/beku.js';
 import { daftarGerakanKas, daftarModalOwner, kunciPelanggan, POS_BIAYA_BULANAN, namaBulanPanjang, akhirBulanIso } from '../mesin/pembantu.js';
 import { ambilTitikKas, ambilAmplopLaba, ambilPindahUang, ambilPengeluaranHarian, ambilKasbonMutasi, ambilModalOwner, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, ambilBiayaBulanan, ambilPiutangMutasi, ambilBahanKemasan, ambilBahanLiteran, cacheMentah, ambilTutupHari } from '../data/toko.js';
-import { RP, ANGKA, hariIniIso, tanggalPendek } from '../inti/format.js';
+import { RP, ANGKA, hariIniIso, tanggalPendek, jamKini } from '../inti/format.js';
 import { TEMPAT_UANG, aturBon } from './bon-pemasok-logika.js';
 
 export const NAMA_KASBON_OWNER = 'Owner';
@@ -43,6 +43,18 @@ function ugPetaKantong() {
 }
 /** Penentu tempat uang satu baris gerakan kas — aturan yang SAMA dengan saldoKantong (dokumen yang menyebut tempatnya menang). 39b no. 13: dipakai kertas laci tutup hari. */
 export function kantongGerakan() { const peta = ugPetaKantong(); return (r) => ugKantongBaris(r, peta); }
+/**
+ * Tinjauan 39b UU38-1: penentu baris gerakan kas yang DICATAT SESUDAH titik kas dipasang — bertanggal hari titik (titik.tanggal), jam catatannya lewat jam
+ * titik dipasang (diubahPada, hari yang sama). Hitungan fisik titik itu belum memuatnya, padahal saldoKantong dan mesin hanya membaca tanggal > titik; tanpa
+ * ini tutup berikutnya menganggapnya lebih/kurang laci dan no. 38 menghitungnya lagi di laba. Titik tanpa jam pasang, atau yang dipasang lewat tengah malam
+ * (hari kalender berikutnya), tidak punya catatan susulan. Baris uang keluar dari mesin tidak berjam — jamnya dibaca dari dokumennya.
+ */
+export function ugSesudahTitik(t) {
+  const d = t && t.diubahPada ? new Date(t.diubahPada) : null;
+  if (!d || !isFinite(d.getTime()) || hariIniIso(d) !== t.tanggal) return () => false;
+  const jamT = jamKini(d); const jamDok = {}; ambilPengeluaranHarian().forEach((h) => { if (h.id !== undefined && h.id !== null && h.jam) jamDok[String(h.id)] = String(h.jam); });
+  return (r) => { const j = String(r.jam || jamDok[String(r.id)] || '').slice(0, 5); return r.t === t.tanggal && /^\d\d:\d\d$/.test(j) && j > jamT; };
+}
 function ugKantongBaris(r, peta) {
   if (r.id && peta.id[String(r.id)]) return peta.id[String(r.id)];
   if (!r.id) { const m = String(r.label || '').match(/^(.*?)(?: \(kotor.*)? — biaya (.+)$/); if (m) { const bulan = ugBulanDariNama(m[2]); const t = peta.bulanan[bulan + '|' + m[1]]; if (t) return t; } }
