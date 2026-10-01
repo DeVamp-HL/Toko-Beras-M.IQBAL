@@ -240,7 +240,10 @@ export function lanjutBuku(tahun) {
   const nT = bkTunda(tahun); if (nT) return { tolak: bkKalimatTunda(tahun, nT) };
   const ub = bkBerubah(a); if (ub) return { tolak: ub };
   const K = bkKirimanDari(a); const sudah = K.filter((k) => bkMasuk(k, a)).length;
-  const kunci = Object.assign({}, a, { status: 'terkunci' }); delete kunci.pembuka; delete kunci.penanda;
+  // §8 no. 5: patokan pemeriksaan ulang (12 baris HARI INI, pembuka masih tersembunyi) diambil tepat sebelum kiriman pertama sesi ini — dulu saat mulai, jadi
+  // penjualan di antara kiriman 1 dan Lanjutkan (hari yang sama) membuat periksa ulang berbunyi palsu
+  const hari = hariIniIso(new Date(Date.now())); const HI = barisBuku(hari, hari);
+  const kunci = Object.assign({}, a, { status: 'terkunci', hariIni: { tanggal: hari, baris: HI.harta.concat(HI.utang).map((b) => ({ id: b.id, nama: b.nama, n: b.n })) } }); delete kunci.pembuka; delete kunci.penanda;
   const tanda = a.pembuka.filter((x) => x.data && x.data.penandaBuku); const belumAda = a.pembuka.filter((x) => tanda.indexOf(x) < 0 && !dokDiCache(x.koleksi, x.data.id));
   const akhir = bkTitikKini({ dokumen: tanda.concat(a.penanda || [], [{ koleksi: 'tutupBukuAcara', data: kunci }]) }, tahun);
   const Pt = kpPotong(belumAda.map((x) => ({ dokumen: [x] })).concat([akhir]), dokDiCache, new Date(Date.now())); if (Pt.tolak) return { tolak: Pt.tolak };
