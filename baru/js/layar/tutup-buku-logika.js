@@ -334,11 +334,13 @@ export function susunBatal(tahun, arsipDok, w) {
 }
 const KOLEKSI_CACHE = { batch: 'batchMasuk', piutang: 'piutangMutasi', kasbon: 'kasbonMutasi', produksi: 'produksiKemasan', bahanKemasan: 'stokBahanKemasan', bahanLiteran: 'stokBahanLiteran', utangPemasok: 'utangPemasokMutasi', utangOwner: 'utangOwnerMutasi', amplop: 'amplopLaba' };
 function bkEraTanpa(tahun) { let t = null; Object.keys(KOLEKSI_CACHE).forEach((c) => cacheMentah(c).forEach((x) => { if (bkTutupBuku(x) && pembukaBerlaku(x) && Number(x.tahunDari) !== tahun) { const n = Number(x.tahunDari); if (isFinite(n) && (t === null || n > t)) t = n; } })); return t; }
+/** Putaran 3 UTBU-2: TIDAK SAMA = kedua sisi terhitung dan berbeda; sisi mana pun yang tidak bisa dihitung (patokan / mesin null, mis. titik kas sudah maju) = belum bisa dihitung. */
+const bkPisahPeriksa = (PU) => ({ beda: PU.baris.filter((b) => b.tahu && b.b !== null && !b.sama), belum: PU.baris.filter((b) => !b.tahu || b.b === null) });
 /** §8 no. 6: kalimat hasil pemeriksaan ulang untuk "selesaikan" ('' = semua sama). */
-function bkKalimatPeriksa(PU) {
+export function bkKalimatPeriksa(PU) {
   if (!PU) return 'Pemeriksaan ulang tidak bisa dijalankan (patokan hari tutup buku tidak ada di berita acara)';
-  if (PU.semuaSama) return ''; const nm = (d) => d.map((b) => b.nama.split(' · ')[0]).join(', '); const beda = PU.baris.filter((b) => b.tahu && !b.sama);
-  return 'Pemeriksaan ulang dari mesin: ' + [beda.length ? beda.length + ' baris TIDAK SAMA (' + nm(beda) + ')' : '', PU.tidakTahu.length ? PU.tidakTahu.length + ' baris belum bisa dihitung (' + nm(PU.tidakTahu) + ')' : ''].filter(Boolean).join(' · ');
+  if (PU.semuaSama) return ''; const nm = (d) => d.map((b) => b.nama.split(' · ')[0]).join(', '); const P = bkPisahPeriksa(PU);
+  return 'Pemeriksaan ulang dari mesin: ' + [P.beda.length ? P.beda.length + ' baris TIDAK SAMA (' + nm(P.beda) + ')' : '', P.belum.length ? P.belum.length + ' baris belum bisa dihitung (' + nm(P.belum) + ')' : ''].filter(Boolean).join(' · ');
 }
 /**
  * Selesai: cadangan sesudah tercatat → berita acara selesai (tidak bisa dibatalkan lagi).
@@ -350,7 +352,7 @@ export function susunSelesai(tahun, namaCadangan2, w, yakin) {
   const sisa = arsipBuku(tahun).n; if (sisa) return { tolak: ANGKA(sisa) + ' catatan ' + tahun + ' belum pindah ke arsip — lanjutkan arsip dulu; tahun ' + tahun + ' belum bisa diselesaikan' };
   const PU = bkPeriksaDipakai(tahun); const kal = bkKalimatPeriksa(PU);
   if (kal && !yakin) return { tolak: kal + '. Sesudah selesai, tutup buku ' + tahun + ' tidak bisa dibatalkan lagi — periksa dulu; kalau memang benar, ketuk sekali lagi.', perluYakin: true };
-  const periksaUlang = { sama: !kal, beda: PU ? PU.beda.map((b) => b.nama) : ['tidak bisa diperiksa'], pada: w.kini };
+  const P = PU ? bkPisahPeriksa(PU) : null; const periksaUlang = { sama: !kal, beda: P ? P.beda.map((b) => b.nama) : ['tidak bisa diperiksa'], belumBisa: P ? P.belum.map((b) => b.nama) : [], pada: w.kini };
   return { dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, acara, { status: 'selesai', cadangan2: namaCadangan2 || '', selesaiPada: w.kini, selesaiTanggal: w.tanggal, periksaUlang, langkah: Object.assign({}, acara.langkah || {}, { cadangan2: w.kini }) }) }], patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup. Simpan kedua berkas cadangan di luar HP.', kabarAwas: false } };
 }
 /**

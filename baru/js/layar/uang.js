@@ -272,7 +272,7 @@ export function pasangLayarUang(akar, opsi) {
     // putaran 3 UTBU-1: hasil periksa ulang DIBEKUKAN saat arsip habis (ditulis ke berita acara) — "selesai" memakainya; tulisan gagal = selesai menghitung ulang
     const PA = BK.susunPeriksaArsip(tahun, waktu()); if (PA.dokumen) { try { await tulisDokumen(PA.dokumen, [], { tunggu: true }); } catch (e) { console.error(e); } }
     const PU = PA.PU || { semuaSama: false, ringkas: 'pemeriksaan ulang tidak bisa dijalankan', beda: [] };
-    set({ sibuk: false, progres: null, sesudahLive: PU, langkahB: Object.assign({}, s.langkahB, { kunci: waktu().kini }), bukaB: 'cadangan2', kabar: (kabarAkhir || '') + (PU.semuaSama ? ' Diperiksa ulang dari mesin: semua baris sama.' : ' AWAS: diperiksa ulang dari mesin ada baris yang tidak sama (' + PU.beda.map((b) => b.nama.split(' · ')[0]).join(', ') + ') — periksa dulu, jangan diselesaikan.'), kabarAwas: !PU.semuaSama });
+    set({ sibuk: false, progres: null, sesudahLive: PU, langkahB: Object.assign({}, s.langkahB, { kunci: waktu().kini }), bukaB: 'cadangan2', kabar: (kabarAkhir || '') + (PU.semuaSama ? ' Diperiksa ulang dari mesin: semua baris sama.' : ' AWAS: ' + BK.bkKalimatPeriksa(PA.PU) + ' — periksa dulu, jangan diselesaikan.'), kabarAwas: !PU.semuaSama });
     return true;
   }
   async function jalankanBatal(tahun, arsipAda) {
