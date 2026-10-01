@@ -11,6 +11,7 @@ import { RP, tanggalPendek } from '../inti/format.js';
 import { semuaOrang, pasanganKembar } from './pelanggan-logika.js';
 import { aturUpah, hitungUpah } from './upah-logika.js';
 import { pjTahun } from './pajak-logika.js';
+import { kemajuanBuku } from './tutup-buku-logika.js';
 
 export const KP_DENYUT_MS = 24 * 3600000;   // ⛔ perangkat yang tidak berdenyut 24 jam terakhir (owner 25 Sep)
 const KP_VERSI_MS = KP_VERSI_HARI * 24 * 3600000;
@@ -69,6 +70,10 @@ export function kpDaftarPeriksa(bulan, kini, K) {
   // keputusan owner 1 Okt (A): bulan sebelum KP_KUNCI_MULAI tidak dikunci (K.kunciMulai = uji saja)
   const mulai = K.kunciMulai !== undefined ? K.kunciMulai : KP_KUNCI_MULAI; const bolehTahun = bulan >= mulai;
   tambah({ id: 'tundaTutupBuku', blokir: true, ok: bolehTahun, teks: 'Kunci bulan dimulai ' + kpNamaBulan(KP_KUNCI_MULAI) + ' (keputusan owner 1 Okt 2026)', ket: bolehTahun ? 'boleh' : nama + ' TIDAK dikunci sampai tutup buku ' + bulan.slice(0, 4) + ' selesai — mengunci satu bulan ikut mengunci semua bulan sebelumnya, lalu saldo pembuka & arsip tutup buku ditolak server' });
+  // §8 no. 9 (tutup buku bertahap): tutup buku / pembatalan yang belum tuntas — mengunci bulan di tengahnya membuat sisa kiriman pembuka (bertanggal 1 Jan & tanggal
+  // utang lama), arsip, dan pembatalan ditolak server: tutup buku buntu, tidak bisa dilanjutkan maupun dibatalkan
+  const KMb = kemajuanBuku();
+  tambah({ id: 'tutupBukuTuntas', blokir: true, ok: !KMb, teks: 'Tidak ada tutup buku yang setengah jalan', ket: KMb ? KMb.teks + ' Tuntaskan atau batalkan dulu di Uang › Tutup buku.' : 'tidak ada' });
   const siap = KP_SIAP_25B || !!K.siap25b;
   tambah({ id: 'siap25b', blokir: true, ok: siap, teks: 'Sistem lama & kasir darurat siap menghadapi bulan terkunci (putaran 25b)', ket: siap ? 'siap' : 'BELUM — sampai putaran 25b, satu nota kasir yang tertahan offline lalu tiba sesudah bulannya terkunci membuat antrean tablet itu MACET (nota sesudahnya ikut tertahan), dan index.html memunculkan "Database terkunci" berulang. Kunci pertama menunggu 25b (keputusan owner 25 Sep).' });
   const bolehT = kpBolehDikunci(bulan, kini, tenggang);

@@ -27,6 +27,7 @@ Yang dijaga:
   N6  "selesaikan" ditolak selama arsip belum habis; periksa ulang beda = ditolak menyebut barisnya, baru diterima pada ketukan kedua (dicatat di berita acara)
   N7  kalimat berhenti: kiriman 1 tutup buku → "Kunci tahun" lagi; kiriman 1 pembatalan → "Batalkan" lagi (Lanjutkan = meneruskan tutup buku); sesudahnya "Lanjutkan"
   N8  dibatalkan, dikunci lagi, dibatalkan lagi → berita acara mencatat tanggal pembatalan KEDUA
+  N9  tutup buku setengah jalan → daftar periksa Kunci bulan punya butir ⛔ (kunci bulan ditolak); sesudah selesai butirnya beres
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -256,6 +257,16 @@ coba('N8', function () { kotak(5); W = jam('2027-01-05T10:00:00+07:00'); R = sus
   ok('N8 kunci kedua tidak membawa tanggal pembatalan pertama; pembatalan kedua tercatat 9 Jan (bukan 5 Jan)', t1 === '2027-01-05' && bersih && acara(2026).status === 'dibatalkan' && acara(2026).dibatalkanTanggal === '2027-01-09' && /^2027-01-09/.test(new Date(new Date(acara(2026).dibatalkanPada).getTime() + 7 * 3600000).toISOString()),
     J([t1, R.acara && R.acara.dibatalkanTanggal, acara(2026).dibatalkanTanggal, acara(2026).dibatalkanPada])); });
 
+// ---- §8 no. 9 · tutup buku setengah jalan → daftar periksa Kunci bulan punya butir ⛔ (mengunci Januari 2027 di tengahnya = pembuka, arsip & batal ditolak server)
+coba('N9', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W); kirim(R.kiriman[0]);
+  var KK = { lokal: { antreLokal: { belum: [], ditolak: [] }, antre: [] }, parkir: [], putusanHari: {}, centang: {} };
+  var butirTB = function (DP) { return DP.butir.filter(function (b) { return b.id !== 'tundaTutupBuku' && /tutup buku/i.test(b.teks + ' ' + b.ket); }); };
+  jam('2027-02-05T10:00:00+07:00'); var DP = kpDaftarPeriksa('2027-01', new Date(__KINI), KK); var tb = butirTB(DP);
+  ok('N9 tutup buku 2026 setengah jalan: daftar periksa Kunci bulan Januari 2027 punya butir ⛔ yang belum beres → kunci bulan ditolak', tb.length === 1 && tb[0].blokir && !tb[0].ok && !DP.boleh, J(tb));
+  jam('2027-01-05T10:00:00+07:00'); L = lanjutBuku(2026); (L.kiriman || []).forEach(kirim); arsipkanDokumen(2026, arsipBuku(2026).daftar); var SL = susunSelesai(2026, 'cadangan-sesudah.json', W); if (!SL.tolak) kirim(SL);
+  jam('2027-02-05T10:00:00+07:00'); DP = kpDaftarPeriksa('2027-01', new Date(__KINI), KK); tb = butirTB(DP);
+  ok('N9 sesudah tutup buku selesai: butir itu beres', kemajuanBuku() === null && tb.length === 1 && tb[0].ok, J([SL.tolak, tb])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -334,6 +345,7 @@ RUSAK = [
     ('§8 no. 7 · pembatalan yang berhenti di kiriman 1 menyuruh "Lanjutkan"', 'baru/js/layar/tutup-buku-logika.js', "return awal + (ke === 1 ? ' Belum ada yang ditarik", "return awal + (false ? ' Belum ada yang ditarik"),
     ('§8 no. 7 · tutup buku yang berhenti di kiriman 1 menyuruh "Lanjutkan"', 'baru/js/layar/tutup-buku-logika.js', "return awal + (ke === 1 ? ' Tidak ada yang masuk", "return awal + (false ? ' Tidak ada yang masuk"),
     ('§8 no. 8 · mulai baru membawa tanggal pembatalan lama', 'baru/js/layar/tutup-buku-logika.js', "delete acara.dariStatus; delete acara.dibatalkanPada; delete acara.dibatalkanTanggal;", "delete acara.dariStatus;"),
+    ('§8 no. 9 · daftar periksa Kunci bulan tidak melihat tutup buku setengah jalan', 'baru/js/layar/kunci-periode-logika.js', "tambah({ id: 'tutupBukuTuntas', blokir: true, ok: !KMb,", "tambah({ id: 'tutupBukuTuntas', blokir: true, ok: true || !KMb,"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]
