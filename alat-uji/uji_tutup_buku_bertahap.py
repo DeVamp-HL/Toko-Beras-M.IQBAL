@@ -484,6 +484,17 @@ coba('P4-2', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = 
   ok('P4-2 dibatalkan Mac B, dimulai lagi di HP A: pemegang HP A, tanpa pemegangLama / jam ambil alih percobaan lama', !B.tolak && !R3.tolak && !!a3.pemegang && a3.pemegang.id === 'p-hpa' && !a3.pemegangLama && !a3.diambilAlihPada,
     J([B.tolak, R3.tolak, a3.pemegang, a3.pemegangLama, a3.diambilAlihPada])); });
 
+// ---- putaran 4 BP4R-2 · HP A memulai lalu membatalkan tuntas; sesudah itu kiriman saldo pembuka HP A yang tertahan mendarat ('dibatalkan' + sisa pembuka).
+//      "Lanjutkan pembatalan" dari 'dibatalkan' tidak dijaga pemegang (boleh dari perangkat mana pun) → perangkat yang memulainya harus jadi pemegang 'membatalkan'.
+//      Dulu pemegang HP A ikut tersalin → Mac B diterima di kiriman 1 lalu ditolak dirinya sendiri di kiriman 2 ("sedang dikerjakan di HP A").
+coba('P4-7', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W, HPA); kirim(R.kiriman[0]);
+  B = susunBatal(2026, [], W, HPA); (B.kiriman || []).forEach(kirim); if (B.akhir) kirim({ dokumen: [B.akhir] });
+  kirim(R.kiriman[1]); var a0 = acara(2026) || {};
+  var BB = susunBatal(2026, [], jam('2027-01-05T12:00:00+07:00'), MACB); var b1 = BB.kiriman ? BB.kiriman[0].dokumen[0].data : {}; if (BB.kiriman) kirim(BB.kiriman[0]);
+  ok('P4-7 sisa saldo pembuka mendarat sesudah dibatalkan → pembatalan lanjutan dari Mac B: pemegang "membatalkan" = Mac B, Mac B tidak ditolak dirinya sendiri di kiriman berikutnya',
+    a0.status === 'dibatalkan' && !BB.tolak && b1.status === 'membatalkan' && !!b1.pemegang && b1.pemegang.id === 'p-macb' && bukanPemegang(2026, MACB) === '' && KAL_A.test(bukanPemegang(2026, HPA).replace('Mac toko contoh', 'HP owner contoh')),
+    J([a0.status, BB.tolak, b1.status, b1.pemegang, bukanPemegang(2026, MACB)])); });
+
 // ---- putaran 4 P4-3 · arsip HP A: potongan TERAKHIR sudah terkirim; sebelum ia mendarat, tutup buku dibatalkan tuntas dari tab lain di HP A (pemegang yang sama).
 //      Potongan itu lalu mendarat. Callback progres uang.js harus membaca status sesudah potongan terakhir juga → potongan itu dikembalikan HP A sendiri.
 //      Dulu `sudah < total ? … : ''` → tidak diperiksa → catatan 2026 potongan terakhir tertinggal di arsip sesudah "dibatalkan", tanpa pita.
@@ -666,6 +677,7 @@ RUSAK = [
     ('putaran 3 AAL7 · kiriman lanjutan dinomori menurut rencana saat mulai', 'baru/js/layar/tutup-buku-logika.js', "const k = { ke: i + 1, total: Pt.potongan.length, lanjutan: true,", "const k = { ke: i + 2, total: Pt.potongan.length + 1, lanjutan: true,"),
     ('putaran 3 AAL1 (susulan) · potongan yang mendarat sesudah pembatalan tidak dikembalikan', 'baru/js/layar/tutup-buku-logika.js', "if (!a || (a.status !== 'membatalkan' && a.status !== 'dibatalkan')) return [];", "if (true) return [];"),
     ('putaran 3 AAL1 (susulan) · tahun yang SELESAI ditutup perangkat lain ikut dikembalikan', 'baru/js/layar/tutup-buku-logika.js', "if (!a || (a.status !== 'membatalkan' && a.status !== 'dibatalkan')) return [];", "if (!a) return [];"),
+    ('putaran 4 BP4R-2 · pembatalan lanjutan dari "dibatalkan" membawa pemegang lama', 'baru/js/layar/tutup-buku-logika.js', "  if (acara.status === 'dibatalkan') { const pg = bkPerangkatIni(L); if (pg) batal.pemegang = pg; }\n", ""),
     ('putaran 4 P4-1 · berita acara tidak mencatat pemegang', 'baru/js/layar/tutup-buku-logika.js', "const pg = bkPerangkatIni(L); if (pg) acara.pemegang = pg;", "const pg = null;"),
     ('putaran 4 P4-1 · percobaan ulang membawa pemegang percobaan lama', 'baru/js/layar/tutup-buku-logika.js', "  delete acara.pemegang;\n", "\n"),
     ('putaran 4 P4-1 · penjaga pemegang mati (perangkat mana pun boleh)', 'baru/js/layar/tutup-buku-logika.js', "  if (L && L.idPerangkat && String(L.idPerangkat) === String(p.id)) return '';", "  return '';"),

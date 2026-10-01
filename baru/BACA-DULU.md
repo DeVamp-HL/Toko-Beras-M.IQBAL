@@ -1387,5 +1387,6 @@ penjaga pusat). Cadangan toko 1 Okt dihitung seolah 5 Jan 2027: 57 dokumen pembu
   keadaan saja + tombol **ambil alih** (`susunAmbilAlih`: tersambung & data dari server, antrean kosong, berita acara diam ≥ 60 menit, pemegang tidak
   berdenyut 15 menit, dua ketukan dengan kalimat peringatan); arsip membaca status sesudah potongan terakhir juga; hasil beku periksa ulang di
   `pengaturan/periksaArsip<tahun>` tanpa status, bertanda percobaan; lembar K6 sesudah kunci memakai kalimat pita, sisi mesin yang tak terhitung "?".
-  Kiriman yang tertahan di perangkat lain tetap bisa mendarat belakangan (sekarang hanya lewat ambil alih) — penangkal sungguhan = rules, TUGAS OWNER.
-  Uji P4-… di `uji_tutup_buku_bertahap.py` (109 lulus, 84 kontrol berbunyi).
+  Pembatalan lanjutan dari `dibatalkan` dipegang perangkat yang memulainya. Kiriman yang tertahan di perangkat lain tetap bisa mendarat belakangan (sekarang
+  lewat jalan MULAI — kiriman pertama yang tertahan sebelum server mengenal pemegangnya — atau ambil alih) — penangkal sungguhan = rules, TUGAS OWNER.
+  Uji P4-… di `uji_tutup_buku_bertahap.py` (110 lulus, 85 kontrol berbunyi).

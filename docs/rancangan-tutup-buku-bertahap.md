@@ -387,19 +387,28 @@ peramban yang dinyalakan.
 | P4-4 | Hasil beku periksa ulang = dokumen tersendiri **tanpa kolom status**: `pengaturan/periksaArsip<tahun>` (rules yang ada: owner saja; bukan titikKas = tidak dikunci, 0 pemeriksaan; tidak dibaca di tempat lain) bertanda percobaan (jam paraf/kunci). Tulisan yang mendarat telat tidak bisa lagi memundurkan `dibatalkan` / `selesai` jadi `terkunci` (TP3-T1 / LP3-Y1); hasil percobaan yang dibatalkan tidak dipakai percobaan berikut (LP3-Z1) | P4-4, P4-4 Z1 |
 | P4-5 | Lembar K6 sesudah kunci memakai kalimat pita (`bkKalimatPeriksa`); baris yang sisi mesinnya tidak bisa dihitung bertanda "?" (belum bisa dihitung), bukan "≠" (TP3-T4 / LP3-C2) | P4-5 + 1 statis |
 | P4-6 | Tanpa kode: pengakuan TP3-T3 dikembalikan ke daftar di bawah | — |
+| P4-7 | Pembatalan lanjutan dari `dibatalkan` (sisa saldo pembuka mendarat belakangan — fase `batal` ini tidak dijaga pemegang) dipegang perangkat yang memulainya: perangkat yang boleh memulai juga boleh menyelesaikan (tinjauan BP4R-2; dulu pemegang lama tersalin → perangkat itu ditolak dirinya sendiri di kiriman ke-2) | P4-7 |
 
-Hasil: `uji_tutup_buku_bertahap` 109 lulus · 0 gagal, `--kontrol` 84 berbunyi (termasuk bentuk lama callback arsip `uang.js`); asap data toko tetap
+Hasil: `uji_tutup_buku_bertahap` 110 lulus · 0 gagal, `--kontrol` 85 berbunyi (termasuk bentuk lama callback arsip `uang.js`); asap data toko tetap
 `[18, 6]` / batal `[18, 6]`; `uji_uang_baru` 151/0, `uji_kunci_periode` 47/0; `peta_akses --kiriman` lulus (`susunPeriksaArsip` tercatat: 1 dokumen
 pengaturan bukan titikKas). Uji peramban TIDAK dijalankan di Mac owner — CI runner.
 
-Yang tetap diakui (menambah daftar §10; butir §10 tentang dua perangkat sekaligus kini hanya mungkin lewat ambil alih atau dua tab di perangkat yang sama):
+Yang tetap diakui (menambah daftar §10; butir §10 tentang dua perangkat sekaligus kini hanya mungkin lewat jalan MULAI, ambil alih, atau dua tab di perangkat yang sama):
 - **Kiriman yang tertahan di perangkat lain bisa mendarat belakangan (TP3-T3).** Rules tidak mengenal urutan tutup buku: tulisan yang menunggu di antrean
   Firestore perangkat mana pun tetap terkirim begitu tersambung dan menimpa berita acara (mis. `selesai` mundur, pembatalan tertimpa). Sesudah P4-1 perangkat
-  lain tidak lagi menulis tutup buku; dua perangkat hanya bisa sama-sama menulis lewat **ambil alih** bila HP lama ternyata masih menyimpan kiriman — itulah
-  kalimat peringatannya. Penangkal sungguhan (berita acara `selesai` tidak boleh ditimpa / status hanya boleh maju) = **rules — TUGAS OWNER** (Console);
+  lain tidak lagi menulis tutup buku; dua perangkat masih bisa sama-sama menulis lewat DUA jalan (tinjauan putaran 4, TT4-DP1): (1) **jalan MULAI** — kiriman
+  pertama (juga percobaan ulang sesudah dibatalkan) tertahan di perangkat pemulai SEBELUM server mengenal pemegangnya; perangkat lain yang lolos g3 (15 menit
+  tanpa denyut, atau owner mengetuk "sudah dimatikan") bisa memulai dan menyelesaikan; begitu kiriman lama mendarat, `selesai` mundur (kotak pasir: jadi
+  `berjalan` dengan pemegang perangkat pemulai). Jalan pulih: Batalkan dari perangkat pemulai itu. (2) **ambil alih** bila HP lama ternyata masih menyimpan
+  kiriman — itulah kalimat peringatannya. Penangkal sungguhan (berita acara `selesai` tidak boleh ditimpa / status hanya boleh maju) = **rules — TUGAS OWNER** (Console);
   belum dirancang di putaran ini. Repro ulang (kotak pasir, E1 jalan ambil alih): Mac B mengambil alih lalu membatalkan tuntas; kiriman penanda HP A yang
-  tertahan mendarat sesudahnya → berita acara `terkunci` lagi DENGAN PEMEGANG HP A dan saldo pembuka 0 dari N = fase `rusak`; Mac B ditolak lagi; "batalkan"
+  tertahan mendarat sesudahnya → berita acara `terkunci` lagi DENGAN PEMEGANG HP A dan SEBAGIAN saldo pembuka ikut masuk (kotak pasir: 11 dari 47 = isi
+  kiriman penanda) = fase `rusak` — selama itu piutang, stok & utang SALAH sampai "batalkan"; Mac B ditolak lagi; "batalkan"
   dari HP A (atau ambil alih lagi sesudah 60 menit) membereskannya — angka kembali seperti sebelum tutup buku.
+- **Pembatalan yang sedang berjalan di HP lama yang BEKU (bukan mati)** tetap meneruskan ekornya sesudah diambil alih: pengembalian arsip lalu `dibatalkan`
+  (`uang.js` jalankanBatal sesudah loop kiriman; penjaga pemegang hanya per kiriman tarik). Kalau perangkat baru sudah menutup buku lagi sampai `selesai`,
+  ekor itu memundurkannya (tinjauan BP4R-1, sudah ada sebelum putaran 4). Pelindungnya kalimat peringatan ambil alih ("pastikan HP lama mati / datanya
+  dihapus") — dan rules yang sama dengan butir di atas.
 - Dua tab di perangkat yang SAMA = satu pemegang (id perangkat sama); keduanya dijaga dua lapis §10 + P4-3.
 - Id perangkat disimpan di localStorage peramban: hapus data peramban / ganti peramban = perangkat baru → lewat ambil alih. Peramban yang menolak localStorage
   sama sekali membuat id baru tiap kali dibaca → perangkat itu tidak dikenali sebagai pemegang (pakai peramban biasa).

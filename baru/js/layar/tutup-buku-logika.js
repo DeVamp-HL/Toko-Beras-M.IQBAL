@@ -396,6 +396,9 @@ export function susunBatal(tahun, arsipDok, w, L) {
   if (!acara || (['terkunci', 'berjalan', 'membatalkan'].indexOf(acara.status) < 0 && !(acara.status === 'dibatalkan' && hapus.length))) return { tolak: 'Tahun ' + tahun + ' tidak sedang terkunci — tidak ada yang dibatalkan' };
   const dari = acara.status === 'membatalkan' || acara.status === 'dibatalkan' ? (acara.dariStatus || 'terkunci') : acara.status;
   const batal = Object.assign({}, acara, { status: 'membatalkan', dariStatus: dari, dibatalkanPada: acara.dibatalkanPada || w.kini, dibatalkanTanggal: acara.dibatalkanTanggal || w.tanggal }); delete batal.pembuka; delete batal.penanda;
+  // putaran 4 BP4R-2: pembatalan lanjutan dari 'dibatalkan' (sisa saldo pembuka mendarat belakangan; tidak dijaga pemegang) dipegang perangkat yang memulainya —
+  // perangkat yang boleh memulai juga boleh menyelesaikan (dulu pemegang lama tersalin → perangkat ini ditolak dirinya sendiri di kiriman ke-2)
+  if (acara.status === 'dibatalkan') { const pg = bkPerangkatIni(L); if (pg) batal.pemegang = pg; }
   const awal = [{ koleksi: 'tutupBukuAcara', data: batal }]; let titik = null;
   if (acara.status === 'terkunci') {
     const eraLama = bkEraTanpa(tahun); awal.push({ koleksi: 'pengaturan', data: { id: 'tutupBuku', tahunDitutup: eraLama === null ? 0 : eraLama, padaTanggal: w.tanggal, dibatalkan: tahun } });
