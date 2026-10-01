@@ -269,7 +269,9 @@ export function pasangLayarUang(akar, opsi) {
     let henti = BK.arsipBerhentiBuku(tahun);
     try { if (!henti) await arsipkanDokumen(tahun, A.daftar, (sudah, total) => { set({ progres: { sudah, total, satuan: 'dokumen dipindah ke arsip' } }); henti = sudah < total ? BK.arsipBerhentiBuku(tahun) : ''; if (henti) throw new Error(henti); }); } catch (e) { set({ sibuk: false, progres: null, kabar: henti || 'Arsip terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan"; yang sudah pindah tidak diulang. Sampai habis, angka toko DOBEL.', kabarAwas: true }); return false; }
     if (henti) { set({ sibuk: false, progres: null, kabar: henti, kabarAwas: true }); return false; }
-    const PU = BK.periksaUlangBuku(tahun) || { semuaSama: false, ringkas: 'pemeriksaan ulang tidak bisa dijalankan', beda: [] };
+    // putaran 3 UTBU-1: hasil periksa ulang DIBEKUKAN saat arsip habis (ditulis ke berita acara) — "selesai" memakainya; tulisan gagal = selesai menghitung ulang
+    const PA = BK.susunPeriksaArsip(tahun, waktu()); if (PA.dokumen) { try { await tulisDokumen(PA.dokumen, [], { tunggu: true }); } catch (e) { console.error(e); } }
+    const PU = PA.PU || { semuaSama: false, ringkas: 'pemeriksaan ulang tidak bisa dijalankan', beda: [] };
     set({ sibuk: false, progres: null, sesudahLive: PU, langkahB: Object.assign({}, s.langkahB, { kunci: waktu().kini }), bukaB: 'cadangan2', kabar: (kabarAkhir || '') + (PU.semuaSama ? ' Diperiksa ulang dari mesin: semua baris sama.' : ' AWAS: diperiksa ulang dari mesin ada baris yang tidak sama (' + PU.beda.map((b) => b.nama.split(' · ')[0]).join(', ') + ') — periksa dulu, jangan diselesaikan.'), kabarAwas: !PU.semuaSama });
     return true;
   }

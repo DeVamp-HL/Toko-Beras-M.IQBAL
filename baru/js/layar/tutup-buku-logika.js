@@ -148,6 +148,22 @@ export function periksaUlangBuku(tahun) {
   const B = barisBuku(H.tanggal, H.tanggal); const o = {}; B.harta.concat(B.utang).forEach((b) => { o[b.id] = b.n; });
   return bandingBuku({ harta: H.baris, utang: [] }, o);
 }
+/**
+ * Putaran 3 UTBU-1: hasil periksa ulang DIBEKUKAN saat arsip habis — ditulis ke berita acara (`periksaArsip`: patokan & angka mesin per baris). "Selesai" & pita
+ * memakai hasil itu; dulu dihitung ulang tiap kali terhadap patokan pagi, jadi penjualan Januari biasa sesudah arsip terbaca "TIDAK SAMA" dan tercatat permanen.
+ * dokumen hanya bila berita acara masih 'terkunci' dan arsip sudah habis.
+ */
+export function susunPeriksaArsip(tahun, w) {
+  const PU = periksaUlangBuku(tahun); const a = bkAcara(tahun);
+  if (!PU || !a || a.status !== 'terkunci' || arsipBuku(tahun).n) return { PU };
+  const periksaArsip = { pada: w.kini, tanggal: w.tanggal, baris: PU.baris.map((b) => ({ id: b.id, nama: b.nama, a: b.a, b: b.b })) };
+  return { PU, dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, a, { periksaArsip }) }] };
+}
+/** Hasil periksa ulang yang dipakai "selesai" & pita: yang dibekukan saat arsip habis; belum ada (arsip dituntaskan tanpa tulisan itu) = dihitung ulang sekarang. */
+function bkPeriksaDipakai(tahun) {
+  const a = bkAcara(tahun); const P = a && a.periksaArsip; if (!P || !Array.isArray(P.baris)) return periksaUlangBuku(tahun);
+  const o = {}; P.baris.forEach((b) => { o[b.id] = b.b; }); return bandingBuku({ harta: P.baris.map((b) => ({ id: b.id, nama: b.nama, n: b.a })), utang: [] }, o);
+}
 /** Yang diarsipkan saat kunci: seluruh dokumen tahun itu menurut tbDaftarKoleksi (sama dengan yang dihapus sistem lama). */
 export function arsipBuku(tahun) { const d = tbDaftarKoleksi(tahun); const daftar = []; d.forEach((k) => k.dok.forEach((dok) => daftar.push({ koleksi: k.koleksi, id: k.koleksi === 'biayaBulanan' ? (dok.bulan || dok.id) : dok.id, data: dok }))); return { daftar, perKoleksi: d.map((k) => ({ koleksi: k.koleksi, label: k.label, n: k.dok.length })).filter((k) => k.n), n: daftar.length }; }
 /** Berkas arsip tahun (JSON) untuk diunduh di langkah 3. */
@@ -274,7 +290,7 @@ function bkTertunda(tahun) {
 }
 /** §8 no. 6: pita fase selesaikan menjalankan periksa ulang dan menyebut hasilnya. */
 function bkTeksSelesaikan(tahun) {
-  const kal = bkKalimatPeriksa(periksaUlangBuku(tahun));
+  const kal = bkKalimatPeriksa(bkPeriksaDipakai(tahun));
   return 'Tahun ' + tahun + ' terkunci dan arsipnya habis. ' + (kal ? 'AWAS: ' + kal + ' — periksa dulu; "selesai" butuh ketukan kedua.' : 'Diperiksa ulang dari mesin: semua baris sama — unduh cadangan sesudahnya & selesai.');
 }
 /** (c) Kemajuan untuk layar K6 & Beranda: tutup buku / pembatalan yang belum tuntas (null = tidak ada). */
@@ -332,7 +348,7 @@ function bkKalimatPeriksa(PU) {
 export function susunSelesai(tahun, namaCadangan2, w, yakin) {
   const acara = ambilTutupBukuAcara().find((a) => Number(a.tahun) === tahun) || null; if (!acara || acara.status !== 'terkunci') return { tolak: 'Kunci tahunnya dulu' };
   const sisa = arsipBuku(tahun).n; if (sisa) return { tolak: ANGKA(sisa) + ' catatan ' + tahun + ' belum pindah ke arsip — lanjutkan arsip dulu; tahun ' + tahun + ' belum bisa diselesaikan' };
-  const PU = periksaUlangBuku(tahun); const kal = bkKalimatPeriksa(PU);
+  const PU = bkPeriksaDipakai(tahun); const kal = bkKalimatPeriksa(PU);
   if (kal && !yakin) return { tolak: kal + '. Sesudah selesai, tutup buku ' + tahun + ' tidak bisa dibatalkan lagi — periksa dulu; kalau memang benar, ketuk sekali lagi.', perluYakin: true };
   const periksaUlang = { sama: !kal, beda: PU ? PU.beda.map((b) => b.nama) : ['tidak bisa diperiksa'], pada: w.kini };
   return { dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, acara, { status: 'selesai', cadangan2: namaCadangan2 || '', selesaiPada: w.kini, selesaiTanggal: w.tanggal, periksaUlang, langkah: Object.assign({}, acara.langkah || {}, { cadangan2: w.kini }) }) }], patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup. Simpan kedua berkas cadangan di luar HP.', kabarAwas: false } };
