@@ -39,10 +39,21 @@ export function dokDiCache(koleksi, id) { const k = KOLEKSI.find((x) => x.nama =
 // TUTUP BUKU BERTAHAP (rancangan Okt 2026): saldo pembuka tahun yang berita acaranya BELUM terkunci ('berjalan' = kiriman pembuka belum semua masuk;
 // 'membatalkan' / 'dibatalkan' = sedang / sudah ditarik) TIDAK terlihat oleh mesin & era. Tahun lama tetap utuh sampai kiriman TERAKHIR (penanda) masuk;
 // sesudah itu tahun baru utuh sekaligus. Saldo pembuka sistem lama (tanpa berita acara) dan yang terkunci/selesai tetap terlihat. Satu tempat: pembukaBerlaku.
+// §8 no. 1 (tinjauan 1 Okt): HP STAF tidak membaca tutupBukuAcara (rules: owner saja) → saringan berita acara saja membuat stok & piutang di HP staf DOBEL
+// selama 'berjalan' / 'membatalkan'. Karena itu saldo pembuka tutup buku bertahap membawa `bertahap: true` dan baru terlihat bila PENANDA tahunnya ada:
+// batch pembuka ber-`penandaBuku` (koleksi batchMasuk — dibaca staf) yang ikut kiriman TERAKHIR dan dihapus di kiriman PERTAMA pembatalan. Aturan yang sama
+// di semua perangkat → HP owner & staf melihat angka yang sama di tiap titik putus. Rules tidak berubah. Pembuka tanpa `bertahap` (sistem lama) tidak tersentuh.
 const BK_TERSEMBUNYI = { berjalan: 1, membatalkan: 1, dibatalkan: 1 };
-function bkTahunTersembunyi() { const s = {}; let ada = false; (_cache.tutupBukuAcara || []).forEach((a) => { if (a && BK_TERSEMBUNYI[a.status]) { s[Number(a.tahun)] = true; ada = true; } }); return ada ? s : null; }
-export function pembukaBerlaku(x) { if (!x || !x.tutupBuku) return true; const s = bkTahunTersembunyi(); return !s || !s[Number(x.tahunDari)]; }
-const bkSaring = (arr) => { const s = bkTahunTersembunyi(); return s ? arr.filter((x) => !x || !x.tutupBuku || !s[Number(x.tahunDari)]) : arr; };
+let _bkMemo = null;
+function bkKeadaan() {
+  const a = _cache.tutupBukuAcara, b = _cache.batch; if (_bkMemo && _bkMemo.a === a && _bkMemo.b === b) return _bkMemo;
+  const sembunyi = {}, penanda = {};
+  (a || []).forEach((x) => { if (x && BK_TERSEMBUNYI[x.status]) sembunyi[Number(x.tahun)] = true; });
+  (b || []).forEach((x) => { if (x && x.tutupBuku && x.penandaBuku) penanda[Number(x.tahunDari)] = true; });
+  _bkMemo = { a, b, sembunyi, penanda }; return _bkMemo;
+}
+export function pembukaBerlaku(x) { if (!x || !x.tutupBuku) return true; const k = bkKeadaan(); const t = Number(x.tahunDari); return !k.sembunyi[t] && (!x.bertahap || !!k.penanda[t]); }
+const bkSaring = (arr) => { const s = arr.filter(pembukaBerlaku); return s.length === arr.length ? arr : s; };
 function bacaCadanganLokal() { return []; }   // cadangan lokal buatan sendiri tidak ada di sistem baru
 export function ambilSemuaBatch() { return bkSaring(_cache.batch); }
 export function ambilBiayaBulanan() { return _cache.bulanan; }

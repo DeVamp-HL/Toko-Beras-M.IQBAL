@@ -177,8 +177,14 @@ export function susunKunci(tahun, D, w) {
     titikTahun: T0, hariIni: { tanggal: hariIni, baris: HI.harta.concat(HI.utang).map((b) => ({ id: b.id, nama: b.nama, n: b.n })) } });
   delete acara.pembuka; delete acara.penanda; delete acara.dariStatus;
   const penanda = (titik ? [{ koleksi: 'pengaturan', data: titik }] : []).concat([{ koleksi: 'pengaturan', data: { id: 'tutupBuku', tahunDitutup: tahun, padaTanggal: w.tanggal } }]);
-  // (a) tiap dokumen pembuka satu kelompok (urutan pembukaBuku); penanda + berita acara terkunci = kelompok TERAKHIR, jadi selalu di kiriman terakhir
-  const Pt = kpPotong(P.dokumen.map((x) => ({ dokumen: [x] })).concat([{ dokumen: penanda.concat([{ koleksi: 'tutupBukuAcara', data: acara }]) }]), dokDiCache, ugKiniDari(w));
+  // §8 no. 1: semua pembuka ber-`bertahap`; PENANDA yang terbaca HP staf = batch pembuka ber-`penandaBuku` (toko.js pembukaBerlaku). Tanpa stok beras → batch
+  // kosong (merkList []) khusus penanda, supaya pembuka lain tetap punya penanda.
+  P.dokumen.forEach((x) => { x.data.bertahap = true; });
+  let tanda = P.dokumen.find((x) => x.koleksi === 'batchMasuk');
+  if (!tanda) { tanda = { koleksi: 'batchMasuk', data: { id: w.idUnik(), tanggal: P.tglBuka, pemasok: 'TUTUP BUKU ' + tahun, biayaBongkar: 0, stokAwal: true, merkList: [], tutupBuku: true, tahunDari: tahun, bertahap: true } }; P.dokumen.push(tanda); acara.nPembuka = P.dokumen.length; }
+  tanda.data.penandaBuku = true;
+  // (a) tiap dokumen pembuka satu kelompok (urutan pembukaBuku); batch penanda + penanda + berita acara terkunci = kelompok TERAKHIR, jadi selalu di kiriman terakhir
+  const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] })).concat([{ dokumen: [tanda].concat(penanda, [{ koleksi: 'tutupBukuAcara', data: acara }]) }]), dokDiCache, ugKiniDari(w));
   if (Pt.tolak) return { tolak: Pt.tolak };
   acara.rencana = { dibuat: w.kini, n: Pt.potongan.length, kiriman: Pt.potongan.map((p, i) => ({ ke: i + 1, get: p.get, dok: p.dokumen.map((x) => ({ koleksi: x.koleksi, id: String(x.data.id) })) })) };
   const berjalan = Object.assign({}, acara, { status: 'berjalan', pembuka: P.dokumen, penanda });
@@ -251,7 +257,9 @@ export function susunBatal(tahun, arsipDok, w) {
     // titik kas dikembalikan HANYA bila titik sekarang masih yang ditulis tutup buku ini (31 Des) — kalau tutup hari sudah memajukannya, hitungan fisik itu dipertahankan
     const tk = ambilTitikKas(); if (acara.titikDitulis && acara.titikSebelum && acara.titikSebelum.tanggal && tk && tk.tanggal === tbCutoff(tahun)) { titik = Object.assign({}, acara.titikSebelum, { id: 'titikKas', diubahPada: w.kini }); awal.push({ koleksi: 'pengaturan', data: titik }); }
   }
-  const P = kpPotong([{ dokumen: awal, hapus: [] }].concat(hapus.map((x) => ({ dokumen: [], hapus: [x] }))), dokDiCache, ugKiniDari(w)); if (P.tolak) return { tolak: P.tolak };
+  // §8 no. 1: batch penanda dihapus di kiriman PERTAMA — HP staf (tanpa berita acara) langsung tidak melihat pembuka lagi, sama dengan HP owner
+  const tanda = hapus.filter((x) => { const d = x.koleksi === 'batchMasuk' ? dokDiCache(x.koleksi, x.id) : null; return !!(d && d.penandaBuku); }); const sisa = hapus.filter((x) => tanda.indexOf(x) < 0);
+  const P = kpPotong([{ dokumen: awal, hapus: tanda }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] }))), dokDiCache, ugKiniDari(w)); if (P.tolak) return { tolak: P.tolak };
   const kiriman = P.potongan.map((p, i) => ({ ke: i + 1, total: P.potongan.length, get: p.get, dokumen: p.dokumen, hapus: p.hapus }));
   const akhir = { koleksi: 'tutupBukuAcara', data: Object.assign({}, batal, { status: 'dibatalkan' }) };
   return { kiriman, akhir, dokumen: [].concat.apply([], kiriman.map((k) => k.dokumen)), hapus, titik, pulih: (arsipDok || []).map((a) => ({ koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok })),

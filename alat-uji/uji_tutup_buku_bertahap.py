@@ -18,6 +18,8 @@ Yang dijaga:
   T8  penjualan 1 Jan sebelum tutup buku → pemeriksaan ulang TIDAK berbunyi palsu
   T9  catatan 2026 berubah di tengah jalan → lanjut ditolak (batalkan dulu)
   T10 (asap, bila ada cadangan lokal di _privat/) data toko pada 5 Jan 2027: dipecah, tiap kiriman ≤ 18; batal juga ≤ 18
+  §8 (syarat wajib hasil tinjauan 1 Okt, docs/rancangan-tutup-buku-bertahap.md):
+  N1  HP STAF (tanpa tutupBukuAcara) melihat angka yang SAMA dengan HP owner di tiap titik putus — penanda = batch pembuka ber-penandaBuku (koleksi yang staf baca)
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -143,6 +145,32 @@ coba('T9', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = su
   terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'susulan', tanggal: '2026-12-20', jam: '10:00', caraBayar: 'Kredit', jenis: 'karung', merkSumber: 'Angsa', totalKg: 10, beratKarungAcuan: 50, jumlahKarung: 0.2, hargaTotal: 200000, hppTotalSaatJual: 130000, namaPelanggan: 'Pengutang Susulan' } }]);
   L = lanjutBuku(2026); ok('T9 nota 20 Des masuk di tengah jalan → lanjut DITOLAK dengan kalimat (batalkan, lalu mulai lagi)', !!L.tolak && /berubah sejak tutup buku dimulai/.test(L.tolak), J(L)); });
 
+// ---- §8 no. 1 · HP STAF: hanya koleksi yang staf dengar (akses.js pendengarPeran — tanpa tutupBukuAcara, kasbon, utang, …); angka HARUS sama dengan HP owner
+function sebagaiStaf(f) {
+  var dengar = {}; pendengarPeran({ jenis: 'aktif', peran: 'karyawan', nama: 'staf', uid: 'u1' }).forEach(function (p) { dengar[p.nama] = p.dok || true; });
+  var simpan = {}; KOLEKSI.forEach(function (k) { simpan[k.nama] = cacheMentah(k.cache); var d = dengar[k.nama];
+    if (!d) pasok(k.nama, []); else if (d !== true) pasok(k.nama, cacheMentah(k.cache).filter(function (x) { return d.indexOf(String(x.id)) >= 0; })); });
+  try { return f(); } finally { KOLEKSI.forEach(function (k) { pasok(k.nama, simpan[k.nama]); }); }
+}
+function lihatToko() { var st = hitungStokKarungPerMerk(); var kg = 0, rp = 0; Object.keys(st).forEach(function (m) { kg += st[m].sisaKg; rp += st[m].sisaKg * (st[m].hppTerakhirPerKg || 0); });
+  var km = hitungStokKemasan(); var u = 0; Object.keys(km).forEach(function (k) { u += km[k].sisaUnit; });
+  var bk = hitungStokBahanKemasan(), bl = hitungStokBahanLiteran(); var pcs = 0; Object.keys(bk).forEach(function (j) { pcs += bk[j].sisaPcs; }); Object.keys(bl).forEach(function (j) { pcs += bl[j].sisaPcs; });
+  return J({ kg: Math.round(kg * 10) / 10, rp: Math.round(rp), kemasan: u, kantong: pcs, piutang: hitungPiutang().reduce(function (a, x) { return a + x.sisa; }, 0), era: ssEraTutupBuku() }); }
+var titikPutus = [];
+function bandingStaf(label) { var o = lihatToko(); var s = sebagaiStaf(lihatToko); titikPutus.push({ label: label, owner: o, staf: s }); }
+function stafBeda() { return titikPutus.filter(function (t) { return t.owner !== t.staf; }).map(function (t) { return t.label + ' owner ' + t.owner + ' staf ' + t.staf; }); }
+coba('N1', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W); titikPutus = [];
+  var awal = lihatToko(); bandingStaf('awal');
+  R.kiriman.forEach(function (k, i) { kirim(k); bandingStaf('sesudah kiriman ' + (i + 1) + ' dari ' + R.kiriman.length); });
+  var A = arsipBuku(2026).daftar; arsipkanDokumen(2026, A.slice(0, 18)); bandingStaf('arsip 18 dari ' + A.length); arsipkanDokumen(2026, arsipBuku(2026).daftar); bandingStaf('arsip habis');
+  B = susunBatal(2026, arsipSimulasi(), W); B.kiriman.forEach(function (k, i) { kirim(k); bandingStaf('batal dari terkunci · kiriman tarik ' + (i + 1) + ' dari ' + B.kiriman.length); });
+  pulihkanArsip(2026, B.pulih); kirim({ dokumen: [B.akhir] }); bandingStaf('sesudah batal');
+  kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W); kirim(R.kiriman[0]); kirim(R.kiriman[1]);
+  B = susunBatal(2026, [], W); B.kiriman.forEach(function (k, i) { kirim(k); bandingStaf('batal dari berjalan · kiriman tarik ' + (i + 1) + ' dari ' + B.kiriman.length); });
+  var staf2 = titikPutus.filter(function (t) { return /kiriman (1|2) dari 3$/.test(t.label); });
+  ok('N1 HP staf = HP owner di SETIAP titik putus (kiriman pembuka, arsip, batal dari terkunci & dari berjalan) — ' + titikPutus.length + ' titik', titikPutus.length >= 9 && !stafBeda().length, J(stafBeda()));
+  ok('N1 selama berjalan HP staf melihat tahun 2026 utuh (stok & piutang tidak dobel)', staf2.length === 2 && staf2.every(function (t) { return t.staf === awal; }), J(staf2)); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -184,16 +212,21 @@ STATIS = [
     ('patokan kas tahun di layar (bukan titik kas sekarang)', ["const SB = BK.barisTahun(T.tahun); const B = s.sesudahLive || bandingB(s, T);", "const bandingB = (s, T) => { const SB = BK.barisTahun(T.tahun);"]),
 ]
 RUSAK = [
-    ('saldo pembuka tidak dipecah (sekali kirim)', 'baru/js/layar/tutup-buku-logika.js', "const Pt = kpPotong(P.dokumen.map((x) => ({ dokumen: [x] }))",
-     "const Pt = { potongan: [{ dokumen: P.dokumen.concat(penanda, [{ koleksi: 'tutupBukuAcara', data: acara }]), get: 0 }] } || kpPotong(P.dokumen.map((x) => ({ dokumen: [x] }))"),
-    ('mesin melihat pembuka yang belum selesai (saringan data mati)', 'baru/js/data/toko.js', "const bkSaring = (arr) => { const s = bkTahunTersembunyi();", "const bkSaring = (arr) => { const s = null;"),
+    ('saldo pembuka tidak dipecah (sekali kirim)', 'baru/js/layar/tutup-buku-logika.js', "const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] }))",
+     "const Pt = { potongan: [{ dokumen: P.dokumen.concat(penanda, [{ koleksi: 'tutupBukuAcara', data: acara }]), get: 0 }] } || kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] }))"),
+    ('mesin melihat pembuka yang belum selesai (saringan data mati)', 'baru/js/data/toko.js', "const bkSaring = (arr) => { const s = arr.filter(pembukaBerlaku);", "const bkSaring = (arr) => { return arr; const s = arr.filter(pembukaBerlaku);"),
+    ('§8 no. 1 · HP staf: pembuka tanpa penanda tetap terlihat (saringan hanya dari berita acara)', 'baru/js/data/toko.js', "return !k.sembunyi[t] && (!x.bertahap || !!k.penanda[t]); }", "return !k.sembunyi[t]; }"),
+    ('§8 no. 1 · batch penanda ikut kiriman PERTAMA (bukan terakhir)', 'baru/js/layar/tutup-buku-logika.js', "const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] })).concat([{ dokumen: [tanda].concat(penanda,",
+     "const Pt = kpPotong(P.dokumen.map((x) => ({ dokumen: [x] })).concat([{ dokumen: [].concat(penanda,"),
+    ('§8 no. 1 · batal menghapus batch penanda TERAKHIR (bukan di kiriman pertama)', 'baru/js/layar/tutup-buku-logika.js', "const P = kpPotong([{ dokumen: awal, hapus: tanda }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] }))),",
+     "const P = kpPotong([{ dokumen: awal, hapus: [] }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] })), [{ dokumen: [], hapus: tanda }]),"),
     ('era menghitung pembuka yang belum selesai', 'baru/js/layar/tutup-buku-logika.js', "if (bkTutupBuku(x) && pembukaBerlaku(x)) { const n = Number(x.tahunDari); if (isFinite(n) && (t === null || n > t)) t = n; } })); return t; }\nexport function aturBuku",
      "if (bkTutupBuku(x)) { const n = Number(x.tahunDari); if (isFinite(n) && (t === null || n > t)) t = n; } })); return t; }\nexport function aturBuku"),
     ('rencana tidak disimpan di server (berita acara berjalan tidak ikut kiriman 1)', 'baru/js/layar/tutup-buku-logika.js', "if (i === 0 && n > 1) dokumen.unshift(", "if (false) dokumen.unshift("),
     ('lanjut mengirim ulang kiriman yang sudah masuk', 'baru/js/layar/tutup-buku-logika.js', "const belum = K.filter((k) => !bkMasuk(k, a));", "const belum = K;"),
     ('lanjut tanpa memeriksa perubahan tahun lama', 'baru/js/layar/tutup-buku-logika.js', "const ub = bkBerubah(a); if (ub) return { tolak: ub };", "const ub = '';"),
     ('mulai baru saat pembatalan belum tuntas', 'baru/js/layar/tutup-buku-logika.js', "const tg = bkTertunda(tahun); if (tg) return { tolak: tg };", "const tg = '';"),
-    ('batal tidak dipecah', 'baru/js/layar/tutup-buku-logika.js', "const P = kpPotong([{ dokumen: awal, hapus: [] }].concat(hapus.map((x) => ({ dokumen: [], hapus: [x] }))), dokDiCache, ugKiniDari(w));",
+    ('batal tidak dipecah', 'baru/js/layar/tutup-buku-logika.js', "const P = kpPotong([{ dokumen: awal, hapus: tanda }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] }))), dokDiCache, ugKiniDari(w));",
      "const P = { potongan: [{ dokumen: awal, hapus, get: 0 }] };"),
     ('titik kas tahun hanya dari titik kas sekarang', 'baru/js/layar/tutup-buku-logika.js', "const th = ambilTutupHari().filter((d) => d && d.tanggal && d.tanggal <= c && d.titik)", "const th = ambilTutupHari().filter((d) => false)"),
     ('titik 2 Jan ditimpa titik 31 Des', 'baru/js/layar/tutup-buku-logika.js', "const titik = K.ada && T0 && T0.dari === 'titikKas' ? {", "const titik = K.ada && T0 ? {"),
