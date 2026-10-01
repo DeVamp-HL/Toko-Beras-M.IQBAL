@@ -220,13 +220,23 @@ function bkTitikKini(k, tahun) {
   return Object.assign({}, k, { dokumen: k.dokumen.filter((x) => !(x.koleksi === 'pengaturan' && String(x.data.id) === 'titikKas'))
     .map((x) => (x.koleksi === 'tutupBukuAcara' && x.data.status === 'terkunci' ? { koleksi: x.koleksi, data: Object.assign({}, x.data, { titikDitulis: false }) } : x)) });
 }
-/** (b) Lanjutkan tutup buku yang berhenti di tengah: kiriman yang BELUM masuk saja, dengan dokumen & id yang sama. titik = titik kas 31 Des yang ikut (atau null). */
+/**
+ * (b) Lanjutkan tutup buku yang berhenti di tengah: dokumen yang BELUM ada saja, dengan id & isi yang sama dari berita acara. titik = titik kas 31 Des yang ikut (atau null).
+ * §8 no. 3: sisa itu DIPECAH ULANG dengan jam SEKARANG (dulu kiriman yang disusun saat mulai dipakai apa adanya: mulai 1–3 Jan = masa tenggang, lanjut sesudah
+ * tanggal 3 → kiriman tersimpan melebihi 18 pemeriksaan, ditolak selamanya). Batch penanda + penanda + berita acara terkunci tetap kelompok TERAKHIR.
+ */
 export function lanjutBuku(tahun) {
   const a = bkAcara(tahun); if (!a || a.status !== 'berjalan' || !a.rencana || !Array.isArray(a.pembuka)) return { tolak: 'Tidak ada tutup buku ' + tahun + ' yang sedang berjalan' };
   const ub = bkBerubah(a); if (ub) return { tolak: ub };
-  const K = bkKirimanDari(a); const belum = K.filter((k) => !bkMasuk(k, a)).map((k) => bkTitikKini(k, tahun));
-  const titik = [].concat.apply([], belum.map((k) => k.dokumen)).find((x) => x.koleksi === 'pengaturan' && String(x.data.id) === 'titikKas');
-  return belum.length ? { kiriman: belum, sudah: K.length - belum.length, total: K.length, titik: titik ? titik.data : null } : { selesai: true, sudah: K.length, total: K.length };
+  const K = bkKirimanDari(a); const sudah = K.filter((k) => bkMasuk(k, a)).length;
+  const kunci = Object.assign({}, a, { status: 'terkunci' }); delete kunci.pembuka; delete kunci.penanda;
+  const tanda = a.pembuka.filter((x) => x.data && x.data.penandaBuku); const belumAda = a.pembuka.filter((x) => tanda.indexOf(x) < 0 && !dokDiCache(x.koleksi, x.data.id));
+  const akhir = bkTitikKini({ dokumen: tanda.concat(a.penanda || [], [{ koleksi: 'tutupBukuAcara', data: kunci }]) }, tahun);
+  const Pt = kpPotong(belumAda.map((x) => ({ dokumen: [x] })).concat([akhir]), dokDiCache, new Date(Date.now())); if (Pt.tolak) return { tolak: Pt.tolak };
+  const belum = Pt.potongan.map((p, i) => ({ ke: sudah + i + 1, total: sudah + Pt.potongan.length, get: p.get, dokumen: p.dokumen,
+    pembuka: p.dokumen.filter((x) => x.data && x.data.tutupBuku).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id) })), penanda: i === Pt.potongan.length - 1 }));
+  const titik = akhir.dokumen.find((x) => x.koleksi === 'pengaturan' && String(x.data.id) === 'titikKas');
+  return { kiriman: belum, sudah, total: sudah + belum.length, titik: titik ? titik.data : null };
 }
 /** Saldo pembuka tahun itu yang ada di cache (termasuk yang tersembunyi dari mesin). */
 function bkPembukaTahun(tahun) { const out = []; Object.keys(KOLEKSI_CACHE).forEach((c) => cacheMentah(c).forEach((x) => { if (bkTutupBuku(x) && Number(x.tahunDari) === tahun) out.push({ koleksi: KOLEKSI_CACHE[c], id: x.id }); })); return out; }
