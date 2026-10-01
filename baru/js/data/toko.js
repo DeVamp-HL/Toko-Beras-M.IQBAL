@@ -44,6 +44,11 @@ export function dokTertunda(koleksi, id) { const s = _tertunda[koleksi]; return 
 const _dariCache = {};
 export function setelDariCache(koleksi, ya) { _dariCache[koleksi] = !!ya; }
 export function koleksiDariCache(koleksi) { return !!_dariCache[koleksi]; }
+// Putaran 3 AAL5: HAPUS yang masih menunggu server di perangkat ini. Firestore langsung membuang dokumennya dari cache, jadi tanda per dokumen (hasPendingWrites,
+// setelTertunda) tidak pernah melihatnya. Diisi tulisBerkas firebase.js per kiriman sampai server mengaku / menolak; simulasi cadangan = selalu kosong.
+const _hapusTertunda = {};
+export function setelHapusTertunda(idKiriman, hapus) { if (hapus && hapus.length) _hapusTertunda[idKiriman] = hapus.map((x) => ({ koleksi: x.koleksi, id: String(x.id) })); else delete _hapusTertunda[idKiriman]; }
+export function hapusTertunda(koleksi) { return Object.keys(_hapusTertunda).reduce((n, k) => n + _hapusTertunda[k].filter((x) => x.koleksi === koleksi).length, 0); }
 
 // ---- batas data untuk mesin beku (nama & bentuk = index.html) ----
 // TUTUP BUKU BERTAHAP (rancangan Okt 2026): saldo pembuka tahun yang berita acaranya BELUM terkunci ('berjalan' = kiriman pembuka belum semua masuk;

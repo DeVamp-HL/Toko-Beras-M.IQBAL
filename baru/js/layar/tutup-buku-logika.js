@@ -10,7 +10,7 @@
 // dan membandingkan sebelum vs sesudah dari susunan itu; sesudah kunci dibandingkan lagi dari mesin (hidup). Titik kas ditulis ulang di 31 Des dari saldo per tempat.
 import { hitungSaldoTutup, tbDaftarKoleksi, hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungPiutang, hitungKasbon, hitungUtangPemasok, hitungUtangOwner, saldoAmplop } from '../mesin/beku.js';
 import { tbCutoff, kunciPelanggan } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, petaStokWadah, petaBukuWadah, dokDiCache, dokTertunda, pembukaBerlaku, koleksiDariCache } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, petaStokWadah, petaBukuWadah, dokDiCache, dokTertunda, pembukaBerlaku, koleksiDariCache, hapusTertunda } from '../data/toko.js';
 import { KP_BATAS_GET, kpPotong } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, lebihBayarDari } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
@@ -233,6 +233,8 @@ function bkMasuk(k, a) { if (k.pembuka.length) return k.pembuka.every((x) => !!d
 function bkTunda(tahun) {
   const a = bkAcara(tahun); let n = a && dokTertunda('tutupBukuAcara', String(a.id || tahun)) ? 1 : 0;
   bkPembukaTahun(tahun).forEach((x) => { if (dokTertunda(x.koleksi, x.id)) n += 1; }); ['titikKas', 'tutupBuku'].forEach((id) => { if (dokTertunda('pengaturan', id)) n += 1; });
+  // putaran 3 AAL5: hapus yang menunggu server (tarik saldo pembuka saat pembatalan) — dokumennya sudah tak ada di cache, dihitung dari kiriman perangkat ini
+  Object.keys(KOLEKSI_CACHE).forEach((c) => { n += hapusTertunda(KOLEKSI_CACHE[c]); });
   return n;
 }
 /**

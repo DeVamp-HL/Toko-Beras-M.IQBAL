@@ -36,6 +36,7 @@ Yang dijaga:
   P3-AAL2  arsip tahun berikutnya putus lalu dilanjutkan: batch penanda tahun lalu diarsipkan paling akhir → tidak ada pembuka tahun lalu tertinggal di koleksi hidup
   P3-AAL3  penanda yang tertahan di HP lain mendarat sesudah pembatalan tuntas → fase RUSAK (batalkan), bukan "lanjutkan arsip"; pembatalan membereskannya
   P3-AAL4  Lanjutkan & Batalkan ditolak tanpa internet atau selama berita acara / pengaturan masih salinan perangkat (Firestore fromCache)
+  P3-AAL5  hapus pembatalan yang menunggu server = fase tunggu (Lanjutkan pembatalan ditolak), bukan "sudah ditarik"
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -357,6 +358,19 @@ coba('P3-AAL4', function () { kotak(40); W = jam('2027-01-05T08:00:00+07:00'); R
   ok('P3-AAL4 Lanjutkan / Batalkan (pita ' + (KM && KM.fase) + '): tanpa internet DITOLAK; berita acara atau pengaturan masih salinan perangkat DITOLAK; data server segar = boleh',
     !!KM && /internet/.test(tanpaInternet) && /data terbaru/.test(tanpaInternet) && /data terbaru/.test(basiAcara) && /data terbaru/.test(basiAtur) && segar === '', J([tanpaInternet, basiAcara, basiAtur, segar])); });
 
+// ---- putaran 3 AAL5 · kiriman ke-2 pembatalan berisi HAPUS saja dan belum diakui server ({ antre }). Firestore sudah membuang dokumennya dari cache, jadi tanda
+//      per dokumen (hasPendingWrites) tidak melihatnya — hapus yang menunggu server dicatat per kiriman (firebase.js tulisBerkas → toko.js setelHapusTertunda)
+var hapusTunda = function (id, h) { if (typeof setelHapusTertunda === 'function') setelHapusTertunda(id, h); };
+coba('P3-AAL5', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W); R.kiriman.forEach(kirim); arsipkanDokumen(2026, arsipBuku(2026).daftar);
+  B = susunBatal(2026, arsipSimulasi(), W); kirim(B.kiriman[0]); var K2 = B.kiriman[1];
+  terapkanKeCache(K2.hapus.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; })); hapusTunda('k-uji-hapus', K2.hapus);
+  var KM = kemajuanBuku(); var B2 = susunBatal(2026, arsipSimulasi(), W);
+  ok('P3-AAL5 hapus kiriman ke-2 pembatalan (' + K2.hapus.length + ' saldo pembuka) masih menunggu server: pita fase tunggu, Lanjutkan pembatalan DITOLAK (bukan dianggap sudah ditarik)',
+    K2.hapus.length > 0 && !(K2.dokumen || []).length && !!KM && KM.fase === 'tunggu' && /menunggu server/.test(KM.teks) && !!B2.tolak && /menunggu server/.test(B2.tolak), J([KM, B2.tolak || B2.kiriman.length]));
+  hapusTunda('k-uji-hapus', null); KM = kemajuanBuku();
+  ok('P3-AAL5 server mengaku hapus itu → pita kembali fase batal (lanjutkan pembatalan)', !!KM && KM.fase === 'batal', J(KM)); });
+hapusTunda('k-uji-hapus', null);
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -409,6 +423,7 @@ STATIS = [
     ('putaran 3 AAL3 · Lanjutkan menolak tutup buku yang tidak utuh (fase rusak) — tidak meneruskan arsip', ["if (KM.fase === 'rusak') return set({ kabar: KM.teks, kabarAwas: true });"]),
     ('putaran 3 AAL4 · Lanjutkan & Batalkan hanya dari data server (tanpa internet / salinan perangkat = ditolak)', ["bkLanjut: async () => { if (st().sibuk) return; const sb = BK.bkSambungan(lokal()); if (sb) return set({ kabar: sb, kabarAwas: true });", "bkBatal: async () => { if (st().sibuk) return; const sb = BK.bkSambungan(lokal()); if (sb) return set({ yakinBatalB: null, kabar: sb, kabarAwas: true });"]),
     ('putaran 3 AAL4 · firebase.js menyetor tanda salinan perangkat (fromCache) per koleksi ke toko.js', ["setelDariCache(k.nama, _dariCache[k.nama]);"], 'baru/js/data/firebase.js'),
+    ('putaran 3 AAL5 · firebase.js mencatat HAPUS yang menunggu server per kiriman sampai commit selesai', ["setelHapusTertunda(idKiriman, H);", ".finally(() => { setelHapusTertunda(idKiriman, null);"], 'baru/js/data/firebase.js'),
 ]
 RUSAK = [
     ('saldo pembuka tidak dipecah (sekali kirim)', 'baru/js/layar/tutup-buku-logika.js', "const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] }))",
@@ -451,6 +466,7 @@ RUSAK = [
     ('putaran 3 AAL2 · batch penanda tahun lalu diarsipkan dalam urutan biasa (bisa lebih dulu dari pembukanya)', 'baru/js/layar/tutup-buku-logika.js', "const daftar = semua.filter((x) => !tanda(x)).concat(semua.filter(tanda));", "const daftar = semua;"),
     ('putaran 3 AAL3 · terkunci dengan saldo pembuka tidak lengkap tetap disebut fase arsip', 'baru/js/layar/tutup-buku-logika.js', "if (adaP < Number(a.nPembuka) && bkEra() === tahun) return {", "if (false) return {"),
     ('putaran 3 AAL4 · Lanjutkan & Batalkan jalan dari salinan perangkat / tanpa internet', 'baru/js/layar/tutup-buku-logika.js', "if (!(L && L.offline) && !basi) return '';", "if (true) return '';"),
+    ('putaran 3 AAL5 · hapus yang menunggu server tidak dihitung tunggu', 'baru/js/layar/tutup-buku-logika.js', "  Object.keys(KOLEKSI_CACHE).forEach((c) => { n += hapusTertunda(KOLEKSI_CACHE[c]); });\n", ""),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]

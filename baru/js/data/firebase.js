@@ -9,7 +9,7 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
 import { KOLEKSI } from './koleksi.js';
-import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda, setelDariCache } from './toko.js';
+import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda, setelDariCache, setelHapusTertunda } from './toko.js';
 import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
 import { buatAntre, cekDariCache } from './antre-lokal.js';
 import { KP_BATAS_GET } from './kunci-periode.js';
@@ -308,10 +308,11 @@ export async function tulisBerkas(daftar, hapus, opsi) {
   // salinan antre SEBELUM dikirim; penuh = tidak dikirim (tidak ada salinan lama yang dibuang)
   const idKiriman = 'k-' + idUnik(); const s0 = antre.tambah({ id: idKiriman, pada: k.kini, akunUid: akun.uid, akunNama: akun.nama, peran: akun.peran, dokumen: ditulis });
   if (s0.tolak) return { gagal: true, pesan: s0.tolak };
-  segarkanLokal(); status.menunggu += 1; beriTahu();
+  // putaran 3 AAL5: hapus di kiriman ini dicatat menunggu server sampai commit selesai (dokumennya sudah hilang dari cache — tutup buku menghitungnya 'tunggu')
+  setelHapusTertunda(idKiriman, H); segarkanLokal(); status.menunggu += 1; beriTahu();
   const janji = b.commit().then(() => { antre.konfirmasi(idKiriman); return { ok: true }; })
     .catch((e) => { const kode = String((e && e.code) || e); antre.tandaiDitolak(idKiriman, kode, new Date().toISOString()); status.galat = 'tulis ditolak: ' + kode; beriTahu(); return { gagal: true, pesan: status.galat + ' — salinannya ada di Sistem › Perangkat (ditolak server)' }; })
-    .finally(() => { segarkanLokal(); status.menunggu = Math.max(0, status.menunggu - 1); beriTahu(); });
+    .finally(() => { setelHapusTertunda(idKiriman, null); segarkanLokal(); status.menunggu = Math.max(0, status.menunggu - 1); beriTahu(); });
   // tutup buku bertahap (opsi.tunggu): kiriman berikutnya hanya sesudah server MENGAKU yang ini — 30 detik tanpa jawaban = berhenti (kirimannya tetap di antrean
   // perangkat; kalau belakangan masuk, "Lanjutkan" melihatnya dari id-nya dan tidak mengirim ulang)
   if (opsi && opsi.tunggu) return Promise.race([janji, new Promise((r) => setTimeout(() => r({ antre: true, pesan: 'server belum mengaku dalam 30 detik' }), 30000))]);
