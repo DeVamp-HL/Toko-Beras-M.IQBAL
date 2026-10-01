@@ -387,7 +387,9 @@ export function kabarBerhentiBuku(jenis, tahun, ke, total, h) {
     return awal + (ke === 1 ? ' Kiriman ini tidak masuk — ketuk "Batalkan" lagi (selama pita belum menyebut pembatalan, "Lanjutkan" meneruskan tutup buku, bukan pembatalan).' : ' Ketuk "Lanjutkan" untuk meneruskan pembatalan — yang sudah ditarik tidak diulang.');
   }
   const awal = 'Berhenti di kiriman ' + ke + ' dari ' + total + sebab + '. Tahun ' + tahun + ' BELUM tertutup (yang sudah masuk belum dihitung).';
-  if (antre) return awal + tunggu + (ke === 1 ? 'Sesudah itu: kalau pita "Tutup buku ' + tahun + ': … sudah masuk" muncul, ketuk "Lanjutkan"; kalau tidak, ketuk "Kunci tahun ' + tahun + '" lagi.' : 'Sesudah itu ketuk "Lanjutkan" — yang sudah masuk tidak dikirim ulang — atau "Batalkan".');
+  // putaran 3 AAL6: SATU kiriman saja = kiriman itu sudah membawa penanda → begitu server mengaku, pitanya "Tahun … terkunci" (bukan "… sudah masuk")
+  // dan tombol K6 sudah tahun berikutnya
+  if (antre) return awal + tunggu + (ke === 1 ? 'Sesudah itu: kalau pita ' + (total === 1 ? '"Tahun ' + tahun + ' terkunci; …" muncul, ketuk "Lanjutkan" (arsip)' : '"Tutup buku ' + tahun + ': … sudah masuk" muncul, ketuk "Lanjutkan"') + '; kalau tidak, ketuk "Kunci tahun ' + tahun + '" lagi.' : 'Sesudah itu ketuk "Lanjutkan" — yang sudah masuk tidak dikirim ulang — atau "Batalkan".');
   return awal + (ke === 1 ? ' Tidak ada yang masuk — ketuk "Kunci tahun ' + tahun + '" lagi sesudah sebabnya dibereskan.' : ' Ketuk "Lanjutkan" — yang sudah masuk tidak dikirim ulang — atau "Batalkan".');
 }
 /** Teks berita acara (cetak/WA). */

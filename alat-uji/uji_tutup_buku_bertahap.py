@@ -37,6 +37,7 @@ Yang dijaga:
   P3-AAL3  penanda yang tertahan di HP lain mendarat sesudah pembatalan tuntas → fase RUSAK (batalkan), bukan "lanjutkan arsip"; pembatalan membereskannya
   P3-AAL4  Lanjutkan & Batalkan ditolak tanpa internet atau selama berita acara / pengaturan masih salinan perangkat (Firestore fromCache)
   P3-AAL5  hapus pembatalan yang menunggu server = fase tunggu (Lanjutkan pembatalan ditolak), bukan "sudah ditarik"
+  P3-AAL6  tutup buku satu kiriman yang antre: kalimat menyebut pita "Tahun … terkunci" → "Lanjutkan" (arsip), bukan "… sudah masuk"
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -371,6 +372,14 @@ coba('P3-AAL5', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R
   ok('P3-AAL5 server mengaku hapus itu → pita kembali fase batal (lanjutkan pembatalan)', !!KM && KM.fase === 'batal', J(KM)); });
 hapusTunda('k-uji-hapus', null);
 
+// ---- putaran 3 AAL6 · tutup buku yang muat SATU kiriman, kiriman itu belum diakui server ({ antre }). Sesudah server mengaku, pita = "Tahun 2026 terkunci; …"
+//      (bukan "… sudah masuk") dan tombol K6 sudah "KUNCI TAHUN 2027" → kalimat menyebut pita yang BENAR dan "Lanjutkan" (arsip)
+coba('P3-AAL6', function () { kotak(5); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W);
+  var kab = kabarBerhenti('kunci', 2026, 1, R.kiriman.length, { antre: true, pesan: 'server belum mengaku dalam 30 detik' });
+  kirim(R.kiriman[0]); var KM = kemajuanBuku();
+  ok('P3-AAL6 satu kiriman antre: kalimat menyebut pita "Tahun 2026 terkunci" → "Lanjutkan"; pita sesudah server mengaku memang berbunyi begitu',
+    R.kiriman.length === 1 && /pita "Tahun 2026 terkunci/.test(kab) && /ketuk "Lanjutkan"/.test(kab) && !/sudah masuk" muncul/.test(kab) && !!KM && /^Tahun 2026 terkunci/.test(KM.teks) && tahunBuku(new Date(__KINI)).tahun === 2027, J([kab, KM && KM.teks])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -467,6 +476,7 @@ RUSAK = [
     ('putaran 3 AAL3 · terkunci dengan saldo pembuka tidak lengkap tetap disebut fase arsip', 'baru/js/layar/tutup-buku-logika.js', "if (adaP < Number(a.nPembuka) && bkEra() === tahun) return {", "if (false) return {"),
     ('putaran 3 AAL4 · Lanjutkan & Batalkan jalan dari salinan perangkat / tanpa internet', 'baru/js/layar/tutup-buku-logika.js', "if (!(L && L.offline) && !basi) return '';", "if (true) return '';"),
     ('putaran 3 AAL5 · hapus yang menunggu server tidak dihitung tunggu', 'baru/js/layar/tutup-buku-logika.js', "  Object.keys(KOLEKSI_CACHE).forEach((c) => { n += hapusTertunda(KOLEKSI_CACHE[c]); });\n", ""),
+    ('putaran 3 AAL6 · satu kiriman antre menyebut pita "… sudah masuk" (yang tidak akan muncul)', 'baru/js/layar/tutup-buku-logika.js', "'Sesudah itu: kalau pita ' + (total === 1 ?", "'Sesudah itu: kalau pita ' + (false ?"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]
