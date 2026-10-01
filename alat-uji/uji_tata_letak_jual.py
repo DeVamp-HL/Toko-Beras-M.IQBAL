@@ -154,6 +154,17 @@ def periksa(t):
     LJ = jual[a:b] if 0 <= a < b else ''
     ip, ik, it = LJ.find('data-aksi="preset"'), LJ.find('data-k="kabar-jumlah"'), LJ.find("${tuts('masukkan'")
     c.append(('lembar jumlah: kalimat tolak takaran digambar DI DALAM lembar, di bawah tombol takaran', bool(LJ) and 0 <= ip < ik < it, (ip, ik, it)))
+    # 1 Okt (sapuan sesudah #84): lembar lain yang tombolnya bisa menolak — kalimatnya tergambar DI DALAM lembar, SEBELUM tombol yang menolak
+    def sebelum(k, tombol):
+        i, j = jual.find("pitaTolak(s, '%s')" % k), jual.find(tombol)
+        return 0 <= i < j and jual.count("pitaTolak(s, '%s')" % k) == 1
+    PT = [('bayar', 'data-aksi="simpan">${tolak'), ('bayar-karcis', 'data-aksi="simpanRinci"'), ('kcbatal', 'data-aksi="kcBatalSimpan"'), ('aturStruk', 'data-aksi="simpanAturStruk"'),
+          ('aturWadah', 'data-aksi="simpanAturWadah"'), ('pengganti', 'data-aksi="tkSudahPilih"'), ('cekWadah', 'data-aksi="cwCatat"')]
+    c.append(('lembar lain: kalimat tolak di dalam lembar, sebelum tombolnya (bayar, simpan rincian, batal karcis, atur struk, harga wadah, pengganti, cek wadah)', all(sebelum(k, b) for k, b in PT), [k for k, b in PT if not sebelum(k, b)]))
+    c.append(('lembar karcis & struk: kalimat tolak tergambar (karcis: sesudah kepala bila formulir batal tertutup; struk: di bawah tombol WA/Cetak)', "${s.kcBatal ? '' : pitaTolak(s, 'karcis')}" in jual and jual.find('data-aksi="cetakStruk">Cetak</div></div>') < jual.find("pitaTolak(s, 'struk')"), ''))
+    c.append(('lembar bayar: "JUAL DULU, TANDAI" bisa dijangkau dari dalam lembar; pita tembus atas layar disembunyikan selama lembar bayar terbuka', 'data-aksi="simpanTembus" data-k="tembus-bayar"' in jual and "s.keranjang.length && s.lembar !== 'bayar' ? h`<div class=\"pita-info emas\" data-k=\"pita-tembus\"" in jual, ''))
+    c.append(('pembuka lembar mengosongkan kalimat lama (bayar, struk, atur struk, harga wadah) — kalimat basi tidak ikut tergambar di lembar baru', all(x in jual for x in ["lembar: 'bayar', ketik: '', kabar: ''", "strukSertakan: null, kabar: '' })", "aturStruk: ST.stAtur(), kabar: '' })", "aturWadah: isi, kabar: '' });"]), ''))
+    c.append(("struk WA: window.open tanpa 'noopener' (dengan itu hasilnya SELALU null → tiap kirim tercatat \"ditahan peramban\" padahal terbuka); opener diputus sesudahnya", "window.open(ST.tautanWa(teks), '_blank');" in jual and "'_blank', 'noopener')" not in jual and 'w.opener = null' in jual, ''))
     c.append(('lembar jumlah: kalimat panel isi ulang (kabarW) tidak digambar dua kali', re.search(r's\.kabar && s\.kabarAwas && !\(s\.kabarW && s\.kabarW\.teks === s\.kabar\)', LJ) is not None, ''))
     c.append(('pita: app.js memberi statusAwas ke Jual', re.search(r'pasangLayarJual\(akar, \{[^\n]*\bstatusAwas\b', app) is not None, ''))
     c.append(('pita: Jual mode Firestore memakai statusAwas (bukan pita tetap)', 'opsi.statusAwas' in jual and 'Nota dicatat ke data toko yang sama dengan sistem lama' not in jual, ''))
@@ -193,6 +204,12 @@ KONTROL = [
     ('tetes emas di bawah panggung lagi', {'baru/css/jual.css': [('.tetes-gerak { position: fixed; z-index: 71;', '.tetes-gerak { position: fixed; z-index: 60;')]}),
     ('kalimat tolak takaran hanya di kabar atas layar lagi', {'baru/js/layar/jual.js': [('        ${kabarDiLembar ? h`<div class="pita-info awas" data-k="kabar-jumlah">${kabarDiLembar}</div>` : \'\'}\n', '')]}),
     ('kalimat panel isi ulang tergambar dua kali', {'baru/js/layar/jual.js': [('s.kabar && s.kabarAwas && !(s.kabarW && s.kabarW.teks === s.kabar) ? s.kabar', 's.kabar && s.kabarAwas ? s.kabar')]}),
+    ('kalimat tolak bayar hanya di kabar atas layar lagi', {'baru/js/layar/jual.js': [("        ${pitaTolak(s, 'bayar')}", '        ')]}),
+    ('kalimat tolak batal karcis hilang dari formulir', {'baru/js/layar/jual.js': [("${pitaTolak(s, 'kcbatal')}<div class=\"tombol-baris\">", '<div class="tombol-baris">')]}),
+    ('kalimat tolak karcis hilang', {'baru/js/layar/jual.js': [("        ${s.kcBatal ? '' : pitaTolak(s, 'karcis')}\n", '')]}),
+    ('tombol jual dulu cuma di atas layar lagi', {'baru/js/layar/jual.js': [('data-aksi="simpanTembus" data-k="tembus-bayar"', 'data-aksi="tutup" data-k="tembus-bayar"')]}),
+    ('pembuka bayar membawa kalimat basi', {'baru/js/layar/jual.js': [("lembar: 'bayar', ketik: '', kabar: ''", "lembar: 'bayar', ketik: ''")]}),
+    ('WA dibuka dengan noopener lagi (selalu dianggap ditahan)', {'baru/js/layar/jual.js': [("window.open(ST.tautanWa(teks), '_blank');", "window.open(ST.tautanWa(teks), '_blank', 'noopener');")]}),
     ('pita status selalu tampil', {'baru/js/app.js': [("  return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : '';", '  return statusTeks();')]}),
     ('pita tanpa internet hilang', {'baru/js/app.js': [("  return statusFb.offline ? 'TANPA INTERNET — angka dari simpanan perangkat, catatan mengantre' : '';", "  return '';")]}),
 ]
