@@ -11,6 +11,7 @@ import { bulanDari, namaBulanPanjang } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, cacheMentah, kunciSampai, jumlahNota } from '../data/toko.js';
 import { RP, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong } from './uang-logika.js';
+import { KP_KUNCI_MULAI } from '../data/kunci-periode.js';
 
 export const PJ_LABEL = 'perkiraan — bukan nasihat pajak';
 export const PJ_ANGGAPAN_OP = 'hitungan dengan anggapan orang pribadi (jenis wajib pajak belum diketahui — tanya pemilik lama)';
@@ -227,7 +228,8 @@ export const pjSetoranSemua = () => cacheMentah('pajakSetoran').slice().sort((a,
 /** NTPN: 16 karakter angka/huruf menurut artikel DJP 2020 [BELUM TERVERIFIKASI untuk era Coretax] → hanya peringatan, tidak memblokir. */
 /** putaran 25: bulan pajak terkunci? (sampaiBulan dokumen kunci) · peringatan untuk setoran bulan yang BELUM dikunci — angkanya masih bisa bergeser. */
 export const pjTerkunci = (key) => { const s = kunciSampai(); return !!s && String(key) <= s; };
-export function pjPeringatanKunci(key) { return pjTerkunci(key) ? '' : 'Kunci bulan ' + pjNama(key) + ' dulu supaya angkanya tidak bergeser (Uang › Tutup buku › Kunci bulan)'; }
+// keputusan owner 1 Okt (A): bulan sebelum KP_KUNCI_MULAI tidak dikunci — peringatannya menyebut tutup buku, bukan menyuruh mengunci
+export function pjPeringatanKunci(key) { return pjTerkunci(key) ? '' : key < KP_KUNCI_MULAI ? 'Angka ' + pjNama(key) + ' masih bisa bergeser sampai tutup buku ' + key.slice(0, 4) + ' (kunci bulan ' + key.slice(0, 4) + ' ditunda — keputusan owner 1 Okt 2026)' : 'Kunci bulan ' + pjNama(key) + ' dulu supaya angkanya tidak bergeser (Uang › Tutup buku › Kunci bulan)'; }
 export function pjCekNtpn(ntpn) { const x = String(ntpn || '').replace(/\s/g, '').toUpperCase(); if (!x) return 'tanpa NTPN'; return /^[0-9A-Z]{16}$/.test(x) ? '' : 'NTPN biasanya 16 karakter angka/huruf (format belum terverifikasi untuk Coretax) — periksa lagi bukti setornya'; }
 export function susunSetoran(isi, w, kini) {
   const masa = String(isi.masaPajak || ''); const tgl = String(isi.tanggalSetor || ''); const ntpn = String(isi.ntpn || '').replace(/\s/g, '').toUpperCase().slice(0, 32);
