@@ -235,6 +235,9 @@ def lebih_kurang_layar(t):
     out = []
     if t.count("R.lebihKurangKas ? [['Lebih/kurang kas', R.lebihKurangKas, 'selisih laci tutup hari']] : []") != 2: out.append('Mingguan/Tahunan tanpa baris lebih/kurang kas')
     if "(K.L.lebihKurangKas ? ' ± lebih/kurang kas' : '')" not in t: out.append('kalimat menutup Biaya tidak menyebut lebih/kurang kas')
+    # tinjauan 39b UU38-2: layar Laba — keterangan keping "Laba bersih" dan kalimat rumus di bawah tangga menyebut lebih/kurang kas bila tangganya punya baris itu
+    if "'sudah − biaya, hapus buku & susut' + (Lb.lebihKurangKas ? ' ± lebih/kurang kas' : '')" not in t: out.append('keterangan keping Laba bersih tidak menyebut lebih/kurang kas')
+    if "hapus buku ± susut${Lb.lebihKurangKas ? ' ± lebih/kurang kas' : ''} · ${B.nama}" not in t: out.append('kalimat rumus di bawah tangga Laba tidak menyebut lebih/kurang kas')
     return out
 
 
@@ -289,7 +292,9 @@ if __name__ == '__main__':
                           ('39b-40 laporan.js: tren menggambar bulan sebelum awal buku merah lagi', lap.replace(" && !b.sebelumBuku ? 'lewat'", " ? 'lewat'", 1)),
                           ('39b-40 laporan.js: Tahunan tanpa pita keterangan sebelum awal buku', lap.replace('${R.sebelumBuku}</div>', '</div>', 1)),
                           ('39b-38 laporan.js: Tahunan tanpa baris lebih/kurang kas', lap.replace("['Susut & selisih stok', R.susut, '']].concat(R.lebihKurangKas ? [['Lebih/kurang kas', R.lebihKurangKas, 'selisih laci tutup hari']] : []).concat([['Laba bersih', R.labaBersih, 'Σ laba bersih tiap bulan']])", "['Susut & selisih stok', R.susut, '']].concat([['Laba bersih', R.labaBersih, 'Σ laba bersih tiap bulan']])", 1)),
-                          ('39b-38 laporan.js: kalimat menutup Biaya diam soal lebih/kurang kas', lap.replace("(K.L.lebihKurangKas ? ' ± lebih/kurang kas' : '')", "''", 1))]:
+                          ('39b-38 laporan.js: kalimat menutup Biaya diam soal lebih/kurang kas', lap.replace("(K.L.lebihKurangKas ? ' ± lebih/kurang kas' : '')", "''", 1)),
+                          ('UU38-2 laporan.js: keping Laba bersih diam soal lebih/kurang kas', lap.replace("'sudah − biaya, hapus buku & susut' + (Lb.lebihKurangKas ? ' ± lebih/kurang kas' : '')", "'sudah − biaya, hapus buku & susut'", 1)),
+                          ('UU38-2 laporan.js: kalimat rumus tangga Laba diam soal lebih/kurang kas', lap.replace("${Lb.lebihKurangKas ? ' ± lebih/kurang kas' : ''} · ${B.nama}", " · ${B.nama}", 1))]:
             g = (dua_nama(isi) + sebelum_buku(isi) + lebih_kurang_layar(isi)) if isi != lap else []
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
