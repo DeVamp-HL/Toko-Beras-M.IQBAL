@@ -200,7 +200,8 @@ Semua dokumen: `id: w.idUnik()`, `tanggal`, `jam` dari `L.waktuSekarang(...)`. `
    buku tujuan belum pernah mengeluarkan kg** (buku yang baru lahir, atau belum pernah dijual / dipindah keluar) — itu yang diperiksa asap ini: aktivasi semua
    wadah dan isi ulang pertama 1 kg ke wadah yang baru aktif → nilai stok sama persis. Pindah ke buku yang sudah pernah terjual menggeser Σ nilai sedikit bila modalnya beda
    (audit 39b no. 42, §8.5); asap pindah balik karung tertinggal ke buku merek (keputusan owner 1 Okt) karena itu hanya membatasi geseran nilai, laba wajib
-   sama. Per merek asal: buku merek + Σ buku karung belakang merek itu + Σ bagian merek itu di wadah (turunan) = buku merek sebelum pindah (kg).
+   sama — **kecuali buku tujuan pernah menerima retur karung utuh** (tinjauan P42-a, §8.5 butir Laba: HPP retur karung utuh dinilai dengan modal per kg
+   SEKARANG, jadi laba bulan retur itu ikut bergeser sedikit). Per merek asal: buku merek + Σ buku karung belakang merek itu + Σ bagian merek itu di wadah (turunan) = buku merek sebelum pindah (kg).
 3. Tiap karung belakang: kolam (catatan `karung` − takar) vs buku — selisih disebut lewat `wbSelisihWadah`, tidak dijumlah dua kali di rantai stok.
 4. Daftar aktivasi di cadangan 29 Sep menghitung isi kotak **+ karung terbuka di belakangnya** (jawaban no. 1), jadi kekurangannya lebih besar dari §6 yang
    hanya menghitung isi kotak: W1 Kumala kurang 2,05 · W4 IR42 Select kurang 32,04 (50,72 + karung 47,8 lawan buku 66,48) · W5 Kumala kurang 81,62 (58,87 +
@@ -210,8 +211,13 @@ Semua dokumen: `id: w.idUnik()`, `tanggal`, `jam` dari `L.waktuSekarang(...)`. `
 ### 8.5 Yang TIDAK berubah
 
 - **28 mesin beku** (`js/mesin/beku.js` byte-identik, `pindah_mesin.py --periksa`); tidak ada koleksi baru; bentuk dokumen = putaran 28 (batch lahir 0 kg, `produksiKemasan` jadi-karung-utuh, `wadahLiteran`, `penyesuaianStok`).
-- **Laba**: pindah buku bukan penjualan (HPP tiap penjualan dicatat saat jual), jadi laba tidak bergeser; literan memotong buku wadah seperti 28; tanda
-  `perluCocokkan` tidak mengubah angka (buku dibiarkan minus, seperti 31b).
+- **Laba**: pindah buku bukan penjualan (HPP tiap penjualan dicatat saat jual), jadi laba tidak bergeser — **kecuali HPP retur karung utuh** (tinjauan P42-a):
+  mesin beku membalik HPP retur karung utuh dengan modal per kg buku itu SEKARANG (`hppTaksiranRetur` = kg × `hppTerakhirPerKg` dari `hitungStokKarungPerMerk()`
+  tanpa batas tanggal). Jadi pindah buku — dan tiap kedatangan — ke buku yang pernah menerima retur karung utuh menggeser sedikit laba bulan retur itu, juga
+  bulan yang sudah dikunci (laporan menghitung ulang dari mesin; potret saat kunci di riwayat Kunci bulan tetap angka lama). Sama dengan catatan no. 41
+  (`docs/audit-39b-temuan.md`: HPP retur utuh dihitung ulang tiap laporan); sifat mesin beku, bukan cacat pindah buku. Contoh (ANGKA CONTOH, jsc): contoh nilai
+  stok di bawah (penjualan September) + retur karung utuh 10 kg ke buku itu September, lalu isi ulang 25 kg @Rp11.000 bertanggal 1 Oktober → modal per kg
+  12.000 → 11.800, HPP retur September 120.000 → 118.000, laba September −Rp2.000. Literan memotong buku wadah seperti 28; tanda `perluCocokkan` tidak mengubah angka (buku dibiarkan minus, seperti 31b).
 - **Nilai stok (neraca)** — dibetulkan sesudah audit 39b no. 42 (diterima owner 30 Sep): pindah buku membawa modal (`hppPerUnit`), tetapi Σ nilai stok
   **tetap hanya bila buku tujuan belum pernah mengeluarkan kg** (buku baru: aktivasi, karung belakang pertama). Pindah ke buku yang sudah pernah terjual atau
   dipindah keluar — isi ulang wadah yang literannya sudah dijual, isi ulang lintas merek, karung berikutnya di belakang wadah, pindah balik ke buku merek,
@@ -226,7 +232,7 @@ Semua dokumen: `id: w.idUnik()`, `tanggal`, `jam` dari `L.waktuSekarang(...)`. `
   - Kecil: satu isi ulang hanya sebagian kecil dari yang pernah masuk ke buku itu, dan modal merek-merek di satu wadah berdekatan (s − a kecil).
   - Contoh (ANGKA CONTOH, bukan angka toko; dihitung ulang dengan mesin beku di kotak pasir jsc): buku sudah menerima 100 kg @Rp12.000 dan terjual 80 (sisa
     20); isi ulang 25 kg merek lain @Rp11.000 → modal per kg jadi 11.800, sisa 45 kg dinilai Rp531.000, padahal 20 × 12.000 + 25 × 11.000 = Rp515.000 →
-    Σ nilai stok naik Rp16.000 (= −25 × 80 × (11.000 − 12.000) ÷ 125); laba bulan itu sama.
+    Σ nilai stok naik Rp16.000 (= −25 × 80 × (11.000 − 12.000) ÷ 125); laba bulan itu sama (buku itu tidak pernah menerima retur karung utuh — lihat butir Laba).
   - Di laporan: laba kumulatif mesin tidak bergerak, laba ditahan neraca (aset − kewajiban − modal) ikut bergerak → geseran ini masuk baris "beda … belum
     terjelaskan buku" di catatan neraca (`neracaPada`).
 - `index.html` / `kasir*.html` / katalog kasir tidak disentuh. Kunci periode v4 tetap: `wadahLiteran` tetap tidak dikunci periode; batch lahir & pindah buku dinilai `tglStaf` / `tglBaru` seperti biasa.

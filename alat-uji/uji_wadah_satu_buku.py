@@ -654,6 +654,18 @@ var kb16 = wbKarungBelakang('Kosong Satu', 'NG').bukuKg; var U16 = U('Kosong Sat
 ok('39c tiga ketukan: karung belakang NG 50 kg di W4 (baru aktif, kosong), minta 55 kg → hitung.seadanya, kg = 50 (sisa buku), dibuka 0, takar bertanda seadanya + kgMinta 55, kabar SEADANYA; sesudahnya permintaan yang sama → karung baru dibuka (dibuka 1, tanpa seadanya)',
   !AK16.tolak && !BK16.tolak && kb16 === 50 && !U16.tolak && U16.hitung.seadanya === true && U16.hitung.kg === 50 && U16.hitung.kgMinta === 55 && U16.hitung.dibuka === 0 && dok(U16, 'wadahLiteran')[0].seadanya === true && dok(U16, 'wadahLiteran')[0].kgMinta === 55 && /SEADANYA 50 kg NG \(minta 55 kg; karung di belakang bersih 0/.test(U16.patch.kabar)
   && denganCacheSementara(U16.dokumen, function () { var r2 = U('Kosong Satu', 'NG', { jenis: 'kg', kg: '5' }); return !r2.tolak && r2.hitung.dibuka === 1 && !r2.hitung.seadanya && r2.hitung.kg === 5 && wbKarungBelakang('Kosong Satu', 'NG').bukuKg === 0; }), J([AK16.tolak, BK16.tolak, kb16, U16.tolak, U16.hitung, U16.patch && U16.patch.kabar]));
+// tinjauan P42-a (docs/peta-wadah-satu-buku.md §8.5 butir Laba): pindah buku ke buku yang pernah menerima retur karung UTUH menggeser laba bulan retur — mesin beku
+// menilai HPP retur utuh = kg × modal per kg SEKARANG. ANGKA CONTOH = contoh peta: buku P42A menerima 100 kg @12.000, terjual 80 (September), retur utuh 10 kg
+// (September), isi ulang 25 kg dari P42B @11.000 bertanggal 1 Okt → laba September −2.000 (HPP retur 120.000 → 118.000); tanpa retur utuh laba September tetap.
+var P42 = [{ koleksi: 'batchMasuk', data: { id: 94201, tanggal: '2026-09-01', jam: '08:00', pemasok: 'P CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [{ id: '1', merk: 'P42A', satuan: 'kg', totalKg: 100, hargaPerKg: 12000, subtotalHarga: 1200000 }] } },
+  { koleksi: 'batchMasuk', data: { id: 94202, tanggal: '2026-09-01', jam: '08:00', pemasok: 'P CONTOH', caraBayar: 'tunai', biayaBongkar: 0, merkList: [{ id: '1', merk: 'P42B', satuan: 'kg', totalKg: 100, hargaPerKg: 11000, subtotalHarga: 1100000 }] } },
+  { koleksi: 'penjualan', data: { id: 94203, tanggal: '2026-09-05', jam: '09:00', jenis: 'karung', merkSumber: 'P42A', namaProduk: 'P42A', totalKg: 80, jumlahKarung: 1, hargaTotal: 1040000, hppTotalSaatJual: 960000, caraBayar: 'Tunai' } },
+  { koleksi: 'retur', data: { id: 94204, tanggal: '2026-09-10', jam: '10:00', jenisAsal: 'karung', kondisi: 'utuh', merkSumber: 'P42A', totalKg: 10, nominalRefund: 130000 } }];
+var geser42 = function (dasar) { return denganCacheSementara(dasar, function () { var L0 = hitungLabaBersihRentang('2026-09-01', '2026-09-30'); var P = wbDokPindah([{ merk: 'P42B', kg: 25 }], 'P42A', { idUnik: function () { return 94205; }, tanggal: '2026-10-01', jam: '08:00' });
+  return denganCacheSementara([P], function () { var L1 = hitungLabaBersihRentang('2026-09-01', '2026-09-30'); return { laba: L1.labaBersih - L0.labaBersih, returHpp: [L0.returHpp, L1.returHpp] }; }); }); };
+var g42a = geser42(P42), g42b = geser42(P42.slice(0, 3));
+ok('tinjauan P42-a (peta §8.5 Laba): isi ulang 25 kg @11.000 bertanggal 1 Okt ke buku yang pernah menerima retur karung utuh 10 kg (September) → laba September −2.000 (HPP retur dinilai modal per kg SEKARANG); buku tanpa retur utuh → laba September tetap',
+  g42a.laba === -2000 && g42b.laba === 0, J([g42a, g42b]));
 print(J({ lulus: lulus, gagal: gagal }));
 """
 
@@ -750,6 +762,16 @@ def cetak_asap(nama, asap):
     print('   isi ulang 1 kg: %s · tumpukan bergeser tidak sebesar karung dibuka: %s · jual 1 L: %d/%d · identitas wadah menutup: %d/%d · bocor: %s'
           % ('; '.join(('%s ← %s %s' % (x['W'], x.get('M', '-'), 'ok (buka %d)' % x['dibuka'] if x.get('ok') else 'lewati ' + x['lewati'] if x.get('lewati') else 'TOLAK ' + x.get('tolak', '') if x.get('tolak') else 'GAGAL')) for x in asap['isiUlang']) or 'tidak ada',
              ', '.join(asap['geserIsi']) or 'tidak ada', len([x for x in asap['jual'] if x.get('ok')]), len([x for x in asap['jual'] if not x.get('lewati')]), len([x for x in asap['identitasWadah'] if x['ok']]), len(asap['identitasWadah']), json.dumps(asap['bocor'])))
+
+
+def peta_p42(t):
+    """tinjauan P42-a — docs/peta-wadah-satu-buku.md: §8.5 butir Laba & §8.4 no. 2 menyebut pengecualian retur karung utuh (HPP retur dinilai modal per kg
+    SEKARANG; contohnya = uji jsc di SKENARIO). Kembalikan daftar masalah."""
+    out = []
+    if '**Laba**: pindah buku bukan penjualan (HPP tiap penjualan dicatat saat jual), jadi laba tidak bergeser — **kecuali HPP retur karung utuh**' not in t or '`hppTaksiranRetur`' not in t or 'laba September −Rp2.000' not in t:
+        out.append('peta §8.5 butir Laba tidak menyebut pengecualian retur karung utuh (HPP retur dinilai modal per kg sekarang) atau contohnya')
+    if 'laba wajib\n   sama — **kecuali buku tujuan pernah menerima retur karung utuh**' not in t: out.append('peta §8.4 no. 2 masih mewajibkan laba sama tanpa pengecualian retur karung utuh')
+    return out
 
 
 RUSAK = {
@@ -859,6 +881,12 @@ if __name__ == '__main__':
     js = uji_wadah_stok_sendiri.bundel()
     if '--kontrol' in sys.argv:
         kode = 0
+        peta = open(os.path.join(AKAR, 'docs', 'peta-wadah-satu-buku.md'), encoding='utf-8').read()
+        for nama, isi in [('P42-a peta: butir Laba kembali "laba tidak bergeser" tanpa pengecualian', peta.replace(' — **kecuali HPP retur karung utuh**', '; ', 1)),
+                          ('P42-a peta: §8.4 no. 2 kembali "laba wajib sama"', peta.replace(' — **kecuali buku tujuan pernah menerima retur karung utuh**', '', 1))]:
+            g = peta_p42(isi) if isi != peta else []
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:140] if g else '-'))
+            if not g: kode = 3
         for nama, (a, b) in RUSAK.items():
             if js.count(a) != 1: print('KONTROL BASI  ' + nama + ' (jangkar ' + str(js.count(a)) + '×)'); kode = 3; continue
             l, g, _ = utama(js.replace(a, b), False)
@@ -879,6 +907,9 @@ if __name__ == '__main__':
         t = open(os.path.join(AKAR, berkas), encoding='utf-8').read(); kurang = [x for x in wajib if x not in t]
         if kurang: g.append('statis 39c · ' + nama + ' → tidak ada: ' + ' | '.join(kurang))
         else: l += 1
+    m42 = peta_p42(open(os.path.join(AKAR, 'docs', 'peta-wadah-satu-buku.md'), encoding='utf-8').read())
+    if m42: g.extend('statis P42-a · ' + x for x in m42)
+    else: l += 1
     print('WADAH SATU BUKU PER KOTAK (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     p = uji_wadah_bernama.cadangan_toko()
