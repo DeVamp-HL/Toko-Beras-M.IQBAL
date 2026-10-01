@@ -82,7 +82,8 @@ function kini() { return new Date(Date.now()); }
 function kunciKe(bulan, riwayat) { terapkanKeCache([{ koleksi: 'aturanToko', data: { id: 'kunciPeriode', sampaiBulan: bulan, riwayat: riwayat || [] } }]); }
 function bukaSemua() { pasok('aturanToko', cacheMentah('aturan').filter(function (d) { return d.id !== 'kunciPeriode'; })); }
 function tulis(r) { if (!r || r.tolak) throw new Error('DITOLAK: ' + (r && r.tolak)); var ops = (r.dokumen || []).concat((r.hapus || []).map(function (h) { return { koleksi: h.koleksi, hapus: h.id }; })); terapkanKeCache(ops); return r; }
-var BERSIH = { lokal: { antreLokal: { belum: [], ditolak: [] }, antre: [] }, parkir: [], putusanHari: {}, centang: {}, siap25b: true };
+// kunciMulai '0000-00' = uji saja: kotak pasir mengunci bulan 2026 (penjaga keputusan owner 1 Okt diuji tersendiri di bawah)
+var BERSIH = { lokal: { antreLokal: { belum: [], ditolak: [] }, antre: [] }, parkir: [], putusanHari: {}, centang: {}, siap25b: true, kunciMulai: '0000-00' };
 function K(tambah) { var k = JSON.parse(JSON.stringify(BERSIH)); Object.keys(tambah || {}).forEach(function (x) { k[x] = tambah[x]; }); return k; }
 var butir = function (D, id) { return D.butir.find(function (b) { return b.id === id; }); };
 var semula = {}; ['perangkat'].forEach(function (c) { semula[c] = cacheMentah(c).slice(); });
@@ -205,7 +206,8 @@ drainMicrotasks(); var tertunda = bertahapTertunda(); lanjutkanBertahap().then(f
 ok('kirim bertahap: kemajuan tersimpan SEBELUM potongan berikutnya dikirim (tab ditutup di tengah = bisa dilanjutkan); terputus di potongan 2 → berhenti (1 dari 3); dilanjutkan → potongan 2 & 3 terkirim, TIDAK ada yang dikirim dua kali; rencana dihapus sesudah selesai',
   !!hasilBT && hasilBT.gagal && diTengah && diTengah.sudah === 1 && tertunda && tertunda.sudah === 1 && tertunda.total === 3 && !!hasilLanjut && hasilLanjut.ok && terkirim.length === 3 && new Set(terkirim).size === 3 && bertahapTertunda() === null, J([hasilBT, tertunda, hasilLanjut, terkirim.length]));
 var nStaf = [{ koleksi: 'penjualan', data: { id: 'sb1', tanggal: '2026-08-31', caraBayar: 'Tunai' }, ada: false, lama: null }];
-pada('2026-09-03T21:00:00+07:00'); var st1 = periksaKiriman(BEN, nStaf, [], {}, kini()); pada('2026-09-04T09:00:00+07:00'); var st2 = periksaKiriman(BEN, nStaf, [], {}, kini()); pada('2026-09-24T10:00:00+07:00');
+var hakBen = { jualTunai: 'sendiri' };   // audit 39b no. 22: penjaga menegakkan kisi — {} = tidak boleh apa pun
+pada('2026-09-03T21:00:00+07:00'); var st1 = periksaKiriman(BEN, nStaf, [], hakBen, kini()); pada('2026-09-04T09:00:00+07:00'); var st2 = periksaKiriman(BEN, nStaf, [], hakBen, kini()); pada('2026-09-24T10:00:00+07:00');
 ok('bukan-owner: nota bertanggal 31 Agu yang tiba 3 Sep malam (masa tenggang) → boleh, 1 access call per dokumen; tiba 4 Sep → ditolak di perangkat ("lewat masa tenggang — owner yang mencatat"), rules tanpa get() kunci',
   !st1.tolak && st1.accessCall === 2 && /lewat masa tenggang/.test(st2.tolak || ''), J([st1, st2]));
 
@@ -240,10 +242,19 @@ ok('lpFinal bulanan: Agustus draf sebelum dikunci, FINAL sesudah; September draf
 ok('tanda lapor DK3 per bulan: Agustus terkunci boleh ditandai; September (belum dikunci) ditolak dengan kalimatnya', !susunTandaLapor('2026-08', W).tolak && /belum dikunci/.test(susunTandaLapor('2026-09', W).tolak || ''));
 var TP = pjTahun(2026, kini()); var bA = TP.daftar.find(function (b) { return b.key === '2026-08'; }), bS = TP.daftar.find(function (b) { return b.key === '2026-09'; });
 var sp = susunSetoran({ masaPajak: '2026-09', tanggalSetor: '2026-09-24', jumlah: '100.000', ntpn: '0123456789ABCDEF' }, W, kini()), sa = susunSetoran({ masaPajak: '2026-08', tanggalSetor: '2026-09-24', jumlah: '100.000', ntpn: '0123456789ABCDEF' }, W, kini());
-ok('pajak: tiap bulan punya keadaan terkunci; setoran untuk bulan BELUM dikunci → peringatan "Kunci bulan … dulu supaya angkanya tidak bergeser"; bulan terkunci tanpa peringatan itu',
-  bA.terkunci && !bS.terkunci && /Kunci bulan September 2026 dulu supaya angkanya tidak bergeser/.test(sp.peringatan) && !/Kunci bulan/.test(sa.peringatan || ''), J([sp.peringatan, sa.peringatan]));
+ok('pajak: tiap bulan punya keadaan terkunci; setoran bulan 2026 BELUM dikunci → "masih bisa bergeser sampai tutup buku 2026 (kunci bulan 2026 ditunda)" — tidak menyuruh mengunci (keputusan owner 1 Okt); bulan 2027 → "Kunci bulan … dulu"; bulan terkunci tanpa peringatan',
+  bA.terkunci && !bS.terkunci && /September 2026 masih bisa bergeser sampai tutup buku 2026 \(kunci bulan 2026 ditunda/.test(sp.peringatan) && !/Kunci bulan September/.test(sp.peringatan) && !/Kunci bulan|ditunda/.test(sa.peringatan || '')
+  && /^Kunci bulan Maret 2027 dulu supaya angkanya tidak bergeser/.test(pjPeringatanKunci('2027-03')), J([sp.peringatan, sa.peringatan, pjPeringatanKunci('2027-03')]));
 ok('Beranda: satu baris "Kunci bulan" hanya bila bulan lalu sudah lewat tenggang & belum dikunci — sesudah 25b tampil tanpa bendera uji',
-  (function () { bukaSemua(); var a = kpPerhatian(kini(), { siap25b: true }), b = kpPerhatian(kini()); kunciKe('2026-08'); var c = kpPerhatian(kini(), { siap25b: true }); return a.length === 1 && /Agustus 2026/.test(a[0].teks) && b.length === 1 && c.length === 0; })());
+  (function () { bukaSemua(); var a = kpPerhatian(kini(), { siap25b: true, kunciMulai: '0000-00' }), b = kpPerhatian(kini()); kunciKe('2026-08'); var c = kpPerhatian(kini(), { siap25b: true, kunciMulai: '0000-00' }); return a.length === 1 && /Agustus 2026/.test(a[0].teks) && b.length === 0 && c.length === 0; })());
+// keputusan owner 1 Okt 2026 (A): bulan 2026 TIDAK dikunci sampai tutup buku 2026 — daftar periksa memblokir, kunci ditolak, Beranda diam; Januari 2027 boleh
+ok('K1 (keputusan owner 1 Okt): Agustus 2026 — butir ⛔ "Kunci bulan dimulai Januari 2027" belum beres (satu-satunya beda dengan jalan pintas uji), kunci DITOLAK; Beranda tidak menyuruh mengunci',
+  (function () { bukaSemua(); var D = kpDaftarPeriksa('2026-08', kini(), K({ kunciMulai: undefined, putusanHari: putusSemua, centang: C_SEMUA })), Db = kpDaftarPeriksa('2026-08', kini(), K({ putusanHari: putusSemua, centang: C_SEMUA }));
+    var t = butir(D, 'tundaTutupBuku'), tb = butir(Db, 'tundaTutupBuku'); var R = susunKunciBulan('2026-08', K({ kunciMulai: undefined, putusanHari: putusSemua, centang: C_SEMUA }), W, OWN, kini());
+    return t && t.blokir && !t.ok && /TIDAK dikunci sampai tutup buku 2026/.test(t.ket) && tb && tb.ok && D.belum === Db.belum + 1 && !D.boleh && !!R.tolak && kpPerhatian(kini(), { siap25b: true }).length === 0; })());
+ok('K1: Januari 2027 (dicoba 10 Feb 2027) — butir "Kunci bulan dimulai Januari 2027" beres; Beranda boleh menyebut Januari 2027',
+  (function () { var lama = __KINI; bukaSemua(); pada('2027-02-10T10:00:00+07:00'); var D = kpDaftarPeriksa('2027-01', kini(), K({ kunciMulai: undefined })); var t = butir(D, 'tundaTutupBuku');
+    kunciKe('2026-12'); var P = kpPerhatian(kini(), { siap25b: true }); __KINI = lama; bukaSemua(); return t && t.ok && P.length === 1 && /Januari 2027/.test(P[0].teks); })());
 
 print(JSON.stringify({ lulus: lulus, gagal: gagal }));
 """
@@ -307,6 +318,9 @@ if __name__ == '__main__':
     js = satu_lingkup(bundel_baru.bundel(MODUL))
     if '--kontrol' in sys.argv:
         rusak = {
+            'K1: bulan 2026 boleh dikunci lagi (penjaga keputusan owner 1 Okt dicabut)': js.replace("const bolehTahun = bulan >= mulai;", "const bolehTahun = true;"),
+            'K1: Beranda kembali menyuruh mengunci bulan 2026': js.replace("if (c < (uji && uji.kunciMulai !== undefined ? uji.kunciMulai : KP_KUNCI_MULAI)) return [];", ""),
+            'K1: pajak kembali menyuruh mengunci bulan 2026': js.replace("return pjTerkunci(key) ? '' : key < KP_KUNCI_MULAI ?", "return pjTerkunci(key) ? '' : false ?"),
             # kontrol wajib prompt
             'koreksi di tempat pada bulan terkunci lolos (penjaga pusat tidak menilai tanggal lama)': js.replace("  if (!op.lama || (op.koleksi === 'pengaturan' && String(op.data.id) === 'titikKas')) return b;", "  return b;"),
             'pembalik bertanggal bulan terkunci (catat ulang tidak memindah tanggal)': js.replace("    data.tanggal = w.tanggal; if (data.jam !== undefined) data.jam = w.jam;", "    if (data.jam !== undefined) data.jam = w.jam;"),
@@ -349,7 +363,7 @@ if __name__ == '__main__':
             'catat ulang ke tanggal tanpa jejak asli': js.replace("    data[f] = (data[f] ? String(data[f]) + ' · ' : '') + 'tanggal asli ' + asli + ' (bulan terkunci, dicatat ulang ' + w.tanggal + ')';", "    void asli;"),
             # final & pajak
             'tahun final dari Januari saja': js.replace("const s = kunciSampai(); return !!s && s >= tahun + '-12'; }", "const s = kunciSampai(); return !!s && s >= tahun + '-01'; }"),
-            'peringatan pajak hilang': js.replace("return pjTerkunci(key) ? '' : 'Kunci bulan '", "return true ? '' : 'Kunci bulan '"),
+            'peringatan pajak hilang': js.replace("return pjTerkunci(key) ? '' : key < KP_KUNCI_MULAI ?", "return true ? '' : key < KP_KUNCI_MULAI ?"),
             'Beranda diam walau siap': js.replace("  const c = kpCalon(kini); if (!c || !kpBolehDikunci(c, kini, kunciTenggang())) return [];", "  return [];"),
         }
         kode = 0

@@ -13,7 +13,7 @@ import * as PJ from './pajak-logika.js';
 import * as KB from './kendali-biaya-logika.js';
 import { waktuSekarang } from './jual-logika.js';
 import { gulirkan } from '../inti/gerak.js';
-import { sumberData, dengarkan, tulisDokumen } from '../data/toko.js';
+import { sumberData, dengarkan, tulisDokumen, kabarKiriman } from '../data/toko.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -47,7 +47,7 @@ export function pasangLayarLaporan(akar, opsi) {
     if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return false; }
     // putaran 25: hapus ikut dikirim (dulu diabaikan — "isian dihapus" di Laporan › Pajak tidak menghapus apa pun di server); SATU kiriman, jejaknya memuat nilai lama (K6)
     try { let x = null; if ((r.dokumen && r.dokumen.length) || (r.hapus && r.hapus.length)) { x = await tulisDokumen(r.dokumen || [], r.hapus, { jejakHapus: r.jejakHapus || 'dihapus dari Laporan' }); if (x && x.gagal) { set({ kabar: 'DITOLAK: ' + x.pesan, kabarAwas: true }); return false; } }
-      if (!tanpaKabar) set(Object.assign({}, r.patch || {}, { kabar: (x && x.simulasi ? 'SIMULASI — ' : '') + ((r.patch || {}).kabar || ''), kabarAwas: !!(r.patch || {}).kabarAwas })); else if (r.patch) { const p = Object.assign({}, r.patch); delete p.kabar; delete p.kabarAwas; set(p); }
+      if (!tanpaKabar) set(Object.assign({}, r.patch || {}, { kabar: kabarKiriman(x, (r.patch || {}).kabar || ''), kabarAwas: !!(r.patch || {}).kabarAwas })); else if (r.patch) { const p = Object.assign({}, r.patch); delete p.kabar; delete p.kabarAwas; set(p); }
       return true; } catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
   const bukaWa = (teks) => { try { return window.open('https://wa.me/?text=' + encodeURIComponent(teks), '_blank', 'noopener'); } catch (e) { return null; } };

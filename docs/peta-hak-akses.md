@@ -16,12 +16,14 @@ access call dianggap TANPA cache; satu baris jejak per kiriman bukan-owner yang 
 
 Kisi `SS_TINDAKAN` (13) × hak bawaan `SS_HAK_BAWAAN`. `sendiri` = boleh sendiri, `owner` = minta owner, `tidak` = tidak boleh.
 Server putaran ini menegakkan **baca & catat baru**. `owner`/`tidak` tertutup bagi bukan-owner (tombol mati + kalimat sebabnya).
+Audit 39b no. 22: penjaga penulis pusat (`periksaKiriman` → `tindakanKiriman`) menegakkan kisi untuk TIAP kiriman, bukan cuma tombol — hak yang diputar owner
+langsung berlaku di perangkat. Rules tidak membaca kisi (tanpa `get()` ke `aturanToko/peran`); yang ditegakkan server tetap kolom kanan.
 
 | Tindakan | ben | karyawan | Fungsi | Koleksi · operasi (per kiriman) | Server putaran ini |
 |---|---|---|---|---|---|
 | jualTunai | sendiri | sendiri | `simpanNota` → `susunNotaDokumen`; lalu `susunStrukKeluar` | `penjualan` create (1 per baris) · `stokBahanLiteran` create `tipe:'pakai'` (literan berkantong, id = baris+1) · `stokBahanKemasan`/`stokBahanLiteran` create `tipe:'pakai'` (baris wadah & repack, id+1) · `pesanan` **update** (kalau keranjang dari pesanan) · `strukKeluar` create (kiriman terpisah) | BUKA untuk ben & karyawan |
 | jualBon | sendiri | owner | sama + `piutangMutasi` create `tipe:'bayar'` (bayar sebagian di tempat) | seperti jualTunai + 1 | BUKA untuk ben; karyawan tertutup |
-| nego | owner | tidak | harga di bawah jatah (persetujuan) | — | tertutup |
+| nego | owner | tidak | harga di bawah jatah (persetujuan) — nego baris (`negoSelisih` ≠ 0) & potongan nota (`potonganTransaksi`) | `penjualan` create (kolom itu) | tertutup di perangkat (penjaga `periksaKiriman` + tombol, audit 39b no. 22); rules belum menolak kolomnya |
 | terimaBon | sendiri | sendiri | `susunBayarBon` (bon-logika) | `piutangMutasi` create `tipe:'bayar'` | BUKA |
 | hitungLaci | sendiri | tidak | `susunTutup` (tutup-hari-logika) | `pengaturan/titikKas` **timpa** (laci, rekening, amplop, brankas) · `amplopLaba`/`setoranKas`/`modalOwner`/`pindahUang`/`pengeluaranHarian` ber-id per tanggal (tutup ulang = **timpa**) · `penyesuaianStok`, `pengeluaranHarian` **hapus** | **TERTUTUP** — lihat §6 |
 | uangKeluar | owner | tidak | `susunKeluar` | `pengeluaranHarian`, `kasbonMutasi` | tertutup |
@@ -100,7 +102,7 @@ Menambah peran nanti (mis. `kasir`) = menambah satu nama di daftar peran tiap ko
 | # | Dokumen | Kolom (`affectedKeys().hasOnly`) | Kenapa tidak bisa create |
 |---|---|---|---|
 | 1 | `pesanan/{id}` yang belum tuntas (`status` ∉ dibayar, batal) | `status` (→ `'dibayar'` saja), `riwayatStatus`, `trxIdJual`, `diubahOleh`, `diubahOlehUid`, `diubahPerangkat`, `diubahPada` — kolom pencipta (`oleh`, `olehUid`, `perangkat`, `lokasi`) tidak pernah ditambah bukan-owner; banyak dokumen lama tanpa `oleh` (cadangan toko: 2.481 dari 4.544 baris penjualan) | Pesanannya sudah ada (dicatat owner saat dipesan). Menjualnya harus menandai dokumen yang SAMA "dibayar" supaya keluar dari daftar pesanan menunggu — sistem lama (`majukanPesanan`) & layar pesanan membaca status di dokumen itu. Dokumen baru terpisah tidak dikenal keduanya. Tidak ada uang/berat yang berubah: nilai pesanan tidak disentuh. |
-| 2 | `perangkatStatus/{idPerangkat}` milik akun itu (`akunUid` = uid) | `id`, `nama`, `akun`, `akunUid`, `aplikasi`, `pada`, `antrean`, `gagal`, `versi`, `pemegang`, `lokasi` | Denyut = satu dokumen per perangkat yang ditimpa tiap ≤ 5 menit (SS1 membaca "terakhir terlihat"). Create per denyut membuat koleksi tumbuh tanpa batas. Bukan data toko. |
+| 2 | `perangkatStatus/{idPerangkat}~{uid}` milik akun itu (`akunUid` = uid; owner tetap `{idPerangkat}`) — satu dokumen per perangkat × akun, tablet bergiliran tidak terkunci ke akun pertama (audit 39b no. 23) | `id`, `nama`, `akun`, `akunUid`, `aplikasi`, `pada`, `antrean`, `gagal`, `versi`, `pemegang`, `lokasi` | Denyut = satu dokumen per perangkat yang ditimpa tiap ≤ 5 menit (SS1 membaca "terakhir terlihat"). Create per denyut membuat koleksi tumbuh tanpa batas. Bukan data toko. |
 
 Tidak ada DELETE untuk bukan-owner.
 
@@ -121,6 +123,7 @@ batasnya, tiap kiriman lewat `periksaKiriman` asli; gagal bila ada yang > 18.
 | Nota | Ben | 16 | **17 / 20** | 7 baris literan berkantong · bayar sebagian (sisa jadi bon) · dari pesanan |
 | Nota | karyawan | 15 | **16 / 20** | 7 baris literan berkantong · tunai/QRIS · dari pesanan (karyawan tidak bisa bon) |
 | Adukan | Ben, karyawan | 16 | **17 / 20** | 8 baris hasil, semua berkantong |
+| Isi ulang wadah (− / + takar) | Ben, karyawan | 17 | **18 / 20** | 5 merek, karung belakang baru semua (lahir + pindah + karung per merek, + takar + pindah); 6 merek = 20 → ditolak layar (39b no. 21) |
 | Terima bon · pelanggan baru · struk | Ben, karyawan | 1 | 2 / 20 | satu dokumen |
 | Denyut perangkat | Ben, karyawan | 1 | 1 / 20 | satu dokumen, tanpa jejak |
 
@@ -133,7 +136,11 @@ tambahan — karyawan tunai dari pesanan, atau Ben dengan bayar sebagian. Ben 9 
 Pagar berlapis:
 1. **Batas per akun** (`akses.js`): 7 baris per nota (`alasanBatasBaris` di tambah-baris & saat dicatat), 8 hasil per adukan — kalimatnya
    "Satu nota paling banyak 7 baris untuk akun bukan-owner — batas sekali kirim ke server. Simpan nota ini dulu, sisanya jadi nota kedua."
-2. **Pagar umum penulis pusat**: kiriman bukan-owner apa pun yang > 18 access call ditolak di perangkat ("pecah jadi dua nota").
+   Audit 39b no. 21: baris ≠ dokumen (literan wadah campuran belum aktif = satu baris penjualan per merek asal; isian − / + takar = per karung belakang
+   baru lahir + pindah + karung) → `batasDokumenKirim` 17 dokumen per nota (`alasanBatasDokumen`, di tambah-baris & saat dicatat) dan per isian takar
+   (`susunTakarWadah`), kalimatnya kalimat nota / kalimat takar.
+2. **Pagar umum penulis pusat**: kiriman bukan-owner apa pun yang > 18 access call ditolak di perangkat ("pecah jadi dua nota" bila ada penjualan,
+   selain itu "catat dalam dua kali").
 3. **Rules**: baris jejak bukan-owner paling banyak 17 dokumen (`stafJejak`).
 
 Kiriman terbesar (17) **belum diuji di server** — gerbang tablet, proyek Firebase kedua di `docs/uji-rules-v3.md`.

@@ -274,3 +274,31 @@ diuji: `rencana/tutup-buku/kerja/`.
 
 - **1 Okt 2026 — K1 (§3g.2): pilihan A.** Bulan 2026 tidak dikunci sampai tutup buku 2026 selesai (`KP_KUNCI_MULAI = '2027-01'`, PR #87).
   Pilihan C (pembuka 1 Jan + arsip tanpa hapus) dirancang di putaran sendiri untuk 2027.
+
+## 8. Status 1 Okt 2026 — kode BELUM terbit; hasil tinjauan independen = syarat wajib sebelum terbit
+
+Kode rancangan ini ada di cabang `audit/tutup-buku-bertahap` (f0992a1, di atas main 7de3e7a; uji `uji_tutup_buku_bertahap.py` 34 lulus,
+asap laporan byte-sama). Tinjauan independen (2 peninjau + penyanggah, jsc, tanpa peramban) menemukan cacat yang LAHIR di cabang itu — tidak
+digabung ke main sampai semuanya dibereskan (tenggat: sebelum Desember 2026). Satu putaran tersendiri, lalu tinjau ulang:
+
+1. **HP staf melihat angka DOBEL selama `berjalan` / `membatalkan`.** Saringan `pembukaBerlaku` bergantung pada `tutupBukuAcara`, koleksi khusus
+   owner (rules) yang tidak didengar HP staf → stok & piutang di HP staf terhitung dua kali sampai penanda masuk. Arah perbaikan: sumber status
+   yang bisa dibaca staf (mis. pembuka disembunyikan selama dokumen penanda tahun itu belum ada di koleksi yang staf baca), atau minimal
+   gerbang "perangkat lain mati" (g3) juga di Lanjutkan + kalimat di pita.
+2. **Lanjutkan menimpa titik kas Januari** dengan titik 31 Des yang disusun saat mulai. Aturan §(d) harus dinilai saat KIRIM: titik kas sekarang
+   sudah lewat 31 Des → `pengaturan/titikKas` dibuang dari kiriman penanda, `titikDitulis = false`.
+3. **Kiriman dihitung dengan jam MULAI** — mulai 1–3 Jan (masa tenggang), lanjut sesudah tanggal 3 → kiriman tersimpan melebihi 18 pemeriksaan,
+   Lanjutkan ditolak selamanya. Lanjutkan memecah ulang kiriman yang belum masuk dengan jam sekarang (id tetap, penanda tetap terakhir).
+4. **Kiriman yang belum diakui server** (tunggu 30 detik habis, masih antre) sudah dihitung "masuk" oleh pita & Lanjutkan → Lanjutkan menolak
+   selama antrean perangkat belum kosong, atau `bkMasuk` tidak menghitung dokumen yang masih menunggu server.
+5. **Periksa ulang berbunyi palsu** bila dilanjutkan di hari mulai sesudah toko berjualan — patokan diambil tepat sebelum kiriman pertama sesi itu.
+6. **"Selesaikan" bisa menutup tahun** walau periksa ulang belum jalan / hasilnya beda — pita fase selesaikan menjalankan periksa ulang dan
+   menolak (atau minta ketukan kedua menyebut barisnya) bila tidak sama.
+7. **Kalimat salah tombol:** pembatalan yang berhenti di kiriman pertama menyuruh "Lanjutkan" (yang justru meneruskan TUTUP BUKU) → kalimat
+   menyuruh "Batalkan" lagi; tutup buku yang berhenti di kiriman pertama menyuruh "Kunci" lagi.
+8. **Berita acara pembatalan kedua** mencatat tanggal pembatalan pertama → `dibatalkanPada/Tanggal` dibuang saat mulai baru.
+9. (sesudah gabung main #87) butir ⛔ di daftar periksa Kunci bulan bila tutup buku belum tuntas (`kemajuanBuku()` tidak null), menutup varian
+   kunci bulan 2027 di tengah tutup buku.
+
+Tidak wajib (penyanggah: urutan rakitan tangan, jendela ±1 detik): batal dari HP lain yang cache-nya masih `berjalan` mendarat sesudah penanda —
+`jalankanBuku` membaca ulang status sebelum arsip, `susunBatal` menolak bila cache sudah `selesai`.

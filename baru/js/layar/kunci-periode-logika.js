@@ -3,7 +3,7 @@
 // terakhir, satu langkah mundur, alasan ≥ 10 huruf; bulan yang punya setoran pajak minta nama bulannya diketik ulang. Server (firestore.rules v4) menegakkan
 // hal yang sama: sampaiBulan hanya naik satu bulan (atau pertama kali dari kosong), turun tepat satu dengan alasan, dan tidak pernah bulan yang masih dalam
 // tenggang minimal. Keputusan owner K1–K6 & syarat 25b: docs/peta-kunci-periode.md.
-import { KP_ID, KP_ID_ATUR, KP_TENGGANG_MIN, KP_SIAP_25B, KP_VERSI_KASIR_25B, KP_VERSI_HARI, kpVersiKasirCukup, kpPerangkatKasir, kpNamaAplikasiKasir, kpWib, kpIdx, kpBulanStr, kpGeser, kpNamaBulan, kpAkhirBulan, kpBolehDikunci, kpDok, kpBulanDok, kpKalimat } from '../data/kunci-periode.js';
+import { KP_ID, KP_ID_ATUR, KP_TENGGANG_MIN, KP_KUNCI_MULAI, KP_SIAP_25B, KP_VERSI_KASIR_25B, KP_VERSI_HARI, kpVersiKasirCukup, kpPerangkatKasir, kpNamaAplikasiKasir, kpWib, kpIdx, kpBulanStr, kpGeser, kpNamaBulan, kpAkhirBulan, kpBolehDikunci, kpDok, kpBulanDok, kpKalimat } from '../data/kunci-periode.js';
 import { cacheMentah, dokDiCache, ambilPenjualan, ambilPenjualanSemua, ambilTutupHari, ambilSemuaBatch, ambilProduksi, ambilUtangPemasokMutasi, ambilPiutangMutasi, kunciSampai, kunciTenggang } from '../data/toko.js';
 import { hitungLabaBersihRentang, hitungNeraca } from '../mesin/beku.js';
 import { kunciPelanggan } from '../mesin/pembantu.js';
@@ -20,6 +20,8 @@ export function kpKasirVersiLama(kini) {
   return cacheMentah('perangkat').filter((p) => { const x = p.pada ? new Date(p.pada).getTime() : NaN; return kpPerangkatKasir(p) && isFinite(x) && t - x <= KP_VERSI_MS && !kpVersiKasirCukup(p.versi); });
 }
 const kpNamaPerangkat = (p) => (p.nama || p.id) + ' · ' + kpNamaAplikasiKasir(p);
+// audit 39b no. 23: satu perangkat bisa punya baris denyut per akun (tablet bergiliran) — nama perangkat + yang memegangnya
+const kpNamaDenyut = (p) => (p.nama || p.id) + (p.pemegang ? ' (' + p.pemegang + ')' : '');
 const kpKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 const kpTgl = (iso) => (iso && iso.length >= 10 ? tanggalPendek(iso) : iso || '—');
 
@@ -64,6 +66,9 @@ export function kpDaftarPeriksa(bulan, kini, K) {
   const butir = [];
   const tambah = (x) => butir.push(Object.assign({ blokir: false, perluCentang: false, rincian: [], aksi: [] }, x));
   // ---- ⛔
+  // keputusan owner 1 Okt (A): bulan sebelum KP_KUNCI_MULAI tidak dikunci (K.kunciMulai = uji saja)
+  const mulai = K.kunciMulai !== undefined ? K.kunciMulai : KP_KUNCI_MULAI; const bolehTahun = bulan >= mulai;
+  tambah({ id: 'tundaTutupBuku', blokir: true, ok: bolehTahun, teks: 'Kunci bulan dimulai ' + kpNamaBulan(KP_KUNCI_MULAI) + ' (keputusan owner 1 Okt 2026)', ket: bolehTahun ? 'boleh' : nama + ' TIDAK dikunci sampai tutup buku ' + bulan.slice(0, 4) + ' selesai — mengunci satu bulan ikut mengunci semua bulan sebelumnya, lalu saldo pembuka & arsip tutup buku ditolak server' });
   const siap = KP_SIAP_25B || !!K.siap25b;
   tambah({ id: 'siap25b', blokir: true, ok: siap, teks: 'Sistem lama & kasir darurat siap menghadapi bulan terkunci (putaran 25b)', ket: siap ? 'siap' : 'BELUM — sampai putaran 25b, satu nota kasir yang tertahan offline lalu tiba sesudah bulannya terkunci membuat antrean tablet itu MACET (nota sesudahnya ikut tertahan), dan index.html memunculkan "Database terkunci" berulang. Kunci pertama menunggu 25b (keputusan owner 25 Sep).' });
   const bolehT = kpBolehDikunci(bulan, kini, tenggang);
@@ -77,11 +82,11 @@ export function kpDaftarPeriksa(bulan, kini, K) {
   const perangkat = cacheMentah('perangkat'); const t = kini.getTime();
   const antreLain = perangkat.filter((p) => (Number(p.antrean) || 0) > 0);
   tambah({ id: 'perangkatAntre', blokir: true, ok: !antreLain.length, teks: 'Tidak ada perangkat yang masih menyimpan antrean', ket: antreLain.length ? 'tulisan offline dari perangkat ini untuk ' + nama + ' akan ditolak sesudah dikunci' : 'semua perangkat melaporkan antrean kosong',
-    rincian: antreLain.map((p) => (p.nama || p.id) + ' · ' + p.antrean + ' antre' + (p.aplikasi ? ' · ' + p.aplikasi : '') + (p.pada ? ' · denyut ' + kpTgl(kpWib(new Date(p.pada)).iso) : '')) });
+    rincian: antreLain.map((p) => kpNamaDenyut(p) + ' · ' + p.antrean + ' antre' + (p.aplikasi ? ' · ' + p.aplikasi : '') + (p.pada ? ' · denyut ' + kpTgl(kpWib(new Date(p.pada)).iso) : '')) });
   const diam = perangkat.filter((p) => { const x = p.pada ? new Date(p.pada).getTime() : NaN; return !isFinite(x) || t - x > KP_DENYUT_MS; });
   tambah({ id: 'perangkatDenyut', blokir: true, ok: !diam.length, teks: 'Semua perangkat berdenyut dalam 24 jam terakhir', ket: diam.length ? 'tulisan offline dari perangkat ini untuk ' + nama + ' akan ditolak sesudah dikunci — nyalakan & sambungkan, atau nyatakan sudah tidak dipakai' : 'semua berdenyut',
-    rincian: diam.map((p) => (p.nama || p.id) + ' · ' + (p.pada ? 'terakhir ' + kpTgl(kpWib(new Date(p.pada)).iso) : 'tanpa denyut') + (p.aplikasi ? ' · ' + p.aplikasi : '')),
-    aksi: diam.filter((p) => !(Number(p.antrean) > 0) && !(Number(p.gagal) > 0)).map((p) => ({ id: String(p.id), label: (p.nama || p.id) + ' sudah tidak dipakai' })) });
+    rincian: diam.map((p) => kpNamaDenyut(p) + ' · ' + (p.pada ? 'terakhir ' + kpTgl(kpWib(new Date(p.pada)).iso) : 'tanpa denyut') + (p.aplikasi ? ' · ' + p.aplikasi : '')),
+    aksi: diam.filter((p) => !(Number(p.antrean) > 0) && !(Number(p.gagal) > 0)).map((p) => ({ id: String(p.id), label: kpNamaDenyut(p) + ' sudah tidak dipakai' })) });
   // ⛔ putaran 25b: berkas kasir SEBELUM 25b menganggap karcis yang ditolak server (bulan terkunci) sebagai "belum masuk" — antrean HP itu macet
   const lamaV = kpKasirVersiLama(kini);
   tambah({ id: 'versiKasir', blokir: true, ok: !lamaV.length, teks: 'Semua perangkat kasir yang berdenyut dalam ' + KP_VERSI_HARI + ' hari terakhir sudah memakai versi 25b',
@@ -143,14 +148,16 @@ export function susunAturKunci(tenggang, w) {
 /** Perangkat lama yang sudah tidak dipakai: catatan denyutnya dihapus (kalau perangkatnya hidup lagi, denyutnya tercatat ulang sendiri). */
 export function susunLupakanPerangkat(id, yakin) {
   const p = cacheMentah('perangkat').find((x) => String(x.id) === String(id)); if (!p) return { tolak: 'Perangkat itu sudah tidak ada di daftar' };
-  if (Number(p.antrean) > 0 || Number(p.gagal) > 0) return { tolak: (p.nama || p.id) + ' terakhir melaporkan ' + (Number(p.antrean) || 0) + ' antrean / ' + (Number(p.gagal) || 0) + ' ditolak — nyalakan & kirim dulu, tidak bisa dilupakan' };
-  if (!yakin) return { tolak: 'Nyatakan ' + (p.nama || p.id) + ' sudah tidak dipakai? Kalau ternyata masih dipakai dan menyimpan nota offline, nota bulan terkunci darinya akan ditolak. Ketuk sekali lagi', perluYakin: true };
-  return { hapus: [{ koleksi: 'perangkatStatus', id: p.id }], patch: { kabar: (p.nama || p.id) + ' dikeluarkan dari daftar denyut', kabarAwas: false, kpYakinLupa: null } };
+  if (Number(p.antrean) > 0 || Number(p.gagal) > 0) return { tolak: kpNamaDenyut(p) + ' terakhir melaporkan ' + (Number(p.antrean) || 0) + ' antrean / ' + (Number(p.gagal) || 0) + ' ditolak — nyalakan & kirim dulu, tidak bisa dilupakan' };
+  if (!yakin) return { tolak: 'Nyatakan ' + kpNamaDenyut(p) + ' sudah tidak dipakai? Kalau ternyata masih dipakai dan menyimpan nota offline, nota bulan terkunci darinya akan ditolak. Ketuk sekali lagi', perluYakin: true };
+  return { hapus: [{ koleksi: 'perangkatStatus', id: p.id }], patch: { kabar: kpNamaDenyut(p) + ' dikeluarkan dari daftar denyut', kabarAwas: false, kpYakinLupa: null } };
 }
 /** Beranda › Perlu perhatian (owner): satu baris kalau bulan lalu sudah lewat tenggang dan belum dikunci. Diam selama kunci belum bisa dipakai (25b). */
 export function kpPerhatian(kini, uji) {
   if (!KP_SIAP_25B && !(uji && uji.siap25b)) return [];
   const c = kpCalon(kini); if (!c || !kpBolehDikunci(c, kini, kunciTenggang())) return [];
+  // keputusan owner 1 Okt (A): bulan 2026 tidak dikunci — Beranda tidak menyuruh mengunci
+  if (c < (uji && uji.kunciMulai !== undefined ? uji.kunciMulai : KP_KUNCI_MULAI)) return [];
   const W = kpWib(kini); const telat = kpIdx(c) < W.idx - 1;
   return [{ teks: 'Kunci bulan: ' + kpNamaBulan(c) + ' belum dikunci' + (telat ? ' (sudah lebih dari sebulan)' : ''), nilai: 'Uang › Tutup buku', awas: telat }];
 }

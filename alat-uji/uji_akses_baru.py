@@ -6,6 +6,7 @@ KOTAK PASIR (akun, uid, nama CONTOH — bukan orang toko). Menguji:
   · baru/js/data/akses.js      — keadaan akun (owner lewat EMAIL saja), pendengar/layar/tombol per peran, penjaga kiriman bukan-owner,
                                  atribusi (olehUid), SATU baris jejak per kiriman yang memuat daftar dokumennya;
   · baru/js/data/antre-lokal.js — salinan antre: tahan muat ulang, berbatas, dihapus hanya sesudah server mengaku, yang ditolak ditandai;
+                                 katalog kasir (dokumen turunan) tidak ikut menilai kiriman sesudah sinkron (audit 39b no. 18);
   · sistem-logika.js SS2       — daftarkan / tolak / ubah akun (tak pernah owner, dua ketukan);
   · sambungan di firebase.js   — tidak bisa dijalankan di jsc (impor URL Firebase), jadi SUMBERNYA diperiksa: penjaga sebelum kirim,
                                  salinan antre sebelum commit, dihapus hanya di .then, jejak per kiriman bukan-owner, owner via email.
@@ -20,7 +21,8 @@ sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/data/antre-lokal.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',
-                                  'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js']
+                                  'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js',
+                                  'baru/js/layar/arsip-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/data/katalog-kasir.js']
 JAM = ("var __RealDate = Date; var __KINI = new __RealDate('2026-09-24T10:00:00+07:00').getTime();\n"
        "Date = function (a, b, c, d, e, f, g) { if (!(this instanceof Date)) return new __RealDate(__KINI).toString(); if (arguments.length === 0) return new __RealDate(__KINI); if (arguments.length === 1) return new __RealDate(a); return new __RealDate(a, b, c === undefined ? 1 : c, d || 0, e || 0, f || 0, g || 0); };\n"
        "Date.prototype = __RealDate.prototype; Date.now = function () { return __KINI; }; Date.UTC = __RealDate.UTC; Date.parse = __RealDate.parse;\n")
@@ -78,9 +80,21 @@ ok('atribusi: bukan-owner MENGUBAH dokumen lama → TIDAK menambah oleh/olehUid/
 // ---- 5 · penjaga kiriman bukan-owner (sebelum dikirim) — sama dengan rules v3
 var nota = function (cara, n) { var a = []; for (var i = 0; i < n; i++) a.push({ koleksi: 'penjualan', data: { id: 100 + i, tanggal: W.tanggal, caraBayar: cara, jenis: 'literan', hargaTotal: 13500 }, ada: false, lama: null }); return a; };
 var p1 = periksaKiriman(KRY, nota('Tunai', 3).concat([{ koleksi: 'stokBahanLiteran', data: { id: 101.5, tanggal: W.tanggal, tipe: 'pakai' }, ada: false }, { koleksi: 'strukKeluar', data: { id: 9 }, ada: false }]), [], HAK_KRY);
-var p2 = periksaKiriman(KRY, nota('Kredit', 1), [], HAK_KRY), p3 = periksaKiriman(BEN, nota('Kredit', 1).concat([{ koleksi: 'piutangMutasi', data: { id: 5, tanggal: W.tanggal, tipe: 'bayar' }, ada: false }]), [], HAK_BEN);
+var p2 = periksaKiriman(KRY, nota('Kredit', 1), [], HAK_KRY), p2b = periksaKiriman(KRY, nota('Kredit', 1), [], Object.assign({}, HAK_KRY, { jualBon: 'sendiri' })), p3 = periksaKiriman(BEN, nota('Kredit', 1).concat([{ koleksi: 'piutangMutasi', data: { id: 5, tanggal: W.tanggal, tipe: 'bayar' }, ada: false }]), [], HAK_BEN);
 ok('kiriman: karyawan nota tunai 3 baris + kantong pakai + struk = 5 dokumen → boleh, access call 6 (dokumen + 1 jejak); karyawan nota KREDIT ditolak ("minta owner"); Ben nota kredit + bayar sebagian → boleh',
-  !p1.tolak && p1.accessCall === 6 && p2.tolak === KALIMAT_MINTA_OWNER && !p3.tolak && p3.accessCall === 3, JSON.stringify([p1, p2, p3]));
+  !p1.tolak && p1.accessCall === 6 && p2.tolak === KALIMAT_MINTA_OWNER && p2b.tolak === KALIMAT_MINTA_OWNER && !p3.tolak && p3.accessCall === 3, JSON.stringify([p1, p2, p2b, p3]));
+var kr9 = nota('Kredit', 1); kr9[0].data.kreditDibukaOwner = true; var p9a = periksaKiriman(BEN, kr9, [], HAK_BEN), p9b = periksaKiriman(OWN, kr9, [], HAK_BEN);
+ok('39b-9: nota Kredit bertanda kreditDibukaOwner (KR1 dilewati) dari Ben → DITOLAK "minta owner" (Ben boleh bon biasa, tapi tidak membuka KR1); owner tetap boleh',
+  p9a.tolak === KALIMAT_MINTA_OWNER && !p9b.tolak, JSON.stringify([p9a, p9b]));
+var pg22 = nota('Tunai', 1); pg22[0].data.penggantiRetur = true; pg22[0].data.hargaTotal = 0; var pgB = periksaKiriman(BEN, pg22, [], HAK_BEN), pgK = periksaKiriman(KRY, pg22, [], HAK_KRY), pgO = periksaKiriman(OWN, pg22, [], HAK_BEN);
+ok('tinjauan no. 22: nota PENGGANTI RETUR (Rp0, barang keluar tanpa uang) dari Ben & karyawan → DITOLAK "minta owner" (retur & tukar = owner saja); owner tetap boleh',
+  pgB.tolak === KALIMAT_MINTA_OWNER && pgK.tolak === KALIMAT_MINTA_OWNER && !pgO.tolak, JSON.stringify([pgB, pgK, pgO]));
+ok('tinjauan no. 22: jual.js — tombol pengganti retur bukan-owner MATI dengan kalimat (tombolLuarKisi) sebelum menandai',
+  SUMBER.layar_jual.indexOf("penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(S(), id)); },") > 0);
+var JL9 = SUMBER.layar_jual, iBK = JL9.indexOf('bukaKredit: () => {'), tubuhBK = iBK > 0 ? JL9.slice(iBK, JL9.indexOf('\n', iBK)) : '';
+ok('39b-9: jual.js — tombol "Buka kredit SEKALI" lewat tombolLuarKisi (bukan-owner: MATI dengan kalimatnya), dan aksinya menolak bukan-owner sebelum membuka',
+  tubuhBK.indexOf('const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set(') > 0 && tubuhBK.indexOf('kreditDibuka: true') > tubuhBK.indexOf('if (!tb.boleh)')
+  && JL9.indexOf('${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">') > 0 && (JL9.match(/data-aksi="bukaKredit"/g) || []).length === 1, tubuhBK.slice(0, 200));
 var p4 = periksaKiriman(BEN, [{ koleksi: 'piutangMutasi', data: { id: 6, tanggal: W.tanggal, tipe: 'hapusBuku' }, ada: false }], [], HAK_BEN), p5 = periksaKiriman(BEN, [{ koleksi: 'stokBahanKemasan', data: { id: 7, tanggal: W.tanggal, tipe: 'beli', hargaTotal: 100000 }, ada: false }], [], HAK_BEN),
   p6 = periksaKiriman(BEN, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p7 = periksaKiriman(KRY, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_KRY),
   p8 = periksaKiriman(BEN, [{ koleksi: 'pengeluaranHarian', data: { id: 9, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p9 = periksaKiriman(KRY, [], [{ koleksi: 'penjualan', id: 1 }], HAK_KRY),
@@ -98,6 +112,11 @@ ok('kiriman: 17 dokumen = 18 access call → masih boleh; 18 dokumen (19 access 
   BATAS_KIRIM_STAF === 18 && periksaKiriman(KRY, besar, [], HAK_KRY).accessCall === 18 && /batas 17\) — pecah jadi dua nota/.test(periksaKiriman(KRY, lebih, [], HAK_KRY).tolak || ''), JSON.stringify(periksaKiriman(KRY, lebih, [], HAK_KRY)));
 ok('batas per akun: owner tanpa batas baris/hasil (0); Ben & karyawan 7 baris per nota, 8 hasil per adukan (terburuknya 17 access call — alat-uji/peta_akses.py --kiriman)',
   batasBarisNota(OWN) === 0 && batasHasilAdukan(OWN) === 0 && batasBarisNota(BEN) === 7 && batasBarisNota(KRY) === 7 && batasHasilAdukan(KRY) === 8);
+// 39b no. 21: batas DOKUMEN per kiriman (nota & isian takar) = pagar perangkat tanpa baris jejak; kalimat pagar umum mengikuti isi kiriman
+var takar18 = []; for (var it = 0; it < 18; it++) takar18.push({ koleksi: 'wadahLiteran', data: { id: 300 + it, tanggal: W.tanggal, tipe: 'karung' }, ada: false });
+var pT = periksaKiriman(KRY, takar18, [], HAK_KRY);
+ok('39b no. 21: batas dokumen per kiriman owner 0 (tanpa batas), Ben & karyawan 17 (= pagar 18 − 1 baris jejak); kiriman BUKAN nota yang terlalu besar ditolak "catat dalam dua kali" (tanpa kata nota), nota tetap "pecah jadi dua nota"',
+  batasDokumenKirim(OWN) === 0 && batasDokumenKirim(BEN) === BATAS_KIRIM_STAF - 1 && batasDokumenKirim(KRY) === 17 && /batas 17\) — catat dalam dua kali$/.test(pT.tolak || '') && !/nota/.test(pT.tolak || ''), JSON.stringify(pT));
 ok('kiriman: owner tidak diperiksa (payung owner, 0 access call); akun belum terdaftar ditolak apa pun isinya',
   periksaKiriman(OWN, lebih, [{ koleksi: 'penjualan', id: 1 }], {}).accessCall === 0 && periksaKiriman(BLM, nota('Tunai', 1), [], {}).tolak === 'Akun ini belum didaftarkan owner');
 
@@ -131,6 +150,19 @@ var server = { '11': { id: 11, diubahPada: '2026-09-24T03:00:00.000Z' } };
 var H = A5.cocokkanSesudahSinkron(cekDariCache(function (kol, id) { return server[id] || null; }), W.kini);
 ok('antre: sesudah sinkron, kiriman SESI LAIN yang dokumennya ada di server → dikonfirmasi; yang TIDAK ada → "ditolak server saat sinkron"; kiriman sesi ini (tab-nya masih menunggu jawaban) tidak disentuh',
   H.dikonfirmasi === 1 && H.ditolak === 1 && A5.ditolak().length === 1 && A5.ditolak()[0].id === 'hilang' && /saat sinkron/.test(A5.ditolak()[0].alasan) && A5.belumTerkirim().length === 1 && A5.belumTerkirim()[0].id === 'sesiini', JSON.stringify(H));
+// audit 39b no. 18: kiriman terbit harga = dokumen catatan (ber-diubahPada) + katalog kasir ringkasanKasir/aktif yang ditulis APA ADANYA (kkMentah: tanpa diubahPada,
+// tidak didengar koleksi.js → dokDiCache selalu null). Tab mati sebelum commit dijawab, server MENERIMA batch-nya → dulu katalog = false → seluruh kiriman "ditolak server".
+simpanan = {}; var A6 = buatAntre(PENY, 'tab-mati'); var P6 = '2026-09-24T03:00:00.000Z';
+var KAT6 = { koleksi: KK_KOLEKSI, data: { id: KK_ID, diperbaruiPada: P6, kemasan: [], merkKarung: [], bahanLiteran: {}, piutang: [], bayarBonTerhitung: [], bayarBonSejak: '' } };
+A6.tambah({ id: 'terbit', dokumen: [{ koleksi: 'katalogHargaKarung', data: { id: 'Contoh', hargaPerKg: 14500, diubahPada: P6 } }, { koleksi: 'hargaTerbit', data: { id: 21, diubahPada: P6 } }, KAT6] });
+A6.tambah({ id: 'terbitTolak', dokumen: [{ koleksi: 'katalogHargaKarung', data: { id: 'Hilang', hargaPerKg: 15000, diubahPada: P6 } }, KAT6] });
+A6.tambah({ id: 'terbitTunda', dokumen: [{ koleksi: 'katalogHargaKarung', data: { id: 'Lama', hargaPerKg: 15000, diubahPada: P6 } }, KAT6] });
+var server6 = { katalogHargaKarung: { Contoh: { id: 'Contoh', hargaPerKg: 14500, diubahPada: P6 }, Lama: { id: 'Lama', hargaPerKg: 14000 } }, hargaTerbit: { '21': { id: 21, diubahPada: P6 } } };
+var ambil6 = function (kol, id) { return KOLEKSI.some(function (k) { return k.nama === kol; }) ? (server6[kol] || {})[id] || null : null; };   // = dokDiCache: koleksi di luar koleksi.js → null
+var H6 = buatAntre(PENY, 'tab-baru').cocokkanSesudahSinkron(cekDariCache(ambil6, kkMentah), W.kini); var A7 = buatAntre(PENY, 'lihat');
+ok('antre (39b no. 18): kiriman terbit harga dari tab mati yang DITERIMA server (katalog kasir ikut, tanpa diubahPada, tidak di cache) → dikonfirmasi, bukan "ditolak server"; katalog tidak menyelamatkan kiriman yang dokumen catatannya tidak ada di server (tetap ditolak) dan tidak memaksa yang belum bisa dipastikan (tetap menunggu)',
+  !KOLEKSI.some(function (k) { return k.nama === KK_KOLEKSI; }) && H6.dikonfirmasi === 1 && H6.ditolak === 1 && H6.ditunda === 1 && A7.ditolak().length === 1 && A7.ditolak()[0].id === 'terbitTolak'
+  && A7.belumTerkirim().length === 1 && A7.belumTerkirim()[0].id === 'terbitTunda', JSON.stringify(H6));
 
 // ---- 9 · SS2 akun per orang (owner)
 pasok('permintaanAkses', [{ id: 'uid-baru', uid: 'uid-baru', email: 'baru.contoh@tokoberasmiqbal.web.app', nama: 'Baru Contoh', pada: '2026-09-24T02:00:00.000Z' }]);
@@ -160,6 +192,8 @@ var F = SUMBER.firebase, A = SUMBER.app;
 var iPeriksa = F.indexOf('periksaKiriman(akun, isi, H'), iBatch = F.indexOf('const b = writeBatch(db); const ditulis = [];'), iAntre = F.indexOf('antre.tambah({ id: idKiriman'), iCommit = F.indexOf('const janji = b.commit().then(() => { antre.konfirmasi(idKiriman)');
 ok('firebase.js: penjaga bukan-owner jalan SEBELUM batch dibangun; salinan antre dibuat SEBELUM commit; salinan dihapus HANYA di .then (server mengaku); ditolak → tandaiDitolak',
   iPeriksa > 0 && iBatch > iPeriksa && iAntre > iBatch && iCommit > iAntre && F.indexOf("antre.tandaiDitolak(idKiriman, kode") > iCommit && F.indexOf('antre.konfirmasi(') === iCommit + 'const janji = b.commit().then(() => { '.length);
+ok('firebase.js (39b no. 18): pencocokan sesudah sinkron memakai cekDariCache(dokDiCache, kkMentah) — katalog kasir tidak ikut menilai kiriman tab mati',
+  F.indexOf('antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache, kkMentah), ') > 0);
 ok('firebase.js: bukan-owner = SATU jejakKiriman per kiriman; owner = satu jejak per dokumen dengan olehUid; atribusi lewat beriAtribusiAkun; owner dikenali lewat EMAIL_OWNER, peran lain lewat aksesAkun/{uid} yang didengarkan terus',
   F.indexOf('if (!owner) { const log = jejakKiriman(akun, ditulis') > 0 && F.indexOf('olehUid: akun.uid, perangkat: k.perangkat, ringkas: ringkasDok(d)') > 0 && F.indexOf('beriAtribusiAkun(x.data, akun, k, x.ada)') > 0
   && F.indexOf("if (email === EMAIL_OWNER) return terapkan(keadaanAkun(email, u.uid, null));") > 0 && F.indexOf("onSnapshot(doc(db, 'aksesAkun', u.uid)") > 0 && F.indexOf('EMAIL_TOKO') < 0);
@@ -226,7 +260,12 @@ if __name__ == '__main__':
             'tulisan tanpa olehUid lolos': (js.replace("if (!d.oleh) { d.oleh = akun.nama; d.olehUid = akun.uid; }", "if (!d.oleh) { d.oleh = akun.nama; }"), S),
             'update bukan-owner menambah kolom pencipta': (js.replace("const isiPencipta = akun.jenis === 'owner' || !ada;", "const isiPencipta = true;"), S),
             'tombol ikut kisi saja, server diabaikan': (js.replace("const buka = SERVER_BUKA[tindakan] || []; if (buka.indexOf(akun.peran) < 0) return { boleh: false, kalimat: KALIMAT_MINTA_OWNER };", ""), S),
-            'karyawan boleh jual bon': (js.replace("const KREDIT_STAF = ['ben'];", "const KREDIT_STAF = ['ben', 'karyawan'];"), S),
+            'karyawan boleh jual bon': (js.replace("const KREDIT_STAF = ['ben'];", "const KREDIT_STAF = ['ben', 'karyawan'];").replace("jualBon: ['ben'], terimaBon:", "jualBon: ['ben', 'karyawan'], terimaBon:"), S),
+            'tinjauan no. 22: staf boleh menulis nota pengganti retur': (js.replace("        if (d.penggantiRetur) return { tolak: KALIMAT_MINTA_OWNER };\n", ""), S),
+            'tinjauan no. 22: tombol pengganti retur tanpa memeriksa akun': (js, ganti('layar_jual', "penggantiRetur: ({ id }) => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set(L.togglePenggantiRetur(S(), id)); },", "penggantiRetur: ({ id }) => { set(L.togglePenggantiRetur(S(), id)); },")),
+            '39b-9: Ben boleh menulis tanda kreditDibukaOwner': (js.replace("        if (d.kreditDibukaOwner) return { tolak: KALIMAT_MINTA_OWNER };\n", ""), S),
+            '39b-9: tombol buka kredit tampil untuk bukan-owner': (js, ganti('layar_jual', '${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">', '${true ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">')),
+            '39b-9: aksi buka kredit tanpa memeriksa akun': (js, ganti('layar_jual', 'const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ kreditDibuka: true,', 'set({ kreditDibuka: true,')),
             'bukan-owner boleh hapus buku bon': (js.replace("if (x.koleksi === 'piutangMutasi' && d.tipe !== 'bayar') return", "if (false) return"), S),
             'bukan-owner boleh beli kantong': (js.replace("if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return", "if (false) return"), S),
             'bukan-owner boleh hapus': (js.replace("if (hapus && hapus.length) return { tolak: tolakTindakan('hapus') };", ""), S),
@@ -234,6 +273,8 @@ if __name__ == '__main__':
             'pesanan yang sudah dibayar bisa diubah lagi': (js.replace("if (x.koleksi === 'pesanan' && (['dibayar', 'batal'].indexOf(String(lama.status || '')) >= 0 || d.status !== 'dibayar'))", "if (x.koleksi === 'pesanan' && d.status !== 'dibayar')"), S),
             'batas access call dilewati': (js.replace("if (accessCall > BATAS_KIRIM_STAF) return", "if (accessCall > 99) return"), S),
             'pagar perangkat tanpa sisa 2': (js.replace("const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL - CADANGAN_ACCESS_CALL;", "const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL;"), S),
+            '39b no. 21: batas dokumen akun = pagar penuh (tanpa baris jejak)': (js.replace("BATAS_KIRIM_STAF - 1 : 0);", "BATAS_KIRIM_STAF : 0);"), S),
+            '39b no. 21: pagar umum berkata "nota" untuk isian takar': (js.replace("(D.some((x) => x.koleksi === 'penjualan') ? 'pecah jadi dua nota' : 'catat dalam dua kali')", "'pecah jadi dua nota'"), S),
             'kisi SS2 memajang "boleh sendiri" yang ditutup server': (js.replace("if (nilai === 'sendiri' && (SERVER_BUKA[tindakan] || []).indexOf(peran) < 0) return", "if (false) return"), S),
             'jejak kiriman cuma menyebut dokumen pertama': (js.replace("const daftar = (dokumen || []).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id), ringkas: ringkasDok(x.data) }));", "const daftar = (dokumen || []).slice(0, 1).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id), ringkas: ringkasDok(x.data) }));"), S),
             'kasir@ bisa minta didaftarkan': (js.replace("if (e === EMAIL_KASIR) return { jenis: 'kasir'", "if (false) return { jenis: 'kasir'"), S),
@@ -242,6 +283,9 @@ if __name__ == '__main__':
             'antre penuh membuang salinan lama': (js.replace("if (a.length >= BATAS_ENTRI) return { tolak:", "if (a.length >= BATAS_ENTRI) a.shift(); if (false) return { tolak:"), S),
             'sinkron menyentuh kiriman sesi ini': (js.replace("baca().filter((x) => x.keadaan === 'antre' && x.sesi !== (sesi || ''))", "baca().filter((x) => x.keadaan === 'antre')"), S),
             'dokumen hilang dianggap terkirim': (js.replace("const d = ambilDok(koleksi, id); if (!d) return false;", "const d = ambilDok(koleksi, id); if (!d) return true;"), S),
+            'sinkron: katalog kasir ikut menilai kiriman (39b no. 18)': (js.replace("if (turunan && turunan(koleksi)) return undefined; ", ""), S),
+            'sinkron: dokumen turunan menutupi dokumen catatan': (js.replace("if (turunan && turunan(koleksi)) return undefined; ", "if (turunan) return undefined; "), S),
+            'firebase: pencocokan sinkron tanpa kkMentah': (js, ganti('firebase', 'antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache, kkMentah), ', 'antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache), ')),
             'SS2 akun bisa didaftarkan sebagai owner': (js.replace("const SS_PERAN_AKUN = SS_PERAN.filter((p) => p.id !== 'owner');", "const SS_PERAN_AKUN = SS_PERAN;"), S),
             'SS2 nonaktifkan tanpa ketukan kedua': (js.replace("if (U.aktif !== undefined && !yakin) return", "if (false) return"), S),
             'SS2 daftarkan tanpa menghapus permintaan': (js.replace("return { dokumen: [{ koleksi: 'aksesAkun', data }], hapus: [{ koleksi: 'permintaanAkses', id: m.uid }],", "return { dokumen: [{ koleksi: 'aksesAkun', data }], hapus: [],"), S),

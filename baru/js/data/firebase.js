@@ -194,7 +194,7 @@ let _cocokJalan = false;
 function cocokkanAntre() {
   if (_cocokJalan || !antre.belumTerkirim().some((x) => x.sesi !== SESI)) return;
   _cocokJalan = true;
-  waitForPendingWrites(db).then(() => { antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache), new Date().toISOString()); segarkanLokal(); beriTahu(); })
+  waitForPendingWrites(db).then(() => { antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache, kkMentah), new Date().toISOString()); segarkanLokal(); beriTahu(); })
     .catch(() => {}).finally(() => { _cocokJalan = false; });
 }
 export function antreLokal() { return { belum: antre.belumTerkirim(), ditolak: antre.ditolak() }; }
@@ -239,13 +239,18 @@ export async function periksaSambungan(ms) {
 }
 // ---- denyut perangkat: dokumen perangkatStatus yang sama dengan sistem lama (denyut HP kasir), ditambah aplikasi 'baru', pemegang & lokasi ----
 const KOLEKSI_PERANGKAT = 'perangkatStatus';
+// Audit 39b no. 23: rules (stafDenyut) hanya membolehkan bukan-owner menimpa dokumen denyut yang akunUid-nya akun itu sendiri.
+// Satu tablet dipakai bergiliran → dokumen {idPerangkat} terkunci ke akun pertama, akun berikutnya ditolak diam-diam.
+// Bukan-owner menulis dokumen per (perangkat, akun) = {idPerangkat}~{uid}; owner tetap {idPerangkat} (rules: owner boleh menimpa).
+// Antrean Firestore memang per akun (catatan akun yang keluar menunggu akun itu masuk lagi), jadi angka antrean per akun yang jujur.
+const idDenyut = () => (status.akun && status.akun.jenis !== 'owner' ? idPerangkat() + '~' + status.akun.uid : idPerangkat());
 let _denyutTerakhir = 0, _denyutTerpasang = false;
 export function kirimDenyut(paksa) {
   if (!db || !status.masuk || !status.akun) return;
   const kini = Date.now(); if (!paksa && kini - _denyutTerakhir < 60000) return; _denyutTerakhir = kini;
   let akun = ''; try { akun = String((auth && auth.currentUser && auth.currentUser.email) || ''); } catch (e) { /* abaikan */ }
   let nama = ''; try { nama = localStorage.getItem('miqbal_perangkat_label_v1') || ''; } catch (e) { /* abaikan */ }
-  try { setDoc(doc(db, KOLEKSI_PERANGKAT, idPerangkat()), { id: idPerangkat(), nama, akun, akunUid: status.akun.uid, aplikasi: 'baru', pada: new Date().toISOString(), antrean: status.antre.length, gagal: status.lokal.ditolak, versi: 'baru', pemegang: pemegangPerangkat(), lokasi: lokasiPerangkat() || '' }).catch(() => {}); }
+  try { const id = idDenyut(); setDoc(doc(db, KOLEKSI_PERANGKAT, id), { id, nama, akun, akunUid: status.akun.uid, aplikasi: 'baru', pada: new Date().toISOString(), antrean: status.antre.length, gagal: status.lokal.ditolak, versi: 'baru', pemegang: pemegangPerangkat(), lokasi: lokasiPerangkat() || '' }).catch(() => {}); }
   catch (e) { /* denyut bukan data uang — gagal = diam */ }
 }
 function pasangDenyut() {

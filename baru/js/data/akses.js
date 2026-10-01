@@ -17,7 +17,7 @@ export const BATAS_ACCESS_CALL = 20;   // per batch/transaksi (dokumentasi Fireb
 // aslinya oleh alat-uji/peta_akses.py --kiriman (CI, gagal bila > 18). Batas baris/hasil di bawah membuat terburuknya 17.
 export const CADANGAN_ACCESS_CALL = 2;
 export const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL - CADANGAN_ACCESS_CALL;   // 18 = paling banyak 17 dokumen + 1 baris jejak
-export const BATAS_BARIS_NOTA_STAF = 7;     // nota: 7 baris × ≤ 2 dokumen + bayar sebagian + pesanan + jejak = 17 (nota nyata terpanjang di cadangan toko: 7 baris)
+export const BATAS_BARIS_NOTA_STAF = 7;     // nota: 7 baris (nota nyata terpanjang di cadangan toko: 7 baris) — DOKUMENNYA dijaga batasDokumenKirim (39b no. 21: literan wadah campuran = satu baris per merek asal)
 export const BATAS_HASIL_ADUKAN_STAF = 8;   // adukan: 8 hasil × (produksi + kantong) + jejak = 17
 
 // §3 — yang DIBACA bukan-owner. Koleksi utuh + setelan PER DOKUMEN (aturanToko & pengaturan bercampur tarif upah, NPWP, titik kas, PIN).
@@ -78,6 +78,8 @@ export function pendengarPeran(akun) {
 /** Batas baris per nota / hasil per adukan untuk akun ini (0 = tanpa batas: owner). Layar menyerahkannya ke logika (s.batasBaris, draf.batasHasil). */
 export const batasBarisNota = (akun) => (akun && akun.jenis !== 'owner' ? BATAS_BARIS_NOTA_STAF : 0);
 export const batasHasilAdukan = (akun) => (akun && akun.jenis !== 'owner' ? BATAS_HASIL_ADUKAN_STAF : 0);
+/** 39b no. 21: dokumen paling banyak per kiriman akun ini (0 = owner) = pagar periksaKiriman tanpa baris jejak. Layar menyerahkannya ke logika (s.batasDok): nota & isian takar. */
+export const batasDokumenKirim = (akun) => (akun && akun.jenis !== 'owner' ? BATAS_KIRIM_STAF - 1 : 0);
 export const bolehLayar = (akun, layar) => bisaBekerja(akun) && (akun.jenis === 'owner' || LAYAR_STAF.indexOf(layar) >= 0);
 /** Angka yang dihitung dari koleksi yang tidak didengarkan TIDAK digambar (bukan Rp0). Kembali: '' = boleh; selain itu kalimatnya. */
 export function angkaBoleh(akun, koleksiDibutuhkan) {
@@ -127,9 +129,28 @@ export function beriAtribusiAkun(data, akun, konteks, ada) {
 const TINDAKAN_DARI = { batchMasuk: 'kedatangan', pengeluaranHarian: 'uangKeluar', kasbonMutasi: 'uangKeluar', tutupHari: 'hitungLaci', aturanToko: 'atur', koreksiHpp: 'hargaBeli',
   katalogHargaKarung: 'hargaBeli', katalogHargaKemasan: 'hargaBeli', katalogHargaLiteran: 'hargaBeli', wadahLiteran: 'isiUlang' };
 const NAMA_TINDAKAN = { kedatangan: 'hitung truk & draf kedatangan', uangKeluar: 'catat uang keluar dari laci', hitungLaci: 'hitung & rapikan laci', atur: 'ubah setelan (Atur)',
-  hargaBeli: 'isi harga beli / modal', hapus: 'hapus catatan', koreksi: 'koreksi nota yang sudah tersimpan', jualBon: 'jual dengan bon', isiUlang: 'isi ulang & cek wadah literan' };
+  hargaBeli: 'isi harga beli / modal', hapus: 'hapus catatan', koreksi: 'koreksi nota yang sudah tersimpan', jualBon: 'jual dengan bon', isiUlang: 'isi ulang & cek wadah literan',
+  jualTunai: 'jual tunai & kembalian', nego: 'nego di bawah jatah margin', terimaBon: 'terima pembayaran bon', adukan: 'catat adukan (bongkar kemasan)', pelangganBaru: 'daftarkan pelanggan baru' };
 /** rules v5 stafBuatLahir: batch LAHIR BUKU 0 kg (buku baru wadah / karung belakang) — bukan kedatangan. */
 const batchLahir = (d) => !!d && d.lahirBuku === true && d.stokAwal === true && !(Number(d.biayaBongkar) || 0) && String(d.pemasok || '') === 'LAHIR BUKU' && (d.merkList || []).every((r) => !(Number(r.totalKg) || 0) && !(Number(r.subtotalHarga) || 0));
+
+/**
+ * audit 39b no. 22: tindakan kisi SS2 yang dijalankan SATU kiriman bukan-owner (dokumen baru saja; update pesanan menumpang notanya).
+ * Ada penjualan = nota: jual bon (Kredit, termasuk bayar sebagian) atau jual tunai, + nego bila ada harga ditawar (negoSelisih) atau potongan nota.
+ * Tanpa nota: pelunasan = terima bon · kartu baru = pelanggan baru · wadah literan / buku lahir = isi ulang · produksi & kantong pakai = adukan.
+ * Struk & jejak tidak menjalankan tindakan apa pun. Bentuk dokumennya tetap dijaga BUAT_STAF / UBAH_STAF di periksaKiriman.
+ */
+export function tindakanKiriman(D) {
+  const baru = (D || []).filter((x) => !x.ada); const t = {}; const ada = (k) => baru.some((x) => x.koleksi === k);
+  const jual = baru.filter((x) => x.koleksi === 'penjualan');
+  jual.forEach((x) => { const d = x.data || {}; t[String(d.caraBayar || '').toLowerCase() === 'kredit' ? 'jualBon' : 'jualTunai'] = 1;
+    if ((Number(d.negoSelisih) || 0) !== 0 || (Number(d.potonganTransaksi) || 0) > 0) t.nego = 1; });
+  if (!jual.length && baru.some((x) => x.koleksi === 'piutangMutasi')) t.terimaBon = 1;
+  if (ada('pelangganCatatan')) t.pelangganBaru = 1;
+  const adaWadah = ada('wadahLiteran') || ada('batchMasuk');
+  if (!jual.length) { if (adaWadah) t.isiUlang = 1; else if (ada('produksiKemasan') || ada('stokBahanKemasan') || ada('stokBahanLiteran')) t.adukan = 1; }
+  return Object.keys(t);
+}
 
 /**
  * Penjaga penulis pusat untuk akun bukan-owner — dijalankan SEBELUM dikirim. dokumen = [{ koleksi, data, ada, lama }] (ada/lama dari cache),
@@ -146,7 +167,7 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
   if (hapus && hapus.length) return { tolak: tolakTindakan('hapus') };
   const D = dokumen || []; if (!D.length) return { tolak: 'Tidak ada yang dikirim' };
   const accessCall = D.length + 1;   // tiap dokumen memeriksa aksesAkun sekali + satu baris jejak kiriman (peta §7)
-  if (accessCall > BATAS_KIRIM_STAF) return { tolak: 'Kiriman ini terlalu besar untuk satu kali kirim (' + D.length + ' catatan, batas ' + (BATAS_KIRIM_STAF - 1) + ') — pecah jadi dua nota' };
+  if (accessCall > BATAS_KIRIM_STAF) return { tolak: 'Kiriman ini terlalu besar untuk satu kali kirim (' + D.length + ' catatan, batas ' + (BATAS_KIRIM_STAF - 1) + ') — ' + (D.some((x) => x.koleksi === 'penjualan') ? 'pecah jadi dua nota' : 'catat dalam dua kali') };
   for (const x of D) {
     const d = x.data || {};
     if (!x.ada) {
@@ -155,6 +176,10 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'penjualan') {
         if (d.dibatalkan || d.dikoreksiOleh) return { tolak: tolakTindakan('koreksi') };
         if (String(d.caraBayar || '').toLowerCase() === 'kredit' && KREDIT_STAF.indexOf(P) < 0) return { tolak: tolakTindakan('jualBon') };
+        // 39b no. 9: tanda "kredit dibuka sekali oleh owner" (KR1 dilewati) hanya ditulis owner
+        if (d.kreditDibukaOwner) return { tolak: KALIMAT_MINTA_OWNER };
+        // tinjauan no. 22: tanda PENGGANTI RETUR (nota Rp0, barang keluar tanpa uang) = retur & tukar → owner saja (peta hak §2)
+        if (d.penggantiRetur) return { tolak: KALIMAT_MINTA_OWNER };
       }
       if (x.koleksi === 'piutangMutasi' && d.tipe !== 'bayar') return { tolak: tolakTindakan('koreksi') };
       if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return { tolak: tolakTindakan('hargaBeli') };
@@ -169,6 +194,9 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'pesanan' && (['dibayar', 'batal'].indexOf(String(lama.status || '')) >= 0 || d.status !== 'dibayar')) return { tolak: tolakTindakan('koreksi') };
     }
   }
+  // audit 39b no. 22: kisi SS2 DITEGAKKAN di sini (dulu hak hanya memilih kalimat; yang menahan cuma 4 tombol). Tiap tindakan kiriman ini wajib "boleh sendiri"
+  // di kisi peran DAN dibuka server (SERVER_BUKA); nego tidak pernah dibuka untuk bukan-owner. Kisi yang diputar owner belum ditegakkan rules (tanpa get()).
+  for (const t of tindakanKiriman(D)) { if (hak[t] !== 'sendiri' || (SERVER_BUKA[t] || []).indexOf(P) < 0) return { tolak: tolakTindakan(t) }; }
   // putaran 25: hanya bulan berjalan / bulan lalu dalam masa tenggang minimal (rules tglStaf(), tanpa get()); dinilai SESUDAH hak, supaya kalimat hak tetap yang tampil
   const lewat = kpNilaiKiriman(D.map((x) => ({ koleksi: x.koleksi, data: x.data, lama: x.lama })), null, kini || new Date(Date.now())).lewatTenggang;
   if (lewat.length) return { tolak: 'Catatan bertanggal ' + kpNamaBulan(lewat[0].bulan) + ' sudah lewat masa tenggang — hanya owner yang bisa mencatatnya sekarang' };

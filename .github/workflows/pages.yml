@@ -91,6 +91,8 @@ jobs:
       # ---- PUTARAN 23 — akun per orang ----
       - name: "Sistem baru — akses per orang: akun, pendengar, penjaga kiriman, jejak, salinan antre (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_akses_baru.py && python3 alat-uji/uji_akses_baru.py --kontrol
+      - name: "Kisi SS2 ditegakkan penjaga (audit 39b no. 22): nego & potongan, hak yang diputar owner, kisi bawaan tanpa tolak palsu — fungsi susun asli (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_kisi_ss2.py && python3 alat-uji/uji_kisi_ss2.py --kontrol
       - name: "firestore.rules v5 — pemeriksa statis (tanpa payung, kunci periode di tiap koleksi bertanggal, blok per koleksi, owner via email, jalur kasir@, uid penulis termasuk stafBuatWadah/stafBuatLahir (39), peran = akses.js) + kontrol"
         run: python3 alat-uji/periksa_rules.py && python3 alat-uji/periksa_rules.py --kontrol
       - name: "Isian lokal (23d): tiap kolom ketik & kunci localStorage layar dijaga penjaga isian — statis + kontrol"
@@ -101,6 +103,8 @@ jobs:
       # ---- PUTARAN 25 — kunci periode bulanan ----
       - name: "Kunci periode (putaran 25): daftar periksa, kunci/buka, pembalik hari ini, final bulanan, pajak, penjaga pusat, kirim bertahap (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_kunci_periode.py && python3 alat-uji/uji_kunci_periode.py --kontrol
+      - name: "Denyut per akun (audit 39b no. 23): tablet bergiliran tidak terkunci ke akun pertama, rules perangkatStatus apa adanya, \"sudah tidak dipakai\" menyebut pemegangnya (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_denyut_per_akun.py && python3 alat-uji/uji_denyut_per_akun.py --kontrol
       - name: "Tutup buku bertahap (rancangan Okt 2026): saldo pembuka per kiriman ≤ 18, berita acara berjalan → penanda terakhir, lanjut/batal bila terputus, titik kas tahun dari tutup hari 31 Des, periksa ulang hari ini (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_tutup_buku_bertahap.py && python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol
 
@@ -158,12 +162,16 @@ jobs:
         run: python3 alat-uji/uji_tata_letak_ringkasan_stok.py && python3 alat-uji/uji_tata_letak_ringkasan_stok.py --kontrol
       - name: "Rapi-rapi tata letak layar lain (36): tujuh layar kerja di Mac selebar 1720 & berpinggir sama, kolom samping tiga-kolom clamp(vw) (1280 tidak menyempit), Menu tetap kolom N1 860"
         run: python3 alat-uji/uji_tata_letak_layar_lain.py && python3 alat-uji/uji_tata_letak_layar_lain.py --kontrol
+      - name: "Audit 39b no. 28: kabar sesudah kiriman jujur — antre = \"Tersimpan di perangkat, menunggu server\" di enam layar + Jual (panel wadah, umum, setelan, pesanan, tarik balik, batal nota) + kiriman bertahap; pil kepala menyebut yang DITOLAK server (jsc)"
+        run: python3 alat-uji/uji_kabar_antre.py && python3 alat-uji/uji_kabar_antre.py --kontrol
       # ---- PUTARAN 38 — kendali biaya (cost controlling) di Laporan › Biaya ----
       - name: "Kendali biaya (38): tiap catatan uang keluar jatuh ke tepat satu jenis (tanda → untuk → kata owner → kata bawaan → lain), Σ jenis menutup ke mesin laba, anggaran owner + lampu (jatah hari ke-N, upah belum dibayar ikut), acuan median terukur, titik impas dari omzet ber-HPP & mesin sampai hari ini, pemicu per satuan (arah dibalik untuk jual/margin), pareto 80 %, peringatan menunjuk pintu, tren, atur & tambah kata satu-kata-satu-jenis; ASAP GLOBAL laba tiap bulan byte-sama dengan main (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_kendali_biaya.py && python3 alat-uji/uji_kendali_biaya.py --kontrol
       # ---- PUTARAN 39 — wadah literan satu buku per kotak (owner 29 Sep): karung belakang = buku sendiri, isi ulang tiga ketukan, aktivasi per wadah, cek wadah; rules v5 ----
       - name: "Wadah satu buku per kotak (39): karung di belakang wadah = buku sendiri (buka = pindah merek → karung belakang, tuang = pindah karung belakang → wadah, kolam vs buku disebut), isi ulang tiga ketukan 1 karung / ½ / kg satu kiriman & batas menggunung, buku merek kurang → tolak + tandai untuk dicocokkan (perluCocokkan + selisihPerMerk, tuntas = cocokkan bertanggal ≥ dokumen), aktivasi per wadah dari daftar tanpa menggeser nilai/laba/tumpukan, komposisi turunan & banding, cek tutup toko (dikosongkan = sisihkan tanpa timbang), selisih dua angka disebut; penjaga perangkat = rules v5 (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_wadah_satu_buku.py && python3 alat-uji/uji_wadah_satu_buku.py --kontrol
+      - name: "Audit 39b no. 29: rak Literan (Jual) & tab Wadah literan (Stok) tidak menghitung ulang komposisi turunan / selisih / cek wadah / buku semua wadah tiap ketukan atau huruf, tapi data baru, keranjang Jual, atau tanggal berganti = dihitung ulang (berkas layar asli di jsc, tanpa peramban; kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_cache_chip_literan.py && python3 alat-uji/uji_cache_chip_literan.py --kontrol
       # Keputusan owner 26 Sep: tiap halaman yang dicoba ulang di uji peramban menulis baris "DICOBA ULANG: <nama uji>" + peringatan di ringkasan
       # run. Sering muncul = masalah sungguhan, bukan Chrome yang lambat. Uji ini memakai Chrome PALSU (tanpa Chrome), jadi tempatnya di sini.
       - name: "Percobaan ulang uji peramban WAJIB tercatat: baris DICOBA ULANG + peringatan ringkasan run, selesai-tanpa-DOM ikut diulang, halaman sehat nol baris — Chrome palsu + kontrol"

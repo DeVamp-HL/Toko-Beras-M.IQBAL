@@ -202,10 +202,13 @@ var AKUN = { ben: keadaanAkun('ben.contoh@tokoberasmiqbal.web.app', 'uid-ben', {
 pasok('pesanan', [{ id: 'ps1', namaPelanggan: 'Pembeli Contoh', status: 'dipesan', isi: 'contoh', nilai: 100000, tanggal: '2026-09-23' }]);
 pasok('penjualan', [{ id: 11, trxId: 11, tanggal: '2026-09-20', jam: '09:00', caraBayar: 'Kredit', namaPelanggan: 'Pembeli Contoh', hargaTotal: 500000, jenis: 'karung', merkSumber: 'Angsa', totalKg: 50 }]);
 pasok('batchMasuk', [{ id: 'b1', tanggal: '2026-09-01', merkList: [{ merk: 'Angsa', satuan: 'karung', beratKarung: 50, totalKg: 5000, subtotalHarga: 65000000, hargaPerKg: 13000 }] }]);
+// audit 39b no. 22: penjaga menegakkan kisi SS2 — ukur dengan kisi PALING LONGGAR yang bisa disetel owner (semua tindakan yang dibuka server "boleh sendiri");
+// yang membatasi = server (SERVER_BUKA) & bentuk dokumen. Kisi kosong {} sekarang berarti "tidak boleh apa pun" → semua kiriman dilewati.
+var HAK_LONGGAR = {}; Object.keys(SERVER_BUKA).forEach(function (t) { HAK_LONGGAR[t] = 'sendiri'; });
 function kirim(peran, dok) {   // → { ac } dihitung, atau { dilewati: alasan } kalau peran ini memang tidak boleh mengirimnya
   var D = dok.map(function (x) { var ada = x.koleksi === 'pesanan'; return { koleksi: x.koleksi, data: x.data, ada: ada, lama: ada ? ambilPesananDoc(String(x.data.id)) : null }; });
-  var r = periksaKiriman(AKUN[peran], D, [], {});
-  if (r.tolak && !/pecah jadi dua nota/.test(r.tolak)) return { dilewati: r.tolak };
+  var r = periksaKiriman(AKUN[peran], D, [], HAK_LONGGAR);
+  if (r.tolak && !/terlalu besar untuk satu kali kirim/.test(r.tolak)) return { dilewati: r.tolak };   // 39b no. 21: pagar umum apa pun kalimat ujungnya = DIHITUNG
   return { ac: D.length + 1, dok: D.length, ditolakPerangkat: !!r.tolak };
 }
 function catat(jenis, peran, rincian, k) { if (k.dilewati) return; hasil.baris.push({ jenis: jenis, peran: peran, rincian: rincian, ac: k.ac, dok: k.dok, ditolakPerangkat: k.ditolakPerangkat }); }
@@ -280,6 +283,40 @@ pasok('batchMasuk', [{ id: 'b1', tanggal: '2026-09-01', merkList: [{ merk: 'Angs
   if (!kirim(p, [{ koleksi: 'batchMasuk', data: { id: 9103, tanggal: W.tanggal, jam: W.jam, pemasok: 'LAHIR BUKU', stokAwal: true, lahirBuku: true, biayaBongkar: 0, merkList: [{ merk: 'Angsa', satuan: 'karung', totalKg: 50, subtotalHarga: 650000 }] } }]).dilewati) salah('batch lahir berisi kg oleh ' + p + ' lolos penjaga perangkat');
 });
 
+// ---- 6 · 39b no. 21: penjaga sekali kirim menghitung DOKUMEN, bukan baris / merek. Literan dari wadah campuran BELUM aktif = satu baris penjualan per
+//        merek asal; isian − / + takar di wadah AKTIF = per merek (karung belakang baru) lahir buku + pindah buku + karung, lalu takar + pindah buku.
+var M6 = ['Bebek', 'Camar', 'Dara', 'Elang', 'Fajar', 'Gagak']; var KOMP = {}; M6.forEach(function (m) { KOMP[m] = 9; });   // merek contoh yang belum dipakai skenario di atas
+pasok('batchMasuk', [{ id: 'b1', tanggal: '2026-09-01', merkList: [{ merk: 'Angsa', satuan: 'karung', beratKarung: 50, totalKg: 5000, subtotalHarga: 65000000, hargaPerKg: 13000 }]
+    .concat(M6.map(function (m, i) { return { id: String(i + 2), merk: m, satuan: 'karung', beratKarung: 50, totalKg: 500, subtotalHarga: 6500000, hargaPerKg: 13000 }; })) },
+  { id: 'b2', tanggal: '2026-09-20', jam: '08:00', pemasok: 'LAHIR BUKU', caraBayar: 'tunai', biayaBongkar: 0, stokAwal: true, lahirBuku: true, merkList: [{ id: '1', merk: 'Wadah Enam Aktif', satuan: 'lahir', beratKarung: 0, jumlahKarung: 0, totalKg: 0, hargaPerKg: 0, subtotalHarga: 0, stokWadah: 'Enam Aktif' }] }]);
+pasok('wadahLiteran', [{ id: 9201, tanggal: '2026-09-01', jam: '07:00', tipe: 'atur', penuhKg: 50, puncakKg: 60, isiUlangKg: 10, takarKg: 1.8, daftar: ['Campur Enam', 'Enam Aktif'] },
+  { id: 9202, tanggal: '2026-09-20', jam: '08:00', tipe: 'isi', wadah: 'Campur Enam', isiKg: 54, komposisi: KOMP },
+  { id: 9203, tanggal: '2026-09-20', jam: '08:00', tipe: 'isi', wadah: 'Enam Aktif', isiKg: 0, stokWadah: 'Wadah Enam Aktif', pindahAwal: true }]);
+pasok('katalogHargaLiteran', [{ id: 'Campur Enam', merk: 'Campur Enam', hargaPerLiter: 12500 }]);
+['ben', 'karyawan'].forEach(function (p) { var BD = batasDokumenKirim(AKUN[p]);
+  Object.keys(CARA).forEach(function (c) { [false, true].forEach(function (ps) {
+    var s = Object.assign(keadaanAwal(), { sekarang: KINI, pelanggan: 'Pembeli Contoh', cara: CARA[c].cara, uang: CARA[c].uang, potongan: 0, pesananId: ps ? 'ps1' : null, batasBaris: NB, batasDok: BD });
+    var chip = susunRak(s).literan.find(function (x) { return x.kunci === 'Campur Enam'; }); if (!chip) { salah('chip literan wadah Campur Enam tidak ada'); return; }
+    var tolakTambah = '';
+    for (var i = 0; i < NB && !tolakTambah; i++) { var r = masukkan(Object.assign({}, s, { pilih: chip }), 1); if (r.keranjang) s = Object.assign({}, s, { keranjang: r.keranjang, urutBaris: r.urutBaris }); else tolakTambah = r.kabar || ''; }
+    if (!s.keranjang.length) { salah('nota literan wadah campuran: baris pertama sudah ditolak (' + p + ' · ' + c + '): ' + tolakTambah); return; }
+    if (!/^Nota ini jadi \d+ catatan sekali kirim/.test(tolakTambah)) salah('nota literan wadah campuran 6 merek (' + p + ' · ' + c + '): ' + (tolakTambah ? 'baris ke-' + (s.keranjang.length + 1) + ' ditolak dengan kalimat lain: ' + tolakTambah : s.keranjang.length + ' baris masuk tanpa ditolak penjaga dokumen'));
+    catat('nota', p, s.keranjang.length + ' baris literan wadah campuran 6 merek' + (tolakTambah ? ' (baris berikutnya ditolak layar)' : ' (TANPA penolakan layar)') + ' · ' + c + (ps ? ' · dari pesanan' : ''), kirim(p, susunNotaDokumen(s, W).dokumen));
+    // keranjang yang membesar SESUDAH ditambah (antrean / ulangi nota): saat dicatat juga tertangkap, kalimatnya kalimat nota
+    var sL = Object.assign({}, s, { keranjang: s.keranjang.concat([{ id: 'bx', trx: s.keranjang[0].trx }]) });
+    if (!/^Nota ini jadi \d+ catatan sekali kirim/.test(alasanTolak(sL))) salah('alasanTolak tidak memakai penjaga dokumen (' + p + ' · ' + c + '): ' + alasanTolak(sL));
+  }); });
+  var sT = { keranjang: [], antrean: [], batasDok: BD }; var isi = function (n) { return M6.slice(0, n).map(function (m) { return { merk: m, takar: 1 }; }); };
+  var T6 = susunTakarWadah('Enam Aktif', isi(6), W, sT, {});
+  if (!/^Isian ini jadi \d+ catatan sekali kirim/.test(T6.tolak || '')) salah('isian − / + takar 6 merek (karung belakang baru semua) tidak ditolak penjaga dokumen (' + p + '): ' + (T6.tolak || (T6.dokumen || []).length + ' dokumen'));
+  var T5 = susunTakarWadah('Enam Aktif', isi(5), W, sT, {});
+  if (T5.tolak) salah('isian − / + takar 5 merek ditolak (' + p + '): ' + T5.tolak); else catat('isi ulang wadah', p, '− / + takar 5 merek, karung belakang baru semua: 5 × (lahir + pindah + karung) + takar + pindah', kirim(p, T5.dokumen));
+  var TO = susunTakarWadah('Enam Aktif', isi(6), W, { keranjang: [], antrean: [], batasDok: batasDokumenKirim(keadaanAkun('owner@tokoberasmiqbal.web.app', 'uid-owner', null)) }, {});
+  if (!TO.dokumen || TO.dokumen.length <= BD) salah('isian takar owner (tanpa batas) 6 merek ditolak / tidak lagi melewati batas — skenario basi: ' + (TO.tolak || (TO.dokumen || []).length));
+  else { var PO = periksaKiriman(AKUN[p], TO.dokumen.map(function (d) { return { koleksi: d.koleksi, data: d.data, ada: false }; }), [], {});
+    if (!/terlalu besar untuk satu kali kirim/.test(PO.tolak || '') || /nota/.test(PO.tolak)) salah('pagar umum menolak kiriman bukan nota dengan kalimat nota / tidak menolak: ' + PO.tolak); }
+});
+
 // ---- 4 · tiap tindakan yang DIBUKA server untuk bukan-owner wajib punya hitungan di atas
 var DIHITUNG = { jualTunai: 'nota', jualBon: 'nota', terimaBon: 'terima bon', adukan: 'adukan', pelangganBaru: 'pelanggan baru', isiUlang: 'isi ulang wadah' };
 Object.keys(SERVER_BUKA).forEach(function (t) { if (!DIHITUNG[t] || !hasil.baris.some(function (b) { return b.jenis === DIHITUNG[t]; })) salah('tindakan "' + t + '" dibuka server untuk bukan-owner, tapi kirimannya tidak dihitung di sini'); });
@@ -315,7 +352,9 @@ def periksa_kiriman(src):
     push_hasil = ad[ad.index('h.sahH.forEach((x, i) => {'):].split('\n  });')[0].count('dokumen.push(')
     # (b) statis: layar menyerahkan batasnya ke logika (kalau tidak, batasnya mati dan yang tersisa cuma pagar umum "pecah jadi dua nota")
     J = src['baru/js/layar/jual.js']; S = src['baru/js/layar/stok.js']
-    if "const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null), tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null) });" not in J: cacat.append('jual.js tidak menyerahkan batas baris akun ke logika')   # putaran 31b: + tembusBoleh
+    if "const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null), batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null), tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null) });" not in J: cacat.append('jual.js tidak menyerahkan batas baris & batas dokumen akun ke logika')   # putaran 31b: + tembusBoleh; 39b no. 21: + batasDok
+    if 'aksiPanelWadah({ set, st: S, tulis: tulisWadah, keranjang: SB, waktu:' not in J: cacat.append('jual.js: panel isi ulang wadah tidak menerima batas dokumen akun (keranjang: SB)')   # 39b no. 21
+    if "const keranjangJual = () => ({ keranjang: opsi.keranjangJual().keranjang, antrean: opsi.keranjangJual().antrean, batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null) });" not in S: cacat.append('stok.js: panel isi ulang wadah tidak menerima batas dokumen akun (keranjangJual)')   # 39b no. 21
     for pang in ['L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }))', 'L.masukkan(SB(), Number(n))', 'L.masukkan(SB())', 'L.ulangiPembelian(SB(), rakKini(), g)']:
         if pang not in J: cacat.append('jual.js: ' + pang + ' tidak ada — jalur itu melewati batas baris')
     if 'L.simpanNota(S())' in J or re.search(r'L\.masukkan\(S\(\)', J): cacat.append('jual.js masih memanggil logika nota tanpa batas baris (S() bukan SB())')
@@ -568,7 +607,7 @@ if __name__ == '__main__':
                 'batas hasil adukan dinaikkan ke 9': rusak(AK, 'export const BATAS_HASIL_ADUKAN_STAF = 8;', 'export const BATAS_HASIL_ADUKAN_STAF = 9;'),
                 'pagar perangkat dikembalikan ke 20': rusak(AK, 'export const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL - CADANGAN_ACCESS_CALL;', 'export const BATAS_KIRIM_STAF = BATAS_ACCESS_CALL;'),
                 'penjaga baris selalu kosong': rusak(JL, "return b > 0 && nBaris > b ?", "return false && nBaris > b ?"),
-                'alasanTolak tanpa penjaga baris': rusak(JL, "const lewat = alasanBatasBaris(s, s.keranjang.length); if (lewat) return lewat;", ""),
+                'alasanTolak tanpa penjaga baris': rusak(JL, "const lewat = alasanBatasBaris(s, s.keranjang.length) || alasanBatasDokumen(s, s.keranjang);", "const lewat = alasanBatasDokumen(s, s.keranjang);"),
                 'baris literan menulis dokumen ketiga': rusak(JL, "    // PUTARAN 15: wadah yang DIJUAL", "    if (d.kemasanLiteran) dokumen.push({ koleksi: 'stokBahanLiteran', data: { id: d.id + 2, tipe: 'pakai' } });\n    // PUTARAN 15: wadah yang DIJUAL"),
                 'adukan tanpa penjaga hasil': rusak(SA, "if (Number(draf.batasHasil) > 0 && h.sahH.length > Number(draf.batasHasil)) return", "if (false) return"),
                 'tindakan baru dibuka server tanpa hitungan': rusak(AK, "isiUlang: ['ben', 'karyawan'] };", "isiUlang: ['ben', 'karyawan'], cekBaru: ['ben'] };"),
@@ -576,6 +615,16 @@ if __name__ == '__main__':
                 'karyawan boleh menulis kedatangan sungguhan sebagai batch lahir': rusak(AK, "if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };", ""),
                 'jual.js mencatat nota tanpa batas baris': rusak('baru/js/layar/jual.js', 'L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }))', 'L.simpanNota(Object.assign(S(), { tembusYakin: tembusYakin === true }))'),
                 'stok.js menyimpan adukan tanpa batas hasil': rusak('baru/js/layar/stok.js', "Object.assign({}, d, { batasHasil: batasHasilAdukan(opsi.akun ? opsi.akun() : null) })", 'd'),
+                # 39b no. 21 — penjaga sekali kirim per DOKUMEN
+                'penjaga dokumen nota selalu kosong': rusak(JL, "const b = Number(s.batasDok) || 0; if (!(b > 0)) return '';", "return '';"),
+                'tambah baris tanpa penjaga dokumen': rusak(JL, "alasanBatasBaris(s, keranjang.length) || alasanBatasDokumen(s, keranjang)", "alasanBatasBaris(s, keranjang.length)"),
+                'alasanTolak tanpa penjaga dokumen': rusak(JL, "alasanBatasBaris(s, s.keranjang.length) || alasanBatasDokumen(s, s.keranjang)", "alasanBatasBaris(s, s.keranjang.length)"),
+                'isian takar wadah aktif tanpa penjaga dokumen': rusak(JL, "const lewatA = alasanBatasTakar(s, dokumen, h); if (lewatA) return { tolak: lewatA };", ""),
+                'batas dokumen akun dinaikkan ke 18': rusak(AK, "BATAS_KIRIM_STAF - 1 : 0);", "BATAS_KIRIM_STAF : 0);"),
+                'pagar umum berkata "nota" untuk kiriman bukan nota': rusak(AK, "(D.some((x) => x.koleksi === 'penjualan') ? 'pecah jadi dua nota' : 'catat dalam dua kali')", "'pecah jadi dua nota'"),
+                'jual.js mencatat nota tanpa batas dokumen': rusak('baru/js/layar/jual.js', 'batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null), ', ''),
+                'jual.js: panel isi ulang tanpa batas dokumen': rusak('baru/js/layar/jual.js', 'keranjang: SB, waktu:', 'keranjang: S, waktu:'),
+                'stok.js: panel isi ulang tanpa batas dokumen': rusak('baru/js/layar/stok.js', ", batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null) });", " });"),
             }
             # putaran 25 — kiriman OWNER bulan lampau (sumber pengganti per berkas; berkas lain dibaca dari disk)
             def rusakO(p, a, b):

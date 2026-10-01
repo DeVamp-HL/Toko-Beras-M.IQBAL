@@ -16,7 +16,7 @@ Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko
 - Belum: Wadah, Repack, Retur, Pesanan, cetak struk, dan semua layar lain (masih di sistem lama).
 
 ## Putaran 2 (19 Sep 2026) — nota DICATAT
-- Satu pintu tulis `toko.tulisDokumen()` → Firestore `writeBatch` (semua dokumen satu nota masuk bersama; index.html menulis satu per satu) + satu baris `logAktivitas` per dokumen; atribusi `oleh/perangkat/diubah*` persis `simpanKeFirestore()` lama. Tanpa internet: tulisan mengantre di cache tetap Firestore, layar bilang "menunggu server".
+- Satu pintu tulis `toko.tulisDokumen()` → Firestore `writeBatch` (semua dokumen satu nota masuk bersama; index.html menulis satu per satu) + satu baris `logAktivitas` per dokumen; atribusi `oleh/perangkat/diubah*` persis `simpanKeFirestore()` lama. Tanpa internet: tulisan mengantre di cache tetap Firestore, layar bilang "menunggu server". Kabarnya satu kalimat untuk semua layar: `kabarKiriman(x, kabar)` di toko.js (antre = "Tersimpan di perangkat, menunggu server"; kiriman bertahap membawa `antre`); pil kepala menyebut "N DITOLAK server" (audit 39b no. 28).
 - Bentuk dokumen = `simpanKeranjangJual()` index.html: potongan dibagi proporsional (sisa ke baris terakhir), pembulatan melekat ke baris terakhir bernilai (`pembulatan`), `uangDiterima`/`kembalian` di tiap baris tunai, `hargaAsliSatuan` + `negoSelisih`, `trxId` satu nota; **uang kurang** = semua baris `Kredit` + satu `piutangMutasi` tipe `bayar` sebesar uang yang diterima; literan berkantong = `stokBahanLiteran {id: id+1, tipe 'pakai'}`. Diuji: kunci dokumen yang dihasilkan ⊆ kunci baris nyata di cadangan toko.
 - KR1 untuk bon murni (belum terdaftar / batas belum terbentuk / lewat batas 2× belanja bulanan) — owner bisa **buka kredit sekali** (tanda `kreditDibukaOwner`), tanpa PIN karena ini alat owner sendiri. Bayar sebagian tidak kena KR1 (sama dengan live).
 - Stok dicek ULANG saat mencatat (bisa berubah sejak dimasukkan). Belum ada jalur "tembus stok" — kalau kurang, ditahan.
@@ -1316,6 +1316,32 @@ Tutup hari). Versi 2 sekaligus:
   karena retur tetap ditulis); kertas Tutup hari: "Retur & refund" sejajar "Penjualan" & "Omzet" (bukan anak Penjualan); angka SEBELUM retur
   di Laba & laba-rugi berkop bernama "Penjualan terhitung" — "Omzet terhitung" hanya angka sesudah retur (Banding). Uji +8, kontrol +14.
   Tidak diubah: Kendali biaya "omzet nyata / hari" = ber-HPP (dasar yang sama dengan impas/hari, sengaja).
+
+## Audit 39b no. 21 — batas sekali kirim akun bukan-owner dihitung per DOKUMEN, bukan per baris (cabang `audit/39b-pagar-dokumen-staf`)
+
+Laten: 0 akun staf; data toko 1 Okt — 8 wadah sudah aktif, resep 1 merek (literan = 1 baris, isi ulang resep 2–4 catatan). Dulu: batas 7 baris nota
+mengira ≤ 2 dokumen per baris, padahal literan dari wadah campuran yang BELUM aktif = satu baris penjualan per merek asal (6 merek × 3 baris = 18 →
+ditolak pagar umum saat SIMPAN, sesudah berasnya diberikan); panel − / + takar di wadah aktif 6 merek dengan karung belakang baru = 20 catatan →
+ditolak dengan kalimat "pecah jadi dua nota" di panel takar.
+- `akses.js` `batasDokumenKirim(akun)` = 17 (pagar 18 − baris jejak), owner 0. Layar menyerahkannya ke logika sebagai `s.batasDok`: `jual.js` `SB()`
+  (nota) & panel isi ulang (`keranjang: SB`), `stok.js` `keranjangJual()` (panel di Stok).
+- `jual-logika.js` `alasanBatasDokumen(s, keranjang)` = jumlah dokumen `susunNotaDokumen` yang sama — dipanggil di `masukkan` (baris yang membuat
+  nota kelewat ditolak saat DITAMBAH) dan `alasanTolak` (keranjang dari antrean / bayar sebagian / pesanan). `susunTakarWadah`: isian > batas
+  ditolak dengan kalimat takar ("catat dua kali …"), dua cabang (wadah aktif & belum).
+- Pagar umum `periksaKiriman`: kiriman tanpa penjualan berakhir "catat dalam dua kali" (bukan "nota").
+- Uji: `peta_akses.py --kiriman` bagian 6 (nota wadah campuran 6 merek di tiap cara bayar × pesanan, alasanTolak keranjang membesar, takar 6 merek
+  ditolak / 5 merek diukur 18/20, owner tanpa batas, kalimat pagar umum) + statis SB / panel / keranjangJual; `kirim()` menghitung SEMUA penolakan
+  pagar umum (dulu hanya kalimat "nota"); kontrol +9. `uji_akses_baru.py` +1 (batas dokumen & kalimat), kontrol +2.
+
+## K1 · Kunci bulan 2026 ditunda sampai tutup buku 2026 (keputusan owner 1 Okt 2026, cabang `audit/k1-tunda-kunci-2026`)
+
+Kunci bulan berbentuk awalan: mengunci September 2026 ikut mengunci semua bulan sebelumnya (sampai 2022). Tutup buku menulis saldo pembuka
+bertanggal lama (piutang ikut tanggal utang tertua, bon pemasok ikut tanggal bon) dan menghapus catatan tahun lama ke arsip — semuanya jatuh di bulan
+terkunci dan pasti ditolak server, jadi tutup buku 2026 mustahil begitu satu bulan 2026 dikunci. Owner memilih **A**: kunci bulanan mulai Januari 2027.
+- `data/kunci-periode.js` `KP_KUNCI_MULAI = '2027-01'`; daftar periksa Kunci bulan punya butir ⛔ pertama "Kunci bulan dimulai Januari 2027" — bulan
+  sebelumnya tidak bisa dikunci (kalimat sebabnya di layar). `K.kunciMulai` / `uji.kunciMulai` = jalan pintas uji saja.
+- Beranda tidak lagi menyuruh mengunci bulan 2026; peringatan pajak bulan 2026 menyebut "masih bisa bergeser sampai tutup buku 2026".
+- Untuk 2027: pembuka bertanggal 1 Jan + arsip tanpa hapus (pilihan C) dirancang di putaran sendiri.
 
 ## Tutup buku bertahap (rancangan Okt 2026; owner 1 Okt: "atur saja dengan semestinya; lolosin dulu 18 nama yang berhutang")
 
