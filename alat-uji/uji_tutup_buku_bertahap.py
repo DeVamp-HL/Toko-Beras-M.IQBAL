@@ -33,6 +33,7 @@ Yang dijaga:
            tombol pita yang mati sungguh mati (CSS + penjaga sibuk)
   P3-UTBU1 hasil periksa ulang dibekukan saat arsip habis (berita acara periksaArsip); nota Januari sesudahnya tidak membuat "selesai" berbunyi / tercatat TIDAK SAMA
   P3-UTBU2 baris yang tidak bisa dihitung mesin (titik kas sudah maju) = "belum bisa dihitung" di pita, "selesai", kabar & berita acara — bukan "TIDAK SAMA"
+  P3-AAL2  arsip tahun berikutnya putus lalu dilanjutkan: batch penanda tahun lalu diarsipkan paling akhir → tidak ada pembuka tahun lalu tertinggal di koleksi hidup
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -314,6 +315,19 @@ coba('P3-UTBU2', function () { kotak(40); W = jam('2027-01-02T07:00:00+07:00'); 
     && /4 baris belum bisa dihitung/.test(kal) && !/TIDAK SAMA/.test(kal) && !S2.tolak && pu.sama === false && Array.isArray(pu.beda) && !pu.beda.length && Array.isArray(pu.belumBisa) && pu.belumBisa.length === 4,
     J([KM && KM.teks, S1.tolak, kal, pu])); });
 
+// ---- putaran 3 AAL2 · tutup buku 2026 tuntas; setahun kemudian tutup buku 2027: ARSIP 2027 putus sesudah potongan pertama, lalu "Lanjutkan" (daftar dihitung
+//      ulang dari catatan yang masih ada). Batch PENANDA 2026 diarsipkan paling akhir → sisa pembuka 2026 tetap terlihat & ikut diarsipkan, tidak tertinggal
+coba('P3-AAL2', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W); R.kiriman.forEach(kirim); arsipkanDokumen(2026, arsipBuku(2026).daftar);
+  var SL = susunSelesai(2026, 'cadangan-sesudah.json', W); if (!SL.tolak) kirim(SL);
+  terapkanKeCache([{ koleksi: 'penjualan', data: { id: 'j2027', tanggal: '2027-06-01', jam: '10:00', caraBayar: 'Tunai', jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 700000, hppTotalSaatJual: 650000 } }]);
+  var W2 = jam('2028-01-05T10:00:00+07:00'); var R2 = susunKunci(2027, D, W2); (R2.kiriman || []).forEach(kirim);
+  var A0 = arsipBuku(2027).daftar; var n2026 = A0.filter(function (x) { return x.data.tutupBuku && Number(x.data.tahunDari) === 2026; }).length;
+  arsipkanDokumen(2027, A0.slice(0, 18)); var KM = kemajuanBuku(); var A1 = arsipBuku(2027).daftar;
+  arsipkanDokumen(2027, A1); var tinggal = nPembukaMentah(2026);
+  ok('P3-AAL2 arsip 2027 putus sesudah 18 dari ' + A0.length + ' (' + n2026 + ' pembuka 2026): pita masih arsip (sisa ' + (A0.length - 18) + '), Lanjutkan memindah sisanya; tidak ada pembuka 2026 tertinggal di koleksi hidup',
+    !R2.tolak && A0.length > 18 && !!KM && KM.fase === 'arsip' && KM.sisa === A0.length - 18 && A1.length === A0.length - 18 && tinggal === 0 && arsipBuku(2027).n === 0,
+    J([R2.tolak, A0.length, KM && (KM.fase + ' · sisa ' + KM.sisa), A1.length, tinggal])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -402,6 +416,7 @@ RUSAK = [
     ('putaran 3 UTBU-1 · "selesai" & pita menghitung ulang periksa ulang (hasil yang dibekukan diabaikan)', 'baru/js/layar/tutup-buku-logika.js', "const P = a && a.periksaArsip; if (!P || !Array.isArray(P.baris)) return periksaUlangBuku(tahun);", "const P = a && a.periksaArsip; if (true) return periksaUlangBuku(tahun);"),
     ('putaran 3 UTBU-1 · hasil periksa ulang tidak disusun untuk berita acara', 'baru/js/layar/tutup-buku-logika.js', "  if (!PU || !a || a.status !== 'terkunci' || arsipBuku(tahun).n) return { PU };", "  if (true) return { PU };"),
     ('putaran 3 UTBU-2 · baris yang tidak bisa dihitung mesin disebut TIDAK SAMA', 'baru/js/layar/tutup-buku-logika.js', "beda: PU.baris.filter((b) => b.tahu && b.b !== null && !b.sama)", "beda: PU.baris.filter((b) => b.tahu && !b.sama)"),
+    ('putaran 3 AAL2 · batch penanda tahun lalu diarsipkan dalam urutan biasa (bisa lebih dulu dari pembukanya)', 'baru/js/layar/tutup-buku-logika.js', "const daftar = semua.filter((x) => !tanda(x)).concat(semua.filter(tanda));", "const daftar = semua;"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]

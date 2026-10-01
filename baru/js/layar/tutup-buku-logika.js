@@ -165,7 +165,11 @@ function bkPeriksaDipakai(tahun) {
   const o = {}; P.baris.forEach((b) => { o[b.id] = b.b; }); return bandingBuku({ harta: P.baris.map((b) => ({ id: b.id, nama: b.nama, n: b.a })), utang: [] }, o);
 }
 /** Yang diarsipkan saat kunci: seluruh dokumen tahun itu menurut tbDaftarKoleksi (sama dengan yang dihapus sistem lama). */
-export function arsipBuku(tahun) { const d = tbDaftarKoleksi(tahun); const daftar = []; d.forEach((k) => k.dok.forEach((dok) => daftar.push({ koleksi: k.koleksi, id: k.koleksi === 'biayaBulanan' ? (dok.bulan || dok.id) : dok.id, data: dok }))); return { daftar, perKoleksi: d.map((k) => ({ koleksi: k.koleksi, label: k.label, n: k.dok.length })).filter((k) => k.n), n: daftar.length }; }
+export function arsipBuku(tahun) { const d = tbDaftarKoleksi(tahun); const semua = []; d.forEach((k) => k.dok.forEach((dok) => semua.push({ koleksi: k.koleksi, id: k.koleksi === 'biayaBulanan' ? (dok.bulan || dok.id) : dok.id, data: dok })));
+  // putaran 3 AAL2: batch PENANDA tutup buku tahun lalu (penandaBuku) diarsipkan PALING AKHIR — selama ia ada, pembuka bertahap tahun itu terlihat & ikut daftar.
+  // Dulu ia bisa terarsip lebih dulu: arsip yang putus lalu dilanjutkan tidak melihat sisa pembukanya lagi → tertinggal di koleksi hidup selamanya.
+  const tanda = (x) => !!(x.data && x.data.penandaBuku); const daftar = semua.filter((x) => !tanda(x)).concat(semua.filter(tanda));
+  return { daftar, perKoleksi: d.map((k) => ({ koleksi: k.koleksi, label: k.label, n: k.dok.length })).filter((k) => k.n), n: daftar.length }; }
 /** Berkas arsip tahun (JSON) untuk diunduh di langkah 3. */
 export function berkasArsip(tahun, kini) { const A = arsipBuku(tahun); const isi = { versi: 5, arsipTahun: tahun, diunduhPada: kini.toISOString(), sumber: 'sistem baru · arsip tutup buku' }; A.perKoleksi.forEach((k) => { isi[k.koleksi] = A.daftar.filter((x) => x.koleksi === k.koleksi).map((x) => x.data); }); return { isi, n: A.n, nama: 'arsip-tahun-' + tahun + '-miqbal.json', perKoleksi: A.perKoleksi }; }
 /**
