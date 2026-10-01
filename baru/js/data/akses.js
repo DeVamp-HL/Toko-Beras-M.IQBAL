@@ -155,6 +155,8 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'penjualan') {
         if (d.dibatalkan || d.dikoreksiOleh) return { tolak: tolakTindakan('koreksi') };
         if (String(d.caraBayar || '').toLowerCase() === 'kredit' && KREDIT_STAF.indexOf(P) < 0) return { tolak: tolakTindakan('jualBon') };
+        // 39b no. 9: tanda "kredit dibuka sekali oleh owner" (KR1 dilewati) hanya ditulis owner
+        if (d.kreditDibukaOwner) return { tolak: KALIMAT_MINTA_OWNER };
       }
       if (x.koleksi === 'piutangMutasi' && d.tipe !== 'bayar') return { tolak: tolakTindakan('koreksi') };
       if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return { tolak: tolakTindakan('hargaBeli') };

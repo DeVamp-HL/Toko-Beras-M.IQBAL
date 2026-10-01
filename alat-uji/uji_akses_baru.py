@@ -81,6 +81,13 @@ var p1 = periksaKiriman(KRY, nota('Tunai', 3).concat([{ koleksi: 'stokBahanLiter
 var p2 = periksaKiriman(KRY, nota('Kredit', 1), [], HAK_KRY), p3 = periksaKiriman(BEN, nota('Kredit', 1).concat([{ koleksi: 'piutangMutasi', data: { id: 5, tanggal: W.tanggal, tipe: 'bayar' }, ada: false }]), [], HAK_BEN);
 ok('kiriman: karyawan nota tunai 3 baris + kantong pakai + struk = 5 dokumen → boleh, access call 6 (dokumen + 1 jejak); karyawan nota KREDIT ditolak ("minta owner"); Ben nota kredit + bayar sebagian → boleh',
   !p1.tolak && p1.accessCall === 6 && p2.tolak === KALIMAT_MINTA_OWNER && !p3.tolak && p3.accessCall === 3, JSON.stringify([p1, p2, p3]));
+var kr9 = nota('Kredit', 1); kr9[0].data.kreditDibukaOwner = true; var p9a = periksaKiriman(BEN, kr9, [], HAK_BEN), p9b = periksaKiriman(OWN, kr9, [], HAK_BEN);
+ok('39b-9: nota Kredit bertanda kreditDibukaOwner (KR1 dilewati) dari Ben → DITOLAK "minta owner" (Ben boleh bon biasa, tapi tidak membuka KR1); owner tetap boleh',
+  p9a.tolak === KALIMAT_MINTA_OWNER && !p9b.tolak, JSON.stringify([p9a, p9b]));
+var JL9 = SUMBER.layar_jual, iBK = JL9.indexOf('bukaKredit: () => {'), tubuhBK = iBK > 0 ? JL9.slice(iBK, JL9.indexOf('\n', iBK)) : '';
+ok('39b-9: jual.js — tombol "Buka kredit SEKALI" lewat tombolLuarKisi (bukan-owner: MATI dengan kalimatnya), dan aksinya menolak bukan-owner sebelum membuka',
+  tubuhBK.indexOf('const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set(') > 0 && tubuhBK.indexOf('kreditDibuka: true') > tubuhBK.indexOf('if (!tb.boleh)')
+  && JL9.indexOf('${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">') > 0 && (JL9.match(/data-aksi="bukaKredit"/g) || []).length === 1, tubuhBK.slice(0, 200));
 var p4 = periksaKiriman(BEN, [{ koleksi: 'piutangMutasi', data: { id: 6, tanggal: W.tanggal, tipe: 'hapusBuku' }, ada: false }], [], HAK_BEN), p5 = periksaKiriman(BEN, [{ koleksi: 'stokBahanKemasan', data: { id: 7, tanggal: W.tanggal, tipe: 'beli', hargaTotal: 100000 }, ada: false }], [], HAK_BEN),
   p6 = periksaKiriman(BEN, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p7 = periksaKiriman(KRY, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_KRY),
   p8 = periksaKiriman(BEN, [{ koleksi: 'pengeluaranHarian', data: { id: 9, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p9 = periksaKiriman(KRY, [], [{ koleksi: 'penjualan', id: 1 }], HAK_KRY),
@@ -227,6 +234,9 @@ if __name__ == '__main__':
             'update bukan-owner menambah kolom pencipta': (js.replace("const isiPencipta = akun.jenis === 'owner' || !ada;", "const isiPencipta = true;"), S),
             'tombol ikut kisi saja, server diabaikan': (js.replace("const buka = SERVER_BUKA[tindakan] || []; if (buka.indexOf(akun.peran) < 0) return { boleh: false, kalimat: KALIMAT_MINTA_OWNER };", ""), S),
             'karyawan boleh jual bon': (js.replace("const KREDIT_STAF = ['ben'];", "const KREDIT_STAF = ['ben', 'karyawan'];"), S),
+            '39b-9: Ben boleh menulis tanda kreditDibukaOwner': (js.replace("        if (d.kreditDibukaOwner) return { tolak: KALIMAT_MINTA_OWNER };\n", ""), S),
+            '39b-9: tombol buka kredit tampil untuk bukan-owner': (js, ganti('layar_jual', '${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">', '${true ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">')),
+            '39b-9: aksi buka kredit tanpa memeriksa akun': (js, ganti('layar_jual', 'const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ kreditDibuka: true,', 'set({ kreditDibuka: true,')),
             'bukan-owner boleh hapus buku bon': (js.replace("if (x.koleksi === 'piutangMutasi' && d.tipe !== 'bayar') return", "if (false) return"), S),
             'bukan-owner boleh beli kantong': (js.replace("if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return", "if (false) return"), S),
             'bukan-owner boleh hapus': (js.replace("if (hapus && hapus.length) return { tolak: tolakTindakan('hapus') };", ""), S),

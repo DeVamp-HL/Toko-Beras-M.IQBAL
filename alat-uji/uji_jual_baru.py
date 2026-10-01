@@ -171,6 +171,16 @@ ok('C: Deka belum terdaftar → KR1 mengunci bon', /belum terdaftar/.test(alasan
 terap({ kreditDibuka: true }); R = simpanNota(s, W); ok('C: owner membuka kredit sekali → sah, baris membawa kreditDibukaOwner', !R.tolak && R.nota.dokumen[0].data.kreditDibukaOwner === true, R.tolak);
 terap({ kreditDibuka: false, pelanggan: 'Bu Suti' }); ok('C: Bu Suti terdaftar, batas 2× belanja bulanan (rata 72.000 → 144.000): 72.000 boleh', alasanTolak(s) === '', alasanTolak(s));
 terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '2' }); terap(masukkan(s)); ok('C: 216.000 melewati batas 144.000 → dikunci', /Melewati batas kredit Rp144\.000/.test(alasanTolak(s)), alasanTolak(s));
+// 39b no. 9: "buka kredit SEKALI" milik STRUK — ikut diparkir, tidak bocor ke pembeli berikutnya, pulih saat struknya dibuka lagi
+mulaiNota(); terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '1' }); terap(masukkan(s)); terap(pilihCara(s, 'Kredit')); terap({ pelanggan: 'Deka', kreditDibuka: true });
+ok('39b-9: bon Deka (belum terdaftar) dibuka owner → sah', alasanTolak(s) === '', alasanTolak(s));
+terap(pembeliLain(s)); var idK9 = s.antrean.length ? s.antrean[0].id : -1;
+ok('39b-9: sesudah Pembeli lain, keranjang baru TIDAK mewarisi buka kredit; struk Deka yang diparkir membawanya', s.kreditDibuka === false && s.antrean.length === 1 && s.antrean[0].beku.kreditDibuka === true, JSON.stringify([s.kreditDibuka, s.antrean.map(function (a) { return a.beku.kreditDibuka; })]));
+terap(ketukChip(s, chip('kemasan', 'Kembang|5'))); terap({ ketik: '1' }); terap(masukkan(s)); terap(pilihCara(s, 'Kredit')); terap({ pelanggan: 'Eko Contoh' });
+ok('39b-9: pembeli berikutnya (belum terdaftar, bon murni) tetap dikunci KR1', /belum terdaftar/.test(alasanTolak(s)), alasanTolak(s));
+terap({ kreditDibuka: false }); terap(pakaiAntrean(s, idK9));
+ok('39b-9: struk Deka dibuka lagi → buka kreditnya pulih (sah tanpa diketuk ulang); struk Eko yang ikut diparkir tidak bertanda', s.pelanggan === 'Deka' && s.kreditDibuka === true && alasanTolak(s) === '' && s.antrean.length === 1 && s.antrean[0].beku.kreditDibuka === false, JSON.stringify([s.pelanggan, s.kreditDibuka, alasanTolak(s), s.antrean.map(function (a) { return a.beku.kreditDibuka; })]));
+mulaiNota(); terap({ kreditDibuka: false });
 // D. literan ≥ 5 L: dokumen pemakaian kantong ikut, id = id + 1
 mulaiNota(); terap(ketukChip(s, chip('literan', 'Angsa'))); terap({ ketik: '6' }); terap(masukkan(s)); terap(uangPas(s));
 N = susunNotaDokumen(s, W); var bh = N.dokumen.filter(function (x) { return x.koleksi === 'stokBahanLiteran'; })[0]; pj = N.dokumen.filter(function (x) { return x.koleksi === 'penjualan'; })[0].data;
@@ -1040,6 +1050,10 @@ if __name__ == '__main__':
             'dokumen retur membawa kunci yang tidak dikenal index.html': js.replace("kondisi: s.rtKondisi, penyelesaian:", "kunciAsingUji: 1, kondisi: s.rtKondisi, penyelesaian:"),
             'dokumen karantina membawa kunci yang tidak dikenal index.html': js.replace("statusTindakan: 'belum_diputuskan' } };", "statusTindakan: 'belum_diputuskan', kunciAsingUji: 1 } };"),
             'dua tukar diikat ke satu keranjang': js.replace("if (s.tukar) return { kabar: 'Keranjang ini MASIH terikat tukar: '", "if (false) return { kabar: 'Keranjang ini MASIH terikat tukar: '"),
+            # ---- 39b no. 9: buka kredit sekali milik struk ----
+            '39b-9: parkir tidak menutup buka kredit (bocor ke pembeli berikutnya)': js.replace("penggantiTanya: null, kreditDibuka: false,\n    aktifId: s.idBerikut", "penggantiTanya: null,\n    aktifId: s.idBerikut"),
+            '39b-9: struk parkir tidak membawa buka kredit': js.replace("toISOString(), kreditDibuka: !!s.kreditDibuka };", "toISOString() };"),
+            '39b-9: struk dibuka lagi tanpa buka kreditnya': js.replace("kreditDibuka: !!a.beku.kreditDibuka, aktifId: id,", "aktifId: id,"),
             # ---- putaran 15: wadah dijual ----
             'wadah tanpa harga jual ikut tampil di rak': js.replace("return daftarJenisWadah().filter((d) => harga[d.jenis]).map((d) => {", "return daftarJenisWadah().map((d) => { harga[d.jenis] = harga[d.jenis] || { harga: 0 };"),
             'wadah dijual tidak memotong buku kantong (tanpa dokumen pakai)': js.replace("if (d.jenis === 'wadah' && d.jenisWadah && d.jumlahUnit > 0) {", "if (false) {"),
