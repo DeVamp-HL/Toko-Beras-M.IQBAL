@@ -246,6 +246,18 @@ export function lpKasAkhirBulan(key) {
   const t = { tanggal: d.tanggal, laci: Number(d.titik.laci) || 0, rekening: Number(d.titik.rekening) || 0, amplop: Number(d.titik.amplop) || 0, brankas: Number(d.titik.brankas) || 0 };
   return { kas: saldoKantong(akhir, t).total, kenapa: '', sumber: 'hitungan fisik tutup hari ' + tanggalPendek(t.tanggal) + (t.tanggal < akhir ? ' + catatan uang sesudahnya sampai ' + tanggalPendek(akhir) : ''), tolak: '' };
 }
+/**
+ * Tinjauan 39b UU36-2: neraca LAYAR untuk tanggal yang dipilih (Laporan → Neraca, layar & kertasnya). Bulan FINAL: akhir bulan = kas dari hitungan fisik tutup
+ * hari akhir bulan (sama dengan Dokumen → Neraca); tanggal lain yang kasnya tidak terhitung mesin (titik kas sekarang lebih muda) ditolak dengan sebab yang
+ * benar, bukan "titik kas belum disetel". Hari ini / bulan draf = neracaPada apa adanya.
+ */
+export function neracaTanggal(sampai, kini, final) {
+  if (!sampai || !final) return neracaPada(sampai, kini);
+  const key = String(sampai).slice(0, 7); if (sampai === akhirBulanIso(key)) return neracaPada(sampai, kini, lpKasAkhirBulan(key));
+  const NP = neracaPada(sampai, kini); if (NP.N.kas !== null) return NP;
+  const nama = lpNamaBulan(key); const kenapa = 'bulan ' + nama + ' sudah final dan titik kas sekarang lebih muda';
+  return neracaPada(sampai, kini, { kas: null, kenapa, sumber: '', tolak: 'Kas per ' + tanggalPendek(sampai) + ' belum bisa dihitung — ' + kenapa + '. Neraca akhir ' + nama + ' (hitungan fisik tutup hari akhir bulan) ada di Dokumen → Laporan berkop' });
+}
 /** Catatan neraca untuk LAYAR: tanpa kalimat kelebihan bayar (layar memajangnya sebagai pita tersendiri, tetap tampil walau neraca ditolak). */
 export const catatanLayarNeraca = (NP, NL) => (NL && NL.kata && NP.catatan.endsWith(' ' + NL.kata) ? NP.catatan.slice(0, NP.catatan.length - NL.kata.length - 1) : NP.catatan);
 /** Banding kekayaan sekarang vs saat titik kas disetel (kalimat tampilkanNeraca sistem lama). */

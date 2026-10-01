@@ -266,6 +266,15 @@ ok('UU36-1 arus kas berkop Okt–Des 2025 (final): penyesuaian 500.000 yang selu
     && cari36(A36m, /^Lebih\/kurang kas/).length === 1 && cari36(A36m, /^Lebih\/kurang kas/)[0].n === 200000 && cari36(A36m, /Penyesuaian/).length === 1 && cari36(A36m, /Penyesuaian/)[0].n === 300000
     && /Lebih\/kurang kas Rp200\.000 = /.test(A36m.catatan) && /Penyesuaian Rp300\.000 = titik kas yang disetel ulang/.test(A36m.catatan) && A36m.baris[A36m.baris.length - 1].n === 7500000,
   J([A36s.baris, A36s.catatan, A36m.baris, A36m.catatan]));
+// tinjauan 39b UU36-2: Laporan → Neraca dengan tanggal di bulan FINAL (layar & kertas yang dikeluarkan) — akhir bulan = hitungan tutup hari akhir bulan (sama dengan
+//      Dokumen → Neraca); tanggal lain yang kasnya tidak terhitung mesin ditolak dengan sebab yang benar, bukan "titik kas belum disetel"; bulan draf tidak berubah.
+var NT = typeof neracaTanggal === 'function' ? neracaTanggal : null;
+var C36t = denganCacheSementara(TH36, function () { return { akhir: NT && NT('2025-12-31', KINI, true), tengah: NT && NT('2025-12-15', KINI, true), dok: laporanBerkop('neraca', '2025-12', 1, KINI) }; });
+ok('UU36-2 layar Neraca 31 Des 2025 (bulan final): kas 7.500.000 dari hitungan tutup hari 31 Des, jumlah harta = Dokumen → Neraca, tidak ditolak; 15 Des 2025 (final, titik kas sekarang lebih muda): kas tidak dihitung, tolak "Kas per 15 Des 2025 belum bisa dihitung — bulan Desember 2025 sudah final … ada di Dokumen", tanpa "titik kas belum disetel" (tolak, keterangan baris kas, catatan); hari bulan draf = neracaPada apa adanya',
+  !!NT && C36t.akhir.N.kas === 7500000 && !C36t.akhir.tolak && C36t.akhir.aset === C36t.dok.baris.find(function (r) { return r.nama === 'Jumlah harta'; }).n
+    && C36t.tengah.N.kas === null && C36t.tengah.total === null && /^Kas per 15 Des 2025 belum bisa dihitung — bulan Desember 2025 sudah final dan titik kas sekarang lebih muda\. Neraca akhir Desember 2025 \(hitungan fisik tutup hari akhir bulan\) ada di Dokumen/.test(C36t.tengah.tolak)
+    && !/belum disetel/.test(C36t.tengah.tolak + ' ' + C36t.tengah.harta[0].ket + ' ' + C36t.tengah.catatan) && J(NT('2026-09-19', KINI, false)) === J(neracaPada('2026-09-19', KINI)),
+  J(NT ? [C36t.akhir.N.kas, C36t.akhir.tolak, C36t.tengah.tolak, C36t.tengah.harta[0], C36t.tengah.catatan] : 'neracaTanggal tidak ada'));
 var G36 = [TH36[0], TH36[1], { koleksi: 'pengeluaranHarian', data: { id: 'h36', kategori: 'toko', tanggal: '2025-12-31', jam: '10:00', keterangan: 'Bensin antar', nominal: 50000 } }, { koleksi: 'tutupHari', data: { id: 'th-251215', tanggal: '2025-12-15', jam: '21:00', selisihLaci: 0 } }];
 var N36g = denganCacheSementara(G36, function () { return laporanBerkop('neraca', '2025-12', 1, KINI); }); var N36l = denganCacheSementara([{ koleksi: 'tutupHari', data: { id: 'th-251215', tanggal: '2025-12-15', jam: '21:00', selisihLaci: 0 } }], function () { return laporanBerkop('neraca', '2025-12', 1, KINI); });
 ok('39b-36 tutup hari terakhir 30 Des + uang keluar 31 Des 50.000: kas akhir = 7.300.000 − 50.000 (catatan sesudahnya ikut, disebut); bulan yang tutup harinya belum menyimpan isi tempat uang (tutup hari lama) ditolak dengan kalimatnya sendiri',
@@ -362,6 +371,15 @@ def utama(js):
     return h['lulus'], h['gagal']
 
 
+def neraca_layar(t):
+    """tinjauan 39b UU36-2 — layar Laporan → Neraca (gambar & kertas yang dikeluarkan) memakai LP.neracaTanggal untuk tanggal yang dipilih (kas bulan final dari
+    hitungan tutup hari akhir bulan / kalimat tolak yang benar), bukan neracaPada tanpa kas bulan final; hero bulan final memakai kalimat tolak itu."""
+    out = []
+    if t.count('LP.neracaTanggal(') != 2 or 'LP.neracaPada(' in t: out.append('layar Neraca masih memakai neracaPada tanpa kas bulan final (gambar / keluarkan)')
+    if "(sampai && D.final ? NP.tolak + '.' :" not in t: out.append('hero Neraca bulan final masih menyebut "titik kas belum disetel"')
+    return out
+
+
 def tunai_layar(t):
     """39b no. 39 — layar Laba: panel "Syarat diterima tunai" menyebut SEMUA komponennya (laba bersih − margin nota bon bulan ini + margin bon yang dibayar
     bulan ini [+ margin bon yang dihapus bukunya]) supaya hitungan yang tergambar menutup. Kembalikan daftar masalah."""
@@ -377,8 +395,10 @@ if __name__ == '__main__':
     if '--kontrol' in sys.argv:
         kode = 0
         for nama, isi in [('39b-39 laporan.js: panel diterima tunai tanpa margin bon yang dibayar', lap.replace(' + margin bon yang dibayar bulan ini ${RP(B.marginDibayar)}', '', 1)),
-                          ('39b-39 laporan.js: panel diterima tunai tanpa margin bon yang dihapus bukunya', lap.replace("${B.marginDihapus ? ' + margin bon yang dihapus bukunya ' + RP(B.marginDihapus) : ''}", '', 1))]:
-            g = tunai_layar(isi) if isi != lap else []
+                          ('39b-39 laporan.js: panel diterima tunai tanpa margin bon yang dihapus bukunya', lap.replace("${B.marginDihapus ? ' + margin bon yang dihapus bukunya ' + RP(B.marginDihapus) : ''}", '', 1)),
+                          ('UU36-2 laporan.js: kertas Neraca yang dikeluarkan memakai neracaPada lagi', lap.replace('const NP = LP.neracaTanggal(st().sampaiN, kini(), D.final);', 'const NP = LP.neracaPada(st().sampaiN, kini());', 1)),
+                          ('UU36-2 laporan.js: hero Neraca bulan final kembali "titik kas belum disetel"', lap.replace("(sampai && D.final ? NP.tolak + '.' :", "(false ? NP.tolak + '.' :", 1))]:
+            g = (tunai_layar(isi) + neraca_layar(isi)) if isi != lap else []
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
         rusak = {
@@ -445,6 +465,8 @@ if __name__ == '__main__':
             # ---- 39b no. 36 (owner 30 Sep): kas akhir bulan final = hitungan fisik tutup hari akhir bulan
             '39b-36: neraca bulan final memakai kasPada (titik kas sekarang) lagi': js.replace("neracaPada(sampai > iso ? iso : sampai, kini, final ? lpKasAkhirBulan(keKey) : null)", "neracaPada(sampai > iso ? iso : sampai, kini, null)"),
             '39b-36: arus kas bulan final memakai kasPada lagi': js.replace("const KA = final ? lpKasAkhirBulan(keKey) : null, KW = final ? lpKasAkhirBulan(lpGeserBulan(bulan[0], -1)) : null;", "const KA = null, KW = null;"),
+            'UU36-2: akhir bulan final di layar Neraca tanpa kas tutup hari akhir bulan': js.replace("if (sampai === akhirBulanIso(key)) return neracaPada(sampai, kini, lpKasAkhirBulan(key));", ""),
+            'UU36-2: tanggal lain di bulan final ditolak "titik kas belum disetel"': js.replace("const NP = neracaPada(sampai, kini); if (NP.N.kas !== null) return NP;", "return neracaPada(sampai, kini);"),
             'UU36-1: selisih laci tutup hari di arus kas berkop kembali disebut "penyesuaian titik kas … bukan uang yang bergerak"': js.replace("const lk = selisih === null ? 0 : LKK.n;", "const lk = 0;"),
             'UU36-1: baris lebih/kurang kas arus kas bernama lain dari laba-rugi': js.replace("[{ nama: lpNamaLebihKurang({ nLebihKurang: LKK.malam }), n: lk }]", "[{ nama: 'Penyesuaian titik kas (disetel ulang dalam periode)', n: lk }]"),
             '39b-36: kas awal arus kas bulan final tetap kasPada': js.replace("KW = final ? lpKasAkhirBulan(lpGeserBulan(bulan[0], -1)) : null;", "KW = null;"),
@@ -482,7 +504,7 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g = utama(js)
-    g = g + tunai_layar(lap)
+    g = g + tunai_layar(lap) + neraca_layar(lap)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')), key=os.path.basename)   # audit 39b no. 46 / tinjauan T6: cadangan toko ada di _privat/
     if cad and not g:
