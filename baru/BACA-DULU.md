@@ -1377,3 +1377,8 @@ penjaga pusat). Cadangan toko 1 Okt dihitung seolah 5 Jan 2027: 57 dokumen pembu
   ulang sisa dengan jam sekarang, dan menyegarkan patokan periksa ulang; tulisan yang masih menunggu server (`toko.js dokTertunda`, diisi `firebase.js`) =
   fase `tunggu`; "selesai" menjalankan periksa ulang (beda = ketukan kedua); kalimat berhenti dari `kabarBerhentiBuku`; tanggal pembatalan lama dibuang saat
   mulai baru; daftar periksa Kunci bulan punya butir ⛔ `tutupBukuTuntas`. Uji N1–N9 di `uji_tutup_buku_bertahap.py`.
+- **Putaran 3 (tinjauan + sanggah sesudah §9) dibereskan** — rincian `docs/rancangan-tutup-buku-bertahap.md` §10: arsip berhenti bila tahun itu dibatalkan
+  dari perangkat lain (potongan yang terlanjur pindah dikembalikan, pembatalan membaca arsip ulang); tombol pita mati sungguh mati; hasil periksa ulang
+  dibekukan saat arsip habis (`periksaArsip`); "belum bisa dihitung" ≠ TIDAK SAMA; penanda tahun lalu diarsipkan paling akhir; `terkunci` dengan pembuka
+  kurang = fase `rusak` (batalkan); Lanjutkan & Batalkan hanya dari data server (`toko.js koleksiDariCache`); hapus yang menunggu server = fase `tunggu`
+  (`setelHapusTertunda`); satu satuan pita / kalimat / Lanjutkan (saldo pembuka, "kiriman lanjutan i dari n"). Uji P3-… di `uji_tutup_buku_bertahap.py`.

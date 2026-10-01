@@ -331,3 +331,40 @@ Yang tetap diakui:
 - Periksa ulang masih bisa berbunyi palsu bila toko berjualan di antara penanda dan LANJUT ARSIP pada hari yang sama (patokan hanya disegarkan saat
   kiriman pembuka dilanjutkan). Kalau itu terjadi, "selesai" meminta ketukan kedua yang menyebut barisnya (no. 6).
 - Fase `tunggu` dihitung dari antrean perangkat ITU; perangkat lain tidak melihat tulisan yang tertunda (memang belum ada di server).
+
+## 10. Putaran 3 (1 Okt 2026, tinjauan + sanggah sesudah §9): 9 cacat dibereskan
+
+Tinjauan ulang atas §9 (jsc, tanpa peramban) menemukan 9 cacat yang tersisa / lahir dari §8. Satu commit per butir; tiap butir punya uji `P3-…` di
+`alat-uji/uji_tutup_buku_bertahap.py` yang GAGAL di kode sebelum butir itu dan LULUS sesudahnya, + kontrol yang berbunyi. Rules, mesin beku, `kasir*.html`
+tidak disentuh.
+
+| Butir | Perbaikan | Uji |
+|---|---|---|
+| AAL1 | Arsip yang berjalan membaca ulang status berita acara sebelum & di antara potongan (`arsipBerhentiBuku`) — dibatalkan dari perangkat lain = berhenti. Tombol pita `.seg.mati` sungguh mati (CSS) dan Lanjutkan/Batalkan tidak jalan selagi sibuk. Susulan: potongan yang sudah terkirim sebelum pembatalan terlihat dikembalikan perangkat pengarsip (`arsipBalikBuku`, hanya bila dibatalkan — `selesai` tidak pernah), dan pembatalan membaca arsip ulang sekali sebelum berita acara `dibatalkan` | P3-AAL1, P3-AAL1b + 5 statis |
+| UTBU-1 | Hasil periksa ulang DIBEKUKAN saat arsip habis (`susunPeriksaArsip` → berita acara `periksaArsip`: patokan & angka mesin per baris). "Selesai" & pita memakainya; belum ada = dihitung ulang seperti dulu | P3-UTBU1 |
+| UTBU-2 | TIDAK SAMA hanya bila kedua sisi terhitung dan berbeda; sisi yang tidak bisa dihitung (titik kas sudah maju) = "belum bisa dihitung" — pita, "selesai", kabar sesudah arsip, berita acara (`periksaUlang.belumBisa`) | P3-UTBU2 |
+| AAL2 | `arsipBuku` menaruh batch penanda tahun lalu PALING AKHIR → arsip tahun berikutnya yang putus lalu dilanjutkan tidak meninggalkan pembuka tahun lalu di koleksi hidup | P3-AAL2 |
+| AAL3 | `terkunci` (tahun era sekarang) dengan saldo pembuka kurang dari `nPembuka` = fase `rusak` → "batalkan", Lanjutkan menolak (penanda yang tertahan di perangkat lain mendarat sesudah pembatalan; kiriman yang belakangan ditolak server) | P3-AAL3 |
+| AAL4 | Lanjutkan & Batalkan hanya dari data server: tanpa internet, atau berita acara / pengaturan masih salinan perangkat (Firestore `fromCache` → `toko.js koleksiDariCache`) = ditolak | P3-AAL4 + 2 statis |
+| AAL5 | Hapus yang menunggu server dicatat per kiriman (`firebase.js tulisBerkas` → `toko.js setelHapusTertunda`) → fase `tunggu`. Bukan tanda tingkat snapshot (saran tinjauan): dokumen yang dihapus sudah keluar dari hasil query, jadi kiriman yang isinya hapus saja tidak terlihat di sana | P3-AAL5 + statis |
+| AAL6 | Tutup buku SATU kiriman yang antre: kalimat menyebut pita "Tahun … terkunci" → "Lanjutkan" (arsip) | P3-AAL6 |
+| AAL7 | Satu satuan: pita = saldo pembuka yang sudah masuk (dokumen); Lanjutkan = "kiriman lanjutan i dari n" + jumlah itu | P3-AAL7; T2/T3/N3/N4 disesuaikan |
+
+Hasil: `uji_tutup_buku_bertahap` 84 lulus · 0 gagal, `--kontrol` 60 berbunyi; asap data toko tetap `[18, 6]` / batal `[18, 6]`; `uji_uang_baru` 151/0,
+`uji_kunci_periode` 47/0, `uji_denyut_per_akun` 17/0 (menangkap bentrok nama `_dariCache` toko.js vs firebase.js di bundel jsc → AAL4 susulan),
+`peta_akses --kiriman --kontrol` 33 berbunyi; ASAP GLOBAL `uji_wadah_bernama` BYTE-SAMA dengan main dan dengan origin/main (tanpa perubahan disengaja);
+`uji_csp` (baru ada di origin/main #91) lulus pada gabungan sementara cabang + origin/main (konflik hanya di `baru/BACA-DULU.md`); seluruh perintah job
+`uji` di `pages.yml` keluar 0. Skrip repro tinjauan dijalankan ulang (lama 1548361 vs baru): yang memanggil lapisan logika berbalik benar; yang melewati
+penjaga layar (memanggil arsip / pembatalan langsung) diulang dengan varian yang meniru `uang.js` dan berbalik benar. Uji peramban TIDAK dijalankan di Mac
+owner — CI runner.
+
+Yang tetap diakui (menggantikan daftar §9):
+- Jendela §9 "batch penanda tahun lama diarsipkan lebih dulu" DITUTUP (AAL2).
+- Periksa ulang dibekukan saat arsip habis: jualan di antara penanda dan arsip habis pada HARI yang sama masih membuat hasil beku "TIDAK SAMA" (ketukan
+  kedua menyebut barisnya). Perubahan sesudah arsip habis tidak diperiksa lagi (disengaja). Tulisan hasil beku gagal → "selesai" menghitung ulang.
+- Arsip dan pembatalan dari dua perangkat sekaligus: dua lapis penjaga (pengarsip mengembalikan potongan terakhirnya; pembatalan membaca arsip ulang).
+  Yang tersisa hanya potongan dari tab yang beku lama dan mendarat sesudah keduanya.
+- Batalkan dari perangkat yang data servernya baru tiba ±detik sebelum penanda perangkat lain masuk: arsip tidak jalan (AAL1), pita "batal" menuntun
+  menarik sisa pembuka, tetapi `pengaturan/tutupBuku` (hanya dibaca sistem lama) & titik 31 Des dari penanda tidak dikembalikan. Tetap "tidak wajib"
+  seperti §8.
+- Fase `tunggu` untuk hapus hanya selama sesi itu (dimuat ulang = catatannya hilang; Firestore tetap mengirim antreannya berurutan).
