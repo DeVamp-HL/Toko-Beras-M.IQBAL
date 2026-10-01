@@ -361,7 +361,9 @@ export function pulihBerhentiBuku(tahun, L, percobaan) {
   const a = bkAcara(tahun); if (a && a.status === 'membatalkan' && bkPercobaan(a) === String(percobaan || '') && !bkBukanPemegang(tahun, L)) return '';
   const p = (a && a.pemegang) || {};
   const kata = { berjalan: 'sedang ditutup lagi', terkunci: 'sudah dikunci lagi', selesai: 'sudah ditutup lagi sampai selesai', dibatalkan: 'sudah dibatalkan tuntas', membatalkan: 'sedang dibatalkan' + (p.nama ? ' di ' + p.nama : '') }[a && a.status] || 'berubah';
-  return 'Pembatalan tutup buku ' + tahun + ' dihentikan: tutup bukunya sudah diubah dari perangkat lain (' + kata + ') — sisa arsip ' + tahun + ' tidak dikembalikan dari perangkat ini. Ikuti pita tutup buku.';
+  // tab / jendela lain di perangkat yang SAMA (pemegang = perangkat ini) bukan "perangkat lain" — jangan membuat owner mengira ada HP lain ikut campur
+  const asal = p.id && L && String(L.idPerangkat || '') === String(p.id) ? 'jendela lain di perangkat ini' : 'perangkat lain';
+  return 'Pembatalan tutup buku ' + tahun + ' dihentikan: tutup bukunya sudah diubah dari ' + asal + ' (' + kata + ') — sisa arsip ' + tahun + ' tidak dikembalikan dari perangkat ini. Ikuti pita tutup buku.';
 }
 /**
  * TRV6-EKOR-1: potongan pengembalian yang terlanjur mendarat saat ekor pembatalan berhenti diarsipkan LAGI hanya bila berita acara sekarang percobaan LAIN yang

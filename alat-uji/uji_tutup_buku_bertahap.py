@@ -604,7 +604,7 @@ function macBatal() { macAlih(); var B2 = susunBatal(2026, bacaArsip26(), jam('2
 function macMulai() { macBatal(); var W3 = jam('2027-01-05T12:10:00+07:00'); var R2 = susunKunci(2026, D, W3, MACB); EK.R2 = R2; EK.P1 = R2.acara ? String(R2.acara.paraf.pada) : ''; return W3; }
 function macSelesai() { var W3 = macMulai(); (EK.R2.kiriman || []).forEach(kirimJam); arsipkanDokumen(2026, arsipBuku(2026).daftar); var PA = susunPeriksaArsip(2026, W3, MACB); if (PA.dokumen) kirimJam({ dokumen: PA.dokumen });
   var SL = susunSelesai(2026, 'cad2.json', W3, true, MACB); if (!SL.tolak) kirimJam(SL); EK.selesaiB = (EK.R2.tolak || '') + (SL.tolak || ''); }
-var KAL_EKOR = /^Pembatalan tutup buku 2026 dihentikan: tutup bukunya sudah diubah dari perangkat lain \(/;
+var KAL_EKOR = /^Pembatalan tutup buku 2026 dihentikan: tutup bukunya sudah diubah dari (perangkat lain|jendela lain di perangkat ini) \(/;
 // (a) + tiap titik pemeriksaan: HP A beku di titik itu; Mac B ambil alih, batal tuntas, mulai lagi, arsip, selesai; HP A hidup lagi → berhenti, tidak mengembalikan
 //     arsip percobaan baru, tidak menulis berita acara; angka = sebelum HP A hidup lagi; berita acara tetap 'selesai' percobaan baru
 function cekSelesaiEk(nama, ket, x, syarat) { var a = acara(2026) || {};
@@ -628,7 +628,7 @@ coba('TRV6-EKOR titik 4', function () { var S0 = siapEk(); var telat = null;
 // (c) Mac B membatalkan tuntas lalu BELUM mulai lagi → HP A berhenti; potongan yang mendarat TIDAK diarsipkan lagi (tempatnya di buku hidup)
 coba('TRV6-EKOR c', function () { var S0 = siapEk(); var x = batalHPA({ 'pulih:1:2': macBatal }, 'pulih:1:2'); var a = acara(2026) || {};
   ok('TRV6-EKOR c · Mac B ambil alih & batal tuntas (belum mulai lagi); HP A hidup lagi → berhenti ("sudah dibatalkan tuntas"), tidak menulis berita acara, tidak mengarsipkan apa pun; penjualan 2026 utuh, arsip 2026 kosong, saldo pembuka 0',
-    x.alih === 'ok' && x.batalB === 'ok' && x.hasil === false && KAL_EKOR.test(x.S.kabar || '') && /sudah dibatalkan tuntas/.test(x.S.kabar || '') && x.acaraSesudah === 0 && x.arsipUlang.length === 0 && J(sesudahEk(x)) === J(['sesudah 1:2:18'])
+    x.alih === 'ok' && x.batalB === 'ok' && x.hasil === false && KAL_EKOR.test(x.S.kabar || '') && /dari perangkat lain/.test(x.S.kabar || '') && /sudah dibatalkan tuntas/.test(x.S.kabar || '') && x.acaraSesudah === 0 && x.arsipUlang.length === 0 && J(sesudahEk(x)) === J(['sesudah 1:2:18'])
     && a.status === 'dibatalkan' && ambilPenjualanSemua().length === S0.nJual && arsipSimulasi().filter(function (q) { return q.tahun === 2026; }).length === 0 && nPembukaMentah(2026) === 0 && jepretEk() === x.jepret && samaBaris(S0.s0, baris(barisTahun(2026))) && kemajuanBuku() === null,
     J([x.alih, x.batalB, x.hasil, x.S.kabar, x.acaraSesudah, x.arsipUlang, sesudahEk(x), a.status, ambilPenjualanSemua().length + '/' + S0.nJual, nPembukaMentah(2026)])); });
 // pemegang: Mac B baru mengambil alih (masih 'membatalkan' percobaan yang sama) → HP A berhenti, tidak mengarsipkan apa pun; Mac B menuntaskan → angka seperti semula
@@ -646,7 +646,7 @@ coba('TRV6-EKOR dua tab', function () { var S0 = siapEk(); var B3 = null;
     B3 = susunBatal(2026, bacaArsip26(), jam('2027-01-05T10:40:00+07:00'), HPA); (B3.kiriman || []).forEach(kirimJam); } }, 'pulih:1:2');
   var a1 = acara(2026) || {}; if (B3 && B3.akhir) { pulihkanArsip(2026, B3.pulih); kirimJam({ dokumen: [B3.akhir] }); }
   ok('TRV6-EKOR dua tab · tab 1 berhenti (percobaan lain sedang dibatalkan di perangkat yang sama), tidak menulis berita acara, tidak mengarsipkan; tab 2 menuntaskan → dibatalkan, penjualan 2026 utuh, arsip kosong',
-    !!B3 && !B3.tolak && x.hasil === false && KAL_EKOR.test(x.S.kabar || '') && /sedang dibatalkan di HP owner contoh/.test(x.S.kabar || '') && x.acaraSesudah === 0 && x.arsipUlang.length === 0 && a1.status === 'membatalkan' && String(a1.paraf.pada) === EK.P1 && EK.P1 !== S0.P0
+    !!B3 && !B3.tolak && x.hasil === false && KAL_EKOR.test(x.S.kabar || '') && /sedang dibatalkan di HP owner contoh/.test(x.S.kabar || '') && /dari jendela lain di perangkat ini/.test(x.S.kabar || '') && x.acaraSesudah === 0 && x.arsipUlang.length === 0 && a1.status === 'membatalkan' && String(a1.paraf.pada) === EK.P1 && EK.P1 !== S0.P0
     && acara(2026).status === 'dibatalkan' && ambilPenjualanSemua().length === S0.nJual && arsipSimulasi().filter(function (q) { return q.tahun === 2026; }).length === 0 && nPembukaMentah(2026) === 0 && kemajuanBuku() === null,
     J([B3 && B3.tolak, x.hasil, x.S.kabar, x.acaraSesudah, x.arsipUlang, a1.status, acara(2026).status, ambilPenjualanSemua().length + '/' + S0.nJual])); });
 // berjalan: Mac B batal tuntas lalu mulai lagi, baru kiriman 1 masuk (percobaan baru 'berjalan' — tahun 2026 masih terbuka) → HP A berhenti, TIDAK mengarsipkan
@@ -815,6 +815,7 @@ RUSAK = [
     ('putaran 3 AAL1 (susulan) · potongan yang mendarat sesudah pembatalan tidak dikembalikan', 'baru/js/layar/tutup-buku-logika.js', "if (!a || (a.status !== 'membatalkan' && a.status !== 'dibatalkan')) return [];", "if (true) return [];"),
     ('putaran 3 AAL1 (susulan) · tahun yang SELESAI ditutup perangkat lain ikut dikembalikan', 'baru/js/layar/tutup-buku-logika.js', "if (!a || (a.status !== 'membatalkan' && a.status !== 'dibatalkan')) return [];", "if (!a) return [];"),
     ('putaran 4 BP4R-2 · pembatalan lanjutan dari "dibatalkan" membawa pemegang lama', 'baru/js/layar/tutup-buku-logika.js', "  if (acara.status === 'dibatalkan') { const pg = bkPerangkatIni(L); if (pg) batal.pemegang = pg; }\n", ""),
+    ('TRV6-EKOR · kalimat menyebut "perangkat lain" untuk jendela lain di perangkat yang sama', 'baru/js/layar/tutup-buku-logika.js', "String(L.idPerangkat || '') === String(p.id) ? 'jendela lain di perangkat ini' : 'perangkat lain';", "false ? 'jendela lain di perangkat ini' : 'perangkat lain';"),
     ('putaran 4 P4-1 · berita acara tidak mencatat pemegang', 'baru/js/layar/tutup-buku-logika.js', "const pg = bkPerangkatIni(L); if (pg) acara.pemegang = pg;", "const pg = null;"),
     ('putaran 4 P4-1 · percobaan ulang membawa pemegang percobaan lama', 'baru/js/layar/tutup-buku-logika.js', "  delete acara.pemegang;\n", "\n"),
     ('putaran 4 P4-1 · penjaga pemegang mati (perangkat mana pun boleh)', 'baru/js/layar/tutup-buku-logika.js', "  if (L && L.idPerangkat && String(L.idPerangkat) === String(p.id)) return '';", "  return '';"),
