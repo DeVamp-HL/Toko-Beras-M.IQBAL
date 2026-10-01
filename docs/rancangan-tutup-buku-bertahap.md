@@ -397,7 +397,9 @@ Yang tetap diakui (menambah daftar §10; butir §10 tentang dua perangkat sekali
   Firestore perangkat mana pun tetap terkirim begitu tersambung dan menimpa berita acara (mis. `selesai` mundur, pembatalan tertimpa). Sesudah P4-1 perangkat
   lain tidak lagi menulis tutup buku; dua perangkat hanya bisa sama-sama menulis lewat **ambil alih** bila HP lama ternyata masih menyimpan kiriman — itulah
   kalimat peringatannya. Penangkal sungguhan (berita acara `selesai` tidak boleh ditimpa / status hanya boleh maju) = **rules — TUGAS OWNER** (Console);
-  belum dirancang di putaran ini.
+  belum dirancang di putaran ini. Repro ulang (kotak pasir, E1 jalan ambil alih): Mac B mengambil alih lalu membatalkan tuntas; kiriman penanda HP A yang
+  tertahan mendarat sesudahnya → berita acara `terkunci` lagi DENGAN PEMEGANG HP A dan saldo pembuka 0 dari N = fase `rusak`; Mac B ditolak lagi; "batalkan"
+  dari HP A (atau ambil alih lagi sesudah 60 menit) membereskannya — angka kembali seperti sebelum tutup buku.
 - Dua tab di perangkat yang SAMA = satu pemegang (id perangkat sama); keduanya dijaga dua lapis §10 + P4-3.
 - Id perangkat disimpan di localStorage peramban: hapus data peramban / ganti peramban = perangkat baru → lewat ambil alih. Peramban yang menolak localStorage
   sama sekali membuat id baru tiap kali dibaca → perangkat itu tidak dikenali sebagai pemegang (pakai peramban biasa).
