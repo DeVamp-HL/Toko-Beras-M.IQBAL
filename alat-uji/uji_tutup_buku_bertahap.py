@@ -26,6 +26,7 @@ Yang dijaga:
   N5  penjualan di antara kiriman 1 dan Lanjutkan (hari yang sama) → periksa ulang tidak berbunyi palsu (patokan diambil tepat sebelum kiriman pertama sesi itu)
   N6  "selesaikan" ditolak selama arsip belum habis; periksa ulang beda = ditolak menyebut barisnya, baru diterima pada ketukan kedua (dicatat di berita acara)
   N7  kalimat berhenti: kiriman 1 tutup buku → "Kunci tahun" lagi; kiriman 1 pembatalan → "Batalkan" lagi (Lanjutkan = meneruskan tutup buku); sesudahnya "Lanjutkan"
+  N8  dibatalkan, dikunci lagi, dibatalkan lagi → berita acara mencatat tanggal pembatalan KEDUA
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -246,6 +247,15 @@ coba('N7', function () { kotak(40); W = jam('2027-01-05T10:00:00+07:00'); R = su
   kirim(B.kiriman[0]); var kc = kabarBerhenti('batal', 2026, 2, B.kiriman.length, { gagal: true, pesan: 'ditolak server' });
   ok('N7 pembatalan berhenti sesudah kiriman 1 masuk (pita fase batal): kalimat menyuruh "Lanjutkan" untuk meneruskan pembatalan', B.kiriman.length >= 2 && (kemajuanBuku() || {}).fase === 'batal' && /ketuk "Lanjutkan" untuk meneruskan pembatalan/i.test(kc), J([B.kiriman.length, kc])); });
 
+// ---- §8 no. 8 · tutup buku dibatalkan 5 Jan, dikunci lagi 8 Jan, dibatalkan lagi 9 Jan → berita acara mencatat tanggal pembatalan KEDUA
+coba('N8', function () { kotak(5); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W); R.kiriman.forEach(kirim); arsipkanDokumen(2026, arsipBuku(2026).daftar);
+  B = susunBatal(2026, arsipSimulasi(), W); B.kiriman.forEach(kirim); pulihkanArsip(2026, B.pulih); kirim({ dokumen: [B.akhir] }); var t1 = acara(2026).dibatalkanTanggal;
+  W = jam('2027-01-08T10:00:00+07:00'); R = susunKunci(2026, D, W); var bersih = !R.tolak && R.acara.dibatalkanTanggal === undefined && R.acara.dibatalkanPada === undefined;
+  R.kiriman.forEach(kirim); arsipkanDokumen(2026, arsipBuku(2026).daftar);
+  W = jam('2027-01-09T10:00:00+07:00'); B = susunBatal(2026, arsipSimulasi(), W); B.kiriman.forEach(kirim); pulihkanArsip(2026, B.pulih); kirim({ dokumen: [B.akhir] });
+  ok('N8 kunci kedua tidak membawa tanggal pembatalan pertama; pembatalan kedua tercatat 9 Jan (bukan 5 Jan)', t1 === '2027-01-05' && bersih && acara(2026).status === 'dibatalkan' && acara(2026).dibatalkanTanggal === '2027-01-09' && /^2027-01-09/.test(new Date(new Date(acara(2026).dibatalkanPada).getTime() + 7 * 3600000).toISOString()),
+    J([t1, R.acara && R.acara.dibatalkanTanggal, acara(2026).dibatalkanTanggal, acara(2026).dibatalkanPada])); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -323,6 +333,7 @@ RUSAK = [
     ('§8 no. 6 · selesai menerima periksa ulang yang beda tanpa ketukan kedua', 'baru/js/layar/tutup-buku-logika.js', "  if (kal && !yakin) return {", "  if (kal && !yakin && false) return {"),
     ('§8 no. 7 · pembatalan yang berhenti di kiriman 1 menyuruh "Lanjutkan"', 'baru/js/layar/tutup-buku-logika.js', "return awal + (ke === 1 ? ' Belum ada yang ditarik", "return awal + (false ? ' Belum ada yang ditarik"),
     ('§8 no. 7 · tutup buku yang berhenti di kiriman 1 menyuruh "Lanjutkan"', 'baru/js/layar/tutup-buku-logika.js', "return awal + (ke === 1 ? ' Tidak ada yang masuk", "return awal + (false ? ' Tidak ada yang masuk"),
+    ('§8 no. 8 · mulai baru membawa tanggal pembatalan lama', 'baru/js/layar/tutup-buku-logika.js', "delete acara.dariStatus; delete acara.dibatalkanPada; delete acara.dibatalkanTanggal;", "delete acara.dariStatus;"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]

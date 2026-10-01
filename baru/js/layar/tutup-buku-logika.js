@@ -175,7 +175,8 @@ export function susunKunci(tahun, D, w) {
   const acara = Object.assign({}, T.acara || {}, { id: String(tahun), tahun, mode: 'sungguhan', status: 'terkunci', saksi: D.saksi || '', paraf: { owner: true, saksi: true, pada: w.kini }, langkah: Object.assign({}, D.langkah || {}, { kunci: w.kini }), cadangan1: D.cadangan1 || '', arsipNama: D.arsipNama || '', nArsip: A.n, arsipPerKoleksi: A.perKoleksi, nPembuka: P.dokumen.length,
     sebelum: B.baris.map((b) => ({ id: b.id, nama: b.nama, n: b.a })), modal: sebelum.modal, labaTinggal: sebelum.labaTinggal, tanggal: w.tanggal, jam: w.jam, titikDitulis: !!titik, titikSebelum: ambilTitikKas() || null,
     titikTahun: T0, hariIni: { tanggal: hariIni, baris: HI.harta.concat(HI.utang).map((b) => ({ id: b.id, nama: b.nama, n: b.n })) } });
-  delete acara.pembuka; delete acara.penanda; delete acara.dariStatus;
+  // §8 no. 8: berita acara percobaan yang dibatalkan dipakai ulang — tanggal pembatalan lamanya dibuang, supaya pembatalan berikutnya mencatat tanggalnya sendiri
+  delete acara.pembuka; delete acara.penanda; delete acara.dariStatus; delete acara.dibatalkanPada; delete acara.dibatalkanTanggal;
   const penanda = (titik ? [{ koleksi: 'pengaturan', data: titik }] : []).concat([{ koleksi: 'pengaturan', data: { id: 'tutupBuku', tahunDitutup: tahun, padaTanggal: w.tanggal } }]);
   // §8 no. 1: semua pembuka ber-`bertahap`; PENANDA yang terbaca HP staf = batch pembuka ber-`penandaBuku` (toko.js pembukaBerlaku). Tanpa stok beras → batch
   // kosong (merkList []) khusus penanda, supaya pembuka lain tetap punya penanda.
