@@ -26,7 +26,7 @@ blok lain byte-sama dengan v5 (`git diff firestore.rules.v5 firestore.rules` = k
 Kenapa (`docs/rancangan-tutup-buku-bertahap.md` §11): kiriman yang tertahan di antrean Firestore perangkat lain bisa mendarat belakangan dan menimpa
 berita acara — (1) jalan MULAI: kiriman pertama tertahan di HP A, owner menuntaskan di Mac B sampai `selesai`, HP A hidup lagi → `selesai` mundur;
 (2) ambil alih: HP lama masih menyimpan kiriman; (3) ekor pembatalan HP beku menulis `dibatalkan` di atas percobaan baru yang `selesai`. Di v6 tulisan
-berita acara itu DITOLAK server (untuk (3) hanya berita acaranya — pengembalian arsip tetap mendarat, lihat "Batas yang diketahui"); karena kiriman tutup buku satu writeBatch, saldo pembuka yang ikut di kiriman itu juga tidak masuk (tidak ada "setengah").
+berita acara itu DITOLAK server (untuk (3) server hanya menolak berita acaranya; pengembalian arsipnya sejak 2 Okt dihentikan kode — TRV6-EKOR-1, lihat "Batas yang diketahui"); karena kiriman tutup buku satu writeBatch, saldo pembuka yang ikut di kiriman itu juga tidak masuk (tidak ada "setengah").
 
 **Mundur** = tempel `firestore.rules.v5` (berita acara kembali owner-saja tanpa urutan; kiriman telat bisa menimpa lagi).
 
@@ -167,13 +167,15 @@ Satu saja ★ yang meleset = **jangan Publish**; kirim nomornya ke Claude Code. 
   tahun itu `berjalan` / `membatalkan` / `dibatalkan` saldo pembuka itu tersembunyi (toko.js `pembukaBerlaku`) dan pita "batal" menyebutnya untuk
   ditarik; tetapi kalau percobaan yang lebih baru sudah `terkunci` / `selesai`, saldo pembuka telat itu IKUT TERHITUNG (dobel) dan tidak ada pita yang
   menyebutnya. Pelindungnya tetap kalimat peringatan ambil alih ("pastikan HP lama mati / datanya dihapus").
-- **Ekor pembatalan HP beku — v6 hanya menolak berita acaranya** (tinjauan rules v6, TRV6-EKOR-1). `uang.js` jalankanBatal mengembalikan arsip
-  (`pulihkanArsip`, lalu `bacaArsipTahun` = SELURUH arsip tahun itu, lalu kembalikan sisanya) SEBELUM menulis `dibatalkan`, dan langkah itu tidak
-  memeriksa pemegang/status lagi. HP A yang beku di tengah pengembalian lalu hidup lagi sesudah Mac B mengambil alih, memulai percobaan baru dan
-  menuntaskannya sampai `selesai`: HP A mengembalikan seluruh arsip tahun itu (termasuk arsip percobaan baru) ke buku hidup; baru `dibatalkan`-nya
-  ditolak v6. Hasil: berita acara tetap `selesai`, catatan tahun lama hidup lagi DI SAMPING saldo pembuka → angka DOBEL tanpa pita. (Di v5 hasilnya
-  `dibatalkan` + dobel.) Pelindungnya kalimat peringatan ambil alih ("pastikan HP lama mati / datanya dihapus"). Perbaikan kode (penjaga pemegang &
-  status sebelum / di antara potongan pengembalian arsip) = putaran terpisah, bukan rules.
+- **Ekor pembatalan HP beku — v6 hanya menolak berita acaranya; DITAMBAL di kode 2 Okt** (tinjauan rules v6, TRV6-EKOR-1; owner: "Tambal sekarang").
+  Dulu `uang.js` jalankanBatal mengembalikan arsip (`pulihkanArsip`, lalu `bacaArsipTahun` = SELURUH arsip tahun itu, lalu kembalikan sisanya) SEBELUM
+  menulis `dibatalkan`, tanpa memeriksa pemegang/status lagi: HP A yang beku di tengah pengembalian lalu hidup lagi sesudah Mac B mengambil alih, memulai
+  percobaan baru dan menuntaskannya sampai `selesai` mengembalikan seluruh arsip tahun itu ke buku hidup; baru `dibatalkan`-nya ditolak v6 → `selesai` +
+  angka DOBEL tanpa pita. Sekarang ekor itu berhenti begitu berita acara di perangkat bukan lagi `membatalkan` percobaan itu dari perangkat itu (diperiksa
+  sebelum tiap langkah & sesudah setiap potongan pengembalian); potongan yang mendarat lalu membuatnya berhenti diarsipkan lagi bila percobaan baru sudah
+  `terkunci` / `selesai`; `dibatalkan`-nya tidak dikirim sama sekali (rincian `docs/rancangan-tutup-buku-bertahap.md` akhir §11). Sisa: penjaganya membaca
+  berita acara di CACHE perangkat — potongan yang diakui server sebelum berita acara terbaru sampai di HP itu lolos (≤ 18 catatan dobel per potongan, tanpa pita);
+  pelindungnya tetap kalimat peringatan ambil alih ("pastikan HP lama mati / datanya dihapus").
 - **Hapus lalu tulis baru**: delete berita acara tetap boleh owner (aplikasi tidak pernah menghapusnya). Kalau dokumen dihapus, tulisan telat yang
   mendarat sesudahnya = create = LOLOS.
 - **Jam perangkat yang salah besar.** Percobaan yang dimulai dari perangkat berjam jauh di depan lalu dibatalkan membuat percobaan berikut dari perangkat

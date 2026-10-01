@@ -1390,6 +1390,10 @@ penjaga pusat). Cadangan toko 1 Okt dihitung seolah 5 Jan 2027: 57 dokumen pembu
   Pembatalan lanjutan dari `dibatalkan` dipegang perangkat yang memulainya. Kiriman yang tertahan di perangkat lain tetap bisa mendarat belakangan (sekarang
   lewat jalan MULAI — kiriman pertama yang tertahan sebelum server mengenal pemegangnya — atau ambil alih) — penangkal sungguhan = rules, TUGAS OWNER.
   Uji P4-… di `uji_tutup_buku_bertahap.py` (110 lulus, 85 kontrol berbunyi).
+- **TRV6-EKOR-1 (2 Okt, owner: "Tambal sekarang")** — ekor pembatalan (`uang.js jalankanBatal`: kembalikan arsip → baca ulang → kembalikan sisa →
+  `dibatalkan`) berhenti bila tutup buku tahun itu diubah perangkat lain (`pulihBerhentiBuku`); potongan yang membuatnya berhenti diarsipkan lagi hanya bila
+  percobaan lain terkunci / selesai (`pulihBalikBuku`). Rincian `docs/rancangan-tutup-buku-bertahap.md` akhir §11. `uji_tutup_buku_bertahap.py`: 123 lulus,
+  102 kontrol berbunyi.
 
 ## CSP /baru/ (keputusan owner 1 Okt 2026: "Pasang"; temuan HawkScan)
 
