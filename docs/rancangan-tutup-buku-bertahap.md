@@ -14,8 +14,9 @@ Semua hitungan memakai `jsc` atas bundel modul `/baru/` (kotak pasir). **Tidak a
   "Batalkan tutup buku" juga butuh 24 → ditolak penjaga, jadi seandainya terkunci pun tidak bisa dibatalkan.
 - **Rancangan:** saldo pembuka dikirim **2 kiriman (18 + 6)**; berita acara `berjalan` (berisi rencana lengkap) ikut kiriman pertama; **penanda** (titik kas
   31 Des · `pengaturan/tutupBuku` · berita acara `terkunci`) ikut kiriman TERAKHIR. Sampai penanda masuk, saldo pembuka yang sudah masuk **tidak terlihat**
-  mesin & era → tahun 2026 utuh, tidak dobel, tidak FINAL. Terputus di tengah → **Lanjutkan** dari perangkat mana pun (id tetap, yang sudah masuk tidak dikirim
-  ulang) atau **Batalkan** (juga per ≤ 18). Layar K6: "kiriman n dari N", "arsip m dari M".
+  mesin & era → tahun 2026 utuh, tidak dobel, tidak FINAL. Terputus di tengah → **Lanjutkan** dari perangkat yang memulainya (putaran 4 §11: satu perangkat
+  saja; perangkat lain hanya lewat "ambil alih") (id tetap, yang sudah masuk tidak dikirim ulang) atau **Batalkan** (juga per ≤ 18). Layar K6: "kiriman n dari
+  N", "arsip m dari M".
 - **Titik kas 31 Des:** hitungan tutup hari 31 Des disimpan di dokumen `tutupHari` (kolom `titik`) → walau tutup hari Januari sudah memajukan titik kas,
   uang per tempat 31 Des tetap bisa dihitung; titik Januari tidak ditimpa.
 - **Rules TIDAK berubah. Mesin beku TIDAK berubah.** Asap laporan semua bulan (cadangan) **byte-sama** dengan main.
@@ -106,7 +107,8 @@ Cadangan 1 Okt **tidak punya** `aturanToko/kunciPeriode` → belum ada bulan ter
 
 ### (b) Bisa dilanjutkan (idempoten)
 
-- Rencana disimpan **di server** (berita acara `berjalan`), bukan di perangkat → lanjut dari HP/Mac mana pun. Id dokumen ditetapkan sekali saat mulai.
+- Rencana disimpan **di server** (berita acara `berjalan`), bukan di perangkat → bisa dilanjutkan walau aplikasinya dimuat ulang. Id dokumen ditetapkan sekali
+  saat mulai. (Putaran 4 §11: hanya dari perangkat PEMEGANG — yang memulai; perangkat lain lewat "ambil alih".)
 - `lanjutBuku(tahun)` membangun ulang kiriman dari berita acara (`bkKirimanDari`) dan mengirim yang **belum masuk** saja: kiriman dianggap masuk bila
   semua dokumen pembukanya ada (cache mentah, per id); kiriman yang hanya penanda = berita acara sudah `terkunci`. Batch Firestore atomik → tidak ada
   kiriman setengah. Yang sudah masuk **tidak pernah dikirim ulang** (mengirim ulang = ubah dokumen bertanggal lama = pemeriksaan tambahan).
@@ -368,3 +370,38 @@ Yang tetap diakui (menggantikan daftar §9):
   menarik sisa pembuka, tetapi `pengaturan/tutupBuku` (hanya dibaca sistem lama) & titik 31 Des dari penanda tidak dikembalikan. Tetap "tidak wajib"
   seperti §8.
 - Fase `tunggu` untuk hapus hanya selama sesi itu (dimuat ulang = catatannya hilang; Firestore tetap mengirim antreannya berurutan).
+
+## 11. Putaran 4 (1 Okt 2026): SATU PERANGKAT SAJA (keputusan owner)
+
+Tiga putaran tambal berturut-turut selalu melahirkan cacat baru, hampir semuanya balapan DUA PERANGKAT: kiriman perangkat A tertahan, owner pindah ke
+perangkat B lalu membatalkan / menyelesaikan / melanjutkan, tulisan A mendarat belakangan dan menimpa. Keputusan owner 1 Okt: **tutup buku dikerjakan dari
+SATU perangkat** (sejalan dengan gerbang g3 "perangkat lain sudah berhenti dipakai"). Satu commit per butir; uji `P4-…` di `alat-uji/uji_tutup_buku_bertahap.py`
+GAGAL di kode sebelum butir itu dan LULUS sesudahnya, + kontrol yang berbunyi. Rules, mesin beku, `kasir*.html` tidak disentuh. Semua lewat jsc; tidak ada
+peramban yang dinyalakan.
+
+| Butir | Perbaikan | Uji |
+|---|---|---|
+| P4-1 | Berita acara mencatat **pemegang** = { id, nama } perangkat yang memulai (juga percobaan ulang sesudah dibatalkan; pemegang lama tidak terbawa). Selama `berjalan` / `terkunci` / `membatalkan`, semua langkah yang menulis tutup buku — Lanjutkan, Batalkan, lanjut arsip, periksa ulang, selesai — hanya dari pemegang; perangkat lain ditolak: "Tutup buku 2026 sedang dikerjakan di &lt;nama&gt;. Lanjutkan atau batalkan dari perangkat itu." Penjaga satu tempat (`bkBukanPemegang`), dipakai `lanjutBuku`, `susunBatal`, `susunSelesai`, `susunPeriksaArsip`, `arsipBerhentiBuku`; layar memakainya sebelum arsip dibaca dan sebelum tiap kiriman berikutnya. Pita K6 di perangkat lain = keadaan + kalimat itu, tanpa tombol lanjutkan / batalkan / selesai. Berita acara tanpa pemegang (uji / latihan lama) = bebas | P4-1, P4-1b + 4 statis |
+| P4-2 | **Ambil alih** (HP pemegang rusak / hilang / data perambannya terhapus = id baru): satu-satunya tombol di pita perangkat lain. Hanya bila SEMUA: perangkat ini tersambung & data tutup buku dan denyut perangkat dari server, antrean perangkat ini kosong, berita acara tidak berubah ≥ 60 menit, pemegang tidak berdenyut 15 menit terakhir. Dua ketukan; yang pertama berbunyi "kalau HP lama masih menyimpan kiriman yang belum terkirim, kiriman itu bisa masuk belakangan — pastikan HP lama mati / datanya dihapus". Hasil: berita acara yang sama dengan pemegang baru + `pemegangLama` & jam; perangkat lama sesudahnya ditolak seperti perangkat lain | P4-2 + 1 statis |
+| P4-3 | Arsip membaca status sesudah SETIAP potongan, termasuk yang terakhir (TP3-T2 / LP3-X1): potongan terakhir yang mendarat sesudah pembatalan tuntas dikembalikan perangkat pengarsip | P4-3 (kotak pasir memakai bentuk callback `uang.js` yang sebenarnya) + 1 statis |
+| P4-4 | Hasil beku periksa ulang = dokumen tersendiri **tanpa kolom status**: `pengaturan/periksaArsip<tahun>` (rules yang ada: owner saja; bukan titikKas = tidak dikunci, 0 pemeriksaan; tidak dibaca di tempat lain) bertanda percobaan (jam paraf/kunci). Tulisan yang mendarat telat tidak bisa lagi memundurkan `dibatalkan` / `selesai` jadi `terkunci` (TP3-T1 / LP3-Y1); hasil percobaan yang dibatalkan tidak dipakai percobaan berikut (LP3-Z1) | P4-4, P4-4 Z1 |
+| P4-5 | Lembar K6 sesudah kunci memakai kalimat pita (`bkKalimatPeriksa`); baris yang sisi mesinnya tidak bisa dihitung bertanda "?" (belum bisa dihitung), bukan "≠" (TP3-T4 / LP3-C2) | P4-5 + 1 statis |
+| P4-6 | Tanpa kode: pengakuan TP3-T3 dikembalikan ke daftar di bawah | — |
+
+Hasil: `uji_tutup_buku_bertahap` 109 lulus · 0 gagal, `--kontrol` 84 berbunyi (termasuk bentuk lama callback arsip `uang.js`); asap data toko tetap
+`[18, 6]` / batal `[18, 6]`; `uji_uang_baru` 151/0, `uji_kunci_periode` 47/0; `peta_akses --kiriman` lulus (`susunPeriksaArsip` tercatat: 1 dokumen
+pengaturan bukan titikKas). Uji peramban TIDAK dijalankan di Mac owner — CI runner.
+
+Yang tetap diakui (menambah daftar §10; butir §10 tentang dua perangkat sekaligus kini hanya mungkin lewat ambil alih atau dua tab di perangkat yang sama):
+- **Kiriman yang tertahan di perangkat lain bisa mendarat belakangan (TP3-T3).** Rules tidak mengenal urutan tutup buku: tulisan yang menunggu di antrean
+  Firestore perangkat mana pun tetap terkirim begitu tersambung dan menimpa berita acara (mis. `selesai` mundur, pembatalan tertimpa). Sesudah P4-1 perangkat
+  lain tidak lagi menulis tutup buku; dua perangkat hanya bisa sama-sama menulis lewat **ambil alih** bila HP lama ternyata masih menyimpan kiriman — itulah
+  kalimat peringatannya. Penangkal sungguhan (berita acara `selesai` tidak boleh ditimpa / status hanya boleh maju) = **rules — TUGAS OWNER** (Console);
+  belum dirancang di putaran ini.
+- Dua tab di perangkat yang SAMA = satu pemegang (id perangkat sama); keduanya dijaga dua lapis §10 + P4-3.
+- Id perangkat disimpan di localStorage peramban: hapus data peramban / ganti peramban = perangkat baru → lewat ambil alih. Peramban yang menolak localStorage
+  sama sekali membuat id baru tiap kali dibaca → perangkat itu tidak dikenali sebagai pemegang (pakai peramban biasa).
+- Syarat ambil alih memakai jam: `diubahPada` berita acara (jam perangkat penulis) dan denyut (`pada`) dibanding jam perangkat ini — jam yang meleset menggeser
+  hitungan 60 / 15 menit. HP pemegang yang aplikasinya di latar belakang tidak berdenyut; selama ARSIP berjalan berita acara memang tidak berubah, jadi
+  pemegang yang mengarsip di latar belakang lebih dari 60 menit bisa diambil alih — arsip HP lama berhenti di potongan berikutnya begitu ia melihat pemegang
+  baru (P4-1), potongan yang sudah terkirim tetap pindah (catatan tahun itu memang sedang diarsipkan; tidak dobel).

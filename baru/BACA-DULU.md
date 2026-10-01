@@ -1355,7 +1355,7 @@ penjaga pusat). Cadangan toko 1 Okt dihitung seolah 5 Jan 2027: 57 dokumen pembu
   TIDAK terlihat mesin (9 `ambil*` koleksi pembuka) dan era (`bkEra`, `ssEraTutupBuku`). Pembuka sistem lama (tanpa berita acara) & yang terkunci/selesai
   tetap terlihat. Tanpa berita acara seperti itu `ambil*` mengembalikan larik yang sama (asap global laporan byte-sama dengan main).
 - **Lanjut** (`lanjutBuku`): kiriman yang belum masuk saja (dokumen pembukanya belum ada menurut id; kiriman penanda = berita acara belum `terkunci`), isi & id
-  sama dari berita acara — perangkat mana pun. Ditolak bila 12 baris 31 Des berubah sejak mulai (`bkBerubah`). Mulai baru ditolak selama ada yang `berjalan`
+  sama dari berita acara — hanya dari perangkat yang memulainya (putaran 4). Ditolak bila 12 baris 31 Des berubah sejak mulai (`bkBerubah`). Mulai baru ditolak selama ada yang `berjalan`
   / `membatalkan` atau pembuka sisa percobaan yang dibatalkan (`bkTertunda`).
 - **Kemajuan** (`kemajuanBuku`): pembuka n dari N kiriman (tahun MASIH TERBUKA) · arsip m dari M (angka DOBEL sampai habis) · selesaikan · batal. Pita di
   atas K6 dengan lanjutkan / batalkan (dua ketukan) / unduh cadangan sesudah · selesai. Langkah 7 memakai tahun yang TERKUNCI (dulu tahun layar = tahun
@@ -1382,3 +1382,10 @@ penjaga pusat). Cadangan toko 1 Okt dihitung seolah 5 Jan 2027: 57 dokumen pembu
   dibekukan saat arsip habis (`periksaArsip`); "belum bisa dihitung" ≠ TIDAK SAMA; penanda tahun lalu diarsipkan paling akhir; `terkunci` dengan pembuka
   kurang = fase `rusak` (batalkan); Lanjutkan & Batalkan hanya dari data server (`toko.js koleksiDariCache`); hapus yang menunggu server = fase `tunggu`
   (`setelHapusTertunda`); satu satuan pita / kalimat / Lanjutkan (saldo pembuka, "kiriman lanjutan i dari n"). Uji P3-… di `uji_tutup_buku_bertahap.py`.
+- **Putaran 4 (owner 1 Okt: SATU PERANGKAT SAJA)** — rincian `docs/rancangan-tutup-buku-bertahap.md` §11: berita acara mencatat PEMEGANG (perangkat yang
+  memulai); Lanjutkan, Batalkan, lanjut arsip, periksa ulang & selesai hanya dari pemegang (`bkBukanPemegang`, satu tempat di logika); perangkat lain melihat
+  keadaan saja + tombol **ambil alih** (`susunAmbilAlih`: tersambung & data dari server, antrean kosong, berita acara diam ≥ 60 menit, pemegang tidak
+  berdenyut 15 menit, dua ketukan dengan kalimat peringatan); arsip membaca status sesudah potongan terakhir juga; hasil beku periksa ulang di
+  `pengaturan/periksaArsip<tahun>` tanpa status, bertanda percobaan; lembar K6 sesudah kunci memakai kalimat pita, sisi mesin yang tak terhitung "?".
+  Kiriman yang tertahan di perangkat lain tetap bisa mendarat belakangan (sekarang hanya lewat ambil alih) — penangkal sungguhan = rules, TUGAS OWNER.
+  Uji P4-… di `uji_tutup_buku_bertahap.py` (109 lulus, 84 kontrol berbunyi).
