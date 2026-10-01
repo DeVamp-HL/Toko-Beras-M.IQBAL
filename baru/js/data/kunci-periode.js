@@ -7,6 +7,9 @@
 // Peta lengkap & keputusan owner: docs/peta-kunci-periode.md.
 export const KP_ID = 'kunciPeriode';
 export const KP_ID_ATUR = 'kunciAtur';
+// Keputusan owner 1 Okt 2026 (pilihan A): bulan 2026 TIDAK dikunci sampai tutup buku 2026 selesai — kunci berbentuk awalan (mengunci September ikut
+// mengunci 2022–Agustus), lalu saldo pembuka bertanggal lama & arsip tutup buku pasti ditolak server. Kunci bulanan mulai Januari 2027.
+export const KP_KUNCI_MULAI = '2027-01';
 export const KP_TENGGANG_MIN = 3;       // hari — DITEGAKKAN rules (tenggangMin()): bulan M paling cepat dikunci tanggal KP_TENGGANG_MIN + 1 bulan M+1 (owner 25 Sep: 3 → tanggal 4)
 export const KP_TENGGANG_BAWAAN = 3;    // bawaan layar = minimal: kunci paling cepat tanggal 4 (bisa dinaikkan owner, tidak di bawah minimal)
 export const KP_BATAS_GET = 18;         // access call per kiriman: batas Firebase 20 per batch, sisa 2 (keputusan owner 24 Sep)

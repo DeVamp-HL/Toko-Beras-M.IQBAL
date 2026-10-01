@@ -3,7 +3,7 @@
 // terakhir, satu langkah mundur, alasan ≥ 10 huruf; bulan yang punya setoran pajak minta nama bulannya diketik ulang. Server (firestore.rules v4) menegakkan
 // hal yang sama: sampaiBulan hanya naik satu bulan (atau pertama kali dari kosong), turun tepat satu dengan alasan, dan tidak pernah bulan yang masih dalam
 // tenggang minimal. Keputusan owner K1–K6 & syarat 25b: docs/peta-kunci-periode.md.
-import { KP_ID, KP_ID_ATUR, KP_TENGGANG_MIN, KP_SIAP_25B, KP_VERSI_KASIR_25B, KP_VERSI_HARI, kpVersiKasirCukup, kpPerangkatKasir, kpNamaAplikasiKasir, kpWib, kpIdx, kpBulanStr, kpGeser, kpNamaBulan, kpAkhirBulan, kpBolehDikunci, kpDok, kpBulanDok, kpKalimat } from '../data/kunci-periode.js';
+import { KP_ID, KP_ID_ATUR, KP_TENGGANG_MIN, KP_KUNCI_MULAI, KP_SIAP_25B, KP_VERSI_KASIR_25B, KP_VERSI_HARI, kpVersiKasirCukup, kpPerangkatKasir, kpNamaAplikasiKasir, kpWib, kpIdx, kpBulanStr, kpGeser, kpNamaBulan, kpAkhirBulan, kpBolehDikunci, kpDok, kpBulanDok, kpKalimat } from '../data/kunci-periode.js';
 import { cacheMentah, dokDiCache, ambilPenjualan, ambilPenjualanSemua, ambilTutupHari, ambilSemuaBatch, ambilProduksi, ambilUtangPemasokMutasi, ambilPiutangMutasi, kunciSampai, kunciTenggang } from '../data/toko.js';
 import { hitungLabaBersihRentang, hitungNeraca } from '../mesin/beku.js';
 import { kunciPelanggan } from '../mesin/pembantu.js';
@@ -64,6 +64,9 @@ export function kpDaftarPeriksa(bulan, kini, K) {
   const butir = [];
   const tambah = (x) => butir.push(Object.assign({ blokir: false, perluCentang: false, rincian: [], aksi: [] }, x));
   // ---- ⛔
+  // keputusan owner 1 Okt (A): bulan sebelum KP_KUNCI_MULAI tidak dikunci (K.kunciMulai = uji saja)
+  const mulai = K.kunciMulai !== undefined ? K.kunciMulai : KP_KUNCI_MULAI; const bolehTahun = bulan >= mulai;
+  tambah({ id: 'tundaTutupBuku', blokir: true, ok: bolehTahun, teks: 'Kunci bulan dimulai ' + kpNamaBulan(KP_KUNCI_MULAI) + ' (keputusan owner 1 Okt 2026)', ket: bolehTahun ? 'boleh' : nama + ' TIDAK dikunci sampai tutup buku ' + bulan.slice(0, 4) + ' selesai — mengunci satu bulan ikut mengunci semua bulan sebelumnya, lalu saldo pembuka & arsip tutup buku ditolak server' });
   const siap = KP_SIAP_25B || !!K.siap25b;
   tambah({ id: 'siap25b', blokir: true, ok: siap, teks: 'Sistem lama & kasir darurat siap menghadapi bulan terkunci (putaran 25b)', ket: siap ? 'siap' : 'BELUM — sampai putaran 25b, satu nota kasir yang tertahan offline lalu tiba sesudah bulannya terkunci membuat antrean tablet itu MACET (nota sesudahnya ikut tertahan), dan index.html memunculkan "Database terkunci" berulang. Kunci pertama menunggu 25b (keputusan owner 25 Sep).' });
   const bolehT = kpBolehDikunci(bulan, kini, tenggang);
@@ -151,6 +154,8 @@ export function susunLupakanPerangkat(id, yakin) {
 export function kpPerhatian(kini, uji) {
   if (!KP_SIAP_25B && !(uji && uji.siap25b)) return [];
   const c = kpCalon(kini); if (!c || !kpBolehDikunci(c, kini, kunciTenggang())) return [];
+  // keputusan owner 1 Okt (A): bulan 2026 tidak dikunci — Beranda tidak menyuruh mengunci
+  if (c < (uji && uji.kunciMulai !== undefined ? uji.kunciMulai : KP_KUNCI_MULAI)) return [];
   const W = kpWib(kini); const telat = kpIdx(c) < W.idx - 1;
   return [{ teks: 'Kunci bulan: ' + kpNamaBulan(c) + ' belum dikunci' + (telat ? ' (sudah lebih dari sebulan)' : ''), nilai: 'Uang › Tutup buku', awas: telat }];
 }

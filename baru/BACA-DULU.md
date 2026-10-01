@@ -1314,3 +1314,13 @@ Tutup hari). Versi 2 sekaligus:
   karena retur tetap ditulis); kertas Tutup hari: "Retur & refund" sejajar "Penjualan" & "Omzet" (bukan anak Penjualan); angka SEBELUM retur
   di Laba & laba-rugi berkop bernama "Penjualan terhitung" — "Omzet terhitung" hanya angka sesudah retur (Banding). Uji +8, kontrol +14.
   Tidak diubah: Kendali biaya "omzet nyata / hari" = ber-HPP (dasar yang sama dengan impas/hari, sengaja).
+
+## K1 · Kunci bulan 2026 ditunda sampai tutup buku 2026 (keputusan owner 1 Okt 2026, cabang `audit/k1-tunda-kunci-2026`)
+
+Kunci bulan berbentuk awalan: mengunci September 2026 ikut mengunci semua bulan sebelumnya (sampai 2022). Tutup buku menulis saldo pembuka
+bertanggal lama (piutang ikut tanggal utang tertua, bon pemasok ikut tanggal bon) dan menghapus catatan tahun lama ke arsip — semuanya jatuh di bulan
+terkunci dan pasti ditolak server, jadi tutup buku 2026 mustahil begitu satu bulan 2026 dikunci. Owner memilih **A**: kunci bulanan mulai Januari 2027.
+- `data/kunci-periode.js` `KP_KUNCI_MULAI = '2027-01'`; daftar periksa Kunci bulan punya butir ⛔ pertama "Kunci bulan dimulai Januari 2027" — bulan
+  sebelumnya tidak bisa dikunci (kalimat sebabnya di layar). `K.kunciMulai` / `uji.kunciMulai` = jalan pintas uji saja.
+- Beranda tidak lagi menyuruh mengunci bulan 2026; peringatan pajak bulan 2026 menyebut "masih bisa bergeser sampai tutup buku 2026".
+- Untuk 2027: pembuka bertanggal 1 Jan + arsip tanpa hapus (pilihan C) dirancang di putaran sendiri.
