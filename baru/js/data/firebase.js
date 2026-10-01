@@ -297,7 +297,8 @@ export async function tulisBerkas(daftar, hapus, opsi) {
         koleksi: x.koleksi, idDok: String(d.id), oleh: d.diubahOleh, olehUid: akun.uid, perangkat: k.perangkat, ringkas: ringkasDok(d) };
       if (x.lama && JEJAK_NILAI_LAMA[jejakKunci(x.koleksi, d.id)]) { log.aksi = 'ubah'; log.lama = x.lama; }   // K6: ubah pajak & dokumen kunci → nilai lamanya ikut di jejak
       // audit 39b no. 45: kiriman ditolak yang ditulis ulang owner — baris jejaknya menyebut pencatat asli
-      const logT = opsi && opsi.pencatatAsli ? jejakTulisUlang(log, opsi.pencatatAsli) : log;
+      // tinjauan P45-a: pencatat asli DOKUMENNYA bila sudah ada (tulis ulang kedua kali: kiriman yang ditolak itu milik owner, dokumennya tetap menyebut karyawan)
+      const logT = opsi && opsi.pencatatAsli ? jejakTulisUlang(log, d.pencatatAsli || opsi.pencatatAsli) : log;
       b.set(doc(db, KOLEKSI_LOG, String(logT.id)), logT);
     }
   });

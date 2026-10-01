@@ -232,7 +232,26 @@ ok('firebase.js: bukan-owner = SATU jejakKiriman per kiriman; owner = satu jejak
   && F.indexOf("if (email === EMAIL_OWNER) return terapkan(keadaanAkun(email, u.uid, null));") > 0 && F.indexOf("onSnapshot(doc(db, 'aksesAkun', u.uid)") > 0 && F.indexOf('EMAIL_TOKO') < 0);
 ok('firebase.js (39b no. 45): tulis ulang kiriman ditolak memakai susunTulisUlang (kolom pencipta TIDAK dibuang) dan memberi tahu penulis pusat pencatat aslinya; baris jejak owner lewat jejakTulisUlang',
   F.indexOf('const T = susunTulisUlang(x); let bersih = T.dokumen;') > 0 && F.indexOf('const r = await tulisBerkas(bersih, [], { pencatatAsli: T.asli });') > 0 && F.indexOf("'oleh', 'olehUid', 'diubahOleh'") < 0
-  && F.indexOf('const logT = opsi && opsi.pencatatAsli ? jejakTulisUlang(log, opsi.pencatatAsli) : log;\n      b.set(doc(db, KOLEKSI_LOG, String(logT.id)), logT);') > 0);
+  && F.indexOf('const logT = opsi && opsi.pencatatAsli ? jejakTulisUlang(log, d.pencatatAsli || opsi.pencatatAsli) : log;\n      b.set(doc(db, KOLEKSI_LOG, String(logT.id)), logT);') > 0);
+// tinjauan P45-a: tulis ulang KEDUA kali — kiriman owner (tulis ulang pertama yang ditolak lagi) membawa dokumen yang SUDAH ber-pencatatAsli karyawan. Ekspresi baris
+// jejak penulis pusat diambil dari firebase.js APA ADANYA → pencatat asli = karyawan dari dokumennya, bukan Owner pemilik kiriman; kiriman owner murni tetap menyebut Owner
+(function () {
+  var mT = /const logT = (opsi && opsi\.pencatatAsli \? jejakTulisUlang\(log, [^;]*\) : log);/.exec(F);
+  var pusat = mT ? new Function('log', 'd', 'opsi', 'jejakTulisUlang', 'return ' + mT[1] + ';') : null;
+  var kO = { perangkat: 'HP Owner Contoh', lokasi: 'toko', kini: W.kini };
+  var asliK = { nama: 'Karyawan Contoh', uid: 'uid-kry', peran: 'karyawan', perangkat: 'Tablet Contoh', pada: '2026-09-24T02:00:00.000Z' };
+  var nota1 = { id: 9041, trxId: 'T9041', tanggal: '2026-09-24', jam: '09:00', jenis: 'karung', namaProduk: 'Beras Contoh', totalKg: 5, hargaTotal: 60000, caraBayar: 'Tunai', namaPelanggan: '',
+    oleh: 'Karyawan Contoh', olehUid: 'uid-kry', perangkat: 'Tablet Contoh', pencatatAsli: asliK, diubahOleh: 'Owner', diubahOlehUid: 'uid-owner', diubahPerangkat: 'HP Owner Contoh', diubahPada: '2026-09-24T03:00:00.000Z' };
+  var E2 = { id: 'k45b', pada: '2026-09-24T03:00:00.000Z', akunUid: 'uid-owner', akunNama: 'Owner', peran: 'owner', keadaan: 'ditolak', alasan: 'permission-denied', dokumen: [{ koleksi: 'penjualan', data: nota1 }] };
+  var T2 = susunTulisUlang(E2); var d2 = beriAtribusiAkun(T2.dokumen[0].data, OWN, kO, true);
+  var log2 = { id: 9901, pada: W.kini, aksi: 'tulis', koleksi: 'penjualan', idDok: '9041', oleh: d2.diubahOleh, olehUid: 'uid-owner', perangkat: kO.perangkat, ringkas: ringkasDok(d2) };
+  var nota3 = beriAtribusiAkun({ id: 9042, trxId: 'T9042', tanggal: '2026-09-24', jam: '10:00', jenis: 'karung', namaProduk: 'Beras Contoh', totalKg: 5, hargaTotal: 60000, caraBayar: 'Tunai', namaPelanggan: '' }, OWN, kO, false);
+  var T3 = susunTulisUlang({ id: 'k45c', pada: W.kini, akunUid: 'uid-owner', akunNama: 'Owner', peran: 'owner', keadaan: 'ditolak', dokumen: [{ koleksi: 'penjualan', data: nota3 }] }); var d3 = beriAtribusiAkun(T3.dokumen[0].data, OWN, kO, true);
+  var L2 = pusat && pusat(log2, d2, { pencatatAsli: T2.asli }, jejakTulisUlang), L3 = pusat && pusat(Object.assign({}, log2, { id: 9902, idDok: '9042', ringkas: ringkasDok(d3) }), d3, { pencatatAsli: T3.asli }, jejakTulisUlang);
+  ok('tinjauan P45-a: tulis ulang kedua kali (kiriman owner yang ditolak lagi, dokumennya sudah ber-pencatatAsli karyawan) — baris jejak penulis pusat firebase.js: "pencatat asli Karyawan Contoh (karyawan)", uid asli karyawan, owner tetap penulisnya; kiriman owner murni (dokumen tanpa pencatatAsli) tetap "pencatat asli Owner (owner)"',
+    !!L2 && T2.asli.uid === 'uid-owner' && d2.pencatatAsli.uid === 'uid-kry' && / · ditulis ulang owner, pencatat asli Karyawan Contoh \(karyawan\)$/.test(L2.ringkas) && L2.pencatatAsli.uid === 'uid-kry' && L2.olehUid === 'uid-owner'
+    && / · ditulis ulang owner, pencatat asli Owner \(owner\)$/.test(L3.ringkas) && L3.pencatatAsli.uid === 'uid-owner', JSON.stringify([mT && mT[1], L2, L3 && L3.ringkas]));
+})();
 ok('firebase.js: bukan-owner tidak pernah HAPUS / bersihkan / arsip; nonaktif = cabut SEMUA pendengar; satu pendengar ditolak tidak mematikan aplikasi (status.masuk tidak dimatikan)',
   F.indexOf("if (!status.akun || status.akun.jenis !== 'owner') { const p = periksaKiriman(status.akun, [], daftar") > 0 && (F.match(/if \(pemilikSaja\(\)\)/g) || []).length === 3
   && F.indexOf('} else { cabutPendengar(); }') > 0 && F.indexOf("includes('permission-denied')) { status.masuk = false; }") < 0);
@@ -327,6 +346,7 @@ if __name__ == '__main__':
             '39b-45: katalog kasir ikut diberi pencatatAsli': (js.replace("if ((data.oleh !== undefined || data.diubahOleh !== undefined) && !data.pencatatAsli)", "if (!data.pencatatAsli)"), S),
             '39b-45: jejak tulis ulang tanpa nama asli': (js.replace("'ditulis ulang owner, pencatat asli ' + (a.nama || '?')", "'ditulis ulang owner'"), S),
             '39b-45 firebase: tulis ulang cara lama (kolom pencipta dibuang)': (js, ganti('firebase', 'const T = susunTulisUlang(x); let bersih = T.dokumen;', "const T = { asli: null }; let bersih = (x.dokumen || []).map((d) => { const data = Object.assign({}, d.data); ['oleh', 'olehUid', 'diubahOleh', 'diubahOlehUid', 'diubahPerangkat', 'diubahPada'].forEach((k) => delete data[k]); return { koleksi: d.koleksi, data }; });")),
+            'P45-a firebase: jejak tulis ulang kedua kali memakai akun kiriman (Owner), bukan pencatat asli dokumennya': (js, ganti('firebase', 'jejakTulisUlang(log, d.pencatatAsli || opsi.pencatatAsli)', 'jejakTulisUlang(log, opsi.pencatatAsli)')),
             '39b-45 firebase: jejak owner tanpa pencatat asli': (js, ganti('firebase', 'const r = await tulisBerkas(bersih, [], { pencatatAsli: T.asli });', 'const r = await tulisBerkas(bersih);')),
             'firebase: pencocokan sinkron tanpa kkMentah': (js, ganti('firebase', 'antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache, kkMentah), ', 'antre.cocokkanSesudahSinkron(cekDariCache(dokDiCache), ')),
             'SS2 akun bisa didaftarkan sebagai owner': (js.replace("const SS_PERAN_AKUN = SS_PERAN.filter((p) => p.id !== 'owner');", "const SS_PERAN_AKUN = SS_PERAN;"), S),
