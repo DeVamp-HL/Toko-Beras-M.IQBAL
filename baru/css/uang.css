@@ -4,6 +4,7 @@ main.layar-uang { position: relative; z-index: 1; display: flex; flex-direction:
 .layar-uang section { display: flex; flex-direction: column; gap: 10px; animation: masuk 420ms cubic-bezier(.2,.8,.2,1); }
 main.layar-uang.masuk > header, main.layar-uang.masuk > .jalur { animation: rkNaik 520ms cubic-bezier(.2,.8,.2,1) both; }
 .layar-uang .kaca-btn.kecil { min-height: 30px; font-size: 11.5px; padding: 0 10px; } .layar-uang .kaca-btn.mati { opacity: 0.45; pointer-events: none; }
+.layar-uang .seg.mati { opacity: 0.45; pointer-events: none; }   /* tutup buku putaran 3 AAL1: tombol pita K6 (lanjutkan / batalkan / selesai) mati selama sibuk */
 .layar-uang .jalur.rapat .seg { min-height: 36px; font-size: 12px; } .layar-uang .jalur.bungkus { flex-wrap: wrap; overflow: visible; } .layar-uang .jalur.bungkus .seg { flex: none; padding: 5px 10px; font-size: 11.5px; }
 .layar-uang .utama.redup { opacity: 0.55; font-size: 13px; } .layar-uang .awas-teks { color: var(--awas); }
 .layar-uang .kepala-lembar { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; } .layar-uang .kepala-lembar .kaca-btn { flex: none; min-height: 36px; padding: 0 12px; }

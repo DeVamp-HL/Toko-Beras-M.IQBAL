@@ -9,7 +9,7 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut }
   from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
 import { KOLEKSI } from './koleksi.js';
-import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData } from './toko.js';
+import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda, setelDariCache, setelHapusTertunda } from './toko.js';
 import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
 import { buatAntre, cekDariCache } from './antre-lokal.js';
 import { KP_BATAS_GET } from './kunci-periode.js';
@@ -140,7 +140,11 @@ function pasangPendengar(akun) {
       const daftar = [], tunda = [];
       snap.forEach((d) => { const x = d.data(); daftar.push(x); if (d.metadata && d.metadata.hasPendingWrites) tunda.push({ koleksi: k.nama, id: d.id, ringkas: ringkasDok(x), pada: x.diubahPada || x.pada || '', oleh: x.oleh || x.diubahOleh || '', perangkat: x.diubahPerangkat || x.perangkat || '' }); });
       _antrePerKoleksi[k.nama] = tunda; status.antre = Object.keys(_antrePerKoleksi).reduce((a, n) => a.concat(_antrePerKoleksi[n]), []);
+      // §8 no. 4: tutup buku bertahap tidak menghitung dokumen yang masih menunggu server sebagai "masuk" (toko.js dokTertunda)
+      setelTertunda(k.nama, tunda.map((t) => t.id));
       _dariCache[k.nama] = !!(snap.metadata && snap.metadata.fromCache);
+      // putaran 3 AAL4: tutup buku membaca tanda ini (toko.js koleksiDariCache) — Lanjutkan & Batalkan tidak jalan dari salinan perangkat
+      setelDariCache(k.nama, _dariCache[k.nama]);
       pasok(k.nama, daftar); tandaiSiap(k.nama);
       // dariCache = angka dari simpanan perangkat (belum tentu terbaru) — layar diberi tahu supaya jujur
       status.offline = !!(snap.metadata && snap.metadata.fromCache && typeof navigator !== 'undefined' && navigator.onLine === false);
@@ -187,7 +191,7 @@ function cabutPendengar() {
   Object.keys(_antrePerKoleksi).forEach((n) => { delete _antrePerKoleksi[n]; }); status.antre = [];
   Object.keys(_dariCache).forEach((n) => { delete _dariCache[n]; }); kkLupakanServer(); clearTimeout(_kkTimer);
   status.koleksiSiap = 0; status.ditolak = []; status.galat = '';
-  KOLEKSI.forEach((k) => pasok(k.nama, []));
+  KOLEKSI.forEach((k) => { pasok(k.nama, []); setelTertunda(k.nama, []); });
 }
 // ---- salinan antre: sesudah semua pendengar siap, online, dan tidak ada tulisan tertunda — kiriman sesi lain dicocokkan ke server ----
 let _cocokJalan = false;
@@ -304,10 +308,14 @@ export async function tulisBerkas(daftar, hapus, opsi) {
   // salinan antre SEBELUM dikirim; penuh = tidak dikirim (tidak ada salinan lama yang dibuang)
   const idKiriman = 'k-' + idUnik(); const s0 = antre.tambah({ id: idKiriman, pada: k.kini, akunUid: akun.uid, akunNama: akun.nama, peran: akun.peran, dokumen: ditulis });
   if (s0.tolak) return { gagal: true, pesan: s0.tolak };
-  segarkanLokal(); status.menunggu += 1; beriTahu();
+  // putaran 3 AAL5: hapus di kiriman ini dicatat menunggu server sampai commit selesai (dokumennya sudah hilang dari cache — tutup buku menghitungnya 'tunggu')
+  setelHapusTertunda(idKiriman, H); segarkanLokal(); status.menunggu += 1; beriTahu();
   const janji = b.commit().then(() => { antre.konfirmasi(idKiriman); return { ok: true }; })
     .catch((e) => { const kode = String((e && e.code) || e); antre.tandaiDitolak(idKiriman, kode, new Date().toISOString()); status.galat = 'tulis ditolak: ' + kode; beriTahu(); return { gagal: true, pesan: status.galat + ' — salinannya ada di Sistem › Perangkat (ditolak server)' }; })
-    .finally(() => { segarkanLokal(); status.menunggu = Math.max(0, status.menunggu - 1); beriTahu(); });
+    .finally(() => { setelHapusTertunda(idKiriman, null); segarkanLokal(); status.menunggu = Math.max(0, status.menunggu - 1); beriTahu(); });
+  // tutup buku bertahap (opsi.tunggu): kiriman berikutnya hanya sesudah server MENGAKU yang ini — 30 detik tanpa jawaban = berhenti (kirimannya tetap di antrean
+  // perangkat; kalau belakangan masuk, "Lanjutkan" melihatnya dari id-nya dan tidak mengirim ulang)
+  if (opsi && opsi.tunggu) return Promise.race([janji, new Promise((r) => setTimeout(() => r({ antre: true, pesan: 'server belum mengaku dalam 30 detik' }), 30000))]);
   // tunggu sebentar: kalau server mengaku dalam 1,5 detik → ok; kalau tidak → antre (offline / lambat), bukan gagal
   return Promise.race([janji, new Promise((r) => setTimeout(() => r({ antre: true }), 1500))]);
 }

@@ -9,7 +9,7 @@
 import { hitungUtangPemasok, hitungStokBahanKemasan, hitungStokKarungPerMerk } from '../mesin/beku.js';
 import { LABEL_BAHAN_KEMASAN, kunciPelanggan, uangKembaliRetur } from '../mesin/pembantu.js';
 import { KOLEKSI } from '../data/koleksi.js';
-import { ambilPenjualan, ambilRetur, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilPetaJenisBeras, cacheMentah } from '../data/toko.js';
+import { ambilPenjualan, ambilRetur, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilPetaJenisBeras, cacheMentah, pembukaBerlaku } from '../data/toko.js';
 import { tempoPemasok } from './bon-pemasok-logika.js';
 import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
 import { semuaBon, pesanTagih } from './bon-logika.js';
@@ -196,7 +196,7 @@ export function susunSetujuiKecil(w) {
 const SS_TAK_DICADANGKAN = { logAktivitas: 1, perangkatStatus: 1 };   // jejak terbatas & denyut bukan data toko
 /** Era tutup buku = tahun saldo pembuka terakhir (eraTutupBuku index.html); null = belum pernah tutup buku. */
 export function ssEraTutupBuku() {
-  let t = null; ['batch', 'piutang', 'kasbon', 'produksi', 'bahanKemasan', 'bahanLiteran', 'utangPemasok', 'utangOwner', 'amplop'].forEach((c) => cacheMentah(c).forEach((x) => { if (x && x.tutupBuku) { const n = Number(x.tahunDari); if (isFinite(n) && (t === null || n > t)) t = n; } }));
+  let t = null; ['batch', 'piutang', 'kasbon', 'produksi', 'bahanKemasan', 'bahanLiteran', 'utangPemasok', 'utangOwner', 'amplop'].forEach((c) => cacheMentah(c).forEach((x) => { if (x && x.tutupBuku && pembukaBerlaku(x)) { const n = Number(x.tahunDari); if (isFinite(n) && (t === null || n > t)) t = n; } }));
   return t;
 }
 /** Isi berkas cadangan = bentuk unduhBackup() sistem lama (versi 5): semua koleksi + peta jenis beras + cap era; koleksi baru ikut. */

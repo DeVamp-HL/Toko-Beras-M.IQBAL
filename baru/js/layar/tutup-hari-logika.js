@@ -160,6 +160,8 @@ export function susunTutup(D, w, yakinUlang) {
   // titik = isi SESUDAH tutup: S sudah memuat sisihan/amankan/MDR yang ditulis malam ini sebelumnya (bila tutup ulang); yang baru ditambahkan, MDR diganti
   const titik = { id: 'titikKas', tanggal: iso, laci: H.laciAkhir, rekening: rekening + H.mdrLama - mdrBaru, amplop: amplop + H.sisihBaru, brankas: brankas + H.amankanBaru, diubahPada: w.kini };
   dokumen.push({ koleksi: 'pengaturan', data: titik });
+  // tutup buku bertahap (d): salinan titik malam ini ikut di dokumen tutupHari-nya — hitungan tutup hari 31 Des tetap bisa jadi patokan kas tahun walau titik kas sudah maju
+  dokTutup.titik = { laci: titik.laci, rekening: titik.rekening, amplop: titik.amplop, brankas: titik.brankas };
   return { dokumen, hapus, titik, H, teks: teksRekap(H, iso, w.jam), patch: { kabar: 'Hari ' + tanggalPendek(iso) + ' ditutup. Laci ' + RP(H.hitung) + (H.selisih === null ? ' (selisih tidak bisa ditanya)' : H.selisih === 0 ? ' pas' : ' selisih ' + RP(H.selisih)) + (H.sisihJadi ? ' · amplop +' + RP(H.sisihJadi) : '') + (H.amankanJadi ? ' · brankas +' + RP(H.amankanJadi) : '') + (H.mdrDicatat && H.mdrJadi ? ' · potongan QRIS ' + RP(H.mdrJadi) + ' jadi biaya' : '') + (H.dilewati.length ? ' · tidak dikerjakan: ' + H.dilewati.join(', ') : '') + '. Patokan kas maju ke malam ini.', kabarAwas: false, tertutup: true, koreksi: false } };
 }
 /** Penutupan yang sudah ada untuk digambar sesudah tertutup (dari dokumen, bukan draf). */

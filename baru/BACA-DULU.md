@@ -354,7 +354,8 @@ Peta & keputusan owner K1–K6: `docs/peta-kunci-periode.md`. Uji server: `docs/
   get() kunci (hanya bulan berjalan / tenggang).
 - **Tutup buku tahunan (K1) — rancang ulang WAJIB selesai sebelum Desember 2026**: sungguhan ditolak selama tahunnya punya bulan terkunci, DAN (diukur)
   saldo pembukanya > 18 pemeriksaan kunci (pembuka piutang = tanggal utang tertua, bon pemasok = tanggal bon; cadangan toko 25 Sep: 24) → ditolak di layar
-  sebelum dikirim. Rancangan baru: arsip = salinan + penanda, tidak menghapus; catatan dasar 10 tahun; tiap kiriman ≤ 18.
+  sebelum dikirim. Rancangan baru: arsip = salinan + penanda, tidak menghapus; catatan dasar 10 tahun; tiap kiriman ≤ 18. **Bagian "tiap kiriman ≤ 18"
+  SELESAI di "Tutup buku bertahap" (bawah)**; penolakan selama ada bulan terkunci di tahun itu (arsip yang menghapus) TETAP — keputusan owner.
 
 ## Putaran 25b — antrean kasir tidak macet, batal karcis darurat (26 Sep 2026, PR #41)
 
@@ -1145,6 +1146,7 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/peta_akses.py --kiriman` (+ `--kontrol`) | access call TERBURUK per jenis kiriman bukan-owner (nota ben/karyawan, adukan, terima bon, pelanggan baru, struk; 39: isi ulang wadah ½ karung 6 / 20 & cek tutup toko, tiga kiriman terlarang wajib ditolak di perangkat) dari fungsi asli di jsc, lewat `periksaKiriman` asli; gagal bila > 18; tiap tindakan yang dibuka server wajib terhitung; layar wajib menyerahkan batasnya + 12 kontrol |
 | `alat-uji/uji_pajak_baru.py` (+ `--kontrol`) | 43 skenario modul pajak (batas bebas di tengah bulan, omzet luar tanpa hitung ganda, kosong ≠ nol, badan tanpa angka, setoran & angka berubah, kurang/lebih, lewat tempo, ambang 70/85/95/100 + proyeksi, regresi penulis rekapOmzet, DK3 = layar Pajak, tanpa NIK/NPWP, status pasangan PH/MT/satu kesatuan/belum diketahui, dua angka omzet) + 29 kontrol; di cadangan toko: omzet layar Pajak = mesin laba = DK3 |
 | `alat-uji/uji_kunci_periode.py` (+ `--kontrol`) | 45 skenario kunci periode (WIB & tenggang 3 hari, tiap ⛔, hari tanpa tutup, kunci/buka satu langkah, pembalik hari ini, keputusan K1–K6, penjaga pusat & kirim bertahap, final bulanan, pajak) + 39 kontrol; di cadangan toko: kunci Agustus → Juli & Agustus byte-sama, satu retur hari ini mengubah September saja |
+| `alat-uji/uji_tutup_buku_bertahap.py` (+ `--kontrol`) | tutup buku bertahap: 40 nama → 3 kiriman ≤ 18, berita acara berjalan di kiriman 1 & penanda di kiriman terakhir, tahun lama utuh sampai penanda (era, FINAL, piutang tidak dobel), putus di kiriman 2 → lanjut tanpa kirim ulang, arsip terputus → lanjut, batal (dari berjalan / terkunci / terputus) per ≤ 18, titik kas tahun dari tutup hari 31 Des, periksa ulang hari ini (penjualan 1 Jan), langkah 7 tahun terkunci; 4 statis uang.js; 17 kontrol; asap data toko 5 Jan 2027 |
 | `alat-uji/peta_akses.py --kiriman` bagian owner | kiriman owner yang menyentuh bulan lampau, dua keadaan (tanpa kunci / Agustus terkunci), fungsi asli ≤ 18 pemeriksaan kunci; tiap penulis koleksi bertanggal wajib terdaftar — 25 DIUKUR (semua yang ber-perulangan: nota 40 baris, batal nota, ini dia, cocokkan, tutup hari, tutup buku & batalnya, arsip per 18), 20 beralasan (jumlah dokumen tetap); arsip dipotong `KP_BATAS_GET`; kasir*.html 1 dokumen per permintaan |
 | `alat-uji/uji_antrean_kasir.py` (+ `--kontrol`, `--gambar DIR`) | 25b: kasir darurat & kasir.html di Chrome headless + Firestore palsu — karcis ke-2 dari 5 ditolak (sisanya masuk), 401, sinyal/429/503, belum masuk, denyut & versi, tahan muat ulang; statis versi kembar; /baru/ ⛔ versi & Perlu perhatian |
 | `alat-uji/uji_sistem_lama_bacasaja.py` (+ `--kontrol`) | 25b: index.html hanya-baca — statis (tiap setDoc/deleteDoc/runTransaction berpenjaga, yang terbuka persis keputusan owner) + Chrome headless dengan Firebase palsu (antrean lama sekali, 35 koleksi ditolak, tombol sungguhan, pulihkan, baca riwayat) |
@@ -1340,6 +1342,54 @@ terkunci dan pasti ditolak server, jadi tutup buku 2026 mustahil begitu satu bul
   sebelumnya tidak bisa dikunci (kalimat sebabnya di layar). `K.kunciMulai` / `uji.kunciMulai` = jalan pintas uji saja.
 - Beranda tidak lagi menyuruh mengunci bulan 2026; peringatan pajak bulan 2026 menyebut "masih bisa bergeser sampai tutup buku 2026".
 - Untuk 2027: pembuka bertanggal 1 Jan + arsip tanpa hapus (pilihan C) dirancang di putaran sendiri.
+
+## Tutup buku bertahap (rancangan Okt 2026; owner 1 Okt: "atur saja dengan semestinya; lolosin dulu 18 nama yang berhutang")
+
+Batas 18 pemeriksaan kunci per kiriman TETAP. Saldo pembuka tidak lagi ditolak bila > 18 — dipecah (`kunci-periode.js kpPotong`, aturan yang sama dengan
+penjaga pusat). Cadangan toko 1 Okt dihitung seolah 5 Jan 2027: 57 dokumen pembuka, 24 pemeriksaan (19 nama berutang + 4 bon pemasok + titik kas 31 Des)
+→ 2 kiriman (18 + 6). Batalkan juga dipecah (dulu satu kiriman 23+ → ditolak penjaga, tutup buku tak bisa dibatalkan).
+- **Urutan**: kiriman 1 = berita acara `tutupBukuAcara/{tahun}` status **`berjalan`** (rencana: daftar kiriman + id; dokumen pembuka lengkap; tanpa
+  pemeriksaan) + potongan pembuka pertama · kiriman berikutnya = potongan pembuka · kiriman TERAKHIR = + **penanda**: titik kas 31 Des · `pengaturan/tutupBuku`
+  · berita acara `terkunci`. Satu kiriman saja (≤ 18) = sama dengan dulu (tanpa `berjalan`). Lalu arsip per 18 seperti dulu.
+- **Tahun lama utuh sampai penanda**: `data/toko.js pembukaBerlaku` — saldo pembuka tahun yang berita acaranya `berjalan` / `membatalkan` / `dibatalkan`
+  TIDAK terlihat mesin (9 `ambil*` koleksi pembuka) dan era (`bkEra`, `ssEraTutupBuku`). Pembuka sistem lama (tanpa berita acara) & yang terkunci/selesai
+  tetap terlihat. Tanpa berita acara seperti itu `ambil*` mengembalikan larik yang sama (asap global laporan byte-sama dengan main).
+- **Lanjut** (`lanjutBuku`): kiriman yang belum masuk saja (dokumen pembukanya belum ada menurut id; kiriman penanda = berita acara belum `terkunci`), isi & id
+  sama dari berita acara — hanya dari perangkat yang memulainya (putaran 4). Ditolak bila 12 baris 31 Des berubah sejak mulai (`bkBerubah`). Mulai baru ditolak selama ada yang `berjalan`
+  / `membatalkan` atau pembuka sisa percobaan yang dibatalkan (`bkTertunda`).
+- **Kemajuan** (`kemajuanBuku`): pembuka n dari N kiriman (tahun MASIH TERBUKA) · arsip m dari M (angka DOBEL sampai habis) · selesaikan · batal. Pita di
+  atas K6 dengan lanjutkan / batalkan (dua ketukan) / unduh cadangan sesudah · selesai. Langkah 7 memakai tahun yang TERKUNCI (dulu tahun layar = tahun
+  berikutnya → "Kunci tahunnya dulu", berita acara tak pernah selesai).
+- **Batal** (`susunBatal`): kiriman 1 = berita acara `membatalkan` (+ era & titik bila sudah terkunci) + potongan tarik pertama; lalu tarik sisanya, kembalikan
+  arsip, `akhir` = `dibatalkan`. Titik kas dikembalikan hanya bila titik sekarang masih titik 31 Des tulisan tutup buku itu.
+- **Titik kas tahun** (`titikTahun`): titik kas sekarang bila ≤ 31 Des; kalau tutup hari Januari sudah memajukannya → kolom **`titik`** dokumen `tutupHari`
+  terakhir ≤ 31 Des (ditulis tiap tutup hari sejak rancangan ini = isi tempat uang sesudah tutup). Titik kas 31 Des ditulis HANYA bila patokan belum melewati
+  31 Des; titik Januari (hitungan fisik lebih baru) dipertahankan. `saldoKantong(sampai, titikPakai)`, `barisTahun(tahun)`.
+- **Periksa ulang** (`periksaUlangBuku`, ganti `sesudahHidup`): 12 baris pada HARI tutup buku dimulai (disimpan di berita acara) sebelum vs sesudah kunci & arsip
+  — dulu 1 Jan vs 31 Des, penjualan 1 Jan membuat stok & laci "tidak sama" palsu.
+- Penulis: `tulisDokumen(…, { tunggu: true })` → `firebase.js tulisBerkas` menunggu pengakuan server (30 detik), bukan 1,5 detik.
+- Uji `uji_tutup_buku_bertahap.py` (+ `--kontrol`, CI): 30 skenario + 4 statis, 17 kontrol, asap data toko; `uji_uang_baru.py`, `uji_kunci_periode.py`
+  (asap: 2 kiriman 18 + 6), `peta_akses.py --kiriman` (25 nama → 2 tahap) disesuaikan. Rules TIDAK berubah.
+- BELUM: arsip yang menghapus vs bulan terkunci (K1) — keputusan owner; cadangan yang diunduh di tengah tutup buku membawa pembuka setengah (jangan dipulihkan
+  lewat sistem lama).
+- **Syarat §8 (tinjauan 1 Okt) dibereskan** — rincian `docs/rancangan-tutup-buku-bertahap.md` §9: pembuka ber-`bertahap` terlihat hanya bila batch PENANDA
+  (`penandaBuku`, koleksi yang staf baca) ada → HP staf = HP owner di tiap titik putus (rules tidak berubah); Lanjutkan menilai titik kas saat kirim, memecah
+  ulang sisa dengan jam sekarang, dan menyegarkan patokan periksa ulang; tulisan yang masih menunggu server (`toko.js dokTertunda`, diisi `firebase.js`) =
+  fase `tunggu`; "selesai" menjalankan periksa ulang (beda = ketukan kedua); kalimat berhenti dari `kabarBerhentiBuku`; tanggal pembatalan lama dibuang saat
+  mulai baru; daftar periksa Kunci bulan punya butir ⛔ `tutupBukuTuntas`. Uji N1–N9 di `uji_tutup_buku_bertahap.py`.
+- **Putaran 3 (tinjauan + sanggah sesudah §9) dibereskan** — rincian `docs/rancangan-tutup-buku-bertahap.md` §10: arsip berhenti bila tahun itu dibatalkan
+  dari perangkat lain (potongan yang terlanjur pindah dikembalikan, pembatalan membaca arsip ulang); tombol pita mati sungguh mati; hasil periksa ulang
+  dibekukan saat arsip habis (`periksaArsip`); "belum bisa dihitung" ≠ TIDAK SAMA; penanda tahun lalu diarsipkan paling akhir; `terkunci` dengan pembuka
+  kurang = fase `rusak` (batalkan); Lanjutkan & Batalkan hanya dari data server (`toko.js koleksiDariCache`); hapus yang menunggu server = fase `tunggu`
+  (`setelHapusTertunda`); satu satuan pita / kalimat / Lanjutkan (saldo pembuka, "kiriman lanjutan i dari n"). Uji P3-… di `uji_tutup_buku_bertahap.py`.
+- **Putaran 4 (owner 1 Okt: SATU PERANGKAT SAJA)** — rincian `docs/rancangan-tutup-buku-bertahap.md` §11: berita acara mencatat PEMEGANG (perangkat yang
+  memulai); Lanjutkan, Batalkan, lanjut arsip, periksa ulang & selesai hanya dari pemegang (`bkBukanPemegang`, satu tempat di logika); perangkat lain melihat
+  keadaan saja + tombol **ambil alih** (`susunAmbilAlih`: tersambung & data dari server, antrean kosong, berita acara diam ≥ 60 menit, pemegang tidak
+  berdenyut 15 menit, dua ketukan dengan kalimat peringatan); arsip membaca status sesudah potongan terakhir juga; hasil beku periksa ulang di
+  `pengaturan/periksaArsip<tahun>` tanpa status, bertanda percobaan; lembar K6 sesudah kunci memakai kalimat pita, sisi mesin yang tak terhitung "?".
+  Pembatalan lanjutan dari `dibatalkan` dipegang perangkat yang memulainya. Kiriman yang tertahan di perangkat lain tetap bisa mendarat belakangan (sekarang
+  lewat jalan MULAI — kiriman pertama yang tertahan sebelum server mengenal pemegangnya — atau ambil alih) — penangkal sungguhan = rules, TUGAS OWNER.
+  Uji P4-… di `uji_tutup_buku_bertahap.py` (110 lulus, 85 kontrol berbunyi).
 
 ## CSP /baru/ (keputusan owner 1 Okt 2026: "Pasang"; temuan HawkScan)
 

@@ -392,6 +392,7 @@ OWNER_JALUR = {
     'susunPenggantiTercatat': '1 dokumen retur (≤ 1 pemeriksaan); retur di bulan terkunci → ditolak logika',
     'susunBayar': 'bayar bon pemasok: 1 utangPemasokMutasi + paling banyak 1 biaya admin, bertanggal hari ini',
     'susunUrungBayar': 'urung bayar bon: hapus 1 pembayaran + paling banyak 1 biaya admin (dokumen barusan)',
+    'susunPeriksaArsip': 'hasil beku periksa ulang tutup buku (putaran 4 P4-4): 1 dokumen pengaturan/periksaArsip<tahun> — bukan titikKas, tidak dikunci (0 pemeriksaan)',
     'susunTitikRekening': 'catat isi rekening (putaran 29): 1 dokumen pengaturan/titikKas bertanggal kemarin atau hari ini (nilai baru dinilai; tenggang 3 hari melindungi tanggal 1–3)',
     'susunBayarBon': 'terima bon: 1 piutangMutasi bertanggal hari ini', 'susunHapusBon': 'hapus buku piutang: 1 piutangMutasi bertanggal hari ini',
     'susunBayarTagihan': '1 dokumen: biayaBulanan bulan INI atau pengeluaranHarian hari ini', 'susunBonus': '2 dokumen: biayaBulanan bulan INI + slipUpah hari ini',
@@ -456,8 +457,9 @@ function ukur(keadaan, jalur, fungsi, r) {
   if (!r || r.tolak) { H.baris.push({ keadaan: keadaan, jalur: jalur, fungsi: fungsi, ac: 0, tolak: String((r && r.tolak) || 'kosong').slice(0, 90) }); return; }
   var ac = 0, bertahap = false;
   if (r.kelompok) { var P = kpPotong(r.kelompok, dokDiCache, new Date(Date.now())); if (P.tolak) { salah(jalur + ': kelompok tidak bisa dipecah — ' + P.tolak); return; } ac = Math.max.apply(null, P.potongan.map(function (x) { return x.get; })); bertahap = P.potongan.length; }
+  else if (r.kiriman) { ac = Math.max.apply(null, r.kiriman.map(function (k) { return butuhGet(k.dokumen || [], k.hapus || []); })); bertahap = r.kiriman.length; }   // tutup buku bertahap (rancangan Okt 2026)
   else ac = butuhGet(r.dokumen || [], r.hapus || []);
-  var jaga = r.kelompok ? null : jagaKunci(r.dokumen || [], r.hapus || []);
+  var jaga = r.kelompok ? null : r.kiriman ? (r.kiriman.map(function (k) { return jagaKunci(k.dokumen || [], k.hapus || []); }).filter(Boolean)[0] || null) : jagaKunci(r.dokumen || [], r.hapus || []);
   if (keadaan === 'B' && (r.kelompok ? r.kelompok.some(function (x) { return jagaKunci(x.dokumen, x.hapus) && jagaKunci(x.dokumen, x.hapus).terkunci; }) : (jaga && jaga.terkunci))) salah(jalur + ' (B): logika MENGIRIM catatan bulan terkunci — layar menawarkan tindakan yang pasti ditolak server');
   H.baris.push({ keadaan: keadaan, jalur: jalur, fungsi: fungsi, ac: ac, bertahap: bertahap, dijaga: !!(jaga && jaga.gagal) });
 }
@@ -530,15 +532,16 @@ function ukurBerulang(keadaan) {
     var rk = susunKunci(2026, { paraf: { owner: true, saksi: true }, saksi: 'Saksi Contoh', langkah: {} }, W27);
     ukur(keadaan, 'tutup buku 2026 pada 5 Jan 2027 · ' + nn + ' nama berutang', 'susunKunci', rk);
     if (keadaan === 'A' && nn === 10 && rk && !rk.tolak) {
-      var gKunci = butuhGet(rk.dokumen, []); var maxA = 0; for (var i = 0; i < rk.arsip.length; i += 18) maxA = Math.max(maxA, butuhGet([], rk.arsip.slice(i, i + 18).map(function (x) { return { koleksi: x.koleksi, id: x.id }; })));
+      var gKunci = Math.max.apply(null, rk.kiriman.map(function (k) { return butuhGet(k.dokumen, []); })); var maxA = 0; for (var i = 0; i < rk.arsip.length; i += 18) maxA = Math.max(maxA, butuhGet([], rk.arsip.slice(i, i + 18).map(function (x) { return { koleksi: x.koleksi, id: x.id }; })));
       H.baris.push({ keadaan: 'A', jalur: 'arsip tutup buku · ' + rk.arsip.length + ' catatan, per potongan 18 (firebase POTONG)', fungsi: 'arsipkanBerkas', ac: maxA, bertahap: Math.ceil(rk.arsip.length / 18) });
       terapkanKeCache(rk.arsip.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; }));   // sesudah arsip: aslinya sudah tidak ada → pengembalian = create
       var maxP = 0; for (var j2 = 0; j2 < rk.arsip.length; j2 += 18) maxP = Math.max(maxP, butuhGet(rk.arsip.slice(j2, j2 + 18).map(function (x) { return { koleksi: x.koleksi, data: x.data }; }), []));
       H.baris.push({ keadaan: 'A', jalur: 'batal tutup buku: arsip dikembalikan per potongan 18', fungsi: 'pulihkanBerkas', ac: maxP, bertahap: Math.ceil(rk.arsip.length / 18) });
       masukCache(rk.dokumen); var bt = susunBatal(2026, [], W27); ukur('A', 'batal tutup buku · saldo pembuka ' + nn + ' nama ditarik', 'susunBatal', bt);
-      if (bt && !bt.tolak && butuhGet(bt.dokumen, bt.hapus) > gKunci) salah('batal tutup buku butuh lebih banyak pemeriksaan daripada kuncinya — tutup buku bisa terkunci tanpa bisa dibatalkan');
+      if (bt && !bt.tolak && Math.max.apply(null, bt.kiriman.map(function (k) { return butuhGet(k.dokumen, k.hapus); })) > KP_BATAS_GET) salah('batal tutup buku: ada kiriman > 18 pemeriksaan — tutup buku bisa terkunci tanpa bisa dibatalkan');
     }
-    if (keadaan === 'A' && nn === 25 && !(rk && rk.tolak && /Saldo pembuka menyentuh/.test(rk.tolak))) salah('tutup buku 25 nama berutang TIDAK ditolak di logika (server pasti menolak > 18)');
+    // rancangan bertahap (owner 1 Okt: batas 18 per kiriman tetap): 25 nama berutang = DIPECAH, bukan ditolak — tiap kiriman ≤ 18 (baris di atas), paling sedikit 2 kiriman
+    if (keadaan === 'A' && nn === 25 && !(rk && !rk.tolak && rk.kiriman && rk.kiriman.length >= 2)) salah('tutup buku 25 nama berutang tidak dipecah jadi beberapa kiriman (server pasti menolak > 18 sekali kirim)');
     pulih(F);
   });
 }
@@ -637,7 +640,7 @@ if __name__ == '__main__':
                 'penjaga pusat tanpa batas 18': rusakO('baru/js/data/toko.js', "if (N.perluGet > KP_BATAS_GET) return { gagal: true,", "if (false) return { gagal: true,"),
                 'arsip tutup buku dipotong 200 lagi': rusakO('baru/js/data/firebase.js', 'const POTONG = KP_BATAS_GET;', 'const POTONG = 200;'),
                 'kasir darurat mengirim banyak dokumen sekaligus': rusakO('kasir-darurat-nominal.html', "method: 'PATCH'", "method: 'POST', jalur: 'documents:commit'"),
-                'tutup buku tanpa batas 18 (pembuka piutang bertanggal lama)': rusakO('baru/js/layar/tutup-buku-logika.js', "if (g > KP_BATAS_GET) return { tolak: 'Saldo pembuka", "if (false) return { tolak: 'Saldo pembuka"),
+                'tutup buku tanpa batas 18 (saldo pembuka sekali kirim, tidak dipecah)': rusakO('baru/js/layar/tutup-buku-logika.js', "const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] }))", "const Pt = { potongan: [{ dokumen: P.dokumen.concat(penanda, [{ koleksi: 'tutupBukuAcara', data: acara }]), get: 0 }] } || kpPotong(P.dokumen.map((x) => ({ dokumen: [x] }))"),
                 'nota owner bertanggal mundur (perulangan baris jadi pemeriksaan kunci)': rusakO('baru/js/layar/jual-logika.js', "d.id = w.idUnik(); d.trxId = trxId; d.tanggal = w.tanggal;", "d.id = w.idUnik(); d.trxId = trxId; d.tanggal = '2026-08-30';"),
                 'jalur baru menulis koleksi bertanggal tanpa hitungan': rusakO('baru/js/layar/uang-logika.js', "// ==================== K4 · PINDAH UANG ====================", "export function susunSetoranBaru(w) { return { dokumen: [{ koleksi: 'setoranKas', data: { id: w.idUnik(), tanggal: w.tanggal, nominal: 1 } }] }; }\n// ==================== K4 · PINDAH UANG ===================="),
             }

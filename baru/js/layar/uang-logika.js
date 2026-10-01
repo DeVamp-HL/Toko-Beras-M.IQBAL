@@ -54,16 +54,18 @@ function ugBulanDariNama(teks) { const m = String(teks).trim().match(/^(\S+)\s+(
  * Saldo tiap tempat uang sampai `sampai` (bawaan: sekarang). ada=false bila titik kas belum disetel atau tanggalnya mundur dari titik (tidak ditebak).
  * total selalu = kasPada(sampai): tiap gerakan kas diletakkan tepat sekali; pindah tempat (amplop, pindahUang) jumlahnya nol.
  */
-export function saldoKantong(sampai) {
-  const t = ambilTitikKas(); const kosong = { ada: false, titik: t, laci: null, brankas: null, rekening: null, amplop: null, total: null, mesin: kasPada(sampai || null) };
+export function saldoKantong(sampai, titikPakai) {
+  // titikPakai (tutup buku): patokan lain dari titik kas sekarang — mis. hitungan tutup hari 31 Des saat titik kas sudah maju ke Januari. Pembanding mesin (kasPada)
+  // selalu memakai titik kas sekarang, jadi dengan titikPakai `mesin`/`cocok` tidak diisi.
+  const t = titikPakai || ambilTitikKas(); const kosong = { ada: false, titik: t, laci: null, brankas: null, rekening: null, amplop: null, total: null, mesin: titikPakai ? null : kasPada(sampai || null) };
   if (!t || (sampai && sampai < t.tanggal)) return kosong;
   const s = { laci: Number(t.laci) || 0, brankas: Number(t.brankas) || 0, rekening: Number(t.rekening) || 0, amplop: Number(t.amplop) || 0 };
   const dalam = (x) => x > t.tanggal && (!sampai || x <= sampai); const peta = ugPetaKantong();
   daftarGerakanKas().forEach((r) => { if (!dalam(r.t)) return; const k = ugKantongBaris(r, peta); if (r.masuk > 0) s[k] += r.masuk; if (r.keluar > 0) s[k] -= r.keluar; });
   ambilAmplopLaba().forEach((a) => { if (a.tutupBuku || !dalam(a.tanggal || '')) return; const n = Number(a.nominal) || 0; if (a.tipe === 'ambil') { s.amplop -= n; s.laci += n; } else { s.laci -= n; s.amplop += n; } });
   ambilPindahUang().forEach((p) => { if (!dalam(p.tanggal || '')) return; const n = Number(p.nominal) || 0; if (s[p.dari] !== undefined) s[p.dari] -= n; if (s[p.ke] !== undefined) s[p.ke] += n; });
-  const total = s.laci + s.brankas + s.rekening + s.amplop; const mesin = kasPada(sampai || null);
-  return { ada: true, titik: t, laci: s.laci, brankas: s.brankas, rekening: s.rekening, amplop: s.amplop, total, mesin, cocok: mesin !== null && Math.abs(total - mesin) < 0.5,
+  const total = s.laci + s.brankas + s.rekening + s.amplop; const mesin = titikPakai ? null : kasPada(sampai || null);
+  return { ada: true, titik: t, laci: s.laci, brankas: s.brankas, rekening: s.rekening, amplop: s.amplop, total, mesin, cocok: titikPakai ? null : mesin !== null && Math.abs(total - mesin) < 0.5,
     minus: ['laci', 'brankas', 'rekening', 'amplop'].filter((k) => s[k] < -0.5), teksTitik: 'titik kas ' + tanggalPendek(t.tanggal) };
 }
 /** Kalimat kalau tempat uang tidak cukup — atau pengakuan bahwa isinya belum bisa dihitung (bukan berarti cukup). */

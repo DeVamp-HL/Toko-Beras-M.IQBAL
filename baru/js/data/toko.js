@@ -34,10 +34,44 @@ export function dengarkan(f) { _pendengar.add(f); return () => _pendengar.delete
 export function cacheMentah(nama) { return _cache[nama] || []; }
 /** Dokumen satu koleksi (nama koleksi Firestore) menurut cache — dipakai penulis pusat untuk membedakan create dari update (putaran 23). */
 export function dokDiCache(koleksi, id) { const k = KOLEKSI.find((x) => x.nama === koleksi); return k ? (_cache[k.cache] || []).find((d) => String(d.id) === String(id)) || null : null; }
+// §8 no. 4 (tutup buku bertahap): dokumen yang masih MENUNGGU SERVER di perangkat ini — Firestore sudah menaruh tulisannya di cache (hasPendingWrites), server
+// belum mengaku (bisa saja nanti ditolak lalu dibuang). Diisi pendengar firebase.js per koleksi (nama Firestore); simulasi cadangan = selalu kosong.
+const _tertunda = {};
+export function setelTertunda(koleksi, ids) { _tertunda[koleksi] = (ids || []).map(String); }
+export function dokTertunda(koleksi, id) { const s = _tertunda[koleksi]; return !!s && s.indexOf(String(id)) >= 0; }
+// Putaran 3 AAL4: koleksi yang jawaban terakhirnya dari SALINAN PERANGKAT (Firestore fromCache, belum dijawab server) — tutup buku tidak dilanjutkan / dibatalkan
+// dari data yang bisa basi. Diisi pendengar firebase.js per koleksi (nama Firestore); simulasi cadangan = selalu kosong.
+// (nama sengaja beda dari _dariCache firebase.js — uji jsc membundel keduanya dalam satu lingkup)
+const _salinanPerangkat = {};
+export function setelDariCache(koleksi, ya) { _salinanPerangkat[koleksi] = !!ya; }
+export function koleksiDariCache(koleksi) { return !!_salinanPerangkat[koleksi]; }
+// Putaran 3 AAL5: HAPUS yang masih menunggu server di perangkat ini. Firestore langsung membuang dokumennya dari cache, jadi tanda per dokumen (hasPendingWrites,
+// setelTertunda) tidak pernah melihatnya. Diisi tulisBerkas firebase.js per kiriman sampai server mengaku / menolak; simulasi cadangan = selalu kosong.
+const _hapusTertunda = {};
+export function setelHapusTertunda(idKiriman, hapus) { if (hapus && hapus.length) _hapusTertunda[idKiriman] = hapus.map((x) => ({ koleksi: x.koleksi, id: String(x.id) })); else delete _hapusTertunda[idKiriman]; }
+export function hapusTertunda(koleksi) { return Object.keys(_hapusTertunda).reduce((n, k) => n + _hapusTertunda[k].filter((x) => x.koleksi === koleksi).length, 0); }
 
 // ---- batas data untuk mesin beku (nama & bentuk = index.html) ----
+// TUTUP BUKU BERTAHAP (rancangan Okt 2026): saldo pembuka tahun yang berita acaranya BELUM terkunci ('berjalan' = kiriman pembuka belum semua masuk;
+// 'membatalkan' / 'dibatalkan' = sedang / sudah ditarik) TIDAK terlihat oleh mesin & era. Tahun lama tetap utuh sampai kiriman TERAKHIR (penanda) masuk;
+// sesudah itu tahun baru utuh sekaligus. Saldo pembuka sistem lama (tanpa berita acara) dan yang terkunci/selesai tetap terlihat. Satu tempat: pembukaBerlaku.
+// §8 no. 1 (tinjauan 1 Okt): HP STAF tidak membaca tutupBukuAcara (rules: owner saja) → saringan berita acara saja membuat stok & piutang di HP staf DOBEL
+// selama 'berjalan' / 'membatalkan'. Karena itu saldo pembuka tutup buku bertahap membawa `bertahap: true` dan baru terlihat bila PENANDA tahunnya ada:
+// batch pembuka ber-`penandaBuku` (koleksi batchMasuk — dibaca staf) yang ikut kiriman TERAKHIR dan dihapus di kiriman PERTAMA pembatalan. Aturan yang sama
+// di semua perangkat → HP owner & staf melihat angka yang sama di tiap titik putus. Rules tidak berubah. Pembuka tanpa `bertahap` (sistem lama) tidak tersentuh.
+const BK_TERSEMBUNYI = { berjalan: 1, membatalkan: 1, dibatalkan: 1 };
+let _bkMemo = null;
+function bkKeadaan() {
+  const a = _cache.tutupBukuAcara, b = _cache.batch; if (_bkMemo && _bkMemo.a === a && _bkMemo.b === b) return _bkMemo;
+  const sembunyi = {}, penanda = {};
+  (a || []).forEach((x) => { if (x && BK_TERSEMBUNYI[x.status]) sembunyi[Number(x.tahun)] = true; });
+  (b || []).forEach((x) => { if (x && x.tutupBuku && x.penandaBuku) penanda[Number(x.tahunDari)] = true; });
+  _bkMemo = { a, b, sembunyi, penanda }; return _bkMemo;
+}
+export function pembukaBerlaku(x) { if (!x || !x.tutupBuku) return true; const k = bkKeadaan(); const t = Number(x.tahunDari); return !k.sembunyi[t] && (!x.bertahap || !!k.penanda[t]); }
+const bkSaring = (arr) => { const s = arr.filter(pembukaBerlaku); return s.length === arr.length ? arr : s; };
 function bacaCadanganLokal() { return []; }   // cadangan lokal buatan sendiri tidak ada di sistem baru
-export function ambilSemuaBatch() { return _cache.batch; }
+export function ambilSemuaBatch() { return bkSaring(_cache.batch); }
 export function ambilBiayaBulanan() { return _cache.bulanan; }
 export function ambilPenjualanSemua() { return _cache.penjualan; }
 export function ambilPenjualan() { return ambilPenjualanSemua().filter(penjualanMasihBerlaku); }
@@ -57,7 +91,7 @@ export function returUangPerHari() {
     const h = out[t] || (out[t] = { uang: 0, baris: [] }); h.uang += u; h.baris.push({ jam: String(r.jam || ''), uang: u }); });
   return out;
 }
-export function ambilProduksi() { return _cache.produksi; }
+export function ambilProduksi() { return bkSaring(_cache.produksi); }
 export function ambilProduksiBerlaku() { return ambilProduksi().filter(produksiMasihBerlaku); }
 
 // ---- STOK WADAH (putaran 28, owner 28 Sep 2026: "semua wadah kotak literan itu punya stok tersendiri") ----
@@ -111,13 +145,13 @@ export function stokMerekSaja(stok) {
 export function ambilRetur() { return _cache.retur; }
 export function ambilKarantina() { return _cache.karantina; }
 export function ambilPengeluaranHarian() { return _cache.harian; }
-export function ambilBahanKemasan() { return _cache.bahanKemasan; }
-export function ambilBahanLiteran() { return _cache.bahanLiteran; }
+export function ambilBahanKemasan() { return bkSaring(_cache.bahanKemasan); }
+export function ambilBahanLiteran() { return bkSaring(_cache.bahanLiteran); }
 export function ambilHargaLiteran() { return _cache.hargaLiteran; }
 export function ambilHargaKemasan() { return _cache.hargaKemasan; }
 export function ambilHargaKarung() { return _cache.hargaKarung; }
-export function ambilPiutangMutasi() { return _cache.piutang; }
-export function ambilKasbonMutasi() { return _cache.kasbon; }
+export function ambilPiutangMutasi() { return bkSaring(_cache.piutang); }
+export function ambilKasbonMutasi() { return bkSaring(_cache.kasbon); }
 export function ambilPenyesuaianStok() { return _cache.penyesuaian; }
 export function ambilPenyesuaianKemasan() { return _cache.penyKemasan; }
 export function ambilTutupHari() { return _cache.tutup; }
@@ -126,11 +160,11 @@ export function ambilPesanan() { return _cache.pesanan; }
 export function ambilWadahLiteran() { return _cache.wadah || []; }
 export function ambilTitipanHarian() { return _cache.titipan; }
 export function ambilSetoranKas() { return _cache.setoran; }
-export function ambilAmplopLaba() { return _cache.amplop; }
+export function ambilAmplopLaba() { return bkSaring(_cache.amplop); }
 export function ambilModalOwner() { return _cache.modal; }
-export function ambilUtangOwnerMutasi() { return _cache.utangOwner; }
+export function ambilUtangOwnerMutasi() { return bkSaring(_cache.utangOwner); }
 export function ambilTembusanStok() { return _cache.tembusan; }
-export function ambilUtangPemasokMutasi() { return _cache.utangPemasok; }
+export function ambilUtangPemasokMutasi() { return bkSaring(_cache.utangPemasok); }
 export function ambilThrPelanggan() { return _cache.thr; }
 export function ambilPemasokCatatan() { return _cache.pemasokCat; }
 export function ambilHargaWadah() { return _cache.hargaWadah || []; }     // putaran 15: harga jual wadah per lembar (id = jenis)
