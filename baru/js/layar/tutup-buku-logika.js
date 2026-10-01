@@ -151,11 +151,11 @@ export function periksaUlangBuku(tahun) {
 /**
  * Putaran 3 UTBU-1: hasil periksa ulang DIBEKUKAN saat arsip habis — ditulis ke berita acara (`periksaArsip`: patokan & angka mesin per baris). "Selesai" & pita
  * memakai hasil itu; dulu dihitung ulang tiap kali terhadap patokan pagi, jadi penjualan Januari biasa sesudah arsip terbaca "TIDAK SAMA" dan tercatat permanen.
- * dokumen hanya bila berita acara masih 'terkunci' dan arsip sudah habis.
+ * dokumen hanya bila berita acara masih 'terkunci', arsip sudah habis, dan (putaran 4 P4-1) perangkat ini pemegangnya (L = lokal() layar).
  */
-export function susunPeriksaArsip(tahun, w) {
+export function susunPeriksaArsip(tahun, w, L) {
   const PU = periksaUlangBuku(tahun); const a = bkAcara(tahun);
-  if (!PU || !a || a.status !== 'terkunci' || arsipBuku(tahun).n) return { PU };
+  if (!PU || !a || a.status !== 'terkunci' || arsipBuku(tahun).n || bkBukanPemegang(tahun, L)) return { PU };
   const periksaArsip = { pada: w.kini, tanggal: w.tanggal, baris: PU.baris.map((b) => ({ id: b.id, nama: b.nama, a: b.a, b: b.b })) };
   return { PU, dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, a, { periksaArsip }) }] };
 }
@@ -181,8 +181,9 @@ export function berkasArsip(tahun, kini) { const A = arsipBuku(tahun); const isi
  *   kiriman N      = + PENANDA: titik kas 31 Des (bila patokannya belum maju) · pengaturan/tutupBuku · berita acara 'terkunci'
  * Selama 'berjalan' saldo pembuka yang sudah masuk TIDAK terlihat mesin & era (toko.js pembukaBerlaku) → tahun lama utuh; penanda membalik semuanya sekaligus.
  * Satu kiriman saja (≤ 18) = sama dengan dulu: tanpa 'berjalan'.
+ * L = lokal() layar ({ idPerangkat, namaPerangkat }) — putaran 4 P4-1: berita acara mencatat perangkat ini sebagai pemegang.
  */
-export function susunKunci(tahun, D, w) {
+export function susunKunci(tahun, D, w, L) {
   const T = tahunBuku(ugKiniDari(w)); if (!T.bolehSungguhan) return { tolak: T.adaKunci ? T.teks : 'Tahun ' + tahun + ' belum lewat 31 Desember — hanya bisa latihan' };
   if (!D.paraf || !D.paraf.owner || !D.paraf.saksi) return { tolak: 'Paraf owner dan saksi dulu' };
   const tg = bkTertunda(tahun); if (tg) return { tolak: tg };
@@ -197,6 +198,9 @@ export function susunKunci(tahun, D, w) {
     titikTahun: T0, hariIni: { tanggal: hariIni, baris: HI.harta.concat(HI.utang).map((b) => ({ id: b.id, nama: b.nama, n: b.n })) } });
   // §8 no. 8: berita acara percobaan yang dibatalkan dipakai ulang — tanggal pembatalan lamanya dibuang, supaya pembatalan berikutnya mencatat tanggalnya sendiri
   delete acara.pembuka; delete acara.penanda; delete acara.dariStatus; delete acara.dibatalkanPada; delete acara.dibatalkanTanggal;
+  // putaran 4 P4-1: PEMEGANG = perangkat yang memulai percobaan ini (juga percobaan ulang sesudah dibatalkan) — pemegang percobaan lama tidak terbawa
+  delete acara.pemegang;
+  const pg = bkPerangkatIni(L); if (pg) acara.pemegang = pg;
   const penanda = (titik ? [{ koleksi: 'pengaturan', data: titik }] : []).concat([{ koleksi: 'pengaturan', data: { id: 'tutupBuku', tahunDitutup: tahun, padaTanggal: w.tanggal } }]);
   // §8 no. 1: semua pembuka ber-`bertahap`; PENANDA yang terbaca HP staf = batch pembuka ber-`penandaBuku` (toko.js pembukaBerlaku). Tanpa stok beras → batch
   // kosong (merkList []) khusus penanda, supaya pembuka lain tetap punya penanda.
@@ -243,6 +247,17 @@ export function bkSambungan(L) {
   const basi = ['tutupBukuAcara', 'pengaturan'].some((k) => koleksiDariCache(k)); if (!(L && L.offline) && !basi) return '';
   return 'Tutup buku: ' + (L && L.offline ? 'perangkat ini tanpa internet' : 'data tutup buku di perangkat ini belum dijawab server (bisa basi)') + ' — sambungkan internet dulu, tunggu data terbaru, baru Lanjutkan atau Batalkan.';
 }
+/**
+ * Putaran 4 P4-1 (owner 1 Okt: SATU PERANGKAT SAJA): tutup buku yang 'berjalan' / 'terkunci' / 'membatalkan' hanya DITULIS dari pemegangnya — perangkat yang
+ * memulainya (berita acara `pemegang` = { id, nama }). Dulu kiriman yang tertahan di perangkat A mendarat sesudah perangkat B membatalkan / menyelesaikan /
+ * melanjutkan, lalu menimpanya. L = lokal() layar ({ idPerangkat, namaPerangkat }). '' = boleh. Berita acara tanpa pemegang (uji / latihan lama) = boleh dari mana saja.
+ */
+export function bkBukanPemegang(tahun, L) {
+  const a = bkAcara(tahun); const p = a && a.pemegang; if (!p || !p.id || ['berjalan', 'terkunci', 'membatalkan'].indexOf(a.status) < 0) return '';
+  if (L && L.idPerangkat && String(L.idPerangkat) === String(p.id)) return '';
+  return 'Tutup buku ' + tahun + ' sedang dikerjakan di ' + (p.nama || p.id) + '. Lanjutkan atau batalkan dari perangkat itu.';
+}
+const bkPerangkatIni = (L) => (L && L.idPerangkat ? { id: String(L.idPerangkat), nama: String(L.namaPerangkat || L.idPerangkat) } : null);
 const bkKalimatTunda = (tahun, n) => 'Tutup buku ' + tahun + ': ' + n + ' catatan di perangkat ini masih menunggu server (belum diakui, belum dihitung masuk). Jangan tutup aplikasi; tunggu sinyal sampai antrean kosong (Menu › Sistem › Perangkat), baru Lanjutkan atau Batalkan.';
 /** Tahun lama berubah sejak rencana dibuat? (pembuka yang sudah masuk tidak terlihat mesin → 31 Des dihitung ulang dari catatan asli dengan patokan kas yang sama) */
 function bkBerubah(a) {
@@ -264,8 +279,9 @@ function bkTitikKini(k, tahun) {
  * §8 no. 3: sisa itu DIPECAH ULANG dengan jam SEKARANG (dulu kiriman yang disusun saat mulai dipakai apa adanya: mulai 1–3 Jan = masa tenggang, lanjut sesudah
  * tanggal 3 → kiriman tersimpan melebihi 18 pemeriksaan, ditolak selamanya). Batch penanda + penanda + berita acara terkunci tetap kelompok TERAKHIR.
  */
-export function lanjutBuku(tahun) {
+export function lanjutBuku(tahun, L) {
   const a = bkAcara(tahun); if (!a || a.status !== 'berjalan' || !a.rencana || !Array.isArray(a.pembuka)) return { tolak: 'Tidak ada tutup buku ' + tahun + ' yang sedang berjalan' };
+  const bp = bkBukanPemegang(tahun, L); if (bp) return { tolak: bp };
   const nT = bkTunda(tahun); if (nT) return { tolak: bkKalimatTunda(tahun, nT) };
   const ub = bkBerubah(a); if (ub) return { tolak: ub };
   const masuk = a.pembuka.filter((x) => !!dokDiCache(x.koleksi, x.data.id)).length;
@@ -286,9 +302,10 @@ export function lanjutBuku(tahun) {
 /**
  * Putaran 3 AAL1: arsip yang sedang berjalan (daftarnya dihitung sekali) berhenti di antara potongan bila berita acara tahun itu di cache bukan lagi 'terkunci'
  * — mis. dibatalkan dari perangkat lain; dulu sisa catatan tahun itu tetap tersapu ke arsip SESUDAH "dibatalkan", tanpa pita. '' = boleh lanjut.
+ * Putaran 4 P4-1: juga berhenti bila perangkat ini bukan (lagi) pemegangnya (L = lokal() layar) — mis. sesudah diambil alih perangkat lain.
  */
-export function arsipBerhentiBuku(tahun) {
-  const a = bkAcara(tahun); if (a && a.status === 'terkunci') return '';
+export function arsipBerhentiBuku(tahun, L) {
+  const a = bkAcara(tahun); if (a && a.status === 'terkunci') return bkBukanPemegang(tahun, L);
   const kata = { membatalkan: 'sedang dibatalkan', dibatalkan: 'sudah dibatalkan', selesai: 'sudah selesai' }[a && a.status] || 'tidak terkunci lagi';
   return 'Arsip ' + tahun + ' dihentikan: tutup buku ' + tahun + ' ' + kata + ' (dari perangkat lain) — catatan ' + tahun + ' yang tersisa tidak dipindah ke arsip. Ikuti pita tutup buku.';
 }
@@ -336,10 +353,11 @@ export function kemajuanBuku() {
  * Batalkan tutup buku (berjalan, atau terkunci sebelum selesai): BERTAHAP juga — tarik saldo pembuka per ≤ 18 pemeriksaan, kembalikan arsip, era mundur.
  * kiriman 1 = berita acara 'membatalkan' (+ era & titik kas bila tahun sempat terkunci) + potongan tarik pertama — pembuka langsung tak terlihat mesin.
  * Sesudah semua kiriman & pengembalian arsip: `akhir` = berita acara 'dibatalkan'. Bisa diulang: yang sudah ditarik/dikembalikan tidak diulang.
- * arsipDok = hasil bacaArsipTahun (sisa yang belum dikembalikan).
+ * arsipDok = hasil bacaArsipTahun (sisa yang belum dikembalikan). L = lokal() layar (putaran 4 P4-1: hanya dari perangkat pemegang).
  */
-export function susunBatal(tahun, arsipDok, w) {
+export function susunBatal(tahun, arsipDok, w, L) {
   const acara = bkAcara(tahun); const hapus = bkPembukaTahun(tahun); const nT = bkTunda(tahun); if (nT) return { tolak: bkKalimatTunda(tahun, nT) };
+  const bp = bkBukanPemegang(tahun, L); if (bp) return { tolak: bp };
   if (!acara || (['terkunci', 'berjalan', 'membatalkan'].indexOf(acara.status) < 0 && !(acara.status === 'dibatalkan' && hapus.length))) return { tolak: 'Tahun ' + tahun + ' tidak sedang terkunci — tidak ada yang dibatalkan' };
   const dari = acara.status === 'membatalkan' || acara.status === 'dibatalkan' ? (acara.dariStatus || 'terkunci') : acara.status;
   const batal = Object.assign({}, acara, { status: 'membatalkan', dariStatus: dari, dibatalkanPada: acara.dibatalkanPada || w.kini, dibatalkanTanggal: acara.dibatalkanTanggal || w.tanggal }); delete batal.pembuka; delete batal.penanda;
@@ -370,10 +388,11 @@ export function bkKalimatPeriksa(PU) {
 /**
  * Selesai: cadangan sesudah tercatat → berita acara selesai (tidak bisa dibatalkan lagi).
  * §8 no. 6: hanya sesudah arsip HABIS; pemeriksaan ulang dari mesin dijalankan di sini — beda / tidak bisa diperiksa = ditolak dengan barisnya (perluYakin),
- * baru diterima pada ketukan kedua (yakin) dan hasilnya dicatat di berita acara.
+ * baru diterima pada ketukan kedua (yakin) dan hasilnya dicatat di berita acara. L = lokal() layar (putaran 4 P4-1: hanya dari perangkat pemegang).
  */
-export function susunSelesai(tahun, namaCadangan2, w, yakin) {
+export function susunSelesai(tahun, namaCadangan2, w, yakin, L) {
   const acara = ambilTutupBukuAcara().find((a) => Number(a.tahun) === tahun) || null; if (!acara || acara.status !== 'terkunci') return { tolak: 'Kunci tahunnya dulu' };
+  const bp = bkBukanPemegang(tahun, L); if (bp) return { tolak: bp };
   const sisa = arsipBuku(tahun).n; if (sisa) return { tolak: ANGKA(sisa) + ' catatan ' + tahun + ' belum pindah ke arsip — lanjutkan arsip dulu; tahun ' + tahun + ' belum bisa diselesaikan' };
   const PU = bkPeriksaDipakai(tahun); const kal = bkKalimatPeriksa(PU);
   if (kal && !yakin) return { tolak: kal + '. Sesudah selesai, tutup buku ' + tahun + ' tidak bisa dibatalkan lagi — periksa dulu; kalau memang benar, ketuk sekali lagi.', perluYakin: true };
