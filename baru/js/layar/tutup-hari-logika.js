@@ -13,12 +13,12 @@
 //  - penyesuaianStok (dariTutup = tanggal) untuk timbang cepat yang beda; pindahUang {id 'pd-'+tanggal} laci → brankas untuk amankan laci.
 //  - setoranKas 'st-' & modalOwner 'mo-st-' bernominal 0 (kompatibilitas: tutup ulang dari sistem lama menimpa id yang sama).
 //  - pengaturan/titikKas = isi tempat uang SESUDAH tutup (laci akhir, rekening, amplop + sisihan, brankas + amankan) — patokan kas maju, inti ritualnya.
-import { kasPada, hitungLabaBersihRentang, hitungStokKarungPerMerk, thDorongRiwayat } from '../mesin/beku.js';
+import { kasPada, hitungStokKarungPerMerk, thDorongRiwayat } from '../mesin/beku.js';
 import { daftarGerakanKas, caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPenjualanSemua, ambilPiutangMutasi, ambilKasbonMutasi, ambilPengeluaranHarian, ambilTutupHari, ambilPenyesuaianStok, ambilAmplopLaba, ambilPindahUang, ambilTitikKas, petaBukuWadah, kunciNota, returUangPerHari } from '../data/toko.js';
 import { RP, ANGKA, KG, hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
 import { aturHarga, hgPct } from './harga-logika.js';
-import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan } from './uang-logika.js';
+import { ugAngka, ugKosong, ugAturDok, ugTambahHari, saldoKantong, ugNamaTempat, kantongGerakan, ugLabaBersih } from './uang-logika.js';
 
 export const ATUR_TUTUP_BAWAAN = { persenSisih: 10, kembalian: 500000, maafSelisih: 2000, alasan: ['Salah kasih kembalian', 'Ada pengeluaran belum dicatat', 'Ada penjualan belum dicatat', 'Belum tahu — dicari besok'], pecahan: [100000, 50000, 20000, 10000, 5000, 2000, 1000] };
 export const LANGKAH_TUTUP = [['laci', 'Uang di laci'], ['rekening', 'Uang QRIS'], ['sisih', 'Sisihkan laba'], ['timbang', 'Timbang cepat'], ['amankan', 'Amankan laci'], ['rekap', 'Rekap & tutup']];
@@ -57,7 +57,9 @@ export function ringkasHari(iso) {
   const tunai = jual.filter((p) => caraBayarKunci(p) !== 'qris' && caraBayarKunci(p) !== 'kredit').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0); const qris = qrisJual + qrisBon + qrisKasbon; const kredit = jual.filter((p) => caraBayarKunci(p) === 'kredit').reduce((a, p) => a + (Number(p.hargaTotal) || 0), 0);
   const bonDibayar = ambilPiutangMutasi().filter((m) => m.tipe === 'bayar' && m.tanggal === iso && caraBayarKunci(m) !== 'qris').reduce((a, m) => a + (Number(m.nominal) || 0), 0);
   const mdrDok = ambilPengeluaranHarian().find((h) => String(h.id) === 'mdr-' + iso) || null; const mdrTercatat = mdrDok ? Number(mdrDok.nominal) || 0 : 0;
-  const L = hitungLabaBersihRentang(iso, iso); const labaSebelumMdr = L.labaBersih + mdrTercatat;
+  // 39b no. 38: laba hari ini (R.laba) = laba bersih toko, termasuk lebih/kurang kas yang sudah tercatat; lembar tutup memakai laba SEBELUM selisih laci
+  // (selisih malam ini punya barisnya sendiri di rekap, dasar sisihan tidak berubah)
+  const L = ugLabaBersih(iso, iso); const labaSebelumMdr = L.labaMesin + mdrTercatat;
   const semua = ambilPenjualan(); const rapikan = semua.filter((p) => p.perluKoreksi).length; const darurat = semua.filter((p) => p.jenis === 'kasir_darurat_nominal').length;
   // no. 19: omzet di layar = penjualan − uang retur (satu arti dengan Laporan & Jual); R.omzet tetap PENJUALAN (dokumen tutupHari.omzet dibaca sistem lama)
   const retur = Math.round(((returUangPerHari()[iso] || {}).uang) || 0);

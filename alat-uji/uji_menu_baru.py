@@ -106,6 +106,12 @@ ok('tanya utang: angka = mesin, jawaban menyebut pemasok & bon lewat tempo; bon 
 ok('tanya kas & kekayaan: titik kas belum disetel → "belum bisa dihitung" (tidak ditebak), dua-duanya', tq('kas').angka === 'belum bisa dihitung' && /Titik kas belum disetel/.test(tq('kas').sub) && tq('kaya').angka === 'belum bisa dihitung', J([tq('kas'), tq('kaya')]));
 var LB = hitungLabaBersihRentang('2026-09-01', '2026-09-19');
 ok('tanya laba: angka = laba bersih bulan ini dari mesin; jawaban menyebut margin kotor & biaya toko', tq('laba').angka === RP(LB.labaBersih) && /margin kotor/.test(tq('laba').sub) && /biaya toko/.test(tq('laba').sub), J(tq('laba')) + ' ' + LB.labaBersih);
+// 39b no. 38 (owner 30 Sep): selisih laci tutup hari = baris lebih/kurang kas di laba — "Bulan ini toko untung berapa?" & laci Laporan memakai laba yang sama dengan Laporan
+var TH38 = [{ koleksi: 'tutupHari', data: { id: '2026-09-15', tanggal: '2026-09-15', jam: '21:00', sistemBaru: true, selisih: 40000, selisihLaci: 40000, alasanSelisih: 'Ada penjualan belum dicatat' } }];
+ok('39b-38 tanya laba & laci Laporan dengan LEBIH 40.000 (15 Sep): angka = laba mesin + 40.000; jawaban menyebut "± lebih/kurang kas Rp40.000"; tanpa selisih kalimatnya tidak menyebutnya',
+  !/lebih\/kurang kas/.test(tq('laba').sub) && denganCacheSementara(TH38, function () { var t = susunTanya(KINI).find(function (x) { return x.id === 'laba'; }); var b = null; susunLaci(KINI, LOKAL).forEach(function (g) { g.isi.forEach(function (x) { if (x.id === 'laporan') b = x; }); });
+    return t.angka === RP(LB.labaBersih + 40000) && /± lebih\/kurang kas Rp40\.000/.test(t.sub) && b.sub.indexOf('laba bersih bulan ini ' + RP(LB.labaBersih + 40000)) >= 0; }),
+  J(denganCacheSementara(TH38, function () { return susunTanya(KINI).find(function (x) { return x.id === 'laba'; }); })));
 ok('tanya piutang: angka = mesin; menyebut jumlah nama & macet; tanya lantai: merek paling tipis IR42 Select −Rp200/kg, 1 merek di bawah modal, AWAS', tq('piutang').angka === RP(totalPI) && /nama\./.test(tq('piutang').sub) && /macet/.test(tq('piutang').sub) && tq('lantai').angka === '−Rp200/kg' && /IR42 Select/.test(tq('lantai').sub) && /1 merek sudah berdiri di bawah modalnya/.test(tq('lantai').sub) && tq('lantai').awas, J([tq('piutang'), tq('lantai')]));
 ok('tanya jam: margin 30 hari terbesar jam 16 (160.000 + 90.000 + 80.000 + 130.000 = 460.000 dari 4 baris), kedua jam 09 (90.000)', tq('jam').angka === '16:00' && /Rp460.000 dari 4 baris/.test(tq('jam').sub) && /Kedua: 09:00 \(Rp90.000\)/.test(tq('jam').sub), J(tq('jam')));
 ok('tanya rak & saksi: merek dengan nilai rak terbesar disebut dengan persennya (desimal KOMA); QRIS 130.000 dari omzet semua nota 5.475.000 = 2,4% → AWAS (< 10%)', /\d,\d% nilai rak beras di Angsa/.test(tq('rak').sub) && tq('saksi').angka === '2,4%' && tq('saksi').awas && /Rp130.000 dari Rp5.475.000/.test(tq('saksi').sub), J([tq('rak'), tq('saksi')]));
@@ -285,6 +291,9 @@ if __name__ == '__main__':
             'kantong tanpa laju ditebak': js.replace("const laju = (pakai[j] || 0) / 14; if (!(laju > 0)) return;", "const laju = (pakai[j] || 0) / 14 || 1;"),
             'WA kedua kali sehari tanpa ditanya': js.replace("if (p.waHari && !yakin) return { perluYakin: true,", "if (false) return { perluYakin: true,"),
             'Owner bisa dihapus dari daftar pencatat': js.replace("if (!tolak && !o.pemegang.some((x) => x.toLowerCase() === 'owner'))", "if (false)"),
+            # ---- 39b no. 38 (owner 30 Sep): selisih laci = baris lebih/kurang kas di laba
+            '39b-38: Menu memakai laba mesin (tanpa lebih/kurang kas)': js.replace("const laba = ugLabaBersih(mnAwalBulan(iso), iso);\n", "const laba = Object.assign(ugLabaBersih(mnAwalBulan(iso), iso), {}); laba.labaBersih = laba.labaMesin; laba.lebihKurangKas = 0;\n"),
+            '39b-38: laci Laporan memakai laba mesin': js.replace("+ 1 : 0; const laba = ugLabaBersih(mnAwalBulan(iso), iso);", "+ 1 : 0; const laba = { labaBersih: ugLabaBersih(mnAwalBulan(iso), iso).labaMesin };"),
         }
         kode = 0
         T = open(os.path.join(AKAR, 'baru/js/layar/menu.js'), encoding='utf-8').read(); Tr = T.replace("${l.notaHari || l.omzetHari ? RP(l.omzetHari) : 'belum ada'}", "${l.omzetHari ? RP(l.omzetHari) : 'belum ada'}", 1)

@@ -16,14 +16,14 @@
 //   5. TITIK IMPAS & PERINGATAN — omzet yang harus dicapai supaya margin kotor menutup biaya di bawahnya (biaya ÷ rasio margin), per hari, dan apakah bulan
 //      berjalan SAMPAI HARI INI sudah menutup (dari mesin, rentang awal bulan → hari ini). Peringatan = daftar yang bengkak/hilang/belum lengkap, tiap baris
 //      menunjuk layar tempat membereskannya. Pareto = catatan terbesar yang membentuk 80 % biaya.
-// SEMUA angka uang dari mesin beku yang sama (hitungLabaBersihRentang, bayaranBiayaBulanan, hitungArusKasInti) — modul ini hanya MEMILAH lalu MEMBANDINGKAN.
+// SEMUA angka uang dari mesin beku yang sama (hitungLabaBersihRentang lewat ugLabaBersih = + lebih/kurang kas, bayaranBiayaBulanan, hitungArusKasInti) — modul ini hanya MEMILAH lalu MEMBANDINGKAN.
 // Wajib MENUTUP: Σ jenis harian = harianToko mesin; upah + tagihan tetap = jatahBulanan mesin; margin − Σ jenis − hapus buku + susut = laba bersih mesin.
 // Tidak ada perilaku uang yang berubah; yang BARU ditulis hanya aturanToko/kendaliBiaya. Nama pembantu diprefiks `kb` (bundel uji jsc satu lingkup).
-import { hitungLabaBersihRentang, hitungArusKasInti, bayaranBiayaBulanan } from '../mesin/beku.js';
+import { hitungArusKasInti, bayaranBiayaBulanan } from '../mesin/beku.js';
 import { akhirBulanIso, bulanDari, POS_BIAYA_BULANAN, hppTercatat, caraBayarKunci } from '../mesin/pembantu.js';
 import { ambilPenjualan, ambilPengeluaranHarian, ambilSemuaBatch, ambilBahanKemasan, ambilBahanLiteran, ambilBiayaBulanan, ambilPiutangMutasi, ambilKasbonMutasi } from '../data/toko.js';
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek } from '../inti/format.js';
-import { ugAturDok, ugAngka, ugKosong, ugUntukDok, adalahMdr } from './uang-logika.js';
+import { ugAturDok, ugAngka, ugKosong, ugUntukDok, adalahMdr, ugLabaBersih } from './uang-logika.js';
 import { lpFinal, lpNamaBulan, lpBulanPendek, daftarBulan, lpAwalBuku, lpKetSebelumBuku } from './laporan-logika.js';
 import { semuaUpah } from './upah-logika.js';
 
@@ -78,7 +78,7 @@ export function jenisCatatan(h, A) {
 
 // ---------- inti satu bulan (dipakai bulan ini, bulan lalu, acuan, tren) ----------
 function kbInti(key, kini, B, A) {
-  const iso = hariIniIso(kini); const awal = key + '-01', akhir = akhirBulanIso(key); const L = hitungLabaBersihRentang(awal, akhir, B);
+  const iso = hariIniIso(kini); const awal = key + '-01', akhir = akhirBulanIso(key); const L = ugLabaBersih(awal, akhir, B);
   const berjalan = key === kbKey(iso); const nHari = Number(akhir.slice(8, 10)); const hariJalan = berjalan ? Math.max(1, Math.min(nHari, Number(iso.slice(8, 10)))) : nHari;
   const per = {}; JENIS_BIAYA.forEach((j) => { per[j.id] = { n: 0, jumlah: 0, catatan: [] }; });
   const rows = B.filter((x) => x.bulan === key); const gaji = rows.filter((x) => String(x.pos || '').indexOf('gaji:') === 0); const tetapRows = rows.filter((x) => KB_POS_TETAP.indexOf(x.pos) >= 0);
@@ -94,7 +94,7 @@ function kbInti(key, kini, B, A) {
   const harian = JENIS_BIAYA.filter((j) => j.sifat === 'variabel').reduce((a, j) => a + per[j.id].n, 0); const cocokHarian = Math.abs(harian - L.harianToko) < 0.5;
   const susut = -(L.susutStok || 0); const hapus = L.hapusBuku || 0; const semuaBiaya = L.biayaToko + hapus + susut;
   let kgTerjual = 0, kgHitung = 0, nKg = 0; ambilPenjualan().forEach((p) => { if (!p.tanggal || p.tanggal < awal || p.tanggal > akhir) return; const kg = Number(p.totalKg) || 0; if (kg > 0) { kgTerjual += kg; nKg += 1; if (hppTercatat(p)) kgHitung += kg; } });
-  const menutup = Math.abs(L.margin - L.biayaToko - hapus + (L.susutStok || 0) - L.labaBersih) < 0.5 && Math.abs(per.upah.n + per.tetap.n - L.jatahBulanan) < 0.5 && cocokHarian && cocokTetap;
+  const menutup = Math.abs(L.margin - L.biayaToko - hapus + (L.susutStok || 0) + L.lebihKurangKas - L.labaBersih) < 0.5 && Math.abs(per.upah.n + per.tetap.n - L.jatahBulanan) < 0.5 && cocokHarian && cocokTetap;
   const tanpaCatatan = L.jumlahTrx === 0 && L.nHarian === 0 && L.nSusut === 0 && !rows.length;
   return { key, nama: lpNamaBulan(key), pendek: lpBulanPendek(key, true), berjalan, final: lpFinal(key), nHari, hariJalan, L, per, posSemua, susut, hapus, semuaBiaya, biayaToko: L.biayaToko, omzet: L.omzetPenuh, omzetHitung: L.omzetHitung, margin: L.margin, labaBersih: L.labaBersih,
     kgTerjual, kgHitung, nKg, belumDipilah, nBelum, dariKata, menutup, cocokHarian, cocokTetap, tanpaCatatan, cakupan: L.omzetHitung + L.omzetTanpaHpp > 0 ? L.omzetHitung / (L.omzetHitung + L.omzetTanpaHpp) : null, awal, akhir };
@@ -132,7 +132,7 @@ export function kendaliBulan(key, kini, bayaran) {
   const merah = baris.filter((r) => r.lampu === 'merah').length, amber = baris.filter((r) => r.lampu === 'amber').length, hijau = baris.filter((r) => r.lampu === 'hijau').length;
   const terjun = [{ nama: 'Margin kotor', n: K.margin, kelas: 'jumlah', ket: 'omzet ber-HPP − HPP (mesin laba)' }]
     .concat(JENIS_BIAYA.map((j) => ({ nama: j.nama, n: -K.per[j.id].n, ket: K.per[j.id].jumlah + ' catatan' })))
-    .concat([{ nama: 'Hapus buku piutang', n: -K.hapus, ket: K.L.nHapus + ' catatan' }, { nama: 'Susut & selisih stok', n: -K.susut, ket: K.L.nSusut + ' baris' }, { nama: 'Laba bersih', n: K.labaBersih, kelas: 'jumlah', ket: 'mesin yang sama dengan Laba' }]);
+    .concat([{ nama: 'Hapus buku piutang', n: -K.hapus, ket: K.L.nHapus + ' catatan' }, { nama: 'Susut & selisih stok', n: -K.susut, ket: K.L.nSusut + ' baris' }]).concat(K.L.lebihKurangKas ? [{ nama: 'Lebih/kurang kas', n: K.L.lebihKurangKas, ket: 'selisih laci tutup hari · ' + K.L.nLebihKurang + ' malam' }] : []).concat([{ nama: 'Laba bersih', n: K.labaBersih, kelas: 'jumlah', ket: 'mesin yang sama dengan Laba' }]);
   return Object.assign(K, { A, KL, U, UL, baris, terjun, merah, amber, hijau, nLampu: merah + amber + hijau, sebelum: sebelum.map((x) => x.key), pctBiaya: kbPct(K.semuaBiaya, K.omzet), pctBiayaToko: kbPct(K.biayaToko, K.omzet), biayaPerKg: K.kgTerjual > 0 ? Math.round(K.semuaBiaya / K.kgTerjual) : null,
     pct: (a) => kbPctTeks(kbPct(a, K.omzet)) });
 }
@@ -143,8 +143,9 @@ export function drafDariAcuan(K, draf) { const d = Object.assign({}, draf || {})
 /** Omzet yang harus dicapai supaya margin kotor menutup biaya di bawahnya: biaya ÷ rasio margin (margin ÷ omzet ber-HPP). Bulan berjalan: juga "sampai hari ini" dari mesin (awal bulan → hari ini). */
 export function titikImpas(K, kini, bayaran) {
   const rasio = K.omzetHitung > 0 ? K.margin / K.omzetHitung : null; const biaya = K.semuaBiaya; const omzetImpas = rasio > 0 ? Math.round(biaya / rasio) : null;
-  const iso = hariIniIso(kini); const sampai = K.berjalan ? (iso < K.akhir ? iso : K.akhir) : K.akhir; const Lj = hitungLabaBersihRentang(K.awal, sampai, bayaran || bayaranBiayaBulanan());
-  const menutupKini = Lj.labaBersih >= 0; const kurang = menutupKini ? 0 : -Lj.labaBersih; const omzetKurang = kurang > 0 && rasio > 0 ? Math.round(kurang / rasio) : 0;
+  const iso = hariIniIso(kini); const sampai = K.berjalan ? (iso < K.akhir ? iso : K.akhir) : K.akhir; const Lj = ugLabaBersih(K.awal, sampai, bayaran || bayaranBiayaBulanan());
+  // 39b no. 38: impas = margin kotor menutup biaya — lebih/kurang kas bukan biaya, jadi dihitung dari laba mesin; laba bersih yang DISEBUT = laba bersih toko
+  const menutupKini = Lj.labaMesin >= 0; const kurang = menutupKini ? 0 : -Lj.labaMesin; const omzetKurang = kurang > 0 && rasio > 0 ? Math.round(kurang / rasio) : 0;
   const hariSisa = K.berjalan ? K.nHari - K.hariJalan : 0;
   const teks = rasio === null ? 'Belum ada omzet ber-HPP bulan ini — rasio margin tidak bisa dihitung.' : rasio <= 0 ? 'Margin kotor bulan ini nol atau minus — berapa pun omzetnya biaya tidak tertutup; bahasannya harga jual, bukan jatah.'
     : 'Dari tiap Rp1.000.000 omzet tersisa ' + RP(Math.round(rasio * 1000000)) + ' sebelum biaya. Biaya di bawah margin ' + RP(biaya) + ' → butuh omzet ' + RP(omzetImpas) + ' sebulan (' + RP(Math.round(omzetImpas / K.nHari)) + ' per hari).';

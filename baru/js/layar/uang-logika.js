@@ -12,7 +12,7 @@
 // tokoDompet) + kolom `dari`. Kasbon owner = kasbonMutasi a.n. "Owner" (mesin kasbon, neraca & tutup buku sudah menghitungnya) bertanda owner: true.
 import { kasPada, hitungKasbon, hitungLabaBersihRentang, hitungUtangOwner } from '../mesin/beku.js';
 import { daftarGerakanKas, daftarModalOwner, kunciPelanggan, POS_BIAYA_BULANAN, namaBulanPanjang, akhirBulanIso } from '../mesin/pembantu.js';
-import { ambilTitikKas, ambilAmplopLaba, ambilPindahUang, ambilPengeluaranHarian, ambilKasbonMutasi, ambilModalOwner, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, ambilBiayaBulanan, ambilPiutangMutasi, ambilBahanKemasan, ambilBahanLiteran, cacheMentah } from '../data/toko.js';
+import { ambilTitikKas, ambilAmplopLaba, ambilPindahUang, ambilPengeluaranHarian, ambilKasbonMutasi, ambilModalOwner, ambilUtangOwnerMutasi, ambilUtangPemasokMutasi, ambilBiayaBulanan, ambilPiutangMutasi, ambilBahanKemasan, ambilBahanLiteran, cacheMentah, ambilTutupHari } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { TEMPAT_UANG, aturBon } from './bon-pemasok-logika.js';
 
@@ -76,6 +76,23 @@ export function ugCukup(S, tempat, n) {
   return { boleh: true, teks: '' };
 }
 
+// ---------- laba bersih toko: SATU aturan untuk semua layar (39b no. 38) ----------
+// Keputusan owner 30 Sep 2026: selisih laci tutup hari (lebih +, kurang −) = baris "Lebih/kurang kas" di LABA. Mesin beku tidak menghitungnya: laba mesin
+// tanpa selisih, sedangkan kas sudah memuatnya (tiap tutup hari memasang titik kas dari hitungan fisik). Jadi laba bersih toko = laba mesin + lebih/kurang kas,
+// disusun DI SINI saja; Laba, laba-rugi berkop, neraca (laba berjalan), Biaya, Menu, kunci bulan & tutup hari membacanya dari sini (mesin beku tidak diubah).
+// Satu malam = selisih catatan tutup sekarang + selisih tiap tutup sebelumnya di riwayatnya (tutup ulang memasang titik kas lagi, jadi tiap selisih sudah
+// masuk kas). Selisih yang tidak bisa dihitung (titik kas belum disetel) = 0: tidak diketahui, bukan lebih/kurang. Kolom = yang dibaca rekap harian.
+export function ugLebihKurangKas(dari, sampai) {
+  let n = 0, malam = 0; const sel = (x) => Number((x && (x.selisihLaci || x.selisih)) || 0);
+  ambilTutupHari().forEach((t) => { if (!t || !t.tanggal || t.tanggal < dari || t.tanggal > sampai) return; const s = (Array.isArray(t.riwayat) ? t.riwayat : []).reduce((a, x) => a + sel(x), sel(t)); if (s) { n += s; malam += 1; } });
+  return { n: Math.round(n), malam };
+}
+/** hitungLabaBersihRentang (mesin beku) + baris lebih/kurang kas: labaMesin = laba tanpa selisih laci, labaBersih = labaMesin + lebihKurangKas. */
+export function ugLabaBersih(dari, sampai, bayaran) {
+  const L = hitungLabaBersihRentang(dari, sampai, bayaran); const K = ugLebihKurangKas(dari, sampai);
+  return Object.assign(L, { labaMesin: L.labaBersih, lebihKurangKas: K.n, nLebihKurang: K.malam, labaBersih: L.labaBersih + K.n });
+}
+
 // ---------- angka owner-toko yang dibaca banyak layar ----------
 /** Modal owner yang tertanam = Σ setor − Σ tarik (modalOwner + setoranKas lama lewat daftarModalOwner); pinjaman owner ke toko TIDAK dihitung modal. */
 export function modalTertanam(sampai) { return daftarModalOwner().reduce((a, m) => { if (m.pinjaman || (sampai && (m.tanggal || '') > sampai)) return a; const n = Number(m.nominal) || 0; return a + (m.tipe === 'setor' ? n : -n); }, 0); }
@@ -132,7 +149,7 @@ export function perluTerukur(kategori) {
 export function aturKeluar(iso) {
   const a = ugAturDok('uangKeluar') || {}; const daftar = (arr, ganti) => (Array.isArray(arr) && arr.length ? arr.filter((x) => x && String(x.nama || '').trim()).map((x) => ({ nama: String(x.nama).trim(), biasa: Math.max(0, Math.round(Number(x.biasa) || 0)) })) : ganti);
   const amanOwner = isFinite(Number(a.aman)) && Number(a.aman) > 0 ? Math.round(Number(a.aman)) : 0;
-  const laba = iso ? hitungLabaBersihRentang(ugAwalBulan(iso), iso).labaBersih : 0;
+  const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;
   return { perluToko: daftar(a.perluToko, perluTerukur('toko')), perluKaryawan: daftar(a.perluKaryawan, perluTerukur('karyawan')), perluPribadi: daftar(a.perluPribadi, perluTerukur('owner')), bulanan: daftar(a.bulanan, []), alasan: Array.isArray(a.alasan) && a.alasan.length ? a.alasan.map(String) : ATUR_KELUAR_BAWAAN.alasan,
     aman: amanOwner || Math.max(0, laba), amanDariLaba: !amanOwner, labaBulan: laba, dariOwner: !!ugAturDok('uangKeluar'), terukurToko: !(Array.isArray(a.perluToko) && a.perluToko.length), terukurKaryawan: !(Array.isArray(a.perluKaryawan) && a.perluKaryawan.length), terukurPribadi: !(Array.isArray(a.perluPribadi) && a.perluPribadi.length) };
 }

@@ -5,12 +5,12 @@
 // Semua angka DIBACA dari data toko lewat mesin yang sama dengan sistem lama — tidak ada angka yang lahir di layar Menu.
 // Tiap baris membawa TUJUAN: layar sistem baru (jual / stok + lembar / pelanggan / sistem), atau sistem lama (halaman yang belum ada di sini).
 // Nama pembantu diprefiks `mn` karena bundel uji jsc satu lingkup.
-import { hitungPiutang, hitungUtangPemasok, hitungKasbon, hitungStokKarungPerMerk, hitungStokKemasan, hitungLabaBersihRentang, hitungNeraca, kasPada } from '../mesin/beku.js';
+import { hitungPiutang, hitungUtangPemasok, hitungKasbon, hitungStokKarungPerMerk, hitungStokKemasan, hitungNeraca, kasPada } from '../mesin/beku.js';
 import { cariHargaKarungPerKg, kunciPelanggan } from '../mesin/pembantu.js';
 // putaran 17: tempo per pemasok (kartu > tempo umum > tidak diramal) — satu kebenaran dengan layar Bon pemasok
 import { tempoPemasok } from './bon-pemasok-logika.js';
 // putaran 18: saldo per tempat uang (laci · brankas · rekening · amplop) — satu kebenaran dengan layar Uang
-import { saldoKantong } from './uang-logika.js';
+import { saldoKantong, ugLabaBersih } from './uang-logika.js';
 import { ambilPenjualan, ambilSemuaBatch, ambilTutupHari, ambilPengeluaranHarian, ambilPiutangMutasi, ambilPenyesuaianStok, ambilPenyesuaianKemasan, ambilBahanKemasan, ambilBahanLiteran, ambilHargaKarung, ambilHargaKemasan, ambilHargaLiteran, ambilProduksiBerlaku, ambilPemasokCatatan, ambilTitikKas, cacheMentah, stokMerekSaja } from '../data/toko.js';
 import { RP, ANGKA, DESIMAL, hariIniIso, tanggalPendek, lebihBayarDari, kalimatLebih, ringkasLebih } from '../inti/format.js';
 import { semuaBon } from './bon-logika.js';
@@ -71,7 +71,7 @@ function mnKatalog() { const k = ambilHargaKarung(), m = ambilHargaKemasan(), l 
 export function susunLaci(kini, lokal) {
   const iso = hariIniIso(kini); const L = lokal || {};
   const U = mnUtang(iso); const semuaB = semuaBon(kini); const LB = lebihBayarDari(semuaB); const bon = semuaB.filter((b) => b.sisa > 0); const totalBon = bon.reduce((a, b) => a + b.sisa, 0); const macet = bon.filter((b) => b.status === 'macet').length; const tagih = bon.filter((b) => b.status === 'janjiLewat' || b.status === 'perluTagih').length;
-  const pertama = mnCatatanPertama(); const umur = pertama ? ssHariKe(iso) - ssHariKe(pertama) + 1 : 0; const laba = hitungLabaBersihRentang(mnAwalBulan(iso), iso);
+  const pertama = mnCatatanPertama(); const umur = pertama ? ssHariKe(iso) - ssHariKe(pertama) + 1 : 0; const laba = ugLabaBersih(mnAwalBulan(iso), iso);
   const K = mnKatalog(); const O = mnOpname(); const opUmur = O.akhir ? ssHariKe(iso) - ssHariKe(O.akhir) : null;
   const prod = ambilProduksiBerlaku(); const prodBulan = new Set(prod.filter((p) => (p.tanggal || '') >= mnAwalBulan(iso) && !p.dariTakar && !p.bukaKemasan).map((p) => p.batchProduksi || p.id)).size; const prodSemua = new Set(prod.filter((p) => !p.dariTakar).map((p) => p.batchProduksi || p.id)).size;
   const era = ssEraTutupBuku(); const tahunLalu = pertama && Number(pertama.slice(0, 4)) < kini.getFullYear();
@@ -112,8 +112,8 @@ export function susunTanya(kini) {
   const kas = kasPada(); const titik = ambilTitikKas();
   const SK = saldoKantong();
   tanya('kas', 'Uang toko sekarang ada di mana?', kas === null ? 'belum bisa dihitung' : RP(kas), kas === null ? 'Titik kas belum disetel di perangkat ini — Tutup hari malam ini (Uang → Tutup hari) menyetelnya. Angka tidak ditebak.' : (SK.ada ? 'Laci ' + RP(SK.laci) + ' · brankas ' + RP(SK.brankas) + ' · rekening ' + RP(SK.rekening) + ' · amplop laba ' + RP(SK.amplop) + ' — dari titik kas ' + tanggalPendek(titik.tanggal) + ' + gerakan kas sesudahnya; pindahkan atau amankan lewat Uang → Pindah uang.' : 'Kas tercatat ' + RP(kas) + '.'), kas === null, { ke: 'uang', keluarga: 'pindah', teks: 'buka Uang → Pindah uang' }, 'dompet');
-  const laba = hitungLabaBersihRentang(mnAwalBulan(iso), iso);
-  tanya('laba', 'Bulan ini toko untung berapa?', laba.omzetHitung > 0 ? RP(laba.labaBersih) : 'belum ada', laba.omzetHitung > 0 ? 'Laba bersih ' + laba.nHari + ' hari bulan ini: margin kotor ' + RP(laba.margin) + ' − biaya toko ' + RP(laba.biayaToko) + (laba.hapusBuku ? ' − hapus buku ' + RP(laba.hapusBuku) : '') + (laba.susutStok ? ' ± susut ' + RP(laba.susutStok) : '') + (laba.jumlahTanpaHpp ? '. ' + laba.jumlahTanpaHpp + ' baris tanpa modal tidak ikut.' : '.') : 'Belum ada nota bulan ini.', laba.omzetHitung > 0 && laba.labaBersih < 0, { ke: 'laporan', keluarga: 'laba', teks: 'buka Laporan → Laba' }, 'naik');
+  const laba = ugLabaBersih(mnAwalBulan(iso), iso);
+  tanya('laba', 'Bulan ini toko untung berapa?', laba.omzetHitung > 0 ? RP(laba.labaBersih) : 'belum ada', laba.omzetHitung > 0 ? 'Laba bersih ' + laba.nHari + ' hari bulan ini: margin kotor ' + RP(laba.margin) + ' − biaya toko ' + RP(laba.biayaToko) + (laba.hapusBuku ? ' − hapus buku ' + RP(laba.hapusBuku) : '') + (laba.susutStok ? ' ± susut ' + RP(laba.susutStok) : '') + (laba.lebihKurangKas ? ' ± lebih/kurang kas ' + RP(laba.lebihKurangKas) : '') + (laba.jumlahTanpaHpp ? '. ' + laba.jumlahTanpaHpp + ' baris tanpa modal tidak ikut.' : '.') : 'Belum ada nota bulan ini.', laba.omzetHitung > 0 && laba.labaBersih < 0, { ke: 'laporan', keluarga: 'laba', teks: 'buka Laporan → Laba' }, 'naik');
   const N = hitungNeraca();
   tanya('kaya', 'Kalau semuanya dihitung, toko ini kaya atau tidak?', N.total === null ? 'belum bisa dihitung' : RP(N.total), N.total === null ? 'Kas belum bisa dihitung (titik kas belum disetel), jadi kekayaannya pun belum.' + (LB.uang.n ? ' Kelebihan bayar pelanggan ' + RP(LB.uang.jumlah) + ' belum dihitung sebagai kewajiban — begitu kas bisa dihitung, kekayaan akan terbaca lebih besar sebesar itu.' : '') : 'Kas ' + RP(N.kas) + ' + stok ' + RP(N.stok) + ' + piutang ' + RP(N.piutang) + ' + kasbon ' + RP(N.kasbon) + ' − utang pemasok ' + RP(N.utangPemasok) + ' − utang ke owner ' + RP(N.utangOwner) + '. Batas BAWAH: aset tetap belum punya kolomnya.' + (N.adaStokMinus ? ' Ada stok yang catatannya minus.' : '') + (LB.uang.n ? ' Kelebihan bayar pelanggan ' + RP(LB.uang.jumlah) + ' belum dihitung sebagai kewajiban — kekayaan ini lebih besar sebesar itu.' : ''), (N.total !== null && N.total < 0) || LB.uang.n > 0, { ke: 'laporan', keluarga: 'neraca', teks: 'buka Laporan → Neraca' }, 'timbangan');
   const macet = B.filter((b) => b.status === 'macet'); const tertua = Math.max(0, ...B.map((b) => b.umur || 0));

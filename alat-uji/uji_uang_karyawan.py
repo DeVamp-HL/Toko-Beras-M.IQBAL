@@ -65,7 +65,8 @@ var KINI = new Date(Date.now()); var W = { tanggal: '2026-09-19', jam: '10:00', 
 var tulis = function (r) { if (r.tolak) throw new Error('DITOLAK: ' + r.tolak); if (r.hapus) terapkanKeCache(r.hapus.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; })); if (r.dokumen) terapkanKeCache(r.dokumen); return r; };
 var LM = function () { return hitungLabaBersihRentang('2026-09-01', '2026-09-30'); };
 var brs = function (M, id) { return M.baris.find(function (b) { return b.id === id; }); };
-var menutup = function (M) { var jml = M.baris.filter(function (b) { return ['kotor', 'toko', 'upah', 'karyawan', 'hapus', 'susut'].indexOf(b.id) >= 0; }).reduce(function (a, b) { return a + b.n; }, 0); return Math.abs(jml - brs(M, 'bersih').n) < 0.5 && Math.abs(brs(M, 'bersih').n + brs(M, 'prive').n - brs(M, 'sisa').n) < 0.5; };
+// 39b no. 38: baris 'lebihKurang' (selisih laci tutup hari) ikut tangga laba kotor → laba bersih
+var menutup = function (M) { var jml = M.baris.filter(function (b) { return ['kotor', 'toko', 'upah', 'karyawan', 'hapus', 'susut', 'lebihKurang'].indexOf(b.id) >= 0; }).reduce(function (a, b) { return a + b.n; }, 0); return Math.abs(jml - brs(M, 'bersih').n) < 0.5 && Math.abs(brs(M, 'bersih').n + brs(M, 'prive').n - brs(M, 'sisa').n) < 0.5; };
 
 // ==================== BAGIAN 3 · LABA KOTOR → KE MANA (sebelum ada catatan hari ini) ====================
 var L0 = LM(); var M = keManaLabaKotor('2026-09', KINI);
@@ -132,7 +133,9 @@ var asap = null;
 if (CADANGAN) {
   Object.keys(CADANGAN).forEach(function (n) { if (Array.isArray(CADANGAN[n])) pasok(n, CADANGAN[n]); });
   localStorage.removeItem('miqbal_titik_kas_v1'); var kini2 = new Date(Date.now()); var bulan = daftarBulan(kini2, 36); var salah = [];
-  var tiap = bulan.map(function (b) { var Mb = keManaLabaKotor(b.key, kini2); var LMb = hitungLabaBersihRentang(b.key + '-01', akhirBulanIso(b.key)); if (!Mb.tanpaCatatan && (!Mb.menutup || !menutup(Mb) || Mb.labaBersih !== LMb.labaBersih || Math.abs(Mb.biayaToko + Mb.biayaKaryawan - LMb.biayaToko) >= 0.5)) salah.push(b.key);
+  // 39b no. 38: laba bersih = mesin + selisih laci tutup hari bulan itu (dihitung ulang di sini dari tutupHari, termasuk riwayat tutup ulang)
+  var kas38 = function (k) { var n = 0; ambilTutupHari().forEach(function (t) { if (!t || String(t.tanggal || '').slice(0, 7) !== k) return; [t].concat(t.riwayat || []).forEach(function (x) { n += Number((x && (x.selisihLaci || x.selisih)) || 0); }); }); return n; };
+  var tiap = bulan.map(function (b) { var Mb = keManaLabaKotor(b.key, kini2); var LMb = hitungLabaBersihRentang(b.key + '-01', akhirBulanIso(b.key)); if (!Mb.tanpaCatatan && (!Mb.menutup || !menutup(Mb) || Mb.labaBersih !== LMb.labaBersih + kas38(b.key) || Math.abs(Mb.biayaToko + Mb.biayaKaryawan - LMb.biayaToko) >= 0.5)) salah.push(b.key);
     return b.key + ': ' + (Mb.tanpaCatatan ? 'tanpa catatan' : 'menutup · belum dipilah ' + Mb.belumDipilah + ' · karyawan ' + Mb.pilah.nKaryawan + ' · ' + (Mb.final ? 'final' : 'draf')); });
   var Pc = pilahHarian('2000-01-01', '2099-12-31'); var AKc = aturKeluar(hariIniIso(kini2));
   asap = { salah: salah, tiap: tiap, semuaCatatan: { n: Pc.n, belumDipilah: Pc.nBelum, karyawan: Pc.nKaryawan, toko: Pc.nToko }, perluKaryawan: AKc.perluKaryawan.map(function (p) { return p.nama; }), terukurKaryawan: AKc.terukurKaryawan };

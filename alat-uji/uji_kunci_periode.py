@@ -146,6 +146,10 @@ var RK = susunKunciBulan('2026-08', K({ putusanHari: putusSemua, centang: C_SEMU
 ok('kunci Agustus: SATU dokumen aturanToko/kunciPeriode, sampaiBulan 2026-08, riwayat +1 (aksi kunci, olehUid owner, butir periksa, keputusan per hari, potret angka)',
   !!dk && RK.dokumen.length === 1 && RK.dokumen[0].koleksi === 'aturanToko' && dk.id === 'kunciPeriode' && dk.sampaiBulan === '2026-08' && dk.riwayat.length === 1 && dk.riwayat[0].aksi === 'kunci'
   && dk.riwayat[0].olehUid === 'uid-owner' && dk.riwayat[0].periksa.length === DOK.butir.length && dk.riwayat[0].hari.length === D1.hari.length && dk.riwayat[0].potret && typeof dk.riwayat[0].potret.omzet === 'number', J(RK.tolak || dk));
+// 39b no. 38 (owner 30 Sep): potret laba bersih saat dikunci = laba yang sama dengan Laporan (mesin + selisih laci tutup hari bulan itu)
+ok('39b-38 potret kunci Agustus: laba bersih = mesin + kurang kas 25.000 (selisih laci 13 Agu); tanpa selisih = mesin',
+  kpPotret('2026-08').labaBersih === Math.round(hitungLabaBersihRentang('2026-08-01', '2026-08-31').labaBersih) && denganCacheSementara([{ koleksi: 'tutupHari', data: { id: '2026-08-13', tanggal: '2026-08-13', jam: '21:00', omzet: 0, kasFisikLaci: 0, selisih: -25000, alasanSelisih: 'Salah kasih kembalian' } }],
+    function () { return kpPotret('2026-08').labaBersih === Math.round(hitungLabaBersihRentang('2026-08-01', '2026-08-31').labaBersih - 25000); }), J(kpPotret('2026-08')));
 tulis(RK);
 ok('sesudah kunci: sampaiBulan naik ke Agustus; calon berikutnya belum ada (September masih berjalan); pada 3 Okt calon = September',
   kpKeadaan().sampai === '2026-08' && kpCalon(kini()) === null && (function () { pada('2026-10-03T10:00:00+07:00'); var c = kpCalon(kini()); pada('2026-09-24T10:00:00+07:00'); return c === '2026-09'; })());
@@ -365,6 +369,7 @@ if __name__ == '__main__':
             'tahun final dari Januari saja': js.replace("const s = kunciSampai(); return !!s && s >= tahun + '-12'; }", "const s = kunciSampai(); return !!s && s >= tahun + '-01'; }"),
             'peringatan pajak hilang': js.replace("return pjTerkunci(key) ? '' : key < KP_KUNCI_MULAI ?", "return true ? '' : key < KP_KUNCI_MULAI ?"),
             'Beranda diam walau siap': js.replace("  const c = kpCalon(kini); if (!c || !kpBolehDikunci(c, kini, kunciTenggang())) return [];", "  return [];"),
+            '39b-38: potret kunci memakai laba mesin (tanpa lebih/kurang kas)': js.replace("const L = ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan));", "const L = { omzetPenuh: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).omzetPenuh, margin: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).margin, labaBersih: ugLabaBersih(bulan + '-01', kpAkhirBulan(bulan)).labaMesin };"),
         }
         kode = 0
         for nama, isi in rusak.items():

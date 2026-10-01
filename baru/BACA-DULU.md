@@ -1416,3 +1416,17 @@ membiarkan kolom pencipta (`oleh`, `olehUid`, `perangkat`, `lokasi`) dan menamba
 dokumen beratribusi (katalog kasir apa adanya; yang sudah punya tidak ditimpa); owner tercatat sebagai penulis ulang di `diubahOleh*`, dan baris jejaknya
 (`jejakTulisUlang`) berbunyi "… · ditulis ulang owner, pencatat asli <nama> (<peran>)". Juga berlaku untuk "catat ulang bertanggal hari ini". Rules v6
 tidak diubah (tulisan owner tidak dibatasi kolomnya). Uji `uji_akses_baru.py` +4, kontrol +7.
+
+## Audit 39b no. 38 — selisih laci = baris "Lebih/kurang kas" di laba (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
+
+Keputusan owner 30 Sep: selisih laci tutup hari (lebih +, kurang −) masuk LABA sebagai baris sendiri. Dulu selisih hanya menggeser kas (titik kas dipasang
+dari hitungan fisik) tanpa jejak di laba/neraca. Mesin beku tidak diubah: `uang-logika.js` `ugLebihKurangKas(dari, sampai)` (Σ `selisihLaci`/`selisih`
+tutupHari + riwayat tutup ulangnya; tidak bisa dihitung = 0) dan `ugLabaBersih()` = `hitungLabaBersihRentang` + baris itu (`labaMesin` = tanpa selisih).
+SEMUA pemakai laba bersih membacanya dari sana: Laba (tangga + diterima tunai), Ke mana laba kotor, laba-rugi berkop (+ kalimatnya), Banding, Mingguan,
+Tahunan, inti Bulanan, neraca (laba kumulatif ikut → beda "belum terjelaskan" bergeser sebesar itu), Biaya (tangga & "menutup"), Menu (laci Laporan,
+"Bulan ini toko untung berapa?"), batas aman ambil pribadi, potret kunci bulan. Baris "Lebih/kurang kas" hanya digambar bila bukan nol. Tetap: titik
+impas Biaya = margin lawan biaya (`labaMesin`; lebih/kurang kas bukan biaya); lembar tutup hari ("Laba hari ini", dasar sisihan) = laba SEBELUM selisih
+laci — selisih malam itu sudah punya barisnya sendiri di rekap. Sistem lama (hanya-baca) tetap laba mesin. Uji: `uji_laporan_baru.py` +4,
+`uji_uang_baru.py` +2 (+1 SENGAJA: laba hari ini sesudah tutup KURANG 30.000 = 44.600, dulu 74.600), `uji_kendali_biaya.py` +2, `uji_menu_baru.py` +1,
+`uji_kunci_periode.py` +1, asap toko `uji_uang_karyawan`/`uji_kendali_biaya`/`uji_laporan_baru` = mesin + selisih (dihitung ulang dari tutupHari);
+ASAP GLOBAL `uji_wadah_bernama.py`: perubahan SENGAJA "no. 38" (geser = selisih laci per bulan, dihitung ulang dari cadangan); kontrol +20.

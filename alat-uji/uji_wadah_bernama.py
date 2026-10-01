@@ -309,10 +309,77 @@ def _syarat19label(c, m, cad):
     return json.dumps(_no19label(c), sort_keys=True) == json.dumps(_no19label(m), sort_keys=True)
 
 
+
+def _rp(n):
+    """RP() format.js: '−Rp1.234' (dibulatkan)."""
+    x = int(abs(n) + 0.5) if n is not None else 0
+    return ('−' if (n or 0) < 0 else '') + 'Rp' + '{:,}'.format(x).replace(',', '.')
+
+
+def _kas38_bulan(cad):
+    """39b no. 38: Σ selisih laci tutup hari per bulan, dihitung ulang dari cadangan (selisihLaci atau selisih; riwayat tutup ulang ikut)."""
+    out = {}
+    for t in cad.get('tutupHari') or []:
+        tg = str(t.get('tanggal') or '')
+        if not tg: continue
+        n = sum(float((x or {}).get('selisihLaci') or (x or {}).get('selisih') or 0) for x in [t] + list(t.get('riwayat') or []))
+        out[tg[:7]] = out.get(tg[:7], 0) + n
+    return out
+
+
+def _no38(h):
+    """39b no. 38 (owner 30 Sep): selisih laci tutup hari = baris "Lebih/kurang kas" di laba. Angka yang memang digeser keputusan itu (laba bersih, diterima
+    tunai, batas aman dari laba, laba kumulatif & beda neraca + kalimatnya) dikosongkan di KEDUA sisi — gesernya diperiksa _syarat38; baris & kolom baru dibuang."""
+    h = json.loads(json.dumps(h))
+    for L in h.get('laba') or []:
+        if not L: continue
+        Ld = L.get('L') or {}
+        for k in ('labaMesin', 'lebihKurangKas', 'nLebihKurang'): Ld.pop(k, None)
+        Ld['labaBersih'] = None; L['labaBersih'] = None; L['tunai'] = None
+        L['terjun'] = [dict(r, n=None) if r.get('nama') == 'Laba bersih' else r for r in (L.get('terjun') or []) if not str(r.get('nama') or '').startswith('Lebih/kurang kas')]
+        if L.get('aman'): L['aman']['batas'] = None; L['aman']['sisa'] = None
+    for I in h.get('inti') or []:
+        if I: I['labaBersih'] = None
+    for N in h.get('neraca') or []:
+        if N:
+            for k in ('labaKum', 'menurutMesin', 'selisihBuku', 'catatan'): N[k] = None
+    return h
+
+
+def _syarat38(c, m, cad):
+    """tiap bulan: laba bersih, laba di tangga & diterima tunai cabang − main = PERSIS selisih laci tutup hari bulan itu (dihitung ulang dari cadangan); baris
+    "Lebih/kurang kas" ada tepat bila selisihnya bukan nol; inti ikut; neraca: laba kumulatif +Σ sampai akhir bulan, beda belum terjelaskan −Σ, harta tidak
+    bergeser, kalimatnya hanya berganti angka; batas aman: tanpa selisih sama persis."""
+    kas = _kas38_bulan(cad); dk = lambda a, b, d: a is not None and b is not None and abs((a - b) - d) < 0.5
+    for k, x, y, ix, iy, nx, ny in zip(c['bulan'], c['laba'], m['laba'], c['inti'], m['inti'], c['neraca'], m['neraca']):
+        x = x or {}; y = y or {}; d = kas.get(k, 0)
+        if not (dk(x.get('labaBersih'), y.get('labaBersih'), d) and dk((x.get('L') or {}).get('labaBersih'), (y.get('L') or {}).get('labaBersih'), d) and dk(x.get('tunai'), y.get('tunai'), d)): return False
+        if abs(((x.get('L') or {}).get('lebihKurangKas') or 0) - d) > 0.5 or abs(((x.get('L') or {}).get('labaMesin') or 0) - ((y.get('L') or {}).get('labaBersih') or 0)) > 0.5: return False
+        lk = [r for r in x.get('terjun') or [] if str(r.get('nama') or '').startswith('Lebih/kurang kas')]
+        if (len(lk) != (1 if abs(d) > 0.5 else 0)) or (lk and abs(lk[0]['n'] - d) > 0.5): return False
+        tb = lambda X: [r['n'] for r in X.get('terjun') or [] if r.get('nama') == 'Laba bersih']
+        if len(tb(x)) != 1 or len(tb(y)) != 1 or not dk(tb(x)[0], tb(y)[0], d): return False
+        if not dk((ix or {}).get('labaBersih'), (iy or {}).get('labaBersih'), d): return False
+        if x.get('aman') or y.get('aman'):
+            ax, ay = x.get('aman') or {}, y.get('aman') or {}
+            if abs(d) < 0.5 and (ax.get('batas') != ay.get('batas') or ax.get('sisa') != ay.get('sisa')): return False
+            if ax.get('terpakai') != ay.get('terpakai'): return False
+        nx = nx or {}; ny = ny or {}; kum = sum(v for b, v in kas.items() if b <= k)
+        if ny.get('labaKum') is not None and not (dk(nx.get('labaKum'), ny.get('labaKum'), kum) and dk(nx.get('menurutMesin'), ny.get('menurutMesin'), kum)): return False
+        if (ny.get('selisihBuku') is None) != (nx.get('selisihBuku') is None) or (ny.get('selisihBuku') is not None and not dk(nx.get('selisihBuku'), ny.get('selisihBuku'), -kum)): return False
+        if nx.get('labaDitahan') != ny.get('labaDitahan') or nx.get('aset') != ny.get('aset'): return False
+        if ny.get('catatan') is not None and ny.get('menurutMesin') is not None:
+            ganti = nx.get('catatan') or ''
+            ganti = ganti.replace('mesin − ambil pribadi = ' + _rp(nx.get('menurutMesin')), 'mesin − ambil pribadi = ' + _rp(ny.get('menurutMesin')))
+            ganti = ganti.replace('; beda ' + _rp(nx.get('selisihBuku')) + ' belum', '; beda ' + _rp(ny.get('selisihBuku')) + ' belum')
+            if ganti != ny.get('catatan'): return False
+    return True
+
 SENGAJA = [
     ('no. 20 hitung nota', 'baru/js/data/toko.js', 'export function jumlahNota', _no20, _syarat20),
     ('no. 24 potongan QRIS satu aturan', 'baru/js/layar/uang-logika.js', 'export const adalahMdr', _no24, _syarat24),
     ('no. 19 nama angka sebelum retur', 'baru/js/layar/laporan-logika.js', "[['Penjualan terhitung', omzetKotor]]", _no19label, _syarat19label),
+    ('no. 38 lebih/kurang kas di laba', 'baru/js/layar/uang-logika.js', 'export function ugLebihKurangKas', _no38, _syarat38),
 ]
 
 
