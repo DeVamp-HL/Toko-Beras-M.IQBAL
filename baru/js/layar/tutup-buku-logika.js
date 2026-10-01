@@ -149,19 +149,28 @@ export function periksaUlangBuku(tahun) {
   return bandingBuku({ harta: H.baris, utang: [] }, o);
 }
 /**
- * Putaran 3 UTBU-1: hasil periksa ulang DIBEKUKAN saat arsip habis — ditulis ke berita acara (`periksaArsip`: patokan & angka mesin per baris). "Selesai" & pita
- * memakai hasil itu; dulu dihitung ulang tiap kali terhadap patokan pagi, jadi penjualan Januari biasa sesudah arsip terbaca "TIDAK SAMA" dan tercatat permanen.
+ * Putaran 3 UTBU-1: hasil periksa ulang DIBEKUKAN saat arsip habis (patokan & angka mesin per baris). "Selesai" & pita memakai hasil itu; dulu dihitung ulang
+ * tiap kali terhadap patokan pagi, jadi penjualan Januari biasa sesudah arsip terbaca "TIDAK SAMA" dan tercatat permanen.
  * dokumen hanya bila berita acara masih 'terkunci', arsip sudah habis, dan (putaran 4 P4-1) perangkat ini pemegangnya (L = lokal() layar).
+ * Putaran 4 P4-4: hasilnya dokumen TERSENDIRI tanpa kolom status — pengaturan/periksaArsip<tahun> (rules: owner saja, bukan titikKas = tidak dikunci; dibaca
+ * hanya di sini) — bertanda percobaan. Dulu berita acara UTUH berstatus 'terkunci' ikut ditulis: kalau mendarat telat (sinyal putus) sesudah 'dibatalkan' /
+ * 'selesai', statusnya mundur jadi 'terkunci' dan pita menyuruh meneruskan arsip.
  */
+// tanda percobaan = jam paraf/kunci percobaan ini: sama di 'berjalan' & 'terkunci', baru tiap mulai lagi
+const bkPercobaan = (a) => (a && a.paraf && a.paraf.pada ? String(a.paraf.pada) : '');
 export function susunPeriksaArsip(tahun, w, L) {
   const PU = periksaUlangBuku(tahun); const a = bkAcara(tahun);
-  if (!PU || !a || a.status !== 'terkunci' || arsipBuku(tahun).n || bkBukanPemegang(tahun, L)) return { PU };
-  const periksaArsip = { pada: w.kini, tanggal: w.tanggal, baris: PU.baris.map((b) => ({ id: b.id, nama: b.nama, a: b.a, b: b.b })) };
-  return { PU, dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, a, { periksaArsip }) }] };
+  if (!PU || !a || a.status !== 'terkunci' || arsipBuku(tahun).n || bkBukanPemegang(tahun, L) || !bkPercobaan(a)) return { PU };
+  const periksaArsip = { id: 'periksaArsip' + tahun, tahun, percobaan: bkPercobaan(a), pada: w.kini, tanggal: w.tanggal, baris: PU.baris.map((b) => ({ id: b.id, nama: b.nama, a: b.a, b: b.b })) };
+  return { PU, dokumen: [{ koleksi: 'pengaturan', data: periksaArsip }] };
 }
-/** Hasil periksa ulang yang dipakai "selesai" & pita: yang dibekukan saat arsip habis; belum ada (arsip dituntaskan tanpa tulisan itu) = dihitung ulang sekarang. */
+/**
+ * Hasil periksa ulang yang dipakai "selesai" & pita: yang dibekukan saat arsip habis PADA PERCOBAAN INI (tanda percobaan sama); belum ada / milik percobaan lain
+ * (dibatalkan lalu dimulai lagi — LP3-Z1) = dihitung ulang sekarang.
+ */
 function bkPeriksaDipakai(tahun) {
-  const a = bkAcara(tahun); const P = a && a.periksaArsip; if (!P || !Array.isArray(P.baris)) return periksaUlangBuku(tahun);
+  const a = bkAcara(tahun); const P = dokDiCache('pengaturan', 'periksaArsip' + tahun);
+  if (!P || !Array.isArray(P.baris) || !bkPercobaan(a) || String(P.percobaan || '') !== bkPercobaan(a)) return periksaUlangBuku(tahun);
   const o = {}; P.baris.forEach((b) => { o[b.id] = b.b; }); return bandingBuku({ harta: P.baris.map((b) => ({ id: b.id, nama: b.nama, n: b.a })), utang: [] }, o);
 }
 /** Yang diarsipkan saat kunci: seluruh dokumen tahun itu menurut tbDaftarKoleksi (sama dengan yang dihapus sistem lama). */

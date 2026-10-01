@@ -283,7 +283,8 @@ export function pasangLayarUang(akar, opsi) {
       const balik = henti ? BK.arsipBalikBuku(tahun, potongTadi) : []; if (balik.length) { try { await pulihkanArsip(tahun, balik); } catch (e2) { console.error(e2); } }
       set({ sibuk: false, progres: null, kabar: henti || 'Arsip terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan"; yang sudah pindah tidak diulang. Sampai habis, angka toko DOBEL.', kabarAwas: true }); return false; }
     if (henti) { set({ sibuk: false, progres: null, kabar: henti, kabarAwas: true }); return false; }
-    // putaran 3 UTBU-1: hasil periksa ulang DIBEKUKAN saat arsip habis (ditulis ke berita acara) — "selesai" memakainya; tulisan gagal = selesai menghitung ulang
+    // putaran 3 UTBU-1: hasil periksa ulang DIBEKUKAN saat arsip habis (putaran 4 P4-4: dokumen tersendiri tanpa status, bertanda percobaan) — "selesai" memakainya;
+    // tulisan gagal = selesai menghitung ulang
     const PA = BK.susunPeriksaArsip(tahun, waktu(), lokal()); if (PA.dokumen) { try { await tulisDokumen(PA.dokumen, [], { tunggu: true }); } catch (e) { console.error(e); } }
     const PU = PA.PU || { semuaSama: false, ringkas: 'pemeriksaan ulang tidak bisa dijalankan', beda: [] };
     set({ sibuk: false, progres: null, sesudahLive: PU, langkahB: Object.assign({}, s.langkahB, { kunci: waktu().kini }), bukaB: 'cadangan2', kabar: (kabarAkhir || '') + (PU.semuaSama ? ' Diperiksa ulang dari mesin: semua baris sama.' : ' AWAS: ' + BK.bkKalimatPeriksa(PA.PU) + ' — periksa dulu, jangan diselesaikan.'), kabarAwas: !PU.semuaSama });
