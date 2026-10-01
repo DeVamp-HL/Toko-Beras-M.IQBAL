@@ -267,8 +267,11 @@ export function pasangLayarUang(akar, opsi) {
     if (titik) setelTitik(titik);
     const A = BK.arsipBuku(tahun); set({ progres: { sudah: 0, total: A.n, satuan: 'dokumen dipindah ke arsip' } });
     // putaran 3 AAL1: daftar arsip dihitung SEKALI — sebelum tiap potongan berikutnya status berita acara di cache dibaca ulang; dibatalkan (perangkat lain) = berhenti
-    let henti = BK.arsipBerhentiBuku(tahun);
-    try { if (!henti) await arsipkanDokumen(tahun, A.daftar, (sudah, total) => { set({ progres: { sudah, total, satuan: 'dokumen dipindah ke arsip' } }); henti = sudah < total ? BK.arsipBerhentiBuku(tahun) : ''; if (henti) throw new Error(henti); }); } catch (e) { set({ sibuk: false, progres: null, kabar: henti || 'Arsip terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan"; yang sudah pindah tidak diulang. Sampai habis, angka toko DOBEL.', kabarAwas: true }); return false; }
+    // susulan: potongan yang terkirim sebelum pembatalan terlihat dikembalikan sendiri (BK.arsipBalikBuku — hanya bila tahun itu dibatalkan)
+    let henti = BK.arsipBerhentiBuku(tahun); let tadi = 0, potongTadi = [];
+    try { if (!henti) await arsipkanDokumen(tahun, A.daftar, (sudah, total) => { set({ progres: { sudah, total, satuan: 'dokumen dipindah ke arsip' } }); potongTadi = A.daftar.slice(tadi, sudah); tadi = sudah; henti = sudah < total ? BK.arsipBerhentiBuku(tahun) : ''; if (henti) throw new Error(henti); }); } catch (e) {
+      const balik = henti ? BK.arsipBalikBuku(tahun, potongTadi) : []; if (balik.length) { try { await pulihkanArsip(tahun, balik); } catch (e2) { console.error(e2); } }
+      set({ sibuk: false, progres: null, kabar: henti || 'Arsip terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan"; yang sudah pindah tidak diulang. Sampai habis, angka toko DOBEL.', kabarAwas: true }); return false; }
     if (henti) { set({ sibuk: false, progres: null, kabar: henti, kabarAwas: true }); return false; }
     // putaran 3 UTBU-1: hasil periksa ulang DIBEKUKAN saat arsip habis (ditulis ke berita acara) — "selesai" memakainya; tulisan gagal = selesai menghitung ulang
     const PA = BK.susunPeriksaArsip(tahun, waktu()); if (PA.dokumen) { try { await tulisDokumen(PA.dokumen, [], { tunggu: true }); } catch (e) { console.error(e); } }
@@ -285,7 +288,10 @@ export function pasangLayarUang(akar, opsi) {
       let h = null; try { h = await tulisDokumen(k.dokumen, k.hapus || [], { tunggu: true }); } catch (e) { h = { gagal: true, pesan: e && e.message ? e.message : String(e) }; }
       if (!h || h.gagal || h.antre) { set({ sibuk: false, progres: null, kabar: BK.kabarBerhentiBuku('batal', tahun, i + 1, r.kiriman.length, h), kabarAwas: true }); return false; }
     }
-    try { await pulihkanArsip(tahun, r.pulih, (sudah, total) => set({ progres: { sudah, total, satuan: 'dokumen dikembalikan dari arsip' } })); } catch (e) { set({ sibuk: false, progres: null, kabar: 'Pengembalian terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan" untuk meneruskan pembatalan', kabarAwas: true }); return false; }
+    // putaran 3 AAL1 (susulan): arsip yang berjalan di perangkat lain bisa memindah satu–dua potongan lagi sebelum melihat pembatalan — arsip dibaca ulang
+    // sekali sebelum berita acara 'dibatalkan', sisanya ikut dikembalikan
+    const balik = (sudah, total) => set({ progres: { sudah, total, satuan: 'dokumen dikembalikan dari arsip' } });
+    try { await pulihkanArsip(tahun, r.pulih, balik); const sisaA = await bacaArsipTahun(tahun); if (sisaA.length) await pulihkanArsip(tahun, sisaA, balik); } catch (e) { set({ sibuk: false, progres: null, kabar: 'Pengembalian terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan" untuk meneruskan pembatalan', kabarAwas: true }); return false; }
     let h2 = null; try { h2 = await tulisDokumen([r.akhir], [], { tunggu: true }); } catch (e) { h2 = { gagal: true }; } if (!h2 || h2.gagal || h2.antre) { set({ sibuk: false, progres: null, kabar: 'Berita acara belum tercatat dibatalkan — ketuk "Lanjutkan"', kabarAwas: true }); return false; }
     setelTitik(r.titik); set({ sibuk: false, progres: null, langkahB: LANGKAH_KOSONG(), parafB: { owner: false, saksi: false }, sesudahLive: null, bukaB: 'periksa', kabar: r.patch.kabar, kabarAwas: false }); return true;
   }

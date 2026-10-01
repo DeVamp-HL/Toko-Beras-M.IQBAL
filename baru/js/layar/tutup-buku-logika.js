@@ -292,6 +292,13 @@ export function arsipBerhentiBuku(tahun) {
   const kata = { membatalkan: 'sedang dibatalkan', dibatalkan: 'sudah dibatalkan', selesai: 'sudah selesai' }[a && a.status] || 'tidak terkunci lagi';
   return 'Arsip ' + tahun + ' dihentikan: tutup buku ' + tahun + ' ' + kata + ' (dari perangkat lain) — catatan ' + tahun + ' yang tersisa tidak dipindah ke arsip. Ikuti pita tutup buku.';
 }
+/**
+ * Putaran 3 AAL1 (susulan): potongan arsip yang sudah terkirim sebelum pembatalan terlihat bisa mendarat SESUDAH perangkat lain membaca arsipnya untuk
+ * dikembalikan → perangkat yang mengarsip mengembalikan potongan terakhirnya sendiri, HANYA bila tahun itu sedang / sudah dibatalkan (selesai = tidak).
+ * daftar = potongan arsipBuku ({ koleksi, id, data }) → bentuk pulihkanArsip.
+ */
+export function arsipBalikBuku(tahun, daftar) { const a = bkAcara(tahun); if (!a || (a.status !== 'membatalkan' && a.status !== 'dibatalkan')) return [];
+  return (daftar || []).map((x) => ({ koleksi: x.koleksi, idAsli: x.id, dok: x.data })); }
 /** Saldo pembuka tahun itu yang ada di cache (termasuk yang tersembunyi dari mesin). */
 function bkPembukaTahun(tahun) { const out = []; Object.keys(KOLEKSI_CACHE).forEach((c) => cacheMentah(c).forEach((x) => { if (bkTutupBuku(x) && Number(x.tahunDari) === tahun) out.push({ koleksi: KOLEKSI_CACHE[c], id: x.id }); })); return out; }
 /** Mulai baru ditolak selama tutup buku / pembatalan tahun itu belum tuntas (pembuka percobaan lama yang tersisa akan ikut terlihat bersama yang baru). */
