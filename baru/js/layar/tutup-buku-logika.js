@@ -262,6 +262,11 @@ function bkTertunda(tahun) {
   const n = bkPembukaTahun(tahun).length; if (n) return 'Sudah ada ' + n + ' saldo pembuka ' + tahun + ' dari percobaan sebelumnya — ' + (a && a.status === 'dibatalkan' ? 'lanjutkan pembatalannya dulu' : 'lanjutkan atau batalkan dulu');
   return '';
 }
+/** §8 no. 6: pita fase selesaikan menjalankan periksa ulang dan menyebut hasilnya. */
+function bkTeksSelesaikan(tahun) {
+  const kal = bkKalimatPeriksa(periksaUlangBuku(tahun));
+  return 'Tahun ' + tahun + ' terkunci dan arsipnya habis. ' + (kal ? 'AWAS: ' + kal + ' — periksa dulu; "selesai" butuh ketukan kedua.' : 'Diperiksa ulang dari mesin: semua baris sama — unduh cadangan sesudahnya & selesai.');
+}
 /** (c) Kemajuan untuk layar K6 & Beranda: tutup buku / pembatalan yang belum tuntas (null = tidak ada). */
 export function kemajuanBuku() {
   const a = ambilTutupBukuAcara().filter((x) => x && (x.status === 'berjalan' || x.status === 'membatalkan' || x.status === 'terkunci' || (x.status === 'dibatalkan' && bkPembukaTahun(Number(x.tahun)).length))).sort((p, q) => Number(q.tahun) - Number(p.tahun))[0];
@@ -272,7 +277,7 @@ export function kemajuanBuku() {
     return { tahun, fase: 'pembuka', sudah, total: K.length, teks: 'Tutup buku ' + tahun + ': ' + sudah + ' dari ' + K.length + ' kiriman saldo pembuka sudah masuk. Tahun ' + tahun + ' MASIH TERBUKA (saldo pembuka yang sudah masuk belum dihitung) sampai kiriman terakhir masuk — lanjutkan atau batalkan.' }; }
   if (a.status === 'terkunci') { const sisa = arsipBuku(tahun).n; const total = Number(a.nArsip) || sisa;
     return sisa ? { tahun, fase: 'arsip', sudah: total - sisa, total, sisa, teks: 'Tahun ' + tahun + ' terkunci; ' + ANGKA(sisa) + ' catatan ' + tahun + ' belum pindah ke arsip (' + Math.ceil(sisa / KP_BATAS_GET) + ' kiriman lagi). Sampai habis, stok, piutang & utang terhitung DOBEL — lanjutkan arsip atau batalkan.' }
-      : { tahun, fase: 'selesaikan', sudah: total, total, sisa: 0, teks: 'Tahun ' + tahun + ' terkunci dan arsipnya habis — periksa ulang, lalu cadangan sesudahnya & selesai.' }; }
+      : { tahun, fase: 'selesaikan', sudah: total, total, sisa: 0, teks: bkTeksSelesaikan(tahun) }; }
   const sisaP = bkPembukaTahun(tahun).length;
   return { tahun, fase: 'batal', sisaPembuka: sisaP, teks: 'Pembatalan tutup buku ' + tahun + ' belum selesai: ' + sisaP + ' saldo pembuka belum ditarik' + (a.dariStatus === 'terkunci' ? ' dan arsip belum semua dikembalikan' : '') + ' — lanjutkan pembatalan.' };
 }
@@ -303,10 +308,24 @@ export function susunBatal(tahun, arsipDok, w) {
 }
 const KOLEKSI_CACHE = { batch: 'batchMasuk', piutang: 'piutangMutasi', kasbon: 'kasbonMutasi', produksi: 'produksiKemasan', bahanKemasan: 'stokBahanKemasan', bahanLiteran: 'stokBahanLiteran', utangPemasok: 'utangPemasokMutasi', utangOwner: 'utangOwnerMutasi', amplop: 'amplopLaba' };
 function bkEraTanpa(tahun) { let t = null; Object.keys(KOLEKSI_CACHE).forEach((c) => cacheMentah(c).forEach((x) => { if (bkTutupBuku(x) && pembukaBerlaku(x) && Number(x.tahunDari) !== tahun) { const n = Number(x.tahunDari); if (isFinite(n) && (t === null || n > t)) t = n; } })); return t; }
-/** Selesai: cadangan sesudah tercatat → berita acara selesai (tidak bisa dibatalkan lagi). */
-export function susunSelesai(tahun, namaCadangan2, w) {
+/** §8 no. 6: kalimat hasil pemeriksaan ulang untuk "selesaikan" ('' = semua sama). */
+function bkKalimatPeriksa(PU) {
+  if (!PU) return 'Pemeriksaan ulang tidak bisa dijalankan (patokan hari tutup buku tidak ada di berita acara)';
+  if (PU.semuaSama) return ''; const nm = (d) => d.map((b) => b.nama.split(' · ')[0]).join(', '); const beda = PU.baris.filter((b) => b.tahu && !b.sama);
+  return 'Pemeriksaan ulang dari mesin: ' + [beda.length ? beda.length + ' baris TIDAK SAMA (' + nm(beda) + ')' : '', PU.tidakTahu.length ? PU.tidakTahu.length + ' baris belum bisa dihitung (' + nm(PU.tidakTahu) + ')' : ''].filter(Boolean).join(' · ');
+}
+/**
+ * Selesai: cadangan sesudah tercatat → berita acara selesai (tidak bisa dibatalkan lagi).
+ * §8 no. 6: hanya sesudah arsip HABIS; pemeriksaan ulang dari mesin dijalankan di sini — beda / tidak bisa diperiksa = ditolak dengan barisnya (perluYakin),
+ * baru diterima pada ketukan kedua (yakin) dan hasilnya dicatat di berita acara.
+ */
+export function susunSelesai(tahun, namaCadangan2, w, yakin) {
   const acara = ambilTutupBukuAcara().find((a) => Number(a.tahun) === tahun) || null; if (!acara || acara.status !== 'terkunci') return { tolak: 'Kunci tahunnya dulu' };
-  return { dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, acara, { status: 'selesai', cadangan2: namaCadangan2 || '', selesaiPada: w.kini, selesaiTanggal: w.tanggal, langkah: Object.assign({}, acara.langkah || {}, { cadangan2: w.kini }) }) }], patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup. Simpan kedua berkas cadangan di luar HP.', kabarAwas: false } };
+  const sisa = arsipBuku(tahun).n; if (sisa) return { tolak: ANGKA(sisa) + ' catatan ' + tahun + ' belum pindah ke arsip — lanjutkan arsip dulu; tahun ' + tahun + ' belum bisa diselesaikan' };
+  const PU = periksaUlangBuku(tahun); const kal = bkKalimatPeriksa(PU);
+  if (kal && !yakin) return { tolak: kal + '. Sesudah selesai, tutup buku ' + tahun + ' tidak bisa dibatalkan lagi — periksa dulu; kalau memang benar, ketuk sekali lagi.', perluYakin: true };
+  const periksaUlang = { sama: !kal, beda: PU ? PU.beda.map((b) => b.nama) : ['tidak bisa diperiksa'], pada: w.kini };
+  return { dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, acara, { status: 'selesai', cadangan2: namaCadangan2 || '', selesaiPada: w.kini, selesaiTanggal: w.tanggal, periksaUlang, langkah: Object.assign({}, acara.langkah || {}, { cadangan2: w.kini }) }) }], patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup. Simpan kedua berkas cadangan di luar HP.', kabarAwas: false } };
 }
 /** Teks berita acara (cetak/WA). */
 export function teksAcara(tahun, D, B, sebelum, saksi, w) {

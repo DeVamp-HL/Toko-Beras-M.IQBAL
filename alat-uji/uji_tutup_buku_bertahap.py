@@ -24,6 +24,7 @@ Yang dijaga:
   N3  mulai di masa tenggang (2 Jan), lanjut 5 Jan: sisa dipecah ulang dengan jam sekarang — tiap kiriman ≤ 18, penanda tetap terakhir, pembuka tepat sekali
   N4  kiriman yang belum diakui server (masih di antrean perangkat) bukan "masuk": pita fase tunggu, Lanjutkan & Batalkan menolak sampai antrean kosong
   N5  penjualan di antara kiriman 1 dan Lanjutkan (hari yang sama) → periksa ulang tidak berbunyi palsu (patokan diambil tepat sebelum kiriman pertama sesi itu)
+  N6  "selesaikan" ditolak selama arsip belum habis; periksa ulang beda = ditolak menyebut barisnya, baru diterima pada ketukan kedua (dicatat di berita acara)
 
     python3 alat-uji/uji_tutup_buku_bertahap.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_bertahap.py --kontrol  → logika yang dirusak wajib ketahuan
@@ -220,6 +221,18 @@ coba('N5', function () { kotak(40); W = jam('2027-01-02T07:00:00+07:00'); R = su
   ok('N5 ada penjualan di antara kiriman 1 dan Lanjutkan (hari yang sama): periksa ulang sesudah kunci & arsip SAMA (patokan diambil tepat sebelum kiriman pertama sesi itu)',
     !L.tolak && acara(2026).status === 'terkunci' && !!PU && PU.semuaSama, J([L.tolak, PU && PU.beda.map(function (b) { return b.nama.split(' · ')[0] + ' ' + b.a + ' vs ' + b.b; })])); });
 
+// ---- §8 no. 6 · "Selesaikan" (tidak bisa dibatalkan lagi) hanya sesudah arsip habis DAN periksa ulang sama; beda = ketukan kedua yang menyebut barisnya
+coba('N6', function () { kotak(5); W = jam('2027-01-05T10:00:00+07:00'); R = susunKunci(2026, D, W); R.kiriman.forEach(kirim);
+  var S0 = susunSelesai(2026, 'cadangan-sesudah.json', W);
+  ok('N6 arsip belum habis → selesai DITOLAK (lanjutkan arsip dulu)', !!S0.tolak && /arsip/.test(S0.tolak), J(S0.tolak || 'diterima'));
+  arsipkanDokumen(2026, arsipBuku(2026).daftar);
+  var pi = cacheMentah('piutang').filter(function (x) { return x.tutupBuku; })[0]; terapkanKeCache([{ koleksi: 'piutangMutasi', hapus: pi.id }]);
+  var KM = kemajuanBuku(); var S1 = susunSelesai(2026, 'cadangan-sesudah.json', W);
+  ok('N6 periksa ulang BEDA (satu pembuka piutang hilang): pita selesaikan menyebut barisnya; selesai DITOLAK dan minta ketukan kedua yang menyebut barisnya',
+    !!KM && KM.fase === 'selesaikan' && /Piutang/.test(KM.teks) && !!S1.tolak && !!S1.perluYakin && /Piutang/.test(S1.tolak), J([KM, S1.tolak || 'diterima']));
+  var S2 = susunSelesai(2026, 'cadangan-sesudah.json', W, true); if (!S2.tolak) kirim(S2);
+  ok('N6 ketukan kedua: selesai; berita acara mencatat periksa ulang yang beda', !S2.tolak && acara(2026).status === 'selesai' && !!acara(2026).periksaUlang && acara(2026).periksaUlang.sama === false && /Piutang/.test(acara(2026).periksaUlang.beda.join()), J(S2.tolak || acara(2026).periksaUlang)); });
+
 print(JSON.stringify({ lulus: lulus, gagal: gagal, penjaga: tolakPenjaga }));
 """
 
@@ -261,6 +274,7 @@ STATIS = [
     ('patokan kas tahun di layar (bukan titik kas sekarang)', ["const SB = BK.barisTahun(T.tahun); const B = s.sesudahLive || bandingB(s, T);", "const bandingB = (s, T) => { const SB = BK.barisTahun(T.tahun);"]),
     ('§8 no. 2 · Lanjutkan menyetel titik kas perangkat HANYA dari titik yang ikut kiriman lanjut (lanjutBuku.titik)', ["jalankanBuku(KM.tahun, Lj.kiriman || [], Lj.titik || null,"]),
     ('§8 no. 4 · Lanjutkan & Batalkan menunggu antrean perangkat (fase tunggu) — tidak mengirim apa pun', ["if (KM.fase === 'tunggu') return set({ kabar: KM.teks, kabarAwas: true });", "if (KM && KM.fase === 'tunggu') return set({ yakinBatalB: null, kabar: KM.teks, kabarAwas: true });"]),
+    ('§8 no. 6 · selesai di layar: periksa ulang & arsip SEBELUM berkas diunduh, ketukan kedua bila beda', ["if (k === 'cadangan2') { const r0 = BK.susunSelesai(tahun, '', waktu(), s.yakinSelesai === tahun);", "const r = BK.susunSelesai(tahun, nama, waktu(), s.yakinSelesai === tahun);"]),
     ('§8 no. 4 · firebase.js menyetor dokumen yang menunggu server (hasPendingWrites) ke toko.js', ["setelTertunda(k.nama, tunda.map((t) => t.id));", "KOLEKSI.forEach((k) => { pasok(k.nama, []); setelTertunda(k.nama, []); });"], 'baru/js/data/firebase.js'),
 ]
 RUSAK = [
@@ -291,6 +305,8 @@ RUSAK = [
     ('§8 no. 4 · Lanjutkan & Batalkan tidak memeriksa antrean perangkat', 'baru/js/layar/tutup-buku-logika.js', "  const nT = bkTunda(tahun); if (nT) return { tolak: bkKalimatTunda(tahun, nT) };\n  const ub = bkBerubah(a);", "  const ub = bkBerubah(a);"),
     ('§8 no. 4 · pita tidak memeriksa antrean perangkat', 'baru/js/layar/tutup-buku-logika.js', "  const nT = bkTunda(tahun); if (nT) return { tahun, fase: 'tunggu', tunda: nT, teks: bkKalimatTunda(tahun, nT) };", "  const nT = 0;"),
     ('§8 no. 5 · Lanjutkan memakai patokan periksa ulang dari saat MULAI', 'baru/js/layar/tutup-buku-logika.js', "const kunci = Object.assign({}, a, { status: 'terkunci', hariIni: { tanggal: hari, baris:", "const kunci = Object.assign({}, a, { status: 'terkunci', hariIniBaru: { tanggal: hari, baris:"),
+    ('§8 no. 6 · selesai tanpa memeriksa arsip & periksa ulang', 'baru/js/layar/tutup-buku-logika.js', "  const sisa = arsipBuku(tahun).n; if (sisa) return { tolak: ANGKA(sisa) + ' catatan '", "  const sisa = 0; if (sisa) return { tolak: ANGKA(sisa) + ' catatan '"),
+    ('§8 no. 6 · selesai menerima periksa ulang yang beda tanpa ketukan kedua', 'baru/js/layar/tutup-buku-logika.js', "  if (kal && !yakin) return {", "  if (kal && !yakin && false) return {"),
     ('pemeriksaan ulang kembali ke 1 Jan vs 31 Des', 'baru/js/layar/tutup-buku-logika.js', "return bandingBuku({ harta: H.baris, utang: [] }, o);",
      "const B1 = barisBuku((tahun + 1) + '-01-01', (tahun + 1) + '-01-01'); const o1 = {}; B1.harta.concat(B1.utang).forEach((b) => { o1[b.id] = b.n; }); return bandingBuku({ harta: a.sebelum, utang: [] }, o1);"),
 ]
