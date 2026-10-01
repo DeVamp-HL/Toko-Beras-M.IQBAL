@@ -682,6 +682,9 @@ export function pasangLayarJual(akar, opsi) {
     if (s.lembar === 'jumlah' && s.pilih) {
       const c = s.pilih; const maks = L.maksUntuk(c);
       const preset = c.jalur === 'karung' ? [1, 2, 5, 10] : c.jalur === 'kemasan' ? [1, 2, 3, 5] : c.jalur === 'repack' ? [5, 10, 20, 25] : c.jalur === 'wadah' ? [1, 2, 5, 10] : [1, 2, 5, 10];
+      // 1 Okt: takaran / MASUKKAN yang DITOLAK (mis. "yang bebas dijual 3 L, diminta 5 L") dulu cuma tergambar di kotak kabar atas layar — di HP tertutup lembar ini,
+      // jadi ketukannya terasa mati. Kalimat tolaknya digambar juga di dalam lembar, di bawah tombol takaran; kabar panel isi ulang (kabarW) sudah punya tempat sendiri.
+      const kabarDiLembar = s.kabar && s.kabarAwas && !(s.kabarW && s.kabarW.teks === s.kabar) ? s.kabar : '';
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
         ${kepala(c.nama + ' ' + c.ukuran, RP(c.harga) + '/' + c.satuan + ' · bebas dijual ' + (c.jalur === 'literan' && c.wadah && !WB.wbAktif(c.kunci) ? '(buku merek asal) ' : '') + (maks === null ? (c.tanpaBatas ? 'tidak dibatasi buku (hasil samping)' : '—') : DESIMAL(maks) + ' ' + c.satuan))}
         ${c.jalur === 'literan' && c.wadah ? panelIsiUlang(c.kunci, s, s, { lipat: true, akun: opsi.akun ? opsi.akun() : null }) : ''}
@@ -697,6 +700,7 @@ export function pasangLayarJual(akar, opsi) {
             <div class="kaca-btn aktif emas" data-aksi="setengah">JUAL ½ · ${RP(nilai)}</div></div>`; })()}
         ${c.jalur === 'repack' ? h`<div class="ket">Jadi produk apa (nama jual di nota) — kosong = nama mereknya</div><input class="ketik-nama" id="namaRepack" type="text" value="${s.namaRepack}" data-ketik="namaRepack" placeholder="${c.nama}">` : ''}
         <div class="tombol-baris">${preset.map((n) => h`<div class="kaca-btn" data-aksi="preset" data-n="${n}">${n} ${c.satuan}</div>`)}</div>
+        ${kabarDiLembar ? h`<div class="pita-info awas" data-k="kabar-jumlah">${kabarDiLembar}</div>` : ''}
         <div class="label">Jumlah</div><div class="angka">${s.ketik || '0'} <span class="ket">${c.satuan}</span>${s.ketik ? h` <span class="ket">= ${RP(c.harga * L.angkaKetik(s.ketik))}</span>` : ''}</div>
         ${c.jalur === 'repack' ? gambarRepackWadah(s) : ''}
         ${tuts('masukkan', 'MASUKKAN KE KERANJANG')}
