@@ -302,3 +302,32 @@ digabung ke main sampai semuanya dibereskan (tenggat: sebelum Desember 2026). Sa
 
 Tidak wajib (penyanggah: urutan rakitan tangan, jendela ±1 detik): batal dari HP lain yang cache-nya masih `berjalan` mendarat sesudah penanda —
 `jalankanBuku` membaca ulang status sebelum arsip, `susunBatal` menolak bila cache sudah `selesai`.
+
+## 9. Syarat §8 no. 1–9 dibereskan (1 Okt 2026, cabang `audit/tutup-buku-bertahap`, satu commit per butir)
+
+Tiap butir: uji baru di `alat-uji/uji_tutup_buku_bertahap.py` (N1–N9) yang GAGAL di kode sebelum butir itu dan LULUS sesudahnya + kontrol yang berbunyi.
+Rules TIDAK berubah, mesin beku TIDAK berubah, `kasir*.html` tidak disentuh. Semua lewat jsc; tidak ada peramban yang dinyalakan.
+
+| No. | Perbaikan | Uji |
+|---|---|---|
+| 1 | Tanpa mengubah rules: semua pembuka tutup buku bertahap ber-`bertahap: true` dan baru terlihat bila PENANDA tahunnya ada = batch pembuka ber-`penandaBuku` (koleksi `batchMasuk`, dibaca staf menurut `akses.js BACA_STAF` & rules). Batch penanda ikut kiriman TERAKHIR; dihapus di kiriman PERTAMA pembatalan. Tanpa stok beras → batch kosong khusus penanda. Satu aturan (`toko.js pembukaBerlaku`) di semua perangkat. | N1: 12 titik putus (kiriman pembuka, arsip, batal dari terkunci & dari berjalan) — HP staf = HP owner |
+| 2 | Aturan titik kas (d) dinilai saat KIRIM (`bkTitikKini`): titik kas sekarang lewat 31 Des → `pengaturan/titikKas` dibuang dari kiriman penanda, `titikDitulis` false | N2 |
+| 3 | `lanjutBuku` mengambil dokumen yang BELUM ada (id & isi dari berita acara) dan memecah ulang dengan `kpPotong` pada jam sekarang; penanda tetap kelompok terakhir | N3 (mulai 2 Jan, lanjut 5 Jan) |
+| 4 | `firebase.js` menyetor id dokumen yang menunggu server (hasPendingWrites) ke `toko.js` (`setelTertunda`/`dokTertunda`). Selama catatan tutup buku tahun itu masih menunggu: kemajuan = fase `tunggu`, Lanjutkan & Batalkan menolak | N4 (+ 2 statis) |
+| 5 | `lanjutBuku` menghitung ulang patokan periksa ulang (12 baris hari ini) tepat sebelum kiriman pertama sesi itu → berita acara terkunci | N5 |
+| 6 | `susunSelesai`: arsip harus habis; periksa ulang dijalankan — beda / tidak bisa diperiksa = ditolak menyebut barisnya, diterima pada ketukan kedua dan dicatat (`periksaUlang`). Pita fase selesaikan menyebut hasilnya; layar memeriksa sebelum berkas diunduh | N6 (+ 1 statis) |
+| 7 | `kabarBerhentiBuku` (satu tempat): kiriman 1 tutup buku → "Kunci tahun" lagi; kiriman 1 pembatalan → "Batalkan" lagi; sesudahnya "Lanjutkan"; antre → tunggu antrean dulu | N7 (+ 1 statis) |
+| 8 | `susunKunci` membuang `dibatalkanPada/Tanggal` dari berita acara yang dipakai ulang | N8 |
+| 9 | Butir ⛔ `tutupBukuTuntas` di `kpDaftarPeriksa` (ok hanya bila `kemajuanBuku()` null) | N9 |
+
+Hasil: `uji_tutup_buku_bertahap` 60 lulus · 0 gagal, `--kontrol` 36 berbunyi; asap data toko tetap `[18, 6]` / batal `[18, 6]`; `uji_uang_baru` 151/0
+(asersi selesai tidak jatuh lagi bila ditolak), `uji_kunci_periode` 47/0, `peta_akses --kiriman --kontrol` 33 berbunyi (jangkar disesuaikan),
+ASAP GLOBAL `uji_wadah_bernama` BYTE-SAMA dengan main (juga dibanding origin/main sesudah #90), seluruh perintah job `uji` di `pages.yml` keluar 0.
+Uji peramban (`uji-peramban`) TIDAK dijalankan di Mac owner — CI runner.
+
+Yang tetap diakui:
+- Selama ARSIP tahun berikutnya berjalan (jendela DOBEL yang sudah ada), batch penanda tahun lama ikut diarsipkan lebih dulu daripada sebagian pembuka
+  tahun lama → pembuka itu tak terlihat sampai ikut diarsipkan. Sama di semua perangkat; periksa ulang baru jalan sesudah arsip habis.
+- Periksa ulang masih bisa berbunyi palsu bila toko berjualan di antara penanda dan LANJUT ARSIP pada hari yang sama (patokan hanya disegarkan saat
+  kiriman pembuka dilanjutkan). Kalau itu terjadi, "selesai" meminta ketukan kedua yang menyebut barisnya (no. 6).
+- Fase `tunggu` dihitung dari antrean perangkat ITU; perangkat lain tidak melihat tulisan yang tertunda (memang belum ada di server).

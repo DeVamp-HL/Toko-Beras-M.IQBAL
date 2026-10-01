@@ -1372,3 +1372,8 @@ penjaga pusat). Cadangan toko 1 Okt dihitung seolah 5 Jan 2027: 57 dokumen pembu
   (asap: 2 kiriman 18 + 6), `peta_akses.py --kiriman` (25 nama → 2 tahap) disesuaikan. Rules TIDAK berubah.
 - BELUM: arsip yang menghapus vs bulan terkunci (K1) — keputusan owner; cadangan yang diunduh di tengah tutup buku membawa pembuka setengah (jangan dipulihkan
   lewat sistem lama).
+- **Syarat §8 (tinjauan 1 Okt) dibereskan** — rincian `docs/rancangan-tutup-buku-bertahap.md` §9: pembuka ber-`bertahap` terlihat hanya bila batch PENANDA
+  (`penandaBuku`, koleksi yang staf baca) ada → HP staf = HP owner di tiap titik putus (rules tidak berubah); Lanjutkan menilai titik kas saat kirim, memecah
+  ulang sisa dengan jam sekarang, dan menyegarkan patokan periksa ulang; tulisan yang masih menunggu server (`toko.js dokTertunda`, diisi `firebase.js`) =
+  fase `tunggu`; "selesai" menjalankan periksa ulang (beda = ketukan kedua); kalimat berhenti dari `kabarBerhentiBuku`; tanggal pembatalan lama dibuang saat
+  mulai baru; daftar periksa Kunci bulan punya butir ⛔ `tutupBukuTuntas`. Uji N1–N9 di `uji_tutup_buku_bertahap.py`.
