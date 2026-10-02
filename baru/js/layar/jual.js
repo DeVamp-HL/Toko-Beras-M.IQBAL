@@ -620,7 +620,7 @@ export function pasangLayarJual(akar, opsi) {
       <div class="kartu daftar-nota">${daftar.map((o) => h`<div class="baris-nota ${o.bisa ? '' : 'tak-bisa'}" ${o.bisa ? mentah('data-aksi="tunjukNota"') : ''} data-id="${o.id}">
         <div class="atas"><span><b>${o.teks}</b>${o.nama ? ' · ' + o.nama : ''}</span><span class="n">${RP(o.hargaTotal)}</span></div>
         <div class="ket">${tanggalPendek(o.tanggal)} ${o.jam} · ${o.cara === 'Kredit' ? 'Bon' : o.cara}${o.bisa ? ' · boleh kembali ' + DESIMAL(o.sisa) + ' ' + o.satuan + (o.bon ? ' · memotong bon' : '') : ''}</div>
-        ${o.bisa ? '' : h`<div class="ket awas-teks">${o.sebab}${o.cadangan ? ' Yang seperti ini masih lewat layar Retur sistem lama (nominalnya diketik tangan).' : ''}</div>`}
+        ${o.bisa ? '' : h`<div class="ket awas-teks">${o.sebab}${o.cadangan ? ' Yang seperti ini dicatat lewat “Tidak ada notanya? Retur ketik tangan” di atas — nominalnya diketik sendiri.' : ''}</div>`}
       </div>`)}${daftar.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Tidak ada nota karung/kemasan yang cocok.</div>`}</div>`;
   }
 
