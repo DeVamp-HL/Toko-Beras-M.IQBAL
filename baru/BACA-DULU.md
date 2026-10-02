@@ -1500,3 +1500,6 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
   penolakan kiriman (`kalimatBonHabis`). Dulu baru ditolak sesudah kg, alasan, kondisi diisi. Riwayat penjualan tetap menawarkan "retur nota ini" (tanpa
   hitungan bon per baris); lembarnya langsung menyebut sebabnya. Cadangan 1 Okt: 11 dari 42 nota bon 60 hari kini ditolak di depan, 31 tetap bisa.
   Uji `uji_laporan_baru.py` +2, kontrol +1.
+- U37-U4: rekap harian (Laporan › Harian, kartu rekap & teks WA) punya baris "Retur nota bon (bon dipotong)" = uang retur hari itu − refund kas
+  (`laporan-logika.js` `lpReturBonHari`, dipakai `teksRekapHari` dan `barisRekap` laporan.js) — omzet = tunai + QRIS + bon − refund − retur nota bon menutup.
+  Hanya tampil bila bukan nol (hari tanpa retur nota bon: teks byte-sama). Uji `uji_laporan_baru.py` +1 + pemeriksa kata kartu rekap, kontrol +3.

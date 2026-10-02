@@ -250,6 +250,13 @@ ok('19 Sep: 4 nota (batal tidak ikut) · omzet 1.270.000 · tunai 370.000 · QRI
 ok('kas bersih = Σ masuk − Σ keluar (baris arus kas yang sama); per jam: jam 09 tiga nota, jam 10 satu', dekat(RH.masuk.reduce(function (a, x) { return a + x.nominal; }, 0) - RH.keluar.reduce(function (a, x) { return a + x.nominal; }, 0), RH.bersih) && RH.perJam.length === 2 && RH.perJam[0].jam === '09' && RH.perJam[0].n === 3 && RH.perJam[1].n === 1, J(RH.perJam));
 ok('buku kas 19 Sep = baris daftarGerakanKas hari itu (5: 3 nota uang + pelunasan + MDR); 16 Sep sudah tutup hari 21:05, 19 Sep belum', RH.buku.length === daftarGerakanKas().filter(function (r) { return r.t === '2026-09-19'; }).length && RH.buku.length === 5 && !RH.tutup && rekapHari('2026-09-16').tutup.jam === '21:05', J(RH.buku.map(function (r) { return r.label; })));
 var TR = teksRekapHari(RH, { nama: 'Toko Contoh' }); ok('teks WA: judul toko, omzet (4 nota), tunai, QRIS, bon, pembayaran bon, kas bersih, margin', /Rekap Toko Contoh — 19 Sep/.test(TR) && /Omzet: Rp1\.270\.000 \(4 nota\)/.test(TR) && /Bon \(belum jadi uang\): Rp300\.000/.test(TR) && /Pembayaran bon pelanggan: Rp100\.000/.test(TR) && /Kas bersih hari ini: Rp1\.068\.200/.test(TR) && /Margin kotor/.test(TR), TR);
+// 39b no. 37 tinjauan U37-U4: rekap harian & teks WA MENUTUP bila ada retur nota BON (bon dipotong, bukan uang laci): omzet = tunai + QRIS + bon − refund − retur
+// nota bon. Dulu baris "Refund & tukar retur" (refund kas = 0) tersaring dan selisihnya tidak disebut di mana pun. Pembanding: retur nota TUNAI tanpa baris baru.
+var U4 = function (id) { return denganCacheSementara([], function () { var r = susunRetur(RS37({ rtNotaId: id, ketik: '5' }), W37); return denganCacheSementara(r.dokumen || [], function () { var R = rekapHari('2026-09-19');
+  return { tolak: r.tolak || '', R: R, rb: lpReturBonHari(R), wa: teksRekapHari(R, { nama: 'Toko Contoh' }), tutup: R.omzet - (R.tunai + R.qris + R.kredit - R.refund - lpReturBonHari(R)) }; }); }); };
+var U4b = U4('j5'), U4t = U4('j4');
+ok('39b-37 U37-U4: retur 5 kg nota BON j5 — rekap menyebut "Retur nota bon (bon dipotong): Rp70.093" dan omzet = tunai + QRIS + bon − refund − retur nota bon (selisih 0); retur nota TUNAI j4 tanpa baris itu (refund-nya sudah menutup)',
+  !U4b.tolak && U4b.rb === 70093 && U4b.R.refund === 0 && U4b.tutup === 0 && /Retur nota bon \(bon dipotong\): Rp70\.093/.test(U4b.wa) && !U4t.tolak && U4t.rb === 0 && U4t.tutup === 0 && !/Retur nota bon/.test(U4t.wa), J([U4b.rb, U4b.tutup, U4b.wa, U4t.rb, U4t.tutup]));
 var HT = hariTerakhir(KINI, 14); ok('14 hari terakhir, hari ini dulu; 19 Sep 4 nota, 18 Sep 1, 15 Sep 0 (sepi tetap ada)', HT.length === 14 && HT[0].iso === '2026-09-19' && HT[0].hariIni && HT[0].n === 4 && HT[1].n === 1 && HT[4].n === 0);
 ok('39b-19 pemilih 14 hari: omzet tiap hari = omzet rekap harinya (penjualan − uang retur), bukan penjualan kotor', hariTerakhir(KINI, 14).every(function (x) { return x.omzet === rekapHari(x.iso).omzet; })
   && denganCacheSementara([{ koleksi: 'retur', data: { id: 'rtL19', tanggal: '2026-09-18', jam: '09:00', nominalRefund: 12000, kondisi: 'utuh' } }], function () { var h = hariTerakhir(KINI, 14)[1]; return h.iso === '2026-09-18' && h.omzet === rekapHari('2026-09-18').omzet && h.omzet === HT[1].omzet - 12000; }),
@@ -494,6 +501,12 @@ def neraca_layar(t):
     return out
 
 
+def rekap_layar(t):
+    """39b no. 37 tinjauan U37-U4 — kartu rekap Laporan › Harian (laporan.js barisRekap) menyebut retur nota bon hari itu lewat LP.lpReturBonHari, satu rumus
+    dengan teks WA, supaya omzet = tunai + QRIS + bon − refund − retur nota bon menutup."""
+    return [] if "{ nama: 'Retur nota bon (bon dipotong)', teks: RP(LP.lpReturBonHari(R)) }" in t else ['kartu rekap harian tidak menyebut retur nota bon (bon dipotong) — omzet tidak menutup']
+
+
 def tunai_layar(t):
     """39b no. 39 — layar Laba: panel "Syarat diterima tunai" menyebut SEMUA komponennya (laba bersih − margin nota bon bulan ini + margin bon yang dibayar
     bulan ini [+ margin bon yang dihapus bukunya]) supaya hitungan yang tergambar menutup. Kembalikan daftar masalah."""
@@ -512,9 +525,10 @@ if __name__ == '__main__':
         for nama, isi in [('39b-39 laporan.js: panel diterima tunai tanpa margin bon yang dibayar', lap.replace(' + margin bon yang dibayar bulan ini ${RP(B.marginDibayar)}', '', 1)),
                           ('39b-39 laporan.js: panel diterima tunai tanpa margin bon yang dihapus bukunya', lap.replace("${B.marginDihapus ? ' + margin bon yang dihapus bukunya ' + RP(B.marginDihapus) : ''}", '', 1)),
                           ('39b-37 laporan.js: panel diterima tunai tanpa margin bon yang dipotong retur barang', lap.replace("${B.marginDiretur ? ' + margin bon yang dipotong retur barang ' + RP(B.marginDiretur) : ''}", '', 1)),
+                          ('39b-37 U37-U4 laporan.js: kartu rekap harian tanpa baris retur nota bon', lap.replace("{ nama: 'Retur nota bon (bon dipotong)', teks: RP(LP.lpReturBonHari(R)) }, ", '', 1)),
                           ('UU36-2 laporan.js: kertas Neraca yang dikeluarkan memakai neracaPada lagi', lap.replace('const NP = LP.neracaTanggal(st().sampaiN, kini(), D.final);', 'const NP = LP.neracaPada(st().sampaiN, kini());', 1)),
                           ('UU36-2 laporan.js: hero Neraca bulan final kembali "titik kas belum disetel"', lap.replace("(sampai && D.final ? NP.tolak + '.' :", "(false ? NP.tolak + '.' :", 1))]:
-            g = (tunai_layar(isi) + neraca_layar(isi)) if isi != lap else []
+            g = (tunai_layar(isi) + neraca_layar(isi) + rekap_layar(isi)) if isi != lap else []
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
         rusak = {
@@ -634,6 +648,8 @@ if __name__ == '__main__':
             '39b-37 U37-U3: jalan ketik tangan tanpa peringatan retur dua kali': js.replace("const awas = ' — catatan itu TIDAK mengurangi nota ini, jadi sesudahnya jangan retur nota ini lagi untuk barang yang sama.';", "const awas = '.';"),
             '39b-37 MM4: sisa bon di bawah satu satuan kembali menyarankan "paling banyak 0"': js.replace("    if (maks < satu) return { tolak:", "    if (false) return { tolak:"),
             '39b-37 MM3: daftar & lembar menawarkan nota bon yang bonnya sudah lunas': js.replace("const B = bonPembeli(d, piutang); return B.sisa > 0.5 ? d : { ok: false, sebab: kalimatBonHabis(B) };", "return d;"),
+            '39b-37 U37-U4: teks WA rekap harian tanpa baris retur nota bon': js.replace("const rb = lpReturBonHari(R); if (rb) b.push('Retur nota bon (bon dipotong): ' + RP(rb));", ""),
+            '39b-37 U37-U4: retur nota bon hari itu dihitung dari uang retur saja (refund ikut)': js.replace("const lpReturBonHari = (R) => Math.max(0, Math.round((R.retur || 0) - (R.refund || 0)));", "const lpReturBonHari = (R) => Math.max(0, Math.round(R.retur || 0));"),
             '39b-37: barang rusak dari nota bon tanpa karantina': js.replace("  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));\n  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON", "  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON"),
             '39b-38: batas aman ambil pribadi dari laba mesin': js.replace("const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;", "const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaMesin : 0;"),
         }
@@ -644,7 +660,7 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g = utama(js)
-    g = g + tunai_layar(lap) + neraca_layar(lap)
+    g = g + tunai_layar(lap) + neraca_layar(lap) + rekap_layar(lap)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')), key=os.path.basename)   # audit 39b no. 46 / tinjauan T6: cadangan toko ada di _privat/
     if cad and not g:

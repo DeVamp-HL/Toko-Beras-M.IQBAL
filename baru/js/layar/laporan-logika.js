@@ -151,10 +151,14 @@ export function rekapHari(iso, bayaran) {
 /** Empat belas hari terakhir untuk pemilih tanggal: omzet & jumlah nota per hari (yang kosong tetap ada, ditandai). */
 export function hariTerakhir(kini, n) { const iso = hariIniIso(kini); const per = {}; const notaHari = {}; const retur = returUangPerHari();   // 39b no. 19: omzet = penjualan − uang retur (sama dengan rekap harinya)
   ambilPenjualan().forEach((p) => { if (!p.tanggal) return; if (!per[p.tanggal]) { per[p.tanggal] = { n: 0, omzet: 0 }; notaHari[p.tanggal] = new Set(); } notaHari[p.tanggal].add(kunciNota(p)); per[p.tanggal].n = notaHari[p.tanggal].size; per[p.tanggal].omzet += p.hargaTotal || 0; }); const out = []; for (let i = 0; i < (n || 14); i++) { const t = ugTambahHari(iso, -i); out.push({ iso: t, n: per[t] ? per[t].n : 0, omzet: (per[t] ? per[t].omzet : 0) - ((retur[t] || {}).uang || 0), hariIni: i === 0 }); } return out; }
+/** Audit 39b no. 37 tinjauan U37-U4: retur nota BON hari itu (bon dipotong, bukan uang laci) = uang retur rekap (uangKembaliRetur, termasuk potongBon) − refund
+ *  kas (nominalRefund + selisih tukar). Kartu rekap & teks WA menyebutnya supaya omzet = tunai + QRIS + bon − refund − retur nota bon menutup. */
+export const lpReturBonHari = (R) => Math.max(0, Math.round((R.retur || 0) - (R.refund || 0)));
 /** Teks rekap untuk WhatsApp — kalimat kirimRekapHarianWa sistem lama, ditambah yang dulu tidak disebut (pelunasan bon, prive, margin). */
 export function teksRekapHari(R, kop) {
   const b = ['*Rekap ' + ((kop && kop.nama) || IDENTITAS_BAWAAN.nama) + ' — ' + tanggalPendek(R.iso) + '*', 'Omzet: ' + RP(R.omzet) + ' (' + R.n + ' nota)', 'Tunai: ' + RP(R.tunai), 'QRIS: ' + RP(R.qris)];
   if (R.kredit) b.push('Bon (belum jadi uang): ' + RP(R.kredit) + ' · ' + R.nKredit + ' nota'); if (R.pelunasan) b.push('Pembayaran bon pelanggan: ' + RP(R.pelunasan)); if (R.refund) b.push('Refund & tukar retur: ' + RP(R.refund));
+  const rb = lpReturBonHari(R); if (rb) b.push('Retur nota bon (bon dipotong): ' + RP(rb));
   if (R.keluarHarian) b.push('Belanja & biaya toko: ' + RP(R.keluarHarian)); if (R.belanja) b.push('Belanja beras tunai + bongkar: ' + RP(R.belanja)); if (R.bayarBon) b.push('Bayar bon pemasok: ' + RP(R.bayarBon)); if (R.biayaBulanan) b.push('Tagihan bulanan: ' + RP(R.biayaBulanan));
   if (R.prive) b.push('Ambil pribadi owner: ' + RP(R.prive)); if (R.setoran) b.push('Setoran ke owner: ' + RP(R.setoran));
   b.push('Kas bersih hari ini: ' + RP(R.bersih)); b.push('Margin kotor: ' + RP(R.margin) + (R.jumlahTanpaHpp ? ' (' + R.jumlahTanpaHpp + ' baris tanpa modal tidak ikut)' : '')); if (R.tutup) b.push('Sudah tutup hari' + (R.tutup.jam ? ' ' + R.tutup.jam : '')); return b.join('\n');
