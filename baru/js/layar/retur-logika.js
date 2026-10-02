@@ -51,7 +51,16 @@ function nilaiRetur(t, d, jml) {
   return Math.round(jml * d.perSatuan) + (d.bon && Math.abs(jml - d.sisa) < 0.0005 ? Math.max(0, Math.round(Number(t.pembulatan) || 0)) : 0);
 }
 /** Sisa bon pembeli nota bon menurut mesin beku hitungPiutang (+ ejaan nama yang dipakai buku bon). */
-function bonPembeli(d) { const P = hitungPiutang().find((x) => x.kunci === kunciPelanggan(d.nama)); return { sisa: P ? P.sisa : 0, nama: P ? P.nama : d.nama }; }
+function bonPembeli(d) { const P = hitungPiutang().find((x) => x.kunci === kunciPelanggan(d.nama)); return { sisa: P ? P.sisa : 0, nama: P ? P.nama : d.nama, bayar: P ? P.bayar || 0 : 0, dihapus: P ? P.dihapus || 0 : 0 }; }
+/** Audit 39b no. 37 tinjauan U37-U2: yang menutup bon pembeli — pembayaran (uang sungguhan) atau HAPUS BUKU (bukan uang). Bon yang ditutup hapus buku tidak
+ *  boleh disebut "sudah dibayar", dan owner tidak boleh disuruh mengembalikan uang laci untuk barang yang tidak pernah dibayar. null = hanya pembayaran. */
+function tutupHapus(B, lunas) {
+  if (!(B.dihapus > 0.5)) return null;
+  const campur = B.bayar > 0.5;
+  return { kata: campur ? 'sudah tertutup (dibayar ' + RP(B.bayar) + ', DIHAPUS BUKU ' + RP(B.dihapus) + ')' : 'sudah DIHAPUS BUKU (' + RP(B.dihapus) + '), bukan dibayar',
+    uang: campur ? 'bagian yang dihapus buku tidak pernah dibayar, jadi tidak ada uang yang dikembalikan untuknya; uang kembali dari laci (lewat "Tidak ada notanya? Retur ketik tangan") paling banyak sebesar yang memang dibayar.'
+      : lunas ? 'barangnya tidak pernah dibayar, jadi tidak ada uang yang dikembalikan.' : 'bagian yang dihapus buku tidak pernah dibayar, jadi tidak ada uang yang dikembalikan untuknya.' };
+}
 
 /** Nota yang bisa ditunjuk: baris karung/kemasan yang masih berlaku, 60 hari terakhir, terbaru dulu. */
 export function daftarNotaRetur(s) {
@@ -122,10 +131,11 @@ function susunReturBon(s, w, r) {
   if (s.rtPenyelesaian === 'tukar') return { tolak: 'Nota BON tidak bisa ditukar langsung: catat retur ini dulu (memotong bon ' + d.nama + '), lalu jual penggantinya seperti biasa (boleh bon).' };
   const B = bonPembeli(d);
   if (nilai - B.sisa > 0.5) {
-    if (!(B.sisa > 0.5)) return { tolak: 'Bon ' + B.nama + ' sudah lunas' + (B.sisa < LEBIH_AMBANG ? ' (malah ada kelebihan bayar ' + RP(-B.sisa) + ')' : '') + ' — tidak ada bon yang bisa dipotong retur ' + RP(nilai) + ' ini. Barangnya sudah dibayar: kalau uangnya dikembalikan dari laci, catat lewat "Tidak ada notanya? Retur ketik tangan" (uang kembali). Retur tidak disimpan.' };
+    const H = tutupHapus(B, !(B.sisa > 0.5));
+    if (!(B.sisa > 0.5)) return { tolak: 'Bon ' + B.nama + ' ' + (H ? H.kata : 'sudah lunas') + (B.sisa < LEBIH_AMBANG ? ' (malah ada kelebihan bayar ' + RP(-B.sisa) + ')' : '') + ' — tidak ada bon yang bisa dipotong retur ' + RP(nilai) + ' ini. ' + (H ? H.uang.charAt(0).toUpperCase() + H.uang.slice(1) : 'Barangnya sudah dibayar: kalau uangnya dikembalikan dari laci, catat lewat "Tidak ada notanya? Retur ketik tangan" (uang kembali).') + ' Retur tidak disimpan.' };
     // batas yang disebut dibulatkan ke BAWAH dua desimal (= yang tergambar), supaya angka yang disarankan tidak melewati sisa bon
     const maks = d.satuan === 'unit' ? Math.floor(B.sisa / d.perSatuan) : Math.floor(B.sisa / d.perSatuan * 100) / 100;
-    return { tolak: 'Retur ' + RP(nilai) + ' melebihi sisa bon ' + B.nama + ' (' + RP(B.sisa) + ') — sebagian bonnya sudah dibayar. Potong bon paling banyak sebesar sisanya: kurangi yang dikembalikan (paling banyak ' + DESIMAL(maks) + ' ' + d.satuan + '); bagian yang sudah dibayar dikembalikan sebagai uang lewat "Tidak ada notanya? Retur ketik tangan". Retur tidak disimpan.' };
+    return { tolak: 'Retur ' + RP(nilai) + ' melebihi sisa bon ' + B.nama + ' (' + RP(B.sisa) + ') — sebagian bonnya ' + (H ? H.kata : 'sudah dibayar') + '. Potong bon paling banyak sebesar sisanya: kurangi yang dikembalikan (paling banyak ' + DESIMAL(maks) + ' ' + d.satuan + '); ' + (H ? H.uang : 'bagian yang sudah dibayar dikembalikan sebagai uang lewat "Tidak ada notanya? Retur ketik tangan".') + ' Retur tidak disimpan.' };
   }
   const idMutasi = w.idUnik();
   Object.assign(draf, { penyelesaian: 'potongBon', nominalRefund: 0, potongBon: nilai, namaPelanggan: B.nama, piutangMutasiId: idMutasi });

@@ -1482,3 +1482,7 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
   dibatalkan — "Batalkan nota barusan" (`susunPembatalan`) dan Karcis kasir (`susunBatalKarcis`), kalimat dari `retur-logika.js` `tolakBatalReturBon`. Dulu
   pembatalan mencabut bonnya, tetapi retur & mutasi piutang tipe `retur` tetap tinggal: bon jadi minus dan terbaca "kelebihan bayar — uang pelanggan dipegang
   toko", bon berikutnya orang itu terpotong diam-diam. Retur uang kembali (nota tunai) tidak disentuh. Uji `uji_jual_baru.py` +1, kontrol +3.
+- U37-U2: kalimat tolak retur nota bon membedakan PEMBAYARAN dari HAPUS BUKU (`retur-logika.js` `tutupHapus`, dari `bayar` / `dihapus` mesin
+  `hitungPiutang`): bon yang dihapus buku ditulis "sudah DIHAPUS BUKU (Rp…), bukan dibayar" — tidak lagi "sudah dibayar", dan tidak menyuruh owner
+  mengembalikan uang laci lewat retur ketik tangan untuk barang yang tidak pernah dibayar; bon yang ditutup keduanya menyebut keduanya dan membatasi uang
+  kembali sebesar yang memang dibayar. Penolakannya sendiri tidak berubah. Uji `uji_laporan_baru.py` +3, kontrol +2 (1 jangkar lama disesuaikan).

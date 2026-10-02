@@ -190,6 +190,20 @@ ok('39b-37 barang RUSAK dari nota bon: retur + mutasi + KARANTINA (3 dokumen); b
   (C37.rusak.dokumen || []).length === 3 && C37.rusak.dokumen[2].koleksi === 'karantina' && C37.P1.sisa === C37.P0.sisa - 140000 && C37.P1.stok === C37.P0.stok && C37.P1.L.labaBersih === C37.P0.L.labaBersih - 140000 && C37.P1.kas === C37.P0.kas,
   J([C37.rusak, C37.P1.sisa - C37.P0.sisa, C37.P1.stok - C37.P0.stok, C37.P1.L.labaBersih - C37.P0.L.labaBersih]));
 
+// ---- 39b no. 37 tinjauan U37-U2: bon yang DIHAPUS BUKU tidak pernah dibayar — kalimat tolak retur tidak boleh menyebut "sudah dibayar" atau menyuruh uang keluar
+// laci lewat retur ketik tangan. ANGKA CONTOH: Uji Hapus bon 700.000 dihapus penuh; Uji Hapus Sebagian dihapus 600.000; Uji Campur dibayar 300.000 + dihapus 400.000.
+var HB37 = function (id, tgl, nama, n) { return { koleksi: 'piutangMutasi', data: { id: id, tipe: 'hapusBuku', namaPelanggan: nama, nominal: n, tanggal: tgl, jam: '10:00', alasan: 'macet', dicatatDi: 'sistem' } }; };
+var U2 = denganCacheSementara([KR37('h37a', '2026-09-10', 'Uji Hapus', 50, 700000, 650000), HB37(3801, '2026-09-12', 'Uji Hapus', 700000),
+  KR37('h37b', '2026-09-10', 'Uji Hapus Sebagian', 50, 700000, 650000), HB37(3802, '2026-09-12', 'Uji Hapus Sebagian', 600000),
+  KR37('h37c', '2026-09-10', 'Uji Campur', 50, 700000, 650000), BY37(3803, '2026-09-11', 'Uji Campur', 300000), HB37(3804, '2026-09-12', 'Uji Campur', 400000)], function () {
+  return { a: susunRetur(RS37({ rtNotaId: 'h37a', ketik: '10' }), W37), b: susunRetur(RS37({ rtNotaId: 'h37b', ketik: '20' }), W37), c: susunRetur(RS37({ rtNotaId: 'h37c', ketik: '10' }), W37) }; });
+ok('39b-37 U37-U2: bon DIHAPUS BUKU penuh — retur ditolak dengan kalimat "sudah DIHAPUS BUKU (Rp700.000), bukan dibayar", tanpa "sudah dibayar" dan tanpa jalan uang laci (retur ketik tangan)',
+  !U2.a.dokumen && /sudah DIHAPUS BUKU \(Rp700\.000\), bukan dibayar/.test(U2.a.tolak || '') && /tidak ada uang yang dikembalikan/.test(U2.a.tolak || '') && !/sudah dibayar|Retur ketik tangan/.test(U2.a.tolak || ''), U2.a.tolak);
+ok('39b-37 U37-U2: bon dihapus buku sebagian (sisa 100.000) — retur 20 kg ditolak "sebagian bonnya sudah DIHAPUS BUKU (Rp600.000), bukan dibayar", batas 7,14 kg tetap disebut, tanpa jalan uang laci',
+  !U2.b.dokumen && /sebagian bonnya sudah DIHAPUS BUKU \(Rp600\.000\), bukan dibayar/.test(U2.b.tolak || '') && /paling banyak 7,14 kg/.test(U2.b.tolak || '') && !/sudah dibayar|Retur ketik tangan/.test(U2.b.tolak || ''), U2.b.tolak);
+ok('39b-37 U37-U2: bon ditutup bayar 300.000 + hapus buku 400.000 — kalimat menyebut keduanya; uang kembali dari laci paling banyak sebesar yang memang dibayar',
+  !U2.c.dokumen && /sudah tertutup \(dibayar Rp300\.000, DIHAPUS BUKU Rp400\.000\)/.test(U2.c.tolak || '') && /paling banyak sebesar yang memang dibayar/.test(U2.c.tolak || ''), U2.c.tolak);
+
 // ==================== HARIAN ====================
 var RH = rekapHari('2026-09-19');
 var rekapHari0918 = rekapHari('2026-09-18');
@@ -573,7 +587,9 @@ if __name__ == '__main__':
             '39b-37: buku bon tanpa baris retur': js.replace("Pa.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur')", "Pa.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku')"),
             '39b-37: Kartu Piutang menyebut retur sebagai bayar': js.replace("else if (m.jenis === 'retur') retur += n; ", ""),
             '39b-37: kelebihan bayar sesudah retur disebut hapus buku terbayar': js.replace("((Number(d.total) || 0) - (Number(d.retur) || 0))", "(Number(d.total) || 0)"),
-            '39b-37: bon lunas: retur ditolak tanpa menunjuk jalan uang kembali': js.replace("Barangnya sudah dibayar: kalau uangnya dikembalikan dari laci, catat lewat \"Tidak ada notanya? Retur ketik tangan\" (uang kembali). ", ""),
+            '39b-37: bon lunas: retur ditolak tanpa menunjuk jalan uang kembali': js.replace("Barangnya sudah dibayar: kalau uangnya dikembalikan dari laci, catat lewat \"Tidak ada notanya? Retur ketik tangan\" (uang kembali).", "Barangnya sudah dibayar."),   # jangkar disesuaikan tinjauan U37-U2
+            '39b-37 U37-U2: bon yang dihapus buku disebut sudah dibayar (kalimat lama, uang laci)': js.replace("  if (!(B.dihapus > 0.5)) return null;\n  const campur", "  return null;\n  const campur"),
+            '39b-37 U37-U2: bon dibayar + dihapus buku disebut dihapus buku saja': js.replace("const campur = B.bayar > 0.5;", "const campur = false;"),
             '39b-37: barang rusak dari nota bon tanpa karantina': js.replace("  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));\n  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON", "  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON"),
             '39b-38: batas aman ambil pribadi dari laba mesin': js.replace("const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;", "const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaMesin : 0;"),
         }
