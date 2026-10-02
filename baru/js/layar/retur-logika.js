@@ -137,6 +137,18 @@ function susunReturBon(s, w, r) {
 }
 
 /**
+ * Audit 39b no. 37 tinjauan U37-U1: nota / karcis yang barangnya sudah kembali lewat retur nota BON (dokumen retur ber-potongBon yang menunjuk salah satu
+ * barisnya) TIDAK boleh dibatalkan. Pembatalan mencabut bonnya, tetapi dokumen retur & mutasi piutang tipe 'retur' tetap tinggal — bon pembeli jadi minus dan
+ * terbaca "kelebihan bayar, uang pelanggan dipegang toko" padahal tidak ada uang, lalu bon berikutnya orang itu terpotong diam-diam. Dipakai Jual
+ * (susunPembatalan) dan Karcis kasir (susunBatalKarcis). Kalimat tolak, atau null bila tidak ada retur seperti itu.
+ */
+export function tolakBatalReturBon(ids) {
+  const k = (ids || []).map(String); const r = ambilRetur().filter((x) => (Number(x.potongBon) || 0) > 0 && k.indexOf(String(x.notaAsalId)) >= 0); if (!r.length) return null;
+  const nama = String(r[0].namaPelanggan || '').trim(); const n = r.reduce((a, x) => a + (Number(x.potongBon) || 0), 0);
+  return 'Nota ini sudah diretur memotong bon' + (nama ? ' ' + nama : '') + ' (' + RP(n) + ') — tidak bisa dibatalkan lagi: returnya tetap tercatat, jadi bon' + (nama ? ' ' + nama : '') + ' akan minus seolah toko memegang uangnya, padahal tidak ada uang. Nota tidak dibatalkan.';
+}
+
+/**
  * Catat retur. REFUND → {dokumen, patch}; TUKAR → {ikat, patch} (tidak ada dokumen: lahir bersama nota penggantinya); nota BON → susunReturBon.
  */
 export function susunRetur(s, w) {

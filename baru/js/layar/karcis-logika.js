@@ -15,6 +15,7 @@ import { susunRak, masukkan, terapkanNego, periksaStokKeranjang, pecahItemsWadah
 import { wbLiteranLangsung } from './wadah-bernama-logika.js';
 import { koleksiWadah } from './wadah-jual-logika.js';
 import { skPecah, skHapusPemecah } from './setengah-logika.js';
+import { tolakBatalReturBon } from './retur-logika.js';
 
 const KC_TERKUNCI = 'karcis ini tidak bisa dirinci lagi; stok yang terlanjur keluar dibetulkan lewat Stok › Cocokkan hari ini';
 const KC_TOLERANSI_BULAT = 500;   // literan: pecahan di bawah Rp500 tidak terpakai di lapangan (kandidatDarurat 32170)
@@ -203,6 +204,8 @@ export function susunBatalKarcis(id, alasan, w) {
   if (!kcDariDarurat(p)) return { tolak: 'Ini bukan catatan kasir darurat — batalkan lewat jalurnya sendiri' };
   if (!penjualanMasihBerlaku(p)) return { tolak: 'Karcis ' + kcEkor(p.id) + ' sudah ' + (p.dibatalkan ? 'dibatalkan' : 'dirinci/dikoreksi (tarik balik rinciannya dulu)') + ' — tidak dibatalkan dua kali' };
   const kunci = tolakKunci('penjualan', p, KC_BATAL_TERKUNCI); if (kunci) return { tolak: kunci };
+  // audit 39b no. 37 tinjauan U37-U1: karcis yang barangnya sudah kembali lewat retur nota bon tidak dibatalkan (retur & mutasi retur tetap tinggal, bon jadi minus)
+  const tolakRb = tolakBatalReturBon([p.id]); if (tolakRb) return { tolak: tolakRb };
   const a = String(alasan || '').trim(); if (a.length < 3) return { tolak: 'Tulis alasannya dulu (mis. "salah ketik, harusnya 39.000") — barisnya tetap tersimpan dan ditandai dibatalkan' };
   const kini = (w && w.kini) || new Date().toISOString();
   const data = Object.assign({}, p, { dibatalkan: true, alasanKoreksi: a.slice(0, 120), dikoreksiPada: kini, dibatalkanPada: kini });

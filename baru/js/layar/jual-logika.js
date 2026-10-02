@@ -25,7 +25,7 @@ import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaK
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
   wzDiKeranjangParkir, sumberData, cacheMentah, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan, returUangPerHari, denganCacheSementara } from '../data/toko.js';
 import { hariIniIso, RP, tanggalPendek, pecahLebih } from '../inti/format.js';
-import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan } from './retur-logika.js';
+import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan, tolakBatalReturBon } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
 import { susunRakWadah, bangunBarisWadah, biayaWadahRepack, koleksiWadah, jenisWadah, bebasWadah } from './wadah-jual-logika.js';
 // putaran 27: wadah bernama, isi per merek asal
@@ -902,6 +902,8 @@ export function susunPembatalan(notaTerakhir, alasan, w) {
   const ids = notaTerakhir.idPenjualan.map(String);
   const baris = ambilPenjualanSemua().filter((p) => ids.indexOf(String(p.id)) >= 0 && !p.dibatalkan);
   if (!baris.length) return null;
+  // audit 39b no. 37 tinjauan U37-U1: barang nota ini sudah kembali lewat retur nota bon → tidak dibatalkan (retur & mutasi retur tetap tinggal, bon jadi minus)
+  const tolakRb = tolakBatalReturBon(baris.map((p) => p.id)); if (tolakRb) return { tolak: tolakRb };
   const kini = (w && w.kini) || new Date().toISOString();
   const dokumen = baris.map((p) => ({ koleksi: 'penjualan', data: Object.assign({}, p, { dibatalkan: true, alasanKoreksi: alasan || 'Diurungkan dari sistem baru', dikoreksiPada: kini, dibatalkanPada: kini }) }));
   const hapus = baris.filter((p) => p.jenis === 'literan' && p.kemasanLiteran).map((p) => ({ koleksi: 'stokBahanLiteran', id: p.id + 1 }));

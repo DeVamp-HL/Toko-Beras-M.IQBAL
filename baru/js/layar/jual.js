@@ -169,6 +169,7 @@ export function pasangLayarJual(akar, opsi) {
       if (nt && nt.rinci) { const r = KC.susunUrungRinci(nt.rinci, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); await kirimUrung(r); return; }
       const p = L.susunPembatalan(S().notaTerakhir, 'Diurungkan dari sistem baru');
       if (!p) return set({ notaTerakhir: null, kabar: 'Tidak ada nota yang bisa dibatalkan', kabarAwas: true });
+      if (p.tolak) return set({ kabar: p.tolak, kabarAwas: true });
       try {
         // putaran 25: tandai-batal + cabut kantong/pelunasan/retur dalam SATU kiriman yang hasilnya diperiksa (dulu dua kiriman, hasil tidak diperiksa:
         // kalau yang pertama ditolak server, yang kedua tetap jalan dan layar tetap bilang "dibatalkan")

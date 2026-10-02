@@ -1476,3 +1476,9 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
   `uji_jual_baru.py` +2 (1 lama dibalik SENGAJA: nota KREDIT kini bisa), kontrol +4 (1 lama diganti); `uji_akses_baru.py` +1 (staf ditolak), kontrol +1;
   `uji_riwayat_penjualan.py` 1 dibalik SENGAJA, kontrol +1; `uji_pelanggan_baru.py` 1 jangkar kontrol; `peta_akses.py` mendaftarkan `susunReturBon`.
   Cadangan 1 Okt: 0 retur nota bon, 0 mutasi retur → ASAP GLOBAL byte-sama (tanpa perubahan SENGAJA baru).
+
+### Tinjauan no. 37 (2 Okt 2026) — satu putaran tambal, satu commit per cacat
+- U37-U1 (+ MM6): nota / karcis BON yang barangnya sudah kembali lewat retur nota bon (dokumen `retur` ber-`potongBon` yang `notaAsalId`-nya baris itu) DITOLAK
+  dibatalkan — "Batalkan nota barusan" (`susunPembatalan`) dan Karcis kasir (`susunBatalKarcis`), kalimat dari `retur-logika.js` `tolakBatalReturBon`. Dulu
+  pembatalan mencabut bonnya, tetapi retur & mutasi piutang tipe `retur` tetap tinggal: bon jadi minus dan terbaca "kelebihan bayar — uang pelanggan dipegang
+  toko", bon berikutnya orang itu terpotong diam-diam. Retur uang kembali (nota tunai) tidak disentuh. Uji `uji_jual_baru.py` +1, kontrol +3.

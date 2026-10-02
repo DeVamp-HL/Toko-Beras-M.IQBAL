@@ -307,6 +307,21 @@ ok('39b-37: retur nota BON = dokumen retur (nominalRefund 0, potongBon 138.000, 
   && /tidak ada uang keluar laci/.test(RB37.patch.kabar), JSON.stringify(RB37));
 terap({ rtPenyelesaian: 'tukar' }); ok('39b-37: nota BON tidak bisa ditukar langsung (catat retur dulu, lalu jual penggantinya)', /tidak bisa ditukar langsung/.test(susunRetur(s, W).tolak || ''), JSON.stringify(susunRetur(s, W)));
 terap(returAwal());
+// 39b no. 37 tinjauan U37-U1 (+ MM6, jalur "Batalkan nota barusan"): nota / karcis BON yang barangnya sudah kembali lewat retur nota bon TIDAK bisa dibatalkan.
+// Dulu pembatalan mencabut bonnya, tapi retur & mutasi piutang tipe retur tetap tinggal: bon jadi minus, terbaca "kelebihan bayar — uang pelanggan dipegang toko".
+// ANGKA CONTOH: karcis kasir darurat (tuts bernama) bon 700.000 diretur penuh; nota bon 700.000 diretur 10 kg; pembanding: karcis bon tanpa retur dan karcis TUNAI
+// yang diretur uang kembali tetap bisa dibatalkan (penjaga ini hanya untuk retur yang memotong bon).
+var U1N = function (id, nama, x) { return { koleksi: 'penjualan', data: Object.assign({ id: id, trxId: 'T' + id, tanggal: '2026-09-19', jam: '08:00', caraBayar: 'Kredit', namaPelanggan: nama, jenis: 'karung', merkSumber: 'Angsa', beratKarungAcuan: 50, jumlahKarung: 1, totalKg: 50, hargaTotal: 700000, hppTotalSaatJual: 650000 }, x || {}) }; };
+var U1 = denganCacheSementara([U1N('u1k', 'Uji Batal', { viaDarurat: true, perangkat: 'd-hp1' }), U1N('u1n', 'Uji Urung'), U1N('u1p', 'Uji Pembanding', { viaDarurat: true, perangkat: 'd-hp1' }), U1N('u1t', '', { caraBayar: 'Tunai', viaDarurat: true, perangkat: 'd-hp1' })], function () {
+  var RS = function (id, kg) { return susunRetur(Object.assign(returAwal(), { rtNotaId: id, ketik: kg, rtAlasan: 'kualitas kurang', rtKondisi: 'utuh' }), W); };
+  var rk = RS('u1k', '50'), rn = RS('u1n', '10'), rt = RS('u1t', '10');
+  return denganCacheSementara((rk.dokumen || []).concat(rn.dokumen || [], rt.dokumen || []), function () {
+    var bk = susunBatalKarcis('u1k', 'salah ketik', W), bn = susunPembatalan({ trxId: 'Tu1n', idPenjualan: ['u1n'], piutangId: null, pesanan: null, retur: null }, 'salah', W);
+    return { rk: rk.tolak || '', rn: rn.tolak || '', rt: rt.tolak || '', bk: bk, bn: bn, bp: susunBatalKarcis('u1p', 'salah ketik', W), bt: susunBatalKarcis('u1t', 'salah ketik', W), sisaK: (hitungPiutang().find(function (x) { return x.kunci === 'uji batal'; }) || {}).sisa };
+  }); });
+ok('39b-37 U37-U1: karcis BON yang sudah diretur memotong bon DITOLAK dibatalkan (kalimat menyebut bon & returnya, tidak ada dokumen); "Batalkan nota barusan" sesudah retur 10 kg juga DITOLAK; karcis bon tanpa retur & karcis tunai yang diretur uang kembali tetap bisa dibatalkan',
+  !U1.rk && !U1.rn && !U1.rt && U1.sisaK === 0 && /sudah diretur memotong bon Uji Batal \(Rp700\.000\)/.test(U1.bk.tolak || '') && !U1.bk.dokumen && !!U1.bn && /sudah diretur memotong bon Uji Urung \(Rp140\.000\)/.test(U1.bn.tolak || '') && !U1.bn.dokumen
+  && !U1.bp.tolak && !!U1.bp.dokumen && U1.bp.dokumen[0].data.dibatalkan === true && !U1.bt.tolak && !!U1.bt.dokumen, JSON.stringify(U1));
 // M. TUKAR: retur diikat ke keranjang, lahir BERSAMA penjualan penggantinya
 mulaiNota(); terap(Object.assign(returAwal(), { rtNotaId: 's5', ketik: '41,5', rtAlasan: 'salah beli', rtKondisi: 'tidak_utuh', rtPenyelesaian: 'tukar', tukar: null }));
 RT = susunRetur(s, W); ok('M: tukar TIDAK menulis dokumen — menghasilkan ikatan {returDraf, kredit 572.700, ringkas}; draf kreditBarangGabung, selisih 0', !RT.dokumen && RT.ikat && RT.ikat.kredit === 572700 && RT.ikat.returDraf.tukarModel === 'kreditBarangGabung' && RT.ikat.returDraf.selisihHargaTukar === 0 && RT.ikat.returDraf.nominalRefund === 572700 && RT.ikat.returDraf.penyelesaian === 'tukar' && /Angsa 41,5 kg/.test(RT.ikat.ringkas), JSON.stringify(RT));
@@ -988,6 +1003,9 @@ if __name__ == '__main__':
             '39b-37: nota BON kembali ditolak (rtDasarNota apa adanya)': js.replace("if (caraBayarKunci(t) !== 'kredit') return rtDasarNota(t);", "return rtDasarNota(t);"),
             '39b-37: retur nota BON tanpa mutasi piutang (bon tidak turun)': js.replace("const dokumen = [{ koleksi: 'retur', data: draf }, { koleksi: 'piutangMutasi', data: mutasi }];", "const dokumen = [{ koleksi: 'retur', data: draf }];"),
             '39b-37: tukar nota BON lolos': js.replace("if (s.rtPenyelesaian === 'tukar') return { tolak: 'Nota BON tidak bisa ditukar langsung", "if (false) return { tolak: 'Nota BON tidak bisa ditukar langsung"),
+            '39b-37 U37-U1: nota yang sudah diretur memotong bon boleh diurungkan (bon jadi minus)': js.replace("const tolakRb = tolakBatalReturBon(baris.map((p) => p.id)); if (tolakRb) return { tolak: tolakRb };", ""),
+            '39b-37 U37-U1: karcis yang sudah diretur memotong bon boleh dibatalkan (bon jadi minus)': js.replace("const tolakRb = tolakBatalReturBon([p.id]); if (tolakRb) return { tolak: tolakRb };", ""),
+            '39b-37 U37-U1: penjaga batal juga menahan retur uang kembali (bukan hanya yang memotong bon)': js.replace("const r = ambilRetur().filter((x) => (Number(x.potongBon) || 0) > 0 && k.indexOf(String(x.notaAsalId)) >= 0); if (!r.length) return null;", "const r = ambilRetur().filter((x) => k.indexOf(String(x.notaAsalId)) >= 0); if (!r.length) return null;"),
             'alasan retur tidak wajib': js.replace("if (!catatan) return { tolak: 'Pilih / isi alasan retur dulu", "if (false) return { tolak: 'Pilih / isi alasan retur dulu"),
             'kondisi barang tidak wajib dijawab': js.replace("if (s.rtKondisi !== 'utuh' && s.rtKondisi !== 'tidak_utuh') return", "if (false) return"),
             'barang rusak tidak masuk karantina': js.replace("if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));", ""),
