@@ -95,6 +95,8 @@ const motor = () => `<g class="kendaraan motor matic"><g class="roda-grup"><circ
   <path class="jok" d="M-48 -32 Q-30 -40 -6 -36 L-6 -28 L-46 -26 Z"/><path class="bodi" d="M20 -12 L14 -22 L18 -52 L28 -52 L30 -22 L26 -12 Z"/>
   <path class="setang" d="M14 -55 h22"/><circle class="lampu" cx="27" cy="-42" r="3.6"/><circle class="jari" cx="34" cy="-60" r="2.2"/><path class="knalpot" d="M-8 -10 h-24 v4 h24 z"/></g>`;
 const mobil = () => `<g class="kendaraan mobil"><path class="bodi" d="M-80 -24 h68 v-26 h30 l18 24 h14 v26 h-130 z"/><path class="bak-garis" d="M-80 -24 h68 v-16 h-68 z M-12 -24 v-26"/><rect class="kaca" x="-6" y="-46" width="24" height="18" rx="3"/><circle class="lampu" cx="48" cy="-14" r="3"/><g class="roda-grup"><circle class="roda" cx="-52" cy="0" r="12"/><circle class="jari" cx="-52" cy="0" r="5"/></g><g class="roda-grup"><circle class="roda" cx="26" cy="0" r="12"/><circle class="jari" cx="26" cy="0" r="5"/></g></g>`;
+// Literan ke karung bekas diikat RAFIA (owner 3 Okt: "Diikat rafia") — tali pipih melingkar di bawah mulut + simpul berekor, muncul di akhir serokan.
+const RAFIA = '<g class="ikatan rafia"><path class="tali-rafia" d="M-25 -17 Q0 -13 25 -17"/><path class="simpul-rafia" d="M-1 -15 l-8 -9 M1 -15 l8 -9 M-1 -15 l-6 8 M1 -15 l6 8"/></g>';
 // KARUNG BEKAS yang diisi setengah lalu dijahit: karung anyaman yang BERDIRI (bukan gentong — owner 2 Okt). Badan tegak hampir persegi panjang:
 // bagian bawah berisi beras sedikit melebar & menggembung, dasar rata menapak lantai, sudut bawahnya membulat sedikit; bagian atas kain kosong
 // dilipat RATA → bibir lurus mendatar di y -38 dengan dua telinga di sudut. Selama dituang mulutnya terbuka (.mulut-bekas: dinding dalam belakang
@@ -140,7 +142,7 @@ const serok = () => `<g class="serok-adegan"><path class="gagang" d="M10 -34 L0 
 /** Literan / repack masuk keranjang: serok → kantong → ikat. n = banyak serokan (1–3) menurut banyaknya beras. */
 export function adeganSerok({ nama, jumlahTeks, dariKarung, kemasanLiteran, serokan }) {
   const n = Math.max(1, Math.min(3, Number(serokan) || 1)); const satu = 820; const lama = n * satu + 900;
-  const wadahKantong = kemasanLiteran === 'karungbekas' ? '<g class="kantong-isi karung-kecil">' + karung('').replace('class="paket karung"', 'class="paket karung terbuka"') + '</g>'
+  const wadahKantong = kemasanLiteran === 'karungbekas' ? '<g class="kantong-isi karung-kecil">' + karung('').replace('class="paket karung"', 'class="paket karung terbuka"') + RAFIA + '</g>'
     : `<g class="kantong-isi"><path class="badan" d="M-24 -30 L24 -30 L28 36 L-28 36 Z"/><rect class="isi-kantong" x="-26" y="-26" width="52" height="60"/><path class="lipat" d="M-12 -30 L-15 36 M12 -30 L15 36"/><g class="ikatan"><path class="leher" d="M-24 -30 L-7 -46 L7 -46 L24 -30 Z"/><path class="tali" d="M-10 -34 h20 M-10 -34 q-9 -6 -3 -12 M10 -34 q9 -6 3 -12"/></g></g>`;
   const svg = `<svg class="adegan serok" viewBox="0 0 320 170" style="--n: ${n}; --satu: ${satu}ms; --total: ${n * satu}ms;">
     <g transform="translate(86 112)">${dariKarung ? karungBuka() : wadahKotak()}</g>
@@ -148,8 +150,8 @@ export function adeganSerok({ nama, jumlahTeks, dariKarung, kemasanLiteran, sero
     <g class="butir"><circle cx="232" cy="66" r="2"/><circle cx="226" cy="60" r="1.6"/><circle cx="238" cy="58" r="1.6"/><circle cx="231" cy="52" r="1.4"/></g>
     <g class="jalur-serok">${serok()}</g>
   </svg>`;
-  // karung bekas: jahitan mulutnya baru muncul SESUDAH serokan terakhir (adegan.css jahitMuncul) → keterangannya "dijahit", bukan "diikat"
-  return mainkan(svg, '<b>' + esc(nama) + '</b> · ' + esc(jumlahTeks) + (kemasanLiteran === 'karungbekas' ? ' · dikemas &amp; dijahit' : kemasanLiteran ? ' · dikemas &amp; diikat' : ' · diserok'), lama);
+  // karung bekas literan DIIKAT RAFIA (owner 3 Okt) — ikatannya muncul SESUDAH serokan terakhir (kelas .ikatan, waktu yang sama dengan kantong)
+  return mainkan(svg, '<b>' + esc(nama) + '</b> · ' + esc(jumlahTeks) + (kemasanLiteran === 'karungbekas' ? ' · dikemas &amp; diikat rafia' : kemasanLiteran ? ' · dikemas &amp; diikat' : ' · diserok'), lama);
 }
 /** Isi ulang wadah: serok dari KARUNG TERBUKA di belakang → dituang ke KOTAK WADAH, permukaannya naik (menggunung bila lewat rata). */
 export function adeganIsiUlang({ nama, keterangan, serokan, dari, ke }) {

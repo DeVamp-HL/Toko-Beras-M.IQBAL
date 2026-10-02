@@ -51,9 +51,10 @@
 .adegan.serok .kantong-isi { transform-origin: 50% 100%; animation: pegasPaket 520ms cubic-bezier(.2,.8,.2,1) calc(var(--total) + 420ms) both; }
 @keyframes pegasPaket { 0% { transform: scale(1); } 40% { transform: scale(1.08, 0.94); } 100% { transform: scale(1); } }
 .adegan.serok .kantong-isi.karung-kecil .paket { transform: scale(0.9); }
-/* literan ke karung bekas: karung() membawa jahitan pabrik → disembunyikan selama diserok, baru dijahit sesudah serokan terakhir (bersama .ikatan kantong) */
-.adegan.serok .karung-kecil .jahit-tutup { transform-box: fill-box; transform-origin: 0 50%; animation: jahitMuncul 520ms ease-out var(--total) both; }
-@keyframes jahitMuncul { from { opacity: 0; transform: scaleX(0.05); } to { opacity: 0.9; transform: none; } }
+/* literan ke karung bekas DIIKAT RAFIA (owner 3 Okt): jahitan pabrik karung() tidak dipakai; ikatan rafia muncul sesudah serokan terakhir (animasi .ikatan) */
+.adegan.serok .karung-kecil .jahit-tutup { display: none; }
+.adegan .tali-rafia { fill: none; stroke: var(--awas); stroke-width: 2.4; stroke-linecap: round; }
+.adegan .simpul-rafia { fill: none; stroke: var(--awas); stroke-width: 1.8; stroke-linecap: round; }
 /* ---- ISI ULANG: karung terbuka → kotak wadah; isi di dalam kotak naik dulu, lewat rata baru menggunung ---- */
 .adegan.isi-ulang .kotak-adegan.kosong { fill: none; }
 .adegan.isi-ulang .isi-wadah-naik { transform-box: fill-box; transform-origin: 50% 100%; animation: isiWadahNaik var(--total) linear both; }
