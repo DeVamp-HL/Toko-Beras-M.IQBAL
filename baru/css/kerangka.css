@@ -47,6 +47,11 @@ main.layar-jual > input[type="hidden"] { display: none; }
 /* nav bawah */
 .nav { position: fixed; left: 14px; right: 14px; bottom: 16px; }
 .nav > div { cursor: pointer; }
+/* owner 2 Okt: menu bawah (HP & tablet) berikon — garis emas tipis seperti menu samping Mac; petak aktif ikonnya sedikit terangkat */
+.nav > div > svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; transition: transform 260ms cubic-bezier(.2,.8,.2,1); }
+.nav > div.aktif > svg { transform: translateY(-1px) scale(1.08); }
+.nav > div > span { line-height: 1.1; }
+@media (prefers-reduced-motion: reduce) { .nav > div > svg { transition: none; } .nav > div.aktif > svg { transform: none; } }
 .kabar-nav { position: fixed; left: 14px; right: 14px; bottom: 96px; z-index: 6; padding: 10px 14px; border-radius: 14px; background: var(--kaca); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--kaca-tepi); font-size: 13px; }
 .kabar-nav.awas { border-color: var(--awas); color: var(--awas); cursor: pointer; }
 
