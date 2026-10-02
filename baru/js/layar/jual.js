@@ -490,7 +490,7 @@ export function pasangLayarJual(akar, opsi) {
       adeganIsiUlang({ nama: wadah, keterangan: takaran + DESIMAL(hsl.kg) + ' kg' + (hsl.banding ? ' · campur ' + hsl.banding : ''), serokan: Math.ceil(hsl.takar / 8), dari: dulu, ke: kini || dulu }); } }));
   delegasi(akar, aksi);
 
-  let _rak = null, _rakUntuk = '', _lembarSebelum = null, _ingatRak = {};
+  let _rak = null, _rakUntuk = '', _rakDasar = '', _lembarSebelum = null, _ingatRak = {};
   // owner 3 Okt ("freeze sebentar ketika catat nota"): menyusun rak ±180 ms di Mac (±0,5 detik di iPad/HP) dan dulu diulang tiap koleksi berubah —
   // sesudah catat nota itu terjadi beberapa kali (penjualan, jejak, denyut, …) tepat saat adegan mau mulai. Kini:
   //  · koleksi yang tidak pernah mengubah rak (jejak, denyut, uang, upah, pajak, struk, dokumen …) tidak membuat rak basi — layar tetap digambar ulang;
@@ -508,7 +508,8 @@ export function pasangLayarJual(akar, opsi) {
   function rakKini(bolehTunda) {
     const s = S(); L.sinkronKeranjang(s);
     // rak bergantung pada ISI keranjang (jumlah + bonus), bukan cuma banyaknya baris — +1 unit atau bonus mengubah sisa chip
-    const tanda = (s.tukar ? 'tk' : '') + (s.karcis ? 'kc' + s.karcis.id : '') + s.pelanggan + '|' + s.keranjang.map((b) => b.trx.jenis + ':' + b.trx.jumlah + ':' + (b.trx.bonusUnit || 0) + ':' + (b.trx.kemasanRepack || '') + (b.trx.jumlahKemasanRepackDipakai || '')).join(',') + '|' + s.antrean.length + '|' + opsi.versiData();
+    const dasar = (s.tukar ? 'tk' : '') + (s.karcis ? 'kc' + s.karcis.id : '') + s.pelanggan;
+    const tanda = dasar + '|' + s.keranjang.map((b) => b.trx.jenis + ':' + b.trx.jumlah + ':' + (b.trx.bonusUnit || 0) + ':' + (b.trx.kemasanRepack || '') + (b.trx.jumlahKemasanRepackDipakai || '')).join(',') + '|' + s.antrean.length + '|' + opsi.versiData();
     if (_rak && Date.now() < _rakTahanSampai) return _rak;
     // owner 3 Okt (patah-patah tiap tambah barang): yang berubah CUMA isi keranjang → layar digambar dulu dengan rak lama (keranjang & lembar langsung
     // bereaksi), rak disusun ulang di bingkai berikutnya. Aksi (ketuk chip, Sering, ulangi) memanggil rakKini() tanpa tunda → selalu rak segar.
@@ -516,7 +517,12 @@ export function pasangLayarJual(akar, opsi) {
       if (!_rakSusulan) { _rakSusulan = true; sebingkai().then(() => { _rakSusulan = false; _rakPaksa = true; nanti(gambarGulir); }); }
       return _rak;
     }
-    if (!_rak || _rakBasi || _rakUntuk !== tanda) { _rak = L.susunRak(s); _rakUntuk = tanda; _ingatRak = {}; _rakBasi = false; }
+    // owner 3 Okt ("layar jual lebih smooth"): yang berubah cuma isi keranjang / struk parkir → rak disusun LANJUTAN dari rak sebelumnya — chip yang
+    // sisanya tidak tersentuh dipakai ulang, hanya yang terpengaruh dihitung ulang (L.susunRakLanjut; hasilnya sama persis dengan susun penuh, data toko
+    // berubah → di sana pun susun penuh). Data toko basi, pelanggan, karcis, atau tukar berubah → susun penuh seperti dulu.
+    if (!_rak || _rakBasi || _rakUntuk !== tanda) {
+      _rak = _rak && !_rakBasi && _rakDasar === dasar ? L.susunRakLanjut(s, _rak) : L.susunRak(s);
+      _rakUntuk = tanda; _rakDasar = dasar; _ingatRak = {}; _rakBasi = false; }
     _rakPaksa = false;
     return _rak;
   }

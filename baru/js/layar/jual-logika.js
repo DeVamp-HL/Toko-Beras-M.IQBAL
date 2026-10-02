@@ -97,11 +97,14 @@ export function susunRak(s) {
   const rak = { karung: [], kemasan: [], literan: [], repack: [], wadah: [] };
   const arsip = arPeta();   // putaran 27 (Bagian 3): nama yang diarsipkan owner tidak tampil di rak (baris saring jenis & Sering ikut, karena turunan rak)
   const wadahDaftar = aturWadah().daftar; const literanLangsung = wbLiteranLangsung().daftar;
+  // owner 3 Okt (rak inkremental): merek yang dibaca tiap chip wadah (komposisi isinya) dicatat untuk susunRakLanjut; beratAkhir = isian #jualKarungBerat terakhir
+  const pakaiWadah = new Map(); let beratAkhir = null;
   // putaran 27 (Bagian 5): WADAH = tempat bernama; harga per liter melekat pada wadah (katalogHargaLiteran ber-id nama wadah); isinya boleh dari beberapa
   // merek — terjual → buku merek-merek asal dipotong sebanding komposisi; modal per kg = rata-rata tertimbang isi wadah
-  wadahDaftar.forEach((W) => { const hl = hargaLiteran.find((x) => x.merk === W); if (!hl || !(hl.hargaPerLiter > 0)) return; const rasio = wbRasio(W); const sisaL = bebasLiterWadah(W, rasio, s);
-    rak.literan.push({ jalur: 'literan', kunci: W, nama: W, ukuran: 'per liter · wadah', harga: hl.hargaPerLiter, satuan: 'L', rasio, sisa: sisaL, sisaTeks: '±' + sisaL.toString().replace('.', ',') + ' L', hppPerKg: wbModalPerKg(W, s),
-      wadahLiteran: true, dipegang: 0 }); });
+  wadahDaftar.forEach((W) => { const hl = hargaLiteran.find((x) => x.merk === W); if (!hl || !(hl.hargaPerLiter > 0)) return; const rasio = wbRasio(W); const pakai = []; const g = geraLiteranWadah(W, rasio, s, pakai);
+    const c = { jalur: 'literan', kunci: W, nama: W, ukuran: 'per liter · wadah', harga: hl.hargaPerLiter, satuan: 'L', rasio, sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerKg: g.hppPerKg,
+      wadahLiteran: true, dipegang: 0 };
+    rak.literan.push(c); pakaiWadah.set(c, pakai); });
   // putaran 28: buku stok WADAH bukan merek karung — tidak dijual per karung / repack / literan langsung (literannya lewat chip wadah di atas)
   // putaran 28 (owner 28 Sep): karung 25 kg merek dua ukuran dijual dari bukunya sendiri 'Merek 25 kg' (harga = katalog merek induk ukuran itu);
   // buku merek induk yang sudah dipisah tidak lagi menawarkan ukuran itu
@@ -114,37 +117,36 @@ export function susunRak(s) {
       if (!merkPunyaKarungBerat(merk, berat)) return;
       const hg = hargaKarungUtuh(hgNama, berat);
       if (!hg || !hg.perUnit) return;
-      setelBeratDom(berat);
-      const maks = stokMaksJalur('karung', merk);   // sudah dikurangi keranjang aktif + yang diparkir
+      const g = geraKarung(merk, berat); beratAkhir = berat;
       rak.karung.push({ jalur: 'karung', kunci: merk, nama: hgNama, ukuran: berat + ' kg', harga: hg.perUnit, satuan: 'karung', indukUkuran: uk ? uk.induk : '',
-        berat, sisa: maks === null ? 0 : maks, sisaTeks: (maks === null ? 0 : maks) + ' karung', hppPerKg: stokKarung[merk].hppTerakhirPerKg || 0,
-        dipegang: wzDiKeranjangParkir('karung', merk) });
+        berat, sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerKg: stokKarung[merk].hppTerakhirPerKg || 0,
+        dipegang: g.dipegang });
     });
     // putaran 27 (Bagian 5): literan per MEREK hanya untuk merek yang dijual literan LANGSUNG dari karungnya; literan wadah = chip per wadah (di bawah)
     const hl = literanLangsung.indexOf(merk) >= 0 ? hargaLiteran.find((x) => x.merk === merk) : null;
     if (hl && hl.hargaPerLiter > 0) {
-      const sisaL = bebasLiter(merk, rasioMerk(merk));
+      const g = geraLiteranLangsung(merk);
       rak.literan.push({ jalur: 'literan', kunci: merk, nama: merk, ukuran: 'per liter', harga: hl.hargaPerLiter, satuan: 'L',
-        rasio: rasioMerk(merk), sisa: sisaL, sisaTeks: '±' + sisaL.toString().replace('.', ',') + ' L', hppPerKg: stokKarung[merk].hppTerakhirPerKg || 0,
-        dipegang: wzDiKeranjangParkir('karung', merk) });
+        rasio: rasioMerk(merk), sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerKg: stokKarung[merk].hppTerakhirPerKg || 0,
+        dipegang: g.dipegang });
     }
     // REPACKING DADAKAN: kg bebas dari kolam karung merek ini, harga per kg katalog (hitungTotalJual index.html 18926)
     const perKg = cariHargaKarungPerKg(merk);
     if (perKg !== null && perKg > 0) {
-      const sisaKg = bebasKg(merk);
+      const g = geraRepack(merk);
       rak.repack.push({ jalur: 'repack', kunci: merk, nama: merk, ukuran: 'kg bebas · buka sack', harga: perKg, satuan: 'kg',
-        sisa: sisaKg, sisaTeks: '±' + DESIMAL2(sisaKg) + ' kg', hppPerKg: stokKarung[merk].hppTerakhirPerKg || 0,
-        dipegang: wzDiKeranjangParkir('karung', merk) });
+        sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerKg: stokKarung[merk].hppTerakhirPerKg || 0,
+        dipegang: g.dipegang });
     }
   });
   Object.keys(stokKemasan).sort().forEach((kunci) => {
     const st = stokKemasan[kunci]; if (arKemasan(st.namaProduk, st.ukuranKemasan, arsip)) return;
     const hg = hargaKemasan.find((x) => x.merk === st.namaProduk && Number(x.ukuran) === Number(st.ukuranKemasan));
     if (!hg || !hg.hargaPerUnit) return;
-    const maks = stokMaksJalur('kemasan', kunci);
+    const g = geraKemasan(kunci);
     rak.kemasan.push({ jalur: 'kemasan', kunci, nama: st.namaProduk, ukuran: st.ukuranKemasan + ' kg', harga: hg.hargaPerUnit, satuan: 'kemasan',
-      ukuranKg: Number(st.ukuranKemasan), sisa: maks === null ? 0 : maks, sisaTeks: (maks === null ? 0 : maks) + ' sisa', hppPerUnit: st.hppRataRataPerUnit || 0,
-      dipegang: wzDiKeranjangParkir('kemasan', kunci) });
+      ukuranKg: Number(st.ukuranKemasan), sisa: g.sisa, sisaTeks: g.sisaTeks, hppPerUnit: st.hppRataRataPerUnit || 0,
+      dipegang: g.dipegang });
   });
   // TATA LETAK (owner 19 Sep, seperti papan harga di toko): per kategori ukuran, tiap kategori dari yang TERMURAH
   const termurah = (a, b) => a.harga - b.harga || a.nama.localeCompare(b.nama);
@@ -154,10 +156,109 @@ export function susunRak(s) {
   // WADAH sebagai barang (putaran 15): hanya jenis berharga jual; sisa = buku − lembar yang dipegang keranjang aktif & struk parkir
   rak.wadah = susunRakWadah((j) => wadahDipegang(j), (j) => wadahDipegangParkir(j));
   rak.literan.forEach((c) => { c.wadah = tinggiWadah(c.kunci, s); });
-  const kelompokkan = (daftar, kunci, judul) => { const out = []; daftar.forEach((c) => { const k = kunci(c); let g = out.find((x) => x.k === k); if (!g) { g = { k, judul: judul(c), daftar: [] }; out.push(g); } g.daftar.push(c); }); return out; };
-  rak.kelompok = { kemasan: kelompokkan(rak.kemasan, (c) => c.ukuranKg, (c) => String(c.ukuranKg).replace('.', ',') + ' kg'), karung: kelompokkan(rak.karung, (c) => c.berat, (c) => 'Karung ' + c.berat + ' kg') };
+  rak.kelompok = kelompokRak(rak);
   // SERING: barang yang biasa dibeli orang ini (90 hari); tanpa nama → yang paling laku 28 hari terakhir
-  rak.sering = susunSering(s, rak);
+  const sr = susunSering(s, rak); rak.sering = sr.daftar;
+  pasangIngatanRak(rak, s, { beratAkhir, urutSering: sr.urut, pakai: rak.literan.map((c) => pakaiWadah.get(c) || null) });
+  return rak;
+}
+
+// ---------- RAK INKREMENTAL (owner 3 Okt: "Gua mau layar jual lebih smooth") ----------
+// Menyusun rak penuh ±176 ms di Mac / ±0,5 dtk di iPad, dan dulu diulang tiap +1/−1. Yang berubah sesudah ketukan keranjang hanya SISA beberapa chip:
+// nama, harga, modal, urutan, dan ada-tidaknya chip cuma bergantung pada data toko. susunRakLanjut(s, rakLama) memakai ulang chip yang masukannya
+// (jejak keranjang di bawah) sama dengan saat ia dihitung, dan menghitung ulang SISANYA saja dengan fungsi gera* yang sama dengan susun penuh.
+// Data toko berubah (versiCache naik), pelanggan / hari berganti, atau keranjang belum disinkronkan → susun penuh. Ragu → hitung ulang.
+// Dijaga alat-uji/uji_rak_inkremental.py: hasilnya sama persis (urutan, kelompok, Sering) dengan susunRak pada keadaan yang sama.
+const INGAT_RAK = '__ingatRak';
+const kelompokkan = (daftar, kunci, judul) => { const out = []; daftar.forEach((c) => { const k = kunci(c); let g = out.find((x) => x.k === k); if (!g) { g = { k, judul: judul(c), daftar: [] }; out.push(g); } g.daftar.push(c); }); return out; };
+function kelompokRak(rak) {
+  return { kemasan: kelompokkan(rak.kemasan, (c) => c.ukuranKg, (c) => String(c.ukuranKg).replace('.', ',') + ' kg'), karung: kelompokkan(rak.karung, (c) => c.berat, (c) => 'Karung ' + c.berat + ' kg') };
+}
+// bagian chip yang bergantung pada keranjang aktif & struk parkir — SATU rumus untuk susun penuh dan susun lanjutan
+function geraKarung(merk, berat) {
+  setelBeratDom(berat);
+  // sudah dikurangi keranjang aktif + yang diparkir
+  const maks = stokMaksJalur('karung', merk); const sisa = maks === null ? 0 : maks;
+  return { sisa, sisaTeks: sisa + ' karung', dipegang: wzDiKeranjangParkir('karung', merk) };
+}
+function geraKemasan(kunci) { const maks = stokMaksJalur('kemasan', kunci); const sisa = maks === null ? 0 : maks; return { sisa, sisaTeks: sisa + ' sisa', dipegang: wzDiKeranjangParkir('kemasan', kunci) }; }
+function geraRepack(merk) { const sisaKg = bebasKg(merk); return { sisa: sisaKg, sisaTeks: '±' + DESIMAL2(sisaKg) + ' kg', dipegang: wzDiKeranjangParkir('karung', merk) }; }
+function geraLiteranLangsung(merk) { const sisaL = bebasLiter(merk, rasioMerk(merk)); return { sisa: sisaL, sisaTeks: '±' + sisaL.toString().replace('.', ',') + ' L', dipegang: wzDiKeranjangParkir('karung', merk) }; }
+function geraLiteranWadah(W, rasio, s, pakai) { const sisaL = bebasLiterWadah(W, rasio, s, pakai); return { sisa: sisaL, sisaTeks: '±' + sisaL.toString().replace('.', ',') + ' L', hppPerKg: wbModalPerKg(W, s) }; }
+const GERA = { karung: (c) => geraKarung(c.kunci, c.berat), kemasan: (c) => geraKemasan(c.kunci), repack: (c) => geraRepack(c.kunci) };
+// keadaan yang dibaca rak = keranjang & struk parkir yang terakhir disinkronkan (stokMaksJalur & langit-langit membaca salinan sinkronKeranjang)
+const rakSelaras = (s) => !!s && Array.isArray(s.keranjang) && Array.isArray(s.antrean) && s.keranjang === _keranjangKini && s.antrean === _antreanKini;
+// jejak satu nilai: 5 dan '5', NaN dan undefined tidak tertukar
+const jejakNilai = (v) => (typeof v === 'number' ? String(v) : typeof v === 'string' ? JSON.stringify(v) : '~' + String(v));
+const jejakDaftar = (d) => '[' + d.map(jejakNilai).join(',') + ']';
+/**
+ * JEJAK keranjang per kunci yang dibaca rak, dari keranjang aktif (@0) & tiap struk parkir (@1, @2, …), baris demi baris dan berurutan — persis bahan
+ * penjumlah mesin (wzJumlahDiDaftar atas bentuk "dipegang": literan wadah per merek asal, ½ karung = 1 × 50 kg) & penjumlah layar:
+ *   kg[merek]   = totalKg baris karung/repacking/literan merek itu (stokMaksJalur karung, bebasLiter, bebasKg, bebasLiterWadah, "dipegang struk lain");
+ *   unit[kunci] = jumlahUnit baris kemasan berkunci itu (stokMaksJalur kemasan);
+ *   wadah[W]    = pecahan baris literan dari wadah W (wbKomposisi, wbModalPerKg, tinggiWadah);
+ *   lembar      = baris yang memegang lembar wadah (dijual / ditanggung repack) → rak Wadah.
+ * Jejak sama ⇒ jumlah & hasil sama; urutan & batas baris/struk ikut dicatat supaya pembulatan penjumlahan pun sama.
+ */
+function jejakKeranjang(s) {
+  const kg = Object.create(null), unit = Object.create(null), wadah = Object.create(null); let lembar = '';
+  const catat = (peta, k, isi) => { peta[k] = (peta[k] || '') + isi; };
+  [s.keranjang].concat(s.antrean.map((a) => ((a && a.beku) || {}).items || [])).forEach((daftar, i) => daftar.forEach((b) => {
+    const t = (b && b.trx) || {}; const pk = Object.create(null), pu = Object.create(null);
+    trxPegang(t).forEach((p) => {
+      const q = p || {};
+      if (q.jenis === 'karung' || q.jenis === 'repacking' || q.jenis === 'literan') (pk[q.merkSumber] = pk[q.merkSumber] || []).push(q.totalKg);
+      else if (q.jenis === 'kemasan') { const k = kunciKemasan(q.namaProduk, q.ukuranKemasan); (pu[k] = pu[k] || []).push(q.jumlahUnit); }
+    });
+    Object.keys(pk).forEach((m) => catat(kg, m, '@' + i + jejakDaftar(pk[m])));
+    Object.keys(pu).forEach((k) => catat(unit, k, '@' + i + jejakDaftar(pu[k])));
+    if (t.jenis === 'literan') { const W = String(t.dariWadah ? t.dariWadah : (t.merkSumber || '')); catat(wadah, W, '@' + i + jejakDaftar(wbPecahanBaris(t, W).reduce((a, x) => a.concat([x.merk, x.kg]), []))); }
+    if (t.jenis === 'wadah' || t.kemasanRepack) lembar += '@' + i + jejakDaftar([t.jenis, t.jenisWadah, t.jumlahUnit, t.kemasanRepack, t.jumlahKemasanRepackDipakai]);
+  }));
+  return { kg, unit, wadah, lembar };
+}
+// sidik satu chip = jejak semua kunci yang dibaca sisanya; chip wadah juga membaca buku merek asal isinya (pakai, dicatat saat dihitung)
+const SIDIK = {
+  karung: (c, J) => J.kg[c.kunci] || '',
+  repack: (c, J) => J.kg[c.kunci] || '',
+  kemasan: (c, J) => J.unit[c.kunci] || '',
+  literan: (c, J, pakai) => JSON.stringify(c.wadahLiteran ? [J.wadah[c.kunci] || '', (pakai || []).map((m) => [m, J.kg[m] || ''])] : [J.kg[c.kunci] || '', J.wadah[c.kunci] || '']),
+};
+function pasangIngatanRak(rak, s, ig) {
+  if (!rakSelaras(s)) return;
+  const J = jejakKeranjang(s);
+  const sidik = { karung: rak.karung.map((c) => SIDIK.karung(c, J)), kemasan: rak.kemasan.map((c) => SIDIK.kemasan(c, J)), repack: rak.repack.map((c) => SIDIK.repack(c, J)),
+    literan: rak.literan.map((c, i) => SIDIK.literan(c, J, ig.pakai[i])) };
+  Object.defineProperty(rak, INGAT_RAK, { value: Object.assign({ versi: versiCache(), pelanggan: kunciPelanggan(s.pelanggan), hari: hariIniIso(s.sekarang), lembar: J.lembar, sidik }, ig) });
+}
+/**
+ * Rak untuk keadaan s, disusun dari rakLama (hasil susunRak / susunRakLanjut sebelumnya): HASILNYA SAMA PERSIS dengan susunRak(s). Panggil sesudah
+ * sinkronKeranjang(s). Chip yang jejaknya berubah dihitung ulang; sisanya, urutan, & nama/harga/modal dipakai ulang; kelompok & Sering disusun lagi
+ * dari chip baru (hitungan Sering per pelanggan & hari diingat).
+ */
+export function susunRakLanjut(s, rakLama) {
+  const ig = rakLama && rakLama[INGAT_RAK];
+  if (!ig || ig.versi !== versiCache() || !rakSelaras(s) || ig.pelanggan !== kunciPelanggan(s.pelanggan) || ig.hari !== hariIniIso(s.sekarang)) return susunRak(s);
+  const J = jejakKeranjang(s);
+  const rak = { karung: null, kemasan: null, literan: null, repack: null, wadah: null }; const sidik = {}; const pakai = [];
+  ['karung', 'kemasan', 'repack'].forEach((jl) => { sidik[jl] = []; rak[jl] = rakLama[jl].map((c, i) => {
+    const sd = SIDIK[jl](c, J); sidik[jl].push(sd);
+    return sd === ig.sidik[jl][i] ? c : Object.assign({}, c, GERA[jl](c));
+  }); });
+  sidik.literan = []; rak.literan = rakLama.literan.map((c, i) => {
+    let p = ig.pakai[i]; let sd = SIDIK.literan(c, J, p); let baru = c;
+    if (sd !== ig.sidik.literan[i]) {
+      p = c.wadahLiteran ? [] : null;
+      baru = Object.assign({}, c, c.wadahLiteran ? geraLiteranWadah(c.kunci, c.rasio, s, p) : geraLiteranLangsung(c.kunci), { wadah: tinggiWadah(c.kunci, s) });
+      sd = SIDIK.literan(baru, J, p);
+    }
+    sidik.literan.push(sd); pakai.push(p); return baru;
+  });
+  rak.wadah = J.lembar === ig.lembar ? rakLama.wadah : susunRakWadah((j) => wadahDipegang(j), (j) => wadahDipegangParkir(j));
+  if (ig.beratAkhir !== null) setelBeratDom(ig.beratAkhir);
+  rak.kelompok = kelompokRak(rak);
+  const sr = susunSering(s, rak, ig.urutSering); rak.sering = sr.daftar;
+  Object.defineProperty(rak, INGAT_RAK, { value: Object.assign({}, ig, { lembar: J.lembar, sidik, pakai, urutSering: sr.urut }) });
   return rak;
 }
 
@@ -169,13 +270,17 @@ function kunciBaris(p) {
   if (p.jenis === 'wadah') return 'wadah|' + p.jenisWadah;
   return null;
 }
-function susunSering(s, rak) {
+function petaSering(rak) {
   const semua = [].concat(rak.karung.map((c) => Object.assign({}, c, { id: 'karung|' + c.kunci + '|' + c.berat })),
     rak.kemasan.map((c) => Object.assign({}, c, { id: 'kemasan|' + c.kunci })),
     rak.literan.map((c) => Object.assign({}, c, { id: 'literan|' + c.kunci })),
     rak.repack.map((c) => Object.assign({}, c, { id: 'repack|' + c.kunci })),
     rak.wadah.map((c) => Object.assign({}, c, { id: 'wadah|' + c.kunci })));
   const peta = {}; semua.forEach((c) => { peta[c.id] = c; });
+  return peta;
+}
+/** Urutan Sering [[id, kali], …] — hanya bergantung pada penjualan, pelanggan, hari, dan chip yang ADA (bukan sisanya). */
+function urutSering(s, peta) {
   const k = kunciPelanggan(s.pelanggan);
   const hari = hariIniIso(s.sekarang);
   const batas = geser(hari, k ? -90 : -28);
@@ -187,8 +292,13 @@ function susunSering(s, rak) {
     const id = kunciBaris(p); if (!id || !peta[id]) return;
     hitung[id] = (hitung[id] || 0) + 1;
   });
-  return Object.keys(hitung).sort((a, b) => hitung[b] - hitung[a]).slice(0, 8)
-    .map((id) => Object.assign({}, peta[id], { jalur: peta[id].jalur, kali: hitung[id], keterangan: hitung[id] + '× ' + (k ? 'dibeli' : 'laku') }));
+  return Object.keys(hitung).sort((a, b) => hitung[b] - hitung[a]).slice(0, 8).map((id) => [id, hitung[id]]);
+}
+/** → { daftar: chip Sering (salinan chip rak + kali), urut } — urut yang diingat dipakai lagi selama semua chipnya masih ada. */
+function susunSering(s, rak, urut) {
+  const peta = petaSering(rak); const k = kunciPelanggan(s.pelanggan);
+  const u = urut && urut.every((x) => peta[x[0]]) ? urut : urutSering(s, peta);
+  return { daftar: u.map((x) => Object.assign({}, peta[x[0]], { jalur: peta[x[0]].jalur, kali: x[1], keterangan: x[1] + '× ' + (k ? 'dibeli' : 'laku') })), urut: u };
 }
 function geser(iso, n) { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return hariIniIso(d); }
 
@@ -275,11 +385,13 @@ function bebasLiter(merk, rasio) {
 /**
  * putaran 27: liter yang bebas dijual dari WADAH W — tiap liter memotong buku merek asal sebanding komposisi isi (bagian positif), jadi yang membatasi = merek
  * yang bukunya paling cepat habis dibanding bagiannya: kg ≤ min(buku bebas merek ÷ porsinya). Isi belum diketahui / kosong → buku karung di belakangnya.
+ * pakai (opsional, owner 3 Okt rak inkremental): diisi merek-merek yang bukunya dibaca — chip wadah dihitung ulang bila keranjang menyentuh salah satunya.
  */
-function bebasLiterWadah(W, rasio, s) {
+function bebasLiterWadah(W, rasio, s, pakai) {
   const K = wbKomposisi(W, s && s.keranjang ? s : null); const stok = hitungStokKarungPerMerk(); const bebasBuku = (m) => ((stok[m] || {}).sisaKg || 0) - wzDiKeranjangParkir('karung', m) - jumlahAktifKg(m);
   const tot = K.positif.reduce((a, x) => a + x.kg, 0);
   const kg = tot > 0 ? Math.min.apply(null, K.positif.map((x) => bebasBuku(x.merk) / (x.kg / tot))) : bebasBuku(wbMerkCadangan(W));
+  if (pakai) (tot > 0 ? K.positif.map((x) => x.merk) : [wbMerkCadangan(W)]).forEach((m) => pakai.push(m));
   return Math.max(0, Math.floor(kg / (rasio || RASIO_DEFAULT) * 10) / 10);
 }
 /** Kg yang bebas dijual lepas (repacking) dari kolam yang sama. */
