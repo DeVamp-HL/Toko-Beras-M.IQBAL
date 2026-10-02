@@ -226,6 +226,9 @@ const SIDIK = {
 };
 function pasangIngatanRak(rak, s, ig) {
   if (!rakSelaras(s)) return;
+  // tinjauan 3 Okt: stokMaksJalur membaca berat karung dari #jualKarungBerat (tanpa isian = 50 kg). Rak yang disusun sebelum isian itu ada TIDAK diingat —
+  // susunan berikutnya penuh, jadi chip karung 25 kg tidak dipakai ulang dengan sisa hitungan 50 kg.
+  if (rak.karung.length && typeof document !== 'undefined' && !document.getElementById('jualKarungBerat')) return;
   const J = jejakKeranjang(s);
   const sidik = { karung: rak.karung.map((c) => SIDIK.karung(c, J)), kemasan: rak.kemasan.map((c) => SIDIK.kemasan(c, J)), repack: rak.repack.map((c) => SIDIK.repack(c, J)),
     literan: rak.literan.map((c, i) => SIDIK.literan(c, J, ig.pakai[i])) };

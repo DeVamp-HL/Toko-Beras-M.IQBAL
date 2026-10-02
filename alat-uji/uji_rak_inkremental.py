@@ -199,6 +199,18 @@ kasus('hari itu: +1 karung NG', ubahJumlahBaris(s, baris(function (t) { return t
 })();
 kasus('kembali selaras (rak lanjutan dari rak sebelum langkah tak selaras)', {}, []);
 
+// tinjauan 3 Okt: rak penuh yang disusun SEBELUM isian #jualKarungBerat ada (berat dianggap 50 kg) tidak boleh dipakai ulang oleh lanjutan
+(function () {
+  var simpan = __dom.jualKarungBerat; delete __dom.jualKarungBerat;
+  var sT = Object.assign({}, s); sinkronKeranjang(sT); var rakT = susunRak(sT);
+  __dom.jualKarungBerat = simpan;
+  var cK = rakT.kemasan.find(function (c) { return c.kunci === 'Kembang|5'; });
+  var r = masukkan(Object.assign({}, sT, { pilih: cK }), 1); var sT2 = Object.assign({}, sT, { keranjang: r.keranjang, urutBaris: r.urutBaris }); sinkronKeranjang(sT2);
+  var lanjutT = susunRakLanjut(sT2, rakT); var penuhT = susunRak(sT2); var b = beda(penuhT, lanjutT, 'rak');
+  ok('rak yang disusun tanpa isian berat karung tidak diingat: lanjutan sesudahnya = susun penuh (karung 25 kg tidak memakai sisa hitungan 50 kg)', !!cK && !!r.keranjang && !b, b || J([!!cK, !!r.keranjang]));
+  sinkronKeranjang(s);
+})();
+
 // ---- 2 · urutan ACAK berbenih tetap — rantai panjang, tiap langkah lanjutan = penuh
 var JUMLAH = { karung: [0.5, 1, 1, 1.5, 2], kemasan: [1, 1, 2, 3], literan: [1, 2, 3, 5, 6, 10], repack: [1, 2.5, 5], wadah: [1, 2, 3] };
 function acakDari(b) { var x = b >>> 0 || 1; return function () { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
@@ -410,6 +422,7 @@ RUSAK = [
     ('hari tidak diperiksa (Sering hari lalu)', [("|| ig.hari !== hariIniIso(s.sekarang)) return susunRak(s);", ") return susunRak(s);")], None),
     ('keranjang belum disinkronkan tetap dilanjutkan', [("if (!ig || ig.versi !== versiCache() || !rakSelaras(s) ||", "if (!ig || ig.versi !== versiCache() ||")], None),
     ('isian #jualKarungBerat tidak dikembalikan ke berat terakhir susun penuh', [("  if (ig.beratAkhir !== null) setelBeratDom(ig.beratAkhir);\n", "")], None),
+    ('rak tanpa isian berat karung tetap diingat (chip 25 kg berhitung 50 kg)', [("  if (rak.karung.length && typeof document !== 'undefined' && !document.getElementById('jualKarungBerat')) return;\n", "")], None),
     ('lanjutan diam-diam selalu susun penuh (tidak inkremental)', [("function susunRakLanjut(s, rakLama) {\n", "function susunRakLanjut(s, rakLama) {\n  if (s) return susunRak(s);\n")], None),
     ('layar: rakKini selalu susun penuh', None, PENUH_LAYAR),
     ('layar: lanjutan walau pelanggan / tukar berubah', None, [("_rakDasar === dasar ? L.susunRakLanjut(s, _rak)", "true ? L.susunRakLanjut(s, _rak)")]),
