@@ -1513,3 +1513,7 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
   nota yang barangnya sudah kembali (cadangan 1 Okt: 2 dari 42 nota bon 60 hari berbentuk begitu). Pembaca di `bon-logika.js` (`rincianBelumLunas`, Buku bon)
   memakai nominal − `diretur`. Sisa total tidak berubah; data tanpa mutasi retur byte-sama. Uji `uji_laporan_baru.py` +3, 1 dibalik SENGAJA (A37: nota 15 Sep
   yang barangnya kembali kini tinggal 420.000, nota 10 Sep 500.500 — dulu 700.000 / 220.500), kontrol +3 (2 jangkar lama disesuaikan); `uji_pelanggan_baru.py` 1 jangkar kontrol (rincian FIFO) disesuaikan.
+- U37-U5: "diterima tunai" (`laporan-logika.js` `lpMarginBonLepas`) — retur nota bon melepas margin NOTA ASALNYA dulu (mutasi retur membawa `notaAsalId`,
+  sama dengan mesin, MM1), sisanya bon tertua dulu. Dulu margin yang dilepas diambil dari bon tertua: pelanggan bersaldo awal (margin 0) membuat diterima
+  tunai turun seukuran margin barang yang kembali padahal tidak ada uang bergerak. Uji `uji_laporan_baru.py` +1, 1 dibalik SENGAJA (A37: margin dilepas
+  20.000 = margin barang yang kembali, dulu 20.186 dari nota 10 Sep), kontrol +1.

@@ -162,8 +162,9 @@ ok('39b-37 laba: penjualan Sep turun 280.000 (baris Retur), modal 20 kg × 13.00
   A37.P1.L.L.returUang === A37.P0.L.L.returUang + 280000 && A37.P1.L.L.omzetHitung === A37.P0.L.L.omzetHitung - 280000 && A37.P1.L.L.returHpp === A37.P0.L.L.returHpp + 260000 && A37.P1.L.labaBersih === A37.P0.L.labaBersih - 20000
   && A37.P1.returHari === A37.P0.returHari + 280000 && A37.P1.omzetHari === A37.P0.omzetHari - 280000, J([A37.P1.L.L.returUang - A37.P0.L.L.returUang, A37.P1.L.L.returHpp - A37.P0.L.L.returHpp, A37.P1.L.labaBersih - A37.P0.L.labaBersih, A37.P1.omzetHari - A37.P0.omzetHari]));
 ok('39b-37 stok: 20 kg utuh kembali ke buku Angsa', A37.P1.stok === A37.P0.stok + 20, J([A37.P0.stok, A37.P1.stok]));
-ok('39b-37 diterima tunai: margin bon yang ditutup retur dilepas sebanding (bon 10 Sep, margin 50.500 × 280.000 ÷ 700.500 = 20.186) dan rumusnya menutup; bulan tanpa retur nota bon tidak punya kolom marginDiretur (bentuk lama)',
-  A37.P1.L.marginDiretur === 20186 && !('marginDiretur' in A37.P0.L) && A37.P1.L.marginKredit === A37.P0.L.marginKredit && A37.P1.L.tunai === A37.P1.L.labaBersih - A37.P1.L.marginKredit + A37.P1.L.marginDibayar + A37.P1.L.marginDihapus + 20186,
+// tinjauan U37-U5 (dibalik SENGAJA): margin yang dilepas retur = margin NOTA YANG DIRETUR (15 Sep), bukan bon tertua — dulu 50.500 × 280.000 ÷ 700.500 = 20.186 (nota 10 Sep)
+ok('39b-37 diterima tunai: margin bon yang ditutup retur dilepas dari NOTA ASALNYA (nota 15 Sep, margin 50.000 × 280.000 ÷ 700.000 = 20.000 = margin barang yang kembali) dan rumusnya menutup; bulan tanpa retur nota bon tidak punya kolom marginDiretur (bentuk lama)',
+  A37.P1.L.marginDiretur === 20000 && !('marginDiretur' in A37.P0.L) && A37.P1.L.marginKredit === A37.P0.L.marginKredit && A37.P1.L.tunai === A37.P1.L.labaBersih - A37.P1.L.marginKredit + A37.P1.L.marginDibayar + A37.P1.L.marginDihapus + 20000,
   J([A37.P1.L.marginDiretur, A37.P1.L.tunai, A37.P1.L.labaBersih, A37.P1.L.marginKredit, A37.P1.L.marginDibayar]));
 ok('39b-37 Kartu Piutang: baris "barang kembali (retur)" −280.000, identitas "… − retur Rp280.000", saldo kartu = mesin (tidak ditolak karena beda sisa; kop kotak pasir memang belum lengkap)',
   !/≠ sisa menurut mesin/.test(A37.kartu.tolak || '') && /− retur Rp280\.000/.test(A37.kartu.identitas) && A37.kartu.baris.some(function (b) { return /barang kembali \(retur\)/.test(b.nama) && b.n === -280000; }), J([A37.kartu.identitas, A37.kartu.tolak]));
@@ -261,6 +262,15 @@ ok('39b-37 MM1: mutasi retur 200.000 TANPA nota asal di buku ini tetap memadamka
   MM1b.sisa === 280000 && MM1b.tertua === '2026-09-18' && J(MM1b.buka) === J([['t37b', 280000]]), J(MM1b));
 ok('39b-37 MM1: tagihan WhatsApp menyebut bon 31 Agu (sisa 200.000), TIDAK menyebut nota 18 Sep yang barangnya sudah dikembalikan',
   MM1.tagih.indexOf(formatTanggal('2026-08-31')) >= 0 && MM1.tagih.indexOf(formatTanggal('2026-09-18')) < 0 && /Total sisa: Rp200\.000/.test(MM1.tagih), MM1.tagih);
+
+// ---- 39b no. 37 tinjauan U37-U5: "diterima tunai" — margin yang dilepas retur nota bon diambil dari NOTA YANG DIRETUR (sama dengan mesin, MM1), bukan dari bon
+// tertua; dulu pelanggan bersaldo awal (margin 0) membuat diterima tunai turun seukuran margin barang itu tanpa ada uang bergerak. ANGKA CONTOH: Uji Lama saldo
+// awal 1.000.000 (1 Agu) + nota bon 18 Sep 700.000 (modal 650.000) diretur penuh; pembanding Uji Baru tanpa bon lama.
+var U5 = function (awal, nama, id) { return denganCacheSementara(awal.concat([KR37(id, '2026-09-18', nama, 50, 700000, 650000)]), function () { var L0 = labaBulan('2026-09', KINI); var r = susunRetur(RS37({ rtNotaId: id, ketik: '50' }), W37);
+  var L1 = denganCacheSementara(r.dokumen || [], function () { return labaBulan('2026-09', KINI); }); return { tolak: r.tolak || '', dLaba: L1.labaBersih - L0.labaBersih, diretur: L1.marginDiretur || 0, dTunai: L1.tunai - L0.tunai }; }); };
+var U5a = U5([{ koleksi: 'piutangMutasi', data: { id: 3950, tipe: 'saldoAwal', namaPelanggan: 'Uji Lama', nominal: 1000000, tanggal: '2026-08-01', jam: '00:00', catatan: 'saldo awal' } }], 'Uji Lama', 'u5a'), U5b = U5([], 'Uji Baru', 'u5b');
+ok('39b-37 U37-U5: retur penuh nota bon pelanggan bersaldo awal — laba bersih −50.000, margin yang dilepas retur 50.000 (nota itu), diterima tunai TIDAK bergerak (tidak ada uang); sama dengan pelanggan tanpa bon lama',
+  !U5a.tolak && U5a.dLaba === -50000 && U5a.diretur === 50000 && U5a.dTunai === 0 && !U5b.tolak && U5b.dLaba === -50000 && U5b.diretur === 50000 && U5b.dTunai === 0, J([U5a, U5b]));
 
 // ==================== HARIAN ====================
 var RH = rekapHari('2026-09-19');
@@ -681,6 +691,7 @@ if __name__ == '__main__':
             '39b-37 MM1: mesin piutang — retur kembali memotong bon tertua (bukan nota asalnya)': js.replace("const u = m.notaAsalId == null ? null : utang.find(x => x.jenis === 'jual' && String(x.idTrx) === String(m.notaAsalId));", "const u = null;"),
             '39b-37 MM1: rincian bon (Pelanggan) mengabaikan bagian nota yang diretur': js.replace("for (const u of utang) { const nom = u.nominal - (u.diretur || 0); if (tertutup >= nom)", "for (const u of utang) { const nom = u.nominal; if (tertutup >= nom)"),
             '39b-37 MM1: Buku bon menyalakan nota yang barangnya sudah kembali': js.replace("utang.forEach((u) => { const nom = u.nominal - (u.diretur || 0); const lunas = tertutup >= nom;", "utang.forEach((u) => { const nom = u.nominal; const lunas = tertutup >= nom;"),
+            '39b-37 U37-U5: margin yang dilepas retur diambil dari bon tertua (bukan nota asalnya)': js.replace("if (c.jenis === 'retur' && c.notaAsalId != null) {", "if (false) {"),
             '39b-37: barang rusak dari nota bon tanpa karantina': js.replace("  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));\n  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON", "  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON"),
             '39b-38: batas aman ambil pribadi dari laba mesin': js.replace("const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;", "const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaMesin : 0;"),
         }

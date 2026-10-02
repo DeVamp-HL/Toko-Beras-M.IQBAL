@@ -70,7 +70,7 @@ const lpMdrRentang = (dari, sampai) => ambilPengeluaranHarian().reduce((a, h) =>
  *  di hari yang sama: bon dulu (sama dengan buku bon per akhir hari). → margin yang lepas di [dari, sampai], dipisah `dibayar` (jadi uang) dan `dihapus`
  *  (hapus buku: laba bersih bulan itu sudah memotong SELURUH nilai bon, termasuk marginnya — kalau tetap ditahan, margin itu terpotong dua kali).
  *  Audit 39b no. 37: `diretur` = bon yang ditutup barang yang kembali dari nota bon (mutasi retur) — laba sudah memotongnya lewat retur (penjualan turun,
- *  modal barang utuh kembali), jadi marginnya juga tidak ditahan lagi; urutan potongnya sama (bon tertua dulu). */
+ *  modal barang utuh kembali), jadi marginnya juga tidak ditahan lagi; urutan potongnya sama dengan mesin (tinjauan U37-U5: NOTA ASALNYA dulu, sisanya bon tertua). */
 export function lpMarginBonLepas(dari, sampai) {
   const baris = {}; ambilPenjualan().forEach((p) => { baris[p.id] = p; });
   const mg = (u) => { const p = u.jenis === 'jual' ? baris[u.idTrx] : null; return p && hppTercatat(p) ? (p.hargaTotal || 0) - (p.hppTotalSaatJual || 0) : 0; };
@@ -84,6 +84,8 @@ export function lpMarginBonLepas(dari, sampai) {
       while (b.sisa > 0 && lebih.length) { const k = lebih[0]; const x = Math.min(k.n, b.sisa); pakai(b, x, k.jenis, String(b.u.tanggal || '')); k.n -= x; if (k.n <= 0) lebih.shift(); }
       if (b.sisa > 0) buka.push(b); } };
     tutup.forEach((c) => { const t = String(c.tanggal || ''); lahir(t); let n = c.nominal || 0;
+      // tinjauan U37-U5: retur nota bon melepas margin NOTA ASALNYA dulu (sama dengan mesin hitungPiutang, MM1), sisanya bon tertua dulu
+      if (c.jenis === 'retur' && c.notaAsalId != null) { const i = buka.findIndex((b) => b.u.jenis === 'jual' && String(b.u.idTrx) === String(c.notaAsalId)); if (i >= 0) { const b = buka[i]; const x = Math.min(n, b.sisa); pakai(b, x, 'retur', t); n -= x; if (b.sisa <= 0) buka.splice(i, 1); } }
       while (n > 0 && buka.length) { const b = buka[0]; const x = Math.min(n, b.sisa); pakai(b, x, c.jenis, t); n -= x; if (b.sisa <= 0) buka.shift(); }
       if (n > 0) lebih.push({ n, jenis: c.jenis }); });
     lahir('\uffff');
