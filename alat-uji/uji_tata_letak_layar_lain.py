@@ -16,7 +16,7 @@ sys.path.insert(0, SINI)
 from uji_tata_letak_jual import aturan   # noqa: E402  (pengurai CSS yang sama)
 LAYAR = {'jual': 'kerangka', 'ringkasan': 'ringkasan', 'stok': 'stok', 'pelanggan': 'pelanggan', 'harga': 'harga', 'uang': 'uang', 'laporan': 'laporan'}
 GRID = {'harga': '.layar-harga .hg-grid.mac', 'uang': '.layar-uang .ug-grid.mac', 'laporan': '.layar-laporan .lp-grid.mac'}
-BERKAS = sorted({'baru/css/%s.css' % f for f in list(LAYAR.values()) + ['menu']})
+BERKAS = sorted({'baru/css/%s.css' % f for f in list(LAYAR.values()) + ['menu']}) + ['baru/index.html']   # + index.html: ikon menu bawah (owner 2 Okt)
 
 
 def baca(ganti=None):
@@ -59,6 +59,14 @@ def periksa(t):
     c.append(('Harga › Belanja: gambar truk tidak melar (paling lebar 360 px)', any('max-width: 360px' in x for x in truk), truk))
     menu = [x for m, s, x in A['baru/css/menu.css'] if s.strip() == 'main.layar-menu' and 'max-width' in x]
     c.append(('menu: tetap kolom 860 px (desain N1 dikunci owner)', any('max-width: 860px' in x for x in menu) and not any('1720' in x for x in menu), menu))
+    # owner 2 Okt: menu bawah HP & tablet BERIKON — tiap petak = satu SVG + teks; ikon sama persis dengan menu samping Mac; garisnya digambar (stroke, tanpa isi)
+    H = t['baru/index.html']; nav = H[H.index('<nav class="nav"'):H.index('</nav>')]; side = H[H.index('<aside class="side"'):H.index('</aside>')]
+    petak = re.findall(r'<div[^>]*data-tujuan="(\w+)"[^>]*>(.*?)</div>', nav)
+    ikonSide = dict((k, re.search(r'<svg viewBox="0 0 24 24">(.*?)</svg>', v).group(1)) for k, v in re.findall(r'<div class="item[^"]*" data-tujuan="(\w+)"[^>]*>(.*?)</div>', side))
+    sama = [k for k, isi in petak if re.search(r'<svg[^>]*>(.*?)</svg>', isi) and re.search(r'<svg[^>]*>(.*?)</svg>', isi).group(1) == ikonSide.get(k)]
+    c.append(('menu bawah: kelima petak berikon (sama dengan menu samping) + teks', len(petak) == 5 and len(sama) == 5 and all('<span>' in isi for k, isi in petak), [k for k, _ in petak if k not in sama]))
+    K = aturan(t['baru/css/kerangka.css'])
+    c.append(('menu bawah: ikon digambar garis (fill none, stroke currentColor) — warna ikut petak aktif & mode gelap', any(s.strip() == '.nav > div > svg' and 'fill: none' in x and 'stroke: currentColor' in x for m, s, x in K if not m), ''))
     return c
 
 
@@ -70,6 +78,9 @@ KONTROL = [
     ('lembar Uang melar', {'baru/css/uang.css': [('  .layar-uang section > .ug-lembar { width: 100%; max-width: 1180px; box-sizing: border-box; }\n', '')]}),
     ('truk Harga lonjong lagi', {'baru/css/harga.css': [('.layar-harga .bl-truk { width: 100%; max-width: 360px; margin-inline: auto; }', '')]}),
     ('Menu ikut 1720', {'baru/css/menu.css': [('max-width: 860px;', 'max-width: 1720px;')]}),
+    ('menu bawah kehilangan ikon Stok', {'baru/index.html': [('<div data-tujuan="stok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z"/><path d="M4 8.5 12 13l8-4.5M12 13v7"/></svg>', '<div data-tujuan="stok">')]}),
+    ('ikon menu bawah beda dengan menu samping', {'baru/index.html': [('<div data-tujuan="menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/>', '<div data-tujuan="menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/>')]}),
+    ('ikon menu bawah terisi hitam (tanpa stroke)', {'baru/css/kerangka.css': [('.nav > div > svg { fill: none; stroke: currentColor;', '.nav > div > svg {')]}),
 ]
 
 
