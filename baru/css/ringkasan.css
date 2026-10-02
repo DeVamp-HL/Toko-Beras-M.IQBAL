@@ -105,3 +105,111 @@ main.layar-ringkasan.masuk > .rk-samping { animation-delay: 230ms; }   /* hero 7
   .layar-ringkasan .rk-nota { grid-column: 1; }
   .layar-ringkasan .rk-samping { grid-column: 2; grid-row: span 2; align-self: start; position: sticky; top: 22px; }
 }
+
+/* ---------- PUTARAN 40 · DASBOR OWNER (brief 29 Sep; saklar Dasbor | Cincin dipilih owner 2 Okt 2026) ----------
+   Hanya peran owner (ringkasan.js: pemilik()). Mode dasbor: cincin, nota & kartu kas disembunyikan — angkanya ada di dasbor; Perlu perhatian &
+   catatan katalog tetap di <aside>. HP satu kolom · tablet & Mac: Hari ini & tren selebar dasbor, kartu lain dua lajur urut ke bawah (columns,
+   bukan grid — kartu yang tinggi tidak membuka lubang di sebelahnya). Mac: dasbor kolom kiri, aside kanan menempel (aturan rapi-rapi 29 Sep). */
+.layar-ringkasan .rk-saklar { order: 0; }
+.layar-ringkasan .rk-saklar[hidden], .layar-ringkasan .rk-dasbor[hidden] { display: none; }
+main.layar-ringkasan.mode-dasbor > .kartu.hero, main.layar-ringkasan.mode-dasbor > .rk-nota, main.layar-ringkasan.mode-dasbor #rkKas { display: none; }
+.layar-ringkasan .rk-dasbor { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; order: 1; }
+@media (min-width: 720px) {
+  .layar-ringkasan .rk-saklar, .layar-ringkasan .rk-dasbor, main.layar-ringkasan.mode-dasbor > .rk-samping { grid-column: 1 / -1; }
+  .layar-ringkasan .rk-dasbor { display: block; columns: 2; column-gap: 10px; }
+  .layar-ringkasan .rk-dasbor > .db-kartu { break-inside: avoid; margin-bottom: 10px; }
+  .layar-ringkasan .rk-dasbor > .db-hari, .layar-ringkasan .rk-dasbor > .db-tren { column-span: all; }
+}
+@media (min-width: 1100px) {
+  .layar-ringkasan .rk-saklar, .layar-ringkasan .rk-dasbor { grid-column: 1; }
+  main.layar-ringkasan.mode-dasbor > .rk-samping { grid-column: 2; }   /* baris: kepala · pita sumber · saklar | samping · dasbor | samping (span 2 dari aturan di atas) */
+}
+main.layar-ringkasan.masuk > .rk-dasbor, main.layar-ringkasan.masuk > .rk-saklar { animation: rkNaik 620ms cubic-bezier(.2,.8,.2,1) both; animation-delay: 70ms; }
+.layar-ringkasan .db-kartu { gap: 7px; }
+.layar-ringkasan .db-kepala { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; }
+.layar-ringkasan .db-periode { flex: 1 1 auto; min-width: 0; font-size: 11.5px; color: var(--redup); }
+.layar-ringkasan .db-sumber { font-size: 11.5px; font-weight: 600; color: var(--aktif); cursor: pointer; white-space: nowrap; }
+.layar-ringkasan .db-dua { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 18px; }   /* omzet selebar angkanya (HP 375 tidak terpotong), laba kotor sisa lebar */
+@media (min-width: 720px) { .layar-ringkasan .db-dua { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.layar-ringkasan .db-tiga { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px 12px; }   /* kartu setengah lebar (tablet) → dua kolom, angka tidak bertabrakan */
+.layar-ringkasan .db-angka-besar { font-size: clamp(24px, 6.6vw, 38px); line-height: 1.1; }
+.layar-ringkasan .db-angka-sedang { font-size: clamp(18px, 4.8vw, 26px); line-height: 1.15; }
+.layar-ringkasan .db-angka-kecil { font-size: 17px; line-height: 1.2; white-space: nowrap; }
+.layar-ringkasan .db-angka-baris { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
+.layar-ringkasan .db-sub { margin-top: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--redup); }
+.layar-ringkasan .db-ketuk { cursor: pointer; border-radius: 8px; transition: background-color 200ms ease; -webkit-tap-highlight-color: transparent; }
+.layar-ringkasan .db-ketuk.db-dipilih, .layar-ringkasan .db-wadah-sel.db-dipilih { background-color: var(--seg); }
+.layar-ringkasan .db-karcis { font-size: 12.5px; padding: 4px 0; }
+.layar-ringkasan .awas-teks { color: var(--awas); }
+.layar-ringkasan .db-legenda { display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: 12px; color: var(--redup); }
+.layar-ringkasan .db-legenda b { color: var(--teks); font-weight: 500; }
+.layar-ringkasan .db-titik { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+/* bilah & batang: SVG tanpa pustaka, preserveAspectRatio none + label HTML (tulisan tidak tergencet) */
+.layar-ringkasan .db-bilah { display: block; width: 100%; height: 12px; overflow: visible; }
+.layar-ringkasan .db-bilah-kas, .layar-ringkasan .db-bilah-tumpuk { height: 14px; border-radius: 7px; overflow: hidden; background: var(--seg); }
+.layar-ringkasan .db-bilah-impas { height: 16px; }
+.layar-ringkasan .db-bilah rect[data-db] { cursor: pointer; }
+.layar-ringkasan .db-grafik { display: block; width: 100%; height: 130px; overflow: visible; }
+.layar-ringkasan .db-grafik-pendek { height: 64px; }
+.layar-ringkasan .db-kartu.hero.db-hari { min-height: 0; }   /* tinggi minimum kartu hero cincin (300 px) tidak berlaku di dasbor */
+.layar-ringkasan .db-kena { fill: transparent; cursor: pointer; }
+.layar-ringkasan .db-kol.db-dipilih .db-kena { fill: var(--seg); }
+.layar-ringkasan .db-omzet { fill: var(--emas-garis); fill-opacity: 0.42; }
+.layar-ringkasan i.db-omzet { background: var(--emas-garis); opacity: 0.6; }
+.layar-ringkasan .db-margin { fill: var(--aktif); }
+.layar-ringkasan i.db-margin { background: var(--aktif); }
+.layar-ringkasan .db-kol.berjalan .db-omzet, .layar-ringkasan .db-kol.berjalan .db-margin { stroke: var(--emas-tepi); stroke-width: 1.2; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; fill-opacity: 0.28; }
+.layar-ringkasan .db-kol.db-dipilih .db-omzet { fill-opacity: 0.75; } .layar-ringkasan .db-margin { fill-opacity: 0.85; }
+.layar-ringkasan .db-rel { fill: var(--rel); }
+.layar-ringkasan .db-dasar { stroke: var(--garis); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.layar-ringkasan .db-patok { stroke: var(--teks); stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.layar-ringkasan .db-sumbu { display: flex; font-size: 10.5px; color: var(--redup); font-variant-numeric: tabular-nums; }
+.layar-ringkasan .db-sumbu span { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-align: center; }
+.layar-ringkasan .db-sumbu .aktif { color: var(--aktif); font-weight: 600; }
+.layar-ringkasan .db-pandu { font-size: 11px; opacity: 0.75; }
+.layar-ringkasan .db-rentang { margin: -2px 0 0; }
+.layar-ringkasan .db-kas-laci { fill: var(--emas-garis); background: var(--emas-garis); }
+.layar-ringkasan .db-kas-brankas { fill: var(--hantu); background: var(--hantu); }
+.layar-ringkasan .db-kas-rekening { fill: var(--qris); background: var(--qris); }
+.layar-ringkasan .db-kas-amplop { fill: var(--bon); background: var(--bon); }
+.layar-ringkasan .db-baris { display: grid; grid-template-columns: minmax(72px, 38%) minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 32px; font-size: 12.5px; border-bottom: 1px solid var(--garis); }
+.layar-ringkasan .db-baris > .ket { font-size: 11.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layar-ringkasan .db-nama { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layar-ringkasan .db-nilai { font-size: 12px; white-space: nowrap; text-align: right; }
+.layar-ringkasan .db-lampu { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--seg); border: 1px solid var(--kaca-tepi); }
+.layar-ringkasan .db-lampu.hijau { background: #2f5d3a; border-color: #2f5d3a; } .layar-ringkasan .db-lampu.amber { background: var(--emas-garis); border-color: var(--emas-garis); } .layar-ringkasan .db-lampu.merah { background: var(--awas); border-color: var(--awas); }
+.layar-ringkasan .db-lampu-isi { fill: var(--hantu); } .layar-ringkasan .db-lampu-isi.hijau { fill: #2f5d3a; } .layar-ringkasan .db-lampu-isi.amber { fill: var(--emas-garis); } .layar-ringkasan .db-lampu-isi.merah { fill: var(--awas); }
+.layar-ringkasan .db-cukup { fill: #2f5d3a; } .layar-ringkasan .db-kurang { fill: var(--awas); }
+.layar-ringkasan .db-stok-isi { fill: var(--emas-garis); } .layar-ringkasan .db-stok-isi.awas { fill: var(--awas); }
+.layar-ringkasan .db-st-janjiLewat { fill: var(--awas); background: var(--awas); }
+.layar-ringkasan .db-st-macet { fill: var(--awas); background: var(--awas); opacity: 0.55; }
+.layar-ringkasan .db-st-perluTagih { fill: var(--emas-garis); background: var(--emas-garis); }
+.layar-ringkasan .db-st-menunggu { fill: var(--qris); background: var(--qris); }
+.layar-ringkasan .db-st-baru { fill: var(--hantu); background: var(--hantu); }
+.layar-ringkasan .db-wadah { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px; }
+.layar-ringkasan .db-wadah-sel { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; padding: 4px 2px; text-align: center; }
+.layar-ringkasan .db-wadah-teks { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.layar-ringkasan .db-wadah-teks.angka { font-size: 13px; }
+.layar-ringkasan .db-gelas { width: 34px; height: auto; display: block; margin-bottom: 2px; overflow: visible; }
+.layar-ringkasan .db-gelas-badan { fill: none; stroke: var(--emas-garis); stroke-width: 1.2; }
+.layar-ringkasan .db-gelas-isi { fill: var(--emas-garis); fill-opacity: 0.7; } .layar-ringkasan .db-gelas-isi.awas { fill: var(--awas); }
+.layar-ringkasan .db-gelas-tanya { fill: var(--redup); font-size: 14px; }
+/* tooltip sentuh: satu kartu kecil di dalam dasbor, diposisikan di bawah bagian yang diketuk */
+.layar-ringkasan .db-tip { position: absolute; z-index: 6; width: min(300px, calc(100% - 8px)); gap: 4px; padding: 10px 12px; break-inside: avoid; column-span: none;
+  background-color: var(--bg2); background-image: linear-gradient(var(--kaca), var(--kaca)); box-shadow: 0 18px 40px -18px var(--bayang); animation: dbMuncul 180ms cubic-bezier(.2,.8,.2,1); }
+.layar-ringkasan .db-tip[hidden] { display: none; }
+.layar-ringkasan .db-tip-baris { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.layar-ringkasan .db-tip-baris span { color: var(--redup); } .layar-ringkasan .db-tip-baris b { font-weight: 600; text-align: right; }
+.layar-ringkasan .db-tip-ke { margin-top: 4px; font-size: 12.5px; font-weight: 600; color: var(--aktif); text-align: right; cursor: pointer; }
+@keyframes dbMuncul { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+/* animasi masuk ringan: hanya saat dasbor dibuka / rentang diganti (kelas .masuk dipasang dasbor.js ±1,4 detik) */
+.layar-ringkasan .rk-dasbor.masuk .db-tumbuh-y { transform-box: fill-box; transform-origin: 50% 100%; animation: dbTumbuhY 560ms cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 28ms); }
+.layar-ringkasan .rk-dasbor.masuk .db-tumbuh-x { transform-box: fill-box; transform-origin: 0 50%; animation: dbTumbuhX 620ms cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 40ms); }
+.layar-ringkasan .rk-dasbor.masuk > .db-kartu { animation: rkNaik 520ms cubic-bezier(.2,.8,.2,1) both; }
+.layar-ringkasan .rk-dasbor.masuk > .db-kartu:nth-child(2) { animation-delay: 60ms; } .layar-ringkasan .rk-dasbor.masuk > .db-kartu:nth-child(n+3) { animation-delay: 120ms; }
+@keyframes dbTumbuhY { from { transform: scaleY(0); } to { transform: none; } }
+@keyframes dbTumbuhX { from { transform: scaleX(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .layar-ringkasan .rk-dasbor.masuk .db-tumbuh-y, .layar-ringkasan .rk-dasbor.masuk .db-tumbuh-x, .layar-ringkasan .rk-dasbor.masuk > .db-kartu, .layar-ringkasan .db-tip { animation: none; }
+  .layar-ringkasan .db-ketuk { transition: none; }
+}

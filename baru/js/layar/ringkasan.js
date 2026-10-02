@@ -18,12 +18,16 @@ import { sumberData, dengarkan } from '../data/toko.js';
 import { pjPerhatian } from './pajak-logika.js';
 import { kpPerhatian, kpPerhatianPerangkat } from './kunci-periode-logika.js';
 import { kkBeranda } from '../data/katalog-kasir.js';
+import { hariIniIso } from '../inti/format.js';
+import { susunDasbor } from './dasbor-logika.js';   // putaran 40: dasbor owner (saklar Dasbor | Cincin, owner 2 Okt)
+import { pasangDasbor } from './dasbor.js';
 
 const IKON = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
   terang: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
 };
 const KUNCI_SKALA = 'miqbal_baru_skala';
+const KUNCI_TAMPILAN = 'miqbal_baru_ringkasan_tampilan';   // putaran 40: 'dasbor' | 'cincin' — pilihan terakhir owner diingat per perangkat
 const NS = 'http://www.w3.org/2000/svg';
 const p2 = (n) => String(n).padStart(2, '0');
 const tenggelam = (t) => 1 - Math.pow(1 - t, 3);
@@ -37,6 +41,11 @@ export function pasangLayarRingkasan(akar, opsi) {
   // putaran 25c: katalog HP kasir — kapan diperbarui, perubahan yang belum sampai, HP kasir yang masih memegang katalog lama (owner saja)
   const katalogKasir = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return null; try { return kkBeranda(k); } catch (e) { console.error('katalog kasir', e); return null; } };
   const perhatianPajak = (k) => { const a = opsi.akun ? opsi.akun() : null; if (!a || a.jenis !== 'owner') return []; try { return pjPerhatian(k); } catch (e) { console.error('perhatian pajak', e); return []; } };
+  // putaran 40: DASBOR hanya untuk peran owner (mode cadangan = owner, app.js). Akun lain tidak mendapat saklar maupun dasbornya: Ringkasan apa adanya.
+  const pemilik = () => { const a = opsi.akun ? opsi.akun() : null; return !!a && a.jenis === 'owner'; };
+  let tampilan = (() => { try { return localStorage.getItem(KUNCI_TAMPILAN) === 'cincin' ? 'cincin' : 'dasbor'; } catch (e) { return 'dasbor'; } })();
+  const modeDasbor = () => tampilan === 'dasbor' && pemilik();
+  let dasbor = null, dbHasil = null, dbKunci = '';   // dbHasil dihitung ulang hanya saat data berubah, hari berganti, atau rentang diganti
   let skala = (() => { try { return localStorage.getItem(KUNCI_SKALA) || 'jam'; } catch (e) { return 'jam'; } })();
   if (!R.SKALA.some((s) => s[0] === skala)) skala = 'jam';
   let ix = null, tampil = false, menitLama = -1, kunciNotaLama = null, angkaTampil = null, rafAngka = 0, sektorKini = [], pilihId = null, jamPilih = 0, detikTotal = 0, jagaAngka = 0;
@@ -57,6 +66,7 @@ export function pasangLayarRingkasan(akar, opsi) {
       <div style="display: flex; gap: 8px; align-items: center;"><div class="pil pil-akun" id="rkPil" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar"></div><div class="tombol-mode" id="rkMode"></div></div>
     </header>
     <div id="rkSumber"></div>
+    <div class="pita rk-saklar" id="rkSaklar" hidden><div class="seg" data-tampil="dasbor">Dasbor</div><div class="seg" data-tampil="cincin">Cincin</div></div>
     <div class="kartu hero" id="rkHero"><div class="kilau" id="rkKilau"></div>
       <div class="label" style="color: var(--hero-label);" id="rkJudul"></div>
       <div class="angka dagang angka-besar" id="rkAngka" style="font-size: clamp(28px, 8vw, 44px);"></div>
@@ -77,6 +87,7 @@ export function pasangLayarRingkasan(akar, opsi) {
       <div class="rk-detail" id="rkDetail"></div>
       <div class="pita" id="rkSkala"></div>
     </div>
+    <section class="rk-dasbor" id="rkDasbor" hidden></section>
     <aside class="rk-samping">
       <div class="dua" id="rkKas"></div>
       <div class="kartu" style="gap: 6px;" id="rkPerhatian"></div>
@@ -92,6 +103,9 @@ export function pasangLayarRingkasan(akar, opsi) {
   $('rkSkala').addEventListener('click', (ev) => { const el = ev.target.closest('[data-k]'); if (el) gantiSkala(el.dataset.k); });
   $('rkLapis').addEventListener('click', (ev) => { const el = ev.target.closest('[data-lapis]'); if (el) gantiSkala(R.SKALA_DARI_LAPIS[el.dataset.lapis]); });
   $('rkMode').addEventListener('click', () => opsi.gantiMode());
+  $('rkSaklar').addEventListener('click', (ev) => { const el = ev.target.closest('[data-tampil]'); if (el) gantiTampilan(el.dataset.tampil); });
+  dasbor = pasangDasbor($('rkDasbor'), { keTujuan: (t) => (opsi.keTujuan ? opsi.keTujuan(t) : opsi.pindah(t.ke)), mintaRentang: () => gambarDasbor(true) });
+  dbHasil = null;
   $('rkKeJual').addEventListener('click', () => opsi.pindah('jual'));
   $('rkCincin').addEventListener('click', (ev) => {
     const kotak = $('rkCincin').getBoundingClientRect(); const skalaPx = 212 / kotak.width;
@@ -111,6 +125,14 @@ export function pasangLayarRingkasan(akar, opsi) {
   }
   let sentuhX = null, sentuhY = null;
   // ---------- interaksi ----------
+  function gantiTampilan(m) { if (m === tampilan || (m !== 'dasbor' && m !== 'cincin')) return; tampilan = m; try { localStorage.setItem(KUNCI_TAMPILAN, m); } catch (e) { /* abaikan */ } angkaTampil = null; kunciNotaLama = null; perbarui('tampil'); }
+  /** Dasbor owner: hitung (kalau basi) lalu gambar. masuk = animasi masuk ringan (buka dasbor, ganti rentang). */
+  function gambarDasbor(masuk) {
+    if (!dasbor || !$('rkDasbor')) return;
+    const k = kini(); const kunci = hariIniIso(k) + '|' + dasbor.rentang();
+    if (!dbHasil || dbKunci !== kunci) { dbHasil = susunDasbor(k, dasbor.rentang()); dbKunci = kunci; }
+    dasbor.gambar(dbHasil, masuk);
+  }
   function gantiSkala(k) { if (k === skala || !R.SKALA.some((s) => s[0] === k)) return; skala = k; pilihId = null; try { localStorage.setItem(KUNCI_SKALA, k); } catch (e) { /* abaikan */ } perbarui('skala'); }
   if (!terkunci()) bangun();
 
@@ -166,17 +188,31 @@ export function pasangLayarRingkasan(akar, opsi) {
   function perbarui(sebab) {
     if (!tampil || terkunci()) return;
     if (!$('rkHero')) bangun();   // tirai baru terbuka: kerangka dibangun ulang
+    const k = kini(); const KK = katalogKasir(k); const perhatian = R.susunPerhatian().concat(perhatianKasir(k), KK ? KK.perhatian : [], perhatianPajak(k), perhatianKunci(k)); const sumber = sumberData();
+    // putaran 40: saklar Dasbor | Cincin hanya untuk owner; mode dasbor menyembunyikan cincin, nota & kartu kas (angkanya ada di dasbor) — perhatian tetap
+    const dsb = modeDasbor(); akar.classList.toggle('mode-dasbor', dsb); $('rkSaklar').hidden = !pemilik(); $('rkDasbor').hidden = !dsb;
+    akar.querySelectorAll('#rkSaklar .seg').forEach((el) => el.classList.toggle('aktif', el.dataset.tampil === (dsb ? 'dasbor' : 'cincin')));
+    $('rkTanggal').textContent = R.tanggalPanjang(k); $('rkSalam').textContent = R.salam(k) + ', Owner';
+    const pil = $('rkPil'); pil.textContent = sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'; pil.classList.toggle('kedip', sumber.jenis !== 'firestore');
+    $('rkMode').innerHTML = IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap'];
+    $('rkSumber').innerHTML = sumber.jenis === 'cadangan' ? '<div class="pita-info emas">Angka dari ' + esc(sumber.keterangan) + ' — "sekarang" dianggap saat cadangan itu diunduh.</div>' : sumber.jenis !== 'firestore' ? '<div class="pita-info awas">Belum tersambung ke data toko — masuk dulu sebagai owner (layar Jual).</div>' : '';
+    $('rkPerhatian').innerHTML = '<div style="display: flex; justify-content: space-between; align-items: center;"><div class="label">Perlu perhatian</div><span class="pil" style="' + (perhatian.some((x) => x.awas) ? 'color: var(--awas);' : '') + '">' + (perhatian.length ? perhatian.length + ' hal' : 'aman') + '</span></div>'
+      + (perhatian.map((x, i) => '<div class="baris ' + (i === perhatian.length - 1 ? 'akhir' : '') + '"><span>' + esc(x.teks) + '</span><span class="angka ' + (x.awas ? 'awas' : '') + '" style="font-size: 14px; white-space: nowrap;">' + esc(x.nilai) + '</span></div>').join('')
+        || '<div class="menolak">Tidak ada bon, utang pemasok, stok menipis, atau pesanan yang menunggu.</div>');
+    if ($('rkKatalog')) { $('rkKatalog').textContent = KK ? KK.status : ''; $('rkKatalog').style.color = KK && KK.awas ? 'var(--awas)' : ''; }
+    if (dsb) {
+      menitLama = k.getHours() * 60 + k.getMinutes();
+      // tiap menit: digambar ulang hanya kalau hari berganti (kunci basi); data baru & buka layar selalu
+      if (sebab !== 'menit' || !dbHasil || dbKunci !== hariIniIso(k) + '|' + dasbor.rentang()) gambarDasbor(sebab === 'tampil');
+      detak(true); return;
+    }
     if (!ix) ix = R.bangunIndeks();
-    const k = kini(); const r = R.susunRingkasan(skala, ix, k); const kas = R.susunKas(k); const KK = katalogKasir(k); const perhatian = R.susunPerhatian().concat(perhatianKasir(k), KK ? KK.perhatian : [], perhatianPajak(k), perhatianKunci(k)); const sumber = sumberData();
+    const r = R.susunRingkasan(skala, ix, k); const kas = R.susunKas(k);
     menitLama = k.getHours() * 60 + k.getMinutes(); sektorKini = r.sektor;
     const pertama = sebab === 'tampil'; const gantiSk = sebab === 'skala';
     const kunciBaru = r.umpan.length ? r.umpan[0].k : ''; const mendarat = !pertama && kunciNotaLama !== null && !!kunciBaru && kunciBaru !== kunciNotaLama; kunciNotaLama = kunciBaru;
     const naik = !pertama && !gantiSk && angkaTampil !== null ? r.angka - angkaTampil : 0;
 
-    $('rkTanggal').textContent = R.tanggalPanjang(k); $('rkSalam').textContent = R.salam(k) + ', Owner';
-    const pil = $('rkPil'); pil.textContent = sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'; pil.classList.toggle('kedip', sumber.jenis !== 'firestore');
-    $('rkMode').innerHTML = IKON[opsi.mode() === 'gelap' ? 'terang' : 'gelap'];
-    $('rkSumber').innerHTML = sumber.jenis === 'cadangan' ? '<div class="pita-info emas">Angka dari ' + esc(sumber.keterangan) + ' — "sekarang" dianggap saat cadangan itu diunduh.</div>' : sumber.jenis !== 'firestore' ? '<div class="pita-info awas">Belum tersambung ke data toko — masuk dulu sebagai owner (layar Jual).</div>' : '';
     $('rkJudul').textContent = r.judul; $('rkSub').textContent = r.sub; $('rkBanding').textContent = r.banding;
     if (gantiSk) { sekali($('rkAngka'), 'ganti', 260); sekali($('rkKilau'), 'sapu', 1150); [$('rkJudul'), $('rkSub'), $('rkBanding'), $('rkLapis')].forEach((el) => sekali(el, 'ganti-teks', 420)); }
     gulirAngka(r.angka, pertama ? 900 : gantiSk ? 560 : 640);
@@ -195,10 +231,6 @@ export function pasangLayarRingkasan(akar, opsi) {
     $('rkKas').innerHTML = '<div class="kartu platina"><div class="label">Kas tercatat · semua kantong</div>' + (kas.adaTitik ? '<div class="angka kas" style="font-size: 20px;">' + esc(RP(kas.total)) + '</div><div class="ket" style="font-size: 11.5px;">dihitung dari titik kas ' + esc(kas.titikTanggal) + '</div>'
       : '<div class="menolak">Titik kas belum ada — Tutup hari malam ini (Uang › Tutup hari) menyetelnya untuk semua perangkat. Tanpa itu saldo tidak ditebak.</div>') + '</div>'
       + '<div class="kartu platina"><div class="label">Uang hari ini</div><div class="angka kas" style="font-size: 20px;">+ ' + esc(RP(kas.masukLaci + kas.masukRek)) + '</div><div class="ket" style="font-size: 11.5px;">laci ' + esc(RP(kas.masukLaci)) + ' · rekening ' + esc(RP(kas.masukRek)) + (kas.keluar ? ' · keluar ' + esc(RP(kas.keluar)) : '') + '</div></div>';
-    $('rkPerhatian').innerHTML = '<div style="display: flex; justify-content: space-between; align-items: center;"><div class="label">Perlu perhatian</div><span class="pil" style="' + (perhatian.some((x) => x.awas) ? 'color: var(--awas);' : '') + '">' + (perhatian.length ? perhatian.length + ' hal' : 'aman') + '</span></div>'
-      + (perhatian.map((x, i) => '<div class="baris ' + (i === perhatian.length - 1 ? 'akhir' : '') + '"><span>' + esc(x.teks) + '</span><span class="angka ' + (x.awas ? 'awas' : '') + '" style="font-size: 14px; white-space: nowrap;">' + esc(x.nilai) + '</span></div>').join('')
-        || '<div class="menolak">Tidak ada bon, utang pemasok, stok menipis, atau pesanan yang menunggu.</div>');
-    if ($('rkKatalog')) { $('rkKatalog').textContent = KK ? KK.status : ''; $('rkKatalog').style.color = KK && KK.awas ? 'var(--awas)' : ''; }
     detak(true);
   }
 
@@ -215,7 +247,8 @@ export function pasangLayarRingkasan(akar, opsi) {
   setInterval(() => detak(false), 1000);
   const perbaruiData = () => perbarui('data');
   const perbaruiTampil = () => perbarui('tampil');   // owner 29 Sep: dulu digambar langsung di ketukan (±80 ms menahan pindah layar)
-  dengarkan(() => { ix = null; nanti(perbaruiData); });
+  const basiSemua = () => { ix = null; dbHasil = null; };   // indeks cincin & hasil dasbor dihitung ulang di gambar berikutnya
+  dengarkan(() => { basiSemua(); nanti(perbaruiData); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) perbarui('data'); });   // kembali ke depan → angka & cincin diselaraskan
 
   // putaran 23d: Beranda tidak punya kolom isian — tidak ada yang ditanyakan atau dikosongkan saat ganti orang (tirai sudah mengosongkan tampilannya)

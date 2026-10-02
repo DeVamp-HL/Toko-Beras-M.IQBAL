@@ -15,7 +15,7 @@ import os, re, sys
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 from uji_tata_letak_jual import aturan   # noqa: E402  (pengurai CSS yang sama)
-BERKAS = ['baru/css/stok.css', 'baru/css/ringkasan.css', 'baru/css/kerangka.css', 'baru/js/layar/stok.js', 'baru/js/layar/ringkasan.js']
+BERKAS = ['baru/css/stok.css', 'baru/css/ringkasan.css', 'baru/css/kerangka.css', 'baru/js/layar/stok.js', 'baru/js/layar/ringkasan.js', 'baru/js/layar/dasbor.js']
 
 
 def baca(ganti=None):
@@ -71,6 +71,19 @@ def periksa(t):
     c.append(('stok: Atur wadah (formulir) ikut 1180, hanya kotak wadah yang lebar', any('[data-k="wadah"]' in s and 'max-width: 1180px' in isi for m, s, isi in S if 'min-width: 1100px' in m and 'section:not(.stok-gudang)' in s), ''))
     lebar = {n: any('max-width: 1720px' in x for x in cari(aturan(t[f]), 'min-width: 1100px', 'main.layar-' + n)) for n, f in [('jual', 'baru/css/kerangka.css'), ('ringkasan', 'baru/css/ringkasan.css'), ('stok', 'baru/css/stok.css')]}
     c.append(('seragam: di Mac Jual, Ringkasan & Stok selebar 1720 px', all(lebar.values()), lebar))
+
+    # ---- PUTARAN 40 · dasbor owner: tiga lebar (HP satu kolom · tablet & Mac dua lajur urut ke bawah · Mac samping kanan menempel)
+    ada = lambda media, potong, isi: any((media in m if media else not m) and potong in s and all(x in b for x in isi) for m, s, b in R)
+    c.append(('dasbor: mode dasbor menyembunyikan cincin, nota & kartu kas (angkanya di dasbor), perhatian tetap', ada('', 'main.layar-ringkasan.mode-dasbor > .kartu.hero', ['display: none']) and ada('', 'main.layar-ringkasan.mode-dasbor > .rk-nota', ['display: none']) and ada('', 'main.layar-ringkasan.mode-dasbor #rkKas', ['display: none']) and not ada('', 'mode-dasbor #rkPerhatian', ['display: none']), ''))
+    c.append(('dasbor: saklar & dasbor yang [hidden] benar-benar hilang (bukan-owner / mode cincin)', ada('', '.layar-ringkasan .rk-saklar[hidden]', ['display: none']) and ada('', '.layar-ringkasan .rk-dasbor[hidden]', ['display: none']), ''))
+    c.append(('dasbor: HP satu kolom, sesudah saklar & sebelum samping (order 1)', ada('', '.layar-ringkasan .rk-dasbor', ['flex-direction: column', 'order: 1']), ''))
+    c.append(('dasbor: tablet & Mac dua lajur urut ke bawah (columns, bukan grid), kartu tidak terbelah, Hari ini & tren selebar dasbor', ada('min-width: 720px', '.layar-ringkasan .rk-dasbor', ['columns: 2']) and ada('min-width: 720px', '.rk-dasbor > .db-kartu', ['break-inside: avoid']) and ada('min-width: 720px', '.rk-dasbor > .db-hari', ['column-span: all']) and ada('min-width: 720px', '.rk-dasbor > .db-tren', ['column-span: all']), ''))
+    c.append(('dasbor: Mac — dasbor kolom kiri, samping tetap kolom kanan yang menempel', ada('min-width: 1100px', '.layar-ringkasan .rk-dasbor', ['grid-column: 1']) and ada('min-width: 1100px', 'main.layar-ringkasan.mode-dasbor > .rk-samping', ['grid-column: 2']) and any('position: sticky' in x for x in rm), ''))
+    c.append(('dasbor: gerak masuk menghormati prefers-reduced-motion', ada('prefers-reduced-motion', '.db-tumbuh-y', ['animation: none']) and ada('prefers-reduced-motion', '.db-tumbuh-x', ['animation: none']), ''))
+    pd = {k: rk.find(v) for k, v in [('sumber', 'id="rkSumber"'), ('saklar', 'id="rkSaklar"'), ('hero', 'id="rkHero"'), ('dasbor', 'id="rkDasbor"'), ('aside', 'class="rk-samping"')]}
+    c.append(('dasbor: urutan kerangka — pita sumber · saklar · hero · dasbor · samping', all(v >= 0 for v in pd.values()) and pd['sumber'] < pd['saklar'] < pd['hero'] < pd['dasbor'] < pd['aside'], pd))
+    DJ = t['baru/js/layar/dasbor.js']
+    c.append(('dasbor: grafik batang & bilah preserveAspectRatio="none" + label HTML di luar SVG (tulisan tidak tergencet di HP)', 'class="db-grafik" viewBox="0 0 \' + W + \' 100" preserveAspectRatio="none"' in DJ and 'class="db-sumbu"' in DJ and DJ.count('viewBox="0 0 100 10" preserveAspectRatio="none"') >= 5, ''))
     return c
 
 
@@ -89,6 +102,15 @@ KONTROL = [
     ('urutan HP Ringkasan berubah', {'baru/css/ringkasan.css': [('.layar-ringkasan .rk-nota { order: 1; }', '.layar-ringkasan .rk-nota { order: 3; }')]}),
     ('samping Ringkasan tidak menempel', {'baru/css/ringkasan.css': [('grid-row: span 2; align-self: start; position: sticky; top: 22px;', 'grid-row: span 2; align-self: start;')]}),
     ('Stok kembali 1180 di Mac', {'baru/css/stok.css': [('  main.layar-stok { max-width: 1720px; }\n', '')]}),
+    ('dasbor: mode dasbor tetap memajang cincin', {'baru/css/ringkasan.css': [('main.layar-ringkasan.mode-dasbor > .kartu.hero, ', '')]}),
+    ('dasbor: saklar [hidden] tetap tampil', {'baru/css/ringkasan.css': [('.layar-ringkasan .rk-saklar[hidden], .layar-ringkasan .rk-dasbor[hidden] { display: none; }', '.layar-ringkasan .rk-dasbor[hidden] { display: none; }')]}),
+    ('dasbor: HP berjajar ke samping', {'baru/css/ringkasan.css': [('.layar-ringkasan .rk-dasbor { position: relative; display: flex; flex-direction: column;', '.layar-ringkasan .rk-dasbor { position: relative; display: flex; flex-direction: row;')]}),
+    ('dasbor: tablet grid (kartu tinggi membuka lubang)', {'baru/css/ringkasan.css': [('.layar-ringkasan .rk-dasbor { display: block; columns: 2; column-gap: 10px; }', '.layar-ringkasan .rk-dasbor { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }')]}),
+    ('dasbor: kartu terbelah antar lajur', {'baru/css/ringkasan.css': [('.layar-ringkasan .rk-dasbor > .db-kartu { break-inside: avoid; margin-bottom: 10px; }', '.layar-ringkasan .rk-dasbor > .db-kartu { margin-bottom: 10px; }')]}),
+    ('dasbor: Mac samping turun ke bawah dasbor', {'baru/css/ringkasan.css': [('  main.layar-ringkasan.mode-dasbor > .rk-samping { grid-column: 2; }', '')]}),
+    ('dasbor: gerak mengabaikan reduced-motion', {'baru/css/ringkasan.css': [('  .layar-ringkasan .rk-dasbor.masuk .db-tumbuh-y, .layar-ringkasan .rk-dasbor.masuk .db-tumbuh-x, ', '  ')]}),
+    ('dasbor: saklar sebelum pita sumber', {'baru/js/layar/ringkasan.js': [('    <div id="rkSumber"></div>\n    <div class="pita rk-saklar" id="rkSaklar" hidden><div class="seg" data-tampil="dasbor">Dasbor</div><div class="seg" data-tampil="cincin">Cincin</div></div>\n', '    <div class="pita rk-saklar" id="rkSaklar" hidden><div class="seg" data-tampil="dasbor">Dasbor</div><div class="seg" data-tampil="cincin">Cincin</div></div>\n    <div id="rkSumber"></div>\n')]}),
+    ('dasbor: grafik tren tergencet (aspek dikunci)', {'baru/js/layar/dasbor.js': [('<svg class="db-grafik" viewBox="0 0 \' + W + \' 100" preserveAspectRatio="none"', '<svg class="db-grafik" viewBox="0 0 \' + W + \' 100"')]}),
 ]
 
 

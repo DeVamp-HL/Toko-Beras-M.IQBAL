@@ -179,6 +179,183 @@ def berkas_titik():
     return dict((f, open(os.path.join(AKAR, f), encoding='utf-8').read()) for f in ['baru/js/layar/ringkasan.js', 'baru/js/layar/bon-pemasok-logika.js'])
 
 
+# ==================== PUTARAN 40 · DASBOR OWNER (baru/js/layar/dasbor-logika.js + saklar di ringkasan.js) ====================
+# Kotak pasir = kotak Kendali Biaya (ANGKA CONTOH, jam 19 Sep 2026 10:00) + bon pelanggan tiga keadaan. Yang diuji: tiap angka dasbor MENUTUP ke fungsi
+# sumbernya (satu sumber, tidak ada rumus uang baru), pengelompokan menutup ke total, kelompok galat tidak mematikan yang lain, dan dasbor hanya untuk owner.
+def modul_dasbor():
+    import uji_laporan_baru
+    out = []
+    for m in uji_laporan_baru.MODUL + ['baru/js/layar/stok-logika.js', 'baru/js/layar/kendali-biaya-logika.js', 'baru/js/layar/karcis-logika.js', 'baru/js/layar/ringkasan-logika.js', 'baru/js/layar/dasbor-logika.js']:
+        if m not in out: out.append(m)
+    return out
+
+
+BON_PEMASOK_LAMA = "function susunBon(kini) {\n  const iso = hariIniIso(kini || new Date()); const atur = aturBon();"
+
+
+def bundel_dasbor():
+    """bon-logika & bon-pemasok-logika sama-sama punya susunBon; di peramban dasbor mengimpor yang pemasok sebagai bpSusunBon — di bundel jsc namanya dipisah."""
+    js = bundel_baru.bundel(modul_dasbor())
+    assert js.count(BON_PEMASOK_LAMA) == 1, 'jangkar susunBon pemasok basi'
+    return js.replace(BON_PEMASOK_LAMA, BON_PEMASOK_LAMA.replace('susunBon(', 'bpSusunBon('))
+
+
+def kotak_dasbor():
+    # umur bon di mesin beku dihitung dari jam PERANGKAT (new Date()), bukan jam uji → tanggal bon baru & bon tagih relatif ke hari ini, supaya keadaannya tetap
+    import uji_kendali_biaya, datetime
+    hari = datetime.date.today(); iso = lambda n: (hari - datetime.timedelta(days=n)).isoformat()
+    k = json.loads(json.dumps(uji_kendali_biaya.KOTAK))
+    k['piutangMutasi'] = k['piutangMutasi'] + [{'id': 811, 'tipe': 'saldoAwal', 'namaPelanggan': 'Bu Baru', 'nominal': 120000, 'tanggal': iso(0), 'jam': '09:00'},
+                                               {'id': 812, 'tipe': 'saldoAwal', 'namaPelanggan': 'Pak Tagih', 'nominal': 300000, 'tanggal': iso(30), 'jam': '09:00'},
+                                               {'id': 813, 'tipe': 'saldoAwal', 'namaPelanggan': 'Bu Macet', 'nominal': 450000, 'tanggal': '2026-01-10', 'jam': '09:00'}]
+    # merek kedua (lebih sedikit dari Angsa) supaya urutan "kg terbesar dulu" teruji; dibayar tunai → tidak menambah bon pemasok
+    k['batchMasuk'] = k['batchMasuk'] + [{'id': 'b3', 'tanggal': '2026-09-12', 'jam': '08:00', 'pemasok': 'PEMASOK CONTOH', 'caraBayar': 'tunai', 'biayaBongkar': 0,
+                                          'merkList': [{'id': 'b30', 'merk': 'Anggrek', 'satuan': 'karung', 'beratKarung': 25, 'jumlahKarung': 8, 'totalKg': 200, 'hargaPerKg': 15000, 'subtotalHarga': 3000000}]}]
+    return k
+
+
+SKENARIO_DASBOR = r"""
+var gagal = [], lulus = 0; var J = JSON.stringify; console.error = function () {};   // galat yang DISENGAJA (uji isolasi) tidak boleh mengotori keluaran JSON
+function ok(nama, syarat, ket) { if (syarat) lulus++; else gagal.push(nama + (ket ? ' → ' + String(ket).slice(0, 600) : '')); }
+Object.keys(KOTAK).forEach(function (n) { pasok(n, JSON.parse(J(KOTAK[n]))); });
+localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-09-15', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }));
+var KINI = new Date(Date.now()); var iso = '2026-09-19'; var hariIni = function (t) { return t === iso; };
+var D; try { D = susunDasbor(KINI, 'hari'); } catch (e) { D = { galatLuar: String(e) }; }
+ok('dasbor: lima kelompok tergambar tanpa galat', ['hari', 'bulan', 'stok', 'tagihan', 'tren'].every(function (k) { return D[k] && !D[k].galat; }), J(D.galatLuar || ['hari', 'bulan', 'stok', 'tagihan', 'tren'].map(function (k) { return D[k] && D[k].galat; })));
+// ---- HARI INI
+var ix = bangunIndeks(); var RJ = susunRingkasan('jam', ix, KINI); var RH = rekapHari(iso); var LH = hitungLabaRentang(hariIni);
+ok('hari ini: omzet = angka cincin Ringkasan = Laporan › Harian = mesin laba (250.000)', D.hari.omzet === RJ.angka && D.hari.omzet === RH.omzet && D.hari.omzet === LH.omzetPenuh && D.hari.omzet === 250000, J([D.hari.omzet, RJ.angka, RH.omzet, LH.omzetPenuh]));
+ok('hari ini: nota = "N NOTA" cincin; laba kotor = mesin laba hari itu (18.600)', D.hari.nota === RJ.notaHariIni && D.hari.margin === LH.margin && D.hari.margin === 18600, J([D.hari.nota, RJ.notaHariIni, D.hari.margin]));
+var RT = [{ koleksi: 'retur', data: { id: 'rtD', tanggal: iso, jam: '09:50', nominalRefund: 20000, kondisi: 'utuh' } },
+  { koleksi: 'penjualan', data: { id: 'n2a', tanggal: iso, jam: '09:55', caraBayar: 'Tunai', jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, totalKg: 5, hargaTotal: 60000, hppTotalSaatJual: 55000, trxId: 'tx2' } },
+  { koleksi: 'penjualan', data: { id: 'n2b', tanggal: iso, jam: '09:55', caraBayar: 'Tunai', jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, totalKg: 5, hargaTotal: 60000, hppTotalSaatJual: 55000, trxId: 'tx2' } }];
+var R2 = denganCacheSementara(RT, function () { var d = dbHariIni(KINI); var r = susunRingkasan('jam', bangunIndeks(), KINI); var tr = dbTren('hari', KINI).batang; return { omzet: d.omzet, retur: d.retur, nota: d.nota, cincin: r.angka, notaCincin: r.notaHariIni, batang: tr[tr.length - 1] }; });
+ok('hari ini + retur 20.000 & nota dua baris: omzet = cincin = 250.000 + 120.000 − 20.000 = 350.000 (sesudah retur); nota dua baris = SATU nota (2 nota); batang tren hari ini sama', R2.omzet === 350000 && R2.cincin === 350000 && R2.retur === 20000 && R2.nota === 2 && R2.notaCincin === 2 && R2.batang.omzet === 350000 && R2.batang.nota === 2 && R2.batang.notaDaftar === 2, J(R2));
+var SK = susunKas(KINI); var jumlahKas = D.hari.kas.tempat.reduce(function (a, t) { return a + t.n; }, 0);
+ok('kas per tempat: Laci · Brankas · Rekening · Amplop laba; Σ tempat = total = kas Ringkasan (kasPada) — menutup', D.hari.kas.ada && D.hari.kas.tempat.map(function (t) { return t.nama; }).join() === 'Laci,Brankas,Rekening,Amplop laba' && Math.abs(jumlahKas - D.hari.kas.total) < 0.5 && Math.abs(D.hari.kas.total - SK.total) < 0.5 && D.hari.kas.cocok === true, J([D.hari.kas, SK.total]));
+localStorage.removeItem('miqbal_titik_kas_v1'); var tanpaTitik = dbHariIni(KINI).kas;
+localStorage.setItem('miqbal_titik_kas_v1', JSON.stringify({ tanggal: '2026-09-15', laci: 2000000, brankas: 10000000, rekening: 3000000, amplop: 1000000 }));
+ok('kas tanpa titik kas: MENOLAK menebak (ada:false, tidak ada tempat) — keadaan "belum bisa dihitung", bukan nol', tanpaTitik.ada === false && tanpaTitik.tempat.length === 0, J(tanpaTitik));
+var KC = daftarKarcis(KINI);
+ok('karcis menunggu dirinci = Jual › Karcis kasir (daftarKarcis): 1 karcis Rp100.000', D.hari.karcis.n === KC.nKarcis && D.hari.karcis.rp === KC.total && D.hari.karcis.n === 1 && D.hari.karcis.rp === 100000 && D.hari.karcisTujuan.ke === 'jual' && D.hari.karcisTujuan.lembar === 'karcis', J(D.hari.karcis));
+// ---- BULAN INI
+var LB = labaBulan('2026-09', KINI); var K = kendaliBulan('2026-09', KINI); var T = titikImpas(K, KINI); var P = pemicuBiaya(K);
+ok('bulan ini: laba kotor & laba bersih = Laporan › Laba (labaBulan) — mesin yang sama', D.bulan.margin === LB.margin && D.bulan.labaBersih === LB.labaBersih && D.bulan.labaTujuan.keluarga === 'laba', J([D.bulan.margin, LB.margin, D.bulan.labaBersih, LB.labaBersih]));
+var jumlahBiaya = D.bulan.biaya.reduce(function (a, r) { return a + r.n - r.menggantung; }, 0);
+ok('bulan ini: biaya = Kendali biaya; Σ baris per jenis (tanpa upah yang belum dibayar) = semua biaya — menutup', D.bulan.semuaBiaya === K.semuaBiaya && Math.abs(jumlahBiaya - D.bulan.semuaBiaya) < 0.5, J([jumlahBiaya, D.bulan.semuaBiaya, D.bulan.biaya.map(function (r) { return r.id + ':' + r.n; })]));
+ok('bulan ini: titik impas & kalimatnya = titikImpas Kendali biaya; susut = baris susut (7.000)', D.bulan.impas.omzetImpas === T.omzetImpas && D.bulan.impas.kiniTeks === T.kiniTeks && D.bulan.impas.labaSampai === T.labaSampai && D.bulan.susut === K.susut && D.bulan.susut === 7000, J([D.bulan.impas, D.bulan.susut]));
+ok('pemicu yang naik = pemicuBiaya().naik (urutan & teks sama); tiap pemicu punya tujuan layar', J(D.bulan.pemicu.map(function (r) { return [r.id, r.teks, r.deltaTeks]; })) === J(P.naik.map(function (r) { return [r.id, r.teks, r.deltaTeks]; })) && D.bulan.pemicu.every(function (r) { return r.tujuan && r.tujuan.ke; }), J([D.bulan.pemicu, P.naik.length]));
+var jenisAda = K.baris.filter(function (r) { return ID_ANGGARAN.indexOf(r.id) >= 0 && r.n > 0; })[0];
+var ang = {}; ang[jenisAda.id] = 1000;
+var LM = denganCacheSementara([{ koleksi: 'aturanToko', data: { id: 'kendaliBiaya', anggaran: ang, ambang: 10, ambangPemicu: 1, kata: {} } }], function () { var b = dbBulanIni(KINI); var k2 = kendaliBulan('2026-09', KINI); var p2 = pemicuBiaya(k2);
+  return { b: b.biaya.find(function (r) { return r.id === jenisAda.id; }), merah: b.merah, kMerah: k2.merah, kLampu: k2.baris.find(function (r) { return r.id === jenisAda.id; }).lampu, pemicu: b.pemicu, naik: p2.naik.map(function (r) { return r.id; }) }; });
+ok('lampu anggaran = Kendali biaya: anggaran Rp1.000 untuk "' + jenisAda.nama + '" → MERAH di dasbor & di Kendali biaya', LM.b && LM.b.lampu === 'merah' && LM.kLampu === 'merah' && LM.merah === LM.kMerah && LM.merah >= 1, J(LM));
+ok('pemicu (ambang owner 1%): yang naik = pemicuBiaya().naik, tiap baris punya tujuan layar (dari peringatan Kendali biaya)', LM.pemicu.length > 0 && J(LM.pemicu.map(function (r) { return r.id; })) === J(LM.naik) && LM.pemicu.every(function (r) { return r.tujuan && r.tujuan.ke; }), J([LM.pemicu, LM.naik]));
+// ---- STOK & WADAH
+var DBr = daftarBarang(); var harap = DBr.filter(function (b) { return b.jenis === 'karung' && !b.wadahStok && Math.abs(b.sisa) > 0.004; });
+ok('stok per merek = Stok › Gudang (daftarBarang): sisa kg & perkiraan hari sama, buku wadah tidak ikut, urut kg terbesar (Angsa sebelum Anggrek — abjad terbalik)', D.stok.merek.length === harap.length && harap.length >= 2 && D.stok.merek[0].nama === 'Angsa' && D.stok.merek[1].nama === 'Anggrek' && D.stok.merek.every(function (m, i) { var b = harap.find(function (x) { return x.nama === m.nama; }); return b && b.sisa === m.kg && b.hariHabis === m.hari && (i === 0 || D.stok.merek[i - 1].kg >= m.kg); }), J([D.stok.merek, harap.map(function (b) { return [b.nama, b.sisa]; })]));
+var SW = susunWadah(null);
+ok('wadah = Stok › Wadah literan (susunWadah): jumlah, nama, isi & terakhir diisi sama', D.stok.wadah.length === SW.daftar.length && D.stok.wadah.every(function (w, i) { var s = SW.daftar[i]; return w.nama === s.nama && w.no === s.no && w.isiKg === (s.diketahui ? s.sisaKg : null) && w.terakhirTanggal === (s.isiTerakhirTanggal || ''); }), J([D.stok.wadah.length, SW.daftar.length]));
+ok('cek wadah memakai HARI TUTUP AKTIF (jam 10.00 → cek tutup kemarin 18 Sep, aturan Tutup hari & Jual)', D.stok.hariCek === tanggalTutupAktif(KINI) && D.stok.hariCek === '2026-09-18', D.stok.hariCek);
+var W0 = SW.daftar[0].nama;
+var CW = denganCacheSementara([{ koleksi: 'wadahLiteran', data: { id: 'cek1', tipe: 'cek', wadah: W0, hasil: 'sesuai', bukuKg: 10, tanggal: '2026-09-18', jam: '21:10' } }], function () { return dbStok(KINI).wadah[0]; });
+ok('cek wadah tercatat 18 Sep 21.10 "sesuai" → wadah itu "✓ Sesuai 21.10" di dasbor (wbCekHari)', CW.dicek === true && CW.hasilTeks === 'Sesuai' && CW.jamCek === '21:10', J(CW));
+// ---- PIUTANG & UTANG PEMASOK
+var HP = hitungPiutang().filter(function (x) { return (x.sisa || 0) > 0; }); var totP = HP.reduce(function (a, x) { return a + x.sisa; }, 0);
+var bonPerhatian = susunPerhatian().find(function (x) { return /Bon belum lunas/.test(x.teks); });
+var jumStatus = D.tagihan.piutang.perStatus.reduce(function (a, s) { return a + s.rp; }, 0);
+ok('piutang: total = mesin (hitungPiutang) = baris "Bon belum lunas" Perlu perhatian; Σ per status = total (870.000) — menutup', D.tagihan.piutang.total === totP && RP(totP) === bonPerhatian.nilai && jumStatus === totP && totP === 870000, J([D.tagihan.piutang.total, totP, bonPerhatian && bonPerhatian.nilai, jumStatus]));
+var st = {}; semuaBon(KINI).forEach(function (b) { st[b.nama] = b.status; });
+ok('piutang: keadaan dari Pelanggan › Bon — Bu Macet macet, Pak Tagih waktunya ditagih (jatuh tempo, 2 nama Rp750.000), Bu Baru masih baru (bukan jatuh tempo)', st['Bu Macet'] === 'macet' && st['Pak Tagih'] === 'perluTagih' && st['Bu Baru'] === 'baru' && D.tagihan.piutang.nJatuh === 2 && D.tagihan.piutang.rpJatuh === 750000 && D.tagihan.piutang.jatuh[0].nama === 'Bu Macet' && D.tagihan.piutang.jatuh[0].tujuan.orang === D.tagihan.piutang.jatuh[0].kunci, J([st, D.tagihan.piutang.jatuh]));
+var U = D.tagihan.pemasok; var totU = hitungUtangPemasok().reduce(function (a, x) { return a + (x.totalUtang || 0); }, 0);
+ok('utang pemasok: total = mesin (hitungUtangPemasok) = Bon pemasok; lewat + ≤7 hari + jauh + tanpa tempo = total — menutup', U.total === totU && U.rpLewat + U.rpDekat + U.rpJauh + U.rpTanpaTempo === U.total && U.total > 0, J([U.total, totU, U.rpLewat, U.rpDekat, U.rpJauh, U.rpTanpaTempo]));
+ok('utang pemasok: bon 20 Agu (tempo umum 21 hari) LEWAT; bon 10 Sep jatuh 1 Okt = tempo masih jauh', U.lewat.length === 1 && U.lewat[0].tanggal === '2026-08-20' && U.nJauh === 1 && U.tujuan.ke === 'harga' && U.lewat[0].tujuan.pemasok === U.lewat[0].pemasok, J(U));
+// ---- TREN
+var TH = D.tren;
+ok('tren hari: 14 batang = pemilih Laporan › Harian; omzet & nota tiap batang = daftar Laporan (hariTerakhir); batang terakhir = hari ini = omzet Hari ini', TH.batang.length === 14 && TH.batang[13].berjalan && TH.batang[13].id === iso && TH.batang.every(function (b) { return b.omzet === b.omzetDaftar && b.nota === b.notaDaftar; }) && TH.batang[13].omzet === D.hari.omzet, J(TH.batang.map(function (b) { return [b.id, b.omzet, b.omzetDaftar, b.nota, b.notaDaftar]; })));
+ok('tren hari: laba kotor tiap batang = mesin laba hari itu; tujuan = Laporan › Harian hari itu', TH.batang.every(function (b) { return b.margin === hitungLabaRentang(function (t) { return t === b.id; }).margin && b.tujuan.keluarga === 'harian' && b.tujuan.hari === b.id; }));
+var TM = dbTren('minggu', KINI); var DM = daftarMinggu(KINI, 8);
+ok('tren minggu: batang = pemilih Laporan › Mingguan (8 minggu, Senin); minggu berjalan = angka "Minggu ini" Ringkasan', TM.batang.length === DM.length && TM.batang.length === 8 && TM.batang[TM.batang.length - 1].omzet === susunRingkasan('hari', ix, KINI).angka && TM.batang.every(function (b) { return b.tujuan.awal === b.id && DM.some(function (m) { return m.awal === b.id; }); }), J(TM.batang.map(function (b) { return [b.id, b.omzet]; })));
+var TB = dbTren('bulan', KINI); var E = enamBulan(KINI);
+ok('tren bulan: batang = pemilih Laporan › Bulanan (≤ 6, sejak catatan pertama); omzet = enamBulan; bulan berjalan = angka bulan Ringkasan', TB.batang.length === daftarBulan(KINI, 6).length && TB.batang.every(function (b) { return E.daftar.some(function (e) { return e.key === b.id && e.omzet === b.omzet; }) && b.tujuan.bulan === b.id; }) && TB.batang[TB.batang.length - 1].omzet === susunRingkasan('bulan', ix, KINI).angka, J(TB.batang.map(function (b) { return [b.id, b.omzet]; })));
+var TA = dbTren('hari', new Date('2026-07-01T10:00:00+07:00'));
+ok('tren hari sebelum catatan pertama (25 Jun): 7 batang ABSEN (bukan nol), sisanya terukur', TA.batang.filter(function (b) { return b.absen; }).length === 7 && TA.batang.filter(function (b) { return !b.absen; }).length === 7 && TA.batang[0].absen && !TA.batang[13].absen, J(TA.batang.map(function (b) { return [b.id, b.absen]; })));
+// ---- galat satu kelompok tidak mematikan yang lain
+var asliDB = daftarBarang; daftarBarang = function () { throw new Error('rusak uji'); };
+var DG; try { DG = susunDasbor(KINI, 'hari'); } catch (e) { DG = { lempar: String(e) }; } daftarBarang = asliDB;
+ok('galat di Stok → kelompok stok membawa pesan galat; hari ini, bulan ini, tagihan, tren tetap tergambar', !DG.lempar && DG.stok && /rusak uji/.test(DG.stok.galat) && !DG.hari.galat && !DG.bulan.galat && !DG.tagihan.galat && !DG.tren.galat, J(DG.lempar || DG.stok));
+print(JSON.stringify({ lulus: lulus, gagal: gagal }));
+"""
+
+JAM_DASBOR = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
+
+
+def utama_dasbor(js):
+    h, e = jalan(JAM_DASBOR + js + '\nvar KOTAK = ' + json.dumps(kotak_dasbor()) + ';\n' + SKENARIO_DASBOR)
+    if h is None: return 0, ['DASBOR JSC JATUH: ' + e]
+    return h['lulus'], ['dasbor: ' + x for x in h['gagal']]
+
+
+def statis_dasbor(r, l, d):
+    """r = ringkasan.js · l = dasbor-logika.js · d = dasbor.js. Akses (owner saja) & satu sumber (tidak ada rumus uang dari dokumen mentah)."""
+    out = []
+    if "const pemilik = () => { const a = opsi.akun ? opsi.akun() : null; return !!a && a.jenis === 'owner'; };" not in r: out.append('akses: pemilik() bukan lagi akun berjenis owner')
+    if "const modeDasbor = () => tampilan === 'dasbor' && pemilik();" not in r: out.append('akses: mode dasbor tidak lagi mensyaratkan owner')
+    if "$('rkSaklar').hidden = !pemilik(); $('rkDasbor').hidden = !dsb;" not in r: out.append('akses: saklar / dasbor tidak disembunyikan untuk bukan-owner')
+    if r.count('gambarDasbor(') != 3 or "if (dsb) {" not in r: out.append('akses: dasbor digambar di luar cabang mode dasbor owner (gambarDasbor dipanggil ' + str(r.count('gambarDasbor(')) + '×)')
+    mentah = re.findall(r'\.(hargaTotal|hppTotalSaatJual|nominal|nilaiRp|subtotalHarga|merkList|hppPerKgSaatOpname)\b', l)
+    if mentah: out.append('satu sumber: dasbor-logika membaca kolom dokumen mentah ' + ', '.join(sorted(set(mentah))) + ' — angka harus dari fungsi layar/mesin yang sudah ada')
+    impor_data = re.findall(r"import \{([^}]*)\} from '\.\./data/toko\.js'", l)
+    if impor_data and [x.strip() for x in impor_data[0].split(',')] != ['jumlahNota']: out.append('satu sumber: dasbor-logika mengimpor pembaca koleksi ' + impor_data[0])
+    if re.search(r"from '\.\./(mesin|data)/", d): out.append('satu sumber: dasbor.js (gambar) mengimpor mesin/data — angka harus lewat dasbor-logika')
+    return out
+
+
+def berkas_dasbor():
+    return [open(os.path.join(AKAR, f), encoding='utf-8').read() for f in ['baru/js/layar/ringkasan.js', 'baru/js/layar/dasbor-logika.js', 'baru/js/layar/dasbor.js']]
+
+
+ASAP_DASBOR = r"""
+console.error = function () {};
+Object.keys(CAD).forEach(function (n) { if (Array.isArray(CAD[n])) pasok(n, CAD[n]); });
+var hidup = (CAD.penjualan || []).filter(function (p) { return !p.dikoreksiOleh && !p.dibatalkan; }); var tgl = hidup.map(function (p) { return p.tanggal || ''; }).sort();
+var KINI = new Date(tgl[tgl.length - 1] + 'T20:00:00'); var D = susunDasbor(KINI, 'hari'); var ix = bangunIndeks();
+var galat = ['hari', 'bulan', 'stok', 'tagihan', 'tren'].filter(function (k) { return D[k].galat; });
+var kas = D.hari.kas.ada ? Math.abs(D.hari.kas.tempat.reduce(function (a, t) { return a + t.n; }, 0) - D.hari.kas.total) < 0.5 && D.hari.kas.cocok : 'tanpa titik';
+var P = D.tagihan.piutang, U = D.tagihan.pemasok;
+var hasil = { galat: galat, omzet: D.hari.omzet === susunRingkasan('jam', ix, KINI).angka, kas: kas, piutang: P.perStatus.reduce(function (a, s) { return a + s.rp; }, 0) === P.total && P.total === hitungPiutang().filter(function (x) { return x.sisa > 0; }).reduce(function (a, x) { return a + x.sisa; }, 0),
+  pemasok: U.rpLewat + U.rpDekat + U.rpJauh + U.rpTanpaTempo === U.total, tren: D.tren.batang.every(function (b) { return b.omzet === b.omzetDaftar && b.nota === b.notaDaftar; }),
+  biaya: Math.abs(D.bulan.biaya.reduce(function (a, r) { return a + r.n - r.menggantung; }, 0) - D.bulan.semuaBiaya) < 0.5, laba: D.bulan.labaBersih === labaBulan(D.bulan.key, KINI).labaBersih };
+print(JSON.stringify(hasil));
+"""
+
+
+RUSAK_DASBOR = [
+    ('dasbor: omzet hari ini bruto (retur tidak dikurangi)', "omzet: R.omzet, nota: R.n,", "omzet: R.omzet + R.retur, nota: R.n,"),
+    ('dasbor: amplop laba tidak ikut kas per tempat', "const DB_TEMPAT = ['laci', 'brankas', 'rekening', 'amplop'];", "const DB_TEMPAT = ['laci', 'brankas', 'rekening'];"),
+    ('dasbor: kas per tempat ditebak walau titik kas belum ada', "kas: S.ada ? { ada: true,", "kas: true ? { ada: true,"),
+    ('dasbor: laba bersih bulan = "sampai hari ini" (beda dengan Laporan › Laba)', "labaBersih: K.labaBersih, susut: K.susut,", "labaBersih: T.labaSampai, susut: K.susut,"),
+    ('dasbor: bon macet tidak dihitung di piutang', "const DB_STATUS_BON = ['janjiLewat', 'macet', 'perluTagih', 'menunggu', 'baru'];", "const DB_STATUS_BON = ['janjiLewat', 'perluTagih', 'menunggu', 'baru'];"),
+    ('dasbor: bon macet bukan "jatuh tempo"', "const DB_JATUH = ['janjiLewat', 'macet', 'perluTagih'];", "const DB_JATUH = ['janjiLewat', 'perluTagih'];"),
+    ('dasbor: bon pemasok bertempo jauh tidak ikut', "rpJauh: jauh.reduce((a, b) => a + b.sisa, 0),", "rpJauh: 0,"),
+    ('dasbor: nota tren dihitung per baris', "nota: jumlahNota(cocok) }, x); };", "nota: ambilPenjualan().filter((p) => cocok(p.tanggal)).length }, x); };"),
+    ('dasbor: laba kotor tren = omzet ber-modal (bukan margin)', "const satu = (cocok, x) => { const L = hitungLabaRentang(cocok); return Object.assign({ omzet: L.omzetPenuh, margin: L.margin,", "const satu = (cocok, x) => { const L = hitungLabaRentang(cocok); return Object.assign({ omzet: L.omzetPenuh, margin: L.omzetHitung,"),
+    ('dasbor: cek wadah memakai tanggal kalender (bukan hari tutup aktif)', "const hariCek = tanggalTutupAktif(kini);", "const hariCek = hariIniIso(kini);"),
+    ('dasbor: tren minggu lebih panjang dari pemilih Laporan (12)', "daftarMinggu(kini, 8)", "daftarMinggu(kini, 12)"),
+    ('dasbor: hari sebelum catatan pertama digambar nol (bukan absen)', "const absen = !pertama || d.iso < pertama;", "const absen = false;"),
+    ('dasbor: stok memakai urutan abjad (bukan kg terbesar)', ".sort((a, b) => b.kg - a.kg || a.nama.localeCompare(b.nama));", ".sort((a, b) => a.nama.localeCompare(b.nama));"),
+    ('dasbor: galat satu kelompok mematikan seluruh dasbor', "return { galat: String((e && e.message) || e) }; } };", "throw e; } };"),
+    ('dasbor: pemicu tanpa tujuan layar', "tujuan: tujuanW('pemicu-' + r.id) || { ke: 'laporan', keluarga: 'biaya', bulan: key } }))", "tujuan: null }))"),
+]
+RUSAK_DASBOR_STATIS = [
+    ('akses: dasbor tampil untuk akun mana pun', 0, "const modeDasbor = () => tampilan === 'dasbor' && pemilik();", "const modeDasbor = () => tampilan === 'dasbor';"),
+    ('akses: saklar tampil untuk bukan-owner', 0, "$('rkSaklar').hidden = !pemilik();", "$('rkSaklar').hidden = false;"),
+    ('akses: pemilik() = siapa pun yang masuk', 0, "return !!a && a.jenis === 'owner'; };", "return !!a; };"),
+    ('satu sumber: dasbor menjumlah hargaTotal sendiri', 1, "omzet: R.omzet, nota: R.n,", "omzet: ambilPenjualan().reduce((a, p) => a + p.hargaTotal, 0), nota: R.n,"),
+    ('satu sumber: gambar dasbor membaca mesin langsung', 2, "import { DB_RENTANG } from './dasbor-logika.js';", "import { DB_RENTANG } from './dasbor-logika.js';\nimport { kasPada } from '../mesin/beku.js';"),
+]
+
+
 if __name__ == '__main__':
     js = bundel_baru.bundel(MODUL)
     if '--kontrol' in sys.argv:
@@ -226,10 +403,23 @@ if __name__ == '__main__':
             l, g = utama(isi)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
+        jsd = bundel_dasbor()
+        for nama, lama, baru in RUSAK_DASBOR:
+            if jsd.count(lama) != 1: print('KONTROL BASI  ' + nama + ' (' + str(jsd.count(lama)) + '×)'); kode = 3; continue
+            l, g = utama_dasbor(jsd.replace(lama, baru))
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
+            if not g: kode = 3
+        BD = berkas_dasbor()
+        for nama, i, lama, baru in RUSAK_DASBOR_STATIS:
+            if BD[i].count(lama) != 1: print('KONTROL BASI  ' + nama); kode = 3; continue
+            B2 = list(BD); B2[i] = B2[i].replace(lama, baru); g = statis_dasbor(*B2)
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
+            if not g: kode = 3
         sys.exit(kode)
     l, g = utama(js)
     t31 = teks_titik_basi(berkas_titik()); g = g + ['39b-31: ' + x for x in t31]; l = l + (0 if t31 else 1)
-    print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
+    ld, gd = utama_dasbor(bundel_dasbor()); sd = statis_dasbor(*berkas_dasbor()); l += ld + (0 if sd else 1); g = g + gd + sd
+    print('KOTAK PASIR: %d lulus · %d gagal (termasuk dasbor owner: %d lulus)' % (l, len(g), ld + (0 if sd else 1))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')), key=os.path.basename)   # cadangan toko boleh di akar, _privat/ atau _arsip-mockup/ (semua di-gitignore); yang terbaru menurut tanggal di namanya
     if cad:
         c = json.load(open(cad[-1], encoding='utf-8'))
@@ -239,4 +429,10 @@ if __name__ == '__main__':
             print('ASAP DATA TOKO (%s, hari terakhir %s, catatan mulai %s): omzet hari/bulan/tahun = penjualan − uang retur cadangan = omzet Laporan: %s/%s/%s · %d skala tergambar · %d hal perlu perhatian'
                   % (os.path.basename(cad[-1]), h['akhir'], h['mulai'], h['hariCocok'], h['bulanCocok'], h['tahunCocok'], h['skala'], h['perhatian']))
             if not (h['hariCocok'] and h['bulanCocok'] and h['tahunCocok'] and h['skala'] == 7): g.append('asap: angka Ringkasan tidak sama dengan jumlah langsung baris cadangan')
+        hd, ed = jalan(bundel_dasbor() + '\nvar CAD = ' + json.dumps(c) + ';\n' + ASAP_DASBOR)
+        if hd is None: print('ASAP DASBOR: JSC JATUH ' + ed); g.append('asap dasbor')
+        else:
+            beres = not hd['galat'] and all(hd[k] is True or hd[k] == 'tanpa titik' for k in ['omzet', 'kas', 'piutang', 'pemasok', 'tren', 'biaya', 'laba'])
+            print('ASAP DASBOR (%s): %s — %s' % (os.path.basename(cad[-1]), 'MENUTUP' if beres else 'GAGAL', json.dumps(hd, ensure_ascii=False)))
+            if not beres: g.append('asap dasbor: ada kelompok yang tidak menutup ke sumbernya di data toko')
     sys.exit(2 if g else 0)
