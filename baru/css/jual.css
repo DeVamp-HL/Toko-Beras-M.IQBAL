@@ -107,6 +107,33 @@
 .gb.wadah.tak-diketahui .kotak { stroke-dasharray: 3 3; opacity: 0.6; } .gb .tanya { font-family: 'Bodoni Moda', Georgia, serif; font-size: 18px; fill: var(--redup); }
 .chip.isi-ulang { border-color: var(--awas); } .chip .wadah-ket { font-weight: 600; } .chip.isi-ulang .wadah-ket { color: var(--awas); }
 .chip.habis .gb { opacity: 0.5; }
+/* 2 Okt (owner: "gambar tumpukan beras yang ada di foto"): karung & kemasan = TUMPUKAN REBAH. Enam lapis selalu ada; yang tidak tampak diberi .pergi
+   (diangkat & memudar — yang paling atas pergi duluan; yang datang turun dari atas, lapis bawah duluan). Habis = lantai bergaris putus + bekas tempat karung. */
+.gb.tumpuk .lantai { fill: none; stroke: var(--rel); stroke-width: 1.2; stroke-linecap: round; }
+.gb.tumpuk-habis .lantai { stroke-dasharray: 3 2.4; }
+.gb.tumpuk .bekas { fill: none; stroke: var(--emas-garis); stroke-width: 1; stroke-dasharray: 2.4 2; stroke-linejoin: round; opacity: 0; transition: opacity 420ms ease 240ms; }
+.gb.tumpuk-habis .bekas { opacity: 0.6; }
+.gb.tumpuk .lapis { transition: transform 520ms cubic-bezier(.2,.8,.2,1), opacity 360ms ease; transition-delay: calc(var(--i, 0) * 45ms); }
+.gb.tumpuk .lapis.pergi { opacity: 0; transform: translateY(-9px); transition-delay: calc(var(--j, 0) * 45ms); }   /* --j = TUMPUK_N − 1 − i dari gambar.js: yang paling atas pergi duluan */
+.gb.tumpuk .badan { stroke: var(--emas-garis); stroke-width: 1.1; stroke-linejoin: round; }
+.gb.tumpuk .kilap1 { stop-color: var(--logam1); } .gb.tumpuk .kilap2 { stop-color: var(--logam2); }
+.gb.tumpuk .garis-warna { fill: none; stroke: var(--platina2); stroke-width: 1; stroke-linecap: round; opacity: 0.6; }
+.gb.tumpuk .jahit { fill: none; stroke: var(--logam3); stroke-width: 0.85; stroke-linecap: round; stroke-linejoin: round; }
+/* kemasan = kantong PLASTIK (platina, bukan emas karung): badan bening menggembung, sirip segel bergurat di kedua ujung, label cetak lebar di muka */
+.gb.kemasan.tumpuk .alas { fill: var(--bg1); }
+.gb.kemasan.tumpuk .badan { stroke: var(--platina1); stroke-opacity: 0.75; stroke-width: 0.9; }
+.gb.kemasan.tumpuk .kilap-plastik { fill: none; stroke: var(--kaca-sorot); stroke-width: 0.9; stroke-linecap: round; }
+/* plastik bening di atas alas warna latar: terang = token platina gelap tipis (perak muda); gelap = token platina terang lebih pekat (perak, tidak tenggelam) */
+.gb.kemasan.tumpuk .plastik1 { stop-color: var(--platina1); stop-opacity: 0.28; } .gb.kemasan.tumpuk .plastik2 { stop-color: var(--platina2); stop-opacity: 0.5; }
+body.gelap .gb.kemasan.tumpuk .plastik1 { stop-opacity: 0.55; } body.gelap .gb.kemasan.tumpuk .plastik2 { stop-opacity: 0.7; }
+.gb.kemasan.tumpuk .sirip { fill: var(--platina1); fill-opacity: 0.16; stroke: var(--platina1); stroke-opacity: 0.7; stroke-width: 0.6; stroke-linejoin: round; }
+.gb.kemasan.tumpuk .segel { fill: none; stroke: var(--platina1); stroke-opacity: 0.5; stroke-width: 0.45; }
+.gb.kemasan.tumpuk .label-kantong { fill: var(--logam1); stroke: var(--emas-garis); stroke-width: 0.6; opacity: 1; }
+.gb.kemasan.tumpuk .cetak { fill: none; stroke: var(--logam3); stroke-width: 0.8; stroke-linecap: round; opacity: 0.8; }
+.gb.kemasan.tumpuk .bekas { stroke: var(--platina1); }
+.gb.tumpuk .papan-ukuran rect { fill: var(--bg1); stroke: var(--emas-garis); stroke-width: 1; }
+/* huruf papan tiga tingkat (papan selebar 18): "50" 12 px, "2,5" 10,5 px, "0,25" 8,5 px */
+.gb.tumpuk .papan-ukuran .ukuran { font-size: 12px; opacity: 1; } .gb.tumpuk .papan-ukuran .ukuran.tiga-huruf { font-size: 10.5px; } .gb.tumpuk .papan-ukuran .ukuran.empat-huruf { font-size: 8.5px; }
 /* kelompok ukuran (seperti papan harga toko: 5 · 10 · 20 · 25 kg) */
 .kelompok-rak { display: flex; flex-direction: column; gap: 6px; animation: masuk 420ms cubic-bezier(.2,.8,.2,1); }
 .judul-kelompok { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 2px 0; font-family: 'Bodoni Moda', Georgia, serif; font-size: 17px; border-bottom: 1px solid var(--garis); padding-bottom: 4px; }
@@ -136,7 +163,7 @@
 /* tetes emas terbang (barang masuk keranjang) — z 71: di atas panggung (70) yang kini duduk di kolom keranjang, di bawah pil & koin omzet (74/75) */
 .tetes-gerak { position: fixed; z-index: 71; width: 12px; height: 12px; border-radius: 50%; pointer-events: none; opacity: 0; background: linear-gradient(160deg, var(--logam1), var(--logam2)); box-shadow: 0 0 12px var(--logam-glow); }
 .tetes-gerak.terbang { animation: terbang 600ms cubic-bezier(.2,.8,.2,1) forwards; }
-@media (prefers-reduced-motion: reduce) { .chip, .kelompok-rak, .keranjang .b, .kabar-kotak > .pita-info, .jual-keranjang.pegas, .tetes-gerak.terbang { animation: none; } .gb .isi-dalam, .gb .gunung, .seg, .kaca-btn, .tuts .k { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .chip, .kelompok-rak, .keranjang .b, .kabar-kotak > .pita-info, .jual-keranjang.pegas, .tetes-gerak.terbang { animation: none; } .gb .isi-dalam, .gb .gunung, .gb.tumpuk .lapis, .gb.tumpuk .bekas, .seg, .kaca-btn, .tuts .k { transition: none; } }
 
 /* ---------- PUTARAN 15: wadah dijual & struk ---------- */
 .rak-wadah-kecil { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }

@@ -10,6 +10,8 @@ uji_kinerja_gerak.py — PUTARAN 33 (owner 29 Sep 2026): gerbang masuk G4, kiner
   · GERBANG: ID formulir putaran 23 utuh (app.js & uji_layar_kunci membacanya); 'tampil' dicabut SEKETIKA saat membuka (gerak di kelas lain);
     tanpa angka rupiah; semua gerak berulang berhenti saat "kurangi gerakan".
   · PENUTUP OMZET: Hari ini ditahan selama adegan, adeganNota mengembalikan lamanya, penjaga waktu melepas angka walau tab disembunyikan.
+  · TUMPUKAN RAK JUAL (jsc, gambarChipBarang): rangka SVG karung & kemasan sama di semua tingkat sisa (morf mempertahankan elemen →
+    transisi lapis berjalan); selalu TUMPUK_N lapis, yang tampak mengikuti tabel & tidak pernah melebihi sisa; urutan pergi dari --j.
 
     python3 alat-uji/uji_kinerja_gerak.py                 → N lulus · 0 gagal
     python3 alat-uji/uji_kinerja_gerak.py --kontrol       → kerusakan wajib ketahuan (keluar 3 kalau ada yang diam)
@@ -17,6 +19,8 @@ uji_kinerja_gerak.py — PUTARAN 33 (owner 29 Sep 2026): gerbang masuk G4, kiner
 """
 import os, re, sys, json, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
+sys.path.insert(0, SINI)
+import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 LAYAR = ['harga', 'laporan', 'menu', 'pelanggan', 'uang', 'stok', 'ringkasan', 'jual']
 ID_MASUK = ['modalMasuk', 'formMasuk', 'pesanMasuk', 'isianEmail', 'ingatEmail', 'lupakanEmail', 'isianSandi', 'salahMasuk', 'tombolMasuk',
@@ -40,7 +44,8 @@ def baca(ganti=None):
     def teks(b):
         if b not in t: t[b] = open(os.path.join(AKAR, b), encoding='utf-8').read()
         return t[b]
-    for b in ['baru/index.html', 'baru/js/app.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerbang.js', 'baru/js/inti/gerak.js', 'baru/css/gerbang.css', 'baru/css/gerak.css'] + ['baru/js/layar/%s.js' % n for n in LAYAR]:
+    for b in ['baru/index.html', 'baru/js/app.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerbang.js', 'baru/js/inti/gerak.js', 'baru/css/gerbang.css', 'baru/css/gerak.css',
+              'baru/js/layar/gambar.js', 'baru/css/jual.css'] + ['baru/js/layar/%s.js' % n for n in LAYAR]:
         teks(b)
     for b, pasangan in (ganti or {}).items():
         teks(b)
@@ -71,6 +76,22 @@ n = 0; m = 0; setelMuat(true); nanti(lain); segera(gambar); bingkai(); hasil.seg
 print(JSON.stringify(hasil));
 """
 
+# Tumpukan rak Jual: gambarChipBarang untuk karung 50 kg & kemasan 5 kg di beberapa sisa. Dua rak: terbanyak 40 (skala akar membedakan
+# sisa 14 dari sisa 3) dan terbanyak 4 (skala akar memberi lebih banyak lapis daripada barangnya — harus dijepit ke sisa).
+TUMPUK_SISA = {40: [40, 14, 3, 1, 0], 4: [4, 3, 2, 1, 0]}
+TUMPUK_TABEL = {40: {40: 6, 14: 4, 3: 2, 1: 1, 0: 0}, 4: {4: 4, 3: 3, 2: 2, 1: 1, 0: 0}}
+TUMPUK_UJI = r"""
+var SISA = %SISA%; var H = { karung: [], kemasan: [], papan: {} };
+[40, 4].forEach(function (penuh) {
+  SISA[penuh].forEach(function (sisa) {
+    H.karung.push({ penuh: penuh, sisa: sisa, svg: gambarChipBarang({ jalur: 'karung', kunci: 'IR64', berat: 50, sisa: sisa }, penuh) });
+    H.kemasan.push({ penuh: penuh, sisa: sisa, svg: gambarChipBarang({ jalur: 'kemasan', kunci: 'IR64', ukuranKg: 5, sisa: sisa }, penuh) });
+  });
+});
+['5', '2.5', '0.25'].forEach(function (u) { H.papan[u] = gambarChipBarang({ jalur: 'kemasan', kunci: 'Pandan', ukuranKg: Number(u), sisa: 3 }, 9); });
+print(JSON.stringify(H));
+"""
+
 
 def periksa(t, teks):
     out = []; ok = lambda n, c, k='': out.append((n, bool(c), k))
@@ -97,6 +118,31 @@ def periksa(t, teks):
         ok('jadwal: dua fungsi berbeda di satu bingkai → masing-masing sekali', h['dua'] == [1, 1], h)
         ok('jadwal: tab tersembunyi (rAF beku) → tetap digambar lewat setTimeout', h['tersembunyi'] == 1, h)
         ok('jadwal: ketukan (segera) di masa muat → tergambar di bingkai BERIKUTNYA, antrean data ikut sekali, tanpa ganda sesudahnya', h['segeraMuat'] == [1, 1] and h['segeraMuatSesudah'] == [1, 1], h)
+    # --- tumpukan rak Jual (gambar.js di jsc lewat bundel)
+    gb = t['baru/js/layar/gambar.js']; jcss = t['baru/css/jual.css']
+    mN = re.search(r'^const TUMPUK_N = (\d+);', gb, flags=re.M); N = int(mN.group(1)) if mN else -1
+    drv = bundel_baru.polos(gb) + TUMPUK_UJI.replace('%SISA%', json.dumps({str(k): v for k, v in TUMPUK_SISA.items()}))
+    with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f: f.write(drv); p = f.name
+    r = subprocess.run([JSC, p], capture_output=True, text=True); os.unlink(p)
+    try: G = json.loads((r.stdout or '').strip().split('\n')[-1])
+    except Exception: G = None
+    ok('tumpukan: gambar.js jalan di jsc (TUMPUK_N = %d)' % N, G is not None and N > 0, (r.stderr or r.stdout)[-400:])
+    if G:
+        for jalur in ('karung', 'kemasan'):
+            rangka = [re.sub(r'\s(?:class|style)="[^"]*"', '', x['svg']) for x in G[jalur]]
+            beda = [('%d/%d' % (x['sisa'], x['penuh'])) for x, rk in zip(G[jalur], rangka) if rk != rangka[0]]
+            ok('tumpukan %s: rangka SVG tanpa class/style SAMA di semua tingkat sisa (morf mempertahankan elemen → lapis bertransisi, bukan diganti)' % jalur, not beda, 'beda: ' + ', '.join(beda))
+            hitung = [(x['penuh'], x['sisa'], len(re.findall(r'class="lapis[" ]', x['svg'])), len(re.findall(r'class="lapis"', x['svg'])), 'tumpuk-habis' in x['svg'].split('>')[0]) for x in G[jalur]]
+            ok('tumpukan %s: selalu %d lapis di DOM (yang tidak tampak = .pergi)' % (jalur, N), all(h[2] == N for h in hitung), hitung)
+            ok('tumpukan %s: lapis tampak sesuai tabel (rak 40: 40→6 · 14→4 · 3→2 · 1→1 · 0→0; rak 4: 4→4 · 3→3 · 2→2 · 1→1 · 0→0)' % jalur,
+               all(h[3] == TUMPUK_TABEL[h[0]][h[1]] for h in hitung), hitung)
+            ok('tumpukan %s: lapis tampak tidak pernah melebihi sisa; sisa 1 → satu lapis' % jalur, all(h[3] <= h[1] for h in hitung) and all(h[3] == 1 for h in hitung if h[1] == 1), hitung)
+            ok('tumpukan %s: habis → nol lapis + kelas tumpuk-habis; masih ada → tanpa tumpuk-habis' % jalur, all((h[3] == 0 and h[4]) if h[1] == 0 else (h[3] > 0 and not h[4]) for h in hitung), hitung)
+            urut = re.findall(r'style="--i: (\d+); --j: (\d+);"', G[jalur][0]['svg'])
+            ok('tumpukan %s: tiap lapis membawa --i naik & --j = TUMPUK_N − 1 − i' % jalur, len(urut) == N and all(int(a) == i and int(b) == N - 1 - i for i, (a, b) in enumerate(urut)), urut)
+        ok('tumpukan papan: huruf tiga tingkat ("5" biasa, "2,5" tiga-huruf, "0,25" empat-huruf)', 'class="ukuran">5<' in G['papan']['5'] and 'class="ukuran tiga-huruf">2,5<' in G['papan']['2.5'] and 'class="ukuran empat-huruf">0,25<' in G['papan']['0.25'],
+           [re.search(r'<text[^>]*>[^<]*<', G['papan'][u]).group(0) for u in ('5', '2.5', '0.25')])
+    ok('tumpukan css: yang pergi berurutan dari --j kiriman JS (bukan salinan angka TUMPUK_N − 1 di CSS)', '.gb.tumpuk .lapis.pergi { opacity: 0; transform: translateY(-9px); transition-delay: calc(var(--j, 0) * 45ms); }' in jcss and not re.search(r'calc\(\(\d+ - var\(--i', jcss))
     # --- sambungan ke layar
     for n in LAYAR:
         s = t['baru/js/layar/%s.js' % n]
@@ -169,6 +215,10 @@ KONTROL = [
     ('harga digambar ulang tiap dibuka', {'baru/js/layar/harga.js': [('if (tampil && (_kotor || !akar.firstElementChild)) segera(gambar); } }', 'if (tampil) segera(gambar); } }')]}),
     ('39b-19: tanpa adegan merayakan Σ hargaTotal (tukar dirayakan penuh)', {'baru/js/layar/jual.js': [('setTimeout(() => rayakanOmzet(L.hariIni(S()).omzet - hariTadi.omzet), 80);', 'setTimeout(() => rayakanOmzet(tambahOmzet), 80);')]}),
     ('gambar ganda status', {'baru/js/app.js': [('const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar,', 'const GAMBAR_STATUS = [() => layar.gambar(), ringkasan.gambar,')]}),
+    ('tumpukan: sisa terakhir tak tergambar (lantai, bukan paling sedikit satu lapis)', {'baru/js/layar/gambar.js': [('const k = Math.max(1, Math.round(Math.sqrt(bulat2(isi)) * TUMPUK_N));', 'const k = Math.max(0, Math.floor(Math.sqrt(bulat2(isi)) * TUMPUK_N));')]}),
+    ('tumpukan: lapis tidak dijepit ke sisa', {'baru/js/layar/gambar.js': [('return Math.min(TUMPUK_N, adaJumlah ? Math.min(k, Math.ceil(j - 1e-9)) : k);', 'return Math.min(TUMPUK_N, k);')]}),
+    ('tumpukan: kemasan hanya menggambar lapis yang tampak (rangka berubah, transisi mati)', {'baru/js/layar/gambar.js': [('for (let i = 0; i < TUMPUK_N; i++) semua.push(lapis(i, k, x0 + GESER_KANTONG[i]', 'for (let i = 0; i < k; i++) semua.push(lapis(i, k, x0 + GESER_KANTONG[i]')]}),
+    ('tumpukan: CSS menyalin angka 5 lagi', {'baru/css/jual.css': [('transition-delay: calc(var(--j, 0) * 45ms);', 'transition-delay: calc((5 - var(--i, 0)) * 45ms);')]}),
 ]
 
 
