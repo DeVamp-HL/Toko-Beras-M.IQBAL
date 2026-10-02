@@ -504,12 +504,20 @@ export function pasangLayarJual(akar, opsi) {
   const sebingkai = () => new Promise((r) => { if (document.hidden || typeof requestAnimationFrame !== 'function') { setTimeout(r, 0); return; } requestAnimationFrame(() => setTimeout(r, 0)); });
   const tahanRak = (ms) => { if (_rak) _rakTahanSampai = Date.now() + ms; };
   const lepasRak = (ms) => { clearTimeout(_jamRak); _jamRak = setTimeout(() => { _rakTahanSampai = 0; nanti(gambarGulir); }, Math.max(0, ms)); };
-  function rakKini() {
+  let _rakSusulan = false, _rakPaksa = false;
+  function rakKini(bolehTunda) {
     const s = S(); L.sinkronKeranjang(s);
     // rak bergantung pada ISI keranjang (jumlah + bonus), bukan cuma banyaknya baris — +1 unit atau bonus mengubah sisa chip
     const tanda = (s.tukar ? 'tk' : '') + (s.karcis ? 'kc' + s.karcis.id : '') + s.pelanggan + '|' + s.keranjang.map((b) => b.trx.jenis + ':' + b.trx.jumlah + ':' + (b.trx.bonusUnit || 0) + ':' + (b.trx.kemasanRepack || '') + (b.trx.jumlahKemasanRepackDipakai || '')).join(',') + '|' + s.antrean.length + '|' + opsi.versiData();
     if (_rak && Date.now() < _rakTahanSampai) return _rak;
+    // owner 3 Okt (patah-patah tiap tambah barang): yang berubah CUMA isi keranjang → layar digambar dulu dengan rak lama (keranjang & lembar langsung
+    // bereaksi), rak disusun ulang di bingkai berikutnya. Aksi (ketuk chip, Sering, ulangi) memanggil rakKini() tanpa tunda → selalu rak segar.
+    if (bolehTunda && !_rakPaksa && _rak && !_rakBasi && _rakUntuk !== tanda && typeof requestAnimationFrame === 'function' && !document.hidden) {   // ada bingkai yang bisa digambar dulu
+      if (!_rakSusulan) { _rakSusulan = true; sebingkai().then(() => { _rakSusulan = false; _rakPaksa = true; nanti(gambarGulir); }); }
+      return _rak;
+    }
     if (!_rak || _rakBasi || _rakUntuk !== tanda) { _rak = L.susunRak(s); _rakUntuk = tanda; _ingatRak = {}; _rakBasi = false; }
+    _rakPaksa = false;
     return _rak;
   }
   // audit 39b no. 29: komposisi turunan, selisih & cek wadah di rak Literan dihitung SEKALI per susunan rak (data & isi keranjang sama → hasilnya sama),
@@ -524,7 +532,7 @@ export function pasangLayarJual(akar, opsi) {
     if (terkunci()) return;   // putaran 23c: belum masuk / belum disetujui → tidak ada yang digambar
     if (!_tampil) { _kotor = true; return; }
     const s = S();
-    const rak = rakKini();
+    const rak = rakKini(true);
     const t = L.hitungTagihan(s);
     const hari = _tahanHari && Date.now() < _tahanHari.sampai ? _tahanHari.hari : L.hariIni(s);   // penutup omzet: angka lama sampai koin mendarat
     const sumber = sumberData();
