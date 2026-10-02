@@ -203,7 +203,10 @@ export function pasangDasbor(akar, opsi) {
   /** Gambar seluruh dasbor dari hasil susunDasbor. masuk = animasi masuk ringan (buka dasbor / ganti rentang), bukan tiap data berubah. */
   function gambar(hasil, masuk) {
     D = hasil; const tadi = pilih; reg = {};
-    akar.innerHTML = kartuHari(D.hari) + kartuTren(D.tren) + kartuBulan(D.bulan) + kartuPemicu(D.bulan) + kartuStok(D.stok) + kartuWadah(D.stok) + kartuTagihan(D.tagihan) + '<div class="db-tip kartu" hidden></div>';
+    // owner 3 Okt: dua lajur DISUSUN DI SINI, bukan CSS columns — Safari/WebKit tidak menggambar kartu beranimasi di dalam columns (kartu Bulan ini kosong
+    // sampai ada yang diketuk, sisa kartu nyangkut di atas Hari ini). Lajur kiri Bulan ini · pemicu · stok, kanan wadah · piutang (= pembagian columns dulu).
+    akar.innerHTML = kartuHari(D.hari) + kartuTren(D.tren) + '<div class="db-lajur">' + kartuBulan(D.bulan) + kartuPemicu(D.bulan) + kartuStok(D.stok) + '</div>'
+      + '<div class="db-lajur">' + kartuWadah(D.stok) + kartuTagihan(D.tagihan) + '</div>' + '<div class="db-tip kartu" hidden></div>';
     pilih = null; if (tadi && reg[tadi]) { const el = akar.querySelector('[data-db="' + (window.CSS && CSS.escape ? CSS.escape(tadi) : tadi) + '"]'); if (el) tampilTip(tadi, el); }
     if (masuk) { akar.classList.remove('masuk'); void akar.offsetWidth; akar.classList.add('masuk'); setTimeout(() => akar.classList.remove('masuk'), 1400); }
   }
