@@ -132,6 +132,7 @@ def periksa_statis(t):
     ok('Jual: tab Riwayat sesudah Retur (JALUR), gambarRiwayat dari RW.rwSusun', "['retur', 'Retur'], ['riwayat', 'Riwayat']]" in lg and "if (s.jalur === 'riwayat') return gambarRiwayat(s);" in jl and 'const R = RW.rwSusun(s, s.sekarang || new Date());' in jl)
     ok('tindakan per nota lewat jalur yang ADA: Struk = bukaStruk (trx/grup/id), Retur = tunjukNota hanya untuk baris bisaRetur', 'data-aksi="bukaStruk" data-trx="${o.trxId || \'\'}" data-grup="${o.grupNota || \'\'}" data-id="${o.id}"' in jl and '${b.bisaRetur ? h`<span class="kaca-btn kecil" data-aksi="tunjukNota" data-id="${b.id}">retur</span>` : \'\'}' in jl)
     ok('riwayat-logika baca saja: tanpa DOM, tanpa penulis (tulisDokumen/dokumen:)', 'document.' not in rw and 'tulisDokumen' not in rw and 'koleksi:' not in rw and 'localStorage' not in rw)
+    ok('Retur: nota yang tidak bisa dihitung ditunjukkan ke Retur ketik tangan di /baru/, BUKAN ke sistem lama (sudah hanya-baca)', 'Retur sistem lama' not in jl and 'Yang seperti ini dicatat lewat “Tidak ada notanya? Retur ketik tangan” di atas' in jl and 'data-aksi="rtTanpaBuka"' in jl)
     ok('keadaan awal Jual memuat saringan riwayat (bawaan: semua periode, tanpa batal)', "rwCari: '', rwPeriode: 'semua', rwJenis: '', rwCara: '', rwBatal: false, rwN: 50, rwBuka: null," in lg)
     return out
 
@@ -166,6 +167,7 @@ KONTROL = [
     ('39b-37: riwayat kembali memakai rtDasarNota (nota BON tidak bisa diretur)', {RW_: [("const d = p.jenis === 'karung' || p.jenis === 'kemasan' ? rtDasarRetur(p) : { ok: false };", "const d = p.jenis === 'karung' || p.jenis === 'kemasan' ? rtDasarNota(p) : { ok: false };")]}, ('jsc',)),
     ('alasan retur tidak disebut', {RW_: [("sebabRetur: hidupBaris && (p.jenis === 'karung' || p.jenis === 'kemasan') && d && !d.ok ? String(d.sebab || '') : '',", "sebabRetur: '',")]}, ('jsc',)),
     ('periode 7 hari jadi 8 hari', {RW_: [("if (periode === '7') return { dari: rwGeser(hari, -6), sampai: hari };", "if (periode === '7') return { dari: rwGeser(hari, -7), sampai: hari };")]}, ('jsc',)),
+    ('Jual: nota tak terhitung kembali disuruh ke layar Retur sistem lama (hanya-baca)', {JU_: [("' Yang seperti ini dicatat lewat “Tidak ada notanya? Retur ketik tangan” di atas — nominalnya diketik sendiri.'", "' Yang seperti ini masih lewat layar Retur sistem lama (nominalnya diketik tangan).'")]}, ('statis',)),
     ('Jual: struk tanpa kunci grupNota', {JU_: [("data-grup=\"${o.grupNota || ''}\" ", "")]}, ('statis',)),
     ('Jual: retur ditawarkan untuk semua baris', {JU_: [("${b.bisaRetur ? h`<span class=\"kaca-btn kecil\" data-aksi=\"tunjukNota\" data-id=\"${b.id}\">retur</span>` : ''}", "${h`<span class=\"kaca-btn kecil\" data-aksi=\"tunjukNota\" data-id=\"${b.id}\">retur</span>`}")]}, ('statis',)),
 ]
