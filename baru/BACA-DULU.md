@@ -1521,3 +1521,7 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
   nominal − `diretur`, sisa retur ikut yang tertua — Σ rincian = sisa mesin = rincian /baru/), riwayat lembar piutang (retur bertanda kurang, bukan +),
   kolam bulan ini (retur di keran keluar "barang kembali (retur nota bon)", bukan utang baru), panel "Belum tertagih" (rumus "− retur" menutup ke sisa).
   Bukan mesin beku. Uji `uji_laporan_baru.py` +1 (rincianBelumLunas index.html disalin apa adanya oleh uji) + pemeriksa kata tiga pembaca, kontrol +5.
+- MM2 (sisa pembaca sistem lama di luar U37-U6, semuanya teks tampilan `index.html`): kepala lembar piutang menyebut "barang kembali (retur)" supaya
+  utang − dibayar − dihapus − retur menutup ke sisa; daftar retur memajang retur nota bon sebagai "Bon dipotong Rp… (retur nota bon, tanpa uang)" (dulu
+  "Tukar (selisih Rp0)"); linimasa menulis nilai potong bonnya (dulu "−0"); kartu laba menyebut "retur (uang kembali & bon dipotong)" (dulu "refund retur").
+  Retur lama tanpa `potongBon` tergambar persis seperti dulu. Uji `uji_laporan_baru.py` pemeriksa kata +4, kontrol +4.

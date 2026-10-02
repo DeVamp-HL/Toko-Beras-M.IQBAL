@@ -16164,7 +16164,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         : (koreksiHilang ? 'KOREKSI LAYAK JUAL HILANG (tertimpa perangkat lain) — tekan lagi' : 'Rusak/diragukan → Karantina');
       const bisaLayak = r.kondisi !== 'utuh' && !(kR && kR.statusTindakan && kR.statusTindakan !== 'belum_diputuskan' && !koreksiHilang);
       const hT = r.hitunganTukarSistem || {};
-      const labelNominal = r.penyelesaian === 'refund'
+      const labelNominal = r.penyelesaian === 'potongBon'
+        ? `Bon dipotong ${formatRupiah(r.potongBon || 0)} (retur nota bon, tanpa uang)`
+        : r.penyelesaian === 'refund'
         ? `Refund ${formatRupiah(r.nominalRefund || 0)}`
         : ((r.tukarModel === 'kreditBarang' || r.tukarModel === 'kreditBarangGabung')
             ? `Tukar · retur senilai ${formatRupiah(r.nominalRefund || 0)} · pengganti ${formatRupiah(hT.pengganti || 0)}`
@@ -29132,7 +29134,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // besar yang dibaca pemilik di desktop — keputusan pemilik, gelombang sendiri. Yang
     // WAJIB sekarang: angkanya mengaku apa adanya, bukan mengaku sudah dipotong.
     const returSemua = ambilRetur().reduce((a, r) => a + uangKembaliRetur(r), 0);
-    if (returSemua > 0) syarat.push('BELUM dikurangi refund retur ' + formatRupiah(returSemua)
+    if (returSemua > 0) syarat.push('BELUM dikurangi retur (uang kembali & bon dipotong) ' + formatRupiah(returSemua)
       + ' — angka di HP sudah dipotong itu, angka ini belum.');
     document.getElementById('labaSyarat').textContent = syarat.join(' ');
 
@@ -29691,7 +29693,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('lembarPiutangJudul').textContent = d.nama;
     document.getElementById('lembarPiutangSub').textContent =
       `Utang ${formatRupiah(d.total)} · sudah dibayar ${formatRupiah(d.bayar)}`
-      + (d.dihapus > 0 ? ` · dihapus buku ${formatRupiah(d.dihapus)}` : '');
+      + (d.dihapus > 0 ? ` · dihapus buku ${formatRupiah(d.dihapus)}` : '')
+      + (d.retur > 0 ? ` · barang kembali (retur) ${formatRupiah(d.retur)}` : '');
     const elSisa = document.getElementById('piutangSisaNilai');
     elSisa.textContent = d.sisa > 0 ? formatRupiah(d.sisa) : 'LUNAS';
     elSisa.classList.toggle('lunas', d.sisa <= 0);
@@ -31570,7 +31573,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         id: r.id, jenis: 'retur', tanggal: r.tanggal || '', jam: '',
         nama: r.namaProduk || r.merkSumber || 'Retur',
         ket: 'Retur · ' + (r.kondisi === 'utuh' ? 'balik ke stok' : 'ke karantina'),
-        nom: '−' + formatRibuan(r.nominalRefund || r.selisihTukar || 0), nomMerah: true, masuk: 0,
+        nom: '−' + formatRibuan(r.nominalRefund || r.potongBon || r.selisihTukar || 0), nomMerah: true, masuk: 0,
         bisaDibuka: false, cari: [r.namaProduk, r.merkSumber, r.catatan].join(' ')
       });
     });

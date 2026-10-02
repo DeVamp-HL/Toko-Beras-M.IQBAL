@@ -573,6 +573,11 @@ def lama_layar(t):
         out.append('sistem lama: kolam bulan ini menghitung retur sebagai utang baru')
     if "sRetur = j('retur')" not in t or "(sRetur > 0 ? ' − retur ' + rp(sRetur) : '')" not in t:
         out.append('sistem lama: panel Belum tertagih tidak mengurangi retur (rumus tidak menutup ke sisa)')
+    # tinjauan MM2: pembaca lain di sistem lama — kepala lembar piutang, daftar retur, linimasa, kartu laba
+    if "+ (d.retur > 0 ? ` · barang kembali (retur) ${formatRupiah(d.retur)}` : '');" not in t: out.append('sistem lama: kepala lembar piutang (utang · dibayar · dihapus) diam soal retur, tidak menutup ke sisa')
+    if "const labelNominal = r.penyelesaian === 'potongBon'" not in t: out.append('sistem lama: daftar retur memajang retur nota bon sebagai "Tukar (selisih Rp0)"')
+    if "formatRibuan(r.nominalRefund || r.potongBon || r.selisihTukar || 0)" not in t: out.append('sistem lama: linimasa menulis retur nota bon "−0"')
+    if "'BELUM dikurangi retur (uang kembali & bon dipotong) '" not in t: out.append('sistem lama: kartu laba menyebut bon yang dipotong retur sebagai "refund retur"')
     return out
 
 
@@ -604,7 +609,11 @@ if __name__ == '__main__':
         # 39b no. 37 tinjauan U37-U6: pembaca piutang sistem lama (index.html) — teksnya dirusak, pemeriksa kata wajib berbunyi
         for nama, isi in [('U37-U6 index.html: riwayat piutang kembali menggambar retur sebagai tambah', idx.replace("const kurang = m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur';", "const kurang = m.jenis === 'bayar' || m.jenis === 'hapusBuku';", 1)),
                           ('U37-U6 index.html: kolam bulan ini kembali menghitung retur sebagai utang baru', idx.replace("            else if (m.jenis === 'retur') diretur += m.nominal || 0;\n", "", 1)),
-                          ('U37-U6 index.html: panel Belum tertagih tanpa retur', idx.replace("(sRetur > 0 ? ' − retur ' + rp(sRetur) : '')", "''", 1))]:
+                          ('U37-U6 index.html: panel Belum tertagih tanpa retur', idx.replace("(sRetur > 0 ? ' − retur ' + rp(sRetur) : '')", "''", 1)),
+                          ('MM2 index.html: kepala lembar piutang tanpa retur', idx.replace("\n      + (d.retur > 0 ? ` · barang kembali (retur) ${formatRupiah(d.retur)}` : '');", ";", 1)),
+                          ('MM2 index.html: daftar retur tanpa cabang potong bon', idx.replace("const labelNominal = r.penyelesaian === 'potongBon'\n        ? `Bon dipotong ${formatRupiah(r.potongBon || 0)} (retur nota bon, tanpa uang)`\n        : r.penyelesaian === 'refund'", "const labelNominal = r.penyelesaian === 'refund'", 1)),
+                          ('MM2 index.html: linimasa retur nota bon −0', idx.replace("formatRibuan(r.nominalRefund || r.potongBon || r.selisihTukar || 0)", "formatRibuan(r.nominalRefund || r.selisihTukar || 0)", 1)),
+                          ('MM2 index.html: kartu laba menyebut potong bon sebagai refund retur', idx.replace("'BELUM dikurangi retur (uang kembali & bon dipotong) '", "'BELUM dikurangi refund retur '", 1))]:
             g = lama_layar(isi) if isi != idx else []
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
