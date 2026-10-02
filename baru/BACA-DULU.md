@@ -1495,3 +1495,8 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
 - MM4: sisa bon lebih kecil dari satu satuan nota (1 unit kemasan / 0,01 kg) — kalimat tolak menyebut "sisa bon itu lebih kecil dari harga 1 unit nota ini
   (Rp…), jadi retur nota ini tidak bisa memotong bon" alih-alih "paling banyak 0 unit" (mengetik 0 ditolak). Cadangan 1 Okt: satu nota kemasan seperti ini,
   kini tanpa saran mustahil. Uji `uji_laporan_baru.py` +2, kontrol +1.
+- MM3: nota bon milik pembeli yang bonnya sudah tertutup (lunas / dihapus buku) DITANDAI tak-bisa di daftar Retur dan lembarnya tidak menggambar "sisa bon
+  Rp0, sesudah retur −Rp…" (`bonMasihAda` di `daftarNotaRetur` — satu `hitungPiutang` per daftar — dan `notaDitunjuk`), dengan kalimat yang sama dengan
+  penolakan kiriman (`kalimatBonHabis`). Dulu baru ditolak sesudah kg, alasan, kondisi diisi. Riwayat penjualan tetap menawarkan "retur nota ini" (tanpa
+  hitungan bon per baris); lembarnya langsung menyebut sebabnya. Cadangan 1 Okt: 11 dari 42 nota bon 60 hari kini ditolak di depan, 31 tetap bisa.
+  Uji `uji_laporan_baru.py` +2, kontrol +1.

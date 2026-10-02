@@ -51,7 +51,7 @@ function nilaiRetur(t, d, jml) {
   return Math.round(jml * d.perSatuan) + (d.bon && Math.abs(jml - d.sisa) < 0.0005 ? Math.max(0, Math.round(Number(t.pembulatan) || 0)) : 0);
 }
 /** Sisa bon pembeli nota bon menurut mesin beku hitungPiutang (+ ejaan nama yang dipakai buku bon). */
-function bonPembeli(d) { const P = hitungPiutang().find((x) => x.kunci === kunciPelanggan(d.nama)); return { sisa: P ? P.sisa : 0, nama: P ? P.nama : d.nama, bayar: P ? P.bayar || 0 : 0, dihapus: P ? P.dihapus || 0 : 0 }; }
+function bonPembeli(d, piutang) { const P = (piutang || hitungPiutang()).find((x) => x.kunci === kunciPelanggan(d.nama)); return { sisa: P ? P.sisa : 0, nama: P ? P.nama : d.nama, bayar: P ? P.bayar || 0 : 0, dihapus: P ? P.dihapus || 0 : 0 }; }
 /** Audit 39b no. 37 tinjauan U37-U2: yang menutup bon pembeli — pembayaran (uang sungguhan) atau HAPUS BUKU (bukan uang). Bon yang ditutup hapus buku tidak
  *  boleh disebut "sudah dibayar", dan owner tidak boleh disuruh mengembalikan uang laci untuk barang yang tidak pernah dibayar. null = hanya pembayaran. */
 function tutupHapus(B, lunas) {
@@ -62,14 +62,20 @@ function tutupHapus(B, lunas) {
       : lunas ? 'barangnya tidak pernah dibayar, jadi tidak ada uang yang dikembalikan.' : 'bagian yang dihapus buku tidak pernah dibayar, jadi tidak ada uang yang dikembalikan untuknya.' };
 }
 
+/** Tinjauan MM3: nota BON milik pembeli yang bonnya sudah tertutup (lunas / dihapus buku) tidak sah ditunjuk — daftar menandainya tak-bisa dan lembar tidak dibuka
+ *  dengan janji "sisa bon Rp0, sesudah retur −Rp…" (dulu baru ditolak susunReturBon sesudah kg, alasan, kondisi diisi). piutang = hitungPiutang() sekali per daftar. */
+function bonMasihAda(d, piutang) {
+  if (!d.ok || !d.bon) return d;
+  const B = bonPembeli(d, piutang); return B.sisa > 0.5 ? d : { ok: false, sebab: kalimatBonHabis(B) };
+}
 /** Nota yang bisa ditunjuk: baris karung/kemasan yang masih berlaku, 60 hari terakhir, terbaru dulu. */
 export function daftarNotaRetur(s) {
-  const hari = hariIniIso(s.sekarang); const batas = geser(hari, -60);
+  const hari = hariIniIso(s.sekarang); const batas = geser(hari, -60); const piutang = hitungPiutang();
   const c = String(s.rtCari || '').trim().toLowerCase();
   return ambilPenjualan().filter((t) => (t.jenis === 'karung' || t.jenis === 'kemasan') && (t.tanggal || '') >= batas && !t.penggantiRetur)
     .filter((t) => !c || (String(t.namaPelanggan || '') + ' ' + teksBarang(t)).toLowerCase().indexOf(c) >= 0)
     .sort((a, b) => ((b.tanggal || '') + (b.jam || '')).localeCompare((a.tanggal || '') + (a.jam || ''))).slice(0, 40)
-    .map((t) => { const d = rtDasarRetur(t); return { id: String(t.id), tanggal: t.tanggal || '', jam: t.jam || '', nama: t.namaPelanggan || '', teks: teksBarang(t),
+    .map((t) => { const d = bonMasihAda(rtDasarRetur(t), piutang); return { id: String(t.id), tanggal: t.tanggal || '', jam: t.jam || '', nama: t.namaPelanggan || '', teks: teksBarang(t),
       hargaTotal: t.hargaTotal || 0, cara: bakuCaraBayar(t.caraBayar), bisa: !!d.ok, sebab: d.ok ? '' : d.sebab, cadangan: !d.ok && !!d.cadangan, sisa: d.ok ? d.sisa : 0, satuan: d.ok ? d.satuan : '', bon: !!(d.ok && d.bon) }; });
 }
 
@@ -78,7 +84,7 @@ export function notaDitunjuk(s) {
   if (!s.rtNotaId) return null;
   const t = ambilPenjualan().find((x) => String(x.id) === String(s.rtNotaId));
   if (!t) return { hilang: true };
-  const d = rtDasarRetur(t);
+  const d = bonMasihAda(rtDasarRetur(t));
   const jml = angka(s.ketik);
   const bon = d.ok && d.bon ? bonPembeli(d) : null;
   const nilai = d.ok && jml > 0 ? (bon ? potongBulat(t, d, jml, nilaiRetur(t, d, jml), bon.sisa) : nilaiRetur(t, d, jml)) : 0;
@@ -143,6 +149,12 @@ function uangKembaliKetik(t, d, x) {
   if (Math.abs(x / setengah - Math.round(x / setengah)) < 0.001) return 'bagian yang sudah dibayar (' + DESIMAL(x) + ' kg = ' + DESIMAL(x / berat) + ' karung) dikembalikan sebagai uang lewat "Tidak ada notanya? Retur ketik tangan"' + awas;
   return 'bagian yang sudah dibayar (' + DESIMAL(x) + ' kg) tidak bisa dicatat sebagai uang kembali di layar ini: retur ketik tangan hanya menerima karung utuh atau setengah (' + DESIMAL(setengah) + ' kg).';
 }
+/** Bon pembeli sudah tertutup (sisa ≤ Rp0,5): retur nota bon tidak bisa memotong apa pun. Satu kalimat untuk daftar, lembar & kiriman (tinjauan MM3);
+ *  nilai boleh kosong (daftar & lembar belum tahu berapa yang kembali). */
+function kalimatBonHabis(B, nilai) {
+  const H = tutupHapus(B, true);
+  return 'Bon ' + B.nama + ' ' + (H ? H.kata : 'sudah lunas') + (B.sisa < LEBIH_AMBANG ? ' (malah ada kelebihan bayar ' + RP(-B.sisa) + ')' : '') + ' — tidak ada bon yang bisa dipotong retur ' + (nilai ? RP(nilai) + ' ini' : 'nota ini') + '. ' + (H ? H.uang.charAt(0).toUpperCase() + H.uang.slice(1) : 'Barangnya sudah dibayar: kalau uangnya dikembalikan dari laci, catat lewat "Tidak ada notanya? Retur ketik tangan" (uang kembali).') + ' Retur tidak disimpan.';
+}
 function susunReturBon(s, w, r) {
   const { draf, d, t } = r; let nilai = r.nilai;
   if (s.rtPenyelesaian === 'tukar') return { tolak: 'Nota BON tidak bisa ditukar langsung: catat retur ini dulu (memotong bon ' + d.nama + '), lalu jual penggantinya seperti biasa (boleh bon).' };
@@ -150,7 +162,7 @@ function susunReturBon(s, w, r) {
   nilai = potongBulat(t, d, draf.jumlahDikembalikan, nilai, B.sisa);
   if (nilai - B.sisa > 0.5) {
     const H = tutupHapus(B, !(B.sisa > 0.5));
-    if (!(B.sisa > 0.5)) return { tolak: 'Bon ' + B.nama + ' ' + (H ? H.kata : 'sudah lunas') + (B.sisa < LEBIH_AMBANG ? ' (malah ada kelebihan bayar ' + RP(-B.sisa) + ')' : '') + ' — tidak ada bon yang bisa dipotong retur ' + RP(nilai) + ' ini. ' + (H ? H.uang.charAt(0).toUpperCase() + H.uang.slice(1) : 'Barangnya sudah dibayar: kalau uangnya dikembalikan dari laci, catat lewat "Tidak ada notanya? Retur ketik tangan" (uang kembali).') + ' Retur tidak disimpan.' };
+    if (!(B.sisa > 0.5)) return { tolak: kalimatBonHabis(B, nilai) };
     // batas yang disebut dibulatkan ke BAWAH dua desimal (= yang tergambar), supaya angka yang disarankan tidak melewati sisa bon
     const maks = d.satuan === 'unit' ? Math.floor(B.sisa / d.perSatuan) : Math.floor(B.sisa / d.perSatuan * 100) / 100;
     // tinjauan MM4: sisa bon lebih kecil dari satu satuan nota (1 unit / 0,01 kg) — jangan sarankan "paling banyak 0" (mengetik 0 ditolak), sebut apa adanya

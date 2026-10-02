@@ -234,6 +234,15 @@ ok('39b-37 MM4: sisa bon Rp3.800 < harga 1 unit — kalimat menyebut retur nota 
 ok('39b-37 MM4: sisa bon Rp100 < harga 0,01 kg — sama untuk karung: tidak ada "paling banyak 0 kg"',
   !MM4.kg.dokumen && /lebih kecil dari harga 0,01 kg nota ini \(Rp140\)/.test(MM4.kg.tolak || '') && !/paling banyak 0 kg/.test(MM4.kg.tolak || ''), MM4.kg.tolak);
 
+// ---- 39b no. 37 tinjauan MM3: nota bon milik pembeli yang bonnya sudah LUNAS — daftar Retur menandainya tak-bisa (dengan kalimat penolakannya) dan lembar tidak
+// dibuka dengan janji "sisa bon Rp0, sesudah retur −Rp…"; dulu baru ditolak sesudah kg, alasan, kondisi diisi. Pembanding: nota bon yang bonnya masih ada tetap bisa.
+var MM3 = denganCacheSementara(BASE37, function () { var dl = daftarNotaRetur({ sekarang: KINI, rtCari: 'uji' }); var cari = function (id) { return dl.find(function (x) { return x.id === id; }) || {}; };
+  return { lunas: cari('k37c'), masih: cari('k37b'), lembar: notaDitunjuk(RS37({ rtNotaId: 'k37c', ketik: '10' })), kirim: susunRetur(RS37({ rtNotaId: 'k37c', ketik: '10' }), W37) }; });
+ok('39b-37 MM3: daftar Retur — nota bon Uji Lunas (bon sudah lunas) tak-bisa dengan kalimat "sudah lunas … Retur ketik tangan"; nota bon Uji Retur (bon masih ada) tetap bisa, bertanda memotong bon',
+  MM3.lunas.bisa === false && /Bon Uji Lunas sudah lunas — tidak ada bon yang bisa dipotong retur nota ini/.test(MM3.lunas.sebab || '') && /Retur ketik tangan/.test(MM3.lunas.sebab || '') && MM3.masih.bisa === true && MM3.masih.bon === true, J([MM3.lunas, MM3.masih]));
+ok('39b-37 MM3: lembar Retur untuk nota itu tidak menggambar bon minus — notaDitunjuk tidak sah (kalimat yang sama), kiriman tetap ditolak tanpa dokumen',
+  !!MM3.lembar && MM3.lembar.d.ok === false && /sudah lunas/.test(MM3.lembar.d.sebab || '') && !MM3.lembar.bon && !MM3.kirim.dokumen && /sudah lunas/.test(MM3.kirim.tolak || ''), J([MM3.lembar && MM3.lembar.d, MM3.kirim.tolak]));
+
 // ==================== HARIAN ====================
 var RH = rekapHari('2026-09-19');
 var rekapHari0918 = rekapHari('2026-09-18');
@@ -624,6 +633,7 @@ if __name__ == '__main__':
             '39b-37 U37-U3: retur ketik tangan dijanjikan untuk kg yang bukan kelipatan setengah karung': js.replace("if (Math.abs(x / setengah - Math.round(x / setengah)) < 0.001) return", "if (true) return"),
             '39b-37 U37-U3: jalan ketik tangan tanpa peringatan retur dua kali': js.replace("const awas = ' — catatan itu TIDAK mengurangi nota ini, jadi sesudahnya jangan retur nota ini lagi untuk barang yang sama.';", "const awas = '.';"),
             '39b-37 MM4: sisa bon di bawah satu satuan kembali menyarankan "paling banyak 0"': js.replace("    if (maks < satu) return { tolak:", "    if (false) return { tolak:"),
+            '39b-37 MM3: daftar & lembar menawarkan nota bon yang bonnya sudah lunas': js.replace("const B = bonPembeli(d, piutang); return B.sisa > 0.5 ? d : { ok: false, sebab: kalimatBonHabis(B) };", "return d;"),
             '39b-37: barang rusak dari nota bon tanpa karantina': js.replace("  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));\n  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON", "  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON"),
             '39b-38: batas aman ambil pribadi dari laba mesin': js.replace("const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;", "const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaMesin : 0;"),
         }
