@@ -153,6 +153,9 @@ function susunReturBon(s, w, r) {
     if (!(B.sisa > 0.5)) return { tolak: 'Bon ' + B.nama + ' ' + (H ? H.kata : 'sudah lunas') + (B.sisa < LEBIH_AMBANG ? ' (malah ada kelebihan bayar ' + RP(-B.sisa) + ')' : '') + ' — tidak ada bon yang bisa dipotong retur ' + RP(nilai) + ' ini. ' + (H ? H.uang.charAt(0).toUpperCase() + H.uang.slice(1) : 'Barangnya sudah dibayar: kalau uangnya dikembalikan dari laci, catat lewat "Tidak ada notanya? Retur ketik tangan" (uang kembali).') + ' Retur tidak disimpan.' };
     // batas yang disebut dibulatkan ke BAWAH dua desimal (= yang tergambar), supaya angka yang disarankan tidak melewati sisa bon
     const maks = d.satuan === 'unit' ? Math.floor(B.sisa / d.perSatuan) : Math.floor(B.sisa / d.perSatuan * 100) / 100;
+    // tinjauan MM4: sisa bon lebih kecil dari satu satuan nota (1 unit / 0,01 kg) — jangan sarankan "paling banyak 0" (mengetik 0 ditolak), sebut apa adanya
+    const satu = d.satuan === 'unit' ? 1 : 0.01;
+    if (maks < satu) return { tolak: 'Retur ' + RP(nilai) + ' melebihi sisa bon ' + B.nama + ' (' + RP(B.sisa) + ') — sebagian bonnya ' + (H ? H.kata : 'sudah dibayar') + '. Sisa bon itu lebih kecil dari harga ' + DESIMAL(satu) + ' ' + d.satuan + ' nota ini (' + RP(Math.round(satu * d.perSatuan)) + '), jadi retur nota ini tidak bisa memotong bon; ' + (H ? H.uang : uangKembaliKetik(t, d, draf.jumlahDikembalikan)) + ' Retur tidak disimpan.' };
     return { tolak: 'Retur ' + RP(nilai) + ' melebihi sisa bon ' + B.nama + ' (' + RP(B.sisa) + ') — sebagian bonnya ' + (H ? H.kata : 'sudah dibayar') + '. Potong bon paling banyak sebesar sisanya: kurangi yang dikembalikan (paling banyak ' + DESIMAL(maks) + ' ' + d.satuan + '); ' + (H ? H.uang : uangKembaliKetik(t, d, draf.jumlahDikembalikan - maks)) + ' Retur tidak disimpan.' };
   }
   const idMutasi = w.idUnik();

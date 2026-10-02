@@ -224,6 +224,16 @@ ok('39b-37 U37-U3: nota bon 50 kg ber-pembulatan 500 yang baru dibayar Rp200 —
 ok('39b-37 U37-U3: sesudah 49,99 kg, sisa 0,01 kg (nilai 140 + pembulatan 500) atas bon Rp440 — DITERIMA, bon dipotong Rp440 dan jadi nol (dulu Rp440 tertinggal)',
   U3.ekor.sisa0 === 440 && !!U3.ekor.e.dokumen && U3.ekor.e.dokumen[0].data.potongBon === 440 && U3.ekor.sisa1 === 0, J([U3.ekor.sisa0, U3.ekor.e.tolak, U3.ekor.sisa1]));
 
+// ---- 39b no. 37 tinjauan MM4: sisa bon lebih kecil dari satu satuan nota (1 unit kemasan / 0,01 kg) — kalimat tolak tidak menyarankan "paling banyak 0 unit"
+// (mengetik 0 ditolak "Isi berapa unit"). ANGKA CONTOH: Uji Kecil kemasan Kembang 5 kg 1 unit 72.000 dibayar 68.200 (sisa 3.800); Uji Kecil Kg bon 700.000 dibayar 699.900.
+var MM4 = denganCacheSementara([{ koleksi: 'penjualan', data: { id: 'm37a', trxId: 'Tm37a', tanggal: '2026-09-18', jam: '09:00', caraBayar: 'Kredit', namaPelanggan: 'Uji Kecil', jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 1, totalKg: 5, hargaTotal: 72000, hppTotalSaatJual: 66000 } },
+  BY37(3921, '2026-09-18', 'Uji Kecil', 68200), KR37('m37b', '2026-09-18', 'Uji Kecil Kg', 50, 700000, 650000), BY37(3922, '2026-09-18', 'Uji Kecil Kg', 699900)], function () {
+  return { unit: susunRetur(RS37({ rtNotaId: 'm37a', ketik: '1' }), W37), kg: susunRetur(RS37({ rtNotaId: 'm37b', ketik: '1' }), W37) }; });
+ok('39b-37 MM4: sisa bon Rp3.800 < harga 1 unit — kalimat menyebut retur nota ini tidak bisa memotong bon (bukan "paling banyak 0 unit"); bagian yang dibayar lewat retur ketik tangan per unit',
+  !MM4.unit.dokumen && /Sisa bon itu lebih kecil dari harga 1 unit nota ini \(Rp72\.000\), jadi retur nota ini tidak bisa memotong bon/.test(MM4.unit.tolak || '') && !/paling banyak 0/.test(MM4.unit.tolak || '') && /\(1 unit\) dikembalikan sebagai uang lewat/.test(MM4.unit.tolak || ''), MM4.unit.tolak);
+ok('39b-37 MM4: sisa bon Rp100 < harga 0,01 kg — sama untuk karung: tidak ada "paling banyak 0 kg"',
+  !MM4.kg.dokumen && /lebih kecil dari harga 0,01 kg nota ini \(Rp140\)/.test(MM4.kg.tolak || '') && !/paling banyak 0 kg/.test(MM4.kg.tolak || ''), MM4.kg.tolak);
+
 // ==================== HARIAN ====================
 var RH = rekapHari('2026-09-19');
 var rekapHari0918 = rekapHari('2026-09-18');
@@ -613,6 +623,7 @@ if __name__ == '__main__':
             '39b-37 U37-U3: pembulatan bon yang tertutup bayar membuat retur nota penuh ditolak': js.replace("return nilai - sisaBon > 0.5 && sisaBon > 0.5 && nilai - sisaBon <= bulat ? sisaBon : nilai;", "return nilai;"),
             '39b-37 U37-U3: retur ketik tangan dijanjikan untuk kg yang bukan kelipatan setengah karung': js.replace("if (Math.abs(x / setengah - Math.round(x / setengah)) < 0.001) return", "if (true) return"),
             '39b-37 U37-U3: jalan ketik tangan tanpa peringatan retur dua kali': js.replace("const awas = ' — catatan itu TIDAK mengurangi nota ini, jadi sesudahnya jangan retur nota ini lagi untuk barang yang sama.';", "const awas = '.';"),
+            '39b-37 MM4: sisa bon di bawah satu satuan kembali menyarankan "paling banyak 0"': js.replace("    if (maks < satu) return { tolak:", "    if (false) return { tolak:"),
             '39b-37: barang rusak dari nota bon tanpa karantina': js.replace("  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));\n  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON", "  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON"),
             '39b-38: batas aman ambil pribadi dari laba mesin': js.replace("const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;", "const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaMesin : 0;"),
         }

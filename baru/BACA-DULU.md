@@ -1492,3 +1492,6 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
   sudah tertutup bayar: retur sisa baris nota memotong bon sebesar sisanya saja, bon jadi nol (`potongBulat`, lembar & kiriman satu aturan; dulu "paling banyak
   50,02 kg" untuk nota 50 kg, lalu Rp440 tertinggal). Batas yang disebut tidak bisa melebihi isi nota karena kasus itu kini diterima — tanpa penjepit. Tidak
   dibangun: mengikat retur ketik tangan ke nota (di luar paket). Uji `uji_laporan_baru.py` +4, kontrol +3.
+- MM4: sisa bon lebih kecil dari satu satuan nota (1 unit kemasan / 0,01 kg) — kalimat tolak menyebut "sisa bon itu lebih kecil dari harga 1 unit nota ini
+  (Rp…), jadi retur nota ini tidak bisa memotong bon" alih-alih "paling banyak 0 unit" (mengetik 0 ditolak). Cadangan 1 Okt: satu nota kemasan seperti ini,
+  kini tanpa saran mustahil. Uji `uji_laporan_baru.py` +2, kontrol +1.
