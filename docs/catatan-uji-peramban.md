@@ -1,7 +1,11 @@
 # Catatan uji peramban (Chrome headless)
 
-Temuan tentang alat uji yang menyalakan Chrome headless (`alat-uji/uji_antrean_kasir.py`, `uji_sistem_lama_bacasaja.py`,
-`uji_layar_kunci.py`). Angka rupiah di catatan ini (karcis 5.200) adalah **angka contoh skenario uji**, bukan data toko.
+Temuan tentang alat uji yang menyalakan Chrome headless (`alat-uji/uji_antrean_kasir.py`, `uji_katalog_kasir.py`, `uji_layar_kunci.py`;
+sampai 2 Okt 2026 juga `uji_sistem_lama_bacasaja.py`). Angka rupiah di catatan ini (karcis 5.200) adalah **angka contoh skenario uji**, bukan data toko.
+
+> **3 Okt 2026:** sistem lama (`index.html`) & `kasir.html` pensiun — keduanya kini halaman pengalih tanpa script. `uji_sistem_lama_bacasaja.py`
+> dihapus, dan `uji_antrean_kasir.py` tinggal menjalankan kasir darurat. Catatan di bawah yang menyebut `kasir.html` / sistem lama = keadaan saat
+> itu (sejarah), bukan uji yang masih hidup.
 
 ## Ringkas
 
@@ -93,7 +97,7 @@ aturan di `CLAUDE.md`.
 
 ## Keputusan: hasil lewat server, bukan lewat DOM (27 Sep 2026)
 
-- Skenario di `uji_antrean_kasir.py` dan `uji_sistem_lama_bacasaja.py` mengirim hasilnya ke `POST /_hasil` **sebelum** `/_siap`, jadi
+- Skenario di `uji_antrean_kasir.py` dan `uji_katalog_kasir.py` (dulu juga `uji_sistem_lama_bacasaja.py`, dihapus 3 Okt) mengirim hasilnya ke `POST /_hasil` **sebelum** `/_siap`, jadi
   sebelum halaman selesai dimuat. `buka()` berhasil begitu hasil masuk; DOM dibuang.
 - **Muat ulang di Chrome yang sama.** Sesudah mengirim hasil skenario utama, halaman memuat ulang dirinya ke skenario muat ulang
   (`?lanjut=` → `location.replace`), seperti HP penjaga memuat ulang halaman. Penyimpanan halaman tidak perlu ditulis ke disk lalu dibaca
