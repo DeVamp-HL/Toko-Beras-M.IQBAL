@@ -167,7 +167,7 @@ def jalan(ganti=None, cadangan=None):
 
 
 RUSAK = [
-    ('Jual: ingatan tidak dikosongkan saat rak disusun ulang (data baru → teks basi)', [("_rak = L.susunRak(s); _rakUntuk = tanda; _ingatRak = {}; }", "_rak = L.susunRak(s); _rakUntuk = tanda; }")]),
+    ('Jual: ingatan tidak dikosongkan saat rak disusun ulang (data baru → teks basi)', [("_rak = L.susunRak(s); _rakUntuk = tanda; _ingatRak = {}; _rakBasi = false; }", "_rak = L.susunRak(s); _rakUntuk = tanda; _rakBasi = false; }")]),
     ('Jual: chip wadah kembali menghitung tiap ketukan', [("const { KT, SL } = ingatRak('w|' + c.kunci + '|' + c.sisa, () => ({ KT: WB.wbKomposisiTurunan(c.kunci, s), SL: WB.wbSelisihWadah(c.kunci, s, c.sisa) }));",
                                                           "const KT = WB.wbKomposisiTurunan(c.kunci, s); const SL = WB.wbSelisihWadah(c.kunci, s, c.sisa);")]),
     ('Jual: tombol Cek wadah kembali menghitung tiap ketukan', [("const CW = cekWadahRak(s); const nA = CW.daftar.filter((x) => x.aktif && x.dicek).length;\n      return h`<div class=\"baris-cek-wadah\"",

@@ -100,8 +100,15 @@ export function pasangLayarJual(akar, opsi) {
     hapusUang: () => set({ uang: 0 }),
     simpan: async () => aksi.catatNota(false),
     simpanTembus: async () => aksi.catatNota(true),   // putaran 31b: ketukan kedua owner — jual dulu, tandai untuk dicocokkan
+    // owner 3 Okt (freeze saat catat nota): "Mencatat…" digambar DULU (satu bingkai), baru nota disusun (±0,2 detik di Mac); ketukan ganda selama
+    // nota masih dicatat (menunggu server ≤1,5 detik) diabaikan — dulu bisa mencatat nota yang sama dua kali
     catatNota: async (tembusYakin) => {
       if (S().karcis) return aksi.simpanRinci();
+      if (_mencatat) return;
+      _mencatat = true;
+      try { set({ kabar: 'Mencatat…', kabarAwas: false }); await sebingkai(); await aksi.catatNotaInti(tembusYakin); } finally { _mencatat = false; }
+    },
+    catatNotaInti: async (tembusYakin) => {
       const r = L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }));
       if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true, tembusTanya: r.perluTembus || null });
       const keranjangTadi = S().keranjang.slice(); const uangTadi = S().cara === 'Tunai' ? S().uang : 0;
@@ -111,11 +118,13 @@ export function pasangLayarJual(akar, opsi) {
       const hariTadi = _tahanHari && Date.now() < _tahanHari.sampai ? _tahanHari.hari : L.hariIni(S());
       const token = ++_tokenPenutup; _tahanHari = { hari: hariTadi, sampai: Date.now() + 5000, token };
       const lepasBila = () => { if (_tahanHari && _tahanHari.token === token) _tahanHari = null; };
+      tahanRak(2500);   // menunggu server ≤1,5 detik + mulai adegan: rak lama dipakai, dilepas di bawah
       set({ kabar: 'Mencatat…', kabarAwas: false });
       try {
         const h = await tulisDokumen(r.dokumen);
-        if (h && h.gagal) { lepasBila(); return set({ kabar: 'DITOLAK, nota tidak tersimpan: ' + h.pesan, kabarAwas: true }); }
-        const lamaAdegan = adeganNota(r.nota, keranjangTadi, uangTadi);   // hanya sesudah nota SUNGGUH tercatat — adegan tidak boleh merayakan nota yang ditolak
+        if (h && h.gagal) { lepasBila(); lepasRak(0); return set({ kabar: 'DITOLAK, nota tidak tersimpan: ' + h.pesan, kabarAwas: true }); }
+        const lamaAdegan = adeganNota(r.nota, keranjangTadi, uangTadi);
+        tahanRak(4500); lepasRak(lamaAdegan ? Math.min(4000, lamaAdegan + 120) : 0);   // rak disusun ulang sesudah adegan selesai, bukan saat adegan mulai   // hanya sesudah nota SUNGGUH tercatat — adegan tidak boleh merayakan nota yang ditolak
         const tambahOmzet = r.dokumen.filter((d) => d.koleksi === 'penjualan').reduce((a, d) => a + (Number(d.data.hargaTotal) || 0), 0);
         // PENUTUP (owner 29 Sep: "animasi setelah transaksi, omzet bertambah"): omzet TIDAK langsung naik — ditahan sampai barang selesai
         // diserahkan, lalu koin emas terbang dari panggung ke angka omzet dan angkanya bergulir naik. Tanpa adegan (kurangi gerakan) → seperti dulu.
@@ -123,7 +132,7 @@ export function pasangLayarJual(akar, opsi) {
         // tanpa adegan: rayakan KENAIKAN SUNGGUHAN angka Hari ini (39b no. 19: nota tukar membawa retur, omzet cuma naik sebesar selisihnya) — sesudah layar digambar ulang
         else { lepasBila(); setTimeout(() => rayakanOmzet(L.hariIni(S()).omzet - hariTadi.omzet), 80); }
         set(Object.assign({}, r.patch, { kabar: (h && h.simulasi ? 'SIMULASI (cadangan, tidak ke Firestore) — ' : h && h.antre ? 'Tersimpan di perangkat, menunggu server — ' : 'Tersimpan — ') + r.ringkas + (r.tembus && r.tembus.some((t) => t.selisihKg > 0.004) ? ' · TEMBUS STOK, tandai dicocokkan: ' + r.tembus.filter((t) => t.selisihKg > 0.004).map((t) => t.nama + ' ' + String(Math.round(t.selisihKg * 10) / 10).replace('.', ',') + ' kg').join(', ') : '') + strukOtomatis(r) }));   // 39b no. 14 tinjauan T5
-      } catch (e) { lepasBila(); set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
+      } catch (e) { lepasBila(); lepasRak(0); set({ kabar: 'GAGAL mencatat: ' + (e && e.message ? e.message : e), kabarAwas: true }); }
     },
     // 39b no. 9: hanya owner yang membuka KR1 (tanda kreditDibukaOwner); kiriman bukan-owner bertanda itu juga ditolak periksaKiriman
     bukaKredit: () => { const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ kreditDibuka: true, kabar: 'Kredit dibuka sekali untuk nota ini — keputusan owner, tercatat di nota', kabarAwas: false }); },
@@ -482,11 +491,25 @@ export function pasangLayarJual(akar, opsi) {
   delegasi(akar, aksi);
 
   let _rak = null, _rakUntuk = '', _lembarSebelum = null, _ingatRak = {};
+  // owner 3 Okt ("freeze sebentar ketika catat nota"): menyusun rak ±180 ms di Mac (±0,5 detik di iPad/HP) dan dulu diulang tiap koleksi berubah —
+  // sesudah catat nota itu terjadi beberapa kali (penjualan, jejak, denyut, …) tepat saat adegan mau mulai. Kini:
+  //  · koleksi yang tidak pernah mengubah rak (jejak, denyut, uang, upah, pajak, struk, dokumen …) tidak membuat rak basi — layar tetap digambar ulang;
+  //  · selama nota dicatat sampai adegannya selesai, rak terakhir dipakai (angkanya sama: barang yang keluar dari keranjang = barang yang terjual),
+  //    lalu disusun ulang sesudahnya. simpanNota tetap memeriksa stok dari mesin, jadi keamanannya tidak berkurang.
+  const BUKAN_RAK = new Set(['logAktivitas', 'perangkatStatus', 'strukKeluar', 'dokumenCetak', 'cadanganCatatan', 'pengingat', 'permintaanAkses', 'aksesAkun',
+    'slipUpah', 'absenKaryawan', 'pajakOmzetLuar', 'pajakSetoran', 'hargaPasar', 'pesananPemasok', 'setoranKas', 'amplopLaba', 'modalOwner', 'utangOwnerMutasi',
+    'utangPemasokMutasi', 'pindahUang', 'biayaBulanan', 'pengeluaranHarian', 'kasbonMutasi', 'tagihPelanggan']);
+  let _rakBasi = false, _rakTahanSampai = 0, _jamRak = null;
+  let _mencatat = false;
+  const sebingkai = () => new Promise((r) => { if (document.hidden || typeof requestAnimationFrame !== 'function') { setTimeout(r, 0); return; } requestAnimationFrame(() => setTimeout(r, 0)); });
+  const tahanRak = (ms) => { if (_rak) _rakTahanSampai = Date.now() + ms; };
+  const lepasRak = (ms) => { clearTimeout(_jamRak); _jamRak = setTimeout(() => { _rakTahanSampai = 0; nanti(gambarGulir); }, Math.max(0, ms)); };
   function rakKini() {
     const s = S(); L.sinkronKeranjang(s);
     // rak bergantung pada ISI keranjang (jumlah + bonus), bukan cuma banyaknya baris — +1 unit atau bonus mengubah sisa chip
     const tanda = (s.tukar ? 'tk' : '') + (s.karcis ? 'kc' + s.karcis.id : '') + s.pelanggan + '|' + s.keranjang.map((b) => b.trx.jenis + ':' + b.trx.jumlah + ':' + (b.trx.bonusUnit || 0) + ':' + (b.trx.kemasanRepack || '') + (b.trx.jumlahKemasanRepackDipakai || '')).join(',') + '|' + s.antrean.length + '|' + opsi.versiData();
-    if (!_rak || _rakUntuk !== tanda) { _rak = L.susunRak(s); _rakUntuk = tanda; _ingatRak = {}; }
+    if (_rak && Date.now() < _rakTahanSampai) return _rak;
+    if (!_rak || _rakBasi || _rakUntuk !== tanda) { _rak = L.susunRak(s); _rakUntuk = tanda; _ingatRak = {}; _rakBasi = false; }
     return _rak;
   }
   // audit 39b no. 29: komposisi turunan, selisih & cek wadah di rak Literan dihitung SEKALI per susunan rak (data & isi keranjang sama → hasilnya sama),
@@ -985,7 +1008,7 @@ export function pasangLayarJual(akar, opsi) {
   let _jamUrung = null;
   K.dengar((s) => { clearTimeout(_jamUrung); if (s.notaTerakhir) _jamUrung = setTimeout(gambar, Math.max(0, L.BATAS_URUNGKAN_DETIK * 1000 - (Date.now() - s.notaTerakhir.pada) + 50)); });
   const gambarGulir = () => { gambar(); gulirkan(akar, RP); };
-  dengarkan(() => { _rak = null; nanti(gambarGulir); });
+  dengarkan((nama) => { if (!BUKAN_RAK.has(nama)) _rakBasi = true; nanti(gambarGulir); });
   gambar(); gulirkan(akar, RP);
   // putaran 23c: keranjang tidak terbawa ke akun berikutnya — app.js menanyakannya saat Keluar lalu melupakannya
   const tampilkan = (ya) => { const tadi = _tampil; _tampil = !!ya; if (_tampil && !tadi && (_kotor || !akar.firstElementChild)) { _kotor = false; segera(gambarGulir); } };
