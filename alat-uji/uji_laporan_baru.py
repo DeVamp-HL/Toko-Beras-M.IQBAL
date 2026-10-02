@@ -257,6 +257,14 @@ var U4 = function (id) { return denganCacheSementara([], function () { var r = s
 var U4b = U4('j5'), U4t = U4('j4');
 ok('39b-37 U37-U4: retur 5 kg nota BON j5 — rekap menyebut "Retur nota bon (bon dipotong): Rp70.093" dan omzet = tunai + QRIS + bon − refund − retur nota bon (selisih 0); retur nota TUNAI j4 tanpa baris itu (refund-nya sudah menutup)',
   !U4b.tolak && U4b.rb === 70093 && U4b.R.refund === 0 && U4b.tutup === 0 && /Retur nota bon \(bon dipotong\): Rp70\.093/.test(U4b.wa) && !U4t.tolak && U4t.rb === 0 && U4t.tutup === 0 && !/Retur nota bon/.test(U4t.wa), J([U4b.rb, U4b.tutup, U4b.wa, U4t.rb, U4t.tutup]));
+// 39b no. 37 tinjauan MM5: arus kas "Refund retur (N retur)" hanya menghitung retur yang mengeluarkan uang — retur nota BON (potong bon, nominalRefund 0) di hari
+// yang sama dulu ikut terhitung (rupiahnya benar, jumlah kejadiannya salah). ANGKA CONTOH: retur 5 kg nota tunai j4 + retur 5 kg nota bon j5, 19 Sep.
+var MM5 = denganCacheSementara([], function () { var a = susunRetur(RS37({ rtNotaId: 'j4', ketik: '5' }), W37); var b = susunRetur(RS37({ rtNotaId: 'j5', ketik: '5' }), W37);
+  return denganCacheSementara((a.dokumen || []).concat(b.dokumen || []), function () { var K = hitungArusKasInti(function (t) { return t === '2026-09-19'; }, bayaranBiayaBulanan()); var R = rekapHari('2026-09-19');
+    var baris = function (xs) { return xs.find(function (x) { return x.label === 'Refund retur'; }) || {}; };
+    return { tolak: (a.tolak || '') + (b.tolak || ''), nRetur: ambilRetur().length, K: baris(K.keluar), R: baris(R.keluar) }; }); });
+ok('39b-37 MM5: hari dengan 1 retur uang kembali + 1 retur nota bon — baris arus kas "Refund retur" = Rp70.225 dari 1 retur (bukan 2); kartu arus kas Harian sama',
+  !MM5.tolak && MM5.nRetur === 2 && MM5.K.nominal === 70225 && MM5.K.n === 1 && MM5.R.n === 1, J(MM5));
 var HT = hariTerakhir(KINI, 14); ok('14 hari terakhir, hari ini dulu; 19 Sep 4 nota, 18 Sep 1, 15 Sep 0 (sepi tetap ada)', HT.length === 14 && HT[0].iso === '2026-09-19' && HT[0].hariIni && HT[0].n === 4 && HT[1].n === 1 && HT[4].n === 0);
 ok('39b-19 pemilih 14 hari: omzet tiap hari = omzet rekap harinya (penjualan − uang retur), bukan penjualan kotor', hariTerakhir(KINI, 14).every(function (x) { return x.omzet === rekapHari(x.iso).omzet; })
   && denganCacheSementara([{ koleksi: 'retur', data: { id: 'rtL19', tanggal: '2026-09-18', jam: '09:00', nominalRefund: 12000, kondisi: 'utuh' } }], function () { var h = hariTerakhir(KINI, 14)[1]; return h.iso === '2026-09-18' && h.omzet === rekapHari('2026-09-18').omzet && h.omzet === HT[1].omzet - 12000; }),
@@ -650,6 +658,7 @@ if __name__ == '__main__':
             '39b-37 MM3: daftar & lembar menawarkan nota bon yang bonnya sudah lunas': js.replace("const B = bonPembeli(d, piutang); return B.sisa > 0.5 ? d : { ok: false, sebab: kalimatBonHabis(B) };", "return d;"),
             '39b-37 U37-U4: teks WA rekap harian tanpa baris retur nota bon': js.replace("const rb = lpReturBonHari(R); if (rb) b.push('Retur nota bon (bon dipotong): ' + RP(rb));", ""),
             '39b-37 U37-U4: retur nota bon hari itu dihitung dari uang retur saja (refund ikut)': js.replace("const lpReturBonHari = (R) => Math.max(0, Math.round((R.retur || 0) - (R.refund || 0)));", "const lpReturBonHari = (R) => Math.max(0, Math.round(R.retur || 0));"),
+            '39b-37 MM5: arus kas menghitung retur potong bon sebagai refund': js.replace("{ label: 'Refund retur', nominal: refund, n: returDipakai.filter(r => !(r.potongBon > 0)).length, satuan: 'retur' },", "{ label: 'Refund retur', nominal: refund, n: returDipakai.length, satuan: 'retur' },"),
             '39b-37: barang rusak dari nota bon tanpa karantina': js.replace("  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));\n  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON", "  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON"),
             '39b-38: batas aman ambil pribadi dari laba mesin': js.replace("const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;", "const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaMesin : 0;"),
         }

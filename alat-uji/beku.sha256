@@ -1,7 +1,7 @@
 # sha256 tubuh 28 mesin uang beku (alat-uji/beku2.py --catat).
 # Berkas ini hanya boleh berubah lewat commit yang menyebut "membekukan ulang"
 # dan disetujui pemilik. CI membandingkan index.html ke berkas ini (--sidik).
-0fe7c92299bed833edd4379b4b6fa9fa37c5c69076751829c2b0dee894b0ebe7  hitungArusKasInti
+c429dc1b4ae091ab56bcbcdb6c30fb99f02a3d7589733ae95ec0910b73c53ffa  hitungArusKasInti
 81dfda469ee7c3a0e43796281540abfd100a005c4eab4f3cedb84f96693a5b41  hitungLabaRentang
 30220f8f6a12ebfc65a10ed16bc883274587833b037cfabaf2f67e0da7e29a64  hitungLabaBersihRentang
 8b05e83b325753a6ca68b122337e9d81ec7ebb29df57a9e56aa99c1b6618ada3  barisSusutStok

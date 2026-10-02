@@ -1503,3 +1503,6 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
 - U37-U4: rekap harian (Laporan › Harian, kartu rekap & teks WA) punya baris "Retur nota bon (bon dipotong)" = uang retur hari itu − refund kas
   (`laporan-logika.js` `lpReturBonHari`, dipakai `teksRekapHari` dan `barisRekap` laporan.js) — omzet = tunai + QRIS + bon − refund − retur nota bon menutup.
   Hanya tampil bila bukan nol (hari tanpa retur nota bon: teks byte-sama). Uji `uji_laporan_baru.py` +1 + pemeriksa kata kartu rekap, kontrol +3.
+- MM5: mesin beku `hitungArusKasInti` (diubah di `index.html`, disalin `pindah_mesin.py`, sidik `beku2.py --catat` = PEMBEKUAN ULANG yang disengaja,
+  keputusan owner 2 Okt "37 buka") — baris "Refund retur" menghitung kejadiannya tanpa retur nota bon (`potongBon`, rupiahnya memang sudah nol di refund):
+  satu ekspresi `n`, rupiah tidak berubah. Retur lama tanpa `potongBon` dihitung persis seperti dulu. Uji `uji_laporan_baru.py` +1, kontrol +1.

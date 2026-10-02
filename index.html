@@ -22570,7 +22570,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       { label: 'Pengeluaran harian (Toko)', nominal: jmlNominal(harianToko), n: harianToko.length, satuan: 'catatan' },
       { label: 'Prive owner — hidup dari laci', nominal: jmlNominal(harianOwner), n: harianOwner.length, satuan: 'catatan' },
       { label: 'Bayar utang ke owner', nominal: jmlNominal(bayarUtangOwner), n: bayarUtangOwner.length, satuan: 'pembayaran' },
-      { label: 'Refund retur', nominal: refund, n: returDipakai.length, satuan: 'retur' },
+      // Retur nota BON (audit 39b no. 37 tinjauan MM5) memotong bon, bukan uang laci — rupiahnya
+      // sudah nol di `refund`, jadi tidak ikut dihitung sebagai kejadian refund.
+      { label: 'Refund retur', nominal: refund, n: returDipakai.filter(r => !(r.potongBon > 0)).length, satuan: 'retur' },
       { label: 'Beli kantong kemasan', nominal: jmlHarga(beliKemasan), n: beliKemasan.length, satuan: 'pembelian' },
       { label: 'Beli paper bag literan', nominal: jmlHarga(beliLiteran), n: beliLiteran.length, satuan: 'pembelian' },
       { label: 'Kasbon diambil pegawai', nominal: jmlNominal(kasbonAmbil), n: kasbonAmbil.length, satuan: 'kali' },
