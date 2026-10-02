@@ -272,6 +272,19 @@ var U5a = U5([{ koleksi: 'piutangMutasi', data: { id: 3950, tipe: 'saldoAwal', n
 ok('39b-37 U37-U5: retur penuh nota bon pelanggan bersaldo awal — laba bersih −50.000, margin yang dilepas retur 50.000 (nota itu), diterima tunai TIDAK bergerak (tidak ada uang); sama dengan pelanggan tanpa bon lama',
   !U5a.tolak && U5a.dLaba === -50000 && U5a.diretur === 50000 && U5a.dTunai === 0 && !U5b.tolak && U5b.dLaba === -50000 && U5b.diretur === 50000 && U5b.dTunai === 0, J([U5a, U5b]));
 
+// ---- 39b no. 37 tinjauan U37-U6 (+ MM2): SISTEM LAMA (index.html, hanya-baca) — hitungPiutang sudah membaca retur, pembacanya ikut. rincianBelumLunas sistem lama
+// (dipakai tagihan WhatsApp-nya) disalin APA ADANYA dari index.html oleh uji ini (rincianBelumLunasLAMA): Σ rincian = sisa mesin = rincian /baru/ (contoh A37 & MM1).
+var U6 = function (dok, k) { return denganCacheSementara(dok, function () { var d = cariP37(k); var lama = rincianBelumLunasLAMA(d).map(function (r) { return r.sisa; }); var baru = rincianBelumLunas(d).map(function (r) { return r.sisa; });
+  return { sisa: d.sisa, lama: lama, baru: baru, jumlahLama: lama.reduce(function (a, x) { return a + x; }, 0) }; }); };
+var U6a = U6(BASE37.concat(A37.D), 'uji retur');
+var U6b = denganCacheSementara([KR37('t37a', '2026-08-31', 'Uji Tua', 20, 300000, 260000), BY37(3931, '2026-09-01', 'Uji Tua', 100000), KR37('t37b', '2026-09-18', 'Uji Tua', 20, 280000, 260000)], function () {
+  return U6(susunRetur(RS37({ rtNotaId: 't37b', ketik: '20' }), W37).dokumen || [], 'uji tua'); });
+var U6c = U6([KR37('t37a', '2026-08-31', 'Uji Tua', 20, 300000, 260000), BY37(3931, '2026-09-01', 'Uji Tua', 100000), KR37('t37b', '2026-09-18', 'Uji Tua', 20, 280000, 260000),
+  { koleksi: 'piutangMutasi', data: { id: 3932, tipe: 'retur', namaPelanggan: 'Uji Tua', nominal: 200000, tanggal: '2026-09-05', jam: '10:00', catatan: 'tanpa nota asal', dicatatDi: 'sistem' } }], 'uji tua');
+ok('39b-37 U37-U6: sistem lama rincianBelumLunas (tagihan WA-nya) — Σ rincian = sisa mesin dan sama dengan rincian /baru/ sesudah retur nota bon (nota asal, juga retur tanpa nota asal; dulu lebih besar tepat sebesar retur)',
+  U6a.jumlahLama === U6a.sisa && J(U6a.lama) === J(U6a.baru) && U6a.sisa === 920500 && U6b.jumlahLama === U6b.sisa && J(U6b.lama) === J(U6b.baru) && U6b.sisa === 200000
+  && U6c.jumlahLama === U6c.sisa && J(U6c.lama) === J(U6c.baru) && U6c.sisa === 280000, J([U6a, U6b, U6c]));
+
 // ==================== HARIAN ====================
 var RH = rekapHari('2026-09-19');
 var rekapHari0918 = rekapHari('2026-09-18');
@@ -544,6 +557,25 @@ def rekap_layar(t):
     return [] if "{ nama: 'Retur nota bon (bon dipotong)', teks: RP(LP.lpReturBonHari(R)) }" in t else ['kartu rekap harian tidak menyebut retur nota bon (bon dipotong) — omzet tidak menutup']
 
 
+def lama_rincian(src):
+    """39b no. 37 tinjauan U37-U6: rincianBelumLunas index.html (sistem lama) APA ADANYA, dinamai rincianBelumLunasLAMA supaya bisa dijalankan di samping /baru/."""
+    import beku2
+    f = beku2.potong(src, 'rincianBelumLunas')
+    return ('\n' + f.replace('function rincianBelumLunas(', 'function rincianBelumLunasLAMA(', 1) + '\n') if f else '\nfunction rincianBelumLunasLAMA() { throw new Error("rincianBelumLunas tidak ada di index.html"); }\n'
+
+
+def lama_layar(t):
+    """39b no. 37 tinjauan U37-U6 + MM2 — pembaca piutang lain di index.html (hanya-baca) mengenal mutasi tipe 'retur': riwayat lembar piutang menggambarnya
+    mengurangi (bukan +), kolam bulan menaruhnya di keran keluar (bukan utang baru), panel "Belum tertagih" menguranginya supaya rumusnya menutup ke sisa."""
+    out = []
+    if "const kurang = m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur';" not in t: out.append('sistem lama: riwayat piutang menggambar retur sebagai tambah (+)')
+    if "else if (m.jenis === 'retur') diretur += m.nominal || 0;" not in t or 'const selisih = baru - dibayar - dihapus - diretur;' not in t or 'const keluar = dibayar + dihapus + diretur;' not in t:
+        out.append('sistem lama: kolam bulan ini menghitung retur sebagai utang baru')
+    if "sRetur = j('retur')" not in t or "(sRetur > 0 ? ' − retur ' + rp(sRetur) : '')" not in t:
+        out.append('sistem lama: panel Belum tertagih tidak mengurangi retur (rumus tidak menutup ke sisa)')
+    return out
+
+
 def tunai_layar(t):
     """39b no. 39 — layar Laba: panel "Syarat diterima tunai" menyebut SEMUA komponennya (laba bersih − margin nota bon bulan ini + margin bon yang dibayar
     bulan ini [+ margin bon yang dihapus bukunya]) supaya hitungan yang tergambar menutup. Kembalikan daftar masalah."""
@@ -555,7 +587,8 @@ def tunai_layar(t):
 
 
 if __name__ == '__main__':
-    js = bundel_baru.bundel(MODUL)
+    idx = open(os.path.join(AKAR, 'index.html'), encoding='utf-8').read()
+    js = bundel_baru.bundel(MODUL) + lama_rincian(idx)
     lap = open(os.path.join(AKAR, 'baru', 'js', 'layar', 'laporan.js'), encoding='utf-8').read()
     if '--kontrol' in sys.argv:
         kode = 0
@@ -566,6 +599,13 @@ if __name__ == '__main__':
                           ('UU36-2 laporan.js: kertas Neraca yang dikeluarkan memakai neracaPada lagi', lap.replace('const NP = LP.neracaTanggal(st().sampaiN, kini(), D.final);', 'const NP = LP.neracaPada(st().sampaiN, kini());', 1)),
                           ('UU36-2 laporan.js: hero Neraca bulan final kembali "titik kas belum disetel"', lap.replace("(sampai && D.final ? NP.tolak + '.' :", "(false ? NP.tolak + '.' :", 1))]:
             g = (tunai_layar(isi) + neraca_layar(isi) + rekap_layar(isi)) if isi != lap else []
+            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
+            if not g: kode = 3
+        # 39b no. 37 tinjauan U37-U6: pembaca piutang sistem lama (index.html) — teksnya dirusak, pemeriksa kata wajib berbunyi
+        for nama, isi in [('U37-U6 index.html: riwayat piutang kembali menggambar retur sebagai tambah', idx.replace("const kurang = m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur';", "const kurang = m.jenis === 'bayar' || m.jenis === 'hapusBuku';", 1)),
+                          ('U37-U6 index.html: kolam bulan ini kembali menghitung retur sebagai utang baru', idx.replace("            else if (m.jenis === 'retur') diretur += m.nominal || 0;\n", "", 1)),
+                          ('U37-U6 index.html: panel Belum tertagih tanpa retur', idx.replace("(sRetur > 0 ? ' − retur ' + rp(sRetur) : '')", "''", 1))]:
+            g = lama_layar(isi) if isi != idx else []
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:120] if g else '-'))
             if not g: kode = 3
         rusak = {
@@ -692,6 +732,8 @@ if __name__ == '__main__':
             '39b-37 MM1: rincian bon (Pelanggan) mengabaikan bagian nota yang diretur': js.replace("for (const u of utang) { const nom = u.nominal - (u.diretur || 0); if (tertutup >= nom)", "for (const u of utang) { const nom = u.nominal; if (tertutup >= nom)"),
             '39b-37 MM1: Buku bon menyalakan nota yang barangnya sudah kembali': js.replace("utang.forEach((u) => { const nom = u.nominal - (u.diretur || 0); const lunas = tertutup >= nom;", "utang.forEach((u) => { const nom = u.nominal; const lunas = tertutup >= nom;"),
             '39b-37 U37-U5: margin yang dilepas retur diambil dari bon tertua (bukan nota asalnya)': js.replace("if (c.jenis === 'retur' && c.notaAsalId != null) {", "if (false) {"),
+            '39b-37 U37-U6: rincianBelumLunas sistem lama mengabaikan retur (tagihan WA lebih besar dari sisa)': js.replace("let tertutup = d.bayar + d.dihapus + (d.retur || 0) - utang.reduce((a, u) => a + (u.diretur || 0), 0);", "let tertutup = d.bayar + d.dihapus;"),
+            '39b-37 U37-U6: rincianBelumLunas sistem lama menagih nota yang barangnya sudah kembali': js.replace("const nominal = u.nominal - (u.diretur || 0);\n      if (tertutup >= nominal)", "const nominal = u.nominal;\n      if (tertutup >= nominal)"),
             '39b-37: barang rusak dari nota bon tanpa karantina': js.replace("  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));\n  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON", "  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON"),
             '39b-38: batas aman ambil pribadi dari laba mesin': js.replace("const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;", "const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaMesin : 0;"),
         }
@@ -702,7 +744,7 @@ if __name__ == '__main__':
             if not g: kode = 3
         sys.exit(kode)
     l, g = utama(js)
-    g = g + tunai_layar(lap) + neraca_layar(lap) + rekap_layar(lap)
+    g = g + tunai_layar(lap) + neraca_layar(lap) + rekap_layar(lap) + lama_layar(idx)
     print('KOTAK PASIR: %d lulus · %d gagal' % (l, len(g))); [print('   ✗ ' + x) for x in g]
     cad = sorted(glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, '_arsip-mockup', 'backup-batch-*.json')) + glob.glob(os.path.join(AKAR, 'backup-batch-*.json')), key=os.path.basename)   # audit 39b no. 46 / tinjauan T6: cadangan toko ada di _privat/
     if cad and not g:

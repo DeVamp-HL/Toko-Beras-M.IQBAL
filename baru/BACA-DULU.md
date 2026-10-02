@@ -1517,3 +1517,7 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
   sama dengan mesin, MM1), sisanya bon tertua dulu. Dulu margin yang dilepas diambil dari bon tertua: pelanggan bersaldo awal (margin 0) membuat diterima
   tunai turun seukuran margin barang yang kembali padahal tidak ada uang bergerak. Uji `uji_laporan_baru.py` +1, 1 dibalik SENGAJA (A37: margin dilepas
   20.000 = margin barang yang kembali, dulu 20.186 dari nota 10 Sep), kontrol +1.
+- U37-U6: SISTEM LAMA (`index.html`, hanya-baca) — hitungPiutang sudah membaca retur, empat pembacanya ikut: `rincianBelumLunas` (tagihan WA sistem lama:
+  nominal − `diretur`, sisa retur ikut yang tertua — Σ rincian = sisa mesin = rincian /baru/), riwayat lembar piutang (retur bertanda kurang, bukan +),
+  kolam bulan ini (retur di keran keluar "barang kembali (retur nota bon)", bukan utang baru), panel "Belum tertagih" (rumus "− retur" menutup ke sisa).
+  Bukan mesin beku. Uji `uji_laporan_baru.py` +1 (rincianBelumLunas index.html disalin apa adanya oleh uji) + pemeriksa kata tiga pembaca, kontrol +5.
