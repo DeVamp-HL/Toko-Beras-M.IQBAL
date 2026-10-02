@@ -337,7 +337,7 @@ if (q.get('cadangan')) {
 document.querySelectorAll('[data-tujuan]').forEach((el) => el.addEventListener('click', () => {
   const t = el.dataset.tujuan;
   if (pindah(t)) return;
-  kabarSebentar('Layar ' + el.textContent.trim() + ' belum ada di sistem baru — masih di sistem lama (index.html).');
+  kabarSebentar('Layar ' + el.textContent.trim() + ' belum ada di sistem baru.');
 }));
 
 // menu samping Mac (owner 23 Sep): sempit; membuka saat kursor menepi ke tepi kiri layar atau masuk ke menu, menutup saat kursor pergi;

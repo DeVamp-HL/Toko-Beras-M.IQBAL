@@ -13,13 +13,12 @@ hawk:
     ajax: true
     maxDurationMinutes: 8
     seedPaths:
+      # 3 Okt 2026 (owner: sistem lama & kasir.html pensiun): / dan /kasir.html kini halaman pengalih tanpa script; lib/kemas-worker.js,
+      # icon-kasir-192/512 (dan manifest-kasir.json) dihapus bersama sistem lama — seed-nya dicabut supaya laporan tidak berisi 404.
       - /baru/
       - /kasir.html
       - /kasir-darurat-nominal.html
       - /sw-kasir.js
-      - /lib/kemas-worker.js
-      - /icon-kasir-192.png
-      - /icon-kasir-512.png
       - /icon-sistem-192.png
       - /icon-sistem-512.png
       - /icon-sistem.svg

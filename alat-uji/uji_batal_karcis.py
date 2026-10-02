@@ -5,8 +5,10 @@ uji_batal_karcis.py — putaran 25b: BATALKAN KARCIS KASIR DARURAT di /baru/ (Ju
 KOTAK PASIR (nama & angka contoh) di jsc, jam dikunci Sabtu 26 Sep 2026 10:00 WIB.
 
 Yang dijaga:
-  · BENTUK DOKUMEN SAMA dengan sistem lama: field yang DITAMBAHKAN pembatalan = persis yang ditulis mulaiBatalkanTrx() di index.html (dibaca dari
-    sumbernya, bukan disalin ke sini) — dibatalkan, alasanKoreksi, dikoreksiPada, dibatalkanPada; tanpa jenis baru; baris TIDAK dihapus; field lain utuh.
+  · BENTUK DOKUMEN SAMA dengan sistem lama: field yang DITAMBAHKAN pembatalan = persis yang ditulis mulaiBatalkanTrx() di index.html — dibatalkan,
+    alasanKoreksi, dikoreksiPada, dibatalkanPada; tanpa jenis baru; baris TIDAK dihapus; field lain utuh. Sampai 2 Okt daftar itu dibaca dari teks
+    index.html; sejak sistem lama dipensiunkan (3 Okt 2026) daftarnya DIBEKUKAN di FIELD_LAMA (diekstrak dari index.html di tag sistem-lama-terakhir
+    = 48a694d dengan pola yang sama). Pembanding dokumen SUNGGUHAN di cadangan toko (di bawah) tetap.
     Atribusi penulis pusat = diubahOleh / diubahPerangkat / diubahPada (sama dengan simpanKeFirestore) + diubahOlehUid (identitas akun, putaran 23).
   · Bila cadangan toko ada di _privat/: dokumen pembatalan sungguhan yang ditulis sistem lama (karcis uji v4, 25 Sep) punya himpunan field yang sama.
   · Hanya catatan kasir darurat (karcis nominal, sisa karcis, tuts bernama viaDarurat, perangkat d-); alasan wajib; tidak dua kali; karcis yang sudah
@@ -25,12 +27,14 @@ JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Help
 JAM = "var __KINI = new Date('2026-09-26T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
+# Field yang DITAMBAHKAN mulaiBatalkanTrx() index.html ke {...p}. Dibekukan 3 Okt 2026 (sistem lama dipensiunkan): diekstrak dari
+# `git show sistem-lama-terakhir:index.html` (commit 48a694d) dengan pola lama
+#   async function mulaiBatalkanTrx() { … simpanKeFirestore(KOLEKSI_PENJUALAN, { ...p, <field>: … }); — himpunan nama field, urut abjad.
+FIELD_LAMA = ['alasanKoreksi', 'dibatalkan', 'dibatalkanPada', 'dikoreksiPada']
+
+
 def field_sistem_lama():
-    """Field yang DITAMBAHKAN mulaiBatalkanTrx() index.html ke {...p} — dibaca dari sumbernya."""
-    src = open(os.path.join(AKAR, 'index.html'), encoding='utf-8').read()
-    m = re.search(r'async function mulaiBatalkanTrx\(\) \{.*?simpanKeFirestore\(KOLEKSI_PENJUALAN, \{\s*\.\.\.p, (.*?)\n\s*\}\);', src, re.S)
-    if not m: return None
-    return sorted(set(re.findall(r'(\w+):', m.group(1))))
+    return list(FIELD_LAMA)
 
 
 def cadangan_toko():
@@ -77,7 +81,7 @@ function tambahan(lama, baru) { return Object.keys(baru).filter(function (k) { r
 
 var r = susunBatalKarcis(1001, 'salah ketik, harusnya 39.000', W); var d = r.dokumen ? r.dokumen[0].data : {}; var a = asli(1001);
 ok('karcis nominal hari ini → satu dokumen penjualan, id SAMA (baris ditandai, bukan dokumen baru), tanpa hapus', !r.tolak && r.dokumen.length === 1 && r.dokumen[0].koleksi === 'penjualan' && d.id === 1001 && r.hapus.length === 0, J(r));
-ok('field yang DITAMBAHKAN = persis mulaiBatalkanTrx() index.html: ' + FIELD_LAMA.join(', '), J(tambahan(a, d)) === J(FIELD_LAMA), J(tambahan(a, d)));
+ok('field yang DITAMBAHKAN = persis mulaiBatalkanTrx() sistem lama: ' + FIELD_LAMA.join(', '), J(tambahan(a, d)) === J(FIELD_LAMA), J(tambahan(a, d)));
 ok('isi penanda: dibatalkan true, alasan apa adanya, dua cap waktu sama dengan jam catat', d.dibatalkan === true && d.alasanKoreksi === 'salah ketik, harusnya 39.000' && d.dikoreksiPada === W.kini && d.dibatalkanPada === W.kini);
 ok('field lama UTUH (jenis tetap kasir_darurat_nominal, nominal, tanggal, jam, perangkat, oleh, operator) — tanpa jenis baru',
   Object.keys(a).every(function (k) { return J(a[k]) === J(d[k]); }) && d.jenis === 'kasir_darurat_nominal', J(d));
@@ -117,7 +121,7 @@ print(J({ lulus: lulus, gagal: gagal }));
 
 def utama(js):
     fl = field_sistem_lama()
-    if not fl: return 0, ['mulaiBatalkanTrx() tidak ditemukan di index.html — pemeriksa bentuk tidak sah']
+    if not fl: return 0, ['daftar field pembatalan sistem lama kosong — pemeriksa bentuk tidak sah']
     isi = JAM + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar FIELD_LAMA = ' + json.dumps(fl) + ';\nvar CONTOH_ASLI = ' + json.dumps(contoh_asli()) + ';\n' + SKENARIO
     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f: f.write(isi); p = f.name
     r = subprocess.run([JSC, p], capture_output=True, text=True, env=dict(os.environ, TZ='Asia/Jakarta')); os.unlink(p)
@@ -150,5 +154,5 @@ if __name__ == '__main__':
     l, g = utama(js)
     print('BATAL KARCIS DARURAT (/baru/, kotak pasir%s): %d lulus · %d gagal' % (' + contoh sungguhan dari ' + os.path.basename(cadangan_toko()) if contoh_asli() else '', l, len(g)))
     [print('   ✗ ' + x) for x in g]
-    print('field yang ditambahkan sistem lama (index.html mulaiBatalkanTrx): ' + ', '.join(field_sistem_lama() or []))
+    print('field yang ditambahkan sistem lama (mulaiBatalkanTrx, dibekukan dari tag sistem-lama-terakhir): ' + ', '.join(field_sistem_lama() or []))
     sys.exit(1 if g else 0)

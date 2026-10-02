@@ -9,7 +9,7 @@ yang meniru keadaan: halaman tidak pernah mengirim hasil, halaman mengirim hasil
 docs/catatan-uji-peramban.md), dan halaman sehat. Semua dijalankan di proses anak dan keluarannya DITANGKAP, jadi peringatan uji ini tidak ikut
 mengotori halaman ringkasan run sungguhan.
 
-  · uji_antrean_kasir (juga dipakai uji_sistem_lama_bacasaja): halaman tidak mengirim hasil → tepat SATU baris DICOBA ULANG dengan nama uji,
+  · uji_antrean_kasir (juga dipakai uji_katalog_kasir): halaman tidak mengirim hasil → tepat SATU baris DICOBA ULANG dengan nama uji,
     halaman, sebab, "percobaan 2 dari 2"; mode --kontrol ikut tertulis di nama uji
   · hasil sudah masuk lalu Chrome macet → TIDAK dicoba ulang, hasilnya terpakai, Chrome ditutup BAIK-BAIK (SIGTERM, penyimpanan sempat ditulis);
     Chrome yang menolak ditutup baik-baik → dimatikan paksa, DIHITUNG, tetap tidak dicoba ulang
@@ -165,8 +165,8 @@ def semua(ganti=None, cepat=False):
            not baris(k) and 'HASIL:{"ok": 1}' in k, k)
         ok('sesudah hasil masuk Chrome ditutup BAIK-BAIK (SIGTERM → penyimpanan halaman sempat ditulis), bukan dimatikan paksa',
            'DITUTUP-BAIK' in k and 'STAT:{"chrome_ditutup_paksa": 0, "halaman": 1, "muat": 1}' in k, k)
-        k = jalankan_('antrean', 'diam', ['alat-uji/uji_sistem_lama_bacasaja.py'])
-        ok('sistem lama hanya-baca (memakai buka() yang sama) → barisnya menyebut uji_sistem_lama_bacasaja', len(baris(k)) == 1 and baris(k)[0].startswith(BARIS + 'uji_sistem_lama_bacasaja · '), k)
+        k = jalankan_('antrean', 'diam', ['alat-uji/uji_katalog_kasir.py'])   # 3 Okt 2026: dulu uji_sistem_lama_bacasaja (pensiun bersama index.html)
+        ok('katalog kasir (memakai buka() yang sama) → barisnya menyebut uji_katalog_kasir', len(baris(k)) == 1 and baris(k)[0].startswith(BARIS + 'uji_katalog_kasir · '), k)
         k = jalankan_('antrean', 'diam', ['alat-uji/uji_antrean_kasir.py'], gha=True)
         ok('GitHub Actions · tiap percobaan ulang juga jadi peringatan "DICOBA ULANG" di halaman ringkasan run',
            len(baris(k)) == 1 and peringatan(k) == [PERINGATAN + 'uji_antrean_kasir' + TIDAK_KIRIM], k)

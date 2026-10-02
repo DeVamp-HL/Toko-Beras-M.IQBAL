@@ -38,7 +38,6 @@ const IK = {
 const ik = (n, w) => mentah('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:' + (w || 17) + 'px;height:' + (w || 17) + 'px;">' + (IK[n] || IK.tanya) + '</svg>');
 const KUNCI_TAB = 'miqbal_baru_menu_tab', KUNCI_LACI = 'miqbal_baru_menu_laci';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
-const HALAMAN_LAMA = { Pemasok: 'Menu → Pemasok', Harga: 'Menu → Harga', Laba: 'Menu → Laba', Setelan: 'Menu → Setelan', 'Tutup Hari': 'Menu → Tutup Hari', Harian: 'Menu → Harian', Bulanan: 'Menu → Bulanan', Jual: 'Jual' };
 const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['kasir', 'Kasir & PIN']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']] };
 const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat' };
 
@@ -68,7 +67,8 @@ export function pasangLayarMenu(akar, opsi) {
     set({ lsKb: ls, autoTanggal: auto });
     try { if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then((e) => set({ usageKb: Math.round((e.usage || 0) / 1024), quotaKb: Math.round((e.quota || 0) / 1024) })).catch(() => {}); } catch (e) { /* abaikan */ }
   }
-  // ---- tujuan tiap baris: layar sistem baru, lembar Sistem di dalam Menu, atau sistem lama (mengaku) ----
+  // ---- tujuan tiap baris: layar sistem baru atau lembar Sistem di dalam Menu. Tujuan 'lama' (tautan ke sistem lama) dibuang 3 Okt 2026: sistem
+  // lama pensiun (owner) dan menu-logika.js sudah tidak punya baris yang menunjuknya ----
   function pergi(t) {
     if (!t) return;
     if (t.ke === 'sistem') { set({ sistem: t.sistem, kabar: '', buka: null, tabS: Object.assign({}, st().tabS, t.tab ? { [t.sistem]: t.tab } : {}) }); ukurSimpanan(); return; }
@@ -79,11 +79,10 @@ export function pasangLayarMenu(akar, opsi) {
     if (t.ke === 'laporan') { opsi.bukaLaporan && opsi.bukaLaporan(t.keluarga || 'laba', t); return; }   // putaran 19: Laporan & Dokumen
     if (t.ke === 'jual' && t.lembar) { opsi.bukaJual ? opsi.bukaJual(t.lembar) : opsi.pindah('jual'); return; }   // putaran 20: Jual → Karcis
     if (t.ke === 'jual' || t.ke === 'ringkasan') { opsi.pindah(t.ke); return; }
-    if (t.ke === 'lama') { set({ kabar: 'Layar ini belum ada di sistem baru — di sistem lama: ' + (HALAMAN_LAMA[t.halaman] || t.halaman) + '. ', kabarAwas: false, bukaLama: t.halaman }); return; }
     set({ kabar: 'Belum ada layarnya di sistem baru.', kabarAwas: true });
   }
   const AKSI = {
-    susunan: ({ s }) => { set({ susunan: s, buka: null, kabar: '' }); ingat(); }, mode: () => opsi.gantiMode(), tutupKabar: () => set({ kabar: '', bukaLama: null }),
+    susunan: ({ s }) => { set({ susunan: s, buka: null, kabar: '' }); ingat(); }, mode: () => opsi.gantiMode(), tutupKabar: () => set({ kabar: '' }),
     // laci N1 terbuka sejak lahir; laci "Ganti bagian hari" TERTUTUP sejak lahir (tidak makan tempat) — keduanya diingat per perangkat
     laci: ({ id }) => { const t = Object.assign({}, st().tutup); t[id] = id === 'ganti' ? !(t.ganti === true) : !t[id]; set({ tutup: t }); ingat(); },
     cari: (v) => set({ cari: String(v).slice(0, 40) }), cariHapus: () => set({ cari: '' }),
@@ -168,7 +167,7 @@ export function pasangLayarMenu(akar, opsi) {
         <div style="display: flex; gap: 8px; align-items: center;"><div class="pil pil-akun ${sumber.jenis === 'firestore' ? '' : 'kedip'}" data-pil-akun title="Akun yang masuk · ketuk untuk Keluar">${sumber.jenis === 'firestore' ? opsi.statusRingkas() : sumber.jenis === 'cadangan' ? 'CADANGAN' : 'belum ada data'}</div>
           <div class="tombol-mode" data-aksi="mode">${mentah(IKON_MODE[opsi.mode() === 'gelap' ? 'terang' : 'gelap'])}</div></div>
       </header>
-      ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}${s.bukaLama ? h` <a href="../index.html" class="mn-tautan" data-k="tautan-lama">Buka sistem lama ›</a>` : ''}</div>` : ''}
+      ${s.kabar ? h`<div class="pita-info ${s.kabarAwas ? 'awas' : 'emas'}" data-k="kabar" data-aksi="tutupKabar" style="cursor: pointer;">${s.kabar}</div>` : ''}
       ${s.sistem ? gambarSistem(s, d) : gambarMenu(s, d)}
     `);
     gulirkan(akar, RP);
@@ -333,7 +332,7 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="ket" data-k="ket-unduh" style="font-size: 11px;">Berkas JSON yang sama bentuknya dengan cadangan sistem lama (versi 5) + koleksi sistem baru, bercap era tutup buku${C.era ? ' (tahun ' + C.era + ')' : ' (belum pernah tutup buku)'}. Yang diunduh adalah salinan di perangkat ini — kalau ada catatan yang belum sampai server, isinya tetap ikut.</div>
       <div class="kartu" data-k="kal" style="gap: 6px; padding: 10px 12px;"><div class="cd-kal">${C.kalender.map((k) => h`<div class="cd-hari ${k.aktif ? 'aktif' : ''} ${k.ini ? 'ini' : ''}" data-k="k-${k.iso}" data-aksi="hariC" data-iso="${k.iso}"><span class="nm">${k.nm}</span><b>${k.tgl}</b><span class="t ${k.keadaan}"></span></div>`)}</div><div class="k2">● emas = ada cadangan hari itu · kosong = tidak ada</div></div>
       <div class="kartu" data-k="hari-c" style="gap: 2px;"><div class="label">${C.hariJudul}</div>${C.hariDaftar.map((c) => h`<div class="cd-baris" data-k="c-${c.id}"><div><div style="font-weight: 600;">${c.jam ? c.jam + ' · ' : ''}${c.nama}</div><div class="k2">${c.sumber}${c.perangkat ? ' · ' + c.perangkat : ''}${c.kb ? ' · ' + ANGKA(c.kb) + ' KB · ' + ANGKA(c.dokumen) + ' catatan' : ''}</div></div><span class="cd-cap ${c.ok ? 'ok' : 'awas'}">${c.jenis}</span></div>`)}</div>
-      <div class="ket" data-k="ket-c" style="font-size: 11px;">Sistem baru tidak memakai cadangan localStorage; jalan tanpa internet ditanggung simpanan Firestore. Angka kuota di atas mengukur simpanan lokal SISTEM LAMA di alamat yang sama — memenuhinya membuat layar sistem lama diam. Memulihkan dari berkas tetap lewat Setelan sistem lama (keputusan owner, dua kali cadangan).</div>
+      <div class="ket" data-k="ket-c" style="font-size: 11px;">Sistem baru tidak memakai cadangan localStorage; jalan tanpa internet ditanggung simpanan Firestore. Angka kuota di atas mengukur simpanan lokal SISTEM LAMA di alamat yang sama — memenuhinya membuat layar sistem lama diam. Memulihkan dari berkas: sistem lama dari tag git dijalankan di komputer, bukan di situs (pensiun 3 Okt 2026) — docs/prosedur-pulih-darurat.md, dua kali cadangan.</div>
       ${pintuAtur('Atur jadwal cadangan, masa simpan & ambang kuota', 'tiap ' + C.atur.cadanganTiap + ' hari · simpan ' + C.atur.simpanHari + ' hari · ambang ' + C.atur.ambangKuota + '%')}`;
   }
   function gambarLokasi(s, d, tab) {

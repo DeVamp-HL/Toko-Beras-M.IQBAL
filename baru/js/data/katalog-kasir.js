@@ -1,5 +1,6 @@
-// KATALOG KASIR — dokumen ringkasanKasir/aktif yang dibaca HP kasir (kasir-darurat-nominal.html & kasir.html, akun kasir@) untuk tuts bernama
-// barang, harga, modal, dan daftar bon. Putaran 25c (owner 27 Sep 2026): /baru/ PENERBITNYA; index.html tidak menulisnya lagi (penjaga, JALUR_DIAM).
+// KATALOG KASIR — dokumen ringkasanKasir/aktif yang dibaca HP kasir (kasir-darurat-nominal.html, akun kasir@; sampai 3 Okt 2026 juga kasir.html)
+// untuk tuts bernama barang, harga, modal, dan daftar bon. Putaran 25c (owner 27 Sep 2026): /baru/ PENERBITNYA. Sejak 3 Okt sistem lama (index.html)
+// & kasir.html pensiun — keduanya kini halaman pengalih; "index.html" & "kasir.html" di bawah = versi terakhirnya di tag git sistem-lama-terakhir.
 //
 // BENTUK TETAP (keputusan owner 27 Sep, pilihan "tetap dulu"): isinya disusun penyusun VERBATIM index.html (susunIsiKatalogKasir, disalin
 // alat-uji/pindah_mesin.py) dan dokumennya berkunci & berurutan persis terbitkanRingkasanKasir() — byte-sama untuk data yang sama. Modal & daftar
@@ -26,7 +27,7 @@ export const KK_KOLEKSI = 'ringkasanKasir';
 export const KK_ID = 'aktif';
 export const KK_JEDA_MS = 4000;
 // Versi kasir TERBARU yang disajikan = VERSI sw-kasir.js (uji_katalog_kasir.py & uji_antrean_kasir.py membandingkannya; naik bersama).
-export const KK_VERSI_KASIR_TERBARU = 'kasir-v30';
+export const KK_VERSI_KASIR_TERBARU = 'kasir-v31';
 // Versi PERTAMA yang mengambil katalog sendiri tiap layar HP dinyalakan & tiap 5 menit (25c). Di bawahnya = harga baru baru sampai saat dibuka ulang;
 // di antara ini dan versi terbaru (39b no. 4: v27 belum punya buku kecil bayar bon) = cukup diberi tahu, pemeriksaan katalog lamanya tetap jalan.
 export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v27';
@@ -140,6 +141,9 @@ export function kkBeranda(kini) {
   const terbitMs = s.ada && s.dok && s.dok.diperbaruiPada ? new Date(s.dok.diperbaruiPada).getTime() : NaN;
   cacheMentah('perangkat').filter(kpPerangkatKasir).forEach((p) => {
     const x = p.pada ? new Date(p.pada).getTime() : NaN; if (!isFinite(x) || t - x > KP_VERSI_HARI * 24 * 3600000) return;
+    // kasir.html (aplikasi 'kasir', kode k-) pensiun 3 Okt 2026 (owner): halamannya kini pengalih ke baru/, jadi "versi baru terpasang saat dibuka
+    // ulang" tidak berlaku lagi. Denyut terakhirnya tetap dinilai daftar periksa kunci bulan (kunci-periode-logika.js); Beranda katalog diam.
+    if (kpNamaAplikasiKasir(p) === 'kasir') return;
     const nama = (p.nama || p.id) + ' · ' + kpNamaAplikasiKasir(p);
     // di bawah versi terbaru: HP itu belum mengambil katalog sendiri & belum melaporkan katalog yang dipegangnya. Di bawah lantai 25b sudah disebut
     // kpPerhatianPerangkat (kunci-periode-logika.js) — tidak diulang di sini.
