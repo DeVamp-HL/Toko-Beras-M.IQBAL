@@ -1486,3 +1486,9 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
   `hitungPiutang`): bon yang dihapus buku ditulis "sudah DIHAPUS BUKU (Rp…), bukan dibayar" — tidak lagi "sudah dibayar", dan tidak menyuruh owner
   mengembalikan uang laci lewat retur ketik tangan untuk barang yang tidak pernah dibayar; bon yang ditutup keduanya menyebut keduanya dan membatasi uang
   kembali sebesar yang memang dibayar. Penolakannya sendiri tidak berubah. Uji `uji_laporan_baru.py` +3, kontrol +2 (1 jangkar lama disesuaikan).
+- U37-U3: kalimat tolak "melebihi sisa bon" (bon sebagian dibayar) tidak lagi menjanjikan jalan yang tidak bisa diikuti — bagian yang sudah dibayar hanya
+  disarankan lewat retur ketik tangan bila kelipatan setengah karung (kemasan: per unit), dengan peringatan bahwa catatan ketik tangan TIDAK mengurangi nota
+  itu (jangan diretur lagi — barang yang sama kembali dua kali); kg pecahan disebut batasnya apa adanya (`uangKembaliKetik`). Pembulatan bon yang sebagian
+  sudah tertutup bayar: retur sisa baris nota memotong bon sebesar sisanya saja, bon jadi nol (`potongBulat`, lembar & kiriman satu aturan; dulu "paling banyak
+  50,02 kg" untuk nota 50 kg, lalu Rp440 tertinggal). Batas yang disebut tidak bisa melebihi isi nota karena kasus itu kini diterima — tanpa penjepit. Tidak
+  dibangun: mengikat retur ketik tangan ke nota (di luar paket). Uji `uji_laporan_baru.py` +4, kontrol +3.

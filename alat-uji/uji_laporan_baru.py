@@ -204,6 +204,26 @@ ok('39b-37 U37-U2: bon dihapus buku sebagian (sisa 100.000) — retur 20 kg dito
 ok('39b-37 U37-U2: bon ditutup bayar 300.000 + hapus buku 400.000 — kalimat menyebut keduanya; uang kembali dari laci paling banyak sebesar yang memang dibayar',
   !U2.c.dokumen && /sudah tertutup \(dibayar Rp300\.000, DIHAPUS BUKU Rp400\.000\)/.test(U2.c.tolak || '') && /paling banyak sebesar yang memang dibayar/.test(U2.c.tolak || ''), U2.c.tolak);
 
+// ---- 39b no. 37 tinjauan U37-U3: jalan "potong bon dulu, sisanya retur ketik tangan" untuk bon yang sebagian dibayar — kalimat menyebut batas ketik tangan apa
+// adanya (karung utuh / setengah saja; tidak terikat ke nota, jadi jangan diretur lagi), dan pembulatan bon yang sudah tertutup bayar tidak membuat retur nota
+// penuh ditolak. ANGKA CONTOH: Uji Sebagian (BASE37) bon 700.000 dibayar 500.000; Uji Dua bon 700.000 dibayar 350.000; Uji Bulat bon 700.500 (pembulatan 500) dibayar 200.
+var U3 = denganCacheSementara(BASE37.concat([KR37('q37a', '2026-09-18', 'Uji Dua', 50, 700000, 650000), BY37(3911, '2026-09-18', 'Uji Dua', 350000),
+  KR37('p37a', '2026-09-18', 'Uji Bulat', 50, 700500, 650000, { pembulatan: 500 }), BY37(3901, '2026-09-18', 'Uji Bulat', 200)]), function () {
+  var bulat = susunRetur(RS37({ rtNotaId: 'p37a', ketik: '50' }), W37); var lembar = notaDitunjuk(RS37({ rtNotaId: 'p37a', ketik: '50' })); var dulu = susunRetur(RS37({ rtNotaId: 'p37a', ketik: '49,99' }), W37);
+  return { pecahan: susunRetur(RS37({ rtNotaId: 'k37d', ketik: '50' }), W37), setengah: susunRetur(RS37({ rtNotaId: 'q37a', ketik: '50' }), W37), bulat: bulat,
+    lembar: { nilai: lembar.nilai, sisa: lembar.bon.sisa }, sisaBulat: denganCacheSementara(bulat.dokumen || [], function () { return cariP37('uji bulat').sisa; }),
+    ekor: denganCacheSementara(dulu.dokumen || [], function () { var e = susunRetur(RS37({ rtNotaId: 'p37a', ketik: '0,01' }), W37); return { sisa0: cariP37('uji bulat').sisa, e: e, sisa1: denganCacheSementara(e.dokumen || [], function () { return cariP37('uji bulat').sisa; }) }; }) }; });
+ok('39b-37 U37-U3: bon sebagian dibayar, sisa barang 35,72 kg BUKAN kelipatan setengah karung — kalimat tidak menjanjikan retur ketik tangan, menyebut batasnya (karung utuh atau setengah, 25 kg)',
+  !U3.pecahan.dokumen && /paling banyak 14,28 kg/.test(U3.pecahan.tolak || '') && /\(35,72 kg\) tidak bisa dicatat sebagai uang kembali di layar ini: retur ketik tangan hanya menerima karung utuh atau setengah \(25 kg\)/.test(U3.pecahan.tolak || '')
+  && !/dikembalikan sebagai uang lewat/.test(U3.pecahan.tolak || ''), U3.pecahan.tolak);
+ok('39b-37 U37-U3: sisa barang 25 kg = 0,5 karung — jalan ketik tangan disebut, dengan peringatan bahwa catatannya TIDAK mengurangi nota ini (jangan diretur lagi: barang yang sama kembali dua kali)',
+  !U3.setengah.dokumen && /paling banyak 25 kg/.test(U3.setengah.tolak || '') && /\(25 kg = 0,5 karung\) dikembalikan sebagai uang lewat "Tidak ada notanya\? Retur ketik tangan"/.test(U3.setengah.tolak || '')
+  && /TIDAK mengurangi nota ini, jadi sesudahnya jangan retur nota ini lagi untuk barang yang sama/.test(U3.setengah.tolak || ''), U3.setengah.tolak);
+ok('39b-37 U37-U3: nota bon 50 kg ber-pembulatan 500 yang baru dibayar Rp200 — retur 50 kg DITERIMA, bon dipotong sebesar sisanya (700.300) dan jadi nol; lembar Retur menggambar angka potong yang sama (dulu ditolak dengan saran "paling banyak 50,02 kg")',
+  !!U3.bulat.dokumen && U3.bulat.dokumen[0].data.potongBon === 700300 && U3.bulat.dokumen[1].data.nominal === 700300 && U3.sisaBulat === 0 && U3.lembar.nilai === 700300 && U3.lembar.sisa === 700300, J([U3.bulat.tolak, U3.sisaBulat, U3.lembar]));
+ok('39b-37 U37-U3: sesudah 49,99 kg, sisa 0,01 kg (nilai 140 + pembulatan 500) atas bon Rp440 — DITERIMA, bon dipotong Rp440 dan jadi nol (dulu Rp440 tertinggal)',
+  U3.ekor.sisa0 === 440 && !!U3.ekor.e.dokumen && U3.ekor.e.dokumen[0].data.potongBon === 440 && U3.ekor.sisa1 === 0, J([U3.ekor.sisa0, U3.ekor.e.tolak, U3.ekor.sisa1]));
+
 // ==================== HARIAN ====================
 var RH = rekapHari('2026-09-19');
 var rekapHari0918 = rekapHari('2026-09-18');
@@ -590,6 +610,9 @@ if __name__ == '__main__':
             '39b-37: bon lunas: retur ditolak tanpa menunjuk jalan uang kembali': js.replace("Barangnya sudah dibayar: kalau uangnya dikembalikan dari laci, catat lewat \"Tidak ada notanya? Retur ketik tangan\" (uang kembali).", "Barangnya sudah dibayar."),   # jangkar disesuaikan tinjauan U37-U2
             '39b-37 U37-U2: bon yang dihapus buku disebut sudah dibayar (kalimat lama, uang laci)': js.replace("  if (!(B.dihapus > 0.5)) return null;\n  const campur", "  return null;\n  const campur"),
             '39b-37 U37-U2: bon dibayar + dihapus buku disebut dihapus buku saja': js.replace("const campur = B.bayar > 0.5;", "const campur = false;"),
+            '39b-37 U37-U3: pembulatan bon yang tertutup bayar membuat retur nota penuh ditolak': js.replace("return nilai - sisaBon > 0.5 && sisaBon > 0.5 && nilai - sisaBon <= bulat ? sisaBon : nilai;", "return nilai;"),
+            '39b-37 U37-U3: retur ketik tangan dijanjikan untuk kg yang bukan kelipatan setengah karung': js.replace("if (Math.abs(x / setengah - Math.round(x / setengah)) < 0.001) return", "if (true) return"),
+            '39b-37 U37-U3: jalan ketik tangan tanpa peringatan retur dua kali': js.replace("const awas = ' — catatan itu TIDAK mengurangi nota ini, jadi sesudahnya jangan retur nota ini lagi untuk barang yang sama.';", "const awas = '.';"),
             '39b-37: barang rusak dari nota bon tanpa karantina': js.replace("  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));\n  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON", "  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',\n    kabar: 'Retur nota BON"),
             '39b-38: batas aman ambil pribadi dari laba mesin': js.replace("const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaBersih : 0;", "const laba = iso ? ugLabaBersih(ugAwalBulan(iso), iso).labaMesin : 0;"),
         }
