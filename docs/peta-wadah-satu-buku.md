@@ -228,7 +228,7 @@ Semua dokumen: `id: w.idUnik()`, `tanggal`, `jam` dari `L.waktuSekarang(...)`. `
     sisa tujuan dinilai ulang dengan rata-rata baru → Σ nilai bergeser **−k × t × (s − a) ÷ (T + k)**. Nol bila t = 0 (buku baru) atau s = a.
   - Sama persis dengan **setiap barang masuk sejak awal buku**: kedatangan k kg harga p ke merek yang sudah terjual bergeser −k × t × (p − a) ÷ (T + k). Jadi
     ini sifat cara menilai mesin (rata-rata tertimbang seluruh yang pernah masuk), bukan cacat pindah buku; mesin beku tidak diubah. Penilaian modal "harga
-    beli terbaru" = keputusan owner audit 39b no. 41 (`docs/audit-39b-temuan.md`).
+    beli terbaru" (audit 39b no. 41) DITUTUP owner 2 Okt: tetap rata-rata tertimbang (`docs/audit-39b-temuan.md`).
   - Kecil: satu isi ulang hanya sebagian kecil dari yang pernah masuk ke buku itu, dan modal merek-merek di satu wadah berdekatan (s − a kecil).
   - Contoh (ANGKA CONTOH, bukan angka toko; dihitung ulang dengan mesin beku di kotak pasir jsc): buku sudah menerima 100 kg @Rp12.000 dan terjual 80 (sisa
     20); isi ulang 25 kg merek lain @Rp11.000 → modal per kg jadi 11.800, sisa 45 kg dinilai Rp531.000, padahal 20 × 12.000 + 25 × 11.000 = Rp515.000 →
