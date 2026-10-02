@@ -169,6 +169,7 @@ export function pasangLayarJual(akar, opsi) {
       if (nt && nt.rinci) { const r = KC.susunUrungRinci(nt.rinci, L.waktuSekarang(S().sekarang || undefined)); if (r.tolak) return set({ kabar: r.tolak, kabarAwas: true }); await kirimUrung(r); return; }
       const p = L.susunPembatalan(S().notaTerakhir, 'Diurungkan dari sistem baru');
       if (!p) return set({ notaTerakhir: null, kabar: 'Tidak ada nota yang bisa dibatalkan', kabarAwas: true });
+      if (p.tolak) return set({ kabar: p.tolak, kabarAwas: true });
       try {
         // putaran 25: tandai-batal + cabut kantong/pelunasan/retur dalam SATU kiriman yang hasilnya diperiksa (dulu dua kiriman, hasil tidak diperiksa:
         // kalau yang pertama ditolak server, yang kedua tetap jalan dan layar tetap bilang "dibatalkan")
@@ -612,13 +613,13 @@ export function pasangLayarJual(akar, opsi) {
 
   function gambarRetur(s) {
     const daftar = RT.daftarNotaRetur(s); const yatim = RT.returYatim();
-    return h`<div class="pita-info">Retur MENUNJUK NOTA: ketuk nota barangnya, isi berapa yang kembali — nilainya dihitung dari nota itu. Uang kembali atau tukar barang.</div>
+    return h`<div class="pita-info">Retur MENUNJUK NOTA: ketuk nota barangnya, isi berapa yang kembali — nilainya dihitung dari nota itu. Uang kembali atau tukar barang; nota BON memotong bonnya.</div>
       ${yatim.length ? h`<div class="kartu" data-k="yatim" style="gap: 6px; border-color: var(--awas);"><div class="label">Tukar yang penggantinya belum tercatat · ${yatim.length}</div>${yatim.map((y) => h`<div class="baris-nota" data-k="y-${y.id}" style="cursor: default;"><div class="atas"><span><b>${y.barang}</b> · tukar ${tanggalPendek(y.tanggal)} ${y.jam}</span><span class="n">${RP(y.nominal)}</span></div><div class="ket">${y.teks}</div><div class="tombol-baris" style="grid-template-columns: 1fr 1fr; margin-top: 4px;"><div class="kaca-btn aktif" data-aksi="tkSusul" data-id="${y.id}">catat penggantinya</div><div class="kaca-btn" data-aksi="tkSudahBuka" data-id="${y.id}">pengganti sudah tercatat</div></div></div>`)}<div class="ket">Selama penggantinya belum tercatat, kas tercatat KURANG dan Tutup Hari terbaca LEBIH. "Pengganti sudah tercatat" kalau penggantinya sudah dijual sebagai nota biasa — jangan dicatat dua kali.</div></div>` : ''}
       <div class="kaca-btn putus" data-aksi="rtTanpaBuka" data-k="tanpa-nota" style="min-height: 40px;">Tidak ada notanya? Retur ketik tangan ›</div>
       <input class="ketik-nama" id="rtCari" type="text" value="${s.rtCari}" data-ketik="rtCari" placeholder="cari nama pembeli / barang (60 hari terakhir)">
       <div class="kartu daftar-nota">${daftar.map((o) => h`<div class="baris-nota ${o.bisa ? '' : 'tak-bisa'}" ${o.bisa ? mentah('data-aksi="tunjukNota"') : ''} data-id="${o.id}">
         <div class="atas"><span><b>${o.teks}</b>${o.nama ? ' · ' + o.nama : ''}</span><span class="n">${RP(o.hargaTotal)}</span></div>
-        <div class="ket">${tanggalPendek(o.tanggal)} ${o.jam} · ${o.cara}${o.bisa ? ' · boleh kembali ' + DESIMAL(o.sisa) + ' ' + o.satuan : ''}</div>
+        <div class="ket">${tanggalPendek(o.tanggal)} ${o.jam} · ${o.cara === 'Kredit' ? 'Bon' : o.cara}${o.bisa ? ' · boleh kembali ' + DESIMAL(o.sisa) + ' ' + o.satuan + (o.bon ? ' · memotong bon' : '') : ''}</div>
         ${o.bisa ? '' : h`<div class="ket awas-teks">${o.sebab}${o.cadangan ? ' Yang seperti ini masih lewat layar Retur sistem lama (nominalnya diketik tangan).' : ''}</div>`}
       </div>`)}${daftar.length ? '' : h`<div class="ket" style="padding: 10px 4px;">Tidak ada nota karung/kemasan yang cocok.</div>`}</div>`;
   }
@@ -749,10 +750,10 @@ export function pasangLayarJual(akar, opsi) {
     if (s.lembar === 'retur') {
       const n = RT.notaDitunjuk(s);
       if (!n || n.hilang || !n.d.ok) return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">${kepala('Retur', 'nota ini tidak bisa ditunjuk lagi')}<div class="pita-info awas">${!n || n.hilang ? 'Nota tidak ditemukan lagi — dibatalkan, dikoreksi, atau dihapus.' : n.d.sebab}</div></div>`;
-      const d = n.d; const tukar = s.rtPenyelesaian === 'tukar';
+      const d = n.d; const tukar = !d.bon && s.rtPenyelesaian === 'tukar';
       return h`${L1}<div class="lembar ${muncul}" data-k="lembar-${s.lembar}">
-        ${kepala('Retur · ' + n.teks, 'nota ' + tanggalPendek(n.t.tanggal) + (n.t.namaPelanggan ? ' · ' + n.t.namaPelanggan : '') + ' · boleh kembali ' + DESIMAL(d.sisa) + ' ' + d.satuan + (d.sudahDiretur ? ' (' + DESIMAL(d.sudahDiretur) + ' sudah diretur)' : ''))}
-        <div class="ket">Harga dibayar per ${d.satuan}: ${RP(d.perSatuan)} — dari ${d.dasar}</div>
+        ${kepala('Retur · ' + n.teks, 'nota ' + (d.bon ? 'BON ' : '') + tanggalPendek(n.t.tanggal) + (n.t.namaPelanggan ? ' · ' + n.t.namaPelanggan : '') + ' · boleh kembali ' + DESIMAL(d.sisa) + ' ' + d.satuan + (d.sudahDiretur ? ' (' + DESIMAL(d.sudahDiretur) + ' sudah diretur)' : ''))}
+        <div class="ket">Harga ${d.bon ? 'ditagih' : 'dibayar'} per ${d.satuan}: ${RP(d.perSatuan)} — dari ${d.dasar}${d.bon && n.t.pembulatan > 0 ? ' · pembulatan bon ' + RP(n.t.pembulatan) + ' ikut dipotong bila sisa nota kembali semua' : ''}</div>
         <div class="label">Berapa ${d.satuan} yang kembali${d.satuan === 'kg' ? ' (boleh sebagian)' : ''}</div>
         <div class="angka">${s.ketik || '0'} <span class="ket">${d.satuan}</span>${n.nilai ? h` <span class="ket">= ${RP(n.nilai)}</span>` : ''}</div>
         ${tuts(null, '')}
@@ -761,13 +762,13 @@ export function pasangLayarJual(akar, opsi) {
         <div class="label">Alasan (wajib)</div>
         <div class="bendera">${RT.ALASAN_RETUR.map((a) => h`<span class="pil ${s.rtAlasan === a ? 'nyala' : ''}" data-aksi="rtAlasanChip" data-v="${a}">${a}</span>`)}</div>
         <input class="ketik-nama" id="rtAlasan" type="text" value="${s.rtAlasan}" data-ketik="rtAlasan" placeholder="atau tulis alasannya">
-        <div class="label">Diselesaikan dengan</div>
-        <div class="tombol-baris"><div class="kaca-btn ${tukar ? '' : 'aktif'}" data-aksi="rtPenyelesaian" data-v="refund">Uang kembali</div><div class="kaca-btn ${tukar ? 'aktif' : ''}" data-aksi="rtPenyelesaian" data-v="tukar">Tukar barang</div></div>
-        ${tukar ? h`<div class="pita-info">Tukar: nilai ${RP(n.nilai)} dipotong dari keranjang pengganti. Retur + penjualan penggantinya dicatat BERSAMA saat nota dicatat — tidak bisa bon, tidak bisa bayar sebagian.</div>`
+        ${d.bon ? h`<div class="pita-info" data-k="rt-bon">Nota BON ${n.bon.nama}: barang yang kembali MEMOTONG BON-nya (sisa bon sekarang ${RP(n.bon.sisa)}${n.nilai ? ', sesudah retur ' + RP(n.bon.sisa - n.nilai) : ''}) — tidak ada uang keluar laci. Tukar barang = dua langkah: catat retur ini, lalu jual penggantinya seperti biasa.</div>` : h`<div class="label">Diselesaikan dengan</div>
+        <div class="tombol-baris"><div class="kaca-btn ${tukar ? '' : 'aktif'}" data-aksi="rtPenyelesaian" data-v="refund">Uang kembali</div><div class="kaca-btn ${tukar ? 'aktif' : ''}" data-aksi="rtPenyelesaian" data-v="tukar">Tukar barang</div></div>`}
+        ${d.bon ? '' : tukar ? h`<div class="pita-info">Tukar: nilai ${RP(n.nilai)} dipotong dari keranjang pengganti. Retur + penjualan penggantinya dicatat BERSAMA saat nota dicatat — tidak bisa bon, tidak bisa bayar sebagian.</div>`
           : h`<div class="ket" style="cursor: pointer; text-decoration: underline;" data-aksi="rtTimpa">${s.rtTimpa ? 'pakai hitungan sistem ' + RP(n.nilai) : 'kembalikan LEBIH KECIL dari hitungan sistem?'}</div>
             ${s.rtTimpa ? h`<input class="ketik-nama" id="rtNominal" type="text" inputmode="numeric" value="${s.rtNominal}" data-ketik="rtNominal" placeholder="uang yang dikembalikan (Rp), paling banyak ${RP(n.nilai)}"><input class="ketik-nama" id="rtAlasanTimpa" type="text" value="${s.rtAlasanTimpa}" data-ketik="rtAlasanTimpa" placeholder="kenapa lebih kecil (wajib, jejak permanen)">` : ''}`}
         ${s.kabar && s.kabarAwas ? h`<div class="pita-info awas">${s.kabar}</div>` : ''}
-        <div class="utama" data-aksi="catatRetur">${tukar ? 'IKAT KE KERANJANG · pilih penggantinya' : 'CATAT RETUR · uang keluar ' + RP(s.rtTimpa ? L.angkaRupiah(s.rtNominal) : n.nilai)}</div>
+        <div class="utama" data-aksi="catatRetur">${d.bon ? 'CATAT RETUR · bon dipotong ' + RP(n.nilai) : tukar ? 'IKAT KE KERANJANG · pilih penggantinya' : 'CATAT RETUR · uang keluar ' + RP(s.rtTimpa ? L.angkaRupiah(s.rtNominal) : n.nilai)}</div>
       </div>`;
     }
     if (s.lembar === 'returTanpa') {

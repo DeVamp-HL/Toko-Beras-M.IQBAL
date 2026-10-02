@@ -438,7 +438,7 @@ if __name__ == '__main__':
             'gabung tidak menghapus kartu nama lama (kartu yatim)': js.replace("if (kL) hapus.push({ koleksi: 'pelangganCatatan', id: kL.dok.id });", ""),
             'THR dua kali setahun untuk orang yang sama diterima': js.replace("if (ambilThrPelanggan().some((t) => t.kunci === kunci && Number(t.tahun) === Th)) return { tolak:", "if (false) return { tolak:"),
             'usul THR melampaui amplop': js.replace("const calon = t.belumDapat.filter((b) => b.belanja > 0).slice(0, muat);", "const calon = t.belumDapat.filter((b) => b.belanja > 0);"),
-            'bon: rincian tidak FIFO (pembayaran tidak memadamkan bon tertua)': js.replace("for (const u of utang) { if (tertutup >= u.nominal) { tertutup -= u.nominal; continue; }", "for (const u of utang) { if (false) { tertutup -= u.nominal; continue; }"),
+            'bon: rincian tidak FIFO (pembayaran tidak memadamkan bon tertua)': js.replace("for (const u of utang) { const nom = u.nominal - (u.diretur || 0); if (tertutup >= nom) { tertutup -= nom; continue; }", "for (const u of utang) { const nom = u.nominal - (u.diretur || 0); if (false) { tertutup -= nom; continue; }"),   # jangkar disesuaikan 39b no. 37 tinjauan MM1
             'bon: macet tanpa syarat "tidak ada pembayaran selama itu"': js.replace("umur > atur.macetHari && (diamSejak === null || diamSejak > atur.macetHari);", "umur > atur.macetHari;"),
             'bon: janji dianggap lewat walau sudah membayar sesudah ditagih': js.replace("tagih.janji < iso && (!bayarAkhir || bayarAkhir.tanggal < tagih.tanggal);", "tagih.janji < iso;"),
             # ---- 39b no. 4: sisa negatif berbunyi
@@ -447,7 +447,7 @@ if __name__ == '__main__':
             'no.4: bayar bon untuk nama kelebihan bayar tidak ditolak duluan': js.replace("  if (b.status === 'lebih') return { tolak: b.nama + ': ' + kalimatLebih(pecahLebih(b)) + '. Tidak ada bon untuk dibayar.' };", ""),
             'no.4: hapus bon untuk nama kelebihan bayar tidak ditolak duluan': js.replace("  if (b.status === 'lebih') return { tolak: b.nama + ': ' + kalimatLebih(pecahLebih(b)) + '. Tidak ada bon untuk dihapus dari buku.' };", ""),
             'no.4: kartu orang tanpa kelebihan bayar': js.replace("const PL = pecahLebih(r); const lebih = PL.lebih;", "const PL = pecahLebih(null); const lebih = 0;"),
-            'no.4 B1: hapus buku terbayar disebut uang pelanggan (pecahan dicabut)': js.replace("const uang = Math.min(lebih, Math.max(0, (Number(d.bayar) || 0) - (Number(d.total) || 0))); return { lebih, uang, hapus: lebih - uang };", "return { lebih, uang: lebih, hapus: 0 };"),
+            'no.4 B1: hapus buku terbayar disebut uang pelanggan (pecahan dicabut)': js.replace("const uang = Math.min(lebih, Math.max(0, (Number(d.bayar) || 0) - ((Number(d.total) || 0) - (Number(d.retur) || 0)))); return { lebih, uang, hapus: lebih - uang };", "return { lebih, uang: lebih, hapus: 0 };"),
             'no.4: gabung nama menjumlah utang yang dijepit 0': js.replace("(P.utang - P.lebih + L.utang - L.lebih > 0 ? ', bon ' + RP(P.utang - P.lebih + L.utang - L.lebih)", "(P.utang + L.utang > 0 ? ', bon ' + RP(P.utang + L.utang)"),
             'no.4: ambang kelebihan bayar di nol (sisa pembulatan jadi kelebihan)': js.replace("const LEBIH_AMBANG = -0.5;", "const LEBIH_AMBANG = 0;"),
             'bon: pembayaran melebihi sisa diterima': js.replace("if (n > b.sisa) return { tolak: 'Pembayaran ' + RP(n) + ' melebihi sisa bonnya", "if (false) return { tolak: 'Pembayaran ' + RP(n) + ' melebihi sisa bonnya"),

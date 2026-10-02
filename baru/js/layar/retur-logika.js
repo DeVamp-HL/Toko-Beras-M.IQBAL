@@ -3,17 +3,20 @@
 // Aturan yang dipegang (semua sudah live di index.html; di sini diikuti, bukan diciptakan ulang):
 //  - nilai retur dihitung dari NOTA-nya lewat rtDasarNota() yang DIPINDAH VERBATIM (pembantu.js): hargaTotal − pembulatan,
 //    potongan nota diprorata, dibagi banyaknya; sisa yang boleh kembali = nota − yang sudah diretur di seluruh rantai koreksi;
-//  - hanya karung & kemasan; nota KREDIT, nota ber-bonus, nota perlu-koreksi DITOLAK di sini (di sistem lama ada jalan
+//  - hanya karung & kemasan; nota ber-bonus, nota perlu-koreksi DITOLAK di sini (di sistem lama ada jalan
 //    ketik-tangan; di sistem baru belum — layar menyuruh ke sistem lama, tidak menebak nilainya);
+//  - nota BON (audit 39b no. 37, keputusan owner 2 Okt 2026 "37 buka"): barang yang kembali MEMOTONG BON pembelinya — dokumen retur
+//    (nominalRefund 0 + potongBon) dan mutasi piutang tipe 'retur' lahir dalam SATU kiriman; tidak ada uang keluar laci, tidak bisa tukar,
+//    tidak boleh melebihi sisa bon orang itu (aturan yang sama dengan bayar & hapus buku; kelebihan bayar hanya untuk uang pelanggan sungguhan);
 //  - alasan WAJIB (KR3), kondisi WAJIB: layak dijual lagi → kembali ke stok; rusak/diragukan → Gudang Karantina
 //    (dokumen karantina ber-id sama, bentuk tulisReturDanKarantina 16864);
 //  - refund: uang keluar sebesar hitungan; boleh DITIMPA hanya ke BAWAH dengan alasan (nominalSistem + alasanTimpaNominal);
 //  - tukar: TIDAK ditulis di sini — disusun lengkap lalu DIIKAT ke keranjang Jual (tukarModel 'kreditBarangGabung');
 //    retur + penjualan penggantinya lahir dalam SATU tulisan saat nota dicatat (jual-logika.js susunNotaDokumen).
-import { rtDasarNota, rtKalimatLebih, rtKunciNota, kunciPelanggan, bakuCaraBayar, formatTanggal, merkPunyaKarungBerat, kunciKemasan, namaSingkatTrx, tkApakahYatim, tkSetTertaut, tkTargetPengganti, tkPenjualanHidup } from '../mesin/pembantu.js';
-import { hitungStokKarungPerMerk, hitungStokKemasan } from '../mesin/beku.js';
+import { rtDasarNota, rtKalimatLebih, rtKunciNota, kunciPelanggan, bakuCaraBayar, formatTanggal, merkPunyaKarungBerat, kunciKemasan, namaSingkatTrx, tkApakahYatim, tkSetTertaut, tkTargetPengganti, tkPenjualanHidup, caraBayarKunci } from '../mesin/pembantu.js';
+import { hitungStokKarungPerMerk, hitungStokKemasan, hitungPiutang } from '../mesin/beku.js';
 import { ambilPenjualan, ambilRetur, tolakKunci, stokMerekSaja, petaUkuran, indukTerpisah } from '../data/toko.js';
-import { hariIniIso, RP } from '../inti/format.js';
+import { hariIniIso, RP, DESIMAL, LEBIH_AMBANG } from '../inti/format.js';
 
 export const ALASAN_RETUR = ['salah beli', 'kualitas kurang', 'kelebihan', 'kemasan rusak'];
 export const returAwal = () => ({ rtCari: '', rtNotaId: null, rtKondisi: null, rtPenyelesaian: 'refund', rtAlasan: '', rtTimpa: false, rtNominal: '', rtAlasanTimpa: '',
@@ -28,15 +31,52 @@ function teksBarang(t) {
     : (t.merkSumber || '') + ' ' + (t.beratKarungAcuan || 50) + ' kg × ' + (t.jumlahKarung || 0) + ' karung';
 }
 
+/**
+ * Dasar retur satu baris nota. Audit 39b no. 37: rtDasarNota (verbatim sistem lama) menolak nota KREDIT karena sistem lama tidak punya jalan potong bon;
+ * sistem baru punya, jadi nota bon dihitung dengan aturan yang SAMA (harga per satuan dari nota, potongan nota diprorata, sisa yang boleh kembali di seluruh
+ * rantai koreksi) — rtDasarNota dipanggil atas salinan barisnya bercara bayar tunai. Hasilnya bertanda `bon` + nama pembeli. Nota bon yang nilainya tidak
+ * bisa dihitung (bonus, perlu koreksi) TIDAK diberi jalan ketik tangan (`cadangan`): jalan itu mengeluarkan uang laci padahal bonnya belum tentu dibayar.
+ */
+export function rtDasarRetur(t) {
+  if (caraBayarKunci(t) !== 'kredit') return rtDasarNota(t);
+  const nama = String(t.namaPelanggan || '').trim();
+  if (!kunciPelanggan(nama)) return { ok: false, sebab: 'Nota BON tanpa nama pembeli — tidak ada bon yang bisa dipotong retur. Betulkan nama notanya dulu.' };
+  const d = rtDasarNota(Object.assign({}, t, { caraBayar: 'Tunai' }));
+  if (!d.ok) return { ok: false, sebab: 'Nota BON: ' + d.sebab + (d.cadangan ? ' Retur ketik tangan tidak bisa dipakai untuk nota bon — jalan itu mengeluarkan uang laci, padahal bonnya belum tentu dibayar.' : '') };
+  return Object.assign(d, { bon: true, nama });
+}
+/** Nilai retur: jumlah × harga per satuan nota. Nota BON: pembulatan Rp500 ikut ditagih di bon, jadi retur yang menghabiskan sisa baris itu ikut memotongnya
+ *  (nota bon yang kembali semua = bonnya nol persis); nota tunai tetap tanpa pembulatan (aturan lama). */
+function nilaiRetur(t, d, jml) {
+  return Math.round(jml * d.perSatuan) + (d.bon && Math.abs(jml - d.sisa) < 0.0005 ? Math.max(0, Math.round(Number(t.pembulatan) || 0)) : 0);
+}
+/** Sisa bon pembeli nota bon menurut mesin beku hitungPiutang (+ ejaan nama yang dipakai buku bon). */
+function bonPembeli(d, piutang) { const P = (piutang || hitungPiutang()).find((x) => x.kunci === kunciPelanggan(d.nama)); return { sisa: P ? P.sisa : 0, nama: P ? P.nama : d.nama, bayar: P ? P.bayar || 0 : 0, dihapus: P ? P.dihapus || 0 : 0 }; }
+/** Audit 39b no. 37 tinjauan U37-U2: yang menutup bon pembeli — pembayaran (uang sungguhan) atau HAPUS BUKU (bukan uang). Bon yang ditutup hapus buku tidak
+ *  boleh disebut "sudah dibayar", dan owner tidak boleh disuruh mengembalikan uang laci untuk barang yang tidak pernah dibayar. null = hanya pembayaran. */
+function tutupHapus(B, lunas) {
+  if (!(B.dihapus > 0.5)) return null;
+  const campur = B.bayar > 0.5;
+  return { kata: campur ? 'sudah tertutup (dibayar ' + RP(B.bayar) + ', DIHAPUS BUKU ' + RP(B.dihapus) + ')' : 'sudah DIHAPUS BUKU (' + RP(B.dihapus) + '), bukan dibayar',
+    uang: campur ? 'bagian yang dihapus buku tidak pernah dibayar, jadi tidak ada uang yang dikembalikan untuknya; uang kembali dari laci (lewat "Tidak ada notanya? Retur ketik tangan") paling banyak sebesar yang memang dibayar.'
+      : lunas ? 'barangnya tidak pernah dibayar, jadi tidak ada uang yang dikembalikan.' : 'bagian yang dihapus buku tidak pernah dibayar, jadi tidak ada uang yang dikembalikan untuknya.' };
+}
+
+/** Tinjauan MM3: nota BON milik pembeli yang bonnya sudah tertutup (lunas / dihapus buku) tidak sah ditunjuk — daftar menandainya tak-bisa dan lembar tidak dibuka
+ *  dengan janji "sisa bon Rp0, sesudah retur −Rp…" (dulu baru ditolak susunReturBon sesudah kg, alasan, kondisi diisi). piutang = hitungPiutang() sekali per daftar. */
+function bonMasihAda(d, piutang) {
+  if (!d.ok || !d.bon) return d;
+  const B = bonPembeli(d, piutang); return B.sisa > 0.5 ? d : { ok: false, sebab: kalimatBonHabis(B) };
+}
 /** Nota yang bisa ditunjuk: baris karung/kemasan yang masih berlaku, 60 hari terakhir, terbaru dulu. */
 export function daftarNotaRetur(s) {
-  const hari = hariIniIso(s.sekarang); const batas = geser(hari, -60);
+  const hari = hariIniIso(s.sekarang); const batas = geser(hari, -60); const piutang = hitungPiutang();
   const c = String(s.rtCari || '').trim().toLowerCase();
   return ambilPenjualan().filter((t) => (t.jenis === 'karung' || t.jenis === 'kemasan') && (t.tanggal || '') >= batas && !t.penggantiRetur)
     .filter((t) => !c || (String(t.namaPelanggan || '') + ' ' + teksBarang(t)).toLowerCase().indexOf(c) >= 0)
     .sort((a, b) => ((b.tanggal || '') + (b.jam || '')).localeCompare((a.tanggal || '') + (a.jam || ''))).slice(0, 40)
-    .map((t) => { const d = rtDasarNota(t); return { id: String(t.id), tanggal: t.tanggal || '', jam: t.jam || '', nama: t.namaPelanggan || '', teks: teksBarang(t),
-      hargaTotal: t.hargaTotal || 0, cara: bakuCaraBayar(t.caraBayar), bisa: !!d.ok, sebab: d.ok ? '' : d.sebab, cadangan: !d.ok && !!d.cadangan, sisa: d.ok ? d.sisa : 0, satuan: d.ok ? d.satuan : '' }; });
+    .map((t) => { const d = bonMasihAda(rtDasarRetur(t), piutang); return { id: String(t.id), tanggal: t.tanggal || '', jam: t.jam || '', nama: t.namaPelanggan || '', teks: teksBarang(t),
+      hargaTotal: t.hargaTotal || 0, cara: bakuCaraBayar(t.caraBayar), bisa: !!d.ok, sebab: d.ok ? '' : d.sebab, cadangan: !d.ok && !!d.cadangan, sisa: d.ok ? d.sisa : 0, satuan: d.ok ? d.satuan : '', bon: !!(d.ok && d.bon) }; });
 }
 
 /** Nota yang sedang ditunjuk + dasar hitungnya, dibaca ULANG tiap kali (nota bisa dibatalkan/dikoreksi/diretur dari perangkat lain). */
@@ -44,10 +84,11 @@ export function notaDitunjuk(s) {
   if (!s.rtNotaId) return null;
   const t = ambilPenjualan().find((x) => String(x.id) === String(s.rtNotaId));
   if (!t) return { hilang: true };
-  const d = rtDasarNota(t);
+  const d = bonMasihAda(rtDasarRetur(t));
   const jml = angka(s.ketik);
-  const nilai = d.ok && jml > 0 ? Math.round(jml * d.perSatuan) : 0;
-  return { t, d, jml, nilai, teks: teksBarang(t) };
+  const bon = d.ok && d.bon ? bonPembeli(d) : null;
+  const nilai = d.ok && jml > 0 ? (bon ? potongBulat(t, d, jml, nilaiRetur(t, d, jml), bon.sisa) : nilaiRetur(t, d, jml)) : 0;
+  return { t, d, jml, nilai, teks: teksBarang(t), bon };
 }
 
 /** Susun draf retur dari isian; {tolak} atau {draf, nilai, d, t}. Bentuk = simpanRetur() index.html cabang _rtNota (15856). */
@@ -63,7 +104,7 @@ function susunDraf(s, w) {
   if (!(jml > 0)) return { tolak: 'Isi berapa ' + d.satuan + ' yang dikembalikan' };
   if (d.satuan === 'unit' && Math.round(jml) !== jml) return { tolak: 'Retur kemasan dihitung per UNIT utuh' };
   if (jml > d.sisa) return { tolak: rtKalimatLebih(d, jml) };
-  const nilai = Math.round(jml * d.perSatuan);
+  const nilai = nilaiRetur(t, d, jml);
   let draf;
   if (t.jenis === 'kemasan') {
     const uk = parseFloat(t.ukuranKemasan);
@@ -87,10 +128,75 @@ export function dokumenKarantina(doc) {
 }
 
 /**
- * Catat retur. REFUND → {dokumen, patch}; TUKAR → {ikat, patch} (tidak ada dokumen: lahir bersama nota penggantinya).
+ * Audit 39b no. 37: retur nota BON = dokumen retur (nominalRefund 0 + potongBon) + mutasi piutang tipe 'retur' dalam SATU kiriman — owner saja (rules v6:
+ * retur create owner; piutangMutasi bukan-owner hanya 'bayar'; penulis pusat menolak lebih dulu). Tidak boleh melebihi sisa bon pembeli, sama dengan bayar &
+ * hapus buku (bon-logika): sisa di bawah nol hanya untuk uang pelanggan sungguhan (no. 4, LEBIH_AMBANG) — barang yang sudah dibayar dikembalikan sebagai
+ * uang (retur ketik tangan), bukan dijadikan kelebihan bayar tanpa uang. Tukar tidak bisa: catat retur ini, lalu jual penggantinya biasa.
+ */
+/** Tinjauan U37-U3: pembulatan bon (ikut dipotong saat sisa baris nota kembali semua) yang sebagian sudah tertutup pembayaran — bon dipotong sebesar sisanya saja,
+ *  supaya bon bisa nol (dulu ditolak dengan saran "paling banyak 50,02 kg" untuk nota 50 kg, lalu sisa Rp440 tertinggal). Lembar Retur & susunReturBon satu aturan. */
+function potongBulat(t, d, jml, nilai, sisaBon) {
+  const bulat = Math.abs(jml - d.sisa) < 0.0005 ? Math.max(0, Math.round(Number(t.pembulatan) || 0)) : 0;
+  return nilai - sisaBon > 0.5 && sisaBon > 0.5 && nilai - sisaBon <= bulat ? sisaBon : nilai;
+}
+/** Tinjauan U37-U3: bagian nota bon yang SUDAH DIBAYAR (x kg / unit di atas batas potong bon) hanya bisa jadi uang kembali lewat retur ketik tangan — yang menerima
+ *  karung utuh atau setengah saja (kemasan per unit), dan TIDAK terikat ke nota ini (nota tetap menawarkan barangnya). Kalimat menyebut batas itu apa adanya:
+ *  kg yang bukan kelipatan setengah karung tidak dijanjikan jalan, dan jalan yang ada diberi peringatan supaya barang yang sama tidak diretur dua kali. */
+function uangKembaliKetik(t, d, x) {
+  const awas = ' — catatan itu TIDAK mengurangi nota ini, jadi sesudahnya jangan retur nota ini lagi untuk barang yang sama.';
+  if (d.satuan === 'unit') return 'bagian yang sudah dibayar (' + DESIMAL(x) + ' unit) dikembalikan sebagai uang lewat "Tidak ada notanya? Retur ketik tangan"' + awas;
+  const berat = Number(t.beratKarungAcuan) || 50; const setengah = berat / 2;
+  if (Math.abs(x / setengah - Math.round(x / setengah)) < 0.001) return 'bagian yang sudah dibayar (' + DESIMAL(x) + ' kg = ' + DESIMAL(x / berat) + ' karung) dikembalikan sebagai uang lewat "Tidak ada notanya? Retur ketik tangan"' + awas;
+  return 'bagian yang sudah dibayar (' + DESIMAL(x) + ' kg) tidak bisa dicatat sebagai uang kembali di layar ini: retur ketik tangan hanya menerima karung utuh atau setengah (' + DESIMAL(setengah) + ' kg).';
+}
+/** Bon pembeli sudah tertutup (sisa ≤ Rp0,5): retur nota bon tidak bisa memotong apa pun. Satu kalimat untuk daftar, lembar & kiriman (tinjauan MM3);
+ *  nilai boleh kosong (daftar & lembar belum tahu berapa yang kembali). */
+function kalimatBonHabis(B, nilai) {
+  const H = tutupHapus(B, true);
+  return 'Bon ' + B.nama + ' ' + (H ? H.kata : 'sudah lunas') + (B.sisa < LEBIH_AMBANG ? ' (malah ada kelebihan bayar ' + RP(-B.sisa) + ')' : '') + ' — tidak ada bon yang bisa dipotong retur ' + (nilai ? RP(nilai) + ' ini' : 'nota ini') + '. ' + (H ? H.uang.charAt(0).toUpperCase() + H.uang.slice(1) : 'Barangnya sudah dibayar: kalau uangnya dikembalikan dari laci, catat lewat "Tidak ada notanya? Retur ketik tangan" (uang kembali).') + ' Retur tidak disimpan.';
+}
+function susunReturBon(s, w, r) {
+  const { draf, d, t } = r; let nilai = r.nilai;
+  if (s.rtPenyelesaian === 'tukar') return { tolak: 'Nota BON tidak bisa ditukar langsung: catat retur ini dulu (memotong bon ' + d.nama + '), lalu jual penggantinya seperti biasa (boleh bon).' };
+  const B = bonPembeli(d);
+  nilai = potongBulat(t, d, draf.jumlahDikembalikan, nilai, B.sisa);
+  if (nilai - B.sisa > 0.5) {
+    const H = tutupHapus(B, !(B.sisa > 0.5));
+    if (!(B.sisa > 0.5)) return { tolak: kalimatBonHabis(B, nilai) };
+    // batas yang disebut dibulatkan ke BAWAH dua desimal (= yang tergambar), supaya angka yang disarankan tidak melewati sisa bon
+    const maks = d.satuan === 'unit' ? Math.floor(B.sisa / d.perSatuan) : Math.floor(B.sisa / d.perSatuan * 100) / 100;
+    // tinjauan MM4: sisa bon lebih kecil dari satu satuan nota (1 unit / 0,01 kg) — jangan sarankan "paling banyak 0" (mengetik 0 ditolak), sebut apa adanya
+    const satu = d.satuan === 'unit' ? 1 : 0.01;
+    if (maks < satu) return { tolak: 'Retur ' + RP(nilai) + ' melebihi sisa bon ' + B.nama + ' (' + RP(B.sisa) + ') — sebagian bonnya ' + (H ? H.kata : 'sudah dibayar') + '. Sisa bon itu lebih kecil dari harga ' + DESIMAL(satu) + ' ' + d.satuan + ' nota ini (' + RP(Math.round(satu * d.perSatuan)) + '), jadi retur nota ini tidak bisa memotong bon; ' + (H ? H.uang : uangKembaliKetik(t, d, draf.jumlahDikembalikan)) + ' Retur tidak disimpan.' };
+    return { tolak: 'Retur ' + RP(nilai) + ' melebihi sisa bon ' + B.nama + ' (' + RP(B.sisa) + ') — sebagian bonnya ' + (H ? H.kata : 'sudah dibayar') + '. Potong bon paling banyak sebesar sisanya: kurangi yang dikembalikan (paling banyak ' + DESIMAL(maks) + ' ' + d.satuan + '); ' + (H ? H.uang : uangKembaliKetik(t, d, draf.jumlahDikembalikan - maks)) + ' Retur tidak disimpan.' };
+  }
+  const idMutasi = w.idUnik();
+  Object.assign(draf, { penyelesaian: 'potongBon', nominalRefund: 0, potongBon: nilai, namaPelanggan: B.nama, piutangMutasiId: idMutasi });
+  const mutasi = { id: idMutasi, tipe: 'retur', namaPelanggan: B.nama, nominal: nilai, tanggal: w.tanggal, jam: w.jam, returId: draf.id, notaAsalId: draf.notaAsalId, catatan: ringkasDraf(draf), dicatatDi: 'sistem' };
+  const dokumen = [{ koleksi: 'retur', data: draf }, { koleksi: 'piutangMutasi', data: mutasi }];
+  if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));
+  return { dokumen, patch: Object.assign(returAwal(), { lembar: null, ketik: '',
+    kabar: 'Retur nota BON dicatat — ' + ringkasDraf(draf) + ' · bon ' + B.nama + ' dipotong ' + RP(nilai) + ' (sisa ' + RP(B.sisa - nilai) + ') · tidak ada uang keluar laci' + (draf.kondisi === 'utuh' ? ' · barang kembali ke stok jual' : ' · barang masuk Gudang Karantina'), kabarAwas: false }) };
+}
+
+/**
+ * Audit 39b no. 37 tinjauan U37-U1: nota / karcis yang barangnya sudah kembali lewat retur nota BON (dokumen retur ber-potongBon yang menunjuk salah satu
+ * barisnya) TIDAK boleh dibatalkan. Pembatalan mencabut bonnya, tetapi dokumen retur & mutasi piutang tipe 'retur' tetap tinggal — bon pembeli jadi minus dan
+ * terbaca "kelebihan bayar, uang pelanggan dipegang toko" padahal tidak ada uang, lalu bon berikutnya orang itu terpotong diam-diam. Dipakai Jual
+ * (susunPembatalan) dan Karcis kasir (susunBatalKarcis). Kalimat tolak, atau null bila tidak ada retur seperti itu.
+ */
+export function tolakBatalReturBon(ids) {
+  const k = (ids || []).map(String); const r = ambilRetur().filter((x) => (Number(x.potongBon) || 0) > 0 && k.indexOf(String(x.notaAsalId)) >= 0); if (!r.length) return null;
+  const nama = String(r[0].namaPelanggan || '').trim(); const n = r.reduce((a, x) => a + (Number(x.potongBon) || 0), 0);
+  return 'Nota ini sudah diretur memotong bon' + (nama ? ' ' + nama : '') + ' (' + RP(n) + ') — tidak bisa dibatalkan lagi: returnya tetap tercatat, jadi bon' + (nama ? ' ' + nama : '') + ' akan minus seolah toko memegang uangnya, padahal tidak ada uang. Nota tidak dibatalkan.';
+}
+
+/**
+ * Catat retur. REFUND → {dokumen, patch}; TUKAR → {ikat, patch} (tidak ada dokumen: lahir bersama nota penggantinya); nota BON → susunReturBon.
  */
 export function susunRetur(s, w) {
   const r = susunDraf(s, w); if (r.tolak) return r;
+  if (r.d.bon) return susunReturBon(s, w, r);
   const { draf, nilai } = r;
   if (draf.penyelesaian === 'tukar') {
     draf.nominalRefund = nilai; draf.selisihHargaTukar = 0; draf.tukarModel = 'kreditBarangGabung';

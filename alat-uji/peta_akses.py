@@ -389,6 +389,7 @@ OWNER_JALUR = {
     'susunKunci': 'diukur', 'susunBatal': 'diukur',
     # dicatat alasannya — jumlah dokumen bertanggal TETAP (tanpa perulangan yang membesar) dan tanggalnya hari ini / bulan ini, atau tidak menulis koleksi bertanggal
     'susunReturTanpaNota': '1 retur bertanggal hari ini (+ karantina, tidak dikunci)',
+    'susunReturBon': '39b no. 37 retur nota BON: 1 retur + 1 piutangMutasi tipe retur bertanggal hari ini (+ karantina, tidak dikunci) — jumlah tetap, nota bulan terkunci tetap retur hari ini',
     'susunPenggantiTercatat': '1 dokumen retur (≤ 1 pemeriksaan); retur di bulan terkunci → ditolak logika',
     'susunBayar': 'bayar bon pemasok: 1 utangPemasokMutasi + paling banyak 1 biaya admin, bertanggal hari ini',
     'susunUrungBayar': 'urung bayar bon: hapus 1 pembayaran + paling banyak 1 biaya admin (dokumen barusan)',

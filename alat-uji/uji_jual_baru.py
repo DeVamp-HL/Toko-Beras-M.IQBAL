@@ -274,7 +274,7 @@ terapkanKeCache([{ koleksi: 'penjualan', data: { id: 's5', trxId: 'T5', tanggal:
   { koleksi: 'penjualan', data: { id: 's6', trxId: 'T6', tanggal: '2026-09-18', jam: '09:40', caraBayar: 'Tunai', namaPelanggan: '', jenis: 'kemasan', namaProduk: 'Kembang', ukuranKemasan: 5, jumlahUnit: 3, bonusUnit: 1, totalKg: 15, hargaTotal: 144000, hppTotalSaatJual: 198000 } }]);
 var dn = daftarNotaRetur(s); function nota(id) { return dn.find(function (x) { return x.id === id; }); }
 ok('L: daftar nota = baris karung/kemasan berlaku (s1 s2 s3 s5 s6), literan & yang dibatalkan tidak ikut, terbaru dulu', dn.length === 5 && dn[0].id === 's2' && !nota('s4'), JSON.stringify(dn.map(function (x) { return x.id; })));
-ok('L: nota KREDIT ditolak dengan sebabnya; nota ber-BONUS ditolak; nota tunai bisa', nota('s2').bisa === false && /KREDIT/.test(nota('s2').sebab) && nota('s6').bisa === false && /BONUS/.test(nota('s6').sebab) && nota('s5').bisa === true && nota('s5').sisa === 100 && nota('s5').satuan === 'kg', JSON.stringify([nota('s2'), nota('s6'), nota('s5')]));
+ok('L: nota BON bisa diretur (39b no. 37: memotong bon, bertanda bon); nota ber-BONUS ditolak; nota tunai bisa', nota('s2').bisa === true && nota('s2').bon === true && nota('s2').sisa === 50 && nota('s6').bisa === false && /BONUS/.test(nota('s6').sebab) && nota('s5').bisa === true && nota('s5').sisa === 100 && nota('s5').satuan === 'kg', JSON.stringify([nota('s2'), nota('s6'), nota('s5')]));
 terap({ rtCari: 'rudi' }); ok('L: cari "rudi" menyempit ke notanya', daftarNotaRetur(s).length === 1 && daftarNotaRetur(s)[0].id === 's5'); terap({ rtCari: '' });
 terap({ rtNotaId: 's5', ketik: '41,5' }); var nd = notaDitunjuk(s);
 ok('L: nilai dari NOTA: (1.380.500 − pembulatan 500) ÷ 100 kg = 13.800/kg × 41,5 kg = 572.700', nd.d.perSatuan === 13800 && nd.nilai === 572700, JSON.stringify([nd.d.perSatuan, nd.nilai]));
@@ -299,6 +299,29 @@ terap({ rtNominal: '70.000', rtAlasanTimpa: 'ok' }); ok('L: menimpa tanpa alasan
 terap({ rtAlasanTimpa: 'kantong sobek, disepakati 70 rb' }); RT = susunRetur(s, W); rd = RT.dokumen[0].data;
 ok('L: timpa ke bawah: nominalRefund 70.000, nominalSistem 72.000, alasanTimpaNominal tercatat; kemasan {namaProduk, ukuranKemasan, jumlahUnit 1, totalKg 5}', rd.nominalRefund === 70000 && rd.nominalSistem === 72000 && /kantong sobek/.test(rd.alasanTimpaNominal) && rd.jenisAsal === 'kemasan' && rd.jumlahUnit === 1 && rd.totalKg === 5 && rd.ukuranKemasan === 5, JSON.stringify(rd));
 terap({ rtNotaId: 'tidak-ada' }); ok('L: nota yang hilang DITOLAK', /tidak ditemukan lagi/.test(susunRetur(s, W).tolak || ''));
+// 39b no. 37 (owner 2 Okt "37 buka"): nota BON s2 (Deka, 690.000 ÷ 50 kg = 13.800/kg) — returnya memotong bon, bukan uang laci; tukar langsung ditolak
+terap(Object.assign(returAwal(), { rtNotaId: 's2', ketik: '10', rtAlasan: 'kualitas kurang', rtKondisi: 'utuh' })); var RB37 = susunRetur(s, W); var rb37 = RB37.dokumen ? RB37.dokumen[0].data : {}, mb37 = RB37.dokumen && RB37.dokumen[1] ? RB37.dokumen[1].data : {};
+ok('39b-37: retur nota BON = dokumen retur (nominalRefund 0, potongBon 138.000, penyelesaian potongBon) + mutasi piutang tipe retur 138.000 atas nama Deka, saling menunjuk — SATU kiriman, kabar "tidak ada uang keluar laci"',
+  !!RB37.dokumen && RB37.dokumen.length === 2 && RB37.dokumen[0].koleksi === 'retur' && rb37.nominalRefund === 0 && rb37.potongBon === 138000 && rb37.penyelesaian === 'potongBon' && rb37.namaPelanggan === 'Deka' && rb37.notaAsalId === 's2'
+  && RB37.dokumen[1].koleksi === 'piutangMutasi' && mb37.tipe === 'retur' && mb37.nominal === 138000 && mb37.namaPelanggan === 'Deka' && String(mb37.returId) === String(rb37.id) && String(rb37.piutangMutasiId) === String(mb37.id)
+  && /tidak ada uang keluar laci/.test(RB37.patch.kabar), JSON.stringify(RB37));
+terap({ rtPenyelesaian: 'tukar' }); ok('39b-37: nota BON tidak bisa ditukar langsung (catat retur dulu, lalu jual penggantinya)', /tidak bisa ditukar langsung/.test(susunRetur(s, W).tolak || ''), JSON.stringify(susunRetur(s, W)));
+terap(returAwal());
+// 39b no. 37 tinjauan U37-U1 (+ MM6, jalur "Batalkan nota barusan"): nota / karcis BON yang barangnya sudah kembali lewat retur nota bon TIDAK bisa dibatalkan.
+// Dulu pembatalan mencabut bonnya, tapi retur & mutasi piutang tipe retur tetap tinggal: bon jadi minus, terbaca "kelebihan bayar — uang pelanggan dipegang toko".
+// ANGKA CONTOH: karcis kasir darurat (tuts bernama) bon 700.000 diretur penuh; nota bon 700.000 diretur 10 kg; pembanding: karcis bon tanpa retur dan karcis TUNAI
+// yang diretur uang kembali tetap bisa dibatalkan (penjaga ini hanya untuk retur yang memotong bon).
+var U1N = function (id, nama, x) { return { koleksi: 'penjualan', data: Object.assign({ id: id, trxId: 'T' + id, tanggal: '2026-09-19', jam: '08:00', caraBayar: 'Kredit', namaPelanggan: nama, jenis: 'karung', merkSumber: 'Angsa', beratKarungAcuan: 50, jumlahKarung: 1, totalKg: 50, hargaTotal: 700000, hppTotalSaatJual: 650000 }, x || {}) }; };
+var U1 = denganCacheSementara([U1N('u1k', 'Uji Batal', { viaDarurat: true, perangkat: 'd-hp1' }), U1N('u1n', 'Uji Urung'), U1N('u1p', 'Uji Pembanding', { viaDarurat: true, perangkat: 'd-hp1' }), U1N('u1t', '', { caraBayar: 'Tunai', viaDarurat: true, perangkat: 'd-hp1' })], function () {
+  var RS = function (id, kg) { return susunRetur(Object.assign(returAwal(), { rtNotaId: id, ketik: kg, rtAlasan: 'kualitas kurang', rtKondisi: 'utuh' }), W); };
+  var rk = RS('u1k', '50'), rn = RS('u1n', '10'), rt = RS('u1t', '10');
+  return denganCacheSementara((rk.dokumen || []).concat(rn.dokumen || [], rt.dokumen || []), function () {
+    var bk = susunBatalKarcis('u1k', 'salah ketik', W), bn = susunPembatalan({ trxId: 'Tu1n', idPenjualan: ['u1n'], piutangId: null, pesanan: null, retur: null }, 'salah', W);
+    return { rk: rk.tolak || '', rn: rn.tolak || '', rt: rt.tolak || '', bk: bk, bn: bn, bp: susunBatalKarcis('u1p', 'salah ketik', W), bt: susunBatalKarcis('u1t', 'salah ketik', W), sisaK: (hitungPiutang().find(function (x) { return x.kunci === 'uji batal'; }) || {}).sisa };
+  }); });
+ok('39b-37 U37-U1: karcis BON yang sudah diretur memotong bon DITOLAK dibatalkan (kalimat menyebut bon & returnya, tidak ada dokumen); "Batalkan nota barusan" sesudah retur 10 kg juga DITOLAK; karcis bon tanpa retur & karcis tunai yang diretur uang kembali tetap bisa dibatalkan',
+  !U1.rk && !U1.rn && !U1.rt && U1.sisaK === 0 && /sudah diretur memotong bon Uji Batal \(Rp700\.000\)/.test(U1.bk.tolak || '') && !U1.bk.dokumen && !!U1.bn && /sudah diretur memotong bon Uji Urung \(Rp140\.000\)/.test(U1.bn.tolak || '') && !U1.bn.dokumen
+  && !U1.bp.tolak && !!U1.bp.dokumen && U1.bp.dokumen[0].data.dibatalkan === true && !U1.bt.tolak && !!U1.bt.dokumen, JSON.stringify(U1));
 // M. TUKAR: retur diikat ke keranjang, lahir BERSAMA penjualan penggantinya
 mulaiNota(); terap(Object.assign(returAwal(), { rtNotaId: 's5', ketik: '41,5', rtAlasan: 'salah beli', rtKondisi: 'tidak_utuh', rtPenyelesaian: 'tukar', tukar: null }));
 RT = susunRetur(s, W); ok('M: tukar TIDAK menulis dokumen — menghasilkan ikatan {returDraf, kredit 572.700, ringkas}; draf kreditBarangGabung, selisih 0', !RT.dokumen && RT.ikat && RT.ikat.kredit === 572700 && RT.ikat.returDraf.tukarModel === 'kreditBarangGabung' && RT.ikat.returDraf.selisihHargaTukar === 0 && RT.ikat.returDraf.nominalRefund === 572700 && RT.ikat.returDraf.penyelesaian === 'tukar' && /Angsa 41,5 kg/.test(RT.ikat.ringkas), JSON.stringify(RT));
@@ -976,7 +999,13 @@ if __name__ == '__main__':
             'nilai retur ikut memuat pembulatan tunai nota': js.replace("const bersih = (p.hargaTotal || 0) - (p.pembulatan || 0);", "const bersih = (p.hargaTotal || 0);"),
             'retur melebihi sisa nota lolos': js.replace("if (jml > d.sisa) return { tolak: rtKalimatLebih(d, jml) };", ""),
             'retur yang sudah terjadi tidak mengurangi sisa nota': js.replace(".reduce((a, r) => a + (r.jumlahDikembalikan || 0), 0);\n    const sisa", ".reduce((a, r) => a + 0, 0);\n    const sisa"),
-            'nota KREDIT boleh di-refund (uang keluar padahal belum dibayar)': js.replace("if (caraBayarKunci(t) === 'kredit') {", "if (false) {"),
+            '39b-37: nota BON di-refund dari laci (bukan potong bon)': js.replace("  if (r.d.bon) return susunReturBon(s, w, r);\n", ""),
+            '39b-37: nota BON kembali ditolak (rtDasarNota apa adanya)': js.replace("if (caraBayarKunci(t) !== 'kredit') return rtDasarNota(t);", "return rtDasarNota(t);"),
+            '39b-37: retur nota BON tanpa mutasi piutang (bon tidak turun)': js.replace("const dokumen = [{ koleksi: 'retur', data: draf }, { koleksi: 'piutangMutasi', data: mutasi }];", "const dokumen = [{ koleksi: 'retur', data: draf }];"),
+            '39b-37: tukar nota BON lolos': js.replace("if (s.rtPenyelesaian === 'tukar') return { tolak: 'Nota BON tidak bisa ditukar langsung", "if (false) return { tolak: 'Nota BON tidak bisa ditukar langsung"),
+            '39b-37 U37-U1: nota yang sudah diretur memotong bon boleh diurungkan (bon jadi minus)': js.replace("const tolakRb = tolakBatalReturBon(baris.map((p) => p.id)); if (tolakRb) return { tolak: tolakRb };", ""),
+            '39b-37 U37-U1: karcis yang sudah diretur memotong bon boleh dibatalkan (bon jadi minus)': js.replace("const tolakRb = tolakBatalReturBon([p.id]); if (tolakRb) return { tolak: tolakRb };", ""),
+            '39b-37 U37-U1: penjaga batal juga menahan retur uang kembali (bukan hanya yang memotong bon)': js.replace("const r = ambilRetur().filter((x) => (Number(x.potongBon) || 0) > 0 && k.indexOf(String(x.notaAsalId)) >= 0); if (!r.length) return null;", "const r = ambilRetur().filter((x) => k.indexOf(String(x.notaAsalId)) >= 0); if (!r.length) return null;"),
             'alasan retur tidak wajib': js.replace("if (!catatan) return { tolak: 'Pilih / isi alasan retur dulu", "if (false) return { tolak: 'Pilih / isi alasan retur dulu"),
             'kondisi barang tidak wajib dijawab': js.replace("if (s.rtKondisi !== 'utuh' && s.rtKondisi !== 'tidak_utuh') return", "if (false) return"),
             'barang rusak tidak masuk karantina': js.replace("if (draf.kondisi === 'tidak_utuh') dokumen.push(dokumenKarantina(draf));", ""),

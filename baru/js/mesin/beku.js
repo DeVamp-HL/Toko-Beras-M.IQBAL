@@ -108,7 +108,9 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
       { label: 'Pengeluaran harian (Toko)', nominal: jmlNominal(harianToko), n: harianToko.length, satuan: 'catatan' },
       { label: 'Prive owner — hidup dari laci', nominal: jmlNominal(harianOwner), n: harianOwner.length, satuan: 'catatan' },
       { label: 'Bayar utang ke owner', nominal: jmlNominal(bayarUtangOwner), n: bayarUtangOwner.length, satuan: 'pembayaran' },
-      { label: 'Refund retur', nominal: refund, n: returDipakai.length, satuan: 'retur' },
+      // Retur nota BON (audit 39b no. 37 tinjauan MM5) memotong bon, bukan uang laci — rupiahnya
+      // sudah nol di `refund`, jadi tidak ikut dihitung sebagai kejadian refund.
+      { label: 'Refund retur', nominal: refund, n: returDipakai.filter(r => !(r.potongBon > 0)).length, satuan: 'retur' },
       { label: 'Beli kantong kemasan', nominal: jmlHarga(beliKemasan), n: beliKemasan.length, satuan: 'pembelian' },
       { label: 'Beli paper bag literan', nominal: jmlHarga(beliLiteran), n: beliLiteran.length, satuan: 'pembelian' },
       { label: 'Kasbon diambil pegawai', nominal: jmlNominal(kasbonAmbil), n: kasbonAmbil.length, satuan: 'kali' },
@@ -556,7 +558,7 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
     function slot(nama, urut) {
       const k = kunciPelanggan(nama);
       if (!k) return null;
-      if (!peta[k]) peta[k] = { kunci: k, nama: String(nama).trim(), urutNama: urut || 0, kredit: 0, saldoAwal: 0, bayar: 0, dihapus: 0, mutasi: [] };
+      if (!peta[k]) peta[k] = { kunci: k, nama: String(nama).trim(), urutNama: urut || 0, kredit: 0, saldoAwal: 0, bayar: 0, dihapus: 0, retur: 0, mutasi: [] };
       // Ejaan yang dipakai = dari mutasi paling baru, supaya pembetulan ejaan ikut terpakai.
       if ((urut || 0) >= peta[k].urutNama) { peta[k].nama = String(nama).trim(); peta[k].urutNama = urut || 0; }
       return peta[k];
@@ -591,11 +593,20 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
         s.dihapus += n;
         s.mutasi.push({ jenis: 'hapusBuku', tanggal: m.tanggal, jam: m.jam || '', nominal: n, idMutasi: m.id,
           ket: 'Hapus buku' + (m.alasan ? ' · ' + m.alasan : '') });
+      } else if (m.tipe === 'retur') {
+        // RETUR NOTA BON (audit 39b no. 37, keputusan owner 2 Okt 2026): barang dari nota bon
+        // kembali, bonnya turun sebesar nilai barang itu. Mengurangi sisa SEPERTI pembayaran
+        // (bon tertua dulu), tapi BUKAN uang masuk — arus kas & buku kas menyaring 'bayar' saja —
+        // dan BUKAN rugi: laba membacanya dari dokumen retur pasangannya (kolom potongBon,
+        // uangKembaliRetur) sebagai pengurang penjualan. Keduanya lahir dalam satu kiriman.
+        s.retur += n;
+        s.mutasi.push({ jenis: 'retur', tanggal: m.tanggal, jam: m.jam || '', nominal: n, idMutasi: m.id,
+          notaAsalId: m.notaAsalId || null, ket: 'Retur barang' + (m.catatan ? ' · ' + m.catatan : '') });
       }
     });
     const hasil = Object.keys(peta).map(k => {
       const s = peta[k];
-      s.sisa = Math.round((s.kredit + s.saldoAwal - s.bayar - s.dihapus) * 100) / 100;
+      s.sisa = Math.round((s.kredit + s.saldoAwal - s.bayar - s.dihapus - s.retur) * 100) / 100;
       s.total = s.kredit + s.saldoAwal;
       // UMUR PIUTANG (12 Agu 2026) — pembayaran dianggap melunasi utang TERTUA dulu
       // (FIFO), kebiasaan penagihan di mana pun. Sisa yang tinggal karena itu melekat
@@ -607,9 +618,20 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
       // Hapus buku ikut memadamkan utang TERTUA lebih dulu, sama seperti pembayaran —
       // sisa yang tinggal memang melekat di utang yang lebih muda.
       let sisaBayar = s.bayar + s.dihapus;
+      // Retur nota bon (audit 39b no. 37 tinjauan MM1) memadamkan NOTA ASALNYA dulu — barang
+      // nota itulah yang kembali; bagiannya dicatat di utang itu (`diretur`). Yang tak punya
+      // nota asal di buku ini (atau melebihinya) ikut memadamkan yang tertua, seperti bayar.
+      s.mutasi.forEach(m => {
+        if (m.jenis !== 'retur') return;
+        const u = m.notaAsalId == null ? null : utang.find(x => x.jenis === 'jual' && String(x.idTrx) === String(m.notaAsalId));
+        const x = u ? Math.max(0, Math.min(m.nominal, u.nominal - (u.diretur || 0))) : 0;
+        if (u) u.diretur = (u.diretur || 0) + x;
+        sisaBayar += m.nominal - x;
+      });
       s.tanggalTertua = null;
       for (const u of utang) {
-        if (sisaBayar >= u.nominal) { sisaBayar -= u.nominal; continue; }
+        const nominal = u.nominal - (u.diretur || 0);
+        if (sisaBayar >= nominal) { sisaBayar -= nominal; continue; }
         s.tanggalTertua = u.tanggal || null;   // utang pertama yang belum tertutup penuh
         break;
       }

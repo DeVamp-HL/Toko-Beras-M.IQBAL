@@ -15,10 +15,11 @@ export const DESIMAL = (n) => (Math.round((n || 0) * 100) / 100).toString().repl
 export const LEBIH_AMBANG = -0.5;
 /** Sisa di bawah nol dipecah DUA bagian yang artinya beda (tinjauan no. 4 · B1): `uang` = pembayaran melebihi SEMUA bon (uang pelanggan sungguhan —
  * kekayaan neraca naik sebesar ini) · `hapus` = sisanya: hapus buku yang ternyata dibayar juga (BUKAN uang pelanggan; hapus bukunya yang perlu dibalik —
- * jangan dikembalikan). d = baris hitungPiutang / semuaBon: total = kredit + saldoAwal, bayar, dihapus, sisa. */
+ * jangan dikembalikan). d = baris hitungPiutang / semuaBon: total = kredit + saldoAwal, bayar, dihapus, retur, sisa.
+ * Audit 39b no. 37: barang yang diretur dari nota bon (retur) mengurangi yang ditagih — pembayaran melebihi bon SESUDAH retur = uang pelanggan juga. */
 export function pecahLebih(d) {
   const lebih = d && d.sisa < LEBIH_AMBANG ? -d.sisa : 0; if (!lebih) return { lebih: 0, uang: 0, hapus: 0 };
-  const uang = Math.min(lebih, Math.max(0, (Number(d.bayar) || 0) - (Number(d.total) || 0))); return { lebih, uang, hapus: lebih - uang };
+  const uang = Math.min(lebih, Math.max(0, (Number(d.bayar) || 0) - ((Number(d.total) || 0) - (Number(d.retur) || 0)))); return { lebih, uang, hapus: lebih - uang };
 }
 /** Kalimat per orang: p = pecahLebih(…) (atau { uang, hapus }). */
 export function kalimatLebih(p) {

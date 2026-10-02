@@ -1455,3 +1455,73 @@ kolom `titik` tutup hari TERAKHIR di bulan itu (+ catatan uang sesudahnya sampai
 (Dokumen → laporan berkop, paket bank) memakainya, kas awal arus kas = hitungan akhir bulan sebelumnya. Tanpa hitungan itu: "Kas akhir <bulan> belum bisa
 dihitung — tidak ada tutup hari di <bulan>". Paket bank ditahan bila salah satu dokumennya menolak. Bulan DRAF, layar Neraca per tanggal & mesin beku
 tidak diubah. Uji `uji_laporan_baru.py` +4 (1 lama dipindah ke kotak bertutup hari), kontrol +9 (1 lama disesuaikan).
+
+## Audit 39b no. 37 — retur nota BON memotong bon (2 Okt 2026, cabang `paket/39b-37-retur-bon`)
+
+Keputusan owner 2 Okt: "37 buka" — mesin beku boleh diubah HANYA untuk retur nota bon. Dulu nota BON tidak bisa diretur di /baru/ (retur ketik tangan
+mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` melewati mutasi piutang bertipe lain diam-diam.
+- Mesin beku `hitungPiutang` (diubah di `index.html`, disalin `pindah_mesin.py`, sidik `beku2.py --catat` = pembekuan ulang yang disengaja, hanya mesin
+  ini): mutasi piutang `tipe: 'retur'` mengurangi sisa seperti pembayaran (bon tertua dulu, umur bon ikut), kolom `retur` sendiri — bukan uang (kas &
+  buku kas menyaring `bayar`), bukan rugi. Neraca, saldo tutup buku, KR1 & katalog kasir ikut sendiri. Pembantu `uangKembaliRetur` + `potongBon`: laba &
+  semua omzet mengurangkannya; kas (`hitungArusKasInti`, `daftarGerakanKas`) membaca `nominalRefund` langsung → tidak bergerak.
+- Jual → Retur (owner saja): nota bon bisa ditunjuk (`retur-logika.js` `rtDasarRetur` = aturan `rtDasarNota` atas salinan baris bercara bayar tunai;
+  `rtDasarNota` tidak diubah). SATU kiriman: `retur` {penyelesaian `potongBon`, nominalRefund 0, `potongBon`, `namaPelanggan`, `piutangMutasiId`} +
+  `piutangMutasi` {tipe `retur`, nominal, `returId`, `notaAsalId`} (+ karantina bila rusak); barang utuh kembali ke stok. Pembulatan bon ikut dipotong saat
+  sisa baris nota kembali semua. Tukar langsung ditolak (retur dulu, lalu jual penggantinya). Melebihi sisa bon / bon sudah lunas → DITOLAK dengan kalimat,
+  sama dengan bayar & hapus buku: kelebihan bayar (no. 4) tetap hanya uang pelanggan sungguhan; bon lunas → retur ketik tangan bila uangnya dikembalikan.
+- Layar: Pelanggan → Bon (rincian, Buku bon, riwayat "barang kembali (retur), bon dipotong"), Kartu Piutang ("− retur"), Riwayat (nota bon bisa diretur),
+  "diterima tunai" (`marginDiretur`, hanya ada bila bukan nol), `pecahLebih` tahu retur, kalimat retur Laporan tanpa kata "uang". Rules v6 tidak diubah.
+- Uji: `uji_laporan_baru.py` +15 (sebagian / penuh / rusak / melebihi / lunas / kelebihan bayar sesudah retur: sisa, bon tertua dulu, KR1, katalog, saldo
+  tutup, neraca, kas tetap, laba, stok, diterima tunai, Kartu Piutang, Bon) + pemeriksa kata panel, kontrol +18 (3 jangkar lama disesuaikan);
+  `uji_jual_baru.py` +2 (1 lama dibalik SENGAJA: nota KREDIT kini bisa), kontrol +4 (1 lama diganti); `uji_akses_baru.py` +1 (staf ditolak), kontrol +1;
+  `uji_riwayat_penjualan.py` 1 dibalik SENGAJA, kontrol +1; `uji_pelanggan_baru.py` 1 jangkar kontrol; `peta_akses.py` mendaftarkan `susunReturBon`.
+  Cadangan 1 Okt: 0 retur nota bon, 0 mutasi retur → ASAP GLOBAL byte-sama (tanpa perubahan SENGAJA baru).
+
+### Tinjauan no. 37 (2 Okt 2026) — satu putaran tambal, satu commit per cacat
+- U37-U1 (+ MM6): nota / karcis BON yang barangnya sudah kembali lewat retur nota bon (dokumen `retur` ber-`potongBon` yang `notaAsalId`-nya baris itu) DITOLAK
+  dibatalkan — "Batalkan nota barusan" (`susunPembatalan`) dan Karcis kasir (`susunBatalKarcis`), kalimat dari `retur-logika.js` `tolakBatalReturBon`. Dulu
+  pembatalan mencabut bonnya, tetapi retur & mutasi piutang tipe `retur` tetap tinggal: bon jadi minus dan terbaca "kelebihan bayar — uang pelanggan dipegang
+  toko", bon berikutnya orang itu terpotong diam-diam. Retur uang kembali (nota tunai) tidak disentuh. Uji `uji_jual_baru.py` +1, kontrol +3.
+- U37-U2: kalimat tolak retur nota bon membedakan PEMBAYARAN dari HAPUS BUKU (`retur-logika.js` `tutupHapus`, dari `bayar` / `dihapus` mesin
+  `hitungPiutang`): bon yang dihapus buku ditulis "sudah DIHAPUS BUKU (Rp…), bukan dibayar" — tidak lagi "sudah dibayar", dan tidak menyuruh owner
+  mengembalikan uang laci lewat retur ketik tangan untuk barang yang tidak pernah dibayar; bon yang ditutup keduanya menyebut keduanya dan membatasi uang
+  kembali sebesar yang memang dibayar. Penolakannya sendiri tidak berubah. Uji `uji_laporan_baru.py` +3, kontrol +2 (1 jangkar lama disesuaikan).
+- U37-U3: kalimat tolak "melebihi sisa bon" (bon sebagian dibayar) tidak lagi menjanjikan jalan yang tidak bisa diikuti — bagian yang sudah dibayar hanya
+  disarankan lewat retur ketik tangan bila kelipatan setengah karung (kemasan: per unit), dengan peringatan bahwa catatan ketik tangan TIDAK mengurangi nota
+  itu (jangan diretur lagi — barang yang sama kembali dua kali); kg pecahan disebut batasnya apa adanya (`uangKembaliKetik`). Pembulatan bon yang sebagian
+  sudah tertutup bayar: retur sisa baris nota memotong bon sebesar sisanya saja, bon jadi nol (`potongBulat`, lembar & kiriman satu aturan; dulu "paling banyak
+  50,02 kg" untuk nota 50 kg, lalu Rp440 tertinggal). Batas yang disebut tidak bisa melebihi isi nota karena kasus itu kini diterima — tanpa penjepit. Tidak
+  dibangun: mengikat retur ketik tangan ke nota (di luar paket). Uji `uji_laporan_baru.py` +4, kontrol +3.
+- MM4: sisa bon lebih kecil dari satu satuan nota (1 unit kemasan / 0,01 kg) — kalimat tolak menyebut "sisa bon itu lebih kecil dari harga 1 unit nota ini
+  (Rp…), jadi retur nota ini tidak bisa memotong bon" alih-alih "paling banyak 0 unit" (mengetik 0 ditolak). Cadangan 1 Okt: satu nota kemasan seperti ini,
+  kini tanpa saran mustahil. Uji `uji_laporan_baru.py` +2, kontrol +1.
+- MM3: nota bon milik pembeli yang bonnya sudah tertutup (lunas / dihapus buku) DITANDAI tak-bisa di daftar Retur dan lembarnya tidak menggambar "sisa bon
+  Rp0, sesudah retur −Rp…" (`bonMasihAda` di `daftarNotaRetur` — satu `hitungPiutang` per daftar — dan `notaDitunjuk`), dengan kalimat yang sama dengan
+  penolakan kiriman (`kalimatBonHabis`). Dulu baru ditolak sesudah kg, alasan, kondisi diisi. Riwayat penjualan tetap menawarkan "retur nota ini" (tanpa
+  hitungan bon per baris); lembarnya langsung menyebut sebabnya. Cadangan 1 Okt: 11 dari 42 nota bon 60 hari kini ditolak di depan, 31 tetap bisa.
+  Uji `uji_laporan_baru.py` +2, kontrol +1.
+- U37-U4: rekap harian (Laporan › Harian, kartu rekap & teks WA) punya baris "Retur nota bon (bon dipotong)" = uang retur hari itu − refund kas
+  (`laporan-logika.js` `lpReturBonHari`, dipakai `teksRekapHari` dan `barisRekap` laporan.js) — omzet = tunai + QRIS + bon − refund − retur nota bon menutup.
+  Hanya tampil bila bukan nol (hari tanpa retur nota bon: teks byte-sama). Uji `uji_laporan_baru.py` +1 + pemeriksa kata kartu rekap, kontrol +3.
+- MM5: mesin beku `hitungArusKasInti` (diubah di `index.html`, disalin `pindah_mesin.py`, sidik `beku2.py --catat` = PEMBEKUAN ULANG yang disengaja,
+  keputusan owner 2 Okt "37 buka") — baris "Refund retur" menghitung kejadiannya tanpa retur nota bon (`potongBon`, rupiahnya memang sudah nol di refund):
+  satu ekspresi `n`, rupiah tidak berubah. Retur lama tanpa `potongBon` dihitung persis seperti dulu. Uji `uji_laporan_baru.py` +1, kontrol +1.
+- MM1: mesin beku `hitungPiutang` (PEMBEKUAN ULANG yang disengaja, keputusan owner 2 Okt "37 buka"; diubah di `index.html`, disalin `pindah_mesin.py`,
+  sidik `beku2.py --catat`) — retur nota bon memadamkan NOTA ASALNYA dulu: mutasi retur membawa `notaAsalId`, bagian yang cocok dengan utang jual ber-`idTrx`
+  sama dicatat di utang itu (`diretur`), sisanya (nota asal tak ada di buku orang itu / sudah habis) ikut bon tertua dulu bersama bayar & hapus buku. Umur
+  bon (`tanggalTertua`, `umurHari`) dan saldo pembuka tutup buku ikut sendiri. Dulu retur memotong bon TERTUA: rincian, Buku bon, tagihan WA & umur menunjuk
+  nota yang barangnya sudah kembali (cadangan 1 Okt: 2 dari 42 nota bon 60 hari berbentuk begitu). Pembaca di `bon-logika.js` (`rincianBelumLunas`, Buku bon)
+  memakai nominal − `diretur`. Sisa total tidak berubah; data tanpa mutasi retur byte-sama. Uji `uji_laporan_baru.py` +3, 1 dibalik SENGAJA (A37: nota 15 Sep
+  yang barangnya kembali kini tinggal 420.000, nota 10 Sep 500.500 — dulu 700.000 / 220.500), kontrol +3 (2 jangkar lama disesuaikan); `uji_pelanggan_baru.py` 1 jangkar kontrol (rincian FIFO) disesuaikan.
+- U37-U5: "diterima tunai" (`laporan-logika.js` `lpMarginBonLepas`) — retur nota bon melepas margin NOTA ASALNYA dulu (mutasi retur membawa `notaAsalId`,
+  sama dengan mesin, MM1), sisanya bon tertua dulu. Dulu margin yang dilepas diambil dari bon tertua: pelanggan bersaldo awal (margin 0) membuat diterima
+  tunai turun seukuran margin barang yang kembali padahal tidak ada uang bergerak. Uji `uji_laporan_baru.py` +1, 1 dibalik SENGAJA (A37: margin dilepas
+  20.000 = margin barang yang kembali, dulu 20.186 dari nota 10 Sep), kontrol +1.
+- U37-U6: SISTEM LAMA (`index.html`, hanya-baca) — hitungPiutang sudah membaca retur, empat pembacanya ikut: `rincianBelumLunas` (tagihan WA sistem lama:
+  nominal − `diretur`, sisa retur ikut yang tertua — Σ rincian = sisa mesin = rincian /baru/), riwayat lembar piutang (retur bertanda kurang, bukan +),
+  kolam bulan ini (retur di keran keluar "barang kembali (retur nota bon)", bukan utang baru), panel "Belum tertagih" (rumus "− retur" menutup ke sisa).
+  Bukan mesin beku. Uji `uji_laporan_baru.py` +1 (rincianBelumLunas index.html disalin apa adanya oleh uji) + pemeriksa kata tiga pembaca, kontrol +5.
+- MM2 (sisa pembaca sistem lama di luar U37-U6, semuanya teks tampilan `index.html`): kepala lembar piutang menyebut "barang kembali (retur)" supaya
+  utang − dibayar − dihapus − retur menutup ke sisa; daftar retur memajang retur nota bon sebagai "Bon dipotong Rp… (retur nota bon, tanpa uang)" (dulu
+  "Tukar (selisih Rp0)"); linimasa menulis nilai potong bonnya (dulu "−0"); kartu laba menyebut "retur (uang kembali & bon dipotong)" (dulu "refund retur").
+  Retur lama tanpa `potongBon` tergambar persis seperti dulu. Uji `uji_laporan_baru.py` pemeriksa kata +4, kontrol +4.

@@ -15013,7 +15013,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     function slot(nama, urut) {
       const k = kunciPelanggan(nama);
       if (!k) return null;
-      if (!peta[k]) peta[k] = { kunci: k, nama: String(nama).trim(), urutNama: urut || 0, kredit: 0, saldoAwal: 0, bayar: 0, dihapus: 0, mutasi: [] };
+      if (!peta[k]) peta[k] = { kunci: k, nama: String(nama).trim(), urutNama: urut || 0, kredit: 0, saldoAwal: 0, bayar: 0, dihapus: 0, retur: 0, mutasi: [] };
       // Ejaan yang dipakai = dari mutasi paling baru, supaya pembetulan ejaan ikut terpakai.
       if ((urut || 0) >= peta[k].urutNama) { peta[k].nama = String(nama).trim(); peta[k].urutNama = urut || 0; }
       return peta[k];
@@ -15048,11 +15048,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         s.dihapus += n;
         s.mutasi.push({ jenis: 'hapusBuku', tanggal: m.tanggal, jam: m.jam || '', nominal: n, idMutasi: m.id,
           ket: 'Hapus buku' + (m.alasan ? ' · ' + m.alasan : '') });
+      } else if (m.tipe === 'retur') {
+        // RETUR NOTA BON (audit 39b no. 37, keputusan owner 2 Okt 2026): barang dari nota bon
+        // kembali, bonnya turun sebesar nilai barang itu. Mengurangi sisa SEPERTI pembayaran
+        // (bon tertua dulu), tapi BUKAN uang masuk — arus kas & buku kas menyaring 'bayar' saja —
+        // dan BUKAN rugi: laba membacanya dari dokumen retur pasangannya (kolom potongBon,
+        // uangKembaliRetur) sebagai pengurang penjualan. Keduanya lahir dalam satu kiriman.
+        s.retur += n;
+        s.mutasi.push({ jenis: 'retur', tanggal: m.tanggal, jam: m.jam || '', nominal: n, idMutasi: m.id,
+          notaAsalId: m.notaAsalId || null, ket: 'Retur barang' + (m.catatan ? ' · ' + m.catatan : '') });
       }
     });
     const hasil = Object.keys(peta).map(k => {
       const s = peta[k];
-      s.sisa = Math.round((s.kredit + s.saldoAwal - s.bayar - s.dihapus) * 100) / 100;
+      s.sisa = Math.round((s.kredit + s.saldoAwal - s.bayar - s.dihapus - s.retur) * 100) / 100;
       s.total = s.kredit + s.saldoAwal;
       // UMUR PIUTANG (12 Agu 2026) — pembayaran dianggap melunasi utang TERTUA dulu
       // (FIFO), kebiasaan penagihan di mana pun. Sisa yang tinggal karena itu melekat
@@ -15064,9 +15073,20 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       // Hapus buku ikut memadamkan utang TERTUA lebih dulu, sama seperti pembayaran —
       // sisa yang tinggal memang melekat di utang yang lebih muda.
       let sisaBayar = s.bayar + s.dihapus;
+      // Retur nota bon (audit 39b no. 37 tinjauan MM1) memadamkan NOTA ASALNYA dulu — barang
+      // nota itulah yang kembali; bagiannya dicatat di utang itu (`diretur`). Yang tak punya
+      // nota asal di buku ini (atau melebihinya) ikut memadamkan yang tertua, seperti bayar.
+      s.mutasi.forEach(m => {
+        if (m.jenis !== 'retur') return;
+        const u = m.notaAsalId == null ? null : utang.find(x => x.jenis === 'jual' && String(x.idTrx) === String(m.notaAsalId));
+        const x = u ? Math.max(0, Math.min(m.nominal, u.nominal - (u.diretur || 0))) : 0;
+        if (u) u.diretur = (u.diretur || 0) + x;
+        sisaBayar += m.nominal - x;
+      });
       s.tanggalTertua = null;
       for (const u of utang) {
-        if (sisaBayar >= u.nominal) { sisaBayar -= u.nominal; continue; }
+        const nominal = u.nominal - (u.diretur || 0);
+        if (sisaBayar >= nominal) { sisaBayar -= nominal; continue; }
         s.tanggalTertua = u.tanggal || null;   // utang pertama yang belum tertutup penuh
         break;
       }
@@ -16144,7 +16164,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         : (koreksiHilang ? 'KOREKSI LAYAK JUAL HILANG (tertimpa perangkat lain) — tekan lagi' : 'Rusak/diragukan → Karantina');
       const bisaLayak = r.kondisi !== 'utuh' && !(kR && kR.statusTindakan && kR.statusTindakan !== 'belum_diputuskan' && !koreksiHilang);
       const hT = r.hitunganTukarSistem || {};
-      const labelNominal = r.penyelesaian === 'refund'
+      const labelNominal = r.penyelesaian === 'potongBon'
+        ? `Bon dipotong ${formatRupiah(r.potongBon || 0)} (retur nota bon, tanpa uang)`
+        : r.penyelesaian === 'refund'
         ? `Refund ${formatRupiah(r.nominalRefund || 0)}`
         : ((r.tukarModel === 'kreditBarang' || r.tukarModel === 'kreditBarangGabung')
             ? `Tukar · retur senilai ${formatRupiah(r.nominalRefund || 0)} · pengganti ${formatRupiah(hT.pengganti || 0)}`
@@ -22561,7 +22583,9 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
       { label: 'Pengeluaran harian (Toko)', nominal: jmlNominal(harianToko), n: harianToko.length, satuan: 'catatan' },
       { label: 'Prive owner — hidup dari laci', nominal: jmlNominal(harianOwner), n: harianOwner.length, satuan: 'catatan' },
       { label: 'Bayar utang ke owner', nominal: jmlNominal(bayarUtangOwner), n: bayarUtangOwner.length, satuan: 'pembayaran' },
-      { label: 'Refund retur', nominal: refund, n: returDipakai.length, satuan: 'retur' },
+      // Retur nota BON (audit 39b no. 37 tinjauan MM5) memotong bon, bukan uang laci — rupiahnya
+      // sudah nol di `refund`, jadi tidak ikut dihitung sebagai kejadian refund.
+      { label: 'Refund retur', nominal: refund, n: returDipakai.filter(r => !(r.potongBon > 0)).length, satuan: 'retur' },
       { label: 'Beli kantong kemasan', nominal: jmlHarga(beliKemasan), n: beliKemasan.length, satuan: 'pembelian' },
       { label: 'Beli paper bag literan', nominal: jmlHarga(beliLiteran), n: beliLiteran.length, satuan: 'pembelian' },
       { label: 'Kasbon diambil pegawai', nominal: jmlNominal(kasbonAmbil), n: kasbonAmbil.length, satuan: 'kali' },
@@ -26873,8 +26897,13 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   // jalur kas (18225) supaya laba dan kas tidak pernah memakai dua rumus untuk satu
   // kejadian: sebuah retur hanya mengisi salah satu dari keduanya, jadi menjumlahkannya
   // aman. Tukar yang MENAMBAH bayaran (selisih negatif) bukan uang kembali.
+  // Satu-satunya yang SENGAJA tidak dibaca jalur kas: potongBon (audit 39b no. 37).
   function uangKembaliRetur(r) {
-    return (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0);
+    // Retur nota BON (audit 39b no. 37, keputusan owner 2 Okt 2026): nilai barang yang kembali
+    // memotong bon (kolom potongBon + mutasi piutang tipe 'retur'), bukan uang laci. Laba & omzet
+    // membacanya di sini sebagai pengurang penjualan; jalur kas (hitungArusKasInti,
+    // daftarGerakanKas) membaca nominalRefund langsung, jadi kas tidak bergerak.
+    return (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0) + (r.potongBon || 0);
   }
   // HPP barang yang diretur — DITAKSIR, karena dokumen retur tidak menyimpan rujukan ke
   // penjualan aslinya (tidak ada idPenjualan di simpanRetur). Cara menaksirnya sengaja
@@ -29105,7 +29134,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     // besar yang dibaca pemilik di desktop — keputusan pemilik, gelombang sendiri. Yang
     // WAJIB sekarang: angkanya mengaku apa adanya, bukan mengaku sudah dipotong.
     const returSemua = ambilRetur().reduce((a, r) => a + uangKembaliRetur(r), 0);
-    if (returSemua > 0) syarat.push('BELUM dikurangi refund retur ' + formatRupiah(returSemua)
+    if (returSemua > 0) syarat.push('BELUM dikurangi retur (uang kembali & bon dipotong) ' + formatRupiah(returSemua)
       + ' — angka di HP sudah dipotong itu, angka ini belum.');
     document.getElementById('labaSyarat').textContent = syarat.join(' ');
 
@@ -29366,11 +29395,11 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           }
         } else if (Z === 'paham') {
           const j = k => berutang.reduce((a, x) => a + (x.d[k] || 0), 0);
-          const sAwal = j('saldoAwal'), sKredit = j('kredit'), sBayar = j('bayar'), sHapus = j('dihapus');
+          const sAwal = j('saldoAwal'), sKredit = j('kredit'), sBayar = j('bayar'), sHapus = j('dihapus'), sRetur = j('retur');
           html += '<div class="kg-panel"><div class="kg-label">Belum tertagih</div>'
             + '<b class="kg-uang-piutang p6-besar">' + rp(totalP) + '</b>'
             + '<div class="kg-rincian">Saldo awal ' + rp(sAwal) + ' + kredit ' + rp(sKredit) + ' − bayar ' + rp(sBayar)
-            + (sHapus > 0 ? ' − dihapus buku ' + rp(sHapus) : '') + ' = ' + rp(totalP)
+            + (sHapus > 0 ? ' − dihapus buku ' + rp(sHapus) : '') + (sRetur > 0 ? ' − retur ' + rp(sRetur) : '') + ' = ' + rp(totalP)
             + '. Dihitung ulang tiap dibuka — tidak pernah disimpan.</div></div>';
 
           // ── BERAPA KARUNG: piutang diterjemahkan jadi barang ──
@@ -29420,14 +29449,16 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
 
           // kolam bulan ini dari mutasi keluaran mesin
           const bl = bulanLokalIso();
-          let baru = 0, dibayar = 0, dihapus = 0;
+          let baru = 0, dibayar = 0, dihapus = 0, diretur = 0;
           daftarP.forEach(d => (d.mutasi || []).forEach(m => {
             if ((m.tanggal || '').slice(0, 7) !== bl) return;
             if (m.jenis === 'bayar') dibayar += m.nominal || 0;
             else if (m.jenis === 'hapusBuku') dihapus += m.nominal || 0;
+            // retur nota bon (audit 39b no. 37 tinjauan U37-U6) menurunkan piutang, bukan utang baru
+            else if (m.jenis === 'retur') diretur += m.nominal || 0;
             else baru += m.nominal || 0;
           }));
-          const selisih = baru - dibayar - dihapus;
+          const selisih = baru - dibayar - dihapus - diretur;
           // ── DUA KERAN. Angka yang SAMA dengan sebelumnya, cuma tergambar: satu batang
           // utang baru masuk, satu batang uang keluar (bayar + hapus buku). Ini
           // MENGGANTI isi kartu lama, bukan menambah kartu — dua kartu yang menggambar
@@ -29441,7 +29472,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
           // Patokan lebar = keran yang lebih deras di bulan ini, dan itu perbandingan
           // dua angka yang dicetak berdampingan — bukan keadaan mutlak. TANPA lantai
           // minimum: keran yang nol harus terlihat nol, bukan disulap jadi sesuatu.
-          const keluar = dibayar + dihapus;
+          const keluar = dibayar + dihapus + diretur;
           const maksKeran = Math.max(baru, keluar);
           const lebar = v => maksKeran > 0 ? Math.round(v / maksKeran * 100) : 0;
           html += '<div class="kg-panel p6-sela"><div class="kg-label">' + (selisih >= 0 ? 'Piutang naik bulan ini' : 'Piutang turun bulan ini') + '</div>'
@@ -29455,7 +29486,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
                 + '<b>' + rp(keluar) + '</b></div>'
             + '</div>'
             + '<div class="kg-rincian">Uang kembali = dibayar ' + rp(dibayar)
-            + (dihapus > 0 ? ' + dihapus buku ' + rp(dihapus) : '')
+            + (dihapus > 0 ? ' + dihapus buku ' + rp(dihapus) : '') + (diretur > 0 ? ' + barang kembali (retur nota bon) ' + rp(diretur) : '')
             + '. Panjang batang membandingkan dua angka ini satu sama lain, bukan terhadap seluruh piutang.</div></div>';
           // ── UNTUNG YANG MASIH NYANGKUT DI PIUTANG ──
           // Kartu ini kena BUTA yang persis sama dengan sebaran margin yang ditolak:
@@ -29662,7 +29693,8 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     document.getElementById('lembarPiutangJudul').textContent = d.nama;
     document.getElementById('lembarPiutangSub').textContent =
       `Utang ${formatRupiah(d.total)} · sudah dibayar ${formatRupiah(d.bayar)}`
-      + (d.dihapus > 0 ? ` · dihapus buku ${formatRupiah(d.dihapus)}` : '');
+      + (d.dihapus > 0 ? ` · dihapus buku ${formatRupiah(d.dihapus)}` : '')
+      + (d.retur > 0 ? ` · barang kembali (retur) ${formatRupiah(d.retur)}` : '');
     const elSisa = document.getElementById('piutangSisaNilai');
     elSisa.textContent = d.sisa > 0 ? formatRupiah(d.sisa) : 'LUNAS';
     elSisa.classList.toggle('lunas', d.sisa <= 0);
@@ -29688,7 +29720,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
     }
     document.getElementById('piutangRiwayatHitung').textContent = d.mutasi.length + ' catatan';
     document.getElementById('piutangRiwayat').innerHTML = d.mutasi.map(m => {
-      const kurang = m.jenis === 'bayar' || m.jenis === 'hapusBuku';
+      const kurang = m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur';
       return `<div class="pm-baris">
         <span class="pm-ket">${escapeHtml(m.ket || '')}<small>${escapeHtml(formatTanggal(m.tanggal))}${m.jam ? ' · ' + escapeHtml(m.jam) : ''}</small></span>
         <span class="pm-nom ${kurang ? 'kurang' : 'tambah'}">${kurang ? '−' : '+'}${formatRupiah(m.nominal)}</span>
@@ -29719,11 +29751,14 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
   function rincianBelumLunas(d) {
     const utang = d.mutasi.filter(m => m.jenis === 'jual' || m.jenis === 'saldoAwal')
       .slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));
-    let tertutup = d.bayar + d.dihapus;
+    // Retur nota bon (audit 39b no. 37 tinjauan U37-U6) sudah memadamkan nota asalnya di mesin
+    // (`diretur` di utang itu); sisanya ikut yang tertua bersama pembayaran & hapus buku.
+    let tertutup = d.bayar + d.dihapus + (d.retur || 0) - utang.reduce((a, u) => a + (u.diretur || 0), 0);
     const hasil = [];
     for (const u of utang) {
-      if (tertutup >= u.nominal) { tertutup -= u.nominal; continue; }
-      hasil.push({ tanggal: u.tanggal, ket: u.ket, nominal: u.nominal, sisa: u.nominal - tertutup });
+      const nominal = u.nominal - (u.diretur || 0);
+      if (tertutup >= nominal) { tertutup -= nominal; continue; }
+      hasil.push({ tanggal: u.tanggal, ket: u.ket, nominal: u.nominal, sisa: nominal - tertutup });
       tertutup = 0;
     }
     return hasil;
@@ -31538,7 +31573,7 @@ body.lembar-mundur-terbuka #lembarMundur{ transform:translateY(0); }
         id: r.id, jenis: 'retur', tanggal: r.tanggal || '', jam: '',
         nama: r.namaProduk || r.merkSumber || 'Retur',
         ket: 'Retur · ' + (r.kondisi === 'utuh' ? 'balik ke stok' : 'ke karantina'),
-        nom: '−' + formatRibuan(r.nominalRefund || r.selisihTukar || 0), nomMerah: true, masuk: 0,
+        nom: '−' + formatRibuan(r.nominalRefund || r.potongBon || r.selisihTukar || 0), nomMerah: true, masuk: 0,
         bisaDibuka: false, cari: [r.namaProduk, r.merkSumber, r.catatan].join(' ')
       });
     });

@@ -24,7 +24,7 @@ JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Help
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/data/antre-lokal.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js',
                                   'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/sistem-logika.js',
                                   'baru/js/layar/arsip-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/data/katalog-kasir.js',
-                                  'baru/js/layar/struk-logika.js', 'baru/js/layar/riwayat-logika.js']
+                                  'baru/js/layar/struk-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/riwayat-logika.js']   # 39b no. 37: riwayat memakai rtDasarRetur (retur-logika)
 JAM = ("var __RealDate = Date; var __KINI = new __RealDate('2026-09-24T10:00:00+07:00').getTime();\n"
        "Date = function (a, b, c, d, e, f, g) { if (!(this instanceof Date)) return new __RealDate(__KINI).toString(); if (arguments.length === 0) return new __RealDate(__KINI); if (arguments.length === 1) return new __RealDate(a); return new __RealDate(a, b, c === undefined ? 1 : c, d || 0, e || 0, f || 0, g || 0); };\n"
        "Date.prototype = __RealDate.prototype; Date.now = function () { return __KINI; }; Date.UTC = __RealDate.UTC; Date.parse = __RealDate.parse;\n")
@@ -97,6 +97,14 @@ var JL9 = SUMBER.layar_jual, iBK = JL9.indexOf('bukaKredit: () => {'), tubuhBK =
 ok('39b-9: jual.js — tombol "Buka kredit SEKALI" lewat tombolLuarKisi (bukan-owner: MATI dengan kalimatnya), dan aksinya menolak bukan-owner sebelum membuka',
   tubuhBK.indexOf('const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set(') > 0 && tubuhBK.indexOf('kreditDibuka: true') > tubuhBK.indexOf('if (!tb.boleh)')
   && JL9.indexOf('${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">') > 0 && (JL9.match(/data-aksi="bukaKredit"/g) || []).length === 1, tubuhBK.slice(0, 200));
+// ---- 39b no. 37 (owner 2 Okt "37 buka"): retur nota BON = dokumen retur + mutasi piutang tipe 'retur' dalam satu kiriman → OWNER SAJA (rules v6 tidak diubah:
+// retur create owner; piutangMutasi bukan-owner hanya tipe bayar) — penulis pusat menolak kiriman bukan-owner sebelum dikirim
+var NB37 = [{ koleksi: 'penjualan', data: { id: 'n37', trxId: 'T37', tanggal: '2026-09-23', jam: '09:00', caraBayar: 'Kredit', namaPelanggan: 'Pelanggan Contoh', jenis: 'karung', merkSumber: 'Angsa', totalKg: 50, beratKarungAcuan: 50, jumlahKarung: 1, hargaTotal: 700000, hppTotalSaatJual: 650000 } }];
+var RB37 = denganCacheSementara(NB37, function () { return susunRetur(Object.assign(returAwal(), { rtNotaId: 'n37', ketik: '10', rtAlasan: 'kualitas kurang', rtKondisi: 'utuh' }), W); });
+var kir37 = (RB37.dokumen || []).map(function (d) { return { koleksi: d.koleksi, data: d.data, ada: false, lama: null }; });
+var r37B = periksaKiriman(BEN, kir37, [], HAK_BEN), r37K = periksaKiriman(KRY, kir37, [], HAK_KRY), r37O = periksaKiriman(OWN, kir37, [], HAK_BEN), r37m = periksaKiriman(BEN, kir37.filter(function (x) { return x.koleksi === 'piutangMutasi'; }), [], HAK_BEN);
+ok('39b-37: kiriman retur nota BON (retur + mutasi piutang retur, satu kiriman) dari Ben & karyawan DITOLAK sebelum dikirim; mutasi retur sendirian pun ditolak (bukan-owner hanya tipe bayar); owner boleh',
+  kir37.length === 2 && kir37[0].koleksi === 'retur' && kir37[1].data.tipe === 'retur' && !!r37B.tolak && !!r37K.tolak && !!r37m.tolak && !r37O.tolak, JSON.stringify([RB37.tolak || '', kir37.map(function (x) { return x.koleksi + ':' + (x.data.tipe || ''); }), r37B, r37K, r37m, r37O]));
 var p4 = periksaKiriman(BEN, [{ koleksi: 'piutangMutasi', data: { id: 6, tanggal: W.tanggal, tipe: 'hapusBuku' }, ada: false }], [], HAK_BEN), p5 = periksaKiriman(BEN, [{ koleksi: 'stokBahanKemasan', data: { id: 7, tanggal: W.tanggal, tipe: 'beli', hargaTotal: 100000 }, ada: false }], [], HAK_BEN),
   p6 = periksaKiriman(BEN, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p7 = periksaKiriman(KRY, [{ koleksi: 'batchMasuk', data: { id: 8, tanggal: W.tanggal }, ada: false }], [], HAK_KRY),
   p8 = periksaKiriman(BEN, [{ koleksi: 'pengeluaranHarian', data: { id: 9, tanggal: W.tanggal }, ada: false }], [], HAK_BEN), p9 = periksaKiriman(KRY, [], [{ koleksi: 'penjualan', id: 1 }], HAK_KRY),
@@ -322,6 +330,7 @@ if __name__ == '__main__':
             '39b-9: tombol buka kredit tampil untuk bukan-owner': (js, ganti('layar_jual', '${tombolLuarKisi(opsi.akun ? opsi.akun() : null).boleh ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">', '${true ? h`<div class="kaca-btn putus" data-aksi="bukaKredit">')),
             '39b-9: aksi buka kredit tanpa memeriksa akun': (js, ganti('layar_jual', 'const tb = tombolLuarKisi(opsi.akun ? opsi.akun() : null); if (!tb.boleh) return set({ kabar: tb.kalimat, kabarAwas: true }); set({ kreditDibuka: true,', 'set({ kreditDibuka: true,')),
             'bukan-owner boleh hapus buku bon': (js.replace("if (x.koleksi === 'piutangMutasi' && d.tipe !== 'bayar') return", "if (false) return"), S),
+            '39b-37: bukan-owner boleh menulis retur nota bon (retur + mutasi retur)': (js.replace("if (x.koleksi === 'piutangMutasi' && d.tipe !== 'bayar') return", "if (x.koleksi === 'piutangMutasi' && d.tipe !== 'bayar' && d.tipe !== 'retur') return").replace("wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'] };", "wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], retur: ['ben', 'karyawan'] };"), S),
             'bukan-owner boleh beli kantong': (js.replace("if ((x.koleksi === 'stokBahanLiteran' || x.koleksi === 'stokBahanKemasan') && d.tipe !== 'pakai') return", "if (false) return"), S),
             'bukan-owner boleh hapus': (js.replace("if (hapus && hapus.length) return { tolak: tolakTindakan('hapus') };", ""), S),
             'update pesanan boleh mengubah kolom mana saja': (js.replace("const liar = berubah.filter((kk) => u.kolom.indexOf(kk) < 0); if (liar.length) return { tolak: tolakTindakan('koreksi') };", ""), S),

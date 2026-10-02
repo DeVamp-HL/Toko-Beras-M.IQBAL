@@ -1,11 +1,13 @@
 // RIWAYAT PENJUALAN (owner 28 Sep 2026: "buatkan seluruh riwayat penjualan") — Jual › tab Riwayat. Baca saja; dua tindakan per nota yang sudah ada jalurnya:
-// buka struk (lembar struk, struk-logika notaDari) dan retur nota ini (jalur Retur, tunjukNota) untuk baris karung/kemasan yang boleh kembali (rtDasarNota).
+// buka struk (lembar struk, struk-logika notaDari) dan retur nota ini (jalur Retur, tunjukNota) untuk baris karung/kemasan yang boleh kembali (rtDasarRetur —
+// aturan rtDasarNota; audit 39b no. 37: nota BON ikut, returnya memotong bon).
 // Satu nota = baris-baris dengan kunci yang SAMA dengan panel "Hari ini" (grupNota → trxId → id). Nota berlaku = baris yang belum dibatalkan / belum digantikan
 // rincian (penjualanMasihBerlaku, mesin laba memakai aturan yang sama); total nota = Σ hargaTotal baris berlaku (= panel "Hari ini"). Omzet LAPORAN = total nota − uang
 // retur hari itu (hitungLabaRentang.omzetPenuh) — riwayat menyebut keduanya selama tidak ada saringan jenis/cara/cari. Nota batal / dirinci hanya tampil bila diminta.
 // Tanpa DOM; nama berawalan rw (bundel uji satu lingkup). Dijaga alat-uji/uji_riwayat_penjualan.py.
 import { ambilPenjualanSemua, ambilRetur } from '../data/toko.js';
-import { penjualanMasihBerlaku, bakuCaraBayar, rtDasarNota, uangKembaliRetur } from '../mesin/pembantu.js';
+import { penjualanMasihBerlaku, bakuCaraBayar, uangKembaliRetur } from '../mesin/pembantu.js';
+import { rtDasarRetur } from './retur-logika.js';
 import { hariIniIso, RP } from '../inti/format.js';
 import { gabungTakaran } from './struk-logika.js';
 
@@ -43,7 +45,7 @@ export function rwSemuaNota() {
     const rows = per[k].slice().sort(rwUrutId); const hidup = rows.filter(penjualanMasihBerlaku); const p0 = hidup[0] || rows[0];
     const status = hidup.length === rows.length ? 'berlaku' : hidup.length ? 'sebagian' : rows.some((x) => x.dibatalkan) ? 'batal' : 'dirinci';
     const tampil = gabungTakaran(hidup.length ? hidup : rows);
-    const baris = tampil.map((p) => { const d = p.jenis === 'karung' || p.jenis === 'kemasan' ? rtDasarNota(p) : { ok: false };
+    const baris = tampil.map((p) => { const d = p.jenis === 'karung' || p.jenis === 'kemasan' ? rtDasarRetur(p) : { ok: false };
       const hidupBaris = status !== 'batal' && status !== 'dirinci' && !p.penggantiRetur;
       return { id: String(p.id), teks: rwTeksBaris(p), n: Math.round(p.hargaTotal || 0), jenis: rwJenisBaris(p), bisaRetur: hidupBaris && !!(d && d.ok),
         sebabRetur: hidupBaris && (p.jenis === 'karung' || p.jenis === 'kemasan') && d && !d.ok ? String(d.sebab || '') : '', tandai: !!p.perluCocokkan, pengganti: !!p.penggantiRetur }; });
