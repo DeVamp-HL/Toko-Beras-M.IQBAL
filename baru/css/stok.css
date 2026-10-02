@@ -181,5 +181,6 @@ body.gelap .layar-stok .iso-toko .sisi-atas.karung { fill: #cdb98b; } body.gelap
 @media (min-width: 1280px) {
   /* daftar jawaban dua kolom, urut ke BAWAH dulu (columns, bukan grid): daftar peringkat tetap terbaca 1, 2, 3 … di kolom kiri */
   .layar-stok .daftar-jawab { display: block; columns: 2; column-gap: 28px; }
-  .layar-stok .daftar-jawab > .jawab { break-inside: avoid; }
+  /* owner 3 Okt: baris di dalam columns TANPA gerak masuk — Safari/WebKit tidak menggambar elemen beranimasi di dalam columns (kartu dasbor kosong sampai diketuk) */
+  .layar-stok .daftar-jawab > .jawab { break-inside: avoid; animation: none; }
 }
