@@ -24,11 +24,15 @@ function urutkanTerbaru(arr, field) {
 export function pasok(namaKoleksi, dokumen) {
   const k = KOLEKSI.find((x) => x.nama === namaKoleksi);
   if (!k) return false;
-  _cache[k.cache] = urutkanTerbaru(dokumen || [], k.urut);
+  _cache[k.cache] = urutkanTerbaru(dokumen || [], k.urut); _versiCache += 1;
   _pendengar.forEach((f) => { try { f(namaKoleksi); } catch (e) { console.error('pendengar data', e); } });
   return true;
 }
-export function setelSumber(jenis, keterangan) { _sumber.jenis = jenis; _sumber.keterangan = keterangan || ''; _pendengar.forEach((f) => f('__sumber__')); }
+// owner 3 Okt (Jual patah-patah): nomor versi isi cache — naik tiap kali isi koleksi diganti (pasok, tulisan simulasi, cache sementara uji, ganti sumber).
+// Dipakai jual-logika untuk tidak menyusun ulang seluruh rak tiap +1/−1 keranjang selama datanya sama.
+let _versiCache = 0;
+export const versiCache = () => _versiCache;
+export function setelSumber(jenis, keterangan) { _versiCache += 1; _sumber.jenis = jenis; _sumber.keterangan = keterangan || ''; _pendengar.forEach((f) => f('__sumber__')); }
 export function sumberData() { return Object.assign({}, _sumber); }
 export function dengarkan(f) { _pendengar.add(f); return () => _pendengar.delete(f); }
 export function cacheMentah(nama) { return _cache[nama] || []; }
@@ -206,9 +210,9 @@ export function denganCacheSementara(daftar, fn) {
     const k = KOLEKSI.find((x) => x.nama === koleksi); if (!k || !data) return;
     if (!(k.cache in simpan)) simpan[k.cache] = _cache[k.cache];
     const id = String(data.id);
-    _cache[k.cache] = urutkanTerbaru(_cache[k.cache].filter((d) => String(d.id) !== id).concat([Object.assign({}, data)]), k.urut);
+    _cache[k.cache] = urutkanTerbaru(_cache[k.cache].filter((d) => String(d.id) !== id).concat([Object.assign({}, data)]), k.urut); _versiCache += 1;
   });
-  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); }
+  try { return fn(); } finally { Object.keys(simpan).forEach((c) => { _cache[c] = simpan[c]; }); _versiCache += 1; }
 }
 
 // ---- keranjang aktif & yang diparkir (dibaca stokMaksJalur lewat wzDiKeranjang) ----
@@ -235,7 +239,7 @@ export function terapkanKeCache(daftar) {
     const k = KOLEKSI.find((x) => x.nama === koleksi); if (!k) return;
     const id = String((data && data.id) || hapus);
     const sisa = _cache[k.cache].filter((d) => String(d.id) !== id);
-    _cache[k.cache] = hapus ? sisa : urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut);
+    _cache[k.cache] = hapus ? sisa : urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut); _versiCache += 1;
     kena[koleksi] = true;
   });
   Object.keys(kena).forEach((n) => _pendengar.forEach((f) => { try { f(n); } catch (e) { console.error('pendengar data', e); } }));

@@ -45,7 +45,7 @@ def baca(ganti=None):
         if b not in t: t[b] = open(os.path.join(AKAR, b), encoding='utf-8').read()
         return t[b]
     for b in ['baru/index.html', 'baru/js/app.js', 'baru/js/inti/jadwal.js', 'baru/js/inti/gerbang.js', 'baru/js/inti/gerak.js', 'baru/css/gerbang.css', 'baru/css/gerak.css',
-              'baru/js/layar/gambar.js', 'baru/css/jual.css'] + ['baru/js/layar/%s.js' % n for n in LAYAR]:
+              'baru/js/layar/gambar.js', 'baru/css/jual.css', 'baru/js/layar/jual-logika.js', 'baru/js/data/toko.js'] + ['baru/js/layar/%s.js' % n for n in LAYAR]:
         teks(b)
     for b, pasangan in (ganti or {}).items():
         teks(b)
@@ -146,9 +146,21 @@ def periksa(t, teks):
     # --- sambungan ke layar
     for n in LAYAR:
         s = t['baru/js/layar/%s.js' % n]
-        pend = re.findall(r'dengarkan\(\(\) => \{?([^;]*;?[^;]*;?)', s)
-        ok('%s: bunyi data lewat nanti() (bukan gambar langsung)' % n, "from '../inti/jadwal.js'" in s and pend and all('nanti(' in x for x in pend) and not re.search(r'dengarkan\(\(\) => gambar\(\)\)', s), pend)
+        pend = re.findall(r'dengarkan\(\(\w*\) => \{?([^;]*;?[^;]*;?)', s)
+        ok('%s: bunyi data lewat nanti() (bukan gambar langsung)' % n, "from '../inti/jadwal.js'" in s and pend and all('nanti(' in x for x in pend) and not re.search(r'dengarkan\(\(\w*\) => gambar\(\)\)', s), pend)
     ok('jual: tersembunyi → cukup ditandai kotor, digambar saat dibuka', "if (!_tampil) { _kotor = true; return; }" in jl and 'tampilkan, belumDisimpan' in jl)
+    # owner 3 Okt (freeze saat catat nota): rak tidak disusun ulang oleh koleksi yang tak pernah mengubahnya; rak lama dipakai selama nota dicatat & adegan;
+    # "Mencatat…" digambar dulu (satu bingkai) baru nota disusun; ketukan ganda diabaikan
+    bukan = re.search(r"const BUKAN_RAK = new Set\(\[([^\]]*)\]\)", jl); bukanRak = re.findall(r"'(\w+)'", bukan.group(1)) if bukan else []
+    ok('jual: rak hanya basi oleh koleksi yang memengaruhinya (jejak/denyut/uang tidak; penjualan/stok/katalog/wadah tetap)', "dengarkan((nama) => { if (!BUKAN_RAK.has(nama)) _rakBasi = true; nanti(gambarGulir); });" in jl
+       and all(k in bukanRak for k in ['logAktivitas', 'perangkatStatus']) and not any(k in bukanRak for k in ['penjualan', 'batchMasuk', 'produksiKemasan', 'stokBahanLiteran', 'stokBahanKemasan', 'wadahLiteran', 'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'aturanToko', 'pengaturan', 'retur', 'penyesuaianStok', 'hargaWadah']), bukanRak)
+    ok('jual: catat nota — "Mencatat…" digambar dulu, ketukan ganda diabaikan, rak ditahan lalu dilepas sesudah adegan', "if (_mencatat) return;" in jl and "await sebingkai(); await aksi.catatNotaInti(tembusYakin);" in jl
+       and "tahanRak(2500);" in jl and "lepasRak(lamaAdegan ? Math.min(4000, lamaAdegan + 120) : 0);" in jl and "if (_rak && Date.now() < _rakTahanSampai) return _rak;" in jl)
+    jlg = t['baru/js/layar/jual-logika.js']; tk = t['baru/js/data/toko.js']
+    ok('jual: +1/−1 keranjang tidak menyusun seluruh rak — rak chip diingat per versi cache; versi naik di SEMUA jalan pengubah cache', "const rak = rakUntukChip();" in jlg
+       and "if (!_rakChip || _rakChipVersi !== v)" in jlg and tk.count('_versiCache += 1') == 5)
+    ok('jual: isi keranjang berubah → digambar dulu dengan rak lama, rak menyusul di bingkai berikut; aksi tetap rak segar', "const rak = rakKini(true);" in jl
+       and "if (bolehTunda && !_rakPaksa && _rak && !_rakBasi && _rakUntuk !== tanda && typeof requestAnimationFrame === 'function' && !document.hidden) {" in jl and "_rakPaksa = true; nanti(gambarGulir);" in jl and jl.count('rakKini(true)') == 1)
     ok('jual: ketukan pemakai tetap seketika (K.dengar menggambar langsung)', "K.dengar(() => { gambar(); gulirkan(akar, RP); });" in jl)
     ok('app: pindah() memberi tahu Jual kapan terlihat', "layar.tampilkan(tujuan === 'jual');" in app)
     ok('app: status sambungan mengantre fungsi gambar YANG SAMA dengan pendengar data (tanpa gambar ganda) lalu setelMuat', 'const GAMBAR_STATUS = [layar.gambarGulir, ringkasan.gambar, stok.gambar, pelanggan.gambar, menu.gambar, harga.gambar, uang.gambar, laporan.gambar];' in app
@@ -201,6 +213,13 @@ KONTROL = [
     ('masa muat tidak dijarangkan', {'baru/js/inti/jadwal.js': [('  if (_muat) { setTimeout(() => jalankan(t), JEDA_MUAT_MS); return; }\n', '')]}),
     ('stok kembali menggambar langsung', {'baru/js/layar/stok.js': [('dengarkan(() => nanti(gambar));', 'dengarkan(() => gambar());')]}),
     ('jual digambar walau tersembunyi', {'baru/js/layar/jual.js': [('    if (!_tampil) { _kotor = true; return; }\n', '')]}),
+    ('rak basi oleh penjualan diabaikan', {'baru/js/layar/jual.js': [("const BUKAN_RAK = new Set(['logAktivitas',", "const BUKAN_RAK = new Set(['penjualan', 'logAktivitas',")]}),
+    ('ketukan ganda catat nota diterima lagi', {'baru/js/layar/jual.js': [('      if (_mencatat) return;\n', '')]}),
+    ('+1 keranjang kembali menyusun seluruh rak', {'baru/js/layar/jual-logika.js': [("const rak = rakUntukChip();", "const rak = susunRak({ pelanggan: '', sekarang: null });")]}),
+    ('tulisan simulasi tidak menaikkan versi cache (rak chip basi)', {'baru/js/data/toko.js': [("urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut); _versiCache += 1;", "urutkanTerbaru(sisa.concat([Object.assign({}, data)]), k.urut);")]}),
+    ('rak menyusul tidak pernah dipaksa segar (tertunda terus)', {'baru/js/layar/jual.js': [("_rakPaksa = true; nanti(gambarGulir);", "nanti(gambarGulir);")]}),
+    ('aksi chip memakai rak yang boleh basi', {'baru/js/layar/jual.js': [("chip: ({ jalur, kunci, berat }) => { const rak = rakKini();", "chip: ({ jalur, kunci, berat }) => { const rak = rakKini(true);")]}),
+    ('rak tidak ditahan selama catat nota', {'baru/js/layar/jual.js': [('    if (_rak && Date.now() < _rakTahanSampai) return _rak;\n', '')]}),
     ('id formulir diganti', {'baru/index.html': [('id="tombolMasuk"', 'id="tombolMasukBaru"')]}),
     ('tampil tertahan selama membuka', {'baru/js/inti/gerbang.js': [("g.classList.remove('tampil'); g.classList.add('membuka');", "g.classList.add('membuka');")]}),
     ('rupiah di gerbang', {'baru/index.html': [('<div class="label">Akun per orang</div>', '<div class="label">Rp5.000</div>')]}),

@@ -23,7 +23,7 @@ import { kunciKemasan, kunciPelanggan, bulatKeAtas500, bakuCaraBayar, merkPunyaK
   tentukanKemasanLiteran, jumlahKemasanLiteran, hargaBahanLiteranEfektif, catatanPelangganBerisi, infoKreditPelanggan,
   pesananBelumTuntas, RASIO_KONVERSI, RASIO_DEFAULT, NEGO_LANTAI } from '../mesin/pembantu.js';
 import { ambilHargaKemasan, ambilHargaLiteran, ambilPenjualan, ambilPenjualanSemua, ambilPelangganCatatan, ambilPesanan, ambilRetur, ambilWadahLiteran, ambilPenyesuaianStok, ambilProduksiBerlaku, setelKeranjang,
-  wzDiKeranjangParkir, sumberData, cacheMentah, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan, returUangPerHari, denganCacheSementara } from '../data/toko.js';
+  wzDiKeranjangParkir, sumberData, cacheMentah, versiCache, ambilSemuaBatch, stokMerekSaja, petaBukuWadah, kunciBukuAdukan, petaUkuran, indukTerpisah, ambilPenyesuaianKemasan, returUangPerHari, denganCacheSementara } from '../data/toko.js';
 import { hariIniIso, RP, tanggalPendek, pecahLebih } from '../inti/format.js';
 import { returAwal, cekDrafTukar, dokumenKarantina, cekSusulan, tolakBatalReturBon } from './retur-logika.js';
 import { tkSetTertaut } from '../mesin/pembantu.js';
@@ -516,8 +516,12 @@ export function ubahJumlahBaris(s, id, selisih) {
   const baru = bangunUlang(b, chip, j, s); if (!baru) return {};
   return { keranjang: s.keranjang.map((x) => (x.id === id ? { id, trx: baru } : x)), kabar: '' };
 }
+// owner 3 Okt (patah-patah tiap +1/−1): dulu SELURUH rak disusun (±180 ms Mac, ±0,5 dtk iPad) hanya untuk mencari satu chip. Rak tanpa pelanggan & tanpa
+// keranjang ini cuma dipakai untuk nama/harga/modal chip (sisa dihitung maksTanpaBaris → maksUntuk), jadi cukup disusun ulang saat isi data berubah.
+let _rakChip = null, _rakChipVersi = -1;
+function rakUntukChip() { const v = versiCache(); if (!_rakChip || _rakChipVersi !== v) { _rakChip = susunRak({ pelanggan: '', sekarang: null }); _rakChipVersi = v; } return _rakChip; }
 function chipDariBaris(t) {
-  const rak = susunRak({ pelanggan: '', sekarang: null });
+  const rak = rakUntukChip();
   if (t.jenis === 'karung') return rak.karung.find((c) => c.kunci === t.merkSumber && c.berat === (t.beratKarungAcuan || 50)) || null;
   if (t.jenis === 'kemasan' && t.setengahDari) { const c50 = rak.kemasan.find((c) => c.kunci === t.setengahDari); return c50 ? skChip(c50, t.setengahHargaBaru || t.hargaAsli) : null; }
   if (t.jenis === 'kemasan') return rak.kemasan.find((c) => c.kunci === kunciKemasan(t.namaProduk, t.ukuranKemasan)) || null;
