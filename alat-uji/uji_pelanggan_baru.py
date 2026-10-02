@@ -438,7 +438,7 @@ if __name__ == '__main__':
             'gabung tidak menghapus kartu nama lama (kartu yatim)': js.replace("if (kL) hapus.push({ koleksi: 'pelangganCatatan', id: kL.dok.id });", ""),
             'THR dua kali setahun untuk orang yang sama diterima': js.replace("if (ambilThrPelanggan().some((t) => t.kunci === kunci && Number(t.tahun) === Th)) return { tolak:", "if (false) return { tolak:"),
             'usul THR melampaui amplop': js.replace("const calon = t.belumDapat.filter((b) => b.belanja > 0).slice(0, muat);", "const calon = t.belumDapat.filter((b) => b.belanja > 0);"),
-            'bon: rincian tidak FIFO (pembayaran tidak memadamkan bon tertua)': js.replace("for (const u of utang) { if (tertutup >= u.nominal) { tertutup -= u.nominal; continue; }", "for (const u of utang) { if (false) { tertutup -= u.nominal; continue; }"),
+            'bon: rincian tidak FIFO (pembayaran tidak memadamkan bon tertua)': js.replace("for (const u of utang) { const nom = u.nominal - (u.diretur || 0); if (tertutup >= nom) { tertutup -= nom; continue; }", "for (const u of utang) { const nom = u.nominal - (u.diretur || 0); if (false) { tertutup -= nom; continue; }"),   # jangkar disesuaikan 39b no. 37 tinjauan MM1
             'bon: macet tanpa syarat "tidak ada pembayaran selama itu"': js.replace("umur > atur.macetHari && (diamSejak === null || diamSejak > atur.macetHari);", "umur > atur.macetHari;"),
             'bon: janji dianggap lewat walau sudah membayar sesudah ditagih': js.replace("tagih.janji < iso && (!bayarAkhir || bayarAkhir.tanggal < tagih.tanggal);", "tagih.janji < iso;"),
             # ---- 39b no. 4: sisa negatif berbunyi

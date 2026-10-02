@@ -1506,3 +1506,10 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
 - MM5: mesin beku `hitungArusKasInti` (diubah di `index.html`, disalin `pindah_mesin.py`, sidik `beku2.py --catat` = PEMBEKUAN ULANG yang disengaja,
   keputusan owner 2 Okt "37 buka") — baris "Refund retur" menghitung kejadiannya tanpa retur nota bon (`potongBon`, rupiahnya memang sudah nol di refund):
   satu ekspresi `n`, rupiah tidak berubah. Retur lama tanpa `potongBon` dihitung persis seperti dulu. Uji `uji_laporan_baru.py` +1, kontrol +1.
+- MM1: mesin beku `hitungPiutang` (PEMBEKUAN ULANG yang disengaja, keputusan owner 2 Okt "37 buka"; diubah di `index.html`, disalin `pindah_mesin.py`,
+  sidik `beku2.py --catat`) — retur nota bon memadamkan NOTA ASALNYA dulu: mutasi retur membawa `notaAsalId`, bagian yang cocok dengan utang jual ber-`idTrx`
+  sama dicatat di utang itu (`diretur`), sisanya (nota asal tak ada di buku orang itu / sudah habis) ikut bon tertua dulu bersama bayar & hapus buku. Umur
+  bon (`tanggalTertua`, `umurHari`) dan saldo pembuka tutup buku ikut sendiri. Dulu retur memotong bon TERTUA: rincian, Buku bon, tagihan WA & umur menunjuk
+  nota yang barangnya sudah kembali (cadangan 1 Okt: 2 dari 42 nota bon 60 hari berbentuk begitu). Pembaca di `bon-logika.js` (`rincianBelumLunas`, Buku bon)
+  memakai nominal − `diretur`. Sisa total tidak berubah; data tanpa mutasi retur byte-sama. Uji `uji_laporan_baru.py` +3, 1 dibalik SENGAJA (A37: nota 15 Sep
+  yang barangnya kembali kini tinggal 420.000, nota 10 Sep 500.500 — dulu 700.000 / 220.500), kontrol +3 (2 jangkar lama disesuaikan); `uji_pelanggan_baru.py` 1 jangkar kontrol (rincian FIFO) disesuaikan.

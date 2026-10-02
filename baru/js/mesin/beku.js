@@ -601,7 +601,7 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
         // uangKembaliRetur) sebagai pengurang penjualan. Keduanya lahir dalam satu kiriman.
         s.retur += n;
         s.mutasi.push({ jenis: 'retur', tanggal: m.tanggal, jam: m.jam || '', nominal: n, idMutasi: m.id,
-          ket: 'Retur barang' + (m.catatan ? ' · ' + m.catatan : '') });
+          notaAsalId: m.notaAsalId || null, ket: 'Retur barang' + (m.catatan ? ' · ' + m.catatan : '') });
       }
     });
     const hasil = Object.keys(peta).map(k => {
@@ -617,10 +617,21 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
         .slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));
       // Hapus buku ikut memadamkan utang TERTUA lebih dulu, sama seperti pembayaran —
       // sisa yang tinggal memang melekat di utang yang lebih muda.
-      let sisaBayar = s.bayar + s.dihapus + s.retur;
+      let sisaBayar = s.bayar + s.dihapus;
+      // Retur nota bon (audit 39b no. 37 tinjauan MM1) memadamkan NOTA ASALNYA dulu — barang
+      // nota itulah yang kembali; bagiannya dicatat di utang itu (`diretur`). Yang tak punya
+      // nota asal di buku ini (atau melebihinya) ikut memadamkan yang tertua, seperti bayar.
+      s.mutasi.forEach(m => {
+        if (m.jenis !== 'retur') return;
+        const u = m.notaAsalId == null ? null : utang.find(x => x.jenis === 'jual' && String(x.idTrx) === String(m.notaAsalId));
+        const x = u ? Math.max(0, Math.min(m.nominal, u.nominal - (u.diretur || 0))) : 0;
+        if (u) u.diretur = (u.diretur || 0) + x;
+        sisaBayar += m.nominal - x;
+      });
       s.tanggalTertua = null;
       for (const u of utang) {
-        if (sisaBayar >= u.nominal) { sisaBayar -= u.nominal; continue; }
+        const nominal = u.nominal - (u.diretur || 0);
+        if (sisaBayar >= nominal) { sisaBayar -= nominal; continue; }
         s.tanggalTertua = u.tanggal || null;   // utang pertama yang belum tertutup penuh
         break;
       }
