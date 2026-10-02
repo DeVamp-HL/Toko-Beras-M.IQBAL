@@ -18,10 +18,11 @@ const bnAngka = (v) => { const t = String(v === undefined || v === null ? '' : v
 const bnKosong = (v) => v === undefined || v === null || String(v).trim() === '';
 /** Umur dalam kata — persis umurKeKata index.html 29121 (dipakai di pesan WhatsApp). */
 export function umurKata(hari) { if (hari === null || hari === undefined) return 'baru'; if (hari <= 0) return 'hari ini'; if (hari < 60) return hari + ' hari'; if (hari < 365) return Math.round(hari / 30) + ' bulan'; const th = Math.floor(hari / 365), bln = Math.round((hari % 365) / 30); return th + ' tahun' + (bln > 0 ? ' ' + bln + ' bln' : ''); }
-/** Rincian bon yang BELUM tertutup (FIFO) — rincianBelumLunas index.html 29599, apa adanya. */
+/** Rincian bon yang BELUM tertutup (FIFO) — rincianBelumLunas index.html 29599; audit 39b no. 37: barang yang diretur dari nota bon (mutasi retur) ikut
+ *  memadamkan bon tertua, sama dengan mesin hitungPiutang. */
 export function rincianBelumLunas(d) {
   const utang = d.mutasi.filter((m) => m.jenis === 'jual' || m.jenis === 'saldoAwal').slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));
-  let tertutup = d.bayar + d.dihapus; const hasil = [];
+  let tertutup = d.bayar + d.dihapus + (d.retur || 0); const hasil = [];
   for (const u of utang) { if (tertutup >= u.nominal) { tertutup -= u.nominal; continue; } hasil.push({ tanggal: u.tanggal, ket: u.ket, nominal: u.nominal, sisa: u.nominal - tertutup, idTrx: u.idTrx || null, idMutasi: u.idMutasi || null }); tertutup = 0; }
   return hasil;
 }
@@ -40,7 +41,7 @@ export function semuaBon(kini) {
     const status = sisa < LEBIH_AMBANG ? 'lebih' : sisa <= 0 ? 'lunas' : macet ? 'macet' : janjiLewat ? 'janjiLewat' : menunggu ? 'menunggu' : umur !== null && umur >= atur.tagihHari ? 'perluTagih' : 'baru'; const kartu = kartuTersimpan(d.kunci);
     const ket = status === 'janjiLewat' ? 'janji bayar ' + formatTanggal(tagih.janji) + ' — lewat ' + (hariKe(iso) - hariKe(tagih.janji)) + ' hari' : status === 'menunggu' ? 'janji bayar ' + formatTanggal(tagih.janji) : status === 'macet' ? 'bon tertua ' + umurKata(umur) + ', tidak ada pembayaran selama itu'
       : status === 'perluTagih' ? 'bon tertua ' + umurKata(umur) + (tagih ? ' · terakhir ditagih ' + formatTanggal(tagih.tanggal) : ' · belum pernah ditagih') : status === 'lebih' ? kalimatLebih(pecahLebih(d)) : status === 'lunas' ? 'tidak ada bon yang terbuka' :'bon tertua ' + umurKata(umur);
-    return { kunci: d.kunci, nama: d.nama, no, sisa, umur, buka, bayar: d.bayar, dihapus: d.dihapus, total: d.total, mutasi: d.mutasi, bayarAkhir, tagih, diamSejak, status, ket, cap: status === 'lebih' ? capLebih(pecahLebih(d)) : KATA_STATUS[status], lebihUang: pecahLebih(d).uang, lebihHapus: pecahLebih(d).hapus, kontak: kartu ? kartu.kontak : '', dikenali: !!(kartu && kartu.dikenali), tanggalJanggal: !!d.tanggalJanggal }; });
+    return { kunci: d.kunci, nama: d.nama, no, sisa, umur, buka, bayar: d.bayar, dihapus: d.dihapus, retur: d.retur || 0, total: d.total, mutasi: d.mutasi, bayarAkhir, tagih, diamSejak, status, ket, cap: status === 'lebih' ? capLebih(pecahLebih(d)) : KATA_STATUS[status], lebihUang: pecahLebih(d).uang, lebihHapus: pecahLebih(d).hapus, kontak: kartu ? kartu.kontak : '', dikenali: !!(kartu && kartu.dikenali), tanggalJanggal: !!d.tanggalJanggal }; });
 }
 const EMBER = [['e1', '≤ 7 hari', 0, 7], ['e2', '8–30 hari', 8, 30], ['e3', '1–3 bulan', 31, 90], ['e4', '> 3 bulan', 91, 99999]];
 /** Susun ketiga tab: buku (satu orang satu halaman), papan (tiga lajur menurut yang harus dilakukan), umur (ember). */
@@ -49,9 +50,9 @@ export function susunBon(kini, bukuKunci, ember) {
   const lebih = semua.filter((b) => b.status === 'lebih').sort((a, b) => a.sisa - b.sisa).map((b) => ({ kunci: b.kunci, nama: b.nama, lebih: -b.sisa, uang: b.lebihUang, hapus: b.lebihHapus })); const maks = Math.max(1, ...berutang.map((b) => b.sisa)); // no. 4: total bon TIDAK dikurangi — kelebihan bayar dipajang terpisah
   const gambar = (b) => Object.assign({}, b, { nBon: b.buka.length + ' bon' + (b.bayar > 0 ? ' · sudah membayar ' + RP(b.bayar) : ''), lebar: Math.max(3, Math.round(b.sisa / maks * 100)) });
   const Pa = berutang.find((b) => b.kunci === bukuKunci) || berutang.slice().sort((a, b) => b.sisa - a.sisa)[0] || null;
-  const halaman = []; if (Pa) { const utang = Pa.mutasi.filter((m) => m.jenis === 'jual' || m.jenis === 'saldoAwal').slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || ''))); let tertutup = Pa.bayar + Pa.dihapus;
+  const halaman = []; if (Pa) { const utang = Pa.mutasi.filter((m) => m.jenis === 'jual' || m.jenis === 'saldoAwal').slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || ''))); let tertutup = Pa.bayar + Pa.dihapus + (Pa.retur || 0);
     utang.forEach((u) => { const lunas = tertutup >= u.nominal; tertutup = Math.max(0, tertutup - u.nominal); halaman.push({ t: u.tanggal || '', u: 0, tgl: formatTanggal(u.tanggal), teks: u.ket || 'Belanja', n: u.nominal, jenis: lunas ? 'coret' : 'bon' }); });
-    Pa.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku').forEach((m) => halaman.push({ t: m.tanggal || '', u: 1, tgl: formatTanggal(m.tanggal), teks: m.jenis === 'bayar' ? m.ket.replace(/^Bayar/, 'bayar') : m.ket.replace(/^Hapus buku/, 'DIHAPUS'), n: -m.nominal, jenis: m.jenis })); halaman.sort((a, b) => a.t.localeCompare(b.t) || a.u - b.u); }
+    Pa.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur').forEach((m) => halaman.push({ t: m.tanggal || '', u: 1, tgl: formatTanggal(m.tanggal), teks: m.jenis === 'bayar' ? m.ket.replace(/^Bayar/, 'bayar') : m.jenis === 'retur' ? m.ket.replace(/^Retur barang/, 'barang kembali (retur)') : m.ket.replace(/^Hapus buku/, 'DIHAPUS'), n: -m.nominal, jenis: m.jenis })); halaman.sort((a, b) => a.t.localeCompare(b.t) || a.u - b.u); }
   const papan = []; const lajur = (judul, awas, d) => { papan.push({ lajur: true, judul, awas, jumlah: d.reduce((a, b) => a + b.sisa, 0), n: d.length }); d.slice().sort((a, b) => b.sisa - a.sisa).forEach((b) => papan.push(gambar(b))); };
   lajur('Tagih hari ini', true, berutang.filter((b) => b.status === 'janjiLewat' || b.status === 'perluTagih')); lajur('Tunggu dulu', false, berutang.filter((b) => b.status === 'menunggu' || b.status === 'baru')); lajur('Macet — usul hapus bon', false, berutang.filter((b) => b.status === 'macet'));
   const diEmber = (e) => berutang.filter((b) => b.umur !== null && b.umur >= e[2] && b.umur <= e[3]); const eP = EMBER.find((e) => e[0] === ember) || null;
@@ -61,7 +62,7 @@ export function susunBon(kini, bukuKunci, ember) {
 /** Lembar satu orang: rincian bon terbuka + riwayat (pembayaran, hapus buku, tagihan). */
 export function lembarBon(kini, kunci) {
   const b = semuaBon(kini).find((x) => x.kunci === kunci); if (!b) return null;
-  const riwayat = b.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku').map((m) => ({ t: (m.tanggal || '') + ' ' + (m.jam || ''), tgl: formatTanggal(m.tanggal), teks: m.jenis === 'bayar' ? m.ket.replace(/^Bayar/, 'membayar') : m.ket.replace(/^Hapus buku/, 'DIHAPUS dari buku'), n: -m.nominal }))
+  const riwayat = b.mutasi.filter((m) => m.jenis === 'bayar' || m.jenis === 'hapusBuku' || m.jenis === 'retur').map((m) => ({ t: (m.tanggal || '') + ' ' + (m.jam || ''), tgl: formatTanggal(m.tanggal), teks: m.jenis === 'bayar' ? m.ket.replace(/^Bayar/, 'membayar') : m.jenis === 'retur' ? m.ket.replace(/^Retur barang/, 'barang kembali (retur), bon dipotong') : m.ket.replace(/^Hapus buku/, 'DIHAPUS dari buku'), n: -m.nominal }))
     .concat(cacheMentah('tagih').filter((t) => t.kunci === kunci).map((t) => ({ t: (t.tanggal || '') + ' ' + (t.jam || ''), tgl: formatTanggal(t.tanggal), teks: 'ditagih' + (t.janji ? ' · janji ' + formatTanggal(t.janji) : ' · tanpa janji'), n: null }))).sort((a, b) => b.t.localeCompare(a.t));
   return Object.assign({}, b, { rinci: b.buka.map((r) => ({ tgl: formatTanggal(r.tanggal), teks: (r.ket || 'Belanja') + (r.sisa < r.nominal ? ' (dari ' + RP(r.nominal) + ')' : ''), n: r.sisa })), riwayat, alasanPilihan: aturPelanggan().alasanHapus });
 }

@@ -6,7 +6,7 @@ sudah ada. KOTAK PASIR (angka contoh), jam dikunci 19 Sep 2026 10:00 WIB.
   · Satu nota = kunci panel "Hari ini" (grupNota → trxId → id); baris satu takaran wadah digabung; nota batal / sudah dirinci disembunyikan kecuali diminta.
   · Total nota = Σ hargaTotal baris berlaku; omzet = total nota − uang retur hari itu (rumus mesin laba) — disebut hanya tanpa saringan jenis/cara/cari.
   · Saringan periode / jenis / cara / cari (nama, barang, nominal) menumpuk; halaman 50 nota; jumlah per hari dihitung dari SEMUA nota yang cocok hari itu.
-  · Retur hanya untuk baris karung/kemasan yang boleh kembali (rtDasarNota); yang tidak boleh menyebut alasannya.
+  · Retur hanya untuk baris karung/kemasan yang boleh kembali (rtDasarRetur = aturan rtDasarNota; 39b no. 37: nota BON ikut, memotong bon); yang tidak boleh menyebut alasannya.
 Asap cadangan (_privat/, lokal): tiap hari omzet riwayat = rekapHari mesin, jumlah nota = panel "Hari ini", Σ total nota = Σ baris berlaku.
 
     python3 alat-uji/uji_riwayat_penjualan.py            → N lulus · 0 gagal
@@ -47,8 +47,8 @@ KOTAK = {
     # G · 17 Sep, pengganti retur (Rp0) + repack
     jual(1009, '2026-09-17', '12:00', 'karung', 0, trxId='tG', merkSumber='Angsa', beratKarungAcuan=50, jumlahKarung=1, totalKg=50, penggantiRetur=True, nilaiBarangPengganti=700000),
     jual(1010, '2026-09-17', '12:00', 'repacking', 72500, trxId='tG', namaProduk='Angsa', merkSumber='Angsa', totalKg=5),
-    # H · 20 Agu (periode lama)
-    jual(1011, '2026-08-20', '10:00', 'kemasan', 70000, trxId='tH', namaProduk='Kembang', ukuranKemasan=5, jumlahUnit=1, totalKg=5),
+    # H · 20 Agu (periode lama), memuat unit BONUS (tidak bisa diretur — alasannya disebut)
+    jual(1011, '2026-08-20', '10:00', 'kemasan', 70000, trxId='tH', namaProduk='Kembang', ukuranKemasan=5, jumlahUnit=1, totalKg=5, bonusUnit=1),
   ],
   'retur': [{'id': 2001, 'tanggal': '2026-09-19', 'jam': '09:30', 'jenis': 'karung', 'merkSumber': 'Angsa', 'totalKg': 50, 'jumlahKarung': 1, 'kondisi': 'utuh', 'penyelesaian': 'refund', 'uangKembali': 90000, 'nominalRefund': 90000, 'dariPenjualanId': '1011'}],
   'katalogHargaKarung': [{'id': 'Angsa', 'merk': 'Angsa', 'hargaPerKg': 14000}],
@@ -67,7 +67,7 @@ ok('nota dikelompokkan dengan kunci panel "Hari ini" (grupNota → trxId → id)
 var A = notaK('tA');
 ok('nota A: dua baris internal satu takaran wadah digabung jadi satu baris "W1 2 L" Rp39.000 (+ karung) — total Rp739.000, status berlaku, cara Tunai', A.nBaris === 2 && A.baris[1].teks === 'W1 2 L' && A.baris[1].n === 39000 && A.baris[0].teks === 'Angsa karung 50 kg × 1' && A.total === 739000 && A.status === 'berlaku' && A.cara === 'Tunai', J(A));
 ok('status: C dibatalkan → batal (total berlaku 0, totalAsli 700.000); karcis 1006 digantikan rincian → dirinci; karcis 1008 belum dirinci → berlaku, teks "Karcis kasir — nominal, belum dirinci"', notaK('tC').status === 'batal' && notaK('tC').total === 0 && notaK('tC').totalAsli === 700000 && notaK('1006').status === 'dirinci' && notaK('1008').status === 'berlaku' && notaK('1008').baris[0].teks === 'Karcis kasir — nominal, belum dirinci' && notaK('1008').karcis === true, J([notaK('tC'), notaK('1006'), notaK('1008')]));
-ok('retur: karung Tunai berlaku bisa diretur; literan tidak (tanpa alasan retur karena bukan karung/kemasan); kemasan BON tidak bisa + alasan rtDasarNota disebut; pengganti retur & nota batal tidak', A.baris[0].bisaRetur === true && A.baris[1].bisaRetur === false && A.baris[1].sebabRetur === '' && notaK('gB').baris[0].bisaRetur === false && /KREDIT/.test(notaK('gB').baris[0].sebabRetur) && notaK('tG').baris[0].bisaRetur === false && notaK('tG').baris[0].pengganti === true && notaK('tC').baris[0].bisaRetur === false, J([A.baris, notaK('gB').baris, notaK('tG').baris]));
+ok('retur: karung Tunai berlaku bisa diretur; literan tidak (tanpa alasan retur karena bukan karung/kemasan); kemasan BON bisa (39b no. 37: returnya memotong bon); kemasan ber-BONUS tidak + alasan rtDasarNota disebut; pengganti retur & nota batal tidak', A.baris[0].bisaRetur === true && A.baris[1].bisaRetur === false && A.baris[1].sebabRetur === '' && notaK('gB').baris[0].bisaRetur === true && notaK('gB').baris[0].sebabRetur === '' && notaK('tH').baris[0].bisaRetur === false && /BONUS/.test(notaK('tH').baris[0].sebabRetur) && notaK('tG').baris[0].bisaRetur === false && notaK('tG').baris[0].pengganti === true && notaK('tC').baris[0].bisaRetur === false, J([A.baris, notaK('gB').baris, notaK('tH').baris, notaK('tG').baris]));
 // ---- 2 · riwayat tanpa saringan
 var R = S();
 ok('semua (bawaan): 6 nota berlaku (batal & dirinci disembunyikan); total nota = Σ baris berlaku = Rp1.225.000; per cara Tunai/Bon', R.n === 6 && R.nBerlaku === 6 && R.omzet === 1225000 && R.omzet === ambilPenjualan().reduce(function (a, p) { return a + (p.hargaTotal || 0); }, 0) && R.perCara.Tunai === 1085000 && R.perCara.Kredit === 140000 && !R.perCara.QRIS, J(R));
@@ -162,7 +162,8 @@ KONTROL = [
     ('jumlah nota per hari hanya yang tergambar', {RW_: [("nota: [], nNota: perHari[o.tanggal].nota,", "nota: [], nNota: 0,"), ("g.nota.push(o); });", "g.nota.push(o); g.nNota += 1; });")]}, ('jsc',)),
     ('halaman tidak dipotong', {RW_: [("const tampil = cocok.slice(0, n);", "const tampil = cocok;")]}, ('jsc',)),
     ('cari nominal mati', {RW_: [("return hay.indexOf(w) >= 0 || (d.length >= 3 && d === w.replace(/[.,]/g, '') && digit.indexOf(d) >= 0);", "return hay.indexOf(w) >= 0;")]}, ('jsc',)),
-    ('literan ditawari retur', {RW_: [("const d = p.jenis === 'karung' || p.jenis === 'kemasan' ? rtDasarNota(p) : { ok: false };", "const d = { ok: true };")]}, ('jsc',)),
+    ('literan ditawari retur', {RW_: [("const d = p.jenis === 'karung' || p.jenis === 'kemasan' ? rtDasarRetur(p) : { ok: false };", "const d = { ok: true };")]}, ('jsc',)),
+    ('39b-37: riwayat kembali memakai rtDasarNota (nota BON tidak bisa diretur)', {RW_: [("const d = p.jenis === 'karung' || p.jenis === 'kemasan' ? rtDasarRetur(p) : { ok: false };", "const d = p.jenis === 'karung' || p.jenis === 'kemasan' ? rtDasarNota(p) : { ok: false };")]}, ('jsc',)),
     ('alasan retur tidak disebut', {RW_: [("sebabRetur: hidupBaris && (p.jenis === 'karung' || p.jenis === 'kemasan') && d && !d.ok ? String(d.sebab || '') : '',", "sebabRetur: '',")]}, ('jsc',)),
     ('periode 7 hari jadi 8 hari', {RW_: [("if (periode === '7') return { dari: rwGeser(hari, -6), sampai: hari };", "if (periode === '7') return { dari: rwGeser(hari, -7), sampai: hari };")]}, ('jsc',)),
     ('Jual: struk tanpa kunci grupNota', {JU_: [("data-grup=\"${o.grupNota || ''}\" ", "")]}, ('statis',)),

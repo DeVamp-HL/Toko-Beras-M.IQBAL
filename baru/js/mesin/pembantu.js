@@ -99,7 +99,11 @@ import { bayaranBiayaBulanan, hitungPiutang, hitungStokBahanLiteran, hitungStokK
     return null;
   }
   function uangKembaliRetur(r) {
-    return (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0);
+    // Retur nota BON (audit 39b no. 37, keputusan owner 2 Okt 2026): nilai barang yang kembali
+    // memotong bon (kolom potongBon + mutasi piutang tipe 'retur'), bukan uang laci. Laba & omzet
+    // membacanya di sini sebagai pengurang penjualan; jalur kas (hitungArusKasInti,
+    // daftarGerakanKas) membaca nominalRefund langsung, jadi kas tidak bergerak.
+    return (r.nominalRefund || 0) + Math.max(0, r.selisihHargaTukar || 0) + (r.potongBon || 0);
   }
   function labelBahan(jenis) { return LABEL_BAHAN_KEMASAN[jenis] || LABEL_BAHAN_LITERAN[jenis] || jenis; }
 

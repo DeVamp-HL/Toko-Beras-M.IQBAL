@@ -556,7 +556,7 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
     function slot(nama, urut) {
       const k = kunciPelanggan(nama);
       if (!k) return null;
-      if (!peta[k]) peta[k] = { kunci: k, nama: String(nama).trim(), urutNama: urut || 0, kredit: 0, saldoAwal: 0, bayar: 0, dihapus: 0, mutasi: [] };
+      if (!peta[k]) peta[k] = { kunci: k, nama: String(nama).trim(), urutNama: urut || 0, kredit: 0, saldoAwal: 0, bayar: 0, dihapus: 0, retur: 0, mutasi: [] };
       // Ejaan yang dipakai = dari mutasi paling baru, supaya pembetulan ejaan ikut terpakai.
       if ((urut || 0) >= peta[k].urutNama) { peta[k].nama = String(nama).trim(); peta[k].urutNama = urut || 0; }
       return peta[k];
@@ -591,11 +591,20 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
         s.dihapus += n;
         s.mutasi.push({ jenis: 'hapusBuku', tanggal: m.tanggal, jam: m.jam || '', nominal: n, idMutasi: m.id,
           ket: 'Hapus buku' + (m.alasan ? ' · ' + m.alasan : '') });
+      } else if (m.tipe === 'retur') {
+        // RETUR NOTA BON (audit 39b no. 37, keputusan owner 2 Okt 2026): barang dari nota bon
+        // kembali, bonnya turun sebesar nilai barang itu. Mengurangi sisa SEPERTI pembayaran
+        // (bon tertua dulu), tapi BUKAN uang masuk — arus kas & buku kas menyaring 'bayar' saja —
+        // dan BUKAN rugi: laba membacanya dari dokumen retur pasangannya (kolom potongBon,
+        // uangKembaliRetur) sebagai pengurang penjualan. Keduanya lahir dalam satu kiriman.
+        s.retur += n;
+        s.mutasi.push({ jenis: 'retur', tanggal: m.tanggal, jam: m.jam || '', nominal: n, idMutasi: m.id,
+          ket: 'Retur barang' + (m.catatan ? ' · ' + m.catatan : '') });
       }
     });
     const hasil = Object.keys(peta).map(k => {
       const s = peta[k];
-      s.sisa = Math.round((s.kredit + s.saldoAwal - s.bayar - s.dihapus) * 100) / 100;
+      s.sisa = Math.round((s.kredit + s.saldoAwal - s.bayar - s.dihapus - s.retur) * 100) / 100;
       s.total = s.kredit + s.saldoAwal;
       // UMUR PIUTANG (12 Agu 2026) — pembayaran dianggap melunasi utang TERTUA dulu
       // (FIFO), kebiasaan penagihan di mana pun. Sisa yang tinggal karena itu melekat
@@ -606,7 +615,7 @@ import { AMBANG_HARI_KRITIS, HARGA_AWAL_BAHAN_LITERAN, JENDELA_LAJU_HARI, JENIS_
         .slice().sort((x, y) => String(x.tanggal || '').localeCompare(String(y.tanggal || '')));
       // Hapus buku ikut memadamkan utang TERTUA lebih dulu, sama seperti pembayaran —
       // sisa yang tinggal memang melekat di utang yang lebih muda.
-      let sisaBayar = s.bayar + s.dihapus;
+      let sisaBayar = s.bayar + s.dihapus + s.retur;
       s.tanggalTertua = null;
       for (const u of utang) {
         if (sisaBayar >= u.nominal) { sisaBayar -= u.nominal; continue; }
