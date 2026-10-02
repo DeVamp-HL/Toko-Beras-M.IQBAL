@@ -113,7 +113,11 @@
 // tidak pernah terpasang, dan HP penjaga terjebak di v30 tanpa tanda apa pun. kasir.html TIDAK lagi di FILES maupun HTML_SWR: SW ini tidak
 // menyajikannya dari cache, jadi pengalih terbaru dari jaringan yang tampil. Cache v30 (berisi kasir.html lama) terhapus di activate karena
 // namanya ≠ VERSI. Kasir darurat hanya ikut naik versi (VERSI_APLIKASI + LABEL_VERSI 'versi 3 Okt'); isi & bentuk nota TIDAK berubah.
-const VERSI = 'kasir-v31';
+// v32 (3 Oktober 2026, owner: "CSP kasir darurat"): kasir darurat memasang CSP lewat meta (script hanya yang hash-nya tercantum, tanpa
+// 'unsafe-inline'; koneksi hanya Firestore & Auth Firebase REST; worker-src 'self' untuk SW ini). Semua handler sebaris (24 di HTML + 3 di
+// innerHTML) pindah ke data-aksi + satu pendengar di document — perilaku tiap tombol sama. LABEL 'versi 3 Okt b'. FILES tidak berubah.
+// WAJIB naik: tanpa itu HP penjaga terus menyajikan berkas v31 dari cache (tanpa CSP) sampai cache-nya kebetulan diperbarui.
+const VERSI = 'kasir-v32';
 const FILES = ['kasir-darurat-nominal.html', 'icon-kasir-180.png', 'icon-kasir-32.png'];
 const HTML_SWR = ['kasir-darurat-nominal.html'];
 

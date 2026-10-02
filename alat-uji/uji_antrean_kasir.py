@@ -20,7 +20,8 @@ SKENARIO:
     "sudah dicatat ulang" butuh DUA ketukan dan MEMINDAH ke arsip (tidak menghapus)
 STATIS: VERSI_APLIKASI kasir darurat = VERSI sw-kasir.js = KK_VERSI_KASIR_TERBARU (/baru/, 25c),
         dan lantai kunci bulan KP_VERSI_KASIR_25B (kasir-v26) tidak di atas versi yang disajikan;
-  service worker mengunduh versi baru melewati cache HTTP (cache:'reload'); kasir darurat memuat ulang diri saat versi baru mengambil alih.
+  service worker mengunduh versi baru melewati cache HTTP (cache:'reload'); kasir darurat memuat ulang diri saat versi baru mengambil alih;
+  salinan uji peramban melonggarkan CSP kasir darurat (kasir-v32, 3 Okt 2026) HANYA di script-src — skenario sebaris uji ikut jalan, direktif lain tetap.
   (FILES service worker = berkas yang ada & tanpa kasir.html: uji_pensiun_sistem_lama.py, job uji.)
 /baru/ (jsc, KOTAK PASIR — nama & angka contoh): ⛔ "semua perangkat kasir yang berdenyut 7 hari terakhir sudah versi 25b" menyebut nama perangkat
   yang tertinggal; Beranda › Perlu perhatian menyebut antrean, ditolak, dan versi lama per HP kasir.
@@ -184,12 +185,23 @@ def _kunci_skenario(jalur):
     return urllib.parse.parse_qs(urllib.parse.urlsplit(jalur).query).get('s', [''])[0]
 
 
+def longgarkan_csp(t):
+    """CSP SALINAN UJI kasir darurat (kasir-v32, 3 Okt 2026 — pola uji_layar_kunci.py). Kasir darurat memasang CSP lewat meta: script hanya yang
+    hash-nya tercantum. Skenario uji disuntik sebagai script sebaris SESUDAH meta itu (sebelum </body>) → tanpa pelonggaran ia diblokir dan uji gagal
+    palsu. script-src SALINAN jadi 'unsafe-inline' (hash dibuang — kalau ada hash, 'unsafe-inline' diabaikan peramban); kontrol yang merusak script
+    halaman pun tetap jalan (bukan mati karena hash basi). Direktif lain (koneksi, worker, objek, dasar) TETAP. Palsu Firestore (KEPALA) disisip
+    tepat sesudah <head>, jadi SEBELUM meta — tidak terkena CSP. Hash halaman yang sungguhan dijaga uji_csp.py (statis)."""
+    csp = re.search(r'(<meta http-equiv="Content-Security-Policy" content="[^"]*?)script-src [^;]*;', t); assert csp, 'meta CSP kasir darurat berubah — perbarui uji'
+    return t.replace(csp.group(0), csp.group(1) + "script-src 'unsafe-inline';", 1)
+
+
 def siapkan(berkas, ganti=None):
     """Folder kerja berisi salinan berkas kasir yang disuntik (palsu di <head>, skenario + penahan di </body>). ganti = [(lama, baru)] untuk kontrol."""
     d = tempfile.mkdtemp(prefix='antre-'); t = open(os.path.join(AKAR, berkas), encoding='utf-8').read()
     for lama, baru in (ganti or []):
         assert lama in t, 'kontrol basi: ' + berkas + ' · ' + lama[:70]; t = t.replace(lama, baru)
     assert t.count('<head>') == 1 and t.count('</body>') == 1
+    t = longgarkan_csp(t)
     t = t.replace('<head>', '<head>' + KEPALA, 1).replace('</body>', SKENARIO.replace('__PENYESUAI__', PENYESUAI[berkas]) + "<img src='/_tahan' alt='' style='display:none'></body>", 1)
     open(os.path.join(d, berkas), 'w', encoding='utf-8').write(t)
     return d
@@ -374,7 +386,7 @@ def periksa_peramban(berkas, u, m, versi_sw):
     ok('daftar ditolak menyebut tanggal, jam & nominal supaya bisa dicatat ulang', m.get('daftarTampil') and '31/08/2026' in (m.get('daftarTeks') or '') and '20:15' in (m.get('daftarTeks') or '') and '5.200' in (m.get('daftarTeks') or ''), m.get('daftarTeks'))
     ok('"sudah dicatat ulang": satu ketukan TIDAK memindah apa pun', len(m['sesudahSatuKetuk']['ditolak']) == 1 and not m['sesudahSatuKetuk']['arsip'], m['sesudahSatuKetuk'])
     ok('ketukan kedua MEMINDAH ke arsip (tidak dihapus), pita hilang', not m['sesudahDuaKetuk']['ditolak'] and m['sesudahDuaKetuk']['arsip'] == [5200] and not m['sesudahDuaKetuk']['pita'], m['sesudahDuaKetuk'])
-    ok('versi yang berjalan tampil di layar ("versi 3 Okt" — naik bersama kasir-v31)', m.get('versiLayar') == 'versi 3 Okt', m.get('versiLayar'))
+    ok('versi yang berjalan tampil di layar ("versi 3 Okt b" — naik bersama kasir-v32)', m.get('versiLayar') == 'versi 3 Okt b', m.get('versiLayar'))
     return out
 
 
@@ -399,7 +411,19 @@ def periksa_statis(teks):
     kk = re.search(r"export const KK_VERSI_KASIR_TERBARU = '([^']+)';", teks['baru/js/data/katalog-kasir.js']); no = lambda x: int(re.match(r'kasir-v(\d+)$', x.group(1)).group(1)) if x and re.match(r'kasir-v(\d+)$', x.group(1)) else -1
     ok('/baru/: versi kasir terbaru (KK_VERSI_KASIR_TERBARU) = VERSI sw-kasir.js; lantai kunci bulan KP_VERSI_KASIR_25B (kasir-v26) ≤ versi itu', kk and vs and kk.group(1) == vs.group(1) and kp and kp.group(1) == 'kasir-v26' and 0 < no(kp) <= no(vs), [x.group(1) if x else None for x in (kk, kp, vs)])
     ok('sw-kasir.js mengunduh versi baru melewati cache HTTP peramban (cache: \'reload\')', "new Request(f, { cache: 'reload' })" in sw)
+    # kasir-v32 (3 Okt 2026): salinan uji (longgarkan_csp) hanya mengganti script-src — koneksi, worker, objek & dasar tetap seperti yang terbit
+    try: lg = longgarkan_csp(teks[DARURAT])
+    except AssertionError: lg = None
+    a, b = _csp(teks[DARURAT]), (_csp(lg) if lg else None)
+    ok(DARURAT + ": salinan uji peramban melonggarkan CSP HANYA di script-src ('unsafe-inline' untuk skenario sebaris uji); direktif lain tetap",
+       a and b and b.get('script-src') == ["'unsafe-inline'"] and dict((k, v) for k, v in a.items() if k != 'script-src') == dict((k, v) for k, v in b.items() if k != 'script-src'), b)
     return out
+
+
+def _csp(t):
+    """Meta CSP → {direktif: [sumber]}; tanpa meta → None."""
+    m = re.search(r'<meta http-equiv="Content-Security-Policy" content="([^"]*)">', t)
+    return dict((x.split()[0], x.split()[1:]) for x in m.group(1).split(';') if x.split()) if m else None
 
 
 def baca_semua():
@@ -505,8 +529,9 @@ KONTROL = [
     ('arsip "sudah dicatat ulang" satu ketukan', {DARURAT: [("  if (!yakinArsip) {\n    yakinArsip = true;", "  if (false) {\n    yakinArsip = true;")]}, None, ['peramban']),
     # 25c: sesudah versi, denyut kasir darurat membawa `katalog` (baris versinya berakhir koma) — kontrol mengganti nilainya saja
     ('denyut masih versi tulis-tangan lama', {DARURAT: [("    versi: VERSI_APLIKASI,\n", "    versi: 'kasir-v24',\n")]}, None, ['statis', 'peramban']),
-    ('sw-kasir.js naik tanpa kasir ikut (VERSI beda)', {'sw-kasir.js': [("const VERSI = 'kasir-v31';", "const VERSI = 'kasir-v32';")]}, None, ['statis']),
+    ('sw-kasir.js naik tanpa kasir ikut (VERSI beda)', {'sw-kasir.js': [("const VERSI = 'kasir-v32';", "const VERSI = 'kasir-v33';")]}, None, ['statis']),
     ('service worker memakai cache HTTP lama', {'sw-kasir.js': [("c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))", "c.addAll(FILES)")]}, None, ['statis']),
+    ('meta CSP kasir darurat tanpa script-src (pelonggar salinan uji kehilangan sasarannya)', {DARURAT: [("script-src 'sha256-", "script-sumber 'sha256-")]}, None, ['statis']),
     ('/baru/: HP kasir versi lama tidak memblokir kunci', {}, [("tambah({ id: 'versiKasir', blokir: true, ok: !lamaV.length,", "tambah({ id: 'versiKasir', blokir: true, ok: true,")], ['baru']),
     ('/baru/: versi dibandingkan sebagai ada/tidak, bukan nomor', {}, [("const kpVersiKasirCukup = (v) => kpNomorVersiKasir(v) >= kpNomorVersiKasir(KP_VERSI_KASIR_25B);", "const kpVersiKasirCukup = (v) => !!v;")], ['baru']),
     ('/baru/: Perlu perhatian diam soal karcis ditolak', {}, [("if (tolak) bagian.push(tolak + ' DITOLAK server", "if (false) bagian.push(tolak + ' DITOLAK server")], ['baru']),

@@ -40,7 +40,7 @@ Semua bisa dijalankan dari folder mana pun, tanpa Node, cukup macOS (jsc bawaan)
 
 | Perintah | Membuktikan | Gagal = |
 |---|---|---|
-| `alat-uji/periksa.sh` (bawaan `kasir-darurat-nominal.html`) | sintaks script (jsc), tidak ada sintaks pasca-Chrome-80, id DOM unik, `onclick` menunjuk fungsi yang ada, `getElementById` menunjuk id yang ada, batas gerak kasir. Berkas tanpa `<script>` (pengalih) DITOLAK | keluar ≠ 0 |
+| `alat-uji/periksa.sh` (bawaan `kasir-darurat-nominal.html`) | sintaks script (jsc), tidak ada sintaks pasca-Chrome-80, id DOM unik, handler sebaris menunjuk fungsi yang ada (kasir darurat sejak kasir-v32 tanpa handler sebaris — `data-aksi` dijaga `uji_csp.py`), `getElementById` menunjuk id yang ada, batas gerak kasir. Berkas tanpa `<script>` (pengalih) DITOLAK | keluar ≠ 0 |
 | `alat-uji/periksa.sh --kontrol` | salinan rusak (sintaks, pasca-Chrome-80, id ganda, gerak) wajib gagal; salinan utuh lulus | 3 |
 | `python3 alat-uji/beku2.py --sidik` | tubuh **26 mesin uang beku** (`baru/js/mesin/beku.js`) byte-identik dengan `alat-uji/beku.sha256`, dan **55 fungsi + 36 konstanta pembantu** (`pembantu.js`) dengan `alat-uji/pembantu.sha256` | 2 |
 | `python3 alat-uji/beku2.py --lama main` | sama, tapi dibandingkan ke `main` (dipakai di cabang kerja) | 2 |
@@ -56,7 +56,7 @@ Sisanya (kotak pasir `/baru/` di jsc, uji peramban di runner) terdaftar di `.git
 `uji_sistem_lama_bacasaja.py` (penjaga tulis `index.html`), dan empat penjaga pola yang hanya membaca `index.html` dan tidak dijalankan CI:
 `uji_dua_arah.py`, `uji_gagal_tertutup.py`, `uji_onclick_aman.py`, `uji_stok_minus.py` (+ `ukur_jepitan.sh`). Apakah keempat pola cacat itu
 (jepitan dua arah, gerbang yang gagal membuka, onclick tanpa escape, stok minus dibaca "0") sudah punya penjaga setara di `/baru/` BELUM diperiksa
-satu per satu; onclick sebaris di `/baru/` sudah tertutup CSP (`uji_csp.py`).
+satu per satu; onclick sebaris di `/baru/` dan kasir darurat (kasir-v32) sudah tertutup CSP (`uji_csp.py`).
 
 ### Membekukan ulang mesin uang (= membuka mesin)
 `alat-uji/beku.sha256` & `alat-uji/pembantu.sha256` hanya boleh berubah lewat `python3 alat-uji/beku2.py --catat`

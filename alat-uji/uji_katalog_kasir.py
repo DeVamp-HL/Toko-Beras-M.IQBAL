@@ -16,7 +16,7 @@ STATIS:
     berbeda; pendengar dokumen katalog hanya untuk owner; terbit tiap data berubah (dengarkan)
   · harga.js: terbit harga menyertakan katalog (kkSertakan) di kiriman yang SAMA
   · kasir darurat (izin owner 27 Sep): ambil katalog saat layar dinyalakan & tiap 5 menit; denyut membawa cap katalog; versi kasir darurat =
-    VERSI sw-kasir.js = KK_VERSI_KASIR_TERBARU (/baru/) = kasir-v31; lantai kunci bulan (KP_VERSI_KASIR_25B) tidak di atas versi yang disajikan
+    VERSI sw-kasir.js = KK_VERSI_KASIR_TERBARU (/baru/) = kasir-v32; lantai kunci bulan (KP_VERSI_KASIR_25B) tidak di atas versi yang disajikan
 JSC (KOTAK PASIR — angka & nama contoh; + cadangan toko kalau ada di _privat/, lokal saja):
   · isi /baru/ (kkIsi, dengan saringan arsip & wadah) == penyusun sistem lama untuk data yang sama — kotak pasir & cadangan toko
   · kunci dokumen = urutan sistem lama; pembanding tidak tertipu urutan kunci peta dari Firestore; server belum terbaca = "belum tahu"
@@ -25,7 +25,8 @@ JSC (KOTAK PASIR — angka & nama contoh; + cadangan toko kalau ada di _privat/,
   · gerbang terbit: owner · Firestore · online · tanpa koleksi ditolak · semua termuat · semua dari SERVER · katalog server terbaca
   · Beranda: "katalog kasir: diperbarui …", perubahan yang belum sampai, HP kasir versi lama, HP penjaga yang masih memegang katalog lama;
     perangkat kasir.html (pensiun) tidak disebut
-PERAMBAN (Chrome headless, SATU peluncuran; kasir-darurat-nominal.html SUNGGUHAN + Firestore REST palsu):
+PERAMBAN (Chrome headless, SATU peluncuran; kasir-darurat-nominal.html SUNGGUHAN + Firestore REST palsu; CSP salinan dilonggarkan HANYA di script-src
+supaya skenario sebaris uji jalan — kasir-v32, 3 Okt 2026):
   · katalog berganti di server → TANPA dibuka ulang: harga tuts tetap lama sampai layar dinyalakan (visibilitychange), lalu harga baru; denyut membawa
     cap katalog baru
   · katalog berganti → tanpa ketukan apa pun, diambil sendiri di jadwal berkala (jadwal 5 menit dipercepat di salinan uji)
@@ -37,7 +38,7 @@ import os, re, sys, json, glob, shutil, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru, beku2, uji_harga_baru  # noqa: E402
-from uji_antrean_kasir import CHROME, layani, buka, hasil_dari, teks_stat  # noqa: E402
+from uji_antrean_kasir import CHROME, layani, buka, hasil_dari, teks_stat, longgarkan_csp  # noqa: E402
 
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/data/katalog-kasir.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js']
@@ -61,7 +62,7 @@ def baca(ganti=None):
 # Kunci & urutan dokumen ringkasanKasir/aktif yang ditulis terbitkanRingkasanKasir() sistem lama (setDoc). Dibekukan 3 Okt 2026 (sistem lama pensiun):
 # diekstrak dari `git show sistem-lama-terakhir:index.html` (commit 48a694d) dengan pola lama setDoc(doc(db, 'ringkasanKasir', 'aktif'), { … }).
 KUNCI_LAMA = ['id', 'diperbaruiPada', 'kemasan', 'merkKarung', 'bahanLiteran', 'piutang']
-VERSI_KASIR = 'kasir-v31'
+VERSI_KASIR = 'kasir-v32'
 
 
 # ---------- KOTAK PASIR: data uji harga (angka contoh) + bon pelanggan + kantong literan ----------
@@ -190,15 +191,15 @@ kkLupakanServer(); ok('gerbang: katalog server belum terbaca → TIDAK terbit', 
 // ---- 6 · Beranda
 var T0 = '2026-09-19T02:00:00.000Z'; kkSetelServer(kkDokumen(kkIsi(), T0), true);
 var hp = function (id, apl, v, pada, kat) { var x = { id: id, nama: id, aplikasi: apl, versi: v, pada: pada, antrean: 0, gagal: 0 }; if (kat !== undefined) x.katalog = kat; return x; };
-pasok('perangkatStatus', [hp('d-v26', 'darurat', 'kasir-v26', '2026-09-19T02:50:00.000Z', undefined), hp('d-segar', 'darurat', 'kasir-v31', '2026-09-19T02:50:00.000Z', T0),
-  hp('d-basi', 'darurat', 'kasir-v31', '2026-09-19T02:50:00.000Z', '2026-09-18T01:00:00.000Z'), hp('d-baru-saja', 'darurat', 'kasir-v31', '2026-09-19T02:03:00.000Z', '2026-09-18T01:00:00.000Z'),
+pasok('perangkatStatus', [hp('d-v26', 'darurat', 'kasir-v26', '2026-09-19T02:50:00.000Z', undefined), hp('d-segar', 'darurat', 'kasir-v32', '2026-09-19T02:50:00.000Z', T0),
+  hp('d-basi', 'darurat', 'kasir-v32', '2026-09-19T02:50:00.000Z', '2026-09-18T01:00:00.000Z'), hp('d-baru-saja', 'darurat', 'kasir-v32', '2026-09-19T02:03:00.000Z', '2026-09-18T01:00:00.000Z'),
   hp('k-kalk', 'kasir', 'kasir-v30', '2026-09-19T02:50:00.000Z', undefined), hp('d-v27', 'darurat', 'kasir-v27', '2026-09-19T02:50:00.000Z', T0), hp('d-v27-basi', 'darurat', 'kasir-v27', '2026-09-19T02:50:00.000Z', '2026-09-18T01:00:00.000Z'), hp('d-v24', 'darurat', 'kasir-v24', '2026-09-19T02:50:00.000Z', undefined), hp('d-jauh', 'darurat', 'kasir-v26', '2026-09-01T02:50:00.000Z', undefined)]);
 var B = kkBeranda(new Date(__KINI)); var tk = B.perhatian.map(function (x) { return x.teks; }).join(' | ');
 ok('Beranda: "Katalog kasir: diperbarui <tanggal jam WIB> · sama dengan data sekarang"', /^Katalog kasir: diperbarui .*09\.00 · sama dengan data sekarang$/.test(B.status) || /^Katalog kasir: diperbarui .* · sama dengan data sekarang$/.test(B.status), B.status);
 ok('Beranda: HP kasir versi 26 disebut (harga baru baru sampai saat dibuka ulang); HP v24 & yang tidak berdenyut 7 hari TIDAK disebut di sini', /HP d-v26 · kasir darurat: masih kasir-v26 — harga baru baru sampai saat aplikasinya dibuka ulang/.test(tk) && !/d-v24|d-jauh/.test(tk), tk);
 ok('Beranda: HP penjaga yang berdenyut > 6 menit sesudah katalog terbit tapi memegang katalog lama → disebut, awas', B.perhatian.some(function (x) { return /HP d-basi · kasir darurat: masih memegang katalog/.test(x.teks) && x.awas; }), tk);
 ok('Beranda: HP yang memegang katalog terbaru, yang baru saja berdenyut, dan kasir.html (pensiun 3 Okt; k-kalk masih kasir-v30, tanpa cap katalog) TIDAK disebut', !/d-segar|d-baru-saja|k-kalk/.test(tk), tk);
-ok('Beranda 39b no. 4: HP v27 (sudah ambil katalog sendiri, belum versi terbaru) disebut "versi kasir-v31 terpasang saat dibuka ulang" tanpa awas — BUKAN "harga baru baru sampai"', B.perhatian.some(function (x) { return /^HP d-v27 · kasir darurat: masih kasir-v27 — versi kasir-v31 terpasang saat aplikasinya dibuka ulang$/.test(x.teks) && !x.awas; }) && !/d-v27[^|]*harga baru baru sampai/.test(tk), tk);
+ok('Beranda 39b no. 4: HP v27 (sudah ambil katalog sendiri, belum versi terbaru) disebut "versi kasir-v32 terpasang saat dibuka ulang" tanpa awas — BUKAN "harga baru baru sampai"', B.perhatian.some(function (x) { return /^HP d-v27 · kasir darurat: masih kasir-v27 — versi kasir-v32 terpasang saat aplikasinya dibuka ulang$/.test(x.teks) && !x.awas; }) && !/d-v27[^|]*harga baru baru sampai/.test(tk), tk);
 ok('Beranda 39b no. 4: HP v27 yang memegang katalog lama TETAP disebut memegang katalog lama (awas) — pemeriksaannya tidak berhenti di versi', B.perhatian.some(function (x) { return /HP d-v27-basi · kasir darurat: masih memegang katalog/.test(x.teks) && x.awas; }) && !B.perhatian.some(function (x) { return /HP d-v27 · kasir darurat: masih memegang katalog/.test(x.teks); }), tk);
 terapkanKeCache([{ koleksi: 'katalogHargaLiteran', data: { id: 'Angsa', merk: 'Angsa', hargaPerLiter: 13500, diubahPada: '2026-09-19T03:00:00.000Z' } }]);
 B = kkBeranda(new Date(__KINI));
@@ -338,6 +339,9 @@ def periksa_peramban(t):
     if not CHROME: return [('peramban · Google Chrome tersedia', False, 'tidak ditemukan')]
     d = tempfile.mkdtemp(prefix='katalog-'); s = t[DARURAT]
     assert s.count('<head>') == 1 and s.count('</body>') == 1
+    # kasir-v32 (3 Okt 2026): kasir darurat ber-CSP (script hanya yang hash-nya tercantum) → SKENARIO_PERAMBAN yang disuntik sesudah meta itu diblokir
+    # tanpa pelonggaran. Salinan dilonggarkan HANYA di script-src (uji_antrean_kasir.longgarkan_csp, pola uji_layar_kunci); KEPALA disisip sebelum meta.
+    s = longgarkan_csp(s)
     s = s.replace('<head>', '<head>' + KEPALA, 1).replace('</body>', SKENARIO_PERAMBAN + "<img src='/_tahan' alt='' style='display:none'></body>", 1)
     open(os.path.join(d, DARURAT), 'w', encoding='utf-8').write(s)
     srv, port, keadaan = layani(d); profil = tempfile.mkdtemp(prefix='katalog-profil-')
@@ -351,7 +355,7 @@ def periksa_peramban(t):
     ok('katalog berganti di server: tanpa pemicu harga tuts TETAP yang lama (bukti pemicunya layar dinyalakan, bukan kebetulan)', N['tanpaPemicu'] == [70000], N)
     ok('layar HP dinyalakan → harga baru 72.000 TANPA membuka ulang aplikasi', N['sesudahNyala'] == [72000] and N['getAkhir'] > N['getAwal'], N)
     ok('denyut HP penjaga membawa cap katalog yang baru dipegangnya', '2026-09-27T02:00:00.000Z' in N['denyutKatalog'], N['denyutKatalog'])
-    ok('bilah atas: "versi 3 Okt"', N.get('label') == 'versi 3 Okt', N.get('label'))
+    ok('bilah atas: "versi 3 Okt b"', N.get('label') == 'versi 3 Okt b', N.get('label'))
     if not B or B.get('galat'): return out + [('peramban · skenario berkala jalan', False, (B or {}).get('galat', 'tidak ada hasil'))]
     ok('tanpa ketukan apa pun: katalog baru (74.000) diambil sendiri di jadwal berkala', B['awal'] == [73000] and B['sesudahJadwal'] == [74000], B)
     return out
@@ -385,7 +389,7 @@ KONTROL = [
     ('kasir darurat tidak mengambil katalog saat layar dinyalakan', {DARURAT: [("document.addEventListener('visibilitychange', function () { if (!document.hidden) segarkanRingkasanD(); });\n", "")]}, ('statis', 'peramban')),
     ('kasir darurat tidak mengambil katalog berkala', {DARURAT: [("setInterval(function () { if (!document.hidden) segarkanRingkasanD(); }, 300000);\n", "")]}, ('statis', 'peramban')),
     ('denyut tanpa cap katalog', {DARURAT: [("    versi: VERSI_APLIKASI,\n    katalog: katalogDipegangD()", "    versi: VERSI_APLIKASI")]}, ('statis', 'peramban')),
-    ('sw-kasir.js naik tanpa /baru/ ikut', {'sw-kasir.js': [("const VERSI = 'kasir-v31';", "const VERSI = 'kasir-v32';")]}, ('statis',)),
+    ('sw-kasir.js naik tanpa /baru/ ikut', {'sw-kasir.js': [("const VERSI = 'kasir-v32';", "const VERSI = 'kasir-v33';")]}, ('statis',)),
     ('Beranda menyebut lagi perangkat kasir.html yang sudah pensiun', {'baru/js/data/katalog-kasir.js': [("    if (kpNamaAplikasiKasir(p) === 'kasir') return;\n", "")]}, ('jsc',)),
     ('dokumen katalog tanpa bagian piutang (bentuk sistem lama berubah)', {'baru/js/data/katalog-kasir.js': [(", piutang: isi.piutang", "")]}, ('jsc',)),
     ('persis: dokumen katalog tanpa daftar id', {'baru/js/data/katalog-kasir.js': [(", bayarBonTerhitung: isi.bayarBonTerhitung || [], bayarBonSejak:", ", bayarBonSejak:")]}, ('jsc',)),
@@ -393,7 +397,7 @@ KONTROL = [
     ('persis: daftar id kembali berjendela jam perangkat', {'baru/js/data/katalog-kasir.js': [("m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan)).map(", "m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan) && (m.tanggal || '') >= new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10)).map(")]}, ('jsc',)),
     ('persis: tanda awal buku tidak ikut dokumen', {'baru/js/data/katalog-kasir.js': [(", bayarBonSejak: isi.bayarBonSejak || '' };", " };")]}, ('jsc',)),
     ('persis: pembayaran tanpa nama ikut daftar (tidak dihitung hitungPiutang)', {'baru/js/data/katalog-kasir.js': [("m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan)).map(", "m.tipe === 'bayar').map(")]}, ('jsc',)),
-    ('HP v27 disebut "harga baru baru sampai" lagi (lantai ambil-sendiri disamakan dengan versi terbaru)', {'baru/js/data/katalog-kasir.js': [("export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v27';", "export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v31';")]}, ('jsc',)),
+    ('HP v27 disebut "harga baru baru sampai" lagi (lantai ambil-sendiri disamakan dengan versi terbaru)', {'baru/js/data/katalog-kasir.js': [("export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v27';", "export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v32';")]}, ('jsc',)),
 ]
 
 if __name__ == '__main__':

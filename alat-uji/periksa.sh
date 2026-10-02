@@ -110,7 +110,11 @@ grep -o -E 'on(click|input|change)="[a-zA-Z_$][a-zA-Z0-9_$]*\(' "$BERKAS" \
 grep -o -E '(function [a-zA-Z_$][a-zA-Z0-9_$]*|window\.[a-zA-Z_$][a-zA-Z0-9_$]* *=|(const|let|var) [a-zA-Z_$][a-zA-Z0-9_$]* *= *(function|\())' "$BERKAS" \
   | sed -E 's/^function //; s/^window\.//; s/^(const|let|var) //; s/ *=.*//' | sort -u > "$KERJA/ada.txt"
 comm -23 "$KERJA/dipanggil.txt" "$KERJA/ada.txt" > "$KERJA/hilang.txt"
-if [[ -s "$KERJA/hilang.txt" ]]; then echo "  PERIKSA MANUAL:"; sed 's/^/    /' "$KERJA/hilang.txt"; else echo "  LULUS"; fi
+# Kasir darurat sejak kasir-v32 (3 Okt 2026, CSP tanpa 'unsafe-inline'): NOL handler sebaris — tombol memakai data-aksi. Bagian ini lalu tidak
+# memeriksa apa pun; pasangan data-aksi ↔ penangan (dan larangan handler sebaris) dijaga alat-uji/uji_csp.py. Dikatakan terang, bukan "LULUS" polos.
+if [[ -s "$KERJA/hilang.txt" ]]; then echo "  PERIKSA MANUAL:"; sed 's/^/    /' "$KERJA/hilang.txt"
+elif [[ ! -s "$KERJA/dipanggil.txt" ]]; then echo "  LULUS — tidak ada handler sebaris (tombol memakai data-aksi; pasangannya dijaga alat-uji/uji_csp.py)"
+else echo "  LULUS"; fi
 
 echo "--- 5 · getElementById ke id yang tidak ada di HTML ---"
 grep -o -E "getElementById\('[A-Za-z0-9_-]+'\)" "$BERKAS" | sed -E "s/.*'([A-Za-z0-9_-]+)'.*/\1/" | sort -u > "$KERJA/dicari.txt"
