@@ -10,7 +10,7 @@
 //   · adukan dicatat (Stok, 23 Sep) → karung 50 kg DITUANG, kemasan hasilnya muncul satu per satu
 //   · (owner 22 Sep) karung 50 kg / kemasan ≥ 10 kg masuk keranjang → ORANG MEMANGGUL karung ke pundaknya;
 //     nota dicatat → orang yang tadi memanggul menaruhnya ke MOTOR MATIC (skuter, owner 23 Sep; banyak → MOBIL bak terbuka), kendaraan pergi → jadi alat bayar;
-//     setengah karung (25 kg dari karung 50 kg) → karung 50 kg DITUANG ke karung bekas, lalu mulutnya DIJAHIT
+//     setengah karung (25 kg dari karung 50 kg) → karung 50 kg DITUANG ke karung bekas, lalu mulutnya DIJAHIT MESIN (mesin jahit karung portabel, owner 2 Okt)
 // Kejujuran: yang "jadi uang" hanya Tunai. QRIS digambar ponsel ber-centang; BON digambar kertas bon — bukan uang,
 // karena belum ada uang yang berpindah (memori: status yang berbohong soal uang).
 // Teknis: hanya transform & opacity (dikomposit GPU → mulus), tidak menghalangi ketukan (pointer-events: none),
@@ -61,13 +61,32 @@ function mainkan(svg, keterangan, lamaMs) {
 const tangan = (kelas) => `<g class="tangan ${kelas}"><path class="lengan" d="M-46 -9 h26 v20 h-26 z"/><path class="kulit" d="M-20 -8 h16 q7 -5 17 -3 l13 3 q7 2 7 9 q0 7 -7 7 h-30 q-6 0 -10 -4 h-6 z"/><path class="ruas" d="M14 -2 v9 M21 -1 v9 M28 1 v8"/></g>`;
 const kantongKertas = () => `<g class="paket kantong"><path class="badan" d="M-22 -8 L22 -8 L26 36 L-26 36 Z"/><path class="leher" d="M-13 -8 L-7 -22 L7 -22 L13 -8 Z"/><path class="lipat" d="M-10 -8 L-13 36 M10 -8 L13 36"/><path class="tali" d="M-9 -12 h18 M-9 -12 q-8 -6 -2 -11 M9 -12 q8 -6 2 -11"/></g>`;
 const kemasan = (ukuran) => `<g class="paket kemasan"><rect class="badan" x="-22" y="-26" width="44" height="60" rx="6"/><path class="lipat" d="M-22 -18 h44 M-22 26 h44"/><rect class="label" x="-14" y="-8" width="28" height="20" rx="3"/><text class="angka-paket" x="0" y="7" text-anchor="middle">${esc(ukuran)}</text></g>`;
-const karung = (berat) => `<g class="paket karung"><path class="badan" d="M-24 -22 Q0 -14 24 -22 L30 -12 Q36 16 30 40 Q0 46 -30 40 Q-36 16 -30 -12 Z"/><path class="tali" d="M-12 -32 Q-6 -22 -14 -21 M12 -32 Q6 -22 14 -21 M-14 -21 Q0 -15 14 -21"/><text class="angka-paket" x="0" y="18" text-anchor="middle">${esc(berat)}</text></g>`;
+// KARUNG BERAS = karung plastik ANYAMAN (owner 2 Okt: "ini jahit karung apa jahit gentong?"): badan tegak berdasar rata, mulut dijepit RATA jadi
+// bibir lurus mendatar dengan dua "telinga" di sudutnya, dijahit melintang tepat di bawah bibir — karung pabrik dijahit, BUKAN diikat tali.
+// Garis warna memanjang di dekat kedua sisinya seperti karung di gudang (foto owner: biru/merah tipis; warnanya token --qris).
+// Kisi anyaman di karung ini tidak diklip (karung() dipakai berkali-kali dalam satu adegan → id klip kembar) → kisinya sengaja di dalam badan:
+// x ±27, y -15…36 (badan di ketinggian itu selebar ±30 ke atas).
+const anyaman = (x0, x1, y0, y1) => { const d = [];
+  for (let y = y0; y <= y1; y += 3) d.push('M' + x0 + ' ' + y + ' H' + x1);
+  for (let x = x0; x <= x1; x += 3) d.push('M' + x + ' ' + y0 + ' V' + y1);
+  return d.join(' '); };
+const jahitRantai = (x, y) => 'M' + x + ' ' + y + ' l2.2 -1.7 l0.8 1.7'.repeat(18);
+const BADAN_KARUNG = 'M-27.5 -27 Q-24.5 -23.6 -21 -23 H21 Q24.5 -23.6 27.5 -27 Q27.4 -21.8 28 -18.5 C32.8 -10 34 3 34 16 C34 30 32 37.5 28 41 Q26 43 21 43 H-21 Q-26 43 -28 41 C-32 37.5 -34 30 -34 16 C-34 3 -32.8 -10 -28 -18.5 Q-27.4 -21.8 -27.5 -27 Z';
+const karung = (berat) => `<g class="paket karung"><path class="badan" d="${BADAN_KARUNG}"/><path class="anyaman" d="${anyaman(-27, 27, -15, 36)}"/>
+  <path class="garis-karung" d="M-23.5 -18 C-28.6 -9 -29.6 4 -29.6 16 C-29.6 28 -28.4 34.5 -25 38.6 M23.5 -18 C28.6 -9 29.6 4 29.6 16 C29.6 28 28.4 34.5 25 38.6"/>
+  <path class="jahit-tutup" d="${jahitRantai(-27, -19.5)}"/><text class="angka-paket" x="0" y="18" text-anchor="middle">${esc(berat)}</text></g>`;
 const uang = () => `<g class="alat-bayar uang"><g transform="rotate(-14)"><rect class="lembar-uang" x="-34" y="-17" width="68" height="34" rx="4"/></g><g transform="rotate(6)"><rect class="lembar-uang" x="-34" y="-17" width="68" height="34" rx="4"/><circle class="cap" cx="0" cy="0" r="9"/><text class="rp" x="0" y="4" text-anchor="middle">Rp</text></g><circle class="koin" cx="40" cy="16" r="8"/><circle class="koin" cx="-42" cy="18" r="6"/></g>`;
 const qris = () => `<g class="alat-bayar qris"><rect class="ponsel" x="-20" y="-32" width="40" height="64" rx="7"/><path class="kotak-qr" d="M-12 -20 h9 v9 h-9 z M3 -20 h9 v9 h-9 z M-12 -5 h9 v9 h-9 z M4 -4 h3 v3 h-3 z M9 1 h3 v3 h-3 z"/><circle class="cap" cx="0" cy="20" r="8"/><path class="centang" d="M-4 20 l3 3 l6 -7"/></g>`;
 const bon = () => `<g class="alat-bayar bon"><path class="kertas" d="M-24 -30 h48 v56 l-8 -5 l-8 5 l-8 -5 l-8 5 l-8 -5 l-8 5 z"/><path class="baris-bon" d="M-16 -18 h32 M-16 -8 h32 M-16 2 h20"/><text class="rp" x="0" y="18" text-anchor="middle">BON</text></g>`;
 const alatBayar = (cara, sisaBon) => (cara === 'QRIS' ? qris() : cara === 'Kredit' ? bon() : (sisaBon ? `<g transform="translate(34 -22) scale(0.62)">${bon()}</g>` : '') + uang());
 const wadahKotak = () => `<g class="wadah-adegan"><path class="gunung-adegan" d="M-44 0 Q-24 -2 -12 -24 Q0 -40 12 -24 Q24 -2 44 0 Z"/><path class="kotak-adegan" d="M-48 0 h96 l-6 46 h-84 z"/><path class="lipat" d="M-46 16 h92 M-44 32 h88"/></g>`;
-const karungBuka = () => `<g class="wadah-adegan"><path class="gunung-adegan" d="M-30 -4 Q0 -22 30 -4 Z"/><path class="kotak-adegan" d="M-32 -6 Q0 2 32 -6 Q40 26 34 46 Q0 52 -34 46 Q-40 26 -32 -6 Z"/></g>`;
+// KARUNG TERBUKA (sumber serok literan & isi ulang wadah; karung yang mendarat di adegan buka karung) — kosakata sama dengan karung(): badan anyaman
+// tegak berdasar rata (sudut bawah membulat), garis warna memanjang dekat sisi; mulutnya dibuka & DIGULUNG keluar (.gulung-mulut: tanpa telinga, tanpa
+// jahitan), rongga mulut di belakang gunungan beras. Mulut (y -5…-2) & gunungan TIDAK digeser: serokan isi ulang & literan mencedok tepat di sana.
+const karungBuka = () => `<g class="wadah-adegan"><path class="rongga-buka" d="M-31 -5 Q0 -13 31 -5 Q0 1 -31 -5 Z"/><path class="gunung-adegan" d="M-30 -4 Q0 -22 30 -4 Z"/>
+  <path class="kotak-adegan" d="M-31 -5 Q0 1 31 -5 C32.6 6 34 16 34 26 C34 35 33.2 40.5 30.6 43.6 Q28.6 46 23.5 46 H-23.5 Q-28.6 46 -30.6 43.6 C-33.2 40.5 -34 35 -34 26 C-34 16 -32.6 6 -31 -5 Z"/>
+  <path class="anyaman" d="${anyaman(-28.5, 28.5, 5, 44)}"/><path class="garis-karung" d="M-27 3.5 C-29 12 -29.6 20 -29.6 27 C-29.6 34 -29 39 -26.6 42.4 M27 3.5 C29 12 29.6 20 29.6 27 C29.6 34 29 39 26.6 42.4"/>
+  <path class="gulung-mulut" d="M-33 -5.5 Q0 0.5 33 -5.5 Q33.9 -1.6 33.4 2 Q0 8.5 -33.4 2 Q-33.9 -1.6 -33 -5.5 Z"/><path class="lipat" d="M-31.5 -1.6 Q0 4.6 31.5 -1.6"/></g>`;
 // orang menghadap kanan, titik asal di kakinya; .beban = barang yang dipanggul di pundak (diisi pemanggil)
 const orang = (beban) => `<g class="orang"><g class="tubuh"><path class="kaki kaki-kiri" d="M-4 -34 L-9 0"/><path class="kaki kaki-kanan" d="M4 -34 L9 0"/><path class="badan-orang" d="M-12 -36 Q-15 -70 0 -74 Q15 -70 12 -36 Z"/><circle class="kepala" cx="0" cy="-85" r="9.5"/><path class="lengan-orang" d="M9 -66 Q26 -64 24 -84"/><g class="beban">${beban || ''}</g></g></g>`;
 const motor = () => `<g class="kendaraan motor matic"><g class="roda-grup"><circle class="roda" cx="-32" cy="0" r="12"/><circle class="jari" cx="-32" cy="0" r="5"/></g><g class="roda-grup"><circle class="roda" cx="36" cy="0" r="12"/><circle class="jari" cx="36" cy="0" r="5"/></g>
@@ -76,8 +95,41 @@ const motor = () => `<g class="kendaraan motor matic"><g class="roda-grup"><circ
   <path class="jok" d="M-48 -32 Q-30 -40 -6 -36 L-6 -28 L-46 -26 Z"/><path class="bodi" d="M20 -12 L14 -22 L18 -52 L28 -52 L30 -22 L26 -12 Z"/>
   <path class="setang" d="M14 -55 h22"/><circle class="lampu" cx="27" cy="-42" r="3.6"/><circle class="jari" cx="34" cy="-60" r="2.2"/><path class="knalpot" d="M-8 -10 h-24 v4 h24 z"/></g>`;
 const mobil = () => `<g class="kendaraan mobil"><path class="bodi" d="M-80 -24 h68 v-26 h30 l18 24 h14 v26 h-130 z"/><path class="bak-garis" d="M-80 -24 h68 v-16 h-68 z M-12 -24 v-26"/><rect class="kaca" x="-6" y="-46" width="24" height="18" rx="3"/><circle class="lampu" cx="48" cy="-14" r="3"/><g class="roda-grup"><circle class="roda" cx="-52" cy="0" r="12"/><circle class="jari" cx="-52" cy="0" r="5"/></g><g class="roda-grup"><circle class="roda" cx="26" cy="0" r="12"/><circle class="jari" cx="26" cy="0" r="5"/></g></g>`;
-const karungBekas = () => `<g class="karung-bekas"><clipPath id="klipBekas"><path d="M-27 -38 h54 Q54 -8 30 40 Q0 46 -30 40 Q-54 -8 -27 -38 Z"/></clipPath><g clip-path="url(#klipBekas)"><rect class="isi-kantong isi-bekas" x="-56" y="-40" width="112" height="86"/></g><path class="badan bekas" d="M-27 -38 h54 Q54 -8 30 40 Q0 46 -30 40 Q-54 -8 -27 -38 Z"/><path class="lipat" d="M-18 -26 v56 M18 -26 v56"/><path class="jahitan" pathLength="100" d="M-27 -38 l4 -6 l4 6 l4 -6 l4 6 l4 -6 l4 6 l4 -6 l4 6 l4 -6 l4 6 l4 -6 l4 6 l4 -6 l2 6"/></g>`;
-const jarum = () => `<g class="jarum"><path class="benang" d="M-4 6 q-10 10 -4 24"/><path class="batang-jarum" d="M-16 14 L14 -6"/><circle class="lubang" cx="10" cy="-3" r="2"/></g>`;
+// KARUNG BEKAS yang diisi setengah lalu dijahit: karung anyaman yang BERDIRI (bukan gentong — owner 2 Okt). Badan tegak hampir persegi panjang:
+// bagian bawah berisi beras sedikit melebar & menggembung, dasar rata menapak lantai, sudut bawahnya membulat sedikit; bagian atas kain kosong
+// dilipat RATA → bibir lurus mendatar di y -38 dengan dua telinga di sudut. Selama dituang mulutnya terbuka (.mulut-bekas: dinding dalam belakang
+// berkain + rongga gelap, selebar badan), sesudah beras masuk mulutnya dirapatkan jadi bibir lurus itu, baru mesin datang.
+// Telinga (.telinga-bekas) TERPISAH dari badan & baru muncul saat mulutnya dirapatkan (tinjauan 2 Okt: karung yang mulutnya terbuka tidak bertelinga);
+// tepi dalam tiap telinga menumpang persis di garis badan (sudut atas & sisi) → tidak ada garis tambahan di dalam badan.
+// Isi beras (.isi-bekas) naik sampai ±62% badan, terlihat lewat kain (klip = badan). Urutan gambar (tinjauan 2 Okt, mode gelap): kain badan dulu,
+// lalu isi + kisi anyaman (diklip), lalu GARIS TEPI saja di atasnya → bagian kosong tetap kain abu (bukan toples bening berisi susu).
+const BADAN_BEKAS = 'M-25.5 -38 H25.5 Q27 -38 27 -36.5 V-33.5 C27.6 -14 29 -2 30.4 10 C31.4 19 31.6 31 28.5 38.6 Q26.6 43 21 43 H-21 Q-26.6 43 -28.5 38.6 C-31.6 31 -31.4 19 -30.4 10 C-29 -2 -27.6 -14 -27 -33.5 V-36.5 Q-27 -38 -25.5 -38 Z';
+const karungBekas = () => `<g class="karung-bekas"><clipPath id="klipBekas"><path d="${BADAN_BEKAS}"/></clipPath><path class="badan bekas" d="${BADAN_BEKAS}"/>
+  <g clip-path="url(#klipBekas)"><rect class="isi-kantong isi-bekas" x="-36" y="-40" width="72" height="86"/><path class="anyaman" d="${anyaman(-33, 33, -38, 43)}"/></g><path class="badan bekas tepi" d="${BADAN_BEKAS}"/>
+  <path class="garis-karung" d="M-22 -34.5 C-22.6 -14 -24 -2 -25.4 10 C-26.4 19 -26.6 30 -24 37.8 M22 -34.5 C22.6 -14 24 -2 25.4 10 C26.4 19 26.6 30 24 37.8"/>
+  <path class="lipat" d="M-25.5 -31 q4 3.5 6 9 M25.5 -31 q-4 3.5 -6 9"/>
+  <path class="telinga-bekas kiri" d="M-22 -38 Q-26.5 -38.6 -31 -41.5 Q-29.8 -36.6 -27 -33.5 V-36.5 Q-27 -38 -25.5 -38 Z"/><path class="telinga-bekas kanan" d="M22 -38 Q26.5 -38.6 31 -41.5 Q29.8 -36.6 27 -33.5 V-36.5 Q27 -38 25.5 -38 Z"/>
+  <g class="mulut-bekas"><path class="dinding-mulut" d="M-26 -38 Q0 -53 26 -38 Q0 -48.5 -26 -38 Z"/><path class="rongga-mulut" d="M-26 -38 Q0 -48.5 26 -38 Q0 -31 -26 -38 Z"/><path class="tepi-mulut" d="M-26 -38 Q0 -53 26 -38 Q0 -31 -26 -38 Z"/></g>
+  <path class="jahitan" pathLength="100" d="${jahitRantai(-27, -33)}"/></g>`;
+// jahitan di atas = jahitan rantai mesin: lurus, rapat, 5 satuan di bawah bibir karung, langkahnya sama rata dari -27 ke 27 (selebar badan atas,
+// ujungnya di pangkal kedua telinga) → panjang yang tampak (stroke-dashoffset) maju SEIRAMA dengan mesinnya (keduanya linear 70% → 91%)
+// MESIN JAHIT KARUNG portabel (owner 2 Okt: "ganti dengan mesin jahit yang ada di foto", bukan jarum tangan), dilihat dari samping; kakinya menghadap
+// kanan = arah jalannya. Titik asal = tempat jahitan keluar: belakang-bawah blok kaki, tepat di garis jahitan (bibir karung 5 satuan di atasnya).
+// Bagian yang dikenali dari foto: pegangan hitam di atas piringan sabuk hitam, cangkir minyak krem di sampingnya, motor silinder di belakang,
+// badan huruf C (lengan miring turun ke pelat kaki di depan, kenop tegangan di lengannya; celah mulutnya melengkung tinggi seperti pintu,
+// puncaknya ±10 satuan di bawah atap badan — dulu cuma takik kecil sehingga badannya terbaca λ/7), gulungan benang krem di sisi dekat, kabel menjuntai.
+const mesinJahit = () => `<g class="mesin-jahit"><path class="kabel" d="M-6 -46 C-14 -45 -19 -36 -20 -24 C-21 -10 -26 2 -33 8"/>
+  <rect class="motor-mesin" x="-16" y="-31" width="14" height="19" rx="3"/><path class="cincin-motor" d="M-16 -27 h14 M-16 -15.5 h14"/><rect class="label-motor" x="-13" y="-24.5" width="8" height="6" rx="1"/>
+  <path class="badan-mesin" d="M0 3 V-21 H-2.5 V-31 H26 L33 -4 H24.5 L19.4 -16.5 Q15.8 -24 11.5 -17.5 V3 Z"/><circle class="baut" cx="6.5" cy="-12" r="1.2"/><circle class="baut" cx="6.5" cy="-3" r="1.2"/>
+  <path class="pelat-kaki" d="M6 -4.2 H39 Q42.5 -4.2 43.5 -7 L45 -6.6 Q44.4 -1 39 -1 H6 Z"/>
+  <path class="piringan" d="M-11 -38.5 H15 Q18.5 -38.5 18.5 -35.5 Q18.5 -31 13 -30.5 H-9 Q-14.5 -31 -14.5 -35.5 Q-14.5 -38.5 -11 -38.5 Z"/><path class="sorot-piringan" d="M-11 -36.8 H15"/>
+  <path class="pegangan" d="M-10.5 -38.5 Q-10.5 -49.5 -2.5 -51.5 H7 Q11.5 -51.5 11.5 -47 V-38.5 H8.9 V-45.6 Q8.9 -48.3 6.2 -48.3 H-1.8 Q-7.6 -47 -7.8 -38.5 Z"/>
+  <path class="cangkir-minyak" d="M11.5 -38.5 V-43 Q11.5 -45 13.25 -45 Q15 -45 15 -43 V-38.5 Z M13.25 -45 V-47.5"/>
+  <path class="tangkai" d="M27 -26 L31 -28"/><circle class="kenop" cx="31.5" cy="-28.2" r="1.8"/>
+  <clipPath id="klipGulungan"><path d="M-12 -14.5 L4 -13 Q5.8 -10 4 -7 L-12 -5.5 Q-14.6 -10 -12 -14.5 Z"/></clipPath>
+  <path class="gulungan" d="M-12 -14.5 L4 -13 Q5.8 -10 4 -7 L-12 -5.5 Q-14.6 -10 -12 -14.5 Z"/>
+  <g clip-path="url(#klipGulungan)"><g class="lilitan"><path d="${Array.from({ length: 16 }).map((_, i) => 'M-16 ' + (i * 2.4 - 15.2).toFixed(1) + ' l24 -8').join(' ')}"/></g></g>
+  <path class="gulungan-tepi" d="M-12 -14.5 L4 -13 Q5.8 -10 4 -7 L-12 -5.5 Q-14.6 -10 -12 -14.5 Z"/><ellipse class="ujung-gulungan" cx="4.3" cy="-10" rx="1.3" ry="2.9"/><path class="benang-mesin" d="M5.4 -10.6 L31.5 -28.2 L13.6 -2.6"/></g>`;
 // muatan di kendaraan: sampai tiga buah ditumpuk
 const muatan = (jenis, ukuran, banyak) => { const n = Math.max(1, Math.min(3, Math.ceil(Number(banyak) || 1))); const satu = jenis === 'karung' ? karung(ukuran || '50') : jenis === 'kemasan' ? kemasan(ukuran || '') : kantongKertas();
   return Array.from({ length: n }).map((_, i) => `<g transform="translate(${i * 7} ${-i * 6}) scale(0.58)">${satu}</g>`).join(''); };
@@ -96,7 +148,8 @@ export function adeganSerok({ nama, jumlahTeks, dariKarung, kemasanLiteran, sero
     <g class="butir"><circle cx="232" cy="66" r="2"/><circle cx="226" cy="60" r="1.6"/><circle cx="238" cy="58" r="1.6"/><circle cx="231" cy="52" r="1.4"/></g>
     <g class="jalur-serok">${serok()}</g>
   </svg>`;
-  return mainkan(svg, '<b>' + esc(nama) + '</b> · ' + esc(jumlahTeks) + (kemasanLiteran ? ' · dikemas &amp; diikat' : ' · diserok'), lama);
+  // karung bekas: jahitan mulutnya baru muncul SESUDAH serokan terakhir (adegan.css jahitMuncul) → keterangannya "dijahit", bukan "diikat"
+  return mainkan(svg, '<b>' + esc(nama) + '</b> · ' + esc(jumlahTeks) + (kemasanLiteran === 'karungbekas' ? ' · dikemas &amp; dijahit' : kemasanLiteran ? ' · dikemas &amp; diikat' : ' · diserok'), lama);
 }
 /** Isi ulang wadah: serok dari KARUNG TERBUKA di belakang → dituang ke KOTAK WADAH, permukaannya naik (menggunung bila lewat rata). */
 export function adeganIsiUlang({ nama, keterangan, serokan, dari, ke }) {
@@ -157,16 +210,22 @@ export function adeganMuat({ kendaraan, jenis, ukuran, banyak, banyakTeks }) {
   </svg>`;
   return mainkan(svg, '<b>Naik ' + (mobilKah ? 'mobil' : 'motor') + '</b> · ' + esc(banyakTeks) + ' · diantar ke kendaraan pembeli', lama);
 }
-/** Setengah karung: karung 50 kg diangkat, DITUANG ke karung bekas sampai separuh, lalu mulut karung bekasnya DIJAHIT. */
+/** Setengah karung: jahitan pabrik karung 50 kg ditarik lepas, karungnya diangkat & DITUANG ke mulut karung bekas yang terbuka sampai separuh;
+ *  mulut itu dirapatkan jadi bibir lurus, lalu MESIN JAHIT KARUNG turun ke bibirnya, meluncur kiri → kanan sambil bergetar, jahitannya keluar
+ *  tepat di belakang kakinya; di ujung mesinnya terangkat & hilang. */
 export function adeganTuangJahit({ nama, berat, kg }) {
   const lama = 3400;
   const svg = `<svg class="adegan tuang-jahit" viewBox="0 0 320 170" style="--lama: ${lama}ms;">
     <path class="lantai" d="M40 152 h240"/>
     <g transform="translate(104 118)"><g class="karung-tuang">${karung(berat || '50')}</g></g>
     <g class="butir"><circle cx="196" cy="74" r="2"/><circle cx="204" cy="66" r="1.7"/><circle cx="212" cy="78" r="1.6"/><circle cx="200" cy="86" r="1.5"/><circle cx="208" cy="58" r="1.4"/></g>
-    <g transform="translate(218 118)">${karungBekas()}<g transform="translate(-34 -46)"><g class="jalur-jarum">${jarum()}</g></g></g>
+    <!-- grup yang dianimasikan CSS TIDAK boleh membawa atribut transform → posisi awal mesin (ujung kiri garis jahitan) di grup pembungkus -->
+    <!-- mesin diperbesar 1,15× (tinjauan 2 Okt: terlalu kecil dibanding karung; lebih besar lagi kabelnya nyaris menyentuh karung 50 kg yang kembali)
+         di grup diam TERDALAM, berporos di titik asalnya (= garis jahitan):
+         kalau skalanya di luar .jalur-mesin, luncuran 54 satuan ikut membesar dan mesin mendahului jahitannya -->
+    <g transform="translate(218 118)">${karungBekas()}<g transform="translate(-27 -33)"><g class="jalur-mesin"><g class="getar-mesin"><g transform="scale(1.15)">${mesinJahit()}</g></g></g></g></g>
   </svg>`;
-  return mainkan(svg, '<b>' + esc(kg) + ' kg ' + esc(nama) + '</b> · dituang dari karung ' + esc(berat || '50') + ' kg ke karung bekas, lalu dijahit', lama);
+  return mainkan(svg, '<b>' + esc(kg) + ' kg ' + esc(nama) + '</b> · dituang dari karung ' + esc(berat || '50') + ' kg ke karung bekas, lalu dijahit mesin', lama);
 }
 /** Adukan dicatat (owner, Stok): karung 50 kg diangkat & dituang, kemasan-kemasan hasilnya muncul satu per satu di bawah curahannya. */
 export function adeganAdukan({ bahanTeks, hasilTeks, ukuran, banyak }) {

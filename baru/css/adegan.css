@@ -51,6 +51,9 @@
 .adegan.serok .kantong-isi { transform-origin: 50% 100%; animation: pegasPaket 520ms cubic-bezier(.2,.8,.2,1) calc(var(--total) + 420ms) both; }
 @keyframes pegasPaket { 0% { transform: scale(1); } 40% { transform: scale(1.08, 0.94); } 100% { transform: scale(1); } }
 .adegan.serok .kantong-isi.karung-kecil .paket { transform: scale(0.9); }
+/* literan ke karung bekas: karung() membawa jahitan pabrik → disembunyikan selama diserok, baru dijahit sesudah serokan terakhir (bersama .ikatan kantong) */
+.adegan.serok .karung-kecil .jahit-tutup { transform-box: fill-box; transform-origin: 0 50%; animation: jahitMuncul 520ms ease-out var(--total) both; }
+@keyframes jahitMuncul { from { opacity: 0; transform: scaleX(0.05); } to { opacity: 0.9; transform: none; } }
 /* ---- ISI ULANG: karung terbuka → kotak wadah; isi di dalam kotak naik dulu, lewat rata baru menggunung ---- */
 .adegan.isi-ulang .kotak-adegan.kosong { fill: none; }
 .adegan.isi-ulang .isi-wadah-naik { transform-box: fill-box; transform-origin: 50% 100%; animation: isiWadahNaik var(--total) linear both; }
@@ -125,9 +128,31 @@
 .adegan .tangki { fill: var(--logam2); stroke: var(--logam3); stroke-width: 1.4; stroke-linejoin: round; }
 .adegan .setang, .adegan .bak-garis { fill: none; stroke: var(--platina2); stroke-width: 2.4; stroke-linecap: round; }
 .adegan .knalpot { fill: var(--platina2); opacity: 0.7; } .adegan .lampu { fill: var(--logam1); stroke: var(--logam3); stroke-width: 1; } .adegan .kaca { fill: var(--seg-aktif); stroke: var(--platina2); stroke-width: 1.4; }
-.adegan .badan.bekas { fill: var(--seg); } .adegan .isi-bekas { transform-box: fill-box; transform-origin: 50% 100%; }
-.adegan .jahitan { fill: none; stroke: var(--awas); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 100; stroke-dashoffset: 100; }
-.adegan .batang-jarum { fill: none; stroke: var(--platina1); stroke-width: 2.4; stroke-linecap: round; } .adegan .lubang { fill: none; stroke: var(--platina1); stroke-width: 1.4; } .adegan .benang { fill: none; stroke: var(--awas); stroke-width: 1.4; stroke-linecap: round; }
+/* karung bekas: kain badan = --seg-aktif (sama dengan karung 50 kg; dulu --seg → di mode gelap nyaris bening, terbaca toples), garis tepinya digambar
+   terpisah di atas isi & anyaman; isinya agak tembus supaya terbaca beras DI DALAM kain */
+.adegan .badan.bekas { fill: var(--seg-aktif); } .adegan .badan.bekas.tepi { fill: none; } .adegan .karung-bekas .isi-bekas { opacity: 0.75; }
+.adegan .isi-bekas { transform-box: fill-box; transform-origin: 50% 100%; }
+.adegan .telinga-bekas { fill: var(--seg-aktif); stroke: var(--emas-garis); stroke-width: 2; stroke-linejoin: round; }
+/* mulut terbuka: dinding dalam belakang (kain yang terbayang, --seg) + rongga gelap + bibir --emas-tepi (lebih kontras dari --emas-garis di kedua mode) */
+.adegan .dinding-mulut { fill: var(--seg); } .adegan .rongga-mulut { fill: var(--logam-teks); fill-opacity: 0.85; }
+.adegan .tepi-mulut { fill: none; stroke: var(--emas-tepi); stroke-width: 1.8; stroke-linejoin: round; }
+/* karung terbuka (serok & isi ulang & buka karung): rongga di belakang gunungan, mulut digulung keluar */
+.adegan .rongga-buka { fill: var(--logam-teks); fill-opacity: 0.7; stroke: var(--emas-garis); stroke-width: 1.2; }
+.adegan .gulung-mulut { fill: var(--seg-aktif); stroke: var(--emas-garis); stroke-width: 1.8; stroke-linejoin: round; }
+/* karung anyaman (owner 2 Okt): kisi anyaman halus, garis warna memanjang dekat sisi, jahitan pabrik di bawah bibir, mulut karung bekas yang terbuka */
+.adegan .anyaman { fill: none; stroke: var(--emas-garis); stroke-width: 0.45; opacity: 0.14; }
+.adegan .garis-karung { fill: none; stroke: var(--qris); stroke-width: 1.7; stroke-linecap: round; opacity: 0.8; }
+.adegan .jahit-tutup { fill: none; stroke: var(--awas); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; }
+.adegan .jahitan { fill: none; stroke: var(--awas); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 100 104; stroke-dashoffset: 100; }
+/* celah 104 (bukan 100): saat tersembunyi (offset 100) ujung jalurnya jatuh DI DALAM celah — tidak ada garis putus nol-panjang bertopi bulat = titik di ujung */
+/* mesin jahit karung portabel (owner 2 Okt, dari fotonya): badan krem-emas, motor logam, piringan & pegangan HITAM di kedua mode (--logam-teks) bertepi platina */
+.adegan .badan-mesin { fill: var(--logam2); stroke: var(--logam3); stroke-width: 1.3; stroke-linejoin: round; } .adegan .baut { fill: var(--logam3); }
+.adegan .motor-mesin { fill: var(--platina1); stroke: var(--platina2); stroke-width: 1.3; } .adegan .cincin-motor { fill: none; stroke: var(--platina2); stroke-width: 1; opacity: 0.7; } .adegan .label-motor { fill: var(--seg-aktif); opacity: 0.85; }
+.adegan .piringan, .adegan .pegangan, .adegan .kenop { fill: var(--logam-teks); stroke: var(--platina2); stroke-width: 1; stroke-linejoin: round; } .adegan .sorot-piringan { fill: none; stroke: var(--platina2); stroke-width: 0.8; opacity: 0.7; }
+.adegan .pelat-kaki { fill: var(--platina1); stroke: var(--platina2); stroke-width: 1; stroke-linejoin: round; }
+.adegan .cangkir-minyak { fill: var(--logam1); stroke: var(--logam3); stroke-width: 1; stroke-linecap: round; } .adegan .tangkai { fill: none; stroke: var(--logam3); stroke-width: 1.4; stroke-linecap: round; }
+.adegan .gulungan, .adegan .ujung-gulungan { fill: var(--logam1); } .adegan .ujung-gulungan { stroke: var(--logam3); stroke-width: 0.9; } .adegan .gulungan-tepi { fill: none; stroke: var(--logam3); stroke-width: 1; stroke-linejoin: round; } .adegan .lilitan path { fill: none; stroke: var(--awas); stroke-width: 1.2; opacity: 0.85; }
+.adegan .benang-mesin { fill: none; stroke: var(--awas); stroke-width: 0.8; stroke-linecap: round; stroke-linejoin: round; } .adegan .kabel { fill: none; stroke: var(--platina2); stroke-width: 1.8; stroke-linecap: round; }
 
 /* PANGGUL: karung di lantai diangkat ke pundak, badannya membungkuk lalu tegak */
 .adegan.panggul .beban-lantai { transform-box: view-box; animation: bebanKePundak 1700ms cubic-bezier(.3,.05,.3,1) both; will-change: transform; }
@@ -150,18 +175,41 @@
 @keyframes rodaPutar { 0%, 58% { transform: rotate(0deg); } 96%, 100% { transform: rotate(900deg); } }
 .adegan.muat .grup-bayar { animation-name: jadiUangKarung; }
 
-/* TUANG & JAHIT: karung 50 kg diangkat & dimiringkan, butir jatuh, karung bekas terisi separuh, jarum menjahit mulutnya */
+/* TUANG & JAHIT: karung 50 kg diangkat & dimiringkan, butir jatuh, karung bekas terisi separuh, MESIN JAHIT KARUNG menjahit mulutnya */
 .adegan.tuang-jahit .karung-tuang { transform-box: fill-box; transform-origin: 50% 50%; animation: karungTuang var(--lama, 3400ms) cubic-bezier(.35,.05,.35,1) both; will-change: transform; }
 @keyframes karungTuang { 0%, 10% { transform: none; } 30% { transform: translate(40px, -76px) rotate(118deg); } 56% { transform: translate(40px, -76px) rotate(118deg); } 70%, 100% { transform: none; } }
+/* karung 50 kg yang mau dituang: jahitan rantai pabriknya ditarik lepas dulu (hilang) sebelum diangkat — dituang dari mulut yang terbuka */
+.adegan.tuang-jahit .karung-tuang .jahit-tutup, .adegan.adukan .karung-tuang .jahit-tutup { transform-box: fill-box; transform-origin: 100% 50%; animation: jahitDibuka var(--lama, 3400ms) linear both; }
+@keyframes jahitDibuka { 0%, 2% { opacity: 0.9; transform: none; } 8%, 100% { opacity: 0; transform: scaleX(0.05); } }
 .adegan.tuang-jahit .butir circle { animation: butirTuang var(--lama, 3400ms) linear both; }
 .adegan.tuang-jahit .butir circle:nth-child(2) { animation-delay: 120ms; } .adegan.tuang-jahit .butir circle:nth-child(3) { animation-delay: 240ms; } .adegan.tuang-jahit .butir circle:nth-child(4) { animation-delay: 60ms; } .adegan.tuang-jahit .butir circle:nth-child(5) { animation-delay: 180ms; }
 @keyframes butirTuang { 0%, 28% { opacity: 0; transform: translateY(0); } 32% { opacity: 1; transform: translateY(0); } 42% { opacity: 1; transform: translateY(40px); } 43% { opacity: 0; transform: translateY(0); } 47% { opacity: 1; } 55% { opacity: 1; transform: translateY(40px); } 56%, 100% { opacity: 0; transform: translateY(40px); } }
 .adegan.tuang-jahit .isi-bekas { animation: isiBekasNaik var(--lama, 3400ms) linear both; }
 @keyframes isiBekasNaik { 0%, 30% { transform: scaleY(0.05); } 58%, 100% { transform: scaleY(0.62); } }
-.adegan.tuang-jahit .jalur-jarum { transform-box: view-box; animation: jarumJahit var(--lama, 3400ms) linear both; will-change: transform, opacity; }
-@keyframes jarumJahit { 0%, 66% { opacity: 0; transform: translate(0, 0); } 70% { opacity: 1; transform: translate(0, 0); } 74% { transform: translate(8px, -6px); } 78% { transform: translate(16px, 0); } 82% { transform: translate(28px, -6px); } 86% { transform: translate(40px, 0); } 90% { transform: translate(54px, -6px); } 94% { opacity: 1; transform: translate(68px, 0); } 100% { opacity: 0; transform: translate(72px, -4px); } }
+/* mulut karung bekas terbuka selama dituang, lalu dirapatkan (pipih ke bibir lurus) sebelum mesin turun di 64% */
+.adegan.tuang-jahit .mulut-bekas { transform-box: fill-box; transform-origin: 50% 70%; animation: mulutDirapatkan var(--lama, 3400ms) cubic-bezier(.4,0,.2,1) both; }
+@keyframes mulutDirapatkan { 0%, 56% { opacity: 1; transform: none; } 61%, 100% { opacity: 0; transform: scaleY(0.08); } }
+/* telinga baru tumbuh dari sudut atas badan BERSAMAAN dengan mulut dirapatkan (karung yang mulutnya terbuka tidak bertelinga);
+   poros = sudut badan (-27 -38) / (27 -38) dalam kotak telinga 9×8 */
+.adegan.tuang-jahit .telinga-bekas { transform-box: fill-box; transform-origin: 44% 44%; animation: telingaMuncul var(--lama, 3400ms) cubic-bezier(.4,0,.2,1) both; }
+.adegan.tuang-jahit .telinga-bekas.kanan { transform-origin: 56% 44%; }
+@keyframes telingaMuncul { 0%, 56% { opacity: 0; transform: scale(0.2); } 61%, 100% { opacity: 1; transform: none; } }
+/* mesin turun & menempel di bibir lurus karung (64–69,5%, sesudah karung 50 kg hampir kembali), MELUNCUR kiri → kanan sepanjang 54 satuan (70–91%, linear =
+   seirama jahitannya), terangkat & hilang. Turun & terangkatnya sama-sama 24 satuan: mesin 1,15× puncak pegangannya di y ±25 → tetap di dalam viewBox.
+   Mulai turun di 64% (dulu 62%): telinga karung 50 kg yang baru (bibir lurus, lebih tinggi dari bibir lama yang melengkung) masih lewat dekat kabelnya
+   di 63–64% → jarak terdekat karung–kabel/motor selagi mesin tampak ±8 satuan (dulu ±6) */
+.adegan.tuang-jahit .jalur-mesin { transform-box: view-box; animation: mesinMeluncur var(--lama, 3400ms) linear both; will-change: transform, opacity; }
+@keyframes mesinMeluncur { 0%, 64% { opacity: 0; transform: translate(0, -24px); animation-timing-function: cubic-bezier(.2,.8,.3,1); } 68% { opacity: 1; transform: translate(0, 1.2px); } 69.5%, 70% { opacity: 1; transform: translate(0, 0); }
+  91% { opacity: 1; transform: translate(54px, 0); animation-timing-function: cubic-bezier(.4,0,.8,.5); } 100% { opacity: 0; transform: translate(60px, -24px); } }
+/* getar halus motornya: naik-turun kecil tiap 1% (±34 ms) selama menempel & menjahit */
+.adegan.tuang-jahit .getar-mesin { animation: mesinGetar var(--lama, 3400ms) linear both; }
+@keyframes mesinGetar { 0%, 68%, 70%, 72%, 74%, 76%, 78%, 80%, 82%, 84%, 86%, 88%, 90%, 92%, 100% { transform: none; }
+  69%, 71%, 73%, 75%, 77%, 79%, 81%, 83%, 85%, 87%, 89%, 91% { transform: translate(0.4px, -0.8px); } }
+/* benang tertarik: lilitan gulungannya bergeser (gulungan berputar) selama menjahit */
+.adegan.tuang-jahit .lilitan { animation: benangTertarik var(--lama, 3400ms) linear both; }
+@keyframes benangTertarik { 0%, 70% { transform: none; } 91%, 100% { transform: translateY(-18px); } }
 .adegan.tuang-jahit .jahitan { animation: jahitTampak var(--lama, 3400ms) linear both; }
-@keyframes jahitTampak { 0%, 69% { stroke-dashoffset: 100; } 94%, 100% { stroke-dashoffset: 0; } }
+@keyframes jahitTampak { 0%, 70% { stroke-dashoffset: 100; } 91%, 100% { stroke-dashoffset: 0; } }
 /* ADUKAN: karung diangkat & dimiringkan, butir jatuh, kemasan hasil muncul satu per satu (--urut) di bawah curahan */
 .adegan.adukan .karung-tuang { transform-box: fill-box; transform-origin: 50% 50%; animation: karungTuangAdukan var(--lama, 3600ms) cubic-bezier(.35,.05,.35,1) both; will-change: transform; }
 @keyframes karungTuangAdukan { 0%, 8% { transform: none; } 26% { transform: translate(52px, -74px) rotate(112deg); } 72% { transform: translate(52px, -74px) rotate(112deg); } 86%, 100% { transform: none; } }
