@@ -416,6 +416,7 @@ OWNER_JALUR = {
     'susunKembalikanKarung': '1 karungIsi dikembalikan (wadahLiteran, tidak dikunci) + paling banyak 1 produksiKemasan pindah buku karung belakang → merek asal (hari ini); karung tanpa buku yang belum ditakar: catatan bukanya dihapus (owner)',
     'susunBukaKemasan': '1 produksiKemasan + paling banyak 1 batchMasuk lahir 0 kg, bertanggal hari ini (+ wadahLiteran, tidak dikunci)',
     'susunAturHargaWadah': 'setelan hargaWadah — bukan koleksi bertanggal', 'susunRak': 'pembaca — tidak menulis', 'susunRakWadah': 'pembaca — tidak menulis',
+    'susunRakLanjut': 'pembaca — tidak menulis (owner 3 Okt: rak Jual inkremental, hasilnya = susunRak)',
     'susunAturTempat': 'pengaturan tempatSimpan / aturanToko / pindahTempat — tidak ada yang dikunci (pengaturan hanya titikKas)',
     'susunBatalKarcis': 'batal karcis kasir darurat (25b): TETAP 1 penjualan (+ paling banyak 1 kantong literan id+1) = ≤ 2 pemeriksaan; karcis bulan terkunci → ditolak logika',
     # putaran 25c — setelan yang pindah dari sistem lama: satu dokumen pengaturan, BUKAN titikKas (satu-satunya dokumen pengaturan yang dikunci) → 0 pemeriksaan
