@@ -5,9 +5,12 @@ uji_setelan_jenis_beras.py — putaran 25c Bagian B: SETELAN JENIS BERAS pindah 
 Harga + Stok + Jual (keputusan owner 27 Sep 2026). KOTAK PASIR (nama & angka contoh) di jsc, jam dikunci.
 
 STATIS:
-  · aturan membaca VERBATIM dari index.html: jenisUntukMerk, tebakJenisBeras, semuaMerkDikenal, PILIHAN_JENIS_BERAS (pindah_mesin.py)
-  · bentuk dokumen: kunci yang ditulis simpanJenisBeras() index.html (dibaca dari sumbernya) = kunci dokumen /baru/ (dibandingkan di jsc)
-  · index.html: jalan tulis jenis beras DITUTUP (ubah & simpan bertanya ke penjaga lebih dulu; tidak ada di daftar terbuka)
+  · aturan membaca = aturan sistem lama: jenisUntukMerk, tebakJenisBeras, semuaMerkDikenal, PILIHAN_JENIS_BERAS di baru/js/mesin/pembantu.js
+    TERKUNCI SIDIK (alat-uji/pembantu.sha256, beku2.py). Sampai 2 Okt dibandingkan huruf demi huruf dengan teks index.html; sejak sistem lama
+    dipensiunkan (3 Okt 2026) kunci sidik itulah pembandingnya — dicatat saat isinya terbukti byte-sama dengan index.html di tag sistem-lama-terakhir.
+  · bentuk dokumen: kunci yang ditulis simpanJenisBeras() index.html = KUNCI_LAMA (dibekukan 3 Okt dari tag sistem-lama-terakhir) = kunci dokumen
+    /baru/ (dibandingkan di jsc)
+  · (pensiun 3 Okt) pemeriksaan "index.html: jalan tulis jenis beras DITUTUP" dihapus bersama objeknya — index.html kini halaman pengalih tanpa script
   · layar: Harga (pil + lembar + daftar), Stok (kartu per jenis), Jual (baris saring) memakai logika jenis-beras-logika.js; cadangan /baru/ membawa peta
 JSC:
   · membaca: dokumen pengaturan/jenisBeras MENANG atas salinan localStorage; tanpa dokumen → salinan; '' = sengaja dikosongkan (menimpa tebakan)
@@ -23,7 +26,7 @@ sys.path.insert(0, SINI)
 import bundel_baru, beku2, uji_jual_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = uji_jual_baru.MODUL + ['baru/js/layar/jenis-beras-logika.js']
-BERKAS = list(dict.fromkeys(MODUL + ['index.html', 'baru/js/layar/harga.js', 'baru/js/layar/stok.js', 'baru/js/layar/jual.js', 'baru/js/layar/sistem-logika.js']))
+BERKAS = list(dict.fromkeys(MODUL + ['baru/js/mesin/pembantu.js', 'baru/js/layar/harga.js', 'baru/js/layar/stok.js', 'baru/js/layar/jual.js', 'baru/js/layar/sistem-logika.js']))
 JAM = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 KOTAK = json.loads(json.dumps(uji_jual_baru.KOTAK))
 KOTAK['pengaturan'] = []
@@ -38,14 +41,15 @@ def baca(ganti=None):
     return t
 
 
-def modul_index(t):
-    s = t['index.html']; return s[s.index('<script type="module">'):s.rindex('</script>')]
+# Kunci dokumen pengaturan/jenisBeras yang ditulis simpanJenisBeras() index.html, urut. Dibekukan 3 Okt 2026 (sistem lama dipensiunkan): diekstrak dari
+# `git show sistem-lama-terakhir:index.html` (commit 48a694d), pola lama simpanKeFirestore('pengaturan', { id: 'jenisBeras', … }).
+KUNCI_LAMA = ['id', 'peta', 'diubahPada']
+# Aturan membaca yang dulu dibandingkan huruf demi huruf dengan index.html — kini terkunci sidik pembantu.sha256.
+ATURAN_TERKUNCI = ['jenisUntukMerk', 'tebakJenisBeras', 'semuaMerkDikenal', 'PILIHAN_JENIS_BERAS']
 
 
 def kunci_lama(t):
-    b = beku2.potong(modul_index(t), 'simpanJenisBeras') or ''
-    m = re.search(r"simpanKeFirestore\('pengaturan', \{ (id: 'jenisBeras', [^}]*) \}\)", b)
-    return [re.match(r'\s*(\w+)', x).group(1) for x in m.group(1).split(',')] if m else None
+    return list(KUNCI_LAMA)
 
 
 SKENARIO = r"""
@@ -65,7 +69,7 @@ ok('nilai kosong "" = sengaja dikosongkan: menimpa tebakan, tampil belum diisi (
 ok('daftar nama = nama yang dikenal stok & katalog (semuaMerkDikenal verbatim): Angsa, IR64 Apex, Kembang; 2 dari 3 terisi', J(jbDaftar().baris.map(function (b) { return b.merk; })) === J(['Angsa', 'IR64 Apex', 'Kembang']) && jbDaftar().terisi === 2 && jbDaftar().total === 3, J(jbDaftar()));
 // ---- 2 · menulis (bentuk sistem lama)
 var R = susunJenisBeras('Angsa', 'Setra Ramos', W); var d = R.dokumen ? R.dokumen[0] : {};
-ok('ubah satu nama → SATU dokumen pengaturan/jenisBeras; kunci = simpanJenisBeras() index.html (' + KUNCI_LAMA.join(', ') + ')', !R.tolak && R.dokumen.length === 1 && d.koleksi === 'pengaturan' && J(Object.keys(d.data)) === J(KUNCI_LAMA) && d.data.id === 'jenisBeras' && d.data.diubahPada === W.kini, J(R));
+ok('ubah satu nama → SATU dokumen pengaturan/jenisBeras; kunci = simpanJenisBeras() sistem lama (' + KUNCI_LAMA.join(', ') + ')', !R.tolak && R.dokumen.length === 1 && d.koleksi === 'pengaturan' && J(Object.keys(d.data)) === J(KUNCI_LAMA) && d.data.id === 'jenisBeras' && d.data.diubahPada === W.kini, J(R));
 ok('peta: nama yang diubah berganti, nama lain UTUH (termasuk yang sengaja dikosongkan)', d.data.peta.Angsa === 'Setra Ramos' && d.data.peta.Kembang === 'Pandan Wangi' && d.data.peta['IR64 Apex'] === '', J(d.data.peta));
 ok('nama tak dikenal ditolak; jenis yang sama ditolak; lebih dari 40 huruf ditolak', /tidak dikenal/.test(susunJenisBeras('Beras Hantu', 'IR64', W).tolak || '') && /sudah berjenis IR64/.test(susunJenisBeras('Angsa', 'IR64', W).tolak || '')
   && /40 huruf/.test(susunJenisBeras('Angsa', new Array(42).join('x'), W).tolak || ''));
@@ -89,7 +93,7 @@ print(J({ lulus: lulus, gagal: gagal }));
 
 def jalan_jsc(t):
     kl = kunci_lama(t)
-    if not kl: return 0, ["simpanKeFirestore('pengaturan', { id: 'jenisBeras', … }) di simpanJenisBeras() index.html tidak terbaca"]
+    if not kl: return 0, ['kunci dokumen jenisBeras sistem lama kosong — pemeriksa bentuk tidak sah']
     js = uji_jual_baru.__dict__.get('satu_lingkup', lambda x: x)('\n'.join([bundel_baru.PRELUDE] + ['\n// ===== ' + m + ' =====\n' + bundel_baru.polos(t[m]) for m in MODUL]))
     isi = JAM + js + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar KUNCI_LAMA = ' + json.dumps(kl) + ';\n' + SKENARIO
     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f: f.write(isi); p = f.name
@@ -101,15 +105,9 @@ def jalan_jsc(t):
 
 def periksa_statis(t):
     out = []; ok = lambda n, c, k='': out.append(('statis · ' + n, bool(c), k))
-    mi = modul_index(t); pb = t['baru/js/mesin/pembantu.js']
-    beda = [n for n in ('jenisUntukMerk', 'tebakJenisBeras', 'semuaMerkDikenal') if (beku2.potong(mi, n) or 'A').strip() != (beku2.potong(pb, n) or 'B').strip()]
-    kl = re.search(r"const PILIHAN_JENIS_BERAS = \[[^\]]*\];", mi); kb = re.search(r"const PILIHAN_JENIS_BERAS = \[[^\]]*\];", pb)
-    ok('aturan membaca VERBATIM index.html: jenisUntukMerk, tebakJenisBeras, semuaMerkDikenal, PILIHAN_JENIS_BERAS', not beda and kl and kb and kl.group(0) == kb.group(0), beda)
-    tb = re.search(r"const TULIS_TERBUKA = \{([^}]*)\};", mi)
-    ok('index.html: jenis beras TIDAK lagi di daftar tulis terbuka', tb and 'jenisBeras' not in tb.group(1), tb.group(1) if tb else '')
-    uj = beku2.potong(mi, 'ubahJenisBeras') or ''; sj = beku2.potong(mi, 'simpanJenisBeras') or ''
-    g = "if (!penjagaTulis('simpan', 'pengaturan', 'jenisBeras')) return;"
-    ok('index.html: ubah & simpan jenis beras bertanya ke penjaga SEBELUM salinan HP atau server diubah', uj.find(g) >= 0 and uj.find(g) < uj.find('prompt(') and sj.find(g) >= 0 and sj.find(g) < sj.find('simpanLokal('))
+    pb = t['baru/js/mesin/pembantu.js']
+    beda = [n for n in ATURAN_TERKUNCI if not beku2.terkunci(n, pb)]
+    ok('aturan membaca = sistem lama: jenisUntukMerk, tebakJenisBeras, semuaMerkDikenal, PILIHAN_JENIS_BERAS di pembantu.js terkunci sidik (pembantu.sha256)', not beda, beda)
     hg = t['baru/js/layar/harga.js']
     ok('Harga: pil jenis per nama beras (papan owner), lembar pilih/ketik/kosongkan, daftar lengkap — semuanya lewat susunJenisBeras',
        'data-aksi="jbBuka"' in hg and 'JB.susunJenisBeras(m, j, waktu())' in hg and "JB.susunJenisBeras(m, '', waktu())" in hg and 'gambarJenisDaftar(s)' in hg and re.search(r"pasangIsian\(K, awal, \[[^\n]*'jbKetik'", hg) is not None)   # jbKetik terdaftar di daftar isian (bukan harus paling akhir)
@@ -129,7 +127,7 @@ def semua(ganti=None, bagian=('statis', 'jsc')):
 
 
 KONTROL = [
-    ('tebakan /baru/ beda dari index.html', {'baru/js/mesin/pembantu.js': [("if (/^IR42/i.test(m)) return 'IR42';", "if (/^IR42/i.test(m)) return 'IR64';")]}, ('statis',)),
+    ('tebakan /baru/ beda dari sistem lama (sidik pembantu)', {'baru/js/mesin/pembantu.js': [("if (/^IR42/i.test(m)) return 'IR42';", "if (/^IR42/i.test(m)) return 'IR64';")]}, ('statis',)),
     ('salinan perangkat menang atas dokumen', {'baru/js/data/toko.js': [("  if (dok && dok.peta && typeof dok.peta === 'object' && !Array.isArray(dok.peta)) return Object.assign({}, dok.peta);\n", "")]}, ('jsc',)),
     ('dokumen jenis beras berbentuk lain (kolom tambahan)', {'baru/js/layar/jenis-beras-logika.js': [("data: { id: 'jenisBeras', peta, diubahPada: w.kini } }]", "data: { id: 'jenisBeras', peta, diubahPada: w.kini, versi: 2 } }]")]}, ('jsc',)),
     ('nama tak dikenal boleh diisi', {'baru/js/layar/jenis-beras-logika.js': [("if (semuaMerkDikenal().indexOf(m) < 0) return", "if (false) return")]}, ('jsc',)),
@@ -137,8 +135,8 @@ KONTROL = [
     ('saring rak Jual tidak menyaring', {'baru/js/layar/jenis-beras-logika.js': [("return !jenis ? (daftar || []) : (daftar || []).filter((c) => jbJenisChip(c) === jenis);", "return daftar || [];")]}, ('jsc',)),
     ('kemasan di Jual dibaca sebagai nama utuh "Kembang|5"', {'baru/js/layar/jenis-beras-logika.js': [("(c && c.jalur === 'kemasan' ? String(c.kunci || '').split('|')[0] : String((c && (c.indukUkuran || c.kunci)) || ''))", "String((c && c.kunci) || '')")]}, ('jsc',)),
     ('Stok: yang belum diisi tidak paling bawah', {'baru/js/layar/jenis-beras-logika.js': [("return Object.keys(per).sort((a, b) => (a === JB_BELUM) - (b === JB_BELUM) || (b === 'IR64')", "return Object.keys(per).sort((a, b) => (b === JB_BELUM) - (a === JB_BELUM) || (b === 'IR64')")]}, ('jsc',)),
-    ('index.html: jenis beras dibuka lagi', {'index.html': [("  const TULIS_TERBUKA = {};", "  const TULIS_TERBUKA = { 'pengaturan/jenisBeras': 'setelan jenis beras' };")]}, ('statis',)),
-    ('index.html: salinan HP diubah walau server menolak', {'index.html': [("    if (!penjagaTulis('simpan', 'pengaturan', 'jenisBeras')) return;   // 25c: diatur di /baru/ — salinan HP ini juga tidak diubah\n", "")]}, ('statis',)),
+    ('pilihan jenis beras /baru/ beda dari sistem lama (sidik konstanta)', {'baru/js/mesin/pembantu.js': [("const PILIHAN_JENIS_BERAS = ['IR64', 'Pandan Wangi',", "const PILIHAN_JENIS_BERAS = ['Pandan Wangi', 'IR64',")]}, ('statis',)),
+    # (pensiun 3 Okt 2026) kontrol "index.html: jenis beras dibuka lagi" & "salinan HP diubah walau server menolak" dihapus bersama objeknya (index.html)
     ('Jual tanpa baris saring jenis', {'baru/js/layar/jual.js': [("const daftar = jbSaringRak(daftarRak, jenisAktif);", "const daftar = daftarRak;")]}, ('statis',)),
 ]
 

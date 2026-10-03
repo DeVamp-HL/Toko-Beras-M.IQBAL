@@ -15,7 +15,7 @@ tetap ditulis barisnya, ditandai DISENGAJA, tanpa peringatan di halaman ringkasa
 
 Di bawah baris itu ikut dicetak ekor catatan Chrome (stderr) dari percobaan yang macet — bukti untuk menyelidiki kalau barisnya mulai sering.
 
-Satu tempat untuk semua alat uji peramban: uji_antrean_kasir.py (juga dipakai uji_sistem_lama_bacasaja.py) dan uji_layar_kunci.py.
+Satu tempat untuk semua alat uji peramban: uji_antrean_kasir.py (juga dipakai uji_katalog_kasir.py; uji_sistem_lama_bacasaja.py pensiun 3 Okt 2026) dan uji_layar_kunci.py.
 Diuji oleh uji_coba_ulang.py (+ --kontrol).
 """
 import os, sys

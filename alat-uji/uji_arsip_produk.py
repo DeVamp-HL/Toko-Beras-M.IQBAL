@@ -5,12 +5,14 @@ uji_arsip_produk.py — putaran 27 Bagian 3: ARSIP PRODUK (owner 27 Sep; penanda
   · Hanya barang bersisa nol yang bisa diarsipkan; stok bukan nol → sisanya disebut, arahnya cocokkan.
   · Arsip menyembunyikan dari rak Jual (juga Sering & saring jenis), katalog harga (juga hitungan "belum ada harga"), label, dan katalog HP kasir
     — buku stok, penjualan, laba, neraca TIDAK berubah; tidak ada catatan bertanggal yang ditulis.
-  · Katalog HP kasir dari /baru/ = penyusun index.html (dibaca dari teks index.html) dikurangi baris nama arsip; tanpa arsip = byte-sama.
+  · Katalog HP kasir dari /baru/ = penyusun sistem lama (susunIsiKatalogKasir) dikurangi baris nama arsip; tanpa arsip = byte-sama. Sampai 2 Okt 2026
+    penyusun itu dipotong dari teks index.html; sejak sistem lama pensiun (owner 3 Okt) diambil dari baru/js/mesin/pembantu.js yang TERKUNCI SIDIK
+    (alat-uji/pembantu.sha256, dicatat saat byte-sama dengan index.html di tag sistem-lama-terakhir) — kalau sidiknya lepas, uji ini menolak jalan.
   · Karung utuh & kemasan senama berbagi dokumen katalog kemasan → baris K<ukuran> tetap tampil selama salah satu pemakainya masih aktif.
   · Hapus hanya untuk nama yang tidak pernah bertransaksi (dua ketukan); pernah bertransaksi → ditolak.
   · Barang masuk atas nama arsip → wajib dijawab pulihkan / varian; adukan dengan hasil kemasan arsip memulihkannya.
 KOTAK PASIR (ANGKA CONTOH), jam dikunci 19 Sep 2026 10:00 WIB. Cadangan toko di _privat/: semua barang bersisa nol diarsipkan → katalog kasir =
-index.html minus barisnya, laba tiap bulan & neraca byte-sama, hapus ditolak untuk semuanya.
+penyusun sistem lama minus barisnya, laba tiap bulan & neraca byte-sama, hapus ditolak untuk semuanya.
 
     python3 alat-uji/uji_arsip_produk.py            → N lulus · 0 gagal
     python3 alat-uji/uji_arsip_produk.py --kontrol  → logika yang dirusak wajib ketahuan (keluar 3 kalau ada yang diam)
@@ -67,8 +69,8 @@ var rakNama = function () { var r = susunRak(s); return [].concat(r.karung, r.li
 var barisHarga = function () { return hgSemua(new Date(Date.now())).baris.map(function (b) { return b.k; }); };
 var terapkan = function (r) { terapkanKeCache((r && r.dokumen) || []); if (r && r.hapus) terapkanKeCache(r.hapus.map(function (x) { return { koleksi: x.koleksi, hapus: x.id }; })); return r; };
 var laporan = function () { return J({ sep: hitungLabaBersihRentang('2026-09-01', '2026-09-30'), stok: hitungStokKarungPerMerk(), kem: hitungStokKemasan(), neraca: hitungNeraca() }); };
-// katalog kasir baru = index.html minus arsip: yang SUDAH diarsipkan di data (arPeta) + yang diarsipkan uji (buangK/buangM), lalu saringan wadah putaran 28 di kedua sisi
-var kkSama = function (buangK, buangM) { var baru = kkIsi(); if (!Array.isArray(baru.bayarBonTerhitung)) return false; delete baru.bayarBonTerhitung; delete baru.bayarBonSejak;   /* cara persis (39b): kunci tambahan paling akhir, sisanya tetap penyusun index.html */ var lama = susunIsiKatalogKasirLama(); var ada = arPeta(); lama.merkKarung = lama.merkKarung.filter(function (m) { return (buangK || []).indexOf(m.merk) < 0 && !ada['K:' + m.merk]; }); lama.kemasan = lama.kemasan.filter(function (k) { return (buangM || []).indexOf(k.kunci) < 0 && !ada['M:' + k.kunci]; }); lama = wbSaringKatalogKasir(lama); return J(baru) === J(lama); };   // putaran 28: saringan wadah/buku ukuran yang sama dipakai kedua sisi (toko kini punya buku wadah & buku 25 kg)
+// katalog kasir baru = penyusun sistem lama (pembantu.js, terkunci sidik) minus arsip: yang SUDAH diarsipkan di data (arPeta) + yang diarsipkan uji (buangK/buangM), lalu saringan wadah putaran 28 di kedua sisi
+var kkSama = function (buangK, buangM) { var baru = kkIsi(); if (!Array.isArray(baru.bayarBonTerhitung)) return false; delete baru.bayarBonTerhitung; delete baru.bayarBonSejak;   /* cara persis (39b): kunci tambahan paling akhir, sisanya tetap penyusun sistem lama */ var lama = susunIsiKatalogKasirLama(); var ada = arPeta(); lama.merkKarung = lama.merkKarung.filter(function (m) { return (buangK || []).indexOf(m.merk) < 0 && !ada['K:' + m.merk]; }); lama.kemasan = lama.kemasan.filter(function (k) { return (buangM || []).indexOf(k.kunci) < 0 && !ada['M:' + k.kunci]; }); lama = wbSaringKatalogKasir(lama); return J(baru) === J(lama); };   // putaran 28: saringan wadah/buku ukuran yang sama dipakai kedua sisi (toko kini punya buku wadah & buku 25 kg)
 
 // ---- 1 · keadaan & penjaga
 var KL = arKeadaan('K:Lama'), KA = arKeadaan('K:Angsa'), KC = arKeadaan('K:Coba · Super');
@@ -84,7 +86,7 @@ ok('sebelum diarsipkan: Lama ada di rak (karung habis, literan, repack), katalog
 terapkan(R2);
 ok('sesudah: Lama HILANG dari rak Jual (karung, literan, repack) & dari Sering', !rakNama().some(function (x) { return /:Lama$/.test(x); }) && !susunRak(s).sering.some(function (c) { return c.kunci === 'Lama'; }), J(rakNama()));
 ok('sesudah: Lama hilang dari katalog harga (per kg, per liter, karung 50 kg), draf-nya tidak ditagih, label "Lama|S" tidak ditagih; label nama lain tetap', !barisHarga().some(function (k) { return /^Lama\|/.test(k); }) && susunLabelTugas(hgSemua(new Date(Date.now()))).tugas.map(function (x) { return x.k; }).join() === 'Angsa|S', J(barisHarga()));
-ok('sesudah: katalog HP kasir dari /baru/ = penyusun index.html DIKURANGI baris Lama saja (fungsi salinan tidak diubah)', !kkIsi().merkKarung.some(function (m) { return m.merk === 'Lama'; }) && kkSama(['Lama'], []));
+ok('sesudah: katalog HP kasir dari /baru/ = penyusun sistem lama DIKURANGI baris Lama saja (fungsi salinan tidak diubah)', !kkIsi().merkKarung.some(function (m) { return m.merk === 'Lama'; }) && kkSama(['Lama'], []));
 ok('sesudah: buku stok, penjualan, laba September, dan neraca BYTE-SAMA; tidak ada baris nota yang berubah', laporan() === lap0 && cacheMentah('penjualan').length === nJual0);
 ok('barang masuk: nama arsip tidak ditawarkan di pilihan cepat', calonMerkMasuk().indexOf('Lama') < 0 && calonMerkMasuk().indexOf('Angsa') >= 0);
 // ---- 3 · kemasan & karung utuh senama
@@ -95,7 +97,7 @@ ok('karung Perahu (habis) diarsipkan TAPI kemasan Perahu 25 kg masih bersisa 3 �
   barisHarga().indexOf('Perahu|S') < 0 && barisHarga().indexOf('Perahu|K25') >= 0 && rakNama().indexOf('kemasan:Perahu|25') >= 0 && kkIsi().kemasan.some(function (k) { return k.kunci === 'Perahu|25'; }) && !kkIsi().merkKarung.some(function (m) { return m.merk === 'Perahu'; }), J(barisHarga()));
 // ---- 4 · pulihkan
 var P4 = arSusunPulih('K:Lama', W); terapkan(P4);
-ok('pulihkan Lama dari Produk arsip: daftar tanpa Lama; Lama kembali di rak & katalog; katalog kasir = index.html minus yang masih diarsipkan', !P4.tolak && !arPeta()['K:Lama'] && rakNama().indexOf('karung:Lama') >= 0 && barisHarga().indexOf('Lama|S') >= 0 && kkSama(['Perahu'], ['Kembang|5']) && arRingkas().length === 2);
+ok('pulihkan Lama dari Produk arsip: daftar tanpa Lama; Lama kembali di rak & katalog; katalog kasir = penyusun sistem lama minus yang masih diarsipkan', !P4.tolak && !arPeta()['K:Lama'] && rakNama().indexOf('karung:Lama') >= 0 && barisHarga().indexOf('Lama|S') >= 0 && kkSama(['Perahu'], ['Kembang|5']) && arRingkas().length === 2);
 // ---- 5 · hapus
 var H5 = arSusunHapus('K:Lama', W, true);
 ok('hapus Lama (pernah bertransaksi) DITOLAK walau yakin — arahnya arsipkan', !!H5.tolak && /pernah punya transaksi/.test(H5.tolak));
@@ -140,9 +142,13 @@ def cadangan_toko():
     return c[-1] if c else None
 
 
-def lama_index():
-    s = open(os.path.join(AKAR, 'index.html'), encoding='utf-8').read(); mi = s[s.index('<script type="module">'):s.rindex('</script>')]
-    f = beku2.potong(mi, 'susunIsiKatalogKasir'); assert f, 'susunIsiKatalogKasir() tidak ditemukan di index.html'
+def lama_penyusun(teks=None):
+    """susunIsiKatalogKasir sistem lama sebagai susunIsiKatalogKasirLama — dari baru/js/mesin/pembantu.js (atau `teks`: salinan rusak untuk kontrol),
+    HANYA kalau masih terkunci sidik (pembantu.sha256 = byte-sama index.html 48a694d). Sidik lepas → None (uji menolak jalan; tanpa kunci itu
+    pembandingnya tautologi)."""
+    if teks is None: teks = open(os.path.join(AKAR, 'baru/js/mesin/pembantu.js'), encoding='utf-8').read()
+    f = beku2.potong(teks, 'susunIsiKatalogKasir')
+    if not f or not beku2.terkunci('susunIsiKatalogKasir', teks): return None
     return f.replace('function susunIsiKatalogKasir(', 'function susunIsiKatalogKasirLama(', 1)
 
 
@@ -160,7 +166,9 @@ def utama(js, pakai_cadangan):
     if p:
         d = json.load(open(p, encoding='utf-8')); kol = re.findall(r"\{ nama: '(\w+)'", open(os.path.join(AKAR, 'baru/js/data/koleksi.js'), encoding='utf-8').read())
         cad = json.dumps(dict((n, d[n]) for n in kol if isinstance(d.get(n), list))); tgl = os.path.basename(p).split('miqbal-')[-1][:10]
-    h, e = jalan(JAM_TETAP + js + '\n' + lama_index() + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar CADANGAN = ' + cad + ';\nvar TGL_CAD = ' + json.dumps(tgl) + ';\n' + SKENARIO)
+    lama = lama_penyusun()
+    if not lama: return 0, ['susunIsiKatalogKasir() di baru/js/mesin/pembantu.js tidak ada / sidiknya lepas dari pembantu.sha256 — pembanding sistem lama tidak sah'], None
+    h, e = jalan(JAM_TETAP + js + '\n' + lama + '\nvar KOTAK = ' + json.dumps(KOTAK) + ';\nvar CADANGAN = ' + cad + ';\nvar TGL_CAD = ' + json.dumps(tgl) + ';\n' + SKENARIO)
     if h is None: return 0, ['JSC JATUH: ' + e], None
     return h['lulus'], h['gagal'], h.get('asap')
 
@@ -190,12 +198,20 @@ if __name__ == '__main__':
             l, g, _ = utama(js.replace(a, b), False)
             print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:140] if g else '-'))
             if not g: kode = 3
+        # 3 Okt 2026: pembanding = penyusun pembantu.js yang TERKUNCI SIDIK. Penyusun yang dirusak wajib DITOLAK sebagai pembanding, bukan dipakai.
+        pb = open(os.path.join(AKAR, 'baru/js/mesin/pembantu.js'), encoding='utf-8').read()
+        a = 'hppPerUnit: s.hppRataRataPerUnit || 0, hargaPerUnit: h ? h.hargaPerUnit : 0 };'
+        if pb.count(a) != 1: print('KONTROL BASI  penyusun sistem lama dirusak (jangkar ' + str(pb.count(a)) + '×)'); kode = 3
+        else:
+            ditolak = lama_penyusun(pb.replace(a, 'hppPerUnit: 0, hargaPerUnit: h ? h.hargaPerUnit : 0 };')) is None
+            print(('BERBUNYI ' if ditolak else 'DIAM!!   ') + 'penyusun sistem lama dirusak (modal kemasan dinolkan) → ' + ('ditolak sebagai pembanding (sidik pembantu.sha256 lepas)' if ditolak else '-'))
+            if not ditolak: kode = 3
         sys.exit(kode)
     l, g, asap = utama(js, True)
     print('ARSIP PRODUK (kotak pasir): %d lulus · %d gagal' % (l, len(g)))
     for x in g: print('   ✗ ' + x)
     if asap:
-        print('ASAP DATA TOKO (%s): %d nama karung & %d kemasan bersisa nol diarsipkan · katalog kasir sebelum = index.html minus arsip yang sudah ada: %s · sesudah = minus arsip yang sudah ada + yang baru: %s · laba Agu & Sep, neraca, buku stok byte-sama: %s · tidak ada di rak: %s · hapus ditolak (pernah bertransaksi): %d'
+        print('ASAP DATA TOKO (%s): %d nama karung & %d kemasan bersisa nol diarsipkan · katalog kasir sebelum = penyusun sistem lama minus arsip yang sudah ada: %s · sesudah = minus arsip yang sudah ada + yang baru: %s · laba Agu & Sep, neraca, buku stok byte-sama: %s · tidak ada di rak: %s · hapus ditolak (pernah bertransaksi): %d'
               % (os.path.basename(cadangan_toko()), len(asap['nolK']), len(asap['nolM']), asap['kkAwal'], asap['kkSesudah'], asap['laporanSama'], not asap['sisaDiRak'], asap['tolakHapus']))
         if not (asap['kkAwal'] and asap['kkSesudah'] and asap['laporanSama'] and not asap['sisaDiRak'] and asap['katalogBersih'] and asap['tolakHapus'] == len(asap['nolK']) + len(asap['nolM'])): g.append('asap data toko: ' + json.dumps(asap, ensure_ascii=False)[:300])
     sys.exit(2 if g else 0)

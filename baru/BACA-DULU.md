@@ -2,12 +2,16 @@
 
 Tampilan baru di atas **data yang sama** dengan `index.html` (Firestore proyek `toko-beras-m-iqbal`, 28 koleksi, akun owner yang sama).
 Hidup berdampingan di alamat `/baru/`; `index.html` tetap alat yang dipakai toko sampai yang baru terbukti.
+**3 Okt 2026: sistem lama (`index.html`) & `kasir.html` PENSIUN** (owner: "bumi hanguskan") — keduanya kini halaman pengalih ke sini; versi terakhirnya
+di tag git `sistem-lama-terakhir` (commit `48a694d`). Lihat bagian "Pensiun sistem lama & kasir.html (3 Okt 2026)" di bawah. Bagian putaran sebelum
+itu = sejarah: "index.html" di sana = sistem lama pada waktu itu.
 Keputusan owner 13 Sep 2026: desain ulang termasuk UI **tanpa mengubah data toko**; 17 Sep: *"mulai sambungkan ke data asli"*.
 
 ## Arah (keputusan owner 24 Sep 2026)
 - **`baru/` = sistem utama owner**, kelak dibungkus menjadi aplikasi native. Catatan native 13 Sep (`_privat/rapikan-2026-09-13/peta_native.md`, `skeptis_native.md` — di mesin owner) masih menyebut `index.html`: **bahan, bukan keputusan**.
 - **Tablet kasir = offline-first**, satu perangkat dipakai bergantian, semua akun seizin owner. Pilihan identitasnya (login per orang vs satu akun tablet + PIN per orang) diputuskan di putaran tablet — jangan ditutup.
 - **`index.html` pensiun** setelah `baru/` lengkap. Sampai saat itu keduanya membaca & menulis data yang sama; `index.html` tidak diperbaiki lagi (19 Sep).
+  **Sudah: 3 Okt 2026** (bersama `kasir.html`).
 
 ## Putaran 1 (19 Sep 2026) — layar JUAL, baca
 - Rak (Sering · Literan · Kemasan · Karung) dibaca dari data toko lewat **mesin beku yang sama** dengan `index.html`.
@@ -1093,12 +1097,14 @@ baru/
   js/app.js             pintu masuk: mode, sumber data (Firestore / ?cadangan=), masuk, nav
   js/inti/{format,dom,keadaan}.js   pemformat, penggambar (escape + delegasi data-aksi), penyimpan keadaan
   js/data/koleksi.js    tabel koleksi (28 lama + baru milik sistem baru) + kolom pengurut; `batas` = hanya N terbaru dibaca (logAktivitas)
-  js/data/toko.js       cache di memori + ambil*() (nama = index.html) + keranjang aktif/parkir
+  js/data/toko.js       cache di memori + ambil*() (nama = sistem lama index.html) + keranjang aktif/parkir
   js/data/firebase.js   Firestore (baca + writeBatch), cache tetap IndexedDB, antrean hasPendingWrites, denyut perangkatStatus, atribusi oleh/lokasi per perangkat
   js/data/cadangan.js   sumber pengganti: berkas backup-batch-*.json (lokal, tidak di repo)
   js/data/katalog-kasir.js   katalog HP kasir (ringkasanKasir): isi, bentuk, pembanding, gerbang terbit, Beranda (25c)
-  js/mesin/beku.js      26 dari 28 MESIN UANG BEKU — DIBUAT ALAT (alat-uji/pindah_mesin.py), byte-identik, JANGAN DISUNTING
-  js/mesin/pembantu.js  fungsi & konstanta pembantu mesin — DIBUAT ALAT juga
+  js/mesin/beku.js      26 MESIN UANG BEKU — SUMBER KEBENARAN sejak 3 Okt 2026 (asal: disalin byte demi byte dari index.html oleh pindah_mesin.py,
+                        kini pensiun); sidik alat-uji/beku.sha256, gerbang beku2.py --sidik; dibuka HANYA atas izin owner
+  js/mesin/pembantu.js  55 fungsi + 36 konstanta pembantu mesin — sama; sidik alat-uji/pembantu.sha256. Kepala komentar kedua berkas masih menyebut
+                        pindah_mesin.py: sengaja dibiarkan (berkas mesin tidak disentuh tanpa izin owner)
   js/layar/jual-logika.js   logika Jual tanpa DOM (diuji di jsc); wadah-jual-logika.js (wadah dijual, harga jual wadah), struk-logika.js (struk kertas/WA + aturan otomatis)
   js/layar/jual.js          gambar & ketukan
   js/layar/wadah-panel.js   panel isi ulang wadah bersama Jual & Stok (takar demi takar sejak putaran 8; 39: tiga ketukan, kepala buku, pita tandai)
@@ -1117,21 +1123,25 @@ baru/
   js/layar/laporan-logika.js, pajak-logika.js, kendali-biaya-logika.js (38: jenis · anggaran · lampu · pemicu · impas · pareto)   logika Laporan tanpa DOM
   js/layar/laporan.js       gambar & ketukan layar Laporan (Laba · Biaya · Harian · Mingguan · Bulanan · Pajak · Tahunan · Neraca · Dokumen · Setelan)
 ```
-Belum dipindah (terikat layar lama): `tulisSaldoPembuka` (ritual Tutup Buku), `thPagar` (Tutup Hari).
+Tidak pernah dipindah, PENSIUN bersama sistem lama (3 Okt 2026): `tulisSaldoPembuka` (ritual Tutup Buku lama) & `thPagar` (pagar Tutup Hari lama) —
+`/baru/` punya padanannya sendiri (`tutup-buku-logika.js`, `tutup-hari-logika.js`); baris acuannya di `beku.sha256` dibiarkan dan dilewati `--sidik`.
 Jangkar warisan: `stokMaksJalur()` membaca `#jualKarungBerat` dari DOM — layar menyediakan `<input type="hidden" id="jualKarungBerat">`.
 
 ## Menjalankan di komputer (tanpa Firestore)
 ```
 python3 -m http.server 8760 --directory .
 ```
-lalu buka `http://localhost:8760/baru/index.html?cadangan=/backup-batch-miqbal-YYYY-MM-DD.json` (berkas cadangan diunduh dari index.html; tidak pernah masuk repo).
+lalu buka `http://localhost:8760/baru/index.html?cadangan=/backup-batch-miqbal-YYYY-MM-DD.json` (berkas cadangan diunduh dari Menu › Sistem › Cadangan; tidak pernah masuk repo).
+Menjalankan **sistem lama** (hanya untuk pulih darurat, dari tag git, bukan dari situs): `docs/prosedur-pulih-darurat.md`.
 Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (diteruskan ke Firebase Auth, tidak disimpan).
 
 ## Gerbang (jalan di CI)
 | alat | membuktikan |
 |---|---|
-| `alat-uji/pindah_mesin.py --periksa` | tiap mesin di `js/mesin/beku.js` = sidik `alat-uji/beku.sha256` |
-| `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 338 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan + retur & tukar + tata letak + wadah literan: takar, karung bernama di belakang, campuran, susunan, rantai stok & pindah nama + WADAH DIJUAL: rak berharga, buku kantong, modal/tanpa modal, hasil samping, repack dijual/ditanggung/upah, atur harga + STRUK: kertas 58/80, WA, menutup, bon, aturan otomatis, setelan) di kotak pasir; 154 kontrol positif berbunyi; kunci dokumen vs baris nyata & vs yang ditulis index.html |
+| `alat-uji/beku2.py --sidik` / `--uji-diri` | tiap mesin di `js/mesin/beku.js` = sidik `alat-uji/beku.sha256` dan tiap fungsi & konstanta `js/mesin/pembantu.js` = `alat-uji/pembantu.sha256`; alat terbukti melihat mutasi (sampai 2 Okt: `pindah_mesin.py --periksa`, pensiun 3 Okt) |
+| `alat-uji/uji_pensiun_sistem_lama.py` (+ `--kontrol`) | 3 Okt: pengalih `index.html` & `kasir.html` ada; `FILES` sw-kasir = berkas yang ada & tanpa `kasir.html`; langkah CI / seed HawkScan / manifest menunjuk berkas yang ada; `/baru/` tanpa tautan sistem lama |
+| `alat-uji/uji_csp.py` (+ `--kontrol`) | CSP `/baru/` (bagian "CSP /baru/" di bawah) + pengalih `index.html` & `kasir.html`: tanpa script, CSP `default-src 'none'`, mengalihkan ke `baru/` |
+| `alat-uji/uji_jual_baru.py` (+ `--kontrol`) | 338 skenario logika Jual (baca + catat + batalkan + repack/bonus/pengganti retur/pesanan + retur & tukar + tata letak + wadah literan: takar, karung bernama di belakang, campuran, susunan, rantai stok & pindah nama + WADAH DIJUAL: rak berharga, buku kantong, modal/tanpa modal, hasil samping, repack dijual/ditanggung/upah, atur harga + STRUK: kertas 58/80, WA, menutup, bon, aturan otomatis, setelan) di kotak pasir; 154 kontrol positif berbunyi; kunci dokumen vs baris nyata & vs yang ditulis sistem lama (`KUNCI_DOK_LAMA`, dibekukan dari tag `sistem-lama-terakhir`) |
 | `alat-uji/uji_ringkasan_baru.py` (+ `--kontrol`) | 28 skenario logika Ringkasan (jam tetap, zona waktu dikunci WIB) + 14 kontrol; di cadangan toko: omzet hari/bulan/tahun = jumlah langsung barisnya |
 | `alat-uji/uji_stok_baru.py` (+ `--kontrol`) | 135 skenario logika Stok (jam & zona waktu dikunci; rantai stok "Berasnya ada di mana?", karung bernama; barang masuk, cocokkan, adukan, karantina; kantong, tempat simpan, HPP: replika rumus = mesin, koreksi = batch yang sama, massal semua-atau-tidak) + 91 kontrol; di cadangan toko: nilai stok layar = mesin neraca, kolom dokumen catat dikenal cadangan, replika HPP = mesin untuk semua nama |
 | `alat-uji/uji_pelanggan_baru.py` (+ `--kontrol`) | 57 skenario logika Pelanggan (jam dikunci penuh — `new Date()` pun; orang, wajah, tampah, belanja, jam, minggu, benang, hafalan, kartu, gabung, atur, THR, bon, tagih, bayar, hapus buku, hapus nama, 23b ciri dicabut & Bersihkan) + 56 kontrol; di cadangan toko: kunjungan/belanja/sisa bon = baris nyata & mesin, kolom dokumen dikenal, pratinjau Bersihkan + suntikan byte-sama |
@@ -1147,14 +1157,13 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_pajak_baru.py` (+ `--kontrol`) | 43 skenario modul pajak (batas bebas di tengah bulan, omzet luar tanpa hitung ganda, kosong ≠ nol, badan tanpa angka, setoran & angka berubah, kurang/lebih, lewat tempo, ambang 70/85/95/100 + proyeksi, regresi penulis rekapOmzet, DK3 = layar Pajak, tanpa NIK/NPWP, status pasangan PH/MT/satu kesatuan/belum diketahui, dua angka omzet) + 29 kontrol; di cadangan toko: omzet layar Pajak = mesin laba = DK3 |
 | `alat-uji/uji_kunci_periode.py` (+ `--kontrol`) | 45 skenario kunci periode (WIB & tenggang 3 hari, tiap ⛔, hari tanpa tutup, kunci/buka satu langkah, pembalik hari ini, keputusan K1–K6, penjaga pusat & kirim bertahap, final bulanan, pajak) + 39 kontrol; di cadangan toko: kunci Agustus → Juli & Agustus byte-sama, satu retur hari ini mengubah September saja |
 | `alat-uji/uji_tutup_buku_bertahap.py` (+ `--kontrol`) | tutup buku bertahap: 40 nama → 3 kiriman ≤ 18, berita acara berjalan di kiriman 1 & penanda di kiriman terakhir, tahun lama utuh sampai penanda (era, FINAL, piutang tidak dobel), putus di kiriman 2 → lanjut tanpa kirim ulang, arsip terputus → lanjut, batal (dari berjalan / terkunci / terputus) per ≤ 18, titik kas tahun dari tutup hari 31 Des, periksa ulang hari ini (penjualan 1 Jan), langkah 7 tahun terkunci; 4 statis uang.js; 17 kontrol; asap data toko 5 Jan 2027 |
-| `alat-uji/peta_akses.py --kiriman` bagian owner | kiriman owner yang menyentuh bulan lampau, dua keadaan (tanpa kunci / Agustus terkunci), fungsi asli ≤ 18 pemeriksaan kunci; tiap penulis koleksi bertanggal wajib terdaftar — 25 DIUKUR (semua yang ber-perulangan: nota 40 baris, batal nota, ini dia, cocokkan, tutup hari, tutup buku & batalnya, arsip per 18), 20 beralasan (jumlah dokumen tetap); arsip dipotong `KP_BATAS_GET`; kasir*.html 1 dokumen per permintaan |
-| `alat-uji/uji_antrean_kasir.py` (+ `--kontrol`, `--gambar DIR`) | 25b: kasir darurat & kasir.html di Chrome headless + Firestore palsu — karcis ke-2 dari 5 ditolak (sisanya masuk), 401, sinyal/429/503, belum masuk, denyut & versi, tahan muat ulang; statis versi kembar; /baru/ ⛔ versi & Perlu perhatian |
-| `alat-uji/uji_sistem_lama_bacasaja.py` (+ `--kontrol`) | 25b: index.html hanya-baca — statis (tiap setDoc/deleteDoc/runTransaction berpenjaga, yang terbuka persis keputusan owner) + Chrome headless dengan Firebase palsu (antrean lama sekali, 35 koleksi ditolak, tombol sungguhan, pulihkan, baca riwayat) |
+| `alat-uji/peta_akses.py --kiriman` bagian owner | kiriman owner yang menyentuh bulan lampau, dua keadaan (tanpa kunci / Agustus terkunci), fungsi asli ≤ 18 pemeriksaan kunci; tiap penulis koleksi bertanggal wajib terdaftar — 25 DIUKUR (semua yang ber-perulangan: nota 40 baris, batal nota, ini dia, cocokkan, tutup hari, tutup buku & batalnya, arsip per 18), 20 beralasan (jumlah dokumen tetap); arsip dipotong `KP_BATAS_GET`; kasir darurat 1 dokumen per permintaan |
+| `alat-uji/uji_antrean_kasir.py` (+ `--kontrol`, `--gambar DIR`) | 25b: kasir darurat di Chrome headless + Firestore palsu — karcis ke-2 dari 5 ditolak (sisanya masuk), 401, sinyal/429/503, belum masuk, denyut & versi, tahan muat ulang; statis versi (darurat = sw = /baru/); /baru/ ⛔ versi & Perlu perhatian. Sampai 2 Okt juga kasir.html (+ buku kecil bayar bon) — dihapus bersama kasir.html |
 | `alat-uji/uji_bayar_bon_terkunci.py` (+ `--kontrol`) | 25b C: bayar bon pemasok/pelanggan dari bulan terkunci lolos — teks rules dicocokkan + model + jalur sistem baru; asap data toko lokal |
-| `alat-uji/uji_batal_karcis.py` (+ `--kontrol`) | 25b: batal karcis kasir darurat di /baru/ — field = `mulaiBatalkanTrx` (dibaca dari index.html) & dokumen pembatalan sungguhan di cadangan lokal |
+| `alat-uji/uji_batal_karcis.py` (+ `--kontrol`) | 25b: batal karcis kasir darurat di /baru/ — field = `mulaiBatalkanTrx` sistem lama (`FIELD_LAMA`, dibekukan dari tag `sistem-lama-terakhir`) & dokumen pembatalan sungguhan di cadangan lokal |
 | `alat-uji/uji_cocokkan_terpisah.py` (+ `--kontrol`) | 27·1: 23 skenario cocokkan tumpukan vs wadah (selisih ke merek asal, susut wajar, isi ulang lupa, rantai stok tidak bergeser) + 16 kontrol; asap: 8 wadah di cadangan dicocokkan |
 | `alat-uji/uji_varian_merek.py` (+ `--kontrol`) | 27·2: 21 skenario varian (batas owner, sama/beda mutu, kolam lama byte-sama, jenis ikut induk, harga varian, induk tanpa nama kelas) + 12 kontrol; asap: tiap merek bermodal jadi varian, nama kelas ditolak |
-| `alat-uji/uji_arsip_produk.py` (+ `--kontrol`) | 27·3: 19 skenario arsip (hanya yang habis, hilang dari rak/katalog/label/katalog HP kasir = index.html minus arsip, hapus tanpa transaksi, pulihkan) + 13 kontrol |
+| `alat-uji/uji_arsip_produk.py` (+ `--kontrol`) | 27·3: 19 skenario arsip (hanya yang habis, hilang dari rak/katalog/label/katalog HP kasir = penyusun sistem lama (pembantu.js, terkunci sidik) minus arsip, hapus tanpa transaksi, pulihkan) + 13 kontrol |
 | `alat-uji/uji_setengah_karung.py` (+ `--kontrol`) | 27·4: 18 skenario ½ karung (harga, langit-langit 50 kg, pemecah Adukan satu kiriman, modal dipindah utuh, batal; 28b: saat merinci karcis — pemecah bertanggal & berjam karcis, tarik balik mencabutnya) + 14 kontrol |
 | `alat-uji/uji_wadah_bernama.py` (+ `--kontrol`) | 27·5: 28 skenario wadah bernama (NG 30 + Kumala 20 → 5 L memotong buku 3 : 2, HPP tertimbang, tanpa buku nama wadah, identitas, struk satu baris, karcis, katalog, kelas ditolak, ganti nama, hapus harga liter tidak dipakai) + 21 kontrol; asap cadangan + ASAP GLOBAL omzet/laba/neraca tiap bulan byte-sama dengan main |
 | `alat-uji/uji_buku_ukuran.py` (+ `--kontrol`) | 28: 19 skenario buku per ukuran (barang masuk memisah 25 kg merek dua ukuran, nama ukuran tak boleh diketik, koreksi tetap, rak/retur/katalog kasir/harga dari buku ukuran, pisah stok lama dengan hitungan + dua ketukan, nilai & laba tetap, karung terbuka 25 kg, jenis ikut induk) + 14 kontrol; asap cadangan: merek dua ukuran dipisah tanpa menggeser nilai stok & laba |
@@ -1168,9 +1177,10 @@ Tanpa `?cadangan=`, halaman memakai Firestore toko dan meminta sandi owner (dite
 | `alat-uji/uji_riwayat_penjualan.py` (+ `--kontrol`) | 32: 16 skenario riwayat (kunci nota & urutan, takaran digabung, status batal/dirinci/karcis, retur per baris + alasan, total = Σ berlaku, per hari − retur = rekapHari, ringkas, tampilkan batal, periode & tepinya, jenis, cara, cari nama/barang/nominal/kata ganda, saringan menumpuk tanpa retur, halaman 50 & hitungan per hari, kosong) + 4 statis + 13 kontrol; asap cadangan: tiap hari omzet = rekapHari mesin, nota & total = panel Hari ini, Σ total nota = Σ baris berlaku |
 | `alat-uji/uji_kendali_biaya.py` (+ `--kontrol`) | 38: 45 skenario kendali biaya (tiap catatan tepat satu jenis & urutan pemilahannya, menutup ke mesin laba, kata owner menang, belum dipilah disebut, anggaran & lampu jatah hari ke-N, upah belum dibayar ikut, acuan median terukur, perkiraan hanya variabel, titik impas dari omzet ber-HPP & mesin sampai hari ini, pemicu per satuan & arah dibalik, pareto 80 % per kata, peringatan berurutan menunjuk pintu, tren, atur ditolak/tersimpan, tambah kata satu-kata-satu-jenis) + 23 kontrol; asap cadangan tiap bulan menutup; ASAP GLOBAL byte-sama main |
 | `alat-uji/uji_wadah_satu_buku.py` (+ `--kontrol`) | 39: satu buku per kotak — karung belakang = buku sendiri (buka = pindah merek → karung belakang, tuang = pindah karung belakang → wadah, kolam vs buku disebut), isi ulang tiga ketukan (1 karung / ½ / kg satu kiriman, batas menggunung), buku merek kurang → tolak + `perluTandai` → tandai (`perluCocokkan` + `selisihPerMerk`, tuntas = cocokkan bertanggal ≥ dokumen), aktivasi per wadah dari daftar (kekurangan disebut; nilai / laba / tumpukan tetap), komposisi turunan & banding, cek tutup toko (dikosongkan = sisihkan tanpa timbang), selisih dua angka; asap cadangan §8.4 & ASAP GLOBAL byte-sama dengan main |
-| `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; 5 kontrol) |
+| `alat-uji/uji_identitas_baru.py` (+ `--kontrol`) | mesin lama & baru diberi cadangan toko yang sama → hasil identik (lokal saja; sisi lama dari `git show sistem-lama-terakhir:index.html` sejak 3 Okt; 5 kontrol) |
 
-Memindahkan mesin ulang (sesudah `index.html` berubah): `python3 alat-uji/pindah_mesin.py`.
+Membuka mesin (HANYA atas perintah owner): sunting `js/mesin/beku.js` / `pembantu.js` langsung → `python3 alat-uji/beku2.py --catat` → sebut di pesan
+commit mesin/pembantu mana & kenapa. (Sampai 2 Okt mesin disalin ulang dari `index.html` oleh `pindah_mesin.py` — pensiun 3 Okt.)
 
 ## Perbaikan 27 Sep 2026 — JAM YANG TAMPIL (rinci karcis & cap waktu, PR #44)
 - Baris rincian karcis kasir darurat membawa **jam karcis asli** (saat penjualan terjadi di kasir); jam merinci ada di `dirinciPada` (ISO/UTC).
@@ -1400,8 +1410,9 @@ penjaga pusat). Cadangan toko 1 Okt dihitung seolah 5 Jan 2027: 57 dokumen pembu
 `<meta http-equiv="Content-Security-Policy">` di `baru/index.html`, sebelum script & stylesheet pertama: `default-src 'self'`; script dari sendiri +
 `www.gstatic.com` (SDK Firebase) + HASH script sebaris (tanpa `'unsafe-inline'`); gaya sendiri + `'unsafe-inline'` (atribut style di templat) + Google Fonts;
 koneksi HANYA Firestore & Auth Firebase; `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`. Ubah script sebaris → `python3 alat-uji/uji_csp.py --pasang`.
-Templat layar TIDAK boleh memakai `on…="…"` / `javascript:` (diblokir) — tetap `data-aksi`. Kasir darurat menyusul sesudah pensiun `kasir.html` mendarat
-(nomor versi `kasir-v*` dipegang bersama `kasir.html` & `sw-kasir.js`).
+Templat layar TIDAK boleh memakai `on…="…"` / `javascript:` (diblokir) — tetap `data-aksi`. Pensiun `kasir.html` sudah mendarat (3 Okt 2026); CSP
+**kasir darurat** (memindah 27 handler statis + 3 di `innerHTML` ke `data-aksi`) BELUM — putaran tersendiri. Nomor versi `kasir-v*` kini dipegang kasir
+darurat, `sw-kasir.js`, dan `KK_VERSI_KASIR_TERBARU`. Pengalih `index.html` & `kasir.html`: CSP `default-src 'none'` tanpa script (`uji_csp.py`).
 
 ## Audit 39b no. 40 — bulan sebelum awal buku tampil, tidak dijumlah sebagai rugi (2 Okt 2026, cabang `paket/39b-keputusan-36-45`)
 
@@ -1525,3 +1536,22 @@ mengeluarkan uang laci padahal bonnya belum dibayar) dan mesin `hitungPiutang` m
   utang − dibayar − dihapus − retur menutup ke sisa; daftar retur memajang retur nota bon sebagai "Bon dipotong Rp… (retur nota bon, tanpa uang)" (dulu
   "Tukar (selisih Rp0)"); linimasa menulis nilai potong bonnya (dulu "−0"); kartu laba menyebut "retur (uang kembali & bon dipotong)" (dulu "refund retur").
   Retur lama tanpa `potongBon` tergambar persis seperti dulu. Uji `uji_laporan_baru.py` pemeriksa kata +4, kontrol +4.
+
+## Pensiun sistem lama & kasir.html (3 Okt 2026, owner: "bumi hanguskan"; cabang `pensiun/bumi-hangus`)
+
+Prasyarat owner beres hari itu (HP kasir melapor 0 antrean / 0 ditolak; perangkat lama ditandai tidak dipakai). Rincian: `docs/peta-pensiun-sistem-lama.md` §8.
+- **`index.html` & `kasir.html` di akar = halaman pengalih** ke `baru/`: tanpa script, meta refresh + tautan, CSP `default-src 'none'; img-src 'self';
+  style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'` (+ `manifest-src 'self'` di `index.html`). Tidak dihapus: perangkat tanpa service worker
+  tidak kena 404. Versi terakhir keduanya di tag `sistem-lama-terakhir`. Menu samping tidak lagi menautkan "Sistem lama"; kode mati tujuan `'lama'` di
+  `menu.js` dibuang; kalimat "pulihkan lewat sistem lama" di Menu › Cadangan & Laporan › Setelan menunjuk `docs/prosedur-pulih-darurat.md`.
+- **sw-kasir.js v31**: `FILES` = kasir darurat + ikon 180/32 (berkas yang ADA); `kasir.html` tidak disajikan dari cache. Kasir darurat hanya naik versi
+  (kasir-v31, "versi 3 Okt"); `KK_VERSI_KASIR_TERBARU` kasir-v31; `KP_VERSI_KASIR_25B` tetap kasir-v26. Beranda katalog kasir tidak menyebut perangkat
+  `kasir.html` (aplikasi `kasir`) lagi.
+- **Dihapus**: `lib/`, `manifest-kasir.json`, `icon-kasir-192/512.png`, `alat-uji/harness/`, `pindah_mesin.py`, `uji_sistem_lama_bacasaja.py`,
+  `uji_dua_arah.py`, `uji_gagal_tertutup.py`, `uji_onclick_aman.py`, `uji_stok_minus.py`, `ukur_jepitan.sh` (objeknya hilang; alasan di `pages.yml`).
+- **Pembanding uji**: yang dulu membaca teks `index.html`/`kasir.html` kini kunci sidik `alat-uji/pembantu.sha256` (dicatat saat byte-sama dengan
+  `index.html` 48a694d) + kunci dokumen yang dibekukan dari tag. Bagian uji yang objeknya hilang (penjaga tulis `index.html`, buku kecil bayar bon
+  `kasir.html`, pembaca piutang sistem lama, `golonganJawaban` kembar) dihapus beserta kontrolnya; alasannya di docstring masing-masing.
+  `periksa.sh` & `lingkup.py` kini memeriksa kasir darurat (`periksa.sh --kontrol` baru menggantikan kontrol harness).
+- **Tidak dikerjakan di sini (tindak lanjut owner):** tab Kasir & PIN tanpa pembaca, `piutang` + `bayarBon*` di katalog kasir tanpa pembaca, hak kasir@
+  yang tidak dipakai di rules, pembersih salinan lokal sistem lama, pemulih dari berkas di `/baru/`, CSP kasir darurat, `404.html`.

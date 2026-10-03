@@ -9,6 +9,11 @@ uji_csp.py — Content-Security-Policy /baru/ (keputusan owner 1 Okt 2026: "Pasa
   · KONEKSI: Firestore & Auth Firebase (firestore / identitytoolkit / securetoken) ada di connect-src; tidak ada host lain yang tidak dipakai.
   · SEBARIS: script-src tanpa 'unsafe-inline' → TIDAK boleh ada on…="…" atau javascript: di index.html maupun templat baru/js/**.
   · DASAR: object-src 'none', base-uri 'self', form-action 'self'.
+PENGALIH (3 Okt 2026, owner: sistem lama & kasir.html "bumi hanguskan"): index.html & kasir.html di akar = halaman pengalih ke baru/.
+  · TANPA <script> sama sekali (juga tanpa on…= / javascript:); meta refresh "0; url=baru/" + tautan <a href="baru/">.
+  · CSP ketat, persis: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none' — + manifest-src 'self'
+    HANYA kalau halaman menautkan manifest. Meta CSP sebelum <link>/<style> pertama.
+  · tiap <link href> / <img src> lokal dan berkasnya ADA di repo (ikon & manifest yang dihapus bersama sistem lama tidak boleh dirujuk).
 
     python3 alat-uji/uji_csp.py            → N lulus · 0 gagal
     python3 alat-uji/uji_csp.py --kontrol  → kerusakan wajib ketahuan (keluar 3 kalau ada yang diam)
@@ -17,11 +22,14 @@ uji_csp.py — Content-Security-Policy /baru/ (keputusan owner 1 Okt 2026: "Pasa
 import os, re, sys, glob, base64, hashlib
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 HTML = 'baru/index.html'
+PENGALIH = ['index.html', 'kasir.html']
+CSP_PENGALIH = {'default-src': ["'none'"], 'img-src': ["'self'"], 'style-src': ["'unsafe-inline'"], 'base-uri': ["'none'"], 'form-action': ["'none'"]}
 FIREBASE = ['https://firestore.googleapis.com', 'https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com']
 
 
 def baca(ganti=None):
     t = {HTML: open(os.path.join(AKAR, HTML), encoding='utf-8').read()}
+    for b in PENGALIH: t[b] = open(os.path.join(AKAR, b), encoding='utf-8').read()
     for p in sorted(glob.glob(os.path.join(AKAR, 'baru/js/**/*.js'), recursive=True)):
         t[os.path.relpath(p, AKAR)] = open(p, encoding='utf-8').read()
     for b, pasangan in (ganti or {}).items():
@@ -80,6 +88,27 @@ def periksa(t):
     c.append(('tidak ada on…="…" / javascript: sebaris (diblokir CSP tanpa unsafe-inline)', not sebaris, sebaris[:8]))
     c.append(("dasar: object-src 'none', base-uri 'self', form-action 'self', default-src 'self'", D.get('object-src') == ["'none'"] and D.get('base-uri') == ["'self'"]
               and D.get('form-action') == ["'self'"] and D.get('default-src') == ["'self'"], {k: D.get(k) for k in ('object-src', 'base-uri', 'form-action', 'default-src')}))
+    for b in PENGALIH: c += periksa_pengalih(b, t[b])
+    return c
+
+
+def periksa_pengalih(b, html):
+    """Halaman pengalih (3 Okt 2026): tanpa script, CSP ketat, mengalihkan ke baru/, rujukan lokal yang ada."""
+    c = []; D, pos = csp_dari(html)
+    c.append((b + ' (pengalih): TANPA <script> sama sekali', '<script' not in html.lower(), html.lower().count('<script')))
+    c.append((b + ' (pengalih): meta refresh "0; url=baru/" + tautan <a href="baru/">',
+              '<meta http-equiv="refresh" content="0; url=baru/">' in html and '<a href="baru/">' in html, ''))
+    if D is None: return c + [(b + ' (pengalih): meta CSP ada', False, '')]
+    kepala = html[:html.find('</head>')] if '</head>' in html else html
+    pertama = [i for i in (kepala.find('<link'), kepala.find('<style')) if i >= 0]
+    c.append((b + ' (pengalih): meta CSP sebelum <link>/<style> pertama', 0 <= pos < min(pertama) if pertama else pos >= 0, (pos, pertama)))
+    manifest = re.search(r'<link rel="manifest" href="([^"]+)"', html)
+    harap = dict(CSP_PENGALIH, **({'manifest-src': ["'self'"]} if manifest else {}))
+    c.append((b + " (pengalih): CSP persis default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none' (+ manifest-src 'self' hanya bila menautkan manifest)",
+              D == harap, D))
+    rujuk = re.findall(r'<(?:link|img)\b[^>]*\s(?:href|src)="([^"]+)"', html)
+    salah = [x for x in rujuk if re.match(r'[a-z]+:|//', x) or not os.path.isfile(os.path.join(AKAR, x.split('?')[0].split('#')[0]))]
+    c.append((b + ' (pengalih): tiap <link>/<img> lokal & berkasnya ada (' + str(len(rujuk)) + ' rujukan)', not salah, salah))
     return c
 
 
@@ -93,6 +122,16 @@ KONTROL = [
     ('onclick sebaris di templat layar', {'baru/js/layar/jual.js': [('<div class="kaca-btn" data-aksi="pecahan"', '<div class="kaca-btn" onclick="x()" data-aksi="pecahan"')]}),
     ('meta CSP sesudah stylesheet', {HTML: [('<meta http-equiv="Content-Security-Policy"', '<link rel="stylesheet" href="css/x.css">\n<meta http-equiv="Content-Security-Policy"')]}),
     ("object-src bukan 'none'", {HTML: [("object-src 'none';", "object-src 'self';")]}),
+    # pengalih (3 Okt 2026)
+    ('pengalih index.html diberi script', {'index.html': [('<main>', '<main><script>location.href = "baru/";</script>')]}),
+    ('pengalih kasir.html diberi onclick', {'kasir.html': [('<a href="baru/">', '<a href="baru/" onclick="x()">')]}),
+    ('pengalih kasir.html tanpa meta refresh', {'kasir.html': [('<meta http-equiv="refresh" content="0; url=baru/">\n', '')]}),
+    ('pengalih index.html mengalihkan ke tempat lain', {'index.html': [('content="0; url=baru/"', 'content="0; url=kasir-darurat-nominal.html"')]}),
+    ("pengalih index.html CSP default-src 'self'", {'index.html': [("content=\"default-src 'none';", "content=\"default-src 'self';")]}),
+    ("pengalih kasir.html CSP diberi script-src", {'kasir.html': [("form-action 'none'\">", "form-action 'none'; script-src 'self'\">")]}),
+    ('pengalih kasir.html menautkan manifest tanpa manifest-src', {'kasir.html': [('<link rel="icon"', '<link rel="manifest" href="manifest-sistem.json">\n<link rel="icon"')]}),
+    ('pengalih index.html merujuk ikon yang sudah dihapus', {'index.html': [('href="icon-sistem-180.png"', 'href="icon-kasir-512.png"')]}),
+    ('pengalih kasir.html meta CSP sesudah stylesheet', {'kasir.html': [('<meta http-equiv="Content-Security-Policy"', '<link rel="icon" href="icon-kasir-32.png">\n<meta http-equiv="Content-Security-Policy"')]}),
 ]
 
 
@@ -120,7 +159,7 @@ def main():
     hasil = periksa(baca())
     for n, ok, k in hasil:
         if not ok: print('GAGAL:', n, '→', str(k)[:400])
-    lulus = sum(1 for _, ok, _ in hasil if ok); print('CSP /baru/: %d lulus · %d gagal' % (lulus, len(hasil) - lulus))
+    lulus = sum(1 for _, ok, _ in hasil if ok); print('CSP /baru/ + pengalih index.html & kasir.html: %d lulus · %d gagal' % (lulus, len(hasil) - lulus))
     return 0 if lulus == len(hasil) else 1
 
 

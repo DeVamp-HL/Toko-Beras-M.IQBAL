@@ -29,34 +29,37 @@ jobs:
       - name: Ambil isi repo
         uses: actions/checkout@v4
 
-      - name: Sintaks modul, lantai Chrome 80, id ganda, onclick, getElementById
-        run: alat-uji/periksa.sh index.html
+      # 3 Okt 2026 (owner: sistem lama & kasir.html "bumi hanguskan"): index.html & kasir.html di akar kini halaman PENGALIH tanpa script ke baru/
+      # (versi terakhirnya di tag git sistem-lama-terakhir). Langkah yang dulu memeriksa index.html dipindah ke kasir darurat atau dihapus:
+      #   · periksa.sh & lingkup.py → kasir-darurat-nominal.html (satu-satunya halaman kasir yang hidup)
+      #   · harness jsc (alat-uji/harness, dua langkah) DIHAPUS — objeknya hilang: ia mengevaluasi modul index.html. /baru/ dievaluasi di jsc lewat
+      #     bundel_baru di tiap uji_*_baru, kasir darurat dimuat di Chrome sungguhan di job uji-peramban.
+      #   · pindah_mesin.py --periksa DIHAPUS — sumber kebenaran mesin beku kini baru/js/mesin/beku.js + pembantu.js, dijaga beku2.py --sidik.
+      - name: "Kasir darurat — sintaks script, lantai Chrome 80, id ganda, onclick, getElementById, batas gerak (dulu index.html, pensiun 3 Okt)"
+        run: alat-uji/periksa.sh kasir-darurat-nominal.html
 
-      - name: Harness jsc — seluruh modul dievaluasi sampai akhir
-        run: alat-uji/harness/jalankan.sh index.html
+      - name: "periksa.sh — kontrol positif (salinan rusak wajib gagal, halaman tanpa script ditolak)"
+        run: alat-uji/periksa.sh --kontrol
 
-      - name: Harness jsc — kontrol positif (modul cacat wajib gagal)
-        run: alat-uji/harness/jalankan.sh --kontrol
-
-      - name: 28 mesin uang beku — byte-identik dengan sidik kanonik
+      - name: "26 mesin uang beku (beku.js) + 55 fungsi & 36 konstanta pembantu (pembantu.js) — byte-identik dengan sidik kanonik"
         run: python3 alat-uji/beku2.py --sidik
 
       - name: beku2 — uji diri (alat terbukti melihat perubahan)
         run: python3 alat-uji/beku2.py --uji-diri
 
-      - name: Lingkup statis — nama dipanggil tanpa deklarasi
-        run: python3 alat-uji/lingkup.py index.html
+      - name: "Lingkup statis kasir darurat — nama dipanggil tanpa deklarasi"
+        run: python3 alat-uji/lingkup.py kasir-darurat-nominal.html
 
       - name: Lingkup statis — kontrol positif
         run: python3 alat-uji/lingkup.py --kontrol
+
+      - name: "Pensiun sistem lama & kasir.html (3 Okt): pengalih ada, FILES service worker = berkas yang ada & tanpa kasir.html, langkah CI / seed HawkScan / manifest menunjuk berkas yang ada, /baru/ tanpa tautan sistem lama + kontrol"
+        run: python3 alat-uji/uji_pensiun_sistem_lama.py && python3 alat-uji/uji_pensiun_sistem_lama.py --kontrol
 
       - name: audit.py masih terkompilasi
         run: python3 -m py_compile alat-audit/audit.py
 
       # ---- SISTEM BARU (baru/) — mulai 19 Sep 2026 ----
-      - name: "Sistem baru — mesin beku yang dipindah tetap byte-identik"
-        run: python3 alat-uji/pindah_mesin.py --periksa
-
       - name: "Sistem baru — fungsi modul lain dipanggil tanpa impor (uji jsc membuang impor) + kontrol positif"
         run: python3 alat-uji/periksa_impor.py && python3 alat-uji/periksa_impor.py --kontrol
 
@@ -85,7 +88,7 @@ jobs:
       - name: "Modul pajak (putaran 24): PPh final perkiraan, omzet luar, setoran, ambang (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_pajak_baru.py && python3 alat-uji/uji_pajak_baru.py --kontrol
 
-      - name: "Sistem baru — identitas angka lama vs baru (dilewati di CI, cadangan toko tidak ada di repo)"
+      - name: "Sistem baru — identitas angka lama vs baru (sisi lama dari tag sistem-lama-terakhir; dilewati di CI: cadangan toko tidak ada di repo, checkout dangkal tanpa tag)"
         run: python3 alat-uji/uji_identitas_baru.py
 
       # ---- PUTARAN 23 — akun per orang ----
@@ -117,9 +120,9 @@ jobs:
         run: python3 alat-uji/uji_jam_tampil.py && python3 alat-uji/uji_jam_tampil.py --kontrol
 
       # ---- PUTARAN 25c — pindahan terakhir: jenis beras, operator & PIN ke /baru/ (katalog kasir: job uji-peramban) ----
-      - name: "Setelan jenis beras di /baru/ (25c): aturan verbatim index.html, dokumen sama, dokumen menang atas salinan HP, tampil di Harga + Stok + Jual, penulis lama ditutup (kotak pasir + kontrol)"
+      - name: "Setelan jenis beras di /baru/ (25c): aturan = sistem lama (terkunci sidik pembantu.sha256), dokumen sama (kunci dibekukan dari tag), dokumen menang atas salinan HP, tampil di Harga + Stok + Jual (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_setelan_jenis_beras.py && python3 alat-uji/uji_setelan_jenis_beras.py --kontrol
-      - name: "Operator kasir & PIN di /baru/ (25c): PIN operator DICABUT dari dokumen yang dibaca kasir@, daftar & aktif/libur pindah, PIN owner bentuk sama (SHA-256 = hashlib), penulis lama ditutup (kotak pasir + kontrol)"
+      - name: "Operator kasir & PIN di /baru/ (25c): PIN operator DICABUT dari dokumen yang dibaca kasir@, daftar & aktif/libur pindah, PIN owner bentuk sama (SHA-256 = hashlib, acakPin terkunci sidik) (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_operator_pin.py && python3 alat-uji/uji_operator_pin.py --kontrol
 
       # ---- PUTARAN 27 — stok & merek (owner 27 Sep) ----
@@ -127,7 +130,7 @@ jobs:
         run: python3 alat-uji/uji_cocokkan_terpisah.py && python3 alat-uji/uji_cocokkan_terpisah.py --kontrol
       - name: "Varian merek per belanja (27 · Bagian 2): harga beli beda > batas owner wajib dijawab sama/beda mutu, varian = nama sendiri, kolam lama tidak disentuh, jenis ikut induk, harga varian terbit sendiri (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_varian_merek.py && python3 alat-uji/uji_varian_merek.py --kontrol
-      - name: "Arsip produk (27 · Bagian 3): hanya yang habis, hilang dari Jual/katalog/label/katalog HP kasir (= index.html minus arsip), laporan & buku tetap, hapus hanya tanpa transaksi, barang masuk bertanya pulihkan/varian (kotak pasir + kontrol)"
+      - name: "Arsip produk (27 · Bagian 3): hanya yang habis, hilang dari Jual/katalog/label/katalog HP kasir (= penyusun sistem lama, terkunci sidik, minus arsip), laporan & buku tetap, hapus hanya tanpa transaksi, barang masuk bertanya pulihkan/varian (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_arsip_produk.py && python3 alat-uji/uji_arsip_produk.py --kontrol
       - name: "Setengah karung (27 · Bagian 4): kemasan 50 kg dijual ½ lewat jalur pemecah Adukan di kiriman yang sama, modal dipindah utuh, stok 50 −1 & 25 +2 −1, harga 25 kg katalog/usul, batal mencabut pemecah (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_setengah_karung.py && python3 alat-uji/uji_setengah_karung.py --kontrol
@@ -197,9 +200,9 @@ jobs:
         run: python3 -u alat-uji/uji_layar_kunci.py && python3 -u alat-uji/uji_layar_kunci.py --kontrol
       - name: "Antrean kasir (25b): karcis ditolak server dipisah, sisanya tetap terkirim; 401 → layar masuk; sinyal/429/503 → tetap antre; denyut & versi; tahan muat ulang — Chrome headless + Firestore palsu + kontrol"
         run: python3 -u alat-uji/uji_antrean_kasir.py && python3 -u alat-uji/uji_antrean_kasir.py --kontrol
-      - name: "Sistem lama hanya-baca (25b B): satu penjaga untuk semua jalan tulis index.html, antrean lama sekali, yang terbuka persis keputusan owner — statis + Chrome headless + Firebase palsu + kontrol"
-        run: python3 -u alat-uji/uji_sistem_lama_bacasaja.py && python3 -u alat-uji/uji_sistem_lama_bacasaja.py --kontrol
-      - name: "Katalog kasir dari /baru/ (25c): isi byte-sama index.html (+ cadangan lokal), ikut kiriman terbit harga, gerbang terbit, Beranda, penulis lama ditutup; HP penjaga mengambil katalog baru tanpa dibuka ulang — statis + jsc + Chrome headless + kontrol"
+      # uji_sistem_lama_bacasaja.py (25b B: penjaga tulis index.html) DIHAPUS 3 Okt 2026 bersama objeknya — sistem lama pensiun, index.html kini
+      # halaman pengalih tanpa script (tidak ada jalan tulis lagi di situs).
+      - name: "Katalog kasir dari /baru/ (25c): penyusun = sistem lama (terkunci sidik), kunci dokumen beku, ikut kiriman terbit harga, gerbang terbit, Beranda (kasir.html pensiun diam); HP penjaga mengambil katalog baru tanpa dibuka ulang — statis + jsc + Chrome headless + kontrol"
         run: python3 -u alat-uji/uji_katalog_kasir.py && python3 -u alat-uji/uji_katalog_kasir.py --kontrol
 
   terbitkan:

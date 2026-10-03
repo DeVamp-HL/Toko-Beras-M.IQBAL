@@ -6,18 +6,21 @@ Keputusan owner 27 Sep 2026: PIN operator DICABUT dari dokumen pengaturan/aksesK
 dipakai kasir mana pun); daftar nama + aktif/libur pindah; PIN owner (pengaturan/keamanan, hanya hasil acak, owner saja) pindah dengan bentuk sama.
 KOTAK PASIR (nama contoh, PIN contoh) di jsc; SHA-256 peramban diganti implementasi JS yang DICOCOKKAN dengan hashlib Python dulu.
 
+PENSIUN SISTEM LAMA (owner 3 Okt 2026): index.html & kasir.html kini halaman pengalih. Yang dulu dibaca dari teksnya DIBEKUKAN di sini (diekstrak dari
+tag git sistem-lama-terakhir = 48a694d dengan pola lama): kunci dokumen simpanModalJaga() & simpanPinOwnerBaru() → KUNCI_OPERATOR & KUNCI_PIN; acakPin()
+→ kunci sidik pembantu.sha256 (beku2.py). DIHAPUS bersama objeknya: penjaga tulis index.html (operator & PIN ditutup), kasir.html SUNGGUHAN membaca
+dokumen /baru/ (infoOperator/rosterKasir), dan pinOwnerBenar() index.html menerima PIN baru (sekarang = acakPin yang sama dengan yang diuji, tautologi).
+Catatan: sejak itu pengaturan/aksesKasir & pengaturan/keamanan tidak punya pembaca lagi — tindak lanjut owner, bukan bagian uji ini.
+
 STATIS:
-  · acakPin /baru/ HURUF DEMI HURUF = acakPin() index.html (pindah_mesin.py)
-  · index.html: operator & PIN owner tidak lagi di daftar tulis terbuka; bukaModalJaga, simpanModalJaga, bukaSetelPin, simpanPinOwnerBaru bertanya ke
-    penjaga SEBELUM apa pun diubah (salinan HP juga)
+  · acakPin /baru/ = acakPin() sistem lama: terkunci sidik (alat-uji/pembantu.sha256), dicatat saat byte-sama dengan index.html 48a694d
   · menu.js: tab "Kasir & PIN" di Peran & persetujuan; kolom PIN berjenis sandi tanpa isi otomatis; isiannya dijaga penjaga isian
 JSC:
   · daftar operator dari dokumen (nama = kunci peta, tidak ada nama di kode); isi PIN tidak pernah keluar dari logika; jumlah PIN terbuka dihitung
-  · cabut PIN / aktif-libur / hapus (dua ketukan): dokumen berkunci sama dengan simpanModalJaga() index.html, TANPA satu pun field pin; TIDAK ada
-    "tambah operator" (nama baru tidak sampai ke kasir mana pun: kasir.html memakai daftar nama tetap, kasir darurat tidak membaca dokumen ini)
-  · kasir.html SUNGGUHAN (infoOperator dari teks kasir.html) membaca dokumen /baru/: aktif/libur terbaca, PIN = tidak ada (dokumen lama: PIN terbaca)
-  · PIN owner: dokumen berkunci sama dengan simpanPinOwnerBaru() index.html; acak = SHA-256(garam|PIN) (dicek hashlib); pinOwnerBenar() index.html menerima
-    PIN baru dari dokumen /baru/; PIN sekarang wajib benar; 4–8 angka; ulangan sama; dokumen tanpa PIN terbuka
+  · cabut PIN / aktif-libur / hapus (dua ketukan): dokumen berkunci sama dengan simpanModalJaga() sistem lama (KUNCI_OPERATOR), TANPA satu pun field pin;
+    TIDAK ada "tambah operator" (nama baru tidak sampai ke kasir mana pun; kasir darurat tidak membaca dokumen ini)
+  · PIN owner: dokumen berkunci sama dengan simpanPinOwnerBaru() sistem lama (KUNCI_PIN); acak = SHA-256(garam|PIN) (dicek hashlib); PIN sekarang wajib
+    benar; 4–8 angka; ulangan sama; dokumen tanpa PIN terbuka
   · (cadangan toko di _privat/, lokal) dokumen aksesKasir sungguhan: PIN terbuka terhitung, cabut → nol, nama & aktif utuh — tanpa mencetak nama/PIN
 
     python3 alat-uji/uji_operator_pin.py            → N lulus · 0 gagal
@@ -29,10 +32,14 @@ sys.path.insert(0, SINI)
 import bundel_baru, beku2  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/akses-kasir-logika.js']
-BERKAS = list(dict.fromkeys(MODUL + ['index.html', 'kasir.html', 'baru/js/layar/menu.js']))
+BERKAS = list(dict.fromkeys(MODUL + ['baru/js/mesin/pembantu.js', 'baru/js/layar/menu.js']))
 JAM = "var __KINI = new Date('2026-09-27T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 HASH_UJI = hashlib.sha256('g-uji|4321'.encode()).hexdigest()
 HASH_LAMA = hashlib.sha256('g-lama|2468'.encode()).hexdigest()
+# Kunci dokumen yang ditulis sistem lama, urut. Dibekukan 3 Okt 2026 (sistem lama pensiun): diekstrak dari `git show sistem-lama-terakhir:index.html`
+# (commit 48a694d) — simpanModalJaga(): const data = { id: 'aksesKasir', … } · simpanPinOwnerBaru(): const data = { id: 'keamanan', … }.
+KUNCI_OPERATOR = ['id', 'operator', 'diubahPada']
+KUNCI_PIN = ['id', 'garam', 'acak', 'diubahPada']
 
 # SHA-256 + TextEncoder untuk jsc (peramban punya crypto.subtle; jsc tidak). Hasilnya dicocokkan dengan hashlib sebelum dipakai.
 POLYFILL = r"""
@@ -65,14 +72,6 @@ def baca(ganti=None):
     return t
 
 
-def modul_index(t):
-    s = t['index.html']; return s[s.index('<script type="module">'):s.rindex('</script>')]
-
-
-def kunci_obj(teks, pola):
-    m = re.search(pola, teks); return [re.match(r'\s*(\w+)', x).group(1) for x in m.group(1).split(',')] if m else None
-
-
 def cadangan_akses():
     c = sorted(glob.glob(os.path.join(AKAR, '_privat', 'backup-batch-*.json')), key=os.path.basename)
     if not c: return None
@@ -98,7 +97,7 @@ var DOK_LAMA = { id: 'aksesKasir', operator: { 'Penjaga Contoh A': { aktif: true
     ok('isi PIN tidak pernah keluar dari logika daftar', !adaPin(D) && !/5801|6902|9753/.test(J(D)));
     // ---- 2 · cabut PIN (keputusan owner)
     var C = susunCabutPinOperator(W); var dc = C.dokumen ? C.dokumen[0] : {};
-    ok('cabut PIN: SATU dokumen pengaturan/aksesKasir; kunci = simpanModalJaga() index.html (' + KUNCI_OPERATOR.join(', ') + ')', !C.tolak && C.dokumen.length === 1 && dc.koleksi === 'pengaturan' && J(Object.keys(dc.data)) === J(KUNCI_OPERATOR) && dc.data.id === 'aksesKasir', J(C));
+    ok('cabut PIN: SATU dokumen pengaturan/aksesKasir; kunci = simpanModalJaga() sistem lama (' + KUNCI_OPERATOR.join(', ') + ')', !C.tolak && C.dokumen.length === 1 && dc.koleksi === 'pengaturan' && J(Object.keys(dc.data)) === J(KUNCI_OPERATOR) && dc.data.id === 'aksesKasir', J(C));
     ok('cabut PIN: TIDAK ADA satu pun field pin; nama & aktif/libur utuh', !adaPin(dc) && J(dc.data.operator) === J({ 'Penjaga Contoh A': { aktif: true }, 'Penjaga Contoh B': { aktif: false }, 'Penjaga Contoh C': { aktif: true } }), J(dc.data));
     terapkanKeCache(C.dokumen);
     ok('sesudah dicabut: 0 PIN terbuka; cabut lagi ditolak dengan kalimat', opDaftar().berPin === 0 && /Tidak ada PIN/.test(susunCabutPinOperator(W).tolak || ''));
@@ -110,20 +109,15 @@ var DOK_LAMA = { id: 'aksesKasir', operator: { 'Penjaga Contoh A': { aktif: true
     ok('tidak ada logika "tambah operator" (nama baru tidak sampai ke kasir mana pun)', typeof susunOperatorTambah === 'undefined');
     var H1 = susunOperatorHapus('Penjaga Contoh C', W, false); var H2 = susunOperatorHapus('Penjaga Contoh C', W, true);
     ok('hapus: ketukan pertama hanya minta yakin; kedua menulis dokumen tanpa nama itu & tanpa pin', H1.perluYakin && !H1.dokumen && !H2.tolak && !('Penjaga Contoh C' in H2.dokumen[0].data.operator) && !adaPin(H2.dokumen), J([H1, H2]));
-    // ---- 4 · kasir.html SUNGGUHAN membaca dokumen /baru/
-    var bacaKasir = function (dok) { __ls['kasir_roster_v1'] = J(dok); return [infoOperator('Penjaga Contoh A'), infoOperator('Penjaga Contoh B')]; };
-    var lama = bacaKasir(DOK_LAMA);
-    ok('kasir.html + dokumen LAMA: PIN operator terbaca di HP kasir (itulah yang dicabut)', lama[0].pin === '5801' && lama[1].pin === '6902');
-    var kini = bacaKasir(dc.data);
-    ok('kasir.html + dokumen /baru/: aktif/libur terbaca, PIN = tidak ada (layar pilih operator tidak meminta PIN)', kini[0].aktif === true && kini[0].pin === null && kini[1].aktif === false && kini[1].pin === null, J(kini));
+    // ---- 4 · (pensiun 3 Okt 2026) "kasir.html SUNGGUHAN membaca dokumen /baru/" dihapus bersama kasir.html
     // ---- 5 · PIN owner
     pasok('pengaturan', []);
     ok('PIN owner belum disetel → keadaannya "belum"; garam & acak tidak pernah keluar', opPinOwner().disetel === false && !/garam|acak/.test(J(opPinOwner())));
     var P = await susunPinOwner({ lama: '', baru: '4321', ulang: '4321' }, W, 'g-uji'); var dp = P.dokumen ? P.dokumen[0] : {};
-    ok('setel PIN owner: dokumen pengaturan/keamanan; kunci = simpanPinOwnerBaru() index.html (' + KUNCI_PIN.join(', ') + ')', !P.tolak && dp.koleksi === 'pengaturan' && J(Object.keys(dp.data)) === J(KUNCI_PIN) && dp.data.id === 'keamanan', J(P));
+    ok('setel PIN owner: dokumen pengaturan/keamanan; kunci = simpanPinOwnerBaru() sistem lama (' + KUNCI_PIN.join(', ') + ')', !P.tolak && dp.koleksi === 'pengaturan' && J(Object.keys(dp.data)) === J(KUNCI_PIN) && dp.data.id === 'keamanan', J(P));
     ok('isinya hanya hasil acak: acak = SHA-256(garam|PIN) (hashlib), PIN-nya sendiri TIDAK tersimpan', dp.data.garam === 'g-uji' && dp.data.acak === HASH_UJI && !/4321/.test(J(dp)), J(dp));
     ok('garam bawaan berbentuk garam sistem lama ("g" + base36)', /^g[0-9a-z]+$/.test((await susunPinOwner({ baru: '5555', ulang: '5555' }, W)).dokumen[0].data.garam));
-    ok('pinOwnerBenar() index.html (acakPin sistem lama) menerima PIN baru dari dokumen /baru/, menolak PIN lain', (await acakPinLama('4321', dp.data.garam)) === dp.data.acak && (await acakPinLama('1234', dp.data.garam)) !== dp.data.acak);
+    ok('PIN lain menghasilkan acak lain (garam dari dokumen /baru/)', (await acakPin('1234', dp.data.garam)) !== dp.data.acak);
     ok('PIN baru bukan 4–8 angka ditolak; ulangan beda ditolak', /4 sampai 8 angka/.test((await susunPinOwner({ baru: '12a4', ulang: '12a4' }, W)).tolak || '') && /4 sampai 8 angka/.test((await susunPinOwner({ baru: '123', ulang: '123' }, W)).tolak || '')
       && /tidak sama/.test((await susunPinOwner({ baru: '1234', ulang: '1235' }, W)).tolak || ''));
     pasok('pengaturan', [{ id: 'keamanan', garam: 'g-lama', acak: HASH_LAMA, diubahPada: '2026-08-14T07:14:56.013Z' }]);
@@ -147,18 +141,10 @@ var DOK_LAMA = { id: 'aksesKasir', operator: { 'Penjaga Contoh A': { aktif: true
 
 
 def jalan_jsc(t):
-    mi = modul_index(t)
-    ko = kunci_obj(beku2.potong(mi, 'simpanModalJaga') or '', r"const data = \{ (id: 'aksesKasir', [^}]*) \};")
-    kp = kunci_obj(beku2.potong(mi, 'simpanPinOwnerBaru') or '', r"const data = \{ (id: 'keamanan', [^}]*) \};")
-    if not ko or not kp: return 0, ['bentuk dokumen simpanModalJaga / simpanPinOwnerBaru index.html tidak terbaca']
-    acak_lama = beku2.potong(mi, 'acakPin')
-    ks = t['kasir.html']; ik = beku2.potong(ks, 'infoOperator'); rk = beku2.potong(ks, 'rosterKasir')
-    if not (acak_lama and ik and rk): return 0, ['acakPin (index.html) / infoOperator, rosterKasir (kasir.html) tidak ditemukan']
     js = '\n'.join([bundel_baru.PRELUDE, POLYFILL] + ['\n// ===== ' + m + ' =====\n' + bundel_baru.polos(t[m]) for m in MODUL])
-    kasir = "var K_ROSTER = 'kasir_roster_v1';\n" + rk + '\n' + ik + '\n'
     asli = cadangan_akses()
-    isi = (JAM + js + '\n' + acak_lama.replace('function acakPin(', 'function acakPinLama(', 1) + '\n' + kasir
-           + 'var KUNCI_OPERATOR = ' + json.dumps(ko) + '; var KUNCI_PIN = ' + json.dumps(kp) + "; var HASH_UJI = '" + HASH_UJI + "'; var HASH_LAMA = '" + HASH_LAMA + "';\n"
+    isi = (JAM + js + '\n'
+           + 'var KUNCI_OPERATOR = ' + json.dumps(KUNCI_OPERATOR) + '; var KUNCI_PIN = ' + json.dumps(KUNCI_PIN) + "; var HASH_UJI = '" + HASH_UJI + "'; var HASH_LAMA = '" + HASH_LAMA + "';\n"
            + 'var ASLI = ' + json.dumps(asli) + ';\n' + SKENARIO)
     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f: f.write(isi); p = f.name
     r = subprocess.run([JSC, p], capture_output=True, text=True, env=dict(os.environ, TZ='Asia/Jakarta')); os.unlink(p)
@@ -169,17 +155,8 @@ def jalan_jsc(t):
 
 def periksa_statis(t):
     out = []; ok = lambda n, c, k='': out.append(('statis · ' + n, bool(c), k))
-    mi = modul_index(t)
-    ok('acakPin /baru/ HURUF DEMI HURUF = acakPin() index.html', (beku2.potong(mi, 'acakPin') or 'A').strip() == (beku2.potong(t['baru/js/mesin/pembantu.js'], 'acakPin') or 'B').strip())
-    tb = re.search(r"const TULIS_TERBUKA = \{([^}]*)\};", mi)
-    ok('index.html: operator kasir & PIN owner TIDAK lagi di daftar tulis terbuka', tb and 'aksesKasir' not in tb.group(1) and 'keamanan' not in tb.group(1), tb.group(1) if tb else '')
-    pj = {'bukaModalJaga': ("'aksesKasir'", 'rosterCache('), 'simpanModalJaga': ("'aksesKasir'", 'simpanKeFirestore('), 'bukaSetelPin': ("'keamanan'", 'pinSudahDisetel('),
-          'simpanPinOwnerBaru': ("'keamanan'", 'simpanLokal(')}
-    salah = []
-    for f, (dok, sesudah) in pj.items():
-        b = beku2.potong(mi, f) or ''; i = b.find("penjagaTulis('simpan', 'pengaturan', " + dok + ')')
-        if i < 0 or i > b.find(sesudah): salah.append(f)
-    ok('index.html: buka & simpan operator, buka setel PIN, simpan PIN owner bertanya ke penjaga SEBELUM apa pun diubah (salinan HP juga)', not salah, salah)
+    # sampai 2 Okt: acakPin dibandingkan HURUF DEMI HURUF dengan teks index.html; sejak sistem lama pensiun (3 Okt) pembandingnya kunci sidik pembantu.sha256
+    ok('acakPin /baru/ = acakPin() sistem lama: terkunci sidik (pembantu.sha256)', beku2.terkunci('acakPin', t['baru/js/mesin/pembantu.js']))
     mn = t['baru/js/layar/menu.js']
     ok('menu.js: tab "Kasir & PIN" di Peran & persetujuan; aksi memakai OP.susun*', "['kasir', 'Kasir & PIN']" in mn and 'OP.susunCabutPinOperator(waktu())' in mn and 'OP.susunOperatorAktif(' in mn and 'OP.susunOperatorHapus(' in mn and 'await OP.susunPinOwner(' in mn)
     ok('menu.js: TIDAK ada tombol/kolom tambah operator; layar menyebut terus terang daftar ini tidak sampai ke kasir mana pun', 'opTambah' not in mn and 'nama operator baru' not in mn and 'menambah nama tidak disediakan' in mn)
@@ -205,8 +182,8 @@ KONTROL = [
     ('PIN owner diganti tanpa PIN sekarang', {'baru/js/layar/akses-kasir-logika.js': [("if (disetel && (!lama || (await acakPin(lama, d.garam)) !== d.acak)) return", "if (false) return")]}, ('jsc',)),
     ('PIN owner tanpa ulangan', {'baru/js/layar/akses-kasir-logika.js': [("if (baru !== ulang) return { tolak: 'Ulangan PIN tidak sama.' };", "")]}, ('jsc',)),
     ('acakPin /baru/ beda dari sistem lama', {'baru/js/mesin/pembantu.js': [("new TextEncoder().encode(String(garam) + '|' + String(pin));", "new TextEncoder().encode(String(pin) + '|' + String(garam));")]}, ('statis', 'jsc')),
-    ('index.html: operator dibuka lagi', {'index.html': [("  const TULIS_TERBUKA = {};", "  const TULIS_TERBUKA = { 'pengaturan/aksesKasir': 'daftar & PIN operator kasir' };")]}, ('statis',)),
-    ('index.html: PIN owner diubah di HP walau server menolak', {'index.html': [("    if (!penjagaTulis('simpan', 'pengaturan', 'keamanan')) throw galatHanyaBaca();   // 25c: diatur di /baru/ — salinan HP ini juga tidak diubah\n", "")]}, ('statis',)),
+    # (pensiun 3 Okt 2026) kontrol "index.html: operator dibuka lagi" & "PIN owner diubah di HP walau server menolak" dihapus bersama objeknya (index.html)
+    ('dokumen PIN owner berbentuk lain (kunci tambahan)', {'baru/js/layar/akses-kasir-logika.js': [("data: { id: 'keamanan', garam, acak, diubahPada: w.kini } }]", "data: { id: 'keamanan', garam, acak, diubahPada: w.kini, versi: 2 } }]")]}, ('jsc',)),
     ('menu: kolom PIN teks biasa', {'baru/js/layar/menu.js': [('type="password" inputmode="numeric" autocomplete="off"', 'type="text" inputmode="numeric"')]}, ('statis',)),
 ]
 

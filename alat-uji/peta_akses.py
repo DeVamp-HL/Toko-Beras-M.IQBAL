@@ -570,8 +570,9 @@ def periksa_owner(teks_sumber=None):
     fb = (teks_sumber or {}).get('baru/js/data/firebase.js') or open(os.path.join(AKAR, 'baru/js/data/firebase.js'), encoding='utf-8').read()
     if 'const POTONG = KP_BATAS_GET;' not in fb or fb.count('i += POTONG') < 2 or fb.count('daftar.slice(i, i + POTONG)') < 2:
         cacat.append('arsip / pengembalian tutup buku tidak dipotong per KP_BATAS_GET (firebase.js POTONG) — satu potongan bisa > 18 pemeriksaan kunci')
-    # (a3) kasir@ (kasir*.html, tidak disentuh putaran 25): SATU dokumen per permintaan REST (PATCH) → ≤ 1 pemeriksaan kunci per permintaan (batas 10)
-    for k in ('kasir.html', 'kasir-darurat-nominal.html'):
+    # (a3) kasir@ (kasir darurat, tidak disentuh putaran 25): SATU dokumen per permintaan REST (PATCH) → ≤ 1 pemeriksaan kunci per permintaan (batas 10).
+    # kasir.html pensiun 3 Okt 2026 (owner) — kini halaman pengalih tanpa script, tidak mengirim apa pun.
+    for k in ('kasir-darurat-nominal.html',):
         t = (teks_sumber or {}).get(k) or open(os.path.join(AKAR, k), encoding='utf-8').read()
         if re.search(r'documents:commit|:batchWrite|writeBatch|runTransaction', t): cacat.append(k + ': kasir@ mengirim banyak dokumen sekaligus — hitungan "≤ 1 pemeriksaan kunci per permintaan" tidak berlaku lagi, ukur ulang')
     # (b) jsc: fungsi asli dua keadaan

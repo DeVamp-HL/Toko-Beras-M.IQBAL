@@ -3,17 +3,51 @@
 # Pengganti node/esbuild yang tidak ada di mesin ini:
 #   - sintaks  : jsc (JavaScriptCore bawaan macOS) via checkSyntax()
 #   - chrome80 : pemindaian statis sintaks pasca-Chrome-80 (lebih lemah dari esbuild)
-# Jalankan dari mana saja:  alat-uji/periksa.sh [berkas]  (bawaan index.html di akar repo)
+# Jalankan dari mana saja:  alat-uji/periksa.sh [berkas]  (bawaan kasir-darurat-nominal.html di akar repo)
+# Sejak 3 Okt 2026 (owner: sistem lama & kasir.html pensiun) index.html & kasir.html di akar hanya halaman PENGALIH tanpa script — pengalih
+# dijaga uji_csp.py, bukan alat ini (berkas tanpa <script> sebaris DITOLAK di bawah, supaya tidak 'lulus' dengan nol blok yang diperiksa).
 set -u
 AKAR="$(cd "$(dirname "$0")/.." && pwd)"
-BERKAS="${1:-$AKAR/index.html}"
+# --kontrol (3 Okt 2026, menggantikan kontrol harness/jalankan.sh yang pensiun bersama index.html): salinan kasir darurat yang DIRUSAK satu hal
+# per salinan wajib GAGAL, salinan utuh wajib LULUS, dan berkas tanpa script (pengalih) wajib DITOLAK. Keluar 3 kalau ada yang diam.
+if [[ "${1:-}" == "--kontrol" ]]; then
+  K="$(mktemp -d)"; KODE=0
+  python3 - "$AKAR/kasir-darurat-nominal.html" "$K" <<'PY' || { echo "KONTROL BASI — jangkar mutasi tidak ditemukan"; rm -rf "$K"; exit 3; }
+import sys, pathlib
+asal = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'); k = pathlib.Path(sys.argv[2])
+rusak = {
+    'utuh': [],
+    'sintaks-rusak': [("var VERSI_APLIKASI = '", "var VERSI_APLIKASI = = '")],
+    'sintaks-pasca-chrome80': [("var VERSI_APLIKASI = '", "var __uji = {}; __uji.a ??= 1;\nvar VERSI_APLIKASI = '")],
+    'id-ganda': [('<small id="versiApp"></small>', '<small id="versiApp"></small><small id="versiApp"></small>')],
+    'gerak-di-luar-transform': [('</style>', '  .gerakUji { transition: width 1s; }\n</style>')],
+}
+for nama, ganti in rusak.items():
+    t = asal
+    for a, b in ganti:
+        if t.count(a) != 1: sys.exit('basi: ' + nama)
+        t = t.replace(a, b)
+    (k / (nama + '.html')).write_text(t, encoding='utf-8')
+(k / 'pengalih-tanpa-script.html').write_text('<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=baru/"></head><body></body></html>', encoding='utf-8')
+PY
+  for f in "$K"/*.html; do
+    n="$(basename "$f" .html)"
+    "$0" "$f" >/dev/null 2>&1; r=$?
+    if [[ "$n" == "utuh" ]]; then
+      [[ $r -eq 0 ]] && echo "LULUS    salinan utuh" || { echo "GAGAL!!  salinan utuh tidak lulus (kode $r)"; KODE=3; }
+    elif [[ $r -ne 0 ]]; then echo "BERBUNYI $n (kode $r)"
+    else echo "DIAM!!   $n"; KODE=3; fi
+  done
+  rm -rf "$K"; exit $KODE
+fi
+BERKAS="${1:-$AKAR/kasir-darurat-nominal.html}"
 [[ "$BERKAS" = /* ]] || BERKAS="$PWD/$BERKAS"
 for c in /System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc /System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Resources/jsc; do [[ -x "$c" ]] && JSC="$c" && break; done
 [[ -n "${JSC:-}" ]] || { echo "GAGAL: jsc tidak ditemukan"; exit 1; }
 KERJA="$(mktemp -d)"
 GAGAL=0
 
-python3 - "$BERKAS" "$KERJA" <<'PY'
+N=$(python3 - "$BERKAS" "$KERJA" <<'PY'
 import re, sys, pathlib
 html = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8')
 kerja = pathlib.Path(sys.argv[2])
@@ -29,6 +63,11 @@ for m in re.finditer(r'<script([^>]*)>(.*?)</script>', html, re.S | re.I):
     (kerja / f'blok{n}.info').write_text(f'{"module" if modul else "classic"} baris {baris}', encoding='utf-8')
 print(n)
 PY
+)
+if [[ "${N:-0}" == "0" ]]; then
+  echo "TOLAK: $(basename "$BERKAS") tidak punya <script> sebaris — tidak ada yang diperiksa (halaman pengalih dijaga alat-uji/uji_csp.py)"
+  rm -rf "$KERJA"; exit 2
+fi
 
 echo "--- 1 · sintaks (jsc checkSyntax) ---"
 for f in "$KERJA"/blok*.js; do
@@ -80,16 +119,8 @@ comm -23 "$KERJA/dicari.txt" "$KERJA/idAda.txt" > "$KERJA/idHilang.txt"
 if [[ -s "$KERJA/idHilang.txt" ]]; then echo "  PERIKSA MANUAL (bisa jadi id dinamis):"; sed 's/^/    /' "$KERJA/idHilang.txt"; else echo "  LULUS"; fi
 
 echo "--- 6 · batas gerak ---"
-# MANDAT DESAIN v2 (14 Agu 2026, perintah pemilik): jatah gerak lama DICABUT untuk
-# SISTEM UTAMA — index.html bebas beranimasi (Platina Malam). Berkas kasir tetap
-# ketat: HP pegawai adalah alasan lahirnya aturan ini.
-if [[ "$(basename "$BERKAS")" == "index.html" ]]; then
-  echo "  DILEWATI — mandat desain v2: gerak bebas untuk sistem utama (kasir tetap dijaga)"
-  echo
-  [[ $GAGAL -eq 0 ]] && echo "HASIL: lulus" || echo "HASIL: ADA YANG GAGAL"
-  rm -rf "$KERJA"
-  exit $GAGAL
-fi
+# MANDAT DESAIN v2 (14 Agu 2026, perintah pemilik): jatah gerak lama DICABUT untuk sistem utama (dulu index.html, dilewati di sini sampai
+# pensiunnya 3 Okt 2026). Berkas kasir tetap ketat: HP pegawai adalah alasan lahirnya aturan ini.
 # Dua pengecualian yang memang tertulis di spesifikasi, jadi tidak dihitung pelanggaran:
 #   denyutAntrean = satu-satunya gerak berulang yang diizinkan (antrean offline)
 #   sorotAngka 400ms = dari spesifikasi Sistem Gerak

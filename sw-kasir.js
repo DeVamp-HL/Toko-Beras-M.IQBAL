@@ -108,9 +108,14 @@
 // (bayarBonTerhitung) dan awal buku berjalan (bayarBonSejak); buku kecil kasir.html (kini menyimpan tanggal) berhenti mengurangkan TEPAT saat id-nya
 // tercantum atau pembayarannya sudah terserap saldo pembuka tutup buku — tanpa daftar itu tetap tebakan waktu server v28.
 // LABEL 'versi 39b-4p'.
-const VERSI = 'kasir-v30';
-const FILES = ['kasir.html', 'kasir-darurat-nominal.html', 'manifest-kasir.json', 'icon-kasir-192.png', 'icon-kasir-512.png', 'icon-kasir-180.png', 'icon-kasir-32.png'];
-const HTML_SWR = ['kasir.html', 'kasir-darurat-nominal.html'];
+// v31 (3 Oktober 2026, owner: sistem lama & kasir.html "bumi hanguskan"): kasir.html kini halaman PENGALIH kecil ke baru/ (tanpa script) dan
+// manifest-kasir.json + icon-kasir-192/512 dihapus. FILES hanya berkas yang ADA — satu berkas hilang di FILES membuat cache.addAll ditolak, SW baru
+// tidak pernah terpasang, dan HP penjaga terjebak di v30 tanpa tanda apa pun. kasir.html TIDAK lagi di FILES maupun HTML_SWR: SW ini tidak
+// menyajikannya dari cache, jadi pengalih terbaru dari jaringan yang tampil. Cache v30 (berisi kasir.html lama) terhapus di activate karena
+// namanya ≠ VERSI. Kasir darurat hanya ikut naik versi (VERSI_APLIKASI + LABEL_VERSI 'versi 3 Okt'); isi & bentuk nota TIDAK berubah.
+const VERSI = 'kasir-v31';
+const FILES = ['kasir-darurat-nominal.html', 'icon-kasir-180.png', 'icon-kasir-32.png'];
+const HTML_SWR = ['kasir-darurat-nominal.html'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSI).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
@@ -125,7 +130,7 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Hanya tangani file kasir sendiri. Firestore, index.html, dan lainnya lewat jaringan biasa.
+  // Hanya tangani file kasir sendiri. Firestore, index.html, kasir.html (pengalih sejak v31), dan lainnya lewat jaringan biasa.
   if (url.origin !== location.origin) return;
   const nama = url.pathname.split('/').pop();
   if (!FILES.includes(nama)) return;
