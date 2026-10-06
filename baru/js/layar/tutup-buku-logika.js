@@ -18,14 +18,17 @@
 // yang ditutup selalu punya bulan terkunci — dan arsip memindah SEMUA catatan ≤ 31 Des (juga tahun-tahun sebelumnya). Ritual membuka PINTU TUTUP BUKU
 // (pengaturan/pintuBuku = { tahun, status 'berjalan', sampai ≤ 72 jam }) di kiriman pertamanya; selama terbuka, server menerima PERSIS: saldo pembuka tahun
 // itu (juga yang bertanggal utang tertua / bon lama / 31 Des), arsip catatan bulan terkunci yang salinannya ditulis di batch yang sama, pengembalian arsip
-// saat Batalkan (isi sama), dan titik kas ≤ 31 Des. Catatan bulan terkunci lainnya tetap tidak bisa diubah / ditambah. Pintu ditutup saat selesai /
+// saat Batalkan (isi sama), dan titik kas 31 Des / titikSebelum. Catatan bulan terkunci lainnya tetap tidak bisa diubah / ditambah. Pintu ditutup saat selesai /
 // dibatalkan; dibuka lagi bila tinggal < 12 jam saat arsip dilanjutkan, kiriman lanjutan, atau pembatalan dimulai / dilanjutkan. Tanpa bulan terkunci (tutup
 // buku 2026) = tanpa pintu, sama seperti sebelum v7.
+// Sanggahan rules 7 Okt: server membaca berita acara SEBELUM kiriman yang membuka pintu (get) — jadi bila ada bulan terkunci, berita acara 'berjalan' dikirim
+// SENDIRIAN dulu (kiriman 1), pintu baru dibuka di kiriman sesudahnya; pembatalan lanjutan dari 'dibatalkan' juga menulis 'membatalkan' sendirian dulu. Berita
+// acara 'selesai' / 'dibatalkan' selalu satu kiriman dengan pintu yang ditutup (server menolaknya bila pintu tahun itu masih terbuka).
 import { hitungSaldoTutup, tbDaftarKoleksi, hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungPiutang, hitungKasbon, hitungUtangPemasok, hitungUtangOwner, saldoAmplop } from '../mesin/beku.js';
 import { tbCutoff, tbPunyaBerat, kunciPelanggan, merkPunyaKarungBerat, labelBahan, pesananBelumTuntas, KOLEKSI_PESANAN } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilPesanan, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, pintuBuku, petaStokWadah, petaBukuWadah, petaUkuran, ukuranDigabung, dokDiCache, dokTertunda, pembukaBerlaku, koleksiDariCache, hapusTertunda, CACHE_PEMBUKA, eraBuku, ringkasKreditLaju, kunciNota, versiCache, ingatStokKarung, ingatStokKemasan, denganCacheSaring } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPesanan, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, pintuBuku, pintuDari, petaStokWadah, petaBukuWadah, petaUkuran, ukuranDigabung, dokDiCache, dokTertunda, pembukaBerlaku, koleksiDariCache, hapusTertunda, CACHE_PEMBUKA, eraBuku, ringkasKreditLaju, kunciNota, versiCache, ingatStokKarung, ingatStokKemasan, denganCacheSaring } from '../data/toko.js';
 import { KOLEKSI } from '../data/koleksi.js';
-import { KP_BATAS_GET, kpPotong, kpNilaiKiriman, kpBulanDok, kpBebas, kpIdx, kpWib, kpNamaBulan, KP_ID_PINTU, KP_PINTU_JAM, KP_PINTU_SISA_JAM, kpPintu, kpPecahBiaya } from '../data/kunci-periode.js';
+import { KP_BATAS_GET, kpPotong, kpNilaiKiriman, kpBulanDok, kpBebas, kpIdx, kpWib, kpNamaBulan, KP_ID_PINTU, KP_PINTU_JAM, KP_PINTU_SISA_JAM, kpPecahBiaya } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, jamKini, tanggalPendek, lebihBayarDari, kalimatLebih } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
 import { aturUpah, hitungUpah, mulaiUpah } from './upah-logika.js';
@@ -120,7 +123,7 @@ function bkTutupPintu(tahun, w, baru) {
   return [{ koleksi: 'pengaturan', data: { id: KP_ID_PINTU, tahun, status: 'tutup', sampai: bkJam(w), ditutup: w.kini, tanggal: w.tanggal, jam: w.jam } }];
 }
 /** Pintu yang berlaku untuk menyusun kiriman (yang akan ditulis di kiriman pertama, atau yang sudah terbuka). */
-const bkPintuPakai = (dok, w) => (dok ? kpPintu(dok.data, bkJam(w)) : pintuBuku());
+const bkPintuPakai = (dok, w) => (dok ? pintuDari(dok.data, bkJam(w)) : pintuBuku());
 /** Gerbang sebelum mulai. lokal = { antre, menunggu, offline, idPerangkat }; lewati = { g3: true } untuk yang owner nyatakan sudah beres. */
 export function gerbangBuku(tahun, kini, lokal, lewati) {
   const L = lokal || {}; const V = lewati || {}; const iso = hariIniIso(kini); const cutoff = tbCutoff(tahun); const sampai = iso < cutoff ? iso : cutoff;
@@ -486,24 +489,29 @@ export function susunKunci(tahun, D, w, L) {
     { sampai: kunciSampai(), pintu: bkPintuPakai(pintu, w) });
   if (Pt.tolak) return { tolak: Pt.tolak };
   acara.rencana = { dibuat: w.kini, n: Pt.potongan.length, kiriman: Pt.potongan.map((p, i) => ({ ke: i + 1, get: p.get, dok: p.dokumen.map((x) => ({ koleksi: x.koleksi, id: String(x.data.id) })) })) };
+  // sanggahan rules 7 Okt: pintu hanya dibuka di atas berita acara yang SUDAH ada di server → berita acara 'berjalan' dikirim sendirian lebih dulu
+  if (pintu) acara.rencana.acaraDulu = true;
   const berjalan = Object.assign({}, acara, { status: 'berjalan', pembuka: P.dokumen, penanda });
   const kiriman = bkKirimanDari(berjalan, pintu ? [pintu] : []);
   return { kiriman, dokumen: [].concat.apply([], kiriman.map((k) => k.dokumen)), arsip: A.daftar, acara, sebelum, banding: B, titik, titikTahun: T0,
     patch: { kabar: 'Tahun ' + tahun + ' DIKUNCI: ' + P.dokumen.length + ' dokumen saldo pembuka ditulis dalam ' + kiriman.length + ' kiriman, ' + ANGKA(A.n) + ' dokumen tahun ' + tahun + ' dipindah ke arsip (tidak dihapus); potret ' + tahun + ' tersimpan di berita acara. Selesaikan dengan cadangan sesudahnya.', kabarAwas: false } };
 }
 const bkAcara = (tahun) => ambilTutupBukuAcara().find((a) => Number(a.tahun) === tahun) || null;
-/** Access call server per catatan arsip (0 / 1 / 3 lewat pintu — kunci-periode.js; pintu dianggap terbuka bila ada bulan terkunci) — dasar perkiraan kiriman & kuota. */
+/** Access call server per catatan arsip, termasuk salinannya (0 bulan bebas / 2 bulan lampau / 5 lewat pintu — kunci-periode.js; pintu dianggap terbuka bila ada bulan terkunci) — dasar perkiraan kiriman & kuota. */
 function bkBiayaArsip(daftar, ops, kini, tahun) { const s = kunciSampai(); const P = s ? { tahun, sampai: Infinity } : null; return daftar.map((x) => kpNilaiKiriman([ops(x)], s, kini, P).perluGet); }
 const bkKirimanArsip = (tahun, daftar) => kpPecahBiaya(bkBiayaArsip(daftar, (x) => ({ koleksi: x.koleksi, id: x.id, lama: x.data, hapus: true, arsip: true }), new Date(Date.now()), tahun), KP_BATAS_GET, KP_BATAS_GET).length;
-/** (b) Kiriman dari berita acara 'berjalan' — sama persis dengan yang disusun saat mulai (id tetap), jadi bisa dilanjutkan dari perangkat mana pun. */
+/** (b) Kiriman dari berita acara 'berjalan' — sama persis dengan yang disusun saat mulai (id tetap), jadi bisa dilanjutkan dari perangkat mana pun.
+ *  rencana.acaraDulu (ada bulan terkunci): kiriman 1 = berita acara 'berjalan' SENDIRIAN, rencana kiriman sesudahnya (pintu di yang pertama). */
 function bkKirimanDari(a, ekstra) {
   const peta = {}; (a.pembuka || []).concat(a.penanda || [], ekstra || []).forEach((x) => { peta[x.koleksi + '|' + String(x.data.id)] = x; });
   const kunci = Object.assign({}, a, { status: 'terkunci' }); delete kunci.pembuka; delete kunci.penanda; const n = a.rencana.kiriman.length;
-  return a.rencana.kiriman.map((k, i) => {
+  const dulu = !!a.rencana.acaraDulu; const N = n + (dulu ? 1 : 0);
+  const out = a.rencana.kiriman.map((k, i) => {
     const dokumen = k.dok.map((d) => (d.koleksi === 'tutupBukuAcara' ? { koleksi: 'tutupBukuAcara', data: kunci } : peta[d.koleksi + '|' + d.id]));
-    if (i === 0 && n > 1) dokumen.unshift({ koleksi: 'tutupBukuAcara', data: a });
-    return { ke: i + 1, total: n, get: k.get, dokumen, pembuka: dokumen.filter((x) => x.data && x.data.tutupBuku).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id) })), penanda: k.dok.some((d) => d.koleksi === 'tutupBukuAcara') };
+    if (i === 0 && n > 1 && !dulu) dokumen.unshift({ koleksi: 'tutupBukuAcara', data: a });
+    return { ke: i + 1 + (dulu ? 1 : 0), total: N, get: k.get, dokumen, pembuka: dokumen.filter((x) => x.data && x.data.tutupBuku).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id) })), penanda: k.dok.some((d) => d.koleksi === 'tutupBukuAcara') };
   });
+  return dulu ? [{ ke: 1, total: N, get: 0, dokumen: [{ koleksi: 'tutupBukuAcara', data: a }], pembuka: [], penanda: false, acaraDulu: true }].concat(out) : out;
 }
 /**
  * §8 no. 4: catatan tutup buku tahun itu yang masih MENUNGGU SERVER di perangkat ini (toko.js dokTertunda) — berita acara, saldo pembuka, penanda (titik kas,
@@ -701,7 +709,11 @@ export function susunBatal(tahun, arsipDok, w, L) {
   // §8 no. 1: batch penanda dihapus di kiriman PERTAMA — HP staf (tanpa berita acara) langsung tidak melihat pembuka lagi, sama dengan HP owner
   const tanda = hapus.filter((x) => { const d = x.koleksi === 'batchMasuk' ? dokDiCache(x.koleksi, x.id) : null; return !!(d && d.penandaBuku); }); const sisa = hapus.filter((x) => tanda.indexOf(x) < 0);
   const P = kpPotong([{ dokumen: awal, hapus: tanda }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] }))), dokDiCache, ugKiniDari(w), { sampai: kunciSampai(), pintu: bkPintuPakai(pintu, w) }); if (P.tolak) return { tolak: P.tolak };
-  const kiriman = P.potongan.map((p, i) => ({ ke: i + 1, total: P.potongan.length, get: p.get, dokumen: p.dokumen, hapus: p.hapus }));
+  // sanggahan rules 7 Okt: pintu hanya dibuka di atas berita acara yang di server SUDAH berjalan / terkunci / membatalkan — pembatalan lanjutan dari
+  // 'dibatalkan' yang perlu pintu menulis 'membatalkan' sendirian dulu (kiriman 1), pintu & tarikan di kiriman sesudahnya
+  const dulu = !!pintu && ['berjalan', 'terkunci', 'membatalkan'].indexOf(acara.status) < 0;
+  const potong = dulu ? [{ dokumen: [awal[0]], hapus: [], get: 0 }].concat(P.potongan.map((p, i) => (i === 0 ? Object.assign({}, p, { dokumen: p.dokumen.filter((x) => x !== awal[0]) }) : p))) : P.potongan;
+  const kiriman = potong.map((p, i) => ({ ke: i + 1, total: potong.length, get: p.get, dokumen: p.dokumen, hapus: p.hapus }));
   const akhir = { koleksi: 'tutupBukuAcara', data: Object.assign({}, batal, { status: 'dibatalkan' }) };
   // v7: pintu DITUTUP bersama berita acara 'dibatalkan' (kiriman terakhir pembatalan)
   return { kiriman, akhir, akhirDokumen: [akhir].concat(bkTutupPintu(tahun, w, !!pintu)), percobaan: bkPercobaan(batal), dokumen: [].concat.apply([], kiriman.map((k) => k.dokumen)), hapus, titik, pulih: (arsipDok || []).map((a) => ({ koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok })),

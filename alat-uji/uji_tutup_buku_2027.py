@@ -11,18 +11,23 @@ Sebelum v7: begitu satu bulan 2027 dikunci, tutup buku 2027 mustahil (rules meno
 
   P0  tutup buku 2026 (tanpa bulan terkunci) jalan seperti dulu — TANPA pintu, semua batch diterima rules v7 (regresi jalur 2026)
   P1  2027 berjalan (nota tunai & bon, bon pemasok, bayar sebagian, kasbon, modal, amplop, biaya bulanan, pindah uang); Januari–November 2027 DIKUNCI
-  P2  5 Jan 2028: tahun 2027 boleh ditutup sungguhan (dulu ditolak); kiriman pertama MEMBUKA pintu; saldo pembuka bertanggal lama (piutang tertua 2026,
+  P2  5 Jan 2028: tahun 2027 boleh ditutup sungguhan (dulu ditolak); kiriman 1 = berita acara 'berjalan' SENDIRIAN, kiriman 2 MEMBUKA pintu (server membaca
+      berita acara SEBELUM batch — sanggahan rules 7 Okt); saldo pembuka bertanggal lama (piutang tertua 2026,
       bon pemasok 2026 & 2027) lewat pintu; arsip memindah catatan bulan terkunci (juga saldo pembuka 2026) — tiap batch DITERIMA rules, ≤ 18 access call,
       dan perkiraan layar = hitungan server (penjaga klien = rules); periksa ulang "sama persis"; selesai MENUTUP pintu; kunci Februari 2028 tidak lagi buntu
   P3  selama pintu terbuka, catatan bulan terkunci LAINNYA tetap terkunci: ubah catatan terkunci (bukan arsip), buat catatan biasa, saldo pembuka tahun lain,
-      hapus tanpa salinan arsip, pindahUang (tidak diarsip), ubah saldo pembuka 2027, kasir@ / staf lewat pintu — DITOLAK rules DAN penjaga klien
+      hapus tanpa salinan arsip, pindahUang (tidak diarsip), ubah saldo pembuka 2027, kasir@ / staf lewat pintu — DITOLAK rules DAN penjaga klien.
+      Sanggahan rules 7 Okt (rules saja): hapus dengan salinan arsip SAMPAH / BEDA isi, salinan arsip karangan, "saldo pembuka" di penjualan &
+      pengeluaranHarian, titik kas mundur jauh, berita acara + pintu tahun lain dalam SATU kiriman, berita acara selesai tanpa menutup pintu — DITOLAK;
+      sesudah selesai: berita acara tidak bisa dihapus, pintu tidak bisa dibuka lagi
   P4  BATALKAN sesudah arsip penuh (jalankanBatal uang.js): tarik saldo pembuka (juga yang bertanggal lama) & kembalikan arsip lewat pintu — batch diterima rules;
-      SEMUA catatan kembali PERSIS (isi, jumlah, titik kas), era kembali 2026, pintu tertutup, berita acara dibatalkan
+      SEMUA catatan kembali PERSIS (isi, jumlah, titik kas), era kembali 2026, pintu tertutup, berita acara dibatalkan. P4b: saldo pembuka yang mendarat
+      SESUDAH dibatalkan → pembatalan lanjutan menulis 'membatalkan' sendirian dulu, baru pintu & tarikannya (diterima rules)
   P5  Desember 2027 ikut dikunci (10 Jan 2028): titik kas 31 Des & modal owner 31 Des lewat pintu; arsip TERPUTUS di tengah, pintu kedaluwarsa (2 hari kemudian)
       → Lanjutkan membuka pintu lagi (bukaPintu uang.js) lalu arsip habis, sama persis
   P6  tanpa pintu (rules menolak) = penjaga klien juga menolak — kiriman tidak dikirim (kalimat bulan terkunci), tidak ada setengah jalan
-  P7  30 nama berutang bertanggal bulan terkunci: saldo pembuka dipecah (berita acara 'berjalan' + pintu di kiriman 1), putus sesudah kiriman 1, tiga hari
-      kemudian (pintu kedaluwarsa) Lanjutkan (lanjutBuku) membuka pintu lagi di kiriman lanjutan pertama — semua batch diterima rules, sama persis
+  P7  30 nama berutang bertanggal bulan terkunci: saldo pembuka dipecah (berita acara 'berjalan' sendirian di kiriman 1, pintu di kiriman 2), putus sesudah
+      kiriman 2, tiga hari kemudian (pintu kedaluwarsa) Lanjutkan (lanjutBuku) membuka pintu lagi di kiriman lanjutan pertama — semua batch diterima rules
 
     python3 alat-uji/uji_tutup_buku_2027.py            → N lulus · 0 gagal
     python3 alat-uji/uji_tutup_buku_2027.py --kontrol  → kerusakan (klien, uang.js, rules) wajib ketahuan (keluar 3 kalau ada yang diam)
@@ -65,7 +70,8 @@ function potretDb(ops) {
   var db = {}; var t = function (kol, id) { var d = dokNyata(kol, String(id)); if (d) db[kol + '/' + id] = d; };
   t('aturanToko', 'kunciPeriode'); t('pengaturan', 'pintuBuku'); t('pengaturan', 'titikKas');
   ambilTutupBukuAcara().forEach(function (a) { db['tutupBukuAcara/' + a.id] = salin(a); });
-  ops.forEach(function (o) { t(o.koleksi, o.id); if (o.koleksi !== 'arsipTahun') TAHUN_DB.forEach(function (y) { t('arsipTahun', y + '|' + o.koleksi + '|' + o.id); }); });
+  ops.forEach(function (o) { t(o.koleksi, o.id); if (o.koleksi !== 'arsipTahun') TAHUN_DB.forEach(function (y) { t('arsipTahun', y + '|' + o.koleksi + '|' + o.id); });
+    else { var bg = String(o.id).split('|'); if (bg.length === 3) t(bg[1], bg[2]); } });   // salinan arsip: rules arsipSah membaca catatan aslinya
   return db;
 }
 function terapkan(ops) {
@@ -112,6 +118,9 @@ function cobaTolak(nama, akun, daftar, hapus) {
   SRV.coba.push({ nama: nama, akun: akun, jam: new Date(__KINI).toISOString(), ops: ops, db: potretDb(ops) });
   return akun === 'owner' ? jagaKunci(daftar || [], hapus || []) : 'bukan-owner';
 }
+
+// percobaan yang WAJIB ditolak rules, berbentuk ops mentah (bukan tulisan layar): salinan arsip karangan, berita acara, pintu — tidak dinilai penjaga klien
+function cobaRules(nama, akun, ops) { SRV.coba.push({ nama: nama, akun: akun, jam: new Date(__KINI).toISOString(), ops: ops.map(salin), db: potretDb(ops) }); }
 
 // ==================== KOTAK & ALAT ====================
 var D = { paraf: { owner: true, saksi: true }, saksi: 'Saksi Contoh', langkah: {} };
@@ -195,12 +204,26 @@ async function utama() {
   var sebelum = potretToko(); var arsip0 = arsipBuku(2027); var nKunci = arsip0.daftar.filter(function (x) { var b = kpBulanDok(x.koleksi, x.data); return b !== null && b <= kpIdx('2027-11'); }).length;
   CATATAN.nArsip = arsip0.n; CATATAN.nArsipTerkunci = nKunci;
   // ---- P2 ritual (jalankanBuku uang.js)
+  // sanggahan rules 7 Okt (rules saja), SEBELUM ritual: ikatan pintu ke ritual tidak bisa dikarang dalam SATU kiriman; berita acara baru wajib berbentuk &
+  // berjam mulai jujur; pintu hanya untuk TAHUN LALU walau berita acara tahun lain sudah ada
+  var paraf0 = { owner: true, saksi: true, pada: new Date(__KINI).toISOString() };
+  cobaRules('P2a SATU kiriman: berita acara 2027 baru + pintu 2027 + hapus nota Juni 2027 dengan salinannya', 'owner', [
+    { op: 'set', koleksi: 'tutupBukuAcara', id: '2027', data: { id: '2027', tahun: 2027, mode: 'sungguhan', status: 'berjalan', paraf: paraf0 } },
+    { op: 'set', koleksi: 'pengaturan', id: 'pintuBuku', data: { id: 'pintuBuku', tahun: 2027, status: 'berjalan', sampai: new Date(__KINI + 24 * 3600000) } },
+    { op: 'set', koleksi: 'arsipTahun', id: '2027|penjualan|t3', data: { id: '2027|penjualan|t3', tahun: 2027, koleksi: 'penjualan', idAsli: 't3', dok: salin(dokDiCache('penjualan', 't3')) } },
+    { op: 'delete', koleksi: 'penjualan', id: 't3' }]);
+  cobaRules('P2c berita acara 2027 baru dengan jam mulai MUNDUR 3 hari', 'owner', [{ op: 'set', koleksi: 'tutupBukuAcara', id: '2027', data: { id: '2027', tahun: 2027, mode: 'sungguhan', status: 'berjalan', paraf: { owner: true, saksi: true, pada: new Date(__KINI - 3 * 86400000).toISOString() } } }]);
+  terapkanKeCache([{ koleksi: 'tutupBukuAcara', data: { id: '2025', tahun: 2025, mode: 'sungguhan', status: 'berjalan', paraf: paraf0 } }]);   // berita acara tahun LAIN yang sedang berjalan
+  cobaRules('P2b pintu 2025 di atas berita acara 2025 yang berjalan (bukan tahun lalu)', 'owner', [{ op: 'set', koleksi: 'pengaturan', id: 'pintuBuku', data: { id: 'pintuBuku', tahun: 2025, status: 'berjalan', sampai: new Date(__KINI + 24 * 3600000) } }]);
+  terapkanKeCache([{ koleksi: 'tutupBukuAcara', hapus: '2025' }]);
   SRV.fase = 'P2 tutup buku 2027'; var b1 = SRV.batch.length;
   var r = await ritual(2027, W);
   ok('P2 ritual 2027 jalan sampai arsip habis (jalankanBuku uang.js)', !r.tolak && r.ok === true, J([r.tolak, S.kabar]));
-  var K1 = r.R && r.R.kiriman ? r.R.kiriman[0] : null; var pintuK1 = K1 ? K1.dokumen.filter(function (x) { return x.koleksi === 'pengaturan' && x.data.id === 'pintuBuku'; })[0] : null;
-  ok('P2 kiriman PERTAMA membuka pintu (pengaturan/pintuBuku: tahun 2027, berjalan, sampai ≤ 72 jam) bersama berita acaranya', !!pintuK1 && pintuK1.data.tahun === 2027 && pintuK1.data.status === 'berjalan' && pintuK1.data.sampai instanceof Date
-    && pintuK1.data.sampai.getTime() - __KINI <= 72 * 3600000 && pintuK1.data.sampai.getTime() > __KINI && K1.dokumen.some(function (x) { return x.koleksi === 'tutupBukuAcara'; }), J(K1 && K1.dokumen.map(function (x) { return x.koleksi + '/' + x.data.id; })));
+  var K1 = r.R && r.R.kiriman ? r.R.kiriman[0] : null; var K2 = r.R && r.R.kiriman ? r.R.kiriman[1] : null;
+  var pintuK2 = K2 ? K2.dokumen.filter(function (x) { return x.koleksi === 'pengaturan' && x.data.id === 'pintuBuku'; })[0] : null;
+  ok('P2 kiriman 1 = berita acara \'berjalan\' SENDIRIAN (server membaca berita acara SEBELUM kiriman yang membuka pintu); kiriman 2 membuka pintu (tahun 2027, berjalan, sampai ≤ 72 jam)',
+    !!K1 && K1.dokumen.length === 1 && K1.dokumen[0].koleksi === 'tutupBukuAcara' && K1.dokumen[0].data.status === 'berjalan' && !!pintuK2 && pintuK2.data.tahun === 2027 && pintuK2.data.status === 'berjalan'
+    && pintuK2.data.sampai instanceof Date && pintuK2.data.sampai.getTime() - __KINI <= 72 * 3600000 && pintuK2.data.sampai.getTime() > __KINI, J([K1 && K1.dokumen.map(function (x) { return x.koleksi + '/' + x.data.id; }), K2 && K2.dokumen.map(function (x) { return x.koleksi + '/' + x.data.id; })]));
   var lamaTerkunci = pembukaTahun(2027).filter(function (x) { var t = x.bonTanggal && x.tipe === 'saldoAwal' && x.pemasok ? x.bonTanggal : x.tanggal; return t && t <= '2027-11-30'; });
   ok('P2 saldo pembuka 2027 bertanggal BULAN TERKUNCI ikut masuk (piutang tertua 2026-09, bon pemasok 2026-08 & 2027-05) — lewat pintu', lamaTerkunci.length >= 3
     && lamaTerkunci.some(function (x) { return x.namaPelanggan === 'Bu Contoh' && x.tanggal === '2026-09-19'; }) && lamaTerkunci.some(function (x) { return x.pemasok && x.bonTanggal === '2027-05-02'; }), J(lamaTerkunci.map(function (x) { return [x.namaPelanggan || x.pemasok, x.tanggal, x.bonTanggal]; })));
@@ -212,20 +235,37 @@ async function utama() {
   var pintu = pintuBuku(); ok('P2 pintu masih terbuka selama belum selesai', !!pintu && pintu.tahun === 2027, J(dokDiCache('pengaturan', 'pintuBuku')));
   // ---- P3 · selama pintu terbuka: catatan bulan terkunci LAINNYA tetap terkunci (klien & rules)
   var pb27 = lamaTerkunci.filter(function (x) { return x.namaPelanggan; })[0] || lamaTerkunci[0]; var kolPb = pb27 && pb27.namaPelanggan ? 'piutangMutasi' : 'utangPemasokMutasi';
+  SRV.arsip['2027|pindahUang|pd27'] = { id: '2027|pindahUang|pd27', tahun: 2027, koleksi: 'pindahUang', idAsli: 'pd27', dok: salin(dokDiCache('pindahUang', 'pd27')) };   // salinan yang SUDAH ada (mis. ditulis dari Console)
   var c = [
     cobaTolak('P3a ubah pindahUang Apr 2027 (terkunci, tidak diarsip)', 'owner', [{ koleksi: 'pindahUang', data: Object.assign({}, dokDiCache('pindahUang', 'pd27'), { nominal: 1 }) }], []),
-    cobaTolak('P3b hapus pindahUang Apr 2027 walau salinan arsip ikut ditulis', 'owner', [{ koleksi: 'arsipTahun', data: { id: '2027|pindahUang|pd27', tahun: 2027, koleksi: 'pindahUang', idAsli: 'pd27', dok: dokDiCache('pindahUang', 'pd27') } }], [{ koleksi: 'pindahUang', id: 'pd27' }]),
+    cobaTolak('P3b hapus pindahUang Apr 2027 walau salinan arsipnya ADA (pindahUang tidak berpintu)', 'owner', [], [{ koleksi: 'pindahUang', id: 'pd27' }]),
     cobaTolak('P3c nota BIASA bertanggal Juni 2027', 'owner', [{ koleksi: 'penjualan', data: jual('x1', '2027-06-01', 'Tunai', 'Angsa', 1, 14000, 13000) }], []),
     cobaTolak('P3d "saldo pembuka" tahun LAIN (tahunDari 2026) bertanggal Maret 2027', 'owner', [{ koleksi: 'piutangMutasi', data: { id: 'x2', tipe: 'saldoAwal', namaPelanggan: 'Contoh Lain', nominal: 1, tanggal: '2027-03-01', tutupBuku: true, tahunDari: 2026 } }], []),
     cobaTolak('P3e UBAH saldo pembuka 2027 bertanggal lama (pintu tidak membuka ubah)', 'owner', [{ koleksi: kolPb, data: Object.assign({}, pb27, { nominal: (pb27 && pb27.nominal || 0) + 1 }) }], []),
     cobaTolak('P3f kembalikan catatan yang TIDAK ada di arsip (bulan terkunci)', 'owner', [{ koleksi: 'penjualan', data: jual('x3', '2027-02-02', 'Tunai', 'Angsa', 1, 14000, 13000) }], []),
+    // sanggahan rules 7 Okt: "saldo pembuka" hanya di koleksi yang memang punya saldo pembuka — nota & uang keluar bertanda tutupBuku tetap catatan biasa
+    cobaTolak('P3i nota PENJUALAN bertanda tutupBuku + tahunDari 2027 bertanggal April 2027 (bukan koleksi saldo pembuka)', 'owner', [{ koleksi: 'penjualan', data: jual('x5', '2027-04-12', 'Tunai', 'Angsa', 1, 5000000, 13000, { tutupBuku: true, tahunDari: 2027 }) }], []),
+    cobaTolak('P3j uang keluar (pengeluaranHarian) bertanda tutupBuku + tahunDari 2027 bertanggal Maret 2027', 'owner', [{ koleksi: 'pengeluaranHarian', data: { id: 'x6', kategori: 'toko', tanggal: '2027-03-02', jam: '09:00', keterangan: 'contoh', nominal: 750000, tutupBuku: true, tahunDari: 2027 } }], []),
+    cobaTolak('P3k titik kas MUNDUR ke 1 Jan 2020 lewat pintu (bukan 31 Des 2027, bukan titikSebelum)', 'owner', [{ koleksi: 'pengaturan', data: { id: 'titikKas', tanggal: '2020-01-01', laci: 1, brankas: 0, rekening: 0, amplop: 0 } }], []),
   ];
-  ok('P3 penjaga klien MENOLAK keenam percobaan bulan terkunci selama pintu terbuka (yang kena hukum rules sama dicek di Python)', c.every(function (x) { return x && x.terkunci; }), J(c));
+  delete SRV.arsip['2027|pindahUang|pd27'];
+  ok('P3 penjaga klien MENOLAK kesembilan percobaan bulan terkunci selama pintu terbuka (yang kena hukum rules sama dicek di Python)', c.every(function (x) { return x && x.terkunci; }), J(c));
+  // sanggahan rules 7 Okt (rules saja): ikatan pintu ke ritual tidak bisa dikarang dalam satu kiriman; berita acara tidak selesai selagi pintunya terbuka
+  var acNow = salin(acara(2027));
+  cobaRules('P3l SATU kiriman: berita acara 2025 baru + pintu 2025 (berita acara belum ada sebelum kiriman, bukan tahun lalu)', 'owner', [
+    { op: 'set', koleksi: 'tutupBukuAcara', id: '2025', data: { id: '2025', tahun: 2025, mode: 'sungguhan', status: 'berjalan', paraf: { owner: true, saksi: true, pada: new Date(__KINI).toISOString() } } },
+    { op: 'set', koleksi: 'pengaturan', id: 'pintuBuku', data: { id: 'pintuBuku', tahun: 2025, status: 'berjalan', sampai: new Date(__KINI + 24 * 3600000) } }]);
+  cobaRules('P3m berita acara 2027 SELESAI tanpa menutup pintu', 'owner', [{ op: 'set', koleksi: 'tutupBukuAcara', id: '2027', data: Object.assign({}, acNow, { status: 'selesai' }) }]);
+  cobaRules('P3n pintu tahun 2026 (bukan tahun lalu; berita acaranya selesai)', 'owner', [{ op: 'set', koleksi: 'pengaturan', id: 'pintuBuku', data: { id: 'pintuBuku', tahun: 2026, status: 'berjalan', sampai: new Date(__KINI + 24 * 3600000) } }]);
+  cobaRules('P3o salinan arsip KARANGAN: nota Juni 2027 yang tidak pernah ada', 'owner', [{ op: 'set', koleksi: 'arsipTahun', id: '2027|penjualan|karang1', data: { id: '2027|penjualan|karang1', tahun: 2027, koleksi: 'penjualan', idAsli: 'karang1', dok: jual('karang1', '2027-06-03', 'Tunai', 'Angsa', 50, 9999999, 650000) } }]);
   cobaTolak('P3g kasir@ membuat saldo pembuka 2027 bertanggal lama', 'kasir', [{ koleksi: 'piutangMutasi', data: { id: 'x4', tipe: 'saldoAwal', namaPelanggan: 'Contoh', nominal: 1, tanggal: '2026-09-19', tutupBuku: true, tahunDari: 2027 } }], []);
   cobaTolak('P3h staf menghapus saldo pembuka 2027 bertanggal lama', 'staf', [], [{ koleksi: kolPb, id: pb27 ? pb27.id : 'x' }]);
   // ---- selesai menutup pintu; kunci Februari 2028 tidak buntu
   SRV.fase = 'P2 selesai 2027'; var es = await selesai(2027, W); var pt = dokDiCache('pengaturan', 'pintuBuku');
   ok('P2 SELESAI: berita acara selesai & pintu DITUTUP (status tutup) di kiriman yang sama', !es && (acara(2027) || {}).status === 'selesai' && pt && pt.status === 'tutup' && !pintuBuku(), J([es, pt]));
+  // sesudah selesai: pintu tahun itu tidak bisa dibuka lagi, berita acaranya tidak bisa dihapus (lalu dibuat lagi)
+  cobaRules('P2x buka pintu 2027 lagi sesudah SELESAI', 'owner', [{ op: 'set', koleksi: 'pengaturan', id: 'pintuBuku', data: { id: 'pintuBuku', tahun: 2027, status: 'berjalan', sampai: new Date(__KINI + 24 * 3600000) } }]);
+  cobaRules('P2y hapus berita acara 2027 yang SELESAI', 'owner', [{ op: 'delete', koleksi: 'tutupBukuAcara', id: '2027' }]);
   jam('2028-02-05T10:00:00+07:00'); var DP = kpDaftarPeriksa('2028-01', new Date(__KINI), { lokal: { antreLokal: { belum: [], ditolak: [] }, antre: [] }, parkir: [], putusanHari: {}, centang: {} });
   var tb = DP.butir.filter(function (b) { return b.id === 'tutupBukuLalu'; })[0];
   ok('P2 kunci Januari 2028: butir "Tutup buku 2027 sudah selesai" BERES (tidak buntu lagi)', !!tb && tb.ok, J(tb));
@@ -246,6 +286,15 @@ async function batalkan() {
   ok('P4 Batalkan tuntas (jalankanBatal uang.js): berita acara dibatalkan, saldo pembuka 2027 = 0, arsip 2027 kosong', okB === true && (acara(2027) || {}).status === 'dibatalkan' && nPembuka(2027) === 0 && Object.keys(SRV.arsip).filter(function (k) { return SRV.arsip[k].tahun === 2027; }).length === 0, J([okB, S.kabar, nPembuka(2027)]));
   ok('P4 SEMUA catatan toko kembali PERSIS seperti sebelum ritual (isi tiap dokumen, jumlah, titik kas) — ' + Object.keys(sebelum).length + ' dibandingkan', beda.length === 0, J(beda.slice(0, 12)));
   ok('P4 era kembali 2026; pintu DITUTUP bersama berita acara dibatalkan', eraBuku() === era0 && era0 === 2026 && pt && pt.status === 'tutup' && !pintuBuku(), J([eraBuku(), pt]));
+  // ---- P4b · saldo pembuka 2027 bertanggal bulan terkunci yang MENDARAT SESUDAH dibatalkan (kiriman HP lain yang tertahan) → pembatalan lanjutan
+  terapkanKeCache([{ koleksi: 'piutangMutasi', data: { id: 'telat1', tipe: 'saldoAwal', namaPelanggan: 'Bu Contoh', nominal: 1000, tanggal: '2026-09-19', jam: '00:00', tutupBuku: true, tahunDari: 2027, bertahap: true } }]);
+  jam('2028-01-05T15:00:00+07:00'); SRV.fase = 'P4b pembatalan lanjutan'; var b0 = SRV.batch.length;
+  var R2 = susunBatal(2027, [], W, L); var k1 = (R2.kiriman || [])[0] || { dokumen: [] }; var k2 = (R2.kiriman || [])[1] || { dokumen: [], hapus: [] };
+  ok('P4b dari dibatalkan: kiriman 1 = berita acara membatalkan SENDIRIAN (server membaca berita acara sebelum kiriman pintu), kiriman 2 = pintu + tarik saldo pembuka telat',
+    !R2.tolak && k1.dokumen.length === 1 && k1.dokumen[0].koleksi === 'tutupBukuAcara' && k1.dokumen[0].data.status === 'membatalkan' && !(k1.hapus || []).length
+    && k2.dokumen.some(function (x) { return x.koleksi === 'pengaturan' && x.data.id === 'pintuBuku'; }) && (k2.hapus || []).some(function (x) { return x.id === 'telat1'; }), J(R2.tolak || (R2.kiriman || []).map(function (k) { return [k.dokumen.map(function (x) { return x.koleksi + '/' + x.data.id; }), (k.hapus || []).map(function (x) { return x.id; })]; })));
+  var okB2 = await UANG.jalankanBatal(2027);
+  ok('P4b pembatalan lanjutan tuntas: saldo pembuka telat ditarik, berita acara dibatalkan lagi, pintu tertutup', okB2 === true && !dokDiCache('piutangMutasi', 'telat1') && (acara(2027) || {}).status === 'dibatalkan' && !pintuBuku() && SRV.batch.length - b0 >= 3, J([okB2, S.kabar, SRV.batch.length - b0]));
   CATATAN.p4 = SRV.batch.length;
 }
 
@@ -264,6 +313,16 @@ async function desemberTerkunci() {
   SRV.putusSesudah = null;
   // selagi pintu MASIH terbuka & arsip setengah jalan: hapus catatan bulan terkunci TANPA salinan arsipnya (atau dengan salinan bertahun lain) tetap ditolak
   var sisaA = arsipBuku(2027).daftar.filter(function (x) { return !x.data.tutupBuku; })[0];
+  // sanggahan rules 7 Okt (rules saja): salinan arsip wajib = isi catatan yang dihapus — sampah / isi beda ditolak walau pintu terbuka
+  if (sisaA) {
+    var aid = '2027|' + sisaA.koleksi + '|' + sisaA.id; var beda = Object.assign({}, salin(sisaA.data), { catatanUji: 'diubah lewat arsip' });
+    cobaRules('P5c hapus catatan bulan terkunci dengan "salinan arsip" SAMPAH', 'owner', [{ op: 'set', koleksi: 'arsipTahun', id: aid, data: { x: 1 } }, { op: 'delete', koleksi: sisaA.koleksi, id: String(sisaA.id) }]);
+    cobaRules('P5d hapus catatan bulan terkunci dengan salinan arsip BERISI LAIN (hapus lalu tulis ulang = ubah)', 'owner', [{ op: 'set', koleksi: 'arsipTahun', id: aid, data: { id: aid, tahun: 2027, koleksi: sisaA.koleksi, idAsli: String(sisaA.id), dok: beda } }, { op: 'delete', koleksi: sisaA.koleksi, id: String(sisaA.id) }]);
+    cobaRules('P5e salinan arsip berisi lain TANPA menghapus (untuk "dikembalikan" nanti)', 'owner', [{ op: 'set', koleksi: 'arsipTahun', id: aid, data: { id: aid, tahun: 2027, koleksi: sisaA.koleksi, idAsli: String(sisaA.id), dok: beda } }]);
+    SRV.arsip[aid] = { id: aid, tahun: 2027, koleksi: sisaA.koleksi, idAsli: String(sisaA.id), dok: beda };   // salinan berisi lain yang SUDAH ada (mis. dari Console)
+    cobaRules('P5f hapus catatan bulan terkunci di atas salinan arsip berisi lain yang sudah ada (tanpa menulis salinan)', 'owner', [{ op: 'delete', koleksi: sisaA.koleksi, id: String(sisaA.id) }]);
+    delete SRV.arsip[aid];
+  }
   var cA = sisaA ? [cobaTolak('P5a hapus catatan bulan terkunci TANPA salinan arsip (pintu terbuka, arsip setengah jalan)', 'owner', [], [{ koleksi: sisaA.koleksi, id: sisaA.id }]),
     cobaTolak('P5b hapus catatan bulan terkunci dengan salinan arsip bertahun LAIN (2026|…)', 'owner', [{ koleksi: 'arsipTahun', data: { id: '2026|' + sisaA.koleksi + '|' + sisaA.id, tahun: 2026, koleksi: sisaA.koleksi, idAsli: String(sisaA.id), dok: sisaA.data } }], [{ koleksi: sisaA.koleksi, id: sisaA.id }])] : [];
   ok('P5 pintu terbuka: hapus catatan bulan terkunci TANPA salinan arsip tahun pintu → penjaga klien menolak (rules dicek di Python)', !!sisaA && !!pintuBuku() && cA.every(function (x) { return x && x.terkunci; }), J([sisaA && sisaA.koleksi, cA]));
@@ -285,11 +344,12 @@ async function banyakKiriman() {
   terapkanKeCache(bon); putusSemua(); kunci('2027-11'); jam('2028-01-05T10:00:00+07:00');
   SRV.fase = 'P7 tutup buku 2027 (banyak kiriman)'; var R = susunKunci(2027, D, W, L);
   var K = R.kiriman || []; var k1 = K[0] || { dokumen: [] };
-  ok('P7 30 nama berutang Feb–Apr 2027 (terkunci): saldo pembuka dipecah ≥ 3 kiriman; kiriman 1 = berita acara berjalan + PINTU; tiap kiriman ≤ 18 (perkiraan layar)', !R.tolak && K.length >= 3
-    && k1.dokumen[0].koleksi === 'tutupBukuAcara' && k1.dokumen[0].data.status === 'berjalan' && k1.dokumen.some(function (x) { return x.koleksi === 'pengaturan' && x.data.id === 'pintuBuku'; }) && K.every(function (k) { return k.get <= 18; }), J(R.tolak || K.map(function (k) { return k.get; })));
-  SRV.nKirim = 0; SRV.putusSesudah = 1; var okB = await UANG.jalankanBuku(2027, K, R.titik, R.patch.kabar); SRV.putusSesudah = null;
+  var k2 = K[1] || { dokumen: [] };
+  ok('P7 30 nama berutang Feb–Apr 2027 (terkunci): saldo pembuka dipecah ≥ 3 kiriman; kiriman 1 = berita acara berjalan SENDIRIAN, kiriman 2 membuka PINTU; tiap kiriman ≤ 18 (perkiraan layar)', !R.tolak && K.length >= 4
+    && k1.dokumen.length === 1 && k1.dokumen[0].koleksi === 'tutupBukuAcara' && k1.dokumen[0].data.status === 'berjalan' && k2.dokumen.some(function (x) { return x.koleksi === 'pengaturan' && x.data.id === 'pintuBuku'; }) && K.every(function (k) { return k.get <= 18; }), J(R.tolak || K.map(function (k) { return k.get; })));
+  SRV.nKirim = 0; SRV.putusSesudah = 2; var okB = await UANG.jalankanBuku(2027, K, R.titik, R.patch.kabar); SRV.putusSesudah = null;
   var KM = kemajuanBuku();
-  ok('P7 putus sesudah kiriman 1: tahun MASIH TERBUKA (fase saldo pembuka), pita menyuruh lanjutkan', okB === false && KM && KM.fase === 'pembuka' && KM.sudah > 0 && KM.sudah < KM.total, J([okB, KM]));
+  ok('P7 putus sesudah kiriman 2: tahun MASIH TERBUKA (fase saldo pembuka), pita menyuruh lanjutkan', okB === false && KM && KM.fase === 'pembuka' && KM.sudah > 0 && KM.sudah < KM.total, J([okB, KM]));
   jam('2028-01-08T11:00:00+07:00');
   ok('P7 tiga hari kemudian pintu kedaluwarsa', !pintuBuku());
   var Lj = lanjutBuku(2027, L); var p1 = Lj.kiriman && Lj.kiriman[0] ? Lj.kiriman[0].dokumen.filter(function (x) { return x.koleksi === 'pengaturan' && x.data.id === 'pintuBuku'; })[0] : null;
@@ -382,7 +442,15 @@ if __name__ == '__main__':
             ('klien: saldo pembuka lewat pintu dihitung tanpa biaya pintu (kiriman kebesaran → perkiraan ≠ server / > 18)', KP, "  return pembuka(op.data) ? 1 : op.pulih ? 2 : 0;", "  return pembuka(op.data) ? 0.0001 : op.pulih ? 2 : 0;"),
             ('klien: pengembalian arsip tidak ditandai (Batalkan tertahan penjaga klien)', TK, "[], { pintu: 'pulih' }); if (j && j.terkunci) throw new Error(j.pesan);", "[]); if (j && j.terkunci) throw new Error(j.pesan);"),
             ('klien: penjaga klien membuka UBAH lewat pintu', KP, "  if (op.lama) return 0;   // dokumen sudah ada = UBAH → tidak ada pintu untuk ubah", "  if (op.lama) return 1;"),
-            ('klien: saldo pembuka tahun mana pun lewat pintu', KP, "const pembuka = (d) => !!d && d.tutupBuku === true && Number(d.tahunDari) === y;", "const pembuka = (d) => !!d && d.tutupBuku === true;"),
+            ('klien: saldo pembuka tahun mana pun lewat pintu', KP, "const pembuka = (d) => !!d && KP_KOLEKSI_PEMBUKA.indexOf(op.koleksi) >= 0 && d.tutupBuku === true && Number(d.tahunDari) === y;", "const pembuka = (d) => !!d && KP_KOLEKSI_PEMBUKA.indexOf(op.koleksi) >= 0 && d.tutupBuku === true;"),
+            ('klien: saldo pembuka di koleksi mana pun (nota / uang keluar bertanda tutupBuku lolos penjaga)', KP, "const pembuka = (d) => !!d && KP_KOLEKSI_PEMBUKA.indexOf(op.koleksi) >= 0 && d.tutupBuku === true", "const pembuka = (d) => !!d && d.tutupBuku === true", 'P3 penjaga klien MENOLAK'),
+            ('klien: titik kas lewat pintu tanggal berapa pun', KP, "return op.data.tanggal === y + '-12-31' ? 1 : kpTitikSebelum(op.data, pintu.titikSebelum) ? 2 : 0; }", "return 1; }", 'P3 penjaga klien MENOLAK'),
+            ('klien: titik kas kembali (titikSebelum) dihitung tanpa baca berita acara (perkiraan ≠ server)', KP, "kpTitikSebelum(op.data, pintu.titikSebelum) ? 2 : 0; }", "kpTitikSebelum(op.data, pintu.titikSebelum) ? 1 : 0; }", 'P4 BATALKAN · tulis": perkiraan layar'),
+            ('klien: salinan arsip dihitung tanpa access call (perkiraan ≠ server / potongan kebesaran)', KP, "    if (op.hapus && op.arsip) out.perluGet += (kpBebas(b, kini) ? 0 : 1) + (kunci ? 1 : 0);\n", "\n", 'arsip 2026 potongan'),
+            ('klien: berita acara selesai / dibatalkan dihitung tanpa baca pintu (perkiraan ≠ server)', KP, "KP_ACARA_AKHIR.indexOf(op.data.status) >= 0 && !(op.lama && kpSama(op.data, op.lama))) out.perluGet += 1;", "KP_ACARA_AKHIR.indexOf(op.data.status) >= 0 && !(op.lama && kpSama(op.data, op.lama))) out.perluGet += 0;", 'access call ≠ server 1'),
+            ('klien: berita acara TIDAK dikirim sendirian dulu (pintu satu kiriman dengan berita acara baru)', TB, "  if (pintu) acara.rencana.acaraDulu = true;\n", "\n", 'P2 kiriman 1 = berita acara'),
+            ('klien: pembatalan lanjutan dari dibatalkan tidak menulis membatalkan sendirian dulu', TB, "const dulu = !!pintu && ['berjalan', 'terkunci', 'membatalkan'].indexOf(acara.status) < 0;", "const dulu = false;", 'P4b dari dibatalkan'),
+            ('klien: titikSebelum berita acara tidak dibawa pintu (titik kembali ditolak penjaga)', TK, "  return kpPintu(d, kini, a && a.titikSebelum);", "  return kpPintu(d, kini);", 'P4 Batalkan tuntas'),
             ('klien: pintu tidak ditutup saat selesai', TB, ".concat(bkTutupPintu(tahun, w)), patch:", ", patch:"),
             ('klien: pintu tidak ditutup saat dibatalkan', TB, "akhirDokumen: [akhir].concat(bkTutupPintu(tahun, w, !!pintu)),", "akhirDokumen: [akhir],"),
             ('klien: kiriman lanjutan tidak membuka pintu lagi', TB, "const pintu = (susunPintu(tahun, wP).dokumen || [])[0] || null;", "const pintu = null;"),
@@ -393,29 +461,44 @@ if __name__ == '__main__':
         ]
         RUSAK_RULES = [
             ('rules: pintu tanpa getAfter (dibaca sebelum batch — kiriman pertama yang membuka pintu ditolak)', "let p = getAfter(/databases/$(database)/documents/pengaturan/pintuBuku);", "let p = get(/databases/$(database)/documents/pengaturan/pintuBuku);"),
-            ('rules: hapus bulan terkunci tanpa salinan arsip diterima', "|| existsAfter(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)));", "|| true);"),
+            ('rules: hapus bulan terkunci tanpa salinan arsip diterima', "|| salinanArsip(getAfter(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)), y, kol, id, resource.data));", "|| true);"),
+            ('rules: salinan arsip tidak dibandingkan isinya (salinan berisi lain lolos)', "\n        && isi.diff(a.data.get('dok', {})).affectedKeys().hasOnly(['capServer']);", ";", 'P5f'),
+            ('rules: salinan arsip karangan diterima (arsipTahun owner bebas)', "allow create, update: if owner() && arsipSah(id);", "allow create, update: if owner();", 'P3o'),
+            ('rules: salinan arsip bulan terkunci tidak diikat ke aslinya', " || salinanAsli(d))));", " || true)));", 'P5e'),
+            ('rules: saldo pembuka di koleksi mana pun (kolPembuka dicabut)', "      return kol in ['batchMasuk', 'piutangMutasi',", "      return true || kol in ['batchMasuk', 'piutangMutasi',", 'P3i'),
+            ('rules: berita acara dibaca SESUDAH batch (ritual karangan satu kiriman lolos)', "let a = get(/databases/$(database)/documents/tutupBukuAcara/$(string(y)));", "let a = getAfter(/databases/$(database)/documents/tutupBukuAcara/$(string(y)));", 'P2a'),
+            ('rules: pintu untuk tahun lampau mana pun (bukan hanya tahun lalu)', "y is int && y == wib().year() - 1", "y is int && y < wib().year()", 'P2b'),
+            ('rules: berita acara selesai walau pintu terbuka', "      return !(b.get('status', '') in ['selesai', 'dibatalkan']) || pintuMati(", "      return true || pintuMati(", 'P3m'),
+            ('rules: berita acara baru bentuk / jam apa saja', "allow create: if owner() && acaraBaru(id);", "allow create: if owner();", 'P2c'),
+            ('rules: berita acara selesai bisa dihapus (lalu dibuat lagi)', "allow delete: if owner() && resource.data.get('status', '') == 'dibatalkan';", "allow delete: if owner();", 'P2y'),
+            ('rules: titik kas lewat pintu tanggal berapa pun ≤ 31 Des', " && (d.get('tanggal', '') == string(y) + '-12-31' || titikSebelum(y, d));", ";", 'P3k'),
             ('rules: pintu membuka UBAH juga (saldo pembuka bertanggal lama bisa diubah)', "      allow update: if owner() && tglUbah('tanggal');\n      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('piutangMutasi',",
              "      allow update: if (owner() && tglUbah('tanggal')) || (owner() && pintuTulis('piutangMutasi', id, bulanDok(request.resource.data, 'tanggal')));\n      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('piutangMutasi',"),
             ('rules: pindahUang ikut berpintu', "    match /pindahUang/{id} {\n      allow read: if owner();\n      allow create: if owner() && tglBaru('tanggal');\n      allow update: if owner() && tglUbah('tanggal');\n      allow delete: if owner() && tglLama('tanggal');",
              "    match /pindahUang/{id} {\n      allow read: if owner();\n      allow create: if owner() && tglBaru('tanggal');\n      allow update: if owner() && tglUbah('tanggal');\n      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('pindahUang', id, bulanDok(resource.data, 'tanggal')));"),
-            ('rules: saldo pembuka tahun mana pun', "((d.get('tutupBuku', false) == true && d.get('tahunDari', 0) == y) || pulihArsip(kol, id, y))", "((d.get('tutupBuku', false) == true) || pulihArsip(kol, id, y))"),
+            ('rules: saldo pembuka tahun mana pun', "((kolPembuka(kol) && d.get('tutupBuku', false) == true && d.get('tahunDari', 0) == y) || pulihArsip(kol, id, y))", "((kolPembuka(kol) && d.get('tutupBuku', false) == true) || pulihArsip(kol, id, y))"),
             ('rules: kasir@ lewat pintu', "(owner() && pintuTulis('piutangMutasi',", "((owner() || kasir()) && pintuTulis('piutangMutasi',"),
             ('rules: titik kas tanpa pintu (Desember terkunci → titik 31 Des ditolak)', "(id != 'titikKas' || tglBaru('tanggal') || pintuTitik())", "(id != 'titikKas' || tglBaru('tanggal'))"),
-            ('rules: pengembalian arsip ditolak (Batalkan buntu)', "\n        && request.resource.data.diff(a.data.get('dok', {})).affectedKeys().hasOnly(['capServer']);", "\n        && false;"),
+            ('rules: pengembalian arsip ditolak (Batalkan buntu)', "      return salinanArsip(get(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)), y, kol, id, request.resource.data);", "      return false;"),
         ]
         kode = 0
-        for nama, berkas, a, b in RUSAK:
+        # kontrol bertanda `harap` (sanggahan rules 7 Okt) wajib berbunyi karena SEBABNYA (teks itu ada di salah satu kegagalan), bukan karena kegagalan lain
+        def lapor(nama, g, harap):
+            kena = [x for x in g if harap in x] if harap else g
+            print(('BERBUNYI ' if kena else 'DIAM!!   ' if not g else 'SALAH SEBAB ') + nama + ' → ' + ((kena or g)[0][:150] if g else '-'))
+            return 0 if kena else 3
+        for x in RUSAK:
+            nama, berkas, a, b = x[:4]; harap = x[4] if len(x) > 4 else None
             t = baca(berkas)
             if t.count(a) != 1: print('KONTROL BASI  ' + nama); kode = 3; continue
             l, g, _ = jalan({berkas: t.replace(a, b)})
-            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:150] if g else '-'))
-            if not g: kode = 3
+            kode = max(kode, lapor(nama, g, harap))
         RS = baca('firestore.rules')
-        for nama, a, b in RUSAK_RULES:
+        for x in RUSAK_RULES:
+            nama, a, b = x[:3]; harap = x[3] if len(x) > 3 else None
             if RS.count(a) != 1: print('KONTROL BASI  ' + nama); kode = 3; continue
             l, g, _ = jalan(teks_rules=RS.replace(a, b))
-            print(('BERBUNYI ' if g else 'DIAM!!   ') + nama + ' → ' + (g[0][:150] if g else '-'))
-            if not g: kode = 3
+            kode = max(kode, lapor(nama, g, harap))
         sys.exit(kode)
     l, g, info = jalan()
     print('TUTUP BUKU 2027 lewat pintu (kotak pasir + rules v7 dinilai penafsir mini): %d lulus · %d gagal · %s' % (l, len(g), json.dumps(info, ensure_ascii=False)))

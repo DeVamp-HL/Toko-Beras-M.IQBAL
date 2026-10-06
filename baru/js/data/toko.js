@@ -327,12 +327,18 @@ function opsKiriman(daftar, hapus, tanda) {
   return (daftar || []).map(({ koleksi, data }) => Object.assign({ koleksi, data, lama: dokDiCache(koleksi, data.id) }, tanda === 'pulih' ? { pulih: true } : {}))
     .concat((hapus || []).map((x) => Object.assign({ koleksi: x.koleksi, id: x.id, lama: dokDiCache(x.koleksi, x.id), hapus: true }, tanda === 'arsip' ? { arsip: true } : {})));
 }
-/** rules v7: PINTU TUTUP BUKU yang terbuka sekarang (pengaturan/pintuBuku di cache) → { tahun, sampai } atau null. */
-export function pintuBuku() { return kpPintu(dokDiCache('pengaturan', KP_ID_PINTU), new Date(Date.now())); }
+/** rules v7: pintu menurut dokumen d pada jam kini, beserta titikSebelum berita acara tahun itu (cache — rules membacanya SEBELUM batch) → { tahun, sampai, titikSebelum } | null. */
+export function pintuDari(d, kini) {
+  const P = kpPintu(d, kini); if (!P) return null;
+  const a = (_cache.tutupBukuAcara || []).find((x) => x && Number(x.tahun) === P.tahun);
+  return kpPintu(d, kini, a && a.titikSebelum);
+}
+/** rules v7: PINTU TUTUP BUKU yang terbuka sekarang (pengaturan/pintuBuku di cache) → { tahun, sampai, titikSebelum } atau null. */
+export function pintuBuku() { return pintuDari(dokDiCache('pengaturan', KP_ID_PINTU), new Date(Date.now())); }
 // pintu yang berlaku untuk SATU kiriman: yang ikut ditulis di kiriman itu (rules menilainya sesudah batch — getAfter), selain itu yang di cache
 function pintuKiriman(daftar) {
   const d = (daftar || []).find((x) => x.koleksi === 'pengaturan' && x.data && String(x.data.id) === KP_ID_PINTU);
-  return d ? kpPintu(d.data, new Date(Date.now())) : pintuBuku();
+  return d ? pintuDari(d.data, new Date(Date.now())) : pintuBuku();
 }
 /** Jumlah pemeriksaan kunci (get()) yang dibutuhkan server untuk satu kiriman — untuk logika layar yang ingin menolak dengan kalimatnya sendiri. */
 export function butuhGet(daftar, hapus) { return kpNilaiKiriman(opsKiriman(daftar, hapus), null, new Date(Date.now())).perluGet; }
@@ -428,9 +434,10 @@ export function arsipSimulasi() { return _arsip.slice(); }
 export async function arsipkanDokumen(tahun, daftar, progres) {
   // K1 (owner 25 Sep): arsip yang MEMINDAH (menghapus) dokumen ditolak di bulan terkunci. Keputusan owner 7 Okt (K8, pengecualian sempit — rules v7): catatan
   // bulan terkunci bertanggal ≤ 31 Des tahun itu BOLEH dipindah selama PINTU TUTUP BUKU tahun itu terbuka (pengaturan/pintuBuku), karena salinannya ditulis
-  // ke arsipTahun di batch yang SAMA (rules: existsAfter). Berkas arsip dan cadangan SEBELUM tetap disimpan 10 tahun di luar Mac.
+  // ke arsipTahun di batch yang SAMA (rules: salinan arsip = isi catatan yang dihapus, dan salinan bulan terkunci = catatan aslinya). Berkas arsip dan
+  // cadangan SEBELUM tetap disimpan 10 tahun di luar Mac.
   const j = jagaKunci([], daftar.map((x) => ({ koleksi: x.koleksi, id: x.id })), { pintu: 'arsip' }); if (j && j.terkunci) throw new Error(j.pesan);
-  // access call server per catatan (0 bulan berjalan · 1 bulan lampau · 3 lewat pintu) — firebase.js memecah potongan ≤ 18 (dulu tetap 18 catatan)
+  // access call server per catatan (0 bulan berjalan · 2 bulan lampau · 5 lewat pintu, termasuk salinan arsipnya) — firebase.js memecah potongan ≤ 18
   const biaya = biayaPintu(daftar.map((x) => ({ koleksi: x.koleksi, id: x.id, lama: x.data, hapus: true, arsip: true })));
   if (_penulis && _penulis.arsipkan) return _penulis.arsipkan(tahun, daftar, progres, biaya);
   daftar.forEach((x) => { _arsip = _arsip.filter((a) => !(a.tahun === tahun && a.koleksi === x.koleksi && String(a.idAsli) === String(x.id))); _arsip.push({ id: tahun + '|' + x.koleksi + '|' + x.id, tahun, koleksi: x.koleksi, idAsli: x.id, dok: x.data }); });

@@ -121,6 +121,20 @@ ok('F: tombol MINTA OWNER untuk Ben HIDUP (BUAT_STAF & BACA_STAF memuat persetuj
 // owner memutus (papan persetujuan yang sama) — permintaan dianggap sudah sampai
 terapkanKeCache(rM.dokumen || []);
 ok('F: permintaan nego tampil di papan persetujuan owner (Menu › Sistem › Peran › Persetujuan) & Buku Nego: menunggu 1', ssPersetujuan(new Date()).menunggu.some(function (m) { return m.tindakan === 'nego' && /Angsa/.test(m.teks); }) && ngMenunggu().length === 1 && ngBuku('2026-10-07').menunggu === 1, J(ngBuku('2026-10-07')));
+// sanggahan rules 7 Okt: papan & Buku Nego owner MENGHITUNG ULANG angkanya (barang, hargaMinta, jumlah + katalog sekarang) — kolom nominal / teks / label kiriman
+// staf tidak dipakai (rules tidak mengikatnya ke harga barang). Kiriman yang diubah: nominal 1, teks & label karangan, batas besar
+var nAsli = (t0.hargaAsli - batasA + 500) * 2;
+var PSf = ssPersetujuan(new Date()).menunggu.filter(function (m) { return m.tindakan === 'nego'; })[0]; var BNf = ngBuku('2026-10-07').baris.filter(function (x) { return x.jenis === 'minta'; })[0];
+ok('F: papan owner — teks dari kunci barang + katalog sekarang, nominal dihitung ulang (= kiriman yang jujur), nego TIDAK ikut "setujui semua yang kecil"',
+  !!PSf && PSf.n === nAsli && /Angsa 50 kg: katalog Rp/.test(PSf.teks) && /potongan Rp/.test(PSf.teks) && PSf.sekaligus === false && !!BNf && BNf.totalSelisih === -nAsli && BNf.hargaAsli === t0.hargaAsli && !BNf.periksa, J([PSf, BNf]));
+terapkanKeCache([{ koleksi: 'persetujuan', data: Object.assign({}, dM.data, { nominal: 1, teks: 'kecil saja', label: 'barang lain', batas: 999999, hargaAsli: 1 }) }]);
+var PSb = ssPersetujuan(new Date()).menunggu.filter(function (m) { return m.tindakan === 'nego'; })[0]; var BNb = ngBuku('2026-10-07').baris.filter(function (x) { return x.jenis === 'minta'; })[0];
+var skB = susunSetujuiKecil(W);
+ok('F: kiriman staf yang DIUBAH (nominal 1, teks / label karangan) — papan & Buku Nego tetap memakai hitungan ulang; setujui sekaligus tidak menyentuhnya',
+  PSb.n === nAsli && !/kecil saja/.test(PSb.teks) && /Angsa 50 kg/.test(PSb.teks) && BNb.totalSelisih === -nAsli && BNb.hargaAsli === t0.hargaAsli && BNb.barang === 'Angsa 50 kg' && !!skB.tolak && /permintaan nego/.test(skB.tolak), J([PSb, BNb, skB]));
+terapkanKeCache(rM.dokumen || []);
+var Qx = ngPeriksaMinta({ barang: 'wadah|ember', hargaMinta: 1000, jumlah: 1 });
+ok('F: barang yang harganya tidak ditemukan → nominal null, teks menyuruh periksa di rak (bukan angka kiriman)', Qx.nominal === null && Qx.katalog === null && /tidak ditemukan/.test(Qx.teks), J(Qx));
 var tolak0 = dM ? susunPutusPersetujuan(dM.data.id, false, '', W) : {};
 ok('F: owner menolak tanpa alasan → ditolak (alasan wajib)', /butuh alasan/.test(tolak0.tolak || ''));
 terapkanKeCache((dM ? susunPutusPersetujuan(dM.data.id, true, '', W).dokumen : null) || []);
@@ -208,8 +222,9 @@ pasok('persetujuan', [
   { id: 'pk2', tindakan: 'nego', status: 'menunggu', tanggal: '2026-10-07', jam: '09:01', pada: '2026-10-07T02:01:00.000Z', dari: 'Ben Contoh', peran: 'ben', negoUid: 'uid-ben', teks: 'nego di bawah modal', nominal: 20000, batas: 670000, alasan: 'beras basah' },
   { id: 'pk3', tindakan: 'nego', status: 'menunggu', tanggal: '2026-10-07', jam: '09:02', pada: '2026-10-07T02:02:00.000Z', dari: 'Ben Contoh', peran: 'ben', negoUid: 'uid-ben', teks: 'nego tanpa modal', nominal: 3000, batas: null, alasan: '' }]);
 var sk = susunSetujuiKecil(W); var idSk = (sk.dokumen || []).map(function (d) { return d.data.id; });
-ok('M: setujui sekaligus → hanya nego dalam modal (pk1); yang beralasan di bawah modal (pk2) & tanpa batas jatah (pk3) tetap menunggu, kabar menyebutnya; hitungan "kecil" di papan sama',
-  J(idSk) === '["pk1"]' && /2 nego di bawah modal \/ tanpa modal dilihat satu per satu/.test(sk.patch.kabar) && ssPersetujuan(new Date()).kecil === 1, J([idSk, sk.patch, ssPersetujuan(new Date()).kecil]));
+// sanggahan rules 7 Okt: nego TIDAK PERNAH ikut setujui sekaligus (dulu yang "dalam modal" menurut kolom kiriman staf ikut — kolom itu tidak diikat rules)
+ok('M: setujui sekaligus tidak menyetujui nego apa pun (pk1 dalam modal, pk2 beralasan, pk3 tanpa batas) — semuanya dilihat satu per satu; hitungan "kecil" di papan 0',
+  idSk.length === 0 && !!sk.tolak && /permintaan nego/.test(sk.tolak) && ssPersetujuan(new Date()).kecil === 0, J([idSk, sk, ssPersetujuan(new Date()).kecil]));
 pasok('persetujuan', []);
 
 // ---- N · tinjauan 7 Okt: harga PAS karcis (penjualan yang sudah terjadi) — owner tidak tunduk pada daftar "boleh di bawah modal"; bukan-owner: DISEBUT, tidak diam
@@ -334,6 +349,9 @@ RUSAK = [
     ('tinjauan 7 Okt: kalimat minta owner menjanjikan permintaan walau server belum membuka', NG, "    if (o.bisaMinta === false) return P('minta',", "    if (false) return P('minta',"),
     ('tinjauan 7 Okt: tombol nego karyawan tanpa jatah terbuka walau minta owner belum bisa', NG, "if (hakNego && hakNego !== 'tidak' && bisaMinta !== false) return", "if (hakNego && hakNego !== 'tidak') return"),
     ('tinjauan 7 Okt: setujui sekaligus ikut menyetujui nego di bawah modal', SL, "const kecil = P.menunggu.filter((m) => m.sekaligus && m.n <= P.batas);", "const kecil = P.menunggu.filter((m) => m.n <= P.batas);"),
+    ('sanggahan rules 7 Okt: nego dalam modal (menurut kiriman staf) ikut setujui sekaligus lagi', SL, "    sekaligus: m.tindakan !== 'nego',", "    sekaligus: !(m.tindakan === 'nego' && (String(m.alasan || '').trim() || !(Number(m.batas) > 0))),"),
+    ('sanggahan rules 7 Okt: papan owner memakai nominal & teks kiriman staf', SL, "teks: Q ? Q.teks : m.teks || '', n: Q ? Q.nominal || 0 : Number(m.nominal) || 0,", "teks: m.teks || '', n: Number(m.nominal) || 0,"),
+    ('sanggahan rules 7 Okt: Buku Nego memakai nominal & label kiriman staf', NG, "totalSelisih: Q.nominal !== null ? -Q.nominal : 0,", "totalSelisih: -(Number(m.nominal) || 0),"),
     ('tinjauan 7 Okt: permintaan nego atas nama akun lain lolos penjaga', AK, " || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };", ")) return { tolak: tolakTindakan('nego') };"),
     ('tinjauan 7 Okt: harga pas karcis tunduk pada daftar di bawah modal (owner dicabut → tidak dipasang)', KC, "negoAlasan: 'harga pas karcis kasir darurat', negoAtur: aturPas }", "negoAlasan: 'harga pas karcis kasir darurat' }"),
     ('tinjauan 7 Okt: harga pas karcis yang gagal dipasang diam', KC, "(gagalPas.length ? ' — harga pas BELUM terpasang (' + gagalPas.join('; ') + ')' : '')", "''"),

@@ -18,20 +18,28 @@
 //       ≤ 960.000 huruf ≈ 700 KB foto). Koleksi ini SENGAJA tidak di baru/js/data/koleksi.js (dibaca sekali saat bon dibuka).
 //   (4) PANGKAS kasir@ (kasir.html pensiun 3 Okt; kasir darurat hanya: nota penjualan, denyut perangkatStatus, baca ringkasanKasir): DICABUT create &
 //       tulis-ulang piutangMutasi / stokBahanLiteran, create logAktivitas, baca pengaturan/aksesKasir. (pengaturan/keamanan memang owner saja sejak v3.)
-//   (5) PINTU TUTUP BUKU (keputusan owner 7 Okt, K8 "pengecualian sempit") — tutup buku tahun Y yang bulannya sudah dikunci: dokumen
-//       pengaturan/pintuBuku = { tahun: Y, status: 'berjalan', sampai: <timestamp> } dibuat OWNER hanya selagi berita acara tutupBukuAcara/Y
-//       berjalan / terkunci / membatalkan (dinilai sesudah batch — boleh satu kiriman dengan berita acaranya), tahun Y < tahun ini (WIB), dan
-//       sampai ≤ jam server + 72 jam (berumur terbatas; diperbarui = dibuat lagi, syaratnya sama). Selama pintu terbuka & belum lewat `sampai`, OWNER boleh:
-//         (a) MENGHAPUS catatan bulan terkunci bertanggal ≤ Desember Y yang salinannya ADA di arsipTahun/'Y|koleksi|id' sesudah batch itu (arsip = pindah,
-//             bukan buang), atau saldo pembuka tahun Y itu sendiri (tutupBuku + tahunDari Y — tarik saldo pembuka saat Batalkan);
-//         (b) MEMBUAT saldo pembuka tahun Y (tutupBuku: true, tahunDari: Y) bertanggal ≤ Desember Y (piutang: tanggal utang tertua; bon pemasok:
-//             bonTanggal; modal owner 31 Des), atau MENGEMBALIKAN catatan dari arsipTahun/'Y|koleksi|id' yang isinya SAMA dengan salinannya (hanya
-//             capServer boleh beda — Batalkan); titik kas pengaturan/titikKas bertanggal ≤ 31 Des Y (titik 31 Des & pengembaliannya).
-//       TIDAK ada pintu untuk UPDATE, untuk catatan lain di bulan terkunci, untuk pindahUang / slipUpah (tidak diarsip), untuk kasir@ / staf.
-//       pengaturan/pintuBuku status 'tutup' (menutup pintu) boleh kapan saja oleh owner. Access call jalur pintu (cache tidak diandalkan): buat / hapus
-//       saldo pembuka & titik kas 2 (kunci + pintu), hapus arsip & kembalikan 3 (kunci + pintu + salinan arsip), buat pintu 1 — layar memecah kiriman
-//       ≤ 18 (baru/js/data/kunci-periode.js kpNilaiKiriman dengan pintu).
-// SENGAJA tidak berubah: create penjualan kasir@ (capServer boleh ada atau tidak), denyut & pesanan staf, tutupBukuAcara (v6 apa adanya), semua update.
+//   (5) PINTU TUTUP BUKU (keputusan owner 7 Okt, K8 "pengecualian sempit"; dipersempit sesudah sanggahan rules 7 Okt) — tutup buku tahun Y yang bulannya
+//       sudah dikunci: dokumen pengaturan/pintuBuku = { tahun: Y, status: 'berjalan', sampai: <timestamp> } dibuat OWNER hanya bila Y = TAHUN LALU (WIB),
+//       sampai ≤ jam server + 72 jam, dan berita acara tutupBukuAcara/Y SUDAH ADA SEBELUM kiriman itu (get, bukan getAfter — ikatan ke ritual tidak bisa
+//       dikarang dalam satu kiriman) berstatus berjalan / terkunci / membatalkan, dimulai (paraf.pada) sesudah 31 Des Y. Berita acara BARU wajib berbentuk
+//       tutup buku sungguhan (id = tahun, tahun lampau, mode sungguhan, berjalan / terkunci) dengan jam mulai = tanggal server ± 1 hari; berita acara hanya
+//       boleh dihapus bila 'dibatalkan' (yang 'selesai' tidak bisa dihapus lalu dibuat lagi). Berita acara jadi 'selesai' / 'dibatalkan' hanya bila pintu
+//       tahun itu TERTUTUP sesudah kiriman itu — jadi pintu tidak pernah terbuka untuk berita acara yang selesai / dibatalkan. Selama pintu terbuka & belum
+//       lewat `sampai`, OWNER boleh (hanya catatan bertanggal ≤ Desember Y di bulan terkunci):
+//         (a) MENGHAPUS catatan yang SALINANNYA di arsipTahun/'Y|koleksi|id' sesudah batch itu = isi catatan yang dihapus (hanya capServer boleh beda;
+//             arsip = pindah, bukan buang), atau saldo pembuka tahun Y (tutupBuku + tahunDari Y) di 10 koleksi yang memang punya saldo pembuka
+//             (kolPembuka = toko.js CACHE_PEMBUKA) — tarik saldo pembuka saat Batalkan;
+//         (b) MEMBUAT saldo pembuka tahun Y di 10 koleksi itu, atau MENGEMBALIKAN catatan dari arsipTahun/'Y|koleksi|id' yang isinya SAMA dengan salinannya
+//             (Batalkan); titik kas pengaturan/titikKas bertanggal 31 Des Y, atau PERSIS titikSebelum di berita acara Y (pengembaliannya saat Batalkan).
+//       SALINAN ARSIP terikat ke aslinya: arsipTahun ditulis hanya berbentuk 'Y|koleksi|id' untuk 18 koleksi yang diarsip, dan salinan catatan bulan
+//       terkunci WAJIB = catatan aslinya sebelum batch (arsip karangan tidak bisa dipakai untuk "mengembalikan" catatan baru).
+//       TIDAK ada pintu untuk UPDATE, untuk catatan lain di bulan terkunci (nota / uang keluar bertanda tutupBuku tetap ditolak), untuk pindahUang /
+//       slipUpah (tidak diarsip), untuk kasir@ / staf. pengaturan/pintuBuku status 'tutup' boleh kapan saja oleh owner. Access call (cache tidak
+//       diandalkan): saldo pembuka & titik 31 Des 2 (kunci + pintu), titik kembali 3 (+ berita acara), hapus arsip & kembalikan 3 (kunci + pintu +
+//       salinan), tulis salinan arsip 1 (kunci; bulan terkunci + 1 catatan asli), buka pintu 1 (berita acara), berita acara selesai / dibatalkan 1
+//       (pintu) — layar memecah kiriman ≤ 18 (baru/js/data/kunci-periode.js kpNilaiKiriman).
+// SENGAJA tidak berubah: create penjualan kasir@ (capServer boleh ada atau tidak), denyut & pesanan staf, urutan berita acara v6 (majuBuku dkk.), semua update
+//   catatan bertanggal.
 // Jalan mundur v7: JANGAN tempel firestore.rules.v6 selama kode bercap berjalan — hapus /baru/ (ber-batu nisan) akan DITOLAK, permintaan nego staf
 //   ditolak (masuk daftar "ditolak" di perangkatnya), foto bon ditolak. Mundur hemat baca = saklar (Menu › Sistem › Perangkat › Hemat baca, atau
 //   /baru/?hemat=mati), bukan rules. v6 baru boleh ditempel balik SESUDAH cabang hemat baca dibalik (git revert) dan HP kasir kembali ke kasir-v32.
@@ -198,47 +206,104 @@ service cloud.firestore {
               && d.riwayat[lama.size()].alasan is string && d.riwayat[lama.size()].alasan.size() >= 10));
     }
 
-    // ---- v7 PINTU TUTUP BUKU (owner 7 Okt 2026, K8 "pengecualian sempit") — hanya OWNER, hanya selama pintu tahun Y terbuka; dipanggil hanya SESUDAH
-    // tglBaru / tglLama / upBaru / upLama menolak (bulan terkunci), jadi tulisan biasa tidak pernah membaca dokumen pintu. Inti klien yang sama:
-    // baru/js/data/kunci-periode.js (kpPintu, kpLewatPintu). getAfter = keadaan SESUDAH batch (pintu boleh dibuka di kiriman yang sama).
+    // ---- v7 PINTU TUTUP BUKU (owner 7 Okt 2026, K8 "pengecualian sempit"; sanggahan rules 7 Okt) — hanya OWNER, hanya selama pintu tahun Y terbuka; dipanggil
+    // hanya SESUDAH tglBaru / tglLama / upBaru / upLama menolak (bulan terkunci), jadi tulisan biasa tidak pernah membaca dokumen pintu. Inti klien yang sama:
+    // baru/js/data/kunci-periode.js (kpPintu, kpLewatPintu). Dokumen PINTU dibaca getAfter (saldo pembuka boleh satu kiriman dengan pintunya); BERITA ACARA
+    // dibaca get = SEBELUM batch (pintu hanya mengikuti tutup buku yang sudah tercatat — tidak bisa dikarang dalam satu kiriman).
     // tahun Y yang pintunya terbuka & belum lewat `sampai`; 0 = tertutup
     function pintuTahun() {
       let p = getAfter(/databases/$(database)/documents/pengaturan/pintuBuku);
       return p != null && p.data.get('status', '') == 'berjalan' && p.data.get('tahun', '') is number && p.data.get('sampai', null) is timestamp
         && request.time < p.data.sampai ? int(p.data.tahun) : 0;
     }
-    // salinan arsip catatan ini (id arsip = 'Y|koleksi|id', sama dengan firebase.js arsipkanBerkas) — isi kembalian SAMA, hanya capServer boleh beda
-    function pulihArsip(kol, id, y) {
-      let a = get(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id));
-      return a != null && a.data.get('tahun', 0) == y && a.data.get('koleksi', '') == kol && a.data.get('idAsli', '') == id
-        && request.resource.data.diff(a.data.get('dok', {})).affectedKeys().hasOnly(['capServer']);
+    // koleksi yang memang punya SALDO PEMBUKA tutup buku (= toko.js CACHE_PEMBUKA = kunci-periode.js KP_KOLEKSI_PEMBUKA); nota, retur, uang keluar dll. TIDAK
+    function kolPembuka(kol) {
+      return kol in ['batchMasuk', 'piutangMutasi', 'kasbonMutasi', 'produksiKemasan', 'stokBahanKemasan', 'stokBahanLiteran', 'utangPemasokMutasi', 'utangOwnerMutasi',
+        'amplopLaba', 'modalOwner'];
     }
-    // CREATE bulan terkunci: saldo pembuka tahun Y (tutupBuku + tahunDari Y), atau catatan yang dikembalikan dari arsip Y (Batalkan). b = bulan catatan
+    // koleksi yang DIARSIP tutup buku (= tbDaftarKoleksi mesin ∩ KP_KOLEKSI = kunci-periode.js KP_KOLEKSI_PINTU; periksa_rules.py membandingkan)
+    function kolArsip(kol) {
+      return kol in ['penjualan', 'batchMasuk', 'produksiKemasan', 'retur', 'pengeluaranHarian', 'setoranKas', 'penyesuaianKemasan', 'amplopLaba', 'modalOwner',
+        'utangPemasokMutasi', 'utangOwnerMutasi', 'stokBahanKemasan', 'stokBahanLiteran', 'piutangMutasi', 'kasbonMutasi', 'penyesuaianStok', 'tutupHari', 'biayaBulanan'];
+    }
+    // salinan arsip a (arsipTahun/'Y|koleksi|id', sama dengan firebase.js arsipkanBerkas) = catatan `isi` — hanya capServer boleh beda (cache perangkat mengupasnya)
+    function salinanArsip(a, y, kol, id, isi) {
+      return a != null && a.data.get('tahun', 0) == y && a.data.get('koleksi', '') == kol && a.data.get('idAsli', '') == id
+        && isi.diff(a.data.get('dok', {})).affectedKeys().hasOnly(['capServer']);
+    }
+    // KEMBALI dari arsip (Batalkan): catatan yang ditulis = salinan arsipnya sebelum batch
+    function pulihArsip(kol, id, y) {
+      return salinanArsip(get(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)), y, kol, id, request.resource.data);
+    }
+    // CREATE bulan terkunci: saldo pembuka tahun Y (tutupBuku + tahunDari Y, koleksi pembuka saja), atau catatan yang dikembalikan dari arsip Y. b = bulan catatan
     function pintuTulis(kol, id, b) {
       let y = pintuTahun();
       let d = request.resource.data;
       return y > 0 && b <= y * 12 + 12
-        && ((d.get('tutupBuku', false) == true && d.get('tahunDari', 0) == y) || pulihArsip(kol, id, y));
+        && ((kolPembuka(kol) && d.get('tutupBuku', false) == true && d.get('tahunDari', 0) == y) || pulihArsip(kol, id, y));
     }
-    // DELETE bulan terkunci: catatan yang salinannya ADA di arsip Y sesudah batch ini (arsip = pindah), atau saldo pembuka tahun Y (tarik saat Batalkan)
+    // DELETE bulan terkunci: catatan yang SALINANNYA di arsip Y sesudah batch ini = isinya (arsip = pindah), atau saldo pembuka tahun Y (tarik saat Batalkan)
     function pintuHapus(kol, id, b) {
       let y = pintuTahun();
       return y > 0 && b <= y * 12 + 12
-        && ((resource.data.get('tutupBuku', false) == true && resource.data.get('tahunDari', 0) == y)
-          || existsAfter(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)));
+        && ((kolPembuka(kol) && resource.data.get('tutupBuku', false) == true && resource.data.get('tahunDari', 0) == y)
+          || salinanArsip(getAfter(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)), y, kol, id, resource.data));
     }
-    // titik kas pengaturan/titikKas di bulan terkunci: hanya bertanggal ≤ 31 Des Y (titik 31 Des tutup buku & pengembaliannya saat Batalkan)
+    // titik kas yang dikembalikan saat Batalkan = PERSIS titikSebelum di berita acara tahun Y (sebelum batch): tanggal & keempat kantong
+    function titikSebelum(y, d) {
+      let s = get(/databases/$(database)/documents/tutupBukuAcara/$(string(y))).data.get('titikSebelum', null);
+      return s is map && d.get('tanggal', '') == s.get('tanggal', null) && d.get('laci', null) == s.get('laci', null) && d.get('brankas', null) == s.get('brankas', null)
+        && d.get('rekening', null) == s.get('rekening', null) && d.get('amplop', null) == s.get('amplop', null);
+    }
+    // titik kas pengaturan/titikKas di bulan terkunci: hanya 31 Des Y (titik tutup buku) atau titikSebelum berita acara Y (pengembaliannya saat Batalkan)
     function pintuTitik() {
       let y = pintuTahun();
-      return y > 0 && bulanDok(request.resource.data, 'tanggal') <= y * 12 + 12;
+      let d = request.resource.data;
+      return y > 0 && bulanDok(d, 'tanggal') <= y * 12 + 12 && (d.get('tanggal', '') == string(y) + '-12-31' || titikSebelum(y, d));
     }
-    // membuka pintu: tahun lampau, berita acara tahun itu sedang berjalan / terkunci / membatalkan (sesudah batch), sampai ≤ jam server + 72 jam
+    // membuka pintu: TAHUN LALU saja, sampai ≤ jam server + 72 jam, berita acara tahun itu SUDAH ADA sebelum batch (get), berjalan / terkunci / membatalkan, dan
+    // percobaannya dimulai sesudah 31 Des tahun itu (paraf.pada UTC ≥ 31 Des 17.00 = 1 Jan 00.00 WIB)
     function pintuSah() {
       let d = request.resource.data;
-      let a = getAfter(/databases/$(database)/documents/tutupBukuAcara/$(string(int(d.get('tahun', 0)))));
-      return d.get('status', '') == 'berjalan' && d.get('tahun', '') is number && int(d.tahun) < wib().year()
+      let y = d.get('tahun', 0);
+      let a = get(/databases/$(database)/documents/tutupBukuAcara/$(string(y)));
+      return d.get('status', '') == 'berjalan' && y is int && y == wib().year() - 1
         && d.get('sampai', null) is timestamp && d.sampai > request.time && d.sampai <= request.time + duration.value(72, 'h')
-        && a != null && a.data.get('status', '') in ['berjalan', 'terkunci', 'membatalkan'];
+        && a != null && a.data.get('tahun', 0) == y && a.data.get('status', '') in ['berjalan', 'terkunci', 'membatalkan']
+        && a.data.get('paraf', {}).get('pada', '') >= string(y) + '-12-31T17:00:00.000Z';
+    }
+    // pintu tahun y tidak terbuka (tidak ada / tutup / tahun lain / lewat `sampai`) — p = dokumen pintu sesudah batch
+    function pintuMati(p, y) {
+      return p == null || p.data.get('status', '') != 'berjalan' || p.data.get('tahun', 0) != y || !(p.data.get('sampai', null) is timestamp) || !(request.time < p.data.sampai);
+    }
+    // berita acara jadi 'selesai' / 'dibatalkan' hanya bila pintu tahunnya tertutup sesudah kiriman itu (aplikasi menutupnya di kiriman yang sama) — 1 access call
+    // hanya untuk dua status akhir itu
+    function acaraTutupPintu(b) {
+      return !(b.get('status', '') in ['selesai', 'dibatalkan']) || pintuMati(getAfter(/databases/$(database)/documents/pengaturan/pintuBuku), b.get('tahun', 0));
+    }
+    function duaDigit(n) { return n < 10 ? '0' + string(n) : string(n); }
+    function hariUtc(t) { return string(t.year()) + '-' + duaDigit(t.month()) + '-' + duaDigit(t.day()); }
+    // berita acara BARU = tutup buku sungguhan tahun lampau (id = tahun), mulai berjalan / terkunci, jam mulai (paraf.pada, toISOString) = tanggal server ± 1 hari
+    function acaraBaru(id) {
+      let d = request.resource.data;
+      let p = d.get('paraf', {}).get('pada', '');
+      return d.get('tahun', '') is int && id == string(d.tahun) && d.tahun < wib().year() && d.get('mode', '') == 'sungguhan' && d.get('status', '') in ['berjalan', 'terkunci']
+        && p is string && p.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z')
+        && p[0:10] in [hariUtc(request.time - duration.value(1, 'd')), hariUtc(request.time), hariUtc(request.time + duration.value(1, 'd'))];
+    }
+    // salinan arsip: bulan catatan aslinya (field tanggal per koleksi = rules di atas)
+    function bulanArsip(kol, dok) { return kol == 'utangPemasokMutasi' ? bulanUP(dok) : bulanDok(dok, kol == 'biayaBulanan' ? 'bulan' : 'tanggal'); }
+    // salinan = catatan aslinya SEBELUM batch (hanya capServer boleh beda)
+    function salinanAsli(d) {
+      let asli = get(/databases/$(database)/documents/$(d.koleksi)/$(d.idAsli));
+      return asli != null && asli.data.diff(d.dok).affectedKeys().hasOnly(['capServer']);
+    }
+    // arsipTahun/'Y|koleksi|id': bentuk firebase.js arsipkanBerkas, koleksi = yang diarsip tutup buku (tbDaftarKoleksi mesin). Catatan bulan TERKUNCI wajib salinan
+    // persis aslinya (bulan terbuka: kunci saja, 1 access call). karantina / pesanan / tembusanStok tidak kena kunci periode (owner menulisnya bebas) — 0 access call
+    function arsipSah(id) {
+      let d = request.resource.data;
+      return d.get('tahun', '') is int && d.get('idAsli', '') is string && d.get('dok', null) is map && id == string(d.tahun) + '|' + d.get('koleksi', '') + '|' + d.idAsli
+        && (d.koleksi in ['karantina', 'pesanan', 'tembusanStok'] || (kolArsip(d.koleksi) && (bolehBulan(bulanArsip(d.koleksi, d.dok)) || salinanAsli(d))));
     }
 
     // ---- satu blok per koleksi di baru/js/data/koleksi.js (+ arsipTahun, ringkasanKasir, aksesAkun, permintaanAkses, fotoBon). Tanpa payung: yang tidak disebut = ditolak. ----
@@ -569,10 +634,13 @@ service cloud.firestore {
     }
     match /tutupBukuAcara/{id} {
       allow read: if owner();
-      allow create: if owner();
-      // kirim ulang identik (SDK mengulang mutasi yang jawabannya hilang) tidak mengubah apa pun → boleh juga di atas 'selesai' / 'dibatalkan'
-      allow update: if owner() && (tulisUlangSama() || ubahBukuSah(request.resource.data, resource.data));
-      allow delete: if owner();
+      // v7 (sanggahan rules 7 Okt): berita acara baru berbentuk tutup buku sungguhan, jam mulainya = tanggal server ± 1 hari (pintu tutup buku mengikutinya)
+      allow create: if owner() && acaraBaru(id);
+      // kirim ulang identik (SDK mengulang mutasi yang jawabannya hilang) tidak mengubah apa pun → boleh juga di atas 'selesai' / 'dibatalkan'.
+      // v7: selesai / dibatalkan hanya bila pintu tutup buku tahun itu tertutup sesudah kiriman itu
+      allow update: if owner() && (tulisUlangSama() || (ubahBukuSah(request.resource.data, resource.data) && acaraTutupPintu(request.resource.data)));
+      // v7: hanya berita acara yang 'dibatalkan' — yang selesai tidak bisa dihapus lalu dibuat lagi (pintu tahun itu tidak bisa dibuka lagi)
+      allow delete: if owner() && resource.data.get('status', '') == 'dibatalkan';
     }
 
     match /dokumenCetak/{id} {
@@ -602,7 +670,10 @@ service cloud.firestore {
     }
 
     match /arsipTahun/{id} {
-      allow read, write: if owner();   // arsip tutup buku: owner saja
+      allow read: if owner();   // arsip tutup buku: owner saja
+      // v7 (sanggahan rules 7 Okt): salinan berbentuk 'Y|koleksi|id' dan — bila catatan aslinya di bulan terkunci — persis catatan aslinya
+      allow create, update: if owner() && arsipSah(id);
+      allow delete: if owner();
     }
 
     // v7 (paket E-2): foto kertas bon pemasok, satu dokumen per foto (base64 JPEG yang dikecilkan di perangkat; Storage tidak dipakai). Tidak diubah —

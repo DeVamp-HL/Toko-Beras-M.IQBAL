@@ -602,8 +602,9 @@ export async function perbaruiBerkas(potongan, ringkas) {
 // Langsung ke server (menunggu commit, bukan 1,5 detik): ritual ini wajib internet & satu perangkat. Satu baris log per potongan, bukan per dokumen.
 // Putaran 25: rules v4 memeriksa kunci periode untuk tiap dokumen bulan lampau yang dihapus/ditulis ulang (1 get() per dokumen, cache tidak diandalkan),
 // jadi potongan dari 200 turun ke KP_BATAS_GET (18) — kalau tidak, kiriman arsip pertama ditolak sesudah saldo pembuka terlanjur tertulis (stok dobel).
-// rules v7 (owner 7 Okt, K8): bulan TERKUNCI tahun itu lewat PINTU TUTUP BUKU — 3 access call per catatan (kunci + pintu + salinan arsip). biaya = access call
-// per catatan dari toko.js (kunci-periode.js); potongan ≤ 18 catatan DAN ≤ 18 access call (kpPecahBiaya). Tanpa biaya = 1 per catatan (seperti dulu).
+// rules v7 (owner 7 Okt, K8; sanggahan 7 Okt): bulan TERKUNCI tahun itu lewat PINTU TUTUP BUKU — hapus 3 access call (kunci + pintu + salinan arsip sesudah batch)
+// + tulis salinan 2 (kunci + catatan asli); bulan lampau terbuka 1 + 1. biaya = access call per catatan dari toko.js (kunci-periode.js); potongan ≤ 18 catatan
+// DAN ≤ 18 access call (kpPecahBiaya). Tanpa biaya = 1 per catatan (seperti dulu).
 const KOLEKSI_ARSIP = 'arsipTahun';
 const POTONG = KP_BATAS_GET;
 export async function arsipkanBerkas(tahun, daftar, progres, biaya) {

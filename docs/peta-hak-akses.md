@@ -410,5 +410,7 @@ Rules v7 (`firestore.rules`, Playground `docs/uji-rules-v7.md`): **ben/karyawan*
 (`stafMintaNego`) + baca `persetujuan` (`akses.js` `BUAT_STAF.persetujuan`, `BACA_STAF`). **kasir@** — hanya kasir darurat: create `penjualan` + kirim
 ulangnya (tulis-ulang identik / bercap), denyut `perangkatStatus`, baca `ringkasanKasir`; DICABUT create & tulis-ulang `piutangMutasi` / `stokBahanLiteran`,
 create `logAktivitas`, baca `pengaturan/aksesKasir`. **owner** — `fotoBon` (paket E-2), `batuNisan` (hemat baca), dan pintu tutup buku
-(`pengaturan/pintuBuku`; bulan terkunci tahun yang ditutup hanya untuk saldo pembuka, arsip, pengembalian arsip & titik kas — tidak pernah untuk staf/kasir@).
+(`pengaturan/pintuBuku`; bulan terkunci tahun lalu hanya untuk saldo pembuka, arsip bersalinan persis, pengembalian arsip & titik kas — tidak pernah untuk
+staf/kasir@), `arsipTahun` hanya salinan berbentuk & (bulan terkunci) persis catatan aslinya, `tutupBukuAcara` baru berbentuk tutup buku sungguhan dan hanya
+bisa dihapus bila dibatalkan.
 

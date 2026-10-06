@@ -2071,8 +2071,8 @@ tulisan (selain cap jam server yang disengaja), simpanan, pendengar staf SAMA.
 
 ### Langkah sesudah tahap ini (tahap 3+, BUKAN di cabang ini)
 
-1. **Rules v7 FINAL terbit DULU — JANGAN merge sebelum itu** (owner lewat Console, Playground `docs/uji-rules-v7.md` semua bagian A, B, N, F, K, R, P
-   sesuai kolom "Wajib"; dokumen uji dihapus lagi; Claude membaca lewat Chrome owner). Satu nota dari HP kasir yang masih v32 masuk. Tanpa v7: batu nisan tidak pernah ditulis (hemat baca tidak bisa
+1. **Rules v7 FINAL terbit DULU — JANGAN merge sebelum itu** (owner lewat Console, Playground `docs/uji-rules-v7.md` 18 kasus "Wajib owner" sesuai kolom
+   "Wajib", bagian lain opsional; dokumen uji dihapus lagi; Claude membaca lewat Chrome owner). Satu nota dari HP kasir yang masih v32 masuk. Tanpa v7: batu nisan tidak pernah ditulis (hemat baca tidak bisa
    dinyalakan) dan kirim ulang karcis kasir-v33 hanya selamat lewat cara lama (jaring pengaman, bukan jalan utama).
 2. **Gabung cabang** (saklar MATI — baca belum berubah). CI hijau, termasuk job peramban (antrean kasir dengan `:commit`).
 3. **HP penjaga** dibuka sekali sampai bilah atas "versi 7 Okt" (kasir-v33). **Semua tab `/baru/`** di tiap perangkat dimuat ulang (denyut `baru-c1`).
@@ -2095,19 +2095,26 @@ saja (nota `penjualan` + kirim ulangnya, denyut `perangkatStatus`, katalog `ring
 SEMUA catatan ≤ 31 Des (juga saldo pembuka tahun lalu yang bertanggal Januari / utang tertua). Tanpa pintu: tutup buku 2027 mustahil, dan butir A2 menahan
 kunci 2028 → buntu Januari 2028.
 
-**Bentuknya** — server (`firestore.rules`: `pintuTahun`, `pintuTulis`, `pulihArsip`, `pintuHapus`, `pintuTitik`, `pintuSah`) dan perangkat
-(`baru/js/data/kunci-periode.js`: `KP_ID_PINTU`, `kpPintu`, `kpLewatPintu`, `kpNilaiKiriman(…, pintu)`, `kpPecahBiaya`) memakai aturan yang SAMA:
-- dokumen `pengaturan/pintuBuku = { tahun: Y, status: 'berjalan' | 'tutup', sampai }`; dibuka OWNER hanya selagi berita acara `tutupBukuAcara/Y` berjalan /
-  terkunci / membatalkan (rules menilai sesudah batch — pintu ikut kiriman PERTAMA ritual / pembatalan), Y < tahun ini, `sampai` ≤ jam server + 72 jam
-  (aplikasi menulis 48 jam menurut jam perangkat). Pintu tinggal < 12 jam dibuka lagi: sebelum arsip (`uang.js` `bukaPintu`), di kiriman lanjutan pertama
-  (`lanjutBuku`), di kiriman pembatalan pertama (`susunBatal`). Ditutup (status `tutup`) bersama berita acara `selesai` / `dibatalkan`.
-- selama terbuka, untuk catatan bertanggal ≤ Des Y di bulan terkunci, hanya: buat saldo pembuka Y (`tutupBuku` + `tahunDari: Y`) · hapus saldo pembuka Y
-  · hapus catatan yang salinannya ikut ditulis ke `arsipTahun/'Y|koleksi|id'` di batch yang sama (rules `existsAfter`) · kembalikan dari arsip dengan isi
-  sama (hanya `capServer` boleh beda) · titik kas ≤ 31 Des Y. **Tidak ada pintu untuk ubah**, untuk catatan bulan terkunci lainnya, untuk `pindahUang` /
-  `slipUpah` (tidak diarsip), untuk kasir@ / staf.
-- access call jalur pintu: 2 (saldo pembuka / titik kas) atau 3 (arsip / pengembalian) per catatan; arsip & pengembalian di `firebase.js` dipecah
-  `kpPecahBiaya` (≤ 18 catatan DAN ≤ 18 access call; jalur pintu = 6 catatan per potongan). `perkiraanKuota` & pita "n kiriman lagi" ikut menghitungnya
-  (tiap access call = 1 baca di tagihan Firestore).
+**Bentuknya** — server (`firestore.rules`: `pintuTahun`, `pintuTulis`, `pulihArsip`, `pintuHapus`, `pintuTitik`, `pintuSah`, `salinanArsip`, `kolPembuka`,
+`titikSebelum`, `arsipSah`, `acaraBaru`, `acaraTutupPintu`) dan perangkat (`baru/js/data/kunci-periode.js`: `KP_ID_PINTU`, `KP_KOLEKSI_PEMBUKA`, `kpPintu`,
+`kpLewatPintu`, `kpTitikSebelum`, `kpNilaiKiriman(…, pintu)`, `kpPecahBiaya`; `toko.js` `pintuDari`) memakai aturan yang SAMA:
+- dokumen `pengaturan/pintuBuku = { tahun: Y, status: 'berjalan' | 'tutup', sampai }`; dibuka OWNER hanya untuk **tahun lalu**, `sampai` ≤ jam server +
+  72 jam (aplikasi menulis 48 jam menurut jam perangkat), dan hanya di atas berita acara `tutupBukuAcara/Y` yang **sudah ada SEBELUM kirimannya** (rules
+  `get`, sanggahan rules 7 Okt) berjalan / terkunci / membatalkan, dimulai sesudah 31 Des Y. Karena itu ritual berbulan terkunci mengirim berita acara
+  'berjalan' SENDIRIAN dulu (`rencana.acaraDulu`; pintu di kiriman 2), dan pembatalan lanjutan dari 'dibatalkan' menulis 'membatalkan' sendirian dulu.
+  Pintu tinggal < 12 jam dibuka lagi: sebelum arsip (`uang.js` `bukaPintu`), di kiriman lanjutan pertama (`lanjutBuku`), di kiriman pembatalan pertama
+  (`susunBatal`). Ditutup (status `tutup`) bersama berita acara `selesai` / `dibatalkan` — rules MENOLAK selesai / dibatalkan selagi pintu tahun itu
+  terbuka (`acaraTutupPintu`), berita acara baru wajib berbentuk tutup buku sungguhan berjam mulai = tanggal server ± 1 hari (`acaraBaru`), dan hanya
+  berita acara 'dibatalkan' yang bisa dihapus — pintu tidak pernah terbuka untuk tahun yang sudah selesai.
+- selama terbuka, untuk catatan bertanggal ≤ Des Y di bulan terkunci, hanya: buat / hapus saldo pembuka Y (`tutupBuku` + `tahunDari: Y`) di 10 koleksi
+  pembuka (`kolPembuka` = `KP_KOLEKSI_PEMBUKA` = `CACHE_PEMBUKA`) · hapus catatan yang salinannya di `arsipTahun/'Y|koleksi|id'` sesudah batch SAMA PERSIS
+  dengan catatannya (`salinanArsip`; hanya `capServer` boleh beda) · kembalikan dari arsip dengan isi sama · titik kas 31 Des Y atau persis `titikSebelum`
+  berita acara Y. Salinan arsip sendiri terikat (`arsipSah`): bentuk `'Y|koleksi|id'` untuk koleksi yang diarsip, dan salinan catatan bulan terkunci =
+  catatan aslinya sebelum batch. **Tidak ada pintu untuk ubah**, untuk catatan bulan terkunci lainnya (nota / uang keluar bertanda `tutupBuku` tetap
+  ditolak), untuk `pindahUang` / `slipUpah` (tidak diarsip), untuk kasir@ / staf.
+- access call: saldo pembuka / titik 31 Des 2, titik kembali 3, arsip 3 + salinan 1–2, pengembalian 3, buka pintu 1, berita acara selesai / dibatalkan 1;
+  arsip & pengembalian di `firebase.js` dipecah `kpPecahBiaya` (≤ 18 catatan DAN ≤ 18 access call; arsip bulan terkunci = 3 catatan per potongan, bulan
+  lampau terbuka 9). `perkiraanKuota` & pita "n kiriman lagi" ikut menghitungnya (tiap access call = 1 baca di tagihan Firestore).
 - `tahunBuku`: tahun berbulan terkunci kini `bolehSungguhan` (dulu ditolak) dengan `perluPintu`; tanpa bulan terkunci (tutup buku 2026) = tanpa pintu, jalur
   dan kirimannya sama dengan sebelum v7.
 
@@ -2117,6 +2124,10 @@ kunci 2028 → buntu Januari 2028.
 `bukaPintu` uang.js APA ADANYA; server tiruan mencatat tiap batch dan TIAP batch dinilai teks `firestore.rules` (≤ 18, perkiraan layar = hitungan server);
 periksa ulang sama persis; Batalkan mengembalikan SEMUA catatan persis; Desember ikut terkunci (titik kas & modal 31 Des); arsip putus + pintu kedaluwarsa →
 Lanjutkan; 30 nama berutang (kiriman dipecah, lanjutan membuka pintu lagi); percobaan mengubah catatan terkunci lain ditolak rules DAN penjaga klien.
+Sanggahan rules 7 Okt (rules): salinan arsip sampah / berisi lain / karangan, "saldo pembuka" di nota & uang keluar, titik kas mundur, berita acara + pintu
+dalam satu kiriman, pintu tahun lain, berita acara selesai tanpa menutup pintu, hapus berita acara selesai — DITOLAK; pembatalan lanjutan dari 'dibatalkan'
+diterima. Papan persetujuan & Buku Nego owner menghitung ulang angka permintaan nego (`ngPeriksaMinta`: barang, harga minta, jumlah + katalog sekarang);
+permintaan nego tidak ikut "setujui semua yang kecil".
 
 **Langkah owner** (urutan lengkap di isi PR #111 & `docs/uji-rules-v7.md`): Playground + Publish v7 → satu nota kasir darurat masuk → merge PR #111 → HP
 penjaga dibuka sekali (kasir-v33) → hemat baca dinyalakan menurut daftar siap-nyala (≤ 20 Nov). Tutup buku 2027 (Januari 2028) tidak perlu langkah rules

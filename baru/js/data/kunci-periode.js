@@ -89,18 +89,26 @@ export function kpBulanOp(op) {
   if (!op.lama || (op.koleksi === 'pengaturan' && String(op.data.id) === 'titikKas')) return b;
   const l = kpBulanDok(op.koleksi, op.lama); if (b === null) return l; if (l === null) return b; return Math.min(b, l);
 }
-// ---- PINTU TUTUP BUKU (rules v7, keputusan owner 7 Okt K8 "pengecualian sempit") — inti klien yang SAMA dengan firestore.rules pintuTahun / pintuTulis /
-// pintuHapus / pintuTitik / pintuSah. Dokumen pengaturan/pintuBuku = { id, tahun: Y, status: 'berjalan' | 'tutup', sampai: Date (Timestamp di server) }.
-// Selama terbuka & belum lewat `sampai`, OWNER boleh (hanya untuk catatan bertanggal ≤ Desember Y yang bulannya terkunci): membuat saldo pembuka tahun Y
-// (tutupBuku + tahunDari Y), menghapus saldo pembuka tahun Y, menghapus catatan yang salinannya ikut ditulis ke arsipTahun di batch yang sama (op.arsip),
-// mengembalikan catatan dari arsip Y (op.pulih — isinya sama dengan salinannya), dan menulis titik kas bertanggal ≤ 31 Des Y. Tidak ada pintu untuk ubah.
-// Access call di server (cache tidak diandalkan): 1 (kunci) + 1 (pintu) + 1 (salinan arsip, hanya arsip & pulih). Membuka pintu: 1 (berita acara).
+// ---- PINTU TUTUP BUKU (rules v7, keputusan owner 7 Okt K8 "pengecualian sempit"; sanggahan rules 7 Okt) — inti klien yang SAMA dengan firestore.rules
+// pintuTahun / pintuTulis / pintuHapus / pintuTitik / pintuSah / arsipSah / acaraTutupPintu. Dokumen pengaturan/pintuBuku = { id, tahun: Y, status: 'berjalan' |
+// 'tutup', sampai: Date (Timestamp di server) }. Selama terbuka & belum lewat `sampai`, OWNER boleh (hanya catatan bertanggal ≤ Desember Y yang bulannya
+// terkunci): membuat / menghapus saldo pembuka tahun Y (tutupBuku + tahunDari Y) di KP_KOLEKSI_PEMBUKA saja, menghapus catatan yang salinannya ikut ditulis
+// ke arsipTahun di batch yang sama (op.arsip — rules membandingkan isinya), mengembalikan catatan dari arsip Y (op.pulih — isinya sama dengan salinannya), dan
+// menulis titik kas 31 Des Y atau PERSIS titikSebelum berita acara Y. Tidak ada pintu untuk ubah.
+// Access call di server (cache tidak diandalkan): 1 (kunci) + 1 (pintu) + 1 (salinan arsip, hanya arsip & pulih; berita acara, hanya titik kembali). Salinan
+// arsip yang ikut ditulis: 1 (kunci, di luar masa bebas) + 1 (catatan asli, bila bulannya terkunci). Membuka pintu: 1 (berita acara). Berita acara
+// selesai / dibatalkan: 1 (pintu).
 export const KP_ID_PINTU = 'pintuBuku';
 export const KP_PINTU_JAM_MAKS = 72;   // = rules pintuSah(): sampai ≤ jam server + 72 jam
 export const KP_PINTU_JAM = 48;        // umur yang ditulis aplikasi (jam perangkat): sisa 24 jam untuk jam HP yang kecepatan
 export const KP_PINTU_SISA_JAM = 12;   // pintu yang tinggal < 12 jam diperbarui (dibuka lagi) sebelum arsip / pembatalan dilanjutkan
 export const KP_KOLEKSI_PINTU = ['penjualan', 'batchMasuk', 'produksiKemasan', 'retur', 'pengeluaranHarian', 'setoranKas', 'penyesuaianKemasan', 'amplopLaba', 'modalOwner',
-  'utangPemasokMutasi', 'utangOwnerMutasi', 'stokBahanKemasan', 'stokBahanLiteran', 'piutangMutasi', 'kasbonMutasi', 'penyesuaianStok', 'tutupHari', 'biayaBulanan'];   // = koleksi yang diarsip tutup buku (tbDaftarKoleksi ∩ KP_KOLEKSI; periksa_rules.py & uji_tutup_buku_2027.py)
+  'utangPemasokMutasi', 'utangOwnerMutasi', 'stokBahanKemasan', 'stokBahanLiteran', 'piutangMutasi', 'kasbonMutasi', 'penyesuaianStok', 'tutupHari', 'biayaBulanan'];   // = koleksi yang diarsip tutup buku (tbDaftarKoleksi ∩ KP_KOLEKSI; rules kolArsip; periksa_rules.py & uji_tutup_buku_2027.py)
+// koleksi yang memang punya SALDO PEMBUKA tutup buku = nilai toko.js CACHE_PEMBUKA = rules kolPembuka() (periksa_rules.py membandingkan ketiganya)
+export const KP_KOLEKSI_PEMBUKA = ['batchMasuk', 'piutangMutasi', 'kasbonMutasi', 'produksiKemasan', 'stokBahanKemasan', 'stokBahanLiteran', 'utangPemasokMutasi', 'utangOwnerMutasi',
+  'amplopLaba', 'modalOwner'];
+export const KP_TITIK_KOLOM = ['tanggal', 'laci', 'brankas', 'rekening', 'amplop'];   // = rules titikSebelum(): titik kas yang dikembalikan = titikSebelum persis
+export const KP_ACARA_AKHIR = ['selesai', 'dibatalkan'];   // = rules acaraTutupPintu(): berita acara berstatus ini membaca dokumen pintu (1 access call)
 /** Milidetik dari nilai waktu apa pun yang mungkin dipegang cache: Date, Timestamp Firestore (toMillis), {seconds} (berkas cadangan), angka, teks ISO. */
 export function kpMs(v) {
   if (v === null || v === undefined) return NaN;
@@ -110,16 +118,22 @@ export function kpMs(v) {
   if (typeof v === 'number') return v;
   return Date.parse(String(v));
 }
-/** Pintu yang TERBUKA menurut dokumen d pada jam kini → { tahun, sampai (ms) } atau null (tidak ada / tutup / lewat / bentuk salah). */
-export function kpPintu(d, kini) {
+/** Pintu yang TERBUKA menurut dokumen d pada jam kini → { tahun, sampai (ms), titikSebelum } atau null (tidak ada / tutup / lewat / bentuk salah).
+ *  titikSebelum = titik kas sebelum tutup buku di berita acara tahun itu (toko.js pintuDari) — satu-satunya titik selain 31 Des yang boleh lewat pintu. */
+export function kpPintu(d, kini, titikSebelum) {
   if (!d || d.status !== 'berjalan') return null; const y = Number(d.tahun); const s = kpMs(d.sampai); const t = kini instanceof Date ? kini.getTime() : Date.now();
-  return Number.isFinite(y) && y > 0 && Number.isFinite(s) && s > t ? { tahun: Math.trunc(y), sampai: s } : null;
+  return Number.isFinite(y) && y > 0 && Number.isFinite(s) && s > t ? { tahun: Math.trunc(y), sampai: s, titikSebelum: titikSebelum && typeof titikSebelum === 'object' ? titikSebelum : null } : null;
 }
-/** Satu operasi bulan terkunci lewat pintu? → access call TAMBAHAN di luar pemeriksaan kunci (1 pembuka / titik kas, 2 arsip / pulih) atau 0 (ditolak). */
+/** Titik kas d = titikSebelum s PERSIS (tanggal & keempat kantong; kolom yang tidak ada = null) — rules titikSebelum(). */
+export function kpTitikSebelum(d, s) {
+  const v = (x, k) => (x && x[k] !== undefined ? x[k] : null);
+  return !!(d && s && typeof s === 'object') && KP_TITIK_KOLOM.every((k) => kpSama(v(d, k), v(s, k)));
+}
+/** Satu operasi bulan terkunci lewat pintu? → access call TAMBAHAN di luar pemeriksaan kunci (1 pembuka / titik 31 Des, 2 arsip / pulih / titik kembali) atau 0 (ditolak). */
 export function kpLewatPintu(op, b, pintu) {
   if (!pintu || !(b <= pintu.tahun * 12 + 12)) return 0;
-  const y = pintu.tahun; const pembuka = (d) => !!d && d.tutupBuku === true && Number(d.tahunDari) === y;
-  if (op.koleksi === 'pengaturan') return op.data && String(op.data.id) === 'titikKas' && !op.hapus ? 1 : 0;
+  const y = pintu.tahun; const pembuka = (d) => !!d && KP_KOLEKSI_PEMBUKA.indexOf(op.koleksi) >= 0 && d.tutupBuku === true && Number(d.tahunDari) === y;
+  if (op.koleksi === 'pengaturan') { if (!(op.data && String(op.data.id) === 'titikKas' && !op.hapus)) return 0; return op.data.tanggal === y + '-12-31' ? 1 : kpTitikSebelum(op.data, pintu.titikSebelum) ? 2 : 0; }
   if (KP_KOLEKSI_PINTU.indexOf(op.koleksi) < 0) return 0;
   if (op.hapus) return pembuka(op.lama) ? 1 : op.arsip ? 2 : 0;
   if (op.lama) return 0;   // dokumen sudah ada = UBAH → tidak ada pintu untuk ubah
@@ -133,12 +147,16 @@ export function kpLewatPintu(op, b, pintu) {
 export function kpNilaiKiriman(ops, sampai, kini, pintu) {
   const out = { terkunci: [], perluGet: 0, lewatTenggang: [], lewatPintu: 0 };
   (ops || []).forEach((op) => {
-    if (op.koleksi === 'pengaturan' && !op.hapus && op.data && String(op.data.id) === KP_ID_PINTU && op.data.status === 'berjalan') out.perluGet += 1;   // pintuSah: getAfter berita acara
+    if (op.koleksi === 'pengaturan' && !op.hapus && op.data && String(op.data.id) === KP_ID_PINTU && op.data.status === 'berjalan') out.perluGet += 1;   // pintuSah: get berita acara
+    // rules acaraTutupPintu: berita acara selesai / dibatalkan membaca dokumen pintu (kirim ulang identik tidak)
+    if (op.koleksi === 'tutupBukuAcara' && !op.hapus && op.data && KP_ACARA_AKHIR.indexOf(op.data.status) >= 0 && !(op.lama && kpSama(op.data, op.lama))) out.perluGet += 1;
     const b = kpBulanOp(op); if (b === null || b === 'sama') return;
     const id = String((op.data && op.data.id) || (op.lama && op.lama.id) || op.id || '');
-    let tambah = 0;
-    if (sampai && b <= kpIdx(sampai)) { tambah = kpLewatPintu(op, b, pintu); if (tambah) out.lewatPintu += 1; else out.terkunci.push({ koleksi: op.koleksi, id, bulan: kpBulanStr(b) }); }
+    let tambah = 0; const kunci = !!sampai && b <= kpIdx(sampai);
+    if (kunci) { tambah = kpLewatPintu(op, b, pintu); if (tambah) out.lewatPintu += 1; else out.terkunci.push({ koleksi: op.koleksi, id, bulan: kpBulanStr(b) }); }
     if (!kpBebas(b, kini)) { out.perluGet += 1 + tambah; out.lewatTenggang.push({ koleksi: op.koleksi, id, bulan: kpBulanStr(b) }); }
+    // arsip: salinan arsipTahun yang ikut ditulis (rules arsipSah) — 1 (kunci) di luar masa bebas, + 1 (catatan asli) bila bulannya terkunci
+    if (op.hapus && op.arsip) out.perluGet += (kpBebas(b, kini) ? 0 : 1) + (kunci ? 1 : 0);
   });
   return out;
 }
