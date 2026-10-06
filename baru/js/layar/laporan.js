@@ -50,7 +50,9 @@ export function pasangLayarLaporan(akar, opsi) {
       if (!tanpaKabar) set(Object.assign({}, r.patch || {}, { kabar: kabarKiriman(x, (r.patch || {}).kabar || ''), kabarAwas: !!(r.patch || {}).kabarAwas })); else if (r.patch) { const p = Object.assign({}, r.patch); delete p.kabar; delete p.kabarAwas; set(p); }
       return true; } catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
-  const bukaWa = (teks) => { try { return window.open('https://wa.me/?text=' + encodeURIComponent(teks), '_blank', 'noopener'); } catch (e) { return null; } };
+  // owner 3 Okt: tanpa 'noopener' — window.open(…, 'noopener') SELALU mengembalikan null walau jendelanya terbuka (sama dengan jual.js bukaWa), jadi kabar
+  // "peramban menahan jendela WhatsApp" dulu muncul tiap kali. Pemutusan opener dilakukan sendiri sesudah jendela terbuka.
+  const bukaWa = (teks) => { try { const w = window.open('https://wa.me/?text=' + encodeURIComponent(teks), '_blank'); if (w) { try { w.opener = null; } catch (e) { /* jendela sudah pindah asal */ } } return w; } catch (e) { return null; } };
   const cetakHtml = (html) => { const w = document.getElementById('cetakDokumen'); if (!w) return; w.innerHTML = html; document.body.classList.add('cetak-dokumen'); const lepas = () => { document.body.classList.remove('cetak-dokumen'); window.removeEventListener('afterprint', lepas); }; window.addEventListener('afterprint', lepas); try { window.print(); } catch (e) { /* abaikan */ } setTimeout(lepas, 4000); };
 
   // ---------- kertas dokumen: satu penyusun untuk layar & dialog cetak ----------
@@ -59,11 +61,19 @@ export function pasangLayarLaporan(akar, opsi) {
     <table class="dk-tabel">${(D.baris || []).map((r, i) => h`<tr class="${r.kelas || ''}" data-k="r-${i}"><td>${r.nama}</td><td class="n">${r.teks || ''}</td>${D.adaSaldo ? h`<td class="n s2">${r.teksSaldo || ''}</td>` : ''}</tr>`)}</table>
     ${ekstra || ''}${D.identitas || D.catatan ? h`<div class="dk-sub kiri">${D.identitas || D.catatan}</div>` : ''}
     <div class="dk-kaki"><span>${D.kop.slogan || ''}</span><span>${nomor ? 'No. ' + ANGKA(nomor) + ' · ' : ''}kop v${D.kop.versi} · ${tanggalPendek(iso())}</span></div></div>`;
-  /** Keluarkan satu dokumen: catat nomornya, lalu cetak / PDF (dialog cetak) / WA (teks). */
+  /** Keluarkan satu dokumen: cetak / PDF (dialog cetak) / WA (teks) DULU, lalu catat nomornya. */
+  // owner 3 Okt (Safari Mac/iPhone/iPad): jendela WhatsApp & dialog cetak dibuka SINKRON di ketukan. Dulu dibuka sesudah `await tulis` — gestur ketukan
+  // sudah habis (Safari hanya meneruskannya lewat timer ≤ 1 detik, bukan lewat jawaban server), jadi jendelanya dibuang diam-diam.
+  // Nomor tetap dihitung sinkron oleh LP.susunCetakan sebelum dokumen keluar: kertas/teks & catatan memuat nomor yang SAMA, satu nomor per ketukan seperti dulu.
+  // Catatan nomor gagal → kabar menyebut dokumennya sudah keluar tanpa tercatat (bukan diam).
   async function keluarkan(D, info, cara) {
-    if (D.tolak) { set({ kabar: D.tolak, kabarAwas: true }); return; } const r = LP.susunCetakan(info, cara, waktu()); if (!(await tulis(r))) return;
-    if (cara === 'wa') { const w = bukaWa(D.teksTambahan ? (D.cap ? D.cap + '\n' : '') + D.teksTambahan + '\nNo. ' + ANGKA(r.nomor) : LP.teksDokumen(D, r.nomor, iso())); if (!w) set({ kabar: 'Peramban menahan jendela WhatsApp — ketuk lagi', kabarAwas: true }); }
+    if (D.tolak) { set({ kabar: D.tolak, kabarAwas: true }); return; } const r = LP.susunCetakan(info, cara, waktu()); if (r.tolak) { set({ kabar: r.tolak, kabarAwas: true }); return; }
+    let w = true;
+    if (cara === 'wa') w = bukaWa(D.teksTambahan ? (D.cap ? D.cap + '\n' : '') + D.teksTambahan + '\nNo. ' + ANGKA(r.nomor) : LP.teksDokumen(D, r.nomor, iso()));
     else cetakHtml(kertas(D, r.nomor).html);
+    const teksKeluar = cara === 'wa' ? 'dibuka di WhatsApp' : cara === 'pdf' ? 'dibuka di dialog cetak' : 'dikirim ke dialog cetak';
+    if (!(await tulis(r))) { set({ kabar: (w ? 'No. ' + ANGKA(r.nomor) + ' sudah ' + teksKeluar + ', tapi nomornya TIDAK tercatat di Cetakan bernomor' : 'Peramban menahan jendela WhatsApp dan nomornya tidak tercatat') + ' — ' + st().kabar, kabarAwas: true }); return; }
+    if (!w) set({ kabar: 'No. ' + ANGKA(r.nomor) + ' tercatat, tapi peramban menahan jendela WhatsApp — izinkan jendela baru (pop-up) untuk alamat ini lalu ketuk lagi', kabarAwas: true });
   }
   const tigaTombol = (aksi, tolak, ekstra) => h`<div class="lp-tiga" data-k="aksi-${aksi}"><div class="utama ${tolak ? 'redup' : ''}" data-aksi="${aksi}" data-cara="cetak">CETAK</div><div class="kaca-btn aktif" data-aksi="${aksi}" data-cara="pdf">simpan PDF</div><div class="kaca-btn" data-aksi="${aksi}" data-cara="wa">kirim WA</div>${ekstra || ''}</div>${tolak ? h`<div class="pita-info awas" data-k="tolak-${aksi}">${tolak}</div>` : ''}`;
   const riwayatHtml = () => { const R = LP.riwayatCetakan(8); return R.length ? h`<div class="kartu platina" data-k="riwayat" style="gap: 2px;"><div class="label">Cetakan bernomor · ${R.length} terakhir</div>${R.map((l) => h`<div class="lp-baris dua" data-k="rc-${l.id}"><div><div>No. ${ANGKA(l.nomor)} · ${l.teks}</div><div class="k2">${tanggalPendek(l.tanggal)} ${l.jam}</div></div></div>`)}</div>` : ''; };
@@ -354,11 +364,13 @@ export function pasangLayarLaporan(akar, opsi) {
         <div class="tautan ${s.yakinPj === 's:' + x.id ? 'awas-teks' : ''}" data-aksi="pjSetorHapus" data-id="${x.id}">${s.yakinPj === 's:' + x.id ? 'yakin hapus' : 'hapus'}</div></div>`)}
       <div class="k2">Setoran boleh untuk bulan yang belum tutup buku (kewajiban setor bulanan). Tanda "dilaporkan" di Bulanan tetap ada; untuk bulan yang punya setoran, statusnya diambil dari setoran.</div></div>`;
     // 4 · omzet di luar sistem
+    // owner 3 Okt (Safari Mac): bulan dipilih dari deretan pil (bulan tahun berjalan s.d. bulan ini, seperti form Setoran) — dulu kolom isian berjenis
+    // month, yang di Safari macOS jadi kotak teks biasa tanpa pemilih dan cuma menerima ketikan "YYYY-MM"
     const dl = s.drafLuar; const luar = PJ.pjOmzetLuarSemua().slice().sort((a, b) => String(b.id).localeCompare(String(a.id)));
     const kartuLuar = h`<div class="kartu" data-k="pj-luar" style="gap: 6px;"><div class="label">4 · Omzet di luar sistem · diketik owner</div>
       <div class="k2">Sistem ini mencatat sejak ${T.awalSistem ? tanggalPendek(T.awalSistem) : '—'}. Bulan sebelumnya (angka dari ayah), usaha lain wajib pajak yang sama, dan usaha pasangan diketik di sini — tampil beda dari hitungan sistem. Kosong ≠ nol.</div>
       ${dl ? h`<div class="pj-form" data-k="pj-luar-form"><div class="label">Sumber</div><div class="jalur rapat" style="flex-wrap: wrap;">${PJ.PJ_SUMBER_LUAR.map((x) => h`${pil(dl.sumber, x.id, 'pjLuarPilih', 'sumber')}${x.nama}</div>`)}</div><div class="k2">${dl.sumber === 'usahaPasangan' ? T.pasangan.teks : (PJ.PJ_SUMBER_LUAR.find((x) => x.id === dl.sumber) || {}).ket}</div>
-        <div class="label">Bulan</div><input class="ketik-nama" type="month" value="${dl.bulan}" max="${bulanKini()}" data-ketik="pjLuarKetik" data-kunci="bulan">
+        <div class="label">Bulan</div><div class="lp-bulan" data-k="pj-luar-bulan">${T.daftar.slice().reverse().map((b) => h`${pil(dl.bulan, b.key, 'pjLuarPilih', 'bulan')}${b.pendek}</div>`)}</div>
         <div class="label">Jumlah (rupiah; ketik 0 kalau memang nol)</div><input class="ketik-nama" type="text" inputmode="numeric" value="${dl.jumlah}" data-ketik="pjLuarKetik" data-kunci="jumlah">
         <div class="label">Keterangan (dari mana angkanya)</div><input class="ketik-nama" type="text" value="${dl.keterangan}" data-ketik="pjLuarKetik" data-kunci="keterangan">
         <div class="pj-dua"><div class="utama" data-aksi="pjLuarSimpan">SIMPAN</div><div class="kaca-btn" data-aksi="pjLuarTutup">batal</div></div></div>`

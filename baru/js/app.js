@@ -174,6 +174,15 @@ const dariModulKita = (x) => /\/baru\/js\//.test(String((x && (x.stack || x.file
 window.addEventListener('unhandledrejection', (e) => { if (dariModulKita(e && e.reason)) pitaGalat(String((e.reason && e.reason.message) || e.reason)); });
 window.addEventListener('error', (e) => { if (e && (dariModulKita(e.error) || /\/baru\/js\//.test(String(e.filename || '')))) pitaGalat(String(e.message || 'galat')); });
 isianSandi.addEventListener('focus', () => { isianSandi.readOnly = false; });
+// owner 3 Okt (Safari Mac & iPhone): readonly juga dilepas di pointerdown — jalan SEBELUM fokus, jadi WebKit iOS sudah melihat kolom yang bisa diketik saat
+// menimbang papan ketik; 'focus' tetap untuk Tab & fokus lewat kode.
+isianSandi.addEventListener('pointerdown', () => { isianSandi.readOnly = false; });
+// owner 3 Okt: readonly dipasang lagi HANYA kalau kolom sedang tidak fokus. Mengetuk / mengklik kolom yang sudah fokus tidak memicu 'focus' lagi, jadi
+// sesudah sandi salah dikirim lewat Enter (Mac) / Go (iPhone) kolomnya dulu terkunci — ketikan berikutnya tidak masuk sampai pindah kolom lalu kembali.
+const kunciSandi = () => { if (document.activeElement !== isianSandi) isianSandi.readOnly = true; };
+// owner 3 Okt (iPhone/iPad): tanpa satu pun pendengar sentuh, WebKit iOS mengirim ketukan sebagai klik tiruan — :active (efek membal, gerak.css)
+// dipasang lalu dicabut sebelum sempat tergambar. Pendengar pasif: gulir tidak tertahan, perilaku klik tidak berubah. Lewat JS, bukan ontouchstart (CSP).
+document.addEventListener('touchstart', () => {}, { passive: true });
 document.getElementById('lupakanEmail').addEventListener('click', () => { try { localStorage.removeItem(KUNCI_EMAIL); } catch (e) { /* abaikan */ } isianEmail.value = ''; ingatEmail.hidden = true; isianEmail.focus(); });
 /** Gambar layar masuk menurut keadaan akun: keluar → formulir; belum terdaftar / dinonaktifkan / kasir@ → lembar akun; owner / aktif → aplikasi. */
 // ---- TIRAI (putaran 23c, owner 24 Sep): belum masuk / belum disetujui / nonaktif / kasir@ → layar di belakang formulir Masuk KOSONG.
@@ -221,7 +230,7 @@ function gambarAkun(akun) {
   const keluarSaja = !akun || akun.jenis === 'keluar';
   formMasuk.hidden = !keluarSaja; panelAkun.hidden = keluarSaja;
   if (keluarSaja) {
-    const e = bacaEmail(); isianEmail.value = e; ingatEmail.hidden = !e; isianSandi.value = ''; isianSandi.readOnly = true; salahMasuk.hidden = true;
+    const e = bacaEmail(); isianEmail.value = e; ingatEmail.hidden = !e; isianSandi.value = ''; kunciSandi(); salahMasuk.hidden = true;
     pesanMasuk.textContent = 'Masuk dengan akun lu sendiri. Akun dibuat owner.';
     setTimeout(() => (e ? isianSandi : isianEmail).focus(), tundaFokus + 50); return;   // sesudah pintu merapat: kolom baru terlihat & bisa difokus
   }
@@ -237,7 +246,7 @@ formMasuk.addEventListener('submit', async (ev) => {
   if (!email) { salahMasuk.textContent = 'Ketik email akun lu.'; salahMasuk.hidden = false; gerbang.ditolak(); isianEmail.focus(); return; }
   if (!sandi) { gerbang.mintaSandi(); return; }   // owner 29 Sep: dulu diam saja — kini kolom sandi berdenyut
   const tombol = document.getElementById('tombolMasuk'); tombol.disabled = true; tombol.textContent = 'Memeriksa…'; salahMasuk.hidden = true; gerbang.memeriksa();
-  const r = await fb.masuk(email, sandi); isianSandi.value = ''; isianSandi.readOnly = true;
+  const r = await fb.masuk(email, sandi); isianSandi.value = ''; kunciSandi();
   tombol.disabled = false; tombol.textContent = 'Masuk';
   if (r.ok) { try { localStorage.setItem(KUNCI_EMAIL, email.toLowerCase()); } catch (e) { /* abaikan */ } } else { salahMasuk.textContent = r.pesan; salahMasuk.hidden = false; gerbang.ditolak(); }
 });
