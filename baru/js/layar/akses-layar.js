@@ -1,10 +1,14 @@
 // Layar mengikuti peran (putaran 23, Tahap 3 — setipis mungkin, keputusan owner 24 Sep: yang login 1–2 bulan ke depan hanya owner).
 // Satu pintu untuk layar: kisi SS2 (sistem-logika) × yang dibuka server (akses.js). Penegaknya tetap penulis pusat & rules;
 // di sini hanya supaya tombol tampil MATI dengan kalimat sebabnya, bukan hilang diam-diam.
-import { tombolTindakan, angkaBoleh, batasBarisNota, batasHasilAdukan, batasDokumenKirim } from '../data/akses.js';
+import { tombolTindakan, angkaBoleh, batasBarisNota, batasHasilAdukan, batasDokumenKirim, bolehLayar, bisaBekerja } from '../data/akses.js';
 import { ssPeran, SS_TINDAKAN } from './sistem-logika.js';
 
 export const bukanOwner = (akun) => !!akun && akun.jenis !== 'owner';
+/** Tombol yang membuka LAYAR LAIN tampil hanya kalau akun ini boleh membuka layar itu — sama persis dengan gerbang pindah() di app.js (akun yang belum
+ *  bisa bekerja & mode cadangan tidak disaring di sini). Owner 7 Okt (tinjauan): staf tanpa Laporan tidak diberi tombol yang hanya berujung kabar
+ *  "tidak termasuk hak". */
+export const bolehBukaLayar = (akun, layar) => !akun || !bisaBekerja(akun) || bolehLayar(akun, layar);
 /** { boleh, kalimat } untuk satu tindakan SS2 bagi akun yang masuk (owner / mode cadangan = selalu boleh). */
 export function tombolAkun(akun, tindakan) {
   if (!bukanOwner(akun)) return { boleh: true, kalimat: '' };

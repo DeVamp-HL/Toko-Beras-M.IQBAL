@@ -14,7 +14,10 @@ import * as S from './sistem-logika.js';
 import { gulirkan, sekali } from '../inti/gerak.js';
 import { sumberData, dengarkan, tulisDokumen, dokDiCache, bertahapTertunda, lanjutkanBertahap, buangBertahap, kabarKiriman } from '../data/toko.js';
 import { kpAlasanDitolak, kpKeHariIni } from './kunci-periode-logika.js';
-import * as OP from './akses-kasir-logika.js';   // 25c: operator kasir & PIN owner pindah dari sistem lama
+// owner 7 Okt (sisa pensiun #103): tab "Kasir & PIN" (25c) DICABUT dari layar — setelan operator kasir (pengaturan/aksesKasir) tidak dibaca aplikasi
+// yang tayang sejak kasir.html & sistem lama pensiun 3 Okt (kasir darurat tidak pernah membacanya). PIN owner (pengaturan/keamanan) juga tidak dibaca
+// aplikasi yang tayang; satu-satunya pembacanya = gerbang sistem lama kalau prosedur pulih darurat menjalankannya dari tag di komputer
+// (docs/prosedur-pulih-darurat.md, langkah 0 & 2). Datanya TIDAK dihapus; logikanya tetap di akses-kasir-logika.js (dijaga uji_operator_pin.py).
 
 const IKON_MODE = {
   gelap: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
@@ -38,7 +41,7 @@ const IK = {
 const ik = (n, w) => mentah('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:' + (w || 17) + 'px;height:' + (w || 17) + 'px;">' + (IK[n] || IK.tanya) + '</svg>');
 const KUNCI_TAB = 'miqbal_baru_menu_tab', KUNCI_LACI = 'miqbal_baru_menu_laci';
 const bacaLokal = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const simpanLokal = (k, v) => { try { if (v) localStorage.setItem(k, JSON.stringify(v)); else localStorage.removeItem(k); } catch (e) { /* abaikan */ } };
-const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan'], ['kasir', 'Kasir & PIN']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']] };
+const TAB_SISTEM = { perangkat: [['perangkat', 'Perangkat'], ['antrean', 'Antrean kirim'], ['jejak', 'Jejak pencatat']], peran: [['peran', 'Peran & hak'], ['minta', 'Persetujuan']], cadangan: [], lokasi: [['lokasi', 'Lokasi'], ['pindah', 'Pindah stok'], ['lapor', 'Laporan']], pengingat: [['kal', 'Kalender'], ['aturan', 'Aturan']] };
 const JUDUL_SISTEM = { perangkat: 'Perangkat & antrean', peran: 'Peran & persetujuan', cadangan: 'Cadangan & simpanan', lokasi: 'Lokasi', pengingat: 'Pengingat' };
 
 /** opsi: gantiMode, mode, sekarang, statusRingkas, pindah(tujuan), bukaStok(lembar|tab), bukaPelanggan(keluarga, orang), lokal() → { antre, idPerangkat, pemegang, lokasi, namaPerangkat, koleksiSiap, koleksiTotal, offline }, periksaSambungan(), setelLokasi, namaiPerangkat, akun(), antreLokal(), buangDitolak(id), tulisUlangDitolak(id) */
@@ -46,13 +49,21 @@ export function pasangLayarMenu(akar, opsi) {
   const tabAwal = bacaLokal(KUNCI_TAB) || {}; const laciAwal = bacaLokal(KUNCI_LACI) || {};
   // putaran 23d: keadaan awal sebagai FUNGSI — dipanggil ulang saat ganti orang (inti/isian.js)
   const awal = () => ({ susunan: M.MN_SUSUNAN.some((t) => t[0] === tabAwal.susunan) ? tabAwal.susunan : 'laci', tutup: laciAwal.tutup || {}, bagian: null, cari: '', buka: null, kabar: '', kabarAwas: false,
-    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, opYakin: null, pinIsi: { lama: '', baru: '', ulang: '' } });
+    sistem: null, tabS: {}, pilihP: null, saring: '', peran: 'ben', akunPilih: {}, yakinAkun: null, alasanAkses: '', yakinBuang: null, mintaKe: null, alasan: '', hariC: null, hariP: 0, pilihG: null, catatanG: '', yakinWa: false, atur: null, pindah: { merk: '', dari: '', ke: '', kg: '', pengantar: '' }, lokasiPilih: null, sambungTeks: '', lsKb: null, usageKb: null, quotaKb: null, autoTanggal: null, lamaInfo: null, lamaBerkas: '', lamaDiunduh: false });
   const K = buatKeadaan(awal());
-  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()], ['pinIsi', (v) => !!(v && (v.lama || v.baru || v.ulang))]], []);
+  const ISIAN = pasangIsian(K, awal, ['pindah', 'alasan', 'alasanAkses', 'atur', 'catatanG', 'akunPilih', ['namaBaru', (v) => !!String(v || '').trim()]], []);
   const set = (p) => K.setel(p); const st = () => K.baca(); let tampil = false; let _kotor = true;   /* owner 29 Sep (lag): permintaan gambar saat tersembunyi cukup MENANDAI; saat dibuka digambar hanya kalau kotor */
   const kini = () => opsi.sekarang() || new Date();
   const waktu = () => { const d = kini(); return { tanggal: hariIniIso(d), jam: jamKini(d), kini: new Date().toISOString(), idUnik: () => Date.now() + Math.random() }; };
-  const lokal = () => Object.assign({}, opsi.lokal ? opsi.lokal() : {}, { lsKb: st().lsKb, usageKb: st().usageKb, quotaKb: st().quotaKb, autoTanggal: st().autoTanggal });
+  const lamaAda = () => { const I = st().lamaInfo; return I && I.ada ? I : null; };   // null = belum dihitung / tidak terbaca
+  const lokal = () => Object.assign({}, opsi.lokal ? opsi.lokal() : {}, { lsKb: st().lsKb, usageKb: st().usageKb, quotaKb: st().quotaKb, autoTanggal: st().autoTanggal,
+    lamaKb: lamaAda() ? lamaAda().kb : null, lamaN: lamaAda() ? lamaAda().ada.length : null });
+  // owner 7 Okt (sisa pensiun #103): baca HANYA kunci sistem lama yang dibekukan di S.SS_KUNCI_LAMA — kunci /baru/ & kasir darurat tidak pernah dibaca/dihapus
+  const bacaLama = () => { const o = {}; S.SS_KUNCI_LAMA.forEach((k) => { try { o[k] = localStorage.getItem(k); } catch (e) { o[k] = null; } }); return o; };
+  // owner 7 Okt (tinjauan, lag iPhone/iPad): sisa sistem lama DIHITUNG di sini saja — saat lembar Sistem dibuka/Menu tampil (ukurSimpanan) dan sesudah
+  // unduh/nyatakan tersimpan/bersihkan — lalu disimpan di keadaan (lamaInfo). Gambar hanya membaca keadaan: tidak ada 50× getItem (cache lama bisa
+  // ber-MB) tiap Menu digambar ulang. localStorage tak terbaca → { takTerbaca } (beda dari "tidak ada sisa").
+  const hitungLama = () => { try { void localStorage.length; return S.ssSimpananLama(bacaLama(), st().lamaDiunduh); } catch (e) { return { takTerbaca: true }; } };
   const ingat = () => { simpanLokal(KUNCI_TAB, { susunan: st().susunan }); simpanLokal(KUNCI_LACI, { tutup: st().tutup }); };
   async function tulis(r) {
     if (!r || r.tolak) { set({ kabar: (r && r.tolak) || 'Tidak ada yang ditulis', kabarAwas: true }); return false; }
@@ -64,7 +75,7 @@ export function pasangLayarMenu(akar, opsi) {
   function ukurSimpanan() {
     let ls = null; try { let b = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); b += (k.length + String(localStorage.getItem(k) || '').length) * 2; } ls = Math.round(b / 1024); } catch (e) { ls = null; }
     let auto = null; try { auto = localStorage.getItem('miqbal_backup_auto_tanggal') || null; } catch (e) { auto = null; }
-    set({ lsKb: ls, autoTanggal: auto });
+    set({ lsKb: ls, autoTanggal: auto, lamaInfo: hitungLama() });
     try { if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then((e) => set({ usageKb: Math.round((e.usage || 0) / 1024), quotaKb: Math.round((e.quota || 0) / 1024) })).catch(() => {}); } catch (e) { /* abaikan */ }
   }
   // ---- tujuan tiap baris: layar sistem baru atau lembar Sistem di dalam Menu. Tujuan 'lama' (tautan ke sistem lama) dibuang 3 Okt 2026: sistem
@@ -99,12 +110,6 @@ export function pasangLayarMenu(akar, opsi) {
     daftarkan: ({ uid }) => tulis(S.susunDaftarkan(uid, st().akunPilih[uid], waktu())),
     alasanAkses: (v) => set({ alasanAkses: String(v).slice(0, 120) }),
     tolakAkses: ({ uid }) => tulis(S.susunTolakAkses(uid, st().alasanAkses, waktu())),
-    // ---- 25c: operator kasir (tanpa PIN) & PIN owner
-    opAktif: ({ nama, aktif }) => tulis(OP.susunOperatorAktif(nama, aktif === '1', waktu())),
-    opHapus: async ({ nama }) => { const r = OP.susunOperatorHapus(nama, waktu(), st().opYakin === nama); if (r.perluYakin) return set({ opYakin: nama, kabar: 'Ketuk sekali lagi untuk menghapus ' + nama + ' dari daftar', kabarAwas: true }); await tulis(r); },
-    opCabutPin: () => tulis(OP.susunCabutPinOperator(waktu())),
-    pinKetik: (v, el) => { const p = Object.assign({}, st().pinIsi); p[el.dataset.kolom] = String(v).replace(/\D/g, '').slice(0, 8); set({ pinIsi: p }); },
-    pinSimpan: async () => { await tulis(await OP.susunPinOwner(st().pinIsi, waktu())); },
     ubahPeranAkun: ({ uid, peran }) => tulis(S.susunUbahAkun(uid, { peran }, waktu(), false)),
     saklarAkun: async ({ uid, aktif }) => { const kunci = uid + ':' + aktif; const r = S.susunUbahAkun(uid, { aktif: aktif === '1' }, waktu(), st().yakinAkun === kunci); if (r.perluYakin) return set({ yakinAkun: kunci, kabar: r.tolak, kabarAwas: true }); await tulis(r); },
     // putaran 23 (7b): kiriman yang ditolak server — owner memutuskan: tulis ulang atas namanya, atau buang (dua ketukan)
@@ -130,6 +135,23 @@ export function pasangLayarMenu(akar, opsi) {
       try { const blob = new Blob([teks], { type: 'application/json' }); bytes = blob.size; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = b.nama; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 2000); }
       catch (e) { set({ kabar: 'Peramban ini tidak bisa mengunduh berkas: ' + (e && e.message ? e.message : e), kabarAwas: true }); return; }
       await tulis(S.susunCatatCadangan(b, bytes, waktu(), (opsi.lokal ? opsi.lokal() : {}).namaPerangkat || '')); ukurSimpanan(); },
+    // owner 7 Okt (sisa pensiun #103): sisa simpanan sistem lama di perangkat ini — unduh salinannya (apa adanya, TANPA salinan PIN owner), lalu bersihkan
+    // dengan DUA ketukan. Antrean lama yang masih berisi (catatan yang tidak pernah sampai server) ikut dibersihkan HANYA sesudah owner MENYATAKAN berkas
+    // salinannya tersimpan (tinjauan: a.click() tidak memberi tahu apa pun — iOS bisa membatalkan lembar unduhan — jadi unduhan sendiri tidak memasang
+    // penanda lamaDiunduh; tombol "berkasnya sudah tersimpan" yang memasangnya).
+    lamaUnduh: () => { const o = bacaLama(); const B = S.ssSalinanLama(o); const Ld = S.ssSimpananLama(o, false); const L = opsi.lokal ? opsi.lokal() : {}; const nama = 'simpanan-sistem-lama-' + hariIniIso(kini()) + '.json';
+      const teks = JSON.stringify({ diunduhPada: new Date().toISOString(), perangkat: L.namaPerangkat || '', idPerangkat: L.idPerangkat || '', simpananSistemLama: B.isi }, null, 2);
+      try { const blob = new Blob([teks], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = nama; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 2000); }
+      catch (e) { set({ kabar: 'Peramban ini tidak bisa mengunduh berkas: ' + (e && e.message ? e.message : e), kabarAwas: true }); return; }
+      set({ lamaBerkas: nama, yakinBuang: null, lamaInfo: hitungLama(), kabar: 'Berkas ' + nama + ' (' + B.n + ' simpanan' + (B.dibuang.length ? ', salinan PIN owner tidak ikut' : '') + ') dikirim ke Unduhan'
+        + (Ld.dijaga.length && !st().lamaDiunduh ? ' — buka Unduhan/Files, pastikan berkasnya ada, lalu ketuk "berkasnya sudah tersimpan"; antrean lama ' + Ld.nCatatan + ' catatan baru ikut dibersihkan sesudah itu' : ' — periksa berkasnya di Unduhan/Files'), kabarAwas: false }); },
+    lamaTersimpan: () => { if (!st().lamaBerkas) return set({ kabar: 'Unduh salinannya dulu', kabarAwas: true });
+      set({ lamaDiunduh: true, yakinBuang: null, kabar: 'Dicatat: berkas ' + st().lamaBerkas + ' tersimpan — antrean lama yang berisi kini ikut BERSIHKAN (tetap dua ketukan)', kabarAwas: false }); set({ lamaInfo: hitungLama() }); },
+    lamaBersih: () => { const L = S.ssSimpananLama(bacaLama(), st().lamaDiunduh); if (!L.dibersihkan.length) return set({ yakinBuang: null, kabar: L.dijaga.length ? 'Yang tersisa cuma antrean lama yang masih berisi ' + L.nCatatan + ' catatan — unduh salinannya dulu, lalu nyatakan berkasnya tersimpan' : 'Tidak ada sisa simpanan sistem lama di perangkat ini', kabarAwas: !!L.dijaga.length });
+      const ikut = L.ada.filter((x) => x.antrean && x.n > 0 && L.dibersihkan.indexOf(x.kunci) >= 0).reduce((n, x) => n + x.n, 0);   // antrean berisi yang ikut (salinannya dinyatakan tersimpan)
+      if (st().yakinBuang !== 'lama') return set({ yakinBuang: 'lama', kabar: 'Ketuk BERSIHKAN sekali lagi: ' + L.dibersihkan.length + ' simpanan sistem lama (±' + ANGKA(Math.round(L.kbBersih)) + ' KB) dihapus dari perangkat ini — data toko di server tidak tersentuh' + (L.dijaga.length ? '; antrean lama berisi ' + L.nCatatan + ' catatan TETAP disimpan sampai salinannya diunduh & dinyatakan tersimpan' : '') + (ikut ? '; termasuk antrean lama berisi ' + ikut + ' catatan — satu-satunya salinannya di berkas ' + (st().lamaBerkas || 'yang diunduh') : ''), kabarAwas: true });
+      let n = 0; L.dibersihkan.forEach((k) => { try { localStorage.removeItem(k); n += 1; } catch (e) { /* terkunci */ } });
+      set({ yakinBuang: null, kabar: n + ' simpanan sistem lama dibersihkan (±' + ANGKA(Math.round(L.kbBersih)) + ' KB)' + (n < L.dibersihkan.length ? ' — ' + (L.dibersihkan.length - n) + ' gagal dihapus peramban' : '') + (L.dijaga.length ? '; antrean lama berisi ' + L.nCatatan + ' catatan masih disimpan' : ''), kabarAwas: n < L.dibersihkan.length }); ukurSimpanan(); },
     lokasiPilih: ({ id }) => set({ lokasiPilih: id }), lokasiIni: ({ id }) => { if (!opsi.setelLokasi) return; opsi.setelLokasi(id); set({ kabar: 'Perangkat ini kini mencatat di ' + (S.ssLokasi().daftar.find((l) => l.id === id) || { nama: id }).nama + ' — catatan berikutnya membawa lokasi itu', kabarAwas: false }); },
     jadikanUtama: async ({ id }) => { await tulis(S.susunJadikanUtama(id, waktu())); },
     pindahIsi: (v, el) => { const p = Object.assign({}, st().pindah); p[el.dataset.kolom] = String(v).slice(0, 10); set({ pindah: p }); }, pindahPilih: ({ kolom, nilai }) => { const p = Object.assign({}, st().pindah); p[kolom] = p[kolom] === nilai ? '' : nilai; set({ pindah: p, kabar: '' }); },
@@ -268,33 +290,14 @@ export function pasangLayarMenu(akar, opsi) {
       <div style="display: flex; flex-direction: column; gap: 6px;" data-k="kartu-p">${P.daftar.map((p) => h`<div class="pr-kartu ${pilih && pilih.id === p.id ? 'aktif' : ''} ${p.hidup ? '' : 'diam'}" data-k="p-${p.id}" data-aksi="pilihP" data-id="${p.id}">
         <div class="pr-kepala"><b><span class="pr-titik ${p.hidup ? '' : p.hariIni ? 'lama' : 'putus'}"></span>${p.nama}${p.ini ? ' · perangkat ini' : ''}</b><span class="pr-n ${p.antrean || p.ditolak ? '' : 'k2'}">${p.antrean ? p.antrean + ' belum sampai' : 'semua sampai'}${p.ditolak ? ' · ' + p.ditolak + ' ditolak server' : ''}</span></div>
         <div class="k2">${p.aplikasi}${p.versi && p.versi !== 'baru' ? ' · ' + p.versi : ''}${p.pemegang ? ' · dipegang ' + p.pemegang : ''}${p.lokasi ? ' · di ' + ((S.ssLokasi().daftar.find((l) => l.id === p.lokasi) || {}).nama || p.lokasi) : ''}</div><div class="k2">${p.denyutTeks}${p.akun ? ' · ' + p.akun : ''}</div></div>`)}
-      ${!P.daftar.length ? h`<div class="ket">Denyut ditulis tiap perangkat yang masuk (sistem lama & baru) paling cepat sekali per menit. Kalau daftar ini kosong padahal HP sedang dipakai, aturan Firestore untuk koleksi perangkatStatus belum terpasang.</div>` : ''}</div>
+      ${!P.daftar.length ? h`<div class="ket">Denyut ditulis tiap perangkat yang masuk (sistem baru & kasir darurat) paling cepat sekali per menit. Kalau daftar ini kosong padahal HP sedang dipakai, aturan Firestore untuk koleksi perangkatStatus belum terpasang.</div>` : ''}</div>
       ${pilih && pilih.ini ? h`<div class="kartu" data-k="panel-ini" style="gap: 6px;"><div style="font-weight: 700;">Perangkat ini</div>
         <div class="label">Nama perangkat ini</div><div style="display: flex; gap: 6px;"><input class="ketik-nama" type="text" placeholder="${L.namaPerangkat || 'mis. iPhone owner, Mac toko'}" value="${s.namaBaru || ''}" data-ketik="namaiPerangkat"><div class="kaca-btn aktif" style="min-width: 84px;" data-aksi="namaiSimpan">simpan</div></div>
         <div class="label">Yang mencatat di perangkat ini</div><div class="pita-info" data-k="masuk-sebagai">Masuk sebagai: <b>${(() => { const a = opsi.akun ? opsi.akun() : null; return a ? (a.jenis === 'owner' ? 'Owner' : a.nama + ' (' + ((S.SS_PERAN.find((p) => p.id === a.peran) || {}).nama || a.peran) + ')') : 'Owner'; })()}</b></div>
         <div class="k2">Catatan membawa nama & uid akun yang MASUK — bukan pilihan di perangkat. Ganti orang = Keluar lalu masuk dengan akunnya sendiri (tombol Keluar di pojok atas).</div></div>` : pilih ? h`<div class="kartu" data-k="panel-lain" style="gap: 4px;"><div style="font-weight: 700;">${pilih.nama}</div><div class="k2">${pilih.denyutTeks} · ${pilih.aplikasi}</div><div class="k2">Antrean & pemegang perangkat lain hanya bisa diubah dari perangkat itu sendiri.</div></div>` : ''}
       ${pintuAtur('Atur batas antrean, denyut & pencatat', 'antrean lama ' + P.atur.batasAntre + ' menit · denyut lama ' + P.atur.batasDenyut + ' menit · ' + P.atur.pemegang.length + ' pencatat')}`;
   }
-  // ---- 25c: Kasir & PIN — operator kasir (tanpa PIN) dan PIN owner, dokumen pengaturan yang sama dengan sistem lama
-  function gambarKasirPin(s) {
-    const a = opsi.akun ? opsi.akun() : null; if (a && a.jenis !== 'owner') return h`<div class="pita-info" data-k="op-bukan-owner">Operator kasir & PIN owner diatur owner.</div>`;
-    const D = OP.opDaftar(); const P = OP.opPinOwner(); const pi = s.pinIsi || { lama: '', baru: '', ulang: '' };
-    const kolomPin = (k, ph) => h`<input class="ketik-nama" type="password" inputmode="numeric" autocomplete="off" placeholder="${ph}" value="${pi[k]}" data-ketik="pinKetik" data-kolom="${k}">`;
-    return h`${D.berPin ? h`<div class="kartu awas" data-k="op-pin" style="gap: 6px;"><div style="font-weight: 700;">${D.berPin} PIN operator masih tersimpan terbuka</div>
-        <div class="k2">Dokumen ini dibaca akun kasir (HP penjaga & kasir kalkulator), jadi siapa pun yang memegang sandi toko bisa membaca PIN-nya. Kasir mana pun sudah tidak memakainya — keputusan owner 27 Sep: dicabut.</div>
-        <div class="kaca-btn aktif" data-aksi="opCabutPin">Cabut PIN operator</div></div>` : ''}
-      <div class="kartu" data-k="op-daftar" style="gap: 6px;"><div class="label">Operator kasir · ${D.baris.length}</div>
-        ${D.baris.length ? D.baris.map((b) => h`<div class="pn-orang ${b.aktif ? '' : 'diam'}" data-k="op-${b.nama}"><b>${b.nama}</b> <span class="k2">${b.aktif ? 'aktif' : 'LIBUR'}</span>
-          <div class="hg-pil"><div class="seg ${b.aktif ? 'aktif' : ''}" data-aksi="opAktif" data-nama="${b.nama}" data-aktif="1">aktif</div><div class="seg ${b.aktif ? '' : 'aktif'}" data-aksi="opAktif" data-nama="${b.nama}" data-aktif="0">libur</div>
-            <div class="seg ${s.opYakin === b.nama ? 'aktif' : ''}" data-aksi="opHapus" data-nama="${b.nama}">${s.opYakin === b.nama ? 'yakin hapus' : 'hapus'}</div></div></div>`) : h`<div class="k2">Belum ada daftar operator.</div>`}
-        <div class="k2">Daftar ini dibaca kasir kalkulator; HP penjaga (kasir darurat) tidak membacanya — karcisnya tercatat "tanpa nama". Layar pilih operator di kasir kalkulator sudah mati sejak 9 Agu dan memakai daftar nama tetap dari kodenya — jadi aktif/libur/hapus di sini belum berpengaruh di kasir mana pun, dan menambah nama tidak disediakan (nama baru tidak akan sampai ke kasir mana pun).${D.diubahPada ? ' Terakhir diubah ' + waktuSetempat(D.diubahPada) + '.' : ''}</div></div>
-      <div class="kartu" data-k="pin-owner" style="gap: 6px;"><div class="label">PIN owner · ${P.disetel ? 'terpasang' : 'belum disetel'}${P.diubahPada ? ' · ' + waktuSetempat(P.diubahPada) : ''}</div>
-        ${P.disetel ? kolomPin('lama', 'PIN sekarang') : ''}${kolomPin('baru', 'PIN baru (4–8 angka)')}${kolomPin('ulang', 'ulangi PIN baru')}
-        <div class="kaca-btn aktif emas" data-aksi="pinSimpan">${P.disetel ? 'GANTI PIN OWNER' : 'SETEL PIN OWNER'}</div>
-        <div class="k2">PIN owner mengunci Menu sistem lama (yang sekarang tinggal untuk membaca riwayat). Sistem baru memakai akun owner, bukan PIN. Yang disimpan hanya hasil acaknya, bukan PIN-nya.</div></div>`;
-  }
   function gambarPeran(s, d, tab) {
-    if (tab === 'kasir') return gambarKasirPin(s);
     const P = S.ssPeran();
     if (tab === 'minta') { const Q = S.ssPersetujuan(d); const m = Q.menunggu.find((x) => x.id === s.mintaKe) || null; return h`<div class="ket" data-k="judul-minta" style="font-size: 11.5px;">${Q.judul}</div>
       <div style="display: flex; flex-direction: column; gap: 6px;" data-k="minta">${Q.menunggu.map((x) => h`<div class="pn-minta ${m && m.id === x.id ? 'aktif' : ''}" data-k="m-${x.id}" data-aksi="mintaKe" data-id="${x.id}"><div style="display: flex; justify-content: space-between; gap: 8px;"><b style="font-size: 12.5px;">${x.dari} · ${x.jam}</b><span class="n">${x.n ? RP(x.n) : ''}</span></div><div style="font-size: 12px;">${x.teks}</div><div class="k2">${x.modul} · ${x.namaTindakan}</div></div>`)}</div>
@@ -327,12 +330,22 @@ export function pasangLayarMenu(akar, opsi) {
         ${C.kuota.adaAngka ? h`<div class="cd-bar ${C.kuota.awas ? 'awas' : ''}"><div style="width: ${Math.min(100, C.kuota.pct)}%;"></div></div>` : ''}<div class="k2">${C.kuota.teks}${C.kuota.ket ? ' · ' + C.kuota.ket : ''}</div>${C.kuota.awasTeks ? h`<div class="pita-info ${C.kuota.awas ? 'awas' : ''}" style="font-size: 11.5px;">${C.kuota.awasTeks}</div>` : ''}
         ${C.simpanan.adaAngka ? h`<div class="k2">Simpanan Firestore di perangkat (IndexedDB): ${ANGKA(C.simpanan.kb)} KB${C.simpanan.quotaKb ? ' dari jatah peramban ' + ANGKA(Math.round(C.simpanan.quotaKb / 1024)) + ' MB (' + C.simpanan.pct + '%)' : ''} — dibersihkan Firestore sendiri, tidak perlu dirapikan.</div>` : ''}
         <div class="cd-angka">${C.sehat.map((x) => h`<div data-k="s-${x.t}">${x.t}<b>${x.n}</b></div>`)}</div></div>
+      ${(() => { const LM = s.lamaInfo;
+        if (!LM) return h`<div class="k2" data-k="sisa-lama-belum">Sisa simpanan sistem lama belum dihitung — dihitung saat lembar ini dibuka.</div>`;
+        if (LM.takTerbaca) return h`<div class="k2" data-k="sisa-lama-tak-terbaca">Sisa simpanan sistem lama tidak bisa dibaca di peramban ini — belum tentu kosong.</div>`;
+        return LM.ada.length ? h`<div class="kartu" data-k="sisa-lama" style="gap: 6px;"><div class="label">Sisa sistem lama di perangkat ini · ${LM.ada.length} simpanan · ${LM.kb < 0.5 ? 'kurang dari 1' : '±' + ANGKA(Math.round(LM.kb))} KB</div><div class="k2">${LM.teks}</div>
+        ${LM.dijaga.length ? h`<div class="pita-info awas" data-k="lama-dijaga">Antrean lama masih berisi ${LM.nCatatan} catatan yang tidak pernah sampai server — tidak ikut dibersihkan sampai salinannya diunduh dan berkasnya dinyatakan tersimpan.</div>` : ''}
+        <div class="pn-dua"><div class="kaca-btn" data-aksi="lamaUnduh">${s.lamaBerkas ? 'unduh lagi' : 'unduh salinannya'}</div><div class="kaca-btn awas" data-aksi="lamaBersih">${s.yakinBuang === 'lama' ? 'YAKIN — BERSIHKAN' : 'BERSIHKAN · ' + LM.dibersihkan.length}</div></div>
+        ${s.lamaBerkas && !s.lamaDiunduh && LM.dijaga.length ? h`<div class="pita-info" data-k="lama-periksa">Buka Unduhan/Files dan pastikan berkas ${s.lamaBerkas} ada — isinya satu-satunya salinan ${LM.nCatatan} catatan itu. Unduhan bisa batal diam-diam (terutama di iPhone/iPad).</div>
+          <div class="kaca-btn aktif emas" data-aksi="lamaTersimpan" data-k="lama-tersimpan">berkasnya sudah tersimpan</div>` : ''}
+        ${s.lamaDiunduh ? h`<div class="k2" data-k="lama-dinyatakan">Berkas ${s.lamaBerkas} dinyatakan tersimpan — antrean lama yang berisi ikut dibersihkan.</div>` : ''}</div>`
+        : h`<div class="k2" data-k="sisa-lama-kosong">Tidak ada sisa simpanan sistem lama di perangkat ini.</div>`; })()}
       <div class="ket" data-k="ringkas-c" style="font-size: 11.5px;">${C.ringkas}</div>
       <div class="utama" data-k="unduh" data-aksi="unduhCadangan">UNDUH CADANGAN SEKARANG</div>
       <div class="ket" data-k="ket-unduh" style="font-size: 11px;">Berkas JSON yang sama bentuknya dengan cadangan sistem lama (versi 5) + koleksi sistem baru, bercap era tutup buku${C.era ? ' (tahun ' + C.era + ')' : ' (belum pernah tutup buku)'}. Yang diunduh adalah salinan di perangkat ini — kalau ada catatan yang belum sampai server, isinya tetap ikut.</div>
       <div class="kartu" data-k="kal" style="gap: 6px; padding: 10px 12px;"><div class="cd-kal">${C.kalender.map((k) => h`<div class="cd-hari ${k.aktif ? 'aktif' : ''} ${k.ini ? 'ini' : ''}" data-k="k-${k.iso}" data-aksi="hariC" data-iso="${k.iso}"><span class="nm">${k.nm}</span><b>${k.tgl}</b><span class="t ${k.keadaan}"></span></div>`)}</div><div class="k2">● emas = ada cadangan hari itu · kosong = tidak ada</div></div>
       <div class="kartu" data-k="hari-c" style="gap: 2px;"><div class="label">${C.hariJudul}</div>${C.hariDaftar.map((c) => h`<div class="cd-baris" data-k="c-${c.id}"><div><div style="font-weight: 600;">${c.jam ? c.jam + ' · ' : ''}${c.nama}</div><div class="k2">${c.sumber}${c.perangkat ? ' · ' + c.perangkat : ''}${c.kb ? ' · ' + ANGKA(c.kb) + ' KB · ' + ANGKA(c.dokumen) + ' catatan' : ''}</div></div><span class="cd-cap ${c.ok ? 'ok' : 'awas'}">${c.jenis}</span></div>`)}</div>
-      <div class="ket" data-k="ket-c" style="font-size: 11px;">Sistem baru tidak memakai cadangan localStorage; jalan tanpa internet ditanggung simpanan Firestore. Angka kuota di atas sebagian masih dipakai salinan lama dari sistem yang sudah pensiun (3 Okt 2026). Memulihkan data dari berkas cadangan sekarang dikerjakan di komputer, bukan di situs ini — minta Claude membuka langkahnya, dan unduh cadangan dua kali.</div>
+      <div class="ket" data-k="ket-c" style="font-size: 11px;">Sistem baru tidak memakai cadangan localStorage; jalan tanpa internet ditanggung simpanan Firestore.${lamaAda() && lamaAda().ada.length ? ' Angka kuota di atas sebagian masih dipakai salinan lama dari sistem yang sudah pensiun (3 Okt 2026) — bersihkan di kartu "Sisa sistem lama".' : ''} Memulihkan data dari berkas cadangan dikerjakan di komputer, bukan di situs ini — langkahnya tertulis di catatan "Prosedur pulih darurat" yang disimpan bersama kode aplikasi toko di GitHub; unduh cadangan dua kali.</div>
       ${pintuAtur('Atur jadwal cadangan, masa simpan & ambang kuota', 'tiap ' + C.atur.cadanganTiap + ' hari · simpan ' + C.atur.simpanHari + ' hari · ambang ' + C.atur.ambangKuota + '%')}`;
   }
   function gambarLokasi(s, d, tab) {
@@ -371,7 +384,7 @@ export function pasangLayarMenu(akar, opsi) {
       ${G.hariKe === 0 && G.segera.length ? h`<div class="kartu" data-k="segera-g" style="gap: 0; padding: 8px 10px;"><div class="label" style="padding-top: 2px;">Segera · ${G.segera.length}</div>${G.segera.map(baris)}</div>` : ''}
       ${p ? h`<div class="kartu" data-k="panel-g" style="gap: 6px;"><div style="font-weight: 700;">${p.teks} · ${p.sisaTeks}${p.n ? ' · ' + RP(p.n) : ''}</div>${p.selesai ? h`<div class="k2">Sudah selesai${p.catatan ? ' · ' + p.catatan : ''}</div>` : h`<input class="ketik-nama" type="text" placeholder="Catatan (wajib kalau sudah lewat)" value="${s.catatanG}" data-ketik="catatanG"><div class="k2">${p.tundaKali >= G.atur.maksTunda ? 'Sudah ditunda ' + p.tundaKali + ' kali (batas ' + G.atur.maksTunda + ') — harus ditindak' : 'Tunda ' + G.atur.tundaHari + ' hari (' + p.tundaKali + ' dari ' + G.atur.maksTunda + ' kali)'}</div>
         <div class="pg-tiga"><div class="kaca-btn aktif emas" data-aksi="selesaiG">SELESAI</div><div class="kaca-btn" data-aksi="tundaG">tunda</div>${p.jenis === 'janji' ? h`<div class="kaca-btn ${s.yakinWa ? 'awas' : 'aktif'}" data-aksi="waG">${s.yakinWa ? 'YAKIN kirim lagi' : 'kirim WA'}</div>` : ''}</div>`}</div>` : ''}
-      <div class="ket" data-k="ket-kal" style="font-size: 11px;">Yang lewat tidak bisa dihapus — diselesaikan dengan catatan, atau ditunda sampai batasnya. "Selesai" di sini tidak mencatat uangnya: bayar bon pemasok tetap di sistem lama, bayar pelanggan di Pelanggan → Bon.</div>
+      <div class="ket" data-k="ket-kal" style="font-size: 11px;">Yang lewat tidak bisa dihapus — diselesaikan dengan catatan, atau ditunda sampai batasnya. "Selesai" di sini tidak mencatat uangnya: bayar bon pemasok di Harga & Pemasok → Bon pemasok, bayar pelanggan di Pelanggan → Bon.</div>
       ${pintuAtur('Atur hari sebelum, lama & batas tunda', 'tunda ' + G.atur.tundaHari + ' hari × ' + G.atur.maksTunda + ' kali · opname tiap ' + G.atur.opnameTiap + ' hari')}`;
   }
   function gambarAtur(s) {

@@ -19,6 +19,12 @@ uji_safari_webkit.py — cacat khas Safari/WebKit di /baru/ (owner 3 Okt 2026: /
   8 MINUS    kolom yang menerima minus (#rtSelisih, placeholder "minus") tanpa inputmode angka — papan angka iPhone tidak punya '-'.
   9 GESTUR   Laporan keluarkan(): WA / dialog cetak dibuka SINKRON di ketukan, baru nomornya dicatat (jsc dengan pemblokir jendela ala Safari);
              nomor dokumen = nomor yang dicatat, satu per ketukan; catatan gagal → kabar jujur; bukaWa tanpa 'noopener' (selalu null).
+ 10 WA LAIN  (owner 7 Okt, sisa #104) Uang & Harga: bukaWa tanpa 'noopener' — jsc: jendela yang terbuka DIKEMBALIKAN (bukan null) & opener-nya diputus;
+             tidak ada 'noopener' di kode layar mana pun.
+ 11 PAKET    (owner 7 Okt) Laporan › Paket bank: dialog cetak dibuka SINKRON di ketukan (jsc, pemblokir ala Safari); nomor di tiap kertas = nomor yang
+             dicatat (urut, satu kiriman); catatan gagal → kabar menyebut paketnya sudah keluar; paket ditolak → tidak mencetak & tidak mencatat.
+ 12 HOVER    (owner 7 Okt) SETIAP :hover di stylesheet /baru/ (jual, menu, pelanggan, stok, identitas, kerangka …) hanya di @media (hover: hover) and
+             (pointer: fine) — iPad sentuh menempelkan :hover pada yang terakhir diketuk.
 
     python3 alat-uji/uji_safari_webkit.py            → N lulus · 0 gagal
     python3 alat-uji/uji_safari_webkit.py --kontrol  → kerusakan wajib ketahuan (keluar 3 kalau ada yang diam)
@@ -30,6 +36,7 @@ from uji_tata_letak_jual import aturan   # noqa: E402  (pengurai CSS yang sama)
 import bundel_baru   # noqa: E402  (polos(): impor dibuang, export dicabut)
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 HTML = 'baru/index.html'; APP = 'baru/js/app.js'; LAP = 'baru/js/layar/laporan.js'; JUAL = 'baru/js/layar/jual.js'; KER = 'baru/css/kerangka.css'
+UANG = 'baru/js/layar/uang.js'; HARGA = 'baru/js/layar/harga.js'   # owner 7 Okt (sisa #104)
 
 
 def baca(ganti=None):
@@ -145,6 +152,45 @@ async function ketuk(cara, o) {
 (async function () { var h = {}; h.wa = await ketuk('wa'); h.cetak = await ketuk('cetak'); h.pdf = await ketuk('pdf'); h.gagalWa = await ketuk('wa', { gagal: true });
   h.gagalCetak = await ketuk('cetak', { gagal: true }); h.blokir = await ketuk('wa', { blokir: true }); h.tolak = await ketuk('wa', { D: { judul: 'X', tolak: 'Kop belum lengkap', kop: {} } });
   print(JSON.stringify(h)); })().catch(function (e) { print(JSON.stringify({ galat: String(e) })); });
+"""
+
+
+# owner 7 Okt (sisa #104): bukaWa Uang & Harga dengan pemblokir ala Safari — 'noopener' = selalu null walau jendelanya terbuka
+WA_UJI = r"""
+var gestur = true, dibuka = [];
+var window = { open: function (url, target, fitur) { var w = gestur ? { opener: { asal: 'layar' } } : null; dibuka.push({ url: url, fitur: fitur || '' }); return /noopener/.test(fitur || '') ? null : w; } };
+%s
+var w = bukaWa(%s);
+print(JSON.stringify({ kembali: !!w, opener: w ? (w.opener === null ? 'putus' : 'tersambung') : 'tidak ada', n: dibuka.length, url: dibuka.length ? dibuka[0].url : '' }));
+"""
+
+# owner 7 Okt: Laporan › Paket bank — penangan dkPaketSusun ASLI + cetakHtml ASLI; LP/kertas/tulis tiruan. window.print mencatat apakah gestur hidup.
+PAKET_UJI = r"""
+var gestur = false, gagalTulis = false, tolakPaket = false, dicetak = [], tulisan = [], keadaan = {};
+var EL = { innerHTML: '' };
+var window = { print: function () { dicetak.push(gestur); }, addEventListener: function () {}, removeEventListener: function () {} };
+var document = { getElementById: function () { return EL; }, body: { classList: { add: function () {}, remove: function () {} } } };
+setTimeout = function () {};
+function ANGKA(n) { return String(n); }
+function waktu() { return { tanggal: '2026-10-07', jam: '10.00' }; }
+function kini() { return new Date(0); }
+var DOKS = [{ jenis: 'labarugi', judul: 'Laporan Laba-Rugi', periode: 'Jul – Sep 26' }, { jenis: 'neraca', judul: 'Laporan Neraca', periode: 'Sep 2026' }, { jenis: 'omzet', judul: 'Rekap Omzet Bulanan', periode: '12 bulan', R: {} }];
+var LP = { paketBank: function () { return tolakPaket ? { tolak: 'Belum ada bulan yang tutup buku' } : { daftar: DOKS }; },
+  susunPaketCetakan: function (daftar) { return { nomor: 7, nomorAkhir: 7 + daftar.length - 1, dokumen: daftar.map(function (d, i) { return { koleksi: 'dokumenCetak', data: { nomor: 7 + i, jenis: d.jenis, judul: d.judul } }; }) }; } };
+function dokRekap() { return { jenis: 'omzet', judul: 'Rekap Omzet Bulanan', periode: '12 bulan' }; }
+function kertas(D, nomor) { return { html: '<div class="dk-kertas" data-no="' + nomor + '">' + D.judul + '</div>' }; }
+function set(p) { for (var k in p) keadaan[k] = p[k]; }
+function st() { return keadaan; }
+async function tulis(r) { tulisan.push(r); await null; await null; if (gagalTulis) { set({ kabar: 'DITOLAK: server menolak', kabarAwas: true }); return false; } return true; }
+%s
+var AKSI = { dkPaketSusun: %s };
+async function ketuk(o) {
+  o = o || {}; dicetak = []; tulisan = []; EL.innerHTML = ''; keadaan = { kabar: '', kabarAwas: false, paket: {} }; gagalTulis = !!o.gagal; tolakPaket = !!o.tolak;
+  gestur = true; var p = AKSI.dkPaketSusun(); gestur = false; await p;
+  return { dicetak: dicetak, nTulis: tulisan.length, nomorTulis: tulisan.length ? tulisan[0].dokumen.map(function (d) { return d.data.nomor; }) : [],
+    nomorKertas: (EL.innerHTML.match(/data-no="\d+"/g) || []).map(function (x) { return Number(x.replace(/\D/g, '')); }), kabar: keadaan.kabar, awas: keadaan.kabarAwas };
+}
+(async function () { var h = {}; h.biasa = await ketuk(); h.gagal = await ketuk({ gagal: true }); h.tolak = await ketuk({ tolak: true }); print(JSON.stringify(h)); })().catch(function (e) { print(JSON.stringify({ galat: String(e) })); });
 """
 
 
@@ -267,6 +313,33 @@ def periksa(t):
               T.get('dibuka') == [] and T.get('nTulis') == 0 and T.get('kabar') == 'Kop belum lengkap', T))
     kode = re.sub(r'^\s*//.*$', '', lap, flags=re.M)   # komentar baris penuh dibuang (komentarnya menyebut 'noopener')
     c.append(("9 gestur: tidak ada window.open(…, 'noopener') di layar Laporan (selalu null → kabar \"ditahan\" palsu)", 'noopener' not in kode, ''))
+
+    # ---- 10 WA LAIN (owner 7 Okt, sisa #104) ----
+    for b, pola, arg in ((UANG, r'^  const bukaWa = \(teks\) => .*?$', "'rekap uji'"), (HARGA, r'^  const bukaWa = \(tautan\) => .*?$', "'https://wa.me/?text=uji'")):
+        wa = potong(t[b], pola); h = (jsc(WA_UJI % (wa, arg)) if wa else None) or {'galat': 'bukaWa tidak ditemukan'}
+        nm = b.split('/')[-1]
+        c.append(('10 wa (jsc): ' + nm + ' bukaWa mengembalikan jendela yang terbuka (bukan null) & memutus opener-nya — kabar "ditahan" tidak palsu',
+                  h.get('kembali') is True and h.get('opener') == 'putus' and h.get('n') == 1 and 'wa.me' in (h.get('url') or ''), h))
+    tanpa = [b for b in t if b.startswith('baru/js/') and b.endswith('.js') and 'noopener' in re.sub(r'^\s*//.*$', '', t[b], flags=re.M)]
+    c.append(("10 wa: tidak ada 'noopener' di kode /baru/ mana pun (window.open dengan 'noopener' selalu null)", not tanpa, tanpa))
+
+    # ---- 11 PAKET BANK (owner 7 Okt) ----
+    pk = re.search(r"^    dkPaketSusun: (async \(\) => \{.*?semua dari bulan FINAL', kabarAwas: false \}\); \}),$", lap, re.S | re.M)
+    h = (jsc(PAKET_UJI % (ce, pk.group(1))) if pk and ce else None) or {'galat': 'dkPaketSusun / cetakHtml tidak ditemukan'}
+    PB = h.get('biasa') or {}; PG = h.get('gagal') or {}; PT = h.get('tolak') or {}
+    c.append(('11 paket (jsc): dialog cetak paket bank dibuka SELAGI ketukan hidup (Safari menahan dialog sesudah await)', PB.get('dicetak') == [True], h.get('galat') or PB))
+    c.append(('11 paket (jsc): nomor di tiap kertas = nomor yang dicatat, urut, SATU kiriman untuk seluruh paket',
+              PB.get('nTulis') == 1 and PB.get('nomorTulis') == [7, 8, 9] and PB.get('nomorKertas') == [7, 8, 9] and PB.get('awas') is False and 'No. 7–9' in (PB.get('kabar') or ''), PB))
+    c.append(('11 paket (jsc): catatan nomor gagal → kabar jujur: paket sudah dibuka di dialog cetak, nomornya TIDAK tercatat, alasan server ikut',
+              PG.get('dicetak') == [True] and PG.get('awas') is True and 'dibuka di dialog cetak' in (PG.get('kabar') or '') and 'TIDAK tercatat' in (PG.get('kabar') or '') and 'DITOLAK: server menolak' in (PG.get('kabar') or ''), PG))
+    c.append(('11 paket (jsc): paket yang ditolak (belum ada bulan final) tidak membuka dialog & tidak mencatat nomor', PT.get('dicetak') == [] and PT.get('nTulis') == 0 and PT.get('awas') is True, PT))
+
+    # ---- 12 HOVER di semua stylesheet (owner 7 Okt) ----
+    salah = [(b, m, s) for b, m, s, isi in A if ':hover' in s and not ('(hover: hover)' in m and '(pointer: fine)' in m)]
+    n_hover = sum(1 for b, m, s, isi in A if ':hover' in s)
+    c.append(('12 hover: SETIAP :hover di stylesheet /baru/ (' + str(n_hover) + ' aturan) hanya di @media (hover: hover) and (pointer: fine) — iPad sentuh menempelkannya', n_hover >= 8 and not salah, salah))
+    aktif = [isi for b, m, s, isi in A if b == 'baru/css/stok.css' and not m and s.strip() == '.layar-stok .iso-toko .zona-iso.aktif .lantai-zona']
+    c.append(('12 hover: zona denah yang DIPILIH (.aktif) tetap menyala tanpa kursor (dipisah dari :hover)', any('fill: var(--seg-aktif)' in x for x in aktif), aktif))
     return c
 
 
@@ -299,6 +372,23 @@ KONTROL = [
     ('9 gestur: catatan nomor gagal → diam (kabar tidak menyebut dokumen sudah keluar)', {LAP: [('if (!(await tulis(r))) { set({ kabar: (w ?', 'if (!(await tulis(r))) { return; set({ kabar: (w ?')]}),
     ('9 gestur: dokumen ditolak tetap membuka jendela', {LAP: [("    if (D.tolak) { set({ kabar: D.tolak, kabarAwas: true }); return; } const r = LP.susunCetakan(info, cara, waktu());",
                                                            "    const r = LP.susunCetakan(info, cara, waktu());")]}),
+    # owner 7 Okt (sisa #104)
+    ("10 wa: uang.js bukaWa memakai 'noopener' lagi (lama)", {UANG: [("encodeURIComponent(teks), '_blank'); if (w)", "encodeURIComponent(teks), '_blank', 'noopener'); if (w)")]}),
+    ("10 wa: harga.js bukaWa memakai 'noopener' lagi (lama)", {HARGA: [("window.open(tautan, '_blank'); if (w)", "window.open(tautan, '_blank', 'noopener'); if (w)")]}),
+    ('10 wa: harga.js bukaWa tidak memutus opener', {HARGA: [("window.open(tautan, '_blank'); if (w) { try { w.opener = null; }", "window.open(tautan, '_blank'); if (w) { try { void 0; }")]}),
+    ('11 paket: dialog cetak dibuka sesudah menunggu (gestur habis, seperti dulu)', {LAP: [("      cetakHtml(dok.map(", "      await null; cetakHtml(dok.map(")]}),
+    ('11 paket: semua kertas paket bernomor sama', {LAP: [("kertas(d, r.nomor + i, 'p' + (r.nomor + i))", "kertas(d, r.nomor, 'p' + r.nomor)")]}),
+    ('11 paket: catatan nomor gagal → diam', {LAP: [("if (!(await tulis(r, true))) { set({ kabar: teks + ', tapi", "if (!(await tulis(r, true))) { return; set({ kabar: teks + ', tapi")]}),
+    ('11 paket: paket ditolak tetap mencetak', {LAP: [("    dkPaketSusun: async () => { const P = LP.paketBank(st().paket, kini()); if (P.tolak) { set({ kabar: P.tolak, kabarAwas: true }); return; }",
+                                                    "    dkPaketSusun: async () => { const P = LP.paketBank(st().paket, kini()); if (P.tolak) { set({ kabar: P.tolak, kabarAwas: true }); P.daftar = []; }")]}),
+    ('12 hover: jual.css .buang:hover tanpa syarat kursor (lama)', {'baru/css/jual.css': [('@media (hover: hover) and (pointer: fine) { .tab-antre .buang:hover { opacity: 1; color: var(--awas); } }', '.tab-antre .buang:hover { opacity: 1; color: var(--awas); }')]}),
+    ('12 hover: menu.css .mn-baris:hover tanpa syarat kursor (lama)', {'baru/css/menu.css': [('@media (hover: hover) and (pointer: fine) { .mn-baris:hover { border-color: var(--kaca-tepi); } }', '.mn-baris:hover { border-color: var(--kaca-tepi); }')]}),
+    ('12 hover: pelanggan.css polaroid:hover tanpa syarat kursor (lama)', {'baru/css/pelanggan.css': [('@media (hover: hover) and (pointer: fine) { .layar-pelanggan .polaroid:hover { transform: rotate(0deg) translateY(-3px); } }', '.layar-pelanggan .polaroid:hover { transform: rotate(0deg) translateY(-3px); }')]}),
+    ('12 hover: stok.css tumpukan:hover tanpa syarat kursor (lama)', {'baru/css/stok.css': [('@media (hover: hover) and (pointer: fine) { .layar-stok .iso-toko .tumpukan:hover .sisi-atas { fill: #f6ecc8; } }', '.layar-stok .iso-toko .tumpukan:hover .sisi-atas { fill: #f6ecc8; }')]}),
+    ('12 hover: stok.css zona:hover tanpa syarat kursor (lama)', {'baru/css/stok.css': [('@media (hover: hover) and (pointer: fine) { .layar-stok .iso-toko .zona-iso:hover .lantai-zona { fill: var(--seg-aktif); stroke: var(--emas-garis); } }', '.layar-stok .iso-toko .zona-iso:hover .lantai-zona { fill: var(--seg-aktif); stroke: var(--emas-garis); }')]}),
+    ('12 hover: identitas.css a:hover tanpa syarat kursor (lama)', {'baru/css/identitas.css': [('@media (hover: hover) and (pointer: fine) { a:hover { color: #2b241a; } }', 'a:hover { color: #2b241a; }')]}),
+    ('12 hover: zona yang DIPILIH ikut masuk media kursor (iPad kehilangan tanda pilihan)', {'baru/css/stok.css': [('.layar-stok .iso-toko .zona-iso.aktif .lantai-zona { fill: var(--seg-aktif); stroke: var(--emas-garis); } @media (hover: hover) and (pointer: fine) { .layar-stok .iso-toko .zona-iso:hover .lantai-zona {',
+                                                                                                                         '@media (hover: hover) and (pointer: fine) { .layar-stok .iso-toko .zona-iso.aktif .lantai-zona { fill: var(--seg-aktif); stroke: var(--emas-garis); } .layar-stok .iso-toko .zona-iso:hover .lantai-zona {')]}),
 ]
 
 

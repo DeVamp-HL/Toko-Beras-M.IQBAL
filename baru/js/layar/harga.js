@@ -59,7 +59,9 @@ export function pasangLayarHarga(akar, opsi) {
       set(Object.assign({}, r.patch || {}, { kabar: kabarKiriman(x, (r.patch || {}).kabar || ''), kabarAwas: !!(r.patch || {}).kabarAwas })); return true;
     } catch (e) { set({ kabar: 'GAGAL menyimpan: ' + (e && e.message ? e.message : e), kabarAwas: true }); return false; }
   }
-  const bukaWa = (tautan) => { try { return window.open(tautan, '_blank', 'noopener'); } catch (e) { return null; } };
+  // owner 7 Okt (Safari, sisa #104): tanpa 'noopener' — window.open(…, 'noopener') SELALU mengembalikan null walau jendelanya terbuka, jadi kabar
+  // "peramban menahan jendela WhatsApp" dulu muncul tiap kali. Pemutusan opener dilakukan sendiri sesudah jendela terbuka (pola laporan.js).
+  const bukaWa = (tautan) => { try { const w = window.open(tautan, '_blank'); if (w) { try { w.opener = null; } catch (e) { /* jendela sudah pindah asal */ } } return w; } catch (e) { return null; } };
   const keAtas = () => { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); } };   // lembar digambar di atas daftar — ketukan dari bawah wajib melihat lembarnya
   const ubahPesan = (p) => { simpanLokal(KUNCI_DRAF_BELANJA, Object.keys(p).length ? p : null); set({ pesan: p }); };
   const S1 = () => HG.hgSemua(kini());
@@ -94,6 +96,8 @@ export function pasangLayarHarga(akar, opsi) {
     papanSisi: ({ s }) => set({ papanSisi: s }),
     hgWa: () => { set({ wa: !st().wa, ubah: null }); keAtas(); },
     hgKirimWa: () => { const t = HG.teksWaHarga(S1(), tanggalPendek(waktu().tanggal)); const w = bukaWa(t.tautan); set({ wa: false, kabar: w ? 'WhatsApp dibuka dengan daftar harga yang sedang berlaku' : 'Peramban menahan jendela WhatsApp — ketuk lagi tombolnya', kabarAwas: !w }); },
+    // owner 7 Okt: kertas berkop & bernomor untuk pelanggan (daftar harga · harga yang naik) tinggal di Laporan › Dokumen › Dokumen kecil
+    hgKertas: ({ jenis }) => { set({ wa: false }); if (opsi.keTujuan) opsi.keTujuan({ ke: 'laporan', keluarga: 'dokumen', jenis: jenis === 'naik' ? 'naik' : 'harga' }); },
     bdPilih: ({ kolom, v }) => set({ bedah: Object.assign({}, st().bedah, { [kolom]: v }) }),
     bukaAturH: () => { const a = HG.aturHarga(); set({ aturH: st().aturH ? null : { targetPerKg: String(a.targetPerKg), bulatLiter: String(a.bulatLiter), bulatKemasan: String(a.bulatKemasan), bulatKarung: String(a.bulatKarung), langkahRp: String(a.langkahRp), ambangDampak: String(a.ambangDampak), bongkarKg: String(a.bongkarKg), mdrPersen: String(a.mdrPersen), mdrBatas: String(a.mdrBatas) } }); },
     hgKetikAtur: (v, el) => { const a = Object.assign({}, st().aturH || {}); a[el.dataset.kolom] = String(v).slice(0, 10); set({ aturH: a }); },
@@ -139,7 +143,7 @@ export function pasangLayarHarga(akar, opsi) {
     bpSimpanBayar: async () => { const r = BP.susunBayar(st().bayar, waktu(), saldoKantong()); if (await tulis(r)) sekali(akar.querySelector('.bn-hero'), 'pegas', 520); },
     bpKeRekening: () => { if (opsi.keTujuan) opsi.keTujuan({ ke: 'uang', keluarga: 'pindah', rek: true }); else if (opsi.pindah) opsi.pindah('uang'); },
     bpTutup: () => set({ bayar: null, lama: null, kartu: null, kabar: '' }),
-    bpUrung: async () => { const u = st().urung; if (!u) return; if (Date.now() > u.sampai) return set({ urung: null, kabar: 'Sudah lewat 90 detik — pembayaran tadi tetap tercatat; kalau salah, catat pembetulannya lewat sistem lama', kabarAwas: true }); await tulis(BP.susunUrungBayar(u.id)); },
+    bpUrung: async () => { const u = st().urung; if (!u) return; if (Date.now() > u.sampai) return set({ urung: null, kabar: 'Sudah lewat 90 detik — pembayaran tadi tetap tercatat. Sistem baru belum punya tombol membatalkan pembayaran bon yang lebih lama dari 90 detik', kabarAwas: true }); await tulis(BP.susunUrungBayar(u.id)); },
     bpLamaBuka: () => { set({ lama: st().lama ? null : { pemasok: '', nama: '', tgl: '', ketik: '', catatan: '' }, bayar: null, kartu: null, kabar: '' }); keAtas(); },
     bpLamaPemasok: ({ p }) => set({ lama: Object.assign({}, st().lama, { pemasok: st().lama.pemasok === p ? '' : p, nama: '' }) }),
     bpLamaKetik: (v, el) => { const l = Object.assign({}, st().lama || {}); l[el.dataset.kolom] = String(v).slice(0, el.dataset.kolom === 'catatan' ? 120 : el.dataset.kolom === 'nama' ? 60 : 14); if (el.dataset.kolom === 'nama') l.pemasok = ''; set({ lama: l }); },
@@ -263,7 +267,8 @@ export function pasangLayarHarga(akar, opsi) {
   function gambarWaHarga(S) {
     const t = HG.teksWaHarga(S, tanggalPendek(waktu().tanggal));
     return h`<div class="kartu" data-k="wa-harga" style="gap: 8px;"><div class="kepala-lembar"><div class="serif" style="font-size: 20px;">Daftar harga untuk WhatsApp</div><div class="kaca-btn" data-aksi="hgWa">tutup</div></div>
-      <div class="hg-wa">${t.baris.map((x, i) => h`<div data-k="w-${i}">${i === 0 ? h`<b>${x.replace(/\*/g, '')}</b>` : x}</div>`)}</div><div class="pita-info">${t.arti}</div><div class="utama" data-aksi="hgKirimWa">KIRIM KE WHATSAPP</div></div>`;
+      <div class="hg-wa">${t.baris.map((x, i) => h`<div data-k="w-${i}">${i === 0 ? h`<b>${x.replace(/\*/g, '')}</b>` : x}</div>`)}</div><div class="pita-info">${t.arti}</div><div class="utama" data-aksi="hgKirimWa">KIRIM KE WHATSAPP</div>
+      <div class="tombol-baris" data-k="wa-kertas"><div class="kaca-btn" data-aksi="hgKertas" data-jenis="harga">Daftar harga berkop · cetak / PDF</div><div class="kaca-btn" data-aksi="hgKertas" data-jenis="naik">Harga yang naik · untuk pelanggan</div></div></div>`;
   }
   function gambarKalimat(s, S) {
     const KL = HG.hitungKalimat(S, s.kal); const K = KL.K;
@@ -529,7 +534,7 @@ export function pasangLayarHarga(akar, opsi) {
     const semua = BL.pesananSemua().slice(0, 8); if (!semua.length) return '';
     return h`<div class="kartu platina" data-k="pesanan" style="gap: 2px;"><div class="label">Pesanan ke pemasok</div>${semua.map((p) => h`<div class="hg-tugas" data-k="ps-${p.id}"><div><div>${p.pemasok} · dipesan ${tanggalPendek(p.tanggal)} ${p.jam || ''} · <b>${p.status === 'menunggu' ? 'menunggu datang' : p.status === 'datang' ? 'sudah datang' + (p.datangTanggal ? ' ' + tanggalPendek(p.datangTanggal) : '') : 'dibatalkan'}</b></div><div class="ket">${(p.baris || []).map((b) => b.merk + ' ' + b.karung).join(' · ')} · ${p.karung} karung · ${BL.blKG(p.kg)} · ±${RP(p.rp)}</div></div>
       ${p.status === 'menunggu' ? h`<div class="hg-aksi-kecil"><div class="kaca-btn kecil" data-aksi="blBukaLagi" data-id="${p.id}">WA lagi</div><div class="kaca-btn kecil" data-aksi="blPesanan" data-id="${p.id}" data-status="datang">sudah datang</div><div class="kaca-btn kecil putus" data-aksi="blPesanan" data-id="${p.id}" data-status="batal">batalkan</div></div>` : ''}</div>`)}
-      <div class="ket" style="padding-top: 4px;">"Sudah datang" dibaca sendiri dari kedatangan pemasok itu sesudah pesanan (Stok → Barang masuk); tombolnya untuk kedatangan yang dicatat di sistem lama.</div></div>`;
+      <div class="ket" style="padding-top: 4px;">"Sudah datang" dibaca sendiri dari kedatangan pemasok itu sesudah pesanan (Stok → Barang masuk); tombolnya untuk pesanan yang barangnya datang tanpa dicatat lewat Barang masuk (mis. dicatat sebelum sistem lama pensiun 3 Okt).</div></div>`;
   }
   function gambarAturL(s, H) {
     return s.aturL ? h`<div class="kartu" data-k="atur-l" style="gap: 8px;"><div class="label">Aturan belanja · angka owner</div><div class="ps-form tiga">

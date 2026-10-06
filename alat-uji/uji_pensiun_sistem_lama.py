@@ -14,6 +14,7 @@ yang ikut dihapus, dan HP kasir tidak tertahan di versi lama:
     dan berkas yang di-shasum uji beban ADA (langkah yang menunjuk berkas hilang = main tidak terbit)
   · seed HawkScan (.github/stackhawk.yml) dan manifest-sistem.json (ikon, start_url) menunjuk berkas yang ADA
   · /baru/ tidak lagi menautkan sistem lama (../index.html)
+  · (owner 7 Okt) 404.html ADA: pengalih tanpa script ke jalur penuh situs /Toko-Beras-M.IQBAL/baru/, tidak di FILES service worker
 Versi kasir (sw = kasir darurat = KK_VERSI_KASIR_TERBARU) dijaga uji_antrean_kasir.py & uji_katalog_kasir.py (job uji-peramban).
 
     python3 alat-uji/uji_pensiun_sistem_lama.py            → N lulus · 0 gagal
@@ -23,7 +24,10 @@ import os, re, sys, glob, json
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 PENGALIH = ['index.html', 'kasir.html']
 WORKFLOW = ['.github/workflows/pages.yml', '.github/workflows/uji-beban-peramban.yml', '.github/workflows/hawkscan.yml']
-BERKAS = PENGALIH + WORKFLOW + ['sw-kasir.js', '.github/stackhawk.yml', 'manifest-sistem.json', 'baru/index.html']
+BERKAS = PENGALIH + WORKFLOW + ['sw-kasir.js', '.github/stackhawk.yml', 'manifest-sistem.json', 'baru/index.html', '404.html']
+# owner 7 Okt (sisa pensiun #103): 404.html = pengalih untuk alamat yang tidak ada (berkas yang dihapus bersama sistem lama, tautan lama di HP).
+# Disajikan di jalur mana pun → tujuannya jalur penuh situs; CSP & isinya dijaga uji_csp.py, keberadaannya & tujuannya di sini.
+TUJUAN_404 = '/Toko-Beras-M.IQBAL/baru/'
 
 
 def baca(ganti=None):
@@ -56,6 +60,10 @@ def periksa(t):
     out = []; ok = lambda n, c, k='': out.append((n, bool(c), k))
     for b in PENGALIH:
         ok(b + ': halaman pengalih ADA (tidak dihapus — perangkat tanpa service worker tidak kena 404)', t.get(b) is not None)
+    h4 = t.get('404.html')
+    ok('404.html: pengalih ADA — alamat yang ikut hilang bersama sistem lama (lib/, manifest kasir, ikon besar, tautan lama di HP) tidak berhenti di 404 polos', h4 is not None)
+    ok('404.html: tanpa script, meta refresh & tombol ke jalur penuh situs ' + TUJUAN_404 + ' (bukan "baru/" relatif yang meleset di alamat dalam)',
+       h4 is not None and '<script' not in h4.lower() and '<meta http-equiv="refresh" content="0; url=' + TUJUAN_404 + '">' in h4 and '<a href="' + TUJUAN_404 + '">' in h4)
     # ---- service worker kasir
     sw = t['sw-kasir.js'] or ''
     F, H = daftar_js(sw, 'FILES'), daftar_js(sw, 'HTML_SWR')
@@ -64,6 +72,7 @@ def periksa(t):
     hilang = [f for f in F if not ada(f, t)]
     ok('sw-kasir.js: tiap berkas di FILES ADA di repo — satu hilang = install ditolak, HP tertahan di versi lama', F and not hilang, [len(F), hilang])
     ok('sw-kasir.js: kasir.html TIDAK di FILES maupun HTML_SWR (pengalih selalu dari jaringan, tidak disajikan dari cache)', 'kasir.html' not in F + H, [F, H])
+    ok('sw-kasir.js: 404.html TIDAK di FILES (pengalih alamat hilang selalu dari jaringan)', '404.html' not in F + H, [F, H])
     ok('sw-kasir.js: HTML_SWR bagian dari FILES', all(h in F for h in H), H)
     i_luar = sw.find('  if (!FILES.includes(nama)) return;\n'); i_jawab = sw.find('e.respondWith(')
     ok('sw-kasir.js: fetch berhenti untuk berkas di luar FILES SEBELUM menjawab dari cache', 0 <= i_luar < i_jawab, [i_luar, i_jawab])
@@ -111,6 +120,10 @@ KONTROL = [
     ('seed HawkScan ke berkas yang sudah dihapus', {'.github/stackhawk.yml': [('      - /sw-kasir.js\n', '      - /sw-kasir.js\n      - /lib/kemas-worker.js\n')]}),
     ('manifest sistem menunjuk ikon yang tidak ada', {'manifest-sistem.json': [('"src": "icon-sistem-512.png"', '"src": "icon-sistem-1024.png"')]}),
     ('tautan "Sistem lama" kembali di /baru/', {'baru/index.html': [('Sistem lama sudah pensiun (3 Okt 2026).', '<a href="../index.html">Sistem lama</a> tetap ada.')]}),
+    ('404.html dihapus (alamat lama berhenti di 404 polos)', {'404.html': None}),
+    ('404.html mengalihkan ke "baru/" relatif (meleset di alamat dalam)', {'404.html': [('content="0; url=/Toko-Beras-M.IQBAL/baru/"', 'content="0; url=baru/"')]}),
+    ('404.html diberi script', {'404.html': [('<main>', '<main><script>location.href = "/Toko-Beras-M.IQBAL/baru/";</script>')]}),
+    ('404.html masuk FILES service worker kasir', {'sw-kasir.js': [("const FILES = ['kasir-darurat-nominal.html',", "const FILES = ['404.html', 'kasir-darurat-nominal.html',")]}),
 ]
 
 

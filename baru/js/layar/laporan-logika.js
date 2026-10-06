@@ -9,7 +9,7 @@
 // tarif/batas rekap omzet bukan nasihat pajak. Nama pembantu diprefiks `lp` (bundel uji jsc satu lingkup).
 import { hitungLabaRentang, hitungArusKasInti, barisSusutStok, bayaranBiayaBulanan, hitungNeraca, kasPada, hitungPiutang, hitungUtangPemasok } from '../mesin/beku.js';
 import { akhirBulanIso, bulanDari, namaBulanPanjang, caraBayarKunci, hppTercatat, daftarGerakanKas, namaSingkatTrx, kunciPelanggan, formatTanggal } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai, kunciNota, jumlahNota, returUangPerHari } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPengeluaranHarian, ambilSemuaBatch, ambilTutupHari, ambilTitikKas, ambilDokumenCetak, cacheMentah, kunciSampai, kunciNota, jumlahNota, returUangPerHari, ambilHargaTerbit } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek, lebihBayarDari, LEBIH_AMBANG, pecahLebih, ringkasLebih } from '../inti/format.js';
 import { ugAturDok, ugAngka, ugKosong, ugTambahHari, modalTertanam, aturKeluar, priveBulan, priveRentang, pilahHarian, adalahMdr, ugLabaBersih, saldoKantong, ugLebihKurangKas } from './uang-logika.js';
 import { bkEra } from './tutup-buku-logika.js';
@@ -19,12 +19,15 @@ import { semuaBon } from './bon-logika.js';
 import { daftarPemasok, bukuBon } from './bon-pemasok-logika.js';
 import { bukuOwner } from './owner-toko-logika.js';
 import { pjOmzetSistem, pjGabungRekap, pjTahun, PJ_LABEL } from './pajak-logika.js';
+// owner 7 Okt: daftar harga & harga yang naik untuk pelanggan dibaca dari katalog yang dipakai kasir
+import { hgSemua } from './harga-logika.js';
 
 export const KELUARGA_LAPORAN = [['laba', 'Laba'], ['biaya', 'Biaya'], ['harian', 'Harian'], ['mingguan', 'Mingguan'], ['bulanan', 'Bulanan'], ['pajak', 'Pajak'], ['tahunan', 'Tahunan'], ['neraca', 'Neraca'], ['dokumen', 'Dokumen'], ['setelan', 'Setelan']];   // Mingguan & Tahunan: owner 23 Sep · Biaya: kendali biaya, putaran 38 (kendali-biaya-logika.js)
 export const JENIS_LAPORAN = [['labarugi', 'Laba-Rugi'], ['neraca', 'Neraca'], ['aruskas', 'Arus Kas']];
 export const RENTANG_LAPORAN = [[1, '1 bulan'], [3, '3 bulan'], [12, '12 bulan']];
-export const JENIS_KECIL = [['setor', 'Bukti setoran modal', 'dari catatan Owner & toko'], ['upah', 'Slip upah', 'dari buku upah'], ['piutang', 'Kartu piutang', 'per pelanggan'], ['bon', 'Rekap bon pemasok', 'per pemasok'], ['nota', 'Cetak ulang nota', 'SALINAN bercap']].map((j) => ({ id: j[0], nama: j[1], ket: j[2] }));
-export const DOKUMEN_KOP = [['nota', 'Nota pelanggan & cetak ulang', 'ringkas'], ['kartu', 'Kartu piutang', 'ringkas'], ['slip', 'Slip upah', 'ringkas'], ['harian', 'Rekap harian', 'ringkas'], ['laporan', 'Laba-rugi · neraca · arus kas', 'penuh'], ['omzet', 'Rekap omzet bulanan', 'penuh'], ['bon', 'Rekap bon pemasok', 'penuh'], ['setor', 'Bukti setoran modal', 'penuh']].map((d) => ({ id: d[0], nama: d[1], awal: d[2] }));
+export const JENIS_KECIL = [['setor', 'Bukti setoran modal', 'dari catatan Owner & toko'], ['upah', 'Slip upah', 'dari buku upah'], ['piutang', 'Kartu piutang', 'per pelanggan'], ['bon', 'Rekap bon pemasok', 'per pemasok'], ['nota', 'Cetak ulang nota', 'SALINAN bercap'],
+  ['harga', 'Daftar harga', 'untuk pelanggan · yang dipakai kasir'], ['naik', 'Harga yang naik', 'untuk pelanggan · dari riwayat terbit']].map((j) => ({ id: j[0], nama: j[1], ket: j[2] }));   // harga & naik: owner 7 Okt (visi 17 Sep)
+export const DOKUMEN_KOP = [['nota', 'Nota pelanggan & cetak ulang', 'ringkas'], ['kartu', 'Kartu piutang', 'ringkas'], ['slip', 'Slip upah', 'ringkas'], ['harian', 'Rekap harian', 'ringkas'], ['laporan', 'Laba-rugi · neraca · arus kas', 'penuh'], ['omzet', 'Rekap omzet bulanan', 'penuh'], ['bon', 'Rekap bon pemasok', 'penuh'], ['setor', 'Bukti setoran modal', 'penuh'], ['harga', 'Daftar harga & harga yang naik', 'ringkas']].map((d) => ({ id: d[0], nama: d[1], awal: d[2] }));
 export const KOLOM_IDENTITAS = [['nama', 'Nama usaha', 'wajib'], ['alamat', 'Alamat', 'wajib'], ['telepon', 'Telepon / WA', 'boleh kosong'], ['npwp', 'NPWP', '15 atau 16 angka, boleh kosong'], ['nib', 'NIB', '13 angka, boleh kosong'], ['slogan', 'Baris kaki', 'boleh kosong']].map((k) => ({ id: k[0], nama: k[1], ket: k[2] }));
 export const IDENTITAS_BAWAAN = { nama: 'Toko Beras M.IQBAL', alamat: '', telepon: '', npwp: '', nib: '', slogan: '', gaya: 'kiri', npwpDiKop: false };
 // NPWP (owner 24 Sep, putaran 24): kolomnya tetap ada, tapi BAWAAN TIDAK DICETAK di kop mana pun — hanya kalau owner menyalakan npwpDiKop (kop penuh saja).
@@ -309,6 +312,13 @@ export function susunCetakan(info, cara, w) {
   return { nomor, dokumen: [{ koleksi: 'dokumenCetak', data: { id: 'dc-' + w.idUnik(), nomor, jenis: info.jenis, judul: info.judul, periode: info.periode || '', cara, kopVersi: I.versi, draf: !!info.draf, tanggal: w.tanggal, jam: w.jam, trxId: info.trxId || null, salinanKe: info.salinanKe || null } }],
     patch: { kabar: info.judul + (info.periode ? ' ' + info.periode : '') + (info.draf ? ' bercap DRAF' : '') + (cara === 'cetak' ? ' dikirim ke dialog cetak' : cara === 'pdf' ? ' dibuka di dialog cetak — pilih "Simpan sebagai PDF"' : ' dibuka di WhatsApp') + ' — No. ' + ANGKA(nomor), kabarAwas: false } };
 }
+/** Paket bank (owner 7 Okt, Safari): SEMUA nomor dihitung dulu — urut dari nomorBerikut(), satu per dokumen, bentuk catatan = susunCetakan(…, 'pdf') —
+ *  supaya dialog cetak dibuka di ketukan yang sama dan catatannya satu kiriman. daftar = [{ jenis, judul, periode, draf }]. */
+export function susunPaketCetakan(daftar, w) {
+  if (!daftar || !daftar.length) return { tolak: 'Paket kosong — pilih isinya' }; const awal = nomorBerikut(); const dokumen = [];
+  for (let i = 0; i < daftar.length; i++) { const r = susunCetakan(daftar[i], 'pdf', w); if (r.tolak) return r; r.dokumen[0].data.nomor = awal + i; dokumen.push(r.dokumen[0]); }
+  return { nomor: awal, nomorAkhir: awal + daftar.length - 1, dokumen };
+}
 export function riwayatCetakan(n) { return ambilDokumenCetak().slice().sort((a, b) => (Number(b.nomor) || 0) - (Number(a.nomor) || 0)).slice(0, n || 12).map((d) => ({ id: String(d.id), nomor: Number(d.nomor) || 0, teks: (d.cara === 'wa' ? 'WA' : d.cara === 'pdf' ? 'PDF' : 'CETAK') + ' · ' + d.judul + (d.periode ? ' ' + d.periode : '') + (d.draf ? ' (DRAF)' : '') + (d.salinanKe ? ' · salinan ke-' + d.salinanKe : '') + ' · kop v' + (d.kopVersi || 0), tanggal: d.tanggal || '', jam: d.jam || '' })); }
 
 // ==================== DK2 · LAPORAN BERKOP ====================
@@ -360,6 +370,44 @@ export function bandingLabaRugi(a, b, kini, bayaran) {
   return { judul: lpNamaBulan(a) + ' vs ' + lpNamaBulan(b), baris: [['Omzet terhitung', 'omzet'], ['HPP', 'hpp'], ['Laba kotor', 'kotor'], ['Biaya, hapus buku & susut', 'biaya']].concat(A1.kas || A2.kas ? [['Lebih/kurang kas', 'kas']] : []).concat([['Laba bersih', 'bersih']]).map((r) => { const d = A1[r[1]] - A2[r[1]]; const pct = A2[r[1]] ? Math.round(d / Math.abs(A2[r[1]]) * 100) : null; return { nama: r[0], a: A1[r[1]], b: A2[r[1]], d, pct, arah: d > 0 ? 'naik' : d < 0 ? 'turun' : '', teksD: (d >= 0 ? '+' : '−') + RP(Math.abs(d)).replace('Rp', '') + (pct === null ? '' : ' (' + (pct >= 0 ? '+' : '') + pct + '%)') }; }) };
 }
 
+// ==================== DK4 · DAFTAR HARGA & HARGA YANG NAIK (owner 7 Okt) ====================
+// Visi owner 17 Sep: pelanggan yang minta daftar harga, dan "daftar harga apa saja yang NAIK". Sumber = katalog yang SEDANG dipakai kasir (sudah terbit;
+// draf tidak ikut — pembeli tidak pernah melihat draf) + riwayat terbit `hargaTerbit` (tiap terbit menulis harga lama → baru). Nama yang diarsipkan
+// tidak ikut (hgSemua menyaringnya). Tidak ada angka yang lahir di sini: harga = katalog, kenaikan = selisih katalog dengan harga sebelum periode.
+export const LP_KELOMPOK_HARGA = [['semua', 'Semua harga'], ['kg', 'Karung per kg'], ['liter', 'Literan per liter'], ['kemasan', 'Kemasan & karung utuh']].map((x) => ({ id: x[0], nama: x[1] }));
+export const LP_RENTANG_NAIK = [['h30', '30 hari terakhir', 30], ['h7', '7 hari terakhir', 7], ['h90', '90 hari terakhir', 90], ['tahun', 'sejak awal tahun', 0]].map((x) => ({ id: x[0], nama: x[1], hari: x[2] }));
+const lpKelompokHarga = (st) => (st.id === 'S' ? 'kg' : st.id === 'L' ? 'liter' : 'kemasan');
+/** Nama satuan untuk pembeli: per kg · per liter · kemasan 5 kg · karung 25 kg. */
+export const lpSatuanPembeli = (st) => (st.id === 'S' ? 'per kg' : st.id === 'L' ? 'per liter' : (st.kg >= 25 ? 'karung ' : 'kemasan ') + String(st.kg).replace('.', ',') + ' kg');
+/** Awal periode "harga yang naik" (iso): N hari terakhir termasuk hari ini, atau 1 Januari tahun ini. */
+export function lpSejakNaik(id, kini) { const iso = hariIniIso(kini); const R = LP_RENTANG_NAIK.find((r) => r.id === id) || LP_RENTANG_NAIK[0]; return R.hari ? ugTambahHari(iso, -(R.hari - 1)) : iso.slice(0, 4) + '-01-01'; }
+/** Harga yang berlaku untuk pembeli = baris katalog berharga terbit (> 0), urutan katalog (merek lalu satuan). kelompok ∈ LP_KELOMPOK_HARGA. */
+export function daftarHargaBerlaku(kini, kelompok) {
+  const S = hgSemua(kini); const semua = S.baris.filter((b) => b.lamaN > 0).map((b) => ({ k: b.k, merk: b.merk, satuan: lpSatuanPembeli(b.st), kelompok: lpKelompokHarga(b.st), n: b.lamaN, draf: b.adaDraf }));
+  const hit = {}; LP_KELOMPOK_HARGA.forEach((g) => { hit[g.id] = g.id === 'semua' ? semua.length : semua.filter((x) => x.kelompok === g.id).length; });
+  const g = LP_KELOMPOK_HARGA.some((x) => x.id === kelompok) ? kelompok : 'semua';
+  return { daftar: g === 'semua' ? semua : semua.filter((x) => x.kelompok === g), kelompok: g, hit, nDraf: semua.filter((x) => x.draf).length };
+}
+/**
+ * Harga yang NAIK sejak `sejak` (iso). Harga sebelum = `lama` di terbit PERTAMA barang itu di dalam periode (barang yang baru diberi harga di periode itu:
+ * harga pertamanya); harga sekarang = katalog yang dipakai kasir. Dicantumkan hanya yang sekarang > sebelum (naik lalu turun lagi ke harga semula tidak
+ * dicantumkan). Yang baru diberi harga lalu tidak berubah, yang turun, dan yang kembali ke harga semula DIHITUNG (disebut jumlahnya), tidak dicantumkan.
+ * berlaku = hasil daftarHargaBerlaku (supaya katalog dihitung sekali).
+ */
+export function hargaNaik(sejak, kini, berlaku) {
+  const B = berlaku || daftarHargaBerlaku(kini, 'semua');
+  const T = ambilHargaTerbit().slice().sort((a, b) => String(a.tanggal || '').localeCompare(String(b.tanggal || '')) || String(a.jam || '').localeCompare(String(b.jam || '')) || (Number(a.id) || 0) - (Number(b.id) || 0));
+  const pertama = T.length ? String(T[0].tanggal || '') : ''; const per = {};
+  T.forEach((t) => { if (String(t.tanggal || '') < sejak) return; (t.daftar || []).forEach((x) => { const k = String(x.kunci || ''); if (k) (per[k] = per[k] || []).push({ tanggal: String(t.tanggal || ''), lama: Math.round(Number(x.lama) || 0), baru: Math.round(Number(x.baru) || 0) }); }); });
+  const naik = []; let nBaru = 0, nTurun = 0, nTetap = 0;
+  B.daftar.forEach((b) => {
+    const E = per[b.k]; if (!E || !E.length) return; const baru0 = !(E[0].lama > 0); const awal = baru0 ? E[0].baru : E[0].lama; if (!(awal > 0)) { nBaru++; return; }
+    if (b.n > awal) { const nk = E.filter((e) => e.lama > 0 && e.baru > e.lama); naik.push({ k: b.k, merk: b.merk, satuan: b.satuan, awal, n: b.n, selisih: b.n - awal, tanggal: (nk.length ? nk[nk.length - 1] : E[E.length - 1]).tanggal }); }
+    else if (b.n < awal) nTurun++; else if (baru0) nBaru++; else nTetap++;
+  });
+  return { naik, nBaru, nTurun, nTetap, pertama, sejak, sebelumRiwayat: !!pertama && sejak < pertama };
+}
+
 // ==================== DK4 · DOKUMEN KECIL ====================
 /** Nota 60 hari terakhir dikelompokkan per nota (trxId / grupNota / baris tunggal), bisa dicari nama atau isinya. */
 export function daftarNota(cari, kini, n) {
@@ -375,7 +423,7 @@ export function daftarNota(cari, kini, n) {
  */
 export function dokumenKecil(jenis, pilih, cari, kini) {
   const iso = hariIniIso(kini); const J = JENIS_KECIL.find((j) => j.id === jenis) || JENIS_KECIL[0]; const P = pakaiKop().pakai; const I = identitasUsaha();
-  let judul = J.nama, sub = '', baris = [], identitas = '', tolak = '', cap = '', pilihan = [], ragam = 'ringkas', trxId = null, salinan = null, cocokN = null, teksTambahan = '';
+  let judul = J.nama, sub = '', baris = [], identitas = '', tolak = '', cap = '', pilihan = [], ragam = 'ringkas', trxId = null, salinan = null, cocokN = null, teksTambahan = '', saldoPolos = false;
   const brs = (nama, n, saldo, kelas) => ({ nama, n: n === '' || n === undefined ? null : n, saldo: saldo === undefined ? null : saldo, kelas: kelas || '', teks: n === '' || n === undefined ? '' : RP(n), teksSaldo: saldo === undefined || saldo === null ? '' : RP(saldo) });
   if (J.id === 'setor') { ragam = P.setor; const rows = bukuOwner(300).filter((r) => r.ubah === 'modal' && r.arah === 1 || r.judul === 'Pinjaman owner ke toko'); pilihan = rows.map((r) => ({ id: r.id, nama: tanggalPendek(r.tanggal) + ' · ' + r.judul, n: r.n })); const S1 = rows.find((r) => r.id === String(pilih)) || rows[0] || null;
     if (S1) { sub = tanggalPendek(S1.tanggal) + (S1.jam ? ' ' + S1.jam : '') + ' · ' + S1.judul; baris = [brs(S1.judul === 'Pinjaman owner ke toko' ? 'Pinjaman owner ke toko (bukan modal)' : 'Setoran modal dari owner', S1.n)].concat(S1.ket ? [brs('Keterangan: ' + S1.ket, '')] : []).concat([brs('Jumlah', S1.n, undefined, 'jumlah')]); identitas = 'Angka dari catatan Owner & toko — tidak diketik ulang'; } else { sub = 'belum ada setoran modal tercatat'; tolak = 'Belum ada catatan setoran modal (Uang → Owner & toko)'; } }
@@ -392,13 +440,29 @@ export function dokumenKecil(jenis, pilih, cari, kini) {
     if (X) { const N = notaDari(X.kunci.indexOf('t:') === 0 ? { trxId: X.trxId } : X.kunci.indexOf('g:') === 0 ? { grupNota: X.trxId } : { id: X.id }); const S = N ? susunStruk(N, stAtur(), { kini: iso }) : null; trxId = X.trxId; salinan = salinanKe(trxId); judul = 'Nota'; sub = tanggalPendek(X.tanggal) + ' ' + X.jam + ' · ' + X.nama + ' · ' + X.cara;
       baris = S ? S.garis.filter((g) => !g.garis && g.kanan).map((g) => brs(g.sisaBonPer ? g.kiri + ' · per ' + formatTanggal(g.sisaBonPer) : g.kiri, g.kanan.replace(/[^\d−-]/g, '') ? Number(g.kanan.replace(/[^\d−-]/g, '').replace('−', '-')) : '', undefined, /^TOTAL/i.test(g.kiri) ? 'jumlah' : '')) : [brs(X.isi, X.total, undefined, 'jumlah')]; teksTambahan = S ? S.teks : '';
       cap = X.batal ? 'DIBATALKAN' : 'SALINAN ke-' + salinan; identitas = X.batal ? 'Nota ini dibatalkan — tidak dicetak ulang' : 'Cetak ulang ke-' + salinan + ' · nota asli ' + tanggalPendek(X.tanggal) + ' ' + X.jam + ' · angka dari nota yang tersimpan'; if (X.batal) tolak = 'Nota dibatalkan tidak dicetak ulang'; } else { sub = cocokN + ' nota cocok — ketuk salah satu'; tolak = 'Pilih notanya'; } }
+  // owner 7 Okt: daftar harga untuk pelanggan — dikelompokkan per merek; pilihan = kelompok satuan (jumlah harganya, bukan rupiah → teksN)
+  if (J.id === 'harga') { ragam = P.harga; const H = daftarHargaBerlaku(kini, pilih || 'semua'); const G = LP_KELOMPOK_HARGA.find((g) => g.id === H.kelompok);
+    pilihan = LP_KELOMPOK_HARGA.filter((g) => g.id === 'semua' || H.hit[g.id] > 0).map((g) => ({ id: g.id, nama: g.nama, n: null, teksN: H.hit[g.id] + ' harga' }));
+    judul = 'Daftar Harga'; sub = 'berlaku ' + tanggalPendek(iso) + ' · ' + (H.kelompok === 'semua' ? '' : G.nama.toLowerCase() + ' · ') + H.daftar.length + ' harga';
+    let m0 = null; H.daftar.forEach((x) => { if (x.merk !== m0) { m0 = x.merk; baris.push(brs(x.merk, '', undefined, 'kel')); } baris.push(brs(x.satuan, x.n)); });
+    identitas = 'Harga yang sedang dipakai kasir (sudah terbit)' + (H.nDraf ? '; ' + H.nDraf + ' perubahan yang masih draf belum ikut' : '') + '.';
+    if (!H.daftar.length) tolak = 'Belum ada harga yang terbit' + (H.kelompok === 'semua' ? '' : ' di kelompok ini') + ' — atur di Harga & Pemasok → Katalog lalu terbitkan'; }
+  // owner 7 Okt: harga yang NAIK — kolom tengah "sebelum → sekarang", kolom kanan naiknya; pilihan = periode (jumlah yang naik)
+  if (J.id === 'naik') { ragam = P.harga; const B = daftarHargaBerlaku(kini, 'semua'); const R0 = LP_RENTANG_NAIK.find((r) => r.id === pilih) || LP_RENTANG_NAIK[0];
+    pilihan = LP_RENTANG_NAIK.map((r) => { const Y = hargaNaik(lpSejakNaik(r.id, kini), kini, B); return { id: r.id, nama: r.nama + ' · sejak ' + tanggalPendek(Y.sejak), n: null, teksN: Y.naik.length + ' naik' }; });
+    const X = hargaNaik(lpSejakNaik(R0.id, kini), kini, B); judul = 'Harga yang Naik'; sub = 'sejak ' + tanggalPendek(X.sejak) + ' sampai ' + tanggalPendek(iso) + ' · ' + X.naik.length + ' harga naik';
+    let m0 = null; X.naik.forEach((x) => { if (x.merk !== m0) { m0 = x.merk; baris.push(brs(x.merk, '', undefined, 'kel')); } baris.push({ nama: x.satuan + ' · naik ' + tanggalPendek(x.tanggal), n: x.n, saldo: x.selisih, kelas: '', teks: RP(x.awal) + ' → ' + RP(x.n), teksSaldo: '+' + RP(x.selisih) }); });
+    if (!X.naik.length) baris.push(brs('Tidak ada harga yang naik sejak ' + tanggalPendek(X.sejak), ''));
+    const lain = [X.nTurun ? X.nTurun + ' harga turun' : '', X.nTetap ? X.nTetap + ' kembali ke harga semula' : '', X.nBaru ? X.nBaru + ' baru diberi harga' : ''].filter(Boolean);
+    identitas = 'Harga sebelum → harga sekarang (yang dipakai kasir, sudah terbit); kanan = naiknya. Draf belum ikut.' + (lain.length ? ' Di periode ini juga: ' + lain.join(', ') + ' — tidak dicantumkan.' : '') + (X.sebelumRiwayat ? ' Riwayat harga tercatat sejak ' + tanggalPendek(X.pertama) + ' — kenaikan sebelum tanggal itu tidak terbaca.' : '');
+    saldoPolos = true; if (!X.pertama) tolak = 'Belum ada riwayat harga — harga yang naik baru terbaca sesudah harga diubah lewat Harga & Pemasok → Katalog lalu diterbitkan'; }
   if (!tolak && !I.lengkap) tolak = 'Kop belum lengkap: nama & alamat wajib (Setelan → Kop & identitas)';
-  return { jenis: J.id, namaJenis: J.nama, judul, sub, baris, identitas, cap, tolak, pilihan, ragam, kop: kopUntuk(ragam, I), trxId, salinanKe: salinan, cocokN, teksTambahan, adaSaldo: baris.some((b) => b.saldo !== null) };
+  return { jenis: J.id, namaJenis: J.nama, judul, sub, baris, identitas, cap, tolak, pilihan, ragam, kop: kopUntuk(ragam, I), trxId, salinanKe: salinan, cocokN, teksTambahan, adaSaldo: baris.some((b) => b.saldo !== null), saldoPolos };
 }
 /** Wujud teks satu dokumen (untuk WhatsApp / pratinjau): kop, judul, baris, catatan, nomor. */
 export function teksDokumen(D, nomor, iso) {
   const k = D.kop; const L = [k.nama.toUpperCase()]; if (k.alamat) L.push(k.alamat); if (k.resmi) L.push(k.resmi); L.push('', (D.judul || '').toUpperCase() + (D.cap ? ' — ' + D.cap : ''), D.sub || '', '');
-  (D.baris || []).forEach((b) => { if (b.kelas === 'kel') L.push(b.nama.toUpperCase()); else L.push((b.kelas === 'jumlah' ? '' : '  ') + b.nama + (b.teks ? '  ' + b.teks : '') + (b.teksSaldo ? '  (saldo ' + b.teksSaldo + ')' : '')); });
+  (D.baris || []).forEach((b) => { if (b.kelas === 'kel') L.push(b.nama.toUpperCase()); else L.push((b.kelas === 'jumlah' ? '' : '  ') + b.nama + (b.teks ? '  ' + b.teks : '') + (b.teksSaldo ? (D.saldoPolos ? '  (' + b.teksSaldo + ')' : '  (saldo ' + b.teksSaldo + ')') : '')); });
   if (D.identitas || D.catatan) L.push('', D.identitas || D.catatan); L.push('', (k.slogan ? k.slogan + ' · ' : '') + 'No. ' + ANGKA(nomor) + ' · kop v' + k.versi + ' · ' + tanggalPendek(iso)); return L.join('\n');
 }
 export const lpKunciOrang = kunciPelanggan;

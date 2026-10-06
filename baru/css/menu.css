@@ -18,7 +18,8 @@ main.layar-menu { position: relative; z-index: 1; display: flex; flex-direction:
 .mn-baris { display: grid; grid-template-columns: 34px minmax(0, 1fr) max-content; gap: 10px; align-items: center;
   padding: 10px 12px; border-radius: 14px; cursor: pointer; min-height: 56px;
   background: var(--kaca); border: 1px solid transparent; transition: background-color 220ms ease, border-color 220ms ease; animation: mnMasuk 420ms cubic-bezier(.2,.8,.2,1) both; }
-.mn-baris:hover { border-color: var(--kaca-tepi); }
+/* owner 7 Okt (iPad): :hover hanya untuk kursor — WebKit sentuh menempelkannya pada baris yang terakhir diketuk */
+@media (hover: hover) and (pointer: fine) { .mn-baris:hover { border-color: var(--kaca-tepi); } }
 .mn-baris.buka { border-color: var(--emas-garis); background: var(--seg); }
 .mn-baris.awas { border-left: 3px solid var(--awas); }
 .mn-ikon { width: 34px; height: 34px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
