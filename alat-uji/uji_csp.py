@@ -8,17 +8,20 @@ uji_csp.py — Content-Security-Policy halaman yang terbit, ATURAN PER HALAMAN. 
   · HASH: tiap <script> sebaris di baru/index.html punya 'sha256-…' yang SAMA dengan isinya (ubah script sebaris → `--pasang` menulis hash baru).
   · SUMBER: tiap <script src>, import modul dari luar (baru/js/**), <link rel=modulepreload|stylesheet> ada di direktif yang benar.
   · KONEKSI: Firestore & Auth Firebase (firestore / identitytoolkit / securetoken) ada di connect-src; tidak ada host lain yang tidak dipakai.
-  · SEBARIS: script-src tanpa 'unsafe-inline' → TIDAK boleh ada on…="…" atau javascript: di index.html maupun templat baru/js/**.
+  · SEBARIS: script-src tanpa 'unsafe-inline' → TIDAK boleh ada on…= (huruf besar/kecil, berkutip atau tanpa kutip) atau javascript: di
+    index.html maupun templat baru/js/**.
   · DASAR: object-src 'none', base-uri 'self', form-action 'self'.
 KASIR DARURAT (3 Okt 2026, sisa owner "hapus sistem lama + kasir.html + CSP kasir darurat") — kasir-darurat-nominal.html, HP penjaga, kasir-v32:
   · META sebelum <script>/<style>/<link> pertama.
-  · HASH: script-src PERSIS hash script sebaris (satu script klasik) — tanpa 'unsafe-inline', 'unsafe-eval', 'self', host; tanpa <script src>.
+  · HASH: script-src PERSIS hash script sebaris (satu script klasik) — tanpa 'unsafe-inline', 'unsafe-eval', 'self', host; tanpa <script src>;
+    jumlah tag <script> = jumlah yang di-hash (script sebaris = SEMUA <script> tanpa src: atribut apa pun seperti type="…", huruf besar/kecil bebas).
   · KONEKSI: connect-src PERSIS 'self' + Firestore/identitytoolkit/securetoken (REST tanpa SDK → TANPA gstatic, beda dengan /baru/); tiap alamat https
     di script & preconnect tercakup; jaringan hanya lewat fetch (tanpa XMLHttpRequest / WebSocket / EventSource / sendBeacon / import()).
   · SW: worker-src 'self' — tanpa itu register jatuh ke script-src (cuma hash) dan service worker DIBLOKIR; register ke berkas situs sendiri yang ADA.
   · GAYA: style-src 'self' 'unsafe-inline' (blok <style> + atribut style); img-src 'self'; rujukan <link>/<img> lokal ada di repo.
   · SEBARIS: tidak ada atribut on… di HTML statis MAUPUN di string innerHTML / setAttribute('on…') di script (handler sebaris DIBLOKIR diam-diam:
-    tombol tampil tapi mati tanpa galat).
+    tombol tampil tapi mati tanpa galat). Huruf besar/kecil bebas (onClick) dan nilai berkutip ATAU tanpa kutip (onclick=simpan()) — peramban
+    menerima keduanya. Pola yang sama dipakai periksa.sh bagian 4 (cari_sebaris diimpor, bukan disalin).
   · DATA-AKSI: tiap data-aksi / data-aksi-ketik punya penangan di AKSI; tiap penangan dipakai; tiap <button> (HTML & string innerHTML) membawa
     data-aksi; satu pendengar delegasi untuk click & input di document.
   · DASAR: default-src 'self', object-src 'none', base-uri 'none', form-action 'none'; tidak ada direktif lain.
@@ -49,6 +52,17 @@ CSP_DARURAT = {'default-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inlin
 # Nama atribut handler peramban yang dicari di dalam script (string yang dirangkai / setAttribute) — atribut sebaris diblokir CSP tanpa 'unsafe-inline'.
 ON_PERISTIWA = (r'on(?:click|dblclick|input|change|key\w+|submit|load|error|focus\w*|blur|mouse\w+|touch\w+|pointer\w+|scroll|wheel|contextmenu|'
                 r'toggle|reset|select|paste|copy|cut|drag\w*|drop|beforeinput|invalid|search|animation\w+|transition\w+)')
+# owner 3 Okt (perkuat, temuan tinjauan): nama atribut HTML tidak peka huruf besar (onClick = onclick bagi peramban) dan nilainya boleh TANPA kutip
+# (onclick=simpanNominal()). Dulu regex peka huruf & mewajibkan kutip — dua bentuk itu lolos padahal tombolnya mati di HP. Nilai = kutip, kutip ber-escape
+# (\" di string JS), atau awal nilai tanpa kutip. Semua pola sebaris di bawah memakai re.I.
+NILAI_ATRIBUT = r'''\s*=\s*(?:\\?["']|[^\s"'<>=`])'''
+ATRIBUT_ON = re.compile(r'''<[a-zA-Z][^<>]*\son[a-z]+''' + NILAI_ATRIBUT, re.I)
+PERISTIWA_JS = re.compile(r'''(?:^|[\s'"])''' + ON_PERISTIWA + NILAI_ATRIBUT, re.I | re.M)
+SET_ON = re.compile(r'''setAttribute\(\s*['"]on''', re.I)
+# Script sebaris = SEMUA <script> tanpa src, apa pun atributnya (type="…", nonce, …) dan huruf besarnya; penutup boleh berspasi (</script >) seperti
+# yang diterima peramban. Dulu hanya '<script>' polos yang di-hash & dipindai: <script type="text/javascript"> sebaris lolos dua-duanya, lalu DIBLOKIR.
+SCRIPT_SEBARIS = re.compile(r'<script\b(?![^>]*\ssrc\s*=)[^>]*>(.*?)</script\s*>', re.S | re.I)
+TAG_SCRIPT_SEBARIS = re.compile(r'<script\b(?![^>]*\ssrc\s*=)', re.I)
 
 
 def baca(ganti=None, hash_ulang=False):
@@ -74,8 +88,26 @@ def csp_dari(html):
     return d, m.start()
 
 
+def isi_sebaris(html):
+    """Isi tiap script sebaris (tanpa src, atribut & huruf besar apa pun), urut kemunculan."""
+    return SCRIPT_SEBARIS.findall(html)
+
+
 def hash_sebaris(html):
-    return ["'sha256-" + base64.b64encode(hashlib.sha256(x.encode('utf-8')).digest()).decode() + "'" for x in re.findall(r'<script>(.*?)</script>', html, re.S)]
+    return ["'sha256-" + base64.b64encode(hashlib.sha256(x.encode('utf-8')).digest()).decode() + "'" for x in isi_sebaris(html)]
+
+
+def cari_sebaris(html):
+    """Handler sebaris di halaman ber-script → [(baris, potongan)]: atribut on… di tag (HTML statis & string innerHTML), nama peristiwa sebelum '='
+    di string script yang dirangkai, setAttribute('on…'), javascript:. Huruf besar/kecil bebas, berkutip atau tanpa kutip (owner 3 Okt, perkuat).
+    Dipakai pemeriksaan kasir darurat di sini DAN periksa.sh bagian 4 — satu pola, dijaga di satu tempat."""
+    out = []; baris = lambda i: html[:i].count('\n') + 1
+    for m in ATRIBUT_ON.finditer(html): out.append((baris(m.start()), m.group(0)[-40:].replace('\n', ' ')))
+    for s in SCRIPT_SEBARIS.finditer(html):
+        for pola in (PERISTIWA_JS, SET_ON):
+            for m in pola.finditer(s.group(1)): out.append((baris(s.start(1) + m.start()), 'script: ' + m.group(0).strip()[:40]))
+    for m in re.finditer(r'javascript:', html): out.append((baris(m.start()), 'javascript:'))
+    return out
 
 
 def tulis_hash(s):
@@ -99,8 +131,10 @@ def periksa(t):
     pertama = [i for i in (kepala.find('<script'), kepala.find('<link rel="stylesheet"'), kepala.find('<link rel="modulepreload"')) if i >= 0]
     c.append(('meta CSP di <head> sebelum script & stylesheet pertama', 0 <= pos < min(pertama) if pertama else pos >= 0, (pos, pertama)))
     ss = D.get('script-src', []); st = D.get('style-src', []); cs = D.get('connect-src', [])
-    hs = hash_sebaris(html)
-    c.append(('script sebaris: hash di script-src = isinya (' + str(len(hs)) + ' script)', all(h in ss for h in hs) and len([x for x in ss if x.startswith("'sha256-")]) == len(hs), (hs, [x for x in ss if x.startswith("'sha256-")])))
+    hs = hash_sebaris(html); n_tag = len(TAG_SCRIPT_SEBARIS.findall(html))
+    # nama TETAP (jumlah script di keterangan): kontrol membandingkan nama pemeriksaan yang lulus sebelum & sesudah kerusakan
+    c.append(('script sebaris: hash di script-src = isinya; tiap tag <script> tanpa src ter-hash', all(h in ss for h in hs) and len([x for x in ss if x.startswith("'sha256-")]) == len(hs)
+              and n_tag == len(hs), (hs, [x for x in ss if x.startswith("'sha256-")], 'tag <script> tanpa src: %d' % n_tag)))
     c.append(("script-src tanpa 'unsafe-inline' & 'unsafe-eval'", "'unsafe-inline'" not in ss and "'unsafe-eval'" not in ss, ss))
     luar_script = set(asal(x) for x in re.findall(r'<script[^>]*\ssrc="(https?://[^"]+)"', html))
     luar_script |= set(asal(x) for x in re.findall(r'<link rel="modulepreload" href="(https?://[^"]+)"', html))
@@ -118,9 +152,10 @@ def periksa(t):
     # semua halaman ber-CSP (/baru/ + templatnya, kasir darurat, pengalih): handler sebaris diblokir
     sebaris = []
     for p, isi in t.items():
-        for m in re.finditer(r'''<[a-zA-Z][^<>]*\son[a-z]+\s*=\s*["']''', isi): sebaris.append(p + ':' + str(isi[:m.start()].count('\n') + 1))
+        for m in ATRIBUT_ON.finditer(isi): sebaris.append(p + ':' + str(isi[:m.start()].count('\n') + 1))
         for m in re.finditer(r'''href\s*=\s*["']javascript:''', isi): sebaris.append(p + ':' + str(isi[:m.start()].count('\n') + 1) + ' javascript:')
-    c.append(('tidak ada on…="…" / javascript: sebaris di /baru/, kasir darurat & pengalih (diblokir CSP tanpa unsafe-inline)', not sebaris, sebaris[:8]))
+    c.append(('tidak ada on…= (huruf besar/kecil, berkutip atau tanpa kutip) / javascript: sebaris di /baru/, kasir darurat & pengalih (diblokir CSP tanpa unsafe-inline)',
+              not sebaris, sebaris[:8]))
     c.append(("dasar: object-src 'none', base-uri 'self', form-action 'self', default-src 'self'", D.get('object-src') == ["'none'"] and D.get('base-uri') == ["'self'"]
               and D.get('form-action') == ["'self'"] and D.get('default-src') == ["'self'"], {k: D.get(k) for k in ('object-src', 'base-uri', 'form-action', 'default-src')}))
     c += periksa_darurat(t[DARURAT])
@@ -137,10 +172,14 @@ def periksa_darurat(html):
     pertama = [i for i in (kepala.find('<script'), kepala.find('<style'), kepala.find('<link')) if i >= 0]
     c.append((b + 'meta CSP di <head> sebelum <script>/<style>/<link> pertama', 0 <= pos < min(pertama) if pertama else pos >= 0, (pos, pertama)))
     ss = D.get('script-src', []); hs = hash_sebaris(html)
-    c.append((b + "script-src PERSIS hash script sebaris — tanpa 'unsafe-inline' / 'unsafe-eval' / 'self' / host", bool(hs) and sorted(ss) == sorted(hs), (hs, ss)))
+    # owner 3 Okt (perkuat): jumlah tag <script> (huruf besar/kecil) WAJIB = jumlah yang di-hash — tag yang tidak tertangkap pola (tanpa penutup,
+    # bentuk aneh) berarti script yang tidak ber-hash, dan peramban memblokirnya diam-diam.
+    n_tag = len(re.findall(r'<script\b', html, re.I))
+    c.append((b + "script-src PERSIS hash script sebaris — tanpa 'unsafe-inline' / 'unsafe-eval' / 'self' / host; tiap tag <script> ter-hash",
+              bool(hs) and sorted(ss) == sorted(hs) and n_tag == len(hs), (hs, ss, 'tag <script>: %d' % n_tag)))
     src = re.findall(r'<script\b[^>]*\ssrc\s*=', html, re.I)
     c.append((b + 'tanpa <script src> (script-src cuma hash — berkas script akan diblokir)', not src, src))
-    js = '\n'.join(re.findall(r'<script>(.*?)</script>', html, re.S))
+    js = '\n'.join(isi_sebaris(html))
     cs = D.get('connect-src', [])
     c.append((b + "connect-src PERSIS 'self' + Firestore / identitytoolkit / securetoken (REST tanpa SDK — tanpa gstatic)", sorted(cs) == sorted(CSP_DARURAT['connect-src']), cs))
     alamat = set(asal(x) for x in re.findall(r"""['"](https?://[^'"\s]+)""", js))
@@ -161,12 +200,9 @@ def periksa_darurat(html):
     rujuk = re.findall(r'<(?:link|img)\b[^>]*\s(?:href|src)="([^"]+)"', html)
     salah = [x for x in rujuk if not re.match(r'https?:', x) and not os.path.isfile(os.path.join(AKAR, x.split('?')[0].split('#')[0]))]
     c.append((b + 'tiap <link>/<img> lokal & berkasnya ada', rujuk and not salah, salah))
-    # SEBARIS: atribut on… di HTML statis & string innerHTML (pola tag utuh), string yang dirangkai, setAttribute('on…'), javascript:
-    sebaris = []
-    for m in re.finditer(r'''<[a-zA-Z][^<>]*\son[a-z]+\s*=\s*\\?["']''', html): sebaris.append('baris ' + str(html[:m.start()].count('\n') + 1))
-    for m in re.finditer(r'''(?:^|[\s'"])''' + ON_PERISTIWA + r'''\s*=\s*\\?["']''', js, re.M): sebaris.append('script: ' + m.group(0).strip()[:30])
-    for m in re.finditer(r'''setAttribute\(\s*['"]on''', js): sebaris.append('script: ' + m.group(0))
-    for m in re.finditer(r'''javascript:''', html): sebaris.append('javascript: baris ' + str(html[:m.start()].count('\n') + 1))
+    # SEBARIS: atribut on… di HTML statis & string innerHTML (pola tag utuh), string yang dirangkai, setAttribute('on…'), javascript: — huruf
+    # besar/kecil bebas, berkutip atau tanpa kutip (cari_sebaris; periksa.sh bagian 4 memakai fungsi yang sama)
+    sebaris = ['baris %d · %s' % x for x in cari_sebaris(html)]
     c.append((b + 'tidak ada atribut on… di HTML statis maupun string innerHTML / setAttribute di script (handler sebaris diblokir diam-diam)', not sebaris, sebaris[:8]))
     # DATA-AKSI ↔ penangan
     blok = re.search(r'\nvar AKSI = \{\n(.*?)\n\};', js, re.S)
@@ -212,6 +248,9 @@ KONTROL = [
     ('connect-src membuka host lain', {HTML: [('https://securetoken.googleapis.com https://www.gstatic.com;', 'https://securetoken.googleapis.com https://www.gstatic.com https://contoh.example;')]}),
     ('font Google tidak diizinkan', {HTML: [("font-src 'self' https://fonts.gstatic.com;", "font-src 'self';")]}),
     ('onclick sebaris di templat layar', {'baru/js/layar/jual.js': [('<div class="kaca-btn" data-aksi="pecahan"', '<div class="kaca-btn" onclick="x()" data-aksi="pecahan"')]}),
+    ('onClick tanpa kutip di templat layar (owner 3 Okt, perkuat)', {'baru/js/layar/jual.js': [('<div class="kaca-btn" data-aksi="pecahan"', '<div class="kaca-btn" onClick=x() data-aksi="pecahan"')]}),
+    ('<script type="text/javascript"> sebaris tanpa hash (owner 3 Okt, perkuat)', {HTML: [('<script type="module" src="js/app.js"></script>',
+                                                                                        '<script type="text/javascript">window.x = 1;</script>\n<script type="module" src="js/app.js"></script>')]}),
     ('meta CSP sesudah stylesheet', {HTML: [('<meta http-equiv="Content-Security-Policy"', '<link rel="stylesheet" href="css/x.css">\n<meta http-equiv="Content-Security-Policy"')]}),
     ("object-src bukan 'none'", {HTML: [("object-src 'none';", "object-src 'self';")]}),
     # kasir darurat (3 Okt 2026) — (nama, ganti, opsi): 'hash' = salinan ditulis ulang hash-nya sesudah diubah; 'harap' = pemeriksaan yang wajib jatuh
@@ -244,6 +283,21 @@ KONTROL = [
                                                                           """'<button type="button" ' + 'onclick="tambahHargaCepat(' + h + ')" data-aksi="hargaCepat" data-nilai="' + h + '">'""")]},
      {'hash': True, 'harap': 'atribut on'}),
     ('kasir darurat: handler dipasang lewat setAttribute', {DARURAT: [("    wadah.className = 'produk';", "    wadah.className = 'produk'; wadah.setAttribute('onclick', 'gambarTutsCepat()');")]},
+     {'hash': True, 'harap': 'atribut on'}),
+    # owner 3 Okt (perkuat, temuan tinjauan): bentuk yang dulu DIAM — script sebaris ber-type tidak di-hash & tidak dipindai, onClick (huruf besar),
+    # on…= tanpa kutip; + tag <script> yang tidak tertangkap pola (tanpa penutup) — jumlah tag wajib = jumlah yang di-hash
+    ('kasir darurat: <script type="text/javascript"> sebaris ditambahkan tanpa hash baru (diblokir)',
+     {DARURAT: [('\n</body>', '\n<script type="text/javascript">tampilkanLayarLogin(false);</script>\n</body>')]}, {'harap': 'script-src PERSIS hash'}),
+    ('kasir darurat: <script> tanpa penutup (menelan sisa halaman, tidak ter-hash)', {DARURAT: [('\n</body>', '\n<script type="module">\n</body>')]},
+     {'hash': True, 'harap': 'script-src PERSIS hash'}),
+    ('kasir darurat: onClick (huruf besar) di tombol SIMPAN', {DARURAT: [('id="btnSimpan" data-aksi="simpan"', 'id="btnSimpan" onClick="simpanNominal()" data-aksi="simpan"')]},
+     {'harap': 'atribut on'}),
+    ('kasir darurat: onclick TANPA kutip di tombol SIMPAN', {DARURAT: [('id="btnSimpan" data-aksi="simpan"', 'id="btnSimpan" onclick=simpanNominal() data-aksi="simpan"')]},
+     {'harap': 'atribut on'}),
+    ('kasir darurat: onkeydown TANPA kutip di kolom sandi', {DARURAT: [('<input type="password" id="inputSandiLogin"', '<input type="password" onkeydown=kirimLogin() id="inputSandiLogin"')]},
+     {'harap': 'atribut on'}),
+    ('kasir darurat: onClick tanpa kutip di string innerHTML (tuts harga)', {DARURAT: [("""'<button type="button" data-aksi="hargaCepat" data-nilai="' + h + '">'""",
+                                                                                       """'<button type="button" onClick=tambahHargaCepat(' + h + ') data-aksi="hargaCepat" data-nilai="' + h + '">'""")]},
      {'hash': True, 'harap': 'atribut on'}),
     ('kasir darurat: data-aksi tanpa penangan (HAPUS mati)', {DARURAT: [('data-aksi="hapusAngka"', 'data-aksi="hapusAngkaLama"')]}, {'harap': 'punya penangan'}),
     ('kasir darurat: penangan yatim (tidak dipakai tombol mana pun)', {DARURAT: [("  simpan: function () { simpanNominal(); },", "  simpan: function () { simpanNominal(); },\n  simpanLagi: function () { simpanNominal(); },")]},

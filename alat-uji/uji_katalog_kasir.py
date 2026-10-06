@@ -17,6 +17,8 @@ STATIS:
   · harga.js: terbit harga menyertakan katalog (kkSertakan) di kiriman yang SAMA
   · kasir darurat (izin owner 27 Sep): ambil katalog saat layar dinyalakan & tiap 5 menit; denyut membawa cap katalog; versi kasir darurat =
     VERSI sw-kasir.js = KK_VERSI_KASIR_TERBARU (/baru/) = kasir-v32; lantai kunci bulan (KP_VERSI_KASIR_25B) tidak di atas versi yang disajikan
+  · salinan uji peramban (dibangun TANPA peramban, owner 3 Okt, perkuat): script-src = hash halaman + hash skenario, tanpa 'unsafe-inline';
+    tiap script sesudah meta ber-hash; penjaga pelanggaran CSP & palsu Firestore SEBELUM meta (uji_antrean_kasir.periksa_salinan)
 JSC (KOTAK PASIR — angka & nama contoh; + cadangan toko kalau ada di _privat/, lokal saja):
   · isi /baru/ (kkIsi, dengan saringan arsip & wadah) == penyusun sistem lama untuk data yang sama — kotak pasir & cadangan toko
   · kunci dokumen = urutan sistem lama; pembanding tidak tertipu urutan kunci peta dari Firestore; server belum terbaca = "belum tahu"
@@ -25,8 +27,9 @@ JSC (KOTAK PASIR — angka & nama contoh; + cadangan toko kalau ada di _privat/,
   · gerbang terbit: owner · Firestore · online · tanpa koleksi ditolak · semua termuat · semua dari SERVER · katalog server terbaca
   · Beranda: "katalog kasir: diperbarui …", perubahan yang belum sampai, HP kasir versi lama, HP penjaga yang masih memegang katalog lama;
     perangkat kasir.html (pensiun) tidak disebut
-PERAMBAN (Chrome headless, SATU peluncuran; kasir-darurat-nominal.html SUNGGUHAN + Firestore REST palsu; CSP salinan dilonggarkan HANYA di script-src
-supaya skenario sebaris uji jalan — kasir-v32, 3 Okt 2026):
+PERAMBAN (Chrome headless, SATU peluncuran; kasir-darurat-nominal.html SUNGGUHAN + Firestore REST palsu; CSP salinan = CSP halaman + hash skenario
+uji, TANPA 'unsafe-inline' — owner 3 Okt, perkuat; dulu dilonggarkan ke 'unsafe-inline'):
+  · tiap pemuatan: tombol KANARI ber-onclick sebaris diblokir & tercatat (CSP berlaku, pendengar hidup), NOL pelanggaran CSP lain
   · katalog berganti di server → TANPA dibuka ulang: harga tuts tetap lama sampai layar dinyalakan (visibilitychange), lalu harga baru; denyut membawa
     cap katalog baru
   · katalog berganti → tanpa ketukan apa pun, diambil sendiri di jadwal berkala (jadwal 5 menit dipercepat di salinan uji)
@@ -38,7 +41,8 @@ import os, re, sys, json, glob, shutil, subprocess, tempfile
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import bundel_baru, beku2, uji_harga_baru  # noqa: E402
-from uji_antrean_kasir import CHROME, layani, buka, hasil_dari, teks_stat, longgarkan_csp  # noqa: E402
+from uji_antrean_kasir import CHROME, layani, buka, hasil_dari, teks_stat  # noqa: E402
+import uji_antrean_kasir as UA  # noqa: E402  (owner 3 Okt, perkuat: PENJAGA_CSP, csp_salinan & periksa dibaca saat dipakai — kontrol bisa menggantinya)
 
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/data/katalog-kasir.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js']
@@ -270,6 +274,7 @@ def periksa_statis(t):
     nomor = lambda m: int(re.match(r'kasir-v(\d+)$', m.group(1)).group(1)) if m else -1
     ok('versi: kasir darurat = VERSI sw-kasir.js = KK_VERSI_KASIR_TERBARU (/baru/) = ' + VERSI_KASIR, vs and kk and all(v and v.group(1) == vs.group(1) for v in va) and kk.group(1) == vs.group(1) == VERSI_KASIR, [x.group(1) if x else None for x in [vs, kk] + va])
     ok('versi: lantai kunci bulan (KP_VERSI_KASIR_25B) tidak di atas versi yang disajikan sw-kasir.js', kp and vs and 0 < nomor(kp) <= nomor(vs), kp.group(1) if kp else None)
+    out += UA.periksa_salinan(t[DARURAT], lambda: salinan_peramban(t[DARURAT]), SKENARIO_PERAMBAN, UA.PENJAGA_CSP)
     return out
 
 
@@ -311,6 +316,7 @@ SKENARIO_PERAMBAN = r"""<script>
   var K = window.__kat; var hasil = {}; var s = new URLSearchParams(location.search).get('s') || '';
   var harga = function () { return (window.daftarProdukD || []).map(function (q) { return q.harga; }); };
   try {
+    hasil.kanari = window.__csp ? await window.__csp.kanari() : null;   // owner 3 Okt (perkuat): CSP halaman berlaku & pendengar pelanggaran hidup
     if (s === 'nyala') {
       await sampai(function () { return harga()[0] === 70000; }, 10000); hasil.awal = harga(); hasil.getAwal = K.get;
       K.pasang(72000, '2026-09-27T02:00:00.000Z');                      // owner menerbitkan harga baru dari /baru/
@@ -326,6 +332,7 @@ SKENARIO_PERAMBAN = r"""<script>
       await sampai(function () { return harga()[0] === 74000; }, 6000); hasil.sesudahJadwal = harga();
     }
   } catch (e) { hasil.galat = String(e && (e.stack || e.message) || e); }
+  await tunggu(100); hasil.cspLain = window.__csp ? window.__csp.lain() : null;
   try { await fetch('/_hasil' + location.search, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hasil) }); } catch (e) {}
   fetch('/_siap');
   var lanjut = new URLSearchParams(location.search).get('lanjut');
@@ -334,15 +341,19 @@ SKENARIO_PERAMBAN = r"""<script>
 </script>"""
 
 
+def salinan_peramban(s):
+    """Teks salinan uji peramban — tanpa menulis atau menyalakan apa pun (dipakai periksa_peramban DAN pemeriksaan statis). Kasir darurat ber-CSP
+    (kasir-v32): SKENARIO_PERAMBAN yang disuntik sesudah meta ikut DI-HASH ke script-src salinan, hash halaman tetap (dihitung ulang hanya kalau kontrol
+    mengubah halaman), TANPA 'unsafe-inline' (owner 3 Okt, perkuat — uji_antrean_kasir.csp_salinan). PENJAGA_CSP & KEPALA disisip SEBELUM meta."""
+    assert s.count('<head>') == 1 and s.count('</body>') == 1
+    s = UA.csp_salinan(s, SKENARIO_PERAMBAN, UA._asli())
+    return s.replace('<head>', '<head>' + UA.PENJAGA_CSP + KEPALA, 1).replace('</body>', SKENARIO_PERAMBAN + "<img src='/_tahan' alt='' style='display:none'></body>", 1)
+
+
 def periksa_peramban(t):
     out = []; ok = lambda n, c, k='': out.append(('peramban · ' + n, bool(c), k))
     if not CHROME: return [('peramban · Google Chrome tersedia', False, 'tidak ditemukan')]
-    d = tempfile.mkdtemp(prefix='katalog-'); s = t[DARURAT]
-    assert s.count('<head>') == 1 and s.count('</body>') == 1
-    # kasir-v32 (3 Okt 2026): kasir darurat ber-CSP (script hanya yang hash-nya tercantum) → SKENARIO_PERAMBAN yang disuntik sesudah meta itu diblokir
-    # tanpa pelonggaran. Salinan dilonggarkan HANYA di script-src (uji_antrean_kasir.longgarkan_csp, pola uji_layar_kunci); KEPALA disisip sebelum meta.
-    s = longgarkan_csp(s)
-    s = s.replace('<head>', '<head>' + KEPALA, 1).replace('</body>', SKENARIO_PERAMBAN + "<img src='/_tahan' alt='' style='display:none'></body>", 1)
+    s = salinan_peramban(t[DARURAT]); d = tempfile.mkdtemp(prefix='katalog-')
     open(os.path.join(d, DARURAT), 'w', encoding='utf-8').write(s)
     srv, port, keadaan = layani(d); profil = tempfile.mkdtemp(prefix='katalog-profil-')
     try:
@@ -350,18 +361,27 @@ def periksa_peramban(t):
     finally:
         srv.shutdown(); shutil.rmtree(profil, ignore_errors=True); shutil.rmtree(d, ignore_errors=True)
     N, B = hasil_dari(a), hasil_dari(b)
-    if not N or N.get('galat'): return [('peramban · skenario layar dinyalakan jalan', False, (N or {}).get('galat', 'tidak ada hasil'))]
+    if not N or N.get('galat'): return [('peramban · skenario layar dinyalakan jalan', False, {'galat': (N or {}).get('galat', 'tidak ada hasil'), 'cspLain': (N or {}).get('cspLain')})]
+    UA.periksa_csp(ok, 'layar dinyalakan', N)
     ok('HP penjaga memuat katalog saat dibuka (tuts bernama berharga 70.000)', N['awal'] == [70000], N)
     ok('katalog berganti di server: tanpa pemicu harga tuts TETAP yang lama (bukti pemicunya layar dinyalakan, bukan kebetulan)', N['tanpaPemicu'] == [70000], N)
     ok('layar HP dinyalakan → harga baru 72.000 TANPA membuka ulang aplikasi', N['sesudahNyala'] == [72000] and N['getAkhir'] > N['getAwal'], N)
     ok('denyut HP penjaga membawa cap katalog yang baru dipegangnya', '2026-09-27T02:00:00.000Z' in N['denyutKatalog'], N['denyutKatalog'])
     ok('bilah atas: "versi 3 Okt b"', N.get('label') == 'versi 3 Okt b', N.get('label'))
-    if not B or B.get('galat'): return out + [('peramban · skenario berkala jalan', False, (B or {}).get('galat', 'tidak ada hasil'))]
+    if not B or B.get('galat'): return out + [('peramban · skenario berkala jalan', False, {'galat': (B or {}).get('galat', 'tidak ada hasil'), 'cspLain': (B or {}).get('cspLain')})]
+    UA.periksa_csp(ok, 'berkala', B)
     ok('tanpa ketukan apa pun: katalog baru (74.000) diambil sendiri di jadwal berkala', B['awal'] == [73000] and B['sesudahJadwal'] == [74000], B)
     return out
 
 
 def semua(ganti=None, bagian=('statis', 'jsc', 'peramban')):
+    """ganti = {berkas: [(lama, baru)]} (kontrol); kunci '@nama' = global uji_antrean_kasir (UA.ganti_alat — mis. csp_salinan, PENJAGA_CSP)."""
+    ganti = ganti or {}
+    with UA.ganti_alat(dict((k[1:], v) for k, v in ganti.items() if k.startswith('@')), UA):
+        return _semua(dict((k, v) for k, v in ganti.items() if not k.startswith('@')), bagian)
+
+
+def _semua(ganti, bagian):
     t = baca(ganti); out = []
     if 'statis' in bagian: out += periksa_statis(t)
     if 'jsc' in bagian:
@@ -397,6 +417,9 @@ KONTROL = [
     ('persis: daftar id kembali berjendela jam perangkat', {'baru/js/data/katalog-kasir.js': [("m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan)).map(", "m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan) && (m.tanggal || '') >= new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10)).map(")]}, ('jsc',)),
     ('persis: tanda awal buku tidak ikut dokumen', {'baru/js/data/katalog-kasir.js': [(", bayarBonSejak: isi.bayarBonSejak || '' };", " };")]}, ('jsc',)),
     ('persis: pembayaran tanpa nama ikut daftar (tidak dihitung hitungPiutang)', {'baru/js/data/katalog-kasir.js': [("m.tipe === 'bayar' && kunciPelanggan(m.namaPelanggan)).map(", "m.tipe === 'bayar').map(")]}, ('jsc',)),
+    # owner 3 Okt (perkuat): salinan uji kembali dilonggarkan ke 'unsafe-inline' — statis (CSP salinan) & peramban (kanari ikut jalan)
+    ("salinan uji kembali melonggarkan script-src ke 'unsafe-inline' (statis)", {'@csp_salinan': UA._salinan_longgar}, ('statis',)),
+    ("salinan uji kembali melonggarkan script-src ke 'unsafe-inline' (peramban: kanari ikut jalan)", {'@csp_salinan': UA._salinan_longgar}, ('peramban',)),
     ('HP v27 disebut "harga baru baru sampai" lagi (lantai ambil-sendiri disamakan dengan versi terbaru)', {'baru/js/data/katalog-kasir.js': [("export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v27';", "export const KK_VERSI_AMBIL_SENDIRI = 'kasir-v32';")]}, ('jsc',)),
 ]
 

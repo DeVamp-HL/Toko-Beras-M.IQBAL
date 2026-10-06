@@ -10,6 +10,7 @@ set -u
 AKAR="$(cd "$(dirname "$0")/.." && pwd)"
 # --kontrol (3 Okt 2026, menggantikan kontrol harness/jalankan.sh yang pensiun bersama index.html): salinan kasir darurat yang DIRUSAK satu hal
 # per salinan wajib GAGAL, salinan utuh wajib LULUS, dan berkas tanpa script (pengalih) wajib DITOLAK. Keluar 3 kalau ada yang diam.
+# Salinan 'sebaris-*' (owner 3 Okt, perkuat) wajib gagal DI BAGIAN 4 — bukan sembarang gagal.
 if [[ "${1:-}" == "--kontrol" ]]; then
   K="$(mktemp -d)"; KODE=0
   python3 - "$AKAR/kasir-darurat-nominal.html" "$K" <<'PY' || { echo "KONTROL BASI — jangkar mutasi tidak ditemukan"; rm -rf "$K"; exit 3; }
@@ -21,6 +22,13 @@ rusak = {
     'sintaks-pasca-chrome80': [("var VERSI_APLIKASI = '", "var __uji = {}; __uji.a ??= 1;\nvar VERSI_APLIKASI = '")],
     'id-ganda': [('<small id="versiApp"></small>', '<small id="versiApp"></small><small id="versiApp"></small>')],
     'gerak-di-luar-transform': [('</style>', '  .gerakUji { transition: width 1s; }\n</style>')],
+    # owner 3 Okt (perkuat): handler sebaris di halaman ber-CSP — termasuk bentuk yang dulu lolos bagian 4 (huruf besar, tanpa kutip, string innerHTML)
+    'sebaris-onclick-berkutip': [('id="btnSimpan" data-aksi="simpan"', 'id="btnSimpan" onclick="simpanNominal()" data-aksi="simpan"')],
+    'sebaris-onClick-huruf-besar': [('id="btnSimpan" data-aksi="simpan"', 'id="btnSimpan" onClick="simpanNominal()" data-aksi="simpan"')],
+    'sebaris-onclick-tanpa-kutip': [('id="btnSimpan" data-aksi="simpan"', 'id="btnSimpan" onclick=simpanNominal() data-aksi="simpan"')],
+    'sebaris-onkeydown-tanpa-kutip': [('<input type="password" id="inputSandiLogin"', '<input type="password" onkeydown=kirimLogin() id="inputSandiLogin"')],
+    'sebaris-onClick-di-string-innerHTML': [("""'<button type="button" data-aksi="hargaCepat" data-nilai="' + h + '">'""",
+                                             """'<button type="button" onClick=tambahHargaCepat(' + h + ') data-aksi="hargaCepat" data-nilai="' + h + '">'""")],
 }
 for nama, ganti in rusak.items():
     t = asal
@@ -32,9 +40,10 @@ for nama, ganti in rusak.items():
 PY
   for f in "$K"/*.html; do
     n="$(basename "$f" .html)"
-    "$0" "$f" >/dev/null 2>&1; r=$?
+    out="$("$0" "$f" 2>&1)"; r=$?
     if [[ "$n" == "utuh" ]]; then
       [[ $r -eq 0 ]] && echo "LULUS    salinan utuh" || { echo "GAGAL!!  salinan utuh tidak lulus (kode $r)"; KODE=3; }
+    elif [[ $r -ne 0 && "$n" == sebaris-* && "$out" != *"GAGAL — handler sebaris"* ]]; then echo "DIAM!!   $n (gagal, tapi bukan di bagian 4)"; KODE=3
     elif [[ $r -ne 0 ]]; then echo "BERBUNYI $n (kode $r)"
     else echo "DIAM!!   $n"; KODE=3; fi
   done
@@ -103,18 +112,44 @@ echo "--- 3 · id ganda ---"
 grep -o -E 'id="[A-Za-z0-9_-]+"' "$BERKAS" | sort | uniq -d > "$KERJA/ganda.txt"
 if [[ -s "$KERJA/ganda.txt" ]]; then echo "  GAGAL:"; sed 's/^/    /' "$KERJA/ganda.txt"; GAGAL=1; else echo "  LULUS"; fi
 
-echo "--- 4 · onclick ke fungsi yang tidak ada ---"
-grep -o -E 'on(click|input|change)="[a-zA-Z_$][a-zA-Z0-9_$]*\(' "$BERKAS" \
-  | sed -E 's/.*"([a-zA-Z_$][a-zA-Z0-9_$]*)\(/\1/' | sort -u \
-  | grep -v -x -E 'namaFungsi|alert|confirm|prompt' > "$KERJA/dipanggil.txt"   # contoh di komentar + global peramban
-grep -o -E '(function [a-zA-Z_$][a-zA-Z0-9_$]*|window\.[a-zA-Z_$][a-zA-Z0-9_$]* *=|(const|let|var) [a-zA-Z_$][a-zA-Z0-9_$]* *= *(function|\())' "$BERKAS" \
-  | sed -E 's/^function //; s/^window\.//; s/^(const|let|var) //; s/ *=.*//' | sort -u > "$KERJA/ada.txt"
-comm -23 "$KERJA/dipanggil.txt" "$KERJA/ada.txt" > "$KERJA/hilang.txt"
-# Kasir darurat sejak kasir-v32 (3 Okt 2026, CSP tanpa 'unsafe-inline'): NOL handler sebaris — tombol memakai data-aksi. Bagian ini lalu tidak
-# memeriksa apa pun; pasangan data-aksi ↔ penangan (dan larangan handler sebaris) dijaga alat-uji/uji_csp.py. Dikatakan terang, bukan "LULUS" polos.
-if [[ -s "$KERJA/hilang.txt" ]]; then echo "  PERIKSA MANUAL:"; sed 's/^/    /' "$KERJA/hilang.txt"
-elif [[ ! -s "$KERJA/dipanggil.txt" ]]; then echo "  LULUS — tidak ada handler sebaris (tombol memakai data-aksi; pasangannya dijaga alat-uji/uji_csp.py)"
-else echo "  LULUS"; fi
+echo "--- 4 · handler sebaris (atribut on…) ---"
+# owner 3 Okt (perkuat, temuan tinjauan): dulu bagian ini hanya mencari on(click|input|change)="…" huruf kecil BERKUTIP lalu mencetak "LULUS — tidak
+# ada handler sebaris" — onClick dan onclick=fungsi() tanpa kutip lolos. Kini pola diambil dari alat-uji/uji_csp.py (cari_sebaris: huruf besar/kecil,
+# berkutip atau tanpa kutip, tag HTML & string innerHTML, setAttribute('on…'), javascript:) — satu pola, dijaga di satu tempat.
+#   · halaman ber-CSP tanpa 'unsafe-inline' (kasir darurat sejak kasir-v32, /baru/): peramban memblokir handler sebaris diam-diam (tombol tampil
+#     tapi mati) → SATU saja = GAGAL. Pasangan data-aksi ↔ penangan dijaga uji_csp.py.
+#   · halaman tanpa CSP ketat: fungsi pertama yang dipanggil tiap handler wajib dideklarasikan di berkas (bukan global peramban) → PERIKSA MANUAL.
+python3 - "$BERKAS" "$AKAR/alat-uji" > "$KERJA/sebaris.txt" <<'PY'
+import re, sys, pathlib
+# kode keluar: 0 nihil · 1 ada handler di halaman ber-CSP ketat · 2 fungsi tak dideklarasikan · 3 ada handler, fungsinya ada · 9 pemeriksa galat
+try:
+    sys.path.insert(0, sys.argv[2]); import uji_csp
+    html = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8')
+    D, _ = uji_csp.csp_dari(html)
+    temuan = uji_csp.cari_sebaris(html)
+    ketat = D is not None and "'unsafe-inline'" not in D.get('script-src', D.get('default-src', ["'unsafe-inline'"]))
+    ada = set(re.findall(r'(?:function\s+|window\.|(?:const|let|var)\s+)([A-Za-z_$][\w$]*)\s*(?:\(|=)', html)) | {'alert', 'confirm', 'prompt'}
+    dipanggil = set(m.group(1) for m in re.finditer(r'''(?<![\w$.-])on[a-z]+\s*=\s*\\?["']?\s*([A-Za-z_$][\w$]*)\s*\(''', html, re.I))
+except Exception as e:
+    print('pemeriksa galat: %r' % e); sys.exit(9)
+if ketat:
+    for baris, potongan in temuan: print('baris %d · %s' % (baris, potongan))
+    sys.exit(1 if temuan else 0)
+hilang = sorted(dipanggil - ada)
+for n in hilang: print(n)
+sys.exit(2 if hilang else (3 if temuan else 0))
+PY
+r=$?
+case $r in
+  0) echo "  LULUS — nol handler sebaris (huruf besar/kecil, berkutip atau tanpa kutip, di tag HTML & string script, setAttribute, javascript:);" \
+          "tombol memakai data-aksi, pasangannya dijaga alat-uji/uji_csp.py";;
+  1) echo "  GAGAL — handler sebaris di halaman ber-CSP tanpa 'unsafe-inline' (peramban memblokirnya diam-diam: tombol tampil tapi mati):"
+     sed 's/^/    /' "$KERJA/sebaris.txt"; GAGAL=1;;
+  2) echo "  PERIKSA MANUAL — handler sebaris memanggil fungsi yang tidak dideklarasikan di berkas (halaman tanpa CSP ketat):"
+     sed 's/^/    /' "$KERJA/sebaris.txt";;
+  3) echo "  LULUS (halaman tanpa CSP ketat: tiap handler sebaris memanggil fungsi yang dideklarasikan di berkas)";;
+  *) echo "  GAGAL — pemeriksa handler sebaris tidak jalan (kode $r)"; sed 's/^/    /' "$KERJA/sebaris.txt"; GAGAL=1;;
+esac
 
 echo "--- 5 · getElementById ke id yang tidak ada di HTML ---"
 grep -o -E "getElementById\('[A-Za-z0-9_-]+'\)" "$BERKAS" | sed -E "s/.*'([A-Za-z0-9_-]+)'.*/\1/" | sort -u > "$KERJA/dicari.txt"

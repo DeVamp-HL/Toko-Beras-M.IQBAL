@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <!-- CSP (3 Okt 2026, kasir-v32): script HANYA yang hash-nya tercantum (tanpa 'unsafe-inline' — tombol memakai data-aksi), koneksi HANYA Firestore &
      Auth Firebase (REST), service worker dari situs sendiri. Ubah isi script sebaris → python3 alat-uji/uji_csp.py --pasang (hash baru). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-8KKG57ffUM7jertWho/n0/5EbR/qh7ABllBOzxHCfQA='; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-xuOSfEtuTmc9M9VMwexUmYkB1LHCxsXU4ZfUq0eWeIM='; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Kasir Darurat — Toko Beras M.IQBAL</title>
 <meta name="description" content="Catat nominal uang masuk saat darurat. Cuma omzet — tanpa produk, tanpa stok.">
@@ -1117,7 +1117,9 @@ window.arsipkanDitolak = arsipkanDitolak;
 // (data-aksi untuk ketukan, data-aksi-ketik untuk ketikan; argumennya di data-nilai), dan satu pendengar di document memanggil fungsi yang
 // SAMA dengan argumen yang SAMA seperti dulu. Tombol yang dibangun lewat innerHTML (hapus barang, tuts bernama, tuts harga) ikut tertangkap
 // karena pendengarnya di document. Fungsinya tetap global (alat uji memanggilnya langsung).
-// uji_csp.py menjaga: tiap data-aksi punya penangan di AKSI, tiap penangan dipakai, tiap tombol membawa data-aksi, tidak ada atribut on… tersisa.
+// uji_csp.py menjaga: tiap data-aksi punya penangan di AKSI, tiap penangan dipakai, tiap tombol membawa data-aksi, tidak ada atribut on… tersisa
+// (huruf besar/kecil, berkutip atau tanpa kutip, di HTML maupun string innerHTML; periksa.sh bagian 4 memakai pola yang sama). uji_antrean_kasir.py
+// mengetuk tombolnya di peramban di bawah CSP halaman ini (tanpa 'unsafe-inline') dan menuntut nol pelanggaran CSP (owner 3 Okt, perkuat).
 // data-nilai: angka papan & cara bayar dibaca sebagai TEKS ('000' harus tetap '000'); nomor baris / nomor tuts / harga dibaca sebagai ANGKA.
 var AKSI = {
   angka: function (el) { tekanAngka(el.getAttribute('data-nilai')); },

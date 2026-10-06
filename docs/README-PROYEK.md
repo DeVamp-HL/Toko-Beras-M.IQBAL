@@ -40,8 +40,8 @@ Semua bisa dijalankan dari folder mana pun, tanpa Node, cukup macOS (jsc bawaan)
 
 | Perintah | Membuktikan | Gagal = |
 |---|---|---|
-| `alat-uji/periksa.sh` (bawaan `kasir-darurat-nominal.html`) | sintaks script (jsc), tidak ada sintaks pasca-Chrome-80, id DOM unik, handler sebaris menunjuk fungsi yang ada (kasir darurat sejak kasir-v32 tanpa handler sebaris — `data-aksi` dijaga `uji_csp.py`), `getElementById` menunjuk id yang ada, batas gerak kasir. Berkas tanpa `<script>` (pengalih) DITOLAK | keluar ≠ 0 |
-| `alat-uji/periksa.sh --kontrol` | salinan rusak (sintaks, pasca-Chrome-80, id ganda, gerak) wajib gagal; salinan utuh lulus | 3 |
+| `alat-uji/periksa.sh` (bawaan `kasir-darurat-nominal.html`) | sintaks script (jsc), tidak ada sintaks pasca-Chrome-80, id DOM unik, handler sebaris (pola `uji_csp.cari_sebaris`: huruf besar/kecil, berkutip atau tanpa kutip; di halaman ber-CSP tanpa `'unsafe-inline'` satu saja = GAGAL, kasir darurat memakai `data-aksi`), `getElementById` menunjuk id yang ada, batas gerak kasir. Berkas tanpa `<script>` (pengalih) DITOLAK | keluar ≠ 0 |
+| `alat-uji/periksa.sh --kontrol` | salinan rusak (sintaks, pasca-Chrome-80, id ganda, gerak, 5 bentuk handler sebaris — wajib gagal di bagian 4) wajib gagal; salinan utuh lulus | 3 |
 | `python3 alat-uji/beku2.py --sidik` | tubuh **26 mesin uang beku** (`baru/js/mesin/beku.js`) byte-identik dengan `alat-uji/beku.sha256`, dan **55 fungsi + 36 konstanta pembantu** (`pembantu.js`) dengan `alat-uji/pembantu.sha256` | 2 |
 | `python3 alat-uji/beku2.py --lama main` | sama, tapi dibandingkan ke `main` (dipakai di cabang kerja) | 2 |
 | `python3 alat-uji/beku2.py --uji-diri` | alat pembanding terbukti MELIHAT perubahan (mutasi di memori pada satu mesin, satu fungsi & satu konstanta pembantu, satu fungsi tanpa kunci) | 3 |

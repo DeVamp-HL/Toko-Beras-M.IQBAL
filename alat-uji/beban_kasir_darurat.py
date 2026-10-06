@@ -7,9 +7,11 @@ SATU Chrome sekali jalan. Tiap pasangan juga DIPERIKSA (periksa_peramban), jadi 
 HANYA DI RUNNER GITHUB (CLAUDE.md, keputusan owner 27 Sep 2026): menolak jalan di luar GitHub Actions. Uji beban di Mac owner pernah membuat
 WindowServer ambruk (kernel panic) — docs/catatan-uji-peramban.md.
 
-Salinan kasir darurat yang dimuat disiapkan uji_antrean_kasir.siapkan — sejak kasir-v32 (3 Okt 2026, CSP kasir darurat) salinan itu melonggarkan CSP-nya
-HANYA di script-src (longgarkan_csp) supaya skenario sebaris uji jalan. Alat ini tidak menyuntik apa pun sendiri; dengan --alat folder lama, alat lama
-memuat kasir darurat dari foldernya sendiri (pasangannya), jadi tidak bertemu CSP yang belum dikenalnya.
+Salinan kasir darurat yang dimuat disiapkan uji_antrean_kasir.siapkan — sejak kasir-v32 (3 Okt 2026, CSP kasir darurat) salinan itu memakai CSP
+halaman yang SAMA: hash halaman + hash skenario uji, TANPA 'unsafe-inline' (owner 3 Okt, perkuat — csp_salinan; dulu longgarkan_csp melonggarkan
+script-src ke 'unsafe-inline'), dan tiap pasangan juga diperiksa kanari CSP-nya & nol pelanggaran lain (periksa_peramban). Alat ini tidak menyuntik
+apa pun sendiri; dengan --alat folder lama, alat lama memuat kasir darurat dari foldernya sendiri (pasangannya), jadi tidak bertemu CSP yang belum
+dikenalnya.
 
 Menghitung per jalan: pemuatan Chrome, DICOBA ULANG (tiap panggilan coba_ulang.catat), pasangan yang pemeriksaannya gagal, dan — alat uji
 sesudah 27 Sep saja — Chrome yang tidak mau ditutup baik-baik sesudah hasil masuk (STAT['chrome_ditutup_paksa'], bukan percobaan ulang).

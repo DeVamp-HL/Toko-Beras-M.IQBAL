@@ -17,11 +17,17 @@ SKENARIO:
   · belum masuk → TIDAK ada kiriman sama sekali (403 tanpa kunci bukan penolakan aturan)
   · denyut melaporkan antrean, jumlah ditolak, dan versi (= VERSI sw-kasir.js)
   · sesudah MUAT ULANG (profil & alamat sama): karcis yang ditolak masih ada, pita masih tampil, daftarnya menyebut tanggal & nominal;
-    "sudah dicatat ulang" butuh DUA ketukan dan MEMINDAH ke arsip (tidak menghapus)
+    "sudah dicatat ulang" butuh DUA ketukan dan MEMINDAH ke arsip (tidak menghapus) — pita, Tutup & tombol arsip DIKETUK (klik DOM)
+  · TOMBOL SUNGGUHAN (owner 3 Okt, perkuat): papan angka, "000", + BARANG BERIKUTNYA, hapus barang (tombol innerHTML), HAPUS, KREDIT, ketik nama,
+    SIMPAN — diketuk lewat klik DOM (data-aksi → jalankanAksi → AKSI), bukan fungsinya dipanggil langsung
+  · CSP (owner 3 Okt, perkuat): salinan memakai CSP halaman yang SAMA — hash halaman + hash skenario uji, TANPA 'unsafe-inline' (dulu salinan
+    dilonggarkan ke 'unsafe-inline', jadi handler sebaris yang tersisa tetap JALAN di uji padahal mati di HP). Tiap pemuatan: tombol KANARI
+    ber-onclick sebaris wajib DIBLOKIR & tercatat (bukti CSP berlaku & pendengar hidup), dan NOL pelanggaran lain sampai skenario selesai.
 STATIS: VERSI_APLIKASI kasir darurat = VERSI sw-kasir.js = KK_VERSI_KASIR_TERBARU (/baru/, 25c),
         dan lantai kunci bulan KP_VERSI_KASIR_25B (kasir-v26) tidak di atas versi yang disajikan;
   service worker mengunduh versi baru melewati cache HTTP (cache:'reload'); kasir darurat memuat ulang diri saat versi baru mengambil alih;
-  salinan uji peramban melonggarkan CSP kasir darurat (kasir-v32, 3 Okt 2026) HANYA di script-src — skenario sebaris uji ikut jalan, direktif lain tetap.
+  salinan uji peramban (dibangun TANPA peramban, teks yang sama dengan yang dimuat Chrome): script-src = hash halaman + hash skenario uji,
+  tanpa 'unsafe-inline', direktif lain tetap; tiap script sesudah meta ber-hash; penjaga pelanggaran & palsu Firestore SEBELUM meta.
   (FILES service worker = berkas yang ada & tanpa kasir.html: uji_pensiun_sistem_lama.py, job uji.)
 /baru/ (jsc, KOTAK PASIR — nama & angka contoh): ⛔ "semua perangkat kasir yang berdenyut 7 hari terakhir sudah versi 25b" menyebut nama perangkat
   yang tertinggal; Beranda › Perlu perhatian menyebut antrean, ditolak, dan versi lama per HP kasir.
@@ -43,11 +49,40 @@ import os, re, sys, json, time, shutil, signal, socket, tempfile, threading, sub
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 sys.path.insert(0, SINI)
 import coba_ulang   # noqa: E402  (tiap percobaan ulang menulis baris DICOBA ULANG — keputusan owner 26 Sep)
+import uji_csp      # noqa: E402  (owner 3 Okt, perkuat: hash salinan uji dihitung dengan cara yang SAMA dengan --pasang)
+import contextlib   # noqa: E402
 CHROME = next((p for p in ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium'] if os.path.exists(p)), None)
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 DARURAT = 'kasir-darurat-nominal.html'
 
-# ---------- Firestore REST PALSU: dipasang PALING AWAL di <head>, sebelum skrip halaman ----------
+# ---------- PENJAGA CSP (owner 3 Okt, perkuat): disisip PALING AWAL di <head>, SEBELUM meta CSP → tidak terkena CSP ----------
+# Salinan uji memakai CSP halaman yang SAMA (csp_salinan: hash halaman + hash skenario uji, TANPA 'unsafe-inline'). Tiap yang diblokir peramban —
+# handler sebaris di tombol, script tanpa hash, koneksi/gambar di luar daftar — dicatat lewat 'securitypolicyviolation'; skenario wajib berakhir
+# dengan NOL. KANARI: satu tombol ber-onclick sebaris dibuat & diketuk di awal tiap pemuatan; handlernya WAJIB diblokir dan tercatat — bukti CSP
+# berlaku di salinan (tidak dilonggarkan) dan pendengarnya hidup. Tanpa kanari, "nol pelanggaran" ikut lulus kalau pendengarnya mati.
+# Dipakai juga uji_katalog_kasir.py.
+PENJAGA_CSP = r"""<script>
+(function () {
+  var C = window.__csp = { pelanggaran: [], sedangKanari: false };
+  document.addEventListener('securitypolicyviolation', function (e) {
+    C.pelanggaran.push({ arahan: String(e.effectiveDirective || e.violatedDirective || ''), diblokir: String(e.blockedURI || ''), baris: e.lineNumber || 0, kanari: C.sedangKanari });
+  });
+  C.kanari = async function () {
+    var n = C.pelanggaran.length, t0 = Date.now(), b = document.createElement('button');
+    C.sedangKanari = true;
+    b.type = 'button'; b.style.display = 'none'; b.setAttribute('onclick', 'window.__kanariJalan = true');
+    document.body.appendChild(b); b.click();
+    while (C.pelanggaran.length === n && Date.now() - t0 < 3000) await new Promise(function (r) { setTimeout(r, 30); });
+    await new Promise(function (r) { setTimeout(r, 100); });
+    C.sedangKanari = false; b.parentNode.removeChild(b);
+    var k = C.pelanggaran.slice(n);
+    return { tercatat: k.length, jalan: !!window.__kanariJalan, arahan: k.map(function (x) { return x.arahan; }) };
+  };
+  C.lain = function () { return C.pelanggaran.filter(function (x) { return !x.kanari; }); };
+})();
+</script>"""
+
+# ---------- Firestore REST PALSU: dipasang PALING AWAL di <head> (sesudah PENJAGA_CSP), sebelum skrip halaman ----------
 KEPALA = r"""<script>
 (function () {
   try { delete Navigator.prototype.serviceWorker; } catch (e) {}   // tanpa service worker: yang diuji berkasnya, bukan cache
@@ -89,7 +124,7 @@ KEPALA = r"""<script>
 # ---------- penyesuai per berkas: cara mencatat, kunci penyimpanan, denyut (kasir.html pensiun 3 Okt 2026 — tinggal kasir darurat) ----------
 PENYESUAI = {
     DARURAT: r"""var A = { antrean: 'darurat_antrean_v1', gagal: 'darurat_gagal_v1', arsip: 'darurat_ditolak_arsip_v1', auth: 'kasir_auth_v1',
-  catat: function (n) { String(n).split('').forEach(function (c) { tekanAngka(c); }); simpanNominal(); },   // lewat papan angka + SIMPAN sungguhan
+  catat: function (n) { String(n).split('').forEach(function (c) { tekanAngka(c); }); simpanNominal(); },   // fungsi papan angka + SIMPAN (ketukan: ketukTombol)
   catatLama: function (n, tgl) { var a = JSON.parse(localStorage.getItem(this.antrean) || '[]'); var id = Date.now() + Math.random();   // karcis yang tertahan offline sejak bulan lalu
     a.push({ koleksi: 'penjualan', docId: String(id), data: { id: id, tanggal: tgl, jam: '20:15', jenis: 'kasir_darurat_nominal', namaProduk: '(tidak tercatat — kasir darurat)', hargaTotal: n,
       caraBayar: 'Tunai', namaPelanggan: '', grupNota: id, oleh: '(darurat tanpa nama)', perangkat: 'd-uji' } }); localStorage.setItem(this.antrean, JSON.stringify(a)); },
@@ -104,6 +139,8 @@ SKENARIO = r"""<script>
   var P = window.__palsu; var hasil = { skenario: {} };
   var L = function (k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return null; } };
   var tampil = function (id) { var e = document.getElementById(id); return !!e && e.classList.contains('tampil'); };
+  // owner 3 Okt (perkuat): KETUK = klik DOM pada elemen yang tampil di HP (data-aksi → jalankanAksi → AKSI), bukan fungsinya dipanggil langsung
+  var ketuk = function (sel) { var el = document.querySelector(sel); if (!el) throw new Error('tidak ada di layar: ' + sel); el.click(); };
   var reset = function (masuk) { [A.antrean, A.gagal, A.arsip].forEach(function (k) { localStorage.removeItem(k); });
     if (masuk) localStorage.setItem(A.auth, JSON.stringify({ refreshToken: 'r-uji', idToken: 't-uji', kedaluwarsa: Date.now() + 3600000 })); else localStorage.removeItem(A.auth);
     P.masuk = []; P.permintaan = []; P.denyut = []; P.tanpaKunci = 0; P.jaringan = true; P.mode = 'ok';
@@ -118,6 +155,7 @@ SKENARIO = r"""<script>
       permintaan: P.permintaan.map(function (x) { return x.hargaTotal; }), tanpaKunci: P.tanpaKunci }; };
   try {
     var s = new URLSearchParams(location.search).get('s') || 'utama';
+    hasil.kanari = window.__csp ? await window.__csp.kanari() : null;   // CSP halaman berlaku di salinan & pendengar pelanggaran hidup
     if (s === 'utama') {
       reset(true); P.jaringan = false; A.catat(1100); A.catat(1200); A.catat(1300); kirimAntrean(true); await diam(); hasil.skenario.jaringanPutus = potret();
       P.jaringan = true; kirimAntrean(true); await kosong(); await diam(); hasil.skenario.jaringanPulih = potret();
@@ -129,6 +167,27 @@ SKENARIO = r"""<script>
       reset(false); P.jaringan = false; A.catat(4100); A.catat(4200); P.jaringan = true; kirimAntrean(true); await diam();
       await tunggu(1700);   // kasir darurat membuka layar masuk 1,3 detik sesudah SIMPAN kalau belum masuk — tunggu di sini, jangan sampai jatuh ke skenario berikutnya
       hasil.skenario.belumMasuk = potret();
+      // owner 3 Okt (perkuat): TOMBOL SUNGGUHAN diketuk lewat klik DOM di bawah CSP halaman yang sama (tanpa 'unsafe-inline') — handler sebaris
+      // yang tersisa di tombol akan mati diam-diam di sini (dan tercatat sebagai pelanggaran). Hasilnya = yang dulu dicapai fungsi langsung.
+      reset(true); P.jaringan = false;
+      var K = {}, nama = document.getElementById('namaPembeliD');
+      var lcd = function () { return document.getElementById('lcdAngka').textContent.replace(/\D/g, ''); };
+      var nBaris = function () { return document.querySelectorAll('#daftarBaris [data-aksi="hapusBaris"]').length; };
+      var papan = function (v) { ketuk('#papan [data-aksi="angka"][data-nilai="' + v + '"]'); };
+      papan('7'); papan('000'); K.lcdTujuhRibu = lcd();
+      ketuk('#btnTambahBaris'); papan('9'); papan('9'); ketuk('#btnTambahBaris'); K.barisDua = nBaris();
+      ketuk('#daftarBaris [data-aksi="hapusBaris"][data-nilai="1"]'); K.barisSesudahHapus = nBaris();
+      papan('1'); papan('2'); papan('5'); ketuk('#papan [data-aksi="hapusAngka"]'); papan('0'); papan('0'); K.lcdSeribuDuaRatus = lcd();
+      ketuk('#bayarD-Kredit'); K.kreditTerpilih = document.getElementById('bayarD-Kredit').classList.contains('pilih');
+      ketuk('#btnSimpan'); K.tanpaNama = { antrean: L(A.antrean).length, kurang: nama.classList.contains('kurang') };
+      nama.value = 'Pembeli Uji'; nama.dispatchEvent(new Event('input', { bubbles: true })); K.sesudahKetikKurang = nama.classList.contains('kurang');
+      ketuk('#btnSimpan');
+      K.antrean = L(A.antrean).map(function (x) { return [x.data.hargaTotal, x.data.caraBayar, x.data.namaPelanggan]; });
+      K.satuNota = L(A.antrean).length === 2 && L(A.antrean)[0].data.grupNota === L(A.antrean)[1].data.grupNota;
+      K.sesudahSimpan = { nama: nama.value, tunai: document.getElementById('bayarD-Tunai').classList.contains('pilih') };
+      await diam(); P.jaringan = true; kirimAntrean(true); await kosong(); await diam();
+      K.masuk = P.masuk.map(function (x) { return [x.hargaTotal, x.cara, x.nama]; });
+      hasil.skenario.ketukTombol = K;
       // PALING AKHIR: karcis ke-2 dari 5 bertanggal bulan terkunci — sisanya dibaca lagi sesudah muat ulang
       reset(true); P.jaringan = false; A.catat(5100); A.catatLama(5200, '2026-08-31'); A.catat(5300); A.catat(5400); A.catat(5500);
       hasil.antreanAwal = L(A.antrean).map(function (x) { return x.data.hargaTotal; });
@@ -140,11 +199,15 @@ SKENARIO = r"""<script>
       await tunggu(300); bukaDaftarDitolak();
     } else if (s === 'muatUlang') {
       await tunggu(400); hasil.skenario.sesudahMuatUlang = potret();
-      bukaDaftarDitolak(); hasil.daftarTeks = document.getElementById('isiDitolak').innerText; hasil.daftarTampil = tampil('layarDitolak');
-      arsipkanDitolak(); hasil.sesudahSatuKetuk = potret(); arsipkanDitolak(); hasil.sesudahDuaKetuk = potret();
+      // owner 3 Okt (perkuat): pita, Tutup & tombol arsip DIKETUK lewat klik DOM — dulu bukaDaftarDitolak() / arsipkanDitolak() dipanggil langsung
+      ketuk('#pitaDitolak'); hasil.daftarTeks = document.getElementById('isiDitolak').innerText; hasil.daftarTampil = tampil('layarDitolak');
+      ketuk('#layarDitolak [data-aksi="tutupDitolak"]'); hasil.sesudahTutup = tampil('layarDitolak');
+      ketuk('#pitaDitolak'); ketuk('#btnArsipDitolak'); hasil.sesudahSatuKetuk = potret(); ketuk('#btnArsipDitolak'); hasil.sesudahDuaKetuk = potret();
       hasil.versiLayar = document.getElementById('versiApp').textContent;
     } else { await tunggu(300); }
   } catch (e) { hasil.galat = String(e && (e.stack || e.message) || e); }
+  await tunggu(100);   // pelanggaran CSP dikabarkan peramban sebagai tugas tersendiri — beri waktu sebelum dihitung
+  hasil.cspLain = window.__csp ? window.__csp.lain() : null;
   // hasil dikirim LANGSUNG ke server uji (per skenario), sebelum /_siap — jadi sebelum halaman selesai dimuat, tidak lewat DOM yang harus
   // diserahkan Chrome. ?lanjut= → muat ulang di Chrome yang SAMA (seperti HP penjaga memuat ulang halaman), penyimpanan halaman ikut.
   try { await fetch('/_hasil' + location.search, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hasil) }); } catch (e) {}
@@ -185,26 +248,59 @@ def _kunci_skenario(jalur):
     return urllib.parse.parse_qs(urllib.parse.urlsplit(jalur).query).get('s', [''])[0]
 
 
-def longgarkan_csp(t):
-    """CSP SALINAN UJI kasir darurat (kasir-v32, 3 Okt 2026 — pola uji_layar_kunci.py). Kasir darurat memasang CSP lewat meta: script hanya yang
-    hash-nya tercantum. Skenario uji disuntik sebagai script sebaris SESUDAH meta itu (sebelum </body>) → tanpa pelonggaran ia diblokir dan uji gagal
-    palsu. script-src SALINAN jadi 'unsafe-inline' (hash dibuang — kalau ada hash, 'unsafe-inline' diabaikan peramban); kontrol yang merusak script
-    halaman pun tetap jalan (bukan mati karena hash basi). Direktif lain (koneksi, worker, objek, dasar) TETAP. Palsu Firestore (KEPALA) disisip
-    tepat sesudah <head>, jadi SEBELUM meta — tidak terkena CSP. Hash halaman yang sungguhan dijaga uji_csp.py (statis)."""
-    csp = re.search(r'(<meta http-equiv="Content-Security-Policy" content="[^"]*?)script-src [^;]*;', t); assert csp, 'meta CSP kasir darurat berubah — perbarui uji'
-    return t.replace(csp.group(0), csp.group(1) + "script-src 'unsafe-inline';", 1)
+def csp_salinan(t, suntikan, asli=None):
+    """CSP SALINAN UJI kasir darurat (owner 3 Okt, perkuat — menggantikan longgarkan_csp, yang mengganti script-src salinan dengan 'unsafe-inline':
+    handler sebaris yang tersisa tetap JALAN di uji padahal mati di HP penjaga, dan hash halaman tidak pernah diuji peramban).
+    script-src salinan = hash halaman + hash tiap script di `suntikan` (skenario uji yang disisip SESUDAH meta), TANPA 'unsafe-inline' — peramban
+    menegakkan CSP yang sama dengan HP penjaga. Hash halaman dipakai APA ADANYA; hanya dihitung ulang (uji_csp.tulis_hash, cara yang sama dengan
+    --pasang) kalau salinan diubah kontrol (t != asli), supaya yang berbunyi cacat yang dituju, bukan hash basi. Yang disisip SEBELUM meta
+    (PENJAGA_CSP, palsu Firestore) tidak terkena CSP dan tidak perlu hash. Direktif lain TETAP."""
+    pola = r'<meta http-equiv="Content-Security-Policy" content="[^"]*?script-src [^;"]*'
+    assert re.search(pola, t), 'meta CSP kasir darurat tanpa script-src — perbarui uji'
+    if asli is not None and t != asli: t = uji_csp.tulis_hash(t)
+    m = re.search(pola, t); ada = m.group(0).split()
+    return t[:m.end()] + ''.join(' ' + h for h in uji_csp.hash_sebaris(suntikan) if h not in ada) + t[m.end():]
+
+
+def salinan(t, berkas=DARURAT, asli=None):
+    """Teks salinan uji peramban — TANPA menulis atau menyalakan apa pun (dipakai siapkan DAN pemeriksaan statis): PENJAGA_CSP + palsu Firestore
+    tepat sesudah <head> (SEBELUM meta CSP), skenario + penahan sebelum </body>, CSP salinan = hash halaman + hash skenario (csp_salinan)."""
+    assert t.count('<head>') == 1 and t.count('</body>') == 1
+    skenario = SKENARIO.replace('__PENYESUAI__', PENYESUAI[berkas])
+    t = csp_salinan(t, skenario, asli)
+    return t.replace('<head>', '<head>' + PENJAGA_CSP + KEPALA, 1).replace('</body>', skenario + "<img src='/_tahan' alt='' style='display:none'></body>", 1)
 
 
 def siapkan(berkas, ganti=None):
-    """Folder kerja berisi salinan berkas kasir yang disuntik (palsu di <head>, skenario + penahan di </body>). ganti = [(lama, baru)] untuk kontrol."""
-    d = tempfile.mkdtemp(prefix='antre-'); t = open(os.path.join(AKAR, berkas), encoding='utf-8').read()
+    """Folder kerja berisi salinan berkas kasir yang disuntik (salinan()). ganti = [(lama, baru)] untuk kontrol."""
+    d = tempfile.mkdtemp(prefix='antre-'); asli = open(os.path.join(AKAR, berkas), encoding='utf-8').read(); t = asli
     for lama, baru in (ganti or []):
         assert lama in t, 'kontrol basi: ' + berkas + ' · ' + lama[:70]; t = t.replace(lama, baru)
-    assert t.count('<head>') == 1 and t.count('</body>') == 1
-    t = longgarkan_csp(t)
-    t = t.replace('<head>', '<head>' + KEPALA, 1).replace('</body>', SKENARIO.replace('__PENYESUAI__', PENYESUAI[berkas]) + "<img src='/_tahan' alt='' style='display:none'></body>", 1)
-    open(os.path.join(d, berkas), 'w', encoding='utf-8').write(t)
+    open(os.path.join(d, berkas), 'w', encoding='utf-8').write(salinan(t, berkas, asli))
     return d
+
+
+@contextlib.contextmanager
+def ganti_alat(alat, modul=None):
+    """Kontrol atas ALAT UJI ini sendiri (owner 3 Okt, perkuat): {nama global: [(lama, baru)] untuk teks | fungsi pengganti}, dipulihkan sesudahnya.
+    modul = modul tempat global itu (bawaan: modul ini; uji_katalog_kasir memberi modul uji_antrean_kasir yang diimpornya)."""
+    g = vars(modul) if modul else globals(); simpan = {}
+    try:
+        for n, v in (alat or {}).items():
+            simpan[n] = g[n]
+            if callable(v): g[n] = v; continue
+            t = g[n]
+            for lama, baru in v:
+                assert lama in t, 'kontrol basi (alat): ' + n + ' · ' + lama[:70]; t = t.replace(lama, baru)
+            g[n] = t
+        yield
+    finally:
+        g.update(simpan)
+
+
+def _salinan_longgar(t, suntikan, asli=None):
+    """PERUSAK untuk kontrol: cara lama (script-src salinan = 'unsafe-inline', hash dibuang)."""
+    return re.sub(r"script-src [^;]*;", "script-src 'unsafe-inline';", t, count=1)
 
 
 def _ikat_tanpa_dns(self):
@@ -355,11 +451,22 @@ def jalankan_berkas(berkas, ganti=None, gambar_dir=None):
         srv.shutdown(); shutil.rmtree(profil, ignore_errors=True); shutil.rmtree(d, ignore_errors=True)
 
 
+def periksa_csp(ok, label, h):
+    """owner 3 Okt (perkuat): CSP halaman BERLAKU di salinan uji (kanari ber-onclick sebaris diblokir & tercatat, tidak jalan) dan NOL pelanggaran
+    lain sepanjang pemuatan. Dipakai juga uji_katalog_kasir.py. h = hasil satu pemuatan (dict)."""
+    k = h.get('kanari') or {}
+    ok(label + ': CSP halaman berlaku di salinan uji — tombol KANARI ber-onclick sebaris DIBLOKIR & tercatat (pendengar pelanggaran hidup)',
+       k.get('tercatat', 0) >= 1 and k.get('jalan') is False and all(str(a).startswith('script-src') for a in (k.get('arahan') or ['?'])), k)
+    ok(label + ': NOL pelanggaran CSP selain kanari (hash halaman & skenario, tombol yang diketuk, koneksi, gambar)', h.get('cspLain') == [], h.get('cspLain'))
+
+
 def periksa_peramban(berkas, u, m, versi_sw):
     """→ [(nama, lulus, keterangan)] untuk satu berkas."""
     kata = 'karcis' if berkas == DARURAT else 'catatan'
     out = []; ok = lambda n, c, k='': out.append((berkas + ' · ' + n, bool(c), k))
-    if not u or u.get('galat'): return [(berkas + ' · skenario utama jalan', False, (u or {}).get('galat', 'tidak ada hasil (halaman tidak jalan)'))]
+    if not u or u.get('galat'):
+        return [(berkas + ' · skenario utama jalan', False, {'galat': (u or {}).get('galat', 'tidak ada hasil (halaman tidak jalan)'), 'cspLain': (u or {}).get('cspLain')})]
+    periksa_csp(ok, 'utama', u)
     S = u['skenario']
     j = S['jaringanPutus']; ok('sinyal putus: antrean utuh (3), tidak ada yang "ditolak", layar masuk tidak muncul', j['antrean'] == [1100, 1200, 1300] and not j['ditolak'] and not j['login'], j)
     j = S['jaringanPulih']; ok('sinyal kembali → dicoba lagi → ketiganya masuk berurutan, antrean kosong', j['masuk'] == [1100, 1200, 1300] and not j['antrean'] and not j['ditolak'], j)
@@ -369,6 +476,16 @@ def periksa_peramban(berkas, u, m, versi_sw):
     j = S['tidakDikenal401']; ok('401 → layar masuk muncul, antrean utuh (2), tidak ada yang pindah ke "ditolak"', j['login'] and j['antrean'] == [3100, 3200] and not j['ditolak'] and not j['masuk'], j)
     j = S['belumMasuk']; ok('belum masuk → nol kiriman ke server (403 tanpa kunci bukan penolakan aturan), antrean utuh, tidak ada "ditolak"' + (', layar masuk muncul' if berkas == DARURAT else ''),
                             j['tanpaKunci'] == 0 and not j['permintaan'] and j['antrean'] == [4100, 4200] and not j['ditolak'] and (j['login'] or berkas != DARURAT), j)
+    j = S.get('ketukTombol') or {}
+    ok('TOMBOL SUNGGUHAN (klik DOM → data-aksi → AKSI): papan 7 + "000" → LCD 7.000 ("000" tetap teks), + BARANG BERIKUTNYA dua kali → 2 baris',
+       j.get('lcdTujuhRibu') == '7000' and j.get('barisDua') == 2, j)
+    ok('ketuk: tombol hapus barang (dibangun innerHTML) menghapus baris ke-2; HAPUS menghapus satu angka (125 → 12 → 1200)',
+       j.get('barisSesudahHapus') == 1 and j.get('lcdSeribuDuaRatus') == '1200', j)
+    ok('ketuk: KREDIT terpilih; SIMPAN tanpa nama DITOLAK (kolom nama ditandai, antrean kosong); ketikan nama (input) membersihkan tandanya',
+       j.get('kreditTerpilih') is True and j.get('tanpaNama') == {'antrean': 0, 'kurang': True} and j.get('sesudahKetikKurang') is False, j)
+    ok('ketuk: SIMPAN → 2 karcis satu nota (7.000 & 1.200, Kredit, bernama) di antrean, kolom kembali kosong & Tunai; terkirim berurutan',
+       j.get('antrean') == [[7000, 'Kredit', 'Pembeli Uji'], [1200, 'Kredit', 'Pembeli Uji']] and j.get('satuNota') is True
+       and j.get('sesudahSimpan') == {'nama': '', 'tunai': True} and j.get('masuk') == j.get('antrean'), j)
     j = S['keduaDitolak']
     ok('antrean awal 5 ' + kata + ', yang ke-2 bertanggal bulan terkunci', u.get('antreanAwal') == [5100, 5200, 5300, 5400, 5500], u.get('antreanAwal'))
     ok(kata + ' ke-2 dari 5 ditolak → 1, 3, 4, 5 MASUK berurutan, antrean kosong', j['masuk'] == [5100, 5300, 5400, 5500] and not j['antrean'], j)
@@ -380,10 +497,13 @@ def periksa_peramban(berkas, u, m, versi_sw):
     ok('bilah status menyebut "1 ditolak"', '1 ditolak' in j['chip'], j['chip'])
     dy = u.get('denyut') or {}
     ok('denyut melaporkan antrean 0, ditolak 1, versi = VERSI sw-kasir.js (' + versi_sw + ')', dy.get('antrean') == 0 and dy.get('gagal') == 1 and dy.get('versi') == versi_sw, dy)
-    if not m or m.get('galat'): out.append((berkas + ' · muat ulang jalan', False, (m or {}).get('galat', 'tidak ada hasil'))); return out
+    if not m or m.get('galat'):
+        out.append((berkas + ' · muat ulang jalan', False, {'galat': (m or {}).get('galat', 'tidak ada hasil'), 'cspLain': (m or {}).get('cspLain')})); return out
+    periksa_csp(ok, 'muat ulang', m)
     j = m['skenario']['sesudahMuatUlang']
     ok('sesudah MUAT ULANG: ' + kata + ' yang ditolak masih ada (tidak hilang), pita masih tampil', len(j['ditolak']) == 1 and j['ditolak'][0]['h'] == 5200 and 'ditolak server' in j['pita'], j)
-    ok('daftar ditolak menyebut tanggal, jam & nominal supaya bisa dicatat ulang', m.get('daftarTampil') and '31/08/2026' in (m.get('daftarTeks') or '') and '20:15' in (m.get('daftarTeks') or '') and '5.200' in (m.get('daftarTeks') or ''), m.get('daftarTeks'))
+    ok('pita DIKETUK → daftar ditolak menyebut tanggal, jam & nominal supaya bisa dicatat ulang', m.get('daftarTampil') and '31/08/2026' in (m.get('daftarTeks') or '') and '20:15' in (m.get('daftarTeks') or '') and '5.200' in (m.get('daftarTeks') or ''), m.get('daftarTeks'))
+    ok('Tutup DIKETUK → daftar ditolak tertutup', m.get('sesudahTutup') is False, m.get('sesudahTutup'))
     ok('"sudah dicatat ulang": satu ketukan TIDAK memindah apa pun', len(m['sesudahSatuKetuk']['ditolak']) == 1 and not m['sesudahSatuKetuk']['arsip'], m['sesudahSatuKetuk'])
     ok('ketukan kedua MEMINDAH ke arsip (tidak dihapus), pita hilang', not m['sesudahDuaKetuk']['ditolak'] and m['sesudahDuaKetuk']['arsip'] == [5200] and not m['sesudahDuaKetuk']['pita'], m['sesudahDuaKetuk'])
     ok('versi yang berjalan tampil di layar ("versi 3 Okt b" — naik bersama kasir-v32)', m.get('versiLayar') == 'versi 3 Okt b', m.get('versiLayar'))
@@ -411,12 +531,34 @@ def periksa_statis(teks):
     kk = re.search(r"export const KK_VERSI_KASIR_TERBARU = '([^']+)';", teks['baru/js/data/katalog-kasir.js']); no = lambda x: int(re.match(r'kasir-v(\d+)$', x.group(1)).group(1)) if x and re.match(r'kasir-v(\d+)$', x.group(1)) else -1
     ok('/baru/: versi kasir terbaru (KK_VERSI_KASIR_TERBARU) = VERSI sw-kasir.js; lantai kunci bulan KP_VERSI_KASIR_25B (kasir-v26) ≤ versi itu', kk and vs and kk.group(1) == vs.group(1) and kp and kp.group(1) == 'kasir-v26' and 0 < no(kp) <= no(vs), [x.group(1) if x else None for x in (kk, kp, vs)])
     ok('sw-kasir.js mengunduh versi baru melewati cache HTTP peramban (cache: \'reload\')', "new Request(f, { cache: 'reload' })" in sw)
-    # kasir-v32 (3 Okt 2026): salinan uji (longgarkan_csp) hanya mengganti script-src — koneksi, worker, objek & dasar tetap seperti yang terbit
-    try: lg = longgarkan_csp(teks[DARURAT])
-    except AssertionError: lg = None
-    a, b = _csp(teks[DARURAT]), (_csp(lg) if lg else None)
-    ok(DARURAT + ": salinan uji peramban melonggarkan CSP HANYA di script-src ('unsafe-inline' untuk skenario sebaris uji); direktif lain tetap",
-       a and b and b.get('script-src') == ["'unsafe-inline'"] and dict((k, v) for k, v in a.items() if k != 'script-src') == dict((k, v) for k, v in b.items() if k != 'script-src'), b)
+    out += periksa_salinan(teks[DARURAT], lambda: salinan(teks[DARURAT], DARURAT, _asli()), SKENARIO.replace('__PENYESUAI__', PENYESUAI[DARURAT]), PENJAGA_CSP)
+    return out
+
+
+def _asli():
+    return open(os.path.join(AKAR, DARURAT), encoding='utf-8').read()
+
+
+def periksa_salinan(halaman, bangun, suntikan, penjaga):
+    """owner 3 Okt (perkuat): salinan uji peramban DIBANGUN TANPA PERAMBAN (teks yang sama dengan yang dimuat Chrome) dan diperiksa: script-src =
+    hash halaman (apa adanya; dihitung ulang hanya kalau kontrol mengubah halaman) + hash skenario uji, TANPA 'unsafe-inline'; direktif lain tetap;
+    tiap script sebaris sesudah meta ber-hash di script-src, tidak lebih; penjaga pelanggaran CSP (dengan kanari) & palsu Firestore SEBELUM meta.
+    halaman = teks kasir darurat yang diuji (boleh salinan rusak kontrol); bangun() → teks salinan. Dipakai juga uji_katalog_kasir.py."""
+    out = []; ok = lambda n, c, k='': out.append(('statis · ' + DARURAT + ': salinan uji peramban — ' + n, bool(c), k))
+    try: sl = bangun()
+    except AssertionError as e: sl = None; sebab = str(e)
+    if sl is None: return [('statis · ' + DARURAT + ': salinan uji peramban dibangun', False, sebab)]
+    a = _csp(halaman if halaman == _asli() else uji_csp.tulis_hash(halaman)); b = _csp(sl) or {}
+    tambah = uji_csp.hash_sebaris(suntikan); lain = lambda d: dict((k, v) for k, v in (d or {}).items() if k != 'script-src')
+    ok("script-src = hash halaman + hash skenario uji, TANPA 'unsafe-inline'; direktif lain tetap",
+       a and sorted(b.get('script-src', [])) == sorted(a.get('script-src', []) + tambah) and "'unsafe-inline'" not in b.get('script-src', []) and lain(a) == lain(b),
+       {'salinan': b.get('script-src'), 'halaman': (a or {}).get('script-src'), 'suntikan': tambah})
+    meta = sl.find('<meta http-equiv="Content-Security-Policy"')
+    ok('tiap script sebaris sesudah meta CSP (halaman + skenario) ber-hash di script-src, tidak lebih',
+       meta > 0 and sorted(uji_csp.hash_sebaris(sl[meta:])) == sorted(b.get('script-src', [])), (uji_csp.hash_sebaris(sl[meta:]), b.get('script-src')))
+    pos = [sl.find(x) for x in ("addEventListener('securitypolicyviolation'", 'C.kanari = async function', 'window.fetch = function')]
+    ok('penjaga pelanggaran CSP (securitypolicyviolation + kanari) & palsu Firestore disisip SEBELUM meta CSP (tidak terkena CSP)',
+       penjaga in sl and all(0 <= x < meta for x in pos), (pos, meta))
     return out
 
 
@@ -493,8 +635,16 @@ def cetak(hasil):
 
 
 def semua(ganti_berkas=None, ganti_jsc=None, gambar_dir=None, hanya=None):
-    """ganti_berkas = {berkas: [(lama, baru)]} (kontrol). hanya = daftar bagian yang dijalankan ('statis', 'peramban', 'baru')."""
-    ganti_berkas = ganti_berkas or {}; hanya = hanya or ['statis', 'peramban', 'baru']; hasil = []
+    """ganti_berkas = {berkas: [(lama, baru)]} (kontrol); kunci '@nama' = global alat uji ini (ganti_alat). hanya = daftar bagian yang dijalankan
+    ('statis', 'peramban', 'baru')."""
+    ganti_berkas = ganti_berkas or {}
+    alat = dict((k[1:], v) for k, v in ganti_berkas.items() if k.startswith('@'))
+    with ganti_alat(alat):
+        return _semua(dict((k, v) for k, v in ganti_berkas.items() if not k.startswith('@')), ganti_jsc, gambar_dir, hanya)
+
+
+def _semua(ganti_berkas, ganti_jsc, gambar_dir, hanya):
+    hanya = hanya or ['statis', 'peramban', 'baru']; hasil = []
     teks = baca_semua()
     for b, gs in ganti_berkas.items():
         for lama, baru in gs:
@@ -531,7 +681,20 @@ KONTROL = [
     ('denyut masih versi tulis-tangan lama', {DARURAT: [("    versi: VERSI_APLIKASI,\n", "    versi: 'kasir-v24',\n")]}, None, ['statis', 'peramban']),
     ('sw-kasir.js naik tanpa kasir ikut (VERSI beda)', {'sw-kasir.js': [("const VERSI = 'kasir-v32';", "const VERSI = 'kasir-v33';")]}, None, ['statis']),
     ('service worker memakai cache HTTP lama', {'sw-kasir.js': [("c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))", "c.addAll(FILES)")]}, None, ['statis']),
-    ('meta CSP kasir darurat tanpa script-src (pelonggar salinan uji kehilangan sasarannya)', {DARURAT: [("script-src 'sha256-", "script-sumber 'sha256-")]}, None, ['statis']),
+    ('meta CSP kasir darurat tanpa script-src (salinan uji tidak bisa menambah hash skenario)', {DARURAT: [("script-src 'sha256-", "script-sumber 'sha256-")]}, None, ['statis']),
+    # owner 3 Okt (perkuat): salinan uji memakai CSP halaman (bukan 'unsafe-inline'), tombol diketuk lewat klik DOM, pelanggaran CSP dihitung (+ kanari)
+    ("salinan uji kembali melonggarkan script-src ke 'unsafe-inline' (statis)", {'@csp_salinan': _salinan_longgar}, None, ['statis']),
+    ("salinan uji kembali melonggarkan script-src ke 'unsafe-inline' (peramban: kanari ikut jalan)", {'@csp_salinan': _salinan_longgar}, None, ['peramban']),
+    ('salinan uji tidak menghitung ulang hash halaman yang diubah kontrol (yang berbunyi hash basi, bukan cacat yang dituju)',
+     {DARURAT: [("    versi: VERSI_APLIKASI,\n", "    versi: VERSI_APLIKASI + '',\n")], '@csp_salinan': lambda t, s, asli=None, f=csp_salinan: f(t, s, None)}, None, ['statis']),
+    ('pendengar pelanggaran CSP dicabut (statis)', {'@PENJAGA_CSP': [("  document.addEventListener('securitypolicyviolation', function (e) {", "  (function (e) {")]}, None, ['statis']),
+    ('pendengar pelanggaran CSP dicabut (peramban: kanari tidak tercatat)', {'@PENJAGA_CSP': [("  document.addEventListener('securitypolicyviolation', function (e) {", "  (function (e) {")]},
+     None, ['peramban']),
+    ('onclick sebaris kembali di tombol SIMPAN (peramban: diblokir CSP, ketukan tidak menyimpan)', {DARURAT: [('id="btnSimpan" data-aksi="simpan"', 'id="btnSimpan" onclick="simpanNominal()"')]}, None, ['peramban']),
+    ('pendengar delegasi click dicabut (peramban: semua tombol sungguhan mati)', {DARURAT: [("document.addEventListener('click', jalankanAksi);\n", "")]}, None, ['peramban']),
+    ('angka papan dibaca sebagai ANGKA ("000" jadi 0)', {DARURAT: [("  angka: function (el) { tekanAngka(el.getAttribute('data-nilai')); },", "  angka: function (el) { tekanAngka(Number(el.getAttribute('data-nilai'))); },")]}, None, ['peramban']),
+    ('pendengar ketikan dicabut (kolom nama tetap ditandai sesudah diketik)', {DARURAT: [("document.addEventListener('input', jalankanAksi);\n", "")]}, None, ['peramban']),
+    ('tombol Tutup daftar ditolak tanpa data-aksi (mati)', {DARURAT: [('<button type="button" data-aksi="tutupDitolak">Tutup</button>', '<button type="button">Tutup</button>')]}, None, ['peramban']),
     ('/baru/: HP kasir versi lama tidak memblokir kunci', {}, [("tambah({ id: 'versiKasir', blokir: true, ok: !lamaV.length,", "tambah({ id: 'versiKasir', blokir: true, ok: true,")], ['baru']),
     ('/baru/: versi dibandingkan sebagai ada/tidak, bukan nomor', {}, [("const kpVersiKasirCukup = (v) => kpNomorVersiKasir(v) >= kpNomorVersiKasir(KP_VERSI_KASIR_25B);", "const kpVersiKasirCukup = (v) => !!v;")], ['baru']),
     ('/baru/: Perlu perhatian diam soal karcis ditolak', {}, [("if (tolak) bagian.push(tolak + ' DITOLAK server", "if (false) bagian.push(tolak + ' DITOLAK server")], ['baru']),
