@@ -14,7 +14,10 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/uang-logika.js', 'baru/js/layar/upah-logika.js', 'baru/js/layar/owner-toko-logika.js', 'baru/js/layar/tutup-hari-logika.js', 'baru/js/layar/tutup-buku-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/pelanggan-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/uang-logika.js', 'baru/js/layar/upah-logika.js', 'baru/js/layar/owner-toko-logika.js', 'baru/js/layar/tutup-hari-logika.js', 'baru/js/layar/tutup-buku-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/pelanggan-logika.js',
+                                  # Paket B (siap 2027): susunKunci menyusun potret tahun dari Pajak, Laporan & kendali biaya. bon-logika SENGAJA tidak ikut: susunBon-nya
+                                  # bertabrakan dengan susunBon bon-pemasok-logika di satu lingkup (yang terakhir menang) — potret tidak memanggilnya
+                                  'baru/js/layar/pajak-logika.js', 'baru/js/layar/laporan-logika.js', 'baru/js/layar/kendali-biaya-logika.js', 'baru/js/layar/potret-logika.js']
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 

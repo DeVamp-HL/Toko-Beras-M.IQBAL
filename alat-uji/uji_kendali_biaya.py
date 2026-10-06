@@ -22,7 +22,7 @@ import bundel_baru  # noqa: E402
 import uji_laporan_baru  # noqa: E402
 import uji_wadah_bernama  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = uji_laporan_baru.MODUL + ['baru/js/layar/kendali-biaya-logika.js']
+MODUL = list(dict.fromkeys(uji_laporan_baru.MODUL + ['baru/js/layar/kendali-biaya-logika.js']))   # Paket B: modul laporan sudah membawa kendali biaya
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 

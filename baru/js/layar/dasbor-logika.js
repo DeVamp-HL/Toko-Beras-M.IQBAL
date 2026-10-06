@@ -6,15 +6,14 @@
 //   bulan ini → kendaliBulan · titikImpas · pemicuBiaya · peringatanBiaya (Laporan › Biaya; laba bersih = mesin yang sama dengan Laporan › Laba)
 //   stok      → daftarBarang (Stok › Gudang) · susunWadah + wbCekHari hari tutup aktif (Stok › Wadah literan; cek wadah di Tutup hari)
 //   tagihan   → semuaBon (Pelanggan › Bon) · susunBon pemasok (Harga & Pemasok › Bon pemasok › Jatuh tempo)
-//   tren      → hariTerakhir / daftarMinggu / daftarBulan (Laporan) + hitungLabaRentang & jumlahNota (mesin laba & kunci nota yang sama)
+//   tren      → hariTerakhir / daftarMinggu / daftarBulan (Laporan) + lpHariRentang (= hitungLabaRentang & jumlahNota; Paket B: hari di tahun yang sudah
+//               ditutup buku dari potret hari — awal Januari batang Desember tidak jatuh ke Rp0)
 // Yang dihitung di sini cuma pengelompokan (jumlah per status dari baris yang sama, urutan, label) — dan uji_ringkasan_baru memeriksa tiap
 // kelompok MENUTUP ke angka sumbernya. Tiap kelompok membawa { periode, sumber, tujuan }; tujuan berbentuk sama dengan baris Menu
 // ({ ke, keluarga, tab, lembar, … }) untuk keTujuan() di app.js. Satu kelompok yang galat tidak mematikan kelompok lain. BACA SAJA.
-import { hitungLabaRentang } from '../mesin/beku.js';
-import { AMBANG_HARI_KRITIS, JENDELA_LAJU_HARI, bulanDari } from '../mesin/pembantu.js';
-import { jumlahNota } from '../data/toko.js';
+import { AMBANG_HARI_KRITIS, JENDELA_LAJU_HARI, akhirBulanIso } from '../mesin/pembantu.js';
 import { hariIniIso, tanggalPendek, tanggalTutupAktif } from '../inti/format.js';
-import { rekapHari, hariTerakhir, daftarMinggu, daftarBulan, lpPertama } from './laporan-logika.js';
+import { rekapHari, hariTerakhir, daftarMinggu, daftarBulan, lpPertama, lpHariRentang } from './laporan-logika.js';
 import { kendaliBulan, titikImpas, pemicuBiaya, peringatanBiaya } from './kendali-biaya-logika.js';
 import { saldoKantong, ugNamaTempat } from './uang-logika.js';
 import { daftarKarcis } from './karcis-logika.js';
@@ -93,14 +92,14 @@ export function dbTagihan(kini) {
  *  bisa dibuka di sana. Omzet & nota dari daftar Laporan, laba kotor dari mesin laba yang sama. */
 export function dbTren(rentang, kini) {
   const iso = hariIniIso(kini); const pertama = lpPertama();
-  const satu = (cocok, x) => { const L = hitungLabaRentang(cocok); return Object.assign({ omzet: L.omzetPenuh, margin: L.margin, tanpaHpp: L.jumlahTanpaHpp, retur: L.returUang, nota: jumlahNota(cocok) }, x); };
+  const satu = (dari, sampai, x) => { const L = lpHariRentang(dari, sampai); return Object.assign({ omzet: L.omzetPenuh, margin: L.margin, tanpaHpp: L.jumlahTanpaHpp, retur: L.returUang, nota: L.nota }, L.tanpaPotret ? { tanpaPotret: L.tanpaPotret } : {}, x); };
   let batang;
-  if (rentang === 'minggu') batang = daftarMinggu(kini, 8).reverse().map((m) => satu((t) => !!t && t >= m.awal && t <= m.akhir, { id: m.awal, label: m.pendek, panjang: 'Minggu ' + m.label, berjalan: m.berjalan, absen: false, tujuan: { ke: 'laporan', keluarga: 'mingguan', awal: m.awal } }));
-  else if (rentang === 'bulan') batang = daftarBulan(kini, 6).reverse().map((b) => satu((t) => !!t && bulanDari(t) === b.key, { id: b.key, label: b.pendek, panjang: b.nama, berjalan: b.berjalan, absen: false, tujuan: { ke: 'laporan', keluarga: 'bulanan', bulan: b.key } }));
+  if (rentang === 'minggu') batang = daftarMinggu(kini, 8).reverse().map((m) => satu(m.awal, m.akhir, { id: m.awal, label: m.pendek, panjang: 'Minggu ' + m.label, berjalan: m.berjalan, absen: false, tujuan: { ke: 'laporan', keluarga: 'mingguan', awal: m.awal } }));
+  else if (rentang === 'bulan') batang = daftarBulan(kini, 6).reverse().map((b) => satu(b.key + '-01', akhirBulanIso(b.key), { id: b.key, label: b.pendek, panjang: b.nama, berjalan: b.berjalan, absen: false, tujuan: { ke: 'laporan', keluarga: 'bulanan', bulan: b.key } }));
   else {
     rentang = 'hari';
-    batang = hariTerakhir(kini, 14).reverse().map((d) => { const absen = !pertama || d.iso < pertama;
-      const x = satu((t) => t === d.iso, { id: d.iso, label: String(Number(d.iso.slice(8, 10))), panjang: tanggalPendek(d.iso) + (d.hariIni ? ' · hari ini' : ''), berjalan: d.hariIni, absen, tujuan: { ke: 'laporan', keluarga: 'harian', hari: d.iso } });
+    batang = hariTerakhir(kini, 14).reverse().map((d) => { const absen = !pertama || d.iso < pertama || !!d.tanpaPotret;   // Paket B: hari tahun yang ditutup tanpa potret = tidak ada angka
+      const x = satu(d.iso, d.iso, { id: d.iso, label: String(Number(d.iso.slice(8, 10))), panjang: tanggalPendek(d.iso) + (d.hariIni ? ' · hari ini' : ''), berjalan: d.hariIni, absen, tujuan: { ke: 'laporan', keluarga: 'harian', hari: d.iso } });
       x.omzetDaftar = d.omzet; x.notaDaftar = d.n; return x; });
   }
   const nama = DB_RENTANG.find((r) => r[0] === rentang)[1];

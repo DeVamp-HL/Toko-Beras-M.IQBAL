@@ -150,8 +150,12 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - [ ] Semua karcis kasir darurat dirinci; nama kembar disatukan; piutang lama diputuskan.
 - [ ] Upah karyawan dibayar & dicatat sampai 31 Des bila bisa. Yang belum dibayar tercatat di berita acara (baris "Upah karyawan yang belum dibayar");
       kalau dibayar Januari, biayanya masuk Januari (bukan 2026).
-- [ ] Cetak / unduh rekap pajak & laporan tahunan 2026 (layar Pajak & Laporan belum membaca tahun yang sudah ditutup).
-- [ ] LATIHAN sekali (16–30 Des). Layar selalu membuka di LATIHAN.
+- [ ] (Cadangan kertas, disarankan) Laporan › Pajak › Rekap pajak untuk konsultan 2026 + Laporan › Tahunan 2026 → simpan PDF. Sejak Paket B (Okt 2026)
+      layar Pajak, Laporan & Dasbor membaca tahun yang sudah ditutup dari **potret** di berita acara (lihat "Sesudahnya"); PDF ini pegangan kalau potretnya
+      kelak tidak terbaca.
+- [ ] LATIHAN sekali (16–30 Des). Layar selalu membuka di LATIHAN. Langkah 6 (Kunci) latihan menyusun **potret 2026** tanpa menulis apa pun dan
+      menyebut hasilnya ("Potret 2026: 12 bulan & … hari berjualan · omzet sistem … · laba bersih … · neraca 31 Des …"). "Potret 2026 GAGAL" = kunci
+      sungguhan akan DITOLAK sampai dibetulkan — kirim tangkapan layarnya.
 - [ ] 31 Des malam: Menu › Sistem › Perangkat — tiap perangkat antrean 0 dan ditolak 0; HP penjaga lalu dimatikan.
 
 **1 Jan 2027 (Jumat, toko tutup), sesudah 15.00 WIB:**
@@ -170,6 +174,15 @@ lama ke koleksi `arsipTahun` (tidak dihapus). Titik baliknya satu: **kiriman pen
 - [ ] Langkah 7: cadangan SESUDAH & selesai. Salin cadangan SEBELUM, berkas arsip, dan cadangan SESUDAH ke ≥ 2 tempat di luar Mac (simpan 10 tahun).
 
 **Sesudahnya:**
+- [ ] Laporan › Pajak membuka **2026** dengan sendirinya selama Januari–Maret masih ada masa terutang (pilihan tahun di atas kartu). Angka sistem 2026 =
+      potret saat kunci (sama rupiah demi rupiah dengan sebelum ritual); omzet di luar sistem & setoran 2026 tetap bisa dicatat. Catat setoran masa
+      **Desember 2026** (tempo 15 Jan 2027) beserta NTPN; cetak Rekap pajak 2026 untuk konsultan / SPT Tahunan (31 Mar 2027).
+- [ ] Laporan (Laba, Biaya, Bulanan, Tahunan, Neraca akhir bulan, Dokumen berkop) & Dasbor 2026 dari potret. Yang ikut arsip dan TIDAK di potret:
+      daftar per nota (nota rugi, tanpa modal, susut), rincian uang keluar per catatan, buku kas & per jam tiap hari, neraca tanggal selain akhir bulan —
+      layar menyebut "sudah diarsip", tidak menggambar Rp0. Rinciannya di berkas arsip & cadangan SEBELUM.
+- [ ] Profil pajak: "Omzet tahun 2026" untuk batas Rp4,8 miliar 2027 — layar 2027 menawarkan angka dari sistem (potret + isian di luar sistem);
+      angka konsultan menang. Aturan pajak bertanda "diisi untuk tahun 2026" sampai owner/konsultan memastikan aturan 2027 lalu menekan "Pakai aturan"
+      dari layar 2027.
 - [ ] Bon pelanggan langganan, saran belanja (laju 14 hari), dan daftar pelanggan memakai ringkasan tahun 2026 yang dibawa batch penanda — tidak
       perlu membuka kredit per nota sampai April.
 - [ ] Kunci bulan Januari 2027 paling cepat 4 Feb, HANYA sesudah tutup buku 2026 "selesai" (daftar periksa kunci bulan menolak sendiri, Beranda

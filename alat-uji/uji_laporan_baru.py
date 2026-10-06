@@ -15,7 +15,9 @@ sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
 MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/harga-logika.js', 'baru/js/layar/bon-pemasok-logika.js', 'baru/js/layar/uang-logika.js', 'baru/js/layar/upah-logika.js', 'baru/js/layar/owner-toko-logika.js', 'baru/js/layar/tutup-hari-logika.js', 'baru/js/layar/tutup-buku-logika.js',
-                                  'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/pajak-logika.js', 'baru/js/layar/laporan-logika.js']
+                                  'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/pajak-logika.js', 'baru/js/layar/laporan-logika.js',
+                                  # Paket B (siap 2027): potret tahun yang ditutup — tutup buku (susunKunci) menyusunnya dari Pajak, Laporan & kendali biaya
+                                  'baru/js/layar/kendali-biaya-logika.js', 'baru/js/layar/potret-logika.js']
 JAM_TETAP = "var __KINI = new Date('2026-09-19T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 
 
@@ -347,7 +349,8 @@ pasok('batchMasuk', ambilSemuaBatch().concat([{ id: 'tb-2025', tanggal: '2025-12
 ok('sesudah tutup buku 2025: Des 2025 final, Jan 2026 draf; rekap punya bulan final terakhir Des 2025; tempo lapor "20 Jan" LEWAT', lpFinal('2025-12') && !lpFinal('2026-01') && rekapOmzet(KINI).finalTerakhir.key === '2025-12' && rekapOmzet(KINI).tempo.lewat && /paling lambat 20 Jan/.test(rekapOmzet(KINI).tempo.teks), J(rekapOmzet(KINI).tempo));
 var TL = susunTandaLapor('2025-12', W); ok('tandai Des 2025: dokumen rekapOmzet.lapor["2025-12"] bertanggal hari ini, tarif/batas tetap', !TL.tolak && TL.dokumen[0].data.lapor['2025-12'].tgl === '2026-09-19' && TL.dokumen[0].data.tarifPerMil === 5 && TL.dokumen[0].data.batasOmzet === 1000000); tulis(TL);
 ok('batalkan tanda butuh ketukan kedua (perluYakin); dengan yakin → tanda hilang', susunTandaLapor('2025-12', W).perluYakin === true && !susunTandaLapor('2025-12', W, true).dokumen[0].data.lapor['2025-12']);
-var BO = buktiOmzet({ '2025-11': true, '2025-12': true }, KINI); ok('bukti dari dua bulan final: tidak ditolak, Σ = jumlah (0 — kotak pasir tidak punya nota 2025), tanda "final"', !BO.tolak && BO.n === 2 && BO.total === 0 && BO.cocok && BO.baris.every(function (b) { return b.tanda === 'final'; }));
+// Paket B (siap 2027, H2 langkah 3): bulan final yang TIDAK punya angka di sistem (sebelum catatan pertama 20 Agu 2026) tidak dicetak "Rp0 final" — ditolak dengan sebabnya
+var BO = buktiOmzet({ '2025-11': true, '2025-12': true }, KINI); ok('bukti dari dua bulan final SEBELUM catatan pertama: DITOLAK ("tidak punya angka omzet di sistem … sebelum catatan pertama"), bukan Rp0 "final"; baris & Σ tetap tersusun (penjaga identitas)', !!BO.tolak && /November 2025, Desember 2025 tidak punya angka omzet di sistem \(sebelum catatan pertama\)/.test(BO.tolak) && /bukan|tidak dicetak Rp0/.test(BO.tolak) && BO.n === 2 && BO.total === 0 && BO.cocok && BO.baris.every(function (b) { return b.tanda === 'final'; }), BO.tolak);
 
 // ==================== NERACA ====================
 var NP = neracaPada(null, KINI); var NM = hitungNeraca();
