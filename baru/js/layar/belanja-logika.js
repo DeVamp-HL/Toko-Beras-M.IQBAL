@@ -4,9 +4,12 @@
 // Owner memesan MUATAN, bukan uang (memori muatan-tiga-ton-tetap): muatan truk bawaan = median berat kedatangan nyata (TERUKUR, disebut), owner boleh mengubahnya di Atur.
 // Tiap pemasok membawa mereknya sendiri (harga terakhir per pemasok dari kedatangan, tanggalnya selalu ditulis); RODA MAS biasa BON, SEJATI biasa TUNAI → perkiraan uangnya dibaca beda.
 // Pesanan yang dikirim = koleksi BARU pesananPemasok (menunggu datang / batal); "sudah datang" dibaca dari kedatangan pemasok itu SESUDAH pesanan (tidak ditebak dari stok).
+// owner 7 Okt: "belanja pakai harga modal yang sudah ada sebelumnya" — nama merek karung berganti-ganti (TH House lalu TH Grand dari pemasok yang sama), pemasok
+// mengenal barangnya dari HARGA (bonnya menulis kode karung + harga per kg). Daftar belanja & pesanan dikelompokkan per pemasok lalu per HARGA BELI TERAKHIR
+// per kg dari pemasok itu (blKelompokHarga); merek seharga = satu baris, karungnya dijumlah. Hitungan stok (laju, sisa, saran) tetap per merek.
 import { hitungStokKarungPerMerk, hitungLajuPakai, kasPada } from '../mesin/beku.js';
-import { merkPunyaKarungBerat, JENDELA_LAJU_HARI } from '../mesin/pembantu.js';
-import { ambilSemuaBatch, ambilPesananPemasok, cacheMentah, stokMerekSaja, lajuLintas } from '../data/toko.js';
+import { merkPunyaKarungBerat, JENDELA_LAJU_HARI, jenisUntukMerk } from '../mesin/pembantu.js';
+import { ambilSemuaBatch, ambilPesananPemasok, cacheMentah, stokMerekSaja, lajuLintas, petaUkuran } from '../data/toko.js';
 import { RP, ANGKA, hariIniIso, tanggalPendek } from '../inti/format.js';
 import { daftarPemasok, tempoPemasok, nomorWa, bpTambahHari, pemasokSungguhan } from './bon-pemasok-logika.js';
 
@@ -52,7 +55,9 @@ export function daftarBelanja(kini) {
   const atur = aturBelanja(); const stok = hitungStokKarungPerMerk(); const laju = lajuLintas(hitungLajuPakai()).kgMerk || {}; const pem = daftarPemasok(); const menunggu = pesananMenunggu();
   // putaran 28: stok wadah diisi dari karung, tidak dibeli
   const merks = new Set(Object.keys(stokMerekSaja(stok))); pem.forEach((p) => Object.keys(p.hargaPerMerk).forEach((m) => merks.add(m)));
-  const merk = Array.from(merks).map((m) => { const sisa = (stok[m] || {}).sisaKg || 0; const l = laju[m] || 0; const hari = hariHabis(sisa, l); const berat = merkPunyaKarungBerat(m, 50) ? 50 : merkPunyaKarungBerat(m, 25) ? 25 : 50;
+  // owner 7 Okt (pesanan per harga): buku per ukuran 'Merek 25 kg' dipesan dalam karung 25 kg — pisah buku (pindah jadi-karung-utuh) membuatnya tampak "punya karung 50 kg"
+  const uk = petaUkuran();
+  const merk = Array.from(merks).map((m) => { const sisa = (stok[m] || {}).sisaKg || 0; const l = laju[m] || 0; const hari = hariHabis(sisa, l); const berat = uk[m] ? uk[m].berat : merkPunyaKarungBerat(m, 50) ? 50 : merkPunyaKarungBerat(m, 25) ? 25 : 50;
     const butuh = l > 0 ? Math.max(0, l * atur.targetHari - sisa) : 0; const saranK = Math.ceil(butuh / berat);
     const sumber = pem.filter((p) => p.hargaPerMerk[m]).map((p) => ({ pemasok: p.nama, harga: p.hargaPerMerk[m].terakhir.hargaPerKg, tanggal: p.hargaPerMerk[m].terakhir.tanggal })).sort((a, b) => a.harga - b.harga);
     const dipesan = menunggu.find((p) => (p.baris || []).some((b) => b.merk === m)) || null;
@@ -70,10 +75,12 @@ export function hitungBelanja(pesan, kini) {
       hargaTeks: sumber ? sumber.pemasok + ' · ' + RP(sumber.harga) + '/kg (harga ' + tanggalPendek(sumber.tanggal) + ')' + (x.sumber.length > 1 ? ' · ganti ›' : '') : 'belum pernah dibeli — pemasok & harganya belum diketahui',
       saranTeks: x.saranK > 0 ? 'saran ' + x.saranK + ' karung' : 'tambah', sesudahTeks: k && x.hariSesudah !== null ? 'jadi cukup ±' + x.hariSesudah + ' hari' : '', dipesanTeks: x.dipesan ? 'sudah dipesan ' + tanggalPendek(x.dipesan.tanggal) + ' — menunggu datang' : '' }); });
   const perP = D.pemasok.map((p) => { const d = baris.filter((b) => b.k > 0 && b.sumber && b.sumber.pemasok === p.nama); const kg = d.reduce((a, b) => a + b.kg, 0), rp = d.reduce((a, b) => a + b.rp, 0), karung = d.reduce((a, b) => a + b.k, 0);
+    const milik = baris.filter((b) => b.sumber && b.sumber.pemasok === p.nama);
     const uang = !karung ? '' : p.cara === 'bon' ? 'Biasanya BON — jadi utang ±' + RP(rp) + (p.tempo.hari > 0 ? ', jatuh tempo ±' + tanggalPendek(bpTambahHari(hariIniIso(kini || new Date()), p.tempo.hari)) + ' kalau datang hari ini' : ', tempo belum disepakati') + '. Yang tunai cuma ongkos bongkar.'
       : p.cara === 'tunai' ? 'Biasanya TUNAI — perlu ±' + RP(rp) + ' waktu barang datang. ' + (kas === null ? 'Uang toko belum bisa dihitung (titik kas belum disetel).' : 'Uang toko sekarang ' + RP(kas) + (rp > kas ? ' — KURANG ' + RP(rp - kas) + '.' : ' — cukup.')) : 'Belum ada kedatangan dari pemasok ini, jadi belum tahu biasanya bon atau tunai. Perkiraan ±' + RP(rp) + '.';
     return { pemasok: p.nama, kunci: p.kunci, cara: p.cara, caraTeks: p.caraTeks, tempo: p.tempo, kontak: p.kontak, d, kg, rp, karung, sisaMuat: atur.muatanKg > 0 ? atur.muatanKg - kg : 0, lebih: atur.muatanKg > 0 ? Math.max(0, kg - atur.muatanKg) : 0, uangTeks: uang, uangAwas: p.cara === 'tunai' && kas !== null && rp > kas,
-      milik: baris.filter((b) => b.sumber && b.sumber.pemasok === p.nama), saran: baris.filter((b) => b.perlu && !b.k && b.sumber && b.sumber.pemasok === p.nama) }; });
+      // owner 7 Okt: g = pesanan per HARGA (truk, pesanan WA); gMilik = merek pemasok ini yang belum dipesan, per harga (daftar di bawah truk)
+      milik, saran: baris.filter((b) => b.perlu && !b.k && b.sumber && b.sumber.pemasok === p.nama), g: blKelompokHarga(d), gMilik: blKelompokHarga(milik.filter((b) => !b.dipesan)), dipesanMerk: milik.filter((b) => !!b.dipesan) }; });
   const totKarung = perP.reduce((a, r) => a + r.karung, 0), totKg = perP.reduce((a, r) => a + r.kg, 0), totRp = perP.reduce((a, r) => a + r.rp, 0);
   const perluSemua = baris.filter((b) => b.perlu && !b.k && b.termurah);
   const urutHari = (a, b) => (a.hari === null ? 999 : a.hari) - (b.hari === null ? 999 : b.hari);
@@ -84,14 +91,61 @@ export function hitungBelanja(pesan, kini) {
   tambah('Sudah dipesan', 'menunggu datang', false, baris.filter((b) => !!b.dipesan));
   const kertas = perP.map((r) => ({ pemasok: r.pemasok, kunci: r.kunci, karung: r.karung, kg: r.kg, rp: r.rp, lebih: r.lebih, sisaMuat: r.sisaMuat, muatanKg: atur.muatanKg,
     isi: baris.filter((b) => !b.dipesan && ((b.k > 0 && b.sumber && b.sumber.pemasok === r.pemasok) || (b.k === 0 && b.perlu && b.termurah && b.termurah.pemasok === r.pemasok))).sort(urutHari) })).filter((r) => r.isi.length);
+  kertas.forEach((r) => { r.g = blKelompokHarga(r.isi); });   // owner 7 Okt: lembar daftar belanja = satu baris per harga
   const lainnya = baris.filter((b) => !b.dipesan && b.k === 0 && !b.perlu && b.termurah).sort(urutHari);
   return { D, atur, baris, perP, totKarung, totKg, totRp, perluSemua, kelompok, kertas, lainnya, kas, ringkas: [{ a: baris.filter((b) => !b.dipesan && b.hari !== null && b.hari <= 2).length, l: 'habis ≤ 2 hari', nyala: true }, { a: baris.filter((b) => b.perlu).length, l: 'perlu dipesan', nyala: false }, { a: baris.filter((b) => b.dipesan).length, l: 'sudah dipesan', nyala: false }],
     legenda: 'Batang abu = stok cukup sampai hari ke berapa (penuh = 30 hari) · garis = ' + atur.ambangHari + ' hari · emas = tambahan dari pesanan', pesanTeks: totKarung ? totKarung + ' karung · ' + blKG(totKg) + ' · ±' + RP(totRp) : '', pesanKet: perP.filter((r) => r.karung).map((r) => r.pemasok + ' ' + r.karung).join(' · ') };
 }
-/** Truk satu pemasok: potongan bak berwarna per merek (label hanya bila tumpukannya cukup lebar). */
+/**
+ * KELOMPOK HARGA (owner 7 Okt: "belanja pakai harga modal yang sudah ada sebelumnya"). Baris belanja satu pemasok dikelompokkan per harga beli terakhir per kg
+ * dari pemasok itu — harga yang sama dengan yang menghitung rp barisnya (b.sumber) — per berat karung, dan per jenis beras (IR64 & IR42 yang kebetulan seharga
+ * tetap dua baris, supaya pemasok tidak salah kirim). Merek seharga = SATU baris; karung, kg, rp dijumlah apa adanya (Σ kelompok = Σ baris). Merek tanpa harga
+ * beli = baris sendiri bertanda "harga belum tercatat". Urutan: termurah dulu, tanpa harga paling akhir. kode = nama karung pemasok (bagian sebelum " · ";
+ * buku per ukuran → induknya) sebagai keterangan kecil "merek lalu".
+ */
+export function blKelompokHarga(rows) {
+  const uk = petaUkuran(); const peta = {}; const urut = [];
+  (rows || []).forEach((b) => {
+    const harga = b.sumber && Number(b.sumber.harga) > 0 ? Number(b.sumber.harga) : 0; const berat = Number(b.berat) || 50; const jenis = harga ? String(jenisUntukMerk(uk[b.merk] ? uk[b.merk].induk : b.merk) || '').trim() : '';
+    const kunci = harga ? berat + '|' + harga + '|' + jenis : 'x|' + b.merk;
+    if (!peta[kunci]) { peta[kunci] = { kunci, harga, berat, jenis, adaHarga: harga > 0, merk: [], k: 0, kg: 0, rp: 0, tanggal: '' }; urut.push(peta[kunci]); }
+    const g = peta[kunci]; g.merk.push(b); g.k += b.k || 0; g.kg += b.kg || 0; g.rp += b.rp || 0; if (b.sumber && String(b.sumber.tanggal || '') > g.tanggal) g.tanggal = String(b.sumber.tanggal || '');
+  });
+  const urutHari = (a, b) => (a.hari === null ? 999 : a.hari) - (b.hari === null ? 999 : b.hari);
+  return urut.map((g) => {
+    const merk = g.merk.slice().sort((a, b) => urutHari(a, b) || String(a.merk).localeCompare(String(b.merk)));
+    const kode = []; if (g.adaHarga) merk.forEach((b) => { const kd = String(uk[b.merk] ? uk[b.merk].induk : b.merk).split(' · ')[0].trim(); if (kd && kd.toLowerCase() !== g.jenis.toLowerCase() && kode.indexOf(kd) < 0) kode.push(kd); });
+    const label = g.adaHarga ? (g.jenis || 'beras') + ' ' + RP(g.harga) + '/kg' : merk[0].merk;
+    const perlu = merk.filter((b) => b.perlu && !b.k); const saranK = perlu.reduce((a, b) => a + (b.saranK || 0), 0); const hari = merk.reduce((a, b) => (b.hari === null ? a : a === null ? b.hari : Math.min(a, b.hari)), null);
+    return Object.assign(g, { merk, kg: Math.round(g.kg * 100) / 100, label, kode, hari, kritis: merk.some((b) => b.kritis), perlu: perlu.length > 0, saranK,
+      saranTeks: saranK > 0 ? 'saran ' + saranK + ' karung' : 'tambah', kodeTeks: kode.length ? 'merek lalu: ' + kode.join(' / ') : '',
+      hargaTeks: g.adaHarga ? 'harga beli terakhir ' + tanggalPendek(g.tanggal) : 'harga belum tercatat — pemasok mengenalnya dari nama ini',
+      teks: '• ' + label + ' — ' + g.k + ' karung × ' + g.berat + ' kg' + (kode.length ? ' (merek lalu: ' + kode.join(' / ') + ')' : '') + (g.adaHarga ? '' : ' · harga belum tercatat') });
+  }).sort((a, b) => (a.adaHarga ? 0 : 1) - (b.adaHarga ? 0 : 1) || a.harga - b.harga || a.jenis.localeCompare(b.jenis) || b.berat - a.berat || a.kunci.localeCompare(b.kunci));
+}
+/**
+ * Ubah SATU kelompok harga (owner 7 Okt; pemasok mengenalnya dari harga, jadi karungnya dibagi ke merek di dalamnya): +1 → merek yang paling cepat habis sesudah
+ * pesanan (merek tanpa laju terakhir); −1 → dari merek berkarung yang paling lama cukup. Hasilnya tetap peta per merek { merk: { p, k } } (laju & sisa per merek).
+ */
+export function ubahKelompok(H, pemasok, kunci, arah, pesan) {
+  const R = H.perP.find((r) => r.pemasok === pemasok); const g = R ? R.gMilik.find((x) => x.kunci === kunci) : null; if (!g) return pesan || {};
+  const cukup = (b, k) => (b.laju > 0 ? (b.sisa + k * b.berat) / b.laju : Infinity);
+  if (Number(arah) > 0) { const c = g.merk.slice().sort((x, y) => cukup(x, x.k) - cukup(y, y.k) || (y.k || 0) - (x.k || 0) || x.merk.localeCompare(y.merk))[0]; return tulisPesan(pesan, c.merk, pemasok, (c.k || 0) + 1); }
+  const ada = g.merk.filter((b) => b.k > 0); if (!ada.length) return pesan || {};
+  const c = ada.sort((x, y) => cukup(y, y.k) - cukup(x, x.k) || x.merk.localeCompare(y.merk))[0]; return tulisPesan(pesan, c.merk, pemasok, c.k - 1);
+}
+/** Centang satu kelompok di daftar: sudah berisi → semua merek di dalamnya dikosongkan; belum → saran tiap merek yang perlu (tanpa saran: satu karung lewat ubahKelompok). */
+export function ketukKelompok(H, pemasok, kunci, pesan) {
+  const R = H.perP.find((r) => r.pemasok === pemasok); const g = R ? R.gMilik.find((x) => x.kunci === kunci) : null; if (!g) return pesan || {};
+  let o = Object.assign({}, pesan || {});
+  if (g.k > 0) { g.merk.forEach((b) => { o = tulisPesan(o, b.merk, pemasok, 0); }); return o; }
+  const perlu = g.merk.filter((b) => b.perlu && b.saranK > 0); if (!perlu.length) return ubahKelompok(H, pemasok, kunci, 1, o);
+  perlu.forEach((b) => { o = tulisPesan(o, b.merk, pemasok, b.saranK); }); return o;
+}
+/** Truk satu pemasok: potongan bak berwarna per HARGA (owner 7 Okt; label hanya bila tumpukannya cukup lebar). */
 export function susunTruk(H, pemasok) {
   const R = H.perP.find((r) => r.pemasok === pemasok) || H.perP[0] || null; if (!R) return null; const muat = H.atur.muatanKg; const dasar = Math.max(muat, R.kg, 1);
-  const bak = R.d.map((b, i) => { const bagian = b.kg / dasar; return { kelas: 'w' + (i % 6), t: bagian >= 0.2 ? b.merk.split(' ')[0].toUpperCase() + ' ' + b.k : bagian >= 0.07 ? String(b.k) : '', flex: Math.min(b.kg, muat || b.kg), merk: b.merk }; });
+  const bak = R.g.map((g, i) => { const bagian = g.kg / dasar; const pendek = g.adaHarga ? ANGKA(g.harga) : g.merk[0].merk.split(' ')[0].toUpperCase(); return { kelas: 'w' + (i % 6), t: bagian >= 0.2 ? pendek + ' · ' + g.k : bagian >= 0.07 ? String(g.k) : '', flex: Math.min(g.kg, muat || g.kg), merk: g.kunci }; });
   if (!R.lebih && muat > 0) bak.push({ kelas: 'kosongbak', t: '', flex: Math.max(0, muat - Math.min(R.kg, muat)) });
   return { R, bak, lebih: R.lebih > 0, muatAngka: blKG(R.kg), muatDari: muat > 0 ? 'dari ' + blKG(muat) : '(muatan truk belum diketahui — isi di Atur)', muatSisa: muat <= 0 ? '' : R.lebih ? 'KELEBIHAN ' + blKG(R.lebih) + ' — tidak muat satu truk' : R.sisaMuat === 0 ? 'truknya penuh' : 'masih muat ' + blKG(R.sisaMuat) + ' · ' + Math.floor(R.sisaMuat / 50) + ' karung',
     bisaPenuhi: muat > 0 && R.sisaMuat >= 25 && R.milik.some((b) => b.laju > 0 && !b.dipesan), saranTeks: R.saran.length ? 'Pakai saran ' + R.saran.length + ' merek' : 'Tidak ada saran lagi' };
@@ -104,12 +158,17 @@ export function penuhiTruk(H, pemasok, pesan) {
   for (let i = 0; i < 400; i++) { const muat = calon.filter((c) => kg + c.b.berat <= H.atur.muatanKg); if (!muat.length) break; muat.sort((x, y) => (x.b.sisa + x.k * x.b.berat) / x.b.laju - (y.b.sisa + y.k * y.b.berat) / y.b.laju); muat[0].k += 1; kg += muat[0].b.berat; tambahan += 1; }
   calon.forEach((c) => { if (c.k > 0) o = tulisPesan(o, c.b.merk, pemasok, c.k); }); return { pesan: o, tambahan };
 }
-/** Pesan WhatsApp satu pemasok + dokumen pesananPemasok. Nomor dari kartu pemasok (0812… → 62812…); tanpa nomor WhatsApp yang bertanya ke siapa. */
+/**
+ * Pesan WhatsApp satu pemasok + dokumen pesananPemasok. Nomor dari kartu pemasok (0812… → 62812…); tanpa nomor WhatsApp yang bertanya ke siapa.
+ * owner 7 Okt: satu baris pesan = satu HARGA beli terakhir dari pemasok itu ("<jenis> Rp<harga>/kg — <n> karung × <berat> kg (merek lalu: <kode karung>)"), bukan nama merek karung
+ * yang berganti-ganti. Dokumen tetap mencatat baris per merek (penanda "sudah dipesan" per merek) + barisHarga = apa yang dikirim ke pemasok.
+ */
 export function susunPesanan(pesan, pemasok, w, waHarga) {
   const H = hitungBelanja(pesan, new Date(w.kini)); const R = H.perP.find((r) => r.pemasok === pemasok); if (!R) return { tolak: 'Pemasok itu tidak dikenal' }; if (!R.karung) return { tolak: 'Belum ada karung untuk ' + pemasok + ' di daftar' };
-  const baris = ['*Pesanan Toko Beras M.IQBAL*', tanggalPendek(w.tanggal) + ' · untuk ' + R.pemasok].concat(R.d.map((b) => '• ' + b.merk + ' — ' + b.k + ' karung × ' + b.berat + ' kg')).concat(['Jumlah ' + R.karung + ' karung · ' + blKG(R.kg)]).concat(waHarga ? ['Perkiraan ' + RP(R.rp)] : []);
+  const baris = ['*Pesanan Toko Beras M.IQBAL*', tanggalPendek(w.tanggal) + ' · untuk ' + R.pemasok].concat(R.g.map((g) => g.teks)).concat(['Jumlah ' + R.karung + ' karung · ' + blKG(R.kg)]).concat(waHarga ? ['Perkiraan ' + RP(R.rp)] : []);
   const nomor = nomorWa(R.kontak); const tautan = 'https://wa.me/' + nomor + '?text=' + encodeURIComponent(baris.join('\n'));
-  const data = { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, pemasok: R.pemasok, baris: R.d.map((b) => ({ merk: b.merk, karung: b.k, berat: b.berat, kg: b.kg, hargaPerKg: b.sumber.harga })), karung: R.karung, kg: R.kg, rp: R.rp, status: 'menunggu', teks: baris.join('\n'), keNomor: nomor };
+  const data = { id: w.idUnik(), tanggal: w.tanggal, jam: w.jam, pemasok: R.pemasok, baris: R.d.map((b) => ({ merk: b.merk, karung: b.k, berat: b.berat, kg: b.kg, hargaPerKg: b.sumber.harga })),
+    barisHarga: R.g.map((g) => ({ hargaPerKg: g.harga, berat: g.berat, jenis: g.jenis, karung: g.k, kg: g.kg, merk: g.merk.filter((b) => b.k > 0).map((b) => b.merk) })), karung: R.karung, kg: R.kg, rp: R.rp, status: 'menunggu', teks: baris.join('\n'), keNomor: nomor };
   const sisa = Object.assign({}, pesan || {}); R.d.forEach((b) => { delete sisa[b.merk]; });
   return { dokumen: [{ koleksi: 'pesananPemasok', data }], tautan, baris, pesanSisa: sisa, lebihTeks: R.lebih ? 'Pesanan ini ' + blKG(R.kg) + ' — lebih ' + blKG(R.lebih) + ' dari satu truk (' + blKG(H.atur.muatanKg) + '). Boleh, tapi berarti lebih dari satu kali antar.' : '', uangTeks: R.uangTeks,
     patch: { wa: null, kabar: 'Pesanan ' + R.pemasok + ' (' + R.karung + ' karung) dicatat sebagai menunggu datang' + (nomor ? ' · WhatsApp ke ' + R.kontak : ' · nomor pemasok belum ada di kartu — WhatsApp menanyakan tujuannya') + '. Dicocokkan dengan kedatangannya di Barang masuk.', kabarAwas: false } };

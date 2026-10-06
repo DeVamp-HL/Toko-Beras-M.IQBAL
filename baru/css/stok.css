@@ -51,6 +51,8 @@ main.layar-stok.masuk > header, main.layar-stok.masuk > .jalur { animation: rkNa
 @media (min-width: 720px) { .layar-stok [data-k="gabung-ukuran"] .tombol-baris { grid-template-columns: minmax(0, 1fr) minmax(200px, auto); } }
 /* audit 39b no. 43: tombol "pakai <varian> · buku … kg" selebar tulisannya — grid tiga kolom Stok memecahnya jadi empat baris di HP 375 (angka terpisah dari "kg") */
 .layar-stok [data-k^="msv-pil-"] { display: flex; flex-wrap: wrap; gap: 6px; } .layar-stok [data-k^="msv-pil-"] > .kaca-btn { flex: 0 1 auto; padding: 0 14px; }
+/* owner 7 Okt: pita "<merek> punya varian … — yang mana?" memakai tombol yang sama */
+.layar-stok [data-k^="mvi-pil-"] { display: flex; flex-wrap: wrap; gap: 6px; } .layar-stok [data-k^="mvi-pil-"] > .kaca-btn { flex: 0 1 auto; padding: 0 14px; }
 /* putaran 39c: slot deretan karung (satu per wadah): kartu petak yang lebih rendah; kosong = garis putus ("?"); habis = tepi awas */
 .layar-stok .petak.slot { padding: 8px 4px 9px; gap: 1px; } .layar-stok .petak.slot .gambar-chip { width: 44px; height: 44px; } .layar-stok .petak.slot .gambar-chip svg { width: 44px; height: 44px; }
 .layar-stok .petak.slot.kosong { border-style: dashed; opacity: 0.82; } .layar-stok .petak.slot.kosong .nm { color: var(--redup); font-weight: 500; } .layar-stok .petak.slot.habis { border-color: var(--awas); }

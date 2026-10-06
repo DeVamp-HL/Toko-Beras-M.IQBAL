@@ -141,9 +141,12 @@ export function hitungMasuk(draf) {
     // harga lalu: merek dikenal = mesin (+ tanggal & pemasok dari riwayat); merek baru berkelas = kedatangan terakhir KELAS itu (pemasok yang dipilih diutamakan)
     const lalu = merk && !masalah ? kmHargaLaluMerk(merk, draf.id) : null; const laluKelas = baru && kelasBaris && !keSendiri ? kmHargaLaluKelas(kelasBaris, pemasokDraf, null) : null;
     const arah = kmArah(harga, lalu ? lalu.harga : laluKelas ? laluKelas.harga : 0); const kelasTanya = baru && !keSendiri && laluKelas ? kmKalimatKelas(harga, laluKelas) : '';
+    // owner 7 Okt (FJN berbuku + FJN · Imperial di katalog): nama yang SUDAH berbuku tapi punya varian → pita "yang datang ini yang mana?" — bukan penolakan,
+    // supaya karung yang dimaksud varian tidak masuk buku induk diam-diam. Koreksi kedatangan, baris yang sudah dijawab sama/beda mutu: tidak ditawari.
+    const varianInduk = !draf.id && !baru && !!merk && !pilih && merk.indexOf('·') < 0 && !wadahStok[merk] && !ukuran[merk] && !kelas[merk] && !sendiri[merk] ? ckSaranVarian(merk).filter((v) => v.nama.indexOf(' · ') > 0) : [];
     return { ke: i + 1, merk, merkSimpan, indukUkuran, varian: pilih, namaMutu: String(b.namaMutu || ''), vr, jumlahKarung: jumlah, beratKarung: berat, hargaPerKg: harga, totalKg: ckB2(jumlah * berat), subtotalHarga: Math.round(jumlah * berat * harga), terisi, masalah, sah: terisi && !masalah,
       hargaLalu: merk ? hargaSebelumnya(merk) : 0,
-      merkKetik, baru, saranVarian, kelas: kelasBaris, kelasAsal, kelasPilih, keSendiri, merkPemasok, lalu, laluKelas, arah, kelasTanya, calonKelas: baru ? calonKelas : [] }; });
+      merkKetik, baru, saranVarian, varianInduk, kelas: kelasBaris, kelasAsal, kelasPilih, keSendiri, merkPemasok, lalu, laluKelas, arah, kelasTanya, calonKelas: baru ? calonKelas : [] }; });
   const sah = baris.filter((b) => b.sah);
   const bal = ckBarisBal(lamaB); const nilaiBal = bal.reduce((a, m) => a + (Number(m.subtotalHarga) || 0), 0);
   const hpp = hitungHppMerkDalamBatch(sah.map((b) => ({ merk: b.merkSimpan, totalKg: b.totalKg, subtotalHarga: b.subtotalHarga })).concat(bal.map((m) => ({ merk: m.merk, totalKg: Number(m.totalKg) || 0, subtotalHarga: Number(m.subtotalHarga) || 0 }))), bongkar);

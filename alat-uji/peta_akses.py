@@ -439,6 +439,8 @@ OWNER_JALUR = {
     'susunCabutPinOperator': 'setelan pengaturan/aksesKasir (25c) — bukan titikKas, tidak dikunci', 'susunOperatorAktif': 'setelan pengaturan/aksesKasir (25c) — tidak dikunci',
     'susunOperatorHapus': 'setelan pengaturan/aksesKasir (25c) — tidak dikunci',
     'susunPinOwner': 'setelan pengaturan/keamanan (25c) — bukan titikKas, tidak dikunci',
+    # owner 7 Okt (tidak berawalan susun — dicatat sukarela): varian dari Harga yang membawa stok induk
+    'vrSusunBuatDariHarga': 'katalog / label / jenis (tidak dikunci) + bila stok induk ikut: paling banyak 10 batchMasuk induk dikoreksi (VR_KOREKSI_MAKS; bulan terkunci → logika memilih pindah buku) ATAU 1 batch lahir 0 kg + 1 produksiKemasan pindah buku, hari ini',
 }
 MODUL_OWNER = None   # diisi dari uji_kunci_periode.MODUL (bundel yang sudah terbukti satu lingkup)
 
