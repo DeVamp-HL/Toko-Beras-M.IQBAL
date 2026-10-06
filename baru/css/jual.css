@@ -29,6 +29,7 @@
 .ps-kartu .aksi .pil.utamaKecil { background: var(--seg-aktif); border-color: var(--emas-garis); color: var(--emas1); }
 .pil.status-dipesan { color: var(--redup); }
 .pil.status-diantar { color: var(--emas1); border-color: var(--emas-garis); }
+.pil.ng-awas { color: var(--awas); border-color: var(--awas); }   /* owner 7 Okt: Buku Nego — menunggu owner / ditolak / di bawah modal */
 .ps-form { display: flex; flex-direction: column; gap: 6px; }
 .ps-form .ketik-nama { min-height: 40px; }
 .keranjang .b .t { grid-area: t; min-width: 0; }

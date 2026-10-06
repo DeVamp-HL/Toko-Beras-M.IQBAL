@@ -186,7 +186,7 @@ def baca_per_layar():
 # ASLI, dan tiap kiriman dilewatkan periksaKiriman ASLI (yang bukan-owner memang tidak boleh kirim → dilewati, bukan dihitung).
 BATAS_CI = 18   # batas Firebase 20 per batch − sisa 2 (keputusan owner). Sengaja TIDAK dibaca dari akses.js: menaikkan batas di sana tidak melonggarkan CI.
 MODUL_KIRIM = ['baru/js/data/koleksi.js', 'baru/js/data/kunci-periode.js', 'baru/js/mesin/pembantu.js', 'baru/js/data/toko.js', 'baru/js/mesin/beku.js', 'baru/js/inti/format.js', 'baru/js/data/akses.js', 'baru/js/layar/arsip-logika.js',
-               'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
+               'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/setengah-logika.js',
                'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/pelanggan-logika.js', 'baru/js/layar/bon-logika.js']
 SUMBER_UI = ['baru/js/layar/jual.js', 'baru/js/layar/stok.js', 'baru/js/data/firebase.js']
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
@@ -355,7 +355,9 @@ def periksa_kiriman(src):
     if "const SB = () => Object.assign({}, K.baca(), { batasBaris: batasBarisNota(opsi.akun ? opsi.akun() : null), batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null), tembusBoleh: !bukanOwner(opsi.akun ? opsi.akun() : null) });" not in J: cacat.append('jual.js tidak menyerahkan batas baris & batas dokumen akun ke logika')   # putaran 31b: + tembusBoleh; 39b no. 21: + batasDok
     if 'aksiPanelWadah({ set, st: S, tulis: tulisWadah, keranjang: SB, waktu:' not in J: cacat.append('jual.js: panel isi ulang wadah tidak menerima batas dokumen akun (keranjang: SB)')   # 39b no. 21
     if "const keranjangJual = () => ({ keranjang: opsi.keranjangJual().keranjang, antrean: opsi.keranjangJual().antrean, batasDok: batasDokumenKirim(opsi.akun ? opsi.akun() : null) });" not in S: cacat.append('stok.js: panel isi ulang wadah tidak menerima batas dokumen akun (keranjangJual)')   # 39b no. 21
-    for pang in ['L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }))', 'L.masukkan(SB(), Number(n))', 'L.masukkan(SB())', 'L.ulangiPembelian(SB(), rakKini(), g)']:
+    # tinjauan 7 Okt: nota dicatat lewat SBN() (= SB() + akun nego, untuk baris yang dipulihkan) — SBN wajib dibangun dari SB() supaya batas baris tetap ikut
+    if "return Object.assign(SB(), { negoAkun: a, negoHak: hakAkun(a, 'nego')," not in J: cacat.append('jual.js: SBN() tidak dibangun dari SB() — batas baris hilang di jalur nego / catat nota')
+    for pang in ['L.simpanNota(Object.assign(SBN(), { tembusYakin: tembusYakin === true }))', 'L.masukkan(SB(), Number(n))', 'L.masukkan(SB())', 'L.ulangiPembelian(SB(), rakKini(), g)']:
         if pang not in J: cacat.append('jual.js: ' + pang + ' tidak ada — jalur itu melewati batas baris')
     if 'L.simpanNota(S())' in J or re.search(r'L\.masukkan\(S\(\)', J): cacat.append('jual.js masih memanggil logika nota tanpa batas baris (S() bukan SB())')
     if "A.susunSimpanAdukan(Object.assign({}, d, { batasHasil: batasHasilAdukan(opsi.akun ? opsi.akun() : null) })" not in S: cacat.append('stok.js tidak menyerahkan batas hasil adukan ke logika')
@@ -617,7 +619,8 @@ if __name__ == '__main__':
                 'tindakan baru dibuka server tanpa hitungan': rusak(AK, "isiUlang: ['ben', 'karyawan'] };", "isiUlang: ['ben', 'karyawan'], cekBaru: ['ben'] };"),
                 'karyawan boleh menulis aturan wadah': rusak(AK, "if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };", ""),
                 'karyawan boleh menulis kedatangan sungguhan sebagai batch lahir': rusak(AK, "if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };", ""),
-                'jual.js mencatat nota tanpa batas baris': rusak('baru/js/layar/jual.js', 'L.simpanNota(Object.assign(SB(), { tembusYakin: tembusYakin === true }))', 'L.simpanNota(Object.assign(S(), { tembusYakin: tembusYakin === true }))'),
+                'jual.js mencatat nota tanpa batas baris': rusak('baru/js/layar/jual.js', 'L.simpanNota(Object.assign(SBN(), { tembusYakin: tembusYakin === true }))', 'L.simpanNota(Object.assign(S(), { tembusYakin: tembusYakin === true }))'),
+                'jual.js: SBN tanpa batas baris (tinjauan 7 Okt)': rusak('baru/js/layar/jual.js', "return Object.assign(SB(), { negoAkun: a, negoHak: hakAkun(a, 'nego'),", "return Object.assign({}, S(), { negoAkun: a, negoHak: hakAkun(a, 'nego'),"),
                 'stok.js menyimpan adukan tanpa batas hasil': rusak('baru/js/layar/stok.js', "Object.assign({}, d, { batasHasil: batasHasilAdukan(opsi.akun ? opsi.akun() : null) })", 'd'),
                 # 39b no. 21 — penjaga sekali kirim per DOKUMEN
                 'penjaga dokumen nota selalu kosong': rusak(JL, "const b = Number(s.batasDok) || 0; if (!(b > 0)) return '';", "return '';"),

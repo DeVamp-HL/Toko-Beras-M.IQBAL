@@ -445,7 +445,7 @@ KONTROL = [
       ('js/app.js', "SEMUA_LAYAR().forEach((l) => l.tampilkan(false)); layar.tampilkan(false);", "")]),
     ('kontrol 3 · beranda tanpa penjaga tirai', 'tirai', [('js/layar/ringkasan.js', "if (!tampil || terkunci()) return;\n    if (!$('rkHero')) bangun();", "if (!tampil) return;\n    if (!$('rkHero')) bangun();"),
                                                           ('js/app.js', "if (kunci) { Object.keys(LAYAR_ADA).forEach((k) => { LAYAR_ADA[k].innerHTML = ''; }); SEMUA_LAYAR().forEach((l) => l.tampilkan(false)); layar.tampilkan(false);", "if (kunci) {")]),
-    ('kontrol 4 · keranjang tidak pernah dilupakan', 'ganti', [('js/layar/jual.js', 'lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))', 'lupakanOrang: () => {}')]),
+    ('kontrol 4 · keranjang tidak pernah dilupakan', 'ganti', [('js/layar/jual.js', 'lupakanOrang: () => { lupakanSimpanan(); K.setel((s) => L.keadaanOrangBerikutnya(s)); }', 'lupakanOrang: () => {}')]),
     ('kontrol 5 · keluar dari tab lain / nonaktif tidak dijaga', 'ganti', [('js/app.js', "if (!akun || akun.jenis === 'keluar' || !bisaBekerja(akun)) { lupakanSemua(); uidKeranjang = ''; return; }", "if (!akun || akun.jenis === 'keluar' || !bisaBekerja(akun)) { uidKeranjang = ''; return; }")]),
     ('kontrol 6 · Keluar tanpa bertanya', 'ganti', [('js/app.js', "(await tanyaIsian(daftar, B, hanyaKeranjang)) !== 'kosongkan'", "false")]),
     ('kontrol 7 · pengosong lupa keranjang yang diparkir', 'ganti', [('js/layar/jual-logika.js', "const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null });", "const baru = Object.assign(keadaanAwal(), { sekarang: (s && s.sekarang) || null, antrean: (s && s.antrean) || [] });")]),
@@ -455,7 +455,7 @@ KONTROL = [
 ]
 # putaran 23d — SATU layar yang tidak dikosongkan wajib membuat uji isian gagal (satu kontrol per layar), deteksi yang buta satu layar, draf lokal yang tertinggal,
 # dan pengosong yang ikut menghapus draf SERVER
-KONTROL += [('kontrol 10 · Jual tidak dikosongkan (isian)', 'isian', [('js/layar/jual.js', 'lupakanOrang: () => K.setel((s) => L.keadaanOrangBerikutnya(s))', 'lupakanOrang: () => {}')])]
+KONTROL += [('kontrol 10 · Jual tidak dikosongkan (isian)', 'isian', [('js/layar/jual.js', 'lupakanOrang: () => { lupakanSimpanan(); K.setel((s) => L.keadaanOrangBerikutnya(s)); }', 'lupakanOrang: () => {}')])]
 KONTROL += [('kontrol 1%d · %s tidak dikosongkan' % (i + 1, n.capitalize()), 'isian', [('js/layar/%s.js' % n, 'lupakanOrang: ISIAN.lupakan', 'lupakanOrang: () => {}')]) for i, n in enumerate(['stok', 'pelanggan', 'harga', 'uang', 'laporan', 'menu'])]
 KONTROL += [('kontrol 17 · deteksi buta layar Uang', 'isian', [('js/layar/uang.js', 'belumDisimpan: ISIAN.belum', 'belumDisimpan: () => false')]),
             ('kontrol 18 · draf lokal tidak dihapus', 'isian', [('js/inti/isian.js', 'drafLokal.forEach(([k]) => hapusLokal(k));', '')]),

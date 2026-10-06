@@ -13,7 +13,7 @@ SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.pat
 sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 JSC = '/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc'
-MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js']
+MODUL = bundel_baru.MODUL_DATA + ['baru/js/inti/format.js', 'baru/js/layar/arsip-logika.js', 'baru/js/layar/retur-logika.js', 'baru/js/layar/wadah-jual-logika.js', 'baru/js/layar/struk-logika.js', 'baru/js/layar/nego-logika.js', 'baru/js/layar/jual-logika.js', 'baru/js/layar/wadah-bernama-logika.js', 'baru/js/layar/stok-adukan-logika.js', 'baru/js/layar/setengah-logika.js', 'baru/js/layar/karcis-logika.js']
 
 # KOTAK PASIR — angka contoh, bukan angka toko
 KOTAK = {
@@ -112,7 +112,9 @@ var info = infoPelanggan('Deka'); ok('info kredit Deka: sisa bon 890.000 (saldo 
 terap(pilihCara(s, 'Tunai')); var id = s.keranjang[0].id;
 p = terapkanNego(s, id, 200); ok('nego di bawah lantai Rp500 ditolak', /paling rendah Rp500/.test(p.kabar) && s.keranjang[0].trx.hargaSatuan === 72000);
 terap(terapkanNego(s, id, 70000)); ok('nego 70.000 → total 210.000, ditandai nego', s.keranjang[0].trx.hargaTotal === 210000 && s.keranjang[0].trx.nego === true && !s.kabarAwas);
-terap(terapkanNego(s, id, 60000)); ok('nego di bawah modal (66.000) tidak ditolak tapi DIBERI TAHU', s.keranjang[0].trx.hargaTotal === 180000 && s.kabarAwas && /DI BAWAH MODAL/.test(s.kabar), s.kabar);
+// owner 7 Okt (JS2-C dikunci 18 Sep): di bawah modal hanya yang diizinkan (bawaan: owner) DENGAN alasan — tanpa alasan harganya tidak berubah
+p = terapkanNego(s, id, 60000); ok('nego di bawah modal (66.000) tanpa alasan DITAHAN: harga tetap, kalimat minta alasan & menyebut modalnya (owner)', s.keranjang[0].trx.hargaTotal === 210000 && p.kabarAwas && /di bawah modal Rp66\.000/.test(p.kabar) && /alasan/.test(p.kabar) && !p.keranjang, p.kabar);
+terap({ negoAlasan: 'karung sobek' }); terap(terapkanNego(s, id, 60000)); ok('nego di bawah modal DENGAN alasan → dipakai & DIBERI TAHU (rugi per kemasan, alasannya tercatat di baris)', s.keranjang[0].trx.hargaTotal === 180000 && s.kabarAwas && /di bawah modal/.test(s.kabar) && s.keranjang[0].trx.negoStatus === 'bawahModal' && s.keranjang[0].trx.negoAlasan === 'karung sobek' && s.negoAlasan === '', s.kabar + ' · ' + JSON.stringify(s.keranjang[0].trx));
 terap(ubahJumlahBaris(s, id, 1)); ok('+1 unit memakai harga nego: 4 × 60.000', s.keranjang[0].trx.jumlah === 4 && s.keranjang[0].trx.hargaTotal === 240000, JSON.stringify(s.keranjang[0].trx));
 terap(ubahJumlahBaris(s, id, -4)); ok('−4 → baris hilang', s.keranjang.length === 0);
 
@@ -221,7 +223,10 @@ terap(ubahJumlahBaris(s, id, 25)); ok('I: 36 bayar + 1 bonus = 37 = pas stok →
 p = ubahJumlahBaris(s, id, 1); ok('I: 37 bayar + bonus = 38 > 37 → ditolak, kalimat menyebut termasuk bonus', /termasuk bonus/.test(p.kabar) && s.keranjang[0].trx.jumlahUnit === 37, p.kabar);
 terap(toggleBonus(s, id)); ok('I: bonus dilepas → 36 unit, tanpa bonusUnit', s.keranjang[0].trx.jumlahUnit === 36 && !('bonusUnit' in s.keranjang[0].trx), JSON.stringify(s.keranjang[0].trx));
 terap(ubahJumlahBaris(s, id, 1)); p = toggleBonus(s, id); ok('I: 37 bayar, minta bonus → stok tidak cukup, ditolak', /Bonus butuh 1 unit lagi/.test(p.kabar) && !s.keranjang[0].trx.bonusUnit, p.kabar);
-terap(ubahJumlahBaris(s, id, -35)); terap(toggleBonus(s, id)); terap(terapkanNego(s, id, 70000)); ok('I: nego pada baris berbonus: uang 2 × 70.000, unit tetap 3', s.keranjang[0].trx.hargaTotal === 140000 && s.keranjang[0].trx.jumlahUnit === 3, JSON.stringify(s.keranjang[0].trx));
+terap(ubahJumlahBaris(s, id, -35)); terap(toggleBonus(s, id)); p = terapkanNego(s, id, 70000);
+// tinjauan 7 Okt: modal per satuan BAYAR — 2 dibayar + 1 bonus, modal 198.000 ÷ 2 = 99.000/kemasan → 70.000 di bawah modal: owner pun wajib alasan
+ok('I: nego pada baris berbonus di bawah modal per satuan bayar TANPA alasan → ditolak, harga tetap katalog', !p.keranjang && /tulis alasannya/.test(p.kabar || '') && s.keranjang[0].trx.hargaSatuan === 72000, JSON.stringify(p));
+terap({ negoAlasan: 'bonus langganan' }); terap(terapkanNego(s, id, 70000)); ok('I: nego pada baris berbonus (dengan alasan): uang 2 × 70.000, unit tetap 3, status di bawah modal', s.keranjang[0].trx.hargaTotal === 140000 && s.keranjang[0].trx.jumlahUnit === 3 && s.keranjang[0].trx.negoStatus === 'bawahModal', JSON.stringify(s.keranjang[0].trx));
 terap(uangPas(s)); pj = susunNotaDokumen(s, W).dokumen[0].data; ok('I: dokumen membawa bonusUnit 1, jumlahUnit 3, hargaTotal 140.000, negoSelisih −2.000', pj.bonusUnit === 1 && pj.jumlahUnit === 3 && pj.hargaTotal === 140000 && pj.negoSelisih === -2000, JSON.stringify(pj));
 ok('I: 140.000 pas; stok cukup → periksaStokKeranjang diam', periksaStokKeranjang(s) === '' && !simpanNota(s, W).tolak);
 terap(ubahJumlahBaris(s, id, 34)); terap(uangPas(s)); ok('I: 36 bayar + 1 bonus = 37 = pas stok', s.keranjang[0].trx.jumlahUnit === 37);
@@ -573,7 +578,7 @@ ok('W: repack 10 kg DITANGGUNG toko + upah 5.000 → SATU baris: hargaTotal 138.
 ok('W: wadah yang ditanggung ikut memegang buku kantong: chip wadah bebas 88', chip('wadah', '5kg_kembangbmw').sisa === 88, chip('wadah', '5kg_kembangbmw').sisa);
 var idR = s.keranjang[0].id; terap(ubahJumlahBaris(s, idR, 5));
 ok('W: +5 kg membangun ulang baris dengan wadah & upah DIPERTAHANKAN: 15 × 13.800 + 5.000 = 212.000, kemasanRepack tetap 2 lembar', s.keranjang[0].trx.hargaTotal === 212000 && s.keranjang[0].trx.upahRepack === 5000 && s.keranjang[0].trx.jumlahKemasanRepackDipakai === 2, JSON.stringify(s.keranjang[0].trx));
-terap(terapkanNego(s, idR, 13000)); ok('W: nego per kg tetap menyimpan upah: 15 × 13.000 + 5.000 = 200.000', s.keranjang[0].trx.hargaTotal === 200000 && s.keranjang[0].trx.upahRepack === 5000, s.keranjang[0].trx.hargaTotal);
+terap({ negoAlasan: 'beras sisa' }); terap(terapkanNego(s, idR, 13000)); ok('W: nego per kg (di bawah modal beras + wadah ditanggung → owner dengan alasan) tetap menyimpan upah: 15 × 13.000 + 5.000 = 200.000', s.keranjang[0].trx.hargaTotal === 200000 && s.keranjang[0].trx.upahRepack === 5000, s.keranjang[0].trx.hargaTotal);
 terap({ uang: 0 }); terap(uangPas(s)); var NR = susunNotaDokumen(s, W); var bR = NR.dokumen.filter(function (d) { return d.koleksi === 'penjualan'; })[0].data;
 ok('W: dokumen repack membawa kemasanRepack/jumlahKemasanRepackDipakai/biayaKemasanRepack/upahRepack + satu dokumen pakai 2 lembar; ringkasannya menyebut ditanggung toko & upah', bR.kemasanRepack === '5kg_kembangbmw' && bR.jumlahKemasanRepackDipakai === 2 && bR.upahRepack === 5000 && NR.dokumen.some(function (d) { return d.koleksi === 'stokBahanKemasan' && d.data.jumlah === 2 && /ditanggung toko/.test(d.data.catatan); }) && /2 lembar wadah ditanggung toko/.test(NR.ringkas) && /upah repack Rp5\.000/.test(NR.ringkas), NR.ringkas);
 terap({ keranjang: [] }); terap(ketukChip(s, chip('repack', 'Angsa'))); terap({ ketik: '10', rpWadah: 'paperbag10l', rpLembar: '1', rpDijual: true, rpUpah: '' }); p = masukkan(s);
@@ -848,6 +853,8 @@ var dikenal = {}; (CAD.penjualan || []).forEach(function (p) { Object.keys(p).fo
 dikenal.bonusUnit = true; dikenal.penggantiRetur = true; dikenal.nilaiBarangPengganti = true;
 // kolom BARU milik sistem baru (putaran 15, tercatat di BACA-DULU): baris wadah & repack berwadah/berupah — sistem lama tidak menulisnya
 ['jenisWadah', 'kemasanRepack', 'jumlahKemasanRepackDipakai', 'biayaKemasanRepack', 'upahRepack', 'perluCocokkan', 'selisihKg'].forEach(function (k) { dikenal[k] = true; });   // + putaran 31b: jual dulu, tandai untuk dicocokkan
+// owner 7 Okt (JS2-C batas nego): kolom jejak nego per baris — siapa sudah lewat atribusi; statusnya, batas & jatah saat itu, alasan di bawah modal, persetujuan owner
+['negoStatus', 'negoBatas', 'negoJatah', 'negoAlasan', 'negoSetujuId'].forEach(function (k) { dikenal[k] = true; });
 function terap(p) { s = Object.assign({}, s, p); sinkronKeranjang(s); }
 var asing = [];
 [['karung', rak.karung[0]], ['literan', rak.literan[0]], ['kemasan', rak.kemasan[0]], ['repack', rak.repack[0]]].forEach(function (x) {
@@ -953,7 +960,8 @@ if __name__ == '__main__':
             'langit-langit stok diabaikan': js.replace("if (maks !== null && j > maks) {", "if (false) {"),
             'uang kurang dianggap lunas': js.replace("const kurang = s.cara === 'Tunai' && uang > 0 ? Math.max(0, total - uang) : 0;", "const kurang = 0;"),
             'sisa bon tanpa nama lolos': js.replace("if (t.sisaJadiBon && !nama) return", "if (false) return"),
-            'nego di bawah modal tidak diberi tahu': js.replace("const awas = hppSatuan > 0 && hg < hppSatuan;", "const awas = false;"),
+            'nego di bawah modal tidak diberi tahu': js.replace("kabarAwas: p.status === 'bawahModal' };", "kabarAwas: false };"),
+            'nego di bawah modal tanpa alasan dipakai (owner 7 Okt)': js.replace("if (!alasan) return P('perluAlasan'", "if (false) return P('perluAlasan'"),
             'penjualan batal ikut dihitung di hari ini': js.replace("const baris = ambilPenjualan().filter((p) => p.tanggal === iso);", "const baris = ambilPenjualanSemua().filter((p) => p.tanggal === iso);"),
             'harga kemasan 25 kg diabaikan (per kg menang)': js.replace("const hg = hargaKarungUtuh(hgNama, berat);", "const hg = { perUnit: Math.round((cariHargaKarungPerKg(merk) || 0) * berat) };"),
             'kantong literan tidak masuk HPP': js.replace("hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * totalKg) + biayaK,", "hppTotalSaatJual: Math.round((chip.hppPerKg || 0) * totalKg),").replace("+ (k === 0 ? (t.biayaKemasanLiteran || 0) : 0);", "+ 0;"),   # putaran 27: literan wadah dihitung ulang saat dipecah
@@ -1095,7 +1103,7 @@ if __name__ == '__main__':
             'modal kantong dipakai walau buku belinya kosong (Rp0 jadi modal)': js.replace("const ada = (st.totalBeli || 0) > 0 && (st.hppPerPcs || 0) > 0;", "const ada = true;"),
             'wadah ditanggung toko tidak masuk HPP baris repack': js.replace("t.kemasanRepack = e.kemasanRepack; t.jumlahKemasanRepackDipakai = b.lembar; t.biayaKemasanRepack = b.biaya; t.hppTotalSaatJual += b.biaya;", "t.kemasanRepack = e.kemasanRepack; t.jumlahKemasanRepackDipakai = b.lembar; t.biayaKemasanRepack = b.biaya;"),
             'upah repack tidak ikut ditagih': js.replace("const nilai = Math.round(t.hargaSatuan * t.jumlah) + (t.upahRepack || 0);", "const nilai = Math.round(t.hargaSatuan * t.jumlah);"),
-            'wadah & upah hilang saat baris repack dibangun ulang (+1 kg)': js.replace("kemasanRepack: t.kemasanRepack, jumlahKemasanRepack: t.jumlahKemasanRepackDipakai, upahRepack: t.upahRepack });", "});"),
+            'wadah & upah hilang saat baris repack dibangun ulang (+1 kg)': js.replace("kemasanRepack: t.kemasanRepack, jumlahKemasanRepack: t.jumlahKemasanRepackDipakai, upahRepack: t.upahRepack }, NG_KOLOM", "}, NG_KOLOM"),
             'pembatalan tidak memulihkan buku kantong wadah': js.replace("baris.forEach((p) => { if (p.jenis === 'wadah' && p.jenisWadah) hapus.push({ koleksi: koleksiWadah(p.jenisWadah), id: p.id + 1 });", "baris.forEach((p) => { if (false) hapus.push({ koleksi: koleksiWadah(p.jenisWadah), id: p.id + 1 });"),
             'lantai Rp100/lembar dilewati (Rp50 diterima)': js.replace("if (n > 0 && n < WJ_LANTAI_LEMBAR) { salah.push(d.label + ': ' + RP(n) + ' per lembar'); return; }", ""),
             'saran lembar dibulatkan ke bawah': js.replace("return Math.max(1, Math.ceil(Math.round(k / d.ukuranKg * 1000) / 1000));", "return Math.max(1, Math.floor(Math.round(k / d.ukuranKg * 1000) / 1000));"),

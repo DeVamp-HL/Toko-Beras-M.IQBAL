@@ -14,6 +14,8 @@ import { tempoPemasok } from './bon-pemasok-logika.js';
 import { RP, ANGKA, hariIniIso, jamKini, tanggalPendek } from '../inti/format.js';
 import { semuaBon, pesanTagih } from './bon-logika.js';
 import { SERVER_BUKA } from '../data/akses.js';
+// owner 7 Okt (JS2-C): bawaan batas nego satu sumber
+import { NG_BAWAAN } from './nego-logika.js';
 
 export const ssHariKe = (iso) => Math.round(Date.UTC(+String(iso).slice(0, 4), +String(iso).slice(5, 7) - 1, +String(iso).slice(8, 10)) / 86400000);
 export const ssTambahHari = (iso, n) => new Date((ssHariKe(iso) + n) * 86400000).toISOString().slice(0, 10);
@@ -38,7 +40,8 @@ export const SS_PENERIMA = ['Owner', 'Ben'];
 // ---------- ATUR SENDIRI — angka & daftar kebijakan owner, satu dokumen aturanToko per layar; bawaan = angka desain terkunci ----------
 export const SS_ATUR_BAWAAN = {
   perangkat: { batasAntre: 30, batasDenyut: 15, pemegang: ['Owner', 'Ben'] },
-  peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: 50, jejak: [] },
+  // owner 7 Okt (JS2-C): jatah nego per peran (% margin) + per akun (uid → %, kosong = ikut peran), siapa boleh di bawah modal ('owner' | peran | 'uid:…'), langkah batas
+  peran: { hak: SS_HAK_BAWAAN, batasSekaligus: 300000, jatahBen: NG_BAWAAN.ben, jatahKaryawan: NG_BAWAAN.karyawan, jatahAkun: {}, bawahModal: NG_BAWAAN.bawahModal.slice(), langkahNego: NG_BAWAAN.langkah, jejak: [] },
   cadangan: { simpanHari: 30, ambangKuota: 80, cadanganTiap: 7 },
   lokasi: { daftar: [{ id: 'toko', nama: 'Toko M.IQBAL', alamat: '', utama: true }], pengantar: ['Ben'] },
   pengingat: { nyala: { bon: true, janji: true, kantong: true, opname: true, cadangan: true, pajak: true }, ke: { bon: ['Owner'], janji: ['Owner', 'Ben'], kantong: ['Ben'], opname: ['Owner'], cadangan: ['Owner'], pajak: ['Owner'] },
@@ -61,7 +64,12 @@ export function susunAturSistem(id, isi, w) {
   const angka = (k, min, maks, satuan) => { const n = ssAngka(isi[k] !== undefined ? isi[k] : A[k], min, maks); if (n === null) return k + ' harus ' + min + '–' + maks + (satuan ? ' ' + satuan : ''); o[k] = Math.round(n); return ''; };
   let tolak = '';
   if (id === 'perangkat') { tolak = angka('batasAntre', 1, 600, 'menit') || angka('batasDenyut', 1, 600, 'menit'); o.pemegang = nama(isi.pemegang !== undefined ? isi.pemegang : A.pemegang); if (!tolak && !o.pemegang.some((x) => x.toLowerCase() === 'owner')) tolak = 'Owner tidak bisa dihapus dari daftar pencatat'; }
-  else if (id === 'peran') { tolak = angka('batasSekaligus', 0, 50000000, 'rupiah') || angka('jatahBen', 0, 100, '%'); o.hak = ssSalin(A.hak); o.jejak = (A.jejak || []).slice(0, 40);
+  else if (id === 'peran') { tolak = angka('batasSekaligus', 0, 50000000, 'rupiah') || angka('jatahBen', 0, 100, '%') || angka('jatahKaryawan', 0, 100, '%') || angka('langkahNego', 1, 1000000, 'rupiah'); o.hak = ssSalin(A.hak); o.jejak = (A.jejak || []).slice(0, 40);
+    // owner 7 Okt (JS2-C): jatah per akun — kosong = ikut perannya; di bawah modal — kunci yang dikenal saja (owner, peran, uid akun terdaftar)
+    const ja = isi.jatahAkun !== undefined ? isi.jatahAkun : A.jatahAkun; o.jatahAkun = {};
+    Object.keys(ja || {}).forEach((u) => { if (ssKosong(ja[u])) return; const n = ssAngka(ja[u], 0, 100); if (n === null) tolak = tolak || 'jatah nego per akun harus 0–100 %'; else o.jatahAkun[u] = Math.round(n); });
+    const kenal = ['owner'].concat(SS_PERAN_AKUN.map((p) => p.id), cacheMentah('aksesAkun').map((a) => 'uid:' + String(a.uid || a.id)));
+    o.bawahModal = (Array.isArray(isi.bawahModal) ? isi.bawahModal : A.bawahModal).map(String).filter((k, i, L) => kenal.indexOf(k) >= 0 && L.indexOf(k) === i);
     const h = isi.hak || {}; Object.keys(h).forEach((p) => { if (p === 'owner' || !SS_HAK_BAWAAN[p]) { tolak = tolak || 'Hak owner tidak diubah — owner selalu boleh semuanya'; return; } Object.keys(h[p]).forEach((t) => { if (SS_NILAI_HAK.indexOf(h[p][t]) < 0 || !SS_TINDAKAN.some((x) => x.id === t)) { tolak = tolak || 'Nilai hak tidak dikenal'; return; } o.hak[p][t] = h[p][t]; }); }); }
   else if (id === 'cadangan') tolak = angka('simpanHari', 1, 365, 'hari') || angka('ambangKuota', 10, 100, '%') || angka('cadanganTiap', 1, 30, 'hari');
   else if (id === 'lokasi') { const daftar = (Array.isArray(isi.daftar) ? isi.daftar : A.daftar).map((l, i) => ({ id: String(l.id || ('lk' + (i + 1))).trim(), nama: String(l.nama || '').trim(), alamat: String(l.alamat || '').trim().slice(0, 80), utama: !!l.utama }));
@@ -122,7 +130,7 @@ export function ssHakServer(peran, tindakan, nilai) {
 export function ssPeran() {
   const A = ssAtur('peran'); const hak = (peran, t) => (peran === 'owner' ? 'sendiri' : (A.hak[peran] || {})[t] || 'tidak');
   const tampil = (peran, t) => ssHakServer(peran, t, hak(peran, t));
-  return { tindakan: SS_TINDAKAN, hak, tampil, batasSekaligus: A.batasSekaligus, jatahBen: A.jatahBen, jejak: (A.jejak || []).slice(0, 12),
+  return { tindakan: SS_TINDAKAN, hak, tampil, batasSekaligus: A.batasSekaligus, jatahBen: A.jatahBen, jatahKaryawan: A.jatahKaryawan, jatahAkun: A.jatahAkun || {}, bawahModal: A.bawahModal || [], langkahNego: A.langkahNego, jejak: (A.jejak || []).slice(0, 12),
     peran: SS_PERAN.map((p) => ({ id: p.id, nama: p.nama, ket: p.id === 'owner' ? 'semua boleh · tidak diubah' : ['sendiri', 'server', 'owner', 'tidak'].map((v) => [SS_TINDAKAN.filter((t) => tampil(p.id, t.id).nilai === v).length, SS_LABEL_TAMPIL[v]]).filter((x) => x[0] > 0).map((x) => x[0] + ' ' + x[1]).join(' · ') })) };
 }
 /** Ketuk satu hak = memutar sendiri → minta owner → tidak boleh; hak owner tidak diubah. */
@@ -175,10 +183,12 @@ export function susunUbahAkun(uid, ubah, w, yakin) {
 export function ssPersetujuan(kini) {
   const semua = cacheMentah('persetujuan').slice().sort(ssUrutTerbaru); const P = ssPeran();
   const baris = (m) => ({ id: String(m.id), dari: m.dari || '—', peran: m.peran || (String(m.dari || '').toLowerCase() === 'ben' ? 'ben' : 'karyawan'), tindakan: m.tindakan || '', namaTindakan: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { nama: m.tindakan || 'tindakan' }).nama, modul: (SS_TINDAKAN.find((t) => t.id === m.tindakan) || { modul: '' }).modul,
+    // tinjauan 7 Okt: permintaan NEGO di bawah modal (beralasan) atau tanpa batas jatah (modal belum tercatat) tidak ikut "setujui semua yang kecil" — dilihat satu per satu
+    sekaligus: !(m.tindakan === 'nego' && (String(m.alasan || '').trim() || !(Number(m.batas) > 0))),
     teks: m.teks || '', n: Number(m.nominal) || 0, tanggal: m.tanggal || '', jam: m.jam || '', status: m.status || 'menunggu', alasanTolak: m.alasanTolak || '', diputusTanggal: m.diputusTanggal || '',
     saran: m.tindakan && P.hak(m.peran || 'karyawan', m.tindakan) === 'tidak' ? 'Peran ' + (m.dari || 'ini') + ' sebenarnya TIDAK BOLEH untuk ini — kalau sering, ubah haknya' : 'Menurut kisi hak, ini memang minta owner' });
   const menunggu = semua.filter((m) => (m.status || 'menunggu') === 'menunggu').map(baris); const riwayat = semua.filter((m) => m.status && m.status !== 'menunggu').map(baris).slice(0, 20);
-  return { menunggu, riwayat, kecil: menunggu.filter((m) => m.n <= P.batasSekaligus).length, batas: P.batasSekaligus, judul: menunggu.length ? menunggu.length + ' permintaan menunggu owner' : 'Tidak ada yang menunggu' + (cacheMentah('persetujuan').length ? '' : ' — permintaan datang dari tablet karyawan (belum ada tabletnya)') };
+  return { menunggu, riwayat, kecil: menunggu.filter((m) => m.sekaligus && m.n <= P.batasSekaligus).length, batas: P.batasSekaligus, judul: menunggu.length ? menunggu.length + ' permintaan menunggu owner' : 'Tidak ada yang menunggu' + (cacheMentah('persetujuan').length ? '' : ' — permintaan datang dari tablet karyawan (belum ada tabletnya)') };
 }
 export function susunPutusPersetujuan(id, setuju, alasan, w) {
   const m = cacheMentah('persetujuan').find((x) => String(x.id) === String(id)); if (!m) return { tolak: 'Permintaannya tidak ditemukan' }; if (m.status && m.status !== 'menunggu') return { tolak: 'Sudah diputus ' + (m.diputusTanggal ? tanggalPendek(m.diputusTanggal) : '') };
@@ -187,9 +197,10 @@ export function susunPutusPersetujuan(id, setuju, alasan, w) {
     patch: { kabar: setuju ? 'Disetujui — ' + (m.dari || 'peminta') + ' bisa melanjutkan di perangkatnya' : 'Ditolak (' + String(alasan).trim() + ') — ' + (m.dari || 'peminta') + ' dapat kabarnya', kabarAwas: false } };
 }
 export function susunSetujuiKecil(w) {
-  const P = ssPersetujuan(new Date(w.kini)); const kecil = P.menunggu.filter((m) => m.n <= P.batas); if (!kecil.length) return { tolak: P.menunggu.length ? 'Semua permintaan di atas batas "sekaligus" (' + RP(P.batas) + ') — setujui satu per satu' : 'Tidak ada yang menunggu' };
+  const P = ssPersetujuan(new Date(w.kini)); const kecil = P.menunggu.filter((m) => m.sekaligus && m.n <= P.batas); const nSatu = P.menunggu.filter((m) => !m.sekaligus && m.n <= P.batas).length;
+  if (!kecil.length) return { tolak: P.menunggu.length ? 'Semua permintaan di atas batas "sekaligus" (' + RP(P.batas) + ')' + (nSatu ? ' atau nego di bawah modal / tanpa modal' : '') + ' — setujui satu per satu' : 'Tidak ada yang menunggu' };
   const dokumen = []; kecil.forEach((m) => { const r = susunPutusPersetujuan(m.id, true, '', w); if (r.dokumen) dokumen.push(r.dokumen[0]); });
-  return { dokumen, patch: { kabar: kecil.length + ' permintaan kecil (≤ ' + RP(P.batas) + ') disetujui sekaligus' + (P.menunggu.length - kecil.length ? '; ' + (P.menunggu.length - kecil.length) + ' yang besar masih menunggu' : ''), kabarAwas: false } };
+  return { dokumen, patch: { kabar: kecil.length + ' permintaan kecil (≤ ' + RP(P.batas) + ') disetujui sekaligus' + (P.menunggu.length - kecil.length - nSatu ? '; ' + (P.menunggu.length - kecil.length - nSatu) + ' yang besar masih menunggu' : '') + (nSatu ? '; ' + nSatu + ' nego di bawah modal / tanpa modal dilihat satu per satu' : ''), kabarAwas: false } };
 }
 
 // ---------- SS3 · Cadangan & kuota ----------

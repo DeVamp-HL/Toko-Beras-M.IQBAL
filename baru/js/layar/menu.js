@@ -164,7 +164,9 @@ export function pasangLayarMenu(akar, opsi) {
     // ---- ATUR SENDIRI per lembar Sistem (angka & daftar owner)
     bukaAtur: () => { if (st().atur) return set({ atur: null }); const id = st().sistem; const a = S.ssAtur(id); const d = { id };
       if (id === 'perangkat') Object.assign(d, { batasAntre: String(a.batasAntre), batasDenyut: String(a.batasDenyut), pemegang: a.pemegang.slice() });
-      if (id === 'peran') Object.assign(d, { batasSekaligus: String(a.batasSekaligus), jatahBen: String(a.jatahBen) });
+      // owner 7 Okt (JS2-C): batas nego per orang — jatah per peran & per akun (kosong = ikut peran), siapa boleh di bawah modal, langkah harga
+      if (id === 'peran') { const ja = {}; Object.keys(a.jatahAkun || {}).forEach((u) => { ja[u] = String(a.jatahAkun[u]); });
+        Object.assign(d, { batasSekaligus: String(a.batasSekaligus), jatahBen: String(a.jatahBen), jatahKaryawan: String(a.jatahKaryawan), langkahNego: String(a.langkahNego), jatahAkun: ja, bawahModal: (a.bawahModal || []).slice() }); }
       if (id === 'cadangan') Object.assign(d, { simpanHari: String(a.simpanHari), ambangKuota: String(a.ambangKuota), cadanganTiap: String(a.cadanganTiap) });
       if (id === 'lokasi') Object.assign(d, { daftar: a.daftar.map((l) => Object.assign({}, l)), pengantar: a.pengantar.slice() });
       if (id === 'pengingat') Object.assign(d, { hariBon: String(a.hariBon), hariJanji: String(a.hariJanji), hariKantong: String(a.hariKantong), hariOpname: String(a.hariOpname), hariCadangan: String(a.hariCadangan), tundaHari: String(a.tundaHari), maksTunda: String(a.maksTunda), opnameTiap: String(a.opnameTiap) });
@@ -173,6 +175,9 @@ export function pasangLayarMenu(akar, opsi) {
     aturTambah: ({ daftar: k }) => { const a = JSON.parse(JSON.stringify(st().atur)); a[k].push(k === 'daftar' ? { id: 'lk' + Date.now().toString(36), nama: '', alamat: '', utama: false } : ''); set({ atur: a }); },
     aturLepas: ({ daftar: k, i }) => { const a = JSON.parse(JSON.stringify(st().atur)); a[k].splice(Number(i), 1); set({ atur: a }); },
     aturUtama: ({ i }) => { const a = JSON.parse(JSON.stringify(st().atur)); a.daftar.forEach((l, j) => { l.utama = j === Number(i); }); set({ atur: a }); },
+    // owner 7 Okt (JS2-C): jatah nego per akun (kosong = ikut perannya) & saklar "boleh di bawah modal" per orang / peran
+    aturJatahAkun: (v, el) => { const a = JSON.parse(JSON.stringify(st().atur)); a.jatahAkun = a.jatahAkun || {}; a.jatahAkun[el.dataset.uid] = String(v).replace(/[^\d]/g, '').slice(0, 3); set({ atur: a }); },
+    aturBawahModal: ({ kunci }) => { const a = JSON.parse(JSON.stringify(st().atur)); const L = a.bawahModal || []; const i = L.indexOf(kunci); if (i >= 0) L.splice(i, 1); else L.push(kunci); a.bawahModal = L; set({ atur: a }); },
     simpanAtur: async () => { const a = st().atur; if (!a) return; const isi = Object.assign({}, a); delete isi.id; if (await tulis(S.susunAturSistem(a.id, isi, waktu()))) set({ atur: null }); },
   };
   delegasi(akar, AKSI);
@@ -304,7 +309,7 @@ export function pasangLayarMenu(akar, opsi) {
       ${m ? h`<div class="kartu" data-k="putus" style="gap: 6px;"><div class="k2">${m.saran}</div><input class="ketik-nama" type="text" placeholder="Alasan kalau menolak (wajib)" value="${s.alasan}" data-ketik="alasan"><div class="pn-dua"><div class="kaca-btn aktif emas" data-aksi="setujui">SETUJUI</div><div class="kaca-btn awas" data-aksi="tolak">tolak</div></div></div>` : ''}
       ${Q.menunggu.length ? h`<div class="kaca-btn" data-k="kecil" data-aksi="setujuiKecil">setujui semua yang kecil (≤ ${RP(Q.batas)}) · ${Q.kecil}</div>` : ''}
       ${Q.riwayat.length ? h`<div class="kartu" data-k="riwayat" style="gap: 2px;"><div class="label">Keputusan sebelumnya</div>${Q.riwayat.map((x) => h`<div class="k2" data-k="r-${x.id}">${tanggalPendek(x.diputusTanggal)} · ${x.status.toUpperCase()}: ${x.teks} (${x.dari})${x.alasanTolak ? ' · ' + x.alasanTolak : ''}</div>`)}</div>` : ''}
-      ${pintuAtur('Atur batas setujui sekaligus & jatah nego', 'sekaligus ≤ ' + RP(P.batasSekaligus) + ' · jatah nego Ben ' + P.jatahBen + '% margin')}`; }
+      ${pintuAtur('Atur batas setujui sekaligus & jatah nego', 'sekaligus ≤ ' + RP(P.batasSekaligus) + ' · jatah nego Ben ' + P.jatahBen + '% · karyawan ' + P.jatahKaryawan + '% margin')}`; }
     const PR = S.SS_PERAN.find((p) => p.id === s.peran) || S.SS_PERAN[1];
     const A = S.ssAkun(); const ownerKini = !opsi.akun || !opsi.akun() || opsi.akun().jenis === 'owner';
     const kartuAkun = !ownerKini ? '' : h`<div class="kartu" data-k="minta-akses" style="gap: 6px;"><div class="label">Permintaan akses · ${A.minta.length}</div>
@@ -322,7 +327,7 @@ export function pasangLayarMenu(akar, opsi) {
         ${P.tindakan.map((t) => { const x = P.tampil(PR.id, t.id); return h`<div class="pn-hak" data-k="h-${t.id}" data-aksi="putarHak" data-peran="${PR.id}" data-t="${t.id}"><div><div style="font-weight: 600;">${t.nama}</div><div class="k2">${t.modul}${x.ket ? ' · ' + x.ket : ''}</div></div><span class="pn-nilai ${x.nilai} ${PR.id === 'owner' ? 'kunci' : ''}">${x.label}</span></div>`; })}</div>
       ${P.jejak.length ? h`<div class="kartu" data-k="jejak-hak" style="gap: 2px;"><div class="label">Perubahan hak terakhir</div>${P.jejak.map((j, i) => h`<div class="k2" data-k="jh-${i}">${tanggalPendek(j.tanggal)} ${j.jam} · ${j.teks}</div>`)}</div>` : ''}
       <div class="ket" data-k="ket-peran" style="font-size: 11px;">Tiga peran: owner (semua), Ben (penjaga laci), karyawan. "Tidak boleh" = tombolnya mati di tablet; "minta owner" = masuk papan persetujuan (alurnya belum ada, jadi sekarang tertutup); menolak wajib alasan. "Tertutup server" = di kisi lu bilang boleh, tapi aturan server (firestore.rules) belum membukanya untuk peran itu — sebabnya tertulis di bawah nama tindakan.</div>
-      ${pintuAtur('Atur batas setujui sekaligus & jatah nego', 'sekaligus ≤ ' + RP(P.batasSekaligus) + ' · jatah nego Ben ' + P.jatahBen + '% margin')}`;
+      ${pintuAtur('Atur batas setujui sekaligus & jatah nego', 'sekaligus ≤ ' + RP(P.batasSekaligus) + ' · jatah nego Ben ' + P.jatahBen + '% · karyawan ' + P.jatahKaryawan + '% margin')}`;
   }
   function gambarCadangan(s, d) {
     const C = S.ssCadangan(d, lokal(), s.hariC);
@@ -387,12 +392,21 @@ export function pasangLayarMenu(akar, opsi) {
       <div class="ket" data-k="ket-kal" style="font-size: 11px;">Yang lewat tidak bisa dihapus — diselesaikan dengan catatan, atau ditunda sampai batasnya. "Selesai" di sini tidak mencatat uangnya: bayar bon pemasok di Harga & Pemasok → Bon pemasok, bayar pelanggan di Pelanggan → Bon.</div>
       ${pintuAtur('Atur hari sebelum, lama & batas tunda', 'tunda ' + G.atur.tundaHari + ' hari × ' + G.atur.maksTunda + ' kali · opname tiap ' + G.atur.opnameTiap + ' hari')}`;
   }
+  // owner 7 Okt (JS2-C): jatah nego per akun terdaftar (kosong = ikut perannya) + siapa boleh menjual di bawah modal (wajib alasan, tercatat di nota)
+  function aturNegoOrang(a) {
+    const akun = S.ssAkun().akun.filter((x) => x.aktif); const bm = a.bawahModal || [];
+    const pil = (kunci, nama) => h`<div class="seg ${bm.indexOf(kunci) >= 0 ? 'aktif' : ''}" data-aksi="aturBawahModal" data-kunci="${kunci}">${nama}</div>`;
+    return h`<div class="label" style="margin-top: 4px;">Jatah nego per orang (kosong = ikut perannya · owner selalu sampai modal)</div>
+      ${akun.length ? akun.map((x) => h`<div class="at-baris" data-k="at-ja-${x.uid}"><div>${x.nama || x.email} <span class="k2">${x.namaPeran}</span></div><input class="ketik-nama sempit" type="text" inputmode="numeric" placeholder="ikut peran" value="${(a.jatahAkun || {})[x.uid] || ''}" data-ketik="aturJatahAkun" data-uid="${x.uid}"><span class="k2">% margin</span></div>`) : h`<div class="k2">Belum ada akun karyawan terdaftar — jatahnya mengikuti peran di atas.</div>`}
+      <div class="label" style="margin-top: 4px;">Boleh jual di bawah modal (wajib alasan; bukan-owner tetap minta owner)</div>
+      <div class="hg-pil" data-k="at-bawah-modal">${pil('owner', 'Owner')}${S.SS_PERAN_AKUN.map((p) => pil(p.id, p.nama))}${akun.map((x) => pil('uid:' + x.uid, x.nama || x.email))}</div>`;
+  }
   function gambarAtur(s) {
     const a = s.atur; const angka = (k, label, satuan) => h`<div class="at-baris" data-k="at-${k}"><div>${label}</div><input class="ketik-nama sempit" type="text" inputmode="numeric" value="${a[k]}" data-ketik="aturKetik" data-kolom="${k}"><span class="k2">${satuan}</span></div>`;
     const daftar = (k, label, contoh) => h`<div class="label" style="margin-top: 4px;">${label}</div>${a[k].map((x, i) => h`<div class="at-baris" data-k="at-${k}-${i}"><input class="ketik-nama" type="text" placeholder="${contoh}" value="${x}" data-ketik="aturKetik" data-kolom="${k}" data-i="${i}"><span class="mn-x" data-aksi="aturLepas" data-daftar="${k}" data-i="${i}">×</span></div>`)}<div class="kaca-btn putus" data-aksi="aturTambah" data-daftar="${k}">＋ tambah</div>`;
     return h`<div class="kartu" data-k="atur-${a.id}" style="gap: 8px;"><div class="serif" style="font-size: 18px;">Atur sendiri · ${JUDUL_SISTEM[a.id]}</div>
       ${a.id === 'perangkat' ? [angka('batasAntre', 'Antrean dianggap lama', 'menit'), angka('batasDenyut', 'Denyut dianggap lama', 'menit'), daftar('pemegang', 'Boleh mencatat di perangkat (Owner tak terhapus)', 'nama orang')]
-      : a.id === 'peran' ? [angka('batasSekaligus', 'Batas setujui sekaligus', 'rupiah'), angka('jatahBen', 'Jatah nego Ben', '% margin')]
+      : a.id === 'peran' ? [angka('batasSekaligus', 'Batas setujui sekaligus', 'rupiah'), angka('jatahBen', 'Jatah nego Ben', '% margin'), angka('jatahKaryawan', 'Jatah nego karyawan', '% margin'), angka('langkahNego', 'Langkah harga nego', 'rupiah'), aturNegoOrang(a)]
       : a.id === 'cadangan' ? [angka('cadanganTiap', 'Ingatkan cadangan tiap', 'hari'), angka('simpanHari', 'Simpan catatan cadangan', 'hari'), angka('ambangKuota', 'Ambang kuota simpanan lokal', '%')]
       : a.id === 'lokasi' ? [h`<div class="label">Lokasi (tepat satu utama)</div>`, a.daftar.map((l, i) => h`<div class="at-lokasi" data-k="at-l-${i}"><input class="ketik-nama" type="text" placeholder="nama lokasi (cabang, gudang)" value="${l.nama}" data-ketik="aturKetik" data-kolom="daftar" data-i="${i}" data-sub="nama"><input class="ketik-nama" type="text" placeholder="alamat (boleh kosong)" value="${l.alamat}" data-ketik="aturKetik" data-kolom="daftar" data-i="${i}" data-sub="alamat"><div class="seg ${l.utama ? 'aktif' : ''}" data-aksi="aturUtama" data-i="${i}">${l.utama ? 'utama' : 'jadikan utama'}</div><span class="mn-x" data-aksi="aturLepas" data-daftar="daftar" data-i="${i}">×</span></div>`), h`<div class="kaca-btn putus" data-aksi="aturTambah" data-daftar="daftar">＋ tambah lokasi</div>`, daftar('pengantar', 'Pengantar pindah stok', 'nama pengantar')]
       : [angka('hariBon', 'Bon pemasok: ingatkan', 'hari sebelum'), angka('hariJanji', 'Janji bayar: ingatkan', 'hari sebelum'), angka('hariKantong', 'Kantong: ingatkan', 'hari sebelum habis'), angka('hariOpname', 'Opname: ingatkan', 'hari sebelum'), angka('opnameTiap', 'Opname rutin tiap', 'hari'), angka('hariCadangan', 'Cadangan: ingatkan', 'hari sebelum'), angka('tundaHari', 'Lama tunda', 'hari'), angka('maksTunda', 'Batas tunda', 'kali')]}

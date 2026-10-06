@@ -135,16 +135,30 @@ const NAMA_TINDAKAN = { kedatangan: 'hitung truk & draf kedatangan', uangKeluar:
 const batchLahir = (d) => !!d && d.lahirBuku === true && d.stokAwal === true && !(Number(d.biayaBongkar) || 0) && String(d.pemasok || '') === 'LAHIR BUKU' && (d.merkList || []).every((r) => !(Number(r.totalKg) || 0) && !(Number(r.subtotalHarga) || 0));
 
 /**
+ * owner 7 Okt (JS2-C batas nego): satu baris penjualan yang harganya DITAWAR boleh dikirim bukan-owner tanpa tindakan "nego di bawah jatah margin" bila
+ * (a) harganya tidak turun (negoSelisih ≥ 0), (b) DALAM JATAH orangnya — negoStatus 'jatah', harga ≥ negoBatas, 0 < negoJatah ≤ jatah akun ini (jatahNego,
+ * setelan owner per orang), atau (c) DISETUJUI owner (negoStatus 'disetujui' + negoSetujuId — permintaan lewat koleksi persetujuan).
+ * Nego tanpa tanda (bentuk lama), di bawah batas, jatah lebih besar dari jatah akun, atau di bawah modal = tindakan nego.
+ */
+export function negoDalamJatah(d, jatahNego) {
+  const sel = Number(d && d.negoSelisih) || 0; if (sel >= 0) return true;
+  if (d.negoStatus === 'disetujui') return !!d.negoSetujuId;
+  if (d.negoStatus !== 'jatah') return false;
+  const harga = (Number(d.hargaAsliSatuan) || 0) + sel; const batas = Number(d.negoBatas); const jatah = Number(d.negoJatah);
+  return batas > 0 && harga >= batas && jatah > 0 && jatah <= (Number(jatahNego) || 0);
+}
+/**
  * audit 39b no. 22: tindakan kisi SS2 yang dijalankan SATU kiriman bukan-owner (dokumen baru saja; update pesanan menumpang notanya).
  * Ada penjualan = nota: jual bon (Kredit, termasuk bayar sebagian) atau jual tunai, + nego bila ada harga ditawar (negoSelisih) atau potongan nota.
+ * owner 7 Okt: harga ditawar DALAM jatah orangnya / disetujui owner bukan tindakan nego (negoDalamJatah; jatahNego = jatah akun yang mengirim).
  * Tanpa nota: pelunasan = terima bon · kartu baru = pelanggan baru · wadah literan / buku lahir = isi ulang · produksi & kantong pakai = adukan.
  * Struk & jejak tidak menjalankan tindakan apa pun. Bentuk dokumennya tetap dijaga BUAT_STAF / UBAH_STAF di periksaKiriman.
  */
-export function tindakanKiriman(D) {
+export function tindakanKiriman(D, jatahNego) {
   const baru = (D || []).filter((x) => !x.ada); const t = {}; const ada = (k) => baru.some((x) => x.koleksi === k);
   const jual = baru.filter((x) => x.koleksi === 'penjualan');
   jual.forEach((x) => { const d = x.data || {}; t[String(d.caraBayar || '').toLowerCase() === 'kredit' ? 'jualBon' : 'jualTunai'] = 1;
-    if ((Number(d.negoSelisih) || 0) !== 0 || (Number(d.potonganTransaksi) || 0) > 0) t.nego = 1; });
+    if (!negoDalamJatah(d, jatahNego) || (Number(d.potonganTransaksi) || 0) > 0) t.nego = 1; });
   if (!jual.length && baru.some((x) => x.koleksi === 'piutangMutasi')) t.terimaBon = 1;
   if (ada('pelangganCatatan')) t.pelangganBaru = 1;
   const adaWadah = ada('wadahLiteran') || ada('batchMasuk');
@@ -154,7 +168,8 @@ export function tindakanKiriman(D) {
 
 /**
  * Penjaga penulis pusat untuk akun bukan-owner — dijalankan SEBELUM dikirim. dokumen = [{ koleksi, data, ada, lama }] (ada/lama dari cache),
- * hapus = [{ koleksi, id }]. hakPeran = kisi SS2 peran itu ({ tindakan: 'sendiri'|'owner'|'tidak' }). Kembali { tolak } atau { accessCall }.
+ * hapus = [{ koleksi, id }]. hakPeran = kisi SS2 peran itu ({ tindakan: 'sendiri'|'owner'|'tidak' }) + jatahNego (owner 7 Okt: jatah nego akun ini, % margin —
+ * app.js setelSumberHak). Kembali { tolak } atau { accessCall }.
  * Putaran 25: bukan-owner hanya boleh menulis catatan bertanggal bulan berjalan atau bulan lalu SELAMA masa tenggang minimal — di rules tanpa get()
  * (kunciPeriode tidak pernah dibaca untuk bukan-owner), jadi access call tetap 1 per dokumen. Di luar itu: owner yang menulis (ditolak server → daftar ditolak).
  */
@@ -186,6 +201,10 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       // rules v5 (putaran 39): karyawan menulis wadahLiteran hanya takar / karung / karungIsi / cek (aturan wadah & titik samakan isi = owner), batchMasuk hanya batch LAHIR BUKU 0 kg
       if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };
       if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };
+      // owner 7 Okt (JS2-C): permintaan nego ke owner — hanya bentuk "menunggu" bertindakan nego, tanpa keputusan, dari peran yang kisinya bukan "tidak boleh".
+      // Sampai rules membuka persetujuan untuk bukan-owner (BUAT_STAF di atas belum memuatnya) baris ini tidak tercapai — penjaganya disiapkan bersama layarnya.
+      // tinjauan 7 Okt: permintaan itu harus atas nama akun yang mengirim (negoUid = uid sendiri) — persetujuannya dicocokkan ke negoUid (ngSetujuUntuk)
+      if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || d.diputusPada || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };
     } else {
       const u = UBAH_STAF[x.koleksi]; if (!u || u.peran.indexOf(P) < 0) return { tolak: tolakTindakan(TINDAKAN_DARI[x.koleksi] || 'koreksi') };
       const lama = x.lama || {}; const kunci = {}; Object.keys(lama).concat(Object.keys(d)).forEach((kk) => { kunci[kk] = true; });
@@ -196,7 +215,7 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
   }
   // audit 39b no. 22: kisi SS2 DITEGAKKAN di sini (dulu hak hanya memilih kalimat; yang menahan cuma 4 tombol). Tiap tindakan kiriman ini wajib "boleh sendiri"
   // di kisi peran DAN dibuka server (SERVER_BUKA); nego tidak pernah dibuka untuk bukan-owner. Kisi yang diputar owner belum ditegakkan rules (tanpa get()).
-  for (const t of tindakanKiriman(D)) { if (hak[t] !== 'sendiri' || (SERVER_BUKA[t] || []).indexOf(P) < 0) return { tolak: tolakTindakan(t) }; }
+  for (const t of tindakanKiriman(D, hak.jatahNego)) { if (hak[t] !== 'sendiri' || (SERVER_BUKA[t] || []).indexOf(P) < 0) return { tolak: tolakTindakan(t) }; }
   // putaran 25: hanya bulan berjalan / bulan lalu dalam masa tenggang minimal (rules tglStaf(), tanpa get()); dinilai SESUDAH hak, supaya kalimat hak tetap yang tampil
   const lewat = kpNilaiKiriman(D.map((x) => ({ koleksi: x.koleksi, data: x.data, lama: x.lama })), null, kini || new Date(Date.now())).lewatTenggang;
   if (lewat.length) return { tolak: 'Catatan bertanggal ' + kpNamaBulan(lewat[0].bulan) + ' sudah lewat masa tenggang — hanya owner yang bisa mencatatnya sekarang' };

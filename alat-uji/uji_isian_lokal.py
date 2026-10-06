@@ -73,6 +73,21 @@ def periksa(sumber):
             kunci = ditulis[0]
             if kunci not in jaga and kunci not in BUKAN_ISIAN.get(nama, {}):
                 cacat.append('%s: kolom %s menulis "%s" yang TIDAK dijaga penjaga isian (dan tidak tercatat sengaja bukan isian)' % (nama, k, kunci))
+    # owner 7 Okt (J2): keranjang Jual yang disimpan di penyimpanan SESI (kunci di jual-logika) ikut dilupakan saat ganti orang — lupakanOrang Jual menghapusnya
+    # lebih dulu, penghapusnya benar-benar menghapus kunci itu, dan tiap kunci penyimpanan milik jual-logika dipakai lewat penulis yang sama
+    jl, js = sumber['_jl'], sumber['jual']
+    kunci_jl = re.findall(r"export const (KUNCI_\w+)\s*=\s*'miqbal_", jl)
+    for kk in kunci_jl:
+        if ('L.' + kk) not in js: cacat.append('jual: kunci penyimpanan %s di jual-logika tidak dipakai layar (penulis & penghapusnya hilang?)' % kk)
+    m = re.search(r"lupakanOrang: \(\) => \{ (\w+)\(\); K\.setel\(\(s\) => L\.keadaanOrangBerikutnya\(s\)\); \}", js)
+    if kunci_jl and not m: cacat.append('jual: lupakanOrang tidak menghapus simpanan keranjang sebelum keadaan dikosongkan')
+    elif kunci_jl:
+        f = re.search(r'function ' + m.group(1) + r'\(\) \{([^}]*)\}', js)
+        if not f or 'tulisSimpanan(null)' not in f.group(1) or '_simpanUid = null' not in f.group(1): cacat.append('jual: %s tidak menghapus simpanan / tidak berhenti menyimpan' % m.group(1))
+        # tinjauan 7 Okt: penulis penyimpanan sesi satu (tulisSesi(kunci, isi) — null = removeItem kunci itu); simpanan keranjang lewat tulisSesi ke kuncinya sendiri
+        tl = re.search(r"const tulisSesi = \(k, v\) => \{(.*?)\};\n", js, re.S)
+        if not tl or 'else sessionStorage.removeItem(k);' not in tl.group(1) or 'const tulisSimpanan = (v) => tulisSesi(L.KUNCI_SIMPAN_KERANJANG, v);' not in js:
+            cacat.append('jual: tulisSimpanan(null) tidak menghapus kunci simpanan keranjang')
     return cacat
 
 
@@ -91,6 +106,10 @@ if __name__ == '__main__':
             ('Harga lupa draf lokal belanja', 'harga', '[KUNCI_DRAF_BELANJA]);', '[]);'),
             ('Jual lupa isian pesanan', '_jl', "const ISIAN_JUAL_LAIN = ['psNama', ", "const ISIAN_JUAL_LAIN = ["),
             ('Menu tidak meneruskan penjaga', 'menu', 'belumDisimpan: ISIAN.belum, lupakanOrang: ISIAN.lupakan', 'belumDisimpan: () => false, lupakanOrang: () => {}'),
+            ('Jual lupa menghapus simpanan keranjang saat ganti orang (owner 7 Okt)', 'jual', 'lupakanOrang: () => { lupakanSimpanan(); K.setel(', 'lupakanOrang: () => { K.setel('),
+            ('Jual: penghapus simpanan tidak menghapus apa pun (owner 7 Okt)', 'jual', 'function lupakanSimpanan() { _simpanUid = null; tulisSimpanan(null); }', 'function lupakanSimpanan() { _simpanUid = null; }'),
+            ('Jual: penulis simpanan tidak pernah removeItem (owner 7 Okt)', 'jual', 'else sessionStorage.removeItem(k);', 'else void 0;'),
+            ('Jual: simpanan keranjang ditulis ke kunci lain (tinjauan 7 Okt)', 'jual', 'tulisSesi(L.KUNCI_SIMPAN_KERANJANG, v)', 'tulisSesi(L.KUNCI_TAB_KERANJANG, v)'),
         ]
         for nama, berkas, lama, baru in rusak:
             T = dict(S); assert lama in T[berkas], 'kontrol basi: ' + nama; T[berkas] = T[berkas].replace(lama, baru, 1)

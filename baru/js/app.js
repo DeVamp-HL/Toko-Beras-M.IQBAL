@@ -13,6 +13,8 @@ import { muatCadangan } from './data/cadangan.js';
 import { dengarkan, sumberData } from './data/toko.js';
 import { bolehLayar, bisaBekerja, teksMasukSebagai } from './data/akses.js';
 import { ssAtur } from './layar/sistem-logika.js';
+// owner 7 Okt (JS2-C): jatah nego akun yang masuk ikut ke penjaga kiriman
+import { ngJatah } from './layar/nego-logika.js';
 import { terkunci, setelKunci } from './inti/kunci.js';
 import { kalimatKeranjangKeluar } from './layar/jual-logika.js';
 import { kalimatIsianKeluar } from './inti/isian.js';
@@ -27,7 +29,7 @@ let versi = 0;
 let statusFb = { masuk: false, akun: null, koleksiSiap: 0, koleksiTotal: 0, offline: false, galat: '', ditolak: [], lokal: { belum: 0, ditolak: 0 } };
 // akun yang masuk (putaran 23). Mode cadangan tidak masuk ke Firebase: dianggap owner (tulisan cuma simulasi di memori).
 const akunKini = () => (sumberData().jenis === 'cadangan' ? { jenis: 'owner', peran: 'owner', nama: 'Owner', uid: '' } : statusFb.akun);
-fb.setelSumberHak(() => { const a = statusFb.akun; if (!a || !a.peran || a.peran === 'owner') return {}; try { return (ssAtur('peran').hak || {})[a.peran] || {}; } catch (e) { return {}; } });
+fb.setelSumberHak(() => { const a = statusFb.akun; if (!a || !a.peran || a.peran === 'owner') return {}; try { return Object.assign({}, (ssAtur('peran').hak || {})[a.peran] || {}, { jatahNego: ngJatah(a) }); } catch (e) { return {}; } });
 
 // Kelas gelap juga di <html>: Safari iOS 26/27 mewarnai daerah poni/jam dari warna dasar & color-scheme elemen akar,
 // bukan dari theme-color — tanpa ini poninya putih di mode gelap. theme-color ikut diganti untuk peramban lain.
@@ -225,6 +227,8 @@ function jagaIsian(akun) {
 function gambarAkun(akun) {
   jagaIsian(akun);
   terapkanKunci(akun);
+  // owner 7 Okt (J2): keranjang & struk parkir akun ini yang tersimpan di tab ini (hari ini) dipulihkan sesudah halaman dimuat ulang — sesudah tirai dibuka
+  if (!q.get('cadangan') && akun && bisaBekerja(akun)) layar.pulihkanKeranjang(akun);
   const bisa = bisaBekerja(akun);
   const tundaFokus = gerbang.akun(akun, bisa) || 0;   // 'tampil' = gerbang menghalangi layar (arti lama); membuka/menutup = gerak di js/inti/gerbang.js
   if (bisa) { isianSandi.value = ''; return; }
