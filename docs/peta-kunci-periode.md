@@ -369,8 +369,11 @@ Kunci berbentuk awalan, sedangkan tutup buku menulis saldo pembuka bertanggal la
 Beranda tidak menyuruh mengunci. Pilihan lain yang ditimbang: B (buka kunci turun satu bulan per langkah — praktis tidak bisa), C (pembuka 1 Jan +
 arsip tanpa hapus — dirancang untuk 2027), D (rules v6 pengecualian sempit).
 
-**Buntu Januari 2028 (dicatat 7 Okt 2026, belum dibangun).** Bulan 2027 yang terkunci membuat tutup buku 2027 sungguhan ditolak (`tahunBuku` →
-`adaKunci`), sedangkan butir ⛔ siap 2027 A2 (`kunci-periode-logika.js` `tutupBukuLalu` ← `bkTahunSelesai`) menahan kunci bulan 2028 sampai tutup buku
-2027 selesai. Keduanya benar sendiri-sendiri; bersama-sama = buntu. Penutupnya paket **tutup buku 2027** (keputusan owner: pengecualian sempit;
-bentuknya dirancang di paket itu, bandingkan C/D di atas), harus siap sebelum ritual 1 Jan 2028. Rincian: `docs/prosedur-pulih-darurat.md`
-bab "Buntu Januari 2028".
+**Buntu Januari 2028 (dicatat 7 Okt 2026) — DITUTUP rules v7 "pintu tutup buku" (K8, owner 7 Okt: pengecualian sempit = pilihan D).** Bulan 2027 yang
+terkunci membuat tutup buku 2027 sungguhan ditolak (dulu `tahunBuku` → `adaKunci`), sedangkan butir ⛔ siap 2027 A2 (`kunci-periode-logika.js`
+`tutupBukuLalu` ← `bkTahunSelesai`) menahan kunci bulan 2028 sampai tutup buku 2027 selesai — bersama-sama = buntu. Sekarang: dokumen
+`pengaturan/pintuBuku` (owner, hanya selagi berita acara tahun itu berjalan / terkunci / membatalkan, ≤ 72 jam) membuka bulan terkunci tahun itu HANYA
+untuk saldo pembuka tahun itu, arsip yang salinannya ditulis di batch yang sama, pengembalian arsip saat Batalkan, dan titik kas ≤ 31 Des; ubah & catatan
+lain tetap ditolak. Pilihan C (arsip tanpa hapus) tidak dipakai: catatan tahun lama tetap terbaca mesin (stok, piutang & utang DOBEL sesudah saldo
+pembuka) tanpa mengubah mesin beku. Bentuk & uji: kepala `firestore.rules`, `docs/uji-rules-v7.md` bagian P, `alat-uji/uji_tutup_buku_2027.py`,
+`baru/BACA-DULU.md` bab "Rules v7 FINAL & tutup buku … lewat PINTU". A2 tetap: kunci 2028 menunggu tutup buku 2027 selesai — kini memang bisa selesai.

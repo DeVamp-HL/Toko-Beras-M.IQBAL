@@ -13,7 +13,7 @@ import { KOLEKSI } from './koleksi.js';
 import { pasok, setelSumber, setelPenulis, dokDiCache, jagaKunci, dengarkan, sumberData, setelTertunda, setelDariCache, setelHapusTertunda, hapusTertunda, cacheMentah, tolakKunci } from './toko.js';
 import { EMAIL_OWNER, keadaanAkun, bisaBekerja, pendengarPeran, periksaKiriman, beriAtribusiAkun, jejakKiriman, ringkasDok, susunPermintaan } from './akses.js';
 import { buatAntre, cekDariCache, susunTulisUlang, jejakTulisUlang } from './antre-lokal.js';
-import { KP_BATAS_GET } from './kunci-periode.js';
+import { KP_BATAS_GET, kpPecahBiaya } from './kunci-periode.js';
 import { KK_KOLEKSI, KK_ID, KK_JEDA_MS, kkSetelServer, kkLupakanServer, kkIsi, kkDokumen, kkTertinggal, kkBolehTerbit, kkMentah, kkCatatTerbit, kkPasangGerbang, kkKanon } from './katalog-kasir.js';
 import { HB_VERSI, HB_LIMIT_F, HB_KOLEKSI_NISAN, HB_ID_KLAIM, HB_MULAI_MS, hbHemat, hbKoleksiHemat, hbKupas, hbSaklar, hbSetelSaklar, hbNisanSah, hbTandaiNisanSah, hbBacaRekam, hbSimpanRekam,
   hbSesi, hbKunciTab, hbAyunanBaru, hbCatatTerbitKatalog, hbNilaiKatalogServer, hbBolehTerbitKatalog, hbSiapNyala, hbTanpaCapStatis } from './hemat-baca.js';
@@ -602,16 +602,17 @@ export async function perbaruiBerkas(potongan, ringkas) {
 // Langsung ke server (menunggu commit, bukan 1,5 detik): ritual ini wajib internet & satu perangkat. Satu baris log per potongan, bukan per dokumen.
 // Putaran 25: rules v4 memeriksa kunci periode untuk tiap dokumen bulan lampau yang dihapus/ditulis ulang (1 get() per dokumen, cache tidak diandalkan),
 // jadi potongan dari 200 turun ke KP_BATAS_GET (18) — kalau tidak, kiriman arsip pertama ditolak sesudah saldo pembuka terlanjur tertulis (stok dobel).
-// Arsip yang MENGHAPUS ini dirancang ulang sebelum Januari 2027 (K1 owner 25 Sep: arsip = salinan + penanda, catatan dasar disimpan 10 tahun).
+// rules v7 (owner 7 Okt, K8): bulan TERKUNCI tahun itu lewat PINTU TUTUP BUKU — 3 access call per catatan (kunci + pintu + salinan arsip). biaya = access call
+// per catatan dari toko.js (kunci-periode.js); potongan ≤ 18 catatan DAN ≤ 18 access call (kpPecahBiaya). Tanpa biaya = 1 per catatan (seperti dulu).
 const KOLEKSI_ARSIP = 'arsipTahun';
 const POTONG = KP_BATAS_GET;
-export async function arsipkanBerkas(tahun, daftar, progres) {
+export async function arsipkanBerkas(tahun, daftar, progres, biaya) {
   if (!db) throw new Error('belum tersambung');
   if (!status.masuk) throw new Error('belum masuk sebagai owner');
   if (pemilikSaja()) throw new Error(pemilikSaja());
   let sudah = 0;
-  for (let i = 0; i < daftar.length; i += POTONG) {
-    const b = writeBatch(db); const potong = daftar.slice(i, i + POTONG);
+  for (const [i, j] of kpPecahBiaya(biaya || daftar.map(() => 1), POTONG, KP_BATAS_GET)) {
+    const b = writeBatch(db); const potong = daftar.slice(i, j);
     potong.forEach((x) => {
       b.set(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.id), { id: tahun + '|' + x.koleksi + '|' + x.id, tahun, koleksi: x.koleksi, idAsli: String(x.id), dok: x.data, pada: new Date().toISOString(), oleh: pemegangPerangkat(), olehUid: status.akun.uid, perangkat: perangkatRingkas() });
       b.delete(doc(db, x.koleksi, String(x.id)));
@@ -629,13 +630,13 @@ export async function bacaArsipBerkas(tahun) {
   const out = []; snap.forEach((d) => { const a = d.data(); out.push({ koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok }); });
   return out;
 }
-export async function pulihkanBerkas(tahun, daftar, progres) {
+export async function pulihkanBerkas(tahun, daftar, progres, biaya) {
   if (!db) throw new Error('belum tersambung');
   if (!status.masuk) throw new Error('belum masuk sebagai owner');
   if (pemilikSaja()) throw new Error(pemilikSaja());
   let sudah = 0;
-  for (let i = 0; i < daftar.length; i += POTONG) {
-    const b = writeBatch(db); const potong = daftar.slice(i, i + POTONG);
+  for (const [i, j] of kpPecahBiaya(biaya || daftar.map(() => 1), POTONG, KP_BATAS_GET)) {
+    const b = writeBatch(db); const potong = daftar.slice(i, j);
     // owner 7 Okt: catatan yang dikembalikan bercap jam server BARU (isinya tetap isi lama) — perangkat hemat baca menerimanya lewat delta
     potong.forEach((x) => { b.set(doc(db, x.koleksi, String(x.idAsli)), pasangCap(x.koleksi, x.dok)); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });
     const log = { id: idUnik(), pada: new Date().toISOString(), aksi: 'pulihkan', koleksi: KOLEKSI_ARSIP, idDok: String(tahun), oleh: pemegangPerangkat(), olehUid: status.akun.uid, perangkat: perangkatRingkas(), ringkas: 'batal tutup buku ' + tahun + ': ' + potong.length + ' dokumen dikembalikan' };

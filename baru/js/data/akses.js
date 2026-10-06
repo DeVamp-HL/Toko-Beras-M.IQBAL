@@ -21,14 +21,16 @@ export const BATAS_BARIS_NOTA_STAF = 7;     // nota: 7 baris (nota nyata terpanj
 export const BATAS_HASIL_ADUKAN_STAF = 8;   // adukan: 8 hasil × (produksi + kantong) + jejak = 17
 
 // §3 — yang DIBACA bukan-owner. Koleksi utuh + setelan PER DOKUMEN (aturanToko & pengaturan bercampur tarif upah, NPWP, titik kas, PIN).
+// rules v7 (owner 7 Okt, JS2-C): persetujuan — yang minta nego membaca keputusan owner (pendengar koleksi utuh; rules bukan saringan)
 export const BACA_STAF = ['penjualan', 'piutangMutasi', 'pelangganCatatan', 'pelangganTitip', 'pesanan', 'tagihPelanggan', 'strukKeluar',
   'batchMasuk', 'produksiKemasan', 'penyesuaianStok', 'penyesuaianKemasan', 'retur', 'karantina', 'stokBahanKemasan', 'stokBahanLiteran', 'wadahLiteran', 'pindahTempat',
-  'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah'];
+  'katalogHargaKarung', 'katalogHargaKemasan', 'katalogHargaLiteran', 'hargaWadah', 'persetujuan'];
 export const DOK_STAF = { aturanToko: ['struk', 'pelanggan', 'pelangganKembar', 'catatStok', 'kantong', 'tempat', 'peran', 'perangkat'], pengaturan: ['tempatSimpan'] };
 // §4 — CREATE bukan-owner: koleksi → peran yang boleh. Menambah peran nanti = menambah satu nama di sini DAN di daftar yang sama di firestore.rules.
 export const BUAT_STAF = { penjualan: ['ben', 'karyawan'], piutangMutasi: ['ben', 'karyawan'], stokBahanLiteran: ['ben', 'karyawan'], stokBahanKemasan: ['ben', 'karyawan'],
   produksiKemasan: ['ben', 'karyawan'], pelangganCatatan: ['ben', 'karyawan'], strukKeluar: ['ben', 'karyawan'], logAktivitas: ['ben', 'karyawan'], perangkatStatus: ['ben', 'karyawan'],
-  wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'] };   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
+  wadahLiteran: ['ben', 'karyawan'], batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'] };   // rules v5 (putaran 39): wadahLiteran hanya tipe takar/karung/karungIsi/cek; batchMasuk hanya batch LAHIR BUKU 0 kg (periksaKiriman)
+// rules v7 (owner 7 Okt, JS2-C): persetujuan hanya PERMINTAAN NEGO "menunggu" atas nama sendiri, tanpa kolom keputusan (stafMintaNego; periksaKiriman di bawah)
 export const TIPE_WADAH_STAF = ['takar', 'karung', 'karungIsi', 'cek'];   // = stafBuatWadah di rules v5
 export const KREDIT_STAF = ['ben'];   // penjualan caraBayar Kredit (jualBon): ben `sendiri`, karyawan `owner`
 // §5 — dua pengecualian UPDATE. Kolom atribusi ubah ikut (penulis pusat menulisnya); kolom pencipta (oleh, perangkat, lokasi) TIDAK pernah ditambah bukan-owner.
@@ -202,9 +204,9 @@ export function periksaKiriman(akun, dokumen, hapus, hakPeran, kini) {
       if (x.koleksi === 'wadahLiteran' && TIPE_WADAH_STAF.indexOf(String(d.tipe || '')) < 0) return { tolak: tolakTindakan('atur') };
       if (x.koleksi === 'batchMasuk' && !batchLahir(d)) return { tolak: tolakTindakan('kedatangan') };
       // owner 7 Okt (JS2-C): permintaan nego ke owner — hanya bentuk "menunggu" bertindakan nego, tanpa keputusan, dari peran yang kisinya bukan "tidak boleh".
-      // Sampai rules membuka persetujuan untuk bukan-owner (BUAT_STAF di atas belum memuatnya) baris ini tidak tercapai — penjaganya disiapkan bersama layarnya.
-      // tinjauan 7 Okt: permintaan itu harus atas nama akun yang mengirim (negoUid = uid sendiri) — persetujuannya dicocokkan ke negoUid (ngSetujuUntuk)
-      if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || d.diputusPada || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };
+      // rules v7 (stafMintaNego) menegakkan bentuk yang SAMA: tindakan 'nego', status 'menunggu', negoUid = olehUid = uid penulis, tanpa diputusPada /
+      // diputusTanggal / diputusJam / alasanTolak. tinjauan 7 Okt: persetujuannya dicocokkan ke negoUid (ngSetujuUntuk)
+      if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].some((k) => k in d) || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };
     } else {
       const u = UBAH_STAF[x.koleksi]; if (!u || u.peran.indexOf(P) < 0) return { tolak: tolakTindakan(TINDAKAN_DARI[x.koleksi] || 'koreksi') };
       const lama = x.lama || {}; const kunci = {}; Object.keys(lama).concat(Object.keys(d)).forEach((kk) => { kunci[kk] = true; });

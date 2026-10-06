@@ -8,7 +8,7 @@
 //  - keranjang aktif & yang diparkir disetel oleh layar lewat setelKeranjang(), bukan variabel global.
 import { KOLEKSI } from './koleksi.js';
 import { penjualanMasihBerlaku, produksiMasihBerlaku, wzJumlahDiDaftar, uangKembaliRetur, kunciPelanggan, kunciKemasan, tanggalLokalIso, JENDELA_LAJU_HARI, daftarGerakanKas, semuaMerkDikenal } from '../mesin/pembantu.js';
-import { kpSampai, kpTenggang, kpNilaiKiriman, kpKalimat, kpPotong, kpBulanDok, kpIdx, kpBulanStr, KP_BATAS_GET } from './kunci-periode.js';
+import { kpSampai, kpTenggang, kpNilaiKiriman, kpKalimat, kpPotong, kpBulanDok, kpIdx, kpBulanStr, KP_BATAS_GET, KP_ID_PINTU, kpPintu } from './kunci-periode.js';
 // hari & hari tutup aktif (JAM_BATAS_TUTUP) untuk kunciLuarCache — satu aturan jam dengan Tutup hari & cek wadah
 import { hariIniIso, tanggalTutupAktif } from '../inti/format.js';
 // mesin beku, daftarGerakanKas & semuaMerkDikenal dipakai HANYA oleh ingatan di bawah (ingatStokKarung dkk.: hasil mesin diingat per versi cache)
@@ -322,15 +322,27 @@ export function kunciTenggang() { return kpTenggang(_cache.aturan); }
 /** Untuk logika layar: '' = boleh; selain itu kalimat "Bulan X terkunci — <pembalik>". Dokumen satu koleksi / satu tanggal. */
 export function tolakKunci(koleksi, dok, pembalik) { const s = kunciSampai(); const b = s ? kpBulanDok(koleksi, dok) : null; return b !== null && b !== undefined && b <= kpIdx(s) ? kpKalimat(kpBulanStr(b), pembalik) : ''; }
 export function tolakKunciTanggal(tgl, pembalik) { const s = kunciSampai(); return s && kpIdx(tgl || null) <= kpIdx(s) ? kpKalimat(kpBulanStr(kpIdx(tgl || null)), pembalik) : ''; }
-function opsKiriman(daftar, hapus) {
-  return (daftar || []).map(({ koleksi, data }) => ({ koleksi, data, lama: dokDiCache(koleksi, data.id) }))
-    .concat((hapus || []).map((x) => ({ koleksi: x.koleksi, id: x.id, lama: dokDiCache(x.koleksi, x.id), hapus: true })));
+// tanda = 'arsip' (hapus = pindah ke arsipTahun di batch yang sama) | 'pulih' (tulis = kembali dari arsipTahun) — hanya arsipkanDokumen / pulihkanArsip
+function opsKiriman(daftar, hapus, tanda) {
+  return (daftar || []).map(({ koleksi, data }) => Object.assign({ koleksi, data, lama: dokDiCache(koleksi, data.id) }, tanda === 'pulih' ? { pulih: true } : {}))
+    .concat((hapus || []).map((x) => Object.assign({ koleksi: x.koleksi, id: x.id, lama: dokDiCache(x.koleksi, x.id), hapus: true }, tanda === 'arsip' ? { arsip: true } : {})));
+}
+/** rules v7: PINTU TUTUP BUKU yang terbuka sekarang (pengaturan/pintuBuku di cache) → { tahun, sampai } atau null. */
+export function pintuBuku() { return kpPintu(dokDiCache('pengaturan', KP_ID_PINTU), new Date(Date.now())); }
+// pintu yang berlaku untuk SATU kiriman: yang ikut ditulis di kiriman itu (rules menilainya sesudah batch — getAfter), selain itu yang di cache
+function pintuKiriman(daftar) {
+  const d = (daftar || []).find((x) => x.koleksi === 'pengaturan' && x.data && String(x.data.id) === KP_ID_PINTU);
+  return d ? kpPintu(d.data, new Date(Date.now())) : pintuBuku();
 }
 /** Jumlah pemeriksaan kunci (get()) yang dibutuhkan server untuk satu kiriman — untuk logika layar yang ingin menolak dengan kalimatnya sendiri. */
 export function butuhGet(daftar, hapus) { return kpNilaiKiriman(opsKiriman(daftar, hapus), null, new Date(Date.now())).perluGet; }
 /** → null (boleh dikirim) atau { gagal, terkunci?, pesan }. opsi.pembalik = kalimat pembalik yang ditawarkan layar. */
+/** Penilaian kunci satu kiriman SEPERTI server (kpNilaiKiriman dengan bulan terkunci & pintu tutup buku): { terkunci, perluGet, lewatPintu, … }. */
+export function nilaiKunci(daftar, hapus, opsi) { return kpNilaiKiriman(opsKiriman(daftar, hapus, opsi && opsi.pintu), kunciSampai(), new Date(Date.now()), pintuKiriman(daftar)); }
 export function jagaKunci(daftar, hapus, opsi) {
-  const N = kpNilaiKiriman(opsKiriman(daftar, hapus), kunciSampai(), new Date(Date.now()));
+  // rules v7: catatan bulan terkunci yang lewat PINTU TUTUP BUKU (saldo pembuka / arsip / pengembalian / titik kas tahun pintu) tidak dihitung terkunci —
+  // biayanya (access call pintu) ikut perluGet. opsi.pintu = 'arsip' | 'pulih' (hanya arsipkanDokumen / pulihkanArsip)
+  const N = nilaiKunci(daftar, hapus, opsi);
   if (N.terkunci.length) return { gagal: true, terkunci: true, bulan: N.terkunci[0].bulan, pesan: kpKalimat(N.terkunci.reduce((a, x) => (x.bulan > a ? x.bulan : a), N.terkunci[0].bulan), opsi && opsi.pembalik) + ' (' + N.terkunci.length + ' catatan)' };
   if (N.perluGet > KP_BATAS_GET) return { gagal: true, pesan: 'Kiriman ini menyentuh ' + N.perluGet + ' catatan bulan lampau — server hanya sanggup memeriksa ' + KP_BATAS_GET + ' sekali kirim. Tidak ada yang dikirim; pecah jadi beberapa kiriman.' };
   return null;
@@ -414,15 +426,20 @@ let _arsip = [];
 export function arsipSimulasi() { return _arsip.slice(); }
 /** daftar = [{ koleksi, id, data }] → dipindah ke arsipTahun (id = tahun|koleksi|id) lalu dihapus dari koleksinya. progres(sudah, total) dipanggil per potongan. */
 export async function arsipkanDokumen(tahun, daftar, progres) {
-  // K1 (owner 25 Sep): arsip yang MEMINDAH (menghapus) dokumen tidak berjalan selama ada bulan terkunci. Keputusan owner 1 Okt (A): tutup buku 2026 tetap memindah;
-  // rancangan "salinan + penanda tanpa hapus" (opsi C) untuk tutup buku 2027 — berkas arsip dan cadangan SEBELUM disimpan 10 tahun di luar Mac
-  const j = jagaKunci([], daftar.map((x) => ({ koleksi: x.koleksi, id: x.id }))); if (j && j.terkunci) throw new Error(j.pesan);
-  if (_penulis && _penulis.arsipkan) return _penulis.arsipkan(tahun, daftar, progres);
+  // K1 (owner 25 Sep): arsip yang MEMINDAH (menghapus) dokumen ditolak di bulan terkunci. Keputusan owner 7 Okt (K8, pengecualian sempit — rules v7): catatan
+  // bulan terkunci bertanggal ≤ 31 Des tahun itu BOLEH dipindah selama PINTU TUTUP BUKU tahun itu terbuka (pengaturan/pintuBuku), karena salinannya ditulis
+  // ke arsipTahun di batch yang SAMA (rules: existsAfter). Berkas arsip dan cadangan SEBELUM tetap disimpan 10 tahun di luar Mac.
+  const j = jagaKunci([], daftar.map((x) => ({ koleksi: x.koleksi, id: x.id })), { pintu: 'arsip' }); if (j && j.terkunci) throw new Error(j.pesan);
+  // access call server per catatan (0 bulan berjalan · 1 bulan lampau · 3 lewat pintu) — firebase.js memecah potongan ≤ 18 (dulu tetap 18 catatan)
+  const biaya = biayaPintu(daftar.map((x) => ({ koleksi: x.koleksi, id: x.id, lama: x.data, hapus: true, arsip: true })));
+  if (_penulis && _penulis.arsipkan) return _penulis.arsipkan(tahun, daftar, progres, biaya);
   daftar.forEach((x) => { _arsip = _arsip.filter((a) => !(a.tahun === tahun && a.koleksi === x.koleksi && String(a.idAsli) === String(x.id))); _arsip.push({ id: tahun + '|' + x.koleksi + '|' + x.id, tahun, koleksi: x.koleksi, idAsli: x.id, dok: x.data }); });
   terapkanKeCache(daftar.map((x) => ({ koleksi: x.koleksi, hapus: x.id })));
   if (progres) progres(daftar.length, daftar.length);
   return { simulasi: true, n: daftar.length };
 }
+/** Access call server per operasi arsip / pengembalian (jalur pintu tutup buku ikut) — dasar pemecah potongan firebase.js (kpPecahBiaya). */
+function biayaPintu(ops) { const s = kunciSampai(); const P = pintuBuku(); const kini = new Date(Date.now()); return ops.map((op) => kpNilaiKiriman([op], s, kini, P).perluGet); }
 /** Semua dokumen arsip satu tahun: [{ koleksi, idAsli, dok }]. */
 export async function bacaArsipTahun(tahun) {
   if (_penulis && _penulis.bacaArsip) return _penulis.bacaArsip(tahun);
@@ -430,8 +447,9 @@ export async function bacaArsipTahun(tahun) {
 }
 /** Kebalikannya: dokumen arsip dikembalikan ke koleksinya, salinan arsipnya dihapus. */
 export async function pulihkanArsip(tahun, daftar, progres) {
-  const j = jagaKunci(daftar.map((x) => ({ koleksi: x.koleksi, data: Object.assign({}, x.dok, { id: x.idAsli }) })), []); if (j && j.terkunci) throw new Error(j.pesan);
-  if (_penulis && _penulis.pulihkan) return _penulis.pulihkan(tahun, daftar, progres);
+  const j = jagaKunci(daftar.map((x) => ({ koleksi: x.koleksi, data: Object.assign({}, x.dok, { id: x.idAsli }) })), [], { pintu: 'pulih' }); if (j && j.terkunci) throw new Error(j.pesan);
+  const biaya = biayaPintu(daftar.map((x) => ({ koleksi: x.koleksi, data: Object.assign({}, x.dok, { id: x.idAsli }), lama: dokDiCache(x.koleksi, x.idAsli), pulih: true })));
+  if (_penulis && _penulis.pulihkan) return _penulis.pulihkan(tahun, daftar, progres, biaya);
   terapkanKeCache(daftar.map((x) => ({ koleksi: x.koleksi, data: x.dok })));
   _arsip = _arsip.filter((a) => a.tahun !== tahun);
   if (progres) progres(daftar.length, daftar.length);

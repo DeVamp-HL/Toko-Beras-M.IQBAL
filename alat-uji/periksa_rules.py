@@ -4,9 +4,11 @@
 periksa_rules.py — pemeriksa STATIS firestore.rules v4 (putaran 23 + 25), tanpa Node & tanpa emulator.
 Membuktikan bentuk rules, bukan perilaku server (itu docs/uji-rules-v4.md: Playground ★).
 
-  1. tiap nama di baru/js/data/koleksi.js punya blok `match /<nama>/{…}` SENDIRI (+ aksesAkun, permintaanAkses, arsipTahun eksplisit);
+  1. tiap nama di baru/js/data/koleksi.js punya blok `match /<nama>/{…}` SENDIRI (+ aksesAkun, permintaanAkses, arsipTahun eksplisit); blok di LUAR
+     koleksi.js hanya yang dikenal (LUAR_KOLEKSI: aksesAkun, permintaanAkses, arsipTahun, ringkasanKasir, batuNisan, fotoBon);
   2. owner() masih berbasis EMAIL owner; tidak ada allow yang cuma `masuk()` (siapa pun yang login);
-  3. semua jalur kasir@ v2 masih ada — dan dipersempit ke email kasir@ (kasir());
+  3. jalur kasir@ (v7: kasir darurat SAJA — nota penjualan + kirim ulangnya, denyut perangkatStatus, baca ringkasanKasir) masih ada dan dipersempit ke
+     email kasir@ (kasir()); kasir() di tempat LAIN mana pun = cacat (v7 mencabut piutangMutasi, stokBahanLiteran, logAktivitas, pengaturan/aksesKasir);
   4. tiap create/update bukan-owner lewat fungsi yang memeriksa uid penulis (jujur() / diubahOlehUid / akunUid), atau ada di daftar
      pengecualian peta (permintaanAkses = uid sendiri); bukan-owner tidak pernah DELETE; arsipTahun owner saja; payung owner di paling bawah;
   5. daftar peran per koleksi di rules SAMA dengan baru/js/data/akses.js (BACA_STAF, DOK_STAF, BUAT_STAF, UBAH_STAF, KREDIT_STAF);
@@ -20,21 +22,35 @@ Membuktikan bentuk rules, bukan perilaku server (itu docs/uji-rules-v4.md: Playg
   9. (v6, draf 1 Okt 2026) BERITA ACARA TUTUP BUKU HANYA MAJU: blok tutupBukuAcara = baca/create/delete owner, update owner && ubahBukuSah(…), fungsinya
      tanpa get(). MODEL: fungsi rules itu APA ADANYA diterjemahkan ke Python lalu dinilai pada tulisan SAH dari kode (wajib boleh) dan tulisan TELAT
      (wajib ditolak). Model bukan server — bukti server = docs/uji-rules-v6.md (Playground ★).
- 10. (v7, hemat baca — owner 7 Okt 2026) HANYA DUA TAMBAHAN atas firestore.rules.v6: (a) ulangKasirBercap() = affectedKeys().hasOnly(['capServer']) &&
-     (capServer tidak ada || capServer == request.time) — tidak ada = HP kasir-v32 mengirim ulang nota yang sudah disentuh perangkat owner (tinjauan
-     7 Okt), dipakai HANYA sebagai suku `kasir() && ulangKasirBercap()` di update penjualan (stokBahanLiteran & piutangMutasi tetap
-     tulis-ulang identik); (b) blok batuNisan: read & delete owner(), create/update owner() && capServer == request.time, tanpa staf/kasir/get().
-     Selain itu ISI SAMA dengan firestore.rules.v6 (dibandingkan tanpa komentar & spasi) — v7 hanya menambah, aman terbit sebelum kode bercap.
+ 10. (v7 FINAL — owner 7 Okt 2026) v7 = firestore.rules.v6 + PERSIS daftar ubahan ini (sisanya dibandingkan tanpa komentar & spasi, per blok):
+     (a) hemat baca: ulangKasirBercap() = affectedKeys().hasOnly(['capServer']) && (capServer tidak ada || capServer == request.time), dipakai HANYA
+         sebagai suku `kasir() && ulangKasirBercap()` di update penjualan; blok batuNisan: read & delete owner(), create/update owner() && capServer ==
+         request.time, tanpa staf/kasir/get();
+     (b) persetujuan: read owner || staf(ben, karyawan), create owner || stafMintaNego(ben, karyawan) (tindakan 'nego', status 'menunggu', negoUid =
+         uid penulis, tanpa kolom keputusan), update/delete owner — sama dengan akses.js BUAT_STAF / BACA_STAF;
+     (c) fotoBon: read/delete owner, create owner + bentuk (id = id dokumen, idBon teks, jenis gambar, base64 ≤ 960.000), TANPA update;
+     (d) kasir@ dipangkas (lihat 3);
+     (e) PINTU TUTUP BUKU — 11.
+ 11. (v7, keputusan owner 7 Okt K8 "pengecualian sempit") PINTU TUTUP BUKU: fungsi pintuTahun / pulihArsip / pintuTulis / pintuHapus / pintuTitik /
+     pintuSah PERSIS bentuknya; pintuTulis HANYA sebagai suku `(owner() && pintuTulis('<koleksi>', id, <bulan BARU>))` di CREATE dan pintuHapus HANYA di
+     DELETE `owner() && (<kunci lama> || pintuHapus('<koleksi>', id, <bulan LAMA>))` — tepat untuk koleksi bertanggal yang diarsip tutup buku
+     (tbDaftarKoleksi mesin ∩ KP_KOLEKSI, dibaca dari berkasnya) — pintuTitik & pintuSah hanya di pengaturan; TIDAK di update/read/staf/kasir@; jalur arsip
+     'Y|koleksi|id' = firebase.js arsipkanBerkas. Lalu MODEL: penafsir rules mini (alat-uji/rules_mini.py) menilai TEKS rules pada kasus Playground ★ v7
+     (docs/uji-rules-v7.md — dokumen uji yang sama) + jumlah access call jalur pintu (≤ 3 per operasi). Model bukan server.
 
     python3 alat-uji/periksa_rules.py            → LULUS / daftar cacat (keluar 2)
     python3 alat-uji/periksa_rules.py --kontrol  → berkas rules cacat buatan WAJIB gagal (keluar 3 kalau ada yang lolos)
 """
 import os, re, sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rules_mini  # noqa: E402
+
 SINI = os.path.dirname(os.path.abspath(__file__)); AKAR = os.path.abspath(os.path.join(SINI, '..'))
 EMAIL_OWNER = 'owner@tokoberasmiqbal.web.app'; EMAIL_KASIR = 'kasir@tokoberasmiqbal.web.app'
 PERAN = ['ben', 'karyawan']
-FUNGSI_JUJUR = {'stafBuat', 'stafBuatTipe', 'stafBuatJual', 'stafJejak', 'stafUbahPesanan', 'stafDenyut', 'stafBuatWadah', 'stafBuatLahir'}   # v5 (putaran 39): keduanya lewat stafBuat() → jujur()
+FUNGSI_JUJUR = {'stafBuat', 'stafBuatTipe', 'stafBuatJual', 'stafJejak', 'stafUbahPesanan', 'stafDenyut', 'stafBuatWadah', 'stafBuatLahir', 'stafMintaNego'}   # v5 (putaran 39) & v7 (permintaan nego): lewat stafBuat() → jujur()
+LUAR_KOLEKSI = ['aksesAkun', 'permintaanAkses', 'arsipTahun', 'ringkasanKasir', 'batuNisan', 'fotoBon']   # blok rules di luar baru/js/data/koleksi.js (v7: fotoBon)
 
 
 def baca(p): return open(os.path.join(AKAR, p), encoding='utf-8').read()
@@ -82,6 +98,8 @@ def allow(blok, op):
 
 
 OPERASI = ['get', 'list', 'create', 'update', 'delete']
+# v7: satu-satunya hak kasir@ (kasir-darurat-nominal.html: nota :commit / PATCH, denyut, katalog ringkasanKasir/aktif) — permintaanAkses memakai !kasir()
+KASIR_BOLEH = {('penjualan', 'create'), ('penjualan', 'update'), ('perangkatStatus', 'create'), ('perangkatStatus', 'update'), ('ringkasanKasir', 'get'), ('ringkasanKasir', 'list')}
 
 
 def suku_atas(kondisi):
@@ -133,7 +151,8 @@ def periksa_kunci(rules, B, F):
         b = B.get(n, '')
         if not b: cacat.append('koleksi bertanggal tanpa blok: ' + n); continue
         up = n == 'utangPemasokMutasi'; baru, ubah, lama = ('upBaru()', 'upUbah()', 'upLama()') if up else ("tglBaru('%s')" % f, "tglUbah('%s')" % f, "tglLama('%s')" % f)
-        if n == 'pengaturan': baru, lama = "(id != 'titikKas' || tglBaru('%s'))" % f, "(id != 'titikKas' || tglLama('%s'))" % f
+        if n == 'pengaturan': baru, lama = "(id != 'titikKas' || tglBaru('%s') || pintuTitik())" % f, "(id != 'titikKas' || tglLama('%s'))" % f   # v7: pintu tutup buku (periksa_pintu)
+        pintu = suku_pintu(n, KOL)   # v7: suku pintu tutup buku di create — bentuk & tempatnya dijaga periksa_pintu
         for op, wajib in (('create', baru), ('update', ubah if n != 'pengaturan' else baru), ('delete', lama)):
             xs = allow(b, op)
             if not xs: cacat.append(n + ': tidak ada allow ' + op); continue
@@ -147,6 +166,7 @@ def periksa_kunci(rules, B, F):
                         if s0 == 'kasir() && ulangKasirBercap()' and n == 'penjualan': continue
                         if s0 != 'kasir() && tulisUlangSama()': cacat.append('%s: update kasir@ bukan tulis-ulang identik: %s' % (n, suku))
                         continue
+                    if op == 'create' and rata(suku) == pintu: continue
                     if re.search(r'\bstaf\w*\(', suku):
                         if "tglStaf('%s')" % f not in suku: cacat.append('%s: %s bukan-owner tanpa tglStaf(%s): %s' % (n, op, f, suku))
                     elif wajib not in suku: cacat.append('%s: %s tanpa kunci periode (%s): %s' % (n, op, wajib, suku))
@@ -295,19 +315,115 @@ def periksa_buku(rules, B):
     for no, nama, lama, baru, boleh in KASUS_BUKU:
         if nilai(baru, DOK_BUKU[lama] if isinstance(lama, str) else lama) != boleh:
             cacat.append('tutupBukuAcara (model) %s %s → %s, wajib %s' % (no, nama, 'BOLEH' if not boleh else 'DITOLAK', 'BOLEH' if boleh else 'DITOLAK'))
+    # v7: penafsir rules mini (dipakai model pintu & uji_tutup_buku_2027) wajib SEPAKAT dengan model ini di semua kasus — silang dua penilai
+    try:
+        RM = rules_mini.Rules(rules)
+        for no, nama, lama, baru, boleh in KASUS_BUKU:
+            h = RM.nilai('update', 'tutupBukuAcara', '1990', auth={'uid': 'uid-uji', 'email': EMAIL_OWNER}, data=baru, sebelum={'tutupBukuAcara/1990': DOK_BUKU[lama] if isinstance(lama, str) else lama})
+            if h.boleh != boleh: cacat.append('penafsir rules mini ≠ model v6 di %s %s (%s)' % (no, nama, h.galat or ('LOLOS' if h.boleh else 'DITOLAK')))
+    except Exception as e: cacat.append('penafsir rules mini gagal mengurai rules: %s' % e)
     return cacat
 
 
 V6_TEKS = None   # kontrol: pengganti isi firestore.rules.v6
 BANDING_V6 = True   # kontrol lama (sebelum v7) mematikannya supaya pemeriksa khususnya sendiri yang wajib berbunyi
+BENTUK_V7 = True   # kontrol 'model:' mematikan pemeriksa BENTUK v7 (persetujuan, fotoBon, pintu) → yang wajib berbunyi = model penafsir (rules_mini)
 UKB_WAJIB = ("return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']) && (!request.resource.data.keys().hasAny(['capServer']) "
              "|| request.resource.data.capServer == request.time);")
 NISAN_WAJIB = {'get': 'if owner()', 'list': 'if owner()', 'create': 'if owner() && request.resource.data.capServer == request.time',
                'update': 'if owner() && request.resource.data.capServer == request.time', 'delete': 'if owner()'}
+# v7 (b) persetujuan nego staf — sama dengan akses.js BUAT_STAF / BACA_STAF (dijaga juga oleh §5)
+SETUJU_WAJIB = {'get': "if owner() || staf(['ben', 'karyawan'])", 'list': "if owner() || staf(['ben', 'karyawan'])", 'create': "if owner() || stafMintaNego(['ben', 'karyawan'])",
+                'update': 'if owner()', 'delete': 'if owner()'}
+MINTA_WAJIB = ("let d = request.resource.data; return stafBuat(peranBoleh) && d.get('tindakan', '') == 'nego' && d.get('status', '') == 'menunggu' "
+               "&& d.get('negoUid', '') == request.auth.uid && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);")
+# v7 (c) foto bon — tanpa update
+FOTO_WAJIB = {'get': 'if owner()', 'list': 'if owner()', 'delete': 'if owner()', 'update': None,
+              'create': ("if owner() && request.resource.data.get('id', '') == id && request.resource.data.get('idBon', 0) is string && request.resource.data.idBon.size() > 0 "
+                         "&& request.resource.data.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp'] && request.resource.data.get('base64', 0) is string "
+                         "&& request.resource.data.base64.size() > 0 && request.resource.data.base64.size() <= 960000")}
+# v7 (e) pintu tutup buku — badan fungsi PERSIS (tanpa komentar, spasi dirapatkan)
+PINTU_FUNGSI = {
+    'pintuTahun': ("let p = getAfter(/databases/$(database)/documents/pengaturan/pintuBuku); return p != null && p.data.get('status', '') == 'berjalan' "
+                   "&& p.data.get('tahun', '') is number && p.data.get('sampai', null) is timestamp && request.time < p.data.sampai ? int(p.data.tahun) : 0;"),
+    'pulihArsip': ("let a = get(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)); return a != null && a.data.get('tahun', 0) == y "
+                   "&& a.data.get('koleksi', '') == kol && a.data.get('idAsli', '') == id && request.resource.data.diff(a.data.get('dok', {})).affectedKeys().hasOnly(['capServer']);"),
+    'pintuTulis': ("let y = pintuTahun(); let d = request.resource.data; return y > 0 && b <= y * 12 + 12 && ((d.get('tutupBuku', false) == true "
+                   "&& d.get('tahunDari', 0) == y) || pulihArsip(kol, id, y));"),
+    'pintuHapus': ("let y = pintuTahun(); return y > 0 && b <= y * 12 + 12 && ((resource.data.get('tutupBuku', false) == true && resource.data.get('tahunDari', 0) == y) "
+                   "|| existsAfter(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)));"),
+    'pintuTitik': "let y = pintuTahun(); return y > 0 && bulanDok(request.resource.data, 'tanggal') <= y * 12 + 12;",
+    'pintuSah': ("let d = request.resource.data; let a = getAfter(/databases/$(database)/documents/tutupBukuAcara/$(string(int(d.get('tahun', 0))))); "
+                 "return d.get('status', '') == 'berjalan' && d.get('tahun', '') is number && int(d.tahun) < wib().year() && d.get('sampai', null) is timestamp "
+                 "&& d.sampai > request.time && d.sampai <= request.time + duration.value(72, 'h') && a != null && a.data.get('status', '') in ['berjalan', 'terkunci', 'membatalkan'];"),
+}
+PEMANGGIL_PINTU = {'pintuTahun': {'pintuTulis', 'pintuHapus', 'pintuTitik'}, 'pulihArsip': {'pintuTulis'}, 'pintuTulis': set(), 'pintuHapus': set(), 'pintuTitik': set(), 'pintuSah': set()}
+ATUR_WAJIB = "if owner() && (id != 'titikKas' || tglBaru('tanggal') || pintuTitik()) && (id != 'pintuBuku' || request.resource.data.get('status', '') == 'tutup' || pintuSah())"
+TEKS_BEKU = None; TEKS_PEMBANTU = None   # kontrol: pengganti isi beku.js / pembantu.js (mesin dibaca saja)
+DOK_V7_TEKS = None   # kontrol: pengganti isi docs/uji-rules-v7.md
+
+
+def koleksi_arsip():
+    """Koleksi bertanggal yang DIARSIP tutup buku = tbDaftarKoleksi (mesin beku, dibaca saja) ∩ KP_KOLEKSI — urutan mesin."""
+    beku = TEKS_BEKU if TEKS_BEKU is not None else baca('baru/js/mesin/beku.js'); pb = TEKS_PEMBANTU if TEKS_PEMBANTU is not None else baca('baru/js/mesin/pembantu.js')
+    m = re.search(r'function tbDaftarKoleksi\(tahun\) \{(.*?)\n  \}', beku, re.S)
+    konst = dict(re.findall(r"const (KOLEKSI_\w+) = '(\w+)';", pb)); KOL, _ = kp_js()
+    if not m: return None
+    return [konst.get(k, '?' + k) for k in re.findall(r'\{ koleksi: (KOLEKSI_\w+),', m.group(1)) if konst.get(k) in KOL]
+
+
+def ekspr_bulan(n, sisi, KOL):
+    return ('bulanUP(%s)' % sisi) if n == 'utangPemasokMutasi' else "bulanDok(%s, '%s')" % (sisi, KOL[n])
+
+
+def ekspr_lama(n, KOL): return 'upLama()' if n == 'utangPemasokMutasi' else "tglLama('%s')" % KOL[n]
+
+
+def suku_pintu(n, KOL): return "(owner() && pintuTulis('%s', id, %s))" % (n, ekspr_bulan(n, 'request.resource.data', KOL))
+
+
+def hapus_pintu(n, KOL): return "if owner() && (%s || pintuHapus('%s', id, %s))" % (ekspr_lama(n, KOL), n, ekspr_bulan(n, 'resource.data', KOL))
+
+
+def ke_v6(R, KOL, ARSIP):
+    """v7 → v6: cabut PERSIS ubahan v7 (tiap ganti wajib kena tepat sekali, blok demi blok). R = rules tanpa komentar. Kembali (teks, cacat)."""
+    cacat = []; rata = lambda t: re.sub(r'\s+', ' ', t).strip()
+
+    def ganti(t, lama, baru, di):
+        k = t.count(lama)
+        if k != 1: cacat.append('v7 ≠ v6 + ubahan yang tercatat: %s — %r ditemukan %d× (wajib 1×)' % (di, lama[:110], k)); return t
+        return t.replace(lama, baru)
+    out = []; pos = 0; dicabut = set()
+    for m in re.finditer(r'\n    match /(\w+)/\{(\w+)\} \{\n(.*?)\n    \}', R, re.S):
+        n = m.group(1); t = rata(m.group(3)); out.append(R[pos:m.start()]); pos = m.end()
+        if n in ('batuNisan', 'fotoBon'): dicabut.add(n); continue   # (a) / (c) blok baru
+        if n == 'penjualan': t = ganti(t, ' || (kasir() && ulangKasirBercap())', '', n)
+        if n in ARSIP:   # (e) pintu
+            t = ganti(t, ' || ' + suku_pintu(n, KOL), '', n + ' create')
+            t = re.sub(r"allow create: if \((owner\(\) && (?:tglBaru\('\w+'\)|upBaru\(\)))\);", r"allow create: if \1;", t)   # v6 tanpa kurung bila suku owner satu-satunya
+            t = ganti(t, 'allow delete: ' + hapus_pintu(n, KOL) + ';', 'allow delete: if owner() && %s;' % ekspr_lama(n, KOL), n + ' delete')
+        if n in ('stokBahanLiteran', 'piutangMutasi'):   # (d) kasir@ dicabut
+            t = ganti(t, "allow create: if (owner() && tglBaru('tanggal')) || ", "allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || ", n + ' create kasir@')
+            t = ganti(t, "allow update: if owner() && tglUbah('tanggal');", "allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama());", n + ' update kasir@')
+        if n == 'logAktivitas': t = ganti(t, "allow create: if owner() || stafJejak(['ben', 'karyawan']);", "allow create: if owner() || kasir() || stafJejak(['ben', 'karyawan']);", n)
+        if n == 'pengaturan':
+            t = ganti(t, "allow read: if owner() || (id == 'tempatSimpan' && staf(['ben', 'karyawan']));", "allow read: if owner() || (id == 'tempatSimpan' && staf(['ben', 'karyawan'])) || (id == 'aksesKasir' && kasir());", n + ' read')
+            t = ganti(t, 'allow create, update: ' + ATUR_WAJIB + ';', "allow create, update: if owner() && (id != 'titikKas' || tglBaru('tanggal'));", n + ' create/update')
+        if n == 'persetujuan':   # (b)
+            t = ganti(t, ' '.join('allow %s: %s;' % (o, SETUJU_WAJIB[w]) for o, w in (('read', 'get'), ('create', 'create'), ('update, delete', 'update'))), 'allow read, write: if owner();', n)
+        out.append('\n    match /%s/{%s} {\n%s\n    }' % (n, m.group(2), t))
+    out.append(R[pos:]); R = ''.join(out)
+    for n in ('batuNisan', 'fotoBon'):
+        if n not in dicabut: cacat.append('blok v7 ' + n + ' tidak ada')
+    for f in ['ulangKasirBercap', 'stafMintaNego'] + list(PINTU_FUNGSI):
+        R2 = re.sub(r"\n    function " + f + r"\([^)]*\) \{.*?\n    \}\n", '\n', R, count=1, flags=re.S)
+        if R2 == R: cacat.append('fungsi v7 ' + f + '() tidak ada')
+        R = R2
+    return R, cacat
 
 
 def periksa_v7(rules):
-    """10 · v7 (hemat baca, owner 7 Okt 2026): HANYA dua tambahan atas firestore.rules.v6."""
+    """10 · v7 FINAL (owner 7 Okt 2026): v6 + PERSIS daftar ubahan (hemat baca, persetujuan, fotoBon, pangkas kasir@, pintu tutup buku)."""
     cacat = []; R = tanpa_komentar(rules); B = blok_rules(R); F = fungsi_rules(R)
     rata = lambda t: re.sub(r'\s+', ' ', t).strip()
     ukb = rata(F.get('ulangKasirBercap', ''))
@@ -327,15 +443,188 @@ def periksa_v7(rules):
             xs = [rata(x) for x in allow(bn, op)]
             if xs != [w]: cacat.append('batuNisan: allow %s bukan "%s": %s' % (op, w, xs))
         if re.search(r'\b(staf\w*|kasir|masuk)\(|get\(/|exists\(', bn): cacat.append('batuNisan: terbuka untuk selain owner / membaca dokumen lain (access call)')
-    # selain dua tambahan: ISI SAMA dengan v6 (tanpa komentar & spasi) — v7 tidak boleh mempersempit / melonggarkan apa pun diam-diam
+    # (b) persetujuan nego staf
+    st = B.get('persetujuan', '')
+    for op, w in (SETUJU_WAJIB.items() if BENTUK_V7 else []):
+        xs = [rata(x) for x in allow(st, op)]
+        if xs != [w]: cacat.append('persetujuan: allow %s bukan "%s" (v7: staf hanya minta nego & membaca keputusan; memutus = owner): %s' % (op, w, xs))
+    if BENTUK_V7 and rata(F.get('stafMintaNego', '')) != MINTA_WAJIB: cacat.append('stafMintaNego() bukan "stafBuat + tindakan nego + status menunggu + negoUid = uid penulis + tanpa kolom keputusan": ' + rata(F.get('stafMintaNego', '(tidak ada)')))
+    # (c) foto bon
+    fb = B.get('fotoBon', '')
+    if not fb: cacat.append('blok fotoBon tidak ada — foto bon (paket E-2) ditolak server')
+    for op, w in (FOTO_WAJIB.items() if BENTUK_V7 else []):
+        xs = [rata(x) for x in allow(fb, op)]
+        if xs != ([w] if w else []): cacat.append('fotoBon: allow %s bukan %s (owner saja, bentuk & ukuran dibatasi, tanpa ubah): %s' % (op, '"%s"' % w if w else '(tidak ada)', xs))
+    # selain ubahan yang tercatat: ISI SAMA dengan v6 (tanpa komentar & spasi) — v7 tidak boleh mempersempit / melonggarkan apa pun diam-diam
+    KOL, _ = kp_js(); ARSIP = koleksi_arsip() or []
     v6 = V6_TEKS if V6_TEKS is not None else baca('firestore.rules.v6')
-    sisa = re.sub(r"\n    function ulangKasirBercap\(\) \{.*?\n    \}\n", '\n', R, flags=re.S).replace(' || (kasir() && ulangKasirBercap())', '')
-    sisa = re.sub(r"\n    match /batuNisan/\{\w+\} \{.*?\n    \}\n", '\n', sisa, flags=re.S)
-    a, b = rata(sisa), rata(tanpa_komentar(v6))
-    if BANDING_V6 and a != b:
-        i = next((j for j in range(min(len(a), len(b))) if a[j] != b[j]), min(len(a), len(b)))
-        cacat.append('v7 mengubah lebih dari dua tambahan atas firestore.rules.v6 — dekat "…%s…" (v6: "…%s…")' % (a[max(0, i - 50):i + 50], b[max(0, i - 50):i + 50]))
+    sisa, c2 = ke_v6(R, KOL, ARSIP)
+    if BANDING_V6:
+        cacat += c2
+        a, b = rata(sisa), rata(tanpa_komentar(v6))
+        if a != b:
+            i = next((j for j in range(min(len(a), len(b))) if a[j] != b[j]), min(len(a), len(b)))
+            cacat.append('v7 mengubah lebih dari ubahan yang tercatat atas firestore.rules.v6 — dekat "…%s…" (v6: "…%s…")' % (a[max(0, i - 60):i + 60], b[max(0, i - 60):i + 60]))
     return cacat
+
+
+def periksa_pintu(rules, akses_js_tidak_dipakai=None):
+    """11 · pintu tutup buku 2027 (owner 7 Okt, K8): bentuk PERSIS + model penafsir pada kasus Playground ★ v7."""
+    cacat = []; R = tanpa_komentar(rules); B = blok_rules(R); F = fungsi_rules(R); rata = lambda t: re.sub(r'\s+', ' ', t).strip()
+    KOL, _ = kp_js(); ARSIP = koleksi_arsip()
+    if not ARSIP or len(ARSIP) < 15: return ['daftar koleksi arsip tutup buku (tbDaftarKoleksi ∩ KP_KOLEKSI) tidak terbaca dari mesin: %s' % ARSIP]
+    if BENTUK_V7:
+        for f, w in PINTU_FUNGSI.items():
+            if rata(F.get(f, '')) != w: cacat.append('pintu: fungsi %s() bukan bentuk yang disepakati: %s' % (f, rata(F.get(f, '(tidak ada)'))[:200]))
+        for f, boleh in PEMANGGIL_PINTU.items():
+            for g, badan in F.items():
+                if g != f and re.search(r'\b' + f + r'\(', badan) and g not in boleh: cacat.append('pintu: %s() dipanggil dari fungsi %s' % (f, g))
+        for n, b in B.items():
+            for op in OPERASI:
+                for x in allow(b, op):
+                    k = rata(x); pakai = set(re.findall(r'\b(pintu\w*|pulihArsip)\(', k))
+                    if not pakai: continue
+                    if n in ARSIP and op == 'create':
+                        sk = suku_atas(k)
+                        if pakai != {'pintuTulis'} or [s for s in sk if 'pintu' in s] != [suku_pintu(n, KOL)]: cacat.append('pintu: %s create bukan satu suku "%s": %s' % (n, suku_pintu(n, KOL), k))
+                    elif n in ARSIP and op == 'delete':
+                        if k != hapus_pintu(n, KOL): cacat.append('pintu: %s delete bukan "%s": %s' % (n, hapus_pintu(n, KOL), k))
+                    elif n == 'pengaturan' and op in ('create', 'update'):
+                        if k != ATUR_WAJIB: cacat.append('pintu: pengaturan %s bukan "%s": %s' % (op, ATUR_WAJIB, k))
+                    else: cacat.append('pintu: %s di %s allow %s — pintu hanya untuk create/delete koleksi arsip & titik kas (bukan ubah, baca, koleksi lain): %s' % (', '.join(sorted(pakai)), n, op, k))
+            if n in ARSIP:
+                if not any('pintuTulis' in rata(x) for x in allow(b, 'create')): cacat.append('pintu: %s create tanpa pintuTulis — saldo pembuka / pengembalian arsip bulan terkunci ditolak (tutup buku buntu)' % n)
+                if not any('pintuHapus' in rata(x) for x in allow(b, 'delete')): cacat.append('pintu: %s delete tanpa pintuHapus — arsip bulan terkunci ditolak (tutup buku buntu)' % n)
+        if [rata(x) for x in allow(B.get('pengaturan', ''), 'create')] != [ATUR_WAJIB]: cacat.append('pintu: pengaturan create bukan "%s"' % ATUR_WAJIB)
+        fb = baca('baru/js/data/firebase.js')
+        for t in ("tahun + '|' + x.koleksi + '|' + x.id", "tahun + '|' + x.koleksi + '|' + x.idAsli"):
+            if t not in fb: cacat.append('pintu: jalur arsip firebase.js tidak lagi "' + t + '" — rules mencari arsipTahun/\'Y|koleksi|id\'')
+    # docs/uji-rules-v7.md memuat PERSIS kasus ★ model ini (id sama) — owner menjalankan yang sudah dinilai model
+    dok = DOK_V7_TEKS if DOK_V7_TEKS is not None else baca('docs/uji-rules-v7.md')
+    di_dok = set(re.findall(r'^\| (★[A-Z]\d+) \|', dok, re.M)); di_model = set(k[0] for k in KASUS_V7 if k[0].startswith('★'))
+    if di_dok != di_model: cacat.append('docs/uji-rules-v7.md tidak sama dengan kasus model v7 — hanya di berkas: %s · hanya di model: %s' % (sorted(di_dok - di_model), sorted(di_model - di_dok)))
+    # MODEL: penafsir rules mini menilai TEKS rules pada kasus Playground ★ v7 (dokumen uji yang sama)
+    try: RM = rules_mini.Rules(rules)
+    except Exception as e: return cacat + ['model v7: rules tidak bisa diurai penafsir mini — %s' % e]
+    for no, nama, aud, op, kol, id_, data, ubah_db, boleh, maks in KASUS_V7:
+        db = dict(DB_UJI_V7); db.update(ubah_db or {}); db = dict((k, v) for k, v in db.items() if v is not None)
+        h = RM.nilai(op, kol, id_, auth=AKUN_UJI[aud], data=data, sebelum=db, jam=JAM_UJI_V7)
+        if h.boleh != boleh: cacat.append('model v7 %s %s → %s, wajib %s%s' % (no, nama, 'LOLOS' if h.boleh else 'DITOLAK', 'LOLOS' if boleh else 'DITOLAK', (' (' + h.galat + ')') if h.galat else ''))
+        elif maks is not None and h.akses > maks: cacat.append('model v7 %s %s: %d access call (batas jalur ini %d)' % (no, nama, h.akses, maks))
+    return cacat
+
+
+# ---- MODEL v7: dokumen uji Playground (docs/uji-rules-v7.md "Dokumen uji") & kasus ★ — SAMA PERSIS dengan berkas itu (uji_rules_v7_dok memeriksanya)
+TS = rules_mini.Ts
+JAM_UJI_V7 = TS.dari_iso('2026-10-09T03:00:00Z')   # Playground dijalankan Okt 2026 (jam simulasi = jam sekarang)
+BESOK = TS(JAM_UJI_V7.ms + 24 * 3600000); LIMA_HARI = TS(JAM_UJI_V7.ms + 5 * 24 * 3600000); THN2100 = TS.dari_iso('2100-01-01T00:00:00Z'); THN2020 = TS.dari_iso('2020-01-01T00:00:00Z')
+HARI_INI = '2026-10-09'
+AKUN_UJI = {'owner': {'uid': 'uid-uji', 'email': EMAIL_OWNER}, 'kasir': {'uid': 'uid-kasir-uji', 'email': EMAIL_KASIR}, 'staf': {'uid': 'uid-staf-uji', 'email': 'staf.uji@contoh.com'},
+            'baru': {'uid': 'baru1', 'email': 'uji.baru1@contoh.com'}}
+NOTA = {'id': 'uji-v7-nota', 'tanggal': HARI_INI, 'hargaTotal': 1000, 'namaProduk': 'Contoh'}
+DOK_LAMA = {'id': 'uji-v7-lama', 'tanggal': '2021-06-15', 'hargaTotal': 1000}
+DOK_PULIH = {'id': 'uji-v7-pulih', 'tanggal': '2021-03-01', 'hargaTotal': 500}
+PEMBUKA = {'id': 'uji-v7-pembuka', 'tipe': 'saldoAwal', 'tutupBuku': True, 'tahunDari': 2021, 'tanggal': '2021-03-01', 'nominal': 1000}
+DB_UJI_V7 = {
+    'aksesAkun/uid-staf-uji': {'uid': 'uid-staf-uji', 'nama': 'Staf Uji', 'peran': 'ben', 'aktif': True},   # Playground: UID akun staf AKTIF yang sudah ada
+    'penjualan/uji-v7-nota': NOTA, 'penjualan/uji-v7-bercap': dict(NOTA, id='uji-v7-bercap', capServer=TS(JAM_UJI_V7.ms - 3600000)),
+    'pengaturan/titikKas': {'id': 'titikKas', 'tanggal': '2026-10-08', 'laci': 1},   # dokumen nyata (isinya tidak dinilai selain tanggal)
+    # ---- bagian P (pintu tutup buku): kunci uji 2021-12 & tahun 2021 — tidak ada catatan toko bertanggal ≤ 2021 (piutang tertua Jul 2022)
+    'aturanToko/kunciPeriode': {'sampaiBulan': '2021-12', 'riwayat': []},
+    'tutupBukuAcara/2021': {'tahun': 2021, 'status': 'terkunci'},
+    'pengaturan/pintuBuku': {'id': 'pintuBuku', 'tahun': 2021, 'status': 'berjalan', 'sampai': THN2100},
+    'penjualan/uji-v7-lama': DOK_LAMA, 'penjualan/uji-v7-tanpa': dict(DOK_LAMA, id='uji-v7-tanpa', tanggal='2021-06-16'),
+    'arsipTahun/2021|penjualan|uji-v7-lama': {'id': '2021|penjualan|uji-v7-lama', 'tahun': 2021, 'koleksi': 'penjualan', 'idAsli': 'uji-v7-lama', 'dok': DOK_LAMA},
+    'arsipTahun/2021|penjualan|uji-v7-pulih': {'id': '2021|penjualan|uji-v7-pulih', 'tahun': 2021, 'koleksi': 'penjualan', 'idAsli': 'uji-v7-pulih', 'dok': DOK_PULIH},
+    'piutangMutasi/uji-v7-pembuka': PEMBUKA,
+}
+MINTA = {'id': 'uji-v7-minta', 'tindakan': 'nego', 'status': 'menunggu', 'negoUid': 'uid-staf-uji', 'olehUid': 'uid-staf-uji', 'teks': 'uji'}
+FOTO = {'id': 'uji-v7-foto', 'idBon': 'b-uji', 'jenis': 'image/jpeg', 'base64': 'QUJD'}
+PB_BARU = dict(PEMBUKA, id='uji-v7-pb-baru')
+PINTU_BARU = {'id': 'pintuBuku', 'tahun': 2021, 'status': 'berjalan', 'sampai': BESOK}
+# (no, nama, akun, op, koleksi, id, isi baru, ubah dokumen uji {kunci: isi | None = hapus}, wajib LOLOS?, batas access call | None)
+KASUS_V7 = [
+    # A/B · hemat baca (sejak draf v7 pertama)
+    ('★A1', 'kasir@ nota baru tanpa capServer', 'kasir', 'create', 'penjualan', 'uji-v7-baru', dict(NOTA, id='uji-v7-baru'), None, True, 0),
+    ('★A2', 'kasir@ kirim ulang identik', 'kasir', 'update', 'penjualan', 'uji-v7-nota', NOTA, None, True, 0),
+    ('★A3', 'owner baca batu nisan', 'owner', 'get', 'batuNisan', 'uji-v7', None, None, True, 0),
+    ('★A4', 'owner hapus batu nisan', 'owner', 'delete', 'batuNisan', 'uji-v7', None, None, True, 0),
+    ('★A5', 'kasir@ kirim ulang tanpa capServer atas nota bercap (HP kasir-v32)', 'kasir', 'update', 'penjualan', 'uji-v7-bercap', dict(NOTA, id='uji-v7-bercap'), None, True, 0),
+    ('★B1', 'kasir@ kirim ulang mengubah hargaTotal + cap', 'kasir', 'update', 'penjualan', 'uji-v7-nota', dict(NOTA, hargaTotal=2000, capServer=JAM_UJI_V7), None, False, None),
+    ('★B2', 'kasir@ cap dari jam HP (ketikan)', 'kasir', 'update', 'penjualan', 'uji-v7-nota', dict(NOTA, capServer=TS(JAM_UJI_V7.ms - 60000)), None, False, None),
+    ('★B3', 'kasir@ kirim ulang stokBahanLiteran (v7: jalurnya dicabut)', 'kasir', 'update', 'stokBahanLiteran', 'x', {'id': 'x', 'tanggal': HARI_INI, 'capServer': JAM_UJI_V7}, {'stokBahanLiteran/x': {'id': 'x', 'tanggal': HARI_INI}}, False, None),
+    ('★B4', 'staf baca batu nisan', 'staf', 'get', 'batuNisan', 'uji-v7', None, None, False, None),
+    ('★B5', 'staf tulis batu nisan', 'staf', 'create', 'batuNisan', 'uji-v7', {'capServer': JAM_UJI_V7}, None, False, None),
+    ('★B6', 'owner batu nisan cap ketikan', 'owner', 'create', 'batuNisan', 'uji-v7', {'id': 'penjualan|x', 'koleksi': 'penjualan', 'idDok': 'x', 'capServer': TS(JAM_UJI_V7.ms - 60000)}, None, False, None),
+    ('★B7', 'kasir@ baca batu nisan', 'kasir', 'get', 'batuNisan', 'uji-v7', None, None, False, None),
+    ('★B8', 'kasir@ buang cap + ubah hargaTotal', 'kasir', 'update', 'penjualan', 'uji-v7-bercap', dict(NOTA, id='uji-v7-bercap', hargaTotal=2000), None, False, None),
+    # N · persetujuan nego staf
+    ('★N1', 'staf aktif minta nego (menunggu, atas nama sendiri)', 'staf', 'create', 'persetujuan', 'uji-v7-minta', MINTA, None, True, 1),
+    ('★N2', 'staf aktif membaca persetujuan', 'staf', 'list', 'persetujuan', 'uji-v7-minta', None, None, True, 1),
+    ('★N3', 'owner memutus (setuju)', 'owner', 'update', 'persetujuan', 'uji-v7-minta', dict(MINTA, status='disetujui', diputusPada='x'), {'persetujuan/uji-v7-minta': MINTA}, True, 0),
+    ('★N4', 'staf minta atas nama akun lain (negoUid lain)', 'staf', 'create', 'persetujuan', 'uji-v7-minta', dict(MINTA, negoUid='uid-lain'), None, False, None),
+    ('★N5', 'staf menulis permintaan yang sudah "disetujui"', 'staf', 'create', 'persetujuan', 'uji-v7-minta', dict(MINTA, status='disetujui'), None, False, None),
+    ('★N6', 'staf menulis kolom keputusan (diputusPada)', 'staf', 'create', 'persetujuan', 'uji-v7-minta', dict(MINTA, diputusPada='2026-10-09T03:00:00Z'), None, False, None),
+    ('★N7', 'staf minta tindakan selain nego (hapus)', 'staf', 'create', 'persetujuan', 'uji-v7-minta', dict(MINTA, tindakan='hapus'), None, False, None),
+    ('★N8', 'staf memutus permintaannya sendiri (update)', 'staf', 'update', 'persetujuan', 'uji-v7-minta', dict(MINTA, status='disetujui'), {'persetujuan/uji-v7-minta': MINTA}, False, None),
+    ('★N9', 'olehUid bukan uid penulis', 'staf', 'create', 'persetujuan', 'uji-v7-minta', dict(MINTA, olehUid='uid-lain'), None, False, None),
+    ('★N10', 'akun tanpa aksesAkun minta nego', 'baru', 'create', 'persetujuan', 'uji-v7-minta', dict(MINTA, negoUid='baru1', olehUid='baru1'), None, False, None),
+    ('★N11', 'kasir@ membaca persetujuan', 'kasir', 'list', 'persetujuan', 'uji-v7-minta', None, None, False, None),
+    # F · foto bon
+    ('★F1', 'owner simpan foto bon', 'owner', 'create', 'fotoBon', 'uji-v7-foto', FOTO, None, True, 0),
+    ('★F2', 'owner baca foto bon', 'owner', 'list', 'fotoBon', 'uji-v7-foto', None, None, True, 0),
+    ('★F3', 'owner hapus foto bon', 'owner', 'delete', 'fotoBon', 'uji-v7-foto', None, {'fotoBon/uji-v7-foto': FOTO}, True, 0),
+    ('★F4', 'owner ubah foto bon', 'owner', 'update', 'fotoBon', 'uji-v7-foto', dict(FOTO, idBon='b-lain'), {'fotoBon/uji-v7-foto': FOTO}, False, None),
+    ('★F5', 'jenis bukan gambar', 'owner', 'create', 'fotoBon', 'uji-v7-foto', dict(FOTO, jenis='text/html'), None, False, None),
+    ('★F6', 'id isi ≠ id dokumen', 'owner', 'create', 'fotoBon', 'uji-v7-foto', dict(FOTO, id='lain'), None, False, None),
+    ('★F7', 'tanpa idBon', 'owner', 'create', 'fotoBon', 'uji-v7-foto', dict((k, v) for k, v in FOTO.items() if k != 'idBon'), None, False, None),
+    ('★F8', 'staf membaca foto bon', 'staf', 'list', 'fotoBon', 'uji-v7-foto', None, None, False, None),
+    ('M-F9', 'base64 di atas 960.000 huruf (model saja — terlalu panjang diketik di Playground)', 'owner', 'create', 'fotoBon', 'uji-v7-foto', dict(FOTO, base64='A' * 960001), None, False, None),
+    # K · kasir@ dipangkas (kasir darurat: nota, denyut, katalog)
+    ('★K1', 'kasir@ denyut perangkatStatus', 'kasir', 'create', 'perangkatStatus', 'd-uji', {'id': 'd-uji', 'aplikasi': 'darurat', 'pada': '2026-10-09T03:00:00Z'}, None, True, 0),
+    ('★K2', 'kasir@ baca katalog ringkasanKasir/aktif', 'kasir', 'get', 'ringkasanKasir', 'aktif', None, None, True, 0),
+    ('★K3', 'kasir@ create piutangMutasi', 'kasir', 'create', 'piutangMutasi', 'uji-v7-k', {'id': 'uji-v7-k', 'tipe': 'bayar', 'tanggal': HARI_INI, 'nominal': 1000}, None, False, None),
+    ('★K4', 'kasir@ create stokBahanLiteran', 'kasir', 'create', 'stokBahanLiteran', 'uji-v7-k', {'id': 'uji-v7-k', 'tipe': 'pakai', 'tanggal': HARI_INI, 'jumlah': 1}, None, False, None),
+    ('★K5', 'kasir@ create logAktivitas', 'kasir', 'create', 'logAktivitas', 'uji-v7-k', {'id': 'uji-v7-k', 'aksi': 'tulis'}, None, False, None),
+    ('★K6', 'kasir@ baca pengaturan/aksesKasir', 'kasir', 'get', 'pengaturan', 'aksesKasir', None, None, False, None),
+    ('★K7', 'kasir@ baca pengaturan/keamanan', 'kasir', 'get', 'pengaturan', 'keamanan', None, None, False, None),
+    # R · regresi singkat (tulisan biasa hari ini tetap seperti v6)
+    ('★R1', 'owner nota hari ini', 'owner', 'create', 'penjualan', 'uji-v7-r1', {'id': 'uji-v7-r1', 'tanggal': HARI_INI, 'hargaTotal': 1000}, None, True, 0),
+    ('★R2', 'staf aktif nota tunai hari ini (atas nama sendiri)', 'staf', 'create', 'penjualan', 'uji-v7-r2', {'id': 'uji-v7-r2', 'tanggal': HARI_INI, 'hargaTotal': 1000, 'caraBayar': 'Tunai', 'olehUid': 'uid-staf-uji'}, None, True, 1),
+    ('★R3', 'staf aktif membaca nota', 'staf', 'get', 'penjualan', 'uji-v7-nota', None, None, True, 1),
+    # P · pintu tutup buku (kunci uji 2021-12, pintu 2021 terbuka)
+    ('★P1', 'owner HAPUS catatan bulan terkunci yang salinannya ada di arsip', 'owner', 'delete', 'penjualan', 'uji-v7-lama', None, None, True, 3),
+    ('★P2', 'owner BUAT saldo pembuka tahun pintu bertanggal bulan terkunci', 'owner', 'create', 'piutangMutasi', 'uji-v7-pb-baru', PB_BARU, None, True, 2),
+    ('★P3', 'owner HAPUS saldo pembuka tahun pintu (tarik saat Batalkan)', 'owner', 'delete', 'piutangMutasi', 'uji-v7-pembuka', None, None, True, 2),
+    ('★P4', 'owner KEMBALIKAN catatan dari arsip, isinya sama', 'owner', 'create', 'penjualan', 'uji-v7-pulih', DOK_PULIH, None, True, 3),
+    ('★P5', 'owner titik kas 31 Des tahun pintu (bulan terkunci)', 'owner', 'update', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2021-12-31', 'laci': 1}, None, True, 2),
+    ('★P6', 'owner BUKA pintu (berita acara 2021 terkunci, sampai besok)', 'owner', 'create', 'pengaturan', 'pintuBuku', PINTU_BARU, None, True, 1),
+    ('★P7', 'owner TUTUP pintu', 'owner', 'update', 'pengaturan', 'pintuBuku', {'id': 'pintuBuku', 'tahun': 2021, 'status': 'tutup'}, None, True, 0),
+    ('★P8', 'owner hapus catatan bulan terkunci TANPA salinan arsip', 'owner', 'delete', 'penjualan', 'uji-v7-tanpa', None, None, False, None),
+    ('★P9', 'owner UBAH catatan bulan terkunci (pintu tidak membuka ubah)', 'owner', 'update', 'penjualan', 'uji-v7-lama', dict(DOK_LAMA, hargaTotal=2000), None, False, None),
+    ('★P10', 'owner BUAT catatan biasa di bulan terkunci (bukan pembuka, tidak di arsip)', 'owner', 'create', 'penjualan', 'uji-v7-baru2', {'id': 'uji-v7-baru2', 'tanggal': '2021-06-20', 'hargaTotal': 1000}, None, False, None),
+    ('★P11', 'owner saldo pembuka tahun LAIN (tahunDari 2020)', 'owner', 'create', 'piutangMutasi', 'uji-v7-pb-lain', dict(PEMBUKA, id='uji-v7-pb-lain', tahunDari=2020), None, False, None),
+    ('★P12', 'owner "saldo pembuka" tanpa tanda tutupBuku (tahunDari ada)', 'owner', 'create', 'piutangMutasi', 'uji-v7-pb-tanpa', dict((k, v) for k, v in PEMBUKA.items() if k != 'tutupBuku'), None, False, None),
+    ('★P13', 'owner kembalikan dari arsip dengan isi BEDA', 'owner', 'create', 'penjualan', 'uji-v7-pulih', dict(DOK_PULIH, hargaTotal=600), None, False, None),
+    ('★P14', 'kasir@ saldo pembuka lewat pintu', 'kasir', 'create', 'piutangMutasi', 'uji-v7-pb-baru', PB_BARU, None, False, None),
+    ('★P15', 'staf aktif menghapus catatan bulan terkunci yang diarsip', 'staf', 'delete', 'penjualan', 'uji-v7-lama', None, None, False, None),
+    ('★P16', 'owner buka pintu lebih dari 72 jam', 'owner', 'create', 'pengaturan', 'pintuBuku', dict(PINTU_BARU, sampai=LIMA_HARI), None, False, None),
+    ('★P17', 'owner buka pintu untuk tahun berjalan', 'owner', 'create', 'pengaturan', 'pintuBuku', dict(PINTU_BARU, tahun=2026), None, False, None),
+    ('★P18', 'owner buka pintu tahun tanpa berita acara (2020)', 'owner', 'create', 'pengaturan', 'pintuBuku', dict(PINTU_BARU, tahun=2020), None, False, None),
+    ('★P19', 'pintu KEDALUWARSA (sampai 2020): hapus yang diarsip ditolak lagi', 'owner', 'delete', 'penjualan', 'uji-v7-lama', None, {'pengaturan/pintuBuku': dict(DB_UJI_V7['pengaturan/pintuBuku'], sampai=THN2020)}, False, None),
+    ('M-P20', 'pintu DITUTUP (status tutup, sampai masih jauh): saldo pembuka bulan terkunci ditolak', 'owner', 'create', 'piutangMutasi', 'uji-v7-pb-baru', PB_BARU, {'pengaturan/pintuBuku': {'id': 'pintuBuku', 'tahun': 2021, 'status': 'tutup', 'sampai': THN2100}}, False, None),
+    ('M-P21', 'tanpa dokumen pintu: hapus yang diarsip ditolak', 'owner', 'delete', 'penjualan', 'uji-v7-lama', None, {'pengaturan/pintuBuku': None}, False, None),
+    ('M-P22', 'catatan bertanggal SESUDAH tahun pintu (2022, terkunci uji diperluas)', 'owner', 'delete', 'penjualan', 'uji-v7-2022', None,
+     {'aturanToko/kunciPeriode': {'sampaiBulan': '2022-12', 'riwayat': []}, 'penjualan/uji-v7-2022': dict(DOK_LAMA, id='uji-v7-2022', tanggal='2022-03-01'),
+      'arsipTahun/2021|penjualan|uji-v7-2022': {'tahun': 2021, 'koleksi': 'penjualan', 'idAsli': 'uji-v7-2022', 'dok': {}}}, False, None),
+    ('M-P23', 'pindahUang bulan terkunci (tidak diarsip — tanpa pintu)', 'owner', 'delete', 'pindahUang', 'uji-v7-pu', None,
+     {'pindahUang/uji-v7-pu': {'id': 'uji-v7-pu', 'tanggal': '2021-06-01'}, 'arsipTahun/2021|pindahUang|uji-v7-pu': {'tahun': 2021, 'koleksi': 'pindahUang', 'idAsli': 'uji-v7-pu', 'dok': {}}}, False, None),
+    ('M-P27', 'owner buka pintu tahun BERJALAN walau berita acaranya berjalan', 'owner', 'create', 'pengaturan', 'pintuBuku', dict(PINTU_BARU, tahun=2026), {'tutupBukuAcara/2026': {'tahun': 2026, 'status': 'berjalan'}}, False, None),
+    ('M-P25', 'saldo pembuka tahun pintu bertanggal SESUDAH tahun itu (2022, terkunci uji diperluas)', 'owner', 'create', 'piutangMutasi', 'uji-v7-pb-2022', dict(PEMBUKA, id='uji-v7-pb-2022', tanggal='2022-02-01'),
+     {'aturanToko/kunciPeriode': {'sampaiBulan': '2022-12', 'riwayat': []}}, False, None),
+    ('M-P26', 'UBAH catatan bulan terkunci jadi sama dengan salinan arsipnya + cap (pintu tidak membuka ubah)', 'owner', 'update', 'penjualan', 'uji-v7-lama', dict(DOK_LAMA, capServer=JAM_UJI_V7), None, False, None),
+    ('M-P24', 'titik kas MUNDUR ke tahun sesudah pintu (2022, terkunci) ditolak', 'owner', 'update', 'pengaturan', 'titikKas', {'id': 'titikKas', 'tanggal': '2022-06-30'}, {'aturanToko/kunciPeriode': {'sampaiBulan': '2022-12', 'riwayat': []}}, False, None),
+]
 
 
 def periksa(rules, koleksi_js, akses_js):
@@ -349,6 +638,8 @@ def periksa(rules, koleksi_js, akses_js):
     # 1 · blok per koleksi
     for n in KOL + ['aksesAkun', 'permintaanAkses', 'arsipTahun']:
         if n not in B: cacat.append('koleksi tanpa blok match sendiri: ' + n)
+    for n in B:
+        if n not in KOL and n not in LUAR_KOLEKSI: cacat.append('blok rules untuk koleksi yang tidak dikenal (bukan koleksi.js, bukan LUAR_KOLEKSI): ' + n)
     # 2 · owner via email, tidak ada masuk() telanjang
     if not re.search(r"function owner\(\) \{\s*return masuk\(\) && request\.auth\.token\.email == '" + re.escape(EMAIL_OWNER) + r"';\s*\}", rules): cacat.append('owner() tidak lagi berbasis email owner')
     if not re.search(r"function kasir\(\) \{\s*return masuk\(\) && request\.auth\.token\.email == '" + re.escape(EMAIL_KASIR) + r"';\s*\}", rules): cacat.append('kasir() tidak lagi berbasis email kasir@')
@@ -356,15 +647,16 @@ def periksa(rules, koleksi_js, akses_js):
         for x in re.finditer(r'allow [a-z, ]+: if (.*?);', b, re.S):
             k = re.sub(r'\s+', ' ', x.group(1))
             if re.search(r'(^|\|\| )masuk\(\)( \|\||$)', k): cacat.append(n + ': allow memakai masuk() saja (siapa pun yang login): ' + k)
-    # 3 · jalur kasir@ v2
-    for n in ['penjualan', 'piutangMutasi', 'stokBahanLiteran']:
-        b = B.get(n, '')
-        if not any('kasir()' in x for x in allow(b, 'create')): cacat.append('jalur kasir@ hilang: create ' + n)
-        if not any('kasir() && tulisUlangSama()' in x for x in allow(b, 'update')): cacat.append('jalur kasir@ hilang: tulis-ulang-sama ' + n)
-    if not any('kasir()' in x for x in allow(B.get('logAktivitas', ''), 'create')): cacat.append('jalur kasir@ hilang: create logAktivitas')
-    if not any('kasir()' in x for x in allow(B.get('perangkatStatus', ''), 'update')): cacat.append('jalur kasir@ hilang: denyut perangkatStatus')
+    # 3 · jalur kasir@ — v7: kasir darurat SAJA (nota penjualan + kirim ulangnya, denyut, katalog); kasir() di tempat lain = hak kasir.html yang pensiun
+    if not any('kasir()' in x for x in allow(B.get('penjualan', ''), 'create')): cacat.append('jalur kasir@ hilang: create penjualan (kasir darurat)')
+    if not any('kasir() && tulisUlangSama()' in x for x in allow(B.get('penjualan', ''), 'update')): cacat.append('jalur kasir@ hilang: tulis-ulang-sama penjualan')
+    for op in ('create', 'update'):
+        if not any('kasir()' in x for x in allow(B.get('perangkatStatus', ''), op)): cacat.append('jalur kasir@ hilang: denyut perangkatStatus (' + op + ')')
     if not any('kasir()' in x for x in allow(B.get('ringkasanKasir', ''), 'read')): cacat.append('jalur kasir@ hilang: baca ringkasanKasir')
-    if not any("id == 'aksesKasir' && kasir()" in x for x in allow(B.get('pengaturan', ''), 'read')): cacat.append('jalur kasir@ hilang: baca pengaturan/aksesKasir')
+    for n, b in B.items():
+        for op in OPERASI:
+            if (n, op) in KASIR_BOLEH: continue
+            if any(re.search(r'(?<!!)\bkasir\(\)', x) for x in allow(b, op)): cacat.append('kasir@ masih punya hak %s di %s — v7 mencabut jalur kasir.html (kasir darurat hanya nota, denyut, katalog)' % (op, n))
     if 'tulisUlangSama' in F and 'masuk()' in F['tulisUlangSama']: cacat.append('tulisUlangSama() masih membuka untuk siapa pun yang login (v2) — harus lewat kasir()')
     # 4 · tulis bukan-owner wajib jujur; tidak ada delete bukan-owner
     if 'jujur()' not in F.get('stafBuat', '') or 'request.resource.data.olehUid == request.auth.uid' not in F.get('jujur', ''): cacat.append('stafBuat() tidak memeriksa olehUid (jujur)')
@@ -395,6 +687,7 @@ def periksa(rules, koleksi_js, akses_js):
         elif re.match(r'^/\{\w+\}/', jalur): cacat.append('wildcard koleksi: ' + jalur)
     cacat += periksa_kunci(rules, B, F)
     cacat += periksa_buku(rules, B)
+    cacat += periksa_pintu(rules)
     # 5 · daftar peran sama dengan akses.js
     peran_txt = "['ben', 'karyawan']"
     for n in KOL:
@@ -431,10 +724,10 @@ if __name__ == '__main__':
         rusak = {
             'satu koleksi tanpa blok sendiri': R.replace('    match /karantina/{id} {', '    match /karantinaX/{id} {'),
             'owner lewat dokumen, bukan email': R.replace("return masuk() && request.auth.token.email == 'owner@tokoberasmiqbal.web.app';", "return masuk() && akun().peran == 'owner';"),
-            'jalur kasir@ penjualan hilang': R.replace("allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (stafBuatJual(", "allow create: if (owner() && tglBaru('tanggal')) || (stafBuatJual("),
+            'jalur kasir@ penjualan hilang': R.replace("allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (owner() && pintuTulis('penjualan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatJual(", "allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('penjualan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatJual("),
             'jalur kasir@ dibuka lagi untuk siapa pun (v2)': R.replace("    function tulisUlangSama() {\n      return request.resource.data == resource.data;", "    function tulisUlangSama() {\n      return masuk() && request.resource.data == resource.data;"),
             'tulisan bukan-owner tanpa olehUid': R.replace("function stafBuat(peranBoleh) { return masuk() && aktifDengan(akun(), peranBoleh) && jujur(); }", "function stafBuat(peranBoleh) { return masuk() && aktifDengan(akun(), peranBoleh); }"),
-            'siapa pun yang login boleh menjual': R.replace("allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (stafBuatJual(", "allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || masuk() || (stafBuatJual("),
+            'siapa pun yang login boleh menjual': R.replace("allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (owner() && pintuTulis('penjualan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatJual(", "allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (owner() && pintuTulis('penjualan', id, bulanDok(request.resource.data, 'tanggal'))) || masuk() || (stafBuatJual("),
             'bukan-owner boleh hapus': R.replace("    match /strukKeluar/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() || stafBuat(['ben', 'karyawan']);\n      allow update, delete: if owner();",
                                                   "    match /strukKeluar/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() || stafBuat(['ben', 'karyawan']);\n      allow update: if owner();\n      allow delete: if owner() || staf(['ben', 'karyawan']);"),
             'karyawan membaca koleksi uang': R.replace("    match /pengeluaranHarian/{id} {\n      allow read: if owner();", "    match /pengeluaranHarian/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);"),
@@ -442,19 +735,19 @@ if __name__ == '__main__':
             # putaran 25 — tanpa payung & kunci periode
             'payung owner dikembalikan (mengalahkan kunci periode)': R.replace("    match /ringkasanKasir/{id} {", "    match /{document=**} {\n      allow read, write: if owner();\n    }\n    match /ringkasanKasir/{id} {"),
             'payung v3 dikembalikan': R.replace("    match /ringkasanKasir/{id} {", "    match /{koleksi}/{sisa=**} {\n      allow read, write: if owner() && !(koleksi in ['aksesAkun', 'permintaanAkses']);\n    }\n    match /ringkasanKasir/{id} {"),
-            'kunci dicabut dari create retur': R.replace("    match /retur/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() && tglBaru('tanggal');", "    match /retur/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner();"),
-            'hapus nota tanpa kunci': R.replace("      allow delete: if owner() && tglLama('tanggal');\n    }\n\n    match /produksiKemasan/{id} {", "      allow delete: if owner();\n    }\n\n    match /produksiKemasan/{id} {"),
+            'kunci dicabut dari create retur': R.replace("    match /retur/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if (owner() && tglBaru('tanggal')) ||", "    match /retur/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);\n      allow create: if owner() ||"),
+            'hapus nota tanpa kunci': R.replace("      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('penjualan', id, bulanDok(resource.data, 'tanggal')));\n    }\n\n    match /produksiKemasan/{id} {", "      allow delete: if owner();\n    }\n\n    match /produksiKemasan/{id} {"),
             'koreksi di tempat pada bulan terkunci lolos (update hanya menilai tanggal baru)': R.replace("function tglUbah(f) { return tulisUlangSama() || bolehBulan(lebihTua(bulanDok(request.resource.data, f), bulanDok(resource.data, f))); }", "function tglUbah(f) { return tulisUlangSama() || bolehBulan(bulanDok(request.resource.data, f)); }"),
-            'kasir@ create tanpa kunci': R.replace("allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (stafBuatJual(", "allow create: if (owner() && tglBaru('tanggal')) || kasir() || (stafBuatJual("),
+            'kasir@ create tanpa kunci': R.replace("allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (owner() && pintuTulis('penjualan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatJual(", "allow create: if (owner() && tglBaru('tanggal')) || kasir() || (owner() && pintuTulis('penjualan', id, bulanDok(request.resource.data, 'tanggal'))) || (stafBuatJual("),
             'bukan-owner membaca dokumen kunci (2 access call per dokumen)': R.replace("function tglStaf(f) { return bebas(bulanDok(request.resource.data, f)); }", "function tglStaf(f) { return bolehBulan(bulanDok(request.resource.data, f)); }"),
             'bukan-owner tanpa penilaian tanggal': R.replace("(stafBuatTipe(['ben', 'karyawan'], 'pakai') && tglStaf('tanggal'));   // bukan beli\n      allow update: if owner() && tglUbah('tanggal');", "stafBuatTipe(['ben', 'karyawan'], 'pakai');   // bukan beli\n      allow update: if owner() && tglUbah('tanggal');"),
             'get() kunci selalu dipanggil (let di bolehBulan)': R.replace("function bolehBulan(b) { return bebas(b) || !terkunci(b); }", "function bolehBulan(b) { let k = terkunci(b); return bebas(b) || !k; }"),
             'get() kunci kedua di luar terkunci()': R.replace("function bolehBulan(b) { return bebas(b) || !terkunci(b); }", "function bolehBulan(b) { return bebas(b) || !terkunci(b); }\n    function sudahDikunci() { return exists(/databases/$(database)/documents/aturanToko/kunciPeriode); }"),
             'tenggang minimal 0 (bulan lalu bisa dikunci tanggal 1)': R.replace("function tenggangMin() { return 3; }", "function tenggangMin() { return 0; }"),
             'tenggang minimal kembali 1 di rules saja (beda dengan kunci-periode.js)': R.replace("function tenggangMin() { return 3; }", "function tenggangMin() { return 1; }"),
-            'kasir@ boleh menghapus nota (dengan kunci pun)': R.replace("      allow delete: if owner() && tglLama('tanggal');\n    }\n\n    match /produksiKemasan/{id} {", "      allow delete: if (owner() || kasir()) && tglLama('tanggal');\n    }\n\n    match /produksiKemasan/{id} {"),
-            'kasir@ boleh mengubah nota asal bulannya terbuka (bukan hanya tulis-ulang identik)': R.replace("allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama());", "allow update: if (owner() && tglUbah('tanggal')) || (kasir() && (tulisUlangSama() || tglUbah('tanggal')));", 1),
-            'kasir@ boleh mengubah nota (bukan tulis-ulang identik)': R.replace("allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama());", "allow update: if ((owner() || kasir()) && tglUbah('tanggal'));", 1),
+            'kasir@ boleh menghapus nota (dengan kunci pun)': R.replace("      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('penjualan', id, bulanDok(resource.data, 'tanggal')));\n    }\n\n    match /produksiKemasan/{id} {", "      allow delete: if (owner() || kasir()) && tglLama('tanggal');\n    }\n\n    match /produksiKemasan/{id} {"),
+            'kasir@ boleh mengubah nota asal bulannya terbuka (bukan hanya tulis-ulang identik)': R.replace("allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama()) || (kasir() && ulangKasirBercap());", "allow update: if (owner() && tglUbah('tanggal')) || (kasir() && (tulisUlangSama() || tglUbah('tanggal'))) || (kasir() && ulangKasirBercap());", 1),
+            'kasir@ boleh mengubah nota (bukan tulis-ulang identik)': R.replace("allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama()) || (kasir() && ulangKasirBercap());", "allow update: if ((owner() || kasir()) && tglUbah('tanggal')) || (kasir() && ulangKasirBercap());", 1),
             'bulan berjalan bisa dikunci': R.replace("function bolehDikunci(b) { return b < bulanIni() - 1 || (b == bulanIni() - 1 && wib().day() > tenggangMin()); }", "function bolehDikunci(b) { return b < bulanIni(); }"),
             'WIB dihitung sebagai UTC': R.replace("timestamp.value(request.time.toMillis() + 25200000)", "timestamp.value(request.time.toMillis())"),
             'kunci boleh melompati bulan': R.replace("bulanDari(d.sampaiBulan) == bulanDari(s0) + 1", "bulanDari(d.sampaiBulan) > bulanDari(s0)"),
@@ -466,7 +759,7 @@ if __name__ == '__main__':
             'pajakSetoran ikut dikunci (melawan K6)': R.replace("    match /pajakSetoran/{id} {\n      allow read, write: if owner();", "    match /pajakSetoran/{id} {\n      allow read: if owner();\n      allow create: if owner() && tglBaru('tanggalSetor');\n      allow update, delete: if owner();"),
             'bon lama pemasok dinilai tanggal catat (melawan K4)': R.replace("function bulanUP(d) { return d.get('tipe', '') == 'saldoAwal' ? bulanNilai(d.get('bonTanggal', null)) : bulanDok(d, 'tanggal'); }", "function bulanUP(d) { return bulanDok(d, 'tanggal'); }"),
             'hapus dokumen yang tidak ada ditolak (batch hapus adukan gagal)': R.replace("function tglLama(f) { return resource == null || bolehBulan(bulanDok(resource.data, f)); }", "function tglLama(f) { return bolehBulan(bulanDok(resource.data, f)); }"),
-            'titik kas tanpa kunci': R.replace("allow create, update: if owner() && (id != 'titikKas' || tglBaru('tanggal'));", "allow create, update: if owner();"),
+            'titik kas tanpa kunci': R.replace("allow create, update: if owner() && (id != 'titikKas' || tglBaru('tanggal') || pintuTitik()) &&", "allow create, update: if owner() &&"),
             'wildcard koleksi tambahan di tengah': R.replace("    match /bukuHapus/{id} {", "    match /{apaSaja}/{id} {\n      allow read: if owner();\n    }\n    match /bukuHapus/{id} {"),
             'setelan upah ikut terbaca bukan-owner': R.replace("'peran', 'perangkat'] && staf(", "'peran', 'perangkat', 'upah'] && staf("),
             'aksesAkun bisa memberi owner': R.replace("request.resource.data.peran in ['ben', 'karyawan'] && request.resource.data.aktif is bool", "request.resource.data.peran in ['ben', 'karyawan', 'owner'] && request.resource.data.aktif is bool"),
@@ -504,8 +797,8 @@ if __name__ == '__main__':
             'v7: ulangKasirBercap tanpa == request.time (cap nilai HP diterima)': R.replace(UKB, "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']);"),
             'v7: kirim ulang HP kasir-v32 (cap dibuang) DITOLAK lagi — nota yang sudah masuk pindah ke "ditolak"': R.replace(UKB, "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer']) && request.resource.data.capServer == request.time;"),
             'v7: cap boleh dibuang walau isi lain berubah (kurung salah)': R.replace(UKB, "return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capServer'])\n        && !request.resource.data.keys().hasAny(['capServer']) || request.resource.data.capServer == request.time;"),
-            'v7: ulangKasirBercap dipasang juga di stokBahanLiteran': R.replace("allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama());\n      allow delete: if owner() && tglLama('tanggal');\n    }\n\n    match /katalogHargaLiteran/{id} {",
-                                                                            "allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama()) || (kasir() && ulangKasirBercap());\n      allow delete: if owner() && tglLama('tanggal');\n    }\n\n    match /katalogHargaLiteran/{id} {"),
+            'v7: ulangKasirBercap dipasang juga di stokBahanLiteran': R.replace("allow update: if owner() && tglUbah('tanggal');\n      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('stokBahanLiteran'",
+                                                                            "allow update: if (owner() && tglUbah('tanggal')) || (kasir() && ulangKasirBercap());\n      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('stokBahanLiteran'"),
             'v7: suku kirim ulang bercap dicabut dari penjualan (kasir-v33 ditolak)': R.replace(" || (kasir() && ulangKasirBercap());", ";"),
             'v7: batu nisan terbaca staf': R.replace("    match /batuNisan/{id} {\n      allow read: if owner();", "    match /batuNisan/{id} {\n      allow read: if owner() || staf(['ben', 'karyawan']);"),
             'v7: batu nisan tertulis staf': R.replace("      allow create, update: if owner() && request.resource.data.capServer == request.time;", "      allow create, update: if (owner() || stafBuat(['ben', 'karyawan'])) && request.resource.data.capServer == request.time;"),
@@ -513,6 +806,54 @@ if __name__ == '__main__':
             'v7: blok batu nisan hilang (hapus /baru/ ditolak seluruh batch)': re.sub(r"\n    match /batuNisan/\{id\} \{.*?\n    \}\n", '\n', R, flags=re.S),
             'v7: baris lain berubah dari v6 (bentuk lain, arti sama — tetap wajib ketahuan)': R.replace("    match /pengingat/{id} {\n      allow read, write: if owner();", "    match /pengingat/{id} {\n      allow read: if owner();\n      allow write: if owner();"),
         })
+        # 10/11 · v7 FINAL: persetujuan, foto bon, kasir@, pintu — BENTUK (pemeriksa khusus) dan MODEL saja ('model:' = bentuk & pembanding v6 dimatikan)
+        PH = "|| existsAfter(/databases/$(database)/documents/arsipTahun/$(string(y) + '|' + kol + '|' + id)));"
+        rusak.update({
+            'v7: staf menulis persetujuan apa saja (stafBuat, bukan stafMintaNego)': R.replace("allow create: if owner() || stafMintaNego(['ben', 'karyawan']);", "allow create: if owner() || stafBuat(['ben', 'karyawan']);"),
+            'v7: staf boleh memutus persetujuan (update)': R.replace("      allow update, delete: if owner();   // memutus", "      allow update: if owner() || staf(['ben', 'karyawan']);\n      allow delete: if owner();   // memutus"),
+            'v7: persetujuan tidak terbaca staf padahal akses.js BACA_STAF memuatnya': R.replace("      allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta", "      allow read: if owner();   // v7: yang meminta"),
+            'v7: blok fotoBon hilang': re.sub(r"\n    match /fotoBon/\{id\} \{.*?\n    \}\n", '\n', R, flags=re.S),
+            'v7: foto bon boleh diubah': R.replace("        && request.resource.data.get('base64', 0) is string && request.resource.data.base64.size() > 0 && request.resource.data.base64.size() <= 960000;\n      allow delete: if owner();",
+                                                    "        && request.resource.data.get('base64', 0) is string && request.resource.data.base64.size() > 0 && request.resource.data.base64.size() <= 960000;\n      allow update: if owner();\n      allow delete: if owner();"),
+            'v7: foto bon tanpa batas ukuran': R.replace(" && request.resource.data.base64.size() <= 960000;", ";"),
+            'v7: kasir@ create logAktivitas dikembalikan': R.replace("      allow create: if owner() || stafJejak(['ben', 'karyawan']);", "      allow create: if owner() || kasir() || stafJejak(['ben', 'karyawan']);"),
+            'v7: kasir@ baca pengaturan/aksesKasir dikembalikan': R.replace("      allow read: if owner() || (id == 'tempatSimpan' && staf(['ben', 'karyawan']));", "      allow read: if owner() || (id == 'tempatSimpan' && staf(['ben', 'karyawan'])) || (id == 'aksesKasir' && kasir());"),
+            'v7: kasir@ create piutangMutasi dikembalikan': R.replace("allow create: if (owner() && tglBaru('tanggal')) || (owner() && pintuTulis('piutangMutasi'", "allow create: if ((owner() || kasir()) && tglBaru('tanggal')) || (owner() && pintuTulis('piutangMutasi'"),
+            'v7: kasir@ membaca persetujuan (hak baru di luar kasir darurat)': R.replace("      allow read: if owner() || staf(['ben', 'karyawan']);   // v7: yang meminta", "      allow read: if owner() || kasir() || staf(['ben', 'karyawan']);   // v7: yang meminta"),
+            'pintu: pintuTulis dipasang di UPDATE (catatan bulan terkunci bisa diubah)': R.replace("      allow update: if (owner() && tglUbah('tanggal')) || (kasir() && tulisUlangSama()) || (kasir() && ulangKasirBercap());",
+                                                                                              "      allow update: if (owner() && tglUbah('tanggal')) || (owner() && pintuTulis('penjualan', id, bulanDok(request.resource.data, 'tanggal'))) || (kasir() && tulisUlangSama()) || (kasir() && ulangKasirBercap());"),
+            'pintu: pindahUang (tidak diarsip) ikut berpintu': R.replace("    match /pindahUang/{id} {\n      allow read: if owner();\n      allow create: if owner() && tglBaru('tanggal');\n      allow update: if owner() && tglUbah('tanggal');\n      allow delete: if owner() && tglLama('tanggal');",
+                                                                    "    match /pindahUang/{id} {\n      allow read: if owner();\n      allow create: if owner() && tglBaru('tanggal');\n      allow update: if owner() && tglUbah('tanggal');\n      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('pindahUang', id, bulanDok(resource.data, 'tanggal')));"),
+            'pintu: tutup hari bulan terkunci tidak bisa diarsip (pintuHapus hilang — tutup buku buntu)': R.replace("      allow delete: if owner() && (tglLama('tanggal') || pintuHapus('tutupHari', id, bulanDok(resource.data, 'tanggal')));", "      allow delete: if owner() && tglLama('tanggal');"),
+            'pintu: staf lewat pintu': R.replace("(owner() && pintuTulis('produksiKemasan',", "(stafBuat(['ben', 'karyawan']) && pintuTulis('produksiKemasan',"),
+            'pintu: dokumen pintu dibaca SEBELUM batch (get) — pintu tidak bisa dibuka di kiriman saldo pembuka yang sama': R.replace("let p = getAfter(/databases/$(database)/documents/pengaturan/pintuBuku);", "let p = get(/databases/$(database)/documents/pengaturan/pintuBuku);"),
+            'pintu: jalur arsip beda dengan firebase.js (Y_koleksi_id)': R.replace("$(string(y) + '|' + kol + '|' + id)", "$(string(y) + '_' + kol + '_' + id)"),
+            'pintu: tanpa batas umur 72 jam': R.replace(" && d.sampai <= request.time + duration.value(72, 'h')", ""),
+            'model: hapus bulan terkunci TANPA salinan arsip lolos': R.replace(PH, "|| true);"),
+            'model: hapus lewat pintu tanpa batas tahun pintu': R.replace("      let y = pintuTahun();\n      return y > 0 && b <= y * 12 + 12\n        && ((resource.data", "      let y = pintuTahun();\n      return y > 0\n        && ((resource.data"),
+            'model: saldo pembuka lewat pintu tanpa batas tahun pintu': R.replace("      let d = request.resource.data;\n      return y > 0 && b <= y * 12 + 12\n", "      let d = request.resource.data;\n      return y > 0\n"),
+            'model: pintu tanpa kedaluwarsa (sampai tidak dinilai)': R.replace(" is timestamp\n        && request.time < p.data.sampai ? int(p.data.tahun) : 0;", " is timestamp\n        ? int(p.data.tahun) : 0;"),
+            'model: pintu tertutup tetap dianggap terbuka (status tidak dinilai)': R.replace("return p != null && p.data.get('status', '') == 'berjalan' && p.data.get('tahun', '') is number", "return p != null && p.data.get('tahun', '') is number"),
+            'model: saldo pembuka tahun mana pun (tahunDari tidak dinilai)': R.replace("((d.get('tutupBuku', false) == true && d.get('tahunDari', 0) == y) || pulihArsip(kol, id, y))", "((d.get('tutupBuku', false) == true) || pulihArsip(kol, id, y))"),
+            'model: catatan apa pun bertahunDari dianggap saldo pembuka (tutupBuku tidak dinilai)': R.replace("((d.get('tutupBuku', false) == true && d.get('tahunDari', 0) == y) || pulihArsip(kol, id, y))", "((d.get('tahunDari', 0) == y) || pulihArsip(kol, id, y))"),
+            'model: pengembalian arsip tanpa pembanding isi': R.replace("\n        && request.resource.data.diff(a.data.get('dok', {})).affectedKeys().hasOnly(['capServer']);", ";"),
+            'model: pintu dibuka tanpa batas 72 jam': R.replace(" && d.sampai <= request.time + duration.value(72, 'h')", ""),
+            'model: pintu dibuka tanpa berita acara berjalan': R.replace("\n        && a != null && a.data.get('status', '') in ['berjalan', 'terkunci', 'membatalkan'];", ";"),
+            'model: pintu untuk tahun berjalan': R.replace("int(d.tahun) < wib().year()", "int(d.tahun) <= wib().year()"),
+            'model: titik kas lewat pintu tanpa batas tanggal': R.replace("return y > 0 && bulanDok(request.resource.data, 'tanggal') <= y * 12 + 12;", "return y > 0;"),
+            'model: permintaan nego atas nama orang lain': R.replace(" && d.get('negoUid', '') == request.auth.uid", ""),
+            'model: permintaan nego sudah berstatus disetujui': R.replace(" && d.get('status', '') == 'menunggu'", ""),
+            'model: permintaan nego membawa kolom keputusan': R.replace("\n        && !d.keys().hasAny(['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak']);", ";"),
+            'model: foto bon jenis apa saja': R.replace("        && request.resource.data.get('jenis', '') in ['image/jpeg', 'image/png', 'image/webp']\n", "\n"),
+        })
+        # mesin menambah koleksi ke arsip tutup buku tanpa pintu di rules (dibaca dari beku.js / pembantu.js)
+        BK0 = baca('baru/js/mesin/beku.js'); PB0 = baca('baru/js/mesin/pembantu.js')
+        assert "      { koleksi: KOLEKSI_BULANAN," in BK0 and "  const KOLEKSI_BULANAN = 'biayaBulanan';" in PB0, 'kontrol basi: tbDaftarKoleksi / KOLEKSI_BULANAN'
+        rusak_mesin = {'pintu: mesin mengarsip slipUpah tapi rules tidak berpintu': (BK0.replace("      { koleksi: KOLEKSI_BULANAN,", "      { koleksi: KOLEKSI_SLIP, label: 'slip', dok: [] },\n      { koleksi: KOLEKSI_BULANAN,", 1),
+                                                                                      PB0.replace("  const KOLEKSI_BULANAN = 'biayaBulanan';", "  const KOLEKSI_BULANAN = 'biayaBulanan';\n  const KOLEKSI_SLIP = 'slipUpah';", 1))}
+        DOK0 = baca('docs/uji-rules-v7.md')
+        assert '| ★P8 |' in DOK0, 'kontrol basi: ★P8 di docs/uji-rules-v7.md'
+        rusak_dok = {'dokumen Playground kehilangan kasus ★P8 (hapus tanpa salinan arsip)': re.sub(r'\n\| ★P8 \|[^\n]*', '', DOK0)}
         kode = 0
         KPJ = baca('baru/js/data/kunci-periode.js')
         rusak['tenggang minimal 1 di rules DAN kunci-periode.js (di bawah keputusan owner 3 hari)'] = (R.replace("function tenggangMin() { return 3; }", "function tenggangMin() { return 1; }"),
@@ -523,9 +864,20 @@ if __name__ == '__main__':
                 isi, KP_TEKS = isi
                 if KP_TEKS == KPJ: print('KONTROL BASI  ' + nama); kode = 3; continue
             if isi == R: print('KONTROL BASI  ' + nama); kode = 3; continue
-            # kontrol lama (sebelum v7) WAJIB tertangkap pemeriksa KHUSUSNYA — pembanding "sama dengan v6" (yang menangkap perubahan apa pun) dimatikan untuknya
-            BANDING_V6 = nama.startswith('v7:')
+            # kontrol lama (sebelum v7) WAJIB tertangkap pemeriksa KHUSUSNYA — pembanding "sama dengan v6" (yang menangkap perubahan apa pun) dimatikan untuknya;
+            # 'model:' — bentuk v7 (persetujuan, fotoBon, pintu) juga dimatikan: yang wajib berbunyi = penafsir rules mini pada kasus Playground ★/M
+            BANDING_V6 = nama.startswith('v7:') or nama.startswith('pintu:'); BENTUK_V7 = not nama.startswith('model:')
             c = periksa(isi, K, A)
+            if nama.startswith('model:') and c and not all(x.startswith('model v7 ') for x in c): c = ['BUKAN MODEL YANG BERBUNYI: ' + c[0]]; print('DIAM!!   ' + nama + ' → ' + c[0][:110]); kode = 3; continue
+            print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
+            if not c: kode = 3
+        BANDING_V6 = True; BENTUK_V7 = True
+        for nama, isi in rusak_dok.items():
+            DOK_V7_TEKS = isi; c = periksa(R, K, A); DOK_V7_TEKS = None
+            print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
+            if not c: kode = 3
+        for nama, (bk, pb) in rusak_mesin.items():
+            TEKS_BEKU, TEKS_PEMBANTU = bk, pb; c = periksa(R, K, A); TEKS_BEKU = TEKS_PEMBANTU = None
             print(('BERBUNYI ' if c else 'DIAM!!   ') + nama + ' → ' + (c[0][:110] if c else '-'))
             if not c: kode = 3
         sys.exit(kode)
@@ -537,5 +889,6 @@ if __name__ == '__main__':
     print('RULES v7 LULUS: %d blok koleksi · TANPA payung (tidak ada match rekursif / wildcard koleksi) · owner via email · jalur kasir@ utuh & dipersempit · '
           'tulis bukan-owner wajib uid · daftar peran = akses.js · kunci periode di %d koleksi bertanggal (= kunci-periode.js), tenggang minimal %d hari, '
           'satu get() dokumen kunci per operasi, bukan-owner tanpa get() kunci, pajak tidak dikunci (K6) · berita acara tutup buku hanya maju (model: %d tulisan '
-          'boleh, %d tulisan telat/mundur ditolak; tanpa get()) · v7 = v6 + kirim ulang kasir@ bercap (penjualan saja, hanya capServer: = request.time atau dibuang HP kasir-v32) + '
-          'batu nisan owner (capServer = request.time), selebihnya sama dengan firestore.rules.v6' % (len(B), len(KOL), TMIN, nS, nT))
+          'boleh, %d tulisan telat/mundur ditolak; tanpa get(); penafsir mini sepakat) · v7 FINAL = v6 + kirim ulang kasir@ bercap + batu nisan + permintaan nego staf + '
+          'foto bon + kasir@ dipangkas (nota, denyut, katalog) + PINTU TUTUP BUKU di %d koleksi arsip (bentuk persis; model penafsir: %d kasus Playground ★/M sesuai, '
+          'access call jalur pintu ≤ 3), selebihnya sama dengan firestore.rules.v6' % (len(B), len(KOL), TMIN, nS, nT, len(koleksi_arsip() or []), len(KASUS_V7)))

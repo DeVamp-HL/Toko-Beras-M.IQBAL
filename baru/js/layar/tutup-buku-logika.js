@@ -13,11 +13,19 @@
 // SIAP 2027 (owner 7 Okt 2026, paket A): hari berjualan tanpa tutup hari diputus PER TANGGAL "tidak ditutup — diterima apa adanya" + alasan (aturanToko/putusanHari,
 // juga putusan kunci bulan yang sudah ada) · gerbang g6 stok minus & kelebihan bayar · saldo pembuka membawa tanda buku (25 kg, adukan, merek pemasok, buku berstok 0)
 // & modal owner · upah yang belum dibayar tercatat menyeberang · ringkasan tahun untuk KR1 / laju / pelanggan · perkiraan kuota · catatan susulan sesudah penanda.
+//
+// TUTUP BUKU TAHUN YANG BULANNYA SUDAH DIKUNCI (owner 7 Okt 2026, K8 "pengecualian sempit"; rules v7): kunci bulan berbentuk awalan, jadi mulai 2027 tahun
+// yang ditutup selalu punya bulan terkunci — dan arsip memindah SEMUA catatan ≤ 31 Des (juga tahun-tahun sebelumnya). Ritual membuka PINTU TUTUP BUKU
+// (pengaturan/pintuBuku = { tahun, status 'berjalan', sampai ≤ 72 jam }) di kiriman pertamanya; selama terbuka, server menerima PERSIS: saldo pembuka tahun
+// itu (juga yang bertanggal utang tertua / bon lama / 31 Des), arsip catatan bulan terkunci yang salinannya ditulis di batch yang sama, pengembalian arsip
+// saat Batalkan (isi sama), dan titik kas ≤ 31 Des. Catatan bulan terkunci lainnya tetap tidak bisa diubah / ditambah. Pintu ditutup saat selesai /
+// dibatalkan; dibuka lagi bila tinggal < 12 jam saat arsip dilanjutkan, kiriman lanjutan, atau pembatalan dimulai / dilanjutkan. Tanpa bulan terkunci (tutup
+// buku 2026) = tanpa pintu, sama seperti sebelum v7.
 import { hitungSaldoTutup, tbDaftarKoleksi, hitungStokKarungPerMerk, hitungStokKemasan, hitungStokBahanKemasan, hitungStokBahanLiteran, hitungPiutang, hitungKasbon, hitungUtangPemasok, hitungUtangOwner, saldoAmplop } from '../mesin/beku.js';
 import { tbCutoff, tbPunyaBerat, kunciPelanggan, merkPunyaKarungBerat, labelBahan, pesananBelumTuntas, KOLEKSI_PESANAN } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPenjualanSemua, ambilPesanan, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, petaStokWadah, petaBukuWadah, petaUkuran, ukuranDigabung, dokDiCache, dokTertunda, pembukaBerlaku, koleksiDariCache, hapusTertunda, CACHE_PEMBUKA, eraBuku, ringkasKreditLaju, kunciNota, versiCache, ingatStokKarung, ingatStokKemasan, denganCacheSaring } from '../data/toko.js';
+import { ambilPenjualan, ambilPenjualanSemua, ambilPesanan, ambilSemuaBatch, ambilTutupHari, ambilTutupBukuAcara, ambilTitikKas, cacheMentah, kunciSampai, pintuBuku, petaStokWadah, petaBukuWadah, petaUkuran, ukuranDigabung, dokDiCache, dokTertunda, pembukaBerlaku, koleksiDariCache, hapusTertunda, CACHE_PEMBUKA, eraBuku, ringkasKreditLaju, kunciNota, versiCache, ingatStokKarung, ingatStokKemasan, denganCacheSaring } from '../data/toko.js';
 import { KOLEKSI } from '../data/koleksi.js';
-import { KP_BATAS_GET, kpPotong, kpNilaiKiriman, kpBulanDok, kpBebas, kpIdx, kpWib } from '../data/kunci-periode.js';
+import { KP_BATAS_GET, kpPotong, kpNilaiKiriman, kpBulanDok, kpBebas, kpIdx, kpWib, kpNamaBulan, KP_ID_PINTU, KP_PINTU_JAM, KP_PINTU_SISA_JAM, kpPintu, kpPecahBiaya } from '../data/kunci-periode.js';
 import { RP, ANGKA, KG, hariIniIso, jamKini, tanggalPendek, lebihBayarDari, kalimatLebih } from '../inti/format.js';
 import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam } from './uang-logika.js';
 import { aturUpah, hitungUpah, mulaiUpah } from './upah-logika.js';
@@ -77,15 +85,42 @@ export function tahunBuku(kini) {
   const iso = hariIniIso(kini); const era = bkEra(); let pertama = '';
   ambilPenjualanSemua().concat(ambilSemuaBatch().filter((b) => !b.stokAwal && !b.tutupBuku)).forEach((d) => { if (d.tanggal && (!pertama || d.tanggal < pertama)) pertama = d.tanggal; });
   const awal = era !== null ? era + 1 : (pertama ? Number(pertama.slice(0, 4)) : Number(iso.slice(0, 4))); const tahun = Math.min(awal, Number(iso.slice(0, 4)));
-  // K1 (owner 25 Sep 2026): selama ada bulan TERKUNCI di tahun itu, tutup buku sungguhan ditolak — arsipnya memindah (menghapus) catatan bulan terkunci.
-  // Keputusan owner 1 Okt (A): tutup buku 2026 dijalankan sebelum bulan 2027 mana pun dikunci (kunci bulan menolak sendiri — siap 2027 A2); rancangan arsip
-  // salinan + penanda tanpa hapus (opsi C) untuk tutup buku 2027. Catatan dasar disimpan 10 tahun (UU KUP Pasal 28 ayat 11): berkas arsip dan cadangan SEBELUM.
-  const sampai = kunciSampai(); const adaKunci = !!sampai && sampai >= tahun + '-01';
-  const bolehSungguhan = iso > tbCutoff(tahun) && !adaKunci; const acara = ambilTutupBukuAcara().find((a) => Number(a.tahun) === tahun) || null;
-  return { tahun, era, pertama, bolehSungguhan, adaKunci, cutoff: tbCutoff(tahun), tglBuka: (tahun + 1) + '-01-01', acara,
-    teks: adaKunci ? 'Tahun ' + tahun + ' punya bulan terkunci (sampai ' + sampai + ') — tutup buku sungguhan ditolak sampai dirancang ulang (arsip tidak boleh menghapus catatan). Sekarang cuma bisa LATIHAN'
-      : bolehSungguhan ? 'Tahun ' + tahun + ' sudah lewat — bisa ditutup sungguhan' : 'Tahun ' + tahun + ' belum lewat 31 Desember — sekarang cuma bisa LATIHAN' };
+  // K1 (owner 25 Sep 2026): catatan bulan TERKUNCI tidak bisa diubah / dihapus. Keputusan owner 1 Okt (A): tutup buku 2026 tanpa bulan terkunci (kunci bulan
+  // mulai 2027 & menunggu tutup buku tahun lalu — siap 2027 A2). Keputusan owner 7 Okt (K8, pengecualian sempit, rules v7): tahun yang bulannya terkunci
+  // ditutup lewat PINTU TUTUP BUKU (lihat kepala berkas) — jadi tutup buku 2027 di Januari 2028 tidak buntu. Catatan dasar disimpan 10 tahun (UU KUP Pasal 28
+  // ayat 11): berkas arsip dan cadangan SEBELUM. perluPintu = ada bulan terkunci mana pun (arsip memindah semua catatan ≤ 31 Des, juga tahun-tahun lalu).
+  const sampai = kunciSampai(); const adaKunci = !!sampai && sampai >= tahun + '-01'; const perluPintu = !!sampai;
+  const bolehSungguhan = iso > tbCutoff(tahun); const acara = ambilTutupBukuAcara().find((a) => Number(a.tahun) === tahun) || null;
+  return { tahun, era, pertama, bolehSungguhan, adaKunci, perluPintu, sampaiKunci: sampai || '', cutoff: tbCutoff(tahun), tglBuka: (tahun + 1) + '-01-01', acara,
+    teks: !bolehSungguhan ? 'Tahun ' + tahun + ' belum lewat 31 Desember — sekarang cuma bisa LATIHAN'
+      : perluPintu ? 'Tahun ' + tahun + ' sudah lewat — bisa ditutup sungguhan. Bulan sampai ' + kpNamaBulan(sampai) + ' sudah dikunci: tutup buku membuka "pintu tutup buku" sebentar (hanya saldo pembuka, arsip & Batalkan; catatan bulan terkunci lainnya tetap tidak bisa diubah)'
+      : 'Tahun ' + tahun + ' sudah lewat — bisa ditutup sungguhan' };
 }
+// ---- PINTU TUTUP BUKU (rules v7) — dokumen pengaturan/pintuBuku; kunci-periode.js kpPintu / kpLewatPintu = inti yang sama dengan rules
+/** Dokumen pintu yang dibuka (umur KP_PINTU_JAM menurut jam perangkat; rules menerima ≤ 72 jam dari jam server). */
+const bkJam = (w) => new Date(Date.parse(w && w.kini) || Date.now());   // jam SEBENARNYA kiriman (ugKiniDari = tengah hari tanggalnya — bukan untuk umur pintu)
+function bkPintuDok(tahun, w) {
+  const t = bkJam(w).getTime();
+  return { koleksi: 'pengaturan', data: { id: KP_ID_PINTU, tahun, status: 'berjalan', sampai: new Date(t + KP_PINTU_JAM * 3600000), dibuka: w.kini, tanggal: w.tanggal, jam: w.jam } };
+}
+/** Pintu tahun itu yang terbuka di cache dan masih ≥ 12 jam lagi (null = perlu dibuka / diperbarui). */
+function bkPintuSegar(tahun, kini) { const P = pintuBuku(); const t = kini ? kini.getTime() : Date.now(); return P && P.tahun === tahun && P.sampai - t >= KP_PINTU_SISA_JAM * 3600000 ? P : null; }
+/**
+ * Pintu sebelum arsip (uang.js bukaPintu), di kiriman lanjutan pertama (lanjutBuku) & kiriman pembatalan pertama (susunBatal): { dokumen: [pintu] } bila tahun itu
+ * perlu pintu (ada bulan terkunci) dan pintunya belum terbuka atau tinggal
+ * < 12 jam; {} bila tidak perlu. Server hanya menerimanya selama berita acara tahun itu berjalan / terkunci / membatalkan (rules pintuSah).
+ */
+export function susunPintu(tahun, w) {
+  if (!kunciSampai() || bkPintuSegar(tahun, bkJam(w))) return {};
+  return { dokumen: [bkPintuDok(tahun, w)] };
+}
+/** Menutup pintu (selesai / dibatalkan): dokumen 'tutup' bila pintu tahun itu terbuka di cache (atau `baru` = baru dibuka di kiriman ini); [] bila tidak ada. */
+function bkTutupPintu(tahun, w, baru) {
+  const d = dokDiCache('pengaturan', KP_ID_PINTU); if (!baru && (!d || d.status !== 'berjalan' || Number(d.tahun) !== tahun)) return [];
+  return [{ koleksi: 'pengaturan', data: { id: KP_ID_PINTU, tahun, status: 'tutup', sampai: bkJam(w), ditutup: w.kini, tanggal: w.tanggal, jam: w.jam } }];
+}
+/** Pintu yang berlaku untuk menyusun kiriman (yang akan ditulis di kiriman pertama, atau yang sudah terbuka). */
+const bkPintuPakai = (dok, w) => (dok ? kpPintu(dok.data, bkJam(w)) : pintuBuku());
 /** Gerbang sebelum mulai. lokal = { antre, menunggu, offline, idPerangkat }; lewati = { g3: true } untuk yang owner nyatakan sudah beres. */
 export function gerbangBuku(tahun, kini, lokal, lewati) {
   const L = lokal || {}; const V = lewati || {}; const iso = hariIniIso(kini); const cutoff = tbCutoff(tahun); const sampai = iso < cutoff ? iso : cutoff;
@@ -405,7 +440,7 @@ export function berkasArsip(tahun, kini) { const A = arsipBuku(tahun); const isi
  * L = lokal() layar ({ idPerangkat, namaPerangkat }) — putaran 4 P4-1: berita acara mencatat perangkat ini sebagai pemegang.
  */
 export function susunKunci(tahun, D, w, L) {
-  const T = tahunBuku(ugKiniDari(w)); if (!T.bolehSungguhan) return { tolak: T.adaKunci ? T.teks : 'Tahun ' + tahun + ' belum lewat 31 Desember — hanya bisa latihan' };
+  const T = tahunBuku(ugKiniDari(w)); if (!T.bolehSungguhan) return { tolak: 'Tahun ' + tahun + ' belum lewat 31 Desember — hanya bisa latihan' };
   if (!D.paraf || !D.paraf.owner || !D.paraf.saksi) return { tolak: 'Paraf owner dan saksi dulu' };
   const tg = bkTertunda(tahun); if (tg) return { tolak: tg };
   // siap 2027 (pintu masuk, bukan hanya layar): hari tanpa tutup hari yang belum diputus (g1) dan stok minus / kelebihan bayar (g6) menolak kunci SUNGGUHAN
@@ -445,18 +480,24 @@ export function susunKunci(tahun, D, w, L) {
   // Laporan, Pajak & Dasbor membacanya sesudah arsip (toko.js potretBulan). Gagal disusun = kunci DITOLAK: tanpa potret, layar tahun ini jadi Rp0 bertanda FINAL.
   try { acara.potret = susunPotret(tahun, ugKiniDari(w)); } catch (e) { return { tolak: 'Potret ' + tahun + ' gagal disusun (' + String((e && e.message) || e).slice(0, 160) + ') — tahun TIDAK dikunci, supaya Laporan & Pajak ' + tahun + ' tidak jadi Rp0 sesudah arsip. Tidak ada yang ditulis. ' + bkKalimatTanpaPotret(tahun) }; }
   // (a) tiap dokumen pembuka satu kelompok (urutan pembukaBuku); batch penanda + penanda + berita acara terkunci = kelompok TERAKHIR, jadi selalu di kiriman terakhir
-  const Pt = kpPotong(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] })).concat([{ dokumen: [tanda].concat(penanda, [{ koleksi: 'tutupBukuAcara', data: acara }]) }]), dokDiCache, ugKiniDari(w));
+  // v7 (K8): ada bulan terkunci → PINTU dibuka di kiriman PERTAMA (rules menilai pintu sesudah batch, bersama berita acaranya); biaya pintu ikut dihitung
+  const pintu = T.perluPintu ? bkPintuDok(tahun, w) : null;
+  const Pt = kpPotong((pintu ? [{ dokumen: [pintu] }] : []).concat(P.dokumen.filter((x) => x !== tanda).map((x) => ({ dokumen: [x] })), [{ dokumen: [tanda].concat(penanda, [{ koleksi: 'tutupBukuAcara', data: acara }]) }]), dokDiCache, ugKiniDari(w),
+    { sampai: kunciSampai(), pintu: bkPintuPakai(pintu, w) });
   if (Pt.tolak) return { tolak: Pt.tolak };
   acara.rencana = { dibuat: w.kini, n: Pt.potongan.length, kiriman: Pt.potongan.map((p, i) => ({ ke: i + 1, get: p.get, dok: p.dokumen.map((x) => ({ koleksi: x.koleksi, id: String(x.data.id) })) })) };
   const berjalan = Object.assign({}, acara, { status: 'berjalan', pembuka: P.dokumen, penanda });
-  const kiriman = bkKirimanDari(berjalan);
+  const kiriman = bkKirimanDari(berjalan, pintu ? [pintu] : []);
   return { kiriman, dokumen: [].concat.apply([], kiriman.map((k) => k.dokumen)), arsip: A.daftar, acara, sebelum, banding: B, titik, titikTahun: T0,
     patch: { kabar: 'Tahun ' + tahun + ' DIKUNCI: ' + P.dokumen.length + ' dokumen saldo pembuka ditulis dalam ' + kiriman.length + ' kiriman, ' + ANGKA(A.n) + ' dokumen tahun ' + tahun + ' dipindah ke arsip (tidak dihapus); potret ' + tahun + ' tersimpan di berita acara. Selesaikan dengan cadangan sesudahnya.', kabarAwas: false } };
 }
 const bkAcara = (tahun) => ambilTutupBukuAcara().find((a) => Number(a.tahun) === tahun) || null;
+/** Access call server per catatan arsip (0 / 1 / 3 lewat pintu — kunci-periode.js; pintu dianggap terbuka bila ada bulan terkunci) — dasar perkiraan kiriman & kuota. */
+function bkBiayaArsip(daftar, ops, kini, tahun) { const s = kunciSampai(); const P = s ? { tahun, sampai: Infinity } : null; return daftar.map((x) => kpNilaiKiriman([ops(x)], s, kini, P).perluGet); }
+const bkKirimanArsip = (tahun, daftar) => kpPecahBiaya(bkBiayaArsip(daftar, (x) => ({ koleksi: x.koleksi, id: x.id, lama: x.data, hapus: true, arsip: true }), new Date(Date.now()), tahun), KP_BATAS_GET, KP_BATAS_GET).length;
 /** (b) Kiriman dari berita acara 'berjalan' — sama persis dengan yang disusun saat mulai (id tetap), jadi bisa dilanjutkan dari perangkat mana pun. */
-function bkKirimanDari(a) {
-  const peta = {}; (a.pembuka || []).concat(a.penanda || []).forEach((x) => { peta[x.koleksi + '|' + String(x.data.id)] = x; });
+function bkKirimanDari(a, ekstra) {
+  const peta = {}; (a.pembuka || []).concat(a.penanda || [], ekstra || []).forEach((x) => { peta[x.koleksi + '|' + String(x.data.id)] = x; });
   const kunci = Object.assign({}, a, { status: 'terkunci' }); delete kunci.pembuka; delete kunci.penanda; const n = a.rencana.kiriman.length;
   return a.rencana.kiriman.map((k, i) => {
     const dokumen = k.dok.map((d) => (d.koleksi === 'tutupBukuAcara' ? { koleksi: 'tutupBukuAcara', data: kunci } : peta[d.koleksi + '|' + d.id]));
@@ -551,7 +592,9 @@ export function lanjutBuku(tahun, L) {
   const kunci = Object.assign({}, a, { status: 'terkunci', hariIni: HI }); delete kunci.pembuka; delete kunci.penanda;
   const tanda = a.pembuka.filter((x) => x.data && x.data.penandaBuku); const belumAda = a.pembuka.filter((x) => tanda.indexOf(x) < 0 && !dokDiCache(x.koleksi, x.data.id));
   const akhir = bkTitikKini({ dokumen: tanda.concat(a.penanda || [], [{ koleksi: 'tutupBukuAcara', data: kunci }]) }, tahun);
-  const Pt = kpPotong(belumAda.map((x) => ({ dokumen: [x] })).concat([akhir]), dokDiCache, new Date(Date.now())); if (Pt.tolak) return { tolak: Pt.tolak };
+  // v7: pintu yang belum terbuka / tinggal < 12 jam dibuka lagi di kiriman lanjutan PERTAMA
+  const wP = { kini: new Date(Date.now()).toISOString(), tanggal: hari, jam: '' }; const pintu = (susunPintu(tahun, wP).dokumen || [])[0] || null;
+  const Pt = kpPotong((pintu ? [{ dokumen: [pintu] }] : []).concat(belumAda.map((x) => ({ dokumen: [x] })), [akhir]), dokDiCache, new Date(Date.now()), { sampai: kunciSampai(), pintu: bkPintuPakai(pintu, wP) }); if (Pt.tolak) return { tolak: Pt.tolak };
   // putaran 3 AAL7: satu satuan — kiriman LANJUTAN dinomori 1..n menurut pecahan SEKARANG (nomor rencana saat mulai tidak cocok lagi sesudah pecah ulang);
   // tiap kiriman membawa jumlah saldo pembuka yang sudah masuk sebelum ia (pita juga menghitung saldo pembuka, bukan kiriman)
   let m = masuk; const belum = Pt.potongan.map((p, i) => { const pembuka = p.dokumen.filter((x) => x.data && x.data.tutupBuku).map((x) => ({ koleksi: x.koleksi, id: String(x.data.id) }));
@@ -626,8 +669,8 @@ export function kemajuanBuku() {
   // lengkap. Itu bukan "lanjutkan arsip" (catatan tahun itu akan dipindah, angka salah) — batalkan (susunBatal menarik sisanya), lalu mulai lagi.
   if (a.status === 'terkunci') { const adaP = bkPembukaTahun(tahun).length; if (adaP < Number(a.nPembuka) && bkEra() === tahun) return { tahun, fase: 'rusak', sisaPembuka: adaP, teks: 'Tutup buku ' + tahun + ' tidak utuh: berita acaranya terkunci, tapi saldo pembukanya cuma ' + adaP + ' dari ' + a.nPembuka + ' (ada kiriman yang ditolak server, atau masuk terlambat dari perangkat lain sesudah pembatalan). Angka toko SALAH sampai dibereskan — arsip JANGAN diteruskan; ketuk "batalkan", lalu mulai lagi.' }; }
   // A9 (siap 2027): sesudah arsip percobaan ini habis sekali, catatan tahun itu yang tersisa = SUSULAN (datang sesudah penanda) — bukan sisa arsip, tidak diarsip
-  if (a.status === 'terkunci') { const sisa = bkArsipHabis(tahun) ? 0 : arsipBuku(tahun).n; const total = Number(a.nArsip) || sisa;
-    return sisa ? { tahun, fase: 'arsip', sudah: total - sisa, total, sisa, teks: 'Tahun ' + tahun + ' terkunci; ' + ANGKA(sisa) + ' catatan ' + tahun + ' belum pindah ke arsip (' + Math.ceil(sisa / KP_BATAS_GET) + ' kiriman lagi). Sampai habis, stok, piutang & utang terhitung DOBEL — lanjutkan arsip atau batalkan.' }
+  if (a.status === 'terkunci') { const A0 = bkArsipHabis(tahun) ? null : arsipBuku(tahun); const sisa = A0 ? A0.n : 0; const total = Number(a.nArsip) || sisa;
+    return sisa ? { tahun, fase: 'arsip', sudah: total - sisa, total, sisa, teks: 'Tahun ' + tahun + ' terkunci; ' + ANGKA(sisa) + ' catatan ' + tahun + ' belum pindah ke arsip (' + bkKirimanArsip(tahun, A0.daftar) + ' kiriman lagi). Sampai habis, stok, piutang & utang terhitung DOBEL — lanjutkan arsip atau batalkan.' }
       : { tahun, fase: 'selesaikan', sudah: total, total, sisa: 0, teks: bkTeksSelesaikan(tahun) }; }
   const sisaP = bkPembukaTahun(tahun).length;
   return { tahun, fase: 'batal', sisaPembuka: sisaP, teks: 'Pembatalan tutup buku ' + tahun + ' belum selesai: ' + sisaP + ' saldo pembuka belum ditarik' + (a.dariStatus === 'terkunci' ? ' dan arsip belum semua dikembalikan' : '') + ' — lanjutkan pembatalan.' };
@@ -653,12 +696,15 @@ export function susunBatal(tahun, arsipDok, w, L) {
     // titik kas dikembalikan HANYA bila titik sekarang masih yang ditulis tutup buku ini (31 Des) — kalau tutup hari sudah memajukannya, hitungan fisik itu dipertahankan
     const tk = ambilTitikKas(); if (acara.titikDitulis && acara.titikSebelum && acara.titikSebelum.tanggal && tk && tk.tanggal === tbCutoff(tahun)) { titik = Object.assign({}, acara.titikSebelum, { id: 'titikKas', diubahPada: w.kini }); awal.push({ koleksi: 'pengaturan', data: titik }); }
   }
+  // v7 (K8): pintu (bila ada bulan terkunci) ikut kiriman PERTAMA — tarik saldo pembuka bertanggal lama, pengembalian arsip & titik kas lewat pintu
+  const pintu = (susunPintu(tahun, w).dokumen || [])[0] || null; if (pintu) awal.push(pintu);
   // §8 no. 1: batch penanda dihapus di kiriman PERTAMA — HP staf (tanpa berita acara) langsung tidak melihat pembuka lagi, sama dengan HP owner
   const tanda = hapus.filter((x) => { const d = x.koleksi === 'batchMasuk' ? dokDiCache(x.koleksi, x.id) : null; return !!(d && d.penandaBuku); }); const sisa = hapus.filter((x) => tanda.indexOf(x) < 0);
-  const P = kpPotong([{ dokumen: awal, hapus: tanda }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] }))), dokDiCache, ugKiniDari(w)); if (P.tolak) return { tolak: P.tolak };
+  const P = kpPotong([{ dokumen: awal, hapus: tanda }].concat(sisa.map((x) => ({ dokumen: [], hapus: [x] }))), dokDiCache, ugKiniDari(w), { sampai: kunciSampai(), pintu: bkPintuPakai(pintu, w) }); if (P.tolak) return { tolak: P.tolak };
   const kiriman = P.potongan.map((p, i) => ({ ke: i + 1, total: P.potongan.length, get: p.get, dokumen: p.dokumen, hapus: p.hapus }));
   const akhir = { koleksi: 'tutupBukuAcara', data: Object.assign({}, batal, { status: 'dibatalkan' }) };
-  return { kiriman, akhir, percobaan: bkPercobaan(batal), dokumen: [].concat.apply([], kiriman.map((k) => k.dokumen)), hapus, titik, pulih: (arsipDok || []).map((a) => ({ koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok })),
+  // v7: pintu DITUTUP bersama berita acara 'dibatalkan' (kiriman terakhir pembatalan)
+  return { kiriman, akhir, akhirDokumen: [akhir].concat(bkTutupPintu(tahun, w, !!pintu)), percobaan: bkPercobaan(batal), dokumen: [].concat.apply([], kiriman.map((k) => k.dokumen)), hapus, titik, pulih: (arsipDok || []).map((a) => ({ koleksi: a.koleksi, idAsli: a.idAsli, dok: a.dok })),
     patch: { kabar: 'Tutup buku ' + tahun + ' dibatalkan — ' + ANGKA((arsipDok || []).length) + ' dokumen dikembalikan dari arsip, ' + hapus.length + ' saldo pembuka ditarik dalam ' + kiriman.length + ' kiriman. Tahun ' + tahun + ' terbuka lagi.', kabarAwas: false } };
 }
 const KOLEKSI_CACHE = CACHE_PEMBUKA;   // siap 2027: satu daftar di toko.js (modalOwner ikut sejak modal owner punya saldo pembuka)
@@ -687,7 +733,8 @@ export function susunSelesai(tahun, namaCadangan2, w, yakin, L) {
   const susulan = S ? { n: S.n, rupiahNota: S.rupiah, rupiahKeluar: S.rupiahKeluar, tanggal: S.tanggal.slice(0, 31) } : null;
   // pesanan yang sengaja tertinggal (belum tuntas) dicatat juga di berita acara — juga bila hasil periksa saat arsip habis tidak sempat tersimpan
   const tertinggal = Array.from(new Set(Object.keys(bkTertinggal(tahun)).concat(bkTertinggalKini(tahun))));
-  return { dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, acara, { status: 'selesai', cadangan2: namaCadangan2 || '', selesaiPada: w.kini, selesaiTanggal: w.tanggal, periksaUlang, susulan, tertinggal, langkah: Object.assign({}, acara.langkah || {}, { cadangan2: w.kini }) }) }], patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup. Simpan kedua berkas cadangan di luar HP.' + (S ? ' ' + S.n + ' catatan susulan ' + tahun + ' tercatat di berita acara — ikuti pitanya.' : ''), kabarAwas: !!S } };
+  // v7: pintu tutup buku DITUTUP bersama berita acara 'selesai'
+  return { dokumen: [{ koleksi: 'tutupBukuAcara', data: Object.assign({}, acara, { status: 'selesai', cadangan2: namaCadangan2 || '', selesaiPada: w.kini, selesaiTanggal: w.tanggal, periksaUlang, susulan, tertinggal, langkah: Object.assign({}, acara.langkah || {}, { cadangan2: w.kini }) }) }].concat(bkTutupPintu(tahun, w)), patch: { kabar: 'Tahun ' + tahun + ' selesai ditutup. Simpan kedua berkas cadangan di luar HP.' + (S ? ' ' + S.n + ' catatan susulan ' + tahun + ' tercatat di berita acara — ikuti pitanya.' : ''), kabarAwas: !!S } };
 }
 /**
  * §8 no. 7: kalimat bila tutup buku / pembatalan BERHENTI di kiriman ke-`ke` — tombol yang disebut harus tombol yang benar-benar meneruskan hal itu.
@@ -813,10 +860,12 @@ export function perkiraanKuota(tahun, kini) {
   const kunciMemo = tahun + '|' + versiCache() + '|' + W.iso; if (_kuotaMemo && _kuotaMemo.k === kunciMemo) return _kuotaMemo.h;   // layar K6 menggambar ulang tiap data berubah
   let n = 0; const P = pembukaBuku(tahun, { idUnik: () => 'perkiraan-' + (n += 1) }); const A = arsipBuku(tahun);
   const nP = P.dokumen.length + (P.dokumen.some((x) => x.koleksi === 'batchMasuk') ? 0 : 1);
-  const getP = kpNilaiKiriman(P.dokumen.map((x) => ({ koleksi: x.koleksi, data: x.data })), null, rencana).perluGet; const nKirim = Math.max(1, Math.ceil(getP / KP_BATAS_GET));
-  const getA = kpNilaiKiriman(A.daftar.map((x) => ({ koleksi: x.koleksi, id: x.id, lama: x.data, hapus: true })), null, rencana).perluGet;
-  const getPulih = kpNilaiKiriman(A.daftar.map((x) => ({ koleksi: x.koleksi, data: x.data })), null, rencana).perluGet;
-  const potong = Math.ceil(A.n / KP_BATAS_GET); const muat = KOLEKSI.reduce((s, k) => s + cacheMentah(k.cache).length, 0);
+  // v7: bulan terkunci → jalur pintu (2–3 access call per catatan; tiap access call = 1 baca di tagihan Firestore) & potongan arsip lebih kecil
+  const sK = kunciSampai(); const PP = sK ? { tahun, sampai: Infinity } : null;
+  const getP = kpNilaiKiriman(P.dokumen.map((x) => ({ koleksi: x.koleksi, data: x.data })), sK, rencana, PP).perluGet + (PP ? 1 : 0); const nKirim = Math.max(1, Math.ceil(getP / KP_BATAS_GET));
+  const bA = bkBiayaArsip(A.daftar, (x) => ({ koleksi: x.koleksi, id: x.id, lama: x.data, hapus: true, arsip: true }), rencana, tahun); const getA = bA.reduce((a, x) => a + x, 0);
+  const getPulih = bkBiayaArsip(A.daftar, (x) => ({ koleksi: x.koleksi, data: x.data, pulih: true }), rencana, tahun).reduce((a, x) => a + x, 0);
+  const potong = kpPecahBiaya(bA, KP_BATAS_GET, KP_BATAS_GET).length; const muat = KOLEKSI.reduce((s, k) => s + cacheMentah(k.cache).length, 0);
   // ritual: pembuka + jejaknya, penanda (pengaturan ×2, berita acara berjalan/terkunci), arsip (salinan + jejak per potongan), hasil periksa, 2 catatan cadangan
   const aturan = 4 + (nKirim > 1 ? 1 : 0);
   const ritual = { tulis: 2 * (nP + aturan) + A.n + potong + 2 + 4, hapus: A.n, baca: muat + getP + getA + nP + aturan + potong };

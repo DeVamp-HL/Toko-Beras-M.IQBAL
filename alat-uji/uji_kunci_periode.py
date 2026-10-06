@@ -188,7 +188,9 @@ var bl1 = susunBonLama({ pemasok: 'PEMASOK CONTOH', ketik: '5.000.000', tgl: '20
 ok('bon lama pemasok (K4): bertanggal bulan terkunci / tanpa tanggal → bonTanggal HARI INI, tanggal aslinya di catatan; bertanggal bulan terbuka → apa adanya',
   bl1.dokumen[0].data.bonTanggal === '2026-09-24' && /tanggal bon asli 2026-08-10/.test(bl1.dokumen[0].data.catatan) && bl2.dokumen[0].data.bonTanggal === '2026-09-10' && bl3.dokumen[0].data.bonTanggal === '2026-09-24' && /tidak diketahui/.test(bl3.dokumen[0].data.catatan));
 pada('2027-01-05T10:00:00+07:00'); var TB = tahunBuku(kini()); pada('2026-09-24T10:00:00+07:00');
-ok('tutup buku (K1): tahun yang punya bulan terkunci → sungguhan DITOLAK dengan kalimat (arsip tidak boleh menghapus catatan)', !TB.bolehSungguhan && TB.adaKunci && /arsip tidak boleh menghapus/.test(TB.teks), J(TB));
+// owner 7 Okt (K8, rules v7): tahun yang punya bulan terkunci TETAP bisa ditutup sungguhan — lewat pintu tutup buku (dulu ditolak = buntu Januari 2028).
+// Ritual lengkapnya (pintu, arsip, Batalkan, catatan terkunci lain tetap terkunci) dijaga alat-uji/uji_tutup_buku_2027.py.
+ok('tutup buku (K1 → K8): tahun yang punya bulan terkunci → sungguhan BOLEH lewat pintu tutup buku, kalimatnya menyebut pintu & catatan terkunci lain tetap terkunci', TB.bolehSungguhan && TB.adaKunci && TB.perluPintu && /pintu tutup buku/.test(TB.teks) && /tetap tidak bisa diubah/.test(TB.teks), J(TB));
 
 // ---- 4 · penjaga pusat (toko.js) — semua tulisan layar
 var a1 = ambilPenjualanSemua().find(function (p) { return p.id === 'a1'; });
@@ -399,7 +401,7 @@ if __name__ == '__main__':
             'SATUKAN memindah bon bulan terkunci': js.replace("  if (bonKunci) return { tolak:", "  if (false) return { tolak:"),
             'upah menulis biaya bulan terkunci (K5)': js.replace("Object.keys(perBulan).forEach((b) => { if (b === bulanBayar || !(tolakKunciTanggal(b + '-01', '') || upTahunDitutup(b))) return;", "Object.keys(perBulan).forEach((b) => { if (true) return;"),
             'bon lama tetap bertanggal bulan terkunci (K4)': js.replace("const keHariIni = !!sampai && (!D.tgl || D.tgl.slice(0, 7) <= sampai);", "const keHariIni = false;"),
-            'tutup buku tidak peduli kunci (K1)': js.replace("const sampai = kunciSampai(); const adaKunci = !!sampai && sampai >= tahun + '-01';", "const sampai = kunciSampai(); const adaKunci = false;"),
+            'tutup buku tidak peduli kunci (K8: tahun berbulan terkunci tanpa pintu tutup buku)': js.replace("const perluPintu = !!sampai;", "const perluPintu = false;"),
             # penjaga pusat & bertahap
             'penjaga pusat tanpa batas pemeriksaan': js.replace("if (N.perluGet > KP_BATAS_GET) return { gagal: true,", "if (false) return { gagal: true,"),
             'pajak ikut dikunci (melawan K6)': js.replace("  biayaBulanan: 'bulan', tutupHari: 'tanggal',", "  biayaBulanan: 'bulan', pajakSetoran: 'tanggalSetor', tutupHari: 'tanggal',"),

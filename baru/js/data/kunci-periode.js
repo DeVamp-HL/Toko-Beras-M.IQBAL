@@ -89,18 +89,68 @@ export function kpBulanOp(op) {
   if (!op.lama || (op.koleksi === 'pengaturan' && String(op.data.id) === 'titikKas')) return b;
   const l = kpBulanDok(op.koleksi, op.lama); if (b === null) return l; if (l === null) return b; return Math.min(b, l);
 }
+// ---- PINTU TUTUP BUKU (rules v7, keputusan owner 7 Okt K8 "pengecualian sempit") — inti klien yang SAMA dengan firestore.rules pintuTahun / pintuTulis /
+// pintuHapus / pintuTitik / pintuSah. Dokumen pengaturan/pintuBuku = { id, tahun: Y, status: 'berjalan' | 'tutup', sampai: Date (Timestamp di server) }.
+// Selama terbuka & belum lewat `sampai`, OWNER boleh (hanya untuk catatan bertanggal ≤ Desember Y yang bulannya terkunci): membuat saldo pembuka tahun Y
+// (tutupBuku + tahunDari Y), menghapus saldo pembuka tahun Y, menghapus catatan yang salinannya ikut ditulis ke arsipTahun di batch yang sama (op.arsip),
+// mengembalikan catatan dari arsip Y (op.pulih — isinya sama dengan salinannya), dan menulis titik kas bertanggal ≤ 31 Des Y. Tidak ada pintu untuk ubah.
+// Access call di server (cache tidak diandalkan): 1 (kunci) + 1 (pintu) + 1 (salinan arsip, hanya arsip & pulih). Membuka pintu: 1 (berita acara).
+export const KP_ID_PINTU = 'pintuBuku';
+export const KP_PINTU_JAM_MAKS = 72;   // = rules pintuSah(): sampai ≤ jam server + 72 jam
+export const KP_PINTU_JAM = 48;        // umur yang ditulis aplikasi (jam perangkat): sisa 24 jam untuk jam HP yang kecepatan
+export const KP_PINTU_SISA_JAM = 12;   // pintu yang tinggal < 12 jam diperbarui (dibuka lagi) sebelum arsip / pembatalan dilanjutkan
+export const KP_KOLEKSI_PINTU = ['penjualan', 'batchMasuk', 'produksiKemasan', 'retur', 'pengeluaranHarian', 'setoranKas', 'penyesuaianKemasan', 'amplopLaba', 'modalOwner',
+  'utangPemasokMutasi', 'utangOwnerMutasi', 'stokBahanKemasan', 'stokBahanLiteran', 'piutangMutasi', 'kasbonMutasi', 'penyesuaianStok', 'tutupHari', 'biayaBulanan'];   // = koleksi yang diarsip tutup buku (tbDaftarKoleksi ∩ KP_KOLEKSI; periksa_rules.py & uji_tutup_buku_2027.py)
+/** Milidetik dari nilai waktu apa pun yang mungkin dipegang cache: Date, Timestamp Firestore (toMillis), {seconds} (berkas cadangan), angka, teks ISO. */
+export function kpMs(v) {
+  if (v === null || v === undefined) return NaN;
+  if (v instanceof Date) return v.getTime();
+  if (typeof v.toMillis === 'function') return v.toMillis();
+  if (typeof v === 'object' && v.seconds !== undefined) return Number(v.seconds) * 1000 + Math.floor(Number(v.nanoseconds || 0) / 1e6);
+  if (typeof v === 'number') return v;
+  return Date.parse(String(v));
+}
+/** Pintu yang TERBUKA menurut dokumen d pada jam kini → { tahun, sampai (ms) } atau null (tidak ada / tutup / lewat / bentuk salah). */
+export function kpPintu(d, kini) {
+  if (!d || d.status !== 'berjalan') return null; const y = Number(d.tahun); const s = kpMs(d.sampai); const t = kini instanceof Date ? kini.getTime() : Date.now();
+  return Number.isFinite(y) && y > 0 && Number.isFinite(s) && s > t ? { tahun: Math.trunc(y), sampai: s } : null;
+}
+/** Satu operasi bulan terkunci lewat pintu? → access call TAMBAHAN di luar pemeriksaan kunci (1 pembuka / titik kas, 2 arsip / pulih) atau 0 (ditolak). */
+export function kpLewatPintu(op, b, pintu) {
+  if (!pintu || !(b <= pintu.tahun * 12 + 12)) return 0;
+  const y = pintu.tahun; const pembuka = (d) => !!d && d.tutupBuku === true && Number(d.tahunDari) === y;
+  if (op.koleksi === 'pengaturan') return op.data && String(op.data.id) === 'titikKas' && !op.hapus ? 1 : 0;
+  if (KP_KOLEKSI_PINTU.indexOf(op.koleksi) < 0) return 0;
+  if (op.hapus) return pembuka(op.lama) ? 1 : op.arsip ? 2 : 0;
+  if (op.lama) return 0;   // dokumen sudah ada = UBAH → tidak ada pintu untuk ubah
+  return pembuka(op.data) ? 1 : op.pulih ? 2 : 0;
+}
 /**
- * Nilai satu kiriman. ops = [{ koleksi, data?, lama?, hapus? }]. Kembali: { terkunci: [{ koleksi, id, bulan }], perluGet (owner & kasir@), lewatTenggang (bukan-owner) }.
- * perluGet = jumlah operasi yang di server memanggil get() dokumen kunci — tulisan bertanggal bulan lampau di luar masa tenggang (cache TIDAK diandalkan).
+ * Nilai satu kiriman. ops = [{ koleksi, data?, lama?, hapus?, arsip?, pulih? }]. Kembali: { terkunci: [{ koleksi, id, bulan }], perluGet (owner & kasir@), lewatTenggang
+ * (bukan-owner), lewatPintu }. perluGet = jumlah access call server untuk kunci — 1 per tulisan bertanggal bulan lampau di luar masa tenggang (cache TIDAK
+ * diandalkan) — DITAMBAH jalur pintu tutup buku (pintu = kpPintu(…) atau null; hanya dinilai bila `sampai` diberikan) dan pembukaan pintu (1).
  */
-export function kpNilaiKiriman(ops, sampai, kini) {
-  const out = { terkunci: [], perluGet: 0, lewatTenggang: [] };
+export function kpNilaiKiriman(ops, sampai, kini, pintu) {
+  const out = { terkunci: [], perluGet: 0, lewatTenggang: [], lewatPintu: 0 };
   (ops || []).forEach((op) => {
+    if (op.koleksi === 'pengaturan' && !op.hapus && op.data && String(op.data.id) === KP_ID_PINTU && op.data.status === 'berjalan') out.perluGet += 1;   // pintuSah: getAfter berita acara
     const b = kpBulanOp(op); if (b === null || b === 'sama') return;
     const id = String((op.data && op.data.id) || (op.lama && op.lama.id) || op.id || '');
-    if (sampai && b <= kpIdx(sampai)) out.terkunci.push({ koleksi: op.koleksi, id, bulan: kpBulanStr(b) });
-    if (!kpBebas(b, kini)) { out.perluGet += 1; out.lewatTenggang.push({ koleksi: op.koleksi, id, bulan: kpBulanStr(b) }); }
+    let tambah = 0;
+    if (sampai && b <= kpIdx(sampai)) { tambah = kpLewatPintu(op, b, pintu); if (tambah) out.lewatPintu += 1; else out.terkunci.push({ koleksi: op.koleksi, id, bulan: kpBulanStr(b) }); }
+    if (!kpBebas(b, kini)) { out.perluGet += 1 + tambah; out.lewatTenggang.push({ koleksi: op.koleksi, id, bulan: kpBulanStr(b) }); }
   });
+  return out;
+}
+/** Pecah daftar biaya (access call per butir) jadi potongan: ≤ batasN butir dan ≤ batasGet access call per potongan → [[awal, akhir)…]. Butir > batasGet = sendiri. */
+export function kpPecahBiaya(biaya, batasN, batasGet) {
+  const out = []; let a = 0, g = 0;
+  for (let i = 0; i < biaya.length; i += 1) {
+    const x = Number(biaya[i]) || 0;
+    if (i > a && (i - a >= batasN || g + x > batasGet)) { out.push([a, i]); a = i; g = 0; }
+    g += x;
+  }
+  if (a < biaya.length) out.push([a, biaya.length]);
   return out;
 }
 /** Kalimat penolakan yang sama di semua layar. */
@@ -111,11 +161,12 @@ export function kpKalimat(bulan, pembalik) { return 'Bulan ' + kpNamaBulan(bulan
  * kelompok = [{ dokumen: [{ koleksi, data }], hapus: [{ koleksi, id }] }] — satu kelompok = satu kesatuan yang tidak boleh terbelah (mis. baris pengganti + asal yang ditandai).
  * cariLama(koleksi, id) → dokumen lama di cache (untuk menilai update/hapus). Kembali { potongan: [{ dokumen, hapus, get }] } atau { tolak }.
  */
-export function kpPotong(kelompok, cariLama, kini) {
-  const potongan = []; let kini_ = { dokumen: [], hapus: [], get: 0 };
+export function kpPotong(kelompok, cariLama, kini, opsi) {
+  // opsi = { sampai, pintu } (tutup buku v7): biaya jalur pintu tutup buku ikut dihitung — tanpa opsi = seperti dulu (1 per tulisan bulan lampau)
+  const o = opsi || {}; const potongan = []; let kini_ = { dokumen: [], hapus: [], get: 0 };
   for (let i = 0; i < (kelompok || []).length; i++) {
     const k = kelompok[i]; const ops = (k.dokumen || []).map((x) => ({ koleksi: x.koleksi, data: x.data, lama: cariLama(x.koleksi, x.data.id) })).concat((k.hapus || []).map((x) => ({ koleksi: x.koleksi, id: x.id, lama: cariLama(x.koleksi, x.id), hapus: true })));
-    const g = kpNilaiKiriman(ops, null, kini).perluGet;
+    const g = kpNilaiKiriman(ops, o.sampai || null, kini, o.pintu || null).perluGet;
     if (g > KP_BATAS_GET) return { tolak: 'Satu bagian kiriman ini sendiri menyentuh ' + g + ' catatan bulan lampau (batas ' + KP_BATAS_GET + ' sekali kirim) — tidak bisa dipecah lebih kecil' };
     if (kini_.get + g > KP_BATAS_GET && (kini_.dokumen.length || kini_.hapus.length)) { potongan.push(kini_); kini_ = { dokumen: [], hapus: [], get: 0 }; }
     kini_.dokumen = kini_.dokumen.concat(k.dokumen || []); kini_.hapus = kini_.hapus.concat(k.hapus || []); kini_.get += g;

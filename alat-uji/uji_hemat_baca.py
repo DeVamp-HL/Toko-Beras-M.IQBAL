@@ -676,6 +676,7 @@ TANPA_CAP = [
     (r"setDoc\(doc\(db, KK_KOLEKSI, KK_ID\), kkDokumen\(isi, kini\)\)", 'katalog kasir: bentuk dokumen beku (uji_katalog_kasir)'),
     (r"setDoc\(doc\(db, KOLEKSI_PERANGKAT, id\), isi\)", 'denyut perangkatStatus: kelas tetap; staf dibatasi keys().hasOnly — owner menambah capServer (gema jam server)'),
     (r"b\.set\(doc\(db, KOLEKSI_ARSIP, ", 'arsipTahun: tidak didengar (dibaca sekali saat batal tutup buku)'),
+    (r"b\.set\(doc\(db, KOLEKSI_FOTO_BON, String\(d\.id\)\), d\)", 'fotoBon (paket E-2): tidak didengar & bukan koleksi.js (dibaca sekali saat bon dibuka); rules v7 blok fotoBon membatasi bentuk & ukuran, tanpa ubah'),
     (r"klaim: \(dok\) => setDoc\(doc\(db, 'aturanToko', HB_ID_KLAIM\), dok\)", 'aturanToko/hematHarian: kelas tetap (didengar penuh semua perangkat owner)'),
 ]
 DENGAN_CAP = ['pasangCap(', 'capServer: serverTimestamp()', 'nisanDok(']

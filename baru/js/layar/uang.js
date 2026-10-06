@@ -304,6 +304,9 @@ export function pasangLayarUang(akar, opsi) {
       if (!h || h.gagal || h.antre) { set({ sibuk: false, progres: null, kabar: BK.kabarBerhentiBuku(k.lanjutan ? 'lanjut' : 'kunci', tahun, k.ke, k.total, h, k), kabarAwas: true }); return false; }
     }
     if (titik) setelTitik(titik);
+    // v7 (owner 7 Okt, K8): ada bulan terkunci → PINTU TUTUP BUKU dibuka / diperbarui (tinggal < 12 jam) SEBELUM arsip — server menerima arsip bulan terkunci
+    // hanya selama pintu tahun itu terbuka. Gagal = arsip belum dimulai (tidak ada yang berpindah); Lanjutkan mencoba lagi.
+    if (!(await bukaPintu(tahun, 'Arsip'))) return false;
     const A = BK.arsipBuku(tahun); set({ progres: { sudah: 0, total: A.n, satuan: 'dokumen dipindah ke arsip' } });
     // putaran 3 AAL1: daftar arsip dihitung SEKALI — sebelum tiap potongan berikutnya status berita acara di cache dibaca ulang; dibatalkan (perangkat lain) = berhenti
     // putaran 4 P4-3: juga sesudah potongan TERAKHIR (dulu `sudah < total` — potongan terakhir yang mendarat sesudah pembatalan tertinggal di arsip)
@@ -340,8 +343,17 @@ export function pasangLayarUang(akar, opsi) {
     try { cekEkor(); await kembalikan(r.pulih); cekEkor(); const sisaA = await bacaArsipTahun(tahun); cekEkor(); if (sisaA.length) await kembalikan(sisaA); cekEkor(); } catch (e) {
       const ulang = henti ? BK.pulihBalikBuku(tahun, potongTadi, r.percobaan) : []; if (ulang.length) { try { await arsipkanDokumen(tahun, ulang); } catch (e2) { console.error(e2); } }
       set({ sibuk: false, progres: null, kabar: henti || 'Pengembalian terhenti: ' + (e && e.message ? e.message : e) + ' — ketuk "Lanjutkan" untuk meneruskan pembatalan', kabarAwas: true }); return false; }
-    let h2 = null; try { h2 = await tulisDokumen([r.akhir], [], { tunggu: true }); } catch (e) { h2 = { gagal: true }; } if (!h2 || h2.gagal || h2.antre) { set({ sibuk: false, progres: null, kabar: 'Berita acara belum tercatat dibatalkan — ketuk "Lanjutkan"', kabarAwas: true }); return false; }
+    let h2 = null; try { h2 = await tulisDokumen(r.akhirDokumen || [r.akhir], [], { tunggu: true }); } catch (e) { h2 = { gagal: true }; } if (!h2 || h2.gagal || h2.antre) { set({ sibuk: false, progres: null, kabar: 'Berita acara belum tercatat dibatalkan — ketuk "Lanjutkan"', kabarAwas: true }); return false; }
     setelTitik(r.titik); set({ sibuk: false, progres: null, langkahB: LANGKAH_KOSONG(), parafB: { owner: false, saksi: false }, sesudahLive: null, bukaB: 'periksa', kabar: r.patch.kabar, kabarAwas: false }); return true;
+  }
+  // v7 (K8): pintu tutup buku (pengaturan/pintuBuku) sebelum arsip — BK.susunPintu = {} bila tidak perlu (tanpa bulan terkunci) atau masih segar. Pembatalan membuka /
+  // memperbarui pintunya di kiriman PERTAMA pembatalan (BK.susunBatal), tepat sebelum saldo pembuka ditarik & arsip dikembalikan
+  async function bukaPintu(tahun, apa) {
+    const Pn = BK.susunPintu(tahun, waktu()); if (!Pn.dokumen) return true;
+    let hp = null; try { hp = await tulisDokumen(Pn.dokumen, [], { tunggu: true }); } catch (e) { hp = { gagal: true, pesan: e && e.message ? e.message : String(e) }; }
+    if (hp && !hp.gagal && !hp.antre) return true;
+    set({ sibuk: false, progres: null, kabar: apa + ' ' + tahun + ' belum dimulai: pintu tutup buku belum terbuka di server' + (hp && hp.pesan ? ' (' + hp.pesan + ')' : '') + ' — tidak ada catatan yang berpindah. Sambungkan internet, lalu ketuk "Lanjutkan".', kabarAwas: true });
+    return false;
   }
   const bandingB = (s, T) => { const SB = BK.barisTahun(T.tahun); if (!s.langkahB.saldo) return BK.bandingBuku(SB, null); const P = BK.pembukaBuku(T.tahun, { idUnik: () => 0 }); return BK.bandingBuku(SB, BK.sesudahDariPembuka(P, SB)); };
   delegasi(akar, AKSI);

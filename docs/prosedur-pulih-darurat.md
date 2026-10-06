@@ -247,16 +247,22 @@ hari ritual tetap terhitung — jangan berjualan selama arsip berjalan.
 - Kartu menulis "Pemeriksaan tidak bisa dijalankan di perangkat ini": tutup lalu buka lagi aplikasinya sekali; kalau tetap, pegangannya pita tutup buku
   ("… semua baris sama") dan kedua berkas cadangan.
 
-## Buntu Januari 2028 — dicatat, BELUM dibangun (7 Okt 2026)
+## Buntu Januari 2028 — DITUTUP oleh pintu tutup buku (rules v7, owner 7 Okt 2026)
 
-Mulai 2027 kunci bulan berjalan (keputusan owner 1 Okt). Begitu SATU bulan 2027 dikunci, tutup buku 2027 sungguhan ditolak (`tahunBuku`: tahun yang
-punya bulan terkunci — arsipnya memindah catatan bulan terkunci, saldo pembuka piutang bertanggal utang tertua). Di saat yang sama butir ⛔
-"Tutup buku 2027 sudah selesai" (siap 2027 A2) menahan kunci bulan 2028 mana pun dan menyuruh menyelesaikan tutup buku di Uang › Tutup buku — yang
-justru mustahil. Akibatnya Januari 2028: tutup buku 2027 tidak bisa jalan, kunci bulan 2028 tidak bisa jalan.
+Mulai 2027 kunci bulan berjalan (keputusan owner 1 Okt). Dulu, begitu SATU bulan 2027 dikunci, tutup buku 2027 sungguhan ditolak, sementara butir ⛔
+"Tutup buku 2027 sudah selesai" (siap 2027 A2) menahan kunci bulan 2028 → buntu. Sejak rules v7 (K8, pengecualian sempit) ritualnya membuka **pintu tutup
+buku** (`pengaturan/pintuBuku`, owner, ≤ 72 jam, hanya selagi berita acara tahun itu berjalan) di kiriman pertamanya; selama terbuka server menerima
+saldo pembuka tahun itu, arsip catatan bulan terkunci (salinannya ditulis di batch yang sama), pengembalian arsip saat Batalkan, dan titik kas ≤ 31 Des —
+catatan bulan terkunci lainnya tetap tidak bisa diubah. Pintu ditutup bersama "selesai" / "dibatalkan".
 
-Penutupnya = **paket tutup buku 2027** (keputusan owner: pengecualian sempit; bentuknya dirancang di paket itu — bandingkan pilihan C/D di
-`docs/peta-kunci-periode.md`), harus siap **sebelum ritual 1 Jan 2028**. Sampai paket itu ada, butir itu di Januari 2028 memang belum punya jalan
-keluar dari layar.
+Yang perlu diingat saat ritual Januari 2028 (dan sesudahnya):
+- **Rules v7 harus yang terbit** (Console › Rules, baris 2 `ATURAN FIRESTORE v7 FINAL`). Rules v6 / v3 (jalan mundur darurat di atas) TIDAK punya pintu:
+  di bawahnya tutup buku tahun berbulan terkunci ditolak di kiriman pertama (tidak ada yang tertulis) — tempel v7 lagi dulu.
+- Arsip bulan terkunci = 3 access call per catatan (= 3 baca di tagihan Firestore) dan 6 catatan per kiriman — lebih lambat dan lebih banyak baca dari
+  ritual 2026. Perkiraan kuota di langkah 1 sudah menghitungnya; kalau "TIDAK MUAT", arsip berhenti di tengah dan dilanjutkan sesudah reset kuota
+  (pintu dibuka lagi sendiri bila tinggal < 12 jam).
+- Batalkan juga lewat pintu (dibuka lagi di kiriman pembatalan pertama bila perlu). Pintu yang tertinggal terbuka (aplikasi tertutup di tengah) habis
+  sendiri paling lama 72 jam sesudah dibuka.
 
 ## Hemat baca (sejak 7 Okt 2026 — `docs/rancangan-hemat-baca.md`)
 

@@ -100,7 +100,7 @@ jobs:
         run: python3 alat-uji/uji_akses_baru.py && python3 alat-uji/uji_akses_baru.py --kontrol
       - name: "Kisi SS2 ditegakkan penjaga (audit 39b no. 22): nego & potongan, hak yang diputar owner, kisi bawaan tanpa tolak palsu — fungsi susun asli (kotak pasir + kontrol)"
         run: python3 alat-uji/uji_kisi_ss2.py && python3 alat-uji/uji_kisi_ss2.py --kontrol
-      - name: "firestore.rules v7 (draf, hemat baca) — pemeriksa statis (tanpa payung, kunci periode di tiap koleksi bertanggal, blok per koleksi, owner via email, jalur kasir@, uid penulis termasuk stafBuatWadah/stafBuatLahir (39), peran = akses.js, berita acara tutup buku hanya maju — model; v7 = v6 + kirim ulang kasir@ bercap di penjualan + batu nisan owner, selebihnya sama dengan firestore.rules.v6) + kontrol"
+      - name: "firestore.rules v7 FINAL (draf) — pemeriksa statis (tanpa payung, kunci periode di tiap koleksi bertanggal, blok per koleksi, owner via email, jalur kasir@ dipangkas jadi kasir darurat saja, uid penulis termasuk stafBuatWadah/stafBuatLahir (39) & stafMintaNego, peran = akses.js, berita acara tutup buku hanya maju — model; v7 = v6 + kirim ulang kasir@ bercap + batu nisan + permintaan nego staf + foto bon + pintu tutup buku 2027, PERSIS daftar ubahan; penafsir rules mini menilai kasus Playground ★) + kontrol"
         run: python3 alat-uji/periksa_rules.py && python3 alat-uji/periksa_rules.py --kontrol
       - name: "Isian lokal (23d): tiap kolom ketik & kunci localStorage layar dijaga penjaga isian — statis + kontrol"
         run: python3 alat-uji/uji_isian_lokal.py && python3 alat-uji/uji_isian_lokal.py --kontrol
@@ -118,6 +118,8 @@ jobs:
         run: python3 alat-uji/uji_potret_tahun.py && python3 alat-uji/uji_potret_tahun.py --kontrol
       - name: "Paket C siap 2027 (8 Okt): kartu Pemeriksaan sesudah tutup buku di Uang › Tutup buku — aplikasi memeriksa sendiri (baris perbandingan beku tanpa catatan susulan / karcis telat, modal pembuka = neraca 31 Des, saldo pembuka & rak Jual & buku 25 kg saat tahun baru dibuka vs catatan hidup 31 Des, pajak dari potret per NTPN, tanpa stok minus, utang & piutang per orang; bon lama yang dibetulkan owner bukan beda); hanya membaca cache, data tak ada / ditolak / tanpa internet / salinan perangkat = belum bisa diperiksa; layar uang.js di jsc (kotak pasir + kontrol; asap cadangan lokal dilewati di CI)"
         run: python3 alat-uji/uji_periksa_sesudah.py && python3 alat-uji/uji_periksa_sesudah.py --kontrol
+      - name: "Tutup buku 2027 lewat PINTU (owner 7 Okt, K8 pengecualian sempit): tahun berbulan terkunci tetap bisa ditutup — jalankanBuku/jalankanBatal uang.js apa adanya, server tiruan mencatat tiap batch, TIAP batch dinilai teks firestore.rules (penafsir mini; ≤ 18 access call; perkiraan layar = server); catatan bulan terkunci lain tetap ditolak; Batalkan kembali persis; pintu kedaluwarsa & Lanjutkan (kotak pasir + kontrol)"
+        run: python3 alat-uji/uji_tutup_buku_2027.py && python3 alat-uji/uji_tutup_buku_2027.py --kontrol
 
       # ---- PUTARAN 25b — antrean kasir tidak boleh macet ----
       - name: "Batal karcis kasir darurat di /baru/ (25b): bentuk dokumen = mulaiBatalkanTrx sistem lama, alasan wajib, bulan terkunci ditolak (kotak pasir + kontrol)"

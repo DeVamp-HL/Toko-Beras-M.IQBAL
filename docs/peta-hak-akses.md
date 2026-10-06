@@ -23,7 +23,7 @@ langsung berlaku di perangkat. Rules tidak membaca kisi (tanpa `get()` ke `atura
 |---|---|---|---|---|---|
 | jualTunai | sendiri | sendiri | `simpanNota` → `susunNotaDokumen`; lalu `susunStrukKeluar` | `penjualan` create (1 per baris) · `stokBahanLiteran` create `tipe:'pakai'` (literan berkantong, id = baris+1) · `stokBahanKemasan`/`stokBahanLiteran` create `tipe:'pakai'` (baris wadah & repack, id+1) · `pesanan` **update** (kalau keranjang dari pesanan) · `strukKeluar` create (kiriman terpisah) | BUKA untuk ben & karyawan |
 | jualBon | sendiri | owner | sama + `piutangMutasi` create `tipe:'bayar'` (bayar sebagian di tempat) | seperti jualTunai + 1 | BUKA untuk ben; karyawan tertutup |
-| nego | owner | tidak | harga di bawah JATAH (owner 7 Okt, JS2-C: jatah = % margin per peran/akun, setelan `aturanToko/peran`; nego DALAM jatah = `negoStatus:'jatah'` + `negoBatas` + `negoJatah` ≤ jatah akun, atau `negoStatus:'disetujui'` + `negoSetujuId` bukan tindakan ini) & potongan nota (`potonganTransaksi`) | `penjualan` create (kolom itu) · permintaan nego = `persetujuan` create `tindakan:'nego'`, `status:'menunggu'` | dalam jatah: BUKA di perangkat (rules tidak membaca kolom nego); di bawah jatah: tertutup di perangkat (penjaga `periksaKiriman` + tombol); **permintaan ke owner menunggu rules** — `persetujuan` masih owner saja (lihat laporan paket Jual 7 Okt) |
+| nego | owner | tidak | harga di bawah JATAH (owner 7 Okt, JS2-C: jatah = % margin per peran/akun, setelan `aturanToko/peran`; nego DALAM jatah = `negoStatus:'jatah'` + `negoBatas` + `negoJatah` ≤ jatah akun, atau `negoStatus:'disetujui'` + `negoSetujuId` bukan tindakan ini) & potongan nota (`potonganTransaksi`) | `penjualan` create (kolom itu) · permintaan nego = `persetujuan` create `tindakan:'nego'`, `status:'menunggu'` | dalam jatah: BUKA di perangkat (rules tidak membaca kolom nego); di bawah jatah: tertutup di perangkat (penjaga `periksaKiriman` + tombol); **permintaan ke owner = rules v7** `stafMintaNego` (create `persetujuan` hanya `tindakan 'nego'`, `status 'menunggu'`, `negoUid` = `olehUid` = uid sendiri, tanpa kolom keputusan) + baca `persetujuan`; memutus tetap owner |
 | terimaBon | sendiri | sendiri | `susunBayarBon` (bon-logika) | `piutangMutasi` create `tipe:'bayar'` | BUKA |
 | hitungLaci | sendiri | tidak | `susunTutup` (tutup-hari-logika) | `pengaturan/titikKas` **timpa** (laci, rekening, amplop, brankas) · `amplopLaba`/`setoranKas`/`modalOwner`/`pindahUang`/`pengeluaranHarian` ber-id per tanggal (tutup ulang = **timpa**) · `penyesuaianStok`, `pengeluaranHarian` **hapus** | **TERTUTUP** — lihat §6 |
 | uangKeluar | owner | tidak | `susunKeluar` | `pengeluaranHarian`, `kasbonMutasi` | tertutup |
@@ -65,7 +65,8 @@ Daftar baca **ben & karyawan** = gabungan Jual (19) + Pelanggan (10) + Stok (20)
 Dikurangi dengan sengaja: `koreksiHpp` & `aturanToko/hpp` (HPP = hargaBeli `tidak`), `thrPelanggan`, `cadanganCatatan` & `logAktivitas`
 (dibaca lembar Bersihkan & Sistem — owner), `bukuHapus` (riwayat hapus — owner). Semua koleksi uang (`pengeluaranHarian`, `modalOwner`, `amplopLaba`,
 `setoranKas`, `tutupHari`, `pindahUang`, `kasbonMutasi`, `biayaBulanan`, `slipUpah`, `absenKaryawan`, `utangOwnerMutasi`, `utangPemasokMutasi`, `pemasokCatatan`,
-`titipanHarian`, `tutupBukuAcara`, `persetujuan`, `pengingat`, `pindahStok`, `tembusanStok`, `dokumenCetak`, `hargaPasar`, `hargaTerbit`, `pesananPemasok`) **tidak dibaca**.
+`titipanHarian`, `tutupBukuAcara`, `pengingat`, `pindahStok`, `tembusanStok`, `dokumenCetak`, `hargaPasar`, `hargaTerbit`, `pesananPemasok`) **tidak dibaca**.
+Rules v7 (owner 7 Okt, JS2-C): `persetujuan` DIBACA ben/karyawan (keputusan owner atas permintaan nego mereka — pendengar koleksi utuh).
 Akibat untuk pendengar (Tahap 3): `aturanToko` & `pengaturan` untuk bukan-owner didengarkan **per dokumen**, bukan per koleksi — rules
 tidak menyaring, jadi pendengar koleksi akan ditolak utuh.
 
@@ -172,7 +173,7 @@ Wajib lulus sebelum akun bukan-owner pertama disetujui (urutan lengkap: kepala `
   (`perangkatStatus`) APA SAJA (`allow create, update: if owner() || kasir() || …`, tanpa daftar kolom). Staf sudah dibatasi `affectedKeys().hasOnly`
   (§5 baris 2); kasir@ belum. Kolom yang kini dikirim kasir: `id, nama, akun, aplikasi, pada, antrean, gagal, versi` + `katalog` (kasir darurat, 25c) —
   daftar itulah batasnya.
-- **PIN operator dicabut (25c, 27 Sep):** `pengaturan/aksesKasir` (dibaca kasir@) ditulis `/baru/` tanpa `pin` — nama + aktif/libur saja. PIN yang sudah
+- **PIN operator dicabut (25c, 27 Sep):** `pengaturan/aksesKasir` (dulu dibaca kasir@; rules v7 mencabut bacanya — kasir darurat tidak memakainya) ditulis `/baru/` tanpa `pin` — nama + aktif/libur saja. PIN yang sudah
   tersimpan hilang dari server sesudah owner menekan "Cabut PIN operator" di Menu › Peran & persetujuan › Kasir & PIN.
 - **Daftar arsip produk belum terbaca staf (putaran 27).** `aturanToko/produkArsip` tidak ada di `DOK_STAF.aturanToko` (`data/akses.js`) dan tidak
   ada di daftar dokumen `aturanToko` yang boleh dibaca staf di rules v4. Akun staf tidak mendengarkannya sama sekali, jadi tidak ada penolakan server
@@ -359,10 +360,15 @@ server dan masuk daftar ditolak (`antre-lokal.js`), tidak hilang diam.
 | stok-tempat | `susunTempatBaru` | aturanToko buat? |
 | struk | `susunAturStruk` | aturanToko buat? |
 | struk | `susunStrukKeluar` | strukKeluar buat |
+| tutup-buku | `susunAmbilAlih` | tutupBukuAcara buat? |
 | tutup-buku | `susunAturBuku` | aturanToko buat? |
-| tutup-buku | `susunBatal` | pengaturan buat? · tutupBukuAcara ubah |
-| tutup-buku | `susunKunci` | amplopLaba buat? · batchMasuk buat? · kasbonMutasi buat? · pengaturan buat? · piutangMutasi buat? · produksiKemasan buat? · stokBahanKemasan buat? · stokBahanLiteran buat? · tutupBukuAcara buat? · utangOwnerMutasi buat? · utangPemasokMutasi buat? |
-| tutup-buku | `susunSelesai` | tutupBukuAcara ubah |
+| tutup-buku | `susunBatal` | pengaturan buat? · tutupBukuAcara buat?/ubah |
+| tutup-buku | `susunCatatSusulan` | pengaturan buat? |
+| tutup-buku | `susunKunci` | amplopLaba buat? · batchMasuk buat/buat? · kasbonMutasi buat? · modalOwner buat? · pengaturan buat? · piutangMutasi buat? · produksiKemasan buat? · stokBahanKemasan buat? · stokBahanLiteran buat? · tutupBukuAcara buat? · utangOwnerMutasi buat? · utangPemasokMutasi buat? |
+| tutup-buku | `susunPeriksaArsip` | pengaturan buat? |
+| tutup-buku | `susunPintu` | pengaturan buat? |
+| tutup-buku | `susunPutusanHari` | aturanToko buat? |
+| tutup-buku | `susunSelesai` | pengaturan buat? · tutupBukuAcara ubah |
 | tutup-hari | `susunAturTutup` | aturanToko buat? |
 | tutup-hari | `susunTutup` | amplopLaba buat? · modalOwner buat? · pengaturan buat? · pengeluaranHarian buat?/hapus · penyesuaianStok buat/hapus · pindahUang buat? · setoranKas buat? · tutupHari buat? |
 | uang | `susunAturKeluar` | aturanToko buat? |
@@ -397,3 +403,12 @@ server dan masuk daftar ditolak (`antre-lokal.js`), tidak hilang diam.
 | menu | 36: aksesAkun, amplopLaba, aturanToko, batchMasuk, biayaBulanan, cadanganCatatan, kasbonMutasi, katalogHargaKarung, katalogHargaKemasan, katalogHargaLiteran, logAktivitas, modalOwner, pelangganCatatan, pemasokCatatan, pengaturan, pengeluaranHarian, pengingat, penjualan, penyesuaianKemasan, penyesuaianStok, perangkatStatus, permintaanAkses, persetujuan, pesanan, pindahStok, pindahUang, piutangMutasi, produksiKemasan, retur, setoranKas, stokBahanKemasan, stokBahanLiteran, tagihPelanggan, utangOwnerMutasi, utangPemasokMutasi, wadahLiteran |
 
 tidak dibaca layar mana pun: titipanHarian
+
+## 10 · v7 FINAL (owner 7 Okt 2026) — yang berubah untuk peran & akun
+
+Rules v7 (`firestore.rules`, Playground `docs/uji-rules-v7.md`): **ben/karyawan** — create `persetujuan` hanya permintaan nego "menunggu" atas nama sendiri
+(`stafMintaNego`) + baca `persetujuan` (`akses.js` `BUAT_STAF.persetujuan`, `BACA_STAF`). **kasir@** — hanya kasir darurat: create `penjualan` + kirim
+ulangnya (tulis-ulang identik / bercap), denyut `perangkatStatus`, baca `ringkasanKasir`; DICABUT create & tulis-ulang `piutangMutasi` / `stokBahanLiteran`,
+create `logAktivitas`, baca `pengaturan/aksesKasir`. **owner** — `fotoBon` (paket E-2), `batuNisan` (hemat baca), dan pintu tutup buku
+(`pengaturan/pintuBuku`; bulan terkunci tahun yang ditutup hanya untuk saldo pembuka, arsip, pengembalian arsip & titik kas — tidak pernah untuk staf/kasir@).
+

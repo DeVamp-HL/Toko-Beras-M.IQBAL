@@ -10,7 +10,8 @@ CONTOH), jsc saja, TANPA peramban.
     hanya bila diizinkan + alasan dan tetap lewat owner; kisi "tidak boleh" → ditolak; karyawan tanpa jatah → tombol nego mati;
   · alur: tawar → minta owner (dokumen persetujuan tindakan 'nego') → owner memutus lewat papan persetujuan yang sama → harga dipakai SEKALI (negoSetujuId); baris
     bernego yang dibangun ulang diputus lagi; tiap nego tercatat di baris nota (negoSelisih, negoStatus, negoBatas, negoJatah, negoAlasan, negoSetujuId);
-  · penjaga kiriman: Ben dalam jatah lolos, permintaan nego ditolak selama rules belum membuka koleksi persetujuan (bentuknya sudah dijaga bila dibuka);
+  · penjaga kiriman: Ben dalam jatah lolos; permintaan nego ke owner LOLOS sejak rules v7 membuka koleksi persetujuan (akses.js BUAT_STAF / BACA_STAF —
+    periksa_rules.py menyamakan), bentuknya dijaga sama dengan rules stafMintaNego (menunggu, nego, atas nama sendiri, tanpa kolom keputusan);
   · Buku Nego: tiap nego hari ini + permintaan yang menunggu, total potongan; layar & Atur memakai rumus yang sama (statis).
 
     python3 alat-uji/uji_jual_nego.py            → N lulus · 0 gagal
@@ -114,9 +115,9 @@ ok('F: MINTA OWNER → satu dokumen persetujuan: tindakan nego, menunggu, milik 
   dM && dM.koleksi === 'persetujuan' && dM.data.tindakan === 'nego' && dM.data.status === 'menunggu' && dM.data.negoUid === 'uid-ben' && dM.data.barang === 'karung|Angsa|50' && dM.data.hargaMinta === batasA - 500 && dM.data.hargaAsli === t0.hargaAsli && dM.data.jumlah === 2
   && dM.data.nominal === (t0.hargaAsli - batasA + 500) * 2 && /Angsa 50 kg: Rp/.test(dM.data.teks) && rM.patch.negoMinta === null && /harga nota tetap/.test(rM.patch.kabar), J(rM));
 var kM = kirim(BEN, rM.dokumen);
-ok('F: penjaga kiriman: Ben belum boleh menulis permintaan (rules belum membuka koleksi persetujuan untuk bukan-owner) → DITOLAK di perangkat, tidak dikirim', !!kM.tolak, J(kM));
+ok('F: penjaga kiriman (rules v7 membuka persetujuan): permintaan nego Ben LOLOS — 1 dokumen + 1 baris jejak = 2 access call', !kM.tolak && kM.accessCall === 2, J(kM));
 var mb = bolehMintaOwner(BEN);
-ok('F: tombol MINTA OWNER untuk Ben MATI dengan kalimat sebab + jalan keluar (pakai batas jatah / owner yang mencatat); owner tidak perlu minta', !mb.boleh && /server belum membuka/.test(mb.kalimat) && /batas jatah/.test(mb.kalimat) && !bolehMintaOwner(OWN).boleh, J(mb));
+ok('F: tombol MINTA OWNER untuk Ben HIDUP (BUAT_STAF & BACA_STAF memuat persetujuan); owner tidak perlu minta', mb.boleh && !mb.kalimat && !bolehMintaOwner(OWN).boleh, J(mb));
 // owner memutus (papan persetujuan yang sama) — permintaan dianggap sudah sampai
 terapkanKeCache(rM.dokumen || []);
 ok('F: permintaan nego tampil di papan persetujuan owner (Menu › Sistem › Peran › Persetujuan) & Buku Nego: menunggu 1', ssPersetujuan(new Date()).menunggu.some(function (m) { return m.tindakan === 'nego' && /Angsa/.test(m.teks); }) && ngMenunggu().length === 1 && ngBuku('2026-10-07').menunggu === 1, J(ngBuku('2026-10-07')));
@@ -157,15 +158,16 @@ terap(terapkanNego(s, idK, tK.hargaAsli)); var tK3 = s.keranjang[0].trx;
 ok('C: mengetik harga katalog lagi → nego dilepas (tanpa kolom nego)', !tK3.nego && !tK3.negoStatus && !tK3.negoAlasan && tK3.hargaSatuan === tK.hargaAsli, J(tK3));
 terap({ keranjang: [] });
 
-// ---- H · permintaan nego bila rules kelak membukanya: bentuknya tetap dijaga penjaga kiriman
-BUAT_STAF.persetujuan = ['ben', 'karyawan']; BACA_STAF.push('persetujuan');
+// ---- H · rules v7 membuka permintaan nego untuk ben/karyawan: bentuknya dijaga penjaga kiriman PERSIS seperti rules stafMintaNego
 var dOk = JSON.parse(J(rM.dokumen || [{ koleksi: 'persetujuan', data: {} }])); var dSalah = JSON.parse(J(dOk)); dSalah[0].data.status = 'disetujui'; var dLain = JSON.parse(J(dOk)); dLain[0].data.tindakan = 'uangKeluar';
 var h1 = kirim(BEN, dOk), h2 = kirim(BEN, dSalah), h3 = kirim(BEN, dLain), h4 = kirim(KRY, dOk);
-ok('H: (seandainya rules dibuka) Ben mengirim permintaan nego "menunggu" → boleh; menyetujui sendiri / tindakan lain → DITOLAK; karyawan berkisi "tidak" → DITOLAK; tombol MINTA OWNER hidup',
+ok('H: Ben mengirim permintaan nego "menunggu" → boleh; menyetujui sendiri / tindakan lain → DITOLAK; karyawan berkisi "tidak" → DITOLAK; tombol MINTA OWNER hidup',
   !h1.tolak && !!h2.tolak && !!h3.tolak && /tidak boleh/.test(h4.tolak || '') && bolehMintaOwner(BEN).boleh, J([h1, h2, h3, h4]));
 var dOrangLain = JSON.parse(J(dOk)); dOrangLain[0].data.negoUid = 'uid-kry'; var h5 = kirim(BEN, dOrangLain);
 ok('H (tinjauan 7 Okt): permintaan nego atas nama akun LAIN (negoUid bukan uid pengirim) → DITOLAK penjaga kiriman', !!h5.tolak, J(h5));
-delete BUAT_STAF.persetujuan; BACA_STAF.pop();
+// rules v7 stafMintaNego: kolom keputusan apa pun (diputusPada / diputusTanggal / diputusJam / alasanTolak) ditolak server → penjaga menolak lebih dulu
+var hK = ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].map(function (k) { var d = JSON.parse(J(dOk)); d[0].data[k] = k === 'alasanTolak' ? '' : '2026-10-07'; return kirim(BEN, d); });
+ok('H (rules v7): permintaan yang membawa kolom keputusan (diputusPada / diputusTanggal / diputusJam / alasanTolak, walau kosong) → DITOLAK penjaga kiriman', hK.every(function (x) { return !!x.tolak; }), J(hK));
 
 // ---- K · tinjauan 7 Okt: nego + bonus tidak membuat uang baris di bawah modal tanpa izin (modal per satuan BAYAR)
 var sK = keadaanAwal(); sK.sekarang = new Date('2026-10-07T10:00:00+07:00');
@@ -323,7 +325,9 @@ RUSAK = [
     ('nego minta owner tetap mengubah harga baris', JL, "if (p.status === 'minta') return { negoMinta: { id, harga: p.harga, batas: p.batas, alasan: p.alasan, teks: p.teks },", "if (p.status === 'minta') return { keranjang: s.keranjang.map((x) => (x.id === id ? { id, trx: selesaikanHarga(Object.assign({}, b.trx, { hargaSatuan: p.harga }), false) } : x)), negoMinta: { id, harga: p.harga, batas: p.batas, alasan: p.alasan, teks: p.teks },"),
     ('baris bernego dibangun ulang tanpa diputus lagi', JL, "  if (!baru || !baru.nego) return { trx: baru };\n  const r = ngPutusUlang(", "  return { trx: baru };\n  const r = ngPutusUlang("),
     ('nota tidak mencatat status nego', JL, "  if (e.nego) { t.nego = true; NG_KOLOM.forEach((k) => { if (e[k] !== undefined) t[k] = e[k]; }); }", "  if (e.nego) { t.nego = true; }"),
-    ('penjaga: permintaan nego tanpa memeriksa bentuk', AK, "if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || d.diputusPada || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };", ""),
+    ('penjaga: permintaan nego tanpa memeriksa bentuk', AK, "if (x.koleksi === 'persetujuan' && (d.tindakan !== 'nego' || d.status !== 'menunggu' || ['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].some((k) => k in d) || (hak.nego || 'tidak') === 'tidak' || String(d.negoUid || '') !== String(akun.uid || ''))) return { tolak: tolakTindakan('nego') };", ""),
+    ('rules v7: penjaga hanya memeriksa diputusPada (alasanTolak kosong lolos — server menolaknya)', AK, "['diputusPada', 'diputusTanggal', 'diputusJam', 'alasanTolak'].some((k) => k in d)", "d.diputusPada"),
+    ('rules v7: persetujuan tidak dibuka untuk staf di akses.js (tombol MINTA OWNER mati walau server membuka)', AK, "batchMasuk: ['ben', 'karyawan'], persetujuan: ['ben', 'karyawan'] };", "batchMasuk: ['ben', 'karyawan'] };"),
     ('Atur menerima jatah karyawan > 100 %', SL, "|| angka('jatahKaryawan', 0, 100, '%')", ""),
     ('Atur tidak menyaring kunci "di bawah modal"', SL, ".filter((k, i, L) => kenal.indexOf(k) >= 0 && L.indexOf(k) === i)", ""),
     ('tinjauan 7 Okt: modal per unit FISIK (bonus menekan modal per satuan → nego + bonus di bawah modal lolos)', NG, "const j = Number(t && t.jumlah) || 0;\n  return hpp > 0 && j > 0 ? hpp / j : null;", "const j = (Number(t && t.jumlah) || 0) + (t && t.jenis === 'kemasan' ? Number(t.bonusUnit) || 0 : 0);\n  return hpp > 0 && j > 0 ? hpp / j : null;"),
