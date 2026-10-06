@@ -41,6 +41,7 @@ PROYEK = re.search(r"export const PROYEK_TIRUAN = '([^']+)';", open(os.path.join
 EMAIL_OWNER = re.search(r"export const EMAIL_OWNER = '([^']+)';", open(os.path.join(AKAR, 'baru/js/data/akses.js'), encoding='utf-8').read()).group(1)
 EMAIL_KARYAWAN = 'karyawan.contoh@gladi.contoh'
 SPARK = {'baca': 50000, 'tulis': 20000, 'hapus': 20000}
+TOKO_ARSIP = 17000   # proyeksi dokumen tahun 2026 di toko akhir Des (audit kesiapan: ±16,5–18 rb) — pengali "perkiraan skala toko" di ringkasan
 # tulisan LATAR (bukan tutup buku): denyut perangkat & katalog HP kasir yang diterbitkan owner otomatis
 LATAR = {'perangkatStatus', 'ringkasanKasir'}
 CHROME = next((p for p in ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser',
@@ -109,7 +110,7 @@ def id_dok(koleksi, d):
 
 
 def kosongkan():
-    rest('DELETE', FS + '/emulator/v1/projects/%s/databases/(default)/documents' % PROYEK)
+    rest('DELETE', FS + '/emulator/v1/projects/%s/databases/(default)/documents' % PROYEK, waktu=900)
     rest('DELETE', AUTH + '/emulator/v1/projects/%s/accounts' % PROYEK)
 
 
@@ -195,6 +196,25 @@ def banding_isi(awal):
     saring = lambda d: {k: v for k, v in d.items() if v}
     return {'sama': not saring(lebih) and not saring(kurang) and not saring(ubah), 'lebih': saring(lebih), 'kurang': saring(kurang), 'ubah': saring(ubah), 'contohUbah': contoh,
             'arsip': arsip, 'dokumen': sum(len(v) for v in kini.values())}
+
+
+# Firestore emulator menulis firestore-debug.log di folder kerja emulators:exec. "too many pending messagings in the back channel" = antrean WebChannel
+# emulator penuh (10.000 pesan) → kanal diputus, pendengar halaman tidak menerima data. Dihitung per skenario supaya penyebabnya terbaca, bukan ditebak.
+LOG_EMULATOR = os.path.join(os.getcwd(), 'firestore-debug.log')
+_log_pos = [0]
+
+
+def log_emulator_baru():
+    """→ {'penuh': n baris antrean penuh, 'putus': n kanal diputus} sejak dipanggil terakhir (0 kalau log tidak ada)."""
+    try:
+        with open(LOG_EMULATOR, 'rb') as f:
+            f.seek(_log_pos[0]); n = {'penuh': 0, 'putus': 0}
+            while True:
+                b = f.read(8 << 20)
+                if not b: break
+                n['penuh'] += b.count(b'too many pending messagings'); n['putus'] += b.count(b'abort the channel')
+            _log_pos[0] = f.tell(); return n
+    except OSError: return {'penuh': 0, 'putus': 0}
 
 
 def cakupan_aturan():
@@ -287,7 +307,7 @@ const ringkasKM = () => { const k = BK.kemajuanBuku(); return k ? { fase: k.fase
 const acara = () => { const a = toko.ambilTutupBukuAcara().find((x) => Number(x.tahun) === 2026); return a ? { status: a.status, nPembuka: a.nPembuka, nArsip: a.nArsip, kiriman: a.rencana ? a.rencana.n : null } : null; };
 function potret() {
   const s = su(); const A = akarU();
-  const g = [...A.querySelectorAll('.tb-cek')].map((e) => ({ id: (e.dataset.k || '').replace(/^g-/, ''), ok: e.classList.contains('ok'), teks: (e.children[1] && e.children[1].children[0] ? e.children[1].children[0].textContent : ''), ket: (e.querySelector('.k') || {}).textContent || '' }));
+  const g = [...A.querySelectorAll('.tb-cek[data-k^="g-"]')].map((e) => ({ id: (e.dataset.k || '').replace(/^g-/, ''), ok: e.classList.contains('ok'), teks: (e.children[1] && e.children[1].children[0] ? e.children[1].children[0].textContent : ''), ket: (e.querySelector('.k') || {}).textContent || '' }));
   const tp = A.querySelector('[data-aksi="bkPeriksa"]'); const kartu = A.querySelector('[data-k="tb-lanjut"], [data-k="tb-selesaikan"]');
   return { modeB: s.modeB, langkahB: Object.assign({}, s.langkahB), kabar: s.kabar, kabarAwas: !!s.kabarAwas, selesaiLatihan: !!s.selesaiLatihan, sibuk: !!s.sibuk, bukaB: s.bukaB,
     gerbang: g, tombolPeriksa: tp ? { teks: tp.textContent.trim(), kelas: tp.className } : null, km: ringkasKM(), acara: acara(), era: BK.bkEra(),
@@ -469,7 +489,7 @@ def jalankan_skenario(nama, data, sandi, rusak=None, cetak=print, kait=None):
     harap = sum(len(v) for k, v in data.items() if isinstance(v, list) and k != 'logAktivitas') + min(150, len(data.get('logAktivitas', [])))
     K = {'konfig': {'email': EMAIL_OWNER, 'sandi': sandi, 'langkah': langkah, 'saksi': meta['saksi'][0], 'harapBaca': harap},
          'selesai': threading.Event(), 'hasil': None, 'langkah': [], 'kunci': threading.Lock()}
-    K['potret'] = potret(); K['baca'] = 0; K['t'] = time.time()
+    K['potret'] = potret(); K['baca'] = 0; K['t'] = time.time(); log_emulator_baru()
     def ukur(isi):
         with K['kunci']:
             p = potret(); tulis, hapus = beda(K['potret'], p); K['potret'] = p
@@ -477,6 +497,8 @@ def jalankan_skenario(nama, data, sandi, rusak=None, cetak=print, kait=None):
             r = {'nama': isi.get('nama'), 'detik': round(time.time() - K['t'], 1), 'baca': db, 'bacaPer': (isi.get('baca') or {}).get('perKoleksi'), 'tulis': sum(tulis.values()),
                  'hapus': sum(hapus.values()), 'tulisPer': tulis, 'hapusPer': hapus, 'info': isi.get('info') or {}}
             if (kait or {}).get(r['nama']): r['kait'] = kait[r['nama']]()
+            r['emulator'] = log_emulator_baru()
+            if r['emulator']['penuh']: cetak('    !! emulator: antrean WebChannel penuh %d kali, kanal diputus %d kali' % (r['emulator']['penuh'], r['emulator']['putus']))
             K['t'] = time.time(); K['langkah'].append(r)
             cetak('  · %-52s %6.1f dtk · baca %6d · tulis %6d · hapus %6d%s' % (r['nama'][:52], r['detik'], r['baca'], r['tulis'], r['hapus'],
                                                                              ('  [' + ', '.join('%s +%d' % x for x in sorted(tulis.items())) + ']') if tulis and r['tulis'] < 60 else ''))
@@ -518,6 +540,8 @@ def cek_umum(S, data, c, tolak_sengaja=()):
         if (ada < harap) or (k not in ('perangkatStatus', 'logAktivitas') and ada != harap): kurang[k] = (ada, harap)
     c.append(('muat penuh: semua koleksi siap, tak ada yang ditolak aturan, isi cache = data contoh per koleksi (%d dokumen)' % sum(len(v) for v in data.values() if isinstance(v, list)),
               I.get('koleksiSiap') == I.get('koleksiTotal') and not I.get('ditolak') and not I.get('galat') and not kurang, {'siap': [I.get('koleksiSiap'), I.get('koleksiTotal')], 'ditolak': I.get('ditolak'), 'galat': I.get('galat'), 'beda': kurang}))
+    penuh = sum((x.get('emulator') or {}).get('penuh', 0) for x in S['langkah'])
+    c.append(('emulator tidak kewalahan: antrean WebChannel tidak pernah penuh (batas emulator 10.000 pesan per kanal)', penuh == 0, {'penuh': penuh}))
     bocor = [x for x in S['konsol'] if ('permission' in x.lower() or 'FirebaseError' in x) and not any(k in x for k in tolak_sengaja)]
     c.append(('tidak ada galat izin / FirebaseError di konsol halaman' + (' (selain penolakan sengaja: ' + ', '.join(tolak_sengaja) + ')' if tolak_sengaja else ''), not bocor, bocor[:3]))
 
@@ -609,6 +633,11 @@ def ringkas_md(lap):
             sb += x['baca']; st += x['tulis']; sh += x['hapus']
             out.append('| %s%s | %s | %d | %d | %d | %.1f%% | %.1f%% | %.1f%% |' % (x['nama'], (' · _' + x['aturan'] + '_') if x.get('aturan') else '', x['detik'], x['baca'], x['tulis'], x['hapus'],
                                                                          100.0 * sb / SPARK['baca'], 100.0 * st / SPARK['tulis'], 100.0 * sh / SPARK['hapus']))
+        na = (lap['data'].get(S['varian']) or {}).get('nArsip')
+        if na:
+            f = TOKO_ARSIP / float(na)
+            out.append('| _perkiraan skala toko (±%s dokumen tahun 2026, × %.2f)_ | | | | | %.1f%% | %.1f%% | %.1f%% |' % (format(TOKO_ARSIP, ',').replace(',', '.'), f, 100.0 * sb * f / SPARK['baca'],
+                                                                                                        100.0 * st * f / SPARK['tulis'], 100.0 * sh * f / SPARK['hapus']))
         out += ['', 'Cek:']
         for x in S['cek']: out.append('- %s %s%s' % ('✓' if x['ok'] else '✗', x['nama'], '' if x['ok'] else ' — `' + json.dumps(x['ket'], ensure_ascii=False)[:500].replace('`', "'") + '`'))
         if S.get('galat'): out += ['', '```', S['galat'][:1500], '```']
@@ -629,7 +658,8 @@ def jalankan(daftar, sandi, rusak=None, cetak=print):
         if varian not in data_per:
             data_per[varian] = DC.bangun(varian)
             h, cacat = DC.periksa(data_per[varian], varian) if DC.jalan_js('print("{}")')[0] is not None else (None, [])
-            lap['data'][varian] = dict(data_per[varian]['gladi'], periksa=(DC.ringkas(h, data_per[varian]) if h and not cacat else ('; '.join(cacat) if cacat else 'tidak dinilai (tanpa jsc/node)')))
+            lap['data'][varian] = dict(data_per[varian]['gladi'], periksa=(DC.ringkas(h, data_per[varian]) if h and not cacat else ('; '.join(cacat) if cacat else 'tidak dinilai (tanpa jsc/node)')),
+                                       nArsip=(h or {}).get('latihan', {}).get('nArsip'))
         data = data_per[varian]
         if varian != varian_kini or nama == 'ritual':
             cetak('— data %s: kosongkan emulator, isi %d dokumen, akun owner & karyawan contoh' % (varian, data['gladi']['dokumen']))

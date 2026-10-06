@@ -13,7 +13,8 @@ VARIAN
   macet   (bawaan) 23 hari berjualan TANPA tutup hari (5 di Agustus, 15 September, 3 Oktober — pola yang sama dengan keadaan toko 6 Okt 2026):
           gerbang g1 tutup buku SUNGGUHAN wajib memblokir.
   bersih  semua hari berjualan ditutup: semua gerbang beres, ritual SUNGGUHAN bisa jalan sampai kunci.
-Dua-duanya: tidak ada stok / kemasan / kantong minus, tidak ada kelebihan bayar, tidak ada karcis yang belum dirinci, ±16–18 rb dokumen (--skala).
+Dua-duanya: tidak ada stok / kemasan / kantong minus, tidak ada kelebihan bayar, tidak ada karcis yang belum dirinci, ±9 rb dokumen (--skala / GLADI_SKALA,
+bawaan 0,65 — batas antrean pesan emulator, lihat SKALA_BAWAAN).
 
     python3 alat-uji/gladi_data_contoh.py --keluar data.json [--varian macet|bersih] [--benih N] [--skala 1.0]
     python3 alat-uji/gladi_data_contoh.py --periksa   → kedua varian dinilai LOGIKA /baru/ ASLI (jsc, atau node di runner Linux):
@@ -34,6 +35,10 @@ JAM_LATIHAN, JAM_SUNGGUHAN = '2026-12-31T21:45:00+07:00', '2027-01-01T15:30:00+0
 PERANGKAT_GLADI = 'p-gladi-runner'
 # rentang "skala toko" (proyeksi akhir Des ±16,5–18 rb dokumen arsip; tugas gladi: ±8–20 rb)
 RENTANG_DOK = (8000, 20000)
+# SKALA BAWAAN 0,65 (±9 rb dokumen, penjualan ±6 rb): Firestore EMULATOR membatasi 10.000 pesan antre per kanal WebChannel (run 7 Okt: data 17 rb →
+# "too many pending messagings in the back channel (10001)", pendengar tidak pernah menerima data, kanal diputus berulang). Server sungguhan tidak punya
+# batas itu. Angka baca/tulis/hapus hari ritual skala toko (±16,5–18 rb) = hasil gladi × (dokumen toko ÷ dokumen gladi) — laporan gladi menghitungnya.
+SKALA_BAWAAN = float(os.environ.get('GLADI_SKALA') or 0.65)
 # hari tanpa tutup hari varian macet: (bulan, jumlah) — pola keadaan toko 6 Okt 2026 (Agu 5 · Sep 15 · Okt 3)
 POLA_MACET = [(8, 5), (9, 15), (10, 3)]
 
@@ -57,8 +62,8 @@ def iso(d): return d.isoformat()
 
 
 class Pembangkit:
-    def __init__(self, benih=BENIH, varian='macet', skala=1.0):
-        self.r = random.Random(benih); self.varian = varian; self.skala = float(skala)
+    def __init__(self, benih=BENIH, varian='macet', skala=None):
+        self.r = random.Random(benih); self.varian = varian; self.skala = float(SKALA_BAWAAN if skala is None else skala)
         self.ids = set(); self.D = {}
         self.stok = {m: 0.0 for m, _, _ in MEREK}; self.nilai = {m: 0.0 for m, _, _ in MEREK}   # kg & nilai (rata-rata tertimbang, seperti mesin)
         self.hpp_dasar = {m: h for m, h, _ in MEREK}
@@ -164,19 +169,23 @@ class Pembangkit:
         pilih = [m for m, _, lit in MEREK if lit and self.stok[m] >= 60]
         if not pilih: return None
         m = self.r.choice(pilih); liter = self.r.choice([1, 1, 2, 2, 2, 3, 3, 5, 5, 5, 5, 10, 10]); kg = round(liter * RASIO_LITER, 2)
-        kantong = 'paperbag5l' if liter <= 5 else 'paperbag10l'
-        if self.bahan[kantong] < 1: self.beli_bahan(tgl, 'stokBahanLiteran', kantong, 1000, HARGA_PAPERBAG[kantong])
-        hk = self.hpp(m); hl = self.harga_liter(m); harga = liter * hl
+        # sepertiga nota literan memakai paper bag toko (dokumen 'pakai' id+1), sisanya wadah pembeli — perbandingan yang sama dengan cadangan toko
+        kantong = ('paperbag5l' if liter <= 5 else 'paperbag10l') if self.r.random() < 0.35 else None
+        if kantong and self.bahan[kantong] < 1: self.beli_bahan(tgl, 'stokBahanLiteran', kantong, 1000, HARGA_PAPERBAG[kantong])
+        hk = self.hpp(m); hl = self.harga_liter(m); harga = liter * hl; biaya = HARGA_PAPERBAG[kantong] if kantong else 0
         sid = self.id(tgl, jam, cadang=True)
         d = {'id': sid, 'tanggal': iso(tgl), 'jam': jam, 'jenis': 'literan', 'caraBayar': 'Tunai' if dari_darurat else self.cara(0.015, 0.012), 'merkSumber': m, 'namaProduk': m,
-             'jumlahLiter': liter, 'totalKg': kg, 'rasioPakai': RASIO_LITER, 'hargaTotal': harga, 'hargaAsliSatuan': hl, 'kemasanLiteran': kantong, 'jumlahKemasanLiteranDipakai': 1,
-             'biayaKemasanLiteran': HARGA_PAPERBAG[kantong], 'hppTotalSaatJual': int(round(hk * kg)) + HARGA_PAPERBAG[kantong], 'namaPelanggan': '', 'trxId': self.id(tgl, jam)}
+             'jumlahLiter': liter, 'totalKg': kg, 'rasioPakai': RASIO_LITER, 'hargaTotal': harga, 'hargaAsliSatuan': hl, 'jumlahKemasanLiteranDipakai': 1 if kantong else 0,
+             'biayaKemasanLiteran': biaya, 'hppTotalSaatJual': int(round(hk * kg)) + biaya, 'namaPelanggan': '', 'trxId': self.id(tgl, jam)}
+        if kantong: d['kemasanLiteran'] = kantong
         if dari_darurat:
             d.update({'koreksiDari': dari_darurat['id'], 'rinciDari': dari_darurat['id'], 'asalDarurat': True, 'grupNota': dari_darurat['grupNota'],
                       'dirinciPada': datetime.datetime(tgl.year, tgl.month, tgl.day, 20, 30, tzinfo=WIB).astimezone(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.000Z'),
                       'alasanKoreksi': 'Rincian dari kasir darurat (contoh)'})
-        self.tambah('stokBahanLiteran', {'id': sid + 1, 'tipe': 'pakai', 'jenis': kantong, 'jumlah': 1, 'hargaTotal': 0, 'tanggal': iso(tgl), 'jam': jam, 'catatan': 'Otomatis dari penjualan literan'})
-        self.bahan[kantong] -= 1; self.stok[m] -= kg; self.nilai[m] -= hk * kg
+        if kantong:
+            self.tambah('stokBahanLiteran', {'id': sid + 1, 'tipe': 'pakai', 'jenis': kantong, 'jumlah': 1, 'hargaTotal': 0, 'tanggal': iso(tgl), 'jam': jam, 'catatan': 'Otomatis dari penjualan literan'})
+            self.bahan[kantong] -= 1
+        self.stok[m] -= kg; self.nilai[m] -= hk * kg
         return self.isi_bayar(d)
 
     def jual_kemasan(self, tgl, jam):
@@ -359,7 +368,7 @@ class Pembangkit:
         return out
 
 
-def bangun(varian='macet', benih=BENIH, skala=1.0):
+def bangun(varian='macet', benih=BENIH, skala=None):
     return Pembangkit(benih, varian, skala).bangun()
 
 
@@ -520,7 +529,7 @@ if __name__ == '__main__':
             if c: print('DATA CONTOH %s GAGAL:' % v); [print('   ✗ ' + x) for x in c]; kode = 2
             else: print('DATA CONTOH %s LULUS: %s' % (v, ringkas(h, D[v])))
         sys.exit(kode)
-    data = bangun(opsi('--varian', 'macet'), int(opsi('--benih', BENIH)), float(opsi('--skala', 1.0)))
+    data = bangun(opsi('--varian', 'macet'), int(opsi('--benih', BENIH)), float(opsi('--skala', SKALA_BAWAAN)))
     keluar = opsi('--keluar', '')
     teks = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
     if keluar: open(keluar, 'w', encoding='utf-8').write(teks); print('data contoh %s: %d dokumen → %s' % (data['gladi']['varian'], data['gladi']['dokumen'], keluar))
