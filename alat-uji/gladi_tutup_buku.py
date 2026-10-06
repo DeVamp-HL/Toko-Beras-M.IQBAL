@@ -32,7 +32,7 @@ KELUARAN: laporan JSON (--keluar) + ringkasan Markdown (--ringkasan; workflow me
 
     python3 alat-uji/gladi_tutup_buku.py --keluar laporan.json --ringkasan ringkasan.md [--skenario latihan,gerbang,ritual]
     python3 alat-uji/gladi_tutup_buku.py --kontrol [N]        → kerusakan di SALINAN uji (latihan menulis, latihan menulis tertunda, gerbang g1 dibuang,
-                                                               data kurang dimuat, pemulihan arsip kurang satu) wajib membuat CEK SASARANNYA gagal, karena
+                                                               satu koleksi tidak lengkap, pemulihan arsip kurang satu) wajib membuat CEK SASARANNYA gagal, karena
                                                                kerusakan itu (bukti), dengan skenario yang jalan sampai akhir (keluar 3 kalau ada yang diam).
                                                                N = satu kontrol saja (workflow: tiap kontrol di emulator sendiri)
     python3 alat-uji/gladi_tutup_buku.py --jumlah-kontrol     → (boleh di Mac) jumlah kontrol
@@ -990,9 +990,12 @@ KONTROL = [
     {'nama': 'gerbang g1 tidak memblokir', 'skenario': 'gerbang', 'rusak': [('js/layar/tutup-buku-logika.js', "ok: belumPutus.length === 0,", "ok: true,")],
      'sasaran': 'gerbang g1 tampil MEMBLOKIR', 'boleh': ['tombol periksa redup', 'mengetuk periksa DITOLAK'],
      'bukti': ('g1 tampil beres saat SUNGGUHAN dipilih walau 23 hari belum diputus', lambda S: any(g['id'] == 'g1' and g['ok'] for g in (info(L_(S, 'SUNGGUHAN dipilih'), 'gerbang') or [])))},
-    {'nama': 'salinan tidak memuat satu koleksi (muat penuh tidak lengkap)', 'skenario': 'latihan', 'rusak': [('js/data/koleksi.js', "  { nama: 'pengeluaranHarian',   urut: 'id',    cache: 'harian' },\n", '')],
+    # run 7 Okt (#106): koleksi yang DIBUANG dari koleksi.js membuat layar Uang tidak tampil → skenario jatuh, dulu tetap dihitung "berbunyi". Kini koleksinya
+    # tetap didengar tetapi hanya 10 dokumen terbaru (pendengar berbatas, seperti jejak) — aplikasi jalan, data yang sampai di halaman kurang.
+    {'nama': 'salinan memuat satu koleksi tidak lengkap (muat penuh kurang)', 'skenario': 'latihan',
+     'rusak': [('js/data/koleksi.js', "  { nama: 'pengeluaranHarian',   urut: 'id',    cache: 'harian' },", "  { nama: 'pengeluaranHarian',   urut: 'id',    cache: 'harian', batas: 10 },")],
      'sasaran': 'muat penuh: semua koleksi siap', 'boleh': [],
-     'bukti': ('pengeluaranHarian disebut "tidak didengar halaman" di cek muat penuh', lambda S: 'pengeluaranHarian' in ((next((x['ket'] for x in S['cek'] if x['nama'].startswith('muat penuh')), None) or {}).get('beda') or {}))},
+     'bukti': ('cek muat penuh menyebut pengeluaranHarian hanya 10 dokumen di halaman', lambda S: (((next((x['ket'] for x in S['cek'] if x['nama'].startswith('muat penuh')), None) or {}).get('beda') or {}).get('pengeluaranHarian') or [None])[0] == 10)},
     {'nama': 'pemulihan arsip melewatkan satu dokumen (BATALKAN sesudah penanda)', 'skenario': 'ritualPendek',
      'rusak': [('js/data/firebase.js', "    potong.forEach((x) => { b.set(doc(db, x.koleksi, String(x.idAsli)), x.dok); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });",
                 "    potong.forEach((x, j) => { if (i + j === 0) return; b.set(doc(db, x.koleksi, String(x.idAsli)), x.dok); b.delete(doc(db, KOLEKSI_ARSIP, tahun + '|' + x.koleksi + '|' + x.idAsli)); });")],

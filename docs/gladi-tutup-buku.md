@@ -70,7 +70,7 @@ terkena), dan bukti kerusakannya terlihat di langkah yang benar. Ada lima kontro
 - latihan yang menulis di langkah 4;
 - latihan yang menulis 5,5 detik sesudah langkah terakhir (hanya langkah diam yang melihatnya);
 - gerbang g1 yang tidak memblokir;
-- salinan yang tidak memuat satu koleksi;
+- salinan yang memuat satu koleksi tidak lengkap (hanya 10 dokumen terbaru);
 - pemulihan arsip yang melewatkan satu dokumen (skenario `ritualPendek`: kunci penuh lalu BATALKAN sesudah penanda). Ini wajib ketahuan dari isi
   server.
 

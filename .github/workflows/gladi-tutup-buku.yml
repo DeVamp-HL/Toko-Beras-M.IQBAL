@@ -81,10 +81,10 @@ jobs:
           firebase --version; java -version; google-chrome --version
           firebase setup:emulators:firestore
 
-      - name: Data contoh dinilai logika /baru/ asli (31 Des LATIHAN 12 baris sama, gerbang per varian, 1 Jan kiriman bertahap ≤ 18) + kontrol
+      - name: Data contoh dinilai logika /baru/ asli (31 Des LATIHAN 12 baris sama, gerbang per varian, 1 Jan macet ditolak tanpa putusan lalu kiriman bertahap ≤ 18) + kontrol
         run: python3 alat-uji/gladi_data_contoh.py --periksa && python3 alat-uji/gladi_data_contoh.py --kontrol
 
-      - name: Salinan uji gladi (statis) — CSP salinan = CSP situs + alamat emulator saja, jam palsu, SDK penghitung
+      - name: Salinan uji gladi (statis) — connect-src salinan tanpa host Firebase sungguhan + alamat emulator, jam palsu, SDK penghitung, nama langkah & jangkar kontrol
         run: python3 alat-uji/gladi_tutup_buku.py --periksa-salinan
 
       # Proyek emulator di folder sementara: firebase.json gladi + SALINAN firestore.rules repo (byte sama; gladi juga memasang ulang teks repo lewat REST
@@ -133,7 +133,7 @@ jobs:
 
       # Tiap kontrol di EMULATOR SENDIRI (sama dengan skenario): sesi kanal halaman kontrol sebelumnya tidak boleh membanjiri muat kontrol berikutnya — kontrol
       # yang ceknya ikut gagal karena antrean emulator dihitung DIAM, bukan berbunyi.
-      - name: "KONTROL — salinan uji dirusak (latihan menulis, latihan menulis tertunda, gerbang g1 dibuang, satu koleksi tidak dimuat, pemulihan arsip kurang satu) wajib ketahuan karena sebab yang benar"
+      - name: "KONTROL — salinan uji dirusak (latihan menulis, latihan menulis tertunda, gerbang g1 dibuang, satu koleksi tidak lengkap, pemulihan arsip kurang satu) wajib ketahuan karena sebab yang benar"
         if: success() && (github.event_name == 'pull_request' || github.event.inputs.kontrol == 'true')
         working-directory: ${{ runner.temp }}/proyek-gladi
         run: |
