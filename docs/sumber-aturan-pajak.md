@@ -32,6 +32,11 @@ Semua sumber dilihat **24 September 2026**. Klaim yang belum terverifikasi tampi
   di luar sistem) — hanya tawaran; angka konsultan menang. Kolom lama `omzetTahunLalu` (tanpa peta) dibaca sebagai omzet 2025.
 - Tahun yang sudah **ditutup buku** dihitung dari potret berita acara (omzet mesin, nota, potongan nota per bulan) + isian di luar sistem & setoran yang
   tetap hidup; masa Desember dicatat di Januari dari layar tahun itu.
+- **Aturan per tahun pajak.** Jenis WP, status PKP, status pasangan, tarif, batas bebas, batas atas & sumber aturan tersimpan per tahun: mengubah aturan
+  tahun berjalan (layar Pajak atau DK3) membekukan aturan tahun lalu dengan nilai lamanya, dan mengubahnya dari layar tahun lalu hanya mengubah tahun itu.
+  Jadi PPh 2026 (rekap SPT 2026, status setoran Desember) tidak ikut berubah kalau tarif/batas 2027 diubah. Kalau aturan tahun yang sudah ditutup buku
+  berbeda dengan saat tahun itu dikunci, layar & cetakan menyebutnya beserta aturan dan perkiraan PPh saat dikunci.
+- Masa di tahun yang sudah ditutup buku = final (sama dengan Laporan): tidak ada peringatan "masih bisa bergeser" saat setoran dicatat.
 
 ## Yang ditemukan di sumber dan memengaruhi angka
 

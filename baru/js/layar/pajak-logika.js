@@ -94,9 +94,18 @@ export function pjAwalSistem() {
 
 // ==================== profil (field tambahan di aturanToko/rekapOmzet) ====================
 export const pjDokRekap = () => ugAturDok('rekapOmzet');
-/** Profil & aturan pajak terbaca. batasOmzet (lama) = BATAS ATAS Rp4,8 miliar — satu angka, tidak ada batasAtas terpisah (lihat BACA-DULU). */
-export function pjProfil() {
-  const d = pjDokRekap() || {}; const jenis = PJ_JENIS_WP.some((j) => j.id === d.jenisWp) ? d.jenisWp : 'belumDiketahui'; const pkp = PJ_STATUS_PKP.some((j) => j.id === d.statusPkp) ? d.statusPkp : 'belumDiketahui';
+// ---- Paket B (sanggahan, owner 7 Okt): ATURAN PER TAHUN PAJAK. Kolom lama dokumen = aturan TERBARU (tahun berjalan; DK3 & pembaca lama membacanya). `aturanTahun`
+// { 'YYYY': { …PJ_KOLOM_TAHUN } } = aturan tahun LALU: dibekukan dengan nilai lamanya begitu aturan terbaru diubah (pjGabungRekap), atau diubah dari layar Pajak
+// tahun itu sendiri. Tahun tanpa entri = aturan terbaru (belum pernah ada yang berubah sejak tahun itu). Jadi tarif/batas/status 2027 yang diubah tidak menghitung
+// ulang PPh 2026 (rekap SPT 2026, status setoran Desember) diam-diam. Nama WP, tahun mulai tarif final & omzet per tahun tetap satu untuk semua tahun.
+export const PJ_KOLOM_TAHUN = ['jenisWp', 'statusPkp', 'statusPasangan', 'tarifPerMil', 'batasBebas', 'batasOmzet', 'sumberAturan'];
+const pjPetaTahun = (d) => (d && d.aturanTahun && typeof d.aturanTahun === 'object' ? d.aturanTahun : {});
+/** Kolom aturan dari `o` — yang tidak ada = null (tersimpan tegas: "belum diatur" ikut dibekukan, tidak jatuh ke aturan terbaru). */
+const pjKolomAturan = (o) => { const out = {}; PJ_KOLOM_TAHUN.forEach((k) => { out[k] = o && o[k] !== undefined ? o[k] : null; }); return out; };
+/** Profil & aturan pajak terbaca untuk `tahun` (kosong = aturan terbaru). batasOmzet (lama) = BATAS ATAS Rp4,8 miliar — satu angka, tidak ada batasAtas terpisah (lihat BACA-DULU). */
+export function pjProfil(tahun) {
+  const d0 = pjDokRekap() || {}; const e = tahun ? pjPetaTahun(d0)[String(Number(tahun))] : null; const ov = {}; if (e && typeof e === 'object') PJ_KOLOM_TAHUN.forEach((k) => { if (k in e) ov[k] = e[k]; });
+  const d = Object.assign({}, d0, ov); const jenis = PJ_JENIS_WP.some((j) => j.id === d.jenisWp) ? d.jenisWp : 'belumDiketahui'; const pkp = PJ_STATUS_PKP.some((j) => j.id === d.statusPkp) ? d.statusPkp : 'belumDiketahui';
   const ang = (v) => { const n = pjAngkaAtauNull(v); return n !== null && n >= 0 ? n : null; };
   const pasangan = PJ_STATUS_PASANGAN.some((j) => j.id === d.statusPasangan) ? d.statusPasangan : 'belumDiketahui';
   // Paket B: omzet tahun lalu PER TAHUN (omzetTahunan { 'YYYY': n }); kolom lama omzetTahunLalu = tahun omzetTahunLaluTahun (bawaan 2025 — modul pajak lahir Sep 2026)
@@ -104,18 +113,32 @@ export function pjProfil() {
   const lama = ang(d.omzetTahunLalu); if (lama !== null && !(d.omzetTahunan && typeof d.omzetTahunan === 'object')) omzetTahunan[String(ang(d.omzetTahunLaluTahun) || PJ_SUMBER_TAHUN - 1)] = lama;   // dokumen sebelum Paket B
   return { wpAtasNama: String(d.wpAtasNama || ''), jenisWp: jenis, statusPkp: pkp, statusPasangan: pasangan, tahunMulaiTarifFinal: ang(d.tahunMulaiTarifFinal), omzetTahunLalu: lama, omzetTahunan, batasBebas: ang(d.batasBebas),
     batasOmzet: ang(d.batasOmzet) || 0, tarifPerMil: ang(d.tarifPerMil) || 0, tanggalLapor: isFinite(Number(d.tanggalLapor)) && Number(d.tanggalLapor) >= 1 && Number(d.tanggalLapor) <= 28 ? Math.round(Number(d.tanggalLapor)) : 15,
-    sumberAturan: d.sumberAturan && typeof d.sumberAturan === 'object' ? Object.assign({ teks: String(d.sumberAturan.teks || ''), tanggal: String(d.sumberAturan.tanggal || '') }, ang(d.sumberAturan.tahun) ? { tahun: ang(d.sumberAturan.tahun) } : {}) : null, ada: !!pjDokRekap() };
+    sumberAturan: d.sumberAturan && typeof d.sumberAturan === 'object' ? Object.assign({ teks: String(d.sumberAturan.teks || ''), tanggal: String(d.sumberAturan.tanggal || '') }, ang(d.sumberAturan.tahun) ? { tahun: ang(d.sumberAturan.tahun) } : {}) : null, ada: !!pjDokRekap(),
+    tahunAturan: Object.keys(ov).length ? Number(tahun) : null };   // tahunAturan = aturan yang dibaca tersimpan khusus tahun itu
 }
 /**
  * SATU-SATUNYA cara menyusun isi aturanToko/rekapOmzet (DK3 susunAturRekap & susunTandaLapor, profil, tombol aturan): dokumen yang ada disalin UTUH
  * (termasuk field yang tidak dikenal penulisnya), lalu hanya `ubah` yang ditimpa. Tanpa ini tiap penulis lama menghapus profil diam-diam.
  */
-export function pjGabungRekap(ubah, w) {
-  const lama = pjDokRekap() || {}; const d = Object.assign({}, lama, ubah || {}, { id: 'rekapOmzet', tanggal: w.tanggal, jam: w.jam });
+export function pjGabungRekap(ubah, w, tahunPajak) {
+  const lama = pjDokRekap() || {}; const u = Object.assign({}, ubah || {}); const th = Number(String(w.tanggal).slice(0, 4));
+  // Paket B: aturan per tahun pajak (PJ_KOLOM_TAHUN) — dijaga DI SINI, satu-satunya penulis dokumen ini
+  const thP = isFinite(Number(tahunPajak)) && Number(tahunPajak) >= 2000 && Number(tahunPajak) < th ? Math.round(Number(tahunPajak)) : th;
+  const kolom = PJ_KOLOM_TAHUN.filter((k) => k in u); const peta = Object.assign({}, pjPetaTahun(lama)); let petaUbah = false; const pilih = (o) => { const x = {}; kolom.forEach((k) => { x[k] = o[k] === undefined ? null : o[k]; }); return x; };
+  if (kolom.length && thP < th) {   // dari layar tahun LALU: hanya aturan tahun itu yang berubah; aturan terbaru (tahun berjalan & DK3) tidak tersentuh
+    peta[String(thP)] = Object.assign(pjKolomAturan(Object.assign({}, lama, peta[String(thP)] || {})), pilih(u)); kolom.forEach((k) => { delete u[k]; }); petaUbah = true;
+  } else if (kolom.length) {
+    const sama = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+    // aturan TERBARU berubah → tahun lalu yang belum punya entri DIBEKUKAN dulu dengan aturan lamanya (tahun lalu tidak ikut berubah)
+    if (kolom.some((k) => !sama(u[k], lama[k]))) pjTahunLalu(th).forEach((y) => { if (!peta[String(y)]) { peta[String(y)] = pjKolomAturan(lama); petaUbah = true; } });
+    if (peta[String(th)]) { peta[String(th)] = Object.assign({}, peta[String(th)], pilih(u)); petaUbah = true; }
+  }
+  if (petaUbah) u.aturanTahun = peta;
+  const d = Object.assign({}, lama, u, { id: 'rekapOmzet', tanggal: w.tanggal, jam: w.jam });
   if (!d.lapor || typeof d.lapor !== 'object') d.lapor = {}; Object.keys(d).forEach((k) => { if (d[k] === undefined) delete d[k]; }); return d;
 }
 export function susunProfilPajak(isi, w) {
-  const P = pjProfil(); const u = {};
+  const u = {};
   if (isi.wpAtasNama !== undefined) { const n = String(isi.wpAtasNama || '').trim().slice(0, 60); if (pjAdaNomorPribadi(n)) return { tolak: PJ_TOLAK_NOMOR }; u.wpAtasNama = n; }
   if (isi.jenisWp !== undefined) { if (!PJ_JENIS_WP.some((j) => j.id === isi.jenisWp)) return { tolak: 'Jenis wajib pajak tidak dikenal' }; u.jenisWp = isi.jenisWp; }
   if (isi.statusPkp !== undefined) { if (!PJ_STATUS_PKP.some((j) => j.id === isi.statusPkp)) return { tolak: 'Status PKP tidak dikenal' }; u.statusPkp = isi.statusPkp; }
@@ -127,18 +150,21 @@ export function susunProfilPajak(isi, w) {
   const salah = angka('tahunMulaiTarifFinal', 2000, th, 'Tahun mulai tarif final: 2000–' + th + ' (kosongkan kalau tidak tahu)') || angka('omzetTahunLalu', 0, 1e13, 'Omzet tahun ' + (thPajak - 1) + ' tidak boleh minus (kosongkan kalau tidak tahu — kosong ≠ nol)')
     || angka('batasBebas', 0, 1e13, 'Batas bebas tidak boleh minus') || angka('batasOmzet', 0, 1e13, 'Batas omzet tidak boleh minus') || angka('tarifPerMil', 0, 1000, 'Tarif ditulis per seribu: 0–1000 (5 = 0,5 %)');
   if (salah) return { tolak: salah };
+  const P = pjProfil(thPajak);
   if (u.omzetTahunLalu !== undefined) { const peta = Object.assign({}, P.omzetTahunan); const y = String(thPajak - 1); if (u.omzetTahunLalu === null) delete peta[y]; else peta[y] = u.omzetTahunLalu; u.omzetTahunan = peta;
     u.omzetTahunLaluTahun = thPajak - 1; }   // kolom lama = isian terakhir + tahunnya (pembaca lama); pembaca baru memakai peta per tahun
   if (u.batasOmzet === null) u.batasOmzet = 0; if (u.tarifPerMil === null) u.tarifPerMil = 0;   // field lama DK3: 0 = belum diatur (bentuk lama dipertahankan)
-  const jenis = u.jenisWp || P.jenisWp;
-  return { dokumen: [{ koleksi: 'aturanToko', data: pjGabungRekap(u, w) }], patch: { kabar: 'Profil pajak tersimpan' + (jenis === 'belumDiketahui' ? ' — ' + PJ_ANGGAPAN_OP : jenis === 'badan' ? ' — badan: kolom PPh tidak dihitung, tanyakan konsultan' : '') + '. ' + PJ_LABEL + '.', kabarAwas: false, drafPj: null } };
+  const jenis = u.jenisWp || P.jenisWp; const lalu = thPajak < th && PJ_KOLOM_TAHUN.some((k) => k in u);
+  return { dokumen: [{ koleksi: 'aturanToko', data: pjGabungRekap(u, w, thPajak) }], patch: { kabar: 'Profil pajak tersimpan' + (lalu ? ' — aturan tahun ' + thPajak + ' saja; tahun lain tidak berubah' : '') + (jenis === 'belumDiketahui' ? ' — ' + PJ_ANGGAPAN_OP : jenis === 'badan' ? ' — badan: kolom PPh tidak dihitung, tanyakan konsultan' : '') + '. ' + PJ_LABEL + '.', kabarAwas: false, drafPj: null } };
 }
 /** Tombol "Pakai aturan PP 55/2022 jo. PP 20/2026": tarif 5‰, batas bebas Rp500 juta, batas atas Rp4,8 miliar + catatan sumbernya. Tiap angka tetap bisa diubah. */
 export function susunPakaiAturan(w, tahunPajak) {
   // Paket B: aturan dicap TAHUN PAJAK yang diperiksa (tahun yang dibuka di layar Pajak; bawaan tahun berjalan) — tahun sesudahnya diberi peringatan (pjAturanTahun)
   const thW = Number(String(w.tanggal).slice(0, 4)); const thP = isFinite(Number(tahunPajak)) && Number(tahunPajak) >= 2000 && Number(tahunPajak) <= thW ? Math.round(Number(tahunPajak)) : thW;
-  return { dokumen: [{ koleksi: 'aturanToko', data: pjGabungRekap({ tarifPerMil: PJ_ATURAN.tarifPerMil, batasBebas: PJ_ATURAN.batasBebas, batasOmzet: PJ_ATURAN.batasOmzet, sumberAturan: { teks: PJ_ATURAN.teks, tanggal: w.tanggal, tahun: Math.max(thP, Number((pjProfil().sumberAturan || {}).tahun) || 0) } }, w) }],
-    patch: { kabar: 'Aturan terisi: tarif 0,5 %, bebas s.d. ' + RP(PJ_ATURAN.batasBebas) + ', batas ' + RP(PJ_ATURAN.batasOmzet) + ' — sumbernya tercatat. Tiap angka bisa lu ubah. ' + PJ_LABEL + '.', kabarAwas: false } };
+  // tahun lalu: aturan khusus tahun itu (dicap tahun itu); tahun berjalan: aturan terbaru (tahun lalu yang belum punya aturan sendiri dibekukan — pjGabungRekap)
+  const tahun = thP < thW ? thP : Math.max(thP, Number((pjProfil().sumberAturan || {}).tahun) || 0);
+  return { dokumen: [{ koleksi: 'aturanToko', data: pjGabungRekap({ tarifPerMil: PJ_ATURAN.tarifPerMil, batasBebas: PJ_ATURAN.batasBebas, batasOmzet: PJ_ATURAN.batasOmzet, sumberAturan: { teks: PJ_ATURAN.teks, tanggal: w.tanggal, tahun } }, w, thP) }],
+    patch: { kabar: 'Aturan ' + (thP < thW ? 'tahun pajak ' + thP + ' (tahun itu saja) ' : '') + 'terisi: tarif 0,5 %, bebas s.d. ' + RP(PJ_ATURAN.batasBebas) + ', batas ' + RP(PJ_ATURAN.batasOmzet) + ' — sumbernya tercatat. Tiap angka bisa lu ubah. ' + PJ_LABEL + '.', kabarAwas: false } };
 }
 
 // ==================== omzet di luar sistem (pajakOmzetLuar) ====================
@@ -193,7 +219,7 @@ export function pjPotonganBulan(key) {
  * sebelumPotongan = omzet mesin + potongan nota & tawar (pjPotonganBulan) — angka kedua untuk konsultan, tidak dipakai menghitung.
  */
 export function pjTahun(tahun, kini) {
-  const iso = hariIniIso(kini || new Date(Date.now())); const kiniKey = pjKey(iso); const th = Number(tahun || kiniKey.slice(0, 4)); const P = pjProfil();
+  const iso = hariIniIso(kini || new Date(Date.now())); const kiniKey = pjKey(iso); const th = Number(tahun || kiniKey.slice(0, 4)); const P = pjProfil(th);
   const awal = pjAwalSistem(); const kAwal = awal ? pjKey(awal) : null; const hitung = P.jenisWp !== 'badan' && P.tarifPerMil > 0; const bebas = P.batasBebas || 0; const AP = pjAturanPasangan(P.statusPasangan);
   const setoran = pjSetoranSemua(); const akhirBulan = th < Number(kiniKey.slice(0, 4)) ? 12 : th > Number(kiniKey.slice(0, 4)) ? 0 : Number(kiniKey.slice(5, 7));
   const daftar = []; let kum = 0, kumGabung = 0, lengkapSejauhIni = true, kosong = 0;
@@ -212,7 +238,7 @@ export function pjTahun(tahun, kini) {
     const berubah = adaPotret && Math.round(Number(potret.omzetSaatSetor)) !== omzet
       ? { omzet: omzet - Math.round(Number(potret.omzetSaatSetor)), pph: pph === null || potret.pphPerkiraanSaatSetor === null || potret.pphPerkiraanSaatSetor === undefined ? null : pph - Math.round(Number(potret.pphPerkiraanSaatSetor)) } : null;
     const B = { key, nama: pjNama(key), pendek: pjPendek(key), sistem: S.omzet, nNota: S.n, sebelumPotongan, potongan: PT, sebagian, awalSistem: sebagian ? awal : null, lama, lain, pasangan, pasanganIkutPph: pasangan !== null && !AP.batasSendiri, lengkap, lengkapSejauhIni, omzet, gabung, kumSebelum, kum, kumGabung, kena, pph,
-      tempo, berjalan, setor, jumlahSetor, ntpn: setor.map((s) => s.ntpn).filter(Boolean), berubah, terkunci: pjTerkunci(key) };   // putaran 25: keadaan kunci bulan
+      tempo, berjalan, setor, jumlahSetor, ntpn: setor.map((s) => s.ntpn).filter(Boolean), berubah, terkunci: pjTerkunci(key), ditutup: tahunDitutup(key) };   // putaran 25: keadaan kunci bulan · Paket B: tahun sudah tutup buku
     // Paket B: bulan di tahun yang sudah ditutup buku — angka sistemnya dari potret (dariPotret) atau, tanpa potret, hanya di berkas arsip (tanpaPotret)
     if (tahunDiarsip(key)) { B.diarsip = true; B.dariPotret = !!potretBulan(key); B.tanpaPotret = !B.dariPotret; }
     B.status = pjStatus(B, P, iso, hitung); daftar.push(B);
@@ -221,7 +247,19 @@ export function pjTahun(tahun, kini) {
   return { tahun: th, daftar, P, hitung, anggapanOp: P.jenisWp === 'belumDiketahui', pasangan: AP, kum, kumGabung,
     totalSistem: daftar.reduce((a, b) => a + (b.sistem || 0), 0), totalSebelumPotongan: daftar.reduce((a, b) => a + (b.sebelumPotongan || 0), 0), kosong, lengkap: kosong === 0, awalSistem: awal, totalPph: hitung ? daftar.reduce((a, b) => a + (b.pph || 0), 0) : null,
     totalSetor: daftar.reduce((a, b) => a + b.jumlahSetor, 0), kumTeks: pjKumTeks(kum, kosong), ambang: pjAmbang(kumGabung, P, th, iso), peringatanTahunLalu: pjPeringatanTahunLalu(P, th),
-    berjalan: th === Number(kiniKey.slice(0, 4)), ditutup, diarsip, potret: adaPotret, tanpaPotret: diarsip && !adaPotret, omzetTahunLalu: pjOmzetTahunLalu(P, th), aturanTahun: pjAturanTahun(P, th, hitung) };
+    berjalan: th === Number(kiniKey.slice(0, 4)), ditutup, diarsip, potret: adaPotret, tanpaPotret: diarsip && !adaPotret, omzetTahunLalu: pjOmzetTahunLalu(P, th), aturanTahun: pjAturanTahun(P, th, hitung),
+    aturanSejakTutup: pjAturanSejakTutup(P, th) };
+}
+/** Paket B (sanggahan): aturan tahun ber-potret dibandingkan dengan aturan SAAT TAHUN ITU DIKUNCI (potret.pajak.profil). Beda → disebut di layar & rekap konsultan
+ *  (PPh tahun itu dihitung dengan aturan yang sekarang tersimpan untuk tahun itu — bisa karena owner membetulkannya sesudah tutup buku). '' = sama / tanpa potret. */
+export function pjAturanSejakTutup(P, th) {
+  const Pt = potretTahun(th); const pp = Pt && Pt.pajak && Pt.pajak.profil; if (!pp) return '';
+  const nama = { jenisWp: 'jenis wajib pajak', statusPasangan: 'status pasangan', tarifPerMil: 'tarif', batasBebas: 'batas bebas', batasOmzet: 'batas atas' };
+  const beda = Object.keys(nama).filter((k) => JSON.stringify(pp[k] === undefined ? null : pp[k]) !== JSON.stringify(P[k] === undefined ? null : P[k]));
+  if (!beda.length) return '';
+  const tarif = (n) => (Number(n) > 0 ? (Number(n) / 10).toFixed(1).replace('.', ',') + ' %' : 'belum diatur');
+  return 'Aturan pajak ' + th + ' diubah sesudah tutup buku (' + beda.map((k) => nama[k]).join(', ') + '). Saat tahun dikunci: tarif ' + tarif(pp.tarifPerMil) + ', batas bebas ' + (pp.batasBebas === null || pp.batasBebas === undefined ? 'belum diisi' : RP(pp.batasBebas))
+    + ', perkiraan PPh setahun ' + (pp && Pt.pajak.totalPph !== null && Pt.pajak.totalPph !== undefined ? RP(Pt.pajak.totalPph) : 'tidak dihitung') + ' — PPh ' + th + ' di sini dihitung dengan aturan yang sekarang tersimpan untuk ' + th + '.';
 }
 function pjKumTeks(kum, kosong) { return RP(kum) + (kosong ? ' — ' + kosong + ' bulan belum diisi, kumulatif KURANG dari sebenarnya' : ''); }
 /** Status satu bulan. Urutan: badan → aturan belum diatur → ada setoran (berubah / kurang / lebih / disetor) → data belum lengkap → lewat tempo / terutang / nihil. */
@@ -268,8 +306,10 @@ export function pjPerkiraanBulan(key, kini) { const T = pjTahun(Number(key.slice
 // ==================== setoran (pajakSetoran) ====================
 export const pjSetoranSemua = () => cacheMentah('pajakSetoran').slice().sort((a, b) => String(a.tanggalSetor || '').localeCompare(String(b.tanggalSetor || '')) || String(a.id).localeCompare(String(b.id)));
 /** NTPN: 16 karakter angka/huruf menurut artikel DJP 2020 [BELUM TERVERIFIKASI untuk era Coretax] → hanya peringatan, tidak memblokir. */
-/** putaran 25: bulan pajak terkunci? (sampaiBulan dokumen kunci) · peringatan untuk setoran bulan yang BELUM dikunci — angkanya masih bisa bergeser. */
-export const pjTerkunci = (key) => { const s = kunciSampai(); return !!s && String(key) <= s; };
+/** putaran 25: bulan pajak terkunci? (sampaiBulan dokumen kunci) · peringatan untuk setoran bulan yang BELUM dikunci — angkanya masih bisa bergeser.
+ *  Paket B (sanggahan): tahun yang sudah DITUTUP BUKU = final juga — toko.js tahunDitutup, pembaca yang sama dengan lpFinal Laporan. Kunci bulan 2026 ditunda (K1),
+ *  jadi tanpa ini Pajak 2026 sesudah ritual menulis "belum dikunci" di 12 masa dan setoran Desember diberi pita "masih bisa bergeser" padahal angkanya beku di potret. */
+export const pjTerkunci = (key) => { if (tahunDitutup(key)) return true; const s = kunciSampai(); return !!s && String(key) <= s; };
 // keputusan owner 1 Okt (A): bulan sebelum KP_KUNCI_MULAI tidak dikunci — peringatannya menyebut tutup buku, bukan menyuruh mengunci
 export function pjPeringatanKunci(key) { return pjTerkunci(key) ? '' : key < KP_KUNCI_MULAI ? 'Angka ' + pjNama(key) + ' masih bisa bergeser sampai tutup buku ' + key.slice(0, 4) + ' (kunci bulan ' + key.slice(0, 4) + ' ditunda — keputusan owner 1 Okt 2026)' : 'Kunci bulan ' + pjNama(key) + ' dulu supaya angkanya tidak bergeser (Uang › Tutup buku › Kunci bulan)'; }
 export function pjCekNtpn(ntpn) { const x = String(ntpn || '').replace(/\s/g, '').toUpperCase(); if (!x) return 'tanpa NTPN'; return /^[0-9A-Z]{16}$/.test(x) ? '' : 'NTPN biasanya 16 karakter angka/huruf (format belum terverifikasi untuk Coretax) — periksa lagi bukti setornya'; }
@@ -319,11 +359,15 @@ export function pjSumberPengingat(kini) {
 
 // ==================== Paket B · pilih TAHUN di layar Pajak ====================
 /** Tahun yang bisa dibuka: tahun berjalan + tahun sebelumnya yang punya nota (hidup / potret tutup buku), isian omzet di luar sistem, atau setoran. Terbaru dulu. */
-export function pjDaftarTahun(kini) {
-  const th = Number(hariIniIso(kini || new Date(Date.now())).slice(0, 4)); const ada = {}; ada[th] = true;
-  const awal = pjAwalSistem(); if (awal) for (let y = Number(awal.slice(0, 4)); y < th; y++) ada[y] = true;
+/** Tahun sebelum `th` yang tercatat: punya nota (hidup / potret), isian omzet di luar sistem, atau setoran. */
+function pjTahunLalu(th) {
+  const ada = {}; const awal = pjAwalSistem(); if (awal) for (let y = Number(awal.slice(0, 4)); y < th; y++) ada[y] = true;
   pjOmzetLuarSemua().forEach((d) => { const y = Number(String(d.bulan || '').slice(0, 4)); if (y >= 2000 && y < th) ada[y] = true; });
   pjSetoranSemua().forEach((s) => { const y = Number(String(s.masaPajak || '').slice(0, 4)); if (y >= 2000 && y < th) ada[y] = true; });
+  return Object.keys(ada).map(Number);
+}
+export function pjDaftarTahun(kini) {
+  const th = Number(hariIniIso(kini || new Date(Date.now())).slice(0, 4)); const ada = {}; ada[th] = true; pjTahunLalu(th).forEach((y) => { ada[y] = true; });
   return Object.keys(ada).map(Number).sort((a, b) => b - a).map((y) => ({ tahun: y, berjalan: y === th, ditutup: tahunDitutup(y), potret: !!potretTahun(y) }));
 }
 /** Masa yang masih harus disetor: PPh > 0 (juga "paling sedikit") dan setoran tercatat kurang dari itu. */
@@ -367,6 +411,7 @@ export function dokRekapPajak(T, kop) {
   });
   baris.push({ nama: 'Jumlah omzet mesin ' + T.tahun, teks: RP(T.totalSistem), kelas: 'jumlah' }, { nama: 'Jumlah omzet sebelum potongan nota ' + T.tahun, teks: RP(T.totalSebelumPotongan), kelas: 'jumlah' });
   baris.push({ nama: 'Jumlah perkiraan PPh ' + T.tahun, teks: T.totalPph === null ? 'tidak dihitung' : RP(T.totalPph), kelas: 'jumlah' }, { nama: 'Jumlah setoran tercatat', teks: RP(T.totalSetor), kelas: 'jumlah' });
+  if (T.aturanSejakTutup) baris.push({ nama: '[DIUBAH SESUDAH TUTUP BUKU] ' + T.aturanSejakTutup, teks: '' });
   baris.push({ nama: 'Sumber aturan (dilihat 24 Sep 2026 · diperiksa untuk tahun pajak ' + PJ_SUMBER_TAHUN + ')', kelas: 'kel' }); if (T.aturanTahun && T.aturanTahun.belum) baris.push({ nama: '[BELUM DIPERIKSA UNTUK ' + T.tahun + '] ' + T.aturanTahun.teks, teks: '' });
   PJ_SUMBER.forEach((s) => baris.push({ nama: (s.terverifikasi ? '' : '[BELUM TERVERIFIKASI] ') + s.klaim, teks: '' }));
   return { jenis: 'pajak', kop, judul: 'Rekap Pajak untuk Konsultan', sub: 'Tahun ' + T.tahun + ' · ' + PJ_LABEL + (T.kosong ? ' · ' + T.kosong + ' bulan belum diisi' : ''), periode: String(T.tahun), baris, cap: T.kosong ? 'DATA BELUM LENGKAP' : '',

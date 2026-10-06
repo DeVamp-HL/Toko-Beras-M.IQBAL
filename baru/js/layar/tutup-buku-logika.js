@@ -23,6 +23,7 @@ import { NAMA_KASBON_OWNER, ugAturDok, ugKiniDari, saldoKantong, modalTertanam }
 import { aturUpah, hitungUpah, mulaiUpah } from './upah-logika.js';
 import { ringkasPelangganTahun } from './pelanggan-logika.js';
 import { susunPotret, ringkasPotret } from './potret-logika.js';
+import { lpBonTerbuka } from './laporan-logika.js';
 
 export const LANGKAH_BUKU = [['periksa', 'Periksa dulu'], ['cadangan1', 'Cadangan sebelum mulai'], ['arsip', 'Simpan arsip'], ['saldo', 'Susun saldo pembuka'], ['paraf', 'Paraf dua orang'], ['kunci', 'Kunci tahun'], ['cadangan2', 'Cadangan sesudahnya & selesai']];
 const bkTutupBuku = (x) => !!(x && x.tutupBuku);
@@ -218,7 +219,11 @@ export function pembukaBuku(tahun, w) {
     d.push({ koleksi: 'produksiKemasan', data: Object.assign({ id: w.idUnik(), tanggal: tglBuka, namaProduk: s.namaProduk, ukuranKemasan: s.ukuranKemasan, jumlahUnit: 0, hppPerUnit: 0, merkSumber: 'BELI JADI', kgDipakai: 0, beliJadi: true, stokAwal: true }, tb) }); });
   saldo.bahanK.forEach((x) => d.push({ koleksi: 'stokBahanKemasan', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', jenis: x.jenis, jumlah: x.sisaPcs, hargaTotal: Math.round(x.sisaPcs * x.hargaRata), tanggal: tglBuka, catatan: 'Saldo pembuka tutup buku ' + tahun }, tb) }));
   saldo.bahanL.forEach((x) => d.push({ koleksi: 'stokBahanLiteran', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', jenis: x.jenis, jumlah: x.sisaPcs, hargaTotal: Math.round(x.sisaPcs * x.hargaRata), tanggal: tglBuka, catatan: 'Saldo pembuka tutup buku ' + tahun }, tb) }));
-  saldo.piutang.forEach((x) => d.push({ koleksi: 'piutangMutasi', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', namaPelanggan: x.nama, nominal: x.sisa, tanggal: x.tanggalTertua, jam: '00:00', catatan: 'Saldo pembuka tutup buku ' + tahun + ' — tanggal mengikuti utang tertuanya supaya umurnya jujur' }, tb) }));
+  // Paket B (sanggahan): saldo awal piutang MEMBAWA bon-bon yang masih terbuka (sisa, nilai & margin asli, nota — lpBonTerbuka, urutan potong buku bon), supaya
+  // margin bon tahun ini yang dibayar sesudah ritual kembali ke "diterima tunai" bulan bayarnya persis seperti sebelum ritual. Σ sisa ≠ saldo → tidak dibawa.
+  const bonBuka = lpBonTerbuka(c);
+  saldo.piutang.forEach((x) => { const mb = bonBuka[kunciPelanggan(x.nama)] || []; const cocok = mb.length && Math.abs(mb.reduce((a, b) => a + b.sisa, 0) - x.sisa) < 1;
+    d.push({ koleksi: 'piutangMutasi', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', namaPelanggan: x.nama, nominal: x.sisa, tanggal: x.tanggalTertua, jam: '00:00', catatan: 'Saldo pembuka tutup buku ' + tahun + ' — tanggal mengikuti utang tertuanya supaya umurnya jujur' }, cocok ? { marginBon: mb } : {}, tb) }); });
   saldo.kasbon.forEach((x) => d.push({ koleksi: 'kasbonMutasi', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', namaPegawai: x.nama, nominal: x.sisa, tanggal: tglBuka, jam: '00:00', catatan: 'Saldo pembuka tutup buku ' + tahun }, kunciPelanggan(x.nama) === kunciPelanggan(NAMA_KASBON_OWNER) ? { owner: true } : {}, tb) }));
   saldo.utangPemasok.forEach((px) => px.bon.forEach((b) => d.push({ koleksi: 'utangPemasokMutasi', data: Object.assign({ id: w.idUnik(), tipe: 'saldoAwal', pemasok: px.pemasok, nominal: b.sisa, bonTanggal: b.bonTanggal, tanggal: tglBuka, catatan: 'Saldo pembuka tutup buku ' + tahun + (b.catatan ? ' — ' + b.catatan : '') }, tb) })));
   if (saldo.amplop > 0) d.push({ koleksi: 'amplopLaba', data: Object.assign({ id: w.idUnik(), tipe: 'setor', nominal: saldo.amplop, tanggal: tglBuka, jam: '00:00', catatan: 'Saldo pembuka tutup buku ' + tahun + ' — isi amplop laba yang menyeberang tahun' }, tb) });

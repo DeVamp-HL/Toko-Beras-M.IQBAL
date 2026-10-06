@@ -10,7 +10,7 @@
 //  - BACA SAJA: layar ini tidak menulis apa pun.
 import { hitungLabaRentang, hitungPiutang, hitungUtangPemasok, hitungStokKarungPerMerk, hitungStokKemasan, hitungLajuPakai, kasPada } from '../mesin/beku.js';
 import { bakuCaraBayar, daftarGerakanKas, pesananBelumTuntas, namaBulanPanjang, AMBANG_HARI_KRITIS } from '../mesin/pembantu.js';
-import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja, kunciNota, returUangPerHari, lajuLintas } from '../data/toko.js';
+import { ambilPenjualan, ambilPesanan, ambilTitikKas, stokMerekSaja, kunciNota, returUangPerHari, lajuLintas, potretTahun, potretHari, tahunDiarsip, awalPotret } from '../data/toko.js';
 import { hariIniIso, RP, lebihBayarDari } from '../inti/format.js';
 
 export const SKALA = [['langsung', 'Langsung'], ['menit', 'Menit'], ['jam', 'Jam'], ['hari', 'Hari'], ['minggu', 'Minggu'], ['bulan', 'Bulan'], ['tahun', 'Tahun']];
@@ -39,12 +39,26 @@ export function bangunIndeks() {
   const perHari = {}; let mulai = ''; const retur = returUangPerHari();
   ambilPenjualan().forEach((p) => {
     const t = p.tanggal || ''; if (!t) return;
+    if (tahunDiarsip(t)) return;   // Paket B: tahun yang sudah ditutup buku dibaca dari potretnya (di bawah), sisa catatan hidupnya tidak dijumlah dua kali
     if (!mulai || t < mulai) mulai = t;
     const h = perHari[t] || (perHari[t] = { omzet: 0, nota: new Set(), baris: [] });
     h.omzet += p.hargaTotal || 0; h.nota.add(rkKunciNota(p)); h.baris.push(p);
   });
-  return { perHari, mulai, retur };
+  // Paket B (sanggahan): hari di tahun yang sudah DITUTUP BUKU (catatannya diarsip) dari POTRET hari — omzet, uang retur, jumlah nota; fungsi sumber yang sama
+  // dengan omzet hari ini (hitungLabaRentang omzetPenuh = penjualan − uang retur). Pembanding hari/minggu/bulan/tahun lalu sesudah ritual = sebelum ritual.
+  // Rincian per nota & per jam ikut arsip: hari itu ditandai `arsip`, pembanding "jam segini" yang jatuh di sana DISEBUT, tidak digambar Rp0.
+  Object.keys(retur).forEach((t) => { if (tahunDiarsip(t)) delete retur[t]; });
+  const arsip = {}; const awal = awalPotret('awalSistem'); const thKini = Number(hariIniIso(new Date(Date.now())).slice(0, 4));
+  for (let y = awal ? Number(awal.slice(0, 4)) : thKini; y < thKini; y++) { const P = tahunDiarsip(y + '-01-01') ? potretTahun(y) : null; if (!P || !P.hari) continue;
+    Object.keys(P.hari).forEach((t) => { const x = P.hari[t] || []; const omzet = Number(x[0]) || 0, uangRetur = Number(x[3]) || 0, nota = Number(x[4]) || 0; arsip[t] = true;
+      if (nota > 0) { perHari[t] = { omzet: omzet + uangRetur, nota: new Set(), baris: [], notaArsip: nota }; if (!mulai || t < mulai) mulai = t; }
+      if (uangRetur) retur[t] = { uang: uangRetur, baris: [] }; }); }
+  return { perHari, mulai, retur, arsip };
 }
+/** Hari di tahun yang ditutup buku TANPA potret: angkanya hanya di berkas arsip — sel absen, pembanding menolak. */
+const rkTanpaPotret = (t) => tahunDiarsip(t) && !potretTahun(t);
+/** Kenapa pembanding "jam segini" pada hari `t` tidak bisa dihitung ('' = bisa): rincian per jam ikut arsip tutup buku. */
+const rkKetJam = (ix, t) => (rkTanpaPotret(t) ? 'sudah tutup buku tanpa potret' : ix.arsip && ix.arsip[t] ? 'sudah tutup buku — rincian per jam ikut arsip' : '');
 const rkReturHari = (ix, t, sampaiMenit) => { const r = (ix.retur || {})[t]; if (!r) return 0; if (sampaiMenit == null) return r.uang;
   return r.baris.reduce((a, x) => { const m = rkMenitKe(x); return a + (m === null || m <= sampaiMenit ? x.uang : 0); }, 0); };
 const rkOmzetHari = (ix, t) => ((ix.perHari[t] || {}).omzet || 0) - rkReturHari(ix, t);
@@ -52,7 +66,7 @@ const rkOmzetHari = (ix, t) => ((ix.perHari[t] || {}).omzet || 0) - rkReturHari(
 const rkReturMenit = (ix, t) => (((ix.retur || {})[t] || {}).baris || []).map((x) => ({ m: rkMenitKe(x), uang: x.uang }));
 const rkMenitKe = (p) => { const m = /^(\d{1,2})[:.](\d{2})/.exec(p.jam || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
 function rkJumlahRentang(ix, dariIso, sampaiIso, sampaiMenitHariAkhir) {
-  let omzet = 0; const nota = new Set(); let hariBuka = 0; let retur = 0;
+  let omzet = 0; const nota = new Set(); let hariBuka = 0; let retur = 0; let notaArsip = 0;   // notaArsip: hari dari potret tutup buku (jumlah, bukan kunci nota)
   Object.keys(ix.retur || {}).forEach((t) => { if (t >= dariIso && t <= sampaiIso) retur += rkReturHari(ix, t, t === sampaiIso ? sampaiMenitHariAkhir : null); });
   Object.keys(ix.perHari).forEach((t) => {
     if (t < dariIso || t > sampaiIso) return;
@@ -61,9 +75,9 @@ function rkJumlahRentang(ix, dariIso, sampaiIso, sampaiMenitHariAkhir) {
       let ada = false;
       h.baris.forEach((p) => { const m = rkMenitKe(p); if (m === null || m <= sampaiMenitHariAkhir) { omzet += p.hargaTotal || 0; nota.add(rkKunciNota(p)); ada = true; } });
       if (ada) hariBuka += 1;
-    } else { omzet += h.omzet; h.nota.forEach((k) => nota.add(k)); hariBuka += 1; }
+    } else { omzet += h.omzet; h.nota.forEach((k) => nota.add(k)); notaArsip += h.notaArsip || 0; hariBuka += 1; }
   });
-  return { omzet: omzet - retur, penjualan: omzet, retur, nota: nota.size, hariBuka };
+  return { omzet: omzet - retur, penjualan: omzet, retur, nota: nota.size + notaArsip, hariBuka };
 }
 
 /** Sel-sel satu lapis cincin: {sel:[{v, kelas}], jalan, vmax}. v null = sebelum ada catatan, 'rel' = belum terjadi. */
@@ -85,12 +99,12 @@ function rkDataLapis(nama, ix, kini) {
     for (let j = JAM_BUKA; j <= JAM_TUTUP; j++) sel.push(j === jamKini ? { v: isi[j] || 0, kelas: 'berjalan' } : j > jamKini ? { v: 'rel', kelas: 'rel' } : { v: isi[j] || 0, kelas: 'emas' });
     jalan = jamKini - JAM_BUKA;
   } else if (nama === 'hari') {
-    for (let i = 29; i >= 0; i--) { const t = rkIso(rkGeser(kini, -i)); sel.push(t < ix.mulai || !ix.mulai ? { v: null, kelas: 'absen' } : i === 0 ? { v: rkOmzetHari(ix, t), kelas: 'berjalan' } : { v: rkOmzetHari(ix, t), kelas: 'emas' }); }
+    for (let i = 29; i >= 0; i--) { const t = rkIso(rkGeser(kini, -i)); sel.push(t < ix.mulai || !ix.mulai || rkTanpaPotret(t) ? { v: null, kelas: 'absen' } : i === 0 ? { v: rkOmzetHari(ix, t), kelas: 'berjalan' } : { v: rkOmzetHari(ix, t), kelas: 'emas' }); }
     jalan = 29;
   } else if (nama === 'minggu') {
     const awal = rkAwalMinggu(kini);
     for (let i = 11; i >= 0; i--) { const a = rkGeser(awal, -7 * i), z = rkGeser(a, 6); const v = rkJumlahRentang(ix, rkIso(a), rkIso(z)).omzet;
-      sel.push(!ix.mulai || rkIso(z) < ix.mulai ? { v: null, kelas: 'absen' } : i === 0 ? { v, kelas: 'berjalan' } : { v, kelas: 'emas' }); }
+      sel.push(!ix.mulai || rkIso(z) < ix.mulai || rkTanpaPotret(rkIso(a)) || rkTanpaPotret(rkIso(z)) ? { v: null, kelas: 'absen' } : i === 0 ? { v, kelas: 'berjalan' } : { v, kelas: 'emas' }); }
     jalan = 11;
   } else if (nama === 'bulan') {
     const th = kini.getFullYear(), blnKini = kini.getMonth();
@@ -99,7 +113,7 @@ function rkDataLapis(nama, ix, kini) {
     jalan = blnKini;
   } else if (nama === 'tahun') {
     const thMulai = ix.mulai ? Number(ix.mulai.slice(0, 4)) : kini.getFullYear();
-    for (let t = thMulai; t <= kini.getFullYear(); t++) sel.push({ v: rkJumlahRentang(ix, t + '-01-01', t + '-12-31').omzet, kelas: t === kini.getFullYear() ? 'berjalan' : 'emas' });
+    for (let t = thMulai; t <= kini.getFullYear(); t++) sel.push(rkTanpaPotret(t + '-12-31') ? { v: null, kelas: 'absen' } : { v: rkJumlahRentang(ix, t + '-01-01', t + '-12-31').omzet, kelas: t === kini.getFullYear() ? 'berjalan' : 'emas' });
     jalan = sel.length - 1;
   }
   const vmax = Math.max(1, ...sel.map((c) => (typeof c.v === 'number' ? c.v : 0)));
@@ -155,7 +169,12 @@ export function selDariKetukan(sektor, jarak, sudutDerajat) {
 }
 export const SKALA_DARI_LAPIS = { m15: 'langsung', menit: 'menit', jam: 'jam', hari: 'hari', minggu: 'minggu', bulan: 'bulan', tahun: 'tahun' };
 
-function rkMarginTeks(cocok) {
+function rkMarginTeks(cocok, ix) {
+  // Paket B: minggu yang menyeberang ke tahun yang sudah ditutup buku (1–3 Jan) — margin & baris tanpa modal hari-hari itu dari potret hari; persennya tidak
+  // dihitung (penyebutnya, omzet ber-modal, tidak dipotret per hari) dan itu disebut
+  const arsip = ix && ix.arsip ? Object.keys(ix.arsip).filter(cocok) : [];
+  if (arsip.length) { const l = hitungLabaRentang((t) => cocok(t) && !tahunDiarsip(t)); let m = l.margin, tt = l.jumlahTanpaHpp; arsip.forEach((t) => { const P = potretHari(t); if (P) { m += P.margin; tt += P.tanpaHpp; } });
+    return { teks: 'margin kotor ' + RP(m) + ' (' + arsip.length + ' hari dari potret tutup buku — persen tidak dihitung)' + (tt ? ' (' + tt + ' baris tanpa modal tidak ikut)' : ''), l }; }
   const l = hitungLabaRentang(cocok);
   if (!(l.omzetHitung > 0)) return { teks: '', l };
   const pct = String(Math.round(l.margin / l.omzetHitung * 1000) / 10).replace('.', ',');
@@ -176,11 +195,13 @@ export function susunRingkasan(skala, ix, kini) {
   const adaSejak = (t) => !!ix.mulai && ix.mulai <= t;
 
   // pembanding "sampai titik yang sama"
-  const kmrSegini = adaSejak(kemarin) ? rkJumlahRentang(ix, kemarin, kemarin, menitKini) : null;
-  const aMgLalu = rkGeser(aMg, -7); const mgLalu = adaSejak(rkIso(aMgLalu)) ? rkJumlahRentang(ix, rkIso(aMgLalu), rkIso(rkGeser(kini, -7)), menitKini) : null;
+  // Paket B: pembanding "jam segini" yang jatuh di hari tutup buku (rincian per jam ikut arsip) disebut, tidak dihitung Rp0; seluruh-hari/bulan/tahun dari potret
+  const ketKmr = rkKetJam(ix, kemarin); const kmrSegini = adaSejak(kemarin) && !ketKmr ? rkJumlahRentang(ix, kemarin, kemarin, menitKini) : null;
+  const aMgLalu = rkGeser(aMg, -7); const ketMg = rkKetJam(ix, rkIso(rkGeser(kini, -7))) || (rkTanpaPotret(rkIso(aMgLalu)) ? 'sudah tutup buku tanpa potret' : '');
+  const mgLalu = adaSejak(rkIso(aMgLalu)) && !ketMg ? rkJumlahRentang(ix, rkIso(aMgLalu), rkIso(rkGeser(kini, -7)), menitKini) : null;
   const blLaluAwal = (() => { const d = new Date(kini.getFullYear(), kini.getMonth() - 1, 1); return d; })();
   const blLaluAkhir = (() => { const akhir = new Date(kini.getFullYear(), kini.getMonth(), 0).getDate(); return new Date(kini.getFullYear(), kini.getMonth() - 1, Math.min(kini.getDate(), akhir)); })();
-  const blLalu = adaSejak(rkIso(blLaluAwal)) ? rkJumlahRentang(ix, rkIso(blLaluAwal), rkIso(blLaluAkhir)) : null;
+  const ketBl = rkTanpaPotret(rkIso(blLaluAwal)) ? 'sudah tutup buku tanpa potret' : ''; const blLalu = adaSejak(rkIso(blLaluAwal)) && !ketBl ? rkJumlahRentang(ix, rkIso(blLaluAwal), rkIso(blLaluAkhir)) : null;
   const namaBlLalu = namaBulanPanjang(rkIso(blLaluAwal).slice(0, 7));
 
   const jamIsi = {}; barisHari.forEach((p) => { const m = rkMenitKe(p); if (m === null) return; const j = Math.floor(m / 60); const o = jamIsi[j] || (jamIsi[j] = { omzet: 0, nota: new Set() }); o.omzet += p.hargaTotal || 0; o.nota.add(rkKunciNota(p)); }); rkReturMenit(ix, hari).forEach((x) => { if (x.m === null) return; const j = Math.floor(x.m / 60); const o = jamIsi[j] || (jamIsi[j] = { omzet: 0, nota: new Set() }); o.omzet -= x.uang; });
@@ -189,17 +210,17 @@ export function susunRingkasan(skala, ix, kini) {
 
   const kepala = {
     langsung: { angka: H.omzet, judul: 'Omzet hari ini · hidup', sub: [mgHari.teks, H.nota + ' nota', H.retur ? 'sudah dikurangi retur ' + RP(H.retur) : ''].filter(Boolean).join(' · '),
-      banding: 'Nota ke-' + H.nota + ' hari ini' + (kmrSegini ? ' · kemarin jam segini nota ke-' + kmrSegini.nota : ' · kemarin belum ada catatan') },
+      banding: 'Nota ke-' + H.nota + ' hari ini' + (kmrSegini ? ' · kemarin jam segini nota ke-' + kmrSegini.nota : ketKmr ? ' · kemarin ' + ketKmr + ', belum bisa dibandingkan jam segini' : ' · kemarin belum ada catatan') },
     menit: { angka: M60.omzet, judul: '60 menit terakhir · ' + rkP2(kini.getHours()) + '.' + rkP2(kini.getMinutes()), sub: M60.nota ? RP(Math.round(M60.omzet / M60.nota)) + '/nota · ' + M60.nota + ' nota' : 'belum ada nota dalam 60 menit ini',
-      banding: (() => { if (!adaSejak(kemarin)) return 'kemarin belum ada catatan · belum bisa dibandingkan'; let o = 0; const n = new Set(); (ix.perHari[kemarin] || { baris: [] }).baris.forEach((p) => { const m = rkMenitKe(p); if (m !== null && menitKini - m >= 0 && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); rkReturMenit(ix, kemarin).forEach((x) => { if (x.m !== null && menitKini - x.m >= 0 && menitKini - x.m < 60) o -= x.uang; }); return 'kemarin jendela ini ' + n.size + ' nota · ' + RP(o) + (o > 0 ? ' (' + rkPersen(M60.omzet, o) + ')' : ''); })() },
+      banding: (() => { if (ketKmr) return 'kemarin ' + ketKmr + ' · belum bisa dibandingkan jam segini'; if (!adaSejak(kemarin)) return 'kemarin belum ada catatan · belum bisa dibandingkan'; let o = 0; const n = new Set(); (ix.perHari[kemarin] || { baris: [] }).baris.forEach((p) => { const m = rkMenitKe(p); if (m !== null && menitKini - m >= 0 && menitKini - m < 60) { o += p.hargaTotal || 0; n.add(rkKunciNota(p)); } }); rkReturMenit(ix, kemarin).forEach((x) => { if (x.m !== null && menitKini - x.m >= 0 && menitKini - x.m < 60) o -= x.uang; }); return 'kemarin jendela ini ' + n.size + ' nota · ' + RP(o) + (o > 0 ? ' (' + rkPersen(M60.omzet, o) + ')' : ''); })() },
     jam: { angka: H.omzet, judul: 'Hari ini · per jam', sub: [mgHari.teks, H.nota + ' nota', H.nota ? RP(Math.round(H.omzet / H.nota)) + '/nota' : ''].filter(Boolean).join(' · '),
       banding: 'Jam ' + rkP2(jamKini) + ' berjalan ' + RP((jamIsi[jamKini] || { omzet: 0 }).omzet) + ' · ' + ((jamIsi[jamKini] || { nota: new Set() }).nota.size) + ' nota' + (jamSibuk != null ? ' · tersibuk ' + rkP2(jamSibuk) + ' · ' + RP(jamIsi[jamSibuk].omzet) : '') },
-    hari: { angka: MG.omzet, judul: 'Minggu ini · per hari · berjalan', sub: [rkMarginTeks((t) => t >= rkIso(aMg) && t <= hari).teks, MG.nota + ' nota', MG.nota ? RP(Math.round(MG.omzet / MG.nota)) + '/nota' : ''].filter(Boolean).join(' · '),
-      banding: mgLalu ? 'minggu lalu sampai ' + RK_NAMA_HARI[kini.getDay()] + ' jam segini: ' + RP(mgLalu.omzet) + (mgLalu.omzet > 0 ? ' (' + rkPersen(MG.omzet, mgLalu.omzet) + ')' : '') : 'minggu lalu belum lengkap tercatat · belum bisa dibandingkan' },
+    hari: { angka: MG.omzet, judul: 'Minggu ini · per hari · berjalan', sub: [rkMarginTeks((t) => t >= rkIso(aMg) && t <= hari, ix).teks, MG.nota + ' nota', MG.nota ? RP(Math.round(MG.omzet / MG.nota)) + '/nota' : ''].filter(Boolean).join(' · '),
+      banding: mgLalu ? 'minggu lalu sampai ' + RK_NAMA_HARI[kini.getDay()] + ' jam segini: ' + RP(mgLalu.omzet) + (mgLalu.omzet > 0 ? ' (' + rkPersen(MG.omzet, mgLalu.omzet) + ')' : '') : ketMg ? 'minggu lalu ' + ketMg + ' · belum bisa dibandingkan sampai jam segini' : 'minggu lalu belum lengkap tercatat · belum bisa dibandingkan' },
     bulan: { angka: BL.omzet, judul: namaBulanPanjang(hari.slice(0, 7)) + ' · berjalan', sub: [rkMarginTeks((t) => t >= aBl && t <= hari).teks, BL.hariBuka + ' hari buka · ' + BL.nota + ' nota'].filter(Boolean).join(' · '),
-      banding: blLalu ? namaBlLalu + ' sampai tanggal ' + blLaluAkhir.getDate() + ': ' + RP(blLalu.omzet) + (blLalu.omzet > 0 ? ' (' + rkPersen(BL.omzet, blLalu.omzet) + ')' : '') : (ix.mulai && ix.mulai.slice(0, 7) === rkIso(blLaluAwal).slice(0, 7) ? namaBlLalu + ' hanya sejak tanggal ' + Number(ix.mulai.slice(8, 10)) + ' · belum bisa dibandingkan' : 'bulan lalu belum ada catatan · belum bisa dibandingkan') },
+      banding: blLalu ? namaBlLalu + ' sampai tanggal ' + blLaluAkhir.getDate() + ': ' + RP(blLalu.omzet) + (blLalu.omzet > 0 ? ' (' + rkPersen(BL.omzet, blLalu.omzet) + ')' : '') : ketBl ? namaBlLalu + ' ' + ketBl + ' · belum bisa dibandingkan' : (ix.mulai && ix.mulai.slice(0, 7) === rkIso(blLaluAwal).slice(0, 7) ? namaBlLalu + ' hanya sejak tanggal ' + Number(ix.mulai.slice(8, 10)) + ' · belum bisa dibandingkan' : 'bulan lalu belum ada catatan · belum bisa dibandingkan') },
     tahun: { angka: TH.omzet, judul: hari.slice(0, 4) + (ix.mulai && ix.mulai > aTh ? ' · sejak ' + Number(ix.mulai.slice(8, 10)) + ' ' + namaBulanPanjang(ix.mulai.slice(0, 7)).split(' ')[0] : ''), sub: TH.hariBuka + ' hari buka · ' + TH.nota + ' nota' + (TH.hariBuka ? ' · rata-rata ' + RP(Math.round(TH.omzet / TH.hariBuka)) + '/hari buka' : ''),
-      banding: ix.mulai && ix.mulai < aTh ? 'tahun lalu sampai tanggal yang sama: ' + RP(rkJumlahRentang(ix, (Number(hari.slice(0, 4)) - 1) + '-01-01', (Number(hari.slice(0, 4)) - 1) + hari.slice(4)).omzet) : 'Pembanding tahun lalu belum ada — catatan toko baru mulai ' + (ix.mulai ? Number(ix.mulai.slice(8, 10)) + ' ' + namaBulanPanjang(ix.mulai.slice(0, 7)) : 'hari ini') },
+      banding: rkTanpaPotret((Number(hari.slice(0, 4)) - 1) + '-12-31') ? 'tahun lalu sudah tutup buku tanpa potret · belum bisa dibandingkan' : ix.mulai && ix.mulai < aTh ? 'tahun lalu sampai tanggal yang sama: ' + RP(rkJumlahRentang(ix, (Number(hari.slice(0, 4)) - 1) + '-01-01', (Number(hari.slice(0, 4)) - 1) + hari.slice(4)).omzet) : 'Pembanding tahun lalu belum ada — catatan toko baru mulai ' + (ix.mulai ? Number(ix.mulai.slice(8, 10)) + ' ' + namaBulanPanjang(ix.mulai.slice(0, 7)) : 'hari ini') },
   };
   kepala.minggu = Object.assign({}, kepala.hari, { judul: 'Minggu ini · berjalan' });
 

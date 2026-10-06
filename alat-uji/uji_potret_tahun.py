@@ -21,7 +21,14 @@ R1–R5). Yang dijaga di sini:
   P8  omzet tahun lalu PER TAHUN + tawaran dari sistem; aturan pajak berlabel tahun pajak (rapi-rapi audit)
   P9  LAYAR (jsc, tanpa peramban): laporan.js ASLI digambar untuk tiap keluarga (Laba, Biaya, Harian, Mingguan, Bulanan + 3 tab, Pajak 2026 & 2027 dengan
       form setoran & omzet luar terbuka, Tahunan, Neraca, Dokumen + paket/banding) sesudah ritual — tidak jatuh, tanpa NaN/undefined, kalimat "sudah diarsip"
-      di tempatnya, pemilih tahun Pajak dengan pil 12 masa untuk 2026
+      di tempatnya, pemilih tahun Pajak dengan pil 12 masa untuk 2026; 12 masa 2026 bertanda "tutup buku" (bukan "belum dikunci"), form setoran Desember tanpa pita
+      "masih bisa bergeser"
+  SANGGAHAN Paket B (ikut P2 sebelum = sesudah, jam 5 Jan & 31 Mar): bulan BERJALAN Januari 2027 — bon 2026 yang dibayar & dihapus buku 4 Jan (margin lepas ke
+      diterima tunai, lewat saldo pembuka yang membawa bon terbukanya) · arus kas Nov 2026 – Jan 2027 yang belum final (kas awal dari potret, penyesuaian titik kas)
+      · Menu (catatan pertama: pintu "satu bulan penuh" & baris Laporan di laci) · Cincin (pembanding hari/minggu/bulan/tahun dari potret hari; "jam segini" di hari
+      tutup buku DISEBUT, tidak Rp0)
+  P10 ATURAN PAJAK PER TAHUN: aturan 2027 diubah (DK3 / profil) → 2026 dibekukan, PPh 2026 tetap; profil 2026 diubah dari layar 2026 → 2027 tidak ikut, dan Pajak
+      & rekap konsultan 2026 menyebut "diubah sesudah tutup buku"
 
     python3 alat-uji/uji_potret_tahun.py                 → N lulus · 0 gagal
     python3 alat-uji/uji_potret_tahun.py --kontrol       → logika yang dirusak wajib ketahuan (keluar 3 kalau ada yang diam)
@@ -33,7 +40,8 @@ sys.path.insert(0, SINI)
 import bundel_baru  # noqa: E402
 import uji_kunci_periode  # noqa: E402
 JSC = uji_kunci_periode.JSC
-_M = uji_kunci_periode.MODUL + ['baru/js/layar/sistem-logika.js', 'baru/js/layar/kendali-biaya-logika.js', 'baru/js/layar/potret-logika.js', 'baru/js/layar/dasbor-logika.js']
+_M = uji_kunci_periode.MODUL + ['baru/js/layar/sistem-logika.js', 'baru/js/layar/kendali-biaya-logika.js', 'baru/js/layar/potret-logika.js', 'baru/js/layar/dasbor-logika.js',
+                                'baru/js/layar/menu-logika.js', 'baru/js/layar/ringkasan-logika.js']
 MODUL = [m for i, m in enumerate(_M) if m not in _M[:i]]
 JAM = "var __KINI = new Date('2027-01-05T10:00:00+07:00').getTime(); Date.now = function () { return __KINI; };\n"
 JT = 1000000
@@ -94,7 +102,12 @@ def susun_kotak():
         'karantina': [{'id': 'rt1', 'tanggal': '2026-11-20', 'asalRetur': True, 'jenisAsal': 'karung', 'merkSumber': 'Angsa', 'totalKg': 5, 'statusTindakan': 'dibuang', 'catatan': 'basah'},
                       {'id': 'rt2', 'tanggal': '2026-12-30', 'asalRetur': True, 'jenisAsal': 'karung', 'merkSumber': 'Angsa', 'totalKg': 5, 'statusTindakan': 'dibuang', 'catatan': 'kutu'}],
         'penyesuaianStok': [{'id': 'ps1', 'tanggal': '2026-10-15', 'jam': '20:00', 'merk': 'Angsa', 'selisihKg': -12, 'nilaiRp': -144000, 'alasan': 'tercecer'}],
-        'piutangMutasi': [{'id': 'pb1', 'tipe': 'bayar', 'namaPelanggan': 'Pelanggan Contoh A', 'nominal': 150000, 'tanggal': '2026-12-15', 'jam': '10:00', 'caraBayar': 'Tunai'}],
+        'piutangMutasi': [{'id': 'pb1', 'tipe': 'bayar', 'namaPelanggan': 'Pelanggan Contoh A', 'nominal': 150000, 'tanggal': '2026-12-15', 'jam': '10:00', 'caraBayar': 'Tunai'},
+                          # sanggahan Paket B: bon 2026 yang dibayar (melewati beberapa nota bon, margin berbeda) & dihapus buku SESUDAH tahun ditutup. A membayar
+                          # 20 Des sampai bon tertua yang masih terbuka per 31 Des = nota TANPA MODAL yang sudah dibayar sebagian; hapus buku 4 Jan melewatinya ke nota RUGI
+                          {'id': 'pb3', 'tipe': 'bayar', 'namaPelanggan': 'Pelanggan Contoh A', 'nominal': 1000000, 'tanggal': '2026-12-20', 'jam': '10:00', 'caraBayar': 'Tunai'},
+                          {'id': 'pb2', 'tipe': 'bayar', 'namaPelanggan': 'Pelanggan Contoh B', 'nominal': 700000, 'tanggal': '2027-01-04', 'jam': '09:30', 'caraBayar': 'Tunai'},
+                          {'id': 'ph1', 'tipe': 'hapusBuku', 'namaPelanggan': 'Pelanggan Contoh A', 'nominal': 300000, 'tanggal': '2027-01-04', 'jam': '11:00', 'alasan': 'contoh: pindah kota'}],
         'utangPemasokMutasi': [{'id': 'ub1', 'tipe': 'bayar', 'pemasok': 'PEMASOK CONTOH', 'nominal': 20000000, 'tanggal': '2026-12-01', 'jam': '10:00', 'bonTanggal': '2026-11-10', 'dari': 'rekening'}],
         'modalOwner': [{'id': 'mo1', 'tanggal': '2026-06-01', 'jam': '08:00', 'tipe': 'setor', 'nominal': 250000000, 'catatan': 'modal awal contoh'}],
         'aturanToko': [], 'pajakOmzetLuar': [], 'pajakSetoran': [], 'tutupBukuAcara': [], 'pengaturan': [], 'dokumenCetak': [], 'produksiKemasan': [], 'stokBahanKemasan': [], 'stokBahanLiteran': [],
@@ -158,6 +171,16 @@ function layar(kini) {
   o.lalu = [rekapTahun(2027, kini).lalu, lpOmzetTahun(2026)].join('|');
   o.enam = enamBulan(kini).daftar.map(function (b) { return [b.key, b.omzet, b.n].join('|'); });
   o.banding = J(bandingLabaRugi('2026-12', '2026-11', kini).baris.map(function (r) { return [r.nama, r.a, r.b, r.d]; }));
+  // sanggahan Paket B — bulan BERJALAN Januari 2027: bon 2026 dibayar & dihapus buku 4 Jan → margin lepas ke diterima tunai (dulu 0 sesudah ritual)
+  var L27 = labaBulan('2027-01', kini); o.laba27 = J([L27.tunai, L27.marginKredit, L27.marginDibayar, L27.marginDihapus, L27.marginDiretur || 0, L27.labaBersih, L27.omzetKredit, L27.nKredit]);
+  // arus kas Nov 2026 – Jan 2027 yang BELUM final: kas awal, penyesuaian titik kas, kas akhir — semua baris (dulu kas awal hilang sesudah ritual)
+  var AL = laporanBerkop('aruskas', '2027-01', 3, kini); o.arusLintas = AL.baris.map(function (r) { return r.nama + '=' + r.teks; }).concat([AL.catatan, String(AL.tolak)]);
+  // Menu: pintu "Laporan satu bulan penuh" & baris Laporan di laci membaca catatan pertama yang SAMA dengan Laporan
+  var TTm = susunTertutup(kini)[0].isi.filter(function (x) { return x.id === 'bulanPenuh'; })[0]; var LCm = null; susunLaci(kini, {}).forEach(function (g) { g.isi.forEach(function (b) { if (b.id === 'laporan') LCm = b; }); });
+  o.menu = J([TTm.tertutup, TTm.sub, TTm.angka, TTm.cap, TTm.jawab, LCm.sub, LCm.angka, LCm.cap]);
+  // Cincin: semua sel 7 lapis + kepala/pembanding bulan & tahun (pembanding "jam segini" di hari tutup buku diuji terpisah)
+  var IX = bangunIndeks(); o.cincinSektor = susunSektor('bulan', IX, kini).map(function (s) { return [s.id, s.nilai, s.keadaan, s.label].join('|'); });
+  o.cincin = ['bulan', 'tahun'].map(function (sk) { var RC = susunRingkasan(sk, IX, kini); return J([RC.angka, RC.judul, RC.sub, RC.banding, RC.lapisan]); }).concat([J([susunRingkasan('hari', IX, kini).angka, susunRingkasan('hari', IX, kini).sub])]);
   return o;
 }
 function beda(a, b) { var out = []; Object.keys(a).forEach(function (k) { var x = J(a[k]), y = J(b[k]); if (x !== y) { var xa = Array.isArray(a[k]) ? a[k] : [x], ya = Array.isArray(b[k]) ? b[k] : [y]; var i = 0; while (i < xa.length && J(xa[i]) === J(ya[i])) i++; out.push(k + '[' + i + ']: ' + String(J(xa[i])).slice(0, 260) + '  ≠  ' + String(J(ya[i])).slice(0, 260)); } }); return out; }
@@ -174,7 +197,7 @@ function persiapkan(w) {
 
 SKENARIO = r"""
 // ==================== P1 + P2 · ritual 5 Jan 2027, banding 5 Jan & 31 Mar ====================
-var W5, S5, S31, R;
+var W5, S5, S31, R, PK0;
 coba('P1-P2', function () {
   W5 = persiapkan(jam('2027-01-05T10:00:00+07:00'));
   var setorJul = susunSetoran({ masaPajak: '2026-07', tanggalSetor: '2026-08-14', jumlah: String(pjTahun(2026, new Date(__KINI)).daftar[6].pph), ntpn: 'AB12CD34EF56GH78', catatan: 'bukti kertas contoh' }, W5, new Date(__KINI)); tulis(setorJul);
@@ -182,6 +205,11 @@ coba('P1-P2', function () {
   ok('kotak pasir masuk akal: 2026 punya omzet sistem tiap bulan Jun–Des, PPh dihitung (aturan dari tombol), Jan–Mei catatan lama; layar sebelum ritual tidak Rp0',
     pjTahun(2026, k5).daftar.slice(5).every(function (b) { return b.sistem > 0; }) && pjTahun(2026, k5).totalPph > 0 && pjTahun(2026, k5).lengkap && S5.hari.length === 14, J(S5.pajak));
   ok('LATIHAN menyusun potret tanpa menulis apa pun (kalimat ringkas, ukuran) — kunci sungguhan memakai fungsi yang sama', (function () { var n0 = ambilTutupBukuAcara().length; var PL = potretLatihan(2026, k5); return PL.ok && /^Potret 2026: 12 bulan & \d+ hari berjualan · omzet sistem Rp/.test(PL.teks) && /neraca 31 Des Rp/.test(PL.teks) && ambilTutupBukuAcara().length === n0 && PL.ukuran > 1000; })(), potretLatihan(2026, k5).teks);
+  PK0 = { peringatan: pjPeringatanKunci('2026-12'), terkunci: pjTahun(2026, k5).daftar.filter(function (b) { return b.terkunci; }).length, cincinMg: susunRingkasan('hari', bangunIndeks(), k5).banding,
+    cincinKmr: susunRingkasan('langsung', bangunIndeks(), jam('2027-01-01T10:00:00+07:00') && new Date(__KINI)).banding, cincinMgSub: susunRingkasan('hari', bangunIndeks(), new Date(__KINI)).sub }; W5 = jam('2027-01-05T10:00:00+07:00');
+  ok('sebelum ritual (bunyi karena sebab yang benar): margin bon 2026 yang dibayar 4 Jan lepas ke diterima tunai Januari (hapus buku melewati nota rugi: minus), kas awal arus kas Nov–Jan ada, pintu bulan penuh terbuka, Cincin membandingkan minggu lalu & kemarin jam segini',
+    JSON.parse(S5.laba27)[2] > 0 && JSON.parse(S5.laba27)[3] < 0 && /^Kas awal periode=−?Rp\d/.test(S5.arusLintas[0]) && JSON.parse(S5.menu)[0] === false && /^minggu lalu sampai Selasa jam segini: Rp/.test(PK0.cincinMg) && /kemarin jam segini nota ke-\d+/.test(PK0.cincinKmr),
+    J([S5.laba27, S5.arusLintas[0], S5.menu, PK0.cincinMg, PK0.cincinKmr]));
   R = ritual(W5);
   ok('ritual 5 Jan 2027 tidak ditolak; berita acara membawa potret 2026 (versi 1, 12 bulan, hari berjualan, nota pertama sistem 5 Jun, catatan pertama 4 Jun)', !R.tolak && !!R.acara.potret && R.acara.potret.versi === 1 && Object.keys(R.acara.potret.bulan).length === 12 && Object.keys(R.acara.potret.hari).length > 50 && R.acara.potret.awalSistem === '2026-06-05' && R.acara.potret.pertama === '2026-06-04', R.tolak || J(Object.keys(R.acara.potret || {})));
   var adaDiKiriman = R.kiriman.map(function (k) { return k.dokumen.filter(function (x) { return x.koleksi === 'tutupBukuAcara'; }).map(function (x) { return x.data.status + ':' + !!x.data.potret; }).join(','); }).filter(Boolean);
@@ -202,6 +230,11 @@ coba('P1-P2', function () {
   ok('Harian 30 Des 2026: omzet, nota & margin dari potret, rincian uang/arus kas/buku kas ikut arsip (null, bukan Rp0)', RH.diarsip && RH.omzet > 0 && RH.tunai === null && RH.bersih === null && !RH.buku.length, J(RH));
   var RM = rekapMinggu(lpSenin('2026-12-28'), new Date(__KINI));
   ok('Mingguan 28 Des – 3 Jan: 4 hari dari potret, laba bersih & arus kas minggu itu tidak disusun (null) dan disebut', RM.diarsip === 4 && RM.labaBersih === null && RM.bersih === null && RM.hari.filter(function (d) { return d.diarsip; }).length === 4, J([RM.diarsip, RM.labaBersih]));
+  var SA = ambilPiutangMutasi().filter(function (m) { return m.tipe === 'saldoAwal' && m.tutupBuku; }); var BF2 = bentukFirestore(SA);
+  ok('saldo pembuka piutang membawa bon yang masih terbuka per 31 Des (Σ sisa = saldo, margin asli, nota) dalam bentuk yang diterima Firestore', SA.length >= 2 && SA.every(function (m) { return Array.isArray(m.marginBon) && m.marginBon.length > 1 && Math.abs(m.marginBon.reduce(function (a, b) { return a + b.sisa; }, 0) - m.nominal) < 1 && m.marginBon.every(function (b) { return b.nilai >= b.sisa && b.nota; }); }) && !BF2.length, J([SA.map(function (m) { return [m.namaPelanggan, m.nominal, (m.marginBon || []).length]; }), BF2.slice(0, 3)]));
+  var RHg = susunRingkasan('hari', bangunIndeks(), new Date(__KINI)).banding; var RKm = susunRingkasan('langsung', bangunIndeks(), jam('2027-01-01T10:00:00+07:00') && new Date(__KINI)).banding; var RSb = susunRingkasan('hari', bangunIndeks(), new Date(__KINI)).sub; var RMn = susunRingkasan('menit', bangunIndeks(), new Date(__KINI)).banding; W5 = jam('2027-01-05T10:00:00+07:00');
+  ok('Cincin sesudah ritual: pembanding "jam segini" yang jatuh di hari tutup buku DISEBUT (rincian per jam ikut arsip), bukan Rp0 / nota ke-0', /^minggu lalu sudah tutup buku — rincian per jam ikut arsip · belum bisa dibandingkan sampai jam segini$/.test(RHg) && /kemarin sudah tutup buku — rincian per jam ikut arsip, belum bisa dibandingkan jam segini/.test(RKm) && !/nota ke-0/.test(RKm) && /^kemarin sudah tutup buku — rincian per jam ikut arsip · belum bisa dibandingkan jam segini$/.test(RMn)
+    && (function () { var m0 = /^margin kotor (Rp[\d.]+) · /.exec(PK0.cincinMgSub); return !!m0 && RSb.indexOf('margin kotor ' + m0[1] + ' (4 hari dari potret tutup buku — persen tidak dihitung)') === 0; })(), J([RHg, RKm, RMn, PK0.cincinMgSub, RSb]));
   var KJ = kendaliBulan('2026-12', new Date(__KINI)); var PA = paretoBiaya(KJ);
   ok('Biaya Desember 2026: per jenis dari potret, pareto menyebut rincian sudah diarsip (bukan "Belum ada biaya tercatat")', KJ.diarsip && PA.diarsip && /sudah diarsip \(tutup buku\)/.test(PA.teks) && !/Belum ada biaya/.test(PA.teks), PA.teks);
 });
@@ -217,11 +250,17 @@ coba('P1b', function () {
 
 // ==================== P3 · setoran masa Desember 2026 dicatat Januari ====================
 coba('P3', function () {
+  // sanggahan Paket B: P3 dulu berjalan sesudah P1b (persiapkan tanpa ritual) — "sesudah ritual"-nya tidak sungguhan. Ritualnya dijalankan di sini.
+  R = ritual(persiapkan(jam('2027-01-05T10:00:00+07:00'))); if (R.tolak) throw new Error('ritual ditolak: ' + R.tolak);
+  ok('P3 berjalan SESUDAH ritual sungguhan (2026 diarsip & ber-potret, era 2026)', tahunDiarsip(2026) && !!potretTahun(2026) && tahunDitutup('2026-12') && eraBuku() === 2026);
   var w = jam('2027-01-10T10:00:00+07:00'); var k = new Date(__KINI); var Des0 = S5.pajak[11].split('|'); var pph = Number(Des0[10]);
   var r = susunSetoran({ masaPajak: '2026-12', tanggalSetor: '2027-01-10', jumlah: String(pph), ntpn: '1234ABCD5678EFGH' }, w, k); tulis(r);
   var s = cacheMentah('pajakSetoran').filter(function (x) { return x.masaPajak === '2026-12'; })[0]; var B = pjTahun(2026, k).daftar[11];
   ok('setoran masa 2026-12 tersimpan 10 Jan 2027 (sesudah ritual): potret omzet & perkiraan saat setor = angka sebelum ritual; status "disetor" (bukan "berubah"), ber-NTPN', !!s && s.omzetSaatSetor === Number(Des0[6]) && s.pphPerkiraanSaatSetor === pph && B.status.kode === 'disetor' && /NTPN 1234ABCD5678EFGH/.test(B.status.teks), J([s, B.status]));
-  ok('peringatan kunci setoran Desember menyebut tutup buku, bukan "kunci bulan dulu"', /bergeser sampai tutup buku 2026|tutup buku/.test(r.peringatan || pjPeringatanKunci('2026-12')) || r.peringatan === '', r.peringatan);
+  var T26 = pjTahun(2026, k);
+  ok('sebelum ritual masa Desember 2026 memang "masih bisa bergeser sampai tutup buku 2026" & tidak ada masa 2026 yang terkunci (K1) — peringatan itu benar SAAT ITU', /^Angka Desember 2026 masih bisa bergeser sampai tutup buku 2026/.test(PK0.peringatan) && PK0.terkunci === 0, J(PK0));
+  ok('sesudah tutup buku Pajak 2026 = FINAL (satu pembaca tahunDitutup dengan Laporan): 12 masa terkunci & bertanda tutup buku, setoran Desember tanpa peringatan "masih bisa bergeser", kabar tanpa pita awas',
+    T26.daftar.length === 12 && T26.daftar.every(function (b) { return b.terkunci && b.ditutup; }) && pjPeringatanKunci('2026-12') === '' && r.peringatan === '' && r.patch.kabarAwas === false && !/bergeser/.test(r.patch.kabar) && lpFinal('2026-12'), J([r.peringatan, r.patch.kabar, T26.daftar.map(function (b) { return b.terkunci; })]));
 });
 
 // ==================== P4 · pilih tahun, bawaan Jan–Mar, Beranda & pengingat ====================
@@ -289,6 +328,21 @@ coba('P8', function () {
   var DR = dokRekapPajak(pjTahun(2027, k), { nama: 'Toko Contoh', alamat: 'Jl. Contoh', versi: 1 });
   ok('rekap 2027 mencetak "Omzet tahun 2026" (angka per tahun), bukan "Omzet tahun lalu"', DR.baris.some(function (b) { return b.nama === 'Omzet tahun 2026' && b.teks === RP(T26.kumGabung); }) && !DR.baris.some(function (b) { return b.nama === 'Omzet tahun lalu'; }));
 });
+
+// ==================== P10 · aturan pajak PER TAHUN (sanggahan Paket B) ====================
+coba('P10', function () {
+  var w = persiapkan(jam('2027-01-05T10:00:00+07:00')); R = ritual(w); var k = new Date(__KINI); var A0 = pjTahun(2026, k); var pph0 = A0.totalPph; var daftar0 = J(A0.daftar.map(function (b) { return [b.pph, b.status.kode]; }));
+  ok('awal: aturan 2026 & 2027 = aturan terbaru (belum ada yang berubah sejak tutup buku), tanpa tanda "diubah sesudah tutup buku"', pph0 > 0 && pjProfil(2026).tahunAturan === null && !A0.aturanSejakTutup && pjTahun(2027, k).P.tarifPerMil === 5, J([pph0, A0.aturanSejakTutup]));
+  tulis(susunAturRekap({ tarifPerMil: '10', batasOmzet: '4800000000', tanggalLapor: '15' }, w));   // DK3 (tahun berjalan) mengubah tarif terbaru jadi 1 %
+  var A1 = pjTahun(2026, k);
+  ok('tarif terbaru diubah dari DK3 (Januari 2027): 2026 DIBEKUKAN dengan aturan lamanya — PPh & status 12 masa 2026 tetap, 2027 memakai 1 %', A1.totalPph === pph0 && J(A1.daftar.map(function (b) { return [b.pph, b.status.kode]; })) === daftar0 && A1.P.tarifPerMil === 5 && pjProfil(2026).tahunAturan === 2026 && pjTahun(2027, k).P.tarifPerMil === 10 && aturRekap().tarifPerMil === 10 && !A1.aturanSejakTutup, J([A1.totalPph, pph0, A1.P.tarifPerMil, pjTahun(2027, k).P.tarifPerMil]));
+  var r = tulis(susunProfilPajak({ statusPasangan: 'pisahHarta', batasBebas: '400.000.000', tahunPajak: 2026 }, w)); var A2 = pjTahun(2026, k); var B2 = pjTahun(2027, k);
+  ok('profil diubah dari layar Pajak 2026: hanya aturan 2026 (status pasangan, batas bebas); 2027 & aturan terbaru tidak ikut; kabar menyebutnya', A2.P.statusPasangan === 'pisahHarta' && A2.P.batasBebas === 400000000 && A2.P.tarifPerMil === 5 && B2.P.statusPasangan === 'belumDiketahui' && B2.P.batasBebas === 500000000 && B2.P.tarifPerMil === 10 && pjProfil().batasBebas === 500000000 && /aturan tahun 2026 saja; tahun lain tidak berubah/.test(r.patch.kabar) && A2.totalPph !== pph0, J([A2.P, B2.P.statusPasangan, r.patch.kabar]));
+  var DR = dokRekapPajak(A2, { nama: 'Toko Contoh', alamat: 'Jl. Contoh', versi: 1 });
+  ok('aturan 2026 berbeda dari saat tahun dikunci → Pajak & rekap konsultan 2026 MENYEBUTNYA (aturan saat dikunci & perkiraan PPh saat itu), 2027 tidak', /^Aturan pajak 2026 diubah sesudah tutup buku \(status pasangan, batas bebas\)\. Saat tahun dikunci: tarif 0,5 %, batas bebas Rp500\.000\.000, perkiraan PPh setahun Rp/.test(A2.aturanSejakTutup) && DR.baris.some(function (b) { return /^\[DIUBAH SESUDAH TUTUP BUKU\] Aturan pajak 2026 diubah/.test(b.nama); }) && !B2.aturanSejakTutup, A2.aturanSejakTutup);
+  tulis(susunProfilPajak({ statusPasangan: 'belumDiketahui', batasBebas: '500.000.000', tahunPajak: 2026 }, w));
+  ok('dikembalikan ke aturan saat dikunci → tanda hilang, PPh 2026 = semula', !pjTahun(2026, k).aturanSejakTutup && pjTahun(2026, k).totalPph === pph0, pjTahun(2026, k).aturanSejakTutup);
+});
 """
 
 # ---------- P9 · laporan.js ASLI digambar di jsc (pasang/delegasi/jadwal diganti penangkap; tanpa DOM) ----------
@@ -322,6 +376,8 @@ coba('P9', function () {
     /class="seg aktif" data-aksi="pjTahun" data-t="2026" data-k="pt-2026">2026 · tutup buku/.test(pj) && (pj.match(/data-k="pb-2026-\d\d"/g) || []).length === 12 && /potret tutup buku/.test(pj)
     && (pj.match(/data-aksi="pjSetorKetikMasa" data-b="2026-\d\d"/g) || []).length === 12 && (pj.match(/data-aksi="pjLuarPilih" data-kunci="bulan" data-nilai="2026-\d\d"/g) || []).length === 12 && /Tahun 2026 sudah tutup buku — angka sistem dari potret/.test(pj) && /Omzet tahun 2025/.test(pj),
     J([(pj.match(/data-k="pb-2026-\d\d"/g) || []).length, (pj.match(/data-aksi="pjSetorKetikMasa" data-b="2026-\d\d"/g) || []).length, (pj.match(/data-aksi="pjLuarPilih" data-kunci="bulan" data-nilai="2026-\d\d"/g) || []).length]));
+  ok('P9 Pajak 2026 sesudah tutup buku: 12 masa bertanda "tutup buku" (bukan "belum dikunci"), form setoran Desember tanpa pita "masih bisa bergeser"',
+    (pj.match(/data-k="pk-2026-\d\d">tutup buku</g) || []).length === 12 && !/belum dikunci/.test(pj) && !/data-k="ps-kunci"/.test(pj) && !/masih bisa bergeser/.test(pj), J([(pj.match(/data-k="pk-2026-\d\d">tutup buku</g) || []).length, (pj.match(/.{80}belum dikunci/) || [''])[0]]));
   ok('P9 Pajak bawaan 5 Jan 2027 = 2026 (masa Desember terutang); Pajak 2027 menawarkan omzet 2026 dari sistem & menandai aturan belum diperiksa untuk 2027',
     /class="seg aktif" data-aksi="pjTahun" data-t="2026"/.test(hasil['pajak-bawaan']) && /data-k="pj-tawar"/.test(hasil['pajak-2027']) && /Omzet tahun 2026 belum diisi di profil/.test(hasil['pajak-2027']) && /data-k="pj-aturan-tahun"/.test(hasil['pajak-2027']));
   ok('P9 Laba Desember 2026: "dari potret tutup buku", daftar nota rugi / tanpa modal / susut menyebut jumlahnya & "rinciannya ikut arsip"', /dari potret tutup buku/.test(hasil['laba-des']) && /rinciannya ikut arsip/.test(hasil['laba-des']) && /rinciannya sudah diarsip \(tutup buku\)/.test(hasil['laba-des']));
@@ -426,7 +482,23 @@ RUSAK = [
     ('Pajak: potongan nota tidak membaca potret', 'baru/js/layar/pajak-logika.js', "  const Pt = potretBulan(key); if (Pt && Pt.potongan) return Object.assign({}, Pt.potongan);", ""),
     ('R4: awal sistem pindah ke nota pertama 2027', 'baru/js/layar/pajak-logika.js', "  const q = awalPotret('awalSistem'); if (q && (!p || q < p)) p = q;\n  const era = eraBerAcara(); if (era !== null && (!p || p > era + '-12-31')) p = (era + 1) + '-01-01';\n", ""),
     ('R4 tanpa potret: tahun sesudah tutup buku tidak sejak 1 Januari', 'baru/js/layar/pajak-logika.js', "if (era !== null && (!p || p > era + '-12-31')) p = (era + 1) + '-01-01';", "if (false) p = (era + 1) + '-01-01';"),
-    ('Laporan: catatan pertama tidak membaca potret (bulan 2026 hilang dari daftar)', 'baru/js/layar/laporan-logika.js', "const q = awalPotret('pertama'); return q && (!p || q < p) ? q : p; }", "return p; }"),
+    ('Laporan & Menu: catatan pertama tidak membaca potret (bulan 2026 hilang dari daftar, pintu bulan penuh tertutup lagi)', 'baru/js/data/toko.js', "const q = awalPotret('pertama'); return q && (!p || q < p) ? q : p; }", "return p; }"),
+    ('Menu: salinan catatan pertama sendiri dari catatan hidup (pintu "satu bulan penuh" tertutup lagi sesudah ritual)', 'baru/js/layar/menu-logika.js', "const pertama = catatanPertama(); const O = mnOpname();", "const pertama = ambilPenjualan().reduce((a, p) => (p.tanggal && (!a || p.tanggal < a) ? p.tanggal : a), ''); const O = mnOpname();"),
+    ('Menu: laci Laporan menulis umur buku dari catatan hidup saja', 'baru/js/layar/menu-logika.js', "const pertama = catatanPertama(); const umur", "const pertama = ambilPenjualan().reduce((a, p) => (p.tanggal && (!a || p.tanggal < a) ? p.tanggal : a), ''); const umur"),
+    ('Pajak: tahun yang ditutup buku tetap "belum dikunci / masih bisa bergeser" (pjTerkunci hanya membaca kunci bulan)', 'baru/js/layar/pajak-logika.js', "if (tahunDitutup(key)) return true; const s = kunciSampai();", "const s = kunciSampai();"),
+    ('saldo pembuka piutang tidak membawa bon terbuka (margin bon 2026 yang dibayar Januari hilang)', 'baru/js/layar/tutup-buku-logika.js', "}, cocok ? { marginBon: mb } : {}, tb) }); });", "}, {}, tb) }); });"),
+    ('saldo awal pembuka tidak dipecah jadi bon asalnya (margin 0)', 'baru/js/layar/laporan-logika.js', "hitungPiutang(batas || undefined).map((d) => lpPecahSaldoAwal(d, dok)).forEach((d) => {", "hitungPiutang(batas || undefined).forEach((d) => {"),
+    ('bon pecahan saldo awal mulai dari nilai aslinya, bukan sisanya', 'baru/js/layar/laporan-logika.js', "sisa: Math.max(0, (utang[j].sub ? utang[j].sisaAwal : utang[j].nominal) || 0) };", "sisa: Math.max(0, utang[j].nominal || 0) };"),
+    ('arus kas lintas tahun belum final: kas awal tidak dari potret (hilang sesudah ritual)', 'baru/js/layar/laporan-logika.js', "const kasAwal = KW ? KW.kas : lpKasPadaLintas(sebelumIso);", "const kasAwal = KW ? KW.kas : kasPada(sebelumIso);"),
+    ('potret tanpa kas titik akhir bulan', 'baru/js/layar/potret-logika.js', "    kasTitik: kasPada(akhirBulanIso(key)),\n", ""),
+    ('Cincin tidak membaca potret hari (pembanding tahun lalu absen)', 'baru/js/layar/ringkasan-logika.js', "const P = tahunDiarsip(y + '-01-01') ? potretTahun(y) : null;", "const P = null;"),
+    ('Cincin: kemarin jam segini di hari tutup buku dihitung Rp0', 'baru/js/layar/ringkasan-logika.js', "const ketKmr = rkKetJam(ix, kemarin);", "const ketKmr = '';"),
+    ('Cincin: margin minggu yang menyeberang ke tahun tutup buku hanya dari catatan hidup', 'baru/js/layar/ringkasan-logika.js', "  const arsip = ix && ix.arsip ? Object.keys(ix.arsip).filter(cocok) : [];", "  const arsip = [];"),
+    ('Cincin: minggu lalu jam segini di hari tutup buku dihitung tanpa jam', 'baru/js/layar/ringkasan-logika.js', "const ketMg = rkKetJam(ix, rkIso(rkGeser(kini, -7))) ||", "const ketMg = '' ||"),
+    ('aturan terbaru diubah tanpa membekukan tahun lalu (PPh 2026 ikut berubah)', 'baru/js/layar/pajak-logika.js', "if (kolom.some((k) => !sama(u[k], lama[k]))) pjTahunLalu(th)", "if (false) pjTahunLalu(th)"),
+    ('profil dari layar tahun lalu menimpa aturan terbaru', 'baru/js/layar/pajak-logika.js', "if (kolom.length && thP < th) {", "if (false) {"),
+    ('aturan per tahun tidak dibaca (tahun lalu memakai aturan terbaru)', 'baru/js/layar/pajak-logika.js', "const d = Object.assign({}, d0, ov);", "const d = Object.assign({}, d0);"),
+    ('aturan diubah sesudah tutup buku tidak disebut', 'baru/js/layar/pajak-logika.js', "  if (!beda.length) return '';\n", "  return '';\n"),
     ('Laba: bulan ditutup tidak membaca potret', 'baru/js/layar/laporan-logika.js', "  const Pt = potretBulan(key); if (Pt && Pt.lb) return lpLabaPotret(key, Pt);   // Paket B: tahun yang sudah ditutup buku", ""),
     ('Ke mana laba kotor: bulan ditutup tidak membaca potret', 'baru/js/layar/laporan-logika.js', "  const Pt = potretBulan(key); if (Pt && Pt.km) {", "  const Pt = null; if (Pt && Pt.km) {"),
     ('Inti bulan: bulan ditutup tidak membaca potret', 'baru/js/layar/laporan-logika.js', "  const Pt = potretBulan(key); if (Pt && Pt.inti) return", "  const Pt = null; if (Pt && Pt.inti) return"),
@@ -457,6 +529,7 @@ RUSAK_LAYAR_JSC = [
     ('laporan.js: Laba bulan diarsip menulis "tidak ada" untuk nota rugi / tanpa modal / susut', "const DA = B.diarsip ? (B.dalamArsip || {}) : null;", "const DA = null;"),
     ('laporan.js: Mingguan lintas tahun tanpa kalimat hari yang diarsip', "${R.diarsip || R.tanpaPotret ? h`<div class=\"pita-info\" data-k=\"minggu-arsip\">", "${false ? h`<div class=\"pita-info\" data-k=\"minggu-arsip\">"),
     ('laporan.js: pemilih tahun Pajak tidak digambar', "    const pilihTahun = DT.length > 1 ?", "    const pilihTahun = false ?"),
+    ('laporan.js: masa tahun yang ditutup buku tanpa tanda "tutup buku"', "${b.berjalan ? '' : b.ditutup ? h`", "${b.berjalan ? '' : false ? h`"),
 ]
 RUSAK_LAYAR = [
     ('laporan.js: Pajak kembali ke tahun berjalan saja', "  function gambarPajak(s, L) {\n    const T = PJ.pjTahun(tahunPajak(), kini());", "  function gambarPajak(s, L) {\n    const T = PJ.pjTahun(null, kini());"),

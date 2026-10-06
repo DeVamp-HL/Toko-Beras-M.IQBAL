@@ -1901,4 +1901,19 @@ tahun lama ke `arsipTahun` (tidak dimuat). Dulu sesudahnya Pajak & Laporan tahun
   (`pjAturanTahun`, `PJ_SUMBER_TAHUN` 2026) — tahun sesudahnya "[BELUM DIPERIKSA UNTUK …]".
 - Dijaga `alat-uji/uji_potret_tahun.py` (kotak pasir: sebelum ritual = sesudah ritual rupiah demi rupiah pada 5 Jan & 31 Mar 2027 untuk 23 kelompok
   layar; setoran masa Desember di Januari; pilih tahun; Beranda & pengingat; R4 dengan & tanpa potret; Batalkan; tanpa potret; per tahun; laporan.js ASLI
-  digambar di jsc untuk 23 keadaan) + `--kontrol` 40 kerusakan + `--asap=<cadangan lokal>` (cadangan 6 Okt: semua kelompok layar 2026 sama sebelum & sesudah pada kedua jam).
+  digambar di jsc untuk 23 keadaan) + `--kontrol` 57 kerusakan + `--asap=<cadangan lokal>` (cadangan 6 Okt: semua kelompok layar 2026 sama sebelum & sesudah pada kedua jam).
+- **Sanggahan Paket B** (sebelum merge):
+  - Pajak tahun yang sudah ditutup buku = FINAL: `pjTerkunci` membaca `tahunDitutup` (pembaca yang sama dengan `lpFinal`), jadi 12 masa 2026 bertanda
+    "tutup buku" (bukan "belum dikunci") dan setoran Desember tidak lagi diberi pita "masih bisa bergeser".
+  - Catatan pertama toko SATU sumber: `toko.js catatanPertama` (Laporan `lpPertama` & Menu — umur buku, pintu "Laporan satu bulan penuh"); salinan di
+    menu-logika dihapus.
+  - Margin bon tahun lalu yang dibayar sesudah ritual: saldo awal piutang pembuka membawa bon yang masih terbuka (`marginBon` [{ sisa, nilai, margin, nota }],
+    `laporan-logika.js lpBonTerbuka`, urutan potong buku bon); `lpMarginBonLepas` memecahnya lagi jadi bon asalnya. Diterima tunai bulan bayar = sebelum ritual.
+    Σ sisa ≠ saldo (diubah tangan) → dibaca seperti saldo awal biasa (margin 0).
+  - Arus kas lintas tahun yang belum final (mis. Nov – Jan di Januari): kas awal dari potret `kasTitik` (kasPada akhir bulan saat dikunci), kalau tidak ada
+    kas akhir bulan dari tutup hari (`lpKasPadaLintas`).
+  - Cincin (Ringkasan): hari tahun yang ditutup dibaca dari potret hari (`bangunIndeks`); pembanding "jam segini" yang jatuh di hari tutup buku disebut
+    ("rincian per jam ikut arsip"), tidak dihitung Rp0.
+  - Aturan pajak PER TAHUN (`aturanToko/rekapOmzet.aturanTahun { 'YYYY': … }`, `PJ_KOLOM_TAHUN`): kolom lama = aturan terbaru (tahun berjalan & DK3);
+    begitu aturan terbaru berubah, tahun lalu yang belum punya entri dibekukan dulu dengan aturan lamanya (`pjGabungRekap`). Profil diubah dari layar tahun
+    lalu = hanya tahun itu. Tahun ber-potret yang aturannya beda dengan saat dikunci disebut di layar & rekap konsultan ("[DIUBAH SESUDAH TUTUP BUKU]").

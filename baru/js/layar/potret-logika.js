@@ -4,14 +4,15 @@
 // (tutup-buku-logika susunKunci, sebelum arsip) potret tahun itu ditulis ke berita acaranya (tutupBukuAcara/{tahun}.potret — owner saja, ikut kiriman berita
 // acara yang sudah ada; rules tidak berubah). Isinya KELUARAN fungsi sumber yang SAMA dengan layar — tidak ada rumus baru:
 //   per bulan : pjOmzetSistem & pjPotonganBulan (Pajak, DK3, Bulanan) · labaBulan (Laba; L = ugLabaBersih bulan itu) · keManaLabaKotor · intiBulan ·
-//               hitungArusKasInti (arus kas berkop) · kendaliPotret (Biaya: jumlah per jenis + bahan pemicu) · lpKasAkhirBulan + neracaPada akhir bulan (Neraca);
+//               hitungArusKasInti (arus kas berkop) · kendaliPotret (Biaya: jumlah per jenis + bahan pemicu) · lpKasAkhirBulan + neracaPada akhir bulan (Neraca) ·
+//               kasPada akhir bulan (kas awal arus kas yang belum final);
 //   per hari  : hitungLabaRentang + jumlahNota hari itu (Harian, Mingguan, tren Dasbor) — hanya hari yang punya nota/retur;
 //   setahun   : nota pertama sistem (pjAwalSistem) & catatan pertama toko (lpPertama) · perkiraan pajak per masa saat dikunci (CATATAN untuk berita acara —
 //               layar Pajak menghitung ulang dari angka bulan + isian di luar sistem & setoran yang tetap hidup).
 // Daftar per catatan (nota rugi, nota tanpa modal, baris susut, rincian uang keluar per jenis, buku kas per gerakan, per jam) TIDAK dipotret — jumlahnya
 // disimpan & layar menyebut "sudah diarsip". Pembaca: toko.js potretBulan / potretHari (satu aturan: tahun ≤ era + berita acara terkunci/selesai).
 // Dijaga alat-uji/uji_potret_tahun.py: sebelum ritual = sesudah ritual, rupiah demi rupiah, per layar.
-import { hitungLabaRentang, hitungArusKasInti, bayaranBiayaBulanan } from '../mesin/beku.js';
+import { hitungLabaRentang, hitungArusKasInti, bayaranBiayaBulanan, kasPada } from '../mesin/beku.js';
 import { akhirBulanIso } from '../mesin/pembantu.js';
 import { ambilPenjualanSemua, ambilRetur, jumlahNota } from '../data/toko.js';
 import { RP, hariIniIso } from '../inti/format.js';
@@ -38,6 +39,9 @@ function ptBulanPotret(key, kini, B) {
     K: { masuk: K.masuk, keluar: K.keluar, pos: K.pos, totalMasuk: K.totalMasuk, totalKeluar: K.totalKeluar, bersih: K.bersih, omzetPenuh: K.omzetPenuh, kreditBulanIni: K.kreditBulanIni, jumlahKredit: K.jumlahKredit },
     // neraca akhir bulan dengan kas akhir bulan dari hitungan tutup hari — sesudah tutup buku bulan ini FINAL, dan bulan final memakai dasar itu (39b no. 36)
     kas: KA, neraca: neracaPada(akhirBulanIso(key), kini, KA),
+    // sanggahan Paket B: kas akhir bulan menurut TITIK KAS (kasPada) saat dikunci — kas awal arus kas yang belum final (mis. Nov – Jan dibuka Januari). Sesudah
+    // ritual titik kas pindah ke 31 Des dan mesin tidak menghitung mundur; tanpa ini kas awalnya hilang. null = memang tidak bisa dihitung saat dikunci.
+    kasTitik: kasPada(akhirBulanIso(key)),
   };
 }
 /** Hari yang punya nota atau retur di tahun itu → [omzet, margin, baris tanpa modal, uang retur, nota] (hitungLabaRentang + jumlahNota hari itu). */

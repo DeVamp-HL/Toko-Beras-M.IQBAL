@@ -472,3 +472,7 @@ export function potretHari(iso) {
 }
 /** Nilai `kolom` paling awal dari semua potret yang terbaca ('awalSistem' = nota pertama sistem, 'pertama' = catatan pertama toko); '' = tidak ada. */
 export function awalPotret(kolom) { let p = ''; const P = ptKeadaan().potret; Object.keys(P).forEach((t) => { const x = String(P[t][kolom] || ''); if (x && (!p || x < p)) p = x; }); return p; }
+/** Tanggal CATATAN PERTAMA toko (nota apa pun atau kedatangan sungguhan — bukan saldo pembuka tutup buku) = awal buku. SATU sumber untuk Laporan (lpPertama:
+ *  daftar bulan, awal buku) dan Menu (umur buku, pintu "satu bulan penuh") — sanggahan Paket B: Menu dulu punya salinan sendiri dari catatan hidup, jadi sesudah
+ *  ritual pintunya tertutup lagi ("4 hari") sementara Laporan tetap membaca 2026. Catatan tahun yang sudah ditutup buku sudah diarsip → dari potretnya. */
+export function catatanPertama() { let p = ''; ambilPenjualanSemua().forEach((d) => { if (d.tanggal && (!p || d.tanggal < p)) p = d.tanggal; }); ambilSemuaBatch().forEach((b) => { if (!b.stokAwal && !b.tutupBuku && b.tanggal && (!p || b.tanggal < p)) p = b.tanggal; }); const q = awalPotret('pertama'); return q && (!p || q < p) ? q : p; }
