@@ -1873,6 +1873,7 @@ Dua butir owner 7 Okt. Tanpa koleksi baru, rules tidak berubah, mesin beku tidak
     adukan, hapus baris / kedatangan) + asap data toko (kedatangan nyata terbaru: tiap ganti nama & hapus yang lolos tanpa stok hantu; koreksi kedatangan
     FJN yang sudah diaduk ditolak; jalur koreksi varian: total kg sama, penjualan terlambat terpotong) + 11 kontrol logika + 5 kontrol statis. `peta_akses.py`:
     `ckSusunPindahKoreksi` dicatat. Rules v7 tidak perlu: semua tulisan owner ke koleksi yang sudah ada (batch lahir & produksiKemasan create hari ini).
+
 ## Paket B — Laporan & Pajak membaca tahun yang sudah ditutup (owner 7 Okt 2026, cabang `perbaikan/laporan-pajak-tahun-ditutup`)
 
 Siap 2027, audit kesiapan H1/H2 R1–R5. Tutup buku memindah catatan
