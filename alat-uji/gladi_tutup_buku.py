@@ -542,7 +542,7 @@ def cek_umum(S, data, c, tolak_sengaja=()):
     c.append(('masuk sebagai owner contoh di SERVER TIRUAN (bilah "SERVER TIRUAN" tampil, sumber Firestore)', bool(m) and m['info'].get('akun') == 'owner' and 'SERVER TIRUAN' in (m['info'].get('bilah') or ''),
               m and {k: m['info'].get(k) for k in ('akun', 'bilah')}))
     mp = L_(S, 'muat penuh')
-    if not mp: c.append(('muat penuh', False, 'langkah tidak tercapai')); return
+    if not mp: c.append(('muat penuh: semua koleksi siap — langkahnya tidak tercapai', False, 'langkah tidak tercapai')); return
     I = mp['info']; kurang = {}
     for k, v in data.items():
         if not isinstance(v, list): continue
