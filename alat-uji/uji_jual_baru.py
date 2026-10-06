@@ -223,7 +223,10 @@ terap(ubahJumlahBaris(s, id, 25)); ok('I: 36 bayar + 1 bonus = 37 = pas stok →
 p = ubahJumlahBaris(s, id, 1); ok('I: 37 bayar + bonus = 38 > 37 → ditolak, kalimat menyebut termasuk bonus', /termasuk bonus/.test(p.kabar) && s.keranjang[0].trx.jumlahUnit === 37, p.kabar);
 terap(toggleBonus(s, id)); ok('I: bonus dilepas → 36 unit, tanpa bonusUnit', s.keranjang[0].trx.jumlahUnit === 36 && !('bonusUnit' in s.keranjang[0].trx), JSON.stringify(s.keranjang[0].trx));
 terap(ubahJumlahBaris(s, id, 1)); p = toggleBonus(s, id); ok('I: 37 bayar, minta bonus → stok tidak cukup, ditolak', /Bonus butuh 1 unit lagi/.test(p.kabar) && !s.keranjang[0].trx.bonusUnit, p.kabar);
-terap(ubahJumlahBaris(s, id, -35)); terap(toggleBonus(s, id)); terap(terapkanNego(s, id, 70000)); ok('I: nego pada baris berbonus: uang 2 × 70.000, unit tetap 3', s.keranjang[0].trx.hargaTotal === 140000 && s.keranjang[0].trx.jumlahUnit === 3, JSON.stringify(s.keranjang[0].trx));
+terap(ubahJumlahBaris(s, id, -35)); terap(toggleBonus(s, id)); p = terapkanNego(s, id, 70000);
+// tinjauan 7 Okt: modal per satuan BAYAR — 2 dibayar + 1 bonus, modal 198.000 ÷ 2 = 99.000/kemasan → 70.000 di bawah modal: owner pun wajib alasan
+ok('I: nego pada baris berbonus di bawah modal per satuan bayar TANPA alasan → ditolak, harga tetap katalog', !p.keranjang && /tulis alasannya/.test(p.kabar || '') && s.keranjang[0].trx.hargaSatuan === 72000, JSON.stringify(p));
+terap({ negoAlasan: 'bonus langganan' }); terap(terapkanNego(s, id, 70000)); ok('I: nego pada baris berbonus (dengan alasan): uang 2 × 70.000, unit tetap 3, status di bawah modal', s.keranjang[0].trx.hargaTotal === 140000 && s.keranjang[0].trx.jumlahUnit === 3 && s.keranjang[0].trx.negoStatus === 'bawahModal', JSON.stringify(s.keranjang[0].trx));
 terap(uangPas(s)); pj = susunNotaDokumen(s, W).dokumen[0].data; ok('I: dokumen membawa bonusUnit 1, jumlahUnit 3, hargaTotal 140.000, negoSelisih −2.000', pj.bonusUnit === 1 && pj.jumlahUnit === 3 && pj.hargaTotal === 140000 && pj.negoSelisih === -2000, JSON.stringify(pj));
 ok('I: 140.000 pas; stok cukup → periksaStokKeranjang diam', periksaStokKeranjang(s) === '' && !simpanNota(s, W).tolak);
 terap(ubahJumlahBaris(s, id, 34)); terap(uangPas(s)); ok('I: 36 bayar + 1 bonus = 37 = pas stok', s.keranjang[0].trx.jumlahUnit === 37);
